@@ -12,6 +12,8 @@
 -export([get/1, get/2, get/3]).
 -export([set/2, set/3]).
 
+-compile([{no_auto_import, [get/1]}]).
+
 -include("ecallmgr.hrl").
 
 -spec flush/0 :: () -> 'ok'.
@@ -81,9 +83,9 @@ set(Key0, Value, Node0) ->
               V =/= undefined],
     case catch ecallmgr_amqp_pool:set_req(Req) of
         {'EXIT', _} ->
-            ?LOG("failed to recv resp for setting ~s to ~p", [Key, Value]);
+            lager:debug("failed to recv resp for setting ~s to ~p", [Key, Value]);
         _ ->
-            ?LOG("recv resp for setting ~s to ~p", [Key, Value])
+            lager:debug("recv resp for setting ~s to ~p", [Key, Value])
     end.
 
 cache_key(K, Node) ->

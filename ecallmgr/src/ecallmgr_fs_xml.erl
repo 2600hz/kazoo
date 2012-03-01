@@ -8,7 +8,8 @@
 %%%-------------------------------------------------------------------
 -module(ecallmgr_fs_xml).
 
--export([route_resp_xml/1, build_route/2, get_leg_vars/1, get_channel_vars/1, get_channel_vars/2, authn_resp_xml/1]).
+-export([route_resp_xml/1, build_route/2, get_leg_vars/1, get_channel_vars/1, 
+         get_channel_vars/2, authn_resp_xml/1, config_acl_xml/1]).
 
 -include("ecallmgr.hrl").
 
@@ -32,7 +33,7 @@ authn_resp_xml(<<"a1-hash">>, JObj) ->
 authn_resp_xml(<<"ip">>, _JObj) ->
     {ok, ?EMPTYRESPONSE};
 authn_resp_xml(_Method, _JObj) ->
-    ?LOG_SYS("Unknown method ~s", [_Method]),
+    lager:debug("unknown method ~s", [_Method]),
     {ok, ?EMPTYRESPONSE}.
 
 route_resp_xml([_|_]=RespProp) ->
@@ -40,10 +41,32 @@ route_resp_xml([_|_]=RespProp) ->
 route_resp_xml(RespJObj) ->
     route_resp_xml(wh_json:get_value(<<"Method">>, RespJObj), wh_json:get_value(<<"Routes">>, RespJObj), RespJObj).
 
+config_acl_xml({struct, Acls}) ->
+    FNodes = fun({_, JObj}, AccJObj) ->
+                  Type = wh_json:get_value(<<"network-list-name">>, JObj),
+              
+                  %ensure Type exists as a key
+                  Acc = case wh_json:get_value(Type, AccJObj, undefined) of
+                            undefined -> wh_json:set_value(Type, [],  AccJObj);
+                            _ -> AccJObj
+                       end,
+                  
+                  Acl = [wh_json:get_value(<<"type">>, JObj), wh_json:get_value(<<"cidr">>, JObj)],
+                  wh_json:set_value(Type, [io_lib:format(?CONFIG_ACL_NODE, Acl) | wh_json:get_value(Type, Acc)], Acc)
+             end,
+
+    Nodes = lists:foldl(FNodes, wh_json:new(), Acls),
+
+    FLists = fun({ListName, ListNodes}, Acc) ->
+                [io_lib:format(?CONFIG_ACL_LIST, [ListName, lists:flatten(ListNodes)]) |Acc]  
+             end,
+    Lists = lists:foldl(FLists, [], wh_json:to_proplist(Nodes)),
+    {ok, lists:flatten(io_lib:format(?CONFIG_ACL, [lists:flatten(Lists)]))}.
+
 %% Prop = Route Response
 -spec route_resp_xml/3 :: (binary(), wh_json:json_objects(), wh_json:json_object()) -> {'ok', iolist()}.
 route_resp_xml(<<"bridge">>, Routes, _JObj) ->
-    ?LOG("Creating a bridge XML response"),
+    lager:debug("Creating a bridge XML response"),
     %% format the Route based on protocol
     {_Idx, Extensions, Errors} = lists:foldr(
                                    fun(RouteJObj, {Idx, Acc, ErrAcc}) ->
@@ -72,22 +95,22 @@ route_resp_xml(<<"bridge">>, Routes, _JObj) ->
                                    end, {1, "", ""}, Routes),
     case Extensions of
         [] ->
-            ?LOG("No endpoints to route to"),
+            lager:debug("No endpoints to route to"),
             {ok, lists:flatten(io_lib:format(?ROUTE_BRIDGE_RESPONSE, [?WHISTLE_CONTEXT, Errors]))};
         _ ->
             Xml = io_lib:format(?ROUTE_BRIDGE_RESPONSE, [?WHISTLE_CONTEXT, Extensions]),
-            ?LOG("Bridge XML generated: ~s", [Xml]),
+            lager:debug("Bridge XML generated: ~s", [Xml]),
             {ok, lists:flatten(Xml)}
     end;
 route_resp_xml(<<"park">>, _Routes, _JObj) ->
     Park = lists:flatten(io_lib:format(?ROUTE_PARK_RESPONSE, [?WHISTLE_CONTEXT])),
-    ?LOG("Creating park XML: ~s", [Park]),
+    lager:debug("Creating park XML: ~s", [Park]),
     {ok, Park};
 route_resp_xml(<<"error">>, _Routes, JObj) ->
     ErrCode = wh_json:get_value(<<"Route-Error-Code">>, JObj),
     ErrMsg = list_to_binary([" ", wh_json:get_value(<<"Route-Error-Message">>, JObj, <<"">>)]),
     Xml = io_lib:format(?ROUTE_ERROR_RESPONSE, [?WHISTLE_CONTEXT, ErrCode, ErrMsg]),
-    ?LOG("Creating error XML: ~s", [Xml]),
+    lager:debug("Creating error XML: ~s", [Xml]),
     {ok, lists:flatten(Xml)}.
 
 -spec build_route/2 :: (proplist() | wh_json:json_object(), DIDFormat :: binary()) -> binary() | {'error', 'timeout'}.
@@ -108,7 +131,7 @@ build_route(RouteJObj, <<"username">>) ->
             RURI = binary:replace(re:replace(Contact, "^[^\@]+", User, [{return, binary}]), <<">">>, <<"">>),
             <<?SIP_INTERFACE, (RURI)/binary>>;
         {error, timeout}=E ->
-            ?LOG("failed to lookup user ~s@~s in the registrar", [User, Realm]),
+            lager:debug("failed to lookup user ~s@~s in the registrar", [User, Realm]),
             E
     end;
 build_route(RouteJObj, DIDFormat) ->
@@ -120,7 +143,7 @@ build_route(RouteJObj, DIDFormat) ->
             RURI = binary:replace(re:replace(Contact, "^[^\@]+", DID, [{return, binary}]), <<">">>, <<"">>),
             <<?SIP_INTERFACE, (RURI)/binary>>;
         {error, timeout}=E ->
-            ?LOG("failed to lookup user ~s@~s in the registrar", [User, Realm]),
+            lager:debug("failed to lookup user ~s@~s in the registrar", [User, Realm]),
             E
     end.
 

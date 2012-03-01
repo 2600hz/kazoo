@@ -38,7 +38,7 @@ onnet_data(State) ->
 
     FromUser = wh_json:get_value(<<"Caller-ID-Name">>, JObj),
 
-    ?LOG("on-net request from ~s(~s) to ~s", [FromUser, AcctID, ToDID]),
+    lager:debug("on-net request from ~s(~s) to ~s", [FromUser, AcctID, ToDID]),
 
     Options = case ts_util:lookup_did(FromUser, AcctID) of
                   {ok, Opts} -> Opts;
@@ -114,8 +114,8 @@ onnet_data(State) ->
         send_park(State, Command)
     catch
         _A:_B ->
-            ?LOG("Exception ~p:~p", [_A, _B]),
-            ?LOG_SYS("Stacktrace: ~p", [erlang:get_stacktrace()]),
+            lager:debug("Exception ~p:~p", [_A, _B]),
+            lager:debug("Stacktrace: ~p", [erlang:get_stacktrace()]),
             wait_for_cdr(State)
     end.
 
@@ -126,15 +126,15 @@ send_park(State, Command) ->
 wait_for_win(State, Command) ->
     case ts_callflow:wait_for_win(State) of
         {won, State1} ->
-            ?LOG("route won, sending offnet resource request"),
+            lager:debug("route won, sending offnet resource request"),
             send_offnet(State1, Command);
         {lost, State2} ->
-            ?LOG("did not win route, passive listening"),
+            lager:debug("did not win route, passive listening"),
             wait_for_bridge(State2)
     end.
 
 send_offnet(State, Command) ->
-    ?LOG("sending offnet request"),
+    lager:debug("sending offnet request"),
     CtlQ = ts_callflow:get_control_queue(State),
     wapi_offnet_resource:publish_req([{<<"Control-Queue">>, CtlQ} | Command]),
     wait_for_bridge(State).
@@ -159,7 +159,7 @@ wait_for_cdr(State) ->
             AcctID = ts_callflow:get_account_id(State1),
             Cost = ts_callflow:get_call_cost(State1),
 
-            ?LOG("a-leg CDR for ~s costs ~p", [AcctID, Cost]),
+            lager:debug("a-leg CDR for ~s costs ~p", [AcctID, Cost]),
 
             wait_for_other_leg(State1, bleg);
         {cdr, bleg, _CDR, State2} ->
@@ -167,12 +167,11 @@ wait_for_cdr(State) ->
             AcctID = ts_callflow:get_account_id(State2),
             Cost = ts_callflow:get_call_cost(State2),
 
-            ?LOG("b-leg CDR for ~s costs ~p", [AcctID, Cost]),
-            ?LOG(BLeg, "b-leg CDR for ~s costs ~p", [AcctID, Cost]),
+            lager:debug("b-leg ~s CDR for ~s costs ~p", [BLeg, AcctID, Cost]),
 
             wait_for_other_leg(State2, aleg);
         {timeout, State3} ->
-            ?LOG("timed out waiting for CDRs, cleaning up"),
+            lager:debug("timed out waiting for CDRs, cleaning up"),
 
             ALeg = ts_callflow:get_aleg_id(State3),
             ts_callflow:finish_leg(State3, ALeg)
@@ -186,7 +185,7 @@ wait_for_other_leg(_State, aleg, {cdr, aleg, _CDR, State1}) ->
 wait_for_other_leg(_State, bleg, {cdr, bleg, _CDR, State1}) ->
     ts_callflow:finish_leg(State1, ts_callflow:get_bleg_id(State1));
 wait_for_other_leg(_State, Leg, {timeout, State1}) ->
-    ?LOG("timed out waiting for ~s CDR, cleaning up", [Leg]),
+    lager:debug("timed out waiting for ~s CDR, cleaning up", [Leg]),
 
     ALeg = ts_callflow:get_aleg_id(State1),
     ts_callflow:finish_leg(State1, ALeg).

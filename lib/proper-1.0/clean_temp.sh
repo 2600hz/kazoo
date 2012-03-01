@@ -1,4 +1,4 @@
-#! /bin/sh
+#!/bin/sh
 
 # Copyright 2010-2011 Manolis Papadakis <manopapad@gmail.com>,
 #                     Eirini Arvaniti <eirinibob@gmail.com>
@@ -22,8 +22,4 @@
 # Author:      Manolis Papadakis
 # Description: Cleanup script for temporary files
 
-DIRS=.\ `ls -l | grep '^d' | awk '{print $8}'`
-
-for d in $DIRS; do
-    rm -f $d/*~ $d/#*# $d/*.dump
-done
+find . \( -name '*~' -or -name '#*#' -or -name '*.dump' \) -delete

@@ -23,6 +23,8 @@
 %%--------------------------------------------------------------------
 -spec start_link/0 :: () -> startlink_ret().
 start_link() ->
+    put(callid, ?LOG_SYSTEM_ID),
+
     _ = start_deps(),
 
     %% maybe move this into a config file?

@@ -49,12 +49,12 @@ handle(Data, Call) ->
             %% bridge only if hotdesk is enabled
             case bridge_to_endpoints(Devices, Data, Call) of
                 {ok, _} ->
-                    ?LOG("completed successful bridge to the hotdesk"),
+                    lager:debug("completed successful bridge to the hotdesk"),
                     cf_exe:stop(Call);
                 {fail, _}=Failure ->
                     cf_util:handle_bridge_failure(Failure, Call);
                 {error, _R} ->
-                    ?LOG("error bridging to hotdesk: ~p", [_R]),
+                    lager:debug("error bridging to hotdesk: ~p", [_R]),
                     cf_exe:continue(Call)
             end;
         <<"bridge">> ->
@@ -119,7 +119,7 @@ login(_, #hotdesk{prompts=#prompts{abort_login=AbortLogin}}, undefined, Call, _)
     ok;
 login(_, #hotdesk{prompts=#prompts{abort_login=AbortLogin}}, _, Call, Loop) when Loop > ?MAX_LOGIN_ATTEMPTS->
     %% if we have exceeded the maximum loop attempts then terminate this call
-    ?LOG("maximum number of invalid attempts to check mailbox"),
+    lager:debug("maximum number of invalid attempts to check mailbox"),
     whapps_call_command:b_play(AbortLogin, Call),
     ok;
 login(Devices, #hotdesk{prompts=#prompts{enter_password=EnterPass, invalid_login=InvalidLogin}
@@ -132,10 +132,10 @@ login(Devices, #hotdesk{prompts=#prompts{enter_password=EnterPass, invalid_login
                 {ok, _} ->
                     login(Devices, H, Call, AuthorizingId, Loop + 1);
                 {error, _} ->
-                    ?LOG("caller hungup during login")
+                    lager:debug("caller hungup during login")
             end;
         {error, _} ->
-            ?LOG("caller hungup during login")
+            lager:debug("caller hungup during login")
     end,
     ok;
 login(Devices, #hotdesk{require_pin=false}=H, _, Call, _) ->
@@ -210,7 +210,7 @@ get_hotdesk_profile(OwnerId, Call) ->
     get_hotdesk_profile(OwnerId, Call, 1).
 
 get_hotdesk_profile(_, _, Loop) when Loop > ?MAX_LOGIN_ATTEMPTS ->
-    ?LOG("too many failed attempts to get the hotdesk id"),
+    lager:debug("too many failed attempts to get the hotdesk id"),
     {error, too_many_attempts};
 get_hotdesk_profile(undefined, Call, Loop) ->
     P = #prompts{},
@@ -223,22 +223,22 @@ get_hotdesk_profile(undefined, Call, Loop) ->
             AccountDb = whapps_call:account_db(Call),
             case couch_mgr:get_results(AccountDb, <<"cf_attributes/hotdesk_id">>, [{<<"key">>, HId}]) of
                 {ok, [JObj]} ->
-                    ?LOG("found hotdesk id ~s", [HId]),
+                    lager:debug("found hotdesk id ~s", [HId]),
                     get_hotdesk_profile(wh_json:get_ne_value([<<"value">>, <<"owner_id">>], JObj), Call, Loop);
                 _ ->
-                    ?LOG("failed to load hotdesk id ~s", [HId]),
+                    lager:debug("failed to load hotdesk id ~s", [HId]),
                     %% set incorrect credentials so that the user dont know this hotdesk_id doesnt exist, avoid brute force
                     {ok, #hotdesk{hotdesk_id = abc, pin = xyz, require_pin = true}}
             end;
         {error, R}=E ->
-            ?LOG("failed to get owner id from caller: ~p", [R]),
+            lager:debug("failed to get owner id from caller: ~p", [R]),
             E
     end;
 get_hotdesk_profile(OwnerId, Call, _) ->
     AccountDb = whapps_call:account_db(Call),
     case couch_mgr:open_doc(AccountDb, OwnerId) of
         {ok, JObj} ->
-            ?LOG("using hotdesk owner id ~s", [OwnerId]), 
+            lager:debug("using hotdesk owner id ~s", [OwnerId]), 
             {ok, #hotdesk{hotdesk_id = wh_json:get_value([<<"hotdesk">>, <<"id">>], JObj)
                           ,enabled = wh_json:is_true([<<"hotdesk">>, <<"enabled">>], JObj)
                           ,pin = wh_json:get_binary_value([<<"hotdesk">>, <<"pin">>], JObj)
@@ -247,7 +247,7 @@ get_hotdesk_profile(OwnerId, Call, _) ->
                           ,keep_logged_in_elsewhere = wh_json:is_true([<<"hotdesk">>, <<"keep_logged_in_elsewhere">>], JObj)
                          }};
         {error, R}=E ->
-            ?LOG("failed to load hotdesking profile for user ~s: ~p", [OwnerId, R]),
+            lager:debug("failed to load hotdesking profile for user ~s: ~p", [OwnerId, R]),
             E
     end.
 
@@ -273,21 +273,21 @@ set_device_owner(undefined, Device, Call) ->
     AccountDb = whapps_call:account_db(Call),
     case couch_mgr:open_doc(AccountDb, Device) of
         {ok, JObj} -> 
-            ?LOG("removing owner id from device ~s in ~s", [Device, AccountDb]),
+            lager:debug("removing owner id from device ~s in ~s", [Device, AccountDb]),
             couch_mgr:save_doc(AccountDb, wh_json:delete_key(<<"owner_id">>, JObj)),
             ok;
         {error, R} -> 
-            ?LOG("failed to load device ~s in ~s: ~p", [Device, AccountDb, R]),
+            lager:debug("failed to load device ~s in ~s: ~p", [Device, AccountDb, R]),
             ok
     end;
 set_device_owner(OwnerId, Device, Call) ->
     AccountDb = whapps_call:account_db(Call),
     case couch_mgr:open_doc(AccountDb, Device) of
         {ok, JObj} -> 
-            ?LOG("setting owner id to ~s on device ~s in ~s", [OwnerId, Device, AccountDb]),
+            lager:debug("setting owner id to ~s on device ~s in ~s", [OwnerId, Device, AccountDb]),
             couch_mgr:save_doc(AccountDb, wh_json:set_value(<<"owner_id">>, OwnerId, JObj)),
             ok;
         {error, R} -> 
-            ?LOG("failed load device ~s in ~s: ~p", [Device, AccountDb, R]),
+            lager:debug("failed load device ~s in ~s: ~p", [Device, AccountDb, R]),
             ok
     end.

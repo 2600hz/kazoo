@@ -25,6 +25,8 @@ start() ->
 start_deps() ->
     whistle_apps_deps:ensure(),
 
+    lager:start(),
+
     case application:get_env(reloader) of
         {ok, true} -> reloader:start();
         _ -> ok

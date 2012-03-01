@@ -22,7 +22,7 @@
 
 -define(SERVER, ?MODULE).
 -define(VIEW_SUMMARY, <<"accounts/listing_by_id">>).
--define(SYS_ADMIN_MODS, [<<"global_resources">>, <<"limits">>, <<"templates">>, <<"rates">>]).
+-define(SYS_ADMIN_MODS, [<<"global_resources">>, <<"limits">>, <<"templates">>, <<"rates">>, <<"acls">>]).
 
 %%%===================================================================
 %%% API
@@ -43,10 +43,10 @@ authorize(#cb_context{auth_account_id=AuthAccountId}=Context) ->
     case allowed_if_sys_admin_mod(IsSysAdmin, Context)
         andalso account_is_descendant(IsSysAdmin, Context) of
         true ->
-            ?LOG("authorizing the request"),
+            lager:debug("authorizing the request"),
             true;
         false ->
-            ?LOG("the request can not be authorized by this module"),
+            lager:debug("the request can not be authorized by this module"),
             false
     end.
 
@@ -61,14 +61,14 @@ authorize(#cb_context{auth_account_id=AuthAccountId}=Context) ->
 account_is_descendant(true, _) ->
     true;
 account_is_descendant(false, #cb_context{auth_account_id=undefined}) ->
-    ?LOG("not authorizing, auth account id is undefined"),
+    lager:debug("not authorizing, auth account id is undefined"),
     false;
 account_is_descendant(false, #cb_context{auth_account_id=AuthAccountId, req_nouns=Nouns}) ->
     %% get the accounts/.... component from the URL
     case props:get_value(?WH_ACCOUNTS_DB, Nouns) of
         %% if the URL did not have the accounts noun then this module denies access
         undefined ->
-            ?LOG("not authorizing, no accounts in request"),
+            lager:debug("not authorizing, no accounts in request"),
             false;
         Params ->
             %% the request that this module process the first element of after 'accounts'
@@ -76,11 +76,11 @@ account_is_descendant(false, #cb_context{auth_account_id=AuthAccountId, req_noun
             ReqAccountId = hd(Params),
             %% we will get the requested account definition from accounts using a view
             %% with a complex key (whose alternate value is useful to use on retrieval)
-            ?LOG("checking if account ~s is a descendant of ~s", [ReqAccountId, AuthAccountId]),
+            lager:debug("checking if account ~s is a descendant of ~s", [ReqAccountId, AuthAccountId]),
             ReqAccountDb = wh_util:format_account_id(ReqAccountId, encoded),
             case ReqAccountId =:= AuthAccountId orelse crossbar_util:open_doc(ReqAccountDb, ReqAccountId) of
                 true -> 
-                    ?LOG("authorizing, requested account is the same as the auth token account"),
+                    lager:debug("authorizing, requested account is the same as the auth token account"),
                     true;
                 %% if the requested account exists, the second component of the key
                 %% is the parent tree, make sure the authorized account id is in that tree
@@ -88,15 +88,15 @@ account_is_descendant(false, #cb_context{auth_account_id=AuthAccountId, req_noun
                     Tree = wh_json:get_value(<<"pvt_tree">>, JObj, []),
                     case lists:member(AuthAccountId, Tree) of
                         true ->
-                            ?LOG("authorizing requested account is a descendant of the auth token"),
+                            lager:debug("authorizing requested account is a descendant of the auth token"),
                             true;
                         false ->
-                            ?LOG("not authorizing, requested account is not a descendant of the auth token"),
+                            lager:debug("not authorizing, requested account is not a descendant of the auth token"),
                             false
                     end;
                 %% anything else and they are not allowed
                 {error, _} ->
-                    ?LOG("not authorizing, error during lookup"),
+                    lager:debug("not authorizing, error during lookup"),
                     false
             end
     end.
@@ -114,15 +114,15 @@ allowed_if_sys_admin_mod(IsSysAdmin, Context) ->
         %% if this is request is not made to a system admin module then this
         %% function doesnt deny it
         false ->
-            ?LOG("authorizing, the request does not contain any system administration modules"),
+            lager:debug("authorizing, the request does not contain any system administration modules"),
             true;
         %% if this request is to a system admin module then check if the
         %% account has the 'pvt_superduper_admin'
         true when IsSysAdmin ->
-            ?LOG("authorizing superduper admin access to system administration module"),
+            lager:debug("authorizing superduper admin access to system administration module"),
             true;
         true ->
-            ?LOG("not authorizing, the request contains a system administration module"),
+            lager:debug("not authorizing, the request contains a system administration module"),
             false
     end.
 
@@ -142,14 +142,14 @@ is_superduper_admin(AccountId) ->
             %% more logging was called for
             case wh_json:is_true(<<"pvt_superduper_admin">>, JObj) of
                 true ->
-                    ?LOG("the requestor is a superduper admin"),
+                    lager:debug("the requestor is a superduper admin"),
                     true;
                 false ->
-                    ?LOG("the requestor is not a superduper admin"),
+                    lager:debug("the requestor is not a superduper admin"),
                     false
             end;
         {error, _} ->
-            ?LOG("not authorizing, error during lookup"),
+            lager:debug("not authorizing, error during lookup"),
             false
     end.
 

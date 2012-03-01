@@ -27,7 +27,7 @@ candidate_rates(ToDID, _FromDID) ->
     <<"+", Start:?MIN_PREFIX_LEN/binary, _/binary>> = E164,
     <<"+", End/binary>> = E164,
 
-    ?LOG("searching for rates in the range ~s to ~s", [Start, End]),
+    lager:debug("searching for rates in the range ~s to ~s", [Start, End]),
     case couch_mgr:get_results(?WH_RATES_DB, <<"rates/lookup">>, [{<<"startkey">>, Start}
                                                                   ,{<<"endkey">>, End}
                                                                  ]) of

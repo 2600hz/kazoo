@@ -1,0 +1,198 @@
+%%%-------------------------------------------------------------------
+%%% @relaodaclor Edouard Swiac <edouard@2600hz.org>
+%%% @copyright (C) 2011, VoIP INC
+%%% @doc
+%%% Send config commands to FS
+%%% @end
+%%%-------------------------------------------------------------------
+-module(ecallmgr_fs_config).
+
+-behaviour(gen_server).
+
+%% API
+-export([start_link/1, start_link/2, 
+        handle_config_req/4]).
+
+%% gen_server callbacks
+-export([init/1, handle_call/3, handle_cast/2, handle_info/2,
+         terminate/2, code_change/3]).
+
+-define(SERVER, ?MODULE).
+-define(FS_TIMEOUT, 5000).
+
+-include("ecallmgr.hrl").
+
+-record(state, {
+          node = undefined :: atom()
+         }).
+
+%%%===================================================================
+%%% API
+%%%===================================================================
+
+%%--------------------------------------------------------------------
+%% @doc
+%% Starts the server
+%%
+%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
+%% @end
+%%--------------------------------------------------------------------
+start_link(Node) ->
+    start_link(Node, []).
+
+start_link(Node, Options) ->
+    gen_server:start_link(?MODULE, [Node, Options], []).
+
+%%%===================================================================
+%%% gen_server callbacks
+%%%===================================================================
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Initializes the server
+%%
+%% @spec init(Args) -> {ok, State} |
+%%                     {ok, State, Timeout} |
+%%                     ignore |
+%%                     {stop, Reason}
+%% @end
+%%--------------------------------------------------------------------
+init([Node, _Options]) ->
+    lager:debug("starting new fs config listener for ~s", [Node]),
+    process_flag(trap_exit, true),
+
+    erlang:monitor_node(Node, true),
+    {ok, #state{node=Node}, 0}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Handling call messages
+%%
+%% @spec handle_call(Request, From, State) ->
+%%                                   {reply, Reply, State} |
+%%                                   {reply, Reply, State, Timeout} |
+%%                                   {noreply, State} |
+%%                                   {noreply, State, Timeout} |
+%%                                   {stop, Reason, Reply, State} |
+%%                                   {stop, Reason, State}
+%% @end
+%%--------------------------------------------------------------------
+handle_call(_Request, _From, State) ->
+    Reply = ok,
+    {reply, Reply, State}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Handling cast messages
+%%
+%% @spec handle_cast(Msg, State) -> {noreply, State} |
+%%                                  {noreply, State, Timeout} |
+%%                                  {stop, Reason, State}
+%% @end
+%%--------------------------------------------------------------------
+handle_cast(_Msg, State) ->
+    {noreply, State}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Handling all non call/cast messages
+%%
+%% @spec handle_info(Info, State) -> {noreply, State} |
+%%                                   {noreply, State, Timeout} |
+%%                                   {stop, Reason, State}
+%% @end
+%%--------------------------------------------------------------------
+handle_info({fetch, configuration, <<"configuration">>, <<"name">>, Conf, ID, Data}, #state{node=Node}=State) ->
+    {ok, ConfigReqPid} = ecallmgr_fs_config_sup:start_req(Node, ID, Conf, Data),
+    erlang:monitor(process, ConfigReqPid),
+    lager:debug("fetch configuration request from from ~s", [Node]),
+    {noreply, State};
+
+handle_info({_Fetch, _Section, _Something, _Key, _Value, ID, [undefined | _Data]}, #state{node=Node}=State) ->
+    _ = freeswitch:fetch_reply(Node, ID, ?EMPTYRESPONSE),
+    lager:debug("ignoring request ~s from ~s", [props:get_value(<<"Event-Name">>, _Data), Node]),
+    {noreply, State};
+
+handle_info(timeout, #state{node=Node}=State) ->
+    Type = {bind, config},
+
+    {foo, Node} ! Type,
+    receive
+        ok ->
+            lager:debug("bound to config request on ~s", [Node]),
+            {noreply, State};
+        {error, Reason} ->
+            lager:debug("failed to bind to config requests on ~s, ~p", [Node, Reason]),
+            {stop, Reason, State}
+    after ?FS_TIMEOUT ->
+            lager:debug("timed out binding to config requests on ~s", [Node]),
+            {stop, timeout, State}
+    end;
+
+handle_info(_Info, State) ->
+    {noreply, State}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% This function is called by a gen_server when it is about to
+%% terminate. It should be the opposite of Module:init/1 and do any
+%% necessary cleaning up. When it returns, the gen_server terminates
+%% with Reason. The return value is ignored.
+%%
+%% @spec terminate(Reason, State) -> void()
+%% @end
+%%--------------------------------------------------------------------
+terminate(_Reason, _State) ->
+    lager:debug("fs config ~p termination", [_Reason]),
+    ok.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Convert process state when code is changed
+%%
+%% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
+%% @end
+%%--------------------------------------------------------------------
+code_change(_OldVsn, State, _Extra) ->
+    {ok, State}.
+
+%%%===================================================================
+%%% Internal functions
+%%%===================================================================
+-spec handle_config_req/4 :: (Node, ID, FsConf, Data) -> {ok, pid()} when
+      Node :: atom(),
+      ID :: binary(),
+      FsConf :: binary(),
+      Data :: proplist().
+handle_config_req(Node, ID, FsConf, _Data) ->
+    Pid = spawn_link(fun() -> 
+              put(callid, ID),
+              try
+                  EcallMgrConf = fsconf_to_sysconf(FsConf),
+                  SysconfResp = ecallmgr_config:get(EcallMgrConf),
+                  lager:debug("received sysconf response for ecallmngr config ~p", [EcallMgrConf]),
+                  {ok, ConfigXml} = case EcallMgrConf of
+                                      <<"acls">> -> ecallmgr_fs_xml:config_acl_xml(SysconfResp)
+                                    end,
+                  lager:debug("sending XML to ~w: ~s", [Node, ConfigXml]),
+                  _ = freeswitch:fetch_reply(Node, ID, ConfigXml)
+              catch 
+                  throw:_T ->
+                    lager:debug("config request failed: thrown ~w", [_T]);
+                  error:_E ->
+                    lager:debug("config request failed: error ~p", [_E])
+              end
+          end),
+    {ok, Pid}.
+
+%%% FS conf keys are not necessarily the same as we store them, remap it
+fsconf_to_sysconf(FsConf) ->
+  case FsConf of
+    <<"acl.conf">> -> <<"acls">>
+  end.

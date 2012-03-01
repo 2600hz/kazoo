@@ -163,7 +163,7 @@ b_pickup(TargetCallId, Call) ->
 %%--------------------------------------------------------------------
 -spec redirect/3 :: (ne_binary(), ne_binary(), whapps_call:call()) -> ok.
 redirect(Contact, Server, Call) ->
-    ?LOG("redirect to ~s on ~s", [Contact, Server]),
+    lager:debug("redirect to ~s on ~s", [Contact, Server]),
     Command = [{<<"Redirect-Contact">>, Contact}
                ,{<<"Redirect-Server">>, Server}
                ,{<<"Application-Name">>, <<"redirect">>}
@@ -1001,20 +1001,20 @@ collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call, Digits
         {amqp_msg, {struct, _}=JObj} ->
             case get_event_type(JObj) of
                 { <<"call_event">>, <<"CHANNEL_UNBRIDGE">>, _ } ->
-                    ?LOG("channel was unbridged while collecting digits"),
+                    lager:debug("channel was unbridged while collecting digits"),
                     {error, channel_unbridge};
                 { <<"call_event">>, <<"CHANNEL_HANGUP">>, _ } ->
-                    ?LOG("channel was hungup while collecting digits"),
+                    lager:debug("channel was hungup while collecting digits"),
                     {error, channel_hungup};
                 { <<"error">>, _, <<"noop">> } ->
                     case wh_json:get_value([<<"Request">>, <<"Msg-ID">>], JObj, NoopId) of
                         NoopId when is_binary(NoopId), NoopId =/= <<>> ->
-                            ?LOG("channel execution error while collecting digits: ~s", [wh_json:encode(JObj)]),
+                            lager:debug("channel execution error while collecting digits: ~s", [wh_json:encode(JObj)]),
                             {error, JObj};
                         _NID when is_binary(NoopId), NoopId =/= <<>> ->
                             collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call, Digits, After);
                         _ ->
-                            ?LOG("channel execution error while collecting digits: ~s", [wh_json:encode(JObj)]),
+                            lager:debug("channel execution error while collecting digits: ~s", [wh_json:encode(JObj)]),
                             {error, JObj}
                     end;
                 { <<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"noop">> } ->
@@ -1041,14 +1041,14 @@ collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call, Digits
                     Digit = wh_json:get_value(<<"DTMF-Digit">>, JObj, <<>>),
                     case lists:member(Digit, Terminators) of
                         true ->
-                            ?LOG("collected digits ('~s') from caller, terminated with ~s", [Digits, Digit]),
+                            lager:debug("collected digits ('~s') from caller, terminated with ~s", [Digits, Digit]),
                             {ok, Digits};
                         false ->
                             case <<Digits/binary, Digit/binary>> of
                                 D when size(D) < MaxDigits ->
                                     collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call, D, Interdigit);
                                 D ->
-                                    ?LOG("collected maximum digits ('~s') from caller", [D]),
+                                    lager:debug("collected maximum digits ('~s') from caller", [D]),
                                     {ok, D}
                             end
                     end;
@@ -1067,7 +1067,7 @@ collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call, Digits
             collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call, Digits, After - (DiffMicro div 1000))
     after
         After ->
-            ?LOG("collect digits timeout"),
+            lager:debug("collect digits timeout"),
             {ok, Digits}
     end.
 
@@ -1097,13 +1097,13 @@ wait_for_message(Application, Event, Type, Timeout) ->
         {amqp_msg, {struct, _}=JObj} ->
             case get_event_type(JObj) of
                 { <<"call_event">>, <<"CHANNEL_DESTROY">>, _ } ->
-                    ?LOG("channel was destroyed while waiting for ~s", [Application]),
+                    lager:debug("channel was destroyed while waiting for ~s", [Application]),
                     {error, channel_destroy};
                 { <<"call_event">>, <<"CHANNEL_HANGUP">>, _ } ->
-                    ?LOG("channel was hungup while waiting for ~s", [Application]),
+                    lager:debug("channel was hungup while waiting for ~s", [Application]),
                     {error, channel_hungup};
                 { <<"error">>, _, Application } ->
-                    ?LOG("channel execution error while waiting for ~s: ~s", [Application, wh_json:encode(JObj)]),
+                    lager:debug("channel execution error while waiting for ~s: ~s", [Application, wh_json:encode(JObj)]),
                     {error, JObj};
                 { Type, Event, Application } ->
                     {ok, JObj};
@@ -1149,10 +1149,10 @@ wait_for_application(Application, Event, Type, Timeout) ->
         {amqp_msg, {struct, _}=JObj} ->
             case get_event_type(JObj) of
                 { <<"error">>, _, Application } ->
-                    ?LOG("channel execution error while waiting for ~s: ~s", [Application, wh_json:encode(JObj)]),
+                    lager:debug("channel execution error while waiting for ~s: ~s", [Application, wh_json:encode(JObj)]),
                     {error, JObj};
                 { <<"call_event">>, <<"CHANNEL_DESTROY">>, _ } ->
-                    ?LOG("channel was hungup while waiting for ~s", [Application]),
+                    lager:debug("channel was hungup while waiting for ~s", [Application]),
                     {error, channel_hungup};
                 { Type, Event, Application } ->
                     {ok, JObj};
@@ -1199,7 +1199,7 @@ wait_for_headless_application(Application, Event, Type, Timeout) ->
         {amqp_msg, {struct, _}=JObj} ->
             case get_event_type(JObj) of
                 { <<"error">>, _, Application } ->
-                    ?LOG("channel execution error while waiting for ~s: ~s", [Application, wh_json:encode(JObj)]),
+                    lager:debug("channel execution error while waiting for ~s: ~s", [Application, wh_json:encode(JObj)]),
                     {error, JObj};
                 { Type, Event, Application } ->
                     {ok, JObj};
@@ -1232,13 +1232,13 @@ wait_for_dtmf(Timeout) ->
         {amqp_msg, {struct, _}=JObj} ->
             case whapps_util:get_event_type(JObj) of
                 { <<"call_event">>, <<"CHANNEL_DESTROY">> } ->
-                    ?LOG("channel was destroyed while waiting for DTMF"),
+                    lager:debug("channel was destroyed while waiting for DTMF"),
                     {error, channel_destroy};
                 { <<"call_event">>, <<"CHANNEL_HANGUP">> } ->
-                    ?LOG("channel was destroyed while waiting for DTMF"),
+                    lager:debug("channel was destroyed while waiting for DTMF"),
                     {error, channel_hungup};
                 { <<"error">>, _ } ->
-                    ?LOG("channel execution error while waiting for DTMF: ~s", [wh_json:encode(JObj)]),
+                    lager:debug("channel execution error while waiting for DTMF: ~s", [wh_json:encode(JObj)]),
                     {error, JObj};
                 { <<"call_event">>, <<"DTMF">> } ->
                     {ok, wh_json:get_value(<<"DTMF-Digit">>, JObj)};
@@ -1284,11 +1284,11 @@ wait_for_bridge(Timeout, Fun, Call) ->
                      end,
             case get_event_type(JObj) of               
                 {<<"error">>, _, <<"bridge">>} ->
-                    ?LOG("channel execution error while waiting for bridge: ~s", [wh_json:encode(JObj)]),
+                    lager:debug("channel execution error while waiting for bridge: ~s", [wh_json:encode(JObj)]),
                     {error, JObj};
                 {<<"call_event">>, <<"CHANNEL_BRIDGE">>, _} ->
                     CallId = wh_json:get_value(<<"Other-Leg-Unique-ID">>, JObj),
-                    ?LOG("channel bridged to ~s", [CallId]),
+                    lager:debug("channel bridged to ~s", [CallId]),
                     case is_function(Fun) of
                         false -> ok;
                         true -> Fun(JObj)
@@ -1297,7 +1297,7 @@ wait_for_bridge(Timeout, Fun, Call) ->
                 {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} ->
                     {Result, JObj};
                 {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>} ->
-                    ?LOG("bridge completed with result ~s catagorized as ~s", [AppResponse, Result]),                     
+                    lager:debug("bridge completed with result ~s catagorized as ~s", [AppResponse, Result]),                     
                    {Result, JObj};
                 _ when Timeout =:= infinity ->
                     wait_for_bridge(Timeout, Fun, Call);
@@ -1421,13 +1421,13 @@ wait_for_application_or_dtmf(Application, Timeout) ->
         {amqp_msg, {struct, _}=JObj} ->
             case get_event_type(JObj) of
                 { <<"call_event">>, <<"CHANNEL_DESTROY">>, _ } ->
-                    ?LOG("channel was destroyed while waiting for ~s or DTMF", [Application]),
+                    lager:debug("channel was destroyed while waiting for ~s or DTMF", [Application]),
                     {error, channel_destroy};
                 { <<"call_event">>, <<"CHANNEL_HANGUP">>, _ } ->
-                    ?LOG("channel was hungup while waiting for ~s or DTMF", [Application]),
+                    lager:debug("channel was hungup while waiting for ~s or DTMF", [Application]),
                     {error, channel_hungup};
                 { <<"error">>, _, Application } ->
-                    ?LOG("channel execution error while waiting ~s or DTMF: ~s", [Application, wh_json:encode(JObj)]),
+                    lager:debug("channel execution error while waiting ~s or DTMF: ~s", [Application, wh_json:encode(JObj)]),
                     {error, JObj};
                 { <<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, Application} ->
                     {ok, JObj};

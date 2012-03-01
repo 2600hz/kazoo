@@ -101,7 +101,7 @@ handle_call_status_resp(JObj, Props) ->
 %%--------------------------------------------------------------------
 init([]) ->
     process_flag(trap_exit, true),
-    ?LOG_SYS("starting new callflow listener"),
+    lager:debug("starting new callflow listener"),
     {ok, []}.
 
 %%--------------------------------------------------------------------
@@ -133,11 +133,11 @@ handle_call(_Msg, _From, Consumers) ->
 %%--------------------------------------------------------------------
 handle_cast({add_consumer, CallId, Consumer}, Consumers) ->
     MRef = erlang:monitor(process, Consumer),
-    ?LOG("added call status response consumer (~p) for ~s", [Consumer, CallId]),
+    lager:debug("added call status response consumer (~p) for ~s", [Consumer, CallId]),
     {noreply, [{CallId, Consumer, MRef}|Consumers]};
 handle_cast({remove_consumer, Consumer}, Consumers) ->
     {noreply, lists:filter(fun({_, C, MRef}) when C =:= Consumer -> 
-                                   ?LOG("removed call status response consumer (~p): response sent", [Consumer]),
+                                   lager:debug("removed call status response consumer (~p): response sent", [Consumer]),
                                    erlang:demonitor(MRef, [flush]),
                                    false; 
                               (_) -> true 
@@ -157,7 +157,7 @@ handle_cast(_Msg, Consumers) ->
 %%--------------------------------------------------------------------
 handle_info({'DOWN', _, _, Consumer, _R}, Consumers) ->
     {noreply, lists:filter(fun({_, C, MRef}) when C =:= Consumer -> 
-                                   ?LOG("removed call status response consumer (~p): ~p", [Consumer, _R]),
+                                   lager:debug("removed call status response consumer (~p): ~p", [Consumer, _R]),
                                    erlang:demonitor(MRef, flush),
                                    false; 
                               (_) -> true 
@@ -189,7 +189,7 @@ handle_event(_JObj, Consumers) ->
 %%--------------------------------------------------------------------
 -spec terminate/2 :: (term(), term()) -> 'ok'.
 terminate(_Reason, _) ->
-    ?LOG_SYS("callflow listner ~p termination", [_Reason]).
+    lager:debug("callflow listner ~p termination", [_Reason]).
 
 %%--------------------------------------------------------------------
 %% @private

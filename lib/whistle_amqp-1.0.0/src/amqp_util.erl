@@ -348,7 +348,7 @@ basic_publish(Exchange, Queue, Payload, ContentType, Props) when is_binary(Paylo
       ,props = MsgProps
      },
 
-    ?AMQP_DEBUG andalso ?LOG("publish ~s ~s: ~s", [Exchange, Queue, Payload]),
+    ?AMQP_DEBUG andalso lager:debug("publish ~s ~s (~p): ~s", [Exchange, Queue, Props, Payload]),
 
     amqp_mgr:publish(BP, AM).
 
@@ -418,7 +418,7 @@ new_exchange(Exchange, Type, Options) ->
       ,nowait = props:get_value(nowait, Options, false)
       ,arguments = props:get_value(arguments, Options, [])
      },
-    ?AMQP_DEBUG andalso ?LOG("create new ~s exchange: ~s", [Type, Exchange]),
+    ?AMQP_DEBUG andalso lager:debug("create new ~s exchange: ~s", [Type, Exchange]),
     amqp_mgr:misc_req(ED).
 
 %%------------------------------------------------------------------------------
@@ -528,13 +528,13 @@ new_queue(Queue, Options) when is_binary(Queue) ->
      },
     case amqp_mgr:consume(QD) of
         {'ok', #'queue.declare_ok'{queue=Q}} ->
-            ?AMQP_DEBUG andalso ?LOG("create queue: ~s)", [Queue]),
+            ?AMQP_DEBUG andalso lager:debug("create queue: ~s)", [Queue]),
             Q;
         {'ok', Q} ->
-            ?AMQP_DEBUG andalso ?LOG("create queue: ~s)", [Queue]),
+            ?AMQP_DEBUG andalso lager:debug("create queue(~p) ~s)", [Options, Queue]),
             Q;
         {error, _Other} ->
-            ?AMQP_DEBUG andalso ?LOG("error creating queue(~p): ~p", [Options, _Other]),
+            ?AMQP_DEBUG andalso lager:debug("error creating queue(~p): ~p", [Options, _Other]),
             {'error', 'amqp_error'}
     end.
 
@@ -593,7 +593,7 @@ queue_delete(Queue, Prop) ->
       ,if_empty = props:get_value(if_empty, Prop, false)
       ,nowait = props:get_value(nowait, Prop, true)
      },
-    ?AMQP_DEBUG andalso ?LOG("delete queue ~s", [Queue]),
+    ?AMQP_DEBUG andalso lager:debug("delete queue ~s", [Queue]),
     amqp_mgr:consume(QD).
 
 %%------------------------------------------------------------------------------
@@ -706,10 +706,10 @@ bind_q_to_exchange(Queue, Routing, Exchange, Options) ->
      },
     case amqp_mgr:consume(QB) of
         ok ->
-            ?AMQP_DEBUG andalso ?LOG("bound queue ~s to ~s with key ~s", [Queue, Exchange, Routing]),
+            ?AMQP_DEBUG andalso lager:debug("bound queue ~s to ~s with key ~s", [Queue, Exchange, Routing]),
             ok;
         {error, _E}=Else ->
-            ?AMQP_DEBUG andalso ?LOG("failed to bind queue ~s: ~p", [Queue, Else]),
+            ?AMQP_DEBUG andalso lager:debug("failed to bind queue ~s: ~p", [Queue, Else]),
             Else
     end.
 
@@ -786,7 +786,7 @@ unbind_q_from_exchange(Queue, Routing, Exchange) ->
       ,routing_key = Routing
       ,arguments = []
      },
-    ?AMQP_DEBUG andalso ?LOG("unbound queue ~s to ~s with key ~s", [Queue, Exchange, Routing]),
+    ?AMQP_DEBUG andalso lager:debug("unbound queue ~s to ~s with key ~s", [Queue, Exchange, Routing]),
     amqp_mgr:consume(QU).
 
 %%------------------------------------------------------------------------------
@@ -812,13 +812,13 @@ basic_consume(Queue, Options) ->
      },
     case amqp_mgr:consume(BC) of
         {error, E}=Err ->
-            ?AMQP_DEBUG andalso ?LOG("error when trying to consume on ~s: ~p", [Queue, E]),
+            ?AMQP_DEBUG andalso lager:debug("error when trying to consume on ~s: ~p", [Queue, E]),
             Err;
         {ok, Pid} when is_pid(Pid) ->
-            ?AMQP_DEBUG andalso ?LOG("started consume of queue(~p) ~s", [Options, Queue]),
+            ?AMQP_DEBUG andalso lager:debug("started consume of queue(~p) ~s", [Options, Queue]),
             ok;
         Else ->
-            ?AMQP_DEBUG andalso ?LOG("failed to start consume of queue(~p) ~s: ~p", [Options, Queue, Else]),
+            ?AMQP_DEBUG andalso lager:debug("failed to start consume of queue(~p) ~s: ~p", [Options, Queue, Else]),
             Else
     end.
 
@@ -831,7 +831,7 @@ basic_consume(Queue, Options) ->
 %%------------------------------------------------------------------------------
 -spec basic_cancel/1 :: (ne_binary()) -> 'ok'.
 basic_cancel(Queue) ->
-    ?AMQP_DEBUG andalso ?LOG("cancel consume for queue ~s", [Queue]),
+    ?AMQP_DEBUG andalso lager:debug("cancel consume for queue ~s", [Queue]),
     amqp_mgr:consume(#'basic.cancel'{consumer_tag = Queue, nowait = false}).
 
 %%------------------------------------------------------------------------------
@@ -873,7 +873,7 @@ is_json(#'P_basic'{content_type=CT}) ->
 %%------------------------------------------------------------------------------
 -spec basic_ack/1 :: (integer()) -> 'ok'.
 basic_ack(DTag) ->
-    ?AMQP_DEBUG andalso ?LOG("basic ack of ~s", [DTag]),
+    ?AMQP_DEBUG andalso lager:debug("basic ack of ~s", [DTag]),
     amqp_mgr:consume(#'basic.ack'{delivery_tag=DTag}).
 
 %%------------------------------------------------------------------------------
@@ -885,7 +885,7 @@ basic_ack(DTag) ->
 %%------------------------------------------------------------------------------
 -spec basic_nack/1 :: (integer()) -> 'ok'.
 basic_nack(DTag) ->
-    ?AMQP_DEBUG andalso ?LOG("basic nack of ~s", [DTag]),
+    ?AMQP_DEBUG andalso lager:debug("basic nack of ~s", [DTag]),
     amqp_mgr:consume(#'basic.nack'{delivery_tag=DTag}).
 
 %%------------------------------------------------------------------------------
@@ -906,7 +906,7 @@ is_host_available() ->
 %%------------------------------------------------------------------------------
 -spec basic_qos/1 :: (non_neg_integer()) -> 'ok'.
 basic_qos(PreFetch) when is_integer(PreFetch) ->
-    ?AMQP_DEBUG andalso ?LOG("set basic qos prefetch to ~p", [PreFetch]),
+    ?AMQP_DEBUG andalso lager:debug("set basic qos prefetch to ~p", [PreFetch]),
     amqp_mgr:consume(#'basic.qos'{prefetch_count = PreFetch}).
 
 %%------------------------------------------------------------------------------
@@ -918,7 +918,7 @@ basic_qos(PreFetch) when is_integer(PreFetch) ->
 %%------------------------------------------------------------------------------
 -spec register_return_handler/0 :: () -> 'ok'.
 register_return_handler() ->
-    ?AMQP_DEBUG andalso ?LOG("registering return handler", []),
+    ?AMQP_DEBUG andalso lager:debug("registering return handler", []),
     amqp_mgr:register_return_handler().
 
 %%------------------------------------------------------------------------------

@@ -26,20 +26,18 @@ handle(Data, Call) ->
     Endpoints = get_endpoints(UserId, Call),
     Timeout = wh_json:get_binary_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT),
     Strategy = wh_json:get_binary_value(<<"strategy">>, Data, <<"simultaneous">>),
-    ?LOG("attempting ~b user devices with strategy ~s", [length(Endpoints), Strategy]),
+    lager:debug("attempting ~b user devices with strategy ~s", [length(Endpoints), Strategy]),
     case length(Endpoints) > 0 andalso whapps_call_command:b_bridge(Endpoints, Timeout, Strategy, <<"true">>, Call) of
         false ->
-            ?LOG(notice, "user ~s has no endpoints", [UserId, {extra_data, [{details, whapps_call:to_proplist(Call)}
-                                                                            ,{account_id, whapps_call:account_id(Call)}
-                                                                           ]}]),
+            lager:notice("user ~s has no endpoints", [UserId]),
             cf_exe:continue(Call);
         {ok, _} ->
-            ?LOG("completed successful bridge to user"),
+            lager:debug("completed successful bridge to user"),
             cf_exe:stop(Call);
         {fail, _}=F ->
             cf_util:handle_bridge_failure(F, Call);
         {error, _R} ->
-            ?LOG("error bridging to user: ~p", [_R]),
+            lager:debug("error bridging to user: ~p", [_R]),
             cf_exe:continue(Call)
     end.
 

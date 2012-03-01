@@ -95,7 +95,8 @@ handle_search_req(JObj, _Props) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    ?LOG_SYS("starting new ecallmgr conference listner process"),
+    put(callid, ?LOG_SYSTEM_ID),
+    lager:debug("starting new ecallmgr conference listner process"),
     {ok, ok}.
 
 %%--------------------------------------------------------------------
@@ -165,8 +166,7 @@ handle_event(_JObj, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
-    ?LOG_SYS("ecallmgr conference listener ~p termination", [_Reason]),
-    ok.
+    lager:debug("ecallmgr conference listener ~p termination", [_Reason]).
 
 %%--------------------------------------------------------------------
 %% @private

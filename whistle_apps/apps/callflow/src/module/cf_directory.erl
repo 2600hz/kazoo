@@ -118,7 +118,7 @@ handle(Data, Call) ->
     DbN0 = case wh_json:is_true(<<"asr_enabled">>, DirJObj, false) of
                true ->
                    ASR = wh_json:get_value(<<"asr_provider">>, DirJObj, wh_json:new()),
-                   ?LOG("Setting ASR data for directory lookup"),
+                   lager:debug("Setting ASR data for directory lookup"),
                    #dbn_state{asr_endpoint = wh_json:get_value(<<"p_endpoint">>, ASR)
                               ,asr_account_id = wh_json:get_value(<<"p_account_id">>, ASR)
                               ,asr_account_pass = wh_json:get_value(<<"p_account_pass">>, ASR)
@@ -130,8 +130,8 @@ handle(Data, Call) ->
     SortBy = get_sort_by(wh_json:get_value(<<"sort_by">>, DirJObj, <<"last_name">>)),
     LookupTable = build_lookup_table(get_dir_docs(DirID, AccountDb)),
 
-    ?LOG_START("dial by name: ~s", [wh_json:get_value(<<"name">>, DirJObj)]),
-    ?LOG("sort by: ~s", [SortBy]),
+    lager:debug("dial by name: ~s", [wh_json:get_value(<<"name">>, DirJObj)]),
+    lager:debug("sort by: ~s", [SortBy]),
 
     DbN = DbN0#dbn_state{sort_by = SortBy
                          ,min_dtmf = MinDTMF
@@ -146,16 +146,16 @@ start_search(Call, Prompts, #dbn_state{asr_endpoint=undefined, sort_by=SortBy}=D
     {ok, DTMFs} = play_start_instructions(Call, Prompts, SortBy),
     collect_min_digits(Call, Prompts, DbN, LookupTable, DTMFs);
 start_search(Call, Prompts, DbN, LookupTable) ->
-    ?LOG("Playing ASR instructions"),
+    lager:debug("Playing ASR instructions"),
     _ = play_asr_instructions(Call, Prompts, DbN),
 
-    ?LOG("Wait for asr response"),
+    lager:debug("Wait for asr response"),
     case asr_response() of
         {ok, Text} ->
-            ?LOG("ASR responded with ~s", [Text]),
+            lager:debug("ASR responded with ~s", [Text]),
             analyze_text(Call, Prompts, DbN, LookupTable, Text);
         {error, Msg} ->
-            ?LOG("Error with ASR, reverting to old school DBN: ~p", [Msg]),
+            lager:debug("Error with ASR, reverting to old school DBN: ~p", [Msg]),
             start_search(Call, Prompts, DbN#dbn_state{asr_endpoint=undefined}, LookupTable)
     end.
 
@@ -182,18 +182,18 @@ analyze_text(Call, Prompts, #dbn_state{confirm_match=ConfirmMatch}=DbN, LookupTa
     end.
 
 asr_response() ->
-    ?LOG("Waiting for ASR response"),
+    lager:debug("Waiting for ASR response"),
     receive
         {amqp_msg, JObj} ->
             case wh_util:get_event_type(JObj) of
                 {<<"call_event">>, <<"CHANNEL_DESTROY">>} ->
-                    ?LOG("channel was destroyed while waiting for bridge"),
+                    lager:debug("channel was destroyed while waiting for bridge"),
                     {error, hangup};
                 {<<"call_event">>, <<"CHANNEL_HANGUP">>} ->
-                    ?LOG("channel was hungup while waiting for bridge"),
+                    lager:debug("channel was hungup while waiting for bridge"),
                     {error, hangup};
                 {<<"error">>, _} ->
-                    ?LOG("channel execution error while waiting for bridge"),
+                    lager:debug("channel execution error while waiting for bridge"),
                     {error, execution_failure};
                 {<<"asr">>, <<"asr_resp">>} ->
                     {ok, wh_json:get_value(<<"Response-Text">>, JObj)};
@@ -239,24 +239,24 @@ collect_min_digits(Call, Prompts, #dbn_state{min_dtmf=MinDTMF, confirm_match=Con
         {error, timeout, DTMFs} ->
             {ok, PromptDTMFs} = play_min_digits_needed(Call, Prompts, MinDTMF),
             CurrDTMFs = <<DTMFs/binary, PromptDTMFs/binary>>,
-            %% ?LOG("Failed to collect ~b digits (currently have ~s)", [MinDTMF, CurrDTMFs]),
+            %% lager:debug("Failed to collect ~b digits (currently have ~s)", [MinDTMF, CurrDTMFs]),
             collect_min_digits(Call, Prompts, DbN, LookupTable, CurrDTMFs)
     end.
 
 -spec analyze_dtmf/2 :: (binary(), wh_json:json_objects() | lookup_table()) -> 'no_dtmf' | 'no_results' | {'one_result', wh_json:json_object()} | {'many_results', wh_json:json_objects()}.
 analyze_dtmf(<<>>, _) -> 'no_dtmf';
 analyze_dtmf(DTMFs, LookupTable) ->
-    ?LOG("Analyze: ~s", [DTMFs]),
+    lager:debug("Analyze: ~s", [DTMFs]),
     case lists:filter(fun(Entry) -> filter_table(Entry, DTMFs) end, LookupTable) of
         [] ->
-            ?LOG("No results"),
+            lager:debug("No results"),
             no_results;
         [{_ID, {_, JObj}}] ->
-            ?LOG("Single result: ~s", [_ID]),
+            lager:debug("Single result: ~s", [_ID]),
             {one_result, JObj};
         MatchesTable ->
             Matches = to_json_list(MatchesTable),
-            ?LOG("Has more than 1 match"),
+            lager:debug("Has more than 1 match"),
             {many_results, Matches}
     end.
 
@@ -294,7 +294,7 @@ matches_menu(Call, Prompts, [], _, _) ->
 matches_menu_dtmf(Call, Prompts, LookupList, DB, MatchNo, {ok, <<>>}) ->
     matches_menu(Call, Prompts, LookupList, DB, MatchNo);
 matches_menu_dtmf(_Call, _Prompts, [JObj | _], _DB, _MatchNo, {ok, ?DTMF_RESULT_CONNECT}) ->
-    %% ?LOG("Routing to ~s (match no ~b)", [_ID, _MatchNo]),
+    %% lager:debug("Routing to ~s (match no ~b)", [_ID, _MatchNo]),
     {route, JObj};
 matches_menu_dtmf(Call, Prompts, [_|RestList], DB, MatchNo, {ok, ?DTMF_RESULT_NEXT}) ->
     matches_menu(Call, Prompts, RestList, DB, MatchNo+1);
@@ -330,10 +330,10 @@ play_no_results_menu(Call, #prompts{no_results_menu=NoResultsMenu}) ->
 play_asr_instructions(Call, #prompts{asr_instructions=AsrInstructions}, DbN) ->
     NoopID = whapps_call_command:audio_macro([{play, AsrInstructions}], Call),
 
-    ?LOG("Send asr amqp"),
+    lager:debug("Send asr amqp"),
     send_asr_info(Call, DbN),
 
-    ?LOG("Waiting for prompt to finish"),
+    lager:debug("Waiting for prompt to finish"),
     {ok, _JObj} = whapps_call_command:wait_for_noop(NoopID),
     ok.
 
@@ -363,10 +363,10 @@ route_to_match(Call, JObj) ->
     AccountDb = whapps_call:account_db(Call),
     case couch_mgr:open_doc(AccountDb, wh_json:get_value(<<"callflow_id">>, JObj)) of
         {ok, CallflowJObj} ->
-            ?LOG("Routing to Callflow: ~s", [wh_json:get_value(<<"_id">>, CallflowJObj)]),
+            lager:debug("Routing to Callflow: ~s", [wh_json:get_value(<<"_id">>, CallflowJObj)]),
             cf_exe:branch(wh_json:get_value(<<"flow">>, CallflowJObj), Call);
         _ ->
-            ?LOG("Failed to find callflow: ~s", [wh_json:get_value(<<"callflow_id">>, JObj)]),
+            lager:debug("Failed to find callflow: ~s", [wh_json:get_value(<<"callflow_id">>, JObj)]),
             cf_exe:continue(Call)
     end.
 
@@ -432,7 +432,7 @@ play_and_collect(AudioMacro, Call) ->
     play_and_collect(AudioMacro, Call, 1).
 play_and_collect(AudioMacro, Call, NumDigits) ->
     NoopID = whapps_call_command:audio_macro(AudioMacro, Call),
-    ?LOG("NoopID: ~s", [NoopID]),
+    lager:debug("NoopID: ~s", [NoopID]),
     whapps_call_command:collect_digits(NumDigits, ?TIMEOUT_DTMF, ?TIMEOUT_DTMF, NoopID, Call).
 
 %% collect DTMF digits individually until length of DTMFs is == MinDTMF

@@ -146,7 +146,7 @@ validate(#cb_context{req_verb = <<"delete">>, req_data=_Data}=Context, MediaID) 
 validate(#cb_context{req_verb = <<"get">>}=Context, MediaID, ?BIN_DATA) ->
     get_media_binary(MediaID, Context);
 validate(#cb_context{req_verb = <<"post">>, req_files=[]}=Context, _MediaID, ?BIN_DATA) ->
-    ?LOG_SYS("No files in request to save attachment"),
+    lager:debug("No files in request to save attachment"),
     crossbar_util:response_invalid_data([<<"no_files">>], Context);
 validate(#cb_context{req_verb = <<"post">>, req_files=[{_Filename, FileObj}]}=Context, MediaID, ?BIN_DATA) ->
     case wh_json:get_value([<<"contents">>], FileObj, <<>>) of
@@ -186,7 +186,7 @@ put(#cb_context{resp_headers=RespHeaders, req_data=ReqData}=Context) ->
                     Context2#cb_context{resp_headers=[{"Location", DocID} | RHs]};
                 Context2 ->
                     crossbar_util:put_reqid(Context),
-                    ?LOG_SYS("put: error saving"),
+                    lager:debug("put: error saving"),
                     Context2
             end;
         _ ->
@@ -218,16 +218,16 @@ update_media_binary(MediaID, Contents, Context, HeadersJObj) ->
     CT = wh_json:get_value(<<"content_type">>, HeadersJObj, <<"application/octet-stream">>),
     Opts = [{headers, [{content_type, wh_util:to_list(CT)}]}],
 
-    ?LOG("Setting Content-Type to ~s", [CT]),
+    lager:debug("Setting Content-Type to ~s", [CT]),
 
     case crossbar_doc:save_attachment(MediaID, attachment_name(), Contents, Context, Opts) of
         #cb_context{resp_status=success}=Context1 ->
-            ?LOG("Saved attachement successfully"),
+            lager:debug("Saved attachement successfully"),
             #cb_context{doc=Doc} = crossbar_doc:load(MediaID, Context),
             Doc1 = wh_json:set_value(<<"content_type">>, CT, Doc),
             crossbar_doc:save(Context1#cb_context{doc=Doc1});
         C ->
-            ?LOG("Failed to save attachment"),
+            lager:debug("Failed to save attachment"),
             C
     end.
 

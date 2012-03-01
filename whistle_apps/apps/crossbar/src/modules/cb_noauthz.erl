@@ -25,5 +25,5 @@ init() ->
     crossbar_bindings:bind(<<"v1_resource.authorize">>, ?MODULE, authorize).
 
 authorize(#cb_context{req_id=ReqId}) ->
-    ?LOG(ReqId, "noauthz authorizing request", []),
+    lager:debug("noauthz authorizing request"),
     true.

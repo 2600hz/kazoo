@@ -13,6 +13,7 @@
 -export([handle_channel_query/2]).
 -export([handle_channel_status/2]).
 -export([handle_call_status/2]).
+-export([handle_switch_reloadacl/2]).
 -export([channel_query/1]).
 
 %% gen_server callbacks
@@ -26,9 +27,11 @@
 -define(RESPONDERS, [{{?MODULE, handle_channel_status}, [{<<"call_event">>, <<"channel_status_req">>}]}
                      ,{{?MODULE, handle_call_status}, [{<<"call_event">>, <<"call_status_req">>}]}
                      ,{{?MODULE, handle_channel_query}, [{<<"call_event">>, <<"channel_query_req">>}]}
+                     ,{{?MODULE, handle_switch_reloadacl}, [{<<"switch_event">>, <<"reloadacl">>}]}
                     ]).
-
--define(BINDINGS, [{call, [{restrict_to, [query_req, status_req]}]}]).
+%% ?? Bindings
+-define(BINDINGS, [{call, [{restrict_to, [query_req, status_req]}]}
+                   ,{switch, []}]).
 -define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).
@@ -59,24 +62,24 @@ handle_channel_status(JObj, _Props) ->
     true = wapi_call:channel_status_req_v(JObj),
     wh_util:put_callid(JObj),
     CallID = wh_json:get_value(<<"Call-ID">>, JObj),
-    ?LOG_START("channel status request received"),
+    lager:debug("channel status request received"),
     case [ecallmgr_fs_node:hostname(NH) || NH <- ecallmgr_fs_sup:node_handlers(), ecallmgr_fs_node:uuid_exists(NH, CallID)] of
         [] -> 
-            ?LOG("no node found with channel ~s", [CallID]),
+            lager:debug("no node found with channel ~s", [CallID]),
             Resp = [{<<"Call-ID">>, CallID}
                     ,{<<"Status">>, <<"terminated">>}
                     ,{<<"Error-Msg">>, <<"no node found with channel">>}
                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)],
             wapi_call:publish_channel_status_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp);
         [{ok, Hostname}] ->
-            ?LOG("call is on ~s", [Hostname]),
+            lager:debug("call is on ~s", [Hostname]),
             Resp = [{<<"Call-ID">>, CallID}
                     ,{<<"Status">>, <<"active">>}
                     ,{<<"Switch-Hostname">>, Hostname}
                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)],
             wapi_call:publish_channel_status_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp);
         [{error, Err}] ->
-            ?LOG("Hostname lookup failed, but call is active"),
+            lager:debug("Hostname lookup failed, but call is active"),
             Resp = [{<<"Call-ID">>, CallID}
                     ,{<<"Status">>, <<"active">>}
                     ,{<<"Error-Msg">>, wh_util:to_binary(Err)}
@@ -95,20 +98,20 @@ handle_call_status(JObj, _Props) ->
     true = wapi_call:call_status_req_v(JObj),
     wh_util:put_callid(JObj),
     CallID = wh_json:get_value(<<"Call-ID">>, JObj),
-    ?LOG("call status request received"),
+    lager:debug("call status request received"),
     case [NH || NH <- ecallmgr_fs_sup:node_handlers(), ecallmgr_fs_node:uuid_exists(NH, CallID)] of
-        [] -> ?LOG("no node found with call having leg ~s", [CallID]);
+        [] -> lager:debug("no node found with call having leg ~s", [CallID]);
         [NodeHandler] ->
             case ecallmgr_fs_node:uuid_dump(NodeHandler, CallID) of
                 {error, E} ->
-                    ?LOG("failed to get channel info for ~s: ~p", [CallID, E]),
+                    lager:debug("failed to get channel info for ~s: ~p", [CallID, E]),
                     Resp = [{<<"Call-ID">>, CallID}
                             ,{<<"Status">>, <<"active">>}
                             ,{<<"Error-Msg">>, wh_util:to_binary(E)}
                             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)],
                     wapi_call:publish_call_status_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp);
                 {ok, Props} ->
-                    ?LOG("got channel info for ~s, forming response", [CallID]),
+                    lager:debug("got channel info for ~s, forming response", [CallID]),
                     ChannelCallID = props:get_value(<<"Channel-Call-UUID">>, Props),
                     Resp = create_call_status_resp(Props, ChannelCallID =:= CallID),
                     wapi_call:publish_call_status_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp)
@@ -119,7 +122,7 @@ handle_call_status(JObj, _Props) ->
 handle_channel_query(JObj, _Props) ->
     true = wapi_call:channel_query_req_v(JObj),
     wh_util:put_callid(JObj),
-    ?LOG("channel query received"),
+    lager:debug("channel query received"),
     RespQ = wh_json:get_value(<<"Server-ID">>, JObj),
     Resp = [{<<"Active-Calls">>, channel_query(JObj)}
             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)],
@@ -141,6 +144,11 @@ channel_query(JObj) ->
                         end
                 end, [], Channels).    
 
+-spec handle_switch_reloadacl/2 ::(wh_json:json_object(), proplist()) -> any().
+handle_switch_reloadacl(JObj, _Props) ->
+  true = wapi_switch:reloadacl_v(JObj),
+  [ecallmgr_fs_node:reloadacl(Pid) || Pid <- ecallmgr_fs_sup:node_handlers()].
+
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -157,6 +165,7 @@ channel_query(JObj) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
+    put(callid, ?LOG_SYSTEM_ID),
     {ok, #state{}}.
 
 %%--------------------------------------------------------------------

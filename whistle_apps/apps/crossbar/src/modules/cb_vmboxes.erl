@@ -292,19 +292,19 @@ load_message_binary(VMBoxId, VMId, #cb_context{req_data=ReqData, db_name=Db, res
                                    ,wh_json:get_value(<<"media_type">>, VMJObj)
                                    ,wh_json:get_value(<<"timezone">>, VMBoxJObj)
                                   ),
-    ?LOG("Sending file with filename ~s", [Filename]),
+    lager:debug("Sending file with filename ~s", [Filename]),
 
     Ctx = crossbar_doc:load_attachment(VMId, AttachmentId, Context),
 
     _ = case wh_json:get_value(<<"folder">>, ReqData) of
             undefined -> ok;
             Folder ->
-                ?LOG("Moving message to ~s", [Folder]),
+                lager:debug("Moving message to ~s", [Folder]),
                 spawn(fun() ->
                               _ = crossbar_util:put_reqid(Context),
                               Context1 = update_message1(VMBoxId, VMId, Context),
                               #cb_context{resp_status=success}=crossbar_doc:save(Context1),
-                              ?LOG("Saved message to new folder ~s", [Folder]),
+                              lager:debug("Saved message to new folder ~s", [Folder]),
                               update_mwi(VMBoxJObj, Db)
                       end)
         end,
@@ -348,7 +348,7 @@ update_mwi(VMBox, DB) ->
     OwnerID = wh_json:get_value(<<"owner_id">>, VMBox),
     false = wh_util:is_empty(OwnerID),
 
-    ?LOG("Sending MWI update to devices owned by ~s", [OwnerID]),
+    lager:debug("Sending MWI update to devices owned by ~s", [OwnerID]),
 
     Messages = wh_json:get_value(<<"messages">>, VMBox, []),
 
@@ -357,7 +357,7 @@ update_mwi(VMBox, DB) ->
     New = count_messages(Messages, <<"new">>),
     Saved = count_messages(Messages, <<"saved">>),
 
-    ?LOG("New: ~b Saved: ~b", [New, Saved]),
+    lager:debug("New: ~b Saved: ~b", [New, Saved]),
 
     CommonHeaders = [{<<"Messages-New">>, New}
                      ,{<<"Messages-Saved">>, Saved}
@@ -450,8 +450,8 @@ generate_media_name(CallerId, GregorianSeconds, Ext, Timezone) ->
     UTCDateTime = calendar:gregorian_seconds_to_datetime(wh_util:to_integer(GregorianSeconds)),
     
     LocalTime = case localtime:utc_to_local(UTCDateTime, wh_util:to_list(Timezone)) of
-                    {{_,_,_},{_,_,_}}=LT -> ?LOG("Converted to TZ: ~s", [Timezone]), LT;
-                    _ -> ?LOG("Bad TZ: ~p", [Timezone]), UTCDateTime
+                    {{_,_,_},{_,_,_}}=LT -> lager:debug("Converted to TZ: ~s", [Timezone]), LT;
+                    _ -> lager:debug("Bad TZ: ~p", [Timezone]), UTCDateTime
                 end,
 
     Date = wh_util:pretty_print_datetime(LocalTime),

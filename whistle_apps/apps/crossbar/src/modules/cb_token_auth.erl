@@ -37,14 +37,14 @@ authenticate(#cb_context{auth_token = <<>>}) ->
 authenticate(#cb_context{auth_token=AuthToken}=Context) ->
     _ = crossbar_util:put_reqid(Context),
 
-    ?LOG("checking auth token: ~s", [AuthToken]),
+    lager:debug("checking auth token: ~s", [AuthToken]),
     case crossbar_util:open_doc(?TOKEN_DB, AuthToken) of
         {ok, JObj} ->
-            ?LOG("token auth is valid, authenticating"),
+            lager:debug("token auth is valid, authenticating"),
             {true, Context#cb_context{auth_account_id=wh_json:get_ne_value(<<"account_id">>, JObj)
                                       ,auth_doc=JObj
                                      }};
         {error, R} ->
-            ?LOG("failed to authenticate token auth, ~p", [R]),
+            lager:debug("failed to authenticate token auth, ~p", [R]),
             false
     end.

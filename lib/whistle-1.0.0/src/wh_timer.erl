@@ -136,7 +136,7 @@ handle_info({'DOWN', _, process, Pid, _}, State) ->
     _ = handle_call({stop, "Stop"}, {Pid, ok}, State),
     {noreply, dict:erase(Pid, State), hibernate};
 handle_info(_Info, State) ->
-    ?LOG(info, "WH_TIMER(~p): unhandled info: ~p~n", [self(), _Info]),
+    lager:info("unhandled info: ~p~n", [_Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------

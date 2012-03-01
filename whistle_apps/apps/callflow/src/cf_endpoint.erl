@@ -82,28 +82,28 @@ create_endpoints(Endpoint, Properties, Call) ->
     Endpoints = case {IgnoreFwd, Substitue, Fwd} of
                     %% if the call forward object is undefined then there is no fwd'n
                     {_, _, undefined} ->
-                        ?LOG("callfwd is undefined, try creating sip endpoint"),
+                        lager:debug("callfwd is undefined, try creating sip endpoint"),
                         [catch(create_sip_endpoint(Endpoint, Properties, Call))];
                     %% if ignore ring groups is true and susbtitues is true (hence false via is_false)
                     %% then there are no endpoints to ring
                     {true, false, _} ->
-                        ?LOG("no endpoints to ring"),
+                        lager:debug("no endpoints to ring"),
                         [];
                     %% if ignore ring groups is true and susbtitues is false (hence true via is_false)
                     %% then try to ring just the device
                     {true, true, _} ->
-                        ?LOG("trying to ring just the device"),
+                        lager:debug("trying to ring just the device"),
                         [catch(create_sip_endpoint(Endpoint, Properties, Call))];
            
          %% if we are not ignoring ring groups and and substitute is not set to false
                     %% (hence false via is_false) then only ring the fwd'd number
                     {false, false, _} ->
-                        ?LOG("trying to ring the fwd number in ring group"),
+                        lager:debug("trying to ring the fwd number in ring group"),
                         [catch(create_call_fwd_endpoint(Endpoint, Properties, Fwd, Call))];
                     %% if we are not ignoring ring groups and and substitute is set to false
                     %% (hence true via is_false) then only ring the fwd'd number
                     {false, true, _} ->
-                        ?LOG("trying to ring the fwd number only"),
+                        lager:debug("trying to ring the fwd number only"),
                         [catch(create_call_fwd_endpoint(Endpoint, Properties, Fwd, Call))
                          ,catch(create_sip_endpoint(Endpoint, Properties, Call))]
                 end,
@@ -134,7 +134,7 @@ get(EndpointId, Call) ->
                     wh_cache:store({?MODULE, AccountDb, EndpointId}, JObj, 300),
                     OK;
                 {error, R}=E ->
-                    ?LOG("unable to fetch endpoint ~s: ~p", [EndpointId, R]),
+                    lager:debug("unable to fetch endpoint ~s: ~p", [EndpointId, R]),
                     E
             end
     end.
@@ -200,7 +200,7 @@ create_sip_endpoint(Endpoint, Properties, Call) ->
 %%--------------------------------------------------------------------
 -spec create_call_fwd_endpoint/4 :: (wh_json:json_object(), wh_json:json_object(), wh_json:json_object(), whapps_call:call()) -> wh_json:json_object().
 create_call_fwd_endpoint(Endpoint, Properties, CallFwd, Call) ->
-    ?LOG("call forwarding endpoint to ~s", [wh_json:get_value(<<"number">>, CallFwd)]),
+    lager:debug("call forwarding endpoint to ~s", [wh_json:get_value(<<"number">>, CallFwd)]),
     IgnoreEarlyMedia = case wh_json:is_true(<<"require_keypress">>, CallFwd)
                            orelse not wh_json:is_true(<<"substitute">>, CallFwd) of
                            true -> <<"true">>;
@@ -269,7 +269,7 @@ generate_ccvs(Endpoint, Call, CallFwd) ->
                        case wh_json:is_true(<<"keep_caller_id">>, CallFwd) of
                            false -> J;
                            true ->
-                                ?LOG("call forwarding configured to keep the caller id"),
+                                lager:debug("call forwarding configured to keep the caller id"),
                                wh_json:set_value(<<"Retain-CID">>, <<"true">>, J)
                        end
                end
@@ -308,7 +308,7 @@ generate_ccvs(Endpoint, Call, CallFwd) ->
                         case wh_json:is_true(<<"require_keypress">>, CallFwd) of
                             false -> J;
                             _ ->
-                                ?LOG("call forwarding configured to require key press"),
+                                lager:debug("call forwarding configured to require key press"),
                                 Confirm = [{<<"Confirm-Key">>, <<"1">>}
                                            ,{<<"Confirm-Cancel-Timeout">>, <<"2">>}
                                            ,{<<"Confirm-File">>, ?CONFIRM_FILE}],
@@ -324,7 +324,7 @@ generate_ccvs(Endpoint, Call, CallFwd) ->
                ,fun(J) ->
                         case wh_json:get_value(<<"pvt_type">>, Endpoint) of
                             <<"device">> ->
-                                ?LOG("setting inherit_codec"),
+                                lager:debug("setting inherit_codec"),
                                 wh_json:set_value(<<"Inherit-Codec">>, <<"true">>, J);
                             false -> J
                         end

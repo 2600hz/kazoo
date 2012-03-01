@@ -29,10 +29,10 @@ lookup_number(Number) ->
             case wh_number_manager:lookup_account_by_number(Num) of
                 {ok, AccountId, ForceOut}=Ok ->
                     wh_cache:store_local(Cache, cache_key_number(Number), {AccountId, ForceOut}),
-                    ?LOG("~s is associated with account ~s", [Num, AccountId]),            
+                    lager:debug("~s is associated with account ~s", [Num, AccountId]),            
                     Ok;
                 {error, Reason}=E ->
-                    ?LOG("~s is not associated with any account, ~p", [Num, Reason]),
+                    lager:debug("~s is not associated with any account, ~p", [Num, Reason]),
                     E
             end
     end.

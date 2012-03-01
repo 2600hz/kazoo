@@ -24,6 +24,6 @@ handle(Data, Call) ->
     Code = wh_json:get_value(<<"code">>, Data, <<"486">>),
     Cause = wh_json:get_ne_value(<<"message">>, Data),
     Media = wh_json:get_ne_value(<<"media">>, Data),
-    ?LOG("repsonding to call with ~s ~s", [Code, Cause]),
+    lager:debug("repsonding to call with ~s ~s", [Code, Cause]),
     whapps_call_command:call_response(Code, Cause, Media, Call),
     cf_exe:stop(Call).

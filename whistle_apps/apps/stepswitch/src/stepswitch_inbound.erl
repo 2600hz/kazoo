@@ -19,7 +19,7 @@ handle_req(JObj, _Prop) ->
     whapps_util:put_callid(JObj),
     case wh_json:get_ne_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj) of
         undefined ->
-            ?LOG_START("received new inbound dialplan route request"),
+            lager:debug("received new inbound dialplan route request"),
             _ =  inbound_handler(JObj);
         _AcctID ->
             ok
@@ -38,12 +38,12 @@ inbound_handler(JObj) ->
 inbound_handler(JObj, Number) ->
     case wh_number_manager:lookup_account_by_number(Number) of
         {ok, AccountId, _} ->
-            ?LOG("number associated with account ~s", [AccountId]),
+            lager:debug("number associated with account ~s", [AccountId]),
             relay_route_req(
               wh_json:set_value(<<"Custom-Channel-Vars">>, custom_channel_vars(AccountId, undefined, JObj), JObj)
              );
         {error, R} ->
-            ?LOG(notice, "unable to get account id for ~s: ~p", [Number, R])
+            lager:notice("unable to get account id for ~s: ~p", [Number, R])
     end.
 
 %%--------------------------------------------------------------------
@@ -87,4 +87,4 @@ custom_channel_vars(AccountId, AuthId, JObj) ->
 -spec relay_route_req/1 :: (wh_json:json_object()) -> 'ok'.
 relay_route_req(Req) ->
     wapi_route:publish_req(Req),
-    ?LOG_END("relayed route request").
+    lager:debug("relayed route request").

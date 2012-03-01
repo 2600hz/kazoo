@@ -204,7 +204,7 @@ relay_amqp(JObj, Props) ->
             ok;
         _Else ->
             %% TODO: queue?
-            ?LOG("received event to relay while no module running, dropping: ~s", [wh_json:encode(JObj)]),
+            lager:debug("received event to relay while no module running, dropping: ~s", [wh_json:encode(JObj)]),
             ok
     end.
 
@@ -227,14 +227,16 @@ init([Call]) ->
     process_flag(trap_exit, true),
     CallId = whapps_call:call_id(Call),
     put(callid, CallId),
-    ?LOG_START("executing callflow ~s", [whapps_call:kvs_fetch(cf_flow_id, Call)]),
-    ?LOG("account id ~s", [whapps_call:account_id(Call)]),
-    ?LOG("request ~s", [whapps_call:request(Call)]),
-    ?LOG("to ~s", [whapps_call:to(Call)]),
-    ?LOG("from ~s", [whapps_call:from(Call)]),
-    ?LOG("CID ~s ~s", [whapps_call:caller_id_name(Call), whapps_call:caller_id_number(Call)]),
-    ?LOG("inception ~s", [whapps_call:inception(Call)]),
-    ?LOG("authorizing id ~s", [whapps_call:authorizing_id(Call)]),
+
+    lager:debug("executing callflow ~s", [whapps_call:kvs_fetch(cf_flow_id, Call)]),
+    lager:debug("account id ~s", [whapps_call:account_id(Call)]),
+    lager:debug("request ~s", [whapps_call:request(Call)]),
+    lager:debug("to ~s", [whapps_call:to(Call)]),
+    lager:debug("from ~s", [whapps_call:from(Call)]),
+    lager:debug("CID ~s ~s", [whapps_call:caller_id_name(Call), whapps_call:caller_id_number(Call)]),
+    lager:debug("inception ~s", [whapps_call:inception(Call)]),
+    lager:debug("authorizing id ~s", [whapps_call:authorizing_id(Call)]),
+
     {ok, TRef} = timer:send_after(?CALL_SANITY_CHECK, self(), {call_sanity_check}),
     Flow = whapps_call:kvs_fetch(cf_flow, Call),
     Self = self(),
@@ -279,17 +281,17 @@ handle_call({get_branch_keys, all}, _From, #state{flow = Flow}=State) ->
 handle_call({attempt, Key}, _From, #state{flow = Flow}=State) ->
     case wh_json:get_value([<<"children">>, Key], Flow) of
         undefined ->
-            ?LOG("attempted undefined child ~s", [Key]),
+            lager:debug("attempted undefined child ~s", [Key]),
             Reply = {attempt_resp, {error, undefined}},
             {reply, Reply, State};
         NewFlow ->
             case wh_json:is_empty(NewFlow) of
                 true ->
-                    ?LOG("attempted empty child ~s", [Key]),
+                    lager:debug("attempted empty child ~s", [Key]),
                     Reply = {attempt_resp, {error, empty}},
                     {reply, Reply, State};
                 false ->
-                    ?LOG("branching to attempted child ~s", [Key]),
+                    lager:debug("branching to attempted child ~s", [Key]),
                     Reply = {attempt_resp, ok},
                     {reply, Reply, launch_cf_module(State#state{flow = NewFlow})}
             end
@@ -316,13 +318,13 @@ handle_call(_Request, _From, State) ->
 handle_cast({set_call, Call}, State) ->
     {noreply, State#state{call=Call}};
 handle_cast({continue, Key}, #state{flow=Flow}=State) ->
-    ?LOG("continuing to child ~s", [Key]),
+    lager:debug("continuing to child ~s", [Key]),
     case wh_json:get_value([<<"children">>, Key], Flow) of
         undefined when Key =:= <<"_">> ->
-            ?LOG("wildcard child does not exist, we are lost..."),
+            lager:debug("wildcard child does not exist, we are lost..."),
             {stop, normal, State};
         undefined ->
-            ?LOG("requested child does not exist, trying wild card", [Key]),
+            lager:debug("requested child does not exist, trying wild card", [Key]),
             ?MODULE:continue(self()),
             {noreply, State};
         NewFlow ->
@@ -340,17 +342,17 @@ handle_cast({transfer}, State) ->
 handle_cast({control_usurped}, State) ->
     {stop, {shutdown, control_usurped}, State};
 handle_cast({branch, NewFlow}, State) ->
-    ?LOG("callflow has been branched"),
+    lager:debug("callflow has been branched"),
     {noreply, launch_cf_module(State#state{flow=NewFlow})};
 handle_cast({channel_status_received, JObj}, #state{sanity_timer=RunningTRef}=State) ->
     case wh_json:get_value(<<"Status">>, JObj) of
         <<"active">> ->
-            ?LOG("callflow executer is sane... for now"),
+            lager:debug("callflow executer is sane... for now"),
             _ = timer:cancel(RunningTRef),
             {ok, TRef} = timer:send_after(?CALL_SANITY_CHECK, self(), {call_sanity_check}),
             {noreply, State#state{status = <<"sane">>, sanity_timer=TRef}};
         _Else ->
-            ?LOG("call status is ~s, preparing to stop cf_exe", [_Else]),
+            lager:debug("call status is ~s, preparing to stop cf_exe", [_Else]),
             _ = timer:cancel(RunningTRef),
             {ok, TRef} = timer:send_after(?CALL_SANITY_CHECK, self(), {call_sanity_check}),
             {noreply, State#state{status = <<"testing">>, sanity_timer=TRef}}
@@ -358,12 +360,12 @@ handle_cast({channel_status_received, JObj}, #state{sanity_timer=RunningTRef}=St
 handle_cast({callid_update, NewCallId, NewCtrlQ}, #state{call=Call}=State) ->
     put(callid, NewCallId),
     PrevCallId = whapps_call:call_id_direct(Call),
-    ?LOG(PrevCallId, "updating callid to ~s, catch you on the flip side", [NewCallId]),
-    ?LOG("removing call event bindings for ~s", [PrevCallId]),
+    lager:debug("updating callid to ~s (from ~s), catch you on the flip side", [NewCallId, PrevCallId]),
+    lager:debug("removing call event bindings for ~s", [PrevCallId]),
     gen_listener:rm_binding(self(), call, [{callid, PrevCallId}]),
-    ?LOG("binding to new call events"),
+    lager:debug("binding to new call events"),
     gen_listener:add_binding(self(), call, [{callid, NewCallId}]),
-    ?LOG("updating control q to ~s", [NewCtrlQ]),
+    lager:debug("updating control q to ~s", [NewCtrlQ]),
     NewCall = whapps_call:set_call_id(NewCallId, whapps_call:set_control_queue(NewCtrlQ, Call)),
     {noreply, State#state{call=NewCall}};
 handle_cast({controller_queue, ControllerQ}, #state{call=Call}=State) ->
@@ -386,20 +388,14 @@ handle_info({'EXIT', _, normal}, State) ->
     {noreply, State};
 handle_info({'EXIT', Pid, Reason}, #state{cf_module_pid=Pid, call=Call}=State) ->
     LastAction = whapps_call:kvs_fetch(cf_last_action, Call),
-    ?LOG(error, "action ~s died unexpectedly: ~p"
-         ,[LastAction, Reason, {extra_data, [{details, whapps_call:to_proplist(Call)}
-                                             ,{account_id, whapps_call:account_id(Call)}
-                                            ]}]),
+    lager:error("action ~s died unexpectedly: ~p", [LastAction, Reason]),
     ?MODULE:continue(self()),
     {noreply, State};
-handle_info({call_sanity_check}, #state{status = <<"testing">>, call=Call}=State) ->
-    ?LOG(info, "callflow executer is insane, shuting down"
-         ,[{extra_data, [{details, whapps_call:to_proplist(Call)}
-                         ,{account_id, whapps_call:account_id(Call)}
-                         ]}]),
+handle_info({call_sanity_check}, #state{status = <<"testing">>}=State) ->
+    lager:info("callflow executer is insane, shuting down"),
     {stop, {shutdown, insane}, State#state{status = <<"insane">>}};
 handle_info({call_sanity_check}, #state{call=Call}=State) ->
-    ?LOG("ensuring call is active, requesting controlling channel status"),
+    lager:debug("ensuring call is active, requesting controlling channel status"),
     spawn(fun() ->
                   CallId = whapps_call:call_id_direct(Call), 
                   whapps_call_command:channel_status(CallId, Call) 
@@ -450,7 +446,7 @@ handle_event(JObj, #state{cf_module_pid=Pid, call=Call}) ->
         {_, CallId} ->
             {reply, [{cf_module_pid, Pid}]};
         {_, _Else} ->
-            ?LOG("received event from call ~s while relaying for ~s, dropping", [_Else, CallId]),
+            lager:debug("received event from call ~s while relaying for ~s, dropping", [_Else, CallId]),
             ignore
     end.
 
@@ -467,15 +463,15 @@ handle_event(JObj, #state{cf_module_pid=Pid, call=Call}) ->
 %%--------------------------------------------------------------------
 terminate({shutdown, transfer}, #state{sanity_timer=TRef}) ->
     _ = timer:cancel(TRef),
-    ?LOG_END("callflow execution has been transfered"),
+    lager:debug("callflow execution has been transfered"),
     ok;
 terminate({shutdown, insane}, #state{sanity_timer=TRef}) ->
     _ = timer:cancel(TRef),
-    ?LOG_END("call id is not longer present on the media gateways, terminating callflow execution"),
+    lager:debug("call id is not longer present on the media gateways, terminating callflow execution"),
     ok;
 terminate({shutdown, control_usurped}, #state{sanity_timer=TRef}) ->
     _ = timer:cancel(TRef),
-    ?LOG_END("the call has been usurped by an external process"),
+    lager:debug("the call has been usurped by an external process"),
     ok;
 terminate(_Reason, #state{sanity_timer=TRef, call=Call}) ->
     _ = timer:cancel(TRef),
@@ -483,7 +479,7 @@ terminate(_Reason, #state{sanity_timer=TRef, call=Call}) ->
                ,{<<"Insert-At">>, <<"now">>}
               ],
     send_command(Command, whapps_call:control_queue_direct(Call), whapps_call:call_id_direct(Call)),
-    ?LOG_END("callflow execution has been stopped: ~p", [_Reason]),
+    lager:debug("callflow execution has been stopped: ~p", [_Reason]),
     ok.
 
 %%--------------------------------------------------------------------
@@ -516,14 +512,11 @@ launch_cf_module(#state{call=Call, flow=Flow}=State) ->
     {Pid, Action} =
         try
             CFModule = wh_util:to_atom(Module, true),
-            ?LOG("moving to action ~s", [Module]),
+            lager:debug("moving to action ~s", [Module]),
             spawn_cf_module(CFModule, Data, Call)
         catch
             _:_ ->
-                ?LOG(error, "unknown callflow action: ~p"
-                     ,[Module, {extra_data, [{details, whapps_call:to_proplist(Call)}
-                                             ,{account_id, whapps_call:account_id(Call)}
-                                            ]}]),
+                lager:error("unknown callflow action: ~p", [Module]),
                 ?MODULE:continue(self()),
                 {undefined, whapps_call:kvs_fetch(cf_last_action, Call)}
         end,

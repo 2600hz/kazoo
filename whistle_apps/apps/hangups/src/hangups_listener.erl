@@ -66,11 +66,12 @@ handle_cdr(JObj, _Props) ->
         true -> ok;
         false -> 
             AccountId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj),
-            ?LOG(hangup_cause_to_alert_level(HangupCause)
-                 ,"abnormal call termination ~s"
-                 ,[HangupCause, {extra_data, [{details, wh_json:to_proplist(JObj)}
-                                              ,{account_id, AccountId}
-                                             ]}])
+            lager:debug("abnormal call termination: ~s", [HangupCause])
+            %% ?LOG(hangup_cause_to_alert_level(HangupCause)
+            %%      ,"abnormal call termination ~s"
+            %%      ,[HangupCause, {extra_data, [{details, wh_json:to_proplist(JObj)}
+            %%                                   ,{account_id, AccountId}
+            %%                                  ]}])
     end.
 
 %%%===================================================================
@@ -89,7 +90,7 @@ handle_cdr(JObj, _Props) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    ?LOG_SYS("started hangups listener"),
+    lager:debug("started hangups listener"),
     {ok, ok}.
 
 %%--------------------------------------------------------------------
@@ -151,7 +152,7 @@ handle_event(_JObj, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
-    ?LOG_SYS("hangups listener ~p termination", [_Reason]),
+    lager:debug("hangups listener ~p termination", [_Reason]),
     ok.
 
 %%--------------------------------------------------------------------

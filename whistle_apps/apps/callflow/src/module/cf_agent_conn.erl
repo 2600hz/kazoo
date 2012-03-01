@@ -15,7 +15,7 @@
 -spec handle/2 :: (wh_json:json_object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     ShouldRecord = wh_json:is_true(<<"record_call">>, Data, true),
-    ShouldRecord andalso ?LOG("will record this call"),   
+    ShouldRecord andalso lager:debug("will record this call"),   
     Skills = whapps_call:kvs_fetch(cf_agent_skills, Call),
     Req = [{<<"Call-ID">>, cf_exe:callid(Call)}
            ,{<<"Control-Queue">>, cf_exe:control_queue(Call)}
@@ -26,6 +26,6 @@ handle(Data, Call) ->
            | wh_api:default_headers(<<>>, ?APP_NAME, ?APP_VERSION)
           ],
     wapi_acd:publish_agent_connect(Req),
-    ?LOG("waiting for hangup"),
+    lager:debug("waiting for hangup"),
     whapps_call_command:wait_for_hangup(),
     cf_exe:continue(Call).

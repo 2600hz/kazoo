@@ -64,17 +64,17 @@ is_valid(JObj, Schema) when is_binary(Schema) ->
         {ok, SchemaJObj} ->
             is_valid(JObj, SchemaJObj);
         {error, R} ->
-            ?LOG("unable to find ~s schema, assuming it passed: ~p", [Schema, R]),
+            lager:debug("unable to find ~s schema, assuming it passed: ~p", [Schema, R]),
             {pass, JObj}
     end;
 is_valid(JObj, Schema) ->
     case are_valid_properties(JObj, Schema) of
         {pass, _}=Ok -> 
-            ?LOG("json validated against ~s schema", [wh_json:get_value(<<"_id">>, Schema)]),
+            lager:debug("json validated against ~s schema", [wh_json:get_value(<<"_id">>, Schema)]),
             Ok;
         {fail, Errors} ->
             E = format_errors(Errors),
-            ?LOG("json failed validation against ~s schema: ~s", [wh_json:get_value(<<"_id">>, Schema)
+            lager:debug("json failed validation against ~s schema: ~s", [wh_json:get_value(<<"_id">>, Schema)
                                                                   ,wh_json:encode(E)]),
             {fail, E}
     end.

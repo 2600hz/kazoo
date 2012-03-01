@@ -65,7 +65,7 @@ cache_account_handler_key(AcctID) ->
 -spec preload_accounts/0 :: () -> [{'ok', pid()},...].
 preload_accounts() ->
     {ok, Accts} = couch_mgr:get_results(?WH_ACCOUNTS_DB, <<"accounts/listing_by_id">>, []),
-    ?LOG_SYS("Loading ~b accounts", [length(Accts)]),
+    lager:debug("Loading ~b accounts", [length(Accts)]),
     preload_accounts(Accts).
 
 preload_accounts(JObjs) ->
@@ -82,7 +82,7 @@ preload_account(AcctID, Cache) ->
 -spec preload_trunkstore/0 :: () -> [{'ok', pid()},...].
 preload_trunkstore() ->
     {ok, TSAccts} = couch_mgr:get_results(<<"ts">>, <<"LookUpDID/DIDsByAcct">>, []), %% crappy way, make new view
-    ?LOG_SYS("Loading ~b trunkstore accounts", [length(TSAccts)]),
+    lager:debug("Loading ~b trunkstore accounts", [length(TSAccts)]),
     preload_accounts(TSAccts).
 
 -spec refresh_all_accounts/0 :: () -> no_return().
@@ -128,7 +128,7 @@ write_transaction_to_ledger(DB, CallID, CallType, Units, Duration, JObj, DocType
 
     ID = mk_id(CallID, AcctID, EvtTimestamp),
 
-    ?LOG("trying to write ~s to ~s for doc ~s", [ID, DB, DocType]),
+    lager:debug("trying to write ~s to ~s for doc ~s", [ID, DB, DocType]),
 
     TransactionJObj = wh_json:from_list([{<<"call_id">>, CallID}
                                          ,{<<"call_type">>, CallType}

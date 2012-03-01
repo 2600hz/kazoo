@@ -64,7 +64,7 @@ is_blacklisted(Srv, AccountID) ->
 handle_req(JObj, Props) ->
     true = dth_api:blacklist_resp_v(JObj),
     Srv = props:get_value(server, Props),
-    ?LOG_SYS("Sending blacklist to ~p", [Srv]),
+    lager:debug("Sending blacklist to ~p", [Srv]),
     Accounts = wh_json:get_value(<<"Accounts">>, JObj, []),
     gen_listener:cast(Srv, {blacklist, Accounts}).
 
@@ -84,7 +84,7 @@ handle_req(JObj, Props) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    ?LOG_SYS("DTH blacklist server started"),
+    lager:debug("DTH blacklist server started"),
     true = is_reference(erlang:send_after(?BLACKLIST_UPDATE_TIMER, self(), update_blacklist)),
     {ok, #state{}}.
 
@@ -122,7 +122,7 @@ handle_call({is_blacklisted, AccountID}, _From, #state{blacklist=BL}=State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast({blacklist, {struct, Accounts}}, State) ->
-    ?LOG_SYS("Updating blacklist with ~p", [Accounts]),
+    lager:debug("Updating blacklist with ~p", [Accounts]),
     {noreply, State#state{blacklist=dict:from_list(Accounts)}}.
 
 %%--------------------------------------------------------------------
@@ -141,7 +141,7 @@ handle_info(update_blacklist, State) ->
     spawn(fun() -> request_blacklist(Self) end),
     {noreply, State};
 handle_info(_Info, State) ->
-    ?LOG_SYS("Unhandled message: ~p", [_Info]),
+    lager:debug("Unhandled message: ~p", [_Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------

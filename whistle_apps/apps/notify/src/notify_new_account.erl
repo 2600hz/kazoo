@@ -35,7 +35,7 @@ init() ->
     notify_util:compile_default_text_template(?DEFAULT_TEXT_TMPL, ?MOD_CONFIG_CAT),
     notify_util:compile_default_html_template(?DEFAULT_HTML_TMPL, ?MOD_CONFIG_CAT),
     notify_util:compile_default_subject_template(?DEFAULT_SUBJ_TMPL, ?MOD_CONFIG_CAT),
-    ?LOG_SYS("init done for ~s", [?MODULE]).
+    lager:debug("init done for ~s", [?MODULE]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -48,7 +48,7 @@ handle_req(JObj, _Props) ->
     true = wapi_notifications:new_account_v(JObj),
     whapps_util:put_callid(JObj),
 
-    ?LOG_START("a new account has been created, sending email notification"),
+    lager:debug("a new account has been created, sending email notification"),
 
     AccountDb = case {wh_json:get_value(<<"Account-DB">>, JObj), wh_json:get_value(<<"Account-ID">>, JObj)} of
                      {undefined, undefined} -> undefined;
@@ -56,7 +56,7 @@ handle_req(JObj, _Props) ->
                      {Id2, _} -> Id2
                      end,
 
-    ?LOG("attempting to load all docs in account db ~s", [AccountDb]),
+    lager:debug("attempting to load all docs in account db ~s", [AccountDb]),
     {ok, AllDocs} = couch_mgr:all_docs(AccountDb, [{<<"include_docs">>, true}]),
     Account = find_account(AllDocs),
     Admin = find_admin(AllDocs), 
@@ -69,7 +69,7 @@ handle_req(JObj, _Props) ->
              |create_template_props(JObj, Admin, Account, AllDocs)
             ],
 
-    ?LOG("creating new account notice"),
+    lager:debug("creating new account notice"),
     
     CustomTxtTemplate = wh_json:get_value([<<"notifications">>, <<"new_account">>, <<"email_text_template">>], Account),
     {ok, TxtBody} = notify_util:render_template(CustomTxtTemplate, ?DEFAULT_TEXT_TMPL, Props),

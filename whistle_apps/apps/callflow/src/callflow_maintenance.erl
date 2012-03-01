@@ -161,7 +161,7 @@ create_media_doc(Name, SourceType, SourceId, Db) ->
       Args :: list().
 log(Format, Args) ->
     io:format(Format ++ "~n", Args),
-    ?LOG(Format, Args).
+    lager:debug(Format, Args).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -179,8 +179,8 @@ update_doc(Key, Value, Id, Db) ->
                 {ok, _} ->
                     ok;
                 {error, _}=E ->
-                    ?LOG("unable to update ~s in ~s, ~p", [Id, Db, E])
+                    lager:debug("unable to update ~s in ~s, ~p", [Id, Db, E])
             end;
         {error, _}=E ->
-            ?LOG("unable to update ~s in ~s, ~p", [Id, Db, E])
+            lager:debug("unable to update ~s in ~s, ~p", [Id, Db, E])
     end.

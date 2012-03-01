@@ -89,7 +89,7 @@ handle_reg_query_resp(JObj, Props) ->
 %%--------------------------------------------------------------------
 init([]) ->
     process_flag(trap_exit, true),
-    ?LOG_SYS("starting new registrar server"),
+    lager:debug("starting new registrar server"),
     {ok, []}.
 
 %%--------------------------------------------------------------------
@@ -121,11 +121,11 @@ handle_call(_Msg, _From, Consumers) ->
 %%--------------------------------------------------------------------
 handle_cast({add_consumer, User, Realm, Consumer}, Consumers) ->
     MRef = erlang:monitor(process, Consumer),
-    ?LOG("added req query response consumer (~p) for ~s@~s", [Consumer, User, Realm]),
+    lager:debug("added req query response consumer (~p) for ~s@~s", [Consumer, User, Realm]),
     {noreply, [{{User, Realm}, Consumer, MRef}|Consumers]};
 handle_cast({remove_consumer, Consumer}, Consumers) ->
     {noreply, lists:filter(fun({_, C, MRef}) when C =:= Consumer -> 
-                                   ?LOG("removed req query response consumer (~p): response sent", [Consumer]),
+                                   lager:debug("removed req query response consumer (~p): response sent", [Consumer]),
                                    erlang:demonitor(MRef, [flush]),
                                    false; 
                               (_) -> true 
@@ -145,7 +145,7 @@ handle_cast(_Msg, Consumers) ->
 %%--------------------------------------------------------------------
 handle_info({'DOWN', _, _, Consumer, _R}, Consumers) ->
     {noreply, lists:filter(fun({_, C, MRef}) when C =:= Consumer -> 
-                                   ?LOG("removed req query response consumer (~p): ~p", [Consumer, _R]),
+                                   lager:debug("removed req query response consumer (~p): ~p", [Consumer, _R]),
                                    erlang:demonitor(MRef, flush),
                                    false; 
                               (_) -> true 
@@ -177,7 +177,7 @@ handle_event(_JObj, Consumers) ->
 %%--------------------------------------------------------------------
 -spec terminate/2 :: (term(), term()) -> 'ok'.
 terminate(_Reason, _) ->
-    ?LOG_SYS("registrar server ~p termination", [_Reason]).
+    lager:debug("registrar server ~p termination", [_Reason]).
 
 %%--------------------------------------------------------------------
 %% @private

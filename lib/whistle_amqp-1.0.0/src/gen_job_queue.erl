@@ -138,7 +138,9 @@ reply(From, Msg) ->
 init([Module, JobsQueue, ResourceQueue, InitArgs]) ->
     process_flag(trap_exit, true),
 
-    ?LOG_START("new gen_job_queue proc: ~s", [Module]),
+    put(callid, ?LOG_SYSTEM_ID),
+
+    lager:debug("new gen_job_queue proc: ~s", [Module]),
 
     {ModState, TimeoutRef} = case erlang:function_exported(Module, init, 1) andalso Module:init(InitArgs) of
                                  {ok, MS} ->
@@ -195,7 +197,7 @@ handle_call(Request, From, #state{module=Module, module_state=ModState, module_t
         {stop, Reason, Reply, ModState1} ->
             {stop, Reason, Reply, State#state{module_state=ModState1}};
         {'EXIT', Why} ->
-            ?LOG(alert, "exception: ~p", [Why]),
+            lager:alert("exception: ~p", [Why]),
             {stop, Why, State}
     end.
 
@@ -222,8 +224,8 @@ handle_cast(Message, #state{module=Module, module_state=ModState, module_timeout
         {stop, Reason, ModState1} ->
             {stop, Reason, State#state{module_state=ModState1}};
         {'EXIT', {Reason, ST}} ->
-            ?LOG("exception: ~p", [Reason]),
-            ?LOG_STACKTRACE(ST),
+            lager:debug("exception: ~p", [Reason]),
+            [lager:debug("st: ~p", [T]) || T <- ST],
             {stop, Reason, State}
     end.
 
@@ -238,40 +240,40 @@ handle_cast(Message, #state{module=Module, module_state=ModState, module_timeout
 %% @end
 %%--------------------------------------------------------------------
 handle_info({#'basic.deliver'{exchange=_Ex, routing_key=_Rk, delivery_tag=_Dt}, #amqp_msg{props = #'P_basic'{content_type=CT}, payload = Payload}}, #state{}=State) ->
-    ?LOG("received from ~s: ~s", [_Ex, _Rk]),
-    ?LOG("delivery tag: ~p", [_Dt]),
-    ?LOG("content type: ~s", [CT]),
-    ?LOG("amqp payload: ~s", [Payload]),
+    lager:debug("received from ~s: ~s", [_Ex, _Rk]),
+    lager:debug("delivery tag: ~p", [_Dt]),
+    lager:debug("content type: ~s", [CT]),
+    lager:debug("amqp payload: ~s", [Payload]),
     {noreply, State};
 
 handle_info({amqp_host_down, _H}=Down, #state{jobs_queue=JobsQueue
                                               ,resource_queue=ResourceQueue
                                              }=State) ->
-    ?LOG(alert, "amqp host down msg: ~p", [_H]),
+    lager:alert("amqp host down msg: ~p", [_H]),
     case amqp_util:is_host_available() of
         true ->
-            ?LOG("host is available, let's try wiring up"),
+            lager:debug("host is available, let's try wiring up"),
             ok = start_jobs_queue(JobsQueue),
             ok = start_resource_queue(ResourceQueue),
             _ = erlang:send_after(?TIMEOUT_RETRY_CONN, self(), is_consuming),
             {noreply, State#state{is_consuming=false}, hibernate};
         false ->
-            ?LOG("no AMQP host ready, waiting another ~b", [?TIMEOUT_RETRY_CONN]),
+            lager:debug("no AMQP host ready, waiting another ~b", [?TIMEOUT_RETRY_CONN]),
             erlang:send_after(?TIMEOUT_RETRY_CONN, self(), Down),
             {noreply, State#state{is_consuming=false}, hibernate}
     end;
 
 handle_info({amqp_lost_channel, no_connection}, State) ->
-    ?LOG(alert, "lost our channel, checking every second for a host to come back up"),
+    lager:alert("lost our channel, checking every second for a host to come back up"),
     _Ref = erlang:send_after(?TIMEOUT_RETRY_CONN, self(), {amqp_host_down, ok}),
     {noreply, State#state{is_consuming=false}, hibernate};
 
 handle_info(#'basic.consume_ok'{}, S) ->
-    ?LOG("consuming from a queue"),
+    lager:debug("consuming from a queue"),
     {noreply, S#state{is_consuming=true}, hibernate};
 
 handle_info(is_consuming, #state{is_consuming=false}=State) ->
-    ?LOG("huh, we're not consuming, consider AMQP down"),
+    lager:debug("huh, we're not consuming, consider AMQP down"),
     _Ref = erlang:send_after(?TIMEOUT_RETRY_CONN, self(), {amqp_host_down, ok}),
     {noreply, State};
 
@@ -295,7 +297,7 @@ handle_callback_info(Message, #state{module=Module, module_state=ModState, modul
         {stop, Reason, ModState1} ->
             {stop, Reason, State#state{module_state=ModState1}};
         {'EXIT', Why} ->
-            ?LOG(alert, "exception: ~p", [Why]),
+            lager:alert("exception: ~p", [Why]),
             {stop, Why, State}
     end.
 
@@ -312,7 +314,7 @@ handle_callback_info(Message, #state{module=Module, module_state=ModState, modul
 %%--------------------------------------------------------------------
 terminate(Reason, #state{module=Module, module_state=ModState}) ->
     Module:terminate(Reason, ModState),
-    ?LOG_END("~s terminated cleanly, going down", [Module]).
+    lager:debug("~s terminated cleanly, going down", [Module]).
 
 %%--------------------------------------------------------------------
 %% @private

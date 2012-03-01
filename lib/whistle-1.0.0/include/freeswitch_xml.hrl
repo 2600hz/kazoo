@@ -109,5 +109,24 @@
   </section>
 </document>").
 
+-define(CONFIG_ACL,
+"<document type=\"freeswitch/xml\">
+  <section name=\"configuration\">
+    <configuration name=\"acls.conf\" description=\"ACLs config data\">
+      <network-lists>
+        ~s
+      </network-lists>
+    </configuration>
+  </section>
+</document>").
+
+-define(CONFIG_ACL_LIST, 
+"<list-name name=\"~s\" default=\"deny\">
+  ~s
+</list-name>~n").
+
+-define(CONFIG_ACL_NODE, 
+"  <node type=\"~s\" cidr=\"~s\" />~n").
+
 -define(FREESWITCH_XML_HRL, true).
 -endif.
