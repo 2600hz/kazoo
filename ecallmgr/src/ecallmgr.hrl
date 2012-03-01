@@ -109,7 +109,7 @@
                                ,{<<"conference">>, <<"conference">>}
                                ,{<<"noop">>, <<"noop">>}
                                ,{<<"execute_extension">>, <<"execute_extension">>}
-                               ,{<<"hold">>, <<"hold">>}
+                               ,{<<"endless_playback">>, <<"hold">>}
                                ,{<<"uuid_record">>, <<"record_call">>}
                                ,{<<"presence">>, <<"presence">>}
                               ]).
