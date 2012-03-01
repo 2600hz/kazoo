@@ -495,25 +495,21 @@ succeeded(#cb_context{resp_status=success}) -> true;
 succeeded(_) -> false.
 
 -spec execute_request/2 :: (#http_req{}, #cb_context{}) -> {boolean() | 'halt', #http_req{}, #cb_context{}}.
-execute_request(Req, #cb_context{req_nouns=Nouns, req_verb=Verb}=Context0) ->
-    Context1 = lists:foldr(fun({Mod, Params}, ContextAcc) ->
-                                   Event = <<"v1_resource.execute.", Verb/binary, ".", Mod/binary>>,
-                                   Payload = [ContextAcc | Params],
-                                   crossbar_bindings:fold(Event, Payload)
-                           end, Context0, Nouns),
-
-    case Context1 of
-        #cb_context{resp_status=success} ->
+execute_request(Req, #cb_context{req_nouns=[{Mod, Params}|_], req_verb=Verb}=Context) ->
+    Event = <<"v1_resource.execute.", Verb/binary, ".", Mod/binary>>,
+    Payload = [Context | Params],
+    case crossbar_bindings:fold(Event, Payload) of
+        #cb_context{resp_status=success}=Context1 ->
             ?LOG("execution finished"),
             execute_request_results(Req, Context1);
-        #cb_context{} ->
+        #cb_context{}=Context1 ->
             ?MODULE:halt(Req, Context1);
         {error, _E} ->
             ?LOG("error executing request: ~p", [_E]),
-            {false, Req, Context0};
+            {false, Req, Context};
         _E ->
             ?LOG("unexpected return from the fold: ~p", [_E]),
-            {false, Req, Context0}
+            {false, Req, Context}
     end;
 execute_request(Req, Context) ->
     ?LOG("execute request false end"),
