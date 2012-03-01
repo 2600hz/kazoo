@@ -110,7 +110,7 @@ put(#cb_context{doc=JObj}=Context) ->
     Acls = whapps_config:get(?ECALLMGR, ?ECALLMGR_ACLS),
     Merged = wh_json:set_value(wh_json:get_value(<<"cidr">>, JObj), JObj, Acls),
     whapps_config:set_default(?ECALLMGR, ?ECALLMGR_ACLS, Merged),
-    wapi_switch:reloadacl(),
+    wapi_switch:publish_reloadacl(),
     Context.
 
 %%--------------------------------------------------------------------
