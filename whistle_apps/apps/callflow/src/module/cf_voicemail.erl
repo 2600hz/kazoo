@@ -973,7 +973,7 @@ get_messages(#mailbox{mailbox_id=Id}, Call) ->
 -spec get_message/2 :: (wh_json:json_object(), whapps_call:call()) -> ne_binary().
 get_message(Message, Call) ->
     MediaId = wh_json:get_value(<<"media_id">>, Message),
-    list_to_binary(["/", whaps_call:account_db(Call), "/", MediaId]).
+    list_to_binary(["/", whapps_call:account_db(Call), "/", MediaId]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1078,7 +1078,7 @@ update_doc(Key, Value, Id, Db) ->
 %%--------------------------------------------------------------------
 -spec tmp_file/0 :: () -> ne_binary().
 tmp_file() ->
-     <<(wh_util:to_hex(crypto:rand_bytes(16)))/binary, ".mp3">>.
+     <<(wh_util:to_hex_binary(crypto:rand_bytes(16)))/binary, ".mp3">>.
 
 %%--------------------------------------------------------------------
 %% @private
