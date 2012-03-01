@@ -141,8 +141,7 @@ check_mailbox(#mailbox{pin = <<>>, exists=true}, false, Call, _) ->
     ok;
 check_mailbox(#mailbox{pin=Pin}=Box, IsOwner, Call, Loop) ->
     ?LOG("requesting pin number to check mailbox"),
-    EnterPass = cf_util:get_prompt(<<"vm-enter_pass">>),
-    case whapps_call_command:b_play_and_collect_digits(<<"1">>, <<"6">>, EnterPass, <<"1">>, Call) of
+    case whapps_call_command:b_prompt_and_collect_digits(<<"1">>, <<"6">>, <<"vm-enter_pass">>, <<"1">>, Call) of
         {ok, Pin} ->
             ?LOG("caller entered a valid pin"),
             main_menu(Box, Call);
@@ -170,8 +169,7 @@ find_mailbox(#mailbox{max_login_attempts=MaxLoginAttempts}, Call, Loop) when Loo
     ok;
 find_mailbox(Box, Call, Loop) ->
     ?LOG("requesting mailbox number to check"),
-    EnterBox = cf_util:get_prompt(<<"vm-enter_id">>),
-    case whapps_call_command:b_play_and_collect_digits(<<"1">>, <<"6">>, EnterBox, <<"1">>, Call) of 
+    case whapps_call_command:b_prompt_and_collect_digits(<<"1">>, <<"6">>, <<"vm-enter_id">>, <<"1">>, Call) of 
         {ok, <<>>} -> find_mailbox(Box, Call, Loop + 1);
         {ok, Mailbox} ->
             BoxNum = try wh_util:to_integer(Mailbox) catch _:_ -> 0 end,
@@ -339,7 +337,7 @@ setup_mailbox(Box, Call) ->
     Box1 = record_unavailable_greeting(tmp_file(), Box, Call),
     ok = update_doc(<<"is_setup">>, true, Box1, Call),
     ?LOG("voicemail configuration wizard is complete"),
-    {ok, _} = whapps_call_command:b_play(<<"vm-setup_complete">>, Call),
+    {ok, _} = whapps_call_command:b_prompt(<<"vm-setup_complete">>, Call),
     Box1#mailbox{is_setup=true}.
 
 %%--------------------------------------------------------------------
@@ -552,8 +550,7 @@ config_menu(#mailbox{keys=#keys{rec_unavailable=RecUnavailable, rec_name=RecName
                                 ,set_pin=SetPin, return_main=ReturnMain}}=Box, Call, Loop) when Loop < 4 ->
     ?LOG("playing mailbox configuration menu"),
     {ok, _} = whapps_call_command:b_flush(Call),
-    SettingsMenu = cf_util:get_prompts(<<"vm-settings_menu">>),
-    case whapps_call_command:b_play_and_collect_digit(SettingsMenu, Call) of
+    case whapps_call_command:b_prompt_and_collect_digit(<<"vm-settings_menu">>, Call) of
         {ok, RecUnavailable} ->
             ?LOG("caller choose to record their unavailable greeting"),
             case record_unavailable_greeting(tmp_file(), Box, Call) of
@@ -660,11 +657,9 @@ record_name(AttachmentName, #mailbox{name_media_id=MediaId}=Box, Call) ->
 change_pin(#mailbox{mailbox_id=Id}=Box, Call) ->
     ?LOG("requesting new mailbox pin number"),
     try
-        EnterNewPin = cf_util:prompts(<<"vm-enter_new_pin">>),
-        {ok, Pin} = whapps_call_command:b_play_and_collect_digits(<<"1">>, <<"6">>, EnterNewPin, <<"1">>, Call),
+        {ok, Pin} = whapps_call_command:b_prompt_and_collect_digits(<<"1">>, <<"6">>, <<"vm-enter_new_pin">>, <<"1">>, Call),
         ?LOG("collected first pin"),
-        ReenterNewPin = cf_util:prompts(<<"vm-enter_new_pin_confirm">>),
-        {ok, Pin} = whapps_call_command:b_play_and_collect_digits(<<"1">>, <<"6">>, ReenterNewPin, <<"1">>, Call),
+        {ok, Pin} = whapps_call_command:b_prompt_and_collect_digits(<<"1">>, <<"6">>, <<"vm-enter_new_pin_confirm">>, <<"1">>, Call),
         ?LOG("collected second pin"),
         if byte_size(Pin) == 0 -> throw(pin_empty); true -> ok end,
         ?LOG("entered pin is not empty"),
@@ -854,7 +849,7 @@ review_recording(_, _, _, Loop) when Loop > 4 ->
     {ok, no_selection};
 review_recording(AttachmentName, #mailbox{keys=#keys{listen=Listen, save=Save, record=Record}}=Box, Call, Loop) ->
     ?LOG("playing recording review options"),
-    case whapps_call_command:b_play_and_collect_digit(<<"vm-review_recording">>, Call) of
+    case whapps_call_command:b_prompt_and_collect_digit(<<"vm-review_recording">>, Call) of
         {ok, Listen} ->
             ?LOG("caller choose to replay the recording"),
             _ = whapps_call_command:b_play(AttachmentName, Call),
