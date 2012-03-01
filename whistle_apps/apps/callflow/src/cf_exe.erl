@@ -438,7 +438,11 @@ handle_event(JObj, #state{cf_module_pid=Pid, call=Call}) ->
                   end),
             ignore;
         {{<<"error">>, _}, _} ->
-            {reply, [{cf_module_pid, Pid}]};
+            case wh_json:get_value([<<"Request">>, <<"Call-ID">>], JObj) of
+                CallId -> {reply, [{cf_module_pid, Pid}]};
+                undefined -> {reply, [{cf_module_pid, Pid}]};
+                _Else -> ignore
+            end;
         {_, CallId} ->
             {reply, [{cf_module_pid, Pid}]};
         {_, _Else} ->

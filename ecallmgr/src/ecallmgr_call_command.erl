@@ -222,11 +222,7 @@ get_fs_app(_Node, _UUID, _JObj, <<"progress">>) ->
     {<<"pre_answer">>, <<>>};
 
 get_fs_app(_Node, _UUID, _JObj, <<"hold">>) ->
-    DP = [{"application", "endless_playback ${hold_music}"}
-          ,{"application", create_masquerade_event(<<"hold">>, <<"CHANNEL_EXECUTE_COMPLETE">>)}
-          ,{"application", "park "}
-         ],
-    {<<"xferext">>, DP};
+    {<<"endless_playback">>, <<"${hold_music}">>};
 
 get_fs_app(_Node, _UUID, _JObj, <<"park">>) ->
     {<<"park">>, <<>>};

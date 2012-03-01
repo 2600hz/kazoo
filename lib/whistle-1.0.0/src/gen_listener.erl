@@ -223,6 +223,7 @@ init([Module, Params, InitArgs]) ->
 handle_call({add_queue, <<>>, QueueProps, Bindings}, _From, #state{other_queues=OtherQueues}=State) ->
     {ok, Q} = start_amqp(QueueProps),
     _ = [create_binding(wh_util:to_binary(Type), BindProps, Q) || {Type, BindProps} <- Bindings],
+
     {reply, {ok, Q}, State#state{other_queues=[{Q, Bindings}|OtherQueues]}};
 
 handle_call({add_queue, QueueName, QueueProps, Bindings}, _From, #state{other_queues=OtherQueues}=State) ->
@@ -405,10 +406,18 @@ handle_event(Payload, <<"application/erlang">>, BD, State) ->
     process_req(State, JObj, BD).
 
 -spec process_req/3 :: (#state{}, wh_json:json_object(), #'basic.deliver'{}) -> pid().
-process_req(#state{queue=Queue, responders=Responders, module=Module, module_state=ModState}, JObj, BD) ->
+process_req(#state{queue=Queue, responders=Responders, module=Module, module_state=ModState, other_queues=OtherQueues}, JObj, BD) ->
+    OtherQueueNames = [OtherQueueName || {OtherQueueName, _} <- OtherQueues],
     Props1 = case catch Module:handle_event(JObj, ModState) of
-                 {reply, Props} when is_list(Props) -> [{server, self()}, {queue, Queue} | Props];
-                 {'EXIT', _Why} -> [{server, self()}, {queue, Queue}];
+                 {reply, Props} when is_list(Props) -> [{server, self()}
+                                                        ,{queue, Queue}
+                                                        ,{other_queues, OtherQueueNames}
+                                                        | Props
+                                                       ];
+                 {'EXIT', _Why} -> [{server, self()}
+                                    ,{queue, Queue}
+                                    ,{other_queues, OtherQueueNames}
+                                   ];
                  ignore -> ignore
              end,
     case Props1 of
@@ -460,7 +469,6 @@ start_amqp(Props) ->
         {'EXIT', _Why} -> lager:alert("exit: ~p", [_Why]), {error, amqp_error};
         Queue ->
             ConsumeProps = props:get_value(consume_options, Props, []),
-
             set_qos(props:get_value(basic_qos, Props)),
             amqp_util:basic_consume(Queue, ConsumeProps),
             {ok, Queue}
