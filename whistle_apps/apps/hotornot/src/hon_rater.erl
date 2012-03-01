@@ -1,10 +1,10 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2011, VoIP, INC
+%%% @copyright (C) 2011-2012, VoIP, INC
 %%% @doc
 %%% Given a rate_req, find appropriate rate for the call
 %%% @end
-%%% Created : 16 Aug 2011 by James Aimonetti <james@2600hz.org>
+%%% @contributors
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(hon_rater).
 
@@ -20,20 +20,26 @@ init() ->
 -spec handle_req/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
 handle_req(JObj, Props) ->
     true = wapi_call:rate_req_v(JObj),
-    lager:debug("Valid rating request"),
+    wh_util:put_callid(JObj),
+
+    lager:debug("valid rating request"),
 
     {ok, RatesData} = get_rate_data(JObj),
-    lager:debug("Rate data retrieved"),
+    lager:debug("rate data retrieved"),
 
     RespProp = [{<<"Rates">>, RatesData}
                 | wh_api:default_headers(props:get_value(queue, Props, <<>>), ?APP_NAME, ?APP_VERSION)
                ],
 
-    spawn( fun() -> set_rate_ccvs(RespProp, wh_json:get_value(<<"Control-Queue">>, JObj), JObj) end),
+    spawn(fun() ->
+                  wh_util:put_callid(JObj),
+                  set_rate_ccvs(RespProp, wh_json:get_value(<<"Control-Queue">>, JObj), JObj)
+          end),
 
     wapi_call:publish_rate_resp(wh_json:get_value(<<"Server-ID">>, JObj), RespProp).
 
--spec get_rate_data/1 :: (wh_json:json_object()) -> {'ok', wh_json:json_objects()} | {'error', 'no_rate_found'}.
+-spec get_rate_data/1 :: (wh_json:json_object()) -> {'ok', wh_json:json_objects()} |
+                                                    {'error', 'no_rate_found'}.
 get_rate_data(JObj) ->
     ToDID = wh_json:get_value(<<"To-DID">>, JObj),
     FromDID = wh_json:get_value(<<"From-DID">>, JObj),
@@ -71,7 +77,7 @@ rate_to_json(Rate) ->
                        ,{<<"Base-Cost">>, wh_util:to_binary(BaseCost)}
                       ]).
 
--spec set_rate_ccvs/3 :: (proplist(), 'undefined' | ne_binary(), wh_json:json_object()) -> ok.
+-spec set_rate_ccvs/3 :: (proplist(), 'undefined' | ne_binary(), wh_json:json_object()) -> 'ok'.
 set_rate_ccvs(_, undefined, _) -> ok;
 set_rate_ccvs(Response, CtrlQ, JObj) ->    
     case props:get_value(<<"Rates">>, Response) of
