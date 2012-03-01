@@ -27,7 +27,7 @@
 -define(MAX_TIMEOUT_FOR_NODE_RESTART, 10000). % 10 seconds
 
 %% list of dialplan Application-Names that can execute after a call has hung up
--define(POST_HANGUP_COMMANDS, [<<"store">>, <<"set">>, <<"presence">>]). 
+-define(POST_HANGUP_COMMANDS, [<<"store">>, <<"set">>, <<"presence">>, <<"record">>]). 
 
 -define(SANITY_CHECK_PERIOD, 300000).
 

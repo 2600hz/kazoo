@@ -211,9 +211,14 @@ handle_cast({consume, {FromPid, _}=From, #'basic.consume'{}=BasicConsume}, #stat
                     gen_server:reply(From, Err),
                     {noreply, State}
             end;
-        {ok, {C,_,Tag,_}} ->
-            ?LOG("Already consuming on ch: ~p for proc: ~p on tag ~s", [C, FromPid, Tag]),
-            gen_server:reply(From, {ok, C}),
+        {ok, {C,_,_,_}} ->
+            case try_to_subscribe(C, BasicConsume, FromPid) of
+                {ok, Tag} ->
+                    ?LOG("started additional consumer on ch: ~p for proc: ~p but dropping tag, they will not be able to cancel this consumer...", [C, FromPid, Tag]),
+                    gen_server:reply(From, {ok, C});
+                {error, _E}=Err ->
+                    gen_server:reply(From, Err)
+            end,
             {noreply, State, hibernate}
     end;
 
