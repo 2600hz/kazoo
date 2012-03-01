@@ -484,7 +484,7 @@ wait_for_pickup(SlotNumber, RingbackId, Call) ->
             cleanup_slot(SlotNumber, cf_exe:callid(Call), Call),
             cf_exe:transfer(Call);
         {ok, _} ->
-            lager:debug("parked caller has been picked up or hungup"),
+            lager:debug("parked caller has been picked up"),
             cleanup_slot(SlotNumber, cf_exe:callid(Call), Call),
             cf_exe:transfer(Call)
     end,

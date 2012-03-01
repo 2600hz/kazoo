@@ -178,8 +178,7 @@ cf_update_number(CF, CaptureGroup, _) ->
 update_callfwd(#callfwd{doc_id=Id, enabled=Enabled, number=Num, require_keypress=RK, keep_caller_id=KCI}=CF, Call) ->
     lager:debug("updating call forwarding settings on ~s", [Id]),
     AccountDb = whapps_call:account_db(Call),
-    AccountId = whapps_call:account_id(Call),
-    {ok, JObj} = couch_mgr:open_doc(AccountDb, AccountId),
+    {ok, JObj} = couch_mgr:open_doc(AccountDb, Id),
     CF1 = {struct, [{<<"enabled">>, Enabled}
                     ,{<<"number">>, Num}
                     ,{<<"require_keypress">>, RK}
