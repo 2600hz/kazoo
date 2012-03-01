@@ -25,10 +25,8 @@ handle(Data, Call) ->
     Retries = wh_json:get_integer_value(<<"retries">>, Data, 3),
 
     case try_collect_pin(Call, Pin, Retries) of
-        allow ->
-            allow_dial(Call, Retries);
-        _ ->
-            cf_exe:hangup(Call)
+        allow -> allow_dial(Call, Retries);
+        _ -> cf_exe:hangup(Call)
     end.
 
 try_collect_pin(_Call, <<>>, _) ->
