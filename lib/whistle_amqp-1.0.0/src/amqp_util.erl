@@ -928,6 +928,10 @@ register_return_handler() ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec encode/1 :: (ne_binary()) -> ne_binary().
+encode(<<"*">>) ->
+    <<"*">>;
+encode(<<"#">>) ->
+    <<"#">>;
 encode(Bin) ->
     << <<(encode_char(B))/binary>> || <<B>> <= Bin >>.
 
