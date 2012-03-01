@@ -17,7 +17,6 @@
          ,allowed_methods/0, allowed_methods/1
          ,resource_exists/0, resource_exists/1
          ,validate/1, validate/2
-         ,put/1
          ,delete/2
         ]).
 
@@ -40,7 +39,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.acls">>, ?MODULE, allowed_methods),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.acls">>, ?MODULE, resource_exists),
     _ = crossbar_bindings:bind(<<"v1_resource.validate.acls">>, ?MODULE, validate),
-    _ = crossbar_bindings:bind(<<"v1_resource.put.acls">>, ?MODULE, put),
+    %_ = crossbar_bindings:bind(<<"v1_resource.put.acls">>, ?MODULE, put),
     _ = crossbar_bindings:bind(<<"v1_resource.delete.acls">>, ?MODULE, delete),
     ok.
 
@@ -105,13 +104,9 @@ validate(Context, _) ->
 %% If the HTTP verib is PUT, execute the actual action, usually a db save.
 %% @end
 %%--------------------------------------------------------------------
--spec put/1 :: (#cb_context{}) -> #cb_context{}.
-put(#cb_context{doc=JObj}=Context) ->
-    Acls = whapps_config:get(?ECALLMGR, ?ECALLMGR_ACLS),
-    Merged = wh_json:set_value(wh_json:get_value(<<"cidr">>, JObj), JObj, Acls),
-    whapps_config:set_default(?ECALLMGR, ?ECALLMGR_ACLS, Merged),
-    wapi_switch:publish_reloadacl(),
-    Context.
+%-spec put/1 :: (#cb_context{}) -> #cb_context{}.
+%put(=Context) ->
+%    Context.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -137,6 +132,12 @@ create(#cb_context{req_data=Data}=Context) ->
     {fail, Errors} ->
         crossbar_util:response_invalid_data(Errors, Context);
     {pass, JObj} ->
+      Acls = whapps_config:get(?ECALLMGR, ?ECALLMGR_ACLS),
+      Key = mochiweb_util:quote_plus(wh_json:get_value(<<"cidr">>, JObj)),
+      Merged = wh_json:set_value(binary:list_to_bin(Key), JObj, Acls),
+      whapps_config:set_default(?ECALLMGR, ?ECALLMGR_ACLS, Merged),
+      wapi_switch:publish_reloadacl(),
+    
         Context#cb_context{doc=JObj, resp_status=success}
     end.
 
