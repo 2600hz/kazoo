@@ -78,7 +78,7 @@ handle_discovery_req(JObj, Props) ->
 
     conf_participant:consume_call_events(Srv),
     whapps_call_command:answer(Call),
-%%    whapps_call_command:b_prompt(<<"conf-welcome">>, Call),
+    whapps_call_command:b_prompt(<<"conf-welcome">>, Call),
 
     try
         Updaters = [fun(C1) ->
@@ -96,7 +96,10 @@ handle_discovery_req(JObj, Props) ->
                                      whapps_conference:moderator(false, C)
                              end
                      end
-                    ,fun(C) -> whapps_conference:set_controller_queue(props:get_value(queue, Props), C) end
+                    ,fun(C) -> 
+                             Q = hd(props:get_value(other_queues, Props)),
+                             whapps_conference:set_controller_queue(Q, C) 
+                     end
                     ,fun(C) -> whapps_conference:set_application_version(<<"2.0.0">>, C) end
                     ,fun(C) -> whapps_conference:set_application_name(<<"conferences">>, C) end
                     ,fun(_) -> 
@@ -110,9 +113,6 @@ handle_discovery_req(JObj, Props) ->
         SearchId = couch_mgr:get_uuid(),
         wh_cache:store_local(Cache, {?MODULE, discovery, SearchId}, Srv, 300),
         ?LOG("publishing conference search request ~s", [SearchId]),
-        %% !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        %%   TODO: Q MUST be a targeted queue...
-        %% !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         whapps_conference_command:search(SearchId, Conference)
     catch
         _:_ ->
@@ -193,6 +193,13 @@ handle_search_resp(JObj, _Props) ->
 %%--------------------------------------------------------------------
 init([]) ->
     ?LOG_SYS("starting new conference discovery process"),
+    Self = self(),
+    spawn(fun() ->
+                  QueueName = <<>>,
+                  Options = [],
+                  Bindings= [{self, []}],
+                  gen_listener:add_queue(Self, QueueName, Options, Bindings)
+          end),
     {ok, ok}.
 
 %%--------------------------------------------------------------------

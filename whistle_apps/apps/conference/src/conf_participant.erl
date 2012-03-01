@@ -15,6 +15,7 @@
 -export([start_link/1]).
 -export([relay_amqp/2]).
 -export([handle_participants_resp/2]).
+-export([handle_conference_error/2]).
 -export([handle_authn_req/2]).
 -export([handle_route_req/2, handle_route_win/2]).
 
@@ -44,6 +45,7 @@
 
 -define(RESPONDERS, [{{?MODULE, relay_amqp}, [{<<"call_event">>, <<"*">>}]}
                      ,{{?MODULE, handle_participants_resp}, [{<<"conference">>, <<"participants_resp">>}]}
+                     ,{{?MODULE, handle_conference_error}, [{<<"conference">>, <<"error">>}]}
                      ,{{?MODULE, handle_authn_req}, [{<<"directory">>, <<"authn_req">>}]}
                      ,{{?MODULE, handle_route_req}, [{<<"dialplan">>, <<"route_req">>}]}
                      ,{{?MODULE, handle_route_win}, [{<<"dialplan">>, <<"route_win">>}]}
@@ -179,6 +181,17 @@ handle_participants_resp(JObj, Props) ->
     Srv = props:get_value(server, Props),
     Participants = wh_json:get_value(<<"Participants">>, JObj, wh_json:new()),
     gen_server:cast(Srv, {sync_participant, Participants}).
+
+-spec handle_conference_error/2 :: (wh_json:json_object(), proplist()) -> ok.
+handle_conference_error(JObj, Props) ->
+    true = wapi_conference:conference_error_v(JObj),
+    case wh_json:get_value([<<"Request">>, <<"Application-Name">>], JObj) of
+        <<"participants">> ->
+            Srv = props:get_value(server, Props),
+            gen_server:cast(Srv, {sync_participant, wh_json:new()});
+        _Else ->
+            ok
+    end.
 
 -spec handle_authn_req/2 :: (wh_json:json_object(), proplist()) -> ok.
 handle_authn_req(JObj, Props) ->
