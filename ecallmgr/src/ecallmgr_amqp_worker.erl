@@ -85,8 +85,10 @@ init([_Args]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({request, ReqProp, PublishFun, CallID, Timeout}, {ClientPid, _}=From, State) ->
-    put(callid, CallID),
+handle_call({request, ReqProp, PublishFun, Timeout}, {ClientPid, _}=From, State) ->
+    wh_util:put_callid(ReqProp),
+    CallID = get(callid),
+
     lager:debug("starting AMQP request for ~p", [ClientPid]),
 
     Self = self(),
@@ -131,10 +133,9 @@ handle_cast({event, MsgId, JObj}, #state{current_msg_id = MsgId
                                          ,client_ref = ClientRef
                                          ,req_timeout_ref = ReqRef
                                          ,req_start_time = StartTime
-                                         ,callid = CallID
                                         }) ->
-    put(callid, CallID),
-    lager:debug("recv response with msg id ~s", [MsgId]),
+    wh_util:put_callid(JObj),
+    lager:debug("recv response for msg id ~s", [MsgId]),
 
     erlang:demonitor(ClientRef, [flush]),
 
@@ -147,7 +148,7 @@ handle_cast({event, MsgId, JObj}, #state{current_msg_id = MsgId
     {noreply, #state{}};
 handle_cast({event, _MsgId, JObj}, State) ->
     wh_util:put_callid(JObj),
-    lager:debug("received message with old/expired message id: ~s", [_MsgId]),
+    lager:debug("received unexpected message with old/expired message id: ~s", [_MsgId]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -164,14 +165,14 @@ handle_info({'DOWN', ClientRef, process, _Pid, _Reason}, #state{current_msg_id =
                                                                 ,client_ref = ClientRef
                                                                 ,req_timeout_ref = ReqRef
                                                                 ,callid = CallID
-                                                              }) ->
+                                                               }) ->
     put(callid, CallID),
     lager:debug("client ~p down with msg id ~s", [_Pid, _MsgID]),
 
     erlang:demonitor(ClientRef, [flush]),
     erlang:cancel_timer(ReqRef),
 
-    poolboy:checkin(self()),
+    poolboy:checkin(?AMQP_POOL_MGR, self()),
 
     {noreply, #state{}};
 handle_info({timeout, ReqRef, req_timeout}, #state{current_msg_id = _MsgID
@@ -188,6 +189,8 @@ handle_info({timeout, ReqRef, req_timeout}, #state{current_msg_id = _MsgID
     gen_server:reply(From, {error, timeout}),
 
     erlang:cancel_timer(ReqRef),
+
+    poolboy:checkin(?AMQP_POOL_MGR, self()),
 
     {noreply, #state{}};
 

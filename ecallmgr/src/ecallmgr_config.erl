@@ -1,10 +1,11 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
 %%% @copyright (C) 2011, VoIP INC
 %%% @doc
 %%% 
 %%% @end
-%%% Created : 28 Oct 2011 by James Aimonetti <james@2600hz.org>
+%%% @contributors
+%%%   James Aimonetti
+%%%   Edouard Swiac
 %%%-------------------------------------------------------------------
 -module(ecallmgr_config).
 
@@ -35,17 +36,23 @@ get(Key0, Default, Node0) ->
     {ok, Cache} = ecallmgr_sup:cache_proc(),
     case wh_cache:fetch_local(Cache, cache_key(Key, Node)) of
         {ok, V} -> V;
-        {error, not_found} ->
+        {error, E} when E =:= not_found orelse E =:= undefined ->
             Req = [KV ||
                       {_, V} = KV <- [{<<"Category">>, <<"ecallmgr">>}
                                       ,{<<"Key">>, Key}
                                       ,{<<"Default">>, Default}
                                       ,{<<"Node">>, Node}
+                                      ,{<<"Msg-ID">>, wh_util:rand_hex_binary(16)}
                                       | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                                      ],
                       V =/= undefined],
+
+            lager:debug("looking up ~s from sysconf", [Key]),
+
             case catch ecallmgr_amqp_pool:get_req(Req) of
                 {ok, RespJObj} ->
+                    lager:debug("received resp: ~p", [RespJObj]),
+
                     true = wapi_sysconf:get_resp_v(RespJObj),
                     V = case wh_json:get_value(<<"Value">>, RespJObj) of
                             undefined -> Default;
@@ -57,7 +64,8 @@ get(Key0, Default, Node0) ->
                                 Value
                         end,
                     V;
-                {'EXIT', _} ->
+                {'EXIT', _R} ->
+                    lager:debug("failed: ~p", [_R]),
                     Default
             end
     end.
