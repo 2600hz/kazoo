@@ -25,6 +25,9 @@ start_link() ->
 
 init(Parent) ->
     put(callid, ?LOG_SYSTEM_ID),
+
+    lager:debug("starting compactor"),
+
     case {couch_config:fetch(compact_automatically, true), couch_config:fetch(conflict_strategy, null)} of
         {true, null} ->
             lager:debug("just compacting"),
