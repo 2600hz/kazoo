@@ -35,4 +35,4 @@ handle_req(ApiJObj, _Props) ->
             ,{<<"Msg-ID">>, MsgID}
             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
-    wapi_sysconf:publish_write_resp(RespQ, Resp).
+    wapi_sysconf:publish_set_resp(RespQ, Resp).
