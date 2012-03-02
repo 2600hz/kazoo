@@ -1,16 +1,12 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2012, VoIP INC
 %%% @doc
 %%% Access and cache config options for Whistle Couch
 %%% It is important to realize that configs are stored
 %%% with the key as part of the value.
-%%%
-%%% So {foo, bar, baz} is internally stored as:
-%%% { foo, {foo, bar, baz} }
-%%% fetch/1,2,3 will use foo as the key, and return the full tuple.
 %%% @end
-%%% Created : 28 Oct 2011 by James Aimonetti <james@2600hz.org>
+%%% @contributors
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(couch_config).
 
@@ -35,21 +31,11 @@ load_config(Path) ->
     lager:debug("loading ~s", [Path]),
     case file:consult(Path) of
         {ok, Startup} ->
-            _ = [cache_from_file(T) || T <- Startup],
-            ok;
+            store(<<"couch_host">>, props:get_value(couch_host, Startup)),
+            store(<<"default_couch_host">>, props:get_value(default_couch_host, Startup));
         {error, enoent}=E ->
             E
     end.
-
-%% convert 3..n-tuples to 2 tuples with the value being (3..n)-1 tuples
-%% so {key, v1, v2, v3} becomes {key, {v1, v2, v3}}
-%% subsequent writes back to the file will store in the new format
-cache_from_file({Key, Value}) ->
-    store(Key, Value);
-cache_from_file(T) when is_tuple(T) ->
-    [Key|V] = erlang:tuple_to_list(T),
-    Value = erlang:list_to_tuple(V),
-    store(Key, Value).
 
 ready() ->
     whapps_config:couch_ready().

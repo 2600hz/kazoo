@@ -1,8 +1,8 @@
-ROOT = .
+ROOT = ../..
 DIALYZER = dialyzer
 REBAR = $(ROOT)/bin/rebar
 
-DIRS = lib/whistle-1.0.0 lib/whistle_couch-1.0.0 lib/whistle_amqp-1.0.0 lib/whistle_number_manager-1.0.0 ecallmgr whistle_apps
+DIRS =  .
 
 all: app
 
