@@ -57,28 +57,41 @@ get_realm_from_db(DBName) ->
 %% has a parent
 -spec ensure_parent_set/0 :: () -> 'ok' | {'error', 'no_accounts' | atom()}.
 ensure_parent_set() ->
-    case couch_mgr:get_results(?WH_ACCOUNTS_DB, ?AGG_VIEW_SUMMARY, [{<<"include_docs">>, true}]) of
+    case couch_mgr:get_results(?WH_ACCOUNTS_DB, ?AGG_VIEW_REALM, [{<<"include_docs">>, true}]) of
         {ok, []} -> {error, no_accounts};
         {ok, AcctJObjs} ->
             DefaultParentID = find_default_parent(AcctJObjs),
-            lager:debug("default parent ID: ~s", [DefaultParentID]),
-            _ = [ ensure_parent_set(DefaultParentID, wh_json:get_binary_value(<<"id">>, AcctJObj))
-                  || AcctJObj <- AcctJObjs,
-                     wh_json:get_value(<<"id">>, AcctJObj) =/= DefaultParentID, % not the default parent
-                     wh_json:get_value([<<"doc">>, <<"pvt_tree">>], AcctJObj, []) =:= [] % empty tree (should have at least the parent)
-                ],
-            ok;
+
+            [ensure_parent_set(DefaultParentID, wh_json:get_value(<<"doc">>, AcctJObj))
+             || AcctJObj <- AcctJObjs,
+                wh_json:get_value(<<"id">>, AcctJObj) =/= DefaultParentID, % not the default parent
+
+                (Tree = wh_json:get_value([<<"doc">>, <<"pvt_tree">>], AcctJObj)) =:= [] orelse % empty tree (should have at least the parent)
+                    Tree =:= <<>> orelse % Tree is an empty string only
+                    Tree =:= [""] orelse % Tree is bound in the prior bit, and might be a list of an empty string
+                    Tree =:= [<<>>] orelse % Tree is a list of an empty string
+                    Tree =:= undefined % if the pvt_tree key doesn't exist
+            ];
         {error, _}=E -> E
     end.
 
--spec ensure_parent_set/2 :: (ne_binary(), ne_binary()) -> 'ok' | #cb_context{}.
-ensure_parent_set(DefaultParentID, AccountID) ->
-    case update_tree(AccountID, DefaultParentID, #cb_context{db_name=?WH_ACCOUNTS_DB}) of
-        #cb_context{resp_status=success}=Context ->
-            lager:debug("updating tree of ~s", [AccountID]),
-            crossbar_doc:save(Context);
-        _Context ->
-            lager:debug("failed to update tree for ~s", [AccountID])
+-spec ensure_parent_set/2 :: (ne_binary(), wh_json:json_object()) -> 'ok' | #cb_context{}.
+ensure_parent_set(DefaultParentID, JObj) ->
+    ParentTree = [DefaultParentID, wh_json:get_value(<<"_id">>, JObj)],
+
+    lager:debug("pvt_tree before: ~p after: ~p", [wh_json:get_value(<<"pvt_tree">>, JObj), ParentTree]),
+
+    [JObj1] = update_doc_tree(ParentTree
+                              ,wh_json:set_values([{<<"id">>, wh_json:get_value(<<"_id">>, JObj)}
+                                                   ,{<<"pvt_tree">>, []}
+                                                  ], JObj)
+                              ,[]),
+
+    case couch_mgr:save_doc(?WH_ACCOUNTS_DB, JObj1) of
+        {ok, _} ->
+            lager:debug("saved ~s with updated tree", [wh_json:get_value(<<"_id">>, JObj)]);
+        {error, _E} ->
+            lager:debug("failed to save ~s with updated tree: ~p", [wh_json:get_value(<<"_id">>, JObj), _E])
     end.
 
 -spec find_default_parent/1 :: (wh_json:json_objects()) -> ne_binary().
@@ -94,6 +107,7 @@ find_default_parent(AcctJObjs) ->
                                             end
                                             ,{wh_json:get_integer_value([<<"doc">>, <<"pvt_created">>], First), wh_json:get_value(<<"id">>, First)}
                                             ,AcctJObjs),
+            lager:debug("setting default parent account to ~s", [OldestAcctID]),
             whapps_config:set(?ACCOUNTS_CONFIG_CAT, <<"default_parent">>, OldestAcctID),
             OldestAcctID;
         Default -> Default
@@ -489,15 +503,20 @@ is_valid_parent(_JObj) ->
 %%--------------------------------------------------------------------
 -spec update_tree/3 :: (ne_binary(), ne_binary() | 'undefined', #cb_context{}) -> #cb_context{}.
 update_tree(_AccountId, undefined, Context) ->
-    lager:debug("Parent ID is undefined"),
+    lager:debug("parent ID is undefined"),
     Context;
 update_tree(AccountId, ParentId, Context) ->
     case crossbar_doc:load(ParentId, Context) of
         #cb_context{resp_status=success, doc=Parent} ->
+            lager:debug("loaded parent account: ~s", [ParentId]),
+
             case load_descendants(AccountId, Context) of
                 #cb_context{resp_status=success, doc=[]} ->
+                    lager:debug("no descendants loaded for ~s", [AccountId]),
                     crossbar_util:response_bad_identifier(AccountId, Context);
                 #cb_context{resp_status=success, doc=DescDocs}=Context1 when is_list(DescDocs) ->
+                    lager:debug("descendants found for ~s", [AccountId]),
+
                     Tree = wh_json:get_value(<<"pvt_tree">>, Parent, []) ++ [ParentId, AccountId],
                     Updater = fun(Desc, Acc) -> update_doc_tree(Tree, Desc, Acc) end,
                     Updates = lists:foldr(Updater, [], DescDocs),
@@ -517,19 +536,23 @@ update_tree(AccountId, ParentId, Context) ->
 -spec update_doc_tree/3 :: ([ne_binary(),...], wh_json:json_object(), wh_json:json_objects()) -> wh_json:json_objects().
 update_doc_tree([_|_]=ParentTree, JObj, Acc) ->
     AccountId = wh_json:get_value(<<"id">>, JObj),
+    PvtTree = wh_json:get_value(<<"pvt_tree">>, JObj),
+
+    {Tree, MyDoc} = case is_list(PvtTree) of
+                        true -> {PvtTree, JObj};
+                        false ->
+                            #cb_context{resp_status=success, doc=Doc} = crossbar_doc:load(AccountId, #cb_context{db_name=?WH_ACCOUNTS_DB}),
+                            {wh_json:get_value(<<"pvt_tree">>, Doc, []), Doc}
+                    end,
+
     ParentId = lists:last(ParentTree),
-    case crossbar_doc:load(AccountId, #cb_context{db_name=?WH_ACCOUNTS_DB}) of
-        #cb_context{resp_status=success, doc=Doc} ->
-            MyTree =
-                case lists:dropwhile(fun(E)-> E =/= ParentId end, wh_json:get_value(<<"pvt_tree">>, Doc, [])) of
-                    [] -> ParentTree;
-                    [_|List] -> ParentTree ++ List
-                end,
-            Trimmed = [E || E <- MyTree, E =/= AccountId],
-            [wh_json:set_value(<<"pvt_tree">>, Trimmed, Doc) | Acc];
-        _Else ->
-            Acc
-    end.
+    MyTree = case lists:dropwhile(fun(E)-> E =/= ParentId end, Tree) of
+                 [] -> ParentTree;
+                 [_|List] -> ParentTree ++ List
+             end,
+    Trimmed = [E || E <- MyTree, E =/= AccountId],
+
+    [wh_json:set_value(<<"pvt_tree">>, Trimmed, MyDoc) | Acc].
 
 %%--------------------------------------------------------------------
 %% @private
