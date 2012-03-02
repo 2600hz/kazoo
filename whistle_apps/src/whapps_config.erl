@@ -20,7 +20,7 @@
 -export([get_non_empty/2, get_non_empty/3, get_non_empty/4]).
 
 -export([set/3, set/4, set_default/3]).
--export([flush/0, import/1, couch_ready/0]).
+-export([flush/0, flush/1, import/1, couch_ready/0]).
 
 -type config_category() :: ne_binary() | nonempty_string() | atom().
 -type config_key() :: ne_binary() | nonempty_string() | atom() | [config_key(),...].
@@ -295,6 +295,11 @@ flush() ->
     {ok, Cache} = whistle_apps_sup:config_cache_proc(),
     wh_cache:flush_local(Cache).
 
+-spec flush/1 :: (ne_binary()) -> 'ok'.
+flush(Category) ->
+    {ok, Cache} = whistle_apps_sup:config_cache_proc(),
+    wh_cache:erase_local(Cache, category_key(Category)).
+
 %%-----------------------------------------------------------------------------
 %% @public
 %% @doc
@@ -339,7 +344,7 @@ fetch_db_config(Category, Cache) ->
     ?LOG("fetch db config for ~s", [Category]),
     case couch_mgr:open_doc(?WH_CONFIG_DB, Category) of
         {ok, JObj}=Ok ->
-            wh_cache:store_local(Cache, {?MODULE, Category}, JObj),
+            wh_cache:store_local(Cache, category_key(Category), JObj),
             Ok;
         {error, _E} ->
             ?LOG("could not fetch config ~s from db: ~p", [Category, _E]),
@@ -397,6 +402,8 @@ do_set(Category0, Keys, Value, Node0) ->
     Category = wh_util:to_binary(Category0),
     Node = wh_util:to_binary(Node0),
 
+    lager:debug("setting ~s(~p): ~p", [Category, Keys, Value]),
+
     {ok, Cache} = whistle_apps_sup:config_cache_proc(),
     UpdateFun = fun(J) ->
                         NodeConfig = wh_json:get_value(Node, J, wh_json:new()),
@@ -429,7 +436,7 @@ update_category_node(Category, Node, UpdateFun, Cache) ->
             update_category(Category, NewCat, Cache);
         false ->
             ?LOG("couch_mgr hasn't started; just cache the json object"),
-            case wh_cache:peek_local(Cache, {?MODULE, Category}) of
+            case wh_cache:peek_local(Cache, category_key(Category)) of
                 {ok, JObj} ->
                     case wh_json:set_value(Node, UpdateFun(JObj), JObj) of
                         JObj -> {ok, JObj};
@@ -457,7 +464,7 @@ update_category(Category, JObj, Cache) ->
     cache_jobj(Cache, Category, SavedJObj).
 
 cache_jobj(Cache, Category, JObj) ->
-    wh_cache:store_local(Cache, {?MODULE, Category}, JObj),
+    wh_cache:store_local(Cache, category_key(Category), JObj),
     {ok, JObj}.
 
 %%-----------------------------------------------------------------------------
@@ -512,3 +519,7 @@ couch_ready() ->
         false ->
             ok
     end.
+
+-spec category_key/1 :: (Cat) -> {?MODULE, Cat}.
+category_key(Category) ->
+    {?MODULE, Category}.
