@@ -10,7 +10,7 @@
 
 -export([authorize/3, is_authorized/1, default/0, authz_win/1]).
 
--export([init_authorize/4]).
+-export([init_authorize/4, enable_authz/0, disable_authz/0]).
 
 -include("ecallmgr.hrl").
 
@@ -24,6 +24,12 @@ default() ->
         {ok, <<"allow">>} -> {true, []};
         _ -> {false, []}
     end.
+
+enable_authz() ->
+    ecallmgr_config:set(<<"authz_enabled">>, true).
+
+disable_authz() ->
+    ecallmgr_config:set(<<"authz_enabled">>, false).
 
 -spec authorize/3 :: (ne_binary(), ne_binary(), proplist()) -> {'ok', pid()}.
 authorize(FSID, CallID, FSData) ->
@@ -100,8 +106,8 @@ authorize_loop(JObj) ->
 -spec request/3 :: (ne_binary(), ne_binary(), proplist()) -> proplist().
 request(FSID, CallID, FSData) ->
     [{<<"Msg-ID">>, FSID}
-     ,{<<"Caller-ID-Name">>, props:get_value(<<"Caller-Caller-ID-Name">>, FSData)}
-     ,{<<"Caller-ID-Number">>, props:get_value(<<"Caller-Caller-ID-Number">>, FSData)}
+     ,{<<"Caller-ID-Name">>, props:get_value(<<"Caller-Caller-ID-Name">>, FSData, <<"noname">>)}
+     ,{<<"Caller-ID-Number">>, props:get_value(<<"Caller-Caller-ID-Number">>, FSData, <<"0000000000">>)}
      ,{<<"To">>, ecallmgr_util:get_sip_to(FSData)}
      ,{<<"From">>, ecallmgr_util:get_sip_from(FSData)}
      ,{<<"Request">>, ecallmgr_util:get_sip_request(FSData)}
