@@ -25,14 +25,14 @@
                     ]).
 -define(BINDINGS, [{self, []}]).
 
--record(state, {
-          status = 'free' :: 'free' | 'busy'
-         ,from = 'undefined' :: 'undefined' | {pid(), reference()}
-         ,ref = 'undefined' :: 'undefined' | reference()
-         ,req_ref = 'undefined' :: 'undefined' | reference()
-         ,parent = 'undefined' :: 'undefined' | pid() | atom()
-         ,start = 'undefined' :: 'undefined' | wh_now()
-         }).
+-record(state, {status = 'free' :: 'free' | 'busy'
+                ,from = 'undefined' :: 'undefined' | {pid(), reference()}
+                ,ref = 'undefined' :: 'undefined' | reference()
+                ,req_ref = 'undefined' :: 'undefined' | reference()
+                ,parent = 'undefined' :: 'undefined' | pid() | atom()
+                ,start = 'undefined' :: 'undefined' | wh_now()
+                ,msg_id = 'undefined' :: 'undefined' | ne_binary()
+               }).
 
 %%%===================================================================
 %%% API
@@ -68,7 +68,7 @@ start_req(Srv, Prop, ApiFun, CallId, From, Parent, Timeout) when is_pid(Srv),
                                 ,{<<"Call-ID">>, CallId}
                                ], JObj),
     PubFun = fun() -> put(callid, CallId), ApiFun(JObj1) end,
-    gen_listener:cast(Srv, {employed, From, Parent, PubFun, CallId, Timeout}).
+    gen_listener:cast(Srv, {employed, From, Parent, PubFun, JObj1, Timeout}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -117,41 +117,50 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({employed, {Pid, _}=From, Parent, PubFun, CallId, Timeout}, #state{status=free}=State) ->
-    ?LOG(CallId, "Employed by ~p via ~p", [Pid, Parent]),
+handle_cast({employed, {Pid, _}=From, Parent, PubFun, JObj, Timeout}, #state{status=free}=State) ->
+    put(callid, wh_json:get_value(<<"Call-ID">>, JObj)),
     Ref = erlang:monitor(process, Pid),
     ReqRef = erlang:start_timer(Timeout, self(), req_timeout),
-
     try
         PubFun(),
-        ?LOG("req ref: ~p", [ReqRef]),
+        ReqMsgId = wh_json:get_ne_value(<<"Msg-ID">>, JObj),
+        ?LOG("employed by ~p via ~p for response with Msg-ID ~s", [Pid, Parent, ReqMsgId]),
         {noreply, State#state{status=busy, from=From, ref=Ref
                               ,parent=Parent, start=erlang:now()
                               ,req_ref=ReqRef
+                              ,msg_id=ReqMsgId
                              }}
     catch
         E:R ->
-            ?LOG("publish fun ~s: ~p", [E,R]),
+            ?LOG("request publish exception(~s): ~p", [E,R]),
             _ = erlang:cancel_timer(ReqRef),
+            put(callid, 000000000000),
             ecallmgr_amqp_pool:worker_free(Parent, self(), 0),
             {noreply, State}
     end;
 handle_cast({response_recv, JObj}, #state{status=busy, from=From, parent=Parent, ref=Ref
-                                          ,start=Start, req_ref=ReqRef}) ->
-    Elapsed = timer:now_diff(erlang:now(), Start),
-    ?LOG("received response after ~b ms, returning to pool ~p", [Elapsed div 1000, Parent]),
+                                          ,start=Start, req_ref=ReqRef, msg_id=ReqMsgId}=State) ->
+    RespMsgId = wh_json:get_ne_value(<<"Msg-ID">>, JObj),
+    case RespMsgId =:= ReqMsgId of
+        false -> 
+            ?LOG("recieved a response with Msg-ID ~s while waiting for ~s, dropping", [RespMsgId, ReqMsgId]),
+            {noreply, State};
+        true ->
+            Elapsed = timer:now_diff(erlang:now(), Start),
+            ?LOG("received response ~s after ~b ms, returning to pool ~p", [RespMsgId, Elapsed div 1000, Parent]),
 
-    _ = erlang:demonitor(Ref, [flush]),
-    _ = erlang:cancel_timer(ReqRef),
-    gen_server:reply(From, {ok, JObj}),
-
-    ecallmgr_amqp_pool:worker_free(Parent, self(), Elapsed),
-    {noreply, #state{}};
+            _ = erlang:demonitor(Ref, [flush]),
+            _ = erlang:cancel_timer(ReqRef),
+            gen_server:reply(From, {ok, JObj}),
+            put(callid, 000000000000),
+            ecallmgr_amqp_pool:worker_free(Parent, self(), Elapsed),
+            {noreply, #state{}}
+    end;
 handle_cast({response_recv, JObj}, State) ->
-    ?LOG("WTF, I'm free, yet receiving a response?"),
-    ?LOG("EvtCat: ~s", [wh_json:get_value(<<"Event-Category">>, JObj)]),
-    ?LOG("EvtName: ~s", [wh_json:get_value(<<"Event-Name">>, JObj)]),
-    ?LOG("SrvID: ~s", [wh_json:get_value(<<"Server-ID">>, JObj)]),
+    ?LOG("non-employed AMQP pool worker received a response?"),
+    ?LOG("event category: ~s", [wh_json:get_value(<<"Event-Category">>, JObj)]),
+    ?LOG("event name: ~s", [wh_json:get_value(<<"Event-Name">>, JObj)]),
+    ?LOG("server id: ~s", [wh_json:get_value(<<"Server-ID">>, JObj)]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -169,7 +178,7 @@ handle_info({'DOWN', Ref, process, Pid, _Info}, #state{status=busy, ref=Ref, par
 
     _ = erlang:demonitor(Ref, [flush]),
     _ = erlang:cancel_timer(ReqRef),
-
+    put(callid, 000000000000),
     ecallmgr_amqp_pool:worker_free(Parent, self(), 0),
     {noreply, #state{}};
 
@@ -184,7 +193,7 @@ handle_info({timeout, ReqRef, req_timeout}, #state{status=busy, from=From, paren
     _ = erlang:cancel_timer(ReqRef),
 
     gen_server:reply(From, {error, timeout}),
-
+    put(callid, 000000000000),
     ecallmgr_amqp_pool:worker_free(Parent, self(), Elapsed),
     {noreply, #state{}};
 
@@ -199,12 +208,11 @@ handle_info(req_timeout, #state{status=busy, from=From, parent=Parent, ref=Ref
     _ = erlang:cancel_timer(ReqRef),
 
     gen_server:reply(From, {error, timeout}),
-
+    put(callid, 000000000000),
     ecallmgr_amqp_pool:worker_free(Parent, self(), Elapsed),
     {noreply, #state{}};
 
 handle_info(_Info, State) ->
-    ?LOG("unhandled message: ~p", [_Info]),
     {noreply, State}.
 
 handle_event(_JObj, _State) ->

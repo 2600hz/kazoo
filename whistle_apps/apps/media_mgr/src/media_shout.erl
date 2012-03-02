@@ -193,7 +193,7 @@ handle_info(timeout, #state{db=Db, doc=Doc, attachment=Attachment, media_name=Me
 
     ?LOG("sending media_resp AMQP"),
 
-    lists:foreach(fun(To) -> send_media_resp(MediaName, StreamUrl, To) end, SendTo),
+    lists:foreach(fun({To, MsgId}) -> send_media_resp(MediaName, StreamUrl, To, MsgId) end, SendTo),
 
     MediaFile = #media_file{stream_url=StreamUrl, contents=Content, content_type=CT, media_name=MediaName, chunk_size=ChunkSize
                             ,shout_response=Resp, shout_header=Header, continuous=(StreamType =:= continuous), pad_response=(CT =:= ?CONTENT_TYPE_MP3)},
@@ -212,9 +212,10 @@ handle_info({add_listener, ListenerQ}, #state{stream_type=single, media_name=Med
           end),
     {noreply, S, hibernate};
 
-handle_info({add_listener, ListenerQ}, #state{media_file=#media_file{stream_url=StreamUrl}, media_name=MediaName, send_to=SendTo}=S) ->
-    send_media_resp(MediaName, StreamUrl, ListenerQ),
-    {noreply, S#state{send_to=[ListenerQ | SendTo]}, hibernate};
+handle_info({add_listener, {To, MsgId}=Listener}
+            ,#state{media_file=#media_file{stream_url=StreamUrl}, media_name=MediaName, send_to=SendTo}=S) ->
+    send_media_resp(MediaName, StreamUrl, To, MsgId),
+    {noreply, S#state{send_to=[Listener | SendTo]}, hibernate};
 
 handle_info({send_media, Socket}, #state{media_loop=undefined, media_file=MediaFile}=S) ->
     CallID = get(callid),
@@ -274,9 +275,10 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-send_media_resp(MediaName, Url, To) ->
+send_media_resp(MediaName, Url, To, MsgId) ->
     Resp = [{<<"Media-Name">>, MediaName}
             ,{<<"Stream-URL">>, Url}
+            ,{<<"Msg-ID">>, MsgId}
             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)],
     ?LOG("notifying requestor that ~s as available at ~s", [MediaName, Url]),
     wapi_media:publish_resp(To, Resp).

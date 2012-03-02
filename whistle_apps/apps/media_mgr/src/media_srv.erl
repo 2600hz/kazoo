@@ -356,7 +356,7 @@ is_streamable(JObj) ->
       Port :: port().
 start_stream(JObj, Db, Doc, Attachment, CType, Port) ->
     MediaName = wh_json:get_value(<<"Media-Name">>, JObj),
-    To = wh_json:get_value(<<"Server-ID">>, JObj),
+    To = {wh_json:get_value(<<"Server-ID">>, JObj), wh_json:get_value(<<"Msg-ID">>, JObj)},
     Media = {MediaName, Db, Doc, Attachment, CType},
     ?LOG_END("request for ~s is starting in new stream server", [MediaName]),
     {ok, _} = media_shout_sup:start_shout(Media, To, single, Port, get(callid)).
@@ -371,7 +371,7 @@ start_stream(JObj, Db, Doc, Attachment, CType, Port) ->
       Streams :: list().
 join_stream(JObj, Db, Doc, Attachment, CType, Port, Streams) ->
     MediaName = wh_json:get_value(<<"Media-Name">>, JObj),
-    To = wh_json:get_value(<<"Server-ID">>, JObj),
+    To = {wh_json:get_value(<<"Server-ID">>, JObj), wh_json:get_value(<<"Msg-ID">>, JObj)},
     Media = {MediaName, Db, Doc, Attachment, CType},
 
     case lists:keyfind(MediaName, 1, Streams) of
