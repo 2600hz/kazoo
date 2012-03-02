@@ -108,13 +108,8 @@
                   "name":{
                      "description":"The caller id name for the object type",
                      "type":"string",
-                     "maxLength":15,
-                     "pattern":"^[0-9A-Za-z ,]*$"
-                  },
-                  "number":{
-                     "description":"The caller id number for the object type",
-                     "type":"string",
-                     "maxLength":15
+                     "maxLength":30,
+                     "pattern":"^[0-9A-Za-z ,&]*$"
                   }
                }
             },
@@ -126,12 +121,7 @@
                      "description":"The caller id name for the object type",
                      "type":"string",
                      "maxLength":15,
-                     "pattern":"^[0-9A-Za-z ,]*$"
-                  },
-                  "number":{
-                     "description":"The caller id number for the object type",
-                     "type":"string",
-                     "maxLength":15
+                     "pattern":"^[0-9A-Za-z ,&]*$"
                   }
                }
             },
@@ -143,12 +133,7 @@
                      "description":"The caller id name for the object type",
                      "type":"string",
                      "maxLength":15,
-                     "pattern":"^[0-9A-Za-z ,]*$"
-                  },
-                  "number":{
-                     "description":"The caller id number for the object type",
-                     "type":"string",
-                     "maxLength":15
+                     "pattern":"^[0-9A-Za-z ,&]*$"
                   }
                }
             }
@@ -372,7 +357,7 @@
          }
       },
       "directories":{
-         "type":"object",
+         "type":"array",
          "description":"Provides the mappings for what directory the user is a part of (the key), and what callflow (the value) to invoke if the user is selected by the caller."
       }
    }
