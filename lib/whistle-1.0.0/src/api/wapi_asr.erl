@@ -124,7 +124,7 @@ bind_q(Queue, _Props) ->
 %%--------------------------------------------------------------------
 -spec unbind_q/1 :: (binary()) -> 'ok'.
 unbind_q(Queue) ->
-    amqp_util:unbind_q_from_callctk(Queue).
+    amqp_util:unbind_q_from_callctl(Queue).
 
 %%--------------------------------------------------------------------
 %% @doc
