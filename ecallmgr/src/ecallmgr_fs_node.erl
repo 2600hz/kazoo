@@ -444,6 +444,7 @@ publish_register_event(Data) ->
 
 -spec process_transfer_event/2 :: (ne_binary(), proplist()) -> ok.
 process_transfer_event(<<"BLIND_TRANSFER">>, Data) ->
+    ?LOG("recieved blind transfer notice"),
     TransfererCtrlUUId = case props:get_value(<<"Transferor-Direction">>, Data) of
                              <<"inbound">> ->
                                  props:get_value(<<"Transferor-UUID">>, Data);
@@ -459,9 +460,11 @@ process_transfer_event(<<"BLIND_TRANSFER">>, Data) ->
              || Pid <- Pids
             ];
         {error, not_found} -> 
+            ?LOG(TransfererCtrlUUId, "no ecallmgr_call_control processes exist locally for reception of transferer notice"),
             ok
     end;
-process_transfer_event(_, Data) ->
+process_transfer_event(_Type, Data) ->
+    ?LOG("recieved ~s transfer notice", [_Type]),
     TransfererCtrlUUId = case props:get_value(<<"Transferor-Direction">>, Data) of
                              <<"inbound">> ->
                                  props:get_value(<<"Transferor-UUID">>, Data);
@@ -477,6 +480,7 @@ process_transfer_event(_, Data) ->
              || Pid <- TransfererPids
             ];
         {error, not_found} -> 
+            ?LOG(TransfererCtrlUUId, "no ecallmgr_call_control processes exist for reception of transferer notice"),
             ok
     end,
     TransfereeCtrlUUId = props:get_value(<<"Replaces">>, Data),
@@ -489,6 +493,7 @@ process_transfer_event(_, Data) ->
              || Pid <- ReplacesPids
             ];
         {error, not_found} ->
+            ?LOG(TransfererCtrlUUId, "no ecallmgr_call_control processes exist locally for reception of transferee notice"),
             ok
     end.    
 
