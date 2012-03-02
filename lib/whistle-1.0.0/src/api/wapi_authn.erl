@@ -19,6 +19,8 @@
 
 -include("../wh_api.hrl").
 
+-define(KEY_AUTHN_REQ, <<"authn.req">>). %% corresponds to the authn_req/1 api call
+
 -define(EVENT_CATEGORY, <<"directory">>).
 -define(AUTHN_REQ_EVENT_NAME, <<"authn_req">>).
 
