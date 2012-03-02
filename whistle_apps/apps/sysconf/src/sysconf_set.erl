@@ -23,6 +23,7 @@ handle_req(ApiJObj, _Props) ->
     Category = wh_json:get_value(<<"Category">>, ApiJObj),
     Key = wh_json:get_value(<<"Key">>, ApiJObj),
     Value = wh_json:get_value(<<"Value">>, ApiJObj),
+    MsgID = wh_json:get_value(<<"Msg-ID">>, ApiJObj),
 
     {ok, _} = whapps_config:set(Category, Key, Value, wh_json:get_value(<<"Node">>, ApiJObj)),
 
@@ -31,6 +32,7 @@ handle_req(ApiJObj, _Props) ->
     Resp = [{<<"Category">>, Category} 
             ,{<<"Key">>, Key}
             ,{<<"Value">>, Value}
+            ,{<<"Msg-ID">>, MsgID}
             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     wapi_sysconf:publish_write_resp(RespQ, Resp).
