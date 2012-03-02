@@ -1,10 +1,10 @@
 %%%-----------------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2011, VoIP, INC
+%%% @copyright (C) 2011-2012, VoIP, INC
 %%% @doc
 %%% Util functions used by whistle_couch
 %%% @end
-%%% Created :  8 Jul 2011 by James Aimonetti <james@2600hz.org>
+%%% @contributors
+%%%   James Aimonetti
 %%%-----------------------------------------------------------------------------
 -module(couch_util).
 
@@ -40,9 +40,8 @@
 -define(MAX_BULK_INSERT, 2000).
 -define(RETRY_504(F), retry504s(fun() -> F end)).
 
--type db_create_options() :: [{q,integer()} | {n,integer()},...] | [].
+-type db_create_options() :: [{'q',integer()} | {'n',integer()},...] | [].
 -export_type([db_create_options/0]).
-
 
 %%------------------------------------------------------------------------------
 %% @public
@@ -214,7 +213,7 @@ save_doc(#server{}=Conn, DbName, Doc, Options) ->
     Db = get_db(Conn, DbName),
     do_save_doc(Db, Doc, Options).
 
--spec save_docs/4 :: (#server{}, ne_binary(), wh_json:json_objects(), proplist()) -> {'ok', wh_json:json_objects()} | {'error', atom()}.
+-spec save_docs/4 :: (#server{}, ne_binary(), wh_json:json_objects(), proplist()) -> {'ok', wh_json:json_objects()}.
 save_docs(#server{}=Conn, DbName, Docs, Options) ->
     Db = get_db(Conn, DbName),
     do_save_docs(Db, Docs, Options).
@@ -287,7 +286,7 @@ do_save_doc(#db{}=Db, Docs, Options) when is_list(Docs) ->
 do_save_doc(#db{}=Db, Doc, Options) ->
     ?RETRY_504(couchbeam:save_doc(Db, Doc, Options)).
 
--spec do_save_docs/3 :: (#db{}, wh_json:json_objects(), proplist()) -> {'ok', wh_json:json_objects()} | {'error', atom()}.
+-spec do_save_docs/3 :: (#db{}, wh_json:json_objects(), proplist()) -> {'ok', wh_json:json_objects()}.
 do_save_docs(#db{}=Db, Docs, Options) ->
     do_save_docs(Db, Docs, Options, []).
 
