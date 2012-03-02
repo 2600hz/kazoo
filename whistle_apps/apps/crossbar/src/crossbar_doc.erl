@@ -67,11 +67,12 @@ load(DocId, #cb_context{db_name=DB}=Context) ->
                 true ->
                     crossbar_util:response_bad_identifier(DocId, Context);
                 false ->
-                    Context#cb_context{doc=Doc
-                                       ,resp_status=success
-                                       ,resp_data=public_fields(Doc)
-                                       ,resp_etag=rev_to_etag(Doc)
-                                      }
+                    Context1 = Context#cb_context{doc=Doc
+                                                  ,resp_status=success
+                                                  ,resp_data=public_fields(Doc)
+                                                  ,resp_etag=rev_to_etag(Doc)
+                                                 },
+                    crossbar_util:store(db_doc, Doc, Context1)
             end;
         _Else ->
             ?LOG("unexpected return from datastore: ~p", [_Else]),
