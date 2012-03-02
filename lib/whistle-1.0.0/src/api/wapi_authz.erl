@@ -132,8 +132,7 @@ bind_q(Q, Props) ->
     Realm = props:get_value(realm, Props, <<"*">>),
 
     amqp_util:callmgr_exchange(),
-    amqp_util:bind_q_to_callmgr(Q, get_authz_req_routing(Realm)),
-    ok.
+    amqp_util:bind_q_to_callmgr(Q, get_authz_req_routing(Realm)).
 
 -spec unbind_q/2 :: (ne_binary(), proplist()) -> 'ok'.
 unbind_q(Q, Props) ->
@@ -181,6 +180,9 @@ publish_win(Queue, Resp, ContentType) ->
 %% @end
 %%-----------------------------------------------------------------------------
 -spec get_auth_realm/1  :: (wh_json:json_object()) -> ne_binary().
+get_auth_realm(ApiProp) when is_list(ApiProp) ->
+    [_ReqUser, ReqDomain] = binary:split(props:get_value(<<"Request">>, ApiProp), <<"@">>),
+    ReqDomain;
 get_auth_realm(ApiJObj) ->
     [_ReqUser, ReqDomain] = binary:split(wh_json:get_value(<<"Request">>, ApiJObj), <<"@">>),
     ReqDomain.

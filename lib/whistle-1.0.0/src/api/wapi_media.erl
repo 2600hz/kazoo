@@ -12,7 +12,7 @@
 
 -export([req/1, resp/1, error/1, req_v/1, resp_v/1, error_v/1]).
 
--export([bind_q/2, unbind_q/1]).
+-export([bind_q/2, unbind_q/2]).
 
 -export([publish_req/1, publish_req/2, publish_resp/2, publish_resp/3
          ,publish_error/2, publish_error/3]).
@@ -107,15 +107,14 @@ error_v(Prop) when is_list(Prop) ->
 error_v(JObj) ->
     error_v(wh_json:to_proplist(JObj)).
 
--spec bind_q/2 :: (binary(), proplist()) -> 'ok'.
+-spec bind_q/2 :: (binary(), wh_proplist()) -> 'ok'.
 bind_q(Queue, _Props) ->
     amqp_util:callevt_exchange(),
-    amqp_util:bind_q_to_callevt(Queue, media_req),
-    ok.
+    amqp_util:bind_q_to_callevt(Queue, media_req).
 
--spec unbind_q/1 :: (binary()) -> 'ok'.
-unbind_q(Queue) ->
-    amqp_util:unbind_q_from_callevt(Queue).
+-spec unbind_q/2 :: (binary(), wh_proplist()) -> 'ok'.
+unbind_q(Queue, _Props) ->
+    amqp_util:unbind_q_from_callevt(Queue, media_req).
 
 -spec publish_req/1 :: (api_terms()) -> 'ok'.
 -spec publish_req/2 :: (api_terms(), ne_binary()) -> 'ok'.

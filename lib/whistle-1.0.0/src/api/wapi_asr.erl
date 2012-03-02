@@ -114,8 +114,7 @@ error_v(JObj) ->
 -spec bind_q/2 :: (binary(), proplist()) -> 'ok'.
 bind_q(Queue, _Props) ->
     amqp_util:callctl_exchange(),
-    amqp_util:bind_q_to_callctl(Queue, ?KEY_ASR_REQ),
-    ok.
+    amqp_util:bind_q_to_callctl(Queue, ?KEY_ASR_REQ).
 
 %%--------------------------------------------------------------------
 %% @doc

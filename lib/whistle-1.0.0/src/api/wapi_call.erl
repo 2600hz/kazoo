@@ -525,25 +525,25 @@ bind_q(Queue, Props) ->
     bind_q(Queue, props:get_value(restrict_to, Props), CallID).
 
 bind_q(Q, undefined, CallID) ->
-    amqp_util:bind_q_to_callevt(Q, CallID),
-    amqp_util:bind_q_to_callevt(Q, CallID, cdr),
-    amqp_util:bind_q_to_callmgr(Q, ?KEY_CHANNEL_QUERY),
+    ok = amqp_util:bind_q_to_callevt(Q, CallID),
+    ok = amqp_util:bind_q_to_callevt(Q, CallID, cdr),
+    ok = amqp_util:bind_q_to_callmgr(Q, ?KEY_CHANNEL_QUERY),
     amqp_util:bind_q_to_callmgr(Q, rating_key(CallID));
 
 bind_q(Q, [events|T], CallID) ->
-    amqp_util:bind_q_to_callevt(Q, CallID),
+    _ = amqp_util:bind_q_to_callevt(Q, CallID),
     bind_q(Q, T, CallID);
 bind_q(Q, [cdr|T], CallID) ->
-    amqp_util:bind_q_to_callevt(Q, CallID, cdr),
+    _ = amqp_util:bind_q_to_callevt(Q, CallID, cdr),
     bind_q(Q, T, CallID);
 bind_q(Q, [rating|T], CallID) ->
-    amqp_util:bind_q_to_callmgr(Q, rating_key(CallID)),
+    ok = amqp_util:bind_q_to_callmgr(Q, rating_key(CallID)),
     bind_q(Q, T, CallID);
 bind_q(Q, [status_req|T], CallID) ->
-    amqp_util:bind_q_to_callevt(Q, CallID, status_req),
+    ok = amqp_util:bind_q_to_callevt(Q, CallID, status_req),
     bind_q(Q, T, CallID);
 bind_q(Q, [query_req|T], CallID) ->
-    amqp_util:bind_q_to_callmgr(Q, ?KEY_CHANNEL_QUERY),
+    ok = amqp_util:bind_q_to_callmgr(Q, ?KEY_CHANNEL_QUERY),
     bind_q(Q, T, CallID);
 bind_q(Q, [_|T], CallID) ->
     bind_q(Q, T, CallID);
@@ -556,25 +556,25 @@ unbind_q(Queue, Props) ->
     unbind_q(Queue, props:get_value(restrict_to, Props), CallID).
 
 unbind_q(Q, undefined, CallID) ->
-    amqp_util:unbind_q_from_callevt(Q, CallID),
-    amqp_util:unbind_q_from_callevt(Q, CallID, cdr),
-    amqp_util:unbind_q_from_callmgr(Q, ?KEY_CHANNEL_QUERY),
+    ok = amqp_util:unbind_q_from_callevt(Q, CallID),
+    ok = amqp_util:unbind_q_from_callevt(Q, CallID, cdr),
+    ok = amqp_util:unbind_q_from_callmgr(Q, ?KEY_CHANNEL_QUERY),
     amqp_util:unbind_q_from_callmgr(Q, rating_key(CallID));
 
 unbind_q(Q, [events|T], CallID) ->
-    amqp_util:unbind_q_from_callevt(Q, CallID),
+    ok = amqp_util:unbind_q_from_callevt(Q, CallID),
     unbind_q(Q, T, CallID);
 unbind_q(Q, [cdr|T], CallID) ->
-    amqp_util:unbind_q_from_callevt(Q, CallID, cdr),
+    ok = amqp_util:unbind_q_from_callevt(Q, CallID, cdr),
     unbind_q(Q, T, CallID);
 unbind_q(Q, [rating|T], CallID) ->
-    amqp_util:unbind_q_from_callmgr(Q, rating_key(CallID)),
+    ok = amqp_util:unbind_q_from_callmgr(Q, rating_key(CallID)),
     unbind_q(Q, T, CallID);
 unbind_q(Q, [status_req|T], CallID) ->
-    amqp_util:unbind_q_from_callevt(Q, CallID, status_req),
+    ok = amqp_util:unbind_q_from_callevt(Q, CallID, status_req),
     unbind_q(Q, T, CallID);
 unbind_q(Q, [query_req|T], CallID) ->
-    amqp_util:unbind_q_from_callmgr(Q, ?KEY_CHANNEL_QUERY),
+    ok = amqp_util:unbind_q_from_callmgr(Q, ?KEY_CHANNEL_QUERY),
     unbind_q(Q, T, CallID);
 unbind_q(Q, [_|T], CallID) ->
     unbind_q(Q, T, CallID);

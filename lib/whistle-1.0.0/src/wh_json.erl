@@ -18,6 +18,7 @@
 -export([get_binary_value/2, get_binary_value/3]).
 -export([get_atom_value/2, get_atom_value/3]).
 -export([get_string_value/2, get_string_value/3]).
+-export([get_json_value/2, get_json_value/3]).
 -export([is_true/2, is_true/3, is_false/2, is_false/3, is_empty/1]).
 
 -export([filter/2, filter/3, map/2, find/2, find/3]).

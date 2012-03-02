@@ -154,8 +154,7 @@ balance_resp_v(JObj) ->
 bind_q(Queue, Props) ->
     Routing = routing_key(Props),
     amqp_util:configuration_exchange(),
-    amqp_util:bind_q_to_configuration(Queue, Routing),
-    ok.
+    amqp_util:bind_q_to_configuration(Queue, Routing).
 
 -spec unbind_q/2 :: (ne_binary(), proplist()) -> 'ok'.
 unbind_q(Queue, Props) ->

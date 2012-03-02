@@ -105,8 +105,7 @@ bind_q(Q, Props) ->
     Realm = props:get_value(realm, Props, <<"*">>),
 
     amqp_util:callmgr_exchange(),
-    amqp_util:bind_q_to_callmgr(Q, get_authn_req_routing(Realm)),
-    ok.
+    amqp_util:bind_q_to_callmgr(Q, get_authn_req_routing(Realm)).
 
 -spec unbind_q/1 :: (ne_binary()) -> 'ok'.
 -spec unbind_q/2:: (ne_binary(), proplist()) -> 'ok'.
