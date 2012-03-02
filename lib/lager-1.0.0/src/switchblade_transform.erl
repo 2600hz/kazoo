@@ -65,7 +65,7 @@ transform_statement({call, Line, {remote, Line1, {atom, Line2, lager},
                                                        {atom, Line, module}, {atom, Line, get(module)}
                                                       ]},
                             {cons, Line, {tuple, Line, [
-                                                        {atom, Line, function}, {call, Line, {atom, Line, get}, [{atom, Line, callid}]}
+                                                        {atom, Line, function}, {call, Line, {remote, Line, {atom, Line, erlang}, {atom, Line, get}}, [{atom, Line, callid}]}
                                                        ]},
                              {cons, Line, {tuple, Line, [
                                                          {atom, Line, line},
@@ -102,7 +102,7 @@ transform_statement({call, Line, {remote, Line1, {atom, Line2, lager},
                [
                 {atom, Line3, Severity},
                 {atom, Line3, get(module)},
-                {call, Line3, {atom, Line3, get}, [{atom, Line3, callid}]},
+                {call, Line3, {remote, Line3, {atom, Line3, erlang}, {atom, Line3, get}}, [{atom, Line3, callid}]},
                 {integer, Line3, Line},
                 {call, Line3, {atom, Line3 ,self}, []},
                 Traces,
