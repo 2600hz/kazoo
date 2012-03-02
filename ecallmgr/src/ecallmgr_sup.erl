@@ -9,8 +9,17 @@
 %% Supervisor callbacks
 -export([init/1]).
 
+-include("ecallmgr.hrl").
+
 %% Helper macro for declaring children of supervisor
 -define(CHILD(I, Type), {I, {I, start_link, []}, permanent, 5000, Type, [I]}).
+-define(POOL(Mod), {Mod, {poolboy, start_link, [
+                                                [{name, {local, Mod}}
+                                                 ,{worker_module, ecallmgr_amqp_worker}
+                                                ]
+                                               ]}
+                    ,permanent, 5000, worker, [poolboy]
+                   }).
 -define(CACHE(Name), {Name, {wh_cache, start_link, [Name]}, permanent, 5000, worker, [wh_cache]}).
 
 %% ===================================================================
@@ -40,6 +49,8 @@ init([]) ->
        {one_for_one, 5, 10}
        ,[?CHILD(wh_alert, worker)
          ,?CACHE(ecallmgr_cache) % provides a cache
+
+         ,?POOL(?AMQP_POOL_MGR) % handles the pool of AMQP queues
 
          ,?CHILD(ecallmgr_call_sup, supervisor) % handles dynamic call {event,control} processes
          ,?CHILD(ecallmgr_shout_sup, supervisor) % handles dynamic record streams from FreeSWITCH to local filesystem
