@@ -629,9 +629,9 @@ record_name(AttachmentName, #mailbox{name_media_id=MediaId}=Box, Call) ->
                               ,{<<"Duration-ON">>, <<"500">>}
                               ,{<<"Duration-OFF">>, <<"100">>}
                              ]),
-    _NoopId = whapps_call_command:audio_macro([{play,  <<"vm-record_name">>}
-                                           ,{tones, [Tone]}
-                                          ], Call),
+    _NoopId = whapps_call_command:audio_macro([{prompt,  <<"vm-record_name">>}
+                                               ,{tones, [Tone]}
+                                              ], Call),
     whapps_call_command:b_record(AttachmentName, Call),
     case review_recording(AttachmentName, Box, Call) of
         {ok, record} ->
