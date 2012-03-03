@@ -522,6 +522,7 @@ sync_participant(Participants, Call, #participant{in_conference=false, conferenc
             Participant#participant{in_conference=true, muted=Muted
                                     ,deaf=Deaf, participant_id=ParticipantId};
         {error, not_found} ->
+            ?LOG("caller not found in the list of conference participants, trying again"),
             timer:sleep(500),
             whapps_conference_command:participants(Conference),
             Participant

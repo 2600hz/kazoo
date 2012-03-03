@@ -134,7 +134,7 @@ handle_cast({employed, {Pid, _}=From, Parent, PubFun, JObj, Timeout}, #state{sta
         E:R ->
             ?LOG("request publish exception(~s): ~p", [E,R]),
             _ = erlang:cancel_timer(ReqRef),
-            put(callid, 000000000000),
+            put(callid, "000000000000"),
             ecallmgr_amqp_pool:worker_free(Parent, self(), 0),
             {noreply, State}
     end;
@@ -152,7 +152,7 @@ handle_cast({response_recv, JObj}, #state{status=busy, from=From, parent=Parent,
             _ = erlang:demonitor(Ref, [flush]),
             _ = erlang:cancel_timer(ReqRef),
             gen_server:reply(From, {ok, JObj}),
-            put(callid, 000000000000),
+            put(callid, "000000000000"),
             ecallmgr_amqp_pool:worker_free(Parent, self(), Elapsed),
             {noreply, #state{}}
     end;
@@ -178,7 +178,7 @@ handle_info({'DOWN', Ref, process, Pid, _Info}, #state{status=busy, ref=Ref, par
 
     _ = erlang:demonitor(Ref, [flush]),
     _ = erlang:cancel_timer(ReqRef),
-    put(callid, 000000000000),
+    put(callid, "000000000000"),
     ecallmgr_amqp_pool:worker_free(Parent, self(), 0),
     {noreply, #state{}};
 
@@ -193,7 +193,7 @@ handle_info({timeout, ReqRef, req_timeout}, #state{status=busy, from=From, paren
     _ = erlang:cancel_timer(ReqRef),
 
     gen_server:reply(From, {error, timeout}),
-    put(callid, 000000000000),
+    put(callid, "000000000000"),
     ecallmgr_amqp_pool:worker_free(Parent, self(), Elapsed),
     {noreply, #state{}};
 
@@ -208,7 +208,7 @@ handle_info(req_timeout, #state{status=busy, from=From, parent=Parent, ref=Ref
     _ = erlang:cancel_timer(ReqRef),
 
     gen_server:reply(From, {error, timeout}),
-    put(callid, 000000000000),
+    put(callid, "000000000000"),
     ecallmgr_amqp_pool:worker_free(Parent, self(), Elapsed),
     {noreply, #state{}};
 
