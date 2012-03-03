@@ -1,11 +1,12 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
 %%% @copyright (C) 2011, VoIP INC
 %%% @doc
 %%% Receive AMQP requests for media, spawn a handler for the response
 %%% TODO: convert to gen_listener
 %%% @end
-%%% Created : 15 Mar 2011 by James Aimonetti <james@2600hz.org>
+%%% @contributors
+%%%   James Aimonetti
+%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(media_srv).
 
@@ -162,7 +163,8 @@ handle_info({_, #amqp_msg{payload = Payload}}, #state{ports=Ports, port_range=Po
     {{value, Port}, Ps1} = queue:out(Ports),
     spawn(fun() ->
                   JObj = mochijson2:decode(Payload),
-                  put(callid, wh_json:get_value(<<"Call-ID">>, JObj, <<"0000000000">>)),
+                  wh_util:put_callid(JObj),
+
                   lager:debug("received request for media"),
 
                   try
@@ -265,6 +267,7 @@ send_error_resp(JObj, _ErrCode, ErrMsg) ->
 -spec(handle_req/3 :: (JObj :: wh_json:json_object(), Port :: port(), Streams :: list()) -> no_return()).
 handle_req(JObj, Port, Streams) ->
     true = wapi_media:req_v(JObj),
+
     case find_attachment(binary:split(wh_json:get_value(<<"Media-Name">>, JObj, <<>>), <<"/">>, [global, trim])) of
         not_found ->
             send_error_resp(JObj, <<"not_found">>, <<>>);
@@ -273,8 +276,10 @@ handle_req(JObj, Port, Streams) ->
         {Db, Doc, Attachment, _MetaData, CType} ->
             case wh_json:get_value(<<"Stream-Type">>, JObj, <<"new">>) of
                 <<"new">> ->
+                    lager:debug("starting new stream"),
                     start_stream(JObj, Db, Doc, Attachment, CType, Port);
                 <<"extant">> ->
+                    lager:debug("joining extant stream"),
                     join_stream(JObj, Db, Doc, Attachment, CType, Port, Streams)
             end
     end.
@@ -294,13 +299,18 @@ find_attachment([Db, Doc, first]) ->
                  true -> Db;
                  false -> wh_util:format_account_id(Db, encoded)
              end,
+
+    lager:debug("trying to find first attachment in doc ~s in db ~s", [Doc, DbName]),
+
     case couch_mgr:open_doc(DbName, Doc) of
         {ok, JObj} ->
             case is_streamable(JObj)
                 andalso wh_json:get_value(<<"_attachments">>, JObj, false) of
                 false ->
+                    lager:debug("isn't streamable or no attachments found"),
                     no_data;
                 {struct, [{Attachment, MetaData} | _]} ->
+                    lager:debug("found attachment to stream: ~s", [Attachment]),
                     {DbName, Doc, Attachment, MetaData, get_content_type_extension(JObj, MetaData)}
             end;
         _->
@@ -311,6 +321,9 @@ find_attachment([Db, Doc, Attachment]) ->
                  true -> Db;
                  false -> wh_util:format_account_id(Db, encoded)
              end,
+
+    lager:debug("trying to find ~s in doc ~s in db ~s", [Attachment, Doc, DbName]),
+
     case couch_mgr:open_doc(DbName, Doc) of
         {ok, JObj} ->
             case is_streamable(JObj)
@@ -345,7 +358,7 @@ valid_content_type(JObj) ->
 
 -spec is_streamable/1 :: (wh_json:json_object()) -> boolean().
 is_streamable(JObj) ->
-    wh_util:is_true(wh_json:get_value(<<"streamable">>, JObj, true)).
+    wh_json:is_true(<<"streamable">>, JObj, true).
 
 -spec start_stream/6 :: (JObj, Db, Doc, Attachment, CType, Port) -> no_return() when
       JObj :: wh_json:json_object(),

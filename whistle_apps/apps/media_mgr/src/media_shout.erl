@@ -169,7 +169,7 @@ handle_info(timeout, #state{db=Db, doc=Doc, attachment=Attachment, media_name=Me
                                             _Acceptor = spawn(fun() -> put(callid, CallID), start_shout_acceptor(Self, LSocket) end),
                                             lager:debug("spawned shout server for mp3: ~p", [_Acceptor]),
 
-                                            Url = list_to_binary(["shout://", Hostname, ":", integer_to_list(PortNo), "/stream.mp3"]),
+                                            Url = list_to_binary(["vlc://shout://", Hostname, ":", integer_to_list(PortNo), "/stream.mp3"]),
 
                                             {
                                               wh_shout:get_shout_srv_response(list_to_binary([?APP_NAME, ": ", ?APP_VERSION]), MediaName, ChunkSize, Url, ?CONTENT_TYPE_MP3)
@@ -187,7 +187,7 @@ handle_info(timeout, #state{db=Db, doc=Doc, attachment=Attachment, media_name=Me
                                               get_http_response_headers(?CONTENT_TYPE_WAV, Size)
                                               ,undefined
                                               ,?CONTENT_TYPE_WAV
-                                              ,list_to_binary(["http://", Hostname, ":", integer_to_list(PortNo), "/stream.wav"])
+                                              ,list_to_binary(["vlc://http://", Hostname, ":", integer_to_list(PortNo), "/stream.wav"])
                                             }
                                     end,
 
