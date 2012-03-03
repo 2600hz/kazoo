@@ -66,13 +66,13 @@ allow_dial(Call, Retries) ->
     end.
 
 play_enter_pin(Call) ->
-    whapps_call_command:b_play(<<"local_stream://en/us/callie/ivr/ivr-please_enter_pin_followed_by_pound.wav">>, Call).
+    whapps_call_command:b_play(<<"/system_media/ivr-please_enter_pin_followed_by_pound">>, Call).
 
 play_invalid_pin(Call) ->
-    whapps_call_command:b_play(<<"local_stream://en/us/callie/ivr/ivr-pin_or_extension_is-invalid.wav">>, Call).
+    whapps_call_command:b_play(<<"local_stream://ivr/ivr-pin_or_extension_is-invalid.wav">>, Call).
 
 play_invalid_ext(Call) ->
-    whapps_call_command:b_play(<<"local_stream://en/us/callie/ivr/ivr-you_have_dialed_an_invalid_extension.wav">>, Call).
+    whapps_call_command:b_play(<<"local_stream://ivr/ivr-you_have_dialed_an_invalid_extension.wav">>, Call).
 
 play_dialtone(Call) ->
     Tone = wh_json:from_list([{<<"Frequencies">>, [<<"350">>, <<"440">>]}
