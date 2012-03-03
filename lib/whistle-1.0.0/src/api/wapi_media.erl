@@ -36,6 +36,7 @@
                           ]).
 -define(MEDIA_RESP_TYPES, [{<<"Stream-URL">>, fun(<<"shout://", _/binary>>) -> true;
                                                  (<<"http://", _/binary>>) -> true;
+                                                 (<<"vlc://", _/binary>>) -> true;
                                                  (_) -> false end}]).
 
 %% Media Error
