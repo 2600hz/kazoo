@@ -34,5 +34,5 @@ handle(Data, Call) ->
         false -> whapps_call_command:answer(Call)
     end,
     ?LOG("playing media ~s", [Media]),
-    whapps_call_command:b_play(Media, wh_json:get_value(<<"terminators">>, Data), Call),
+    whapps_call_command:b_play(Media, Call),
     cf_exe:continue(Call).

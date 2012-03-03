@@ -146,8 +146,7 @@ handle_cast({channel_redirected, Props}, State) ->
     {stop, {shutdown, redirect}, State};
 handle_cast({channel_destroyed, Props}, State) ->
     ?LOG("our channel has been destroyed, preparing to shutdown"),
-%%    process_channel_event(Props, State),
-    erlang:send_after(5000, self(), {shutdown}),
+    erlang:send_after(1000, self(), {shutdown}),
     {noreply, State};
 handle_cast({transferer, _}, State) ->
     ?LOG("call control has been transfered."),

@@ -28,11 +28,6 @@ exec_cmd(Node, UUID, JObj, ControlPID) ->
                     Result;
                 {AppName, noop} ->
                     ecallmgr_call_control:event_execute_complete(ControlPID, UUID, AppName);
-                {<<"answer">> = AppName, AppData} ->
-                    _ = send_cmd(Node, UUID, AppName, AppData),
-                    %% 22:55 pyite_mac  can you sleep 0.5 seconds before continuing
-                    timer:sleep(500),
-                    ecallmgr_call_control:event_execute_complete(ControlPID, UUID, AppName);
                 {AppName, AppData} ->
                     send_cmd(Node, UUID, AppName, AppData)
             end;
@@ -842,7 +837,6 @@ send_fetch_call_event(Node, UUID, JObj) ->
 
                end,
         EvtProp1 = [{<<"Msg-ID">>, props:get_value(<<"Event-Date-Timestamp">>, Prop)}
-                    ,{<<"Timestamp">>, props:get_value(<<"Event-Date-Timestamp">>, Prop)}
                     ,{<<"Call-ID">>, UUID}
                     ,{<<"Call-Direction">>, props:get_value(<<"Call-Direction">>, Prop)}
                     ,{<<"Channel-Call-State">>, props:get_value(<<"Channel-Call-State">>, Prop)}
@@ -886,9 +880,7 @@ send_store_call_event(Node, UUID, MediaTransResults) ->
                    ?LOG_SYS("sending less interesting call_event message"),
                    []
            end,
-
     EvtProp1 = [{<<"Msg-ID">>, props:get_value(<<"Event-Date-Timestamp">>, Prop, Timestamp)}
-                ,{<<"Timestamp">>, props:get_value(<<"Event-Date-Timestamp">>, Prop, Timestamp)}
                 ,{<<"Call-ID">>, UUID}
                 ,{<<"Call-Direction">>, props:get_value(<<"Call-Direction">>, Prop, <<>>)}
                 ,{<<"Channel-Call-State">>, props:get_value(<<"Channel-Call-State">>, Prop, <<"HANGUP">>)}

@@ -355,26 +355,31 @@ handle_cast({rm_leg, JObj}, #state{other_legs=Legs, callid=CallId}=State) ->
                       end),
             {noreply, State#state{other_legs=lists:delete(LegId, Legs), last_removed_leg=LegId}}
     end;
-handle_cast({channel_destroyed, _},  #state{is_call_up=true, sanity_check_tref=SCTRef, current_app=CurrentApp
+handle_cast({channel_destroyed, JObj},  #state{is_call_up=true, sanity_check_tref=SCTRef, current_app=CurrentApp
                                             ,current_cmd=CurrentCmd, callid=CallId, node=Node}=State) ->
-    ?LOG("our channel has been destroyed, executing any post-hangup commands"),
-    %% if our sanity check timer is running stop it, it will always return false
-    %% now that the channel is gone
-    catch (erlang:cancel_timer(SCTRef)),
-    %% since this is not attached to a call the node status doesnt matter anymore
-    erlang:monitor_node(Node, false),
-    %% if the current application can not be run without a channel and we have received the
-    %% channel_destory (the last event we will ever receive from freeswitch for this call)
-    %% then create an error and force advance. This will happen with dialplan actions that
-    %% have not been executed on freeswitch but were already queued (for example in xferext). 
-    %% Commonly events like masquerade, noop, ect
-    _ = case CurrentApp =:= undefined orelse is_post_hangup_command(CurrentApp) of
-            true -> ok;
-            false -> 
-                send_error_resp(CallId, CurrentCmd),
-                self() ! {force_queue_advance, CallId}
-        end,
-    {noreply, State#state{keep_alive_ref=get_keep_alive_ref(State#state{is_call_up=false}), is_call_up=false, is_node_up=true}, hibernate};
+    case wh_json:get_value(<<"Call-ID">>, JObj) =:= CallId of
+        false -> {noreply, State};
+        true ->
+            ?LOG("our channel has been destroyed, executing any post-hangup commands"),
+            %% if our sanity check timer is running stop it, it will always return false
+            %% now that the channel is gone
+            catch (erlang:cancel_timer(SCTRef)),
+            %% since this is not attached to a call the node status doesnt matter anymore
+            erlang:monitor_node(Node, false),
+            %% if the current application can not be run without a channel and we have received the
+            %% channel_destory (the last event we will ever receive from freeswitch for this call)
+            %% then create an error and force advance. This will happen with dialplan actions that
+            %% have not been executed on freeswitch but were already queued (for example in xferext). 
+            %% Commonly events like masquerade, noop, ect
+            _ = case CurrentApp =:= undefined orelse is_post_hangup_command(CurrentApp) of
+                    true -> ok;
+                    false -> 
+                        send_error_resp(CallId, CurrentCmd),
+                        self() ! {force_queue_advance, CallId}
+                end,
+            {noreply, State#state{keep_alive_ref=get_keep_alive_ref(State#state{is_call_up=false})
+                                  ,is_call_up=false, is_node_up=true}, hibernate}
+    end;
 handle_cast({channel_destroyed, _},  #state{is_call_up=false}=State) ->
     {noreply, State};
 handle_cast({dialplan, JObj}, #state{callid=CallId, is_node_up=INU, is_call_up=CallUp
