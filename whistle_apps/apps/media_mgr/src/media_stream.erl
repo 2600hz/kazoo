@@ -13,11 +13,11 @@
 -behaviour(gen_server).
 
 %% API
-export([
-        start_link/5
-        ,join_stream/2
-        ,stop/1
-       ]).
+-export([
+         start_link/5
+         ,join_stream/2
+         ,stop/1
+        ]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -73,7 +73,7 @@ stop(StreamPid) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init([JObj, Db, Doc, Attachement, StreamType]) ->
+init([JObj, Db, Doc, Attachment, StreamType]) ->
     wh_util:put_callid(JObj),
 
     {ok, #state{db=Db

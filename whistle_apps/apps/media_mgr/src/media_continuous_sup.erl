@@ -11,10 +11,12 @@
 -behaviour(supervisor).
 
 %% API
--export([start_link/0, start_shout/4]).
+-export([start_link/0, join_stream/4]).
 
 %% Supervisor callbacks
 -export([init/1]).
+
+-include("media.hrl").
 
 -define(SERVER, ?MODULE).
 -define(CHILD(Name, Mod, Args), {Name, {Mod, start_link, Args}, transient, 5000, worker, [Mod]}).
