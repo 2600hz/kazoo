@@ -23,8 +23,6 @@
           listener :: pid()
           ,socket :: inet:socket()
           ,transport :: module()
-          ,file_server :: pid()
-          ,file_server_ref :: reference()
           ,buffer = <<>> :: binary()
           ,timeout = ?MILLISECONDS_IN_DAY :: pos_integer()
           ,dispatch = [] :: cowboy_displatch:dispatch_rules()
@@ -42,12 +40,7 @@ start_link(ListenerPid, Socket, Transport, Opts) ->
 %% @private
 -spec init(pid(), inet:socket(), module(), any()) -> 'ok'.
 init(ListenerPid, Socket, Transport, Opts) ->
-    lager:debug("init shout protocol"),
-
-    SrvPid = props:get_value(file_server, Opts),
-    lager:debug("file server at ~p", [SrvPid]),
-
-    Ref = erlang:monitor(process, SrvPid),
+    lager:debug("init shout protocol from ~s", [Transport]),
 
     Timeout = props:get_value(timeout, Opts, ?MILLISECONDS_IN_DAY),
     Dispatch = props:get_value(dispatch, Opts, []),
@@ -56,8 +49,6 @@ init(ListenerPid, Socket, Transport, Opts) ->
     wait_request(#state{listener=ListenerPid
                         ,socket=Socket
                         ,transport=Transport
-                        ,file_server=SrvPid
-                        ,file_server_ref=Ref
                         ,timeout=Timeout
                         ,dispatch=Dispatch
                        }).

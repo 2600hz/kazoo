@@ -32,7 +32,7 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    gen_server:start_link(?MODULE, [{bindings, [{media, []}]}
+    gen_listener:start_link(?MODULE, [{bindings, [{media, []}]}
                                     ,{responders, [{{?MODULE, handle_media_req}, [{<<"media">>, <<"media_req">>}]}]}
                                    ], []).
 
@@ -45,15 +45,17 @@ handle_media_req(JObj, _Props) ->
         no_data ->
             send_error_resp(JObj, <<"no_data">>, <<>>);
         {Db, Doc, Attachment, _MetaData, CType} ->
-            case wh_json:get_value(<<"Stream-Type">>, JObj, <<"new">>) of
-                <<"new">> ->
-                    lager:debug("starting new stream"),
-                    media_single_sup:new_stream(JObj, Db, Doc, Attachment, CType);
-                <<"extant">> ->
-                    lager:debug("joining extant stream"),
-                    media_continuous_sup:join_stream(JObj, Db, Doc, Attachment, CType)
-            end
+            send_media_resp(JObj, Db, Doc, Attachment)
     end.
+
+send_media_resp(JObj, Db, Doc, Attachment) ->
+    Resp = [{<<"Media-Name">>, wh_json:get_value(<<"Media-Name">>, JObj)}
+            ,{<<"Stream-URL">>, <<"vlc://http://localhost:1234/single/"
+                                  ,Db/binary, "/"
+                                  ,Doc/binary, "/"
+                                  ,Attachment/binary>>}
+            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)],
+    wapi_media:publish_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp).
 
 %%%===================================================================
 %%% gen_server callbacks

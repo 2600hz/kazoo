@@ -52,8 +52,6 @@ upgrade() ->
 
 init([]) ->
     Processes = [
-                 ?CHILD(media_single_sup, supervisor)
-                 ,?CHILD(media_continuous_suo, supervisor)
-                 ,?CHILD(media_listener, worker)
+                 ?CHILD(media_listener, worker)
                 ], %% Put list of ?CHILD(media_mgr_server, worker) or ?CHILD(media_mgr_other_sup, supervisor)
     {ok, { {one_for_one, 10, 10}, Processes} }.
