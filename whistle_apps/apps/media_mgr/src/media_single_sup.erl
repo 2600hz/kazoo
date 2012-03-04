@@ -6,7 +6,7 @@
 %%% @contributors
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
--module(media_shout_sup).
+-module(media_single_sup).
 
 -behaviour(supervisor).
 
@@ -33,7 +33,7 @@ start_link() ->
     supervisor:start_link({local, ?SERVER}, ?MODULE, []).
 
 new_stream(JObj, Db, Doc, Attachment, ContentType) ->
-    supervisor:start_child(?SERVER, [JObj, Db, Doc, Attachment, ContentType]).
+    supervisor:start_child(?SERVER, [JObj, Db, Doc, Attachment, ContentType, single]).
 
 %%%===================================================================
 %%% Supervisor callbacks

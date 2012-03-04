@@ -1,9 +1,11 @@
-%%% @author James Aimonetti <james@2600hz.org>
+%%%-------------------------------------------------------------------
 %%% @copyright (C) 2010 VoIP INC
 %%% @doc
 %%% 
 %%% @end
-%%% Created :  15 Mar 2011 13:43:17 GMT: James Aimonetti <james@2600hz.org>
+%%% @contributors
+%%%   James Aimonetti
+%%%-------------------------------------------------------------------
 -module(media_mgr_sup).
 
 -behaviour(supervisor).
@@ -50,7 +52,8 @@ upgrade() ->
 
 init([]) ->
     Processes = [
-		 ?CHILD(media_srv, worker)
-		 ,?CHILD(media_shout_sup, supervisor)
-		], %% Put list of ?CHILD(media_mgr_server, worker) or ?CHILD(media_mgr_other_sup, supervisor)
+                 ?CHILD(media_single_sup, supervisor)
+                 ,?CHILD(media_continuous_suo, supervisor)
+                 ,?CHILD(media_listener, worker)
+                ], %% Put list of ?CHILD(media_mgr_server, worker) or ?CHILD(media_mgr_other_sup, supervisor)
     {ok, { {one_for_one, 10, 10}, Processes} }.
