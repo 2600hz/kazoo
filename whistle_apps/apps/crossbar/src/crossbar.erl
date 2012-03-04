@@ -48,7 +48,7 @@ start_link() ->
             SSLKey = whapps_config:get_string(?CONFIG_CAT, <<"ssl_key">>, "priv/ssl/key.pem"),
             SSLPassword = whapps_config:get_string(?CONFIG_CAT, <<"ssl_password">>, "2600hz"),
 
-            cowboy:start_listener(v1_resource, 100
+            cowboy:start_listener(v1_resource_ssl, 100
                                   ,cowboy_ssl_transport, [
                                                           {port, SSLPort}
                                                           ,{certfile, SSLCert}
