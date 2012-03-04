@@ -20,16 +20,16 @@ start_link() ->
     _ = start_deps(),
 
     Dispatch = [
-                {'_', [{['single', '...'], media_single, []}
-                       ,{['continuous','...'], media_continuous, []}
+                {'_', [{['new', '...'], media_single, []}
+                       ,{['extant','...'], media_continuous, []}
                       ]}
                 ],
 
-    Port = whapps_config:get_integer(?CONFIG_CAT, <<"port">>, 1234),
+    Port = whapps_config:get_integer(?CONFIG_CAT, <<"port">>, 24517),
     %% Name, NbAcceptors, Transport, TransOpts, Protocol, ProtoOpts
     cowboy:start_listener(media_mgr, 2
                           ,cowboy_tcp_transport, [{port, Port}]
-                          ,media_shout_protocol, [{dispatch, Dispatch}]
+                          ,cowboy_http_protocol, [{dispatch, Dispatch}]
                          ),
 
     media_mgr_sup:start_link().

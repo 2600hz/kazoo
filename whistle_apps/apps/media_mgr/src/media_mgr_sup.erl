@@ -11,7 +11,7 @@
 -behaviour(supervisor).
 
 %% API
--export([start_link/0, upgrade/0]).
+-export([start_link/0, upgrade/0, cache_proc/0, listener_proc/0]).
 
 %% Supervisor callbacks
 -export([init/1]).
@@ -19,6 +19,7 @@
 %% Helper macro for declaring children of supervisor
 -define(CHILD(I, Type), {I, {I, start_link, []}, permanent, 5000, Type, [I]}).
 -define(CHILD(I, Type, Args), {I, {I, start, [Args]}, permanent, 5000, Type, dynamic}).
+-define(CACHE(Name), {Name, {wh_cache, start_link, [Name]}, permanent, 5000, worker, [wh_cache]}).
 
 %% ===================================================================
 %% API functions
@@ -26,6 +27,19 @@
 
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+
+-spec cache_proc/0 :: () -> {'ok', pid()}.
+cache_proc() ->
+    [P] = [P || {Mod, P, _, _} <- supervisor:which_children(?MODULE),
+                Mod =:= media_mgr_cache],
+    {ok, P}.
+
+-spec listener_proc/0 :: () -> {'ok', pid()}.
+listener_proc() ->
+    [P] = [P || {Mod, P, _, _} <- supervisor:which_children(?MODULE),
+                Mod =:= media_listener],
+    {ok, P}.
+
 
 %% @spec upgrade() -> ok
 %% @doc Add processes if necessary.
@@ -52,6 +66,7 @@ upgrade() ->
 
 init([]) ->
     Processes = [
-                 ?CHILD(media_listener, worker)
+                 ?CACHE(media_mgr_cache)
+                 ,?CHILD(media_listener, worker)
                 ], %% Put list of ?CHILD(media_mgr_server, worker) or ?CHILD(media_mgr_other_sup, supervisor)
     {ok, { {one_for_one, 10, 10}, Processes} }.

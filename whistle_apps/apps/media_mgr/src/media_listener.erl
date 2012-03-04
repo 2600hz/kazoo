@@ -44,16 +44,36 @@ handle_media_req(JObj, _Props) ->
             send_error_resp(JObj, <<"not_found">>, <<>>);
         no_data ->
             send_error_resp(JObj, <<"no_data">>, <<>>);
-        {Db, Doc, Attachment, _MetaData, CType} ->
-            send_media_resp(JObj, Db, Doc, Attachment)
+        {Db, Doc, Attachment, MetaData} ->
+            Id = wh_util:format_account_id(Db, raw),
+            send_media_resp(JObj, Id, Doc, Attachment),
+
+            {ok, Bin} = couch_mgr:fetch_attachment(Db, Doc, Attachment),
+            {ok, Cache} = media_mgr_sup:cache_proc(),
+
+            wh_cache:store_local(Cache, {Id, Doc, Attachment}, {MetaData, Bin})
     end.
 
-send_media_resp(JObj, Db, Doc, Attachment) ->
+send_media_resp(JObj, Id, Doc, Attachment) ->
+    Hostname = wh_util:get_hostname(),
+    Port = whapps_config:get_binary(?CONFIG_CAT, <<"port">>),
+    VlcPrefix = case whapps_config:get_is_true(?CONFIG_CAT, <<"use_vlc">>, true) of
+                    true -> <<"vlc://">>;
+                    false -> <<>>
+                end,
+
+    StreamType = wh_json:get_value(<<"Stream-Type">>, JObj),
+
+    %% TODO: add auth creds for one-time media response, and streaming creds for continuous
     Resp = [{<<"Media-Name">>, wh_json:get_value(<<"Media-Name">>, JObj)}
-            ,{<<"Stream-URL">>, <<"vlc://http://localhost:1234/single/"
-                                  ,Db/binary, "/"
-                                  ,Doc/binary, "/"
-                                  ,Attachment/binary>>}
+            ,{<<"Stream-URL">>, list_to_binary([VlcPrefix
+                                                ,<<"http://">>
+                                                ,Hostname
+                                                ,<<":">>, Port, <<"/">>
+                                                ,StreamType, <<"/">>
+                                                ,Id, <<"/">>
+                                                ,Doc, <<"/">>
+                                                ,Attachment])}
             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)],
     wapi_media:publish_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp).
 
@@ -177,9 +197,10 @@ find_attachment([Db, Doc, first]) ->
                 false ->
                     lager:debug("isn't streamable or no attachments found"),
                     no_data;
-                {struct, [{Attachment, MetaData} | _]} ->
+                Attachments ->
+                    {Attachment, MetaData} = hd(wh_json:to_proplist(Attachments)),
                     lager:debug("found attachment to stream: ~s", [Attachment]),
-                    {DbName, Doc, Attachment, MetaData, get_content_type_extension(JObj, MetaData)}
+                    {DbName, Doc, Attachment, MetaData}
             end;
         _->
             not_found
@@ -199,29 +220,10 @@ find_attachment([Db, Doc, Attachment]) ->
                 false ->
                     no_data;
                 MetaData ->
-                    {DbName, Doc, Attachment, MetaData, get_content_type_extension(JObj, MetaData)}
+                    {DbName, Doc, Attachment, MetaData}
             end;
         _ ->
             not_found
-    end.
-
--spec get_content_type_extension/2 :: (wh_json:json_object(), wh_json:json_object()) -> 'undefined' | ne_binary().
-get_content_type_extension(JObj, MetaData) ->
-    case valid_content_type(JObj) of
-        undefined ->
-            valid_content_type(MetaData);
-        ContentType ->
-            ContentType
-    end.
-
--spec valid_content_type/1 :: (wh_json:json_object()) -> 'undefined' | ne_binary().
-valid_content_type(JObj) ->
-    case wh_json:get_value(<<"content_type">>, JObj) of
-        <<"audio/mp3", _/binary>> -> <<"mp3">>; %% Jon's computer uses this, is this legit?
-        <<"audio/mpeg", _/binary>> -> <<"mp3">>;
-        <<"audio/x-wav", _/binary>> -> <<"wav">>;
-        <<"audio/wav", _/binary>> -> <<"wav">>;
-        _ -> undefined
     end.
 
 -spec is_streamable/1 :: (wh_json:json_object()) -> boolean().
