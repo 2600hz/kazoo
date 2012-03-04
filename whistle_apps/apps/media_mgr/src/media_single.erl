@@ -12,7 +12,7 @@
 
 -include("media.hrl").
 
-init({Transport, Proto}, Req0, _Opts) ->
+init({_Transport, _Proto}, Req0, _Opts) ->
     {[Id, Doc, Attachment], Req1} = cowboy_http_req:path_info(Req0),
 
     {ok, Cache} = media_mgr_sup:cache_proc(),
