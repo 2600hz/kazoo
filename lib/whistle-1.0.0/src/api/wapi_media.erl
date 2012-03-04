@@ -1,10 +1,10 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
 %%% @copyright (C) 2011, VoIP INC
 %%% @doc
 %%% Media requests, responses, and errors
 %%% @end
-%%% Created : 17 Oct 2011 by James Aimonetti <james@2600hz.org>
+%%% @contributors
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(wapi_media).
 
@@ -21,7 +21,7 @@
 
 %% Media Request - when streaming is needed
 -define(MEDIA_REQ_HEADERS, [<<"Media-Name">>]).
--define(OPTIONAL_MEDIA_REQ_HEADERS, [<<"Stream-Type">>, <<"Call-ID">>]).
+-define(OPTIONAL_MEDIA_REQ_HEADERS, [<<"Stream-Type">>, <<"Call-ID">>, <<"Msg-ID">>]).
 -define(MEDIA_REQ_VALUES, [{<<"Event-Category">>, <<"media">>}
                            ,{<<"Event-Name">>, <<"media_req">>}
                            ,{<<"Stream-Type">>, [<<"new">>, <<"extant">>]}
@@ -30,7 +30,7 @@
 
 %% Media Response
 -define(MEDIA_RESP_HEADERS, [<<"Media-Name">>, <<"Stream-URL">>]).
--define(OPTIONAL_MEDIA_RESP_HEADERS, []).
+-define(OPTIONAL_MEDIA_RESP_HEADERS, [<<"Msg-ID">>]).
 -define(MEDIA_RESP_VALUES, [{<<"Event-Category">>, <<"media">>}
                            ,{<<"Event-Name">>, <<"media_resp">>}
                           ]).
@@ -108,12 +108,12 @@ error_v(Prop) when is_list(Prop) ->
 error_v(JObj) ->
     error_v(wh_json:to_proplist(JObj)).
 
--spec bind_q/2 :: (binary(), wh_proplist()) -> 'ok'.
+-spec bind_q/2 :: (ne_binary(), wh_proplist()) -> 'ok'.
 bind_q(Queue, _Props) ->
     amqp_util:callevt_exchange(),
     amqp_util:bind_q_to_callevt(Queue, media_req).
 
--spec unbind_q/2 :: (binary(), wh_proplist()) -> 'ok'.
+-spec unbind_q/2 :: (ne_binary(), wh_proplist()) -> 'ok'.
 unbind_q(Queue, _Props) ->
     amqp_util:unbind_q_from_callevt(Queue, media_req).
 
