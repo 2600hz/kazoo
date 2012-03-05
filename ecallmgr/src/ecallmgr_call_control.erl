@@ -318,7 +318,7 @@ handle_cast({transferee, JObj}, #state{other_legs=Legs, node=Node, callid=PrevCa
             ?LOG("...call id updated, continuing post-transfer"),
             {noreply, State#state{callid=NewCallId, other_legs=lists:delete(NewCallId, Legs)}}
     end;
-handle_cast({add_leg, JObj}, #state{other_legs=Legs, node=Node, callid=CallId}=State) ->
+handle_cast({add_leg, JObj}, #state{other_legs=Legs, callid=CallId}=State) ->
     LegId = case wh_json:get_value(<<"Event-Name">>, JObj) of
                 <<"CHANNEL_BRIDGE">> ->
                     wh_json:get_value(<<"Other-Leg-Unique-ID">>, JObj);
@@ -333,8 +333,6 @@ handle_cast({add_leg, JObj}, #state{other_legs=Legs, node=Node, callid=CallId}=S
                               _ = put(callid, CallId),
                               publish_leg_addition(JObj)
                       end),
-            ?LOG("ensuring event listener for leg ~s exists", [LegId]),
-            _ = ecallmgr_call_sup:start_event_process(Node, LegId),
             {noreply, State#state{other_legs=[LegId|Legs]}}
     end;
 handle_cast({rm_leg, JObj}, #state{other_legs=Legs, callid=CallId}=State) ->
