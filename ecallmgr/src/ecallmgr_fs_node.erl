@@ -159,8 +159,9 @@ handle_info(Msg, #state{stats=#node_stats{created_channels=Cr, destroyed_channel
 handle_info({event, [undefined | Data]}, #state{stats=Stats, node=Node}=State) ->
     case props:get_value(<<"Event-Name">>, Data) of
         <<"PRESENCE_", _/binary>> = EvtName ->
+            ShouldDistribute = ecallmgr_config:get(<<"distribute_presence">>, true),
             _ = case props:get_value(<<"Distributed-From">>, Data) of
-                    undefined ->
+                    undefined when ShouldDistribute ->
                         NodeBin = wh_util:to_binary(Node),
                         ecallmgr_notify:send_presence_event(EvtName, NodeBin, Data),
                         Headers = [{<<"Distributed-From">>, NodeBin} | Data],
@@ -205,8 +206,9 @@ handle_info({event, [UUID | Data]}, #state{node=Node, stats=#node_stats{created_
             spawn(fun() -> put(callid, UUID), ecallmgr_call_cdr:new_cdr(UUID, Data) end),
             {noreply, State};
         <<"PRESENCE_", _/binary>> = EvtName ->
+            ShouldDistribute = ecallmgr_config:get(<<"distribute_presence">>, true),
             _ = case props:get_value(<<"Distributed-From">>, Data) of
-                    undefined ->
+                    undefined when ShouldDistribute ->
                         ecallmgr_notify:send_presence_event(EvtName, Node, Data),
                         Headers = [{<<"Distributed-From">>, wh_util:to_binary(Node)}|Data],
                         [distributed_presence(Srv, EvtName, Headers)
