@@ -52,7 +52,7 @@
 %% API
 -export([start_link/3]).
 -export([handle_call_command/2, handle_conference_command/2, handle_call_events/2]).
--export([queue_name/1, callid/1]).
+-export([queue_name/1, callid/1, node/1]).
 -export([event_execute_complete/3]).
 -export([add_leg/1, rm_leg/1]).
 -export([other_legs/1]).
@@ -126,6 +126,10 @@ start_link(Node, CallId, WhAppQ) ->
 -spec callid/1 :: (pid()) -> ne_binary().
 callid(Srv) ->
     gen_server:call(Srv, {callid}, 1000).
+
+-spec node/1 :: (pid()) -> ne_binary().
+node(Srv) ->
+    gen_server:call(Srv, {node}, 1000).
 
 -spec queue_name/1 :: (pid()) -> ne_binary().
 queue_name(Srv) ->
@@ -254,6 +258,8 @@ init([Node, CallId, WhAppQ]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_call({node}, _From, #state{node=Node}=State) ->
+    {reply, Node, State};
 handle_call({callid}, _From, #state{callid=CallId}=State) ->
     {reply, CallId, State};
 handle_call({other_legs}, _From, #state{other_legs=Legs}=State) ->

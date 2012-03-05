@@ -29,11 +29,11 @@
 -export([transfer/3]).
 -export([get_fs_var/4]).
 -export([publish_channel_destroy/1]).
+-export([queue_name/1, callid/1, node/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
--export([queue_name/1, callid/1]).
 
 -define(SERVER, ?MODULE).
 
@@ -66,6 +66,11 @@ start_link(Node, CallId) ->
 callid(Srv) ->
     gen_server:call(Srv, {callid}, 1000).
 
+-spec node/1 :: (pid()) -> ne_binary().
+node(Srv) ->
+    gen_server:call(Srv, {node}, 1000).
+
+-spec transfer/3 :: (pid(), atom(), proplist()) -> 'ok'.
 transfer(Srv, TransferType, Props) ->
     gen_listener:cast(Srv, {TransferType, Props}).
 
@@ -125,6 +130,8 @@ init([Node, CallId]) when is_atom(Node) andalso is_binary(CallId) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_call({node}, _From, #state{node=Node}=State) ->
+    {reply, Node, State};
 handle_call({callid}, _From, #state{callid=CallId}=State) ->
     {reply, CallId, State};
 handle_call(_Request, _From, State) ->
