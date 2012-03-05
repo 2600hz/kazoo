@@ -65,6 +65,7 @@
                       ,call_event_consumers = []
                       ,self = self()
                       ,in_conference = false
+                      ,join_attempts = 0
                       ,conference = whapps_conference:new()
                       ,discovery_event = wh_json:new()
                      }).
@@ -305,7 +306,9 @@ handle_cast(join_local, #participant{call=Call, conference=DiscoveryConference}=
     Conference = whapps_conference:set_controller_queue(ControllerQ, DiscoveryConference),
     Self = self(),
     spawn(fun() ->
+                  put(callid, whapps_call:call_id(Call)),
                   consume_call_events(Self),
+                  ?LOG("answering conference call"),
                   whapps_call_command:b_answer(Call),
                   ConferenceId = whapps_conference:id(Conference),
                   case whapps_conference:moderator(Conference) of 
@@ -316,6 +319,7 @@ handle_cast(join_local, #participant{call=Call, conference=DiscoveryConference}=
                           ?LOG("member is joining conference ~s", [ConferenceId]),
                           whapps_call_command:b_conference(ConferenceId, <<"false">>, <<"false">>, <<"false">>, Call)
                   end,
+                  ?LOG("requesting conference participants"),
                   whapps_conference_command:participants(Conference)
           end),
     {noreply, Participant#participant{conference=Conference}};
@@ -346,9 +350,9 @@ handle_cast({route_win, JObj}, #participant{conference=Conference, bridge=Bridge
     gen_listener:rm_binding(self(), route, []),
     gen_listener:rm_binding(self(), authn, []),
     B = whapps_call:from_route_win(JObj, Bridge),
-    Self = self(),
     spawn(fun() ->
-                  consume_call_events(Self),
+                  put(callid, whapps_call:call_id(B)),
+                  ?LOG("answering conference call"),
                   whapps_call_command:answer(B),
                   ConferenceId = whapps_conference:id(Conference),
                   case whapps_conference:moderator(Conference) of 
@@ -359,6 +363,7 @@ handle_cast({route_win, JObj}, #participant{conference=Conference, bridge=Bridge
                           ?LOG("member is joining remote conference ~s", [ConferenceId]),
                           whapps_call_command:conference(ConferenceId, <<"false">>, <<"false">>, <<"false">>, B)
                   end,
+                  ?LOG("requesting conference participants"),
                   whapps_conference_command:participants(Conference)
           end),
     {noreply, Participant#participant{bridge=B}};
@@ -468,8 +473,8 @@ handle_event(JObj, #participant{call_event_consumers=Consumers, call=Call, self=
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, #participant{conference=Conference}) ->
-    whapps_conference_command:play(<<"tone_stream://%(500,0,300,200,100,50,25)">>, Conference),
+terminate(_Reason, #participant{conference=Conference, in_conference=InConference}) ->
+    InConference andalso whapps_conference_command:play(<<"tone_stream://%(500,0,300,200,100,50,25)">>, Conference),
     ?LOG_END("conference participant execution has been stopped: ~p", [_Reason]),
     ok.
 
@@ -498,7 +503,7 @@ find_participant([{_, Participant}|Participants], CallId) ->
     end.
 
 -spec sync_participant/3 :: (wh_json:json_object(), whapps_call:call(), #participant{}) -> #participant{}.
-sync_participant(Participants, Call, #participant{in_conference=false, conference=Conference}=Participant) ->
+sync_participant(Participants, Call, #participant{in_conference=false, conference=Conference, join_attempts=JoinAttempts}=Participant) ->
     Moderator = whapps_conference:moderator(Conference),
     case find_participant(wh_json:to_proplist(Participants), whapps_call:call_id(Call)) of
         {ok, JObj} when Moderator ->
@@ -521,11 +526,15 @@ sync_participant(Participants, Call, #participant{in_conference=false, conferenc
             whapps_conference:member_join_deaf(Conference) andalso gen_server:cast(self(), deaf),     
             Participant#participant{in_conference=true, muted=Muted
                                     ,deaf=Deaf, participant_id=ParticipantId};
+        {error, not_found} when JoinAttempts > 15 ->
+            ?LOG("too many attempts to discover the participant id, assuming call lost"),
+            gen_server:cast(self(), hungup),
+            Participant#participant{join_attempts = JoinAttempts + 1};
         {error, not_found} ->
             ?LOG("caller not found in the list of conference participants, trying again"),
             timer:sleep(500),
             whapps_conference_command:participants(Conference),
-            Participant
+            Participant#participant{join_attempts = JoinAttempts + 1}
     end;
 sync_participant(Participants, Call, #participant{in_conference=true}=Participant) ->
     case find_participant(wh_json:to_proplist(Participants), whapps_call:call_id(Call)) of
