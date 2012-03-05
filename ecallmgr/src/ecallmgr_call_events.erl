@@ -64,7 +64,7 @@ start_link(Node, CallId) ->
 
 -spec callid/1 :: (pid()) -> ne_binary().
 callid(Srv) ->
-    gen_server:call(Srv, {callid}, 100).
+    gen_server:call(Srv, {callid}, 1000).
 
 transfer(Srv, TransferType, Props) ->
     gen_listener:cast(Srv, {TransferType, Props}).
@@ -144,7 +144,7 @@ handle_cast({channel_redirected, Props}, State) ->
     ?LOG("our channel has been redirected, shutting down immediately"),
     process_channel_event(Props, State),
     {stop, {shutdown, redirect}, State};
-handle_cast({channel_destroyed, Props}, State) ->
+handle_cast({channel_destroyed, _}, State) ->
     ?LOG("our channel has been destroyed, preparing to shutdown"),
     erlang:send_after(1000, self(), {shutdown}),
     {noreply, State};

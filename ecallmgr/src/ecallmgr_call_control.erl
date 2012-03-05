@@ -125,7 +125,7 @@ start_link(Node, CallId, WhAppQ) ->
 
 -spec callid/1 :: (pid()) -> ne_binary().
 callid(Srv) ->
-    gen_server:call(Srv, {callid}, 100).
+    gen_server:call(Srv, {callid}, 1000).
 
 -spec queue_name/1 :: (pid()) -> ne_binary().
 queue_name(Srv) ->
@@ -133,7 +133,7 @@ queue_name(Srv) ->
 
 -spec other_legs/1 :: (pid()) -> [] | [ne_binary(),...].
 other_legs(Srv) ->
-    gen_server:call(Srv, {other_legs}, 100).
+    gen_server:call(Srv, {other_legs}, 1000).
 
 -spec event_execute_complete/3 :: (pid(), ne_binary(), ne_binary()) -> 'ok'.
 event_execute_complete(Srv, CallId, App) ->
