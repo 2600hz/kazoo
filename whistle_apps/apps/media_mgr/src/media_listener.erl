@@ -57,7 +57,8 @@ handle_media_req(JObj, _Props) ->
 send_media_resp(JObj, Id, Doc, Attachment) ->
     Hostname = wh_util:get_hostname(),
     Port = whapps_config:get_binary(?CONFIG_CAT, <<"port">>),
-    VlcPrefix = case whapps_config:get_is_true(?CONFIG_CAT, <<"use_vlc">>, true) of
+
+    VlcPrefix = case whapps_config:get_is_true(?CONFIG_CAT, <<"use_vlc">>, false) of
                     true -> <<"vlc://">>;
                     false -> <<>>
                 end,
