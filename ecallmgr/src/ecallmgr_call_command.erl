@@ -247,7 +247,7 @@ get_fs_app(_Node, _UUID, JObj, <<"say">>) ->
     end;
 
 get_fs_app(Node, UUID, JObj, <<"bridge">>) ->
-    Endpoints = wh_json:get_value(<<"Endpoints">>, JObj, []),
+    Endpoints = wh_json:get_json_value(<<"Endpoints">>, JObj, []),
     case wapi_dialplan:bridge_v(JObj) of
         false -> {'error', <<"bridge failed to execute as JObj did not validate">>};
         true when Endpoints =:= [] -> {'error', <<"bridge request had no endpoints">>};
@@ -274,8 +274,7 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>) ->
                           ,wh_json:get_value(<<"Route">>, Endpoint)
                          ]
                          ,Endpoint}
-                        || Endpoint <- Endpoints,
-                           wh_json:is_json_object(Endpoint)
+                        || Endpoint <- Endpoints
                        ],
 
             S = self(),
@@ -284,8 +283,7 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>) ->
                                                                put(callid, UUID),
                                                                S ! {self(), (catch get_bridge_endpoint(EP))}
                                                        end)
-                                                 || {_, EP} <- props:unique(KeyedEPs),
-                                                    wh_json:is_json_object(EP)
+                                                 || {_, EP} <- props:unique(KeyedEPs)
                                                 ]
                                      ], not wh_util:is_empty(D)],
 
@@ -495,9 +493,9 @@ get_fs_app(Node, UUID, JObj, <<"tone_detect">>) ->
             SuccessJObj = case wh_json:get_value(<<"On-Success">>, JObj, []) of
                               %% default to parking the call
                               [] -> 
-                                  [{<<"Application-Name">>, <<"park">>} | wapi_dialplan:extract_defaults(JObj)];
+                                  [{<<"Application-Name">>, <<"park">>} | wh_api:extract_defaults(JObj)];
                               AppJObj -> 
-                                  wh_json:from_list(AppJObj ++ wapi_dialplan:extract_defaults(JObj))
+                                  wh_json:from_list(AppJObj ++ wh_api:extract_defaults(JObj))
                           end,
             
             {SuccessApp, SuccessData} = case get_fs_app(Node, UUID, SuccessJObj

@@ -7,7 +7,7 @@
 -export([to_integer/1, to_integer/2
          ,to_float/1, to_float/2
          ,to_number/1
-         ,to_hex/1, to_hex_binary/1
+         ,to_hex/1, to_hex_binary/1, rand_hex_binary/1
          ,to_list/1, to_binary/1
          ,to_atom/1, to_atom/2
         ]).
@@ -199,7 +199,9 @@ join_binary([_|Rest], Sep) ->
 %% dictionary, failing that the Msg-ID and finally a generic
 %% @end
 %%--------------------------------------------------------------------
--spec put_callid/1 :: (wh_json:json_object()) -> ne_binary() | 'undefined'.
+-spec put_callid/1 :: (wh_json:json_object() | wh_proplist()) -> ne_binary() | 'undefined'.
+put_callid(Prop) when is_list(Prop) ->
+    erlang:put(callid, props:get_value(<<"Call-ID">>, Prop, props:get_value(<<"Msg-ID">>, Prop, ?LOG_SYSTEM_ID)));
 put_callid(JObj) ->
     erlang:put(callid, wh_json:get_binary_value(<<"Call-ID">>, JObj, wh_json:get_binary_value(<<"Msg-ID">>, JObj, ?LOG_SYSTEM_ID))).
 
@@ -244,6 +246,10 @@ to_hex(S) ->
 to_hex_binary(S) ->
     Bin = to_binary(S),
     << <<(binary_to_hex_char(B div 16)), (binary_to_hex_char(B rem 16))>> || <<B>> <= Bin>>.
+
+-spec rand_hex_binary/1 :: (pos_integer()) -> ne_binary().
+rand_hex_binary(Size) when is_integer(Size) andalso Size > 0 ->
+    to_hex_binary(crypto:rand_bytes(Size)).
 
 binary_to_hex_char(N) when N < 10 ->
     $0 + N;

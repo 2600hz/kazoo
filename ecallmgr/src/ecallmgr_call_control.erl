@@ -71,7 +71,7 @@
 
 -record(state, {
           node = 'undefined' :: atom()
-         ,callid = <<>> :: binary()
+         ,callid :: ne_binary()
          ,self = 'undefined' :: 'undefined' | pid()
          ,controller_q = 'undefined' :: 'undefined' | ne_binary()
          ,evtpid = 'undefined' :: 'undefined' | pid()
@@ -138,7 +138,7 @@ other_legs(Srv) ->
 event_execute_complete(Srv, CallId, App) ->
     gen_server:cast(Srv, {event_execute_complete, CallId, App}).
 
--spec add_leg/1 :: (proplist()) -> pid().
+-spec add_leg/1 :: (wh_proplist()) -> 'ok' | ['ok',...].
 add_leg(Props) ->
     %% if there is a Other-Leg-Unique-ID then that MAY refer to a leg managed
     %% by call_control, if so add the leg to it
@@ -151,7 +151,7 @@ add_leg(Props) ->
             [gen_server:cast(Srv, {add_leg, wh_json:from_list(Props)}) || Srv <- Srvs]
     end.
 
--spec rm_leg/1 :: (proplist()) -> pid().
+-spec rm_leg/1 :: (wh_proplist()) -> 'ok' | ['ok',...].
 rm_leg(Props) ->
     %% if there is a Other-Leg-Unique-ID then that MAY refer to a leg managed
     %% by call_control, if so remove the leg from it

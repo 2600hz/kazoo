@@ -115,8 +115,8 @@ unserialize_fs_array(<<"ARRAY::", Serialized/binary>>) ->
 varstr_to_proplist(VarStr) ->
     [to_kv(X, "=") || X <- string:tokens(wh_util:to_list(VarStr), ",")].
 
--spec get_setting/1 :: (atom()) -> {'ok', term()}.
--spec get_setting/2 :: (atom(), Default) -> {'ok', term() | Default}.
+-spec get_setting/1 :: (wh_json:json_string()) -> {'ok', term()}.
+-spec get_setting/2 :: (wh_json:json_string(), Default) -> {'ok', term() | Default}.
 get_setting(Setting) ->
     get_setting(Setting, null).
 get_setting(Setting, Default) ->

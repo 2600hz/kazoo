@@ -19,6 +19,8 @@
 
 -include("../wh_api.hrl").
 
+-define(KEY_AUTHN_REQ, <<"authn.req">>). %% corresponds to the authn_req/1 api call
+
 -define(EVENT_CATEGORY, <<"directory">>).
 -define(AUTHN_REQ_EVENT_NAME, <<"authn_req">>).
 
@@ -103,8 +105,7 @@ bind_q(Q, Props) ->
     Realm = props:get_value(realm, Props, <<"*">>),
 
     amqp_util:callmgr_exchange(),
-    amqp_util:bind_q_to_callmgr(Q, get_authn_req_routing(Realm)),
-    ok.
+    amqp_util:bind_q_to_callmgr(Q, get_authn_req_routing(Realm)).
 
 -spec unbind_q/1 :: (ne_binary()) -> 'ok'.
 -spec unbind_q/2:: (ne_binary(), proplist()) -> 'ok'.

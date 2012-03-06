@@ -6,6 +6,8 @@
 -include_lib("whistle/include/freeswitch_xml.hrl").
 -include_lib("whistle/src/wh_api.hrl").
 
+-define(AMQP_POOL_MGR, ecallmgr_amqp_pool).
+
 -type fs_api_ret() :: {'ok', binary()} | {'error', binary()} | 'timeout'.
 -type fs_sendmsg_ret() :: 'ok' | {'error', binary()} | 'timeout'.
 

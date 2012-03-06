@@ -18,6 +18,7 @@
 -export([get_binary_value/2, get_binary_value/3]).
 -export([get_atom_value/2, get_atom_value/3]).
 -export([get_string_value/2, get_string_value/3]).
+-export([get_json_value/2, get_json_value/3]).
 -export([is_true/2, is_true/3, is_false/2, is_false/3, is_empty/1]).
 
 -export([filter/2, filter/3, map/2, find/2, find/3]).
@@ -192,13 +193,13 @@ encode_kv(<<>>, K, JObj) when ?IS_JSON_GUARD(JObj) ->
 encode_kv(Prefix, K, JObj) when ?IS_JSON_GUARD(JObj) ->
     to_querystring(JObj, [Prefix, <<"[">>, K, <<"]">>]).
 
--spec encode_kv/4 :: (iolist() | binary(), ne_binary(), string(), string() | binary()) -> iolist().
+-spec encode_kv/4 :: (iolist() | binary(), ne_binary(), ne_binary(), string() | binary()) -> iolist().
 encode_kv(<<>>, K, Sep, V) ->
     [wh_util:to_binary(K), Sep, wh_util:to_binary(V)];
 encode_kv(Prefix, K, Sep, V) ->
     [Prefix, <<"[">>, wh_util:to_binary(K), <<"]">>, Sep, wh_util:to_binary(V)].
 
--spec encode_kv/5 :: (iolist() | binary(), ne_binary(), [string(),...] | [], string() | binary(), iolist()) -> iolist().
+-spec encode_kv/5 :: (iolist() | binary(), ne_binary(), [string(),...] | [], ne_binary(), iolist()) -> iolist().
 encode_kv(Prefix, K, [V], Sep, Acc) ->
     lists:reverse([ encode_kv(Prefix, K, Sep, mochiweb_util:quote_plus(V)) | Acc]);
 encode_kv(Prefix, K, [V|Vs], Sep, Acc) ->
@@ -439,8 +440,8 @@ set_values(KVs, JObj) when is_list(KVs) ->
 -spec set_value/3 :: (json_string() | json_strings() |
                       integer() | [integer(),...]
                       ,json_term()
-                      ,json_object() | json_objects()) ->
-                             json_object() | json_objects().
+                      ,json_object() | json_objects()
+                     ) -> json_object() | json_objects().
 set_value(Keys, Value, JObj) when is_list(Keys) ->
     set_value1(Keys, Value, JObj);
 set_value(Key, Value, JObj) ->
@@ -448,7 +449,7 @@ set_value(Key, Value, JObj) ->
 %% set_value(Key, Value, [{struct, _} | _]=JObjs) ->
 %%     set_value1(Key, Value, JObjs).
 
--spec set_value1/3 :: (json_strings() | [integer(),...], json_term(), json_object() | json_objects()) -> json_object().
+-spec set_value1/3 :: (json_strings() | [integer(),...], json_term(), json_object() | json_objects()) -> json_object() | json_objects().
 set_value1([Key|T], Value, JObjs) when is_list(JObjs) ->
     Key1 = wh_util:to_integer(Key),
     case Key1 > length(JObjs) of
@@ -465,7 +466,7 @@ set_value1([Key|T], Value, JObjs) when is_list(JObjs) ->
                     catch _:_ -> erlang:error(badarg)
                     end
             end;
-        %% The object index exists so iterate into the object and updat it
+        %% The object index exists so iterate into the object and update it
         false ->
             element(1, lists:mapfoldl(fun(E, {Pos, Pos}) ->
                                              {set_value1(T, Value, E), {Pos + 1, Pos}};
@@ -505,7 +506,7 @@ set_value1([], Value, _JObj) -> Value.
 %% delete_key([foo, far], {struct, [{foo, {struct, [{far, away}]}}, {baz, biz}]}) -> {struct, [{foo, {struct, []}}, {baz, biz}]}
 
 -spec delete_key/2 :: (json_string() | json_strings(), json_object() | json_objects()) -> json_object() | json_objects().
--spec delete_key/3 :: (json_strings(), json_object() | json_objects(), 'prune' | 'no_prune') -> json_object() | json_objects().
+-spec delete_key/3 :: (json_string() | json_strings(), json_object() | json_objects(), 'prune' | 'no_prune') -> json_object() | json_objects().
 delete_key(Key, JObj) when not is_list(Key) ->
     delete_key([Key], JObj, no_prune);
 delete_key(Keys, JObj) ->

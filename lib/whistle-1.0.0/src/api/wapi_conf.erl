@@ -85,8 +85,7 @@ doc_update_v(JObj) ->
 -spec bind_q/2 :: (binary(), proplist()) -> 'ok'.
 bind_q(Q, Props) ->
     RoutingKey = get_routing_key(Props),
-    amqp_util:bind_q_to_configuration(Q, RoutingKey),
-    ok.
+    amqp_util:bind_q_to_configuration(Q, RoutingKey).
 
 -spec unbind_q/2 :: (binary(), proplist()) -> 'ok'.
 unbind_q(Q, Props) ->

@@ -261,6 +261,9 @@ publish_win(RespQ, Win, ContentType) ->
 %% @end
 %%-----------------------------------------------------------------------------
 -spec get_auth_realm/1  :: (wh_json:json_object()) -> ne_binary().
+get_auth_realm(ApiProp) when is_list(ApiProp) ->
+    [_ReqUser, ReqDomain] = binary:split(props:get_value(<<"Request">>, ApiProp), <<"@">>),
+    ReqDomain;
 get_auth_realm(ApiJObj) ->
     [_ReqUser, ReqDomain] = binary:split(wh_json:get_value(<<"Request">>, ApiJObj), <<"@">>),
     ReqDomain.

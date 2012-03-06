@@ -100,6 +100,7 @@ request_node(Type) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
+    put(callid, ?LOG_SYSTEM_ID),
     lager:debug("starting new fs handler"),
     process_flag(trap_exit, true),
 
@@ -393,12 +394,15 @@ process_resource_request(Type, _Nodes, _Options) ->
     [].
 
 start_preconfigured_servers() ->
+    put(callid, ?LOG_SYSTEM_ID),
+
     case ecallmgr_config:get(<<"fs_nodes">>, []) of
         [] ->
             lager:debug("no preconfigured servers, waiting then trying again"),
             timer:sleep(5000),
             start_preconfigured_servers();
         Nodes when is_list(Nodes) ->
+            lager:debug("nodes retrieved, adding..."),
             [?MODULE:add_fs_node(wh_util:to_atom(N, true)) || N <- Nodes];
         _E ->
             lager:debug("recieved a non-list for fs_nodes: ~p", [_E]),

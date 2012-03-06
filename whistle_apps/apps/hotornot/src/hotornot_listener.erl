@@ -1,10 +1,10 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2012, VoIP INC
 %%% @doc
 %%% Rater whapp; send me a DID, get a rate back
 %%% @end
-%%% Created :  3 May 2011 by James Aimonetti <james@2600hz.org>
+%%% @contributors
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(hotornot_listener).
 
@@ -15,7 +15,7 @@
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2
-	 ,terminate/2, code_change/3]).
+         ,terminate/2, code_change/3]).
 
 -include("hotornot.hrl").
 
@@ -23,6 +23,7 @@
 
 -define(BINDINGS, [ {call, [{restrict_to, [rating]}]} ]).
 -define(RESPONDERS, [{hon_rater, [{<<"call_mgmt">>, <<"rating_req">>}]}]).
+-define(QUEUE_NAME, <<"hotornot_rating">>).
 
 %%%===================================================================
 %%% API
@@ -38,8 +39,10 @@
 -spec start_link/0 :: () -> startlink_ret().
 start_link() ->
     gen_listener:start_link(?MODULE, [{responders, ?RESPONDERS}
-				      ,{bindings, ?BINDINGS}
-				     ], []).
+                                      ,{bindings, ?BINDINGS}
+                                      ,{queue_name, ?QUEUE_NAME}
+                                      ,{basic_qos, 1}
+                                     ], []).
 
 -spec stop/1 :: (pid() | atom()) -> 'ok'.
 stop(Srv) ->
@@ -105,7 +108,7 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info(_Info, State) ->
-    lager:debug("Unhandled message: ~p", [_Info]),
+    lager:debug("unhandled message: ~p", [_Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------

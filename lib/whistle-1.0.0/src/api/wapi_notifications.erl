@@ -405,48 +405,48 @@ bind_q(Queue, Props) ->
     bind_to_q(Queue, props:get_value(restrict_to, Props)).
 
 bind_to_q(Q, undefined) ->
-    amqp_util:bind_q_to_notifications(Q, <<"notifications.*.*">>);
+    ok = amqp_util:bind_q_to_notifications(Q, <<"notifications.*.*">>);
 bind_to_q(Q, [new_voicemail|T]) ->
-    amqp_util:bind_q_to_notifications(Q, ?NOTIFY_VOICEMAIL_NEW),
+    ok = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_VOICEMAIL_NEW),
     bind_to_q(Q, T);
 bind_to_q(Q, [mwi_update|T]) ->
-    amqp_util:bind_q_to_notifications(Q, ?NOTIFY_MWI_UPDATE),
+    ok = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_MWI_UPDATE),
     bind_to_q(Q, T);
 bind_to_q(Q, [register|T]) ->
-    amqp_util:bind_q_to_notifications(Q, ?NOTIFY_REGISTER),
+    ok = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_REGISTER),
     bind_to_q(Q, T);
 bind_to_q(Q, [deregister|T]) ->
-    amqp_util:bind_q_to_notifications(Q, ?NOTIFY_DEREGISTER),
+    ok = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_DEREGISTER),
     bind_to_q(Q, T);
 bind_to_q(Q, [presence_update|T]) ->
-    amqp_util:bind_q_to_notifications(Q, ?NOTIFY_PRESENCE_UPDATE),
+    ok = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_PRESENCE_UPDATE),
     bind_to_q(Q, T);
 bind_to_q(Q, [presence_probe|T]) ->
-    amqp_util:bind_q_to_notifications(Q, ?NOTIFY_PRESENCE_PROBE),
+    ok = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_PRESENCE_PROBE),
     bind_to_q(Q, T);
 bind_to_q(Q, [presence_in|T]) ->
-    amqp_util:bind_q_to_notifications(Q, ?NOTIFY_PRESENCE_IN),
+    ok = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_PRESENCE_IN),
     bind_to_q(Q, T);
 bind_to_q(Q, [presence_out|T]) ->
-    amqp_util:bind_q_to_notifications(Q, ?NOTIFY_PRESENCE_OUT),
+    ok = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_PRESENCE_OUT),
     bind_to_q(Q, T);
 bind_to_q(Q, [pwd_recovery|T]) ->
-    amqp_util:bind_q_to_notifications(Q, ?NOTIFY_PWD_RECOVERY),
+    ok = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_PWD_RECOVERY),
     bind_to_q(Q, T);
 bind_to_q(Q, [new_account|T]) ->
-    amqp_util:bind_q_to_notifications(Q, ?NOTIFY_NEW_ACCOUNT),
+    ok = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_NEW_ACCOUNT),
     bind_to_q(Q, T);
 bind_to_q(Q, [port_request|T]) ->
-    amqp_util:bind_q_to_notifications(Q, ?NOTIFY_PORT_REQUEST),
+    ok = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_PORT_REQUEST),
     bind_to_q(Q, T);
 bind_to_q(Q, [cnam_requests|T]) ->
-    amqp_util:bind_q_to_notifications(Q, ?NOTIFY_CNAM_REQUEST),
+    ok = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_CNAM_REQUEST),
     bind_to_q(Q, T);
 bind_to_q(Q, [low_balance|T]) ->
-    amqp_util:bind_q_to_notifications(Q, ?NOTIFY_LOW_BALANCE),
+    ok = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_LOW_BALANCE),
     bind_to_q(Q, T);
 bind_to_q(Q, [system_alerts|T]) ->
-    amqp_util:bind_q_to_notifications(Q, ?NOTIFY_SYSTEM_ALERT),
+    ok = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_SYSTEM_ALERT),
     bind_to_q(Q, T);
 bind_to_q(_Q, []) ->
     ok.
@@ -461,48 +461,48 @@ unbind_q(Queue, Props) ->
     unbind_q_from(Queue, props:get_value(restrict_to, Props)).
 
 unbind_q_from(Q, undefined) ->
-    amqp_util:unbind_q_from_notifications(Q, <<"notifications.*.*">>);
+    ok = amqp_util:unbind_q_from_notifications(Q, <<"notifications.*.*">>);
 unbind_q_from(Q, [new_voicemail|T]) ->
-    amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_VOICEMAIL_NEW),
+    ok = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_VOICEMAIL_NEW),
     unbind_q_from(Q, T);
 unbind_q_from(Q, [mwi_update|T]) ->
-    amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_MWI_UPDATE),
+    ok = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_MWI_UPDATE),
     unbind_q_from(Q, T);
 unbind_q_from(Q, [register|T]) ->
-    amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_REGISTER),
+    ok = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_REGISTER),
     unbind_q_from(Q, T);
 unbind_q_from(Q, [deregister|T]) ->
-    amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_DEREGISTER),
+    ok = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_DEREGISTER),
     unbind_q_from(Q, T);
 unbind_q_from(Q, [presence_update|T]) ->
-    amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_PRESENCE_UPDATE),
+    ok = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_PRESENCE_UPDATE),
     unbind_q_from(Q, T);
 unbind_q_from(Q, [presence_probe|T]) ->
-    amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_PRESENCE_PROBE),
+    ok = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_PRESENCE_PROBE),
     unbind_q_from(Q, T);
 unbind_q_from(Q, [presence_in|T]) ->
-    amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_PRESENCE_IN),
+    ok = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_PRESENCE_IN),
     unbind_q_from(Q, T);
 unbind_q_from(Q, [presence_out|T]) ->
-    amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_PRESENCE_OUT),
+    ok = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_PRESENCE_OUT),
     unbind_q_from(Q, T);
 unbind_q_from(Q, [pwd_recovery|T]) ->
-    amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_PWD_RECOVERY),
+    ok = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_PWD_RECOVERY),
     unbind_q_from(Q, T);
 unbind_q_from(Q, [new_account|T]) ->
-    amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_NEW_ACCOUNT),
+    ok = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_NEW_ACCOUNT),
     unbind_q_from(Q, T);
 unbind_q_from(Q, [port_request|T]) ->
-    amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_PORT_REQUEST),
+    ok = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_PORT_REQUEST),
     unbind_q_from(Q, T);
 unbind_q_from(Q, [cnam_request|T]) ->
-    amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_CNAM_REQUEST),
+    ok = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_CNAM_REQUEST),
     unbind_q_from(Q, T);
 unbind_q_from(Q, [low_balance|T]) ->
-    amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_LOW_BALANCE),
+    ok = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_LOW_BALANCE),
     unbind_q_from(Q, T);
 unbind_q_from(Q, [system_alert|T]) ->
-    amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_SYSTEM_ALERT),
+    ok = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_SYSTEM_ALERT),
     unbind_q_from(Q, T);
 unbind_q_from(_Q, []) ->
     ok.

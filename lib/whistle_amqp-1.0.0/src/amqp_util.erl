@@ -207,7 +207,7 @@ callctl_publish(CtrlQ, Payload, ContentType, Props) ->
 -spec callevt_publish/3 :: (amqp_payload(), amqp_payload(), Type) -> 'ok' when
       Type :: 'media_req' | 'event' | 'status_req' | 'cdr' | ne_binary().
 -spec callevt_publish/4 :: (ne_binary(), amqp_payload(), Type, ne_binary()) -> 'ok' when
-      Type :: 'status_req' | 'event' | ne_binary().
+      Type :: 'status_req' | 'event' | 'cdr' | ne_binary().
 callevt_publish(Payload) ->
     callevt_publish(Payload, ?DEFAULT_CONTENT_TYPE, media_req).
 
@@ -928,10 +928,8 @@ register_return_handler() ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec encode/1 :: (ne_binary()) -> ne_binary().
-encode(<<"*">>) ->
-    <<"*">>;
-encode(<<"#">>) ->
-    <<"#">>;
+encode(<<"*">>) -> <<"*">>;
+encode(<<"#">>) -> <<"#">>;
 encode(Bin) ->
     << <<(encode_char(B))/binary>> || <<B>> <= Bin >>.
 

@@ -732,20 +732,20 @@ bind_q(Queue, Props) ->
     bind_to_q(Queue, props:get_value(restrict_to, Props)).
 
 bind_to_q(Q, undefined) ->
-    amqp_util:bind_q_to_conference(Q, discovery),
-    amqp_util:bind_q_to_conference(Q, command),
+    ok = amqp_util:bind_q_to_conference(Q, discovery),
+    ok = amqp_util:bind_q_to_conference(Q, command),
     amqp_util:bind_q_to_conference(Q, event);
 bind_to_q(Q, [discovery|T]) ->
-    amqp_util:bind_q_to_conference(Q, discovery),
+    ok = amqp_util:bind_q_to_conference(Q, discovery),
     bind_to_q(Q, T);
 bind_to_q(Q, [command|T]) ->
-    amqp_util:bind_q_to_conference(Q, command),
+    ok = amqp_util:bind_q_to_conference(Q, command),
     bind_to_q(Q, T);
 bind_to_q(Q, [event|T]) ->
-    amqp_util:bind_q_to_conference(Q, event),
+    ok = amqp_util:bind_q_to_conference(Q, event),
     bind_to_q(Q, T);
 bind_to_q(Q, [{conference, ConfId}|T]) ->
-    amqp_util:bind_q_to_conference(Q, event, ConfId),
+    ok = amqp_util:bind_q_to_conference(Q, event, ConfId),
     bind_to_q(Q, T);
 bind_to_q(_Q, []) ->
     ok.
@@ -761,20 +761,20 @@ unbind_q(Queue, Props) ->
     unbind_from_q(Queue, props:get_value(restrict_to, Props)).
 
 unbind_from_q(Q, undefined) ->
-    amqp_util:unbind_q_from_conference(Q, discovery),
-    amqp_util:unbind_q_from_conference(Q, command),
+    ok = amqp_util:unbind_q_from_conference(Q, discovery),
+    ok = amqp_util:unbind_q_from_conference(Q, command),
     amqp_util:unbind_q_from_conference(Q, event);
 unbind_from_q(Q, [discovery|T]) ->
-    amqp_util:unbind_q_from_conference(Q, discovery),
+    ok = amqp_util:unbind_q_from_conference(Q, discovery),
     unbind_from_q(Q, T);
 unbind_from_q(Q, [command|T]) ->
-    amqp_util:unbind_q_from_conference(Q, command),
+    ok = amqp_util:unbind_q_from_conference(Q, command),
     unbind_from_q(Q, T);
 unbind_from_q(Q, [event|T]) ->
-    amqp_util:unbind_q_from_conference(Q, event),
+    ok = amqp_util:unbind_q_from_conference(Q, event),
     unbind_from_q(Q, T);
 unbind_from_q(Q, [{conference, ConfId}|T]) ->
-    amqp_util:unbind_q_from_conference(Q, event, ConfId),
+    ok = amqp_util:unbind_q_from_conference(Q, event, ConfId),
     unbind_from_q(Q, T);
 unbind_from_q(_Q, []) ->
     ok.

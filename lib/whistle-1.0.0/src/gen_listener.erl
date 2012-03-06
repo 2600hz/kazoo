@@ -308,7 +308,7 @@ handle_cast(Message, #state{module=Module, module_state=ModState, module_timeout
             {stop, Reason, State#state{module_state=ModState1}};
         {'EXIT', {Reason, ST}} ->
             lager:debug("exception: ~p", [Reason]),
-            [lager:debug("st: ~p", [T]) || T <- ST],
+            _ = [lager:debug("st: ~p", [T]) || T <- ST],
             {stop, Reason, State}
     end.
 

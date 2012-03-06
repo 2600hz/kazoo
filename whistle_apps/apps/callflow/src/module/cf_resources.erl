@@ -23,7 +23,7 @@
 %% Entry point for this module
 %% @end
 %%--------------------------------------------------------------------
--spec handle/2 :: (wh_json:json_object(), whapps_call:call()) -> ok.
+-spec handle/2 :: (wh_json:json_object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     {ok, Endpoints} = find_endpoints(Call),
     Timeout = wh_json:get_value(<<"timeout">>, Data, <<"60">>),
@@ -42,9 +42,8 @@ handle(Data, Call) ->
 %% advanced, because its cool like that
 %% @end
 %%--------------------------------------------------------------------
--spec bridge_to_resources/5 :: (endpoints(), cf_api_binary(), cf_api_binary(), cf_api_binary(), whapps_call:call()) -> ok.
+-spec bridge_to_resources/5 :: (endpoints(), cf_api_binary(), cf_api_binary(), cf_api_binary(), whapps_call:call()) -> 'ok'.
 bridge_to_resources([{DestNum, Rsc, _CIDType}|T], Timeout, IgnoreEarlyMedia, Ringback, Call) ->
-    AccountId = whapps_call:account_id(Call),
     Endpoint = [create_endpoint(DestNum, Gtw) || Gtw <- wh_json:get_value(<<"gateways">>, Rsc)],
     case whapps_call_command:b_bridge(Endpoint, Timeout, <<"single">>, IgnoreEarlyMedia, Ringback, Call) of
         {ok, _} ->
@@ -135,7 +134,7 @@ find_endpoints(Call) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec(get_caller_id_type/2 :: (Resource :: wh_json:json_object(), Call :: whapps_call:call()) -> raw | binary()).
+-spec get_caller_id_type/2 :: (wh_json:json_object(), whapps_call:call()) -> 'raw' | binary().
 get_caller_id_type(Resource, Call) ->
     case wh_json:is_true(<<"emergency">>, Resource) of
         true ->

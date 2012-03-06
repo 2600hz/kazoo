@@ -7,7 +7,7 @@
 %%%-------------------------------------------------------------------
 -module(whapps_call_command).
 
--include_lib("whistle_apps/include/whapps_call_command.hrl").
+-include("./whapps_call_command.hrl").
 
 -export([audio_macro/2]).
 -export([response/2, response/3, response/4]).
