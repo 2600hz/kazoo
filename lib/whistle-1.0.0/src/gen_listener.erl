@@ -481,7 +481,7 @@ start_amqp(Props) ->
         Queue ->
             ConsumeProps = props:get_value(consume_options, Props, []),
             set_qos(props:get_value(basic_qos, Props)),
-            amqp_util:basic_consume(Queue, ConsumeProps),
+            ok = amqp_util:basic_consume(Queue, ConsumeProps),
             {ok, Queue}
     end.
 

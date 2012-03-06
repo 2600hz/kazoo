@@ -98,9 +98,9 @@ bind_q(Queue, _Props) ->
 -spec unbind_q/1 :: (ne_binary()) -> 'ok'.
 -spec unbind_q/2 :: (ne_binary(), proplist()) -> 'ok'.
 unbind_q(Queue) ->
-    amqp_util:unbind_q_from_resource(Queue).
+    amqp_util:unbind_q_from_resource(Queue, ?KEY_OFFNET_RESOURCE_REQ).
 unbind_q(Queue, _Props) ->
-    amqp_util:unbind_q_from_resource(Queue).
+    amqp_util:unbind_q_from_resource(Queue, ?KEY_OFFNET_RESOURCE_REQ).
 
 -spec publish_req/1 :: (api_terms()) -> 'ok'.
 -spec publish_req/2 :: (api_terms(), ne_binary()) -> 'ok'.
