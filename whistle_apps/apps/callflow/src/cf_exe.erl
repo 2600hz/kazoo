@@ -73,7 +73,7 @@ start_link(Call) ->
 
 -spec get_call/1 :: (pid()) -> {ok, whapps_call:call()}.
 get_call(Srv) when is_pid(Srv) ->
-    gen_server:call(Srv, {get_call}, 500);
+    gen_server:call(Srv, {get_call}, 1000);
 get_call(Call) ->
     Srv = whapps_call:kvs_fetch(cf_exe_pid, Call),
     get_call(Srv).
@@ -81,7 +81,7 @@ get_call(Call) ->
 -spec set_call/1 :: (whapps_call:call()) -> 'ok'.
 set_call(Call) ->
     Srv = whapps_call:kvs_fetch(cf_exe_pid, Call),
-    gen_server:cast(Srv, {set_call, Call}, 500).
+    gen_server:cast(Srv, {set_call, Call}).
     
 -spec continue/1 :: (whapps_call:call() | pid()) -> 'ok'.
 -spec continue/2 :: (ne_binary(), whapps_call:call() | pid()) -> 'ok'.
@@ -134,7 +134,7 @@ callid_update(CallId, CtrlQ, Call) ->
 -spec callid/2 :: ('undefined' | ne_binary(), whapps_call:call()) -> ne_binary().
 
 callid(Srv) when is_pid(Srv) ->
-    CallId = gen_server:call(Srv, {callid}, 500),
+    CallId = gen_server:call(Srv, {callid}, 1000),
     put(callid, CallId),
     CallId;
 callid(Call) ->
@@ -402,7 +402,7 @@ handle_info({call_sanity_check}, #state{call=Call}=State) ->
     ?LOG("ensuring call is active, requesting controlling channel status"),
     spawn(fun() ->
                   CallId = whapps_call:call_id_direct(Call), 
-                  whapps_call_command:channel_status(CallId, Call) 
+                  whapps_call_command:channel_status(CallId, Call)
           end),
     {ok, TRef} = timer:send_after(?CALL_SANITY_CHECK, self(), {call_sanity_check}),
     {noreply, State#state{status = <<"testing">>, sanity_timer=TRef}};
@@ -417,8 +417,11 @@ handle_info(_, State) ->
 handle_event(JObj, #state{cf_module_pid=Pid, call=Call}) ->
     CallId = whapps_call:call_id_direct(Call),
     case {whapps_util:get_event_type(JObj), wh_json:get_value(<<"Call-ID">>, JObj)}of
-        {{<<"call_event">>, <<"channel_status_resp">>}, _} ->
-            gen_server:cast(self(), {channel_status_received, JObj}),
+        {{<<"call_event">>, <<"channel_status_resp">>}, StatusCallId} ->
+            case StatusCallId of
+                CallId -> gen_server:cast(self(), {channel_status_received, JObj});
+                _Else  -> ok
+            end,
             {reply, [{cf_module_pid, Pid}]};
         {{<<"call_event">>, <<"call_status_resp">>}, _} ->
             {reply, [{cf_module_pid, Pid}]};
