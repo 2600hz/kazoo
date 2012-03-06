@@ -1,5 +1,5 @@
 *~
-*.log
+*.log*
 *.sasl
 */ebin/*.beam
 */ebin/*.app
