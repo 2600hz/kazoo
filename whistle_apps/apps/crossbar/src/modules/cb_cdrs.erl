@@ -21,6 +21,8 @@
 
 -include("../../include/crossbar.hrl").
 
+-define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".cdrs">>).
+
 -define(CB_LIST_BY_USER, <<"cdrs/listing_by_owner">>).
 -define(CB_LIST, <<"cdrs/crossbar_listing">>).
 
@@ -91,20 +93,32 @@ validate(#cb_context{req_verb = <<"get">>}=Context, CDRId) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec load_cdr_summary/1 :: (#cb_context{}) -> #cb_context{}.
-load_cdr_summary(#cb_context{req_nouns=Nouns}=Context) ->
+load_cdr_summary(#cb_context{req_nouns=Nouns, query_json=QJObj}=Context) ->
     case Nouns of
         [_, {?WH_ACCOUNTS_DB, _AID} | _] ->
             lager:debug("loading cdrs for account ~s", [_AID]),
-            crossbar_doc:load_view(?CB_LIST
-                                   ,[]
-                                   ,Context
-                                   ,fun normalize_view_results/2);
+            case create_view_options(undefined, Context) of
+                {error, C} -> C;
+                {ok, ViewOptions} ->
+                    crossbar_doc:load_view(?CB_LIST
+                                           ,ViewOptions
+                                           ,Context#cb_context{query_json=wh_json:delete_keys([<<"created_to">>
+                                                                                              ,<<"created_from">>
+                                                                                              ], QJObj)}
+                                           ,fun normalize_view_results/2)
+            end;
         [_, {<<"users">>, [UserId] } | _] ->
             lager:debug("loading cdrs for user ~s", [UserId]),
-            crossbar_doc:load_view(?CB_LIST_BY_USER
-                                   ,[{<<"key">>, UserId}]
-                                   ,Context
-                                   ,fun normalize_view_results/2);
+            case create_view_options(UserId, Context) of
+                {error, C} -> C;
+                {ok, ViewOptions} ->
+                    crossbar_doc:load_view(?CB_LIST_BY_USER
+                                           ,ViewOptions
+                                           ,Context#cb_context{query_json=wh_json:delete_keys([<<"created_to">>
+                                                                                              ,<<"created_from">>
+                                                                                              ], QJObj)}
+                                           ,fun normalize_view_results/2)
+            end;
         _ ->
             lager:debug("invalid URL chain for cdr summary request"),
             crossbar_util:response_faulty_request(Context)
@@ -126,6 +140,38 @@ load_cdr(CdrId, Context) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec(normalize_view_results/2 :: (Doc :: wh_json:json_object(), Acc :: wh_json:json_objects()) -> wh_json:json_objects()).
+-spec normalize_view_results/2 :: (Doc :: wh_json:json_object(), Acc :: wh_json:json_objects()) -> wh_json:json_objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec create_view_options/2 :: (undefined | ne_binary(), #cb_context{}) -> {error, #cb_context{}} |
+                                                                           {ok, proplist()}.
+create_view_options(OwnerId, #cb_context{query_json=JObj}=Context) ->
+    MaxRange = whapps_config:get_integer(?MOD_CONFIG_CAT, <<"maximum_range">>, 6048000),
+    To = wh_json:get_integer_value(<<"created_to">>, JObj, wh_util:current_tstamp()),
+    From = wh_json:get_integer_value(<<"created_from">>, JObj, wh_util:current_tstamp() - MaxRange),
+    Diff = To - From,
+    case {Diff < 0, Diff > MaxRange} of
+        {true, _} -> 
+            Error = wh_json:set_value([<<"created_from">>, <<"invalid">>]
+                                      ,<<"created_from is prior to created_to">>
+                                      ,wh_json:new()),
+            {error, crossbar_util:response_invalid_data(Error, Context)};
+        {_, true} -> 
+            Error = wh_json:set_value([<<"created_to">>, <<"invalid">>]
+                                      ,<<"created_to is more than "
+                                         ,(wh_util:to_binary(MaxRange))/binary
+                                         ," seconds from created_from">>
+                                      ,wh_json:new()),
+            {error, crossbar_util:response_invalid_data(Error, Context)};
+        {false, false} when OwnerId =:= undefined ->
+            {ok, [{<<"startkey">>, From}, {<<"endkey">>, To}]};
+         {false, false} ->
+            {ok, [{<<"startkey">>, [OwnerId, From]}, {<<"endkey">>, [OwnerId, To]}]}
+    end.

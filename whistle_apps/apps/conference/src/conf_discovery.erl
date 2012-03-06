@@ -296,7 +296,7 @@ validate_conference_id(ConferenceId, Call) ->
 validate_conference_id(undefined, Call, Loop) when Loop > 3 ->
     lager:debug("caller has failed to provide a valid conference number to many times"),    
     whapps_call_command:b_prompt(<<"conf-too_many_attempts">>, Call),
-    {error, to_many_attempts};
+    {error, too_many_attempts};
 validate_conference_id(undefined, Call, Loop) ->
     lager:debug("requesting conference id from caller"),
     case whapps_call_command:b_prompt_and_collect_digits(<<"1">>, <<"6">>, <<"conf-enter_conf_number">>, <<"1">>, Call) of
@@ -358,7 +358,7 @@ validate_conference_pin(Conference, Call) ->
 validate_conference_pin(_, _, Call, Loop) when Loop > 3->
     lager:debug("caller has failed to provide a valid conference pin to many times"),    
     whapps_call_command:b_prompt(<<"conf-too_many_attempts">>, Call),
-    {error, to_many_attempts};
+    {error, too_many_attempts};
 validate_conference_pin(true, Conference, Call, Loop) ->
     lager:debug("requesting moderator pin from caller"),
     case whapps_call_command:b_prompt_and_collect_digits(<<"1">>, <<"6">>, <<"conf-enter_conf_pin">>, <<"1">>, Call) of

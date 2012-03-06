@@ -238,18 +238,18 @@ request_media(MediaName, Type, CallID) ->
     end.
 
 lookup_remote(MediaName, extant, CallID) ->
-    Request = [
-                {<<"Media-Name">>, MediaName}
+    Request = [{<<"Media-Name">>, MediaName}
                ,{<<"Stream-Type">>, <<"extant">>}
                ,{<<"Call-ID">>, CallID}
+               ,{<<"Msg-ID">>, wh_util:to_binary(wh_util:current_tstamp())}
                | wh_api:default_headers(<<>>, <<"media">>, <<"media_req">>, ?APP_NAME, ?APP_VERSION)
               ],
     lookup_remote(MediaName, Request);
 lookup_remote(MediaName, new, CallID) ->
-    Request = [
-                {<<"Media-Name">>, MediaName}
+    Request = [{<<"Media-Name">>, MediaName}
                ,{<<"Stream-Type">>, <<"new">>}
                ,{<<"Call-ID">>, CallID}
+               ,{<<"Msg-ID">>, wh_util:to_binary(wh_util:current_tstamp())}
                | wh_api:default_headers(<<>>, <<"media">>, <<"media_req">>, ?APP_NAME, ?APP_VERSION)
               ],
     lookup_remote(MediaName, Request).

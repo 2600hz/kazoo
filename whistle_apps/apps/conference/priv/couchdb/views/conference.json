@@ -3,7 +3,7 @@
     ,"language": "javascript"
     ,"views": {       
         "listing_by_number": {
-            "map": "function(doc) { if (doc.pvt_type != 'conference' || doc.pvt_deleted) return; var ModeratorPins = []; var MemberPins = []; if (typeof doc.moderator == 'object' && doc.moderator.pins) ModeratorPins = doc.moderator.pins; if (typeof doc.member == 'object' && doc.member.pins) MemberPins = doc.member.pins; var Func = function (Num, Moderator) {emit(Num, {moderator: Moderator,pins: {moderator: ModeratorPins,member: MemberPins}})}; if (doc.conference_numbers) doc.conference_numbers.forEach(function (Num) {Func(Num, 'unknown')}); if (doc.moderator.numbers) doc.moderator.numbers.forEach(function (Num) {Func(Num, true)}); if (doc.member.numbers) doc.member.numbers.forEach(function (Num) {Func(Num, false)}); }"
+            "map": "function(doc) { if (doc.pvt_type != 'conference' || doc.pvt_deleted) return; if (typeof doc.moderator == 'object' && doc.moderator.numbers) doc.moderator.numbers.forEach(function (Num) {emit(Num, null)}); if (typeof doc.member == 'object' && doc.member.numbers) doc.member.numbers.forEach(function (Num) {emit(Num, null)}); if (doc.conference_numbers) doc.conference_numbers.forEach(function (Num) {emit(Num, null)});}"
         }
     }
 }

@@ -29,11 +29,11 @@
 -export([transfer/3]).
 -export([get_fs_var/4]).
 -export([publish_channel_destroy/1]).
+-export([queue_name/1, callid/1, node/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
--export([queue_name/1, callid/1]).
 
 -define(SERVER, ?MODULE).
 
@@ -64,8 +64,13 @@ start_link(Node, CallId) ->
 
 -spec callid/1 :: (pid()) -> ne_binary().
 callid(Srv) ->
-    gen_server:call(Srv, {callid}, 100).
+    gen_server:call(Srv, {callid}, 1000).
 
+-spec node/1 :: (pid()) -> ne_binary().
+node(Srv) ->
+    gen_server:call(Srv, {node}, 1000).
+
+-spec transfer/3 :: (pid(), atom(), proplist()) -> 'ok'.
 transfer(Srv, TransferType, Props) ->
     gen_listener:cast(Srv, {TransferType, Props}).
 
@@ -125,6 +130,8 @@ init([Node, CallId]) when is_atom(Node) andalso is_binary(CallId) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_call({node}, _From, #state{node=Node}=State) ->
+    {reply, Node, State};
 handle_call({callid}, _From, #state{callid=CallId}=State) ->
     {reply, CallId, State};
 handle_call(_Request, _From, State) ->
@@ -140,10 +147,13 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({channel_destroyed, Props}, State) ->
-    lager:debug("our channel has been destroyed, preparing to shutdown"),
+handle_cast({channel_redirected, Props}, State) ->
+    lager:debug("our channel has been redirected, shutting down immediately"),
     process_channel_event(Props, State),
-    erlang:send_after(5000, self(), {shutdown}),
+    {stop, {shutdown, redirect}, State};
+handle_cast({channel_destroyed, _}, State) ->
+    lager:debug("our channel has been destroyed, preparing to shutdown"),
+    erlang:send_after(1000, self(), {shutdown}),
     {noreply, State};
 handle_cast({transferer, _}, State) ->
     lager:debug("call control has been transfered."),
@@ -161,16 +171,18 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({call, {event, [CallId | Props]}}, #state{callid=CallId}=State) ->        
-    case props:get_value(<<"Event-Name">>, Props) of
-        <<"CHANNEL_DESTROY">> -> gen_server:cast(self(), {channel_destroyed, Props});
-        _Else -> process_channel_event(Props, State)
+handle_info({call, {event, [CallId | Props]}}, #state{callid=CallId}=State) ->   
+    case {props:get_value(<<"Event-Name">>, Props), props:get_value(<<"Application">>, Props)} of
+        {_, <<"redirect">>} -> gen_server:cast(self(), {channel_redirected, Props});
+        {<<"CHANNEL_DESTROY">>, _} -> gen_server:cast(self(), {channel_destroyed, Props});
+        {_, _} -> process_channel_event(Props, State)
     end,
     {'noreply', State};
 handle_info({call_event, {event, [CallId | Props]}}, #state{callid=CallId}=State) ->
-    case props:get_value(<<"Event-Name">>, Props) of
-        <<"CHANNEL_DESTROY">> -> gen_server:cast(self(), {channel_destroyed, Props});
-        _Else -> process_channel_event(Props, State)
+    case {props:get_value(<<"Event-Name">>, Props), props:get_value(<<"Application">>, Props)} of
+        {_, <<"redirect">>} -> gen_server:cast(self(), {channel_redirected, Props});
+        {<<"CHANNEL_DESTROY">>, _} -> gen_server:cast(self(), {channel_destroyed, Props});
+        {_, _} -> process_channel_event(Props, State)
     end,
     {'noreply', State};
 handle_info({nodedown, _}, #state{node=Node, is_node_up=true}=State) ->
@@ -218,7 +230,7 @@ handle_info({sanity_check}, #state{node=Node, callid=CallId}=State) ->
             TRef = erlang:send_after(?SANITY_CHECK_PERIOD, self(), {sanity_check}),
             {'noreply', State#state{sanity_check_tref=TRef}};
         _E ->
-            lager:debug("But I tried, didn't I? Goddamnit, at least I did that"),
+            lager:debug("call no longer exists, shutting down immediately"),
             {stop, normal, State#state{sanity_check_tref=undefined}}
     end;
 handle_info({shutdown}, State) ->
@@ -306,6 +318,7 @@ create_event_props(EventName, ApplicationName, Props) ->
                           %% to communicate to it)
                           ,{<<"Presence-ID">>, props:get_value(<<"variable_presence_id">>, Props)}
                           ,{<<"Raw-Application-Name">>, props:get_value(<<"Application">>, Props, ApplicationName)}
+                          ,{<<"Raw-Application-Data">>, props:get_value(<<"Application-Data">>, Props)}
                           | event_specific(EventName, ApplicationName, Props) 
                          ], V =/= undefined
     ].
@@ -314,15 +327,23 @@ create_event_props(EventName, ApplicationName, Props) ->
 publish_event(Props) ->
     %% call_control publishes channel create/destroy on the control
     %% events queue by calling create_event then this directly.
-    EventName = props:get_value(<<"Event-Name">>, Props),
-    ApplicationName = props:get_value(<<"Application-Name">>, Props),
+    EventName = wh_util:to_lower_binary(props:get_value(<<"Event-Name">>, Props, <<>>)),
+    ApplicationName = wh_util:to_lower_binary(props:get_value(<<"Application-Name">>, Props, <<>>)),
     CallId = props:get_value(<<"Call-ID">>, Props),
     put(callid, CallId),
-    case props:get_value(<<"Application-Name">>, Props) of
-        undefined ->
-            lager:debug("publishing channel event ~s", [EventName]);
-        ApplicationName -> 
-            lager:debug("publishing channel command ~s ~s", [ApplicationName, EventName])
+    case {ApplicationName, EventName} of
+        {_, <<"dtmf">>} ->
+            Pressed = props:get_value(<<"DTMF-Digit">>, Props),       
+            lager:debug("publishing recevied DTMF digit ~s", [Pressed]);
+        {<<>>, _} ->
+            lager:debug("publishing call event ~s", [wh_util:to_lower_binary(EventName)]);
+        {ApplicationName, <<"channel_execute_complete">>} -> 
+            ApplicationResponse = wh_util:to_lower_binary(props:get_value(<<"Application-Response">>, Props, <<>>)),
+            ApplicationData = props:get_value(<<"Raw-Application-Data">>, Props, <<>>),
+            lager:debug("publishing call event ~s '~s(~s)' result: ~s", [EventName, ApplicationName, ApplicationData, ApplicationResponse]);
+        {ApplicationName, _} -> 
+            ApplicationData = props:get_value(<<"Raw-Application-Data">>, Props, <<>>),
+            lager:debug("publishing call event ~s '~s(~s)'", [EventName, ApplicationName, ApplicationData])
     end,
     wapi_call:publish_event(CallId, Props).
 
@@ -386,18 +407,8 @@ event_specific(<<"DETECTED_TONE">>, _, Prop) ->
 event_specific(<<"DTMF">>, _, Prop) ->
     Pressed = props:get_value(<<"DTMF-Digit">>, Prop),
     Duration = props:get_value(<<"DTMF-Duration">>, Prop),
-    lager:debug("received DTMF ~s (~s)", [Pressed, Duration]),
     [{<<"DTMF-Digit">>, Pressed}
      ,{<<"DTMF-Duration">>, Duration}
-    ];
-event_specific(_, <<"conference">>, Props) ->
-    %% TODO: This is a temporary workaround until we can break conferences
-    %% commands/events into their own module
-    CallId = props:get_value(<<"Caller-Unique-ID">>, Props),
-    Node = wh_util:to_atom(props:get_value(<<"Node">>, Props)),
-    MemberId = get_fs_var(Node, CallId, <<"conference_member_id">>, <<"0">>),
-    [{<<"Application-Name">>, <<"conference">>}
-     ,{<<"Application-Response">>, MemberId}
     ];
 event_specific(_, <<"play_and_get_digits">>, Prop) ->
     [{<<"Application-Name">>, <<"play_and_collect_digits">>}

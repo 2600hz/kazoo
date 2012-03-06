@@ -301,7 +301,7 @@ resource_exists(Req0, Context0) ->
                     {Context1#cb_context.req_verb =/= <<"put">>, Req0, Context1};
                 false ->
                     lager:debug("failed to validate resource"),
-                    {false, Req0, Context1}
+                    v1_util:halt(Req0, Context1)
             end;
         false ->
             lager:debug("requested resource does not exist"),

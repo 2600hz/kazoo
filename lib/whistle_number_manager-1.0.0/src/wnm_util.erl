@@ -9,6 +9,7 @@
 -module(wnm_util).
 
 -export([is_tollfree/1]).
+-export([is_reconcilable/1]).
 -export([list_carrier_modules/0]).
 -export([get_carrier_module/1]).
 -export([try_load_module/1]).
@@ -21,6 +22,25 @@
 -include_lib("proper/include/proper.hrl").
 
 -define(SERVER, ?MODULE).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Determines if a given number is reconcilable
+%% @end
+%%--------------------------------------------------------------------
+-spec is_reconcilable/1 :: (ne_binary()) -> boolean().
+is_reconcilable(Number) ->
+    Regex = whapps_config:get_binary(?WNM_CONFIG_CAT, <<"reconcile_regex">>, <<"^\\+{0,1}1{0,1}(\\d{10})$">>),
+    Num = wnm_util:normalize_number(Number),
+    case re:run(Num, Regex) of
+        nomatch ->
+            lager:debug("number '~s' is not reconcilable", [Num]),
+            false;
+        _ ->
+            lager:debug("number '~s' can be reconciled, proceeding", [Num]),
+            true
+    end.
 
 %%--------------------------------------------------------------------
 %% @public

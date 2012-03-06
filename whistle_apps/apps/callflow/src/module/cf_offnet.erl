@@ -21,7 +21,11 @@
 -spec handle/2 :: (wh_json:json_object(), whapps_call:call()) -> ok.
 handle(Data, Call) ->
     {ECIDNum, ECIDName} = cf_attributes:caller_id(<<"emergency">>, Call),
-    {CIDNum, CIDName} = cf_attributes:caller_id(<<"external">>, Call),
+    {CIDNumber, CIDName} = cf_attributes:caller_id(<<"external">>, Call),
+    CIDNum = case whapps_call:kvs_fetch(dynamic_cid, Call) of
+                 undefined -> CIDNumber;
+                 DynamicCID -> DynamicCID
+             end,
     Req = [{<<"Call-ID">>, cf_exe:callid(Call)}
            ,{<<"Resource-Type">>, <<"audio">>}
            ,{<<"To-DID">>, whapps_call:request_user(Call)}
