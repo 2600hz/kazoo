@@ -15,21 +15,23 @@
 -define(GET_CONFIG, fun(Key, Default) ->
                       whapps_config:get_binary(<<"callflow.dynamic_cid">>, Key, Default)
                     end).
+
+-define(MOD_CONFIG_CAT, <<(?CF_CONFIG_CAT)/binary, ".dynamic_cid">>).
                             
 -record(prompts, {accept_tone = 
-                      ?GET_CONFIG(<<"accept_prompt">>, <<"tone_stream://%(250,50,440)">>),
+                      whapps_config:get_binary(?MOD_CONFIG_CAT, <<"accept_prompt">>, <<"tone_stream://%(250,50,440)">>),
                   reject_tone =
-                      ?GET_CONFIG(<<"reject_prompt">>, <<"/system_media/dynamic-cid-invalid_using_default">>),
+                      whapps_config:get_binary(?MOD_CONFIG_CAT, <<"reject_prompt">>, <<"/system_media/dynamic-cid-invalid_using_default">>),
                   default_prompt = 
-                      ?GET_CONFIG(<<"default_prompt">>, <<"/system_media/dynamic-cid-enter_cid">>)
+                      whapps_config:get_binary(?MOD_CONFIG_CAT, <<"default_prompt">>, <<"/system_media/dynamic-cid-enter_cid">>)
                  }).
 
 -record(dynamic_cid, {
           prompts = #prompts{},
-          default_cid = ?GET_CONFIG(<<"default_cid">>, <<"0000000000">>),
-          max_digits = ?GET_CONFIG(<<"max_digits">>, <<"10">>),
-          min_digits = ?GET_CONFIG(<<"min_digits">>, <<"10">>),
-          whitelist = ?GET_CONFIG(<<"whitelist_regex">>, <<"\\d+">>)
+          default_cid = whapps_config:get_binary(?MOD_CONFIG_CAT, <<"default_cid">>, <<"0000000000">>),
+          max_digits = whapps_config:get_binary(?MOD_CONFIG_CAT, <<"max_digits">>, <<"10">>),
+          min_digits = whapps_config:get_binary(?MOD_CONFIG_CAT, <<"min_digits">>, <<"10">>),
+          whitelist = whapps_config:get_binary(?MOD_CONFIG_CAT, <<"whitelist_regex">>, <<"\\d+">>)
          }).
 %%--------------------------------------------------------------------
 %% @public
@@ -69,5 +71,10 @@ handle(Data, Call) ->
                   DefaultCID
           end,
     lager:debug("setting the caller id number to ~s", [CID]),
-    whapps_call_command:set(wh_json:from_list([{<<"Caller-ID-Number">> ,CID}]), undefined, Call),
+
+    {ok, C1} = cf_exe:get_call(Call),
+    Updates = [fun(C) -> whapps_call:kvs_store(dynamic_cid, CID, C) end
+               ,fun(C) -> whapps_call:set_caller_id_number(CID, C) end
+              ],
+    cf_exe:set_call(whapps_call:exec(Updates, C1)),
     cf_exe:continue(Call).

@@ -126,13 +126,13 @@ retrieve(SlotNumber, ParkedCalls, Call) ->
             case get_switch_hostname(ParkedCall, Call) of
                 undefined ->
                     lager:debug("the parked caller node is undefined"),
-                    case cleanup_slot(SlotNumber, ParkedCall, Call) of
+                    case cleanup_slot(SlotNumber, ParkedCall, whapps_call:account_db(Call)) of
                         {ok, JObj} -> {hungup, JObj};
                         {error, _} -> {hungup, ParkedCalls}
                     end;
                 CallerHost ->
                     ParkedCall = wh_json:get_ne_value(<<"Call-ID">>, Slot),
-                    case cleanup_slot(SlotNumber, ParkedCall, Call) of
+                    case cleanup_slot(SlotNumber, ParkedCall, whapps_call:account_db(Call)) of
                         {ok, _}=Ok ->
                             publish_usurp_control(ParkedCall, Call),
                             lager:debug("pickup call id ~s", [ParkedCall]),
@@ -420,9 +420,8 @@ get_parked_calls(AccountDb, AccountId) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec cleanup_slot/3 :: (ne_binary(), ne_binary(), whapps_call:call()) -> {ok, wh_json:json_object()} | {error, term()}.
-cleanup_slot(SlotNumber, ParkedCall, Call) ->
-    AccountDb = whapps_call:account_db(Call),
+-spec cleanup_slot/3 :: (ne_binary(), ne_binary(), ne_binary()) -> {ok, wh_json:json_object()} | {error, term()}.
+cleanup_slot(SlotNumber, ParkedCall, AccountDb) ->
     case couch_mgr:open_doc(AccountDb, ?DB_DOC_NAME) of
         {ok, JObj} ->
             case wh_json:get_value([<<"slots">>, SlotNumber, <<"Call-ID">>], JObj) of
@@ -434,7 +433,7 @@ cleanup_slot(SlotNumber, ParkedCall, Call) ->
                     whapps_call_command:presence(<<"terminated">>, PresenceId, ParkedCallId),
                     case couch_mgr:save_doc(AccountDb, wh_json:delete_key([<<"slots">>, SlotNumber], JObj)) of
                         {ok, _}=Ok -> Ok;
-                        {error, conflict} -> cleanup_slot(SlotNumber, ParkedCall, Call);
+                        {error, conflict} -> cleanup_slot(SlotNumber, ParkedCall, AccountDb);
                         {error, _R}=E ->
                             lager:debug("failed to clean up our slot: ~p", [_R]),
                             E
@@ -459,7 +458,7 @@ wait_for_pickup(SlotNumber, undefined, Call) ->
     lager:debug("(no ringback) waiting for parked caller to be picked up or hangup"),
     whapps_call_command:b_hold(Call),
     lager:debug("(no ringback) parked caller has been picked up or hungup"),    
-    cleanup_slot(SlotNumber, cf_exe:callid(Call), Call),
+    cleanup_slot(SlotNumber, cf_exe:callid(Call), whapps_call:account_db(Call)),
     ok;
 wait_for_pickup(SlotNumber, RingbackId, Call) ->
     lager:debug("waiting for parked caller to be picked up or hangup"),    
@@ -476,16 +475,16 @@ wait_for_pickup(SlotNumber, RingbackId, Call) ->
                     wait_for_pickup(SlotNumber, RingbackId, Call);
                 false -> 
                     lager:debug("parked call doesnt exist anymore, hangup"),
-                    cleanup_slot(SlotNumber, cf_exe:callid(Call), Call),
+                    cleanup_slot(SlotNumber, cf_exe:callid(Call), whapps_call:account_db(Call)),
                     cf_exe:stop(Call)                    
             end;
         {error, _} ->
             lager:debug("parked caller has hungup"),
-            cleanup_slot(SlotNumber, cf_exe:callid(Call), Call),
+            cleanup_slot(SlotNumber, cf_exe:callid(Call), whapps_call:account_db(Call)),
             cf_exe:transfer(Call);
         {ok, _} ->
             lager:debug("parked caller has been picked up"),
-            cleanup_slot(SlotNumber, cf_exe:callid(Call), Call),
+            cleanup_slot(SlotNumber, cf_exe:callid(Call), whapps_call:account_db(Call)),
             cf_exe:transfer(Call)
     end,
     ok.
@@ -566,7 +565,7 @@ ringback_parker(EndpointId, SlotNumber, TmpCID, Call) ->
             lager:debug("attempting to ringback ~s", [EndpointId]),
             OriginalCID = whapps_call:caller_id_name(Call),
             CleanUpFun = fun(_) ->
-                                 cleanup_slot(SlotNumber, cf_exe:callid(Call), Call),
+                                 cleanup_slot(SlotNumber, cf_exe:callid(Call), whapps_call:account_db(Call)),
                                  whapps_call:set_caller_id_name(OriginalCID, Call),
                                  whapps_call:set_caller_id_name(OriginalCID, Call)
                          end,

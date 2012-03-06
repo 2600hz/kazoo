@@ -465,7 +465,7 @@ validate(#cb_context{req_nouns=Nouns}=Context0) ->
                            end, Context0, Nouns),
     case succeeded(Context1) of
         true -> process_billing(Context1);
-        false -> crossbar_util:response_faulty_request(Context1)
+        false -> Context1
     end.
 
 %%--------------------------------------------------------------------

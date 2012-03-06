@@ -62,8 +62,12 @@ handle_channel_status(JObj, _Props) ->
     true = wapi_call:channel_status_req_v(JObj),
     wh_util:put_callid(JObj),
     CallID = wh_json:get_value(<<"Call-ID">>, JObj),
-    lager:debug("channel status request received"),
-    case [ecallmgr_fs_node:hostname(NH) || NH <- ecallmgr_fs_sup:node_handlers(), ecallmgr_fs_node:uuid_exists(NH, CallID)] of
+    lager:debug("channel status request received for callid ~s", [CallID]),
+    NodeHandlers = ecallmgr_fs_sup:node_handlers(),
+    NodeList = ecallmgr_config:get(<<"fs_nodes">>, []),
+    case [ecallmgr_fs_node:hostname(NH) || NH <- NodeHandlers, ecallmgr_fs_node:uuid_exists(NH, CallID)] of
+        [] when length(NodeList) =/= length(NodeHandlers) ->
+            lager:debug("no node found with channel ~s, but we are not authoritative", [CallID]);
         [] -> 
             lager:debug("no node found with channel ~s", [CallID]),
             Resp = [{<<"Call-ID">>, CallID}

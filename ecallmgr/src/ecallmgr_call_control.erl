@@ -52,7 +52,7 @@
 %% API
 -export([start_link/3]).
 -export([handle_call_command/2, handle_conference_command/2, handle_call_events/2]).
--export([queue_name/1, callid/1]).
+-export([queue_name/1, callid/1, node/1]).
 -export([event_execute_complete/3]).
 -export([add_leg/1, rm_leg/1]).
 -export([other_legs/1]).
@@ -85,6 +85,7 @@
          ,other_legs = [] :: [] | [ne_binary(),...]
          ,last_removed_leg = 'undefined' :: 'undefined' | ne_binary()
          ,sanity_check_tref = 'undefined' :: 'undefined' | reference()
+         ,msg_id = 'undefined' :: 'undefined' | ne_binary()
          }).
 
 -define(RESPONDERS, [{{?MODULE, handle_call_command}, [{<<"call">>, <<"command">>}]}
@@ -124,7 +125,11 @@ start_link(Node, CallId, WhAppQ) ->
 
 -spec callid/1 :: (pid()) -> ne_binary().
 callid(Srv) ->
-    gen_server:call(Srv, {callid}, 100).
+    gen_server:call(Srv, {callid}, 1000).
+
+-spec node/1 :: (pid()) -> ne_binary().
+node(Srv) ->
+    gen_server:call(Srv, {node}, 1000).
 
 -spec queue_name/1 :: (pid()) -> ne_binary().
 queue_name(Srv) ->
@@ -132,11 +137,11 @@ queue_name(Srv) ->
 
 -spec other_legs/1 :: (pid()) -> [] | [ne_binary(),...].
 other_legs(Srv) ->
-    gen_server:call(Srv, {other_legs}, 100).
+    gen_server:call(Srv, {other_legs}, 1000).
 
 -spec event_execute_complete/3 :: (pid(), ne_binary(), ne_binary()) -> 'ok'.
 event_execute_complete(Srv, CallId, App) ->
-    gen_server:cast(Srv, {event_execute_complete, CallId, App}).
+    gen_server:cast(Srv, {event_execute_complete, CallId, App, wh_json:new()}).
 
 -spec add_leg/1 :: (wh_proplist()) -> 'ok' | ['ok',...].
 add_leg(Props) ->
@@ -191,13 +196,18 @@ handle_call_events(JObj, Props) ->
         <<"CHANNEL_EXECUTE_COMPLETE">> ->
             Application = wh_json:get_value(<<"Raw-Application-Name">>, JObj, wh_json:get_value(<<"Application-Name">>, JObj)),
             lager:debug("control queue ~p channel execute completion for '~s'", [Srv, Application]),
-            gen_server:cast(Srv, {event_execute_complete, CallId, Application});
+            gen_server:cast(Srv, {event_execute_complete, CallId, Application, JObj});
         <<"CHANNEL_DESTROY">> ->
             gen_server:cast(Srv, {channel_destroyed, JObj});
         <<"CHANNEL_UNBRIDGE">> ->
             gen_server:cast(Srv, {rm_leg, JObj});
         <<"CHANNEL_BRIDGE">> ->
             gen_server:cast(Srv, {add_leg, JObj});
+        <<"CHANNEL_EXECUTE">> ->
+            case wh_json:get_value(<<"Raw-Application-Name">>, JObj) of
+                <<"redirect">> -> gen_server:cast(Srv, {channel_redirected, JObj});
+                _Else -> ok
+            end;
         <<"controller_queue">> ->
             ControllerQ = wh_json:get_value(<<"Controller-Queue">>, JObj),
             gen_server:cast(Srv, {controller_queue, ControllerQ});
@@ -249,6 +259,8 @@ init([Node, CallId, WhAppQ]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_call({node}, _From, #state{node=Node}=State) ->
+    {reply, Node, State};
 handle_call({callid}, _From, #state{callid=CallId}=State) ->
     {reply, CallId, State};
 handle_call({other_legs}, _From, #state{other_legs=Legs}=State) ->
@@ -271,6 +283,10 @@ handle_cast({controller_queue, ControllerQ}, State) ->
     {noreply, State#state{controller_q=ControllerQ}};
 handle_cast({usurp_control, _}, State) ->
     lager:debug("the call has been usurped by an external process"),
+    {stop, normal, State};
+handle_cast({channel_redirected, _}, #state{callid=CallId, controller_q=ControllerQ}=State) ->
+    lager:debug("call control has been redirected, shutting down immediately"),
+    spawn(fun() -> publish_control_transfer(ControllerQ, CallId) end),
     {stop, normal, State};
 handle_cast({transferer, _}, #state{last_removed_leg=undefined, other_legs=[]}=State) ->    
     %% if the callee preforms a blind transfer then sometimes the new control
@@ -309,7 +325,7 @@ handle_cast({transferee, JObj}, #state{other_legs=Legs, node=Node, callid=PrevCa
             lager:debug("...call id updated, continuing post-transfer"),
             {noreply, State#state{callid=NewCallId, other_legs=lists:delete(NewCallId, Legs)}}
     end;
-handle_cast({add_leg, JObj}, #state{other_legs=Legs, node=Node, callid=CallId}=State) ->
+handle_cast({add_leg, JObj}, #state{other_legs=Legs, callid=CallId}=State) ->
     LegId = case wh_json:get_value(<<"Event-Name">>, JObj) of
                 <<"CHANNEL_BRIDGE">> ->
                     wh_json:get_value(<<"Other-Leg-Unique-ID">>, JObj);
@@ -324,8 +340,6 @@ handle_cast({add_leg, JObj}, #state{other_legs=Legs, node=Node, callid=CallId}=S
                               _ = put(callid, CallId),
                               publish_leg_addition(JObj)
                       end),
-            lager:debug("ensuring event listener for leg ~s exists", [LegId]),
-            _ = ecallmgr_call_sup:start_event_process(Node, LegId),
             {noreply, State#state{other_legs=[LegId|Legs]}}
     end;
 handle_cast({rm_leg, JObj}, #state{other_legs=Legs, callid=CallId}=State) ->
@@ -346,26 +360,31 @@ handle_cast({rm_leg, JObj}, #state{other_legs=Legs, callid=CallId}=State) ->
                       end),
             {noreply, State#state{other_legs=lists:delete(LegId, Legs), last_removed_leg=LegId}}
     end;
-handle_cast({channel_destroyed, _},  #state{is_call_up=true, sanity_check_tref=SCTRef, current_app=CurrentApp
+handle_cast({channel_destroyed, JObj},  #state{is_call_up=true, sanity_check_tref=SCTRef, current_app=CurrentApp
                                             ,current_cmd=CurrentCmd, callid=CallId, node=Node}=State) ->
-    lager:debug("our channel has been destroyed, executing any post-hangup commands"),
-    %% if our sanity check timer is running stop it, it will always return false
-    %% now that the channel is gone
-    catch (erlang:cancel_timer(SCTRef)),
-    %% since this is not attached to a call the node status doesnt matter anymore
-    erlang:monitor_node(Node, false),
-    %% if the current application can not be run without a channel and we have received the
-    %% channel_destory (the last event we will ever receive from freeswitch for this call)
-    %% then create an error and force advance. This will happen with dialplan actions that
-    %% have not been executed on freeswitch but were already queued (for example in xferext). 
-    %% Commonly events like masquerade, noop, ect
-    _ = case CurrentApp =:= undefined orelse is_post_hangup_command(CurrentApp) of
-            true -> ok;
-            false -> 
-                send_error_resp(CallId, CurrentCmd),
-                self() ! {force_queue_advance, CallId}
-        end,
-    {noreply, State#state{keep_alive_ref=get_keep_alive_ref(State#state{is_call_up=false}), is_call_up=false, is_node_up=true}, hibernate};
+    case wh_json:get_value(<<"Call-ID">>, JObj) =:= CallId of
+        false -> {noreply, State};
+        true ->
+            lager:debug("our channel has been destroyed, executing any post-hangup commands"),
+            %% if our sanity check timer is running stop it, it will always return false
+            %% now that the channel is gone
+            catch (erlang:cancel_timer(SCTRef)),
+            %% since this is not attached to a call the node status doesnt matter anymore
+            erlang:monitor_node(Node, false),
+            %% if the current application can not be run without a channel and we have received the
+            %% channel_destory (the last event we will ever receive from freeswitch for this call)
+            %% then create an error and force advance. This will happen with dialplan actions that
+            %% have not been executed on freeswitch but were already queued (for example in xferext). 
+            %% Commonly events like masquerade, noop, ect
+            _ = case CurrentApp =:= undefined orelse is_post_hangup_command(CurrentApp) of
+                    true -> ok;
+                    false -> 
+                        send_error_resp(CallId, CurrentCmd),
+                        self() ! {force_queue_advance, CallId}
+                end,
+            {noreply, State#state{keep_alive_ref=get_keep_alive_ref(State#state{is_call_up=false})
+                                  ,is_call_up=false, is_node_up=true}, hibernate}
+    end;
 handle_cast({channel_destroyed, _},  #state{is_call_up=false}=State) ->
     {noreply, State};
 handle_cast({dialplan, JObj}, #state{callid=CallId, is_node_up=INU, is_call_up=CallUp
@@ -387,19 +406,23 @@ handle_cast({dialplan, JObj}, #state{callid=CallId, is_node_up=INU, is_call_up=C
                         send_error_resp(CallId, Cmd),
                         self() ! {force_queue_advance, CallId}
                 end,
+            MsgId = wh_json:get_value(<<"Msg-ID">>, Cmd),
             {noreply, State#state{command_q=NewCmdQ1, current_app=AppName, current_cmd=Cmd
-                                  ,keep_alive_ref=get_keep_alive_ref(State)}, hibernate};
+                                  ,keep_alive_ref=get_keep_alive_ref(State), msg_id=MsgId}, hibernate};
         false ->
-            is_binary(CurrApp) andalso lager:debug("curr app remains: ~s", [CurrApp]),
             {noreply, State#state{command_q=NewCmdQ, keep_alive_ref=get_keep_alive_ref(State)}, hibernate}
     end;
-handle_cast({event_execute_complete, CallId, EvtName},#state{callid=CallId, is_node_up=INU, is_call_up=CallUp
-                                                             ,command_q=CmdQ, current_app=CurrApp}=State) ->
+handle_cast({event_execute_complete, CallId, EvtName, JObj}, #state{callid=CallId, is_node_up=INU, is_call_up=CallUp
+                                                                    ,command_q=CmdQ, current_app=CurrApp, msg_id=CurrMsgId}=State) ->
+    NoopId = wh_json:get_value(<<"Application-Response">>, JObj),
     case lists:member(EvtName, ecallmgr_util:convert_whistle_app_name(CurrApp)) of
         false ->
             {noreply, State};
+        true when EvtName =:= <<"noop">>, NoopId =/= CurrMsgId ->
+            lager:debug("recieved noop execute complete with incorrect id, ignoring"),
+            {noreply, State};
         true ->
-            lager:debug("completed execution of command '~s'", [CurrApp]),
+            lager:debug("execution complete '~s' for command '~s'", [EvtName, CurrApp]),
             case INU andalso queue:out(CmdQ) of
                 false ->
                     %% if the node is down, don't inject the next FS event
@@ -417,7 +440,8 @@ handle_cast({event_execute_complete, CallId, EvtName},#state{callid=CallId, is_n
                                 send_error_resp(CallId, Cmd),
                                 self() ! {force_queue_advance, CallId}
                         end,
-                    {noreply, State#state{command_q = CmdQ1, current_app = AppName, current_cmd = Cmd}, hibernate}
+                    MsgId = wh_json:get_value(<<"Msg-ID">>, Cmd, <<>>),
+                    {noreply, State#state{command_q = CmdQ1, current_app = AppName, current_cmd = Cmd, msg_id=MsgId}, hibernate}
             end
     end.
 
@@ -474,8 +498,9 @@ handle_info({force_queue_advance, CallId}, #state{callid=CallId, current_app=Cur
                         send_error_resp(CallId, Cmd),
                         self() ! {force_queue_advance, CallId}
                 end,
+            MsgId = wh_json:get_value(<<"Msg-ID">>, Cmd),
             {noreply, State#state{command_q=CmdQ1, current_app=AppName, current_cmd=Cmd
-                                  ,keep_alive_ref=get_keep_alive_ref(State)}, hibernate}
+                                  ,keep_alive_ref=get_keep_alive_ref(State), msg_id=MsgId}, hibernate}
     end;
 handle_info(keep_alive_expired, State) ->
     lager:debug("no new commands received after channel destruction, our job here is done"),
@@ -615,7 +640,9 @@ execute_control_request(Cmd, #state{node=Node, callid=CallId, self=Srv}) ->
     put(callid, CallId),
 
     try
-        lager:debug("executing call command '~s'", [wh_json:get_value(<<"Application-Name">>, Cmd)]),
+        lager:debug("executing call command '~s' ~s", [wh_json:get_value(<<"Application-Name">>, Cmd)
+                                                       ,wh_json:get_value(<<"Msg-ID">>, Cmd, <<>>)
+                                                      ]),
         Mod = wh_util:to_atom(<<"ecallmgr_"
                                      ,(wh_json:get_value(<<"Event-Category">>, Cmd, <<>>))/binary
                                      ,"_"

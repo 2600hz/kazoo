@@ -261,17 +261,12 @@ delete_attachment(Number, AccountId, Name) ->
 -spec reconcile_number/2 :: (ne_binary(), ne_binary()) -> {ok, wh_json:json_object()} |
                                                           {error, term()}.
 reconcile_number(Number, AccountId) ->
-    Regex = whapps_config:get_binary(?WNM_CONFIG_CAT, <<"reconcile_regex">>, <<"^\\+{0,1}1{0,1}(\\d{10})$">>),
     Num = wnm_util:normalize_number(Number),
     lager:debug("attempting to reconcile number '~s' with account '~s'", [Num, AccountId]),
     try 
-        case re:run(Num, Regex) of
-            nomatch ->
-                lager:debug("number '~s' is not reconcilable", [Num]),
-                throw(not_reconcilable);
-            _ ->
-                lager:debug("number '~s' can be reconciled, proceeding", [Num]),
-                ok
+        case wnm_util:is_reconcilable(Num) of 
+            false -> throw(not_reconcilable);
+            true -> ok
         end,
         JObj = case store_discovery(Num, <<"wnm_local">>, wh_json:new(), {<<"reserved">>, AccountId}) of
                     {ok, J1} -> J1;
@@ -303,10 +298,14 @@ reserve_number(Number, AccountId) ->
 
 reserve_number(Number, AccountId, PublicFields) ->
     Num = wnm_util:normalize_number(Number),
-    case store_discovery(Num, <<"wnm_local">>, wh_json:new(), {<<"reserved">>, AccountId}, PublicFields) of
-        {error, {conflict, _}} -> {error, conflict};
-        {ok, JObj} -> {ok, wh_json:public_fields(JObj)};
-        Else -> Else
+    case wnm_util:is_reconcilable(Num) of 
+        false -> {error, not_reconcilable};
+        true -> 
+            case store_discovery(Num, <<"wnm_local">>, wh_json:new(), {<<"reserved">>, AccountId}, PublicFields) of
+                {error, {conflict, _}} -> {error, conflict};
+                {ok, JObj} -> {ok, wh_json:public_fields(JObj)};
+                Else -> Else
+            end
     end.
 
 %%--------------------------------------------------------------------
@@ -326,6 +325,10 @@ assign_number_to_account(Number, AccountId, PublicFields) ->
     Num = wnm_util:normalize_number(Number),
     Db = wnm_util:number_to_db_name(Num),
     try
+        case wnm_util:is_reconcilable(Num) of 
+            false -> throw(not_reconcilable);
+            true -> ok
+        end,
         JObj1 = case couch_mgr:open_doc(Db, Num) of
                    {error, R1} -> 
                         lager:debug("failed to open number DB: ~p", [R1]),
@@ -519,6 +522,11 @@ release_number(Number, AccountId) ->
     Num = wnm_util:normalize_number(Number),
     Db = wnm_util:number_to_db_name(Num),
     try
+        case wnm_util:is_reconcilable(Num) of 
+            false -> throw(not_reconcilable);
+            true -> ok
+        end,
+        ReleaseState = whapps_config:get_binary(?WNM_CONFIG_CAT, <<"released_state">>, <<"available">>),
         JObj1 = case couch_mgr:open_doc(Db, Num) of
                    {error, R1} -> 
                         lager:debug("failed to open number DB: ~p", [R1]),
@@ -556,7 +564,7 @@ release_number(Number, AccountId) ->
                             {ok, Data2} -> 
                                 Data2
                         end,
-        Updaters = [fun(J) -> wh_json:set_value(<<"pvt_number_state">>, <<"released">>, J) end
+        Updaters = [fun(J) -> wh_json:set_value(<<"pvt_number_state">>, ReleaseState, J) end
                     ,fun(J) -> wh_json:set_value(<<"pvt_module_data">>, NewModuleData, J) end
                     ,fun(J) -> wh_json:set_value(<<"pvt_modified">>, wh_util:current_tstamp(), J) end
                     ,fun(J) -> wh_json:delete_key(<<"pvt_assigned_to">>, J) end
@@ -732,7 +740,8 @@ update_numbers_on_account(Number, State, AccountId) ->
             Migrate = wh_json:get_value(<<"pvt_wnm_numbers">>, JObj, []),
             Updated = lists:foldr(fun(<<"numbers">>, J) when Migrate =/= [] ->
                                           N = wh_json:get_value(<<"pvt_wnm_in_service">>, J, []),
-                                          wh_json:set_value(<<"pvt_wnm_in_service">>, N ++ Migrate, J);
+                                          wh_json:set_value(<<"pvt_wnm_in_service">>, N ++ Migrate,
+                                                            wh_json:delete_key(<<"pvt_wnm_numbers">>, J));
                                      (<<"numbers">>, J) when Migrate =:= [] ->
                                           wh_json:delete_key(<<"pvt_wnm_numbers">>, J);
                                      (S, J) when S =:= State ->
@@ -744,7 +753,12 @@ update_numbers_on_account(Number, State, AccountId) ->
                                           N = wh_json:get_value(<<"pvt_wnm_", S/binary>>, JObj, []),
                                           wh_json:set_value(<<"pvt_wnm_", S/binary>>, lists:delete(Number,N), J)
                                   end, JObj, [<<"numbers">>|?WNM_NUMBER_STATUS]),
-            case couch_mgr:save_doc(Db, Updated) of
+            Cleaned = lists:foldr(fun(S, J) ->
+                                          Nums = wh_json:get_value(<<"pvt_wnm_", S/binary>>, J, []),
+                                          Clean = ordsets:to_list(ordsets:from_list(Nums)),
+                                          wh_json:set_value(<<"pvt_wnm_", S/binary>>, Clean, J)
+                                  end, Updated, ?WNM_NUMBER_STATUS),
+            case couch_mgr:save_doc(Db, Cleaned) of
                 {ok, AccountDef} ->
                     lager:debug("updated the account definition"),
                     couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, AccountDef);

@@ -53,7 +53,7 @@ workers() ->
     ].
 
 -spec find_workers/1 :: (ne_binary()) -> {'error', 'not_found'} | {'ok', [pid(),...]}.
--spec do_find_worker/3 :: ([pid(),...] | [], [pid(),...] | [], ne_binary()) -> {'error', 'not_found'} | {'ok', pid()}.
+-spec do_find_worker/3 :: ([pid(),...] | [], [pid(),...] | [], ne_binary()) -> {'error', 'not_found'} | {'ok', [pid(),...]}.
 find_workers(CallID) ->
     C = wh_util:to_binary(http_uri:decode(wh_util:to_list(CallID))),
     do_find_worker(workers(), [], C).

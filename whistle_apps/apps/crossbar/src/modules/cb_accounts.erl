@@ -78,7 +78,6 @@ ensure_parent_set() ->
 -spec ensure_parent_set/2 :: (ne_binary(), wh_json:json_object()) -> 'ok' | #cb_context{}.
 ensure_parent_set(DefaultParentID, JObj) ->
     ParentTree = [DefaultParentID, wh_json:get_value(<<"_id">>, JObj)],
-
     lager:debug("pvt_tree before: ~p after: ~p", [wh_json:get_value(<<"pvt_tree">>, JObj), ParentTree]),
 
     [JObj1] = update_doc_tree(ParentTree
@@ -509,14 +508,12 @@ update_tree(AccountId, ParentId, Context) ->
     case crossbar_doc:load(ParentId, Context) of
         #cb_context{resp_status=success, doc=Parent} ->
             lager:debug("loaded parent account: ~s", [ParentId]),
-
             case load_descendants(AccountId, Context) of
                 #cb_context{resp_status=success, doc=[]} ->
                     lager:debug("no descendants loaded for ~s", [AccountId]),
                     crossbar_util:response_bad_identifier(AccountId, Context);
                 #cb_context{resp_status=success, doc=DescDocs}=Context1 when is_list(DescDocs) ->
                     lager:debug("descendants found for ~s", [AccountId]),
-
                     Tree = wh_json:get_value(<<"pvt_tree">>, Parent, []) ++ [ParentId, AccountId],
                     Updater = fun(Desc, Acc) -> update_doc_tree(Tree, Desc, Acc) end,
                     Updates = lists:foldr(Updater, [], DescDocs),
