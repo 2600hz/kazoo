@@ -62,39 +62,42 @@ handle_channel_status(JObj, _Props) ->
     true = wapi_call:channel_status_req_v(JObj),
     wh_util:put_callid(JObj),
     CallID = wh_json:get_value(<<"Call-ID">>, JObj),
-    lager:debug("channel status request received for callid ~s", [CallID]),
-    NodeHandlers = ecallmgr_fs_sup:node_handlers(),
+    lager:debug("channel status request received"),
     NodeList = ecallmgr_config:get(<<"fs_nodes">>, []),
-    case [ecallmgr_fs_node:hostname(NH) || NH <- NodeHandlers, ecallmgr_fs_node:uuid_exists(NH, CallID)] of
-        [] when length(NodeList) =/= length(NodeHandlers) ->
+    SearchResults = [{ecallmgr_fs_node:uuid_exists(NH, CallID), NH} || NH <- ecallmgr_fs_sup:node_handlers()],
+    case was_uuid_found(SearchResults) of
+        {error, not_found} when length(SearchResults) =/= length(NodeList) ->
             lager:debug("no node found with channel ~s, but we are not authoritative", [CallID]);
-        [] -> 
+        {error, not_found} -> 
             lager:debug("no node found with channel ~s", [CallID]),
             Resp = [{<<"Call-ID">>, CallID}
                     ,{<<"Status">>, <<"terminated">>}
                     ,{<<"Error-Msg">>, <<"no node found with channel">>}
                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)],
             wapi_call:publish_channel_status_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp);
-        [{ok, Hostname}] ->
-            lager:debug("call is on ~s", [Hostname]),
-            Resp = [{<<"Call-ID">>, CallID}
-                    ,{<<"Status">>, <<"active">>}
-                    ,{<<"Switch-Hostname">>, Hostname}
-                    | wh_api:default_headers(?APP_NAME, ?APP_VERSION)],
-            wapi_call:publish_channel_status_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp);
-        [{error, Err}] ->
-            lager:debug("Hostname lookup failed, but call is active"),
-            Resp = [{<<"Call-ID">>, CallID}
-                    ,{<<"Status">>, <<"active">>}
-                    ,{<<"Error-Msg">>, wh_util:to_binary(Err)}
-                    | wh_api:default_headers(?APP_NAME, ?APP_VERSION)],
-            wapi_call:publish_channel_status_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp);
-        [timeout] ->
-            Resp = [{<<"Call-ID">>, CallID}
-                    ,{<<"Status">>, <<"active">>}
-                    ,{<<"Error-Msg">>, <<"switch timeout">>}
-                    | wh_api:default_headers(?APP_NAME, ?APP_VERSION)],
-            wapi_call:publish_channel_status_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp)
+        {ok, NodeHandler} ->
+            case ecallmgr_fs_node:hostname(NodeHandler) of
+                {ok, Hostname} ->
+                    lager:debug("call is on ~s", [Hostname]),
+                    Resp = [{<<"Call-ID">>, CallID}
+                            ,{<<"Status">>, <<"active">>}
+                            ,{<<"Switch-Hostname">>, Hostname}
+                            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)],
+                    wapi_call:publish_channel_status_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp);
+                {error, Err} ->
+                    lager:debug("Hostname lookup failed, but call is active"),
+                    Resp = [{<<"Call-ID">>, CallID}
+                            ,{<<"Status">>, <<"active">>}
+                            ,{<<"Error-Msg">>, wh_util:to_binary(Err)}
+                            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)],
+                    wapi_call:publish_channel_status_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp);
+                timeout ->
+                    Resp = [{<<"Call-ID">>, CallID}
+                            ,{<<"Status">>, <<"active">>}
+                            ,{<<"Error-Msg">>, <<"switch timeout">>}
+                            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)],
+                    wapi_call:publish_channel_status_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp)
+            end
     end.
 
 -spec handle_call_status/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
@@ -103,9 +106,19 @@ handle_call_status(JObj, _Props) ->
     wh_util:put_callid(JObj),
     CallID = wh_json:get_value(<<"Call-ID">>, JObj),
     lager:debug("call status request received"),
-    case [NH || NH <- ecallmgr_fs_sup:node_handlers(), ecallmgr_fs_node:uuid_exists(NH, CallID)] of
-        [] -> lager:debug("no node found with call having leg ~s", [CallID]);
-        [NodeHandler] ->
+    NodeList = ecallmgr_config:get(<<"fs_nodes">>, []),
+    SearchResults = [{ecallmgr_fs_node:uuid_exists(NH, CallID), NH} || NH <- ecallmgr_fs_sup:node_handlers()],
+    case was_uuid_found(SearchResults) of
+        {error, not_found} when length(SearchResults) =/= length(NodeList) ->                                                                                                                                                                                                                
+            lager:debug("no node found with call leg ~s, but we are not authoritative", [CallID]); 
+        {error, not_found} -> 
+            lager:debug("no node found with call having leg ~s", [CallID]),
+            Resp = [{<<"Call-ID">>, CallID}
+                    ,{<<"Status">>, <<"terminated">>}
+                    ,{<<"Error-Msg">>, <<"no node found with call id">>}
+                    | wh_api:default_headers(?APP_NAME, ?APP_VERSION)],
+            wapi_call:publish_call_status_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp);
+        {ok, NodeHandler} ->
             case ecallmgr_fs_node:uuid_dump(NodeHandler, CallID) of
                 {error, E} ->
                     lager:debug("failed to get channel info for ~s: ~p", [CallID, E]),
@@ -298,3 +311,11 @@ create_call_status_resp(Props, false) ->
      ,{<<"Other-Leg-Destination-Number">>, props:get_value(<<"Caller-Destination-Number">>, Props)}
      ,{<<"Presence-ID">>, props:get_value(<<"variable_presence_id">>, Props)}
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)].
+
+-spec was_uuid_found/1 :: ([{boolean(), pid()} | timeout,...]) -> {error, not_found} | {ok, pid()}.
+was_uuid_found([]) ->
+    {error, not_found};
+was_uuid_found([{true, NodeHandler}|_]) ->
+    {ok, NodeHandler};
+was_uuid_found([_|NodeHandlers]) ->
+    was_uuid_found(NodeHandlers).
