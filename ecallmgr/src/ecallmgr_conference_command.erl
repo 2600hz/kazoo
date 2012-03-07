@@ -23,6 +23,8 @@ exec(Focus, ConferenceId, JObj) ->
             send_response(App, {noop, Conference}, wh_json:get_value(<<"Server-ID">>, JObj), JObj);
         {AppName, AppData} ->
             Command = wh_util:to_list(list_to_binary([ConferenceId, " ", AppName, " ", AppData])),
+            Focus =/= undefined andalso ?LOG("execute on node ~s: conference ~s", [Focus, Command]),
+            Focus =/= undefined andalso  ecallmgr_util:fs_log(Focus, "whistle executing conference ~s", [Command]),
             Result = freeswitch:api(Focus, 'conference', Command),
             send_response(App, Result, wh_json:get_value(<<"Server-ID">>, JObj), JObj)
     end.

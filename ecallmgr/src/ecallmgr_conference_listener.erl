@@ -52,10 +52,13 @@ start_link() ->
 
 -spec conferences_on_node/1 :: (atom()) -> wh_json:json_object().
 conferences_on_node(Node) ->
-    Props = ecallmgr_util:get_interface_properties(Node),
+    ?LOG("looking for conferences on node ~s", [Node]),
     [_, Hostname] = binary:split(wh_util:to_binary(Node), <<"@">>),
+    ?LOG("requesting xml list of conferences"),
     {ok, Response} = freeswitch:api(Node, 'conference', "xml_list"),
     {Xml, _} = xmerl_scan:string(binary_to_list(binary:replace(Response, <<"\n">>, <<>>, [global]))),
+    ?LOG("got xml list of conferences"),
+    Props = ecallmgr_util:get_interface_properties(Node),
     conferences_xml_to_json(Xml, [{<<"Hostname">>, Hostname}|Props], wh_json:new()).
 
 -spec handle_command/2 :: (wh_json:json_object(), proplist()) -> ok.
@@ -68,8 +71,10 @@ handle_command(JObj, _Props) ->
 -spec handle_search_req/2 :: (wh_json:json_object(), proplist()) -> ok.
 handle_search_req(JObj, _Props) ->
     ConferenceId = wh_json:get_value(<<"Conference-ID">>, JObj),
+    ?LOG("received search request for conference id ~s", [ConferenceId]),
     case search_nodes_for_conference(ConferenceId) of
         undefined ->
+            ?LOG("sending error search response, conference not found"),
             Error = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
                      ,{<<"Error-Message">>, <<"Conference ", ConferenceId/binary, " not found">>}
                      ,{<<"Request">>, JObj}
@@ -77,6 +82,7 @@ handle_search_req(JObj, _Props) ->
                     ],
             wapi_conference:publish_error(wh_json:get_value(<<"Server-ID">>, JObj), Error);
         Conference ->
+            ?LOG("sending affirmative search response, conference found"),
             Resp = wh_json:set_values([{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
                                        |wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                                       ], Conference),
@@ -189,12 +195,17 @@ search_nodes_for_conference(ConferenceId) ->
     search_nodes_for_conference(get_nodes(), ConferenceId).
 
 search_nodes_for_conference([], _) ->
+    ?LOG("failed to find conference on any of the freeswitch nodes"),
     undefined;
 search_nodes_for_conference([Node|Nodes], ConferenceId) ->
     JObj = conferences_on_node(Node),
     case wh_json:get_value(ConferenceId, JObj) of
-        undefined -> search_nodes_for_conference(Nodes, ConferenceId);
-        Conference -> Conference
+        undefined -> 
+            ?LOG("conference ~s not running on node ~s", [ConferenceId, Node]),
+            search_nodes_for_conference(Nodes, ConferenceId);
+        Conference ->
+            ?LOG("found conference ~s on node ~s", [ConferenceId, Node]),
+            Conference
     end.
 
 %% TODO: Flush cache on conference end
@@ -202,11 +213,16 @@ search_nodes_for_conference([Node|Nodes], ConferenceId) ->
 get_conference_focus(ConferenceId) ->
     {ok, Cache} = ecallmgr_sup:cache_proc(),
     case wh_cache:fetch_local(Cache, {conference, focus, ConferenceId}) of
-        {ok, Focus} -> Focus;
+        {ok, Focus} -> 
+            ?LOG("found conference focus ~s for conference ~s in cache", [Focus, ConferenceId]),
+            Focus;
         {error, not_found} ->
             case search_for_conference_focus(get_nodes(), ConferenceId) of
-                undefined -> undefined;
+                undefined -> 
+                    ?LOG("failed to find conference focus for conference ~s", [ConferenceId]),
+                    undefined;
                 Focus ->
+                    ?LOG("found conference focus ~s for conference ~s, storing in cache", [Focus, ConferenceId]),
                     wh_cache:store_local(Cache, {conference, focus, ConferenceId}, Focus),
                     Focus
             end
@@ -241,6 +257,7 @@ conferences_xml_to_json([#xmlElement{attributes=Attributes, name='conference', c
     case wh_json:get_value(<<"Conference-ID">>, Conference) of
         undefined -> conferences_xml_to_json(ConferencesXml, Props, JObj);
         ConferenceId ->
+            ?LOG("populating conference ~s in conference props", [ConferenceId]),
             conferences_xml_to_json(ConferencesXml, Props, wh_json:set_value(ConferenceId, Conference, JObj))
     end;
 conferences_xml_to_json([_|ConferencesXml], Props, JObj) ->
@@ -258,6 +275,7 @@ members_xml_to_json([#xmlElement{content=Content, name='member'}|MembersXml], JO
     case wh_json:get_value(<<"Participant-ID">>, Member) of
         undefined -> members_xml_to_json(MembersXml, JObj);
         ParticipantId ->
+            ?LOG("populating conference participant ~s in conference props", [ParticipantId]),
             members_xml_to_json(MembersXml, wh_json:set_value(ParticipantId, Member, JObj))
     end;
 members_xml_to_json([_|MembersXml], JObj) ->
