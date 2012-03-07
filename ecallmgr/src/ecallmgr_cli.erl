@@ -45,7 +45,9 @@ status(always, [DisplayOpt]) ->
         {ok, _, _}=Res -> Res;
         {ok, Data} ->
             diagnostics_server:display_fs_data(Data, wh_util:to_atom(DisplayOpt, true)),
-            ok
+            ok;
+        {error, Fmt, Args} ->
+            format(Fmt, Args)
     end.
 
 set_amqp_host(always, [Host]=Arg) ->
@@ -55,7 +57,9 @@ set_amqp_host(always, [Host]=Arg) ->
         {ok, ok} ->
             {ok, "Set ecallmgr's amqp host to ~p", [Host]};
         {ok, Other} ->
-            {ok, "Something unexpected happened while setting the amqp host: ~p", [Other]}
+            {ok, "Something unexpected happened while setting the amqp host: ~p", [Other]};
+        {error, Fmt, Args} ->
+            format(Fmt, Args)
     end.
 
 add_fs_node(always, [FSNode]) ->
@@ -64,7 +68,9 @@ add_fs_node(always, [FSNode]) ->
         {ok, ok} ->
             {ok, "Added ~p successfully~n", [FSNode]};
         {ok, Res} ->
-            {ok, "Failed to add node(~p): ~p~n", [FSNode, Res]}
+            {ok, "Failed to add node(~p): ~p~n", [FSNode, Res]};
+        {error, Fmt, Args} ->
+            format(Fmt, Args)
     end.
 
 rm_fs_node(always, [FSNode]) ->
@@ -72,8 +78,8 @@ rm_fs_node(always, [FSNode]) ->
     case rpc_call(Node, ecallmgr_fs_handler, rm_fs_node, [list_to_atom(FSNode)]) of
         {ok, _} ->
             {ok, "Removed ~p successfully~n", [FSNode]};
-        Other -> %{ok, Res} ->
-            {ok, "Failed to remove node(~p): ~p~n", [FSNode, Other]}
+        {error, Fmt, Args} ->
+            format(Fmt, Args)
     end.
 
 rpc_call(Node, M, F, A) ->
@@ -81,5 +87,5 @@ rpc_call(Node, M, F, A) ->
         pong ->
             {ok, rpc:call(Node, M, F, A)};
         pang ->
-            {ok, "~p not reachable", [Node]}
+            {error, "The ecallmgr node ~p is not reachable. Have you started it yet?~nTry ./start.sh or ./start-dev.sh~n~n", [Node]}
     end.
