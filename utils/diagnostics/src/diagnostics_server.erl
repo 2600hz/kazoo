@@ -16,21 +16,18 @@
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-	 terminate/2, code_change/3]).
-
--import(logger, [format_log/3]).
--import(props, [get_value/2, get_value/3]).
+         terminate/2, code_change/3]).
 
 -define(SERVER, ?MODULE).
 
 -define(CELL_FORMAT, " ~11.s |").
 -define(HANDLER_LINE, lists:flatten(["  | ", ?CELL_FORMAT, ?CELL_FORMAT
-				     ,?CELL_FORMAT, ?CELL_FORMAT, ?CELL_FORMAT
-				     ,?CELL_FORMAT, ?CELL_FORMAT, "~n"])).
+                                     ,?CELL_FORMAT, ?CELL_FORMAT, ?CELL_FORMAT
+                                     ,?CELL_FORMAT, ?CELL_FORMAT, "~n"])).
 -define(HANDLER_LINE_HEADER, io_lib:format(?HANDLER_LINE, ["Type", "Requested", "Successful"
-							,"Timed Out", "Failed", "Active", "Uptime"])).
+                                                        ,"Timed Out", "Failed", "Active", "Uptime"])).
 -define(NODE_LINE, lists:flatten(["  | ", ?CELL_FORMAT, ?CELL_FORMAT
-				  ,?CELL_FORMAT, ?CELL_FORMAT, ?CELL_FORMAT, "~n"])).
+                                  ,?CELL_FORMAT, ?CELL_FORMAT, ?CELL_FORMAT, "~n"])).
 -define(NODE_LINE_HEADER, io_lib:format(?NODE_LINE, ["Type", "Created", "Destroyed", "Active", "Uptime"])).
 
 -define(MICRO_TO_SEC, 1000000).
@@ -95,39 +92,37 @@ init([]) ->
 %%--------------------------------------------------------------------
 handle_call({add_node, Node}, _From, Nodes) ->
     case lists:member(Node, Nodes) of
-	true ->
-	    {reply, {error, {node_known, Node}}, Nodes};
-	false ->
-	    case net_adm:ping(Node) of
-		pong ->
-		    {reply, {ok, node_added}, [Node | Nodes]};
-		pang ->
-		    {reply, {error, {ping_failed, Node}}, Nodes}
-	    end
+        true ->
+            {reply, {error, {node_known, Node}}, Nodes};
+        false ->
+            case net_adm:ping(Node) of
+                pong ->
+                    {reply, {ok, node_added}, [Node | Nodes]};
+                pang ->
+                    {reply, {error, {ping_failed, Node}}, Nodes}
+            end
     end;
 handle_call({rm_node, Node}, _From, Nodes) ->
     case lists:member(Node, Nodes) of
-	true ->
-	    {reply, {ok, node_removed}, lists:delete(Node, Nodes)};
-	false ->
-	    {reply, {error, {node_unkown, Node}}, Nodes}
+        true ->
+            {reply, {ok, node_removed}, lists:delete(Node, Nodes)};
+        false ->
+            {reply, {error, {node_unkown, Node}}, Nodes}
     end;
 handle_call({view}, _From, Nodes) ->
-    format_log(info, "DIAG_SERVER: Nodes to view: ~p~n", [Nodes]),
     lists:foreach(fun display_node/1, Nodes),
     {reply, ok, Nodes};
 handle_call({view, Node}, _From, Nodes) ->
-    format_log(info, "DIAG_SERVER: Node to view: ~p~n", [Node]),
     case lists:member(Node, Nodes) of
-	true ->
-	    case display_node(Node) of
-		error ->
-		    {reply, {error, {node_error, Node}}, lists:delete(Node, Nodes)};
-		ok ->
-		    {reply, ok, Nodes}
-	    end;
-	false ->
-	    {reply, {error, {unknown_node, Node}}, Nodes}
+        true ->
+            case display_node(Node) of
+                error ->
+                    {reply, {error, {node_error, Node}}, lists:delete(Node, Nodes)};
+                ok ->
+                    {reply, ok, Nodes}
+            end;
+        false ->
+            {reply, {error, {unknown_node, Node}}, Nodes}
     end;
 handle_call(_Request, _From, State) ->
     Reply = ok,
@@ -190,15 +185,15 @@ code_change(_OldVsn, State, _Extra) ->
 -spec(display_node/1 :: (Node :: atom()) -> ok | error).
 display_node(Node) ->
     case rpc:call(Node, ecallmgr, diagnostics, []) of
-	{badrpc, Reason} ->
-	    io:format("DIAG_SERVER: Error getting data from ~p: ~p~n", [Node, Reason]),
-	    error;
-	Data ->
-	    lists:foreach(fun({freeswitch_nodes, FSData}) ->
-				  display_fs_data(FSData);
-			     (X) -> io:format("DIAG_SERVER: Unknown result.~n~p~n", [X])
-			  end, Data),
-	    ok
+        {badrpc, Reason} ->
+            io:format("DIAG_SERVER: Error getting data from ~p: ~p~n", [Node, Reason]),
+            error;
+        Data ->
+            lists:foreach(fun({freeswitch_nodes, FSData}) ->
+                                  display_fs_data(FSData);
+                             (X) -> io:format("DIAG_SERVER: Unknown result.~n~p~n", [X])
+                          end, Data),
+            ok
     end.
 
 %% Diagnostics for GEN_SERVER (VSN) on HOST at HH:MM:SS on YYYY-MM-DD
@@ -211,60 +206,74 @@ display_node(Node) ->
 display_fs_data(Data) -> display_fs_data(Data, all).
 
 display_fs_data(Data, Opt) ->
-    GenSrv = get_value(gen_server, Data),
-    Vsn = get_value(version, Data),
-    Host = get_value(host, Data),
-    {{Y, M, D}, {H, Min, S}} = calendar:now_to_datetime(get_value(recorded, Data)),
-
-    BaseAcc = [{node_handler, {ok, [{active_channels, 0}, {created_channels, 0}, {destroyed_channels, 0}]}}
-	       ,{auth_handler, {ok, [{lookups_success,0}, {lookups_failed,0}, {lookups_timeout,0}, {lookups_requested,0}]}}
-	       ,{route_handler, {ok, [{lookups_success,0}, {lookups_failed,0}, {lookups_timeout,0}, {lookups_requested,0}]}}
-	      ],
+    GenSrv = props:get_value(gen_server, Data),
+    Vsn = props:get_value(version, Data),
+    Host = props:get_value(host, Data),
+    {{Y, M, D}, {H, Min, S}} = calendar:now_to_datetime(props:get_value(recorded, Data)),
 
     io:format("Diagnostics for ~p (~s) on ~p at ~2.2.0w:~2.2.0w:~2.2.0w on ~p-~p-~p~n", [GenSrv, Vsn, Host, H,Min,S, Y,M,D]),
+
+    case props:get_value(handler_diagnostics, Data) of
+        [] -> show_no_nodes();
+        Nodes -> show_nodes(Nodes, Opt)
+    end.
+
+show_no_nodes() ->
+    io:format("~nNo FreeSWITCH servers were found (or they all timed out)~n"
+              "Is the sysconf whapp connected to the same AMQP broker as ecallmgr?~n~n"
+              "To add a FreeSWITCH server, execute './ecallmgr_ctl add_fs_node freeswitch@your.freeswitch.server'~n"
+              "To remove a FreeSWITCH server, execute './ecallmgr_ctl rm_fs_node freeswitch@your.freeswitch.server'~n"
+              , []).
+
+show_nodes(Nodes, Opt) ->
+    BaseAcc = [{node_handler, {ok, [{active_channels, 0}, {created_channels, 0}, {destroyed_channels, 0}]}}
+               ,{auth_handler, {ok, [{lookups_success,0}, {lookups_failed,0}, {lookups_timeout,0}, {lookups_requested,0}]}}
+               ,{route_handler, {ok, [{lookups_success,0}, {lookups_failed,0}, {lookups_timeout,0}, {lookups_requested,0}]}}
+              ],
+
     AccNodes = lists:foldr(fun(T, Acc)  ->
-				   case Opt of
-				       all -> show_node(T), merge_data(T, Acc);
-				       acc -> merge_data(T, Acc);
-				       Node when element(1, T) =:= Node -> show_node(T);
-				       _ -> Acc
-				   end
-			   end, BaseAcc, get_value(handler_diagnostics, Data)),
+                                   case Opt of
+                                       all -> show_node(T), merge_data(T, Acc);
+                                       acc -> merge_data(T, Acc);
+                                       Node when element(1, T) =:= Node -> show_node(T);
+                                       _ -> Acc
+                                   end
+                           end, BaseAcc, Nodes),
 
     case Opt of
-	Node when Node =/= all andalso Node =/= acc -> ok;
-	_ ->
-	    AccData = list_to_tuple([accumulated
-				     ,{auth_handler, get_value(auth_handler, AccNodes)}
-				     ,{route_handler, get_value(route_handler, AccNodes)}
-				     ,{node_handler, get_value(node_handler, AccNodes)}]),
-	    
-	    io:format("~n", []),
-	    show_node(AccData)
+        Node when Node =/= all andalso Node =/= acc -> ok;
+        _ ->
+            AccData = list_to_tuple([accumulated
+                                     ,{auth_handler, props:get_value(auth_handler, AccNodes)}
+                                     ,{route_handler, props:get_value(route_handler, AccNodes)}
+                                     ,{node_handler, props:get_value(node_handler, AccNodes)}]),
+            
+            io:format("~n", []),
+            show_node(AccData)
     end.
 
 merge_data(T, Acc0) ->
     [_Node | L] = tuple_to_list(T),
     lists:foldl(fun({_Type, {error, _, _}}, Acc) -> Acc;
-		   ({_Type, {'EXIT', _, _}}, Acc) -> Acc;
-		   ({node_handler, {ok, Data}}, Acc) ->
-			{ok, NodeAcc} = get_value(node_handler, Acc),
-			AC = get_value(active_channels, Data, 0) + get_value(active_channels, NodeAcc, 0),
-			CC = get_value(created_channels, Data, 0) + get_value(created_channels, NodeAcc, 0),
-			DC = get_value(destroyed_channels, Data, 0) + get_value(destroyed_channels, NodeAcc, 0),
+                   ({_Type, {'EXIT', _, _}}, Acc) -> Acc;
+                   ({node_handler, {ok, Data}}, Acc) ->
+                        {ok, NodeAcc} = props:get_value(node_handler, Acc),
+                        AC = props:get_value(active_channels, Data, 0) + props:get_value(active_channels, NodeAcc, 0),
+                        CC = props:get_value(created_channels, Data, 0) + props:get_value(created_channels, NodeAcc, 0),
+                        DC = props:get_value(destroyed_channels, Data, 0) + props:get_value(destroyed_channels, NodeAcc, 0),
 
-			[{node_handler, {ok, [{active_channels, AC}, {created_channels, CC}, {destroyed_channels, DC}]}}
-			 | lists:keydelete(node_handler, 1, Acc)];
-		   ({H, {ok, Data}}, Acc) ->
-			{ok, HAcc} = get_value(H, Acc),
-			LS = get_value(lookups_success, Data, 0) + get_value(lookups_success, HAcc, 0),
-			LF = get_value(lookups_failed, Data, 0) + get_value(lookups_failed, HAcc, 0),
-			LT = get_value(lookups_timeout, Data, 0) + get_value(lookups_timeout, HAcc, 0),
-			LR = get_value(lookups_requested, Data, 0) + get_value(lookups_requested, HAcc, 0),
+                        [{node_handler, {ok, [{active_channels, AC}, {created_channels, CC}, {destroyed_channels, DC}]}}
+                         | lists:keydelete(node_handler, 1, Acc)];
+                   ({H, {ok, Data}}, Acc) ->
+                        {ok, HAcc} = props:get_value(H, Acc),
+                        LS = props:get_value(lookups_success, Data, 0) + props:get_value(lookups_success, HAcc, 0),
+                        LF = props:get_value(lookups_failed, Data, 0) + props:get_value(lookups_failed, HAcc, 0),
+                        LT = props:get_value(lookups_timeout, Data, 0) + props:get_value(lookups_timeout, HAcc, 0),
+                        LR = props:get_value(lookups_requested, Data, 0) + props:get_value(lookups_requested, HAcc, 0),
 
-			[{H, {ok, [{lookups_success,LS}, {lookups_failed,LF}, {lookups_timeout,LT}, {lookups_requested,LR}]}}
-			 | lists:keydelete(H, 1, Acc)]
-		end, Acc0, L).
+                        [{H, {ok, [{lookups_success,LS}, {lookups_failed,LF}, {lookups_timeout,LT}, {lookups_requested,LR}]}}
+                         | lists:keydelete(H, 1, Acc)]
+                end, Acc0, L).
 
 show_node(T) ->
     [Node | L] = tuple_to_list(T),
@@ -280,30 +289,29 @@ show_line(node_handler=Handler, {ok, Data}) ->
     io:format("~n", []),
     io:format(?NODE_LINE_HEADER, []),
     Type = lists:takewhile(fun(C) -> C =/= $_ end, atom_to_list(Handler)),
-    R = wh_util:to_list(get_value(created_channels, Data, 0)),
-    S = wh_util:to_list(get_value(destroyed_channels, Data, 0)),
-    A = wh_util:to_list(get_value(active_channels, Data, 0)),
-    U = get_uptime(get_value(uptime, Data, 0)),
+    R = wh_util:to_list(props:get_value(created_channels, Data, 0)),
+    S = wh_util:to_list(props:get_value(destroyed_channels, Data, 0)),
+    A = wh_util:to_list(props:get_value(active_channels, Data, 0)),
+    U = get_uptime(props:get_value(uptime, Data, 0)),
     io:format(?NODE_LINE, [Type, R, S, A, U]);
 show_line(Handler, {ok, Data}) when is_list(Data) ->
     Type = lists:takewhile(fun(C) -> C =/= $_ end, atom_to_list(Handler)),
-    LR = get_value(lookups_requested, Data, 0),
+    LR = props:get_value(lookups_requested, Data, 0),
     R = integer_to_list(LR),
 
     Format = fun(0) -> "0 (0%)";
-		(X) when is_integer(X) -> io_lib:format("~p (~p%)", [X, round(X / LR * 100)]);
-		(Y) -> io_lib:format("Huh: ~p", [Y])
-	     end,
+                (X) when is_integer(X) -> io_lib:format("~p (~p%)", [X, round(X / LR * 100)]);
+                (Y) -> io_lib:format("Huh: ~p", [Y])
+             end,
 
-    S = Format(get_value(lookups_success, Data, 0)),
-    T = Format(get_value(lookups_timeout, Data, 0)),
-    F = Format(get_value(lookups_failed, Data, 0)),
-    A = Format(length(get_value(active_lookups, Data, []))),
-    U = get_uptime(get_value(uptime, Data, 0)),
+    S = Format(props:get_value(lookups_success, Data, 0)),
+    T = Format(props:get_value(lookups_timeout, Data, 0)),
+    F = Format(props:get_value(lookups_failed, Data, 0)),
+    A = Format(length(props:get_value(active_lookups, Data, []))),
+    U = get_uptime(props:get_value(uptime, Data, 0)),
     io:format(?HANDLER_LINE, [Type, R, S, T, F, A, U]);
 show_line(Handler, {error, E, _}) ->
     io:format(" ~p: ~p~n", [Handler, E]).
-
 
 %% uptime, in microseconds
 get_uptime(0) ->

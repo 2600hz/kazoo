@@ -174,8 +174,6 @@ handle_info({'DOWN', ClientRef, process, _Pid, _Reason}, #state{current_msg_id =
     erlang:demonitor(ClientRef, [flush]),
     _ = erlang:cancel_timer(ReqRef),
 
-    poolboy:checkin(?AMQP_POOL_MGR, self()),
-
     {noreply, #state{}};
 
 handle_info({timeout, ReqRef, req_timeout}, #state{current_msg_id = _MsgID
@@ -192,8 +190,6 @@ handle_info({timeout, ReqRef, req_timeout}, #state{current_msg_id = _MsgID
     gen_server:reply(From, {error, timeout}),
 
     _ = erlang:cancel_timer(ReqRef),
-
-    poolboy:checkin(?AMQP_POOL_MGR, self()),
 
     {noreply, #state{}};
 

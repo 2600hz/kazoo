@@ -49,7 +49,7 @@ get(Key0, Default, Node0) ->
 
             lager:debug("looking up ~s from sysconf", [Key]),
 
-            case catch ecallmgr_amqp_pool:get_req(Req) of
+            case ecallmgr_amqp_pool:get_req(Req) of
                 {ok, RespJObj} ->
                     lager:debug("received resp: ~p", [RespJObj]),
 
@@ -64,9 +64,7 @@ get(Key0, Default, Node0) ->
                                 Value
                         end,
                     V;
-                {'EXIT', _R} ->
-                    lager:debug("failed: ~p", [_R]),
-                    Default
+                {error, timeout} -> Default
             end
     end.
 
