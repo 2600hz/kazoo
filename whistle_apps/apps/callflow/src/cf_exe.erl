@@ -45,7 +45,6 @@
                 ,flow = wh_json:new() :: wh_json:json_object()
                 ,cf_module_pid = 'undefined' :: 'undefined' | pid()
                 ,status = <<"sane">> :: ne_binary()
-                ,sanity_timer = 'undefined' :: 'undefined' | timer:tref()
                }).
                
 %%%===================================================================
@@ -235,7 +234,6 @@ init([Call]) ->
     ?LOG("CID ~s ~s", [whapps_call:caller_id_name(Call), whapps_call:caller_id_number(Call)]),
     ?LOG("inception ~s", [whapps_call:inception(Call)]),
     ?LOG("authorizing id ~s", [whapps_call:authorizing_id(Call)]),
-    {ok, TRef} = timer:send_after(?CALL_SANITY_CHECK, self(), {call_sanity_check}),
     Flow = whapps_call:kvs_fetch(cf_flow, Call),
     Self = self(),
     spawn(fun() ->
@@ -246,7 +244,7 @@ init([Call]) ->
                 ,fun(C) -> whapps_call:call_id_helper(fun cf_exe:callid/2, C) end
                 ,fun(C) -> whapps_call:control_queue_helper(fun cf_exe:control_queue/2, C) end
                ],
-    {ok, #state{call=lists:foldr(fun(F, C) -> F(C) end, Call, Updaters), flow=Flow, sanity_timer=TRef}}.
+    {ok, #state{call=lists:foldr(fun(F, C) -> F(C) end, Call, Updaters), flow=Flow}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -342,19 +340,6 @@ handle_cast({control_usurped}, State) ->
 handle_cast({branch, NewFlow}, State) ->
     ?LOG("callflow has been branched"),
     {noreply, launch_cf_module(State#state{flow=NewFlow})};
-handle_cast({channel_status_received, JObj}, #state{sanity_timer=RunningTRef}=State) ->
-    case wh_json:get_value(<<"Status">>, JObj) of
-        <<"active">> ->
-            ?LOG("callflow executer is sane... for now"),
-            _ = timer:cancel(RunningTRef),
-            {ok, TRef} = timer:send_after(?CALL_SANITY_CHECK, self(), {call_sanity_check}),
-            {noreply, State#state{status = <<"sane">>, sanity_timer=TRef}};
-        _Else ->
-            ?LOG("call status is ~s, preparing to stop cf_exe", [_Else]),
-            _ = timer:cancel(RunningTRef),
-            {ok, TRef} = timer:send_after(?CALL_SANITY_CHECK, self(), {call_sanity_check}),
-            {noreply, State#state{status = <<"testing">>, sanity_timer=TRef}}
-    end;            
 handle_cast({callid_update, NewCallId, NewCtrlQ}, #state{call=Call}=State) ->
     put(callid, NewCallId),
     PrevCallId = whapps_call:call_id_direct(Call),
@@ -392,20 +377,6 @@ handle_info({'EXIT', Pid, Reason}, #state{cf_module_pid=Pid, call=Call}=State) -
                                             ]}]),
     ?MODULE:continue(self()),
     {noreply, State};
-handle_info({call_sanity_check}, #state{status = <<"testing">>, call=Call}=State) ->
-    ?LOG(info, "callflow executer is insane, shuting down"
-         ,[{extra_data, [{details, whapps_call:to_proplist(Call)}
-                         ,{account_id, whapps_call:account_id(Call)}
-                         ]}]),
-    {stop, {shutdown, insane}, State#state{status = <<"insane">>}};
-handle_info({call_sanity_check}, #state{call=Call}=State) ->
-    ?LOG("ensuring call is active, requesting controlling channel status"),
-    spawn(fun() ->
-                  CallId = whapps_call:call_id_direct(Call), 
-                  whapps_call_command:channel_status(CallId, Call)
-          end),
-    {ok, TRef} = timer:send_after(?CALL_SANITY_CHECK, self(), {call_sanity_check}),
-    {noreply, State#state{status = <<"testing">>, sanity_timer=TRef}};
 handle_info(_, State) ->
     {noreply, State}.
 
@@ -417,11 +388,7 @@ handle_info(_, State) ->
 handle_event(JObj, #state{cf_module_pid=Pid, call=Call}) ->
     CallId = whapps_call:call_id_direct(Call),
     case {whapps_util:get_event_type(JObj), wh_json:get_value(<<"Call-ID">>, JObj)}of
-        {{<<"call_event">>, <<"channel_status_resp">>}, StatusCallId} ->
-            case StatusCallId of
-                CallId -> gen_server:cast(self(), {channel_status_received, JObj});
-                _Else  -> ok
-            end,
+        {{<<"call_event">>, <<"channel_status_resp">>}, _} ->
             {reply, [{cf_module_pid, Pid}]};
         {{<<"call_event">>, <<"call_status_resp">>}, _} ->
             {reply, [{cf_module_pid, Pid}]};
@@ -468,20 +435,13 @@ handle_event(JObj, #state{cf_module_pid=Pid, call=Call}) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate({shutdown, transfer}, #state{sanity_timer=TRef}) ->
-    _ = timer:cancel(TRef),
+terminate({shutdown, transfer}, _) ->
     ?LOG_END("callflow execution has been transfered"),
     ok;
-terminate({shutdown, insane}, #state{sanity_timer=TRef}) ->
-    _ = timer:cancel(TRef),
-    ?LOG_END("call id is not longer present on the media gateways, terminating callflow execution"),
-    ok;
-terminate({shutdown, control_usurped}, #state{sanity_timer=TRef}) ->
-    _ = timer:cancel(TRef),
+terminate({shutdown, control_usurped}, _) ->
     ?LOG_END("the call has been usurped by an external process"),
     ok;
-terminate(_Reason, #state{sanity_timer=TRef, call=Call}) ->
-    _ = timer:cancel(TRef),
+terminate(_Reason, #state{call=Call}) ->
     Command = [{<<"Application-Name">>, <<"hangup">>}
                ,{<<"Insert-At">>, <<"now">>}
               ],
