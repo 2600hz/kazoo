@@ -305,6 +305,8 @@ numbers_are_unique(#cb_context{req_data=JObj}=Context) ->
     numbers_are_unique(wh_json:get_value(<<"numbers">>, JObj), Context).
 
 -spec numbers_are_unique/2 :: (wh_json:json_object(), #cb_context{}) -> #cb_context{}.    
+numbers_are_unique(_, #cb_context{db_name=undefined}=Context) ->
+    Context;
 numbers_are_unique(Numbers, #cb_context{db_name=Db, resp_status=Status, resp_data=Data, doc=JObj}=Context) ->
     case couch_mgr:get_results(Db, ?CB_LIST, [{<<"include_docs">>, true}]) of
         {error, _R} ->
