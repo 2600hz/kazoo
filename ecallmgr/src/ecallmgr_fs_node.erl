@@ -556,6 +556,8 @@ run_start_cmds(Node) ->
     case ecallmgr_config:get(<<"fs_cmds">>, [], Node) of
         [] ->
             lager:debug("no freeswitch commands to run, seems suspect"),
+            lager:info("unable to fetch FreeSWITCH startup commands. Is the sysconf whapp attached to the same AMQP broker?"),
+
             timer:sleep(5000),
             [];
         Cmds when is_list(Cmds) ->

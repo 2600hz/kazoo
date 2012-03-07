@@ -105,7 +105,7 @@ init([]) ->
     lager:debug("starting new fs handler"),
     process_flag(trap_exit, true),
 
-    _Pid = spawn(fun() -> start_preconfigured_servers() end),
+    Pid = spawn(fun() -> start_preconfigured_servers() end),
 
     {ok, #state{preconfigured_lookup=Pid}}.
 
