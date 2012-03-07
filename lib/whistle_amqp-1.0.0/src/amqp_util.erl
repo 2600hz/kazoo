@@ -701,7 +701,7 @@ bind_q_to_exchange(Queue, Routing, Exchange, Options) ->
       queue = Queue %% what queue does the binding attach to?
       ,exchange = Exchange %% what exchange does the binding attach to?
       ,routing_key = Routing %% how does an exchange know a message should go to a bound queue?
-      ,nowait = props:get_value(nowait, Options, true)
+      ,nowait = props:get_value(nowait, Options, false)
       ,arguments = []
      },
     case amqp_mgr:consume(QB) of
