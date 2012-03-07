@@ -200,7 +200,7 @@ search_nodes_for_conference([], _) ->
 search_nodes_for_conference([Node|Nodes], ConferenceId) ->
     JObj = conferences_on_node(Node),
     case wh_json:get_value(ConferenceId, JObj) of
-        undefined -> 
+        undefined ->
             ?LOG("conference ~s not running on node ~s", [ConferenceId, Node]),
             search_nodes_for_conference(Nodes, ConferenceId);
         Conference ->
@@ -211,21 +211,13 @@ search_nodes_for_conference([Node|Nodes], ConferenceId) ->
 %% TODO: Flush cache on conference end
 -spec get_conference_focus/1 :: (ne_binary()) -> undefined | atom().
 get_conference_focus(ConferenceId) ->
-    {ok, Cache} = ecallmgr_sup:cache_proc(),
-    case wh_cache:fetch_local(Cache, {conference, focus, ConferenceId}) of
-        {ok, Focus} -> 
-            ?LOG("found conference focus ~s for conference ~s in cache", [Focus, ConferenceId]),
-            Focus;
-        {error, not_found} ->
-            case search_for_conference_focus(get_nodes(), ConferenceId) of
-                undefined -> 
-                    ?LOG("failed to find conference focus for conference ~s", [ConferenceId]),
-                    undefined;
-                Focus ->
-                    ?LOG("found conference focus ~s for conference ~s, storing in cache", [Focus, ConferenceId]),
-                    wh_cache:store_local(Cache, {conference, focus, ConferenceId}, Focus),
-                    Focus
-            end
+    case search_for_conference_focus(get_nodes(), ConferenceId) of
+        undefined ->
+            ?LOG("failed to find conference focus for conference ~s", [ConferenceId]),
+            undefined;
+        Focus ->
+            ?LOG("found conference focus ~s for conference ~s, storing in cache", [Focus, ConferenceId]),
+            Focus
     end.
 
 -spec search_for_conference_focus/2 :: ([atom(),...], ne_binary()) -> undefined | atom().
