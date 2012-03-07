@@ -492,13 +492,14 @@ whistle_version(FileName) ->
 write_pid(FileName) ->
     file:write_file(FileName, io_lib:format("~s", [os:getpid()]), [write, binary]).
 
--spec ensure_started/1 :: (atom()) -> 'ok'.
+-spec ensure_started/1 :: (atom()) -> 'ok' | {'error', term()}.
 ensure_started(App) when is_atom(App) ->
     case application:start(App) of
         ok ->
             ok;
         {error, {already_started, App}} ->
-            ok
+            ok;
+        E -> E
     end.
 
 %% there are 86400 seconds in a day
