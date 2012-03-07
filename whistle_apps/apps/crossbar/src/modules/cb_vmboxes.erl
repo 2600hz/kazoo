@@ -38,7 +38,6 @@ init() ->
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.vmboxes">>, ?MODULE, allowed_methods),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.vmboxes">>, ?MODULE, resource_exists),
     _ = crossbar_bindings:bind(<<"v1_resource.validate.vmboxes">>, ?MODULE, validate),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.put.vmboxes">>, ?MODULE, get),
     _ = crossbar_bindings:bind(<<"v1_resource.execute.put.vmboxes">>, ?MODULE, put),
     _ = crossbar_bindings:bind(<<"v1_resource.execute.post.vmboxes">>, ?MODULE, post),
     _ = crossbar_bindings:bind(<<"v1_resource.execute.delete.vmboxes">>, ?MODULE, delete).
