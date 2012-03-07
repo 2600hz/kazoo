@@ -60,12 +60,11 @@ handle_channel_status(JObj, _Props) ->
     wh_util:put_callid(JObj),
     CallID = wh_json:get_value(<<"Call-ID">>, JObj),
     ?LOG_START("channel status request received"),
-    NodeList = ecallmgr_config:get(<<"fs_nodes">>, []),
     SearchResults = [{ecallmgr_fs_node:uuid_exists(NH, CallID), NH} || NH <- ecallmgr_fs_sup:node_handlers()],
     case was_uuid_found(SearchResults) of
-        {error, not_found} when length(SearchResults) =/= length(NodeList) ->
+        {error, not_found} ->
             ?LOG("no node found with channel ~s, but we are not authoritative", [CallID]);
-        {error, not_found} -> 
+        {error, does_not_exist} -> 
             ?LOG("no node found with channel ~s", [CallID]),
             Resp = [{<<"Call-ID">>, CallID}
                     ,{<<"Status">>, <<"terminated">>}
@@ -103,12 +102,11 @@ handle_call_status(JObj, _Props) ->
     wh_util:put_callid(JObj),
     CallID = wh_json:get_value(<<"Call-ID">>, JObj),
     ?LOG("call status request received"),
-    NodeList = ecallmgr_config:get(<<"fs_nodes">>, []),
     SearchResults = [{ecallmgr_fs_node:uuid_exists(NH, CallID), NH} || NH <- ecallmgr_fs_sup:node_handlers()],
     case was_uuid_found(SearchResults) of
-        {error, not_found} when length(SearchResults) =/= length(NodeList) ->                                                                                                                                                                                                                
+        {error, not_found} ->    
             ?LOG("no node found with call leg ~s, but we are not authoritative", [CallID]); 
-        {error, not_found} -> 
+        {error, does_not_exist} -> 
             ?LOG("no node found with call having leg ~s", [CallID]),
             Resp = [{<<"Call-ID">>, CallID}
                     ,{<<"Status">>, <<"terminated">>}
@@ -303,10 +301,23 @@ create_call_status_resp(Props, false) ->
      ,{<<"Presence-ID">>, props:get_value(<<"variable_presence_id">>, Props)}
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)].
 
--spec was_uuid_found/1 :: ([{boolean(), pid()} | timeout,...]) -> {error, not_found} | {ok, pid()}.
-was_uuid_found([]) ->
+-spec was_uuid_found/1 :: ([{boolean(), pid()} | timeout,...]) -> {error, not_found} | 
+                                                                  {error, does_not_exist} | 
+                                                                  {ok, pid()}.
+-spec was_uuid_found/2 :: ([{boolean(), pid()} | timeout,...], integer()) -> {error, not_found} | 
+                                                                             {error, does_not_exist} | 
+                                                                             {ok, pid()}.
+was_uuid_found(NodeHandlers) ->
+    was_uuid_found(NodeHandlers, length(ecallmgr_config:get(<<"fs_nodes">>, []))).
+
+was_uuid_found([], 0) ->
+    {error, does_not_exist};
+was_uuid_found([], _) ->
     {error, not_found};
-was_uuid_found([{true, NodeHandler}|_]) ->
+was_uuid_found([{true, NodeHandler}|_], _) ->
     {ok, NodeHandler};
-was_uuid_found([_|NodeHandlers]) ->
-    was_uuid_found(NodeHandlers).
+was_uuid_found([{false, _}|NodeHandlers], Count) ->
+    was_uuid_found(NodeHandlers, Count - 1);
+was_uuid_found([_|NodeHandlers], Count) ->
+    was_uuid_found(NodeHandlers, Count).
+
