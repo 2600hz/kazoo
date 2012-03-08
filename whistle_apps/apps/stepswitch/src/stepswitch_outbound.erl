@@ -383,6 +383,7 @@ build_endpoint(Number, Gateway, _Delay) ->
             ,{<<"Route">>, stepswitch_util:get_dialstring(Gateway, Number)}
             ,{<<"Callee-ID-Name">>, wh_util:to_binary(Number)}
             ,{<<"Callee-ID-Number">>, wh_util:to_binary(Number)}
+            ,{<<"To-DID">>, wh_util:to_binary(Number)}
             ,{<<"Caller-ID-Type">>, Gateway#gateway.caller_id_type}
             ,{<<"Bypass-Media">>, Gateway#gateway.bypass_media}
             ,{<<"Endpoint-Progress-Timeout">>, wh_util:to_binary(Gateway#gateway.progress_timeout)}
