@@ -670,14 +670,20 @@ create_masquerade_event(Application, EventName) ->
 %%--------------------------------------------------------------------
 -spec get_bridge_endpoint/1 :: (wh_json:json_object()) -> binary().
 get_bridge_endpoint(JObj) ->
-    case ecallmgr_fs_xml:build_route(JObj, wh_json:get_value(<<"Invite-Format">>, JObj)) of
+    get_bridge_endpoint(JObj, wh_json:get_value(<<"Endpoint-Type">>, JObj, <<"sip">>), ecallmgr_fs_xml:get_leg_vars(JObj)).
+get_bridge_endpoint(JObj, <<"sip">>, CVs) ->
+    case ecallmgr_fs_xml:build_sip_route(JObj, wh_json:get_value(<<"Invite-Format">>, JObj)) of
         {'error', 'timeout'} ->
             lager:debug("unable to build route to endpoint"),
             <<>>;
         EndPoint ->
-            CVs = ecallmgr_fs_xml:get_leg_vars(JObj),
             list_to_binary([CVs, EndPoint])
-    end.
+    end;
+get_bridge_endpoint(JObj, <<"freetdm">>, CVs) ->
+    Endpoint = ecallmgr_fs_xml:build_freetdm_route(JObj),
+    lager:info("freetdm endpoint: ~p", [Endpoint]),
+    lager:info("freetdm ccvs: ~p", [CVs]),
+    list_to_binary([CVs, Endpoint]).
 
 %%--------------------------------------------------------------------
 %% @private

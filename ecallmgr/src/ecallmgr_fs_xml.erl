@@ -1,15 +1,18 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
 %%% @copyright (C) 2011, VoIP INC
 %%% @doc
 %%% Generate the XML for various FS responses
 %%% @end
-%%% Created : 25 Mar 2011 by James Aimonetti <james@2600hz.org>
+%%% @contributors
+%%%   James Aimonetti
+%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(ecallmgr_fs_xml).
 
--export([route_resp_xml/1, build_route/2, get_leg_vars/1, get_channel_vars/1, 
-         get_channel_vars/2, authn_resp_xml/1, config_acl_xml/1]).
+-export([build_sip_route/2, build_freetdm_route/1
+         ,get_leg_vars/1, get_channel_vars/1, get_channel_vars/2
+         ,route_resp_xml/1 ,authn_resp_xml/1, config_acl_xml/1
+        ]).
 
 -include("ecallmgr.hrl").
 
@@ -66,11 +69,11 @@ config_acl_xml({struct, Acls}) ->
 %% Prop = Route Response
 -spec route_resp_xml/3 :: (binary(), wh_json:json_objects(), wh_json:json_object()) -> {'ok', iolist()}.
 route_resp_xml(<<"bridge">>, Routes, _JObj) ->
-    lager:debug("Creating a bridge XML response"),
+    lager:debug("creating a bridge XML response"),
     %% format the Route based on protocol
     {_Idx, Extensions, Errors} = lists:foldr(
                                    fun(RouteJObj, {Idx, Acc, ErrAcc}) ->
-                                           case build_route(RouteJObj, wh_json:get_value(<<"Invite-Format">>, RouteJObj)) of
+                                           case build_sip_route(RouteJObj, wh_json:get_value(<<"Invite-Format">>, RouteJObj)) of
                                                {error, timeout} ->
                                                    {Idx+1, Acc, ErrAcc};
                                                Route ->
@@ -113,17 +116,17 @@ route_resp_xml(<<"error">>, _Routes, JObj) ->
     lager:debug("Creating error XML: ~s", [Xml]),
     {ok, lists:flatten(Xml)}.
 
--spec build_route/2 :: (proplist() | wh_json:json_object(), DIDFormat :: binary()) -> binary() | {'error', 'timeout'}.
-build_route(Route, undefined) ->
-    build_route(Route, <<"username">>);
-build_route([_|_]=RouteProp, DIDFormat) ->
-    build_route(wh_json:from_list(RouteProp), DIDFormat);
-build_route(RouteJObj, <<"route">>) ->
+-spec build_sip_route/2 :: (proplist() | wh_json:json_object(), ne_binary() | 'undefined') -> ne_binary() | {'error', 'timeout'}.
+build_sip_route(Route, undefined) ->
+    build_sip_route(Route, <<"username">>);
+build_sip_route([_|_]=RouteProp, DIDFormat) ->
+    build_sip_route(wh_json:from_list(RouteProp), DIDFormat);
+build_sip_route(RouteJObj, <<"route">>) ->
     case wh_json:get_value(<<"Route">>, RouteJObj) of
         <<"sip:", _/binary>> = R1 -> <<?SIP_INTERFACE, (R1)/binary>>;
         R2 -> R2
     end;
-build_route(RouteJObj, <<"username">>) ->
+build_sip_route(RouteJObj, <<"username">>) ->
     User = wh_json:get_value(<<"To-User">>, RouteJObj),
     Realm = wh_json:get_value(<<"To-Realm">>, RouteJObj),
     case ecallmgr_registrar:lookup(Realm, User, [<<"Contact">>]) of
@@ -134,7 +137,7 @@ build_route(RouteJObj, <<"username">>) ->
             lager:debug("failed to lookup user ~s@~s in the registrar", [User, Realm]),
             E
     end;
-build_route(RouteJObj, DIDFormat) ->
+build_sip_route(RouteJObj, DIDFormat) ->
     User = wh_json:get_value(<<"To-User">>, RouteJObj),
     Realm = wh_json:get_value(<<"To-Realm">>, RouteJObj),
     DID = format_did(wh_json:get_value(<<"To-DID">>, RouteJObj), DIDFormat),
@@ -147,13 +150,28 @@ build_route(RouteJObj, DIDFormat) ->
             E
     end.
 
+build_freetdm_route(EndpointJObj) ->
+    Opts = wh_json:get_value(<<"Endpoint-Options">>, EndpointJObj, wh_json:new()),
+    Span = wh_json:get_binary_value(<<"Span">>, Opts, <<"1">>),
+    StartFrom = case wh_json:get_binary_value(<<"Channel-Selection">>, Opts) of
+                    <<"descending">> -> <<"A">>;
+                    _ -> <<"a">>
+                end,
+    DID = format_did(wh_json:get_binary_value(<<"To-DID">>, EndpointJObj), wh_json:get_value(<<"Invite-Format">>, EndpointJObj, <<"e164">>)),
+
+    lager:debug("freetdm/span: ~s/start: ~s/DID: ~s", [Span, StartFrom, DID]),
+
+    [<<"freetdm/">>, Span, <<"/">>, StartFrom, <<"/">>, DID].
+
 -spec format_did/2 :: (ne_binary(), ne_binary()) -> ne_binary().
 format_did(DID, <<"e164">>) ->
     wnm_util:to_e164(DID);
 format_did(DID, <<"npan">>) ->
     wnm_util:to_npan(DID);
 format_did(DID, <<"1npan">>) ->
-    wnm_util:to_1npan(DID).
+    wnm_util:to_1npan(DID);
+format_did(DID, _) ->
+    DID.
 
 -spec get_leg_vars/1 :: (wh_json:json_object() | proplist()) -> [nonempty_string(),...].
 get_leg_vars([_|_]=Prop) ->

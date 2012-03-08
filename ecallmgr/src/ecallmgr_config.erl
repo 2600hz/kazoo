@@ -51,8 +51,6 @@ get(Key0, Default, Node0) ->
 
             case ecallmgr_amqp_pool:get_req(Req) of
                 {ok, RespJObj} ->
-                    lager:debug("received resp: ~p", [RespJObj]),
-
                     true = wapi_sysconf:get_resp_v(RespJObj),
                     V = case wh_json:get_value(<<"Value">>, RespJObj) of
                             undefined -> Default;
