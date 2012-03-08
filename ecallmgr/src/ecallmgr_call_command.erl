@@ -242,7 +242,7 @@ get_fs_app(_Node, _UUID, JObj, <<"say">>) ->
     end;
 
 get_fs_app(Node, UUID, JObj, <<"bridge">>) ->
-    Endpoints = wh_json:get_json_value(<<"Endpoints">>, JObj, []),
+    Endpoints = wh_json:get_ne_value(<<"Endpoints">>, JObj, []),
     case wapi_dialplan:bridge_v(JObj) of
         false -> {'error', <<"bridge failed to execute as JObj did not validate">>};
         true when Endpoints =:= [] -> {'error', <<"bridge request had no endpoints">>};
