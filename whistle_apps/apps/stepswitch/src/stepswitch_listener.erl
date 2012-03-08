@@ -259,11 +259,6 @@ create_resrc(JObj) ->
     Id = wh_json:get_value(<<"_id">>, JObj),
     lager:debug("loading resource ~s", [Id]),
 
-    Gateways = case wh_json:get_value(<<"gateways">>, JObj) of
-                   undefined -> wh_json:get_value(<<"tdm_cards">>, JObj, []);
-                   Gs -> Gs
-               end,
-
     #resrc{id = Id
            ,rev =
                wh_json:get_value(<<"_rev">>, JObj)
@@ -277,7 +272,7 @@ create_resrc(JObj) ->
                [R2 || R1 <- wh_json:get_value(<<"rules">>, JObj, Default#resrc.rules)
                           ,(R2 = compile_rule(R1, Id)) =/= error]
            ,gateways =
-               [create_gateway(G, Id) || G <- Gateways,
+               [create_gateway(G, Id) || G <- wh_json:get_value(<<"gateways">>, JObj, []),
                                          wh_json:is_true(<<"enabled">>, G, 'true')]
            ,is_emergency =
                wh_json:is_true(<<"emergency">>, JObj)
