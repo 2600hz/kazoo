@@ -42,10 +42,8 @@ handle_req(JObj, Props) ->
                    {ok, _}=R1 -> response(R1, JObj);
                    {fail, _}=R2 -> response(R2, JObj);
                    {error, _}=R3 ->
-                       Error = response(R3, JObj),
-                       AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
                        lager:notice("error attempting global resources to ~s", [Number]),
-                       Error
+                       response(R3, JObj)
                end,
     wapi_offnet_resource:publish_resp(wh_json:get_value(<<"Server-ID">>, JObj), Response).
 
@@ -381,7 +379,7 @@ build_endpoint(Number, Gateway, _Delay) ->
     lager:debug("found resource ~s (~s)", [Gateway#gateway.resource_id, Route]),
 
     CCVs = [{<<"Resource-ID">>, Gateway#gateway.resource_id}],
-    Prop = [{<<"Invite-Format">>, <<"route">>}
+    Prop = [{<<"Invite-Format">>, Gateway#gateway.invite_format}
             ,{<<"Route">>, stepswitch_util:get_dialstring(Gateway, Number)}
             ,{<<"Callee-ID-Name">>, wh_util:to_binary(Number)}
             ,{<<"Callee-ID-Number">>, wh_util:to_binary(Number)}
@@ -393,6 +391,8 @@ build_endpoint(Number, Gateway, _Delay) ->
             ,{<<"Auth-Password">>, Gateway#gateway.password}
             ,{<<"SIP-Headers">>, Gateway#gateway.sip_headers}
             ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
+            ,{<<"Endpoint-Type">>, Gateway#gateway.endpoint_type}
+            ,{<<"Endpoint-Options">>, Gateway#gateway.endpoint_options}
            ],
     wh_json:from_list([ KV || {_, V}=KV <- Prop, V =/= 'undefined' andalso V =/= <<"0">>]).
 
