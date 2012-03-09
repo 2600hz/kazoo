@@ -21,28 +21,26 @@
 %%% wh_json:decode(<<"{\"foo\":true}">>) -> [{<<"foo">>, true}]
 %%%
 %%% @contributors
-%%% James Aimonetti <james@2600hz.org>
-%%% Karl Anderson <karl@2600hz.org>
-%%%
-%%% @end
-%%% Created : 23 Nov 2011 by James Aimonetti <james@2600hz.org>
+%%%   James Aimonetti <james@2600hz.org>
+%%%   Karl Anderson <karl@2600hz.org>
 %%%-------------------------------------------------------------------
 -module(wh_json_validator).
 
 -export([is_valid/2, is_valid_attribute/3]).
 
--compile([export_all]).
-
 -include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_log.hrl").
 -include_lib("whistle/include/wh_databases.hrl").
 
--type error_result() :: {ne_binary(), ne_binary()}.
--type error_results() :: [error_result(),...].
--type results() :: {'pass', wh_json:json_object()} | {'fail', wh_json:json_object()}.
--type attribute_results() :: 'true' | error_results().
--type error_acc() :: [] | [{[ne_binary(),...], ne_binary() },...].
--type jkey_acc() :: [] | [wh_json:json_string(),...].
+-type error_key() :: ne_binary() | [ne_binary(),...].
+-type error_tuple() :: {error_key(), ne_binary()}.
+-type error_proplist() :: [error_tuple(),...] | [].
+
+-type pass() :: {'pass', wh_json:json_object()}.
+-type fail() :: {'fail', {error_key(), ne_binary()} | wh_json:json_object() | error_proplist()}.
+
+-type error_acc() :: [] | [{[ne_binary(),...], ne_binary()},...].
+-type jkey_acc() :: wh_json:json_strings().
 
 -define(SIMPLE_TYPES, [<<"string">>,<<"number">>,<<"integer">>,<<"boolean">>,<<"object">>
                            ,<<"array">>,<<"null">>,<<"any">>]).
@@ -57,7 +55,7 @@
 -define(HOSTNAME_REGEX, <<"^[[\:alnum\:]-.]{1,}([.]([[\:alnum\:]_-]{1,}))$">>).
 
 %% Return true or [{JObjKey, ErrorMsg},...]
--spec is_valid/2 :: (wh_json:json_object(), ne_binary() | wh_json:json_object()) -> results().
+-spec is_valid/2 :: (wh_json:json_object(), ne_binary() | wh_json:json_object()) -> pass() | fail().
 is_valid(JObj, Schema) when is_binary(Schema) ->
     %% TODO: cache the schema?
     case couch_mgr:open_doc(?WH_SCHEMA_DB, Schema) of
@@ -88,8 +86,11 @@ format_errors(Errors) ->
 
 format_errors([], JObj) ->
     JObj;
-format_errors([{K, V}|T], JObj) ->
+format_errors([{K, V}|T], JObj) when is_list(K) ->
     Property = wh_util:binary_join(K, <<".">>),
+    [Attr, Msg] = binary:split(V, <<":">>),
+    format_errors(T, wh_json:set_value([Property, Attr], Msg, JObj));
+format_errors([{Property, V}|T], JObj) ->
     [Attr, Msg] = binary:split(V, <<":">>),
     format_errors(T, wh_json:set_value([Property, Attr], Msg, JObj)).
 
@@ -102,9 +103,9 @@ format_errors([{K, V}|T], JObj) ->
 %%   },
 %%   ...
 %% }
--spec are_valid_properties/2 :: (wh_json:json_object(), wh_json:json_object()) -> attribute_results().
--spec are_valid_properties/3 :: (wh_json:json_object(), [] | [ne_binary(),...], wh_json:json_object()) -> attribute_results().
--spec are_valid_properties/4 :: (wh_json:json_object(), jkey_acc(), error_acc(), wh_json:json_object()) -> attribute_results().
+-spec are_valid_properties/2 :: (wh_json:json_object(), wh_json:json_object()) -> pass() | fail().
+-spec are_valid_properties/3 :: (wh_json:json_object(), [] | [ne_binary(),...], wh_json:json_object()) -> pass() | fail().
+-spec are_valid_properties/4 :: (wh_json:json_object(), jkey_acc(), error_acc(), wh_json:json_proplist()) -> pass() | fail().
 
 are_valid_properties(JObj, Schema) ->
     PropertiesJObj = wh_json:get_value(<<"properties">>, Schema, wh_json:new()),
@@ -159,8 +160,8 @@ are_valid_properties(JObj, Path, Errors, [{Property, AttributesJObj}|T]) ->
 %% JObj = {..., "name":"Mal Reynolds",...}
 %% Key = "name"
 %% AttributesJObj = {"type":"string"}
--spec are_valid_attributes/3 :: (wh_json:json_object(), jkey_acc(), wh_json:json_object()) -> attribute_results().
--spec are_valid_attributes/5 :: (wh_json:json_object(), jkey_acc(), wh_json:json_object(), error_acc(), proplist()) -> attribute_results().
+-spec are_valid_attributes/3 :: (wh_json:json_object(), jkey_acc(), wh_json:json_object()) -> pass() | fail().
+-spec are_valid_attributes/5 :: (wh_json:json_object(), jkey_acc(), wh_json:json_object(), error_acc(), proplist()) -> pass() | fail().
 
 are_valid_attributes(JObj, Key, AttributesJObj) ->
     %% 5.7 - testing here for required saves lots of work....
@@ -194,8 +195,8 @@ are_valid_attributes(JObj, Key, AttributesJObj, Errors, [{AttributeKey, Attribut
 %% "type" : string | number | integer | float | boolean | array | object | null | any | user-defined
 %%          The last two (any and user-defined) are automatically considered valid
 %%
--spec is_valid_attribute/3 :: ({wh_json:json_string(), term(), wh_json:json_object()}, wh_json:json_object(), jkey_acc()) ->
-                                      {'pass', wh_json:json_object()} | {'fail', {jkey_acc(), ne_binary()}}.
+%% {'pass', wh_json:json_object()} | {'fail', {jkey_acc(), ne_binary()}}
+-spec is_valid_attribute/3 :: ({wh_json:json_string(), term(), wh_json:json_object()}, wh_json:json_object(), jkey_acc()) -> pass() | fail().
 
 %% 5.1
 is_valid_attribute({<<"type">>, [], _}, _, Key) ->
@@ -227,12 +228,10 @@ is_valid_attribute({<<"additionalProperties">>, _, _}, JObj, _Key) ->
 %% 5.5
 is_valid_attribute({<<"items">>, Items, _}, JObj, Key) ->
     Instance = wh_json:get_value(Key, JObj),
-    case {check_valid_type(Instance, <<"array">>), are_valid_items(Instance, Items)} of
-        {false, _} -> 
-            {pass, JObj};
-        {true, true} -> 
-            {pass, JObj};
-        {true, Error} ->
+    case (not check_valid_type(Instance, <<"array">>)) andalso are_valid_items(Instance, Items) of
+        true ->
+            {pass, JObj}; % true if check_valid_type/2 is false, or are_valid_items/2 returns true
+        Error ->
             {fail, {Key, list_to_binary([<<"items:">>, Error])}}
     end;
 
@@ -494,7 +493,7 @@ is_valid_attribute(_, JObj, _) ->
 %%% Helper functions
 %%
 -spec are_unique_items/1 :: (list()) -> 'true' | ne_binary().
--spec are_unique_items/2 :: (list(), undefined | ne_binary()) -> 'true' | ne_binary().
+-spec are_unique_items/2 :: (list(), 'undefined' | ne_binary()) -> 'true' | ne_binary().
 
 are_unique_items(Instance) ->
     try lists:usort(fun are_same_items/2, Instance) of
@@ -515,7 +514,7 @@ are_unique_items(Instance, TryUnique) ->
     end.
 
 %% will throw an exception if A and B are identical
--spec are_same_items/2 :: (term(), term()) -> false.
+-spec are_same_items/2 :: (term(), term()) -> 'false'.
 %% are_same_items(A, A) -> throw({duplicate_found, A});
 are_same_items(A, B) ->
     Funs = [ fun are_null/2
@@ -743,7 +742,7 @@ is_valid_format(_,_) ->
 %% Items: [ json_term(),...]
 %% SchemaItemsJObj: {"type":"some_type", properties:{"prop1":{"attr1key":"attr1val",...},...},...}
 %%  or could be a list of schemas
--spec are_valid_items/2 :: (list(), wh_json:json_object() | wh_json:json_objects()) -> attribute_results().
+-spec are_valid_items/2 :: (list(), wh_json:json_object() | wh_json:json_objects()) -> 'true'. %attribute_results().
 are_valid_items(_Items, _SchemaItemsJObj) ->
     _ItemType = wh_json:get_value(<<"type">>, _SchemaItemsJObj, <<"any">>),
     _ItemSchemaJObj = wh_json:get_value(<<"items">>, _SchemaItemsJObj, wh_json:new()),

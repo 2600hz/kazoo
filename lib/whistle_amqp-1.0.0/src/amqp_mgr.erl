@@ -68,7 +68,7 @@ publish(BP, AM) ->
 consume(BC) ->
     gen_server:call(?SERVER, {consume, BC}).
 
--spec misc_req/1 :: (amqp_host:mic_records()) -> 'ok' | {'error', atom()}.
+-spec misc_req/1 :: (amqp_host:misc_records()) -> 'ok' | {'error', atom()}.
 misc_req(Req) ->
     gen_server:call(?SERVER, {misc_req, Req}).
 

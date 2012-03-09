@@ -50,9 +50,9 @@
           connection = 'undefined' :: 'undefined' | {pid(), reference()}
           ,publish_channel = 'undefined' :: 'undefined' | channel_data()
           ,misc_channel = 'undefined' :: 'undefined' | channel_data()
-          ,consumers = dict:new() :: amqp_host:dict(pid(), consumer_data())
+          ,consumers = dict:new() :: dict()
           ,use_federation = 'true' :: boolean()
-          ,return_handlers = dict:new() %% ref, pid() - list of PIDs that are interested in returned messages
+          ,return_handlers = dict:new() :: dict() %% ref, pid() - list of PIDs that are interested in returned messages
           ,manager = 'undefined' :: 'undefined' | pid()
           ,amqp_h = 'undefined' :: 'undefined' | binary()
          }).

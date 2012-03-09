@@ -7,28 +7,28 @@
 
 %%
 start(_Type, _Args) ->
-    start_deps(),
+    _ = start_deps(),
     whistle_couch_sup:start_link().
 
 %% @spec start_link() -> {ok,Pid::pid()}
 %% @doc Starts the app for inclusion in a supervisor tree
 start_link() ->
-    start_deps(),
+    _ = start_deps(),
     whistle_couch_sup:start_link().
 
 %% @spec start() -> ok
 %% @doc Start the couch server.
 start() ->
-    start_deps(),
+    _ = start_deps(),
     application:start(whistle_couch).
 
 start_deps() ->
     whistle_couch_deps:ensure(?MODULE),
-    wh_util:ensure_started(sasl),
-    wh_util:ensure_started(crypto),
-    wh_util:ensure_started(riak_err),
-    wh_util:ensure_started(ibrowse),
-    wh_util:ensure_started(couchbeam).
+    ok = wh_util:ensure_started(sasl),
+    ok = wh_util:ensure_started(crypto),
+    ok = wh_util:ensure_started(riak_err),
+    ok = wh_util:ensure_started(ibrowse),
+    ok = wh_util:ensure_started(couchbeam).
 
 %% @spec stop() -> ok
 %% @doc Stop the couch server.
