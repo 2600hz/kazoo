@@ -16,3 +16,5 @@ lib/erlydtl*/src/erlydtl_parser.erl
 utils/*/ebin/*.beam
 utils/*/ebin/*.app
 .*_dialyzer.plt
+#*
+.#*
