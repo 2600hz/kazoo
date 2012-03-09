@@ -29,8 +29,8 @@
 -spec temporal_rules/1 :: (whapps_call:call()) -> wh_json:json_objects().
 temporal_rules(Call) ->
     AccountDb = whapps_call:account_db(Call),
-    case couch_mgr:get_results(AccountDb, {<<"cf_attributes">>, <<"temporal_rules">>}
-                               ,[{<<"include_docs">>, true}]) of
+    case couch_mgr:get_results(AccountDb, <<"cf_attributes/temporal_rules">>
+                                   ,[{<<"include_docs">>, true}]) of
         {ok, JObjs} -> JObjs;
         {error, _} -> []
     end.
@@ -54,10 +54,10 @@ call_forward(EndpointId, Call) ->
 
 call_forward(EndpointId, OwnerId, Call) ->
     AccountDb = whapps_call:account_db(Call),
-    CallFwd = case couch_mgr:get_all_results(AccountDb, {<<"cf_attributes">>, <<"call_forward">>}) of
-                  {ok, JObj} ->
+    CallFwd = case couch_mgr:get_all_results(AccountDb, <<"cf_attributes/call_forward">>) of
+                  {ok, JObjs} ->
                       [{Key, wh_json:get_value(<<"value">>, CF)}
-                       || CF <- JObj
+                       || CF <- JObjs
                               ,wh_json:is_true([<<"value">>, <<"enabled">>], CF)
                               ,(begin
                                     Key = wh_json:get_value(<<"key">>, CF),
@@ -71,9 +71,12 @@ call_forward(EndpointId, OwnerId, Call) ->
               end,
     case props:get_value(EndpointId, CallFwd) of
         undefined ->
-            Fwd = props:get_value(OwnerId, CallFwd),
-            Fwd =/= undefined andalso lager:debug("found enabled call forwarding on ~s", [OwnerId]),
-            Fwd;
+            case props:get_value(OwnerId, CallFwd) of
+                undefined -> undefined;
+                Fwd ->
+                    lager:debug("found enabled call forwarding on ~s", [OwnerId]),
+                    Fwd
+            end;
         Fwd ->
             lager:debug("found enabled call forwarding on ~s", [EndpointId]),
             Fwd
@@ -401,10 +404,8 @@ presence_id(undefined, _) ->
     undefined;
 presence_id(EndpointId, Call) when is_binary(EndpointId) ->
     case cf_endpoint:get(EndpointId, Call) of
-        {ok, Endpoint} ->
-            presence_id(Endpoint, Call);
-        {error, _} ->
-            undefined
+        {ok, Endpoint} -> presence_id(Endpoint, Call);
+        {error, _} -> undefined
     end;
 presence_id(Endpoint, Call) ->
     <<(wh_json:get_binary_value([<<"sip">>, <<"username">>], Endpoint, whapps_call:request_user(Call)))/binary
@@ -415,7 +416,7 @@ presence_id(Endpoint, Call) ->
 %% @doc
 %% @end
 %%-----------------------------------------------------------------------------
--spec search_attributes/3 :: (cf_api_binary(), [ne_binary(),...] | [], proplist()) -> 'undefined' | {ne_binary(), ne_binary()}.
+-spec search_attributes/3 :: (cf_api_binary(), [ne_binary(),...] | [], proplist()) -> 'undefined' | {ne_binary(), ne_binary() | wh_json:json_object()}.
 search_attributes(_, _, []) ->
     undefined;
 search_attributes(_, [], _) ->
@@ -435,7 +436,7 @@ search_attributes(Attribute, [Id|T], Attributes) ->
 %% @doc
 %% @end
 %%-----------------------------------------------------------------------------
--spec fetch_sub_key/3 :: (cf_api_binary(), cf_api_binary(), proplist()) -> cf_api_binary().
+-spec fetch_sub_key/3 :: (cf_api_binary(), cf_api_binary(), proplist()) -> cf_api_binary() | wh_json:json_object().
 fetch_sub_key(Attribute, Id, Attributes) ->
     fetch_sub_key(Attribute, props:get_value(Id, Attributes)).
 fetch_sub_key(_, undefined) ->
@@ -455,10 +456,10 @@ fetch_attributes(Attribute, Call) ->
         {ok, Attributes} ->
             Attributes;
         {error, not_found} ->
-            case couch_mgr:get_all_results(AccountDb, {<<"cf_attributes">>, wh_util:to_binary(Attribute)}) of
+            case couch_mgr:get_all_results(AccountDb, <<"cf_attributes/", (wh_util:to_binary(Attribute))/binary>>) of
                 {ok, JObjs} ->
                     Props = [{wh_json:get_value(<<"key">>, JObj), wh_json:get_value(<<"value">>, JObj)}
-                                  || JObj <- JObjs],
+                             || JObj <- JObjs],
                     wh_cache:store({?MODULE, AccountDb, Attribute}, Props, 900),
                     Props;
                 {error, R} ->

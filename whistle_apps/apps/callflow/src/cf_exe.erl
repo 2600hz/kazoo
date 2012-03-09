@@ -162,14 +162,14 @@ control_queue(Call) ->
 control_queue(_, Call) ->
     control_queue(Call).
 
--spec get_branch_keys/1 :: (whapps_call:call() | pid()) -> {branch_keys, [ne_binary(),...]}.
+-spec get_branch_keys/1 :: (whapps_call:call() | pid()) -> {branch_keys, wh_json:json_strings()}.
 get_branch_keys(Srv) when is_pid(Srv) ->
     gen_listener:call(Srv, {get_branch_keys});
 get_branch_keys(Call) ->
     Srv = whapps_call:kvs_fetch(cf_exe_pid, Call),
     get_branch_keys(Srv).
 
--spec get_all_branch_keys/1 :: (whapps_call:call() | pid()) -> {branch_keys, [ne_binary(),...]}.
+-spec get_all_branch_keys/1 :: (whapps_call:call() | pid()) -> {branch_keys, wh_json:json_strings()}.
 get_all_branch_keys(Srv) when is_pid(Srv) ->
     gen_listener:call(Srv, {get_branch_keys, all});
 get_all_branch_keys(Call) ->
@@ -267,12 +267,12 @@ handle_call({callid}, _From, #state{call=Call}=State) ->
 handle_call({control_queue_name}, _From, #state{call=Call}=State) ->
     {reply, whapps_call:control_queue_direct(Call), State};
 handle_call({get_branch_keys}, _From, #state{flow = Flow}=State) ->
-    {struct, Children} = wh_json:get_value(<<"children">>, Flow, wh_json:new()),
-    Reply = {branch_keys, lists:delete(<<"_">>, proplists:get_keys(Children))},
+    Children = wh_json:get_value(<<"children">>, Flow, wh_json:new()),
+    Reply = {branch_keys, lists:delete(<<"_">>, wh_json:get_keys(Children))},
     {reply, Reply, State};
 handle_call({get_branch_keys, all}, _From, #state{flow = Flow}=State) ->
-    {struct, Children} = wh_json:get_value(<<"children">>, Flow, wh_json:new()),
-    Reply = {branch_keys, proplists:get_keys(Children)},
+    Children = wh_json:get_value(<<"children">>, Flow, wh_json:new()),
+    Reply = {branch_keys, wh_json:get_keys(Children)},
     {reply, Reply, State};
 handle_call({attempt, Key}, _From, #state{flow = Flow}=State) ->
     case wh_json:get_value([<<"children">>, Key], Flow) of

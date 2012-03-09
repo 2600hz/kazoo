@@ -42,6 +42,6 @@ stop() ->
 -spec start_deps/0 :: () -> 'ok'.
 start_deps() ->
     whistle_apps_deps:ensure(?MODULE), % if started by the whistle_controller, this will exist
-    wh_util:ensure_started(sasl), % logging
-    wh_util:ensure_started(crypto), % random
+    ok = wh_util:ensure_started(sasl), % logging
+    ok = wh_util:ensure_started(crypto), % random
     wh_util:ensure_started(whistle_amqp). % amqp wrapper

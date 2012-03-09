@@ -107,8 +107,8 @@ bridge_to_endpoints(Devices, Data, Call) ->
 %% 3y) Is the pin valid?
 %% 3n) Login
 %%--------------------------------------------------------------------
--spec login/3 :: ([ne_binary(),...], #hotdesk{}, whapps_call:call()) -> ok.
--spec login/5 :: ([ne_binary(),...], #hotdesk{}, undefined | ne_binary(), whapps_call:call(), non_neg_integer()) -> ok.
+-spec login/3 :: ([ne_binary(),...] | [], #hotdesk{}, whapps_call:call()) -> ok.
+-spec login/5 :: ([ne_binary(),...] | [], #hotdesk{}, undefined | ne_binary(), whapps_call:call(), non_neg_integer()) -> ok.
 
 login(Devices, H, Call) ->
     login(Devices, H, whapps_call:authorizing_id(Call), Call, 1).
@@ -152,18 +152,18 @@ login(Devices, #hotdesk{require_pin=false}=H, _, Call, _) ->
 %% 3) Infrom the user
 %% @end
 %%--------------------------------------------------------------------
--spec do_login/3 :: ([ne_binary(),...], #hotdesk{}, whapps_call:call()) -> ok.
+-spec do_login/3 :: ([ne_binary(),...] | [], #hotdesk{}, whapps_call:call()) -> ok.
 do_login(_, #hotdesk{keep_logged_in_elsewhere=true, owner_id=OwnerId, prompts=#prompts{hotdesk_login=HotdeskLogin, goodbye=Bye}}, Call) ->
     %% keep logged in elsewhere, so we update only the device used to call
-    {ok, _} = set_device_owner(OwnerId, whapps_call:authorizing_id(Call), Call),
+    ok = set_device_owner(OwnerId, whapps_call:authorizing_id(Call), Call),
     whapps_call_command:b_play(HotdeskLogin, Call),
     whapps_call_command:b_play(Bye, Call),
     ok;
 do_login(Devices, #hotdesk{keep_logged_in_elsewhere=false, owner_id=OwnerId
                            ,prompts=#prompts{hotdesk_login=HotdeskLogin, goodbye=Bye}}, Call) ->
     %% log out from owned devices , since we don't want to keep logged in elsewhere, then log unto the device currently used
-    logout_from_elsewhere(Devices, Call),
-    {ok, _} = set_device_owner(OwnerId, whapps_call:authorizing_id(Call), Call),
+    _ = logout_from_elsewhere(Devices, Call),
+    ok = set_device_owner(OwnerId, whapps_call:authorizing_id(Call), Call),
     whapps_call_command:b_play(HotdeskLogin, Call),
     whapps_call_command:b_play(Bye, Call),
     ok.
@@ -181,15 +181,15 @@ do_login(Devices, #hotdesk{keep_logged_in_elsewhere=false, owner_id=OwnerId
 %% 3) Infrom the user
 %% @end
 %%--------------------------------------------------------------------
--spec logout/3 :: ([ne_binary(),...], #hotdesk{}, whapps_call:call()) -> ok.
+-spec logout/3 :: ([ne_binary(),...], #hotdesk{}, whapps_call:call()) -> 'ok'.
 logout(_, #hotdesk{keep_logged_in_elsewhere=true, prompts=#prompts{hotdesk_logout=HotdeskLogout, goodbye=Bye}}, Call) ->
-    {ok, _} = set_device_owner(undefined, whapps_call:authorizing_id(Call), Call),
+    ok = set_device_owner(undefined, whapps_call:authorizing_id(Call), Call),
     whapps_call_command:b_play(HotdeskLogout, Call),
     whapps_call_command:b_play(Bye, Call),
     ok;
 logout(Devices, #hotdesk{keep_logged_in_elsewhere=false, prompts=#prompts{hotdesk_logout=HotdeskLogout, goodbye=Bye}}, Call) ->
-    logout_from_elsewhere(Devices, Call),
-    {ok, _} = set_device_owner(undefined, whapps_call:authorizing_id(Call), Call),
+    _ = logout_from_elsewhere(Devices, Call),
+    ok = set_device_owner(undefined, whapps_call:authorizing_id(Call), Call),
     whapps_call_command:b_play(HotdeskLogout, Call),
     whapps_call_command:b_play(Bye, Call),
     ok.
@@ -257,10 +257,9 @@ get_hotdesk_profile(OwnerId, Call, _) ->
 %% Reset owner_id for all specified devices
 %% @end
 %%--------------------------------------------------------------------
--spec logout_from_elsewhere/2 :: (ne_binary(), [ne_binary(),...]) -> ok.
+-spec logout_from_elsewhere/2 :: ([ne_binary(),...], whapps_call:call()) -> any().
 logout_from_elsewhere(Devices, Call) ->
-    [set_device_owner(undefined, Device, Call) || Device <- Devices],
-    ok.
+    [set_device_owner(undefined, Device, Call) || Device <- Devices].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -268,26 +267,24 @@ logout_from_elsewhere(Devices, Call) ->
 %% Set owner id for a specified device
 %% @end
 %%--------------------------------------------------------------------
--spec set_device_owner/3 :: (undefined | ne_binary(), ne_binary(), whapps_call:call()) -> ok.
+-spec set_device_owner/3 :: ('undefined' | ne_binary(), ne_binary(), whapps_call:call()) -> 'ok'.
 set_device_owner(undefined, Device, Call) ->
     AccountDb = whapps_call:account_db(Call),
-    case couch_mgr:open_doc(AccountDb, Device) of
-        {ok, JObj} -> 
-            lager:debug("removing owner id from device ~s in ~s", [Device, AccountDb]),
-            couch_mgr:save_doc(AccountDb, wh_json:delete_key(<<"owner_id">>, JObj)),
-            ok;
-        {error, R} -> 
-            lager:debug("failed to load device ~s in ~s: ~p", [Device, AccountDb, R]),
-            ok
-    end;
+    _ = case couch_mgr:open_doc(AccountDb, Device) of
+            {ok, JObj} -> 
+                lager:debug("removing owner id from device ~s in ~s", [Device, AccountDb]),
+                couch_mgr:save_doc(AccountDb, wh_json:delete_key(<<"owner_id">>, JObj));
+            {error, R} -> 
+                lager:debug("failed to load device ~s in ~s: ~p", [Device, AccountDb, R])
+        end,
+    ok;
 set_device_owner(OwnerId, Device, Call) ->
     AccountDb = whapps_call:account_db(Call),
-    case couch_mgr:open_doc(AccountDb, Device) of
-        {ok, JObj} -> 
-            lager:debug("setting owner id to ~s on device ~s in ~s", [OwnerId, Device, AccountDb]),
-            couch_mgr:save_doc(AccountDb, wh_json:set_value(<<"owner_id">>, OwnerId, JObj)),
-            ok;
-        {error, R} -> 
-            lager:debug("failed load device ~s in ~s: ~p", [Device, AccountDb, R]),
-            ok
-    end.
+    _ = case couch_mgr:open_doc(AccountDb, Device) of
+            {ok, JObj} -> 
+                lager:debug("setting owner id to ~s on device ~s in ~s", [OwnerId, Device, AccountDb]),
+                couch_mgr:save_doc(AccountDb, wh_json:set_value(<<"owner_id">>, OwnerId, JObj));
+            {error, R} -> 
+                lager:debug("failed load device ~s in ~s: ~p", [Device, AccountDb, R])
+        end,
+    ok.

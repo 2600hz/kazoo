@@ -26,7 +26,9 @@ handle(Data, Call) ->
 
     case try_collect_pin(Call, Pin, Retries) of
         allow -> allow_dial(Call, Retries);
-        _ -> cf_exe:hangup(Call)
+        _ ->
+            whapps_call_command:hangup(Call),
+            cf_exe:stop(Call)
     end.
 
 try_collect_pin(_Call, <<>>, _) ->

@@ -76,6 +76,20 @@ build(Endpoint, Properties, Call) ->
 %%--------------------------------------------------------------------
 -spec create_endpoints/3 :: (wh_json:json_object(), wh_json:json_object(), whapps_call:call()) -> {'ok', wh_json:json_objects()} |
                                                                                                   {'error', 'no_endpoints'}.
+
+{_, _, 'undefined'}
+
+{'false',
+ boolean(),
+ {'struct',[{atom() | <<_:8,_:_*8>>,atom() | binary() | [atom() | binary() | [any()] | number() | {_,_}] | number() | {'json',maybe_improper_list(any(),binary() | [])} | {'struct',[any()]}}]}
+}
+
+{'true',
+ boolean(),
+ {'struct',[{atom() | <<_:8,_:_*8>>,atom() | binary() | [atom() | binary() | [any()] | number() | {_,_}] | number() | {'json',maybe_improper_list(any(),binary() | [])} | {'struct',[any()]}}]}
+}
+
+
 create_endpoints(Endpoint, Properties, Call) ->
     Fwd = cf_attributes:call_forward(Endpoint, Call),
     Substitue = wh_json:is_false(<<"substitute">>, Fwd),

@@ -21,7 +21,7 @@
 %% 
 %% @end
 %%--------------------------------------------------------------------
--spec presence_probe/2 :: (wh_json:json_object(), proplist()) -> ok.
+-spec presence_probe/2 :: (wh_json:json_object(), proplist()) -> any().
 presence_probe(JObj, _Props) ->
     ToUser = wh_json:get_value(<<"To-User">>, JObj),
     ToRealm = wh_json:get_value(<<"To-Realm">>, JObj),
@@ -31,8 +31,7 @@ presence_probe(JObj, _Props) ->
     ProbeRepliers = [fun presence_mwi_update/4
                      ,fun presence_parking_slot/4
                     ],
-    [Fun(Subscription, {FromUser, FromRealm}, {ToUser, ToRealm}, JObj) || Fun <- ProbeRepliers],
-    ok.
+    [Fun(Subscription, {FromUser, FromRealm}, {ToUser, ToRealm}, JObj) || Fun <- ProbeRepliers].
 
 -spec presence_mwi_update/4 :: (ne_binary(), {ne_binary(), ne_binary()}, {ne_binary(), ne_binary()}, wh_json:json_object()) -> ok.
 presence_mwi_update(<<"message-summary">>, {FromUser, FromRealm}, _, _) ->     
@@ -65,7 +64,7 @@ presence_parking_slot(_, {_, FromRealm}, {ToUser, ToRealm}, _) ->
     case whapps_util:get_account_by_realm(FromRealm) of
         {ok, AccountDb} ->
             AccountId = wh_util:format_account_id(AccountDb, raw),
-            lookup_callflow(ToUser, AccountId),
+            _ = lookup_callflow(ToUser, AccountId),
             case wh_cache:fetch({cf_flow, ToUser, AccountDb}) of
                 {error, not_found} -> ok;
                 {ok, Flow} ->
