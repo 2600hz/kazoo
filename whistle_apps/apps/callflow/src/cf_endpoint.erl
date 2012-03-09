@@ -76,6 +76,7 @@ build(Endpoint, Properties, Call) ->
 %%--------------------------------------------------------------------
 -spec create_endpoints/3 :: (wh_json:json_object(), wh_json:json_object(), whapps_call:call()) -> {'ok', wh_json:json_objects()} |
                                                                                                   {'error', 'no_endpoints'}.
+
 create_endpoints(Endpoint, Properties, Call) ->
     Fwd = cf_attributes:call_forward(Endpoint, Call),
     Substitue = wh_json:is_false(<<"substitute">>, Fwd),
