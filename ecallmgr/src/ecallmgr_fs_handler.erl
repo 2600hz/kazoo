@@ -54,7 +54,7 @@ start_link() ->
 -spec add_fs_node/2 :: (atom(), proplist()) -> 'ok' | {'error', 'no_connection'}.
 add_fs_node(Node) -> add_fs_node(Node, []).
 add_fs_node(Node, Opts) ->
-    gen_server:call(?MODULE, {add_fs_node, Node, Opts}, infinity).
+    gen_server:call(?MODULE, {add_fs_node, Node, Opts}).
 
 %% returns ok or {error, some_error_atom_explaining_more}
 -spec rm_fs_node/1 :: (atom()) -> 'ok'.
@@ -64,11 +64,11 @@ rm_fs_node(Node) ->
 %% calls all handlers and gets diagnostic info from them
 -spec diagnostics/0 :: () -> proplist().
 diagnostics() ->
-    gen_server:call(?MODULE, {diagnostics}, infinity).
+    gen_server:call(?MODULE, {diagnostics}).
 
 -spec is_node_up/1 :: (atom()) -> boolean().
 is_node_up(Node) ->
-    gen_server:call(?MODULE, {is_node_up, Node}, infinity).
+    gen_server:call(?MODULE, {is_node_up, Node}).
 
 %% Type - audio | video
 %% Options - Proplist
@@ -162,6 +162,10 @@ handle_call({diagnostics}, From, #state{fs_nodes=Nodes}=State) ->
                   gen_server:reply(From, Resp)
           end),
     {noreply, State};
+handle_call({add_fs_node, Node, Options}, {Pid, _}, #state{preconfigured_lookup=Pid}=State) ->
+    lager:debug("trying to add ~s", [Node]),
+    {Resp, State1} = add_fs_node(Node, check_options(Options), State),
+    {reply, Resp, State1, hibernate};
 handle_call({add_fs_node, Node, Options}, _From, #state{preconfigured_lookup=Pid}=State) ->
     lager:debug("trying to add ~s", [Node]),
     {Resp, State1} = add_fs_node(Node, check_options(Options), State),
