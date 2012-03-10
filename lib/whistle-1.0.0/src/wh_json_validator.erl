@@ -196,7 +196,7 @@ are_valid_attributes(JObj, Key, AttributesJObj, Errors, [{AttributeKey, Attribut
 %%          The last two (any and user-defined) are automatically considered valid
 %%
 %% {'pass', wh_json:json_object()} | {'fail', {jkey_acc(), ne_binary()}}
--spec is_valid_attribute/3 :: ({wh_json:json_string(), term(), wh_json:json_object()}, wh_json:json_object(), jkey_acc()) -> pass() | fail().
+-spec is_valid_attribute/3 :: ({wh_json:json_string(), wh_json:json_term(), wh_json:json_object()}, wh_json:json_object(), jkey_acc()) -> pass() | fail().
 
 %% 5.1
 is_valid_attribute({<<"type">>, [], _}, _, Key) ->
