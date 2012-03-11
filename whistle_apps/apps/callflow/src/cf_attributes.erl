@@ -138,8 +138,13 @@ caller_id(EndpointId, OwnerId, Attribute, Call) ->
                   undefined -> friendly_name(EndpointId, OwnerId, Call);
                   Name -> Name
               end,
-    lager:debug("using caller id ~s '~s'", [CIDNum, CIDName]),
-    {CIDNum, CIDName}.
+    
+    lager:debug("attempting to prepend caller id ~s '~s'", [CIDNum, CIDName]),
+    CIDNum1 = prepend_caller_id_number(Call, CIDNum),
+    CIDName1 = prepend_caller_id_name(Call, CIDName),
+
+    lager:debug("using caller id ~s '~s'", [CIDNum1, CIDName1]),
+    {CIDNum1, CIDName1}.
 
 %%-----------------------------------------------------------------------------
 %% @public
@@ -466,4 +471,32 @@ fetch_attributes(Attribute, Call) ->
                     lager:debug("unable to fetch attribute ~s: ~p", [Attribute, R]),
                     []
             end
+    end.
+
+%%-----------------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%-----------------------------------------------------------------------------
+-spec prepend_caller_id_name/2 :: (whapps_call:call(), ne_binary()) -> ne_binary().
+prepend_caller_id_name(Call, CIDName) ->
+    case whapps_call:kvs_fetch(prepend_cid_name, Call) of
+	undefined ->
+	    CIDName;
+	Prefix ->
+	    <<Prefix/binary, CIDName/binary>>
+    end.
+
+%%-----------------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%-----------------------------------------------------------------------------
+-spec prepend_caller_id_number/2 :: (whapps_call:call(), ne_binary()) -> ne_binary().
+prepend_caller_id_number(Call, CIDNum) ->
+    case whapps_call:kvs_fetch(prepend_cid_number, Call) of
+	undefined ->
+	    CIDNum;
+	Prefix ->
+	    <<Prefix/binary, CIDNum/binary>>
     end.
