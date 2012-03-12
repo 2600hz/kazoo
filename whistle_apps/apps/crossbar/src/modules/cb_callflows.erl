@@ -302,7 +302,7 @@ create_metadata(Doc) ->
 
 -spec numbers_are_unique/1 :: (#cb_context{}) -> #cb_context{}.
 numbers_are_unique(#cb_context{req_data=JObj}=Context) ->
-    numbers_are_unique(wh_json:get_value(<<"numbers">>, JObj), Context).
+    numbers_are_unique(wh_json:get_value(<<"numbers">>, JObj, []), Context).
 
 -spec numbers_are_unique/2 :: (wh_json:json_object(), #cb_context{}) -> #cb_context{}.    
 numbers_are_unique(_, #cb_context{db_name=undefined}=Context) ->
