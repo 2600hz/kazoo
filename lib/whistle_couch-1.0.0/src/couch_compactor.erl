@@ -1,10 +1,10 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2011, James Aimonetti
+%%% @copyright (C) 2011-2012, VoIP INC
 %%% @doc
 %%% Utilities to compact BigCouch clusters, nodes, and DBs
 %%% @end
-%%% Created :  8 Sep 2011 by James Aimonetti <james@2600hz.org>
+%%% @contributors
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(couch_compactor).
 
@@ -24,6 +24,8 @@ start_link() ->
     proc_lib:start_link(?MODULE, init, [self()], infinity, []).
 
 init(Parent) ->
+    put(callid, ?LOG_SYSTEM_ID),
+
     case {couch_config:fetch(compact_automatically, true), couch_config:fetch(conflict_strategy, null)} of
         {true, null} ->
             ?LOG_SYS("just compacting"),
@@ -39,7 +41,9 @@ init(Parent) ->
         {null, _Strategy} ->
             ?LOG_SYS("auto-compaction not enabled"),
             proc_lib:init_ack(Parent, ignore),
-            couch_config:store(compact_automatically, false)
+            couch_config:store(compact_automatically, false);
+        _Other ->
+            lager:debug("unexpected values for auto-compaction: ~p", [_Other])
     end.
 
 -spec compact_all/0 :: () -> 'done'.

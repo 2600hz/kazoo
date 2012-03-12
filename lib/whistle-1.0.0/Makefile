@@ -1,7 +1,8 @@
+ROOT = ../..
 DIALYZER = dialyzer
-REBAR = rebar
+REBAR = $(ROOT)/bin/rebar
 
-DIRS = lib/whistle-1.0.0 lib/whistle_couch-1.0.0 lib/whistle_amqp-1.0.0 lib/whistle_number_manager-1.0.0 ecallmgr whistle_apps
+DIRS =  .
 
 all: app
 
@@ -16,9 +17,7 @@ clean:
 	rm -f test/*.beam
 	rm -f erl_crash.dump
 
-tests: clean app eunit ct
-
-inttests: clean app eunit intct
+test: clean app eunit
 
 eunit:
 	@$(REBAR) eunit skip_deps=true

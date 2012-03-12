@@ -1,10 +1,11 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2010, James Aimonetti
+%%% @copyright (C) 2010-2012, VoIP INC
 %%% @doc
 %%% Manage CouchDB connections
 %%% @end
-%%% Created : 16 Sep 2010 by James Aimonetti <james@2600hz.org>
+%%% @contributors
+%%%   James Aimonetti
+%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(couch_mgr).
 
@@ -534,6 +535,7 @@ get_conn() ->
             ?LOG("no server by the name of ~s", [?SERVER]),
             ST = erlang:get_stacktrace(),
             ?LOG_STACKTRACE(ST),
+
             exit(couch_mgr_died)
     end.
 
