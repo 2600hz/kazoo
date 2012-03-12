@@ -430,7 +430,7 @@ send_awesome_provisioning_request(ProvisionRequest, MACAddress) ->
               ],
     Body = wh_json:encode(ProvisionRequest),
     HTTPOptions = [],
-    lager:debug("provisioning via ~s with settings ~s", [UrlString, Body]),
+    lager:debug("provisioning via ~s", [UrlString]),
     case ibrowse:send_req(UrlString, Headers, post, Body, HTTPOptions) of
         {ok, "200", _, Response} ->
             lager:debug("SUCCESS! BOOM! ~s", [Response]);
