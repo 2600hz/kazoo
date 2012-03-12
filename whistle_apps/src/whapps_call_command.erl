@@ -1227,6 +1227,8 @@ wait_for_headless_application(Application, Event, Type, Timeout) ->
 %%--------------------------------------------------------------------
 -spec wait_for_dtmf/1 :: ('infinity' | pos_integer()) -> {'error', 'channel_hungup' | wh_json:json_object()} | {'ok', binary()}.
 wait_for_dtmf(Timeout) ->
+    lager:debug("waiting ~p for DTMF", [Timeout]),
+
     Start = erlang:now(),
     receive
         {amqp_msg, {struct, _}=JObj} ->
@@ -1246,11 +1248,14 @@ wait_for_dtmf(Timeout) ->
                     wait_for_dtmf(Timeout);
                 _ ->
                     DiffMicro = timer:now_diff(erlang:now(), Start),
+                    lager:debug("ignoring amqp jobj"),
                     wait_for_dtmf(Timeout - (DiffMicro div 1000))
             end;
-        _ when Timeout =:= infinity ->
+        _E when Timeout =:= infinity ->
+            lager:debug("unexpected ~p", [_E]),
             wait_for_dtmf(Timeout);
-        _ ->
+        _E ->
+            lager:debug("unexpected ~p", [_E]),
             %% dont let the mailbox grow unbounded if
             %%   this process hangs around...
             DiffMicro = timer:now_diff(erlang:now(), Start),
