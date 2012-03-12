@@ -2,6 +2,7 @@
 *.log*
 *.sasl
 */ebin/*.beam
+*/deps/*/ebin/*
 */ebin/*.app
 */priv/*.pid
 .eunit
