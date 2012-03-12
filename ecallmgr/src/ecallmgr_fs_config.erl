@@ -1,9 +1,11 @@
 %%%-------------------------------------------------------------------
-%%% @relaodaclor Edouard Swiac <edouard@2600hz.org>
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2012, VoIP INC
 %%% @doc
 %%% Send config commands to FS
 %%% @end
+%%% @contributors
+%%%   Edouard Swiac
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(ecallmgr_fs_config).
 
@@ -184,9 +186,11 @@ handle_config_req(Node, ID, FsConf, _Data) ->
                   _ = freeswitch:fetch_reply(Node, ID, ConfigXml)
               catch 
                   throw:_T ->
-                    lager:debug("config request failed: thrown ~w", [_T]);
+                      lager:debug("config request failed: thrown ~w", [_T]),
+                      _ = freeswitch:fetch_reply(Node, ID, ?EMPTYRESPONSE);
                   error:_E ->
-                    lager:debug("config request failed: error ~p", [_E])
+                      lager:debug("config request failed: error ~p", [_E]),
+                      _ = freeswitch:fetch_reply(Node, ID, ?EMPTYRESPONSE)
               end
           end),
     {ok, Pid}.
