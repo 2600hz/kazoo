@@ -404,7 +404,6 @@ handle_event(Payload, <<"application/erlang">>, BD, State) ->
     JObj = binary_to_term(Payload),
     process_req(State, JObj, BD).
 
-
 -spec process_req/3 :: (#state{}, wh_json:json_object(), #'basic.deliver'{}) -> #state{}.
 process_req(#state{responders=Responders, active_responders=ARs}=State, JObj, BD) ->
     case dedup_events(wh_util:get_event_type(JObj), JObj, State) of

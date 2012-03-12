@@ -871,7 +871,9 @@ is_json(#'P_basic'{content_type=CT}) ->
 %% delivered via the Deliver or Get-'Ok' methods.
 %% @end
 %%------------------------------------------------------------------------------
--spec basic_ack/1 :: (integer()) -> 'ok'.
+-spec basic_ack/1 :: (integer() | #'basic.deliver'{}) -> 'ok'.
+basic_ack(#'basic.deliver'{delivery_tag=DTag}) ->
+    basic_ack(DTag);
 basic_ack(DTag) ->
     ?AMQP_DEBUG andalso lager:debug("basic ack of ~s", [DTag]),
     amqp_mgr:consume(#'basic.ack'{delivery_tag=DTag}).
@@ -883,7 +885,9 @@ basic_ack(DTag) ->
 %% Reject one or more incoming messages.
 %% @end
 %%------------------------------------------------------------------------------
--spec basic_nack/1 :: (integer()) -> 'ok'.
+-spec basic_nack/1 :: (integer() | #'basic.deliver'{}) -> 'ok'.
+basic_nack(#'basic.deliver'{delivery_tag=DTag}) ->
+    basic_nack(DTag);
 basic_nack(DTag) ->
     ?AMQP_DEBUG andalso lager:debug("basic nack of ~s", [DTag]),
     amqp_mgr:consume(#'basic.nack'{delivery_tag=DTag}).
