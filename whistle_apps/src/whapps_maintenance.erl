@@ -34,7 +34,6 @@ migrate() ->
     couch_mgr:db_delete(<<"crossbar_schemas">>),
     couch_mgr:db_delete(<<"registrations">>),
     couch_mgr:db_delete(<<"crossbar%2Fsessions">>),
-    trunkstore_maintenance:migrate(),
     stepswitch_maintenance:refresh(),
     blocking_refresh(),
     whistle_number_manager_maintenance:reconcile(all),
