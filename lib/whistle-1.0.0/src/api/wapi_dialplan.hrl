@@ -36,13 +36,16 @@
                                                     ,<<"Endpoint-Timeout">>, <<"Endpoint-Progress-Timeout">>
                                                     ,<<"Endpoint-Delay">>, <<"Codecs">>, <<"SIP-Headers">>, <<"Presence-ID">>
                                                     ,<<"Custom-Channel-Vars">>, <<"Auth-User">>, <<"Auth-Password">>
+                                                    ,<<"Endpoint-Type">>, <<"Endpoint-Options">>
                                               ]).
 -define(BRIDGE_REQ_ENDPOINT_VALUES, [?INVITE_FORMAT_TUPLE
                                      ,{<<"Ignore-Early-Media">>, [<<"true">>, <<"false">>]}
                                      ,{<<"Bypass-Media">>, [<<"true">>, <<"false">>]}
+                                     ,{<<"Endpoint-Type">>, [<<"sip">>, <<"freetdm">>]}
                                     ]).
 -define(BRIDGE_REQ_ENDPOINT_TYPES, [{<<"SIP-Headers">>, ?IS_JSON_OBJECT}
                                     ,{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}
+                                    ,{<<"Endpoint-Options">>, ?IS_JSON_OBJECT}
                                    ]).
 
 %% Store Request
