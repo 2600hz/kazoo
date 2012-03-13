@@ -401,8 +401,7 @@ is_known_content_type(Req0, #cb_context{req_nouns=Nouns}=Context0) ->
                             Payload = [ContextAcc | Params],
                             crossbar_bindings:fold(Event, Payload)
                     end, Context0, Nouns),
-try
-    lager:debug("ctas:~p", [CTAs]),
+
     CTA = lists:foldr(fun({_Fun, L}, Acc) ->
                               lists:foldl(fun({Type, Sub}, Acc1) ->
                                                   [{Type, Sub, []} | Acc1]
@@ -412,17 +411,12 @@ try
                                                   [{Type, Sub, []} | Acc1]
                                           end, Acc, L)
                       end, [], CTAs),
-    lager:debug("cta:~p", [CTA]),
 
     {CT, Req1} = cowboy_http_req:parse_header('Content-Type', Req0),
 
     IsAcceptable = is_acceptable_content_type(CT, CTA),
-  lager:debug("is acceptable content type: ~s", [IsAcceptable]),
-      {IsAcceptable, Req1, Context1#cb_context{content_types_accepted=CTAs}}
-catch
-    _A:_B -> 
-        lager:debug("a(~p): ~p", [_A, _B])
-end.
+    lager:debug("is acceptable content type: ~s", [IsAcceptable]),
+    {IsAcceptable, Req1, Context1#cb_context{content_types_accepted=CTAs}}.
 
 -spec is_acceptable_content_type/2 :: (content_type(), [content_type(),...] | []) -> boolean().
 is_acceptable_content_type(CTA, CTAs) ->
