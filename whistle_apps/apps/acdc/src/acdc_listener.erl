@@ -24,20 +24,16 @@
 -record(state, {}).
 
 %% By convention, we put the options here in macros, but not required.
--define(BINDINGS, [{route, []}
+-define(BINDINGS, [{queue, []}
                    ,{self, []}
                   ]).
 -define(RESPONDERS, [
-                     %% Received because of our route binding
-                     {{acdc_handlers, handle_route_req}, [{<<"dialplan">>, <<"route_req">>}]}
-
-                     %% Received because of our self binding (route_wins are sent to the route_resp's Server-ID
-                     %% which is usually populated with the listener's queue name
-                     ,{{acdc_handlers, handle_route_win}, [{<<"dialplan">>, <<"route_win">>}]}
+                     %% New caller in the call queue
+                     {{acdc_handlers, handle_new_member}, [{<<"queue">>, <<"new_member">>}]}
                     ]).
--define(QUEUE_NAME, <<>>).
+-define(QUEUE_NAME, wapi_queue:listener_queue_name()).
 -define(QUEUE_OPTIONS, []).
--define(ROUTE_OPTIONS, []).
+-define(ROUTE_OPTIONS, [{no_ack, false}]). %% don't auto-ack the customer
 
 %%%===================================================================
 %%% API
@@ -51,14 +47,14 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    gen_server:start_link(?MODULE, [
-                                    {bindings, ?BINDINGS}
-                                    ,{responders, ?RESPONDERS}
-                                    ,{queue_name, ?QUEUE_NAME}       % optional to include
-                                    ,{queue_options, ?QUEUE_OPTIONS} % optional to include
-                                    ,{route_options, ?ROUTE_OPTIONS} % optional to include
-                                    %%,{basic_qos, 1}                % only needed if prefetch controls
-                                   ], []).
+    gen_listener:start_link(?MODULE, [
+                                      {bindings, ?BINDINGS}
+                                      ,{responders, ?RESPONDERS}
+                                      ,{queue_name, ?QUEUE_NAME}       % optional to include
+                                      ,{queue_options, ?QUEUE_OPTIONS} % optional to include
+                                      ,{route_options, ?ROUTE_OPTIONS} % optional to include
+                                      ,{basic_qos, 1}                % only needed if prefetch controls
+                                     ], []).
 
 %%%===================================================================
 %%% gen_server callbacks
