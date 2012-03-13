@@ -10,7 +10,7 @@
 
 -export([get_endpoints/2, log_agent_activity/3
          ,get_agents/2, get_agent_status/2
-         ,fetch_queue_pid/3, store_queue_pid/4, erase_queue_pid/3
+         ,find_queue/2
         ]).
 
 -include("acdc.hrl").
@@ -62,12 +62,20 @@ get_agents(AcctDb, QueueId) ->
             Err
     end.
 
-fetch_queue_pid(Cache, AcctDb, QueueId) ->
-    wh_cache:fetch_local(Cache, queue_pid_cache_key(AcctDb, QueueId)).
-store_queue_pid(Cache, AcctDb, QueueId, Pid) ->
-    wh_cache:store_local(Cache, queue_pid_cache_key(AcctDb, QueueId), Pid, fun(_,V,_) -> gen_listener:stop(V) end).
-erase_queue_pid(Cache, AcctDb, QueueId) ->
-    wh_cache:erase_local(Cache, queue_pid_cache_key(AcctDb, QueueId)).
+find_queue(AcctDb, QueueId) ->
+    {ok, Cache} = acdc_sup:cache_proc(),
+    find_queue(AcctDb, QueueId, Cache).
+find_queue(AcctDb, QueueId, Cache) ->
+    case wh_cache:fetch_local(Cache, queue_cache_key(AcctDb, QueueId)) of
+        {ok, _QueueJObj}=OK -> OK;
+        {error, not_found} ->
+            case couch_mgr:open_doc(AcctDb, QueueId) of
+                {ok, JObj}=OK ->
+                    wh_cache:store_local(Cache, queue_cache_key(AcctDb, QueueId), JObj),
+                    OK;
+                E -> E
+            end
+    end.
 
-queue_pid_cache_key(AcctDb, QueueId) ->
+queue_cache_key(AcctDb, QueueId) ->
     {?MODULE, AcctDb, QueueId}.
