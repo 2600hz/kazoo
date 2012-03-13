@@ -41,10 +41,9 @@ init() ->
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.queues">>, ?MODULE, allowed_methods),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.queues">>, ?MODULE, resource_exists),
     _ = crossbar_bindings:bind(<<"v1_resource.validate.queues">>, ?MODULE, validate),
-    _ = crossbar_bindings:bind(<<"v1_resource.put.queues">>, ?MODULE, put),
-    _ = crossbar_bindings:bind(<<"v1_resource.post.queues">>, ?MODULE, post),
-    _ = crossbar_bindings:bind(<<"v1_resource.delete.queues">>, ?MODULE, delete).
-
+    _ = crossbar_bindings:bind(<<"v1_resource.execute.put.queues">>, ?MODULE, put),
+    _ = crossbar_bindings:bind(<<"v1_resource.execute.post.queues">>, ?MODULE, post),
+    _ = crossbar_bindings:bind(<<"v1_resource.execute.delete.queues">>, ?MODULE, delete).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -106,6 +105,7 @@ validate(#cb_context{req_verb = <<"delete">>}=Context, Id) ->
 %%--------------------------------------------------------------------
 -spec put/1 :: (#cb_context{}) -> #cb_context{}.
 put(#cb_context{}=Context) ->
+    lager:debug("saving new queue"),
     crossbar_doc:save(Context).
 
 %%--------------------------------------------------------------------
