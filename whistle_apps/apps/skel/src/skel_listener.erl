@@ -51,14 +51,14 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    gen_server:start_link(?MODULE, [
-                                    {bindings, ?BINDINGS}
-                                    ,{responders, ?RESPONDERS}
-                                    ,{queue_name, ?QUEUE_NAME}       % optional to include
-                                    ,{queue_options, ?QUEUE_OPTIONS} % optional to include
-                                    ,{route_options, ?ROUTE_OPTIONS} % optional to include
-                                    %%,{basic_qos, 1}                % only needed if prefetch controls
-                                   ], []).
+    gen_listener:start_link(?MODULE, [
+                                      {bindings, ?BINDINGS}
+                                      ,{responders, ?RESPONDERS}
+                                      ,{queue_name, ?QUEUE_NAME}       % optional to include
+                                      ,{queue_options, ?QUEUE_OPTIONS} % optional to include
+                                      ,{route_options, ?ROUTE_OPTIONS} % optional to include
+                                      %%,{basic_qos, 1}                % only needed if prefetch controls
+                                     ], []).
 
 %%%===================================================================
 %%% gen_server callbacks
