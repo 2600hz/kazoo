@@ -612,14 +612,15 @@ clean_consumers(FromPid, {C,Ref1,_,FromRef}, AccDict, Ref, Conn) when Ref =:= Re
 
     case start_channel(Conn, FromPid) of
         {CNew, RefNew} when is_pid(CNew) andalso is_reference(RefNew) ->
-            lager:debug("New channel started for ~p", [FromPid]),
+            lager:debug("new channel started for ~p", [FromPid]),
+            FromPid ! {amqp_lost_channel, connection_restored},
             dict:store(FromPid, {CNew, RefNew, <<>>, FromRef}, AccDict);
         {error, no_connection} ->
-            lager:debug("No connection available"),
+            lager:debug("no connection available"),
             FromPid ! {amqp_lost_channel, no_connection},
             dict:erase(FromPid, AccDict);
         closing ->
-            lager:debug("Closing, no connection"),
+            lager:debug("closing, no connection"),
             FromPid ! {amqp_lost_channel, no_connection},
             dict:erase(FromPid, AccDict)
     end;

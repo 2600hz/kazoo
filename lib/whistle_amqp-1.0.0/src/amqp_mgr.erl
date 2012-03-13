@@ -199,22 +199,21 @@ handle_cast({start_conn, Uri, UseFederation}, _State) ->
 %%                                       {stop, Reason, State}
 %% Description: Handling all non call/cast messages
 %%--------------------------------------------------------------------
-handle_info({reconnect, Timeout}, #state{conn_ref=undefined
-                                         ,conn_params=ConnP
+handle_info({reconnect, Timeout}, #state{conn_params=ConnP
                                          ,use_federation=UseFederation
                                          ,amqp_uri=_Uri
                                         }=State) ->
     case start_amqp_host(ConnP, State, UseFederation) of
         {ok, State1} ->
-            lager:debug("Reconnected AMQP"),
-            lager:info("We've reconnected to the broker at ~s", [_Uri]),
+            lager:debug("reconnected AMQP"),
+            lager:info("we've reconnected to the broker at ~s", [_Uri]),
             {noreply, State1};
         {error, _E} ->
-            lager:debug("Failed to reconnect to AMQP(~p), waiting a bit more", [_E]),
-            lager:info("We failed to reconnect to the AMQP broker at ~s: ~p", [_Uri, _E]),
+            lager:debug("failed to reconnect to AMQP(~p), waiting a bit more", [_E]),
+            lager:info("we failed to reconnect to the AMQP broker at ~s: ~p", [_Uri, _E]),
 
             NextTimeout = next_timeout(Timeout),
-            lager:info("We will try to recoonect in ~b milliseconds", [NextTimeout]),
+            lager:info("we will try to recoonect in ~b milliseconds", [NextTimeout]),
 
             _Ref = erlang:send_after(NextTimeout, self(), {reconnect, NextTimeout}),
             {noreply, State}
@@ -256,6 +255,7 @@ handle_info({'DOWN', Ref, process, _, _Reason}, #state{handler_ref=Ref}=State) -
     lager:debug("amqp host process went down, ~w", [_Reason]),
     erlang:demonitor(Ref, [flush]),
     _Ref = erlang:send_after(?START_TIMEOUT, self(), {reconnect, ?START_TIMEOUT}),
+
     {noreply, State#state{handler_pid=undefined, handler_ref=undefined}, hibernate};
 
 handle_info(_Info, State) ->
