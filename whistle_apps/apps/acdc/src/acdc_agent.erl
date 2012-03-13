@@ -1,36 +1,32 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2012, VoIP INC
 %%% @doc
-%%% Our connection to AMQP and how we handle what payloads we want to
-%%% receive, and what module/functions should handle those payloads
-%%% when received.
+%%%
 %%% @end
 %%% @contributors
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
--module(acdc_listener).
+-module(acdc_agent).
 
 -behaviour(gen_listener).
 
 %% API
--export([start_link/0]).
+-export([start_link/1, handle_call_event/2, update_agent/2
+         ,maybe_handle_call/5
+        ]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2
          ,terminate/2, code_change/3]).
 
 -include("acdc.hrl").
--include_lib("amqp_client/include/amqp_client.hrl").
 
-%% By convention, we put the options here in macros, but not required.
--define(BINDINGS, [{queue, []}]).
--define(RESPONDERS, [
-                     %% New caller in the call queue
-                     {{acdc_agent_pool, find_agent}, [{<<"queue">>, <<"new_member">>}]}
-                    ]).
--define(QUEUE_NAME, wapi_queue:listener_queue_name()).
--define(QUEUE_OPTIONS, []).
--define(ROUTE_OPTIONS, [{exclusive, false}]).
+-record(state, {
+          acct_db :: ne_binary()
+         ,agent_id :: ne_binary()
+         ,queues :: [ne_binary(),...]
+         ,call :: whapps_call:call()
+         }).
 
 %%%===================================================================
 %%% API
@@ -43,15 +39,19 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
-start_link() ->
-    gen_listener:start_link(?MODULE, [
-                                      {bindings, ?BINDINGS}
-                                      ,{responders, ?RESPONDERS}
-                                      ,{queue_name, ?QUEUE_NAME}       % optional to include
-                                      ,{queue_options, ?QUEUE_OPTIONS} % optional to include
-                                      ,{route_options, ?ROUTE_OPTIONS} % optional to include
-                                      ,{basic_qos, 1}                % only needed if prefetch controls
+start_link(_) ->
+    gen_listener:start_link(?MODULE, [{bindings, []}
+                                      ,{responders, [{{?MODULE, handle_call_event}, {<<"call_event">>, <<"*">>}}]}
                                      ], []).
+
+handle_call_event(JObj, Props) ->
+    gen_listener:cast(props:get_value(server, Props), {call_event, JObj}).
+
+update_agent(Srv, IDandInfo) ->
+    gen_listener:cast(Srv, {update, IDandInfo}).
+
+maybe_handle_call(Srv, Call, AcctDb, QueueId, Timeout) ->
+    gen_listener:call(Srv, {maybe_handle_call, Call, AcctDb, QueueId}, Timeout).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -68,10 +68,10 @@ start_link() ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init([]) ->
+init(_) ->
     put(callid, ?LOG_SYSTEM_ID),
-    lager:debug("acdc listener starting"),
-    {ok, []}.
+    lager:debug("acdc_agent starting"),
+    {ok, #state{}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -87,6 +87,29 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_call({maybe_handle_call, Call, AcctDb, QueueId}, _, #state{
+                                                          acct_db=DB
+                                                          ,queues=Qs
+                                                          ,agent_id=AgentId
+                                                         }=State) ->
+    case AcctDb =:= DB andalso lists:member(QueueId, Qs) of
+        false ->
+            lager:debug("db ~s doesn't match ~s", [AcctDb, DB]),
+            lager:debug("or agent isn't in queue ~s: ~p", [QueueId, Qs]),
+            {reply, false, State};
+        true ->
+            case acdc_util:get_agent_status(AcctDb, AgentId) of
+                <<"login">> ->
+                    acdc_util:log_agent_activity(Call, <<"busy">>, AgentId),
+                    {reply, true, State#state{call=Call}};
+                <<"resume">> ->
+                    acdc_util:log_agent_activity(Call, <<"busy">>, AgentId),
+                    {reply, true, State#state{call=Call}};
+                _Action ->
+                    lager:debug("in non-ready state: ~s", [_Action]),
+                    {reply, false, State}
+            end
+    end;
 handle_call(_Request, _From, State) ->
     Reply = ok,
     {reply, Reply, State}.
@@ -101,7 +124,15 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast(_, State) ->
+handle_cast({update, {AcctDb, AgentId, Info}}, State) ->
+    lager:debug("updating agent ~s", [AgentId]),
+    {noreply, State#state{
+                acct_db=AcctDb
+                ,agent_id=AgentId
+                ,queues=wh_json:get_value(<<"queues">>, Info, [])
+               }};
+handle_cast(_Msg, State) ->
+    lager:debug("cast: ~p", [_Msg]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -115,17 +146,9 @@ handle_cast(_, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info(_Info, State) ->
-    lager:debug("unhandled message: ~p", [_Info]),
+    lager:debug("unhandled msg: ~p", [_Info]),
     {noreply, State}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Allows listener to pass options to handlers
-%%
-%% @spec handle_event(JObj, State) -> {reply, Options}
-%% @end
-%%--------------------------------------------------------------------
 handle_event(_JObj, _State) ->
     {reply, []}.
 
@@ -141,7 +164,7 @@ handle_event(_JObj, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
-    lager:debug("listener terminating: ~p", [_Reason]).
+    ok.
 
 %%--------------------------------------------------------------------
 %% @private

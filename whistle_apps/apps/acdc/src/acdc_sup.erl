@@ -14,7 +14,10 @@
 -define(CHILD(I, Type), {I, {I, start_link, []}, permanent, 5000, Type, [I]}).
 -define(POOL(Mod), {Mod, {poolboy, start_link, [
                                                 [{name, {local, Mod}}
-                                                 ,{worker_module, ecallmgr_amqp_worker}
+                                                 ,{worker_module, acdc_agent}
+                                                 ,{size, 0} %% no agents yet, so no size
+                                                 ,{max_overflow, 0} %% can't magically create agents
+                                                 ,{worker_stop, fun gen_listener:stop/1}
                                                 ]
                                                ]}
                     ,permanent, 5000, worker, [poolboy]
