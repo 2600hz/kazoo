@@ -33,11 +33,12 @@ handle(Data, Call) ->
 
 publish_queue_join(Queue, Call) ->
     JObj = wh_json:from_list([{<<"Queue">>, Queue}
+                              ,{<<"Queue-ID">>, wh_json:get_value(<<"_id">>, Queue)}
                               ,{<<"Call">>, whapps_call:to_json(Call)}
                               ,{<<"Call-ID">>, whapps_call:call_id(Call)}
                               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                              ]),
-    wapi_queue:publish_queue_member(JObj).
+    wapi_queue:publish_new_member(JObj).
 
 wait_for_conn_or_exit(Call, ExitKey, ConnTimeout, QID) ->
     Start = erlang:now(),

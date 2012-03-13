@@ -160,15 +160,17 @@ find_agent_by_pin(Call, Pin) ->
     end.
 
 current_status(Call, AgentId) ->
-    case couch_mgr:get_results(whapps_call:account_db(Call), <<"agents/agent_status">>, [{<<"startkey">>, [wh_json:new(), AgentId]}
-                                                                                         ,{<<"endkey">>, [0, AgentId]}
+    case couch_mgr:get_results(whapps_call:account_db(Call), <<"agents/agent_status">>, [{<<"startkey">>, [AgentId, wh_json:new()]}
+                                                                                         ,{<<"endkey">>, [AgentId, 0]}
                                                                                          ,{<<"descending">>, true}
                                                                                          ,{<<"limit">>, 1}
+                                                                                         ,{<<"reduce">>, false}
+                                                                                         ,{<<"include_docs">>, true}
                                                                                         ]) of
         {ok, []} ->
             undefined;
         {ok, [StatusJObj|_]} ->
-            wh_json:get_value(<<"value">>, StatusJObj);
+            wh_json:get_value([<<"doc">>, <<"action">>], StatusJObj);
         {error, _E} ->
             error
     end.    
