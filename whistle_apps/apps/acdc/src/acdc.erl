@@ -14,7 +14,7 @@
 %% @doc Starts the app for inclusion in a supervisor tree
 start_link() ->
     _ = start_deps(),
-    registrar_sup:start_link().
+    acdc_sup:start_link().
 
 %% @spec start() -> ok
 %% @doc Start the app
