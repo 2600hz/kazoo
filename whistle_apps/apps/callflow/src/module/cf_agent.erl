@@ -17,6 +17,9 @@
 -define(PROMPT_RETRIES_EXCEEDED, <<"/system_media/conf-to_many_attempts">>).
 -define(PROMPT_LOGGED_IN, <<"/system_media/hotdesk-logged_in">>).
 -define(PROMPT_LOGGED_OUT, <<"/system_media/hotdesk-logged_out">>).
+-define(PROMPT_BREAK, <<"/system_media/temporal-marked_disabled">>).
+-define(PROMPT_RESUME, <<"/system_media/temporal-marked_enabled">>).
+-define(PROMPT_ERROR, <<"/system_media/menu-invalid_entry">>).
 
 -define(TIMEOUT_DTMF, 2000).
 
@@ -31,11 +34,53 @@ handle(Data, Call) ->
     lager:debug("performing ~s on agent", [Action]),
 
     case Action of
-        <<"login">> -> login_agent(Call, Retries);
-        <<"logout">> -> logout_agent(Call, Retries);
-        <<"break">> -> break_agent(Call, Retries);
-        <<"resume">> -> resume_agent(Call, Retries);
+        <<"login">> -> update_agent(Call, Retries, Action);
+        <<"logout">> -> update_agent(Call, Retries, Action);
+        <<"break">> -> update_agent(Call, Retries, Action);
+        <<"resume">> -> update_agent(Call, Retries, Action);
         _ -> toggle_agent(Call, Retries)
+    end.
+
+update_agent(Call, Retries, _) when Retries =< 0 ->
+    whapps_call_command:b_play(?PROMPT_RETRIES_EXCEEDED, Call),
+    cf_exe:stop(Call);
+update_agent(Call, Retries, Action) ->
+    case play_and_collect(Call, ?PROMPT_PIN) of
+        {ok, Pin} ->
+            case find_agent_by_pin(Call, Pin) of
+                {ok, AgentId} ->
+                    lager:debug("found agent ~s, updating", [AgentId]),
+                    update_agent_status(Call, AgentId, Action);
+                {error, _} ->
+                    lager:debug("failed to find agent by pin: ~s", [Pin]),
+                    whapps_call_command:b_play(?PROMPT_INVALID_PIN, Call),
+                    update_agent(Call, Retries-1, Action)
+            end;
+        {error, _E} ->
+            lager:debug("error collecting digits: ~p", [_E]),
+            whapps_call_command:b_play(?PROMPT_INVALID_PIN, Call),
+            update_agent(Call, Retries-1, Action)
+    end.
+
+update_agent_status(Call, AgentId, Action) ->
+    Current = case current_status(Call, AgentId) of
+                  undefined -> <<"logout">>;
+                  error ->
+                      lager:debug("error finding agent status for ~s", [AgentId]),
+                      play_action(Call, ok),
+                      cf_exe:stop(Call);
+                  C -> C
+              end,
+    Transitions = transitions(Current),
+    case lists:member(Action, Transitions) of
+        true ->
+            lager:debug("action ~s is a valid transition of current state(~s), updating", [Action, Current]),
+            log_agent_activity(Call, Action, AgentId),
+            cf_exe:stop(Call);
+        false ->
+            lager:debug("action ~s not a valid transition from ~s", [Action, Current]),
+            play_action(Call, ok),
+            cf_exe:stop(Call)
     end.
 
 toggle_agent(Call, Retries) when Retries =< 0 ->
@@ -59,113 +104,32 @@ toggle_agent(Call, Retries) ->
             toggle_agent(Call, Retries-1)
     end.
 
-login_agent(Call, Retries) when Retries =< 0 ->
-    whapps_call_command:b_play(?PROMPT_RETRIES_EXCEEDED, Call),
-    cf_exe:stop(Call);
-login_agent(Call, Retries) ->
-    case play_and_collect(Call, ?PROMPT_PIN) of
-        {ok, Pin} ->
-            case find_agent_by_pin(Call, Pin) of
-                {ok, AgentId} ->
-                    log_agent_activity(Call, <<"login">>, AgentId);
-                {error, _} ->
-                    lager:debug("failed to find agent by pin: ~s", [Pin]),
-                    whapps_call_command:b_play(?PROMPT_INVALID_PIN, Call),
-                    login_agent(Call, Retries-1)
-            end;
-        {error, _E} ->
-            lager:debug("error collecting digits: ~p", [_E]),
-            whapps_call_command:b_play(?PROMPT_INVALID_PIN, Call),
-            login_agent(Call, Retries-1)
-    end.
-
-logout_agent(Call, Retries) when Retries =< 0 ->
-    whapps_call_command:b_play(?PROMPT_RETRIES_EXCEEDED, Call),
-    cf_exe:stop(Call);
-logout_agent(Call, Retries) ->
-    case play_and_collect(Call, ?PROMPT_PIN) of
-        {ok, Pin} ->
-            case find_agent_by_pin(Call, Pin) of
-                {ok, AgentId} ->
-                    log_agent_activity(Call, <<"logout">>, AgentId);
-                {error, _} ->
-                    lager:debug("failed to find agent by pin: ~s", [Pin]),
-                    whapps_call_command:b_play(?PROMPT_INVALID_PIN, Call),
-                    logout_agent(Call, Retries-1)
-            end;
-        {error, _E} ->
-            lager:debug("error collecting digits: ~p", [_E]),
-            whapps_call_command:b_play(?PROMPT_INVALID_PIN, Call),
-            logout_agent(Call, Retries-1)
-    end.
-
-break_agent(Call, Retries) when Retries =< 0 ->
-    whapps_call_command:b_play(?PROMPT_RETRIES_EXCEEDED, Call),
-    cf_exe:stop(Call);
-break_agent(Call, Retries) ->
-    case play_and_collect(Call, ?PROMPT_PIN) of
-        {ok, Pin} ->
-            case find_agent_by_pin(Call, Pin) of
-                {ok, AgentId} ->
-                    log_agent_activity(Call, <<"break">>, AgentId);
-                {error, _} ->
-                    lager:debug("failed to find agent by pin: ~s", [Pin]),
-                    whapps_call_command:b_play(?PROMPT_INVALID_PIN, Call),
-                    break_agent(Call, Retries-1)
-            end;
-        {error, _E} ->
-            lager:debug("error collecting digits: ~p", [_E]),
-            whapps_call_command:b_play(?PROMPT_INVALID_PIN, Call),
-            break_agent(Call, Retries-1)
-    end.
-
-resume_agent(Call, Retries) when Retries =< 0 ->
-    whapps_call_command:b_play(?PROMPT_RETRIES_EXCEEDED, Call),
-    cf_exe:stop(Call);
-resume_agent(Call, Retries) ->
-    case play_and_collect(Call, ?PROMPT_PIN) of
-        {ok, Pin} ->
-            case find_agent_by_pin(Call, Pin) of
-                {ok, AgentId} ->
-                    log_agent_activity(Call, <<"resume">>, AgentId);
-                {error, _} ->
-                    lager:debug("failed to find agent by pin: ~s", [Pin]),
-                    whapps_call_command:b_play(?PROMPT_INVALID_PIN, Call),
-                    resume_agent(Call, Retries-1)
-            end;
-        {error, _E} ->
-            lager:debug("error collecting digits: ~p", [_E]),
-            whapps_call_command:b_play(?PROMPT_INVALID_PIN, Call),
-            resume_agent(Call, Retries-1)
-    end.
-
 toggle_agent_status(Call, AgentId) ->
-    case couch_mgr:get_results(whapps_call:account_db(Call), <<"agents/agent_status">>, [{<<"startkey">>, [wh_json:new(), AgentId]}
-                                                                                         ,{<<"endkey">>, [0, AgentId]}
-                                                                                         ,{<<"descending">>, true}
-                                                                                         ,{<<"limit">>, 1}
-                                                                                         ]) of
-        {ok, []} ->
+    case current_status(Call, AgentId) of
+        undefined ->
             lager:debug("no status available, logging in"),
             log_agent_activity(Call, <<"login">>, AgentId),
             cf_exe:stop(Call);
-        {ok, [Status]} ->
-            lager:debug("current status: ~s", [Status]),
-            log_agent_activity(Call, opposite(Status), AgentId),
+        error ->
+            lager:debug("error looking up status"),
+            play_action(Call, ok),
             cf_exe:stop(Call);
-        {error, _E} ->
-            lager:debug("error looking up status: ~p", [_E]),
+        Status ->
+            [Opp|_] = transitions(Status),
+            lager:debug("current status: ~s transitioning to ~s", [Status, Opp]),
+            log_agent_activity(Call, Opp, AgentId),
             cf_exe:stop(Call)
     end.
 
-opposite(<<"login">>) ->
-    <<"logout">>;
-opposite(<<"logout">>) ->
-    <<"login">>;
-opposite(<<"resume">>) ->
-    <<"tmpaway">>;
-opposite(<<"tmpaway">>) ->
-    <<"resume">>.
+%% transition in first position is the preferred, for toggling
+transitions(<<"login">>) ->
+    [<<"logout">>, <<"break">>];
+transitions(<<"logout">>) ->
+    [<<"login">>];
+transitions(<<"resume">>) ->
+    [<<"break">>, <<"logout">>];
+transitions(<<"break">>) ->
+    [<<"resume">>, <<"logout">>].
 
 play_and_collect(Call, Prompt) ->
     NoopID = whapps_call_command:audio_macro([{play, Prompt}], Call),
@@ -195,11 +159,39 @@ find_agent_by_pin(Call, Pin) ->
             E
     end.
 
+current_status(Call, AgentId) ->
+    case couch_mgr:get_results(whapps_call:account_db(Call), <<"agents/agent_status">>, [{<<"startkey">>, [wh_json:new(), AgentId]}
+                                                                                         ,{<<"endkey">>, [0, AgentId]}
+                                                                                         ,{<<"descending">>, true}
+                                                                                         ,{<<"limit">>, 1}
+                                                                                        ]) of
+        {ok, []} ->
+            undefined;
+        {ok, [StatusJObj|_]} ->
+            wh_json:get_value(<<"value">>, StatusJObj);
+        {error, _E} ->
+            error
+    end.    
+
 log_agent_activity(Call, Action, AgentId) ->
+    lager:debug("setting action for agent ~s to ~s", [AgentId, Action]),
     Doc = wh_json:from_list([{<<"call_id">>, whapps_call:call_id(Call)}
                              ,{<<"agent_id">>, AgentId}
                              ,{<<"action">>, Action}
                              ,{<<"pvt_type">>, <<"agent_activity">>}
                              ,{<<"pvt_created">>, wh_util:current_tstamp()}
                             ]),
-    couch_mgr:save_doc(whapps_call:account_db(Call), Doc).
+    {ok, _} = couch_mgr:save_doc(whapps_call:account_db(Call), Doc),
+    play_action(Call, Action).
+
+play_action(Call, <<"login">>) ->
+    whapps_call_command:b_play(?PROMPT_LOGGED_IN, Call);
+play_action(Call, <<"logout">>) ->
+    whapps_call_command:b_play(?PROMPT_LOGGED_OUT, Call);
+play_action(Call, <<"break">>) ->
+    whapps_call_command:b_play(?PROMPT_BREAK, Call);
+play_action(Call, <<"resume">>) ->
+    whapps_call_command:b_play(?PROMPT_RESUME, Call);
+play_action(Call, _) ->
+    whapps_call_command:b_play(?PROMPT_ERROR, Call).
+
