@@ -1,62 +1,74 @@
 %%%-------------------------------------------------------------------
-%%% @author Karl Anderson <karl@2600hz.org>
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2012, VoIP INC
 %%% @doc
 %%%
 %%% @end
-%%% Created : 22 Feb 2011 by Karl Anderson <karl@2600hz.org>
+%%% @contributors
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(cf_queue).
 
--include("../callflow.hrl").
-
 -export([handle/2]).
+
+-include("../callflow.hrl").
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Entry point for this module, attempts to call an endpoint as defined
-%% in the Data payload.  Returns continue if fails to connect or
-%% stop when successfull.
 %% @end
 %%--------------------------------------------------------------------
--spec handle/2 :: (wh_json:json_object(), whapps_call:call()) -> ok.
+-spec handle/2 :: (wh_json:json_object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
-    Endpoints = get_endpoints(Data, Call),
-    Timeout = wh_json:get_binary_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT),
-    Strategy = wh_json:get_binary_value(<<"strategy">>, Data, <<"simultaneous">>),
-    Ringback = wh_json:get_value(<<"ringback">>, Data),
-    lager:debug("attempting ring group of ~b members with strategy ~s", [length(Endpoints), Strategy]),
-    case length(Endpoints) > 0 andalso whapps_call_command:b_bridge(Endpoints, Timeout, Strategy, <<"true">>, Ringback, Call) of
-        false ->
-            lager:debug("ring group has no endpoints"),
+    QID = wh_json:get_value(<<"id">>, Data),
+    {ok, Queue} = couch_mgr:open_doc(whapps_call:account_db(Call), QID),
+
+    ExitKey = wh_json:get_value(<<"caller_exit_key">>, Queue, <<"#">>),
+    ConnTimeout = wh_json:get_integer_value(<<"connection_timeout">>, Queue, 30),
+
+    publish_queue_join(Queue, Call),
+
+    log_queue_activity(Call, <<"enter">>, QID),
+
+    wait_for_conn_or_exit(Call, ExitKey, ConnTimeout*1000, QID).
+
+publish_queue_join(Queue, Call) ->
+    JObj = wh_json:from_list([{<<"Queue">>, Queue}
+                              ,{<<"Call">>, whapps_call:to_json(Call)}
+                              ,{<<"Call-ID">>, whapps_call:call_id(Call)}
+                              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                             ]),
+    wapi_queue:publish_queue_member(JObj).
+
+wait_for_conn_or_exit(Call, ExitKey, ConnTimeout, QID) ->
+    Start = erlang:now(),
+
+    case whapps_call_command:wait_for_application_or_dtmf(<<"bridge">>, ConnTimeout) of
+        {ok, _JObj} ->
+            lager:debug("bridge returned: ~p", [_JObj]),
+            log_queue_activity(Call, <<"exit">>, QID),
+            cf_exe:hangup(Call);
+        {dtmf, ExitKey} ->
+            lager:debug("exit key ~s pushed", [ExitKey]),
+            log_queue_activity(Call, <<"dtmf_exit">>, QID),
             cf_exe:continue(Call);
-        {ok, _} ->
-            lager:debug("completed successful bridge to the ring group"),
-            cf_exe:stop(Call);
-        {fail, _}=F ->
-            cf_util:handle_bridge_failure(F, Call);
-        {error, _R} ->
-            lager:debug("error bridging to ring group: ~p", [_R]),
+        {dtmf, _Key} ->
+            lager:debug("other key ~s pressed", [_Key]),
+            wait_for_conn_or_exit(Call, ExitKey, ConnTimeout - (timer:now_diff(erlang:now(), Start) div 1000), QID);
+        {error, timeout} ->
+            lager:debug("caller timed out in the queue"),
+            log_queue_activity(Call, <<"timeout">>, QID),
+            cf_exe:continue(Call);
+        {error, _E} ->
+            lager:debug("error: ~p", [_E]),
+            log_queue_activity(Call, <<"error">>, QID),
             cf_exe:continue(Call)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Loop over the provided endpoints for the callflow and build the
-%% json object used in the bridge API
-%% @end
-%%--------------------------------------------------------------------
--spec get_endpoints/2 :: (wh_json:json_object(), whapps_call:call()) -> wh_json:json_objects().
-get_endpoints(Data, Call) ->
-    lists:foldr(fun(Member, Acc) ->
-                        EndpointId = wh_json:get_value(<<"id">>, Member),
-                        Properties = wh_json:set_value(<<"source">>, ?MODULE, Member),
-                        case cf_endpoint:build(EndpointId, Properties, Call) of
-                            {ok, Endpoint} -> 
-                                Endpoint ++ Acc;
-                            {error, _} -> 
-                                Acc
-                        end
-                end, [], wh_json:get_value([<<"endpoints">>], Data, [])).
+log_queue_activity(Call, Action, QID) ->
+    Doc = wh_json:from_list([{<<"call_id">>, whapps_call:call_id(Call)}
+                             ,{<<"action">>, Action}
+                             ,{<<"timestamp">>, wh_util:current_tstamp()}
+                             ,{<<"queue_id">>, QID}
+                             ,{<<"pvt_type">>, <<"queue_activity">>}
+                            ]),
+    couch_mgr:save_doc(whapps_call:account_db(Call), Doc).
