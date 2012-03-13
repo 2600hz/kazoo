@@ -24,6 +24,7 @@
 -define(PVT_TYPE, <<"queue">>).
 -define(PVT_FUNS, [fun add_pvt_type/2]).
 -define(CB_LIST, <<"queues/crossbar_listing">>).
+-define(CB_AGENTS_LIST, <<"queues/agent_listing">>). %{agent_id, queue_id}
 
 %%%===================================================================
 %%% API
@@ -44,27 +45,6 @@ init() ->
     _ = crossbar_bindings:bind(<<"v1_resource.post.queues">>, ?MODULE, post),
     _ = crossbar_bindings:bind(<<"v1_resource.delete.queues">>, ?MODULE, delete).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Authenticates the incoming request, returning true if the requestor is
-%% known, or false if not.
-%% @end
-%%--------------------------------------------------------------------
--spec authenticate/1 :: (#cb_context{}) -> boolean().
-authenticate(#cb_context{}) ->
-    false.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Authorizes the incoming request, returning true if the requestor is
-%% allowed to access the resource, or false if not.
-%% @end
-%%--------------------------------------------------------------------
--spec authorize/1 :: (#cb_context{}) -> boolean().
-authorize(#cb_context{}) ->
-    false.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -97,67 +77,6 @@ resource_exists(_) -> true.
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% What content-types will the module be using to respond (matched against
-%% client's accept header)
-%% Of the form {atom, [{Type, SubType}]} :: {to_json, [{<<"application">>, <<"json">>}]}
-%% @end
-%%--------------------------------------------------------------------
--spec content_types_provided/1 :: (path_tokens()) -> [crossbar_content_handler(),...] | [].
-content_types_provided(_) ->
-    [].
-
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% What content-types will the module be requiring (matched to the client's
-%% Content-Type header
-%% Of the form {atom, [{Type, SubType}]} :: {to_json, [{<<"application">>, <<"json">>}]}
-%% @end
-%%--------------------------------------------------------------------
--spec content_types_accepted/1 :: (path_tokens()) -> crossbar_content_handler().
-content_types_accepted(_) ->
-    [].
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% If you provide alternative languages, return a list of languages and optional
-%% quality value:
-%% [<<"en">>, <<"en-gb;q=0.7">>, <<"da;q=0.5">>]
-%% @end
-%%--------------------------------------------------------------------
--spec languages_provided/1 :: (path_tokens()) -> [ne_binary(),...] | [].
-languages_provided(_) ->
-    [].
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% If you provide alternative charsets, return a list of charsets and optional
-%% quality value:
-%% [<<"iso-8859-5">>, <<"unicode-1-1;q=0.8">>]
-%% @end
-%%--------------------------------------------------------------------
--spec charsets_provided/1 :: (path_tokens()) -> [ne_binary(),...] | [].
-charsets_provided(_) ->
-    [].
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% If you provide alternative encodings, return a list of encodings and optional
-%% quality value:
-%% [<<"gzip;q=1.0">>, <<"identity">>;q=0.5">>, <<"*;q=0">>]
-%% @end
-%%--------------------------------------------------------------------
--spec encodings_provided/1 :: (path_tokens()) -> [ne_binary(),...] | [].
-encodings_provided(_) ->
-    [].
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
 %% Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
 %% /queues mights load a list of queue objects
@@ -182,40 +101,11 @@ validate(#cb_context{req_verb = <<"delete">>}=Context, Id) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% If you handle billing-related calls, this callback will allow you to
-%% execute those.
-%% @end
-%%--------------------------------------------------------------------
--spec billing/1 :: (#cb_context{}) -> #cb_context{}.
-billing(#cb_context{}=Context) ->
-    Context.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% If the HTTP verb is a GET, execute necessary code to fulfill the GET
-%% request. Generally, this will involve stripping pvt fields and loading
-%% the resource into the resp_data, resp_headers, etc...
-%% @end
-%%--------------------------------------------------------------------
--spec get/1 :: (#cb_context{}) -> #cb_context{}.
--spec get/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
-get(#cb_context{}=Context) ->
-    Context.
-get(#cb_context{}=Context, _) ->
-    Context.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
 %% If the HTTP verib is PUT, execute the actual action, usually a db save.
 %% @end
 %%--------------------------------------------------------------------
 -spec put/1 :: (#cb_context{}) -> #cb_context{}.
--spec put/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
 put(#cb_context{}=Context) ->
-    crossbar_doc:save(Context).
-put(#cb_context{}=Context, _) ->
     crossbar_doc:save(Context).
 
 %%--------------------------------------------------------------------
@@ -225,10 +115,7 @@ put(#cb_context{}=Context, _) ->
 %% (after a merge perhaps).
 %% @end
 %%--------------------------------------------------------------------
--spec post/1 :: (#cb_context{}) -> #cb_context{}.
 -spec post/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
-post(#cb_context{}=Context) ->
-    crossbar_doc:save(Context).
 post(#cb_context{}=Context, _) ->
     crossbar_doc:save(Context).
 
@@ -238,42 +125,13 @@ post(#cb_context{}=Context, _) ->
 %% If the HTTP verib is DELETE, execute the actual action, usually a db delete
 %% @end
 %%--------------------------------------------------------------------
--spec delete/1 :: (#cb_context{}) -> #cb_context{}.
 -spec delete/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
-delete(#cb_context{}=Context) ->
-    crossbar_doc:delete(Context).
 delete(#cb_context{}=Context, _) ->
     crossbar_doc:delete(Context).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% If you want to manipulate the etag header, change it here in the cb_context{}
-%% @end
-%%--------------------------------------------------------------------
--spec etag/1 :: (#cb_context{}) -> #cb_context{}.
-etag(#cb_context{}=Context) ->
-    Context.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Set the expires header
-%% @end
-%%--------------------------------------------------------------------
--spec expires/1 :: (#cb_context{}) -> #cb_context{}.
-expires(#cb_context{}=Context) ->
-    Context.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% The response has gone out, do some cleanup of your own here.
-%% @end
-%%--------------------------------------------------------------------
--spec finish_request/1 :: (#cb_context{}) -> #cb_context{}.
-finish_request(#cb_context{}=Context) ->
-    Context.
+%%%===================================================================
+%%% Internal functions
+%%%===================================================================
 
 %%--------------------------------------------------------------------
 %% @private
@@ -301,7 +159,18 @@ create(#cb_context{req_data=Data}=Context) ->
 %%--------------------------------------------------------------------
 -spec read/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
 read(Id, Context) ->
-    crossbar_doc:load(Id, Context).
+    case crossbar_doc:load(Id, Context) of
+        #cb_context{resp_status=success}=Context1 ->
+            load_queue_agents(Id, Context1);
+        Context1 -> Context1
+    end.
+
+load_queue_agents(Id, #cb_context{resp_data=Queue}=Context) ->
+    case crossbar_doc:load_view(?CB_AGENTS_LIST, [{<<"key">>, Id}], Context, fun normalize_agents_results/2) of
+        #cb_context{resp_status=success, resp_data=Users} ->
+            Context#cb_context{resp_data=wh_json:set_value(<<"agents">>, Agents, Queue)};
+        _ -> Context
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -342,6 +211,13 @@ summary(Context) ->
 -spec normalize_view_results/2 :: (wh_json:json_object(), wh_json:json_objects()) -> wh_json:json_objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
+
+-spec normalize_agents_results/2 :: (wh_json:json_object(), wh_json:json_objects()) -> wh_json:json_objects().
+normalize_agents__results(JObj, Acc) ->
+    [wh_json:set_values([{<<"agent_id">>, wh_json:get_value(<<"id">>, JObj)}
+                         ,{<<"queue_id">>, wh_json:get_value(<<"value">>, JObj)}
+                        ], wh_json:new())
+     | Acc].
 
 %%--------------------------------------------------------------------
 %% @private

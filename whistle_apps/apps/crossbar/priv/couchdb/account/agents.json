@@ -3,7 +3,13 @@
     ,"language": "javascript"
     ,"views": {
         "crossbar_listing": {
-            "map": "function(doc) { if (doc.pvt_type != 'agent' || doc.pvt_deleted) return; emit(doc._id, {'id': doc._id, 'name': doc.name, 'pin':doc.pin}); }"
+            "map": "function(doc) { if (doc.pvt_type != 'user' || typeof doc.queues != 'array' || doc.pvt_deleted) return; emit(doc._id, {'name':doc.name', 'queues':doc.queues, 'queue_pid':doc.queue_pin}); }"
+        },
+        "agent_listing":{
+            "map":"function(doc) { if (doc.pvt_type != 'user' || typeof doc.queues != 'array' || doc.pvt_deleted) return; for (i in doc.queues) { emit(doc.queue[i], doc._id);} }"
+        },
+        "agent_status":{
+            "map":"function(doc) { if (doc.pvt_type != 'agent_activity' || doc.pvt_deleted) return; emit([doc.timestamp, doc.agent_id], doc.status); }"
         }
     }
 }
