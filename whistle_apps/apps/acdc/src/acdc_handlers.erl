@@ -8,20 +8,14 @@
 %%%-------------------------------------------------------------------
 -module(acdc_handlers).
 
--export([handle_new_member/3
+-export([handle_new_member/2
         ]).
 
 -include("acdc.hrl").
 
-handle_new_member(JObj, Props, Delivery) ->
-    lager:debug("recv ~p", [JObj]),
-    lager:debug("delivery: ~p", [Delivery]),
+handle_new_member(JObj, _Props) ->
+    Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, JObj)),
 
-    case crypto:rand_uniform(1, 10) of
-        X when X < 8 ->
-            lager:debug("acking message"),
-            amqp_util:basic_ack(Delivery);
-        _ ->
-            lager:debug("nacking message"),
-            amqp_util:basic_nack(Delivery)
-    end.
+    QueueId = wapi_queue:get_queue_id(JObj),
+
+    ok.

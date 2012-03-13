@@ -8,29 +8,33 @@
 %%% @contributors
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
--module(acdc_listener).
+-module(acdc_queue).
 
 -behaviour(gen_listener).
 
 %% API
--export([start_link/0, handle_new_member/3]).
+-export([start_link/2, handle_new_member/2, handle_call_event/2]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2
          ,terminate/2, code_change/3]).
 
 -include("acdc.hrl").
--include_lib("amqp_client/include/amqp_client.hrl").
+
+-record(state, {
+          acct_db :: ne_binary()
+         ,queue_id :: ne_binary()
+         ,queue :: wh_json:json_object()
+         ,agents :: queue()
+         }).
 
 %% By convention, we put the options here in macros, but not required.
--define(BINDINGS, [{queue, []}]).
 -define(RESPONDERS, [
-                     %% New caller in the call queue
-                     {{?MODULE, handle_new_member}, [{<<"queue">>, <<"new_member">>}]}
+                     {{?MODULE, handle_call_event}, [{<<"call_event">>, <<"*">>}]}
                     ]).
--define(QUEUE_NAME, wapi_queue:listener_queue_name()).
+-define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
--define(ROUTE_OPTIONS, [{exclusive, false}]). %% don't auto-ack the customer
+-define(ROUTE_OPTIONS, []).
 
 %%%===================================================================
 %%% API
@@ -43,27 +47,22 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
-start_link() ->
+
+start_link(AcctDb, QueueId) ->
     gen_listener:start_link(?MODULE, [
-                                      {bindings, ?BINDINGS}
+                                      {bindings, []}
                                       ,{responders, ?RESPONDERS}
                                       ,{queue_name, ?QUEUE_NAME}       % optional to include
                                       ,{queue_options, ?QUEUE_OPTIONS} % optional to include
                                       ,{route_options, ?ROUTE_OPTIONS} % optional to include
                                       ,{basic_qos, 1}                % only needed if prefetch controls
-                                     ], []).
+                                     ], [AcctDb, QueueId]).
 
-handle_new_member(JObj, Props, #'basic.deliver'{routing_key=RK}) ->
-    [QueueId, AcctDb|_] = lists:reverse(binary:split(RK, <<".">>, [global])),
-    lager:debug("recv new member for ~s/~s", [AcctDb, QueueId]),
+handle_new_member(Srv, JObj) ->
+    gen_listener:cast(Srv, {new_member, JObj}).
 
-    {ok, Cache} = acdc_sup:cache_proc(),
-    {ok, QPid} = case acdc_util:fetch_queue_pid(Cache, AcctDb, QueueId) of
-                     {error, not_found} ->
-                         gen_listener:call(props:get_value(server, Props), {start_queue, AcctDb, QueueId});
-                     {ok, _}=OK -> OK
-                 end,
-    acdc_queue:handle_new_member(QPid, JObj).
+handle_call_event(JObj, Props) ->
+    gen_listener:cast(props:get_value(server, Props), {call_event, JObj}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -80,12 +79,19 @@ handle_new_member(JObj, Props, #'basic.deliver'{routing_key=RK}) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init([]) ->
+init([AcctDb, QueueId]) ->
     put(callid, ?LOG_SYSTEM_ID),
-    lager:debug("acdc listener starting"),
+    lager:debug("acdc listener starting for ~s/~s", [AcctDb, QueueId]),
 
-    gen_listener:cast(self(), load_queues),
-    {ok, []}.
+    gen_listener:cast(self(), reload_agents),
+
+    {ok, Queue} = couch_mgr:open_doc(AcctDb, QueueId),
+
+    {ok, #state{
+       acct_db=AcctDb
+       ,queue_id=QueueId
+       ,queue=Queue
+      }}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -115,9 +121,18 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast(load_queues, _State) ->
-    Queues = [Queue || {_Pid, Ref}=Queue <- start_listeners(), is_reference(Ref)],
-    {noreply, Queues}.
+handle_cast(reload_agents, #state{acct_db=AcctDb, queue_id=QueueId}=State) ->
+    case acdc_util:get_agents(AcctDb, QueueId) of
+        {ok, Agents} -> {noreply, State#state{agents=queue:from_list(Agents)}};
+        {error, _} -> {noreply, State}
+    end;
+handle_cast({new_member, JObj}, #state{agents=Agents}=State) ->
+    gen_listener:add_binding(self(), call, [{restrict_to, [events, cdr]}
+                                            ,{callid, wh_json:get_value(<<"Call-ID">>, JObj)}
+                                           ]),
+    Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, JObj),
+    Agents1 = connect_member(Call, Agents),
+    {noreply, State#state{agents=Agents1}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -172,49 +187,18 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-start_listeners() ->
-    {ok, Cache} = acdc_sup:cache_proc(),
-    lists:foldl(fun(AcctDb, Acc) ->
-                        maybe_start_listener(Cache, AcctDb, Acc)
-                end, [], whapps_util:get_all_accounts()).
-
-maybe_start_listener(Cache, AcctDb, Acc) ->
-    case couch_mgr:get_results(AcctDb, <<"queues/crossbar_listing">>, []) of
-        {ok, []} ->
-            lager:debug("no queues in account ~s", [AcctDb]),
-            Acc;
-        {ok, Qs} ->
-            lager:debug("starting queues in account ~s", [AcctDb]),
-            lists:foldl(fun(QueueId, Acc1) ->
-                                [maybe_cache_proc(Cache, AcctDb, QueueId) | Acc1]
-                        end, Acc, [wh_json:get_value(<<"id">>, Q) || Q <- Qs]);
-        {error, _E} ->
-            lager:debug("error getting queues for ~s", [AcctDb]),
-            Acc
+connect_member(Call, Agents) ->
+    {{value, Agent}, Agents1} = queue:out(Agents),
+    case try_connect_agent(Call, Agent) of
+        {connected, AgentId} ->
+            queue:in({AgentId, Call}, Agents1);
+        {failure, AgentId, Status} ->
+            queue:in({AgentId, Status}, Agents1)
     end.
 
--spec maybe_cache_proc/3 :: (pid(), ne_binary(), ne_binary()) -> {pid() | 'error', reference() | term()}.
-maybe_cache_proc(Cache, AcctDb, QueueId) ->
-    case acdc_util:fetch_queue_pid(Cache, AcctDb, QueueId) of
-        {error, not_found} ->
-            case acdc_listener_sup:new(AcctDb, QueueId) of
-                {ok, Pid} when is_pid(Pid) ->
-                    acdc_util:store_queue_pid(Cache, AcctDb, QueueId, Pid),
-                    {Pid, erlang:monitor(process, Pid)};
-                {error, {already_started, Pid}} ->
-                    lager:debug("already started handler for ~s/~s", [AcctDb, QueueId]),
-                    {Pid, erlang:monitor(process, Pid)};
-                {error, _E}=E ->
-                    lager:debug("some error occurred starting ~s/~s: ~p", [AcctDb, QueueId, _E]),
-                    E
-            end;
-        {ok, Pid} ->
-            case erlang:process_is_alive(Pid) of
-                true ->
-                    lager:debug("queue ~s/~s cached at ~p", [AcctDb, QueueId, Pid]),
-                    {error, already_cached};
-                false ->
-                    acdc_util:erase_queue_pid(Cache, AcctDb, QueueId),
-                    maybe_cache_proc(Cache, AcctDb, QueueId)
-            end
+try_connect_agent(Call, {AgentId, <<"login">>}) ->
+    Endpoints = acdc_util:get_endpoints(AgentId),
+    case whapps_call_command:b_bridge(Endpoints, Call) of
+        ok ->
+            ok
     end.

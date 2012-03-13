@@ -38,5 +38,6 @@ listener_proc() ->
 init([]) ->
     {ok, { {one_for_one, 5, 10}, [
                                   ?CACHE(acdc_cache) %% generally, we create a local cache process per whapps
+                                  ,?CHILD(acdc_listener_sup, supervisor)
                                   ,?CHILD(acdc_listener, worker) %% the listener, we always want this running
                                  ]} }.
