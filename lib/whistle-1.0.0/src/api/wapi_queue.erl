@@ -14,7 +14,7 @@
 
 -export([bind_q/2, unbind_q/2]).
 
--export([publish_new_member/1, publish_new_member/2, publish_new_member/3]).
+-export([publish_new_member/1, publish_new_member/2]).
 
 -include("../wh_api.hrl").
 
@@ -56,27 +56,34 @@ get_queue_id(JObj) ->
         QID -> QID
     end.
 
+get_account_db(Prop) when is_list(Prop) ->
+    wh_json:get_value(<<"Account-DB">>, props:get_value(<<"Call">>, Prop));
+get_account_db(JObj) ->
+    wh_json:get_value([<<"Call">>, <<"Account-DB">>], JObj).
+
 listener_queue_name() ->
     ?LISTENER_QUEUE_NAME.
 
 bind_q(Queue, Props) ->
+    AcctDb = props:get_value(account_db, Props, <<"*">>),
     QID = props:get_value(queue_id, Props, <<"*">>),
 
     amqp_util:callmgr_exchange(),
-    amqp_util:bind_q_to_callmgr(Queue, new_member_routing(QID)).
+    amqp_util:bind_q_to_callmgr(Queue, new_member_routing(AcctDb, QID)).
 
 unbind_q(Queue, Props) ->
+    AcctDb = props:get_value(account_db, Props, <<"*">>),
     QID = props:get_value(queue_id, Props, <<"*">>),
 
-    amqp_util:unbind_q_from_callmgr(Queue, new_member_routing(QID)).
+    amqp_util:unbind_q_from_callmgr(Queue, new_member_routing(AcctDb, QID)).
 
 publish_new_member(JObj) ->
-    publish_new_member(JObj, ?DEFAULT_CONTENT_TYPE, get_queue_id(JObj)).
+    publish_new_member(JObj, ?DEFAULT_CONTENT_TYPE, get_account_db(JObj), get_queue_id(JObj)).
 publish_new_member(API, ContentType) ->
-    publish_new_member(API, ContentType, get_queue_id(API)).
-publish_new_member(API, ContentType, QID) ->
+    publish_new_member(API, ContentType, get_account_db(API), get_queue_id(API)).
+publish_new_member(API, ContentType, AcctDb, QID) ->
     {ok, Payload} = wh_api:prepare_api_payload(API, ?NEW_MEMBER_VALUES, fun ?MODULE:new_member/1),
-    amqp_util:callmgr_publish(Payload, ContentType, new_member_routing(QID)).
+    amqp_util:callmgr_publish(Payload, ContentType, new_member_routing(AcctDb, QID)).
 
-new_member_routing(QID) ->
-    list_to_binary([?NEW_MEMBER_ROUTING_KEY, ".", QID]).
+new_member_routing(AcctDb, QID) ->
+    list_to_binary([?NEW_MEMBER_ROUTING_KEY, ".", AcctDb, ".", QID]).

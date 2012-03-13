@@ -54,6 +54,8 @@
 
 -export([add_binding/2, add_binding/3, rm_binding/2, rm_binding/3]).
 
+-export([ack/2, nack/2]).
+
 behaviour_info(callbacks) ->
     [{init, 1}
      ,{handle_event, 2} %% Module passes back {reply, Proplist}, passed as 2nd param to Responder:handle_req/2
@@ -105,6 +107,12 @@ queue_name(Srv) ->
 
 responders(Srv) ->
     gen_server:call(Srv, responders).
+
+ack(Srv, Delivery) ->
+    gen_server:cast(Srv, {ack, Delivery}).
+
+nack(Srv, Delivery) ->
+    gen_server:cast(Srv, {nack, Delivery}).
 
 %% API functions that mirror gen_server:call,cast,reply
 -spec call/2 :: (pid(), term()) -> term().
@@ -269,6 +277,15 @@ handle_call(Request, From, #state{module=Module, module_state=ModState, module_t
     end.
 
 -spec handle_cast/2 :: (term(), #state{}) -> handle_cast_ret().
+
+handle_cast({ack, Delivery}, State) ->
+    amqp_util:basic_ack(Delivery),
+    {noreply, State};
+
+handle_cast({nack, Delivery}, State) ->
+    amqp_util:basic_nack(Delivery),
+    {noreply, State};
+
 handle_cast({rm_queue, QueueName}, #state{other_queues=OtherQueues}=State) ->
     _ = [remove_binding(Binding, Props, QueueName) || {Binding, Props} <- props:get_value(QueueName, OtherQueues, [])],
     {noreply, State#state{other_queues=props:delete(QueueName, OtherQueues)}};
@@ -290,8 +307,13 @@ handle_cast({rm_responder, Responder, Keys}, #state{responders=Responders}=State
     {noreply, State#state{responders=listener_utils:rm_responder(Responders, Responder, Keys)}, hibernate};
 
 handle_cast({add_binding, Binding, Props}, #state{queue=Q, bindings=Bs}=State) ->
-    create_binding(Binding, Props, Q),
-    {noreply, State#state{bindings=[{Binding, Props}|Bs]}};
+    case lists:keyfind(Binding, 1, Bs) of
+        false ->
+            create_binding(Binding, Props, Q),
+            {noreply, State#state{bindings=[{Binding, Props}|Bs]}};
+        _ ->
+            {noreply, State}
+    end;
 
 handle_cast({rm_binding, Binding, Props}, #state{queue=Q, bindings=Bs}=State) ->
     _ = remove_binding(Binding, Props, Q),
@@ -339,7 +361,7 @@ handle_info({amqp_host_down, _H}=Down, #state{bindings=Bindings, params=Params}=
                     Self = self(),
                     _ = erlang:send_after(?TIMEOUT_RETRY_CONN, Self, is_consuming),
                     proc_lib:spawn(fun() -> [ add_binding(Self, Type, BindProps) || {Type, BindProps} <- Bindings ] end),
-                    {noreply, State#state{queue=Q, is_consuming=false}, hibernate};
+                    {noreply, State#state{queue=Q, is_consuming=false, bindings=[]}, hibernate};
                 {error, _} ->
                     lager:debug("failed to start amqp, waiting another second"),
                     _ = erlang:send_after(?TIMEOUT_RETRY_CONN, self(), Down),
@@ -355,6 +377,21 @@ handle_info({amqp_lost_channel, no_connection}, State) ->
     lager:alert("lost our channel, checking every second for a host to come back up"),
     _Ref = erlang:send_after(?TIMEOUT_RETRY_CONN, self(), {amqp_host_down, ok}),
     {noreply, State#state{queue = <<>>, is_consuming=false}, hibernate};
+
+handle_info({amqp_lost_channel, connection_restored}, #state{params=Params, bindings=Bindings}=State) ->
+    lager:alert("lost our channel, but its back up; rebinding"),
+
+    case start_amqp(Params) of
+        {ok, Q} ->
+            Self = self(),
+            _ = erlang:send_after(?TIMEOUT_RETRY_CONN, Self, is_consuming),
+            proc_lib:spawn(fun() -> [ add_binding(Self, Type, BindProps) || {Type, BindProps} <- Bindings ] end),
+            {noreply, State#state{queue=Q, is_consuming=false, bindings=[]}, hibernate};
+        {error, _} ->
+            lager:debug("failed to start amqp, waiting another second"),
+            _ = erlang:send_after(?TIMEOUT_RETRY_CONN, self(), {amqp_host_down, ok}),
+            {noreply, State#state{queue = <<>>, is_consuming=false}, hibernate}
+    end;
 
 handle_info(#'basic.consume_ok'{}, S) ->
     lager:debug("consuming from our queue"),
