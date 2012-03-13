@@ -167,7 +167,7 @@ read(Id, Context) ->
 
 load_queue_agents(Id, #cb_context{resp_data=Queue}=Context) ->
     case crossbar_doc:load_view(?CB_AGENTS_LIST, [{<<"key">>, Id}], Context, fun normalize_agents_results/2) of
-        #cb_context{resp_status=success, resp_data=Users} ->
+        #cb_context{resp_status=success, resp_data=Agents} ->
             Context#cb_context{resp_data=wh_json:set_value(<<"agents">>, Agents, Queue)};
         _ -> Context
     end.
@@ -213,7 +213,7 @@ normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
 
 -spec normalize_agents_results/2 :: (wh_json:json_object(), wh_json:json_objects()) -> wh_json:json_objects().
-normalize_agents__results(JObj, Acc) ->
+normalize_agents_results(JObj, Acc) ->
     [wh_json:set_values([{<<"agent_id">>, wh_json:get_value(<<"id">>, JObj)}
                          ,{<<"queue_id">>, wh_json:get_value(<<"value">>, JObj)}
                         ], wh_json:new())
