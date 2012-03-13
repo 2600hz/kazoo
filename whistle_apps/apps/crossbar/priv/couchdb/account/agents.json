@@ -9,7 +9,7 @@
             "map":"function(doc) { if (typeof doc.queues !== 'object' || doc.pvt_deleted) return; for (i in doc.queues) { emit(doc.queues[i], doc._id);} }"
         },
         "agent_status":{
-            "map":"function(doc) { if (doc.pvt_type != 'agent_activity' || doc.pvt_deleted) return; emit([doc.timestamp, doc.agent_id], doc.status); }"
+            "map":"function(doc) { if (doc.pvt_type != 'agent_activity' || doc.pvt_deleted) return; emit([doc.pvt_created, doc.agent_id], doc.action); }"
         },
         "agent_pins":{
             "map":"function(doc) { if (typeof doc.queue_pin === 'undefined' || doc.pvt_deleted) return; emit(doc.queue_pin, null); }"

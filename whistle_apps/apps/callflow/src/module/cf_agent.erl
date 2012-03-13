@@ -28,7 +28,7 @@ handle(Data, Call) ->
 
     Action = wh_json:get_value(<<"action">>, Data, <<"toggle">>),
 
-    lager:debug("performing ~s on agent"),
+    lager:debug("performing ~s on agent", [Action]),
 
     case Action of
         <<"login">> -> login_agent(Call, Retries);
@@ -40,13 +40,13 @@ handle(Data, Call) ->
 
 toggle_agent(Call, Retries) when Retries =< 0 ->
     whapps_call_command:b_play(?PROMPT_RETRIES_EXCEEDED, Call),
-    cf_exe:hangup(Call);
+    cf_exe:stop(Call);
 toggle_agent(Call, Retries) ->
     case play_and_collect(Call, ?PROMPT_PIN) of
         {ok, Pin} ->
             case find_agent_by_pin(Call, Pin) of
                 {ok, AgentId} ->
-                    lager:debug("found agent ~s, toggling"),
+                    lager:debug("found agent ~s, toggling", [AgentId]),
                     toggle_agent_status(Call, AgentId);
                 {error, _} ->
                     lager:debug("failed to find agent by pin: ~s", [Pin]),
@@ -61,7 +61,7 @@ toggle_agent(Call, Retries) ->
 
 login_agent(Call, Retries) when Retries =< 0 ->
     whapps_call_command:b_play(?PROMPT_RETRIES_EXCEEDED, Call),
-    cf_exe:hangup(Call);
+    cf_exe:stop(Call);
 login_agent(Call, Retries) ->
     case play_and_collect(Call, ?PROMPT_PIN) of
         {ok, Pin} ->
@@ -81,7 +81,7 @@ login_agent(Call, Retries) ->
 
 logout_agent(Call, Retries) when Retries =< 0 ->
     whapps_call_command:b_play(?PROMPT_RETRIES_EXCEEDED, Call),
-    cf_exe:hangup(Call);
+    cf_exe:stop(Call);
 logout_agent(Call, Retries) ->
     case play_and_collect(Call, ?PROMPT_PIN) of
         {ok, Pin} ->
@@ -101,7 +101,7 @@ logout_agent(Call, Retries) ->
 
 break_agent(Call, Retries) when Retries =< 0 ->
     whapps_call_command:b_play(?PROMPT_RETRIES_EXCEEDED, Call),
-    cf_exe:hangup(Call);
+    cf_exe:stop(Call);
 break_agent(Call, Retries) ->
     case play_and_collect(Call, ?PROMPT_PIN) of
         {ok, Pin} ->
@@ -121,7 +121,7 @@ break_agent(Call, Retries) ->
 
 resume_agent(Call, Retries) when Retries =< 0 ->
     whapps_call_command:b_play(?PROMPT_RETRIES_EXCEEDED, Call),
-    cf_exe:hangup(Call);
+    cf_exe:stop(Call);
 resume_agent(Call, Retries) ->
     case play_and_collect(Call, ?PROMPT_PIN) of
         {ok, Pin} ->
@@ -145,12 +145,17 @@ toggle_agent_status(Call, AgentId) ->
                                                                                          ,{<<"descending">>, true}
                                                                                          ,{<<"limit">>, 1}
                                                                                          ]) of
+        {ok, []} ->
+            lager:debug("no status available, logging in"),
+            log_agent_activity(Call, <<"login">>, AgentId),
+            cf_exe:stop(Call);
         {ok, [Status]} ->
             lager:debug("current status: ~s", [Status]),
-            log_agent_activity(Call, opposite(Status), AgentId);
+            log_agent_activity(Call, opposite(Status), AgentId),
+            cf_exe:stop(Call);
         {error, _E} ->
             lager:debug("error looking up status: ~p", [_E]),
-            cf_exe:hangup(Call)
+            cf_exe:stop(Call)
     end.
 
 opposite(<<"login">>) ->
@@ -163,23 +168,21 @@ opposite(<<"tmpaway">>) ->
     <<"resume">>.
 
 play_and_collect(Call, Prompt) ->
-    whapps_call_command:prompt(Prompt, Call),
-    collect(Call, <<>>).
+    NoopID = whapps_call_command:audio_macro([{play, Prompt}], Call),
+    {ok, Bin} = whapps_call_command:collect_digits(1, ?TIMEOUT_DTMF, ?TIMEOUT_DTMF, NoopID, Call),
+    collect(Call, Bin).
 collect(Call, DTMFs) ->
     case whapps_call_command:wait_for_dtmf(?TIMEOUT_DTMF) of
         {ok, <<>>} ->
-            lager:debug("no dtmfs in timeout, returning ~s", [DTMFs]),
+            lager:debug("failed to collect more digits, returning"),
             {ok, DTMFs};
         {ok, DTMF} ->
-            lager:debug("another dtmf received, waiting for more"),
-            collect(Call, <<DTMFs/binary, DTMF/binary>>);
-        {error, _E} ->
-            lager:debug("error collecting dtmfs, returning ~s", [DTMFs]),
-            {ok, DTMFs}
+            lager:debug("another dtmf: ~s", [DTMF]),
+            collect(Call, <<DTMFs/binary, DTMF/binary>>)
     end.
 
 find_agent_by_pin(Call, Pin) ->
-    case couch_mgr:get_results(whapps_call:account_db(Call), <<"agents/crossbar_listing">>, [{<<"key">>, Pin}]) of
+    case couch_mgr:get_results(whapps_call:account_db(Call), <<"agents/agent_pins">>, [{<<"key">>, wh_util:to_integer(Pin)}]) of
         {ok, []} ->
             {error, no_agents_found};
         {ok, [AgentJObj]} ->
