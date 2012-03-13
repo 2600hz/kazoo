@@ -67,7 +67,7 @@ wait_for_conn_or_exit(Call, ExitKey, ConnTimeout, QID) ->
 log_queue_activity(Call, Action, QID) ->
     Doc = wh_json:from_list([{<<"call_id">>, whapps_call:call_id(Call)}
                              ,{<<"action">>, Action}
-                             ,{<<"timestamp">>, wh_util:current_tstamp()}
+                             ,{<<"pvt_created">>, wh_util:current_tstamp()}
                              ,{<<"queue_id">>, QID}
                              ,{<<"pvt_type">>, <<"queue_activity">>}
                             ]),
