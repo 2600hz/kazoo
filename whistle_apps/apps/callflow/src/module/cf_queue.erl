@@ -26,6 +26,7 @@ handle(Data, Call) ->
     ConnTimeout = wh_json:get_integer_value(<<"connection_timeout">>, Queue, 30),
 
     publish_queue_join(Queue, Call),
+    whapps_call_command:hold(Call),
 
     log_queue_activity(Call, <<"enter">>, QID),
 
@@ -43,11 +44,19 @@ publish_queue_join(Queue, Call) ->
 wait_for_conn_or_exit(Call, ExitKey, ConnTimeout, QID) ->
     Start = erlang:now(),
 
+    lager:debug("waiting up to ~b before progressing", [ConnTimeout]),
     case whapps_call_command:wait_for_application_or_dtmf(<<"bridge">>, ConnTimeout) of
-        {ok, _JObj} ->
-            lager:debug("bridge returned: ~p", [_JObj]),
-            log_queue_activity(Call, <<"exit">>, QID),
-            cf_exe:stop(Call);
+        {ok, JObj} ->
+            case wh_json:get_value(<<"Hangup-Code">>, JObj) of
+                <<"sip:200">> ->
+                    lager:debug("bridge returned successfully, caller should be done"),
+                    log_queue_activity(Call, <<"exit">>, QID),
+                    cf_exe:stop(Call);
+                _Code ->
+                    lager:debug("bridge returned with unknown hangup code, continuing to wait: ~s", [_Code]),
+                    whapps_call_command:hold(Call),
+                    wait_for_conn_or_exit(Call, ExitKey, ConnTimeout - (timer:now_diff(erlang:now(), Start) div 1000), QID)
+            end;
         {dtmf, ExitKey} ->
             lager:debug("exit key ~s pushed", [ExitKey]),
             log_queue_activity(Call, <<"dtmf_exit">>, QID),
@@ -59,10 +68,17 @@ wait_for_conn_or_exit(Call, ExitKey, ConnTimeout, QID) ->
             lager:debug("caller timed out in the queue"),
             log_queue_activity(Call, <<"timeout">>, QID),
             cf_exe:continue(Call);
-        {error, _E} ->
-            lager:debug("error: ~p", [_E]),
-            log_queue_activity(Call, <<"error">>, QID),
-            cf_exe:continue(Call)
+        {error, JObj} ->
+            case wh_util:get_event_type(JObj) of
+                {<<"error">>, <<"dialplan">>} ->
+                    lager:debug("dialplan error, probably an agent didn't answer in time"),
+                    wait_for_conn_or_exit(Call, ExitKey, ConnTimeout - (timer:now_diff(erlang:now(), Start) div 1000), QID);
+                Type ->
+                    lager:debug("error type: ~p", [Type]),
+                    lager:debug("error jobj: ~p", [JObj]),
+                    log_queue_activity(Call, <<"error">>, QID),
+                    cf_exe:continue(Call)
+            end
     end.
 
 log_queue_activity(Call, Action, QID) ->
@@ -73,3 +89,4 @@ log_queue_activity(Call, Action, QID) ->
                              ,{<<"pvt_type">>, <<"queue_activity">>}
                             ]),
     couch_mgr:save_doc(whapps_call:account_db(Call), Doc).
+
