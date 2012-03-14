@@ -309,15 +309,29 @@ handle_cast({rm_responder, Responder, Keys}, #state{responders=Responders}=State
 handle_cast({add_binding, Binding, Props}, #state{queue=Q, bindings=Bs}=State) ->
     case lists:keyfind(Binding, 1, Bs) of
         false ->
+            lager:debug("creating new binding: ~s", [Binding]),
             create_binding(Binding, Props, Q),
             {noreply, State#state{bindings=[{Binding, Props}|Bs]}};
-        _ ->
-            {noreply, State}
+        {_, P} ->
+            case Props =:= P of
+                true ->
+                    lager:debug("binding ~s exists", [Binding]),
+                    {noreply, State};
+                false ->
+                    lager:debug("adding binding ~s with new props: ~p", [Binding, Props]),
+                    create_binding(Binding, Props, Q),
+                    {noreply, State#state{bindings=[{Binding, Props}|Bs]}}
+            end
     end;
 
 handle_cast({rm_binding, Binding, Props}, #state{queue=Q, bindings=Bs}=State) ->
-    _ = remove_binding(Binding, Props, Q),
-    {noreply, State#state{bindings=props:delete(Binding, Bs)}};
+    KeepBs = lists:filter(fun({B, P}) when B =:= Binding, P =:= Props ->
+                                  lager:debug("removing binding ~s (~p)", [B, P]),
+                                  remove_binding(B, P, Q),
+                                  false;
+                             (_) -> true
+                          end, Bs),
+    {noreply, State#state{bindings=KeepBs}};
 
 handle_cast(Message, #state{module=Module, module_state=ModState, module_timeout_ref=OldRef}=State) ->
     _ = stop_timer(OldRef),
