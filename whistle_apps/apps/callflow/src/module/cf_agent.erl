@@ -129,7 +129,9 @@ transitions(<<"logout">>) ->
 transitions(<<"resume">>) ->
     [<<"break">>, <<"logout">>];
 transitions(<<"break">>) ->
-    [<<"resume">>, <<"logout">>].
+    [<<"resume">>, <<"logout">>];
+transitions(_) ->
+    [<<"logout">>].
 
 play_and_collect(Call, Prompt) ->
     NoopID = whapps_call_command:audio_macro([{play, Prompt}], Call),
