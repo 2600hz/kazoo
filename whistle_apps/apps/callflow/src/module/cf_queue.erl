@@ -47,7 +47,7 @@ wait_for_conn_or_exit(Call, ExitKey, ConnTimeout, QID) ->
         {ok, _JObj} ->
             lager:debug("bridge returned: ~p", [_JObj]),
             log_queue_activity(Call, <<"exit">>, QID),
-            cf_exe:hangup(Call);
+            cf_exe:stop(Call);
         {dtmf, ExitKey} ->
             lager:debug("exit key ~s pushed", [ExitKey]),
             log_queue_activity(Call, <<"dtmf_exit">>, QID),
