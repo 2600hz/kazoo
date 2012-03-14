@@ -78,7 +78,7 @@ fs_node(Srv) ->
 -spec uuid_exists/2 :: (pid(), ne_binary()) -> boolean().
 uuid_exists(Srv, UUID) ->
     case catch(gen_server:call(Srv, {uuid_exists, UUID}, ?FS_TIMEOUT)) of
-        {'EXIT', _} -> false;
+        {'EXIT', _} -> timeout;
         Else -> Else
     end.
 
@@ -120,7 +120,7 @@ handle_call({uuid_exists, UUID}, From, #state{node=Node}=State) ->
                           gen_server:reply(From, wh_util:is_true(Result));
                       _ ->
                           lager:debug("failed to get result from uuid_exists(~s)", [UUID]),
-                          gen_server:reply(From, false)
+                          gen_server:reply(From, error)
                   end
           end),
     {noreply, State};

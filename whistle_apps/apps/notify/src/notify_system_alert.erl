@@ -69,14 +69,9 @@ handle_req(JObj, _Props) ->
     case alert_level_to_integer(AlertLevel) >= alert_level_to_integer(MinLevel) of
         false -> ok;
         true ->
-            DefaultFrom = list_to_binary([<<"no_reply@">>, wh_util:to_binary(net_adm:localhost())]),
-            From = wh_json:get_value([<<"notifications">>, <<"alert">>, <<"send_from">>], Account
-                                     ,whapps_config:get(?MOD_CONFIG_CAT, <<"default_from">>, DefaultFrom)),
-
             lager:debug("creating system alert notice"),
             
-            Props = [{<<"From">>, From}
-                     ,{<<"Level">>, AlertLevel}
+            Props = [{<<"Level">>, AlertLevel}
                      |create_template_props(JObj, Account)
                     ],
             
@@ -130,7 +125,8 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) when is_list(To)->
     [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props) || T <- To],
     ok;
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
-    From = props:get_value(<<"From">>, Props),
+    Service = props:get_value(<<"service">>, Props),
+    From = props:get_value(<<"send_from">>, Service),
     %% Content Type, Subtype, Headers, Parameters, Body
     Email = {<<"multipart">>, <<"mixed">>
                  ,[{<<"From">>, From}
