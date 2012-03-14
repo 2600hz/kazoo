@@ -87,7 +87,7 @@ init(_) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({maybe_handle_call, Call, AcctDb, QueueId}, _, #state{
+handle_call({maybe_handle_call, Call, AcctDb, QueueId}, From, #state{
                                                           acct_db=DB
                                                           ,queues=Qs
                                                           ,agent_id=AgentId
@@ -98,13 +98,25 @@ handle_call({maybe_handle_call, Call, AcctDb, QueueId}, _, #state{
             lager:debug("or agent isn't in queue ~s: ~p", [QueueId, Qs]),
             {reply, false, State};
         true ->
+            %% TODO: no guarantee Agent is still available or will answer the call;
+            %% detect that case and move to next agent
             case acdc_util:get_agent_status(AcctDb, AgentId) of
                 <<"login">> ->
                     acdc_util:log_agent_activity(Call, <<"busy">>, AgentId),
-                    {reply, true, State#state{call=Call}};
+                    gen_server:reply(From, true),
+
+                    call_binding(Call),
+                    call_bridging(Call, AgentId),
+
+                    {noreply, State#state{call=Call}};
                 <<"resume">> ->
                     acdc_util:log_agent_activity(Call, <<"busy">>, AgentId),
-                    {reply, true, State#state{call=Call}};
+                    gen_server:reply(From, true),
+
+                    call_binding(Call),
+                    call_bridging(Call, AgentId),
+
+                    {noreply, State#state{call=Call}};
                 _Action ->
                     lager:debug("in non-ready state: ~s", [_Action]),
                     {reply, false, State}
@@ -180,3 +192,17 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+call_binding(Call) ->
+    gen_listener:add_binding(self(), call, [{restrict_to, [events, cdr]}, {callid, whapps_call:call_id(Call)}]).
+
+call_bridging(Call, AgentId) ->
+    whapps_call_command:b_bridge(get_endpoints(Call, AgentId), Call).
+
+%% TODO: move to shared place, instead of calling callflow functions directly
+get_endpoints(Call, UserId) ->
+    lists:foldr(fun(EndpointId, Acc) ->
+                        case cf_endpoint:build(EndpointId, Call) of
+                            {ok, Endpoint} -> Endpoint ++ Acc;
+                            {error, _E} -> Acc
+                        end
+                end, [], cf_attributes:fetch_owned_by(UserId, device, Call)).
