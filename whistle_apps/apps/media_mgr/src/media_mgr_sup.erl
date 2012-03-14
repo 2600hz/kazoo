@@ -67,6 +67,7 @@ upgrade() ->
 init([]) ->
     Processes = [
                  ?CACHE(media_mgr_cache)
+                 ,?CHILD(media_files_sup, supervisor)
                  ,?CHILD(media_listener, worker)
                 ], %% Put list of ?CHILD(media_mgr_server, worker) or ?CHILD(media_mgr_other_sup, supervisor)
     {ok, { {one_for_one, 10, 10}, Processes} }.

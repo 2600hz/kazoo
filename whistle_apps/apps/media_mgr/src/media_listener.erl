@@ -44,14 +44,12 @@ handle_media_req(JObj, _Props) ->
             send_error_resp(JObj, <<"not_found">>, <<>>);
         no_data ->
             send_error_resp(JObj, <<"no_data">>, <<>>);
-        {Db, Doc, Attachment, MetaData} ->
+        {Db, Doc, Attachment, Meta} ->
             Id = wh_util:format_account_id(Db, raw),
             send_media_resp(JObj, Id, Doc, Attachment),
 
-            {ok, Bin} = couch_mgr:fetch_attachment(Db, Doc, Attachment),
-            {ok, Cache} = media_mgr_sup:cache_proc(),
-
-            wh_cache:store_local(Cache, {Id, Doc, Attachment}, {MetaData, Bin})
+            {ok, FileServer} = media_files_sup:find_file_server(Id, Doc, Attachment, Meta),
+            lager:debug("file server at ~p", [FileServer])
     end.
 
 send_media_resp(JObj, Id, Doc, Attachment) ->
