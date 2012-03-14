@@ -35,7 +35,7 @@ update_presence(SlotNumber, PresenceId, AccountDb) ->
                               case cf_util:get_call_status(CId) of
                                   {ok, _} -> {<<"early">>, CId};
                                   {error, _} ->
-                                      cleanup_slot(SlotNumber, CId, AccountDb),
+                                      _ = cleanup_slot(SlotNumber, CId, AccountDb),
                                       {<<"terminated">>, CId}
                               end
                       end,
@@ -48,7 +48,7 @@ update_presence(SlotNumber, PresenceId, AccountDb) ->
 %% call originator.
 %% @end
 %%--------------------------------------------------------------------
--spec handle/2 :: (wh_json:json_object(), whapps_call:call()) -> ok.
+-spec handle/2 :: (wh_json:json_object(), whapps_call:call()) -> any().
 handle(Data, Call) ->
     ParkedCalls = get_parked_calls(Call),
     SlotNumber = get_slot_number(ParkedCalls, whapps_call:kvs_fetch(cf_capture_group, Call)),
@@ -126,13 +126,13 @@ retrieve(SlotNumber, ParkedCalls, Call) ->
             case get_switch_hostname(ParkedCall, Call) of
                 undefined ->
                     lager:debug("the parked caller node is undefined"),
-                    case cleanup_slot(SlotNumber, ParkedCall, Call) of
+                    case cleanup_slot(SlotNumber, ParkedCall, whapps_call:account_db(Call)) of
                         {ok, JObj} -> {hungup, JObj};
                         {error, _} -> {hungup, ParkedCalls}
                     end;
                 CallerHost ->
                     ParkedCall = wh_json:get_ne_value(<<"Call-ID">>, Slot),
-                    case cleanup_slot(SlotNumber, ParkedCall, Call) of
+                    case cleanup_slot(SlotNumber, ParkedCall, whapps_call:account_db(Call)) of
                         {ok, _}=Ok ->
                             publish_usurp_control(ParkedCall, Call),
                             lager:debug("pickup call id ~s", [ParkedCall]),
@@ -199,7 +199,9 @@ park_call(SlotNumber, ParkedCalls, ReferredTo, Call) ->
             TmpCID = <<"Parking slot ", SlotNumber/binary, " occupied">>,
             case ringback_parker(wh_json:get_value(<<"Ringback-ID">>, Slot), SlotNumber, TmpCID, Call) of
                 answered -> cf_exe:continue(Call);
-                failed -> cf_exe:hangup(Call)
+                failed ->
+                    whapps_call_command:hangup(Call),
+                    cf_exe:stop(Call)
             end,
             ok;
         %% blind transfer and allowed to update the provided slot number
@@ -208,8 +210,7 @@ park_call(SlotNumber, ParkedCalls, ReferredTo, Call) ->
             PresenceId = wh_json:get_value(<<"Presence-ID">>, Slot),
             lager:debug("update presence-id '~s' with state: early", [PresenceId]),
             whapps_call_command:presence(<<"early">>, PresenceId, ParkedCallId),
-            wait_for_pickup(SlotNumber, wh_json:get_value(<<"Ringback-ID">>, Slot), Call),
-            ok
+            wait_for_pickup(SlotNumber, wh_json:get_value(<<"Ringback-ID">>, Slot), Call)
     end.
 
 %%--------------------------------------------------------------------
@@ -318,7 +319,7 @@ do_save_slot(SlotNumber, Slot, ParkedCalls, Call) ->
 %% actuall "A-Leg".  Find the old callid and update it with the new one.
 %% @end
 %%--------------------------------------------------------------------
--spec update_call_id/3 :: (ne_binary(), wh_json:json_object(), whapps_call:call()) -> 'ok'.
+-spec update_call_id/3 :: (ne_binary(), wh_json:json_object(), whapps_call:call()) -> {'ok', ne_binary(), wh_json:json_object()}.
 update_call_id(Replaces, ParkedCalls, Call) ->
     CallId = cf_exe:callid(Call),
     Slots = wh_json:get_value(<<"slots">>, ParkedCalls, wh_json:new()),
@@ -368,9 +369,10 @@ update_call_id(Replaces, ParkedCalls, Call) ->
 %% the provided call id.
 %% @end
 %%--------------------------------------------------------------------
--spec find_slot_by_callid/2 :: (wh_json:json_object(), ne_binary()) -> {ok, wh_json:json_object()} | {error, not_found}.
--spec find_slot_by_callid/3 :: ([ne_binary(),...], wh_json:json_object(), ne_binary()) -> {ok, wh_json:json_object()} |
-                                                                                          {error, not_found}.
+-spec find_slot_by_callid/2 :: (wh_json:json_object(), ne_binary()) -> {'ok', ne_binary(), wh_json:json_object()} |
+                                                                       {'error', 'not_found'}.
+-spec find_slot_by_callid/3 :: ([ne_binary(),...], wh_json:json_object(), ne_binary()) -> {'ok', ne_binary(), wh_json:json_object()} |
+                                                                                          {'error', 'not_found'}.
 
 find_slot_by_callid(Slots, CallId) ->
     find_slot_by_callid(wh_json:get_keys(Slots), Slots, CallId).
@@ -420,9 +422,8 @@ get_parked_calls(AccountDb, AccountId) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec cleanup_slot/3 :: (ne_binary(), ne_binary(), whapps_call:call()) -> {ok, wh_json:json_object()} | {error, term()}.
-cleanup_slot(SlotNumber, ParkedCall, Call) ->
-    AccountDb = whapps_call:account_db(Call),
+-spec cleanup_slot/3 :: (ne_binary(), ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} | {'error', term()}.
+cleanup_slot(SlotNumber, ParkedCall, AccountDb) ->
     case couch_mgr:open_doc(AccountDb, ?DB_DOC_NAME) of
         {ok, JObj} ->
             case wh_json:get_value([<<"slots">>, SlotNumber, <<"Call-ID">>], JObj) of
@@ -431,10 +432,10 @@ cleanup_slot(SlotNumber, ParkedCall, Call) ->
                     ParkedCallId = wh_json:get_value([<<"slots">>, SlotNumber, <<"Call-ID">>], JObj),
                     PresenceId = wh_json:get_value([<<"slots">>, SlotNumber, <<"Presence-ID">>], JObj),
                     lager:debug("update presence-id '~s' with state: terminated", [PresenceId]),
-                    whapps_call_command:presence(<<"terminated">>, PresenceId, ParkedCallId),
+                    _ = whapps_call_command:presence(<<"terminated">>, PresenceId, ParkedCallId),
                     case couch_mgr:save_doc(AccountDb, wh_json:delete_key([<<"slots">>, SlotNumber], JObj)) of
                         {ok, _}=Ok -> Ok;
-                        {error, conflict} -> cleanup_slot(SlotNumber, ParkedCall, Call);
+                        {error, conflict} -> cleanup_slot(SlotNumber, ParkedCall, AccountDb);
                         {error, _R}=E ->
                             lager:debug("failed to clean up our slot: ~p", [_R]),
                             E
@@ -454,13 +455,12 @@ cleanup_slot(SlotNumber, ParkedCall, Call) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec wait_for_pickup/3 :: (ne_binary(), undefined | ne_binary(), whapps_call:call()) -> ok.
+-spec wait_for_pickup/3 :: (ne_binary(), 'undefined' | ne_binary(), whapps_call:call()) -> any().
 wait_for_pickup(SlotNumber, undefined, Call) ->
     lager:debug("(no ringback) waiting for parked caller to be picked up or hangup"),
     whapps_call_command:b_hold(Call),
     lager:debug("(no ringback) parked caller has been picked up or hungup"),    
-    cleanup_slot(SlotNumber, cf_exe:callid(Call), Call),
-    ok;
+    cleanup_slot(SlotNumber, cf_exe:callid(Call), whapps_call:account_db(Call));
 wait_for_pickup(SlotNumber, RingbackId, Call) ->
     lager:debug("waiting for parked caller to be picked up or hangup"),    
     case whapps_call_command:b_hold(?DEFAULT_RINGBACK_TM, Call) of
@@ -476,19 +476,18 @@ wait_for_pickup(SlotNumber, RingbackId, Call) ->
                     wait_for_pickup(SlotNumber, RingbackId, Call);
                 false -> 
                     lager:debug("parked call doesnt exist anymore, hangup"),
-                    cleanup_slot(SlotNumber, cf_exe:callid(Call), Call),
+                    _ = cleanup_slot(SlotNumber, cf_exe:callid(Call), whapps_call:account_db(Call)),
                     cf_exe:stop(Call)                    
             end;
         {error, _} ->
             lager:debug("parked caller has hungup"),
-            cleanup_slot(SlotNumber, cf_exe:callid(Call), Call),
+            _ = cleanup_slot(SlotNumber, cf_exe:callid(Call), whapps_call:account_db(Call)),
             cf_exe:transfer(Call);
         {ok, _} ->
             lager:debug("parked caller has been picked up"),
-            cleanup_slot(SlotNumber, cf_exe:callid(Call), Call),
+            _ = cleanup_slot(SlotNumber, cf_exe:callid(Call), whapps_call:account_db(Call)),
             cf_exe:transfer(Call)
-    end,
-    ok.
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -566,7 +565,7 @@ ringback_parker(EndpointId, SlotNumber, TmpCID, Call) ->
             lager:debug("attempting to ringback ~s", [EndpointId]),
             OriginalCID = whapps_call:caller_id_name(Call),
             CleanUpFun = fun(_) ->
-                                 cleanup_slot(SlotNumber, cf_exe:callid(Call), Call),
+                                 _ = cleanup_slot(SlotNumber, cf_exe:callid(Call), whapps_call:account_db(Call)),
                                  whapps_call:set_caller_id_name(OriginalCID, Call),
                                  whapps_call:set_caller_id_name(OriginalCID, Call)
                          end,

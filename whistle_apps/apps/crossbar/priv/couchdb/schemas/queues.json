@@ -1,4 +1,4 @@
-var a = {
+{
    "_id":"queues",
    "$schema":"http://json-schema.org/draft-03/schema#",
    "id":"http://json-schema.org/draft-03/schema#",
@@ -35,11 +35,6 @@ var a = {
            "default":0,
            "minimum":0
        },
-       "endpoints":{
-           "description":"List of endpoint device IDs (agents) available to ring when callers enter the queue",
-           "type":"array",
-           "default":[]
-       },
        "moh":{
            "description":"Media ID (or appropriate media URI) of media to play while caller is on hold.",
            "type":"string"
@@ -53,6 +48,12 @@ var a = {
            ,"type":"string"
            ,"enum":["round_robin", "most_idle"]
            ,"default":"round_robin"
+       },
+       "caller_exit_key":{
+           "description":"Key caller can press while on hold to exit the queue and continue in the callflow"
+           ,"type":"string"
+           ,"enum":["#","*","1","2","3","4","5","6","7","8","9","0"]
+           ,"default":"#"
        }
    }
-};
+}

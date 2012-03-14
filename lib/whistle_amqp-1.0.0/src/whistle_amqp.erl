@@ -7,26 +7,26 @@
 
 %%
 start(_Type, _Args) ->
-    start_deps(),
+    _ = start_deps(),
     whistle_amqp_sup:start_link().
 
 %% @spec start_link() -> {ok,Pid::pid()}
 %% @doc Starts the app for inclusion in a supervisor tree
 start_link() ->
-    start_deps(),
+    _ = start_deps(),
     whistle_amqp_sup:start_link().
 
 %% @spec start() -> ok
 %% @doc Start the amqp server.
 start() ->
-    start_deps(),
+    _ = start_deps(),
     application:start(whistle_amqp).
 
 start_deps() ->
     whistle_amqp_deps:ensure(?MODULE),
-    wh_util:ensure_started(sasl),
-    wh_util:ensure_started(riak_err),
-    wh_util:ensure_started(amqp_client).
+    ok = wh_util:ensure_started(sasl),
+    ok = wh_util:ensure_started(riak_err),
+    ok = wh_util:ensure_started(amqp_client).
 
 %% @spec stop() -> ok
 %% @doc Stop the amqp server.

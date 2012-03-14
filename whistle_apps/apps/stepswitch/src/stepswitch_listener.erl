@@ -258,6 +258,7 @@ create_resrc(JObj) ->
     Default = #resrc{},
     Id = wh_json:get_value(<<"_id">>, JObj),
     lager:debug("loading resource ~s", [Id]),
+
     #resrc{id = Id
            ,rev =
                wh_json:get_value(<<"_rev">>, JObj)
@@ -287,6 +288,10 @@ create_resrc(JObj) ->
 -spec create_gateway/2 :: (wh_json:json_object(), ne_binary()) -> #gateway{}.
 create_gateway(JObj, Id) ->
     Default = #gateway{},
+
+    EndpointType = endpoint_type(JObj, Default),
+    EndpointOptions = endpoint_options(JObj, EndpointType),
+
     #gateway{resource_id = Id
              ,server =
                  wh_json:get_value(<<"server">>, JObj, Default#gateway.server)
@@ -312,7 +317,26 @@ create_gateway(JObj, Id) ->
                  wh_json:get_value(<<"custom_sip_headers">>, JObj, Default#gateway.sip_headers)
              ,progress_timeout =
                  wh_util:to_integer(wh_json:get_value(<<"progress_timeout">>, JObj, Default#gateway.progress_timeout))
+             ,invite_format =
+                 wh_json:get_value(<<"invite_format">>, JObj, Default#gateway.invite_format)
+             ,endpoint_type =
+                 EndpointType
+             ,endpoint_options =
+                 EndpointOptions
             }.
+
+endpoint_type(JObj, Default) ->
+    case wh_json:get_value(<<"span">>, JObj) of
+        undefined -> Default#gateway.endpoint_type;
+        _ -> <<"freetdm">>
+    end.
+
+endpoint_options(JObj, <<"freetdm">>) ->
+    wh_json:from_list([{<<"Span">>, wh_json:get_value(<<"span">>, JObj)}
+                       ,{<<"Channel-Selection">>, wh_json:get_value(<<"channel_selection">>, JObj, <<"ascending">>)}
+                      ]);
+endpoint_options(_, _) ->
+    wh_json:new().
 
 %%--------------------------------------------------------------------
 %% @private

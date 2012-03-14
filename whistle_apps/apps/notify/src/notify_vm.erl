@@ -82,9 +82,6 @@ create_template_props(Event, Docs, Account) ->
     DateCalled = wh_util:to_integer(wh_json:get_value(<<"Voicemail-Timestamp">>, Event)),
     DateTime = calendar:gregorian_seconds_to_datetime(DateCalled),
 
-    FromAddress = wh_json:find([<<"notifications">>, <<"voicemail_to_email">>, <<"send_from">>], Docs
-                               ,whapps_config:get(?MOD_CONFIG_CAT, <<"default_from">>, <<"no_reply@2600hz.com">>)),
-
     Timezone = wh_util:to_list(wh_json:find(<<"timezone">>, Docs, <<"UTC">>)),
     ClockTimezone = whapps_config:get_string(<<"servers">>, <<"clock_timezone">>, <<"UTC">>),
     
@@ -101,7 +98,6 @@ create_template_props(Event, Docs, Account) ->
                          ,{<<"voicemail_box">>, wh_json:get_value(<<"Voicemail-Box">>, Event)}
                          ,{<<"voicemail_media">>, wh_json:get_value(<<"Voicemail-Name">>, Event)}
                          ,{<<"call_id">>, wh_json:get_value(<<"Call-ID">>, Event)}
-                         ,{<<"from_address">>, FromAddress}
                         ]}
      ,{<<"account_db">>, wh_json:get_value(<<"pvt_account_db">>, Account)}
     ].
@@ -118,11 +114,11 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) when is_list(To) ->
     ok;
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
     Voicemail = props:get_value(<<"voicemail">>, Props),
+    Service = props:get_value(<<"service">>, Props),
     DB = props:get_value(<<"account_db">>, Props),
     DocId = props:get_value(<<"voicemail_media">>, Voicemail),
 
-    HostFrom = list_to_binary([<<"no_reply@">>, wh_util:to_binary(net_adm:localhost())]),
-    From = props:get_value(<<"from_address">>, Voicemail, HostFrom),
+    From = props:get_value(<<"send_from">>, Service),
     To = props:get_value(<<"email_address">>, Props),
 
     lager:debug("attempting to attach media ~s in ~s", [DocId, DB]),

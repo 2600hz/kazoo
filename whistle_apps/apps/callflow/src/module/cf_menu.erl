@@ -22,7 +22,7 @@
          }).
 -type menu_keys() :: #menu_keys{}.
 
--record(cf_menu, {
+-record(cf_menu_data, {
           menu_id = 'undefined' :: ne_binary() | 'undefined'
          ,name = <<>>
          ,retries = 3 :: pos_integer()
@@ -39,7 +39,7 @@
          ,invalid_media = 'true' :: boolean() | ne_binary()
          ,keys = #menu_keys{} :: menu_keys()
          }).
--type menu() :: #cf_menu{}.
+-type menu() :: #cf_menu_data{}.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -62,7 +62,7 @@ handle(Data, Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec menu_loop/2 :: (menu(), whapps_call:call()) -> 'ok'.
-menu_loop(#cf_menu{retries=Retries}=Menu, Call) when Retries =< 0 ->
+menu_loop(#cf_menu_data{retries=Retries}=Menu, Call) when Retries =< 0 ->
     lager:debug("maxium number of retries reached"),
     whapps_call_command:flush_dtmf(Call),
     play_exit_prompt(Menu, Call),
@@ -76,7 +76,7 @@ menu_loop(#cf_menu{retries=Retries}=Menu, Call) when Retries =< 0 ->
             end,
             cf_exe:continue(Call)
     end;
-menu_loop(#cf_menu{retries=Retries, max_length=MaxLength, timeout=Timeout
+menu_loop(#cf_menu_data{retries=Retries, max_length=MaxLength, timeout=Timeout
                 ,record_pin=RecordPin, record_from_offnet=RecOffnet}=Menu, Call) ->
     case whapps_call_command:b_play_and_collect_digits(<<"1">>, MaxLength, get_prompt(Menu, Call), <<"1">>, Timeout, Call) of
         {ok, <<>>} ->
@@ -85,7 +85,7 @@ menu_loop(#cf_menu{retries=Retries, max_length=MaxLength, timeout=Timeout
                 {attempt_resp, ok} ->
                     ok;
                 {attempt_resp, {error, _}} ->
-                    menu_loop(Menu#cf_menu{retries=Retries - 1}, Call)
+                    menu_loop(Menu#cf_menu_data{retries=Retries - 1}, Call)
             end;
         {ok, Digits} ->
             %% this try_match_digits calls hunt_for_callflow() based on the digits dialed
@@ -109,7 +109,7 @@ menu_loop(#cf_menu{retries=Retries, max_length=MaxLength, timeout=Timeout
                 false ->
                     lager:debug("invalid selection ~w", [Digits]),
                     play_invalid_prompt(Menu, Call),
-                    menu_loop(Menu#cf_menu{retries=Retries - 1}, Call)
+                    menu_loop(Menu#cf_menu_data{retries=Retries - 1}, Call)
             end;
         {error, _} ->
             lager:debug("caller hungup while in the menu"),
@@ -154,7 +154,7 @@ is_callflow_child(Digits, _, Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec is_hunt_enabled/3 :: (ne_binary(), menu(), whapps_call:call()) -> boolean().
-is_hunt_enabled(_, #cf_menu{hunt=Hunt}, _) ->
+is_hunt_enabled(_, #cf_menu_data{hunt=Hunt}, _) ->
     Hunt.
 
 %%--------------------------------------------------------------------
@@ -164,10 +164,10 @@ is_hunt_enabled(_, #cf_menu{hunt=Hunt}, _) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec is_hunt_allowed/3 :: (ne_binary(), menu(), whapps_call:call()) -> boolean().
-is_hunt_allowed(_, #cf_menu{hunt_allow = <<>>}, _) ->
+is_hunt_allowed(_, #cf_menu_data{hunt_allow = <<>>}, _) ->
     lager:debug("hunt_allow implicitly accepted digits"),
     true;
-is_hunt_allowed(Digits, #cf_menu{hunt_allow=RegEx}, _) ->
+is_hunt_allowed(Digits, #cf_menu_data{hunt_allow=RegEx}, _) ->
     try
         {match, _} = re:run(Digits, RegEx),
         lager:debug("hunt_allow accepted digits"),
@@ -185,10 +185,10 @@ is_hunt_allowed(Digits, #cf_menu{hunt_allow=RegEx}, _) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec is_hunt_denied/3 :: (ne_binary(), menu(), whapps_call:call()) -> boolean().
-is_hunt_denied(_, #cf_menu{hunt_deny = <<>>}, _) ->
+is_hunt_denied(_, #cf_menu_data{hunt_deny = <<>>}, _) ->
     lager:debug("hunt_deny implicitly accepted digits"),
     false;
-is_hunt_denied(Digits, #cf_menu{hunt_deny=RegEx}, _) ->
+is_hunt_denied(Digits, #cf_menu_data{hunt_deny=RegEx}, _) ->
     try
         {match, _} = re:run(Digits, RegEx),
         lager:debug("hunt_deny denied digits"),
@@ -229,10 +229,10 @@ hunt_for_callflow(Digits, Menu, Call) ->
 %%--------------------------------------------------------------------
 -spec record_greeting/3 :: (binary(), menu(), whapps_call:call()) -> {'ok', menu()} |
                                                                      {'error', wh_json:json_object()}.
-record_greeting(AttachmentName, #cf_menu{greeting_id=undefined}=Menu, Call) ->
+record_greeting(AttachmentName, #cf_menu_data{greeting_id=undefined}=Menu, Call) ->
     MediaId = recording_media_doc(<<"greeting">>, Menu, Call),
-    record_greeting(AttachmentName, Menu#cf_menu{greeting_id=MediaId}, Call);
-record_greeting(AttachmentName, #cf_menu{greeting_id=MediaId}=Menu, Call) ->
+    record_greeting(AttachmentName, Menu#cf_menu_data{greeting_id=MediaId}, Call);
+record_greeting(AttachmentName, #cf_menu_data{greeting_id=MediaId}=Menu, Call) ->
     lager:debug("recording new menu greeting"),
     whapps_call_command:audio_macro([{prompt, <<"vm-record_greeting">>}
                                  ,{tones, [wh_json:from_list([{<<"Frequencies">>, [440]}
@@ -274,11 +274,11 @@ record_greeting(AttachmentName, #cf_menu{greeting_id=MediaId}=Menu, Call) ->
 %%--------------------------------------------------------------------
 -spec play_invalid_prompt/2 :: (menu(), whapps_call:call()) -> {'ok', wh_json:json_object()} |
                                                                {'error', atom()}.
-play_invalid_prompt(#cf_menu{invalid_media=false}, _) ->
+play_invalid_prompt(#cf_menu_data{invalid_media=false}, _) ->
     {ok, wh_json:new()};
-play_invalid_prompt(#cf_menu{invalid_media=true}, Call) ->
+play_invalid_prompt(#cf_menu_data{invalid_media=true}, Call) ->
     whapps_call_command:b_prompt(<<"menu-invalid_entry">>, Call);
-play_invalid_prompt(#cf_menu{invalid_media=Id}, Call) ->
+play_invalid_prompt(#cf_menu_data{invalid_media=Id}, Call) ->
     whapps_call_command:b_play(<<$/, (whapps_call:account_db(Call))/binary, $/, Id/binary>>, Call).
 
 %%--------------------------------------------------------------------
@@ -289,11 +289,11 @@ play_invalid_prompt(#cf_menu{invalid_media=Id}, Call) ->
 %%--------------------------------------------------------------------
 -spec play_transferring_prompt/2 :: (menu(), whapps_call:call()) -> {'ok', wh_json:json_object()} |
                                                                     {'error', atom()}.
-play_transferring_prompt(#cf_menu{transfer_media=false}, _) ->
+play_transferring_prompt(#cf_menu_data{transfer_media=false}, _) ->
     {ok, wh_json:new()};
-play_transferring_prompt(#cf_menu{transfer_media=true}, Call) ->
+play_transferring_prompt(#cf_menu_data{transfer_media=true}, Call) ->
     whapps_call_command:b_prompt(<<"menu-transferring_call">>, Call);
-play_transferring_prompt(#cf_menu{transfer_media=Id}, Call) ->
+play_transferring_prompt(#cf_menu_data{transfer_media=Id}, Call) ->
     whapps_call_command:b_play(<<$/, (whapps_call:account_db(Call))/binary, $/, Id/binary>>, Call).
 
 %%--------------------------------------------------------------------
@@ -304,11 +304,11 @@ play_transferring_prompt(#cf_menu{transfer_media=Id}, Call) ->
 %%--------------------------------------------------------------------
 -spec play_exit_prompt/2 :: (menu(), whapps_call:call()) -> {'ok', wh_json:json_object()} |
                                                             {'error', atom()}.
-play_exit_prompt(#cf_menu{exit_media=false}, _) ->
+play_exit_prompt(#cf_menu_data{exit_media=false}, _) ->
     {ok, wh_json:new()};
-play_exit_prompt(#cf_menu{exit_media=true}, Call) ->
+play_exit_prompt(#cf_menu_data{exit_media=true}, Call) ->
     whapps_call_command:b_prompt(<<"menu-exit">>, Call);
-play_exit_prompt(#cf_menu{exit_media=Id}, Call) ->
+play_exit_prompt(#cf_menu_data{exit_media=Id}, Call) ->
     whapps_call_command:b_play(<<$/, (whapps_call:account_db(Call))/binary, $/, Id/binary>>, Call).
 
 %%--------------------------------------------------------------------
@@ -318,11 +318,11 @@ play_exit_prompt(#cf_menu{exit_media=Id}, Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec get_prompt/2 :: (menu(), whapps_call:call()) -> ne_binary().
-get_prompt(#cf_menu{greeting_id=undefined}, _) ->
+get_prompt(#cf_menu_data{greeting_id=undefined}, _) ->
     cf_util:get_prompt(<<"menu-no_prompt">>);
-get_prompt(#cf_menu{greeting_id = <<"local_stream://", _/binary>> = ID}, _) ->
+get_prompt(#cf_menu_data{greeting_id = <<"local_stream://", _/binary>> = ID}, _) ->
     ID;
-get_prompt(#cf_menu{greeting_id=Id}, Call) ->
+get_prompt(#cf_menu_data{greeting_id=Id}, Call) ->
     <<$/, (whapps_call:account_db(Call))/binary, $/, Id/binary>>.
 
 %%--------------------------------------------------------------------
@@ -384,7 +384,7 @@ tmp_file() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec review_recording/3 :: (ne_binary(), menu(), whapps_call:call()) -> {'ok', 'record' | 'save' | 'no_selection'}.
-review_recording(MediaName, #cf_menu{keys=#menu_keys{listen=ListenKey, record=RecordKey, save=SaveKey}}=Menu, Call) ->
+review_recording(MediaName, #cf_menu_data{keys=#menu_keys{listen=ListenKey, record=RecordKey, save=SaveKey}}=Menu, Call) ->
     lager:debug("playing menu greeting review options"),
     whapps_call_command:flush_dtmf(Call),
     Prompt = cf_util:get_prompt(<<"vm-review_recording">>),
@@ -408,7 +408,7 @@ review_recording(MediaName, #cf_menu{keys=#menu_keys{listen=ListenKey, record=Re
 %% @end
 %%--------------------------------------------------------------------
 -spec recording_media_doc/3 :: (binary(), menu(), whapps_call:call()) -> binary().
-recording_media_doc(Type, #cf_menu{name=MenuName, menu_id=Id}, Call) ->
+recording_media_doc(Type, #cf_menu_data{name=MenuName, menu_id=Id}, Call) ->
     AccountDb = whapps_call:account_db(Call),
     Name = <<MenuName/binary, " menu ", Type/binary >>,
     Props = [{<<"name">>, Name}
@@ -429,7 +429,7 @@ recording_media_doc(Type, #cf_menu{name=MenuName, menu_id=Id}, Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec update_doc/4 :: (list() | binary(), wh_json:json_term(), menu() | binary(),  whapps_call:call() | binary()) -> 'ok' | {'error', atom()}.
-update_doc(Key, Value, #cf_menu{menu_id=Id}, Db) ->
+update_doc(Key, Value, #cf_menu_data{menu_id=Id}, Db) ->
     update_doc(Key, Value, Id, Db);
 update_doc(Key, Value, Id, Call) when is_tuple(Call) ->
     update_doc(Key, Value, Id, whapps_call:account_db(Call));
@@ -461,26 +461,26 @@ get_menu_profile(Data, Call) ->
     case couch_mgr:open_doc(AccountDb, Id) of
         {ok, JObj} ->
             lager:debug("loaded menu route ~s", [Id]),
-            Default=#cf_menu{},
-            #cf_menu{menu_id = Id
+            Default=#cf_menu_data{},
+            #cf_menu_data{menu_id = Id
                      ,name =
                          wh_json:get_ne_value(<<"name">>, JObj, Id)
                      ,retries =
-                         wh_json:get_integer_value(<<"retries">>, JObj, Default#cf_menu.retries)
+                         wh_json:get_integer_value(<<"retries">>, JObj, Default#cf_menu_data.retries)
                      ,timeout =
-                         wh_json:get_binary_value(<<"timeout">>, JObj, Default#cf_menu.timeout)
+                         wh_json:get_binary_value(<<"timeout">>, JObj, Default#cf_menu_data.timeout)
                      ,max_length =
-                         wh_json:get_binary_value(<<"max_extension_length">>, JObj, Default#cf_menu.max_length)
+                         wh_json:get_binary_value(<<"max_extension_length">>, JObj, Default#cf_menu_data.max_length)
                      ,hunt =
-                         wh_json:is_true(<<"hunt">>, JObj, Default#cf_menu.hunt)
+                         wh_json:is_true(<<"hunt">>, JObj, Default#cf_menu_data.hunt)
                      ,hunt_deny =
-                         wh_json:get_value(<<"hunt_deny">>, JObj, Default#cf_menu.hunt_deny)
+                         wh_json:get_value(<<"hunt_deny">>, JObj, Default#cf_menu_data.hunt_deny)
                      ,hunt_allow =
-                         wh_json:get_value(<<"hunt_allow">>, JObj, Default#cf_menu.hunt_allow)
+                         wh_json:get_value(<<"hunt_allow">>, JObj, Default#cf_menu_data.hunt_allow)
                      ,record_pin =
-                         wh_json:get_value(<<"record_pin">>, JObj, Default#cf_menu.record_pin)
+                         wh_json:get_value(<<"record_pin">>, JObj, Default#cf_menu_data.record_pin)
                      ,record_from_offnet =
-                         wh_json:is_true(<<"allow_record_from_offnet">>, JObj, Default#cf_menu.record_from_offnet)
+                         wh_json:is_true(<<"allow_record_from_offnet">>, JObj, Default#cf_menu_data.record_from_offnet)
                      ,greeting_id =
                          wh_json:get_ne_value([<<"media">>, <<"greeting">>], JObj)
                      ,exit_media =
@@ -495,5 +495,5 @@ get_menu_profile(Data, Call) ->
                     };
         {error, R} ->
             lager:debug("failed to load menu route ~s, ~w", [Id, R]),
-            #cf_menu{}
+            #cf_menu_data{}
     end.

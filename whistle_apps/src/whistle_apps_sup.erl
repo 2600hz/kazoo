@@ -44,7 +44,6 @@ init([]) ->
               ,?CACHE(config_cache)
               ,?CACHE(whapps_call_cache)
               ,?CHILD(whistle_couch_sup, worker)
-              %% ,?CHILD(wh_timer, worker)
               ,?CHILD(whapps_sup, supervisor)
               ,?CHILD(whapps_controller, worker)
              ]

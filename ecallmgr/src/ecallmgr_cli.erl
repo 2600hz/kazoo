@@ -15,9 +15,9 @@
 help(always,_) ->
   lists:foreach(
     fun({E,D}) ->
-	    format(E ++ "~n", D);
+            format(E ++ "~n", D);
        (E) ->
-	    format(E ++ "~n", [])
+            format(E ++ "~n", [])
     end, usage()),
   ok.
 
@@ -42,44 +42,50 @@ status(always, [DisplayOpt]) ->
     Node = wh_util:to_atom([$e,$c,$a,$l,$l,$m,$g,$r,$@ | net_adm:localhost()], true),
     format("Retrieving status for ~s~n", [Node]),
     case rpc_call(Node, ecallmgr_fs_handler, diagnostics, []) of 
-	{ok, _, _}=Res -> Res;
-	{ok, Data} ->
-	    diagnostics_server:display_fs_data(Data, wh_util:to_atom(DisplayOpt, true)),
-	    ok
+        {ok, _, _}=Res -> Res;
+        {ok, Data} ->
+            diagnostics_server:display_fs_data(Data, wh_util:to_atom(DisplayOpt, true)),
+            ok;
+        {error, Fmt, Args} ->
+            format(Fmt, Args)
     end.
 
 set_amqp_host(always, [Host]=Arg) ->
     Node = list_to_atom(lists:flatten(["ecallmgr@", net_adm:localhost()])),
     format("Setting AMQP host to ~p on ~p~n", [Host, Node]),
     case rpc_call(Node, ecallmgr_fs_handler, set_amqp_host, Arg) of
-	{ok, ok} ->
-	    {ok, "Set ecallmgr's amqp host to ~p", [Host]};
-	{ok, Other} ->
-	    {ok, "Something unexpected happened while setting the amqp host: ~p", [Other]}
+        {ok, ok} ->
+            {ok, "Set ecallmgr's amqp host to ~p", [Host]};
+        {ok, Other} ->
+            {ok, "Something unexpected happened while setting the amqp host: ~p", [Other]};
+        {error, Fmt, Args} ->
+            format(Fmt, Args)
     end.
 
 add_fs_node(always, [FSNode]) ->
     Node = list_to_atom(lists:flatten(["ecallmgr@", net_adm:localhost()])),
     case rpc_call(Node, ecallmgr_fs_handler, add_fs_node, [list_to_atom(FSNode)]) of
-	{ok, ok} ->
-	    {ok, "Added ~p successfully~n", [FSNode]};
-	{ok, Res} ->
-	    {ok, "Failed to add node(~p): ~p~n", [FSNode, Res]}
+        {ok, ok} ->
+            {ok, "Added ~p successfully~n", [FSNode]};
+        {ok, Res} ->
+            {ok, "Failed to add node(~p): ~p~n", [FSNode, Res]};
+        {error, Fmt, Args} ->
+            format(Fmt, Args)
     end.
 
 rm_fs_node(always, [FSNode]) ->
     Node = list_to_atom(lists:flatten(["ecallmgr@", net_adm:localhost()])),
     case rpc_call(Node, ecallmgr_fs_handler, rm_fs_node, [list_to_atom(FSNode)]) of
-	{ok, _} ->
-	    {ok, "Removed ~p successfully~n", [FSNode]};
-	Other -> %{ok, Res} ->
-	    {ok, "Failed to remove node(~p): ~p~n", [FSNode, Other]}
+        {ok, _} ->
+            {ok, "Removed ~p successfully~n", [FSNode]};
+        {error, Fmt, Args} ->
+            format(Fmt, Args)
     end.
 
 rpc_call(Node, M, F, A) ->
     case net_adm:ping(Node) of
-	pong ->
-	    {ok, rpc:call(Node, M, F, A)};
-	pang ->
-	    {ok, "~p not reachable", [Node]}
+        pong ->
+            {ok, rpc:call(Node, M, F, A)};
+        pang ->
+            {error, "The ecallmgr node ~p is not reachable. Have you started it yet?~nTry ./start.sh or ./start-dev.sh~n~n", [Node]}
     end.

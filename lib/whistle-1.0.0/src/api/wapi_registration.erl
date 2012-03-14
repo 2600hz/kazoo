@@ -126,13 +126,13 @@ bind_q(Q, Props) ->
     bind_q(Q, props:get_value(retrict_to, Props), Props).
 
 bind_q(Q, undefined, Props) ->
-    amqp_util:bind_q_to_callmgr(Q, get_success_binding(Props)),
+    _ = amqp_util:bind_q_to_callmgr(Q, get_success_binding(Props)),
     amqp_util:bind_q_to_callmgr(Q, get_query_binding(Props));
 bind_q(Q, [reg_success|T], Props) ->
-    amqp_util:bind_q_to_callmgr(Q, get_success_binding(Props)),
+    _ = amqp_util:bind_q_to_callmgr(Q, get_success_binding(Props)),
     bind_q(Q, T, Props);
 bind_q(Q, [reg_query|T], Props) ->
-    amqp_util:bind_q_to_callmgr(Q, get_query_binding(Props)),
+    _ = amqp_util:bind_q_to_callmgr(Q, get_query_binding(Props)),
     bind_q(Q, T, Props);
 bind_q(Q, [_|T], Props) ->
     bind_q(Q, T, Props);
@@ -147,13 +147,13 @@ unbind_q(Q, Props) ->
     unbind_q(Q, props:get_value(retrict_to, Props), Props).
 
 unbind_q(Q, undefined, Props) ->
-    amqp_util:unbind_q_from_callmgr(Q, get_success_binding(Props)),
+    _ = amqp_util:unbind_q_from_callmgr(Q, get_success_binding(Props)),
     amqp_util:unbind_q_from_callmgr(Q, get_query_binding(Props));
 unbind_q(Q, [reg_success|T], Props) ->
-    amqp_util:unbind_q_from_callmgr(Q, get_success_binding(Props)),
+    _ = amqp_util:unbind_q_from_callmgr(Q, get_success_binding(Props)),
     unbind_q(Q, T, Props);
 unbind_q(Q, [reg_query|T], Props) ->
-    amqp_util:unbind_q_from_callmgr(Q, get_query_binding(Props)),
+    _ = amqp_util:unbind_q_from_callmgr(Q, get_query_binding(Props)),
     unbind_q(Q, T, Props);
 unbind_q(Q, [_|T], Props) ->
     unbind_q(Q, T, Props);

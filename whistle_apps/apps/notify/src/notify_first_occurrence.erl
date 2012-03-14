@@ -133,9 +133,7 @@ first_occurrence_notice(Account, Occurrence) ->
 
     lager:debug("creating first occurrence notice"),
     
-    Props = [{<<"From">>, From}
-             |create_template_props(Account, Occurrence)
-            ],
+    Props = create_template_props(Account, Occurrence),
 
     CustomTxtTemplate = wh_json:get_value([<<"notifications">>, <<"first_occurrence">>, <<"email_text_template">>], Account),
     {ok, TxtBody} = notify_util:render_template(CustomTxtTemplate, ?DEFAULT_TEXT_TMPL, Props),
@@ -179,7 +177,8 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) when is_list(To) ->
     [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props) || T <- To],
     ok;
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
-    From = props:get_value(<<"From">>, Props),
+    Service = props:get_value(<<"service">>, Props),
+    From = props:get_value(<<"send_from">>, Service),
     %% Content Type, Subtype, Headers, Parameters, Body
     Email = {<<"multipart">>, <<"mixed">>
                  ,[{<<"From">>, From}

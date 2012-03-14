@@ -34,11 +34,13 @@ start_app(App) when not is_atom(App) ->
 start_app(App) when is_atom(App) ->
     lager:debug("attempting to start whapp ~s", [App]),
     case lists:keyfind(App, 1, supervisor:which_children(whapps_sup)) of
-        {App, _, _, _} -> exists;
+        {App, _, _, _} ->
+            lager:info("the ~s whapp is already running", [App]),
+            exists;
         false ->
             try
                 {ok, _} = whapps_sup:start_app(App),
-                lager:info("started whistle application ~s", [App]),
+                lager:info("the ~s whapp has started successfully", [App]),
                 ok
             catch
                 E:R ->
@@ -79,7 +81,11 @@ initialize_whapps() ->
     end,
 
     WhApps = whapps_config:get(?MODULE, <<"whapps">>, []),
-    lists:foreach(fun(WhApp) -> start_app(WhApp) end, WhApps).
+    Started = [ WhApp
+                || WhApp <- WhApps,
+                   (Res = start_app(WhApp)) =:= ok orelse Res =:= exists
+              ],
+    lager:info("Auto-started whapps ~p", [Started]).
 
 %%%===================================================================
 %%% Internal functions

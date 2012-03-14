@@ -20,6 +20,7 @@
 -include("ecallmgr.hrl").
 
 -define(DEFAULT_TIMEOUT, 5000).
+-define(FUDGE, 2600).
 
 -spec authn_req/1 :: (proplist() | wh_json:json_object()) -> {'ok', wh_json:json_object()} |
                                                              {'error', _}.
@@ -94,7 +95,9 @@ send_request(Req, Timeout, PubFun) ->
                false -> Req
            end,
 
-    Reply = gen_listener:call(W, {request, Prop, PubFun, Timeout}, Timeout),
-    lager:debug("reply received: ~p", [Reply]),
+    %% We need to timeout the caller without crashing, so add a fudge to the gen_listener's timeout
+    %% but still timeout the caller in Timeout milliseconds (allows the poolboy worker the chance to
+    %% get checked back in before the caller crashes - poolboy kills the worker if the caller crashes)
+    Reply = gen_listener:call(W, {request, Prop, PubFun, Timeout}, Timeout+?FUDGE),
     poolboy:checkin(?AMQP_POOL_MGR, W),
     Reply.

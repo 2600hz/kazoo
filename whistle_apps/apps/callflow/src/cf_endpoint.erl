@@ -25,10 +25,12 @@
 %% like devices, ring groups, and resources.
 %% @end
 %%--------------------------------------------------------------------
--spec build/2 :: ('undefined' | ne_binary() | wh_json:json_object(), whapps_call:call()) -> {'ok', wh_json:json_objects()} | 
-                                                                                    {'error', term()}.
+-type build_errors() :: 'db_not_reachable' | 'disabled' | 'endpoint_called_self' | 'endpoint_id_undefined' | 'invalid_endpoint_id' | 'not_found' | 'owner_called_self'.
+
+-spec build/2 :: ('undefined' | ne_binary() | wh_json:json_object(), whapps_call:call()) -> {'ok', wh_json:json_objects()} |
+                                                                                            {'error', build_errors()}.
 -spec build/3 :: ('undefined' | ne_binary() | wh_json:json_object(), 'undefined' | wh_json:json_object(), whapps_call:call()) -> {'ok', wh_json:json_objects()} |
-                                                                                                                         {'error', term()}.
+                                                                                                                                 {'error', build_errors()}.
 build(EndpointId, Call) ->
     build(EndpointId, wh_json:new(), Call).
 
@@ -73,7 +75,8 @@ build(Endpoint, Properties, Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec create_endpoints/3 :: (wh_json:json_object(), wh_json:json_object(), whapps_call:call()) -> {'ok', wh_json:json_objects()} |
-                                                                                          {'error', 'no_endpoints'}.
+                                                                                                  {'error', 'no_endpoints'}.
+
 create_endpoints(Endpoint, Properties, Call) ->
     Fwd = cf_attributes:call_forward(Endpoint, Call),
     Substitue = wh_json:is_false(<<"substitute">>, Fwd),

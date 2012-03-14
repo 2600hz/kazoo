@@ -69,8 +69,8 @@
 -record(temporal, {local_sec = 0 :: non_neg_integer()
                    ,local_date = {2011, 1, 1} :: wh_date()
                    ,local_time = {0, 0, 0} :: wh_time()
-                   ,routes = [] :: proplist()
-                   ,timezone = ?TEMPORAL_DEFAULT_TIMEZONE :: binary()
+                   ,routes = [] :: wh_json:json_strings()
+                   ,timezone = ?TEMPORAL_DEFAULT_TIMEZONE :: ne_binary()
                    ,prompts=#prompts{}
                    ,keys=#keys{}
                   }).
@@ -80,7 +80,7 @@
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec handle/2 :: (wh_json:json_object(), whapps_call:call()) -> ok.
+-spec handle/2 :: (wh_json:json_object(), whapps_call:call()) -> any().
 handle(Data,Call) ->
     Temporal = get_temporal_route(Data, Call),
     case wh_json:get_value(<<"action">>, Data) of
@@ -153,7 +153,6 @@ process_rules(_, [], _) ->
     lager:debug("continuing with default callflow"),
     default.
 
-
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -161,9 +160,7 @@ process_rules(_, [], _) ->
 %% the future as well as pertain to this temporal route mapping.
 %% @end
 %%--------------------------------------------------------------------
--spec get_temporal_rules/2 :: (Temporal, Call) -> [#rule{},...] when
-      Temporal :: #temporal{},
-      Call :: whapps_call:call().
+-spec get_temporal_rules/2 :: (#temporal{}, whapps_call:call()) -> [#rule{},...].
 get_temporal_rules(#temporal{local_sec=LSec, routes=Routes}, Call) ->
     [#rule{id = ID
            ,enabled =
@@ -198,9 +195,7 @@ get_temporal_rules(#temporal{local_sec=LSec, routes=Routes}, Call) ->
 %% Loads the temporal record with data from the db.
 %% @end
 %%--------------------------------------------------------------------
--spec get_temporal_route/2 :: (JObj, Call) -> #temporal{} when
-      JObj :: wh_json:json_object(),
-      Call :: whapps_call:call().
+-spec get_temporal_route/2 :: (wh_json:json_object(), whapps_call:call()) -> #temporal{}.
 get_temporal_route(JObj, Call) ->
     lager:debug("loading temporal route"),
     {branch_keys, Keys} = cf_exe:get_branch_keys(Call),

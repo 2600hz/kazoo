@@ -49,10 +49,8 @@ get(Key0, Default, Node0) ->
 
             lager:debug("looking up ~s from sysconf", [Key]),
 
-            case catch ecallmgr_amqp_pool:get_req(Req) of
+            case ecallmgr_amqp_pool:get_req(Req) of
                 {ok, RespJObj} ->
-                    lager:debug("received resp: ~p", [RespJObj]),
-
                     true = wapi_sysconf:get_resp_v(RespJObj),
                     V = case wh_json:get_value(<<"Value">>, RespJObj) of
                             undefined -> Default;
@@ -64,9 +62,7 @@ get(Key0, Default, Node0) ->
                                 Value
                         end,
                     V;
-                {'EXIT', _R} ->
-                    lager:debug("failed: ~p", [_R]),
-                    Default
+                {error, timeout} -> Default
             end
     end.
 

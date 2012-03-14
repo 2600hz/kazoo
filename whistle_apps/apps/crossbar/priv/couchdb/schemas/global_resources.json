@@ -135,7 +135,29 @@
                "progress_timeout":{
                   "description":"The progress timeout to apply to the device",
                   "type":"integer"
-               }
+               },
+               "endpoint_type":{
+                   "description":"What type of endpoint is this gateway.",
+                   "type":"string",
+                   "enum":["sip", "freetdm"],
+                   "default":"sip"
+               },
+                "channel_selection":{
+                    "description":"Automatic selection of the channel within the span: ascending starts at 1 and moves up; descending is the opposite",
+                    "type":"string",
+                    "enum":["ascending","descending"],
+                    "default":"ascending"
+                },
+                "span":{
+                    "description":"The identity of the hardware on the media server",
+                    "type":"string"
+                },
+                "invite_format":{
+                    "description":"The format of the DID needed by the underlying hardware/gateway",
+                    "type":"string",
+                    "enum":["route","username","e164","npan","1npan"],
+                    "default":"route"
+                }
             }
          }
       }

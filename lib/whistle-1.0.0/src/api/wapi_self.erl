@@ -12,8 +12,7 @@
 
 bind_q(Q, _Props) ->
     amqp_util:targeted_exchange(),
-    amqp_util:bind_q_to_targeted(Q),
-    ok.
+    amqp_util:bind_q_to_targeted(Q).
 
 unbind_q(Q) ->
     amqp_util:unbind_q_from_targeted(Q).

@@ -54,6 +54,8 @@
 
 -export([add_binding/2, add_binding/3, rm_binding/2, rm_binding/3]).
 
+-export([ack/2, nack/2]).
+
 behaviour_info(callbacks) ->
     [{init, 1}
      ,{handle_event, 2} %% Module passes back {reply, Proplist}, passed as 2nd param to Responder:handle_req/2
@@ -92,6 +94,7 @@ behaviour_info(_) ->
          ,module_timeout_ref = 'undefined' :: 'undefined' | reference() % when the client sets a timeout, gen_listener calls shouldn't negate it, only calls that pass through to the client
          ,active_responders = [] :: [pid(),...] | [] %% list of pids processing requests
          ,other_queues = [] :: [{ne_binary(), bindings()},...] | [] %% {QueueName, Binding()}
+         ,last_call_event = [] :: proplist()
          }).
 
 -define(TIMEOUT_RETRY_CONN, 1000).
@@ -104,6 +107,12 @@ queue_name(Srv) ->
 
 responders(Srv) ->
     gen_server:call(Srv, responders).
+
+ack(Srv, Delivery) ->
+    gen_server:cast(Srv, {ack, Delivery}).
+
+nack(Srv, Delivery) ->
+    gen_server:cast(Srv, {nack, Delivery}).
 
 %% API functions that mirror gen_server:call,cast,reply
 -spec call/2 :: (pid(), term()) -> term().
@@ -268,6 +277,15 @@ handle_call(Request, From, #state{module=Module, module_state=ModState, module_t
     end.
 
 -spec handle_cast/2 :: (term(), #state{}) -> handle_cast_ret().
+
+handle_cast({ack, Delivery}, State) ->
+    amqp_util:basic_ack(Delivery),
+    {noreply, State};
+
+handle_cast({nack, Delivery}, State) ->
+    amqp_util:basic_nack(Delivery),
+    {noreply, State};
+
 handle_cast({rm_queue, QueueName}, #state{other_queues=OtherQueues}=State) ->
     _ = [remove_binding(Binding, Props, QueueName) || {Binding, Props} <- props:get_value(QueueName, OtherQueues, [])],
     {noreply, State#state{other_queues=props:delete(QueueName, OtherQueues)}};
@@ -289,12 +307,31 @@ handle_cast({rm_responder, Responder, Keys}, #state{responders=Responders}=State
     {noreply, State#state{responders=listener_utils:rm_responder(Responders, Responder, Keys)}, hibernate};
 
 handle_cast({add_binding, Binding, Props}, #state{queue=Q, bindings=Bs}=State) ->
-    create_binding(Binding, Props, Q),
-    {noreply, State#state{bindings=[{Binding, Props}|Bs]}};
+    case lists:keyfind(Binding, 1, Bs) of
+        false ->
+            lager:debug("creating new binding: ~s", [Binding]),
+            create_binding(Binding, Props, Q),
+            {noreply, State#state{bindings=[{Binding, Props}|Bs]}};
+        {_, P} ->
+            case Props =:= P of
+                true ->
+                    lager:debug("binding ~s exists", [Binding]),
+                    {noreply, State};
+                false ->
+                    lager:debug("adding binding ~s with new props: ~p", [Binding, Props]),
+                    create_binding(Binding, Props, Q),
+                    {noreply, State#state{bindings=[{Binding, Props}|Bs]}}
+            end
+    end;
 
 handle_cast({rm_binding, Binding, Props}, #state{queue=Q, bindings=Bs}=State) ->
-    _ = remove_binding(Binding, Props, Q),
-    {noreply, State#state{bindings=props:delete(Binding, Bs)}};
+    KeepBs = lists:filter(fun({B, P}) when B =:= Binding, P =:= Props ->
+                                  lager:debug("removing binding ~s (~p)", [B, P]),
+                                  remove_binding(B, P, Q),
+                                  false;
+                             (_) -> true
+                          end, Bs),
+    {noreply, State#state{bindings=KeepBs}};
 
 handle_cast(Message, #state{module=Module, module_state=ModState, module_timeout_ref=OldRef}=State) ->
     _ = stop_timer(OldRef),
@@ -313,12 +350,10 @@ handle_cast(Message, #state{module=Module, module_state=ModState, module_timeout
     end.
 
 -spec handle_info/2 :: (term(), #state{}) -> handle_info_ret().
-handle_info({#'basic.deliver'{}=BD, #amqp_msg{props = #'P_basic'{content_type=CT}, payload = Payload}}, #state{active_responders=ARs}=State) ->
+handle_info({#'basic.deliver'{}=BD, #amqp_msg{props = #'P_basic'{content_type=CT}, payload = Payload}}, State) ->
     case catch handle_event(Payload, CT, BD, State) of
-        Pid when is_pid(Pid) ->
-            {noreply, State#state{active_responders=[Pid | ARs]}, hibernate};
-        ignore ->
-            {noreply, State};
+        #state{}=S ->
+            {noreply, S, hibernate};
         {'EXIT', Why} ->
             lager:alert("exception: ~p", [Why]),
             {stop, Why, State}
@@ -340,7 +375,7 @@ handle_info({amqp_host_down, _H}=Down, #state{bindings=Bindings, params=Params}=
                     Self = self(),
                     _ = erlang:send_after(?TIMEOUT_RETRY_CONN, Self, is_consuming),
                     proc_lib:spawn(fun() -> [ add_binding(Self, Type, BindProps) || {Type, BindProps} <- Bindings ] end),
-                    {noreply, State#state{queue=Q, is_consuming=false}, hibernate};
+                    {noreply, State#state{queue=Q, is_consuming=false, bindings=[]}, hibernate};
                 {error, _} ->
                     lager:debug("failed to start amqp, waiting another second"),
                     _ = erlang:send_after(?TIMEOUT_RETRY_CONN, self(), Down),
@@ -356,6 +391,21 @@ handle_info({amqp_lost_channel, no_connection}, State) ->
     lager:alert("lost our channel, checking every second for a host to come back up"),
     _Ref = erlang:send_after(?TIMEOUT_RETRY_CONN, self(), {amqp_host_down, ok}),
     {noreply, State#state{queue = <<>>, is_consuming=false}, hibernate};
+
+handle_info({amqp_lost_channel, connection_restored}, #state{params=Params, bindings=Bindings}=State) ->
+    lager:alert("lost our channel, but its back up; rebinding"),
+
+    case start_amqp(Params) of
+        {ok, Q} ->
+            Self = self(),
+            _ = erlang:send_after(?TIMEOUT_RETRY_CONN, Self, is_consuming),
+            proc_lib:spawn(fun() -> [ add_binding(Self, Type, BindProps) || {Type, BindProps} <- Bindings ] end),
+            {noreply, State#state{queue=Q, is_consuming=false, bindings=[]}, hibernate};
+        {error, _} ->
+            lager:debug("failed to start amqp, waiting another second"),
+            _ = erlang:send_after(?TIMEOUT_RETRY_CONN, self(), {amqp_host_down, ok}),
+            {noreply, State#state{queue = <<>>, is_consuming=false}, hibernate}
+    end;
 
 handle_info(#'basic.consume_ok'{}, S) ->
     lager:debug("consuming from our queue"),
@@ -397,7 +447,7 @@ terminate(Reason, #state{module=Module, module_state=ModState}) ->
     Module:terminate(Reason, ModState),
     lager:debug("~s terminated cleanly, going down", [Module]).
 
--spec handle_event/4 :: (ne_binary(), ne_binary(), #'basic.deliver'{}, #state{}) -> pid().
+-spec handle_event/4 :: (ne_binary(), ne_binary(), #'basic.deliver'{}, #state{}) ->  #state{}.
 handle_event(Payload, <<"application/json">>, BD, State) ->
     JObj = mochijson2:decode(Payload),
     process_req(State, JObj, BD);
@@ -405,25 +455,20 @@ handle_event(Payload, <<"application/erlang">>, BD, State) ->
     JObj = binary_to_term(Payload),
     process_req(State, JObj, BD).
 
--spec process_req/3 :: (#state{}, wh_json:json_object(), #'basic.deliver'{}) -> pid().
-process_req(#state{queue=Queue, responders=Responders, module=Module, module_state=ModState, other_queues=OtherQueues}, JObj, BD) ->
-    OtherQueueNames = [OtherQueueName || {OtherQueueName, _} <- OtherQueues],
-    Props1 = case catch Module:handle_event(JObj, ModState) of
-                 {reply, Props} when is_list(Props) -> [{server, self()}
-                                                        ,{queue, Queue}
-                                                        ,{other_queues, OtherQueueNames}
-                                                        | Props
-                                                       ];
-                 {'EXIT', _Why} -> [{server, self()}
-                                    ,{queue, Queue}
-                                    ,{other_queues, OtherQueueNames}
-                                   ];
-                 ignore -> ignore
-             end,
-    case Props1 of
-        ignore -> ignore;
-        _Else ->
-            proc_lib:spawn_link(fun() -> _ = wh_util:put_callid(JObj), process_req(Props1, Responders, JObj, BD) end)
+-spec process_req/3 :: (#state{}, wh_json:json_object(), #'basic.deliver'{}) -> #state{}.
+process_req(#state{responders=Responders, active_responders=ARs}=State, JObj, BD) ->
+    case dedup_events(wh_util:get_event_type(JObj), JObj, State) of
+        duplicate -> State;
+        #state{}=S ->
+            case handle_callback_event(S, JObj) of
+                ignore -> State;
+                Props ->
+                    Pid = proc_lib:spawn_link(fun() -> 
+                                                      _ = wh_util:put_callid(JObj),
+                                                      process_req(Props, Responders, JObj, BD) 
+                                              end),
+                    S#state{active_responders=[Pid | ARs]}
+            end
     end.
 
 -spec process_req/4 :: (wh_proplist(), responders(), wh_json:json_object(), #'basic.deliver'{}) -> 'ok'.
@@ -441,6 +486,22 @@ process_req(Props, Responders, JObj, BD) ->
                    maybe_event_matches_key(Key, Evt)
                ],
     wait_for_handlers(Handlers).
+
+-spec handle_callback_event/2 :: (#state{}, wh_json:json_object()) -> 'ignore' | proplist().
+handle_callback_event(#state{module=Module, module_state=ModState, queue=Queue, other_queues=OtherQueues}, JObj) ->
+    OtherQueueNames = [OtherQueueName || {OtherQueueName, _} <- OtherQueues],
+    case catch Module:handle_event(JObj, ModState) of
+        {reply, Props} when is_list(Props) -> [{server, self()}
+                                               ,{queue, Queue}
+                                               ,{other_queues, OtherQueueNames}
+                                               | Props
+                                              ];
+        {'EXIT', _Why} -> [{server, self()}
+                           ,{queue, Queue}
+                           ,{other_queues, OtherQueueNames}
+                          ];
+        ignore -> ignore
+    end.
 
 %% allow wildcard (<<"*">>) in the Key to match either (or both) Category and Name
 -spec maybe_event_matches_key/2 :: (responder_callback_mapping(), responder_callback_mapping()) -> boolean().
@@ -470,7 +531,7 @@ start_amqp(Props) ->
         Queue ->
             ConsumeProps = props:get_value(consume_options, Props, []),
             set_qos(props:get_value(basic_qos, Props)),
-            amqp_util:basic_consume(Queue, ConsumeProps),
+            ok = amqp_util:basic_consume(Queue, ConsumeProps),
             {ok, Queue}
     end.
 
@@ -534,3 +595,36 @@ stop_timer(Ref) when is_reference(Ref) ->
 start_timer(Timeout) when is_integer(Timeout) andalso Timeout >= 0 ->
     erlang:send_after(Timeout, self(), ?CALLBACK_TIMEOUT_MSG);
 start_timer(_) -> 'undefined'.
+
+-spec dedup_events/3 :: ({ne_binary(), ne_binary()}, wh_json:json_object(), #state{}) -> 'duplicate' | #state{}.
+dedup_events({<<"call_event">>, EventName}, JObj, #state{last_call_event=Props}=State) ->
+    {LastAppName, LastAppData, LastTimestamp} = props:get_value(EventName, Props, {undefined, undefined, 0}),
+    EventTimestamp = wh_json:get_integer_value(<<"Timestamp">>, JObj, 0),
+    EventAppName = wh_json:get_value(<<"Raw-Application-Name">>, JObj),
+    EventAppData = wh_json:get_value(<<"Raw-Application-Data">>, JObj, <<>>),
+
+    EventOccuredAfterLast = (EventTimestamp =:= 0
+                             orelse
+                             EventTimestamp > LastTimestamp
+                            ),
+    SameTimeDifferentEvent = (EventTimestamp >= LastTimestamp
+                              andalso 
+                                (EventAppName =/= LastAppName
+                                 orelse
+                                 EventAppData =/= LastAppData
+                                )
+                             ),
+
+    case EventOccuredAfterLast orelse SameTimeDifferentEvent of
+        true -> State#state{last_call_event=[{EventName, {EventAppName, EventAppData, EventTimestamp}}
+                                             | props:delete(EventName, Props)
+                                            ]};
+        false when not EventOccuredAfterLast -> 
+            lager:debug("ignoring call event ~s for ~s(~s), same event has already been recieved", [EventName, EventAppName, EventAppData]),
+            duplicate;
+        false -> 
+            lager:debug("ignoring call event ~s for ~s(~s), timestamp is older than previous message", [EventName, EventAppName, EventAppData]),
+            duplicate
+    end;
+dedup_events(_, _, State) ->
+    State.

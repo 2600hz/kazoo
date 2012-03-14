@@ -39,8 +39,8 @@ init() ->
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.acls">>, ?MODULE, allowed_methods),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.acls">>, ?MODULE, resource_exists),
     _ = crossbar_bindings:bind(<<"v1_resource.validate.acls">>, ?MODULE, validate),
-    %_ = crossbar_bindings:bind(<<"v1_resource.put.acls">>, ?MODULE, put),
-    _ = crossbar_bindings:bind(<<"v1_resource.delete.acls">>, ?MODULE, delete),
+    %_ = crossbar_bindings:bind(<<"v1_resource.execute.put.acls">>, ?MODULE, put),
+    _ = crossbar_bindings:bind(<<"v1_resource.execute.delete.acls">>, ?MODULE, delete),
     ok.
 
 %%--------------------------------------------------------------------

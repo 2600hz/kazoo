@@ -15,9 +15,9 @@
 help(always,_) ->
   lists:foreach(
     fun({E,D}) ->
-	    format(E ++ "~n", D);
+            format(E ++ "~n", D);
        (E) ->
-	    format(E ++ "~n", [])
+            format(E ++ "~n", [])
     end, usage()),
   ok.
 
@@ -41,10 +41,12 @@ set_amqp_host(always, [Host]=Arg) ->
     Node = list_to_atom(lists:flatten(["whistle_apps@", net_adm:localhost()])),
     format("Setting AMQP host to ~p on ~p~n", [Host, Node]),
     case rpc_call(Node, whapps_controller, set_amqp_host, Arg) of
-	{ok, ok} ->
-	    {ok, "Set whistle controller's amqp host to ~p", [Host]};
-	{ok, Other} ->
-	    {ok, "Something unexpected happened while setting the amqp host: ~p", [Other]}
+        {ok, ok} ->
+            {ok, "Set whistle controller's amqp host to ~p", [Host]};
+        {ok, Other} ->
+            {ok, "Something unexpected happened while setting the amqp host: ~p", [Other]};
+        {error, Fmt, Args} ->
+            format(Fmt, Args)
     end.
 
 set_couch_host(always, [Host]) ->
@@ -53,46 +55,54 @@ set_couch_host(always, [Host]) ->
     User = io:get_line("CouchDB Username: "),
     Pass = io:get_line("CouchDB Password: "),
     case rpc_call(Node, whapps_controller, set_couch_host, [Host, string:strip(User, right, $\n), string:strip(Pass, right, $\n)]) of
-	{ok, ok} ->
-	    {ok, "Set whistle controller's couch host to ~p", [Host]};
-	{ok, Other} ->
-	    {ok, "Something unexpected happened while setting the couch host: ~p", [Other]}
+        {ok, ok} ->
+            {ok, "Set whistle controller's couch host to ~p", [Host]};
+        {ok, Other} ->
+            {ok, "Something unexpected happened while setting the couch host: ~p", [Other]};
+        {error, Fmt, Args} ->
+            format(Fmt, Args)
     end.
 
 start_app(always, [Whapp]) ->
     Node = list_to_atom(lists:flatten(["whistle_apps@", net_adm:localhost()])),
     format("Starting whapp ~p on ~p~n", [Whapp, Node]),
     case rpc_call(Node, whapps_controller, start_app, [list_to_atom(Whapp)]) of
-	{ok, ok} ->
-	    {ok, "~p started successfully", [Whapp]};
-	{ok, Other} ->
-	    {ok, "Something unexpected happened while starting ~p: ~p", [Whapp, Other]}
+        {ok, ok} ->
+            {ok, "~p started successfully", [Whapp]};
+        {ok, Other} ->
+            {ok, "Something unexpected happened while starting ~p: ~p", [Whapp, Other]};
+        {error, Fmt, Args} ->
+            format(Fmt, Args)
     end.
 
 stop_app(always, [Whapp]) ->
     Node = list_to_atom(lists:flatten(["whistle_apps@", net_adm:localhost()])),
     format("Stopping whapp ~p on ~p~n", [Whapp, Node]),
     case rpc_call(Node, whapps_controller, stop_app, [list_to_atom(Whapp)]) of
-	{ok, ok} ->
-	    {ok, "~p stopped successfully", [Whapp]};
-	{ok, Other} ->
-	    {ok, "Something unexpected happened while stopping ~p: ~p", [Whapp, Other]}
+        {ok, ok} ->
+            {ok, "~p stopped successfully", [Whapp]};
+        {ok, Other} ->
+            {ok, "Something unexpected happened while stopping ~p: ~p", [Whapp, Other]};
+        {error, Fmt, Args} ->
+            format(Fmt, Args)
     end.
 
 running_apps(always, []) ->
     Node = list_to_atom(lists:flatten(["whistle_apps@", net_adm:localhost()])),
     format("Searching for running whapps on ~p~n", [Node]),
     case rpc_call(Node, whapps_controller, running_apps, []) of
-	{ok, Apps} when is_list(Apps) ->
-	    {ok, "~p~n", [Apps]};
-	{ok, Other} ->
-	    {ok, "Something unexpected happened while looking for running whapps: ~p", [Other]}
+        {ok, Apps} when is_list(Apps) ->
+            {ok, "~p~n", [Apps]};
+        {ok, Other} ->
+            {ok, "Something unexpected happened while looking for running whapps: ~p", [Other]};
+        {error, Fmt, Args} ->
+            format(Fmt, Args)
     end.
 
 rpc_call(Node, M, F, A) ->
     case net_adm:ping(Node) of
-	pong ->
-	    {ok, rpc:call(Node, M, F, A)};
-	pang ->
-	    {ok, "~p not reachable", [Node]}
+        pong ->
+            {ok, rpc:call(Node, M, F, A)};
+        pang ->
+            {error, "The whapps node ~p is not reachable. Have you started it yet?~nTry ./start.sh or ./start-dev.sh~n~n", [Node]}
     end.

@@ -23,6 +23,8 @@
 
 -include_lib("crossbar/include/crossbar.hrl").
 
+-define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".provisioner_templates">>).
+
 -define(CB_LIST, <<"provisioner_templates/crossbar_listing">>).
 
 %%%===================================================================
@@ -177,7 +179,7 @@ update_provisioner_template(DocId, #cb_context{req_data=JObj}=Context) ->
 %%--------------------------------------------------------------------
 -spec get_provision_defaults/1 :: (#cb_context{}) -> #cb_context{}.
 get_provision_defaults(#cb_context{req_data=JObj}=Context) ->
-    Url = [whapps_config:get_string(<<"crossbar.provisioner_templates">>, <<"provisioner_template_url">>)
+    Url = [whapps_config:get_string(?MOD_CONFIG_CAT, <<"provisioner_template_url">>)
            ,"?request=data"
            ,"&brand=", mochiweb_util:quote_plus(wh_json:get_string_value([<<"properties">>, <<"brand">>], JObj))
            ,"&model=", mochiweb_util:quote_plus(wh_json:get_string_value([<<"properties">>, <<"model">>], JObj))
@@ -186,9 +188,11 @@ get_provision_defaults(#cb_context{req_data=JObj}=Context) ->
 
     UrlString = lists:flatten(Url),
 
-    Headers = [{"Host", whapps_config:get_string(<<"crossbar.provisioner_templates">>, <<"provisioner_template_host">>)}
-               ,{"Referer", whapps_config:get_string(<<"crossbar.provisioner_templates">>, <<"provisioner_template_referer">>)}
-               ,{"User-Agent", wh_util:to_list(erlang:node())}
+    Headers = [KV || {_, V}=KV <- [{"Host", whapps_config:get_string(?MOD_CONFIG_CAT, <<"provisioner_template_host">>)}
+                                   ,{"Referer", whapps_config:get_string(?MOD_CONFIG_CAT, <<"provisioner_template_referer">>)}
+                                   ,{"User-Agent", wh_util:to_list(erlang:node())}
+                                  ],
+                     V =/= undefined
               ],
 
     Body = [],
@@ -198,14 +202,17 @@ get_provision_defaults(#cb_context{req_data=JObj}=Context) ->
 
     case ibrowse:send_req(UrlString, Headers, get, Body, HTTPOptions) of
         {ok, "200", _, Response} ->
-            lager:debug("Great success! Acquired provisioning template."),
+            lager:debug("great success, accquired provisioning template"),
             JResp = wh_json:decode(Response),
             Context#cb_context{
                 doc = wh_json:set_value(<<"template">>, JResp, JObj)
                 ,resp_status = success
             };
-        _ ->
-            lager:debug("Error! Could not acquiring provisioning template."),
+        {ok, Status, _, _} ->
+            lager:debug("could not acquiring provisioning template: ~s", [Status]),
+            crossbar_util:response(error, <<"Error retrieving content from external site">>, 500, Context);
+        {error, _R} ->
+            lager:debug("could not acquiring provisioning template: ~p", [_R]),
             crossbar_util:response(error, <<"Error retrieving content from external site">>, 500, Context)
     end.
 

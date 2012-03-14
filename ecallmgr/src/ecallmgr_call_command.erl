@@ -28,11 +28,6 @@ exec_cmd(Node, UUID, JObj, ControlPID) ->
                     Result;
                 {AppName, noop} ->
                     ecallmgr_call_control:event_execute_complete(ControlPID, UUID, AppName);
-                {<<"answer">> = AppName, AppData} ->
-                    _ = send_cmd(Node, UUID, AppName, AppData),
-                    %% 22:55 pyite_mac  can you sleep 0.5 seconds before continuing
-                    timer:sleep(500),
-                    ecallmgr_call_control:event_execute_complete(ControlPID, UUID, AppName);
                 {AppName, AppData} ->
                     send_cmd(Node, UUID, AppName, AppData)
             end;
@@ -247,7 +242,7 @@ get_fs_app(_Node, _UUID, JObj, <<"say">>) ->
     end;
 
 get_fs_app(Node, UUID, JObj, <<"bridge">>) ->
-    Endpoints = wh_json:get_json_value(<<"Endpoints">>, JObj, []),
+    Endpoints = wh_json:get_ne_value(<<"Endpoints">>, JObj, []),
     case wapi_dialplan:bridge_v(JObj) of
         false -> {'error', <<"bridge failed to execute as JObj did not validate">>};
         true when Endpoints =:= [] -> {'error', <<"bridge request had no endpoints">>};
@@ -675,14 +670,20 @@ create_masquerade_event(Application, EventName) ->
 %%--------------------------------------------------------------------
 -spec get_bridge_endpoint/1 :: (wh_json:json_object()) -> binary().
 get_bridge_endpoint(JObj) ->
-    case ecallmgr_fs_xml:build_route(JObj, wh_json:get_value(<<"Invite-Format">>, JObj)) of
+    get_bridge_endpoint(JObj, wh_json:get_value(<<"Endpoint-Type">>, JObj, <<"sip">>), ecallmgr_fs_xml:get_leg_vars(JObj)).
+get_bridge_endpoint(JObj, <<"sip">>, CVs) ->
+    case ecallmgr_fs_xml:build_sip_route(JObj, wh_json:get_value(<<"Invite-Format">>, JObj)) of
         {'error', 'timeout'} ->
             lager:debug("unable to build route to endpoint"),
             <<>>;
         EndPoint ->
-            CVs = ecallmgr_fs_xml:get_leg_vars(JObj),
             list_to_binary([CVs, EndPoint])
-    end.
+    end;
+get_bridge_endpoint(JObj, <<"freetdm">>, CVs) ->
+    Endpoint = ecallmgr_fs_xml:build_freetdm_route(JObj),
+    lager:info("freetdm endpoint: ~p", [Endpoint]),
+    lager:info("freetdm ccvs: ~p", [CVs]),
+    list_to_binary([CVs, Endpoint]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -840,7 +841,6 @@ send_fetch_call_event(Node, UUID, JObj) ->
 
                end,
         EvtProp1 = [{<<"Msg-ID">>, props:get_value(<<"Event-Date-Timestamp">>, Prop)}
-                    ,{<<"Timestamp">>, props:get_value(<<"Event-Date-Timestamp">>, Prop)}
                     ,{<<"Call-ID">>, UUID}
                     ,{<<"Call-Direction">>, props:get_value(<<"Call-Direction">>, Prop)}
                     ,{<<"Channel-Call-State">>, props:get_value(<<"Channel-Call-State">>, Prop)}
@@ -884,9 +884,7 @@ send_store_call_event(Node, UUID, MediaTransResults) ->
                    lager:debug("sending less interesting call_event message"),
                    []
            end,
-
     EvtProp1 = [{<<"Msg-ID">>, props:get_value(<<"Event-Date-Timestamp">>, Prop, Timestamp)}
-                ,{<<"Timestamp">>, props:get_value(<<"Event-Date-Timestamp">>, Prop, Timestamp)}
                 ,{<<"Call-ID">>, UUID}
                 ,{<<"Call-Direction">>, props:get_value(<<"Call-Direction">>, Prop, <<>>)}
                 ,{<<"Channel-Call-State">>, props:get_value(<<"Channel-Call-State">>, Prop, <<"HANGUP">>)}

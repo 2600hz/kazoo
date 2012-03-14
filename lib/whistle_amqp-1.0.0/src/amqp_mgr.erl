@@ -68,7 +68,7 @@ publish(BP, AM) ->
 consume(BC) ->
     gen_server:call(?SERVER, {consume, BC}).
 
--spec misc_req/1 :: (amqp_host:mic_records()) -> 'ok' | {'error', atom()}.
+-spec misc_req/1 :: (amqp_host:misc_records()) -> 'ok' | {'error', atom()}.
 misc_req(Req) ->
     gen_server:call(?SERVER, {misc_req, Req}).
 
@@ -101,9 +101,13 @@ init([]) ->
     case start_amqp_host(Uri, UseFederation) of
         {ok, State} ->
             lager:debug("starting amqp manager server"),
+            lager:info("We've connected successfully to the broker at ~s", [Uri]),
             process_flag(trap_exit, true),
             {ok, State#state{amqp_uri=Uri, use_federation=UseFederation}};
-        {error, E} -> {stop, E}
+        {error, E} ->
+            lager:info("We tried to connect to ~s, but were unsuccessful: ~p", [Uri, E]),
+            lager:info("We can't start without a working connection to an AMQP broker"),
+            {stop, E}
     end.
 
 %%--------------------------------------------------------------------
@@ -170,15 +174,23 @@ handle_cast({start_conn, Uri}, #state{use_federation=UseFederation}) ->
     lager:debug("Starting connection with uri: ~s: ~s", [Uri, UseFederation]),
 
     case start_amqp_host(Uri, UseFederation) of
-        {ok, State1} -> {noreply, State1#state{amqp_uri=Uri, use_federation=UseFederation}};
-        {error, E} -> {stop, E, normal}
+        {ok, State1} ->
+            lager:info("We've connected successfully to the broker at ~s", [Uri]),
+            {noreply, State1#state{amqp_uri=Uri, use_federation=UseFederation}};
+        {error, E} ->
+            lager:info("We can't seem to start an AMQP connection using ~s: ~p", [Uri, E]),
+            {stop, E, normal}
     end;
 handle_cast({start_conn, Uri, UseFederation}, _State) ->
     lager:debug("Starting connection with uri: ~s: ~s", [Uri, UseFederation]),
 
     case start_amqp_host(Uri, UseFederation) of
-        {ok, State1} -> {noreply, State1#state{amqp_uri=Uri, use_federation=UseFederation}};
-        {error, E} -> {stop, E, normal}
+        {ok, State1} ->
+            lager:info("We've connected successfully to the broker at ~s", [Uri]),
+            {noreply, State1#state{amqp_uri=Uri, use_federation=UseFederation}};
+        {error, E} ->
+            lager:info("We can't seem to start an AMQP connection using ~s: ~p", [Uri, E]),
+            {stop, E, normal}
     end.
 
 %%--------------------------------------------------------------------
@@ -187,17 +199,22 @@ handle_cast({start_conn, Uri, UseFederation}, _State) ->
 %%                                       {stop, Reason, State}
 %% Description: Handling all non call/cast messages
 %%--------------------------------------------------------------------
-handle_info({reconnect, Timeout}, #state{conn_ref=undefined
-                                         ,conn_params=ConnP
+handle_info({reconnect, Timeout}, #state{conn_params=ConnP
                                          ,use_federation=UseFederation
+                                         ,amqp_uri=_Uri
                                         }=State) ->
     case start_amqp_host(ConnP, State, UseFederation) of
         {ok, State1} ->
-            lager:debug("Reconnected AMQP"),
+            lager:debug("reconnected AMQP"),
+            lager:info("we've reconnected to the broker at ~s", [_Uri]),
             {noreply, State1};
         {error, _E} ->
-            lager:debug("Failed to reconnect to AMQP(~p), waiting a bit more", [_E]),
+            lager:debug("failed to reconnect to AMQP(~p), waiting a bit more", [_E]),
+            lager:info("we failed to reconnect to the AMQP broker at ~s: ~p", [_Uri, _E]),
+
             NextTimeout = next_timeout(Timeout),
+            lager:info("we will try to recoonect in ~b milliseconds", [NextTimeout]),
+
             _Ref = erlang:send_after(NextTimeout, self(), {reconnect, NextTimeout}),
             {noreply, State}
     end;
@@ -238,10 +255,11 @@ handle_info({'DOWN', Ref, process, _, _Reason}, #state{handler_ref=Ref}=State) -
     lager:debug("amqp host process went down, ~w", [_Reason]),
     erlang:demonitor(Ref, [flush]),
     _Ref = erlang:send_after(?START_TIMEOUT, self(), {reconnect, ?START_TIMEOUT}),
+
     {noreply, State#state{handler_pid=undefined, handler_ref=undefined}, hibernate};
 
 handle_info(_Info, State) ->
-    lager:debug("Unhandled message: ~p", [_Info]),
+    lager:debug("unhandled message: ~p", [_Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -253,8 +271,7 @@ handle_info(_Info, State) ->
 %%--------------------------------------------------------------------
 -spec terminate/2 :: (term(), #state{}) -> no_return().
 terminate(_Reason, _) ->
-    lager:debug("amqp manager ~p termination", [_Reason]),
-    ok.
+    lager:debug("amqp manager terminated: ~p", [_Reason]).
 
 %%--------------------------------------------------------------------
 %% Func: code_change(OldVsn, State, Extra) -> {ok, NewState}
@@ -273,7 +290,8 @@ get_new_connection(ConnP) ->
             lager:debug("established network connection (~p) to amqp broker at ~s", [Connection, wh_amqp_params:host(ConnP)]),
             OK;
         {error, econnrefused}=E ->
-            lager:debug("amqp connection to ~s refused", [wh_amqp_params:host(ConnP)]),
+            Host = wh_amqp_params:host(ConnP),
+            lager:debug("amqp connection to ~s refused", [Host]),
             E;
         {error, broker_not_found_on_node}=E ->
             lager:debug("found node ~s but no amqp broker", [wh_amqp_params:host(ConnP)]),
@@ -327,6 +345,7 @@ get_config() ->
     case file:consult(?STARTUP_FILE) of
         {ok, Prop} ->
             lager:debug("loaded amqp manager configuration from ~s", [?STARTUP_FILE]),
+            lager:info("loaded amqp manager configuration from ~s", [?STARTUP_FILE]),
             Prop;
         E ->
             lager:debug("unable to load amqp manager configuration ~p", [E]),

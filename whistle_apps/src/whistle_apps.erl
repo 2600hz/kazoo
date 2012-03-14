@@ -32,12 +32,12 @@ start_deps() ->
         _ -> ok
     end,
 
-    wh_util:ensure_started(sasl),
-    wh_util:ensure_started(crypto),
-    wh_util:ensure_started(ibrowse),
-    wh_util:ensure_started(riak_err),
-    wh_util:ensure_started(couchbeam),
-    wh_util:ensure_started(whistle_amqp).
+    ok = wh_util:ensure_started(sasl),
+    ok = wh_util:ensure_started(crypto),
+    ok = wh_util:ensure_started(ibrowse),
+    ok = wh_util:ensure_started(riak_err),
+    ok = wh_util:ensure_started(couchbeam),
+    ok = wh_util:ensure_started(whistle_amqp).
 
 %% @spec stop() -> ok
 %% @doc Stop the whistle_apps server.

@@ -65,7 +65,7 @@
                             ,member_pins = [] :: [ne_binary(),...] | []                                   %% a list of pins for use by members
                             ,moderator_pins = [] :: [ne_binary(),...] | []                                %% a list of pins for use by the moderators
                             ,moderator = undefined :: undefined | boolean()                               %% tri-state true/false if the caller is known to be a moderator, otherwise undefined 
-                            ,member_join_muted = true :: boolean()                                        %% should the member join muted
+                            ,member_join_muted = false :: boolean()                                       %% should the member join muted
                             ,member_join_deaf = false :: boolean()                                        %% should the member join deaf
                             ,moderator_join_muted = false :: boolean()                                    %% should the moderator join muted
                             ,moderator_join_deaf = false :: boolean()                                     %% should the moderator join deaf

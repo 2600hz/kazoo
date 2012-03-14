@@ -50,9 +50,9 @@
           connection = 'undefined' :: 'undefined' | {pid(), reference()}
           ,publish_channel = 'undefined' :: 'undefined' | channel_data()
           ,misc_channel = 'undefined' :: 'undefined' | channel_data()
-          ,consumers = dict:new() :: amqp_host:dict(pid(), consumer_data())
+          ,consumers = dict:new() :: dict()
           ,use_federation = 'true' :: boolean()
-          ,return_handlers = dict:new() %% ref, pid() - list of PIDs that are interested in returned messages
+          ,return_handlers = dict:new() :: dict() %% ref, pid() - list of PIDs that are interested in returned messages
           ,manager = 'undefined' :: 'undefined' | pid()
           ,amqp_h = 'undefined' :: 'undefined' | binary()
          }).
@@ -215,7 +215,7 @@ handle_cast({consume, {FromPid, _}=From, #'basic.consume'{}=BasicConsume}, #stat
         {ok, {C,_,_,_}} ->
             case try_to_subscribe(C, BasicConsume, FromPid) of
                 {ok, Tag} ->
-                    lager:debug("started additional consumer on ch: ~p for proc: ~p but dropping tag, they will not be able to cancel this consumer...", [C, FromPid, Tag]),
+                    lager:debug("started additional consumer on ch: ~p for proc: ~p but dropping tag ~p, they will not be able to cancel this consumer...", [C, FromPid, Tag]),
                     gen_server:reply(From, {ok, C});
                 {error, _E}=Err ->
                     gen_server:reply(From, Err)
@@ -612,14 +612,15 @@ clean_consumers(FromPid, {C,Ref1,_,FromRef}, AccDict, Ref, Conn) when Ref =:= Re
 
     case start_channel(Conn, FromPid) of
         {CNew, RefNew} when is_pid(CNew) andalso is_reference(RefNew) ->
-            lager:debug("New channel started for ~p", [FromPid]),
+            lager:debug("new channel started for ~p", [FromPid]),
+            FromPid ! {amqp_lost_channel, connection_restored},
             dict:store(FromPid, {CNew, RefNew, <<>>, FromRef}, AccDict);
         {error, no_connection} ->
-            lager:debug("No connection available"),
+            lager:debug("no connection available"),
             FromPid ! {amqp_lost_channel, no_connection},
             dict:erase(FromPid, AccDict);
         closing ->
-            lager:debug("Closing, no connection"),
+            lager:debug("closing, no connection"),
             FromPid ! {amqp_lost_channel, no_connection},
             dict:erase(FromPid, AccDict)
     end;

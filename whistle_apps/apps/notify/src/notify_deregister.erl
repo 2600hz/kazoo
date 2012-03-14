@@ -52,15 +52,9 @@ handle_req(JObj, _Props) ->
 
     {ok, Account} = notify_util:get_account_doc(JObj),
 
-    DefaultFrom = list_to_binary([<<"no_reply@">>, wh_util:to_binary(net_adm:localhost())]),
-    From = wh_json:get_value([<<"notifications">>, <<"deregister">>, <<"send_from">>], Account
-                             ,whapps_config:get(?MOD_CONFIG_CAT, <<"default_from">>, DefaultFrom)),
-
     lager:debug("creating deregisted notice"),
     
-    Props = [{<<"From">>, From}
-             |create_template_props(JObj, Account)
-            ],
+    Props = create_template_props(JObj, Account),
 
     CustomTxtTemplate = wh_json:get_value([<<"notifications">>, <<"deregister">>, <<"email_text_template">>], Account),
     {ok, TxtBody} = notify_util:render_template(CustomTxtTemplate, ?DEFAULT_TEXT_TMPL, Props),
@@ -99,7 +93,8 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) when is_list(To) ->
     [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props) || T <- To],
     ok;
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
-    From = props:get_value(<<"From">>, Props),
+    Service = props:get_value(<<"service">>, Props),
+    From = props:get_value(<<"send_from">>, Service),
     %% Content Type, Subtype, Headers, Parameters, Body
     Email = {<<"multipart">>, <<"mixed">>
                  ,[{<<"From">>, From}

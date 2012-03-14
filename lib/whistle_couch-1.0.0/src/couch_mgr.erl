@@ -495,23 +495,23 @@ start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 %% set the host to connect to
--spec set_host/1 :: (string()) -> 'ok' | {'error', term()}.
+-spec set_host/1 :: (string()) -> 'ok' | {'error', 'unable_to_connect'}.
 set_host(HostName) ->
     set_host(HostName, ?DEFAULT_PORT, "", "", ?DEFAULT_ADMIN_PORT).
 
--spec set_host/2 :: (string(), non_neg_integer()) -> 'ok' | {'error', term()}.
+-spec set_host/2 :: (string(), non_neg_integer()) -> 'ok' | {'error', 'unable_to_connect'}.
 set_host(HostName, Port) ->
     set_host(HostName, Port, "", "", ?DEFAULT_ADMIN_PORT).
 
--spec set_host/3 :: (string(), string(), string()) -> 'ok' | {'error', term()}.
+-spec set_host/3 :: (string(), string(), string()) -> 'ok' | {'error', 'unable_to_connect'}.
 set_host(HostName, UserName, Password) ->
     set_host(HostName, ?DEFAULT_PORT, UserName, Password, ?DEFAULT_ADMIN_PORT).
 
--spec set_host/4 :: (string(), non_neg_integer(), string(), string()) -> 'ok' | {'error', term()}.
+-spec set_host/4 :: (string(), non_neg_integer(), string(), string()) -> 'ok' | {'error', 'unable_to_connect'}.
 set_host(HostName, Port, UserName, Password) ->
     set_host(HostName, Port, UserName, Password, ?DEFAULT_ADMIN_PORT).
 
--spec set_host/5 :: (string(), non_neg_integer(), string(), string(), non_neg_integer()) -> 'ok' | {'error', term()}.
+-spec set_host/5 :: (string(), non_neg_integer(), string(), string(), non_neg_integer()) -> 'ok' | {'error', 'unable_to_connect'}.
 set_host(HostName, Port, UserName, Password, AdminPort) ->
     gen_server:call(?SERVER, {set_host, HostName, Port, UserName, Password, AdminPort}, infinity).
 
@@ -638,31 +638,44 @@ handle_call(get_admin_port, _From, #state{host={_,_,P}}=State) ->
 
 handle_call({set_host, Host, Port, User, Pass, AdminPort}, _From, #state{host={OldHost,_,_}}=State) ->
     lager:debug("updating host from ~p to ~p", [OldHost, Host]),
-    Conn = couch_util:get_new_connection(Host, Port, User, Pass),
-    AdminConn = couch_util:get_new_connection(Host, AdminPort, User, Pass),
+    try {couch_util:get_new_connection(Host, Port, User, Pass)
+         ,couch_util:get_new_connection(Host, AdminPort, User, Pass)} of
+        {Conn, AdminConn} ->
+            couch_config:store(couch_host, {Host, Port, User, Pass, AdminPort}),
 
-    couch_config:store(couch_host, {Host, Port, User, Pass, AdminPort}),
-
-    {reply, ok, State#state{host={Host, Port, AdminPort}
-                            ,connection=Conn
-                            ,admin_connection=AdminConn
-                            ,change_handlers=dict:new()
-                            ,creds={User,Pass}
-                           }};
+            {reply, ok, State#state{host={Host, Port, AdminPort}
+                                    ,connection=Conn
+                                    ,admin_connection=AdminConn
+                                    ,change_handlers=dict:new()
+                                    ,creds={User,Pass}
+                                   }}
+    catch
+        _:_ ->
+            lager:debug("failed to connect to ~s:~p or ~p", [Host, Port, AdminPort]),
+            lager:info("We tried to connect to BigCouch at ~s:~p and ~p but were refused. Is BigCouch/HAProxy running at these host:port combos?", [Host, Port, AdminPort]),
+            {reply, {error, unable_to_connect}, State}
+    end;
 
 handle_call({set_host, Host, Port, User, Pass, AdminPort}, _From, State) ->
     lager:debug("setting host for the first time to ~p", [Host]),
-    Conn = couch_util:get_new_connection(Host, Port, User, Pass),
-    AdminConn = couch_util:get_new_connection(Host, AdminPort, User, Pass),
 
-    couch_config:store(couch_host, {Host, Port, User, Pass, AdminPort}),
+    try {couch_util:get_new_connection(Host, Port, User, Pass)
+         ,couch_util:get_new_connection(Host, AdminPort, User, Pass)} of
+        {Conn, AdminConn} ->
+            couch_config:store(couch_host, {Host, Port, User, Pass, AdminPort}),
 
-    {reply, ok, State#state{host={Host,Port,AdminPort}
-                            ,connection=Conn
-                            ,admin_connection=AdminConn
-                            ,change_handlers=dict:new()
-                            ,creds={User,Pass}
-                           }};
+            {reply, ok, State#state{host={Host,Port,AdminPort}
+                                    ,connection=Conn
+                                    ,admin_connection=AdminConn
+                                    ,change_handlers=dict:new()
+                                    ,creds={User,Pass}
+                                   }}
+    catch
+        _:_ ->
+            lager:debug("failed to connect to ~s:~p or ~p", [Host, Port, AdminPort]),
+            lager:info("We tried to connect to BigCouch at ~s:~p and ~p but were refused. Is BigCouch/HAProxy running at these host:port combos?", [Host, Port, AdminPort]),
+            {reply, {error, unable_to_connect}, State}
+    end;
 
 handle_call(get_conn, _, #state{connection=S}=State) ->
     {reply, S, State};
@@ -788,16 +801,25 @@ init_state_from_config({H, User, Pass}) ->
 init_state_from_config({H, Port, User, Pass}) ->
     init_state_from_config({H, Port, User, Pass, ?DEFAULT_ADMIN_PORT});
 init_state_from_config({H, Port, User, Pass, AdminPort}) ->
-    Conn = couch_util:get_new_connection(H, wh_util:to_integer(Port), User, Pass),
-    AdminConn = couch_util:get_new_connection(H, wh_util:to_integer(AdminPort), User, Pass),
-
-    lager:debug("returning state record"),
-    couch_config:ready(),
-    #state{connection=Conn
-           ,admin_connection=AdminConn
-           ,host={H, wh_util:to_integer(Port), wh_util:to_integer(AdminPort)}
-           ,creds={User, Pass}
-          }.
+    try {couch_util:get_new_connection(H, wh_util:to_integer(Port), User, Pass)
+         ,couch_util:get_new_connection(H, wh_util:to_integer(AdminPort), User, Pass)} of
+        {Conn, AdminConn} ->
+            lager:debug("returning state record"),
+            couch_config:ready(),
+            #state{connection=Conn
+                   ,admin_connection=AdminConn
+                   ,host={H, wh_util:to_integer(Port), wh_util:to_integer(AdminPort)}
+                   ,creds={User, Pass}
+                  }
+    catch
+        error:{badmatch,{error,{conn_failed,{error,econnrefused}}}} ->
+            lager:debug("connection to ~s:~p refused", [H, Port]),
+            lager:info("We tried to connect to BigCouch at ~s:~p and ~p but were refused. Is BigCouch/HAProxy running at these host:port combos?", [H, Port, AdminPort]),
+            exit(couch_connection_failed);
+        A:B ->
+            lager:debug("init failed to connect: ~p:~p", [A, B]),
+            A(B)
+    end.
 
 -spec remove_ref/2 :: (reference(), dict()) -> dict().
 remove_ref(Ref, CH) ->

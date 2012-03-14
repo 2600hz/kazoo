@@ -227,8 +227,8 @@ compose_voicemail(#mailbox{max_message_count=Count, message_count=Count}, _, Cal
     ok;
 compose_voicemail(#mailbox{keys=#keys{login=Login}}=Box, _, Call) ->
     lager:debug("playing mailbox greeting to caller"),
-    play_greeting(Box, Call),
-    play_instructions(Box, Call),
+    _ = play_greeting(Box, Call),
+    _ = play_instructions(Box, Call),
     _NoopId = whapps_call_command:noop(Call),
     %% timeout after 5 min for saftey, so this process cant hang around forever
     case whapps_call_command:wait_for_application_or_dtmf(<<"noop">>, 300000) of
@@ -327,14 +327,14 @@ record_voicemail(AttachmentName, #mailbox{max_message_length=MaxMessageLength}=B
 %% @end
 %%--------------------------------------------------------------------
 -spec setup_mailbox/2 :: (#mailbox{}, whapps_call:call()) -> #mailbox{}.
-setup_mailbox(Box, Call) ->
+setup_mailbox(#mailbox{}=Box, Call) ->
     lager:debug("starting voicemail configuration wizard"),
     {ok, _} = whapps_call_command:b_prompt(<<"vm-setup_intro">>, Call),
     lager:debug("prompting caller to set a pin"),
-    change_pin(Box, Call),
+    _ = change_pin(Box, Call),
     {ok, _} = whapps_call_command:b_prompt(<<"vm-setup_rec_greeting">>, Call),
     lager:debug("prompting caller to record an unavailable greeting"),
-    Box1 = record_unavailable_greeting(tmp_file(), Box, Call),
+    #mailbox{}=Box1 = record_unavailable_greeting(tmp_file(), Box, Call),
     ok = update_doc(<<"is_setup">>, true, Box1, Call),
     lager:debug("voicemail configuration wizard is complete"),
     {ok, _} = whapps_call_command:b_prompt(<<"vm-setup_complete">>, Call),
@@ -603,14 +603,13 @@ record_unavailable_greeting(AttachmentName, #mailbox{unavailable_media_id=MediaI
         {ok, record} ->
             record_unavailable_greeting(tmp_file(), Box, Call);
         {ok, save} ->
-            store_recording(AttachmentName, MediaId, Call),
+            _ = store_recording(AttachmentName, MediaId, Call),
             ok = update_doc([<<"media">>, <<"unavailable">>], MediaId, Box, Call),
             whapps_call_command:b_prompt(<<"vm-saved">>, Call),
             Box;
         {ok, no_selection} ->
             whapps_call_command:b_prompt(<<"vm-deleted">>, Call),
-            ok;
-        {error, _} -> ok
+            ok
     end.
 
 %%--------------------------------------------------------------------
@@ -629,22 +628,21 @@ record_name(AttachmentName, #mailbox{name_media_id=MediaId}=Box, Call) ->
                               ,{<<"Duration-ON">>, <<"500">>}
                               ,{<<"Duration-OFF">>, <<"100">>}
                              ]),
-    _NoopId = whapps_call_command:audio_macro([{play,  <<"vm-record_name">>}
-                                           ,{tones, [Tone]}
-                                          ], Call),
+    _NoopId = whapps_call_command:audio_macro([{prompt,  <<"vm-record_name">>}
+                                               ,{tones, [Tone]}
+                                              ], Call),
     whapps_call_command:b_record(AttachmentName, Call),
     case review_recording(AttachmentName, Box, Call) of
         {ok, record} ->
             record_name(tmp_file(), Box, Call);
         {ok, save} ->
-            store_recording(AttachmentName, MediaId, Call),
+            _ = store_recording(AttachmentName, MediaId, Call),
             ok = update_doc([<<"media">>, <<"name">>], MediaId, Box, Call),
             whapps_call_command:b_prompt(<<"vm-saved">>, Call),
             Box;
         {ok, no_selection} ->
             whapps_call_command:b_prompt(<<"vm-deleted">>, Call),
-            ok;
-        {error, _} -> ok
+            ok
     end.
 
 %%--------------------------------------------------------------------
@@ -1043,13 +1041,13 @@ update_folder1(Message, _, _, _) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec update_doc/4 :: (list() | binary(), list() | binary(), #mailbox{}, whapps_call:call()) -> 'ok' | {'error', atom()}.
-
+-spec update_doc/4 :: (wh_json:json_string() | wh_json:json_strings()
+                       ,wh_json:json_term()
+                       ,#mailbox{} | ne_binary()
+                       ,whapps_call:call() | ne_binary()) -> 'ok' | {'error', atom()}.
 update_doc(Key, Value, #mailbox{mailbox_id=Id}, Db) ->
     update_doc(Key, Value, Id, Db);
-update_doc(Key, Value, Id, Call) when is_tuple(Call) ->
-    update_doc(Key, Value, Id, whapps_call:account_db(Call));
-update_doc(Key, Value, Id, Db) ->
+update_doc(Key, Value, Id, ?NE_BINARY = Db) ->
     case couch_mgr:open_doc(Db, Id) of
         {ok, JObj} ->
             case couch_mgr:save_doc(Db, wh_json:set_value(Key, Value, JObj)) of
@@ -1064,7 +1062,10 @@ update_doc(Key, Value, Id, Db) ->
         {error, R}=E ->
             lager:debug("unable to update ~s in ~s, ~p", [Id, Db, R]),
             E
-    end.
+    end;
+update_doc(Key, Value, Id, Call) ->
+    update_doc(Key, Value, Id, whapps_call:account_db(Call)).
+
 
 %%--------------------------------------------------------------------
 %% @private

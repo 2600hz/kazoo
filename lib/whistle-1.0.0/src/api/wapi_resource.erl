@@ -12,7 +12,7 @@
 
 -export([req/1, resp/1, error/1, req_v/1, resp_v/1, error_v/1]).
 
--export([bind_q/2, unbind_q/1]).
+-export([bind_q/2, unbind_q/1, unbind_q/2]).
 
 -export([publish_req/1, publish_req/2, publish_resp/2, publish_resp/3
          ,publish_error/2, publish_error/3]).
@@ -130,12 +130,14 @@ error_v(JObj) ->
 -spec bind_q/2 :: (ne_binary(), proplist()) -> 'ok'.
 bind_q(Queue, _Prop) ->
     amqp_util:callmgr_exchange(),
-    amqp_util:bind_q_to_callmgr(Queue, ?KEY_RESOURCE_REQ),
-    ok.
+    amqp_util:bind_q_to_callmgr(Queue, ?KEY_RESOURCE_REQ).
 
 -spec unbind_q/1 :: (ne_binary()) -> 'ok'.
+-spec unbind_q/2 :: (ne_binary(), wh_proplist()) -> 'ok'.
 unbind_q(Queue) ->
-    amqp_util:unbind_q_from_callmgr(Queue).
+    unbind_q(Queue, []).
+unbind_q(Queue, _Props) ->
+    amqp_util:unbind_q_from_callmgr(Queue, ?KEY_RESOURCE_REQ).
 
 -spec publish_req/1 :: (api_terms()) -> 'ok'.
 -spec publish_req/2 :: (api_terms(), ne_binary()) -> 'ok'.

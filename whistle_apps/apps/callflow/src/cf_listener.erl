@@ -1,10 +1,10 @@
 %%%-------------------------------------------------------------------
-%%% @author Karl anderson <karl@2600hz.org>
 %%% @copyright (C) 2011, VoIP INC
 %%% @doc
 %%% Listener for route requests that can be fulfilled by callflows
 %%% @end
-%%% Created : 30 Nov 2011 by Karl Anderson <karl@2600hz.org>
+%%% @contributors
+%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(cf_listener).
 
@@ -59,30 +59,29 @@ start_link() ->
                                       ,{consume_options, ?CONSUME_OPTIONS}
                                      ], []).
 
--spec pause/0 :: () -> ok.
+-spec pause/0 :: () -> 'ok'.
 pause() ->
     {ok, Srv} = callflow_sup:listener_proc(),
     gen_listener:rm_responder(Srv, cf_route_req).
 
--spec resume/0 :: () -> ok.
+-spec resume/0 :: () -> 'ok'.
 resume() ->
     {ok, Srv} = callflow_sup:listener_proc(),
     gen_listener:add_responder(Srv, cf_route_req, [{<<"dialplan">>, <<"route_req">>}]).
 
--spec stop/0 :: () -> ok.
+-spec stop/0 :: () -> 'ok'.
 stop() ->
     {ok, Srv} = callflow_sup:listener_proc(),
     gen_listener:stop(Srv).
 
--spec handle_call_status_resp/2 :: (wh_json:json_object(), proplist()) -> ok.
+-spec handle_call_status_resp/2 :: (wh_json:json_object(), proplist()) -> any().
 handle_call_status_resp(JObj, Props) ->
     Consumers = props:get_value(consumers, Props),
     StatusCallId = wh_json:get_value(<<"Call-ID">>, JObj),
     [Consumer ! {call_status_resp, JObj}
      || {CallId, Consumer, _} <- Consumers
             ,CallId =:= StatusCallId
-    ],
-    ok.
+    ].
 
 %%%===================================================================
 %%% gen_listener callbacks
