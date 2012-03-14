@@ -47,6 +47,7 @@ find_agent(Call, AcctDb, QueueId, CallerTimeout) ->
                 false ->
                     lager:debug("agent isn't handling the call"),
                     poolboy:checkin(?MODULE, Agent),
+                    timer:sleep(100),
                     find_agent(Call, AcctDb, QueueId);
                 true ->
                     lager:debug("agent handled the call"),

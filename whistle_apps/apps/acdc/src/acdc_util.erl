@@ -24,6 +24,14 @@ get_endpoints(Call, UserId) ->
                         end
                 end, [], cf_attributes:fetch_owned_by(UserId, device, Call)).
 
+log_agent_activity(Db, Action, AgentId) when is_binary(Db) ->
+    lager:debug("setting action for agent ~s to ~s", [AgentId, Action]),
+    Doc = wh_json:from_list([{<<"agent_id">>, AgentId}
+                             ,{<<"action">>, Action}
+                             ,{<<"pvt_type">>, <<"agent_activity">>}
+                             ,{<<"pvt_created">>, wh_util:current_tstamp()}
+                            ]),
+    {ok, _} = couch_mgr:save_doc(Db, Doc);
 log_agent_activity(Call, Action, AgentId) ->
     lager:debug("setting action for agent ~s to ~s", [AgentId, Action]),
     Doc = wh_json:from_list([{<<"call_id">>, whapps_call:call_id(Call)}
