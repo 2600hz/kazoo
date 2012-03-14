@@ -47,7 +47,7 @@
 -export([all_docs/2, all_design_docs/2, admin_all_docs/2]).
 
 %% attachments
--export([fetch_attachment/3, stream_attachment/4
+-export([fetch_attachment/3, stream_attachment/3
          ,put_attachment/4, put_attachment/5
          ,delete_attachment/3, delete_attachment/4
         ]).
@@ -442,7 +442,7 @@ del_docs(DbName, Docs) ->
 fetch_attachment(DbName, DocId, AName) ->
     couch_util:fetch_attachment(get_conn(), DbName, DocId, AName).
 
--spec fetch_attachment/3 :: (ne_binary(), ne_binary(), ne_binary()) -> {'ok', reference()} | {'error', term()}.
+-spec stream_attachment/3 :: (ne_binary(), ne_binary(), ne_binary()) -> {'ok', reference()} | {'error', term()}.
 stream_attachment(DbName, DocId, AName) ->
     couch_util:stream_attachment(get_conn(), DbName, DocId, AName, self()).
 
