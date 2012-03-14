@@ -280,9 +280,8 @@ import_missing_account(AccountId, Account) ->
                     ?LOG("missing local account definition, creating from shared auth response"),
                     Doc = wh_json:delete_key(<<"_rev">>, Account),
                     Event = <<"v1_resource.execute.post.accounts">>,
-                    Payload = [undefined, #cb_context{doc=Doc, db_name=Db}, AccountId],
-                    case crossbar_bindings:fold(Event, Payload) of
-                        [_, #cb_context{resp_status=success} | _] ->
+                    case crossbar_bindings:fold(Event, [#cb_context{doc=Doc, db_name=Db}, AccountId]) of
+                        #cb_context{resp_status=success} ->
                             ?LOG("udpated account definition"),
                             true;
                         _ ->
@@ -295,11 +294,10 @@ import_missing_account(AccountId, Account) ->
             end;
         false ->
             ?LOG("remote account db ~s does not exist locally, creating", [AccountId]),
-            Event = <<"v1_resource.execute.put.accounts">>,
             Doc = wh_json:delete_key(<<"_rev">>, Account),
-            Payload = [undefined, #cb_context{doc=Doc}, [[]]],
-            case crossbar_bindings:fold(Event, Payload) of
-                [_, #cb_context{resp_status=success} | _] ->
+            Event = <<"v1_resource.execute.put.accounts">>,
+            case crossbar_bindings:fold(Event, [#cb_context{doc=Doc}]) of
+                #cb_context{resp_status=success} ->
                     ?LOG("imported account"),
                     true;
                 _ ->
@@ -329,11 +327,10 @@ import_missing_user(AccountId, UserId, User) ->
             ?LOG("remote user ~s already exists locally in account ~s", [UserId, AccountId]),
             true;
         _Else ->
-            Event = <<"v1_resource.execute.put.users">>,
             Doc = wh_json:delete_key(<<"_rev">>, User),
-            Payload = [undefined, #cb_context{doc=Doc, db_name=Db}, [[]]],
-            case crossbar_bindings:fold(Event, Payload) of
-                [_, #cb_context{resp_status=success} | _] ->
+            Event = <<"v1_resource.execute.put.users">>,
+            case crossbar_bindings:fold(Event, [#cb_context{doc=Doc, db_name=Db}]) of
+                #cb_context{resp_status=success} ->
                     ?LOG("imported user ~s in account ~s", [UserId, AccountId]),
                     true;
                 _ ->
