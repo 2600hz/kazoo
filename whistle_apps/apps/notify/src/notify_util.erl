@@ -153,6 +153,9 @@ get_service_props(Request, Account, ConfigCat) ->
                                            ,whapps_config:get(ConfigCat, <<"default_support_number">>, <<"(415) 886-7900">>)),
     DefaultEmail = wh_json:get_ne_value(<<"support_email">>, Request
                                         ,whapps_config:get(ConfigCat, <<"default_support_email">>, <<"support@2600hz.com">>)),
+    UnconfiguredFrom = list_to_binary([<<"no_reply@">>, wh_util:to_binary(net_adm:localhost())]),
+    DefaultFrom = wh_json:get_ne_value(<<"send_from">>, Request
+                                       ,whapps_config:get(ConfigCat, <<"default_from">>, UnconfiguredFrom)),
     Tree = wh_json:get_value(<<"pvt_tree">>, Account, []),
     [_, Module] = binary:split(ConfigCat, <<".">>),
     case Tree =/= [] andalso couch_mgr:open_doc(?WH_ACCOUNTS_DB, lists:last(Tree)) of
@@ -163,6 +166,7 @@ get_service_props(Request, Account, ConfigCat) ->
              ,{<<"provider">>, wh_json:get_value([<<"notifications">>, Module, <<"service_provider">>], JObj, DefaultProvider)}
              ,{<<"support_number">>, wh_json:get_value([<<"notifications">>, Module, <<"support_number">>], JObj, DefaultNumber)}
              ,{<<"support_email">>, wh_json:get_value([<<"notifications">>, Module, <<"support_email">>], JObj, DefaultEmail)}
+             ,{<<"send_from">>, wh_json:get_value([<<"notifications">>, Module, <<"send_from">>], JObj, DefaultFrom)}
              ,{<<"host">>, wh_util:to_binary(net_adm:localhost())}
             ];
         _E ->
@@ -172,6 +176,7 @@ get_service_props(Request, Account, ConfigCat) ->
              ,{<<"provider">>, DefaultProvider}
              ,{<<"support_number">>, DefaultNumber}
              ,{<<"support_email">>, DefaultEmail}
+             ,{<<"send_from">>, DefaultFrom}
              ,{<<"host">>, wh_util:to_binary(net_adm:localhost())}
             ]
     end.         
