@@ -8,7 +8,7 @@
 %%% @contributors
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
--module(skel_listener).
+-module(acdc_listener).
 
 -behaviour(gen_listener).
 
@@ -19,25 +19,18 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2
          ,terminate/2, code_change/3]).
 
--include("skel.hrl").
-
--record(state, {}).
+-include("acdc.hrl").
+-include_lib("amqp_client/include/amqp_client.hrl").
 
 %% By convention, we put the options here in macros, but not required.
--define(BINDINGS, [{route, []}
-                   ,{self, []}
-                  ]).
+-define(BINDINGS, [{queue, []}]).
 -define(RESPONDERS, [
-                     %% Received because of our route binding
-                     {{skel_handlers, handle_route_req}, [{<<"dialplan">>, <<"route_req">>}]}
-
-                     %% Received because of our self binding (route_wins are sent to the route_resp's Server-ID
-                     %% which is usually populated with the listener's queue name
-                     ,{{skel_handlers, handle_route_win}, [{<<"dialplan">>, <<"route_win">>}]}
+                     %% New caller in the call queue
+                     {{acdc_agent_pool, find_agent}, [{<<"queue">>, <<"new_member">>}]}
                     ]).
--define(QUEUE_NAME, <<>>).
+-define(QUEUE_NAME, wapi_queue:listener_queue_name()).
 -define(QUEUE_OPTIONS, []).
--define(ROUTE_OPTIONS, []).
+-define(ROUTE_OPTIONS, [{exclusive, false}]).
 
 %%%===================================================================
 %%% API
@@ -57,7 +50,7 @@ start_link() ->
                                       ,{queue_name, ?QUEUE_NAME}       % optional to include
                                       ,{queue_options, ?QUEUE_OPTIONS} % optional to include
                                       ,{route_options, ?ROUTE_OPTIONS} % optional to include
-                                      %%,{basic_qos, 1}                % only needed if prefetch controls
+                                      ,{basic_qos, 1}                % only needed if prefetch controls
                                      ], []).
 
 %%%===================================================================
@@ -76,7 +69,9 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    {ok, #state{}}.
+    put(callid, ?LOG_SYSTEM_ID),
+    lager:debug("acdc listener starting"),
+    {ok, []}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -106,7 +101,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast(_Msg, State) ->
+handle_cast(_, State) ->
     {noreply, State}.
 
 %%--------------------------------------------------------------------

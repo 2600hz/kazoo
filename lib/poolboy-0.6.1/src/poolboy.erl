@@ -4,6 +4,7 @@
 -behaviour(gen_fsm).
 
 -export([start_link/1, checkout/1, checkout/2, checkout/3, checkin/2, stop/1]).
+-export([add_worker/2, rm_worker/2]).
 -export([init/1, ready/2, ready/3, overflow/2, overflow/3, full/2, full/3,
          handle_event/3, handle_sync_event/4, handle_info/3, terminate/3,
          code_change/4]).
@@ -23,6 +24,14 @@
     worker_init = ?DEFAULT_INIT_FUN :: fun((Worker :: pid()) -> {ok, pid()}),
     worker_stop = ?DEFAULT_STOP_FUN :: fun((Worker :: pid()) -> stop)
 }).
+
+-spec add_worker(Pool :: node(), fun((Worker :: pid()) -> {ok, pid()})) -> 'ok'.
+add_worker(Pool, InitFun) ->
+    gen_fsm:send_all_state_event(Pool, {add_worker, InitFun}).
+
+-spec rm_worker(Pool :: node(), pid()) -> 'ok'.
+rm_worker(Pool, Pid) ->
+    gen_fsm:send_all_state_event(Pool, {rm_worker, Pid}).
 
 -spec checkout(Pool :: node()) -> pid().
 checkout(Pool) ->
@@ -224,6 +233,19 @@ full({checkout, _Block, Timeout}, From, #state{waiting=Waiting}=State) ->
     {next_state, full, State#state{waiting=add_waiting(From, Timeout, Waiting)}};
 full(_Event, _From, State) ->
     {reply, ok, full, State}.
+
+handle_event({add_worker, InitFun}, _StateName, #state{workers=Workers
+                                                      ,worker_sup=Sup
+                                                      ,size=Size
+                                                     }=State) ->
+    Workers1 = queue:in(new_worker(Sup, InitFun), Workers),
+    {next_state, ready, State#state{workers=Workers1, size=Size+1}};
+
+handle_event({rm_worker, Pid}, StateName, #state{worker_stop=StopFun
+                                                 ,size=Size
+                                                }=State) ->
+    dismiss_worker(Pid, StopFun),
+    {next_state, StateName, State#state{size=Size-1}};
 
 handle_event(_Event, StateName, State) ->
     {next_state, StateName, State}.

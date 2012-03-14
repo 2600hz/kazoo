@@ -99,6 +99,5 @@ send_request(Req, Timeout, PubFun) ->
     %% but still timeout the caller in Timeout milliseconds (allows the poolboy worker the chance to
     %% get checked back in before the caller crashes - poolboy kills the worker if the caller crashes)
     Reply = gen_listener:call(W, {request, Prop, PubFun, Timeout}, Timeout+?FUDGE),
-    lager:debug("reply received: ~p", [Reply]),
     poolboy:checkin(?AMQP_POOL_MGR, W),
     Reply.

@@ -1302,8 +1302,8 @@ wait_for_bridge(Timeout, Fun, Call) ->
                 {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} ->
                     {Result, JObj};
                 {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>} ->
-                    lager:debug("bridge completed with result ~s catagorized as ~s", [AppResponse, Result]),                     
-                   {Result, JObj};
+                    lager:debug("bridge completed with result ~s catagorized as ~s", [AppResponse, Result]),
+                    {Result, JObj};
                 _ when Timeout =:= infinity ->
                     wait_for_bridge(Timeout, Fun, Call);
                 _ ->

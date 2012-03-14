@@ -45,8 +45,7 @@
 new_cdr(UUID, EvtProp) ->
     put(callid, UUID),
     CDR = create_cdr(EvtProp),
-    wapi_call:publish_cdr(UUID, CDR),
-    lager:debug("sent cdr: ~s", [wh_json:encode(wh_json:from_list(CDR))]).
+    wapi_call:publish_cdr(UUID, CDR).
 
 -spec create_cdr/1 :: (proplist()) -> proplist().
 create_cdr(EvtProp) ->

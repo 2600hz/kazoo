@@ -61,14 +61,13 @@ init() ->
     _ = crossbar_bindings:bind(<<"v1_resource.encodings_provided.skels">>, ?MODULE, encodings_provided),
     _ = crossbar_bindings:bind(<<"v1_resource.validate.skels">>, ?MODULE, validate),
     _ = crossbar_bindings:bind(<<"v1_resource.billing">>, ?MODULE, billing),
-    _ = crossbar_bindings:bind(<<"v1_resource.get.skels">>, ?MODULE, get),
-    _ = crossbar_bindings:bind(<<"v1_resource.put.skels">>, ?MODULE, put),
-    _ = crossbar_bindings:bind(<<"v1_resource.post.skels">>, ?MODULE, post),
-    _ = crossbar_bindings:bind(<<"v1_resource.delete.skels">>, ?MODULE, delete),
+    _ = crossbar_bindings:bind(<<"v1_resource.execute.get.skels">>, ?MODULE, get),
+    _ = crossbar_bindings:bind(<<"v1_resource.execute.put.skels">>, ?MODULE, put),
+    _ = crossbar_bindings:bind(<<"v1_resource.execute.post.skels">>, ?MODULE, post),
+    _ = crossbar_bindings:bind(<<"v1_resource.execute.delete.skels">>, ?MODULE, delete),
     _ = crossbar_bindings:bind(<<"v1_resource.etag.skels">>, ?MODULE, etag),
     _ = crossbar_bindings:bind(<<"v1_resource.expires.skels">>, ?MODULE, expires),
-    _ = crossbar_bindings:bind(<<"v1_resource.finish_request">>, ?MODULE, finish_request),
-    ok.
+    _ = crossbar_bindings:bind(<<"v1_resource.finish_request">>, ?MODULE, finish_request).
 
 %%--------------------------------------------------------------------
 %% @public

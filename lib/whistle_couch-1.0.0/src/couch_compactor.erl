@@ -45,7 +45,7 @@ init(Parent) ->
             proc_lib:init_ack(Parent, ignore),
             couch_config:store(compact_automatically, false);
         _Other ->
-            ?LOG("unexpected values for auto-compaction: ~p", [_Other])
+            lager:debug("unexpected values for auto-compaction: ~p", [_Other])
     end.
 
 -spec compact_all/0 :: () -> 'done'.

@@ -93,7 +93,7 @@ add_cors_headers(Req0, #cb_context{allow_methods=Ms}=Context) ->
 -spec get_cors_headers/1 :: (#cb_context{}) -> [{ne_binary(), ne_binary()},...].
 get_cors_headers(#cb_context{allow_methods=Allowed}) ->
     Methods = wh_util:join_binary([wh_util:to_binary(A) || A <- Allowed, A =/= undefined], <<", ">>),
-    lager:debug("allowed cors methods: ~s", [Methods]),
+
     [{<<"Access-Control-Allow-Origin">>, <<"*">>}
      ,{<<"Access-Control-Allow-Methods">>, Methods}
      ,{<<"Access-Control-Allow-Headers">>, <<"Content-Type, Depth, User-Agent, X-File-Size, X-Requested-With, If-Modified-Since, X-File-Name, Cache-Control, X-Auth-Token, If-Match">>}
@@ -429,8 +429,8 @@ content_type_matches({Type, SubType, Opts}, {Type, SubType, ModOpts}) ->
     lists:all(fun({K, V}) ->
                       props:get_value(K, Opts) =:= V
               end, ModOpts);
-content_type_matches(_, _) ->
-    lager:debug("failed to match content type"),
+content_type_matches(_CTA, _CTAs) ->
+    lager:debug("failed to match content type: ~p", [_CTA]),
     false.
 
 %%--------------------------------------------------------------------
@@ -561,10 +561,9 @@ create_push_response(Req0, Context) ->
     {Content, Req1} = create_resp_content(Req0, Context),
 
     Req2 = set_resp_headers(Req1, Context),
-    lager:debug("content: ~s", [Content]),
+
     {ok, Req3} = cowboy_http_req:set_resp_body(Content, Req2),
     Succeeded = succeeded(Context),
-    lager:debug("is successful response: ~p", [Succeeded]),
 
     {Succeeded, Req3, Context}.
 
@@ -577,10 +576,7 @@ create_push_response(Req0, Context) ->
 %%--------------------------------------------------------------------
 -spec create_pull_response/2 :: (#http_req{}, #cb_context{}) -> {ne_binary() | iolist() | 'halt', #http_req{}, #cb_context{}}.
 create_pull_response(Req0, Context) ->
-    lager:debug("create pull response"),
     {Content, Req1} = create_resp_content(Req0, Context),
-
-    lager:debug("content: ~s", [Content]),
 
     Req2 = set_resp_headers(Req1, Context),
 
@@ -597,13 +593,11 @@ create_pull_response(Req0, Context) ->
 %%--------------------------------------------------------------------
 -spec create_resp_envelope/1 :: (#cb_context{}) -> wh_json:json_proplist(<<_:32,_:_*8>>). 
 create_resp_envelope(#cb_context{resp_data=RespData, resp_status=success, auth_token=AuthToken, resp_etag=undefined}) ->
-    lager:debug("generating successful response, no etag"),
     [{<<"auth_token">>, AuthToken}
      ,{<<"status">>, <<"success">>}
      ,{<<"data">>, RespData}
     ];
 create_resp_envelope(#cb_context{resp_data=RespData, resp_status=success, auth_token=AuthToken, resp_etag=Etag}) ->
-    lager:debug("generating successful response, etag: ~s", [Etag]),
     [{<<"auth_token">>, AuthToken}
      ,{<<"status">>, <<"success">>}
      ,{<<"data">>, RespData}
@@ -618,7 +612,7 @@ create_resp_envelope(#cb_context{auth_token=AuthToken, resp_data=RespData, resp_
               Else ->
                   wh_util:to_binary(Else)
           end,
-    lager:debug("generating ~s 500 response, ~s", [RespStatus, Msg]),
+
     [{<<"auth_token">>, wh_util:to_binary(AuthToken)}
      ,{<<"status">>, wh_util:to_binary(RespStatus)}
      ,{<<"message">>, wh_util:to_binary(Msg)}
@@ -635,8 +629,6 @@ create_resp_envelope(#cb_context{resp_error_msg=RespErrorMsg, resp_status=RespSt
               Else ->
                   wh_util:to_binary(Else)
           end,
-
-    lager:debug("generating ~s ~b response, ~s", [RespStatus, wh_util:to_integer(RespErrorCode), Msg]),
 
     [{<<"auth_token">>, wh_util:to_binary(AuthToken)}
      ,{<<"status">>, wh_util:to_binary(RespStatus)}
@@ -656,7 +648,7 @@ set_resp_headers(Req0, #cb_context{resp_headers=[]}) -> Req0;
 set_resp_headers(Req0, #cb_context{resp_headers=Headers}) ->
     lists:foldl(fun({Header, Value}, ReqAcc) ->
                         {H, V} = fix_header(Header, Value, ReqAcc),
-                        lager:debug("response header: ~s: ~s", [H, V]),
+
                         {ok, ReqAcc1} = cowboy_http_req:set_resp_header(H, V, ReqAcc),
                         ReqAcc1
                 end, Req0, Headers).
@@ -672,7 +664,6 @@ halt(Req0, #cb_context{resp_error_code=StatusCode}=Context) ->
     lager:debug("halting execution here"),
 
     {Content, Req1} = create_resp_content(Req0, Context),
-    lager:debug("setting resp body: ~s", [Content]),
     {ok, Req2} = cowboy_http_req:set_resp_body(Content, Req1),
 
     lager:debug("setting status code: ~p", [StatusCode]),
