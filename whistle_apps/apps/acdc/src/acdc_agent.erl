@@ -53,7 +53,18 @@ start_link(_) ->
                                      ], []).
 
 handle_call_event(JObj, Props) ->
-    gen_listener:cast(props:get_value(server, Props), {call_event, wh_util:get_event_type(JObj), JObj}).
+    Accept = props:get_value(accept_call_events, Props),
+
+    case wh_util:get_event_type(JObj) of
+        {<<"call_event">>, _}=Type when Accept ->
+            gen_listener:cast(props:get_value(server, Props), {call_event, Type, JObj});
+        {<<"call_detail">>, _}=Type when Accept ->
+            gen_listener:cast(props:get_value(server, Props), {call_event, Type, JObj});
+        {<<"error">>, <<"dialplan">>}=Type when Accept ->
+            gen_listener:cast(props:get_value(server, Props), {call_event, Type, JObj});
+        _Type ->
+            lager:debug("not sending event of type ~p: ~p", [_Type, Accept])
+    end.
 
 update_agent(Srv, IDandInfo) ->
     gen_listener:cast(Srv, {update, IDandInfo}).
@@ -169,29 +180,41 @@ handle_cast({call_event, {<<"call_event">>, <<"LEG_CREATED">>}, JObj}, State) ->
     lager:debug("b-leg created (~s), hope we answer!", [wh_json:get_value(<<"Other-Leg-Unique-ID">>, JObj)]),
     {noreply, State};
 
+handle_cast({call_event, {<<"call_event">>, <<"LEG_DESTROYED">>}, JObj}, #state{from={_,_}=From}=State) ->
+    lager:debug("b-leg destroyed (~s): ~s(~s)", [wh_json:get_value(<<"Other-Leg-Unique-ID">>, JObj)
+                                                 ,wh_json:get_value(<<"Hangup-Cause">>, JObj)
+                                                 ,wh_json:get_value(<<"Hangup-Code">>, JObj)
+                                                ]),
+    gen_server:reply(From, false),
+    {noreply, clear_call(State)};
+handle_cast({call_event, {<<"call_event">>, <<"LEG_DESTROYED">>}, JObj}, State) ->
+    lager:debug("b-leg destroyed (~s): ~s(~s)", [wh_json:get_value(<<"Other-Leg-Unique-ID">>, JObj)
+                                                 ,wh_json:get_value(<<"Hangup-Cause">>, JObj)
+                                                 ,wh_json:get_value(<<"Hangup-Code">>, JObj)
+                                                ]),
+    {noreply, State};
+
 handle_cast({call_event, {<<"call_event">>, <<"CHANNEL_BRIDGE">>}, JObj}, #state{from={_,_}=From}=State) ->
     lager:debug("leg (~s) was bridged! we're handling the call", [wh_json:get_value(<<"Other-Leg-Unique-ID">>, JObj)]),
     gen_server:reply(From, true),
     {noreply, clear_from(State)};
 
-handle_cast({call_event, {<<"call_event">>, <<"CHANNEL_DESTROY">>}, JObj}, #state{from={_,_}=From, agent_id=AgentId, call=Call}=State) ->
+handle_cast({call_event, {<<"call_event">>, <<"CHANNEL_DESTROY">>}, JObj}, #state{from={_,_}=From}=State) ->
     lager:debug("received channel destroy for caller, we're done here: ~s", [wh_json:get_value(<<"Hangup-Code">>, JObj)]),
-    acdc_util:log_agent_activity(Call, <<"resume">>, AgentId),
+
     gen_server:reply(From, false),
     {noreply, clear_call(State)};
-handle_cast({call_event, {<<"call_event">>, <<"CHANNEL_DESTROY">>}, _JObj}, #state{agent_id=AgentId, call=Call}=State) ->
-    lager:debug("received channel destroy for caller, reinstating agent"),
-    acdc_util:log_agent_activity(Call, <<"resume">>, AgentId),
+handle_cast({call_event, {<<"call_event">>, <<"CHANNEL_DESTROY">>}, _JObj}, State) ->
+    lager:debug("received channel destroy for caller, reinstating agent as available"),
     {noreply, clear_call(State)};
 
-handle_cast({call_event, {<<"error">>, <<"dialplan">>}, JObj}, #state{from={_,_}=From, agent_id=AgentId, call=Call}=State) ->
+handle_cast({call_event, {<<"error">>, <<"dialplan">>}, JObj}, #state{from={_,_}=From}=State) ->
     lager:debug("recieved dialplan error: ~s", [wh_json:get_value(<<"Error-Message">>, JObj)]),
-    acdc_util:log_agent_activity(Call, <<"resume">>, AgentId),
-    gen_server:reply(From, false),
+    gen_server:reply(From, down),
     {noreply, clear_call(State)};
 
 handle_cast({call_event, {_Cat, _Name}, _JObj}, State) ->
-    lager:debug("unhandled call event: ~s/~s", [_Cat, _Name]),
+    lager:debug("unhandled call event: ~s/~s: ~s", [_Cat, _Name, wh_json:get_value(<<"Application-Name">>, _JObj)]),
     {noreply, State};
 handle_cast(_Msg, State) ->
     lager:debug("cast: ~p", [_Msg]),
@@ -232,8 +255,8 @@ handle_info(_Info, State) ->
     lager:debug("unhandled msg: ~p", [_Info]),
     {noreply, State}.
 
-handle_event(_JObj, _State) ->
-    {reply, []}.
+handle_event(_JObj, #state{call=Call}) ->
+    {reply, [{accept_call_events, whapps_call:is_call(Call)}]}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -247,7 +270,7 @@ handle_event(_JObj, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
-    ok.
+    lager:debug("agent going down: ~p", [_Reason]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -263,9 +286,18 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-clear_call(#state{from_timeout_ref=Ref, call=Call}=State) ->
+clear_call(#state{from_timeout_ref=Ref, call=Call, acct_db=AcctDb, agent_id=AgentId}=State) ->
     catch(erlang:cancel_timer(Ref)),
-    ok = call_unbinding(Call),
+
+    case whapps_call:is_call(Call) of
+        true ->
+            call_unbinding(Call),
+            acdc_util:log_agent_activity(Call, <<"resume">>, AgentId);
+        false ->
+            acdc_util:log_agent_activity(AcctDb, <<"resume">>, AgentId)
+    end,
+
+    put(callid, ?LOG_SYSTEM_ID),
     State#state{
       call = undefined
       ,from = undefined
