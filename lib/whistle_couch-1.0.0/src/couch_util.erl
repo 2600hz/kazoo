@@ -27,8 +27,9 @@
         ]).
 
 %% Attachment-related
--export([fetch_attachment/4, put_attachment/5, put_attachment/6, delete_attachment/4
-         ,delete_attachment/5
+-export([fetch_attachment/4, stream_attachment/5
+         ,put_attachment/5, put_attachment/6
+         ,delete_attachment/4, delete_attachment/5
         ]).
 
 %% Settings-related
@@ -306,6 +307,10 @@ fetch_attachment(#server{}=Conn, DbName, DocId, AName) ->
     Db = get_db(Conn, DbName),
     do_fetch_attachment(Db, DocId, AName).
 
+-spec stream_attachment/5 :: (#server{}, ne_binary(), ne_binary(), ne_binary(), pid()) -> {'ok', reference()} | {'error', term()}.
+stream_attachment(#server{}=Conn, DbName, DocId, AName, Caller) ->
+    do_stream_attachment(get_db(Conn, DbName), DocId, AName, Caller).
+
 -spec put_attachment/5 :: (#server{}, ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
 -spec put_attachment/6 :: (#server{}, ne_binary(), ne_binary(), ne_binary(), ne_binary(), proplist()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
 put_attachment(#server{}=Conn, DbName, DocId, AName, Contents) ->
@@ -342,6 +347,10 @@ delete_attachment(#server{}=Conn, DbName, DocId, AName, Options) ->
 -spec do_fetch_attachment/3 :: (#db{}, ne_binary(), ne_binary()) -> {'ok', binary()} | {'error', atom()}.
 do_fetch_attachment(#db{}=Db, DocId, AName) ->
     ?RETRY_504(couchbeam:fetch_attachment(Db, DocId, AName)).
+
+-spec do_stream_attachment/4 :: (#db{}, ne_binary(), ne_binary(), pid()) -> {'ok', reference()} | {'error', term()}.
+do_stream_attachment(#db{}=Db, DocId, AName, Caller) ->
+    couchbeam:stream_attachment(Db, DocId, AName, Caller).
 
 -spec do_put_attachment/5 :: (#db{}, ne_binary(), ne_binary(), ne_binary(), proplist()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
 do_put_attachment(#db{}=Db, DocId, AName, Contents, Options) ->
