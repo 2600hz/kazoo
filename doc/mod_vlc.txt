@@ -1,0 +1,10 @@
+My steps for building mod_vlc on ubuntu:
+
+0. sudo apt-get install libavcodec-dev libavutil-dev libavformat-dev liba52-0.7.4-dev libgcrypt-dev gettext
+1. git clone git://git.videolan.org/vlc.git
+2. ./bootstrap.sh
+3. ./configure --prefix=/usr/ --disable-lua --disable-mad --disable-swscale --disable-postproc --disable-xcb --disable-vlc
+4. ./compile # yay pretty colors!
+5. make install # had to run several times, weird
+6. Add format/mod_vlc to modules.conf
+7. make C_INCLUDE_PATH=/path/to/git/vlc/include:$C_INCLUDE_PATH LIBRARY_PATH=/usr/lib:$LIBRARY_PATH mod_vlc-install

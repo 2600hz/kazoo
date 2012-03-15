@@ -1,22 +1,26 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2012, VoIP INC
 %%% @doc
 %%%
 %%% @end
-%%% Created : 15 Mar 2011 by James Aimonetti <james@2600hz.org>
+%%% @contributors
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
--module(media_shout_sup).
+-module(media_files_sup).
 
 -behaviour(supervisor).
 
 %% API
--export([start_link/0, start_shout/5]).
+-export([start_link/0
+         ,find_file_server/3, find_file_server/4
+        ]).
 
 %% Supervisor callbacks
 -export([init/1]).
 
 -define(SERVER, ?MODULE).
+
+-define(CHILD(Name, Id, Doc, Attachment, Meta), {Name, {media_file, start_link, [Id, Doc, Attachment, Meta]}, permanent, 5000, worker, [media_file]}).
 
 %%%===================================================================
 %%% API functions
@@ -32,8 +36,20 @@
 start_link() ->
     supervisor:start_link({local, ?SERVER}, ?MODULE, []).
 
-start_shout(Media, To, Type, Port, CallID) ->
-    supervisor:start_child(?SERVER, [Media, To, Type, Port, CallID]).
+find_file_server(Id, Doc, Attachment) ->
+    Name = wh_util:to_hex(list_to_binary([Id,Doc,Attachment])),
+    case [P||{N,P,_,_} <- supervisor:which_children(?MODULE), N =:= Name] of
+        [] -> {error, no_file_server};
+        [P] -> {ok, P}
+    end.
+             
+find_file_server(Id, Doc, Attachment, Meta) ->
+    Name = wh_util:to_hex(list_to_binary([Id,Doc,Attachment])),
+    case supervisor:start_child(?MODULE, ?CHILD(Name, Id, Doc, Attachment, Meta)) of
+        {ok, _Pid}=OK -> OK;
+        {error, {already_started, Pid}} -> {ok, Pid};
+        {error, _}=E -> E
+    end.
 
 %%%===================================================================
 %%% Supervisor callbacks
@@ -53,14 +69,13 @@ start_shout(Media, To, Type, Port, CallID) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    Restart = temporary,
-    Shutdown = 2000,
-    Type = worker,
+    RestartStrategy = one_for_one,
+    MaxRestarts = 10,
+    MaxSecondsBetweenRestarts = 36,
 
-    AChild = {media_shout, {media_shout, start_link, []},
-	      Restart, Shutdown, Type, [media_shout]},
+    SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    {ok, {{simple_one_for_one, 1, 2}, [AChild]}}.
+    {ok, {SupFlags, []}}.
 
 %%%===================================================================
 %%% Internal functions

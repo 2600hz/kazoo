@@ -47,7 +47,10 @@
 -export([all_docs/2, all_design_docs/2, admin_all_docs/2]).
 
 %% attachments
--export([fetch_attachment/3, put_attachment/4, put_attachment/5, delete_attachment/3, delete_attachment/4]).
+-export([fetch_attachment/3, stream_attachment/3
+         ,put_attachment/4, put_attachment/5
+         ,delete_attachment/3, delete_attachment/4
+        ]).
 
 %% Views
 -export([get_all_results/2, get_results/3]).
@@ -438,6 +441,10 @@ del_docs(DbName, Docs) ->
 -spec fetch_attachment/3 :: (ne_binary(), ne_binary(), ne_binary()) -> {'ok', ne_binary()} | {'error', atom()}.
 fetch_attachment(DbName, DocId, AName) ->
     couch_util:fetch_attachment(get_conn(), DbName, DocId, AName).
+
+-spec stream_attachment/3 :: (ne_binary(), ne_binary(), ne_binary()) -> {'ok', reference()} | {'error', term()}.
+stream_attachment(DbName, DocId, AName) ->
+    couch_util:stream_attachment(get_conn(), DbName, DocId, AName, self()).
 
 -spec put_attachment/4 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
 %% Options = [ {'content_type', Type}, {'content_length', Len}, {'rev', Rev}] <- note atoms as keys in proplist
