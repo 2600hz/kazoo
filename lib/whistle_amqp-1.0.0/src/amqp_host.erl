@@ -173,7 +173,7 @@ handle_cast({register_return_handler, {FromPid, _}=From}, #state{return_handlers
     ?LOG_SYS("adding ~p as a return handler", [FromPid]),
     {noreply, State#state{return_handlers=dict:store(erlang:monitor(process, FromPid), FromPid, RHDict)}, hibernate};
 
-handle_cast({consume, {FromPid, _}=From, #'basic.consume'{}=BasicConsume}, #state{connection=Conn, consumers=Consumers}=State) ->
+handle_cast({consume, {FromPid, _}=From, #'basic.consume'{consumer_tag=CTag}=BasicConsume}, #state{connection=Conn, consumers=Consumers}=State) ->
     case dict:find(FromPid, Consumers) of
         error ->
             case start_channel(Conn, FromPid) of
@@ -211,6 +211,9 @@ handle_cast({consume, {FromPid, _}=From, #'basic.consume'{}=BasicConsume}, #stat
                     gen_server:reply(From, Err),
                     {noreply, State}
             end;
+        {ok, {C,_,CTag,_}} when CTag =/= <<>> ->
+            gen_server:reply(From, {error, sloppy_code_detected}),
+            {noreply, State, hibernate};
         {ok, {C,_,_,_}} ->
             case try_to_subscribe(C, BasicConsume, FromPid) of
                 {ok, Tag} ->
@@ -221,6 +224,7 @@ handle_cast({consume, {FromPid, _}=From, #'basic.consume'{}=BasicConsume}, #stat
             end,
             {noreply, State, hibernate}
     end;
+
 
 handle_cast({consume, {FromPid, _}=From, #'basic.cancel'{}=BasicCancel}, #state{consumers=Consumers}=State) ->
     case dict:find(FromPid, Consumers) of
