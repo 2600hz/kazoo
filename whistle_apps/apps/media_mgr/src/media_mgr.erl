@@ -20,10 +20,10 @@ start_link() ->
     _ = start_deps(),
 
     Dispatch = [
-                {'_', [{['new', '...'], media_single, []}
-                       ,{['extant','...'], media_continuous, []}
+                {'_', [{['single', '...'], media_single, []}
+                       ,{['continuous','...'], media_continuous, []}
                       ]}
-                ],
+               ],
 
     Port = whapps_config:get_integer(?CONFIG_CAT, <<"port">>, 24517),
     %% Name, NbAcceptors, Transport, TransOpts, Protocol, ProtoOpts

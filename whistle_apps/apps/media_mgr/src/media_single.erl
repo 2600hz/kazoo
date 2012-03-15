@@ -13,9 +13,14 @@
 -include("media.hrl").
 
 init({_Transport, _Proto}, Req0, _Opts) ->
+    put(callid, ?LOG_SYSTEM_ID),
+
     {[Id, Doc, Attachment], Req1} = cowboy_http_req:path_info(Req0),
 
-    {ok, Pid} = media_files_sup:find_file_server(wh_util:format_account_id(Id, encoded), Doc, Attachment),
+    lager:debug("fetch ~s/~s/~s", [Id, Doc, Attachment]),
+
+    {ok, Pid} = media_files_sup:find_file_server(Id, Doc, Attachment),
+    lager:debug("found media file server: ~p", [Pid]),
     {ok, Req1, media_file:single(Pid)}.
 
 handle(Req0, {Meta, Bin}) ->

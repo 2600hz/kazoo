@@ -49,7 +49,7 @@ handle_media_req(JObj, _Props) ->
             send_media_resp(JObj, Id, Doc, Attachment),
 
             {ok, FileServer} = media_files_sup:find_file_server(Id, Doc, Attachment, Meta),
-            lager:debug("file server at ~p", [FileServer])
+            lager:debug("file server at ~p for ~s/~s/~s", [FileServer, Id, Doc, Attachment])
     end.
 
 send_media_resp(JObj, Id, Doc, Attachment) ->
@@ -61,7 +61,7 @@ send_media_resp(JObj, Id, Doc, Attachment) ->
                     false -> <<>>
                 end,
 
-    StreamType = wh_json:get_value(<<"Stream-Type">>, JObj),
+    StreamType = convert_stream_type(wh_json:get_value(<<"Stream-Type">>, JObj)),
 
     %% TODO: add auth creds for one-time media response, and streaming creds for continuous
     Resp = [{<<"Media-Name">>, wh_json:get_value(<<"Media-Name">>, JObj)}
@@ -73,6 +73,7 @@ send_media_resp(JObj, Id, Doc, Attachment) ->
                                                 ,Id, <<"/">>
                                                 ,Doc, <<"/">>
                                                 ,Attachment])}
+            ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)],
     wapi_media:publish_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp).
 
@@ -246,3 +247,10 @@ send_error_resp(JObj, _ErrCode, ErrMsg) ->
              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)],
     lager:debug("sending error reply ~s for ~s", [_ErrCode, MediaName]),
     wapi_media:publish_error(wh_json:get_value(<<"Server-ID">>, JObj), Error).
+
+convert_stream_type(<<"new">>) ->
+    <<"single">>;
+convert_stream_type(<<"extant">>) ->
+    <<"continuous">>;
+convert_stream_type(Type) ->
+    Type.

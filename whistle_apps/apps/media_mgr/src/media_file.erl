@@ -32,7 +32,7 @@
          ,contents :: ne_binary()
          ,stream_ref :: reference()
          ,status :: 'streaming' | 'ready'
-         ,timeout_ref :: reference()
+         ,reqs :: [{pid(), reference()},...] | []
          }).
 
 %%%===================================================================
@@ -81,6 +81,7 @@ init([Db, Doc, Attach, Meta]) ->
        ,stream_ref=Ref
        ,status=streaming
        ,contents = <<>>
+       ,reqs = [] %% buffer requests until file has completed streaming
       }
      ,?TIMEOUT_LIFETIME}.
 
@@ -98,9 +99,12 @@ init([Db, Doc, Attach, Meta]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call(single, _From, #state{meta=Meta, contents=Contents}=State) ->
+handle_call(single, _From, #state{meta=Meta, contents=Contents, status=ready}=State) ->
     %% doesn't currently check whether we're still streaming in from the DB
     {reply, {Meta, Contents}, State, ?TIMEOUT_LIFETIME};
+handle_call(single, From, #state{reqs=Reqs, status=streaming}=State) ->
+    lager:debug("file not ready for ~p", [From]),
+    {noreply, State#state{reqs=[From, Reqs]}};
 handle_call(continuous, _From, #state{}=State) ->
     {reply, ok, State, ?TIMEOUT_LIFETIME}.
 
@@ -130,7 +134,10 @@ handle_cast(_Msg, State) ->
 handle_info(timeout, State) ->
     lager:debug("timeout expired, going down"),
     {stop, normal, State};
-handle_info({Ref, done}, #state{stream_ref=Ref}=State) ->
+handle_info({Ref, done}, #state{stream_ref=Ref, reqs=Reqs, contents=Contents, meta=Meta}=State) ->
+    Res = {Meta, Contents},
+    _ = [gen_server:reply(From, Res) || From <- Reqs],
+
     lager:debug("finished receiving file contents"),
     {noreply, State#state{status=ready}, hibernate};
 handle_info({Ref, {ok, Bin}}, #state{stream_ref=Ref, contents=Contents}=State) ->
