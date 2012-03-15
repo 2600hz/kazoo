@@ -292,7 +292,7 @@ record_to_xml(Card, ToString) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec json_to_record/1 :: (JObj) -> #bt_card{} when
-      JObj :: undefined | json_object().
+      JObj :: undefined | wh_json:json_object().
 json_to_record(undefined) ->
     undefined;
 json_to_record(JObj) ->
@@ -316,7 +316,7 @@ json_to_record(JObj) ->
 %% Convert a given record into a json object
 %% @end
 %%--------------------------------------------------------------------
--spec record_to_json/1 :: (Card) -> json_object() when
+-spec record_to_json/1 :: (Card) -> wh_json:json_object() when
       Card :: #bt_card{}.
 record_to_json(Card) ->
     Props =[{<<"id">>, Card#bt_card.token}
@@ -347,7 +347,7 @@ record_to_json(Card) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec create_or_get_json_id/1 :: (JObj) ->  undefined | string() when
-      JObj :: json_object().
+      JObj :: wh_json:json_object().
 create_or_get_json_id(JObj) ->
     case wh_json:get_value(<<"number">>, JObj) of
         undefined ->

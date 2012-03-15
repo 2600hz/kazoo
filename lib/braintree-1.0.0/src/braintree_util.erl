@@ -65,7 +65,7 @@ props_to_xml([{K, V}|T], Xml) when is_boolean(V) ->
 props_to_xml([{K, V}|T], Xml) ->
     props_to_xml(T, [{K, [wh_util:to_list(V)]}|Xml]).
 
--spec props_to_json/1 :: (proplist()) -> json_object().
+-spec props_to_json/1 :: (proplist()) -> wh_json:json_object().
 props_to_json(Props) ->
     wh_json:from_list([begin
 			   case V of

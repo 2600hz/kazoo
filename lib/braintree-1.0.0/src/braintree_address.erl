@@ -220,7 +220,7 @@ record_to_xml(Address, ToString) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec json_to_record/1 :: (JObj) -> #bt_address{} when
-      JObj :: undefined | json_object().
+      JObj :: undefined | wh_json:json_object().
 json_to_record(undefined) ->
     undefined;
 json_to_record(JObj) ->
@@ -245,7 +245,7 @@ json_to_record(JObj) ->
 %% Convert a given record into a json object
 %% @end
 %%--------------------------------------------------------------------
--spec record_to_json/1 :: (Address) -> json_object() when
+-spec record_to_json/1 :: (Address) -> wh_json:json_object() when
       Address :: #bt_address{}.
 record_to_json(Address) ->
     Props = [{<<"id">>, Address#bt_address.id}
@@ -274,7 +274,7 @@ record_to_json(Address) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec create_or_get_json_id/1 :: (JObj) ->  undefined | string() when
-      JObj :: json_object().
+      JObj :: wh_json:json_object().
 create_or_get_json_id(JObj) ->
     case wh_json:get_value(<<"street_address">>, JObj) of
         undefined ->
