@@ -214,7 +214,7 @@ record_to_xml(Customer, ToString) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec json_to_record/1 :: (JObj) -> #bt_customer{} when
-      JObj :: undefined | json_object().
+      JObj :: undefined | wh_json:json_object().
 json_to_record(undefined) ->
     #bt_customer{};
 json_to_record(JObj) ->
@@ -234,7 +234,7 @@ json_to_record(JObj) ->
 %% Convert a given record into a json object
 %% @end
 %%--------------------------------------------------------------------
--spec record_to_json/1 :: (Customer) -> json_object() when
+-spec record_to_json/1 :: (Customer) -> wh_json:json_object() when
       Customer :: #bt_customer{}.
 record_to_json(Customer) ->
     Props = [{<<"id">>, Customer#bt_customer.id}
