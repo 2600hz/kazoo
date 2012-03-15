@@ -96,22 +96,22 @@ allowed_methods(?TRANSACTIONS_PATH_TOKEN, _) ->
 -spec resource_exists/1 :: (path_token()) -> 'true'.
 -spec resource_exists/2 :: (path_token(), path_token()) -> 'true'.
 resource_exists(?CUSTOMER_PATH_TOKEN) ->
-    ['GET', 'POST'];
+    true;
 resource_exists(?CARDS_PATH_TOKEN) ->
-    ['GET', 'PUT'];
+    true;
 resource_exists(?ADDRESSES_PATH_TOKEN) ->
-    ['GET', 'PUT'];
+    true;
 resource_exists(?TRANSACTIONS_PATH_TOKEN) ->
-    ['GET', 'PUT'];
+    true;
 resource_exists(?CREDITS_PATH_TOKEN) ->
-    ['GET', 'PUT'].
+    true.
 
 resource_exists(?CARDS_PATH_TOKEN, _) ->
-    ['GET', 'POST', 'DELETE'];
+    true;
 resource_exists(?ADDRESSES_PATH_TOKEN, _) ->
-    ['GET', 'POST', 'DELETE'];
+    true;
 resource_exists(?TRANSACTIONS_PATH_TOKEN, _) ->
-    ['GET'].
+    true.
 
 %%--------------------------------------------------------------------
 %% @public
