@@ -262,7 +262,7 @@ to_integer(X) ->
     to_integer(X, notstrict).
 
 to_integer(X, strict) when is_float(X) ->
-    error(badarg);
+    erlang:error(badarg);
 to_integer(X, notstrict) when is_float(X) ->
     round(X);
 to_integer(X, S) when is_binary(X) ->
@@ -291,7 +291,7 @@ to_float(X, S) when is_list(X) ->
         error:badarg when S =:= notstrict -> list_to_integer(X)*1.0 %% "500" -> 500.0
     end;
 to_float(X, strict) when is_integer(X) ->
-    error(badarg);
+    erlang:error(badarg);
 to_float(X, notstrict) when is_integer(X) ->
     X * 1.0;
 to_float(X, _) when is_float(X) ->
