@@ -350,7 +350,7 @@ do_fetch_attachment(#db{}=Db, DocId, AName) ->
 
 -spec do_stream_attachment/4 :: (#db{}, ne_binary(), ne_binary(), pid()) -> {'ok', reference()} | {'error', term()}.
 do_stream_attachment(#db{}=Db, DocId, AName, Caller) ->
-    couchbeam:stream_attachment(Db, DocId, AName, Caller).
+    couchbeam:stream_fetch_attachment(Db, DocId, AName, Caller).
 
 -spec do_put_attachment/5 :: (#db{}, ne_binary(), ne_binary(), ne_binary(), proplist()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
 do_put_attachment(#db{}=Db, DocId, AName, Contents, Options) ->
