@@ -11,7 +11,10 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/4]).
+-export([start_link/4
+         ,single/1
+         ,continuous/1
+        ]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -19,7 +22,7 @@
 
 -include("media.hrl").
 
--define(SERVER, ?MODULE). 
+-define(TIMEOUT_LIFETIME, 600000).
 
 -record(state, {
           db :: ne_binary()
@@ -29,6 +32,7 @@
          ,contents :: ne_binary()
          ,stream_ref :: reference()
          ,status :: 'streaming' | 'ready'
+         ,timeout_ref :: reference()
          }).
 
 %%%===================================================================
@@ -44,6 +48,12 @@
 %%--------------------------------------------------------------------
 start_link(Db, Doc, Attach, Meta) ->
     gen_server:start_link(?MODULE, [Db, Doc, Attach, Meta], []).
+
+single(Srv) ->
+    gen_server:call(Srv, single).
+
+continuous(Srv) ->
+    gen_server:call(Srv, continuous).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -62,7 +72,8 @@ start_link(Db, Doc, Attach, Meta) ->
 %%--------------------------------------------------------------------
 init([Db, Doc, Attach, Meta]) ->
     {ok, Ref} = couch_mgr:stream_attachment(Db, Doc, Attach),
-    {ok, #state{
+    {ok
+     ,#state{
        db=Db
        ,doc=Doc
        ,attach=Attach
@@ -70,7 +81,8 @@ init([Db, Doc, Attach, Meta]) ->
        ,stream_ref=Ref
        ,status=streaming
        ,contents = <<>>
-      }}.
+      }
+     ,?TIMEOUT_LIFETIME}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -86,9 +98,11 @@ init([Db, Doc, Attach, Meta]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call(_Request, _From, State) ->
-    Reply = ok,
-    {reply, Reply, State}.
+handle_call(single, _From, #state{meta=Meta, contents=Contents}=State) ->
+    %% doesn't currently check whether we're still streaming in from the DB
+    {reply, {Meta, Contents}, State, ?TIMEOUT_LIFETIME};
+handle_call(continuous, _From, #state{}=State) ->
+    {reply, ok, State, ?TIMEOUT_LIFETIME}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -113,18 +127,21 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info(timeout, State) ->
+    lager:debug("timeout expired, going down"),
+    {stop, normal, State};
 handle_info({Ref, done}, #state{stream_ref=Ref}=State) ->
     lager:debug("finished receiving file contents"),
-    {noreply, State#state{status=ready}};
+    {noreply, State#state{status=ready}, hibernate};
 handle_info({Ref, {ok, Bin}}, #state{stream_ref=Ref, contents=Contents}=State) ->
     lager:debug("recv ~b bytes", [byte_size(Bin)]),
     {noreply, State#state{contents = <<Contents/binary, Bin/binary>>}};
 handle_info({Ref, {error, _E}}, #state{stream_ref=Ref}=State) ->
     lager:debug("recv stream error: ~p", [_E]),
-    {noreply, State};
+    {noreply, State, hibernate};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
-    {noreply, State}.
+    {noreply, State, hibernate}.
 
 %%--------------------------------------------------------------------
 %% @private

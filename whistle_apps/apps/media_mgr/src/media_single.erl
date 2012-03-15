@@ -15,21 +15,8 @@
 init({_Transport, _Proto}, Req0, _Opts) ->
     {[Id, Doc, Attachment], Req1} = cowboy_http_req:path_info(Req0),
 
-    {ok, Cache} = media_mgr_sup:cache_proc(),
-    case wh_cache:fetch_local(Cache, {Id,Doc,Attachment}) of
-        {error, not_found} ->
-            Db = wh_util:format_account_id(Id, encoded),
-            case couch_mgr:open_doc(Db, Doc) of
-                {ok, JObj} ->
-                    Meta = wh_json:get_value([<<"_attachments">>, Attachment], JObj),
-                    {ok, Bin} = couch_mgr:fetch_attachment(Db, Doc, Attachment),
-                    {ok, Req1, {Meta, Bin}};
-                _ ->
-                    {shutdown, Req1, ok}
-            end;
-        {ok, {Meta, Bin}} ->
-            {ok, Req1, {Meta, Bin}}
-    end.
+    {ok, Pid} = media_files_sup:find_file_server(wh_util:format_account_id(Id, encoded), Doc, Attachment),
+    {ok, Req1, media_file:single(Pid)}.
 
 handle(Req0, {Meta, Bin}) ->
     Size = byte_size(Bin),

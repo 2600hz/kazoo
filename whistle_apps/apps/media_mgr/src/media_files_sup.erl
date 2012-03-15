@@ -11,7 +11,9 @@
 -behaviour(supervisor).
 
 %% API
--export([start_link/0, find_file_server/4]).
+-export([start_link/0
+         ,find_file_server/3, find_file_server/4
+        ]).
 
 %% Supervisor callbacks
 -export([init/1]).
@@ -34,6 +36,13 @@
 start_link() ->
     supervisor:start_link({local, ?SERVER}, ?MODULE, []).
 
+find_file_server(Id, Doc, Attachment) ->
+    Name = wh_util:to_hex(list_to_binary([Id,Doc,Attachment])),
+    case [P||{N,P,_,_} <- supervisor:which_children(?MODULE), N =:= Name] of
+        [] -> {error, no_file_server};
+        [P] -> {ok, P}
+    end.
+             
 find_file_server(Id, Doc, Attachment, Meta) ->
     Name = wh_util:to_hex(list_to_binary([Id,Doc,Attachment])),
     case supervisor:start_child(?MODULE, ?CHILD(Name, Id, Doc, Attachment, Meta)) of
