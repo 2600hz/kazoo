@@ -5,6 +5,13 @@
 %%%
 %%% Handle client requests for provisioner template documents
 %%%
+%%% Note regarding storing the template as an attachment:
+%%% Since the tempalte is a 300k json object it is more efficent to store it as
+%%% an attachment, funky I know but necessary. Also since we already require
+%%% two API calls for editing a template we will maintain backward compatiblity by 
+%%% not requiring an additional API call for the template and merge/unmerge it
+%%% from requests.
+%%%
 %%% @end
 %%% @contributors
 %%%   Jon Blanton
@@ -32,6 +39,7 @@
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".provisioner_templates">>).
 -define(CB_LIST, <<"provisioner_templates/crossbar_listing">>).
 -define(IMAGE_REQ, <<"image">>).
+-define(TEMPLATE_ATTCH, <<"template">>).
 -define(MIME_TYPES, [{<<"image">>, <<"*">>}
                      ,{<<"application">>, <<"base64">>}
                      ,{<<"application">>, <<"x-base64">>}
@@ -177,12 +185,37 @@ validate(#cb_context{req_verb = <<"delete">>}=Context, DocId, ?IMAGE_REQ) ->
     load_template_image(DocId, Context).
 
 -spec post/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
-post(Context, _) ->
-    crossbar_doc:save(Context).
-
+post(#cb_context{doc=JObj}=Context, DocId) ->
+    %% see note at top of file
+    Template = wh_json:get_value(<<"template">>, JObj),
+    Doc = wh_json:delete_key(<<"template">>, JObj),
+    case crossbar_doc:save(Context#cb_context{doc=Doc}) of
+        #cb_context{resp_status=success, resp_data=SavedResp}=Context1 ->
+            Opts = [{headers, [{content_type, "application/json"}]}],
+            case crossbar_doc:save_attachment(DocId, ?TEMPLATE_ATTCH, wh_json:encode(Template), Context, Opts) of
+                #cb_context{resp_data=success} ->
+                    Context1#cb_context{resp_data=wh_json:set_value(<<"template">>, Template, SavedResp)};
+                Else -> Else
+            end;
+        Else -> Else
+    end.
+                
 -spec put/1 :: (#cb_context{}) -> #cb_context{}.
-put(Context) ->
-    crossbar_doc:save(Context).
+put(#cb_context{doc=JObj}=Context) ->
+    %% see note at top of file
+    Template = wh_json:get_value(<<"template">>, JObj),
+    Doc = wh_json:delete_key(<<"template">>, JObj),
+    case crossbar_doc:save(Context#cb_context{doc=Doc}) of
+        #cb_context{resp_status=success, doc=SavedDoc, resp_data=SavedResp}=Context1 ->
+            DocId = wh_json:get_value(<<"_id">>, SavedDoc),
+            Opts = [{headers, [{content_type, "application/json"}]}],
+            case crossbar_doc:save_attachment(DocId, ?TEMPLATE_ATTCH, wh_json:encode(Template), Context, Opts) of
+                #cb_context{resp_status=success} ->
+                    Context1#cb_context{resp_data=wh_json:set_value(<<"template">>, Template, SavedResp)};
+                Else -> Else
+            end;
+        Else -> Else
+    end.
 
 -spec delete/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
 delete(Context, _) ->
@@ -273,7 +306,17 @@ create_provisioner_template(#cb_context{req_data=Data}=Context) ->
 %%--------------------------------------------------------------------
 -spec load_provisioner_template/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
 load_provisioner_template(DocId, Context) ->
-    crossbar_doc:load(DocId, Context).
+    %% see note at top of file
+    case crossbar_doc:load(DocId, Context) of
+        #cb_context{resp_status=success, resp_data=RespJObj}=Context1 ->
+            case crossbar_doc:load_attachment(DocId, ?TEMPLATE_ATTCH, Context) of
+                #cb_context{resp_status=success, resp_data=TemplateJObj} ->
+                    Template = wh_json:decode(TemplateJObj),
+                    Context1#cb_context{resp_data=wh_json:set_value(<<"template">>, Template, RespJObj)};
+                Else -> Else
+            end;
+        Else -> Else
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -311,14 +354,14 @@ normalize_view_results(JObj, Acc) ->
 -spec get_template/1 :: (#cb_context{}) -> {ok, wh_json:json_object()} |
                                            {error, term()}.
 get_template(#cb_context{doc=Device, db_name=Db}) ->
-    TemplateId = wh_json:get_value([<<"provision">>, <<"id">>], Device),
-    case is_binary(TemplateId) andalso couch_mgr:open_doc(Db, TemplateId) of
+    DocId = wh_json:get_value([<<"provision">>, <<"id">>], Device),
+    case is_binary(DocId) andalso couch_mgr:fetch_attachment(Db, DocId, ?TEMPLATE_ATTCH) of 
         false ->
-            lager:debug("unknown template id ~s", [TemplateId]),
+            lager:debug("unknown template id ~s", [DocId]),
             {error, not_found};
         {error, _R}=E ->
-            lager:debug("could not fetch template doc ~s: ~p", [TemplateId, _R]),
+            lager:debug("could not fetch template doc ~s: ~p", [DocId, _R]),
             E;
-        {ok, JObj} ->
-            {ok, wh_json:get_value(<<"template">>, JObj)}
+        {ok, Attachment} ->
+            {ok, wh_json:decode(Attachment)}
     end.

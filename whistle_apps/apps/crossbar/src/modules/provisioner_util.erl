@@ -31,7 +31,8 @@ send_provisioning_template(JObj, #cb_context{doc=Device}=Context) ->
     LineGenerators = [fun set_device_line_defaults/1
                       ,fun set_account_line_defaults/1
                      ],
-    TmplGenerators = [fun set_account_overrides/1
+    TmplGenerators = [fun set_account_id/1 
+                      ,fun set_account_overrides/1
                       ,fun set_user_overrides/1
                       ,fun set_device_overrides/1
                       ,fun set_global_overrides/1
@@ -43,6 +44,16 @@ send_provisioning_template(JObj, #cb_context{doc=Device}=Context) ->
     LineTemplate = lists:foldr(fun(F, J) -> F(J) end, LineLoop, LineUpdaters),
     Template = wh_json:set_value([<<"data">>, <<"globals">>, <<"globals">>, Line], LineTemplate, DefaultTemplate),
     send_provisioning_request(Template, MAC).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% add the account_id to the root of the provisioning json
+%% @end
+%%--------------------------------------------------------------------
+-spec set_account_id/1 :: (#cb_context{}) -> [fun((wh_json:json_object()) -> wh_json:json_object()),...].
+set_account_id(#cb_context{auth_account_id=AccountId}) ->
+    [fun(J) -> wh_json:set_value(<<"account_id">>, AccountId, J) end].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -127,7 +138,7 @@ set_global_overrides(_) ->
     [fun(J) ->
              case wh_json:get_value(<<"defaults">>, GlobalDefaults) of
                  undefined -> J;
-                 Overrides -> 
+                 Overrides ->
                      wh_json:merge_recursive(J, Overrides)
              end
      end
@@ -202,7 +213,6 @@ set_device_overrides(#cb_context{doc=Device}) ->
 -spec send_provisioning_request/2 :: (wh_json:json_object(), ne_binary()) -> 'ok'.
 send_provisioning_request(Template, MACAddress) ->
     ProvisionRequest = wh_json:encode(Template),
-    file:write_file("/tmp/provision.log", io_lib:format("~s~n", [ProvisionRequest])),
     Url = whapps_config:get_string(?MOD_CONFIG_CAT, <<"provisioning_url">>),
     UrlString = lists:flatten([Url, MACAddress]),
     Headers = [KV || {_, V}=KV <- [{"Content-Type", "application/json"}
