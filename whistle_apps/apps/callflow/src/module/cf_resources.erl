@@ -44,7 +44,7 @@ handle(Data, Call) ->
 %%--------------------------------------------------------------------
 -spec bridge_to_resources/5 :: (endpoints(), cf_api_binary(), cf_api_binary(), cf_api_binary(), whapps_call:call()) -> 'ok'.
 bridge_to_resources([{DestNum, Rsc, _CIDType}|T], Timeout, IgnoreEarlyMedia, Ringback, Call) ->
-    Endpoint = [create_endpoint(DestNum, Gtw) || Gtw <- wh_json:get_value(<<"gateways">>, Rsc)],
+    Endpoint = [create_endpoint(DestNum, Gtw, whapps_call:account_db(Call)) || Gtw <- wh_json:get_value(<<"gateways">>, Rsc)],
     case whapps_call_command:b_bridge(Endpoint, Timeout, <<"single">>, IgnoreEarlyMedia, Ringback, Call) of
         {ok, _} ->
             lager:debug("completed successful bridge to resource"),
@@ -83,8 +83,8 @@ bridge_to_resources([], _, _, _, Call) ->
 %% for use with the whistle bridge API.
 %% @end
 %%--------------------------------------------------------------------
--spec create_endpoint/2 :: (ne_binary(), wh_json:json_object()) -> wh_json:json_object().
-create_endpoint(DestNum, JObj) ->
+-spec create_endpoint/3 :: (ne_binary(), wh_json:json_object(), ne_binary()) -> wh_json:json_object().
+create_endpoint(DestNum, JObj, AcctDb) ->
     Rule = <<"sip:"
               ,(wh_json:get_value(<<"prefix">>, JObj, <<>>))/binary
               ,DestNum/binary
@@ -98,6 +98,7 @@ create_endpoint(DestNum, JObj) ->
                 ,{<<"Bypass-Media">>, wh_json:get_value(<<"bypass_media">>, JObj)}
                 ,{<<"Endpoint-Progress-Timeout">>, wh_json:get_value(<<"progress_timeout">>, JObj, <<"6">>)}
                 ,{<<"Codecs">>, wh_json:get_value(<<"codecs">>, JObj)}
+                ,{<<"From-URI">>, maybe_from_uri(AcctDb, JObj, DestNum)}
                ],
     wh_json:from_list([ KV || {_, V}=KV <- Endpoint, V =/= undefined ]).
 
@@ -113,6 +114,7 @@ create_endpoint(DestNum, JObj) ->
 find_endpoints(Call) ->
     lager:debug("searching for resource endpoints"),
     AccountDb = whapps_call:account_db(Call),
+
     case couch_mgr:get_results(AccountDb, ?VIEW_BY_RULES, []) of
         {ok, Resources} ->
             lager:debug("found resources, filtering by rules"),
@@ -166,3 +168,26 @@ evaluate_rules([_, Regex], DestNum) ->
             [DestNum];
         _ -> []
     end.
+
+maybe_from_uri(true, DestNum, Realm) ->
+    from_uri(DestNum, Realm);
+maybe_from_uri(false, DestNum, Realm) ->
+    case wh_util:is_true(whapps_config:get_value(?APP_NAME, <<"format_from_uri">>)) of
+        true -> from_uri(DestNum, Realm);
+        false -> undefined
+    end;
+maybe_from_uri(AccountDb, Gateway, DestNum) ->
+    {ok, AcctDoc} = couch_mgr:open_doc(AccountDb, wh_util:format_account_id(AccountDb, raw)),
+
+    Realm = wh_json:get_value(<<"realm">>, AcctDoc),
+    case wh_json:is_true(<<"format_from_uri">>, Gateway, false) of
+        true -> from_uri(DestNum, Realm);
+        false -> maybe_from_uri(wh_json:is_true(<<"format_from_uri">>, AcctDoc, false), DestNum, Realm)
+    end.
+
+from_uri(DestNum, Realm) ->
+    lager:debug("setting From-URI to sip:~s@~s", [DestNum, Realm]),
+    <<"sip:", DestNum/binary, "@", Realm/binary>>.
+            
+
+    
