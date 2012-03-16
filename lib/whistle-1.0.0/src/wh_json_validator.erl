@@ -228,12 +228,14 @@ is_valid_attribute({<<"additionalProperties">>, _, _}, JObj, _Key) ->
 %% 5.5
 is_valid_attribute({<<"items">>, Items, _}, JObj, Key) ->
     Instance = wh_json:get_value(Key, JObj),
-    case (not check_valid_type(Instance, <<"array">>)) andalso are_valid_items(Instance, Items) of
-        true ->
-            {pass, JObj}; % true if check_valid_type/2 is false, or are_valid_items/2 returns true
-        Error ->
+    case {check_valid_type(Instance, <<"array">>), are_valid_items(Instance, Items)} of
+        {false, _} -> 
+            {pass, JObj};
+        {true, true} -> 
+            {pass, JObj};
+        {true, Error} ->
             {fail, {Key, list_to_binary([<<"items:">>, Error])}}
-    end;
+    end;    
 
 %% 5.6
 is_valid_attribute({<<"additionalItems">>, _, _}, JObj, _Key) ->
