@@ -402,12 +402,17 @@ lookup_account_by_number(Number) ->
     DefaultAccount = whapps_config:get_non_empty(?WNM_CONFIG_CAT, <<"default_account">>, <<>>),
     case couch_mgr:open_doc(Db, Num) of
         {ok, JObj} ->
-            lager:debug("found number"),
+            lager:debug("found number in db"),
             AssignedTo = wh_json:get_value(<<"pvt_assigned_to">>, JObj, DefaultAccount),
-            case wh_util:is_account_enabled(AssignedTo) of
+            NumberState = wh_json:get_value(<<"pvt_number_state">>, JObj),
+            case is_binary(AssignedTo) andalso
+                NumberState =:= <<"in_service">> andalso
+                wh_util:is_account_enabled(AssignedTo) of
                 true ->
+                    lager:debug("number belongs to an active account ~s", [AssignedTo]),
                     {ok, AssignedTo, wh_json:is_true(<<"force_outbound">>, JObj, false)};
                 false ->
+                    lager:debug("number is inactive, account id is unknown, or account is disabled"),
                     {error, not_found}
             end;
         {error, R1} when DefaultAccount =/= undefined -> 
