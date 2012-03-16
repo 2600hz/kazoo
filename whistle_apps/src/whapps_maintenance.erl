@@ -108,6 +108,7 @@ do_refresh() ->
     refresh(?WH_SIP_DB),
     refresh(?WH_SCHEMA_DB),
     refresh(?WH_ACCOUNTS_DB),
+    refresh(?WH_PROVISIONER_DB),
     Views = [whapps_util:get_view_json(whistle_apps, ?MAINTENANCE_VIEW_FILE)
              ,whapps_util:get_view_json(conference, <<"views/conference.json">>)
              |whapps_util:get_views_json(crossbar, "account")
@@ -137,7 +138,8 @@ refresh(?WH_SIP_DB) ->
     end;
 refresh(?WH_SCHEMA_DB) ->
     couch_mgr:db_create(?WH_SCHEMA_DB),
-    couch_mgr:revise_docs_from_folder(?WH_SCHEMA_DB, crossbar, "schemas");
+    couch_mgr:revise_docs_from_folder(?WH_SCHEMA_DB, crossbar, "schemas"),
+    ok;
 refresh(?WH_ACCOUNTS_DB) ->
     couch_mgr:db_create(?WH_ACCOUNTS_DB),
     Views = [whapps_util:get_view_json(whistle_apps, ?MAINTENANCE_VIEW_FILE)
@@ -151,6 +153,10 @@ refresh(?WH_ACCOUNTS_DB) ->
         _ ->
             ok
     end,
+    ok;
+refresh(?WH_PROVISIONER_DB) ->
+    couch_mgr:db_create(?WH_PROVISIONER_DB),
+    couch_mgr:revise_doc_from_file(?WH_PROVISIONER_DB, crossbar, "account/provisioner_templates.json"),
     ok;
 refresh(<<Account/binary>>) ->
     Views = [whapps_util:get_view_json(whistle_apps, ?MAINTENANCE_VIEW_FILE)

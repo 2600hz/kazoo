@@ -6,6 +6,7 @@
 -define(WH_SIP_DB, <<"sip_auth">>).
 -define(WH_ACCOUNTS_DB, <<"accounts">>).
 -define(WH_RATES_DB, <<"ratedeck">>).
+-define(WH_PROVISIONER_DB, <<"global_provisioner">>).
 
 -define(WHISTLE_DBS_INCLUDED, true).
 -endif.

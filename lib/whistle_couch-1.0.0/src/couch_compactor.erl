@@ -16,7 +16,7 @@
 -export([compact_all/1, compact_all/2, compact_node/2, compact_node/3
          ,compact_db/3, compact_db/4]).
 
--include("wh_couch.hrl").
+-include_lib("whistle_couch/include/wh_couch.hrl").
 -define(SLEEP_BETWEEN_COMPACTION, 60000). %% sleep 60 seconds between shard compactions
 -define(SLEEP_BETWEEN_POLL, 5000). %% sleep 5 seconds before polling the shard for compaction status
 

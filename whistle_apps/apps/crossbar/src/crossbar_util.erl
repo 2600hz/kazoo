@@ -33,7 +33,7 @@
 -export([find_account_id/3, find_account_id/4]).
 -export([find_account_db/3, find_account_db/4]).
 
--include("../include/crossbar.hrl").
+-include_lib("crossbar/include/crossbar.hrl").
 
 %%--------------------------------------------------------------------
 %% @private

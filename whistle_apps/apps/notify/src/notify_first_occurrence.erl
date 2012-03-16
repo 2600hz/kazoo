@@ -127,10 +127,6 @@ notify_initial_call(AccountDb, JObj) ->
 %% @end
 %%--------------------------------------------------------------------
 first_occurrence_notice(Account, Occurrence) ->
-    DefaultFrom = list_to_binary([<<"no_reply@">>, wh_util:to_binary(net_adm:localhost())]),
-    From = wh_json:get_value([<<"notifications">>, <<"first_occurrence">>, <<"send_from">>], Account
-                             ,whapps_config:get(?MOD_CONFIG_CAT, <<"default_from">>, DefaultFrom)),
-
     lager:debug("creating first occurrence notice"),
     
     Props = create_template_props(Account, Occurrence),

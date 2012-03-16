@@ -23,6 +23,8 @@
 
 -include_lib("crossbar/include/crossbar.hrl").
 
+-define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".devices">>).
+
 -define(CB_LIST, <<"devices/crossbar_listing">>).
 
 %%%===================================================================
@@ -112,7 +114,7 @@ post(#cb_context{}=Context, _DocId) ->
                     lager:debug("adding device to the sip auth aggregate"),
                     couch_mgr:ensure_saved(?WH_SIP_DB, wh_json:delete_key(<<"_rev">>, Doc1))
             end,
-            provision(Context1, whapps_config:get_string(<<"crossbar.devices">>, <<"provisioning_type">>)),
+            spawn(fun() -> do_simple_provision(Context1) end),
             Context1;
         Else ->
             Else
@@ -129,7 +131,7 @@ put(#cb_context{}=Context) ->
                     lager:debug("adding device to the sip auth aggregate"),
                     couch_mgr:ensure_saved(?WH_SIP_DB, wh_json:delete_key(<<"_rev">>, Doc1))
             end,    
-            provision(Context1, whapps_config:get_string(<<"crossbar.devices">>, <<"provisioning_type">>)),
+            spawn(fun() -> do_simple_provision(Context1) end),
             Context1;
         Else ->
             Else
@@ -350,117 +352,29 @@ is_sip_creds_unique(_, Realm, Username, DocId) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Spawn the function to post data to a provisioning server, if
-%% provided with URL
-%% @end
-%%--------------------------------------------------------------------
--spec provision/2 :: (#cb_context{}, ne_binary() | 'undefined') -> 'ok' | pid().
-provision(Context, "simple_provisioner") ->   
-    spawn(fun() -> do_simple_provision(Context) end);
-provision(Context, "provisioner.net") ->
-    spawn(fun() -> do_awesome_provision(Context) end);
-provision(_, _Else) ->
-    lager:debug("unsupported provisioning type: ~s", [_Else]),
-    ok.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Do awesome provisioning
-%% @end
-%%--------------------------------------------------------------------
--spec do_awesome_provision/1 :: (#cb_context{}) -> 'ok'.
-do_awesome_provision(#cb_context{doc=JObj, db_name=Db}) ->
-    TemplateOverrides = wh_json:get_value([<<"provision">>, <<"template">>], JObj, wh_json:new()),
-    TemplateId = wh_json:get_value([<<"provision">>, <<"id">>], JObj),
-    case is_binary(TemplateId) andalso couch_mgr:open_doc(Db, TemplateId) of
-        false ->
-             lager:debug("unknown template id ~s", [TemplateId]),
-             ok;
-        {error, _R} ->
-             lager:debug("could not fetch template doc ~s: ~p", [TemplateId, _R]),
-             ok;
-        {ok, TemplateJObj} ->
-            TemplateBase = wh_json:get_value(<<"template">>, TemplateJObj),
-            Template = wh_json:merge_recursive(TemplateBase, TemplateOverrides),
-            ProvisionRequest = provision_device_line([<<"data">>, <<"globals">>, <<"globals">>, <<"lineloop|line_1">>]
-                                                    ,JObj, Template),
-            MACAddress = re:replace(wh_json:get_string_value(<<"mac_address">>, JObj, "")
-                                    ,"[^0-9a-fA-F]", "", [{return, list}, global]),
-            send_awesome_provisioning_request(ProvisionRequest, MACAddress)
-    end,
-    ok.
-
--spec provision_device_line/3 :: ([ne_binary(),...], wh_json:json_object(), wh_json:json_object()) -> wh_json:json_object().
-provision_device_line(BaseKey, Device, Template) ->
-    Mappings = [{[<<"username">>, <<"value">>], [<<"sip">>, <<"username">>]}
-                ,{[<<"authname">>, <<"value">>], [<<"sip">>, <<"username">>]}
-                ,{[<<"secret">>, <<"value">>], [<<"sip">>, <<"password">>]}
-                ,{[<<"server_host">>, <<"value">>], [<<"sip">>, <<"realm">>]}
-               ],
-    provision_device_line(BaseKey, Device, Template, Mappings).
-
--spec provision_device_line/4 :: (wh_json:json_strings(), wh_json:json_object(), wh_json:json_object(), [{wh_json:json_strings(), wh_json:json_strings()},...] | []) 
-                                 -> wh_json:json_object().
-provision_device_line(_, _, Template, []) ->
-    Template;
-provision_device_line(BaseKey, Device, Template, [{TemplateKey, DeviceKey}|T]) ->
-    case wh_json:get_ne_value(DeviceKey, Device) of
-        undefined -> provision_device_line(BaseKey, Device, Template, T);
-        Value when is_list(TemplateKey) ->
-            NewTemplate = wh_json:set_value(BaseKey ++ TemplateKey, Value, Template),
-            provision_device_line(BaseKey, Device, NewTemplate, T);
-        Value ->
-            NewTemplate = wh_json:set_value(BaseKey ++ [TemplateKey], Value, Template),
-            provision_device_line(BaseKey, Device, NewTemplate, T)
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Send awesome provisioning request
-%% @end
-%%--------------------------------------------------------------------
--spec send_awesome_provisioning_request/2 :: (wh_json:json_object(), ne_binary()) -> 'ok'.
-send_awesome_provisioning_request(ProvisionRequest, MACAddress) ->
-    Url = whapps_config:get_string(<<"crossbar.devices">>, <<"provisioning_url">>),
-    UrlString = lists:flatten([Url, MACAddress]),
-    Headers = [{"User-Agent", wh_util:to_list(erlang:node())}
-               ,{"Content-Type", "application/json"}
-              ],
-    Body = wh_json:encode(ProvisionRequest),
-    HTTPOptions = [],
-    lager:debug("provisioning via ~s", [UrlString]),
-    case ibrowse:send_req(UrlString, Headers, post, Body, HTTPOptions) of
-        {ok, "200", _, Response} ->
-            lager:debug("SUCCESS! BOOM! ~s", [Response]);
-        {ok, Code, _, Response} ->
-            lager:debug("ERROR! OH NO! ~s. ~s", [Code, Response])
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
 %% post data to a provisiong server
 %% @end
 %%--------------------------------------------------------------------
 -spec do_simple_provision/1 :: (#cb_context{}) -> 'ok'.
 do_simple_provision(#cb_context{doc=JObj}=Context) ->
-    Url = whapps_config:get_string(<<"crossbar.devices">>, <<"provisioning_url">>),
-    AccountRealm = crossbar_util:get_account_realm(Context),
-    Headers = [{K, V}
-               || {K, V} <- [{"Host", whapps_config:get_string(<<"crossbar.devices">>, <<"provisioning_host">>)}
-                             ,{"Referer", whapps_config:get_string(<<"crossbar.devices">>, <<"provisioning_referer">>)}
-                             ,{"User-Agent", wh_util:to_list(erlang:node())}
-                             ,{"Content-Type", "application/x-www-form-urlencoded"}]
-                      ,V =/= undefined],
-    HTTPOptions = [],
-    Body = [{"api[realm]", wh_json:get_string_value([<<"sip">>, <<"realm">>], JObj, AccountRealm)}
-            ,{"mac", re:replace(wh_json:get_string_value(<<"mac_address">>, JObj, ""), "[^0-9a-fA-F]", "", [{return, list}, global])}
-            ,{"label", wh_json:get_string_value(<<"name">>, JObj)}
-            ,{"sip[username]", wh_json:get_string_value([<<"sip">>, <<"username">>], JObj)}
-            ,{"sip[password]", wh_json:get_string_value([<<"sip">>, <<"password">>], JObj)}
-            ,{"submit", "true"}],
-    Encoded = mochiweb_util:urlencode(Body),
-    lager:debug("posting to ~s with ~s", [Url, Encoded]),
-    ibrowse:send_req(Url, Headers, post, Encoded, HTTPOptions).
+    case whapps_config:get_string(?MOD_CONFIG_CAT, <<"provisioning_url">>) of
+        undefined -> ok;
+        Url ->
+            AccountRealm = crossbar_util:get_account_realm(Context),
+            Headers = [{K, V}
+                       || {K, V} <- [{"Host", whapps_config:get_string(?MOD_CONFIG_CAT, <<"provisioning_host">>)}
+                                     ,{"Referer", whapps_config:get_string(?MOD_CONFIG_CAT, <<"provisioning_referer">>)}
+                                     ,{"User-Agent", wh_util:to_list(erlang:node())}
+                                     ,{"Content-Type", "application/x-www-form-urlencoded"}]
+                              ,V =/= undefined],
+            HTTPOptions = [],
+            Body = [{"device[mac]", re:replace(wh_json:get_string_value(<<"mac_address">>, JObj, ""), "[^0-9a-fA-F]", "", [{return, list}, global])}
+                    ,{"device[label]", wh_json:get_string_value(<<"name">>, JObj)}
+                    ,{"sip[realm]", wh_json:get_string_value([<<"sip">>, <<"realm">>], JObj, AccountRealm)}
+                    ,{"sip[username]", wh_json:get_string_value([<<"sip">>, <<"username">>], JObj)}
+                    ,{"sip[password]", wh_json:get_string_value([<<"sip">>, <<"password">>], JObj)}
+                    ,{"submit", "true"}],
+            Encoded = mochiweb_util:urlencode(Body),
+            lager:debug("posting to ~s with ~s", [Url, Encoded]),
+            ibrowse:send_req(Url, Headers, post, Encoded, HTTPOptions)
+    end.
