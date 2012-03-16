@@ -16,7 +16,7 @@
 -export([compact_all/1, compact_all/2, compact_node/2, compact_node/3
          ,compact_db/3, compact_db/4]).
 
--include("wh_couch.hrl").
+-include_lib("whistle_couch/include/wh_couch.hrl").
 -define(SLEEP_BETWEEN_COMPACTION, 60000). %% sleep 60 seconds between shard compactions
 -define(SLEEP_BETWEEN_POLL, 5000). %% sleep 5 seconds before polling the shard for compaction status
 
@@ -45,7 +45,7 @@ init(Parent) ->
             proc_lib:init_ack(Parent, ignore),
             couch_config:store(compact_automatically, false);
         _Other ->
-            ?LOG("unexpected values for auto-compaction: ~p", [_Other])
+            lager:debug("unexpected values for auto-compaction: ~p", [_Other])
     end.
 
 -spec compact_all/0 :: () -> 'done'.

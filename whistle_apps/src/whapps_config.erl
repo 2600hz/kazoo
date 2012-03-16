@@ -402,7 +402,7 @@ do_set(Category0, Keys, Value, Node0) ->
     Category = wh_util:to_binary(Category0),
     Node = wh_util:to_binary(Node0),
 
-    ?LOG("setting ~s(~p): ~p", [Category, Keys, Value]),
+    lager:debug("setting ~s(~p): ~p", [Category, Keys, Value]),
 
     {ok, Cache} = whistle_apps_sup:config_cache_proc(),
     UpdateFun = fun(J) ->
