@@ -22,7 +22,7 @@
 
 -define(SERVER, ?MODULE).
 -define(VIEW_SUMMARY, <<"accounts/listing_by_id">>).
--define(SYS_ADMIN_MODS, [<<"global_resources">>, <<"limits">>, <<"templates">>, <<"rates">>, <<"acls">>]).
+-define(SYS_ADMIN_MODS, [<<"global_resources">>, <<"limits">>, <<"templates">>, <<"rates">>, <<"acls">>, <<"global_provisioner_templates">>]).
 
 %%%===================================================================
 %%% API
@@ -38,6 +38,9 @@ authorize(#cb_context{req_nouns=[{?WH_ACCOUNTS_DB,[]}]
         true -> true;
         false -> Verb =:= <<"put">>
     end;
+authorize(#cb_context{req_nouns=[{<<"global_provisioner_templates">>,_}|_]
+                      ,req_verb = <<"get">>}) ->
+    true;
 authorize(#cb_context{auth_account_id=AuthAccountId}=Context) ->
     IsSysAdmin = is_superduper_admin(AuthAccountId),
     case allowed_if_sys_admin_mod(IsSysAdmin, Context)
