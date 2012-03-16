@@ -18,6 +18,7 @@
          ,does_resource_exist/1, validate/1
          ,succeeded/1
          ,execute_request/2
+         ,finish_request/2, request_terminated/2
          ,create_push_response/2, set_resp_headers/2
          ,create_resp_content/2, create_pull_response/2
          ,halt/2, content_type_matches/2
@@ -103,43 +104,51 @@ get_cors_headers(#cb_context{allow_methods=Allowed}) ->
 
 -spec get_req_data/2 :: (#cb_context{}, #http_req{}) -> {#cb_context{}, #http_req{}}.
 get_req_data(Context, Req0) ->
-    {ContentType, Req1} = cowboy_http_req:header('Content-Type', Req0),
-    {QS0, Req2} = cowboy_http_req:qs_vals(Req1),
+    {QS0, Req1} = cowboy_http_req:qs_vals(Req0),
     QS = wh_json:from_list(QS0),
-
-    lager:debug("request has content type: ~s", [ContentType]),
-
-    case ContentType of
-        <<"multipart/form-data", _/binary>> ->
-            extract_multipart(Context#cb_context{query_json=QS}, Req2);
-        <<"application/x-www-form-urlencoded", _/binary>> ->
+    case cowboy_http_req:parse_header('Content-Type', Req1) of
+        {undefined, Req2} -> 
+            {Context#cb_context{query_json=QS}, Req2};
+        {{<<"multipart">>, <<"form-data">>, _}, Req2} ->
             case catch extract_multipart(Context#cb_context{query_json=QS}, Req2) of
                 {'EXIT', _} ->
                     lager:debug("failed to extract multipart"),
                     {halt, Context, Req2};
                 Resp -> Resp
             end;
-        <<"application/json", _/binary>> ->
+        {{<<"application">>, <<"x-www-form-urlencoded">>, _}, Req2} ->
+            case catch extract_multipart(Context#cb_context{query_json=QS}, Req2) of
+                {'EXIT', _} ->
+                    lager:debug("failed to extract multipart"),
+                    {halt, Context, Req2};
+                Resp -> Resp
+            end;
+        {{<<"application">>, <<"json">>, _}, Req2} ->
             {JSON, Req3_1} = get_json_body(Req2),
             {Context#cb_context{req_json=JSON
                                 ,req_data=wh_json:get_value(<<"data">>, JSON, wh_json:new())
                                 ,query_json=QS
                                }
              ,Req3_1};
-        <<"application/x-json", _/binary>> ->
+        {{<<"application">>, <<"x-json">>, _}, Req2} ->
             {JSON, Req3_1} = get_json_body(Req2),
             {Context#cb_context{req_json=JSON
                                 ,req_data=wh_json:get_value(<<"data">>, JSON, wh_json:new())
                                 ,query_json=QS
                                }
              ,Req3_1};
-        _CT ->
-            lager:debug("unknown content-type: ~s", [_CT]),
-            extract_file(Context#cb_context{query_json=QS}, Req2)
+        {{<<"application">>, <<"base64">>, _}, Req2} ->
+            decode_base64(Context#cb_context{query_json=QS}, <<"application/base64">>, Req2);
+        {{<<"application">>, <<"x-base64">>, _}, Req2} ->
+            decode_base64(Context#cb_context{query_json=QS}, <<"application/base64">>, Req2);
+        {{ContentType, ContentSubType, _}, Req2} ->
+            lager:debug("unknown content-type: ~s/~s", [ContentType, ContentSubType]),
+            extract_file(Context#cb_context{query_json=QS}, list_to_binary([ContentType, "/", ContentSubType]), Req2)
     end.
 
 -spec extract_multipart/2 :: (#cb_context{}, #http_req{}) -> {#cb_context{}, #http_req{}}.
 extract_multipart(#cb_context{req_files=Files}=Context, #http_req{}=Req0) ->
+    lager:debug("request content is multipart content, extracting"),
     case extract_multipart_content(cowboy_http_req:multipart_data(Req0), wh_json:new()) of
         {eof, Req1} -> {Context, Req1};
         {end_of_part, JObj, Req1} -> extract_multipart(Context#cb_context{req_files=[JObj|Files]}, Req1)
@@ -154,36 +163,79 @@ extract_multipart_content({{data, Datum}, Req}, JObj) ->
     Data = wh_json:get_value(<<"data">>, JObj),
     extract_multipart_content(cowboy_http_req:multipart_data(Req), wh_json:set_value(<<"data">>, <<Data/binary, Datum/binary>>, JObj)).
 
--spec extract_file/2 :: (#cb_context{}, #http_req{}) -> {#cb_context{}, #http_req{}}.
-extract_file(Context, Req0) ->
+-spec extract_file/3 :: (#cb_context{}, ne_binary(), #http_req{}) -> {#cb_context{}, #http_req{}}.
+extract_file(Context, ContentType, Req0) ->
     case cowboy_http_req:body(Req0) of
         {error, badarg} -> {Context, Req0};
         {ok, FileContents, Req1} ->
-            {ContentType, Req2} = cowboy_http_req:header(<<"Content-Type">>, Req1),
-            {ContentLength, Req3} = cowboy_http_req:header(<<"Content-Length">>, Req2),
+            %% http://tools.ietf.org/html/rfc2045#page-17
+            case cowboy_http_req:header(<<"Content-Transfer-Encoding">>, Req1) of
+                <<"base64">> -> decode_base64(Context, ContentType, Req1);
+                _Else ->
+                    {ContentLength, Req2} = cowboy_http_req:header('Content-Length', Req1),
+                    Headers = wh_json:from_list([{<<"content_type">>, ContentType}
+                                                 ,{<<"content_length">>, ContentLength}
+                                                ]),
+                    FileJObj = wh_json:from_list([{<<"headers">>, Headers}
+                                                  ,{<<"contents">>, FileContents}
+                                                 ]),
+                    lager:debug("request is a file upload of type: ~s", [ContentType]),
+                    {Context#cb_context{req_files=[{<<"uploaded_file">>, FileJObj}]}, Req2}
+            end
+    end.
 
+-spec decode_base64/3 :: (#cb_context{}, ne_binary(), #http_req{}) -> {#cb_context{}, #http_req{}}.
+decode_base64(Context, CT, Req0) -> 
+    case cowboy_http_req:body(Req0) of
+        {error, badarg} -> {Context, Req0};
+        {ok, Base64Data, Req1} ->
+            {EncodedType, FileContents} = decode_base64(Base64Data),
+            ContentType = case EncodedType of
+                              undefined -> CT;
+                              <<"application/base64">> -> <<"application/octet-stream">>;
+                              Else -> Else
+                          end,
             Headers = wh_json:from_list([{<<"content_type">>, ContentType}
-                                         ,{<<"content_length">>, ContentLength}
+                                         ,{<<"content_length">>, wh_util:to_binary(size(FileContents))}
                                         ]),
             FileJObj = wh_json:from_list([{<<"headers">>, Headers}
                                           ,{<<"contents">>, FileContents}
                                          ]),
-
-            {Context#cb_context{req_files=[{<<"uploaded_file">>, FileJObj}]}, Req3}
+            lager:debug("request is a base64 file upload of type: ~s", [ContentType]),
+            {Context#cb_context{req_files=[{<<"uploaded_file">>, FileJObj}]}, Req1}
     end.
+    
+-spec decode_base64/1 :: (ne_binary()) -> {undefined | ne_binary(), ne_binary()}.
+decode_base64(Base64) ->
+    case binary:split(Base64, <<",">>) of
+        %% http://tools.ietf.org/html/rfc4648
+        [Bin] -> {undefined, corrected_base64_decode(Bin)};
+        %% http://tools.ietf.org/rfc/rfc2397.txt
+        [<<"data:", CT/binary>>, Bin] -> 
+            {ContentType, _Opts} = mochiweb_util:parse_header(wh_util:to_list(CT)),
+            {wh_util:to_binary(ContentType), corrected_base64_decode(Bin)}
+    end.
+
+-spec corrected_base64_decode/1 :: (ne_binary()) -> ne_binary().
+corrected_base64_decode(Base64) when byte_size(Base64) rem 4 == 3 ->
+    base64:mime_decode(<<Base64/bytes, "=">>);
+corrected_base64_decode(Base64) when byte_size(Base64) rem 4 == 2 ->    
+    base64:mime_decode(<<Base64/bytes, "==">>);
+corrected_base64_decode(Base64) ->
+    base64:mime_decode(Base64).
 
 -spec get_json_body/1 :: (#http_req{}) -> {wh_json:json_object(), #http_req{}} |
                                            {{'malformed', ne_binary()}, #http_req{}}.
 get_json_body(Req0) ->
     case cowboy_http_req:body(Req0) of
         {error, _E} ->
-            lager:debug("failed to fetch req body: ~s", [_E]),
+            lager:debug("request had no payload: ~s", [_E]),
             {wh_json:new(), Req0};
         {ok, <<>>, Req1} ->
-            lager:debug("no req body"),
+            lager:debug("request had no payload"),
             {wh_json:new(), Req1};
         {ok, ReqBody, Req1} ->
-            lager:debug("req body: ~s", [ReqBody]),
+            lager:debug("request has a json payload: ~s", [ReqBody]),
             try wh_json:decode(ReqBody) of
                 JObj ->
                     case is_valid_request_envelope(JObj) of
@@ -196,7 +248,7 @@ get_json_body(Req0) ->
                     end
             catch
                 _:{badmatch, {comma,{decoder,_,S,_,_,_}}} ->
-            lager:debug("failed to decode json: comma error around char ~s", [wh_util:to_list(S)]),
+                    lager:debug("failed to decode json: comma error around char ~s", [wh_util:to_list(S)]),
                     {{malformed, list_to_binary(["Failed to decode: comma error around char ", wh_util:to_list(S)])}, Req1};
                 _:E ->
                     lager:debug("failed to decode json: ~p", [E]),
@@ -317,12 +369,10 @@ maybe_add_post_method(_, _, Allowed) ->
 -spec is_authentic/2 :: (#http_req{}, #cb_context{}) -> {{'false', <<>>} | 'true', #http_req{}, #cb_context{}}.
 is_authentic(Req, #cb_context{req_verb = <<"options">>}=Context) ->
     %% all OPTIONS, they are harmless (I hope) and required for CORS preflight
-    lager:debug("is authentic: options"),
     {true, Req, Context};
 is_authentic(Req0, Context0) ->
     Event = <<"v1_resource.authenticate">>,
     {Req1, Context1} = get_auth_token(Req0, Context0),
-
     case crossbar_bindings:succeeded(crossbar_bindings:map(Event, Context1)) of
         [] ->
             lager:debug("failed to authenticate"),
@@ -423,6 +473,8 @@ is_acceptable_content_type(CTA, CTAs) ->
     [ true || ModCTA <- CTAs, content_type_matches(CTA, ModCTA)] =/= [].
 
 -spec content_type_matches/2 :: (content_type(), content_type()) -> boolean().
+content_type_matches({Type, _, _}, {Type, <<"*">>, []}) ->
+    true;
 content_type_matches({Type, SubType, _}, {Type, SubType, []}) ->
     true;
 content_type_matches({Type, SubType, Opts}, {Type, SubType, ModOpts}) ->
@@ -528,6 +580,32 @@ execute_request_results(Req, #cb_context{req_nouns=[{Mod, Params}|_], req_verb=V
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
+%% This function runs the request terminated bindings at the conclusion
+%% of all requests
+%% @end
+%%--------------------------------------------------------------------
+-spec request_terminated/2 :: (#http_req{}, #cb_context{}) -> ok.
+request_terminated(_Req, #cb_context{req_nouns=[{Mod, _}|_], req_verb=Verb}=Context) ->
+    Event = <<"v1_resource.request_terminated.", Verb/binary, ".", Mod/binary>>,
+    crossbar_bindings:map(Event, Context),
+    ok.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% This function runs the request terminated bindings at the conclusion
+%% of all requests
+%% @end
+%%--------------------------------------------------------------------
+-spec finish_request/2 :: (#http_req{}, #cb_context{}) -> ok.
+finish_request(_Req, #cb_context{req_nouns=[{Mod, _}|_], req_verb=Verb}=Context) ->
+    Event = <<"v1_resource.finish_request.", Verb/binary, ".", Mod/binary>>,
+    crossbar_bindings:map(Event, Context),
+    ok.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
 %% This function will create the content for the response body
 %% @end
 %%--------------------------------------------------------------------
@@ -559,13 +637,11 @@ create_resp_content(Req0, #cb_context{req_json=ReqJson}=Context) ->
 create_push_response(Req0, Context) ->
     lager:debug("create push response"),
     {Content, Req1} = create_resp_content(Req0, Context),
-
     Req2 = set_resp_headers(Req1, Context),
-    lager:debug("content: ~s", [Content]),
+    lager:debug("content: ~s", [list_to_binary(Content)]),
     {ok, Req3} = cowboy_http_req:set_resp_body(Content, Req2),
     Succeeded = succeeded(Context),
     lager:debug("is successful response: ~p", [Succeeded]),
-
     {Succeeded, Req3, Context}.
 
 %%--------------------------------------------------------------------
@@ -579,11 +655,8 @@ create_push_response(Req0, Context) ->
 create_pull_response(Req0, Context) ->
     lager:debug("create pull response"),
     {Content, Req1} = create_resp_content(Req0, Context),
-
-    lager:debug("content: ~s", [Content]),
-
+    lager:debug("content: ~s", [list_to_binary(Content)]),
     Req2 = set_resp_headers(Req1, Context),
-
     case succeeded(Context) of
         false -> {halt, Req2, Context};
         true -> {Content, Req2, Context}
@@ -635,9 +708,7 @@ create_resp_envelope(#cb_context{resp_error_msg=RespErrorMsg, resp_status=RespSt
               Else ->
                   wh_util:to_binary(Else)
           end,
-
-    lager:debug("generating ~s ~b response, ~s", [RespStatus, wh_util:to_integer(RespErrorCode), Msg]),
-
+    lager:debug("generating ~s ~b response, ~s", [RespStatus, wh_util:to_integer(RespErrorCode), list_to_binary(Msg)]),
     [{<<"auth_token">>, wh_util:to_binary(AuthToken)}
      ,{<<"status">>, wh_util:to_binary(RespStatus)}
      ,{<<"message">>, wh_util:to_binary(Msg)}
@@ -671,7 +742,7 @@ fix_header(H, V, _) ->
 halt(Req0, #cb_context{resp_error_code=StatusCode}=Context) ->
     lager:debug("halting execution here"),
 
-    {Content, Req1} = create_resp_content(Req0, Context),
+    {Content, Req1} = create_resp_content(Req0, Context),    
     lager:debug("setting resp body: ~s", [Content]),
     {ok, Req2} = cowboy_http_req:set_resp_body(Content, Req1),
 
