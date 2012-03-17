@@ -52,7 +52,7 @@ handle(Data, Call) ->
 -spec get_endpoints/2 :: (wh_json:json_objects(), whapps_call:call()) -> wh_json:json_objects().
 get_endpoints([], _) ->
     [];
-get_endpoints(Members, Call) when length(Members) < 2 ->
+get_endpoints(Members, Call) when length(Members) < 3 ->
     lists:foldr(fun(Member, Acc) ->
                         EndpointId = wh_json:get_value(<<"id">>, Member),
                         Properties = wh_json:set_value(<<"source">>, ?MODULE, Member),
