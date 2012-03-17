@@ -2,7 +2,6 @@
 
 -export([slice/2,slice_input_cases/7]).
 
--define(TEST,"").
 -define(NOTEST,1).
 % remark out NODEBUG when running tests; unremark when debugging indivdual use cases
 -define(NODEBUG,1).
@@ -17,9 +16,9 @@ slice(List,Index) ->
       slice_input_cases(List,ListLength,Start,C1,End,C2,Step)
     catch
       throw:outOfBounds ->
-	  [];
+          [];
       throw:indexError ->
-	  indexError
+          indexError
     end.
 
 slice_input_cases(_List,ListLength,Start,false,[],false,[]) when Start > 0, Start >= ListLength ->
@@ -71,11 +70,11 @@ slice_transform(List,ListLength,Start,C1,End,C2,Step) ->
 slice_list(_List,_ListLength,Start,_C1,End,_C2,Step) when Start > End, Step > 0 ->
     throw(outOfBounds);
 slice_list(_List,_ListLength,Start,_C1,End,_C2,Step) when Start < End andalso Step < 0 ->
-	  throw(outOfBounds); 
+          throw(outOfBounds); 
 slice_list(_List,_ListLength,Start,_C1,End,_C2,_Step) when Start < 0 andalso End < 0 ->
-	  throw(outOfBounds);
+          throw(outOfBounds);
 slice_list(_List,ListLength,Start,_C1,End,_C2,_Step) when Start > ListLength andalso End > ListLength-1 ->
-	  throw(outOfBounds);
+          throw(outOfBounds);
 slice_list(List,ListLength,Start,_C1,End,_C2,Step) when Step > 0 ->
     {LowerBound,UpperBound} = index_bounds(Step,ListLength,Start,End), 
     ?debugFmt("LowerBound+1, UpperBound+1, UpperBound - LowerBound + 1: ~p, ~p, ~p~n",[LowerBound+1,UpperBound,UpperBound-LowerBound]), 

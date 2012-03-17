@@ -36,8 +36,7 @@
 -author('emmiller@gmail.com').
 -author('drew dot gulino at google dot com').
  
--define(TEST,"").
-%-define(NOTEST,1).
+-define(NOTEST,1).
 -define(NODEBUG,1).
 -include_lib("eunit/include/eunit.hrl").
  
