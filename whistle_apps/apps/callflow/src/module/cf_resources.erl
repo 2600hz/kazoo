@@ -45,7 +45,7 @@ handle(Data, Call) ->
 -spec bridge_to_resources/5 :: (endpoints(), cf_api_binary(), cf_api_binary(), cf_api_binary(), whapps_call:call()) -> ok.
 bridge_to_resources([{DestNum, Rsc, _CIDType}|T], Timeout, IgnoreEarlyMedia, Ringback, Call) ->
     AccountId = whapps_call:account_id(Call),
-    Endpoint = [create_endpoint(DestNum, Gtw) || Gtw <- wh_json:get_value(<<"gateways">>, Rsc)],
+    Endpoint = [create_endpoint(DestNum, Gtw, Call) || Gtw <- wh_json:get_value(<<"gateways">>, Rsc)],
     case whapps_call_command:b_bridge(Endpoint, Timeout, <<"single">>, IgnoreEarlyMedia, Ringback, Call) of
         {ok, _} ->
             ?LOG("completed successful bridge to resource"),
@@ -89,8 +89,8 @@ bridge_to_resources([], _, _, _, Call) ->
 %% for use with the whistle bridge API.
 %% @end
 %%--------------------------------------------------------------------
--spec create_endpoint/2 :: (ne_binary(), wh_json:json_object()) -> wh_json:json_object().
-create_endpoint(DestNum, JObj) ->
+-spec create_endpoint/3 :: (ne_binary(), wh_json:json_object(), whapps_call:call()) -> wh_json:json_object().
+create_endpoint(DestNum, JObj, Call) ->
     Rule = <<"sip:"
               ,(wh_json:get_value(<<"prefix">>, JObj, <<>>))/binary
               ,DestNum/binary
@@ -104,6 +104,7 @@ create_endpoint(DestNum, JObj) ->
                 ,{<<"Bypass-Media">>, wh_json:get_value(<<"bypass_media">>, JObj)}
                 ,{<<"Endpoint-Progress-Timeout">>, wh_json:get_value(<<"progress_timeout">>, JObj, <<"6">>)}
                 ,{<<"Codecs">>, wh_json:get_value(<<"codecs">>, JObj)}
+                ,{<<"Custom-Channel-Vars">>, wh_json:from_list([{<<"Account-ID">>, whapps_call:account_id(Call)}])}
                ],
     wh_json:from_list([ KV || {_, V}=KV <- Endpoint, V =/= undefined ]).
 
