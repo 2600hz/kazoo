@@ -22,7 +22,8 @@
 %%--------------------------------------------------------------------
 -spec handle/2 :: (wh_json:json_object(), whapps_call:call()) -> ok.
 handle(Data, Call) ->
-    Endpoints = get_endpoints(Data, Call),
+    Endpoints = get_endpoints(wh_json:get_value(<<"endpoints">>, Data, []), Call),
+    io:format("~p~n", [Endpoints]),
     Timeout = wh_json:get_binary_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT),
     Strategy = wh_json:get_binary_value(<<"strategy">>, Data, <<"simultaneous">>),
     Ringback = wh_json:get_value(<<"ringback">>, Data),
@@ -48,8 +49,10 @@ handle(Data, Call) ->
 %% json object used in the bridge API
 %% @end
 %%--------------------------------------------------------------------
--spec get_endpoints/2 :: (wh_json:json_object(), whapps_call:call()) -> wh_json:json_objects().
-get_endpoints(Data, Call) ->
+-spec get_endpoints/2 :: (wh_json:json_objects(), whapps_call:call()) -> wh_json:json_objects().
+get_endpoints([], _) ->
+    [];
+get_endpoints(Members, Call) when length(Members) < 2 ->
     lists:foldr(fun(Member, Acc) ->
                         EndpointId = wh_json:get_value(<<"id">>, Member),
                         Properties = wh_json:set_value(<<"source">>, ?MODULE, Member),
@@ -59,4 +62,19 @@ get_endpoints(Data, Call) ->
                             {error, _} -> 
                                 Acc
                         end
-                end, [], wh_json:get_value([<<"endpoints">>], Data, [])).
+                end, [], Members);
+get_endpoints(Members, Call) ->
+    S = self(),
+    Builders = [spawn(fun() ->
+                              EndpointId = wh_json:get_value(<<"id">>, Member),
+                              Properties = wh_json:set_value(<<"source">>, ?MODULE, Member),
+                              S ! {self(), (catch cf_endpoint:build(EndpointId, Properties, Call))}
+                      end)
+                || Member <- Members
+               ],
+    io:format("~p~n", [Builders]),
+    Endpoints = [JObj || {Status, JObj} <- [receive {Pid, Endpoint} -> Endpoint end
+                                            || Pid <- Builders
+                                           ], Status =:= ok
+                ],
+    lists:flatten(Endpoints).
