@@ -399,25 +399,25 @@ lookup_account_by_number(Number) ->
     Num = wnm_util:normalize_number(Number),
     Db = wnm_util:number_to_db_name(Num),
     lager:debug("attempting to lookup '~s' in '~s'", [Num, Db]),
-    DefaultAccount = whapps_config:get_non_empty(?WNM_CONFIG_CAT, <<"default_account">>, <<>>),
     case couch_mgr:open_doc(Db, Num) of
         {ok, JObj} ->
             lager:debug("found number in db"),
-            AssignedTo = wh_json:get_value(<<"pvt_assigned_to">>, JObj, DefaultAccount),
+            AssignedTo = wh_json:get_ne_value(<<"pvt_assigned_to">>, JObj),
             NumberState = wh_json:get_value(<<"pvt_number_state">>, JObj),
-            case is_binary(AssignedTo) andalso
-                NumberState =:= <<"in_service">> andalso
-                wh_util:is_account_enabled(AssignedTo) of
+            AccountEnabled = wh_util:is_account_enabled(AssignedTo),
+            if
+                AssignedTo =:= undefined ->
+                    lager:debug("number assigned to account id is unknown"),
+                    {error, unassigned};
+                NumberState =/= <<"in_service">> ->
+                    lager:debug("number assigned to acccount id '~s' but not in service (~s)", [AssignedTo, NumberState]),
+                    {error, {not_in_service, AssignedTo}};
+                AccountEnabled =:= false ->
+                    lager:debug("number assigned to acccount id '~s' but account is disabled", [AssignedTo]),
+                    {error, {account_disabled, AssignedTo}};
                 true ->
-                    lager:debug("number belongs to an active account ~s", [AssignedTo]),
-                    {ok, AssignedTo, wh_json:is_true(<<"force_outbound">>, JObj, false)};
-                false ->
-                    lager:debug("number is inactive, account id is unknown, or account is disabled"),
-                    {error, not_found}
+                    {ok, AssignedTo, wh_json:is_true(<<"force_outbound">>, JObj, false)}
             end;
-        {error, R1} when DefaultAccount =/= undefined -> 
-            lager:debug("failed to lookup number, using default account ~s: ~p", [DefaultAccount, R1]),
-            {ok, DefaultAccount, false};
         {error, R2}=E -> 
             lager:debug("failed to lookup number: ~p", [R2]),
             E
