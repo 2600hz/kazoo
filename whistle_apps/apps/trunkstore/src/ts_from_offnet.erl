@@ -297,11 +297,21 @@ routing_data(ToDID, AcctID) ->
                                         ,wh_json:get_value(<<"media_handling">>, AcctStuff)
                                        ]),
 
-    Failover = ts_util:failover([
-                                 wh_json:get_value(<<"failover">>, DIDOptions)
-                                 ,wh_json:get_value(<<"failover">>, SrvOptions)
-                                 ,wh_json:get_value(<<"failover">>, AcctStuff)
-                                ]),
+
+    FailoverLocations = [
+                         wh_json:get_value(<<"failover">>, DIDOptions)
+                         ,wh_json:get_value(<<"failover">>, SrvOptions)
+                         ,wh_json:get_value(<<"failover">>, AcctStuff)
+                        ],
+
+    Num = wnm_util:normalize_number(ToDID),
+    Db = wnm_util:number_to_db_name(Num),
+    FL = case couch_mgr:open_doc(Db, Num) of
+             {ok, NumJObj} -> [wh_json:get_value(<<"failover">>, NumJObj) | FailoverLocations];
+             {error, _} -> FailoverLocations
+         end,
+
+    Failover = ts_util:failover(FL),
 
     Delay = ts_util:delay([
                            wh_json:get_value(<<"delay">>, DIDOptions)
