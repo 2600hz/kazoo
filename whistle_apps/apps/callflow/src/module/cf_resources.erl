@@ -44,7 +44,7 @@ handle(Data, Call) ->
 %%--------------------------------------------------------------------
 -spec bridge_to_resources/5 :: (endpoints(), cf_api_binary(), cf_api_binary(), cf_api_binary(), whapps_call:call()) -> 'ok'.
 bridge_to_resources([{DestNum, Rsc, _CIDType}|T], Timeout, IgnoreEarlyMedia, Ringback, Call) ->
-    Endpoint = [create_endpoint(DestNum, Gtw, whapps_call:account_db(Call), whapps_call:caller_id_number(Call))
+    Endpoint = [create_endpoint(DestNum, Gtw, Call)
                 || Gtw <- wh_json:get_value(<<"gateways">>, Rsc)
                ],
     case whapps_call_command:b_bridge(Endpoint, Timeout, <<"single">>, IgnoreEarlyMedia, Ringback, Call) of
@@ -85,8 +85,10 @@ bridge_to_resources([], _, _, _, Call) ->
 %% for use with the whistle bridge API.
 %% @end
 %%--------------------------------------------------------------------
--spec create_endpoint/4 :: (ne_binary(), wh_json:json_object(), ne_binary(), ne_binary()) -> wh_json:json_object().
-create_endpoint(DestNum, JObj, AcctDb, CNum) ->
+-spec create_endpoint/3 :: (ne_binary(), wh_json:json_object(), whapps_call:call()) -> wh_json:json_object().
+create_endpoint(DestNum, JObj, Call) ->
+    AccountDb = whapps_call:account_db(Call), 
+    CNum = whapps_call:caller_id_number(Call),
     Rule = <<"sip:"
               ,(wh_json:get_value(<<"prefix">>, JObj, <<>>))/binary
               ,DestNum/binary
@@ -100,7 +102,8 @@ create_endpoint(DestNum, JObj, AcctDb, CNum) ->
                 ,{<<"Bypass-Media">>, wh_json:get_value(<<"bypass_media">>, JObj)}
                 ,{<<"Endpoint-Progress-Timeout">>, wh_json:get_value(<<"progress_timeout">>, JObj, <<"6">>)}
                 ,{<<"Codecs">>, wh_json:get_value(<<"codecs">>, JObj)}
-                ,{<<"From-URI">>, maybe_from_uri(AcctDb, JObj, CNum)}
+                ,{<<"From-URI">>, maybe_from_uri(AccountDb, JObj, CNum)}
+                ,{<<"Custom-Channel-Vars">>, wh_json:from_list([{<<"Account-ID">>, whapps_call:account_id(Call)}])}
                ],
     wh_json:from_list([ KV || {_, V}=KV <- Endpoint, V =/= undefined ]).
 
