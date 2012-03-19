@@ -79,11 +79,11 @@ list_attachments(Number, AccountId) ->
                             {ok, wh_json:get_value(<<"_attachments">>, JObj, wh_json:new())};
                         _ ->
                             ?LOG("number belongs to another account"),
-                            {error, unathorized}
+                            {error, unauthorized}
                     end;
                 Else -> 
                     ?LOG("disallowing listing attachments for a number in state ~s", [Else]),
-                    {error, unathorized}
+                    {error, unauthorized}
             end
     end.
 
@@ -121,11 +121,11 @@ fetch_attachment(Number, AccountId, Name) ->
                             couch_mgr:fetch_attachment(Db, Num, Name);
                         _ ->
                             ?LOG("number belongs to another account"),
-                            {error, unathorized}
+                            {error, unauthorized}
                     end;
                 Else -> 
                     ?LOG("disallowing attachment to a number in state ~s", [Else]),
-                    {error, unathorized}
+                    {error, unauthorized}
             end
     end.
 
@@ -185,11 +185,11 @@ put_attachment(Number, AccountId, Name, Content, Options) ->
                             end;
                         _ ->
                             ?LOG("number belongs to another account"),
-                            {error, unathorized}
+                            {error, unauthorized}
                     end;
                 Else -> 
                     ?LOG("disallowing attachment to a number in state ~s", [Else]),
-                    {error, unathorized}
+                    {error, unauthorized}
             end
     end.
 
@@ -243,11 +243,11 @@ delete_attachment(Number, AccountId, Name) ->
                             end;
                         _ ->
                             ?LOG("number belongs to another account"),
-                            {error, unathorized}
+                            {error, unauthorized}
                     end;
                 Else -> 
                     ?LOG("disallowing delete attachment from a number in state ~s", [Else]),
-                    {error, unathorized}
+                    {error, unauthorized}
             end
     end.
 
@@ -445,8 +445,8 @@ get_public_fields(Number, AccountId) ->
                             Attachments = wh_json:get_keys(wh_json:get_value(<<"_attachments">>, JObj, wh_json:new())),
                             {ok, wh_json:public_fields(wh_json:set_value(<<"attachments">>, Attachments, JObj))};
                         _Else ->
-                            ?LOG("found number was not assigned to ~s, returning unathorized", [AccountId]),
-                            {error, unathorized}
+                            ?LOG("found number was not assigned to ~s, returning unauthorized", [AccountId]),
+                            {error, unauthorized}
                     end;
                 <<"in_service">> -> 
                     case wh_json:get_value(<<"pvt_assigned_to">>, JObj) of
@@ -455,12 +455,12 @@ get_public_fields(Number, AccountId) ->
                             Attachments = wh_json:get_keys(wh_json:get_value(<<"_attachments">>, JObj, wh_json:new())),
                             {ok, wh_json:public_fields(wh_json:set_value(<<"attachments">>, Attachments, JObj))};
                         _Else ->
-                            ?LOG("found number was not assigned to ~s, returning unathorized", [AccountId]),
-                            {error, unathorized}
+                            ?LOG("found number was not assigned to ~s, returning unauthorized", [AccountId]),
+                            {error, unauthorized}
                     end;
                 Else -> 
                     ?LOG("disallowing attachment to a number in state ~s", [Else]),
-                    {error, unathorized}
+                    {error, unauthorized}
             end;
         {error, R}=E -> 
             ?LOG("failed to lookup number: ~p", [R]),
@@ -493,8 +493,8 @@ set_public_fields(Number, AccountId, Data) ->
                                         ?LOG("found number assigned to ~s", [AccountId]),
                                         J;
                                     _Else ->
-                                        ?LOG("found number was not assigned to ~s, returning unathorized", [AccountId]),
-                                        throw(unathorized)
+                                        ?LOG("found number was not assigned to ~s, returning unauthorized", [AccountId]),
+                                        throw(unauthorized)
                                 end;
                             <<"in_service">> -> 
                                 case wh_json:get_value(<<"pvt_assigned_to">>, J) of
@@ -502,12 +502,12 @@ set_public_fields(Number, AccountId, Data) ->
                                         ?LOG("found number assigned to ~s", [AccountId]),
                                         J;
                                     _Else ->
-                                        ?LOG("found number was not assigned to ~s, returning unathorized", [AccountId]),
-                                        throw(unathorized)
+                                        ?LOG("found number was not assigned to ~s, returning unauthorized", [AccountId]),
+                                        throw(unauthorized)
                                 end;
                             Else -> 
                                 ?LOG("disallowing attachment to a number in state ~s", [Else]),
-                                throw(unathorized)
+                                throw(unauthorized)
                         end
                end,
         save_number(Db, Num, wh_json:merge_jobjs(wh_json:private_fields(JObj1), PublicJObj), JObj1)
@@ -556,7 +556,7 @@ release_number(Number, AccountId) ->
                         ok;
                     _ ->
                         ?LOG("number is in service for another account"),
-                        throw(unathorized)
+                        throw(unauthorized)
                 end;
             _Else -> 
                 ?LOG("number is not in service"),
@@ -581,7 +581,7 @@ release_number(Number, AccountId) ->
         throw:not_found ->
             update_numbers_on_account(Num, <<"released">>, AccountId),
             ok;
-        throw:unathorized ->
+        throw:unauthorized ->
             update_numbers_on_account(Num, <<"released">>, AccountId),
             ok;
         throw:unavailable ->

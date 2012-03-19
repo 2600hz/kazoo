@@ -379,7 +379,7 @@ set_response({error, reserved}, _, Context) ->
     crossbar_util:response_conflicting_docs(Context);
 set_response({error, unavailable}, _, Context) ->
     crossbar_util:response_conflicting_docs(Context);
-set_response({error, unathorized}, Number, Context) ->
+set_response({error, unauthorized}, Number, Context) ->
     crossbar_util:response_bad_identifier(Number, Context);
 set_response({error, unknown_carrier}, _, Context) ->
     crossbar_util:response_db_fatal(Context);
