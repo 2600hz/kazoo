@@ -306,8 +306,12 @@ routing_data(ToDID, AcctID) ->
     Num = wnm_util:normalize_number(ToDID),
     Db = wnm_util:number_to_db_name(Num),
     FL = case couch_mgr:open_doc(Db, Num) of
-             {ok, NumJObj} -> [wh_json:get_value(<<"failover">>, NumJObj) | FailoverLocations];
-             {error, _} -> FailoverLocations
+             {ok, NumJObj} ->
+                 ?LOG("found ~s in ~s", [Num, Db]),
+                 [wh_json:get_value(<<"failover">>, NumJObj) | FailoverLocations];
+             {error, _} ->
+                 ?LOG("failed to find ~s in ~s", [Num, Db]),
+                 FailoverLocations
          end,
 
     Failover = ts_util:failover(FL),
