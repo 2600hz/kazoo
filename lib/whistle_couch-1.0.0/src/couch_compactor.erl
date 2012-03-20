@@ -28,7 +28,7 @@ init(Parent) ->
 
     lager:debug("starting compactor"),
 
-    case {couch_config:fetch(compact_automatically, true), couch_config:fetch(conflict_strategy, null)} of
+    case {couch_config:fetch(compact_automatically, false), couch_config:fetch(conflict_strategy, null)} of
         {true, null} ->
             lager:debug("just compacting"),
             proc_lib:init_ack(Parent, {ok, self()}),
