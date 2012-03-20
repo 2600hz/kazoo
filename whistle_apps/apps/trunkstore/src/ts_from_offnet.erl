@@ -297,7 +297,6 @@ routing_data(ToDID, AcctID) ->
                                         ,wh_json:get_value(<<"media_handling">>, AcctStuff)
                                        ]),
 
-
     FailoverLocations = [
                          wh_json:get_value(<<"failover">>, DIDOptions)
                          ,wh_json:get_value(<<"failover">>, SrvOptions)
@@ -308,8 +307,14 @@ routing_data(ToDID, AcctID) ->
     Db = wnm_util:number_to_db_name(Num),
     FL = case couch_mgr:open_doc(Db, Num) of
              {ok, NumJObj} ->
-                 ?LOG("found ~s in ~s", [Num, Db]),
-                 [wh_json:get_value(<<"failover">>, NumJObj) | FailoverLocations];
+                 case wh_json:get_value(<<"pvt_assigned_to">>, NumJObj) =:= AcctID of
+                     true ->
+                         ?LOG("found ~s in ~s", [Num, Db]),
+                         [wh_json:get_value(<<"failover">>, NumJObj) | FailoverLocations];
+                     false ->
+                         ?LOG("found ~s in ~s, but is for account ~s", [Num, Db, wh_json:get_value(<<"pvt_assigned_to">>, NumJObj)]),
+                         FailoverLocations
+                 end;
              {error, _} ->
                  ?LOG("failed to find ~s in ~s", [Num, Db]),
                  FailoverLocations
