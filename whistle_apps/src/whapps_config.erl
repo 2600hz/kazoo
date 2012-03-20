@@ -420,7 +420,7 @@ do_set(Category0, Keys, Value, Node0) ->
 %%-----------------------------------------------------------------------------
 -spec update_category_node/4 :: (ne_binary(), ne_binary(), fun((wh_json:json_object()) -> wh_json:json_object()) , pid()) -> {'ok', wh_json:json_object()}.
 update_category_node(Category, Node, UpdateFun, Cache) ->
-    DBReady = case wh_cache:fetch_local(Cache, {?MODULE, couch_mgr_ready}) of
+    DBReady = case wh_cache:fetch_local(Cache, couch_ready_key()) of
                   {ok, true} -> true;
                   _ -> false
               end,
@@ -512,13 +512,16 @@ couch_ready() ->
     case whereis(couch_mgr) =:= self() of
         true ->
             {ok, Cache} = whistle_apps_sup:config_cache_proc(),
-            wh_cache:store_local(Cache, {?MODULE, couch_mgr_ready}, true
+            wh_cache:store_local(Cache, couch_ready_key(), true
                                  ,fun(_, _, _) ->
                                           couch_mgr:load_configs()
                                   end);
         false ->
             ok
     end.
+
+couch_ready_key() ->
+    {?MODULE, couch_mgr_ready}.
 
 -spec category_key/1 :: (Cat) -> {?MODULE, Cat}.
 category_key(Category) ->
