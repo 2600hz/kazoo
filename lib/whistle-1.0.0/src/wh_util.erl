@@ -31,7 +31,7 @@
 -export([is_ipv4/1, is_ipv6/1]).
 -export([get_hostname/0]).
 
--export([gc_all/0, top_mem_consumers/0, top_mem_consumers/1]).
+-export([gc_all/0, top_mem_consumers/0, top_mem_consumers/1, etop/0]).
 
 -include_lib("kernel/include/inet.hrl").
 -include_lib("xmerl/include/xmerl.hrl").
@@ -553,6 +553,9 @@ top_mem_consumers() ->
     top_mem_consumers(10).
 top_mem_consumers(Len) when is_integer(Len), Len > 0 ->
     lists:split(Len, lists:reverse(lists:keysort(2, [{P, erlang:process_info(P, total_heap_size)} || P <- processes()]))).
+
+etop() ->
+    etop:start([{output, text}]).
 
 %% PROPER TESTING
 prop_to_integer() ->
