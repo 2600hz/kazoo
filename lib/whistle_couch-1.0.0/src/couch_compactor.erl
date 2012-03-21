@@ -239,7 +239,7 @@ get_ports(Node) ->
     Cookie = couch_config:fetch(bigcouch_cookie),
     lager:debug("using cookie ~s on node ~s", [Cookie, Node]),
     try
-        erlang:set_cookie(Node, Cookie),
+        erlang:set_cookie(Node, wh_util:to_atom(Cookie, true)),
         get_ports(Node, net_adm:ping(Node))
     catch
         _:_R ->
