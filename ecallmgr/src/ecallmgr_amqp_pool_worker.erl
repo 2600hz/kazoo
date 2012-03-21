@@ -99,9 +99,9 @@ start_req(Srv, Prop, ApiFun, CallId, From, Parent, Timeout, VFun) when is_pid(Sr
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    NegThresh = ecallmgr_config:get(<<"neg_resp_threshold">>, 2),
-    ?LOG("AMQP pool worker started: ~p neg threshold", NegThresh),
-    {ok, #state{neg_resp_count=0, neg_resp_threshold=wh_util:to_integer(NegThresh)}}.
+    ?LOG("AMQP pool worker started"),
+
+    {ok, #state{neg_resp_count=0, neg_resp_threshold=2}}.
 
 %%--------------------------------------------------------------------
 %% @private

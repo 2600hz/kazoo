@@ -175,11 +175,11 @@ init([Count]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({request, Prop, ApiFun, CallId, Timeout}, From, #state{workers=W, worker_count=WC
-                                                                   ,requests_per=RP}=State) ->
+handle_call({request, Prop, ApiFun, CallId, Timeout, VFun}, From, #state{workers=W, worker_count=WC
+                                                                         ,requests_per=RP}=State) ->
     case queue:out(W) of
         {{value, Worker}, W1} ->
-            ecallmgr_amqp_pool_worker:start_req(Worker, Prop, ApiFun, CallId, From, self(), Timeout),
+            ecallmgr_amqp_pool_worker:start_req(Worker, Prop, ApiFun, CallId, From, self(), Timeout, VFun),
             {noreply, State#state{workers=W1, requests_per=RP+1}, hibernate};
         {empty, _} ->
             Worker = start_worker(),
