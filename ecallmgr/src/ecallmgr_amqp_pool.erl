@@ -87,7 +87,9 @@ route_req(Prop) ->
     route_req(Prop, ?DEFAULT_TIMEOUT).
 route_req(Prop, Timeout) ->
     gen_server:call(?SERVER
-                    ,{request, Prop, fun wapi_route:publish_req/1, get(callid), Timeout}
+                    ,{request, Prop, fun wapi_route:publish_req/1, get(callid), Timeout
+                      ,fun wapi_route:is_actionable_resp/1
+                     }
                     ,Timeout).
 
 reg_query(Prop) ->
