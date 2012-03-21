@@ -1,12 +1,14 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2012, VoIP INC
 %%% @doc
 %%% Handles authorization requests, responses, queue bindings
 %%% @end
-%%% Created : 14 Oct 2011 by James Aimonetti <james@2600hz.org>
+%%% @contributors
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(wapi_authz).
+
+-compile({no_auto_import, [error/1]}).
 
 -export([req/1, req_v/1
          ,resp/1, resp_v/1
@@ -15,7 +17,7 @@
          ,publish_req/1, publish_req/2
          ,publish_resp/2, publish_resp/3
          ,publish_win/2, publish_win/3
-         ,get_auth_realm/1
+         ,get_auth_realm/1, is_authorized/1
          ,req_event_type/0
         ]).
 
@@ -51,7 +53,7 @@
                            ]).
 -define(AUTHZ_RESP_TYPES, [{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}]).
 
-%% Authorization Requests
+%% Authorization Wins
 -define(AUTHZ_WIN_HEADERS, [<<"Call-ID">>]).
 -define(OPTIONAL_AUTHZ_WIN_HEADERS, []).
 -define(AUTHZ_WIN_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
@@ -102,6 +104,12 @@ resp_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?AUTHZ_RESP_HEADERS, ?AUTHZ_RESP_VALUES, ?AUTHZ_RESP_TYPES);
 resp_v(JObj) ->
     resp_v(wh_json:to_proplist(JObj)).
+
+-spec is_authorized/1 :: (api_terms()) -> boolean().
+is_authorized(Prop) when is_list(Prop) ->
+    wh_util:is_true(props:get_value(<<"Is-Authorized">>, Prop, false));
+is_authorized(JObj) ->
+    wh_json:is_true(<<"Is-Authorized">>, JObj, false).
 
 %%--------------------------------------------------------------------
 %% @doc Authorization Win - see wiki
