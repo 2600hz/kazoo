@@ -1,10 +1,11 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2012, VoIP INC
 %%% @doc
 %%% Manage a pool of amqp queues
 %%% @end
-%%% Created : 28 Mar 2011 by James Aimonetti <james@2600hz.org>
+%%% @contributors
+%%%   James Aimonetti
+%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(ecallmgr_amqp_pool).
 
@@ -31,7 +32,7 @@
 
 -define(SERVER, ?MODULE).
 -define(WORKER_COUNT, 10).
--define(DEFAULT_TIMEOUT, 5000).
+-define(DEFAULT_TIMEOUT, 2000).
 
 %% every X ms, compare RequestsPer to WorkerCount
 %% If RP < WC, reduce Ws by max(WC-RP, OrigWC)
@@ -66,7 +67,9 @@ authn_req(Prop) ->
     authn_req(Prop, ?DEFAULT_TIMEOUT).
 authn_req(Prop, Timeout) ->
     gen_server:call(?SERVER
-                    ,{request, Prop, fun wapi_authn:publish_req/1, get(callid), Timeout}
+                    ,{request, Prop, fun wapi_authn:publish_req/1, get(callid), Timeout
+                     ,fun wapi_authn:resp_v/1 % will be authn_error if a failed reg attempt
+                     }
                     ,Timeout).
 
 -spec authz_req/1 :: (proplist() | wh_json:json_object()) -> {'ok', wh_json:json_object()}.
@@ -75,7 +78,9 @@ authz_req(Prop) ->
     authz_req(Prop, ?DEFAULT_TIMEOUT).
 authz_req(Prop, Timeout) ->
     gen_server:call(?SERVER
-                    ,{request, Prop, fun wapi_authz:publish_req/1, get(callid), Timeout}
+                    ,{request, Prop, fun wapi_authz:publish_req/1, get(callid), Timeout
+                      ,fun wapi_authz:is_authorized/1
+                     }
                     ,Timeout).
 
 route_req(Prop) ->
