@@ -563,7 +563,14 @@ bridge_to_conference(Route, Conference, Call) ->
                                   ,{<<"Ignore-Early-Media">>, <<"true">>}
                                   ,{<<"Bypass-Media">>, <<"true">>}
                                  ]),
-    whapps_call_command:bridge([Endpoint], Call).
+    Command = [{<<"Application-Name">>, <<"bridge">>}
+               ,{<<"Endpoints">>, [Endpoint]}
+               ,{<<"Timeout">>, <<"20">>}
+               ,{<<"Ignore-Early-Media">>, <<"false">>}
+               ,{<<"Dial-Endpoint-Method">>, <<"single">>}
+               ,{<<"Media">>, <<"bypass">>}
+              ],
+    whapps_call_command:send_command(Command, Call).
 
 -spec publish_route_response/3 :: (ne_binary(), undefined | ne_binary(), ne_binary()) -> ok.
 publish_route_response(ControllerQ, MsgId, ServerId) ->
