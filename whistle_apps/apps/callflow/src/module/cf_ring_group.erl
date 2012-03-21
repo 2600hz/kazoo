@@ -55,45 +55,42 @@ handle(Data, Call) ->
 -spec get_endpoints/2 :: (wh_json:json_objects(), whapps_call:call()) -> wh_json:json_objects().
 get_endpoints([], _) ->
     [];
-get_endpoints(Members, Call) when length(Members) < 3 ->
-    lists:foldr(fun(Member, Acc) ->
-                        MemberId = wh_json:get_value(<<"id">>, Member),
-                        EPs = case wh_json:get_value(<<"endpoint_type">>, Member) of
-                                  <<"user">> ->
-                                      lager:debug("member ~s is a user, get all the user's endpoints", [MemberId]),
-                                      cf_attributes:fetch_owned_by(MemberId, device, Call);
-                                  _ ->
-                                      lager:debug("member ~s is not a user, assuming a device", [MemberId]),
-                                      [MemberId]
-                              end,
-                        Properties = wh_json:set_value(<<"source">>, ?MODULE, Member),
-                        lists:foldl(fun({ok, EP}, Acc0) ->
-                                            [EP | Acc0];
-                                       (_, Acc0) ->
-                                            Acc0
-                                    end, Acc, [cf_endpoint:build(EndpointId, Properties, Call) || EndpointId <- EPs])
-                end, [], Members);
+get_endpoints([_]=Members, Call) ->
+    get_endpoints_direct(Members, Call);
+get_endpoints([_,_]=Members, Call) ->
+    get_endpoints_direct(Members, Call);
 get_endpoints(Members, Call) ->
     S = self(),
     Builders = [spawn(fun() ->
                               put(callid, whapps_call:call_id(Call)),
-                              MemberId = wh_json:get_value(<<"id">>, Member),
-                              EPs = case wh_json:get_value(<<"endpoint_type">>, Member) of
-                                        <<"user">> ->
-                                            lager:debug("member ~s is a user, get all the user's endpoints", [MemberId]),
-                                            cf_attributes:fetch_owned_by(MemberId, device, Call);
-                                        _ ->
-                                            lager:debug("member ~s is not a user, assuming a device", [MemberId]),
-                                            [MemberId]
-                                    end,
+                              EPIds = fetch_endpoints(wh_json:get_value(<<"id">>, Member), wh_json:get_value(<<"endpoint_type">>, Member), Call),
+
                               Properties = wh_json:set_value(<<"source">>, ?MODULE, Member),
-                              [S ! {self(), (catch cf_endpoint:build(EndpointId, Properties, Call))} || EndpointId <- EPs]
+                              S ! {self(), [(catch cf_endpoint:build(EndpointId, Properties, Call)) || EndpointId <- EPIds]}
                       end)
                 || Member <- Members
                ],
 
-    Endpoints = [JObj || {Status, JObj} <- [receive {Pid, Endpoint} -> Endpoint end
-                                            || Pid <- Builders
-                                           ], Status =:= ok
-                ],
-    lists:flatten(Endpoints).
+    lists:foldl(fun(Pid, Acc) ->
+                        BRs = receive {Pid, BuildResults} -> BuildResults end,
+                        lists:foldl(fun fold_eps/2, Acc, BRs)
+                end, [], Builders).
+
+get_endpoints_direct(Members, Call) ->
+    lists:foldr(fun(Member, Acc) ->
+                        EPIds = fetch_endpoints(wh_json:get_value(<<"id">>, Member), wh_json:get_value(<<"endpoint_type">>, Member), Call),
+
+                        Properties = wh_json:set_value(<<"source">>, ?MODULE, Member),
+                        lists:foldl(fun fold_eps/2, Acc, [(catch cf_endpoint:build(EndpointId, Properties, Call)) || EndpointId <- EPIds])
+                end, [], Members).
+
+fold_eps({ok, EPs}, Acc0) when is_list(EPs) -> EPs ++ Acc0;
+fold_eps({ok, EP}, Acc0) -> [EP | Acc0];
+fold_eps(_, Acc0) -> Acc0.
+
+fetch_endpoints(MemberId, <<"user">>, Call) ->
+    lager:debug("member ~s is a user, get all the user's endpoints", [MemberId]),
+    cf_attributes:fetch_owned_by(MemberId, device, Call);
+fetch_endpoints(MemberId, _, _) ->
+    lager:debug("member ~s is not a user, assuming a device", [MemberId]),
+    [MemberId].
