@@ -33,6 +33,7 @@
 -define(SERVER, ?MODULE).
 -define(WORKER_COUNT, 10).
 -define(DEFAULT_TIMEOUT, 2000).
+-define(DEFAULT_VFUN, fun(_) -> true end).
 
 %% every X ms, compare RequestsPer to WorkerCount
 %% If RP < WC, reduce Ws by max(WC-RP, OrigWC)
@@ -115,13 +116,17 @@ media_req(Prop, Timeout) ->
 get_req(Api) ->
     get_req(Api, ?DEFAULT_TIMEOUT).
 get_req(Api, Timeout) ->
-    gen_server:call(?SERVER, {request, Api, fun wapi_sysconf:publish_get_req/1, get(callid), Timeout}
+    gen_server:call(?SERVER, {request, Api, fun wapi_sysconf:publish_get_req/1, get(callid), Timeout
+                              ,?DEFAULT_VFUN
+                             }
                     ,Timeout).
 
 set_req(Api) ->
     set_req(Api, ?DEFAULT_TIMEOUT).
 set_req(Api, Timeout) ->
-    gen_server:call(?SERVER, {request, Api, fun wapi_sysconf:publish_set_req/1, get(callid), Timeout}
+    gen_server:call(?SERVER, {request, Api, fun wapi_sysconf:publish_set_req/1, get(callid), Timeout
+                              ,?DEFAULT_VFUN
+                             }
                     ,Timeout).
 
 worker_free(Srv, Worker, Elapsed) ->
