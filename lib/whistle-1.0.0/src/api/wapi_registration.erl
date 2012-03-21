@@ -8,14 +8,18 @@
 %%%-------------------------------------------------------------------
 -module(wapi_registration).
 
--export([success/1, query_req/1, query_resp/1, success_v/1, query_req_v/1, query_resp_v/1]).
+-export([success/1, query_req/1, query_resp/1, query_err/1
+         ,success_v/1, query_req_v/1, query_resp_v/1, query_err_v/1
+        ]).
 
 -export([bind_q/2, unbind_q/1, unbind_q/2]).
 
 -export([success_keys/0]).
 
--export([publish_success/1, publish_success/2, publish_query_req/1, publish_query_req/2
+-export([publish_success/1, publish_success/2
+         ,publish_query_req/1, publish_query_req/2
          ,publish_query_resp/2, publish_query_resp/3
+         ,publish_query_err/2, publish_query_err/3
         ]).
 
 -include("../wh_api.hrl").
@@ -33,7 +37,7 @@
 -define(REG_SUCCESS_TYPES, []).
 
 %% Query Registrations
--define(REG_QUERY_HEADERS, [<<"Realm">>]).
+-define(REG_QUERY_HEADERS, [<<"Realm">>, <<"Msg-ID">>]).
 -define(OPTIONAL_REG_QUERY_HEADERS, [<<"Username">>, <<"Fields">>]).
 -define(REG_QUERY_VALUES, [{<<"Event-Category">>, <<"directory">>}
                            ,{<<"Event-Name">>, <<"reg_query">>}
@@ -48,12 +52,20 @@
                          ]).
 
 %% Registration Query Response
--define(REG_QUERY_RESP_HEADERS, [<<"Fields">>]).
+-define(REG_QUERY_RESP_HEADERS, [<<"Fields">>, <<"Msg-ID">>]).
 -define(OPTIONAL_REG_QUERY_RESP_HEADERS, [<<"Multiple">>]).
 -define(REG_QUERY_RESP_VALUES, [{<<"Event-Category">>, <<"directory">>}
                                 ,{<<"Event-Name">>, <<"reg_query_resp">>}
                                ]).
 -define(REG_QUERY_RESP_TYPES, []).
+
+%% Registration Query Error
+-define(REG_QUERY_ERR_HEADERS, [<<"Msg-ID">>]).
+-define(OPTIONAL_REG_QUERY_ERR_HEADERS, []).
+-define(REG_QUERY_ERR_VALUES, [{<<"Event-Category">>, <<"directory">>}
+                                ,{<<"Event-Name">>, <<"reg_query_error">>}
+                               ]).
+-define(REG_QUERY_ERR_TYPES, []).
 
 %%--------------------------------------------------------------------
 %% @doc Registration Success - see wiki
@@ -114,6 +126,26 @@ query_resp_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?REG_QUERY_RESP_HEADERS, ?REG_QUERY_RESP_VALUES, ?REG_QUERY_RESP_TYPES);
 query_resp_v(JObj) ->
     query_resp_v(wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
+%% @doc Registration Query Response - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec query_err/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
+query_err(Prop) when is_list(Prop) ->
+    case query_err_v(Prop) of
+        true -> wh_api:build_message(Prop, ?REG_QUERY_ERR_HEADERS, ?OPTIONAL_REG_QUERY_ERR_HEADERS);
+        false -> {error, "Proplist failed validation for reg_query_err"}
+    end;
+query_err(JObj) ->
+    query_err(wh_json:to_proplist(JObj)).
+
+-spec query_err_v/1 :: (api_terms()) -> boolean().
+query_err_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?REG_QUERY_ERR_HEADERS, ?REG_QUERY_ERR_VALUES, ?REG_QUERY_ERR_TYPES);
+query_err_v(JObj) ->
+    query_err_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc Setup and tear down bindings for authn gen_listeners
@@ -188,6 +220,14 @@ publish_query_resp(Queue, Resp, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(Resp, ?REG_QUERY_RESP_VALUES, fun ?MODULE:query_resp/1),
     amqp_util:targeted_publish(Queue, Payload, ContentType).
 
+-spec publish_query_err/2 :: (ne_binary(), api_terms()) -> 'ok'.
+-spec publish_query_err/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+publish_query_err(Queue, JObj) ->
+    publish_query_err(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_query_err(Queue, Resp, ContentType) ->
+    {ok, Payload} = wh_api:prepare_api_payload(Resp, ?REG_QUERY_ERR_VALUES, fun ?MODULE:query_err/1),
+    amqp_util:targeted_publish(Queue, Payload, ContentType).
+
 %%--------------------------------------------------------------------
 %% @doc Special access to the API keys
 %% @end
@@ -225,7 +265,6 @@ get_query_routing(Realm, undefined) ->
     list_to_binary([?KEY_REG_QUERY, ".", amqp_util:encode(Realm), ".*"]);
 get_query_routing(Realm, User) ->
     list_to_binary([?KEY_REG_QUERY, ".", amqp_util:encode(Realm), ".", amqp_util:encode(User)]).
-
 
 %% Allow Queues to be bound for specific realms, and even users within those realms
 %% the resulting binding will be reg.success.{realm | *}.{user | *}
