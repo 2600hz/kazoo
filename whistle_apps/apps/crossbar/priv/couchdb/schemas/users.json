@@ -357,7 +357,7 @@
          }
       },
       "directories":{
-         "type":"array",
+         "type":"object",
          "description":"Provides the mappings for what directory the user is a part of (the key), and what callflow (the value) to invoke if the user is selected by the caller."
       }
    }
