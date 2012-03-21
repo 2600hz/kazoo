@@ -1,10 +1,11 @@
 %%%-------------------------------------------------------------------
-%%% @author Karl Anderson <karl@2600hz.org>
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2012, VoIP INC
 %%% @doc
 %%%
 %%% @end
-%%% Created : 22 Feb 2011 by Karl Anderson <karl@2600hz.org>
+%%% @contributors
+%%%   Karl Anderson
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(cf_ring_group).
 
@@ -23,11 +24,13 @@
 -spec handle/2 :: (wh_json:json_object(), whapps_call:call()) -> ok.
 handle(Data, Call) ->
     Endpoints = get_endpoints(wh_json:get_value(<<"endpoints">>, Data, []), Call),
-    io:format("~p~n", [Endpoints]),
+
     Timeout = wh_json:get_binary_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT),
     Strategy = wh_json:get_binary_value(<<"strategy">>, Data, <<"simultaneous">>),
     Ringback = wh_json:get_value(<<"ringback">>, Data),
+
     lager:debug("attempting ring group of ~b members with strategy ~s", [length(Endpoints), Strategy]),
+
     case length(Endpoints) > 0 andalso whapps_call_command:b_bridge(Endpoints, Timeout, Strategy, <<"true">>, Ringback, Call) of
         false ->
             lager:notice("ring group has no endpoints"),
@@ -54,25 +57,41 @@ get_endpoints([], _) ->
     [];
 get_endpoints(Members, Call) when length(Members) < 3 ->
     lists:foldr(fun(Member, Acc) ->
-                        EndpointId = wh_json:get_value(<<"id">>, Member),
+                        MemberId = wh_json:get_value(<<"id">>, Member),
+                        EPs = case wh_json:get_value(<<"endpoint_type">>, Member) of
+                                  <<"user">> ->
+                                      lager:debug("member ~s is a user, get all the user's endpoints", [MemberId]),
+                                      cf_attributes:fetch_owned_by(MemberId, device, Call);
+                                  _ ->
+                                      lager:debug("member ~s is not a user, assuming a device", [MemberId]),
+                                      [MemberId]
+                              end,
                         Properties = wh_json:set_value(<<"source">>, ?MODULE, Member),
-                        case cf_endpoint:build(EndpointId, Properties, Call) of
-                            {ok, Endpoint} -> 
-                                Endpoint ++ Acc;
-                            {error, _} -> 
-                                Acc
-                        end
+                        lists:foldl(fun({ok, EP}, Acc0) ->
+                                            [EP | Acc0];
+                                       (_, Acc0) ->
+                                            Acc0
+                                    end, Acc, [cf_endpoint:build(EndpointId, Properties, Call) || EndpointId <- EPs])
                 end, [], Members);
 get_endpoints(Members, Call) ->
     S = self(),
     Builders = [spawn(fun() ->
-                              EndpointId = wh_json:get_value(<<"id">>, Member),
+                              put(callid, whapps_call:call_id(Call)),
+                              MemberId = wh_json:get_value(<<"id">>, Member),
+                              EPs = case wh_json:get_value(<<"endpoint_type">>, Member) of
+                                        <<"user">> ->
+                                            lager:debug("member ~s is a user, get all the user's endpoints", [MemberId]),
+                                            cf_attributes:fetch_owned_by(MemberId, device, Call);
+                                        _ ->
+                                            lager:debug("member ~s is not a user, assuming a device", [MemberId]),
+                                            [MemberId]
+                                    end,
                               Properties = wh_json:set_value(<<"source">>, ?MODULE, Member),
-                              S ! {self(), (catch cf_endpoint:build(EndpointId, Properties, Call))}
+                              [S ! {self(), (catch cf_endpoint:build(EndpointId, Properties, Call))} || EndpointId <- EPs]
                       end)
                 || Member <- Members
                ],
-    io:format("~p~n", [Builders]),
+
     Endpoints = [JObj || {Status, JObj} <- [receive {Pid, Endpoint} -> Endpoint end
                                             || Pid <- Builders
                                            ], Status =:= ok
