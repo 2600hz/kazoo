@@ -308,14 +308,14 @@ routing_data(ToDID, AcctID) ->
              {ok, NumJObj} ->
                  case wh_json:get_value(<<"pvt_assigned_to">>, NumJObj) =:= AcctID of
                      true ->
-                         ?LOG("found ~s in ~s", [Num, Db]),
+                         lager:debug("found ~s in ~s", [Num, Db]),
                          [wh_json:get_value(<<"failover">>, NumJObj) | FailoverLocations];
                      false ->
-                         ?LOG("found ~s in ~s, but is for account ~s", [Num, Db, wh_json:get_value(<<"pvt_assigned_to">>, NumJObj)]),
+                         lager:debug("found ~s in ~s, but is for account ~s", [Num, Db, wh_json:get_value(<<"pvt_assigned_to">>, NumJObj)]),
                          FailoverLocations
                  end;
              {error, _} ->
-                 ?LOG("failed to find ~s in ~s", [Num, Db]),
+                 lager:debug("failed to find ~s in ~s", [Num, Db]),
                  FailoverLocations
          end,
 
