@@ -107,7 +107,9 @@ media_req(Prop) ->
 
 media_req(Prop, Timeout) ->
     gen_server:call(?SERVER
-                    ,{request, Prop, fun wapi_media:publish_req/1, get(callid), Timeout}
+                    ,{request, Prop, fun wapi_media:publish_req/1, get(callid), Timeout
+                      ,fun wapi_media:resp_v/1
+                     }
                     ,Timeout).
 
 get_req(Api) ->
