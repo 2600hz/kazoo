@@ -212,7 +212,7 @@ handle_cast({consume, {FromPid, _}=From, #'basic.consume'{consumer_tag=CTag}=Bas
                     gen_server:reply(From, Err),
                     {noreply, State}
             end;
-        {ok, {C,_,CTag,_}} when CTag =/= <<>> ->
+        {ok, {_,_,CTag,_}} when CTag =/= <<>> ->
             gen_server:reply(From, {error, sloppy_code_detected}),
             {noreply, State, hibernate};
         {ok, {C,_,_,_}} ->
