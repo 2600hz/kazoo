@@ -97,7 +97,9 @@ reg_query(Prop) ->
 
 reg_query(Prop, Timeout) ->
     gen_server:call(?SERVER
-                    ,{request, Prop, fun wapi_registration:publish_query_req/1, get(callid), Timeout}
+                    ,{request, Prop, fun wapi_registration:publish_query_req/1, get(callid), Timeout
+                      ,fun wapi_registration:query_resp_v/1
+                     }
                     ,Timeout).
 
 media_req(Prop) ->
