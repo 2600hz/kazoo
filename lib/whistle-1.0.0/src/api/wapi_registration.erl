@@ -37,8 +37,8 @@
 -define(REG_SUCCESS_TYPES, []).
 
 %% Query Registrations
--define(REG_QUERY_HEADERS, [<<"Realm">>, <<"Msg-ID">>]).
--define(OPTIONAL_REG_QUERY_HEADERS, [<<"Username">>, <<"Fields">>]).
+-define(REG_QUERY_HEADERS, [<<"Realm">>]).
+-define(OPTIONAL_REG_QUERY_HEADERS, [<<"Username">>, <<"Fields">>, <<"Msg-ID">>]).
 -define(REG_QUERY_VALUES, [{<<"Event-Category">>, <<"directory">>}
                            ,{<<"Event-Name">>, <<"reg_query">>}
                           ]).
@@ -52,16 +52,16 @@
                          ]).
 
 %% Registration Query Response
--define(REG_QUERY_RESP_HEADERS, [<<"Fields">>, <<"Msg-ID">>]).
--define(OPTIONAL_REG_QUERY_RESP_HEADERS, [<<"Multiple">>]).
+-define(REG_QUERY_RESP_HEADERS, [<<"Fields">>]).
+-define(OPTIONAL_REG_QUERY_RESP_HEADERS, [<<"Multiple">>, <<"Msg-ID">>]).
 -define(REG_QUERY_RESP_VALUES, [{<<"Event-Category">>, <<"directory">>}
                                 ,{<<"Event-Name">>, <<"reg_query_resp">>}
                                ]).
 -define(REG_QUERY_RESP_TYPES, []).
 
 %% Registration Query Error
--define(REG_QUERY_ERR_HEADERS, [<<"Msg-ID">>]).
--define(OPTIONAL_REG_QUERY_ERR_HEADERS, []).
+-define(REG_QUERY_ERR_HEADERS, []).
+-define(OPTIONAL_REG_QUERY_ERR_HEADERS, [<<"Msg-ID">>]).
 -define(REG_QUERY_ERR_VALUES, [{<<"Event-Category">>, <<"directory">>}
                                 ,{<<"Event-Name">>, <<"reg_query_error">>}
                                ]).
