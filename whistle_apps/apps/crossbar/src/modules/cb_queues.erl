@@ -24,7 +24,7 @@
 -define(PVT_TYPE, <<"queue">>).
 -define(PVT_FUNS, [fun add_pvt_type/2]).
 -define(CB_LIST, <<"queues/crossbar_listing">>).
--define(CB_AGENTS_LIST, <<"queues/agent_listing">>). %{agent_id, queue_id}
+-define(CB_AGENTS_LIST, <<"queues/agents_listing">>). %{agent_id, queue_id}
 
 %%%===================================================================
 %%% API
@@ -214,10 +214,7 @@ normalize_view_results(JObj, Acc) ->
 
 -spec normalize_agents_results/2 :: (wh_json:json_object(), wh_json:json_objects()) -> wh_json:json_objects().
 normalize_agents_results(JObj, Acc) ->
-    [wh_json:set_values([{<<"agent_id">>, wh_json:get_value(<<"id">>, JObj)}
-                         ,{<<"queue_id">>, wh_json:get_value(<<"value">>, JObj)}
-                        ], wh_json:new())
-     | Acc].
+    [wh_json:get_value(<<"id">>, JObj) | Acc].
 
 %%--------------------------------------------------------------------
 %% @private
