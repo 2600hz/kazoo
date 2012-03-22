@@ -31,8 +31,6 @@
 -export([is_ipv4/1, is_ipv6/1]).
 -export([get_hostname/0]).
 
--export([gc_all/0, top_mem_consumers/0, top_mem_consumers/1, etop/0]).
-
 -include_lib("kernel/include/inet.hrl").
 -include_lib("xmerl/include/xmerl.hrl").
 -include_lib("proper/include/proper.hrl").
@@ -541,21 +539,6 @@ is_ipv6(Address) when is_list(Address) ->
         {ok, _} -> true;
         {error, _} -> false
     end.
-
--spec gc_all/0 :: () -> 'ok'.
-gc_all() ->
-    _ = [begin erlang:garbage_collect(P), timer:sleep(500) end || P <- processes()],
-    ok.
-
--spec top_mem_consumers/0 :: () -> {wh_proplist_kv(pid(), integer()), wh_proplist_kv(pid(), integer())}.
--spec top_mem_consumers/1 :: (pos_integer()) -> {wh_proplist_kv(pid(), integer()), wh_proplist_kv(pid(), integer())}.
-top_mem_consumers() ->
-    top_mem_consumers(10).
-top_mem_consumers(Len) when is_integer(Len), Len > 0 ->
-    lists:split(Len, lists:reverse(lists:keysort(2, [{P, erlang:process_info(P, total_heap_size)} || P <- processes()]))).
-
-etop() ->
-    etop:start([{output, text}]).
 
 %% PROPER TESTING
 prop_to_integer() ->
