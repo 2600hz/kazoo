@@ -256,22 +256,21 @@ lookup_user(Node, ID, Data) ->
 
                              ?LOG(ID, "looking up credentials of ~s@~s for a ~s", [AuthUser, AuthRealm, props:get_value(<<"Method">>, AuthReq)]),
 
-                             try
-                                 {ok, AuthResp} = ecallmgr_amqp_pool:authn_req(AuthReq),
-
-                                 true = wapi_authn:resp_v(AuthResp),
-                                 ?LOG(ID, "received authn_resp", []),
-                                 {ok, Xml} = ecallmgr_fs_xml:authn_resp_xml(
-                                               wh_json:set_value(<<"Auth-Realm">>, AuthRealm
-                                                                 ,wh_json:set_value(<<"Auth-User">>, AuthUser, AuthResp))
-                                              ),
-                                 ?LOG_END(ID, "sending XML to ~w: ~s", [Node, Xml]),
-                                 freeswitch:fetch_reply(Node, ID, Xml)
-                             catch
-                                 throw:_T ->
-                                     ?LOG("auth request lookup failed: thrown ~w", [_T]);
-                                 error:_E ->
-                                     ?LOG("auth request lookup failed: error ~w", [_E])
+                             case ecallmgr_amqp_pool:authn_req(AuthReq) of
+                                 {error, _R} -> 
+                                     ?LOG("auth request lookup failed: error ~p", [_R]),
+                                     ok;
+                                 {negative_resp, _} -> 
+                                     ?LOG("auth request received authoritive negative response"),
+                                     freeswitch:fetch_reply(Node, ID, ?EMPTYRESPONSE);
+                                 {ok, AuthResp} ->
+                                     ?LOG(ID, "received authn_resp", []),
+                                     {ok, Xml} = ecallmgr_fs_xml:authn_resp_xml(
+                                                   wh_json:set_value(<<"Auth-Realm">>, AuthRealm
+                                                                     ,wh_json:set_value(<<"Auth-User">>, AuthUser, AuthResp))
+                                                  ),
+                                     ?LOG_END(ID, "sending XML to ~w: ~s", [Node, Xml]),
+                                     freeswitch:fetch_reply(Node, ID, Xml)
                              end
                      end),
     {ok, Pid}.

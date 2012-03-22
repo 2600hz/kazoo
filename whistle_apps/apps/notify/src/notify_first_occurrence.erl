@@ -69,6 +69,7 @@ start_crawler() ->
 %%--------------------------------------------------------------------
 -spec handle_req/2 :: (wh_json:json_object(), proplist()) -> ok.
 handle_req(JObj, _Props) ->
+    true = wapi_registration:query_resp_v(JObj),
     AccountId = case wh_json:is_true(<<"Multiple">>, JObj) of
                     true -> wh_json:get_value([<<"Fields">>, 1, <<"Account-ID">>], JObj);
                     false -> wh_json:get_value([<<"Fields">>, <<"Account-ID">>], JObj)

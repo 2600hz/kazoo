@@ -101,7 +101,7 @@ start_req(Srv, Prop, ApiFun, CallId, From, Parent, Timeout, VFun) when is_pid(Sr
 init([]) ->
     ?LOG("AMQP pool worker started"),
 
-    {ok, #state{neg_resp_count=0, neg_resp_threshold=2}}.
+    {ok, #state{}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -156,7 +156,7 @@ handle_cast({employed, {Pid, _}=From, Parent, PubFun, JObj, Timeout, VFun}, #sta
     end;
 handle_cast({response_recv, JObj}, #state{status=busy, from=From, parent=Parent, ref=Ref, vfun=VFun
                                           ,neg_resp_count=NegCnt, neg_resp_threshold=NegThresh
-                                          ,start=Start, req_ref=ReqRef, msg_id=ReqMsgId}=State) when NegCnt < NegThresh ->
+                                          ,start=Start, req_ref=ReqRef, msg_id=ReqMsgId}=State) ->
     RespMsgId = wh_json:get_ne_value(<<"Msg-ID">>, JObj),
     case RespMsgId =:= ReqMsgId of
         false -> 
@@ -175,28 +175,21 @@ handle_cast({response_recv, JObj}, #state{status=busy, from=From, parent=Parent,
                     gen_server:reply(From, {ok, JObj}),
                     put(callid, "000000000000"),
                     ecallmgr_amqp_pool:worker_free(Parent, self(), Elapsed),
-                    {noreply, State#state{vfun=undefined,neg_resp_count=0}};
-                false ->
+                    {noreply, #state{}};
+                false when (NegCnt + 1) < NegThresh ->
                     ?LOG("resp json failed validator (~b of ~b)", [NegCnt+1, NegThresh]),
-                    {noreply, State#state{neg_resp_count=NegCnt+1}}
+                    {noreply, State#state{neg_resp_count=NegCnt + 1}};
+                false ->
+                    ?LOG("received response ~s after ~b ms", [ReqMsgId, Elapsed div 1000]),
+                    ?LOG("reached neg count threshold ~b, failure", [NegThresh]),
+                    _ = erlang:demonitor(Ref, [flush]),
+                    _ = erlang:cancel_timer(ReqRef),
+                    gen_server:reply(From, {negative_resp, JObj}),
+                    put(callid, "000000000000"),
+                    ecallmgr_amqp_pool:worker_free(Parent, self(), Elapsed),
+                    {noreply, #state{}}
             end
     end;
-handle_cast({response_recv, JObj}, #state{status=busy, from=From, parent=Parent, ref=Ref
-                                          ,neg_resp_count=NegThresh, neg_resp_threshold=NegThresh
-                                          ,start=Start, req_ref=ReqRef, msg_id=ReqMsgId}=State) ->
-    Elapsed = timer:now_diff(erlang:now(), Start),
-
-    ?LOG("received response ~s after ~b ms", [ReqMsgId, Elapsed div 1000]),
-    ?LOG("reached neg count threshold ~b, failure", [NegThresh]),
-
-    _ = erlang:demonitor(Ref, [flush]),
-    _ = erlang:cancel_timer(ReqRef),
-    gen_server:reply(From, {error, JObj}),
-    put(callid, "000000000000"),
-    ecallmgr_amqp_pool:worker_free(Parent, self(), Elapsed),
-    {noreply, State#state{vfun=undefined,neg_resp_count=0}};
-
-
 handle_cast({response_recv, JObj}, State) ->
     ?LOG("non-employed AMQP pool worker received a response?"),
     ?LOG("event category: ~s", [wh_json:get_value(<<"Event-Category">>, JObj)]),
