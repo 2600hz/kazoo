@@ -1,0 +1,12 @@
+{application, command_bridge,
+ [
+  {description, ""},
+  {vsn, "1"},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib
+                 ]},
+  {mod, { command_bridge_app, []}},
+  {env, []}
+ ]}.
