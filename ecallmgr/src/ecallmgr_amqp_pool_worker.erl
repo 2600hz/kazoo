@@ -1,17 +1,18 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2012, VoIP INC
 %%% @doc
 %%% Send/receive AMQP API calls
 %%% @end
-%%% Created : 19 Sep 2011 by James Aimonetti <james@2600hz.org>
+%%% @contributors
+%%%   James Aimonetti
+%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(ecallmgr_amqp_pool_worker).
 
 -behaviour(gen_listener).
 
 %% API
--export([start_link/0, stop/1, start_req/7, handle_req/2]).
+-export([start_link/0, stop/1, start_req/8, handle_req/2]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2,
@@ -32,6 +33,9 @@
                 ,parent = 'undefined' :: 'undefined' | pid() | atom()
                 ,start = 'undefined' :: 'undefined' | wh_now()
                 ,msg_id = 'undefined' :: 'undefined' | ne_binary()
+                ,vfun :: fun((wh_json:json_object()) -> boolean())
+                ,neg_resp_threshold = 2 :: pos_integer() % how many failed responses to recv before returning failure
+                ,neg_resp_count = 0 :: non_neg_integer()
                }).
 
 %%%===================================================================
@@ -55,11 +59,20 @@ start_link() ->
 stop(Srv) ->
     gen_listener:stop(Srv).
 
--spec start_req/7 :: (pid(), wh_json:json_object() | proplist(), fun((api_terms()) -> 'ok'), ne_binary() | 'undefined', {pid(), reference()}, pid() | atom(), pos_integer()) -> 'ok'.
-start_req(Srv, Prop, ApiFun, CallId, From, Parent, Timeout) when is_pid(Srv),
-                                                                 is_function(ApiFun, 1),
-                                                                 is_pid(Parent),
-                                                                 is_integer(Timeout) ->
+-spec start_req/8 :: (pid() % worker pid
+                      ,wh_json:json_object() | wh_json:json_proplist() % api req
+                      ,fun((api_terms()) -> 'ok') % publisher fun
+                      ,ne_binary() | 'undefined' % call-id
+                      ,{pid(), reference()} % caller pid/ref to respond to
+                      ,pid() | atom() % pool pid
+                      ,pos_integer() % caller timeout
+                      ,fun((wh_json:json_object()) -> boolean()) % validator for resp JSON
+                     ) -> 'ok'.
+start_req(Srv, Prop, ApiFun, CallId, From, Parent, Timeout, VFun) when is_pid(Srv),
+                                                                       is_function(ApiFun, 1),
+                                                                       is_pid(Parent),
+                                                                       is_integer(Timeout),
+                                                                       is_function(VFun, 1) ->
     JObj = case wh_json:is_json_object(Prop) of
                true -> Prop;
                false -> wh_json:from_list(Prop)
@@ -68,7 +81,7 @@ start_req(Srv, Prop, ApiFun, CallId, From, Parent, Timeout) when is_pid(Srv),
                                 ,{<<"Call-ID">>, CallId}
                                ], JObj),
     PubFun = fun() -> put(callid, CallId), ApiFun(JObj1) end,
-    gen_listener:cast(Srv, {employed, From, Parent, PubFun, JObj1, Timeout}).
+    gen_listener:cast(Srv, {employed, From, Parent, PubFun, JObj1, Timeout, VFun}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -87,7 +100,8 @@ start_req(Srv, Prop, ApiFun, CallId, From, Parent, Timeout) when is_pid(Srv),
 %%--------------------------------------------------------------------
 init([]) ->
     ?LOG("AMQP pool worker started"),
-    {ok, #state{}}.
+
+    {ok, #state{neg_resp_count=0, neg_resp_threshold=2}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -117,7 +131,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({employed, {Pid, _}=From, Parent, PubFun, JObj, Timeout}, #state{status=free}=State) ->
+handle_cast({employed, {Pid, _}=From, Parent, PubFun, JObj, Timeout, VFun}, #state{status=free}=State) ->
     put(callid, wh_json:get_value(<<"Call-ID">>, JObj)),
     Ref = erlang:monitor(process, Pid),
     ReqRef = erlang:start_timer(Timeout, self(), req_timeout),
@@ -129,6 +143,8 @@ handle_cast({employed, {Pid, _}=From, Parent, PubFun, JObj, Timeout}, #state{sta
                               ,parent=Parent, start=erlang:now()
                               ,req_ref=ReqRef
                               ,msg_id=ReqMsgId
+                              ,vfun = VFun
+                              ,neg_resp_count = 0
                              }}
     catch
         E:R ->
@@ -138,8 +154,9 @@ handle_cast({employed, {Pid, _}=From, Parent, PubFun, JObj, Timeout}, #state{sta
             ecallmgr_amqp_pool:worker_free(Parent, self(), 0),
             {noreply, State}
     end;
-handle_cast({response_recv, JObj}, #state{status=busy, from=From, parent=Parent, ref=Ref
-                                          ,start=Start, req_ref=ReqRef, msg_id=ReqMsgId}=State) ->
+handle_cast({response_recv, JObj}, #state{status=busy, from=From, parent=Parent, ref=Ref, vfun=VFun
+                                          ,neg_resp_count=NegCnt, neg_resp_threshold=NegThresh
+                                          ,start=Start, req_ref=ReqRef, msg_id=ReqMsgId}=State) when NegCnt < NegThresh ->
     RespMsgId = wh_json:get_ne_value(<<"Msg-ID">>, JObj),
     case RespMsgId =:= ReqMsgId of
         false -> 
@@ -147,15 +164,39 @@ handle_cast({response_recv, JObj}, #state{status=busy, from=From, parent=Parent,
             {noreply, State};
         true ->
             Elapsed = timer:now_diff(erlang:now(), Start),
-            ?LOG("received response ~s after ~b ms, returning to pool ~p", [RespMsgId, Elapsed div 1000, Parent]),
 
-            _ = erlang:demonitor(Ref, [flush]),
-            _ = erlang:cancel_timer(ReqRef),
-            gen_server:reply(From, {ok, JObj}),
-            put(callid, "000000000000"),
-            ecallmgr_amqp_pool:worker_free(Parent, self(), Elapsed),
-            {noreply, #state{}}
+            ?LOG("received response ~s after ~b ms", [RespMsgId, Elapsed div 1000]),
+
+            case VFun(JObj) of
+                true ->
+                    ?LOG("resp json passed validator"),
+                    _ = erlang:demonitor(Ref, [flush]),
+                    _ = erlang:cancel_timer(ReqRef),
+                    gen_server:reply(From, {ok, JObj}),
+                    put(callid, "000000000000"),
+                    ecallmgr_amqp_pool:worker_free(Parent, self(), Elapsed),
+                    {noreply, State#state{vfun=undefined,neg_resp_count=0}};
+                false ->
+                    ?LOG("resp json failed validator (~b of ~b)", [NegCnt+1, NegThresh]),
+                    {noreply, State#state{neg_resp_count=NegCnt+1}}
+            end
     end;
+handle_cast({response_recv, JObj}, #state{status=busy, from=From, parent=Parent, ref=Ref
+                                          ,neg_resp_count=NegThresh, neg_resp_threshold=NegThresh
+                                          ,start=Start, req_ref=ReqRef, msg_id=ReqMsgId}=State) ->
+    Elapsed = timer:now_diff(erlang:now(), Start),
+
+    ?LOG("received response ~s after ~b ms", [ReqMsgId, Elapsed div 1000]),
+    ?LOG("reached neg count threshold ~b, failure", [NegThresh]),
+
+    _ = erlang:demonitor(Ref, [flush]),
+    _ = erlang:cancel_timer(ReqRef),
+    gen_server:reply(From, {error, JObj}),
+    put(callid, "000000000000"),
+    ecallmgr_amqp_pool:worker_free(Parent, self(), Elapsed),
+    {noreply, State#state{vfun=undefined,neg_resp_count=0}};
+
+
 handle_cast({response_recv, JObj}, State) ->
     ?LOG("non-employed AMQP pool worker received a response?"),
     ?LOG("event category: ~s", [wh_json:get_value(<<"Event-Category">>, JObj)]),
