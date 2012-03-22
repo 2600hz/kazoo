@@ -44,9 +44,8 @@ handle(Data, Call) ->
 %%--------------------------------------------------------------------
 -spec bridge_to_resources/5 :: (endpoints(), cf_api_binary(), cf_api_binary(), cf_api_binary(), whapps_call:call()) -> 'ok'.
 bridge_to_resources([{DestNum, Rsc, _CIDType}|T], Timeout, IgnoreEarlyMedia, Ringback, Call) ->
-    Endpoint = [create_endpoint(DestNum, Gtw, Call)
-                || Gtw <- wh_json:get_value(<<"gateways">>, Rsc)
-               ],
+    AccountId = whapps_call:account_id(Call),
+    Endpoint = [create_endpoint(DestNum, Gtw, Call) || Gtw <- wh_json:get_value(<<"gateways">>, Rsc)],
     case whapps_call_command:b_bridge(Endpoint, Timeout, <<"single">>, IgnoreEarlyMedia, Ringback, Call) of
         {ok, _} ->
             lager:debug("completed successful bridge to resource"),

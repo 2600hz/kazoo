@@ -9,7 +9,7 @@
 
 %%% See http://www.rabbitmq.com/releases/rabbitmq-erlang-client/v2.7.0/doc/
 
--define(AMQP_DEBUG, true).
+-define(AMQP_DEBUG, false).
 
 %% see http://www.rabbitmq.com/uri-spec.html
 -define(DEFAULT_AMQP_URI, "amqp://guest:guest@localhost:5672/").
