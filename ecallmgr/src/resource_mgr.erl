@@ -61,7 +61,7 @@ handle_req(JObj, _Prop) ->
     Min = wh_util:to_integer(props:get_value(min_channels_requested, Options)),
     Max = wh_util:to_integer(props:get_value(max_channels_requested, Options)),
 
-    Route = ecallmgr_fs_xml:build_route(wh_json:set_value(<<"Realm">>, ?DEFAULT_DOMAIN, JObj), wh_json:get_value(<<"Invite-Format">>, JObj)),
+    Route = ecallmgr_fs_xml:build_sip_route(wh_json:set_value(<<"Realm">>, ?DEFAULT_DOMAIN, JObj), wh_json:get_value(<<"Invite-Format">>, JObj)),
 
     case start_channels(Nodes, JObj, Route, Min, Max-Min, []) of
         {error, failed_starting, Errors} ->

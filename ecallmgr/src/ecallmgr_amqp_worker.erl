@@ -24,6 +24,10 @@
          ,client_pid :: pid()
          ,client_ref :: reference()
          ,client_from :: {pid(), reference()}
+         ,client_vfun :: fun((api_terms()) -> boolean())
+         ,neg_resp :: wh_json:json_object()
+         ,neg_resp_count = 0 :: non_neg_integer()
+         ,neg_resp_threshold = 2 :: pos_integer()
          ,req_timeout_ref :: reference()
          ,req_start_time :: wh_now()
          ,callid :: ne_binary()
@@ -87,7 +91,7 @@ init([_Args]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({request, ReqProp, PublishFun, Timeout}, {ClientPid, _}=From, State) ->
+handle_call({request, ReqProp, PublishFun, VFun, Timeout}, {ClientPid, _}=From, State) ->
     _ = wh_util:put_callid(ReqProp),
     CallID = get(callid),
 
@@ -114,6 +118,8 @@ handle_call({request, ReqProp, PublishFun, Timeout}, {ClientPid, _}=From, State)
                 client_pid = ClientPid
                 ,client_ref = ClientRef
                 ,client_from = From
+                ,client_vfun = VFun
+                ,neg_resp_count = 0
                 ,current_msg_id = MsgID
                 ,req_timeout_ref = ReqRef
                 ,req_start_time = erlang:now()
@@ -133,21 +139,29 @@ handle_call({request, ReqProp, PublishFun, Timeout}, {ClientPid, _}=From, State)
 handle_cast({event, MsgId, JObj}, #state{current_msg_id = MsgId
                                          ,client_from = From
                                          ,client_ref = ClientRef
+                                         ,client_vfun = VFun
                                          ,req_timeout_ref = ReqRef
                                          ,req_start_time = StartTime
-                                        }) ->
+                                         ,neg_resp_count = NegCount
+                                         ,neg_resp_threshold = NegThreshold
+                                        }=State) when NegCount < NegThreshold ->
     _ = wh_util:put_callid(JObj),
     lager:debug("recv response for msg id ~s", [MsgId]),
-
-    erlang:demonitor(ClientRef, [flush]),
-
-    gen_server:reply(From, {ok, JObj}),
-
     lager:debug("response took ~b micro to return", [timer:now_diff(erlang:now(), StartTime)]),
 
-    _ = erlang:cancel_timer(ReqRef),
+    case VFun(JObj) of
+        true ->
+            erlang:demonitor(ClientRef, [flush]),
 
-    {noreply, #state{}};
+            gen_server:reply(From, {ok, JObj}),
+            _ = erlang:cancel_timer(ReqRef),
+
+            put(callid, ?LOG_SYSTEM_ID),
+            {noreply, #state{}};
+        false ->
+            lager:debug("response failed validator, waiting for more responses"),
+            {noreply, State#state{neg_resp_count = NegCount + 1, neg_resp=JObj}, 0}
+    end;
 handle_cast({event, _MsgId, JObj}, State) ->
     _ = wh_util:put_callid(JObj),
     lager:debug("received unexpected message with old/expired message id: ~s", [_MsgId]),
@@ -163,6 +177,20 @@ handle_cast({event, _MsgId, JObj}, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info(timeout, #state{neg_resp=JObj, neg_resp_count=Thresh, neg_resp_threshold=Thresh
+                            ,client_ref=ClientRef, client_from=From, req_timeout_ref=ReqRef
+                           }) ->
+    lager:debug("negative resp threshold reached"),
+    erlang:demonitor(ClientRef, [flush]),
+
+    gen_server:reply(From, {error, JObj}),
+    _ = erlang:cancel_timer(ReqRef),
+
+    put(callid, ?LOG_SYSTEM_ID),
+    {noreply, #state{}};
+handle_info(timeout, State) ->
+    {noreply, State};
+
 handle_info({'DOWN', ClientRef, process, _Pid, _Reason}, #state{current_msg_id = _MsgID
                                                                 ,client_ref = ClientRef
                                                                 ,req_timeout_ref = ReqRef
@@ -174,6 +202,7 @@ handle_info({'DOWN', ClientRef, process, _Pid, _Reason}, #state{current_msg_id =
     erlang:demonitor(ClientRef, [flush]),
     _ = erlang:cancel_timer(ReqRef),
 
+    put(callid, ?LOG_SYSTEM_ID),
     {noreply, #state{}};
 
 handle_info({timeout, ReqRef, req_timeout}, #state{current_msg_id = _MsgID
@@ -191,6 +220,7 @@ handle_info({timeout, ReqRef, req_timeout}, #state{current_msg_id = _MsgID
 
     _ = erlang:cancel_timer(ReqRef),
 
+    put(callid, ?LOG_SYSTEM_ID),
     {noreply, #state{}};
 
 handle_info(_Info, State) ->

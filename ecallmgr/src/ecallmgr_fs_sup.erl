@@ -63,7 +63,7 @@ node_handlers() ->
     [ Pid || {_, Pid, worker, [HandlerMod]} <- supervisor:which_children(?SERVER),
              HandlerMod =:= ecallmgr_fs_node].
 
--spec get_handler_pids/1 :: (atom()) -> {pid() | 'error', pid() | 'error', pid() | 'error'}.
+-spec get_handler_pids/1 :: (atom()) -> {pid() | 'error', pid() | 'error', pid() | 'error', pid() | 'error'}.
 get_handler_pids(Node) when is_atom(Node) ->
     NodeB = wh_util:to_binary(Node),
     NodePids = [ {HandlerMod, Pid} || {Name, Pid, worker, [HandlerMod]} <- supervisor:which_children(?SERVER)
