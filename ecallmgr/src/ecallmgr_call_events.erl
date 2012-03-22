@@ -1,15 +1,13 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010, VoIP INC
+%%% @copyright (C) 2010-2012, VoIP INC
 %%% @doc
 %%% Receive call events from freeSWITCH, publish to the call's event
 %%% queue
 %%% @end
 %%%
 %%% @contributors
-%%% James Aimonetti <james@2600hz.org>
-%%% Karl Anderson <karl@2600hz.org>
-%%%
-%%% Created : 25 Aug 2010 by James Aimonetti <james@2600hz.org>
+%%%   James Aimonetti <james@2600hz.org>
+%%%   Karl Anderson <karl@2600hz.org>
 %%%-------------------------------------------------------------------
 -module(ecallmgr_call_events).
 -behaviour(gen_server).
@@ -320,7 +318,8 @@ create_event_props(EventName, ApplicationName, Props) ->
                           ,{<<"Raw-Application-Name">>, props:get_value(<<"Application">>, Props, ApplicationName)}
                           ,{<<"Raw-Application-Data">>, props:get_value(<<"Application-Data">>, Props)}
                           | event_specific(EventName, ApplicationName, Props) 
-                         ], V =/= undefined
+                         ],
+            V =/= undefined
     ].
 
 -spec publish_event/1 :: (proplist()) -> 'ok'.
@@ -382,7 +381,7 @@ get_event_application(Props, Masqueraded) ->
     end.
 
 %% return a proplist of k/v pairs specific to the event
--spec event_specific/3 :: (ne_binary(), 'undefined' | ne_binary(), proplist()) -> proplist().
+-spec event_specific/3 :: (binary(), 'undefined' | ne_binary(), proplist()) -> proplist().
 event_specific(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"noop">>, Prop) ->
     [{<<"Application-Name">>, props:get_value(<<"whistle_application_name">>, Prop)}
      ,{<<"Application-Response">>, props:get_value(<<"whistle_application_response">>, Prop)}

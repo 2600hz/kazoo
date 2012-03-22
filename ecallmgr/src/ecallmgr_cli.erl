@@ -1,10 +1,10 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2010, James Aimonetti
+%%% @copyright (C) 2010-2012, VoIP INC
 %%% @doc
 %%% CLI interface to Call Manager
 %%% @end
-%%% Created : 19 Dec 2010 by James Aimonetti <james@2600hz.org>
+%%% @contributors
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(ecallmgr_cli).
 
@@ -42,7 +42,6 @@ status(always, [DisplayOpt]) ->
     Node = wh_util:to_atom([$e,$c,$a,$l,$l,$m,$g,$r,$@ | net_adm:localhost()], true),
     format("Retrieving status for ~s~n", [Node]),
     case rpc_call(Node, ecallmgr_fs_handler, diagnostics, []) of 
-        {ok, _, _}=Res -> Res;
         {ok, Data} ->
             diagnostics_server:display_fs_data(Data, wh_util:to_atom(DisplayOpt, true)),
             ok;
