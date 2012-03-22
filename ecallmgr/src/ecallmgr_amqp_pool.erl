@@ -17,10 +17,15 @@
          ,set_req/1, set_req/2
         ]).
 
+-export([true/1]).
+
 -include("ecallmgr.hrl").
 
--define(DEFAULT_TIMEOUT, 5000).
+-define(DEFAULT_TIMEOUT, 1500).
 -define(FUDGE, 2600).
+
+-spec true/1 :: (any()) -> 'true'.
+true(_) -> true.
 
 -spec authn_req/1 :: (proplist() | wh_json:json_object()) -> {'ok', wh_json:json_object()} |
                                                              {'error', _}.
@@ -29,7 +34,7 @@
 authn_req(AuthnReq) ->
     authn_req(AuthnReq, ?DEFAULT_TIMEOUT).
 authn_req(AuthnReq, Timeout) ->
-    send_request(AuthnReq, Timeout, fun wapi_authn:publish_req/1).
+    send_request(AuthnReq, Timeout, fun wapi_authn:publish_req/1, fun wapi_authn:resp_v/1).
 
 -spec authz_req/1 :: (proplist() | wh_json:json_object()) -> {'ok', wh_json:json_object()} |
                                                              {'error', _}.
@@ -38,7 +43,7 @@ authn_req(AuthnReq, Timeout) ->
 authz_req(AuthzReq) ->
     authz_req(AuthzReq, ?DEFAULT_TIMEOUT).
 authz_req(AuthzReq, Timeout) ->
-    send_request(AuthzReq, Timeout, fun wapi_authz:publish_req/1).
+    send_request(AuthzReq, Timeout, fun wapi_authz:publish_req/1, fun wapi_authz:is_authorized/1).
 
 -spec route_req/1 :: (proplist() | wh_json:json_object()) -> {'ok', wh_json:json_object()} |
                                                              {'error', _}.
@@ -47,7 +52,7 @@ authz_req(AuthzReq, Timeout) ->
 route_req(RouteReq) ->
     route_req(RouteReq, ?DEFAULT_TIMEOUT).
 route_req(RouteReq, Timeout) ->
-    send_request(RouteReq, Timeout, fun wapi_route:publish_req/1).
+    send_request(RouteReq, Timeout, fun wapi_route:publish_req/1, fun wapi_route:is_actionable_resp/1).
 
 -spec reg_query/1 :: (proplist() | wh_json:json_object()) -> {'ok', wh_json:json_object()} |
                                                              {'error', _}.
@@ -56,7 +61,7 @@ route_req(RouteReq, Timeout) ->
 reg_query(RegReq) ->
     reg_query(RegReq, ?DEFAULT_TIMEOUT).
 reg_query(RegReq, Timeout) ->
-    send_request(RegReq, Timeout, fun wapi_registration:publish_query_req/1).
+    send_request(RegReq, Timeout, fun wapi_registration:publish_query_req/1, fun wapi_registration:query_resp_v/1).
 
 -spec media_req/1 :: (proplist() | wh_json:json_object()) -> {'ok', wh_json:json_object()} |
                                                              {'error', _}.
@@ -65,7 +70,7 @@ reg_query(RegReq, Timeout) ->
 media_req(MediaReq) ->
     media_req(MediaReq, ?DEFAULT_TIMEOUT).
 media_req(MediaReq, Timeout) ->
-    send_request(MediaReq, Timeout, fun wapi_media:publish_req/1).
+    send_request(MediaReq, Timeout, fun wapi_media:publish_req/1, fun wapi_media:resp_v/1).
 
 -spec get_req/1 :: (proplist() | wh_json:json_object()) -> {'ok', wh_json:json_object()} |
                                                            {'error', _}.
@@ -74,7 +79,7 @@ media_req(MediaReq, Timeout) ->
 get_req(GetReq) ->
     get_req(GetReq, ?DEFAULT_TIMEOUT).
 get_req(GetReq, Timeout) ->
-    send_request(GetReq, Timeout, fun wapi_sysconf:publish_get_req/1).
+    send_request(GetReq, Timeout, fun wapi_sysconf:publish_get_req/1, fun ecallmgr_amqp_pool:true/1).
 
 -spec set_req/1 :: (proplist() | wh_json:json_object()) -> {'ok', wh_json:json_object()} |
                                                            {'error', _}.
@@ -83,11 +88,11 @@ get_req(GetReq, Timeout) ->
 set_req(GetReq) ->
     set_req(GetReq, ?DEFAULT_TIMEOUT).
 set_req(GetReq, Timeout) ->
-    send_request(GetReq, Timeout, fun wapi_sysconf:publish_set_req/1).
+    send_request(GetReq, Timeout, fun wapi_sysconf:publish_set_req/1, fun ecallmgr_amqp_pool:true/1).
 
--spec send_request/3 :: (api_terms(), pos_integer(), fun((api_terms()) -> _)) -> {'ok', wh_json:json_object()} |
-                                                                                 {'error', _}.
-send_request(Req, Timeout, PubFun) ->
+-spec send_request/4 :: (api_terms(), pos_integer(), fun((api_terms()) -> _), fun((api_terms()) -> boolean())) -> {'ok', wh_json:json_object()} |
+                                                                                                                  {'error', _}.
+send_request(Req, Timeout, PubFun, VFun) ->
     W = poolboy:checkout(?AMQP_POOL_MGR),
 
     Prop = case wh_json:is_json_object(Req) of
@@ -98,6 +103,6 @@ send_request(Req, Timeout, PubFun) ->
     %% We need to timeout the caller without crashing, so add a fudge to the gen_listener's timeout
     %% but still timeout the caller in Timeout milliseconds (allows the poolboy worker the chance to
     %% get checked back in before the caller crashes - poolboy kills the worker if the caller crashes)
-    Reply = gen_listener:call(W, {request, Prop, PubFun, Timeout}, Timeout+?FUDGE),
+    Reply = gen_listener:call(W, {request, Prop, PubFun, VFun, Timeout}, Timeout+?FUDGE),
     poolboy:checkin(?AMQP_POOL_MGR, W),
     Reply.
