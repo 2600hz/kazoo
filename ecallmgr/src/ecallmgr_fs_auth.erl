@@ -1,10 +1,11 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2012, VoIP INC
 %%% @doc
 %%% Directory lookups from FS
 %%% @end
-%%% Created : 29 Mar 2011 by James Aimonetti <james@2600hz.org>
+%%% @contributors
+%%%   James Aimonetti
+%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(ecallmgr_fs_auth).
 
@@ -23,7 +24,7 @@
 -include("ecallmgr.hrl").
 
 -record(state, {
-          node = undefined :: atom()
+          node = 'undefined' :: atom()
           ,stats = #handler_stats{} :: #handler_stats{}
           ,lookups = [] :: [{pid(), binary(), {integer(), integer(), integer()}},...] | []
          }).
@@ -204,6 +205,7 @@ handle_info(timeout, #state{node=Node}=State) ->
     end;
 
 handle_info(_Info, State) ->
+    lager:debug("unhandled message: ~p", [_Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -218,8 +220,7 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
-    lager:debug("fs auth ~p termination", [_Reason]),
-    ok.
+    lager:debug("fs auth ~p termination", [_Reason]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -235,10 +236,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec lookup_user/3 :: (Node, ID, Data) -> {ok, pid()} when
-      Node :: atom(),
-      ID :: binary(),
-      Data :: proplist().
+-spec lookup_user/3 :: (atom(), ne_binary(), proplist()) -> {'ok', pid()}.
 lookup_user(Node, ID, Data) ->
     Pid = spawn_link(fun() ->
                              put(callid, ID),
@@ -258,22 +256,21 @@ lookup_user(Node, ID, Data) ->
 
                              lager:debug("looking up credentials of ~s@~s for a ~s", [AuthUser, AuthRealm, props:get_value(<<"Method">>, AuthReq)]),
 
-                             try
-                                 {ok, AuthResp} = ecallmgr_amqp_pool:authn_req(AuthReq),
-
-                                 true = wapi_authn:resp_v(AuthResp),
-                                 lager:debug("received authn_resp", []),
-                                 {ok, Xml} = ecallmgr_fs_xml:authn_resp_xml(
-                                               wh_json:set_value(<<"Auth-Realm">>, AuthRealm
-                                                                 ,wh_json:set_value(<<"Auth-User">>, AuthUser, AuthResp))
-                                              ),
-                                 lager:debug("sending XML to ~w: ~s", [Node, Xml]),
-                                 freeswitch:fetch_reply(Node, ID, Xml)
-                             catch
-                                 throw:_T ->
-                                     lager:debug("auth request lookup failed: thrown ~w", [_T]);
-                                 error:_E ->
-                                     lager:debug("auth request lookup failed: error ~w", [_E])
+                             case ecallmgr_amqp_pool:authn_req(AuthReq) of
+                                 {error, _R} ->
+                                     lager:debug("authn request lookup failed: ~p", [_R]);
+                                 {negative_resp, _} ->
+                                     lager:debug("authn request recv authoritative negative response"),
+                                     freeswitch:fetch_reply(Node, ID, ?EMPTYRESPONSE);
+                                 {ok, AuthResp} ->
+                                     true = wapi_authn:resp_v(AuthResp),
+                                     lager:debug("received authn_resp"),
+                                     {ok, Xml} = ecallmgr_fs_xml:authn_resp_xml(
+                                                   wh_json:set_value(<<"Auth-Realm">>, AuthRealm
+                                                                     ,wh_json:set_value(<<"Auth-User">>, AuthUser, AuthResp))
+                                                  ),
+                                     lager:debug("sending XML to ~w: ~s", [Node, Xml]),
+                                     freeswitch:fetch_reply(Node, ID, Xml)
                              end
                      end),
     {ok, Pid}.

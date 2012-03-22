@@ -1,6 +1,5 @@
 %%%-----------------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2010-2011, VoIP INC
+%%% @copyright (C) 2010-2012, VoIP INC
 %%% @doc
 %%%
 %%% When connecting to a FreeSWITCH node, we create three processes: one to
@@ -8,7 +7,8 @@
 %%% requests, and one to monitor the node and various stats about the node.
 %%%
 %%% @end
-%%% Created : 08 Oct 2010 by James Aimonetti <james@2600hz.org>
+%%% @contributors
+%%%   James Aimonetti
 %%%-----------------------------------------------------------------------------
 -module(ecallmgr_fs_handler).
 
@@ -31,6 +31,7 @@
 -define(AUTH_MOD, ecallmgr_fs_auth).
 -define(ROUTE_MOD, ecallmgr_fs_route).
 -define(NODE_MOD, ecallmgr_fs_node).
+-define(CONFIG_MOD, ecallmgr_fs_config).
 
 -record(node_handler, {node = 'undefined' :: atom()
                        ,options = [] :: proplist()
@@ -140,7 +141,7 @@ handle_call({is_node_up, Node}, _From, #state{fs_nodes=Nodes}=State) ->
 handle_call({diagnostics}, From, #state{fs_nodes=Nodes}=State) ->
     spawn(fun() ->
                   {KnownNodes, HandlerD} = lists:foldl(fun(#node_handler{node=FSNode}, {KN, HD}) ->
-                                                               {AHP, RHP, NHP} = ecallmgr_fs_sup:get_handler_pids(FSNode),
+                                                               {AHP, RHP, NHP, _} = ecallmgr_fs_sup:get_handler_pids(FSNode),
                                                                AuthHandlerD = diagnostics_query(AHP),
                                                                RteHandlerD = diagnostics_query(RHP),
                                                                NodeHandlerD = diagnostics_query(NHP),
@@ -345,7 +346,7 @@ add_fs_node(Node, Options, #state{fs_nodes=Nodes}=State) ->
         [#node_handler{node=Node}=N] ->
             lager:debug("handlers known for node ~p", [Node]),
 
-            {_, _, NHP} = Handlers = ecallmgr_fs_sup:get_handler_pids(Node),
+            {_, _, NHP, _} = Handlers = ecallmgr_fs_sup:get_handler_pids(Node),
             is_pid(NHP) andalso NHP ! {update_options, Options},
 
             case lists:any(fun(error) -> true; (undefined) -> true; (_) -> false end, tuple_to_list(Handlers)) of
@@ -388,7 +389,7 @@ close_node(#node_handler{node=Node}) ->
 -spec process_resource_request/3 :: (ne_binary(), [#node_handler{},...], wh_proplist()) -> [wh_proplist(),...] | [].
 process_resource_request(<<"audio">> = Type, Nodes, Options) ->
     NodesResp = [begin
-                     {_,_,NHP} = ecallmgr_fs_sup:get_handler_pids(Node),
+                     {_,_,NHP,_} = ecallmgr_fs_sup:get_handler_pids(Node),
                      NHP ! {resource_request, self(), Type, Options},
                      receive {resource_response, NHP, Resp} -> Resp
                      after 500 -> []

@@ -1,15 +1,13 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010, VoIP INC
+%%% @copyright (C) 2010-2012, VoIP INC
 %%% @doc
 %%% Various utilities specific to ecallmgr. More general utilities go
 %%% in whistle_util.erl
 %%% @end
 %%%
 %%% @contributors
-%%% James Aimonetti <james@2600hz.org>
-%%% Karl Anderson <karl@2600hz.org>
-%%%
-%%% Created : 15 Nov 2010 by James Aimonetti <james@2600hz.org>
+%%%   James Aimonetti <james@2600hz.org>
+%%%   Karl Anderson <karl@2600hz.org>
 %%%-------------------------------------------------------------------
 -module(ecallmgr_util).
 
@@ -121,9 +119,6 @@ get_setting(Setting) ->
     get_setting(Setting, null).
 get_setting(Setting, Default) ->
     {ok, ecallmgr_config:get(Setting, Default)}.
-
-cache_key(Setting) ->
-    {?MODULE, Setting}.
 
 -spec is_node_up/1 :: (atom()) -> boolean().
 is_node_up(Node) ->

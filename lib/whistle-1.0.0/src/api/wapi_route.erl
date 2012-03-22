@@ -19,6 +19,7 @@
          ,publish_win/2, publish_win/3
          ,get_auth_realm/1
          ,req_event_type/0
+         ,is_actionable_resp/1
         ]).
 
 -define(EVENT_CATEGORY, <<"dialplan">>).
@@ -166,6 +167,16 @@ resp_v(Prop) when is_list(Prop) ->
     end;
 resp_v(JObj) ->
     resp_v(wh_json:to_proplist(JObj)).
+
+-spec is_actionable_resp/1 :: (api_terms()) -> boolean().
+is_actionable_resp(Prop) when is_list(Prop) ->
+    case props:get_value(<<"Method">>, Prop) of
+        <<"bridge">> -> true;
+        <<"park">> -> true;
+        _ -> false
+    end;
+is_actionable_resp(JObj) ->
+    is_actionable_resp(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc Route within a Dialplan Route Response - see wiki

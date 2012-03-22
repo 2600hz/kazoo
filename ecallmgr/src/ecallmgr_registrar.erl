@@ -179,7 +179,7 @@ lookup_reg(Realm, User, Fields) ->
                        ,{<<"Fields">>, []}
                        | wh_api:default_headers(?APP_NAME, ?APP_VERSION) ],
             try
-                case ecallmgr_amqp_pool:reg_query(RegProp, 1000) of
+                case ecallmgr_amqp_pool:reg_query(RegProp) of
                     {ok, RegJObj} ->
                         true = wapi_registration:query_resp_v(RegJObj),
 
@@ -190,9 +190,9 @@ lookup_reg(Realm, User, Fields) ->
 
                         lager:debug("received registration information"),
                         lists:foldr(FilterFun, [], RegFields);
-                    timeout ->
+                    {error, timeout}=E ->
                         lager:debug("Looking up registration timed out"),
-                        {error, timeout}
+                        E
                 end
             catch
                 _:{timeout, _} ->

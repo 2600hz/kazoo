@@ -1,9 +1,12 @@
-%%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2010, VoIP INC
+%%%-------------------------------------------------------------------
+%%% @copyright (C) 2010-2012, VoIP INC
 %%% @doc
 %%% Manage a FreeSWITCH node and its resources
 %%% @end
-%%% Created : 11 Nov 2010 by James Aimonetti <james@2600hz.org>
+%%% @contributors
+%%%   James Aimonetti
+%%%   Karl Anderson
+%%%-------------------------------------------------------------------
 -module(ecallmgr_fs_node).
 
 -behaviour(gen_server).
@@ -211,7 +214,7 @@ handle_info({event, [UUID | Data]}, #state{node=Node, stats=#node_stats{created_
                 <<"CS_DESTROY">> ->
                     lager:debug("received channel destroyed: ~s", [UUID]),
                     spawn(fun() -> 
-                                  ecallmgr_call_control:rm_leg(Data),
+                                  _ = ecallmgr_call_control:rm_leg(Data),
                                   ecallmgr_call_events:publish_channel_destroy(Data)
                           end),
                     {noreply, State#state{stats=Stats#node_stats{destroyed_channels=De+1}}, hibernate}
@@ -271,7 +274,7 @@ handle_info(timeout, #state{node=Node}=State) ->
     receive
         ok ->
             lager:debug("event handler registered on node ~s", [Node]),
-            Res = lists:flatten(run_start_cmds(Node)),
+            Res = run_start_cmds(Node),
 
             case lists:filter(fun was_not_successful_cmd/1, Res) of
                 [] ->
@@ -338,8 +341,8 @@ originate_channel(Node, Pid, Route, AvailChan, JObj) ->
     OrigStr = binary_to_list(list_to_binary([ChannelVars, Route, " ", Action])),
     lager:debug("originate ~s on node ~s", [OrigStr, Node]),
     _ = ecallmgr_util:fs_log(Node, "whistle originating call: ~s", [OrigStr]),
-    Result = freeswitch:bgapi(Node, originate, OrigStr),
-    case Result of
+
+    case freeswitch:bgapi(Node, originate, OrigStr) of
         {ok, JobId} ->
             receive
                 {bgok, JobId, X} ->
@@ -471,7 +474,7 @@ process_transfer_event(<<"BLIND_TRANSFER">>, Data) ->
     case ecallmgr_call_control_sup:find_workers(TransfererCtrlUUId) of
         {ok, Pids} -> 
             [begin
-                 ecallmgr_call_control:transferer(Pid, Data),
+                 _ = ecallmgr_call_control:transferer(Pid, Data),
                  lager:debug("sending transferer notice for ~s to ecallmgr_call_control ~p", [TransfererCtrlUUId, Pid])
              end
              || Pid <- Pids
@@ -489,18 +492,18 @@ process_transfer_event(_Type, Data) ->
                                  props:get_value(<<"Transferee-UUID">>, Data)
                          end,
 
-    case ecallmgr_call_control_sup:find_workers(TransfererCtrlUUId) of
-        {ok, TransfererPids} -> 
-            [begin 
-                 ecallmgr_call_control:transferer(Pid, Data),
-                 lager:debug("sending transferer notice for ~s to ecallmgr_call_control ~p", [TransfererCtrlUUId, Pid])
-             end
-             || Pid <- TransfererPids
-            ];
-        {error, not_found} -> 
-            lager:debug(TransfererCtrlUUId, "no ecallmgr_call_control processes exist for reception of transferer notice"),
-            ok
-    end,
+    _ = case ecallmgr_call_control_sup:find_workers(TransfererCtrlUUId) of
+            {ok, TransfererPids} -> 
+                [begin 
+                     _ = ecallmgr_call_control:transferer(Pid, Data),
+                     lager:debug("sending transferer notice for ~s to ecallmgr_call_control ~p", [TransfererCtrlUUId, Pid])
+                 end
+                 || Pid <- TransfererPids
+                ];
+            {error, not_found} -> 
+                lager:debug(TransfererCtrlUUId, "no ecallmgr_call_control processes exist for reception of transferer notice"),
+                ok
+        end,
     TransfereeCtrlUUId = props:get_value(<<"Replaces">>, Data),
 
     case ecallmgr_call_control_sup:find_workers(TransfereeCtrlUUId) of
@@ -524,7 +527,7 @@ get_originate_action(<<"transfer">>, JObj) ->
     end;
 get_originate_action(<<"bridge">>, JObj) ->
     Data = wh_json:get_value(<<"Application-Data">>, JObj),
-    case ecallmgr_fs_xml:build_route(Data, wh_json:get_value(<<"Invite-Format">>, Data)) of
+    case ecallmgr_fs_xml:build_sip_route(Data, wh_json:get_value(<<"Invite-Format">>, Data)) of
         {error, timeout} -> <<"error">>;
         EndPoint ->
             list_to_binary(["'m:^:", get_unset_vars(JObj), "bridge:", EndPoint, "' inline"])
@@ -547,8 +550,7 @@ get_unset_vars(JObj) ->
 
 -type cmd_result() :: {'ok', {atom(), nonempty_string()}, ne_binary()} |
                       {'error', {atom(), nonempty_string()}, ne_binary()} |
-                      {'error', {atom(), nonempty_string()}, ne_binary()} |
-                      {'timeout', ne_binary()}.
+                      {'timeout', {atom(), ne_binary()}}.
 -type cmd_results() :: [cmd_result(),...] | [].
 
 -spec run_start_cmds/1 :: (atom()) -> cmd_results().
@@ -558,11 +560,11 @@ run_start_cmds(Node) ->
             lager:info("no freeswitch commands to run, seems suspect. Is your ecallmgr connected to the same AMQP as the whapps running sysconf?"),
             [];
         Cmds when is_list(Cmds) ->
-            [process_cmd(Node, Cmd) || Cmd <- Cmds];
+            lists:foldl(fun(Cmd, Acc) -> process_cmd(Node, Cmd, Acc) end, [], Cmds);
         CmdJObj ->
             case wh_json:is_json_object(CmdJObj) of
                 true ->
-                    process_cmd(Node, CmdJObj);
+                    process_cmd(Node, CmdJObj, []);
                 false ->
                     lager:debug("recv something other than a list for fs_cmds: ~p", [CmdJObj]),
                     timer:sleep(5000),
@@ -570,21 +572,23 @@ run_start_cmds(Node) ->
             end
     end.
 
-process_cmd(Node, JObj) ->
-    [process_cmd(Node, ApiCmd, ApiArg) || {ApiCmd, ApiArg} <- wh_json:to_proplist(JObj)].
-process_cmd(Node, ApiCmd0, ApiArg0) ->
+-spec process_cmd/3 :: (atom(), wh_json:json_object(), cmd_results()) -> cmd_results().
+-spec process_cmd/4 :: (atom(), ne_binary(), ne_binary(), cmd_results()) -> cmd_results().
+process_cmd(Node, JObj, Acc0) ->
+    lists:foldl(fun({ApiCmd, ApiArg}, Acc) ->
+                        process_cmd(Node, ApiCmd, ApiArg, Acc)
+                end, Acc0, wh_json:to_proplist(JObj)).
+
+process_cmd(Node, ApiCmd0, ApiArg0, Acc) ->
     ApiCmd = wh_util:to_atom(wh_util:to_binary(ApiCmd0), ?FS_CMD_SAFELIST),
     ApiArg = wh_util:to_list(ApiArg0),
 
     case freeswitch:api(Node, ApiCmd, wh_util:to_list(ApiArg)) of
         {ok, FSResp} ->
-            process_resp(ApiCmd, ApiArg, binary:split(FSResp, <<"\n">>, [global]));
-        {error, _}=E -> [E];
-        timeout -> [{timeout, {ApiCmd, ApiArg}}]
+            process_resp(ApiCmd, ApiArg, binary:split(FSResp, <<"\n">>, [global]), Acc);
+        {error, _}=E -> [E|Acc];
+        timeout -> [{timeout, {ApiCmd, ApiArg}} | Acc]
     end.
-
-process_resp(ApiCmd, ApiArg, FSResps) ->
-    process_resp(ApiCmd, ApiArg, FSResps, []).
 
 process_resp(ApiCmd, ApiArg, [<<>>|Resps], Acc) ->
     process_resp(ApiCmd, ApiArg, Resps, Acc);
@@ -609,6 +613,8 @@ was_bad_error(_E, _, _) ->
     true.
 
 was_not_successful_cmd({ok, _}) ->
+    false;
+was_not_successful_cmd({ok, _, _}) ->
     false;
 was_not_successful_cmd(_) ->
     true.
@@ -657,18 +663,16 @@ return_rows(Node, [R|Rs], Acc) ->
     end;
 return_rows(_Node, [], Acc) -> Acc.
 
+-spec print_api_responses/1 :: (cmd_results()) -> 'ok'.
 print_api_responses(Res) ->
     lager:debug("start cmd results:"),
     _ = [ print_api_response(ApiRes) || ApiRes <- lists:flatten(Res)],
     lager:debug("end cmd results").
 
+-spec print_api_response/1 :: (cmd_result()) -> 'ok'.
 print_api_response({ok, {Cmd, Args}, Res}) ->
     lager:debug("ok: ~s(~s) => ~s", [Cmd, Args, Res]);
 print_api_response({error, {Cmd, Args}, Res}) ->
     lager:debug("error: ~s(~s) => ~s", [Cmd, Args, Res]);
-print_api_response({error, Res}) ->
-    lager:debug("error: ~s", [Res]);
 print_api_response({timeout, {Cmd, Arg}}) ->
-    lager:debug("timeout: ~s(~s)", [Cmd, Arg]);
-print_api_response(Other) ->
-    lager:debug("other: ~p", [Other]).
+    lager:debug("timeout: ~s(~s)", [Cmd, Arg]).
