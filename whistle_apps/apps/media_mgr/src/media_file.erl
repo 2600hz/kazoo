@@ -71,9 +71,13 @@ continuous(Srv) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init([Id, Doc, Attach, Meta]) ->
+init([<<"system_media">>|Rest]) ->
+    init(<<"system_media">>, Rest);
+init([Id|Rest]) ->
+    init(wh_util:format_account_id(Id, encoded), Rest).
+
+init(Db, [Doc, Attach, Meta]) ->
     put(callid, ?LOG_SYSTEM_ID),
-    Db = wh_util:format_account_id(Id, encoded),
 
     lager:debug("streaming ~s/~s/~s", [Db, Doc, Attach]),
     {ok, Ref} = couch_mgr:stream_attachment(Db, Doc, Attach),
