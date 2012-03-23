@@ -24,7 +24,7 @@ eunit:
 
 build-plt:
 	@$(DIALYZER) --build_plt --output_plt $(ROOT)/.platform_dialyzer.plt \
-		--apps kernel stdlib sasl inets crypto public_key ssl
+		--apps erts kernel stdlib sasl inets crypto public_key ssl
 
 dialyze: 
 	@$(DIALYZER) $(foreach DIR,$(DIRS),$(DIR)/ebin) \
