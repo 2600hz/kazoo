@@ -20,7 +20,7 @@
 
 -define(SERVER, ?MODULE).
 
--define(CHILD(Name, Id, Doc, Attachment, Meta), {Name, {media_file, start_link, [Id, Doc, Attachment, Meta]}, permanent, 5000, worker, [media_file]}).
+-define(CHILD(Name, Id, Doc, Attachment, Meta), {Name, {media_file, start_link, [Id, Doc, Attachment, Meta]}, temporary, 5000, worker, [media_file]}).
 
 %%%===================================================================
 %%% API functions
@@ -37,14 +37,14 @@ start_link() ->
     supervisor:start_link({local, ?SERVER}, ?MODULE, []).
 
 find_file_server(Id, Doc, Attachment) ->
-    Name = wh_util:to_hex(list_to_binary([Id,Doc,Attachment])),
+    Name = [Id,Doc,Attachment],
     case [P||{N,P,_,_} <- supervisor:which_children(?MODULE), N =:= Name] of
         [] -> {error, no_file_server};
         [P] -> {ok, P}
     end.
              
 find_file_server(Id, Doc, Attachment, Meta) ->
-    Name = wh_util:to_hex(list_to_binary([Id,Doc,Attachment])),
+    Name = [Id,Doc,Attachment],
     case supervisor:start_child(?MODULE, ?CHILD(Name, Id, Doc, Attachment, Meta)) of
         {ok, _Pid}=OK -> OK;
         {error, {already_started, Pid}} -> {ok, Pid};
