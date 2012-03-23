@@ -162,9 +162,9 @@ handle_cast({event, MsgId, JObj}, #state{current_msg_id = MsgId
             lager:debug("response failed validator, waiting for more responses"),
             {noreply, State#state{neg_resp_count = NegCount + 1, neg_resp=JObj}, 0}
     end;
-handle_cast({event, _MsgId, JObj}, State) ->
+handle_cast({event, _MsgId, JObj}, #state{current_msg_id=_CurrMsgId}=State) ->
     _ = wh_util:put_callid(JObj),
-    lager:debug("received unexpected message with old/expired message id: ~s", [_MsgId]),
+    lager:debug("received unexpected message with old/expired message id: ~s, waiting for ~s", [_MsgId, _CurrMsgId]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
