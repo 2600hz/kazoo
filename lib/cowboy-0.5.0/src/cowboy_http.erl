@@ -17,14 +17,14 @@
 -module(cowboy_http).
 
 %% Parsing.
--export([list/2, nonempty_list/2, content_type/1, content_type_params/3,
-	media_range/2, conneg/2, language_range/2, entity_tag_match/1,
+-export([list/2, nonempty_list/2, content_type/1, media_range/2, conneg/2,
+	language_range/2, entity_tag_match/1, expectation/2, params/2,
 	http_date/1, rfc1123_date/1, rfc850_date/1, asctime_date/1,
 	whitespace/2, digits/1, token/2, token_ci/2, quoted_string/2]).
 
 %% Interpretation.
 -export([connection_to_atom/1, urldecode/1, urldecode/2, urlencode/1,
-	urlencode/2]).
+	urlencode/2, x_www_form_urlencoded/2]).
 
 -type method() :: 'OPTIONS' | 'GET' | 'HEAD'
 	| 'POST' | 'PUT' | 'DELETE' | 'TRACE' | binary().
@@ -51,7 +51,6 @@
 
 -export_type([method/0, uri/0, version/0, header/0, headers/0, status/0]).
 
--include("include/http.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
 %% Parsing.
@@ -98,33 +97,9 @@ list(Data, Fun, Acc) ->
 content_type(Data) ->
 	media_type(Data,
 		fun (Rest, Type, SubType) ->
-				content_type_params(Rest,
-					fun (Params) -> {Type, SubType, Params} end, [])
-		end).
-
--spec content_type_params(binary(), fun(), list({binary(), binary()}))
-	-> any().
-content_type_params(Data, Fun, Acc) ->
-	whitespace(Data,
-		fun (<< $;, Rest/binary >>) -> content_type_param(Rest, Fun, Acc);
-			(<<>>) -> Fun(lists:reverse(Acc));
-			(_Rest) -> {error, badarg}
-		end).
-
--spec content_type_param(binary(), fun(), list({binary(), binary()}))
-	-> any().
-content_type_param(Data, Fun, Acc) ->
-	whitespace(Data,
-		fun (Rest) ->
-				token_ci(Rest,
-					fun (_Rest2, <<>>) -> {error, badarg};
-						(<< $=, Rest2/binary >>, Attr) ->
-							word(Rest2,
-								fun (Rest3, Value) ->
-										content_type_params(Rest3, Fun,
-											[{Attr, Value}|Acc])
-								end);
-						(_Rest2, _Attr) -> {error, badarg}
+				params(Rest,
+					fun (<<>>, Params) -> {Type, SubType, Params};
+						(_Rest2, _) -> {error, badarg}
 					end)
 		end).
 
@@ -178,6 +153,13 @@ media_type(Data, Fun) ->
 		fun (_Rest, <<>>) -> {error, badarg};
 			(<< $/, Rest/binary >>, Type) ->
 				token_ci(Rest,
+					fun (_Rest2, <<>>) -> {error, badarg};
+						(Rest2, SubType) -> Fun(Rest2, Type, SubType)
+					end);
+			%% This is a non-strict parsing clause required by some user agents
+			%% that use * instead of */* in the list of media types.
+			(Rest, <<"*">> = Type) ->
+				token_ci(<<"*", Rest/binary>>,
 					fun (_Rest2, <<>>) -> {error, badarg};
 						(Rest2, SubType) -> Fun(Rest2, Type, SubType)
 					end);
@@ -317,6 +299,50 @@ opaque_tag(Data, Fun, Strength) ->
 	quoted_string(Data,
 		fun (_Rest, <<>>) -> {error, badarg};
 			(Rest, OpaqueTag) -> Fun(Rest, {Strength, OpaqueTag})
+		end).
+
+%% @doc Parse an expectation.
+-spec expectation(binary(), fun()) -> any().
+expectation(Data, Fun) ->
+	token_ci(Data,
+		fun (_Rest, <<>>) -> {error, badarg};
+			(<< $=, Rest/binary >>, Expectation) ->
+				word(Rest,
+					fun (Rest2, ExtValue) ->
+						params(Rest2, fun (Rest3, ExtParams) ->
+							Fun(Rest3, {Expectation, ExtValue, ExtParams})
+						end)
+					end);
+			(Rest, Expectation) ->
+				Fun(Rest, Expectation)
+		end).
+
+%% @doc Parse a list of parameters (a=b;c=d).
+-spec params(binary(), fun()) -> any().
+params(Data, Fun) ->
+	params(Data, Fun, []).
+
+-spec params(binary(), fun(), [{binary(), binary()}]) -> any().
+params(Data, Fun, Acc) ->
+	whitespace(Data,
+		fun (<< $;, Rest/binary >>) -> param(Rest, Fun, Acc);
+			(Rest) -> Fun(Rest, lists:reverse(Acc))
+		end).
+
+-spec param(binary(), fun(), [{binary(), binary()}]) -> any().
+param(Data, Fun, Acc) ->
+	whitespace(Data,
+		fun (Rest) ->
+				token_ci(Rest,
+					fun (_Rest2, <<>>) -> {error, badarg};
+						(<< $=, Rest2/binary >>, Attr) ->
+							word(Rest2,
+								fun (Rest3, Value) ->
+										params(Rest3, Fun,
+											[{Attr, Value}|Acc])
+								end);
+						(_Rest2, _Attr) -> {error, badarg}
+					end)
 		end).
 
 %% @doc Parse an HTTP date (RFC1123, RFC850 or asctime date).
@@ -657,6 +683,9 @@ quoted_string(<< C, Rest/binary >>, Fun, Acc) ->
 -spec qvalue(binary(), fun()) -> any().
 qvalue(<< $0, $., Rest/binary >>, Fun) ->
 	qvalue(Rest, Fun, 0, 100);
+%% Some user agents use q=.x instead of q=0.x
+qvalue(<< $., Rest/binary >>, Fun) ->
+	qvalue(Rest, Fun, 0, 100);
 qvalue(<< $0, Rest/binary >>, Fun) ->
 	Fun(Rest, 0);
 qvalue(<< $1, $., $0, $0, $0, Rest/binary >>, Fun) ->
@@ -780,6 +809,16 @@ tohexu(C) when C < 17 -> $A + C - 10.
 tohexl(C) when C < 10 -> $0 + C;
 tohexl(C) when C < 17 -> $a + C - 10.
 
+-spec x_www_form_urlencoded(binary(), fun((binary()) -> binary())) ->
+		list({binary(), binary() | true}).
+x_www_form_urlencoded(<<>>, _URLDecode) ->
+	[];
+x_www_form_urlencoded(Qs, URLDecode) ->
+	Tokens = binary:split(Qs, <<"&">>, [global, trim]),
+	[case binary:split(Token, <<"=">>) of
+		[Token] -> {URLDecode(Token), true};
+		[Name, Value] -> {URLDecode(Name), URLDecode(Value)}
+	end || Token <- Tokens].
 
 %% Tests.
 
@@ -865,6 +904,13 @@ media_range_list_test_() ->
 				[{<<"level">>, <<"1">>}, {<<"quoted">>, <<"hi hi hi">>}]}, 123,
 				[<<"standalone">>, {<<"complex">>, <<"gits">>}]},
 			{{<<"text">>, <<"plain">>, []}, 1000, []}
+		]},
+		{<<"text/html, image/gif, image/jpeg, *; q=.2, */*; q=.2">>, [
+			{{<<"text">>, <<"html">>, []}, 1000, []},
+			{{<<"image">>, <<"gif">>, []}, 1000, []},
+			{{<<"image">>, <<"jpeg">>, []}, 1000, []},
+			{{<<"*">>, <<"*">>, []}, 200, []},
+			{{<<"*">>, <<"*">>, []}, 200, []}
 		]}
 	],
 	[{V, fun() -> R = list(V, fun media_range/2) end} || {V, R} <- Tests].
@@ -946,6 +992,22 @@ digits_test_() ->
 		{<<"1337">>, 1337}
 	],
 	[{V, fun() -> R = digits(V) end} || {V, R} <- Tests].
+
+x_www_form_urlencoded_test_() ->
+	%% {Qs, Result}
+	Tests = [
+		{<<"">>, []},
+		{<<"a=b">>, [{<<"a">>, <<"b">>}]},
+		{<<"aaa=bbb">>, [{<<"aaa">>, <<"bbb">>}]},
+		{<<"a&b">>, [{<<"a">>, true}, {<<"b">>, true}]},
+		{<<"a=b&c&d=e">>, [{<<"a">>, <<"b">>},
+			{<<"c">>, true}, {<<"d">>, <<"e">>}]},
+		{<<"a=b=c=d=e&f=g">>, [{<<"a">>, <<"b=c=d=e">>}, {<<"f">>, <<"g">>}]},
+		{<<"a+b=c+d">>, [{<<"a b">>, <<"c d">>}]}
+	],
+	URLDecode = fun urldecode/1,
+	[{Qs, fun() -> R = x_www_form_urlencoded(
+		Qs, URLDecode) end} || {Qs, R} <- Tests].
 
 urldecode_test_() ->
 	U = fun urldecode/2,
