@@ -29,7 +29,7 @@
          ,doc :: ne_binary()
          ,attach :: ne_binary()
          ,meta :: wh_json:json_object()
-         ,contents :: ne_binary()
+         ,contents = <<>> :: binary()
          ,stream_ref :: reference()
          ,status :: 'streaming' | 'ready'
          ,reqs :: [{pid(), reference()},...] | []
@@ -46,8 +46,9 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
-start_link(Db, Doc, Attach, Meta) ->
-    gen_server:start_link(?MODULE, [Db, Doc, Attach, Meta], []).
+-spec start_link/4 :: (ne_binary(), ne_binary(), ne_binary(), wh_json:json_object()) -> {'ok', pid()}.
+start_link(Id, Doc, Attach, Meta) ->
+    gen_server:start_link(?MODULE, [Id, Doc, Attach, Meta], []).
 
 single(Srv) ->
     gen_server:call(Srv, single).
@@ -70,8 +71,13 @@ continuous(Srv) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init([Db, Doc, Attach, Meta]) ->
+init([Id, Doc, Attach, Meta]) ->
+    put(callid, ?LOG_SYSTEM_ID),
+    Db = wh_util:format_account_id(Id, encoded),
+
+    lager:debug("streaming ~s/~s/~s", [Db, Doc, Attach]),
     {ok, Ref} = couch_mgr:stream_attachment(Db, Doc, Attach),
+
     {ok
      ,#state{
        db=Db
@@ -101,10 +107,11 @@ init([Db, Doc, Attach, Meta]) ->
 %%--------------------------------------------------------------------
 handle_call(single, _From, #state{meta=Meta, contents=Contents, status=ready}=State) ->
     %% doesn't currently check whether we're still streaming in from the DB
+    lager:debug("returning media contents"),
     {reply, {Meta, Contents}, State, ?TIMEOUT_LIFETIME};
 handle_call(single, From, #state{reqs=Reqs, status=streaming}=State) ->
-    lager:debug("file not ready for ~p", [From]),
-    {noreply, State#state{reqs=[From, Reqs]}};
+    lager:debug("file not ready for ~p, queueing", [From]),
+    {noreply, State#state{reqs=[From | Reqs]}};
 handle_call(continuous, _From, #state{}=State) ->
     {reply, ok, State, ?TIMEOUT_LIFETIME}.
 
@@ -143,9 +150,9 @@ handle_info({Ref, done}, #state{stream_ref=Ref, reqs=Reqs, contents=Contents, me
 handle_info({Ref, {ok, Bin}}, #state{stream_ref=Ref, contents=Contents}=State) ->
     lager:debug("recv ~b bytes", [byte_size(Bin)]),
     {noreply, State#state{contents = <<Contents/binary, Bin/binary>>}};
-handle_info({Ref, {error, _E}}, #state{stream_ref=Ref}=State) ->
-    lager:debug("recv stream error: ~p", [_E]),
-    {noreply, State, hibernate};
+handle_info({Ref, {error, E}}, #state{stream_ref=Ref}=State) ->
+    lager:debug("recv stream error: ~p", [E]),
+    {stop, normal, State};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {noreply, State, hibernate}.

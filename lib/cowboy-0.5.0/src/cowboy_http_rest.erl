@@ -41,12 +41,12 @@
 	charset_a :: undefined | binary(),
 
 	%% Cached resource calls.
-	etag :: undefined | no_call | binary(),
+	etag :: undefined | no_call | {strong | weak, binary()},
 	last_modified :: undefined | no_call | calendar:datetime(),
 	expires :: undefined | no_call | calendar:datetime()
 }).
 
--include("include/http.hrl").
+-include("http.hrl").
 
 %% @doc Upgrade a HTTP request to the REST protocol.
 %%
@@ -487,14 +487,10 @@ if_match_exists(Req, State) ->
 
 if_match(Req, State, EtagsList) ->
 	{Etag, Req2, State2} = generate_etag(Req, State),
-	case Etag of
-		no_call ->
-			precondition_failed(Req2, State2);
-		Etag ->
-			case lists:member(Etag, EtagsList) of
-				true -> if_unmodified_since_exists(Req2, State2);
-				false -> precondition_failed(Req2, State2)
-			end
+	case lists:member(Etag, EtagsList) of
+		true -> if_unmodified_since_exists(Req2, State2);
+		%% Etag may be `undefined' which cannot be a member.
+		false -> precondition_failed(Req2, State2)
 	end.
 
 if_match_musnt_exist(Req, State) ->
@@ -534,7 +530,7 @@ if_none_match_exists(Req, State) ->
 if_none_match(Req, State, EtagsList) ->
 	{Etag, Req2, State2} = generate_etag(Req, State),
 	case Etag of
-		no_call ->
+		undefined ->
 			precondition_failed(Req2, State2);
 		Etag ->
 			case lists:member(Etag, EtagsList) of
@@ -699,7 +695,7 @@ process_post(Req, State) ->
 			terminate(Req2, State#state{handler_state=HandlerState});
 		{true, Req2, HandlerState} ->
 			State2 = State#state{handler_state=HandlerState},
-			next(Req2, State2, 201);
+			next(Req2, State2, fun is_new_resource/2);
 		{false, Req2, HandlerState} ->
 			State2 = State#state{handler_state=HandlerState},
 			respond(Req2, State2, 500)
@@ -733,10 +729,14 @@ put_resource(Req, State, OnTrue) ->
 			choose_content_type(Req3, State2, OnTrue, ContentType, CTA)
 	end.
 
+%% The special content type '*' will always match. It can be used as a
+%% catch-all content type for accepting any kind of request content.
+%% Note that because it will always match, it should be the last of the
+%% list of content types, otherwise it'll shadow the ones following.
 choose_content_type(Req, State, _OnTrue, _ContentType, []) ->
 	respond(Req, State, 415);
-choose_content_type(Req, State, OnTrue, ContentType,
-		[{Accepted, Fun}|_Tail]) when ContentType =:= Accepted ->
+choose_content_type(Req, State, OnTrue, ContentType, [{Accepted, Fun}|_Tail])
+		when Accepted =:= '*' orelse Accepted =:= ContentType ->
 	case call(Req, State, Fun) of
 		{halt, Req2, HandlerState} ->
 			terminate(Req2, State#state{handler_state=HandlerState});
@@ -810,9 +810,13 @@ set_resp_etag(Req, State) ->
 			{Req2, State2};
 		Etag ->
 			{ok, Req3} = cowboy_http_req:set_resp_header(
-				<<"Etag">>, Etag, Req2),
+				<<"ETag">>, encode_etag(Etag), Req2),
 			{Req3, State2}
 	end.
+
+-spec encode_etag({strong | weak, binary()}) -> iolist().
+encode_etag({strong, Etag}) -> [$",Etag,$"];
+encode_etag({weak, Etag}) -> ["W/\"",Etag,$"].
 
 set_resp_expires(Req, State) ->
 	{Expires, Req2, State2} = expires(Req, State),
@@ -834,6 +838,15 @@ generate_etag(Req, State=#state{etag=undefined}) ->
 	case call(Req, State, generate_etag) of
 		no_call ->
 			{undefined, Req, State#state{etag=no_call}};
+		%% Previously the return value from the generate_etag/2 callback was set
+		%% as the value of the ETag header in the response. Therefore the only
+		%% valid return type was `binary()'. If a handler returns a `binary()'
+		%% it must be mapped to the expected type or it'll always fail to
+		%% compare equal to any entity tags present in the request headers.
+		%% @todo Remove support for binary return values after 0.6.
+		{Etag, Req2, HandlerState} when is_binary(Etag) ->
+			[Etag2] = cowboy_http:entity_tag_match(Etag),
+			{Etag2, Req2, State#state{handler_state=HandlerState, etag=Etag2}};
 		{Etag, Req2, HandlerState} ->
 			{Etag, Req2, State#state{handler_state=HandlerState, etag=Etag}}
 	end;
