@@ -29,7 +29,7 @@
          ,doc :: ne_binary()
          ,attach :: ne_binary()
          ,meta :: wh_json:json_object()
-         ,contents :: ne_binary()
+         ,contents = <<>> :: binary()
          ,stream_ref :: reference()
          ,status :: 'streaming' | 'ready'
          ,reqs :: [{pid(), reference()},...] | []
@@ -46,6 +46,7 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
+-spec start_link/4 :: (ne_binary(), ne_binary(), ne_binary(), wh_json:json_object()) -> {'ok', pid()}.
 start_link(Id, Doc, Attach, Meta) ->
     gen_server:start_link(?MODULE, [Id, Doc, Attach, Meta], []).
 
@@ -76,6 +77,7 @@ init([Id, Doc, Attach, Meta]) ->
 
     lager:debug("streaming ~s/~s/~s", [Db, Doc, Attach]),
     {ok, Ref} = couch_mgr:stream_attachment(Db, Doc, Attach),
+
     {ok
      ,#state{
        db=Db
