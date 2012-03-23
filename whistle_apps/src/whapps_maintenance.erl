@@ -41,17 +41,21 @@ migrate() ->
     XbarUpdates = [fun(L) -> lists:delete(<<"cb_cdr">>, L) end
                    ,fun(L) -> lists:delete(<<"cb_signups">>, L) end
                    ,fun(L) -> lists:delete(<<"cb_resources">>, L) end
+		   ,fun(L) -> lists:delete(<<"cb_provisioner_templates">>, L) end
                    ,fun(L) -> [<<"cb_phone_numbers">> | lists:delete(<<"cb_phone_numbers">>, L)] end
                    ,fun(L) -> [<<"cb_templates">> | lists:delete(<<"cb_templates">>, L)] end
                    ,fun(L) -> [<<"cb_onboard">> | lists:delete(<<"cb_onboard">>, L)] end
                    ,fun(L) -> [<<"cb_connectivity">> | lists:delete(<<"cb_ts_accounts">>, L)] end
-                   ,fun(L) -> [<<"cb_provisioner_templates">> | lists:delete(<<"cb_provisioner_templates">>, L)] end
+                   ,fun(L) -> [<<"cb_local_provisioner_templates">> | lists:delete(<<"cb_local_provisioner_templates">>, L)] end
+		   ,fun(L) -> [<<"cb_global_provisioner_templates">> | lists:delete(<<"cb_global_provisioner_templates">>, L)] end
+		   ,fun(L) -> [<<"cb_queues">> | lists:delete(<<"cb_queues">>, L)] end
                   ],
     StartModules = whapps_config:get(<<"crossbar">>, <<"autoload_modules">>, []),
     whapps_config:set_default(<<"crossbar">>
                                   ,<<"autoload_modules">>
                                   ,lists:foldr(fun(F, L) -> F(L) end, StartModules, XbarUpdates)),
     WhappsUpdates = [fun(L) -> [<<"sysconf">> | lists:delete(<<"sysconf">>, L)] end
+		    ,fun(L) -> [<<"acdc">> | lists:delete(<<"acdc">>, L)] end
                     ],
     StartWhapps = whapps_config:get(<<"whapps_controller">>, <<"whapps">>, []),
     whapps_config:set_default(<<"whapps_controller">>
@@ -60,6 +64,7 @@ migrate() ->
     whapps_controller:restart_app(crossbar),
     whapps_controller:restart_app(sysconf),
     whapps_controller:restart_app(notify),
+    whapps_controller:restart_app(acdc),
     ok.
 
 %%--------------------------------------------------------------------
