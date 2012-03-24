@@ -51,8 +51,8 @@ update_agent(Call, Retries, Action) ->
                 {ok, AgentId} ->
                     lager:debug("found agent ~s, updating", [AgentId]),
                     update_agent_status(Call, AgentId, Action);
-                {error, _} ->
-                    lager:debug("failed to find agent by pin: ~s", [Pin]),
+                {error, _E} ->
+                    lager:debug("failed to find agent by pin: ~s: ~p", [Pin, _E]),
                     whapps_call_command:b_play(?PROMPT_INVALID_PIN, Call),
                     update_agent(Call, Retries-1, Action)
             end;
@@ -93,8 +93,8 @@ toggle_agent(Call, Retries) ->
                 {ok, AgentId} ->
                     lager:debug("found agent ~s, toggling", [AgentId]),
                     toggle_agent_status(Call, AgentId);
-                {error, _} ->
-                    lager:debug("failed to find agent by pin: ~s", [Pin]),
+                {error, _E} ->
+                    lager:debug("failed to find agent by pin: ~s: ~p", [Pin, _E]),
                     whapps_call_command:b_play(?PROMPT_INVALID_PIN, Call),
                     toggle_agent(Call, Retries-1)
             end;
@@ -148,14 +148,17 @@ collect(Call, DTMFs) ->
     end.
 
 find_agent_by_pin(Call, Pin) ->
+    OwnerId = whapps_call:kvs_fetch(owner_id, Call),
     case couch_mgr:get_results(whapps_call:account_db(Call), <<"agents/agent_pins">>, [{<<"key">>, wh_util:to_integer(Pin)}]) of
         {ok, []} ->
+            lager:debug("no agents found with pin: ~s", [Pin]),
             {error, no_agents_found};
-        {ok, [AgentJObj]} ->
-            {ok, wh_json:get_value(<<"id">>, AgentJObj)};
-        {ok, _Agents} ->
-            lager:debug("more than one agent with pin ~s", [Pin]),
-            {error, duplicate_pins_found};
+        {ok, Agents} ->
+            lager:debug("agents found with pin ~s, searching for ~s", [Pin, OwnerId]),
+            case [Agent || Agent <- Agents, OwnerId =:= wh_json:get_value(<<"id">>, Agent)] of
+              [] -> {error, no_agents_matching};
+              [A] -> {ok, A}
+            end;
         {error, _E}=E ->
             lager:debug("error looking up pins: ~p", [_E]),
             E
