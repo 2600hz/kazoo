@@ -149,7 +149,7 @@ collect(Call, DTMFs) ->
 
 find_agent_by_pin(Call, Pin) ->
     OwnerId = whapps_call:kvs_fetch(owner_id, Call),
-    case couch_mgr:get_results(whapps_call:account_db(Call), <<"agents/agent_pins">>, [{<<"key">>, wh_util:to_integer(Pin)}]) of
+    case couch_mgr:get_results(whapps_call:account_db(Call), <<"agents/agent_pins">>, [{<<"key">>, Pin}]) of
         {ok, []} ->
             lager:debug("no agents found with pin: ~s", [Pin]),
             {error, no_agents_found};
