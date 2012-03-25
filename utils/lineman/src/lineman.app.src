@@ -1,0 +1,11 @@
+{application, lineman,
+ [{description, "A integration test tool for the 2600hz platform"},
+  {vsn, "1"},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib
+                 ]},
+  {mod, { lineman_app, []}},
+  {env, []}
+ ]}.
