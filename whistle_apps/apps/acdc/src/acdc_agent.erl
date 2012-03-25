@@ -120,8 +120,7 @@ handle_call({maybe_handle_call, Call, AcctDb, QueueId, Timeout}, From, #state{
                                                                   }=State) ->
     case AcctDb =:= DB andalso lists:keyfind(QueueId, 1, Qs) of
         false ->
-            lager:debug("db ~s doesn't match ~s", [AcctDb, DB]),
-            lager:debug("or agent isn't in queue ~s", [QueueId]),
+            lager:debug("agent unable to process this queue caller"),
             {reply, false, State};
         {_, Q} ->
             %% TODO: no guarantee Agent is still available or will answer the call;
@@ -165,16 +164,26 @@ handle_call({maybe_handle_call, Call, AcctDb, QueueId, Timeout}, From, #state{
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({connect_call, Q}, #state{call=Call, endpoints=EPs}=State) ->
-    lager:debug("trying to connect call"),
-    call_bridging(Call, acdc_util:get_endpoints(Call, EPs), Q),
-    {noreply, State};
+handle_cast({connect_call, Q}, #state{call=Call, endpoints=EPs, from=From}=State) ->
+    case call_bridging(Call, acdc_util:get_endpoints(Call, EPs), Q) of
+        {error, no_endpoints} ->
+            lager:debug("no endpoints, can't handle"),
+            gen_server:reply(From, false),
+            {noreply, clear_call(State)};
+        _ ->
+            lager:debug("call attempted"),
+            {noreply, State}
+    end;
 handle_cast({update, {AcctDb, AgentId, Info}}, State) ->
     lager:debug("updating agent ~s", [AgentId]),
+
+    EPs = acdc_util:fetch_owned_by(AgentId, device, AcctDb),
+    lager:debug("agent has endpoints: ~p", [EPs]),
+
     {noreply, State#state{
                 acct_db=AcctDb
                 ,agent_id=AgentId
-                ,endpoints = acdc_util:fetch_owned_by(AgentId, device, AcctDb)
+                ,endpoints=EPs
                 ,queues=[begin
                              {ok, Q} = couch_mgr:open_doc(AcctDb, QID),
                              {QID, Q}
@@ -324,6 +333,7 @@ call_binding(Call) ->
 call_unbinding(Call) ->
     gen_listener:rm_binding(self(), call, [{callid, whapps_call:call_id(Call)}, {restrict_to, [events, cdr]}]).
 
+call_bridging(_, [], _) -> {error, no_endpoints};
 call_bridging(Call, EPs, MemberTimeout) ->
     EPs1 = [wh_json:set_value(<<"Endpoint-Timeout">>, wh_util:to_binary(MemberTimeout), EP) || EP <- EPs],
     whapps_call_command:bridge(EPs1, Call).
