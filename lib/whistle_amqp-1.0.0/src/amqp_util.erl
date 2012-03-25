@@ -49,7 +49,7 @@
 -export([delete_callmgr_queue/1]).
 -export([bind_q_to_callmgr/2]).
 -export([unbind_q_from_callmgr/2]).
--export([callmgr_publish/3]).
+-export([callmgr_publish/3, callmgr_publish/4]).
 
 -export([resource_exchange/0]).
 -export([new_resource_queue/0, new_resource_queue/1]).
@@ -142,9 +142,12 @@ sysconf_publish(Routing, Payload, ContentType, Opts) ->
     basic_publish(?EXCHANGE_SYSCONF, Routing, Payload, ContentType, Opts).
 
 -spec callmgr_publish/3 :: (amqp_payload(), ne_binary(), ne_binary()) -> 'ok'.
+-spec callmgr_publish/4 :: (amqp_payload(), ne_binary(), ne_binary(), proplist()) -> 'ok'.
 %% TODO: The routing key on this function should be the first argument for consistency
 callmgr_publish(Payload, ContentType, RoutingKey) ->
     basic_publish(?EXCHANGE_CALLMGR, RoutingKey, Payload, ContentType).
+callmgr_publish(Payload, ContentType, RoutingKey, Opts) ->
+    basic_publish(?EXCHANGE_CALLMGR, RoutingKey, Payload, ContentType, Opts).
 
 -spec configuration_publish/2 :: (ne_binary(), amqp_payload()) -> 'ok'.
 -spec configuration_publish/3 :: (ne_binary(), amqp_payload(), ne_binary()) -> 'ok'.
