@@ -337,7 +337,7 @@ basic_publish(Exchange, Queue, Payload, ContentType, Props) when is_binary(Paylo
       ,priority = props:get_value(priority, Props) % message priority, 0-9
       ,correlation_id = props:get_value(correlation_id, Props) % correlation identifier
       ,reply_to = props:get_value(reply_to, Props) % address to reply to
-      ,expiration = props:get_value(expiration, Props) % expires time
+      ,expiration = wh_util:to_binary(props:get_value(expiration, Props)) % expires time
       ,message_id = props:get_value(message_id, Props) % app message id
       ,timestamp = props:get_value(timestamp, Props) % message timestamp
       ,type = props:get_value(type, Props) % message type
