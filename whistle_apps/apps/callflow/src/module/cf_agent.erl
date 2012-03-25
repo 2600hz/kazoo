@@ -32,7 +32,7 @@ handle(Data, Call) ->
     Action = wh_json:get_value(<<"action">>, Data, <<"toggle">>),
 
     OwnerId = whapps_call:kvs_fetch(owner_id, Call),
-    Owner = couch_mgr:open_doc(whapps_call:account_db(Call), OwnerId),
+    {ok, Owner} = couch_mgr:open_doc(whapps_call:account_db(Call), OwnerId),
 
     lager:debug("performing ~s on agent ~s", [Action, OwnerId]),
 
