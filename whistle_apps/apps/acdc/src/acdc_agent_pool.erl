@@ -36,7 +36,7 @@ find_agent(JObj, _Prop) ->
 -spec find_agent/3 :: (whapps_call:call(), ne_binary(), ne_binary()) -> any().
 find_agent(Call, AcctDb, QueueId) ->
     {ok, Queue} = acdc_util:find_queue(AcctDb, QueueId),
-    find_agent(Call, AcctDb, QueueId, wh_json:get_integer_value(<<"connection_timeout">>, Queue, 300) * 1000).
+    find_agent(Call, AcctDb, QueueId, wh_json:get_integer_value(<<"connection_timeout">>, Queue, 300)).
 
 -spec find_agent/4 :: (whapps_call:call(), ne_binary(), ne_binary(), pos_integer()) -> any().
 find_agent(Call, AcctDb, QueueId, CallerTimeout) ->
