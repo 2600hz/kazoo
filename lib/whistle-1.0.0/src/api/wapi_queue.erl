@@ -14,7 +14,7 @@
 
 -export([bind_q/2, unbind_q/2]).
 
--export([publish_new_member/1, publish_new_member/2]).
+-export([publish_new_member/1, publish_new_member/2, publish_new_member/3]).
 
 -include("../wh_api.hrl").
 
@@ -79,11 +79,20 @@ unbind_q(Queue, Props) ->
 
 publish_new_member(JObj) ->
     publish_new_member(JObj, ?DEFAULT_CONTENT_TYPE, get_account_db(JObj), get_queue_id(JObj)).
-publish_new_member(API, ContentType) ->
-    publish_new_member(API, ContentType, get_account_db(API), get_queue_id(API)).
+publish_new_member(API, ContentType) when is_binary(ContentType) ->
+    publish_new_member(API, ContentType, get_account_db(API), get_queue_id(API));
+publish_new_member(API, ConnTimeout) when is_integer(ConnTimeout) ->
+    publish_new_member(API, ?DEFAULT_CONTENT_TYPE, get_account_db(API), get_queue_id(API), ConnTimeout).
+
+publish_new_member(API, ContentType, ConnTimeout) when is_integer(ConnTimeout) ->
+    publish_new_member(API, ContentType, get_account_db(API), get_queue_id(API), ConnTimeout).
+
 publish_new_member(API, ContentType, AcctDb, QID) ->
     {ok, Payload} = wh_api:prepare_api_payload(API, ?NEW_MEMBER_VALUES, fun ?MODULE:new_member/1),
     amqp_util:callmgr_publish(Payload, ContentType, new_member_routing(AcctDb, QID)).
+publish_new_member(API, ContentType, AcctDb, QID, ConnTimeout) ->
+    {ok, Payload} = wh_api:prepare_api_payload(API, ?NEW_MEMBER_VALUES, fun ?MODULE:new_member/1),
+    amqp_util:callmgr_publish(Payload, ContentType, new_member_routing(AcctDb, QID), [{expiration, ConnTimeout}]).
 
 new_member_routing(AcctDb, QID) ->
     list_to_binary([?NEW_MEMBER_ROUTING_KEY, ".", AcctDb, ".", QID]).
