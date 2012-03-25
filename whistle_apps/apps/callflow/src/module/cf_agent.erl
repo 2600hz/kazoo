@@ -31,35 +31,35 @@ handle(Data, Call) ->
 
     Action = wh_json:get_value(<<"action">>, Data, <<"toggle">>),
 
-    lager:debug("performing ~s on agent", [Action]),
+    OwnerId = whapps_call:kvs_fetch(owner_id, Call),
+    Owner = couch_mgr:open_doc(whapps_call:account_db(Call), OwnerId),
+
+    lager:debug("performing ~s on agent ~s", [Action, OwnerId]),
 
     case Action of
-        <<"login">> -> update_agent(Call, Retries, Action);
-        <<"logout">> -> update_agent(Call, Retries, Action);
-        <<"break">> -> update_agent(Call, Retries, Action);
-        <<"resume">> -> update_agent(Call, Retries, Action);
-        _ -> toggle_agent(Call, Retries)
+        <<"login">> -> update_agent(Call, Retries, Action, Owner);
+        <<"logout">> -> update_agent(Call, Retries, Action, Owner);
+        <<"break">> -> update_agent(Call, Retries, Action, Owner);
+        <<"resume">> -> update_agent(Call, Retries, Action, Owner);
+        _ -> toggle_agent(Call, Retries, Owner)
     end.
 
-update_agent(Call, Retries, _) when Retries =< 0 ->
+update_agent(Call, Retries, _, _) when Retries =< 0 ->
     whapps_call_command:b_play(?PROMPT_RETRIES_EXCEEDED, Call),
     cf_exe:stop(Call);
-update_agent(Call, Retries, Action) ->
+update_agent(Call, Retries, Action, Owner) ->
+    AgentPin = wh_json:get_value(<<"queue_pin">>, Owner),
     case play_and_collect(Call, ?PROMPT_PIN) of
+        {ok, AgentPin} ->
+            lager:debug("matched pin to ~s", [AgentPin]),
+            update_agent_status(Call, wh_json:get_value(<<"_id">>, Owner), Action);
         {ok, Pin} ->
-            case find_agent_by_pin(Call, Pin) of
-                {ok, AgentId} ->
-                    lager:debug("found agent ~s, updating", [AgentId]),
-                    update_agent_status(Call, AgentId, Action);
-                {error, _E} ->
-                    lager:debug("failed to find agent by pin: ~s: ~p", [Pin, _E]),
-                    whapps_call_command:b_play(?PROMPT_INVALID_PIN, Call),
-                    update_agent(Call, Retries-1, Action)
-            end;
+            lager:debug("pin ~s doesn't match ~s", [Pin, AgentPin]),
+            update_agent(Call, Retries-1, Action, Owner);
         {error, _E} ->
-            lager:debug("error collecting digits: ~p", [_E]),
+            lager:debug("error recv pin: ~p", [_E]),
             whapps_call_command:b_play(?PROMPT_INVALID_PIN, Call),
-            update_agent(Call, Retries-1, Action)
+            update_agent(Call, Retries-1, Action, Owner)
     end.
 
 update_agent_status(Call, AgentId, Action) ->
@@ -83,25 +83,23 @@ update_agent_status(Call, AgentId, Action) ->
             cf_exe:stop(Call)
     end.
 
-toggle_agent(Call, Retries) when Retries =< 0 ->
+toggle_agent(Call, Retries, _) when Retries =< 0 ->
     whapps_call_command:b_play(?PROMPT_RETRIES_EXCEEDED, Call),
     cf_exe:stop(Call);
-toggle_agent(Call, Retries) ->
+toggle_agent(Call, Retries, Owner) ->
+    AgentPin = wh_json:get_value(<<"queue_pin">>, Owner),
     case play_and_collect(Call, ?PROMPT_PIN) of
+        {ok, AgentPin} ->
+            lager:debug("found agent, toggling"),
+            toggle_agent_status(Call, wh_json:get_value(<<"_id">>, Owner));
         {ok, Pin} ->
-            case find_agent_by_pin(Call, Pin) of
-                {ok, AgentId} ->
-                    lager:debug("found agent ~s, toggling", [AgentId]),
-                    toggle_agent_status(Call, AgentId);
-                {error, _E} ->
-                    lager:debug("failed to find agent by pin: ~s: ~p", [Pin, _E]),
-                    whapps_call_command:b_play(?PROMPT_INVALID_PIN, Call),
-                    toggle_agent(Call, Retries-1)
-            end;
+            lager:debug("pin ~s doesn't match ~s", [Pin, AgentPin]),
+            whapps_call_command:b_play(?PROMPT_INVALID_PIN, Call),
+            toggle_agent(Call, Retries-1, Owner);
         {error, _E} ->
             lager:debug("error collecting digits: ~p", [_E]),
             whapps_call_command:b_play(?PROMPT_INVALID_PIN, Call),
-            toggle_agent(Call, Retries-1)
+            toggle_agent(Call, Retries-1, Owner)
     end.
 
 toggle_agent_status(Call, AgentId) ->
@@ -145,23 +143,6 @@ collect(Call, DTMFs) ->
         {ok, DTMF} ->
             lager:debug("another dtmf: ~s", [DTMF]),
             collect(Call, <<DTMFs/binary, DTMF/binary>>)
-    end.
-
-find_agent_by_pin(Call, Pin) ->
-    OwnerId = whapps_call:kvs_fetch(owner_id, Call),
-    case couch_mgr:get_results(whapps_call:account_db(Call), <<"agents/agent_pins">>, [{<<"key">>, Pin}]) of
-        {ok, []} ->
-            lager:debug("no agents found with pin: ~s", [Pin]),
-            {error, no_agents_found};
-        {ok, Agents} ->
-            lager:debug("agents found with pin ~s, searching for ~s", [Pin, OwnerId]),
-            case [Agent || Agent <- Agents, OwnerId =:= wh_json:get_value(<<"id">>, Agent)] of
-              [] -> {error, no_agents_matching};
-              [A] -> {ok, A}
-            end;
-        {error, _E}=E ->
-            lager:debug("error looking up pins: ~p", [_E]),
-            E
     end.
 
 current_status(Call, AgentId) ->

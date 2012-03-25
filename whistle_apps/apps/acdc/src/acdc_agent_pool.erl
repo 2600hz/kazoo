@@ -8,13 +8,17 @@
 %%%-------------------------------------------------------------------
 -module(acdc_agent_pool).
 
--export([init/0, find_agent/2]).
+-export([init/0, find_agent/2, update_agent/2]).
 
 -include("acdc.hrl").
 
 init() ->
     lager:debug("finding all agents and starting workers"),
     [add_agents(AcctDb) || AcctDb <- whapps_util:get_all_accounts()].
+
+update_agent(JObj, _Prop) ->
+    wh_util:put_callid(JObj),
+    lager:debug("recv agent update for: ~p", [wh_json:get_value(<<"doc">>, JObj)]).
 
 -spec find_agent/2 :: (wh_json:json_object(), wh_proplist()) -> any().
 find_agent(JObj, _Prop) ->

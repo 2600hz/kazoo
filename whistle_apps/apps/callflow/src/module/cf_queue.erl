@@ -25,21 +25,21 @@ handle(Data, Call) ->
     ExitKey = wh_json:get_value(<<"caller_exit_key">>, Queue, <<"#">>),
     ConnTimeout = wh_json:get_integer_value(<<"connection_timeout">>, Queue, 30),
 
-    publish_queue_join(Queue, Call),
+    publish_queue_join(Queue, Call, ConnTimeout),
     whapps_call_command:hold(Call),
 
     log_queue_activity(Call, <<"enter">>, QID),
 
     wait_for_conn_or_exit(Call, ExitKey, ConnTimeout*1000, QID).
 
-publish_queue_join(Queue, Call) ->
+publish_queue_join(Queue, Call, ConnTimeout) ->
     JObj = wh_json:from_list([{<<"Queue">>, Queue}
                               ,{<<"Queue-ID">>, wh_json:get_value(<<"_id">>, Queue)}
                               ,{<<"Call">>, whapps_call:to_json(Call)}
                               ,{<<"Call-ID">>, whapps_call:call_id(Call)}
                               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                              ]),
-    wapi_queue:publish_new_member(JObj).
+    wapi_queue:publish_new_member(JObj, ConnTimeout).
 
 wait_for_conn_or_exit(Call, ExitKey, ConnTimeout, QID) ->
     Start = erlang:now(),

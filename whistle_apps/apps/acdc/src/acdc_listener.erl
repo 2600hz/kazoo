@@ -23,10 +23,14 @@
 -include_lib("amqp_client/include/amqp_client.hrl").
 
 %% By convention, we put the options here in macros, but not required.
--define(BINDINGS, [{queue, []}]).
+-define(BINDINGS, [{queue, []}
+                   ,{conf, [{doc_type, <<"user">>}]} % bind to user-related DB events
+                  ]).
 -define(RESPONDERS, [
                      %% New caller in the call queue
                      {{acdc_agent_pool, find_agent}, [{<<"queue">>, <<"new_member">>}]}
+                     %% User doc updated
+                     ,{{acdc_agent_pool, update_agent}, [{<<"configuration">>, <<"*">>}]}
                     ]).
 -define(QUEUE_NAME, wapi_queue:listener_queue_name()).
 -define(QUEUE_OPTIONS, []).
