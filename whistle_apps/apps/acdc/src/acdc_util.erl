@@ -31,7 +31,7 @@ log_agent_activity(Db, Action, AgentId) when is_binary(Db) ->
                              ,{<<"pvt_type">>, <<"agent_activity">>}
                              ,{<<"pvt_created">>, wh_util:current_tstamp()}
                             ]),
-    {ok, _} = couch_mgr:save_doc(Db, Doc);
+    couch_mgr:save_doc(Db, Doc);
 log_agent_activity(Call, Action, AgentId) ->
     lager:debug("setting action for agent ~s to ~s", [AgentId, Action]),
     Doc = wh_json:from_list([{<<"call_id">>, whapps_call:call_id(Call)}
@@ -40,7 +40,7 @@ log_agent_activity(Call, Action, AgentId) ->
                              ,{<<"pvt_type">>, <<"agent_activity">>}
                              ,{<<"pvt_created">>, wh_util:current_tstamp()}
                             ]),
-    {ok, _} = couch_mgr:save_doc(whapps_call:account_db(Call), Doc).
+    couch_mgr:save_doc(whapps_call:account_db(Call), Doc).
 
 get_agent_status(AcctDb, AgentId) ->
     case couch_mgr:get_results(AcctDb, <<"agents/agent_status">>, [{<<"startkey">>, [AgentId, wh_json:new()]}

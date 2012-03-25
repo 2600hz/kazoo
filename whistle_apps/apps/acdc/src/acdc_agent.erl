@@ -11,7 +11,7 @@
 -behaviour(gen_listener).
 
 %% API
--export([start_link/1, handle_call_event/2, update_agent/2
+-export([start_link/4, handle_call_event/2
          ,maybe_handle_call/5
         ]).
 
@@ -45,13 +45,13 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
-start_link(_) ->
+start_link(_PoolArgs, AcctDb, AgentId, AgentInfo) ->
     gen_listener:start_link(?MODULE, [{bindings, [{self, []}]}
                                       ,{responders, [{{?MODULE, handle_call_event}, {<<"*">>, <<"*">>}}]}
                                       ,{queue_name, <<>>}
                                       ,{queue_options, []}
                                       ,{consume_options, []}
-                                     ], []).
+                                     ], [AcctDb, AgentId, AgentInfo]).
 
 handle_call_event(JObj, Props) ->
     Accept = props:get_value(accept_call_events, Props),
@@ -66,9 +66,6 @@ handle_call_event(JObj, Props) ->
         _Type ->
             ok
     end.
-
-update_agent(Srv, IDandInfo) ->
-    gen_listener:cast(Srv, {update, IDandInfo}).
 
 maybe_handle_call(Srv, Call, AcctDb, QueueId, Timeout) ->
     gen_listener:call(Srv, {maybe_handle_call, Call, AcctDb, QueueId, Timeout}, Timeout+?FUDGE).
@@ -88,13 +85,27 @@ maybe_handle_call(Srv, Call, AcctDb, QueueId, Timeout) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init(_) ->
+init([AcctDb, AgentId, Info]) ->
+    erlang:process_flag(trap_exit, true),
     put(callid, ?LOG_SYSTEM_ID),
-    lager:debug("acdc_agent starting"),
+
+    lager:debug("acdc_agent starting: ~s", [AgentId]),
 
     _ = erlang:send_after(?TIMEOUT_CALL_STATUS, self(), call_status),
 
-    {ok, #state{}}.
+    EPs = acdc_util:fetch_owned_by(AgentId, device, AcctDb),
+    lager:debug("agent has endpoints: ~p", [EPs]),
+
+    {ok, #state{
+       acct_db=AcctDb
+       ,agent_id=AgentId
+       ,endpoints=EPs
+       ,queues=[begin
+                    {ok, Q} = couch_mgr:open_doc(AcctDb, QID),
+                    {QID, Q}
+                end || QID <- wh_json:get_value(<<"queues">>, Info, [])
+               ]
+      }}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -112,6 +123,9 @@ init(_) ->
 %%--------------------------------------------------------------------
 handle_call({maybe_handle_call, _, _, _, _}, _From, #state{from={_,_}}=State) ->
     lager:debug("agent already processing a call"),
+    {reply, false, State};
+handle_call({maybe_handle_call, _, _, _, _}, _From, #state{acct_db=undefined}=State) ->
+    lager:debug("agent proc not setup with an agent id"),
     {reply, false, State};
 handle_call({maybe_handle_call, Call, AcctDb, QueueId, Timeout}, From, #state{
                                                                    acct_db=DB
@@ -165,7 +179,7 @@ handle_call({maybe_handle_call, Call, AcctDb, QueueId, Timeout}, From, #state{
 %% @end
 %%--------------------------------------------------------------------
 handle_cast({connect_call, Q}, #state{call=Call, endpoints=EPs, from=From}=State) ->
-    case call_bridging(Call, acdc_util:get_endpoints(Call, EPs), Q) of
+    case call_bridging(Call, acdc_util:get_endpoints(Call, EPs), wh_json:get_value(<<"member_timeout">>, Q, <<"5">>)) of
         {error, no_endpoints} ->
             lager:debug("no endpoints, can't handle"),
             gen_server:reply(From, false),
@@ -174,22 +188,6 @@ handle_cast({connect_call, Q}, #state{call=Call, endpoints=EPs, from=From}=State
             lager:debug("call attempted"),
             {noreply, State}
     end;
-handle_cast({update, {AcctDb, AgentId, Info}}, State) ->
-    lager:debug("updating agent ~s", [AgentId]),
-
-    EPs = acdc_util:fetch_owned_by(AgentId, device, AcctDb),
-    lager:debug("agent has endpoints: ~p", [EPs]),
-
-    {noreply, State#state{
-                acct_db=AcctDb
-                ,agent_id=AgentId
-                ,endpoints=EPs
-                ,queues=[begin
-                             {ok, Q} = couch_mgr:open_doc(AcctDb, QID),
-                             {QID, Q}
-                         end || QID <- wh_json:get_value(<<"queues">>, Info, [])
-                        ]
-               }};
 
 handle_cast({call_event, {<<"call_event">>, <<"LEG_CREATED">>}, JObj}, State) ->
     lager:debug("b-leg created (~s), hope we answer!", [wh_json:get_value(<<"Other-Leg-Unique-ID">>, JObj)]),
