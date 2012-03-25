@@ -10,19 +10,19 @@
 
 -export([get_endpoints/2, log_agent_activity/3
          ,get_agents/2, get_agent_status/2
-         ,find_queue/2
+         ,find_queue/2, fetch_owned_by/3
         ]).
 
 -include("acdc.hrl").
 
 %% TODO - remove need for callflows to be present in VM
-get_endpoints(Call, UserId) ->
+get_endpoints(Call, EPs) ->
     lists:foldr(fun(EndpointId, Acc) ->
                         case cf_endpoint:build(EndpointId, Call) of
                             {ok, Endpoint} -> Endpoint ++ Acc;
                             {error, _E} -> Acc
                         end
-                end, [], cf_attributes:fetch_owned_by(UserId, device, Call)).
+                end, [], EPs).
 
 log_agent_activity(Db, Action, AgentId) when is_binary(Db) ->
     lager:debug("setting action for agent ~s to ~s", [AgentId, Action]),
@@ -87,3 +87,53 @@ find_queue(AcctDb, QueueId, Cache) ->
 
 queue_cache_key(AcctDb, QueueId) ->
     {?MODULE, AcctDb, QueueId}.
+
+%%-----------------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%-----------------------------------------------------------------------------
+-spec owned_by/2 :: ('undefined' | ne_binary(), ne_binary()) -> list().
+-spec owned_by/3 :: ('undefined' | ne_binary(), atom() | string() | ne_binary(), ne_binary()) -> list().
+
+-spec fetch_owned_by/3 :: ('undefined' | ne_binary(), atom() | string() | ne_binary(), ne_binary()) -> list().
+
+owned_by(undefined, _) ->
+    [];
+owned_by(OwnerId, AcctDb) ->
+    Attributes = fetch_attributes(owned, AcctDb),
+    [V || {[I, _], V} <- Attributes, I =:= OwnerId].
+
+owned_by(undefined, _, _) ->
+    [];
+owned_by(OwnerId, false, AcctDb) ->
+    owned_by(OwnerId, AcctDb);
+owned_by(OwnerId, Attribute, AcctDb) when not is_binary(Attribute) ->
+    owned_by(OwnerId, wh_util:to_binary(Attribute), AcctDb);
+owned_by(OwnerId, Attribute, AcctDb) ->
+    Attributes = fetch_attributes(owned, AcctDb),
+    [V || {[I, T], V} <- Attributes, I =:= OwnerId, T =:= Attribute].
+
+fetch_owned_by(OwnerId, Attribute, AcctDb) ->
+    owned_by(OwnerId, Attribute, AcctDb).
+
+%%-----------------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%-----------------------------------------------------------------------------
+-spec fetch_attributes/2 :: (atom(), ne_binary()) -> proplist().
+fetch_attributes(Attribute, AcctDb) ->
+    case wh_cache:peek({?MODULE, AcctDb, Attribute}) of
+        {ok, Attributes} ->
+            Attributes;
+        {error, not_found} ->
+            case couch_mgr:get_all_results(AcctDb, <<"cf_attributes/", (wh_util:to_binary(Attribute))/binary>>) of
+                {ok, JObjs} ->
+                    [{wh_json:get_value(<<"key">>, JObj), wh_json:get_value(<<"value">>, JObj)}
+                     || JObj <- JObjs];
+                {error, R} ->
+                    lager:debug("unable to fetch attribute ~s: ~p", [Attribute, R]),
+                    []
+            end
+    end.
