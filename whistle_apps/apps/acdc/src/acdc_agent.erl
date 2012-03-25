@@ -27,7 +27,7 @@
 -record(state, {
           acct_db :: ne_binary()
          ,agent_id :: ne_binary()
-         ,queues :: [ne_binary(),...]
+         ,queues :: [{ne_binary(), wh_json:json_object()},...]
          ,call :: whapps_call:call()
          ,from :: {pid(), reference()}
          ,from_timeout_ref :: reference()
@@ -117,12 +117,12 @@ handle_call({maybe_handle_call, Call, AcctDb, QueueId, Timeout}, From, #state{
                                                                    ,queues=Qs
                                                                    ,agent_id=AgentId
                                                                   }=State) ->
-    case AcctDb =:= DB andalso lists:member(QueueId, Qs) of
+    case AcctDb =:= DB andalso lists:keyfind(QueueId, 1, Qs) of
         false ->
             lager:debug("db ~s doesn't match ~s", [AcctDb, DB]),
             lager:debug("or agent isn't in queue ~s: ~p", [QueueId, Qs]),
             {reply, false, State};
-        true ->
+        {_, Q} ->
             %% TODO: no guarantee Agent is still available or will answer the call;
             %% detect that case and move to next agent
             case acdc_util:get_agent_status(AcctDb, AgentId) of
@@ -134,7 +134,7 @@ handle_call({maybe_handle_call, Call, AcctDb, QueueId, Timeout}, From, #state{
 
                     call_binding(Call),
 
-                    gen_listener:cast(self(), {connect_call}),
+                    gen_listener:cast(self(), {connect_call, Q}),
 
                     {noreply, State#state{call=Call, from=From, from_timeout_ref=Ref}};
                 <<"resume">> ->
@@ -145,7 +145,7 @@ handle_call({maybe_handle_call, Call, AcctDb, QueueId, Timeout}, From, #state{
 
                     call_binding(Call),
 
-                    gen_listener:cast(self(), {connect_call}),
+                    gen_listener:cast(self(), {connect_call, Q}),
 
                     {noreply, State#state{call=Call, from=From, from_timeout_ref=Ref}};
                 _Action ->
@@ -164,16 +164,20 @@ handle_call({maybe_handle_call, Call, AcctDb, QueueId, Timeout}, From, #state{
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({connect_call}, #state{call=Call, agent_id=AgentId}=State) ->
+handle_cast({connect_call, Q}, #state{call=Call, agent_id=AgentId}=State) ->
     lager:debug("trying to connect call"),
-    call_bridging(Call, AgentId),
+    call_bridging(Call, AgentId, Q),
     {noreply, State};
 handle_cast({update, {AcctDb, AgentId, Info}}, State) ->
     lager:debug("updating agent ~s", [AgentId]),
     {noreply, State#state{
                 acct_db=AcctDb
                 ,agent_id=AgentId
-                ,queues=wh_json:get_value(<<"queues">>, Info, [])
+                ,queues=[begin
+                             {ok, Q} = couch_mgr:open_doc(AcctDb, QID),
+                             {QID, Q}
+                         end || QID <- wh_json:get_value(<<"queues">>, Info, [])
+                        ]
                }};
 
 handle_cast({call_event, {<<"call_event">>, <<"LEG_CREATED">>}, JObj}, State) ->
@@ -318,16 +322,22 @@ call_binding(Call) ->
 call_unbinding(Call) ->
     gen_listener:rm_binding(self(), call, [{callid, whapps_call:call_id(Call)}, {restrict_to, [events, cdr]}]).
 
-call_bridging(Call, AgentId) ->
-    whapps_call_command:bridge(get_endpoints(Call, AgentId), Call).
+call_bridging(Call, AgentId, Q) ->
+    whapps_call_command:bridge(get_endpoints(Call, AgentId, Q), Call).
 
 %% TODO: move to shared place, instead of calling callflow functions directly
-get_endpoints(Call, UserId) ->
-    lager:debug("find devices owned by ~s", [UserId]),
+get_endpoints(Call, UserId, Q) ->
+    MemberTimeout = wh_json:get_integer_value(<<"member_timeout">>, Q, 5) * 1000,
+
+    lager:debug("find devices owned by ~s (timeout after ~bms)", [UserId, MemberTimeout]),
+
     lists:foldr(fun(EndpointId, Acc) ->
                         lager:debug("ep id: ~s", [EndpointId]),
                         case cf_endpoint:build(EndpointId, Call) of
-                            {ok, Endpoint} -> Endpoint ++ Acc;
+                            {ok, Endpoints} ->
+                                lists:foldl(fun(EP, Acc0) ->
+                                                    [wh_json:set_value(<<"Endpoint-Timeout">>, wh_util:to_binary(MemberTimeout), EP)|Acc0]
+                                            end, Acc, Endpoints);
                             {error, _E} -> lager:debug("failed to build ep: ~p", [_E]), Acc
                         end
                 end, [], cf_attributes:fetch_owned_by(UserId, device, Call)).
