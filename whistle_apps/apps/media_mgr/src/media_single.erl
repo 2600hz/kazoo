@@ -81,10 +81,8 @@ send_chunks(Transport, Socket, ChunkSize, Bin, Header, ToPad) ->
 
 %% When we know we have the whole chunk, just send it + header
 write_chunk(Transport, Socket, Bin, undefined) ->
-    lager:debug("writing ~b bytes", [byte_size(Bin)]),
     Transport:send(Socket, Bin);
 write_chunk(Transport, Socket, Bin, Header) ->
-    lager:debug("writing ~b bytes", [byte_size(Bin)+byte_size(the_header(Header))]),
     Transport:send(Socket, [Bin, the_header(Header)]).
 
 %% when we have less than the chunk size to send, possibly pad it
@@ -94,13 +92,10 @@ write_data(Transport, Socket, ChunkSize, Bin, Header, true) ->
 
     Padding = binary:copy(<<0>>, ChunkSize-Size-byte_size(H)),
 
-    lager:debug("writing ~b bytes", [Size+byte_size(H)+byte_size(Padding)]),
     Transport:send(Socket, [Bin, H, Padding]);
 write_data(Transport, Socket, _, Bin, undefined, _) ->
-    lager:debug("writing ~b byptes", [byte_size(Bin)]),
     Transport:send(Socket, Bin);
 write_data(Transport, Socket, _, Bin, Header, false) ->
-    lager:debug("writing ~b bytes", [byte_size(Bin)+byte_size(the_header(Header))]),
     Transport:send(Socket, [Bin, the_header(Header)]).
 
 bump(undefined) -> undefined;
