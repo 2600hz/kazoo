@@ -14,6 +14,7 @@
 -export([pickup/2, b_pickup/2]).
 -export([redirect/3]).
 -export([answer/1, hangup/1, set/3, fetch/1, fetch/2]).
+-export([ring/1]).
 -export([call_status/1, call_status/2, channel_status/1, channel_status/2]).
 -export([bridge/2, bridge/3, bridge/4, bridge/5, bridge/6]).
 -export([hold/1, b_hold/1, b_hold/2]).
@@ -37,6 +38,7 @@
 -export([flush/1, flush_dtmf/1]).
 
 -export([b_answer/1, b_hangup/1, b_fetch/1, b_fetch/2]).
+-export([b_ring/1]).
 -export([b_call_status/1, b_call_status/2, b_channel_status/1, b_channel_status/2]).
 -export([b_bridge/2, b_bridge/3, b_bridge/4, b_bridge/5, b_bridge/6]).
 -export([b_play/2, b_play/3]).
@@ -262,6 +264,23 @@ b_fetch(FromOtherLeg, Call) ->
         {error, _}=E ->
             E
     end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Produces the low level wh_api request to ring the channel
+%% @end
+%%--------------------------------------------------------------------
+-spec ring/1 :: (whapps_call:call()) -> 'ok'.
+-spec b_ring/1 :: (whapps_call:call()) -> whapps_api_error() | {'ok', wh_json:json_object()}.
+
+ring(Call) ->
+    Command = [{<<"Application-Name">>, <<"ring">>}],
+    send_command(Command, Call).
+
+b_ring(Call) ->
+    ring(Call),
+    wait_for_message(<<"ring">>).
 
 %%--------------------------------------------------------------------
 %% @public

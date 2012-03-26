@@ -155,6 +155,16 @@
                            ]).
 -define(PROGRESS_REQ_TYPES, []).
 
+%% Ring
+-define(RING_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>]).
+-define(OPTIONAL_RING_REQ_HEADERS, [<<"Insert-At">>, <<"Ringback">>]).
+-define(RING_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
+                            ,{<<"Event-Name">>, <<"command">>}
+                            ,{<<"Application-Name">>, <<"ring">>}
+                            ,?INSERT_AT_TUPLE
+                           ]).
+-define(RING_REQ_TYPES, []).
+
 %% Hangup
 -define(HANGUP_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>]).
 -define(OPTIONAL_HANGUP_REQ_HEADERS, [<<"Insert-At">>]).
