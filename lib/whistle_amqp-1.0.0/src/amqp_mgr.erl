@@ -126,7 +126,7 @@ handle_call(is_available, _, #state{handler_pid=HPid}=State) ->
     case erlang:is_pid(HPid) andalso erlang:is_process_alive(HPid) of
         true -> {reply, true, State};
         false ->
-            {ok, _} = stop_amqp_host(State),
+            ok = stop_amqp_host(State),
             self() ! {reconnect, ?START_TIMEOUT},
             {reply, false, State#state{handler_pid=undefined, handler_ref=undefined}}
     end;
@@ -225,7 +225,7 @@ handle_info({'DOWN', ConnRef, process, _Pid, {shutdown, {server_initiated_close,
     lager:debug("connection to ~s (process ~p) went down, error ~p", [wh_amqp_params:host(ConnP), _Pid, Code]),
     erlang:demonitor(ConnRef, [flush]),
     _Ref = erlang:send_after(0, self(), {reconnect, ?START_TIMEOUT}),
-    {ok, _} = stop_amqp_host(State),
+    ok = stop_amqp_host(State),
     {noreply, State#state{conn_ref=undefined, handler_pid=undefined
                           ,handler_ref=undefined, use_federation = false
                          }, hibernate};
@@ -235,7 +235,7 @@ handle_info({'DOWN', ConnRef, process, _Pid, {shutdown, {internal_error, Code,_}
     lager:debug("connection to ~s (process ~p) went down, error ~p", [wh_amqp_params:host(ConnP), _Pid, Code]),
     erlang:demonitor(ConnRef, [flush]),
     _Ref = erlang:send_after(0, self(), {reconnect, ?START_TIMEOUT}),
-    {ok, _} = stop_amqp_host(State),
+    ok = stop_amqp_host(State),
     {noreply, State#state{conn_ref=undefined, handler_pid=undefined
                           ,handler_ref=undefined, use_federation = false
                          }, hibernate};
@@ -244,7 +244,7 @@ handle_info({'DOWN', ConnRef, process, _Pid, _Reason}, #state{conn_params=ConnP,
     lager:debug("connection to ~s (process ~p) went down, ~w", [wh_amqp_params:host(ConnP), _Pid, _Reason]),
     erlang:demonitor(ConnRef, [flush]),
     _Ref = erlang:send_after(0, self(), {reconnect, ?START_TIMEOUT}),
-    {ok, _} = stop_amqp_host(State),
+    ok = stop_amqp_host(State),
     {noreply, State#state{conn_ref=undefined, handler_pid=undefined, handler_ref=undefined}, hibernate};
 
 handle_info({'DOWN', Ref, process, _, normal}, #state{handler_ref=Ref}=State) ->
