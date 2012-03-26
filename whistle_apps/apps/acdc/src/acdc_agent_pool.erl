@@ -17,7 +17,7 @@
 
 init() ->
     lager:debug("finding all agents and starting workers"),
-    [add_agents(AcctDb) || AcctDb <- whapps_util:get_all_accounts()],
+    _ = [add_agents(AcctDb) || AcctDb <- whapps_util:get_all_accounts()],
     acdc_agents:reload_agents().
 
 update_agent(JObj, _Prop) ->    
@@ -61,7 +61,7 @@ add_agents(AccountDb) ->
             lager:debug("error finding agents in ~s", [AccountDb])
     end.
 
--spec start_worker/2 :: (ne_binary(), wh_json:json_object()) -> 'ok'.
+-spec start_worker/2 :: (ne_binary(), wh_json:json_object()) -> sup_startchild_ret().
 start_worker(AccountDb, Agent) ->
     AgentId = wh_json:get_value(<<"id">>, Agent),
     Queues =  wh_json:get_value([<<"value">>, <<"queues">>], Agent, []),
