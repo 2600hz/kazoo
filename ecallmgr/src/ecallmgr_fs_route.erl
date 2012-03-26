@@ -177,7 +177,7 @@ handle_info({is_node_up, Timeout}, #state{node=Node}=State) ->
 
 handle_info(shutdown, #state{node=Node, lookups=LUs}=State) ->
     lists:foreach(fun({Pid, _CallID, _StartTime}) ->
-                          case erlang:is_process_alive(Pid) of
+                           case erlang:is_process_alive(Pid) of
                               true -> Pid ! shutdown;
                               false -> ok
                           end
@@ -194,19 +194,13 @@ handle_info({diagnostics, Pid}, #state{stats=Stats, lookups=LUs}=State) ->
     {noreply, State};
 
 handle_info(timeout, #state{node=Node}=State) ->
-    Type = {bind, dialplan},
-
-    {foo, Node} ! Type,
-    receive
+    case freeswitch:bind(Node, dialplan) of
         ok ->
             lager:debug("bound to dialplan request on ~s", [Node]),
             {noreply, State};
         {error, Reason} ->
             lager:debug("failed to bind to dialplan requests on ~s, ~p", [Node, Reason]),
             {stop, Reason, State}
-    after ?FS_TIMEOUT ->
-            lager:debug("timed out binding to dialplan requests on ~s", [Node]),
-            {stop, timeout, State}
     end;
 
 handle_info(_Other, State) ->

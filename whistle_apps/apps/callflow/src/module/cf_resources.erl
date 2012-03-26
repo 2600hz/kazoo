@@ -177,7 +177,7 @@ evaluate_rules([_, Regex], DestNum) ->
 maybe_from_uri(true, CNum, Realm) ->
     from_uri(CNum, Realm);
 maybe_from_uri(false, CNum, Realm) ->
-    case wh_util:is_true(whapps_config:get_value(?APP_NAME, <<"format_from_uri">>)) of
+    case whapps_config:get_is_true(?APP_NAME, <<"format_from_uri">>) of
         true -> from_uri(CNum, Realm);
         false -> undefined
     end;

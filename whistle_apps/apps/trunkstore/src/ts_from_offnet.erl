@@ -43,10 +43,8 @@ endpoint_data(State) ->
                         _ -> <<"process">>
                     end,
 
-    Command = [
-               {<<"Application-Name">>, <<"bridge">>}
+    Command = [{<<"Application-Name">>, <<"bridge">>}
                ,{<<"Endpoints">>, [EP]}
-               ,{<<"Timeout">>, <<"26">>}
                ,{<<"Media">>, MediaHandling}
                ,{<<"Dial-Endpoint-Method">>, <<"single">>}
                ,{<<"Call-ID">>, CallID}

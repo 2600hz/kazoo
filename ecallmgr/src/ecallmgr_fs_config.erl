@@ -120,19 +120,13 @@ handle_info({_Fetch, _Section, _Something, _Key, _Value, ID, [undefined | _Data]
     {noreply, State};
 
 handle_info(timeout, #state{node=Node}=State) ->
-    Type = {bind, config},
-
-    {foo, Node} ! Type,
-    receive
+    case freeswitch:bind(Node, config) of
         ok ->
             lager:debug("bound to config request on ~s", [Node]),
             {noreply, State};
         {error, Reason} ->
             lager:debug("failed to bind to config requests on ~s, ~p", [Node, Reason]),
             {stop, Reason, State}
-    after ?FS_TIMEOUT ->
-            lager:debug("timed out binding to config requests on ~s", [Node]),
-            {stop, timeout, State}
     end;
 
 handle_info(_Info, State) ->
