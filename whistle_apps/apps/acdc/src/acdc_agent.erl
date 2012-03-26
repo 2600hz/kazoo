@@ -207,18 +207,16 @@ handle_cast({call_event, {<<"call_event">>, <<"LEG_DESTROYED">>}, JObj}, State) 
                                                 ]),
     {noreply, State};
 
-handle_cast({call_event, {<<"call_event">>, <<"CHANNEL_BRIDGE">>}, JObj}, #state{from={_,_}=From}=State) ->
+handle_cast({call_event, {<<"call_event">>, <<"CHANNEL_BRIDGE">>}, JObj}, State) ->
     lager:debug("leg (~s) was bridged! we're handling the call", [wh_json:get_value(<<"Other-Leg-Unique-ID">>, JObj)]),
-    gen_server:reply(From, true),
-    {noreply, clear_from(State)};
+    {noreply, State};
 
 handle_cast({call_event, {<<"call_event">>, <<"CHANNEL_DESTROY">>}, JObj}, #state{from={_,_}=From}=State) ->
     lager:debug("received channel destroy for caller, we're done here: ~s", [wh_json:get_value(<<"Hangup-Code">>, JObj)]),
-
-    gen_server:reply(From, false),
+    gen_server:reply(From, true),
     {noreply, clear_call(State)};
-handle_cast({call_event, {<<"call_event">>, <<"CHANNEL_DESTROY">>}, _JObj}, State) ->
-    lager:debug("received channel destroy for caller, reinstating agent as available"),
+handle_cast({call_event, {<<"call_event">>, <<"CHANNEL_DESTROY">>}, JObj}, State) ->
+    lager:debug("received channel destroy for caller, we're done here: ~s", [wh_json:get_value(<<"Hangup-Code">>, JObj)]),
     {noreply, clear_call(State)};
 
 handle_cast({call_event, {<<"error">>, <<"dialplan">>}, JObj}, #state{from={_,_}=From}=State) ->
@@ -227,10 +225,6 @@ handle_cast({call_event, {<<"error">>, <<"dialplan">>}, JObj}, #state{from={_,_}
     {noreply, clear_call(State)};
 
 handle_cast({call_event, {_Cat, _Name}, _JObj}, State) ->
-    lager:debug("unhandled call event: ~s/~s: ~s", [_Cat, _Name, wh_json:get_value(<<"Application-Name">>, _JObj)]),
-    {noreply, State};
-handle_cast(_Msg, State) ->
-    lager:debug("cast: ~p", [_Msg]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -314,14 +308,6 @@ clear_call(#state{from_timeout_ref=Ref, call=Call, acct_db=AcctDb, agent_id=Agen
     State#state{
       call = undefined
       ,from = undefined
-      ,from_timeout_ref = undefined
-     }.
-
-clear_from(#state{from_timeout_ref=Ref}=State) ->
-    catch(erlang:cancel_timer(Ref)),
-
-    State#state{
-      from = undefined
       ,from_timeout_ref = undefined
      }.
 
