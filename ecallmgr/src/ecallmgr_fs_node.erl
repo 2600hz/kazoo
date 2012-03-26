@@ -26,8 +26,8 @@
 
 -record(state, {
           node = 'undefined' :: atom()
-          ,stats = #node_stats{} :: #node_stats{}
-          ,options = [] :: proplist()
+                                ,stats = #node_stats{} :: #node_stats{}
+                                                          ,options = [] :: proplist()
          }).
 
 -define(SERVER, ?MODULE).
@@ -58,7 +58,7 @@ show_channels(Srv) ->
     case catch(gen_server:call(Srv, show_channels, ?FS_TIMEOUT)) of
         {'EXIT', _} -> [];
         Else -> Else
-    end.        
+    end.
 
 -spec hostname/1 :: (pid()) -> fs_api_ret().
 hostname(Srv) ->
@@ -90,7 +90,7 @@ uuid_dump(Srv, UUID) ->
     case catch(gen_server:call(Srv, {uuid_dump, UUID}, ?FS_TIMEOUT)) of
         {'EXIT', _} -> [];
         Else -> Else
-    end.        
+    end.
 
 -spec start_link/1 :: (atom()) -> {'ok', pid()} | {'error', term()}.
 start_link(Node) ->
@@ -130,10 +130,10 @@ handle_call({uuid_exists, UUID}, From, #state{node=Node}=State) ->
 handle_call({uuid_dump, UUID}, From, #state{node=Node}=State) ->
     spawn(fun() ->
                   case freeswitch:api(Node, uuid_dump, wh_util:to_list(UUID)) of
-                      {'ok', Result} -> 
+                      {'ok', Result} ->
                           Props = ecallmgr_util:eventstr_to_proplist(Result),
                           gen_server:reply(From, {ok, Props});
-                      Error -> 
+                      Error ->
                           lager:debug("failed to get result from uuid_dump(~s)", [UUID]),
                           gen_server:reply(From, Error)
                   end
@@ -213,7 +213,7 @@ handle_info({event, [UUID | Data]}, #state{node=Node, stats=#node_stats{created_
                     {noreply, State, hibernate};
                 <<"CS_DESTROY">> ->
                     lager:debug("received channel destroyed: ~s", [UUID]),
-                    spawn(fun() -> 
+                    spawn(fun() ->
                                   _ = ecallmgr_call_control:rm_leg(Data),
                                   ecallmgr_call_events:publish_channel_destroy(Data)
                           end),
@@ -269,30 +269,27 @@ handle_info({diagnostics, Pid}, #state{stats=Stats}=State) ->
     spawn(fun() -> diagnostics(Pid, Stats) end),
     {noreply, State};
 
-handle_info(timeout, #state{node=Node}=State) ->
-    {foo, Node} ! register_event_handler,
-    receive
+handle_info(timeout, #state{node=Node, stats=Stats}=State) ->
+    case freeswitch:register_event_handler(Node) of
         ok ->
-            lager:debug("event handler registered on node ~s", [Node]),
-            Res = run_start_cmds(Node),
-
-            case lists:filter(fun was_not_successful_cmd/1, Res) of
-                [] ->
-                    lager:debug("everything went according to plan"),
-                    {noreply, continue_startup(State), hibernate};
-                Errs ->
-                    print_api_responses(Errs),
-                    ecallmgr_fs_handler:rm_fs_node(Node),
-                    {stop, normal, State}
-            end;
+            lager:debug("event handler registered on node ~s", [Node]),            
+            run_start_cmds(Node),
+            NodeData = extract_node_data(Node),
+            Active = get_active_channels(Node),
+            ok = freeswitch:event(Node, ['CHANNEL_CREATE', 'CHANNEL_DESTROY', 'HEARTBEAT', 'CHANNEL_HANGUP_COMPLETE'
+                                         ,'PRESENCE_IN', 'PRESENCE_OUT', 'PRESENCE_PROBE'
+                                         ,'CUSTOM', 'sofia::register', 'sofia::transfer'
+                                        ]),
+            lager:debug("bound to switch events on node ~s", [Node]),
+            {noreply, State#state{stats=(Stats#node_stats{
+                                           created_channels = Active
+                                           ,fs_uptime = props:get_value(uptime, NodeData, 0)
+                                          })}, hibernate};
         {error, Reason} ->
             lager:debug("error when trying to register event handler on node ~s: ~p", [Node, Reason]),
             {stop, Reason, State};
         timeout ->
             lager:debug("timeout when trying to register event handler on node ~s", [Node]),
-            {stop, timeout, State}
-    after ?FS_TIMEOUT ->
-            lager:debug("fs timeout when trying to register event handler on node ~s", [Node]),
             {stop, timeout, State}
     end;
 
@@ -308,8 +305,7 @@ handle_info(nodedown, #state{node=Node}=State) ->
     lager:debug("nodedown received from node ~s", [Node]),
     {stop, normal, State};
 
-handle_info(_Msg, #state{node=Node}=State) ->
-    lager:debug("unhandled message from node ~s: ~p", [Node, _Msg]),
+handle_info(_Msg, State) ->
     {noreply, State}.
 
 terminate(_Reason, #state{node=Node}) ->
@@ -317,22 +313,6 @@ terminate(_Reason, #state{node=Node}) ->
 
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
-
--spec continue_startup/1 :: (#state{}) -> #state{}.
-continue_startup(#state{node=Node, stats=Stats}=State) ->
-    NodeData = extract_node_data(Node),
-    Active = get_active_channels(Node),
-
-    ok = freeswitch:event(Node, ['CHANNEL_CREATE', 'CHANNEL_DESTROY', 'HEARTBEAT', 'CHANNEL_HANGUP_COMPLETE'
-                                 ,'PRESENCE_IN', 'PRESENCE_OUT', 'PRESENCE_PROBE'
-                                 ,'CUSTOM', 'sofia::register', 'sofia::transfer'
-                                ]),
-    lager:debug("bound to switch events on node ~s", [Node]),
-
-    State#state{stats=(Stats#node_stats{
-                         created_channels = Active
-                         ,fs_uptime = props:get_value(uptime, NodeData, 0)
-                        })}.
 
 -spec originate_channel/5 :: (atom(), pid(), ne_binary(), integer(), wh_json:json_object()) -> no_return().
 originate_channel(Node, Pid, Route, AvailChan, JObj) ->
@@ -395,39 +375,79 @@ channel_request(Pid, FSHandlerPid, AvailChan, Utilized, MinReq) ->
     end.
 
 -spec extract_node_data/1 :: (atom()) -> [{'cpu',string()} |
-                                        {'sessions_max',integer()} |
-                                        {'sessions_per_thirty',integer()} |
-                                        {'sessions_since_startup',integer()} |
-                                        {'uptime',number()}
-                                        ,...].
+                                          {'sessions_max',integer()} |
+                                          {'sessions_per_thirty',integer()} |
+                                          {'sessions_since_startup',integer()} |
+                                          {'uptime',number()}
+                                          ,...].
 extract_node_data(Node) ->
-    {ok, Status} = freeswitch:api(Node, status),
-    Lines = string:tokens(wh_util:to_list(Status), [$\n]),
-    process_status(Lines).
+    Lines = case freeswitch:api(Node, status) of
+                {ok, Status} ->
+                    string:tokens(wh_util:to_list(Status), [$\n]);
+                _Else ->
+                    lager:info("failed to get initial status of node '~s': ~p", [Node, _Else]),
+                    ["", "", "", "", ""]
+            end,
+    process_status(Lines, Node).
 
--spec process_status/1 :: ([nonempty_string(),...]) -> [{'cpu',string()} |
-                                                        {'sessions_max',integer()} |
-                                                        {'sessions_per_thirty',integer()} |
-                                                        {'sessions_since_startup',integer()} |
-                                                        {'uptime',number()}
-                                                        ,...].
-process_status([Uptime, _, SessSince, Sess30, SessMax, CPU]) ->
-    process_status([Uptime, SessSince, Sess30, SessMax, CPU]);
-process_status(["UP " ++ Uptime, SessSince, Sess30, SessMax, CPU]) ->
-    {match, [[Y],[D],[Hour],[Min],[Sec],[Milli],[Micro]]} = re:run(Uptime, "([\\d]+)", [{capture, [1], list}, global]),
-    UpMicro = ?YR_TO_MICRO(Y) + ?DAY_TO_MICRO(D) + ?HR_TO_MICRO(Hour) + ?MIN_TO_MICRO(Min)
-        + ?SEC_TO_MICRO(Sec) + ?MILLI_TO_MICRO(Milli) + wh_util:to_integer(Micro),
-    {match, SessSinceNum} = re:run(SessSince, "([\\d]+)", [{capture, [1], list}]),
-    {match, Sess30Num} = re:run(Sess30, "([\\d]+)", [{capture, [1], list}]),
-    {match, SessMaxNum} = re:run(SessMax, "([\\d]+)", [{capture, [1], list}]),
-    {match, CPUNum} = re:run(CPU, "([\\d\.]+)", [{capture, [1], list}]),
-
-    [{uptime, UpMicro}
-     ,{sessions_since_startup, wh_util:to_integer(lists:flatten(SessSinceNum))}
-     ,{sessions_per_thirty, wh_util:to_integer(lists:flatten(Sess30Num))}
-     ,{sessions_max, wh_util:to_integer(lists:flatten(SessMaxNum))}
-     ,{cpu, lists:flatten(CPUNum)}
-    ].
+-spec process_status/2 :: ([nonempty_string(),...], atom()) -> [{'cpu',string()} |
+                                                                {'sessions_max',integer()} |
+                                                                {'sessions_per_thirty',integer()} |
+                                                                {'sessions_since_startup',integer()} |
+                                                                {'uptime',number()}
+                                                                ,...].
+process_status([Uptime, _, SessSince, Sess30, SessMax, CPU], Node) ->
+    process_status([Uptime, SessSince, Sess30, SessMax, CPU], Node);
+process_status(["UP " ++ Uptime, SessSince, Sess30, SessMax, CPU], Node) ->
+    Parsers = [fun(P) ->
+                       case re:run(Uptime, "([\\d]+)", [{capture, [1], list}, global]) of
+                           {match, [[Y],[D],[Hour],[Min],[Sec],[Milli],[Micro]]} ->
+                               UpMicro = ?YR_TO_MICRO(Y) + ?DAY_TO_MICRO(D) + ?HR_TO_MICRO(Hour) + ?MIN_TO_MICRO(Min)
+                                   + ?SEC_TO_MICRO(Sec) + ?MILLI_TO_MICRO(Milli) + wh_util:to_integer(Micro),
+                               [{uptime, UpMicro}|P];
+                           _Else ->
+                               lager:info("failed to determine uptime of node '~s', statistics may not be accurate", [Node]),
+                               [{uptime, 0}|P]
+                       end
+               end
+               ,fun(P) ->  
+                        case re:run(SessSince, "([\\d]+)", [{capture, [1], list}]) of
+                            {match, SessSinceNum} ->
+                                [{sessions_since_startup, wh_util:to_integer(lists:flatten(SessSinceNum))} |P];
+                            _Else ->
+                                lager:info("failed to determine session since startup of node '~s', statistics may not be accurate", [Node]),
+                                [{sessions_since_startup, 0}|P]
+                        end
+                end
+               ,fun(P) ->
+                        case re:run(Sess30, "([\\d]+)", [{capture, [1], list}]) of
+                            {match, Sess30Num} ->
+                                [{sessions_per_thirty, wh_util:to_integer(lists:flatten(Sess30Num))}|P];
+                            _Else ->
+                                lager:info("failed to determine session per thirty of node '~s', statistics may not be accurate", [Node]),
+                                [{sessions_per_thirty, 0}|P]
+                        end
+                end
+               ,fun(P) ->
+                        case re:run(SessMax, "([\\d]+)", [{capture, [1], list}]) of
+                            {match, SessMaxNum} ->
+                                [{sessions_max, wh_util:to_integer(lists:flatten(SessMaxNum))}|P];
+                            _Else ->
+                                lager:info("failed to determine max sessions of node '~s', statistics may not be accurate", [Node]),
+                                [{sessions_max, 5000}|P]
+                        end
+                end
+               ,fun(P) ->
+                        case re:run(CPU, "([\\d\.]+)", [{capture, [1], list}]) of
+                            {match, CPUNum} ->
+                                [{cpu, lists:flatten(CPUNum)}|P];
+                            _Else ->
+                                lager:info("failed to determine cpu info of node '~s', statistics may not be accurate", [Node]),
+                                [{cpu, "0.00"}|P]
+                        end
+                end
+              ],
+    lists:foldr(fun(F, P) -> F(P) end, [], Parsers).
 
 process_custom_data(Data) ->
     put(callid, props:get_value(<<"call-id">>, Data)),
@@ -472,14 +492,14 @@ process_transfer_event(<<"BLIND_TRANSFER">>, Data) ->
                          end,
 
     case ecallmgr_call_control_sup:find_workers(TransfererCtrlUUId) of
-        {ok, Pids} -> 
+        {ok, Pids} ->
             [begin
                  _ = ecallmgr_call_control:transferer(Pid, Data),
                  lager:debug("sending transferer notice for ~s to ecallmgr_call_control ~p", [TransfererCtrlUUId, Pid])
              end
              || Pid <- Pids
             ];
-        {error, not_found} -> 
+        {error, not_found} ->
             lager:debug(TransfererCtrlUUId, "no ecallmgr_call_control processes exist locally for reception of transferer notice"),
             ok
     end;
@@ -493,22 +513,22 @@ process_transfer_event(_Type, Data) ->
                          end,
 
     _ = case ecallmgr_call_control_sup:find_workers(TransfererCtrlUUId) of
-            {ok, TransfererPids} -> 
-                [begin 
+            {ok, TransfererPids} ->
+                [begin
                      _ = ecallmgr_call_control:transferer(Pid, Data),
                      lager:debug("sending transferer notice for ~s to ecallmgr_call_control ~p", [TransfererCtrlUUId, Pid])
                  end
                  || Pid <- TransfererPids
                 ];
-            {error, not_found} -> 
+            {error, not_found} ->
                 lager:debug(TransfererCtrlUUId, "no ecallmgr_call_control processes exist for reception of transferer notice"),
                 ok
         end,
     TransfereeCtrlUUId = props:get_value(<<"Replaces">>, Data),
 
     case ecallmgr_call_control_sup:find_workers(TransfereeCtrlUUId) of
-        {ok, ReplacesPids} -> 
-            [begin 
+        {ok, ReplacesPids} ->
+            [begin
                  ecallmgr_call_control:transferee(Pid, Data),
                  lager:debug("sending transferee notice for ~s to ecallmgr_call_control ~p", [TransfereeCtrlUUId, Pid])
              end
@@ -517,7 +537,7 @@ process_transfer_event(_Type, Data) ->
         {error, not_found} ->
             lager:debug(TransfererCtrlUUId, "no ecallmgr_call_control processes exist locally for reception of transferee notice"),
             ok
-    end.    
+    end.
 
 get_originate_action(<<"transfer">>, JObj) ->
     case wh_json:get_value([<<"Application-Data">>, <<"Route">>], JObj) of
@@ -542,7 +562,7 @@ get_unset_vars(JObj) ->
     Export = [K || KV <- lists:foldr(fun ecallmgr_fs_xml:get_channel_vars/2, [], [{<<"Custom-Channel-Vars">>, wh_json:from_list(ExportProps)}])
                        ,([K, _] = string:tokens(binary_to_list(KV), "=")) =/= undefined],
     case [[$u,$n,$s,$e,$t,$: | K] || KV <- lists:foldr(fun ecallmgr_fs_xml:get_channel_vars/2, [], wh_json:to_proplist(JObj))
-                               ,not lists:member(begin [K, _] = string:tokens(binary_to_list(KV), "="), K end, Export)] of
+                                         ,not lists:member(begin [K, _] = string:tokens(binary_to_list(KV), "="), K end, Export)] of
         [] -> "";
         Unset ->
             [string:join(Unset, "^"), "^"]
@@ -553,23 +573,32 @@ get_unset_vars(JObj) ->
                       {'timeout', {atom(), ne_binary()}}.
 -type cmd_results() :: [cmd_result(),...] | [].
 
--spec run_start_cmds/1 :: (atom()) -> cmd_results().
+-spec run_start_cmds/1 :: (atom()) -> pid().
 run_start_cmds(Node) ->
-    case ecallmgr_config:get(<<"fs_cmds">>, [], Node) of
-        [] ->
-            lager:info("no freeswitch commands to run, seems suspect. Is your ecallmgr connected to the same AMQP as the whapps running sysconf?"),
-            [];
-        Cmds when is_list(Cmds) ->
-            lists:foldl(fun(Cmd, Acc) -> process_cmd(Node, Cmd, Acc) end, [], Cmds);
-        CmdJObj ->
-            case wh_json:is_json_object(CmdJObj) of
-                true ->
-                    process_cmd(Node, CmdJObj, []);
-                false ->
-                    lager:debug("recv something other than a list for fs_cmds: ~p", [CmdJObj]),
-                    timer:sleep(5000),
-                    run_start_cmds(Node)
-            end
+    spawn_link(fun() ->
+                       Cmds = ecallmgr_config:get(<<"fs_cmds">>, [], Node),
+                       Res = process_cmds(Node, Cmds),
+                       case lists:filter(fun was_not_successful_cmd/1, Res) of
+                           [] -> ok;
+                           Errs ->
+                               print_api_responses(Errs)
+                       end
+               end).
+
+-spec process_cmds/2 :: (atom(), wh_json:json_object() | [] | [ne_binary(),...]) -> cmd_results().
+process_cmds(_, []) ->
+    lager:info("no freeswitch commands to run, seems suspect. Is your ecallmgr connected to the same AMQP as the whapps running sysconf?"),
+    [];
+process_cmds(Node, Cmds) when is_list(Cmds) ->
+    lists:foldl(fun(Cmd, Acc) -> process_cmd(Node, Cmd, Acc) end, [], Cmds);
+process_cmds(Node, Cmds) ->
+    case wh_json:is_json_object(Cmds) of
+        true ->
+            process_cmd(Node, Cmds, []);
+        false ->
+            lager:debug("recv something other than a list for fs_cmds: ~p", [Cmds]),
+            timer:sleep(5000),
+            run_start_cmds(Node)
     end.
 
 -spec process_cmd/3 :: (atom(), wh_json:json_object(), cmd_results()) -> cmd_results().
@@ -582,7 +611,6 @@ process_cmd(Node, JObj, Acc0) ->
 process_cmd(Node, ApiCmd0, ApiArg0, Acc) ->
     ApiCmd = wh_util:to_atom(wh_util:to_binary(ApiCmd0), ?FS_CMD_SAFELIST),
     ApiArg = wh_util:to_list(ApiArg0),
-
     case freeswitch:api(Node, ApiCmd, wh_util:to_list(ApiArg)) of
         {ok, FSResp} ->
             process_resp(ApiCmd, ApiArg, binary:split(FSResp, <<"\n">>, [global]), Acc);
@@ -623,10 +651,15 @@ was_not_successful_cmd(_) ->
 get_active_channels(Node) ->
     case freeswitch:api(Node, show, "channels") of
         {ok, Chans} ->
-            {ok, R} = re:compile("([\\d+])"),
-            {match, Match} = re:run(Chans, R, [{capture, [1], list}]),
-            wh_util:to_integer(lists:flatten(Match));
+            case re:run(Chans, "([\\d+])", [{capture, [1], list}]) of
+                {match, Match} ->
+                    wh_util:to_integer(lists:flatten(Match));
+                _Else ->
+                    lager:info("failed to parse active channel count on node '~s', statistics may not be accurate", [Node]),
+                    0
+            end;
         _ ->
+            lager:info("failed to get active channel count from node '~s', statistics may not be accurate", [Node]),
             0
     end.
 
@@ -648,7 +681,7 @@ return_rows(Node, [R|Rs], Acc) ->
             return_rows(Node, Rs, Acc);
         [UUID|_] ->
             case freeswitch:api(Node, uuid_dump, wh_util:to_list(UUID)) of
-                {'ok', Result} -> 
+                {'ok', Result} ->
                     Props = ecallmgr_util:eventstr_to_proplist(Result),
                     ApplicationName = props:get_value(<<"variable_current_application">>, Props),
                     JObj = wh_json:from_list([{<<"Switch-Hostname">>, Node}
@@ -656,7 +689,7 @@ return_rows(Node, [R|Rs], Acc) ->
                                               | ecallmgr_call_events:create_event_props(<<>>, ApplicationName, Props)
                                              ]),
                     return_rows(Node, Rs, [JObj|Acc]);
-                Error -> 
+                Error ->
                     lager:debug("failed to get result from uuid_dump(~s): ~p", [UUID, Error]),
                     return_rows(Node, Rs, Acc)
             end

@@ -44,7 +44,6 @@ handle(Data, Call) ->
 %%--------------------------------------------------------------------
 -spec bridge_to_resources/5 :: (endpoints(), cf_api_binary(), cf_api_binary(), cf_api_binary(), whapps_call:call()) -> 'ok'.
 bridge_to_resources([{DestNum, Rsc, _CIDType}|T], Timeout, IgnoreEarlyMedia, Ringback, Call) ->
-    AccountId = whapps_call:account_id(Call),
     Endpoint = [create_endpoint(DestNum, Gtw, Call) || Gtw <- wh_json:get_value(<<"gateways">>, Rsc)],
     case whapps_call_command:b_bridge(Endpoint, Timeout, <<"single">>, IgnoreEarlyMedia, Ringback, Call) of
         {ok, _} ->
@@ -176,7 +175,7 @@ evaluate_rules([_, Regex], DestNum) ->
 maybe_from_uri(true, CNum, Realm) ->
     from_uri(CNum, Realm);
 maybe_from_uri(false, CNum, Realm) ->
-    case wh_util:is_true(whapps_config:get_value(?APP_NAME, <<"format_from_uri">>)) of
+    case whapps_config:get_is_true(?APP_NAME, <<"format_from_uri">>) of
         true -> from_uri(CNum, Realm);
         false -> undefined
     end;
