@@ -44,22 +44,29 @@ handle(Data, Call) ->
         _ -> toggle_agent(Call, Retries, Owner)
     end.
 
-update_agent(Call, Retries, _, _) when Retries =< 0 ->
+update_agent(Call, Retries, Action, Owner) ->
+    update_agent(Call, Retries, Action
+                 ,wh_json:get_value(<<"_id">>, Owner)
+                 ,wh_json:get_binary_value(<<"queue_pin">>, Owner)
+                ).
+
+update_agent(Call, _, _, _, undefined) ->
+    lager:debug("no pin set on agent's doc, not an agent"),
+    cf_exe:continue(Call);
+update_agent(Call, _, Action, Id, <<>>) ->
+    lager:debug("agent's pin is empty, performing action ~s", [Action]),
+    update_agent_status(Call, Id, Action);
+update_agent(Call, Retries, _, _, _)  when Retries =< 0 ->
     whapps_call_command:b_play(?PROMPT_RETRIES_EXCEEDED, Call),
     cf_exe:stop(Call);
-update_agent(Call, Retries, Action, Owner) ->
-    AgentPin = wh_json:get_value(<<"queue_pin">>, Owner),
+update_agent(Call, Retries, Action, AgentId, AgentPin) ->
     case play_and_collect(Call, ?PROMPT_PIN) of
         {ok, AgentPin} ->
             lager:debug("matched pin to ~s", [AgentPin]),
-            update_agent_status(Call, wh_json:get_value(<<"_id">>, Owner), Action);
+            update_agent_status(Call, AgentId, Action);
         {ok, Pin} ->
             lager:debug("pin ~s doesn't match ~s", [Pin, AgentPin]),
-            update_agent(Call, Retries-1, Action, Owner);
-        {error, _E} ->
-            lager:debug("error recv pin: ~p", [_E]),
-            whapps_call_command:b_play(?PROMPT_INVALID_PIN, Call),
-            update_agent(Call, Retries-1, Action, Owner)
+            update_agent(Call, Retries-1, Action, AgentId, AgentPin)
     end.
 
 update_agent_status(Call, AgentId, Action) ->
@@ -87,19 +94,26 @@ toggle_agent(Call, Retries, _) when Retries =< 0 ->
     whapps_call_command:b_play(?PROMPT_RETRIES_EXCEEDED, Call),
     cf_exe:stop(Call);
 toggle_agent(Call, Retries, Owner) ->
-    AgentPin = wh_json:get_value(<<"queue_pin">>, Owner),
+    toggle_agent(Call, Retries, wh_json:get_value(<<"_id">>, Owner), wh_json:get_value(<<"queue_pin">>, Owner)).
+
+toggle_agent(Call, _, _, undefined) ->
+    lager:debug("caller is not an agent (no queue_pin defined)"),
+    cf_exe:continue(Call);
+toggle_agent(Call, _, AgentId, <<>>) ->
+    lager:debug("agent has no pin, performing toggle"),
+    toggle_agent_status(Call, AgentId);
+toggle_agent(Call, Retries, _, _)  when Retries =< 0 ->
+    whapps_call_command:b_play(?PROMPT_RETRIES_EXCEEDED, Call),
+    cf_exe:stop(Call);
+toggle_agent(Call, Retries, AgentId, AgentPin) ->
     case play_and_collect(Call, ?PROMPT_PIN) of
         {ok, AgentPin} ->
             lager:debug("found agent, toggling"),
-            toggle_agent_status(Call, wh_json:get_value(<<"_id">>, Owner));
+            toggle_agent_status(Call, AgentId);
         {ok, Pin} ->
             lager:debug("pin ~s doesn't match ~s", [Pin, AgentPin]),
             whapps_call_command:b_play(?PROMPT_INVALID_PIN, Call),
-            toggle_agent(Call, Retries-1, Owner);
-        {error, _E} ->
-            lager:debug("error collecting digits: ~p", [_E]),
-            whapps_call_command:b_play(?PROMPT_INVALID_PIN, Call),
-            toggle_agent(Call, Retries-1, Owner)
+            toggle_agent(Call, Retries-1, AgentId, AgentPin)
     end.
 
 toggle_agent_status(Call, AgentId) ->
@@ -131,10 +145,13 @@ transitions(<<"break">>) ->
 transitions(_) ->
     [<<"logout">>].
 
+-spec play_and_collect/2 :: (whapps_call:call(), ne_binary()) -> {'ok', binary()}.
 play_and_collect(Call, Prompt) ->
     NoopID = whapps_call_command:audio_macro([{play, Prompt}], Call),
     {ok, Bin} = whapps_call_command:collect_digits(1, ?TIMEOUT_DTMF, ?TIMEOUT_DTMF, NoopID, Call),
     collect(Call, Bin).
+
+-spec collect/2 :: (whapps_call:call(), binary()) -> {'ok', binary()}.
 collect(Call, DTMFs) ->
     case whapps_call_command:wait_for_dtmf(?TIMEOUT_DTMF) of
         {ok, <<>>} ->

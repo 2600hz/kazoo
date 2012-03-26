@@ -65,7 +65,7 @@ handle(Data, Call) ->
 menu_loop(#cf_menu_data{retries=Retries}=Menu, Call) when Retries =< 0 ->
     lager:debug("maxium number of retries reached"),
     whapps_call_command:flush_dtmf(Call),
-    play_exit_prompt(Menu, Call),
+    _ = play_exit_prompt(Menu, Call),
     case cf_exe:attempt(<<"max_retries">>, Call) of
         {attempt_resp, ok} ->
             ok;
@@ -108,7 +108,7 @@ menu_loop(#cf_menu_data{retries=Retries, max_length=MaxLength, timeout=Timeout
                     end;                            
                 false ->
                     lager:debug("invalid selection ~w", [Digits]),
-                    play_invalid_prompt(Menu, Call),
+                    _ = play_invalid_prompt(Menu, Call),
                     menu_loop(Menu#cf_menu_data{retries=Retries - 1}, Call)
             end;
         {error, _} ->
@@ -213,7 +213,7 @@ hunt_for_callflow(Digits, Menu, Call) ->
         {ok, Flow, false} ->
             lager:debug("callflow hunt succeeded, branching"),
             whapps_call_command:flush_dtmf(Call),
-            play_transferring_prompt(Menu, Call),
+            _ = play_transferring_prompt(Menu, Call),
             cf_exe:branch(wh_json:get_value(<<"flow">>, Flow, wh_json:new()), Call),
             true;
         _ ->
@@ -260,8 +260,7 @@ record_greeting(AttachmentName, #cf_menu_data{greeting_id=MediaId}=Menu, Call) -
                 {ok, no_selection} ->
                     lager:debug("abandoning recorded greeting"),
                     whapps_call_command:b_prompt(<<"vm-deleted">>, Call),
-                    {ok, Menu};
-                {error, _}=E -> E
+                    {ok, Menu}
             end
     end.
 
@@ -345,22 +344,20 @@ store_recording(AttachmentName, MediaId, Call) ->
 -spec get_new_attachment_url/3 :: (binary(), binary(), whapps_call:call()) -> ne_binary().
 get_new_attachment_url(AttachmentName, MediaId, Call) ->
     AccountDb = whapps_call:account_db(Call),
-    case couch_mgr:open_doc(AccountDb, MediaId) of
-        {ok, JObj} ->
-            case wh_json:get_keys(wh_json:get_value(<<"_attachments">>, JObj, wh_json:new())) of
-                [] ->
-                    ok;
-                Existing ->
-                    [couch_mgr:delete_attachment(AccountDb, MediaId, Attach) || Attach <- Existing]
-            end;
-        {error, _} ->
-            ok
-    end,
+    _ = case couch_mgr:open_doc(AccountDb, MediaId) of
+            {ok, JObj} ->
+                case wh_json:get_keys(wh_json:get_value(<<"_attachments">>, JObj, wh_json:new())) of
+                    [] ->
+                        ok;
+                    Existing ->
+                        [couch_mgr:delete_attachment(AccountDb, MediaId, Attach) || Attach <- Existing]
+                end;
+            {error, _} ->
+                ok
+        end,
     Rev = case couch_mgr:lookup_doc_rev(AccountDb, MediaId) of
-              {ok, R} ->
-                  <<"?rev=", R/binary>>;
-              _ ->
-                  <<>>
+              {ok, R} -> <<"?rev=", R/binary>>;
+              _ -> <<>>
           end,
     <<(couch_mgr:get_url())/binary
       ,AccountDb/binary
