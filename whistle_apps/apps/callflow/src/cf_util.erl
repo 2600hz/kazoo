@@ -277,36 +277,31 @@ lookup_callflow(Number, AccountId) ->
 
 do_lookup_callflow(Number, Db) ->
     lager:debug("searching for callflow in ~s to satisfy '~s'", [Db, Number]),
-%%    case wh_cache:fetch({cf_flow, Number, Db}) of
-%%      {ok, Flow} ->
-%%          {ok, Flow, Number =:= ?NO_MATCH_CF};
-%%      {error, not_found} ->
-            Options = [{<<"key">>, Number}, {<<"include_docs">>, true}],
-            case couch_mgr:get_results(Db, ?LIST_BY_NUMBER, Options) of
-                {ok, []} when Number =/= ?NO_MATCH_CF ->
-                    case lookup_callflow_patterns(Number, Db) of
-                        {error, _} ->
-                            do_lookup_callflow(?NO_MATCH_CF, Db);
-                        {ok, {Flow, Capture}} ->
-                            F = wh_json:set_value(<<"capture_group">>, Capture, Flow),
-                            wh_cache:store({cf_flow, Number, Db}, F),
-                            {ok, F, false}
-                    end;
-                {ok, []} ->
-                    {error, not_found};
-                {ok, [{struct, _}=JObj]} ->
-                    Flow = wh_json:get_value(<<"doc">>, JObj),
-                    wh_cache:store({cf_flow, Number, Db}, Flow),
-                    {ok, Flow, Number =:= ?NO_MATCH_CF};
-                {ok, [{struct, _}=JObj | _Rest]} ->
-                    lager:debug("lookup resulted in more than one result, using the first"),
-                    Flow = wh_json:get_value(<<"doc">>, JObj),
-                    wh_cache:store({cf_flow, Number, Db}, Flow),
-                    {ok, Flow, Number =:= ?NO_MATCH_CF};
-                {error, _}=E ->
-                    E
-            end.
-%%    end.
+    Options = [{<<"key">>, Number}, {<<"include_docs">>, true}],
+    case couch_mgr:get_results(Db, ?LIST_BY_NUMBER, Options) of
+        {ok, []} when Number =/= ?NO_MATCH_CF ->
+            case lookup_callflow_patterns(Number, Db) of
+                {error, _} ->
+                    do_lookup_callflow(?NO_MATCH_CF, Db);
+                {ok, {Flow, Capture}} ->
+                    F = wh_json:set_value(<<"capture_group">>, Capture, Flow),
+                    wh_cache:store({cf_flow, Number, Db}, F),
+                    {ok, F, false}
+            end;
+        {ok, []} ->
+            {error, not_found};
+        {ok, [{struct, _}=JObj]} ->
+            Flow = wh_json:get_value(<<"doc">>, JObj),
+            wh_cache:store({cf_flow, Number, Db}, Flow),
+            {ok, Flow, Number =:= ?NO_MATCH_CF};
+        {ok, [{struct, _}=JObj | _Rest]} ->
+            lager:debug("lookup resulted in more than one result, using the first"),
+            Flow = wh_json:get_value(<<"doc">>, JObj),
+            wh_cache:store({cf_flow, Number, Db}, Flow),
+            {ok, Flow, Number =:= ?NO_MATCH_CF};
+        {error, _}=E ->
+            E
+    end.
 
 %%-----------------------------------------------------------------------------
 %% @private

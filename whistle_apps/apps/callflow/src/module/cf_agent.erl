@@ -12,11 +12,12 @@
 
 -include("../callflow.hrl").
 
--define(PROMPT_PIN, <<"/system_media/hotdesk-enter_pin">>).
+-define(PROMPT_PIN, <<"/system_media/agent_enter_pin">>).
 -define(PROMPT_INVALID_PIN, <<"/system_media/conf-bad_pin">>).
 -define(PROMPT_RETRIES_EXCEEDED, <<"/system_media/conf-to_many_attempts">>).
--define(PROMPT_LOGGED_IN, <<"/system_media/hotdesk-logged_in">>).
--define(PROMPT_LOGGED_OUT, <<"/system_media/hotdesk-logged_out">>).
+-define(PROMPT_LOGGED_IN, <<"/system_media/agent_logged_in">>).
+-define(PROMPT_LOGGED_OUT, <<"/system_media/agent_logged_out">>).
+-define(PROMPT_ALREADY_LOGGED_IN, <<"/system_media/agent_logged_already_in">>).
 -define(PROMPT_BREAK, <<"/system_media/temporal-marked_disabled">>).
 -define(PROMPT_RESUME, <<"/system_media/temporal-marked_enabled">>).
 -define(PROMPT_ERROR, <<"/system_media/menu-invalid_entry">>).
@@ -78,6 +79,14 @@ update_agent_status(Call, AgentId, Action) ->
                       cf_exe:stop(Call);
                   C -> C
               end,
+
+    update_agent_status(Call, AgentId, Action, Current).
+
+update_agent_status(Call, _, <<"login">>, <<"login">>) ->
+    lager:debug("agent already logged in"),
+    play_action(Call, <<"logged_in_already">>),
+    cf_exe:stop(Call);
+update_agent_status(Call, AgentId, Action, Current) ->
     Transitions = transitions(Current),
     case lists:member(Action, Transitions) of
         true ->
@@ -94,7 +103,7 @@ toggle_agent(Call, Retries, _) when Retries =< 0 ->
     whapps_call_command:b_play(?PROMPT_RETRIES_EXCEEDED, Call),
     cf_exe:stop(Call);
 toggle_agent(Call, Retries, Owner) ->
-    toggle_agent(Call, Retries, wh_json:get_value(<<"_id">>, Owner), wh_json:get_value(<<"queue_pin">>, Owner)).
+    toggle_agent(Call, Retries, wh_json:get_value(<<"_id">>, Owner), wh_json:get_binary_value(<<"queue_pin">>, Owner)).
 
 toggle_agent(Call, _, _, undefined) ->
     lager:debug("caller is not an agent (no queue_pin defined)"),
@@ -106,6 +115,7 @@ toggle_agent(Call, Retries, _, _)  when Retries =< 0 ->
     whapps_call_command:b_play(?PROMPT_RETRIES_EXCEEDED, Call),
     cf_exe:stop(Call);
 toggle_agent(Call, Retries, AgentId, AgentPin) ->
+    lager:debug("agent pin: ~s", [AgentPin]),
     case play_and_collect(Call, ?PROMPT_PIN) of
         {ok, AgentPin} ->
             lager:debug("found agent, toggling"),
@@ -119,8 +129,8 @@ toggle_agent(Call, Retries, AgentId, AgentPin) ->
 toggle_agent_status(Call, AgentId) ->
     case current_status(Call, AgentId) of
         undefined ->
-            lager:debug("no status available, logging in"),
-            log_agent_activity(Call, <<"login">>, AgentId),
+            lager:debug("no status available, logging out"),
+            log_agent_activity(Call, <<"logout">>, AgentId),
             cf_exe:stop(Call);
         error ->
             lager:debug("error looking up status"),
@@ -137,7 +147,7 @@ toggle_agent_status(Call, AgentId) ->
 transitions(<<"login">>) ->
     [<<"logout">>, <<"break">>];
 transitions(<<"logout">>) ->
-    [<<"login">>];
+    [<<"login">>, <<"logout">>];
 transitions(<<"resume">>) ->
     [<<"break">>, <<"logout">>];
 transitions(<<"break">>) ->
@@ -197,6 +207,8 @@ play_action(Call, <<"break">>) ->
     whapps_call_command:b_play(?PROMPT_BREAK, Call);
 play_action(Call, <<"resume">>) ->
     whapps_call_command:b_play(?PROMPT_RESUME, Call);
+play_action(Call, <<"logged_in_already">>) ->
+    whapps_call_command:b_play(?PROMPT_ALREADY_LOGGED_IN, Call);
 play_action(Call, _) ->
     whapps_call_command:b_play(?PROMPT_ERROR, Call).
 
