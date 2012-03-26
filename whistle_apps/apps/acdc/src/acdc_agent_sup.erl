@@ -7,19 +7,16 @@
 %%%   James Aimonetti
 %%%   Karl Anderson
 %%%-------------------------------------------------------------------
--module(acdc_sup).
+-module(acdc_agent_sup).
 
 -behaviour(supervisor).
 
 -include_lib("whistle/include/wh_types.hrl").
 
 -export([start_link/0]).
--export([cache_proc/0]).
--export([listener_proc/0]).
+-export([new/3]).
+-export([workers/0]).
 -export([init/1]).
-
--define(CACHE(Name), {Name, {wh_cache, start_link, [Name]}, permanent, 5000, worker, [wh_cache]}).
--define(CHILD(Name, Type), {Name, {Name, start_link, []}, permanent, 5000, Type, [Name]}).
 
 %% ===================================================================
 %% API functions
@@ -35,17 +32,18 @@
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
--spec cache_proc/0 :: () -> {'ok', pid()}.
-cache_proc() ->
-    [P] = [P || {Mod, P, _, _} <- supervisor:which_children(?MODULE),
-                Mod =:= acdc_cache],
-    {ok, P}.
+-spec new/3 :: (ne_binary(), ne_binary(), wh_json:json_object()) -> sup_startchild_ret().
+new(AccountDb, AgentId, Queues) ->
+    Agent = {AgentId
+             ,{acdc_agent, start_link, [AccountDb, AgentId, Queues]}
+             ,permanent, 5000, worker
+             ,[acdc_agent]
+            },
+    supervisor:start_child(?MODULE, Agent).
 
--spec listener_proc/0 :: () -> {'ok', pid()}.
-listener_proc() ->
-    [P] = [P || {Mod, P, _, _} <- supervisor:which_children(?MODULE),
-                Mod =:= acdc_listener],
-    {ok, P}.
+-spec workers/0 :: () -> [pid(),...] | [].
+workers() ->
+    [ Pid || {_, Pid, worker, [_]} <- supervisor:which_children(?MODULE)].
 
 %% ===================================================================
 %% Supervisor callbacks
@@ -64,12 +62,8 @@ listener_proc() ->
 init([]) ->
     RestartStrategy = one_for_one,
     MaxRestarts = 5,
-    MaxSecondsBetweenRestarts = 10,
+    MaxSecondsBetweenRestarts = 5,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    {ok, {SupFlags, [?CACHE(acdc_cache) %% generally, we create a local cache process per whapps
-                     ,?CHILD(acdc_listener, worker) %% the listener, we always want this running
-                     ,?CHILD(acdc_agents, worker)
-                     ,?CHILD(acdc_agent_sup, supervisor)
-                    ]}}.
+    {ok, {SupFlags, []}}.

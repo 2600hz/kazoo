@@ -1,40 +1,31 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2012, VoIP INC
 %%% @doc
-%%% Our connection to AMQP and how we handle what payloads we want to
-%%% receive, and what module/functions should handle those payloads
-%%% when received.
+%%%
 %%% @end
 %%% @contributors
 %%%   James Aimonetti
+%%%   Karl Anderson
 %%%-------------------------------------------------------------------
--module(acdc_listener).
+-module(acdc_agents).
 
--behaviour(gen_listener).
+-behaviour(gen_server).
 
-%% API
 -export([start_link/0]).
+-export([next_agent/0]).
+-export([reload_agents/0]).
 
-%% gen_server callbacks
--export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2
-         ,terminate/2, code_change/3]).
+-export([init/1
+         ,handle_call/3
+         ,handle_cast/2
+         ,handle_info/2
+         ,terminate/2
+         ,code_change/3
+        ]).
 
 -include("acdc.hrl").
--include_lib("amqp_client/include/amqp_client.hrl").
 
-%% By convention, we put the options here in macros, but not required.
--define(BINDINGS, [{queue, []}
-                   ,{conf, [{doc_type, <<"user">>}]} % bind to user-related DB events
-                  ]).
--define(RESPONDERS, [
-                     %% New caller in the call queue
-                     {{acdc_agent_pool, new_member}, [{<<"queue">>, <<"new_member">>}]}
-                     %% User doc updated
-                     ,{{acdc_agent_pool, update_agent}, [{<<"configuration">>, <<"*">>}]}
-                    ]).
--define(QUEUE_NAME, wapi_queue:listener_queue_name()).
--define(QUEUE_OPTIONS, []).
--define(ROUTE_OPTIONS, [{exclusive, false}]).
+-define(SERVER, ?MODULE).
 
 %%%===================================================================
 %%% API
@@ -48,13 +39,15 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    gen_listener:start_link(?MODULE, [{bindings, ?BINDINGS}
-                                      ,{responders, ?RESPONDERS}
-                                      ,{queue_name, ?QUEUE_NAME}       % optional to include
-                                      ,{queue_options, ?QUEUE_OPTIONS} % optional to include
-                                      ,{route_options, ?ROUTE_OPTIONS} % optional to include
-                                      ,{basic_qos, 1}                % only needed if prefetch controls
-                                     ], []).
+    gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+
+-spec reload_agents/0 :: () -> 'ok'.
+reload_agents() ->
+    gen_server:cast(?SERVER, reload_agents).
+
+-spec next_agent/0 :: () -> {'ok', pid()} | {'error', 'no_agents'}.
+next_agent() ->
+    gen_server:call(?SERVER, next_agent).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -73,7 +66,7 @@ start_link() ->
 %%--------------------------------------------------------------------
 init([]) ->
     put(callid, ?LOG_SYSTEM_ID),
-    lager:debug("acdc listener starting"),
+    lager:debug("acdc agents starting"),
     {ok, []}.
 
 %%--------------------------------------------------------------------
@@ -90,9 +83,15 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_call(next_agent, _From, []) ->
+    {reply, {error, no_agents}, []};
+handle_call(next_agent, _From, [Agent|Agents]) ->
+    %% this is currently just round-robin but eventually there could
+    %% be lists for each queue and the pids are drawn via a strategy
+    %% maybe....
+    {reply, {ok, Agent}, lists:reverse([Agent|lists:reverse(Agents)])};
 handle_call(_Request, _From, State) ->
-    Reply = ok,
-    {reply, Reply, State}.
+    {reply, {error, not_implemented}, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -104,6 +103,9 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast(reload_agents, _) ->
+    lager:debug("reloading list of agent workers"),
+    {noreply, acdc_agent_sup:workers()};
 handle_cast(_, State) ->
     {noreply, State}.
 
@@ -123,17 +125,6 @@ handle_info(_Info, State) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Allows listener to pass options to handlers
-%%
-%% @spec handle_event(JObj, State) -> {reply, Options}
-%% @end
-%%--------------------------------------------------------------------
-handle_event(_JObj, _State) ->
-    {reply, []}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
 %% This function is called by a gen_server when it is about to
 %% terminate. It should be the opposite of Module:init/1 and do any
 %% necessary cleaning up. When it returns, the gen_server terminates
@@ -143,7 +134,7 @@ handle_event(_JObj, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
-    lager:debug("acdc listner terminating: ~p", [_Reason]).
+    lager:debug("acdc agents terminating: ~p", [_Reason]).
 
 %%--------------------------------------------------------------------
 %% @private

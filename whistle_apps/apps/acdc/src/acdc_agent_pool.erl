@@ -5,77 +5,65 @@
 %%% @end
 %%% @contributors
 %%%   James Aimonetti
+%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(acdc_agent_pool).
 
--export([init/0, find_agent/2, update_agent/2]).
+-export([init/0]).
+-export([new_member/2]).
+-export([update_agent/2]).
 
 -include("acdc.hrl").
 
 init() ->
     lager:debug("finding all agents and starting workers"),
-    [add_agents(AcctDb) || AcctDb <- whapps_util:get_all_accounts()].
+    [add_agents(AcctDb) || AcctDb <- whapps_util:get_all_accounts()],
+    acdc_agents:reload_agents().
 
-update_agent(JObj, _Prop) ->
+update_agent(JObj, _Prop) ->    
     wh_util:put_callid(JObj),
     lager:debug("recv agent update for: ~p", [wh_json:get_value(<<"doc">>, JObj)]).
 
--spec find_agent/2 :: (wh_json:json_object(), wh_proplist()) -> any().
-find_agent(JObj, _Prop) ->
+-spec new_member/2 :: (wh_json:json_object(), wh_proplist()) -> any().
+new_member(JObj, _Prop) ->
     wh_util:put_callid(JObj),
-
     Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, JObj)),
     QueueId = wh_json:get_value(<<"Queue-ID">>, JObj),
-
     lager:debug("caller in queue ~s", [QueueId]),
+    find_queue(Call, QueueId, wh_json:get_value(<<"Server-ID">>, JObj)).
 
-    find_agent(Call, whapps_call:account_db(Call), QueueId).
-
--spec find_agent/3 :: (whapps_call:call(), ne_binary(), ne_binary()) -> any().
-find_agent(Call, AcctDb, QueueId) ->
-    {ok, Queue} = acdc_util:find_queue(AcctDb, QueueId),
-    find_agent(Call, AcctDb, QueueId, wh_json:get_integer_value(<<"connection_timeout">>, Queue, 300) * 1000).
-
--spec find_agent/4 :: (whapps_call:call(), ne_binary(), ne_binary(), pos_integer()) -> any().
-find_agent(Call, AcctDb, QueueId, CallerTimeout) ->
-    Start = erlang:now(),
-
-    lager:debug("finding agent for ~s/~s in ~b timeout", [AcctDb, QueueId, CallerTimeout]),
-
-    case poolboy:checkout(?MODULE, true, CallerTimeout) of
-        Agent when is_pid(Agent) ->
-            lager:debug("checking with agent ~p", [Agent]),
-            case acdc_agent:maybe_handle_call(Agent, Call, AcctDb, QueueId, CallerTimeout) of
-                false ->
-                    lager:debug("agent isn't handling the call"),
-                    poolboy:checkin(?MODULE, Agent),
-                    timer:sleep(100),
-                    find_agent(Call, AcctDb, QueueId, CallerTimeout - (timer:now_diff(erlang:now(), Start) div 1000));
-                down ->
-                    lager:debug("agent thinks the call is down, we're done"),
-                    poolboy:checkin(?MODULE, Agent);
-                true ->
-                    lager:debug("agent handled the call"),
-                    poolboy:checkin(?MODULE, Agent)
-            end;
-        _Other ->
-            lager:debug("checked out ~p instead of agent", [_Other]),
-            find_agent(Call, AcctDb, QueueId, CallerTimeout - (timer:now_diff(erlang:now(), Start) div 1000))
+-spec find_queue/3 :: (whapps_call:call(), ne_binary(), ne_binary()) -> 'ok' | {'error', term()}.
+find_queue(Call, QueueId, ServerId) ->
+    AccountDb = whapps_call:account_db(Call),
+    case acdc_util:find_queue(AccountDb, QueueId) of
+        {error, _Reason} ->
+            lager:debug("unable to find ACD queue ~s/~s: ~p", [AccountDb, QueueId, _Reason]),
+            CallId = whapps_call:is_call(Call) andalso whapps_call:call_id(Call),
+            Result = [{<<"Call-ID">>, CallId}
+                      ,{<<"Result">>, <<"FAULT">>}
+                      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                     ],
+            wapi_queue:publish_result(ServerId, Result);
+        {ok, Queue} ->
+            ConnectionTimeout = wh_json:get_integer_value(<<"connection_timeout">>, Queue, 300) * 1000,
+            acdc_agent:maybe_handle_call(Call, Queue, ServerId, ConnectionTimeout)
     end.
 
-add_agents(AcctDb) ->
-    case couch_mgr:get_results(AcctDb, <<"agents/crossbar_listing">>, []) of
+-spec add_agents/1 :: (ne_binary()) -> 'ok'.
+add_agents(AccountDb) ->
+    case couch_mgr:get_results(AccountDb, <<"agents/crossbar_listing">>, []) of
         {ok, []} ->
-            lager:debug("no agents in ~s", [AcctDb]);
+            lager:debug("no agents in ~s", [AccountDb]);
         {ok, As} ->
-            lager:debug("found agents for ~s", [AcctDb]),
-            [start_worker(AcctDb, A) || A <- As];
+            lager:debug("found agents for ~s", [AccountDb]),
+            [start_worker(AccountDb, A) || A <- As];
         {error, _E} ->
-            lager:debug("error finding agents in ~s", [AcctDb])
+            lager:debug("error finding agents in ~s", [AccountDb])
     end.
 
-start_worker(AcctDb, Agent) ->
+-spec start_worker/2 :: (ne_binary(), wh_json:json_object()) -> 'ok'.
+start_worker(AccountDb, Agent) ->
     AgentId = wh_json:get_value(<<"id">>, Agent),
-    AgentInfo = wh_json:get_value(<<"value">>, Agent),
+    Queues =  wh_json:get_value([<<"value">>, <<"queues">>], Agent, []),
     lager:debug("adding agent worker ~s", [AgentId]),
-    poolboy:add_worker(?MODULE, fun(Worker) -> {ok, Worker} end, [AcctDb, AgentId, AgentInfo]).
+    acdc_agent_sup:new(AccountDb, AgentId, Queues).

@@ -5,34 +5,51 @@
 %%% @end
 %%% @contributors
 %%%   James Aimonetti
+%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(acdc_agent).
 
 -behaviour(gen_listener).
 
 %% API
--export([start_link/4, handle_call_event/2
-         ,maybe_handle_call/5
-        ]).
+-export([start_link/3]).
+-export([handle_call_event/2]).
+-export([maybe_handle_call/4]).
+-export([consume_call_events/1]).
 
 %% gen_server callbacks
--export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2
-         ,terminate/2, code_change/3]).
+-export([init/1
+         ,handle_call/3
+         ,handle_cast/2
+         ,handle_info/2
+         ,handle_event/2
+         ,terminate/2
+         ,code_change/3
+        ]).
 
 -include("acdc.hrl").
 
--define(TIMEOUT_CALL_STATUS, 300000). % check call status every 5 minutes
 -define(FUDGE, 2600).
 
--record(state, {
-          acct_db :: ne_binary()
-         ,agent_id :: ne_binary()
-         ,endpoints :: wh_json:json_object()
-         ,queues :: [{ne_binary(), wh_json:json_object()},...]
-         ,call :: whapps_call:call()
-         ,from :: {pid(), reference()}
-         ,from_timeout_ref :: reference()
-         }).
+%% By convention, put the options here in macros
+-define(BINDINGS, [{self, []}]).
+-define(RESPONDERS, [{{?MODULE, handle_call_event}, {<<"*">>, <<"*">>}}]).
+-define(QUEUE_NAME, <<>>).
+-define(QUEUE_OPTIONS, []).
+-define(ROUTE_OPTIONS, []).
+
+-record(state, {account_db :: ne_binary()
+                ,agent_id :: ne_binary()
+                ,endpoints :: wh_json:json_object()
+                ,queues :: [{ne_binary(), wh_json:json_object()},...]
+                ,queue :: 'undefined' | wh_json:json_object()
+                ,call_event_consumers = []
+                ,call :: whapps_call:call()
+                ,start = 'undefined'
+                ,timeout = 0 :: integer()
+                ,ref :: reference() 
+                ,server_id = 'undefined'
+               }).
 
 %%%===================================================================
 %%% API
@@ -45,30 +62,48 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
-start_link(_PoolArgs, AcctDb, AgentId, AgentInfo) ->
-    gen_listener:start_link(?MODULE, [{bindings, [{self, []}]}
-                                      ,{responders, [{{?MODULE, handle_call_event}, {<<"*">>, <<"*">>}}]}
-                                      ,{queue_name, <<>>}
-                                      ,{queue_options, []}
-                                      ,{consume_options, []}
-                                     ], [AcctDb, AgentId, AgentInfo]).
+start_link(AccountDb, AgentId, AgentInfo) ->        
+    gen_listener:start_link(?MODULE, [{bindings, ?BINDINGS}
+                                      ,{responders, ?RESPONDERS}
+                                      ,{queue_name, ?QUEUE_NAME}
+                                      ,{queue_options, ?QUEUE_OPTIONS}
+                                      ,{route_options, ?ROUTE_OPTIONS}
+                                     ], [AccountDb, AgentId, AgentInfo]).
 
-handle_call_event(JObj, Props) ->
-    Accept = props:get_value(accept_call_events, Props),
+-spec handle_call_event/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
+handle_call_event(JObj, Props) ->        
+    [Pid ! {amqp_msg, JObj}
+     || Pid <- props:get_value(call_event_consumers, Props, [])
+            ,is_pid(Pid)
+    ],
+    ok.
 
-    case wh_util:get_event_type(JObj) of
-        {<<"call_event">>, _}=Type when Accept ->
-            gen_listener:cast(props:get_value(server, Props), {call_event, Type, JObj});
-        {<<"call_detail">>, _}=Type when Accept ->
-            gen_listener:cast(props:get_value(server, Props), {call_event, Type, JObj});
-        {<<"error">>, <<"dialplan">>}=Type when Accept ->
-            gen_listener:cast(props:get_value(server, Props), {call_event, Type, JObj});
-        _Type ->
-            ok
+-spec maybe_handle_call/4 :: (whapps_call:call(), wh_json:json_object(), ne_binary(), integer()) -> boolean().
+maybe_handle_call(Call, _, ServerId, Timeout) when Timeout =< 0 ->        
+    CallId = whapps_call:is_call(Call) andalso whapps_call:call_id(Call),
+    lager:debug("call ~s timed out before an agent answered", [CallId]),
+    Result = [{<<"Call-ID">>, CallId}
+              ,{<<"Result">>, <<"NO_ANSWER">>}
+              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+             ],
+    wapi_queue:publish_result(ServerId, Result);
+maybe_handle_call(Call, Queue, ServerId, Timeout) ->
+    case acdc_agents:next_agent() of
+        {error, _}=E -> 
+            CallId = whapps_call:is_call(Call) andalso whapps_call:call_id(Call),
+            lager:debug("unable to find next agent for call ~s: ~p", [CallId, E]),
+            Result = [{<<"Call-ID">>, CallId}
+                      ,{<<"Result">>, <<"FAULT">>}
+                      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                     ],
+            wapi_queue:publish_result(ServerId, Result);
+        {ok, Agent} -> 
+            gen_listener:cast(Agent, {maybe_handle_call, Call, Queue, ServerId, Timeout})
     end.
 
-maybe_handle_call(Srv, Call, AcctDb, QueueId, Timeout) ->
-    gen_listener:call(Srv, {maybe_handle_call, Call, AcctDb, QueueId, Timeout}, Timeout+?FUDGE).
+-spec consume_call_events/1 :: (pid()) -> ok.
+consume_call_events(Srv) ->
+    gen_server:cast(Srv, {add_consumer, self()}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -85,27 +120,15 @@ maybe_handle_call(Srv, Call, AcctDb, QueueId, Timeout) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init([AcctDb, AgentId, Info]) ->
+init([AccountDb, AgentId, Queues]) ->    
     erlang:process_flag(trap_exit, true),
     put(callid, ?LOG_SYSTEM_ID),
-
-    lager:debug("acdc_agent starting: ~s", [AgentId]),
-
-    _ = erlang:send_after(?TIMEOUT_CALL_STATUS, self(), call_status),
-
-    EPs = acdc_util:fetch_owned_by(AgentId, device, AcctDb),
-    lager:debug("agent has endpoints: ~p", [EPs]),
-
-    {ok, #state{
-       acct_db=AcctDb
-       ,agent_id=AgentId
-       ,endpoints=EPs
-       ,queues=[begin
-                    {ok, Q} = couch_mgr:open_doc(AcctDb, QID),
-                    {QID, Q}
-                end || QID <- wh_json:get_value(<<"queues">>, Info, [])
-               ]
-      }}.
+    lager:debug("starting new agent process for ~s/~s", [AccountDb, AgentId]),
+    {ok, #state{account_db=AccountDb
+                ,agent_id=AgentId
+                ,endpoints=acdc_util:fetch_owned_by(AgentId, device, AccountDb)
+                ,queues=Queues
+               }}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -121,52 +144,8 @@ init([AcctDb, AgentId, Info]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({maybe_handle_call, _, _, _, _}, _From, #state{from={_,_}}=State) ->
-    lager:debug("agent already processing a call"),
-    {reply, false, State};
-handle_call({maybe_handle_call, _, _, _, _}, _From, #state{acct_db=undefined}=State) ->
-    lager:debug("agent proc not setup with an agent id"),
-    {reply, false, State};
-handle_call({maybe_handle_call, Call, AcctDb, QueueId, Timeout}, From, #state{
-                                                                   acct_db=DB
-                                                                   ,queues=Qs
-                                                                   ,agent_id=AgentId
-                                                                  }=State) ->
-    case AcctDb =:= DB andalso lists:keyfind(QueueId, 1, Qs) of
-        false ->
-            lager:debug("agent unable to process this queue caller"),
-            {reply, false, State};
-        {_, Q} ->
-            %% TODO: no guarantee Agent is still available or will answer the call;
-            %% detect that case and move to next agent
-            case acdc_util:get_agent_status(AcctDb, AgentId) of
-                <<"login">> ->
-                    _ = put(callid, whapps_call:call_id(Call)),
-                    _ = acdc_util:log_agent_activity(Call, <<"busy">>, AgentId),
-
-                    Ref = erlang:send_after(Timeout, self(), from_timeout),
-
-                    call_binding(Call),
-
-                    gen_listener:cast(self(), {connect_call, Q}),
-
-                    {noreply, State#state{call=Call, from=From, from_timeout_ref=Ref}};
-                <<"resume">> ->
-                    _ = put(callid, whapps_call:call_id(Call)),
-                    _ = acdc_util:log_agent_activity(Call, <<"busy">>, AgentId),
-
-                    Ref = erlang:send_after(Timeout, self(), from_timeout),
-
-                    call_binding(Call),
-
-                    gen_listener:cast(self(), {connect_call, Q}),
-
-                    {noreply, State#state{call=Call, from=From, from_timeout_ref=Ref}};
-                _Action ->
-                    lager:debug("in non-ready state: ~s", [_Action]),
-                    {reply, false, State}
-            end
-    end.
+handle_call(_Msg, _From, State) ->
+    {reply, {error, not_implemented}, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -178,59 +157,89 @@ handle_call({maybe_handle_call, Call, AcctDb, QueueId, Timeout}, From, #state{
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({connect_call, Q}, #state{call=Call, endpoints=EPs, from=From}=State) ->
-    case call_bridging(Call, acdc_util:get_endpoints(Call, EPs), wh_json:get_value(<<"member_timeout">>, Q, <<"5">>)) of
-        {error, no_endpoints} ->
-            lager:debug("no endpoints, can't handle"),
-            gen_server:reply(From, false),
-            {noreply, clear_call(State)};
-        _ ->
-            lager:debug("call attempted"),
-            {noreply, State}
+handle_cast({maybe_handle_call, Call, Queue, ServerId, Timeout}, #state{account_db=AccountDb
+                                                                        ,queues=Queues
+                                                                        ,agent_id=AgentId
+                                                                        ,start=undefined
+                                                                       }=State) ->
+    OriginalCallId = get(callid),
+    _ = put(callid, whapps_call:call_id(Call)),
+    Criteria = [fun() ->
+                        QueueId = wh_json:get_value(<<"_id">>, Queue),
+                        case lists:member(QueueId, Queues) of
+                            true -> true;
+                            false ->
+                                lager:debug("agent does not belong to queue '~s', declined", [QueueId]),
+                                false
+                        end
+                end
+                ,fun() ->
+                         CallAccountId = whapps_call:account_db(Call),
+                         case AccountDb =:= CallAccountId of
+                             true -> true;
+                             false ->
+                                 lager:debug("agent does not belong to account id '~s', declined", [CallAccountId]),
+                                 false
+                         end
+                 end
+                ,fun() ->
+                         case acdc_util:get_agent_status(AccountDb, AgentId) of
+                             <<"login">> -> true;
+                             <<"resume">> -> true;
+                             _Else ->
+                                 lager:debug("agent is in non-ready state '~s', declined", [_Else]),
+                                 false
+                         end
+                 end
+               ],
+    case lists:all(fun(F) -> F() end, Criteria) of
+        false -> 
+            maybe_handle_call(Call, Queue, ServerId, Timeout - 500),
+            put(callid, OriginalCallId),
+            {noreply, State};
+        true ->
+            lager:debug("attempting to ring agent ~s", [AgentId]),
+            gen_listener:cast(self(), attempt_agent),
+            {noreply, State#state{call=Call, queue=Queue, start=erlang:now(), timeout=Timeout, server_id=ServerId}}
     end;
-
-handle_cast({call_event, {<<"call_event">>, <<"LEG_CREATED">>}, JObj}, State) ->
-    lager:debug("b-leg created (~s), hope we answer!", [wh_json:get_value(<<"Other-Leg-Unique-ID">>, JObj)]),
+handle_cast({maybe_handle_call, Call, Queue, ServerId, Timeout}, State) ->
+    OriginalCallId = get(callid),
+    put(callid, whapps_call:call_id(Call)),
+    lager:debug("agent already processing call, declined", []),
+    maybe_handle_call(Call, Queue, ServerId, Timeout - 500),
+    put(callid, OriginalCallId),
     {noreply, State};
-
-handle_cast({call_event, {<<"call_event">>, <<"LEG_DESTROYED">>}, JObj}, #state{from={_,_}=From}=State) ->
-    lager:debug("b-leg destroyed (~s): ~s(~s)", [wh_json:get_value(<<"Other-Leg-Unique-ID">>, JObj)
-                                                 ,wh_json:get_value(<<"Hangup-Cause">>, JObj)
-                                                 ,wh_json:get_value(<<"Hangup-Code">>, JObj)
-                                                ]),
-    gen_server:reply(From, false),
-    {noreply, clear_call(State)};
-handle_cast({call_event, {<<"call_event">>, <<"LEG_DESTROYED">>}, JObj}, State) ->
-    lager:debug("b-leg destroyed (~s): ~s(~s)", [wh_json:get_value(<<"Other-Leg-Unique-ID">>, JObj)
-                                                 ,wh_json:get_value(<<"Hangup-Cause">>, JObj)
-                                                 ,wh_json:get_value(<<"Hangup-Code">>, JObj)
-                                                ]),
-    {noreply, State};
-
-handle_cast({call_event, {<<"call_event">>, <<"CHANNEL_BRIDGE">>}, JObj}, #state{from={_,_}=From}=State) ->
-    lager:debug("leg (~s) was bridged! we're handling the call", [wh_json:get_value(<<"Other-Leg-Unique-ID">>, JObj)]),
-    gen_server:reply(From, true),
-    {noreply, clear_from(State)};
-
-handle_cast({call_event, {<<"call_event">>, <<"CHANNEL_DESTROY">>}, JObj}, #state{from={_,_}=From}=State) ->
-    lager:debug("received channel destroy for caller, we're done here: ~s", [wh_json:get_value(<<"Hangup-Code">>, JObj)]),
-
-    gen_server:reply(From, false),
-    {noreply, clear_call(State)};
-handle_cast({call_event, {<<"call_event">>, <<"CHANNEL_DESTROY">>}, _JObj}, State) ->
-    lager:debug("received channel destroy for caller, reinstating agent as available"),
-    {noreply, clear_call(State)};
-
-handle_cast({call_event, {<<"error">>, <<"dialplan">>}, JObj}, #state{from={_,_}=From}=State) ->
-    lager:debug("recieved dialplan error: ~s", [wh_json:get_value(<<"Error-Message">>, JObj)]),
-    gen_server:reply(From, down),
-    {noreply, clear_call(State)};
-
-handle_cast({call_event, {_Cat, _Name}, _JObj}, State) ->
-    lager:debug("unhandled call event: ~s/~s: ~s", [_Cat, _Name, wh_json:get_value(<<"Application-Name">>, _JObj)]),
-    {noreply, State};
+handle_cast({add_consumer, Consumer}, #state{call_event_consumers=Consumers}=State) ->
+    link(Consumer),
+    {noreply, State#state{call_event_consumers=[Consumer|Consumers]}};
+handle_cast({remove_consumer, Consumer}, #state{call_event_consumers=Consumers}=State) ->
+    {noreply, State#state{call_event_consumers=lists:filter(fun(C) -> C =/= Consumer end, Consumers)}};
+handle_cast({bridge_result, Ref, {ok, _}}, #state{server_id=ServerId, call=Call, ref=Ref}=State) ->
+    lager:debug("agent handled call"),
+    CallId = whapps_call:is_call(Call) andalso whapps_call:call_id(Call),
+    Result = [{<<"Call-ID">>, CallId}
+              ,{<<"Result">>, <<"ANSWERED">>}
+              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+             ],
+    wapi_queue:publish_result(ServerId, Result),
+    {noreply, reset(State)};
+handle_cast({bridge_result, Ref, _R}, #state{ref=Ref}=State) ->
+    try_next_agent(State),
+    {noreply, reset(State)};
+handle_cast(attempt_agent, #state{call=Call, queue=Queue, endpoints=EPs}=State) ->
+    CallId = whapps_call:call_id(Call),
+    gen_listener:add_binding(self(), call, [{callid, CallId}, {restrict_to, [events, cdr]}]),
+    Self = self(),
+    Ref = make_ref(),
+    spawn_link(fun() ->
+                  put(callid, CallId),
+                  gen_server:cast(Self, {add_consumer, self()}),
+                  Timeout = wh_json:get_ne_value(<<"member_timeout">>, Queue, <<"5">>),
+                  Result = (catch bridge_to_endpoints(acdc_util:get_endpoints(Call, EPs), Timeout, Call)),
+                  gen_server:cast(Self, {bridge_result, Ref, Result})
+          end),
+    {noreply, State#state{ref=Ref}};
 handle_cast(_Msg, State) ->
-    lager:debug("cast: ~p", [_Msg]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -243,33 +252,26 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info(from_timeout, #state{from={_,_}=From}=State) ->
-    gen_listener:reply(From, false),
-    {noreply, clear_call(State)};
-
-handle_info(call_status, #state{call=undefined, agent_id=AgentId, acct_db=AcctDb}=State) ->
-    _ = erlang:send_after(?TIMEOUT_CALL_STATUS, self(), call_status),
-
-    case acdc_util:get_agent_status(AcctDb, AgentId) of
-        <<"busy">> ->
-            lager:debug("agent marked as busy, which is wrong as we have no call; setting to resume"),
-            _ = acdc_util:log_agent_activity(AcctDb, <<"resume">>, AgentId),
-            {noreply, State};
-        _ ->
-            {noreply, State}
-    end;
-handle_info(call_status, #state{call=Call}=State) ->
-    whapps_call_command:call_status(Call),
-    lager:debug("sent call status req"),
-    _ = erlang:send_after(?TIMEOUT_CALL_STATUS, self(), call_status),
-    {noreply, State};
-
+handle_info({'EXIT', Consumer, _R}, #state{call_event_consumers=Consumers}=State) ->
+    {noreply, State#state{call_event_consumers=lists:filter(fun(C) -> C =/= Consumer end, Consumers)}};
 handle_info(_Info, State) ->
-    lager:debug("unhandled msg: ~p", [_Info]),
     {noreply, State}.
 
-handle_event(_JObj, #state{call=Call}) ->
-    {reply, [{accept_call_events, whapps_call:is_call(Call)}]}.
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+handle_event(_JObj, #state{call=undefined}) ->
+    ignore;
+handle_event(JObj, #state{call_event_consumers=Consumers, call=Call}) ->
+    CallId = whapps_call:call_id_direct(Call),
+    case {whapps_util:get_event_type(JObj), wh_json:get_value(<<"Call-ID">>, JObj)} of
+        {{<<"call_event">>, _}, EventCallId} when EventCallId =/= CallId ->
+            ignore;
+        {_Else, _} ->
+            {reply, [{call_event_consumers, Consumers}]}
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -299,39 +301,26 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-clear_call(#state{from_timeout_ref=Ref, call=Call, acct_db=AcctDb, agent_id=AgentId}=State) ->
-    catch(erlang:cancel_timer(Ref)),
+-spec bridge_to_endpoints/3 :: (wh_json:json_objects(), ne_binary(), whapps_call:call()) -> {'ok', wh_json:json_object()} |
+                                                                                            {'fail', wh_json:json_object()} |
+                                                                                            {'error', term()}.
+bridge_to_endpoints([], _, _) ->
+    {error, no_endpoints};
+bridge_to_endpoints(Endpoints, Timeout, Call) ->
+    whapps_call_command:b_bridge(Endpoints, Timeout, <<"simultaneous">>, Call).
 
-    _ = case whapps_call:is_call(Call) of
-            true ->
-                call_unbinding(Call),
-                acdc_util:log_agent_activity(Call, <<"resume">>, AgentId);
-            false ->
-                acdc_util:log_agent_activity(AcctDb, <<"resume">>, AgentId)
-        end,
+-spec reset/1 :: (#state{}) -> #state{}.
+reset(#state{call_event_consumers=Consumers, call=Call}=State) ->
+    [exit(Consumer, exit) || Consumer <- Consumers],
+    case whapps_call:call_id(Call) of
+        CallId when is_binary(CallId) ->
+            gen_listener:rm_binding(self(), call, [{callid, CallId}, {restrict_to, [events, cdr]}]);
+        _Else ->
+            ok
+    end,
+    State#state{call=undefined, start=undefined, queue=undefined, timeout=0, ref=undefined, call_event_consumers=[]}.
 
-    put(callid, ?LOG_SYSTEM_ID),
-    State#state{
-      call = undefined
-      ,from = undefined
-      ,from_timeout_ref = undefined
-     }.
-
-clear_from(#state{from_timeout_ref=Ref}=State) ->
-    catch(erlang:cancel_timer(Ref)),
-
-    State#state{
-      from = undefined
-      ,from_timeout_ref = undefined
-     }.
-
-call_binding(Call) ->
-    gen_listener:add_binding(self(), call, [{callid, whapps_call:call_id(Call)}, {restrict_to, [events, cdr]}]).
-
-call_unbinding(Call) ->
-    gen_listener:rm_binding(self(), call, [{callid, whapps_call:call_id(Call)}, {restrict_to, [events, cdr]}]).
-
-call_bridging(_, [], _) -> {error, no_endpoints};
-call_bridging(Call, EPs, MemberTimeout) ->
-    EPs1 = [wh_json:set_value(<<"Endpoint-Timeout">>, wh_util:to_binary(MemberTimeout), EP) || EP <- EPs],
-    whapps_call_command:bridge(EPs1, Call).
+-spec try_next_agent/1 :: (#state{}) -> 'ok'.
+try_next_agent(#state{call=Call, queue=Queue, timeout=Timeout, start=Start, server_id=ServerId}) ->
+    DiffMicro = timer:now_diff(erlang:now(), Start),
+    maybe_handle_call(Call, Queue, ServerId, Timeout - (DiffMicro div 1000)).
