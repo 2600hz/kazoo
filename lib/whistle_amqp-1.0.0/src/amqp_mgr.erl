@@ -224,7 +224,7 @@ handle_info({'DOWN', ConnRef, process, _Pid, {shutdown, {server_initiated_close,
              ,#state{conn_params=ConnP, conn_ref=ConnRef}=State) ->
     lager:debug("connection to ~s (process ~p) went down, error ~p", [wh_amqp_params:host(ConnP), _Pid, Code]),
     erlang:demonitor(ConnRef, [flush]),
-    _Ref = erlang:send_after(?START_TIMEOUT, self(), {reconnect, ?START_TIMEOUT}),
+    _Ref = erlang:send_after(0, self(), {reconnect, ?START_TIMEOUT}),
     {ok, _} = stop_amqp_host(State),
     {noreply, State#state{conn_ref=undefined, handler_pid=undefined
                           ,handler_ref=undefined, use_federation = false
@@ -234,7 +234,7 @@ handle_info({'DOWN', ConnRef, process, _Pid, {shutdown, {internal_error, Code,_}
             ,#state{conn_params=ConnP, conn_ref=ConnRef}=State) ->
     lager:debug("connection to ~s (process ~p) went down, error ~p", [wh_amqp_params:host(ConnP), _Pid, Code]),
     erlang:demonitor(ConnRef, [flush]),
-    _Ref = erlang:send_after(?START_TIMEOUT, self(), {reconnect, ?START_TIMEOUT}),
+    _Ref = erlang:send_after(0, self(), {reconnect, ?START_TIMEOUT}),
     {ok, _} = stop_amqp_host(State),
     {noreply, State#state{conn_ref=undefined, handler_pid=undefined
                           ,handler_ref=undefined, use_federation = false
@@ -243,7 +243,7 @@ handle_info({'DOWN', ConnRef, process, _Pid, {shutdown, {internal_error, Code,_}
 handle_info({'DOWN', ConnRef, process, _Pid, _Reason}, #state{conn_params=ConnP, conn_ref=ConnRef}=State) ->
     lager:debug("connection to ~s (process ~p) went down, ~w", [wh_amqp_params:host(ConnP), _Pid, _Reason]),
     erlang:demonitor(ConnRef, [flush]),
-    _Ref = erlang:send_after(?START_TIMEOUT, self(), {reconnect, ?START_TIMEOUT}),
+    _Ref = erlang:send_after(0, self(), {reconnect, ?START_TIMEOUT}),
     {ok, _} = stop_amqp_host(State),
     {noreply, State#state{conn_ref=undefined, handler_pid=undefined, handler_ref=undefined}, hibernate};
 
@@ -255,7 +255,7 @@ handle_info({'DOWN', Ref, process, _, normal}, #state{handler_ref=Ref}=State) ->
 handle_info({'DOWN', Ref, process, _, _Reason}, #state{handler_ref=Ref}=State) ->
     lager:debug("amqp host process went down, ~p", [_Reason]),
     erlang:demonitor(Ref, [flush]),
-    _Ref = erlang:send_after(?START_TIMEOUT, self(), {reconnect, ?START_TIMEOUT}),
+    _Ref = erlang:send_after(0, self(), {reconnect, ?START_TIMEOUT}),
 
     {noreply, State#state{handler_pid=undefined, handler_ref=undefined}, hibernate};
 
