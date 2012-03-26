@@ -126,15 +126,16 @@ handle_call(is_available, _, #state{handler_pid=HPid}=State) ->
     case erlang:is_pid(HPid) andalso erlang:is_process_alive(HPid) of
         true -> {reply, true, State};
         false ->
-            _ = stop_amqp_host(State),
-            {reply, false, State#state{handler_pid=undefined, handler_ref=undefined}, 0}
+            {ok, _} = stop_amqp_host(State),
+            self() ! {reconnect, ?START_TIMEOUT},
+            {reply, false, State#state{handler_pid=undefined, handler_ref=undefined}}
     end;
 
 handle_call(get_host, _, #state{conn_params=ConnP}=State) ->
     {reply, wh_amqp_params:host(ConnP), State};
 
 handle_call(_, _, #state{handler_pid = undefined}=State) ->
-    {reply, {error, amqp_down}, State, 0};
+    {reply, {error, amqp_down}, State};
 
 handle_call({publish, BP, AM}, From, #state{handler_pid=HPid}=State) ->
     send_req(HPid, From, fun() -> catch amqp_host:publish(HPid, From, BP, AM) end),
@@ -224,7 +225,7 @@ handle_info({'DOWN', ConnRef, process, _Pid, {shutdown, {server_initiated_close,
     lager:debug("connection to ~s (process ~p) went down, error ~p", [wh_amqp_params:host(ConnP), _Pid, Code]),
     erlang:demonitor(ConnRef, [flush]),
     _Ref = erlang:send_after(?START_TIMEOUT, self(), {reconnect, ?START_TIMEOUT}),
-    _ = stop_amqp_host(State),
+    {ok, _} = stop_amqp_host(State),
     {noreply, State#state{conn_ref=undefined, handler_pid=undefined
                           ,handler_ref=undefined, use_federation = false
                          }, hibernate};
@@ -234,7 +235,7 @@ handle_info({'DOWN', ConnRef, process, _Pid, {shutdown, {internal_error, Code,_}
     lager:debug("connection to ~s (process ~p) went down, error ~p", [wh_amqp_params:host(ConnP), _Pid, Code]),
     erlang:demonitor(ConnRef, [flush]),
     _Ref = erlang:send_after(?START_TIMEOUT, self(), {reconnect, ?START_TIMEOUT}),
-    _ = stop_amqp_host(State),
+    {ok, _} = stop_amqp_host(State),
     {noreply, State#state{conn_ref=undefined, handler_pid=undefined
                           ,handler_ref=undefined, use_federation = false
                          }, hibernate};
@@ -243,7 +244,7 @@ handle_info({'DOWN', ConnRef, process, _Pid, _Reason}, #state{conn_params=ConnP,
     lager:debug("connection to ~s (process ~p) went down, ~w", [wh_amqp_params:host(ConnP), _Pid, _Reason]),
     erlang:demonitor(ConnRef, [flush]),
     _Ref = erlang:send_after(?START_TIMEOUT, self(), {reconnect, ?START_TIMEOUT}),
-    _ = stop_amqp_host(State),
+    {ok, _} = stop_amqp_host(State),
     {noreply, State#state{conn_ref=undefined, handler_pid=undefined, handler_ref=undefined}, hibernate};
 
 handle_info({'DOWN', Ref, process, _, normal}, #state{handler_ref=Ref}=State) ->
@@ -252,11 +253,14 @@ handle_info({'DOWN', Ref, process, _, normal}, #state{handler_ref=Ref}=State) ->
     {noreply, State#state{handler_ref=undefined, handler_pid=undefined}};
 
 handle_info({'DOWN', Ref, process, _, _Reason}, #state{handler_ref=Ref}=State) ->
-    lager:debug("amqp host process went down, ~w", [_Reason]),
+    lager:debug("amqp host process went down, ~p", [_Reason]),
     erlang:demonitor(Ref, [flush]),
     _Ref = erlang:send_after(?START_TIMEOUT, self(), {reconnect, ?START_TIMEOUT}),
 
     {noreply, State#state{handler_pid=undefined, handler_ref=undefined}, hibernate};
+
+handle_info(timeout, State) ->
+    {noreply, State};
 
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
@@ -303,7 +307,7 @@ stop_amqp_host(#state{handler_pid=undefined}) ->
 stop_amqp_host(#state{handler_pid=HPid, handler_ref=HRef}) ->
     erlang:demonitor(HRef, [flush]),
     _ = net_kernel:monitor_nodes(false),
-    spawn(fun() -> amqp_host:stop(HPid) end).
+    amqp_host:stop(HPid).
 
 -spec start_amqp_host/2 :: (string(), boolean()) -> {'ok', #state{}} | {'error', 'econnrefused'}.
 -spec start_amqp_host/3 :: (#'amqp_params_direct'{} | #'amqp_params_network'{}, #state{}, boolean()) ->
