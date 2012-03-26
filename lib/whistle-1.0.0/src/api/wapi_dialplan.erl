@@ -18,6 +18,7 @@
 -export([respond/1, respond_v/1]).
 -export([redirect/1, redirect_v/1]).
 -export([progress/1, progress_v/1]).
+-export([ring/1, ring_v/1]).
 -export([execute_extension/1, execute_extension_v/1]).
 -export([play/1, play_v/1]).
 -export([record/1, record_v/1]).
@@ -358,6 +359,26 @@ progress_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?PROGRESS_REQ_HEADERS, ?PROGRESS_REQ_VALUES, ?PROGRESS_REQ_TYPES);
 progress_v(JObj) ->
     progress_v(wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
+%% @doc Ring a session - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec ring/1 :: (api_terms()) -> api_formatter_return().
+ring(Prop) when is_list(Prop) ->
+    case ring_v(Prop) of
+        true -> wh_api:build_message(Prop, ?RING_REQ_HEADERS, ?OPTIONAL_RING_REQ_HEADERS);
+        false -> {error, "Proplist failed validation for ring_req"}
+    end;
+ring(JObj) ->
+    ring(wh_json:to_proplist(JObj)).
+
+-spec ring_v/1 :: (api_terms()) -> boolean().
+ring_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?RING_REQ_HEADERS, ?RING_REQ_VALUES, ?RING_REQ_TYPES);
+ring_v(JObj) ->
+    ring_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc Hangup a call - see wiki

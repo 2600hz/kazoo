@@ -105,6 +105,7 @@
                                ,{<<"signal_bridge">>, <<"bridge">>}
                                ,{<<"answer">>, <<"answer">>}
                                ,{<<"pre_answer">>, <<"progress">>}
+                               ,{<<"ring_ready">>, <<"ring">>}
                                ,{<<"tone_detect">>, <<"tone_detect">>}
                                ,{<<"play_and_get_digits">>, <<"play_and_collect_digits">>}
                                ,{<<"respond">>, <<"respond">>}

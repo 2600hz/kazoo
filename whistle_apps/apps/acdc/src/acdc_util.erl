@@ -5,6 +5,7 @@
 %%% @end
 %%% @contributors
 %%%   James Aimonetti
+%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(acdc_util).
 
@@ -54,7 +55,8 @@ get_agent_status(AcctDb, AgentId) ->
             false;
         {ok, [StatusJObj]} ->
             wh_json:get_value([<<"doc">>, <<"action">>], StatusJObj);
-        {error, _E} ->
+        {error, _Reason} ->
+            lager:debug("unable to determine the status of the agent: ~p", [_Reason]),
             false
     end.
 

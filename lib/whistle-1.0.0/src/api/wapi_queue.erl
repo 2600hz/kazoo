@@ -9,12 +9,14 @@
 -module(wapi_queue).
 
 -export([new_member/1, new_member_v/1]).
+-export([result/1, result_v/1]).
 
 -export([listener_queue_name/0, get_queue_id/1]).
 
 -export([bind_q/2, unbind_q/2]).
 
 -export([publish_new_member/1, publish_new_member/2, publish_new_member/3]).
+-export([publish_result/2, publish_result/3]).
 
 -include("../wh_api.hrl").
 
@@ -27,6 +29,13 @@
                             ,{<<"Event-Name">>, <<"new_member">>}
                            ]).
 -define(NEW_MEMBER_TYPES, []).
+
+-define(RESULT_HEADERS, [<<"Call-ID">>, <<"Result">>]).
+-define(OPTIONAL_RESULT_HEADERS, [<<"Queue">>]).
+-define(RESULT_VALUES, [{<<"Event-Category">>, <<"queue">>}
+                        ,{<<"Event-Name">>, <<"result">>}
+                       ]).
+-define(RESULT_TYPES, []).
 
 -spec new_member/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
 new_member(Prop) when is_list(Prop) ->
@@ -42,6 +51,23 @@ new_member_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?NEW_MEMBER_HEADERS, ?NEW_MEMBER_VALUES, ?NEW_MEMBER_TYPES);
 new_member_v(JObj) ->
     new_member_v(wh_json:to_proplist(JObj)).
+
+
+-spec result/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
+result(Prop) when is_list(Prop) ->
+    case result_v(Prop) of
+        true -> wh_api:build_message(Prop, ?RESULT_HEADERS, ?OPTIONAL_RESULT_HEADERS);
+        false -> {error, "Proplist failed validation for result"}
+    end;
+result(JObj) ->
+    result(wh_json:to_proplist(JObj)).
+
+-spec result_v/1 :: (api_terms()) -> boolean().
+result_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?RESULT_HEADERS, ?RESULT_VALUES, ?RESULT_TYPES);
+result_v(JObj) ->
+    result_v(wh_json:to_proplist(JObj)).
+
 
 get_queue_id(Prop) when is_list(Prop) ->
     case props:get_value(<<"Queue-ID">>, Prop) of
@@ -93,6 +119,14 @@ publish_new_member(API, ContentType, AcctDb, QID) ->
 publish_new_member(API, ContentType, AcctDb, QID, ConnTimeout) ->
     {ok, Payload} = wh_api:prepare_api_payload(API, ?NEW_MEMBER_VALUES, fun ?MODULE:new_member/1),
     amqp_util:callmgr_publish(Payload, ContentType, new_member_routing(AcctDb, QID), [{expiration, ConnTimeout}]).
+
+-spec publish_result/2 :: (ne_binary(), api_terms()) -> 'ok'.
+-spec publish_result/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+publish_result(Queue, JObj) ->
+    publish_result(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_result(Queue, Req, ContentType) ->
+    {ok, Payload} = wh_api:prepare_api_payload(Req, ?RESULT_VALUES, fun ?MODULE:result/1),
+    amqp_util:targeted_publish(Queue, Payload, ContentType).
 
 new_member_routing(AcctDb, QID) ->
     list_to_binary([?NEW_MEMBER_ROUTING_KEY, ".", AcctDb, ".", QID]).
