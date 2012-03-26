@@ -33,3 +33,6 @@ dialyze:
 
 docs:
 	@$(REBAR) doc skip_deps=true
+
+update:
+	./bin/git_update.sh
