@@ -4,7 +4,7 @@
 -behaviour(gen_fsm).
 
 -export([start_link/1, checkout/1, checkout/2, checkout/3, checkin/2, stop/1]).
--export([add_worker/2, rm_worker/2]).
+-export([add_worker/2, add_worker/3, rm_worker/2]).
 -export([init/1, ready/2, ready/3, overflow/2, overflow/3, full/2, full/3,
          handle_event/3, handle_sync_event/4, handle_info/3, terminate/3,
          code_change/4]).
