@@ -4,7 +4,7 @@
 -behaviour(gen_fsm).
 
 -export([start_link/1, checkout/1, checkout/2, checkout/3, checkin/2, stop/1]).
--export([add_worker/2, rm_worker/2]).
+-export([add_worker/2, add_worker/3, rm_worker/2]).
 -export([init/1, ready/2, ready/3, overflow/2, overflow/3, full/2, full/3,
          handle_event/3, handle_sync_event/4, handle_info/3, terminate/3,
          code_change/4]).
@@ -26,8 +26,11 @@
 }).
 
 -spec add_worker(Pool :: node(), fun((Worker :: pid()) -> {ok, pid()})) -> 'ok'.
+-spec add_worker(Pool :: node(), fun((Worker :: pid()) -> {ok, pid()}), list()) -> 'ok'.
 add_worker(Pool, InitFun) ->
-    gen_fsm:send_all_state_event(Pool, {add_worker, InitFun}).
+    add_worker(Pool, InitFun, []).
+add_worker(Pool, InitFun, InitArgs) ->
+    gen_fsm:send_all_state_event(Pool, {add_worker, InitFun, InitArgs}).
 
 -spec rm_worker(Pool :: node(), pid()) -> 'ok'.
 rm_worker(Pool, Pid) ->
@@ -234,11 +237,11 @@ full({checkout, _Block, Timeout}, From, #state{waiting=Waiting}=State) ->
 full(_Event, _From, State) ->
     {reply, ok, full, State}.
 
-handle_event({add_worker, InitFun}, _StateName, #state{workers=Workers
-                                                      ,worker_sup=Sup
-                                                      ,size=Size
-                                                     }=State) ->
-    Workers1 = queue:in(new_worker(Sup, InitFun), Workers),
+handle_event({add_worker, InitFun, InitArgs}, _StateName, #state{workers=Workers
+                                                                 ,worker_sup=Sup
+                                                                 ,size=Size
+                                                                }=State) ->
+    Workers1 = queue:in(new_worker(Sup, InitFun, InitArgs), Workers),
     {next_state, ready, State#state{workers=Workers1, size=Size+1}};
 
 handle_event({rm_worker, Pid}, StateName, #state{worker_stop=StopFun
@@ -367,12 +370,14 @@ code_change(_OldVsn, StateName, State, _Extra) ->
     {ok, StateName, State}.
 
 new_worker(Sup, InitFun) ->
-    {ok, Pid} = supervisor:start_child(Sup, []),
+    new_worker(Sup, InitFun, []).
+
+new_worker(Sup, InitFun, InitArgs) when is_function(InitFun) ->
+    {ok, Pid} = supervisor:start_child(Sup, InitArgs),
     {ok, Pid1} = InitFun(Pid),
     link(Pid1),
-    Pid1.
-
-new_worker(Sup, FromPid, InitFun) ->
+    Pid1;
+new_worker(Sup, FromPid, InitFun) when is_pid(FromPid) ->
     Pid = new_worker(Sup, InitFun),
     Ref = erlang:monitor(process, FromPid),
     {Pid, Ref}.

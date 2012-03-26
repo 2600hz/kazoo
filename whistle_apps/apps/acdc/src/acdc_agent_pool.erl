@@ -24,8 +24,6 @@ update_agent(JObj, _Prop) ->
 find_agent(JObj, _Prop) ->
     wh_util:put_callid(JObj),
 
-    lager:debug("new caller in a queue"),
-
     Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, JObj)),
     QueueId = wh_json:get_value(<<"Queue-ID">>, JObj),
 
@@ -36,7 +34,7 @@ find_agent(JObj, _Prop) ->
 -spec find_agent/3 :: (whapps_call:call(), ne_binary(), ne_binary()) -> any().
 find_agent(Call, AcctDb, QueueId) ->
     {ok, Queue} = acdc_util:find_queue(AcctDb, QueueId),
-    find_agent(Call, AcctDb, QueueId, wh_json:get_integer_value(<<"connection_timeout">>, Queue, 300)).
+    find_agent(Call, AcctDb, QueueId, wh_json:get_integer_value(<<"connection_timeout">>, Queue, 300) * 1000).
 
 -spec find_agent/4 :: (whapps_call:call(), ne_binary(), ne_binary(), pos_integer()) -> any().
 find_agent(Call, AcctDb, QueueId, CallerTimeout) ->
@@ -80,7 +78,4 @@ start_worker(AcctDb, Agent) ->
     AgentId = wh_json:get_value(<<"id">>, Agent),
     AgentInfo = wh_json:get_value(<<"value">>, Agent),
     lager:debug("adding agent worker ~s", [AgentId]),
-    poolboy:add_worker(?MODULE, fun(Worker) ->
-                                        acdc_agent:update_agent(Worker, {AcctDb, AgentId, AgentInfo}),
-                                        {ok, Worker}
-                                end).
+    poolboy:add_worker(?MODULE, fun(Worker) -> {ok, Worker} end, [AcctDb, AgentId, AgentInfo]).

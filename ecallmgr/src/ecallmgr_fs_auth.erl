@@ -189,19 +189,13 @@ handle_info({'EXIT', LU, _Reason}, #state{node=Node, lookups=LUs}=State) ->
     {noreply, State#state{lookups=lists:keydelete(LU, 1, LUs)}, hibernate};
 
 handle_info(timeout, #state{node=Node}=State) ->
-    Type = {bind, directory},
-
-    {foo, Node} ! Type,
-    receive
+    case freeswitch:bind(Node, directory) of
         ok ->
             lager:debug("bound to directory request on ~s", [Node]),
             {noreply, State};
         {error, Reason} ->
             lager:debug("failed to bind to directory requests on ~s, ~p", [Node, Reason]),
             {stop, Reason, State}
-    after ?FS_TIMEOUT ->
-            lager:debug("timed out binding to directory requests on ~s", [Node]),
-            {stop, timeout, State}
     end;
 
 handle_info(_Info, State) ->

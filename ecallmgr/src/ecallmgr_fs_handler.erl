@@ -208,7 +208,7 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({nodedown, Node}, #state{fs_nodes=Nodes, node_reconnect_pids=ReconPids}=State) ->
-    lager:debug("node ~p has gone down", [Node]),
+    lager:warning("node ~p has gone down", [Node]),
     WatcherPid = spawn_link(fun() ->
                                     case [N || #node_handler{node=Node1}=N <- Nodes, Node =:= Node1] of
                                         [#node_handler{node=Node, options=Opts}] ->
@@ -227,7 +227,6 @@ handle_info({'EXIT', Pid, _Reason}, #state{node_reconnect_pids=ReconPids}=State)
     lager:debug("pid ~p exited: ~p", [Pid, _Reason]),
     {noreply, State#state{node_reconnect_pids=lists:keydelete(Pid, 2, ReconPids)}};
 handle_info(_Info, State) ->
-    lager:debug("unhandled message: ~p", [_Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -275,7 +274,7 @@ watch_node_for_restart(Node, Opts, Timeout) ->
 is_node_up(Node, Opts, Timeout) ->
     case net_adm:ping(Node) of
         pong ->
-            lager:debug("node ~s has risen", [Node]),
+            lager:info("node ~s has risen", [Node]),
             ?MODULE:add_fs_node(Node, Opts);
         pang ->
             lager:debug("waiting ~b seconds to ping again", [Timeout div 1000]),
@@ -333,13 +332,15 @@ add_fs_node(Node, Options, #state{fs_nodes=Nodes}=State) ->
                                       (_) -> false
                                    end, ecallmgr_fs_sup:start_handlers(Node, Options)) of
                         true ->
+                            lager:info("successfully connected to node '~s'", [Node]),
                             {ok, State#state{fs_nodes=[#node_handler{node=Node, options=Options} | Nodes]}};
                         false ->
+                            lager:warning("failed to start all handlers for node '~s'", [Node]),
                             self() ! {nodedown, Node},
                             {{error, failed_starting_handlers}, State}
                     end;
                 pang ->
-                    lager:debug("node ~p not responding, can't connect", [Node]),
+                    lager:info("unable to connect to node '~s'; ensure it is reachable from this server and using cookie '~s'", [Node, erlang:get_cookie()]),
                     self() ! {nodedown, Node},
                     {{error, no_connection}, State}
             end;
