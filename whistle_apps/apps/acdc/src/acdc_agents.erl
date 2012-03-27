@@ -143,6 +143,7 @@ handle_cast({update_agent, Agent, Time}, Agents) ->
 %%--------------------------------------------------------------------
 handle_info({'DOWN', Ref, process, Pid, _Reason}, State) ->
     lager:debug("agent ~p maybe went down: ~p", [Pid, _Reason]),
+    gen_server:cast(self(), reload_agents),
     {noreply, remove(State, Pid, Ref)};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
