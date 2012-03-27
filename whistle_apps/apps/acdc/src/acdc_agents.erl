@@ -99,6 +99,10 @@ init([]) ->
         <<"round_robin">> ->
             lager:debug("starting acdc agents with round-robin"),
             {ok, {rr, queue:new()}};
+        <<"longest_idle">> ->
+            whapps_config:set(?APP_NAME, <<"queue_strategy">>, <<"most_idle">>),
+            lager:debug("starting acdc agents with most-idle"),
+            {ok, {mi, []}}; % {Agent, idle_time}
         <<"most_idle">> ->
             lager:debug("starting acdc agents with most-idle"),
             {ok, {mi, []}} % {Agent, idle_time}
@@ -207,8 +211,10 @@ next_agent_please({mi, []}) ->
     undefined.
 
 -spec update/3 :: (agents(), pid(), pos_integer()) -> agents().
-update({rr, _}=RR, _, _) ->
-    RR;
+update({rr, As}, A, _) ->
+    %% forward queue to just past A
+    {End, [Agent|Start]} = lists:splitwith(fun({P,_}) -> P =/= A end, queue:to_list(As)),
+    {rr, queue:from_list(Start ++ End ++ [Agent])};
 update({mi, As}, A, T) ->
     case lists:keytake(A, 1, As) of
         false -> {mi, [{A, T, erlang:monitor(process, A)} | As]};
