@@ -256,13 +256,13 @@ lookup_user(Node, ID, Data) ->
 
                              ?LOG(ID, "looking up credentials of ~s@~s for a ~s", [AuthUser, AuthRealm, props:get_value(<<"Method">>, AuthReq)]),
 
-                             case ecallmgr_amqp_pool:authn_req(AuthReq) of
+                             try ecallmgr_amqp_pool:authn_req(AuthReq) of
                                  {error, _R} -> 
                                      ?LOG("auth request lookup failed: error ~p", [_R]),
                                      ok;
                                  {negative_resp, _} -> 
                                      ?LOG("auth request received authoritive negative response"),
-                                     freeswitch:fetch_reply(Node, ID, ?EMPTYRESPONSE);
+                                     freeswitch:fetch_reply(Node, ID, ?ROUTE_NOT_FOUND_RESPONSE);
                                  {ok, AuthResp} ->
                                      ?LOG(ID, "received authn_resp", []),
                                      {ok, Xml} = ecallmgr_fs_xml:authn_resp_xml(
@@ -271,6 +271,10 @@ lookup_user(Node, ID, Data) ->
                                                   ),
                                      ?LOG_END(ID, "sending XML to ~w: ~s", [Node, Xml]),
                                      freeswitch:fetch_reply(Node, ID, Xml)
+                             catch
+                                 exit:{timeout, _} ->
+                                     ?LOG("auth request lookup time out"),
+                                     freeswitch:fetch_reply(Node, ID, ?ROUTE_NOT_FOUND_RESPONSE)
                              end
                      end),
     {ok, Pid}.
