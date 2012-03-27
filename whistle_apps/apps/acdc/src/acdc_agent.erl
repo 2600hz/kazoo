@@ -49,6 +49,7 @@
                 ,timeout = 0 :: integer()
                 ,ref :: 'undefined' | reference()
                 ,server_id = 'undefined' :: 'undefined' | ne_binary()
+                ,last_call = wh_util:current_tstamp() :: pos_integer()
                }).
 
 %%%===================================================================
@@ -100,7 +101,7 @@ maybe_handle_call(Call, Queue, ServerId, Timeout) ->
             gen_listener:cast(Agent, {maybe_handle_call, Call, Queue, ServerId, Timeout})
     end.
 
--spec consume_call_events/1 :: (pid()) -> ok.
+-spec consume_call_events/1 :: (pid()) -> 'ok'.
 consume_call_events(Srv) ->
     gen_server:cast(Srv, {add_consumer, self()}).
 
