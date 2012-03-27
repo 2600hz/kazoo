@@ -24,7 +24,7 @@ update_agent(JObj, _Prop) ->
     wh_util:put_callid(JObj),
     lager:debug("recv agent update for: ~p", [wh_json:get_value(<<"doc">>, JObj)]).
 
--spec new_member/2 :: (wh_json:json_object(), wh_proplist()) -> any().
+-spec new_member/2 :: (wh_json:json_object(), wh_proplist()) -> 'ok' | {'error', term()}.
 new_member(JObj, _Prop) ->
     wh_util:put_callid(JObj),
     Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, JObj)),
@@ -34,19 +34,17 @@ new_member(JObj, _Prop) ->
 
 -spec find_queue/3 :: (whapps_call:call(), ne_binary(), ne_binary()) -> 'ok' | {'error', term()}.
 find_queue(Call, QueueId, ServerId) ->
-    AccountDb = whapps_call:account_db(Call),
-    case acdc_util:find_queue(AccountDb, QueueId) of
+    case acdc_call:new(Call, QueueId) of
         {error, _Reason} ->
-            lager:debug("unable to find ACD queue ~s/~s: ~p", [AccountDb, QueueId, _Reason]),
+            lager:debug("unable to find ACD queue ~s/~s: ~p", [whapps_call:account_db(Call), QueueId, _Reason]),
             CallId = whapps_call:is_call(Call) andalso whapps_call:call_id(Call),
             Result = [{<<"Call-ID">>, CallId}
                       ,{<<"Result">>, <<"FAULT">>}
                       | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                      ],
             wapi_queue:publish_result(ServerId, Result);
-        {ok, Queue} ->
-            ConnectionTimeout = wh_json:get_integer_value(<<"connection_timeout">>, Queue, 300) * 1000,
-            acdc_agent:maybe_handle_call(Call, Queue, ServerId, ConnectionTimeout)
+        Caller ->
+            acdc_agent:maybe_handle_call(Caller, acdc_call:connection_timeout(Caller), ServerId)
     end.
 
 -spec add_agents/1 :: (ne_binary()) -> 'ok'.
