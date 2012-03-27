@@ -142,7 +142,7 @@ handle_call({request, ReqProp, PublishFun, VFun, Timeout}, {ClientPid, _}=From, 
 %% @end
 %%--------------------------------------------------------------------
 handle_cast({set_negative_threshold, NegThreshold}, State) ->
-    lager:info("set negative threshold to ~p", [NegThreshold]),
+    lager:debug("set negative threshold to ~p", [NegThreshold]),
     {noreply, State#state{neg_resp_threshold = NegThreshold}};
 handle_cast({event, MsgId, JObj}, #state{current_msg_id = MsgId
                                          ,client_from = From
