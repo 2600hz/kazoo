@@ -1,8 +1,8 @@
-ROOT = .
+ROOT = ../..
 DIALYZER = dialyzer
 REBAR = $(ROOT)/bin/rebar
 
-DIRS = lib/whistle-1.0.0 lib/whistle_couch-1.0.0 lib/whistle_amqp-1.0.0 lib/whistle_number_manager-1.0.0 ecallmgr whistle_apps
+DIRS = $(ROOT)/lib/whistle-1.0.0 .
 
 all: app
 
@@ -24,7 +24,7 @@ eunit:
 
 build-plt:
 	@$(DIALYZER) --build_plt --output_plt $(ROOT)/.platform_dialyzer.plt \
-		--apps erts kernel stdlib sasl inets crypto public_key ssl
+		--apps kernel stdlib sasl inets crypto public_key ssl
 
 dialyze: 
 	@$(DIALYZER) $(foreach DIR,$(DIRS),$(DIR)/ebin) \
@@ -33,6 +33,3 @@ dialyze:
 
 docs:
 	@$(REBAR) doc skip_deps=true
-
-update:
-	./bin/git_update.sh

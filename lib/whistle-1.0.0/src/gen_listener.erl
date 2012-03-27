@@ -366,7 +366,9 @@ handle_info({'EXIT', Pid, _Reason}=Message, #state{active_responders=ARs}=State)
     end;
 
 handle_info({amqp_host_down, _H}=Down, #state{bindings=Bindings, params=Params}=State) ->
+    timer:sleep(random:uniform(150)+100), % wait a bit before reconnecting, so we don't slam amqp_mgr
     lager:alert("amqp host down msg: ~p", [_H]),
+
     case amqp_util:is_host_available() of
         true ->
             lager:debug("host is available, let's try wiring up"),

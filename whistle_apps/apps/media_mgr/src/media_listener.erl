@@ -46,33 +46,37 @@ handle_media_req(JObj, _Props) ->
             send_error_resp(JObj, <<"no_data">>, <<>>);
         {Db, Doc, Attachment, Meta} ->
             Id = wh_util:format_account_id(Db, raw),
-            send_media_resp(JObj, Id, Doc, Attachment),
+            send_media_resp(JObj, Id, Doc, Attachment, Meta),
 
             {ok, FileServer} = media_files_sup:find_file_server(Id, Doc, Attachment, Meta),
             lager:debug("file server at ~p for ~s/~s/~s", [FileServer, Id, Doc, Attachment])
     end.
 
-send_media_resp(JObj, Id, Doc, Attachment) ->
+send_media_resp(JObj, Id, Doc, Attachment, Meta) ->
     Hostname = wh_util:get_hostname(),
     Port = whapps_config:get_binary(?CONFIG_CAT, <<"port">>),
 
-    VlcPrefix = case whapps_config:get_is_true(?CONFIG_CAT, <<"use_vlc">>, false) of
-                    true -> <<"vlc://">>;
-                    false -> <<>>
+    {VlcPrefix, Protocol} = case whapps_config:get_is_true(?CONFIG_CAT, <<"use_vlc">>, false) of
+                    true -> {<<"vlc://">>, <<"http://">>};
+                    false -> {<<>>, streaming_protocol(wh_json:get_value(<<"content_type">>, Meta))}
                 end,
 
     StreamType = convert_stream_type(wh_json:get_value(<<"Stream-Type">>, JObj)),
+    StreamURL = list_to_binary([VlcPrefix
+                                ,Protocol
+                                ,Hostname, <<":">>
+                                ,Port, <<"/">>
+                                ,StreamType, <<"/">>
+                                ,Id, <<"/">>
+                                ,Doc, <<"/">>
+                                ,Attachment
+                               ]),
+
+    lager:debug("final stream URL: ~s", [StreamURL]),
 
     %% TODO: add auth creds for one-time media response, and streaming creds for continuous
     Resp = [{<<"Media-Name">>, wh_json:get_value(<<"Media-Name">>, JObj)}
-            ,{<<"Stream-URL">>, list_to_binary([VlcPrefix
-                                                ,<<"http://">>
-                                                ,Hostname
-                                                ,<<":">>, Port, <<"/">>
-                                                ,StreamType, <<"/">>
-                                                ,Id, <<"/">>
-                                                ,Doc, <<"/">>
-                                                ,Attachment])}
+            ,{<<"Stream-URL">>, StreamURL}
             ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)],
     wapi_media:publish_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp).
@@ -200,7 +204,14 @@ find_attachment([Db, Doc, first]) ->
                 Attachments ->
                     {Attachment, MetaData} = hd(wh_json:to_proplist(Attachments)),
                     lager:debug("found attachment to stream: ~s", [Attachment]),
-                    {DbName, Doc, Attachment, MetaData}
+
+                    case wh_json:get_value(<<"content_type">>, JObj) of
+                        undefined ->
+                            {DbName, Doc, Attachment, MetaData};
+                        CT ->
+                            lager:debug("overwriting content type in metadata with ~s", [CT]),
+                            {DbName, Doc, Attachment, wh_json:set_value(<<"content_type">>, CT, MetaData)}
+                    end
             end;
         _->
             not_found
@@ -220,7 +231,13 @@ find_attachment([Db, Doc, Attachment]) ->
                 false ->
                     no_data;
                 MetaData ->
-                    {DbName, Doc, Attachment, MetaData}
+                    case wh_json:get_value(<<"content_type">>, JObj) of
+                        undefined ->
+                            {DbName, Doc, Attachment, MetaData};
+                        CT ->
+                            lager:debug("overwriting content type in metadata with ~s", [CT]),
+                            {DbName, Doc, Attachment, wh_json:set_value(<<"content_type">>, CT, MetaData)}
+                    end
             end;
         _ ->
             not_found
@@ -254,3 +271,10 @@ convert_stream_type(<<"extant">>) ->
     <<"continuous">>;
 convert_stream_type(Type) ->
     Type.
+
+streaming_protocol(<<"audio/mp3">>) ->
+    <<"shout://">>;
+streaming_protocol(<<"audio/mpeg">>) ->
+    <<"shout://">>;
+streaming_protocol(_) ->
+    <<"http://">>.
