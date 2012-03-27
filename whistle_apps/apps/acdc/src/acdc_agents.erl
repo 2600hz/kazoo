@@ -27,8 +27,12 @@
 
 -include("acdc.hrl").
 
--type li_list() :: [{pid(), pos_integer()},...] | [].
--type state() :: {'rr', queue()} | {'li', li_list(), li_list()}.
+-type mi_list() :: [{pid(), pos_integer()},...] | [].
+-type state() :: {'rr', queue()} | {'mi', mi_list(), mi_list()}.
+
+%% rr - round robin: no information about the agent's last call is kept
+%% mi - most idle: track agent's last call; agent with lowest last call
+%%      is given first shot at the next caller
 
 -define(SERVER, ?MODULE).
 
@@ -82,8 +86,8 @@ init([]) ->
             lager:debug("starting acdc agents with round-robin"),
             {ok, {rr, queue:new()}};
         <<"longest_idle">> ->
-            lager:debug("starting acdc agents with longest-idle"),
-            {ok, {li, [], []}} % {Agent, idle_time}
+            lager:debug("starting acdc agents with most-idle"),
+            {ok, {mi, [], []}} % {Agent, idle_time}
     end.
 
 %%--------------------------------------------------------------------
@@ -174,32 +178,32 @@ next_agent_please({rr, As}) ->
         {empty, _} -> undefined;
         {{value, A}, As1} -> {A, {rr, queue:in(A, As1)}}
     end;
-next_agent_please({li, [A|As]=Agents, Out}) ->
+next_agent_please({mi, [A|As]=Agents, Out}) ->
     {NextAgent, _}=Next = lists:foldr(fun({_, T}=NewAcc, {_, T1}) when T < T1 -> NewAcc;
                                          (_, Acc) -> Acc
                                       end, A, As),
-    {NextAgent, {li, lists:keydelete(NextAgent, 1, Agents), [Next | Out]}};
-next_agent_please({li, [], _}) ->
+    {NextAgent, {mi, lists:keydelete(NextAgent, 1, Agents), [Next | Out]}};
+next_agent_please({mi, [], _}) ->
     undefined.
 
 -spec update/3 :: (state(), pid(), pos_integer()) -> state().
 update({rr, _}=RR, _, _) ->
     RR;
-update({li, As, Out}=LI, A, T) ->
+update({mi, As, Out}=MI, A, T) ->
     case lists:keytake(A, 1, As) of
         false ->
             case lists:keytake(A, 1, Out) of
-                false -> LI;
-                {value, {A, _}, Out1} -> {li, [{A, T}|As], Out1}
+                false -> MI;
+                {value, {A, _}, Out1} -> {mi, [{A, T}|As], Out1}
             end;
-        {value, {A, _}, As1} -> {li, [{A, T} | As1], Out}
+        {value, {A, _}, As1} -> {mi, [{A, T} | As1], Out}
     end.
 
 -spec reload/2 :: (state(), [pid(),...]) -> state().
 reload({rr, _}, Ws) ->
     {rr, queue:from_list(Ws)};
-reload({li, As, _Out}, Ws) ->
-    {li, [{W, idle_time(lists:keyfind(W, 1, As))} || W <- Ws], []}.
+reload({mi, As, _Out}, Ws) ->
+    {mi, [{W, idle_time(lists:keyfind(W, 1, As))} || W <- Ws], []}.
 
 -spec idle_time/1 :: ('false' | {pid(),pos_integer()}) -> pos_integer().
 idle_time(false) ->
@@ -207,14 +211,14 @@ idle_time(false) ->
 idle_time({value, {_,T}}) ->
     T.
 
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+
 -spec agent_count/1 :: (state()) -> non_neg_integer().
 agent_count({rr, As}) ->
     queue:len(As);
-agent_count({li, As, _}) ->
+agent_count({mi, As, _}) ->
     length(As).
-
--ifdef(TEST).
--include_lib("eunit/include/eunit.hrl").
 
 rr_next_agent_please_test() ->
     State0 = {rr, queue:new()},
@@ -238,7 +242,7 @@ rr_next_agent_please_test() ->
     ?assertEqual(A3, A6).
 
 li_next_agent_please_test() ->
-    State0 = {li, [], []},
+    State0 = {mi, [], []},
     State1 = reload(State0, [pid1, pid2, pid3]),
     ?assertEqual(agent_count(State1), 3),
 
