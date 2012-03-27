@@ -13,7 +13,7 @@
 
 -export([start_link/0]).
 -export([next_agent/0
-         ,update_agent/1
+         ,update_agent/1, restock_agent/1
         ]).
 -export([reload_agents/0]).
 
@@ -64,6 +64,9 @@ next_agent() ->
 -spec update_agent/1 :: (pid()) -> 'ok'.
 update_agent(Agent) ->
     gen_server:cast(?SERVER, {update_agent, Agent, wh_util:current_tstamp()}).
+
+restock_agent(Agent) ->
+    gen_server:cast(?SERVER, {restock_agent, Agent}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -128,6 +131,8 @@ handle_call(_Request, _From, State) ->
 handle_cast(reload_agents, As) ->
     lager:debug("reloading list of agent workers"),
     {noreply, reload(As, acdc_agent_sup:workers())};
+handle_cast({restock_agent, Agent}, Agents) ->
+    {noreply, restock(Agents, Agent)};
 handle_cast({update_agent, Agent, Time}, Agents) ->
     {noreply, update(Agents, Agent, Time)}.
 
@@ -218,6 +223,15 @@ remove({mi, As, Out}, P, R) ->
                    not (Pid =:= P andalso Ref =:= R)
       ]}.
 
+-spec restock/2 :: (state(), pid()) -> state().
+restock({rr, _}=Agents, _) ->
+    Agents;
+restock({mi, As, Out}=State, Agent) ->
+    case lists:keytake(Agent, 1, Out) of
+        false -> State;
+        {value, A, Out1} -> {mi, [A|As], Out1}
+    end.
+
 -spec reload/2 :: (state(), [pid(),...]) -> state().
 reload({rr, _}, Ws) ->
     {rr, queue:from_list([begin {W, erlang:monitor(process, W)} end || W <- Ws])};
@@ -253,6 +267,8 @@ rr_next_agent_please_test() ->
     ?assertEqual(pid2, A2),
     ?assertEqual(pid3, A3),
 
+    ?assertEqual(State4, restock(State4, pid2)),
+
     {A4, State5} = next_agent_please(State4),
     {A5, State6} = next_agent_please(State5),
     {A6, State7} = next_agent_please(State6),
@@ -283,7 +299,7 @@ li_next_agent_please_test() ->
 
     State8 = update(State7, pid1, 9),
     State9 = update(State8, pid2, 11),
-    State10 = update(State9, pid3, 3),
+    State10 = restock(State9, pid3),
 
     {A4, State11} = next_agent_please(State10),
     {A5, State12} = next_agent_please(State11),
@@ -294,7 +310,5 @@ li_next_agent_please_test() ->
 
     ?assertEqual(pid3, A4),
     ?assertEqual(pid1, A5),
-    ?assertEqual(pid2, A6).
-
-    
+    ?assertEqual(pid2, A6).    
 -endif.
