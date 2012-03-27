@@ -27,8 +27,11 @@
 
 -include("acdc.hrl").
 
--type mi_list() :: [{pid(), pos_integer()},...] | [].
--type state() :: {'rr', queue()} | {'mi', mi_list(), mi_list()}.
+-type mi_list() :: [{pid(), pos_integer(), reference()},...] | [].
+
+%% queue({pid(), reference()})
+-type state() :: {'rr', queue()} |
+                 {'mi', mi_list(), mi_list()}.
 
 %% rr - round robin: no information about the agent's last call is kept
 %% mi - most idle: track agent's last call; agent with lowest last call
@@ -126,10 +129,7 @@ handle_cast(reload_agents, As) ->
     lager:debug("reloading list of agent workers"),
     {noreply, reload(As, acdc_agent_sup:workers())};
 handle_cast({update_agent, Agent, Time}, Agents) ->
-    Agents1 = update(Agents, Agent, Time),
-    {noreply, Agents1};
-handle_cast(_, State) ->
-    {noreply, State}.
+    {noreply, update(Agents, Agent, Time)}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -141,7 +141,11 @@ handle_cast(_, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info({'DOWN', Ref, process, Pid, _Reason}, State) ->
+    lager:debug("agent ~p maybe went down: ~p", [Pid, _Reason]),
+    {noreply, remove(State, Pid, Ref)};
 handle_info(_Info, State) ->
+    lager:debug("unhandled message: ~p", [_Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -176,12 +180,12 @@ code_change(_OldVsn, State, _Extra) ->
 next_agent_please({rr, As}) ->
     case queue:out(As) of
         {empty, _} -> undefined;
-        {{value, A}, As1} -> {A, {rr, queue:in(A, As1)}}
+        {{value, {A, _}=Agent}, As1} -> {A, {rr, queue:in(Agent, As1)}}
     end;
 next_agent_please({mi, [A|As]=Agents, Out}) ->
-    {NextAgent, _}=Next = lists:foldr(fun({_, T}=NewAcc, {_, T1}) when T < T1 -> NewAcc;
-                                         (_, Acc) -> Acc
-                                      end, A, As),
+    {NextAgent, _, _}=Next = lists:foldr(fun({_, T, _}=NewAcc, {_, T1, _}) when T < T1 -> NewAcc;
+                                            (_, Acc) -> Acc
+                                         end, A, As),
     {NextAgent, {mi, lists:keydelete(NextAgent, 1, Agents), [Next | Out]}};
 next_agent_please({mi, [], _}) ->
     undefined.
@@ -194,21 +198,36 @@ update({mi, As, Out}=MI, A, T) ->
         false ->
             case lists:keytake(A, 1, Out) of
                 false -> MI;
-                {value, {A, _}, Out1} -> {mi, [{A, T}|As], Out1}
+                {value, {A, _, Ref}, Out1} -> {mi, [{A, T, Ref}|As], Out1}
             end;
-        {value, {A, _}, As1} -> {mi, [{A, T} | As1], Out}
+        {value, {A, _, Ref}, As1} -> {mi, [{A, T, Ref} | As1], Out}
     end.
+
+-spec remove/3 :: (state(), pid(), reference()) -> state().
+remove({rr, Q}, P, R) ->
+    {rr, queue:filter(fun({Pid, Ref}) ->
+                              not (Pid =:= P andalso Ref =:= R)
+                      end, Q)};
+remove({mi, As, Out}, P, R) ->
+    {mi
+     ,[Agent || {Pid, _, Ref}=Agent <- As,
+                not (Pid =:= P andalso Ref =:= R)
+      ]
+     ,[AgentOut || {Pid, _, Ref}=AgentOut <- Out,
+                   not (Pid =:= P andalso Ref =:= R)
+      ]}.
 
 -spec reload/2 :: (state(), [pid(),...]) -> state().
 reload({rr, _}, Ws) ->
-    {rr, queue:from_list(Ws)};
+    {rr, queue:from_list([begin {W, erlang:monitor(process, W)} end || W <- Ws])};
 reload({mi, As, _Out}, Ws) ->
-    {mi, [{W, idle_time(lists:keyfind(W, 1, As))} || W <- Ws], []}.
+    {mi, [{W, idle_time(lists:keyfind(W, 1, As)), erlang:monitor(process, W)} || W <- Ws], []}.
 
 -spec idle_time/1 :: ('false' | {pid(),pos_integer()}) -> pos_integer().
 idle_time(false) ->
     wh_util:current_tstamp();
-idle_time({value, {_,T}}) ->
+idle_time({value, {_,T, Ref}}) ->
+    erlang:demonitor(Ref, [flush]),
     T.
 
 -ifdef(TEST).
@@ -229,9 +248,9 @@ rr_next_agent_please_test() ->
     {A2, State3} = next_agent_please(State2),
     {A3, State4} = next_agent_please(State3),
     ?assertEqual(agent_count(State4), 3),
-    ?assertEqual(A1, pid1),
-    ?assertEqual(A2, pid2),
-    ?assertEqual(A3, pid3),
+    ?assertEqual(pid1, A1),
+    ?assertEqual(pid2, A2),
+    ?assertEqual(pid3, A3),
 
     {A4, State5} = next_agent_please(State4),
     {A5, State6} = next_agent_please(State5),
@@ -275,5 +294,6 @@ li_next_agent_please_test() ->
     ?assertEqual(pid3, A4),
     ?assertEqual(pid1, A5),
     ?assertEqual(pid2, A6).
+
     
 -endif.
