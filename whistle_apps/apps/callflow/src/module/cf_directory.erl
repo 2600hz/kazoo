@@ -131,13 +131,13 @@ handle(Data, Call) ->
               ,digits_collected = <<>>
               ,users = Users
              },
-            log(Users),
+            _ = log(Users),
             directory_start(Call, State, Users);
         {error, no_users_in_directory} ->
             _ = play_no_users(Call),
             cf_exe:continue(Call);
         {error, _} ->
-            play_error(Call),
+            _ = play_error(Call),
             cf_exe:continue(Call)
     end.
 
@@ -203,7 +203,7 @@ matches_menu(Call, State, Users) ->
 
 maybe_match_users(Call, State, [], _) ->
     lager:debug("failed to match any users, back to the beginning"),
-    play_no_users(Call),
+    _ = play_no_users(Call),
     directory_start(Call, clear_dtmf(State), users(State));
 maybe_match_users(Call, State, [U|Us], MatchNum) ->
     case maybe_match_user(Call, U, MatchNum) of
@@ -230,7 +230,8 @@ maybe_match_users(Call, State, [U|Us], MatchNum) ->
 -spec maybe_match_user/3 :: (whapps_call:call(), directory_user(), pos_integer()) -> 'route' |
                                                                                      'next' |
                                                                                      'start_over' |
-                                                                                     'ivalid'.
+                                                                                     'invalid' |
+                                                                                     'continue'.
 maybe_match_user(Call, U, MatchNum) ->
     UserName = case media_name(U) of
                    undefined -> {say, <<$', (full_name(U))/binary, $'>>};
@@ -255,7 +256,8 @@ maybe_match_user(Call, U, MatchNum) ->
 -spec interpret_user_match_dtmf/1 :: (ne_binary()) -> 'route' |
                                                       'next' |
                                                       'start_over' |
-                                                      'invalid'.
+                                                      'invalid' |
+                                                      'continue'.
 interpret_user_match_dtmf(?DTMF_RESULT_CONNECT) -> route;
 interpret_user_match_dtmf(?DTMF_RESULT_NEXT) -> next;
 interpret_user_match_dtmf(?DTMF_RESULT_START) -> start_over;
@@ -285,9 +287,6 @@ play_user(Call, UsernameTuple, MatchNum) ->
                             ,UsernameTuple
                             ,{play, ?PROMPT_RESULT_MENU}
                            ]).
-
-play_invalid_key(Call) ->
-    whapps_call_command:audio_macro([{play, ?PROMPT_INVALID_KEY}], Call).
 
 play_confirm_match(Call, User) ->
     play_and_collect(Call, [{play, ?PROMPT_FOUND}

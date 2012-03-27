@@ -55,7 +55,28 @@ inbound_handler(JObj, Number) ->
 -spec get_dest_number/1 :: (wh_json:json_object()) -> ne_binary().
 get_dest_number(JObj) ->
     {User, _} = whapps_util:get_destination(JObj, ?APP_NAME, <<"inbound_user_field">>),
-    wnm_util:to_e164(User).
+    case whapps_config:get_is_true(<<"stepswitch">>, <<"assume_inbound_e164">>) of
+	true ->
+	    Number = assume_e164(User),
+	    lager:debug("assuming number is e164, normalizing to ~s", [Number]),
+	    Number;
+	_ ->
+	    Number = wnm_util:to_e164(User),
+	    lager:debug("converted number to e164: ~s", [Number]),
+	    Number
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% determine the e164 format of the inbound number
+%% @end
+%%--------------------------------------------------------------------
+-spec assume_e164/1 :: (ne_binary()) -> ne_binary().
+assume_e164(<<$+, _/binary>> = Number) ->
+    Number;
+assume_e164(Number) ->
+    <<$+, Number/binary>>.
 
 %%--------------------------------------------------------------------
 %% @private
