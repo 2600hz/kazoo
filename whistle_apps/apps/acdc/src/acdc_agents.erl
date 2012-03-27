@@ -12,7 +12,9 @@
 -behaviour(gen_server).
 
 -export([start_link/0]).
--export([next_agent/0, update_agent/1]).
+-export([next_agent/0
+         ,update_agent/1
+        ]).
 -export([reload_agents/0]).
 
 -export([init/1
@@ -25,7 +27,8 @@
 
 -include("acdc.hrl").
 
--type state() :: {'rr', queue()} | {'li', [{pid(), pos_integer()},...] | []}.
+-type li_list() :: [{pid(), pos_integer()},...] | [].
+-type state() :: {'rr', queue()} | {'li', li_list(), li_list()}.
 
 -define(SERVER, ?MODULE).
 
@@ -80,7 +83,7 @@ init([]) ->
             {ok, {rr, queue:new()}};
         <<"longest_idle">> ->
             lager:debug("starting acdc agents with longest-idle"),
-            {ok, {li, []}} % {Agent, idle_time}
+            {ok, {li, [], []}} % {Agent, idle_time}
     end.
 
 %%--------------------------------------------------------------------
@@ -171,38 +174,102 @@ next_agent_please({rr, As}) ->
         {empty, _} -> undefined;
         {{value, A}, As1} -> {A, {rr, queue:in(A, As1)}}
     end;
-next_agent_please({li, [A|As]}=All) ->
-    {Next, _} = lists:foldr(fun({_, T}=NewAcc, {_, T1}) when T < T1 -> NewAcc;
-                               (_, Acc) -> Acc
-                            end, A, As),
-    {Next, All}.
+next_agent_please({li, [A|As]=Agents, Out}) ->
+    {NextAgent, _}=Next = lists:foldr(fun({_, T}=NewAcc, {_, T1}) when T < T1 -> NewAcc;
+                                         (_, Acc) -> Acc
+                                      end, A, As),
+    {NextAgent, {li, lists:keydelete(NextAgent, 1, Agents), [Next | Out]}};
+next_agent_please({li, [], _}) ->
+    undefined.
 
 -spec update/3 :: (state(), pid(), pos_integer()) -> state().
 update({rr, _}=RR, _, _) ->
     RR;
-update({li, As}=LI, A, T) ->
+update({li, As, Out}=LI, A, T) ->
     case lists:keytake(A, 1, As) of
-        false -> LI;
-        {A, _, As1} -> {li, [{A, T} | As1]}
+        false ->
+            case lists:keytake(A, 1, Out) of
+                false -> LI;
+                {value, {A, _}, Out1} -> {li, [{A, T}|As], Out1}
+            end;
+        {value, {A, _}, As1} -> {li, [{A, T} | As1], Out}
     end.
 
 -spec reload/2 :: (state(), [pid(),...]) -> state().
 reload({rr, _}, Ws) ->
     {rr, queue:from_list(Ws)};
-reload({li, As}, Ws) ->
-    {li, [{W, idle_time(lists:keyfind(W, 1, As))} || W <- Ws]}.
+reload({li, As, _Out}, Ws) ->
+    {li, [{W, idle_time(lists:keyfind(W, 1, As))} || W <- Ws], []}.
 
 -spec idle_time/1 :: ('false' | {pid(),pos_integer()}) -> pos_integer().
 idle_time(false) ->
     wh_util:current_tstamp();
-idle_time({_,T}) ->
+idle_time({value, {_,T}}) ->
     T.
+
+-spec agent_count/1 :: (state()) -> non_neg_integer().
+agent_count({rr, As}) ->
+    queue:len(As);
+agent_count({li, As, _}) ->
+    length(As).
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 
 rr_next_agent_please_test() ->
-   State0 = {rr, queue:new()}. 
+    State0 = {rr, queue:new()},
+    State1 = reload(State0, [pid1, pid2, pid3]),
+    ?assertEqual(agent_count(State1), 3),
 
+    {A1, State2} = next_agent_please(State1),
+    {A2, State3} = next_agent_please(State2),
+    {A3, State4} = next_agent_please(State3),
+    ?assertEqual(agent_count(State4), 3),
+    ?assertEqual(A1, pid1),
+    ?assertEqual(A2, pid2),
+    ?assertEqual(A3, pid3),
 
+    {A4, State5} = next_agent_please(State4),
+    {A5, State6} = next_agent_please(State5),
+    {A6, State7} = next_agent_please(State6),
+    ?assertEqual(agent_count(State7), 3),
+    ?assertEqual(A1, A4),
+    ?assertEqual(A2, A5),
+    ?assertEqual(A3, A6).
+
+li_next_agent_please_test() ->
+    State0 = {li, [], []},
+    State1 = reload(State0, [pid1, pid2, pid3]),
+    ?assertEqual(agent_count(State1), 3),
+
+    State2 = update(State1, pid1, 1),
+    State3 = update(State2, pid2, 5),
+    State4 = update(State3, pid3, 3),
+
+    {A1, State5} = next_agent_please(State4),
+    {A2, State6} = next_agent_please(State5),
+    {A3, State7} = next_agent_please(State6),
+
+    ?assertEqual(agent_count(State7), 0),
+    ?assertEqual(undefined, next_agent_please(State7)),
+
+    ?assertEqual(pid1, A1),
+    ?assertEqual(pid3, A2),
+    ?assertEqual(pid2, A3),
+
+    State8 = update(State7, pid1, 9),
+    State9 = update(State8, pid2, 11),
+    State10 = update(State9, pid3, 3),
+
+    {A4, State11} = next_agent_please(State10),
+    {A5, State12} = next_agent_please(State11),
+    {A6, State13} = next_agent_please(State12),
+
+    ?assertEqual(agent_count(State13), 0),
+    ?assertEqual(undefined, next_agent_please(State13)),
+
+    ?assertEqual(pid3, A4),
+    ?assertEqual(pid1, A5),
+    ?assertEqual(pid2, A6).
+    
 -endif.
