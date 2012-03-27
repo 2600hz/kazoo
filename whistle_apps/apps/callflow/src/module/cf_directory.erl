@@ -120,7 +120,7 @@
 -spec handle/2 :: (wh_json:json_object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     {ok, DirJObj} = couch_mgr:open_doc(whapps_call:account_db(Call), wh_json:get_value(<<"id">>, Data)),
-
+    whapps_call_command:answer(Call),
     case get_directory_listing(whapps_call:account_db(Call), wh_json:get_value(<<"_id">>, DirJObj)) of
         {ok, Users} ->
             State = #directory{
