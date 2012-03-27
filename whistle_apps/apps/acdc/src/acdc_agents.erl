@@ -13,9 +13,13 @@
 
 -export([start_link/0]).
 -export([next_agent/0
-         ,update_agent/1, restock_agent/1
+         ,get_agents/0
+         ,update_agent/1
+         ,reload_agents/0
+         ,next_agent_please/1
         ]).
--export([reload_agents/0]).
+
+-export([summary/0]).
 
 -export([init/1
          ,handle_call/3
@@ -29,9 +33,9 @@
 
 -type mi_list() :: [{pid(), pos_integer(), reference()},...] | [].
 
-%% queue({pid(), reference()})
--type state() :: {'rr', queue()} |
-                 {'mi', mi_list(), mi_list()}.
+-opaque agents() :: {'rr', queue()} |             % queue({pid(), reference()})
+                    {'mi', mi_list()}. % [{pid(), last_call_timestamp, reference()}]
+-export_type([agents/0]).
 
 %% rr - round robin: no information about the agent's last call is kept
 %% mi - most idle: track agent's last call; agent with lowest last call
@@ -61,12 +65,16 @@ reload_agents() ->
 next_agent() ->
     gen_server:call(?SERVER, next_agent).
 
+-spec get_agents/0 :: () -> agents().
+get_agents() ->
+    gen_server:call(?SERVER, get_agents).
+
 -spec update_agent/1 :: (pid()) -> 'ok'.
 update_agent(Agent) ->
     gen_server:cast(?SERVER, {update_agent, Agent, wh_util:current_tstamp()}).
 
-restock_agent(Agent) ->
-    gen_server:cast(?SERVER, {restock_agent, Agent}).
+summary() ->
+    gen_server:call(?SERVER, summary).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -83,17 +91,17 @@ restock_agent(Agent) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
--spec init/1 :: ([]) -> {ok, state()}.
+-spec init/1 :: ([]) -> {'ok', agents()}.
 init([]) ->
     put(callid, ?LOG_SYSTEM_ID),
 
-    case whapps_config:get(?APP_NAME, <<"queue_strategy">>, <<"longest_idle">>) of
+    case whapps_config:get(?APP_NAME, <<"queue_strategy">>, <<"most_idle">>) of
         <<"round_robin">> ->
             lager:debug("starting acdc agents with round-robin"),
             {ok, {rr, queue:new()}};
-        <<"longest_idle">> ->
+        <<"most_idle">> ->
             lager:debug("starting acdc agents with most-idle"),
-            {ok, {mi, [], []}} % {Agent, idle_time}
+            {ok, {mi, []}} % {Agent, idle_time}
     end.
 
 %%--------------------------------------------------------------------
@@ -110,6 +118,10 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_call(summary, _From, Agents) ->
+    {reply, summary(Agents), Agents};
+handle_call(get_agents, _From, Agents) ->
+    {reply, Agents, Agents};
 handle_call(next_agent, _From, Agents) ->
     case next_agent_please(Agents) of
         undefined -> {reply, {error, no_agent}, Agents};
@@ -131,8 +143,6 @@ handle_call(_Request, _From, State) ->
 handle_cast(reload_agents, As) ->
     lager:debug("reloading list of agent workers"),
     {noreply, reload(As, acdc_agent_sup:workers())};
-handle_cast({restock_agent, Agent}, Agents) ->
-    {noreply, restock(Agents, Agent)};
 handle_cast({update_agent, Agent, Time}, Agents) ->
     {noreply, update(Agents, Agent, Time)}.
 
@@ -182,76 +192,79 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec next_agent_please/1 :: (state()) -> {pid(), state()} | 'undefined'.
+-spec next_agent_please/1 :: (agents()) -> {pid(), agents()} | 'undefined'.
 next_agent_please({rr, As}) ->
     case queue:out(As) of
         {empty, _} -> undefined;
         {{value, {A, _}=Agent}, As1} -> {A, {rr, queue:in(Agent, As1)}}
     end;
-next_agent_please({mi, [A|As]=Agents, Out}) ->
-    {NextAgent, _, _}=Next = lists:foldr(fun({_, T, _}=NewAcc, {_, T1, _}) when T < T1 -> NewAcc;
-                                            (_, Acc) -> Acc
-                                         end, A, As),
-    {NextAgent, {mi, lists:keydelete(NextAgent, 1, Agents), [Next | Out]}};
-next_agent_please({mi, [], _}) ->
+next_agent_please({mi, [A|As]=Agents}) ->
+    {NextAgent, _, _} = lists:foldr(fun({_, T, _}=NewAcc, {_, T1, _}) when T < T1 -> NewAcc;
+                                       (_, Acc) -> Acc
+                                    end, A, As),
+    {NextAgent, {mi, lists:keydelete(NextAgent, 1, Agents)}};
+next_agent_please({mi, []}) ->
     undefined.
 
--spec update/3 :: (state(), pid(), pos_integer()) -> state().
+-spec update/3 :: (agents(), pid(), pos_integer()) -> agents().
 update({rr, _}=RR, _, _) ->
     RR;
-update({mi, As, Out}=MI, A, T) ->
+update({mi, As}, A, T) ->
     case lists:keytake(A, 1, As) of
-        false ->
-            case lists:keytake(A, 1, Out) of
-                false -> MI;
-                {value, {A, _, Ref}, Out1} -> {mi, [{A, T, Ref}|As], Out1}
-            end;
-        {value, {A, _, Ref}, As1} -> {mi, [{A, T, Ref} | As1], Out}
+        false -> {mi, [{A, T, erlang:monitor(process, A)} | As]};
+        {value, {A, _, Ref}, As1} -> {mi, [{A, T, Ref} | As1]}
     end.
 
--spec remove/3 :: (state(), pid(), reference()) -> state().
+-spec remove/3 :: (agents(), pid(), reference()) -> agents().
 remove({rr, Q}, P, R) ->
     {rr, queue:filter(fun({Pid, Ref}) ->
                               not (Pid =:= P andalso Ref =:= R)
                       end, Q)};
-remove({mi, As, Out}, P, R) ->
+remove({mi, As}, P, R) ->
     {mi
      ,[Agent || {Pid, _, Ref}=Agent <- As,
                 not (Pid =:= P andalso Ref =:= R)
-      ]
-     ,[AgentOut || {Pid, _, Ref}=AgentOut <- Out,
-                   not (Pid =:= P andalso Ref =:= R)
       ]}.
 
--spec restock/2 :: (state(), pid()) -> state().
-restock({rr, _}=Agents, _) ->
-    Agents;
-restock({mi, As, Out}=State, Agent) ->
-    case lists:keytake(Agent, 1, Out) of
-        false -> State;
-        {value, A, Out1} -> {mi, [A|As], Out1}
-    end.
+-type agent_summary_list() :: [{pid(), non_neg_integer()},...] | [].
+-spec summary/1 :: (agents()) -> [{'strategy', ne_binary()} |
+                                 {'agents', agent_summary_list()}
+                                 ,...
+                                ].
+summary({rr, As}) ->
+    [{strategy, <<"round robin">>}
+     ,{agents, [{P, 0} || {P, _Ref} <- queue:to_list(As)]}
+    ];
+summary({mi, As}) ->
+    [{strategy, <<"most idle">>}
+     ,{agents, list_summary(As)}
+    ].
 
--spec reload/2 :: (state(), [pid(),...]) -> state().
+-spec list_summary/1 :: (mi_list()) -> agent_summary_list().
+list_summary(L) when is_list(L) ->
+    F = fun({P, T, _}, Acc) -> [{P, T} | Acc] end,
+    lists:foldl(F, [], L).
+
+-spec reload/2 :: (agents(), [pid(),...]) -> agents().
 reload({rr, _}, Ws) ->
     {rr, queue:from_list([begin {W, erlang:monitor(process, W)} end || W <- Ws])};
-reload({mi, As, _Out}, Ws) ->
-    {mi, [{W, idle_time(lists:keyfind(W, 1, As)), erlang:monitor(process, W)} || W <- Ws], []}.
+reload({mi, As}, Ws) ->
+    {mi, [{W, idle_time(lists:keyfind(W, 1, As)), erlang:monitor(process, W)} || W <- Ws]}.
 
--spec idle_time/1 :: ('false' | {pid(),pos_integer()}) -> pos_integer().
+-spec idle_time/1 :: ('false' | {pid(),pos_integer(), reference()}) -> pos_integer().
 idle_time(false) ->
     wh_util:current_tstamp();
-idle_time({value, {_,T, Ref}}) ->
+idle_time({_,T, Ref}) ->
     erlang:demonitor(Ref, [flush]),
     T.
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 
--spec agent_count/1 :: (state()) -> non_neg_integer().
+-spec agent_count/1 :: (agents()) -> non_neg_integer().
 agent_count({rr, As}) ->
     queue:len(As);
-agent_count({mi, As, _}) ->
+agent_count({mi, As}) ->
     length(As).
 
 rr_next_agent_please_test() ->
@@ -267,8 +280,6 @@ rr_next_agent_please_test() ->
     ?assertEqual(pid2, A2),
     ?assertEqual(pid3, A3),
 
-    ?assertEqual(State4, restock(State4, pid2)),
-
     {A4, State5} = next_agent_please(State4),
     {A5, State6} = next_agent_please(State5),
     {A6, State7} = next_agent_please(State6),
@@ -277,10 +288,10 @@ rr_next_agent_please_test() ->
     ?assertEqual(A2, A5),
     ?assertEqual(A3, A6).
 
-li_next_agent_please_test() ->
-    State0 = {mi, [], []},
+mi_next_agent_please_test() ->
+    State0 = {mi, []},
     State1 = reload(State0, [pid1, pid2, pid3]),
-    ?assertEqual(agent_count(State1), 3),
+    ?assertEqual(3, agent_count(State1)),
 
     State2 = update(State1, pid1, 1),
     State3 = update(State2, pid2, 5),
@@ -290,7 +301,7 @@ li_next_agent_please_test() ->
     {A2, State6} = next_agent_please(State5),
     {A3, State7} = next_agent_please(State6),
 
-    ?assertEqual(agent_count(State7), 0),
+    ?assertEqual(0, agent_count(State7)),
     ?assertEqual(undefined, next_agent_please(State7)),
 
     ?assertEqual(pid1, A1),
@@ -299,13 +310,15 @@ li_next_agent_please_test() ->
 
     State8 = update(State7, pid1, 9),
     State9 = update(State8, pid2, 11),
-    State10 = restock(State9, pid3),
+    State10 = update(State9, pid3, 3),
+
+    ?assertEqual(3, agent_count(State10)),
 
     {A4, State11} = next_agent_please(State10),
     {A5, State12} = next_agent_please(State11),
     {A6, State13} = next_agent_please(State12),
+    ?assertEqual(0, agent_count(State13)),
 
-    ?assertEqual(agent_count(State13), 0),
     ?assertEqual(undefined, next_agent_please(State13)),
 
     ?assertEqual(pid3, A4),

@@ -32,7 +32,7 @@
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
--spec new/3 :: (ne_binary(), ne_binary(), wh_json:json_object()) -> sup_startchild_ret().
+-spec new/3 :: (ne_binary(), ne_binary(), [ne_binary(),...] | []) -> sup_startchild_ret().
 new(AccountDb, AgentId, Queues) ->
     Agent = {AgentId
              ,{acdc_agent, start_link, [AccountDb, AgentId, Queues]}
