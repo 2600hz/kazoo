@@ -30,6 +30,7 @@
         ]).
 
 -include("acdc.hrl").
+-include_lib("amqp_client/include/amqp_client.hrl").
 
 -define(FUDGE, 2600).
 
@@ -168,7 +169,6 @@ handle_cast({maybe_handle_call, Caller, Timeout, ServerId}, #state{account_db=Ac
                                                                   }=State) ->
     OriginalCallId = get(callid),
     acdc_call:put_callid(Caller),
-
     Criteria = [fun() ->
                         QueueId = acdc_call:queue_id(Caller),
                         case lists:member(QueueId, QueueIDs) of
@@ -200,32 +200,26 @@ handle_cast({maybe_handle_call, Caller, Timeout, ServerId}, #state{account_db=Ac
     case lists:all(fun(F) -> F() end, Criteria) of
         false ->
             maybe_handle_call(Caller, Timeout-500, ServerId),
-
             put(callid, OriginalCallId),
             {noreply, State};
         true ->
             lager:debug("attempting to ring agent ~s", [AgentId]),
+            flush(),
             gen_listener:cast(self(), attempt_agent),
             {noreply, State#state{caller=Caller, start=erlang:now(), timeout=Timeout, server_id=ServerId}}
     end;
 handle_cast({maybe_handle_call, Caller, Timeout, ServerId}, State) ->
     OriginalCallId = get(callid),
     acdc_call:put_callid(Caller),
-
     lager:debug("agent already processing call, declined", []),
-
     maybe_handle_call(Caller, Timeout-500, ServerId),
-
     put(callid, OriginalCallId),
     {noreply, State};
-
 handle_cast({add_consumer, Consumer}, #state{call_event_consumers=Consumers}=State) ->
     link(Consumer),
     {noreply, State#state{call_event_consumers=[Consumer|Consumers]}};
-
 handle_cast({remove_consumer, Consumer}, #state{call_event_consumers=Consumers}=State) ->
     {noreply, State#state{call_event_consumers=lists:filter(fun(C) -> C =/= Consumer end, Consumers)}};
-
 handle_cast({bridge_result, Ref, {ok, _}}, #state{server_id=ServerId, caller=Caller, ref=Ref}=State) ->
     lager:debug("agent handled call"),
     Result = [{<<"Call-ID">>, acdc_call:callid(Caller)}
@@ -240,24 +234,20 @@ handle_cast({bridge_result, Ref, _R}, #state{ref=Ref}=State) ->
     try_next_agent(State),
     acdc_agents:update_agent(self()),
     {noreply, reset(State)};
-
 handle_cast(attempt_agent, #state{caller=Caller, endpoints=EPs}=State) ->
     CallId = acdc_call:callid(Caller),
-
-    gen_listener:add_binding(self(), call, [{callid, CallId}, {restrict_to, [events, cdr]}]),
-    lager:debug("added bindings for ~s", [CallId]),
     Self = self(),
     Ref = make_ref(),
-
     Call = acdc_call:call(Caller),
-
     spawn_link(fun() ->
                        put(callid, CallId),
+                       gen_listener:add_binding(Self, call, [{callid, CallId}, {restrict_to, [events]}]),
                        gen_server:cast(Self, {add_consumer, self()}),
                        Result = (catch bridge_to_endpoints(acdc_util:get_endpoints(Call, EPs)
                                                            ,acdc_call:member_timeout(Caller)
                                                            ,Call
                                                           )),
+                       gen_listener:rm_binding(Self, call, [{callid, CallId}, {restrict_to, [events]}]),
                        gen_server:cast(Self, {bridge_result, Ref, Result})
                end),
     {noreply, State#state{ref=Ref}}.
@@ -275,7 +265,6 @@ handle_cast(attempt_agent, #state{caller=Caller, endpoints=EPs}=State) ->
 handle_info({'EXIT', Consumer, _R}, #state{call_event_consumers=Consumers}=State) ->
     {noreply, State#state{call_event_consumers=lists:filter(fun(C) -> C =/= Consumer end, Consumers)}};
 handle_info(_Info, State) ->
-    lager:debug("unhandled message: ~p", [_Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -288,7 +277,6 @@ handle_event(_JObj, #state{caller=undefined}) ->
 handle_event(JObj, #state{call_event_consumers=Consumers, caller=Caller}) ->
     Call = acdc_call:call(Caller),
     CallId = whapps_call:call_id_direct(Call),
-
     case {whapps_util:get_event_type(JObj), wh_json:get_value(<<"Call-ID">>, JObj)} of
         {{<<"call_event">>, _}, EventCallId} when EventCallId =/= CallId ->
             ignore;
@@ -333,19 +321,24 @@ bridge_to_endpoints(Endpoints, Timeout, Call) ->
     whapps_call_command:b_bridge(Endpoints, Timeout, <<"simultaneous">>, Call).
 
 -spec reset/1 :: (#state{}) -> #state{}.
-reset(#state{call_event_consumers=Consumers, caller=Caller}=State) ->
-    _ = [exit(Consumer, exit) || Consumer <- Consumers],
-    case acdc_call:is_call(Caller) andalso acdc_call:callid(Caller) of
-        CallId when is_binary(CallId) ->
-            gen_listener:rm_binding(self(), call, [{callid, CallId}, {restrict_to, [events, cdr]}]);
-        _Else ->
-            ok
-    end,
+reset(State) ->
+    lager:debug("reset agent...", []),
+    put(callid, <<"000000000000">>),
+    flush(),
     State#state{caller=undefined, start=undefined, timeout=0, ref=undefined, call_event_consumers=[]}.
 
 -spec try_next_agent/1 :: (#state{}) -> boolean().
 try_next_agent(#state{caller=Caller, timeout=Timeout, start=Start, server_id=ServerId}) ->
     maybe_handle_call(Caller, Timeout - diff_milli(Start), ServerId).
+
+-spec flush/0 :: () -> 'ok'.
+flush() ->
+    receive
+        {#'basic.deliver'{}, #amqp_msg{}} -> flush();
+        {bridge_result, _, _} -> flush()
+    after 
+        0 -> ok
+    end.
 
 diff_milli(Start) ->
     diff_micro(Start) div 1000.
