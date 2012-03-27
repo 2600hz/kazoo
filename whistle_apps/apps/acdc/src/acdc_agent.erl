@@ -195,6 +195,8 @@ handle_cast({maybe_handle_call, Call, Queue, ServerId, Timeout}, #state{account_
     case lists:all(fun(F) -> F() end, Criteria) of
         false ->
             maybe_handle_call(Call, Queue, ServerId, Timeout - 500),
+            acdc_agents:restock_agent(self()),
+
             put(callid, OriginalCallId),
             {noreply, State};
         true ->
@@ -206,7 +208,11 @@ handle_cast({maybe_handle_call, Call, Queue, ServerId, Timeout}, State) ->
     OriginalCallId = get(callid),
     put(callid, whapps_call:call_id(Call)),
     lager:debug("agent already processing call, declined", []),
+
+
     maybe_handle_call(Call, Queue, ServerId, Timeout - 500),
+    acdc_agents:restock_agent(self()),
+
     put(callid, OriginalCallId),
     {noreply, State};
 

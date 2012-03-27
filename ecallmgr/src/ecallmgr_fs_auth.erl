@@ -246,16 +246,15 @@ lookup_user(Node, ID, Data) ->
                                         ,{<<"Method">>, props:get_value(<<"sip_auth_method">>, Data)}
                                         ,{<<"Auth-User">>, AuthUser}
                                         ,{<<"Auth-Realm">>, AuthRealm}
-                                        | wh_api:default_headers(<<>>, <<"directory">>, <<"authn_req">>, ?APP_NAME, ?APP_VERSION)],
+                                        | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                                       ],
 
                              lager:debug("looking up credentials of ~s@~s for a ~s", [AuthUser, AuthRealm, props:get_value(<<"Method">>, AuthReq)]),
 
                              case ecallmgr_amqp_pool:authn_req(AuthReq) of
                                  {error, _R} ->
-                                     lager:debug("authn request lookup failed: ~p", [_R]);
-                                 {negative_resp, _} ->
-                                     lager:debug("authn request recv authoritative negative response"),
-                                     freeswitch:fetch_reply(Node, ID, ?EMPTYRESPONSE);
+                                     lager:debug("authn request lookup failed: ~p", [_R]),
+                                     freeswitch:fetch_reply(Node, ID, ?ROUTE_NOT_FOUND_RESPONSE);
                                  {ok, AuthResp} ->
                                      true = wapi_authn:resp_v(AuthResp),
                                      lager:debug("received authn_resp"),
