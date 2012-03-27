@@ -74,7 +74,12 @@ init([_Args]) ->
     process_flag(trap_exit, true),
     put(callid, ?LOG_SYSTEM_ID),
     lager:debug("starting amqp worker"),
-
+    Self = self(),
+    spawn(fun() ->
+                  timer:sleep(1000),
+                  NegThreshold = wh_util:to_integer(ecallmgr_config:get(<<"negative_response_threshold">>, <<"2">>)),
+                  gen_server:cast(Self, {set_negative_threshold, NegThreshold})
+          end),
     {ok, #state{}}.
 
 %%--------------------------------------------------------------------
@@ -136,6 +141,9 @@ handle_call({request, ReqProp, PublishFun, VFun, Timeout}, {ClientPid, _}=From, 
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast({set_negative_threshold, NegThreshold}, State) ->
+    lager:info("set negative threshold to ~p", [NegThreshold]),
+    {noreply, State#state{neg_resp_threshold = NegThreshold}};
 handle_cast({event, MsgId, JObj}, #state{current_msg_id = MsgId
                                          ,client_from = From
                                          ,client_ref = ClientRef
@@ -157,7 +165,7 @@ handle_cast({event, MsgId, JObj}, #state{current_msg_id = MsgId
             _ = erlang:cancel_timer(ReqRef),
 
             put(callid, ?LOG_SYSTEM_ID),
-            {noreply, #state{}};
+            {noreply, reset(State)};
         false ->
             lager:debug("response failed validator, waiting for more responses"),
             {noreply, State#state{neg_resp_count = NegCount + 1, neg_resp=JObj}, 0}
@@ -179,7 +187,7 @@ handle_cast({event, _MsgId, JObj}, #state{current_msg_id=_CurrMsgId}=State) ->
 %%--------------------------------------------------------------------
 handle_info(timeout, #state{neg_resp=JObj, neg_resp_count=Thresh, neg_resp_threshold=Thresh
                             ,client_ref=ClientRef, client_from=From, req_timeout_ref=ReqRef
-                           }) ->
+                           }=State) ->
     lager:debug("negative resp threshold reached"),
     erlang:demonitor(ClientRef, [flush]),
 
@@ -187,7 +195,7 @@ handle_info(timeout, #state{neg_resp=JObj, neg_resp_count=Thresh, neg_resp_thres
     _ = erlang:cancel_timer(ReqRef),
 
     put(callid, ?LOG_SYSTEM_ID),
-    {noreply, #state{}};
+    {noreply, reset(State)};
 handle_info(timeout, State) ->
     {noreply, State};
 
@@ -195,7 +203,7 @@ handle_info({'DOWN', ClientRef, process, _Pid, _Reason}, #state{current_msg_id =
                                                                 ,client_ref = ClientRef
                                                                 ,req_timeout_ref = ReqRef
                                                                 ,callid = CallID
-                                                               }) ->
+                                                               }=State) ->
     put(callid, CallID),
     lager:debug("client ~p down with msg id ~s", [_Pid, _MsgID]),
 
@@ -203,14 +211,14 @@ handle_info({'DOWN', ClientRef, process, _Pid, _Reason}, #state{current_msg_id =
     _ = erlang:cancel_timer(ReqRef),
 
     put(callid, ?LOG_SYSTEM_ID),
-    {noreply, #state{}};
+    {noreply, reset(State)};
 
 handle_info({timeout, ReqRef, req_timeout}, #state{current_msg_id = _MsgID
                                                    ,client_ref = ClientRef
                                                    ,req_timeout_ref = ReqRef
                                                    ,client_from = From
                                                    ,callid = CallID
-                                                  }) ->
+                                                  }=State) ->
     put(callid, CallID),
     lager:debug("request timeout exceeded for msg id: ~s", [_MsgID]),
 
@@ -221,7 +229,7 @@ handle_info({timeout, ReqRef, req_timeout}, #state{current_msg_id = _MsgID
     _ = erlang:cancel_timer(ReqRef),
 
     put(callid, ?LOG_SYSTEM_ID),
-    {noreply, #state{}};
+    {noreply, reset(State)};
 
 handle_info(_Info, State) ->
     put(callid, ?LOG_SYSTEM_ID),
@@ -259,3 +267,15 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+-spec reset/1 :: (#state{}) -> #state{}.
+reset(State) ->
+    State#state{client_pid = undefined
+                ,client_ref = undefined
+                ,client_from = undefined
+                ,client_vfun = undefined
+                ,neg_resp_count = 0
+                ,current_msg_id = undefined
+                ,req_timeout_ref = undefined
+                ,req_start_time = undefined
+                ,callid = undefined
+               }.

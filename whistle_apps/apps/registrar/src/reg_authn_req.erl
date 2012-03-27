@@ -15,9 +15,7 @@
 init() ->
     ok.
 
--spec handle_req/2 :: (ApiJObj, Props) -> 'ok' when
-      ApiJObj :: wh_json:json_object(),
-      Props :: proplist().
+-spec handle_req/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
 handle_req(ApiJObj, _Props) ->
     true = wapi_authn:req_v(ApiJObj),
 
@@ -31,8 +29,9 @@ handle_req(ApiJObj, _Props) ->
     case reg_util:lookup_auth_user(AuthU, AuthR) of
         {ok, AuthJObj} ->
             send_auth_resp(AuthJObj, AuthU, AuthR, ApiJObj);
-        {error, not_found} ->
-            lager:debug("user ~s@~s is unknown", [AuthU, AuthR])
+        {error, not_found} ->            
+            lager:debug("user ~s@~s is unknown", [AuthU, AuthR]),
+            send_auth_error(ApiJObj)
     end.
 
 %%-----------------------------------------------------------------------------
@@ -42,11 +41,7 @@ handle_req(ApiJObj, _Props) ->
 %% when provided with an IP
 %% @end
 %%-----------------------------------------------------------------------------
--spec send_auth_resp/4  :: (AuthJObj, AuthU, AuthR, ApiJObj) -> ok when
-      AuthJObj :: wh_json:json_object(),
-      AuthU :: binary(),
-      AuthR :: binary(),
-      ApiJObj :: wh_json:json_object().
+-spec send_auth_resp/4  :: (wh_json:json_object(), ne_binary(), ne_binary(), wh_json:json_object()) -> 'ok'.
 send_auth_resp(AuthJObj, AuthU, AuthR, ApiJObj) ->
     AuthValue = wh_json:get_value(<<"value">>, AuthJObj),
     AuthDoc = wh_json:get_value(<<"doc">>, AuthJObj),
@@ -62,13 +57,26 @@ send_auth_resp(AuthJObj, AuthU, AuthR, ApiJObj) ->
     Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, ApiJObj)}
             ,{<<"Auth-Password">>, wh_json:get_value(<<"password">>, AuthValue)}
             ,{<<"Auth-Method">>, get_auth_method(AuthValue)}
-%%            ,{<<"Access-Group">>, wh_json:get_value(<<"access_group">>, AuthValue, <<"ignore">>)}
-%%            ,{<<"Tenant-ID">>, wh_json:get_value(<<"tenant_id">>, AuthValue, <<"ignore">>)}
             ,{<<"Custom-Channel-Vars">>, wh_json:from_list([CCV || {_, V}=CCV <- CCVs, V =/= undefined ])}
             | wh_api:default_headers(Category, <<"authn_resp">>, ?APP_NAME, ?APP_VERSION)],
-
+    
     lager:debug("sending SIP authentication reply, with credentials"),
     wapi_authn:publish_resp(wh_json:get_value(<<"Server-ID">>, ApiJObj), Resp).
+
+%%-----------------------------------------------------------------------------
+%% @private
+%% @doc
+%% extract the auth realm from the API request, using the requests to domain
+%% when provided with an IP
+%% @end
+%%-----------------------------------------------------------------------------
+-spec send_auth_error/1 :: (wh_json:json_object()) -> 'ok'.
+send_auth_error(ApiJObj) ->
+    Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, ApiJObj)}
+            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+           ],
+    lager:debug("sending SIP authentication error"),
+    wapi_authn:publish_error(wh_json:get_value(<<"Server-ID">>, ApiJObj), Resp).
 
 %%-----------------------------------------------------------------------------
 %% @private
