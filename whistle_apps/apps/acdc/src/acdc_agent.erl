@@ -209,11 +209,14 @@ handle_cast({maybe_handle_call, Call, Queue, ServerId, Timeout}, State) ->
     maybe_handle_call(Call, Queue, ServerId, Timeout - 500),
     put(callid, OriginalCallId),
     {noreply, State};
+
 handle_cast({add_consumer, Consumer}, #state{call_event_consumers=Consumers}=State) ->
     link(Consumer),
     {noreply, State#state{call_event_consumers=[Consumer|Consumers]}};
+
 handle_cast({remove_consumer, Consumer}, #state{call_event_consumers=Consumers}=State) ->
     {noreply, State#state{call_event_consumers=lists:filter(fun(C) -> C =/= Consumer end, Consumers)}};
+
 handle_cast({bridge_result, Ref, {ok, _}}, #state{server_id=ServerId, call=Call, ref=Ref}=State) ->
     lager:debug("agent handled call"),
     CallId = whapps_call:is_call(Call) andalso whapps_call:call_id(Call),
@@ -222,10 +225,13 @@ handle_cast({bridge_result, Ref, {ok, _}}, #state{server_id=ServerId, call=Call,
               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
              ],
     wapi_queue:publish_result(ServerId, Result),
+    acdc_agents:update_agent(self()),
     {noreply, reset(State)};
 handle_cast({bridge_result, Ref, _R}, #state{ref=Ref}=State) ->
     try_next_agent(State),
+    acdc_agents:update_agent(self()),
     {noreply, reset(State)};
+
 handle_cast(attempt_agent, #state{call=Call, queue=Queue, endpoints=EPs}=State) ->
     CallId = whapps_call:call_id(Call),
     gen_listener:add_binding(self(), call, [{callid, CallId}, {restrict_to, [events, cdr]}]),
