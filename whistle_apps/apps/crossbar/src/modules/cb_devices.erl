@@ -103,10 +103,11 @@ post(#cb_context{}=Context, _DocId) ->
         #cb_context{resp_status=success, doc=Doc1}=Context1 ->
             DeviceId = wh_json:get_value(<<"_id">>, Doc1),
             IsRealmDefined = wh_util:is_empty(wh_json:get_value([<<"sip">>, <<"realm">>], Doc1)),
+            IsIpDefined = wh_util:is_empty(wh_json:get_value([<<"sip">>, <<"ip">>], Doc1)),
             case couch_mgr:lookup_doc_rev(?WH_SIP_DB, DeviceId) of
-                {ok, Rev} when IsRealmDefined ->
-                    lager:debug("removing device from sip auth aggregate as it is using the account realm"),
-                    couch_mgr:del_doc(?WH_SIP_DB, wh_json:set_value(<<"_rev">>, Rev, Doc1));
+                {ok, Rev} when IsRealmDefined orelse not IsIpDefined->
+                    lager:debug("removing device from sip auth aggregate as it is using the account realm or does not have an IP"),
+                    couch_mgr:del_doc(?WH_SIP_DB, wh_json:set_value(<<"_rev">>, Rev, Doc1)); 
                 {ok, Rev} ->
                     lager:debug("updating device in sip auth aggregate"),
                     couch_mgr:ensure_saved(?WH_SIP_DB, wh_json:set_value(<<"_rev">>, Rev, Doc1));
@@ -130,7 +131,15 @@ put(#cb_context{}=Context) ->
                 _Else ->
                     lager:debug("adding device to the sip auth aggregate"),
                     couch_mgr:ensure_saved(?WH_SIP_DB, wh_json:delete_key(<<"_rev">>, Doc1))
-            end,    
+            end,
+            
+            case wh_json:get_ne_value([<<"sip">>, <<"ip">>], Doc1) of
+                undefined -> ok;
+                _ ->
+                    lager:debug("adding device to the sip auth aggregate"),
+                    couch_mgr:ensure_saved(?WH_SIP_DB, wh_json:delete_key(<<"_rev">>, Doc1))
+            end,
+
             spawn(fun() -> do_simple_provision(Context1) end),
             Context1;
         Else ->

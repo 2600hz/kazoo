@@ -195,10 +195,12 @@ refresh(Account, Views) ->
                     _ = [whapps_util:add_aggregate_device(AccountDb, wh_json:get_value(<<"doc">>, Device))
                          || Device <- Devices
                                 ,wh_json:get_ne_value([<<"doc">>, <<"sip">>, <<"realm">>], Device, AccountRealm) =/= AccountRealm
+                                orelse wh_json:get_ne_value([<<"doc">>, <<"sip">>, <<"ip">>], Device, undefined) =/= undefined
                         ],
                     _ = [whapps_util:rm_aggregate_device(AccountDb, wh_json:get_value(<<"doc">>, Device))
                          || Device <- Devices
                                 ,wh_json:get_ne_value([<<"doc">>, <<"sip">>, <<"realm">>], Device, AccountRealm) =:= AccountRealm
+                                orelse wh_json:get_ne_value([<<"doc">>, <<"sip">>, <<"ip">>], Device, undefined) =:= undefined
                         ];
                 {error, _} ->
                     ok
