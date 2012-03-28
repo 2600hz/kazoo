@@ -459,18 +459,14 @@ handle_event(Payload, <<"application/erlang">>, BD, State) ->
 
 -spec process_req/3 :: (#state{}, wh_json:json_object(), #'basic.deliver'{}) -> #state{}.
 process_req(#state{responders=Responders, active_responders=ARs}=State, JObj, BD) ->
-    case dedup_events(wh_util:get_event_type(JObj), JObj, State) of
-        duplicate -> State;
-        #state{}=S ->
-            case handle_callback_event(S, JObj) of
-                ignore -> State;
-                Props ->
-                    Pid = proc_lib:spawn_link(fun() -> 
-                                                      _ = wh_util:put_callid(JObj),
-                                                      process_req(Props, Responders, JObj, BD) 
-                                              end),
-                    S#state{active_responders=[Pid | ARs]}
-            end
+    case handle_callback_event(State, JObj) of
+        ignore -> State;
+        Props ->
+            Pid = proc_lib:spawn_link(fun() -> 
+                                              _ = wh_util:put_callid(JObj),
+                                              process_req(Props, Responders, JObj, BD) 
+                                      end),
+            State#state{active_responders=[Pid | ARs]}
     end.
 
 -spec process_req/4 :: (wh_proplist(), responders(), wh_json:json_object(), #'basic.deliver'{}) -> 'ok'.
@@ -546,7 +542,7 @@ remove_binding(Binding, Props, Q) ->
     Wapi = list_to_binary([<<"wapi_">>, wh_util:to_binary(Binding)]),
     try
         ApiMod = wh_util:to_atom(Wapi),
-        ApiMod:bind_q(Q, Props)
+        ApiMod:unbind_q(Q, Props)
     catch
         error:badarg ->
             lager:debug("api module ~s not found", [Wapi]),
@@ -597,36 +593,3 @@ stop_timer(Ref) when is_reference(Ref) ->
 start_timer(Timeout) when is_integer(Timeout) andalso Timeout >= 0 ->
     erlang:send_after(Timeout, self(), ?CALLBACK_TIMEOUT_MSG);
 start_timer(_) -> 'undefined'.
-
--spec dedup_events/3 :: ({ne_binary(), ne_binary()}, wh_json:json_object(), #state{}) -> 'duplicate' | #state{}.
-dedup_events({<<"call_event">>, EventName}, JObj, #state{last_call_event=Props}=State) ->
-    {LastAppName, LastAppData, LastTimestamp} = props:get_value(EventName, Props, {undefined, undefined, 0}),
-    EventTimestamp = wh_json:get_integer_value(<<"Timestamp">>, JObj, 0),
-    EventAppName = wh_json:get_value(<<"Raw-Application-Name">>, JObj),
-    EventAppData = wh_json:get_value(<<"Raw-Application-Data">>, JObj, <<>>),
-
-    EventOccuredAfterLast = (EventTimestamp =:= 0
-                             orelse
-                             EventTimestamp > LastTimestamp
-                            ),
-    SameTimeDifferentEvent = (EventTimestamp >= LastTimestamp
-                              andalso 
-                                (EventAppName =/= LastAppName
-                                 orelse
-                                 EventAppData =/= LastAppData
-                                )
-                             ),
-
-    case EventOccuredAfterLast orelse SameTimeDifferentEvent of
-        true -> State#state{last_call_event=[{EventName, {EventAppName, EventAppData, EventTimestamp}}
-                                             | props:delete(EventName, Props)
-                                            ]};
-        false when not EventOccuredAfterLast -> 
-            lager:debug("ignoring call event ~s for ~s(~s), same event has already been recieved", [EventName, EventAppName, EventAppData]),
-            duplicate;
-        false -> 
-            lager:debug("ignoring call event ~s for ~s(~s), timestamp is older than previous message", [EventName, EventAppName, EventAppData]),
-            duplicate
-    end;
-dedup_events(_, _, State) ->
-    State.
