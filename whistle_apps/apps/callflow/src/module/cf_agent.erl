@@ -17,6 +17,7 @@
 -define(PROMPT_RETRIES_EXCEEDED, <<"/system_media/conf-to_many_attempts">>).
 -define(PROMPT_LOGGED_IN, <<"/system_media/agent_logged_in">>).
 -define(PROMPT_LOGGED_OUT, <<"/system_media/agent_logged_out">>).
+-define(PROMPT_NOT_AGENT, <<"/system_media/agent-not_call_center_agent">>).
 -define(PROMPT_ALREADY_LOGGED_IN, <<"/system_media/agent_logged_already_in">>).
 -define(PROMPT_BREAK, <<"/system_media/temporal-marked_disabled">>).
 -define(PROMPT_RESUME, <<"/system_media/temporal-marked_enabled">>).
@@ -53,6 +54,7 @@ update_agent(Call, Retries, Action, Owner) ->
 
 update_agent(Call, _, _, _, undefined) ->
     lager:debug("no pin set on agent's doc, not an agent"),
+    whapps_call_command:b_play(?PROMPT_NOT_AGENT, Call),
     cf_exe:continue(Call);
 update_agent(Call, _, Action, Id, <<>>) ->
     lager:debug("agent's pin is empty, performing action ~s", [Action]),
@@ -157,20 +159,8 @@ transitions(_) ->
 
 -spec play_and_collect/2 :: (whapps_call:call(), ne_binary()) -> {'ok', binary()}.
 play_and_collect(Call, Prompt) ->
-    NoopID = whapps_call_command:audio_macro([{play, Prompt}], Call),
-    {ok, Bin} = whapps_call_command:collect_digits(1, ?TIMEOUT_DTMF, ?TIMEOUT_DTMF, NoopID, Call),
-    collect(Call, Bin).
-
--spec collect/2 :: (whapps_call:call(), binary()) -> {'ok', binary()}.
-collect(Call, DTMFs) ->
-    case whapps_call_command:wait_for_dtmf(?TIMEOUT_DTMF) of
-        {ok, <<>>} ->
-            lager:debug("failed to collect more digits, returning"),
-            {ok, DTMFs};
-        {ok, DTMF} ->
-            lager:debug("another dtmf: ~s", [DTMF]),
-            collect(Call, <<DTMFs/binary, DTMF/binary>>)
-    end.
+    _ = whapps_call_command:audio_macro([{play, Prompt}], Call),
+    whapps_call_command:collect_digits(15, ?TIMEOUT_DTMF, ?TIMEOUT_DTMF, Call).
 
 current_status(Call, AgentId) ->
     case couch_mgr:get_results(whapps_call:account_db(Call), <<"agents/agent_status">>, [{<<"startkey">>, [AgentId, wh_json:new()]}
