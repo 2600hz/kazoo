@@ -305,6 +305,11 @@
                "type":"integer",
                "description":"The time in seconds to force registrations to expire",
                "default":300
+            },
+            "ip" : {
+              "type":"string", 
+              "description":"IP address for this device",
+              "required":false
             }
          },
          "default":{
