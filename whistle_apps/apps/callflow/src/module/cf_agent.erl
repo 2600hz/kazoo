@@ -109,6 +109,7 @@ toggle_agent(Call, Retries, Owner) ->
 
 toggle_agent(Call, _, _, undefined) ->
     lager:debug("caller is not an agent (no queue_pin defined)"),
+    whapps_call_command:b_play(?PROMPT_NOT_AGENT, Call),
     cf_exe:continue(Call);
 toggle_agent(Call, _, AgentId, <<>>) ->
     lager:debug("agent has no pin, performing toggle"),
