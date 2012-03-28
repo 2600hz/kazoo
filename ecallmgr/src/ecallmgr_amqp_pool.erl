@@ -184,7 +184,7 @@ handle_call({request, Prop, ApiFun, CallId, Timeout, VFun}, From, #state{workers
         {empty, _} ->
             Worker = start_worker(),
             ?LOG("starting additional worker ~p", [Worker]),
-            ecallmgr_amqp_pool_worker:start_req(Worker, Prop, ApiFun, CallId, From, self(), Timeout),
+            ecallmgr_amqp_pool_worker:start_req(Worker, Prop, ApiFun, CallId, From, self(), Timeout, VFun),
             {noreply, State#state{worker_count=WC+1, requests_per=RP+1}, hibernate}
     end.
 
