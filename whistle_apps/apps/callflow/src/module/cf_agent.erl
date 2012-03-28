@@ -157,20 +157,8 @@ transitions(_) ->
 
 -spec play_and_collect/2 :: (whapps_call:call(), ne_binary()) -> {'ok', binary()}.
 play_and_collect(Call, Prompt) ->
-    NoopID = whapps_call_command:audio_macro([{play, Prompt}], Call),
-    {ok, Bin} = whapps_call_command:collect_digits(1, ?TIMEOUT_DTMF, ?TIMEOUT_DTMF, NoopID, Call),
-    collect(Call, Bin).
-
--spec collect/2 :: (whapps_call:call(), binary()) -> {'ok', binary()}.
-collect(Call, DTMFs) ->
-    case whapps_call_command:wait_for_dtmf(?TIMEOUT_DTMF) of
-        {ok, <<>>} ->
-            lager:debug("failed to collect more digits, returning"),
-            {ok, DTMFs};
-        {ok, DTMF} ->
-            lager:debug("another dtmf: ~s", [DTMF]),
-            collect(Call, <<DTMFs/binary, DTMF/binary>>)
-    end.
+    _ = whapps_call_command:audio_macro([{play, Prompt}], Call),
+    whapps_call_command:collect_digits(15, ?TIMEOUT_DTMF, ?TIMEOUT_DTMF, Call).
 
 current_status(Call, AgentId) ->
     case couch_mgr:get_results(whapps_call:account_db(Call), <<"agents/agent_status">>, [{<<"startkey">>, [AgentId, wh_json:new()]}
