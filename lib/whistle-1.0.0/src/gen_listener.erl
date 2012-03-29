@@ -67,26 +67,26 @@ behaviour_info(callbacks) ->
 behaviour_info(_) ->
     undefined.
 
--type responders() :: [listener_utils:responder(),...] | [].
 -type binding() :: {atom() | ne_binary(), wh_proplist()}. %% {wapi_module, options}
 -type bindings() :: [binding(),...] | [].
 
 -type responder_callback_mod() :: atom() | {atom(), atom()}.
 -type responder_callback_mapping() :: {ne_binary(), ne_binary()}.
 -type responder_callback_mappings() :: [responder_callback_mapping(),...] | [].
+-type responder_start_params() :: [{responder_callback_mod(), responder_callback_mappings()},...].
 
--type start_params() :: [{responders, responders()} |
+-type start_params() :: [{responders, responder_start_params()} |
                          {bindings, bindings()} |
                          {queue_name, binary()} |
                          {queue_options, wh_proplist()} |
                          {consume_options, wh_proplist()} |
                          {basic_qos, non_neg_integer()}
-                         ,...] | [].
+                         ,...].
 
 -record(state, {
           queue = <<>> :: binary()
          ,is_consuming = 'false' :: boolean()
-         ,responders = [] :: responders() %% { {EvtCat, EvtName}, Module }
+         ,responders = [] :: listener_utils:responders() %% { {EvtCat, EvtName}, Module }
          ,bindings = [] :: bindings() %% {authentication, [{key, value},...]}
          ,params = [] :: wh_proplist()
          ,module = 'undefined' :: atom()
@@ -476,7 +476,7 @@ process_req(#state{responders=Responders, active_responders=ARs}=State, JObj, BD
             State#state{active_responders=[Pid | ARs]}
     end.
 
--spec process_req/4 :: (wh_proplist(), responders(), wh_json:json_object(), #'basic.deliver'{}) -> 'ok'.
+-spec process_req/4 :: (wh_proplist(), listener_utils:responders(), wh_json:json_object(), #'basic.deliver'{}) -> 'ok'.
 process_req(Props, Responders, JObj, BD) ->
     Key = wh_util:get_event_type(JObj),
 
