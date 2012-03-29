@@ -39,7 +39,7 @@
 -define(RESPONDERS, [{{?MODULE, handle_call_event}, {<<"*">>, <<"*">>}}]).
 -define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
--define(ROUTE_OPTIONS, []).
+-define(CONSUME_OPTIONS, []).
 
 -record(state, {account_db :: 'undefined' | ne_binary()
                 ,agent_id :: 'undefined' | ne_binary()
@@ -70,7 +70,7 @@ start_link(AccountDb, AgentId, QueueIDs) ->
                                       ,{responders, ?RESPONDERS}
                                       ,{queue_name, ?QUEUE_NAME}
                                       ,{queue_options, ?QUEUE_OPTIONS}
-                                      ,{route_options, ?ROUTE_OPTIONS}
+                                      ,{consume_options, ?CONSUME_OPTIONS}
                                      ], [AccountDb, AgentId, QueueIDs]).
 
 -spec handle_call_event/2 :: (wh_json:json_object(), proplist()) -> any().
