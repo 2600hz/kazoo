@@ -40,7 +40,7 @@
           ,allowed_methods = ?ALLOWED_METHODS :: [atom(),...] | []
           ,allow_methods = ?ALLOWED_METHODS :: [atom(),...] | []
           ,languages_provided = [<<"en">>] :: [ne_binary(),...] %% english by default
-          ,charsets_provided = [<<"*">>] :: [ne_binary(),...] %% all charsets provided
+          ,charsets_provided = [<<"iso-8859-1">>] :: [ne_binary(),...] %% all charsets provided
           ,encodings_provided = [<<"gzip;q=1.0">>,<<"identity;q=0.5">>] :: [ne_binary(),...] %% gzip and identity
           ,auth_token = <<>> :: binary()
           ,auth_account_id = 'undefined' :: 'undefined' | ne_binary()
@@ -49,7 +49,7 @@
           ,req_nouns = [{<<"404">>, []}] :: [{ne_binary(), list()},...] | []
           ,req_json = wh_json:new() :: wh_json:json_object() | {'malformed', binary()} %% the request JSON envelope
           ,req_files = [] :: [{ne_binary(), wh_json:json_object()},...] | [] %% {file_name, {"contents":<<bin>>, "headers":{"content-type":"", "content-length":1}}}
-          ,req_data = [] :: wh_json:json_objects()  % the "data" from the request JSON envelope
+          ,req_data = wh_json:new() :: wh_json:json_objects()  % the "data" from the request JSON envelope
           ,query_json = wh_json:new() :: wh_json:json_object()
           ,account_id = 'undefined' :: 'undefined' | ne_binary()
           ,db_name = 'undefined' :: 'undefined' | ne_binary()
