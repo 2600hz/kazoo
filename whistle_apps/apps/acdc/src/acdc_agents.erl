@@ -329,5 +329,8 @@ mi_next_agent_please_test() ->
 
     ?assertEqual(pid3, A4),
     ?assertEqual(pid1, A5),
-    ?assertEqual(pid2, A6).    
+    ?assertEqual(pid2, A6).
+
+
+
 -endif.
