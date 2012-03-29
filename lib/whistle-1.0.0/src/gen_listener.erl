@@ -43,7 +43,7 @@
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2
-         ,code_change/3
+         ,code_change/3, format_status/2
         ]).
 
 %% gen_server API
@@ -444,6 +444,13 @@ handle_callback_info(Message, #state{module=Module, module_state=ModState, modul
 
 code_change(_OldVersion, State, _Extra) ->
     {ok, State}.
+
+format_status(_Opt, [_PDict, #state{module=Module, module_state=ModState}=State]) ->
+    [{data, [{"Module State", ModState}
+             ,{"Module", Module}
+            ]}
+     ,{data, [{"Listener State", State}]}
+    ].
 
 terminate(Reason, #state{module=Module, module_state=ModState}) ->
     Module:terminate(Reason, ModState),
