@@ -146,8 +146,21 @@ check_preflight(Req0, #cb_context{allowed_methods=Methods, req_nouns=[{Mod, Para
 malformed_request(Req, #cb_context{req_json={malformed, _}}=Context) ->
     lager:debug("request is malformed"),
     {true, Req, Context};
-malformed_request(Req, Context) ->
-    {false, Req, Context}.
+malformed_request(Req, #cb_context{req_nouns=Nouns}=Context) ->
+    case props:get_value(<<"accounts">>, Nouns) of
+        [AcctId] ->
+            case cb_accounts:validate(Context, AcctId) of
+                #cb_context{resp_status=success}=Context1 ->
+                    lager:debug("account ~s is valid", [AcctId]),
+                    {false, Req, Context1};
+                Context1 ->
+                    lager:debug("account ~s is not valid", [AcctId]),
+                    {true, Req, Context1}
+            end;
+        _Other ->
+            lager:debug("other: ~p", [Nouns]),
+            {false, Req, Context}
+    end.
 
 -spec is_authorized/2 :: (#http_req{}, #cb_context{}) -> {'true' | {'false', <<>>}, #http_req{}, #cb_context{}}.
 is_authorized(Req, Context) ->
