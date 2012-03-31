@@ -226,11 +226,11 @@ load_docs(#cb_context{db_name=Db}=Context, Filter) when is_function(Filter, 2) -
 %% Failure here returns 500 or 503
 %% @end
 %%--------------------------------------------------------------------
--spec load_attachment/3 :: (ne_binary(), ne_binary(), #cb_context{}) -> #cb_context{}.
+-spec load_attachment/3 :: (ne_binary() | wh_json:json_object(), ne_binary(), #cb_context{}) -> #cb_context{}.
 load_attachment(_DocId, _AName, #cb_context{db_name = undefined}=Context) ->
     lager:debug("loading attachment ~s from doc ~s failed: no db", [_DocId, _AName]),
     crossbar_util:response_db_missing(Context);
-load_attachment(DocId, AName, #cb_context{db_name=DB}=Context) ->
+load_attachment(DocId, AName, #cb_context{db_name=DB}=Context) when is_binary(DocId) ->
     case couch_mgr:fetch_attachment(DB, DocId, AName) of
         {error, db_not_reachable} ->
             lager:debug("loading attachment ~s from doc ~s from db ~s failed: db not reachable", [AName, DocId, DB]),
@@ -246,6 +246,26 @@ load_attachment(DocId, AName, #cb_context{db_name=DB}=Context) ->
                                 ,resp_data=AttachBin
                                 ,resp_etag=rev_to_etag(Doc)
                                };
+        _Else ->
+            lager:debug("loading attachment ~s from doc ~s from db ~s failed: unexpected ~p", [AName, DocId, DB, _Else]),
+            Context
+    end;
+load_attachment(Doc, AName, #cb_context{db_name=DB}=Context) ->
+    DocId = wh_json:get_value(<<"_id">>, Doc, wh_json:get_value(<<"id">>, Doc)),
+    case couch_mgr:fetch_attachment(DB, DocId, AName) of
+        {error, db_not_reachable} ->
+            lager:debug("loading attachment ~s from doc ~s from db ~s failed: db not reachable", [AName, DocId, DB]),
+            crossbar_util:response_datastore_timeout(Context);
+        {error, not_found} ->
+            lager:debug("loading attachment ~s from doc ~s from db ~s failed: attachment not found", [AName, DocId, DB]),
+            crossbar_util:response_bad_identifier(DocId, Context);
+        {ok, AttachBin} ->
+            lager:debug("loaded attachment ~s from doc ~s from db ~s", [AName, DocId, DB]),
+            Context#cb_context{resp_status=success
+                               ,doc=Doc
+                               ,resp_data=AttachBin
+                               ,resp_etag=rev_to_etag(Doc)
+                              };
         _Else ->
             lager:debug("loading attachment ~s from doc ~s from db ~s failed: unexpected ~p", [AName, DocId, DB, _Else]),
             Context
