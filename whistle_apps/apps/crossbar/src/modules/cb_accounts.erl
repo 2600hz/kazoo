@@ -629,9 +629,11 @@ load_account_db(AccountId, Context) when is_binary(AccountId) ->
     case wh_cache:peek_local(Srv, {crossbar, exists, AccountId}) of
         {ok, true} ->
             lager:debug("check succeeded for db_exists on ~s", [AccountId]),
-            Context#cb_context{db_name = AccountDb
-                               ,account_id = AccountId
-                              };
+            Context#cb_context{
+              resp_status = success
+              ,db_name = AccountDb
+              ,account_id = AccountId
+             };
         _ ->
             case couch_mgr:db_exists(AccountDb) of
                 false ->
@@ -640,9 +642,11 @@ load_account_db(AccountId, Context) when is_binary(AccountId) ->
                 true ->
                     wh_cache:store_local(Srv, {crossbar, exists, AccountId}, true, ?CACHE_TTL),
                     lager:debug("check succeeded for db_exists on ~s", [AccountId]),
-                    Context#cb_context{db_name = AccountDb
-                                       ,account_id = AccountId
-                                      }
+                    Context#cb_context{
+                      resp_status = success
+                      ,db_name = AccountDb
+                      ,account_id = AccountId
+                     }
             end
     end.
 
