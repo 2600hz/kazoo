@@ -1,14 +1,14 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2012, VoIP INC
 %%% @doc
 %%% Provision template module
 %%%
 %%% Handle client requests for provisioner template documents
 %%%
 %%% Note regarding storing the template as an attachment:
-%%% Since the tempalte is a 300k json object it is more efficent to store it as
+%%% Since the template is a 300k json object it is more efficent to store it as
 %%% an attachment, funky I know but necessary. Also since we already require
-%%% two API calls for editing a template we will maintain backward compatiblity by 
+%%% two API calls for editing a template we will maintain backward compatiblity by
 %%% not requiring an additional API call for the template and merge/unmerge it
 %%% from requests.
 %%%
@@ -21,7 +21,7 @@
 -module(cb_global_provisioner_templates).
 
 -export([init/0
-         ,content_types_provided/3, content_types_accepted/3         
+         ,content_types_provided/3, content_types_accepted/3
          ,allowed_methods/0, allowed_methods/1, allowed_methods/2
          ,resource_exists/0, resource_exists/1, resource_exists/2
          ,validate/1, validate/2, validate/3
@@ -74,7 +74,7 @@ content_types_provided(#cb_context{req_verb = <<"get">>}=Context, DocId, ?IMAGE_
         {ok, JObj} ->
             ContentType = wh_json:get_value([<<"_attachments">>, ?IMAGE_REQ, <<"content_type">>]
                                             ,JObj
-                                            ,<<"application/octet-stream">>),            
+                                            ,<<"application/octet-stream">>),
             [Type, SubType] = binary:split(ContentType, <<"/">>),
             lager:debug("found attachement of content type: ~s/~s~n", [Type, SubType]),
             Context#cb_context{content_types_provided=[{to_binary, [{Type, SubType}]}]}
@@ -198,7 +198,7 @@ post(#cb_context{doc=JObj}=Context, DocId) ->
             end;
         Else -> Else
     end.
-                
+
 -spec put/1 :: (#cb_context{}) -> #cb_context{}.
 put(#cb_context{doc=JObj}=Context) ->
     %% see note at top of file
@@ -346,7 +346,7 @@ normalize_view_results(JObj, Acc) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% If the device specifies a global template id then return that 
+%% If the device specifies a global template id then return that
 %% template
 %% @end
 %%--------------------------------------------------------------------
@@ -354,7 +354,7 @@ normalize_view_results(JObj, Acc) ->
                                            {error, term()}.
 get_template(#cb_context{doc=Device}) ->
     DocId = wh_json:get_value([<<"provision">>, <<"id">>], Device),
-    case is_binary(DocId) andalso couch_mgr:fetch_attachment(?WH_PROVISIONER_DB, DocId, ?TEMPLATE_ATTCH) of 
+    case is_binary(DocId) andalso couch_mgr:fetch_attachment(?WH_PROVISIONER_DB, DocId, ?TEMPLATE_ATTCH) of
         false ->
             lager:debug("unknown template id ~s", [DocId]),
             {error, not_found};

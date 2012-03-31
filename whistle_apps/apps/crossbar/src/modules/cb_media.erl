@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2012, VoIP INC
 %%% @doc
 %%% Account module
 %%%
@@ -30,6 +30,8 @@
 
 -define(MEDIA_MIME_TYPES, [{<<"audio">>, <<"x-wav">>}
                            ,{<<"audio">>, <<"mpeg">>}
+                           ,{<<"audio">>, <<"mp3">>}
+                           ,{<<"audio">>, <<"ogg">>}
                            ,{<<"application">>, <<"octet-stream">>}
                           ]).
 
@@ -95,9 +97,15 @@ resource_exists(_, ?BIN_DATA) -> true.
 %% @end
 %%--------------------------------------------------------------------
 -spec content_types_provided/3 :: (#cb_context{}, path_token(), path_token()) -> crossbar_content_handlers().
-content_types_provided(#cb_context{req_verb = <<"get">>}=Context, _MediaID, ?BIN_DATA) ->
-    CTP = [{to_binary, ?MEDIA_MIME_TYPES}],
-    Context#cb_context{content_types_provided=CTP}.
+content_types_provided(#cb_context{db_name=Db, req_verb = <<"get">>}=Context, MediaID, ?BIN_DATA) when is_binary(Db) ->
+    lager:debug("open media doc ~s / ~s", [Db, MediaID]),
+    case couch_mgr:open_doc(Db, MediaID) of
+        {error, _} -> Context;
+        {ok, JObj} ->
+            [Type, SubType] = binary:split(content_type_of(JObj), <<"/">>),
+            lager:debug("getting media of type ~s/~s", [Type, SubType]),
+            Context#cb_context{content_types_provided=[{to_binary, [{Type, SubType}]}]}
+    end.
 
 -spec content_types_accepted/3 :: (#cb_context{}, path_token(), path_token()) -> #cb_context{}.
 content_types_accepted(#cb_context{req_verb = <<"post">>}=Context, _MediaID, ?BIN_DATA) ->
@@ -144,6 +152,7 @@ validate(#cb_context{req_verb = <<"delete">>, req_data=_Data}=Context, MediaID) 
     get_media_doc(MediaID, Context).
 
 validate(#cb_context{req_verb = <<"get">>}=Context, MediaID, ?BIN_DATA) ->
+    lager:debug("fetch media contents"),
     get_media_binary(MediaID, Context);
 validate(#cb_context{req_verb = <<"post">>, req_files=[]}=Context, _MediaID, ?BIN_DATA) ->
     lager:debug("No files in request to save attachment"),
@@ -246,15 +255,18 @@ lookup_media(Context) ->
 get_media_doc(MediaID, Context) ->
     crossbar_doc:load(MediaID, Context).
 
+
 %% GET/DELETE /media/MediaID/raw
 get_media_binary(MediaID, Context) ->
     case crossbar_doc:load(MediaID, Context) of
         #cb_context{resp_status=success, doc=MediaMeta} ->
-            case wh_json:get_value([<<"_attachments">>, 1], MediaMeta) of
-                undefined -> crossbar_util:response_bad_identifier(MediaID, Context);
-                AttachMeta ->
-                    [AttachmentID] = wh_json:get_keys(AttachMeta),
-                    crossbar_doc:load_attachment(MediaID, AttachmentID, Context)
+            case wh_json:get_keys(wh_json:get_value([<<"_attachments">>], MediaMeta)) of
+                [] -> crossbar_util:response_bad_identifier(MediaID, Context);
+                [AttachmentID|_] ->
+                    Context1 = crossbar_doc:load_attachment(MediaMeta, AttachmentID, Context),
+                    [Type, SubType] = binary:split(content_type_of(MediaMeta), <<"/">>),
+                    lager:debug("getting media of type ~s/~s", [Type, SubType]),
+                    Context1#cb_context{content_types_provided=[{to_binary, [{Type, SubType}]}]}                    
             end;
         Context1 -> Context1
     end.
@@ -287,3 +299,14 @@ delete_media_binary(MediaID, Context) ->
 -spec attachment_name/0 :: () -> ne_binary().
 attachment_name() ->
     wh_util:to_hex_binary(crypto:rand_bytes(16)).
+
+-spec content_type_of/1 :: (wh_json:json_object()) -> ne_binary().
+content_type_of(JObj) ->
+    case wh_json:get_value(<<"content_type">>, JObj) of
+        undefined ->
+            case wh_json:get_keys(wh_json:get_value([<<"_attachments">>], JObj, wh_json:new())) of
+                [] -> <<"application/octect-stream">>;
+                [Key|_] -> wh_json:get_value([Key, <<"content_type">>], JObj, <<"application/octet-stream">>)
+            end;
+        CT -> CT
+    end.
