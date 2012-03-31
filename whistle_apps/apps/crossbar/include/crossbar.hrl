@@ -39,7 +39,7 @@
           ,content_types_accepted = ?CONTENT_ACCEPTED :: [crossbar_content_handler(),...] | []
           ,allowed_methods = ?ALLOWED_METHODS :: [atom(),...] | []
           ,allow_methods = ?ALLOWED_METHODS :: [atom(),...] | []
-          ,languages_provided = [<<"en">>] :: [ne_binary(),...] %% english by default
+          ,languages_provided = [<<"en">>, <<"en-us">>] :: [ne_binary(),...] %% english by default
           ,charsets_provided = [<<"iso-8859-1">>] :: [ne_binary(),...] %% all charsets provided
           ,encodings_provided = [<<"gzip;q=1.0">>,<<"identity;q=0.5">>] :: [ne_binary(),...] %% gzip and identity
           ,auth_token = <<>> :: binary()
