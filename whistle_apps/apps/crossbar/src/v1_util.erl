@@ -66,11 +66,11 @@ is_cors_request(Req0) ->
                 {undefined, Req2} ->
                     case cowboy_http_req:header(<<"Access-Control-Request-Headers">>, Req2) of
                         {undefined, Req3} -> {false, Req3};
-                        {_, Req3} -> lager:debug("has access control request headers"), {true, Req3}
+                        {_, Req3} -> {true, Req3}
                     end;
-                {_M, Req2} -> lager:debug("has access control request method: ~s", [_M]), {true, Req2}
+                {_M, Req2} -> {true, Req2}
             end;
-        {_O, Req1} -> lager:debug("has origin: ~s", [_O]), {true, Req1}
+        {_O, Req1} -> {true, Req1}
     end.
 
 %%--------------------------------------------------------------------
@@ -81,7 +81,7 @@ is_cors_request(Req0) ->
 -spec add_cors_headers/2 :: (#http_req{}, #cb_context{}) -> {'ok', #http_req{}}.
 add_cors_headers(Req0, #cb_context{allow_methods=Ms}=Context) ->
     {ReqM, Req1} = cowboy_http_req:header(<<"Access-Control-Request-Method">>, Req0),
-    lager:debug("cors req methods: ~p", [ReqM]),
+
     lists:foldl(fun({H, V}, {ok, ReqAcc}) ->
                         cowboy_http_req:set_resp_header(H, V, ReqAcc)
                 end, {ok, Req1}, get_cors_headers(Context#cb_context{allow_methods=[ReqM|Ms]})).
@@ -272,10 +272,16 @@ get_http_verb(Method, #cb_context{req_json=ReqJObj, query_json=ReqQs}) ->
     case wh_json:get_value(<<"verb">>, ReqJObj) of
         undefined ->
             case wh_json:get_value(<<"verb">>, ReqQs) of
-                undefined -> lager:debug("sticking with method ~s", [Method]), wh_util:to_lower_binary(Method);
-                Verb -> lager:debug("found verb ~s on query string", [Verb]), wh_util:to_lower_binary(Verb)
+                undefined ->
+                    lager:debug("sticking with method ~s", [Method]),
+                    wh_util:to_lower_binary(Method);
+                Verb ->
+                    lager:debug("found verb ~s on query string, using instead of ~s", [Verb, Method]),
+                    wh_util:to_lower_binary(Verb)
             end;
-        Verb -> lager:debug("found verb ~s in req data", [Verb]), wh_util:to_lower_binary(Verb)
+        Verb ->
+            lager:debug("found verb ~s in req data, using instead of ~s", [Verb, Method]),
+            wh_util:to_lower_binary(Verb)
     end.
 
 %%--------------------------------------------------------------------
