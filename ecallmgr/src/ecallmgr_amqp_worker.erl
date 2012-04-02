@@ -273,6 +273,7 @@ reset(State) ->
                 ,client_ref = undefined
                 ,client_from = undefined
                 ,client_vfun = undefined
+                ,neg_resp = undefined
                 ,neg_resp_count = 0
                 ,current_msg_id = undefined
                 ,req_timeout_ref = undefined
