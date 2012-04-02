@@ -107,15 +107,20 @@ handle_call({request, ReqProp, PublishFun, VFun, Timeout}, {ClientPid, _}=From, 
     ClientRef = erlang:monitor(process, ClientPid),
     ReqRef = erlang:start_timer(Timeout, Self, req_timeout),
 
+    {ReqProp1, MsgID} = case props:get_value(<<"Msg-ID">>, ReqProp) of
+                            undefined ->
+                                M = wh_util:rand_hex_binary(8),
+                                {[{<<"Msg-ID">>, M} | ReqProp], M};
+                            M -> {ReqProp, M}
+                        end,
+
     spawn(fun() ->
                   put(callid, CallID),
                   Prop = [{<<"Server-ID">>, gen_listener:queue_name(Self)}
                           ,{<<"Call-ID">>, CallID}
-                          | ReqProp],
+                          | ReqProp1],
                   PublishFun(Prop)
           end),
-
-    MsgID = props:get_value(<<"Msg-ID">>, ReqProp),
 
     lager:debug("published request with msg id ~s", [MsgID]),
 
