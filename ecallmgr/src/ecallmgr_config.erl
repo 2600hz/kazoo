@@ -16,6 +16,7 @@
 -compile([{no_auto_import, [get/1]}]).
 
 -include("ecallmgr.hrl").
+-define(DO_NOT_CACHE, [<<"ecallmgr.acls">>]).
 
 -spec flush/0 :: () -> 'ok'.
 flush() ->
@@ -58,7 +59,10 @@ get(Key0, Default, Node0) ->
                             <<"undefined">> -> Default;
                             <<"null">> -> Default;
                             Value ->
-                                wh_cache:store_local(Cache, cache_key(Key, Node), Value),
+                                case lists:exists(Key, ?DO_NOT_CACHE) of
+                                    false -> wh_cache:store_local(Cache, cache_key(Key, Node), Value);
+                                    true -> nothing
+                                end,
                                 Value
                         end,
                     V;
@@ -75,7 +79,10 @@ set(Key0, Value, Node0) ->
     Node = wh_util:to_binary(Node0),
 
     {ok, Cache} = ecallmgr_sup:cache_proc(),
-    wh_cache:store_local(Cache, cache_key(Key, Node), Value),
+    case lists:exists(Key, ?DO_NOT_CACHE) of
+        false -> wh_cache:store_local(Cache, cache_key(Key, Node), Value);
+        true -> nothing
+    end,
 
     Req = [KV ||
               {_, V} = KV <- [{<<"Category">>, <<"ecallmgr">>}
