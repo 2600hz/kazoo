@@ -37,20 +37,20 @@ handle(Req0, {Meta, Bin}) ->
     Url = wh_json:get_value(<<"url">>, Meta, <<>>),
 
     {ok, Req2} = case ContentType of
-                     CT when CT =:= <<"audio/x-wav">> orelse CT =:= <<"audio/wav">> ->
-                         {ok, Req1} = set_resp_headers(Req0, ContentType),
-
-                         cowboy_http_req:set_resp_body_fun(Size
-                                                           ,fun() ->
-                                                                    stream(Req1, ChunkSize, Bin, undefined, false)
-                                                            end
-                                                           ,Req1);
                      CT when CT =:= <<"audio/mpeg">> orelse CT =:= <<"audio/mp3">> ->
                          {ok, Req1} = set_resp_headers(Req0, ChunkSize, ContentType, MediaName, Url),
 
                          cowboy_http_req:set_resp_body_fun(Size
                                                            ,fun() ->
                                                                     stream(Req1, ChunkSize, Bin, get_shout_header(MediaName, Url), true)
+                                                            end
+                                                           ,Req1);
+                     CT ->
+                         {ok, Req1} = set_resp_headers(Req0, CT),
+
+                         cowboy_http_req:set_resp_body_fun(Size
+                                                           ,fun() ->
+                                                                    stream(Req1, ChunkSize, Bin, undefined, false)
                                                             end
                                                            ,Req1)
                  end,
@@ -109,12 +109,12 @@ the_header({K, H}) ->
         _ -> <<0>>
     end.
 
-set_resp_headers(Req, <<"audio/x-wav">>) ->
+set_resp_headers(Req, ContentType) ->
     lists:foldl(fun({K,V}, {ok, Req0Acc}) ->
                         cowboy_http_req:set_resp_header(K, V, Req0Acc)
                 end, {ok, Req}, [
                                  {<<"Server">>, list_to_binary([?APP_NAME, "/", ?APP_VERSION])}
-                                 ,{<<"Content-Type">>, <<"audio/x-wav">>}
+                                 ,{<<"Content-Type">>, ContentType}
                                 ]
                ).
 
@@ -124,7 +124,7 @@ set_resp_headers(Req, ChunkSize, ContentType, MediaName, Url) ->
                         cowboy_http_req:set_resp_header(K, V, Req0Acc)
                 end, {ok, Req}, [
                                  {<<"Server">>, list_to_binary([?APP_NAME, "/", ?APP_VERSION])}
-                                 ,{<<"Content-Type">>, <<"audio/mpeg">>}
+                                 ,{<<"Content-Type">>, ContentType}
                                  ,{<<"icy-notice1">>, <<"MediaMgr">>}
                                  ,{<<"icy-name">>, MediaName}
                                  ,{<<"icy-genre">>, <<"Whistle Media">>}
