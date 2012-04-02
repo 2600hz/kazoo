@@ -57,12 +57,14 @@ req_query_req(ApiJObj, _Props) ->
 
     Realm = wh_json:get_value(<<"Realm">>, ApiJObj),
     Username = wh_json:get_value(<<"Username">>, ApiJObj),
+    MsgID = wh_json:get_value(<<"Msg-ID">>, ApiJObj),
 
     %% only send data if a registration is found
     case reg_util:lookup_registration(Realm, Username) of
         {ok, RegJObjs} when is_list(RegJObjs) ->
             lager:debug("found multiple contacts for ~s@~s in cache", [Username, Realm]),
             Resp = [{<<"Multiple">>, <<"true">>}
+                    ,{<<"Msg-ID">>, MsgID}
                     ,{<<"Fields">>, [filter(ApiJObj, RegJObj) 
                                      || RegJObj <- RegJObjs
                                     ]}
@@ -73,6 +75,7 @@ req_query_req(ApiJObj, _Props) ->
         {ok, RegJObj} ->
             lager:debug("found contact for ~s@~s in cache", [Username, Realm]),
             Resp = [{<<"Fields">>, filter(ApiJObj, RegJObj)}
+                    ,{<<"Msg-ID">>, MsgID}
                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                    ],
             wapi_registration:publish_query_resp(wh_json:get_value(<<"Server-ID">>, ApiJObj), Resp),
