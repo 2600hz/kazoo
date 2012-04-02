@@ -37,7 +37,7 @@ handle(Req0, {Meta, Bin}) ->
     Url = wh_json:get_value(<<"url">>, Meta, <<>>),
 
     {ok, Req2} = case ContentType of
-                     <<"audio/x-wav">> ->
+                     CT when CT =:= <<"audio/x-wav">> orelse CT =:= <<"audio/wav">> ->
                          {ok, Req1} = set_resp_headers(Req0, ContentType),
 
                          cowboy_http_req:set_resp_body_fun(Size
