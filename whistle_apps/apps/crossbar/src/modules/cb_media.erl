@@ -82,9 +82,9 @@ allowed_methods(_MediaID, ?BIN_DATA) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists/0 :: () -> boolean().
--spec resource_exists/1 :: (path_token()) -> boolean().
--spec resource_exists/2 :: (path_token(), path_token()) -> boolean().
+-spec resource_exists/0 :: () -> 'true'.
+-spec resource_exists/1 :: (path_token()) -> 'true'.
+-spec resource_exists/2 :: (path_token(), path_token()) -> 'true'.
 resource_exists() -> true.
 resource_exists(_) -> true.
 resource_exists(_, ?BIN_DATA) -> true.
@@ -96,7 +96,7 @@ resource_exists(_, ?BIN_DATA) -> true.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec content_types_provided/3 :: (#cb_context{}, path_token(), path_token()) -> crossbar_content_handlers().
+-spec content_types_provided/3 :: (#cb_context{}, path_token(), path_token()) -> #cb_context{}.
 content_types_provided(#cb_context{db_name=Db, req_verb = <<"get">>}=Context, MediaID, ?BIN_DATA) when is_binary(Db) ->
     lager:debug("open media doc ~s / ~s", [Db, MediaID]),
     case couch_mgr:open_doc(Db, MediaID) of
@@ -196,7 +196,7 @@ put(#cb_context{resp_headers=RespHeaders, req_data=ReqData}=Context) ->
                     DocID = wh_json:get_value(<<"id">>, RespData),
                     Context2#cb_context{resp_headers=[{"Location", DocID} | RHs]};
                 Context2 ->
-                    crossbar_util:put_reqid(Context),
+                    _ = crossbar_util:put_reqid(Context),
                     lager:debug("put: error saving"),
                     Context2
             end;
