@@ -328,7 +328,7 @@ create_device(JObj, Iteration, Context, {Pass, Fail}) ->
                                undefined ->
                                    Strength = whapps_config:get_integer(?OB_CONFIG_CAT, <<"device_username_strength">>, 3),
                                    wh_json:set_value([<<"sip">>, <<"username">>]
-                                                     ,list_to_binary(["user_", rand_chars(Strength)]), J);
+                                                     ,list_to_binary(["user_", wh_util:rand_hex_binary(Strength)]), J);
                                _ ->
                                    J
                            end
@@ -338,7 +338,7 @@ create_device(JObj, Iteration, Context, {Pass, Fail}) ->
                                undefined ->
                                    Strength = whapps_config:get_integer(?OB_CONFIG_CAT, <<"device_pwd_strength">>, 6),
                                    wh_json:set_value([<<"sip">>, <<"password">>]
-                                                     ,rand_chars(Strength), J);
+                                                     ,wh_util:rand_hex_binary(Strength), J);
                                _ ->
                                    J
                            end
@@ -540,16 +540,6 @@ get_context_jobj(Key, Pass) ->
         #cb_context{doc=JObj} -> JObj;
         _ -> wh_json:new()
     end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Helper function to generate random strings
-%% @end
-%%--------------------------------------------------------------------
--spec rand_chars/1 :: (pos_integer()) -> ne_binary().
-rand_chars(Count) ->
-    wh_util:to_hex_binary(crypto:rand_bytes(Count)).
 
 %%--------------------------------------------------------------------
 %% @private
