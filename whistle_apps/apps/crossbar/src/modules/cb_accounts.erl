@@ -342,7 +342,7 @@ create_account(#cb_context{req_data=ReqData}=Context, ParentId) ->
                undefined ->
                    RealmSuffix = whapps_config:get_binary(?ACCOUNTS_CONFIG_CAT, <<"account_realm_suffix">>, <<"sip.2600hz.com">>),
                    Strength = whapps_config:get_integer(?ACCOUNTS_CONFIG_CAT, <<"random_realm_strength">>, 3),
-                   wh_json:set_value(<<"realm">>, list_to_binary([crossbar_util:rand_chars(Strength), ".", RealmSuffix]), ReqData);
+                   wh_json:set_value(<<"realm">>, list_to_binary([wh_util:rand_hex_binary(Strength), ".", RealmSuffix]), ReqData);
                _Else ->
                    ReqData
            end,

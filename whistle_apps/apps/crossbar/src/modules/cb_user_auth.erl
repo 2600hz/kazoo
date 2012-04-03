@@ -289,7 +289,7 @@ create_token(#cb_context{doc=JObj}=Context) ->
 %%--------------------------------------------------------------------
 -spec reset_users_password/1 :: (#cb_context{}) -> #cb_context{}.
 reset_users_password(#cb_context{doc=JObj, req_data=Data}=Context) ->
-    Password = rand_chars(16),
+    Password = wh_util:rand_hex_binary(16),
     {MD5, SHA1} = cb_modules_util:pass_hashes(wh_json:get_value(<<"username">>, JObj), Password),
     Email = wh_json:get_value(<<"email">>, JObj),
     Updaters = [fun(J) -> wh_json:set_value(<<"pvt_md5_auth">>, MD5, J) end
@@ -312,13 +312,3 @@ reset_users_password(#cb_context{doc=JObj, req_data=Data}=Context) ->
         Else -> 
             Else
     end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Helper function to generate random strings
-%% @end
-%%--------------------------------------------------------------------
--spec rand_chars/1 :: (pos_integer()) -> ne_binary().
-rand_chars(Count) ->
-    wh_util:to_hex_binary(crypto:rand_bytes(Count)).
