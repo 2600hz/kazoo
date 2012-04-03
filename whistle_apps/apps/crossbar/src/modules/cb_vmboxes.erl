@@ -76,9 +76,9 @@ allowed_methods(_VMBoxID, ?MESSAGES_RESOURCE, _MsgID, ?BIN_DATA) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists/0 :: () -> boolean().
--spec resource_exists/1 :: (path_token()) -> boolean().
--spec resource_exists/2 :: (path_token(), path_token()) -> boolean().
+-spec resource_exists/0 :: () -> 'true'.
+-spec resource_exists/1 :: (path_token()) -> 'true'.
+-spec resource_exists/2 :: (path_token(), path_token()) -> 'true'.
 resource_exists() -> true.
 resource_exists(_) -> true.
 resource_exists(_, ?MESSAGES_RESOURCE) -> true.
@@ -92,7 +92,7 @@ resource_exists(_, ?MESSAGES_RESOURCE, _, ?BIN_DATA) -> true.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec content_types_provided/5 :: (#cb_context{}, path_token(), path_token(), path_token(), path_token()) -> crossbar_content_handlers().
+-spec content_types_provided/5 :: (#cb_context{}, path_token(), path_token(), path_token(), path_token()) -> #cb_context{}.
 content_types_provided(#cb_context{req_verb = <<"get">>}=Context
                        ,_VMBox, ?MESSAGES_RESOURCE, _MsgID, ?BIN_DATA) ->
     CTP = [{to_binary, ?MEDIA_MIME_TYPES}],
