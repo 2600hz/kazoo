@@ -1,14 +1,14 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2010-2011 VoIP INC
+%%% @copyright (C) 2010-2012 VoIP INC
 %%% @doc
 %%%
 %%% @end
-%%% Created : 14 Dec 2010 by James Aimonetti <james@2600hz.org>
+%%% @contributors
+%%%   James Aimonetti
+%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(crossbar_util).
 
--export([rand_chars/1]).
 -export([response/2, response/3, response/4, response/5]).
 -export([response_deprecated/1, response_deprecated_redirect/2, response_deprecated_redirect/3
          ,response_redirect/3, response_redirect/4
@@ -34,16 +34,6 @@
 -export([find_account_db/3, find_account_db/4]).
 
 -include_lib("crossbar/include/crossbar.hrl").
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Helper function to generate random strings
-%% @end
-%%--------------------------------------------------------------------
--spec rand_chars/1 :: (pos_integer()) -> ne_binary().
-rand_chars(Count) ->
-    wh_util:to_hex_binary(crypto:rand_bytes(Count)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -396,7 +386,7 @@ get_account_realm(Db, AccountId) ->
 %% Flag all descendants of the account id as disabled
 %% @end
 %%--------------------------------------------------------------------
--spec disable_account/1 :: (undefined | ne_binary()) -> ok.
+-spec disable_account/1 :: ('undefined' | ne_binary()) -> 'ok' | {'error', _}.
 disable_account(undefined) ->
     ok;
 disable_account(AccountId) ->
@@ -416,7 +406,7 @@ disable_account(AccountId) ->
 %% Flag all descendants of the account id as enabled
 %% @end
 %%--------------------------------------------------------------------
--spec enable_account/1 :: (undefined | ne_binary()) -> ok.
+-spec enable_account/1 :: ('undefined' | ne_binary()) -> 'ok' | {'error', _}.
 enable_account(undefined) ->
     ok;
 enable_account(AccountId) ->
@@ -541,6 +531,32 @@ get_path1(RawPath, Relative) ->
                        (Segment, PathTokens) -> [Segment | PathTokens]
                     end, PathTokensRev, UrlTokens)
        ), <<"/">>).
+
+parse_qs(QS) ->
+    parse_qs(QS, []).
+
+parse_qs(QS, Acc) ->
+    {K, Rest} = parse_qs_key(QS),
+    {V, Rest1} = parse_qs_key(Rest),
+    parse_qs(Rest1, [{K, V}|Acc]).
+
+parse_qs_key(<<" ", R/binary>>) ->
+    parse_qs_key(R);
+parse_qs_key(V) ->
+    parse_qs_key(V, <<>>).
+
+parse_qs_key(<<>>, Acc) ->
+    {Acc, <<>>};
+parse_qs_key(<<"=", R/binary>>, Acc) ->
+    {Acc, R};
+parse_qs_key(<<";", _/binary>> = R, Acc) ->
+    {Acc, R};
+parse_qs_key(<<"&", _/binary>> = R, Acc) ->
+    {Acc, R};
+parse_qs_key(<<C:1/binary, R/binary>>, Acc) ->
+    parse_qs_key(R, <<Acc/binary, C/binary>>).
+
+
 
 -include_lib("eunit/include/eunit.hrl").
 -ifdef(TEST).

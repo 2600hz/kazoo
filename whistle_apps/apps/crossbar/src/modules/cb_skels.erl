@@ -127,9 +127,9 @@ resource_exists(_) -> true.
 %% Of the form {atom, [{Type, SubType}]} :: {to_json, [{<<"application">>, <<"json">>}]}
 %% @end
 %%--------------------------------------------------------------------
--spec content_types_provided/1 :: (path_tokens()) -> [crossbar_content_handler(),...] | [].
-content_types_provided(_) ->
-    [].
+-spec content_types_provided/1 :: (#cb_context{}) -> #cb_context{}.
+content_types_provided(#cb_context{}=Context) ->
+    Context.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -139,9 +139,9 @@ content_types_provided(_) ->
 %% Of the form {atom, [{Type, SubType}]} :: {to_json, [{<<"application">>, <<"json">>}]}
 %% @end
 %%--------------------------------------------------------------------
--spec content_types_accepted/1 :: (path_tokens()) -> crossbar_content_handler().
-content_types_accepted(_) ->
-    [].
+-spec content_types_accepted/1 :: (#cb_context{}) -> #cb_context{}.
+content_types_accepted(#cb_context{}=Context) ->
+    Context.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -151,9 +151,9 @@ content_types_accepted(_) ->
 %% [<<"en">>, <<"en-gb;q=0.7">>, <<"da;q=0.5">>]
 %% @end
 %%--------------------------------------------------------------------
--spec languages_provided/1 :: (path_tokens()) -> [ne_binary(),...] | [].
-languages_provided(_) ->
-    [].
+-spec languages_provided/1 :: (#cb_context{}) -> #cb_context{}.
+languages_provided(#cb_context{}=Context) ->
+    Context.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -163,9 +163,9 @@ languages_provided(_) ->
 %% [<<"iso-8859-5">>, <<"unicode-1-1;q=0.8">>]
 %% @end
 %%--------------------------------------------------------------------
--spec charsets_provided/1 :: (path_tokens()) -> [ne_binary(),...] | [].
-charsets_provided(_) ->
-    [].
+-spec charsets_provided/1 :: (#cb_context{}) -> #cb_context{}.
+charsets_provided(#cb_context{}=Context) ->
+    Context.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -175,9 +175,9 @@ charsets_provided(_) ->
 %% [<<"gzip;q=1.0">>, <<"identity;q=0.5">>, <<"*;q=0">>]
 %% @end
 %%--------------------------------------------------------------------
--spec encodings_provided/1 :: (path_tokens()) -> [ne_binary(),...] | [].
-encodings_provided(_) ->
-    [].
+-spec encodings_provided/1 :: (#cb_context{}) -> #cb_context{}.
+encodings_provided(#cb_context{}=Context) ->
+    Context.
 
 %%--------------------------------------------------------------------
 %% @public

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2012, VoIP INC
 %%% @doc
 %%% NoAuthZ module
 %%%
@@ -24,6 +24,7 @@
 init() ->
     crossbar_bindings:bind(<<"v1_resource.authorize">>, ?MODULE, authorize).
 
-authorize(#cb_context{req_id=ReqId}) ->
+-spec authorize/1 :: (#cb_context{}) -> 'true'.
+authorize(_) ->
     lager:debug("noauthz authorizing request"),
     true.
