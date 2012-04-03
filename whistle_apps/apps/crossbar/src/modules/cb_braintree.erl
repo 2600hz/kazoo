@@ -30,11 +30,14 @@
 -define(TRANSACTIONS_PATH_TOKEN, <<"transactions">>).
 -define(CREDITS_PATH_TOKEN, <<"credits">>).
 
+-type subscription_update() :: {string(), pos_integer()}.
+-type subscription_updates() :: [subscription_update(),...] | [].
+
 %%%===================================================================
 %%% API
 %%%===================================================================
 init() ->
-    ssl:start(),
+    _ = ssl:start(),
     _ = crossbar_bindings:bind(<<"v1_resource.billing">>, ?MODULE, billing),
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.braintree">>, ?MODULE, allowed_methods),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.braintree">>, ?MODULE, resource_exists),
@@ -128,13 +131,13 @@ validate(#cb_context{req_verb = <<"get">>, account_id=AccountId}=Context, ?CUSTO
     case braintree_customer:find(AccountId) of
         {ok, #bt_customer{}=C} ->
             Resp = braintree_customer:record_to_json(C),
-            disable_cardless_accounts(wh_json:get_value(<<"credit_cards">>, Resp, []), Context),
+            _ = disable_cardless_accounts(wh_json:get_value(<<"credit_cards">>, Resp, []), Context),
             crossbar_util:response(Resp, Context);
         {error, #bt_api_error{}=ApiError} ->
             Resp = braintree_util:bt_api_error_to_json(ApiError),
             crossbar_util:response(error, <<"braintree api error">>, 400, Resp, Context);
         {error, not_found} ->
-            disable_cardless_accounts([], Context),
+            _ = disable_cardless_accounts([], Context),
             create_placeholder_account(Context);
         {error, _} ->
             crossbar_util:response_db_fatal(Context)
@@ -160,7 +163,7 @@ validate(#cb_context{req_verb = <<"get">>, account_id=AccountId}=Context, ?CARDS
     case braintree_customer:find(AccountId) of
         {ok, #bt_customer{credit_cards=Cards}} ->
             Resp = [braintree_card:record_to_json(Card) || Card <- Cards],
-            disable_cardless_accounts(Resp, Context),
+            _ = disable_cardless_accounts(Resp, Context),
             crossbar_util:response(Resp, Context);
         {error, #bt_api_error{}=ApiError} ->
             Resp = braintree_util:bt_api_error_to_json(ApiError),
@@ -284,12 +287,12 @@ validate(#cb_context{req_verb = <<"get">>}=Context, ?TRANSACTIONS_PATH_TOKEN, Tr
 post(#cb_context{account_id=AccountId}=Context, ?CUSTOMER_PATH_TOKEN) ->
     _ = crossbar_util:put_reqid(Context),
     Customer = crossbar_util:fetch(braintree, Context),
-    create_placeholder_account(Context),
+    _ = create_placeholder_account(Context),
     case braintree_customer:update(Customer) of
         {ok, #bt_customer{}=C} ->
-            crossbar_util:enable_account(AccountId),
+            _ = crossbar_util:enable_account(AccountId),
             Resp = braintree_customer:record_to_json(C),
-            disable_cardless_accounts(wh_json:get_value(<<"credit_cards">>, Resp, []), Context),
+            _ = disable_cardless_accounts(wh_json:get_value(<<"credit_cards">>, Resp, []), Context),
             crossbar_util:response(Resp, Context);
         {error, #bt_api_error{}=ApiError} ->
             Resp = braintree_util:bt_api_error_to_json(ApiError),
@@ -305,7 +308,7 @@ post(Context, ?CARDS_PATH_TOKEN, CardId) ->
     case braintree_card:update(Card) of
         {ok, #bt_card{}=C} ->
             Resp = braintree_card:record_to_json(C),
-            disable_cardless_accounts(Resp, Context),
+            _ = disable_cardless_accounts(Resp, Context),
             crossbar_util:response(Resp, Context);
         {error, #bt_api_error{}=ApiError} ->
             Resp = braintree_util:bt_api_error_to_json(ApiError),
@@ -381,7 +384,7 @@ put(Context, ?CARDS_PATH_TOKEN) ->
     case braintree_card:create(Card) of
         {ok, #bt_card{}=C} ->
             Resp = braintree_card:record_to_json(C),
-            disable_cardless_accounts(Resp, Context),
+            _ = disable_cardless_accounts(Resp, Context),
             crossbar_util:response(Resp, Context);
         {error, #bt_api_error{}=ApiError} ->
             Resp = braintree_util:bt_api_error_to_json(ApiError),
@@ -397,7 +400,7 @@ delete(Context, ?CARDS_PATH_TOKEN, CardId) ->
     case braintree_card:delete(CardId) of
         {ok, #bt_card{}=C} ->
             Resp = braintree_card:record_to_json(C),
-            disable_cardless_accounts(Resp, Context),
+            _ = disable_cardless_accounts(Resp, Context),
             crossbar_util:response(Resp, Context);
         {error, #bt_api_error{}=ApiError} ->
             Resp = braintree_util:bt_api_error_to_json(ApiError),
@@ -434,7 +437,7 @@ delete(Context, ?ADDRESSES_PATH_TOKEN, AddressId) ->
 %% disabling all decendants... BRING THE HAMMER
 %% @end
 %%--------------------------------------------------------------------
--spec disable_cardless_accounts/2 :: (list(), #cb_context{}) -> #cb_context{}.
+-spec disable_cardless_accounts/2 :: (list(), #cb_context{}) -> 'ok' | {'error', _}.
 disable_cardless_accounts([], #cb_context{account_id=AccountId}) ->
     crossbar_util:disable_account(AccountId);
 disable_cardless_accounts(_, #cb_context{account_id=AccountId}) ->
@@ -478,7 +481,8 @@ authorize_trunkstore([], #cb_context{req_verb = <<"put">>, doc=JObj, account_id=
     Updates = [{"outbound_us", fun() -> ts_outbound_us_quantity(JObj) end()}
                ,{"did_us", fun() -> ts_did_us_quantity(JObj) end()}
                ,{"tollfree_us", fun() -> ts_tollfree_us_quantity(JObj) end()}
-               ,{"e911", fun() -> ts_e911_quantity(JObj) end()}],
+               ,{"e911", fun() -> ts_e911_quantity(JObj) end()}
+              ],
     BillingAccount = wh_json:get_value(<<"billing_account_id">>, JObj, AccountId),
     case ts_get_subscription(JObj, BillingAccount) of
         {ok, Subscription} ->
@@ -502,7 +506,8 @@ authorize_trunkstore([_], #cb_context{req_verb = <<"post">>, doc=JObj, account_i
     Updates = [{"outbound_us", fun() -> ts_outbound_us_quantity(JObj) end()}
                ,{"did_us", fun() -> ts_did_us_quantity(JObj) end()}
                ,{"tollfree_us", fun() -> ts_tollfree_us_quantity(JObj) end()}
-               ,{"e911", fun() -> ts_e911_quantity(JObj) end()}],
+               ,{"e911", fun() -> ts_e911_quantity(JObj) end()}
+              ],
     BillingAccount = wh_json:get_value(<<"billing_account_id">>, JObj, AccountId),
     case ts_get_subscription(JObj, BillingAccount) of
         {ok, Subscription} ->
@@ -580,7 +585,7 @@ ts_e911_quantity(JObj) ->
              || Server <- wh_json:get_value(<<"servers">>, JObj, [])],
     length(E911).
 
--spec ts_fold_did_fun/1 :: (boolean()) -> pos_integer().
+-spec ts_fold_did_fun/1 :: (boolean()) -> fun((pos_integer(), non_neg_integer()) -> non_neg_integer()).
 ts_fold_did_fun(true) ->
     fun(Number, Count) ->
             case wnm_util:is_tollfree(Number) of
@@ -635,7 +640,7 @@ ts_get_subscription(JObj, BillingAccount, Create) ->
             {error, fatal}                     
     end.
 
--spec change_subscription/3 :: (ne_binary(), #bt_subscription{}, #cb_context{}) -> #cb_context{}.
+-spec change_subscription/3 :: (subscription_updates(), #bt_subscription{}, #cb_context{}) -> #cb_context{}.
 change_subscription(Updates, #bt_subscription{id=undefined}=Subscription, #cb_context{doc=JObj}=Context) ->
     NewSubscription =
         lists:foldr(fun({AddOn, Quantity}, Sub) ->
@@ -685,17 +690,17 @@ change_subscription(Updates, Subscription, #cb_context{doc=JObj}=Context) ->
                                 {'error', atom()} |
                                 {'inactive', ne_binary()} |
                                 {'api_error', wh_json:json_object()}
-                                ,ne_binary()) -> {'ok', #bt_subscription{}} |
-                                                 {'error', atom()} |
-                                                 {'inactive', ne_binary()} |
-                                                 {'api_error', wh_json:json_object()}.
+                                ,nonempty_string()) -> {'ok', #bt_subscription{}} |
+                                                       {'error', atom()} |
+                                                       {'inactive', ne_binary()} |
+                                                       {'api_error', wh_json:json_object()}.
 create_subscription({ok, Token}, Plan) ->
     lager:debug("creating new subscription ~s with token ~s", [Plan, Token]),
     {ok, #bt_subscription{payment_token=Token, plan_id=Plan, do_not_inherit=true}};
 create_subscription(Error, _) ->
     Error.
 
--spec get_payment_token/1 :: (ne_binary() | list()) -> {'ok', ne_binary()} |
+-spec get_payment_token/1 :: (ne_binary() | list()) -> {'ok', nonempty_string()} |
                                                        {'error', atom()} |
                                                        {'api_error', wh_json:json_object()}.
 get_payment_token(BillingAccount) when not is_list(BillingAccount) ->

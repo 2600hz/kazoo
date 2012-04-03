@@ -68,7 +68,7 @@
           ,port = 8000 :: integer()
           ,raw_path = <<>> :: binary()
           ,raw_qs = <<>> :: binary()
-          ,method = 'GET' :: http_methods()
+          ,method = 'GET' :: http_method()
          }).
 
 -ifdef(PROFILE).

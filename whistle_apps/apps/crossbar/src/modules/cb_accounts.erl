@@ -62,16 +62,17 @@ ensure_parent_set() ->
         {ok, AcctJObjs} ->
             DefaultParentID = find_default_parent(AcctJObjs),
 
-            [ensure_parent_set(DefaultParentID, wh_json:get_value(<<"doc">>, AcctJObj))
-             || AcctJObj <- AcctJObjs,
-                wh_json:get_value(<<"id">>, AcctJObj) =/= DefaultParentID, % not the default parent
+            _ = [ensure_parent_set(DefaultParentID, wh_json:get_value(<<"doc">>, AcctJObj))
+                 || AcctJObj <- AcctJObjs,
+                    wh_json:get_value(<<"id">>, AcctJObj) =/= DefaultParentID, % not the default parent
 
-                (Tree = wh_json:get_value([<<"doc">>, <<"pvt_tree">>], AcctJObj)) =:= [] orelse % empty tree (should have at least the parent)
-                    Tree =:= <<>> orelse % Tree is an empty string only
-                    Tree =:= [""] orelse % Tree is bound in the prior bit, and might be a list of an empty string
-                    Tree =:= [<<>>] orelse % Tree is a list of an empty string
-                    Tree =:= undefined % if the pvt_tree key doesn't exist
-            ];
+                    (Tree = wh_json:get_value([<<"doc">>, <<"pvt_tree">>], AcctJObj)) =:= [] orelse % empty tree (should have at least the parent)
+                        Tree =:= <<>> orelse % Tree is an empty string only
+                        Tree =:= [""] orelse % Tree is bound in the prior bit, and might be a list of an empty string
+                        Tree =:= [<<>>] orelse % Tree is a list of an empty string
+                        Tree =:= undefined % if the pvt_tree key doesn't exist
+                ],
+            ok;
         {error, _}=E -> E
     end.
 
