@@ -99,7 +99,7 @@ validate(#cb_context{req_data=Data, req_verb = <<"put">>}=Context) ->
         {fail, Errors} ->
             crossbar_util:response_invalid_data(Errors, Context);
         {pass, JObj} ->
-            crossbar_util:put_reqid(Context),
+            _ = crossbar_util:put_reqid(Context),
             authorize_api_key(Context, wh_json:get_value(<<"api_key">>, JObj))
     end.
 
@@ -109,7 +109,7 @@ validate(#cb_context{req_data=Data, req_verb = <<"put">>}=Context) ->
 %% @end
 %%--------------------------------------------------------------------
 put(Context) ->
-    crossbar_util:put_reqid(Context),
+    _ = crossbar_util:put_reqid(Context),
     create_token(Context).
 
 %%%===================================================================
