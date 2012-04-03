@@ -102,6 +102,7 @@ content_types_provided(#cb_context{db_name=Db, req_verb = <<"get">>}=Context, Me
     case couch_mgr:open_doc(Db, MediaID) of
         {error, _} -> Context;
         {ok, JObj} ->
+            lager:debug("media: ~p", [JObj]),
             [Type, SubType] = binary:split(content_type_of(JObj), <<"/">>),
             lager:debug("getting media of type ~s/~s", [Type, SubType]),
             Context#cb_context{content_types_provided=[{to_binary, [{Type, SubType}]}]}
@@ -179,7 +180,8 @@ post(#cb_context{req_files=[], resp_status=RespStatus}=Context, _MediaID) ->
         true -> crossbar_doc:save(Context);
         false -> Context
     end.
-post(#cb_context{req_files=[{_, FileObj}]}=Context, MediaID, ?BIN_DATA) ->
+post(#cb_context{req_files=[{_, FileObj}|_Files]}=Context, MediaID, ?BIN_DATA) ->
+    lager:debug("other files: ~p", [_Files]),
     HeadersJObj = wh_json:get_value(<<"headers">>, FileObj),
     Contents = wh_json:get_value(<<"contents">>, FileObj),
 
@@ -224,6 +226,7 @@ create_media_meta(Data, Context) ->
 
 -spec update_media_binary/4 :: (ne_binary(), ne_binary(), #cb_context{}, wh_json:json_object()) -> #cb_context{}.
 update_media_binary(MediaID, Contents, Context, HeadersJObj) ->
+    lager:debug("update headers: ~p", [HeadersJObj]),
     CT = wh_json:get_value(<<"content_type">>, HeadersJObj, <<"application/octet-stream">>),
     Opts = [{headers, [{content_type, wh_util:to_list(CT)}]}],
 
@@ -231,12 +234,12 @@ update_media_binary(MediaID, Contents, Context, HeadersJObj) ->
 
     case crossbar_doc:save_attachment(MediaID, attachment_name(), Contents, Context, Opts) of
         #cb_context{resp_status=success}=Context1 ->
-            lager:debug("Saved attachement successfully"),
+            lager:debug("saved attachement successfully"),
             #cb_context{doc=Doc} = crossbar_doc:load(MediaID, Context),
             Doc1 = wh_json:set_value(<<"content_type">>, CT, Doc),
             crossbar_doc:save(Context1#cb_context{doc=Doc1});
         C ->
-            lager:debug("Failed to save attachment"),
+            lager:debug("failed to save attachment"),
             C
     end.
 
