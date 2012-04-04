@@ -1493,8 +1493,8 @@ get_event_type(JObj) ->
 %% Sends call commands to the appropriate call control process
 %% @end
 %%--------------------------------------------------------------------
--spec send_command/2 :: (proplist(), whapps_call:call()) -> 'ok'.
-send_command(Command, Call) ->
+-spec send_command/2 :: (api_terms(), whapps_call:call()) -> 'ok'.
+send_command(Command, Call) when is_list(Command) ->
     CustomPublisher = whapps_call:custom_publish_function(Call),
     CtrlQ = whapps_call:control_queue(Call),    
     case is_function(CustomPublisher) of
@@ -1509,4 +1509,6 @@ send_command(Command, Call) ->
                               ],
             wapi_dialplan:publish_command(CtrlQ, Prop);
         false -> ok
-    end.
+    end;
+send_command(JObj, Call) ->
+    send_command(wh_json:to_proplist(JObj), Call).
