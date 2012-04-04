@@ -20,6 +20,7 @@
 
 -define(DEVICES_CB_LIST, <<"devices/crossbar_listing">>).
 -define(MAINTENANCE_VIEW_FILE, <<"views/maintenance.json">>).
+-define(FAXES_VIEW_FILE, <<"views/faxes.json">>).
 -define(ACCOUNTS_AGG_VIEW_FILE, <<"views/accounts.json">>).
 -define(ACCOUNTS_AGG_NOTIFY_VIEW_FILE, <<"views/notify.json">>).
 
@@ -115,6 +116,7 @@ do_refresh() ->
     refresh(?WH_SCHEMA_DB),
     refresh(?WH_ACCOUNTS_DB),
     refresh(?WH_PROVISIONER_DB),
+    refresh(?WH_FAXES),
     Views = [whapps_util:get_view_json(whistle_apps, ?MAINTENANCE_VIEW_FILE)
              ,whapps_util:get_view_json(conference, <<"views/conference.json">>)
              |whapps_util:get_views_json(crossbar, "account")
@@ -161,6 +163,10 @@ refresh(?WH_ACCOUNTS_DB) ->
 refresh(?WH_PROVISIONER_DB) ->
     couch_mgr:db_create(?WH_PROVISIONER_DB),
     couch_mgr:revise_doc_from_file(?WH_PROVISIONER_DB, crossbar, "account/provisioner_templates.json"),
+    ok;
+refresh(?WH_FAXES) ->
+    couch_mgr:db_create(?WH_FAXES),
+    couch_mgr:revise_doc_from_file(?WH_FAXES, whistle_apps, ?FAXES_VIEW_FILE),
     ok;
 refresh(<<Account/binary>>) ->
     Views = [whapps_util:get_view_json(whistle_apps, ?MAINTENANCE_VIEW_FILE)
