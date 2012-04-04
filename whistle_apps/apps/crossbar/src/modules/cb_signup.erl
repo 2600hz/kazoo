@@ -53,6 +53,7 @@
 %%% API
 %%%===================================================================
 init() ->
+    
     _ = crossbar_bindings:bind(<<"v1_resource.authenticate">>, ?MODULE, authenticate),
     _ = crossbar_bindings:bind(<<"v1_resource.authorize">>, ?MODULE, authorize),
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.signup">>, ?MODULE, allowed_methods),
@@ -60,13 +61,14 @@ init() ->
     _ = crossbar_bindings:bind(<<"v1_resource.validate.signup">>, ?MODULE, validate),
     _ = crossbar_bindings:bind(<<"v1_resource.execute.post.signup">>, ?MODULE, post),
     _ = crossbar_bindings:bind(<<"v1_resource.execute.put.signup">>, ?MODULE, put),
-
+    
     _ = couch_mgr:db_create(?SIGNUP_DB),
-
+    
     _ = case couch_mgr:update_doc_from_file(?SIGNUP_DB, crossbar, ?VIEW_FILE) of
             {error, _} ->
+                
                 couch_mgr:load_doc_from_file(?SIGNUP_DB, crossbar, ?VIEW_FILE);
-            {ok, _} -> ok
+                        {ok, _} -> ok
         end,
 
     supervisor:start_child(crossbar_sup, crossbar_sup:child_spec(?MODULE)).
@@ -161,7 +163,7 @@ authenticate(#cb_context{req_nouns=[{<<"signup">>,[_]}]}) ->
 post(#cb_context{doc=JObj}=Context, _) ->
     case activate_signup(JObj) of
         {ok, Account, User} ->
-            _ = couch_mgr:delete_doc(?SIGNUP_DB, JObj),
+            _ = couch_mgr:del_doc(?SIGNUP_DB, JObj),
             Context#cb_context{resp_status=success
                                ,resp_data=wh_json:from_list([{<<"account">>, Account}
                                                              ,{<<"user">>, User}
@@ -311,9 +313,9 @@ activate_account(undefined) ->
     {error, account_undefined};
 activate_account(Account) ->
     Event = <<"v1_resource.execute.put.accounts">>,
-    Payload = [undefined, #cb_context{doc=Account}, [[]]],
+    Payload = [#cb_context{doc=Account}],
     case crossbar_bindings:fold(Event, Payload) of
-        [_, #cb_context{resp_status=success, resp_data=JObj} | _] ->
+        #cb_context{resp_status=success, resp_data=JObj} ->
             AccountId = wh_json:get_value(<<"id">>, JObj),
             lager:debug("created new account ~s", [AccountId]),
             {ok, JObj};
@@ -337,9 +339,9 @@ activate_user(Account, User) ->
     AccountId = wh_json:get_value(<<"id">>, Account),
     Db = wh_util:format_account_id(AccountId, encoded),
     Event = <<"v1_resource.execute.put.users">>,
-    Payload = [undefined, #cb_context{doc=User, db_name=Db}, [[]]],
+    Payload = [#cb_context{doc=User, db_name=Db}],
     case crossbar_bindings:fold(Event, Payload) of
-        [_, #cb_context{resp_status=success, resp_data=JObj} | _] ->
+        #cb_context{resp_status=success, resp_data=JObj} ->
             UserId = wh_json:get_value(<<"id">>, JObj),
             lager:debug("created new user ~s in account ~s", [UserId, AccountId]),
             {ok, Account, JObj};
@@ -497,7 +499,7 @@ cleanup_signups(#state{signup_lifespan=Lifespan}) ->
                                                                       ,{<<"include_docs">>, true}
                                                                      ]) of
         {ok, Expired} ->
-            _ = couch_mgr:delete_docs(?SIGNUP_DB, [wh_json:get_value(<<"doc">>, JObj, wh_json:new()) || JObj <- Expired]),
+            _ = couch_mgr:del_docs(?SIGNUP_DB, [wh_json:get_value(<<"doc">>, JObj, wh_json:new()) || JObj <- Expired]),
             ok;
         _Else ->
             ok
@@ -582,4 +584,3 @@ do_compile_template(Template, Name) ->
             lager:debug("could not compile ~s template, ignoring", [Name]),
             undefined
     end.
-
