@@ -180,7 +180,7 @@ handle_call({request_resource, Type, Options}, From, #state{fs_nodes=Nodes}=Stat
     {noreply, State};
 
 handle_call(_Request, _From, State) ->
-    {reply, {error, unhandled_request}, State}.
+    {reply, {error, not_implemented}, State}.
 
 %%--------------------------------------------------------------------
 %% @private

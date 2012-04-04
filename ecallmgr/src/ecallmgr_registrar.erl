@@ -91,7 +91,9 @@ handle_call({lookup, Realm, User, Fields, CallId}, From, State) ->
                   put(callid, CallId),
                   gen_server:reply(From, lookup_reg(Realm, User, Fields))
           end),
-    {noreply, State}.
+    {noreply, State};
+handle_call(_Msg, _From, State) ->
+    {reply, {error, not_implemented}, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -128,6 +130,14 @@ handle_info({cache_registrations, Realm, User, RegFields}, State) ->
 handle_info(_Info, State) ->
     {noreply, State}.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Allows listener to pass options to handlers
+%%
+%% @spec handle_event(JObj, State) -> {reply, Options}
+%% @end
+%%--------------------------------------------------------------------
 handle_event(_,_) ->
     {reply, []}.
 

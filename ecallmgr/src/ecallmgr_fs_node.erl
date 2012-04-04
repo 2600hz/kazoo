@@ -148,7 +148,9 @@ handle_call(show_channels, From, #state{node=Node}=State) ->
                       _ -> gen_server:reply(From, [])
                   end
           end),
-    {noreply, State}.
+    {noreply, State};
+handle_call(_Msg, _From, State) ->
+    {reply, {error, not_implemented}, State}.    
 
 handle_cast({distributed_presence, Presence, Event}, #state{node=Node}=State) ->
     Headers = [{wh_util:to_list(K), wh_util:to_list(V)}
