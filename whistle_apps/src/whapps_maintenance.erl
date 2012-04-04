@@ -52,20 +52,20 @@ migrate() ->
                    ,fun(L) -> [<<"cb_queues">> | lists:delete(<<"cb_queues">>, L)] end
                   ],
     StartModules = whapps_config:get(<<"crossbar">>, <<"autoload_modules">>, []),
-    whapps_config:set_default(<<"crossbar">>
-                                  ,<<"autoload_modules">>
-                                  ,lists:foldr(fun(F, L) -> F(L) end, StartModules, XbarUpdates)),
+    _ = whapps_config:set_default(<<"crossbar">>
+                                      ,<<"autoload_modules">>
+                                      ,lists:foldr(fun(F, L) -> F(L) end, StartModules, XbarUpdates)),
     WhappsUpdates = [fun(L) -> [<<"sysconf">> | lists:delete(<<"sysconf">>, L)] end
                     ,fun(L) -> [<<"acdc">> | lists:delete(<<"acdc">>, L)] end
                     ],
     StartWhapps = whapps_config:get(<<"whapps_controller">>, <<"whapps">>, []),
-    whapps_config:set_default(<<"whapps_controller">>
-                                  ,<<"whapps">>
-                                  ,lists:foldr(fun(F, L) -> F(L) end, StartWhapps, WhappsUpdates)),
-    whapps_controller:restart_app(crossbar),
-    whapps_controller:restart_app(sysconf),
-    whapps_controller:restart_app(notify),
-    whapps_controller:restart_app(acdc),
+    _ = whapps_config:set_default(<<"whapps_controller">>
+                                      ,<<"whapps">>
+                                      ,lists:foldr(fun(F, L) -> F(L) end, StartWhapps, WhappsUpdates)),
+    _ = whapps_controller:restart_app(crossbar),
+    _ = whapps_controller:restart_app(sysconf),
+    _ = whapps_controller:restart_app(notify),
+    _ = whapps_controller:restart_app(acdc),
     ok.
 
 %%--------------------------------------------------------------------
@@ -92,7 +92,7 @@ find_invalid_acccount_dbs() ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec blocking_refresh/0 :: () -> 'ok'.
+-spec blocking_refresh/0 :: () -> pos_integer().
 blocking_refresh() ->
     do_refresh().
 
@@ -110,6 +110,7 @@ refresh() ->
     spawn(fun do_refresh/0),
     started.
 
+-spec do_refresh/0 :: () -> pos_integer().
 do_refresh() ->
     refresh(?WH_SIP_DB),
     refresh(?WH_SCHEMA_DB),
@@ -125,10 +126,8 @@ do_refresh() ->
     Total = length(Accounts),
     lists:foldr(fun(AccountDb, Current) ->
                         lager:debug("refreshing database (~p/~p) '~s'", [Current, Total, AccountDb]),
-                        case refresh(AccountDb, Views) of
-                            ok -> Current + 1;
-                            remove -> Current + 1
-                        end
+                        _ = refresh(AccountDb, Views),
+                        Current + 1
                 end, 1, Accounts).
 
 refresh(?WH_SIP_DB) ->
@@ -154,12 +153,12 @@ refresh(?WH_ACCOUNTS_DB) ->
              ,whapps_util:get_view_json(notify, ?ACCOUNTS_AGG_NOTIFY_VIEW_FILE)
             ],
     whapps_util:update_views(?WH_ACCOUNTS_DB, Views, true),
-    case couch_mgr:all_docs(?WH_ACCOUNTS_DB, [{<<"include_docs">>, true}]) of
-        {ok, JObjs} ->
-            [cleanup_aggregated_account(wh_json:get_value(<<"doc">>, JObj)) || JObj <- JObjs];
-        _ ->
-            ok
-    end,
+    _ = case couch_mgr:all_docs(?WH_ACCOUNTS_DB, [{<<"include_docs">>, true}]) of
+            {ok, JObjs} ->
+                _ = [cleanup_aggregated_account(wh_json:get_value(<<"doc">>, JObj)) || JObj <- JObjs];
+            _ ->
+                ok
+        end,
     ok;
 refresh(?WH_PROVISIONER_DB) ->
     couch_mgr:db_create(?WH_PROVISIONER_DB),
@@ -194,21 +193,21 @@ refresh(Account, Views) ->
             end,
             remove;
         {ok, JObj} ->
-            couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, JObj),
+            _ = couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, JObj),
             AccountRealm = crossbar_util:get_account_realm(AccountDb, AccountId),
-            case couch_mgr:get_results(AccountDb, ?DEVICES_CB_LIST, [{<<"include_docs">>, true}]) of
-                {ok, Devices} ->
-                    _ = [whapps_util:add_aggregate_device(AccountDb, wh_json:get_value(<<"doc">>, Device))
-                         || Device <- Devices
-                                ,wh_json:get_ne_value([<<"doc">>, <<"sip">>, <<"realm">>], Device, AccountRealm) =/= AccountRealm
-                        ],
-                    _ = [whapps_util:rm_aggregate_device(AccountDb, wh_json:get_value(<<"doc">>, Device))
-                         || Device <- Devices
-                                ,wh_json:get_ne_value([<<"doc">>, <<"sip">>, <<"realm">>], Device, AccountRealm) =:= AccountRealm
-                        ];
-                {error, _} ->
-                    ok
-            end,
+            _ = case couch_mgr:get_results(AccountDb, ?DEVICES_CB_LIST, [{<<"include_docs">>, true}]) of
+                    {ok, Devices} ->
+                        _ = [whapps_util:add_aggregate_device(AccountDb, wh_json:get_value(<<"doc">>, Device))
+                             || Device <- Devices
+                                    ,wh_json:get_ne_value([<<"doc">>, <<"sip">>, <<"realm">>], Device, AccountRealm) =/= AccountRealm
+                            ],
+                        _ = [whapps_util:rm_aggregate_device(AccountDb, wh_json:get_value(<<"doc">>, Device))
+                             || Device <- Devices
+                                    ,wh_json:get_ne_value([<<"doc">>, <<"sip">>, <<"realm">>], Device, AccountRealm) =:= AccountRealm
+                            ];
+                    {error, _} ->
+                        ok
+                end,
             whapps_util:update_views(AccountDb, Views, true)
     end.
 
