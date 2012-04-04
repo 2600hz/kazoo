@@ -73,7 +73,7 @@ is_valid(JObj, Schema) ->
         {fail, Errors} ->
             E = format_errors(Errors),
             lager:debug("json failed validation against ~s schema: ~s", [wh_json:get_value(<<"_id">>, Schema)
-                                                                  ,wh_json:encode(E)]),
+                                                                  ,list_to_binary(wh_json:encode(E))]),
             {fail, E}
     end.
 
