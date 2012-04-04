@@ -14,16 +14,20 @@
 
 -behaviour(gen_server).
 
-%% API
--export([start_link/0, add_fs_node/1, add_fs_node/2, rm_fs_node/1, diagnostics/0]).
+-export([start_link/0]).
+-export([add_fs_node/1]).
+-export([add_fs_node/2]).
+-export([rm_fs_node/1]).
+-export([diagnostics/0]).
 -export([is_node_up/1]).
-
-%% Resource allotment
--export([request_resource/2, request_node/1]).
-
-%% gen_server callbacks
--export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-         terminate/2, code_change/3]).
+-export([request_node/1]).
+-export([init/1
+         ,handle_call/3
+         ,handle_cast/2
+         ,handle_info/2
+         ,terminate/2
+         ,code_change/3
+        ]).
 
 -include("ecallmgr.hrl").
 
@@ -70,17 +74,6 @@ diagnostics() ->
 -spec is_node_up/1 :: (atom()) -> boolean().
 is_node_up(Node) ->
     gen_server:call(?MODULE, {is_node_up, Node}).
-
-%% Type - audio | video
-%% Options - Proplist
-%%   {min_channels_requested, 1}
-%%   {max_channels_requested, 1}
-%% Returns - Proplist
-%%   {max_channels_available, 4}
-%%   {bias, 1}
--spec request_resource/2 :: (ne_binary(), proplist()) -> [proplist(),...].
-request_resource(Type, Options) ->
-    gen_server:call(?MODULE, {request_resource, Type, Options}).
 
 -spec request_node/1 :: (ne_binary()) -> {'ok', atom()} | {'error', ne_binary()}.
 request_node(Type) ->
@@ -172,13 +165,6 @@ handle_call({add_fs_node, Node, Options}, _From, #state{preconfigured_lookup=Pid
     {Resp, State1} = add_fs_node(Node, check_options(Options), State),
     Pid1 = maybe_stop_preconfigured_lookup(Resp, Pid),
     {reply, Resp, State1#state{preconfigured_lookup=Pid1}, hibernate};
-handle_call({request_resource, Type, Options}, From, #state{fs_nodes=Nodes}=State) ->
-    spawn(fun() ->
-                  Resp = process_resource_request(Type, Nodes, Options),
-                  gen_server:reply(From, Resp)
-          end),
-    {noreply, State};
-
 handle_call(_Request, _From, State) ->
     {reply, {error, unhandled_request}, State}.
 
@@ -387,23 +373,8 @@ close_node(#node_handler{node=Node}) ->
     erlang:monitor_node(Node, false),
     ecallmgr_fs_sup:stop_handlers(Node).
 
--spec process_resource_request/3 :: (ne_binary(), [#node_handler{},...], wh_proplist()) -> [wh_proplist(),...] | [].
-process_resource_request(<<"audio">> = Type, Nodes, Options) ->
-    NodesResp = [begin
-                     {_,_,NHP,_} = ecallmgr_fs_sup:get_handler_pids(Node),
-                     NHP ! {resource_request, self(), Type, Options},
-                     receive {resource_response, NHP, Resp} -> Resp
-                     after 500 -> []
-                     end
-                 end || #node_handler{node=Node} <- Nodes],
-    [ X || X <- NodesResp, X =/= []];
-process_resource_request(Type, _Nodes, _Options) ->
-    lager:debug("unhandled resource request type ~p", [Type]),
-    [].
-
 start_preconfigured_servers() ->
     put(callid, ?LOG_SYSTEM_ID),
-
     case ecallmgr_config:get(<<"fs_nodes">>, []) of
         [] ->
             lager:debug("no preconfigured servers, waiting then trying again"),

@@ -1,20 +1,22 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2012, VoIP INC
 %%% @doc
 %%% Manage starting fs_auth, fs_route, and fs_node handlers
 %%% @end
-%%% Created : 17 May 2011 by James Aimonetti <james@2600hz.org>
+%%% @contributors
+%%%   James Aimonetti
+%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(ecallmgr_fs_sup).
 
 -behaviour(supervisor).
 
-%% API
--export([start_link/0, start_handlers/2, stop_handlers/1, get_handler_pids/1]).
+-export([start_link/0]).
+-export([start_handlers/2]).
+-export([stop_handlers/1]).
 -export([node_handlers/0]).
-
-%% Supervisor callbacks
+-export([notify_handlers/0]).
+-export([get_handler_pids/1]).
 -export([init/1]).
 
 -include("ecallmgr.hrl").
@@ -46,7 +48,7 @@ start_handlers(Node, Options) when is_atom(Node) ->
           lager:debug("starting handler ~s", [Name]),
           supervisor:start_child(?SERVER, ?CHILD(Name, Mod, [Node, Options]))
       end
-      || H <- [<<"_auth">>, <<"_route">>, <<"_node">>, <<"_config">>] ].
+      || H <- [<<"_auth">>, <<"_route">>, <<"_node">>, <<"_config">>, <<"_resource">>, <<"_notify">>] ].
 
 -spec stop_handlers/1 :: (atom()) -> ['ok' | {'error', 'running' | 'not_found' | 'simple_one_for_one'},...].
 stop_handlers(Node) when is_atom(Node) ->
@@ -62,6 +64,11 @@ stop_handlers(Node) when is_atom(Node) ->
 node_handlers() ->
     [ Pid || {_, Pid, worker, [HandlerMod]} <- supervisor:which_children(?SERVER),
              HandlerMod =:= ecallmgr_fs_node].
+
+-spec notify_handlers/0 :: () -> [pid(),...] | [].
+notify_handlers() ->
+    [ Pid || {_, Pid, worker, [HandlerMod]} <- supervisor:which_children(?SERVER),
+             HandlerMod =:= ecallmgr_fs_notify].
 
 -spec get_handler_pids/1 :: (atom()) -> {pid() | 'error', pid() | 'error', pid() | 'error', pid() | 'error'}.
 get_handler_pids(Node) when is_atom(Node) ->

@@ -3,6 +3,9 @@
 %%% @doc
 %%% Execute call commands
 %%% @end
+%%% @contributors
+%%%   James Aimonetti
+%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(ecallmgr_call_command).
 
@@ -270,28 +273,7 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>) ->
                                 _Else ->
                                     <<"|">>
                             end,
-
-            %% { [ne_binary(),...], json_object() }
-            KeyedEPs = [{[wh_json:get_value(<<"Invite-Format">>, Endpoint)
-                          ,wh_json:get_value(<<"To-User">>, Endpoint)
-                          ,wh_json:get_value(<<"To-Realm">>, Endpoint)
-                          ,wh_json:get_value(<<"To-DID">>, Endpoint)
-                          ,wh_json:get_value(<<"Route">>, Endpoint)
-                         ]
-                         ,Endpoint}
-                        || Endpoint <- Endpoints
-                       ],
-
-            S = self(),
-            DialStrings = [D || D <- [receive {Pid, DS} -> DS end
-                                      || Pid <- [spawn(fun() ->
-                                                               put(callid, UUID),
-                                                               S ! {self(), (catch get_bridge_endpoint(EP))}
-                                                       end)
-                                                 || {_, EP} <- props:unique(KeyedEPs)
-                                                ]
-                                     ], not wh_util:is_empty(D)],
-
+            DialStrings = ecallmgr_util:build_bridge_string(Endpoints, DialSeparator),
             Generators = [fun(DP) ->
                                   case wh_json:get_integer_value(<<"Timeout">>, JObj) of
                                       undefined ->
@@ -376,20 +358,18 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>) ->
                                    ]
                            end
                           ,fun(DP) ->
-                                   BridgeCmd = list_to_binary(["bridge ", ecallmgr_fs_xml:get_channel_vars(JObj)
-                                                               ,wh_util:binary_join([D || D <- DialStrings], DialSeparator)]),
+                                   BridgeCmd = list_to_binary(["bridge ", ecallmgr_fs_xml:get_channel_vars(JObj), DialStrings]),
                                    [{"application", BridgeCmd}|DP]
                            end
                           ,fun(DP) ->
-                                   [{"application", create_masquerade_event(<<"bridge">>, <<"CHANNEL_EXECUTE_COMPLETE">>)}
+                                   [{"application", ecallmgr_util:create_masquerade_event(<<"bridge">>, <<"CHANNEL_EXECUTE_COMPLETE">>)}
                                     ,{"application", "park "}
                                     |DP
                                    ]
                            end
                          ],
-
             case DialStrings of
-                [] ->
+                <<>> ->
                     {error, <<"registrar returned no endpoints">>};
                 _ ->
                     lager:debug("creating bridge dialplan"),
@@ -433,7 +413,8 @@ get_fs_app(_Node, _UUID, JObj, <<"call_pickup">>) ->
                                    [{"application", <<"intercept ", Arg/binary>>}|DP]
                            end
                           ,fun(DP) ->
-                                   [{"application", create_masquerade_event(<<"intercept">>, <<"CHANNEL_EXECUTE_COMPLETE">>)}
+                                   Masquerade = ecallmgr_util:create_masquerade_event(<<"intercept">>, <<"CHANNEL_EXECUTE_COMPLETE">>),
+                                   [{"application", Masquerade}
                                     ,{"application", "park "}
                                     |DP
                                    ]
@@ -471,8 +452,8 @@ get_fs_app(Node, UUID, JObj, <<"execute_extension">>) ->
                            end
                           ,fun(DP) ->
                                    [{"application", <<"unset ", ?CHANNEL_VAR_PREFIX, "Executing-Extension">>}
-                                    ,{"application", create_masquerade_event(<<"execute_extension">>
-                                                                                 ,<<"CHANNEL_EXECUTE_COMPLETE">>)}
+                                    ,{"application", ecallmgr_util:create_masquerade_event(<<"execute_extension">>
+                                                                                               ,<<"CHANNEL_EXECUTE_COMPLETE">>)}
                                     ,{"application", "park "}
                                     |DP
                                    ]
@@ -658,42 +639,6 @@ send_cmd(Node, UUID, AppName, Args) ->
                                     ,{"execute-app-name", wh_util:to_list(AppName)}
                                     ,{"execute-app-arg", wh_util:to_list(Args)}
                                    ]).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec create_masquerade_event/2 :: (ne_binary(), ne_binary()) -> ne_binary().
-create_masquerade_event(Application, EventName) ->
-    <<"event Event-Name=CUSTOM,Event-Subclass=whistle::masquerade"
-      ,",whistle_event_name=", EventName/binary
-      ,",whistle_application_name=", Application/binary>>.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% take an endpoint (/sofia/foo/bar), and optionally a caller id name/num
-%% and create the dial string ([origination_caller_id_name=Name
-%%                              ,origination_caller_id_number=Num]Endpoint)
-%% @end
-%%--------------------------------------------------------------------
--spec get_bridge_endpoint/1 :: (wh_json:json_object()) -> binary().
-get_bridge_endpoint(JObj) ->
-    get_bridge_endpoint(JObj, wh_json:get_value(<<"Endpoint-Type">>, JObj, <<"sip">>), ecallmgr_fs_xml:get_leg_vars(JObj)).
-get_bridge_endpoint(JObj, <<"sip">>, CVs) ->
-    case ecallmgr_fs_xml:build_sip_route(JObj, wh_json:get_value(<<"Invite-Format">>, JObj)) of
-        {'error', 'timeout'} ->
-            lager:debug("unable to build route to endpoint"),
-            <<>>;
-        EndPoint ->
-            list_to_binary([CVs, EndPoint])
-    end;
-get_bridge_endpoint(JObj, <<"freetdm">>, CVs) ->
-    Endpoint = ecallmgr_fs_xml:build_freetdm_route(JObj),
-    lager:info("freetdm endpoint: ~p", [Endpoint]),
-    lager:info("freetdm ccvs: ~p", [CVs]),
-    list_to_binary([CVs, Endpoint]).
 
 %%--------------------------------------------------------------------
 %% @private

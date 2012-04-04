@@ -16,6 +16,8 @@
 -export([eventstr_to_proplist/1, varstr_to_proplist/1, get_setting/1, get_setting/2]).
 -export([is_node_up/1, is_node_up/2]).
 -export([fs_log/3, put_callid/1]).
+-export([build_bridge_string/1, build_bridge_string/2]).
+-export([create_masquerade_event/2, create_masquerade_event/3]).
 -export([media_path/2, media_path/3]).
 -export([unserialize_fs_array/1]).
 -export([convert_fs_evt_name/1, convert_whistle_app_name/1]).
@@ -148,6 +150,96 @@ put_callid(JObj) ->
         undefined -> put(callid, wh_json:get_value(<<"Msg-ID">>, JObj, <<"0000000000">>));
         CallID -> put(callid, CallID)
     end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% takes endpoints (/sofia/foo/bar), and optionally a caller id name/num
+%% and create the dial string ([origination_caller_id_name=Name
+%%                              ,origination_caller_id_number=Num]Endpoint)
+%% joined by the optional seperator.  Saves time by not spawning 
+%% endpoints with the invite format of "route" (about 100ms per endpoint)
+%% @end
+%%--------------------------------------------------------------------
+-spec build_bridge_string/1 :: (wh_json:json_objects()) -> ne_binary().
+-spec build_bridge_string/2 :: (wh_json:json_objects(), ne_binary()) -> ne_binary().
+
+build_bridge_string(Endpoints) ->
+    build_bridge_string(Endpoints, <<"|">>).
+
+build_bridge_string(Endpoints, Seperator) ->
+    KeyedEPs = [{[wh_json:get_value(<<"Invite-Format">>, Endpoint)
+                  ,wh_json:get_value(<<"To-User">>, Endpoint)
+                  ,wh_json:get_value(<<"To-Realm">>, Endpoint)
+                  ,wh_json:get_value(<<"To-DID">>, Endpoint)
+                  ,wh_json:get_value(<<"Route">>, Endpoint)
+                 ]
+                 ,Endpoint}
+                || Endpoint <- Endpoints
+               ],    
+    BridgeStrings = build_bridge_endpoints(props:unique(KeyedEPs), []),
+    %% NOTE: dont use binary_join here as it will crash on an empty list...
+    wh_util:join_binary(lists:reverse(BridgeStrings), Seperator).
+
+-type build_return() :: ne_binary() | {'worker', pid()}.
+-spec build_bridge_endpoints/2 :: (wh_json:json_objects(), [build_return(),...]) -> [ne_binary(),...].
+build_bridge_endpoints([], Channels) ->
+    lists:foldr(fun({worker, Pid}, BridgeStrings) ->
+                        receive
+                            {Pid, BridgeString} ->
+                                case wh_util:is_empty(BridgeString) of
+                                    true -> BridgeStrings;
+                                    false -> [BridgeString|BridgeStrings]
+                                end
+                        after
+                            2000 -> BridgeStrings 
+                        end;
+                 (BridgeString, BridgeStrings) -> [BridgeString|BridgeStrings]
+                end, [], Channels);
+build_bridge_endpoints([{[<<"route">>|_], Endpoint}|Endpoints], Channels) ->
+    build_bridge_endpoints(Endpoints, [build_bridge_endpoint(Endpoint)|Channels]);
+build_bridge_endpoints([{_, Endpoint}|Endpoints], Channels) ->
+    S = self(),
+    Pid = spawn(fun() ->
+                        S ! {self(), build_bridge_endpoint(Endpoint)} 
+                end),
+    build_bridge_endpoints(Endpoints, [{worker, Pid}|Channels]).
+
+-spec build_bridge_endpoint/1 :: (wh_json:json_object()) -> binary().
+build_bridge_endpoint(JObj) ->
+    build_bridge_endpoint(JObj, wh_json:get_value(<<"Endpoint-Type">>, JObj, <<"sip">>), ecallmgr_fs_xml:get_leg_vars(JObj)).
+
+build_bridge_endpoint(JObj, <<"sip">>, CVs) ->
+    case ecallmgr_fs_xml:build_sip_route(JObj, wh_json:get_value(<<"Invite-Format">>, JObj)) of
+        {'error', 'timeout'} ->
+            lager:debug("unable to build route to endpoint"),
+            <<>>;
+        EndPoint ->
+            list_to_binary([CVs, EndPoint])
+    end;
+build_bridge_endpoint(JObj, <<"freetdm">>, CVs) ->
+    Endpoint = ecallmgr_fs_xml:build_freetdm_route(JObj),
+    lager:info("freetdm endpoint: ~p", [Endpoint]),
+    lager:info("freetdm ccvs: ~p", [CVs]),
+    list_to_binary([CVs, Endpoint]).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec create_masquerade_event/2 :: (ne_binary(), ne_binary()) -> ne_binary().
+create_masquerade_event(Application, EventName) ->
+    create_masquerade_event(Application, EventName, true).
+
+create_masquerade_event(Application, EventName, Boolean) ->
+    Prefix = case Boolean of
+                 true -> <<"event ">>;
+                 false -> <<>>
+             end,
+    <<Prefix/binary, "Event-Name=CUSTOM,Event-Subclass=whistle::masquerade"
+      ,",whistle_event_name=", EventName/binary
+      ,",whistle_application_name=", Application/binary>>.
 
 %%--------------------------------------------------------------------
 %% @public
