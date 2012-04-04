@@ -1,23 +1,23 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2012, VoIP INC
 %%% @doc
-%%% Our connection to AMQP and how we handle what payloads we want to
-%%% receive, and what module/functions should handle those payloads
-%%% when received.
+%%% 
 %%% @end
 %%% @contributors
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(skel_listener).
 
 -behaviour(gen_listener).
 
-%% API
 -export([start_link/0]).
-
-%% gen_server callbacks
--export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2
-         ,terminate/2, code_change/3]).
+-export([init/1
+         ,handle_call/3
+         ,handle_cast/2
+         ,handle_info/2
+         ,handle_event/2
+         ,terminate/2
+         ,code_change/3
+        ]).
 
 -include("skel.hrl").
 
@@ -37,6 +37,7 @@
                     ]).
 -define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
+-define(CONSUME_OPTIONS, []).
 -define(ROUTE_OPTIONS, []).
 
 %%%===================================================================
@@ -56,6 +57,7 @@ start_link() ->
                                       ,{responders, ?RESPONDERS}
                                       ,{queue_name, ?QUEUE_NAME}       % optional to include
                                       ,{queue_options, ?QUEUE_OPTIONS} % optional to include
+                                      ,{consume_options, ?CONSUME_OPTIONS} % optional to include
                                       ,{route_options, ?ROUTE_OPTIONS} % optional to include
                                       %%,{basic_qos, 1}                % only needed if prefetch controls
                                      ], []).
@@ -93,8 +95,7 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call(_Request, _From, State) ->
-    Reply = ok,
-    {reply, Reply, State}.
+    {reply, {error, not_implemented}, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -120,7 +121,6 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info(_Info, State) ->
-    lager:debug("unhandled message: ~p", [_Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
