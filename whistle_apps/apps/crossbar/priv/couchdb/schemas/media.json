@@ -17,6 +17,10 @@
          "minLength":1,
          "maxLength":128
       },
+      "content_length":{
+         "description":"length, in bytes, of the file",
+         "type":"integer"
+      },
       "content_type":{
          "description":"Used to override the automatic upload type",
          "type":"string",

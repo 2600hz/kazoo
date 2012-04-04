@@ -561,14 +561,14 @@ bridge_to_conference(Route, Conference, Call) ->
                                   ,{<<"Outgoing-Caller-ID-Number">>, whapps_call:caller_id_number(Call)}
                                   ,{<<"Outgoing-Caller-ID-Name">>, whapps_call:caller_id_name(Call)}
                                   ,{<<"Ignore-Early-Media">>, <<"true">>}
-                                  ,{<<"Bypass-Media">>, <<"true">>}
+%%                                  ,{<<"Bypass-Media">>, <<"true">>}
                                  ]),
     Command = [{<<"Application-Name">>, <<"bridge">>}
                ,{<<"Endpoints">>, [Endpoint]}
                ,{<<"Timeout">>, <<"20">>}
                ,{<<"Ignore-Early-Media">>, <<"false">>}
                ,{<<"Dial-Endpoint-Method">>, <<"single">>}
-               ,{<<"Media">>, <<"bypass">>}
+%%               ,{<<"Media">>, <<"bypass">>}
               ],
     whapps_call_command:send_command(Command, Call).
 

@@ -79,7 +79,7 @@ collect_registrar_responses(Registrations) ->
         500 -> Registrations
     end.
 
--spec accumulate_unique_registrations/2 :: (wh_json:objects(), proplist()) -> proplist().
+-spec accumulate_unique_registrations/2 :: (wh_json:json_objects(), proplist()) -> proplist().
 accumulate_unique_registrations([], Accumulator) ->
     Accumulator;
 accumulate_unique_registrations([Registration|Registrations], Accumulator) ->

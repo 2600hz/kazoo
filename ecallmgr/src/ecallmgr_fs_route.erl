@@ -89,7 +89,7 @@ init([Node]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call(_Request, _From, State) ->
-    {reply, ok, State}.
+    {reply, {error, not_implemented}, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -269,15 +269,23 @@ process_route_req(Node, FSID, CallID, FSData) ->
 -spec authorize_and_route/5 :: (atom(), ne_binary(), ne_binary(), proplist(), proplist()) -> 'ok'.
 authorize_and_route(Node, FSID, CallID, FSData, DefProp) ->
     lager:debug("starting authorization request from node ~s", [Node]),
-    {ok, AuthZPid} = ecallmgr_authz:authorize(FSID, CallID, FSData),
-    route(Node, FSID, CallID, DefProp, AuthZPid).
-
+    case ecallmgr_authz:authorize(FSID, CallID, FSData) of
+        {ok, AuthZPid} ->
+            route(Node, FSID, CallID, DefProp, AuthZPid);
+        _Else ->
+            lager:debug("did not receive authorization response: ~p", [_Else])
+    end.
+    
 -spec route/5 :: (atom(), ne_binary(), ne_binary(), proplist(), pid() | 'undefined') -> 'ok'.
 route(Node, FSID, CallID, DefProp, AuthZPid) ->
     lager:debug("starting route request from node ~s", [Node]),
-    {ok, RespJObj} = ecallmgr_amqp_pool:route_req(DefProp),
-    RouteCCV = wh_json:get_value(<<"Custom-Channel-Vars">>, RespJObj, wh_json:new()),
-    authorize(Node, FSID, CallID, RespJObj, AuthZPid, RouteCCV).
+    case ecallmgr_amqp_pool:route_req(DefProp) of
+        {ok, RespJObj} ->
+            RouteCCV = wh_json:get_value(<<"Custom-Channel-Vars">>, RespJObj, wh_json:new()),
+            authorize(Node, FSID, CallID, RespJObj, AuthZPid, RouteCCV);
+        _Else ->
+            lager:debug("did not receive route response: ~p", [_Else])
+    end.
 
 -spec authorize/6 :: (atom(), ne_binary(), ne_binary(), wh_json:json_object(), pid() | 'undefined', wh_json:json_object()) -> 'ok'.
 authorize(Node, FSID, CallID, RespJObj, undefined, RouteCCV) ->

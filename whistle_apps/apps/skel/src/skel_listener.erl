@@ -38,7 +38,6 @@
 -define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).
--define(ROUTE_OPTIONS, []).
 
 %%%===================================================================
 %%% API
@@ -58,7 +57,6 @@ start_link() ->
                                       ,{queue_name, ?QUEUE_NAME}       % optional to include
                                       ,{queue_options, ?QUEUE_OPTIONS} % optional to include
                                       ,{consume_options, ?CONSUME_OPTIONS} % optional to include
-                                      ,{route_options, ?ROUTE_OPTIONS} % optional to include
                                       %%,{basic_qos, 1}                % only needed if prefetch controls
                                      ], []).
 

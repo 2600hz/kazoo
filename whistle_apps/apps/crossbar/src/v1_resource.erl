@@ -49,15 +49,12 @@
 %%%===================================================================
 -spec init/3 :: ({'tcp' | 'ssl', 'http'}, #http_req{}, proplist()) -> {'upgrade', 'protocol', 'cowboy_http_rest'}.
 init({tcp, http}, _Req, _Opts) ->
-    lager:debug("tcp: upgrading to REST"),
     {upgrade, protocol, cowboy_http_rest};
 init({ssl, http}, _Req, _Opts) ->
-    lager:debug("ssl: upgrading to REST"),
     {upgrade, protocol, cowboy_http_rest}.
 
 -spec rest_init/2 :: (#http_req{}, proplist()) -> {'ok', #http_req{}, #cb_context{}}.
 rest_init(Req0, Opts) ->
-    lager:debug("rest init: Opts: ~p", [Opts]),
     ReqId = case cowboy_http_req:header(<<"X-Request-Id">>, Req0) of
                 {undefined, _} -> couch_mgr:get_uuid();
                 {UserReqId, _} -> wh_util:to_binary(UserReqId)
@@ -70,7 +67,6 @@ rest_init(Req0, Opts) ->
     {QS, Req4} = cowboy_http_req:raw_qs(Req3),
     {Method, Req5} = cowboy_http_req:method(Req4),
 
-    lager:debug("host: ~s:~b", [Host, Port]),
     lager:debug("~s: ~s?~s", [Method, Path, QS]),
 
     Context0 = #cb_context{req_id=ReqId
@@ -126,7 +122,7 @@ check_preflight(Req0, #cb_context{allowed_methods=Methods, req_nouns=[{Mod, Para
     Responses = crossbar_bindings:map(<<"v1_resource.allowed_methods.", Mod/binary>>, Params),
     {Method, Req1} = cowboy_http_req:method(Req0),
     Verb = v1_util:get_http_verb(Method, Context),
-    lager:debug("http method: ~s, actual verb to be used: ~s", [Method, Verb]),
+
     Methods1 = v1_util:allow_methods(Responses, Methods, Verb, Method),
     case v1_util:is_cors_preflight(Req1) of
         {true, Req2} ->
@@ -146,8 +142,21 @@ check_preflight(Req0, #cb_context{allowed_methods=Methods, req_nouns=[{Mod, Para
 malformed_request(Req, #cb_context{req_json={malformed, _}}=Context) ->
     lager:debug("request is malformed"),
     {true, Req, Context};
-malformed_request(Req, Context) ->
-    {false, Req, Context}.
+malformed_request(Req, #cb_context{req_verb = <<"options">>}=Context) ->
+    {false, Req, Context};
+malformed_request(Req, #cb_context{req_nouns=Nouns}=Context) ->
+    case props:get_value(<<"accounts">>, Nouns) of
+        [AcctId] ->
+            case cb_accounts:validate(Context, AcctId) of
+                #cb_context{resp_status=success}=Context1 ->
+                    {false, Req, Context1};
+                Context1 ->
+                    {true, Req, Context1}
+            end;
+        _Other ->
+            lager:debug("other: ~p", [Nouns]),
+            {false, Req, Context}
+    end.
 
 -spec is_authorized/2 :: (#http_req{}, #cb_context{}) -> {'true' | {'false', <<>>}, #http_req{}, #cb_context{}}.
 is_authorized(Req, Context) ->
@@ -241,16 +250,18 @@ languages_provided(Req0, #cb_context{req_nouns=Nouns}=Context0) ->
                     end, {Req0, Context0}, Nouns),
     {LangsProvided, Req1, Context1}.
 
--spec charsets_provided/2 :: (#http_req{}, #cb_context{}) -> {[ne_binary(),...], #http_req{}, #cb_context{}}.
-charsets_provided(Req0, #cb_context{req_nouns=Nouns}=Context0) ->
-    {Req1, #cb_context{charsets_provided=CharsetsProvided}=Context1} = 
-        lists:foldr(fun({Mod, Params}, {ReqAcc, ContextAcc}) ->
-                            Event = <<"v1_resource.charsets_provided.", Mod/binary>>,
-                            Payload = {ReqAcc, ContextAcc, Params},
-                            {ReqAcc1, ContextAcc1, _} = crossbar_bindings:fold(Event, Payload),
-                            {ReqAcc1, ContextAcc1}
-                    end, {Req0, Context0}, Nouns),
-    {CharsetsProvided, Req1, Context1}.
+%% -spec charsets_provided/2 :: (#http_req{}, #cb_context{}) -> {[ne_binary(),...], #http_req{}, #cb_context{}}.
+%% charsets_provided(Req0, #cb_context{req_nouns=Nouns}=Context0) ->
+%%     {Req1, #cb_context{charsets_provided=CharsetsProvided}=Context1} = 
+%%         lists:foldr(fun({Mod, Params}, {ReqAcc, ContextAcc}) ->
+%%                             Event = <<"v1_resource.charsets_provided.", Mod/binary>>,
+%%                             Payload = {ReqAcc, ContextAcc, Params},
+%%                             {ReqAcc1, ContextAcc1, _} = crossbar_bindings:fold(Event, Payload),
+%%                             {ReqAcc1, ContextAcc1}
+%%                     end, {Req0, Context0}, Nouns),
+%%     {CharsetsProvided, Req1, Context1}.
+charsets_provided(_Req, _Context) ->
+    no_call.
 
 -spec encodings_provided/2 :: (#http_req{}, #cb_context{}) -> {[ne_binary(),...], #http_req{}, #cb_context{}}.
 encodings_provided(Req0, #cb_context{req_nouns=Nouns}=Context0) ->
@@ -392,6 +403,7 @@ to_json(Req, Context) ->
 to_binary(Req, #cb_context{resp_data=RespData}=Context) ->
     Event = <<"v1_resource.to_binary">>,
     _ = crossbar_bindings:map(Event, {Req, Context}),
+    lager:debug("responding to_binary"),
     {RespData, v1_util:set_resp_headers(Req, Context), Context}.
 
 -spec multiple_choices/2 :: (#http_req{}, #cb_context{}) -> {'false', #http_req{}, #cb_context{}}.

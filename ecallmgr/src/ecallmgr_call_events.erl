@@ -133,7 +133,7 @@ handle_call({node}, _From, #state{node=Node}=State) ->
 handle_call({callid}, _From, #state{callid=CallId}=State) ->
     {reply, CallId, State};
 handle_call(_Request, _From, State) ->
-    {reply, 'ok', State}.
+    {reply, {error, not_implemented}, State}.
 
 %%--------------------------------------------------------------------
 %% @private

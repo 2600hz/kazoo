@@ -66,11 +66,11 @@ is_cors_request(Req0) ->
                 {undefined, Req2} ->
                     case cowboy_http_req:header(<<"Access-Control-Request-Headers">>, Req2) of
                         {undefined, Req3} -> {false, Req3};
-                        {_, Req3} -> lager:debug("has access control request headers"), {true, Req3}
+                        {_, Req3} -> {true, Req3}
                     end;
-                {_M, Req2} -> lager:debug("has access control request method: ~s", [_M]), {true, Req2}
+                {_M, Req2} -> {true, Req2}
             end;
-        {_O, Req1} -> lager:debug("has origin: ~s", [_O]), {true, Req1}
+        {_O, Req1} -> {true, Req1}
     end.
 
 %%--------------------------------------------------------------------
@@ -81,7 +81,7 @@ is_cors_request(Req0) ->
 -spec add_cors_headers/2 :: (#http_req{}, #cb_context{}) -> {'ok', #http_req{}}.
 add_cors_headers(Req0, #cb_context{allow_methods=Ms}=Context) ->
     {ReqM, Req1} = cowboy_http_req:header(<<"Access-Control-Request-Method">>, Req0),
-    lager:debug("cors req methods: ~p", [ReqM]),
+
     lists:foldl(fun({H, V}, {ok, ReqAcc}) ->
                         cowboy_http_req:set_resp_header(H, V, ReqAcc)
                 end, {ok, Req1}, get_cors_headers(Context#cb_context{allow_methods=[ReqM|Ms]})).
@@ -102,21 +102,25 @@ get_cors_headers(#cb_context{allow_methods=Allowed}) ->
      ,{<<"Access-Control-Max-Age">>, wh_util:to_binary(?SECONDS_IN_DAY)}
     ].
 
--spec get_req_data/2 :: (#cb_context{}, #http_req{}) -> {#cb_context{}, #http_req{}}.
+-spec get_req_data/2 :: (#cb_context{}, #http_req{}) -> {#cb_context{}, #http_req{}} |
+                                                        {'halt', #cb_context{}, #http_req{}}.
 get_req_data(Context, Req0) ->
     {QS0, Req1} = cowboy_http_req:qs_vals(Req0),
     QS = wh_json:from_list(QS0),
     case cowboy_http_req:parse_header('Content-Type', Req1) of
-        {undefined, Req2} -> 
+        {undefined, Req2} ->
+            lager:debug("undefined content type when getting req data"),
             {Context#cb_context{query_json=QS}, Req2};
         {{<<"multipart">>, <<"form-data">>, _}, Req2} ->
+            lager:debug("multipart/form-data content type when getting req data"),
             case catch extract_multipart(Context#cb_context{query_json=QS}, Req2) of
-                {'EXIT', _} ->
-                    lager:debug("failed to extract multipart"),
+                {'EXIT', _E} ->
+                    lager:debug("failed to extract multipart: ~p", [_E]),
                     {halt, Context, Req2};
                 Resp -> Resp
             end;
         {{<<"application">>, <<"x-www-form-urlencoded">>, _}, Req2} ->
+            lager:debug("application/x-www-form-urlencoded content type when getting req data"),
             case catch extract_multipart(Context#cb_context{query_json=QS}, Req2) of
                 {'EXIT', _} ->
                     lager:debug("failed to extract multipart"),
@@ -124,6 +128,7 @@ get_req_data(Context, Req0) ->
                 Resp -> Resp
             end;
         {{<<"application">>, <<"json">>, _}, Req2} ->
+            lager:debug("application/json content type when getting req data"),
             {JSON, Req3_1} = get_json_body(Req2),
             {Context#cb_context{req_json=JSON
                                 ,req_data=wh_json:get_value(<<"data">>, JSON, wh_json:new())
@@ -131,6 +136,7 @@ get_req_data(Context, Req0) ->
                                }
              ,Req3_1};
         {{<<"application">>, <<"x-json">>, _}, Req2} ->
+            lager:debug("application/x-json content type when getting req data"),
             {JSON, Req3_1} = get_json_body(Req2),
             {Context#cb_context{req_json=JSON
                                 ,req_data=wh_json:get_value(<<"data">>, JSON, wh_json:new())
@@ -138,8 +144,10 @@ get_req_data(Context, Req0) ->
                                }
              ,Req3_1};
         {{<<"application">>, <<"base64">>, _}, Req2} ->
+            lager:debug("application/base64 content type when getting req data"),
             decode_base64(Context#cb_context{query_json=QS}, <<"application/base64">>, Req2);
         {{<<"application">>, <<"x-base64">>, _}, Req2} ->
+            lager:debug("application/x-base64 content type when getting req data"),
             decode_base64(Context#cb_context{query_json=QS}, <<"application/base64">>, Req2);
         {{ContentType, ContentSubType, _}, Req2} ->
             lager:debug("unknown content-type: ~s/~s", [ContentType, ContentSubType]),
@@ -148,20 +156,29 @@ get_req_data(Context, Req0) ->
 
 -spec extract_multipart/2 :: (#cb_context{}, #http_req{}) -> {#cb_context{}, #http_req{}}.
 extract_multipart(#cb_context{req_files=Files}=Context, #http_req{}=Req0) ->
-    lager:debug("request content is multipart content, extracting"),
-    case extract_multipart_content(cowboy_http_req:multipart_data(Req0), wh_json:new()) of
+    MPData = cowboy_http_req:multipart_data(Req0),
+
+    case extract_multipart_content(MPData, wh_json:new()) of
         {eof, Req1} -> {Context, Req1};
-        {end_of_part, JObj, Req1} -> extract_multipart(Context#cb_context{req_files=[JObj|Files]}, Req1)
+        {end_of_part, JObj, Req1} ->
+            extract_multipart(Context#cb_context{req_files=[JObj|Files]}, Req1)
     end.
 
--spec extract_multipart_content/2 :: (cowboy_multipart_response(), wh_json:json_object()) -> {'end_of_part', wh_json:json_object(), #http_req{}} | {'eof', #http_req{}}.
+-spec extract_multipart_content/2 :: (cowboy_multipart_response(), wh_json:json_object()) -> {'end_of_part', wh_json:json_object(), #http_req{}} |
+                                                                                             {'eof', #http_req{}}.
 extract_multipart_content({eof, _}=EOF, _) -> EOF;
 extract_multipart_content({end_of_part, Req}, JObj) -> {end_of_part, JObj, Req};
-extract_multipart_content({headers, Headers, Req}, JObj) ->
-    extract_multipart_content(cowboy_http_req:multipart_data(Req), wh_json:set_value(<<"headers">>, Headers, JObj));
+extract_multipart_content({{headers, Headers}, Req}, JObj) ->
+    lager:debug("setting multipart headers: ~p", [Headers]),
+    MPData = cowboy_http_req:multipart_data(Req),
+    extract_multipart_content(MPData, wh_json:set_value(<<"headers">>, Headers, JObj));
+extract_multipart_content({{body, Datum}, Req}, JObj) ->
+    extract_multipart_content({{data, Datum}, Req}, JObj);
 extract_multipart_content({{data, Datum}, Req}, JObj) ->
-    Data = wh_json:get_value(<<"data">>, JObj),
-    extract_multipart_content(cowboy_http_req:multipart_data(Req), wh_json:set_value(<<"data">>, <<Data/binary, Datum/binary>>, JObj)).
+    Data = wh_json:get_value(<<"data">>, JObj, <<>>),
+    extract_multipart_content(cowboy_http_req:multipart_data(Req)
+                              ,wh_json:set_value(<<"data">>, <<Data/binary, Datum/binary>>, JObj)
+                             ).
 
 -spec extract_file/3 :: (#cb_context{}, ne_binary(), #http_req{}) -> {#cb_context{}, #http_req{}}.
 extract_file(Context, ContentType, Req0) ->
@@ -272,10 +289,16 @@ get_http_verb(Method, #cb_context{req_json=ReqJObj, query_json=ReqQs}) ->
     case wh_json:get_value(<<"verb">>, ReqJObj) of
         undefined ->
             case wh_json:get_value(<<"verb">>, ReqQs) of
-                undefined -> lager:debug("sticking with method ~s", [Method]), wh_util:to_lower_binary(Method);
-                Verb -> lager:debug("found verb ~s on query string", [Verb]), wh_util:to_lower_binary(Verb)
+                undefined ->
+                    lager:debug("sticking with method ~s", [Method]),
+                    wh_util:to_lower_binary(Method);
+                Verb ->
+                    lager:debug("found verb ~s on query string, using instead of ~s", [Verb, Method]),
+                    wh_util:to_lower_binary(Verb)
             end;
-        Verb -> lager:debug("found verb ~s in req data", [Verb]), wh_util:to_lower_binary(Verb)
+        Verb ->
+            lager:debug("found verb ~s in req data, using instead of ~s", [Verb, Method]),
+            wh_util:to_lower_binary(Verb)
     end.
 
 %%--------------------------------------------------------------------
@@ -336,7 +359,7 @@ is_cb_module(Elem, Ebin) ->
 %% 'POST' from the allowed methods.
 %% @end
 %%--------------------------------------------------------------------
--spec allow_methods/4  :: ([http_methods(),...], http_methods(), ne_binary(), atom()) -> http_methods().
+-spec allow_methods/4  :: (http_methods(), http_methods(), ne_binary(), atom()) -> http_methods().
 allow_methods(Responses, Available, ReqVerb, HttpVerb) ->
     case crossbar_bindings:succeeded(Responses) of
         [] -> [];
@@ -349,7 +372,7 @@ allow_methods(Responses, Available, ReqVerb, HttpVerb) ->
     end.
 
 %% insert 'POST' if Verb is in Allowed; otherwise remove 'POST'.
--spec maybe_add_post_method/3 :: (ne_binary(), http_methods(), [http_methods(),...]) -> [http_methods(),...].
+-spec maybe_add_post_method/3 :: (ne_binary(), http_method(), http_methods()) -> http_methods().
 maybe_add_post_method(Verb, 'POST', Allowed) ->
     VerbAtom = wh_util:to_atom(wh_util:to_upper_binary(Verb)),
     case lists:member(VerbAtom, Allowed) of
@@ -482,7 +505,6 @@ content_type_matches({Type, SubType, Opts}, {Type, SubType, ModOpts}) ->
                       props:get_value(K, Opts) =:= V
               end, ModOpts);
 content_type_matches(_CTA, _CTAs) ->
-    lager:debug("failed to match content type: ~p", [_CTA]),
     false.
 
 %%--------------------------------------------------------------------
@@ -584,10 +606,10 @@ execute_request_results(Req, #cb_context{req_nouns=[{Mod, Params}|_], req_verb=V
 %% of all requests
 %% @end
 %%--------------------------------------------------------------------
--spec request_terminated/2 :: (#http_req{}, #cb_context{}) -> ok.
+-spec request_terminated/2 :: (#http_req{}, #cb_context{}) -> 'ok'.
 request_terminated(_Req, #cb_context{req_nouns=[{Mod, _}|_], req_verb=Verb}=Context) ->
     Event = <<"v1_resource.request_terminated.", Verb/binary, ".", Mod/binary>>,
-    crossbar_bindings:map(Event, Context),
+    _ = crossbar_bindings:map(Event, Context),
     ok.
 
 %%--------------------------------------------------------------------
@@ -597,10 +619,10 @@ request_terminated(_Req, #cb_context{req_nouns=[{Mod, _}|_], req_verb=Verb}=Cont
 %% of all requests
 %% @end
 %%--------------------------------------------------------------------
--spec finish_request/2 :: (#http_req{}, #cb_context{}) -> ok.
+-spec finish_request/2 :: (#http_req{}, #cb_context{}) -> 'ok'.
 finish_request(_Req, #cb_context{req_nouns=[{Mod, _}|_], req_verb=Verb}=Context) ->
     Event = <<"v1_resource.finish_request.", Verb/binary, ".", Mod/binary>>,
-    crossbar_bindings:map(Event, Context),
+    _ = crossbar_bindings:map(Event, Context),
     ok.
 
 %%--------------------------------------------------------------------

@@ -107,15 +107,20 @@ handle_call({request, ReqProp, PublishFun, VFun, Timeout}, {ClientPid, _}=From, 
     ClientRef = erlang:monitor(process, ClientPid),
     ReqRef = erlang:start_timer(Timeout, Self, req_timeout),
 
+    {ReqProp1, MsgID} = case props:get_value(<<"Msg-ID">>, ReqProp) of
+                            undefined ->
+                                M = wh_util:rand_hex_binary(8),
+                                {[{<<"Msg-ID">>, M} | ReqProp], M};
+                            M -> {ReqProp, M}
+                        end,
+
     spawn(fun() ->
                   put(callid, CallID),
                   Prop = [{<<"Server-ID">>, gen_listener:queue_name(Self)}
                           ,{<<"Call-ID">>, CallID}
-                          | ReqProp],
+                          | ReqProp1],
                   PublishFun(Prop)
           end),
-
-    MsgID = props:get_value(<<"Msg-ID">>, ReqProp),
 
     lager:debug("published request with msg id ~s", [MsgID]),
 
@@ -129,7 +134,9 @@ handle_call({request, ReqProp, PublishFun, VFun, Timeout}, {ClientPid, _}=From, 
                 ,req_timeout_ref = ReqRef
                 ,req_start_time = erlang:now()
                 ,callid = CallID
-               }}.
+               }};
+handle_call(_Request, _From, State) ->
+    {reply, {error, not_implemented}, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -173,6 +180,8 @@ handle_cast({event, MsgId, JObj}, #state{current_msg_id = MsgId
 handle_cast({event, _MsgId, JObj}, #state{current_msg_id=_CurrMsgId}=State) ->
     _ = wh_util:put_callid(JObj),
     lager:debug("received unexpected message with old/expired message id: ~s, waiting for ~s", [_MsgId, _CurrMsgId]),
+    {noreply, State};
+handle_cast(_Msg, State) ->
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -198,7 +207,6 @@ handle_info(timeout, #state{neg_resp=JObj, neg_resp_count=Thresh, neg_resp_thres
     {noreply, reset(State)};
 handle_info(timeout, State) ->
     {noreply, State};
-
 handle_info({'DOWN', ClientRef, process, _Pid, _Reason}, #state{current_msg_id = _MsgID
                                                                 ,client_ref = ClientRef
                                                                 ,req_timeout_ref = ReqRef
@@ -212,7 +220,6 @@ handle_info({'DOWN', ClientRef, process, _Pid, _Reason}, #state{current_msg_id =
 
     put(callid, ?LOG_SYSTEM_ID),
     {noreply, reset(State)};
-
 handle_info({timeout, ReqRef, req_timeout}, #state{current_msg_id = _MsgID
                                                    ,client_ref = ClientRef
                                                    ,req_timeout_ref = ReqRef
@@ -230,12 +237,17 @@ handle_info({timeout, ReqRef, req_timeout}, #state{current_msg_id = _MsgID
 
     put(callid, ?LOG_SYSTEM_ID),
     {noreply, reset(State)};
-
 handle_info(_Info, State) ->
-    put(callid, ?LOG_SYSTEM_ID),
-    lager:debug("unhandled message: ~p", [_Info]),
     {noreply, State}.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Allows listener to pass options to handlers
+%%
+%% @spec handle_event(JObj, State) -> {reply, Options}
+%% @end
+%%--------------------------------------------------------------------
 handle_event(_JObj, _State) ->
     {reply, []}.
 
@@ -273,6 +285,7 @@ reset(State) ->
                 ,client_ref = undefined
                 ,client_from = undefined
                 ,client_vfun = undefined
+                ,neg_resp = undefined
                 ,neg_resp_count = 0
                 ,current_msg_id = undefined
                 ,req_timeout_ref = undefined

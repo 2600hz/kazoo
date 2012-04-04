@@ -57,23 +57,23 @@
 
 -export([flush/0, cache/1, cache/2, retrieve/1]).
 
--record(whapps_conference, {id = undefined :: undefined | ne_binary()                                     %% the conference id
-                            ,focus = undefined :: undefined | ne_binary()                                 %% the conference focus
-                            ,controller_q = undefined :: undefined | ne_binary()                          %% the controller queue, for responses
+-record(whapps_conference, {id = 'undefined' :: 'undefined' | ne_binary()                                 %% the conference id
+                            ,focus = 'undefined' :: 'undefined' | ne_binary()                             %% the conference focus
+                            ,controller_q = 'undefined' :: 'undefined' | ne_binary()                      %% the controller queue, for responses
                             ,bridge_username = <<"test">> :: ne_binary()                                  %% the username used for a conference bridge
                             ,bridge_password = <<"\/\/|-|157L3_(0|\|Ph3R3|\|(3">> :: ne_binary()          %% the password used for a conference bridge
                             ,member_pins = [] :: [ne_binary(),...] | []                                   %% a list of pins for use by members
                             ,moderator_pins = [] :: [ne_binary(),...] | []                                %% a list of pins for use by the moderators
-                            ,moderator = undefined :: undefined | boolean()                               %% tri-state true/false if the caller is known to be a moderator, otherwise undefined 
+                            ,moderator = 'undefined' :: 'undefined' | boolean()                           %% tri-state true/false if the caller is known to be a moderator, otherwise 'undefined' 
                             ,member_join_muted = false :: boolean()                                       %% should the member join muted
                             ,member_join_deaf = false :: boolean()                                        %% should the member join deaf
                             ,moderator_join_muted = false :: boolean()                                    %% should the moderator join muted
                             ,moderator_join_deaf = false :: boolean()                                     %% should the moderator join deaf
-                            ,max_participants = 0 :: integer()                                            %% max number of participants
+                            ,max_participants = 0 :: non_neg_integer()                                    %% max number of participants
                             ,require_moderator = false :: boolean()                                       %% does the conference require a moderator
                             ,wait_for_moderator = false :: boolean()                                      %% can members wait for a moderator
                             ,play_name_on_join = false :: boolean()                                       %% should participants have their name played on join
-                            ,conference_doc = undefined :: undefined | wh_json:json_object()              %% the complete conference doc used to create the record (when and if)
+                            ,conference_doc = 'undefined' :: 'undefined' | wh_json:json_object()          %% the complete conference doc used to create the record (when and if)
                             ,app_name = <<"whapps_conference">> :: ne_binary()                            %% The application name used during whapps_conference_command
                             ,app_version = <<"1.0.0">> :: ne_binary()                                     %% The application version used during whapps_conference_command
                             ,kvs = orddict:new() :: orddict:orddict()                                     %% allows conferences to set values that propogate to children
@@ -118,18 +118,18 @@ to_json(#whapps_conference{}=Conference) ->
     Props = to_proplist(Conference),
     KVS = [KV 
            || {_, V}=KV <- props:get_value(<<"Key-Value-Store">>, Props, [])
-                  ,V =/= undefined
+                  ,V =/= 'undefined'
                   ,wh_json:is_json_term(V)
           ],
     wh_json:from_list([KV 
                        || {_, V}=KV <- [{<<"Key-Value-Store">>, wh_json:from_list(KVS)} |
                                         proplists:delete(<<"Key-Value-Store">>, Props)
                                        ]
-                              ,V =/= undefined
+                              ,V =/= 'undefined'
                               ,wh_json:is_json_term(V)
                       ]).
 
--spec to_proplist/1 :: (#whapps_conference{}) -> proplist().
+-spec to_proplist/1 :: (conference()) -> proplist().
 to_proplist(#whapps_conference{}=Conference) ->
     [{<<"Conference-ID">>, id(Conference)}
      ,{<<"focus">>, focus(Conference)}
@@ -185,7 +185,7 @@ from_conference_doc(JObj, Conference) ->
 update(Updaters, Conference) ->
     lists:foldr(fun(F, C) -> F(C) end, Conference, Updaters).
 
--spec id/1 :: (conference()) -> undefined | ne_binary().
+-spec id/1 :: (conference()) -> 'undefined' | ne_binary().
 id(#whapps_conference{id=Id}) ->
     Id.
 
@@ -209,7 +209,7 @@ application_version(#whapps_conference{app_version=AppVersion}) ->
 set_application_version(AppVersion, #whapps_conference{}=Conference) when is_binary(AppVersion) ->
     Conference#whapps_conference{app_version=AppVersion}.
 
--spec focus/1 :: (conference()) -> undefined | ne_binary().
+-spec focus/1 :: (conference()) -> 'undefined' | ne_binary().
 focus(#whapps_conference{focus=Focus}) ->
     Focus.
 
@@ -217,7 +217,7 @@ focus(#whapps_conference{focus=Focus}) ->
 set_focus(Focus, Conference) when is_binary(Focus) ->
     Conference#whapps_conference{focus=Focus}.
 
--spec controller_queue/1 :: (conference()) -> undefined | ne_binary().
+-spec controller_queue/1 :: (conference()) -> 'undefined' | ne_binary().
 controller_queue(#whapps_conference{controller_q=ControllerQ}) ->
     ControllerQ.
 
@@ -225,7 +225,7 @@ controller_queue(#whapps_conference{controller_q=ControllerQ}) ->
 set_controller_queue(ControllerQ, Conference) when is_binary(ControllerQ) ->
     Conference#whapps_conference{controller_q=ControllerQ}.
 
--spec bridge_username/1 :: (conference()) -> undefined | ne_binary().
+-spec bridge_username/1 :: (conference()) -> ne_binary().
 bridge_username(#whapps_conference{bridge_username=BridgeUsername}) ->
     BridgeUsername.
 
@@ -233,7 +233,7 @@ bridge_username(#whapps_conference{bridge_username=BridgeUsername}) ->
 set_bridge_username(BridgeUsername, Conference) when is_binary(BridgeUsername) ->
     Conference#whapps_conference{bridge_username=BridgeUsername}.
 
--spec bridge_password/1 :: (conference()) -> undefined | ne_binary().
+-spec bridge_password/1 :: (conference()) -> ne_binary().
 bridge_password(#whapps_conference{bridge_password=BridgePassword}) ->
     BridgePassword.
 
@@ -241,7 +241,7 @@ bridge_password(#whapps_conference{bridge_password=BridgePassword}) ->
 set_bridge_password(BridgePassword, Conference) when is_binary(BridgePassword) ->
     Conference#whapps_conference{bridge_password=BridgePassword}.
 
--spec member_pins/1 :: (conference()) -> undefined | list().
+-spec member_pins/1 :: (conference()) -> [ne_binary(),...].
 member_pins(#whapps_conference{member_pins=MemberPins}) ->
     MemberPins.
 
@@ -249,7 +249,7 @@ member_pins(#whapps_conference{member_pins=MemberPins}) ->
 set_member_pins(MemberPins, Conference) when is_list(MemberPins) ->
     Conference#whapps_conference{member_pins=MemberPins}.
 
--spec moderator_pins/1 :: (conference()) -> undefined | list().
+-spec moderator_pins/1 :: (conference()) -> [ne_binary(),...].
 moderator_pins(#whapps_conference{moderator_pins=ModeratorPins}) ->
     ModeratorPins.
 
@@ -257,7 +257,7 @@ moderator_pins(#whapps_conference{moderator_pins=ModeratorPins}) ->
 set_moderator_pins(ModeratorPins, Conference) when is_list(ModeratorPins) ->
     Conference#whapps_conference{moderator_pins=ModeratorPins}.
 
--spec moderator/1 :: (conference()) -> undefined | boolean().
+-spec moderator/1 :: (conference()) -> 'undefined' | boolean().
 moderator(#whapps_conference{moderator=Moderator}) ->
     Moderator.
 
@@ -267,7 +267,7 @@ set_moderator(undefined, Conference) ->
 set_moderator(Moderator, Conference) when is_boolean(Moderator) ->
     Conference#whapps_conference{moderator=Moderator}.
 
--spec member_join_muted/1 :: (conference()) -> undefined | boolean().
+-spec member_join_muted/1 :: (conference()) -> boolean().
 member_join_muted(#whapps_conference{member_join_muted=MemberJoinMuted}) ->
     MemberJoinMuted.
 
@@ -275,7 +275,7 @@ member_join_muted(#whapps_conference{member_join_muted=MemberJoinMuted}) ->
 set_member_join_muted(MemberJoinMuted, Conference) when is_boolean(MemberJoinMuted) ->
     Conference#whapps_conference{member_join_muted=MemberJoinMuted}.
 
--spec member_join_deaf/1 :: (conference()) -> undefined | boolean().
+-spec member_join_deaf/1 :: (conference()) -> boolean().
 member_join_deaf(#whapps_conference{member_join_deaf=MemberJoinDeaf}) ->
     MemberJoinDeaf.
 
@@ -283,7 +283,7 @@ member_join_deaf(#whapps_conference{member_join_deaf=MemberJoinDeaf}) ->
 set_member_join_deaf(MemberJoinDeaf, Conference) when is_boolean(MemberJoinDeaf) ->
     Conference#whapps_conference{member_join_deaf=MemberJoinDeaf}.
 
--spec moderator_join_muted/1 :: (conference()) -> undefined | boolean().
+-spec moderator_join_muted/1 :: (conference()) -> boolean().
 moderator_join_muted(#whapps_conference{moderator_join_muted=ModeratorJoinMuted}) ->
     ModeratorJoinMuted.
 
@@ -291,7 +291,7 @@ moderator_join_muted(#whapps_conference{moderator_join_muted=ModeratorJoinMuted}
 set_moderator_join_muted(ModeratorJoinMuted, Conference) when is_boolean(ModeratorJoinMuted) ->
     Conference#whapps_conference{moderator_join_muted=ModeratorJoinMuted}.
 
--spec moderator_join_deaf/1 :: (conference()) -> undefined | boolean().
+-spec moderator_join_deaf/1 :: (conference()) -> boolean().
 moderator_join_deaf(#whapps_conference{moderator_join_deaf=ModeratorJoinDeaf}) ->
     ModeratorJoinDeaf.
 
@@ -299,7 +299,7 @@ moderator_join_deaf(#whapps_conference{moderator_join_deaf=ModeratorJoinDeaf}) -
 set_moderator_join_deaf(ModeratorJoinDeaf, Conference) when is_boolean(ModeratorJoinDeaf) ->
     Conference#whapps_conference{moderator_join_deaf=ModeratorJoinDeaf}.
 
--spec max_participants/1 :: (conference()) -> undefined | boolean().
+-spec max_participants/1 :: (conference()) -> pos_integer().
 max_participants(#whapps_conference{max_participants=MaxParticipants}) ->
     MaxParticipants.
 
@@ -307,7 +307,7 @@ max_participants(#whapps_conference{max_participants=MaxParticipants}) ->
 set_max_participants(MaxParticipants, Conference) when is_integer(MaxParticipants) ->
     Conference#whapps_conference{max_participants=MaxParticipants}.
 
--spec require_moderator/1 :: (conference()) -> undefined | boolean().
+-spec require_moderator/1 :: (conference()) -> boolean().
 require_moderator(#whapps_conference{require_moderator=RequireModerator}) ->
     RequireModerator.
 
@@ -315,7 +315,7 @@ require_moderator(#whapps_conference{require_moderator=RequireModerator}) ->
 set_require_moderator(RequireModerator, Conference) when is_boolean(RequireModerator) ->
     Conference#whapps_conference{require_moderator=RequireModerator}.
 
--spec wait_for_moderator/1 :: (conference()) -> undefined | boolean().
+-spec wait_for_moderator/1 :: (conference()) -> boolean().
 wait_for_moderator(#whapps_conference{wait_for_moderator=WaitForModerator}) ->
     WaitForModerator.
 
@@ -323,7 +323,7 @@ wait_for_moderator(#whapps_conference{wait_for_moderator=WaitForModerator}) ->
 set_wait_for_moderator(WaitForModerator, Conference) when is_boolean(WaitForModerator) ->
     Conference#whapps_conference{wait_for_moderator=WaitForModerator}.
 
--spec play_name_on_join/1 :: (conference()) -> undefined | boolean().
+-spec play_name_on_join/1 :: (conference()) -> boolean().
 play_name_on_join(#whapps_conference{play_name_on_join=PlayNameOnJoin}) ->
     PlayNameOnJoin.
 
@@ -331,7 +331,7 @@ play_name_on_join(#whapps_conference{play_name_on_join=PlayNameOnJoin}) ->
 set_play_name_on_join(PlayNameOnJoin, Conference) when is_boolean(PlayNameOnJoin) ->
     Conference#whapps_conference{play_name_on_join=PlayNameOnJoin}.
 
--spec conference_doc/1 :: (conference()) -> undefined | wh_json:json_object().
+-spec conference_doc/1 :: (conference()) -> 'undefined' | wh_json:json_object().
 conference_doc(#whapps_conference{conference_doc=JObj}) ->
     JObj.
 
@@ -356,7 +356,7 @@ kvs_fetch(Key, #whapps_conference{kvs=Dict}) ->
     try orddict:fetch(wh_util:to_binary(Key), Dict) of
         Ok -> Ok
     catch
-        error:function_clause -> undefined
+        error:function_clause -> 'undefined'
     end.     
 
 -spec kvs_fetch_keys/1 :: (conference()) -> [term(),...].
@@ -367,7 +367,7 @@ kvs_fetch_keys( #whapps_conference{kvs=Dict}) ->
 kvs_filter(Pred, #whapps_conference{kvs=Dict}=Conference) ->
     Conference#whapps_conference{kvs=orddict:filter(Pred, Dict)}.
 
--spec kvs_find/2 :: (term(), conference()) -> {ok, term()} | error.
+-spec kvs_find/2 :: (term(), conference()) -> {'ok', term()} | 'error'.
 kvs_find(Key, #whapps_conference{kvs=Dict}) ->
     orddict:find(wh_util:to_binary(Key), Dict).
  
@@ -377,8 +377,8 @@ kvs_fold(Fun, Acc0, #whapps_conference{kvs=Dict}) ->
 
 -spec kvs_from_proplist/2 :: (proplist(), conference()) -> conference().
 kvs_from_proplist(List, #whapps_conference{kvs=Dict}=Conference) ->
-    L = [{wh_util:to_binary(K), V} || {K, V} <- List],
-    Conference#whapps_conference{kvs=orddict:from_list(L, Dict)}.
+    L = orddict:from_list([{wh_util:to_binary(K), V} || {K, V} <- List]),
+    Conference#whapps_conference{kvs=orddict:merge(fun(_, V, _) -> V end, L, Dict)}.
 
 -spec kvs_is_key/2 :: (term(), conference()) -> boolean().
 kvs_is_key(Key, #whapps_conference{kvs=Dict}) ->
