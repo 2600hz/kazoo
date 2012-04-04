@@ -23,6 +23,8 @@
 -define(POOL(Mod), {Mod, {poolboy, start_link, [
                                                 [{name, {local, Mod}}
                                                  ,{worker_module, ecallmgr_amqp_worker}
+                                                 ,{size, 50}
+                                                 ,{max_overflow, 50}
                                                 ]
                                                ]}
                     ,permanent, 5000, worker, [poolboy]
