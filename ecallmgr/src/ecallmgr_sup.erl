@@ -1,12 +1,19 @@
-
+%%%-------------------------------------------------------------------
+%%% @copyright (C) 2012, VoIP INC
+%%% @doc
+%%%
+%%% @end
+%%% @contributors
+%%%   James Aimonetti
+%%%   Karl Anderson
+%%%-------------------------------------------------------------------
 -module(ecallmgr_sup).
 
 -behaviour(supervisor).
 
-%% API
--export([start_link/0, cache_proc/0, registrar_proc/0]).
-
-%% Supervisor callbacks
+-export([start_link/0]).
+-export([cache_proc/0]).
+-export([registrar_proc/0]).
 -export([init/1]).
 
 -include("ecallmgr.hrl").
@@ -25,7 +32,6 @@
 %% ===================================================================
 %% API functions
 %% ===================================================================
-
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
@@ -61,11 +67,9 @@ init([]) ->
 
          ,?CHILD(ecallmgr_fs_sup, supervisor)
 
-         ,?CHILD(resource_mgr, worker) % handles resource requests / resource availability
          ,?CHILD(ecallmgr_registrar, worker) % local cache for registrations
 
          ,?CHILD(ecallmgr_media_registry, worker) % handles tracking media names and files per-call
-         ,?CHILD(ecallmgr_notify, worker) % handles notify-type API calls (like MWI, BLF, check-sync
          ,?CHILD(ecallmgr_fs_query, worker) % handles queries for call information/location
          ,?CHILD(ecallmgr_conference_listener, worker)
 

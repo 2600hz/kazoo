@@ -1,24 +1,30 @@
 %%%-------------------------------------------------------------------
-%%% @author Karl Anderson <karl@2600hz.org>
-%%% @copyright (C) 2011, VoIP, INC
+%%% @copyright (C) 2012, VoIP, INC
 %%% @doc
 %%% Notify-type requests, like MWI updates, received and processed here
 %%% @end
-%%% Created :  18 Jul 2011 by Karl Anderson <karl@2600hz.org>
+%%% @contributors
+%%%    Karl Anderson
 %%%-------------------------------------------------------------------
--module(ecallmgr_notify).
+-module(ecallmgr_fs_notify).
 
 -behaviour(gen_listener).
 
-%% API
--export([start_link/0]).
+-export([start_link/1, start_link/2]).
+-export([distributed_presence/3]).
 -export([presence_update/2]).
 -export([mwi_update/2]).
--export([send_presence_event/3]).
+-export([init/1
+         ,handle_call/3
+         ,handle_cast/2
+         ,handle_info/2
+         ,handle_event/2
+         ,terminate/2
+         ,code_change/3
+        ]).
 
-%% gen_server callbacks
--export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2,
-         terminate/2, code_change/3]).
+-record(state, {node :: atom()
+               ,options :: proplist()}).
 
 -define(SERVER, ?MODULE).
 -define(MWI_BODY, "Messages-Waiting: ~s\r\nMessage-Account: sip:~s\r\nVoice-Message: ~b/~b (~b/~b)\r\n\r\n").
@@ -27,7 +33,6 @@
                      ,{{?MODULE, presence_update}, [{<<"notification">>, <<"presence_update">>}]}
                     ]).
 -define(BINDINGS, [{notifications, [{restrict_to, [mwi_update, presence_update]}]}]).
-
 -define(QUEUE_NAME, <<"ecallmgr_notify">>).
 -define(QUEUE_OPTIONS, [{exclusive, false}]).
 -define(CONSUME_OPTIONS, [{exclusive, false}]).
@@ -43,8 +48,13 @@
 %% Starts the server
 %% @end
 %%--------------------------------------------------------------------
--spec start_link/0 :: () -> startlink_ret().
-start_link() ->
+-spec start_link/1 :: (atom()) -> startlink_ret().
+-spec start_link/2 :: (atom(), proplist()) -> startlink_ret().
+
+start_link(Node) ->
+    start_link(Node, []).
+
+start_link(Node, Options) ->
     gen_listener:start_link(?MODULE,
                             [{responders, ?RESPONDERS}
                              ,{bindings, ?BINDINGS}
@@ -52,10 +62,14 @@ start_link() ->
                              ,{queue_options, ?QUEUE_OPTIONS}
                              ,{consume_options, ?CONSUME_OPTIONS}
                              ,{basic_qos, 1}
-                            ], []).
+                            ], [Node, Options]).
+
+-spec distributed_presence/3 :: (pid(), ne_binary(), proplist()) -> 'ok'.
+distributed_presence(Srv, Type, Event) ->
+    gen_server:cast(Srv, {distributed_presence, Type, Event}).
 
 -spec presence_update/2 :: (wh_json:json_object(), proplist()) -> ok.
-presence_update(JObj, _Props) ->
+presence_update(JObj, Props) ->
     PresenceId = wh_json:get_value(<<"Presence-ID">>, JObj),
     Event = case wh_json:get_value(<<"State">>, JObj) of
                 undefined ->
@@ -74,25 +88,17 @@ presence_update(JObj, _Props) ->
                 <<"terminated">> -> create_presence_in(PresenceId, "CS_ROUTING", "terminated", JObj);
                 _ -> create_presence_in(PresenceId, "Available", undefined, wh_json:new())
             end,
-    NodeHandlers = ecallmgr_fs_sup:node_handlers(),
-    _ = [begin
-             lager:debug("sending presence in event to ~p~n", [Node]),
-             freeswitch:sendevent(Node, 'PRESENCE_IN', [{"Distributed-From", wh_util:to_list(Node)} | Event])
-         end
-         || NodeHandler <- NodeHandlers,
-            (Node = ecallmgr_fs_node:fs_node(NodeHandler)) =/= undefined
-        ],
+    Node = props:get_value(node, Props),
+    lager:debug("sending presence in event to ~p~n", [Node]),
+    freeswitch:sendevent(Node, 'PRESENCE_IN', [{"Distributed-From", wh_util:to_list(Node)} | Event]),
     ok.
 
 -spec mwi_update/2 :: (wh_json:json_object(), proplist()) -> no_return().
-mwi_update(JObj, _Props) ->
+mwi_update(JObj, Props) ->
     _ = wh_util:put_callid(JObj),
-
     true = wapi_notifications:mwi_update_v(JObj),
-
     User = wh_json:get_value(<<"Notify-User">>, JObj),
     Realm  = wh_json:get_value(<<"Notify-Realm">>, JObj),
-
     case get_endpoint(User, Realm) of
         {error, timeout} ->
             lager:debug("mwi timed out looking up contact for ~s@~s", [User, Realm]);
@@ -114,33 +120,10 @@ mwi_update(JObj, _Props) ->
                        ,{"content-length", wh_util:to_list(length(Body))}
                        ,{"body", lists:flatten(Body)}
                       ],
-            {ok, Node} = ecallmgr_fs_handler:request_node(<<"audio">>),
+            Node = props:get_value(node, Props),
             Resp = freeswitch:sendevent(Node, 'NOTIFY', Headers),
             lager:debug("sending of MWI update to ~s resulted in: ~p", [Node, Resp])
     end.
-
--spec send_presence_event/3 :: (ne_binary(), ne_binary() | atom(), proplist()) -> 'ok'.
-send_presence_event(<<"PRESENCE_PROBE">>, Node, Data) ->
-    From = props:get_value(<<"from">>, Data, <<"nouser@nodomain">>),
-    To = props:get_value(<<"to">>, Data, <<"nouser@nodomain">>),
-    [FromUser, FromRealm] = binary:split(From, <<"@">>),
-    [ToUser, ToRealm] = binary:split(To, <<"@">>),
-    Req = [{<<"From">>, From}
-           ,{<<"From-User">>, FromUser}
-           ,{<<"From-Realm">>, FromRealm}
-           ,{<<"To">>, To}
-           ,{<<"To-User">>, ToUser}
-           ,{<<"To-Realm">>, ToRealm}
-           ,{<<"Node">>, wh_util:to_binary(Node)}
-           ,{<<"Expires">>, props:get_value(<<"expires">>, Data)}
-           ,{<<"Subscription-Call-ID">>, props:get_value(<<"sub-call-id">>, Data)}
-           ,{<<"Subscription-Type">>, props:get_value(<<"alt_event_type">>, Data)}
-           ,{<<"Subscription">>, props:get_value(<<"proto-specific-event-name">>, Data)}
-           | wh_api:default_headers(<<>>, <<"notification">>, <<"presence_probe">>, ?APP_NAME, ?APP_VERSION)
-          ],
-    wapi_notifications:publish_presence_probe(Req);
-send_presence_event(_, _, _) ->
-    ok.
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -152,10 +135,10 @@ send_presence_event(_, _, _) ->
 %% Initializes the server
 %% @end
 %%--------------------------------------------------------------------
-init([]) ->
+init([Node, Options]) ->
     put(callid, ?LOG_SYSTEM_ID),
     lager:debug("starting new ecallmgr notify process"),
-    {ok, ok}.
+    {ok, #state{node=Node, options=Options}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -172,7 +155,7 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call(_Request, _From, State) ->
-    {reply, ok, State}.
+    {reply, {error, not_implemented}, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -184,6 +167,15 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast({distributed_presence, Type, Event}, #state{node=Node}=State) ->
+    Headers = [{wh_util:to_list(K), wh_util:to_list(V)}
+               || {K, V} <- lists:foldr(fun(Header, Props) ->
+                                                proplists:delete(Header, Props)
+                                        end, Event, ?FS_DEFAULT_HDRS)
+              ],
+    EventName = wh_util:to_atom(Type, true),
+    _ = freeswitch:sendevent(Node, EventName, [{"Distributed-From", wh_util:to_list(Node)} | Headers]),
+    {noreply, State};
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
@@ -197,12 +189,52 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info({event, [_ | Data]}, #state{node=Node}=State) ->
+    case props:get_value(<<"Event-Name">>, Data) of
+        <<"PRESENCE_", _/binary>> = EvtName ->
+            ShouldDistribute = ecallmgr_config:get(<<"distribute_presence">>, true),
+            ShouldDistribute andalso process_presence_event(EvtName, Data, Node),
+            {noreply, State, hibernate};
+        _ ->
+            {noreply, State}
+    end;
+handle_info({update_options, NewOptions}, State) ->
+    {noreply, State#state{options=NewOptions}, hibernate};
+handle_info(timeout, #state{node=Node}=State) ->
+    case freeswitch:register_event_handler(Node) of
+        ok ->
+            ok = freeswitch:event(Node, ['PRESENCE_IN', 'PRESENCE_OUT', 'PRESENCE_PROBE']),
+            lager:debug("bound to switch presence events on node ~s", [Node]),
+            {noreply, State, hibernate};
+        {error, Reason} ->
+            lager:debug("error when trying to register notify handler on node ~s: ~p", [Node, Reason]),
+            {stop, Reason, State};
+        timeout ->
+            lager:debug("timeout when trying to register notify handler on node ~s", [Node]),
+            {stop, timeout, State}
+    end;
+handle_info({'EXIT', _Pid, noconnection}, State) ->
+    lager:debug("noconnection received for node, pid: ~p", [_Pid]),
+    {stop, normal, State};
+handle_info({nodedown, Node}, #state{node=Node}=State) ->
+    lager:debug("nodedown received from node ~s", [Node]),
+    {stop, normal, State};
+handle_info(nodedown, #state{node=Node}=State) ->
+    lager:debug("nodedown received from node ~s", [Node]),
+    {stop, normal, State};
 handle_info(_Info, State) ->
-    lager:debug("Unhandled message: ~p", [_Info]),
     {noreply, State}.
 
-handle_event(_JObj, _State) ->
-    {reply, []}.
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Allows listener to pass options to handlers
+%%
+%% @spec handle_event(JObj, State) -> {reply, Options}
+%% @end
+%%--------------------------------------------------------------------
+handle_event(_JObj, #state{node=Node}) ->
+    {reply, [{node, Node}]}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -285,3 +317,45 @@ create_presence_in(PresenceId, Status, State, JObj) ->
                         ]
                ,V =/= undefined
     ].
+
+-spec send_presence_event/3 :: (ne_binary(), ne_binary() | atom(), proplist()) -> 'ok'.
+send_presence_event(<<"PRESENCE_PROBE">>, Node, Data) ->
+    From = props:get_value(<<"from">>, Data, <<"nouser@nodomain">>),
+    To = props:get_value(<<"to">>, Data, <<"nouser@nodomain">>),
+    [FromUser, FromRealm] = binary:split(From, <<"@">>),
+    [ToUser, ToRealm] = binary:split(To, <<"@">>),
+    Req = [{<<"From">>, From}
+           ,{<<"From-User">>, FromUser}
+           ,{<<"From-Realm">>, FromRealm}
+           ,{<<"To">>, To}
+           ,{<<"To-User">>, ToUser}
+           ,{<<"To-Realm">>, ToRealm}
+           ,{<<"Node">>, wh_util:to_binary(Node)}
+           ,{<<"Expires">>, props:get_value(<<"expires">>, Data)}
+           ,{<<"Subscription-Call-ID">>, props:get_value(<<"sub-call-id">>, Data)}
+           ,{<<"Subscription-Type">>, props:get_value(<<"alt_event_type">>, Data)}
+           ,{<<"Subscription">>, props:get_value(<<"proto-specific-event-name">>, Data)}
+           | wh_api:default_headers(<<>>, <<"notification">>, <<"presence_probe">>, ?APP_NAME, ?APP_VERSION)
+          ],
+    wapi_notifications:publish_presence_probe(Req);
+send_presence_event(_, _, _) ->
+    ok.
+
+-spec process_presence_event/3 :: (ne_binary(), proplist(), atom()) -> 'ok'.
+process_presence_event(EvtName, Data, Node) ->
+    %% if the distributed-from is on the request then we already saw it
+    case props:get_value(<<"Distributed-From">>, Data) of
+        undefined ->
+            NodeBin = wh_util:to_binary(Node),
+            Headers = [{<<"Distributed-From">>, NodeBin} | Data],
+            %% send it out over AMQP
+            send_presence_event(EvtName, NodeBin, Headers),
+            %% reply it on all the other connected nodes...
+            %% "mod_multicast" style
+            [distributed_presence(Srv, EvtName, Headers)
+             || Srv <- ecallmgr_fs_sup:notify_handlers(),
+                Srv =/= self()
+            ];
+        _Else ->
+            ok
+    end.

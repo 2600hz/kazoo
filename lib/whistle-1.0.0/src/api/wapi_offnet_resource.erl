@@ -18,19 +18,20 @@
 -include("../wh_api.hrl").
 
 %% Offnet Resource Request
--define(OFFNET_RESOURCE_REQ_HEADERS, [<<"Call-ID">>, <<"Resource-Type">>, <<"To-DID">>
-                                      ,<<"Account-ID">>, <<"Control-Queue">>, <<"Application-Name">>
+-define(OFFNET_RESOURCE_REQ_HEADERS, [<<"Account-ID">>, <<"Resource-Type">>, <<"To-DID">>
+                                          ,<<"Application-Name">>
                                      ]).
 -define(OPTIONAL_OFFNET_RESOURCE_REQ_HEADERS, [<<"Timeout">>, <<"Ignore-Early-Media">>, <<"Flags">>, <<"Media">>
-                                               ,<<"Outgoing-Caller-ID-Name">>, <<"Outgoing-Caller-ID-Number">>
-                                               ,<<"Emergency-Caller-ID-Name">>, <<"Emergency-Caller-ID-Number">>
-                                               ,<<"Ringback">>, <<"SIP-Headers">>, <<"Custom-Channel-Vars">>
-                                               ,<<"Hold-Media">>, <<"Presence-ID">>, <<"Account-Realm">>
+                                                   ,<<"Outgoing-Caller-ID-Name">>, <<"Outgoing-Caller-ID-Number">>
+                                                   ,<<"Emergency-Caller-ID-Name">>, <<"Emergency-Caller-ID-Number">>
+                                                   ,<<"Ringback">>, <<"SIP-Headers">>, <<"Custom-Channel-Vars">>
+                                                   ,<<"Hold-Media">>, <<"Presence-ID">>, <<"Account-Realm">>
+                                                   ,<<"Control-Queue">>, <<"Call-ID">>, <<"Msg-ID">>, <<"Application-Data">>
                                               ]).
 -define(OFFNET_RESOURCE_REQ_VALUES, [{<<"Event-Category">>, <<"resource">>}
                                      ,{<<"Event-Name">>, <<"offnet_req">>}
-                                     ,{<<"Resource-Type">>, [<<"audio">>, <<"video">>]}
-                                     ,{<<"Application-Name">>, [<<"bridge">>]}
+                                     ,{<<"Resource-Type">>, [<<"audio">>, <<"video">>, <<"originate">>]}
+                                     ,{<<"Application-Name">>, [<<"park">>, <<"bridge">>, <<"transfer">>, <<"fax">>]}
                                      ,{<<"Media">>, [<<"process">>, <<"bypass">>, <<"auto">>]}
                                     ]).
 -define(OFFNET_RESOURCE_REQ_TYPES, [{<<"Call-ID">>, fun is_binary/1}
@@ -43,8 +44,9 @@
                                    ]).
 
 %% Offnet Resource Response
--define(OFFNET_RESOURCE_RESP_HEADERS, [<<"Call-ID">>, <<"Response-Message">>]).
--define(OPTIONAL_OFFNET_RESOURCE_RESP_HEADERS, [<<"Msg-ID">>, <<"Error-Message">>, <<"Response-Code">>]).
+-define(OFFNET_RESOURCE_RESP_HEADERS, [<<"Response-Message">>]).
+-define(OPTIONAL_OFFNET_RESOURCE_RESP_HEADERS, [<<"Msg-ID">>, <<"Error-Message">>, <<"Response-Code">>
+                                               ,<<"Call-ID">>]).
 -define(OFFNET_RESOURCE_RESP_VALUES, [{<<"Event-Category">>, <<"resource">>}
                                       ,{<<"Event-Name">>, <<"offnet_resp">>}
                                      ]).
