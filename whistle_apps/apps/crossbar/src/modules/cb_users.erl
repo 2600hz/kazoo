@@ -19,6 +19,7 @@
          ,put/1
          ,post/2
          ,delete/2
+         ,create_user/1
         ]).
 
 -include("../../include/crossbar.hrl").
