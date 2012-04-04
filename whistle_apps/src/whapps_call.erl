@@ -324,7 +324,9 @@ call_id_direct(#whapps_call{call_id=CallId}) ->
 
 -spec call_id_helper/2 :: (whapps_helper_function(), whapps_call:call()) -> whapps_call:call().
 call_id_helper(Fun, #whapps_call{}=Call) when is_function(Fun, 2) ->
-    Call#whapps_call{call_id_helper=Fun}.
+    Call#whapps_call{call_id_helper=Fun};
+call_id_helper(_, #whapps_call{}=Call) ->
+    Call#whapps_call{call_id_helper=undefined}.
 
 -spec set_control_queue/2 :: (ne_binary(), whapps_call:call()) -> whapps_call:call().
 set_control_queue(ControlQ, #whapps_call{}=Call) when is_binary(ControlQ) ->
@@ -343,7 +345,9 @@ control_queue_direct(#whapps_call{control_q=ControlQ}) ->
 
 -spec control_queue_helper/2 :: (whapps_helper_function(), whapps_call:call()) -> whapps_call:call().
 control_queue_helper(Fun, #whapps_call{}=Call) when is_function(Fun, 2) ->
-    Call#whapps_call{control_q_helper=Fun}.
+    Call#whapps_call{control_q_helper=Fun};
+control_queue_helper(_, #whapps_call{}=Call) ->
+    Call#whapps_call{control_q_helper=undefined}.
 
 -spec set_controller_queue/2 :: (ne_binary(), whapps_call:call()) -> whapps_call:call().
 set_controller_queue(ControllerQ, #whapps_call{call_id=CallId, control_q=CtrlQ}=Call) when is_binary(ControllerQ) ->
