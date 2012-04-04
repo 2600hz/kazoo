@@ -73,7 +73,8 @@ start_link(Host, Conn, UseFederation) ->
 
 -spec publish/4 :: (pid(), call_from(), #'basic.publish'{}, ne_binary() | iolist()) -> 'ok'.
 publish(Srv, From, BasicPub, AmqpMsg) ->
-    gen_server:cast(Srv, {publish, From, BasicPub, AmqpMsg}).
+    C = gen_server:call(Srv, publish_channel),
+    gen_server:reply(From, amqp_channel:call(C, BasicPub, AmqpMsg)).
 
 -spec consume/3 :: (pid(), call_from(), consume_records()) -> 'ok'.
 consume(Srv, From, Msg) ->
@@ -148,6 +149,8 @@ init([Host, Conn, UseFederation]) when is_pid(Conn) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_call(publish_channel, _, #state{publish_channel={C,_}}=State) ->
+    {reply, C, State};
 handle_call(stop, {From, _}, #state{manager=Mgr}=State) ->
     case Mgr =:= From of
         true -> {stop, normal, ok, State};
