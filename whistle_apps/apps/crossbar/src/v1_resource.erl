@@ -34,6 +34,7 @@
          ,create_path/2
          ,process_post/2
          ,delete_resource/2
+         ,delete_completed/2
          ,is_conflict/2
          ,to_json/2, to_binary/2
          ,from_json/2, from_binary/2, from_form/2
@@ -324,6 +325,10 @@ allow_missing_post(Req0, #cb_context{req_verb=_Verb}=Context) ->
 -spec delete_resource/2 :: (#http_req{}, #cb_context{}) -> {boolean() | 'halt', #http_req{}, #cb_context{}}.
 delete_resource(Req, Context) ->
     v1_util:execute_request(Req, Context).
+
+-spec delete_completed/2 :: (#http_req{}, #cb_context{}) -> {boolean(), #http_req{}, #cb_context{}}.
+delete_completed(Req, Context) ->
+    v1_util:create_push_response(Req, Context).
 
 %% If allow_missing_post returned true (cause it was a POST) and PUT has been tunnelled,
 %% POST is a create
