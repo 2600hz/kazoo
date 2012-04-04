@@ -33,13 +33,12 @@
                            ,{<<"audio">>, <<"mp3">>}
                            ,{<<"audio">>, <<"ogg">>}
                            ,{<<"application">>, <<"octet-stream">>}
+                           ,{<<"application">>, <<"base64">>}
+                           ,{<<"application">>, <<"x-base64">>}
                           ]).
 
--define(METADATA_FIELDS, [<<"name">>, <<"description">>, <<"media_type">>
-                              ,<<"status">>, <<"content_size">>, <<"size">>
-                              ,<<"content_type">>, <<"content_length">>
-                              ,<<"streamable">>, <<"format">>, <<"sample">>
-                        ]). % until validation is in place
+-define(PVT_TYPE, <<"media">>).
+-define(PVT_FUNS, [fun add_pvt_type/2]).
 
 %%%===================================================================
 %%% API
@@ -133,11 +132,13 @@ validate(#cb_context{req_verb = <<"put">>, req_data=Data}=Context) ->
     case Name =/= undefined andalso lookup_media_by_name(Name, Context) of
         false ->
             crossbar_util:response_invalid_data([<<"name">>], Context);
-        #cb_context{resp_status=success, doc=[{struct, _}=Doc|_], resp_headers=RHs}=Context1 ->
+        #cb_context{resp_status=success, doc=[Doc|_], resp_headers=RHs}=Context1 ->
             DocID = wh_json:get_value(<<"id">>, Doc),
+            lager:debug("media with name ~s found in doc ~s", [Name, Doc]),
             Context1#cb_context{resp_headers=[{"Location", DocID} | RHs]};
         _ ->
-            Context#cb_context{resp_status=success}
+            lager:debug("media name ~s unknown, create meta", [Name]),
+            create_media_meta(Data, Context)
     end.
 
 validate(#cb_context{req_verb = <<"get">>}=Context, MediaID) ->
@@ -181,28 +182,14 @@ post(#cb_context{req_files=[], resp_status=RespStatus}=Context, _MediaID) ->
         false -> Context
     end.
 post(#cb_context{req_files=[{_, FileObj}|_Files]}=Context, MediaID, ?BIN_DATA) ->
-    lager:debug("other files: ~p", [_Files]),
     HeadersJObj = wh_json:get_value(<<"headers">>, FileObj),
     Contents = wh_json:get_value(<<"contents">>, FileObj),
 
     update_media_binary(MediaID, Contents, Context, HeadersJObj).
 
 -spec put/1 :: (#cb_context{}) -> #cb_context{}.
-put(#cb_context{resp_headers=RespHeaders, req_data=ReqData}=Context) ->
-    case props:get_value(<<"Location">>, RespHeaders) of
-        undefined ->
-            case create_media_meta(ReqData, Context) of
-                #cb_context{resp_status=success, resp_data=RespData, resp_headers=RHs}=Context2 ->
-                    DocID = wh_json:get_value(<<"id">>, RespData),
-                    Context2#cb_context{resp_headers=[{"Location", DocID} | RHs]};
-                Context2 ->
-                    _ = crossbar_util:put_reqid(Context),
-                    lager:debug("put: error saving"),
-                    Context2
-            end;
-        _ ->
-            Context
-    end.
+put(#cb_context{}=Context) ->
+    crossbar_doc:save(Context).
 
 -spec delete/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
 -spec delete/3 :: (#cb_context{}, path_token(), path_token()) -> #cb_context{}.
@@ -216,27 +203,30 @@ delete(Context, MediaID, ?BIN_DATA) ->
 %%%===================================================================
 -spec create_media_meta/2 :: (wh_json:json_object(), #cb_context{}) -> #cb_context{}.
 create_media_meta(Data, Context) ->
-    Doc1 = lists:foldr(fun(Meta, DocAcc) ->
-                               case wh_json:get_value(Meta, Data) of
-                                   undefined -> [{Meta, <<>>} | DocAcc];
-                                   V -> [{Meta, wh_util:to_binary(V)} | DocAcc]
-                               end
-                       end, [], ?METADATA_FIELDS),
-    crossbar_doc:save(Context#cb_context{doc=wh_json:from_list([{<<"pvt_type">>, <<"media">>} | Doc1])}).
+    case wh_json_validator:is_valid(Data, <<"media">>) of
+        {fail, Errors} ->
+            crossbar_util:response_invalid_data(Errors, Context);
+        {pass, JObj} ->
+            {JObj1, _} = lists:foldr(fun(F, {J, C}) ->
+                                             {F(J, C), C}
+                                     end, {JObj, Context}, ?PVT_FUNS),
+            Context#cb_context{doc=JObj1, resp_status=success}
+    end.
 
 -spec update_media_binary/4 :: (ne_binary(), ne_binary(), #cb_context{}, wh_json:json_object()) -> #cb_context{}.
 update_media_binary(MediaID, Contents, Context, HeadersJObj) ->
-    lager:debug("update headers: ~p", [HeadersJObj]),
     CT = wh_json:get_value(<<"content_type">>, HeadersJObj, <<"application/octet-stream">>),
     Opts = [{headers, [{content_type, wh_util:to_list(CT)}]}],
 
-    lager:debug("Setting Content-Type to ~s", [CT]),
+    lager:debug("file content type: ~s", [CT]),
 
     case crossbar_doc:save_attachment(MediaID, attachment_name(), Contents, Context, Opts) of
         #cb_context{resp_status=success}=Context1 ->
             lager:debug("saved attachement successfully"),
             #cb_context{doc=Doc} = crossbar_doc:load(MediaID, Context),
-            Doc1 = wh_json:set_value(<<"content_type">>, CT, Doc),
+            Doc1 = wh_json:set_values([{<<"content_type">>, CT}
+                                       ,{<<"content_length">>, wh_json:get_integer_value(<<"content_length">>, HeadersJObj)}
+                                      ], Doc),
             crossbar_doc:save(Context1#cb_context{doc=Doc1});
         C ->
             lager:debug("failed to save attachment"),
@@ -258,7 +248,6 @@ lookup_media(Context) ->
 get_media_doc(MediaID, Context) ->
     crossbar_doc:load(MediaID, Context).
 
-
 %% GET/DELETE /media/MediaID/raw
 get_media_binary(MediaID, Context) ->
     case crossbar_doc:load(MediaID, Context) of
@@ -269,7 +258,7 @@ get_media_binary(MediaID, Context) ->
                     Context1 = crossbar_doc:load_attachment(MediaMeta, AttachmentID, Context),
                     [Type, SubType] = binary:split(content_type_of(MediaMeta), <<"/">>),
                     lager:debug("getting media of type ~s/~s", [Type, SubType]),
-                    Context1#cb_context{content_types_provided=[{to_binary, [{Type, SubType}]}]}                    
+                    Context1#cb_context{content_types_provided=[{to_binary, [{Type, SubType}]}]}
             end;
         Context1 -> Context1
     end.
@@ -313,3 +302,14 @@ content_type_of(JObj) ->
             end;
         CT -> CT
     end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% These are the pvt funs that add the necessary pvt fields to every
+%% instance
+%% @end
+%%--------------------------------------------------------------------
+-spec add_pvt_type/2 :: (wh_json:json_object(), #cb_context{}) -> wh_json:json_object().
+add_pvt_type(JObj, _) ->
+    wh_json:set_value(<<"pvt_type">>, ?PVT_TYPE, JObj).
