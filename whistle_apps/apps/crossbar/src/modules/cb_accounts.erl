@@ -62,16 +62,17 @@ ensure_parent_set() ->
         {ok, AcctJObjs} ->
             DefaultParentID = find_default_parent(AcctJObjs),
 
-            [ensure_parent_set(DefaultParentID, wh_json:get_value(<<"doc">>, AcctJObj))
-             || AcctJObj <- AcctJObjs,
-                wh_json:get_value(<<"id">>, AcctJObj) =/= DefaultParentID, % not the default parent
+            _ = [ensure_parent_set(DefaultParentID, wh_json:get_value(<<"doc">>, AcctJObj))
+                 || AcctJObj <- AcctJObjs,
+                    wh_json:get_value(<<"id">>, AcctJObj) =/= DefaultParentID, % not the default parent
 
-                (Tree = wh_json:get_value([<<"doc">>, <<"pvt_tree">>], AcctJObj)) =:= [] orelse % empty tree (should have at least the parent)
-                    Tree =:= <<>> orelse % Tree is an empty string only
-                    Tree =:= [""] orelse % Tree is bound in the prior bit, and might be a list of an empty string
-                    Tree =:= [<<>>] orelse % Tree is a list of an empty string
-                    Tree =:= undefined % if the pvt_tree key doesn't exist
-            ];
+                    (Tree = wh_json:get_value([<<"doc">>, <<"pvt_tree">>], AcctJObj)) =:= [] orelse % empty tree (should have at least the parent)
+                        Tree =:= <<>> orelse % Tree is an empty string only
+                        Tree =:= [""] orelse % Tree is bound in the prior bit, and might be a list of an empty string
+                        Tree =:= [<<>>] orelse % Tree is a list of an empty string
+                        Tree =:= undefined % if the pvt_tree key doesn't exist
+                ],
+            ok;
         {error, _}=E -> E
     end.
 
@@ -342,7 +343,7 @@ create_account(#cb_context{req_data=ReqData}=Context, ParentId) ->
                undefined ->
                    RealmSuffix = whapps_config:get_binary(?ACCOUNTS_CONFIG_CAT, <<"account_realm_suffix">>, <<"sip.2600hz.com">>),
                    Strength = whapps_config:get_integer(?ACCOUNTS_CONFIG_CAT, <<"random_realm_strength">>, 3),
-                   wh_json:set_value(<<"realm">>, list_to_binary([crossbar_util:rand_chars(Strength), ".", RealmSuffix]), ReqData);
+                   wh_json:set_value(<<"realm">>, list_to_binary([wh_util:rand_hex_binary(Strength), ".", RealmSuffix]), ReqData);
                _Else ->
                    ReqData
            end,
@@ -629,9 +630,11 @@ load_account_db(AccountId, Context) when is_binary(AccountId) ->
     case wh_cache:peek_local(Srv, {crossbar, exists, AccountId}) of
         {ok, true} ->
             lager:debug("check succeeded for db_exists on ~s", [AccountId]),
-            Context#cb_context{db_name = AccountDb
-                               ,account_id = AccountId
-                              };
+            Context#cb_context{
+              resp_status = success
+              ,db_name = AccountDb
+              ,account_id = AccountId
+             };
         _ ->
             case couch_mgr:db_exists(AccountDb) of
                 false ->
@@ -640,9 +643,11 @@ load_account_db(AccountId, Context) when is_binary(AccountId) ->
                 true ->
                     wh_cache:store_local(Srv, {crossbar, exists, AccountId}, true, ?CACHE_TTL),
                     lager:debug("check succeeded for db_exists on ~s", [AccountId]),
-                    Context#cb_context{db_name = AccountDb
-                                       ,account_id = AccountId
-                                      }
+                    Context#cb_context{
+                      resp_status = success
+                      ,db_name = AccountDb
+                      ,account_id = AccountId
+                     }
             end
     end.
 

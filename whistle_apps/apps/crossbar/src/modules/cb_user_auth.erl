@@ -60,7 +60,7 @@ allowed_methods([<<"recovery">>]) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists/0 :: () -> boolean().
+-spec resource_exists/0 :: () -> 'true'.
 -spec resource_exists/1 :: (path_tokens()) -> boolean().
 resource_exists() -> true.
 resource_exists(<<"recovery">>) -> true;
@@ -99,7 +99,7 @@ authenticate(_) ->
 %%--------------------------------------------------------------------
 -spec validate/1 :: (#cb_context{}) -> #cb_context{}.
 validate(#cb_context{req_data=Data, req_verb = <<"put">>}=Context) ->
-    crossbar_util:put_reqid(Context),
+    _ = crossbar_util:put_reqid(Context),
     lager:debug("validating user_auth"),
     case catch(wh_json_validator:is_valid(Data, <<"user_auth">>)) of
         {fail, Errors} ->
@@ -127,7 +127,7 @@ validate(#cb_context{req_data=Data, req_verb = <<"put">>}=Context) ->
     end.
 
 validate(#cb_context{req_data=Data, req_verb = <<"put">>}=Context, <<"recovery">>) ->
-    crossbar_util:put_reqid(Context),
+    _ = crossbar_util:put_reqid(Context),
     case wh_json_validator:is_valid(Data, <<"user_auth_recovery">>) of
         {fail, Errors} ->
             crossbar_util:response_invalid_data(Errors, Context);
@@ -163,7 +163,7 @@ validate(#cb_context{req_data=Data, req_verb = <<"put">>}=Context, <<"recovery">
             end
     end;
 validate(Context, _Path) ->
-    crossbar_util:put_reqid(Context),
+    _ = crossbar_util:put_reqid(Context),
     lager:debug("bad path: ~p", [_Path]),
     lager:debug("req verb: ~s", [Context#cb_context.req_verb]),
     crossbar_util:response_faulty_request(Context).
@@ -171,10 +171,10 @@ validate(Context, _Path) ->
 -spec put/1 :: (#cb_context{}) -> #cb_context{}.
 -spec put/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
 put(Context) ->
-    crossbar_util:put_reqid(Context),
+    _ = crossbar_util:put_reqid(Context),
     create_token(Context).
 put(Context, <<"recovery">>) ->
-    crossbar_util:put_reqid(Context),
+    _ = crossbar_util:put_reqid(Context),
     reset_users_password(Context).
 
 %%%===================================================================
@@ -208,7 +208,7 @@ normalize_account_name(AccountName) ->
 %% Failure here returns 401
 %% @end
 %%--------------------------------------------------------------------
--spec authorize_user/4 :: (#cb_context{}, ne_binary(), ne_binary(), ne_binary() | [] | [ne_binary(),...] ) -> #cb_context{}.
+-spec authorize_user/4 :: (#cb_context{}, ne_binary(), ne_binary(), [ne_binary(),...] | []) -> #cb_context{}.
 authorize_user(Context, _, _, []) ->
     lager:debug("no account(s) specified"),
     crossbar_util:response(error, <<"invalid credentials">>, 401, Context);
@@ -289,7 +289,7 @@ create_token(#cb_context{doc=JObj}=Context) ->
 %%--------------------------------------------------------------------
 -spec reset_users_password/1 :: (#cb_context{}) -> #cb_context{}.
 reset_users_password(#cb_context{doc=JObj, req_data=Data}=Context) ->
-    Password = rand_chars(16),
+    Password = wh_util:rand_hex_binary(16),
     {MD5, SHA1} = cb_modules_util:pass_hashes(wh_json:get_value(<<"username">>, JObj), Password),
     Email = wh_json:get_value(<<"email">>, JObj),
     Updaters = [fun(J) -> wh_json:set_value(<<"pvt_md5_auth">>, MD5, J) end
@@ -312,13 +312,3 @@ reset_users_password(#cb_context{doc=JObj, req_data=Data}=Context) ->
         Else -> 
             Else
     end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Helper function to generate random strings
-%% @end
-%%--------------------------------------------------------------------
--spec rand_chars/1 :: (pos_integer()) -> ne_binary().
-rand_chars(Count) ->
-    wh_util:to_hex_binary(crypto:rand_bytes(Count)).

@@ -63,7 +63,7 @@
 %% is the payload, possibly modified
 %% @end
 %%--------------------------------------------------------------------
--spec map/2 :: (ne_binary(), term()) -> [{boolean(), term()} | http_methods(),...].
+-spec map/2 :: (ne_binary(), term()) -> [boolean() | http_method(),...] | [].
 map(Routing, Payload) ->
     gen_server:call(?MODULE, {map, Routing, Payload, get(callid)}, infinity).
 
