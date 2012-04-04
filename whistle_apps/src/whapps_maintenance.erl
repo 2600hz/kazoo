@@ -189,7 +189,6 @@ refresh(Account, Views) ->
         {ok, JObj} ->
             _ = couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, JObj),
             AccountRealm = crossbar_util:get_account_realm(AccountDb, AccountId),
-<<<<<<< HEAD
             case couch_mgr:get_results(AccountDb, ?DEVICES_CB_LIST, [{<<"include_docs">>, true}]) of
                 {ok, Devices} ->
                     _ = [whapps_util:add_aggregate_device(AccountDb, wh_json:get_value(<<"doc">>, Device))
