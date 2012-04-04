@@ -638,7 +638,7 @@ create_push_response(Req0, Context) ->
     lager:debug("create push response"),
     {Content, Req1} = create_resp_content(Req0, Context),
     Req2 = set_resp_headers(Req1, Context),
-    lager:debug("content: ~s", [list_to_binary(Content)]),
+    lager:debug("content: ~s", [wh_util:to_binary(Content)]),
     {ok, Req3} = cowboy_http_req:set_resp_body(Content, Req2),
     Succeeded = succeeded(Context),
     lager:debug("is successful response: ~p", [Succeeded]),
@@ -654,7 +654,7 @@ create_push_response(Req0, Context) ->
 -spec create_pull_response/2 :: (#http_req{}, #cb_context{}) -> {ne_binary() | iolist() | 'halt', #http_req{}, #cb_context{}}.
 create_pull_response(Req0, Context) ->
     {Content, Req1} = create_resp_content(Req0, Context),
-    lager:debug("content: ~s", [list_to_binary(Content)]),
+    lager:debug("content: ~s", [wh_util:to_binary(Content)]),
     Req2 = set_resp_headers(Req1, Context),
     case succeeded(Context) of
         false -> {halt, Req2, Context};
@@ -705,7 +705,7 @@ create_resp_envelope(#cb_context{resp_error_msg=RespErrorMsg, resp_status=RespSt
               Else ->
                   wh_util:to_binary(Else)
           end,
-    lager:debug("generating ~s ~b response, ~s", [RespStatus, wh_util:to_integer(RespErrorCode), list_to_binary(Msg)]),
+    lager:debug("generating ~s ~b response, ~s", [RespStatus, wh_util:to_integer(RespErrorCode), wh_util:to_binary(Msg)]),
     [{<<"auth_token">>, wh_util:to_binary(AuthToken)}
      ,{<<"status">>, wh_util:to_binary(RespStatus)}
      ,{<<"message">>, wh_util:to_binary(Msg)}

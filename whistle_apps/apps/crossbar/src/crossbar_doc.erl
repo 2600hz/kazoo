@@ -608,10 +608,18 @@ add_pvt_vsn(JObj, _) ->
     end.
 
 add_pvt_account_db(JObj, DBName) ->
-    wh_json:set_value(<<"pvt_account_db">>, DBName, JObj).
+    case wh_json:get_value(<<"pvt_account_db">>, JObj) of
+        undefined ->
+            wh_json:set_value(<<"pvt_account_db">>, DBName, JObj);
+        _Else -> JObj
+    end.
 
 add_pvt_account_id(JObj, DBName) ->
-    wh_json:set_value(<<"pvt_account_id">>, wh_util:format_account_id(DBName, raw), JObj).
+    case wh_json:get_value(<<"pvt_account_id">>, JObj) of
+        undefined ->
+            wh_json:set_value(<<"pvt_account_id">>, wh_util:format_account_id(DBName, raw), JObj);
+        _Else -> JObj
+    end.
 
 add_pvt_created(JObj, _) ->
     case wh_json:get_value(<<"_rev">>, JObj) of
