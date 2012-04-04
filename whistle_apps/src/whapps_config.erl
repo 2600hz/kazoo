@@ -191,7 +191,7 @@ get_non_empty(Category, Key, Default, Node) ->
 %%-----------------------------------------------------------------------------
 -spec get/2 :: (config_category(), config_key()) -> term() | 'undefined'.
 -spec get/3 :: (config_category(), config_key(), Default) -> term() | Default.
--spec get/4 :: (config_category(), config_key(), Default, ne_binary()) -> term() | Default.
+-spec get/4 :: (config_category(), config_key(), Default, ne_binary() | atom()) -> term() | Default.
 get(Category, Key) ->
     get(Category, Key, undefined).
 get(Category, Key, Default) ->
@@ -211,7 +211,7 @@ get(Category0, Keys, Default, Node0) ->
                     case wh_json:get_value([<<"default">> | Keys], JObj) of
                         undefined ->
                             lager:debug("missing key ~s(~s) ~p: ~p", [Category, Node, Keys, Default]),
-                            set_default(Category, Keys, Default),
+                            _ = set_default(Category, Keys, Default),
                             Default;
                         Else ->
                             lager:debug("fetched config ~s(default) ~p: ~p", [Category, Keys, Else]),
@@ -265,7 +265,7 @@ get_all_kvs(Category) ->
 %% @end
 %%-----------------------------------------------------------------------------
 -spec set/3 :: (config_category(), config_key(), term()) -> {'ok', wh_json:json_object()}.
--spec set/4 :: (config_category(), config_key(), term(), ne_binary()) -> {'ok', wh_json:json_object()}.
+-spec set/4 :: (config_category(), config_key(), term(), ne_binary() | atom()) -> {'ok', wh_json:json_object()}.
 set(Category, Key, Value) ->
     set(Category, Key, Value, node()).
 set(Category, Key, Value, Node) ->
@@ -395,7 +395,7 @@ config_terms_to_json(Terms) ->
 %% for the given node
 %% @end
 %%-----------------------------------------------------------------------------
--spec do_set/4 :: (config_category(), config_key(), term(), ne_binary()) -> {'ok', wh_json:json_object()}.
+-spec do_set/4 :: (config_category(), config_key(), term(), ne_binary() | atom()) -> {'ok', wh_json:json_object()}.
 do_set(Category, Key, Value, Node) when not is_list(Key) ->
     do_set(Category, [wh_util:to_binary(Key)], Value, Node);
 do_set(Category0, Keys, Value, Node0) ->

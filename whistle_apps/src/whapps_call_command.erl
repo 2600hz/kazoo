@@ -163,7 +163,7 @@ b_pickup(TargetCallId, Call) ->
 %% Create a redirect request to the Contact on Server
 %% @end
 %%--------------------------------------------------------------------
--spec redirect/3 :: (ne_binary(), ne_binary(), whapps_call:call()) -> ok.
+-spec redirect/3 :: (ne_binary(), ne_binary(), whapps_call:call()) -> 'ok'.
 redirect(Contact, Server, Call) ->
     lager:debug("redirect to ~s on ~s", [Contact, Server]),
     Command = [{<<"Redirect-Contact">>, Contact}
@@ -179,7 +179,7 @@ redirect(Contact, Server, Call) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec flush_dtmf/1 :: (whapps_call:call()) -> 'ok'.
+-spec flush_dtmf/1 :: (whapps_call:call()) -> ne_binary().
 flush_dtmf(Call) ->
     play(<<"silence_stream://50">>, Call).
 
@@ -189,22 +189,22 @@ flush_dtmf(Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec presence/2 :: (ne_binary(), ne_binary() | whapps_call:call()) -> 'ok'.
--spec presence/3 :: (ne_binary(), ne_binary() | whapps_call:call(), ne_binary() | whapps_call:call()) -> 'ok'.
+-spec presence/3 :: (ne_binary(), ne_binary() | whapps_call:call(), ne_binary() | whapps_call:call() | 'undefined') -> 'ok'.
 
-presence(State, Call) when is_tuple(Call) ->
-    presence(State, whapps_call:from(Call));
-presence(State, PresenceId) ->
-    presence(State, PresenceId, undefined).
+presence(State, PresenceId) when is_binary(PresenceId) ->
+    presence(State, PresenceId, undefined);
+presence(State, Call) ->
+    presence(State, whapps_call:from(Call)).
 
-presence(State, PresenceId, Call) when is_tuple(Call) ->
-    presence(State, PresenceId, whapps_call:call_id(Call));
-presence(State, PresenceId, CallId) ->
+presence(State, PresenceId, CallId) when is_binary(CallId) orelse CallId =:= 'undefined' ->
     Command = [{<<"Presence-ID">>, PresenceId}
                ,{<<"State">>, State}
                ,{<<"Call-ID">>, CallId}
                | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
-    wapi_notifications:publish_presence_update(Command).
+    wapi_notifications:publish_presence_update(Command);
+presence(State, PresenceId, Call) ->
+    presence(State, PresenceId, whapps_call:call_id(Call)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -470,8 +470,8 @@ b_bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, Call) ->
 %%--------------------------------------------------------------------
 -spec hold/1 :: (whapps_call:call()) -> 'ok'.
 
--spec b_hold/1 :: (whapps_call:call()) -> 'ok'.
--spec b_hold/2 :: ('infinity' | pos_integer(), whapps_call:call()) -> 'ok'.
+-spec b_hold/1 :: (whapps_call:call()) -> whapps_api_std_return().
+-spec b_hold/2 :: ('infinity' | pos_integer(), whapps_call:call()) -> whapps_api_std_return().
 
 hold(Call) ->
     Command = [{<<"Application-Name">>, <<"hold">>}
@@ -492,8 +492,8 @@ b_hold(Timeout, Call) ->
 %% caller.
 %% @end
 %%--------------------------------------------------------------------
--spec prompt/2 :: (ne_binary(), whapps_call:call()) -> 'ok'.
--spec prompt/3 :: (ne_binary(), ne_binary(), whapps_call:call()) -> 'ok'.
+-spec prompt/2 :: (ne_binary(), whapps_call:call()) -> ne_binary().
+-spec prompt/3 :: (ne_binary(), ne_binary(), whapps_call:call()) -> ne_binary().
 
 -spec b_prompt/2 :: (ne_binary(), whapps_call:call()) -> whapps_api_std_return().
 -spec b_prompt/3 :: (ne_binary(), ne_binary(), whapps_call:call()) -> whapps_api_std_return().
@@ -518,8 +518,8 @@ b_prompt(Prompt, Lang, Call) ->
 %% can use to skip playback.
 %% @end
 %%--------------------------------------------------------------------
--spec play/2 :: (ne_binary(), whapps_call:call()) -> 'ok'.
--spec play/3 :: (ne_binary(), [ne_binary(),...], whapps_call:call()) -> 'ok'.
+-spec play/2 :: (ne_binary(), whapps_call:call()) -> ne_binary().
+-spec play/3 :: (ne_binary(), [ne_binary(),...], whapps_call:call()) -> ne_binary().
 
 -spec b_play/2 :: (ne_binary(), whapps_call:call()) -> whapps_api_std_return().
 -spec b_play/3 :: (ne_binary(), [ne_binary(),...], whapps_call:call()) -> whapps_api_std_return().
@@ -1098,10 +1098,10 @@ collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call, Digits
 %% for the optional timeout period then errors are returned.
 %% @end
 %%--------------------------------------------------------------------
--spec wait_for_message/1 :: (ne_binary()) -> whapps_api_std_return().
--spec wait_for_message/2 :: (ne_binary(), ne_binary()) -> whapps_api_std_return().
--spec wait_for_message/3 :: (ne_binary(), ne_binary(), ne_binary()) -> whapps_api_std_return().
--spec wait_for_message/4 :: (ne_binary(), ne_binary(), ne_binary(), 'infinity' | pos_integer()) -> whapps_api_std_return().
+-spec wait_for_message/1 :: (binary()) -> whapps_api_std_return().
+-spec wait_for_message/2 :: (binary(), ne_binary()) -> whapps_api_std_return().
+-spec wait_for_message/3 :: (binary(), ne_binary(), ne_binary()) -> whapps_api_std_return().
+-spec wait_for_message/4 :: (binary(), ne_binary(), ne_binary(), 'infinity' | pos_integer()) -> whapps_api_std_return().
 
 wait_for_message(Application) ->
     wait_for_message(Application, <<"CHANNEL_EXECUTE_COMPLETE">>).
@@ -1113,7 +1113,7 @@ wait_for_message(Application, Event, Type) ->
 wait_for_message(Application, Event, Type, Timeout) ->
     Start = erlang:now(),
     receive
-        {amqp_msg, {struct, _}=JObj} ->
+        {amqp_msg, JObj} ->
             case get_event_type(JObj) of
                 { <<"call_event">>, <<"CHANNEL_DESTROY">>, _ } ->
                     lager:debug("channel was destroyed while waiting for ~s", [Application]),

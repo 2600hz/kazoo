@@ -260,8 +260,8 @@ get_views_json(App, Folder) ->
 %% 
 %% @end
 %%--------------------------------------------------------------------
--spec get_view_json/2 :: (atom(), string()) -> {ne_binary(), wh_json:json_object()}.
--spec get_view_json/1 :: (string()) -> {ne_binary(), wh_json:json_object()}.
+-spec get_view_json/2 :: (atom(), ne_binary() | nonempty_string()) -> {ne_binary(), wh_json:json_object()}.
+-spec get_view_json/1 :: (ne_binary() | nonempty_string()) -> {ne_binary(), wh_json:json_object()}.
 
 get_view_json(App, File) ->
     Path = list_to_binary([code:priv_dir(App), "/couchdb/", File]),
