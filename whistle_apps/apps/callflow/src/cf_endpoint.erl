@@ -13,7 +13,7 @@
 -export([build/2, build/3]).
 -export([get/2]).
 
--define(NON_DIRECT_MODULES, [cf_ring_group]).
+-define(NON_DIRECT_MODULES, [cf_ring_group, acdc_util]).
 
 %%--------------------------------------------------------------------
 %% @public

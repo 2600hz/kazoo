@@ -18,8 +18,9 @@
 
 %% TODO - remove need for callflows to be present in VM
 get_endpoints(Call, EPs) ->
+    Properties = wh_json:from_list([{<<"source">>, ?MODULE}]),
     lists:foldr(fun(EndpointId, Acc) ->
-                        case cf_endpoint:build(EndpointId, Call) of
+                        case cf_endpoint:build(EndpointId, Properties, Call) of
                             {ok, Endpoint} -> Endpoint ++ Acc;
                             {error, _E} -> Acc
                         end
