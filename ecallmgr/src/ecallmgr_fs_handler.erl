@@ -166,7 +166,7 @@ handle_call({add_fs_node, Node, Options}, _From, #state{preconfigured_lookup=Pid
     Pid1 = maybe_stop_preconfigured_lookup(Resp, Pid),
     {reply, Resp, State1#state{preconfigured_lookup=Pid1}, hibernate};
 handle_call(_Request, _From, State) ->
-    {reply, {error, unhandled_request}, State}.
+    {reply, {error, not_implemented}, State}.
 
 %%--------------------------------------------------------------------
 %% @private

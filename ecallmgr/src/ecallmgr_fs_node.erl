@@ -173,6 +173,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_cast/2 :: (term(), #state{}) -> {'noreply', #state{}}.
 handle_cast(_Req, State) ->
     {noreply, State}.
 
