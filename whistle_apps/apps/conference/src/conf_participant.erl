@@ -560,8 +560,8 @@ bridge_to_conference(Route, Conference, Call) ->
                                   ,{<<"Auth-Password">>, whapps_conference:bridge_password(Conference)}
                                   ,{<<"Outgoing-Caller-ID-Number">>, whapps_call:caller_id_number(Call)}
                                   ,{<<"Outgoing-Caller-ID-Name">>, whapps_call:caller_id_name(Call)}
-%%                                  ,{<<"Ignore-Early-Media">>, <<"true">>}
-                                  ,{<<"Bypass-Media">>, <<"true">>}
+                                  ,{<<"Ignore-Early-Media">>, <<"true">>}
+%%                                  ,{<<"Bypass-Media">>, <<"true">>}
                                  ]),
     Command = [{<<"Application-Name">>, <<"bridge">>}
                ,{<<"Endpoints">>, [Endpoint]}
