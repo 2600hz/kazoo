@@ -3,6 +3,9 @@
 %%% @doc
 %%% Handle offnet requests, including rating them
 %%% @end
+%%% @contributors
+%%%   Karl Anderson
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(stepswitch_outbound).
 
@@ -33,12 +36,24 @@ handle_req(JObj, Props) ->
     whapps_util:put_callid(JObj),
     true = wapi_offnet_resource:req_v(JObj),
     lager:debug("received outbound request"),
-    <<"audio">> = wh_json:get_value(<<"Resource-Type">>, JObj),
-    {Number, _} = whapps_util:get_destination(JObj, ?APP_NAME, <<"outbound_user_field">>),
+    handle_req(wh_json:get_value(<<"Resource-Type">>, JObj), JObj, Props).
 
-    lager:debug("outbound request to ~s from account ~s", [Number, wh_json:get_value(<<"Account-ID">>, JObj)]),
+handle_req(<<"audio">>, JObj, Props) ->
+    {Number, _} = whapps_util:get_destination(JObj, ?APP_NAME, <<"outbound_user_field">>),
+    lager:debug("bridge request to ~s from account ~s", [Number, wh_json:get_value(<<"Account-ID">>, JObj)]),
     CtrlQ = wh_json:get_value(<<"Control-Queue">>, JObj),
     Response = case attempt_to_fullfill_req(Number, CtrlQ, JObj, Props) of
+                   {ok, _}=R1 -> response(R1, JObj);
+                   {fail, _}=R2 -> response(R2, JObj);
+                   {error, _}=R3 ->
+                       lager:notice("error attempting global resources to ~s", [Number]),
+                       response(R3, JObj)
+               end,
+    wapi_offnet_resource:publish_resp(wh_json:get_value(<<"Server-ID">>, JObj), Response);
+handle_req(<<"originate">>, JObj, Props) ->
+    {Number, _} = whapps_util:get_destination(JObj, ?APP_NAME, <<"outbound_user_field">>),
+    lager:debug("originate request to ~s from account ~s", [Number, wh_json:get_value(<<"Account-ID">>, JObj)]),
+    Response = case attempt_to_fullfill_originate_req(Number, JObj, Props) of
                    {ok, _}=R1 -> response(R1, JObj);
                    {fail, _}=R2 -> response(R2, JObj);
                    {error, _}=R3 ->
@@ -75,6 +90,22 @@ attempt_to_fullfill_req(Number, CtrlQ, JObj, Props) ->
         _Else -> Result
     end.
 
+-spec attempt_to_fullfill_originate_req/3 :: (ne_binary(), wh_json:json_object(), proplist()) -> bridge_resp() | execute_ext_resp().
+attempt_to_fullfill_originate_req(Number, JObj, Props) ->
+    Flags = wh_json:get_value(<<"Flags">>, JObj),
+    Resources = props:get_value(resources, Props), 
+    {Endpoints, _} = find_endpoints(Number, Flags, Resources),
+    Result = originate_to_endpoints(Endpoints, JObj),
+    CIDNum = wh_json:get_value(<<"Outgoing-Caller-ID-Number">>, JObj
+                               ,wh_json:get_value(<<"Emergency-Caller-ID-Number">>, JObj)),
+    case {Result, correct_shortdial(Number, CIDNum)} of
+        {{error, no_resources}, fail} -> Result;
+        {{error, no_resources}, CorrectedNumber} -> 
+            lager:debug("found no resources for number as dialed, retrying number corrected for shortdial as ~s", [CorrectedNumber]),
+            attempt_to_fullfill_originate_req(CorrectedNumber, JObj, Props);
+        _Else -> Result
+    end.
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -88,7 +119,7 @@ attempt_to_fullfill_req(Number, CtrlQ, JObj, Props) ->
 bridge_to_endpoints([], _, _, _) ->
     {error, no_resources};
 bridge_to_endpoints(Endpoints, IsEmergency, CtrlQ, JObj) ->
-    lager:debug("found resources that handle the number...to the cloud!"),
+    lager:debug("found resources that bridge the number...to the cloud!"),
     Q = create_queue(JObj),
 
     {CIDNum, CIDName} = case IsEmergency of
@@ -140,6 +171,64 @@ bridge_to_endpoints(Endpoints, IsEmergency, CtrlQ, JObj) ->
               ],
     wapi_dialplan:publish_command(CtrlQ, Command),
     wait_for_bridge(whapps_config:get_integer(<<"stepswitch">>, <<"bridge_timeout">>, 30000)).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Build a whistle dialplan API to bridge to the provided endpoints, and
+%% block until the bridge is complete.  If the Endpoints that we are
+%% attempting to use have been flagged as emergency routes then prefer
+%% the emergency CID.
+%% @end
+%%--------------------------------------------------------------------
+-spec originate_to_endpoints/2 :: (proplist(), wh_json:json_object()) -> {'error', 'no_resources'} | bridge_resp().
+originate_to_endpoints([], _) ->
+    {error, no_resources};
+originate_to_endpoints(Endpoints, JObj) ->
+    lager:debug("found resources that can originate the number...to the cloud!"),
+    Q = create_queue(JObj),
+
+    CIDNum = wh_json:get_value(<<"Outgoing-Caller-ID-Number">>, JObj),
+
+    FromURI = case catch whapps_config:get_atom(?APP_NAME, <<"format_from_uri">>, false) of
+                  true ->
+                      case {CIDNum, wh_json:get_value(<<"Account-Realm">>, JObj)} of
+                          {undefined, _} -> undefined;
+                          {_, undefined} -> undefined;
+                          {FromNumber, FromRealm} -> <<"sip:", FromNumber/binary, "@", FromRealm/binary>>
+                      end;
+                  _ -> undefined
+              end,
+
+    lager:debug("setting from-uri to ~s", [FromURI]),
+
+    CCVs = wh_json:set_values([ KV || {_,V}=KV <- [{<<"Account-ID">>, wh_json:get_value(<<"Account-ID">>, JObj, <<>>)}
+                                                   ,{<<"From-URI">>, FromURI}
+                                                  ],
+                                      V =/= undefined
+                              ], wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new())),
+
+    Request = [{<<"Application-Name">>, wh_json:get_value(<<"Application-Name">>, JObj, <<"park">>)}                                                                                                                                                                     
+               ,{<<"Application-Data">>, wh_json:get_value(<<"Application-Data">>, JObj)}
+               ,{<<"Endpoints">>, Endpoints}
+               ,{<<"Timeout">>, wh_json:get_value(<<"Timeout">>, JObj)}
+               ,{<<"Ignore-Early-Media">>, wh_json:get_value(<<"Ignore-Early-Media">>, JObj)}
+               ,{<<"Media">>, wh_json:get_value(<<"Media">>, JObj)}
+               ,{<<"Hold-Media">>, wh_json:get_value(<<"Hold-Media">>, JObj)}
+               ,{<<"Presence-ID">>, wh_json:get_value(<<"Presence-ID">>, JObj)}
+               ,{<<"Outgoing-Caller-ID-Number">>, CIDNum}
+               ,{<<"Outgoing-Caller-ID-Name">>, wh_json:get_value(<<"Outgoing-Caller-ID-Name">>, JObj)}
+               ,{<<"Ringback">>, wh_json:get_value(<<"Ringback">>, JObj)}
+               ,{<<"Dial-Endpoint-Method">>, <<"single">>}
+               ,{<<"Continue-On-Fail">>, <<"true">>}
+               ,{<<"SIP-Headers">>, wh_json:get_value(<<"SIP-Headers">>, JObj)}
+               ,{<<"Custom-Channel-Vars">>, CCVs}
+               | wh_api:default_headers(Q, <<"resource">>, <<"originate_req">>, ?APP_NAME, ?APP_VERSION)
+              ],
+    wapi_resource:publish_originate_req(Request).
+%%    io:format("~p~n", [Command]).
+%%    wapi_dialplan:publish_command(CtrlQ, Command),
+%%    wait_for_bridge(whapps_config:get_integer(<<"stepswitch">>, <<"bridge_timeout">>, 30000)).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -264,7 +353,7 @@ wait_for_bridge(Timeout) ->
 create_queue(JObj) ->
     Q = amqp_util:new_queue(),
     amqp_util:basic_consume(Q),
-    wapi_call:bind_q(Q, [{restrict_to, [events, cdr]}
+    wapi_call:bind_q(Q, [{restrict_to, [events]}
                          ,{callid, get(callid)}
                         ]),
     wapi_self:bind_q(Q, []),

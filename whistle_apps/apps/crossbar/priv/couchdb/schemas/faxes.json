@@ -1,0 +1,176 @@
+{
+   "_id":"faxes",
+   "id":"http://json-schema.org/draft-03/schema#",
+   "description":"Faxes API allows you to update and access fax jobs for both sending and receiving",
+   "properties":{
+      "document":{
+         "description":"Parameters related to the storage of a fax document",
+         "type":"object",
+         "properties":{
+            "url":{
+               "description":"The url of the fax document",
+               "type":"string"
+            },
+            "method":{
+               "description":"The method that should be used to reteive the document",
+               "type":"string",
+               "default":"get",
+               "enum":[
+                  "get",
+                  "post"
+               ]
+            },
+            "host":{
+               "description":"The host header to be used when fetching for transmission",
+               "type":"string"
+            },
+            "referer":{
+               "description":"The referer header to be used when fetching for transmission",
+               "type":"string"
+            },
+            "content_type":{
+               "description":"The content type header to be used when fetching for transmission as a post",
+               "type":"string"
+            },
+            "content":{
+               "description":"The content provided in the body when fetching for transmission as a post",
+               "type":"string"
+            }
+         },
+         "default":{
+
+         }
+      },
+      "notifications":{
+         "description":"Status notifications",
+         "type":"object",
+         "properties":{
+            "email":{
+               "description":"Email notifications",
+               "type":"object",
+               "properties":{
+                  "send_to":{
+                     "description":"A list or string of email recipent(s)",
+                     "type":[
+                        "string",
+                        "array"
+                     ]
+                  }
+               }
+            },
+            "sms":{
+               "description":"SMS notifications",
+               "type":"object",
+               "properties":{
+                  "send_to":{
+                     "description":"A list or string of sms recipent(s)",
+                     "type":[
+                        "string",
+                        "array"
+                     ]
+                  }
+               }
+            }
+         }
+      },
+      "retries":{
+         "description":"The number of times to retry",
+         "type":"integer",
+         "default":1
+      },
+      "attempts":{
+         "description":"The number of attempts made, this will be set by the system and reset automaticly on put/post",
+         "type":"integer",
+         "default":0
+      },
+      "from_name":{
+         "description":"The sender name for the fax",
+         "type":"string"
+      },
+      "from_number":{
+         "description":"The sender number for the fax",
+         "type":"string"
+      },
+      "to_name":{
+         "description":"The recipient name for the fax",
+         "type":"string"
+      },
+      "to_number":{
+         "description":"The recipient number for the fax",
+         "type":"string"
+      },
+      "tx_result":{
+         "description":"The result of a transmission attempt",
+         "type":"object",
+         "properties":{
+            "success":{
+               "description":"True if the fax transmission was successful",
+               "type":"boolean",
+               "default":false
+            },
+            "error_message":{
+               "description":"A description of any error that occured",
+               "type":"string",
+               "default":""
+            },
+            "pages_sent":{
+               "description":"The number of pages transmitted",
+               "type":"integer",
+               "default":0
+            },
+            "time_elapsed":{
+               "description":"The amount of time from submition to completion",
+               "type":"integer",
+               "default":0
+            },
+            "fax_bad_rows":{
+               "description":"The number of bad rows",
+               "type":"integer",
+               "default":0
+            },
+            "fax_speed":{
+               "description":"The speed achieved during transmission",
+               "type":"integer",
+               "default":0
+            },
+            "fax_receiver_id":{
+               "description":"The receiver id reported by the remote fax device",
+               "type":"string",
+               "default":""
+            },
+            "fax_error_correction":{
+               "description":"True if fax error correction was used",
+               "type":"boolean",
+               "default":false
+            }
+         },
+         "default":{
+
+         }
+      },
+      "callback":{
+         "description":"A URL to send results to",
+         "type":"object",
+         "properties":{
+            "url":{
+               "description":"The URL to call back with the results",
+               "type":"string"
+            },
+            "method":{
+               "description":"The caller id name of the sender",
+               "enum":[
+                  "post",
+                  "put"
+               ]
+            },
+            "type":{
+               "description":"The caller id name of the sender",
+               "enum":[
+                  "json",
+                  "www-url-form-encoded"
+               ]
+            }
+         }
+      }
+   }
+}

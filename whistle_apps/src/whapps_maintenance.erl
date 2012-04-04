@@ -20,6 +20,7 @@
 
 -define(DEVICES_CB_LIST, <<"devices/crossbar_listing">>).
 -define(MAINTENANCE_VIEW_FILE, <<"views/maintenance.json">>).
+-define(FAXES_VIEW_FILE, <<"views/faxes.json">>).
 -define(ACCOUNTS_AGG_VIEW_FILE, <<"views/accounts.json">>).
 -define(ACCOUNTS_AGG_NOTIFY_VIEW_FILE, <<"views/notify.json">>).
 
@@ -41,21 +42,21 @@ migrate() ->
     XbarUpdates = [fun(L) -> lists:delete(<<"cb_cdr">>, L) end
                    ,fun(L) -> lists:delete(<<"cb_signups">>, L) end
                    ,fun(L) -> lists:delete(<<"cb_resources">>, L) end
-		   ,fun(L) -> lists:delete(<<"cb_provisioner_templates">>, L) end
+                   ,fun(L) -> lists:delete(<<"cb_provisioner_templates">>, L) end
                    ,fun(L) -> [<<"cb_phone_numbers">> | lists:delete(<<"cb_phone_numbers">>, L)] end
                    ,fun(L) -> [<<"cb_templates">> | lists:delete(<<"cb_templates">>, L)] end
                    ,fun(L) -> [<<"cb_onboard">> | lists:delete(<<"cb_onboard">>, L)] end
                    ,fun(L) -> [<<"cb_connectivity">> | lists:delete(<<"cb_ts_accounts">>, L)] end
                    ,fun(L) -> [<<"cb_local_provisioner_templates">> | lists:delete(<<"cb_local_provisioner_templates">>, L)] end
-		   ,fun(L) -> [<<"cb_global_provisioner_templates">> | lists:delete(<<"cb_global_provisioner_templates">>, L)] end
-		   ,fun(L) -> [<<"cb_queues">> | lists:delete(<<"cb_queues">>, L)] end
+                   ,fun(L) -> [<<"cb_global_provisioner_templates">> | lists:delete(<<"cb_global_provisioner_templates">>, L)] end
+                   ,fun(L) -> [<<"cb_queues">> | lists:delete(<<"cb_queues">>, L)] end
                   ],
     StartModules = whapps_config:get(<<"crossbar">>, <<"autoload_modules">>, []),
     whapps_config:set_default(<<"crossbar">>
                                   ,<<"autoload_modules">>
                                   ,lists:foldr(fun(F, L) -> F(L) end, StartModules, XbarUpdates)),
     WhappsUpdates = [fun(L) -> [<<"sysconf">> | lists:delete(<<"sysconf">>, L)] end
-		    ,fun(L) -> [<<"acdc">> | lists:delete(<<"acdc">>, L)] end
+                    ,fun(L) -> [<<"acdc">> | lists:delete(<<"acdc">>, L)] end
                     ],
     StartWhapps = whapps_config:get(<<"whapps_controller">>, <<"whapps">>, []),
     whapps_config:set_default(<<"whapps_controller">>
@@ -114,6 +115,7 @@ do_refresh() ->
     refresh(?WH_SCHEMA_DB),
     refresh(?WH_ACCOUNTS_DB),
     refresh(?WH_PROVISIONER_DB),
+    refresh(?WH_FAXES),
     Views = [whapps_util:get_view_json(whistle_apps, ?MAINTENANCE_VIEW_FILE)
              ,whapps_util:get_view_json(conference, <<"views/conference.json">>)
              |whapps_util:get_views_json(crossbar, "account")
@@ -162,6 +164,10 @@ refresh(?WH_ACCOUNTS_DB) ->
 refresh(?WH_PROVISIONER_DB) ->
     couch_mgr:db_create(?WH_PROVISIONER_DB),
     couch_mgr:revise_doc_from_file(?WH_PROVISIONER_DB, crossbar, "account/provisioner_templates.json"),
+    ok;
+refresh(?WH_FAXES) ->
+    couch_mgr:db_create(?WH_FAXES),
+    couch_mgr:revise_doc_from_file(?WH_FAXES, whistle_apps, ?FAXES_VIEW_FILE),
     ok;
 refresh(<<Account/binary>>) ->
     Views = [whapps_util:get_view_json(whistle_apps, ?MAINTENANCE_VIEW_FILE)
