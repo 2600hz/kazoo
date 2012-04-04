@@ -59,7 +59,7 @@ get(Key0, Default, Node0) ->
                             <<"undefined">> -> Default;
                             <<"null">> -> Default;
                             Value ->
-                                case lists:exists(Key, ?DO_NOT_CACHE) of
+                                case lists:member(Key, ?DO_NOT_CACHE) of
                                     false -> wh_cache:store_local(Cache, cache_key(Key, Node), Value);
                                     true -> nothing
                                 end,
@@ -79,7 +79,7 @@ set(Key0, Value, Node0) ->
     Node = wh_util:to_binary(Node0),
 
     {ok, Cache} = ecallmgr_sup:cache_proc(),
-    case lists:exists(Key, ?DO_NOT_CACHE) of
+    case lists:member(Key, ?DO_NOT_CACHE) of
         false -> wh_cache:store_local(Cache, cache_key(Key, Node), Value);
         true -> nothing
     end,
