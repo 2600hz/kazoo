@@ -532,32 +532,6 @@ get_path1(RawPath, Relative) ->
                     end, PathTokensRev, UrlTokens)
        ), <<"/">>).
 
-parse_qs(QS) ->
-    parse_qs(QS, []).
-
-parse_qs(QS, Acc) ->
-    {K, Rest} = parse_qs_key(QS),
-    {V, Rest1} = parse_qs_key(Rest),
-    parse_qs(Rest1, [{K, V}|Acc]).
-
-parse_qs_key(<<" ", R/binary>>) ->
-    parse_qs_key(R);
-parse_qs_key(V) ->
-    parse_qs_key(V, <<>>).
-
-parse_qs_key(<<>>, Acc) ->
-    {Acc, <<>>};
-parse_qs_key(<<"=", R/binary>>, Acc) ->
-    {Acc, R};
-parse_qs_key(<<";", _/binary>> = R, Acc) ->
-    {Acc, R};
-parse_qs_key(<<"&", _/binary>> = R, Acc) ->
-    {Acc, R};
-parse_qs_key(<<C:1/binary, R/binary>>, Acc) ->
-    parse_qs_key(R, <<Acc/binary, C/binary>>).
-
-
-
 -include_lib("eunit/include/eunit.hrl").
 -ifdef(TEST).
 

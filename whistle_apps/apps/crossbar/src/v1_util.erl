@@ -161,7 +161,6 @@ extract_multipart(#cb_context{req_files=Files}=Context, #http_req{}=Req0) ->
     case extract_multipart_content(MPData, wh_json:new()) of
         {eof, Req1} -> {Context, Req1};
         {end_of_part, JObj, Req1} ->
-            
             extract_multipart(Context#cb_context{req_files=[JObj|Files]}, Req1)
     end.
 
@@ -172,7 +171,7 @@ extract_multipart_content({end_of_part, Req}, JObj) -> {end_of_part, JObj, Req};
 extract_multipart_content({{headers, Headers}, Req}, JObj) ->
     lager:debug("setting multipart headers: ~p", [Headers]),
     MPData = cowboy_http_req:multipart_data(Req),
-    extract_multipart_content(MPData, wh_json:set_value(<<"headers">>, extract_headers(Headers), JObj));
+    extract_multipart_content(MPData, wh_json:set_value(<<"headers">>, Headers, JObj));
 extract_multipart_content({{body, Datum}, Req}, JObj) ->
     extract_multipart_content({{data, Datum}, Req}, JObj);
 extract_multipart_content({{data, Datum}, Req}, JObj) ->
@@ -180,16 +179,6 @@ extract_multipart_content({{data, Datum}, Req}, JObj) ->
     extract_multipart_content(cowboy_http_req:multipart_data(Req)
                               ,wh_json:set_value(<<"data">>, <<Data/binary, Datum/binary>>, JObj)
                              ).
-
-extract_headers([_|_]=Headers) ->
-    case props:get_value(<<"Content-Disposition">>, Headers) of
-        <<"form-data; ", Key/binary>> ->
-            lager:debug("creating headers from ~s", [Key]),
-            mochiweb_util:parse_qs(Key);
-        _CD ->
-            lager:debug("unhandled content disposition: ~p", [_CD]),
-            Headers
-    end.
 
 -spec extract_file/3 :: (#cb_context{}, ne_binary(), #http_req{}) -> {#cb_context{}, #http_req{}}.
 extract_file(Context, ContentType, Req0) ->
