@@ -266,7 +266,7 @@ handle_call({callid}, _From, #state{callid=CallId}=State) ->
 handle_call({other_legs}, _From, #state{other_legs=Legs}=State) ->
     {reply, Legs, State};
 handle_call(_Request, _From, State) ->
-    {reply, ok, State}.
+    {reply, {error, not_implemented}, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -443,7 +443,9 @@ handle_cast({event_execute_complete, CallId, EvtName, JObj}, #state{callid=CallI
                     MsgId = wh_json:get_value(<<"Msg-ID">>, Cmd, <<>>),
                     {noreply, State#state{command_q = CmdQ1, current_app = AppName, current_cmd = Cmd, msg_id=MsgId}, hibernate}
             end
-    end.
+    end;
+handle_cast(_Msg, State) ->
+    {noreply, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -522,6 +524,9 @@ handle_info(_Msg, State) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
+%% Allows listener to pass options to handlers
+%%
+%% @spec handle_event(JObj, State) -> {reply, Options}
 %% @end
 %%--------------------------------------------------------------------
 handle_event(_JObj, _State) ->

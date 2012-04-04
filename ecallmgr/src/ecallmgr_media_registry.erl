@@ -150,7 +150,7 @@ handle_call({is_local, MediaName, CallId}, {FromPid, _Ref}=From, Dict) ->
     end;
 
 handle_call(_Request, _From, Dict) ->
-    {reply, {error, bad_request}, Dict}.
+    {reply, {error, not_implemented}, Dict}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -191,7 +191,6 @@ handle_info({'EXIT', Pid, _Reason}, Dict) ->
                           end, Dict), hibernate};
 
 handle_info(_Info, Dict) ->
-    lager:debug("unhandled message: ~p", [self(), _Info]),
     {noreply, Dict}.
 
 %%--------------------------------------------------------------------
