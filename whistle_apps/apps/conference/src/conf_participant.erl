@@ -155,10 +155,10 @@ consume_call_events(Srv) ->
 
 -spec relay_amqp/2 :: (wh_json:json_object(), proplist()) -> ok.
 relay_amqp(JObj, Props) ->
-    [Pid ! {amqp_msg, JObj}
-     || Pid <- props:get_value(call_event_consumers, Props, [])
-            ,is_pid(Pid)
-    ],
+    _ = [Pid ! {amqp_msg, JObj}
+         || Pid <- props:get_value(call_event_consumers, Props, [])
+                ,is_pid(Pid)
+        ],
     Digit = wh_json:get_value(<<"DTMF-Digit">>, JObj),
     case is_binary(Digit) andalso props:get_value(in_conference, Props, false) of
         false -> ok;
