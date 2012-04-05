@@ -49,10 +49,12 @@
 %% Default Headers
 %% All messages MUST include the DEFAULT_HEADERS list.
 -define(DEFAULT_HEADERS, [<<"Server-ID">>, <<"Event-Category">>, <<"Event-Name">>
-                              , <<"App-Name">>, <<"App-Version">>]).
+                              ,<<"App-Name">>, <<"App-Version">>
+                         ]).
 -define(OPTIONAL_DEFAULT_HEADERS, [<<"Raw-Headers">>, <<"Destination-Server">>
-                                  , <<"Geo-Location">>, <<"Access-Group">>
-                                  , <<"Tenant-ID">>]).
+                                       ,<<"Geo-Location">>, <<"Access-Group">>
+                                       ,<<"Tenant-ID">>
+                                  ]).
 -define(DEFAULT_VALUES, []).
 -define(DEFAULT_TYPES, [{<<"Server-ID">>, fun is_binary/1}
                         ,{<<"Event-Category">>, fun is_binary/1}
@@ -64,7 +66,7 @@
                         ,{<<"Geo-Location">>, fun is_binary/1}
                         ,{<<"Access-Group">>, fun is_binary/1}
                         ,{<<"Tenant-ID">>, fun is_binary/1}
-                        ]).
+                       ]).
 
 %% Error Responses
 -define(ERROR_RESP_HEADERS, [<<"Msg-ID">>, <<"Error-Message">>]).

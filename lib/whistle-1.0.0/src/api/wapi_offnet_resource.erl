@@ -46,7 +46,7 @@
 %% Offnet Resource Response
 -define(OFFNET_RESOURCE_RESP_HEADERS, [<<"Response-Message">>]).
 -define(OPTIONAL_OFFNET_RESOURCE_RESP_HEADERS, [<<"Msg-ID">>, <<"Error-Message">>, <<"Response-Code">>
-                                               ,<<"Call-ID">>]).
+                                               ,<<"Call-ID">>, <<"Resource-Response">>]).
 -define(OFFNET_RESOURCE_RESP_VALUES, [{<<"Event-Category">>, <<"resource">>}
                                       ,{<<"Event-Name">>, <<"offnet_resp">>}
                                      ]).

@@ -17,15 +17,25 @@
 -module(wh_api).
 
 %% API
--export([default_headers/2, default_headers/3, default_headers/4, default_headers/5]).
--export([prepare_api_payload/3, set_missing_values/2, remove_empty_values/1, extract_defaults/1]).
+-export([default_headers/2
+         ,default_headers/3
+         ,default_headers/4
+         ,default_headers/5]).
+-export([prepare_api_payload/3]).
+-export([set_missing_values/2]).
+-export([remove_empty_values/1]).
+-export([extract_defaults/1]).
 -export([disambiguate_and_publish/3]).
--export([error_resp/1]).
--export([error_resp_v/1]).
+-export([error_resp/1, error_resp_v/1]).
+-export([publish_error/2, publish_error/3]).
 
 %% Other AMQP API validators can use these helpers
--export([build_message/3, build_message_specific/3, build_message_specific_headers/3
-         ,validate/4, validate_message/4]).
+-export([build_message/3
+         ,build_message_specific/3
+         ,build_message_specific_headers/3
+         ,validate/4
+         ,validate_message/4
+        ]).
 
 -include("wh_api.hrl").
 -include("../include/wh_log.hrl").
@@ -170,6 +180,14 @@ error_resp_v(Prop) when is_list(Prop) ->
     validate(Prop, ?ERROR_RESP_HEADERS, ?ERROR_RESP_VALUES, ?ERROR_RESP_TYPES);
 error_resp_v(JObj) ->
     error_resp_v(wh_json:to_proplist(JObj)).
+
+-spec publish_error/2 :: (ne_binary(), api_terms()) -> 'ok'.
+-spec publish_error/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+publish_error(TargetQ, JObj) ->
+    publish_error(TargetQ, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_error(TargetQ, Error, ContentType) ->
+    {ok, Payload} = wh_api:prepare_api_payload(Error, ?ERROR_RESP_VALUES, fun ?MODULE:error_resp/1),
+    amqp_util:targeted_publish(TargetQ, Payload, ContentType).
 
 %%%===================================================================
 %%% Internal functions
