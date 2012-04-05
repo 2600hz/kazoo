@@ -68,11 +68,19 @@ init([Node]) ->
     put(callid, Node),
     lager:debug("starting new fs route listener for ~s", [Node]),
     process_flag(trap_exit, true),
-
     erlang:monitor_node(Node, true),
-
-    Stats = #handler_stats{started = erlang:now()},
-    {ok, #state{node=Node, stats=Stats}, 0}.
+    case freeswitch:bind(Node, dialplan) of
+        ok ->
+            lager:debug("bound to dialplan request on ~s", [Node]),
+            Stats = #handler_stats{started = erlang:now()},
+            {ok, #state{node=Node, stats=Stats}};
+        {error, Reason} ->
+            lager:warning("failed to bind to dialplan requests on ~s, ~p", [Node, Reason]),
+            {stop, Reason};
+        timeout ->
+            lager:warning("timeout when trying to bind to dialplan requests on node ~s", [Node]),
+            {stop, timeout}
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -193,16 +201,6 @@ handle_info({diagnostics, Pid}, #state{stats=Stats, lookups=LUs}=State) ->
     Pid ! Resp,
     {noreply, State};
 
-handle_info(timeout, #state{node=Node}=State) ->
-    case freeswitch:bind(Node, dialplan) of
-        ok ->
-            lager:debug("bound to dialplan request on ~s", [Node]),
-            {noreply, State};
-        {error, Reason} ->
-            lager:debug("failed to bind to dialplan requests on ~s, ~p", [Node, Reason]),
-            {stop, Reason, State}
-    end;
-
 handle_info(_Other, State) ->
     {noreply, State}.
 
@@ -269,12 +267,8 @@ process_route_req(Node, FSID, CallID, FSData) ->
 -spec authorize_and_route/5 :: (atom(), ne_binary(), ne_binary(), proplist(), proplist()) -> 'ok'.
 authorize_and_route(Node, FSID, CallID, FSData, DefProp) ->
     lager:debug("starting authorization request from node ~s", [Node]),
-    case ecallmgr_authz:authorize(FSID, CallID, FSData) of
-        {ok, AuthZPid} ->
-            route(Node, FSID, CallID, DefProp, AuthZPid);
-        _Else ->
-            lager:debug("did not receive authorization response: ~p", [_Else])
-    end.
+    {ok, AuthZPid} = ecallmgr_authz:authorize(FSID, CallID, FSData),
+    route(Node, FSID, CallID, DefProp, AuthZPid).
     
 -spec route/5 :: (atom(), ne_binary(), ne_binary(), proplist(), pid() | 'undefined') -> 'ok'.
 route(Node, FSID, CallID, DefProp, AuthZPid) ->

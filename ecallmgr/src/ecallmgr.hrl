@@ -85,6 +85,7 @@
                                ,{<<"Inherit-Codec">>, <<"inherit_codec">>}
                                ,{<<"From-URI">>, <<"sip_from_uri">>}
                                ,{<<"Bypass-Media">>, <<"bypass_media">>}
+                               ,{<<"Origination-UUID">>, <<"origination_uuid">>}
                                %% ,{<<"Hold-Media">>, <<"hold_music">>}
                               ]).
 

@@ -182,7 +182,7 @@ build_bridge_string(Endpoints, Seperator) ->
     wh_util:join_binary(lists:reverse(BridgeStrings), Seperator).
 
 -type build_return() :: ne_binary() | {'worker', pid()}.
--spec build_bridge_endpoints/2 :: (wh_json:json_objects(), [build_return(),...]) -> [ne_binary(),...].
+-spec build_bridge_endpoints/2 :: (wh_json:json_objects(), [build_return(),...] | []) -> [ne_binary(),...].
 build_bridge_endpoints([], Channels) ->
     lists:foldr(fun({worker, Pid}, BridgeStrings) ->
                         receive

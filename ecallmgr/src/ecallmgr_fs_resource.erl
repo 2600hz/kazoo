@@ -61,12 +61,29 @@ start_link(Node, Options) ->
 
 -spec handle_originate_req/2 :: (wh_json:json_object(), proplist()) -> 'ok' | 'fail'.
 handle_originate_req(JObj, Props) ->
+    true = wapi_resource:originate_req_v(JObj),
+    Node = props:get_value(node, Props),
+    lager:debug("received originate request for node ~s", [Node]),
+    ServerId = wh_json:get_value(<<"Server-ID">>, JObj),
     Endpoints = wh_json:get_ne_value(<<"Endpoints">>, JObj, []),
     case wapi_resource:originate_req_v(JObj) of
-        false -> {'error', <<"originate failed to execute as JObj did not validate">>};
-        true when Endpoints =:= [] -> {'error', <<"originate request had no endpoints">>};
+        false -> 
+            lager:debug("originate failed to execute as JObj did not validate", []), 
+            E = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, wh_util:to_binary(wh_util:current_tstamp()))}
+                 ,{<<"Request">>, JObj}
+                 ,{<<"Error-Message">>, <<"originate failed to execute as JObj did not validate">>}
+                 | wh_api:default_headers(<<"error">>, <<"originate_resp">>, ?APP_NAME, ?APP_VERSION)
+                ],
+            wh_api:publish_error(ServerId, E);
+        true when Endpoints =:= [] -> 
+            lager:debug("originate request had no endpoints", []),
+            E = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, wh_util:to_binary(wh_util:current_tstamp()))}
+                 ,{<<"Request">>, JObj}
+                 ,{<<"Error-Message">>, <<"originate request had no endpoints">>}
+                 | wh_api:default_headers(<<"error">>, <<"originate_resp">>, ?APP_NAME, ?APP_VERSION)
+                ],
+            wh_api:publish_error(ServerId, E);
         true ->
-            Node = props:get_value(node, Props),
             DialSeparator = case wh_json:get_value(<<"Dial-Endpoint-Method">>, JObj, <<"single">>) of
                                 <<"simultaneous">> when length(Endpoints) > 1 -> <<",">>;
                                 _Else -> <<"|">>
@@ -74,10 +91,18 @@ handle_originate_req(JObj, Props) ->
             DialStrings = ecallmgr_util:build_bridge_string(Endpoints, DialSeparator),
             Action = get_originate_action(wh_json:get_value(<<"Application-Name">>, JObj), JObj),
             Args = list_to_binary([ecallmgr_fs_xml:get_channel_vars(JObj), DialStrings, " ", Action]),
-%%            io:format("freeswitch:api(~p, 'originate', \"~s\").~n", [Node, Args]),
-            ecallmgr_util:fs_log(Node, "whistle originating call: ~s", [Args]),
-            Result = freeswitch:api(Node, 'originate', wh_util:to_list(Args)),
-            io:format("Result: ~p~n", [Result])
+            _ = ecallmgr_util:fs_log(Node, "whistle originating call: ~s", [Args]),
+            case handle_originate_return(Node, freeswitch:api(Node, 'originate', wh_util:to_list(Args))) of
+                {ok, Resp} -> 
+                    lager:debug("originate completed, sending notice to requestor", []),
+                    wapi_resource:publish_originate_resp(ServerId, Resp);
+                {error, Error} -> 
+                    E = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, wh_util:to_binary(wh_util:current_tstamp()))}
+                         ,{<<"Request">>, JObj}
+                         | Error
+                        ],
+                    wh_api:publish_error(ServerId, E)
+            end
     end.
 
 %%%===================================================================
@@ -185,7 +210,7 @@ code_change(_OldVsn, State, _Extra) ->
 -spec get_originate_action/2 :: (ne_binary(), wh_json:json_object()) -> ne_binary().
 get_originate_action(<<"fax">>, JObj) ->
     Data = wh_json:get_value(<<"Application-Data">>, JObj),
-    <<"$txfax(${http_get(", Data/binary, ")})">>;
+    <<"&txfax(${http_get(", Data/binary, ")})">>;
 get_originate_action(<<"transfer">>, JObj) ->
     case wh_json:get_value([<<"Application-Data">>, <<"Route">>], JObj) of
         undefined -> <<"error">>;
@@ -215,49 +240,80 @@ get_unset_vars(JObj) ->
         Unset -> [string:join(Unset, "^"), "^"]
     end.
 
+-spec handle_originate_return/2 :: (atom(), {'ok', ne_binary()} | {'error', ne_binary()} | timeout) -> {'ok', proplist()} |
+                                                                                                       {'error', proplist()}.
 
+handle_originate_return(Node, {ok, <<"+OK ", CallId/binary>>}) ->
+    start_call_handling(Node, binary:replace(CallId, <<"\n">>, <<>>));
+handle_originate_return(Node, {error, <<"-ERR ", Error/binary>>}) ->
+    lager:debug("originate on ~s resulted in an error: ~s", [Node, Error]),
+    create_error_resp(Error);
+handle_originate_return(Node, timeout) ->
+    lager:debug("originate timed out on ~s", [Node]),
+    create_error_resp(<<"originate command timed out">>);
+handle_originate_return(Node, Else) ->
+    lager:debug("originate on ~s returned an unexpected result: ~s", [Node, Else]),
+    create_error_resp(<<"unexpected originate return value">>).
 
--spec originate_channel/5 :: (atom(), pid(), ne_binary(), integer(), wh_json:json_object()) -> no_return().
-originate_channel(Node, Pid, Route, AvailChan, JObj) ->
-    ChannelVars = ecallmgr_fs_xml:get_channel_vars(JObj),
-    Action = get_originate_action(wh_json:get_value(<<"Application-Name">>, JObj), JObj),
-    OrigStr = binary_to_list(list_to_binary([ChannelVars, Route, " ", Action])),
-    lager:debug("originate ~s on node ~s", [OrigStr, Node]),
-    _ = ecallmgr_util:fs_log(Node, "whistle originating call: ~s", [OrigStr]),
-
-    case freeswitch:bgapi(Node, originate, OrigStr) of
-        {ok, JobId} ->
-            receive
-                {bgok, JobId, X} ->
-                    CallID = erlang:binary_part(X, {4, byte_size(X)-5}),
-                    lager:debug("originate on ~s with job id ~s received bgok ~s", [Node, JobId, X]),
-                    CtlQ = start_call_handling(Node, CallID),
-                    Pid ! {resource_consumed, CallID, CtlQ, AvailChan-1};
-                {bgerror, JobId, Y} ->
-                    ErrMsg = erlang:binary_part(Y, {5, byte_size(Y)-6}),
-                    lager:debug("~s failed to originate, ~p", [Node, ErrMsg]),
-                    Pid ! {resource_error, ErrMsg}
-            after
-                9000 ->
-                    lager:debug("~s originate timed out", [Node]),
-                    Pid ! {resource_error, timeout}
-            end;
-        {error, Y} ->
-            ErrMsg = erlang:binary_part(Y, {5, byte_size(Y)-6}),
-            lager:debug("~s failed to originate ~p", [Node, ErrMsg]),
-            Pid ! {resource_error, ErrMsg};
+-spec start_call_handling/2 :: (atom(), ne_binary()) -> {'ok', proplist()} |
+                                                        {'error', proplist()}.
+start_call_handling(Node, CallId) ->
+    erlang:monitor_node(Node, true),
+    case freeswitch:handlecall(Node, CallId) of
+        ok -> 
+            lager:debug("listening to originated call ~s events from ~s", [CallId, Node]),
+            wait_for_originate(Node, CallId);
         timeout ->
-            lager:debug("~s originate timed out", [Node]),
-            Pid ! {resource_error, timeout}
+            lager:debug("timed out trying to listen to originated call events from ~s", [Node]),
+            create_error_resp(<<"node timedout">>);
+        {'error', badsession} ->
+            lager:debug("bad session received when setting up originated call listener from ~s", [Node]),
+            create_error_resp(<<"badsession received while registering event listener">>);
+        _E ->
+            lager:debug("failed to setup listener for originated call events from ~s: ~p", [Node, _E]),
+            create_error_resp(<<"unexepected return registering event listener">>)
     end.
 
--spec start_call_handling/2 :: (atom(), ne_binary()) -> ne_binary() | {'error', 'amqp_error'}.
-start_call_handling(Node, UUID) ->
-    try
-        {ok, CtlPid} = ecallmgr_call_sup:start_control_process(Node, UUID),
-        {ok, _} = ecallmgr_call_sup:start_event_process(Node, UUID),
-
-        ecallmgr_call_control:queue_name(CtlPid)
-    catch
-        _:_ -> {error, amqp_error}
+-spec wait_for_originate/2 :: (atom(), ne_binary()) -> {'ok', proplist()} |
+                                                       {'error', proplist()}.
+wait_for_originate(Node, CallId) ->
+    receive 
+        {_, {event, [CallId | Props]}} ->
+            case props:get_value(<<"Event-Name">>, Props) of
+                <<"CHANNEL_DESTROY">> -> 
+                    lager:debug("received channel destroy event", []),
+                    create_success_resp(Props);
+                _Else -> 
+                    wait_for_originate(Node, CallId)
+            end;
+        {nodedown, _} ->
+            lager:debug("lost connection to node ~s", [Node]),
+            erlang:monitor_node(Node, false),
+            create_error_resp(<<"lost connection to freeswitch node">>);
+        _Else ->
+            wait_for_originate(Node, CallId)
     end.
+
+-spec create_error_resp/1 :: (ne_binary()) -> {'error', proplist()}.
+create_error_resp(Msg) ->
+    {error, [{<<"Error-Message">>, binary:replace(Msg, <<"\n">>, <<>>)}
+             | wh_api:default_headers(<<"error">>, <<"originate_resp">>, ?APP_NAME, ?APP_VERSION)
+            ]}.
+
+-spec create_success_resp/1 :: (ne_binary()) -> {'ok', proplist()}.
+create_success_resp(Props) ->
+    EventName = props:get_value(<<"Event-Name">>, Props),
+    ApplicationName = props:get_value(<<"Application">>, Props),
+    Builders = [fun(P) -> 
+                        [{<<"Event-Category">>, <<"resource">>}
+                         | props:delete(<<"Event-Category">>, P)
+                        ] 
+                end
+                ,fun(P) -> 
+                         [{<<"Event-Name">>, <<"originate_resp">>}
+                          | props:delete(<<"Event-Name">>, P)
+                         ] 
+                 end
+                ,fun(_) -> ecallmgr_call_events:create_event(EventName, ApplicationName, Props) end
+               ],
+    {ok, lists:foldr(fun(F, P) -> F(P) end, [],  Builders)}.
