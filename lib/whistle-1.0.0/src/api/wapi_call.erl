@@ -8,6 +8,8 @@
 %%%-------------------------------------------------------------------
 -module(wapi_call).
 
+-export([optional_call_event_headers/0]).
+
 -export([event/1, event_v/1]).
 -export([channel_status_req/1, channel_status_req_v/1]).
 -export([channel_status_resp/1, channel_status_resp_v/1]).
@@ -61,6 +63,9 @@
                                           ,<<"Detected-Tone">>, <<"DTMF-Duration">>, <<"DTMF-Digit">> %% DTMF and Tones
                                           ,<<"Terminator">>, <<"Disposition">>, <<"Hangup-Cause">>, <<"Hangup-Code">> %% Hangup
                                           ,<<"Raw-Application-Name">>, <<"Raw-Application-Data">>, <<"Length">>
+                                          ,<<"Fax-Success">>, <<"Fax-Result-Code">>, <<"Fax-Result-Text">>, <<"Fax-ECM-Used">>
+                                          ,<<"Fax-Transferred-Pages">>, <<"Fax-Total-Pages">>, <<"Fax-Bad-Rows">>, <<"Fax-Transfer-Rate">>
+                                          ,<<"Msg-ID">>
                                      ]).
 -define(CALL_EVENT_VALUES, [{<<"Event-Category">>, <<"call_event">>}]).
 -define(CALL_EVENT_TYPES, [{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}]).
@@ -201,8 +206,13 @@
 -define(RATING_RESP_RATE_VALUES, []).
 -define(RATING_RESP_RATE_TYPES, []).
 
+-spec required_rate_resp_rate_headers/0 :: () -> proplist().
 required_rate_resp_rate_headers() ->
     ?RATING_RESP_RATE_HEADERS.
+
+-spec optional_call_event_headers/0 :: () -> proplist().
+optional_call_event_headers() ->
+    ?OPTIONAL_CALL_EVENT_HEADERS.
 
 %%--------------------------------------------------------------------
 %% @doc Format a call event from the switch for the listener

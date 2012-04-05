@@ -3,12 +3,18 @@
 %%% @doc
 %%% Dialplan API commands
 %%% @end
+%%% @contributors
+%%%   James Aimonetti
+%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(wapi_dialplan).
 
 -compile({no_auto_import, [error/1]}).
 
 -export([v/1]).
+
+-export([optional_bridge_req_headers/0]).
+-export([optional_bridge_req_endpoint_headers/0]).
 
 -export([bridge/1, bridge_v/1, bridge_endpoint/1, bridge_endpoint_v/1]).
 -export([store/1, store_v/1, store_amqp_resp/1, store_amqp_resp_v/1
@@ -48,6 +54,14 @@
 
 -include("wapi_dialplan.hrl").
 -include_lib("whistle/include/wh_log.hrl").
+
+-spec optional_bridge_req_headers/0 :: () -> proplist().
+optional_bridge_req_headers() ->
+    ?OPTIONAL_BRIDGE_REQ_HEADERS.
+
+-spec optional_bridge_req_endpoint_headers/0 :: () -> proplist().
+optional_bridge_req_endpoint_headers() ->
+    ?OPTIONAL_BRIDGE_REQ_ENDPOINT_HEADERS.
 
 %% Takes a generic API JObj, determines what type it is, and calls the appropriate validator
 -spec v/1 :: (api_terms()) -> boolean().
