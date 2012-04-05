@@ -24,7 +24,7 @@
          ,delete/2, delete/4
         ]).
 
--include("../../include/crossbar.hrl").
+-include_lib("crossbar/include/crossbar.hrl").
 
 -define(PORT_DOCS, <<"docs">>).
 -define(ACTIVATE, <<"activate">>).
@@ -94,23 +94,20 @@ allowed_methods(_, ?PORT_DOCS, _) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists/0 :: () -> boolean().
--spec resource_exists/1 :: (path_token()) -> boolean().
+-spec resource_exists/0 :: () -> 'true'.
+-spec resource_exists/1 :: (path_token()) -> 'true'.
 -spec resource_exists/2 :: (path_token(), path_token()) -> boolean().
 -spec resource_exists/3 :: (path_token(), path_token(), path_token()) -> boolean().
-resource_exists() ->
-    true.
+resource_exists() -> true.
 
-resource_exists(_) ->
-    true.
+resource_exists(_) -> true.
 
-resource_exists(_, ?ACTIVATE) ->
-    true;
-resource_exists(_, ?PORT_DOCS) ->
-    true.
-
-resource_exists(_, ?PORT_DOCS, _) ->
-    true.
+resource_exists(_, ?ACTIVATE) -> true;
+resource_exists(_, ?PORT_DOCS) -> true;
+resource_exists(_, _) -> false.
+ 
+resource_exists(_, ?PORT_DOCS, _) -> true;
+resource_exists(_, _, _) -> false.
 
 %%--------------------------------------------------------------------
 %% @private

@@ -76,9 +76,8 @@ init() ->
 %% known, or false if not.
 %% @end
 %%--------------------------------------------------------------------
--spec authenticate/1 :: (#cb_context{}) -> boolean().
-authenticate(#cb_context{}) ->
-    false.
+-spec authenticate/1 :: (#cb_context{}) -> 'false'.
+authenticate(#cb_context{}) -> false.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -87,9 +86,8 @@ authenticate(#cb_context{}) ->
 %% allowed to access the resource, or false if not.
 %% @end
 %%--------------------------------------------------------------------
--spec authorize/1 :: (#cb_context{}) -> boolean().
-authorize(#cb_context{}) ->
-    false.
+-spec authorize/1 :: (#cb_context{}) -> 'false'.
+authorize(#cb_context{}) -> false.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -114,8 +112,8 @@ allowed_methods(_) ->
 %%    /skels/foo/bar => [<<"foo">>, <<"bar">>]
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists/0 :: () -> boolean().
--spec resource_exists/1 :: (path_tokens()) -> boolean().
+-spec resource_exists/0 :: () -> 'true'.
+-spec resource_exists/1 :: (path_tokens()) -> 'true'.
 resource_exists() -> true.
 resource_exists(_) -> true.
 

@@ -19,7 +19,7 @@
          ,validate/1, validate/2
         ]).
 
--include("../../include/crossbar.hrl").
+-include_lib("crossbar/include/crossbar.hrl").
 
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".cdrs">>).
 
@@ -62,12 +62,10 @@ allowed_methods(_) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists/0 :: () -> boolean().
--spec resource_exists/1 :: (path_token()) -> boolean().
-resource_exists() ->
-    true.
-resource_exists(_) ->
-    true.
+-spec resource_exists/0 :: () -> 'true'.
+-spec resource_exists/1 :: (path_token()) -> 'true'.
+resource_exists() -> true.
+resource_exists(_) -> true.
 
 %%--------------------------------------------------------------------
 %% @private

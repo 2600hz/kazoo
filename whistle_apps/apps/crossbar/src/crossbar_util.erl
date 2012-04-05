@@ -278,11 +278,21 @@ fetch(Key, #cb_context{storage=Storage}) ->
 %% Fetches a previously stored value from the current request.
 %% @end
 %%--------------------------------------------------------------------
--spec find_account_db/3 :: ('undefined' | ne_binary(), 'undefined' | ne_binary(), 'undefined' | ne_binary()) -> {'ok', ne_binary()} |
-                                                                                                          {'error', wh_json:json_object()}.
+-spec find_account_id/3 :: ('undefined' | ne_binary(), 'undefined' | ne_binary(), 'undefined' | ne_binary()) 
+                           -> {'ok', ne_binary()} | {'multiples', [ne_binary(),...]} | {'error', wh_json:json_object()}.
 
--spec find_account_db/4 :: ('undefined' | ne_binary(), 'undefined' | ne_binary(), 'undefined' | ne_binary(), boolean()) 
-                           -> {'ok', ne_binary()} | {'ok', [ne_binary(),...]} | {'error', wh_json:json_object()}.
+-spec find_account_id/4 :: ('undefined' | ne_binary(), 'undefined' | ne_binary(), 'undefined' | ne_binary(), 'true') 
+                           -> {'ok', ne_binary()} | {'multiples', [ne_binary(),...]} | {'error', wh_json:json_object()};
+                           ('undefined' | ne_binary(), 'undefined' | ne_binary(), 'undefined' | ne_binary(), 'false') 
+                           -> {'ok', ne_binary()} | {'error', wh_json:json_object()}.
+
+-spec find_account_db/3 :: ('undefined' | ne_binary(), 'undefined' | ne_binary(), 'undefined' | ne_binary()) 
+                           -> {'ok', ne_binary()} | {'multiples', [ne_binary(),...]} | {'error', wh_json:json_object()}.
+
+-spec find_account_db/4 :: ('undefined' | ne_binary(), 'undefined' | ne_binary(), 'undefined' | ne_binary(), 'true') 
+                           -> {'ok', ne_binary()} | {'multiples', [ne_binary(),...]} | {'error', wh_json:json_object()};
+                           ('undefined' | ne_binary(), 'undefined' | ne_binary(), 'undefined' | ne_binary(), 'false') 
+                           -> {'ok', ne_binary()} | {'error', wh_json:json_object()}.
 
 find_account_id(PhoneNumber, AccountRealm, AccountName) ->
     find_account_id(PhoneNumber, AccountRealm, AccountName, true).
@@ -290,7 +300,7 @@ find_account_id(PhoneNumber, AccountRealm, AccountName) ->
 find_account_id(PhoneNumber, AccountRealm, AccountName, AllowMultiples) ->
     case find_account_db(PhoneNumber, AccountRealm, AccountName, AllowMultiples, wh_json:new()) of
         {ok, AccountDb} -> {ok, wh_util:format_account_id(AccountDb, raw)};
-        {multiples, AccountDbs} -> {ok, [wh_util:format_account_id(AccountDb, raw) || AccountDb <- AccountDbs]};
+        {multiples, AccountDbs} -> {multiples, [wh_util:format_account_id(AccountDb, raw) || AccountDb <- AccountDbs]};
         Else -> Else
     end.
 

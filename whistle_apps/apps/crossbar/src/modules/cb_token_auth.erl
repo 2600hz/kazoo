@@ -31,7 +31,7 @@ init() ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec authenticate/1 :: (#cb_context{}) -> boolean() | {boolean(), #cb_context{}}.
+-spec authenticate/1 :: (#cb_context{}) -> 'false' | {'true', #cb_context{}}.
 authenticate(#cb_context{auth_token = <<>>}) ->
     false;
 authenticate(#cb_context{auth_token=AuthToken}=Context) ->

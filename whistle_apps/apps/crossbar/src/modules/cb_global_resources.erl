@@ -63,13 +63,20 @@ allowed_methods(_) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists/0 :: () -> boolean().
--spec resource_exists/1 :: (path_token()) -> boolean().
-resource_exists() ->
-    true.
-resource_exists(_) ->
-    true.
+-spec resource_exists/0 :: () -> 'true'.
+-spec resource_exists/1 :: (path_token()) -> 'true'.
+resource_exists() -> true.
+resource_exists(_) -> true.
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% This function determines if the parameters and content are correct
+%% for this request
+%%
+%% Failure here returns 400
+%% @end
+%%--------------------------------------------------------------------
 -spec validate/1 :: (#cb_context{}) -> #cb_context{}.
 -spec validate/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
 validate(Context) ->

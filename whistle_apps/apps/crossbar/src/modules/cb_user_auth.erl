@@ -208,7 +208,7 @@ normalize_account_name(AccountName) ->
 %% Failure here returns 401
 %% @end
 %%--------------------------------------------------------------------
--spec authorize_user/4 :: (#cb_context{}, ne_binary(), ne_binary(), [ne_binary(),...] | []) -> #cb_context{}.
+-spec authorize_user/4 :: (#cb_context{}, ne_binary(), ne_binary(), [ne_binary(),...] | [] | ne_binary()) -> #cb_context{}.
 authorize_user(Context, _, _, []) ->
     lager:debug("no account(s) specified"),
     crossbar_util:response(error, <<"invalid credentials">>, 401, Context);
