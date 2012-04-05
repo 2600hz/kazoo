@@ -1,3 +1,4 @@
+
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011, VoIP INC
 %%% @doc
@@ -237,7 +238,6 @@ content_types_accepted(Req0, #cb_context{req_nouns=Nouns}=Context0) ->
                                                   [ {EncType, Fun} | Acc1 ]
                                           end, Acc, L)
                       end, [], CTAs),
-    io:format("~p~n", [CTA]),
     {CTA, Req1, Context1}.
 
 -spec languages_provided/2 :: (#http_req{}, #cb_context{}) -> {[ne_binary(),...], #http_req{}, #cb_context{}}.
