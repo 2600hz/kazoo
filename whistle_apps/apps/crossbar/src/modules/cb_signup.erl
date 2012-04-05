@@ -87,12 +87,13 @@ cleanup_loop(#state{cleanup_interval=CleanupInterval}=State) ->
     Wait = CleanupInterval * 1000,
     receive
         {send_activation_email, Context} ->
-            send_activation_email(Context, State),
+            _ = send_activation_email(Context, State),
             cleanup_loop(State);
         {register, Context} ->
-            exec_register_command(Context, State),
+            _ = exec_register_command(Context, State),
             cleanup_loop(State);
-        _ -> cleanup_loop(State)
+        _ -> 
+            cleanup_loop(State)
     after
         Wait ->
             cleanup_signups(State),
@@ -123,12 +124,10 @@ allowed_methods(_) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists/0 :: () -> boolean().
--spec resource_exists/1 :: (path_token()) -> boolean().
-resource_exists() ->
-    true.
-resource_exists(_) ->
-    true.
+-spec resource_exists/0 :: () -> 'true'.
+-spec resource_exists/1 :: (path_token()) -> 'true'.
+resource_exists() -> true.
+resource_exists(_) -> true.
 
 %%--------------------------------------------------------------------
 %% @public

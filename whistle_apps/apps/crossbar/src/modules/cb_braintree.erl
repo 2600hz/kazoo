@@ -686,13 +686,11 @@ change_subscription(Updates, Subscription, #cb_context{doc=JObj}=Context) ->
             crossbar_util:response_db_fatal(Context)
     end.
 
--spec create_subscription/2 :: ({'ok', ne_binary()} |
+-spec create_subscription/2 :: ({'ok', nonempty_string()} |
                                 {'error', atom()} |
-                                {'inactive', ne_binary()} |
                                 {'api_error', wh_json:json_object()}
                                 ,nonempty_string()) -> {'ok', #bt_subscription{}} |
                                                        {'error', atom()} |
-                                                       {'inactive', ne_binary()} |
                                                        {'api_error', wh_json:json_object()}.
 create_subscription({ok, Token}, Plan) ->
     lager:debug("creating new subscription ~s with token ~s", [Plan, Token]),

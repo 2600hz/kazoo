@@ -18,7 +18,7 @@
          ,delete/2
         ]).
 
--include("../../include/crossbar.hrl").
+-include_lib("crossbar/include/crossbar.hrl").
 
 -define(PVT_FUNS, [fun add_pvt_type/2]).
 -define(PVT_TYPE, <<"rate">>).
@@ -68,12 +68,10 @@ allowed_methods(_) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists/0 :: () -> boolean().
--spec resource_exists/1 :: (path_token()) -> boolean().
-resource_exists() ->
-    true.
-resource_exists(_) ->
-    true.
+-spec resource_exists/0 :: () -> 'true'.
+-spec resource_exists/1 :: (path_token()) -> 'true'.
+resource_exists() -> true.
+resource_exists(_) -> true.
 
 -spec content_types_accepted/1 :: (#cb_context{}) -> #cb_context{}.
 content_types_accepted(#cb_context{req_verb = <<"post">>}=Context) ->
@@ -252,7 +250,7 @@ process_upload_file(#cb_context{req_files=[{_Name, File}|_]}=Context) ->
                  ,Context
                 ).
 
--spec convert_file/3 :: (nonempty_string(), ne_binary(), #cb_context{}) -> {'ok', {non_neg_integer(), wh_json:json_objects()}}.
+-spec convert_file/3 :: (ne_binary(), ne_binary(), #cb_context{}) -> {'ok', {non_neg_integer(), wh_json:json_objects()}}.
 convert_file(<<"text/csv">>, FileContents, Context) ->
     csv_to_rates(FileContents, Context);
 convert_file(ContentType, _, _) ->
@@ -267,8 +265,8 @@ csv_to_rates(CSV, Context) ->
                                           RateDocs1 = case Cnt > 1 andalso Cnt rem BulkInsert =:= 0 of
                                                           true ->
                                                               spawn(fun() ->
-                                                                            crossbar_util:put_reqid(Context),
-                                                                            crossbar_doc:save(Context#cb_context{doc=RateDocs}),
+                                                                            _ = crossbar_util:put_reqid(Context),
+                                                                            _ = crossbar_doc:save(Context#cb_context{doc=RateDocs}),
                                                                             lager:debug("saved up to ~b docs", [Cnt])
                                                                     end),
                                                               [];
@@ -326,11 +324,11 @@ constrain_weight(X) when X >= 100 -> 100;
 constrain_weight(X) -> X.
 
 upload_csv(Context) ->
-    crossbar_util:put_reqid(Context),
+    _ = crossbar_util:put_reqid(Context),
     Now = erlang:now(),
     {ok, {Count, Rates}} = process_upload_file(Context),
 
     lager:debug("trying to save ~b rates (took ~b ms to process)", [Count, timer:now_diff(erlang:now(), Now) div 1000]),
-    crossbar_doc:save(Context#cb_context{doc=Rates}, [{publish_doc, false}]),
+    _  = crossbar_doc:save(Context#cb_context{doc=Rates}, [{publish_doc, false}]),
 
     lager:debug("it took ~b milli to process and save ~b rates", [timer:now_diff(erlang:now(), Now) div 1000, Count]).

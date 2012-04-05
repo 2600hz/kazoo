@@ -37,7 +37,7 @@
 %%% API
 %%%===================================================================
 init() ->
-    ssl:start(),
+    ok = ssl:start(),
     {ok, _} = openid_srv:start_link(openid_auth_srv),
 
     %% prefetch some config values
@@ -52,17 +52,17 @@ init() ->
     _ = crossbar_bindings:bind(<<"v1_resource.authenticate">>, ?MODULE, authenticate),
     crossbar_bindings:bind(<<"v1_resource.execute.get.openid_auth">>, ?MODULE, get).
 
-authorize(#cb_context{req_nouns=[{<<"openid_auth">>,[_]}], req_id=ReqId}) ->
+authorize(#cb_context{req_nouns=[{<<"openid_auth">>,[_]}]}) ->
     lager:debug("authorizing request"),
     true;
-authorize(#cb_context{req_nouns=[{<<"openid_auth">>,[<<"checkauth">>, _]}], req_id=ReqId}) ->
+authorize(#cb_context{req_nouns=[{<<"openid_auth">>,[<<"checkauth">>, _]}]}) ->
     lager:debug("authorizing request"),
     true.
 
-authenticate(#cb_context{req_nouns=[{<<"openid_auth">>,[_]}], req_id=ReqId}) ->
+authenticate(#cb_context{req_nouns=[{<<"openid_auth">>,[_]}]}) ->
     lager:debug("authenticating request"),
     true;
-authenticate(#cb_context{req_nouns=[{<<"openid_auth">>,[<<"checkauth">>, _]}], req_id=ReqId}) ->
+authenticate(#cb_context{req_nouns=[{<<"openid_auth">>,[<<"checkauth">>, _]}]}) ->
     lager:debug("authenticating request"),
     true.
 
@@ -164,7 +164,7 @@ get(#cb_context{query_json=QS}=Context, Provider) ->
     end.
 
 get(#cb_context{query_json=QS}=Context, <<"checkauth">>, CacheKey) ->
-    crossbar_util:put_reqid(Context),
+    _ = crossbar_util:put_reqid(Context),
 
     Realm = whapps_config:get(?OPENID_CONFIG_CATEGORY, <<"realm">>),
     RegUrl = whapps_config:get(?OPENID_CONFIG_CATEGORY, <<"reg_url">>),

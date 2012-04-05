@@ -19,7 +19,7 @@
          ,delete/2
         ]).
 
--include("../../include/crossbar.hrl").
+-include_lib("crossbar/include/crossbar.hrl").
 
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".callflows">>).
 
@@ -63,8 +63,8 @@ allowed_methods(_MediaID) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists/0 :: () -> boolean().
--spec resource_exists/1 :: (path_token()) -> boolean().
+-spec resource_exists/0 :: () -> 'true'.
+-spec resource_exists/1 :: (path_token()) -> 'true'.
 resource_exists() -> true.
 resource_exists(_) -> true.
 
@@ -103,10 +103,10 @@ post(Context, _DocId) ->
                     Set2 = sets:from_list(wh_json:get_value(<<"numbers">>, JObj, [])),
                     NewNumbers = sets:subtract(Set2, Set1),
                     RemovedNumbers = sets:subtract(Set1, Set2),
-                    [wh_number_manager:reconcile_number(Number, AccountId)
-                     || Number <- sets:to_list(NewNumbers)],
-                    [wh_number_manager:release_number(Number, AccountId)
-                     || Number <- sets:to_list(RemovedNumbers)],
+                    _ = [wh_number_manager:reconcile_number(Number, AccountId)
+                         || Number <- sets:to_list(NewNumbers)],
+                    _ = [wh_number_manager:release_number(Number, AccountId)
+                         || Number <- sets:to_list(RemovedNumbers)],
                     C
             end;
         Else ->
@@ -117,8 +117,8 @@ post(Context, _DocId) ->
 put(Context) ->
     case crossbar_doc:save(Context) of
         #cb_context{account_id=AccountId, doc=JObj, resp_status=success}=C ->
-            [wh_number_manager:reconcile_number(Number, AccountId)
-             || Number <- wh_json:get_value(<<"numbers">>, JObj, [])],
+            _ = [wh_number_manager:reconcile_number(Number, AccountId)
+                 || Number <- wh_json:get_value(<<"numbers">>, JObj, [])],
             C;
         Else ->
             Else
@@ -128,8 +128,8 @@ put(Context) ->
 delete(#cb_context{doc=JObj, account_id=AccountId}=Context, _DocId) ->
     case crossbar_doc:delete(Context) of
         #cb_context{resp_status=success}=C ->
-            [wh_number_manager:release_number(Number, AccountId)
-             || Number <- wh_json:get_value(<<"numbers">>, JObj, [])],
+            _ = [wh_number_manager:release_number(Number, AccountId)
+                 || Number <- wh_json:get_value(<<"numbers">>, JObj, [])],
             C;
         Else ->
             Else

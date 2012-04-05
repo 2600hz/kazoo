@@ -20,7 +20,7 @@
          ,account_created/1
         ]).
 
--include("../../include/crossbar.hrl").
+-include_lib("crossbar/include/crossbar.hrl").
 
 -define(DB_PREFIX, "template/").
 
@@ -59,12 +59,10 @@ allowed_methods(_) ->
 %% Failure here returns 404
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists/0 :: () -> boolean().
--spec resource_exists/1 :: (path_token()) -> boolean().
-resource_exists() ->
-    true.
-resource_exists(_) ->
-    true.
+-spec resource_exists/0 :: () -> 'true'.
+-spec resource_exists/1 :: (path_token()) -> 'true'.
+resource_exists() -> true.
+resource_exists(_) -> true.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -158,13 +156,7 @@ load_template_db(TemplateName, Context) ->
 %% Format the template/db name into a raw, unencoded or encoded form.
 %% @end
 %%--------------------------------------------------------------------
--spec format_template_name/2 :: (ne_binary(), unencoded | encoded | raw) -> ne_binary().
-format_template_name(<<"template/", _/binary>> = TemplateName, unencoded) ->
-    TemplateName;
-format_template_name(<<"template%2F", TemplateName/binary>>, unencoded) ->
-    <<"template/", TemplateName/binary>>;
-format_template_name(TemplateName, unencoded) ->
-    <<"template/", TemplateName/binary>>;
+-spec format_template_name/2 :: (ne_binary(), encoded | raw) -> ne_binary().
 format_template_name(<<"template%2F", _/binary>> = TemplateName, encoded) ->
     TemplateName;
 format_template_name(<<"template/", TemplateName/binary>>, encoded) ->
@@ -206,7 +198,7 @@ create_template_db(TemplateName, Context) ->
 %% documents into the account
 %% @end
 %%--------------------------------------------------------------------
--spec import_template/3 :: (undefined | ne_binary(), ne_binary(), ne_binary()) -> ne_binary().
+-spec import_template/3 :: (undefined | ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 import_template(undefined, _, _) ->
     ok;
 import_template(TemplateName, AccountId, AccountDb) ->
