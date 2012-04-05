@@ -220,14 +220,14 @@ get_fs_app(_Node, _UUID, _JObj, <<"progress">>) ->
     {<<"pre_answer">>, <<>>};
 
 get_fs_app(Node, UUID, JObj, <<"ring">>) ->
-    case wh_json:get_value(<<"Ringback">>, JObj) of
-        undefined -> ok;
-        Ringback ->
-            Stream = ecallmgr_util:media_path(Ringback, extant, UUID),
-            lager:debug("custom ringback: ~s", [Stream]),
-            _ = send_cmd(Node, UUID, <<"set">>, <<"ringback=", Stream/binary>>)
-    end,
-        {<<"ring_ready">>, <<>>};
+    _ = case wh_json:get_value(<<"Ringback">>, JObj) of
+            undefined -> ok;
+            Ringback ->
+                Stream = ecallmgr_util:media_path(Ringback, extant, UUID),
+                lager:debug("custom ringback: ~s", [Stream]),
+                _ = send_cmd(Node, UUID, <<"set">>, <<"ringback=", Stream/binary>>)
+        end,
+    {<<"ring_ready">>, <<>>};
 
 get_fs_app(_Node, _UUID, _JObj, <<"hold">>) ->
     {<<"endless_playback">>, <<"${hold_music}">>};

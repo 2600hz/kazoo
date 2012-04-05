@@ -82,7 +82,7 @@ hostname(Srv) ->
 reloadacl(Srv) ->
     Node = fs_node(Srv),
     lager:debug("reloadacl command sent to FS ~s", [Node]),
-    freeswitch:api(Node, reloadacl),
+    {ok, <<"+OK acl reloaded\n">>} = freeswitch:api(Node, reloadacl),
     ok.
 
 -spec fs_node/1 :: (pid()) -> atom().
@@ -136,9 +136,31 @@ init([Node, Options]) ->
     process_flag(trap_exit, true),
     put(callid, wh_util:to_binary(Node)),
 
-    Stats = #node_stats{started = erlang:now()},
     erlang:monitor_node(Node, true),
-    {ok, #state{node=Node, stats=Stats, options=Options}, 0}.
+    case freeswitch:register_event_handler(Node) of
+        ok ->
+            Stats = #node_stats{started = erlang:now()},
+            lager:debug("event handler registered on node ~s", [Node]),            
+            run_start_cmds(Node),
+            NodeData = extract_node_data(Node),
+            Active = get_active_channels(Node),
+            ok = freeswitch:event(Node, ['CHANNEL_CREATE', 'CHANNEL_DESTROY', 'HEARTBEAT', 'CHANNEL_HANGUP_COMPLETE'
+                                         ,'CUSTOM', 'sofia::register', 'sofia::transfer'
+                                        ]),
+            lager:debug("bound to switch events on node ~s", [Node]),
+            {ok, #state{stats=(Stats#node_stats{
+                                 created_channels = Active
+                                 ,fs_uptime = props:get_value(uptime, NodeData, 0)
+                                })
+                        ,node=Node
+                        ,options=Options}};
+        {error, Reason} ->
+            lager:warning("error when trying to register event handler on node ~s: ~p", [Node, Reason]),
+            {stop, Reason};
+        timeout ->
+            lager:warning("timeout when trying to register event handler on node ~s", [Node]),
+            {stop, timeout}
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -154,7 +176,9 @@ init([Node, Options]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call/3 :: (term(), {pid(), reference()}, #state{}) -> {'noreply', #state{}} | {'reply', atom(), #state{}}.
+-spec handle_call/3 :: ('hostname', {pid(), reference()}, #state{}) -> {'reply', {'ok', ne_binary()}, #state{}};
+                       ('fs_node', {pid(), reference()}, #state{}) -> {'reply', atom(), #state{}};
+                       (term(), {pid(), reference()}, #state{}) -> {'reply', {'error', 'not_implemented'}, #state{}}.
 handle_call(hostname, _From, #state{node=Node}=State) ->
     [_, Hostname] = binary:split(wh_util:to_binary(Node), <<"@">>),
     {reply, {ok, Hostname}, State};
@@ -243,28 +267,6 @@ handle_info({update_options, NewOptions}, State) ->
 handle_info({diagnostics, Pid}, #state{stats=Stats}=State) ->
     spawn(fun() -> diagnostics(Pid, Stats) end),
     {noreply, State};
-handle_info(timeout, #state{node=Node, stats=Stats}=State) ->
-    case freeswitch:register_event_handler(Node) of
-        ok ->
-            lager:debug("event handler registered on node ~s", [Node]),            
-            run_start_cmds(Node),
-            NodeData = extract_node_data(Node),
-            Active = get_active_channels(Node),
-            ok = freeswitch:event(Node, ['CHANNEL_CREATE', 'CHANNEL_DESTROY', 'HEARTBEAT', 'CHANNEL_HANGUP_COMPLETE'
-                                         ,'CUSTOM', 'sofia::register', 'sofia::transfer'
-                                        ]),
-            lager:debug("bound to switch events on node ~s", [Node]),
-            {noreply, State#state{stats=(Stats#node_stats{
-                                           created_channels = Active
-                                           ,fs_uptime = props:get_value(uptime, NodeData, 0)
-                                          })}, hibernate};
-        {error, Reason} ->
-            lager:debug("error when trying to register event handler on node ~s: ~p", [Node, Reason]),
-            {stop, Reason, State};
-        timeout ->
-            lager:debug("timeout when trying to register event handler on node ~s", [Node]),
-            {stop, timeout, State}
-    end;
 handle_info({'EXIT', _Pid, noconnection}, State) ->
     lager:debug("noconnection received for node, pid: ~p", [_Pid]),
     {stop, normal, State};

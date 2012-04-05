@@ -63,9 +63,18 @@ start_link(Node, Options) ->
 init([Node, _Options]) ->
     lager:debug("starting new fs config listener for ~s", [Node]),
     process_flag(trap_exit, true),
-
     erlang:monitor_node(Node, true),
-    {ok, #state{node=Node}, 0}.
+    case freeswitch:bind(Node, config) of
+        ok ->
+            lager:debug("bound to config request on ~s", [Node]),
+            {ok, #state{node=Node}};
+        {error, Reason} ->
+            lager:warning("failed to bind to config requests on ~s, ~p", [Node, Reason]),
+            {stop, Reason};
+        timeout ->
+            lager:warning("failed to bind to directory requests on ~s: timeout", [Node]),
+            {stop, timeout}
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -113,22 +122,10 @@ handle_info({fetch, configuration, <<"configuration">>, <<"name">>, Conf, ID, Da
     erlang:monitor(process, ConfigReqPid),
     lager:debug("fetch configuration request from from ~s", [Node]),
     {noreply, State};
-
 handle_info({_Fetch, _Section, _Something, _Key, _Value, ID, [undefined | _Data]}, #state{node=Node}=State) ->
     _ = freeswitch:fetch_reply(Node, ID, ?EMPTYRESPONSE),
     lager:debug("ignoring request ~s from ~s", [props:get_value(<<"Event-Name">>, _Data), Node]),
     {noreply, State};
-
-handle_info(timeout, #state{node=Node}=State) ->
-    case freeswitch:bind(Node, config) of
-        ok ->
-            lager:debug("bound to config request on ~s", [Node]),
-            {noreply, State};
-        {error, Reason} ->
-            lager:debug("failed to bind to config requests on ~s, ~p", [Node, Reason]),
-            {stop, Reason, State}
-    end;
-
 handle_info(_Info, State) ->
     {noreply, State}.
 

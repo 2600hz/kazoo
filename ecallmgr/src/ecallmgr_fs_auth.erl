@@ -68,9 +68,18 @@ init([Node, _Options]) ->
     lager:debug("starting new fs auth listener for ~s", [Node]),
 
     erlang:monitor_node(Node, true),
-
-    Stats = #handler_stats{started=erlang:now()},
-    {ok, #state{node=Node, stats=Stats}, 0}.
+    case freeswitch:bind(Node, directory) of
+        ok ->
+            lager:debug("bound to directory request on ~s", [Node]),
+            Stats = #handler_stats{started=erlang:now()},
+            {ok, #state{node=Node, stats=Stats}};
+        {error, Reason} ->
+            lager:warning("failed to bind to directory requests on ~s: ~p", [Node, Reason]),
+            {stop, Reason};
+        timeout ->
+            lager:warning("failed to bind to directory requests on ~s: timeout", [Node]),
+            {stop, timeout}
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -175,28 +184,14 @@ handle_info({diagnostics, Pid}, #state{lookups=LUs, stats=Stats}=State) ->
            ],
     Pid ! Resp,
     {noreply, State};
-
 handle_info({'DOWN', _Ref, process, LU, _Reason}, #state{lookups=LUs}=State) ->
     {noreply, State#state{lookups=lists:keydelete(LU, 1, LUs)}, hibernate};
-
 handle_info({'EXIT', _Pid, noconnection}, #state{node=Node}=State) ->
     lager:debug("noconnection received for node ~s, pid: ~p", [Node, _Pid]),
     {stop, normal, State};
-
 handle_info({'EXIT', LU, _Reason}, #state{node=Node, lookups=LUs}=State) ->
     lager:debug("lookup ~w for node ~s exited unexpectedly", [LU, Node]),
     {noreply, State#state{lookups=lists:keydelete(LU, 1, LUs)}, hibernate};
-
-handle_info(timeout, #state{node=Node}=State) ->
-    case freeswitch:bind(Node, directory) of
-        ok ->
-            lager:debug("bound to directory request on ~s", [Node]),
-            {noreply, State};
-        {error, Reason} ->
-            lager:debug("failed to bind to directory requests on ~s, ~p", [Node, Reason]),
-            {stop, Reason, State}
-    end;
-
 handle_info(_Info, State) ->
     {noreply, State}.
 

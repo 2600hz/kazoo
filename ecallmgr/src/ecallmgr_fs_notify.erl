@@ -68,7 +68,7 @@ start_link(Node, Options) ->
 distributed_presence(Srv, Type, Event) ->
     gen_server:cast(Srv, {distributed_presence, Type, Event}).
 
--spec presence_update/2 :: (wh_json:json_object(), proplist()) -> ok.
+-spec presence_update/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
 presence_update(JObj, Props) ->
     PresenceId = wh_json:get_value(<<"Presence-ID">>, JObj),
     Event = case wh_json:get_value(<<"State">>, JObj) of
@@ -90,8 +90,8 @@ presence_update(JObj, Props) ->
             end,
     Node = props:get_value(node, Props),
     lager:debug("sending presence in event to ~p~n", [Node]),
-    freeswitch:sendevent(Node, 'PRESENCE_IN', [{"Distributed-From", wh_util:to_list(Node)} | Event]),
-    ok.
+    ok = freeswitch:sendevent(Node, 'PRESENCE_IN', [{"Distributed-From", wh_util:to_list(Node)} | Event]).
+    
 
 -spec mwi_update/2 :: (wh_json:json_object(), proplist()) -> no_return().
 mwi_update(JObj, Props) ->
@@ -138,7 +138,20 @@ mwi_update(JObj, Props) ->
 init([Node, Options]) ->
     put(callid, ?LOG_SYSTEM_ID),
     lager:debug("starting new ecallmgr notify process"),
-    {ok, #state{node=Node, options=Options}}.
+    process_flag(trap_exit, true),
+    erlang:monitor_node(Node, true),
+    case freeswitch:register_event_handler(Node) of
+        ok ->
+            ok = freeswitch:event(Node, ['PRESENCE_IN', 'PRESENCE_OUT', 'PRESENCE_PROBE']),
+            lager:debug("bound to switch presence events on node ~s", [Node]),
+            {ok, #state{node=Node, options=Options}};
+        {error, Reason} ->
+            lager:warning("error when trying to bind to presence events on node ~s: ~p", [Node, Reason]),
+            {stop, Reason};
+        timeout ->
+            lager:warning("timeout when trying to bind to presence events on node ~s", [Node]),
+            {stop, timeout}
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -200,19 +213,6 @@ handle_info({event, [_ | Data]}, #state{node=Node}=State) ->
     end;
 handle_info({update_options, NewOptions}, State) ->
     {noreply, State#state{options=NewOptions}, hibernate};
-handle_info(timeout, #state{node=Node}=State) ->
-    case freeswitch:register_event_handler(Node) of
-        ok ->
-            ok = freeswitch:event(Node, ['PRESENCE_IN', 'PRESENCE_OUT', 'PRESENCE_PROBE']),
-            lager:debug("bound to switch presence events on node ~s", [Node]),
-            {noreply, State, hibernate};
-        {error, Reason} ->
-            lager:debug("error when trying to register notify handler on node ~s: ~p", [Node, Reason]),
-            {stop, Reason, State};
-        timeout ->
-            lager:debug("timeout when trying to register notify handler on node ~s", [Node]),
-            {stop, timeout, State}
-    end;
 handle_info({'EXIT', _Pid, noconnection}, State) ->
     lager:debug("noconnection received for node, pid: ~p", [_Pid]),
     {stop, normal, State};
