@@ -28,9 +28,10 @@ start_link() ->
     _ = start_deps(),
 
     %% maybe move this into a config file?
-    Dispatch = [
-                %% {Host, list({Path, Handler, Opts})}
-                {'_', [{['v1', '...'], v1_resource, []}]}
+    %% {Host, list({Path, Handler, Opts})}
+    Dispatch = [{'_', [{['v1', '...'], v1_resource, []}
+                       ,{'_', crossbar_default_handler, []}
+                      ]}
                ],
 
     Port = whapps_config:get_integer(?CONFIG_CAT, <<"port">>, 8000),
@@ -69,6 +70,7 @@ start_link() ->
 %%--------------------------------------------------------------------
 -spec stop/0 :: () -> 'ok'.
 stop() ->
+    cowboy:stop_listener(v1_resource),
     ok = application:stop(crossbar).
 
 %%--------------------------------------------------------------------
