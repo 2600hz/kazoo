@@ -20,7 +20,7 @@
 
 -include("fax.hrl").
 
--define(POLLING_INTERVAL, 1000).
+-define(POLLING_INTERVAL, 5000).
 
 -record(state, {jobs=[]}).
 
@@ -147,7 +147,7 @@ code_change(_OldVsn, State, _Extra) ->
 -spec distribute_jobs/1 :: (wh_json:json_objects()) -> wh_json:json_objects().
 distribute_jobs([]) -> [];
 distribute_jobs([Job|Jobs]) -> 
-    case poolboy:checkout(fax_worker_pool) of
+    case catch poolboy:checkout(fax_worker_pool, false, 1000) of
         Worker when is_pid(Worker) ->
             gen_server:cast(Worker, {attempt_transmission, self(), Job}),
             distribute_jobs(Jobs);

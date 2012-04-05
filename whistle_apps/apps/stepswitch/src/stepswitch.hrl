@@ -9,6 +9,8 @@
 -define(LIST_ROUTE_DUPS, {<<"routes">>, <<"listing_by_assignment">>}).
 -define(LIST_ROUTE_ACCOUNTS, {<<"routes">>, <<"listing_by_account">>}).
 
+-define(SUCCESSFUL_HANGUP_CAUSES, [<<"NORMAL_CLEARING">>, <<"ORIGINATOR_CANCEL">>, <<"SUCCESS">>]).
+
 -define(RESOURCES_DB, <<"offnet">>).
 -define(LIST_RESOURCES_BY_ID, {<<"resources">>, <<"listing_by_id">>}).
 

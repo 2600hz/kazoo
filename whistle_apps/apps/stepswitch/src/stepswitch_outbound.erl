@@ -22,6 +22,10 @@
                              {'ok', 'execute_extension'} |
                              {'fail', wh_json:json_object()}.
 
+-type originate_resp() :: {'error', wh_json:json_object()} |
+                          {'ok', wh_json:json_object()} |
+                          {'fail', wh_json:json_object()}.
+
 init() ->
     'ok'.
 
@@ -42,25 +46,13 @@ handle_req(<<"audio">>, JObj, Props) ->
     {Number, _} = whapps_util:get_destination(JObj, ?APP_NAME, <<"outbound_user_field">>),
     lager:debug("bridge request to ~s from account ~s", [Number, wh_json:get_value(<<"Account-ID">>, JObj)]),
     CtrlQ = wh_json:get_value(<<"Control-Queue">>, JObj),
-    Response = case attempt_to_fullfill_req(Number, CtrlQ, JObj, Props) of
-                   {ok, _}=R1 -> response(R1, JObj);
-                   {fail, _}=R2 -> response(R2, JObj);
-                   {error, _}=R3 ->
-                       lager:notice("error attempting global resources to ~s", [Number]),
-                       response(R3, JObj)
-               end,
-    wapi_offnet_resource:publish_resp(wh_json:get_value(<<"Server-ID">>, JObj), Response);
+    Result = attempt_to_fullfill_bridge_req(Number, CtrlQ, JObj, Props),
+    wapi_offnet_resource:publish_resp(wh_json:get_value(<<"Server-ID">>, JObj), response(Result, JObj));
 handle_req(<<"originate">>, JObj, Props) ->
     {Number, _} = whapps_util:get_destination(JObj, ?APP_NAME, <<"outbound_user_field">>),
     lager:debug("originate request to ~s from account ~s", [Number, wh_json:get_value(<<"Account-ID">>, JObj)]),
-    Response = case attempt_to_fullfill_originate_req(Number, JObj, Props) of
-                   {ok, _}=R1 -> response(R1, JObj);
-                   {fail, _}=R2 -> response(R2, JObj);
-                   {error, _}=R3 ->
-                       lager:notice("error attempting global resources to ~s", [Number]),
-                       response(R3, JObj)
-               end,
-    wapi_offnet_resource:publish_resp(wh_json:get_value(<<"Server-ID">>, JObj), Response).
+    Result = attempt_to_fullfill_originate_req(Number, JObj, Props),
+    wapi_offnet_resource:publish_resp(wh_json:get_value(<<"Server-ID">>, JObj), response(Result, JObj)).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -68,8 +60,8 @@ handle_req(<<"originate">>, JObj, Props) ->
 %% 
 %% @end
 %%--------------------------------------------------------------------
--spec attempt_to_fullfill_req/4 :: (ne_binary(), ne_binary(), wh_json:json_object(), proplist()) -> bridge_resp() | execute_ext_resp().
-attempt_to_fullfill_req(Number, CtrlQ, JObj, Props) ->
+-spec attempt_to_fullfill_bridge_req/4 :: (ne_binary(), ne_binary(), wh_json:json_object(), proplist()) -> bridge_resp() | execute_ext_resp().
+attempt_to_fullfill_bridge_req(Number, CtrlQ, JObj, Props) ->
     Result = case stepswitch_util:lookup_number(Number) of
                  {ok, AccountId, false} ->
                      lager:debug("found local extension, keeping onnet"),
@@ -80,30 +72,25 @@ attempt_to_fullfill_req(Number, CtrlQ, JObj, Props) ->
                      {Endpoints, IsEmergency} = find_endpoints(Number, Flags, Resources),
                      bridge_to_endpoints(Endpoints, IsEmergency, CtrlQ, JObj)
              end,
-    CIDNum = wh_json:get_value(<<"Outgoing-Caller-ID-Number">>, JObj
-                               ,wh_json:get_value(<<"Emergency-Caller-ID-Number">>, JObj)),
-    case {Result, correct_shortdial(Number, CIDNum)} of
+    case {Result, correct_shortdial(Number, JObj)} of
         {{error, no_resources}, fail} -> Result;
         {{error, no_resources}, CorrectedNumber} -> 
             lager:debug("found no resources for number as dialed, retrying number corrected for shortdial as ~s", [CorrectedNumber]),
-            attempt_to_fullfill_req(CorrectedNumber, CtrlQ, JObj, Props);
+            attempt_to_fullfill_bridge_req(CorrectedNumber, CtrlQ, JObj, Props);
         _Else -> Result
     end.
 
--spec attempt_to_fullfill_originate_req/3 :: (ne_binary(), wh_json:json_object(), proplist()) -> bridge_resp() | execute_ext_resp().
+-spec attempt_to_fullfill_originate_req/3 :: (ne_binary(), wh_json:json_object(), proplist()) -> originate_resp().
 attempt_to_fullfill_originate_req(Number, JObj, Props) ->
     Flags = wh_json:get_value(<<"Flags">>, JObj),
     Resources = props:get_value(resources, Props), 
     {Endpoints, _} = find_endpoints(Number, Flags, Resources),
-    Result = originate_to_endpoints(Endpoints, JObj),
-    CIDNum = wh_json:get_value(<<"Outgoing-Caller-ID-Number">>, JObj
-                               ,wh_json:get_value(<<"Emergency-Caller-ID-Number">>, JObj)),
-    case {Result, correct_shortdial(Number, CIDNum)} of
-        {{error, no_resources}, fail} -> Result;
+    case {originate_to_endpoints(Endpoints, JObj), correct_shortdial(Number, JObj)} of
+        {{error, no_resources}, fail} -> {error, no_resources};
         {{error, no_resources}, CorrectedNumber} -> 
-            lager:debug("found no resources for number as dialed, retrying number corrected for shortdial as ~s", [CorrectedNumber]),
+            lager:debug("found no resources for number as originated, retrying number corrected for shortdial as ~s", [CorrectedNumber]),
             attempt_to_fullfill_originate_req(CorrectedNumber, JObj, Props);
-        _Else -> Result
+        {Result, _} -> Result
     end.
 
 %%--------------------------------------------------------------------
@@ -208,8 +195,10 @@ originate_to_endpoints(Endpoints, JObj) ->
                                       V =/= undefined
                               ], wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new())),
 
+    MsgId = wh_json:get_value(<<"Msg-ID">>, JObj, wh_util:rand_hex_binary(16)),
     Request = [{<<"Application-Name">>, wh_json:get_value(<<"Application-Name">>, JObj, <<"park">>)}                                                                                                                                                                     
                ,{<<"Application-Data">>, wh_json:get_value(<<"Application-Data">>, JObj)}
+               ,{<<"Msg-ID">>, MsgId}
                ,{<<"Endpoints">>, Endpoints}
                ,{<<"Timeout">>, wh_json:get_value(<<"Timeout">>, JObj)}
                ,{<<"Ignore-Early-Media">>, wh_json:get_value(<<"Ignore-Early-Media">>, JObj)}
@@ -225,10 +214,9 @@ originate_to_endpoints(Endpoints, JObj) ->
                ,{<<"Custom-Channel-Vars">>, CCVs}
                | wh_api:default_headers(Q, <<"resource">>, <<"originate_req">>, ?APP_NAME, ?APP_VERSION)
               ],
-    wapi_resource:publish_originate_req(Request).
-%%    io:format("~p~n", [Command]).
-%%    wapi_dialplan:publish_command(CtrlQ, Command),
-%%    wait_for_bridge(whapps_config:get_integer(<<"stepswitch">>, <<"bridge_timeout">>, 30000)).
+    wapi_resource:publish_originate_req(Request),
+    amqp_mgr:register_return_handler(),
+    wait_for_originate(MsgId).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -266,6 +254,37 @@ execute_local_extension(Number, AccountId, CtrlQ, JObj) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
+%% Consume AMQP messages waiting for the originate response/error
+%% @end
+%%--------------------------------------------------------------------
+-spec wait_for_originate/1 :: (ne_binary()) -> originate_resp().
+wait_for_originate(MsgId) ->
+    receive
+        {#'basic.deliver'{}, #amqp_msg{props=#'P_basic'{content_type=CT}, payload=Payload}} ->
+            JObj = wh_json:decode(Payload, CT),
+            case get_event_type(JObj) of               
+                {<<"resource">>, <<"originate_resp">>, _} ->
+                    {hangup_result(JObj), JObj};
+                {<<"error">>, <<"originate_resp">>, _} ->
+                    {error, JObj};
+                _  ->
+                    wait_for_originate(MsgId)
+            end;
+        %% if there are no FS nodes connected (or ecallmgr is down) we get the message
+        %% returned so we know...
+        {#'basic.return'{}, #amqp_msg{props=#'P_basic'{content_type=CT}, payload=Payload}} ->
+            JObj = wh_json:decode(Payload, CT),
+            case wh_json:get_value(<<"Msg-ID">>, JObj) of
+                MsgId -> {error, no_resources};
+                _Else -> wait_for_originate(MsgId)
+            end;
+        _ ->
+            wait_for_originate(MsgId)
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
 %% Consume AMQP messages waiting for the channel to end or the 
 %% execute extension to complete.  However, if we receive a rate
 %% response then set the CCVs accordingly.
@@ -278,14 +297,7 @@ wait_for_execute_extension() ->
             JObj = wh_json:decode(Payload, CT),
             case get_event_type(JObj) of               
                 {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} ->
-                    AppResponse = wh_json:get_value(<<"Application-Response">>, JObj,
-                                                    wh_json:get_value(<<"Hangup-Cause">>, JObj)),
-                    Result = case lists:member(AppResponse, [<<"NORMAL_CLEARING">>, <<"ORIGINATOR_CANCEL">>
-                                                                 ,<<"SUCCESS">>]) of
-                                 true -> ok;
-                                 false -> fail
-                             end,
-                    {Result, JObj};
+                    {hangup_result(JObj), JObj};
                 {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"execute_extension">>} ->
                     {ok, execute_extension};
                 _  ->
@@ -303,20 +315,12 @@ wait_for_execute_extension() ->
 %% response then set the CCVs accordingly.
 %% @end
 %%--------------------------------------------------------------------
-
 -spec wait_for_bridge/1 :: ('infinity' | pos_integer()) -> bridge_resp().
 wait_for_bridge(Timeout) ->
     Start = erlang:now(),
     receive
         {#'basic.deliver'{}, #amqp_msg{props=#'P_basic'{content_type=CT}, payload=Payload}} ->
             JObj = wh_json:decode(Payload, CT),
-            AppResponse = wh_json:get_value(<<"Application-Response">>, JObj,
-                                            wh_json:get_value(<<"Hangup-Cause">>, JObj)),
-            Result = case lists:member(AppResponse, [<<"NORMAL_CLEARING">>, <<"ORIGINATOR_CANCEL">>
-                                                         ,<<"SUCCESS">>]) of
-                         true -> ok;
-                         false -> fail
-                     end,
             case get_event_type(JObj) of               
                 {<<"error">>, <<"dialplan">>, _} ->
                     {error, JObj};
@@ -325,9 +329,9 @@ wait_for_bridge(Timeout) ->
                     lager:debug("outbound request bridged to call ~s", [CallId]),
                     wait_for_bridge(infinity);
                 {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} ->
-                    {Result, JObj};
+                    {hangup_result(JObj), JObj};
                 {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>} ->
-                    {Result, JObj};
+                    {hangup_result(JObj), JObj};
                 _ when Timeout =:= infinity ->
                     wait_for_bridge(Timeout);
                 _ ->
@@ -341,6 +345,21 @@ wait_for_bridge(Timeout) ->
             wait_for_bridge(Timeout - (DiffMicro div 1000))
     end.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Determine if the hangup case indicates a call failure
+%% @end
+%%--------------------------------------------------------------------
+-spec hangup_result/1 :: (wh_json:json_object()) -> 'ok' | 'fail'.
+hangup_result(JObj) ->
+    AppResponse = wh_json:get_value(<<"Application-Response">>, JObj,
+                                    wh_json:get_value(<<"Hangup-Cause">>, JObj)),
+    case lists:member(AppResponse, ?SUCCESSFUL_HANGUP_CAUSES) of
+        true -> ok;
+        false -> fail
+    end.
+    
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -494,21 +513,23 @@ build_endpoint(Number, Gateway, _Delay) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec response/2 :: (bridge_resp() | execute_ext_resp(), wh_json:json_object()) -> proplist().
-response({ok, _}, JObj) ->
+response({ok, Resp}, JObj) ->
     lager:debug("outbound request successfully completed"),
     [{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
      ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
      ,{<<"Response-Message">>, <<"SUCCESS">>}
      ,{<<"Response-Code">>, <<"sip:200">>}
+     ,{<<"Resource-Response">>, Resp}
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ];
-response({fail, BridgeResp}, JObj) ->
+response({fail, Resp}, JObj) ->
     lager:debug("resources for outbound request failed"),
     [{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
      ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
-     ,{<<"Response-Message">>, wh_json:get_value(<<"Application-Response">>, BridgeResp
-                                                 ,wh_json:get_value(<<"Hangup-Cause">>, BridgeResp, <<"ERROR">>))}
-     ,{<<"Response-Code">>, wh_json:get_value(<<"Hangup-Code">>, BridgeResp)}
+     ,{<<"Response-Message">>, wh_json:get_value(<<"Application-Response">>, Resp
+                                                 ,wh_json:get_value(<<"Hangup-Cause">>, Resp, <<"ERROR">>))}
+     ,{<<"Response-Code">>, wh_json:get_value(<<"Hangup-Code">>, Resp)}
+     ,{<<"Resource-Response">>, Resp}
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ];
 response({error, no_resources}, JObj) ->
@@ -532,12 +553,12 @@ response({error, timeout}, JObj) ->
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ];
 response({error, Error}, JObj) ->
-    lager:debug("error during outbound request: ~s", [wh_json:encode(Error)]),
+    lager:debug("error during outbound request: ~s", [wh_util:to_binary(wh_json:encode(Error))]),
     [{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
      ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
      ,{<<"Response-Message">>, <<"NORMAL_TEMPORARY_FAILURE">>}
      ,{<<"Response-Code">>, <<"sip:500">>}
-     ,{<<"Error-Message">>, wh_json:get_value(<<"Error-Message">>, Error)}
+     ,{<<"Error-Message">>, wh_json:get_value(<<"Error-Message">>, Error, <<"failed to process request">>)}
      ,{<<"To-DID">>, wh_json:get_value(<<"To-DID">>, JObj)}
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
@@ -550,8 +571,10 @@ response({error, Error}, JObj) ->
 %% callerid.
 %% @end
 %%--------------------------------------------------------------------
--spec correct_shortdial/2 :: (ne_binary(), ne_binary()) -> ne_binary() | 'fail'.
-correct_shortdial(Number, CIDNum) ->
+-spec correct_shortdial/2 :: (ne_binary(), wh_json:json_object()) -> ne_binary() | 'fail'.
+correct_shortdial(Number, JObj) ->
+    CIDNum = wh_json:get_value(<<"Outgoing-Caller-ID-Number">>, JObj
+                               ,wh_json:get_value(<<"Emergency-Caller-ID-Number">>, JObj)),
     MaxCorrection = whapps_config:get_integer(<<"stepswitch">>, <<"max_shortdial_correction">>, 5),
     case is_binary(CIDNum) andalso (size(CIDNum) - size(Number)) of
         Length when Length =< MaxCorrection, Length > 0 ->

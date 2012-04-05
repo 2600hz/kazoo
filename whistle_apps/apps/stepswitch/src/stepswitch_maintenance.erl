@@ -40,10 +40,10 @@ refresh() ->
     whapps_util:update_views(?RESOURCES_DB, Views, true),
     case couch_mgr:all_docs(?RESOURCES_DB, [{<<"include_docs">>, true}]) of
         {ok, JObjs} ->
-            [couch_mgr:del_doc(?RESOURCES_DB, wh_json:get_value(<<"doc">>, JObj)) 
-             || JObj <- JObjs
-                    ,wh_json:get_value([<<"doc">>, <<"pvt_type">>], JObj) =:= <<"route">>
-            ],
+            _ = [couch_mgr:del_doc(?RESOURCES_DB, wh_json:get_value(<<"doc">>, JObj)) 
+                 || JObj <- JObjs
+                        ,wh_json:get_value([<<"doc">>, <<"pvt_type">>], JObj) =:= <<"route">>
+                ],
             ok;
         {error, _} ->
             ok

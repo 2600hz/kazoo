@@ -20,8 +20,8 @@
 -define(CHILD(Name, Type), fun(N, cache) -> {N, {wh_cache, start_link, [N]}, permanent, 5000, worker, [wh_cache]};
                               (N, pool) -> {N, {poolboy, start_link, [[{name, {local, N}}
                                                                        ,{worker_module, fax_worker}
-                                                                       ,{size, 10}
-                                                                       ,{max_overflow, 20}
+                                                                       ,{size, 5}
+                                                                       ,{max_overflow, 0}
                                                                       ]]}
                                             ,permanent, 5000, worker, [poolboy]};
                               (N, T) -> {N, {N, start_link, []}, permanent, 5000, T, [N]} end(Name, Type)).

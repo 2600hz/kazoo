@@ -28,17 +28,17 @@ handle(Req0, State) ->
     case cowboy_http_req:path_info(Req0) of
         {[JobId], Req1} -> 
             lager:debug("fetching ~s", [JobId]),
-            {ok, Cache} = fax_sup:cache_proc(),
-            {ok, Req2} = case wh_cache:fetch_local(Cache, {fax_file, JobId}) of
-                             {error, not_found} ->
-                                 lager:debug("missing fax contents for ~s", [JobId]),
-                                 cowboy_http_req:reply(404, Req1);
-                             {ok, {ContentType, ContentSize, Content}} ->
+            TmpDir = whapps_config:get_binary(?CONFIG_CAT, <<"file_cache_path">>, <<"/tmp/">>),
+            File = list_to_binary([TmpDir, JobId]),
+            {ok, Req2} = case file:read_file(File) of
+                             {ok, Content} ->
                                  lager:debug("sending fax contents", []),
-                                 Headers = [{'Content-Type', ContentType}
-                                            ,{'Content-Length', ContentSize}
-                                           ],
-                                 cowboy_http_req:reply(200, Headers, Content, Req1)
+                                 TmpDir = whapps_config:get_binary(?CONFIG_CAT, <<"file_cache_path">>, <<"/tmp/">>),
+                                 Headers = [{'Content-Type', "image/tiff"}],
+                                 cowboy_http_req:reply(200, Headers, Content, Req1);
+                             {error, _Reason} ->
+                                 lager:debug("could not open file '~s': ~p", [File, _Reason]),
+                                 cowboy_http_req:reply(404, Req1)
                          end,
             {ok, Req2, State};
         _Else ->
