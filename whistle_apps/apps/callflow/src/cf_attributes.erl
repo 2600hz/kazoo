@@ -106,28 +106,31 @@ caller_id(EndpointId, OwnerId, Attribute, Call) ->
     CCVs = whapps_call:custom_channel_vars(Call),
     Inception = whapps_call:inception(Call),
     Ids = [EndpointId, OwnerId, AccountId],
+    Attributes = fetch_attributes(caller_id, Call),
     CID = case (Inception =:= <<"off-net">> andalso not wh_json:is_true(<<"Call-Forward">>, CCVs))
               orelse wh_json:is_true(<<"Retain-CID">>, CCVs) of
               true ->
-                  lager:debug("retaining original caller id"),
-                  wh_json:from_list([{<<"number">>, whapps_call:caller_id_number(Call)}
-                                     ,{<<"name">>, whapps_call:caller_id_name(Call)}
-                                    ]);
+                  lager:debug("retaining original caller id, attemping to format. searching ~p", [Ids]),
+		  case search_attributes(<<"offnet_reformat">>, Ids, Attributes) of
+		      undefined ->
+			  wh_json:new();
+		      {_Id, ReformatAttributes} ->
+			  reformat_caller_id(Call, ReformatAttributes)
+		  end;
               false ->
                   lager:debug("find ~s caller id on ~s", [Attribute, wh_util:join_binary(Ids)]),
-                  Attributes = fetch_attributes(caller_id, Call),
                   case search_attributes(Attribute, Ids, Attributes) of
                       undefined ->
                           case search_attributes(<<"default">>, [AccountId], Attributes) of
                               undefined ->
                                   wh_json:new();
-                              {Id, Value} ->
+                              {Id, CIDAttributes} ->
                                   lager:debug("found default caller id on ~s", [Id]),
-                                  Value
+                                  CIDAttributes
                           end;
-                      {Id, Value} ->
+                      {Id, CIDAttributes} ->
                           lager:debug("found ~s caller id on ~s", [Attribute, Id]),
-                          Value
+                          CIDAttributes
                   end
           end,
     CIDNum = case wh_json:get_ne_value(<<"number">>, CID) of
@@ -485,7 +488,7 @@ prepend_caller_id_name(Call, CIDName) ->
 	    CIDName;
 	Prefix ->
 	    <<Prefix/binary, CIDName/binary>>
-    end.
+     end.
 
 %%-----------------------------------------------------------------------------
 %% @private
@@ -500,3 +503,30 @@ prepend_caller_id_number(Call, CIDNum) ->
 	Prefix ->
 	    <<Prefix/binary, CIDNum/binary>>
     end.
+
+%%-----------------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%-----------------------------------------------------------------------------
+-spec reformat_caller_id/2 :: (whapps_call:call(), wh_json:json_object()) -> wh_json:json_object().
+reformat_caller_id(Call, Attributes) ->
+    CIDName = whapps_call:caller_id_name(Call),
+    CIDNum = whapps_call:caller_id_number(Call),
+    CIDNum1 = case wh_json:get_ne_value(<<"number">>, Attributes) of
+		 undefined ->
+		     lager:debug("No REGEX?! ~p", [Attributes]),
+		     CIDNum;
+		 Regex ->
+		     case re:run(CIDNum, Regex, [{capture, ['NUMBER'], binary}, dupnames]) of
+			 nomatch ->
+			     lager:debug("did not match the regex: ~p", [Regex]),
+			     CIDNum;
+			 {match, [FirstMatch | _ ]} ->
+			     lager:debug("found it! winner winner chicken dinner"),
+			     FirstMatch
+		     end
+	      end,
+    wh_json:from_list([{<<"name">>, CIDName}
+		       ,{<<"number">>, CIDNum1}]).
+			    
