@@ -74,8 +74,8 @@ allowed_methods(_) ->
 %%    /faxes/foo/bar => [<<"foo">>, <<"bar">>]
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists/0 :: () -> boolean().
--spec resource_exists/1 :: (path_tokens()) -> boolean().
+-spec resource_exists/0 :: () -> 'true'.
+-spec resource_exists/1 :: (path_tokens()) -> 'true'.
 resource_exists() -> true.
 resource_exists(_) -> true.
 
