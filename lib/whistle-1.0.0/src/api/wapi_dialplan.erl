@@ -55,11 +55,11 @@
 -include("wapi_dialplan.hrl").
 -include_lib("whistle/include/wh_log.hrl").
 
--spec optional_bridge_req_headers/0 :: () -> proplist().
+-spec optional_bridge_req_headers/0 :: () -> [ne_binary(),...].
 optional_bridge_req_headers() ->
     ?OPTIONAL_BRIDGE_REQ_HEADERS.
 
--spec optional_bridge_req_endpoint_headers/0 :: () -> proplist().
+-spec optional_bridge_req_endpoint_headers/0 :: () -> [ne_binary(),...].
 optional_bridge_req_endpoint_headers() ->
     ?OPTIONAL_BRIDGE_REQ_ENDPOINT_HEADERS.
 

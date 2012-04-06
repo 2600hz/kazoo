@@ -206,11 +206,11 @@
 -define(RATING_RESP_RATE_VALUES, []).
 -define(RATING_RESP_RATE_TYPES, []).
 
--spec required_rate_resp_rate_headers/0 :: () -> proplist().
+-spec required_rate_resp_rate_headers/0 :: () -> [ne_binary(),...].
 required_rate_resp_rate_headers() ->
     ?RATING_RESP_RATE_HEADERS.
 
--spec optional_call_event_headers/0 :: () -> proplist().
+-spec optional_call_event_headers/0 :: () -> [ne_binary(),...].
 optional_call_event_headers() ->
     ?OPTIONAL_CALL_EVENT_HEADERS.
 
