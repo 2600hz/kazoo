@@ -139,7 +139,8 @@ refresh(?WH_SIP_DB) ->
             [cleanup_aggregated_device(wh_json:get_value(<<"doc">>, JObj)) || JObj <- JObjs];
         _ ->
             ok
-    end;
+    end,
+    wapi_switch:publish_reloadacl();
 refresh(?WH_SCHEMA_DB) ->
     couch_mgr:db_create(?WH_SCHEMA_DB),
     couch_mgr:revise_docs_from_folder(?WH_SCHEMA_DB, crossbar, "schemas"),

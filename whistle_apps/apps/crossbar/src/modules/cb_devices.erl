@@ -115,6 +115,7 @@ post(#cb_context{}=Context, _DocId) ->
                     lager:debug("adding device to the sip auth aggregate"),
                     couch_mgr:ensure_saved(?WH_SIP_DB, wh_json:delete_key(<<"_rev">>, Doc1))
             end,
+            wapi_switch:publish_reloadacl(),
             spawn(fun() -> do_simple_provision(Context1) end),
             Context1;
         Else ->
@@ -139,7 +140,7 @@ put(#cb_context{}=Context) ->
                     lager:debug("adding device to the sip auth aggregate"),
                     couch_mgr:ensure_saved(?WH_SIP_DB, wh_json:delete_key(<<"_rev">>, Doc1))
             end,
-
+            wapi_switch:publish_reloadacl(),
             spawn(fun() -> do_simple_provision(Context1) end),
             Context1;
         Else ->
@@ -159,6 +160,7 @@ delete(#cb_context{doc=Doc}=Context, _DocId) ->
                 {error, not_found} ->
                     ok
             end,
+            wapi_switch:reloadacl(),
             Context1;
         Else ->
             Else
