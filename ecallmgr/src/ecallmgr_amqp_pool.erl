@@ -12,6 +12,7 @@
          ,authz_req/1, authz_req/2
          ,route_req/1, route_req/2
          ,reg_query/1, reg_query/2
+         ,sip_ip_req/1
          ,media_req/1, media_req/2
          ,get_req/1, get_req/2
          ,set_req/1, set_req/2
@@ -62,6 +63,11 @@ reg_query(RegReq) ->
     reg_query(RegReq, ?DEFAULT_TIMEOUT).
 reg_query(RegReq, Timeout) ->
     send_request(RegReq, Timeout, fun wapi_registration:publish_query_req/1, fun wapi_registration:query_resp_v/1).
+
+-spec sip_ip_req/1 :: (proplist() | wh_json:json_object()) -> {'ok', [ne_binary(),...]} |
+                                 {'error', _}.
+sip_ip_req(SipIpReq) ->
+    send_request(SipIpReq, ?DEFAULT_TIMEOUT, fun wapi_registration:publish_sip_ip_req/1, fun wapi_registration:sip_ip_resp_v/1).
 
 -spec media_req/1 :: (proplist() | wh_json:json_object()) -> {'ok', wh_json:json_object()} |
                                                              {'error', _}.
