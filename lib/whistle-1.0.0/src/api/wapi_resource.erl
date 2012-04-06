@@ -21,7 +21,10 @@
 -include("../wh_api.hrl").
 
 -define(ORIGINATE_REQ_HEADERS, [<<"Endpoints">>, <<"Application-Name">>]).
--define(OPTIONAL_ORIGINATE_REQ_HEADERS, [<<"Application-Data">> | fun() -> wapi_dialplan:optional_bridge_req_headers() end()]).
+-define(OPTIONAL_ORIGINATE_REQ_HEADERS, [<<"Application-Data">>
+                                             ,<<"Export-Custom-Channel-Vars">>
+                                             | fun() -> wapi_dialplan:optional_bridge_req_headers() end()
+                                        ]).
 -define(ORIGINATE_REQ_VALUES, [{<<"Event-Category">>, <<"resource">>}
                                ,{<<"Event-Name">>, <<"originate_req">>}
                                ,{<<"Dial-Endpoint-Method">>, [<<"single">>, <<"simultaneous">>]}
