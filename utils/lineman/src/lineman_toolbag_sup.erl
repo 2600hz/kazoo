@@ -5,19 +5,21 @@
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
--module(lineman_sup).
+-module(lineman_toolbag_sup).
 
 -behaviour(supervisor).
 
 -include_lib("whistle/include/wh_types.hrl").
 
 -export([start_link/0]).
+-export([sync_msg_all/1]).
+-export([sync_msg_tool/2]).
 -export([init/1]).
 
 %% Helper macro for declaring children of supervisor
 -define(CHILD(Name, Type), fun(N, cache) -> {N, {wh_cache, start_link, [N]}, permanent, 5000, worker, [wh_cache]};
                               (N, T) -> {N, {N, start_link, []}, permanent, 5000, T, [N]} end(Name, Type)).
--define(CHILDREN, [{lineman_bindings, worker}, {lineman_toolbag_sup, supervisor}, {lineman_workorder, worker}]).
+-define(CHILDREN, [{lineman_tool_freeswitch, worker}]). %%, {lineman_tool_couchdb, worker}]).
 
 %% ===================================================================
 %% API functions
@@ -32,6 +34,20 @@
 -spec start_link/0 :: () -> startlink_ret().
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+
+-spec sync_msg_all/1 :: (term()) -> 'ok'.
+sync_msg_all(Msg) ->
+    [ok = gen_server:call(P, Msg) 
+     || {_, P, _, _} <- supervisor:which_children(?MODULE)
+    ],
+    ok.
+
+sync_msg_tool(Tool, Msg) ->
+    Mod = wh_util:to_atom(list_to_binary(["lineman_tool_", Tool]), true),
+    case [P || {M, P, _, _} <- supervisor:which_children(?MODULE), M =:= Mod] of
+        [Pid] -> gen_server:call(Pid, Msg);
+        _Else -> {error, tool_not_found}
+    end.
 
 %% ===================================================================
 %% Supervisor callbacks

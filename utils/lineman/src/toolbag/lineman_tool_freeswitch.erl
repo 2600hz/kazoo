@@ -6,7 +6,7 @@
 %%% @contributors
 %%%   Karl Anderson
 %%%------------------------------------------------------------------
--module(fs_simulator).
+-module(lineman_tool_freeswitch).
 
 -behaviour(gen_server).
 
@@ -19,16 +19,17 @@
          ,code_change/3
         ]).
 
--export([register_event_handler/1]).
--export([binding_handler/1]).
--export([api_handler/1]).
--export([events_handler/1]).
+-include_lib("lineman/src/lineman.hrl").
 
 -define(SERVER, ?MODULE).
--define(FS_STATUS, <<"UP 0 years, 18 days, 13 hours, 41 minutes, 1 second, 777 milliseconds, 964 microseconds\nFreeSWITCH is ready\n147 session(s) since startup\n0 session(s) 0/200\n5000 session(s) max\nmin idle cpu 0.00/43.00\n">>).
--define(FS_ZERO_CHANNELS, <<"\n0 total.\n">>).
 
--record(state, {}).
+-record(state, {event_handlers = []
+                ,bindings = []
+                ,events = sets:new()
+                ,session_events = sets:new()
+                ,default_event_headers = []
+                ,static_binding_results = []
+               }).
 
 %%%===================================================================
 %%% API
@@ -61,38 +62,7 @@ start_link() ->
 %%--------------------------------------------------------------------
 init([]) ->
     lager:debug("starting fs simulator"),
-    case lineman_util:get_target("ecallmgr") of
-        {error, Reason} -> 
-            lager:info("failed to connect to the ecallmgr node: ~p", [Reason]),
-            {stop, Reason};
-        {ok, Target} ->
-            _ = lineman_bindings:bind(<<"fs_event.request.register_event_handler">>, ?MODULE, register_event_handler),
-            _ = lineman_bindings:bind(<<"fs_event.request.bind.*">>, ?MODULE, binding_handler),
-            _ = lineman_bindings:bind(<<"fs_event.request.api.status">>, ?MODULE, api_handler),
-            _ = lineman_bindings:bind(<<"fs_event.request.api.show">>, ?MODULE, api_handler),
-            _ = lineman_bindings:bind(<<"fs_event.request.events">>, ?MODULE, events_handler),
-            connect_simulator(Target),
-            {ok, #state{}, 0}
-    end.
-
-register_event_handler(Pid) ->
-    lager:info("registered event handler", []),
-    Pid ! ok.
-
-binding_handler({Pid, _Binding}) ->
-    lager:info("adding binding for ~s", [_Binding]),
-    Pid ! ok.
-
-api_handler({Pid, show, "channels"}) ->
-    lager:info("responding to show channels request"),
-    Pid ! {ok, ?FS_ZERO_CHANNELS};    
-api_handler({Pid, status, []}) ->
-    lager:info("responding to status request"),
-    Pid ! {ok, ?FS_STATUS}.
-
-events_handler({Pid, _Events}) ->
-    lager:info("registering events handlers"),
-    Pid ! ok.
+    {ok, #state{}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -108,8 +78,41 @@ events_handler({Pid, _Events}) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_call(reset, _From, State) ->
+    {reply, ok, reset(State)};
+handle_call({parameter, "default-event-headers", Parameter}, _From, State) -> 
+    DefaultEventHeaders = lineman_util:get_xml_element_content(Parameter),
+    lager:debug("loaded default event headers: ~p", [DefaultEventHeaders]),
+    {reply, ok, State#state{default_event_headers=DefaultEventHeaders}};
+handle_call({parameter, "bind", Parameter}, _From, #state{static_binding_results=SBRs}=State) -> 
+    Binding = wh_util:to_binary(lineman_util:get_xml_attribute_value("binding", Parameter)),
+    Args = wh_util:to_list(lineman_util:get_xml_attribute_value("args", Parameter, [])),
+    Value = case lineman_util:get_xml_attribute_value("clean", Parameter) of
+                "false" -> lineman_util:get_xml_element_content(Parameter, false);
+                _Else -> lineman_util:get_xml_element_content(Parameter)
+            end,
+    lager:debug("added static binding result for ~s with arg '~s'", [Binding, Args, Value]),
+    Pid = spawn_link(?MODULE, static_responder, [Binding, Args, Value]),
+    {reply, ok, State#state{static_responder=[Pid|SBRs]}};
+handle_call({parameter, "connect", Parameter}, _From, State) -> 
+    Node = lineman_util:get_xml_attribute_value("node", Parameter, "ecallmgr"),
+    Host = lineman_util:get_xml_attribute_value("host", Parameter, net_adm:localhost()),
+    DefaultCookie = lineman_util:try_get_cookie_from_vmargs(?ECALL_VM_ARGS),
+    Cookie = lineman_util:get_xml_attribute_value("cookie", Parameter, DefaultCookie),
+    lager:info("attempting to connect fs simulator to target '~s@~s' with cookie '~s'", [Node, Host, Cookie]),
+    case lineman_util:try_connect_to_target(Node, Cookie, Host) of
+        {ok, Target} -> 
+            c:nl(freeswitch),
+            spawn(fun() ->
+                          R = rpc:call(Target, ecallmgr_fs_handler, add_fs_node, [erlang:node()]),
+                          lager:info("rpc call result: ~p", [R])
+                  end),
+            {reply, ok, State};
+        {error, _}=E ->
+            {reply, E, reset(State)}
+    end;
 handle_call(_Msg, _From, State) ->
-    {noreply, State}.
+    {reply, {error, not_implemented}, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -134,14 +137,15 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({Pid, register_event_handler}, State) ->
-    Route = list_to_binary(["fs_event.request.register_event_handler"]),
-    lineman_bindings:map(Route, Pid),
-    {noreply, State};
-handle_info({Pid, bind, Type}, State) ->
-    Route = list_to_binary(["fs_event.request.bind.", atom_to_list(Type)]),
-    lineman_bindings:map(Route, {Pid, Type}),
-    {noreply, State};
+handle_info({Pid, register_event_handler}, #state{event_handlers=EventHandlers}=State) ->
+    Pid ! ok,
+    Ref = erlang:monitor(process, Pid),
+    lager:debug("registered event handler ~p", [Pid]),
+    {noreply, State#state{event_handlers=[{Pid, Ref}|EventHandlers]}};
+handle_info({Pid, bind, Type}, #state{bindings=Bindings}=State) ->
+    Pid ! ok,
+    lager:debug("added binding '~s' to ~p", [Type, Pid]),
+    {noreply, State#state{bindings=[{Type, Pid}|Bindings]}};
 handle_info({Pid, send, Term}, State) ->
     Route = list_to_binary(["fs_event.request.send"]),
     lineman_bindings:map(Route, {Pid, Term}),
@@ -158,9 +162,17 @@ handle_info({Pid, bgapi, Cmd, Args}, State) ->
     Route = list_to_binary(["fs_event.request.bgapi.", Cmd]),
     lineman_bindings:map(Route, {Pid, Cmd, Args}), 
     {noreply, State};
-handle_info({Pid, event, Events}, State) ->
-    Route = list_to_binary(["fs_event.request.events"]),
-    lineman_bindings:map(Route, {Pid, Events}), 
+handle_info({Pid, event, AddEvents}, #state{events=Events}=State) ->
+    Pid ! ok,
+    NewEvents = lists:foldr(fun(Event, E) -> 
+                                    lager:debug("added event binding: ~s", [Event]),
+                                    sets:add_element(Event, E) 
+                            end, Events, AddEvents),
+    {noreply, State#state{events=NewEvents}};
+handle_info({Pid, session_event, Events}, State) ->
+    Route = list_to_binary(["fs_event.request.session_events"]),
+    lineman_bindings:map(Route, {Pid, Events}),
+     
     {noreply, State};
 handle_info({Pid, session_event, Events}, State) ->
     Route = list_to_binary(["fs_event.request.session_events"]),
@@ -247,7 +259,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-connect_simulator(Target) ->
-    c:nl(freeswitch),
-    R = rpc:call(Target, ecallmgr_fs_handler, add_fs_node, [erlang:node()]),
-    lager:info("rpc call result: ~p", [R]).
+-spec reset/1 :: (#state{}) -> #state{}.
+reset(State) ->
+    lager:info("reseting state", []),
+    State.
