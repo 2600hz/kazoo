@@ -224,7 +224,11 @@ maybe_match_users(Call, State, [U|Us], MatchNum) ->
             collect_more_digits(Call, clear_current_users(State), get_current_users(State));
         start_over ->
             lager:debug("starting over"),
-            directory_start(Call, clear_dtmf(State), users(State))
+            directory_start(Call, clear_dtmf(State), users(State));
+        invalid ->
+            lager:debug("invalid key press"),
+            play_invalid(Call),
+            maybe_match_users(Call, State, [U|Us], MatchNum)
     end.
 
 -spec maybe_match_user/3 :: (whapps_call:call(), directory_user(), pos_integer()) -> 'route' |
@@ -287,6 +291,9 @@ play_user(Call, UsernameTuple, MatchNum) ->
                             ,UsernameTuple
                             ,{play, ?PROMPT_RESULT_MENU}
                            ]).
+
+play_invalid(Call) ->
+    whapps_call_command:audio_macro([{play, ?PROMPT_INVALID_KEY}], Call).
 
 play_confirm_match(Call, User) ->
     play_and_collect(Call, [{play, ?PROMPT_FOUND}
