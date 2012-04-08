@@ -20,47 +20,48 @@
                 get_event_name/1, getpid/1, sendmsg/3, bind/2,
                 sendevent/3, sendevent_custom/3, handlecall/2, handlecall/3, start_fetch_handler/5,
                 start_log_handler/4, start_event_handler/4, fetch_reply/3, register_event_handler/1]).
+-export([fs_simulator/0]).
+
 -define(TIMEOUT, 5000).
+
+fs_simulator() ->
+     ok.
 
 %% @doc Return the value for a specific header in an event or `{error,notfound}'.
 get_event_header([], _Needle) ->
-        {error, notfound};
+    {error, notfound};
 get_event_header({event, Headers}, Needle) when is_list(Headers) ->
-        get_event_header(Headers, Needle);
+    get_event_header(Headers, Needle);
 get_event_header([undefined | Headers], Needle) ->
-        get_event_header(Headers, Needle);
+    get_event_header(Headers, Needle);
 get_event_header([UUID | Headers], Needle) when is_list(UUID) ->
-        get_event_header(Headers, Needle);
+    get_event_header(Headers, Needle);
 get_event_header([{Key,Value} | Headers], Needle) ->
-        case Key of
-                Needle ->
-                        Value;
-                _ ->
-                        get_event_header(Headers, Needle)
-        end.
+    case Key of
+        Needle -> Value;
+        _ -> get_event_header(Headers, Needle)
+    end.
 
 %% @doc Return the name of the event.
 get_event_name(Event) ->
-        get_event_header(Event, "Event-Name").
+    get_event_header(Event, "Event-Name").
 
 %% @doc Return the body of the event or `{error, notfound}' if no event body.
 get_event_body(Event) ->
-        get_event_header(Event, "body").
+    get_event_header(Event, "body").
 
 bind(Node, Type) ->
-    {fs_simulator, Node} ! {self(), bind, Type},
+    {fs_simulator, Node} ! {self(), <<"freeswitch.bind.", (wh_util:to_lower_binary(Type))/binary>>, []},
     receive
-        Response ->
-            Response
+        {ok, _} -> ok
     after ?TIMEOUT ->
             timeout
     end.
-    
+
 register_event_handler(Node) ->
-    {fs_simulator, Node} ! {self(), register_event_handler},
+    {fs_simulator, Node} ! {self(), <<"freeswitch.register_event_handler">>, []},
     receive
-        Response ->
-            Response
+        {ok, _} -> ok
     after ?TIMEOUT ->
             timeout
     end.
@@ -68,24 +69,22 @@ register_event_handler(Node) ->
 %% @doc Send a raw term to FreeSWITCH. Returns the reply or `timeout' on a
 %% timeout.
 send(Node, Term) ->
-        {fs_simulator, Node} ! {self(), send, Term},
-        receive
-                Response ->
-                        Response
-        after ?TIMEOUT ->
-                        timeout
-        end.
+    {fs_simulator, Node} ! {self(), <<"freeswitch.send">>, Term},
+    receive
+        {ok, Response} -> Response;
+        {error, Reason} -> {error, Reason}
+    after ?TIMEOUT ->
+            timeout
+    end.
 
 fetch_reply(Node, FetchID, Reply) ->
-        {fs_simulator, Node} ! {self(), fetch_reply, FetchID, Reply},
-        receive
-                {ok, FetchID} ->
-                        ok;
-                {error, FetchID, Reason} ->
-                        {error, Reason}
-        after ?TIMEOUT ->
-                        timeout
-        end.
+    {fs_simulator, Node} ! {self(), <<"freeswitch.fetch_reply.", (wh_util:to_lower_binary(FetchID))/binary>>, Reply},
+    receive
+        {ok, FetchID} -> ok;
+        {error, Reason} -> {error, Reason}
+    after ?TIMEOUT ->
+            timeout
+    end.
 
 
 %% @doc Make a blocking API call to FreeSWITCH. The result of the API call is
@@ -94,19 +93,17 @@ api(Node, Cmd, Args) ->
     api(Node, Cmd, Args, ?TIMEOUT).
 
 api(Node, Cmd, Args, Timeout) ->
-        {fs_simulator, Node} ! {self(), api, Cmd, Args},
-        receive
-                {ok, X} -> 
-                        {ok, X};
-                {error, X} ->
-                        {error, X}
-        after Timeout ->
-                timeout
-        end.
+    {fs_simulator, Node} ! {self(), <<"freeswitch.api.", (wh_util:to_lower_binary(Cmd))/binary>>, Args},
+    receive
+        {ok, X} -> {ok, X};
+        {error, X} -> {error, X}
+    after Timeout ->
+            timeout
+    end.
 
 %% @doc Same as @link{api/3} except there's no additional arguments.
 api(Node, Cmd) ->
-        api(Node, Cmd, "").
+    api(Node, Cmd, "").
 
 %% @doc Make a backgrounded API call to FreeSWITCH. The asynchronous reply is
 %% sent to calling process after it is received. This function
@@ -114,36 +111,35 @@ api(Node, Cmd) ->
 %% to respond.
 -spec(bgapi/3 :: (Node :: atom(), Cmd :: atom(), Args :: string()) -> {'ok', string()} | {'error', any()} | 'timeout').
 bgapi(Node, Cmd, Args) ->
-        Self = self(),
-        % spawn a new process so that both responses go here instead of directly to
-        % the calling process.
-        spawn(fun() ->
-                {fs_simulator, Node} ! {self(), bgapi, Cmd, Args},
-                receive
-                        {error, Reason} ->
-                                % send the error condition to the calling process
-                                Self ! {api, {error, Reason}};
-                        {ok, JobID} ->
-                                % send the reply to the calling process
-                                Self ! {api, {ok, JobID}},
-                                receive % wait for the job's reply
-                                        {bgok, JobID, Reply} ->
-                                                % send the actual command output back to the calling process
-                                                Self ! {bgok, JobID, Reply};
-                                        {bgerror, JobID, Reply} ->
-                                                Self ! {bgerror, JobID, Reply}
-                                end
-                after ?TIMEOUT ->
-                        % send a timeout to the calling process
-                        Self ! {api, timeout}
-                end
-        end),
-
-        % get the initial result of the command, NOT the asynchronous response, and
-        % return it
-        receive
-                {api, X} -> X
-        end.
+    Self = self(),
+    %% spawn a new process so that both responses go here instead of directly to
+    %% the calling process.
+    spawn(fun() ->
+                  {fs_simulator, Node} ! {self(), <<"freeswitch.bgapi.", (wh_util:to_lower_binary(Cmd))/binary>>, Args},
+                  receive
+                      {error, Reason} ->
+                          %% send the error condition to the calling process
+                          Self ! {api, {error, Reason}};
+                      {ok, JobID} ->
+                          %% send the reply to the calling process
+                          Self ! {api, {ok, JobID}},
+                          receive % wait for the job's reply
+                              {bgok, JobID, Reply} ->
+                                  %% send the actual command output back to the calling process
+                                  Self ! {bgok, JobID, Reply};
+                              {bgerror, JobID, Reply} ->
+                                  Self ! {bgerror, JobID, Reply}
+                          end
+                  after ?TIMEOUT ->
+                          %% send a timeout to the calling process
+                          Self ! {api, timeout}
+                  end
+          end),
+    %% get the initial result of the command, NOT the asynchronous response, and
+    %% return it
+    receive
+        {api, X} -> X
+    end.
 
 %% @doc Make a backgrounded API call to FreeSWITCH. The asynchronous reply is
 %% passed as the argument to `Fun' after it is received. This function
@@ -151,199 +147,199 @@ bgapi(Node, Cmd, Args) ->
 %% to respond.
 -spec(bgapi/4 :: (Node :: atom(), Cmd :: atom(), Args :: string(), Fun :: fun()) -> 'ok' | {'error', any()} | 'timeout').
 bgapi(Node, Cmd, Args, Fun) ->
-        Self = self(),
-        % spawn a new process so that both responses go here instead of directly to
-        % the calling process.
-        spawn(fun() ->
-                {fs_simulator, Node} ! {self(), bgapi, Cmd, Args},
-                receive
-                        {error, Reason} ->
-                                % send the error condition to the calling process
+    Self = self(),
+    %% spawn a new process so that both responses go here instead of directly to
+    %% the calling process.
+    spawn(fun() ->
+                  {fs_simulator, Node} ! {self(), <<"freeswitch.bgapi.", (wh_util:to_lower_binary(Cmd))/binary>>, Args},
+                  receive
+                      {error, Reason} ->
+                          %% send the error condition to the calling process
                                 Self ! {api, {error, Reason}};
-                        {ok, JobID} ->
-                                % send the reply to the calling process
-                                Self ! {api, ok},
-                                receive % wait for the job's reply
-                                        {bgok, JobID, Reply} ->
-                                                % Call the function with the reply
-                                                Fun(ok, Reply);
-                                        {bgerror, JobID, Reply} ->
-                                                Fun(error, Reply)
-                                end
-                after ?TIMEOUT ->
-                        % send a timeout to the calling process
-                        Self ! {api, timeout}
-                end
-        end),
-
-        % get the initial result of the command, NOT the asynchronous response, and
-        % return it
-        receive
-                {api, X} -> X
-        end.
+                      {ok, JobID} ->
+                          %% send the reply to the calling process
+                          Self ! {api, ok},
+                          receive % wait for the job's reply
+                              {bgok, JobID, Reply} ->
+                                  %% Call the function with the reply
+                                  Fun(ok, Reply);
+                              {bgerror, JobID, Reply} ->
+                                  Fun(error, Reply)
+                          end
+                  after ?TIMEOUT ->
+                          %% send a timeout to the calling process
+                          Self ! {api, timeout}
+                  end
+          end),
+    %% get the initial result of the command, NOT the asynchronous response, and
+    %% return it
+    receive
+        {api, X} -> X
+    end.
 
 %% @doc Request to receive any events in the list `List'.
 event(Node, Events) when is_list(Events) ->
-        {fs_simulator, Node} ! {self(), event, Events},
-        receive
-                ok -> ok;
-                {error, Reason} -> {error, Reason}
-        after ?TIMEOUT ->
-                timeout
-        end;
+    {fs_simulator, Node} ! {self(), <<"freeswitch.event">>, Events},
+    receive
+        {ok, _} -> ok;
+        {error, Reason} -> {error, Reason}
+    after ?TIMEOUT ->
+            timeout
+    end;
 event(Node, Event) when is_atom(Event) ->
-        event(Node, [Event]).
+    event(Node, [Event]).
 
 session_event(Node, Events) when is_list(Events) ->
-        {fs_simulator, Node} ! {self(), session_event, Events},
-        receive
-                ok -> ok;
-                {error, Reason} -> {error, Reason}
-        after ?TIMEOUT ->
-                        timeout
-        end;
+    {fs_simulator, Node} ! {self(), <<"freeswitch.session_event">>, Events},
+    receive
+        {ok, _} -> ok;
+        {error, Reason} -> {error, Reason}
+    after ?TIMEOUT ->
+            timeout
+    end;
 session_event(Node, Event) when is_atom(Event) ->
-        session_event(Node, [Event]).
+    session_event(Node, [Event]).
 
 %% @doc Stop receiving any events in the list `Events' from `Node'.
 nixevent(Node, Events) when is_list(Events) ->
-        {fs_simulator, Node} ! {self(), nixevent, Events},
-        receive
-                ok -> ok;
-                {error, Reason} -> {error, Reason}
-        after ?TIMEOUT ->
-                timeout
-        end;
+    {fs_simulator, Node} ! {self(), <<"freeswitch.nixevent">>, Events},
+    receive
+        {ok, _} -> ok;
+        {error, Reason} -> {error, Reason}
+    after ?TIMEOUT ->
+            timeout
+    end;
 nixevent(Node, Event) when is_atom(Event) ->
-        nixevent(Node, [Event]).
+    nixevent(Node, [Event]).
 
 session_nixevent(Node, Events) when is_list(Events) ->
-        {fs_simulator, Node} ! {self(), session_nixevent, Events},
-        receive
-                ok -> ok;
-                {error, Reason} -> {error, Reason}
-        after ?TIMEOUT ->
-                timeout
-        end;
+    {fs_simulator, Node} ! {self(), <<"freeswitch.session_nixevent">>, Events},
+    receive
+        {ok, _} -> ok;
+        {error, Reason} -> {error, Reason}
+    after ?TIMEOUT ->
+            timeout
+    end;
 session_nixevent(Node, Event) when is_atom(Event) ->
-        session_nixevent(Node, [Event]).
+    session_nixevent(Node, [Event]).
 
 %% @doc Stop receiving any events from `Node'.
 noevents(Node) ->
-        {fs_simulator, Node} ! {self(), noevents},
-        receive
-                ok -> ok;
-                {error, Reason} -> {error, Reason}
-        after ?TIMEOUT ->
-                timeout
-        end.
+    {fs_simulator, Node} ! {self(), <<"freeswitch.noevents">>, []},
+    receive
+        {ok, _} -> ok;
+        {error, Reason} -> {error, Reason}
+    after ?TIMEOUT ->
+            timeout
+    end.
 
 session_noevents(Node) ->
-        {fs_simulator, Node} ! {self(), session_noevents},
-        receive
-                ok -> ok;
-                {error, Reason} -> {error, Reason}
-        after ?TIMEOUT ->
-                        timeout
-        end.
+    {fs_simulator, Node} ! {self(), <<"freeswitch.session_noevents">>, []},
+    receive
+        {ok, _} -> ok;
+        {error, Reason} -> {error, Reason}
+    after ?TIMEOUT ->
+            timeout
+    end.
 
 %% @doc Close the connection to `Node'.
 close(Node) ->
-        {fs_simulator, Node} ! {self(), close, exit},
-        receive
-                ok -> ok
-        after ?TIMEOUT ->
-                timeout
-        end.
+    {fs_simulator, Node} ! {self(), <<"freeswitch.close.exit">>, []},
+    receive
+        {ok, _} -> ok;
+        {error, Reason} -> {error, Reason}
+    after ?TIMEOUT ->
+            timeout
+    end.
 
 %% @doc Send an event to FreeSWITCH. `EventName' is the name of the event and
 %% `Headers' is a list of `{Key, Value}' string tuples. See the mod_event_socket
 %% documentation for more information.
 sendevent(Node, EventName, Headers) ->
-        {fs_simulator, Node} ! {self(), sendevent, EventName, Headers},
-        receive
-                ok -> ok;
-                {error, Reason} -> {error, Reason}
-        after ?TIMEOUT ->
-                timeout
-        end.
+    {fs_simulator, Node} ! {self(), <<"freeswitch.sendevent.", (wh_util:to_lower_binary(EventName))/binary>>, Headers},
+    receive
+        {ok, _} -> ok;
+        {error, Reason} -> {error, Reason}
+    after ?TIMEOUT ->
+            timeout
+    end.
 
 %% @doc Send a CUSTOM event to FreeSWITCH. `SubClassName' is the name of the event
 %% subclass and `Headers' is a list of `{Key, Value}' string tuples. See the
 %% mod_event_socket documentation for more information.
 sendevent_custom(Node, SubClassName, Headers) ->
-        {fs_simulator, Node} ! {self(), sendevent, 'CUSTOM',  SubClassName, Headers},
-        receive
-                ok -> ok;
-                {error, Reason} -> {error, Reason}
-        after ?TIMEOUT ->
-                timeout
-        end.
+    {fs_simulator, Node} ! {self(), <<"sendevent.custom.", (wh_util:to_lower_binary(SubClassName))/binary>>, Headers},
+    receive
+        {ok, _} -> ok;
+        {error, Reason} -> {error, Reason}
+    after ?TIMEOUT ->
+            timeout
+    end.
 
 
 %% @doc Send a message to the call identified by `UUID'. `Headers' is a list of
 %% `{Key, Value}' string tuples.
 sendmsg(Node, UUID, Headers) ->
-        {fs_simulator, Node} ! {self(), sendmsg, UUID, Headers},
-        receive
-                ok -> ok;
-                {error, Reason} -> {error, Reason}
-        after ?TIMEOUT ->
-                timeout
-        end.
+    {fs_simulator, Node} ! {self(), <<"freeswitch.sendmsg.", (wh_util:to_lower_binary(UUID))/binary>>, Headers},
+    receive
+        {ok, _} -> ok;
+        {error, Reason} -> {error, Reason}
+    after ?TIMEOUT ->
+            timeout
+    end.
 
 
 %% @doc Get the fake pid of the FreeSWITCH node at `Node'. This can be helpful
 %% for linking to the process. Returns `{ok, Pid}' or `timeout'.
 getpid(Node) ->
-        {fs_simulator, Node} ! {self(), getpid},
-        receive
-                {ok, Pid} when is_pid(Pid) -> {ok, Pid}
-        after ?TIMEOUT ->
-                timeout
-        end.
+    {fs_simulator, Node} ! {self(), <<"freeswitch.getpid">>, []},
+    receive
+        {ok, Pid} when is_pid(Pid) -> {ok, Pid};
+        {error, Reason} -> {error, Reason}
+    after ?TIMEOUT ->
+            timeout
+    end.
 
 %% @doc Request that FreeSWITCH send any events pertaining to call `UUID' to
 %% `Process' where process is a registered process name.
 handlecall(Node, UUID, Process) ->
-        {fs_simulator, Node} ! {self(), handlecall, UUID, Process},
-        receive
-                ok -> ok;
-                {error, Reason} -> {error, Reason}
-        after ?TIMEOUT ->
-                timeout
-        end.
+    {fs_simulator, Node} ! {self(), <<"freeswitch.handlecall.", (wh_util:to_lower_binary(UUID))/binary>>, Process},
+    receive
+        {ok, _} -> ok;
+        {error, Reason} -> {error, Reason}
+    after ?TIMEOUT ->
+            timeout
+    end.
 
 %% @doc Request that FreeSWITCH send any events pertaining to call `UUID' to
 %% the calling process.
 handlecall(Node, UUID) ->
-        {fs_simulator, Node} ! {self(), handlecall, UUID},
-        receive
-                ok -> ok;
-                {error, Reason} -> {error, Reason}
-        after ?TIMEOUT ->
-                timeout
-        end.
+    {fs_simulator, Node} ! {self(), <<"freeswitch.handlecall.", (wh_util:to_lower_binary(UUID))/binary>>, []},
+    receive
+        {ok, _} -> ok;
+        {error, Reason} -> {error, Reason}
+    after ?TIMEOUT ->
+            timeout
+    end.
 
 %% @private
 start_handler(Node, Type, Module, Function, State) ->
-        Self = self(),
-        spawn(fun() ->
-                {fs_simulator, Node} ! {self(), start_handler, Type},
-                receive
-                        ok ->
-                                Self ! {Type, {ok, self()}},
-                                apply(Module, Function, [Node, State]);
-                        {error,Reason} ->
-                                Self ! {Type, {error, Reason}}
-                after ?TIMEOUT ->
-                                Self ! {Type, timeout}
-                end
-                end),
-        
-        receive
-                {Type, X} -> X
-        end.
+    Self = self(),
+    spawn(fun() ->
+                  {fs_simulator, Node} ! {self(), <<"freeswitch.start_handler.", (wh_util:to_lower_binary(Type))/binary>>, []},
+                  receive
+                      {ok, _} ->
+                          Self ! {Type, {ok, self()}},
+                          apply(Module, Function, [Node, State]);
+                      {error,Reason} ->
+                          Self ! {Type, {error, Reason}}
+                  after ?TIMEOUT ->
+                          Self ! {Type, timeout}
+                  end
+          end),    
+    receive
+        {Type, X} -> X
+    end.
 
 %% @todo Notify the process if it gets replaced by a new log handler.
 
@@ -361,7 +357,7 @@ start_handler(Node, Type, Module, Function, State) ->
 %% spawned process, `{error, Reason}' or the atom `timeout' if FreeSWITCH did
 %% not respond.
 start_log_handler(Node, Module, Function, State) ->
-        start_handler(Node, register_log_handler, Module, Function, State).
+    start_handler(Node, register_log_handler, Module, Function, State).
 
 %% @todo Notify the process if it gets replaced with a new event handler.
 
@@ -380,7 +376,7 @@ start_log_handler(Node, Module, Function, State) ->
 %% spawned process, `{error, Reason}' or the atom `timeout' if FreeSWITCH did
 %% not respond.
 start_event_handler(Node, Module, Function, State) ->
-        start_handler(Node, register_event_handler, Module, Function, State).
+    start_handler(Node, register_event_handler, Module, Function, State).
 
 %% @doc Spawn Module:Function as an XML config fetch handler for configs of type
 %% `Section'. See the FreeSWITCH documentation for mod_xml_rpc for more
@@ -401,4 +397,4 @@ start_event_handler(Node, Module, Function, State) ->
 %% spawned process, `{error, Reason}' or the atom `timeout' if FreeSWITCH did
 %% not respond.
 start_fetch_handler(Node, Section, Module, Function, State) ->
-        start_handler(Node, {bind, Section}, Module, Function, State).
+    start_handler(Node, {bind, Section}, Module, Function, State).

@@ -9,11 +9,13 @@
 
 -behaviour(supervisor).
 
--include_lib("whistle/include/wh_types.hrl").
+-include_lib("lineman/src/lineman.hrl").
 
 -export([start_link/0]).
--export([sync_msg_all/1]).
--export([sync_msg_tool/2]).
+-export([reset_all/0]).
+-export([set_parameter/3]).
+-export([prepare/2]).
+-export([execute/2]).
 -export([init/1]).
 
 %% Helper macro for declaring children of supervisor
@@ -35,18 +37,45 @@
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
--spec sync_msg_all/1 :: (term()) -> 'ok'.
-sync_msg_all(Msg) ->
-    [ok = gen_server:call(P, Msg) 
-     || {_, P, _, _} <- supervisor:which_children(?MODULE)
-    ],
+-spec reset_all/0 :: () -> 'ok'.
+reset_all() ->
+    [P ! reset || {_, P, _, _} <- supervisor:which_children(?MODULE)],
     ok.
 
-sync_msg_tool(Tool, Msg) ->
-    Mod = wh_util:to_atom(list_to_binary(["lineman_tool_", Tool]), true),
-    case [P || {M, P, _, _} <- supervisor:which_children(?MODULE), M =:= Mod] of
-        [Pid] -> gen_server:call(Pid, Msg);
-        _Else -> {error, tool_not_found}
+-spec set_parameter/3 :: (text(), string(), #xmlElement{}) -> term().
+set_parameter(Tool, Name, Parameter) ->
+    {ok, Mod} = maybe_get_tool(Tool),
+    Mod:set_parameter(Name, Parameter).
+
+-spec prepare/2 :: (text(), #xmlElement{}) -> term().
+prepare(Tool, Step) ->
+    {ok, Mod} = maybe_get_tool(Tool),
+    Mod:prepare(Step).
+
+-spec execute/2 :: (text(), #xmlElement{}) -> term().
+execute(Tool, Step) ->
+    {ok, Mod} = maybe_get_tool(Tool),
+    Mod:execute(Step).
+
+
+-spec maybe_get_tool/1 :: (text()) -> {'ok', atom()} | {'error', 'not_found' | 'load_failed'}.
+maybe_get_tool(Tool) ->
+    ModBin = list_to_binary(["lineman_tool_", Tool]),
+    try wh_util:to_atom(ModBin) of
+        Mod -> {ok, Mod}
+    catch
+        error:badarg ->
+            case code:where_is_file(wh_util:to_list(<<ModBin/binary, ".beam">>)) of
+                non_existing -> 
+                    lager:debug("tool ~s not found", [ModBin]),
+                    {error, not_found};
+                _Path ->
+                    wh_util:to_atom(ModBin, true),
+                    maybe_get_tool(ModBin)
+            end;
+        _T:_R ->
+            lager:debug("failed to load tool ~s", [ModBin]),
+            {error, load_failed}
     end.
 
 %% ===================================================================

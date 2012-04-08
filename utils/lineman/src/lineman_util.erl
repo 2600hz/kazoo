@@ -21,10 +21,10 @@
 %% Attempts to connect to another erlang node
 %% @end
 %%--------------------------------------------------------------------
--spec try_connect_to_target/2 :: (atom(), atom()) -> {'ok', atom()} | 
+-spec try_connect_to_target/2 :: (text(), text()) -> {'ok', atom()} | 
                                                      {'error', term()}.
--spec try_connect_to_target/3 :: (atom(), atom(), string()) -> {'ok', atom()} | 
-                                                               {'error', term()}.
+-spec try_connect_to_target/3 :: (text(), text(), text()) -> {'ok', atom()} | 
+                                                             {'error', term()}.
 
 try_connect_to_target(Node, Cookie) ->
     try_connect_to_target(Node, Cookie, net_adm:localhost()).
@@ -115,8 +115,6 @@ get_xml_element_content([#xmlText{value=Value}|Content], true, Acc) when is_bina
     end;
 get_xml_element_content([#xmlText{value=Value}|Content], Clean, Acc) when is_binary(Acc) ->
     get_xml_element_content(Content, Clean, <<Acc/binary, (wh_util:to_binary(Value))/binary>>);
-
-
 get_xml_element_content([_|Content], Clean, Acc) ->
     get_xml_element_content(Content, Clean, Acc);
 get_xml_element_content([], _, Acc) ->

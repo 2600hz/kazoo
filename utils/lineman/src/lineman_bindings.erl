@@ -26,13 +26,15 @@
 
 %% API
 -export([start_link/0]).
--export([bind/3]).
+-export([bind/2, bind/3]).
 -export([map/2]).
 -export([fold/2]).
--export([flush/0, flush/1, flush_mod/1]).
+-export([flush/0]).
+-export([flush_binding/1]).
+-export([flush_callback/1]).
 -export([stop/0]).
--export([modules_loaded/0]).
 -export([any/1, all/1, succeeded/1, failed/1]).
+-export([get_bindings/0]).
 
 -export([init/1
          ,handle_call/3
@@ -43,16 +45,22 @@
         ]).
 
 -include_lib("proper/include/proper.hrl").
--include("lineman.hrl").
+-include_lib("lineman/src/lineman.hrl").
 
 -define(SERVER, ?MODULE).
 
-%% {FullBinding, BindingPieces, QueueOfMods}
-%% {<<"foo.bar.#">>, [<<"foo">>, <<"bar">>, <<"#">>], queue()}
--type binding() :: {ne_binary(), [ne_binary(),...], queue()}. %% queue(Module::atom() | pid())
+%% {{FullBinding, BindingPieces}, ListOfModsAndPids}
+%% {{<<"foo.bar.#">>, [<<"foo">>, <<"bar">>, <<"#">>]}, list()}
+-type callback() :: {atom(), atom()} | 
+                     {pid(), call} |
+                     {pid(), cast} |
+                     {pid(), non_neg_integer()} |
+                     {reference(), fun((term()) -> term())}.
+
+-type binding() :: {{ne_binary(), [ne_binary(),...]}, [callback(),...]}.
 -type bindings() :: [binding(),...] | [].
 
--record(state, {bindings = [] :: bindings()}).
+-record(state, {bindings = dict:new()}).
 
 %%%===================================================================
 %%% API
@@ -66,9 +74,20 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec map/2 :: (ne_binary(), term()) -> [{boolean(), term()},...].
+map(Routing, Payload) when not is_list(Payload) ->
+    map(Routing, [Payload]);
 map(Routing, Payload) ->
     lager:info("map '~s': ~p", [Routing, Payload]),
-    gen_server:call(?MODULE, {map, Routing, Payload, get(callid)}, infinity).
+    RoutingParts = lists:reverse(binary:split(Routing, <<".">>, [global])),
+    lists:foldl(fun({{B, BParts}, MFs}, Acc) ->
+                        case B =:= Routing orelse matches(BParts, RoutingParts) of
+                            false -> Acc;
+                            true -> 
+                                [catch execute_binding(MF, Payload) 
+                                 || MF <- MFs
+                                ] ++ Acc
+                        end
+                end, [], get_bindings()).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -78,9 +97,21 @@ map(Routing, Payload) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec fold/2 :: (ne_binary(), term()) -> term().
+fold(Routing, Payload) when not is_list(Payload) ->
+    fold(Routing, [Payload]);
 fold(Routing, Payload) ->
-    lager:info("fold '~s': ~p", [Routing, Payload]),
-    gen_server:call(?MODULE, {fold, Routing, Payload, get(callid)}, infinity).
+    lager:debug("running fold for binding ~s", [Routing]),    
+    RoutingParts = lists:reverse(binary:split(Routing, <<".">>, [global])),
+    [Reply|_] = lists:foldl(
+                  fun({{B, BParts}, MFs}, Acc) ->
+                          case B =:= Routing orelse matches(BParts, RoutingParts) of
+                              false -> Acc;
+                              true ->
+                                  lager:debug("routing ~s matches ~s", [Routing, B]),
+                                  fold_bind_results(MFs, Acc, Routing)
+                          end
+                  end, Payload, get_bindings()),
+    Reply.
 
 %%-------------------------------------------------------------------
 %% @doc
@@ -93,10 +124,10 @@ any(Res) when is_list(Res) -> lists:any(fun check_bool/1, Res).
 -spec all/1 :: (proplist()) -> boolean().
 all(Res) when is_list(Res) -> lists:all(fun check_bool/1, Res).
 
--spec failed/1 :: (proplist_bool()) -> proplist_bool().
+-spec failed/1 :: (proplist()) -> boolean().
 failed(Res) when is_list(Res) -> [R || R <- Res, filter_out_succeeded(R)].
 
--spec succeeded/1 :: (proplist_bool()) -> proplist_bool().
+-spec succeeded/1 :: (proplist()) -> boolean().
 succeeded(Res) when is_list(Res) -> [R || R <- Res, filter_out_failed(R)].
 
 %%--------------------------------------------------------------------
@@ -112,25 +143,40 @@ start_link() ->
 stop() ->
     gen_server:cast(?SERVER, stop).
 
--spec bind/3 :: (ne_binary(), atom(), atom()) -> 'ok' | {'error', 'exists'}.
-bind(Binding, Module, Fun) ->
-    gen_server:call(?MODULE, {bind, Binding, Module, Fun}, infinity).
+-spec bind/2 :: (ne_binary(), pid()) -> 'ok';
+                (ne_binary(), fun((term()) -> term())) -> reference().
+bind(Binding, Pid) when is_pid(Pid) ->
+    gen_server:cast(?MODULE, {bind, Binding, {Pid, 1000}});
+bind(Binding, Fun) when is_function(Fun) ->
+    gen_server:call(?MODULE, {bind, Binding, Fun}).
+
+-spec bind/3 :: (ne_binary(), atom(), atom()) -> 'ok';
+                (ne_binary(), pid(), call | cast | non_neg_integer()) -> 'ok'.
+bind(Binding, Module, Fun) when is_atom(Module), is_atom(Fun) ->
+    gen_server:cast(?MODULE, {bind, Binding, {Module, Fun}});
+bind(Binding, Pid, call) when is_pid(Pid) ->
+    gen_server:cast(?MODULE, {bind, Binding, {Pid, call}});
+bind(Binding, Pid, cast) when is_pid(Pid) ->
+    gen_server:cast(?MODULE, {bind, Binding, {Pid, cast}});
+bind(Binding, Pid, Timeout) when is_integer(Timeout), Timeout >= 0 ->
+    gen_server:cast(?MODULE, {bind, Binding, {Pid, Timeout}}).
+
+
+-spec get_bindings/0 :: () -> bindings().
+get_bindings() ->
+    gen_server:call(?MODULE, bindings).
 
 -spec flush/0 :: () -> 'ok'.
 flush() ->
     gen_server:cast(?MODULE, flush).
 
--spec flush/1 :: (ne_binary()) -> 'ok'.
-flush(Binding) ->
-    gen_server:cast(?MODULE, {flush, Binding}).
+-spec flush_binding/1 :: (ne_binary()) -> 'ok'.
+flush_binding(Binding) ->
+    gen_server:cast(?MODULE, {flush_binding, Binding}).
 
--spec flush_mod/1 :: (atom()) -> 'ok'.
-flush_mod(CBMod) ->
-    gen_server:cast(?MODULE, {flush_mod, CBMod}).
-
--spec modules_loaded/0 :: () -> [atom(),...] | [].
-modules_loaded() ->
-    gen_server:call(?MODULE, modules_loaded).
+-spec flush_callback/1 :: (atom()) -> 'ok'.
+flush_callback(Mod) ->
+    gen_server:cast(?MODULE, {flush_callback, Mod}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -150,27 +196,7 @@ modules_loaded() ->
 init([]) ->
     process_flag(trap_exit, true),
     lager:debug("starting bindings server"),
-    spawn(fun() ->
-                  [maybe_init_mod(Mod)
-                   || Mod <- lineman_config:get(<<"tools">>, [])
-                  ]
-          end),
     {ok, #state{}}.
-
-maybe_init_mod(ModBin) ->
-    try wh_util:to_atom(ModBin) of
-        Mod -> lager:debug("init: ~s: ~p", [ModBin, catch Mod:init()])
-    catch
-        error:badarg ->
-            case code:where_is_file(wh_util:to_list(<<ModBin/binary, ".beam">>)) of
-                non_existing -> lager:debug("module ~s doesn't exist", [ModBin]);
-                _Path ->
-                    wh_util:to_atom(ModBin, true),
-                    maybe_init_mod(ModBin)
-            end;
-        _T:_R ->
-            lager:debug("failed to load ~s as an atom: ~p, ~p", [ModBin, _T, _R])
-    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -186,78 +212,14 @@ maybe_init_mod(ModBin) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call(modules_loaded, _, #state{bindings=Bs}=State) ->
-    Mods = lists:foldl(fun({_, _, MFs}, Acc) ->
-                               [ K || {K, _} <- props:unique(queue:to_list(MFs))] ++ Acc
-                       end, [], Bs),
-    {reply, lists:usort(Mods), State};
-
-handle_call({map, Routing, Payload, ReqId}, From, State) when not is_list(Payload) ->
-    handle_call({map, Routing, [Payload], ReqId}, From, State);
-handle_call({map, Routing, Payload, ReqId}, From , #state{bindings=Bs}=State) ->
-    spawn(fun() ->
-                  put(callid, ReqId),
-                  RoutingParts = lists:reverse(binary:split(Routing, <<".">>, [global])),
-                  Map = fun({Mod, Fun}) when is_atom(Mod) ->
-                                put(callid, ReqId),
-                                lager:debug("sending routing ~s to ~s:~s", [Routing, Mod, Fun]),
-                                apply(Mod, Fun, Payload)
-                        end,
-                  Reply = lists:foldl(fun({B, _, MFs}, Acc) when B =:= Routing ->
-                                              lager:debug("exact match ~p to ~p", [B, Routing]),
-                                              [catch Map(MF) || MF <- queue:to_list(MFs)] ++ Acc;
-                                         ({_, BParts, MFs}, Acc) ->
-                                              case matches(BParts, RoutingParts) of
-                                                  true ->
-                                                      lager:debug("matched ~p to ~p", [BParts, RoutingParts]),
-                                                      [catch Map(MF) || MF <- queue:to_list(MFs)] ++ Acc;
-                                                 false -> Acc
-                                             end
-                                     end, [], Bs),
-
-                  gen_server:reply(From, Reply)
-          end),
-    {noreply, State};
-handle_call({fold, Routing, Payload, ReqId}, From, State) when not is_list(Payload) ->
-    handle_call({fold, Routing, [Payload], ReqId}, From, State);
-handle_call({fold, Routing, Payload, ReqId}, From, #state{bindings=Bs}=State) ->
-    spawn(fun() ->
-                  put(callid, ReqId),
-                  lager:debug("running fold for binding ~s", [Routing]),
-
-                  RoutingParts = lists:reverse(binary:split(Routing, <<".">>, [global])),
-
-                  [Reply|_] = lists:foldl(
-                                fun({B, BParts, MFs}, Acc) ->
-                                        case B =:= Routing orelse matches(BParts, RoutingParts) of
-                                            true ->
-                                                lager:debug("routing ~s matches ~s", [Routing, B]),
-                                                fold_bind_results(MFs, Acc, Routing);
-                                            false -> Acc
-                                        end
-                                end, Payload, Bs),
-
-                  gen_server:reply(From, Reply)
-          end),
-    {noreply, State};
-handle_call({bind, Binding, Mod, Fun}, _, #state{bindings=[]}=State) ->
+handle_call(bindings, _, #state{bindings=Bindings}=State) ->
+    {reply, dict:to_list(Bindings), State};
+handle_call({bind, Binding, Callback}, _, #state{bindings=Bindings}=State) ->
+    Ref = make_ref(),
     BParts = lists:reverse(binary:split(Binding, <<".">>, [global])),
-    {reply, ok, State#state{bindings=[{Binding, BParts, queue:in({Mod, Fun}, queue:new())}]}, hibernate};
-handle_call({bind, Binding, Mod, Fun}, _, #state{bindings=Bs}=State) ->
-    MF = {Mod, Fun},
-    lager:debug("~w is binding ~s", [MF, Binding]),
-    case lists:keyfind(Binding, 1, Bs) of
-        false ->
-            BParts = lists:reverse(binary:split(Binding, <<".">>, [global])),
-            {reply, ok, State#state{bindings=[{Binding, BParts, queue:in(MF, queue:new())} | Bs]}, hibernate};
-        {_, _, Subscribers} ->
-            case queue:member(MF, Subscribers) of
-                true -> {reply, {error, exists}, State};
-                false ->
-                    BParts = lists:reverse(binary:split(Binding, <<".">>, [global])),
-                    {reply, ok, State#state{bindings=[{Binding, BParts, queue:in(MF, Subscribers)} | lists:keydelete(Binding, 1, Bs)]}, hibernate}
-            end
-    end.
+    {reply, Ref, State#state{bindings=dict:append({Binding, BParts}, {Ref, Callback}, Bindings)}};
+handle_call(_Msg, _From, State) ->
+    {reply, {error, not_implemented}, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -269,23 +231,34 @@ handle_call({bind, Binding, Mod, Fun}, _, #state{bindings=Bs}=State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast({bind, Binding, Callback}, #state{bindings=Bindings}=State) ->
+    BParts = lists:reverse(binary:split(Binding, <<".">>, [global])),
+    case Callback of
+        {Pid, _} when is_pid(Pid) -> monitor(process, Pid);
+        Else when is_pid(Else) -> monitor(process, Else);
+        _Else -> ok
+    end,    
+    {noreply, State#state{bindings=dict:append({Binding, BParts}, Callback, Bindings)}};
 handle_cast(flush, #state{}=State) ->
-    {noreply, State#state{bindings=[]}, hibernate};
-handle_cast({flush, Binding}, #state{bindings=Bs}=State) ->
-    case lists:keyfind(Binding, 1, Bs) of
-        false -> {noreply, State};
-        {_, _, _} ->
-            {noreply, State#state{bindings=lists:keydelete(Binding, 1, Bs)}, hibernate}
-    end;
-handle_cast({flush_mod, CBMod}, #state{bindings=Bs}=State) ->
-    lager:debug("trying to flush ~s", [CBMod]),
-    Bs1 = [ {Binding, BParts, MFs1}
-            || {Binding, BParts, MFs} <- Bs,
-               not queue:is_empty(MFs1 = queue:filter(fun({Mod, _}) -> Mod =/= CBMod end, MFs))
-          ],
-    {noreply, State#state{bindings=Bs1}};
+    {noreply, State#state{bindings=dict:new()}, hibernate};
+handle_cast({flush_binding, Binding}, #state{bindings=Bindings}=State) ->
+    NewBindings = dict:filter(fun({B, _}, _) when B =:= Binding -> false;
+                                 (_, _) -> true
+                              end, Bindings),
+    {noreply, State#state{bindings=NewBindings}};
+handle_cast({flush_callback, Id}, #state{bindings=Bindings}=State) ->
+    NewBindings = dict:map(fun({_, _}, MFs) -> 
+                                   [MF || MF <- MFs
+                                              ,(fun({M, _}) when M=:=Id -> false;
+                                                   (_) -> true 
+                                                end)(MF)
+                                   ]
+                              end, Bindings),
+    {noreply, State#state{bindings=NewBindings}};
 handle_cast(stop, State) ->
-    {stop, normal, State}.
+    {stop, normal, State};
+handle_cast(_Msg, State) ->
+    {noreply, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -297,6 +270,9 @@ handle_cast(stop, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info({'DOWN', _, _, Pid, _}, State) ->
+    gen_server:cast(self(), {flush_callback, Pid}),
+    {noreply, State};
 handle_info(_Info, State) ->
     {noreply, State}.
 
@@ -397,19 +373,21 @@ matches(_, _) -> false.
 %% previous payload being passed to the next invocation.
 %% @end
 %%--------------------------------------------------------------------
--spec fold_bind_results/3 :: (queue() | [{atom(), atom()},...] | [], term(), ne_binary()) -> term().
+-spec fold_bind_results/3 :: ([callback(),...] | [], term(), ne_binary()) -> term().
 fold_bind_results(_, {error, _}=E, _) -> [E];
 fold_bind_results(MFs, Payload, Route) when is_list(MFs) ->
     fold_bind_results(MFs, Payload, Route, length(MFs), []);
 fold_bind_results(MFs, Payload, Route) ->
-    fold_bind_results(queue:to_list(MFs), Payload, Route, queue:len(MFs), []).
+    fold_bind_results(MFs, Payload, Route, length(MFs), []).
 
 -spec fold_bind_results/5 :: ([{atom(), atom()},...] | [], term(), ne_binary(), non_neg_integer(), [{atom(), atom()},...] | []) -> term().
-fold_bind_results([{M,F}|MFs], [_|Tokens]=Payload, Route, MFsLen, ReRunQ) ->
-    case catch apply(M, F, Payload) of
-        eoq -> lager:debug("putting ~s to eoq", [M]), fold_bind_results(MFs, Payload, Route, MFsLen, [{M,F}|ReRunQ]);
-        {error, _E}=E -> lager:debug("error, E"), E;
-        {'EXIT', _E} -> lager:debug("excepted: ~p", [_E]), fold_bind_results(MFs, Payload, Route, MFsLen, ReRunQ);
+fold_bind_results([MF|MFs], [_|Tokens]=Payload, Route, MFsLen, ReRunQ) ->
+    case catch execute_binding(MF, Payload) of
+        eoq -> fold_bind_results(MFs, Payload, Route, MFsLen, [MF|ReRunQ]);
+        {error, _E}=E -> E;
+        {'EXIT', _E} -> 
+            lager:debug("excepted: ~p", [_E]),
+            fold_bind_results(MFs, Payload, Route, MFsLen, ReRunQ);
         Pay1 ->
             fold_bind_results(MFs, [Pay1|Tokens], Route, MFsLen, ReRunQ)
     end;
@@ -460,6 +438,29 @@ filter_out_succeeded({false, _}) -> true;
 filter_out_succeeded(false) -> true;
 filter_out_succeeded({'EXIT', _}) -> true;
 filter_out_succeeded(Term) -> wh_util:is_empty(Term).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec execute_binding/2 :: (callback(), term()) -> term().
+execute_binding({Pid, call}, Payload) when is_pid(Pid) ->
+    gen_server:call(Pid, Payload);
+execute_binding({Pid, cast}, Payload) when is_pid(Pid) ->
+    gen_server:cast(Pid, Payload),
+    Payload;
+execute_binding({Pid, After}, Payload) when is_pid(Pid) ->
+    Pid ! {binding, self(), Payload},
+    receive
+        {binding_response, Anything} -> Anything
+    after
+        After -> throw("no response from pid") 
+    end;
+execute_binding({_Ref, Fun}, Payload) when is_function(Fun) ->
+    Fun(Payload);
+execute_binding({Mod, Fun}, Payload) when is_atom(Mod) ->
+    apply(Mod, Fun, Payload).
 
 %% EUNIT and PropEr TESTING %%
 

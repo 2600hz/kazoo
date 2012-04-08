@@ -27,20 +27,22 @@
       </bind>
     </couchdb>
     <freeswitch>
-	<default-event-headers>
-	  <event-header name="Core-UUID">05cfa64d-fd57-478b-a34d-2877d1aaaeec</event-header>
-	  <event-header name="FreeSWITCH-Hostname">vagrant.2600hz.com</event-header>
-	  <event-header name="FreeSWITCH-Switchname">vagrant.2600hz.com</event-header>
-	  <event-header name="FreeSWITCH-IPv4">192.168.1.45</event-header>
-	  <event-header name="FreeSWITCH-IPv6">::1</event-header>
-	  <event-header name="Event-Date-Local">2012-04-06 13:17:53</event-header>
-	  <event-header name="Event-Date-GMT">Fri, 06 Apr 2012 20:17:53 GMT</event-header>
-	  <event-header name="Event-Date-Timestamp">1333743473494547</event-header>
-	  <event-header name="Event-Calling-File">sofia_reg.c</event-header>
-	  <event-header name="Event-Calling-Function">sofia_reg_parse_auth</event-header>
-	  <event-header name="Event-Calling-Line-Number">2379</event-header>
-	</default-event-headers>
-      <bind binding="fs_event.request.api.status" args="">
+      <default-event-headers>
+	<event-header name="Core-UUID">05cfa64d-fd57-478b-a34d-2877d1aaaeec</event-header>
+	<event-header name="FreeSWITCH-Hostname">vagrant.2600hz.com</event-header>
+	<event-header name="FreeSWITCH-Switchname">vagrant.2600hz.com</event-header>
+	<event-header name="FreeSWITCH-IPv4">192.168.1.45</event-header>
+	<event-header name="FreeSWITCH-IPv6">::1</event-header>
+	<event-header name="Event-Date-Local">2012-04-06 13:17:53</event-header>
+	<event-header name="Event-Date-GMT">Fri, 06 Apr 2012 20:17:53 GMT</event-header>
+	<event-header name="Event-Date-Timestamp">1333743473494547</event-header>
+	<event-header name="Event-Calling-File">sofia_reg.c</event-header>
+	<event-header name="Event-Calling-Function">sofia_reg_parse_auth</event-header>
+	<event-header name="Event-Calling-Line-Number">2379</event-header>
+      </default-event-headers>
+
+      <!--<bind binding="freeswitch.api.status" args="" clean="false" error="true"> data </bind> -->
+      <bind binding="freeswitch.api.status" args="">
 	<![CDATA[
 	  UP 0 years, 18 days, 13 hours, 41 minutes, 1 second, 777 milliseconds, 964 microseconds
 	  FreeSWITCH is ready
@@ -51,32 +53,40 @@
 	  
 	]]>
       </bind>
-      <bind binding="fs_event.request.api.show" args="channels">
+      <bind binding="freeswitch.api.show" args="channels">
 	<![CDATA[
 
 	    0 total.
 	    
 	  ]]>
       </bind>
-      <connect/>
+      <bind binding="freeswitch.api.load" args="mod_sofia">
+	<![CDATA[
+	  +OK Reloading XML
+	  -ERR [Module already loaded]
+	  
+	]]>
+      </bind>
+      <!--<connect node="ecallmgr" host="apps002-dev-vb.2600hz.com" cookie="W41stl3DiXIE;("/> -->
+      <connect node="ecallmgr"/>
     </freeswitch>
   </toolbag>
   <sequences>
     <sequence>
-      <freeswitch action="fetch" fetch-module="directory" fetch-key="domain" fetch-property="name" fetch-value="test.2600hz.com" fetch-id="36889abf-8e1b-498e-9f68-d9ad6af3df48" uuid="">
+      <freeswitch action="fetch" fetch-module="directory" fetch-key="domain" fetch-property="name" fetch-value="test.2600hz.com" fetch-id="36889abf-8e1b-498e-9f68-d9ad6af3df48">
 	<event-header name="action">sip_auth</event-header>
 	<event-header name="sip_profile">sipinterface_1</event-header>
 	<event-header name="sip_user_agent">PolycomSoundPointIP-SPIP_330-UA/3.3.2.0413</event-header>
-	<event-header name="sip_auth_username">user_vysfhp</event-header>
-	<event-header name="sip_auth_realm">jon.sip.2600hz.com</event-header>
+	<event-header name="sip_auth_username">device_1</event-header>
+	<event-header name="sip_auth_realm">test.2600hz.com</event-header>
 	<event-header name="sip_auth_nonce">6acd9049-149e-4790-bb4c-1a6931b633ae</event-header>
-	<event-header name="sip_auth_uri">sip:jon.sip.2600hz.com:5060</event-header>
-	<event-header name="sip_contact_user">user_vysfhp</event-header>
+	<event-header name="sip_auth_uri">sip:test.2600hz.com:5060</event-header>
+	<event-header name="sip_contact_user">device_1</event-header>
 	<event-header name="sip_contact_host">192.168.1.181</event-header>
-	<event-header name="sip_to_user">user_vysfhp</event-header>
-	<event-header name="sip_to_host">jon.sip.2600hz.com</event-header>
-	<event-header name="sip_from_user">user_vysfhp</event-header>
-	<event-header name="sip_from_host">jon.sip.2600hz.com</event-header>
+	<event-header name="sip_to_user">device_1</event-header>
+	<event-header name="sip_to_host">test.2600hz.com</event-header>
+	<event-header name="sip_from_user">device_1</event-header>
+	<event-header name="sip_from_host">test.2600hz.com</event-header>
 	<event-header name="sip_request_host">192.168.1.45</event-header>
 	<event-header name="sip_request_port">5060</event-header>
 	<event-header name="X-AUTH-IP">192.168.1.181</event-header>
@@ -86,46 +96,46 @@
 	<event-header name="sip_auth_response">3ad345827751258c993109c0ef4c297e</event-header>
 	<event-header name="sip_auth_method">REGISTER</event-header>
 	<event-header name="key">id</event-header>
-	<event-header name="user">user_vysfhp</event-header>
-	<event-header name="domain">jon.sip.2600hz.com</event-header>
+	<event-header name="user">device_1</event-header>
+	<event-header name="domain">test.2600hz.com</event-header>
 	<event-header name="ip">192.168.1.41</event-header>	
       </freeswitch>
-      <freeswitch action="expect" expected-type="xml" fetch-id="36889abf-8e1b-498e-9f68-d9ad6af3df48">
+      <expect binding="freeswitch.fetch_reply.36889abf-8e1b-498e-9f68-d9ad6af3df48" args="" comparision="xml" require="all" timeout="1000">
 	<section name="directory">
-	  <domain name="jon.sip.2600hz.com">
-	    <user id="user_muln7r">
+	  <domain name="test.2600hz.com">
+	    <user id="device_1">
 	      <params>
-		<param name="password" value="aon1952y0v48"/>
+		<param name="password" value="123456"/>
 	      </params>
 	      <variables>
-		<variable name="ecallmgr_Authorizing-ID" value="eb4ac0fbf62158fa65f4665a31c7d62d" />          
+		<variable name="ecallmgr_Authorizing-ID" value="e00816343ee126968a5f18a0aa2442e4" />          
 		<variable name="ecallmgr_Inception" value="on-net" />          
 		<variable name="ecallmgr_Authorizing-Type" value="device" />          
-		<variable name="ecallmgr_Account-ID" value="a631cd317cfc2e474d7a6dc0df2b6d9d" />          
-		<variable name="ecallmgr_Realm" value="jon.sip.2600hz.com" />          
-		<variable name="ecallmgr_Username" value="user_muln7r" />        
+		<variable name="ecallmgr_Account-ID" value="c0705d7474ea0160c10a351b2544006b" />          
+		<variable name="ecallmgr_Realm" value="test.2600hz.com" />          
+		<variable name="ecallmgr_Username" value="device_1" />        
 	      </variables>      
 	    </user>    
 	  </domain>  
 	</section>
-      </freeswitch>
+      </expect>      
       <sleep time="500"/>
       <freeswitch action="publish" event-name="CUSTOM" event-subclass="sofia%3A%3Aregister" uuid="66d05b09-74b57bae-d67cf1f7%40192.168.1.181">
 	<event-header name="profile-name">sipinterface_1</event-header>
-	<event-header name="from-user">user_vysfhp</event-header>
-	<event-header name="from-host">jon.sip.2600hz.com</event-header>
-	<event-header name="presence-hosts">jon.sip.2600hz.com</event-header>
-	<event-header name="contact">%22user%22%20%3Csip%3Auser_vysfhp%40192.168.1.181%3A5348%3Bfs_path%3D%253Csip%253A192.168.1.41%253Blr%253Breceived%253Dsip%253A192.168.1.181%253A5348%253E%3E</event-header>
+	<event-header name="from-user">device_1</event-header>
+	<event-header name="from-host">test.2600hz.com</event-header>
+	<event-header name="presence-hosts">test.2600hz.com</event-header>
+	<event-header name="contact">%22user%22%20%3Csip%3Adevice_1%40192.168.1.181%3A5348%3Bfs_path%3D%253Csip%253A192.168.1.41%253Blr%253Breceived%253Dsip%253A192.168.1.181%253A5348%253E%3E</event-header>
 	<event-header name="call-id">66d05b09-74b57bae-d67cf1f7%40192.168.1.181</event-header>
 	<event-header name="rpid">unknown</event-header>
 	<event-header name="status">Registered(UDP)</event-header>
 	<event-header name="expires">60</event-header>
-	<event-header name="to-user">user_vysfhp</event-header>
-	<event-header name="to-host">jon.sip.2600hz.com</event-header>
+	<event-header name="to-user">device_1</event-header>
+	<event-header name="to-host">test.2600hz.com</event-header>
 	<event-header name="network-ip">192.168.1.41</event-header>
 	<event-header name="network-port">5060</event-header>
-	<event-header name="username">user_vysfhp</event-header>
-	<event-header name="realm">jon.sip.2600hz.com</event-header>
+	<event-header name="username">device_1</event-header>
+	<event-header name="realm">test.2600hz.com</event-header>
 	<event-header name="user-agent">PolycomSoundPointIP-SPIP_330-UA/3.3.2.0413</event-header>
       </freeswitch>
     </sequence>

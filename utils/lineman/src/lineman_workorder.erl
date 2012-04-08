@@ -111,9 +111,12 @@ handle_call(_Msg, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast(initialize_toolbag, State) ->
-    ok = lineman_toolbag_sup:sync_msg_all(reset),
+    ok = lineman_toolbag_sup:reset_all(),
     gen_server:cast(self(), start_sequences),
     {noreply, initialize_toolbag(State)};
+handle_cast(start_sequences, #state{sequences=[Seq]}=State) ->
+    lineman_sequence:start_link(self(), Seq),
+    {noreply, State};
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
@@ -178,8 +181,8 @@ initialize_tools([Tool|Tools]) ->
 initialize_tools([]) -> ok.
 
 -spec initialize_tool/2 :: (string(), [#xmlElement{},...] | []) -> 'ok'.
-initialize_tool(Name, [Parameter|Parameters]) ->
-    {xmlObj, string, Type} = xmerl_xpath:string("name()", Parameter),
-    lineman_toolbag_sup:sync_msg_tool(Name, {parameter, Type, Parameter}),
-    initialize_tool(Name, Parameters);
+initialize_tool(Tool, [Parameter|Parameters]) ->
+    {xmlObj, string, Name} = xmerl_xpath:string("name()", Parameter),
+    lineman_toolbag_sup:set_parameter(Tool, Name, Parameter),
+    initialize_tool(Tool, Parameters);
 initialize_tool(_, []) -> ok.
