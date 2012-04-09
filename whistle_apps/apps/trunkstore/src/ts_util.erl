@@ -1,6 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2010-2011, VoIP INC
+%%% @copyright (C) 2010-2012, VoIP INC
 %%% @doc
 %%% utility functions for Trunkstore
 %%%
@@ -8,7 +7,8 @@
 %%% module, and as such the functions may change or be removed.
 %%%
 %%% @end
-%%% Created : 24 Nov 2010 by James Aimonetti <james@2600hz.org>
+%%% @contributors
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(ts_util).
 
@@ -71,7 +71,8 @@ constrain_weight(W) when W > 100 -> 100;
 constrain_weight(W) when W < 1 -> 1;
 constrain_weight(W) -> W.
 
--spec lookup_did/2 :: (ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} | {'error', 'no_did_found' | atom()}.
+-spec lookup_did/2 :: (ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} |
+                                                    {'error', 'no_did_found' | atom()}.
 lookup_did(DID, AcctID) ->
     Options = [{<<"key">>, DID}],
     AcctDB = wh_util:format_account_id(AcctID, encoded),

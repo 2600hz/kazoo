@@ -1,12 +1,12 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2012, VoIP INC
 %%% @doc
 %%% Calls coming from offnet (in this case, likely stepswitch) potentially
 %%% destined for a trunkstore client, or, if the account exists and
 %%% failover is configured, to an external DID or SIP URI
 %%% @end
-%%% Created : 20 Jun 2011 by James Aimonetti <james@2600hz.org>
+%%% @contributors
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(ts_from_offnet).
 
@@ -26,13 +26,20 @@ start_amqp(State) ->
 
 endpoint_data(State) ->
     JObj = ts_callflow:get_request_data(State),
-    {endpoint, EP} = get_endpoint_data(JObj),
 
+    try get_endpoint_data(JObj) of
+        {endpoint, EP} ->
+            proceed_with_endpoint(State, EP, JObj)
+    catch
+        throw:_E ->
+            lager:debug("thrown exception caught: ~p", [_E])
+    end.
+
+proceed_with_endpoint(State, EP, JObj) ->
     CallID = ts_callflow:get_aleg_id(State),
     Q = ts_callflow:get_my_queue(State),
 
     true = wapi_dialplan:bridge_endpoint_v(EP),
-    lager:debug("Valid endpoint"),
 
     MediaHandling = case wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Offnet-Loopback-Number">>], JObj) of
                         undefined ->
@@ -50,7 +57,6 @@ endpoint_data(State) ->
                ,{<<"Call-ID">>, CallID}
                | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    lager:debug("Endpoint loaded"),
 
     State1 = ts_callflow:set_failover(State, wh_json:get_value(<<"Failover">>, EP, wh_json:new())),
     State2 = ts_callflow:set_endpoint_data(State1, EP),
@@ -64,16 +70,16 @@ send_park(State, Command) ->
 wait_for_win(State, Command) ->
     case ts_callflow:wait_for_win(State) of
         {won, State1} ->
-            lager:debug("Route won, sending command"),
+            lager:debug("route won, sending command"),
             send_onnet(State1, Command);
         {lost, State2} ->
-            lager:debug("Didn't win route, passive listening"),
+            lager:debug("didn't win route, passive listening"),
             wait_for_bridge(State2)
     end.
 
 send_onnet(State, Command) ->
     {ok, Payload} = wapi_dialplan:bridge(Command),
-    lager:debug("Sending onnet command: ~s", [Payload]),
+    lager:debug("sending onnet command: ~s", [Payload]),
 
     CtlQ = ts_callflow:get_control_queue(State),
 
@@ -127,7 +133,7 @@ wait_for_other_leg(_State, aleg, {cdr, aleg, _CDR, State1}) ->
 wait_for_other_leg(_State, bleg, {cdr, bleg, _CDR, State1}) ->
     ts_callflow:finish_leg(State1, ts_callflow:get_bleg_id(State1));
 wait_for_other_leg(_State, Leg, {timeout, State1}) ->
-    lager:debug("Timed out waiting for ~s CDR, cleaning up", [Leg]),
+    lager:debug("timed out waiting for ~s CDR, cleaning up", [Leg]),
 
     ts_callflow:finish_leg(State1, ts_callflow:get_bleg_id(State1)).
 
@@ -175,7 +181,7 @@ try_failover_sip(State, SIPUri) ->
 
     {ok, Payload} = wapi_dialplan:bridge(Command),
 
-    lager:debug("Sending SIP failover for ~s: ~s", [SIPUri, Payload]),
+    lager:debug("sending SIP failover for ~s: ~s", [SIPUri, Payload]),
 
     amqp_util:targeted_publish(CtlQ, Payload, <<"application/json">>),
     wait_for_bridge(ts_callflow:set_failover(State, wh_json:new())).
@@ -216,19 +222,13 @@ get_endpoint_data(JObj) ->
     %% wh_timer:tick("inbound_route/1"),
     AcctID = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj),
 
-    lager:debug("EP: AcctID: ~s", [AcctID]),
-
     {ToUser, _} = whapps_util:get_destination(JObj, ?APP_NAME, <<"inbound_user_field">>),
     ToDID = wnm_util:to_e164(ToUser),
-    lager:debug("EP: ToDID: ~s", [ToDID]),
 
     RoutingData = routing_data(ToDID, AcctID),
 
     AuthUser = props:get_value(<<"To-User">>, RoutingData),
     AuthRealm = props:get_value(<<"To-Realm">>, RoutingData),
-
-    lager:debug("EP: AuthUser: ~s", [AuthUser]),
-    lager:debug("EP: AuthRealm: ~s", [AuthRealm]),
 
     InFormat = props:get_value(<<"Invite-Format">>, RoutingData, <<"username">>),
     Invite = ts_util:invite_format(wh_util:to_lower_binary(InFormat), ToDID) ++ RoutingData,
@@ -244,11 +244,18 @@ get_endpoint_data(JObj) ->
     }.
 
 -spec routing_data/2 :: (ne_binary(), ne_binary()) -> [{<<_:48,_:_*8>>,_},...] | [].
+-spec routing_data/3 :: (ne_binary(), ne_binary(), wh_json:json_object()) -> [{<<_:48,_:_*8>>,_},...] | [].
 routing_data(ToDID, AcctID) ->
-    {ok, Settings} = ts_util:lookup_did(ToDID, AcctID),
+    case ts_util:lookup_did(ToDID, AcctID) of
+        {ok, Settings} ->
+            lager:debug("got settings for DID ~s", [ToDID]),
+            routing_data(ToDID, AcctID, Settings);
+        {error, no_did_found} ->
+            lager:debug("DID ~s not found in ~s", [ToDID, AcctID]),
+            throw(no_did_found)
+    end.
 
-    lager:debug("Got DID settings"),
-
+routing_data(ToDID, AcctID, Settings) ->
     AuthOpts = wh_json:get_value(<<"auth">>, Settings, wh_json:new()),
     Acct = wh_json:get_value(<<"account">>, Settings, wh_json:new()),
     DIDOptions = wh_json:get_value(<<"DID_Opts">>, Settings, wh_json:new()),
@@ -259,20 +266,23 @@ routing_data(ToDID, AcctID) ->
 
     {Srv, AcctStuff} = try
                       {ok, AccountSettings} = ts_util:lookup_user_flags(AuthU, AuthR, AcctID),
-                      lager:debug("Got account settings"),
+                      lager:debug("got account settings"),
                       {
                         wh_json:get_value(<<"server">>, AccountSettings, wh_json:new())
                         ,wh_json:get_value(<<"account">>, AccountSettings, wh_json:new())
                       }
                   catch
                       _A:_B ->
-                          lager:debug("Failed to get account settings: ~p: ~p", [_A, _B]),
+                          lager:debug("failed to get account settings: ~p: ~p", [_A, _B]),
                           {wh_json:new(), wh_json:new()}
                   end,
 
     SrvOptions = wh_json:get_value(<<"options">>, Srv, wh_json:new()),
 
-    true = wh_util:is_true(wh_json:get_value(<<"enabled">>, SrvOptions)),
+    case wh_util:is_true(wh_json:get_value(<<"enabled">>, SrvOptions)) of
+        false -> throw("this server is not enabled");
+        true -> ok
+    end,
 
     InboundFormat = wh_json:get_value(<<"inbound_format">>, SrvOptions, <<"npan">>),
 
