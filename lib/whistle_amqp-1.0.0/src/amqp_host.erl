@@ -1,10 +1,11 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2012, VoIP INC
 %%% @doc
 %%% Handle a host's connection/channels
 %%% @end
-%%% Created : 18 Mar 2011 by James Aimonetti <james@2600hz.org>
+%%% @contributions
+%%%   James Aimonetti
+%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(amqp_host).
 
@@ -12,6 +13,8 @@
 
 %% API
 -export([start_link/3, publish/4, consume/3, misc_req/3, stop/1]).
+-export([publish_channel/2, misc_channel/2, my_channel/2]).
+
 -export([register_return_handler/2]).
 
 %% gen_server callbacks
@@ -73,7 +76,7 @@ start_link(Host, Conn, UseFederation) ->
 
 -spec publish/4 :: (pid(), call_from(), #'basic.publish'{}, ne_binary() | iolist()) -> 'ok'.
 publish(Srv, From, BasicPub, AmqpMsg) ->
-    C = gen_server:call(Srv, publish_channel),
+    {ok, C} = gen_server:call(Srv, publish_channel),
     gen_server:reply(From, amqp_channel:call(C, BasicPub, AmqpMsg)).
 
 -spec consume/3 :: (pid(), call_from(), consume_records()) -> 'ok'.
@@ -87,6 +90,19 @@ misc_req(Srv, From, Req) ->
 -spec register_return_handler/2 :: (pid(), call_from()) -> 'ok'.
 register_return_handler(Srv, From) ->
     gen_server:cast(Srv, {register_return_handler, From}).
+
+-spec publish_channel/2 :: (pid(), call_from()) -> {'ok', pid()}.
+publish_channel(Srv, From) ->
+    gen_server:reply(From, gen_server:call(Srv, publish_channel)).
+
+-spec misc_channel/2 :: (pid(), call_from()) -> {'ok', pid()}.
+misc_channel(Srv, From) ->
+    gen_server:reply(From, gen_server:call(Srv, misc_channel)).
+
+-spec my_channel/2 :: (pid(), call_from()) -> {'ok', pid()} |
+                                              {'error', term()}.
+my_channel(Srv, {FromPid, _}=From) ->
+    gen_server:reply(From, gen_server:call(Srv, {my_channel, FromPid})).
 
 -spec stop/1 :: (pid()) -> 'ok' | {'error', 'you_are_not_my_boss'}.
 stop(Srv) ->
@@ -150,7 +166,35 @@ init([Host, Conn, UseFederation]) when is_pid(Conn) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call(publish_channel, _, #state{publish_channel={C,_}}=State) ->
-    {reply, C, State};
+    {reply, {ok, C}, State};
+handle_call(misc_channel, _, #state{misc_channel={C,_}}=State) ->
+    {reply, {ok, C}, State};
+handle_call({my_channel, FromPid}, _, #state{connection=Conn, consumers=Consumers}=State) ->
+    case dict:find(FromPid, Consumers) of
+        error ->
+            case start_channel(Conn, FromPid) of
+                {C,R} when is_pid(C) andalso is_reference(R) -> % channel, channel ref
+                    lager:debug("started new ch: ~p for proc: ~p", [C, FromPid]),
+                    FromRef = erlang:monitor(process, FromPid),
+                    amqp_selective_consumer:register_default_consumer(C, self()),
+
+                    {reply
+                     ,{ok, C}
+                     ,State#state{consumers=dict:store(FromPid, {C,R,<<>>,FromRef}, Consumers)}
+                     ,hibernate
+                    };
+                closing ->
+                    lager:debug("failed to start channel: closing"),
+                    {reply, {error, closing}, State};
+                {error, _}=E ->
+                    lager:debug("failed to start channel: ~p", [E]),
+                    {reply, E, State}
+            end;
+        {ok, {C,_,_,_}} ->
+            lager:debug("channel ~p exists for proc ~p", [C, FromPid]),
+            {reply, {ok, C}, State}
+    end;
+
 handle_call(stop, {From, _}, #state{manager=Mgr}=State) ->
     case Mgr =:= From of
         true -> {stop, normal, ok, State};
@@ -228,7 +272,6 @@ handle_cast({consume, {FromPid, _}=From, #'basic.consume'{consumer_tag=CTag}=Bas
             end,
             {noreply, State, hibernate}
     end;
-
 
 handle_cast({consume, {FromPid, _}=From, #'basic.cancel'{}=BasicCancel}, #state{consumers=Consumers}=State) ->
     case dict:find(FromPid, Consumers) of
