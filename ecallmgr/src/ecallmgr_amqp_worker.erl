@@ -11,7 +11,7 @@
 -behaviour(gen_listener).
 
 %% API
--export([start_link/1, handle_resp/2]).
+-export([start_link/1, handle_resp/2, send_request/4]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2
@@ -54,6 +54,13 @@ start_link(Args) ->
 
 handle_resp(JObj, Props) ->
     gen_listener:cast(props:get_value(server, Props), {event, wh_json:get_value(<<"Msg-ID">>, JObj), JObj}).
+
+send_request(CallID, Self, PublishFun, ReqProp) ->
+    put(callid, CallID),
+    Prop = [{<<"Server-ID">>, gen_listener:queue_name(Self)}
+            ,{<<"Call-ID">>, CallID}
+            | ReqProp],
+    PublishFun(Prop).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -114,13 +121,9 @@ handle_call({request, ReqProp, PublishFun, VFun, Timeout}, {ClientPid, _}=From, 
                             M -> {ReqProp, M}
                         end,
 
-    spawn(fun() ->
-                  put(callid, CallID),
-                  Prop = [{<<"Server-ID">>, gen_listener:queue_name(Self)}
-                          ,{<<"Call-ID">>, CallID}
-                          | ReqProp1],
-                  PublishFun(Prop)
-          end),
+    P = proc_lib:spawn(?MODULE, send_request, [CallID, Self, PublishFun, ReqProp1]),
+    _R = erlang:monitor(process, P),
+    lager:debug("pid ~p spawned (~p)", [P, _R]),
 
     lager:debug("published request with msg id ~s", [MsgID]),
 

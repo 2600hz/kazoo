@@ -1,3 +1,13 @@
+%%%-------------------------------------------------------------------
+%%% @copyright (C) 2010-2012, VoIP INC
+%%% @doc
+%%% Utilities to facilitate AMQP interaction
+%%% @end
+%%% @contributions
+%%%   James Aimonetti
+%%%   Karl Anderson
+%%%   Edouard Swiac
+%%%-------------------------------------------------------------------
 -module(amqp_util).
 
 -include("amqp_util.hrl").
@@ -353,7 +363,8 @@ basic_publish(Exchange, Queue, Payload, ContentType, Props) when is_binary(Paylo
 
     ?AMQP_DEBUG andalso lager:debug("publish ~s ~s (~p): ~s", [Exchange, Queue, Props, Payload]),
 
-    amqp_mgr:publish(BP, AM).
+    {ok, C} = amqp_mgr:publish_channel(),
+    amqp_channel:call(C, BP, AM).
 
 %%------------------------------------------------------------------------------
 %% @public
@@ -422,7 +433,9 @@ new_exchange(Exchange, Type, Options) ->
       ,arguments = props:get_value(arguments, Options, [])
      },
     ?AMQP_DEBUG andalso lager:debug("create new ~s exchange: ~s", [Type, Exchange]),
-    amqp_mgr:misc_req(ED).
+
+    {ok, C} = amqp_mgr:misc_channel(),
+    amqp_channel:call(C, ED).
 
 %%------------------------------------------------------------------------------
 %% @public
@@ -529,16 +542,17 @@ new_queue(Queue, Options) when is_binary(Queue) ->
       ,nowait = props:get_value(nowait, Options, false)
       ,arguments = props:get_value(arguments, Options, [])
      },
-    case amqp_mgr:consume(QD) of
-        {'ok', #'queue.declare_ok'{queue=Q}} ->
-            ?AMQP_DEBUG andalso lager:debug("create queue: ~s)", [Queue]),
+    {ok, C} = amqp_mgr:my_channel(),
+
+    lager:debug("trying to declare queue ~s on ~p", [Queue, C]),
+
+    case amqp_channel:call(C, QD) of
+        #'queue.declare_ok'{queue=Q} ->
+            ?AMQP_DEBUG andalso lager:debug("create queue: ~s", [Q]),
             Q;
-        {'ok', Q} ->
-            ?AMQP_DEBUG andalso lager:debug("create queue(~p) ~s)", [Options, Queue]),
-            Q;
-        {error, _Other} ->
+        {error, _Other}=E ->
             ?AMQP_DEBUG andalso lager:debug("error creating queue(~p): ~p", [Options, _Other]),
-            {'error', 'amqp_error'}
+            E
     end.
 
 %%------------------------------------------------------------------------------
@@ -597,7 +611,8 @@ queue_delete(Queue, Prop) ->
       ,nowait = props:get_value(nowait, Prop, true)
      },
     ?AMQP_DEBUG andalso lager:debug("delete queue ~s", [Queue]),
-    amqp_mgr:consume(QD).
+    {ok, C} = amqp_mgr:my_channel(),
+    amqp_channel:call(C, QD).
 
 %%------------------------------------------------------------------------------
 %% @public
@@ -707,13 +722,13 @@ bind_q_to_exchange(Queue, Routing, Exchange, Options) ->
       ,nowait = props:get_value(nowait, Options, false)
       ,arguments = []
      },
-    case amqp_mgr:consume(QB) of
-        ok ->
-            ?AMQP_DEBUG andalso lager:debug("bound queue ~s to ~s with key ~s", [Queue, Exchange, Routing]),
-            ok;
-        {error, _E}=Else ->
-            ?AMQP_DEBUG andalso lager:debug("failed to bind queue ~s: ~p", [Queue, Else]),
-            Else
+
+    ?AMQP_DEBUG andalso lager:debug("binding queue ~s to ~s with key ~s", [Queue, Exchange, Routing]),
+
+    {ok, C} = amqp_mgr:my_channel(),
+    case amqp_channel:call(C, QB) of
+        #'queue.bind_ok'{} -> ok;
+        E -> E
     end.
 
 %%------------------------------------------------------------------------------
@@ -789,8 +804,11 @@ unbind_q_from_exchange(Queue, Routing, Exchange) ->
       ,routing_key = Routing
       ,arguments = []
      },
-    ?AMQP_DEBUG andalso lager:debug("unbound queue ~s to ~s with key ~s", [Queue, Exchange, Routing]),
-    amqp_mgr:consume(QU).
+
+    ?AMQP_DEBUG andalso lager:debug("unbinding queue ~s to ~s with key ~s", [Queue, Exchange, Routing]),
+
+    {ok, C} = amqp_mgr:my_channel(),
+    amqp_channel:call(C, QU).
 
 %%------------------------------------------------------------------------------
 %% @public
@@ -813,16 +831,12 @@ basic_consume(Queue, Options) ->
       ,exclusive = props:get_value(exclusive, Options, true)
       ,nowait = props:get_value(nowait, Options, false)
      },
-    case amqp_mgr:consume(BC) of
-        {error, E}=Err ->
-            ?AMQP_DEBUG andalso lager:debug("error when trying to consume on ~s: ~p", [Queue, E]),
-            Err;
-        {ok, Pid} when is_pid(Pid) ->
-            ?AMQP_DEBUG andalso lager:debug("started consume of queue(~p) ~s", [Options, Queue]),
-            ok;
-        Else ->
-            ?AMQP_DEBUG andalso lager:debug("failed to start consume of queue(~p) ~s: ~p", [Options, Queue, Else]),
-            Else
+
+    ?AMQP_DEBUG andalso lager:debug("trying to consume from queue(~p) ~s", [Options, Queue]),
+    {ok, C} = amqp_mgr:my_channel(),
+    case amqp_channel:subscribe(C, BC, self()) of
+        #'basic.consume_ok'{} -> ok;
+        E -> E
     end.
 
 %%------------------------------------------------------------------------------
@@ -835,7 +849,8 @@ basic_consume(Queue, Options) ->
 -spec basic_cancel/1 :: (ne_binary()) -> 'ok'.
 basic_cancel(Queue) ->
     ?AMQP_DEBUG andalso lager:debug("cancel consume for queue ~s", [Queue]),
-    amqp_mgr:consume(#'basic.cancel'{consumer_tag = Queue, nowait = false}).
+    {ok, C} = amqp_mgr:my_channel(),
+    amqp_channel:cast(C, #'basic.cancel'{consumer_tag = Queue, nowait = false}, self()).
 
 %%------------------------------------------------------------------------------
 %% @public
@@ -879,7 +894,8 @@ basic_ack(#'basic.deliver'{delivery_tag=DTag}) ->
     basic_ack(DTag);
 basic_ack(DTag) ->
     ?AMQP_DEBUG andalso lager:debug("basic ack of ~b", [DTag]),
-    amqp_mgr:consume(#'basic.ack'{delivery_tag=DTag}).
+    {ok, C} = amqp_mgr:my_channel(),
+    amqp_channel:call(C, #'basic.ack'{delivery_tag=DTag}).
 
 %%------------------------------------------------------------------------------
 %% @public
@@ -893,7 +909,8 @@ basic_nack(#'basic.deliver'{delivery_tag=DTag}) ->
     basic_nack(DTag);
 basic_nack(DTag) ->
     ?AMQP_DEBUG andalso lager:debug("basic nack of ~b", [DTag]),
-    amqp_mgr:consume(#'basic.nack'{delivery_tag=DTag}).
+    {ok, C} = amqp_mgr:my_channel(),
+    amqp_channel:call(C, #'basic.nack'{delivery_tag=DTag}).
 
 %%------------------------------------------------------------------------------
 %% @public
@@ -914,7 +931,8 @@ is_host_available() ->
 -spec basic_qos/1 :: (non_neg_integer()) -> 'ok'.
 basic_qos(PreFetch) when is_integer(PreFetch) ->
     ?AMQP_DEBUG andalso lager:debug("set basic qos prefetch to ~p", [PreFetch]),
-    amqp_mgr:consume(#'basic.qos'{prefetch_count = PreFetch}).
+    {ok, C} = amqp_mgr:my_channel(),
+    amqp_channel:call(C, #'basic.qos'{prefetch_count = PreFetch}).
 
 %%------------------------------------------------------------------------------
 %% @public
@@ -959,9 +977,12 @@ hexint(C) when C < 10 ->
 hexint(C) when C < 16 ->
     ($A + (C - 10)).
 
--include_lib("eunit/include/eunit.hrl").
 -ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+
 encode_key_test() ->
+    ?assertEqual(<<"#">>, encode(<<"#">>)),
+    ?assertEqual(<<"*">>, encode(<<"*">>)),
     ?assertEqual(<<"key">>, encode(<<"key">>)),
     ?assertEqual(<<"routing%2Ekey">>, encode(<<"routing.key">>)),
     ?assertEqual(<<"long%2Erouting%2Ekey">>, encode(<<"long.routing.key">>)),
