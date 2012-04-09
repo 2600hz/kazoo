@@ -31,7 +31,7 @@
 
 -record(state, {
           amqp_uri = "" :: string()
-         ,use_federation = true :: boolean()
+         ,use_federation = false :: boolean()
          ,handler_pid = 'undefined' :: 'undefined' | pid()
          ,handler_ref = 'undefined' :: 'undefined' | reference()
          ,conn_params = 'undefined' :: 'undefined' | #'amqp_params_direct'{} | #'amqp_params_network'{}
@@ -113,7 +113,7 @@ init([]) ->
     put(callid, ?LOG_SYSTEM_ID),
     Init = get_config(),
     Uri = props:get_value(amqp_uri, Init, ?DEFAULT_AMQP_URI),
-    UseFederation = props:get_value(use_federation, Init, true),
+    UseFederation = props:get_value(use_federation, Init, false),
 
     case start_amqp_host(Uri, UseFederation) of
         {ok, State} ->
@@ -170,7 +170,7 @@ handle_call({register_return_handler}, From, #state{handler_pid=HPid}=State)->
     send_req(HPid, From, fun() -> catch amqp_host:register_return_handler(HPid, From) end),
     {noreply, State};
 
-handle_call({publsh_channel}, From, #state{handler_pid=HPid}=State) ->
+handle_call({publish_channel}, From, #state{handler_pid=HPid}=State) ->
     send_req(HPid, From, publish_channel),
     {noreply, State};
 
