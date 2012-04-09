@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="ISO-8859-1"?>
 <workorder>
   <parameters>
+    <name>Registration Validation</name>
     <max-running-sequences>10</max-running-sequences>
     <deadcall-wait>5000</deadcall-wait>
   </parameters>
@@ -74,6 +75,7 @@
   <sequences>
     <sequence>
       <freeswitch action="fetch" fetch-module="directory" fetch-key="domain" fetch-property="name" fetch-value="test.2600hz.com" fetch-id="36889abf-8e1b-498e-9f68-d9ad6af3df48">
+	<event-header name="Event-Name">REQUEST_PARAMS</event-header>
 	<event-header name="action">sip_auth</event-header>
 	<event-header name="sip_profile">sipinterface_1</event-header>
 	<event-header name="sip_user_agent">PolycomSoundPointIP-SPIP_330-UA/3.3.2.0413</event-header>
@@ -120,13 +122,15 @@
 	</section>
       </expect>      
       <sleep time="500"/>
-      <freeswitch action="publish" event-name="CUSTOM" event-subclass="sofia%3A%3Aregister" uuid="66d05b09-74b57bae-d67cf1f7%40192.168.1.181">
+      <freeswitch action="publish" call-id="66d05b09-74b57bae-d67cf1f7@192.168.1.181">
+	<event-header name="Event-Name">CUSTOM</event-header>
+	<event-header name="Event-Subclass">sofia::register</event-header>
 	<event-header name="profile-name">sipinterface_1</event-header>
 	<event-header name="from-user">device_1</event-header>
 	<event-header name="from-host">test.2600hz.com</event-header>
 	<event-header name="presence-hosts">test.2600hz.com</event-header>
-	<event-header name="contact">%22user%22%20%3Csip%3Adevice_1%40192.168.1.181%3A5348%3Bfs_path%3D%253Csip%253A192.168.1.41%253Blr%253Breceived%253Dsip%253A192.168.1.181%253A5348%253E%3E</event-header>
-	<event-header name="call-id">66d05b09-74b57bae-d67cf1f7%40192.168.1.181</event-header>
+	<event-header name="contact"><![CDATA["user" <sip:device_1@192.168.1.181:5348;fs_path=<sip:192.168.1.50;lr;received=sip:192.168.1.181:5348>>]]></event-header>
+	<event-header name="call-id">66d05b09-74b57bae-d67cf1f7@192.168.1.181</event-header>
 	<event-header name="rpid">unknown</event-header>
 	<event-header name="status">Registered(UDP)</event-header>
 	<event-header name="expires">60</event-header>

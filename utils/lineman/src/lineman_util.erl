@@ -10,10 +10,22 @@
 
 -export([try_connect_to_target/2, try_connect_to_target/3]).
 -export([try_get_cookie_from_vmargs/1]).
--export([get_xml_element_content/1, get_xml_element_content/2]).
--export([get_xml_attribute_value/2, get_xml_attribute_value/3]).
+-export([xml_content/1, xml_content/2]).
+-export([xml_attribute/2, xml_attribute/3]).
+-export([xml_string_attribute/2, xml_string_attribute/3]).
+-export([xml_atom_attribute/2, xml_atom_attribute/3]).
+-export([xml_integer_attribute/2, xml_integer_attribute/3]).
+-export([xml_boolean_attribute/2, xml_boolean_attribute/3]).
+-export([xml_value/2, xml_value/3]).
+-export([xml_binary_value/2, xml_binary_value/3]).
+-export([xml_string_value/2, xml_string_value/3]).
+-export([xml_atom_value/2, xml_atom_value/3]).
+-export([xml_integer_value/2, xml_integer_value/3]).
+-export([xml_boolean_value/2, xml_boolean_value/3]).
 
 -include_lib("lineman/src/lineman.hrl").
+
+-type xml_return_types() :: 'undefined' | 'binary' | 'string' | 'atom' | 'integer' | 'boolean'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -84,40 +96,40 @@ try_get_cookie_from_vmargs(File) ->
 %% the xml file easier to read.
 %% @end
 %%--------------------------------------------------------------------
--type xml_collection() :: [term(),...].
+-spec xml_content/1 :: (xml()) -> binary() | proplist().
+xml_content(Content) ->
+    xml_content(Content, true).
 
--spec get_xml_element_content/1 :: (xml_collection()) -> binary() | proplist().
-get_xml_element_content(Content) ->
-    get_xml_element_content(Content, true).
+-spec xml_content/2 :: (xml(), boolean()) -> binary() | proplist().
+xml_content(Content, Clean) ->
+    xml_content(Content, Clean, <<>>).
 
--spec get_xml_element_content/2 :: (xml_collection(), boolean()) -> binary() | proplist().
-get_xml_element_content(Content, Clean) ->
-    get_xml_element_content(Content, Clean, <<>>).
-
--spec get_xml_element_content/3 :: (xml_collection(), boolean(), binary() | list()) -> binary() | proplist().
-get_xml_element_content(#xmlElement{content=Content}, Clean, Acc) ->
-    get_xml_element_content(Content, Clean, Acc);
-get_xml_element_content([#xmlElement{content=SubContent}=Element|Content], Clean, Acc) ->
-    NewAcc = case get_xml_attribute_value("name", Element) of
+-spec xml_content/3 :: (xml(), boolean(), binary() | list()) -> binary() | proplist().
+xml_content(#xmlElement{content=Content}, Clean, Acc) ->
+    xml_content(Content, Clean, Acc);
+xml_content([#xmlElement{content=Content}], Clean, Acc) ->
+    xml_content(Content, Clean, Acc);
+xml_content([#xmlElement{content=SubContent}=Element|Content], Clean, Acc) ->
+    NewAcc = case xml_attribute("name", Element) of
                  undefined -> Acc;
                  Key when is_list(Acc) ->
-                     [{wh_util:to_binary(Key), get_xml_element_content(SubContent, Clean, <<>>)}|Acc];
+                     [{wh_util:to_binary(Key), xml_content(SubContent, Clean, <<>>)}|Acc];
                  Key ->
-                     [{wh_util:to_binary(Key), get_xml_element_content(SubContent, Clean, <<>>)}]
+                     [{wh_util:to_binary(Key), xml_content(SubContent, Clean, <<>>)}]
              end,
-    get_xml_element_content(Content, Clean, NewAcc);
-get_xml_element_content([#xmlText{value=Value}|Content], true, Acc) when is_binary(Acc) ->
+    xml_content(Content, Clean, NewAcc);
+xml_content([#xmlText{value=Value}|Content], true, Acc) when is_binary(Acc) ->
     case re:run(Value, "^[\n\t\\s]*$") =/= nomatch of
-        true -> get_xml_element_content(Content, true, Acc);
+        true -> xml_content(Content, true, Acc);
         false -> 
             Text = wh_util:to_binary(clean_xml_value(Value)),
-            get_xml_element_content(Content, true, <<Acc/binary, Text/binary>>)
+            xml_content(Content, true, <<Acc/binary, Text/binary>>)
     end;
-get_xml_element_content([#xmlText{value=Value}|Content], Clean, Acc) when is_binary(Acc) ->
-    get_xml_element_content(Content, Clean, <<Acc/binary, (wh_util:to_binary(Value))/binary>>);
-get_xml_element_content([_|Content], Clean, Acc) ->
-    get_xml_element_content(Content, Clean, Acc);
-get_xml_element_content([], _, Acc) ->
+xml_content([#xmlText{value=Value}|Content], Clean, Acc) when is_binary(Acc) ->
+    xml_content(Content, Clean, <<Acc/binary, (wh_util:to_binary(Value))/binary>>);
+xml_content([_|Content], Clean, Acc) ->
+    xml_content(Content, Clean, Acc);
+xml_content([], _, Acc) ->
     Acc.
 
 %%--------------------------------------------------------------------
@@ -128,17 +140,129 @@ get_xml_element_content([], _, Acc) ->
 %% multiples are found.
 %% @end
 %%--------------------------------------------------------------------
--spec get_xml_attribute_value/2 :: (string(), #xmlElement{}) -> string() | 'undefined'.
-get_xml_attribute_value(Attribute, Xml) ->
-    get_xml_attribute_value(Attribute, Xml, undefined).
+-spec xml_attribute/2 :: (string(), xml()) -> binary() | 'undefined'.
+xml_attribute(Attribute, Xml) ->
+    xml_attribute(Attribute, Xml, undefined, binary).
 
--spec get_xml_attribute_value/3 :: (string(), #xmlElement{}, Default) -> string() | Default.
-get_xml_attribute_value(Attribute, Xml, Default) ->
+-spec xml_string_attribute/2 :: (string(), xml()) -> string() | 'undefined'.
+xml_string_attribute(Attribute, Xml) ->
+    xml_attribute(Attribute, Xml, undefined, string).
+
+-spec xml_atom_attribute/2 :: (string(), xml()) -> atom() | 'undefined'.
+xml_atom_attribute(Attribute, Xml) ->
+    xml_attribute(Attribute, Xml, undefined, atom).
+
+-spec xml_integer_attribute/2 :: (string(), xml()) -> integer() | 'undefined'.
+xml_integer_attribute(Attribute, Xml) ->
+    xml_attribute(Attribute, Xml, undefined, integer).
+
+-spec xml_boolean_attribute/2 :: (string(), xml()) -> boolean() | 'undefined'.
+xml_boolean_attribute(Attribute, Xml) ->
+    xml_attribute(Attribute, Xml, undefined, boolean).
+
+-spec xml_attribute/3 :: (string(), xml(), Default) -> binary() | Default.
+xml_attribute(Attribute, Xml, Default) ->
+    xml_attribute(Attribute, Xml, Default, binary).
+
+-spec xml_string_attribute/3 :: (string(), xml(), Default) -> string() | Default.
+xml_string_attribute(Attribute, Xml, Default) ->
+    xml_attribute(Attribute, Xml, Default, string).
+
+-spec xml_atom_attribute/3 :: (string(), xml(), Default) -> atom() | Default.
+xml_atom_attribute(Attribute, Xml, Default) ->
+    xml_attribute(Attribute, Xml, Default, atom).
+
+-spec xml_integer_attribute/3 :: (string(), xml(), Default) -> integer() | Default.
+xml_integer_attribute(Attribute, Xml, Default) ->
+    xml_attribute(Attribute, Xml, Default, integer).
+
+-spec xml_boolean_attribute/3 :: (string(), xml(), Default) -> boolean() | Default.
+xml_boolean_attribute(Attribute, Xml, Default) ->
+    xml_attribute(Attribute, Xml, Default, boolean).
+
+-spec xml_attribute/4 :: (string(), xml(), term(), xml_return_types()) -> term().
+xml_attribute(Attribute, Xml, Default, Type) ->
     case xmerl_xpath:string("@" ++ Attribute, Xml) of
+        [#xmlAttribute{value=Value}] when Type =:= binary -> 
+            wh_util:to_binary(Value);
+        [#xmlAttribute{value=Value}] when Type =:= string -> 
+            wh_util:to_list(Value);
+        [#xmlAttribute{value=Value}] when Type =:= atom -> 
+            wh_util:to_atom(Value, true);
+        [#xmlAttribute{value=Value}] when Type =:= integer -> 
+            wh_util:to_integer(Value);
+        [#xmlAttribute{value=Value}] when Type =:= boolean -> 
+            wh_util:is_true(Value);
         [#xmlAttribute{value=Value}] -> Value;
         _Else -> Default
     end.
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% cleaning whitespace, tabs, newlines that make the xml file easier 
+%% to read but still maintains newlines that are intentional
+%% @end
+%%-------------------------------------------------------------------
+-spec xml_value/2 :: (string(), xml()) -> term().
+xml_value(Path, Xml) ->
+    xml_value(Path, Xml, undefined, undefined).    
+
+-spec xml_binary_value/2 :: (string(), xml()) -> binary() | 'undefined'.
+xml_binary_value(Path, Xml) ->
+    xml_value(Path, Xml, undefined, binary).  
+
+-spec xml_string_value/2 :: (string(), xml()) -> string() | 'undefined'.
+xml_string_value(Path, Xml) ->
+    xml_value(Path, Xml, undefined, string).
+
+-spec xml_atom_value/2 :: (string(), xml()) -> atom() | 'undefined'.
+xml_atom_value(Path, Xml) ->
+    xml_value(Path, Xml, undefined, atom).
+
+-spec xml_integer_value/2 :: (string(), xml()) -> integer() | 'undefined'.
+xml_integer_value(Path, Xml) ->
+    xml_value(Path, Xml, undefined, integer).
+
+-spec xml_boolean_value/2 :: (string(), xml()) -> boolean() | 'undefined'.
+xml_boolean_value(Path, Xml) ->
+    xml_value(Path, Xml, undefined, boolean).
+
+-spec xml_value/3 :: (string(), xml(), term()) -> term().
+xml_value(Path, Xml, Default) ->
+    xml_value(Path, Xml, Default, undefined).    
+
+-spec xml_binary_value/3 :: (string(), xml(), Default) -> binary() | Default.
+xml_binary_value(Path, Xml, Default) ->
+    xml_value(Path, Xml, Default, binary).    
+
+-spec xml_string_value/3 :: (string(), xml(), Default) -> string() | Default.
+xml_string_value(Path, Xml, Default) ->
+    xml_value(Path, Xml, Default, string).
+
+-spec xml_atom_value/3 :: (string(), xml(), Default) -> atom() | Default.
+xml_atom_value(Path, Xml, Default) ->
+    xml_value(Path, Xml, Default, atom).
+
+-spec xml_integer_value/3 :: (string(), xml(), Default) -> integer() | Default.
+xml_integer_value(Path, Xml, Default) ->
+    xml_value(Path, Xml, Default, integer).
+
+-spec xml_boolean_value/3 :: (string(), xml(), Default) -> boolean() | Default.
+xml_boolean_value(Path, Xml, Default) ->
+    xml_value(Path, Xml, Default, boolean).
+
+-spec xml_value/4 :: (string(), xml(), Default, xml_return_types()) -> binary() | Default.
+xml_value(Path, Xml, Default, Type) ->
+    case xml_content(xmerl_xpath:string(Path, Xml)) of
+        <<>> -> Default;
+        Value when Type =:= binary -> wh_util:to_binary(Value);
+        Value when Type =:= string -> wh_util:to_list(Value);
+        Value when Type =:= atom -> wh_util:to_atom(Value, true);
+        Value when Type =:= integer -> wh_util:to_integer(Value);
+        Value when Type =:= boolean -> wh_util:is_true(Value);
+        Value -> Value
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -147,7 +271,7 @@ get_xml_attribute_value(Attribute, Xml, Default) ->
 %% to read but still maintains newlines that are intentional
 %% @end
 %%-------------------------------------------------------------------
--spec clean_xml_value/1 :: (string()) -> string().
+-spec clean_xml_value/1 :: (string() | binary()) -> string() | binary().
 clean_xml_value(Value) ->
     lists:foldr(fun({RE, Replacement}, Subject) -> 
                         re:replace(Subject, RE, Replacement, [global]) 

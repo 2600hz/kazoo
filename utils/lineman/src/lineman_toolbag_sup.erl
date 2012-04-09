@@ -14,8 +14,8 @@
 -export([start_link/0]).
 -export([reset_all/0]).
 -export([set_parameter/3]).
--export([prepare/2]).
--export([execute/2]).
+-export([prepare/3]).
+-export([execute/3]).
 -export([init/1]).
 
 %% Helper macro for declaring children of supervisor
@@ -42,20 +42,20 @@ reset_all() ->
     [P ! reset || {_, P, _, _} <- supervisor:which_children(?MODULE)],
     ok.
 
--spec set_parameter/3 :: (text(), string(), #xmlElement{}) -> term().
-set_parameter(Tool, Name, Parameter) ->
+-spec set_parameter/3 :: (text(), string(), xml()) -> term().
+set_parameter(Tool, Name, Xml) ->
     {ok, Mod} = maybe_get_tool(Tool),
-    Mod:set_parameter(Name, Parameter).
+    Mod:set_parameter(Name, Xml).
 
--spec prepare/2 :: (text(), #xmlElement{}) -> term().
-prepare(Tool, Step) ->
+-spec prepare/3 :: (text(), xml(), lineman_workorder:workorder()) -> lineman_workorder:workorder().
+prepare(Tool, Xml, Workorder) ->
     {ok, Mod} = maybe_get_tool(Tool),
-    Mod:prepare(Step).
+    Mod:prepare(Xml, Workorder).
 
--spec execute/2 :: (text(), #xmlElement{}) -> term().
-execute(Tool, Step) ->
+-spec execute/3 :: (text(), xml(), lineman_workorder:workorder()) -> lineman_workorder:workorder().
+execute(Tool, Xml, Workorder) ->
     {ok, Mod} = maybe_get_tool(Tool),
-    Mod:execute(Step).
+    Mod:execute(Xml, Workorder).
 
 
 -spec maybe_get_tool/1 :: (text()) -> {'ok', atom()} | {'error', 'not_found' | 'load_failed'}.

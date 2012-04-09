@@ -12,8 +12,8 @@
 
 -export([start_link/0]).
 -export([set_parameter/2]).
--export([prepare/1]).
--export([execute/1]).
+-export([prepare/2]).
+-export([execute/2]).
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -26,7 +26,7 @@
 
 -define(SERVER, fs_simulator).
 
--record(state, {event_handler = undefined
+-record(state, {event_handler
                 ,bindings = dict:new()
                 ,events = sets:new()
                 ,session_events = dict:new()
@@ -52,11 +52,29 @@ start_link() ->
 set_parameter(Name, Parameter) ->
     gen_server:call(?SERVER, {parameter, Name, Parameter}).
 
--spec prepare/1 :: (#xmlElement{}) -> 'ok'.
-prepare(_) -> 'ok'.
+-spec prepare/2 :: (xml(), lineman_workorder:workorder()) -> lineman_workorder:workorder().
+prepare(_Xml, Workorder) -> Workorder.
 
--spec execute/1 :: (#xmlElement{}) -> 'ok'.
-execute(_) -> 'ok'.
+-spec execute/2 :: (xml(), lineman_workorder:workorder()) -> lineman_workorder:workorder().
+execute(Xml, Workorder) ->
+    Action = lineman_util:xml_attribute("action", Xml),
+    execute_action(Action, Xml),
+    Workorder.
+
+-spec execute_action/2 :: (ne_binary(), #xmlElement{}) -> 'ok'.
+execute_action(<<"fetch">>, Step) ->
+    Module = lineman_util:xml_atom_attribute("fetch-module", Step),
+    Key = lineman_util:xml_attribute("fetch-key", Step),
+    Property = lineman_util:xml_attribute("fetch-property", Step),
+    Value = lineman_util:xml_attribute("fetch-value", Step),
+    Id = lineman_util:xml_attribute("fetch-id", Step),
+    CallId = lineman_util:xml_attribute("call-id", Step),
+    Event = [CallId | lineman_util:xml_content(Step)],
+    gen_server:cast(?SERVER, {fetch, Module, Key, Property, Value, Id, Event});
+execute_action(<<"publish">>, Step) ->
+    CallId = lineman_util:xml_attribute("call-id", Step),
+    Event = lineman_util:xml_content(Step),
+    gen_server:cast(?SERVER, {event, CallId, Event}).
 
 %%%===================================================================
 %%% gen_listener callbacks
@@ -77,10 +95,6 @@ init([]) ->
     lager:debug("starting fs simulator"),
     {ok, #state{}}.
 
-
-%%events_handler(Pid, Args) ->
-%%    lineman_bindings:bind(<<"fs_event.request.events">>, ?MODULE, events_handler).
-
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -96,27 +110,27 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call({parameter, "default-event-headers", Parameter}, _From, State) -> 
-    DefaultEventHeaders = lineman_util:get_xml_element_content(Parameter),
+    DefaultEventHeaders = lineman_util:xml_content(Parameter),
     lager:debug("loaded default event headers: ~p", [DefaultEventHeaders]),
     {reply, ok, State#state{default_event_headers=DefaultEventHeaders}};
 handle_call({parameter, "bind", Parameter}, _From, #state{static_responses=StaticResponses}=State) -> 
-    Binding = wh_util:to_binary(lineman_util:get_xml_attribute_value("binding", Parameter)),
-    Args = wh_util:to_list(lineman_util:get_xml_attribute_value("args", Parameter, [])),
-    Value = case lineman_util:get_xml_attribute_value("clean", Parameter) of
-                "false" -> lineman_util:get_xml_element_content(Parameter, false);
-                _Else1 -> lineman_util:get_xml_element_content(Parameter)
+    Binding = lineman_util:xml_attribute("binding", Parameter),
+    Args = lineman_util:xml_string_attribute("args", Parameter, []),
+    Value = case lineman_util:xml_attribute("clean", Parameter) of
+                <<"false">> -> lineman_util:xml_content(Parameter, false);
+                _Else1 -> lineman_util:xml_content(Parameter)
             end,
-    Msg = case lineman_util:get_xml_attribute_value("error", Parameter) of
-              "true" -> {error, Value};
+    Msg = case lineman_util:xml_attribute("error", Parameter) of
+              <<"true">> -> {error, Value};
               _Else2  -> {ok, Value}
           end,
     lager:info("added static binding result for ~s with arg '~s'", [Binding, Args]),
     {reply, ok, State#state{static_responses=dict:store({Binding, Args}, Msg, StaticResponses)}};
 handle_call({parameter, "connect", Parameter}, _From, State) -> 
-    Node = lineman_util:get_xml_attribute_value("node", Parameter, "ecallmgr"),
-    Host = lineman_util:get_xml_attribute_value("host", Parameter, net_adm:localhost()),
+    Node = lineman_util:xml_string_attribute("node", Parameter, "ecallmgr"),
+    Host = lineman_util:xml_string_attribute("host", Parameter, net_adm:localhost()),
     DefaultCookie = lineman_util:try_get_cookie_from_vmargs(?ECALL_VM_ARGS),
-    Cookie = lineman_util:get_xml_attribute_value("cookie", Parameter, DefaultCookie),
+    Cookie = lineman_util:xml_atom_attribute("cookie", Parameter, DefaultCookie),
     lager:info("attempting to connect fs simulator to target '~s@~s' with cookie '~s'", [Node, Host, Cookie]),
     case lineman_util:try_connect_to_target(Node, Cookie, Host) of
         {ok, Target} -> 
@@ -142,55 +156,26 @@ handle_call(_Msg, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-
-handle_cast({Pid, session_event, Events}, State) ->
-    Route = list_to_binary(["fs_event.request.session_events"]),
-    lineman_bindings:map(Route, {Pid, Events}),     
+handle_cast({event, CallId, Event}, #state{events=Events, event_handler=EventHandler
+                                           ,default_event_headers=DefaultHeaders}=State) ->
+    Class = proplists:get_value(<<"Event-Name">>, Event),
+    Subclass = proplists:get_value(<<"Event-Subclass">>, Event),
+    UUID = proplists:get_value(<<"call-id">>, Event, CallId),
+    case sets:is_element({Class, Subclass}, Events) of
+        false -> ok;
+        true ->
+            lager:debug("sending event ~s ~s to ~p", [Class, Subclass, EventHandler]),
+            EventHandler ! {event, [UUID | DefaultHeaders ++ Event]}
+    end,
     {noreply, State};
-handle_cast({Pid, session_nixevent, Events}, State) ->
-    Route = list_to_binary(["fs_event.request.session_nixevents"]),
-    lineman_bindings:map(Route, {Pid, Events}), 
+handle_cast({fetch, Module, _Key, _Property, _Value, _Id, _Event}=Req, #state{bindings=Bindings}=State) ->
+    case dict:find(wh_util:to_binary(Module), Bindings) of
+        error -> ok;
+        {ok, Pids} ->
+            lager:debug("sending fetch request for ~s", [Module]),
+            [Pid ! Req || Pid <- Pids, is_pid(Pid)]
+    end,
     {noreply, State};
-handle_cast({Pid, session_noevents}, State) ->
-    Route = list_to_binary(["fs_event.request.session_noevents"]),
-    lineman_bindings:map(Route, Pid), 
-    {noreply, State};
-
-handle_cast({Pid, close, Reason}, State) ->
-    Route = list_to_binary(["fs_event.request.close"]),
-    lineman_bindings:map(Route, {Pid, Reason}), 
-    lineman_bindings:flush(<<"fs_event.request.#">>),
-    {noreply, State};
-
-handle_cast({Pid, sendevent, 'CUSTOM', SubClassName, Headers}, State) ->
-    Route = list_to_binary(["fs_event.request.sendevent.custom.", SubClassName]),
-    lineman_bindings:map(Route, {Pid, SubClassName, Headers}),
-    {noreply, State};
-handle_cast({Pid, sendevent, EventName, Headers}, State) ->
-    Route = list_to_binary(["fs_event.request.sendevent.", EventName]),
-    lineman_bindings:map(Route, {Pid, EventName, Headers}),
-    {noreply, State};
-
-handle_cast({Pid, sendmsg, UUID, Headers}, State) ->
-    Route = list_to_binary(["fs_event.request.sendmsg.", UUID]),
-    lineman_bindings:map(Route, {Pid, UUID, Headers}),
-    {noreply, State};
-
-handle_cast({Pid, handlecall, UUID}, State) ->
-    Route = list_to_binary(["fs_event.request.handlecall.", UUID]),
-    lineman_bindings:map(Route, {Pid, UUID}),
-    {noreply, State};
-
-handle_cast({Pid, handlecall, UUID, Process}, State) ->
-    Route = list_to_binary(["fs_event.request.handlecall.", UUID]),
-    lineman_bindings:map(Route, {Pid, UUID, Process}),
-    {noreply, State};
-
-handle_cast({Pid, start_handler, Type}, State) ->
-    Route = list_to_binary(["fs_event.request.start_handler"]),
-    lineman_bindings:map(Route, {Pid, Type}),
-    {noreply, State};
-
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
@@ -214,7 +199,7 @@ handle_info({Pid, <<"freeswitch.getpid">>, []}, State) ->
 handle_info({Pid, <<"freeswitch.bind.", Type/binary>>, []}, #state{bindings=Bindings}=State) ->
     Pid ! {ok, accepted},
     lager:info("added binding '~s' to ~p", [Type, Pid]),
-    {noreply, State#state{bindings=dict:store(Type, Pid, Bindings)}};
+    {noreply, State#state{bindings=dict:append(Type, Pid, Bindings)}};
 handle_info({Pid, <<"freeswitch.event">>, AddEvents}, #state{events=Events}=State) ->
     Pid ! {ok, accepted},
     {noreply, State#state{events=add_events(AddEvents, Events)}};
@@ -225,20 +210,16 @@ handle_info({Pid, <<"freeswitch.noevents">>, []}, State) ->
     Pid ! {ok, accepted},
     {noreply, State#state{events=sets:new()}};
 handle_info({Pid, Route, Term}, #state{static_responses=StaticResponses}=State) ->
-    lager:info("received '~s': ~p", [Route, Term]),
     case dict:find({Route, Term}, StaticResponses) of
         {ok, Value} -> 
             lager:info("sending static response for '~s'", [Route]),
             Pid ! Value;
-        error ->
-            lager:info("running map", []),
-            lineman_bindings:map(Route, {Pid, Term})
+        error -> lineman_bindings:map(Route, {Pid, Term})
     end,
     {noreply, State};
 handle_info(reset, State) ->
     {noreply, reset(State)};
 handle_info(_Info, State) ->
-    lager:info("Unknown info message: ~p", [_Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -278,27 +259,31 @@ reset(State) ->
 add_events(['CUSTOM'|AddEvents], Events) ->
     add_custom_events(AddEvents, Events);
 add_events([AddEvent|AddEvents], Events) ->
-    lager:info("added binding for event '~s'", [AddEvent]),
-    add_events(AddEvents, sets:add_element(AddEvent, Events));
+    Class = list_to_binary(atom_to_list(AddEvent)),
+    lager:info("added binding for event '~s'", [Class]),
+    add_events(AddEvents, sets:add_element({Class, undefined}, Events));
 add_events([], Events) ->
     Events.
 
 add_custom_events([AddEvent|AddEvents], Events) ->
-    lager:info("added binding for event 'CUSTOM ~s'", [AddEvent]),
-    add_custom_events(AddEvents, sets:add_element({'CUSTOM', AddEvent}, Events));
+    Subclass = list_to_binary(atom_to_list(AddEvent)),
+    lager:info("added binding for event 'CUSTOM ~s'", [Subclass]),
+    add_custom_events(AddEvents, sets:add_element({<<"CUSTOM">>, Subclass}, Events));
 add_custom_events([], Events) ->
     Events.
 
 remove_events(['CUSTOM'|RemoveEvents], Events) ->
     remove_custom_events(RemoveEvents, Events);
 remove_events([RemoveEvent|RemoveEvents], Events) ->
-    lager:info("removed binding for event '~s'", [RemoveEvent]),
-    remove_events(RemoveEvents, sets:del_element(RemoveEvent, Events));
+    Class = list_to_binary(atom_to_list(RemoveEvent)),
+    lager:info("removed binding for event '~s'", [Class]),
+    remove_events(RemoveEvents, sets:del_element({Class, undefined}, Events));
 remove_events([], Events) ->
     Events.
 
 remove_custom_events([RemoveEvent|RemoveEvents], Events) ->
-    lager:info("removed binding for event 'CUSTOM ~s'", [RemoveEvent]),
-    remove_custom_events(RemoveEvents, sets:del_element({'CUSTOM', RemoveEvent}, Events));
+    Subclass = list_to_binary(atom_to_list(RemoveEvent)),
+    lager:info("removed binding for event 'CUSTOM ~s'", [Subclass]),
+    remove_custom_events(RemoveEvents, sets:del_element({<<"CUSTOM">>, Subclass}, Events));
 remove_custom_events([], Events) ->
     Events.

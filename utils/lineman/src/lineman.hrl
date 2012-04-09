@@ -8,6 +8,7 @@
 -define(ECALL_VM_ARGS, "/opt/whistle/whistle/ecallmgr/conf/vm.args").
 
 -type text() :: atom() | string() | binary().
+-type xml() :: term().
 
 -define(LINEMAN_INCLUDED, true).
 -endif.

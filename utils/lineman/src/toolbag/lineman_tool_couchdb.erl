@@ -11,15 +11,15 @@
 -include_lib("lineman/src/lineman.hrl").
 
 -export([set_parameter/2]).
--export([prepare/1]).
--export([execute/1]).
+-export([prepare/2]).
+-export([execute/2]).
 
--spec set_parameter/2 :: (string(), #xmlElement{}) -> 'ok'.
-set_parameter(_Name, _Parameter) -> ok.
+-spec set_parameter/2 :: (string(), xml()) -> 'ok'.
+set_parameter(_Name, _Xml) -> ok.
 
--spec prepare/1 :: (#xmlElement{}) -> 'ok'.
-prepare(Step) -> ok.
+-spec prepare/2 :: (xml(), lineman_workorder:workorder()) -> lineman_workorder:workorder().
+prepare(_Xml, Workorder) -> Workorder.
 
--spec execute/1 :: (#xmlElement{}) -> 'ok'.
-execute(_) -> ok.
+-spec execute/2 :: (xml(), lineman_workorder:workorder()) -> lineman_workorder:workorder().
+execute(_Xml, Workorder) -> Workorder.
 
