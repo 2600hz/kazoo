@@ -599,14 +599,14 @@ start_channel(Connection) when is_pid(Connection) ->
     %% Open an AMQP channel to access our realm
     case erlang:is_process_alive(Connection) andalso amqp_connection:open_channel(Connection) of
         {ok, Channel} ->
-            lager:debug("Opened channel ~p", [Channel]),
+            lager:debug("opened channel ~p", [Channel]),
 
             ChanMRef = erlang:monitor(process, Channel),
             {Channel, ChanMRef};
         false ->
             {error, no_connection};
         E ->
-            lager:debug("Error opening channel: ~p", [E]),
+            lager:debug("error opening channel: ~p", [E]),
             E
     end.
 
@@ -614,10 +614,10 @@ start_channel(Connection) when is_pid(Connection) ->
 start_channel(Connection, Pid) ->
     case start_channel(Connection) of
         {C, _} = Channel when is_pid(C) ->
-            lager:debug("Started channel ~p for caller ~p", [C, Pid]),
+            lager:debug("started channel ~p for caller ~p", [C, Pid]),
             Channel;
         {error, no_connection}=E ->
-            lager:debug("No connection available to start channel"),
+            lager:debug("no connection available to start channel"),
             E;
         E ->
             lager:debug("failed to start new channel for ~p: ~p", [Pid, E]),

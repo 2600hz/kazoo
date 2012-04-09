@@ -543,9 +543,12 @@ new_queue(Queue, Options) when is_binary(Queue) ->
       ,arguments = props:get_value(arguments, Options, [])
      },
     {ok, C} = amqp_mgr:my_channel(),
+
+    lager:debug("trying to declare queue ~s on ~p", [Queue, C]),
+
     case amqp_channel:call(C, QD) of
         #'queue.declare_ok'{queue=Q} ->
-            ?AMQP_DEBUG andalso lager:debug("create queue: ~s)", [Queue]),
+            ?AMQP_DEBUG andalso lager:debug("create queue: ~s", [Q]),
             Q;
         {error, _Other}=E ->
             ?AMQP_DEBUG andalso lager:debug("error creating queue(~p): ~p", [Options, _Other]),
@@ -723,7 +726,10 @@ bind_q_to_exchange(Queue, Routing, Exchange, Options) ->
     ?AMQP_DEBUG andalso lager:debug("binding queue ~s to ~s with key ~s", [Queue, Exchange, Routing]),
 
     {ok, C} = amqp_mgr:my_channel(),
-    amqp_channel:call(C, QB).
+    case amqp_channel:call(C, QB) of
+        #'queue.bind_ok'{} -> ok;
+        E -> E
+    end.
 
 %%------------------------------------------------------------------------------
 %% @public
