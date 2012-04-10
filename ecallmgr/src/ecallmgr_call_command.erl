@@ -286,12 +286,16 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>) ->
             DialStrings = [D || D <- [receive {Pid, DS} -> DS end
                                       || Pid <- [spawn(fun() ->
                                                                put(callid, UUID),
-                                                               S ! {self(), (catch get_bridge_endpoint(EP))}
+                                                               case length(Endpoints) > 1 of
+                                                                   true ->
+                                                                       S ! {self(), (catch get_bridge_endpoint(EP))};
+                                                                   false ->
+                                                                       S ! {self(), (catch get_bridge_endpoint(wh_json:delete_key(<<"Ignore-Early-Media">>, EP)))}
+                                                               end
                                                        end)
                                                  || {_, EP} <- props:unique(KeyedEPs)
                                                 ]
                                      ], not wh_util:is_empty(D)],
-
             Generators = [fun(DP) ->
                                   case wh_json:get_integer_value(<<"Timeout">>, JObj) of
                                       undefined ->
@@ -376,7 +380,11 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>) ->
                                    ]
                            end
                           ,fun(DP) ->
-                                   BridgeCmd = list_to_binary(["bridge ", ecallmgr_fs_xml:get_channel_vars(JObj)
+                                   CVs = case length(Endpoints) > 1 of
+                                             true -> ecallmgr_fs_xml:get_channel_vars(JObj);
+                                             false -> ecallmgr_fs_xml:get_channel_vars(wh_json:delete_key(<<"Ignore-Early-Media">>, JObj))
+                                         end,
+                                   BridgeCmd = list_to_binary(["bridge ", CVs
                                                                ,wh_util:binary_join([D || D <- DialStrings], DialSeparator)]),
                                    [{"application", BridgeCmd}|DP]
                            end
