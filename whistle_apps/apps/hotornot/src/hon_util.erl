@@ -1,10 +1,10 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
 %%% @copyright (C) 2012, VoIP INC
 %%% @doc
 %%% 
 %%% @end
-%%% Created : 28 Jan 2012 by James Aimonetti <james@2600hz.org>
+%%% @contributors
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(hon_util).
 
@@ -22,8 +22,11 @@
 -spec candidate_rates/2 :: (ne_binary(), binary()) -> {'ok', wh_json:json_objects()} | {'error', atom()}.
 candidate_rates(ToDID) ->
     candidate_rates(ToDID, <<>>).
-candidate_rates(ToDID, _FromDID) ->
+candidate_rates(ToDID, FromDID) ->
     E164 = wnm_util:to_e164(ToDID),
+    find_candidate_rates(E164, FromDID).
+
+find_candidate_rates(E164, _FromDID) when byte_size(E164) > ?MIN_PREFIX_LEN ->
     <<"+", Start:?MIN_PREFIX_LEN/binary, _/binary>> = E164,
     <<"+", End/binary>> = E164,
 
@@ -34,7 +37,10 @@ candidate_rates(ToDID, _FromDID) ->
         {ok, []}=OK -> OK;
         {ok, ViewRows} -> {ok, [wh_json:get_value(<<"value">>, ViewRow) || ViewRow <- ViewRows]};
         {error, _}=E -> E
-    end.
+    end;
+find_candidate_rates(DID, _) ->
+    lager:debug("DID ~s is too short", [DID]),
+    {error, did_too_short}.
 
 %% Given a list of rates, return the list of rates whose routes regexes match the given E164
 %% Optionally include direction of the call and options from the client to match against the rate
