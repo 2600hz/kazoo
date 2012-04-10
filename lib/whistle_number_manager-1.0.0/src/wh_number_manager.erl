@@ -1,11 +1,12 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2012, VoIP INC
 %%% @doc
 %%%
 %%% Handle client requests for phone_number documents
 %%%
 %%% @end
-%%% Created : 08 Jan 2012 by Karl Anderson <karl@2600hz.org>
+%%% @contributors
+%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(wh_number_manager).
 

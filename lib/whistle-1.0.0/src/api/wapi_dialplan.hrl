@@ -1,3 +1,12 @@
+%%%-------------------------------------------------------------------
+%%% @copyright (C) 2011-2012 VoIP INC
+%%% @doc
+%%% Dialplan API definitions
+%%% @end
+%%% @contributors
+%%%   James Aimonetti
+%%%   Karl Anderson
+%%%-------------------------------------------------------------------
 -include("../wh_api.hrl").
 
 %% For dialplan messages, an optional insert-at tuple is common across all requests

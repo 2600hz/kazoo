@@ -1,8 +1,10 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2011, VoIP INC
+%%% @copyright (C) 2010-2012, VoIP INC
 %%% @doc
 %%% Preforms maintenance operations against the stepswitch dbs
 %%% @end
+%%% @contributors
+%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(whistle_number_manager_maintenance).
 
