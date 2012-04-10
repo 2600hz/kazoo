@@ -1,10 +1,10 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2011, James Aimonetti
+%%% @copyright (C) 2011-2012, VoIP INC
 %%% @doc
 %%% Common functionality for onnet and offnet call handling
 %%% @end
-%%% Created : 30 Jun 2011 by James Aimonetti <james@2600hz.org>
+%%% @contributors
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(ts_callflow).
 
@@ -26,7 +26,7 @@
 -define(WAIT_FOR_HANGUP_TIMEOUT, 1000 * 60 * 60 * 1). %% 1 hour
 -define(WAIT_FOR_CDR_TIMEOUT, 5000).
 
--record(state, {
+-record(ts_callflow_state, {
           aleg_callid = <<>> :: binary()
           ,bleg_callid = <<>> :: binary()
           ,acctid = <<>> :: binary()
@@ -39,20 +39,29 @@
           ,failover = wh_json:new() :: wh_json:json_object()
          }).
 
--spec init/1 :: (wh_json:json_object()) -> #state{}.
+-spec init/1 :: (wh_json:json_object()) -> #ts_callflow_state{} |
+                                           {'error', 'not_ts_account'}.
 init(RouteReqJObj) ->
     CallID = wh_json:get_value(<<"Call-ID">>, RouteReqJObj),
     put(callid, CallID),
 
-    true = is_trunkstore_acct(RouteReqJObj),
+    case is_trunkstore_acct(RouteReqJObj) of
+        false ->
+            lager:debug("request is not for a trunkstore account"),
+            {error, not_ts_account};
+        true ->
+            AcctID = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], RouteReqJObj),
 
-    AcctID = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], RouteReqJObj),
+            lager:debug("init done for route req for account ~s", [AcctID]),
+            #ts_callflow_state{aleg_callid=CallID
+                   ,route_req_jobj=RouteReqJObj
+                   ,acctid=AcctID
+                   ,acctdb=wh_util:format_account_id(AcctID, encoded)
+                  }
+    end.
 
-    lager:debug("Init done for route req for account ~s", [AcctID]),
-    #state{aleg_callid=CallID, route_req_jobj=RouteReqJObj, acctid=AcctID, acctdb=wh_util:format_account_id(AcctID, encoded)}.
-
--spec start_amqp/1 :: (#state{}) -> #state{}.
-start_amqp(#state{}=State) ->
+-spec start_amqp/1 :: (#ts_callflow_state{}) -> #ts_callflow_state{}.
+start_amqp(#ts_callflow_state{}=State) ->
     Q = amqp_util:new_queue(),
 
     %% Bind the queue to an exchange
@@ -60,10 +69,10 @@ start_amqp(#state{}=State) ->
     _ = amqp_util:basic_consume(Q, [{exclusive, false}]),
 
     lager:debug("Started AMQP with queue ~s", [Q]),
-    State#state{my_q=Q}.
+    State#ts_callflow_state{my_q=Q}.
 
--spec send_park/1 :: (#state{}) -> #state{}.
-send_park(#state{aleg_callid=CallID, my_q=Q, route_req_jobj=JObj}=State) ->
+-spec send_park/1 :: (#ts_callflow_state{}) -> #ts_callflow_state{}.
+send_park(#ts_callflow_state{aleg_callid=CallID, my_q=Q, route_req_jobj=JObj}=State) ->
     Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
             ,{<<"Routes">>, []}
             ,{<<"Method">>, <<"park">>}
@@ -76,8 +85,8 @@ send_park(#state{aleg_callid=CallID, my_q=Q, route_req_jobj=JObj}=State) ->
     _ = amqp_util:basic_consume(Q, [{exclusive, false}]), %% need to verify if this step is needed
     State.
 
--spec wait_for_win/1 :: (#state{}) -> {'won' | 'lost', #state{}}.
-wait_for_win(#state{aleg_callid=CallID}=State) ->
+-spec wait_for_win/1 :: (#ts_callflow_state{}) -> {'won' | 'lost', #ts_callflow_state{}}.
+wait_for_win(#ts_callflow_state{aleg_callid=CallID}=State) ->
     receive
         #'basic.consume_ok'{} -> wait_for_win(State);
 
@@ -89,14 +98,14 @@ wait_for_win(#state{aleg_callid=CallID}=State) ->
 
             CallctlQ = wh_json:get_value(<<"Control-Queue">>, WinJObj),
 
-            {won, State#state{callctl_q=CallctlQ}}
+            {won, State#ts_callflow_state{callctl_q=CallctlQ}}
     after ?WAIT_FOR_WIN_TIMEOUT ->
             lager:debug("Timed out(~b) waiting for route_win", [?WAIT_FOR_WIN_TIMEOUT]),
             {lost, State}
     end.
 
--spec wait_for_bridge/1 :: (#state{}) -> {'bridged' | 'error' | 'hangup' | 'timeout', #state{}}.
--spec wait_for_bridge/2 :: (#state{}, integer()) -> {'bridged' | 'error' | 'hangup' | 'timeout', #state{}}.
+-spec wait_for_bridge/1 :: (#ts_callflow_state{}) -> {'bridged' | 'error' | 'hangup' | 'timeout', #ts_callflow_state{}}.
+-spec wait_for_bridge/2 :: (#ts_callflow_state{}, integer()) -> {'bridged' | 'error' | 'hangup' | 'timeout', #ts_callflow_state{}}.
 wait_for_bridge(State) ->
     wait_for_bridge(State, ?WAIT_FOR_BRIDGE_TIMEOUT).
 wait_for_bridge(State, Timeout) ->
@@ -119,8 +128,8 @@ wait_for_bridge(State, Timeout) ->
             {timeout, State}
     end.
 
--spec process_event_for_bridge/2 :: (#state{}, wh_json:json_object()) -> 'ignore' | {'bridged' | 'error' | 'hangup', #state{}}.
-process_event_for_bridge(#state{aleg_callid=ALeg, my_q=Q, callctl_q=CtlQ}=State, JObj) ->
+-spec process_event_for_bridge/2 :: (#ts_callflow_state{}, wh_json:json_object()) -> 'ignore' | {'bridged' | 'error' | 'hangup', #ts_callflow_state{}}.
+process_event_for_bridge(#ts_callflow_state{aleg_callid=ALeg, my_q=Q, callctl_q=CtlQ}=State, JObj) ->
     case { wh_json:get_value(<<"Application-Name">>, JObj)
            ,wh_json:get_value(<<"Event-Name">>, JObj)
            ,wh_json:get_value(<<"Event-Category">>, JObj) } of
@@ -143,7 +152,7 @@ process_event_for_bridge(#state{aleg_callid=ALeg, my_q=Q, callctl_q=CtlQ}=State,
 
             _ = amqp_util:bind_q_to_callevt(Q, BLeg, cdr),
             _ = amqp_util:basic_consume(Q),
-            {bridged, State#state{bleg_callid=BLeg}};
+            {bridged, State#ts_callflow_state{bleg_callid=BLeg}};
 
         { _, <<"CHANNEL_HANGUP">>, <<"call_event">> } ->
             lager:debug("channel hungup before bridge"),
@@ -179,8 +188,8 @@ process_event_for_bridge(#state{aleg_callid=ALeg, my_q=Q, callctl_q=CtlQ}=State,
             ignore
     end.
 
--spec wait_for_cdr/1 :: (#state{}) -> {'timeout', #state{}} | {'cdr', 'aleg' | 'bleg', wh_json:json_object(), #state{}}.
--spec wait_for_cdr/2 :: (#state{}, pos_integer() | 'infinity') -> {'timeout', #state{}} | {'cdr', 'aleg' | 'bleg', wh_json:json_object(), #state{}}.
+-spec wait_for_cdr/1 :: (#ts_callflow_state{}) -> {'timeout', #ts_callflow_state{}} | {'cdr', 'aleg' | 'bleg', wh_json:json_object(), #ts_callflow_state{}}.
+-spec wait_for_cdr/2 :: (#ts_callflow_state{}, pos_integer() | 'infinity') -> {'timeout', #ts_callflow_state{}} | {'cdr', 'aleg' | 'bleg', wh_json:json_object(), #ts_callflow_state{}}.
 wait_for_cdr(State) ->
     wait_for_cdr(State, infinity).
 wait_for_cdr(State, Timeout) ->
@@ -198,9 +207,9 @@ wait_for_cdr(State, Timeout) ->
             {timeout, State}
     end.
 
--spec process_event_for_cdr/2 :: (#state{}, wh_json:json_object()) -> {'hangup', #state{}} | 'ignore' |
-                                                              {'cdr', 'aleg' | 'bleg', wh_json:json_object(), #state{}}.
-process_event_for_cdr(#state{aleg_callid=ALeg}=State, JObj) ->
+-spec process_event_for_cdr/2 :: (#ts_callflow_state{}, wh_json:json_object()) -> {'hangup', #ts_callflow_state{}} | 'ignore' |
+                                                              {'cdr', 'aleg' | 'bleg', wh_json:json_object(), #ts_callflow_state{}}.
+process_event_for_cdr(#ts_callflow_state{aleg_callid=ALeg}=State, JObj) ->
     case wh_util:get_event_type(JObj) of
         {<<"resource">>, <<"offnet_resp">>} ->
             case wh_json:get_value(<<"Response-Message">>, JObj) of
@@ -255,16 +264,16 @@ process_event_for_cdr(#state{aleg_callid=ALeg}=State, JObj) ->
             ignore
     end.
 
--spec finish_leg/2 :: (#state{}, 'undefined' | ne_binary()) -> 'ok'.
+-spec finish_leg/2 :: (#ts_callflow_state{}, 'undefined' | ne_binary()) -> 'ok'.
 finish_leg(_State, undefined) ->
     ok;
-finish_leg(#state{}=State, _Leg) ->
+finish_leg(#ts_callflow_state{}=State, _Leg) ->
     send_hangup(State).
 
--spec send_hangup/1 :: (#state{}) -> 'ok'.
-send_hangup(#state{callctl_q = <<>>}) ->
+-spec send_hangup/1 :: (#ts_callflow_state{}) -> 'ok'.
+send_hangup(#ts_callflow_state{callctl_q = <<>>}) ->
     ok;
-send_hangup(#state{callctl_q=CtlQ, my_q=Q, aleg_callid=CallID}) ->
+send_hangup(#ts_callflow_state{callctl_q=CtlQ, my_q=Q, aleg_callid=CallID}) ->
     Command = [
                {<<"Application-Name">>, <<"hangup">>}
                ,{<<"Call-ID">>, CallID}
@@ -278,50 +287,50 @@ send_hangup(#state{callctl_q=CtlQ, my_q=Q, aleg_callid=CallID}) ->
 %%%-----------------------------------------------------------------------------
 %%% Data access functions
 %%%-----------------------------------------------------------------------------
--spec get_request_data/1 :: (#state{}) -> wh_json:json_object().
-get_request_data(#state{route_req_jobj=JObj}) ->
+-spec get_request_data/1 :: (#ts_callflow_state{}) -> wh_json:json_object().
+get_request_data(#ts_callflow_state{route_req_jobj=JObj}) ->
     JObj.
 
--spec set_endpoint_data/2 :: (#state{}, wh_json:json_object()) -> #state{}.
+-spec set_endpoint_data/2 :: (#ts_callflow_state{}, wh_json:json_object()) -> #ts_callflow_state{}.
 set_endpoint_data(State, Data) ->
-    State#state{ep_data=Data}.
+    State#ts_callflow_state{ep_data=Data}.
 
--spec get_endpoint_data/1 :: (#state{}) -> wh_json:json_object().
-get_endpoint_data(#state{ep_data=EP}) ->
+-spec get_endpoint_data/1 :: (#ts_callflow_state{}) -> wh_json:json_object().
+get_endpoint_data(#ts_callflow_state{ep_data=EP}) ->
     EP.
 
--spec set_account_id/2 :: (#state{}, ne_binary()) -> #state{}.
+-spec set_account_id/2 :: (#ts_callflow_state{}, ne_binary()) -> #ts_callflow_state{}.
 set_account_id(State, ID) ->
-    State#state{acctid=ID}.
+    State#ts_callflow_state{acctid=ID}.
 
--spec get_account_id/1 :: (#state{}) -> ne_binary().
-get_account_id(#state{acctid=ID}) ->
+-spec get_account_id/1 :: (#ts_callflow_state{}) -> ne_binary().
+get_account_id(#ts_callflow_state{acctid=ID}) ->
     ID.
 
--spec get_my_queue/1 :: (#state{}) -> ne_binary().
--spec get_control_queue/1 :: (#state{}) -> ne_binary().
-get_my_queue(#state{my_q=Q}) ->
+-spec get_my_queue/1 :: (#ts_callflow_state{}) -> ne_binary().
+-spec get_control_queue/1 :: (#ts_callflow_state{}) -> ne_binary().
+get_my_queue(#ts_callflow_state{my_q=Q}) ->
     Q.
-get_control_queue(#state{callctl_q=CtlQ}) ->
+get_control_queue(#ts_callflow_state{callctl_q=CtlQ}) ->
     CtlQ.
 
--spec get_aleg_id/1 :: (#state{}) -> ne_binary().
--spec get_bleg_id/1 :: (#state{}) -> ne_binary().
-get_aleg_id(#state{aleg_callid=ALeg}) ->
+-spec get_aleg_id/1 :: (#ts_callflow_state{}) -> ne_binary().
+-spec get_bleg_id/1 :: (#ts_callflow_state{}) -> ne_binary().
+get_aleg_id(#ts_callflow_state{aleg_callid=ALeg}) ->
     ALeg.
-get_bleg_id(#state{bleg_callid=ALeg}) ->
+get_bleg_id(#ts_callflow_state{bleg_callid=ALeg}) ->
     ALeg.
 
--spec get_call_cost/1 :: (#state{}) -> float().
-get_call_cost(#state{call_cost=Cost}) ->
+-spec get_call_cost/1 :: (#ts_callflow_state{}) -> float().
+get_call_cost(#ts_callflow_state{call_cost=Cost}) ->
     Cost.
 
--spec set_failover/2 :: (#state{}, wh_json:json_object()) -> #state{}.
+-spec set_failover/2 :: (#ts_callflow_state{}, wh_json:json_object()) -> #ts_callflow_state{}.
 set_failover(State, Failover) ->
-    State#state{failover=Failover}.
+    State#ts_callflow_state{failover=Failover}.
 
--spec get_failover/1 :: (#state{}) -> wh_json:json_object().
-get_failover(#state{failover=Fail}) ->
+-spec get_failover/1 :: (#ts_callflow_state{}) -> wh_json:json_object().
+get_failover(#ts_callflow_state{failover=Fail}) ->
     Fail.
 
 -spec is_trunkstore_acct/1 :: (wh_json:json_object()) -> boolean().

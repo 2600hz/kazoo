@@ -21,6 +21,7 @@ init(Parent, RouteReqJObj) ->
     proc_lib:init_ack(Parent, {ok, self()}),
     start_amqp(ts_callflow:init(RouteReqJObj)).
 
+start_amqp({error, not_ts_account}) -> ok;
 start_amqp(State) ->
     endpoint_data(ts_callflow:start_amqp(State)).
 
@@ -135,7 +136,10 @@ wait_for_other_leg(_State, bleg, {cdr, bleg, _CDR, State1}) ->
 wait_for_other_leg(_State, Leg, {timeout, State1}) ->
     lager:debug("timed out waiting for ~s CDR, cleaning up", [Leg]),
 
-    ts_callflow:finish_leg(State1, ts_callflow:get_bleg_id(State1)).
+    ts_callflow:finish_leg(State1, ts_callflow:get_bleg_id(State1));
+wait_for_other_leg(_State, Leg, {cdr, OtherLeg, CDR, State1}) ->
+    lager:debug("while waiting for cdr for ~s, recv cdr for ~s", [Leg, OtherLeg]),
+    wait_for_other_leg(State1, Leg, ts_callflow:wait_for_cdr(State1)).
 
 try_failover(State) ->
     case {ts_callflow:get_control_queue(State), ts_callflow:get_failover(State)} of

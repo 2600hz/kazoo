@@ -1,6 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2012, VoIP INC
 %%% @doc
 %%% Calls coming from known clients, getting settings for caller-id and
 %%% what not, and sending the calls offnet.
@@ -9,7 +8,8 @@
 %%% stepswitch) will redirect the request back in, to be picked up by
 %%% ts_from_offnet.
 %%% @end
-%%% Created : 20 Jun 2011 by James Aimonetti <james@2600hz.org>
+%%% @contributors
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(ts_from_onnet).
 
@@ -24,6 +24,7 @@ init(Parent, RouteReqJObj) ->
     proc_lib:init_ack(Parent, {ok, self()}),
     start_amqp(ts_callflow:init(RouteReqJObj)).
 
+start_amqp({error, not_ts_account}) -> ok;
 start_amqp(State) ->
     onnet_data(ts_callflow:start_amqp(State)).
 

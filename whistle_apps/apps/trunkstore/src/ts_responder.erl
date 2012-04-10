@@ -1,6 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2010, VoIP INC
+%%% @copyright (C) 2010-2012, VoIP INC
 %%% @doc
 %%% Trunk-Store responder waits for Auth and Route requests on the broadcast
 %%% Exchange, and delievers the requests to the corresponding handler.
@@ -9,7 +8,8 @@
 %%% Each request received by TS_RESPONDER should be put into a new spawn()
 %%% to avoid blocking on each request.
 %%% @end
-%%% Created : 31 Aug 2010 by James Aimonetti <james@2600hz.org>
+%%% @contributors
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(ts_responder).
 
@@ -75,7 +75,7 @@ stop(Srv) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    lager:debug("Started responder"),
+    lager:debug("started ts_responder"),
     {ok, ok}.
 
 %%--------------------------------------------------------------------
@@ -119,8 +119,9 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info(_Unhandled, State) ->
-    lager:debug("Unknown message: ~p~n", [_Unhandled]),
-    {noreply, State, 1000}.
+    lager:debug("unknown message: ~p", [_Unhandled]),
+    {noreply, State}.
+
 
 handle_event(_JObj, _State) ->
     {reply, []}.
@@ -137,7 +138,7 @@ handle_event(_JObj, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _) ->
-    lager:debug("Terminating: ~p~n", [_Reason]).
+    lager:debug("ts_responder terminating: ~p", [_Reason]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -148,7 +149,6 @@ terminate(_Reason, _) ->
 %% @end
 %%--------------------------------------------------------------------
 code_change(_OldVsn, State, _Extra) ->
-    lager:debug("Code Change from ~p~n", [_OldVsn]),
     {ok, State}.
 
 %%%===================================================================
