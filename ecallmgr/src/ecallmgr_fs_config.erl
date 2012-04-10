@@ -12,21 +12,23 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/1, start_link/2, 
-        handle_config_req/4]).
-
-%% gen_server callbacks
--export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-         terminate/2, code_change/3]).
+-export([start_link/1, start_link/2]). 
+-export([handle_config_req/4]).
+-export([init/1
+         ,handle_call/3
+         ,handle_cast/2
+         ,handle_info/2
+         ,terminate/2
+         ,code_change/3
+        ]).
 
 -define(SERVER, ?MODULE).
--define(FS_TIMEOUT, 5000).
 
 -include("ecallmgr.hrl").
 
--record(state, {
-          node = undefined :: atom()
-         }).
+-record(state, {node = undefined :: atom()
+                ,options = [] :: proplist()
+               }).
 
 %%%===================================================================
 %%% API
@@ -60,14 +62,14 @@ start_link(Node, Options) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init([Node, _Options]) ->
-    lager:debug("starting new fs config listener for ~s", [Node]),
+init([Node, Options]) ->
+    put(callid, Node),
     process_flag(trap_exit, true),
-    erlang:monitor_node(Node, true),
+    lager:debug("starting new fs config listener for ~s", [Node]),
     case freeswitch:bind(Node, config) of
         ok ->
             lager:debug("bound to config request on ~s", [Node]),
-            {ok, #state{node=Node}};
+            {ok, #state{node=Node, options=Options}};
         {error, Reason} ->
             lager:warning("failed to bind to config requests on ~s, ~p", [Node, Reason]),
             {stop, Reason};
@@ -91,8 +93,7 @@ init([Node, _Options]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call(_Request, _From, State) ->
-    Reply = ok,
-    {reply, Reply, State}.
+    {reply, {error, not_implemented}, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -118,8 +119,8 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({fetch, configuration, <<"configuration">>, <<"name">>, Conf, ID, Data}, #state{node=Node}=State) ->
-    {ok, ConfigReqPid} = ecallmgr_fs_config_sup:start_req(Node, ID, Conf, Data),
-    erlang:monitor(process, ConfigReqPid),
+    %% TODO: move this to a supervisor somewhere....
+    handle_config_req(Node, ID, Conf, Data),
     lager:debug("fetch configuration request from from ~s", [Node]),
     {noreply, State};
 handle_info({_Fetch, _Section, _Something, _Key, _Value, ID, [undefined | _Data]}, #state{node=Node}=State) ->
@@ -140,9 +141,8 @@ handle_info(_Info, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, _State) ->
-    lager:debug("fs config ~p termination", [_Reason]),
-    ok.
+terminate(_Reason, #state{node=Node}) ->
+    lager:debug("fs config ~s termination: ~p", [Node, _Reason]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -158,35 +158,31 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec handle_config_req/4 :: (Node, ID, FsConf, Data) -> {ok, pid()} when
-      Node :: atom(),
-      ID :: binary(),
-      FsConf :: binary(),
-      Data :: proplist().
+-spec handle_config_req/4 :: (atom(), ne_binary(), ne_binary(), proplist()) -> pid().
 handle_config_req(Node, ID, FsConf, _Data) ->
-    Pid = spawn_link(fun() -> 
-              put(callid, ID),
-              try
-                  EcallMgrConf = fsconf_to_sysconf(FsConf),
-                  SysconfResp = ecallmgr_config:get(EcallMgrConf),
-                  lager:debug("received sysconf response for ecallmngr config ~p", [EcallMgrConf]),
-                  {ok, ConfigXml} = case EcallMgrConf of
-                                      <<"acls">> -> ecallmgr_fs_xml:config_acl_xml(SysconfResp)
-                                    end,
-                  lager:debug("sending XML to ~w: ~s", [Node, ConfigXml]),
-                  _ = freeswitch:fetch_reply(Node, ID, ConfigXml)
-              catch 
-                  throw:_T ->
-                      lager:debug("config request failed: thrown ~w", [_T]),
-                      _ = freeswitch:fetch_reply(Node, ID, ?EMPTYRESPONSE);
-                  error:_E ->
-                      lager:debug("config request failed: error ~p", [_E]),
-                      _ = freeswitch:fetch_reply(Node, ID, ?EMPTYRESPONSE)
-              end
-          end),
-    {ok, Pid}.
+    spawn(fun() -> 
+                  put(callid, ID),
+                  try
+                      EcallMgrConf = fsconf_to_sysconf(FsConf),
+                      SysconfResp = ecallmgr_config:get(EcallMgrConf),
+                      lager:debug("received sysconf response for ecallmngr config ~p", [EcallMgrConf]),
+                      {ok, ConfigXml} = case EcallMgrConf of
+                                            <<"acls">> -> ecallmgr_fs_xml:config_acl_xml(SysconfResp)
+                                        end,
+                      lager:debug("sending XML to ~w: ~s", [Node, ConfigXml]),
+                      _ = freeswitch:fetch_reply(Node, ID, ConfigXml)
+                  catch 
+                      throw:_T ->
+                          lager:debug("config request failed: thrown ~w", [_T]),
+                          _ = freeswitch:fetch_reply(Node, ID, ?EMPTYRESPONSE);
+                      error:_E ->
+                          lager:debug("config request failed: error ~p", [_E]),
+                          _ = freeswitch:fetch_reply(Node, ID, ?EMPTYRESPONSE)
+                  end
+          end).
 
 %%% FS conf keys are not necessarily the same as we store them, remap it
+-spec fsconf_to_sysconf/1 :: (ne_binary()) -> ne_binary().
 fsconf_to_sysconf(FsConf) ->
   case FsConf of
     <<"acl.conf">> -> <<"acls">>

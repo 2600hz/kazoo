@@ -19,7 +19,7 @@
 -define(NODE_CHECK_PERIOD, 1000).
 
 %% API
--export([start_link/2]).
+-export([start_link/3]).
 -export([swap_call_legs/1]).
 -export([create_event/3]).
 -export([create_event_props/3]).
@@ -56,8 +56,8 @@
 %% @spec start_link() -> {'ok', Pid} | ignore | {'error', Error}
 %% @end
 %%--------------------------------------------------------------------
--spec start_link/2 :: (atom(), ne_binary()) -> {'ok', pid()}.
-start_link(Node, CallId) ->
+-spec start_link/3 :: (atom(), ne_binary(), 'undefined' | ne_binary()) -> {'ok', pid()}.
+start_link(Node, CallId, _) ->
     gen_server:start_link(?MODULE, [Node, CallId], []).
 
 -spec callid/1 :: (pid()) -> ne_binary().

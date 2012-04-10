@@ -5,11 +5,11 @@
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
--module(ecallmgr_fs_sup).
+-module(ecallmgr_fs_pinger_sup).
 
 -behaviour(supervisor).
 
--include_lib("ecallmgr/src/ecallmgr.hrl").
+-include_lib("whistle/include/wh_types.hrl").
 
 -define(SERVER, ?MODULE).
 
@@ -18,10 +18,11 @@
 -export([remove_node/1]).
 -export([init/1]).
 
--define(CHILD(Name, Type), fun(N, cache) -> {N, {wh_cache, start_link, [N]}, permanent, 5000, worker, [wh_cache]};
-                              (N, T) -> {N, {N, start_link, []}, permanent, 5000, T, [N]} end(Name, Type)).
--define(NODE(Name, Args), {Name, {ecallmgr_fs_node_sup, start_link, Args}, transient, 5000, supervisor, [ecallmgr_fs_node_sup]}).
--define(CHILDREN, [{ecallmgr_fs_nodes, worker}, {ecallmgr_fs_pinger_sup, supervisor}]).
+%% Helper macro for declaring children of supervisor
+-define(CHILD(Name, Type, Args), fun(N, cache) -> {N, {wh_cache, start_link, [N]}, permanent, 5000, worker, [wh_cache]};
+                                    (N, T, A) -> {N, {N, start_link, A}, permanent, 5000, T, [N]} end(Name, Type, Args)).
+-define(PINGER(Node, Opts), {Node, {ecallmgr_fs_pinger, start_link, [Node, Opts]}, transient, 5000, worker, [Node]}).
+-define(CHILDREN, []).
 
 %% ===================================================================
 %% API functions
@@ -39,7 +40,7 @@ start_link() ->
 
 -spec add_node/2 :: (atom(), proplist()) -> startlink_ret().
 add_node(Node, Options) ->
-    supervisor:start_child(?SERVER, ?NODE(Node, [Node, Options])).
+    supervisor:start_child(?SERVER, ?PINGER(Node, Options)).
 
 -spec remove_node/1 :: (atom()) -> 'ok' | {'error', 'running' | 'not_found' | 'simple_one_for_one'}.
 remove_node(Node) ->
@@ -59,14 +60,13 @@ remove_node(Node) ->
 %% specifications.
 %% @end
 %%--------------------------------------------------------------------
--spec init(list()) -> sup_init_ret().
+-spec init([]) -> sup_init_ret().
 init([]) ->
     RestartStrategy = one_for_one,
     MaxRestarts = 5,
     MaxSecondsBetweenRestarts = 10,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
-
-    Children = [?CHILD(Name, Type) || {Name, Type} <- ?CHILDREN],
+    Children = [],
 
     {ok, {SupFlags, Children}}.

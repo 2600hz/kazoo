@@ -10,6 +10,14 @@
 -module(ecallmgr_maintenance).
 
 -export([show_calls/0]).
+-export([add_fs_node/1]).
+-export([remove_fs_node/1]).
+
+add_fs_node(Node) ->
+    ecallmgr_fs_nodes:add(Node).
+
+remove_fs_node(Node) ->
+    ecallmgr_fs_nodes:remove(Node).
 
 -spec show_calls/0 :: () -> 'ok'.
 show_calls() ->

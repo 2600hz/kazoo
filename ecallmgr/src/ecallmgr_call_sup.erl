@@ -1,78 +1,63 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2010, James Aimonetti
+%%% @copyright (C) 2012, VoIP, INC
 %%% @doc
-%%% Manage call-specific processes (events and control)
+%%%
 %%% @end
-%%% Created : 24 Nov 2010 by James Aimonetti <james@2600hz.org>
+%%% @contributors
 %%%-------------------------------------------------------------------
 -module(ecallmgr_call_sup).
 
 -behaviour(supervisor).
 
-%% API
--export([start_link/0]).
--export([start_control_process/2, start_control_process/3]).
--export([start_event_process/2]).
+-include_lib("whistle/include/wh_types.hrl").
 
-%% Supervisor callbacks
+-export([start_link/2]).
 -export([init/1]).
 
--define(SERVER, ?MODULE).
+%% Helper macro for declaring children of supervisor
+-define(CHILD(Name, Type, Args), fun(N, cache, _) -> {N, {wh_cache, start_link, [N]}, permanent, 5000, worker, [wh_cache]};
+                              (N, T, A) -> {N, {N, start_link, A}, permanent, 5000, T, [N]} end(Name, Type, Args)).
+-define(CHILDREN, [{ecallmgr_call_events, worker}, {ecallmgr_call_control, worker}]).
 
-%% supervisors should never die for good
--define(CHILD(Mod, Type), {Mod, {Mod, start_link, []}, permanent, 5000, Type, [Mod]}).
-
-%%%===================================================================
-%%% API functions
-%%%===================================================================
+%% ===================================================================
+%% API functions
+%% ===================================================================
 
 %%--------------------------------------------------------------------
+%% @public
 %% @doc
 %% Starts the supervisor
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
-start_link() ->
-    supervisor:start_link({local, ?SERVER}, ?MODULE, []).
+-spec start_link/2 :: (atom(), ne_binary()) -> startlink_ret().
+-spec start_link/3 :: (atom(), ne_binary(), 'undefined' | ne_binary()) -> startlink_ret().
 
-start_event_process(Node, UUID) ->
-    ecallmgr_call_event_sup:start_proc([Node, UUID]).
+start_link(Node, UUID) ->
+    start_link(Node, UUID, undefined).
 
-start_control_process(Node, UUID) ->
-    ecallmgr_call_control_sup:start_proc([Node, UUID, undefined]).
+start_link(Node, UUID, SendTo) ->
+    supervisor:start_link(?MODULE, [Node, UUID, SendTo]).
 
-start_control_process(Node, UUID, SendTo) ->
-    ecallmgr_call_control_sup:start_proc([Node, UUID, SendTo]).
-
-%%%===================================================================
-%%% Supervisor callbacks
-%%%===================================================================
+%% ===================================================================
+%% Supervisor callbacks
+%% ===================================================================
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% Whenever a supervisor is started using supervisor:start_link/[2,3],
 %% this function is called by the new process to find out about
 %% restart strategy, maximum restart frequency and child
 %% specifications.
-%%
-%% @spec init(Args) -> {ok, {SupFlags, [ChildSpec]}} |
-%%                     ignore |
-%%                     {error, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init([]) ->
-    {ok
-     ,{
-       {one_for_one, 5, 10}
-       ,[?CHILD(ecallmgr_call_event_sup, supervisor)
-         ,?CHILD(ecallmgr_call_control_sup, supervisor)
-        ]
-      }
-    }.
+-spec init(list()) -> sup_init_ret().
+init([Node, UUID]) ->
+    RestartStrategy = one_for_one,
+    MaxRestarts = 5,
+    MaxSecondsBetweenRestarts = 10,
 
-%%%===================================================================
-%%% Internal functions
-%%%===================================================================
+    SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
+    Children = [?CHILD(Name, Type, [Node, UUID]) || {Name, Type} <- ?CHILDREN],
+
+    {ok, {SupFlags, Children}}.

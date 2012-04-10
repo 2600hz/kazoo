@@ -136,13 +136,11 @@ mwi_update(JObj, Props) ->
 %% @end
 %%--------------------------------------------------------------------
 init([Node, Options]) ->
-    put(callid, ?LOG_SYSTEM_ID),
-    lager:debug("starting new ecallmgr notify process"),
+    put(callid, Node),
     process_flag(trap_exit, true),
-    erlang:monitor_node(Node, true),
-    case freeswitch:register_event_handler(Node) of
+    lager:debug("starting new ecallmgr notify process"),
+    case freeswitch:event(Node, ['PRESENCE_IN', 'PRESENCE_OUT', 'PRESENCE_PROBE']) of
         ok ->
-            ok = freeswitch:event(Node, ['PRESENCE_IN', 'PRESENCE_OUT', 'PRESENCE_PROBE']),
             lager:debug("bound to switch presence events on node ~s", [Node]),
             {ok, #state{node=Node, options=Options}};
         {error, Reason} ->
@@ -211,17 +209,6 @@ handle_info({event, [_ | Data]}, #state{node=Node}=State) ->
         _ ->
             {noreply, State}
     end;
-handle_info({update_options, NewOptions}, State) ->
-    {noreply, State#state{options=NewOptions}, hibernate};
-handle_info({'EXIT', _Pid, noconnection}, State) ->
-    lager:debug("noconnection received for node, pid: ~p", [_Pid]),
-    {stop, normal, State};
-handle_info({nodedown, Node}, #state{node=Node}=State) ->
-    lager:debug("nodedown received from node ~s", [Node]),
-    {stop, normal, State};
-handle_info(nodedown, #state{node=Node}=State) ->
-    lager:debug("nodedown received from node ~s", [Node]),
-    {stop, normal, State};
 handle_info(_Info, State) ->
     {noreply, State}.
 
