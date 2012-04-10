@@ -179,7 +179,8 @@ maybe_from_uri(true, CNum, Realm) ->
 maybe_from_uri(false, CNum, Realm) ->
     case whapps_config:get_is_true(?APP_NAME, <<"format_from_uri">>) of
         true -> from_uri(CNum, Realm);
-        false -> undefined
+        false -> undefined;
+        undefined -> undefined
     end;
 maybe_from_uri(AccountDb, Gateway, CNum) ->
     {ok, AcctDoc} = couch_mgr:open_doc(AccountDb, wh_util:format_account_id(AccountDb, raw)),
