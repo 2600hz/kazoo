@@ -24,19 +24,22 @@ handle_req(JObj, Props) ->
 
     lager:debug("valid rating request"),
 
-    {ok, RatesData} = get_rate_data(JObj),
-    lager:debug("rate data retrieved"),
+    case get_rate_data(JObj) of
+        {error, no_rate_found} -> ok;
+        {ok, RatesData} ->
+            lager:debug("rate data retrieved"),
 
-    RespProp = [{<<"Rates">>, RatesData}
-                | wh_api:default_headers(props:get_value(queue, Props, <<>>), ?APP_NAME, ?APP_VERSION)
-               ],
+            RespProp = [{<<"Rates">>, RatesData}
+                        | wh_api:default_headers(props:get_value(queue, Props, <<>>), ?APP_NAME, ?APP_VERSION)
+                       ],
 
-    spawn(fun() ->
-                  wh_util:put_callid(JObj),
-                  set_rate_ccvs(RespProp, wh_json:get_value(<<"Control-Queue">>, JObj), JObj)
-          end),
+            spawn(fun() ->
+                          wh_util:put_callid(JObj),
+                          set_rate_ccvs(RespProp, wh_json:get_value(<<"Control-Queue">>, JObj), JObj)
+                  end),
 
-    wapi_call:publish_rate_resp(wh_json:get_value(<<"Server-ID">>, JObj), RespProp).
+            wapi_call:publish_rate_resp(wh_json:get_value(<<"Server-ID">>, JObj), RespProp)
+    end.
 
 -spec get_rate_data/1 :: (wh_json:json_object()) -> {'ok', wh_json:json_objects()} |
                                                     {'error', 'no_rate_found'}.
