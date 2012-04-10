@@ -137,7 +137,7 @@ wait_for_other_leg(_State, Leg, {timeout, State1}) ->
     lager:debug("timed out waiting for ~s CDR, cleaning up", [Leg]),
 
     ts_callflow:finish_leg(State1, ts_callflow:get_bleg_id(State1));
-wait_for_other_leg(_State, Leg, {cdr, OtherLeg, CDR, State1}) ->
+wait_for_other_leg(_State, Leg, {cdr, OtherLeg, _CDR, State1}) ->
     lager:debug("while waiting for cdr for ~s, recv cdr for ~s", [Leg, OtherLeg]),
     wait_for_other_leg(State1, Leg, ts_callflow:wait_for_cdr(State1)).
 
@@ -269,22 +269,22 @@ routing_data(ToDID, AcctID, Settings) ->
     AuthR = wh_json:get_value(<<"auth_realm">>, AuthOpts, wh_json:get_value(<<"auth_realm">>, Acct)),
 
     {Srv, AcctStuff} = try
-                      {ok, AccountSettings} = ts_util:lookup_user_flags(AuthU, AuthR, AcctID),
-                      lager:debug("got account settings"),
-                      {
-                        wh_json:get_value(<<"server">>, AccountSettings, wh_json:new())
-                        ,wh_json:get_value(<<"account">>, AccountSettings, wh_json:new())
-                      }
-                  catch
-                      _A:_B ->
-                          lager:debug("failed to get account settings: ~p: ~p", [_A, _B]),
-                          {wh_json:new(), wh_json:new()}
-                  end,
+                           {ok, AccountSettings} = ts_util:lookup_user_flags(AuthU, AuthR, AcctID),
+                           lager:debug("got account settings"),
+                           {
+                             wh_json:get_value(<<"server">>, AccountSettings, wh_json:new())
+                             ,wh_json:get_value(<<"account">>, AccountSettings, wh_json:new())
+                           }
+                       catch
+                           _A:_B ->
+                               lager:debug("failed to get account settings: ~p: ~p", [_A, _B]),
+                               {wh_json:new(), wh_json:new()}
+                       end,
 
     SrvOptions = wh_json:get_value(<<"options">>, Srv, wh_json:new()),
 
     case wh_util:is_true(wh_json:get_value(<<"enabled">>, SrvOptions)) of
-        false -> throw("this server is not enabled");
+        false -> throw({server_disabled, wh_json:get_value(<<"id">>, Srv)});
         true -> ok
     end,
 
@@ -326,8 +326,8 @@ routing_data(ToDID, AcctID, Settings) ->
                          lager:debug("found ~s in ~s, but is for account ~s", [Num, Db, wh_json:get_value(<<"pvt_assigned_to">>, NumJObj)]),
                          FailoverLocations
                  end;
-             {error, _} ->
-                 lager:debug("failed to find ~s in ~s", [Num, Db]),
+             {error, _E} ->
+                 lager:debug("failed to find ~s in ~s: ~p", [Num, Db, _E]),
                  FailoverLocations
          end,
 

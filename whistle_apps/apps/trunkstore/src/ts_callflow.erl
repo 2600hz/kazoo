@@ -111,6 +111,7 @@ wait_for_bridge(State) ->
 wait_for_bridge(State, Timeout) ->
     Start = erlang:now(),
     receive
+        #'basic.consume_ok'{} -> wait_for_bridge(State, Timeout);
         {_, #amqp_msg{payload=Payload}} ->
             JObj = mochijson2:decode(Payload),
             case process_event_for_bridge(State, JObj) of
@@ -194,6 +195,7 @@ wait_for_cdr(State) ->
     wait_for_cdr(State, infinity).
 wait_for_cdr(State, Timeout) ->
     receive
+        #'basic.consume_ok'{} -> wait_for_cdr(State, Timeout);
         {_, #amqp_msg{payload=Payload}} ->
             JObj = mochijson2:decode(Payload),
             case process_event_for_cdr(State, JObj) of
