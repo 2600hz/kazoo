@@ -22,7 +22,7 @@
 -define(CHILD(I, Type), {I, {I, start_link, []}, permanent, 5000, Type, [I]}).
 -define(POOL(Mod), {Mod, {poolboy, start_link, [
                                                 [{name, {local, Mod}}
-                                                 ,{worker_module, ecallmgr_amqp_worker}
+                                                 ,{worker_module, wh_amqp_worker}
                                                  ,{size, 50}
                                                  ,{max_overflow, 50}
                                                 ]

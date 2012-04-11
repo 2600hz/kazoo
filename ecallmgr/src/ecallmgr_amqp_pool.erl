@@ -22,7 +22,6 @@
 -include("ecallmgr.hrl").
 
 -define(DEFAULT_TIMEOUT, 1500).
--define(FUDGE, 2600).
 
 -spec true/1 :: (any()) -> 'true'.
 true(_) -> true.
@@ -90,19 +89,20 @@ set_req(GetReq) ->
 set_req(GetReq, Timeout) ->
     send_request(GetReq, Timeout, fun wapi_sysconf:publish_set_req/1, fun ecallmgr_amqp_pool:true/1).
 
--spec send_request/4 :: (api_terms(), pos_integer(), fun((api_terms()) -> _), fun((api_terms()) -> boolean())) -> {'ok', wh_json:json_object()} |
-                                                                                                                  {'error', _}.
+-spec send_request/4 :: (api_terms(), pos_integer(), wh_amqp_worker:publish_fun(), wh_amqp_worker:validate_fun()) -> {'ok', wh_json:json_object()} |
+                                                                                                                     {'error', _}.
 send_request(Req, Timeout, PubFun, VFun) ->
-    W = poolboy:checkout(?AMQP_POOL_MGR),
+    case poolboy:checkout(?AMQP_POOL_MGR, false, ?DEFAULT_TIMEOUT) of
+        W when is_pid(W) ->
+            Prop = case wh_json:is_json_object(Req) of
+                       true -> wh_json:to_proplist(Req);
+                       false -> Req
+                   end,
 
-    Prop = case wh_json:is_json_object(Req) of
-               true -> wh_json:to_proplist(Req);
-               false -> Req
-           end,
-
-    %% We need to timeout the caller without crashing, so add a fudge to the gen_listener's timeout
-    %% but still timeout the caller in Timeout milliseconds (allows the poolboy worker the chance to
-    %% get checked back in before the caller crashes - poolboy kills the worker if the caller crashes)
-    Reply = gen_listener:call(W, {request, Prop, PubFun, VFun, Timeout}, Timeout+?FUDGE),
-    poolboy:checkin(?AMQP_POOL_MGR, W),
-    Reply.
+            Reply = wh_amqp_worker:new_request(W, Prop, PubFun, VFun, Timeout),
+            poolboy:checkin(?AMQP_POOL_MGR, W),
+            Reply;
+        full ->
+            lager:debug("failed to checkout worker: full"),
+            {error, pool_full}
+    end.

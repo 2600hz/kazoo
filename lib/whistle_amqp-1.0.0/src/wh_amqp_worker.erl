@@ -1,23 +1,33 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2012, VoIP INC
 %%% @doc
-%%% Worker with a dedicated targeted queue
+%%% Worker with a dedicated targeted queue.
+%%%
+%%% Inserts Queue Name as the Server-ID and proxies the AMQP request
+%%% (expects responses to the request)
 %%% @end
 %%% @contributors
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
--module(ecallmgr_amqp_worker).
+-module(wh_amqp_worker).
 
 -behaviour(gen_listener).
 
 %% API
--export([start_link/1, handle_resp/2, send_request/4]).
+-export([start_link/1, handle_resp/2, send_request/4, new_request/5]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2
          ,terminate/2, code_change/3]).
 
--include("ecallmgr.hrl").
+-include("amqp_util.hrl").
+
+-type publish_fun() :: fun((api_terms()) -> _).
+-type validate_fun() :: fun((api_terms()) -> boolean()).
+
+-export_type([publish_fun/0, validate_fun/0]).
+
+-define(FUDGE, 2600).
 
 -record(state, {
           current_msg_id :: ne_binary()
@@ -55,6 +65,12 @@ start_link(Args) ->
 handle_resp(JObj, Props) ->
     gen_listener:cast(props:get_value(server, Props), {event, wh_json:get_value(<<"Msg-ID">>, JObj), JObj}).
 
+-spec new_request/5 :: (pid(), api_terms(), publish_fun(), validate_fun(), pos_integer()) -> {'ok', wh_json:json_object()} |
+                                                                                             {'error', _}.
+new_request(Srv, ReqProp, PubFun, VFun, Timeout) ->
+    gen_listener:call(Srv, {request, ReqProp, PubFun, VFun, Timeout}, Timeout+?FUDGE).
+
+-spec send_request/4 :: (ne_binary(), pid(), function(), proplist()) -> 'ok'.
 send_request(CallID, Self, PublishFun, ReqProp) ->
     put(callid, CallID),
     Prop = [{<<"Server-ID">>, gen_listener:queue_name(Self)}
@@ -77,17 +93,14 @@ send_request(CallID, Self, PublishFun, ReqProp) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init([_Args]) ->
+init([Args]) ->
     process_flag(trap_exit, true),
     put(callid, ?LOG_SYSTEM_ID),
     lager:debug("starting amqp worker"),
-    Self = self(),
-    spawn(fun() ->
-                  timer:sleep(1000),
-                  NegThreshold = wh_util:to_integer(ecallmgr_config:get(<<"negative_response_threshold">>, <<"2">>)),
-                  gen_server:cast(Self, {set_negative_threshold, NegThreshold})
-          end),
-    {ok, #state{}}.
+
+    NegThreshold = props:get_value(neg_resp_threshold, Args, 2),
+
+    {ok, #state{neg_resp_threshold=NegThreshold}}.
 
 %%--------------------------------------------------------------------
 %% @private
