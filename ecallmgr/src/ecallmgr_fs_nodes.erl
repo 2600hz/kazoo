@@ -15,6 +15,7 @@
 -behaviour(gen_server).
 
 -export([start_link/0]).
+-export([connected/0]).
 -export([add/1, add/2]).
 -export([remove/1]).
 -export([is_node_up/1]).
@@ -60,6 +61,10 @@ add(Node, Opts) ->
 remove(Node) ->
     gen_server:cast(?MODULE, {rm_fs_node, Node}).
 
+-spec connected/0 :: () -> list().
+connected() ->
+    gen_server:call(?MODULE, connected_nodes).
+
 -spec is_node_up/1 :: (atom()) -> boolean().
 is_node_up(Node) ->
     gen_server:call(?MODULE, {is_node_up, Node}).
@@ -82,7 +87,6 @@ is_node_up(Node) ->
 init([]) ->
     put(callid, ?LOG_SYSTEM_ID),
     lager:debug("starting new fs handler"),
-    io:format("NODE: ~p~n", [#node.node]),
     Pid = spawn(fun() -> start_preconfigured_servers() end),
     {ok, #state{preconfigured_lookup=Pid}}.
 
@@ -103,6 +107,8 @@ init([]) ->
 %%--------------------------------------------------------------------
 handle_call({is_node_up, Node}, _From, #state{nodes=Nodes}=State) ->
     {reply, [ Node1 || #node{node=Node1} <- Nodes, Node1 =:= Node ] =/= [], State};
+handle_call(connected_nodes, _From, #state{nodes=Nodes}=State) ->
+    {reply, [ Node || #node{node=Node} <- Nodes ], State};
 handle_call({add_fs_node, Node, Options}, {Pid, _}, #state{preconfigured_lookup=Pid}=State) ->
     lager:debug("trying to add ~s", [Node]),
     {Resp, State1} = add_fs_node(Node, Options, State),
@@ -141,12 +147,24 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({nodedown, Node}, #state{nodes=Nodes}=State) ->
-    close_node(Node),
-    case lists:keyfind(Node, #node.node, Nodes) of 
-        #node{options=Opts} -> ecallmgr_fs_pinger_sup:add_node(Node, Opts);
-        false -> ecallmgr_fs_pinger_sup:add_node(Node, [])
-    end,
-    {noreply, State#state{nodes=lists:keydelete(Node, #node.node, Nodes)}};
+    _ = ecallmgr_fs_sup:remove_node(Node),
+    Opts = case lists:keyfind(Node, #node.node, Nodes) of 
+               #node{options=O} -> O;
+               false -> []
+           end,
+    case ecallmgr_fs_pinger_sup:add_node(Node, Opts) of
+        {ok, _} -> 
+            lager:debug("started fs pinger for node '~s'", [Node]),
+            {noreply, State#state{nodes=lists:keydelete(Node, #node.node, Nodes)}};
+        {error, {already_started, _}} ->
+            lager:debug("fs pinger for node '~s' already exists", [Node]),
+            {noreply, State#state{nodes=lists:keydelete(Node, #node.node, Nodes)}};
+        _Else ->
+            _ = ecallmgr_fs_pinger_sup:remove_node(Node),
+            self() ! {nodedown, Node},
+            lager:debug("failed to start fs pinger for node '~s': ~p", [Node, _Else]),
+            {noreply, State}
+    end;
 handle_info(_Info, State) ->
     {noreply, State}.
 
@@ -161,9 +179,8 @@ handle_info(_Info, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, #state{nodes=Nodes}) ->
-    lager:debug("fs handler ~p termination", [_Reason]),
-    lists:foreach(fun close_node/1, Nodes).
+terminate(_Reason, _State) ->
+    lager:debug("fs nodes termination: ~p", [ _Reason]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -193,12 +210,11 @@ add_fs_node(Node, Options, #state{nodes=Nodes}=State) ->
                             erlang:monitor_node(Node, true),
                             lager:info("successfully connected to node '~s'", [Node]),
                             {ok, State#state{nodes=[#node{node=Node, options=Options} | Nodes]}};
-                        {error, already_started} ->
+                        {error, {already_started, _}} ->
                             lager:info("already connected to node '~s'", [Node]),
-                            {ok, State};
+                            {ok, State#state{nodes=[#node{node=Node, options=Options} | Nodes]}};
                         _Else ->
                             lager:warning("failed to add node '~s'", [Node]),
-                            io:format("START: ~p~n", [_Else]),
                             self() ! {nodedown, Node},
                             {{error, failed_starting_handlers}, State}
                     end;
@@ -214,22 +230,16 @@ add_fs_node(Node, Options, #state{nodes=Nodes}=State) ->
 
 -spec rm_fs_node/2 :: (atom(), #state{}) -> #state{}.
 rm_fs_node(Node, #state{nodes=Nodes}=State) ->
+    lager:debug("closing node handler for ~s", [Node]),
     _ = close_node(Node),
-    case lists:keyfind(Node, 2, Nodes) of
-        false ->
-            lager:debug("no handlers found for ~s", [Node]),
-            State;
-        _ ->
-            lager:debug("closing node handler for ~s", [Node]),
-            State#state{nodes=lists:keydelete(Node, 2, Nodes)}
-    end.
+    State#state{nodes=lists:keydelete(Node, 2, Nodes)}.    
 
--spec close_node/1 :: (atom() | #node{}) -> ['ok' | {'error', 'not_found' | 'running' | 'simple_one_for_one'},...].
+-spec close_node/1 :: (atom() | #node{}) -> 'ok' | {'error','not_found' | 'running' | 'simple_one_for_one'}.
 close_node(#node{node=Node}) ->
     close_node(Node);
 close_node(Node) ->
     erlang:monitor_node(Node, false),
-    ecallmgr_fs_pinger_sup:remove_node(Node),
+    _ = ecallmgr_fs_pinger_sup:remove_node(Node),
     ecallmgr_fs_sup:remove_node(Node).
 
 start_preconfigured_servers() ->
@@ -238,13 +248,11 @@ start_preconfigured_servers() ->
         [] ->
             lager:debug("no preconfigured servers, waiting then trying again"),
             lager:info("no preconfigured servers available. Is the sysconf whapp running?"),
-
             timer:sleep(5000),
             start_preconfigured_servers();
         Nodes when is_list(Nodes) ->
             lager:debug("nodes retrieved, adding..."),
             lager:info("successfully retrieved FreeSWITCH nodes to connect with, doing so..."),
-
             [?MODULE:add(wh_util:to_atom(N, true)) || N <- Nodes];
         _E ->
             lager:debug("recieved a non-list for fs_nodes: ~p", [_E]),

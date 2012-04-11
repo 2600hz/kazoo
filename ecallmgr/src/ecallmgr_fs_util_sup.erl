@@ -5,28 +5,21 @@
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
--module(ecallmgr_sup).
+-module(ecallmgr_fs_util_sup).
 
 -behaviour(supervisor).
 
 -include_lib("ecallmgr/src/ecallmgr.hrl").
 
+-define(SERVER, ?MODULE).
+
 -export([start_link/0]).
 -export([init/1]).
 
--define(CHILD(Name, Type), fun(N, pool) -> {N, {poolboy, start_link, [[{name, {local, N}}
-                                                                       ,{worker_module, ecallmgr_amqp_worker}
-                                                                       ,{size, 50}
-                                                                       ,{max_overflow, 50}
-                                                                      ]
-                                                                     ]}
-                                            ,permanent, 5000, worker, [poolboy]
-                                           };
-                              (N, T) -> {N, {N, start_link, []}, permanent, 5000, T, [N]} end(Name, Type)).
--define(CHILDREN, [{?AMQP_POOL_MGR, pool}
-                   ,{ecallmgr_util_sup, supervisor}
-                   ,{ecallmgr_call_sup, supervisor}
-                   ,{ecallmgr_fs_sup, supervisor}
+-define(CHILD(Name, Type), fun(N, T) -> {N, {N, start_link, []}, permanent, 5000, T, [N]} end(Name, Type)).
+-define(CHILDREN, [{ecallmgr_fs_query, worker}
+                   ,{ecallmgr_fs_conference_sup, supervisor}
+                   ,{ecallmgr_fs_pinger_sup, supervisor}
                   ]).
 
 %% ===================================================================
@@ -41,7 +34,7 @@
 %%--------------------------------------------------------------------
 -spec start_link/0 :: () -> startlink_ret().
 start_link() ->
-    supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+    supervisor:start_link({local, ?SERVER}, ?MODULE, []).
 
 %% ===================================================================
 %% Supervisor callbacks
@@ -56,13 +49,14 @@ start_link() ->
 %% specifications.
 %% @end
 %%--------------------------------------------------------------------
--spec init([]) -> sup_init_ret().
+-spec init(list()) -> sup_init_ret().
 init([]) ->
     RestartStrategy = one_for_one,
     MaxRestarts = 5,
     MaxSecondsBetweenRestarts = 10,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
+
     Children = [?CHILD(Name, Type) || {Name, Type} <- ?CHILDREN],
 
     {ok, {SupFlags, Children}}.

@@ -7,6 +7,7 @@
 -include_lib("whistle/src/wh_api.hrl").
 
 -define(AMQP_POOL_MGR, ecallmgr_amqp_pool).
+-define(FS_PARTY_LINE, ecallmgr_fs_party_line).
 
 -type fs_api_ret() :: {'ok', binary()} | {'error', binary()} | 'timeout'.
 -type fs_sendmsg_ret() :: 'ok' | {'error', binary()} | 'timeout'.

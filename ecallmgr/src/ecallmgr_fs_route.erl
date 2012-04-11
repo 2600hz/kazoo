@@ -162,7 +162,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec process_route_req/4 :: (atom(), ne_binary(), ne_binary(), proplist()) -> 'ok'.
+-spec process_route_req/4 :: (atom(), ne_binary(), ne_binary(), proplist()) -> pid().
 process_route_req(Node, FSID, CallID, FSData) ->
     spawn(fun() ->
                   lager:debug("processing fetch request ~s (call ~s) from ~s", [FSID, CallID, Node]),

@@ -172,7 +172,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec lookup_user/3 :: (atom(), ne_binary(), proplist()) -> {'ok', pid()}.
+-spec lookup_user/3 :: (atom(), ne_binary(), proplist()) -> pid().
 lookup_user(Node, ID, Data) ->
     spawn(fun() ->
                   put(callid, ID),

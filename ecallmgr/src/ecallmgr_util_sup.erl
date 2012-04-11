@@ -5,28 +5,25 @@
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
--module(ecallmgr_sup).
+-module(ecallmgr_util_sup).
 
 -behaviour(supervisor).
 
 -include_lib("ecallmgr/src/ecallmgr.hrl").
 
 -export([start_link/0]).
+-export([cache_proc/0]).
+-export([registrar_proc/0]).
 -export([init/1]).
 
--define(CHILD(Name, Type), fun(N, pool) -> {N, {poolboy, start_link, [[{name, {local, N}}
-                                                                       ,{worker_module, ecallmgr_amqp_worker}
-                                                                       ,{size, 50}
-                                                                       ,{max_overflow, 50}
-                                                                      ]
-                                                                     ]}
-                                            ,permanent, 5000, worker, [poolboy]
-                                           };
+%% Helper macro for declaring children of supervisor
+-define(CHILD(Name, Type), fun(N, cache) -> {N, {wh_cache, start_link, [N]}, permanent, 5000, worker, [wh_cache]};
                               (N, T) -> {N, {N, start_link, []}, permanent, 5000, T, [N]} end(Name, Type)).
--define(CHILDREN, [{?AMQP_POOL_MGR, pool}
-                   ,{ecallmgr_util_sup, supervisor}
-                   ,{ecallmgr_call_sup, supervisor}
-                   ,{ecallmgr_fs_sup, supervisor}
+-define(CHILDREN, [{wh_alert, worker}
+                   ,{ecallmgr_cache, cache}
+                   ,{ecallmgr_shout_sup, supervisor}
+                   ,{ecallmgr_registrar, worker}
+                   ,{ecallmgr_media_registry, worker}
                   ]).
 
 %% ===================================================================
@@ -42,6 +39,18 @@
 -spec start_link/0 :: () -> startlink_ret().
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+
+-spec cache_proc/0 :: () -> {'ok', pid()}.
+cache_proc() ->
+    [P] = [P || {Mod, P, _, _} <- supervisor:which_children(?MODULE),
+                Mod =:= ecallmgr_cache],
+    {ok, P}.
+
+-spec registrar_proc/0 :: () -> {'ok', pid()}.
+registrar_proc() ->
+    [P] = [P || {Mod, P, _, _} <- supervisor:which_children(?MODULE),
+                Mod =:= ecallmgr_registrar],
+    {ok, P}.
 
 %% ===================================================================
 %% Supervisor callbacks

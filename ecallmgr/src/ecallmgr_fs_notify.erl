@@ -141,6 +141,7 @@ init([Node, Options]) ->
     lager:debug("starting new ecallmgr notify process"),
     case freeswitch:event(Node, ['PRESENCE_IN', 'PRESENCE_OUT', 'PRESENCE_PROBE']) of
         ok ->
+            party_line:register(?FS_PARTY_LINE, notify),
             lager:debug("bound to switch presence events on node ~s", [Node]),
             {ok, #state{node=Node, options=Options}};
         {error, Reason} ->
@@ -340,7 +341,7 @@ process_presence_event(EvtName, Data, Node) ->
             %% reply it on all the other connected nodes...
             %% "mod_multicast" style
             [distributed_presence(Srv, EvtName, Headers)
-             || Srv <- ecallmgr_fs_sup:notify_handlers(),
+             || Srv <- party_line:list(?FS_PARTY_LINE, notify),
                 Srv =/= self()
             ];
         _Else ->

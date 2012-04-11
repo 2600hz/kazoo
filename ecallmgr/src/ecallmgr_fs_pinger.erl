@@ -107,6 +107,7 @@ handle_info(timeout, #state{node=Node, options=Options, timeout=Timeout}=State) 
             lager:debug("waiting ~b seconds to ping again", [T div 1000]),
             {noreply, State#state{timeout=T}, T};
         false ->
+            lager:debug("waiting ~b seconds to ping again", [?MAX_TIMEOUT_FOR_NODE_RESTART div 1000]),
             {noreply, State#state{timeout=?MAX_TIMEOUT_FOR_NODE_RESTART}, T}
     end;
 handle_info(_Info, #state{timeout=Timeout}=State) ->

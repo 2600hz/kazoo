@@ -18,8 +18,7 @@
 -define(MAX_FAILED_NODE_CHECKS, 10).
 -define(NODE_CHECK_PERIOD, 1000).
 
-%% API
--export([start_link/3]).
+-export([start_link/2]).
 -export([swap_call_legs/1]).
 -export([create_event/3]).
 -export([create_event_props/3]).
@@ -28,10 +27,13 @@
 -export([get_fs_var/4]).
 -export([publish_channel_destroy/1]).
 -export([queue_name/1, callid/1, node/1]).
-
-%% gen_server callbacks
--export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-         terminate/2, code_change/3]).
+-export([init/1
+         ,handle_call/3
+         ,handle_cast/2
+         ,handle_info/2
+         ,terminate/2
+         ,code_change/3
+        ]).
 
 -define(SERVER, ?MODULE).
 
@@ -56,8 +58,8 @@
 %% @spec start_link() -> {'ok', Pid} | ignore | {'error', Error}
 %% @end
 %%--------------------------------------------------------------------
--spec start_link/3 :: (atom(), ne_binary(), 'undefined' | ne_binary()) -> {'ok', pid()}.
-start_link(Node, CallId, _) ->
+-spec start_link/2 :: (atom(), ne_binary()) -> {'ok', pid()}.
+start_link(Node, CallId) ->
     gen_server:start_link(?MODULE, [Node, CallId], []).
 
 -spec callid/1 :: (pid()) -> ne_binary().

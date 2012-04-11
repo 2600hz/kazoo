@@ -38,13 +38,15 @@
 start_link() ->
     supervisor:start_link({local, ?SERVER}, ?MODULE, []).
 
--spec add_node/2 :: (atom(), proplist()) -> startlink_ret().
+-spec add_node/2 :: (atom(), proplist()) -> {'error', term()} | 
+                                            {'ok','undefined' | pid()} | 
+                                            {'ok','undefined' | pid(), term()}.
 add_node(Node, Options) ->
     supervisor:start_child(?SERVER, ?PINGER(Node, Options)).
 
 -spec remove_node/1 :: (atom()) -> 'ok' | {'error', 'running' | 'not_found' | 'simple_one_for_one'}.
 remove_node(Node) ->
-    supervisor:terminate_child(?SERVER, Node),
+    _ = supervisor:terminate_child(?SERVER, Node),
     supervisor:delete_child(?SERVER, Node).
 
 %% ===================================================================

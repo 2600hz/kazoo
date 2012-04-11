@@ -140,7 +140,8 @@ init([Node, Options]) ->
                                          ,'CUSTOM', 'sofia::register', 'sofia::transfer'
                                         ]),
             lager:debug("bound to switch events on node ~s", [Node]),
-%%            run_start_cmds(Node),
+            party_line:register(?FS_PARTY_LINE, fs_node),
+            run_start_cmds(Node),
             {ok, #state{node=Node, options=Options}};
         {error, Reason} ->
             lager:warning("error when trying to register event handler on node ~s: ~p", [Node, Reason]),

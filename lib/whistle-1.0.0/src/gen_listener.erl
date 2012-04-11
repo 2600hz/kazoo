@@ -35,7 +35,7 @@
 
 -export([behaviour_info/1]).
 
--export([start_link/3, stop/1]).
+-export([start_link/3, start_link/4, stop/1]).
 
 -export([queue_name/1, responders/1]).
 
@@ -135,6 +135,10 @@ reply(From, Msg) ->
 -spec start_link/3 :: (atom(), start_params(), term()) -> startlink_ret().
 start_link(Module, Params, InitArgs) ->
     gen_server:start_link(?MODULE, [Module, Params, InitArgs], []).
+
+-spec start_link/4 :: ({local, atom()} | {global, term()}, atom(), start_params(), term()) -> startlink_ret().
+start_link(Name, Module, Params, InitArgs) ->
+    gen_server:start_link(Name, ?MODULE, [Module, Params, InitArgs], []).
 
 -spec stop/1 :: (pid()) -> 'ok'.
 stop(Srv) when is_pid(Srv) ->

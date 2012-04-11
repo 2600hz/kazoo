@@ -542,39 +542,6 @@ get_fs_app(Node, UUID, JObj, <<"fetch">>) ->
           end),
     {<<"fetch">>, noop};
 
-get_fs_app(_Node, _UUID, JObj, <<"presence">>) ->
-    NodeHandlers = ecallmgr_fs_sup:node_handlers(),
-    UUID = case wh_json:get_ne_value(<<"Msg-ID">>, JObj) of
-               undefined -> wh_util:to_list(wh_util:current_tstamp());
-               Else -> wh_util:to_list(Else)
-           end,
-    State = case wh_json:get_value(<<"State">>, JObj) of
-                <<"early">> -> "early";
-                <<"confirmed">> -> "confirmed";
-                _ -> "terminated"
-            end,
-    Event = [{"unique-id", UUID}
-             ,{"channel-state", "CS_ROUTING"}
-             ,{"answer-state", State}
-             ,{"proto", "any"}
-             ,{"login", "src/mod/event_handlers/mod_erlang_event/handle_msg.c"}
-             ,{"from", wh_json:get_string_value(<<"User">>, JObj)}
-             ,{"rpid", "unknown"}
-             ,{"status", "CS_ROUTING"}
-             ,{"event_type", "presence"}
-             ,{"alt_event_type", "dialog"}
-             ,{"presence-call-direction", "outbound"}
-             ,{"event_count", "0"}
-            ],
-    _ = [begin
-             lager:debug("sending presence in event to ~p~n", [Node]),
-             freeswitch:sendevent(Node, 'PRESENCE_IN', Event) 
-         end
-         || NodeHandler <- NodeHandlers,
-            (Node = ecallmgr_fs_node:fs_node(NodeHandler)) =/= undefined
-        ],
-    {<<"presence">>, noop};
-
 get_fs_app(_Node, _UUID, JObj, <<"conference">>) ->
     case wapi_dialplan:conference_v(JObj) of
         false -> {'error', <<"conference failed to execute as JObj did not validate">>};

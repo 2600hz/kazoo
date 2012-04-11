@@ -14,8 +14,9 @@
 -export([start_link/2]).
 -export([init/1]).
 
--define(CHILD(Name, Type, Args), fun(N, cache, _) -> {N, {wh_cache, start_link, [N]}, permanent, 5000, worker, [wh_cache]};
-                                    (N, T, A) -> {N, {N, start_link, A}, permanent, 5000, T, [N]} end(Name, Type, Args)).
+-define(CHILD(Name, Mod, Args), fun(N, cache, _) -> {N, {wh_cache, start_link, [N]}, permanent, 5000, worker, [wh_cache]};
+                                    (N, M, A) -> {N, {M, start_link, A}, permanent, 5000, worker, [N]} end(Name, Mod, Args)).
+-define(CHILDREN, [<<"_node">>, <<"_auth">>, <<"_route">>, <<"_config">>, <<"_resource">>, <<"_notify">>]).
 
 %% ===================================================================
 %% API functions
@@ -51,7 +52,15 @@ init([Node, Options]) ->
     MaxSecondsBetweenRestarts = 10,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
-    
-    Children = [?CHILD(ecallmgr_fs_handler_sup, supervisor, [Node, Options])],
+
+    NodeB = wh_util:to_binary(Node),
+    Children = [ begin
+                     Name = wh_util:to_atom(<<NodeB/binary, H/binary>>, true),
+                     Mod = wh_util:to_atom(<<"ecallmgr_fs", H/binary>>),
+                     lager:debug("starting handler ~s", [Name]),
+                     ?CHILD(Name, Mod, [Node, Options])
+                 end
+                 || H <- ?CHILDREN
+               ],
 
     {ok, {SupFlags, Children}}.

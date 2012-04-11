@@ -19,7 +19,7 @@
 
 -spec flush/0 :: () -> 'ok'.
 flush() ->
-    {ok, Cache} = ecallmgr_sup:cache_proc(),
+    {ok, Cache} = ecallmgr_util_sup:cache_proc(),
     wh_cache:flush_local(Cache).
 
 -spec get/1 :: (wh_json:json_string()) -> wh_json:json_term() | 'undefined'.
@@ -33,7 +33,7 @@ get(Key0, Default, Node0) ->
     Key = wh_util:to_binary(Key0),
     Node = wh_util:to_binary(Node0),
 
-    {ok, Cache} = ecallmgr_sup:cache_proc(),
+    {ok, Cache} = ecallmgr_util_sup:cache_proc(),
     case wh_cache:fetch_local(Cache, cache_key(Key, Node)) of
         {ok, V} -> V;
         {error, E} when E =:= not_found orelse E =:= undefined ->
@@ -74,7 +74,7 @@ set(Key0, Value, Node0) ->
     Key = wh_util:to_binary(Key0),
     Node = wh_util:to_binary(Node0),
 
-    {ok, Cache} = ecallmgr_sup:cache_proc(),
+    {ok, Cache} = ecallmgr_util_sup:cache_proc(),
     wh_cache:store_local(Cache, cache_key(Key, Node), Value),
 
     Req = [KV ||

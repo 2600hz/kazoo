@@ -18,10 +18,13 @@
 -export([remove_node/1]).
 -export([init/1]).
 
--define(CHILD(Name, Type), fun(N, cache) -> {N, {wh_cache, start_link, [N]}, permanent, 5000, worker, [wh_cache]};
+-define(CHILD(Name, Type), fun(N, party_line) -> {N, {party_line, start_link, [N]}, permanent, 5000, worker, [N]};
                               (N, T) -> {N, {N, start_link, []}, permanent, 5000, T, [N]} end(Name, Type)).
 -define(NODE(Name, Args), {Name, {ecallmgr_fs_node_sup, start_link, Args}, transient, 5000, supervisor, [ecallmgr_fs_node_sup]}).
--define(CHILDREN, [{ecallmgr_fs_nodes, worker}, {ecallmgr_fs_pinger_sup, supervisor}]).
+-define(CHILDREN, [{ecallmgr_fs_nodes, worker}
+                   ,{ecallmgr_fs_util_sup, supervisor}
+                   ,{?FS_PARTY_LINE, party_line}
+                  ]).
 
 %% ===================================================================
 %% API functions
@@ -37,13 +40,15 @@
 start_link() ->
     supervisor:start_link({local, ?SERVER}, ?MODULE, []).
 
--spec add_node/2 :: (atom(), proplist()) -> startlink_ret().
+-spec add_node/2 :: (atom(), proplist()) -> {'error', term()} | 
+                                            {'ok','undefined' | pid()} | 
+                                            {'ok','undefined' | pid(), term()}.
 add_node(Node, Options) ->
     supervisor:start_child(?SERVER, ?NODE(Node, [Node, Options])).
 
 -spec remove_node/1 :: (atom()) -> 'ok' | {'error', 'running' | 'not_found' | 'simple_one_for_one'}.
 remove_node(Node) ->
-    supervisor:terminate_child(?SERVER, Node),
+    _ = supervisor:terminate_child(?SERVER, Node),
     supervisor:delete_child(?SERVER, Node).
 
 %% ===================================================================

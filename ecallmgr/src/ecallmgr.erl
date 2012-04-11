@@ -23,7 +23,7 @@ start_link() ->
     _ = start_deps(),
     ecallmgr_sup:start_link().
 
--spec start/0 :: () -> startlink_ret().
+-spec start/0 :: () -> 'ok' | {'error', term()}.
 start() ->
     _ = start_deps(),
     application:start(ecallmgr).
