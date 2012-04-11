@@ -6,7 +6,7 @@
 %% @spec start_link() -> {ok,Pid::pid()}
 %% @doc Starts the app for inclusion in a supervisor tree
 start_link() ->
-    start_deps(),
+    _ = start_deps(),
     ecallmgr_sup:start_link().
 
 %% @spec start() -> ok
@@ -25,10 +25,8 @@ start_deps() ->
         _ -> ok
     end,
 
-    wh_util:ensure_started(sasl),
-    wh_util:ensure_started(crypto),
-    wh_util:ensure_started(whistle_amqp),
-    wh_util:ensure_started(ibrowse).
+    _ = [wh_util:ensure_started(App) || App <- [sasl, crypto, whistle_amqp, ibrowse]],
+    ok.
 
 %% @spec stop() -> ok
 %% @doc Stop the callmgr server.

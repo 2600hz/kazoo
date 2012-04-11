@@ -79,7 +79,7 @@ presence_update(JObj, Props) ->
                             create_presence_in(PresenceId, "Available", undefined, wh_json:new());
                         Channel -> 
                             State = wh_json:get_string_value(<<"Answer-State">>, Channel),
-                            Status = case State of <<"answered">> -> "answered"; _Else -> "CS_ROUTING" end, 
+                            Status = case State of "answered" -> "answered"; _Else -> "CS_ROUTING" end, 
                             create_presence_in(PresenceId, Status, State, Channel)
                     end;
                 <<"early">> -> create_presence_in(PresenceId, "CS_ROUTING", "early", JObj);

@@ -60,9 +60,11 @@ start_link() ->
 -spec handle_channel_status/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
 handle_channel_status(JObj, _Props) ->
     true = wapi_call:channel_status_req_v(JObj),
-    wh_util:put_callid(JObj),
+    _ = wh_util:put_callid(JObj),
+
     CallID = wh_json:get_value(<<"Call-ID">>, JObj),
     lager:debug("channel status request received"),
+
     SearchResults = [{ecallmgr_fs_node:uuid_exists(NH, CallID), NH} || NH <- ecallmgr_fs_sup:node_handlers()],
     case was_uuid_found(SearchResults) of
         {error, not_found} ->
@@ -102,9 +104,11 @@ handle_channel_status(JObj, _Props) ->
 -spec handle_call_status/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
 handle_call_status(JObj, _Props) ->
     true = wapi_call:call_status_req_v(JObj),
-    wh_util:put_callid(JObj),
+    _ = wh_util:put_callid(JObj),
+
     CallID = wh_json:get_value(<<"Call-ID">>, JObj),
     lager:debug("call status request received"),
+
     SearchResults = [{ecallmgr_fs_node:uuid_exists(NH, CallID), NH} || NH <- ecallmgr_fs_sup:node_handlers()],
     case was_uuid_found(SearchResults) of
         {error, not_found} ->    
@@ -136,8 +140,10 @@ handle_call_status(JObj, _Props) ->
 -spec handle_channel_query/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
 handle_channel_query(JObj, _Props) ->
     true = wapi_call:channel_query_req_v(JObj),
-    wh_util:put_callid(JObj),
+    _ = wh_util:put_callid(JObj),
+
     lager:debug("channel query received"),
+
     RespQ = wh_json:get_value(<<"Server-ID">>, JObj),
     Resp = [{<<"Active-Calls">>, channel_query(JObj)}
             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)],

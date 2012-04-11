@@ -176,16 +176,13 @@ init([Node, Options]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call/3 :: ('hostname', {pid(), reference()}, #state{}) -> {'reply', {'ok', ne_binary()}, #state{}};
-                       ('fs_node', {pid(), reference()}, #state{}) -> {'reply', atom(), #state{}};
-                       (term(), {pid(), reference()}, #state{}) -> {'reply', {'error', 'not_implemented'}, #state{}}.
+-spec handle_call/3 :: ('hostname', call_from(), #state{}) -> {'reply', {'ok', ne_binary()}, #state{}};
+                       ('fs_node', call_from(), #state{}) -> {'reply', atom(), #state{}}.
 handle_call(hostname, _From, #state{node=Node}=State) ->
     [_, Hostname] = binary:split(wh_util:to_binary(Node), <<"@">>),
     {reply, {ok, Hostname}, State};
 handle_call(fs_node, _From, #state{node=Node}=State) ->
-    {reply, Node, State};
-handle_call(_Request, _From, State) ->
-    {reply, {error, not_implemented}, State}.
+    {reply, Node, State}.
 
 %%--------------------------------------------------------------------
 %% @private
