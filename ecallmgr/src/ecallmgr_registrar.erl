@@ -36,18 +36,18 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    gen_listener:start_link(?MODULE, [{responders, ?RESPONDERS}
-                                     ,{bindings, ?BINDINGS}]
-                            ,[]).
+    gen_listener:start_link({local, ?SERVER}, ?MODULE, [{responders, ?RESPONDERS}
+                                                        ,{bindings, ?BINDINGS}
+                                                       ], []).
 
 -spec lookup/3 :: (ne_binary(), ne_binary(), [ne_binary(),...]) -> proplist() | {'error', 'timeout'}.
 lookup(Realm, User, Fields) ->
-    {ok, Srv} = ecallmgr_sup:registrar_proc(),
+    {ok, Srv} = ecallmgr_util_sup:registrar_proc(),
     gen_server:call(Srv, {lookup, Realm, User, Fields, get(callid)}).
 
 -spec handle_req/2 :: (wh_json:json_object(), proplist()) -> no_return().
 handle_req(JObj, _Props) ->
-    {ok, Cache} = ecallmgr_sup:cache_proc(),
+    {ok, Cache} = ecallmgr_util_sup:cache_proc(),
     User = wh_json:get_value(<<"Username">>, JObj),
     Realm = wh_json:get_value(<<"Realm">>, JObj),
     lager:debug("received successful registration for ~s@~s, erasing cache", [User, Realm]),
@@ -120,7 +120,7 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info({cache_registrations, Realm, User, RegFields}, State) ->
     lager:debug("storing registration information for ~s@~s", [User, Realm]),
-    {ok, Cache} = ecallmgr_sup:cache_proc(),
+    {ok, Cache} = ecallmgr_util_sup:cache_proc(),
 
     wh_cache:store_local(Cache, cache_key(Realm, User), RegFields
                          ,wh_util:to_integer(props:get_value(<<"Expires">>, RegFields, 300)) %% 5 minute default
@@ -173,7 +173,7 @@ code_change(_OldVsn, State, _Extra) ->
 -spec lookup_reg/3 :: (ne_binary(), ne_binary(), [ne_binary(),...] | []) -> proplist() | {'error', 'timeout'}.
 lookup_reg(Realm, User, Fields) ->
     lager:debug("looking up registration information for ~s@~s", [User, Realm]),
-    {ok, Cache} = ecallmgr_sup:cache_proc(),
+    {ok, Cache} = ecallmgr_util_sup:cache_proc(),
     FilterFun = fun({K, _}=V, Acc) ->
                         case lists:member(K, Fields) of
                             true -> [V | Acc];
@@ -195,7 +195,7 @@ lookup_reg(Realm, User, Fields) ->
 
                         RegFields = wh_json:to_proplist(wh_json:get_value(<<"Fields">>, RegJObj, wh_json:new())),
 
-                        {ok, Srv} = ecallmgr_sup:registrar_proc(),
+                        {ok, Srv} = ecallmgr_util_sup:registrar_proc(),
                         Srv ! {cache_registrations, Realm, User, RegFields},
 
                         lager:debug("received registration information"),

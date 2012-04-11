@@ -1,46 +1,51 @@
+%%%-------------------------------------------------------------------
+%%% @copyright (C) 2012, VoIP, INC
+%%% @doc
+%%%
+%%% @end
+%%% @contributors
+%%%-------------------------------------------------------------------
 -module(ecallmgr).
 
--author('James Aimonetti <james@2600hz.org>').
--export([start/0, start_link/0, stop/0, add_fs_node/1, rm_fs_node/1, diagnostics/0]).
+-include_lib("whistle/include/wh_types.hrl").
 
-%% @spec start_link() -> {ok,Pid::pid()}
-%% @doc Starts the app for inclusion in a supervisor tree
+-export([start_link/0, start/0]).
+-export([stop/0]).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Starts the app for inclusion in a supervisor tree
+%% @end
+%%--------------------------------------------------------------------
+-spec start_link/0 :: () -> startlink_ret().
 start_link() ->
-    start_deps(),
+    _ = start_deps(),
     ecallmgr_sup:start_link().
 
-%% @spec start() -> ok
-%% @doc Start the callmgr server.
+-spec start/0 :: () -> 'ok' | {'error', term()}.
 start() ->
-    start_deps(),
+    _ = start_deps(),
     application:start(ecallmgr).
 
-start_deps() ->
-    ecallmgr_deps:ensure(),
-
-    lager:start(),
-
-    case application:get_env(reloader) of
-        {ok, true} -> reloader:start();
-        _ -> ok
-    end,
-
-    wh_util:ensure_started(sasl),
-    wh_util:ensure_started(crypto),
-    wh_util:ensure_started(whistle_amqp),
-    wh_util:ensure_started(ibrowse).
-
-%% @spec stop() -> ok
-%% @doc Stop the callmgr server.
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Stop the app
+%% @end
+%%--------------------------------------------------------------------
+-spec stop/0 :: () -> 'ok'.
 stop() ->
     application:stop(ecallmgr).
 
-add_fs_node(Node) ->
-    ecallmgr_fs_handler:add_fs_node(Node).
-
-rm_fs_node(Node) ->
-    ecallmgr_fs_handler:rm_fs_node(Node).
-
-%% list of handlers to retrieve diagnostics from
-diagnostics() ->
-    [{freeswitch_nodes, ecallmgr_fs_handler:diagnostics()}].
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Ensures that all dependencies for this app are already running
+%% @end
+%%--------------------------------------------------------------------
+-spec start_deps/0 :: () -> 'ok'.
+start_deps() ->
+    lager:start(),
+    _ = [wh_util:ensure_started(App) || App <- [sasl, crypto, gproc, whistle_amqp, ibrowse]],
+    ok.

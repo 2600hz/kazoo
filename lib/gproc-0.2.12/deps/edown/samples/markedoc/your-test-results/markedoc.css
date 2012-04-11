@@ -1,0 +1,202 @@
+/* standard EDoc style sheet */
+body {
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+	font-size: .9em;
+      	margin-left: 2em;
+       	margin-right: 2em;
+       	margin-top: 2em;
+       	margin-bottom: 2em;
+       	color: #000000;
+       	background-color: #ffffff;
+}
+h1 {
+ 	margin-left: 0;
+ 	font-size: 3em;
+}
+h2 {
+ 	margin-left: -.3em;
+ 	font-size: 2em;
+}
+
+h2.indextitle {
+	
+	font-size: 1em;
+}
+
+h2.indextitle table {
+	border-collapse: separate;
+	border-bottom-right-radius: 1em;
+	border: 1px solid #3070a0;
+	padding: 1em;
+	
+	font-size: 0.9em;
+}
+
+h2.indextitle table tr td {
+	background-color: #deeefe;
+	border: 0;
+	border-bottom: 1px solid white;
+}
+
+h3 {
+ 	margin-left: -.3em;
+ 	font-size: 1.8em;
+}
+
+h4 {
+ 	margin-left: -.3em;
+ 	font-size: 1.5em;
+}
+
+div.navbar {
+	color: white;
+	font-weight: bold;
+	text-size: 0.9em;
+	background-color: #3070a0;
+	padding: 0.2em;
+	border-bottom: 1em solid #f09840;
+	border-top-left-radius: 1em;
+}
+h2.indextitle {
+	color: white;
+	padding: 0.4em;
+	background-color: #3070a0;
+	border-bottom: 10px solid #f09840;
+	border-top-left-radius: 1em;
+}
+
+h3.function,h3.typedecl {
+	color: white;
+	background-color: #3070a0;
+ 	padding-left: 1em;
+	border-bottom: 5px solid #f09840;
+	border-top-left-radius: 1em;
+}
+
+div.spec {
+	font-weight: bold;
+ 	margin-left: 0em;
+ 	padding: .2em 1.1em .2em;
+	background-color: #eeeeee;
+	border-bottom-right-radius: 1em;
+	
+}
+a { color: inherit; padding: 2px; text-decoration: none; }
+
+a.module,a.package {
+	text-decoration:none
+}
+a:hover {
+	background-color: #deeefe;
+	color: navy;
+}
+
+a.module:hover,a.package:hover {
+	background-color: #deeefe;
+}
+ul.definitions {
+	list-style-type: none;
+}
+
+ul.index {
+	list-style-type: none;
+	border-collapse: separate;
+	border-bottom-right-radius: 1em;
+	border: 1px solid #3070a0;
+	padding: 1em;
+	
+	font-size: 1.1em;
+}
+
+ul.index li {
+	background-color: #feeede;
+	border: 0;
+	border-bottom: 1px solid white;
+	padding: 2px;
+}
+ 
+ul {
+	list-style-type: square;
+}
+table {
+	border-collapse: collapse;
+}
+
+table.index {
+	border-collapse: separate;
+	border-bottom-right-radius: 1em;
+	border: 1px solid #3070a0;
+	padding: 1em;
+	
+	font-size: 0.9em;
+}
+
+table.index td {
+	background-color: #deeefe;
+	border: 0;
+	border-bottom: 1px solid white;
+}
+
+
+table.index td a:hover {
+	background-color: #feeede;
+}
+
+td {
+	padding: 2px;
+}
+
+code {
+	font-size: 1.1em; 
+}
+
+div.navbar {
+	background:url("markedoc-footer.png") no-repeat right top;
+}
+
+
+div.navbar  a {
+	color: lightblue;
+	font-size: 0.9em;
+	font-weight: bold;
+	margin-left:1em;
+	line-height: 1em;
+}
+
+img {
+	 margin-right: 10px;
+
+	 }
+
+a {
+	color: navy;
+}
+
+h1 a, h2 a, h3 a, h4 a, h5 a {
+	color: black;
+	}
+	
+h3.function a {
+	color: white;
+	}
+	
+pre { margin: 0;
+  	  margin-top: 1em;
+  	  margin-bottom: 1em;
+	  padding: 1.2em; 
+	  background-color: #f0f4f8; 
+	  border-radius: 1em; 
+	  line-height: 1.3em; 
+	  color: #101000; }
+span.comment {
+	color: dimgrey;
+	}
+
+li.ref { 
+	background-color: #fff8e8; 
+	padding: 0.1em;
+	margin-left: 0em;
+	padding-left: 1em;
+	list-style-type:square;
+	font-variant: small-caps;
+	}

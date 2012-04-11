@@ -10,27 +10,23 @@
 
 -behaviour(gen_server).
 
-%% API
--export([start_link/1, start_link/2, handle_route_req/4]).
-
-%% Internal API
--export([init_route_req/5]).
-
-%% gen_server callbacks
--export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-         terminate/2, code_change/3]).
+-export([start_link/1, start_link/2]).
+-export([process_route_req/4]).
+-export([init/1
+         ,handle_call/3
+         ,handle_cast/2
+         ,handle_info/2
+         ,terminate/2
+         ,code_change/3
+        ]).
 
 -define(SERVER, ?MODULE).
--define(FS_TIMEOUT, 5000).
 
--include("ecallmgr.hrl").
+-include_lib("ecallmgr/src/ecallmgr.hrl").
 
-%% lookups [ {LPid, FS_ReqID, erlang:now()} ]
--record(state, {
-          node = 'undefined' :: atom()
-          ,stats = #handler_stats{} :: #handler_stats{}
-          ,lookups = [] :: [{pid(), ne_binary(), {integer(), integer(), integer()}},...] | []
-         }).
+-record(state, {node = 'undefined' :: atom()
+                ,options = [] :: proplist()
+               }).
 
 %%%===================================================================
 %%% API
@@ -44,10 +40,10 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link(Node) ->
-    gen_server:start_link(?MODULE, [Node], []).
+    start_link(Node, []).
 
-start_link(Node, _Options) ->
-    gen_server:start_link(?MODULE, [Node], []).
+start_link(Node, Options) ->
+    gen_server:start_link(?MODULE, [Node, Options], []).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -64,16 +60,14 @@ start_link(Node, _Options) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init([Node]) ->
+init([Node, Options]) ->
     put(callid, Node),
-    lager:debug("starting new fs route listener for ~s", [Node]),
     process_flag(trap_exit, true),
-    erlang:monitor_node(Node, true),
+    lager:debug("starting new fs route listener for ~s", [Node]),
     case freeswitch:bind(Node, dialplan) of
         ok ->
             lager:debug("bound to dialplan request on ~s", [Node]),
-            Stats = #handler_stats{started = erlang:now()},
-            {ok, #state{node=Node, stats=Stats}};
+            {ok, #state{node=Node, options=Options}};
         {error, Reason} ->
             lager:warning("failed to bind to dialplan requests on ~s, ~p", [Node, Reason]),
             {stop, Reason};
@@ -122,85 +116,21 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info/2 :: ('timeout', #state{}) -> handle_info_ret();
-                       ({'nodedown', atom()}, #state{}) -> {'noreply', #state{}};
-                       ({'is_node_up', non_neg_integer()}, #state{}) -> handle_info_ret();
-                       ({'fetch', atom(), _, _, _, binary(), proplist()}, #state{}) ->
-                               {'noreply', #state{}};
-                       ('shutdown', #state{}) -> {'stop', term(), #state{}};
-                       ({'diagnostics', pid()}, #state{}) -> {'noreply', #state{}};
-                       ({'DOWN', reference(), 'process', pid(), term()}, #state{}) -> {'noreply', #state{}};
-                       ({'EXIT', pid(), term()}, #state{}) -> {'noreply', #state{}}.
 handle_info({fetch, _Section, _Something, _Key, _Value, ID, [undefined | _Data]}, #state{node=Node}=State) ->
     lager:debug("fetch unknown section from ~s: ~p So: ~p, K: ~p V: ~p ID: ~s", [Node, _Section, _Something, _Key, _Value, ID]),
     _ = freeswitch:fetch_reply(Node, ID, ?EMPTYRESPONSE),
     {noreply, State};
-
-handle_info({fetch, dialplan, _Tag, _Key, _Value, FSID, [CallID | FSData]}, #state{node=Node, stats=Stats, lookups=LUs}=State) ->
+handle_info({fetch, dialplan, _Tag, _Key, _Value, FSID, [CallID | FSData]}, #state{node=Node}=State) ->
     case {props:get_value(<<"Event-Name">>, FSData), props:get_value(<<"Caller-Context">>, FSData)} of
         {<<"REQUEST_PARAMS">>, ?WHISTLE_CONTEXT} ->
-            {ok, LookupPid} = ecallmgr_fs_route_sup:start_req(Node, FSID, CallID, FSData),
-            erlang:monitor(process, LookupPid),
-
-            LookupsReq = Stats#handler_stats.lookups_requested + 1,
-            lager:debug("processing fetch request ~s (# ~b for ~s) from ~s in PID ~p", [FSID, LookupsReq, CallID, Node, LookupPid]),
-            {noreply, State#state{lookups=[{LookupPid, FSID, erlang:now()} | LUs]
-                                  ,stats=Stats#handler_stats{lookups_requested=LookupsReq}}, hibernate};
+            %% TODO: move this to a supervisor somewhere
+            process_route_req(Node, FSID, CallID, FSData),
+            {noreply, State, hibernate};
         {_Other, _Context} ->
             lager:debug("ignoring event ~s in context ~s from ~s", [_Other, _Context, Node]),
             _ = freeswitch:fetch_reply(Node, FSID, ?EMPTYRESPONSE),
             {noreply, State, hibernate}
     end;
-
-handle_info({'DOWN', _Ref, process, LU, _Reason}, #state{lookups=LUs, node=Node}=State) ->
-    lager:debug("lookup task ~p from node ~s went down, ~p", [LU, Node, _Reason]),
-    {noreply, State#state{lookups=lists:keydelete(LU, 1, LUs)}, hibernate};
-
-handle_info({'EXIT', _Pid, noconnection}, #state{node=Node}=State) ->
-    lager:debug("noconnection received for node ~s, pid: ~p", [Node, _Pid]),
-    {stop, normal, State};
-
-handle_info({'EXIT', LU, _Reason}, #state{lookups=LUs, node=Node}=State) ->
-    lager:debug("lookup task ~p from node ~s exited, ~p", [LU, Node, _Reason]),
-    {noreply, State#state{lookups=lists:keydelete(LU, 1, LUs)}, hibernate};
-
-handle_info({nodedown, Node}, #state{node=Node}=State) ->
-    lager:debug("lost connection to node ~s, waiting for reconnection", [Node]),
-    freeswitch:close(Node),
-    _Ref = erlang:send_after(0, self(), {is_node_up, 100}),
-    {noreply, State};
-
-handle_info({is_node_up, Timeout}, State) when Timeout > ?FS_TIMEOUT ->
-    handle_info({is_node_up, ?FS_TIMEOUT}, State);
-handle_info({is_node_up, Timeout}, #state{node=Node}=State) ->
-    case ecallmgr_fs_handler:is_node_up(Node) of
-        true ->
-            lager:debug("node ~p recovered, restarting", [self(), Node]),
-            {noreply, State, 0};
-        false ->
-            lager:debug("node ~p still down, retrying in ~p ms", [self(), Node, Timeout]),
-            _Ref = erlang:send_after(Timeout, self(), {is_node_up, Timeout*2}),
-            {noreply, State}
-    end;
-
-handle_info(shutdown, #state{node=Node, lookups=LUs}=State) ->
-    lists:foreach(fun({Pid, _CallID, _StartTime}) ->
-                           case erlang:is_process_alive(Pid) of
-                              true -> Pid ! shutdown;
-                              false -> ok
-                          end
-                  end, LUs),
-    lager:debug("commanded to shutdown node ~s", [Node]),
-    {stop, normal, State};
-
-handle_info({diagnostics, Pid}, #state{stats=Stats, lookups=LUs}=State) ->
-    ActiveLUs = [ [{fs_route_id, ID}, {started, Started}] || {_, ID, Started} <- LUs],
-    Resp = [{active_lookups, ActiveLUs}
-            ,{amqp_host, amqp_mgr:get_host()}
-            | ecallmgr_diagnostics:get_diagnostics(Stats) ],
-    Pid ! Resp,
-    {noreply, State};
-
 handle_info(_Other, State) ->
     {noreply, State}.
 
@@ -216,8 +146,7 @@ handle_info(_Other, State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, #state{node=Node}) ->
-    lager:debug("fs route ~p termination", [_Reason]),
-    freeswitch:close(Node).
+    lager:debug("fs route ~s termination: ~p", [Node, _Reason]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -233,36 +162,28 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec handle_route_req/4 :: (atom(), ne_binary(), ne_binary(), proplist()) -> {'ok', pid()}.
-handle_route_req(Node, FSID, CallID, FSData) ->
-    proc_lib:start_link(?MODULE, init_route_req, [self(), Node, FSID, CallID, FSData]).
-
--spec init_route_req/5 :: (pid(), atom(), ne_binary(), ne_binary(), proplist()) -> no_return().
-init_route_req(Parent, Node, FSID, CallID, FSData) ->
-    proc_lib:init_ack(Parent, {ok, self()}),
-    put(callid, CallID),
-    process_route_req(Node, FSID, CallID, FSData).
-
--spec process_route_req/4 :: (atom(), ne_binary(), ne_binary(), proplist()) -> 'ok'.
+-spec process_route_req/4 :: (atom(), ne_binary(), ne_binary(), proplist()) -> pid().
 process_route_req(Node, FSID, CallID, FSData) ->
-    DefProp = [{<<"Msg-ID">>, FSID}
-               ,{<<"Caller-ID-Name">>, props:get_value(<<"variable_effective_caller_id_name">>, FSData, 
-                                                       props:get_value(<<"Caller-Caller-ID-Name">>, FSData, <<"Unknown">>))}
-               ,{<<"Caller-ID-Number">>, props:get_value(<<"variable_effective_caller_id_number">>, FSData, 
-                                                         props:get_value(<<"Caller-Caller-ID-Number">>, FSData, <<"0000000000">>))}
-               ,{<<"To">>, ecallmgr_util:get_sip_to(FSData)}
-               ,{<<"From">>, ecallmgr_util:get_sip_from(FSData)}
-               ,{<<"Request">>, ecallmgr_util:get_sip_request(FSData)}
-               ,{<<"Call-ID">>, CallID}
-               ,{<<"Custom-Channel-Vars">>, wh_json:from_list(ecallmgr_util:custom_channel_vars(FSData))}
-               | wh_api:default_headers(<<>>, <<"dialplan">>, <<"route_req">>, ?APP_NAME, ?APP_VERSION)],
-    %% Server-ID will be over-written by the pool worker
-
-    {ok, AuthZEnabled} = ecallmgr_util:get_setting(authz_enabled, true),
-    case wh_util:is_true(AuthZEnabled) of
-        true -> authorize_and_route(Node, FSID, CallID, FSData, DefProp);
-        false -> route(Node, FSID, CallID, DefProp, undefined)
-    end.
+    spawn(fun() ->
+                  lager:debug("processing fetch request ~s (call ~s) from ~s", [FSID, CallID, Node]),
+                  DefProp = [{<<"Msg-ID">>, FSID}
+                             ,{<<"Caller-ID-Name">>, props:get_value(<<"variable_effective_caller_id_name">>, FSData, 
+                                                                     props:get_value(<<"Caller-Caller-ID-Name">>, FSData, <<"Unknown">>))}
+                             ,{<<"Caller-ID-Number">>, props:get_value(<<"variable_effective_caller_id_number">>, FSData, 
+                                                                       props:get_value(<<"Caller-Caller-ID-Number">>, FSData, <<"0000000000">>))}
+                             ,{<<"To">>, ecallmgr_util:get_sip_to(FSData)}
+                             ,{<<"From">>, ecallmgr_util:get_sip_from(FSData)}
+                             ,{<<"Request">>, ecallmgr_util:get_sip_request(FSData)}
+                             ,{<<"Call-ID">>, CallID}
+                             ,{<<"Custom-Channel-Vars">>, wh_json:from_list(ecallmgr_util:custom_channel_vars(FSData))}
+                             | wh_api:default_headers(<<>>, <<"dialplan">>, <<"route_req">>, ?APP_NAME, ?APP_VERSION)],
+                  %% Server-ID will be over-written by the pool worker
+                  {ok, AuthZEnabled} = ecallmgr_util:get_setting(authz_enabled, true),
+                  case wh_util:is_true(AuthZEnabled) of
+                      true -> authorize_and_route(Node, FSID, CallID, FSData, DefProp);
+                      false -> route(Node, FSID, CallID, DefProp, undefined)
+                  end
+          end).
 
 -spec authorize_and_route/5 :: (atom(), ne_binary(), ne_binary(), proplist(), proplist()) -> 'ok'.
 authorize_and_route(Node, FSID, CallID, FSData, DefProp) ->

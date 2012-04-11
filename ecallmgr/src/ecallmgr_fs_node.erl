@@ -18,6 +18,7 @@
 -export([uuid_dump/2]).
 -export([hostname/1]).
 -export([reloadacl/1]).
+-export([process_custom_data/1]).
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -29,7 +30,6 @@
 -include("ecallmgr.hrl").
 
 -record(state, {node = 'undefined' :: atom()
-                ,stats = #node_stats{} :: #node_stats{}
                 ,options = [] :: proplist()
                }).
 
@@ -56,10 +56,11 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec start_link/1 :: (atom()) -> {'ok', pid()} | {'error', term()}.
-start_link(Node) ->
-    gen_server:start_link(?SERVER, [Node, []], []).
-
 -spec start_link/2 :: (atom(), proplist()) -> {'ok', pid()} | {'error', term()}.
+
+start_link(Node) ->
+    start_link(Node, []).
+
 start_link(Node, Options) ->
     gen_server:start_link(?SERVER, [Node, Options], []).
 
@@ -71,11 +72,13 @@ show_channels(Srv) ->
         _ -> []
     end.
 
--spec hostname/1 :: (pid()) -> fs_api_ret().
+-spec hostname/1 :: (pid()) -> 'undefined' | ne_binary().
 hostname(Srv) ->
-    case catch(gen_server:call(Srv, hostname, ?FS_TIMEOUT)) of
-        {'EXIT', _} -> timeout;
-        Else -> Else
+    case fs_node(Srv) of
+        undefined -> undefined;
+        Node ->
+            [_, Hostname] = binary:split(wh_util:to_binary(Node), <<"@">>),
+            Hostname
     end.
 
 -spec reloadacl/1 ::(pid()) -> 'ok'.
@@ -87,31 +90,31 @@ reloadacl(Srv) ->
 
 -spec fs_node/1 :: (pid()) -> atom().
 fs_node(Srv) ->
-    case catch(gen_server:call(Srv, fs_node, ?FS_TIMEOUT)) of
+    case catch(gen_server:call(Srv, node, ?FS_TIMEOUT)) of
         {'EXIT', _} -> undefined;
         Else -> Else
     end.
 
 -spec uuid_exists/2 :: (pid(), ne_binary()) -> boolean() | 'error'.
 uuid_exists(Srv, UUID) ->
-    case freeswitch:api(fs_node(Srv), uuid_exists, wh_util:to_list(UUID)) of
+    case catch(freeswitch:api(fs_node(Srv), uuid_exists, wh_util:to_list(UUID))) of
         {'ok', Result} ->
             lager:debug("result of uuid_exists(~s): ~s", [UUID, Result]),
             wh_util:is_true(Result);
-        _ ->
-            lager:debug("failed to get result from uuid_exists(~s)", [UUID]),
+        _Else ->
+            lager:debug("failed to get result from uuid_exists(~s): ~p", [UUID, _Else]),
             error
     end.
 
--spec uuid_dump/2 :: (pid(), ne_binary()) -> {'ok', proplist()} | {'error', ne_binary()} | 'timeout'.
+-spec uuid_dump/2 :: (pid(), ne_binary()) -> {'ok', proplist()} | 'error'.
 uuid_dump(Srv, UUID) ->
-    case freeswitch:api(fs_node(Srv), uuid_dump, wh_util:to_list(UUID)) of
+    case catch(freeswitch:api(fs_node(Srv), uuid_dump, wh_util:to_list(UUID))) of
         {'ok', Result} ->
             Props = ecallmgr_util:eventstr_to_proplist(Result),
             {ok, Props};
-        Error ->
-            lager:debug("failed to get result from uuid_dump(~s)", [UUID]),
-            Error
+        _Else ->
+            lager:debug("failed to get result from uuid_dump(~s): ~p", [UUID, _Else]),
+            error
     end.
 
 %%%===================================================================
@@ -131,29 +134,18 @@ uuid_dump(Srv, UUID) ->
 %%--------------------------------------------------------------------
 init([Node, Options]) ->
     put(callid, Node),
-    lager:debug("starting new fs node ~s", [Node]),
-
     process_flag(trap_exit, true),
-    put(callid, wh_util:to_binary(Node)),
-
-    erlang:monitor_node(Node, true),
+    lager:debug("starting new fs node ~s", [Node]),
     case freeswitch:register_event_handler(Node) of
         ok ->
-            Stats = #node_stats{started = erlang:now()},
             lager:debug("event handler registered on node ~s", [Node]),            
-            run_start_cmds(Node),
-            NodeData = extract_node_data(Node),
-            Active = get_active_channels(Node),
             ok = freeswitch:event(Node, ['CHANNEL_CREATE', 'CHANNEL_DESTROY', 'HEARTBEAT', 'CHANNEL_HANGUP_COMPLETE'
                                          ,'CUSTOM', 'sofia::register', 'sofia::transfer'
                                         ]),
             lager:debug("bound to switch events on node ~s", [Node]),
-            {ok, #state{stats=(Stats#node_stats{
-                                 created_channels = Active
-                                 ,fs_uptime = props:get_value(uptime, NodeData, 0)
-                                })
-                        ,node=Node
-                        ,options=Options}};
+            gproc:reg({p, l, fs_node}),
+            run_start_cmds(Node),
+            {ok, #state{node=Node, options=Options}};
         {error, Reason} ->
             lager:warning("error when trying to register event handler on node ~s: ~p", [Node, Reason]),
             {stop, Reason};
@@ -179,10 +171,7 @@ init([Node, Options]) ->
 -spec handle_call/3 :: ('hostname', {pid(), reference()}, #state{}) -> {'reply', {'ok', ne_binary()}, #state{}};
                        ('fs_node', {pid(), reference()}, #state{}) -> {'reply', atom(), #state{}};
                        (term(), {pid(), reference()}, #state{}) -> {'reply', {'error', 'not_implemented'}, #state{}}.
-handle_call(hostname, _From, #state{node=Node}=State) ->
-    [_, Hostname] = binary:split(wh_util:to_binary(Node), <<"@">>),
-    {reply, {ok, Hostname}, State};
-handle_call(fs_node, _From, #state{node=Node}=State) ->
+handle_call(node, _From, #state{node=Node}=State) ->
     {reply, Node, State};
 handle_call(_Request, _From, State) ->
     {reply, {error, not_implemented}, State}.
@@ -211,71 +200,9 @@ handle_cast(_Req, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info(Msg, #state{stats=#node_stats{created_channels=Cr, destroyed_channels=De}=Stats}=S) when De > Cr ->
-    %% If we start up while there are active channels, we'll have negative active_channels in our stats.
-    %% The first clause fixes that situation
-    handle_info(Msg, S#state{stats=Stats#node_stats{created_channels=De, destroyed_channels=De}});
-handle_info({event, [undefined | Data]}, #state{stats=Stats}=State) ->
-    case props:get_value(<<"Event-Name">>, Data) of
-        <<"HEARTBEAT">> ->
-            {noreply, State#state{stats=Stats#node_stats{last_heartbeat=erlang:now()}}, hibernate};
-        <<"CUSTOM">> ->
-            spawn(fun() -> 
-                          process_custom_data(Data) 
-                  end),
-            {noreply, State, hibernate};
-        _ ->
-            {noreply, State, hibernate}
-    end;
-handle_info({event, [UUID | Data]}, #state{stats=#node_stats{created_channels=Cr, destroyed_channels=De}=Stats}=State) ->
-    case props:get_value(<<"Event-Name">>, Data) of
-        <<"CHANNEL_CREATE">> ->
-            spawn(fun() -> 
-                          lager:debug("received channel create event: ~s", [UUID]),
-                          ecallmgr_call_control:add_leg(Data) 
-                  end),
-            {noreply, State#state{stats=Stats#node_stats{created_channels=Cr+1}}, hibernate};
-        <<"CHANNEL_DESTROY">> ->
-            case props:get_value(<<"Channel-State">>, Data) of
-                <<"CS_NEW">> -> % ignore
-                    lager:debug("ignoring channel destroy because of CS_NEW: ~s", [UUID]),
-                    {noreply, State, hibernate};
-                <<"CS_DESTROY">> ->
-                    spawn(fun() ->
-                                  lager:debug("received channel destroyed: ~s", [UUID]),
-                                  _ = ecallmgr_call_control:rm_leg(Data),
-                                  ecallmgr_call_events:publish_channel_destroy(Data)
-                          end),
-                    {noreply, State#state{stats=Stats#node_stats{destroyed_channels=De+1}}, hibernate}
-            end;
-        <<"CHANNEL_HANGUP_COMPLETE">> ->
-            spawn(fun() -> 
-                          put(callid, UUID), 
-                          ecallmgr_call_cdr:new_cdr(UUID, Data) 
-                  end),
-            {noreply, State};
-        <<"CUSTOM">> ->
-            spawn(fun() -> 
-                          process_custom_data(Data) 
-                  end),
-            {noreply, State};
-        _ ->
-            {noreply, State}
-    end;
-handle_info({update_options, NewOptions}, State) ->
-    {noreply, State#state{options=NewOptions}, hibernate};
-handle_info({diagnostics, Pid}, #state{stats=Stats}=State) ->
-    spawn(fun() -> diagnostics(Pid, Stats) end),
-    {noreply, State};
-handle_info({'EXIT', _Pid, noconnection}, State) ->
-    lager:debug("noconnection received for node, pid: ~p", [_Pid]),
-    {stop, normal, State};
-handle_info({nodedown, Node}, #state{node=Node}=State) ->
-    lager:debug("nodedown received from node ~s", [Node]),
-    {stop, normal, State};
-handle_info(nodedown, #state{node=Node}=State) ->
-    lager:debug("nodedown received from node ~s", [Node]),
-    {stop, normal, State};
+handle_info({event, [UUID | Data]}, State) ->
+    catch process_event(UUID, Data),
+    {noreply, State, hibernate};
 handle_info(_Msg, State) ->
     {noreply, State}.
 
@@ -307,86 +234,36 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec diagnostics/2 :: (pid(), tuple()) -> proplist().
-diagnostics(Pid, Stats) ->
-    Resp = ecallmgr_diagnostics:get_diagnostics(Stats),
-    Pid ! Resp.
+-spec process_event/2 :: ('undefined' | ne_binary(), proplist()) -> 'ok'.
+-spec process_event/3 :: (ne_binary(), 'undefined' | ne_binary(), proplist()) -> 'ok'.
 
--spec extract_node_data/1 :: (atom()) -> [{'cpu',string()} |
-                                          {'sessions_max',integer()} |
-                                          {'sessions_per_thirty',integer()} |
-                                          {'sessions_since_startup',integer()} |
-                                          {'uptime',number()}
-                                          ,...].
-extract_node_data(Node) ->
-    Lines = case freeswitch:api(Node, status) of
-                {ok, Status} ->
-                    string:tokens(wh_util:to_list(Status), [$\n]);
-                _Else ->
-                    lager:info("failed to get initial status of node '~s': ~p", [Node, _Else]),
-                    ["", "", "", "", ""]
-            end,
-    process_status(Lines, Node).
+process_event(UUID, Data) ->
+    EventName = props:get_value(<<"Event-Name">>, Data),
+    gproc:send({p, l, {call_event, EventName}}, {event, [UUID | Data]}),
+    process_event(EventName, UUID, Data).
 
--spec process_status/2 :: ([nonempty_string(),...], atom()) -> [{'cpu',string()} |
-                                                                {'sessions_max',integer()} |
-                                                                {'sessions_per_thirty',integer()} |
-                                                                {'sessions_since_startup',integer()} |
-                                                                {'uptime',number()}
-                                                                ,...].
-process_status([Uptime, _, SessSince, Sess30, SessMax, CPU], Node) ->
-    process_status([Uptime, SessSince, Sess30, SessMax, CPU], Node);
-process_status(["UP " ++ Uptime, SessSince, Sess30, SessMax, CPU], Node) ->
-    Parsers = [fun(P) ->
-                       case re:run(Uptime, "([\\d]+)", [{capture, [1], list}, global]) of
-                           {match, [[Y],[D],[Hour],[Min],[Sec],[Milli],[Micro]]} ->
-                               UpMicro = ?YR_TO_MICRO(Y) + ?DAY_TO_MICRO(D) + ?HR_TO_MICRO(Hour) + ?MIN_TO_MICRO(Min)
-                                   + ?SEC_TO_MICRO(Sec) + ?MILLI_TO_MICRO(Milli) + wh_util:to_integer(Micro),
-                               [{uptime, UpMicro}|P];
-                           _Else ->
-                               lager:info("failed to determine uptime of node '~s', statistics may not be accurate", [Node]),
-                               [{uptime, 0}|P]
-                       end
-               end
-               ,fun(P) ->  
-                        case re:run(SessSince, "([\\d]+)", [{capture, [1], list}]) of
-                            {match, SessSinceNum} ->
-                                [{sessions_since_startup, wh_util:to_integer(lists:flatten(SessSinceNum))} |P];
-                            _Else ->
-                                lager:info("failed to determine session since startup of node '~s', statistics may not be accurate", [Node]),
-                                [{sessions_since_startup, 0}|P]
-                        end
-                end
-               ,fun(P) ->
-                        case re:run(Sess30, "([\\d]+)", [{capture, [1], list}]) of
-                            {match, Sess30Num} ->
-                                [{sessions_per_thirty, wh_util:to_integer(lists:flatten(Sess30Num))}|P];
-                            _Else ->
-                                lager:info("failed to determine session per thirty of node '~s', statistics may not be accurate", [Node]),
-                                [{sessions_per_thirty, 0}|P]
-                        end
-                end
-               ,fun(P) ->
-                        case re:run(SessMax, "([\\d]+)", [{capture, [1], list}]) of
-                            {match, SessMaxNum} ->
-                                [{sessions_max, wh_util:to_integer(lists:flatten(SessMaxNum))}|P];
-                            _Else ->
-                                lager:info("failed to determine max sessions of node '~s', statistics may not be accurate", [Node]),
-                                [{sessions_max, 5000}|P]
-                        end
-                end
-               ,fun(P) ->
-                        case re:run(CPU, "([\\d\.]+)", [{capture, [1], list}]) of
-                            {match, CPUNum} ->
-                                [{cpu, lists:flatten(CPUNum)}|P];
-                            _Else ->
-                                lager:info("failed to determine cpu info of node '~s', statistics may not be accurate", [Node]),
-                                [{cpu, "0.00"}|P]
-                        end
-                end
-              ],
-    lists:foldr(fun(F, P) -> F(P) end, [], Parsers).
+process_event(<<"CUSTOM">>, _, Data) ->
+    spawn_link(?MODULE, process_custom_data, [Data]),
+    ok;
+process_event(<<"CHANNEL_CREATE">>, UUID, Data) ->
+    lager:debug("received channel create event: ~s", [UUID]),
+    ecallmgr_call_control:add_leg(Data);
+process_event(<<"CHANNEL_DESTROY">>, UUID, Data) ->
+    case props:get_value(<<"Channel-State">>, Data) of
+        <<"CS_NEW">> -> 
+            lager:debug("ignoring channel destroy because of CS_NEW: ~s", [UUID]);
+        <<"CS_DESTROY">> ->
+            lager:debug("received channel destroyed: ~s", [UUID]),
+            _ = ecallmgr_call_control:rm_leg(Data),
+            ecallmgr_call_events:publish_channel_destroy(Data)
+    end;
+process_event(<<"CHANNEL_HANGUP_COMPLETE">>, UUID, Data) ->
+    spawn(ecallmgr_call_cdr, new_cdr, [UUID, Data]),
+    ok;
+process_event(_, _, _) ->
+    ok.
 
+-spec process_custom_data/1 :: (proplist()) -> 'ok'.
 process_custom_data(Data) ->
     put(callid, props:get_value(<<"call-id">>, Data)),
     Subclass = props:get_value(<<"Event-Subclass">>, Data),
@@ -401,6 +278,7 @@ process_custom_data(Data) ->
             ok
     end.
 
+-spec publish_register_event/1 :: (proplist()) -> 'ok'.
 publish_register_event(Data) ->
     ApiProp = lists:foldl(fun(K, Api) ->
                                   case props:get_value(wh_util:to_lower_binary(K), Data) of
@@ -419,7 +297,7 @@ publish_register_event(Data) ->
     lager:debug("sending successful registration"),
     wapi_registration:publish_success(ApiProp).
 
--spec process_transfer_event/2 :: (ne_binary(), proplist()) -> ok.
+-spec process_transfer_event/2 :: (ne_binary(), proplist()) -> 'ok'.
 process_transfer_event(<<"BLIND_TRANSFER">>, Data) ->
     lager:debug("recieved blind transfer notice"),
     TransfererCtrlUUId = case props:get_value(<<"Transferor-Direction">>, Data) of
@@ -429,17 +307,15 @@ process_transfer_event(<<"BLIND_TRANSFER">>, Data) ->
                                  props:get_value(<<"Transferee-UUID">>, Data)
                          end,
 
-    case ecallmgr_call_control_sup:find_workers(TransfererCtrlUUId) of
-        {ok, Pids} ->
+    case gproc:lookup_pids({p, l, {call_control, TransfererCtrlUUId}}) of
+        [] -> lager:debug(TransfererCtrlUUId, "no ecallmgr_call_control processes exist locally for reception of transferer notice");
+        Pids ->
             [begin
                  _ = ecallmgr_call_control:transferer(Pid, Data),
                  lager:debug("sending transferer notice for ~s to ecallmgr_call_control ~p", [TransfererCtrlUUId, Pid])
              end
              || Pid <- Pids
-            ];
-        {error, not_found} ->
-            lager:debug(TransfererCtrlUUId, "no ecallmgr_call_control processes exist locally for reception of transferer notice"),
-            ok
+            ]
     end;
 process_transfer_event(_Type, Data) ->
     lager:debug("recieved ~s transfer notice", [_Type]),
@@ -450,31 +326,26 @@ process_transfer_event(_Type, Data) ->
                                  props:get_value(<<"Transferee-UUID">>, Data)
                          end,
 
-    _ = case ecallmgr_call_control_sup:find_workers(TransfererCtrlUUId) of
-            {ok, TransfererPids} ->
+    _ = case gproc:lookup_pids({p, l, {call_control, TransfererCtrlUUId}}) of
+            [] -> lager:debug(TransfererCtrlUUId, "no ecallmgr_call_control processes exist for reception of transferer notice");
+            TransfererPids ->
                 [begin
                      _ = ecallmgr_call_control:transferer(Pid, Data),
                      lager:debug("sending transferer notice for ~s to ecallmgr_call_control ~p", [TransfererCtrlUUId, Pid])
                  end
                  || Pid <- TransfererPids
-                ];
-            {error, not_found} ->
-                lager:debug(TransfererCtrlUUId, "no ecallmgr_call_control processes exist for reception of transferer notice"),
-                ok
+                ]
         end,
     TransfereeCtrlUUId = props:get_value(<<"Replaces">>, Data),
-
-    case ecallmgr_call_control_sup:find_workers(TransfereeCtrlUUId) of
-        {ok, ReplacesPids} ->
+    case gproc:lookup_pids({p, l, {call_control, TransfereeCtrlUUId}}) of
+        [] -> lager:debug(TransfererCtrlUUId, "no ecallmgr_call_control processes exist locally for reception of transferee notice");
+        ReplacesPids ->
             [begin
                  ecallmgr_call_control:transferee(Pid, Data),
                  lager:debug("sending transferee notice for ~s to ecallmgr_call_control ~p", [TransfereeCtrlUUId, Pid])
              end
              || Pid <- ReplacesPids
-            ];
-        {error, not_found} ->
-            lager:debug(TransfererCtrlUUId, "no ecallmgr_call_control processes exist locally for reception of transferee notice"),
-            ok
+            ]
     end.
 
 -type cmd_result() :: {'ok', {atom(), nonempty_string()}, ne_binary()} |
@@ -535,6 +406,8 @@ process_resp(ApiCmd, ApiArg, [<<"+OK acl reloaded">>|Resps], Acc) ->
     process_resp(ApiCmd, ApiArg, Resps, Acc);
 process_resp(ApiCmd, ApiArg, [<<"+OK ", Resp/binary>>|Resps], Acc) ->
     process_resp(ApiCmd, ApiArg, Resps, [{ok, {ApiCmd, ApiArg}, Resp} | Acc]);
+process_resp(ApiCmd, ApiArg, [<<"+OK">>|Resps], Acc) ->
+    process_resp(ApiCmd, ApiArg, Resps, [{ok, {ApiCmd, ApiArg}, <<"OK">>} | Acc]);
 process_resp(ApiCmd, ApiArg, [<<"-ERR ", Err/binary>>|Resps], Acc) ->
     case was_bad_error(Err, ApiCmd, ApiArg) of
         true -> process_resp(ApiCmd, ApiArg, Resps, [{error, {ApiCmd, ApiArg}, Err} | Acc]);
@@ -555,22 +428,6 @@ was_not_successful_cmd({ok, _, _}) ->
     false;
 was_not_successful_cmd(_) ->
     true.
-
--spec get_active_channels/1 :: (atom()) -> integer().
-get_active_channels(Node) ->
-    case freeswitch:api(Node, show, "channels") of
-        {ok, Chans} ->
-            case re:run(Chans, "([\\d+])", [{capture, [1], list}]) of
-                {match, Match} ->
-                    wh_util:to_integer(lists:flatten(Match));
-                _Else ->
-                    lager:info("failed to parse active channel count on node '~s', statistics may not be accurate", [Node]),
-                    0
-            end;
-        _ ->
-            lager:info("failed to get active channel count from node '~s', statistics may not be accurate", [Node]),
-            0
-    end.
 
 -spec convert_rows/2 :: (atom(), binary()) -> [proplist(),...] | [].
 convert_rows(Node, <<"\n0 total.\n">>) ->
