@@ -15,7 +15,9 @@
 
 -export([start_link/0, publish/2, consume/1, misc_req/1, register_return_handler/0]).
 
--export([publish_channel/0, misc_channel/0, my_channel/0]).
+-export([publish_channel/0, misc_channel/0, my_channel/0
+         ,update_my_tag/1, fetch_my_tag/0
+        ]).
 
 -export([is_available/0]).
 
@@ -74,6 +76,12 @@ misc_channel() ->
                             {'error', term()}.
 my_channel() ->
     gen_server:call(?SERVER, {my_channel}).
+
+update_my_tag(Tag) ->
+    gen_server:call(?SERVER, {update_my_tag, Tag}).
+
+fetch_my_tag() ->
+    gen_server:call(?SERVER, {fetch_my_tag}).
 
 -spec publish/2 :: (#'basic.publish'{}, #'amqp_msg'{}) -> 'ok'.
 publish(BP, AM) ->
@@ -182,6 +190,14 @@ handle_call({my_channel}, From, #state{handler_pid=HPid}=State) ->
     send_req(HPid, From, my_channel),
     {noreply, State};
 
+handle_call({update_my_tag, Tag}, From, #state{handler_pid=HPid}=State) ->
+    send_req(HPid, From, update_my_tag, Tag),
+    {noreply, State};
+
+handle_call({fetch_my_tag}, From, #state{handler_pid=HPid}=State) ->
+    send_req(HPid, From, fetch_my_tag),
+    {noreply, State};
+
 handle_call(_, _, State) ->
     {noreply, State}.
 
@@ -193,6 +209,12 @@ send_req(HPid, From, Fun) when is_function(Fun, 0) ->
 send_req(HPid, From, Fun) when is_atom(Fun) ->
     case erlang:is_process_alive(HPid) of
         true -> spawn(fun() -> amqp_host:Fun(HPid, From) end);
+        false -> gen_server:reply(From, {error, amqp_host_missing})
+    end.
+
+send_req(HPid, From, Fun, Arg) when is_atom(Fun) ->
+    case erlang:is_process_alive(HPid) of
+        true -> spawn(fun() -> amqp_host:Fun(HPid, From, Arg) end);
         false -> gen_server:reply(From, {error, amqp_host_missing})
     end.
 

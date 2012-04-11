@@ -13,7 +13,9 @@
 
 %% API
 -export([start_link/3, publish/4, consume/3, misc_req/3, stop/1]).
--export([publish_channel/2, misc_channel/2, my_channel/2]).
+-export([publish_channel/2, misc_channel/2, my_channel/2
+         ,update_my_tag/3, fetch_my_tag/2
+        ]).
 
 -export([register_return_handler/2]).
 
@@ -103,6 +105,15 @@ misc_channel(Srv, From) ->
                                               {'error', term()}.
 my_channel(Srv, {FromPid, _}=From) ->
     gen_server:reply(From, gen_server:call(Srv, {my_channel, FromPid})).
+
+-spec update_my_tag/3 :: (pid(), call_from(), ne_binary()) -> 'ok'.
+update_my_tag(Srv, {FromPid, _}=From, Tag) ->
+    gen_server:reply(From, gen_server:cast(Srv, {update_my_tag, FromPid, Tag})).
+
+-spec fetch_my_tag/2 :: (pid(), call_from()) -> {'ok', binary()} |
+                                                {'error', 'not_consuming'}.
+fetch_my_tag(Srv, {FromPid, _}=From) ->
+    gen_server:reply(From, gen_server:call(Srv, {fetch_my_tag, FromPid})).
 
 -spec stop/1 :: (pid()) -> 'ok' | {'error', 'you_are_not_my_boss'}.
 stop(Srv) ->
@@ -195,6 +206,13 @@ handle_call({my_channel, FromPid}, _, #state{connection=Conn, consumers=Consumer
             {reply, {ok, C}, State}
     end;
 
+handle_call({fetch_my_tag, FromPid}, _, #state{consumers=Consumers}=State) ->
+    case dict:find(FromPid, Consumers) of
+        error -> {reply, {error, not_consuming}, State};
+        {ok, {_C, _R, T, _FromRef}} -> {reply, {ok, T}, State}
+    end;
+
+
 handle_call(stop, {From, _}, #state{manager=Mgr}=State) ->
     case Mgr =:= From of
         true -> {stop, normal, ok, State};
@@ -220,6 +238,14 @@ handle_cast({register_return_handler, {FromPid, _}=From}, #state{return_handlers
     gen_server:reply(From, ok),
     lager:debug("adding ~p as a return handler", [FromPid]),
     {noreply, State#state{return_handlers=dict:store(erlang:monitor(process, FromPid), FromPid, RHDict)}, hibernate};
+
+handle_cast({update_my_tag, FromPid, Tag}, #state{consumers=Consumers}=State) ->
+    case dict:find(FromPid, Consumers) of
+        error -> {noreply, State};
+        {ok, {C, R, _T, FromRef}} ->
+            lager:debug("updating tag for ~p from ~p to ~p", [FromPid, _T, Tag]),
+            {noreply, State#state{consumers=dict:store(FromPid, {C, R, Tag, FromRef}, Consumers)}, hibernate}
+    end;
 
 handle_cast({consume, {FromPid, _}=From, #'basic.consume'{consumer_tag=CTag}=BasicConsume}, #state{connection=Conn, consumers=Consumers}=State) ->
     case dict:find(FromPid, Consumers) of
