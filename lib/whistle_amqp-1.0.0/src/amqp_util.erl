@@ -834,8 +834,12 @@ basic_consume(Queue, Options) ->
 
     ?AMQP_DEBUG andalso lager:debug("trying to consume from queue(~p) ~s", [Options, Queue]),
     {ok, C} = amqp_mgr:my_channel(),
+
+
     case amqp_channel:subscribe(C, BC, self()) of
-        #'basic.consume_ok'{} -> ok;
+        #'basic.consume_ok'{consumer_tag=Tag} ->
+            amqp_mgr:update_my_tag(Tag),
+            ok;
         E -> E
     end.
 
@@ -850,7 +854,8 @@ basic_consume(Queue, Options) ->
 basic_cancel(Queue) ->
     ?AMQP_DEBUG andalso lager:debug("cancel consume for queue ~s", [Queue]),
     {ok, C} = amqp_mgr:my_channel(),
-    amqp_channel:cast(C, #'basic.cancel'{consumer_tag = Queue, nowait = false}, self()).
+    {ok, Tag} = amqp_mgr:fetch_my_tag(),
+    amqp_channel:cast(C, #'basic.cancel'{consumer_tag = Tag}, self()).
 
 %%------------------------------------------------------------------------------
 %% @public

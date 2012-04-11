@@ -204,13 +204,10 @@ create_sip_endpoint(Endpoint, Properties, Call) ->
 -spec create_call_fwd_endpoint/4 :: (wh_json:json_object(), wh_json:json_object(), wh_json:json_object(), whapps_call:call()) -> wh_json:json_object().
 create_call_fwd_endpoint(Endpoint, Properties, CallFwd, Call) ->
     lager:debug("call forwarding endpoint to ~s", [wh_json:get_value(<<"number">>, CallFwd)]),
-    IgnoreEarlyMedia = case {wh_json:is_true(<<"require_keypress">>, CallFwd),  wh_json:is_true(<<"substitute">>, CallFwd)} of
-                           %% if a keypress is required then we dont need to IEM, its implied
-                           {true, _} -> <<"false">>;
-                           %% if a keypress is not required and we are not substituting (ringing the desk phone as well) force IEM
-                           {false, false} -> <<"true">>;
-                           %% any other condition its up to the user
-                           {_, _} -> wh_json:get_binary_boolean(<<"ignore_early_media">>, CallFwd)
+    IgnoreEarlyMedia = case wh_json:is_true(<<"require_keypress">>, CallFwd)
+                           orelse not wh_json:is_true(<<"substitute">>, CallFwd) of
+                           true -> <<"true">>;
+                           false -> wh_json:get_binary_boolean(<<"ignore_early_media">>, CallFwd)
                        end,
     Prop = [{<<"Invite-Format">>, <<"route">>}
             ,{<<"To-DID">>, wh_json:get_value(<<"number">>, Endpoint, whapps_call:request_user(Call))}

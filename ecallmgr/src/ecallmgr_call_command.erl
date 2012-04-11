@@ -273,7 +273,9 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>) ->
                                 _Else ->
                                     <<"|">>
                             end,
+
             DialStrings = ecallmgr_util:build_bridge_string(Endpoints, DialSeparator),
+
             Generators = [fun(DP) ->
                                   case wh_json:get_integer_value(<<"Timeout">>, JObj) of
                                       undefined ->
