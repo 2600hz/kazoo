@@ -43,14 +43,23 @@
 -export([tones/1, tones_req_tone/1, tones_v/1, tones_req_tone_v/1]).
 -export([tones_req_tone_headers/1]).
 -export([conference/1, conference_v/1]).
+-export([originate_ready/1, originate_ready_v/1
+         ,originate_execute/1, originate_execute_v/1
+        ]).
 
 -export([queue/1, queue_v/1]).
 -export([error/1, error_v/1]).
 
+
+-export([bind_q/2, unbind_q/1]).
+
+
 -export([publish_action/2, publish_action/3]).
 -export([publish_event/2, publish_event/3]).
 -export([publish_command/2, publish_command/3]).
--export([bind_q/2, unbind_q/1]).
+-export([publish_originate_ready/2, publish_originate_ready/3
+         ,publish_originate_execute/2, publish_originate_execute/3
+        ]).
 
 -include("wapi_dialplan.hrl").
 -include_lib("whistle/include/wh_log.hrl").
@@ -695,6 +704,42 @@ conference_v(JObj) ->
     conference_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
+%% @doc Originate Ready/Execute
+%% Send Requestor a message that the originate is ready to execute and
+%% wait for the Requestor to respond to execute the origination
+%% @end
+%%--------------------------------------------------------------------
+-spec originate_ready/1 :: (api_terms()) -> api_formatter_return().
+originate_ready(Prop) when is_list(Prop) ->
+    case originate_ready_v(Prop) of
+        true -> wh_api:build_message(Prop, ?ORIGINATE_READY_HEADERS, ?OPTIONAL_ORIGINATE_READY_HEADERS);
+        false -> {error, "Proplist failed validation for originate_ready"}
+    end;
+originate_ready(JObj) ->
+    originate_ready(wh_json:to_proplist(JObj)).
+
+-spec originate_ready_v/1 :: (api_terms()) -> boolean().
+originate_ready_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?ORIGINATE_READY_HEADERS, ?ORIGINATE_READY_VALUES, ?ORIGINATE_READY_TYPES);
+originate_ready_v(JObj) ->
+    originate_ready_v(wh_json:to_proplist(JObj)).
+
+-spec originate_execute/1 :: (api_terms()) -> api_formatter_return().
+originate_execute(Prop) when is_list(Prop) ->
+    case originate_execute_v(Prop) of
+        true -> wh_api:build_message(Prop, ?ORIGINATE_EXECUTE_HEADERS, ?OPTIONAL_ORIGINATE_EXECUTE_HEADERS);
+        false -> {error, "Proplist failed validation for originate_execute"}
+    end;
+originate_execute(JObj) ->
+    originate_execute(wh_json:to_proplist(JObj)).
+
+-spec originate_execute_v/1 :: (api_terms()) -> boolean().
+originate_execute_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?ORIGINATE_EXECUTE_HEADERS, ?ORIGINATE_EXECUTE_VALUES, ?ORIGINATE_EXECUTE_TYPES);
+originate_execute_v(JObj) ->
+    originate_execute_v(wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
 %% @doc Error - Sends error to Queue - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
@@ -749,6 +794,22 @@ publish_event(CallID, JObj) ->
     publish_event(CallID, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_event(CallID, Payload, ContentType) ->
     amqp_util:callevt_publish(CallID, Payload, event, ContentType).
+
+-spec publish_originate_ready/2 :: (ne_binary(), iolist()) -> 'ok'.
+-spec publish_originate_ready/3 :: (ne_binary(), iolist(), ne_binary()) -> 'ok'.
+publish_originate_ready(ServerId, JObj) ->
+    publish_originate_ready(ServerId, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_originate_ready(ServerId, API, ContentType) ->
+    {ok, Payload} = wh_api:prepare_api_payload(API, ?ORIGINATE_READY_VALUES, fun ?MODULE:originate_ready/1),
+    amqp_util:targeted_publish(ServerId, Payload, ContentType).
+
+-spec publish_originate_execute/2 :: (ne_binary(), iolist()) -> 'ok'.
+-spec publish_originate_execute/3 :: (ne_binary(), iolist(), ne_binary()) -> 'ok'.
+publish_originate_execute(ServerId, JObj) ->
+    publish_originate_execute(ServerId, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_originate_execute(ServerId, API, ContentType) ->
+    {ok, Payload} = wh_api:prepare_api_payload(API, ?ORIGINATE_EXECUTE_VALUES, fun ?MODULE:originate_execute/1),
+    amqp_util:targeted_publish(ServerId, Payload, ContentType).
 
 bind_q(Queue, _Prop) ->
     _ = amqp_util:bind_q_to_callctl(Queue),

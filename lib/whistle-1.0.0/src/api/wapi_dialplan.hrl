@@ -380,3 +380,19 @@
 -define(CONFERENCE_REQ_TYPES, [{<<"Call-ID">>, fun is_binary/1}
                                ,{<<"Conference-ID">>, fun is_binary/1}
                               ]).
+
+%% Originate Ready
+-define(ORIGINATE_READY_HEADERS, [<<"Msg-ID">>, <<"Call-ID">>, <<"Control-Queue">>]).
+-define(OPTIONAL_ORIGINATE_READY_HEADERS, []).
+-define(ORIGINATE_READY_VALUES, [{<<"Event-Category">>, <<"dialplan">>}
+                                 ,{<<"Event-Name">>, <<"originate_ready">>}
+                                ]).
+-define(ORIGINATE_READY_TYPES, []).
+
+%% Originate Execute
+-define(ORIGINATE_EXECUTE_HEADERS, [<<"Msg-ID">>, <<"Call-ID">>]).
+-define(OPTIONAL_ORIGINATE_EXECUTE_HEADERS, []).
+-define(ORIGINATE_EXECUTE_VALUES, [{<<"Event-Category">>, <<"dialplan">>}
+                                 ,{<<"Event-Name">>, <<"originate_execute">>}
+                                ]).
+-define(ORIGINATE_EXECUTE_TYPES, []).

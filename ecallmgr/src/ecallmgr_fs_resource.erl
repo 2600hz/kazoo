@@ -5,6 +5,7 @@
 %%% @end
 %%% @contributors
 %%%    Karl Anderson
+%%%    James Aimonetti
 %%%-------------------------------------------------------------------
 -module(ecallmgr_fs_resource).
 
@@ -24,7 +25,7 @@
 -include("ecallmgr.hrl").
 
 -record(state, {node :: atom()
-               ,options :: proplist()}).
+               ,options :: wh_proplist()}).
 
 -define(BINDINGS, [{resource, []}
                    ,{self, []}
@@ -34,6 +35,8 @@
 -define(QUEUE_OPTIONS, [{exclusive, false}]).
 -define(CONSUME_OPTIONS, [{exclusive, false}]).
 -define(ROUTE_OPTIONS, []).
+
+-define(ORIGINATE_PARK, <<"&park()">>).
 
 %%%===================================================================
 %%% API
@@ -59,13 +62,17 @@ start_link(Node, Options) ->
                                       ,{basic_qos, 1}
                                      ], [Node, Options]).
 
--spec handle_originate_req/2 :: (wh_json:json_object(), proplist()) -> 'ok' | 'fail'.
+-spec handle_originate_req/2 :: (wh_json:json_object(), wh_proplist()) -> 'ok'.
 handle_originate_req(JObj, Props) ->
+    _ = wh_util:put_callid(JObj),
     true = wapi_resource:originate_req_v(JObj),
+
     Node = props:get_value(node, Props),
     lager:debug("received originate request for node ~s", [Node]),
+
     ServerId = wh_json:get_value(<<"Server-ID">>, JObj),
     Endpoints = wh_json:get_ne_value(<<"Endpoints">>, JObj, []),
+
     case wapi_resource:originate_req_v(JObj) of
         false -> 
             lager:debug("originate failed to execute as JObj did not validate", []), 
@@ -89,20 +96,9 @@ handle_originate_req(JObj, Props) ->
                                 _Else -> <<"|">>
                             end,
             DialStrings = ecallmgr_util:build_bridge_string(Endpoints, DialSeparator),
+
             Action = get_originate_action(wh_json:get_value(<<"Application-Name">>, JObj), JObj),
-            Args = list_to_binary([ecallmgr_fs_xml:get_channel_vars(JObj), DialStrings, " ", Action]),
-            _ = ecallmgr_util:fs_log(Node, "whistle originating call: ~s", [Args]),
-            case handle_originate_return(Node, freeswitch:api(Node, 'originate', wh_util:to_list(Args))) of
-                {ok, Resp} -> 
-                    lager:debug("originate completed, sending notice to requestor", []),
-                    wapi_resource:publish_originate_resp(ServerId, Resp);
-                {error, Error} -> 
-                    E = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, wh_util:to_binary(wh_util:current_tstamp()))}
-                         ,{<<"Request">>, JObj}
-                         | Error
-                        ],
-                    wh_api:publish_error(ServerId, E)
-            end
+            originate_to_dialstrings(JObj, Node, ServerId, DialStrings, Action)
     end.
 
 %%%===================================================================
@@ -225,7 +221,7 @@ get_originate_action(<<"bridge">>, JObj) ->
             list_to_binary(["'m:^:", get_unset_vars(JObj), "bridge:", EndPoint, "' inline"])
     end;
 get_originate_action(_, _) ->
-    <<"&park()">>.
+    ?ORIGINATE_PARK.
 
 -spec get_unset_vars/1 :: (wh_json:json_object()) -> string().
 get_unset_vars(JObj) ->
@@ -240,8 +236,8 @@ get_unset_vars(JObj) ->
         Unset -> [string:join(Unset, "^"), "^"]
     end.
 
--spec handle_originate_return/2 :: (atom(), {'ok', ne_binary()} | {'error', ne_binary()} | timeout) -> {'ok', proplist()} |
-                                                                                                       {'error', proplist()}.
+-spec handle_originate_return/2 :: (atom(), {'ok', ne_binary()} | {'error', ne_binary()} | timeout) -> {'ok', wh_proplist()} |
+                                                                                                       {'error', wh_proplist()}.
 
 handle_originate_return(Node, {ok, <<"+OK ", CallId/binary>>}) ->
     start_call_handling(Node, binary:replace(CallId, <<"\n">>, <<>>));
@@ -255,8 +251,8 @@ handle_originate_return(Node, Else) ->
     lager:debug("originate on ~s returned an unexpected result: ~s", [Node, Else]),
     create_error_resp(<<"unexpected originate return value">>).
 
--spec start_call_handling/2 :: (atom(), ne_binary()) -> {'ok', proplist()} |
-                                                        {'error', proplist()}.
+-spec start_call_handling/2 :: (atom(), ne_binary()) -> {'ok', wh_proplist()} |
+                                                        {'error', wh_proplist()}.
 start_call_handling(Node, CallId) ->
     erlang:monitor_node(Node, true),
     case freeswitch:handlecall(Node, CallId) of
@@ -274,8 +270,8 @@ start_call_handling(Node, CallId) ->
             create_error_resp(<<"unexepected return registering event listener">>)
     end.
 
--spec wait_for_originate/2 :: (atom(), ne_binary()) -> {'ok', proplist()} |
-                                                       {'error', proplist()}.
+-spec wait_for_originate/2 :: (atom(), ne_binary()) -> {'ok', wh_proplist()} |
+                                                       {'error', wh_proplist()}.
 wait_for_originate(Node, CallId) ->
     receive 
         {_, {event, [CallId | Props]}} ->
@@ -294,13 +290,13 @@ wait_for_originate(Node, CallId) ->
             wait_for_originate(Node, CallId)
     end.
 
--spec create_error_resp/1 :: (ne_binary()) -> {'error', proplist()}.
+-spec create_error_resp/1 :: (ne_binary()) -> {'error', wh_proplist()}.
 create_error_resp(Msg) ->
     {error, [{<<"Error-Message">>, binary:replace(Msg, <<"\n">>, <<>>)}
              | wh_api:default_headers(<<"error">>, <<"originate_resp">>, ?APP_NAME, ?APP_VERSION)
             ]}.
 
--spec create_success_resp/1 :: (ne_binary()) -> {'ok', proplist()}.
+-spec create_success_resp/1 :: (wh_proplist()) -> {'ok', wh_proplist()}.
 create_success_resp(Props) ->
     EventName = props:get_value(<<"Event-Name">>, Props),
     ApplicationName = props:get_value(<<"Application">>, Props),
@@ -317,3 +313,80 @@ create_success_resp(Props) ->
                 ,fun(_) -> ecallmgr_call_events:create_event(EventName, ApplicationName, Props) end
                ],
     {ok, lists:foldr(fun(F, P) -> F(P) end, [],  Builders)}.
+
+-spec originate_to_dialstrings(wh_json:json_object(), atom(), ne_binary(), term(), ne_binary()) -> 'ok'.
+originate_to_dialstrings(JObj, Node, ServerId, Dialstrings, ?ORIGINATE_PARK) ->
+    case freeswitch:api(Node, 'create_uuid', "") of
+        {ok, UUID} ->
+            put(callid, UUID),
+            originate_and_park(JObj, Node, ServerId, Dialstrings, UUID);
+        {error, E} ->
+            lager:debug("failed to create uuid on node ~s: ~p", [Node, E]),
+            E = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, wh_util:to_binary(wh_util:current_tstamp()))}
+                 ,{<<"Request">>, JObj}
+                 ,{<<"Errors">>, wh_json:from_list(E)}
+                ],
+            wh_api:publish_error(ServerId, E);
+        timeout ->
+            lager:debug("timed out requesting node ~s to create a UUID", [Node]),
+            E = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, wh_util:to_binary(wh_util:current_tstamp()))}
+                 ,{<<"Request">>, JObj}
+                 ,{<<"Error-Message">>, <<"Creating UUID timed out">>}
+                ],
+            wh_api:publish_error(ServerId, E)
+    end;
+originate_to_dialstrings(JObj, Node, ServerId, DialStrings, Action) ->
+    Args = list_to_binary([ecallmgr_fs_xml:get_channel_vars(JObj), DialStrings, " ", Action]),
+    _ = ecallmgr_util:fs_log(Node, "whistle originating call: ~s", [Args]),
+    case handle_originate_return(Node, freeswitch:api(Node, 'originate', wh_util:to_list(Args))) of
+        {ok, Resp} -> 
+            lager:debug("originate completed, sending notice to requestor", []),
+            wapi_resource:publish_originate_resp(ServerId, Resp);
+        {error, Error} ->
+            E = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, wh_util:to_binary(wh_util:current_tstamp()))}
+                 ,{<<"Request">>, JObj}
+                 | Error
+                ],
+            wh_api:publish_error(ServerId, E)
+    end.
+
+-spec originate_and_park/5 :: (wh_json:json_object(), atom(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+originate_and_park(JObj, Node, ServerId, DialStrings, UUID) ->
+    {ok, CtlPid} = ecallmgr_call_sup:start_control_process(Node, UUID, ServerId),
+    {ok, _EvtPid} = ecallmgr_call_sup:start_event_process(Node, UUID),
+
+    CtlQ = ecallmgr_call_control:queue_name(CtlPid),
+
+    CtlProp = [{<<"Msg-ID">>, UUID}
+               ,{<<"Call-ID">>, UUID}
+               ,{<<"Control-Queue">>, CtlQ}
+               | wh_api:default_headers(<<>>, <<"dialplan">>, <<"originate_ready">>, ?APP_NAME, ?APP_VERSION)
+              ],
+
+    case ecallmgr_amqp_pool:originate_ready(ServerId, CtlProp) of
+        {ok, _Exec} ->
+            lager:debug("recv originate_execute: ~p", [_Exec]),
+            execute_originate_park(JObj, Node, ServerId, DialStrings, UUID);
+        {error, _E} ->
+            lager:debug("failed to recv valid originate_execute: ~p", [_E]),
+            E = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, wh_util:to_binary(wh_util:current_tstamp()))}
+                 ,{<<"Request">>, JObj}
+                 ,{<<"Error-Message">>, <<"Failed to receive valid originate_execute in time">>}
+                ],
+            wh_api:publish_error(ServerId, E)
+    end.
+
+execute_originate_park(JObj, Node, ServerId, DialStrings, UUID) ->
+    Args = list_to_binary([ecallmgr_fs_xml:get_channel_vars(wh_json:set_value(<<"origination_uuid">>, UUID, JObj)), DialStrings, " ", ?ORIGINATE_PARK]),
+    _ = ecallmgr_util:fs_log(Node, "whistle originating call: ~s", [Args]),
+    case handle_originate_return(Node, freeswitch:api(Node, 'originate', wh_util:to_list(Args))) of
+        {ok, Resp} ->
+            lager:debug("originate completed, sending notice to requestor", []),
+            wapi_resource:publish_originate_resp(ServerId, Resp);
+        {error, Error} ->
+            E = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, wh_util:to_binary(wh_util:current_tstamp()))}
+                 ,{<<"Request">>, JObj}
+                 | Error
+                ],
+            wh_api:publish_error(ServerId, E)
+    end.
