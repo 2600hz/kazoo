@@ -1,0 +1,31 @@
+.DS_Store
+
+# ----------------------------
+# specific markedoc artifacts:
+# ----------------------------
+# some artifacts can be expected to happen from experimenting in the main and samples dir:
+
+./doc/
+./doc/*
+
+# general intermediary files (relative to sample/)
+SAMPLE.edoc
+edoc-info
+*.dump
+*.beam
+*.log
+
+# specific sample files (relative to sample/)
+markedoc/doc/S*.edoc
+markedoc/doc/*.html
+markedoc/doc/edoc-info
+markedoc/doc/stylesheet.css
+markedoc/your-test-results/*.edoc
+markedoc/your-test-results/*.html
+markedoc/your-test-results/edoc-info
+
+# dev (relative to sample/)
+README.html
+markedoc/README.html
+
+# ----------------------------

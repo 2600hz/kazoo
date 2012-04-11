@@ -1,0 +1,3 @@
+{application,edown}.
+{packages,[]}.
+{modules,[edown_doclet,edown_layout,edown_lib,edown_make,edown_xmerl]}.
