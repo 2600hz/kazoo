@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2012, VoIP INC
 %%% @doc
 %%% Handle offnet requests, including rating them
 %%% @end
@@ -24,6 +24,7 @@
 
 -type originate_resp() :: {'error', wh_json:json_object()} |
                           {'ok', wh_json:json_object()} |
+                          {'ready', wh_json:json_object()} |
                           {'fail', wh_json:json_object()}.
 
 init() ->
@@ -46,12 +47,12 @@ handle_req(<<"audio">>, JObj, Props) ->
     {Number, _} = whapps_util:get_destination(JObj, ?APP_NAME, <<"outbound_user_field">>),
     lager:debug("bridge request to ~s from account ~s", [Number, wh_json:get_value(<<"Account-ID">>, JObj)]),
     CtrlQ = wh_json:get_value(<<"Control-Queue">>, JObj),
-    Result = attempt_to_fullfill_bridge_req(Number, CtrlQ, JObj, Props),
+    Result = attempt_to_fulfill_bridge_req(Number, CtrlQ, JObj, Props),
     wapi_offnet_resource:publish_resp(wh_json:get_value(<<"Server-ID">>, JObj), response(Result, JObj));
 handle_req(<<"originate">>, JObj, Props) ->
     {Number, _} = whapps_util:get_destination(JObj, ?APP_NAME, <<"outbound_user_field">>),
     lager:debug("originate request to ~s from account ~s", [Number, wh_json:get_value(<<"Account-ID">>, JObj)]),
-    Result = attempt_to_fullfill_originate_req(Number, JObj, Props),
+    Result = attempt_to_fulfill_originate_req(Number, JObj, Props),
     wapi_offnet_resource:publish_resp(wh_json:get_value(<<"Server-ID">>, JObj), response(Result, JObj)).
 
 %%--------------------------------------------------------------------
@@ -60,8 +61,8 @@ handle_req(<<"originate">>, JObj, Props) ->
 %% 
 %% @end
 %%--------------------------------------------------------------------
--spec attempt_to_fullfill_bridge_req/4 :: (ne_binary(), ne_binary(), wh_json:json_object(), proplist()) -> bridge_resp() | execute_ext_resp().
-attempt_to_fullfill_bridge_req(Number, CtrlQ, JObj, Props) ->
+-spec attempt_to_fulfill_bridge_req/4 :: (ne_binary(), ne_binary(), wh_json:json_object(), proplist()) -> bridge_resp() | execute_ext_resp().
+attempt_to_fulfill_bridge_req(Number, CtrlQ, JObj, Props) ->
     Result = case stepswitch_util:lookup_number(Number) of
                  {ok, AccountId, false} ->
                      lager:debug("found local extension, keeping onnet"),
@@ -76,12 +77,12 @@ attempt_to_fullfill_bridge_req(Number, CtrlQ, JObj, Props) ->
         {{error, no_resources}, fail} -> Result;
         {{error, no_resources}, CorrectedNumber} -> 
             lager:debug("found no resources for number as dialed, retrying number corrected for shortdial as ~s", [CorrectedNumber]),
-            attempt_to_fullfill_bridge_req(CorrectedNumber, CtrlQ, JObj, Props);
+            attempt_to_fulfill_bridge_req(CorrectedNumber, CtrlQ, JObj, Props);
         _Else -> Result
     end.
 
--spec attempt_to_fullfill_originate_req/3 :: (ne_binary(), wh_json:json_object(), proplist()) -> originate_resp().
-attempt_to_fullfill_originate_req(Number, JObj, Props) ->
+-spec attempt_to_fulfill_originate_req/3 :: (ne_binary(), wh_json:json_object(), proplist()) -> originate_resp().
+attempt_to_fulfill_originate_req(Number, JObj, Props) ->
     Flags = wh_json:get_value(<<"Flags">>, JObj),
     Resources = props:get_value(resources, Props), 
     {Endpoints, _} = find_endpoints(Number, Flags, Resources),
@@ -89,7 +90,7 @@ attempt_to_fullfill_originate_req(Number, JObj, Props) ->
         {{error, no_resources}, fail} -> {error, no_resources};
         {{error, no_resources}, CorrectedNumber} -> 
             lager:debug("found no resources for number as originated, retrying number corrected for shortdial as ~s", [CorrectedNumber]),
-            attempt_to_fullfill_originate_req(CorrectedNumber, JObj, Props);
+            attempt_to_fulfill_originate_req(CorrectedNumber, JObj, Props);
         {Result, _} -> Result
     end.
 
@@ -168,7 +169,7 @@ bridge_to_endpoints(Endpoints, IsEmergency, CtrlQ, JObj) ->
 %% the emergency CID.
 %% @end
 %%--------------------------------------------------------------------
--spec originate_to_endpoints/2 :: (proplist(), wh_json:json_object()) -> {'error', 'no_resources'} | bridge_resp().
+-spec originate_to_endpoints/2 :: (proplist(), wh_json:json_object()) -> {'error', 'no_resources'} | originate_resp().
 originate_to_endpoints([], _) ->
     {error, no_resources};
 originate_to_endpoints(Endpoints, JObj) ->
@@ -196,7 +197,8 @@ originate_to_endpoints(Endpoints, JObj) ->
                               ], wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new())),
 
     MsgId = wh_json:get_value(<<"Msg-ID">>, JObj, wh_util:rand_hex_binary(16)),
-    Request = [{<<"Application-Name">>, wh_json:get_value(<<"Application-Name">>, JObj, <<"park">>)}                                                                                                                                                                     
+    Application = wh_json:get_value(<<"Application-Name">>, JObj, <<"park">>),
+    Request = [{<<"Application-Name">>, Application}
                ,{<<"Application-Data">>, wh_json:get_value(<<"Application-Data">>, JObj)}
                ,{<<"Msg-ID">>, MsgId}
                ,{<<"Endpoints">>, Endpoints}
@@ -267,6 +269,9 @@ wait_for_originate(MsgId) ->
                     {hangup_result(JObj), JObj};
                 {<<"error">>, <<"originate_resp">>, _} ->
                     {error, JObj};
+                {<<"dialplan">>, <<"originate_ready">>, _} ->
+                    lager:debug("originate is ready"),
+                    {ready, JObj};
                 _  ->
                     wait_for_originate(MsgId)
             end;
@@ -512,13 +517,21 @@ build_endpoint(Number, Gateway, _Delay) ->
 %% create and send a Whistle offnet resource response
 %% @end
 %%--------------------------------------------------------------------
--spec response/2 :: (bridge_resp() | execute_ext_resp(), wh_json:json_object()) -> proplist().
+-spec response/2 :: (bridge_resp() | execute_ext_resp() | originate_resp(), wh_json:json_object()) -> proplist().
 response({ok, Resp}, JObj) ->
     lager:debug("outbound request successfully completed"),
     [{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
      ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
      ,{<<"Response-Message">>, <<"SUCCESS">>}
      ,{<<"Response-Code">>, <<"sip:200">>}
+     ,{<<"Resource-Response">>, Resp}
+     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+    ];
+response({ready, Resp}, _JObj) ->
+    lager:debug("originate is ready to execute"),
+    [{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, Resp)}
+     ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, Resp)}
+     ,{<<"Response-Message">>, <<"READY">>}
      ,{<<"Resource-Response">>, Resp}
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ];
