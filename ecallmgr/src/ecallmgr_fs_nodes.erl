@@ -61,7 +61,7 @@ add(Node, Opts) ->
 remove(Node) ->
     gen_server:cast(?MODULE, {rm_fs_node, Node}).
 
--spec connected/0 :: () -> list().
+-spec connected/0 :: () -> [atom(),...] | [].
 connected() ->
     gen_server:call(?MODULE, connected_nodes).
 

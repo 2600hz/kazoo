@@ -47,5 +47,5 @@ stop() ->
 -spec start_deps/0 :: () -> 'ok'.
 start_deps() ->
     lager:start(),
-    _ = [wh_util:ensure_started(App) || App <- [sasl, crypto, whistle_amqp, ibrowse]],
+    _ = [wh_util:ensure_started(App) || App <- [sasl, crypto, gproc, whistle_amqp, ibrowse]],
     ok.

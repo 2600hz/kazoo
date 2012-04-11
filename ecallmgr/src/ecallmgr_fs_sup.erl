@@ -18,12 +18,10 @@
 -export([remove_node/1]).
 -export([init/1]).
 
--define(CHILD(Name, Type), fun(N, party_line) -> {N, {party_line, start_link, [N]}, permanent, 5000, worker, [N]};
-                              (N, T) -> {N, {N, start_link, []}, permanent, 5000, T, [N]} end(Name, Type)).
+-define(CHILD(Name, Type), fun(N, T) -> {N, {N, start_link, []}, permanent, 5000, T, [N]} end(Name, Type)).
 -define(NODE(Name, Args), {Name, {ecallmgr_fs_node_sup, start_link, Args}, transient, 5000, supervisor, [ecallmgr_fs_node_sup]}).
 -define(CHILDREN, [{ecallmgr_fs_nodes, worker}
                    ,{ecallmgr_fs_util_sup, supervisor}
-                   ,{?FS_PARTY_LINE, party_line}
                   ]).
 
 %% ===================================================================

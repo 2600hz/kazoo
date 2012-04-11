@@ -15,17 +15,11 @@
 -behaviour(supervisor).
 
 %% API
--export([start_link/0, start_proc/1]).
--export([workers/0]).
--export([find_workers/1]).
--export([find_control_queue/1]).
-
--include("ecallmgr.hrl").
-
-%% Supervisor callbacks
+-export([start_link/0]).
+-export([start_proc/1]).
 -export([init/1]).
 
--include("ecallmgr.hrl").
+-include_lib("ecallmgr/src/ecallmgr.hrl").
 
 -define(SERVER, ?MODULE).
 
@@ -45,36 +39,6 @@ start_link() ->
 
 start_proc(Args) ->
     supervisor:start_child(?SERVER, Args).
-
--spec workers/0 :: () -> [pid(),...] | [].
-workers() ->
-    [ Pid || {_, Pid, worker, [Worker]} <- supervisor:which_children(?SERVER),
-             Worker =:= ecallmgr_call_control
-    ].
-
--spec find_workers/1 :: (ne_binary()) -> {'error', 'not_found'} | {'ok', [pid(),...]}.
--spec do_find_worker/3 :: ([pid(),...] | [], [pid(),...] | [], ne_binary()) -> {'error', 'not_found'} | {'ok', [pid(),...]}.
-find_workers(CallID) ->
-    C = wh_util:to_binary(http_uri:decode(wh_util:to_list(CallID))),
-    do_find_worker(workers(), [], C).
-
-do_find_worker([], [], _CallId) ->
-    {error, not_found};
-do_find_worker([], Acc, _CallId) ->
-    {ok, Acc};
-do_find_worker([Srv|T], Acc, CallID) ->
-    case catch(ecallmgr_call_control:callid(Srv)) of
-        CallID -> do_find_worker(T, [Srv|Acc], CallID);
-        _E -> do_find_worker(T, Acc, CallID)
-    end.
-
--spec find_control_queue/1 :: (ne_binary()) -> {'error', 'not_found'} | {'ok', ne_binary()}.
-find_control_queue(CallID) ->    
-    case find_workers(CallID) of
-        {error, _}=E -> E;
-        {ok, [Worker|_]} ->
-            {ok, ecallmgr_call_control:queue_name(Worker)}
-    end.
 
 %%%===================================================================
 %%% Supervisor callbacks

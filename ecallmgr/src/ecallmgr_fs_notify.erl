@@ -141,7 +141,10 @@ init([Node, Options]) ->
     lager:debug("starting new ecallmgr notify process"),
     case freeswitch:event(Node, ['PRESENCE_IN', 'PRESENCE_OUT', 'PRESENCE_PROBE']) of
         ok ->
-            party_line:register(?FS_PARTY_LINE, notify),
+            gproc:reg({p, l, fs_notify}),
+            gproc:reg({p, l, {call_event, <<"PRESENCE_IN">>}}),
+            gproc:reg({p, l, {call_event, <<"PRESENCE_OUT">>}}),
+            gproc:reg({p, l, {call_event, <<"PRESENCE_PROBE">>}}),
             lager:debug("bound to switch presence events on node ~s", [Node]),
             {ok, #state{node=Node, options=Options}};
         {error, Reason} ->
@@ -341,7 +344,7 @@ process_presence_event(EvtName, Data, Node) ->
             %% reply it on all the other connected nodes...
             %% "mod_multicast" style
             [distributed_presence(Srv, EvtName, Headers)
-             || Srv <- party_line:list(?FS_PARTY_LINE, notify),
+             || Srv <- gproc:lookup_pids({p, l, fs_notify}),
                 Srv =/= self()
             ];
         _Else ->

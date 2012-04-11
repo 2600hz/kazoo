@@ -87,10 +87,10 @@ publish_channel_destroy(Props) ->
     ApplicationName = props:get_value(<<"Application">>, Props),
     Event = create_event(EventName, ApplicationName, Props),
     publish_event(Event),
-    case ecallmgr_call_event_sup:find_worker(CallId) of
-        {error, not_found} -> ok;
-        {ok, Srv} -> 
-            erlang:send_after(5000, Srv, {shutdown}),
+    case gproc:lookup_pids({p, l, {call_events, CallId}}) of
+        [] -> ok;
+        Pids ->
+            _ = [erlang:send_after(5000, Pid, {shutdown}) || Pid <- Pids],
             ok
     end.
 
@@ -113,6 +113,8 @@ publish_channel_destroy(Props) ->
 init([Node, CallId]) when is_atom(Node) andalso is_binary(CallId) ->
     put(callid, CallId),
     lager:debug("starting call events listener"),
+    gproc:reg({p, l, call_events}),
+    gproc:reg({p, l, {call_events, CallId}}),
     TRef = erlang:send_after(?SANITY_CHECK_PERIOD, self(), {sanity_check}),
     {'ok', #state{node=Node, callid=CallId, sanity_check_tref=TRef, self=self()}, 0}.
 

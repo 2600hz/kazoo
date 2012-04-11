@@ -10,16 +10,11 @@
 
 -behaviour(supervisor).
 
-%% API
--export([start_link/0, start_proc/1]).
--export([workers/0]).
--export([find_worker/1]).
--export([find_control_queue/1]).
-
-%% Supervisor callbacks
+-export([start_link/0]).
+-export([start_proc/1]).
 -export([init/1]).
 
--include("ecallmgr.hrl").
+-include_lib("ecallmgr/src/ecallmgr.hrl").
 
 -define(SERVER, ?MODULE).
 
@@ -38,41 +33,11 @@ start_link() ->
     supervisor:start_link({local, ?SERVER}, ?MODULE, []).
 
 start_proc([_, CallId]=Args) ->
-    case find_worker(CallId) of
-        {ok, Srv}=Ok -> 
-            lager:debug("recycling existing call events worker ~p", [Srv]),
-            Ok;
-        _ -> 
-            supervisor:start_child(?SERVER, Args)
-    end.
-
--spec workers/0 :: () -> [pid(),...] | [].
-workers() ->
-    [ Pid || {_, Pid, worker, [Worker]} <- supervisor:which_children(?SERVER),
-             Worker =:= ecallmgr_call_events
-    ].
-
--spec find_worker/1 :: (ne_binary()) -> {'error', 'not_found'} | {'ok', pid()}.
--spec do_find_worker/2 :: ([] | [pid(),...], ne_binary()) -> {'error', 'not_found'} | {'ok', pid()}.
-
-find_worker(CallId) ->
-    C = wh_util:to_binary(http_uri:decode(wh_util:to_list(CallId))),
-    do_find_worker(workers(), C).
-
-do_find_worker([], _) ->
-    {error, not_found};
-do_find_worker([Srv|T], CallId) ->
-    case catch(ecallmgr_call_events:callid(Srv)) of
-        CallId -> {ok, Srv};
-        _ -> do_find_worker(T, CallId)
-    end.
-
--spec find_control_queue/1 :: (ne_binary()) -> {'error', 'not_found'} | {'ok', ne_binary()}.
-find_control_queue(CallId) ->    
-    case find_worker(CallId) of
-        {error, _}=E -> E;
-        {ok, Worker} ->
-            {ok, ecallmgr_call_events:queue_name(Worker)}
+    case gproc:lookup_pids({p, l, {call_events, CallId}}) of
+        [] -> supervisor:start_child(?SERVER, Args);
+        [Pid] -> 
+            lager:debug("recycling existing call events worker ~p", [Pid]),
+            {ok, Pid}
     end.
 
 %%%===================================================================

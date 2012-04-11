@@ -18,6 +18,7 @@
 -export([uuid_dump/2]).
 -export([hostname/1]).
 -export([reloadacl/1]).
+-export([process_custom_data/1]).
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -71,11 +72,13 @@ show_channels(Srv) ->
         _ -> []
     end.
 
--spec hostname/1 :: (pid()) -> fs_api_ret().
+-spec hostname/1 :: (pid()) -> 'undefined' | ne_binary().
 hostname(Srv) ->
-    case catch(gen_server:call(Srv, hostname, ?FS_TIMEOUT)) of
-        {'EXIT', _} -> timeout;
-        Else -> Else
+    case fs_node(Srv) of
+        undefined -> undefined;
+        Node ->
+            [_, Hostname] = binary:split(wh_util:to_binary(Node), <<"@">>),
+            Hostname
     end.
 
 -spec reloadacl/1 ::(pid()) -> 'ok'.
@@ -87,31 +90,31 @@ reloadacl(Srv) ->
 
 -spec fs_node/1 :: (pid()) -> atom().
 fs_node(Srv) ->
-    case catch(gen_server:call(Srv, fs_node, ?FS_TIMEOUT)) of
+    case catch(gen_server:call(Srv, node, ?FS_TIMEOUT)) of
         {'EXIT', _} -> undefined;
         Else -> Else
     end.
 
 -spec uuid_exists/2 :: (pid(), ne_binary()) -> boolean() | 'error'.
 uuid_exists(Srv, UUID) ->
-    case freeswitch:api(fs_node(Srv), uuid_exists, wh_util:to_list(UUID)) of
+    case catch(freeswitch:api(fs_node(Srv), uuid_exists, wh_util:to_list(UUID))) of
         {'ok', Result} ->
             lager:debug("result of uuid_exists(~s): ~s", [UUID, Result]),
             wh_util:is_true(Result);
-        _ ->
-            lager:debug("failed to get result from uuid_exists(~s)", [UUID]),
+        _Else ->
+            lager:debug("failed to get result from uuid_exists(~s): ~p", [UUID, _Else]),
             error
     end.
 
--spec uuid_dump/2 :: (pid(), ne_binary()) -> {'ok', proplist()} | {'error', ne_binary()} | 'timeout'.
+-spec uuid_dump/2 :: (pid(), ne_binary()) -> {'ok', proplist()} | 'error'.
 uuid_dump(Srv, UUID) ->
-    case freeswitch:api(fs_node(Srv), uuid_dump, wh_util:to_list(UUID)) of
+    case catch(freeswitch:api(fs_node(Srv), uuid_dump, wh_util:to_list(UUID))) of
         {'ok', Result} ->
             Props = ecallmgr_util:eventstr_to_proplist(Result),
             {ok, Props};
-        Error ->
-            lager:debug("failed to get result from uuid_dump(~s)", [UUID]),
-            Error
+        _Else ->
+            lager:debug("failed to get result from uuid_dump(~s): ~p", [UUID, _Else]),
+            error
     end.
 
 %%%===================================================================
@@ -140,7 +143,7 @@ init([Node, Options]) ->
                                          ,'CUSTOM', 'sofia::register', 'sofia::transfer'
                                         ]),
             lager:debug("bound to switch events on node ~s", [Node]),
-            party_line:register(?FS_PARTY_LINE, fs_node),
+            gproc:reg({p, l, fs_node}),
             run_start_cmds(Node),
             {ok, #state{node=Node, options=Options}};
         {error, Reason} ->
@@ -168,10 +171,7 @@ init([Node, Options]) ->
 -spec handle_call/3 :: ('hostname', {pid(), reference()}, #state{}) -> {'reply', {'ok', ne_binary()}, #state{}};
                        ('fs_node', {pid(), reference()}, #state{}) -> {'reply', atom(), #state{}};
                        (term(), {pid(), reference()}, #state{}) -> {'reply', {'error', 'not_implemented'}, #state{}}.
-handle_call(hostname, _From, #state{node=Node}=State) ->
-    [_, Hostname] = binary:split(wh_util:to_binary(Node), <<"@">>),
-    {reply, {ok, Hostname}, State};
-handle_call(fs_node, _From, #state{node=Node}=State) ->
+handle_call(node, _From, #state{node=Node}=State) ->
     {reply, Node, State};
 handle_call(_Request, _From, State) ->
     {reply, {error, not_implemented}, State}.
@@ -200,47 +200,9 @@ handle_cast(_Req, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({event, [undefined | Data]}, State) ->
-    case props:get_value(<<"Event-Name">>, Data) of
-        <<"CUSTOM">> ->
-            process_custom_data(Data),
-            {noreply, State, hibernate};
-        _ ->
-            {noreply, State, hibernate}
-    end;
 handle_info({event, [UUID | Data]}, State) ->
-    case props:get_value(<<"Event-Name">>, Data) of
-        <<"CHANNEL_CREATE">> ->
-            spawn(fun() -> 
-                          lager:debug("received channel create event: ~s", [UUID]),
-                          ecallmgr_call_control:add_leg(Data) 
-                  end),
-            {noreply, State, hibernate};
-        <<"CHANNEL_DESTROY">> ->
-            case props:get_value(<<"Channel-State">>, Data) of
-                <<"CS_NEW">> -> % ignore
-                    lager:debug("ignoring channel destroy because of CS_NEW: ~s", [UUID]),
-                    {noreply, State, hibernate};
-                <<"CS_DESTROY">> ->
-                    spawn(fun() ->
-                                  lager:debug("received channel destroyed: ~s", [UUID]),
-                                  _ = ecallmgr_call_control:rm_leg(Data),
-                                  ecallmgr_call_events:publish_channel_destroy(Data)
-                          end),
-                    {noreply, State, hibernate}
-            end;
-        <<"CHANNEL_HANGUP_COMPLETE">> ->
-            spawn(fun() -> 
-                          put(callid, UUID), 
-                          ecallmgr_call_cdr:new_cdr(UUID, Data) 
-                  end),
-            {noreply, State};
-        <<"CUSTOM">> ->
-            process_custom_data(Data),
-            {noreply, State};
-        _ ->
-            {noreply, State}
-    end;
+    catch process_event(UUID, Data),
+    {noreply, State, hibernate};
 handle_info(_Msg, State) ->
     {noreply, State}.
 
@@ -272,22 +234,49 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec process_custom_data/1 :: (proplist()) -> pid().
+-spec process_event/2 :: ('undefined' | ne_binary(), proplist()) -> 'ok'.
+-spec process_event/3 :: (ne_binary(), 'undefined' | ne_binary(), proplist()) -> 'ok'.
+
+process_event(UUID, Data) ->
+    EventName = props:get_value(<<"Event-Name">>, Data),
+    gproc:send({p, l, {call_event, EventName}}, {event, [UUID | Data]}),
+    process_event(EventName, UUID, Data).
+
+process_event(<<"CUSTOM">>, _, Data) ->
+    spawn_link(?MODULE, process_custom_data, [Data]),
+    ok;
+process_event(<<"CHANNEL_CREATE">>, UUID, Data) ->
+    lager:debug("received channel create event: ~s", [UUID]),
+    ecallmgr_call_control:add_leg(Data);
+process_event(<<"CHANNEL_DESTROY">>, UUID, Data) ->
+    case props:get_value(<<"Channel-State">>, Data) of
+        <<"CS_NEW">> -> 
+            lager:debug("ignoring channel destroy because of CS_NEW: ~s", [UUID]);
+        <<"CS_DESTROY">> ->
+            lager:debug("received channel destroyed: ~s", [UUID]),
+            _ = ecallmgr_call_control:rm_leg(Data),
+            ecallmgr_call_events:publish_channel_destroy(Data)
+    end;
+process_event(<<"CHANNEL_HANGUP_COMPLETE">>, UUID, Data) ->
+    spawn(ecallmgr_call_cdr, new_cdr, [UUID, Data]),
+    ok;
+process_event(_, _, _) ->
+    ok.
+
+-spec process_custom_data/1 :: (proplist()) -> 'ok'.
 process_custom_data(Data) ->
-    spawn_link(fun() -> 
-                       put(callid, props:get_value(<<"call-id">>, Data)),
-                       Subclass = props:get_value(<<"Event-Subclass">>, Data),
-                       case Subclass of
-                           <<"sofia::register">> ->
-                               lager:debug("received registration event"),
-                               publish_register_event(Data);
-                           <<"sofia::transfer">> ->
-                               lager:debug("received transfer event"),
-                               process_transfer_event(props:get_value(<<"Type">>, Data), Data);
-                           _ ->
-                               ok
-                       end
-               end).
+    put(callid, props:get_value(<<"call-id">>, Data)),
+    Subclass = props:get_value(<<"Event-Subclass">>, Data),
+    case Subclass of
+        <<"sofia::register">> ->
+            lager:debug("received registration event"),
+            publish_register_event(Data);
+        <<"sofia::transfer">> ->
+            lager:debug("received transfer event"),
+            process_transfer_event(props:get_value(<<"Type">>, Data), Data);
+        _ ->
+            ok
+    end.
 
 -spec publish_register_event/1 :: (proplist()) -> 'ok'.
 publish_register_event(Data) ->
@@ -308,7 +297,7 @@ publish_register_event(Data) ->
     lager:debug("sending successful registration"),
     wapi_registration:publish_success(ApiProp).
 
--spec process_transfer_event/2 :: (ne_binary(), proplist()) -> ok.
+-spec process_transfer_event/2 :: (ne_binary(), proplist()) -> 'ok'.
 process_transfer_event(<<"BLIND_TRANSFER">>, Data) ->
     lager:debug("recieved blind transfer notice"),
     TransfererCtrlUUId = case props:get_value(<<"Transferor-Direction">>, Data) of
@@ -318,17 +307,15 @@ process_transfer_event(<<"BLIND_TRANSFER">>, Data) ->
                                  props:get_value(<<"Transferee-UUID">>, Data)
                          end,
 
-    case ecallmgr_call_control_sup:find_workers(TransfererCtrlUUId) of
-        {ok, Pids} ->
+    case gproc:lookup_pids({p, l, {call_control, TransfererCtrlUUId}}) of
+        [] -> lager:debug(TransfererCtrlUUId, "no ecallmgr_call_control processes exist locally for reception of transferer notice");
+        Pids ->
             [begin
                  _ = ecallmgr_call_control:transferer(Pid, Data),
                  lager:debug("sending transferer notice for ~s to ecallmgr_call_control ~p", [TransfererCtrlUUId, Pid])
              end
              || Pid <- Pids
-            ];
-        {error, not_found} ->
-            lager:debug(TransfererCtrlUUId, "no ecallmgr_call_control processes exist locally for reception of transferer notice"),
-            ok
+            ]
     end;
 process_transfer_event(_Type, Data) ->
     lager:debug("recieved ~s transfer notice", [_Type]),
@@ -339,31 +326,26 @@ process_transfer_event(_Type, Data) ->
                                  props:get_value(<<"Transferee-UUID">>, Data)
                          end,
 
-    _ = case ecallmgr_call_control_sup:find_workers(TransfererCtrlUUId) of
-            {ok, TransfererPids} ->
+    _ = case gproc:lookup_pids({p, l, {call_control, TransfererCtrlUUId}}) of
+            [] -> lager:debug(TransfererCtrlUUId, "no ecallmgr_call_control processes exist for reception of transferer notice");
+            TransfererPids ->
                 [begin
                      _ = ecallmgr_call_control:transferer(Pid, Data),
                      lager:debug("sending transferer notice for ~s to ecallmgr_call_control ~p", [TransfererCtrlUUId, Pid])
                  end
                  || Pid <- TransfererPids
-                ];
-            {error, not_found} ->
-                lager:debug(TransfererCtrlUUId, "no ecallmgr_call_control processes exist for reception of transferer notice"),
-                ok
+                ]
         end,
     TransfereeCtrlUUId = props:get_value(<<"Replaces">>, Data),
-
-    case ecallmgr_call_control_sup:find_workers(TransfereeCtrlUUId) of
-        {ok, ReplacesPids} ->
+    case gproc:lookup_pids({p, l, {call_control, TransfereeCtrlUUId}}) of
+        [] -> lager:debug(TransfererCtrlUUId, "no ecallmgr_call_control processes exist locally for reception of transferee notice");
+        ReplacesPids ->
             [begin
                  ecallmgr_call_control:transferee(Pid, Data),
                  lager:debug("sending transferee notice for ~s to ecallmgr_call_control ~p", [TransfereeCtrlUUId, Pid])
              end
              || Pid <- ReplacesPids
-            ];
-        {error, not_found} ->
-            lager:debug(TransfererCtrlUUId, "no ecallmgr_call_control processes exist locally for reception of transferee notice"),
-            ok
+            ]
     end.
 
 -type cmd_result() :: {'ok', {atom(), nonempty_string()}, ne_binary()} |
