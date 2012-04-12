@@ -76,7 +76,7 @@
 start_link(Host, Conn, UseFederation) ->
     gen_server:start_link(?MODULE, [Host, Conn, UseFederation], []).
 
--spec publish/4 :: (pid(), call_from(), #'basic.publish'{}, ne_binary() | iolist()) -> 'ok'.
+-spec publish/4 :: (pid(), call_from(), #'basic.publish'{}, ne_binary() | iolist()) -> any().
 publish(Srv, From, BasicPub, AmqpMsg) ->
     {ok, C} = gen_server:call(Srv, publish_channel),
     gen_server:reply(From, amqp_channel:call(C, BasicPub, AmqpMsg)).
@@ -93,25 +93,23 @@ misc_req(Srv, From, Req) ->
 register_return_handler(Srv, From) ->
     gen_server:cast(Srv, {register_return_handler, From}).
 
--spec publish_channel/2 :: (pid(), call_from()) -> {'ok', pid()}.
+-spec publish_channel/2 :: (pid(), call_from()) -> any().
 publish_channel(Srv, From) ->
     gen_server:reply(From, gen_server:call(Srv, publish_channel)).
 
--spec misc_channel/2 :: (pid(), call_from()) -> {'ok', pid()}.
+-spec misc_channel/2 :: (pid(), call_from()) -> any().
 misc_channel(Srv, From) ->
     gen_server:reply(From, gen_server:call(Srv, misc_channel)).
 
--spec my_channel/2 :: (pid(), call_from()) -> {'ok', pid()} |
-                                              {'error', term()}.
+-spec my_channel/2 :: (pid(), call_from()) -> any().
 my_channel(Srv, {FromPid, _}=From) ->
     gen_server:reply(From, gen_server:call(Srv, {my_channel, FromPid})).
 
--spec update_my_tag/3 :: (pid(), call_from(), ne_binary()) -> 'ok'.
+-spec update_my_tag/3 :: (pid(), call_from(), ne_binary()) -> any().
 update_my_tag(Srv, {FromPid, _}=From, Tag) ->
     gen_server:reply(From, gen_server:cast(Srv, {update_my_tag, FromPid, Tag})).
 
--spec fetch_my_tag/2 :: (pid(), call_from()) -> {'ok', binary()} |
-                                                {'error', 'not_consuming'}.
+-spec fetch_my_tag/2 :: (pid(), call_from()) -> any().
 fetch_my_tag(Srv, {FromPid, _}=From) ->
     gen_server:reply(From, gen_server:call(Srv, {fetch_my_tag, FromPid})).
 

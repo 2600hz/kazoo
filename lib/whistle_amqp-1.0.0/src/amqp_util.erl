@@ -364,7 +364,7 @@ basic_publish(Exchange, Queue, Payload, ContentType, Props) when is_binary(Paylo
     ?AMQP_DEBUG andalso lager:debug("publish ~s ~s (~p): ~s", [Exchange, Queue, Props, Payload]),
 
     {ok, C} = amqp_mgr:publish_channel(),
-    amqp_channel:call(C, BP, AM).
+    amqp_channel:cast(C, BP, AM).
 
 %%------------------------------------------------------------------------------
 %% @public
@@ -821,7 +821,6 @@ unbind_q_from_exchange(Queue, Routing, Exchange) ->
 -spec basic_consume/2 :: (ne_binary(), proplist()) -> 'ok' | {'error', atom()}.
 basic_consume(Queue) ->
     basic_consume(Queue, []).
-
 basic_consume(Queue, Options) ->
     BC = #'basic.consume'{
       queue = Queue
@@ -834,7 +833,6 @@ basic_consume(Queue, Options) ->
 
     ?AMQP_DEBUG andalso lager:debug("trying to consume from queue(~p) ~s", [Options, Queue]),
     {ok, C} = amqp_mgr:my_channel(),
-
 
     case amqp_channel:subscribe(C, BC, self()) of
         #'basic.consume_ok'{consumer_tag=Tag} ->

@@ -1,10 +1,11 @@
 %%%-------------------------------------------------------------------
-%%% File    : amqp_mgr.erl
-%%% Authors  : K Anderson
-%%%          : James Aimonetti
-%%% Description : The AMQP connection manager.
+%%% @copyright (C) 2010-2012, VoIP INC
+%%% @doc
 %%%
-%%% Created :  March 24 2010
+%%% @end
+%%% @contributors
+%%%   James Aimonetti
+%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(amqp_mgr).
 
@@ -77,9 +78,11 @@ misc_channel() ->
 my_channel() ->
     gen_server:call(?SERVER, {my_channel}).
 
+-spec update_my_tag/1 :: (ne_binary()) -> 'ok'.
 update_my_tag(Tag) ->
     gen_server:call(?SERVER, {update_my_tag, Tag}).
 
+-spec fetch_my_tag/0 :: () -> {'ok', binary()}.
 fetch_my_tag() ->
     gen_server:call(?SERVER, {fetch_my_tag}).
 
