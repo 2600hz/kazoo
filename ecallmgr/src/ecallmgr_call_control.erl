@@ -162,9 +162,9 @@ add_leg(Props) ->
     case props:get_value(<<"Other-Leg-Unique-ID">>, Props) of
         undefined -> ok;
         CallId ->
-            [gen_server:cast(Srv, {add_leg, wh_json:from_list(Props)}) 
-             || Srv <- gproc:lookup_pids({p, l, {call_control, CallId}})
-            ],
+            _ = [gen_server:cast(Srv, {add_leg, wh_json:from_list(Props)}) 
+                 || Srv <- gproc:lookup_pids({p, l, {call_control, CallId}})
+                ],
             ok
     end.
 
@@ -175,9 +175,9 @@ rm_leg(Props) ->
     case props:get_value(<<"Other-Leg-Unique-ID">>, Props) of
         undefined -> ok;
         CallId ->
-            [gen_server:cast(Srv, {rm_leg, wh_json:from_list(Props)}) 
-             || Srv <- gproc:lookup_pids({p, l, {call_control, CallId}})
-            ],
+            _ = [gen_server:cast(Srv, {rm_leg, wh_json:from_list(Props)}) 
+                 || Srv <- gproc:lookup_pids({p, l, {call_control, CallId}})
+                ],
             ok
     end.
 
