@@ -92,14 +92,8 @@ handle_originate_req(JObj, Props) ->
                 ],
             wh_api:publish_error(ServerId, E);
         true ->
-            DialSeparator = case wh_json:get_value(<<"Dial-Endpoint-Method">>, JObj, <<"single">>) of
-                                <<"simultaneous">> when length(Endpoints) > 1 -> <<",">>;
-                                _Else -> <<"|">>
-                            end,
-            DialStrings = ecallmgr_util:build_bridge_string(Endpoints, DialSeparator),
-
             Action = get_originate_action(wh_json:get_value(<<"Application-Name">>, JObj), JObj),
-            originate_to_dialstrings(JObj, Node, ServerId, DialStrings, Action)
+            originate_to_dialstrings(JObj, Node, ServerId, Endpoints, Action)
     end.
 
 %%%===================================================================
@@ -317,12 +311,20 @@ create_success_resp(Props) ->
                ],
     {ok, lists:foldr(fun(F, P) -> F(P) end, [],  Builders)}.
 
--spec originate_to_dialstrings(wh_json:json_object(), atom(), ne_binary(), term(), ne_binary()) -> 'ok'.
-originate_to_dialstrings(JObj, Node, ServerId, Dialstrings, ?ORIGINATE_PARK) ->
+-spec originate_to_dialstrings(wh_json:json_object(), atom(), ne_binary(), list(), ne_binary()) -> 'ok'.
+originate_to_dialstrings(JObj, Node, ServerId, Endpoints, ?ORIGINATE_PARK) ->
     case freeswitch:api(Node, 'create_uuid', "") of
         {ok, UUID} ->
             put(callid, UUID),
-            originate_and_park(JObj, Node, ServerId, Dialstrings, UUID);
+
+            DialSeparator = case wh_json:get_value(<<"Dial-Endpoint-Method">>, JObj, <<"single">>) of
+                                <<"simultaneous">> when length(Endpoints) > 1 -> <<",">>;
+                                _Else -> <<"|">>
+                            end,
+            DialStrings = ecallmgr_util:build_bridge_string([wh_json:set_value(<<"origination_uuid">>, UUID, E) || E <- Endpoints]
+                                                            ,DialSeparator),
+
+            originate_and_park(JObj, Node, ServerId, DialStrings, UUID);
         {error, E} ->
             lager:debug("failed to create uuid on node ~s: ~p", [Node, E]),
             E = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, wh_util:to_binary(wh_util:current_tstamp()))}
@@ -381,13 +383,21 @@ originate_and_park(JObj, Node, ServerId, DialStrings, UUID) ->
 
 -spec execute_originate_park/6 :: (wh_json:json_object(), atom(), ne_binary(), ne_binary(), ne_binary(), pid()) -> 'ok'.
 execute_originate_park(JObj, Node, ServerId, DialStrings, UUID, CtlPid) ->
-    Args = list_to_binary([ecallmgr_fs_xml:get_channel_vars(wh_json:set_value(<<"origination_uuid">>, UUID, JObj)), DialStrings, " ", ?ORIGINATE_PARK]),
+    Args = list_to_binary([ecallmgr_fs_xml:get_channel_vars(JObj)
+                           ,DialStrings, " ", ?ORIGINATE_PARK
+                          ]),
     _ = ecallmgr_util:fs_log(Node, "whistle originating call: ~s", [Args]),
-    case handle_originate_return(Node, freeswitch:api(Node, 'originate', wh_util:to_list(Args))) of
-        {ok, Resp} ->
+
+    UUIDSize = byte_size(UUID),
+
+    case freeswitch:api(Node, 'originate', wh_util:to_list(Args)) of
+        {ok, <<"+OK ", UUID:UUIDSize/binary, _/binary>>} ->
             {ok, _EvtPid} = ecallmgr_call_sup:start_event_process(Node, UUID),
-            lager:debug("originate completed, sending notice to requestor", []),
-            wapi_resource:publish_originate_resp(ServerId, Resp);
+            lager:debug("originate completed");
+        {ok, Error} ->
+            lager:debug("something other than +OK from FS: ~s", [Error]);
+        timeout ->
+            lager:debug("timed out waiting for FS");
         {error, Error} ->
             E = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, wh_util:to_binary(wh_util:current_tstamp()))}
                  ,{<<"Request">>, JObj}

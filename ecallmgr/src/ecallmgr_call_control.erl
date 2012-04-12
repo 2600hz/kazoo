@@ -530,8 +530,8 @@ handle_info({sanity_check}, #state{node=Node, callid=CallId, keep_alive_ref=unde
             lager:debug("listener passed sanity check, call is still up"),
             TRef = erlang:send_after(?SANITY_CHECK_PERIOD, self(), {sanity_check}),
             {'noreply', State#state{sanity_check_tref=TRef}};
-        _ ->
-            lager:debug("call uuid does not exist, executing post-hangup events and terminating"),
+        _E ->
+            lager:debug("call uuid does not exist, executing post-hangup events and terminating: ~p", [_E]),
             gen_listener:cast(self(), {channel_destroyed, wh_json:new()}),
             {'noreply', State}
     end;
