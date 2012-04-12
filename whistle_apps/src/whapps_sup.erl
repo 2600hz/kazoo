@@ -1,37 +1,38 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2012, VoIP, INC
 %%% @doc
 %%%
 %%% @end
-%%% Created : 13 Jun 2011 by James Aimonetti <james@2600hz.org>
+%%% @contributors
 %%%-------------------------------------------------------------------
 -module(whapps_sup).
 
 -behaviour(supervisor).
 
-%% API
--export([start_link/0, start_app/1, restart_app/1, stop_app/1]).
+-include_lib("whistle/include/wh_types.hrl").
 
-%% Supervisor callbacks
+-export([start_link/1]).
+-export([start_app/1]).
+-export([restart_app/1]).
+-export([stop_app/1]).
 -export([init/1]).
 
--define(SERVER, ?MODULE).
--define(CHILD(I, Type), {I, {I, start_link, []}, permanent, 5000, Type, [I]}).
+-define(CHILD(Name, Type), fun(N, cache) -> {N, {wh_cache, start_link, [N]}, permanent, 5000, worker, [wh_cache]};
+                              (N, T) -> {N, {N, start_link, []}, permanent, 5000, T, [N]} end(Name, Type)).
 
-%%%===================================================================
-%%% API functions
-%%%===================================================================
+%% ===================================================================
+%% API functions
+%% ===================================================================
 
 %%--------------------------------------------------------------------
+%% @public
 %% @doc
 %% Starts the supervisor
-%%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
-start_link() ->
-    supervisor:start_link({local, ?SERVER}, ?MODULE, []).
+-spec start_link/1 :: ([atom(),...] | []) -> startlink_ret().
+start_link(Whapps) ->
+    supervisor:start_link({local, ?MODULE}, ?MODULE, [Whapps]).
 
 -spec start_app/1 :: (atom()) -> {'ok', pid() | 'undefined'} | {'ok', pid() | 'undefined', term()} | {'error', term()}.
 start_app(App) ->
@@ -46,32 +47,26 @@ stop_app(App) ->
     _ = supervisor:terminate_child(?MODULE, App),
     supervisor:delete_child(?MODULE, App).
 
-%%%===================================================================
-%%% Supervisor callbacks
-%%%===================================================================
+%% ===================================================================
+%% Supervisor callbacks
+%% ===================================================================
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% Whenever a supervisor is started using supervisor:start_link/[2,3],
 %% this function is called by the new process to find out about
 %% restart strategy, maximum restart frequency and child
 %% specifications.
-%%
-%% @spec init(Args) -> {ok, {SupFlags, [ChildSpec]}} |
-%%                     ignore |
-%%                     {error, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init([]) ->
+-spec init([[atom(),...] | []]) -> sup_init_ret().
+init([Whapps]) ->
     RestartStrategy = one_for_one,
-    MaxRestarts = 3,
-    MaxSecondsBetweenRestarts = 120,
+    MaxRestarts = 5,
+    MaxSecondsBetweenRestarts = 10,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
+    Children = [?CHILD(Whapp, supervisor) || Whapp <- Whapps],
 
-    {ok, {SupFlags, []}}.
-
-%%%===================================================================
-%%% Internal functions
-%%%===================================================================
+    {ok, {SupFlags, Children}}.
