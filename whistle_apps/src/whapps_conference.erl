@@ -417,7 +417,7 @@ kvs_update_counter(Key, Number, #whapps_conference{kvs=Dict}=Conference) ->
 -spec flush/0 :: () -> 'ok'.
 flush() ->
     {ok, Cache} = whistle_apps_sup:whapps_call_cache_proc(),
-    wh_cache:local_flush(Cache).
+    wh_cache:flush_local(Cache).
 
 -spec cache/1 :: (conference()) -> 'ok'.
 -spec cache/2 :: (conference(), pos_integer()) -> 'ok'.

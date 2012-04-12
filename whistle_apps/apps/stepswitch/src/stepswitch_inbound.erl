@@ -16,7 +16,7 @@ init() ->
 
 -spec handle_req/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
 handle_req(JObj, _Prop) ->
-    whapps_util:put_callid(JObj),
+    _ = whapps_util:put_callid(JObj),
     case wh_json:get_ne_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj) of
         undefined ->
             lager:debug("received new inbound dialplan route request"),
@@ -56,14 +56,14 @@ inbound_handler(JObj, Number) ->
 get_dest_number(JObj) ->
     {User, _} = whapps_util:get_destination(JObj, ?APP_NAME, <<"inbound_user_field">>),
     case whapps_config:get_is_true(<<"stepswitch">>, <<"assume_inbound_e164">>) of
-	true ->
-	    Number = assume_e164(User),
-	    lager:debug("assuming number is e164, normalizing to ~s", [Number]),
-	    Number;
-	_ ->
-	    Number = wnm_util:to_e164(User),
-	    lager:debug("converted number to e164: ~s", [Number]),
-	    Number
+        true ->
+            Number = assume_e164(User),
+            lager:debug("assuming number is e164, normalizing to ~s", [Number]),
+            Number;
+        _ ->
+            Number = wnm_util:to_e164(User),
+            lager:debug("converted number to e164: ~s", [Number]),
+            Number
     end.
 
 %%--------------------------------------------------------------------

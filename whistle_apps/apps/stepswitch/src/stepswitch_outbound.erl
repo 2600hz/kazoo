@@ -37,8 +37,10 @@ init() ->
 %% route
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_req/2 :: (wh_json:json_object(), proplist()) -> any().
+-spec handle_req/3 :: (ne_binary(), wh_json:json_object(), proplist()) -> any().
 handle_req(JObj, Props) ->
-    whapps_util:put_callid(JObj),
+    _ = whapps_util:put_callid(JObj),
     true = wapi_offnet_resource:req_v(JObj),
     lager:debug("received outbound request"),
     handle_req(wh_json:get_value(<<"Resource-Type">>, JObj), JObj, Props).
@@ -58,10 +60,10 @@ handle_req(<<"originate">>, JObj, Props) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
--spec attempt_to_fulfill_bridge_req/4 :: (ne_binary(), ne_binary(), wh_json:json_object(), proplist()) -> bridge_resp() | execute_ext_resp().
+-spec attempt_to_fulfill_bridge_req/4 :: (ne_binary(), ne_binary(), wh_json:json_object(), proplist()) -> bridge_resp() | execute_ext_resp() | {'error', 'no_resources'}.
 attempt_to_fulfill_bridge_req(Number, CtrlQ, JObj, Props) ->
     Result = case stepswitch_util:lookup_number(Number) of
                  {ok, AccountId, false} ->
@@ -69,13 +71,13 @@ attempt_to_fulfill_bridge_req(Number, CtrlQ, JObj, Props) ->
                      execute_local_extension(Number, AccountId, CtrlQ, JObj);
                  _ ->
                      Flags = wh_json:get_value(<<"Flags">>, JObj),
-                     Resources = props:get_value(resources, Props), 
+                     Resources = props:get_value(resources, Props),
                      {Endpoints, IsEmergency} = find_endpoints(Number, Flags, Resources),
                      bridge_to_endpoints(Endpoints, IsEmergency, CtrlQ, JObj)
              end,
     case {Result, correct_shortdial(Number, JObj)} of
         {{error, no_resources}, fail} -> Result;
-        {{error, no_resources}, CorrectedNumber} -> 
+        {{error, no_resources}, CorrectedNumber} ->
             lager:debug("found no resources for number as dialed, retrying number corrected for shortdial as ~s", [CorrectedNumber]),
             attempt_to_fulfill_bridge_req(CorrectedNumber, CtrlQ, JObj, Props);
         _Else -> Result
@@ -84,11 +86,11 @@ attempt_to_fulfill_bridge_req(Number, CtrlQ, JObj, Props) ->
 -spec attempt_to_fulfill_originate_req/3 :: (ne_binary(), wh_json:json_object(), proplist()) -> originate_resp().
 attempt_to_fulfill_originate_req(Number, JObj, Props) ->
     Flags = wh_json:get_value(<<"Flags">>, JObj),
-    Resources = props:get_value(resources, Props), 
+    Resources = props:get_value(resources, Props),
     {Endpoints, _} = find_endpoints(Number, Flags, Resources),
     case {originate_to_endpoints(Endpoints, JObj), correct_shortdial(Number, JObj)} of
         {{error, no_resources}, fail} -> {error, no_resources};
-        {{error, no_resources}, CorrectedNumber} -> 
+        {{error, no_resources}, CorrectedNumber} ->
             lager:debug("found no resources for number as originated, retrying number corrected for shortdial as ~s", [CorrectedNumber]),
             attempt_to_fulfill_originate_req(CorrectedNumber, JObj, Props);
         {Result, _} -> Result
@@ -123,14 +125,14 @@ bridge_to_endpoints(Endpoints, IsEmergency, CtrlQ, JObj) ->
                         end,
     lager:debug("set outbound caller id to ~s '~s'", [CIDNum, CIDName]),
 
-    FromURI = case catch whapps_config:get_atom(?APP_NAME, <<"format_from_uri">>, false) of
+    FromURI = case whapps_config:get_is_true(?APP_NAME, <<"format_from_uri">>, false) of
                   true ->
                       case {CIDNum, wh_json:get_value(<<"Account-Realm">>, JObj)} of
                           {undefined, _} -> undefined;
                           {_, undefined} -> undefined;
                           {FromNumber, FromRealm} -> <<"sip:", FromNumber/binary, "@", FromRealm/binary>>
                       end;
-                  _ -> undefined
+                  false -> undefined
               end,
     lager:debug("setting from-uri to ~s", [FromURI]),
 
@@ -178,14 +180,14 @@ originate_to_endpoints(Endpoints, JObj) ->
 
     CIDNum = wh_json:get_value(<<"Outgoing-Caller-ID-Number">>, JObj),
 
-    FromURI = case catch whapps_config:get_atom(?APP_NAME, <<"format_from_uri">>, false) of
+    FromURI = case whapps_config:get_is_true(?APP_NAME, <<"format_from_uri">>, false) of
                   true ->
                       case {CIDNum, wh_json:get_value(<<"Account-Realm">>, JObj)} of
                           {undefined, _} -> undefined;
                           {_, undefined} -> undefined;
                           {FromNumber, FromRealm} -> <<"sip:", FromNumber/binary, "@", FromRealm/binary>>
                       end;
-                  _ -> undefined
+                  false -> undefined
               end,
 
     lager:debug("setting from-uri to ~s", [FromURI]),
@@ -224,7 +226,7 @@ originate_to_endpoints(Endpoints, JObj) ->
 %% @private
 %% @doc
 %% When the outbound number belongs to another account on the system
-%% simply execute that callflow in the context of this call (think 
+%% simply execute that callflow in the context of this call (think
 %% macro).  This function will block until that callflow is complete.
 %% @end
 %%--------------------------------------------------------------------
@@ -259,18 +261,24 @@ execute_local_extension(Number, AccountId, CtrlQ, JObj) ->
 %% Consume AMQP messages waiting for the originate response/error
 %% @end
 %%--------------------------------------------------------------------
--spec wait_for_originate/1 :: (ne_binary()) -> originate_resp().
+-spec wait_for_originate/1 :: (ne_binary()) -> originate_resp() | {'error', 'no_resources'}.
 wait_for_originate(MsgId) ->
     receive
         {#'basic.deliver'{}, #amqp_msg{props=#'P_basic'{content_type=CT}, payload=Payload}} ->
             JObj = wh_json:decode(Payload, CT),
-            case get_event_type(JObj) of               
+            case get_event_type(JObj) of
                 {<<"resource">>, <<"originate_resp">>, _} ->
                     {hangup_result(JObj), JObj};
                 {<<"error">>, <<"originate_resp">>, _} ->
                     {error, JObj};
                 {<<"dialplan">>, <<"originate_ready">>, _} ->
                     lager:debug("originate is ready"),
+                    RespQ = wh_json:get_value(<<"Server-ID">>, JObj),
+                    Resp = [{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
+                            ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+                            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)],
+
+                    wapi_dialplan:publish_originate_execute(RespQ, Resp),
                     {ready, JObj};
                 _  ->
                     wait_for_originate(MsgId)
@@ -290,7 +298,7 @@ wait_for_originate(MsgId) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Consume AMQP messages waiting for the channel to end or the 
+%% Consume AMQP messages waiting for the channel to end or the
 %% execute extension to complete.  However, if we receive a rate
 %% response then set the CCVs accordingly.
 %% @end
@@ -300,7 +308,7 @@ wait_for_execute_extension() ->
     receive
         {#'basic.deliver'{}, #amqp_msg{props=#'P_basic'{content_type=CT}, payload=Payload}} ->
             JObj = wh_json:decode(Payload, CT),
-            case get_event_type(JObj) of               
+            case get_event_type(JObj) of
                 {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} ->
                     {hangup_result(JObj), JObj};
                 {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"execute_extension">>} ->
@@ -315,7 +323,7 @@ wait_for_execute_extension() ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Consume AMQP messages waiting for the channel to end or the 
+%% Consume AMQP messages waiting for the channel to end or the
 %% the bridge to complete.  However, if we receive a rate
 %% response then set the CCVs accordingly.
 %% @end
@@ -326,7 +334,7 @@ wait_for_bridge(Timeout) ->
     receive
         {#'basic.deliver'{}, #amqp_msg{props=#'P_basic'{content_type=CT}, payload=Payload}} ->
             JObj = wh_json:decode(Payload, CT),
-            case get_event_type(JObj) of               
+            case get_event_type(JObj) of
                 {<<"error">>, <<"dialplan">>, _} ->
                     {error, JObj};
                 {<<"call_event">>, <<"CHANNEL_BRIDGE">>, _} ->
@@ -364,7 +372,7 @@ hangup_result(JObj) ->
         true -> ok;
         false -> fail
     end.
-    
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -376,14 +384,14 @@ hangup_result(JObj) ->
 -spec create_queue/1 :: (wh_json:json_object()) -> ne_binary().
 create_queue(JObj) ->
     Q = amqp_util:new_queue(),
-    amqp_util:basic_consume(Q),
-    wapi_call:bind_q(Q, [{restrict_to, [events]}
-                         ,{callid, get(callid)}
-                        ]),
-    wapi_self:bind_q(Q, []),
-    lager:debug("consuming call events"),
-    request_rating(JObj),
-    Q.    
+
+    ok = amqp_util:basic_consume(Q),
+    ok = wapi_call:bind_q(Q, [{restrict_to, [events]}
+                              ,{callid, get(callid)}
+                             ]),
+    ok = wapi_self:bind_q(Q, []),
+    ok = request_rating(JObj),
+    Q.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -393,18 +401,19 @@ create_queue(JObj) ->
 %%--------------------------------------------------------------------
 -spec request_rating/1 :: (wh_json:json_object()) -> 'ok'.
 request_rating(JObj) ->
-    whapps_util:put_callid(JObj),
+    _ = wh_util:put_callid(JObj),
+    CallID = wh_json:get_value(<<"Call-ID">>, JObj),
     lager:debug("sending rate request"),
     Req = [{<<"To-DID">>, wh_json:get_value(<<"To-DID">>, JObj)}
            ,{<<"From-DID">>, wh_json:get_value(<<"From-DID">>, JObj)}
-           ,{<<"Call-ID">>, get(callid)}
+           ,{<<"Call-ID">>, CallID}
            ,{<<"Control-Queue">>, wh_json:get_value(<<"Control-Queue">>, JObj)}
            ,{<<"Account-ID">>, wh_json:get_value(<<"Account-ID">>, JObj)}
            ,{<<"Options">>, wh_json:get_value(<<"Flags">>, JObj, [])}
            ,{<<"Direction">>, <<"outbound">>}
            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    wapi_call:publish_rate_req(get(callid), [KV || {_,V}=KV <- Req, V =/= undefined]).
+    wapi_call:publish_rate_req(CallID, [KV || {_,V}=KV <- Req, V =/= undefined]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -413,24 +422,25 @@ request_rating(JObj) ->
 %% us in a case clause to determine the appropriate action.
 %% @end
 %%--------------------------------------------------------------------
--spec get_event_type/1 :: (wh_json:json_object()) -> {binary(), binary(), undefined | binary()}.
+-spec get_event_type/1 :: (wh_json:json_object()) -> {binary(), binary(), binary()}.
 get_event_type(JObj) ->
     { wh_json:get_value(<<"Event-Category">>, JObj, <<>>)
       ,wh_json:get_value(<<"Event-Name">>, JObj, <<>>)
-      ,wh_json:get_value(<<"Application-Name">>, JObj, <<>>) }.
+      ,wh_json:get_value(<<"Application-Name">>, JObj, <<>>)
+    }.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% Filter the given resources by any flags required and rules that match
-%% this number.  Then sort them by weight and build the Endpoints 
+%% this number.  Then sort them by weight and build the Endpoints
 %% component of a Whistle dialplan bridge API.
 %% @end
 %%--------------------------------------------------------------------
 -spec find_endpoints/3 :: (ne_binary(), [] | [ne_binary(),...], endpoints()) -> {proplist(), boolean()}.
 find_endpoints(Number, Flags, Resources) ->
     Endpoints = case Flags of
-                    'undefined' -> 
+                    'undefined' ->
                         stepswitch_util:evaluate_number(Number, Resources);
                     Flags ->
                         _ = [lager:debug("resource must have ~s flag", [F]) || F <- Flags],
@@ -483,7 +493,7 @@ build_endpoints([{_, GracePeriod, Number, Gateways, _}|T], Delay, Acc0) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec build_endpoint/3 :: (ne_binary(), #gateway{}, non_neg_integer()) -> wh_json:json_object().
@@ -517,7 +527,7 @@ build_endpoint(Number, Gateway, _Delay) ->
 %% create and send a Whistle offnet resource response
 %% @end
 %%--------------------------------------------------------------------
--spec response/2 :: (bridge_resp() | execute_ext_resp() | originate_resp(), wh_json:json_object()) -> proplist().
+-spec response/2 :: ({'error', 'no_resources'} | bridge_resp() | execute_ext_resp() | originate_resp(), wh_json:json_object()) -> proplist().
 response({ok, Resp}, JObj) ->
     lager:debug("outbound request successfully completed"),
     [{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
@@ -579,8 +589,8 @@ response({error, Error}, JObj) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% if the given number is shorter then a known caller id then try 
-%% to pad the front of the dialed number with values from the 
+%% if the given number is shorter then a known caller id then try
+%% to pad the front of the dialed number with values from the
 %% callerid.
 %% @end
 %%--------------------------------------------------------------------

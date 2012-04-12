@@ -1,8 +1,11 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2011, VoIP INC
+%%% @copyright (C) 2010-2012, VoIP INC
 %%% @doc
 %%% stepswitch routing WhApp
 %%% @end
+%%% @contributors
+%%%   Karl Anderson
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(stepswitch).
 
@@ -18,7 +21,7 @@
 %%--------------------------------------------------------------------
 -spec start_link/0 :: () -> startlink_ret().
 start_link() ->
-    start_deps(),
+    _ = start_deps(),
     stepswitch_sup:start_link().
 
 %%--------------------------------------------------------------------
@@ -27,9 +30,9 @@ start_link() ->
 %% Starts the app
 %% @end
 %%--------------------------------------------------------------------
--spec start/0 :: () -> ok.
+-spec start/0 :: () -> 'ok'.
 start() ->
-    start_deps(),
+    _ = start_deps(),
     application:start(stepswitch).
 
 %%--------------------------------------------------------------------
@@ -38,7 +41,7 @@ start() ->
 %% Stop the app
 %% @end
 %%--------------------------------------------------------------------
--spec stop/0 :: () -> ok.
+-spec stop/0 :: () -> 'ok'.
 stop() ->
     application:stop(stepswitch).
 
@@ -48,9 +51,8 @@ stop() ->
 %% Ensures that all dependencies for this app are already running
 %% @end
 %%--------------------------------------------------------------------
--spec start_deps/0 :: () -> ok.
+-spec start_deps/0 :: () -> 'ok'.
 start_deps() ->
     whistle_apps_deps:ensure(),
-    wh_util:ensure_started(sasl),
-    wh_util:ensure_started(crypto),
-    wh_util:ensure_started(whistle_amqp).
+    _ = [wh_util:ensure_started(App) || App <- [sasl, crypto, whistle_amqp]],
+    ok.
