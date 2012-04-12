@@ -20,7 +20,7 @@ start_link() ->
 %% @doc Start the amqp server.
 start() ->
     _ = start_deps(),
-    application:start(whistle_amqp).
+    application:start(whistle_amqp, permanent).
 
 start_deps() ->
     whistle_amqp_deps:ensure(?MODULE),

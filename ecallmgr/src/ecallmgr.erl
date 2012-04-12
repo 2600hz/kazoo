@@ -26,7 +26,7 @@ start_link() ->
 -spec start/0 :: () -> 'ok' | {'error', term()}.
 start() ->
     _ = start_deps(),
-    application:start(ecallmgr).
+    application:start(ecallmgr, permanent).
 
 %%--------------------------------------------------------------------
 %% @public

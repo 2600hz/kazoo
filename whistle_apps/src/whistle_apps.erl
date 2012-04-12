@@ -20,7 +20,7 @@ start_link() ->
 %% @doc Start the callmgr server.
 start() ->
     start_deps(),
-    application:start(whistle_apps).
+    application:start(whistle_apps, permanent).
 
 start_deps() ->
     whistle_apps_deps:ensure(),
