@@ -50,7 +50,7 @@
 -behaviour(gen_listener).
 
 %% API
--export([start_link/3]).
+-export([start_link/3, stop/1]).
 -export([handle_call_command/2, handle_conference_command/2, handle_call_events/2]).
 -export([queue_name/1, callid/1, node/1, hostname/1]).
 -export([event_execute_complete/3]).
@@ -58,7 +58,7 @@
 -export([other_legs/1]).
 -export([transferer/2, transferee/2]).
 
-%% gen_server callbacks
+%% gen_listener callbacks
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -129,13 +129,16 @@ start_link(Node, CallId, WhAppQ) ->
                                       ,{consume_options, ?CONSUME_OPTIONS}
                                      ], [Node, CallId, WhAppQ]).
 
+stop(Srv) ->
+    gen_listener:stop(Srv).
+
 -spec callid/1 :: (pid()) -> ne_binary().
 callid(Srv) ->
-    gen_server:call(Srv, {callid}, 1000).
+    gen_listener:call(Srv, {callid}, 1000).
 
 -spec node/1 :: (pid()) -> ne_binary().
 node(Srv) ->
-    gen_server:call(Srv, {node}, 1000).
+    gen_listener:call(Srv, {node}, 1000).
 
 -spec hostname/1 :: (pid()) -> binary().
 hostname(Srv) ->
@@ -149,11 +152,11 @@ queue_name(Srv) ->
 
 -spec other_legs/1 :: (pid()) -> [] | [ne_binary(),...].
 other_legs(Srv) ->
-    gen_server:call(Srv, {other_legs}, 1000).
+    gen_listener:call(Srv, {other_legs}, 1000).
 
 -spec event_execute_complete/3 :: (pid(), ne_binary(), ne_binary()) -> 'ok'.
 event_execute_complete(Srv, CallId, App) ->
-    gen_server:cast(Srv, {event_execute_complete, CallId, App, wh_json:new()}).
+    gen_listener:cast(Srv, {event_execute_complete, CallId, App, wh_json:new()}).
 
 -spec add_leg/1 :: (wh_proplist()) -> 'ok'.
 add_leg(Props) ->
@@ -162,7 +165,7 @@ add_leg(Props) ->
     case props:get_value(<<"Other-Leg-Unique-ID">>, Props) of
         undefined -> ok;
         CallId ->
-            _ = [gen_server:cast(Srv, {add_leg, wh_json:from_list(Props)}) 
+            _ = [gen_listener:cast(Srv, {add_leg, wh_json:from_list(Props)}) 
                  || Srv <- gproc:lookup_pids({p, l, {call_control, CallId}})
                 ],
             ok
@@ -175,7 +178,7 @@ rm_leg(Props) ->
     case props:get_value(<<"Other-Leg-Unique-ID">>, Props) of
         undefined -> ok;
         CallId ->
-            _ = [gen_server:cast(Srv, {rm_leg, wh_json:from_list(Props)}) 
+            _ = [gen_listener:cast(Srv, {rm_leg, wh_json:from_list(Props)}) 
                  || Srv <- gproc:lookup_pids({p, l, {call_control, CallId}})
                 ],
             ok
@@ -183,21 +186,21 @@ rm_leg(Props) ->
 
 -spec transferer/2 :: (pid(), proplist()) -> 'ok'.
 transferer(Srv, Props) ->
-    gen_server:cast(Srv, {transferer, wh_json:from_list(Props)}).
+    gen_listener:cast(Srv, {transferer, wh_json:from_list(Props)}).
 
 -spec transferee/2 :: (pid(), proplist()) -> 'ok'.
 transferee(Srv, Props) ->
-    gen_server:cast(Srv, {transferee, wh_json:from_list(Props)}).
+    gen_listener:cast(Srv, {transferee, wh_json:from_list(Props)}).
 
 -spec handle_call_command/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
 handle_call_command(JObj, Props) ->
     Srv = props:get_value(server, Props),
-    gen_server:cast(Srv, {dialplan, JObj}).
+    gen_listener:cast(Srv, {dialplan, JObj}).
 
 -spec handle_conference_command/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
 handle_conference_command(JObj, Props) ->
     Srv = props:get_value(server, Props),
-    gen_server:cast(Srv, {dialplan, JObj}).
+    gen_listener:cast(Srv, {dialplan, JObj}).
 
 -spec handle_call_events/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
 handle_call_events(JObj, Props) ->
@@ -208,33 +211,33 @@ handle_call_events(JObj, Props) ->
         <<"CHANNEL_EXECUTE_COMPLETE">> ->
             Application = wh_json:get_value(<<"Raw-Application-Name">>, JObj, wh_json:get_value(<<"Application-Name">>, JObj)),
             lager:debug("control queue ~p channel execute completion for '~s'", [Srv, Application]),
-            gen_server:cast(Srv, {event_execute_complete, CallId, Application, JObj});
+            gen_listener:cast(Srv, {event_execute_complete, CallId, Application, JObj});
         <<"CHANNEL_DESTROY">> ->
-            gen_server:cast(Srv, {channel_destroyed, JObj});
+            gen_listener:cast(Srv, {channel_destroyed, JObj});
         <<"CHANNEL_UNBRIDGE">> ->
-            gen_server:cast(Srv, {rm_leg, JObj});
+            gen_listener:cast(Srv, {rm_leg, JObj});
         <<"CHANNEL_BRIDGE">> ->
-            gen_server:cast(Srv, {add_leg, JObj});
+            gen_listener:cast(Srv, {add_leg, JObj});
         <<"CHANNEL_EXECUTE">> ->
             case wh_json:get_value(<<"Raw-Application-Name">>, JObj) of
-                <<"redirect">> -> gen_server:cast(Srv, {channel_redirected, JObj});
+                <<"redirect">> -> gen_listener:cast(Srv, {channel_redirected, JObj});
                 _Else -> ok
             end;
         <<"controller_queue">> ->
             ControllerQ = wh_json:get_value(<<"Controller-Queue">>, JObj),
-            gen_server:cast(Srv, {controller_queue, ControllerQ});
+            gen_listener:cast(Srv, {controller_queue, ControllerQ});
         <<"usurp_control">> ->
             Q = props:get_value(queue, Props),
             case wh_json:get_value(<<"Control-Queue">>, JObj) of
                 Q -> ok;
-                _Else -> gen_server:cast(Srv, {usurp_control, JObj})
+                _Else -> gen_listener:cast(Srv, {usurp_control, JObj})
             end;
         _ ->
             ok
     end.
 
 %%%===================================================================
-%%% gen_server callbacks
+%%% gen_listener callbacks
 %%%===================================================================
 
 %%--------------------------------------------------------------------
@@ -529,10 +532,11 @@ handle_info({sanity_check}, #state{node=Node, callid=CallId, keep_alive_ref=unde
             {'noreply', State#state{sanity_check_tref=TRef}};
         _ ->
             lager:debug("call uuid does not exist, executing post-hangup events and terminating"),
-            gen_server:cast(self(), {channel_destroyed, wh_json:new()}),
+            gen_listener:cast(self(), {channel_destroyed, wh_json:new()}),
             {'noreply', State}
     end;
 handle_info(_Msg, State) ->
+    lager:debug("unhandled message: ~p", [_Msg]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -544,14 +548,14 @@ handle_info(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_event(_JObj, _State) ->
-    {reply, [{server, self()}]}.
+    {reply, []}.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% This function is called by a gen_server when it is about to
+%% This function is called by a gen_listener when it is about to
 %% terminate. It should be the opposite of Module:init/1 and do any
-%% necessary cleaning up. When it returns, the gen_server terminates
+%% necessary cleaning up. When it returns, the gen_listener terminates
 %% with Reason. The return value is ignored.
 %%
 %% @spec terminate(Reason, State) -> void()
