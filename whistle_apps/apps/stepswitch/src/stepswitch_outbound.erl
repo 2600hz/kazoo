@@ -537,10 +537,10 @@ response({ok, Resp}, JObj) ->
      ,{<<"Resource-Response">>, Resp}
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ];
-response({ready, Resp}, _JObj) ->
+response({ready, Resp}, JObj) ->
     lager:debug("originate is ready to execute"),
     [{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, Resp)}
-     ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, Resp)}
+     ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
      ,{<<"Response-Message">>, <<"READY">>}
      ,{<<"Resource-Response">>, Resp}
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
