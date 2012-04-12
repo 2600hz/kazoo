@@ -16,7 +16,7 @@
 
 -export([start_link/0]).
 -export([connected/0]).
--export([add/1, add/2]).
+-export([add/1, add/2, add/3]).
 -export([remove/1]).
 -export([is_node_up/1]).
 -export([init/1
@@ -32,6 +32,7 @@
 -define(SERVER, ?MODULE).
 
 -record(node, {node = 'undefined' :: atom()
+               ,cookie = 'undefined' :: atom()
                ,options = [] :: proplist()
               }).
 
@@ -48,13 +49,19 @@ start_link() ->
 
 %% returns ok or {error, some_error_atom_explaining_more}
 -spec add/1 :: (atom()) -> 'ok' | {'error', 'no_connection'}.
--spec add/2 :: (atom(), proplist()) -> 'ok' | {'error', 'no_connection'}.
+-spec add/2 :: (atom(), proplist() | atom()) -> 'ok' | {'error', 'no_connection'}.
+-spec add/3 :: (atom(), atom(), proplist() | atom()) -> 'ok' | {'error', 'no_connection'}.
 
 add(Node) -> 
     add(Node, []).
 
-add(Node, Opts) ->
-    gen_server:call(?MODULE, {add_fs_node, Node, Opts}, 30000).
+add(Node, Opts) when is_list(Opts) ->
+    add(Node, erlang:get_cookie(), Opts);
+add(Node, Cookie) when is_atom(Cookie) ->
+    add(Node, Cookie, []).
+
+add(Node, Cookie, Opts) ->
+    gen_server:call(?MODULE, {add_fs_node, Node, Cookie, Opts}, 30000).
 
 %% returns ok or {error, some_error_atom_explaining_more}
 -spec remove/1 :: (atom()) -> 'ok'.
@@ -109,13 +116,13 @@ handle_call({is_node_up, Node}, _From, #state{nodes=Nodes}=State) ->
     {reply, [ Node1 || #node{node=Node1} <- Nodes, Node1 =:= Node ] =/= [], State};
 handle_call(connected_nodes, _From, #state{nodes=Nodes}=State) ->
     {reply, [ Node || #node{node=Node} <- Nodes ], State};
-handle_call({add_fs_node, Node, Options}, {Pid, _}, #state{preconfigured_lookup=Pid}=State) ->
-    lager:debug("trying to add ~s", [Node]),
-    {Resp, State1} = add_fs_node(Node, Options, State),
+handle_call({add_fs_node, Node, Cookie, Options}, {Pid, _}, #state{preconfigured_lookup=Pid}=State) ->
+    lager:debug("trying to add ~s(~s)", [Node, Cookie]),
+    {Resp, State1} = add_fs_node(Node, Cookie, Options, State),
     {reply, Resp, State1, hibernate};
-handle_call({add_fs_node, Node, Options}, _From, #state{preconfigured_lookup=Pid}=State) ->
-    lager:debug("trying to add ~s", [Node]),
-    {Resp, State1} = add_fs_node(Node, Options, State),
+handle_call({add_fs_node, Node, Cookie, Options}, _From, #state{preconfigured_lookup=Pid}=State) ->
+    lager:debug("trying to add ~s(~s)", [Node, Cookie]),
+    {Resp, State1} = add_fs_node(Node, Cookie, Options, State),
     Pid1 = maybe_stop_preconfigured_lookup(Resp, Pid),
     {reply, Resp, State1#state{preconfigured_lookup=Pid1}, hibernate};
 handle_call(_Request, _From, State) ->
@@ -132,9 +139,7 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast({rm_fs_node, Node}, State) ->
-    {noreply, rm_fs_node(Node, State), hibernate};
-handle_cast(_Msg, State) ->
-    {noreply, State}.
+    {noreply, rm_fs_node(Node, State), hibernate}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -196,12 +201,13 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec add_fs_node/3 :: (atom(), proplist(), #state{}) -> {'ok', #state{}} | 
-                                                         {{'error', 'no_connection'}, #state{}} |
-                                                         {{'error', 'failed_starting_handlers'}, #state{}}.
-add_fs_node(Node, Options, #state{nodes=Nodes}=State) ->
+-spec add_fs_node/4 :: (atom(), atom(), proplist(), #state{}) -> {'ok', #state{}} | 
+                                                                 {{'error', 'no_connection'}, #state{}} |
+                                                                 {{'error', 'failed_starting_handlers'}, #state{}}.
+add_fs_node(Node, Cookie, Options, #state{nodes=Nodes}=State) ->
     case [N || #node{node=Node1}=N <- Nodes, Node =:= Node1] of
         [] ->
+            erlang:set_cookie(Node, Cookie),
             case net_adm:ping(Node) of
                 pong ->
                     lager:debug("no node matching ~p found, adding", [Node]),
@@ -209,17 +215,17 @@ add_fs_node(Node, Options, #state{nodes=Nodes}=State) ->
                         {ok, _} -> 
                             erlang:monitor_node(Node, true),
                             lager:info("successfully connected to node '~s'", [Node]),
-                            {ok, State#state{nodes=[#node{node=Node, options=Options} | Nodes]}};
+                            {ok, State#state{nodes=[#node{node=Node, cookie=Cookie, options=Options} | Nodes]}};
                         {error, {already_started, _}} ->
                             lager:info("already connected to node '~s'", [Node]),
-                            {ok, State#state{nodes=[#node{node=Node, options=Options} | Nodes]}};
+                            {ok, State#state{nodes=[#node{node=Node, cookie=Cookie, options=Options} | Nodes]}};
                         _Else ->
                             lager:warning("failed to add node '~s'", [Node]),
                             self() ! {nodedown, Node},
                             {{error, failed_starting_handlers}, State}
                     end;
                 pang ->
-                    lager:info("unable to connect to node '~s'; ensure it is reachable from this server and using cookie '~s'", [Node, erlang:get_cookie()]),
+                    lager:info("unable to connect to node '~s'; ensure it is reachable from this server and using cookie '~s'", [Node, Cookie]),
                     self() ! {nodedown, Node},
                     {{error, no_connection}, State}
             end;
@@ -246,20 +252,26 @@ start_preconfigured_servers() ->
     put(callid, ?LOG_SYSTEM_ID),
     case ecallmgr_config:get(<<"fs_nodes">>, []) of
         [] ->
-            lager:debug("no preconfigured servers, waiting then trying again"),
             lager:info("no preconfigured servers available. Is the sysconf whapp running?"),
             timer:sleep(5000),
             start_preconfigured_servers();
         Nodes when is_list(Nodes) ->
-            lager:debug("nodes retrieved, adding..."),
             lager:info("successfully retrieved FreeSWITCH nodes to connect with, doing so..."),
-            [?MODULE:add(wh_util:to_atom(N, true)) || N <- Nodes];
+            [start_node_from_config(N) || N <- Nodes];
         _E ->
             lager:debug("recieved a non-list for fs_nodes: ~p", [_E]),
             timer:sleep(5000),
             start_preconfigured_servers()
     end.
 
+start_node_from_config(MaybeJObj) ->
+    case wh_json:is_json_object(MaybeJObj) of
+        false -> ?MODULE:add(wh_util:to_atom(MaybeJObj, true));
+        true ->
+            {[Cookie], [Node]} = wh_json:get_values(MaybeJObj),
+            ?MODULE:add(wh_util:to_atom(Node, true), wh_util:to_atom(Cookie, true))
+    end.
+            
 -spec maybe_stop_preconfigured_lookup/2 :: ('ok' | {'error', _}, pid() | 'undefined') -> pid() | 'undefined'.
 maybe_stop_preconfigured_lookup(_, undefined) -> undefined;
 maybe_stop_preconfigured_lookup(ok, Pid) ->
