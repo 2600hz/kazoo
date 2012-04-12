@@ -35,9 +35,9 @@ get_interface_properties(Node, Interface) ->
         {ok, Response} ->
             R = binary:replace(Response, <<" ">>, <<>>, [global]),
             [KV || Line <- binary:split(R, <<"\n">>, [global]),
-                   (KV = case binary:split(Line, <<"\t">>) of 
+                   (KV = case binary:split(Line, <<"\t">>) of
                              [K, V] -> {K, V};
-                             _ -> false 
+                             _ -> false
                          end) =/= false
             ];
         _Else -> []
@@ -66,7 +66,7 @@ get_sip_from(Prop) ->
 %% retrieves the sip address for the 'request' field
 -spec get_sip_request/1 :: (proplist()) -> ne_binary().
 get_sip_request(Prop) ->
-    list_to_binary([props:get_value(<<"Hunt-Destination-Number">>, Prop                    
+    list_to_binary([props:get_value(<<"Hunt-Destination-Number">>, Prop
                                     ,props:get_value(<<"Caller-Destination-Number">>, Prop, "nouser"))
                     ,"@"
                     ,props:get_value(list_to_binary(["variable_", ?CHANNEL_VAR_PREFIX, "Realm"]), Prop
@@ -146,10 +146,7 @@ fs_log(Node, Format, Args) ->
 
 -spec put_callid/1 :: (wh_json:json_object()) -> 'undefined' | term().
 put_callid(JObj) ->
-    case props:get_value(<<"Call-ID">>, JObj) of
-        undefined -> put(callid, wh_json:get_value(<<"Msg-ID">>, JObj, <<"0000000000">>));
-        CallID -> put(callid, CallID)
-    end.
+    wh_util:put_callid(JObj).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -157,7 +154,7 @@ put_callid(JObj) ->
 %% takes endpoints (/sofia/foo/bar), and optionally a caller id name/num
 %% and create the dial string ([origination_caller_id_name=Name
 %%                              ,origination_caller_id_number=Num]Endpoint)
-%% joined by the optional seperator.  Saves time by not spawning 
+%% joined by the optional seperator.  Saves time by not spawning
 %% endpoints with the invite format of "route" (about 100ms per endpoint)
 %% @end
 %%--------------------------------------------------------------------
@@ -176,13 +173,14 @@ build_bridge_string(Endpoints, Seperator) ->
                  ]
                  ,Endpoint}
                 || Endpoint <- Endpoints
-               ],    
+               ],
     BridgeStrings = build_bridge_endpoints(props:unique(KeyedEPs), []),
     %% NOTE: dont use binary_join here as it will crash on an empty list...
     wh_util:join_binary(lists:reverse(BridgeStrings), Seperator).
 
 -type build_return() :: ne_binary() | {'worker', pid()}.
--spec build_bridge_endpoints/2 :: (wh_json:json_objects(), [build_return(),...] | []) -> [ne_binary(),...].
+-type bridge_endpoints() :: [{[ne_binary() | 'undefined',...], wh_json:json_object()},...] | [].
+-spec build_bridge_endpoints/2 :: (bridge_endpoints(), [build_return(),...] | []) -> [ne_binary(),...].
 build_bridge_endpoints([], Channels) ->
     lists:foldr(fun({worker, Pid}, BridgeStrings) ->
                         receive
@@ -192,7 +190,7 @@ build_bridge_endpoints([], Channels) ->
                                     false -> [BridgeString|BridgeStrings]
                                 end
                         after
-                            2000 -> BridgeStrings 
+                            2000 -> BridgeStrings
                         end;
                  (BridgeString, BridgeStrings) -> [BridgeString|BridgeStrings]
                 end, [], Channels);
@@ -201,11 +199,12 @@ build_bridge_endpoints([{[<<"route">>|_], Endpoint}|Endpoints], Channels) ->
 build_bridge_endpoints([{_, Endpoint}|Endpoints], Channels) ->
     S = self(),
     Pid = spawn(fun() ->
-                        S ! {self(), build_bridge_endpoint(Endpoint)} 
+                        S ! {self(), build_bridge_endpoint(Endpoint)}
                 end),
     build_bridge_endpoints(Endpoints, [{worker, Pid}|Channels]).
 
 -spec build_bridge_endpoint/1 :: (wh_json:json_object()) -> binary().
+-spec build_bridge_endpoint/3 :: (wh_json:json_object(), ne_binary(), [nonempty_string(),...] | []) -> binary().
 build_bridge_endpoint(JObj) ->
     build_bridge_endpoint(JObj, wh_json:get_value(<<"Endpoint-Type">>, JObj, <<"sip">>), ecallmgr_fs_xml:get_leg_vars(JObj)).
 

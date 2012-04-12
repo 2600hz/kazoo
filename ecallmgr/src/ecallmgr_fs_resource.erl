@@ -356,7 +356,6 @@ originate_to_dialstrings(JObj, Node, ServerId, DialStrings, Action) ->
 -spec originate_and_park/5 :: (wh_json:json_object(), atom(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 originate_and_park(JObj, Node, ServerId, DialStrings, UUID) ->
     {ok, CtlPid} = ecallmgr_call_sup:start_control_process(Node, UUID, ServerId),
-    {ok, _EvtPid} = ecallmgr_call_sup:start_event_process(Node, UUID),
 
     CtlQ = ecallmgr_call_control:queue_name(CtlPid),
 
@@ -369,21 +368,24 @@ originate_and_park(JObj, Node, ServerId, DialStrings, UUID) ->
     case ecallmgr_amqp_pool:originate_ready(ServerId, CtlProp) of
         {ok, _Exec} ->
             lager:debug("recv originate_execute: ~p", [_Exec]),
-            execute_originate_park(JObj, Node, ServerId, DialStrings, UUID);
+            execute_originate_park(JObj, Node, ServerId, DialStrings, UUID, CtlPid);
         {error, _E} ->
             lager:debug("failed to recv valid originate_execute: ~p", [_E]),
             E = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, wh_util:to_binary(wh_util:current_tstamp()))}
                  ,{<<"Request">>, JObj}
                  ,{<<"Error-Message">>, <<"Failed to receive valid originate_execute in time">>}
                 ],
-            wh_api:publish_error(ServerId, E)
+            wh_api:publish_error(ServerId, E),
+            ecallmgr_call_control:stop(CtlPid)
     end.
 
-execute_originate_park(JObj, Node, ServerId, DialStrings, UUID) ->
+-spec execute_originate_park/6 :: (wh_json:json_object(), atom(), ne_binary(), ne_binary(), ne_binary(), pid()) -> 'ok'.
+execute_originate_park(JObj, Node, ServerId, DialStrings, UUID, CtlPid) ->
     Args = list_to_binary([ecallmgr_fs_xml:get_channel_vars(wh_json:set_value(<<"origination_uuid">>, UUID, JObj)), DialStrings, " ", ?ORIGINATE_PARK]),
     _ = ecallmgr_util:fs_log(Node, "whistle originating call: ~s", [Args]),
     case handle_originate_return(Node, freeswitch:api(Node, 'originate', wh_util:to_list(Args))) of
         {ok, Resp} ->
+            {ok, _EvtPid} = ecallmgr_call_sup:start_event_process(Node, UUID),
             lager:debug("originate completed, sending notice to requestor", []),
             wapi_resource:publish_originate_resp(ServerId, Resp);
         {error, Error} ->
@@ -391,5 +393,6 @@ execute_originate_park(JObj, Node, ServerId, DialStrings, UUID) ->
                  ,{<<"Request">>, JObj}
                  | Error
                 ],
-            wh_api:publish_error(ServerId, E)
+            wh_api:publish_error(ServerId, E),
+            ecallmgr_call_control:stop(CtlPid)
     end.
