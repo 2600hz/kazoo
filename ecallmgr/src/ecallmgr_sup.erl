@@ -15,7 +15,7 @@
 -export([init/1]).
 
 -define(CHILD(Name, Type), fun(N, pool) -> {N, {poolboy, start_link, [[{name, {local, N}}
-                                                                       ,{worker_module, ecallmgr_amqp_worker}
+                                                                       ,{worker_module, wh_amqp_worker}
                                                                        ,{size, 50}
                                                                        ,{max_overflow, 50}
                                                                       ]
