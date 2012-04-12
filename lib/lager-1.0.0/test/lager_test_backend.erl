@@ -87,6 +87,12 @@ count_ignored() ->
 flush() ->
     gen_event:call(lager_event, ?MODULE, flush).
 
+has_line_numbers() ->
+	%% are we R15 or greater
+	Rel = erlang:system_info(otp_release),
+	{match, [Major]} = re:run(Rel, "^R(\\d+)[A|B](|0(\\d))$", [{capture, [1], list}]),
+	list_to_integer(Major) >= 15.
+
 not_running_test() ->
     ?assertEqual({error, lager_not_running}, lager:log(info, self(), "not running")).
 
@@ -225,6 +231,8 @@ setup() ->
     application:load(lager),
     application:set_env(lager, handlers, [{?MODULE, info}]),
     application:set_env(lager, error_logger_redirect, false),
+    application:start(compiler),
+    application:start(syntax_tools),
     application:start(lager),
     gen_event:call(lager_event, ?MODULE, flush).
 
@@ -239,6 +247,18 @@ crash(Type) ->
     _ = gen_event:which_handlers(error_logger),
     ok.
 
+test_body(Expected, Actual) ->
+    case has_line_numbers() of
+        true ->
+            FileLine = string:substr(Actual, length(Expected)+1),
+            Body = string:substr(Actual, 1, length(Expected)),
+            ?assertEqual(Expected, Body),
+            ?assertEqual(" line ", string:substr(FileLine, 1, 6));
+        false ->
+            ?assertEqual(Expected, Actual)
+    end.
+
+
 error_logger_redirect_crash_test_() ->
     {foreach,
         fun() ->
@@ -246,6 +266,8 @@ error_logger_redirect_crash_test_() ->
                 application:load(lager),
                 application:set_env(lager, error_logger_redirect, true),
                 application:set_env(lager, handlers, [{?MODULE, error}]),
+                application:start(compiler),
+                application:start(syntax_tools),
                 application:start(lager),
                 crash:start()
         end,
@@ -289,7 +311,7 @@ error_logger_redirect_crash_test_() ->
                         crash(case_clause),
                         {_, _, Msg} = pop(),
                         Expected = lists:flatten(io_lib:format("[error] ~w gen_server crash terminated with reason: no case clause matching {} in crash:handle_call/3", [Pid])),
-                        ?assertEqual(Expected, lists:flatten(Msg))
+                        test_body(Expected, lists:flatten(Msg))
                 end
             },
             {"case clause string",
@@ -298,7 +320,7 @@ error_logger_redirect_crash_test_() ->
                         crash(case_clause_string),
                         {_, _, Msg} = pop(),
                         Expected = lists:flatten(io_lib:format("[error] ~w gen_server crash terminated with reason: no case clause matching \"crash\" in crash:handle_call/3", [Pid])),
-                        ?assertEqual(Expected, lists:flatten(Msg))
+                        test_body(Expected, lists:flatten(Msg))
                 end
             },
             {"function clause",
@@ -307,7 +329,7 @@ error_logger_redirect_crash_test_() ->
                         crash(function_clause),
                         {_, _, Msg} = pop(),
                         Expected = lists:flatten(io_lib:format("[error] ~w gen_server crash terminated with reason: no function clause matching crash:function({})", [Pid])),
-                        ?assertEqual(Expected, lists:flatten(Msg))
+                        test_body(Expected, lists:flatten(Msg))
                 end
             },
             {"if clause",
@@ -316,7 +338,7 @@ error_logger_redirect_crash_test_() ->
                         crash(if_clause),
                         {_, _, Msg} = pop(),
                         Expected = lists:flatten(io_lib:format("[error] ~w gen_server crash terminated with reason: no true branch found while evaluating if expression in crash:handle_call/3", [Pid])),
-                        ?assertEqual(Expected, lists:flatten(Msg))
+                        test_body(Expected, lists:flatten(Msg))
                 end
             },
             {"try clause",
@@ -325,7 +347,7 @@ error_logger_redirect_crash_test_() ->
                         crash(try_clause),
                         {_, _, Msg} = pop(),
                         Expected = lists:flatten(io_lib:format("[error] ~w gen_server crash terminated with reason: no try clause matching [] in crash:handle_call/3", [Pid])),
-                        ?assertEqual(Expected, lists:flatten(Msg))
+                        test_body(Expected, lists:flatten(Msg))
                 end
             },
             {"undefined function",
@@ -334,7 +356,7 @@ error_logger_redirect_crash_test_() ->
                         crash(undef),
                         {_, _, Msg} = pop(),
                         Expected = lists:flatten(io_lib:format("[error] ~w gen_server crash terminated with reason: call to undefined function crash:booger/0 from crash:handle_call/3", [Pid])),
-                        ?assertEqual(Expected, lists:flatten(Msg))
+                        test_body(Expected, lists:flatten(Msg))
                 end
             },
             {"bad math",
@@ -343,7 +365,7 @@ error_logger_redirect_crash_test_() ->
                         crash(badarith),
                         {_, _, Msg} = pop(),
                         Expected = lists:flatten(io_lib:format("[error] ~w gen_server crash terminated with reason: bad arithmetic expression in crash:handle_call/3", [Pid])),
-                        ?assertEqual(Expected, lists:flatten(Msg))
+                        test_body(Expected, lists:flatten(Msg))
                 end
             },
             {"bad match",
@@ -352,7 +374,7 @@ error_logger_redirect_crash_test_() ->
                         crash(badmatch),
                         {_, _, Msg} = pop(),
                         Expected = lists:flatten(io_lib:format("[error] ~w gen_server crash terminated with reason: no match of right hand value {} in crash:handle_call/3", [Pid])),
-                        ?assertEqual(Expected, lists:flatten(Msg))
+                        test_body(Expected, lists:flatten(Msg))
                 end
             },
             {"bad arity",
@@ -361,7 +383,7 @@ error_logger_redirect_crash_test_() ->
                         crash(badarity),
                         {_, _, Msg} = pop(),
                         Expected = lists:flatten(io_lib:format("[error] ~w gen_server crash terminated with reason: fun called with wrong arity of 1 instead of 3 in crash:handle_call/3", [Pid])),
-                        ?assertEqual(Expected, lists:flatten(Msg))
+                        test_body(Expected, lists:flatten(Msg))
                 end
             },
             {"bad arg1",
@@ -370,7 +392,7 @@ error_logger_redirect_crash_test_() ->
                         crash(badarg1),
                         {_, _, Msg} = pop(),
                         Expected = lists:flatten(io_lib:format("[error] ~w gen_server crash terminated with reason: bad argument in crash:handle_call/3", [Pid])),
-                        ?assertEqual(Expected, lists:flatten(Msg))
+                        test_body(Expected, lists:flatten(Msg))
                 end
             },
             {"bad arg2",
@@ -379,7 +401,7 @@ error_logger_redirect_crash_test_() ->
                         crash(badarg2),
                         {_, _, Msg} = pop(),
                         Expected = lists:flatten(io_lib:format("[error] ~w gen_server crash terminated with reason: bad argument in call to erlang:iolist_to_binary([\"foo\",bar]) in crash:handle_call/3", [Pid])),
-                        ?assertEqual(Expected, lists:flatten(Msg))
+                        test_body(Expected, lists:flatten(Msg))
                 end
             },
             {"noproc",
@@ -397,7 +419,7 @@ error_logger_redirect_crash_test_() ->
                         crash(badfun),
                         {_, _, Msg} = pop(),
                         Expected = lists:flatten(io_lib:format("[error] ~w gen_server crash terminated with reason: bad function booger in crash:handle_call/3", [Pid])),
-                        ?assertEqual(Expected, lists:flatten(Msg))
+                        test_body(Expected, lists:flatten(Msg))
                 end
             }
 
@@ -695,7 +717,7 @@ error_logger_redirect_test_() ->
                         {_, _, Msg} = pop(),
                         Expected = lists:flatten(io_lib:format("[error] ~p CRASH REPORT Process ~p with 0 neighbours crashed with reason: no function clause matching special_process:foo(bar)",
                                 [Pid, Pid])),
-                        ?assertEqual(Expected, lists:flatten(Msg))
+                        test_body(Expected, lists:flatten(Msg))
                 end
             },
             {"messages should not be generated if they don't satisfy the threshold",
