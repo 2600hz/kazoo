@@ -272,13 +272,6 @@ wait_for_originate(MsgId) ->
                 {<<"error">>, <<"originate_resp">>, _} ->
                     {error, JObj};
                 {<<"dialplan">>, <<"originate_ready">>, _} ->
-                    lager:debug("originate is ready"),
-                    RespQ = wh_json:get_value(<<"Server-ID">>, JObj),
-                    Resp = [{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
-                            ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
-                            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)],
-
-                    wapi_dialplan:publish_originate_execute(RespQ, Resp),
                     {ready, JObj};
                 _  ->
                     wait_for_originate(MsgId)

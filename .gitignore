@@ -19,3 +19,4 @@ utils/*/ebin/*.app
 .*_dialyzer.plt
 #*
 .#*
+/whistle_apps/erl_crash.dump
