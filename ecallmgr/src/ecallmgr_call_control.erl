@@ -52,15 +52,21 @@
 %% API
 -export([start_link/3]).
 -export([handle_call_command/2, handle_conference_command/2, handle_call_events/2]).
--export([queue_name/1, callid/1, node/1]).
+-export([queue_name/1, callid/1, node/1, hostname/1]).
 -export([event_execute_complete/3]).
 -export([add_leg/1, rm_leg/1]).
 -export([other_legs/1]).
 -export([transferer/2, transferee/2]).
 
 %% gen_server callbacks
--export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2
-         ,terminate/2, code_change/3]).
+-export([init/1
+         ,handle_call/3
+         ,handle_cast/2
+         ,handle_info/2
+         ,handle_event/2
+         ,terminate/2
+         ,code_change/3
+        ]).
 
 -include("ecallmgr.hrl").
 
@@ -131,6 +137,12 @@ callid(Srv) ->
 node(Srv) ->
     gen_server:call(Srv, {node}, 1000).
 
+-spec hostname/1 :: (pid()) -> binary().
+hostname(Srv) ->
+    Node = ?MODULE:node(Srv),
+    [_, Hostname] = binary:split(wh_util:to_binary(Node), <<"@">>),
+    Hostname.
+
 -spec queue_name/1 :: (pid()) -> ne_binary().
 queue_name(Srv) ->
     gen_listener:queue_name(Srv).
@@ -143,30 +155,30 @@ other_legs(Srv) ->
 event_execute_complete(Srv, CallId, App) ->
     gen_server:cast(Srv, {event_execute_complete, CallId, App, wh_json:new()}).
 
--spec add_leg/1 :: (wh_proplist()) -> 'ok' | ['ok',...].
+-spec add_leg/1 :: (wh_proplist()) -> 'ok'.
 add_leg(Props) ->
     %% if there is a Other-Leg-Unique-ID then that MAY refer to a leg managed
     %% by call_control, if so add the leg to it
-    CallId = props:get_value(<<"Other-Leg-Unique-ID">>, Props),
-    put(callid, CallId),
-    case is_binary(CallId) andalso ecallmgr_call_control_sup:find_workers(CallId) of
-        false -> ok;
-        {error, _} -> ok;
-        {ok, Srvs} -> 
-            [gen_server:cast(Srv, {add_leg, wh_json:from_list(Props)}) || Srv <- Srvs]
+    case props:get_value(<<"Other-Leg-Unique-ID">>, Props) of
+        undefined -> ok;
+        CallId ->
+            _ = [gen_server:cast(Srv, {add_leg, wh_json:from_list(Props)}) 
+                 || Srv <- gproc:lookup_pids({p, l, {call_control, CallId}})
+                ],
+            ok
     end.
 
--spec rm_leg/1 :: (wh_proplist()) -> 'ok' | ['ok',...].
+-spec rm_leg/1 :: (wh_proplist()) -> 'ok'.
 rm_leg(Props) ->
     %% if there is a Other-Leg-Unique-ID then that MAY refer to a leg managed
     %% by call_control, if so remove the leg from it
-    CallId = props:get_value(<<"Other-Leg-Unique-ID">>, Props),
-    put(callid, CallId),
-    case is_binary(CallId) andalso ecallmgr_call_control_sup:find_workers(CallId) of
-        false -> ok;
-        {error, _} -> ok;
-        {ok, Srvs} -> 
-            [gen_server:cast(Srv, {rm_leg, wh_json:from_list(Props)}) || Srv <- Srvs]
+    case props:get_value(<<"Other-Leg-Unique-ID">>, Props) of
+        undefined -> ok;
+        CallId ->
+            _ = [gen_server:cast(Srv, {rm_leg, wh_json:from_list(Props)}) 
+                 || Srv <- gproc:lookup_pids({p, l, {call_control, CallId}})
+                ],
+            ok
     end.
 
 -spec transferer/2 :: (pid(), proplist()) -> 'ok'.
@@ -240,6 +252,8 @@ init([Node, CallId, WhAppQ]) ->
     put(callid, CallId),
     lager:debug("starting call control listener"),
     erlang:monitor_node(Node, true),
+    gproc:reg({p, l, call_control}),
+    gproc:reg({p, l, {call_control, CallId}}),
     TRef = erlang:send_after(?SANITY_CHECK_PERIOD, self(), {sanity_check}),
     {ok, #state{node=Node, callid=CallId, command_q=queue:new(), self=self()
                 ,controller_q=WhAppQ, start_time=erlang:now(), sanity_check_tref=TRef}

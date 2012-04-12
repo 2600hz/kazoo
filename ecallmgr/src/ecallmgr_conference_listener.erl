@@ -192,7 +192,7 @@ code_change(_OldVsn, State, _Extra) ->
 -spec search_nodes_for_conference/2 :: ([atom(),...], ne_binary()) -> undefined | wh_json:json_object().
 
 search_nodes_for_conference(ConferenceId) ->
-    search_nodes_for_conference(get_nodes(), ConferenceId).
+    search_nodes_for_conference(ecallmgr_fs_nodes:connected(), ConferenceId).
 
 search_nodes_for_conference([], _) ->
     lager:debug("failed to find conference on any of the freeswitch nodes"),
@@ -211,7 +211,7 @@ search_nodes_for_conference([Node|Nodes], ConferenceId) ->
 %% TODO: Flush cache on conference end
 -spec get_conference_focus/1 :: (ne_binary()) -> undefined | atom().
 get_conference_focus(ConferenceId) ->
-    case search_for_conference_focus(get_nodes(), ConferenceId) of
+    case search_for_conference_focus(ecallmgr_fs_nodes:connected(), ConferenceId) of
         undefined ->
             lager:debug("failed to find conference focus for conference ~s", [ConferenceId]),
             undefined;
@@ -304,9 +304,3 @@ member_flags_xml_to_json([#xmlElement{name=Name, content=Content}|Xml], JObj) ->
     end;
 member_flags_xml_to_json([_|Xml], JObj) ->
     member_flags_xml_to_json(Xml, JObj).
-
--spec get_nodes/0 :: () -> [atom(),...] | [].
-get_nodes() ->
-    [ecallmgr_fs_node:fs_node(Srv) || Srv <- ecallmgr_fs_sup:node_handlers()].
-
-

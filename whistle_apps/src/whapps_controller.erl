@@ -74,18 +74,14 @@ initialize_whapps() ->
             lager:debug("changing the erlang cookie to ~s", [Cookie]),
             erlang:set_cookie(node(), wh_util:to_atom(Cookie, true))
     end,
-
     case couch_mgr:db_exists(?WH_ACCOUNTS_DB) of
         false -> whapps_maintenance:refresh();
         true -> ok
     end,
-
     WhApps = whapps_config:get(?MODULE, <<"whapps">>, []),
-    Started = [ WhApp
-                || WhApp <- WhApps,
-                   (Res = start_app(WhApp)) =:= ok orelse Res =:= exists
-              ],
-    lager:info("Auto-started whapps ~p", [Started]).
+    StartWhApps = [wh_util:to_atom(WhApp, true) || WhApp <- WhApps],
+    whistle_apps_sup:initialize_whapps(StartWhApps),
+    lager:info("auto-started whapps ~p", [StartWhApps]).
 
 %%%===================================================================
 %%% Internal functions

@@ -1,0 +1,42 @@
+#!/usr/bin/env escript
+%% -*- erlang -*-
+
+%% @spec main() -> no_return()
+%% @doc Escript for building edown (or edoc) documentation
+%%
+%% Usage: edown_make ConfigFile
+%%
+%% The ConfigFile will be read using {@link file:script/1}, and should return
+%% `{App, Dir, Options}', as required by {@link edoc:application/3}.
+%%
+%% This function does not manage dependencies. It is simply a wrapper around
+%% {@link edoc:application/3}.
+%% @end
+%%
+main(Args) ->
+    Config = parse_args(Args),
+    edown_make:main([Config]).
+
+parse_args(Args) ->
+    parse_args(Args, "edown.config").
+
+parse_args([], Config) ->
+    Config;
+parse_args(["-config", Config|Args], _) ->
+    parse_args(Args, Config);
+parse_args(["-pa", P|Args], Config) ->
+    code:add_patha(P),
+    parse_args(Args, Config);
+parse_args(["-pz", P|Args], Config) ->
+    code:add_pathz(P),
+    parse_args(Args, Config);
+parse_args(Args, _) ->
+    io:fwrite("Unknown options: ~p~n", [Args]),
+    usage(),
+    halt(1).
+
+usage() ->
+    Full = escript:script_name(),
+    Base = filename:basename(Full),
+    io:fwrite("~s~nUsage: ~s -config Config [-pa Path] [-pz Path]~n",
+	      [Full, Base]).

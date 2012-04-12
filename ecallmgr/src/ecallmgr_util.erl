@@ -124,11 +124,11 @@ get_setting(Setting, Default) ->
 
 -spec is_node_up/1 :: (atom()) -> boolean().
 is_node_up(Node) ->
-    ecallmgr_fs_handler:is_node_up(Node).
+    ecallmgr_fs_nodes:is_node_up(Node).
 
 -spec is_node_up/2 :: (atom(), ne_binary()) -> boolean().
 is_node_up(Node, UUID) ->
-    case ecallmgr_fs_handler:is_node_up(Node) andalso freeswitch:api(Node, uuid_exists, wh_util:to_list(UUID)) of
+    case ecallmgr_fs_nodes:is_node_up(Node) andalso freeswitch:api(Node, uuid_exists, wh_util:to_list(UUID)) of
         {'ok', IsUp} -> wh_util:is_true(IsUp);
         timeout -> timer:sleep(100), is_node_up(Node, UUID);
         _ -> false

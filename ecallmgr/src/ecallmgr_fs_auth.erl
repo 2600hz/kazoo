@@ -12,22 +12,23 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/1, start_link/2, lookup_user/3]).
-
-%% gen_server callbacks
--export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-         terminate/2, code_change/3]).
+-export([start_link/1, start_link/2]).
+-export([lookup_user/3]).
+-export([init/1
+         ,handle_call/3
+         ,handle_cast/2
+         ,handle_info/2
+         ,terminate/2
+         ,code_change/3
+        ]).
 
 -define(SERVER, ?MODULE).
--define(FS_TIMEOUT, 5000).
 
 -include("ecallmgr.hrl").
 
--record(state, {
-          node = 'undefined' :: atom()
-          ,stats = #handler_stats{} :: #handler_stats{}
-          ,lookups = [] :: [{pid(), binary(), {integer(), integer(), integer()}},...] | []
-         }).
+-record(state, {node = 'undefined' :: atom()
+                ,options = [] :: proplist()
+               }).
 
 %%%===================================================================
 %%% API
@@ -61,18 +62,14 @@ start_link(Node, Options) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init([Node, _Options]) ->
-    process_flag(trap_exit, true),
-
+init([Node, Options]) ->
     put(callid, Node),
+    process_flag(trap_exit, true),
     lager:debug("starting new fs auth listener for ~s", [Node]),
-
-    erlang:monitor_node(Node, true),
     case freeswitch:bind(Node, directory) of
         ok ->
             lager:debug("bound to directory request on ~s", [Node]),
-            Stats = #handler_stats{started=erlang:now()},
-            {ok, #state{node=Node, stats=Stats}};
+            {ok, #state{node=Node, options=Options}};
         {error, Reason} ->
             lager:warning("failed to bind to directory requests on ~s: ~p", [Node, Reason]),
             {stop, Reason};
@@ -121,7 +118,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({fetch, directory, <<"domain">>, <<"name">>, _Value, ID, [undefined | Data]}, #state{node=Node, stats=Stats, lookups=LUs}=State) ->
+handle_info({fetch, directory, <<"domain">>, <<"name">>, _Value, ID, [undefined | Data]}, #state{node=Node}=State) ->
     case props:get_value(<<"sip_auth_method">>, Data) of
         <<"REGISTER">> ->
             lager:debug("received fetch request (~s) for sip registration creds from ~s", [ID, Node]);
@@ -130,11 +127,9 @@ handle_info({fetch, directory, <<"domain">>, <<"name">>, _Value, ID, [undefined 
     end,
     case {props:get_value(<<"Event-Name">>, Data), props:get_value(<<"action">>, Data)} of
         {<<"REQUEST_PARAMS">>, <<"sip_auth">>} ->
-            {ok, LookupPid} = ecallmgr_fs_auth_sup:start_req(Node, ID, Data),
-            erlang:monitor(process, LookupPid),
-
-            LookupsReq = Stats#handler_stats.lookups_requested + 1,
-            {noreply, State#state{lookups=[{LookupPid, ID, erlang:now()} | LUs], stats=Stats#handler_stats{lookups_requested=LookupsReq}}, hibernate};
+            %% TODO: move this to a supervisor somewhere....
+            lookup_user(Node, ID, Data),
+            {noreply, State, hibernate};
         _Other ->
             _ = freeswitch:fetch_reply(Node, ID, ?EMPTYRESPONSE),
             lager:debug("ignoring request from ~s for ~p", [Node, _Other]),
@@ -142,56 +137,10 @@ handle_info({fetch, directory, <<"domain">>, <<"name">>, _Value, ID, [undefined 
     end;
 
 handle_info({fetch, _Section, _Something, _Key, _Value, ID, [undefined | _Data]}, #state{node=Node}=State) ->
-    lager:debug("received fetch request (~s) for ~s ~s from ~s", [ID, _Section, _Something, Node]),
+    lager:debug("sending empyt reply for request (~s) for ~s ~s from ~s", [ID, _Section, _Something, Node]),
     _ = freeswitch:fetch_reply(Node, ID, ?EMPTYRESPONSE),
-    lager:debug("ignoring request from for ~s", [Node, props:get_value(<<"Event-Name">>, _Data)]),
     {noreply, State};
 
-handle_info({nodedown, Node}, #state{node=Node}=State) ->
-    lager:debug("lost connection to node ~s, waiting for reconnection", [Node]),
-    freeswitch:close(Node),
-    _Ref = erlang:send_after(0, self(), {is_node_up, 100}),
-    {noreply, State};
-
-handle_info({is_node_up, Timeout}, State) when Timeout > ?FS_TIMEOUT ->
-    handle_info({is_node_up, ?FS_TIMEOUT}, State);
-handle_info({is_node_up, Timeout}, #state{node=Node}=State) ->
-    case ecallmgr_fs_handler:is_node_up(Node) of
-        true ->
-            lager:debug("node ~s recovered, rebinding", [Node]),
-            {noreply, State, 0};
-        false ->
-            lager:debug("node ~s still down, retrying in ~b ms", [Node, Timeout]),
-            _Ref = erlang:send_after(Timeout, self(), {is_node_up, Timeout*2}),
-            {noreply, State}
-    end;
-
-handle_info(shutdown, #state{node=Node, lookups=LUs}=State) ->
-    lists:foreach(fun({Pid, _CallID, _StartTime}) ->
-                          case erlang:is_process_alive(Pid) of
-                              true -> Pid ! shutdown;
-                              false -> ok
-                          end
-                  end, LUs),
-    freeswitch:close(Node),
-    lager:debug("asked to shut down for node ~s", [Node]),
-    {stop, normal, State};
-
-handle_info({diagnostics, Pid}, #state{lookups=LUs, stats=Stats}=State) ->
-    ActiveLUs = [ [{fs_auth_id, ID}, {started, Started}] || {_, ID, Started} <- LUs ],
-    Resp = [{active_lookups, ActiveLUs}
-            | ecallmgr_diagnostics:get_diagnostics(Stats)
-           ],
-    Pid ! Resp,
-    {noreply, State};
-handle_info({'DOWN', _Ref, process, LU, _Reason}, #state{lookups=LUs}=State) ->
-    {noreply, State#state{lookups=lists:keydelete(LU, 1, LUs)}, hibernate};
-handle_info({'EXIT', _Pid, noconnection}, #state{node=Node}=State) ->
-    lager:debug("noconnection received for node ~s, pid: ~p", [Node, _Pid]),
-    {stop, normal, State};
-handle_info({'EXIT', LU, _Reason}, #state{node=Node, lookups=LUs}=State) ->
-    lager:debug("lookup ~w for node ~s exited unexpectedly", [LU, Node]),
-    {noreply, State#state{lookups=lists:keydelete(LU, 1, LUs)}, hibernate};
 handle_info(_Info, State) ->
     {noreply, State}.
 
@@ -206,8 +155,8 @@ handle_info(_Info, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, _State) ->
-    lager:debug("fs auth ~p termination", [_Reason]).
+terminate(_Reason, #state{node=Node}) ->
+    lager:debug("fs auth ~s termination: ~p", [Node, _Reason]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -223,40 +172,39 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec lookup_user/3 :: (atom(), ne_binary(), proplist()) -> {'ok', pid()}.
+-spec lookup_user/3 :: (atom(), ne_binary(), proplist()) -> pid().
 lookup_user(Node, ID, Data) ->
-    Pid = spawn_link(fun() ->
-                             put(callid, ID),
-
-                             %% build req for rabbit
-                             AuthRealm = props:get_value(<<"domain">>, Data, props:get_value(<<"Auth-Realm">>, Data)),
-                             AuthUser = props:get_value(<<"user">>, Data, props:get_value(<<"Auth-User">>, Data)),
-
-                             AuthReq = [{<<"Msg-ID">>, ID}
-                                        ,{<<"To">>, ecallmgr_util:get_sip_to(Data)}
-                                        ,{<<"From">>, ecallmgr_util:get_sip_from(Data)}
-                                        ,{<<"Orig-IP">>, ecallmgr_util:get_orig_ip(Data)}
-                                        ,{<<"Method">>, props:get_value(<<"sip_auth_method">>, Data)}
-                                        ,{<<"Auth-User">>, AuthUser}
-                                        ,{<<"Auth-Realm">>, AuthRealm}
-                                        | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-                                       ],
-
-                             lager:debug("looking up credentials of ~s@~s for a ~s", [AuthUser, AuthRealm, props:get_value(<<"Method">>, AuthReq)]),
-
-                             case ecallmgr_amqp_pool:authn_req(AuthReq) of
-                                 {error, _R} ->
-                                     lager:debug("authn request lookup failed: ~p", [_R]),
-                                     freeswitch:fetch_reply(Node, ID, ?ROUTE_NOT_FOUND_RESPONSE);
-                                 {ok, AuthResp} ->
-                                     true = wapi_authn:resp_v(AuthResp),
-                                     lager:debug("received authn_resp"),
-                                     {ok, Xml} = ecallmgr_fs_xml:authn_resp_xml(
-                                                   wh_json:set_value(<<"Auth-Realm">>, AuthRealm
-                                                                     ,wh_json:set_value(<<"Auth-User">>, AuthUser, AuthResp))
-                                                  ),
-                                     lager:debug("sending XML to ~w: ~s", [Node, Xml]),
-                                     freeswitch:fetch_reply(Node, ID, Xml)
-                             end
-                     end),
-    {ok, Pid}.
+    spawn(fun() ->
+                  put(callid, ID),
+                  
+                  %% build req for rabbit
+                  AuthRealm = props:get_value(<<"domain">>, Data, props:get_value(<<"Auth-Realm">>, Data)),
+                  AuthUser = props:get_value(<<"user">>, Data, props:get_value(<<"Auth-User">>, Data)),
+                  
+                  AuthReq = [{<<"Msg-ID">>, ID}
+                             ,{<<"To">>, ecallmgr_util:get_sip_to(Data)}
+                             ,{<<"From">>, ecallmgr_util:get_sip_from(Data)}
+                             ,{<<"Orig-IP">>, ecallmgr_util:get_orig_ip(Data)}
+                             ,{<<"Method">>, props:get_value(<<"sip_auth_method">>, Data)}
+                             ,{<<"Auth-User">>, AuthUser}
+                             ,{<<"Auth-Realm">>, AuthRealm}
+                             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                            ],
+                  
+                  lager:debug("looking up credentials of ~s@~s for a ~s", [AuthUser, AuthRealm, props:get_value(<<"Method">>, AuthReq)]),
+                  
+                  case ecallmgr_amqp_pool:authn_req(AuthReq) of
+                      {error, _R} ->
+                          lager:debug("authn request lookup failed: ~p", [_R]),
+                          freeswitch:fetch_reply(Node, ID, ?ROUTE_NOT_FOUND_RESPONSE);
+                      {ok, AuthResp} ->
+                          true = wapi_authn:resp_v(AuthResp),
+                          lager:debug("received authn_resp"),
+                          {ok, Xml} = ecallmgr_fs_xml:authn_resp_xml(
+                                        wh_json:set_value(<<"Auth-Realm">>, AuthRealm
+                                                          ,wh_json:set_value(<<"Auth-User">>, AuthUser, AuthResp))
+                                       ),
+                          lager:debug("sending XML to ~w: ~s", [Node, Xml]),
+                          freeswitch:fetch_reply(Node, ID, Xml)
+                  end
+          end).

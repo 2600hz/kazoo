@@ -617,7 +617,7 @@ flush() ->
 -spec cache/2 :: (whapps_call:call(), pos_integer()) -> 'ok'.
 
 cache(#whapps_call{}=Call) ->
-    cache(Call, 300000).
+    cache(Call, 300).
     
 cache(#whapps_call{call_id=CallId}=Call, Expires) ->
     {ok, Cache} = whistle_apps_sup:whapps_call_cache_proc(),

@@ -1,84 +1,68 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012, VoIP, INC
 %%% @doc
 %%%
 %%% @end
 %%% @contributors
-%%%   James Aimonetti
-%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(ecallmgr_sup).
 
 -behaviour(supervisor).
 
+-include_lib("ecallmgr/src/ecallmgr.hrl").
+
 -export([start_link/0]).
--export([cache_proc/0]).
--export([registrar_proc/0]).
 -export([init/1]).
 
--include("ecallmgr.hrl").
-
-%% Helper macro for declaring children of supervisor
--define(CHILD(I, Type), {I, {I, start_link, []}, permanent, 5000, Type, [I]}).
--define(POOL(Mod), {Mod, {poolboy, start_link, [
-                                                [{name, {local, Mod}}
-                                                 ,{worker_module, wh_amqp_worker}
-                                                 ,{size, 50}
-                                                 ,{max_overflow, 50}
-                                                ]
-                                               ]}
-                    ,permanent, 5000, worker, [poolboy]
-                   }).
--define(CACHE(Name), {Name, {wh_cache, start_link, [Name]}, permanent, 5000, worker, [wh_cache]}).
+-define(CHILD(Name, Type), fun(N, pool) -> {N, {poolboy, start_link, [[{name, {local, N}}
+                                                                       ,{worker_module, wh_amqp_worker}
+                                                                       ,{size, 50}
+                                                                       ,{max_overflow, 50}
+                                                                      ]
+                                                                     ]}
+                                            ,permanent, 5000, worker, [poolboy]
+                                           };
+                              (N, T) -> {N, {N, start_link, []}, permanent, 5000, T, [N]} end(Name, Type)).
+-define(CHILDREN, [{?AMQP_POOL_MGR, pool}
+                   ,{ecallmgr_util_sup, supervisor}
+                   ,{ecallmgr_call_sup, supervisor}
+                   ,{ecallmgr_fs_sup, supervisor}
+                  ]).
 
 %% ===================================================================
 %% API functions
 %% ===================================================================
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Starts the supervisor
+%% @end
+%%--------------------------------------------------------------------
+-spec start_link/0 :: () -> startlink_ret().
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
-
--spec cache_proc/0 :: () -> {'ok', pid()}.
-cache_proc() ->
-    [P] = find_procs(ecallmgr_cache),
-    {ok, P}.
-
--spec registrar_proc/0 :: () -> {'ok', pid()}.
-registrar_proc() ->
-    [R] = find_procs(ecallmgr_registrar),
-    {ok, R}.
 
 %% ===================================================================
 %% Supervisor callbacks
 %% ===================================================================
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Whenever a supervisor is started using supervisor:start_link/[2,3],
+%% this function is called by the new process to find out about
+%% restart strategy, maximum restart frequency and child
+%% specifications.
+%% @end
+%%--------------------------------------------------------------------
+-spec init([]) -> sup_init_ret().
 init([]) ->
-    {ok
-     ,{
-       {one_for_one, 5, 10}
-       ,[?CHILD(wh_alert, worker)
-         ,?CACHE(ecallmgr_cache) % provides a cache
+    RestartStrategy = one_for_one,
+    MaxRestarts = 5,
+    MaxSecondsBetweenRestarts = 10,
 
-         ,?POOL(?AMQP_POOL_MGR) % handles the pool of AMQP queues
+    SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
+    Children = [?CHILD(Name, Type) || {Name, Type} <- ?CHILDREN],
 
-         ,?CHILD(ecallmgr_call_sup, supervisor) % handles dynamic call {event,control} processes
-         ,?CHILD(ecallmgr_shout_sup, supervisor) % handles dynamic record streams from FreeSWITCH to local filesystem
-
-         ,?CHILD(ecallmgr_fs_route_sup, supervisor)
-         ,?CHILD(ecallmgr_fs_auth_sup, supervisor)
-         ,?CHILD(ecallmgr_fs_config_sup, supervisor)
-
-         ,?CHILD(ecallmgr_fs_sup, supervisor)
-
-         ,?CHILD(ecallmgr_registrar, worker) % local cache for registrations
-
-         ,?CHILD(ecallmgr_media_registry, worker) % handles tracking media names and files per-call
-         ,?CHILD(ecallmgr_fs_query, worker) % handles queries for call information/location
-         ,?CHILD(ecallmgr_conference_listener, worker)
-
-         ,?CHILD(ecallmgr_fs_handler, worker) % handles starting FreeSWITCH handlers for a given FS node
-        ]
-      }
-    }.
-
-find_procs(Mod) ->
-    [P || {M, P, _, _} <- supervisor:which_children(?MODULE), M =:= Mod].
+    {ok, {SupFlags, Children}}.

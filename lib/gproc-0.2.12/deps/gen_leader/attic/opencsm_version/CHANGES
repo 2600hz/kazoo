@@ -1,0 +1,9 @@
+* Don't hang when only one candidate is specified
+* Implemented handle_DOWN to match docs
+* Added gen_leader_cast
+* Allowed multiple gen_leader instances per node by prefixing the module name to
+  the incarnation filename
+* Add some documentation where the code was unclear
+* Runtime added worker support (uses code_change)
+* Fix obsolete guards (atom() -> is_atom())
+* R13B fix

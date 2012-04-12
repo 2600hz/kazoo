@@ -1,0 +1,346 @@
+@doc
+== SAMPLE 1: Emysql Readme of Jan 2011 ==
+```
+ --------------------------------------------------------------
+| THIS TEXT IS USED AS A SAMPLE TO ILLUSTRATE MARKEDOC USAGE.  |
+| If you see this in your browser, you succeeded compiling it  |
+| from markdown into an edoc. As you see it's quite complex    |
+| and there is no 'cheating' involved.                         |
+ --------------------------------------------------------------
+'''
+
+Erlang MySQL driver, based on a rewrite at Electronic Arts&#153;. Supports prepared statements and stored procedures. For <a href="javascript:goto('samples')" onMouseOver="this.title=url('samples')">samples</a> and <a href="javascript:goto('docs')" onMouseOver="this.title=url('docs')">docs</a> see below.
+
+While you can use mysql via ODBC, using a driver like Emysql should perform better. 
+
+This is a continuation fork of <a href="javascript:goto('1')" onMouseOver="this.title=url('1')">emysql</a> with <a href="javascript:goto('fixes')" onMouseOver="this.title=url('fixes')">fixes</a>, <a href="javascript:goto('updates')" onMouseOver="this.title=url('updates')">updates</a>, more <a href="javascript:goto('docs')" onMouseOver="this.title=url('docs')">docs</a> and <a href="javascript:goto('samples')" onMouseOver="this.title=url('samples')">samples</a>. <a href="javascript:goto('1')" onMouseOver="this.title=url('1')">emysql</a> is a clean rewrite of <a href="javascript:goto('2')" onMouseOver="this.title=url('2')">erlang-mysql-driver</a>. 
+
+<hr/>
+
+ <b>&#171;Which fork should I use?&#187;</b> See <a href="javascript:goto('history')" onMouseOver="this.title=url('history')">history</a>.<br />
+ <b>&#171;Who used this fork?&#187;</b> Electronic Arts.<br />
+ <b>&#171;How do I ...?&#187;</b> See <a href="javascript:goto('samples')" onMouseOver="this.title=url('samples')">samples</a>.<br />
+
+ <b>Download:</b> <a href="https://github.com/Eonblast/Emysql/archives/master">https://github.com/Eonblast/Emysql/archives/master</a><br />
+ <b>Repository:</b> <a href="https://github.com/Eonblast/Emysql">https://github.com/Eonblast/Emysql</a><br />
+ <b>Docs:</b> <a href="http://eonblast.github.com/Emysql/">http://eonblast.github.com/Emysql/</a><br />
+
+<hr/>
+
+== Contents ==
+
+<li> <a href="javascript:goto('History')" onMouseOver="this.title=url('History')">History</a></li>
+<li> <a href="javascript:goto('Usage')" onMouseOver="this.title=url('Usage')">Usage</a></li>
+<li> <a href="javascript:goto('Samples')" onMouseOver="this.title=url('Samples')">Samples</a></li>
+<li> <a href="javascript:goto('Links')" onMouseOver="this.title=url('Links')">Links</a></li>
+<li> <a href="javascript:goto('Todo')" onMouseOver="this.title=url('Todo')">Todo</a></li>
+<li> <a href="javascript:goto('License')" onMouseOver="this.title=url('License')">License</a></li>
+
+<hr/>
+
+== History ==
+
+Open Source Erlang MySQL driver efforts are currently a fractured matter, at least for the higher functionality. There are four main choices:
+
+<li> <b>Yxa</b>: The first Erlang MySQL driver seems to have been written in 2005 by <a href="javascript:goto('ma')" onMouseOver="this.title=url('ma')">Magnus Ahltorp</a> at the <a href="javascript:goto('3')" onMouseOver="this.title=url('3')">Royal Institute of Technology</a>. It is the basis for the following two. The <a href="javascript:goto('4')" onMouseOver="this.title=url('4')">original mysql driver source</a> is stable since at least 2007, it is available as part of the SIP proxy <a href="javascript:goto('5')" onMouseOver="this.title=url('5')">Yxa 1.0</a> (hosted <a href="javascript:goto('6')" onMouseOver="this.title=url('6')">on github</a>).</li>
+
+<li> <b>ejabberd</b>: Already in 2006, a <a href="javascript:goto('7')" onMouseOver="this.title=url('7')">fork</a> was created by <a href="javascript:goto('mr')" onMouseOver="this.title=url('mr')">Mickael Remond</a> at <a href="javascript:goto('8')" onMouseOver="this.title=url('8')">Process One</a> to become part of the successful instant messaging server <a href="javascript:goto('9')" onMouseOver="this.title=url('9')">ejabberd</a> (also hosted <a href="javascript:goto('10')" onMouseOver="this.title=url('10')">at github</a>). It can be assumed to be as stable as the Yxa branch, and it didn't change anything in the lowest level, mysql_recv.erl. The differences to the original Yxa branch mainly consists of added inspection functions that help using query results, and an <a href="javascript:goto('11')" onMouseOver="this.title=url('11')">independent adoption</a> to the MySQL 4.1 client-server protocol. Also, the original Yxa branch has meanwhile adopted edoc comment format. Find a diff <a href="javascript:goto('12')" onMouseOver="this.title=url('12')">here</a>, one ignoring comment lines <a href="javascript:goto('13')" onMouseOver="this.title=url('13')">here</a>.</li>
+
+<li> <b>erlang-mysql-driver</b>: in 2006/07 <a href="javascript:goto('ys')" onMouseOver="this.title=url('ys')">Yariv Sadan</a> created a fork from the ejabberd branch, made it a standalone project, gave it the name that stuck, and hosted it at <a href="javascript:goto('15')" onMouseOver="this.title=url('15')">Google Code</a>. Before he moved on to work at Facebook, he had added higher level handling of prepared statements and transactions, and stated that he had improved connection pooling and logging. There were changes both in the original Yxa and the ejabberd branch after the forking off that seem to never have made their way into the erlang-mysql-driver branch, which now lies dormant since Oct '07. Docs were somewhat unsatisfying, as much as for the earlier branches. In Feb '10, Dave Smith started making some</li>
+<a href="javascript:goto('15')" onMouseOver="this.title=url('15')">updates</a> and put them on github, were the driver is now enjoying a couple of <a href="javascript:goto('16')" onMouseOver="this.title=url('16')">active forks</a> that make for a convincing case in favor of the github Network graph.
+
+<li> <b>Emysql</b> was started from scratch in 2009 by <a href="javascript:goto('jv')" onMouseOver="this.title=url('jv')">Jacob Vorreuter</a> and <a href="javascript:goto('bw')" onMouseOver="this.title=url('bw')">Bill Warnecke</a> at Electronic Arts, who rewrote the erlang-mysql-driver code because they felt it had been touched by so many people that it had become more complicated than necessary. In a way, the third layer module, mysql.erl, had over time started to become badly entangled with the second, mysql_conn.erl. According to Jacob, Emysql is pretty stable and ran without issue in a production environment at Electronic Arts. This fork is a continuation of <a href="javascript:goto('1')" onMouseOver="this.title=url('1')">their work</a>, including all their commits and adding <a href="javascript:goto('docs')" onMouseOver="this.title=url('docs')">documentation</a>, [samples], <a href="javascript:goto('fixes')" onMouseOver="this.title=url('fixes')">fixes</a> and extensions.   </li>
+<br />
+<a href="javascript:goto('vb')" onMouseOver="this.title=url('vb')">Vitaliy Batichko</a> and
+<a href="javascript:goto('cr')" onMouseOver="this.title=url('cr')">Chris Rempel</a> have contributed updates to this branch. Thank you!
+
+<li class="ref url"> emysql:<a name="1" id="1" href="http://github.com/JacobVorreuter/emysql" target="_parent">http://github.com/JacobVorreuter/emysql</a></li>
+<li class="ref url"> erlang-mysql-driver:<a name="2" id="2" href="http://github.com/dizzyd/erlang-mysql-driver" target="_parent">http://github.com/dizzyd/erlang-mysql-driver</a></li>
+<li class="ref url"> Royal Institure of Technology:<a name="3" id="3" href="http://www.kth.se/" target="_parent">http://www.kth.se/</a></li>
+<li class="ref url"> Yxa mysql driver:<a name="4" id="4" href="https://github.com/fredrikt/yxa/tree/master/src/mysql" target="_parent">https://github.com/fredrikt/yxa/tree/master/src/mysql</a></li>
+<li class="ref url"> Yxa Home:<a name="5" id="5" href="http://www.stacken.kth.se/project/yxa/index.html" target="_parent">http://www.stacken.kth.se/project/yxa/index.html</a></li>
+<li class="ref url"> Yxa repository at github:<a name="6" id="6" href="https://github.com/fredrikt/yxa" target="_parent">https://github.com/fredrikt/yxa</a></li>
+<li class="ref url"> ejabberd mysql driver:<a name="7" id="7" href="http://svn.process-one.net/ejabberd-modules/mysql/trunk/" target="_parent">http://svn.process-one.net/ejabberd-modules/mysql/trunk/</a></li>
+<li class="ref url"> Process One Home:<a name="8" id="8" href="https://support.process-one.net" target="_parent">https://support.process-one.net</a></li>
+<li class="ref url"> ejabberd Home:<a name="9" id="9" href="http://www.process-one.net/en/ejabberd/" target="_parent">http://www.process-one.net/en/ejabberd/</a></li>
+<li class="ref url"> ejabberd repository at github:<a name="10" id="10" href="https://github.com/processone/ejabberd/" target="_parent">https://github.com/processone/ejabberd/</a></li>
+<li class="ref url"> ejabberd MySQL 4.1. patch:<a name="11" id="11" href="https://support.process-one.net/doc/display/CONTRIBS/Yxa" target="_parent">https://support.process-one.net/doc/display/CONTRIBS/Yxa</a></li>
+<li class="ref url"> Diff of Yxa and ejabberd mysql drivers:<a name="12" id="12" href="https://github.com/Eonblast/Emysql/tree/master/doc/diff-ejabberd-yxa.txt" target="_parent">https://github.com/Eonblast/Emysql/tree/master/doc/diff-ejabberd-yxa.txt</a></li>
+<li class="ref url"> Diff of Yxa and ejabberd mysql drivers ignoring comment changes:<a name="13" id="13" href="https://github.com/Eonblast/Emysql/tree/master/doc/diff-ejabberd-yxa-2.txt" target="_parent">https://github.com/Eonblast/Emysql/tree/master/doc/diff-ejabberd-yxa-2.txt</a></li>
+<li class="ref url"> original erlang-mysql-driver:<a name="14" id="14" href="http://code.google.com/p/erlang-mysql-driver/" target="_parent">http://code.google.com/p/erlang-mysql-driver/</a></li>
+<li class="ref url"> Dave Smith's erlang-mysql-driver at github, currently not maintained:<a name="15" id="15" href="http://github.com/dizzyd/erlang-mysql-driver" target="_parent">http://github.com/dizzyd/erlang-mysql-driver</a></li>
+<li class="ref url"> Fork graph of erlang-mysql-driver at github:<a name="16" id="16" href="https://github.com/dizzyd/erlang-mysql-driver/network" target="_parent">https://github.com/dizzyd/erlang-mysql-driver/network</a></li>
+
+<li class="ref email"> Magnus Ahltorp:<a name="ma" id="ma" href="mailto:ahltorp@nada.kth.se">ahltorp@nada.kth.se</a></li>
+<li class="ref url"> <a name="ys" id="ys" href="http://yarivsblog.blogspot.com/" target="_parent">http://yarivsblog.blogspot.com/</a></li>
+<li class="ref email"> <a name="bw" id="bw" href="mailto:bill@rupture.com">bill@rupture.com</a></li>
+<li class="ref url"> <a name="jv" id="jv" href="https://github.com/JacobVorreuter" target="_parent">https://github.com/JacobVorreuter</a></li>
+<li class="ref url"> <a name="vb" id="vb" href="https://github.com/bva" target="_parent">https://github.com/bva</a></li>
+<li class="ref url"> Chris Rempel:<a name="cr" id="cr" href="https://github.com/csrl" target="_parent">https://github.com/csrl</a></li>
+<li class="ref email"> Henning Diedrich:<a name="hd" id="hd" href="mailto:hd2010@eonblast.com">hd2010@eonblast.com</a></li>
+<li class="ref email"> Mickael Remond:<a name="mr" id="mr" href="mailto:mickael.remond@process-one.net">mickael.remond@process-one.net</a></li>
+
+<li class="ref url"> Emysql fixes:<a name="fixes" id="fixes" href="https://github.com/Eonblast/Emysql/issues/closed" target="_parent">https://github.com/Eonblast/Emysql/issues/closed</a></li>
+<li class="ref url"> Emysql online docs:<a name="docs" id="docs" href="http://eonblast.github.com/Emysql/" target="_parent">http://eonblast.github.com/Emysql/</a></li>
+
+== Usage  ==
+
+==== Start the application ====
+
+```
+ crypto:start(),
+ application:start(emysql).
+'''
+
+==== Add a pool ====
+```
+ % emysql:add_pool(PoolName, PoolSize, Username, Password, Host, Port, Database, Encoding) ->
+ %	 ok | {error, pool_already_exists}  
+ % PoolName = atom()  
+ % PoolSize = integer()  
+ % Username = string()  
+ % Password = string()  
+ % Host = string()  
+ % Port = integer()  
+ % Database = string()  
+ % Encoding = atom()  
+ 
+ emysql:add_pool(mypoolname, 1, "username", "mypassword", "localhost", 3306, "mydatabase", utf8).
+'''
+
+==== Record Types ====
+```
+ -record(ok_packet, {seq_num, affected_rows, insert_id, status, warning_count, msg}).
+ -record(error_packet, {seq_num, code, msg}).
+ -record(result_packet, {seq_num, field_list, rows, extra}).
+'''
+
+==== Executing SQL statements ====
+```
+ % emysql:execute(PoolName, Statement) -> result_packet() | ok_packet() | error_packet()  
+ % PoolName = atom()  
+ % Statement = string() | binary()  
+ 
+ emysql:execute(mypoolname, <<"SELECT * from mytable">>).
+ #result_packet{field_list=[...], rows=[...]}
+ 
+ emysql:execute(mypoolname, <<"UPDATE mytable SET bar = 'baz' WHERE id = 1">>).
+ #ok_packet{affected_rows=1}
+'''
+
+==== Executing prepared statements ====
+```
+ % emysql:prepare(StmtName, Statement) -> ok  
+ % StmtName = atom()  
+ % Statement = binary() | string()  
+'''
+
+```
+ emysql:prepare(my_stmt, <<"SELECT * from mytable WHERE id = ?">>).
+ ok
+ 
+ % emysql:execute(PoolName, StmtName, Args) -> result_packet() | ok_packet() | error_packet()  
+ % StmtName = atom()  
+ % Args = [term()]  
+'''
+
+```
+ emysql:execute(mypoolname, my_stmt, [1]).
+ #result_packet{field_list=[...], rows=[...]}
+'''
+
+==== Executing stored procedures ====
+
+```
+ % emysql:execute(PoolName, StmtName, Args) -> result_packet() | ok_packet() | error_packet()  
+ % StmtName = atom()  
+ % Args = [term()]  
+'''
+
+```
+ emysql:execute(hello_pool,
+ 	<<"create procedure sp_hello() begin select * from hello_table; end">>).
+ {ok_packet,1,0,0,2,0,[]}
+'''
+
+```
+ emysql:execute(hello_pool, <<"call sp_hello();">>).
+ [{result_packet,6,
+                 [{field,2,<<"def">>,<<"hello_database">>,<<"hello_table">>,
+                         <<"hello_table">>,<<"hello_text">>,<<"hello_text">>,
+                         254,<<>>,33,60,0,0}],
+                 [[<<"Hello World!">>],[<<"Hello World!">>]],
+                 <<>>},
+ {ok_packet,7,0,0,34,0,[]}]
+'''
+ 
+==== Converting Row Data To Records ====
+```
+ % emysql_util:as_record(ResultPacket, RecordName, Fields) -> Result  
+ % ResultPacket = result_packet()  
+ % RecordName = atom() (the name of the record to generate)  
+ % Fields = [atom()] (the field names to generate for each record)  
+ % Result = [record()]  
+ 
+ -module(fetch_example).
+ -record(foo, {bar, baz, bat}).
+ 
+ fetch_foo() ->
+    Result = emysql:execute(pool1, <<"select bar, baz, bat from foo">>),
+    Recs = emysql_util:as_record(Result, foo, record_info(fields, foo)),
+    [begin
+ 	  io:format("foo: ~p, ~p, ~p~n", [Foo#foo.bar, Foo#foo.baz, Foo#foo.bat])
+     end || Foo <- Recs].
+'''
+
+== Getting Emysql ==
+
+```
+ $ git clone git://github.com/Eonblast/Emysql.git Emysql
+ 
+'''
+== Samples ==
+
+==== Hello World&#42; ====
+
+This is a hello world program. Follow the three steps below to try it out.
+```
+ 
+ -module(a_hello).
+ -export([run/0]).
+ 
+ run() ->
+ 
+ 	crypto:start(),
+ 	application:start(emysql),
+ 
+ 	emysql:add_pool(hello_pool, 1,
+ 		"hello_username", "hello_password", "localhost", 3306,
+ 		"hello_database", utf8),
+ 
+ 	emysql:execute(hello_pool,
+ 		<<"INSERT INTO hello_table SET hello_text = 'Hello World!'">>),
+ 
+     Result = emysql:execute(hello_pool,
+ 		<<"select hello_text from hello_table">>),
+ 
+ 	io:format("~n~p~n", [Result]).
+'''
+
+
+We come back to that source, but first:
+
+==== Building Emysql ====
+
+Build emysql.app, using make:
+
+```
+ $ cd Emysql
+ $ make
+'''
+
+
+==== Sample database ====
+
+For the above sample, create a local mysql database. You should have a mysql server installed and running:
+```
+ 
+ $ mysql [-u<user> -p]
+ mysql> create database hello_database;
+ mysql> use hello_database;
+ mysql> create table hello_table (hello_text char(20));
+ mysql> grant all privileges on hello_database.* to hello_username@localhost identified by 'hello_password';
+'''
+
+==== Run Hello ====
+
+Be sure to have ./ebin in your Erlang path. Now copy the Hello World source above at '&#42;' into a file hello.erl and run it (in the Emysql root directory):
+
+```
+ $ erlc hello.erl
+ $ erl -pa ../ebin -s hello run -s init stop -noshell
+'''
+
+See more sample programms, below.
+
+==== Running the Samples ====
+Sample programs are in ./samples. 
+
+<li> <a href="http://github.com/Eonblast/Emysql/blob/master/samples/a_hello.erl">a_hello</a> - Hello World</li>
+<li> <a href="http://github.com/Eonblast/Emysql/blob/master/samples/a_hello2.erl">a_hello2</a> - Hello World somewhat rawer</li>
+<li> <a href="http://github.com/Eonblast/Emysql/blob/master/samples/b_rows_as_records.erl">b_rows_as_records</a> - Using Erlang records to access result rows</li>
+<li> <a href="http://github.com/Eonblast/Emysql/blob/master/samples/c_stored_procedure.erl">c_stored_procedure</a> - Using Stored procedures</li>
+
+To run the samples, create the database as listed above at localhost, and:
+
+```
+ $ cd samples
+ $ ./a_hello
+ $ ./b_raw
+ $ ./d_rows_as_records
+ $ ./e_prepared_statement
+ $ ./e_stored_procedure
+ 
+'''
+or make emysql.app and start a_hello etc. manually along these lines (but
+first create the database as listed above):
+
+```
+ $ make
+ $ cd samples
+ $ erlc a_hello.erl
+ $ erl -pa ../ebin -s a_hello run -s init stop -noshell
+'''
+
+== Links ==
+
+<li> <a href="http://github.com/Eonblast/Emysql">Emysql on Github</a></li>
+<li> <a href="https://github.com/fredrikt/yxa/tree/master/src/mysql">Original Yxa</a> mysql driver</li>
+<li> <a href="http://svn.process-one.net/ejabberd-modules/mysql/trunk/">ejabberd fork</a></li>
+<li> <a href="http://code.google.com/p/erlang-mysql-driver/">'erlang-mysql-driver'</a></li>
+<li> <a href="http://github.com/dizzyd/erlang-mysql-driver">Dave Smith's erlang-mysql-driver fork</a></li>
+<li> <a href="https://github.com/JoelPM/erlang-mysql-driver">A maintained erlang-mysql-driver</a>  fork</li>
+<li> <a href="https://github.com/chernomor/erlang-mysql-driver">Another maintained&#134; erlang-mysql-driver</a>  fork</li>
+<li> <a href="http://forge.mysql.com/wiki/MySQL_Internals_ClientServer_Protocol">MySQL Client Server Protocol</a></li>
+<li> <a href="ftp://ftp.fu-berlin.de/unix/databases/mysql/Downloads/MySQL-5.5/mysql-5.5.8.tar.gz">MySQL 5.5 Source</a></li>
+
+&#134;maintained at the time of writing, Jan 2011.
+
+== TODO ==
+<li> decrementing pool size could close sockets that are in use</li>
+<li> spawn individual conn_mgr gen_server processes for each pool</li>
+<li> allow row results to be returned as binary</li>
+
+== License ==
+
+Copyright &#169; 2009-2011
+Bill Warnecke <a href="mailto:bill@rupture.com">bill@rupture.com</a>,
+Jacob Vorreuter <a href="mailto:jacob.vorreuter@gmail.com">jacob.vorreuter@gmail.com</a>,
+Henning Diedrich <a href="mailto:hd2010@eonblast.com">hd2010@eonblast.com</a>,
+Eonblast Corporation [http://www.eonblast.com].
+
+Permission is  hereby  granted,  free of charge,  to any person
+obtaining  a copy of this software and associated documentation
+files  (the  "Software"),  to  deal  in  the  Software  without 
+restriction,  including  without limitation  the rights to use,
+copy, modify,  merge,  publish, distribute,  sublicense, and/or 
+sell  copies of the  Software,  and to permit  persons  to whom
+the  Software  is furnished to do so,  subject to the following 
+conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+OF  MERCHANTABILITY,  FITNESS  FOR  A  PARTICULAR  PURPOSE  AND
+NONINFRINGEMENT. IN  NO  EVENT  SHALL  THE AUTHORS OR COPYRIGHT
+HOLDERS  BE  LIABLE FOR  ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+WHETHER IN AN ACTION OF CONTRACT,  TORT  OR OTHERWISE,  ARISING
+FROM,  OUT OF OR IN CONNECTION WITH THE SOFTWARE  OR THE USE OR
+OTHER DEALINGS IN THE SOFTWARE.
+<script>
+// Jump directly to a referenced url given in trailing '[]:...'-notation
+function goto(tag) { parent.document.location.href = url(tag); }
+function url(tag) { var o=document.getElementById(tag); return o ? o.href : '#'+tag; }
+</script>

@@ -1,0 +1,10 @@
+EDown is derived from code in EDoc, and designed to be an extension
+to EDoc.
+
+EDoc was written by Richard Carlsson, (c) 2001-2007 Richard Carlsson.
+It is part of Erlang/OTP (http://www.erlang.org) and available
+via the Erlang Public License (EPL).
+
+Original idea and implementation for EDown: ulf.wiger@erlang-solutions.com
+
+Markedoc contributed by Henning Dietrich <hd2010@eonblast.com>

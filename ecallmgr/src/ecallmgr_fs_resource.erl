@@ -25,7 +25,8 @@
 -include("ecallmgr.hrl").
 
 -record(state, {node :: atom()
-               ,options :: wh_proplist()}).
+               ,options :: proplist()
+               }).
 
 -define(BINDINGS, [{resource, []}
                    ,{self, []}
@@ -117,6 +118,8 @@ handle_originate_req(JObj, Props) ->
 %% @end
 %%--------------------------------------------------------------------
 init([Node, Options]) ->
+    put(callid, Node),
+    process_flag(trap_exit, true),
     {ok, #state{node=Node, options=Options}}.
 
 %%--------------------------------------------------------------------
@@ -186,8 +189,8 @@ handle_event(_JObj, #state{node=Node}) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, _State) ->
-    lager:debug("listener terminating: ~p", [_Reason]).
+terminate(_Reason, #state{node=Node}) ->
+    lager:debug("fs resource ~s termination: ~p", [Node, _Reason]).
 
 %%--------------------------------------------------------------------
 %% @private
