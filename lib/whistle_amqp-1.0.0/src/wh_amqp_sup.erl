@@ -5,29 +5,19 @@
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
--module(ecallmgr_sup).
+-module(wh_amqp_sup).
 
 -behaviour(supervisor).
 
--include_lib("ecallmgr/src/ecallmgr.hrl").
+-include_lib("whistle/include/wh_types.hrl").
 
 -export([start_link/0]).
+-export([stop_bootstrap/0]).
 -export([init/1]).
 
--define(CHILD(Name, Type), fun(N, pool) -> {N, {poolboy, start_link, [[{name, {local, N}}
-                                                                       ,{worker_module, wh_amqp_worker}
-                                                                       ,{size, 50}
-                                                                       ,{max_overflow, 50}
-                                                                      ]
-                                                                     ]}
-                                            ,permanent, 5000, worker, [poolboy]
-                                           };
-                              (N, T) -> {N, {N, start_link, []}, permanent, 5000, T, [N]} end(Name, Type)).
--define(CHILDREN, [{?ECALLMGR_AMQP_POOL, pool}
-                   ,{ecallmgr_util_sup, supervisor}
-                   ,{ecallmgr_call_sup, supervisor}
-                   ,{ecallmgr_fs_sup, supervisor}
-                  ]).
+-define(SERVER, ?MODULE).
+-define(CHILD(Name, Type), fun(N, T) -> {N, {N, start_link, []}, permanent, 5000, T, [N]} end(Name, Type)).
+-define(CHILDREN, [{wh_amqp_connection_sup, supervisor}, {wh_amqp_mgr, worker}, {wh_amqp_bootstrap, worker}]).
 
 %% ===================================================================
 %% API functions
@@ -42,6 +32,10 @@
 -spec start_link/0 :: () -> startlink_ret().
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+
+-spec stop_bootstrap/0 :: () -> 'ok' | {'error', 'running' | 'not_found' | 'simple_one_for_one'}.
+stop_bootstrap() ->
+    _ = supervisor:terminate_child(?SERVER, wh_amqp_bootstrap).
 
 %% ===================================================================
 %% Supervisor callbacks

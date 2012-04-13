@@ -48,10 +48,15 @@ get(Key0, Default, Node0) ->
                       V =/= undefined],
 
             lager:debug("looking up ~s from sysconf", [Key]),
-
-            case ecallmgr_amqp_pool:get_req(Req) of
+            ReqResp = wh_amqp_worker:call(?ECALLMGR_AMQP_POOL
+                                          ,Req
+                                          ,fun wapi_sysconf:publish_get_req/1
+                                          ,fun wapi_sysconf:get_resp_v/1),
+            case ReqResp of
+                {error, _R} -> 
+                    lager:debug("unable to get config for key '~s' failed: ~p", [Key0, _R]),
+                    Default;
                 {ok, RespJObj} ->
-                    true = wapi_sysconf:get_resp_v(RespJObj),
                     V = case wh_json:get_value(<<"Value">>, RespJObj) of
                             undefined -> Default;
                             null -> Default;
@@ -61,8 +66,7 @@ get(Key0, Default, Node0) ->
                                 wh_cache:store_local(Cache, cache_key(Key, Node), Value),
                                 Value
                         end,
-                    V;
-                {error, timeout} -> Default
+                    V
             end
     end.
 
@@ -73,10 +77,8 @@ set(Key, Value) ->
 set(Key0, Value, Node0) ->
     Key = wh_util:to_binary(Key0),
     Node = wh_util:to_binary(Node0),
-
     {ok, Cache} = ecallmgr_util_sup:cache_proc(),
     wh_cache:store_local(Cache, cache_key(Key, Node), Value),
-
     Req = [KV ||
               {_, V} = KV <- [{<<"Category">>, <<"ecallmgr">>}
                               ,{<<"Key">>, Key}
@@ -85,12 +87,16 @@ set(Key0, Value, Node0) ->
                               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                              ],
               V =/= undefined],
-    case catch ecallmgr_amqp_pool:set_req(Req) of
-        {'EXIT', _} ->
-            lager:debug("failed to recv resp for setting ~s to ~p", [Key, Value]);
-        _ ->
-            lager:debug("recv resp for setting ~s to ~p", [Key, Value])
+    ReqResp = wh_amqp_worker:call(?ECALLMGR_AMQP_POOL
+                                  ,Req
+                                  ,fun wapi_sysconf:publish_set_req/1
+                                  ,fun wh_amqp_worker:any_resp/1),
+    case ReqResp of
+        {error, _R} -> 
+            lager:debug("set config for key '~s' failed: ~p", [Key0, _R]);
+        {ok, _} ->
+            lager:debug("set config for key '~s' to new value: ~p", [Key0, Value])
     end.
-
+ 
 cache_key(K, Node) ->
     {?MODULE, K, Node}.

@@ -730,6 +730,7 @@ publish_event(CallID, Payload, ContentType) ->
     amqp_util:callevt_publish(CallID, Payload, event, ContentType).
 
 bind_q(Queue, _Prop) ->
+    _ = amqp_util:callctl_exchange(),
     _ = amqp_util:bind_q_to_callctl(Queue),
     'ok'.
 

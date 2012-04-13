@@ -14,11 +14,20 @@
 -behaviour(gen_listener).
 
 %% API
--export([start_link/1, handle_resp/2, send_request/4, new_request/5]).
-
-%% gen_server callbacks
--export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2
-         ,terminate/2, code_change/3]).
+-export([start_link/1]).
+-export([call/4, call/5]).
+-export([cast/3]).
+-export([any_resp/1]).
+-export([handle_resp/2]).
+-export([send_request/4]).
+-export([init/1
+         ,handle_call/3
+         ,handle_cast/2
+         ,handle_info/2
+         ,handle_event/2
+         ,terminate/2
+         ,code_change/3
+        ]).
 
 -include("amqp_util.hrl").
 
@@ -27,21 +36,26 @@
 
 -export_type([publish_fun/0, validate_fun/0]).
 
+-record(state, {current_msg_id :: ne_binary()
+                ,client_pid :: pid()
+                ,client_ref :: reference()
+                ,client_from :: {pid(), reference()}
+                ,client_vfun :: fun((api_terms()) -> boolean())
+                ,neg_resp :: wh_json:json_object()
+                ,neg_resp_count = 0 :: non_neg_integer()
+                ,neg_resp_threshold = 2 :: pos_integer()
+                ,req_timeout_ref :: reference()
+                ,req_start_time :: wh_now()
+                ,callid :: ne_binary()
+               }).
+
 -define(FUDGE, 2600).
 
--record(state, {
-          current_msg_id :: ne_binary()
-         ,client_pid :: pid()
-         ,client_ref :: reference()
-         ,client_from :: {pid(), reference()}
-         ,client_vfun :: fun((api_terms()) -> boolean())
-         ,neg_resp :: wh_json:json_object()
-         ,neg_resp_count = 0 :: non_neg_integer()
-         ,neg_resp_threshold = 2 :: pos_integer()
-         ,req_timeout_ref :: reference()
-         ,req_start_time :: wh_now()
-         ,callid :: ne_binary()
-         }).
+-define(BINDINGS, [{self, []}]).
+-define(RESPONDERS, [{{?MODULE, handle_resp}, [{<<"*">>, <<"*">>}]}]).
+-define(QUEUE_NAME, <<>>).
+-define(QUEUE_OPTIONS, []).
+-define(CONSUME_OPTIONS, []).
 
 %%%===================================================================
 %%% API
@@ -55,20 +69,56 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link(Args) ->
-    gen_listener:start_link(?MODULE
-                            ,[{bindings, [{self, []}]}
-                              ,{responders, [{{?MODULE, handle_resp}, [{<<"*">>, <<"*">>}]}]}
-                             ]
-                            ,[Args]
-                           ).
+    gen_listener:start_link(?MODULE, [{bindings, ?BINDINGS}
+                                      ,{responders, ?RESPONDERS}
+                                      ,{queue_name, ?QUEUE_NAME}
+                                      ,{queue_options, ?QUEUE_OPTIONS}
+                                      ,{consume_options, ?CONSUME_OPTIONS}
+                                     ], [Args]).
 
+-spec call/4 :: (server_ref(), api_terms(), wh_amqp_worker:publish_fun(), wh_amqp_worker:validate_fun()) -> {'ok', wh_json:json_object()} |
+                                                                                                                           {'error', _}.
+-spec call/5 :: (server_ref(), api_terms(), wh_amqp_worker:publish_fun(), wh_amqp_worker:validate_fun(), pos_integer()) -> {'ok', wh_json:json_object()} |
+                                                                                                                           {'error', _}.
+call(Srv, Req, PubFun, VFun) ->
+    call(Srv, Req, PubFun, VFun, 1500).
+
+call(Srv, Req, PubFun, VFun, Timeout) ->
+    case poolboy:checkout(Srv, false, 1000) of
+        W when is_pid(W) ->
+            Prop = case wh_json:is_json_object(Req) of
+                       true -> wh_json:to_proplist(Req);
+                       false -> Req
+                   end,
+            Reply = gen_listener:call(W, {request, Prop, PubFun, VFun, Timeout}, Timeout + ?FUDGE),
+            poolboy:checkin(Srv, W),
+            Reply;
+        full ->
+            lager:debug("failed to checkout worker: full"),
+            {error, pool_full}
+    end.
+
+-spec cast/3 :: (server_ref(), api_terms(), wh_amqp_worker:publish_fun()) -> 'ok' | {'error', _}.
+cast(Srv, Req, PubFun) ->
+    case poolboy:checkout(Srv, false, 1000) of
+        W when is_pid(W) ->
+            poolboy:checkin(Srv, W),
+            Prop = case wh_json:is_json_object(Req) of
+                       true -> wh_json:to_proplist(Req);
+                       false -> Req
+                   end,
+            gen_listener:cast(W, {publish, Prop, PubFun});
+        full ->
+            lager:debug("failed to checkout worker: full"),
+            {error, pool_full}
+    end.
+
+-spec any_resp/1 :: (any()) -> 'true'.
+any_resp(_) -> true.
+
+-spec handle_resp/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
 handle_resp(JObj, Props) ->
     gen_listener:cast(props:get_value(server, Props), {event, wh_json:get_value(<<"Msg-ID">>, JObj), JObj}).
-
--spec new_request/5 :: (pid(), api_terms(), publish_fun(), validate_fun(), pos_integer()) -> {'ok', wh_json:json_object()} |
-                                                                                             {'error', _}.
-new_request(Srv, ReqProp, PubFun, VFun, Timeout) ->
-    gen_listener:call(Srv, {request, ReqProp, PubFun, VFun, Timeout}, Timeout+?FUDGE).
 
 -spec send_request/4 :: (ne_binary(), pid(), function(), proplist()) -> 'ok'.
 send_request(CallID, Self, PublishFun, ReqProp) ->
@@ -97,9 +147,7 @@ init([Args]) ->
     process_flag(trap_exit, true),
     put(callid, ?LOG_SYSTEM_ID),
     lager:debug("starting amqp worker"),
-
     NegThreshold = props:get_value(neg_resp_threshold, Args, 2),
-
     {ok, #state{neg_resp_threshold=NegThreshold}}.
 
 %%--------------------------------------------------------------------
@@ -119,27 +167,18 @@ init([Args]) ->
 handle_call({request, ReqProp, PublishFun, VFun, Timeout}, {ClientPid, _}=From, State) ->
     _ = wh_util:put_callid(ReqProp),
     CallID = get(callid),
-
-    lager:debug("starting AMQP request for ~p", [ClientPid]),
-
     Self = self(),
-
     ClientRef = erlang:monitor(process, ClientPid),
     ReqRef = erlang:start_timer(Timeout, Self, req_timeout),
-
     {ReqProp1, MsgID} = case props:get_value(<<"Msg-ID">>, ReqProp) of
                             undefined ->
                                 M = wh_util:rand_hex_binary(8),
                                 {[{<<"Msg-ID">>, M} | ReqProp], M};
                             M -> {ReqProp, M}
                         end,
-
+    lager:debug("published request with msg id ~s for ~p", [MsgID, ClientPid]),
     P = proc_lib:spawn(?MODULE, send_request, [CallID, Self, PublishFun, ReqProp1]),
     _R = erlang:monitor(process, P),
-    lager:debug("pid ~p spawned (~p)", [P, _R]),
-
-    lager:debug("published request with msg id ~s", [MsgID]),
-
     {noreply, State#state{
                 client_pid = ClientPid
                 ,client_ref = ClientRef
@@ -164,6 +203,9 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast({publish, ReqProp, PublishFun}, State) ->
+    PublishFun(ReqProp),
+    {noreply, State};    
 handle_cast({set_negative_threshold, NegThreshold}, State) ->
     lager:debug("set negative threshold to ~p", [NegThreshold]),
     {noreply, State#state{neg_resp_threshold = NegThreshold}};
@@ -177,16 +219,12 @@ handle_cast({event, MsgId, JObj}, #state{current_msg_id = MsgId
                                          ,neg_resp_threshold = NegThreshold
                                         }=State) when NegCount < NegThreshold ->
     _ = wh_util:put_callid(JObj),
-    lager:debug("recv response for msg id ~s", [MsgId]),
-    lager:debug("response took ~b micro to return", [timer:now_diff(erlang:now(), StartTime)]),
-
+    lager:debug("response for msg id ~s took ~b micro to return", [MsgId, timer:now_diff(erlang:now(), StartTime)]),
     case VFun(JObj) of
         true ->
             erlang:demonitor(ClientRef, [flush]),
-
             gen_server:reply(From, {ok, JObj}),
             _ = erlang:cancel_timer(ReqRef),
-
             put(callid, ?LOG_SYSTEM_ID),
             {noreply, reset(State)};
         false ->
@@ -213,12 +251,10 @@ handle_cast(_Msg, State) ->
 handle_info(timeout, #state{neg_resp=JObj, neg_resp_count=Thresh, neg_resp_threshold=Thresh
                             ,client_ref=ClientRef, client_from=From, req_timeout_ref=ReqRef
                            }=State) ->
-    lager:debug("negative resp threshold reached"),
+    lager:debug("negative response threshold reached, returning last negative message"),
     erlang:demonitor(ClientRef, [flush]),
-
     gen_server:reply(From, {error, JObj}),
     _ = erlang:cancel_timer(ReqRef),
-
     put(callid, ?LOG_SYSTEM_ID),
     {noreply, reset(State)};
 handle_info(timeout, State) ->
@@ -229,11 +265,9 @@ handle_info({'DOWN', ClientRef, process, _Pid, _Reason}, #state{current_msg_id =
                                                                 ,callid = CallID
                                                                }=State) ->
     put(callid, CallID),
-    lager:debug("client ~p down with msg id ~s", [_Pid, _MsgID]),
-
+    lager:debug("requestor processes ~p  died while waiting for msg id ~s", [_Pid, _MsgID]),
     erlang:demonitor(ClientRef, [flush]),
     _ = erlang:cancel_timer(ReqRef),
-
     put(callid, ?LOG_SYSTEM_ID),
     {noreply, reset(State)};
 handle_info({timeout, ReqRef, req_timeout}, #state{current_msg_id = _MsgID
@@ -244,13 +278,9 @@ handle_info({timeout, ReqRef, req_timeout}, #state{current_msg_id = _MsgID
                                                   }=State) ->
     put(callid, CallID),
     lager:debug("request timeout exceeded for msg id: ~s", [_MsgID]),
-
     erlang:demonitor(ClientRef, [flush]),
-
     gen_server:reply(From, {error, timeout}),
-
     _ = erlang:cancel_timer(ReqRef),
-
     put(callid, ?LOG_SYSTEM_ID),
     {noreply, reset(State)};
 handle_info(_Info, State) ->

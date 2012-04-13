@@ -83,5 +83,7 @@
 -type handle_info_ret() :: {'noreply', term()} | {'noreply', term(), gen_server_timeout()} |
                            {'stop', term(), term()}.
 
+-type server_ref() :: atom() | {atom(), atom()} | {global, term()} | {via, atom(), term()} | pid().
+
 -define(WHISTLE_TYPES_INCLUDED, true).
 -endif.

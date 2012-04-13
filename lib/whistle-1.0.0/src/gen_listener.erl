@@ -100,6 +100,9 @@ behaviour_info(_) ->
 -define(TIMEOUT_RETRY_CONN, 1000).
 -define(CALLBACK_TIMEOUT_MSG, callback_timeout).
 
+-define(START_TIMEOUT, 500).
+-define(MAX_TIMEOUT, 5000).
+
 %% API functions for requesting data from the gen_listener
 -spec queue_name/1 :: (pid()) -> ne_binary().
 queue_name(Srv) ->
@@ -198,9 +201,7 @@ rm_binding(Srv, Binding, Props) ->
 init([Module, Params, InitArgs]) ->
     process_flag(trap_exit, true),
     put(callid, ?LOG_SYSTEM_ID),
-
     lager:debug("starting new gen_listener proc: ~s", [wh_util:to_binary(Module)]),
-
     {ModState, TimeoutRef} = case erlang:function_exported(Module, init, 1) andalso Module:init(InitArgs) of
                                  {ok, MS} ->
                                      {MS, undefined};
@@ -211,22 +212,24 @@ init([Module, Params, InitArgs]) ->
                                  Err ->
                                      throw(Err)
                              end,
-
     Responders = props:get_value(responders, Params, []),
     Bindings = props:get_value(bindings, Params, []),
-
-    {ok, Q} = start_amqp(Params),
-
-    _ = erlang:send_after(?TIMEOUT_RETRY_CONN, self(), is_consuming),
-
-    _ = [add_responder(self(), Mod, Evts) || {Mod, Evts} <- Responders],
-
-    _ = [create_binding(wh_util:to_binary(Type), BindProps, Q) || {Type, BindProps} <- Bindings],
-
-    {ok, #state{queue=Q, module=Module, module_state=ModState, module_timeout_ref=TimeoutRef
-                ,responders=[], bindings=Bindings
-                ,params=lists:keydelete(responders, 1, lists:keydelete(bindings, 1, Params))}
-     ,hibernate}.
+    case start_amqp(Params) of
+        {error, _R} ->
+            lager:alert("lost our channel, but its back up; rebinding"),
+            _Ref = erlang:send_after(?TIMEOUT_RETRY_CONN, self(), {amqp_channel_event, initial_conn_failed}),
+            {ok, #state{module=Module, module_state=ModState, module_timeout_ref=TimeoutRef
+                        ,responders=[], bindings=Bindings
+                        ,params=lists:keydelete(responders, 1, lists:keydelete(bindings, 1, Params))}};
+        {ok, Q} ->
+            _ = erlang:send_after(?TIMEOUT_RETRY_CONN, self(), is_consuming),
+            _ = [add_responder(self(), Mod, Evts) || {Mod, Evts} <- Responders],
+            _ = [create_binding(wh_util:to_binary(Type), BindProps, Q) || {Type, BindProps} <- Bindings],
+            {ok, #state{queue=Q, module=Module, module_state=ModState, module_timeout_ref=TimeoutRef
+                        ,responders=[], bindings=Bindings
+                        ,params=lists:keydelete(responders, 1, lists:keydelete(bindings, 1, Params))}
+             ,hibernate}
+    end.
 
 -type gen_l_handle_call_ret() :: {'reply', term(), #state{}, gen_server_timeout()} |
                                  {'noreply', #state{}, gen_server_timeout()} |
@@ -369,47 +372,40 @@ handle_info({'EXIT', Pid, _Reason}=Message, #state{active_responders=ARs}=State)
         false -> handle_callback_info(Message, State)
     end;
 
-handle_info({amqp_host_down, _H}=Down, #state{bindings=Bindings, params=Params}=State) ->
-    timer:sleep(random:uniform(150)+100), % wait a bit before reconnecting, so we don't slam amqp_mgr
-    lager:alert("amqp host down msg: ~p", [_H]),
-
-    case amqp_util:is_host_available() of
-        true ->
-            lager:debug("host is available, let's try wiring up"),
-            case start_amqp(Params) of
-                {ok, Q} ->
-                    Self = self(),
-                    _ = erlang:send_after(?TIMEOUT_RETRY_CONN, Self, is_consuming),
-                    proc_lib:spawn(fun() -> [ add_binding(Self, Type, BindProps) || {Type, BindProps} <- Bindings ] end),
-                    {noreply, State#state{queue=Q, is_consuming=false, bindings=[]}, hibernate};
-                {error, _} ->
-                    lager:debug("failed to start amqp, waiting another second"),
-                    _ = erlang:send_after(?TIMEOUT_RETRY_CONN, self(), Down),
-                    {noreply, State#state{queue = <<>>, is_consuming=false}, hibernate}
-            end;
-        false ->
-            lager:debug("no AMQP host ready, waiting another second"),
-            erlang:send_after(?TIMEOUT_RETRY_CONN, self(), Down),
-            {noreply, State#state{queue = <<>>, is_consuming=false}, hibernate}
-    end;
-
-handle_info({amqp_lost_channel, no_connection}, State) ->
-    lager:alert("lost our channel, checking every second for a host to come back up"),
-    _Ref = erlang:send_after(?TIMEOUT_RETRY_CONN, self(), {amqp_host_down, ok}),
+handle_info({amqp_channel_event, initial_conn_failed}, State) ->
+    lager:alert("failed to create initial connection to AMQP, waiting for connection"),
+    _Ref = erlang:send_after(?START_TIMEOUT, self(), {'$maybe_connect_amqp', ?START_TIMEOUT}),
     {noreply, State#state{queue = <<>>, is_consuming=false}, hibernate};
-
-handle_info({amqp_lost_channel, connection_restored}, #state{params=Params, bindings=Bindings}=State) ->
-    lager:alert("lost our channel, but its back up; rebinding"),
-
+handle_info({amqp_channel_event, restarted}, #state{params=Params, bindings=Bindings}=State) ->
     case start_amqp(Params) of
         {ok, Q} ->
             Self = self(),
+            lager:debug("lost our channel, but its back up; rebinding"),
             _ = erlang:send_after(?TIMEOUT_RETRY_CONN, Self, is_consuming),
-            proc_lib:spawn(fun() -> [ add_binding(Self, Type, BindProps) || {Type, BindProps} <- Bindings ] end),
+            proc_lib:spawn(fun() -> [add_binding(Self, Type, BindProps) || {Type, BindProps} <- Bindings] end),
+            {noreply, State#state{queue=Q, is_consuming=false, bindings=[]}, hibernate};
+        {error, _R} ->
+            lager:alert("failed to rebind after channel restart: ~p", [_R]),
+            _Ref = erlang:send_after(?START_TIMEOUT, self(), {'$maybe_connect_amqp', ?START_TIMEOUT}),
+            {noreply, State#state{queue = <<>>, is_consuming=false}, hibernate}
+    end;
+handle_info({amqp_channel_event, _Reason}, State) ->
+    lager:alert("notified AMQP channel died: ~p", [_Reason]),
+    _Ref = erlang:send_after(?START_TIMEOUT, self(), {'$maybe_connect_amqp', ?START_TIMEOUT}),
+    {noreply, State#state{queue = <<>>, is_consuming=false}, hibernate};
+
+handle_info({'$maybe_connect_amqp', Timeout}, #state{bindings=Bindings, params=Params}=State) ->
+    case start_amqp(Params) of
+        {ok, Q} ->            
+            Self = self(),
+            lager:info("reconnected to AMQP channel, rebinding"),
+            _ = erlang:send_after(?TIMEOUT_RETRY_CONN, Self, is_consuming),
+            proc_lib:spawn(fun() ->
+                                   [add_binding(Self, Type, BindProps) || {Type, BindProps} <- Bindings]
+                           end),
             {noreply, State#state{queue=Q, is_consuming=false, bindings=[]}, hibernate};
         {error, _} ->
-            lager:debug("failed to start amqp, waiting another second"),
-            _ = erlang:send_after(?TIMEOUT_RETRY_CONN, self(), {amqp_host_down, ok}),
+            _Ref = erlang:send_after(Timeout, self(), {'$maybe_connect_amqp', next_timeout(Timeout)}),
             {noreply, State#state{queue = <<>>, is_consuming=false}, hibernate}
     end;
 
@@ -419,7 +415,7 @@ handle_info(#'basic.consume_ok'{}, S) ->
 
 handle_info(is_consuming, #state{is_consuming=false, queue=Q}=State) ->
     lager:debug("huh, we're not consuming. Queue: ~p", [Q]),
-    _Ref = erlang:send_after(?TIMEOUT_RETRY_CONN, self(), {amqp_host_down, ok}),
+    _Ref = erlang:send_after(?START_TIMEOUT, self(), {'$maybe_connect_amqp', ?START_TIMEOUT}),
     {noreply, State};
 
 handle_info(is_consuming, State) ->
@@ -532,16 +528,19 @@ wait_for_handlers([]) -> ok.
 
 -spec start_amqp/1 :: (wh_proplist()) -> {'ok', binary()} | {'error', 'amqp_error'}.
 start_amqp(Props) ->
-    QueueProps = props:get_value(queue_options, Props, []),
-    QueueName = props:get_value(queue_name, Props, <<>>),
-    case catch amqp_util:new_queue(QueueName, QueueProps) of
-        {error, amqp_error}=E -> lager:debug("failed to start new queue"), E;
-        {'EXIT', _Why} -> lager:alert("exit: ~p", [_Why]), {error, amqp_error};
-        Queue ->
-            ConsumeProps = props:get_value(consume_options, Props, []),
-            set_qos(props:get_value(basic_qos, Props)),
-            ok = amqp_util:basic_consume(Queue, ConsumeProps),
-            {ok, Queue}
+    case wh_amqp_mgr:is_available() of
+        false -> {error, amqp_down};
+        true ->
+            QueueProps = props:get_value(queue_options, Props, []),
+            QueueName = props:get_value(queue_name, Props, <<>>),
+            case amqp_util:new_queue(QueueName, QueueProps) of
+                {error, _}=E -> E;
+                Q ->
+                    ConsumeProps = props:get_value(consume_options, Props, []),
+                    set_qos(props:get_value(basic_qos, Props)),
+                    ok = amqp_util:basic_consume(Q, ConsumeProps),
+                    {ok, Q}
+            end
     end.
 
 -spec set_qos/1 :: ('undefined' | non_neg_integer()) -> 'ok'.
@@ -604,3 +603,13 @@ stop_timer(Ref) when is_reference(Ref) ->
 start_timer(Timeout) when is_integer(Timeout) andalso Timeout >= 0 ->
     erlang:send_after(Timeout, self(), ?CALLBACK_TIMEOUT_MSG);
 start_timer(_) -> 'undefined'.
+
+-spec next_timeout/1 :: (pos_integer()) -> ?START_TIMEOUT..?MAX_TIMEOUT.
+next_timeout(?MAX_TIMEOUT=Timeout) ->
+    Timeout;
+next_timeout(Timeout) when Timeout*2 > ?MAX_TIMEOUT ->
+    ?MAX_TIMEOUT;
+next_timeout(Timeout) when Timeout < ?START_TIMEOUT ->
+    ?START_TIMEOUT;
+next_timeout(Timeout) ->
+    Timeout * 2.

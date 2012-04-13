@@ -356,7 +356,7 @@ publish_event(Props) ->
             ApplicationData = props:get_value(<<"Raw-Application-Data">>, Props, <<>>),
             lager:debug("publishing call event ~s '~s(~s)'", [EventName, ApplicationName, ApplicationData])
     end,
-    wapi_call:publish_event(CallId, Props).
+    wh_amqp_worker:cast(?ECALLMGR_AMQP_POOL, Props, fun(P) -> wapi_call:publish_event(CallId, P) end).
 
 -spec is_masquerade/1 :: (proplist()) -> boolean().
 is_masquerade(Props) ->

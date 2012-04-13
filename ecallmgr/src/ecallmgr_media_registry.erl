@@ -255,15 +255,17 @@ lookup_remote(MediaName, new, CallID) ->
 
 -spec lookup_remote/2 :: (ne_binary(), proplist()) -> {'ok', ne_binary()} | {'error', 'not_local'}.
 lookup_remote(MediaName, Request) ->
-    try
-        {ok, MediaResp} = ecallmgr_amqp_pool:media_req(Request, 2000),
-        true = wapi_media:resp_v(MediaResp),
-        MediaName = wh_json:get_value(<<"Media-Name">>, MediaResp),
-
-        {ok, wh_json:get_value(<<"Stream-URL">>, MediaResp, <<>>)}
-    catch
-        _:B ->
-            {error, B}
+    ReqResp = wh_amqp_worker:call(?ECALLMGR_AMQP_POOL
+                                  ,Request
+                                  ,fun wapi_media:publish_req/1
+                                  ,fun wapi_media:resp_v/1),
+    case ReqResp of 
+        {error, _R}=E -> 
+            lager:debug("media lookup for '~s' failed: ~p", [MediaName, _R]),
+            E;
+        {ok, MediaResp} ->
+            MediaName = wh_json:get_value(<<"Media-Name">>, MediaResp),
+            {ok, wh_json:get_value(<<"Stream-URL">>, MediaResp, <<>>)}
     end.
 
 wait_for_fs_media({Path,_}, RecvSrv, FromPid) ->

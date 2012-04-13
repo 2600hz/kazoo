@@ -194,12 +194,15 @@ authorize_and_route(Node, FSID, CallID, FSData, DefProp) ->
 -spec route/5 :: (atom(), ne_binary(), ne_binary(), proplist(), pid() | 'undefined') -> 'ok'.
 route(Node, FSID, CallID, DefProp, AuthZPid) ->
     lager:debug("starting route request from node ~s", [Node]),
-    case ecallmgr_amqp_pool:route_req(DefProp) of
+    ReqResp = wh_amqp_worker:call(?ECALLMGR_AMQP_POOL
+                                  ,DefProp
+                                  ,fun wapi_route:publish_req/1
+                                  ,fun wapi_route:is_actionable_resp/1),
+    case ReqResp of
+        {error, _R} -> lager:debug("did not receive route response: ~p", [_R]);
         {ok, RespJObj} ->
             RouteCCV = wh_json:get_value(<<"Custom-Channel-Vars">>, RespJObj, wh_json:new()),
-            authorize(Node, FSID, CallID, RespJObj, AuthZPid, RouteCCV);
-        _Else ->
-            lager:debug("did not receive route response: ~p", [_Else])
+            authorize(Node, FSID, CallID, RespJObj, AuthZPid, RouteCCV)
     end.
 
 -spec authorize/6 :: (atom(), ne_binary(), ne_binary(), wh_json:json_object(), pid() | 'undefined', wh_json:json_object()) -> 'ok'.
