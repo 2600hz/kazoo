@@ -35,6 +35,7 @@ start_deps() ->
     ok = wh_util:ensure_started(sasl),
     ok = wh_util:ensure_started(crypto),
     ok = wh_util:ensure_started(ibrowse),
+    ok = wh_util:ensure_started(gproc),
     ok = wh_util:ensure_started(riak_err),
     ok = wh_util:ensure_started(couchbeam),
     ok = wh_util:ensure_started(whistle_amqp).

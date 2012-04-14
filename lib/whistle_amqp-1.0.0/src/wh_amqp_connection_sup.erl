@@ -5,29 +5,20 @@
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
--module(ecallmgr_sup).
+-module(wh_amqp_connection_sup).
 
 -behaviour(supervisor).
 
--include_lib("ecallmgr/src/ecallmgr.hrl").
+-include_lib("whistle/include/wh_types.hrl").
 
 -export([start_link/0]).
+-export([add/1]).
+-export([remove/1]).
 -export([init/1]).
 
--define(CHILD(Name, Type), fun(N, pool) -> {N, {poolboy, start_link, [[{name, {local, N}}
-                                                                       ,{worker_module, wh_amqp_worker}
-                                                                       ,{size, 50}
-                                                                       ,{max_overflow, 50}
-                                                                      ]
-                                                                     ]}
-                                            ,permanent, 5000, worker, [poolboy]
-                                           };
-                              (N, T) -> {N, {N, start_link, []}, permanent, 5000, T, [N]} end(Name, Type)).
--define(CHILDREN, [{?ECALLMGR_AMQP_POOL, pool}
-                   ,{ecallmgr_util_sup, supervisor}
-                   ,{ecallmgr_call_sup, supervisor}
-                   ,{ecallmgr_fs_sup, supervisor}
-                  ]).
+-define(SERVER, ?MODULE).
+
+-define(CHILD(Name, Type, Args), fun(N, T, A) -> {N, {wh_amqp_connection, start_link, [A]}, permanent, 5000, T, [N]} end(Name, Type, Args)).
 
 %% ===================================================================
 %% API functions
@@ -42,6 +33,17 @@
 -spec start_link/0 :: () -> startlink_ret().
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+
+-spec add/1 :: (wh_amqp_broker:broker()) -> {'error', _} | {'ok','undefined' | pid()} | {'ok','undefined' | pid(), _}.
+add(Broker) ->
+    Name = wh_amqp_broker:name(Broker),
+    supervisor:start_child(?SERVER, ?CHILD(Name, worker, Broker)).
+
+-spec remove/1 :: (wh_amqp_broker:broker()) -> 'ok' | {'error', 'running' | 'not_found' | 'simple_one_for_one'}.
+remove(Broker) ->
+    Name = wh_amqp_broker:name(Broker),
+    _ = supervisor:terminate_child(?SERVER, Name),
+    supervisor:delete_child(?SERVER, Name).
 
 %% ===================================================================
 %% Supervisor callbacks
@@ -63,6 +65,6 @@ init([]) ->
     MaxSecondsBetweenRestarts = 10,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
-    Children = [?CHILD(Name, Type) || {Name, Type} <- ?CHILDREN],
+    Children = [],
 
     {ok, {SupFlags, Children}}.

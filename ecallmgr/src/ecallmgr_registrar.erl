@@ -121,7 +121,6 @@ handle_cast(_Msg, State) ->
 handle_info({cache_registrations, Realm, User, RegFields}, State) ->
     lager:debug("storing registration information for ~s@~s", [User, Realm]),
     {ok, Cache} = ecallmgr_util_sup:cache_proc(),
-
     wh_cache:store_local(Cache, cache_key(Realm, User), RegFields
                          ,wh_util:to_integer(props:get_value(<<"Expires">>, RegFields, 300)) %% 5 minute default
                         ),
@@ -180,37 +179,25 @@ lookup_reg(Realm, User, Fields) ->
                             false -> Acc
                         end
                 end,
-
     case wh_cache:fetch_local(Cache, cache_key(Realm, User)) of
         {error, not_found} ->
             lager:debug("valid cached registration not found, querying whapps"),
-            RegProp = [{<<"Username">>, User}
-                       ,{<<"Realm">>, Realm}
-                       ,{<<"Fields">>, []}
-                       | wh_api:default_headers(?APP_NAME, ?APP_VERSION) ],
-            try
-                case ecallmgr_amqp_pool:reg_query(RegProp) of
-                    {ok, RegJObj} ->
-                        true = wapi_registration:query_resp_v(RegJObj),
-
-                        RegFields = wh_json:to_proplist(wh_json:get_value(<<"Fields">>, RegJObj, wh_json:new())),
-
-                        {ok, Srv} = ecallmgr_util_sup:registrar_proc(),
-                        Srv ! {cache_registrations, Realm, User, RegFields},
-
-                        lager:debug("received registration information"),
-                        lists:foldr(FilterFun, [], RegFields);
-                    {error, timeout}=E ->
-                        lager:debug("Looking up registration timed out"),
-                        E
-                end
-            catch
-                _:{timeout, _} ->
-                    lager:debug("looking up registration threw exception: timeout", []),
-                    {error, timeout};
-                _:R ->
-                    lager:debug("looking up registration threw exception: ~p", [R]),
-                    {error, timeout}
+            ReqResp = wh_amqp_worker:call(?ECALLMGR_AMQP_POOL
+                                          ,[{<<"Username">>, User}
+                                            ,{<<"Realm">>, Realm}
+                                            ,{<<"Fields">>, []}
+                                            | wh_api:default_headers(?APP_NAME, ?APP_VERSION) 
+                                           ]
+                                          ,fun wapi_registration:publish_query_req/1
+                                          ,fun wapi_registration:query_resp_v/1),
+            case ReqResp of
+                {error, _R} -> lager:debug("did not receive registrar response: ~p", [_R]);
+                {ok, RespJObj} ->
+                    RegFields = wh_json:to_proplist(wh_json:get_value(<<"Fields">>, RespJObj, wh_json:new())),
+                    {ok, Srv} = ecallmgr_util_sup:registrar_proc(),
+                    Srv ! {cache_registrations, Realm, User, RegFields},
+                    lager:debug("received registration information"),
+                    lists:foldr(FilterFun, [], RegFields)
             end;
         {ok, RegFields} ->
             lager:debug("found cached registration information"),

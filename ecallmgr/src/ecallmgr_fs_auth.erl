@@ -128,7 +128,7 @@ handle_info({fetch, directory, <<"domain">>, <<"name">>, _Value, ID, [undefined 
     case {props:get_value(<<"Event-Name">>, Data), props:get_value(<<"action">>, Data)} of
         {<<"REQUEST_PARAMS">>, <<"sip_auth">>} ->
             %% TODO: move this to a supervisor somewhere....
-            lookup_user(Node, ID, Data),
+            proc_lib:spawn(?MODULE, lookup_user, [Node, ID, Data]),
             {noreply, State, hibernate};
         _Other ->
             _ = freeswitch:fetch_reply(Node, ID, ?EMPTYRESPONSE),
@@ -176,33 +176,31 @@ code_change(_OldVsn, State, _Extra) ->
 lookup_user(Node, ID, Data) ->
     spawn(fun() ->
                   put(callid, ID),
-                  
                   %% build req for rabbit
                   AuthRealm = props:get_value(<<"domain">>, Data, props:get_value(<<"Auth-Realm">>, Data)),
                   AuthUser = props:get_value(<<"user">>, Data, props:get_value(<<"Auth-User">>, Data)),
-                  
-                  AuthReq = [{<<"Msg-ID">>, ID}
-                             ,{<<"To">>, ecallmgr_util:get_sip_to(Data)}
-                             ,{<<"From">>, ecallmgr_util:get_sip_from(Data)}
-                             ,{<<"Orig-IP">>, ecallmgr_util:get_orig_ip(Data)}
-                             ,{<<"Method">>, props:get_value(<<"sip_auth_method">>, Data)}
-                             ,{<<"Auth-User">>, AuthUser}
-                             ,{<<"Auth-Realm">>, AuthRealm}
-                             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-                            ],
-                  
-                  lager:debug("looking up credentials of ~s@~s for a ~s", [AuthUser, AuthRealm, props:get_value(<<"Method">>, AuthReq)]),
-                  
-                  case ecallmgr_amqp_pool:authn_req(AuthReq) of
+                  Method = props:get_value(<<"sip_auth_method">>, Data),
+                  lager:debug("looking up credentials of ~s@~s for a ~s", [AuthUser, AuthRealm, Method]),
+                  ReqResp = wh_amqp_worker:call(?ECALLMGR_AMQP_POOL
+                                                ,[{<<"Msg-ID">>, ID}
+                                                  ,{<<"To">>, ecallmgr_util:get_sip_to(Data)}
+                                                  ,{<<"From">>, ecallmgr_util:get_sip_from(Data)}
+                                                  ,{<<"Orig-IP">>, ecallmgr_util:get_orig_ip(Data)}
+                                                  ,{<<"Method">>, Method}
+                                                  ,{<<"Auth-User">>, AuthUser}
+                                                  ,{<<"Auth-Realm">>, AuthRealm}
+                                                  | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                                                 ]
+                                                ,fun wapi_authn:publish_req/1
+                                                ,fun wapi_authn:resp_v/1),
+                  case ReqResp of
                       {error, _R} ->
                           lager:debug("authn request lookup failed: ~p", [_R]),
                           freeswitch:fetch_reply(Node, ID, ?ROUTE_NOT_FOUND_RESPONSE);
-                      {ok, AuthResp} ->
-                          true = wapi_authn:resp_v(AuthResp),
-                          lager:debug("received authn_resp"),
+                      {ok, RespJObj} ->
                           {ok, Xml} = ecallmgr_fs_xml:authn_resp_xml(
                                         wh_json:set_value(<<"Auth-Realm">>, AuthRealm
-                                                          ,wh_json:set_value(<<"Auth-User">>, AuthUser, AuthResp))
+                                                          ,wh_json:set_value(<<"Auth-User">>, AuthUser, RespJObj))
                                        ),
                           lager:debug("sending XML to ~w: ~s", [Node, Xml]),
                           freeswitch:fetch_reply(Node, ID, Xml)
