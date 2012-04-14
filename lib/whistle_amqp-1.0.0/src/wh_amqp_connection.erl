@@ -158,9 +158,11 @@ consume(Srv, #'basic.qos'{}=BasicQos) ->
     case my_channel(Srv) of
         {error, _}=E -> E;
         {ok, Channel} ->
-%%% TODO.... FIX ME by checking the result...
-            amqp_channel:call(Channel, BasicQos),
-            ok
+            case amqp_channel:call(Channel, BasicQos) of
+                #'basic.qos_ok'{} -> ok;
+                {error, _}=E -> E;
+                Err -> {error, Err}
+            end
     end;
 consume(Srv, #'basic.ack'{}=BasicAck) ->
     case my_channel(Srv) of
