@@ -19,7 +19,6 @@
 -define(SERVER, ?MODULE).
 
 -define(CHILD(Name, Type, Args), fun(N, T, A) -> {N, {wh_amqp_connection, start_link, [A]}, permanent, 5000, T, [N]} end(Name, Type, Args)).
--define(CHILDREN, []).
 
 %% ===================================================================
 %% API functions
@@ -35,7 +34,7 @@
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
--spec add/1 :: (wh_amqp_broker:broker()) -> {'ok', pid()}.
+-spec add/1 :: (wh_amqp_broker:broker()) -> {'error', _} | {'ok','undefined' | pid()} | {'ok','undefined' | pid(), _}.
 add(Broker) ->
     Name = wh_amqp_broker:name(Broker),
     supervisor:start_child(?SERVER, ?CHILD(Name, worker, Broker)).
@@ -66,6 +65,6 @@ init([]) ->
     MaxSecondsBetweenRestarts = 10,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
-    Children = [?CHILD(Name, Type, []) || {Name, Type} <- ?CHILDREN],
+    Children = [],
 
     {ok, {SupFlags, Children}}.

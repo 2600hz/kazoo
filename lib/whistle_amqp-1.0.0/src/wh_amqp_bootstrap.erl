@@ -113,7 +113,7 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info(timeout, State) ->
-    wh_amqp_sup:stop_bootstrap(),
+    _ = wh_amqp_sup:stop_bootstrap(),
     {noreply, State};
 handle_info(_Info, State) ->
     {noreply, State}.

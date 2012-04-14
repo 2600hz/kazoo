@@ -48,7 +48,7 @@
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
--spec get_connection/0 :: () -> wh_amqp_broker:broker() | {'error', 'amqp_down'}.
+-spec get_connection/0 :: () -> {'ok', atom()} | {'error', 'amqp_down'}.
 get_connection() ->
     gen_server:call(?SERVER, get_connection).
 
@@ -65,9 +65,7 @@ wait_for_available_host() ->
             wait_for_available_host()
     end.
 
--spec consume/1 :: (wh_amqp_connection:consume_records()) -> 'ok' |
-                                                    {'ok', ne_binary()} |
-                                                    {'error', term()}.
+-spec consume/1 :: (wh_amqp_connection:consume_records()) -> 'ok' | {'ok', ne_binary()} | {'error', _}.
 consume(BC) ->
     case get_connection() of
         {ok, Connection} -> wh_amqp_connection:consume(Connection, BC);
@@ -81,7 +79,7 @@ publish(BP, AM) ->
         {error, _}=E -> E
     end.
 
--spec misc_req/1 :: (wh_amqp_connection:misc_records()) -> 'ok' | {'error', atom()}.
+-spec misc_req/1 :: (wh_amqp_connection:misc_records()) -> 'ok' | {'error', _}.
 misc_req(Req) ->
     case get_connection() of
         {ok, Connection} -> wh_amqp_connection:misc_req(Connection, Req);
@@ -169,7 +167,7 @@ handle_cast({add_broker, URI, UseFederation}, #state{brokers=Brokers}=State) ->
                     {noreply, State#state{brokers=dict:store(Name, Broker, Brokers)}, hibernate};
                 {error, {Reason, _}} ->
                     lager:info("unable to start AMQP connection to '~s': ~p", [Name, Reason]),
-                    wh_amqp_connection_sup:remove(Broker),
+                    _ = wh_amqp_connection_sup:remove(Broker),
                     {noreply, State}
             end
     end;
@@ -226,7 +224,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%--------------------------------------------------------------------
 -spec next_available_broker/1 :: (#state{}) -> {'undefined' | wh_amqp_broker:broker(), #state{}}.
--spec next_available_broker/3 :: ('priority', [wh_amqp_broker:broker(),...]|[], #state{}) -> {'undefined' | wh_amqp_broker:broker(), #state{}}.
+-spec next_available_broker/3 :: ('priority', [{atom(), wh_amqp_broker:broker()},...] | [], #state{}) -> {'undefined' | wh_amqp_broker:broker(), #state{}}.
 
 next_available_broker(#state{strategy=Strategy,  available_brokers=Brokers}=State) ->
     case dict:to_list(Brokers) of

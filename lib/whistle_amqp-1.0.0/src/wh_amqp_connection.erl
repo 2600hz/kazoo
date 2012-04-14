@@ -18,6 +18,7 @@
 -export([my_channel/1]).
 -export([update_my_tag/2]).
 -export([fetch_my_tag/1]).
+-export([use_federation/1]).
 -export([stop/1]).
 -export([init/1
          ,handle_call/3
@@ -79,16 +80,22 @@ start_link(Broker) ->
     Name = wh_amqp_broker:name(Broker),
     gen_server:start_link({local, Name}, ?MODULE, [Broker], []).
 
--spec publish/3 :: (pid(), #'basic.publish'{}, ne_binary() | iolist()) -> 'ok'.
+-spec publish/3 :: (atom(), #'basic.publish'{}, ne_binary() | iolist()) -> 'ok' | {'error', _}.
 publish(Srv, #'basic.publish'{exchange=_Exchange, routing_key=_RK}=BasicPub, AmqpMsg) ->
-    {ok, Channel} = case my_channel(Srv, false) of
-                        {error, _} -> gen_server:call(Srv, publish_channel);
-                        {ok, _}=Ok -> Ok
-                    end,
-    lager:debug("publish to exchange '~s' with routing key '~s' via channel ~p", [_Exchange, _RK, Channel]),
-    amqp_channel:call(Channel, BasicPub, AmqpMsg).
+    FindChannel = [fun(_) -> my_channel(Srv, false) end
+                   ,fun({error, _}) -> gen_server:call(Srv, publish_channel);
+                       ({ok, _}=OK) -> OK
+                    end
+                  ],
+    case lists:foldl(fun(F, C) -> F(C) end, {error, no_channel}, FindChannel) of 
+        {error, _}=E -> E;
+        {ok, Channel} ->
+            lager:debug("publish to exchange '~s' with routing key '~s' via channel ~p", [_Exchange, _RK, Channel]),
+            amqp_channel:call(Channel, BasicPub, AmqpMsg),
+            ok
+    end.
 
--spec consume/2 :: (pid(), consume_records()) -> 'ok' | {'error', term()}.
+-spec consume/2 :: (atom(), consume_records()) -> 'ok' | {'ok', ne_binary()} | {'error', _}.
 consume(Srv, #'basic.consume'{consumer_tag=CTag}=BasicConsume) ->
     case my_channel(Srv) of
         {error, _}=E -> E;
@@ -104,7 +111,8 @@ consume(Srv, #'basic.cancel'{}=BasicCancel) ->
         {error, _}=E -> E;
         {ok, Tag} ->
             {ok, Channel} = my_channel(Srv),
-            amqp_channel:call(Channel, BasicCancel#'basic.cancel'{consumer_tag=Tag})
+            amqp_channel:call(Channel, BasicCancel#'basic.cancel'{consumer_tag=Tag}),
+            ok
     end;
 consume(Srv, #'queue.bind'{}=QueueBind) ->
     case my_channel(Srv) of
@@ -150,7 +158,7 @@ consume(Srv, #'basic.qos'{}=BasicQos) ->
     case my_channel(Srv) of
         {error, _}=E -> E;
         {ok, Channel} ->
-%%% TODO.... FIX ME            
+%%% TODO.... FIX ME by checking the result...
             amqp_channel:call(Channel, BasicQos),
             ok
     end;
@@ -158,59 +166,51 @@ consume(Srv, #'basic.ack'{}=BasicAck) ->
     case my_channel(Srv) of
         {error, _}=E -> E;
         {ok, Channel} ->
-            amqp_channel:cast(Channel, BasicAck)
+            amqp_channel:cast(Channel, BasicAck),
+            ok
     end;
 consume(Srv, #'basic.nack'{}=BasicAck) ->
     case my_channel(Srv) of
         {error, _}=E -> E;
         {ok, Channel} ->
-            amqp_channel:cast(Channel, BasicAck)
-    end;
-consume(Srv, #'exchange.declare'{}=BasicAck) ->
-    case my_channel(Srv) of
-        {error, _}=E -> E;
-        {ok, Channel} ->
-%%% TODO.... FEDERATION STUFF...
-            case amqp_channel:call(Channel, BasicAck) of
-                #'exchange.declare_ok'{} -> ok;
-                {error, _}=E -> E;
-                Err -> {error, Err}
-            end
+            amqp_channel:cast(Channel, BasicAck),
+            ok
     end.
 
--spec misc_req/2 :: (pid(), misc_records()) -> 'ok'.
+-spec misc_req/2 :: (atom(), misc_records()) -> 'ok'.
 misc_req(Srv,  #'exchange.declare'{exchange=_Ex, type=_Ty}=ExchangeDeclare) ->
     {ok, Channel} = gen_server:call(Srv, misc_channel),
-    case os:getenv("AMQP_DEBUG") of
-        false -> ok;
-        _Else ->
-            lager:debug("attempting to create new ~s exchange '~s' via channel ~p", [_Ty, _Ex, Channel])
-    end,
-    case amqp_channel:call(Channel, ExchangeDeclare) of
+    lager:debug("attempting to create new ~s exchange '~s' via channel ~p", [_Ty, _Ex, Channel]),
+    UseFederation = use_federation(Srv),
+    case amqp_channel:call(Channel, exchange_declare(ExchangeDeclare, UseFederation)) of
         #'exchange.declare_ok'{} -> ok;
         {error, _}=E -> E;
         Err -> {error, Err}
     end.
 
--spec my_channel/1 :: (pid()) -> {'ok', pid()} |
-                                 {'error', term()}.
--spec my_channel/2 :: (pid(), boolean) -> {'ok', pid()} |
-                                          {'error', term()}.
+-spec my_channel/1 :: (atom()) -> {'ok', pid()} |
+                                  {'error', term()}.
+-spec my_channel/2 :: (atom(), boolean()) -> {'ok', pid()} |
+                                             {'error', term()}.
 my_channel(Srv) ->
     my_channel(Srv, true).
 
 my_channel(Srv, Create) ->
     gen_server:call(Srv, {my_channel, self(), Create}).
 
--spec update_my_tag/2 :: (pid(), ne_binary()) -> 'ok'.
+-spec update_my_tag/2 :: (atom(), ne_binary()) -> 'ok'.
 update_my_tag(Srv, Tag) ->
     gen_server:cast(Srv, {update_my_tag, self(), Tag}).
 
--spec fetch_my_tag/1 :: (pid()) -> {'ok', binary()} |
-                                   {'error', 'not_consuming'}.
+-spec fetch_my_tag/1 :: (atom()) -> {'ok', binary()} |
+                                    {'error', 'not_consuming'}.
 fetch_my_tag(Srv) ->
     gen_server:call(Srv, {fetch_my_tag, self()}).
 
+-spec use_federation/1 :: (atom()) -> boolean().
+use_federation(Srv) ->
+    gen_server:call(Srv, use_federation).
+    
 -spec stop/1 :: (pid()) -> 'ok'.
 stop(Srv) ->
     case erlang:is_process_alive(Srv) of
@@ -253,6 +253,9 @@ init([Broker]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_call(use_federation, _, #state{broker=Broker}=State) ->
+    %% If we are diconnected dont pay attention to requests
+    {reply, wh_amqp_broker:use_federation(Broker), State};
 handle_call(_, _, #state{connection=undefined}=State) ->
     %% If we are diconnected dont pay attention to requests
     {reply, {error, amqp_down}, State};
@@ -390,10 +393,10 @@ terminate(_Reason, {_H, _Conn, _UseF}) ->
     lager:debug("params: ~s on conn ~p, use federation: ~s", [_H, _Conn, _UseF]);
 terminate(_Reason, #state{consumers=Consumers, broker=Broker}) ->
     Name = wh_amqp_broker:name(Broker),
-    spawn(fun() ->
-                  put(callid, ?LOG_SYSTEM_ID),
-                  notify_consumers({amqp_channel_event, terminated}, Consumers)
-          end),
+    _ = spawn(fun() ->
+                      put(callid, ?LOG_SYSTEM_ID),
+                      notify_consumers({amqp_channel_event, terminated}, Consumers)
+              end),
     lager:debug("connection to AMQP broker '~s' terminated: ~p", [Name, _Reason]).
 
 %%--------------------------------------------------------------------
@@ -443,7 +446,7 @@ remove_ref(Ref, #state{connection=Connection, consumers=Cs}=State) ->
                                             clean_consumers(K, V, Acc, Ref, Connection)
                                     end, Cs, Cs)}.
 
--spec notify_consumers/2 :: ({'amqp_channel_event', binary()}, dict()) -> 'ok'.
+-spec notify_consumers/2 :: ({'amqp_channel_event', atom()}, dict()) -> 'ok'.
 notify_consumers(Msg, Dict) ->
     lists:foreach(fun({Pid,_}) -> Pid ! Msg end, dict:to_list(Dict)).
 
@@ -504,7 +507,7 @@ clean_consumers(ConsumerPid, {C, ChannelRef, _, ConsumerRef}, Dict, _, _) ->
 clean_consumers(_, _, Dict,_,_) ->
     Dict.
 
--spec try_to_subscribe/3 :: (pid(), pid(), #'basic.consume'{}) -> {'ok', term()} | {'error', term()}.
+-spec try_to_subscribe/3 :: (atom(), pid(), #'basic.consume'{}) -> 'ok' | {'error', term()}.
 try_to_subscribe(Srv, Channel, BasicConsume) ->
     try amqp_channel:call(Channel, BasicConsume) of
         #'basic.consume_ok'{consumer_tag=Tag} -> 
