@@ -791,6 +791,7 @@ publish_originate_execute(ServerId, API, ContentType) ->
     amqp_util:targeted_publish(ServerId, Payload, ContentType).
 
 bind_q(Queue, _Prop) ->
+    _ = amqp_util:callctl_exchange(),
     _ = amqp_util:bind_q_to_callctl(Queue),
     'ok'.
 

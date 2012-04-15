@@ -1,37 +1,50 @@
+%%%-------------------------------------------------------------------
+%%% @copyright (C) 2012, VoIP, INC
+%%% @doc
+%%%
+%%% @end
+%%% @contributors
+%%%-------------------------------------------------------------------
 -module(whistle_amqp).
--behaviour(application).
 
--author('James Aimonetti <james@2600hz.org>').
+-include_lib("whistle/include/wh_types.hrl").
 
--export([start/2, start/0, start_link/0, stop/0, stop/1]).
+-export([start_link/0, start/0]).
+-export([stop/0]).
 
-%%
-start(_Type, _Args) ->
-    _ = start_deps(),
-    whistle_amqp_sup:start_link().
-
-%% @spec start_link() -> {ok,Pid::pid()}
-%% @doc Starts the app for inclusion in a supervisor tree
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Starts the app for inclusion in a supervisor tree
+%% @end
+%%--------------------------------------------------------------------
+-spec start_link/0 :: () -> startlink_ret().
 start_link() ->
     _ = start_deps(),
-    whistle_amqp_sup:start_link().
+    wh_amqp_sup:start_link().
 
-%% @spec start() -> ok
-%% @doc Start the amqp server.
+-spec start/0 :: () -> 'ok' | {'error', _}.
 start() ->
     _ = start_deps(),
     application:start(whistle_amqp, permanent).
 
-start_deps() ->
-    whistle_amqp_deps:ensure(?MODULE),
-    ok = wh_util:ensure_started(sasl),
-    ok = wh_util:ensure_started(riak_err),
-    ok = wh_util:ensure_started(amqp_client).
-
-%% @spec stop() -> ok
-%% @doc Stop the amqp server.
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Stop the app
+%% @end
+%%--------------------------------------------------------------------
+-spec stop/0 :: () -> 'ok'.
 stop() ->
     application:stop(whistle_amqp).
 
-stop(_) ->
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Ensures that all dependencies for this app are already running
+%% @end
+%%--------------------------------------------------------------------
+-spec start_deps/0 :: () -> 'ok'.
+start_deps() ->
+    _ = [wh_util:ensure_started(App) || App <- [sasl, riak_error, amqp_client]],
     ok.

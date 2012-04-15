@@ -168,7 +168,6 @@ init([Node, Options]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call/3 :: ('node', {pid(), reference()}, #state{}) -> {'reply', atom(), #state{}}.
 handle_call(node, _From, #state{node=Node}=State) ->
     {reply, Node, State}.
 

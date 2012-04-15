@@ -62,23 +62,18 @@ authz_win(Pid) when is_pid(Pid) ->
 init_authorize(Parent, FSID, CallID, FSData) ->
     proc_lib:init_ack(Parent, {ok, self()}),
     put(callid, CallID),
-
     lager:debug("authorize started"),
-
-    ReqProp = request(FSID, CallID, FSData),
-
-    JObj = try
-               {ok, RespJObj} = ecallmgr_amqp_pool:authz_req(ReqProp, 2000),
-               true = wapi_authz:resp_v(RespJObj),
-               RespJObj
-           catch
-               _T:_R ->
-                   lager:debug("authz request un-answered or improper"),
-                   lager:debug("authz ~p: ~p", [_T, _R]),
-                   default()
-           end,
-
-    authorize_loop(JObj).
+    ReqResp = wh_amqp_worker:call(?ECALLMGR_AMQP_POOL
+                                  ,request(FSID, CallID, FSData)
+                                  ,fun wapi_authz:publish_req/1
+                                  ,fun wapi_authz:is_authorized/1),
+    case ReqResp of 
+        {error, _R} -> 
+            lager:debug("authz request lookup failed: ~p", [_R]),
+            default();
+        {ok, RespJObj} ->
+            authorize_loop(RespJObj)
+    end.
 
 -spec authorize_loop/1 :: (wh_json:json_object()) -> no_return().
 authorize_loop(JObj) ->
