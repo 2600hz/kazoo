@@ -80,7 +80,7 @@ initialize_whapps() ->
     end,
     WhApps = whapps_config:get(?MODULE, <<"whapps">>, []),
     StartWhApps = [wh_util:to_atom(WhApp, true) || WhApp <- WhApps],
-    whistle_apps_sup:initialize_whapps(StartWhApps),
+    _ = whistle_apps_sup:initialize_whapps(StartWhApps),
     lager:info("auto-started whapps ~p", [StartWhApps]).
 
 %%%===================================================================
