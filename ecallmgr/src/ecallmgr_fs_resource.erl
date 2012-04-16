@@ -376,6 +376,7 @@ originate_and_park(JObj, Node, ServerId, DialStrings, UUID) ->
             E = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, wh_util:to_binary(wh_util:current_tstamp()))}
                  ,{<<"Request">>, JObj}
                  ,{<<"Error-Message">>, <<"Failed to receive valid originate_execute in time">>}
+                 | wh_api:default_headers(<<>>, <<"dialplan">>, <<"originate_ready">>, ?APP_NAME, ?APP_VERSION)
                 ],
             wh_api:publish_error(ServerId, E),
             ecallmgr_call_control:stop(CtlPid)
@@ -386,7 +387,7 @@ originate_and_park(JObj, Node, ServerId, DialStrings, UUID) ->
 maybe_confirm_originate(ServerId, CtlProp) ->
     wh_amqp_worker:call(?ECALLMGR_AMQP_POOL
                         ,CtlProp
-                        ,fun(Req) -> wapi_dialplan:originate_resp(ServerId, Req) end
+                        ,fun(Req) -> wapi_dialplan:publish_originate_ready(ServerId, Req) end
                         ,fun wapi_dialplan:originate_execute_v/1
                        ).
 

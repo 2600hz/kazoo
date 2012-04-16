@@ -218,7 +218,7 @@ originate_to_endpoints(Endpoints, JObj) ->
                ,{<<"Custom-Channel-Vars">>, CCVs}
                | wh_api:default_headers(Q, <<"resource">>, <<"originate_req">>, ?APP_NAME, ?APP_VERSION)
               ],
-    amqp_mgr:register_return_handler(),
+    wh_amqp_mgr:register_return_handler(),
     wapi_resource:publish_originate_req(Request),
     wait_for_originate(MsgId).
 
