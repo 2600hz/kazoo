@@ -139,12 +139,13 @@ init([Node, Options]) ->
     put(callid, Node),
     process_flag(trap_exit, true),
     lager:debug("starting new ecallmgr notify process"),
-    case freeswitch:event(Node, ['PRESENCE_IN', 'PRESENCE_OUT', 'PRESENCE_PROBE']) of
+    case freeswitch:event(Node, ['PRESENCE_IN', 'PRESENCE_OUT', 'PRESENCE_PROBE', 'MESSAGE_QUERY']) of
         ok ->
             gproc:reg({p, l, fs_notify}),
             gproc:reg({p, l, {call_event, <<"PRESENCE_IN">>}}),
             gproc:reg({p, l, {call_event, <<"PRESENCE_OUT">>}}),
             gproc:reg({p, l, {call_event, <<"PRESENCE_PROBE">>}}),
+            gproc:reg({p, l, {call_event, <<"MESSAGE_QUERY">>}}),
             lager:debug("bound to switch presence events on node ~s", [Node]),
             {ok, #state{node=Node, options=Options}};
         {error, Reason} ->
@@ -207,8 +208,13 @@ handle_cast(_Msg, State) ->
 handle_info({event, [_ | Data]}, #state{node=Node}=State) ->
     case props:get_value(<<"Event-Name">>, Data) of
         <<"PRESENCE_", _/binary>> = EvtName ->
+            wh_util:put_callid(Data),
             ShouldDistribute = ecallmgr_config:get(<<"distribute_presence">>, true),
             ShouldDistribute andalso process_presence_event(EvtName, Data, Node),
+            {noreply, State, hibernate};
+        <<"MESSAGE_QUERY">> ->
+            wh_util:put_callid(Data),
+            process_message_query_event(Data, Node),
             {noreply, State, hibernate};
         _ ->
             {noreply, State}
@@ -348,5 +354,24 @@ process_presence_event(EvtName, Data, Node) ->
                 Srv =/= self()
             ];
         _Else ->
+            ok
+    end.
+
+-spec process_message_query_event/2 :: (proplist(), atom()) -> 'ok'.
+process_message_query_event(Data, Node) ->
+    MessageAccount = props:get_value(<<"Message-Account">>, Data),
+    case re:run(MessageAccount, <<"(?:sip:)?(.*)@(.*)$">>, [{capture, all, binary}]) of
+        {match, [_, Username, Realm]} ->
+            lager:debug("publishing message query for ~s@~s", [Username, Realm]),
+            Query = [{<<"Username">>, Username}
+                     ,{<<"Realm">>, Realm}
+                     ,{<<"Call-ID">>, props:get_value(<<"VM-Call-ID">>, Data)}
+                     ,{<<"Node">>, wh_util:to_binary(Node)}
+                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                    ],
+            wapi_notifications:publish_mwi_query(Query),
+            ok;
+        _Else ->
+            lager:debug("unknown message query format: ~p", [MessageAccount]),
             ok
     end.
