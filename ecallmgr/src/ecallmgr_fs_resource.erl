@@ -1,7 +1,7 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2012, VoIP INC
 %%% @doc
-%%% 
+%%%
 %%% @end
 %%% @contributors
 %%%    Karl Anderson
@@ -75,15 +75,15 @@ handle_originate_req(JObj, Props) ->
     Endpoints = wh_json:get_ne_value(<<"Endpoints">>, JObj, []),
 
     case wapi_resource:originate_req_v(JObj) of
-        false -> 
-            lager:debug("originate failed to execute as JObj did not validate", []), 
+        false ->
+            lager:debug("originate failed to execute as JObj did not validate", []),
             E = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, wh_util:to_binary(wh_util:current_tstamp()))}
                  ,{<<"Request">>, JObj}
                  ,{<<"Error-Message">>, <<"originate failed to execute as JObj did not validate">>}
                  | wh_api:default_headers(<<"error">>, <<"originate_resp">>, ?APP_NAME, ?APP_VERSION)
                 ],
             wh_api:publish_error(ServerId, E);
-        true when Endpoints =:= [] -> 
+        true when Endpoints =:= [] ->
             lager:debug("originate request had no endpoints", []),
             E = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, wh_util:to_binary(wh_util:current_tstamp()))}
                  ,{<<"Request">>, JObj}
@@ -253,7 +253,7 @@ handle_originate_return(Node, Else) ->
 start_call_handling(Node, CallId) ->
     erlang:monitor_node(Node, true),
     case freeswitch:handlecall(Node, CallId) of
-        ok -> 
+        ok ->
             lager:debug("listening to originated call ~s events from ~s", [CallId, Node]),
             wait_for_originate(Node, CallId);
         timeout ->
@@ -270,13 +270,13 @@ start_call_handling(Node, CallId) ->
 -spec wait_for_originate/2 :: (atom(), ne_binary()) -> {'ok', wh_proplist()} |
                                                        {'error', wh_proplist()}.
 wait_for_originate(Node, CallId) ->
-    receive 
+    receive
         {_, {event, [CallId | Props]}} ->
             case props:get_value(<<"Event-Name">>, Props) of
-                <<"CHANNEL_DESTROY">> -> 
+                <<"CHANNEL_DESTROY">> ->
                     lager:debug("received channel destroy event", []),
                     create_success_resp(Props);
-                _Else -> 
+                _Else ->
                     wait_for_originate(Node, CallId)
             end;
         {nodedown, _} ->
@@ -297,15 +297,15 @@ create_error_resp(Msg) ->
 create_success_resp(Props) ->
     EventName = props:get_value(<<"Event-Name">>, Props),
     ApplicationName = props:get_value(<<"Application">>, Props),
-    Builders = [fun(P) -> 
+    Builders = [fun(P) ->
                         [{<<"Event-Category">>, <<"resource">>}
                          | props:delete(<<"Event-Category">>, P)
-                        ] 
+                        ]
                 end
-                ,fun(P) -> 
+                ,fun(P) ->
                          [{<<"Event-Name">>, <<"originate_resp">>}
                           | props:delete(<<"Event-Name">>, P)
-                         ] 
+                         ]
                  end
                 ,fun(_) -> ecallmgr_call_events:create_event(EventName, ApplicationName, Props) end
                ],
@@ -344,7 +344,7 @@ originate_to_dialstrings(JObj, Node, ServerId, DialStrings, Action) ->
     Args = list_to_binary([ecallmgr_fs_xml:get_channel_vars(JObj), DialStrings, " ", Action]),
     _ = ecallmgr_util:fs_log(Node, "whistle originating call: ~s", [Args]),
     case handle_originate_return(Node, freeswitch:api(Node, 'originate', wh_util:to_list(Args))) of
-        {ok, Resp} -> 
+        {ok, Resp} ->
             lager:debug("originate completed, sending notice to requestor", []),
             wapi_resource:publish_originate_resp(ServerId, Resp);
         {error, Error} ->
@@ -367,7 +367,7 @@ originate_and_park(JObj, Node, ServerId, DialStrings, UUID) ->
                | wh_api:default_headers(<<>>, <<"dialplan">>, <<"originate_ready">>, ?APP_NAME, ?APP_VERSION)
               ],
 
-    case ecallmgr_amqp_pool:originate_ready(ServerId, CtlProp) of
+    case maybe_confirm_originate(ServerId, CtlProp) of %ecallmgr_amqp_pool:originate_ready(ServerId, CtlProp) of
         {ok, _Exec} ->
             lager:debug("recv originate_execute: ~p", [_Exec]),
             execute_originate_park(JObj, Node, ServerId, DialStrings, UUID, CtlPid);
@@ -380,6 +380,15 @@ originate_and_park(JObj, Node, ServerId, DialStrings, UUID) ->
             wh_api:publish_error(ServerId, E),
             ecallmgr_call_control:stop(CtlPid)
     end.
+
+-spec maybe_confirm_originate/2 :: (ne_binary(), wh_json:json_proplist()) -> {'ok', wh_json:json_object()} |
+                                                                            {'error', _}.
+maybe_confirm_originate(ServerId, CtlProp) ->
+    wh_amqp_worker:call(?ECALLMGR_AMQP_POOL
+                        ,CtlProp
+                        ,fun(Req) -> wapi_dialplan:originate_resp(ServerId, Req) end
+                        ,fun wapi_dialplan:originate_execute_v/1
+                       ).
 
 -spec execute_originate_park/6 :: (wh_json:json_object(), atom(), ne_binary(), ne_binary(), ne_binary(), pid()) -> 'ok'.
 execute_originate_park(JObj, Node, ServerId, DialStrings, UUID, CtlPid) ->
@@ -395,14 +404,29 @@ execute_originate_park(JObj, Node, ServerId, DialStrings, UUID, CtlPid) ->
             {ok, _EvtPid} = ecallmgr_call_sup:start_event_process(Node, UUID),
             lager:debug("originate completed");
         {ok, Error} ->
+            E = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+                 ,{<<"Request">>, JObj}
+                 ,{<<"Error-Message">>, Error}
+                 | wh_api:default_headers(<<"error">>, <<"originate_resp">>, ?APP_NAME, ?APP_VERSION)
+                ],
+            wh_api:publish_error(ServerId, E),
+            ecallmgr_call_control:stop(CtlPid),
             lager:debug("something other than +OK from FS: ~s", [Error]);
         timeout ->
+            E = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+                 ,{<<"Request">>, JObj}
+                 ,{<<"Error-Message">>, <<"Originate timed out waiting for the switch to reply">>}
+                 | wh_api:default_headers(<<"error">>, <<"originate_resp">>, ?APP_NAME, ?APP_VERSION)
+                ],
+            wh_api:publish_error(ServerId, E),
+            ecallmgr_call_control:stop(CtlPid),
             lager:debug("timed out waiting for FS");
         {error, Error} ->
             E = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, wh_util:to_binary(wh_util:current_tstamp()))}
                  ,{<<"Request">>, JObj}
-                 | Error
+                 | Error ++ wh_api:default_headers(<<"error">>, <<"originate_resp">>, ?APP_NAME, ?APP_VERSION)
                 ],
             wh_api:publish_error(ServerId, E),
-            ecallmgr_call_control:stop(CtlPid)
+            ecallmgr_call_control:stop(CtlPid),
+            lager:debug("error originating to ~s: ~p", [Node, Error])
     end.
