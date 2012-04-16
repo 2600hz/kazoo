@@ -400,6 +400,8 @@ execute_originate_park(JObj, Node, ServerId, DialStrings, UUID, CtlPid) ->
 
     UUIDSize = byte_size(UUID),
 
+    lager:debug("originate(~s)", [Args]),
+
     case freeswitch:api(Node, 'originate', wh_util:to_list(Args)) of
         {ok, <<"+OK ", UUID:UUIDSize/binary, _/binary>>} ->
             {ok, _EvtPid} = ecallmgr_call_sup:start_event_process(Node, UUID),
