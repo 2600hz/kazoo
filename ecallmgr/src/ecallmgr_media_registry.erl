@@ -1,11 +1,11 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2010, James Aimonetti
+%%% @copyright (C) 2010-2012, VoIP INC
 %%% @doc
 %%% Handle registrations of Name/CallID combos for media, creating
 %%% temp names to store on the local box.
 %%% @end
-%%% Created : 27 Aug 2010 by James Aimonetti <james@2600hz.org>
+%%% @contributors
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(ecallmgr_media_registry).
 
@@ -73,6 +73,7 @@ is_local(MediaName, CallId) ->
 %%--------------------------------------------------------------------
 init([]) ->
     process_flag(trap_exit, true),
+    _ = put(callid, ?LOG_SYSTEM_ID),
     {ok, dict:new()}.
 
 %%--------------------------------------------------------------------
@@ -90,6 +91,7 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call({register_local_media, MediaName, CallId, Version}, {Pid, _Ref}, Dict) ->
+    Old = put(callid, CallId),
     Dict1 = dict:filter(fun({Pid1, CallId1, MediaName1, _}, _) when Pid =:= Pid1 andalso CallId =:= CallId1 andalso MediaName =:= MediaName1 ->
                                 true;
                            (_, _) -> false
@@ -102,15 +104,17 @@ handle_call({register_local_media, MediaName, CallId, Version}, {Pid, _Ref}, Dic
             lager:debug("recv shout server on ~p for media ~s", [RecvSrv, Path]),
             Url = ecallmgr_shout:get_recv_url(RecvSrv),
             lager:debug("recv at ~s", [Url]),
+            _ = put(callid, Old),
             {reply, Url, dict:store({Pid, CallId, MediaName, RecvSrv}, {Path, Url}, Dict), hibernate};
         [{_, {Path, Url}}] ->
             case Version of
-                path -> {reply, Path, Dict};
-                url -> {reply, Url, Dict}
+                path -> _ = put(callid, Old), {reply, Path, Dict};
+                url -> _ = put(callid, Old), {reply, Url, Dict}
             end
     end;
 
 handle_call({lookup_local, MediaName, CallId}, {FromPid, _Ref}=From, Dict) ->
+    Old = put(callid, CallId),
     lager:debug("lookup local media ~s for ~s", [MediaName, CallId]),
     Dict1 = dict:filter(fun({Pid1, CallId1, MediaName1, _}, _) when FromPid =:= Pid1 andalso CallId =:= CallId1 andalso MediaName =:= MediaName1 ->
                                 true;
@@ -118,6 +122,7 @@ handle_call({lookup_local, MediaName, CallId}, {FromPid, _Ref}=From, Dict) ->
                         end, Dict),
     case dict:size(Dict1) =:= 1 andalso dict:to_list(Dict1) of
         false ->
+            _ = put(callid, Old),
             {reply, {error, not_local}, Dict};
         [{{_,_,_,RecvSrv},{Path,_}}] when is_pid(RecvSrv) ->
             spawn(fun() ->
@@ -127,10 +132,12 @@ handle_call({lookup_local, MediaName, CallId}, {FromPid, _Ref}=From, Dict) ->
                           _ = wait_for_fs_media(Path, RecvSrv, FromPid),
                           gen_server:reply(From, {ok, Path})
                   end),
+            _ = put(callid, Old),
             {noreply, Dict}
     end;
 
 handle_call({is_local, MediaName, CallId}, {FromPid, _Ref}=From, Dict) ->
+    Old = put(callid, CallId),
     lager:debug("is ~s for ~s", [MediaName, CallId]),
     Dict1 = dict:filter(fun({Pid1, CallId1, MediaName1, _}, _) when FromPid =:= Pid1 andalso CallId =:= CallId1 andalso MediaName =:= MediaName1 ->
                                 true;
@@ -138,6 +145,7 @@ handle_call({is_local, MediaName, CallId}, {FromPid, _Ref}=From, Dict) ->
                         end, Dict),
     case dict:size(Dict1) =:= 1 andalso dict:to_list(Dict1) of
         false ->
+            _ = put(callid, Old),
             {reply, {error, not_local}, Dict};
         [{{_,_,_,RecvSrv},{Path,_}}] when is_pid(RecvSrv) ->
             spawn(fun() ->
@@ -146,11 +154,9 @@ handle_call({is_local, MediaName, CallId}, {FromPid, _Ref}=From, Dict) ->
                           link(FromPid),
                           gen_server:reply(From, wait_for_fs_media(Path, RecvSrv, FromPid))
                   end),
+            _ = put(callid, Old),
             {noreply, Dict}
-    end;
-
-handle_call(_Request, _From, Dict) ->
-    {reply, {error, not_implemented}, Dict}.
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -191,6 +197,7 @@ handle_info({'EXIT', Pid, _Reason}, Dict) ->
                           end, Dict), hibernate};
 
 handle_info(_Info, Dict) ->
+    lager:debug("unhandled message: ~p", [_Info]),
     {noreply, Dict}.
 
 %%--------------------------------------------------------------------
@@ -205,7 +212,7 @@ handle_info(_Info, Dict) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
-    ok.
+    lager:debug("media_registry terminating: ~p", [_Reason]).
 
 %%--------------------------------------------------------------------
 %% @private
