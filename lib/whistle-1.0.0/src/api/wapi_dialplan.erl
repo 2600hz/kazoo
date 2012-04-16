@@ -49,9 +49,7 @@
 -export([queue/1, queue_v/1]).
 -export([error/1, error_v/1]).
 
-
--export([bind_q/2, unbind_q/1]).
-
+-export([bind_q/2, unbind_q/2]).
 
 -export([publish_action/2, publish_action/3]).
 -export([publish_event/2, publish_event/3]).
@@ -782,8 +780,8 @@ publish_originate_ready(ServerId, API, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(API, ?ORIGINATE_READY_VALUES, fun ?MODULE:originate_ready/1),
     amqp_util:targeted_publish(ServerId, Payload, ContentType).
 
--spec publish_originate_execute/2 :: (ne_binary(), iolist()) -> 'ok'.
--spec publish_originate_execute/3 :: (ne_binary(), iolist(), ne_binary()) -> 'ok'.
+-spec publish_originate_execute/2 :: (ne_binary(), api_terms()) -> 'ok'.
+-spec publish_originate_execute/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
 publish_originate_execute(ServerId, JObj) ->
     publish_originate_execute(ServerId, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_originate_execute(ServerId, API, ContentType) ->
@@ -795,5 +793,5 @@ bind_q(Queue, _Prop) ->
     _ = amqp_util:bind_q_to_callctl(Queue),
     'ok'.
 
-unbind_q(Queue) ->
+unbind_q(Queue, _Prop) ->
     amqp_util:unbind_q_from_callctl(Queue).
