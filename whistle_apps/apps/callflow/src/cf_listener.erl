@@ -30,10 +30,11 @@
 -define(RESPONDERS, [{cf_route_req, [{<<"dialplan">>, <<"route_req">>}]}
                      ,{cf_route_win, [{<<"dialplan">>, <<"route_win">>}]}
                      ,{{cf_util, presence_probe}, [{<<"notification">>, <<"presence_probe">>}]}
+                     ,{{cf_util, presence_mwi_query}, [{<<"notification">>, <<"mwi_query">>}]}
                      ,{{?MODULE, handle_call_status_resp}, [{<<"call_event">>, <<"channel_status_resp">>}]}
                     ]).
 -define(BINDINGS, [{route, []}
-                   ,{notifications, [{restrict_to, [presence_probe]}]}
+                   ,{notifications, [{restrict_to, [presence_probe, mwi_query]}]}
                    ,{self, []}
                   ]).
 -define(QUEUE_NAME, <<"">>).
