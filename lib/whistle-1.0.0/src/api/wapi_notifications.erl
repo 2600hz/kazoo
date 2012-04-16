@@ -12,6 +12,7 @@
 
 -export([voicemail/1, voicemail_v/1]).
 -export([mwi_update/1, mwi_update_v/1]).
+-export([mwi_query/1, mwi_query_v/1]).
 -export([register/1, register_v/1]).
 -export([deregister/1, deregister_v/1]).
 -export([presence_probe/1, presence_probe_v/1]).
@@ -25,6 +26,7 @@
 
 -export([publish_voicemail/1, publish_voicemail/2]).
 -export([publish_mwi_update/1, publish_mwi_update/2]).
+-export([publish_mwi_query/1, publish_mwi_query/2]).
 -export([publish_register/1, publish_register/2]).
 -export([publish_deregister/1, publish_deregister/2]).
 -export([publish_presence_probe/1, publish_presence_probe/2]).
@@ -40,6 +42,7 @@
 
 -define(NOTIFY_VOICEMAIL_NEW, <<"notifications.voicemail.new">>).
 -define(NOTIFY_MWI_UPDATE, <<"notifications.sip.mwi_update">>).
+-define(NOTIFY_MWI_QUERY, <<"notifications.sip.mwi_query">>).
 -define(NOTIFY_DEREGISTER, <<"notifications.sip.deregister">>).
 -define(NOTIFY_REGISTER, <<"notifications.sip.register">>).
 -define(NOTIFY_PRESENCE_UPDATE, <<"notifications.presence.update">>).
@@ -74,6 +77,14 @@
                         ,{<<"Messages-Urgent">>, fun(I) -> is_integer(wh_util:to_integer(I)) end}
                         ,{<<"Messages-Urgent-Saved">>, fun(I) -> is_integer(wh_util:to_integer(I)) end}
                        ]).
+
+%% Notify updated MWI
+-define(MWI_QUERY_HEADERS, [<<"Username">>, <<"Realm">>]).
+-define(OPTIONAL_MWI_QUERY_HEADERS, [<<"Call-ID">>, <<"Node">>]).
+-define(MWI_QUERY_VALUES, [{<<"Event-Category">>, <<"notification">>}
+                           ,{<<"Event-Name">>, <<"mwi_query">>}
+                          ]).
+-define(MWI_QUERY_TYPES, []).
 
 %% Notify Presence_Probe
 -define(PRESENCE_PROBE_HEADERS, [<<"From">>, <<"To">>, <<"Node">>]).
@@ -208,6 +219,26 @@ mwi_update_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?MWI_REQ_HEADERS, ?MWI_REQ_VALUES, ?MWI_REQ_TYPES);
 mwi_update_v(JObj) ->
     mwi_update_v(wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
+%% @doc MWI - Query the Message Waiting Indicator on a device - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec mwi_query/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
+mwi_query(Prop) when is_list(Prop) ->
+    case mwi_query_v(Prop) of
+        true -> wh_api:build_message(Prop, ?MWI_QUERY_HEADERS, ?OPTIONAL_MWI_QUERY_HEADERS);
+        false -> {error, "Proplist failed validation for mwi query"}
+    end;
+mwi_query(JObj) ->
+    mwi_query(wh_json:to_proplist(JObj)).
+
+-spec mwi_query_v/1 :: (api_terms()) -> boolean().
+mwi_query_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?MWI_QUERY_HEADERS, ?MWI_QUERY_VALUES, ?MWI_QUERY_TYPES);
+mwi_query_v(JObj) ->
+    mwi_query_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc Register (unregister is a key word) - see wiki
@@ -412,6 +443,9 @@ bind_to_q(Q, [new_voicemail|T]) ->
 bind_to_q(Q, [mwi_update|T]) ->
     ok = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_MWI_UPDATE),
     bind_to_q(Q, T);
+bind_to_q(Q, [mwi_query|T]) ->
+    ok = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_MWI_QUERY),
+    bind_to_q(Q, T);
 bind_to_q(Q, [register|T]) ->
     ok = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_REGISTER),
     bind_to_q(Q, T);
@@ -468,6 +502,9 @@ unbind_q_from(Q, [new_voicemail|T]) ->
 unbind_q_from(Q, [mwi_update|T]) ->
     ok = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_MWI_UPDATE),
     unbind_q_from(Q, T);
+unbind_q_from(Q, [mwi_query|T]) ->
+    ok = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_MWI_QUERY),
+    unbind_q_from(Q, T);
 unbind_q_from(Q, [register|T]) ->
     ok = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_REGISTER),
     unbind_q_from(Q, T);
@@ -522,6 +559,14 @@ publish_mwi_update(JObj) ->
 publish_mwi_update(API, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(API, ?MWI_REQ_VALUES, fun ?MODULE:mwi_update/1),
     amqp_util:notifications_publish(?NOTIFY_MWI_UPDATE, Payload, ContentType).
+
+-spec publish_mwi_query/1 :: (api_terms()) -> 'ok'.
+-spec publish_mwi_query/2 :: (api_terms(), ne_binary()) -> 'ok'.
+publish_mwi_query(JObj) ->
+    publish_mwi_query(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_mwi_query(API, ContentType) ->
+    {ok, Payload} = wh_api:prepare_api_payload(API, ?MWI_QUERY_VALUES, fun ?MODULE:mwi_query/1),
+    amqp_util:notifications_publish(?NOTIFY_MWI_QUERY, Payload, ContentType).
 
 -spec publish_register/1 :: (api_terms()) -> 'ok'.
 -spec publish_register/2 :: (api_terms(), ne_binary()) -> 'ok'.

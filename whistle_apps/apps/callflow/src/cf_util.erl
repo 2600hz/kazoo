@@ -3,6 +3,7 @@
 -include("callflow.hrl").
 
 -export([presence_probe/2]).
+-export([presence_mwi_query/2]).
 -export([update_mwi/1, update_mwi/2, update_mwi/4]).
 -export([get_call_status/1]).
 -export([get_prompt/1, get_prompt/2]).
@@ -28,34 +29,8 @@ presence_probe(JObj, _Props) ->
     FromUser = wh_json:get_value(<<"From-User">>, JObj),
     FromRealm = wh_json:get_value(<<"From-Realm">>, JObj),
     Subscription = wh_json:get_value(<<"Subscription">>, JObj),
-    ProbeRepliers = [fun presence_mwi_update/4
-                     ,fun presence_parking_slot/4
-                    ],
+    ProbeRepliers = [fun presence_parking_slot/4],
     [Fun(Subscription, {FromUser, FromRealm}, {ToUser, ToRealm}, JObj) || Fun <- ProbeRepliers].
-
--spec presence_mwi_update/4 :: (ne_binary(), {ne_binary(), ne_binary()}, {ne_binary(), ne_binary()}, wh_json:json_object()) -> ok.
-presence_mwi_update(<<"message-summary">>, {FromUser, FromRealm}, _, _) ->     
-    case whapps_util:get_account_by_realm(FromRealm) of
-        {ok, AccountDb} ->
-            ViewOptions = [{<<"include_docs">>, true}
-                           ,{<<"key">>, FromUser}
-                          ],
-            case couch_mgr:get_results(AccountDb, <<"cf_attributes/sip_credentials">>, ViewOptions) of
-                {ok, []} -> 
-                    lager:debug("sip credentials not in account db ~s", [AccountDb]),
-                    ok;
-                {ok, [Device]} -> 
-                    update_mwi(wh_json:get_value([<<"doc">>, <<"owner_id">>], Device), AccountDb);
-                {error, _R} -> 
-                    lager:debug("unable to lookup sip credentials for owner id: ~p", [_R]),
-                    ok
-            end;
-        _E ->
-            lager:debug("failed to find the account for realm ~s: ~p", [FromRealm, _E]),
-            ok
-    end;
-presence_mwi_update(_, _, _, _) ->
-    ok.
 
 -spec presence_parking_slot/4 :: (ne_binary(), {ne_binary(), ne_binary()}, {ne_binary(), ne_binary()}, wh_json:json_object()) -> ok.
 presence_parking_slot(<<"message-summary">>, _, _, _) ->
@@ -70,14 +45,39 @@ presence_parking_slot(_, {_, FromRealm}, {ToUser, ToRealm}, _) ->
                 {ok, Flow} ->
                     case wh_json:get_value([<<"flow">>, <<"module">>], Flow) of
                         <<"park">> -> 
+                            lager:debug("replying to presence query for a parking slot"),
                             SlotNumber = wh_json:get_ne_value(<<"capture_group">>, Flow, ToUser),
                             cf_park:update_presence(SlotNumber, <<ToUser/binary, "@", ToRealm/binary>>, AccountDb);
                         _Else -> ok
                     end
             end;
-        _E ->
-            lager:debug("failed to find the account for realm ~s: ~p", [FromRealm, _E]),
-            ok
+        _E -> ok
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec presence_mwi_query/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
+presence_mwi_query(JObj, _Props) -> 
+    wh_util:put_callid(JObj),
+    Username = wh_json:get_value(<<"Username">>, JObj), 
+    Realm = wh_json:get_value(<<"Realm">>, JObj),
+    case whapps_util:get_account_by_realm(Realm) of
+        {ok, AccountDb} ->
+            ViewOptions = [{<<"include_docs">>, true}
+                           ,{<<"key">>, Username}
+                          ],
+            case couch_mgr:get_results(AccountDb, <<"cf_attributes/sip_credentials">>, ViewOptions) of
+                {ok, []} ->  ok;
+                {ok, [Device]} -> 
+                    lager:debug("replying to mwi query"),
+                    update_mwi(wh_json:get_value([<<"doc">>, <<"owner_id">>], Device), AccountDb);
+                {error, _R} -> ok
+            end;
+        _Else -> ok
     end.
 
 %%--------------------------------------------------------------------
