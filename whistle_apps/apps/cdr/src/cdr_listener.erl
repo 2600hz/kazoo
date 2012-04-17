@@ -1,12 +1,12 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2010-2011, VoIP INC
+%%% @copyright (C) 2010-2012, VoIP INC
 %%% @doc
 %%% Listen for CDR events and record them to the database
 %%% TODO: convert to gen_listener
 %%% @end
-%%% Created : 23 Nov 2010 by James Aimonetti <james@2600hz.org>
-%%% Updated : 19 Jun 2011 by Edouard Swiac <edouard@2600hz.org>
+%%% @contributors
+%%%   James Aimonetti
+%%%   Edouard Swiac
 %%%-------------------------------------------------------------------
 -module(cdr_listener).
 
