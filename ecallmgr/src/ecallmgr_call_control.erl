@@ -119,7 +119,9 @@ start_link(Node, CallId, WhAppQ) ->
     %% ecallmgr.  Since our call_events will get a bad session if we
     %% try to handlecall more than once on a UUID we had to leave the
     %% call_events running on another ecallmgr... fun fun
-    Bindings = [{call, [{callid, CallId}]}
+    Bindings = [{call, [{callid, CallId}
+                        ,{restrict_to, [events]}
+                       ]}
                 ,{dialplan, []}
                 ,{self, []}],
     gen_listener:start_link(?MODULE, [{responders, ?RESPONDERS}
