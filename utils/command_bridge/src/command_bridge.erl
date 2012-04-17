@@ -19,31 +19,42 @@
 
 -spec main/1 :: (string()) -> no_return().
 main(CommandLineArgs) ->
+    main(CommandLineArgs, 0).
+
+main(CommandLineArgs, Loops) ->
     os:cmd("epmd -daemon"),
-    net_kernel:start([my_name(), longnames]),
-    {ok, Options, Args} = parse_args(CommandLineArgs),
-    Verbose = proplists:get_value(verbose, Options) =/= undefined,
-    Target = get_target(Options, Verbose),
-    Module = list_to_atom(proplists:get_value(module, Options, "nomodule")),
-    Function = list_to_atom(proplists:get_value(function, Options, "nofunction")),
-    Timeout = proplists:get_value(timeout, Options, 5) * 1000,
-    Verbose andalso io:format(standard_io, "Running ~s:~s(~s)~n", [Module, Function, string:join(Args, ", ")]),
-    case rpc:call(Target, Module, Function, [list_to_binary(Arg) || Arg <- Args], Timeout) of
-        {badrpc, {'EXIT',{undef, _}}} ->
-            io:format(standard_error, "Invalid command or wrong number of arguments, please try again~n", []),
+    net_kernel:stop(),
+    case net_kernel:start([my_name(), longnames]) of
+        {error, _} when Loops < 3 ->
+            io:format(standard_error, "Unable to start command bridge network kernel, try again~n", []),
             halt(1);
-        {badrpc, Reason} ->
-            String = io_lib:print(Reason, 1, ?MAX_CHARS, -1),
-            io:format(standard_error, "Command failed: ~s~n", [String]),
-            halt(1);
-        Result when Verbose ->
-            String = io_lib:print(Result, 1, ?MAX_CHARS, -1),
-            io:format(standard_io, "Result: ~s~n", [String]),
-            erlang:halt(0);
-        Result ->
-            String = io_lib:print(Result, 1, ?MAX_CHARS, -1),
-            io:format(standard_io, "~s~n", [String]),
-            erlang:halt(0)
+        {error, _} ->
+            main(CommandLineArgs, Loops + 1);
+        _Else ->
+            {ok, Options, Args} = parse_args(CommandLineArgs),
+            Verbose = proplists:get_value(verbose, Options) =/= undefined,
+            Target = get_target(Options, Verbose),
+            Module = list_to_atom(proplists:get_value(module, Options, "nomodule")),
+            Function = list_to_atom(proplists:get_value(function, Options, "nofunction")),
+            Timeout = proplists:get_value(timeout, Options, 5) * 1000,
+            Verbose andalso io:format(standard_io, "Running ~s:~s(~s)~n", [Module, Function, string:join(Args, ", ")]),
+            case rpc:call(Target, Module, Function, [list_to_binary(Arg) || Arg <- Args], Timeout) of
+                {badrpc, {'EXIT',{undef, _}}} ->
+                    io:format(standard_error, "Invalid command or wrong number of arguments, please try again~n", []),
+                    halt(1);
+                {badrpc, Reason} ->
+                    String = io_lib:print(Reason, 1, ?MAX_CHARS, -1),
+                    io:format(standard_error, "Command failed: ~s~n", [String]),
+                    halt(1);
+                Result when Verbose ->
+                    String = io_lib:print(Result, 1, ?MAX_CHARS, -1),
+                    io:format(standard_io, "Result: ~s~n", [String]),
+                    erlang:halt(0);
+                Result ->
+                    String = io_lib:print(Result, 1, ?MAX_CHARS, -1),
+                    io:format(standard_io, "~s~n", [String]),
+                    erlang:halt(0)
+            end
     end.
 
 -spec get_target/2 :: (proplist(), boolean()) -> atom().
@@ -72,7 +83,7 @@ get_cookie(Options, Node) ->
                  {_, ""} -> print_no_setcookie();
                  {_, C} -> C
              end,
-    erlang:set_cookie(my_name(), list_to_atom(Cookie)),
+    erlang:set_cookie(node(), list_to_atom(Cookie)),
     Cookie.
 
 -spec get_cookie_from_vmargs/1 :: (string()) -> string().
@@ -102,9 +113,7 @@ get_host(Options) ->
 -spec my_name/0 :: () -> atom().
 my_name() ->
     Localhost = net_adm:localhost(),
-    TimeStamp = calendar:datetime_to_gregorian_seconds(calendar:universal_time()),
-    Name = "command_bridge_" ++ integer_to_list(TimeStamp) ++ "@" ++ Localhost,
-    list_to_atom(Name).
+    list_to_atom("command_bridge_" ++ os:getpid() ++ "@" ++ Localhost).
 
 -spec parse_args/1 :: (string()) -> {'ok', proplist(), list()}.
 parse_args(CommandLineArgs) ->
