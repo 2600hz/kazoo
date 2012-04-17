@@ -237,7 +237,7 @@ init_templates() ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec get_configs/0 :: () -> {'ok', proplist()} | {'error', file:posix() | 'badarg' | 'terminated' | 'system_limit'
@@ -318,7 +318,7 @@ normalize_view_results(JObj, Acc) ->
 %%--------------------------------------------------------------------
 -spec execute_delete_command/1 :: (#cb_context{}) -> 'ok'.
 execute_delete_command(#cb_context{doc=JObj}) ->
-    case whapps_config:get(?SERVER_CONFIG_CATEGORY, <<"delete_tmpl">>) of
+    case whapps_config:get_atom(?SERVER_CONFIG_CATEGORY, <<"delete_tmpl">>) of
         undefined ->
             lager:debug("no delete template defined");
         DeleteTmpl ->
@@ -382,10 +382,10 @@ get_command_tmpl(#cb_context{doc=JObj}) ->
     case lists:member(DevRole, Roles) of
         true ->
             lager:debug("use development template"),
-            whapps_config:get(?SERVER_CONFIG_CATEGORY, <<"dev_deploy_tmpl">>);
+            whapps_config:get_atom(?SERVER_CONFIG_CATEGORY, <<"dev_deploy_tmpl">>);
         false ->
             lager:debug("use production template"),
-            whapps_config:get(?SERVER_CONFIG_CATEGORY, <<"prod_deploy_tmpl">>)
+            whapps_config:get_atom(?SERVER_CONFIG_CATEGORY, <<"prod_deploy_tmpl">>)
     end.
 
 %%--------------------------------------------------------------------
@@ -397,8 +397,8 @@ get_command_tmpl(#cb_context{doc=JObj}) ->
 -spec template_props/1 :: (#cb_context{}) -> [{ne_binary(), ne_binary() | proplist() | wh_json:json_objects()},...].
 template_props(#cb_context{doc=JObj, req_data=Data, db_name=Db}=Context) ->
     Mappings = whapps_config:get(?SERVER_CONFIG_CATEGORY, <<"databag_mapping">>),
-    RolePathTmpl = whapps_config:get(?SERVER_CONFIG_CATEGORY, <<"role_path_tmpl">>),
-    DatabagPathTmpl = whapps_config:get(?SERVER_CONFIG_CATEGORY, <<"databag_path_tmpl">>),
+    RolePathTmpl = whapps_config:get_atom(?SERVER_CONFIG_CATEGORY, <<"role_path_tmpl">>),
+    DatabagPathTmpl = whapps_config:get_atom(?SERVER_CONFIG_CATEGORY, <<"databag_path_tmpl">>),
 
     Server = wh_json:to_proplist(JObj),
     Servers = case couch_mgr:get_results(Db, ?CB_LIST, [{<<"include_docs">>, true}]) of
@@ -445,7 +445,7 @@ template_props(#cb_context{doc=JObj, req_data=Data, db_name=Db}=Context) ->
 %%--------------------------------------------------------------------
 -spec create_role/2 :: (proplist(), #cb_context{}) -> wh_json:json_object().
 create_role(Account, #cb_context{db_name=Db}) ->
-    case whapps_config:get(?SERVER_CONFIG_CATEGORY, <<"role_tmpl">>) of
+    case whapps_config:get_atom(?SERVER_CONFIG_CATEGORY, <<"role_tmpl">>) of
         undefined -> wh_json:new();
         RoleTmpl ->
             try
