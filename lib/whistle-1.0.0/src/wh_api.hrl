@@ -49,13 +49,13 @@
 %% Default Headers
 %% All messages MUST include the DEFAULT_HEADERS list.
 -define(DEFAULT_HEADERS, [<<"Server-ID">>, <<"Event-Category">>, <<"Event-Name">>
-                              ,<<"App-Name">>, <<"App-Version">>
+                              ,<<"App-Name">>, <<"App-Version">>, <<"Node">>
                          ]).
 -define(OPTIONAL_DEFAULT_HEADERS, [<<"Raw-Headers">>, <<"Destination-Server">>
                                        ,<<"Geo-Location">>, <<"Access-Group">>
                                        ,<<"Tenant-ID">>
                                   ]).
--define(DEFAULT_VALUES, []).
+-define(DEFAULT_VALUES, [{<<"Node">>, wh_util:to_binary(node())}]).
 -define(DEFAULT_TYPES, [{<<"Server-ID">>, fun is_binary/1}
                         ,{<<"Event-Category">>, fun is_binary/1}
                         ,{<<"Event-Name">>, fun is_binary/1}
