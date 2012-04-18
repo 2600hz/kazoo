@@ -8,6 +8,8 @@
 %%%-------------------------------------------------------------------
 -module(lineman_util).
 
+-export([add_dynamic_var/2]).
+-export([replace_dynamic_vars/1]).
 -export([try_connect_to_target/2, try_connect_to_target/3]).
 -export([try_get_cookie_from_vmargs/1]).
 -export([xml_content/1, xml_content/2]).
@@ -26,6 +28,40 @@
 -include_lib("lineman/src/lineman.hrl").
 
 -type xml_return_types() :: 'undefined' | 'binary' | 'string' | 'atom' | 'integer' | 'boolean'.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec add_dynamic_var/2 :: (term(), term()) -> term().
+add_dynamic_var(Name, Value) ->
+    lager:info("added dynamic var '~s': ~s", [Name, Value]),
+    case get(dynamic_vars) of
+        undefined -> 
+            put(dynamic_vars, [{Name, Value}]);
+        Vars -> 
+            put(dynamic_vars, [{Name, Value} | proplists:delete(Name, Vars)])
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec replace_dynamic_vars/1 :: (binary()) -> binary().
+replace_dynamic_vars(Subject) when not is_binary(Subject) ->
+    replace_dynamic_vars(wh_util:to_binary(Subject));
+replace_dynamic_vars(Subject) ->
+    case get(dynamic_vars) of
+        undefined -> Subject;
+        Vars ->
+            lists:foldl(fun({K, V}, S) ->
+                                binary:replace(S, <<"{{", (wh_util:to_binary(K))/binary, "}}">>, V, [global])
+                        end, Subject, Vars)
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -113,20 +149,20 @@ xml_content([#xmlElement{content=SubContent}=Element|Content], Clean, Acc) ->
     NewAcc = case xml_attribute("name", Element) of
                  undefined -> Acc;
                  Key when is_list(Acc) ->
-                     [{wh_util:to_binary(Key), xml_content(SubContent, Clean, <<>>)}|Acc];
+                     [{replace_dynamic_vars(Key), xml_content(SubContent, Clean, <<>>)}|Acc];
                  Key ->
-                     [{wh_util:to_binary(Key), xml_content(SubContent, Clean, <<>>)}]
+                     [{replace_dynamic_vars(Key), xml_content(SubContent, Clean, <<>>)}]
              end,
     xml_content(Content, Clean, NewAcc);
 xml_content([#xmlText{value=Value}|Content], true, Acc) when is_binary(Acc) ->
     case re:run(Value, "^[\n\t\\s]*$") =/= nomatch of
         true -> xml_content(Content, true, Acc);
         false -> 
-            Text = wh_util:to_binary(clean_xml_value(Value)),
+            Text = replace_dynamic_vars(clean_xml_value(Value)),
             xml_content(Content, true, <<Acc/binary, Text/binary>>)
     end;
 xml_content([#xmlText{value=Value}|Content], Clean, Acc) when is_binary(Acc) ->
-    xml_content(Content, Clean, <<Acc/binary, (wh_util:to_binary(Value))/binary>>);
+    xml_content(Content, Clean, <<Acc/binary, (replace_dynamic_vars(Value))/binary>>);
 xml_content([_|Content], Clean, Acc) ->
     xml_content(Content, Clean, Acc);
 xml_content([], _, Acc) ->
@@ -182,19 +218,28 @@ xml_boolean_attribute(Attribute, Xml, Default) ->
 
 -spec xml_attribute/4 :: (string(), xml(), term(), xml_return_types()) -> term().
 xml_attribute(Attribute, Xml, Default, Type) ->
-    case xmerl_xpath:string("@" ++ Attribute, Xml) of
-        [#xmlAttribute{value=Value}] when Type =:= binary -> 
+    case get_xml_attribute(Attribute, Xml) of
+        undefined -> Default;
+        Value when Type =:= binary -> 
             wh_util:to_binary(Value);
-        [#xmlAttribute{value=Value}] when Type =:= string -> 
+        Value when Type =:= string -> 
             wh_util:to_list(Value);
-        [#xmlAttribute{value=Value}] when Type =:= atom -> 
+        Value when Type =:= atom -> 
             wh_util:to_atom(Value, true);
-        [#xmlAttribute{value=Value}] when Type =:= integer -> 
+        Value when Type =:= integer -> 
             wh_util:to_integer(Value);
-        [#xmlAttribute{value=Value}] when Type =:= boolean -> 
+        Value when Type =:= boolean -> 
             wh_util:is_true(Value);
-        [#xmlAttribute{value=Value}] -> Value;
-        _Else -> Default
+        Value -> Value
+    end.
+
+-spec get_xml_attribute/2 :: (string(), xml()) -> 'undefined' | ne_binary().
+get_xml_attribute(Attribute, Xml) ->
+    case xmerl_xpath:string("@" ++ Attribute, Xml) of
+        [#xmlAttribute{value=""}] -> undefined;
+        [#xmlAttribute{value=Value}] ->
+            replace_dynamic_vars(Value);
+        _Else -> undefined
     end.
 
 %%--------------------------------------------------------------------

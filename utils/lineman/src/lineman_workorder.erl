@@ -23,7 +23,7 @@
                     ,sequence_order = simultanous
                     ,toolbag = []
                     ,sequences = []
-               }).
+                   }).
 
 -opaque workorder() :: #workorder{}.
 -export_type([workorder/0]).

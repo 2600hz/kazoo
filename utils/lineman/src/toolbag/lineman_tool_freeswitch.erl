@@ -136,7 +136,7 @@ handle_call({parameter, "connect", Parameter}, _From, State) ->
         {ok, Target} -> 
             c:nl(freeswitch),
             spawn(fun() ->
-                          R = rpc:call(Target, ecallmgr_fs_handler, add_fs_node, [erlang:node()]),
+                          R = rpc:call(Target, ecallmgr_fs_nodes, add, [erlang:node()]),
                           lager:info("rpc call result: ~p", [R])
                   end),
             {reply, ok, State};
@@ -214,7 +214,7 @@ handle_info({Pid, Route, Term}, #state{static_responses=StaticResponses}=State) 
         {ok, Value} -> 
             lager:info("sending static response for '~s'", [Route]),
             Pid ! Value;
-        error -> lineman_bindings:map(Route, {Pid, Term})
+        error -> lineman_bindings:map(Route, Term)
     end,
     {noreply, State};
 handle_info(reset, State) ->
