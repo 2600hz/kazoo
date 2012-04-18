@@ -37,7 +37,7 @@
 %%--------------------------------------------------------------------
 -spec add_dynamic_var/2 :: (term(), term()) -> term().
 add_dynamic_var(Name, Value) ->
-    lager:info("added dynamic var '~s': ~s", [Name, Value]),
+    lager:debug("added dynamic var '~s': ~s", [Name, Value]),
     case get(dynamic_vars) of
         undefined -> 
             put(dynamic_vars, [{Name, Value}]);
@@ -95,13 +95,13 @@ try_connect_to_target(Node, Cookie, Host) ->
             erlang:set_cookie(Target, Cookie),
             case net_adm:ping(Target) of
                 pong ->
-                    lager:info("connected to service '~s' with cookie '~s'~n", [Target, Cookie]),
+                    lager:debug("connected to service '~s' with cookie '~s'~n", [Target, Cookie]),
                     {ok, Target};
                 pang ->
-                    lager:info("connection to service '~s' rejected~n", [Target]),            
+                    lager:debug("connection to service '~s' rejected~n", [Target]),            
                     {error, pang};
                 Else ->
-                    lager:info("connection to service '~s' failed: ~p~n", [Target, Else]),            
+                    lager:debug("connection to service '~s' failed: ~p~n", [Target, Else]),            
                     {error, Else}
             end
     end.

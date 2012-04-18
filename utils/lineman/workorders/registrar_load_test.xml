@@ -1,0 +1,366 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<workorder>
+  <parameters>
+    <name>Registrar Load Test</name>
+    <max-running-sequences>15</max-running-sequences>
+    <max-sequence-executions>1000</max-sequence-executions>
+    <sequence-order>random</sequence-order>
+    <sequence-rate>10</sequence-rate>
+    <sequence-period>1000</sequence-period>
+    <deadcall-wait>5000</deadcall-wait>
+  </parameters>
+  <toolbag>
+    <freeswitch>
+      <default-event-headers>
+	<event-header name="Core-UUID">05cfa64d-fd57-478b-a34d-2877d1aaaeec</event-header>
+	<event-header name="FreeSWITCH-Hostname">vagrant.2600hz.com</event-header>
+	<event-header name="FreeSWITCH-Switchname">vagrant.2600hz.com</event-header>
+	<event-header name="FreeSWITCH-IPv4">192.168.1.45</event-header>
+	<event-header name="FreeSWITCH-IPv6">::1</event-header>
+	<event-header name="Event-Date-Local">2012-04-06 13:17:53</event-header>
+	<event-header name="Event-Date-GMT">Fri, 06 Apr 2012 20:17:53 GMT</event-header>
+	<event-header name="Event-Date-Timestamp">1333743473494547</event-header>
+	<event-header name="Event-Calling-File">sofia_reg.c</event-header>
+	<event-header name="Event-Calling-Function">sofia_reg_parse_auth</event-header>
+	<event-header name="Event-Calling-Line-Number">2379</event-header>
+      </default-event-headers>
+
+      <!--<bind binding="freeswitch.api.status" args="" clean="false" error="true"> data </bind> -->
+      <bind binding="freeswitch.api.status" args="">
+	<![CDATA[
+	  UP 0 years, 18 days, 13 hours, 41 minutes, 1 second, 777 milliseconds, 964 microseconds
+	  FreeSWITCH is ready
+	  147 session(s) since startup
+	  0 session(s) 0/200
+	  5000 session(s) max
+	  min idle cpu 0.00/43.00
+	  
+	]]>
+      </bind>
+      <bind binding="freeswitch.api.show" args="channels">
+	<![CDATA[
+
+	    0 total.
+	    
+	  ]]>
+      </bind>
+      <bind binding="freeswitch.api.load" args="mod_sofia">
+	<![CDATA[
+	  +OK Reloading XML
+	  -ERR [Module already loaded]
+	  
+	]]>
+      </bind>
+      <!--<connect node="ecallmgr" host="apps001-dev-vb.2600hz.com" cookie="W41stl3DiXIE;("/> -->
+      <connect node="ecallmgr"/>
+    </freeswitch>
+  </toolbag>
+  <sequences>
+    <sequence name="device_1">
+      <variables>
+         <variable name="seq_uuid" generate="uuid"/>
+         <variable name="username">device_1</variable>
+         <variable name="password">123456</variable>
+         <variable name="realm">test.sip.2600hz.com</variable>
+      </variables>
+      <freeswitch action="fetch" fetch-module="directory" fetch-key="domain" fetch-property="name" fetch-value="{{realm}}" fetch-id="{{seq_uuid}}">
+	<event-header name="Event-Name">REQUEST_PARAMS</event-header>
+	<event-header name="action">sip_auth</event-header>
+	<event-header name="sip_profile">sipinterface_1</event-header>
+	<event-header name="sip_user_agent">PolycomSoundPointIP-SPIP_330-UA/3.3.2.0413</event-header>
+	<event-header name="sip_auth_username">{{username}}</event-header>
+	<event-header name="sip_auth_realm">{{realm}}</event-header>
+	<event-header name="sip_auth_nonce">6acd9049-149e-4790-bb4c-1a6931b633ae</event-header>
+	<event-header name="sip_auth_uri">sip:{{realm}}:5060</event-header>
+	<event-header name="sip_contact_user">{{username}}</event-header>
+	<event-header name="sip_contact_host">42.42.42.42</event-header>
+	<event-header name="sip_to_user">{{username}}</event-header>
+	<event-header name="sip_to_host">{{realm}}</event-header>
+	<event-header name="sip_from_user">{{username}}</event-header>
+	<event-header name="sip_from_host">{{realm}}</event-header>
+	<event-header name="sip_request_host">192.168.1.45</event-header>
+	<event-header name="sip_request_port">5060</event-header>
+	<event-header name="X-AUTH-IP">42.42.42.42</event-header>
+	<event-header name="sip_auth_qop">auth</event-header>
+	<event-header name="sip_auth_cnonce">n6XPbFowczF2OxQ</event-header>
+	<event-header name="sip_auth_nc">00000009</event-header>
+	<event-header name="sip_auth_response">3ad345827751258c993109c0ef4c297e</event-header>
+	<event-header name="sip_auth_method">REGISTER</event-header>
+	<event-header name="key">id</event-header>
+	<event-header name="user">{{username}}</event-header>
+	<event-header name="domain">{{realm}}</event-header>
+	<event-header name="ip">192.168.1.41</event-header>
+      </freeswitch>
+      <expect binding="freeswitch.fetch_reply.{{seq_uuid}}" timeout="2000">
+        <![CDATA[
+	<section name="directory">
+	  <domain name="{{realm}}">
+	    <user id="{{username}}">
+	      <params>
+		<param name="password" value="{{password}}"/>
+	      </params>
+	      <variables>
+		<variable name="ecallmgr_Inception" value="on-net" />          
+		<variable name="ecallmgr_Authorizing-Type" value="device" />          
+		<variable name="ecallmgr_Account-ID" value="c0705d7474ea0160c10a351b2544006b" />          
+		<variable name="ecallmgr_Realm" value="{{realm}}" />          
+		<variable name="ecallmgr_Username" value="{{username}}" />        
+	      </variables>      
+	    </user>    
+	  </domain>  
+	</section>
+        ]]>
+      </expect>
+      <sleep time="500"/>
+      <freeswitch action="publish" call-id="66d05b09-74b57bae-d67cf1f7@42.42.42.42">
+	<event-header name="Event-Name">CUSTOM</event-header>
+	<event-header name="Event-Subclass">sofia::register</event-header>
+	<event-header name="profile-name">sipinterface_1</event-header>
+	<event-header name="from-user">{{username}}</event-header>
+	<event-header name="from-host">{{realm}}</event-header>
+	<event-header name="presence-hosts">{{realm}}</event-header>
+	<event-header name="contact"><![CDATA["user" <sip:{{username}}@42.42.42.42:5348;fs_path=<sip:192.168.1.50;lr;received=sip:42.42.42.42:5348>>]]></event-header>
+	<event-header name="call-id">66d05b09-74b57bae-d67cf1f7@42.42.42.42</event-header>
+	<event-header name="rpid">unknown</event-header>
+	<event-header name="status">Registered(UDP)</event-header>
+	<event-header name="expires">60</event-header>
+	<event-header name="to-user">{{username}}</event-header>
+	<event-header name="to-host">{{realm}}</event-header>
+	<event-header name="network-ip">192.168.1.41</event-header>
+	<event-header name="network-port">5060</event-header>
+	<event-header name="username">{{username}}</event-header>
+	<event-header name="realm">{{realm}}</event-header>
+	<event-header name="user-agent">PolycomSoundPointIP-SPIP_330-UA/3.3.2.0413</event-header>
+      </freeswitch>
+      <os event="os_command.registrar.local_summary.{{seq_uuid}}">
+	<![CDATA[
+          /opt/whistle/2600hz-platform/utils/command_bridge/command_bridge registrar_maintenance local_summary {{realm}} {{username}}
+	]]>
+      </os>
+      <expect binding="os_command.registrar.local_summary.{{seq_uuid}}">
+        <![CDATA[
+	  Network-Port: 5060
+	  Network-IP: 192.168.1.41
+	  To-Host: {{realm}}
+	  To-User: {{username}}
+	  RPid: unknown
+	  FreeSWITCH-Hostname: vagrant.2600hz.com
+	  From-Host: {{realm}}
+	  From-User: {{username}}
+	  Presence-Hosts: {{realm}}
+	  Profile-Name: sipinterface_1
+	  Call-ID: 66d05b09-74b57bae-d67cf1f7@42.42.42.42
+	  User-Agent: PolycomSoundPointIP-SPIP_330-UA/3.3.2.0413
+	  Status: Registered(UDP)
+	  Realm: {{realm}}
+          Username: {{username}}
+	  Contact: "user" sip:{{username}}@42.42.42.42:5348;fs_path=sip:192.168.1.50;lr;received=sip:42.42.42.42:5348
+        ]]>
+      </expect>      
+    </sequence>
+    <sequence name="device_2">
+      <variables>
+         <variable name="seq_uuid" generate="uuid"/>
+         <variable name="username">device_2</variable>
+         <variable name="password">123456</variable>
+         <variable name="realm">test.sip.2600hz.com</variable>
+      </variables>
+      <freeswitch action="fetch" fetch-module="directory" fetch-key="domain" fetch-property="name" fetch-value="{{realm}}" fetch-id="{{seq_uuid}}">
+	<event-header name="Event-Name">REQUEST_PARAMS</event-header>
+	<event-header name="action">sip_auth</event-header>
+	<event-header name="sip_profile">sipinterface_1</event-header>
+	<event-header name="sip_user_agent">PolycomSoundPointIP-SPIP_330-UA/3.3.2.0413</event-header>
+	<event-header name="sip_auth_username">{{username}}</event-header>
+	<event-header name="sip_auth_realm">{{realm}}</event-header>
+	<event-header name="sip_auth_nonce">6acd9049-149e-4790-bb4c-1a6931b633ae</event-header>
+	<event-header name="sip_auth_uri">sip:{{realm}}:5060</event-header>
+	<event-header name="sip_contact_user">{{username}}</event-header>
+	<event-header name="sip_contact_host">42.42.42.42</event-header>
+	<event-header name="sip_to_user">{{username}}</event-header>
+	<event-header name="sip_to_host">{{realm}}</event-header>
+	<event-header name="sip_from_user">{{username}}</event-header>
+	<event-header name="sip_from_host">{{realm}}</event-header>
+	<event-header name="sip_request_host">192.168.1.45</event-header>
+	<event-header name="sip_request_port">5060</event-header>
+	<event-header name="X-AUTH-IP">42.42.42.42</event-header>
+	<event-header name="sip_auth_qop">auth</event-header>
+	<event-header name="sip_auth_cnonce">n6XPbFowczF2OxQ</event-header>
+	<event-header name="sip_auth_nc">00000009</event-header>
+	<event-header name="sip_auth_response">3ad345827751258c993109c0ef4c297e</event-header>
+	<event-header name="sip_auth_method">REGISTER</event-header>
+	<event-header name="key">id</event-header>
+	<event-header name="user">{{username}}</event-header>
+	<event-header name="domain">{{realm}}</event-header>
+	<event-header name="ip">192.168.1.41</event-header>
+      </freeswitch>
+      <expect binding="freeswitch.fetch_reply.{{seq_uuid}}" timeout="2000">
+        <![CDATA[
+	<section name="directory">
+	  <domain name="{{realm}}">
+	    <user id="{{username}}">
+	      <params>
+		<param name="password" value="{{password}}"/>
+	      </params>
+	      <variables>
+		<variable name="ecallmgr_Inception" value="on-net" />          
+		<variable name="ecallmgr_Authorizing-Type" value="device" />          
+		<variable name="ecallmgr_Account-ID" value="c0705d7474ea0160c10a351b2544006b" />          
+		<variable name="ecallmgr_Realm" value="{{realm}}" />          
+		<variable name="ecallmgr_Username" value="{{username}}" />        
+	      </variables>      
+	    </user>    
+	  </domain>  
+	</section>
+        ]]>
+      </expect>
+      <sleep time="500"/>
+      <freeswitch action="publish" call-id="66d05b09-74b57bae-d67cf1f7@42.42.42.42">
+	<event-header name="Event-Name">CUSTOM</event-header>
+	<event-header name="Event-Subclass">sofia::register</event-header>
+	<event-header name="profile-name">sipinterface_1</event-header>
+	<event-header name="from-user">{{username}}</event-header>
+	<event-header name="from-host">{{realm}}</event-header>
+	<event-header name="presence-hosts">{{realm}}</event-header>
+	<event-header name="contact"><![CDATA["user" <sip:{{username}}@42.42.42.42:5348;fs_path=<sip:192.168.1.50;lr;received=sip:42.42.42.42:5348>>]]></event-header>
+	<event-header name="call-id">66d05b09-74b57bae-d67cf1f7@42.42.42.42</event-header>
+	<event-header name="rpid">unknown</event-header>
+	<event-header name="status">Registered(UDP)</event-header>
+	<event-header name="expires">60</event-header>
+	<event-header name="to-user">{{username}}</event-header>
+	<event-header name="to-host">{{realm}}</event-header>
+	<event-header name="network-ip">192.168.1.41</event-header>
+	<event-header name="network-port">5060</event-header>
+	<event-header name="username">{{username}}</event-header>
+	<event-header name="realm">{{realm}}</event-header>
+	<event-header name="user-agent">PolycomSoundPointIP-SPIP_330-UA/3.3.2.0413</event-header>
+      </freeswitch>
+      <os event="os_command.registrar.local_summary.{{seq_uuid}}">
+	<![CDATA[
+          /opt/whistle/2600hz-platform/utils/command_bridge/command_bridge registrar_maintenance local_summary {{realm}} {{username}}
+	]]>
+      </os>
+      <expect binding="os_command.registrar.local_summary.{{seq_uuid}}">
+        <![CDATA[
+	  Network-Port: 5060
+	  Network-IP: 192.168.1.41
+	  To-Host: {{realm}}
+	  To-User: {{username}}
+	  RPid: unknown
+	  FreeSWITCH-Hostname: vagrant.2600hz.com
+	  From-Host: {{realm}}
+	  From-User: {{username}}
+	  Presence-Hosts: {{realm}}
+	  Profile-Name: sipinterface_1
+	  Call-ID: 66d05b09-74b57bae-d67cf1f7@42.42.42.42
+	  User-Agent: PolycomSoundPointIP-SPIP_330-UA/3.3.2.0413
+	  Status: Registered(UDP)
+	  Realm: {{realm}}
+          Username: {{username}}
+	  Contact: "user" sip:{{username}}@42.42.42.42:5348;fs_path=sip:192.168.1.50;lr;received=sip:42.42.42.42:5348
+        ]]>
+      </expect>      
+    </sequence>
+    <sequence name="device_3">
+      <variables>
+         <variable name="seq_uuid" generate="uuid"/>
+         <variable name="username">device_3</variable>
+         <variable name="password">123456</variable>
+         <variable name="realm">test.sip.2600hz.com</variable>
+      </variables>
+      <freeswitch action="fetch" fetch-module="directory" fetch-key="domain" fetch-property="name" fetch-value="{{realm}}" fetch-id="{{seq_uuid}}">
+	<event-header name="Event-Name">REQUEST_PARAMS</event-header>
+	<event-header name="action">sip_auth</event-header>
+	<event-header name="sip_profile">sipinterface_1</event-header>
+	<event-header name="sip_user_agent">PolycomSoundPointIP-SPIP_330-UA/3.3.2.0413</event-header>
+	<event-header name="sip_auth_username">{{username}}</event-header>
+	<event-header name="sip_auth_realm">{{realm}}</event-header>
+	<event-header name="sip_auth_nonce">6acd9049-149e-4790-bb4c-1a6931b633ae</event-header>
+	<event-header name="sip_auth_uri">sip:{{realm}}:5060</event-header>
+	<event-header name="sip_contact_user">{{username}}</event-header>
+	<event-header name="sip_contact_host">42.42.42.42</event-header>
+	<event-header name="sip_to_user">{{username}}</event-header>
+	<event-header name="sip_to_host">{{realm}}</event-header>
+	<event-header name="sip_from_user">{{username}}</event-header>
+	<event-header name="sip_from_host">{{realm}}</event-header>
+	<event-header name="sip_request_host">192.168.1.45</event-header>
+	<event-header name="sip_request_port">5060</event-header>
+	<event-header name="X-AUTH-IP">42.42.42.42</event-header>
+	<event-header name="sip_auth_qop">auth</event-header>
+	<event-header name="sip_auth_cnonce">n6XPbFowczF2OxQ</event-header>
+	<event-header name="sip_auth_nc">00000009</event-header>
+	<event-header name="sip_auth_response">3ad345827751258c993109c0ef4c297e</event-header>
+	<event-header name="sip_auth_method">REGISTER</event-header>
+	<event-header name="key">id</event-header>
+	<event-header name="user">{{username}}</event-header>
+	<event-header name="domain">{{realm}}</event-header>
+	<event-header name="ip">192.168.1.41</event-header>
+      </freeswitch>
+      <expect binding="freeswitch.fetch_reply.{{seq_uuid}}" timeout="2000">
+        <![CDATA[
+	<section name="directory">
+	  <domain name="{{realm}}">
+	    <user id="{{username}}">
+	      <params>
+		<param name="password" value="{{password}}"/>
+	      </params>
+	      <variables>
+		<variable name="ecallmgr_Inception" value="on-net" />          
+		<variable name="ecallmgr_Authorizing-Type" value="device" />          
+		<variable name="ecallmgr_Account-ID" value="c0705d7474ea0160c10a351b2544006b" />          
+		<variable name="ecallmgr_Realm" value="{{realm}}" />          
+		<variable name="ecallmgr_Username" value="{{username}}" />        
+	      </variables>      
+	    </user>    
+	  </domain>  
+	</section>
+        ]]>
+      </expect>
+      <sleep time="500"/>
+      <freeswitch action="publish" call-id="66d05b09-74b57bae-d67cf1f7@42.42.42.42">
+	<event-header name="Event-Name">CUSTOM</event-header>
+	<event-header name="Event-Subclass">sofia::register</event-header>
+	<event-header name="profile-name">sipinterface_1</event-header>
+	<event-header name="from-user">{{username}}</event-header>
+	<event-header name="from-host">{{realm}}</event-header>
+	<event-header name="presence-hosts">{{realm}}</event-header>
+	<event-header name="contact"><![CDATA["user" <sip:{{username}}@42.42.42.42:5348;fs_path=<sip:192.168.1.50;lr;received=sip:42.42.42.42:5348>>]]></event-header>
+	<event-header name="call-id">66d05b09-74b57bae-d67cf1f7@42.42.42.42</event-header>
+	<event-header name="rpid">unknown</event-header>
+	<event-header name="status">Registered(UDP)</event-header>
+	<event-header name="expires">60</event-header>
+	<event-header name="to-user">{{username}}</event-header>
+	<event-header name="to-host">{{realm}}</event-header>
+	<event-header name="network-ip">192.168.1.41</event-header>
+	<event-header name="network-port">5060</event-header>
+	<event-header name="username">{{username}}</event-header>
+	<event-header name="realm">{{realm}}</event-header>
+	<event-header name="user-agent">PolycomSoundPointIP-SPIP_330-UA/3.3.2.0413</event-header>
+      </freeswitch>
+      <os event="os_command.registrar.local_summary.{{seq_uuid}}">
+	<![CDATA[
+          /opt/whistle/2600hz-platform/utils/command_bridge/command_bridge registrar_maintenance local_summary {{realm}} {{username}}
+	]]>
+      </os>
+      <expect binding="os_command.registrar.local_summary.{{seq_uuid}}">
+        <![CDATA[
+	  Network-Port: 5060
+	  Network-IP: 192.168.1.41
+	  To-Host: {{realm}}
+	  To-User: {{username}}
+	  RPid: unknown
+	  FreeSWITCH-Hostname: vagrant.2600hz.com
+	  From-Host: {{realm}}
+	  From-User: {{username}}
+	  Presence-Hosts: {{realm}}
+	  Profile-Name: sipinterface_1
+	  Call-ID: 66d05b09-74b57bae-d67cf1f7@42.42.42.42
+	  User-Agent: PolycomSoundPointIP-SPIP_330-UA/3.3.2.0413
+	  Status: Registered(UDP)
+	  Realm: {{realm}}
+          Username: {{username}}
+	  Contact: "user" sip:{{username}}@42.42.42.42:5348;fs_path=sip:192.168.1.50;lr;received=sip:42.42.42.42:5348
+        ]]>
+      </expect>      
+    </sequence>
+  </sequences>
+</workorder>

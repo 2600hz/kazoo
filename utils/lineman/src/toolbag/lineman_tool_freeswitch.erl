@@ -124,7 +124,7 @@ handle_call({parameter, "bind", Parameter}, _From, #state{static_responses=Stati
               <<"true">> -> {error, Value};
               _Else2  -> {ok, Value}
           end,
-    lager:info("added static binding result for ~s with arg '~s'", [Binding, Args]),
+    lager:debug("added static binding result for ~s with arg '~s'", [Binding, Args]),
     {reply, ok, State#state{static_responses=dict:store({Binding, Args}, Msg, StaticResponses)}};
 handle_call({parameter, "connect", Parameter}, _From, State) -> 
     Node = lineman_util:xml_string_attribute("node", Parameter, "ecallmgr"),
@@ -137,7 +137,7 @@ handle_call({parameter, "connect", Parameter}, _From, State) ->
             c:nl(freeswitch),
             spawn(fun() ->
                           R = rpc:call(Target, ecallmgr_fs_nodes, add, [erlang:node()]),
-                          lager:info("rpc call result: ~p", [R])
+                          lager:debug("rpc call result: ~p", [R])
                   end),
             {reply, ok, State};
         {error, _}=E ->

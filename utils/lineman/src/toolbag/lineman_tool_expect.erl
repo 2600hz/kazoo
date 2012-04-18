@@ -20,7 +20,7 @@ set_parameter(_Name, _Parameter) -> ok.
 -spec prepare/2 :: (xml(), lineman_workorder:workorder()) -> lineman_workorder:workorder().
 prepare(Xml, Workorder) ->
     Binding = lineman_util:xml_attribute("binding", Xml),
-    lager:info("~p binding to '~s'", [self(), Binding]),
+    lager:debug("~p binding to '~s'", [self(), Binding]),
     lineman_bindings:bind(Binding, self(), 0),
     Workorder.
 

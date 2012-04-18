@@ -77,7 +77,7 @@
 map(Routing, Payload) when not is_list(Payload) ->
     map(Routing, [Payload]);
 map(Routing, Payload) ->
-    lager:info("map '~s': ~p", [Routing, Payload]),
+    lager:debug("map '~s'", [Routing]),
     RoutingParts = lists:reverse(binary:split(Routing, <<".">>, [global])),
     lists:foldl(fun({{B, BParts}, MFs}, Acc) ->
                         case B =:= Routing orelse matches(BParts, RoutingParts) of

@@ -23,7 +23,7 @@ prepare(_Xml, Workorder) -> Workorder.
 -spec execute/2 :: (xml(), lineman_workorder:workorder()) -> lineman_workorder:workorder().
 execute(Xml, Workorder) ->
     Cmd = wh_util:to_list(lineman_util:xml_content(Xml)),
-    lager:info("running os command: ~p", [Cmd]),
+    lager:debug("running os command: ~p", [Cmd]),
     Result = os:cmd(Cmd),
     case lineman_util:xml_attribute("event", Xml) of
         undefined -> Workorder;
