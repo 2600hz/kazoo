@@ -127,8 +127,7 @@ merge_jobjs({struct, Props1}=_JObj1, {struct, _}=JObj2) ->
 merge_recursive(JObj1, JObj2) ->
     merge_recursive(JObj1, JObj2, []).
 
-merge_recursive(JObj1, JObj2, Keys) when ?IS_JSON_GUARD(JObj1) andalso
-                                         ?IS_JSON_GUARD(JObj2) ->
+merge_recursive(JObj1, JObj2, Keys) when ?IS_JSON_GUARD(JObj2) ->
     Prop2 = to_proplist(JObj2),
     lists:foldr(fun(Key, J) ->
                         merge_recursive(J, props:get_value(Key, Prop2), [Key|Keys])
