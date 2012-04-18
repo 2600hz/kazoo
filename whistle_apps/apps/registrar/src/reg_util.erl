@@ -1,10 +1,11 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2012, VoIP INC
 %%% @doc
 %%% Shared functions
 %%% @end
-%%% Created : 19 Aug 2011 by James Aimonetti <james@2600hz.org>
+%%% @contributors
+%%%   James Aimonetti
+%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(reg_util).
 
@@ -14,6 +15,7 @@
 -export([lookup_registrations/1, lookup_registration/2, fetch_all_registrations/0]).
 -export([reg_removed_from_cache/3]).
 -export([search_for_registration/2]).
+
 -include("reg.hrl").
 
 cache_reg_key(Id) -> {?MODULE, registration, Id}.
@@ -26,7 +28,8 @@ cache_user_key(Realm, User) -> {?MODULE, sip_credentials, Realm, User}.
 %% look up a cached registration by realm and optionally username
 %% @end
 %%-----------------------------------------------------------------------------
--spec lookup_registrations/1 :: (ne_binary()) -> {'ok', wh_json:json_objects()} | {'error', 'not_found'}.
+-spec lookup_registrations/1 :: (ne_binary()) -> {'ok', wh_json:json_objects()} |
+                                                 {'error', 'not_found'}.
 lookup_registrations(Realm) when not is_binary(Realm) ->
     lookup_registrations(wh_util:to_binary(Realm));
 lookup_registrations(Realm) ->
@@ -41,7 +44,8 @@ lookup_registrations(Realm) ->
         Else -> {'ok', Else}
     end.
 
--spec lookup_registration/2 :: (ne_binary(), undefined | ne_binary()) -> {'ok', wh_json:json_object()} | {'error', 'not_found'}.
+-spec lookup_registration/2 :: (ne_binary(), 'undefined' | ne_binary()) -> {'ok', wh_json:json_object()} |
+                                                                           {'error', 'not_found'}.
 lookup_registration(Realm, undefined) ->
     lookup_registrations(Realm);
 lookup_registration(Realm, Username) when not is_binary(Realm) ->
@@ -97,7 +101,8 @@ hash_contact(Contact) ->
 %% look up the user and realm in the database and return the result
 %% @end
 %%-----------------------------------------------------------------------------
--spec lookup_auth_user/2 :: (ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} | {'error', 'not_found'}.
+-spec lookup_auth_user/2 :: (ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} |
+                                                          {'error', 'not_found'}.
 lookup_auth_user(Name, Realm) ->
     lager:debug("looking up auth creds for ~s@~s", [Name, Realm]),
     {ok, Cache} = registrar_sup:cache_proc(),
@@ -128,7 +133,8 @@ lookup_auth_user(Name, Realm) ->
             end
     end.
 
--spec get_auth_user/2 :: (ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} | {'error', 'not_found'}.
+-spec get_auth_user/2 :: (ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} |
+                                                       {'error', 'not_found'}.
 get_auth_user(Name, Realm) ->
     case whapps_util:get_account_by_realm(Realm) of
         {'error', E} ->
@@ -141,7 +147,8 @@ get_auth_user(Name, Realm) ->
             get_auth_user_in_account(Name, Realm, AccountDB)
     end.
 
--spec get_auth_user_in_agg/2 :: (ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} | {'error', 'not_found'}.
+-spec get_auth_user_in_agg/2 :: (ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} |
+                                                              {'error', 'not_found'}.
 get_auth_user_in_agg(Name, Realm) ->
     UseAggregate = whapps_config:get_is_true(?CONFIG_CAT, <<"use_aggregate">>, false),
     ViewOptions = [{<<"key">>, [Realm, Name]}, {<<"include_docs">>, true}],
@@ -160,7 +167,8 @@ get_auth_user_in_agg(Name, Realm) ->
             {'ok', User}
     end.
 
--spec get_auth_user_in_account/3 :: (ne_binary(), ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} | {'error', 'not_found'}.
+-spec get_auth_user_in_account/3 :: (ne_binary(), ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} |
+                                                                               {'error', 'not_found'}.
 get_auth_user_in_account(Name, Realm, AccountDB) ->
     case couch_mgr:get_results(AccountDB, <<"devices/sip_credentials">>, [{<<"key">>, Name}, {<<"include_docs">>, true}]) of
         {'error', R} ->
@@ -174,7 +182,7 @@ get_auth_user_in_account(Name, Realm, AccountDB) ->
             {'ok', User}
     end.
 
--spec reg_removed_from_cache/3 :: (term(), term(), expire | flush | erase) -> ok.
+-spec reg_removed_from_cache/3 :: (term(), term(), 'expire' | 'flush' | 'erase') -> 'ok'.
 reg_removed_from_cache({?MODULE, registration, Realm, User}, Reg, expire) ->
     lager:debug("received notice that user ~s@~s registration has expired", [User, Realm]),
     SuppressUnregister = wh_json:is_true(<<"Suppress-Unregister-Notify">>, Reg),
@@ -199,7 +207,8 @@ reg_removed_from_cache({?MODULE, registration, Realm, User}, Reg, expire) ->
 reg_removed_from_cache(_, _, _) ->
     ok.
 
--spec search_for_registration/2 :: (ne_binary(), ne_binary()) -> {ok, wh_json:json_object()} | {error, timeout}.
+-spec search_for_registration/2 :: (ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} |
+                                                                 {'error', 'timeout'}.
 search_for_registration(User, Realm) ->
     {ok, Srv} = registrar_sup:listener_proc(),
     Q = gen_listener:queue_name(Srv),
