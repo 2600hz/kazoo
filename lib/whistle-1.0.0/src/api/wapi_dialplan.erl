@@ -746,14 +746,14 @@ publish_command(CtrlQ, JObj) ->
     publish_command(CtrlQ, wh_json:to_proplist(JObj)).
 
 publish_command(CtrlQ, Prop, DPApp) ->
-    try
-        BuildMsgFun = wh_util:to_atom(<<DPApp/binary>>),
-        case lists:keyfind(BuildMsgFun, 1, ?MODULE:module_info(exports)) of
-            false -> throw({invalid_dialplan_object, Prop});
-            {_, 1} -> 
-                {ok, Payload} = ?MODULE:BuildMsgFun(Prop),                    
-                amqp_util:callctl_publish(CtrlQ, Payload, ?DEFAULT_CONTENT_TYPE)                
-        end
+    try wh_util:to_atom(<<DPApp/binary>>) of
+        BuildMsgFun ->
+            case lists:keyfind(BuildMsgFun, 1, ?MODULE:module_info(exports)) of
+                false -> {error, invalid_dialplan_object};
+                {_, 1} -> 
+                    {ok, Payload} = ?MODULE:BuildMsgFun(Prop),                    
+                    amqp_util:callctl_publish(CtrlQ, Payload, ?DEFAULT_CONTENT_TYPE)                
+            end
     catch
         _:R ->
             throw({R, Prop})
