@@ -196,6 +196,14 @@ reg_removed_from_cache({?MODULE, registration, Realm, User}, Reg, expire) ->
             wapi_notifications:publish_deregister(Event)
     end,       
     ok;
+reg_removed_from_cache({?MODULE, sip_credentials, Realm, User}, _, expire) ->
+    case lookup_registration(Realm, User) of
+        {error, not_found} -> ok;
+        {ok, _} -> 
+            lager:debug("preemptively refreshing sip credentials for ~s@~s", [User, Realm]),
+            lookup_auth_user(User, Realm)
+    end,
+    ok;
 reg_removed_from_cache(_, _, _) ->
     ok.
 
