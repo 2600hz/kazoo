@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<workorder>
+  <parameters>
+    <name>Registration Validation</name>
+    <max-running-sequences>1</max-running-sequences>
+    <max-sequence-executions>10</max-sequence-executions>
+    <sequence-order>sequential</sequence-order>
+    <sequence-rate>1</sequence-rate>
+    <sequence-period>1000</sequence-period>
+    <deadcall-wait>5000</deadcall-wait>
+  </parameters>
+  <toolbag>
+    <couchdb>
+      <bind binding="couchdb.get.accounts._design.accounts._view.listing_by_realm">
+	<![CDATA[
+	  {"total_rows":1,"offset":0,"rows":[
+	  {"id":"c0705d7474ea0160c10a351b2544006b","key":"{{realm}}","value":{"account_id":"c0705d7474ea0160c10a351b2544006b","account_db":"account%2Fc0%2F70%2F5d7474ea0160c10a351b2544006b"}},
+	  ]} 
+	]]>
+      </bind> 
+      <bind binding="couchdb.get.account%2Fc0%2F70%2F5d7474ea0160c10a351b2544006b._design.devices._view.sip_credentials">
+	<![CDATA[
+	  {"total_rows":1,"offset":0,"rows":[
+	  {"id":"e00816343ee126968a5f18a0aa2442e4","key":"{{username}}","value":{"method":"password","invite_format":"username","username":"{{username}}","password":"123456","expire_seconds":"360","custom_sip_headers":{},"registration_expiration":300,"authorizing_id":"e00816343ee126968a5f18a0aa2442e4","authorizing_type":"device"}}
+	  ]} 
+	]]>
+      </bind>      
+      <bind binding="couchdb.get.account%2Fc0%2F70%2F5d7474ea0160c10a351b2544006b.e00816343ee126968a5f18a0aa2442e4">
+	<![CDATA[
+	  {"_id":"e00816343ee126968a5f18a0aa2442e4","_rev":"62-492fbf99aad99aefebbb0a5d89dd980a","sip":{"method":"password","invite_format":"username","username":"{{username}}","password":"123456","expire_seconds":"360","custom_sip_headers":{},"registration_expiration":300},"name":"Device 1","owner_id":"c0705d7474ea0160c10a351b2544078a","id":"e00816343ee126968a5f18a0aa2442e4","enabled":true,"caller_id_options":{},"ringtones":{},"device_type":"sip_device","music_on_hold":{"media_id_old":"421ae0323e57006316595c4169684690","media_id":"7001cff5128448f196c145c2035d4d4d"},"call_forward":{"enabled":false,"substitute":true,"require_keypress":true,"keep_caller_id":true,"direct_calls_only":false,"ignore_early_media":true},"media":{"bypass_media":"false","audio":{"codecs":[]},"video":{"codecs":[]},"fax":{"option":"auto"},"ignore_early_media":false},"caller_id":{},"status":false,"pvt_type":"device","pvt_vsn":"1","pvt_account_id":"c0705d7474ea0160c10a351b2544006b","pvt_account_db":"account%2Fc0%2F70%2F5d7474ea0160c10a351b2544006b","pvt_created":63491028440,"pvt_modified":63494417632}
+	]]>
+      </bind>
+    </couchdb>
+    <freeswitch>
+      <default-event-headers>
+	<event-header name="Core-UUID">05cfa64d-fd57-478b-a34d-2877d1aaaeec</event-header>
+	<event-header name="FreeSWITCH-Hostname">vagrant.2600hz.com</event-header>
+	<event-header name="FreeSWITCH-Switchname">vagrant.2600hz.com</event-header>
+	<event-header name="FreeSWITCH-IPv4">192.168.1.45</event-header>
+	<event-header name="FreeSWITCH-IPv6">::1</event-header>
+	<event-header name="Event-Date-Local">2012-04-06 13:17:53</event-header>
+	<event-header name="Event-Date-GMT">Fri, 06 Apr 2012 20:17:53 GMT</event-header>
+	<event-header name="Event-Date-Timestamp">1333743473494547</event-header>
+	<event-header name="Event-Calling-File">sofia_reg.c</event-header>
+	<event-header name="Event-Calling-Function">sofia_reg_parse_auth</event-header>
+	<event-header name="Event-Calling-Line-Number">2379</event-header>
+      </default-event-headers>
+
+      <!--<bind binding="freeswitch.api.status" args="" clean="false" error="true"> data </bind> -->
+      <bind binding="freeswitch.api.status" args="">
+	<![CDATA[
+	  UP 0 years, 18 days, 13 hours, 41 minutes, 1 second, 777 milliseconds, 964 microseconds
+	  FreeSWITCH is ready
+	  147 session(s) since startup
+	  0 session(s) 0/200
+	  5000 session(s) max
+	  min idle cpu 0.00/43.00
+	  
+	]]>
+      </bind>
+      <bind binding="freeswitch.api.show" args="channels">
+	<![CDATA[
+
+	    0 total.
+	    
+	  ]]>
+      </bind>
+      <bind binding="freeswitch.api.load" args="mod_sofia">
+	<![CDATA[
+	  +OK Reloading XML
+	  -ERR [Module already loaded]
+	  
+	]]>
+      </bind>
+      <!--<connect node="ecallmgr" host="apps001-dev-vb.2600hz.com" cookie="W41stl3DiXIE;("/> -->
+      <connect node="ecallmgr"/>
+    </freeswitch>
+  </toolbag>
+  <sequences>
+    <sequence>
+      <variables>
+         <variable name="fetch_uuid" generate="uuid"/>
+         <variable name="ip" generate="ip_v4"/>
+         <variable name="username" generate="username"/>
+         <variable name="password" generate="password"/>
+         <variable name="realm" generate="domain"/>
+      </variables>
+      <freeswitch action="fetch" fetch-module="directory" fetch-key="domain" fetch-property="name" fetch-value="{{realm}}" fetch-id="{{fetch_uuid}}">
+	<event-header name="Event-Name">REQUEST_PARAMS</event-header>
+	<event-header name="action">sip_auth</event-header>
+	<event-header name="sip_profile">sipinterface_1</event-header>
+	<event-header name="sip_user_agent">PolycomSoundPointIP-SPIP_330-UA/3.3.2.0413</event-header>
+	<event-header name="sip_auth_username">{{username}}</event-header>
+	<event-header name="sip_auth_realm">{{realm}}</event-header>
+	<event-header name="sip_auth_nonce">6acd9049-149e-4790-bb4c-1a6931b633ae</event-header>
+	<event-header name="sip_auth_uri">sip:{{realm}}:5060</event-header>
+	<event-header name="sip_contact_user">{{username}}</event-header>
+	<event-header name="sip_contact_host">{{ip}}</event-header>
+	<event-header name="sip_to_user">{{username}}</event-header>
+	<event-header name="sip_to_host">{{realm}}</event-header>
+	<event-header name="sip_from_user">{{username}}</event-header>
+	<event-header name="sip_from_host">{{realm}}</event-header>
+	<event-header name="sip_request_host">192.168.1.45</event-header>
+	<event-header name="sip_request_port">5060</event-header>
+	<event-header name="X-AUTH-IP">{{ip}}</event-header>
+	<event-header name="sip_auth_qop">auth</event-header>
+	<event-header name="sip_auth_cnonce">n6XPbFowczF2OxQ</event-header>
+	<event-header name="sip_auth_nc">00000009</event-header>
+	<event-header name="sip_auth_response">3ad345827751258c993109c0ef4c297e</event-header>
+	<event-header name="sip_auth_method">REGISTER</event-header>
+	<event-header name="key">id</event-header>
+	<event-header name="user">{{username}}</event-header>
+	<event-header name="domain">{{realm}}</event-header>
+	<event-header name="ip">192.168.1.41</event-header>
+      </freeswitch>
+      <expect binding="freeswitch.fetch_reply.{{fetch_uuid}}" timeout="2000">
+        <![CDATA[
+	<section name="directory">
+	  <domain name="{{realm}}">
+	    <user id="{{username}}">
+	      <params>
+		<param name="password" value="{{password}}"/>
+	      </params>
+	      <variables>
+		<variable name="ecallmgr_Inception" value="on-net" />          
+		<variable name="ecallmgr_Authorizing-Type" value="device" />          
+		<variable name="ecallmgr_Account-ID" value="c0705d7474ea0160c10a351b2544006b" />          
+		<variable name="ecallmgr_Realm" value="{{realm}}" />          
+		<variable name="ecallmgr_Username" value="{{username}}" />        
+	      </variables>      
+	    </user>    
+	  </domain>  
+	</section>
+        ]]>
+      </expect>
+      <sleep time="500"/>
+      <freeswitch action="publish" call-id="66d05b09-74b57bae-d67cf1f7@{{ip}}">
+	<event-header name="Event-Name">CUSTOM</event-header>
+	<event-header name="Event-Subclass">sofia::register</event-header>
+	<event-header name="profile-name">sipinterface_1</event-header>
+	<event-header name="from-user">{{username}}</event-header>
+	<event-header name="from-host">{{realm}}</event-header>
+	<event-header name="presence-hosts">{{realm}}</event-header>
+	<event-header name="contact"><![CDATA["user" <sip:{{username}}@{{ip}}:5348;fs_path=<sip:192.168.1.50;lr;received=sip:{{ip}}:5348>>]]></event-header>
+	<event-header name="call-id">66d05b09-74b57bae-d67cf1f7@{{ip}}</event-header>
+	<event-header name="rpid">unknown</event-header>
+	<event-header name="status">Registered(UDP)</event-header>
+	<event-header name="expires">60</event-header>
+	<event-header name="to-user">{{username}}</event-header>
+	<event-header name="to-host">{{realm}}</event-header>
+	<event-header name="network-ip">192.168.1.41</event-header>
+	<event-header name="network-port">5060</event-header>
+	<event-header name="username">{{username}}</event-header>
+	<event-header name="realm">{{realm}}</event-header>
+	<event-header name="user-agent">PolycomSoundPointIP-SPIP_330-UA/3.3.2.0413</event-header>
+      </freeswitch>
+      <os event="os_command.registrar.local_summary">
+	<![CDATA[
+          /opt/whistle/2600hz-platform/utils/command_bridge/command_bridge registrar_maintenance local_summary {{realm}} {{username}}
+	]]>
+      </os>
+      <expect binding="os_command.registrar.local_summary">
+        <![CDATA[
+	  Network-Port: 5060
+	  Network-IP: 192.168.1.41
+	  To-Host: {{realm}}
+	  To-User: {{username}}
+	  RPid: unknown
+	  FreeSWITCH-Hostname: vagrant.2600hz.com
+	  From-Host: {{realm}}
+	  From-User: {{username}}
+	  Presence-Hosts: {{realm}}
+	  Profile-Name: sipinterface_1
+	  Call-ID: 66d05b09-74b57bae-d67cf1f7@{{ip}}
+	  User-Agent: PolycomSoundPointIP-SPIP_330-UA/3.3.2.0413
+	  Status: Registered(UDP)
+	  Realm: {{realm}}
+          Username: {{username}}
+	  Contact: "user" sip:{{username}}@{{ip}}:5348;fs_path=sip:192.168.1.50;lr;received=sip:{{ip}}:5348
+        ]]>
+      </expect>      
+    </sequence>
+  </sequences>
+</workorder>
