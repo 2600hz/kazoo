@@ -36,6 +36,7 @@
 
 -define(SERVER, ?MODULE).
 -define(EXPIRES, 3600). %% an hour
+-define(EXPIRE_CHECK, 30000).
 
 %%%===================================================================
 %%% API
@@ -154,7 +155,7 @@ filter_local(Srv, Pred)  when is_pid(Srv) andalso is_function(Pred, 2) ->
 %%--------------------------------------------------------------------
 init([Name]) ->
     put(callid, ?LOG_SYSTEM_ID),
-    {ok, _} = timer:send_interval(1000, flush),
+    _ = erlang:send_after(?EXPIRE_CHECK, self(), flush),
     lager:debug("started new cache proc: ~s", [Name]),
     {ok, dict:new()}.
 
@@ -237,6 +238,7 @@ handle_info(flush, Dict) ->
                      spawn(fun() -> F(K, V, expire) end),
                      false
              end,
+    _ = erlang:send_after(?EXPIRE_CHECK, self(), flush),
     {noreply, dict:filter(Filter, Dict), hibernate};
 handle_info(_Info, State) ->
     {noreply, State}.
