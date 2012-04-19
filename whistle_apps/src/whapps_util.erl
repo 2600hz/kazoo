@@ -130,16 +130,24 @@ is_acct_db(_) -> false.
 %%--------------------------------------------------------------------
 -spec get_account_by_realm/1 :: (ne_binary()) -> {'ok', ne_binary()} | {'error', 'not_found'}.
 get_account_by_realm(Realm) ->
-    case couch_mgr:get_results(?WH_ACCOUNTS_DB, ?AGG_LIST_BY_REALM, [{<<"key">>, Realm}]) of
-        {ok, [JObj]} -> 
-            {ok, wh_json:get_value([<<"value">>, <<"account_db">>], JObj)};
-        {ok, []} ->
-            {error, not_found};
-        {ok, JObjs} ->
-            {multiples, [wh_json:get_value([<<"value">>, <<"account_db">>], JObj) || JObj <- JObjs]};
-        _E ->
-            lager:debug("error while fetching accounts by realm: ~p", [_E]),
-            {error, not_found}
+    case wh_cache:peek({?MODULE, account_by_realm, Realm}) of
+        {ok, _}=Ok -> Ok;
+        {error, not_found} ->
+            case couch_mgr:get_results(?WH_ACCOUNTS_DB, ?AGG_LIST_BY_REALM, [{<<"key">>, Realm}]) of
+                {ok, [JObj]} ->
+                    AccountDb = wh_json:get_value([<<"value">>, <<"account_db">>], JObj),
+                    wh_cache:store({?MODULE, account_by_realm, Realm}, AccountDb),
+                    {ok, AccountDb};
+                {ok, []} ->
+                    {error, not_found};
+                {ok, JObjs} ->
+                    AccountDbs = [wh_json:get_value([<<"value">>, <<"account_db">>], JObj) || JObj <- JObjs],
+                    wh_cache:store({?MODULE, account_by_realm, Realm}, AccountDbs),
+                    {multiples, AccountDbs};
+                _E ->
+                    lager:debug("error while fetching accounts by realm: ~p", [_E]),
+                    {error, not_found}
+            end
     end.
 
 %%--------------------------------------------------------------------
@@ -150,16 +158,24 @@ get_account_by_realm(Realm) ->
 %%--------------------------------------------------------------------
 -spec get_accounts_by_name/1 :: (ne_binary()) -> {'ok', [ne_binary(),...]} | {'error', 'not_found'}.
 get_accounts_by_name(Name) ->
-    case couch_mgr:get_results(?WH_ACCOUNTS_DB, ?AGG_LIST_BY_NAME, [{<<"key">>, Name}]) of
-        {ok, [JObj]} -> 
-            {ok, wh_json:get_value([<<"value">>, <<"account_db">>], JObj)};
-        {ok, []} ->
-            {error, not_found};
-        {ok, JObjs} ->
-            {multiples, [wh_json:get_value([<<"value">>, <<"account_db">>], JObj) || JObj <- JObjs]};
-        _E ->
-            lager:debug("error while fetching accounts by name: ~p", [_E]),
-            {error, not_found}
+    case wh_cache:peek({?MODULE, account_by_name, Name}) of
+        {ok, _}=Ok -> Ok;
+        {error, not_found} ->
+            case couch_mgr:get_results(?WH_ACCOUNTS_DB, ?AGG_LIST_BY_NAME, [{<<"key">>, Name}]) of
+                {ok, [JObj]} -> 
+                    AccountDb = wh_json:get_value([<<"value">>, <<"account_db">>], JObj),
+                    wh_cache:store({?MODULE, account_by_name, Name}, AccountDb),                    
+                    {ok, AccountDb};
+                {ok, []} ->
+                    {error, not_found};
+                {ok, JObjs} ->
+                    AccountDbs = [wh_json:get_value([<<"value">>, <<"account_db">>], JObj) || JObj <- JObjs],
+                    wh_cache:store({?MODULE, account_by_realm, Name}, AccountDbs),
+                    {multiples, AccountDbs};
+                _E ->
+                    lager:debug("error while fetching accounts by name: ~p", [_E]),
+                    {error, not_found}
+            end
     end.
 
 %%--------------------------------------------------------------------
