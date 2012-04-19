@@ -29,7 +29,7 @@ execute(Xml, Workorder) ->
     Timeout = lineman_util:xml_integer_attribute("timeout", Xml, 1000),
     receive
         {binding, _, Received} -> 
-            Type = lineman_util:xml_attribute("type", Xml, <<"string">>),
+            Type = lineman_util:xml_attribute("type", Xml, <<"line">>),
             Expected = lineman_util:xml_content(Xml),
             compare(Type, Received, Expected, Xml, Workorder)
     after
@@ -39,7 +39,7 @@ execute(Xml, Workorder) ->
     Workorder.
 
 -spec compare/5 :: (ne_binary(), term(), term(), xml(), lineman_workorder:workorder()) -> lineman_workorder:workorder().
-compare(<<"string">>, Received, Expected, _, Workorder) ->
+compare(<<"line">>, Received, Expected, _, Workorder) ->
     R = wh_util:to_list(Received),
     [begin 
          Error = io_lib:format("could not find expected string: ~p", [E]),
