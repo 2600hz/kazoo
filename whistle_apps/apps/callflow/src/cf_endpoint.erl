@@ -98,7 +98,7 @@ create_endpoints(Endpoint, Properties, Call) ->
                         lager:debug("trying to ring just the device"),
                         [catch(create_sip_endpoint(Endpoint, Properties, Call))];
            
-		    %% if we are not ignoring ring groups and and substitute is not set to false
+         %% if we are not ignoring ring groups and and substitute is not set to false
                     %% (hence false via is_false) then only ring the fwd'd number
                     {false, false, _} ->
                         lager:debug("trying to ring the fwd number in ring group"),
@@ -155,7 +155,7 @@ create_sip_endpoint(Endpoint, Properties, Call) ->
     CIDName = whapps_call:caller_id_name(Call),
     CIDNum = whapps_call:caller_id_number(Call),
     {CalleeNum, CalleeName} = cf_attributes:callee_id(Endpoint, Call),
-    {IntCIDNumber, IntCIDName} = case cf_attributes:caller_id(Endpoint, <<"internal">>, Call) of
+    {IntCIDNumber, IntCIDName} = case cf_attributes:caller_id(<<"internal">>, Call) of
                                      %% if both the internal name and number are the same as the current
                                      %% caller id then leave it alone
                                      {CIDNum, CIDName} -> {undefined, undefined};
