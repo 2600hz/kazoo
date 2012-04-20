@@ -191,7 +191,9 @@ lookup_reg(Realm, User, Fields) ->
                                           ,fun wapi_registration:publish_query_req/1
                                           ,fun wapi_registration:query_resp_v/1),
             case ReqResp of
-                {error, _R} -> lager:debug("did not receive registrar response: ~p", [_R]);
+                {error, _R} -> 
+                    lager:debug("did not receive registrar response: ~p", [_R]),
+                    {error, timeout};
                 {ok, RespJObj} ->
                     RegFields = wh_json:to_proplist(wh_json:get_value(<<"Fields">>, RespJObj, wh_json:new())),
                     {ok, Srv} = ecallmgr_util_sup:registrar_proc(),
