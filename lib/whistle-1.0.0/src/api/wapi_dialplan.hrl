@@ -249,6 +249,16 @@
                          ]).
 -define(PLAY_REQ_TYPES, [{<<"Terminators">>, fun is_list/1}]).
 
+%% PlayStop Request
+-define(PLAY_STOP_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>]).
+-define(OPTIONAL_PLAY_STOP_REQ_HEADERS, [<<"Insert-At">>]).
+-define(PLAY_STOP_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
+                               ,{<<"Event-Name">>, <<"command">>}
+                               ,{<<"Application-Name">>, <<"playstop">>}
+                               ,{<<"Insert-At">>, <<"now">>}
+                              ]).
+-define(PLAY_STOP_REQ_TYPES, [{<<"Terminators">>, fun is_list/1}]).
+
 %% Record Request
 -define(RECORD_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Media-Name">>]).
 -define(OPTIONAL_RECORD_REQ_HEADERS, [<<"Terminators">>, <<"Time-Limit">>, <<"Silence-Threshold">>

@@ -26,7 +26,7 @@
 -export([progress/1, progress_v/1]).
 -export([ring/1, ring_v/1]).
 -export([execute_extension/1, execute_extension_v/1]).
--export([play/1, play_v/1]).
+-export([play/1, play_v/1, playstop/1, playstop_v/1]).
 -export([record/1, record_v/1]).
 -export([record_call/1, record_call_v/1]).
 -export([answer/1, answer_v/1]).
@@ -289,7 +289,7 @@ queue_v(JObj) ->
 play(Prop) when is_list(Prop) ->
     case play_v(Prop) of
         true -> wh_api:build_message(Prop, ?PLAY_REQ_HEADERS, ?OPTIONAL_PLAY_REQ_HEADERS);
-        false -> {error, "Proplist failed validation for play_req"}
+        false -> {error, "Proplist failed validation for play"}
     end;
 play(JObj) ->
     play(wh_json:to_proplist(JObj)).
@@ -299,6 +299,26 @@ play_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?PLAY_REQ_HEADERS, ?PLAY_REQ_VALUES, ?PLAY_REQ_TYPES);
 play_v(JObj) ->
     play_v(wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
+%% @doc Stop media from playing - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec playstop/1 :: (api_terms()) -> api_formatter_return().
+playstop(Prop) when is_list(Prop) ->
+    case playstop_v(Prop) of
+        true -> wh_api:build_message(Prop, ?PLAY_STOP_REQ_HEADERS, ?OPTIONAL_PLAY_STOP_REQ_HEADERS);
+        false -> {error, "Proplist failed validation for playstop"}
+    end;
+playstop(JObj) ->
+    playstop(wh_json:to_proplist(JObj)).
+
+-spec playstop_v/1 :: (api_terms()) -> boolean().
+playstop_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?PLAY_STOP_REQ_HEADERS, ?PLAY_STOP_REQ_VALUES, ?PLAY_STOP_REQ_TYPES);
+playstop_v(JObj) ->
+    playstop_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc Record media - see wiki

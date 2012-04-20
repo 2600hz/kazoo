@@ -77,6 +77,13 @@ get_fs_app(Node, UUID, JObj, <<"play">>) ->
             {<<"playback">>, F}
     end;
 
+get_fs_app(_Node, UUID, JObj, <<"playstop">>) ->
+    case wapi_dialplan:playstop_v(JObj) of
+        false -> {'error', <<"playstop failed to execute as JObj did not validate">>};
+        true ->
+            {<<"playstop">>, UUID}
+    end;
+
 get_fs_app(_Node, _UUID, _JObj, <<"hangup">>) ->
     {<<"hangup">>, <<>>};
 
@@ -592,6 +599,11 @@ send_cmd(Node, UUID, <<"record_call">>, Args) ->
     lager:debug("execute on node ~s: uuid_record(~s)", [Node, Cmd]),
     Ret = freeswitch:api(Node, uuid_record, wh_util:to_list(Cmd)),
     lager:debug("executing uuid_record returned ~p", [Ret]),
+    Ret;
+send_cmd(Node, UUID, <<"playstop">>, Args) ->
+    lager:debug("execute on node ~s: uuid_break(~s)", [Node, UUID]),
+    Ret = freeswitch:api(Node, uuid_break, wh_util:to_list(Args)),
+    lager:debug("executing uuid_break returned ~s", [Ret]),
     Ret;
 send_cmd(Node, UUID, <<"xferext">>, Dialplan) ->
     XferExt = [begin
