@@ -1,4 +1,3 @@
-
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011, VoIP INC
 %%% @doc
@@ -232,7 +231,7 @@ content_types_accepted(Req0, #cb_context{req_nouns=Nouns}=Context0) ->
                                                       true ->
                                                           [{CT, Fun} | Acc1];
                                                       false ->
-                                                          Acc
+                                                          Acc1
                                                   end;
                                              (EncType, Acc1) ->
                                                   [ {EncType, Fun} | Acc1 ]

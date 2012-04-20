@@ -98,7 +98,7 @@ create_endpoints(Endpoint, Properties, Call) ->
                         lager:debug("trying to ring just the device"),
                         [catch(create_sip_endpoint(Endpoint, Properties, Call))];
            
-         %% if we are not ignoring ring groups and and substitute is not set to false
+                    %% if we are not ignoring ring groups and and substitute is not set to false
                     %% (hence false via is_false) then only ring the fwd'd number
                     {false, false, _} ->
                         lager:debug("trying to ring the fwd number in ring group"),

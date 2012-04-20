@@ -277,8 +277,7 @@ media_path(MediaName, Type, UUID) ->
 %%--------------------------------------------------------------------
 -spec get_fs_playback/1 :: (ne_binary()) -> ne_binary().
 get_fs_playback(<<"http://", _/binary>>=Url) ->
-    {ok, RemoteAudioScript} = get_setting(remote_audio_script, <<"/usr/local/bin/fetch_remote_audio.sh">>),
-    <<"shell_stream://", (wh_util:to_binary(RemoteAudioScript))/binary, " ", Url/binary>>;
+    <<"${http_get(", Url/binary, ")}">>;
 get_fs_playback(Url) ->
     Url.
 
