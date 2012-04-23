@@ -602,9 +602,7 @@ send_cmd(Node, UUID, <<"record_call">>, Args) ->
     Ret;
 send_cmd(Node, UUID, <<"playstop">>, Args) ->
     lager:debug("execute on node ~s: uuid_break(~s)", [Node, UUID]),
-    Ret = freeswitch:api(Node, uuid_break, wh_util:to_list(Args)),
-    lager:debug("executing uuid_break returned ~s", [Ret]),
-    Ret;
+    freeswitch:api(Node, uuid_break, wh_util:to_list(Args));
 send_cmd(Node, UUID, <<"xferext">>, Dialplan) ->
     XferExt = [begin
                    _ = ecallmgr_util:fs_log(Node, "whistle queuing command in 'xferext' extension: ~s", [V]),

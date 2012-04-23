@@ -424,12 +424,22 @@ execute_originate_park(JObj, Node, ServerId, DialStrings, UUID, CtlPid) ->
             wh_api:publish_error(ServerId, E),
             ecallmgr_call_control:stop(CtlPid),
             lager:debug("timed out waiting for FS");
-        {error, Error} ->
+        {error, Error} when is_binary(Error) ->
+            lager:debug("error originating to ~s: ~s", [Node, Error]),
             E = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, wh_util:to_binary(wh_util:current_tstamp()))}
                  ,{<<"Request">>, JObj}
-                 | Error ++ wh_api:default_headers(<<"error">>, <<"originate_resp">>, ?APP_NAME, ?APP_VERSION)
+                 ,{<<"Error-Message">>, Error}
+                 | wh_api:default_headers(<<"error">>, <<"originate_resp">>, ?APP_NAME, ?APP_VERSION)
                 ],
             wh_api:publish_error(ServerId, E),
-            ecallmgr_call_control:stop(CtlPid),
-            lager:debug("error originating to ~s: ~p", [Node, Error])
+            ecallmgr_call_control:stop(CtlPid);
+        {error, Error} ->
+            lager:debug("error originating to ~s: ~p", [Node, Error]),
+            E = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, wh_util:to_binary(wh_util:current_tstamp()))}
+                 ,{<<"Request">>, JObj}
+                 ,{<<"Error-Message">>, Error}
+                 | wh_api:default_headers(<<"error">>, <<"originate_resp">>, ?APP_NAME, ?APP_VERSION)
+                ],
+            wh_api:publish_error(ServerId, E),
+            ecallmgr_call_control:stop(CtlPid)
     end.
