@@ -29,7 +29,7 @@ handle(Data, Call) ->
     Timeout = wh_json:get_value(<<"timeout">>, Data, <<"60">>),
     IgnoreEarlyMedia = wh_json:get_value(<<"ignore_early_media">>, Data),
     Ringback = wh_json:get_value(<<"ringback">>, Data),
-    bridge_to_resources(Endpoints, Timeout, IgnoreEarlyMedia, Ringback, Call).
+    bridge_to_resources(Endpoints, Timeout, IgnoreEarlyMedia, Ringback, Data, Call).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -42,12 +42,13 @@ handle(Data, Call) ->
 %% advanced, because its cool like that
 %% @end
 %%--------------------------------------------------------------------
--spec bridge_to_resources/5 :: (endpoints(), cf_api_binary(), cf_api_binary(), cf_api_binary(), whapps_call:call()) -> 'ok'.
-bridge_to_resources([{DestNum, Rsc, _CIDType}|T], Timeout, IgnoreEarlyMedia, Ringback, Call) ->
+-spec bridge_to_resources/6 :: (endpoints(), cf_api_binary(), cf_api_binary(), cf_api_binary(), wh_json:json_object(), whapps_call:call()) -> 'ok'.
+bridge_to_resources([{DestNum, Rsc, _CIDType}|T], Timeout, IgnoreEarlyMedia, Ringback, Data, Call) ->
     Endpoint = [create_endpoint(DestNum, Gtw, Call)
                 || Gtw <- wh_json:get_value(<<"gateways">>, Rsc)
                ],
-    case whapps_call_command:b_bridge(Endpoint, Timeout, <<"single">>, IgnoreEarlyMedia, Ringback, Call) of
+    SIPHeaders = build_sip_headers(Data, Call),
+    case whapps_call_command:b_bridge(Endpoint, Timeout, <<"single">>, IgnoreEarlyMedia, Ringback, SIPHeaders, Call) of
         {ok, _} ->
             lager:debug("completed successful bridge to resource"),
             cf_exe:stop(Call);
@@ -62,12 +63,12 @@ bridge_to_resources([{DestNum, Rsc, _CIDType}|T], Timeout, IgnoreEarlyMedia, Rin
                     cf_exe:continue(Call)
             end;
         {fail, _} ->
-            bridge_to_resources(T, Timeout, IgnoreEarlyMedia, Ringback, Call);
+            bridge_to_resources(T, Timeout, IgnoreEarlyMedia, Ringback, Data, Call);
         {error, _R} ->
             lager:notice("error attemping local resource to ~s: ~p", [DestNum, _R]),
-            bridge_to_resources(T, Timeout, IgnoreEarlyMedia, Ringback, Call)
+            bridge_to_resources(T, Timeout, IgnoreEarlyMedia, Ringback, Data, Call)
     end;
-bridge_to_resources([], _, _, _, Call) ->
+bridge_to_resources([], _, _, _, _, Call) ->
     lager:debug("resources exhausted without success"),
     WildcardIsEmpty = cf_exe:wildcard_is_empty(Call),
     case cf_util:handle_bridge_failure(<<"NO_ROUTE_DESTINATION">>, Call) =:= ok of
@@ -198,3 +199,27 @@ from_uri(?NE_BINARY = CNum, Realm) ->
 from_uri(_, _) ->
     undefined.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% if the callflow data object for this instance of the local resources
+%% defines custom sip headers or flags to include custom sip headers
+%% build a json object of those now.
+%% @end
+%%--------------------------------------------------------------------
+-spec build_sip_headers/2 :: (wh_json:json_object(), whapps_call:call()) -> 'undefined' | wh_json:json_object().
+build_sip_headers(Data, Call) ->
+    Builders = [fun(J) ->
+                        case wh_json:is_true(<<"emit_account_id">>, Data) of
+                            false -> J;
+                            true -> 
+                                wh_json:set_value(<<"X-Account-ID">>, whapps_call:account_id(Call), J)
+                        end
+                end
+               ],
+    CustomHeaders = wh_json:get_value(<<"custom_sip_headers">>, Data, wh_json:new()),
+    JObj = lists:foldl(fun(F, J) -> F(J) end, CustomHeaders, Builders),
+    case wh_util:is_empty(JObj) of
+        true -> undefined;
+        false -> JObj
+    end.
