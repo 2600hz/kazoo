@@ -102,8 +102,9 @@ create_endpoint(DestNum, JObj, Call) ->
                 ,{<<"Bypass-Media">>, wh_json:get_value(<<"bypass_media">>, JObj)}
                 ,{<<"Endpoint-Progress-Timeout">>, wh_json:get_value(<<"progress_timeout">>, JObj, <<"6">>)}
                 ,{<<"Codecs">>, wh_json:get_value(<<"codecs">>, JObj)}
-                ,{<<"From-URI">>, maybe_from_uri(AccountDb, JObj, CNum)}
-                ,{<<"Custom-Channel-Vars">>, wh_json:from_list([{<<"Account-ID">>, whapps_call:account_id(Call)}])}
+                ,{<<"Custom-Channel-Vars">>, wh_json:from_list([{<<"Account-ID">>, whapps_call:account_id(Call)}
+                                                                ,{<<"From-URI">>, maybe_from_uri(AccountDb, JObj, CNum)}
+                                                               ])}
                ],
     wh_json:from_list([ KV || {_, V}=KV <- Endpoint, V =/= undefined ]).
 
