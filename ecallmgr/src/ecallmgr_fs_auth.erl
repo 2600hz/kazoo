@@ -128,7 +128,7 @@ handle_info({fetch, directory, <<"domain">>, <<"name">>, _Value, ID, [undefined 
     case {props:get_value(<<"Event-Name">>, Data), props:get_value(<<"action">>, Data)} of
         {<<"REQUEST_PARAMS">>, <<"sip_auth">>} ->
             %% TODO: move this to a supervisor somewhere....
-            proc_lib:spawn(?MODULE, lookup_user, [Node, ID, Data]),
+            lookup_user(Node, ID, Data),
             {noreply, State, hibernate};
         _Other ->
             _ = freeswitch:fetch_reply(Node, ID, ?EMPTYRESPONSE),
