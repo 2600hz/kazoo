@@ -135,7 +135,7 @@ get_fs_app(Node, UUID, JObj, <<"record_call">>) ->
             case wh_json:get_value(<<"Record-Action">>, JObj) of
                 <<"start">> ->
                     Media = case wh_json:get_value(<<"Stream-To">>, JObj, <<"remote">>) of
-                                <<"local">> -> <<"${sound_prefix}/", MediaName/binary>>;
+                                <<"local">> -> MediaName;
                                 _ -> ecallmgr_media_registry:register_local_media(MediaName, UUID)
                             end,
 
@@ -144,7 +144,7 @@ get_fs_app(Node, UUID, JObj, <<"record_call">>) ->
 
                     %% UUID start path/to/media limit
                     RecArg = binary_to_list(list_to_binary([
-                                                            UUID, <<"start ">>
+                                                            UUID, <<" start ">>
                                                            ,Media, <<" ">>
                                                            ,wh_json:get_string_value(<<"Time-Limit">>, JObj, "20")
                                                            ])),
@@ -155,7 +155,7 @@ get_fs_app(Node, UUID, JObj, <<"record_call">>) ->
                                 _ -> ecallmgr_media_registry:register_local_media(MediaName, UUID, url)
                             end,
                     %% UUID stop path/to/media
-                    RecArg = binary_to_list(list_to_binary([UUID, <<"stop ">>, Media])),
+                    RecArg = binary_to_list(list_to_binary([UUID, <<" stop ">>, Media])),
                     {<<"record_call">>, RecArg}
             end
     end;
