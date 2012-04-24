@@ -287,7 +287,8 @@ load_media_binary(MediaId, #cb_context{resp_headers=RespHeaders}=Context) ->
                                                         ,{<<"Content-Type">>, wh_json:get_value([Attachment, <<"content_type">>], MediaMeta)}
                                                         ,{<<"Content-Length">>, wh_json:get_value([Attachment, <<"length">>], MediaMeta)}
                                                         | RespHeaders
-                                                       ]}
+                                                       ]
+                                       ,resp_etag=undefined}
             end;
         Context1 -> Context1
     end.

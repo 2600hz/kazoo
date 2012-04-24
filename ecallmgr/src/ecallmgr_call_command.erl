@@ -665,8 +665,8 @@ stream_over_http(Node, UUID, File, Method, JObj) ->
     lager:debug("streaming via HTTP(~s) to ~s", [Method, Url]),
     AddHeaders = wh_json:to_proplist(wh_json:get_value(<<"Additional-Headers">>, JObj, wh_json:new())),
     Headers = [{"Content-Length", filelib:file_size(File)}
+               ,{"Content-Type", "audio/mpeg"}
                | [ {wh_util:to_list(K), V} || {K,V} <- AddHeaders] ],
-
     Body = {fun stream_file/1, {undefined, File}},
     AppQ = wh_json:get_value(<<"Server-ID">>, JObj),
     case ibrowse:send_req(Url, Headers, Method, Body) of
