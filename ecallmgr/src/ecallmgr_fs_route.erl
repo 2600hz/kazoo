@@ -165,6 +165,7 @@ code_change(_OldVsn, State, _Extra) ->
 -spec process_route_req/4 :: (atom(), ne_binary(), ne_binary(), proplist()) -> pid().
 process_route_req(Node, FSID, CallID, FSData) ->
     spawn(fun() ->
+                  put(callid, CallID),
                   lager:debug("processing fetch request ~s (call ~s) from ~s", [FSID, CallID, Node]),
                   DefProp = [{<<"Msg-ID">>, FSID}
                              ,{<<"Caller-ID-Name">>, props:get_value(<<"variable_effective_caller_id_name">>, FSData, 

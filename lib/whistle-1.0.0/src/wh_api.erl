@@ -61,7 +61,9 @@ default_headers(AppName, AppVsn) ->
 default_headers(ServerID, AppName, AppVsn) ->
     [{<<"Server-ID">>, ServerID}
      ,{<<"App-Name">>, AppName}
-     ,{<<"App-Version">>, AppVsn}].
+     ,{<<"App-Version">>, AppVsn}
+     ,{<<"Node">>, wh_util:to_binary(node())}
+    ].
 
 default_headers(EvtCat, EvtName, AppName, AppVsn) ->
     default_headers(<<>>, EvtCat, EvtName, AppName, AppVsn).
@@ -71,7 +73,9 @@ default_headers(ServerID, EvtCat, EvtName, AppName, AppVsn) ->
      ,{<<"Event-Category">>, EvtCat}
      ,{<<"Event-Name">>, EvtName}
      ,{<<"App-Name">>, AppName}
-     ,{<<"App-Version">>, AppVsn}].
+     ,{<<"App-Version">>, AppVsn}
+     ,{<<"Node">>, wh_util:to_binary(node())}
+    ].
 
 disambiguate_and_publish(ReqJObj, RespJObj, Binding) ->
     Wapi = list_to_binary([<<"wapi_">>, wh_util:to_binary(Binding)]),
@@ -86,10 +90,12 @@ disambiguate_and_publish(ReqJObj, RespJObj, Binding) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec prepare_api_payload/3 :: (api_terms(), proplist(), fun((api_terms()) -> api_formatter_return())) -> api_formatter_return().
-prepare_api_payload(Prop, HeaderValues, ValidateFun) when is_list(Prop) ->
+prepare_api_payload(Prop, HeaderValues, FormatterFun) when is_list(Prop) ->
     CleanupFuns = [fun (P) -> remove_empty_values(P) end
-                   ,fun (P) -> set_missing_values(P, HeaderValues) end],
-    ValidateFun(lists:foldr(fun(F, P) -> F(P) end, Prop, CleanupFuns));
+                   ,fun (P) -> set_missing_values(P, ?DEFAULT_VALUES) end
+                   ,fun (P) -> set_missing_values(P, HeaderValues) end
+                  ],
+    FormatterFun(lists:foldr(fun(F, P) -> F(P) end, Prop, CleanupFuns));
 prepare_api_payload(JObj, HeaderValues, ValidateFun) ->
     prepare_api_payload(wh_json:to_proplist(JObj), HeaderValues, ValidateFun).
 
@@ -101,10 +107,14 @@ prepare_api_payload(JObj, HeaderValues, ValidateFun) ->
 %%--------------------------------------------------------------------
 -spec set_missing_values/2 :: (api_terms(), proplist()) -> api_terms().
 set_missing_values(Prop, HeaderValues) when is_list(Prop) ->
-    Missing = [{K, V} || {K,V} <- HeaderValues
-                             ,not is_list(V)
-                             ,is_empty(props:get_value(K, Prop))],
-    Prop ++ Missing;
+    lists:foldl(fun({_, V}, PropAcc) when is_list(V) ->
+                        PropAcc;
+                   ({K, _}=KV, PropAcc) ->
+                        case is_empty(props:get_value(K, Prop)) of
+                            true -> [ KV | PropAcc ];
+                            false -> PropAcc
+                        end
+                end, Prop, HeaderValues);
 set_missing_values(JObj, HeaderValues) ->
     wh_json:from_list(set_missing_values(wh_json:to_proplist(JObj), HeaderValues)).
 

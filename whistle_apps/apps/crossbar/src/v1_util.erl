@@ -202,7 +202,7 @@ extract_file(Context, ContentType, Req0) ->
     end.
 
 -spec decode_base64/3 :: (#cb_context{}, ne_binary(), #http_req{}) -> {#cb_context{}, #http_req{}}.
-decode_base64(Context, CT, Req0) -> 
+decode_base64(Context, CT, Req0) ->
     case cowboy_http_req:body(Req0) of
         {error, badarg} -> {Context, Req0};
         {ok, Base64Data, Req1} ->
@@ -221,14 +221,14 @@ decode_base64(Context, CT, Req0) ->
             lager:debug("request is a base64 file upload of type: ~s", [ContentType]),
             {Context#cb_context{req_files=[{<<"uploaded_file">>, FileJObj}]}, Req1}
     end.
-    
+
 -spec decode_base64/1 :: (ne_binary()) -> {undefined | ne_binary(), ne_binary()}.
 decode_base64(Base64) ->
     case binary:split(Base64, <<",">>) of
         %% http://tools.ietf.org/html/rfc4648
         [Bin] -> {undefined, corrected_base64_decode(Bin)};
         %% http://tools.ietf.org/rfc/rfc2397.txt
-        [<<"data:", CT/binary>>, Bin] -> 
+        [<<"data:", CT/binary>>, Bin] ->
             {ContentType, _Opts} = mochiweb_util:parse_header(wh_util:to_list(CT)),
             {wh_util:to_binary(ContentType), corrected_base64_decode(Bin)}
     end.
@@ -236,13 +236,13 @@ decode_base64(Base64) ->
 -spec corrected_base64_decode/1 :: (ne_binary()) -> ne_binary().
 corrected_base64_decode(Base64) when byte_size(Base64) rem 4 == 3 ->
     base64:mime_decode(<<Base64/bytes, "=">>);
-corrected_base64_decode(Base64) when byte_size(Base64) rem 4 == 2 ->    
+corrected_base64_decode(Base64) when byte_size(Base64) rem 4 == 2 ->
     base64:mime_decode(<<Base64/bytes, "==">>);
 corrected_base64_decode(Base64) ->
     base64:mime_decode(Base64).
 
 -spec get_json_body/1 :: (#http_req{}) -> {wh_json:json_object(), #http_req{}} |
-                                           {{'malformed', ne_binary()}, #http_req{}}.
+                                          {{'malformed', ne_binary()}, #http_req{}}.
 get_json_body(Req0) ->
     case cowboy_http_req:body(Req0) of
         {error, _E} ->
@@ -534,9 +534,9 @@ validate(#cb_context{req_nouns=Nouns}=Context0) ->
     Context1 = lists:foldr(fun({Mod, Params}, ContextAcc) ->
                                    Event = <<"v1_resource.validate.", Mod/binary>>,
                                    lager:debug("validating against params ~p", [Params]),
-                                   Payload = [ContextAcc | Params],
+                                   Payload = [ContextAcc#cb_context{resp_status=fatal} | Params],
                                    crossbar_bindings:fold(Event, Payload)
-                           end, Context0, Nouns),
+                           end, Context0#cb_context{resp_status=fatal}, Nouns),
     case succeeded(Context1) of
         true -> process_billing(Context1);
         false -> Context1
@@ -689,7 +689,7 @@ create_pull_response(Req0, Context) ->
 %% This function extracts the reponse fields and puts them in a proplist
 %% @end
 %%--------------------------------------------------------------------
--spec create_resp_envelope/1 :: (#cb_context{}) -> wh_json:json_proplist(<<_:32,_:_*8>>). 
+-spec create_resp_envelope/1 :: (#cb_context{}) -> wh_json:json_proplist(<<_:32,_:_*8>>).
 create_resp_envelope(#cb_context{resp_data=RespData, resp_status=success, auth_token=AuthToken, resp_etag=undefined}) ->
     [{<<"auth_token">>, AuthToken}
      ,{<<"status">>, <<"success">>}
@@ -760,7 +760,7 @@ fix_header(H, V, _) ->
 -spec halt/2 :: (#http_req{}, #cb_context{}) -> {'halt', #http_req{}, #cb_context{}}.
 halt(Req0, #cb_context{resp_error_code=StatusCode}=Context) ->
     lager:debug("halting execution here"),
-    {Content, Req1} = create_resp_content(Req0, Context),    
+    {Content, Req1} = create_resp_content(Req0, Context),
     lager:debug("setting resp body: ~s", [Content]),
     {ok, Req2} = cowboy_http_req:set_resp_body(Content, Req1),
     lager:debug("setting status code: ~p", [StatusCode]),

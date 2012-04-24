@@ -113,9 +113,7 @@ get_host(Options) ->
 -spec my_name/0 :: () -> atom().
 my_name() ->
     Localhost = net_adm:localhost(),
-    TimeStamp = calendar:datetime_to_gregorian_seconds(calendar:universal_time()),
-    Name = "command_bridge_" ++ integer_to_list(TimeStamp) ++ "@" ++ Localhost,
-    list_to_atom(Name).
+    list_to_atom("command_bridge_" ++ os:getpid() ++ "@" ++ Localhost).
 
 -spec parse_args/1 :: (string()) -> {'ok', proplist(), list()}.
 parse_args(CommandLineArgs) ->

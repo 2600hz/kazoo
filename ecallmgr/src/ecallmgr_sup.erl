@@ -16,8 +16,8 @@
 
 -define(CHILD(Name, Type), fun(N, pool) -> {N, {poolboy, start_link, [[{name, {local, N}}
                                                                        ,{worker_module, wh_amqp_worker}
-                                                                       ,{size, 50}
-                                                                       ,{max_overflow, 50}
+                                                                       ,{size, 200}
+                                                                       ,{max_overflow, 200}
                                                                       ]
                                                                      ]}
                                             ,permanent, 5000, worker, [poolboy]

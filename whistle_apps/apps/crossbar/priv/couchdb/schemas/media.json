@@ -19,17 +19,29 @@
       },
       "content_length":{
          "description":"length, in bytes, of the file",
-         "type":"integer"
+         "type":"integer",
+         "minimum":1,
+         "maximum":5242880
       },
       "content_type":{
          "description":"Used to override the automatic upload type",
          "type":"string",
-         "enum": ["audio/mp3", "audio/mpeg", "audio/x-wav", "audio/wav"]
+         "enum":[
+            "audio/mp3",
+            "audio/mpeg",
+            "audio/mpeg3",
+            "audio/x-wav",
+            "audio/wav",
+            "audio/ogg"
+         ]
       },
-      "media_type":{
-         "description":"Friendly media type name",
+      "media_source":{
+         "description":"Source for the media",
          "type":"string",
-         "enum": ["mp3", "wav"]
+         "enum":[
+            "recorded",
+            "uploaded"
+         ]
       },
       "source_type":{
          "description":"If the media was generated from a callflow module, this is the module name",
@@ -50,4 +62,3 @@
       }
    }
 }
-

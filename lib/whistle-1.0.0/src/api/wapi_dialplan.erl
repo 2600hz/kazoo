@@ -26,7 +26,7 @@
 -export([progress/1, progress_v/1]).
 -export([ring/1, ring_v/1]).
 -export([execute_extension/1, execute_extension_v/1]).
--export([play/1, play_v/1]).
+-export([play/1, play_v/1, playstop/1, playstop_v/1]).
 -export([record/1, record_v/1]).
 -export([record_call/1, record_call_v/1]).
 -export([answer/1, answer_v/1]).
@@ -49,9 +49,7 @@
 -export([queue/1, queue_v/1]).
 -export([error/1, error_v/1]).
 
-
--export([bind_q/2, unbind_q/1]).
-
+-export([bind_q/2, unbind_q/2]).
 
 -export([publish_action/2, publish_action/3]).
 -export([publish_event/2, publish_event/3]).
@@ -291,7 +289,7 @@ queue_v(JObj) ->
 play(Prop) when is_list(Prop) ->
     case play_v(Prop) of
         true -> wh_api:build_message(Prop, ?PLAY_REQ_HEADERS, ?OPTIONAL_PLAY_REQ_HEADERS);
-        false -> {error, "Proplist failed validation for play_req"}
+        false -> {error, "Proplist failed validation for play"}
     end;
 play(JObj) ->
     play(wh_json:to_proplist(JObj)).
@@ -301,6 +299,26 @@ play_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?PLAY_REQ_HEADERS, ?PLAY_REQ_VALUES, ?PLAY_REQ_TYPES);
 play_v(JObj) ->
     play_v(wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
+%% @doc Stop media from playing - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec playstop/1 :: (api_terms()) -> api_formatter_return().
+playstop(Prop) when is_list(Prop) ->
+    case playstop_v(Prop) of
+        true -> wh_api:build_message(Prop, ?PLAY_STOP_REQ_HEADERS, ?OPTIONAL_PLAY_STOP_REQ_HEADERS);
+        false -> {error, "Proplist failed validation for playstop"}
+    end;
+playstop(JObj) ->
+    playstop(wh_json:to_proplist(JObj)).
+
+-spec playstop_v/1 :: (api_terms()) -> boolean().
+playstop_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?PLAY_STOP_REQ_HEADERS, ?PLAY_STOP_REQ_VALUES, ?PLAY_STOP_REQ_TYPES);
+playstop_v(JObj) ->
+    playstop_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc Record media - see wiki
@@ -748,14 +766,14 @@ publish_command(CtrlQ, JObj) ->
     publish_command(CtrlQ, wh_json:to_proplist(JObj)).
 
 publish_command(CtrlQ, Prop, DPApp) ->
-    try
-        BuildMsgFun = wh_util:to_atom(<<DPApp/binary>>),
-        case lists:keyfind(BuildMsgFun, 1, ?MODULE:module_info(exports)) of
-            false -> throw({invalid_dialplan_object, Prop});
-            {_, 1} -> 
-                {ok, Payload} = ?MODULE:BuildMsgFun(Prop),                    
-                amqp_util:callctl_publish(CtrlQ, Payload, ?DEFAULT_CONTENT_TYPE)                
-        end
+    try wh_util:to_atom(<<DPApp/binary>>) of
+        BuildMsgFun ->
+            case lists:keyfind(BuildMsgFun, 1, ?MODULE:module_info(exports)) of
+                false -> {error, invalid_dialplan_object};
+                {_, 1} -> 
+                    {ok, Payload} = ?MODULE:BuildMsgFun(Prop),                    
+                    amqp_util:callctl_publish(CtrlQ, Payload, ?DEFAULT_CONTENT_TYPE)                
+            end
     catch
         _:R ->
             throw({R, Prop})
@@ -782,8 +800,8 @@ publish_originate_ready(ServerId, API, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(API, ?ORIGINATE_READY_VALUES, fun ?MODULE:originate_ready/1),
     amqp_util:targeted_publish(ServerId, Payload, ContentType).
 
--spec publish_originate_execute/2 :: (ne_binary(), iolist()) -> 'ok'.
--spec publish_originate_execute/3 :: (ne_binary(), iolist(), ne_binary()) -> 'ok'.
+-spec publish_originate_execute/2 :: (ne_binary(), api_terms()) -> 'ok'.
+-spec publish_originate_execute/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
 publish_originate_execute(ServerId, JObj) ->
     publish_originate_execute(ServerId, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_originate_execute(ServerId, API, ContentType) ->
@@ -795,5 +813,5 @@ bind_q(Queue, _Prop) ->
     _ = amqp_util:bind_q_to_callctl(Queue),
     'ok'.
 
-unbind_q(Queue) ->
+unbind_q(Queue, _Prop) ->
     amqp_util:unbind_q_from_callctl(Queue).

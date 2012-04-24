@@ -146,7 +146,7 @@ response(Code, Cause, Media, Call) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec pickup/2 :: (ne_binary(), whapps_call:call()) -> ok.
+-spec pickup/2 :: (ne_binary(), whapps_call:call()) -> 'ok'.
 pickup(TargetCallId, Call) ->
     Command = [{<<"Application-Name">>, <<"call_pickup">>}
                ,{<<"Target-Call-ID">>, TargetCallId}

@@ -124,12 +124,12 @@
                                 ]).
 -define(TONE_DETECT_REQ_TYPES, [{<<"On-Success">>, fun is_list/1}
                                 ,{<<"Timeout">>, fun(Timeout) ->
-                                                         T2 = case Timeout of
-                                                                  <<$+, T/binary>> -> T;
-                                                                  T -> T
-                                                              end,
-                                                         try wh_util:to_integer(T2), true
-                                                         catch _:_ -> false
+                                                         %% <<"+123">> converts to 123, so yay!
+                                                         try wh_util:to_integer(Timeout) of
+                                                             T when T < 0 -> false;
+                                                             _ -> true
+                                                         catch
+                                                             _:_ -> false
                                                          end
                                                  end}
                                ]).
@@ -248,6 +248,16 @@
                           ,?INSERT_AT_TUPLE
                          ]).
 -define(PLAY_REQ_TYPES, [{<<"Terminators">>, fun is_list/1}]).
+
+%% PlayStop Request
+-define(PLAY_STOP_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>]).
+-define(OPTIONAL_PLAY_STOP_REQ_HEADERS, [<<"Insert-At">>]).
+-define(PLAY_STOP_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
+                               ,{<<"Event-Name">>, <<"command">>}
+                               ,{<<"Application-Name">>, <<"playstop">>}
+                               ,{<<"Insert-At">>, <<"now">>}
+                              ]).
+-define(PLAY_STOP_REQ_TYPES, [{<<"Terminators">>, fun is_list/1}]).
 
 %% Record Request
 -define(RECORD_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Media-Name">>]).

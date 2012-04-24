@@ -452,8 +452,14 @@ format_status(_Opt, [_PDict, #state{module=Module, module_state=ModState}=State]
      ,{data, [{"Listener State", State}]}
     ].
 
-terminate(Reason, #state{module=Module, module_state=ModState}) ->
-    Module:terminate(Reason, ModState),
+terminate(Reason, #state{module=Module, module_state=ModState
+                         ,queue=Q, bindings=Bs
+                        }) ->
+    _ = (catch Module:terminate(Reason, ModState)),
+    lists:foreach(fun({B, P}) ->
+                          lager:debug("terminating binding ~s (~p)", [B, P]),
+                          (catch remove_binding(B, P, Q))
+                  end, Bs),
     lager:debug("~s terminated cleanly, going down", [Module]).
 
 -spec handle_event/4 :: (ne_binary(), ne_binary(), #'basic.deliver'{}, #state{}) ->  #state{}.
@@ -566,7 +572,7 @@ remove_binding(Binding, Props, Q) ->
                     remove_binding(Binding, Props, Q)
             end;
         error:undef ->
-            lager:debug("module ~s doesn't exist or bind_q/2 isn't exported", [Wapi]),
+            lager:debug("module ~s doesn't exist or unbind_q/2 isn't exported", [Wapi]),
             erlang:error(api_call_undefined)
     end.
 

@@ -110,9 +110,10 @@ code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
 schedule_rotation(undefined) ->
-    undefined;
+    ok;
 schedule_rotation(Date) ->
-    erlang:send_after(lager_util:calculate_next_rotation(Date) * 1000, self(), rotate).
+    erlang:send_after(lager_util:calculate_next_rotation(Date) * 1000, self(), rotate),
+    ok.
 
 %% ===== Begin code lifted from riak_err =====
 
@@ -240,6 +241,8 @@ filesystem_test_() ->
                 application:set_env(lager, handlers, [{lager_test_backend, info}]),
                 application:set_env(lager, error_logger_redirect, true),
                 application:unset_env(lager, crash_log),
+                application:start(compiler),
+                application:start(syntax_tools),
                 application:start(lager),
                 timer:sleep(100),
                 lager_test_backend:flush()

@@ -78,7 +78,7 @@
                        ,call_id_helper = 'undefined' :: 'undefined' | whapps_helper_function()           %% A function used when requesting the call id, to ensure it is up-to-date
                        ,control_q = 'undefined' :: 'undefined' | ne_binary()                           %% The control queue provided on route win
                        ,control_q_helper = 'undefined' :: 'undefined' | whapps_helper_function()         %% A function used when requesting the call id, to ensure it is up-to-date
-                       ,controller_q = 'undefined' :: 'undefined' | ne_binary()                        %%  
+                       ,controller_q = 'undefined' :: 'undefined' | ne_binary()                        %%
                        ,caller_id_name = <<"Unknown">> :: binary()                                     %% The caller name
                        ,caller_id_number = <<"0000000000">> :: binary()                                %% The caller number
                        ,callee_id_name = <<>> :: binary()                                              %% The callee name
@@ -105,12 +105,13 @@
                       }).
 
 -opaque call() :: #whapps_call{}.
+-type whapps_helper_function() :: fun(('undefined' | ne_binary(), call()) -> 'undefined' | ne_binary()).
 -export_type([call/0]).
 
 -spec new/0 :: () -> whapps_call:call().
 new() ->
     #whapps_call{}.
-  
+
 -spec from_route_req/1 :: (wh_json:json_object()) -> whapps_call:call().
 from_route_req(RouteReq) ->
     from_route_req(RouteReq, #whapps_call{}).
@@ -137,7 +138,7 @@ from_route_req(RouteReq, #whapps_call{}=Call) ->
     [ToUser, ToRealm] = binary:split(To, <<"@">>),
     [FromUser, FromRealm] = binary:split(From, <<"@">>),
     [RequestUser, RequestRealm] = binary:split(Request, <<"@">>),
-    
+
     Call#whapps_call{call_id=CallId
                      ,request=Request
                      ,request_user=wnm_util:to_e164(RequestUser)
@@ -160,7 +161,7 @@ from_route_req(RouteReq, #whapps_call{}=Call) ->
 
 -spec from_route_win/1 :: (wh_json:json_object()) -> whapps_call:call().
 from_route_win(RouteWin) ->
-    from_route_win(RouteWin, #whapps_call{}). 
+    from_route_win(RouteWin, #whapps_call{}).
 
 -spec from_route_win/2 :: (wh_json:json_object(), whapps_call:call()) -> whapps_call:call().
 from_route_win(RouteWin, #whapps_call{}=Call) ->
@@ -187,8 +188,8 @@ from_route_win(RouteWin, #whapps_call{}=Call) ->
                      ,authorizing_id=wh_json:get_ne_value(<<"Authorizing-ID">>, CCVs, Call#whapps_call.authorizing_id)
                      ,authorizing_type=wh_json:get_ne_value(<<"Authorizing-Type">>, CCVs, Call#whapps_call.authorizing_type)
                      ,ccvs = CCVs
-                    }.   
- 
+                    }.
+
 -spec from_json/1 :: (wh_json:json_object()) -> whapps_call:call().
 from_json(JObj) ->
     from_json(JObj, #whapps_call{}).
@@ -197,11 +198,11 @@ from_json(JObj) ->
 %% @public
 %% @doc
 %% READ THIS CAVEAT!!
-%% custom publisher and helper functions are not maintained when 
-%% converting to/from json 
+%% custom publisher and helper functions are not maintained when
+%% converting to/from json
 %% @end
 %%--------------------------------------------------------------------
--spec from_json/2 :: (wh_json:json_object(), whapps_call:call()) -> whapps_call:call().    
+-spec from_json/2 :: (wh_json:json_object(), whapps_call:call()) -> whapps_call:call().
 from_json(JObj, Call) ->
     CCVs = wh_json:merge_recursive(Call#whapps_call.ccvs, wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new())),
     KVS = orddict:from_list(wh_json:to_proplist(wh_json:get_value(<<"Key-Value-Store">>, JObj, wh_json:new()))),
@@ -236,19 +237,19 @@ from_json(JObj, Call) ->
 %% @public
 %% @doc
 %% READ THIS CAVEAT!!
-%% custom publisher and helper functions are not maintained when 
-%% converting to/from json 
+%% custom publisher and helper functions are not maintained when
+%% converting to/from json
 %% @end
 %%--------------------------------------------------------------------
 -spec to_json/1 :: (whapps_call:call()) -> wh_json:json_object().
 to_json(#whapps_call{}=Call) ->
     Props = to_proplist(Call),
-    KVS = [KV 
+    KVS = [KV
            || {_, V}=KV <- props:get_value(<<"Key-Value-Store">>, Props, [])
                   ,V =/= undefined
                   ,wh_json:is_json_term(V)
           ],
-    wh_json:from_list([KV 
+    wh_json:from_list([KV
                        || {_, V}=KV <- [{<<"Key-Value-Store">>, wh_json:from_list(KVS)} |
                                         proplists:delete(<<"Key-Value-Store">>, Props)
                                        ]
@@ -286,7 +287,7 @@ to_proplist(#whapps_call{}=Call) ->
 -spec is_call/1 :: (term()) -> boolean().
 is_call(#whapps_call{}) -> true;
 is_call(_) -> false.
-    
+
 -spec exec/2 :: ([fun((whapps_call:call()) -> whapps_call:call()),...], whapps_call:call()) -> whapps_call:call().
 exec(Funs, #whapps_call{}=Call) ->
     lists:foldr(fun(F, C) -> F(C) end, Call, Funs).
@@ -551,7 +552,7 @@ kvs_fetch(Key, #whapps_call{kvs=Dict}) ->
         Ok -> Ok
     catch
         error:function_clause -> undefined
-    end.     
+    end.
 
 -spec kvs_fetch_keys/1 :: (whapps_call:call()) -> [term(),...].
 kvs_fetch_keys( #whapps_call{kvs=Dict}) ->
@@ -564,7 +565,7 @@ kvs_filter(Pred, #whapps_call{kvs=Dict}=Call) ->
 -spec kvs_find/2 :: (term(), whapps_call:call()) -> {ok, term()} | error.
 kvs_find(Key, #whapps_call{kvs=Dict}) ->
     orddict:find(wh_util:to_binary(Key), Dict).
- 
+
 -spec kvs_fold/3 :: (fun((term(), term(), term()) -> term()), term(), whapps_call:call()) -> whapps_call:call().
 kvs_fold(Fun, Acc0, #whapps_call{kvs=Dict}) ->
     orddict:fold(Fun, Acc0, Dict).
@@ -588,8 +589,8 @@ kvs_store(Key, Value, #whapps_call{kvs=Dict}=Call) ->
 
 -spec kvs_store_proplist/2 :: (proplist(), whapps_call:call()) -> whapps_call:call().
 kvs_store_proplist(List, #whapps_call{kvs=Dict}=Call) ->
-    Call#whapps_call{kvs=lists:foldr(fun({K, V}, D) -> 
-                                             orddict:store(wh_util:to_binary(K), V, D) 
+    Call#whapps_call{kvs=lists:foldr(fun({K, V}, D) ->
+                                             orddict:store(wh_util:to_binary(K), V, D)
                                      end, Dict, List)}.
 
 -spec kvs_to_proplist/1 :: (whapps_call:call()) -> proplist().
@@ -618,7 +619,7 @@ flush() ->
 
 cache(#whapps_call{}=Call) ->
     cache(Call, 300).
-    
+
 cache(#whapps_call{call_id=CallId}=Call, Expires) ->
     {ok, Cache} = whistle_apps_sup:whapps_call_cache_proc(),
     wh_cache:store_local(Cache, {?MODULE, call, CallId}, Call, Expires).
@@ -655,7 +656,7 @@ retrieve(CallId) ->
                    ,fun(C) -> whapps_call:kvs_store(<<"kvs_key_2">>, wh_json:from_list([{<<"sub_key_1">>, <<"sub_value_1">>}]), C) end
                   ]).
 
-%% TODO: I am out of the alloted time for this module, please add during another refactor 
+%% TODO: I am out of the alloted time for this module, please add during another refactor
 from_route_request_test() ->
     ok.
 

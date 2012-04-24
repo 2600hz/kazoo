@@ -218,7 +218,7 @@ originate_to_endpoints(Endpoints, JObj) ->
                ,{<<"Custom-Channel-Vars">>, CCVs}
                | wh_api:default_headers(Q, <<"resource">>, <<"originate_req">>, ?APP_NAME, ?APP_VERSION)
               ],
-    amqp_mgr:register_return_handler(),
+    wh_amqp_mgr:register_return_handler(),
     wapi_resource:publish_originate_req(Request),
     wait_for_originate(MsgId).
 
@@ -272,13 +272,6 @@ wait_for_originate(MsgId) ->
                 {<<"error">>, <<"originate_resp">>, _} ->
                     {error, JObj};
                 {<<"dialplan">>, <<"originate_ready">>, _} ->
-                    lager:debug("originate is ready"),
-                    RespQ = wh_json:get_value(<<"Server-ID">>, JObj),
-                    Resp = [{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
-                            ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
-                            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)],
-
-                    wapi_dialplan:publish_originate_execute(RespQ, Resp),
                     {ready, JObj};
                 _  ->
                     wait_for_originate(MsgId)
@@ -537,10 +530,10 @@ response({ok, Resp}, JObj) ->
      ,{<<"Resource-Response">>, Resp}
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ];
-response({ready, Resp}, _JObj) ->
+response({ready, Resp}, JObj) ->
     lager:debug("originate is ready to execute"),
     [{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, Resp)}
-     ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, Resp)}
+     ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
      ,{<<"Response-Message">>, <<"READY">>}
      ,{<<"Resource-Response">>, Resp}
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)

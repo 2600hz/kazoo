@@ -14,7 +14,7 @@
          [{handlers,
               [{lager_console_backend,info},
                {lager_file_backend,[{"log/error.log",error,10485760,"$D0",5}]},
-               {lager_syslog_backend,["whistle_apps",local0,debug]}]},
+               {lager_syslog_backend,["2600hz",local0,debug]}]},
           {crash_log,"log/crash.log"},
           {crash_log_msg_size,65536},
           {crash_log_size,10485760},

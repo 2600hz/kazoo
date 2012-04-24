@@ -77,6 +77,13 @@ get_fs_app(Node, UUID, JObj, <<"play">>) ->
             {<<"playback">>, F}
     end;
 
+get_fs_app(_Node, UUID, JObj, <<"playstop">>) ->
+    case wapi_dialplan:playstop_v(JObj) of
+        false -> {'error', <<"playstop failed to execute as JObj did not validate">>};
+        true ->
+            {<<"playstop">>, UUID}
+    end;
+
 get_fs_app(_Node, _UUID, _JObj, <<"hangup">>) ->
     {<<"hangup">>, <<>>};
 
@@ -593,6 +600,9 @@ send_cmd(Node, UUID, <<"record_call">>, Args) ->
     Ret = freeswitch:api(Node, uuid_record, wh_util:to_list(Cmd)),
     lager:debug("executing uuid_record returned ~p", [Ret]),
     Ret;
+send_cmd(Node, UUID, <<"playstop">>, Args) ->
+    lager:debug("execute on node ~s: uuid_break(~s)", [Node, UUID]),
+    freeswitch:api(Node, uuid_break, wh_util:to_list(Args));
 send_cmd(Node, UUID, <<"xferext">>, Dialplan) ->
     XferExt = [begin
                    _ = ecallmgr_util:fs_log(Node, "whistle queuing command in 'xferext' extension: ~s", [V]),
@@ -665,8 +675,8 @@ stream_over_http(Node, UUID, File, Method, JObj) ->
     lager:debug("streaming via HTTP(~s) to ~s", [Method, Url]),
     AddHeaders = wh_json:to_proplist(wh_json:get_value(<<"Additional-Headers">>, JObj, wh_json:new())),
     Headers = [{"Content-Length", filelib:file_size(File)}
+               ,{"Content-Type", "audio/mpeg"}
                | [ {wh_util:to_list(K), V} || {K,V} <- AddHeaders] ],
-
     Body = {fun stream_file/1, {undefined, File}},
     AppQ = wh_json:get_value(<<"Server-ID">>, JObj),
     case ibrowse:send_req(Url, Headers, Method, Body) of
@@ -723,7 +733,7 @@ stream_file({Iod, _File}=State) ->
 %%--------------------------------------------------------------------
 -spec set_terminators/3 :: (atom(), ne_binary(), 'undefined' | binary()) -> 'ok' | fs_api_ret().
 set_terminators(_Node, _UUID, undefined) -> 'ok';
-set_terminators(Node, UUID, <<>>) -> set(Node, UUID, <<"none">>);
+set_terminators(Node, UUID, <<>>) -> set(Node, UUID, <<"playback_terminators=none">>);
 set_terminators(Node, UUID, Ts) ->
     Terms = list_to_binary(["playback_terminators=", Ts]),
     set(Node, UUID, Terms).

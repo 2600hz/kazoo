@@ -197,18 +197,9 @@ document_routing_key(<<"*">>, Db, Type, Id) ->
 document_routing_key(Action, Db, Type, Id) ->
     list_to_binary(["doc_", wh_util:to_list(Action), ".", Db, ".", Type, ".", Id]).
 
--spec callctl_publish/2 :: (CtrlQ, Payload) -> 'ok' when
-      CtrlQ :: ne_binary(),
-      Payload :: amqp_payload().
--spec callctl_publish/3 :: (CtrlQ, Payload, ContentType) -> 'ok' when
-      CtrlQ :: ne_binary(),
-      Payload :: amqp_payload(),
-      ContentType :: ne_binary().
--spec callctl_publish/4 :: (CtrlQ, Payload, ContentType, Props) -> 'ok' when
-      CtrlQ :: ne_binary(),
-      Payload :: amqp_payload(),
-      ContentType :: ne_binary(),
-      Props :: proplist().
+-spec callctl_publish/2 :: (ne_binary(), amqp_payload()) -> 'ok'.
+-spec callctl_publish/3 :: (ne_binary(), amqp_payload(), ne_binary()) -> 'ok'.
+-spec callctl_publish/4 :: (ne_binary(), amqp_payload(), ne_binary(), proplist()) -> 'ok'.
 callctl_publish(CtrlQ, Payload) ->
     callctl_publish(CtrlQ, Payload, ?DEFAULT_CONTENT_TYPE).
 callctl_publish(CtrlQ, Payload, ContentType) ->

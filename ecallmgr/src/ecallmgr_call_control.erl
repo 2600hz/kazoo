@@ -119,7 +119,9 @@ start_link(Node, CallId, WhAppQ) ->
     %% ecallmgr.  Since our call_events will get a bad session if we
     %% try to handlecall more than once on a UUID we had to leave the
     %% call_events running on another ecallmgr... fun fun
-    Bindings = [{call, [{callid, CallId}]}
+    Bindings = [{call, [{callid, CallId}
+                        ,{restrict_to, [events]}
+                       ]}
                 ,{dialplan, []}
                 ,{self, []}],
     gen_listener:start_link(?MODULE, [{responders, ?RESPONDERS}
@@ -530,8 +532,8 @@ handle_info({sanity_check}, #state{node=Node, callid=CallId, keep_alive_ref=unde
             lager:debug("listener passed sanity check, call is still up"),
             TRef = erlang:send_after(?SANITY_CHECK_PERIOD, self(), {sanity_check}),
             {'noreply', State#state{sanity_check_tref=TRef}};
-        _ ->
-            lager:debug("call uuid does not exist, executing post-hangup events and terminating"),
+        _E ->
+            lager:debug("call uuid does not exist, executing post-hangup events and terminating: ~p", [_E]),
             gen_listener:cast(self(), {channel_destroyed, wh_json:new()}),
             {'noreply', State}
     end;

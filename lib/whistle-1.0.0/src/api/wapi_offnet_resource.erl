@@ -19,7 +19,7 @@
 -include("../wh_api.hrl").
 
 %% Offnet Resource Request
--define(OFFNET_RESOURCE_REQ_HEADERS, [<<"Account-ID">>, <<"Resource-Type">>, <<"To-DID">>
+-define(OFFNET_RESOURCE_REQ_HEADERS, [<<"Resource-Type">>, <<"To-DID">>
                                           ,<<"Application-Name">>
                                      ]).
 -define(OPTIONAL_OFFNET_RESOURCE_REQ_HEADERS, [<<"Timeout">>, <<"Ignore-Early-Media">>, <<"Flags">>, <<"Media">>
@@ -28,6 +28,7 @@
                                                    ,<<"Ringback">>, <<"SIP-Headers">>, <<"Custom-Channel-Vars">>
                                                    ,<<"Hold-Media">>, <<"Presence-ID">>, <<"Account-Realm">>
                                                    ,<<"Control-Queue">>, <<"Call-ID">>, <<"Msg-ID">>, <<"Application-Data">>
+                                                   ,<<"Account-ID">>
                                               ]).
 -define(OFFNET_RESOURCE_REQ_VALUES, [{<<"Event-Category">>, <<"resource">>}
                                      ,{<<"Event-Name">>, <<"offnet_req">>}

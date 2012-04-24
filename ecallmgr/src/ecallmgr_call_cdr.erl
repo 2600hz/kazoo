@@ -1,12 +1,12 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2010, James Aimonetti
+%%% @copyright (C) 2010-2012, VoIP INC
 %%% @doc
 %%% Receive the CHANNEL_HANGUP_COMPLETE event and generate a CDR, putting
 %%% it on the Messaging Bus
 %%% queue
 %%% @end
-%%% Created : 9 Nov 2010 by James Aimonetti <james@2600hz.org>
+%%% @contributors
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(ecallmgr_call_cdr).
 
@@ -45,6 +45,8 @@
 new_cdr(UUID, EvtProp) ->
     put(callid, UUID),
     CDR = create_cdr(EvtProp),
+
+    lager:debug("publising cdr: ~p", [CDR]),
     wapi_call:publish_cdr(UUID, CDR).
 
 -spec create_cdr/1 :: (proplist()) -> proplist().

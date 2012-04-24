@@ -873,7 +873,6 @@ review_recording(AttachmentName, #mailbox{keys=#keys{listen=Listen, save=Save, r
 -spec store_recording/3 :: (ne_binary(), ne_binary(), whapps_call:call()) -> {'ok', wh_json:json_object()} | {'error', wh_json:json_object()}.
 store_recording(AttachmentName, MediaId, Call) ->
     lager:debug("storing recording ~s as media ~s", [AttachmentName, MediaId]),
-    ok = update_doc(<<"content_type">>, <<"audio/mpeg">>, MediaId, Call),
     whapps_call_command:b_store(AttachmentName, get_new_attachment_url(AttachmentName, MediaId, Call), Call).
 
 %%--------------------------------------------------------------------
@@ -916,8 +915,7 @@ message_media_doc(Db, #mailbox{mailbox_number=BoxNum, mailbox_id=Id, timezone=Ti
              ,{<<"description">>, <<"voicemail message media">>}
              ,{<<"source_type">>, <<"voicemail">>}
              ,{<<"source_id">>, Id}
-             ,{<<"content_type">>, <<"audio/mpeg">>}
-             ,{<<"media_type">>, <<"mp3">>}
+             ,{<<"media_source">>, <<"recording">>}
              ,{<<"streamable">>, true}],
     Doc = wh_doc:update_pvt_parameters(wh_json:from_list(Props), Db, [{type, <<"private_media">>}]),
     {ok, JObj} = couch_mgr:save_doc(Db, Doc),
@@ -936,8 +934,7 @@ recording_media_doc(Recording, #mailbox{mailbox_number=BoxNum, mailbox_id=Id}, C
              ,{<<"description">>, <<"voicemail recorded/prompt media">>}
              ,{<<"source_type">>, <<"voicemail">>}
              ,{<<"source_id">>, Id}
-             ,{<<"content_type">>, <<"audio/mpeg">>}
-             ,{<<"media_type">>, <<"mp3">>}
+             ,{<<"media_source">>, <<"recording">>}
              ,{<<"streamable">>, true}],
     Doc = wh_doc:update_pvt_parameters(wh_json:from_list(Props), AccountDb, [{type, <<"media">>}]),
     {ok, JObj} = couch_mgr:save_doc(AccountDb, Doc),

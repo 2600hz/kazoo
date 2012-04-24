@@ -13,6 +13,7 @@
         ]).
 -export([to_boolean/1, is_true/1, is_false/1, is_empty/1, is_proplist/1]).
 -export([to_lower_binary/1, to_upper_binary/1, binary_join/2]).
+-export([ucfirst_binary/1, lcfirst_binary/1]).
 
 -export([pad_binary/3, join_binary/1, join_binary/2]).
 -export([a1hash/3, floor/1, ceiling/1]).
@@ -407,6 +408,14 @@ to_lower_binary(Bin) when is_binary(Bin) ->
     << <<(binary_to_lower_char(B))>> || <<B>> <= Bin>>;
 to_lower_binary(Else) ->
     to_lower_binary(to_binary(Else)).
+
+-spec ucfirst_binary/1 :: (ne_binary()) -> ne_binary().
+ucfirst_binary(<<F:8, Bin/binary>>) ->
+    <<(binary_to_upper_char(F)):8, Bin/binary>>.
+
+-spec lcfirst_binary/1 :: (ne_binary()) -> ne_binary().
+lcfirst_binary(<<F:8, Bin/binary>>) ->
+    <<(binary_to_lower_char(F)):8, Bin/binary>>.
     
 -spec binary_to_lower_char/1 :: (char()) -> char().
 binary_to_lower_char(C) when is_integer(C), $A =< C, C =< $Z -> C + 32;
@@ -608,5 +617,21 @@ binary_join_test() ->
     ?assertEqual(<<"foo">>, binary_join([<<"foo">>], <<", ">>)),
     ?assertEqual(<<"foo, bar">>, binary_join([<<"foo">>, <<"bar">>], <<", ">>)),
     ?assertEqual(<<"foo, bar, baz">>, binary_join([<<"foo">>, <<"bar">>, <<"baz">>], <<", ">>)).
+
+ucfirst_binary_test() ->
+    ?assertEqual(<<"Foo">>, ucfirst_binary(<<"foo">>)),
+    ?assertEqual(<<"Foo">>, ucfirst_binary(<<"Foo">>)),
+    ?assertEqual(<<"FOO">>, ucfirst_binary(<<"FOO">>)),
+    ?assertEqual(<<"1oo">>, ucfirst_binary(<<"1oo">>)),
+    ?assertEqual(<<"100">>, ucfirst_binary(<<"100">>)),
+    ?assertEqual(<<"1FF">>, ucfirst_binary(<<"1FF">>)).
+
+lcfirst_binary_test() ->
+    ?assertEqual(<<"foo">>, lcfirst_binary(<<"foo">>)),
+    ?assertEqual(<<"foo">>, lcfirst_binary(<<"Foo">>)),
+    ?assertEqual(<<"fOO">>, lcfirst_binary(<<"FOO">>)),
+    ?assertEqual(<<"1oo">>, lcfirst_binary(<<"1oo">>)),
+    ?assertEqual(<<"100">>, lcfirst_binary(<<"100">>)),
+    ?assertEqual(<<"1FF">>, lcfirst_binary(<<"1FF">>)).
 
 -endif.

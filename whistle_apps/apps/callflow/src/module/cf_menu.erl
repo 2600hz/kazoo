@@ -412,8 +412,7 @@ recording_media_doc(Type, #cf_menu_data{name=MenuName, menu_id=Id}, Call) ->
              ,{<<"description">>, <<"menu recorded/prompt media">>}
              ,{<<"source_type">>, <<"menu">>}
              ,{<<"source_id">>, Id}
-             ,{<<"content_type">>, <<"audio/mpeg">>}
-             ,{<<"media_type">>, <<"mp3">>}
+             ,{<<"media_source">>, <<"recording">>}
              ,{<<"streamable">>, true}],
     Doc = wh_doc:update_pvt_parameters(wh_json:from_list(Props), AccountDb, [{type, <<"media">>}]),
     {ok, JObj} = couch_mgr:save_doc(AccountDb, Doc),

@@ -288,7 +288,7 @@ load_message_binary(VMBoxId, VMId, #cb_context{req_data=ReqData, db_name=Db, res
 
     Filename = generate_media_name(wh_json:get_value(<<"caller_id_number">>, VMMetaJObj)
                                    ,wh_json:get_value(<<"timestamp">>, VMMetaJObj)
-                                   ,wh_json:get_value(<<"media_type">>, VMJObj)
+                                   ,filename:extension(AttachmentId)
                                    ,wh_json:get_value(<<"timezone">>, VMBoxJObj)
                                   ),
     lager:debug("Sending file with filename ~s", [Filename]),
@@ -308,12 +308,12 @@ load_message_binary(VMBoxId, VMId, #cb_context{req_data=ReqData, db_name=Db, res
                       end)
         end,
 
-    Ctx#cb_context{resp_headers = [
-                                   {<<"Content-Type">>, wh_json:get_value([<<"_attachments">>, AttachmentId, <<"content_type">>], VMJObj)},
-                                   {<<"Content-Disposition">>, <<"attachment; filename=", Filename/binary>>},
-                                   {<<"Content-Length">> ,wh_util:to_binary(wh_json:get_value([<<"_attachments">>, AttachmentId, <<"length">>], VMJObj))}
-                                   | RespHeaders
-                                  ]
+    Ctx#cb_context{resp_headers=[{<<"Content-Type">>, wh_json:get_value([<<"_attachments">>, AttachmentId, <<"content_type">>], VMJObj)}
+                                 ,{<<"Content-Disposition">>, <<"attachment; filename=", Filename/binary>>}
+                                 ,{<<"Content-Length">> ,wh_util:to_binary(wh_json:get_value([<<"_attachments">>, AttachmentId, <<"length">>], VMJObj))}
+                                 | RespHeaders
+                                ]
+                   ,resp_etag=undefined
                   }.
 
 %%--------------------------------------------------------------------
@@ -456,6 +456,6 @@ generate_media_name(CallerId, GregorianSeconds, Ext, Timezone) ->
     Date = wh_util:pretty_print_datetime(LocalTime),
 
     case CallerId of
-        undefined -> list_to_binary(["unknown_", Date, ".", Ext]);
-        _ -> list_to_binary([CallerId, "_", Date, ".", Ext])
+        undefined -> list_to_binary(["unknown_", Date, Ext]);
+        _ -> list_to_binary([CallerId, "_", Date, Ext])
     end.
