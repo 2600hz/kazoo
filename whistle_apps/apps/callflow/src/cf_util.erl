@@ -29,8 +29,34 @@ presence_probe(JObj, _Props) ->
     FromUser = wh_json:get_value(<<"From-User">>, JObj),
     FromRealm = wh_json:get_value(<<"From-Realm">>, JObj),
     Subscription = wh_json:get_value(<<"Subscription">>, JObj),
-    ProbeRepliers = [fun presence_parking_slot/4],
+    ProbeRepliers = [fun presence_mwi_update/4
+                     ,fun presence_parking_slot/4
+                    ],
     [Fun(Subscription, {FromUser, FromRealm}, {ToUser, ToRealm}, JObj) || Fun <- ProbeRepliers].
+
+-spec presence_mwi_update/4 :: (ne_binary(), {ne_binary(), ne_binary()}, {ne_binary(), ne_binary()}, wh_json:json_object()) -> ok.
+presence_mwi_update(<<"message-summary">>, {FromUser, FromRealm}, _, _) ->
+    case whapps_util:get_account_by_realm(FromRealm) of
+        {ok, AccountDb} ->
+            ViewOptions = [{<<"include_docs">>, true}
+                           ,{<<"key">>, FromUser}
+                          ],
+            case couch_mgr:get_results(AccountDb, <<"cf_attributes/sip_credentials">>, ViewOptions) of
+                {ok, []} ->
+                    lager:debug("sip credentials not in account db ~s", [AccountDb]),
+                    ok;
+                {ok, [Device]} -> 
+                    update_mwi(wh_json:get_value([<<"doc">>, <<"owner_id">>], Device), AccountDb);
+                {error, _R} -> 
+                    lager:debug("unable to lookup sip credentials for owner id: ~p", [_R]),
+                    ok
+            end;
+        _E ->
+            lager:debug("failed to find the account for realm ~s: ~p", [FromRealm, _E]),
+            ok
+    end;
+presence_mwi_update(_, _, _, _) ->
+    ok.
 
 -spec presence_parking_slot/4 :: (ne_binary(), {ne_binary(), ne_binary()}, {ne_binary(), ne_binary()}, wh_json:json_object()) -> ok.
 presence_parking_slot(<<"message-summary">>, _, _, _) ->
