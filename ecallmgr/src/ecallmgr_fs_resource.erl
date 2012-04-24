@@ -369,7 +369,7 @@ originate_and_park(JObj, Node, ServerId, DialStrings, UUID) ->
 
     case maybe_confirm_originate(ServerId, CtlProp) of %ecallmgr_amqp_pool:originate_ready(ServerId, CtlProp) of
         {ok, _Exec} ->
-            lager:debug("recv originate_execute: ~p", [_Exec]),
+            lager:debug("recv originate_execute", []),
             execute_originate_park(JObj, Node, ServerId, DialStrings, UUID, CtlPid);
         {error, _E} ->
             lager:debug("failed to recv valid originate_execute: ~p", [_E]),
