@@ -76,6 +76,9 @@ rest_init(Req0, Opts) ->
                            ,raw_path=Path
                            ,raw_qs=QS
                            ,method=Method
+                           ,resp_status=fatal
+                           ,resp_error_msg = <<"unspecified">>
+                           ,resp_error_code=500
                           },
 
     {Context1, _} = crossbar_bindings:fold(<<"v1_resource.init">>, {Context0, Opts}),
@@ -105,11 +108,8 @@ allowed_methods(Req0, #cb_context{allowed_methods=Methods}=Context) ->
             %% HTTP method with the tunneled version
             case v1_util:get_req_data(Context, Req1) of
                 {halt, Context1, Req2} ->
-                    Context2 = crossbar_util:response_invalid_data(
-                                 wh_json:set_value(<<"error">>, <<"failed to parse request body">>, wh_json:new())
-                                 ,Context1),
-
-                    v1_util:halt(Req2, Context2);
+                    E = wh_json:set_value([<<"data">>, <<"parse">>], <<"failed to parse request body">>, wh_json:new()),
+                    v1_util:halt(Req2, crossbar_util:response_invalid_data(E, Context1));
                 {Context1, Req2} ->
                     check_preflight(Req2, Context1#cb_context{req_nouns=Nouns})
             end;
@@ -124,20 +124,23 @@ check_preflight(Req0, #cb_context{allowed_methods=Methods, req_nouns=[{Mod, Para
     {Method, Req1} = cowboy_http_req:method(Req0),
     Verb = v1_util:get_http_verb(Method, Context),
 
-    Methods1 = v1_util:allow_methods(Responses, Methods, Verb, Method),
-    case v1_util:is_cors_preflight(Req1) of
-        {true, Req2} ->
-            lager:debug("allowing OPTIONS request for CORS preflight"),
-            {ok, Req3} = v1_util:add_cors_headers(Req2, Context),
-            {['OPTIONS'], Req3, Context#cb_context{allow_methods=Methods1
-                                                   ,req_verb=Verb
-                                                  }};
-        {false, Req2} ->
-            lager:debug("not CORS preflight"),
-            {ok, Req3} = v1_util:add_cors_headers(Req2, Context),
-            {Methods1, Req3, Context#cb_context{allow_methods=Methods1
-                                                ,req_verb=Verb
-                                               }}
+    case v1_util:allow_methods(Responses, Methods, Verb, Method) of
+        [] -> {Methods, Req1, Context#cb_context{req_nouns=[{<<"404">>, []}]}};
+        Methods1 ->
+            case v1_util:is_cors_preflight(Req1) of
+                {true, Req2} ->
+                    lager:debug("allowing OPTIONS request for CORS preflight"),
+                    {ok, Req3} = v1_util:add_cors_headers(Req2, Context),
+                    {['OPTIONS'], Req3, Context#cb_context{allow_methods=Methods1
+                                                           ,req_verb=Verb
+                                                          }};
+                {false, Req2} ->
+                    lager:debug("not CORS preflight"),
+                    {ok, Req3} = v1_util:add_cors_headers(Req2, Context),
+                    {Methods1, Req3, Context#cb_context{allow_methods=Methods1
+                                                        ,req_verb=Verb
+                                                       }}
+            end
     end.
 
 malformed_request(Req, #cb_context{req_json={malformed, _}}=Context) ->
@@ -152,7 +155,7 @@ malformed_request(Req, #cb_context{req_nouns=Nouns}=Context) ->
                 #cb_context{resp_status=success}=Context1 ->
                     {false, Req, Context1};
                 Context1 ->
-                    {true, Req, Context1}
+                    v1_util:halt(Req, Context1)
             end;
         _Other ->
             lager:debug("other: ~p", [Nouns]),
