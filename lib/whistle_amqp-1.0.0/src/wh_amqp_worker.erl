@@ -229,7 +229,7 @@ handle_cast({event, MsgId, JObj}, #state{current_msg_id = MsgId
     case VFun(JObj) of
         true ->
             erlang:demonitor(ClientRef, [flush]),
-            lager:info("response after ~b", [timer:now_diff(erlang:now(), StartTime) div 1000]),
+            lager:info("response after ~b ms", [timer:now_diff(erlang:now(), StartTime) div 1000]),
             gen_server:reply(From, {ok, JObj}),
             _ = erlang:cancel_timer(ReqRef),
             put(callid, ?LOG_SYSTEM_ID),
