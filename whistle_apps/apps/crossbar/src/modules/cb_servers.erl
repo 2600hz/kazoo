@@ -502,12 +502,12 @@ write_databag(Account, Server, JObj, PathTmpl) ->
 -spec create_databag/3 :: (wh_json:json_objects(), list(), wh_json:json_object()) -> wh_json:json_object().
 create_databag([], _, JObj) -> JObj;
 create_databag([H|T], Mapping, JObj) ->
-    Roles = wh_json:get_value(<<"roles">>, H, []),
-    Hostname = wh_json:get_value(<<"hostname">>, H),
-    IP = wh_json:get_value(<<"ip">>, H),
+    Roles = props:get_value(<<"roles">>, H, []),
+    Hostname = props:get_value(<<"hostname">>, H),
+    IP = props:get_value(<<"ip">>, H),
 
     NewJ = lists:foldr(fun(Role, J) ->
-                               case proplists:get_value(Role, Mapping) of
+                               case wh_json:get_value(Role, Mapping) of
                                    undefined -> J;
                                    Name -> wh_json:set_value([Name, <<"servers">>, Hostname], IP, J)
                                end
