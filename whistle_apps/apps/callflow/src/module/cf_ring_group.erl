@@ -74,7 +74,7 @@ get_endpoints(Members, Call) ->
     lists:foldl(fun(Pid, Acc) ->
                         BRs = receive {Pid, BuildResults} -> BuildResults end,
                         lists:foldl(fun fold_eps/2, Acc, BRs)
-                end, [], Builders).
+                end, [], lists:reverse(Builders)).
 
 get_endpoints_direct(Members, Call) ->
     lists:foldr(fun(Member, Acc) ->
