@@ -81,10 +81,10 @@ start_link(Args) ->
 -spec call/5 :: (server_ref(), api_terms(), wh_amqp_worker:publish_fun(), wh_amqp_worker:validate_fun(), pos_integer()) -> {'ok', wh_json:json_object()} |
                                                                                                                            {'error', _}.
 call(Srv, Req, PubFun, VFun) ->
-    call(Srv, Req, PubFun, VFun, 1500).
+    call(Srv, Req, PubFun, VFun, 2000).
 
 call(Srv, Req, PubFun, VFun, Timeout) ->
-    case poolboy:checkout(Srv, false, 1000) of
+    case catch poolboy:checkout(Srv, false, 1000) of
         W when is_pid(W) ->
             Prop = case wh_json:is_json_object(Req) of
                        true -> wh_json:to_proplist(Req);
@@ -95,12 +95,15 @@ call(Srv, Req, PubFun, VFun, Timeout) ->
             Reply;
         full ->
             lager:debug("failed to checkout worker: full"),
-            {error, pool_full}
+            {error, pool_full};
+        _Else ->
+            lager:debug("poolboy error: ~p", [_Else]),
+            {error, poolboy_fault}
     end.
 
 -spec cast/3 :: (server_ref(), api_terms(), wh_amqp_worker:publish_fun()) -> 'ok' | {'error', _}.
 cast(Srv, Req, PubFun) ->
-    case poolboy:checkout(Srv, false, 1000) of
+    case catch poolboy:checkout(Srv, false, 1000) of
         W when is_pid(W) ->
             poolboy:checkin(Srv, W),
             Prop = case wh_json:is_json_object(Req) of
@@ -110,7 +113,10 @@ cast(Srv, Req, PubFun) ->
             gen_listener:cast(W, {publish, Prop, PubFun});
         full ->
             lager:debug("failed to checkout worker: full"),
-            {error, pool_full}
+            {error, pool_full};
+        _Else ->
+            lager:debug("poolboy error: ~p", [_Else]),
+            {error, poolboy_fault}
     end.
 
 -spec any_resp/1 :: (any()) -> 'true'.
@@ -223,6 +229,7 @@ handle_cast({event, MsgId, JObj}, #state{current_msg_id = MsgId
     case VFun(JObj) of
         true ->
             erlang:demonitor(ClientRef, [flush]),
+            lager:info("response after ~b", [timer:now_diff(erlang:now(), StartTime) div 1000]),
             gen_server:reply(From, {ok, JObj}),
             _ = erlang:cancel_timer(ReqRef),
             put(callid, ?LOG_SYSTEM_ID),
@@ -250,8 +257,10 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info(timeout, #state{neg_resp=JObj, neg_resp_count=Thresh, neg_resp_threshold=Thresh
                             ,client_ref=ClientRef, client_from=From, req_timeout_ref=ReqRef
+                            ,req_start_time = StartTime
                            }=State) ->
     lager:debug("negative response threshold reached, returning last negative message"),
+    lager:info("negative after ~b", [timer:now_diff(erlang:now(), StartTime) div 1000]),
     erlang:demonitor(ClientRef, [flush]),
     gen_server:reply(From, {error, JObj}),
     _ = erlang:cancel_timer(ReqRef),
@@ -275,8 +284,10 @@ handle_info({timeout, ReqRef, req_timeout}, #state{current_msg_id = _MsgID
                                                    ,req_timeout_ref = ReqRef
                                                    ,client_from = From
                                                    ,callid = CallID
+                                                   ,req_start_time = StartTime
                                                   }=State) ->
     put(callid, CallID),
+    lager:info("timeout after ~b", [timer:now_diff(erlang:now(), StartTime) div 1000]),
     lager:debug("request timeout exceeded for msg id: ~s", [_MsgID]),
     erlang:demonitor(ClientRef, [flush]),
     gen_server:reply(From, {error, timeout}),
@@ -309,6 +320,7 @@ handle_event(_JObj, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
+    lager:info("~p", [_Reason]),
     lager:debug("amqp worker terminating: ~p", [_Reason]).
 
 %%--------------------------------------------------------------------
