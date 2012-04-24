@@ -23,22 +23,24 @@
          ,delete/2, delete/3
         ]).
 
--include("../../include/crossbar.hrl").
+-include_lib("crossbar/include/crossbar.hrl").
 
 -define(SERVER, ?MODULE).
 -define(BIN_DATA, <<"raw">>).
 
 -define(MEDIA_MIME_TYPES, [{<<"audio">>, <<"x-wav">>}
+                           ,{<<"audio">>, <<"wav">>}
                            ,{<<"audio">>, <<"mpeg">>}
                            ,{<<"audio">>, <<"mp3">>}
                            ,{<<"audio">>, <<"ogg">>}
-                           ,{<<"application">>, <<"octet-stream">>}
                            ,{<<"application">>, <<"base64">>}
                            ,{<<"application">>, <<"x-base64">>}
                           ]).
 
 -define(PVT_TYPE, <<"media">>).
--define(PVT_FUNS, [fun add_pvt_type/2]).
+-define(PVT_FUNS, [fun add_pvt_type/2, fun add_media_source/2]).
+
+-define(CB_LIST, <<"media/crossbar_listing">>).
 
 %%%===================================================================
 %%% API
@@ -96,21 +98,26 @@ resource_exists(_, ?BIN_DATA) -> true.
 %% @end
 %%--------------------------------------------------------------------
 -spec content_types_provided/3 :: (#cb_context{}, path_token(), path_token()) -> #cb_context{}.
-content_types_provided(#cb_context{db_name=Db, req_verb = <<"get">>}=Context, MediaID, ?BIN_DATA) when is_binary(Db) ->
-    lager:debug("open media doc ~s / ~s", [Db, MediaID]),
-    case couch_mgr:open_doc(Db, MediaID) of
-        {error, _} -> Context;
-        {ok, JObj} ->
-            lager:debug("media: ~p", [JObj]),
-            [Type, SubType] = binary:split(content_type_of(JObj), <<"/">>),
-            lager:debug("getting media of type ~s/~s", [Type, SubType]),
-            Context#cb_context{content_types_provided=[{to_binary, [{Type, SubType}]}]}
-    end.
+content_types_provided(#cb_context{req_verb = <<"get">>}=Context, MediaId, ?BIN_DATA) ->
+    case load_media_meta(MediaId, Context) of
+        #cb_context{resp_status=success, doc=JObj} ->
+            case wh_json:get_keys(wh_json:get_value([<<"_attachments">>], JObj)) of
+                [] -> Context;
+                [Attachment|_] ->
+                    CT = wh_json:get_value([<<"_attachments">>, Attachment, <<"content_type">>], JObj),
+                    [Type, SubType] = binary:split(CT, <<"/">>),
+                    Context#cb_context{content_types_provided=[{to_binary, [{Type, SubType}]}]}
+            end
+    end;
+content_types_provided(Context, _, _) ->
+    Context.
 
 -spec content_types_accepted/3 :: (#cb_context{}, path_token(), path_token()) -> #cb_context{}.
 content_types_accepted(#cb_context{req_verb = <<"post">>}=Context, _MediaID, ?BIN_DATA) ->
     CTA = [{from_binary, ?MEDIA_MIME_TYPES}],
-    Context#cb_context{content_types_accepted=CTA}.
+    Context#cb_context{content_types_accepted=CTA};
+content_types_accepted(Context, _, _) ->
+    Context.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -125,48 +132,51 @@ content_types_accepted(#cb_context{req_verb = <<"post">>}=Context, _MediaID, ?BI
 -spec validate/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
 -spec validate/3 :: (#cb_context{}, path_token(), path_token()) -> #cb_context{}.
 validate(#cb_context{req_verb = <<"get">>}=Context) ->
-    lookup_media(Context);
-validate(#cb_context{req_verb = <<"put">>, req_data=Data}=Context) ->
-    Name = wh_json:get_value(<<"name">>, Data),
-
-    case Name =/= undefined andalso lookup_media_by_name(Name, Context) of
-        false ->
-            crossbar_util:response_invalid_data([<<"name">>], Context);
-        #cb_context{resp_status=success, doc=[Doc|_], resp_headers=RHs}=Context1 ->
-            DocID = wh_json:get_value(<<"id">>, Doc),
-            lager:debug("media with name ~s found in doc ~s", [Name, Doc]),
-            Context1#cb_context{resp_headers=[{"Location", DocID} | RHs]};
-        _ ->
-            lager:debug("media name ~s unknown, create meta", [Name]),
-            create_media_meta(Data, Context)
-    end.
-
-validate(#cb_context{req_verb = <<"get">>}=Context, MediaID) ->
-    get_media_doc(MediaID, Context);
-validate(#cb_context{req_verb = <<"post">>, req_data=Data}=Context, MediaID) ->
-    case wh_json:get_value(<<"name">>, Data) =/= undefined of
-        true ->
-            crossbar_doc:load_merge(MediaID, Data, Context);
-        false ->
-            crossbar_util:response_invalid_data([<<"name">>], Context)
-    end;
+    load_media_summary(Context);
+validate(#cb_context{req_verb = <<"put">>}=Context) ->
+    create_media_meta(Context).
+validate(#cb_context{req_verb = <<"get">>}=Context, MediaId) ->
+    load_media_meta(MediaId, Context);
+validate(#cb_context{req_verb = <<"post">>}=Context, MediaId) ->
+    update_media_meta(MediaId, Context);
 validate(#cb_context{req_verb = <<"delete">>, req_data=_Data}=Context, MediaID) ->
-    get_media_doc(MediaID, Context).
+    load_media_meta(MediaID, Context).
 
-validate(#cb_context{req_verb = <<"get">>}=Context, MediaID, ?BIN_DATA) ->
+validate(#cb_context{req_verb = <<"get">>}=Context, MediaId, ?BIN_DATA) ->
     lager:debug("fetch media contents"),
-    get_media_binary(MediaID, Context);
+    load_media_binary(MediaId, Context);
 validate(#cb_context{req_verb = <<"post">>, req_files=[]}=Context, _MediaID, ?BIN_DATA) ->
     lager:debug("No files in request to save attachment"),
-    crossbar_util:response_invalid_data([<<"no_files">>], Context);
-validate(#cb_context{req_verb = <<"post">>, req_files=[{_Filename, FileObj}]}=Context, MediaID, ?BIN_DATA) ->
-    case wh_json:get_value([<<"contents">>], FileObj, <<>>) of
-        <<>> ->
-            crossbar_util:response_invalid_data([<<"empty_file">>], Context);
-        _ ->
-            lookup_media_by_id(MediaID, Context)
-    end.
+    E = wh_json:set_value([<<"content_size">>, <<"minLength">>], <<"No file uploaded">>, wh_json:new()),
+    crossbar_util:response_invalid_data(E, Context);
+validate(#cb_context{req_verb = <<"post">>, req_files=[{_Filename, FileObj}]}=Context, MediaId, ?BIN_DATA) ->
+    case load_media_meta(MediaId, Context) of
+        #cb_context{resp_status=success, doc=Data}=Context1 ->
+            Updaters = [fun(J) ->
+                                CT = wh_json:get_value([<<"headers">>, <<"content_type">>], FileObj, <<"application/octet-stream">>),
+                                wh_json:set_value(<<"content_type">>, CT, J)
+                        end
+                        ,fun(J) ->
+                                 Size = wh_json:get_integer_value([<<"headers">>, <<"content_length">>]
+                                                                 ,FileObj
+                                                                  ,byte_size(wh_json:get_value(<<"contents">>, FileObj, <<>>))),
+                                 wh_json:set_value(<<"content_length">>, Size, J)
+                         end
+                       ],
+            case wh_json_validator:is_valid(lists:foldr(fun(F, J) -> F(J) end, Data, Updaters), <<"media">>) of
+                {fail, Errors} ->
+                    crossbar_util:response_invalid_data(Errors, Context);
+                {pass, JObj} ->
+                    Context1#cb_context{doc=JObj}
+            end;
+        Else -> Else
+    end;
+validate(#cb_context{req_verb = <<"post">>}=Context, _, ?BIN_DATA) ->
+    lager:debug("Multiple files in request to save attachment"),
+    E = wh_json:set_value([<<"content_size">>, <<"maxLength">>], <<"Uploading multiple files is not supported">>, wh_json:new()),
+    crossbar_util:response_invalid_data(E, Context).
 
+-spec get/3 :: (#cb_context{}, path_token(), path_token()) -> #cb_context{}.
 get(Context, _MediaID, ?BIN_DATA) ->
     Context#cb_context{resp_headers = [{<<"Content-Type">>
                                             ,wh_json:get_value(<<"content-type">>, Context#cb_context.doc, <<"application/octet-stream">>)}
@@ -174,35 +184,54 @@ get(Context, _MediaID, ?BIN_DATA) ->
                                              ,wh_util:to_binary(binary:referenced_byte_size(Context#cb_context.resp_data))}
                                        | Context#cb_context.resp_headers]}.
 
--spec post/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
--spec post/3 :: (#cb_context{}, path_token(), path_token()) -> #cb_context{}.
-post(#cb_context{req_files=[], resp_status=RespStatus}=Context, _MediaID) ->
-    case RespStatus =:= success of
-        true -> crossbar_doc:save(Context);
-        false -> Context
-    end.
-post(#cb_context{req_files=[{_, FileObj}|_Files]}=Context, MediaID, ?BIN_DATA) ->
-    HeadersJObj = wh_json:get_value(<<"headers">>, FileObj),
-    Contents = wh_json:get_value(<<"contents">>, FileObj),
-
-    update_media_binary(MediaID, Contents, Context, HeadersJObj).
-
 -spec put/1 :: (#cb_context{}) -> #cb_context{}.
 put(#cb_context{}=Context) ->
     crossbar_doc:save(Context).
 
+-spec post/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+-spec post/3 :: (#cb_context{}, path_token(), path_token()) -> #cb_context{}.
+
+post(Context, _MediaID) ->
+    crossbar_doc:save(Context).
+post(Context, MediaID, ?BIN_DATA) ->
+    update_media_binary(MediaID, Context).
+
 -spec delete/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
 -spec delete/3 :: (#cb_context{}, path_token(), path_token()) -> #cb_context{}.
+
 delete(Context, _MediaID) ->
-    delete_media(Context).
+    crossbar_doc:delete(Context).
 delete(Context, MediaID, ?BIN_DATA) ->
     delete_media_binary(MediaID, Context).
 
-%%%===================================================================
-%%% Internal functions
-%%%===================================================================
--spec create_media_meta/2 :: (wh_json:json_object(), #cb_context{}) -> #cb_context{}.
-create_media_meta(Data, Context) ->
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Attempt to load a summarized list of media
+%% @end
+%%--------------------------------------------------------------------
+-spec load_media_summary/1 :: (Context :: #cb_context{}) -> #cb_context{}.
+load_media_summary(Context) ->
+    crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Load a media document from the database
+%% @end
+%%--------------------------------------------------------------------
+-spec load_media_meta/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
+load_media_meta(MediaId, Context) ->
+    crossbar_doc:load(MediaId, Context).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Create a new media_meta document with the data provided, if it is valid
+%% @end
+%%--------------------------------------------------------------------
+-spec create_media_meta/1 :: (#cb_context{}) -> #cb_context{}.
+create_media_meta(#cb_context{req_data=Data}=Context) ->
     case wh_json_validator:is_valid(Data, <<"media">>) of
         {fail, Errors} ->
             crossbar_util:response_invalid_data(Errors, Context);
@@ -213,69 +242,83 @@ create_media_meta(Data, Context) ->
             Context#cb_context{doc=JObj1, resp_status=success}
     end.
 
--spec update_media_binary/4 :: (ne_binary(), ne_binary(), #cb_context{}, wh_json:json_object()) -> #cb_context{}.
-update_media_binary(MediaID, Contents, Context, HeadersJObj) ->
-    CT = wh_json:get_value(<<"content_type">>, HeadersJObj, <<"application/octet-stream">>),
-    Opts = [{headers, [{content_type, wh_util:to_list(CT)}]}],
-
-    lager:debug("file content type: ~s", [CT]),
-
-    case crossbar_doc:save_attachment(MediaID, attachment_name(), Contents, Context, Opts) of
-        #cb_context{resp_status=success}=Context1 ->
-            lager:debug("saved attachement successfully"),
-            #cb_context{doc=Doc} = crossbar_doc:load(MediaID, Context),
-            Doc1 = wh_json:set_values([{<<"content_type">>, CT}
-                                       ,{<<"content_length">>, wh_json:get_integer_value(<<"content_length">>, HeadersJObj)}
-                                      ], Doc),
-            crossbar_doc:save(Context1#cb_context{doc=Doc1});
-        C ->
-            lager:debug("failed to save attachment"),
-            C
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Update an existing media document with the data provided, if it is
+%% valid
+%% @end
+%%--------------------------------------------------------------------
+-spec update_media_meta/2 :: (binary(), #cb_context{}) -> #cb_context{}.
+update_media_meta(MediaId, #cb_context{req_data=Data}=Context) ->
+    case wh_json_validator:is_valid(Data, <<"media">>) of
+        {fail, Errors} ->
+            crossbar_util:response_invalid_data(Errors, Context);
+        {pass, JObj} ->
+            crossbar_doc:load_merge(MediaId, add_pvt_type(JObj, Context), Context)
     end.
 
-%% GET /media
--spec lookup_media/1 :: (Context :: #cb_context{}) -> #cb_context{}.
-lookup_media(Context) ->
-    case crossbar_doc:load_view(<<"media/crossbar_listing">>, [], Context) of
-        #cb_context{resp_status=success, doc=Doc}=Context1 ->
-            Resp = [ wh_json:get_value(<<"value">>, ViewObj) || ViewObj <- Doc ],
-            crossbar_util:response(Resp, Context1);
-        C -> C
-    end.
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Normalizes the resuts of a view
+%% @end
+%%--------------------------------------------------------------------
+-spec(normalize_view_results/2 :: (Doc :: wh_json:json_object(), Acc :: wh_json:json_objects()) -> wh_json:json_objects()).
+normalize_view_results(JObj, Acc) ->
+    [wh_json:get_value(<<"value">>, JObj)|Acc].
 
-%% GET/POST/DELETE /media/MediaID
--spec get_media_doc/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
-get_media_doc(MediaID, Context) ->
-    crossbar_doc:load(MediaID, Context).
-
-%% GET/DELETE /media/MediaID/raw
-get_media_binary(MediaID, Context) ->
-    case crossbar_doc:load(MediaID, Context) of
-        #cb_context{resp_status=success, doc=MediaMeta} ->
-            case wh_json:get_keys(wh_json:get_value([<<"_attachments">>], MediaMeta)) of
-                [] -> crossbar_util:response_bad_identifier(MediaID, Context);
-                [AttachmentID|_] ->
-                    Context1 = crossbar_doc:load_attachment(MediaMeta, AttachmentID, Context),
-                    [Type, SubType] = binary:split(content_type_of(MediaMeta), <<"/">>),
-                    lager:debug("getting media of type ~s/~s", [Type, SubType]),
-                    Context1#cb_context{content_types_provided=[{to_binary, [{Type, SubType}]}]}
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Load the binary attachment of a media doc
+%% @end
+%%--------------------------------------------------------------------
+-spec load_media_binary/2 :: (path_token(), #cb_context{}) -> #cb_context{}.
+load_media_binary(MediaId, #cb_context{resp_headers=RespHeaders}=Context) ->
+    case load_media_meta(MediaId, Context) of
+        #cb_context{resp_status=success, doc=JObj} ->
+            MediaMeta = wh_json:get_value([<<"_attachments">>], JObj),
+            case wh_json:get_keys(MediaMeta) of
+                [] -> crossbar_util:response_bad_identifier(MediaId, Context);
+                [Attachment|_] ->
+                    Context1 = crossbar_doc:load_attachment(JObj, Attachment, Context),
+                    Context1#cb_context{resp_headers = [{<<"Content-Disposition">>, <<"attachment; filename=", Attachment/binary>>}
+                                                        ,{<<"Content-Type">>, wh_json:get_value([Attachment, <<"content_type">>], MediaMeta)}
+                                                        ,{<<"Content-Length">>, wh_json:get_value([Attachment, <<"length">>], MediaMeta)}
+                                                        | RespHeaders
+                                                       ]
+                                       ,resp_etag=undefined}
             end;
         Context1 -> Context1
     end.
 
-%% check for existence of media by name
--spec lookup_media_by_name/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
-lookup_media_by_name(MediaName, Context) ->
-    crossbar_doc:load_view(<<"media/listing_by_name">>, [{<<"key">>, MediaName}], Context).
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Update the binary attachment of a media doc
+%% @end
+%%--------------------------------------------------------------------
+-spec update_media_binary/2 :: (path_token(), #cb_context{}) -> #cb_context{}.
+update_media_binary(MediaID, #cb_context{doc=JObj, req_files=[{Filename, FileObj}], db_name=Db}=Context) ->
+    Contents = wh_json:get_value(<<"contents">>, FileObj),
+    CT = wh_json:get_value([<<"headers">>, <<"content_type">>], FileObj),
+    lager:debug("file content type: ~s", [CT]),
+    Opts = [{headers, [{content_type, wh_util:to_list(CT)}]}],
+    OldAttachments = wh_json:get_value(<<"_attachments">>, JObj, wh_json:new()),
+    Id = wh_json:get_value(<<"_id">>, JObj),
+    [couch_mgr:delete_attachment(Db, Id, Attachment)
+     || Attachment <- wh_json:get_keys(OldAttachments)
+    ],
+    crossbar_doc:save_attachment(MediaID, attachment_name(Filename, CT), Contents, Context, Opts).
 
-%% check for existence of media by id
--spec(lookup_media_by_id/2 :: (MediaID :: binary(), Context :: #cb_context{}) -> #cb_context{}).
-lookup_media_by_id(MediaID, Context) ->
-    crossbar_doc:load_view(<<"media/crossbar_listing">>, [{<<"key">>, MediaID}], Context).
-
-delete_media(Context) ->
-    crossbar_doc:delete(Context).
-
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Delete the binary attachment of a media doc
+%% @end
+%%--------------------------------------------------------------------
+-spec delete_media_binary/2 :: (path_token(), #cb_context{}) -> #cb_context{}.
 delete_media_binary(MediaID, Context) ->
     case crossbar_doc:load(MediaID, Context) of
         #cb_context{resp_status=success, doc=MediaMeta} ->
@@ -288,20 +331,44 @@ delete_media_binary(MediaID, Context) ->
         Context1 -> Context1
     end.
 
--spec attachment_name/0 :: () -> ne_binary().
-attachment_name() ->
-    wh_util:to_hex_binary(crypto:rand_bytes(16)).
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Generate an attachment name if one is not provided and ensure
+%% it has an extension (for the associated content type)
+%% @end
+%%--------------------------------------------------------------------
+-spec attachment_name/2 :: (ne_binary(), ne_binary()) -> ne_binary().
+attachment_name(Filename, CT) ->
+    Generators = [fun(A) ->
+                          case wh_util:is_empty(A) of
+                              true -> wh_util:to_hex_binary(crypto:rand_bytes(16));
+                              false -> A
+                          end
+                  end
+                  ,fun(A) ->
+                           case wh_util:is_empty(filename:extension(A)) of
+                               false -> A;
+                               true ->
+                                   <<A/binary, ".", (content_type_to_extension(CT))/binary>>
+                           end
+                   end
+                 ],
+    lists:foldr(fun(F, A) -> F(A) end, Filename, Generators).
 
--spec content_type_of/1 :: (wh_json:json_object()) -> ne_binary().
-content_type_of(JObj) ->
-    case wh_json:get_value(<<"content_type">>, JObj) of
-        undefined ->
-            case wh_json:get_keys(wh_json:get_value([<<"_attachments">>], JObj, wh_json:new())) of
-                [] -> <<"application/octect-stream">>;
-                [Key|_] -> wh_json:get_value([Key, <<"content_type">>], JObj, <<"application/octet-stream">>)
-            end;
-        CT -> CT
-    end.
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Convert known media types to extensions
+%% @end
+%%--------------------------------------------------------------------
+-spec content_type_to_extension/1 :: (ne_binary()) -> ne_binary().
+content_type_to_extension(<<"audio/wav">>) -> <<"wav">>;
+content_type_to_extension(<<"audio/x-wav">>) -> <<"wav">>;
+content_type_to_extension(<<"audio/mpeg">>) -> <<"mp3">>;
+content_type_to_extension(<<"audio/mpeg3">>) -> <<"mp3">>;
+content_type_to_extension(<<"audio/mp3">>) -> <<"mp3">>;
+content_type_to_extension(<<"audio/ogg">>) -> <<"ogg">>.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -313,3 +380,7 @@ content_type_of(JObj) ->
 -spec add_pvt_type/2 :: (wh_json:json_object(), #cb_context{}) -> wh_json:json_object().
 add_pvt_type(JObj, _) ->
     wh_json:set_value(<<"pvt_type">>, ?PVT_TYPE, JObj).
+
+-spec add_media_source/2 :: (wh_json:json_object(), #cb_context{}) -> wh_json:json_object().
+add_media_source(JObj, _) ->
+    wh_json:set_value(<<"media_source">>, <<"upload">>, JObj).

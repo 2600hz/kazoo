@@ -383,26 +383,23 @@ is_valid_attribute({<<"maxLength">>, Max, _}, JObj, Key) ->
 
 %% 5.19
 is_valid_attribute({<<"enum">>, Enums, _}, JObj, Key) ->
-    Instance = wh_json:get_value(Key, JObj),
-    case check_valid_type(Instance, <<"array">>) of
-        false -> 
+    Instance =  wh_json:get_value(Key, JObj),
+    I = case check_valid_type(Instance, <<"array">>) of
+            true -> Instance;
+            false -> [Instance]
+        end,            
+    case lists:all(fun(Elem) -> 
+                           try [are_same_items(Enum, Elem) || Enum <- Enums] of
+                               [] -> true;
+                               _ -> false
+                           catch
+                               throw:{duplicate_found, _} -> true
+                           end
+                   end, I) of
+        true ->
             {pass, JObj};
-        true when length(Instance) =:= 0 ->
-            {pass, JObj};
-        true -> 
-            case lists:all(fun(Elem) -> 
-                                   try [are_same_items(Enum, Elem) || Enum <- Enums] of
-                                       [] -> true;
-                                       _ -> false
-                                   catch
-                                       throw:{duplicate_found, _} -> true
-                                   end
-                           end, Instance) of
-                true ->
-                    {pass, JObj};
-                false ->
-                    {fail, {Key, <<"enum:Value not found in enumerated list of values">>}}
-            end
+        false ->
+            {fail, {Key, <<"enum:Value not found in enumerated list of values">>}}
     end;
 
 %% 5.23
@@ -988,8 +985,8 @@ max_length_test() ->
 %%     Enumeration of all possible values that are valid for the instance property
 enum_test() ->
     Schema = "{ \"enum\": [\"foobar\", \"barfoo\"]}",
-    Succeed = [?STR1, ?PI, ?NULL, ?TRUE, ?FALSE, ?NEG1, ?ZERO, ?POS1, ?STR2, ?ARR1, ?ARR2, ?ARR3, ?OBJ1],
-    Fail = [?ARR4, ?ARR5, ?ARR6, ?ARR7, ?ARR8],
+    Succeed = [?STR1, ?STR2, ?ARR1, ?ARR2, ?ARR3],
+    Fail = [?PI, ?NULL, ?TRUE, ?FALSE, ?NEG1, ?ZERO, ?POS1, ?OBJ1, ?ARR4, ?ARR5, ?ARR6, ?ARR7, ?ARR8],
 
     validate_test(Succeed, Fail, Schema).
 

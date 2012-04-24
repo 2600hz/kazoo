@@ -191,61 +191,31 @@ find_attachment([Db, Doc, first]) ->
                  true -> Db;
                  false -> wh_util:format_account_id(Db, encoded)
              end,
-
     lager:debug("trying to find first attachment in doc ~s in db ~s", [Doc, DbName]),
-
     case couch_mgr:open_doc(DbName, Doc) of
         {ok, JObj} ->
-            case is_streamable(JObj)
-                andalso wh_json:get_value(<<"_attachments">>, JObj, false) of
-                false ->
-                    lager:debug("isn't streamable or no attachments found"),
-                    no_data;
+            case wh_json:get_value(<<"_attachments">>, JObj, []) of
+                [] -> no_data;
                 Attachments ->
                     {Attachment, MetaData} = hd(wh_json:to_proplist(Attachments)),
-                    lager:debug("found attachment to stream: ~s", [Attachment]),
-
-                    case wh_json:get_value(<<"content_type">>, JObj) of
-                        undefined ->
-                            {DbName, Doc, Attachment, MetaData};
-                        CT ->
-                            lager:debug("overwriting content type in metadata with ~s", [CT]),
-                            {DbName, Doc, Attachment, wh_json:set_value(<<"content_type">>, CT, MetaData)}
-                    end
+                    {DbName, Doc, Attachment, MetaData}
             end;
-        _->
-            not_found
+        _ -> not_found
     end;
 find_attachment([Db, Doc, Attachment]) ->
     DbName = case couch_mgr:db_exists(Db) of
                  true -> Db;
                  false -> wh_util:format_account_id(Db, encoded)
              end,
-
     lager:debug("trying to find ~s in doc ~s in db ~s", [Attachment, Doc, DbName]),
-
     case couch_mgr:open_doc(DbName, Doc) of
         {ok, JObj} ->
-            case is_streamable(JObj)
-                andalso wh_json:get_value([<<"_attachments">>, Attachment], JObj, false) of
-                false ->
-                    no_data;
-                MetaData ->
-                    case wh_json:get_value(<<"content_type">>, JObj) of
-                        undefined ->
-                            {DbName, Doc, Attachment, MetaData};
-                        CT ->
-                            lager:debug("overwriting content type in metadata with ~s", [CT]),
-                            {DbName, Doc, Attachment, wh_json:set_value(<<"content_type">>, CT, MetaData)}
-                    end
+            case wh_json:get_value([<<"_attachments">>, Attachment], JObj, false) of
+                undefined -> no_data;
+                MetaData -> {DbName, Doc, Attachment, MetaData}
             end;
-        _ ->
-            not_found
+        _ -> not_found
     end.
-
--spec is_streamable/1 :: (wh_json:json_object()) -> boolean().
-is_streamable(JObj) ->
-    wh_json:is_true(<<"streamable">>, JObj, true).
 
 send_error_resp(JObj, ErrCode, <<>>) ->
     MediaName = wh_json:get_value(<<"Media-Name">>, JObj),
