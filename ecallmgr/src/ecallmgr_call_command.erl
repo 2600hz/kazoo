@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010 VoIP INC
+%%% @copyright (C) 2010-2012 VoIP INC
 %%% @doc
 %%% Execute call commands
 %%% @end
@@ -17,7 +17,9 @@
 -type io_device() :: pid() | fd().
 -type file_stream_state() :: {'undefined' | io_device(), binary()}.
 
--spec exec_cmd/4 :: (atom(), ne_binary(), wh_json:json_object(), pid()) -> 'ok' | 'timeout' | {'error', ne_binary()}.
+-spec exec_cmd/4 :: (atom(), ne_binary(), wh_json:json_object(), pid()) -> 'ok' |
+                                                                           'timeout' |
+                                                                           {'error', ne_binary()}.
 exec_cmd(Node, UUID, JObj, ControlPID) ->
     DestID = wh_json:get_value(<<"Call-ID">>, JObj),
     App = wh_json:get_value(<<"Application-Name">>, JObj),
@@ -46,9 +48,9 @@ exec_cmd(Node, UUID, JObj, ControlPID) ->
 %% the FS ESL via mod_erlang_event
 %% @end
 %%--------------------------------------------------------------------
--spec get_fs_app/4 :: (atom(), ne_binary(), wh_json:json_object(), ne_binary()) -> {ne_binary(), ne_binary() | 'noop'}
-                                                                               | {'return', 'ok'}
-                                                                               | {'error', ne_binary()}.
+-spec get_fs_app/4 :: (atom(), ne_binary(), wh_json:json_object(), ne_binary()) -> {ne_binary(), ne_binary() | 'noop'} |
+                                                                                   {'return', 'ok'} |
+                                                                                   {'error', ne_binary()}.
 get_fs_app(_Node, _UUID, JObj, <<"noop">>) ->
     case wapi_dialplan:noop_v(JObj) of
         false ->
@@ -132,24 +134,28 @@ get_fs_app(Node, UUID, JObj, <<"record_call">>) ->
 
             case wh_json:get_value(<<"Record-Action">>, JObj) of
                 <<"start">> ->
-                    Media = ecallmgr_media_registry:register_local_media(MediaName, UUID),
+                    Media = case wh_json:get_value(<<"Stream-To">>, JObj, <<"remote">>) of
+                                <<"local">> -> <<"${sound_prefix}/", MediaName/binary>>;
+                                _ -> ecallmgr_media_registry:register_local_media(MediaName, UUID)
+                            end,
 
+                    _ = set(Node, UUID, <<"RECORD_APPEND=true">>), % allow recording to be appended to
                     _ = set(Node, UUID, <<"enable_file_write_buffering=false">>), % disable buffering to see if we get all the media
 
                     %% UUID start path/to/media limit
                     RecArg = binary_to_list(list_to_binary([
-                                                            <<"start ">>
-                                                            ,Media, <<" ">>
-                                                            ,wh_json:get_string_value(<<"Time-Limit">>, JObj, "20"), " "
+                                                            UUID, <<"start ">>
+                                                           ,Media, <<" ">>
+                                                           ,wh_json:get_string_value(<<"Time-Limit">>, JObj, "20")
                                                            ])),
                     {<<"record_call">>, RecArg};
                 <<"stop">> ->
-                    MediaUrl = ecallmgr_media_registry:register_local_media(MediaName, UUID, url),
+                    Media = case wh_json:get_value(<<"Stream-To">>, JObj, <<"remote">>) of
+                                <<"local">> -> <<"${sound_prefix}/", MediaName/binary>>;
+                                _ -> ecallmgr_media_registry:register_local_media(MediaName, UUID, url)
+                            end,
                     %% UUID stop path/to/media
-                    RecArg = binary_to_list(list_to_binary([
-                                                            <<"stop ">>
-                                                            ,MediaUrl
-                                                           ])),
+                    RecArg = binary_to_list(list_to_binary([UUID, <<"stop ">>, Media])),
                     {<<"record_call">>, RecArg}
             end
     end;
@@ -346,9 +352,9 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>) ->
                                            DP
                                    end
                            end
-                          ,fun(DP) -> 
+                          ,fun(DP) ->
                                    case freeswitch:api(Node, uuid_dump, wh_util:to_list(UUID)) of
-                                       {'ok', Result} -> 
+                                       {'ok', Result} ->
                                            Props = ecallmgr_util:eventstr_to_proplist(Result),
                                            case props:get_value(<<"variable_hold_music">>, Props) of
                                                undefined ->
@@ -449,7 +455,7 @@ get_fs_app(Node, UUID, JObj, <<"execute_extension">>) ->
                                        true -> DP;
                                        false ->
                                            ChannelVars = wh_json:to_proplist(CCVs),
-                                           [{"application", <<"set ", (get_fs_kv(K, V, UUID))/binary>>} 
+                                           [{"application", <<"set ", (get_fs_kv(K, V, UUID))/binary>>}
                                             || {K, V} <- ChannelVars] ++ DP
                                    end
                            end
@@ -487,18 +493,18 @@ get_fs_app(Node, UUID, JObj, <<"tone_detect">>) ->
 
             SuccessJObj = case wh_json:get_value(<<"On-Success">>, JObj, []) of
                               %% default to parking the call
-                              [] -> 
+                              [] ->
                                   [{<<"Application-Name">>, <<"park">>} | wh_api:extract_defaults(JObj)];
-                              AppJObj -> 
+                              AppJObj ->
                                   wh_json:from_list(AppJObj ++ wh_api:extract_defaults(JObj))
                           end,
-            
+
             {SuccessApp, SuccessData} = case get_fs_app(Node, UUID, SuccessJObj
-                                                        ,wh_json:get_value(<<"Application-Name">>, SuccessJObj)) of 
+                                                        ,wh_json:get_value(<<"Application-Name">>, SuccessJObj)) of
                                             %% default to park if passed app isn't right
-                                            {'error', _Str} -> 
+                                            {'error', _Str} ->
                                                 {<<"park">>, <<>>};
-                                            {_, _}=Success -> 
+                                            {_, _}=Success ->
                                                 Success
                                         end,
 
@@ -594,8 +600,7 @@ send_cmd(Node, UUID, <<"hangup">>, _) ->
     lager:debug("terminate call on node ~s", [Node]),
     _ = ecallmgr_util:fs_log(Node, "whistle terminating call", []),
     freeswitch:api(Node, uuid_kill, wh_util:to_list(UUID));
-send_cmd(Node, UUID, <<"record_call">>, Args) ->
-    Cmd = list_to_binary([UUID, " ", Args]),
+send_cmd(Node, _UUID, <<"record_call">>, Cmd) ->
     lager:debug("execute on node ~s: uuid_record(~s)", [Node, Cmd]),
     Ret = freeswitch:api(Node, uuid_record, wh_util:to_list(Cmd)),
     lager:debug("executing uuid_record returned ~p", [Ret]),
@@ -607,9 +612,9 @@ send_cmd(Node, UUID, <<"xferext">>, Dialplan) ->
     XferExt = [begin
                    _ = ecallmgr_util:fs_log(Node, "whistle queuing command in 'xferext' extension: ~s", [V]),
                    lager:debug("building xferext on node ~s: ~s", [Node, V]),
-                   {wh_util:to_list(K), wh_util:to_list(V)}    
+                   {wh_util:to_list(K), wh_util:to_list(V)}
                end || {K, V} <- Dialplan],
-    ok = freeswitch:sendmsg(Node, UUID, [{"call-command", "xferext"}] ++ XferExt),
+    ok = freeswitch:sendmsg(Node, UUID, [{"call-command", "xferext"} | XferExt]),
     ecallmgr_util:fs_log(Node, "whistle transfered call to 'xferext' extension", []);
 send_cmd(Node, UUID, AppName, Args) ->
     lager:debug("execute on node ~s: ~s(~s)", [Node, AppName, Args]),
@@ -712,7 +717,8 @@ stream_over_http(Node, UUID, File, Method, JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec stream_file/1 :: (file_stream_state()) -> {'ok', ne_binary(), file_stream_state()} | 'eof'.
+-spec stream_file/1 :: (file_stream_state()) -> {'ok', ne_binary(), file_stream_state()} |
+                                                'eof'.
 stream_file({undefined, File}) ->
     true = filelib:is_regular(File),
     {ok, Iod} = file:open(File, [read, raw, binary]),
@@ -731,7 +737,8 @@ stream_file({Iod, _File}=State) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec set_terminators/3 :: (atom(), ne_binary(), 'undefined' | binary()) -> 'ok' | fs_api_ret().
+-spec set_terminators/3 :: (atom(), ne_binary(), 'undefined' | binary()) -> 'ok' |
+                                                                            fs_api_ret().
 set_terminators(_Node, _UUID, undefined) -> 'ok';
 set_terminators(Node, UUID, <<>>) -> set(Node, UUID, <<"playback_terminators=none">>);
 set_terminators(Node, UUID, Ts) ->
@@ -835,24 +842,23 @@ send_store_call_event(Node, UUID, MediaTransResults) ->
 -spec create_dialplan_move_ccvs/4 :: (ne_binary(), atom(), ne_binary(), proplist()) -> proplist().
 create_dialplan_move_ccvs(Root, Node, UUID, DP) ->
     case freeswitch:api(Node, uuid_dump, wh_util:to_list(UUID)) of
-        {'ok', Result} -> 
+        {'ok', Result} ->
             Props = ecallmgr_util:eventstr_to_proplist(Result),
-            lists:foldr(fun({<<"variable_", ?CHANNEL_VAR_PREFIX, Key/binary>>, Val}, Acc) -> 
+            lists:foldr(fun({<<"variable_", ?CHANNEL_VAR_PREFIX, Key/binary>>, Val}, Acc) ->
                                 [{"application"
                                   ,<<"unset ", ?CHANNEL_VAR_PREFIX, Key/binary>>}
                                  ,{"application"
                                    ,<<"set ",?CHANNEL_VAR_PREFIX, Root/binary ,Key/binary, "=", Val/binary>>}
                                  |Acc
                                 ];
-                           ({<<?CHANNEL_VAR_PREFIX, K/binary>> = Key, Val}, Acc) -> 
+                           ({<<?CHANNEL_VAR_PREFIX, K/binary>> = Key, Val}, Acc) ->
                                 [{"application", <<"unset ", Key/binary>>}
                                  ,{"application", <<"set ", ?CHANNEL_VAR_PREFIX, Root/binary, K/binary, "=", Val/binary>>}
                                  |Acc];
-                           (_, Acc) -> 
+                           (_, Acc) ->
                                 Acc
                         end, DP, Props);
-        _Error -> 
+        _Error ->
             lager:debug("failed to get result from uuid_dump for ~s", [UUID]),
             DP
     end.
-        
