@@ -65,38 +65,6 @@
          "type":"boolean",
          "default":false
       },
-      "apps":{
-         "description":"The applications the user has enabled in the GUI",
-         "type":"object",
-         "enum":[
-            "cluster",
-            "voip",
-            "userportal",
-            "connectivity"
-         ],
-         "properties":{
-            "label":{
-               "description":"The display name of the application",
-               "type":"string",
-               "pattern":"^[0-9A-Za-z_]*$",
-               "maxLength":25
-            },
-            "icon":{
-               "description":"The display icon of the application",
-               "type":"string",
-               "pattern":"^[0-9A-Za-z_]*$",
-               "maxLength":25
-            },
-            "api_url":{
-               "description":"The API url of the application",
-               "type":"string",
-               "maxLength":64
-            }
-         },
-         "default":{
-
-         }
-      },
       "caller_id":{
          "description":"The default caller ID parameters",
          "type":"object",
