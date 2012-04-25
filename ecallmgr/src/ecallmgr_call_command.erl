@@ -151,7 +151,7 @@ get_fs_app(Node, UUID, JObj, <<"record_call">>) ->
                     {<<"record_call">>, RecArg};
                 <<"stop">> ->
                     Media = case wh_json:get_value(<<"Stream-To">>, JObj, <<"remote">>) of
-                                <<"local">> -> <<"${sound_prefix}/", MediaName/binary>>;
+                                <<"local">> -> MediaName;
                                 _ -> ecallmgr_media_registry:register_local_media(MediaName, UUID, url)
                             end,
                     %% UUID stop path/to/media
