@@ -16,7 +16,7 @@
 -export([answer/1, hangup/1, set/3, fetch/1, fetch/2]).
 -export([ring/1]).
 -export([call_status/1, call_status/2, channel_status/1, channel_status/2]).
--export([bridge/2, bridge/3, bridge/4, bridge/5, bridge/6]).
+-export([bridge/2, bridge/3, bridge/4, bridge/5, bridge/6, bridge/7]).
 -export([hold/1, b_hold/1, b_hold/2]).
 -export([presence/2, presence/3]).
 -export([play/2, play/3]).
@@ -40,7 +40,7 @@
 -export([b_answer/1, b_hangup/1, b_fetch/1, b_fetch/2]).
 -export([b_ring/1]).
 -export([b_call_status/1, b_call_status/2, b_channel_status/1, b_channel_status/2]).
--export([b_bridge/2, b_bridge/3, b_bridge/4, b_bridge/5, b_bridge/6]).
+-export([b_bridge/2, b_bridge/3, b_bridge/4, b_bridge/5, b_bridge/6, b_bridge/7]).
 -export([b_play/2, b_play/3]).
 -export([b_prompt/2, b_prompt/3]).
 -export([b_record/2, b_record/3, b_record/4, b_record/5, b_record/6]).
@@ -419,12 +419,15 @@ wait_for_our_channel_status(CallId) ->
 -spec bridge/4 :: (wh_json:json_objects(), whapps_api_binary(), whapps_api_binary(), whapps_call:call()) -> 'ok'.
 -spec bridge/5 :: (wh_json:json_objects(), whapps_api_binary(), whapps_api_binary(), whapps_api_binary(), whapps_call:call()) -> 'ok'.
 -spec bridge/6 :: (wh_json:json_objects(), whapps_api_binary(), whapps_api_binary(), whapps_api_binary(), whapps_api_binary(), whapps_call:call()) -> 'ok'.
+-spec bridge/7 :: (wh_json:json_objects(), whapps_api_binary(), whapps_api_binary(), whapps_api_binary(), whapps_api_binary(), wh_json:json_object(), whapps_call:call()) -> 'ok'.
 
 -spec b_bridge/2 :: (wh_json:json_objects(), whapps_call:call()) -> whapps_api_bridge_return().
 -spec b_bridge/3 :: (wh_json:json_objects(), whapps_api_binary(), whapps_call:call()) -> whapps_api_bridge_return().
 -spec b_bridge/4 :: (wh_json:json_objects(), whapps_api_binary(), whapps_api_binary(), whapps_call:call()) -> whapps_api_bridge_return().
 -spec b_bridge/5 :: (wh_json:json_objects(), whapps_api_binary(), whapps_api_binary(), whapps_api_binary(), whapps_call:call()) -> whapps_api_bridge_return().
 -spec b_bridge/6 :: (wh_json:json_objects(), whapps_api_binary(), whapps_api_binary(), whapps_api_binary(), whapps_api_binary(), whapps_call:call()) 
+                    -> whapps_api_bridge_return().
+-spec b_bridge/7 :: (wh_json:json_objects(), whapps_api_binary(), whapps_api_binary(), whapps_api_binary(), whapps_api_binary(), whapps_call:call(), wh_json:json_object()) 
                     -> whapps_api_bridge_return().
 
 bridge(Endpoints, Call) ->
@@ -436,12 +439,15 @@ bridge(Endpoints, Timeout, Strategy, Call) ->
 bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Call) ->
     bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, undefined, Call).
 bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, Call) ->
+    bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, undefined, Call).
+bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, Call) ->
     Command = [{<<"Application-Name">>, <<"bridge">>}
                ,{<<"Endpoints">>, Endpoints}
                ,{<<"Timeout">>, Timeout}
                ,{<<"Ignore-Early-Media">>, IgnoreEarlyMedia}
                ,{<<"Ringback">>, cf_util:correct_media_path(Ringback, Call)}
                ,{<<"Dial-Endpoint-Method">>, Strategy}
+               ,{<<"SIP-Headers">>, SIPHeaders}
               ],
     send_command(Command, Call).
 
@@ -454,7 +460,9 @@ b_bridge(Endpoints, Timeout, Strategy, Call) ->
 b_bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Call) ->
     b_bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, undefined, Call).
 b_bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, Call) ->
-    bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, Call),
+    b_bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, undefined, Call).
+b_bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, Call) ->
+    bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, Call),
     case wait_for_bridge((wh_util:to_integer(Timeout)*1000) + 10000, Call) of
         {ok, _}=Ok ->
             Ok;

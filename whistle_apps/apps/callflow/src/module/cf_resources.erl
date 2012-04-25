@@ -105,6 +105,7 @@ create_endpoint(DestNum, JObj, Call) ->
                 ,{<<"Codecs">>, wh_json:get_value(<<"codecs">>, JObj)}
                 ,{<<"Custom-Channel-Vars">>, wh_json:from_list([{<<"Account-ID">>, whapps_call:account_id(Call)}
                                                                 ,{<<"From-URI">>, maybe_from_uri(AccountDb, JObj, CNum)}
+                                                                ,{<<"Ignore-Display-Updates">>, <<"true">>}
                                                                ])}
                ],
     wh_json:from_list([ KV || {_, V}=KV <- Endpoint, V =/= undefined ]).

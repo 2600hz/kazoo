@@ -86,6 +86,7 @@
                                ,{<<"From-URI">>, <<"sip_from_uri">>}
                                ,{<<"Bypass-Media">>, <<"bypass_media">>}
                                ,{<<"Origination-UUID">>, <<"origination_uuid">>}
+                               ,{<<"Ignore-Display-Updates">>, <<"ignore_display_updates">>}
                                %% ,{<<"Hold-Media">>, <<"hold_music">>}
                               ]).
 
