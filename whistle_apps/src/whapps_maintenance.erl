@@ -339,7 +339,7 @@ migrate_attachment(AccountDb, ViewJObj) ->
                     lager:debug("media doc ~s/~s has no attachments, removing", [AccountDb, Id]),
                     couch_mgr:save_doc(AccountDb, wh_json:set_value(<<"pvt_deleted">>, true, JObj1));
                 Attachments ->
-                    [migrate_attachment(AccountDb, JObj1, Attachment, wh_json:get_value(Attachment, Attachments)) 
+                    [catch migrate_attachment(AccountDb, JObj1, Attachment, wh_json:get_value(Attachment, Attachments)) 
                      || Attachment <- wh_json:get_keys(Attachments)
                     ],
                     ok
@@ -352,13 +352,15 @@ migrate_attachment(AccountDb, ViewJObj) ->
             J = wh_json:delete_keys([<<"status">>, <<"content_size">>, <<"size">>, <<"content_type">>
                                          ,<<"content_length">>, <<"format">>, <<"sample">>, <<"media_type">>
                                     ], JObj2),
-            Result = case wh_json:get_value(<<"source_id">>, J) of
-                    undefined ->
-                        couch_mgr:save_doc(AccountDb, wh_json:set_value(<<"media_source">>, <<"upload">>, J));
-                    _Else ->
-                        couch_mgr:save_doc(AccountDb, wh_json:set_value(<<"media_source">>, <<"recording">>, J))
+            Result = case J =/= JObj2 andalso wh_json:get_value(<<"source_id">>, J) of
+                         false -> no_need;
+                         undefined ->
+                             couch_mgr:save_doc(AccountDb, wh_json:set_value(<<"media_source">>, <<"upload">>, J));
+                         _Else ->
+                             couch_mgr:save_doc(AccountDb, wh_json:set_value(<<"media_source">>, <<"recording">>, J))
                 end,
             case Result of
+                no_need -> ok;
                 {ok, _} ->
                     lager:info("removed depreciated properties from ~s/~s", [AccountDb, Id]);
                 {error, _}=E3 ->
@@ -376,10 +378,16 @@ migrate_attachment(AccountDb, ViewJObj) ->
 migrate_attachment(AccountDb, JObj, Attachment, MetaData) ->
     DocCT = wh_json:get_value(<<"content_type">>, JObj),
     MetaCT = wh_json:get_value(<<"content_type">>, MetaData),
-    Migrations = [fun({A, CT}) ->
-                          case is_audio_content(DocCT) of
-                              false -> {A, CT};
-                              true -> {A, DocCT}
+    Migrations = [fun({A, _CT}) ->
+                          case {is_audio_content(DocCT), is_audio_content(MetaCT)} of
+                              {_, true} -> {A, MetaCT};
+                              {true, _} -> {A, DocCT};
+                              {_, _} ->
+                                  Ext = wh_util:to_list(filename:extension(A)),
+                                  case mochiweb_mime:from_extension(Ext) of
+                                      undefined -> {A, <<"audio/mpeg">>};
+                                      MIME -> {A, wh_util:to_binary(MIME)}
+                                  end
                           end
                   end  
                   ,fun({A, CT}) ->
@@ -412,32 +420,52 @@ maybe_update_attachment(AccountDb, Id, {OrigAttch, _CT1}, {NewAttch, CT}) ->
     %% 4. Remove the original (erronous) attachment
     %% However, if it failes at any of those stages it will leave the media doc with multiple
     %%    attachments and require manual intervention
-    Updaters = [fun(_) -> couch_mgr:fetch_attachment(AccountDb, Id, OrigAttch) end
-                ,fun({ok, Content}) ->
-                         Options = [{headers, [{content_type, wh_util:to_list(CT)}]}],
-                         case couch_mgr:put_attachment(AccountDb, Id, NewAttch, Content, Options) of
-                             {error, _}=E -> 
-                                 lager:info("unable to put new attachment ~s/~s/~s: ~p", [AccountDb, Id, NewAttch, E]),
-                                 E;
-                             {ok, _} -> 
+    Updaters = [fun(_) -> 
+                        case couch_mgr:fetch_attachment(AccountDb, Id, OrigAttch) of
+                            {ok, _}=Ok -> Ok;
+                            {error, _}=E ->
+                                lager:info("unable to fetch attachment ~s/~s/~s: ~p", [AccountDb, Id, OrigAttch, E]),
+                                E
+                            end
+                end
+                ,fun({ok, Content1}) ->
+                         {'ok', Rev} = couch_mgr:lookup_doc_rev(AccountDb, Id),
+                         Options = [{headers, [{content_type, wh_util:to_list(CT)}]}
+                                    ,{rev, Rev}
+                                   ],
+                         %% bigcouch is awesome in that it sometimes returns 409 (conflict) but does the work anyway..
+                         %%   so rather than check the put return fetch the new attachment and compare it to the old 
+                         Result = couch_mgr:put_attachment(AccountDb, Id, NewAttch, Content1, Options),
+                         {ok, JObj} = couch_mgr:open_doc(AccountDb, Id),
+                         case wh_json:get_value([<<"_attachments">>, OrigAttch, <<"length">>], JObj) =:= wh_json:get_value([<<"_attachments">>, NewAttch, <<"length">>], JObj) of
+                             false -> 
+                                 lager:info("unable to put new attachment ~s/~s/~s: ~p", [AccountDb, Id, NewAttch, Result]),
+                                 {error, length_mismatch};
+                             true -> 
                                  Filename = wh_util:to_list(<<"/tmp/media_", Id/binary, "_", OrigAttch/binary>>),
-                                 file:write_file(Filename, Content)
-                         end;
-                    ({error, _}=E) ->
-                         lager:info("unable to fetch attachment ~s/~s/~s: ~p", [AccountDb, Id, OrigAttch, E]),
-                         E
+                                 case file:write_file(Filename, Content1) of
+                                     ok -> ok;
+                                     {error, _}=E2 ->
+                                         lager:info("unable to backup attachment ~s/~s/~s: ~p", [AccountDb, Id, NewAttch, E2]),
+                                         E2
+                                 end
+                         end
                  end
                 ,fun(ok) ->
                          case OrigAttch =/= NewAttch of
                              true ->
-                                 R = couch_mgr:delete_attachment(AccountDb, Id, OrigAttch),
-                                 lager:info("update attachment name ~s/~s/~s result: ~p", [AccountDb, Id, NewAttch, R]);
+                                 case couch_mgr:delete_attachment(AccountDb, Id, OrigAttch) of
+                                     {ok, _} ->
+                                         lager:info("updated attachment name ~s/~s/~s", [AccountDb, Id, NewAttch]),
+                                         ok;
+                                     {error, _}=E ->
+                                         lager:info("unable to remove original attachment ~s/~s/~s: ~p", [AccountDb, Id, OrigAttch, E]),
+                                         error
+                                 end;
                              false ->
-                                 lager:info("updated content type for ~s/~s/~s", [AccountDb, Id, NewAttch])
-                         end;     
-                    ({error, _}=E) ->
-                         lager:info("unable to backup attachment ~s/~s/~s: ~p", [AccountDb, Id, NewAttch, E]),
-                         E
+                                 lager:info("updated content type for ~s/~s/~s", [AccountDb, Id, NewAttch]),
+                                 ok
+                         end
                  end
                ],
     lists:foldl(fun(F, A) -> F(A) end, [], Updaters).
