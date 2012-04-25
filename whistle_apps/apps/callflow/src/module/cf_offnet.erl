@@ -42,6 +42,7 @@ handle(Data, Call) ->
            ,{<<"Outgoing-Caller-ID-Number">>, CIDNum}
            ,{<<"Presence-ID">>, cf_attributes:presence_id(Call)}
            ,{<<"Ringback">>, wh_json:get_value(<<"ringback">>, Data)}
+           ,{<<"SIP-Headers">>, build_sip_headers(Data, Call)}
            | wh_api:default_headers(cf_exe:queue_name(Call), ?APP_NAME, ?APP_VERSION)],
     wapi_offnet_resource:publish_req(Req),
     case wait_for_offnet() of
@@ -81,3 +82,30 @@ wait_for_offnet() ->
             %%   this process hangs around...
             wait_for_offnet()
     end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% if the callflow data object for this instance of the global resources
+%% defines custom sip headers or flags to include custom sip headers
+%% build a json object of those now.
+%% @end
+%%--------------------------------------------------------------------
+-spec build_sip_headers/2 :: (wh_json:json_object(), whapps_call:call()) -> 'undefined' | wh_json:json_object().
+build_sip_headers(Data, Call) ->
+    Builders = [fun(J) ->
+                        case wh_json:is_true(<<"emit_account_id">>, Data) of
+                            false -> J;
+                            true -> 
+                                wh_json:set_value(<<"X-Account-ID">>, whapps_call:account_id(Call), J)
+                        end
+                end
+               ],
+    CustomHeaders = wh_json:get_value(<<"custom_sip_headers">>, Data, wh_json:new()),
+    JObj = lists:foldl(fun(F, J) -> F(J) end, CustomHeaders, Builders),
+    case wh_util:is_empty(JObj) of
+        true -> undefined;
+        false -> JObj
+    end.
+                 
+                         

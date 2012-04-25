@@ -138,6 +138,7 @@ bridge_to_endpoints(Endpoints, IsEmergency, CtrlQ, JObj) ->
 
     CCVs = wh_json:set_values([ KV || {_,V}=KV <- [{<<"Account-ID">>, wh_json:get_value(<<"Account-ID">>, JObj, <<>>)}
                                                    ,{<<"From-URI">>, FromURI}
+                                                   ,{<<"Ignore-Display-Updates">>, <<"true">>}
                                                   ],
                                       V =/= undefined
                               ], wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new())),
