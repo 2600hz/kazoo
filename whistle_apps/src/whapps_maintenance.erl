@@ -39,7 +39,6 @@ migrate() ->
     stepswitch_maintenance:refresh(),
     blocking_refresh(),
 %%    whistle_number_manager_maintenance:reconcile(all),
-    migrate_media(),
     whapps_config:flush(),
     XbarUpdates = [fun(L) -> lists:delete(<<"cb_cdr">>, L) end
                    ,fun(L) -> lists:delete(<<"cb_signups">>, L) end
@@ -292,8 +291,9 @@ migrate_media() ->
     Accounts = whapps_util:get_all_accounts(),
     Total = length(Accounts),
     lists:foldr(fun(AccountDb, Current) ->
-                        lager:debug("migrating media in database (~p/~p) '~s'", [Current, Total, AccountDb]),
+                        lager:info("migrating media in database (~p/~p) '~s'", [Current, Total, AccountDb]),
                         _ = migrate_media(AccountDb),
+                        couch_compactor:compact_db(AccountDb),
                         Current + 1
                 end, 1, Accounts),
     ok.
