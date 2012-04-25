@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010, VoIP INC
+%%% @copyright (C) 2010-2012, VoIP INC
 %%% @doc
 %%% Created when a call hits a fetch_handler in ecallmgr_route.
 %%% A Control Queue is created by the lookup_route function in the
@@ -40,10 +40,8 @@
 %%% @end
 %%%
 %%% @contributors
-%%% James Aimonetti <james@2600hz.org>
-%%% Karl Anderson <karl@2600hz.org>
-%%%
-%%% Created : 26 Aug 2010 by James Aimonetti <james@2600hz.org>
+%%%   James Aimonetti <james@2600hz.org>
+%%%   Karl Anderson <karl@2600hz.org>
 %%%-------------------------------------------------------------------
 -module(ecallmgr_call_control).
 
@@ -211,6 +209,10 @@ handle_call_events(JObj, Props) ->
     put(callid, CallId),
     case wh_json:get_value(<<"Event-Name">>, JObj) of
         <<"CHANNEL_EXECUTE_COMPLETE">> ->
+            Application = wh_json:get_value(<<"Raw-Application-Name">>, JObj, wh_json:get_value(<<"Application-Name">>, JObj)),
+            lager:debug("control queue ~p channel execute completion for '~s'", [Srv, Application]),
+            gen_listener:cast(Srv, {event_execute_complete, CallId, Application, JObj});
+        <<"RECORD_STOP">> ->
             Application = wh_json:get_value(<<"Raw-Application-Name">>, JObj, wh_json:get_value(<<"Application-Name">>, JObj)),
             lager:debug("control queue ~p channel execute completion for '~s'", [Srv, Application]),
             gen_listener:cast(Srv, {event_execute_complete, CallId, Application, JObj});
@@ -436,6 +438,7 @@ handle_cast({event_execute_complete, CallId, EvtName, JObj}, #state{callid=CallI
     NoopId = wh_json:get_value(<<"Application-Response">>, JObj),
     case lists:member(EvtName, ecallmgr_util:convert_whistle_app_name(CurrApp)) of
         false ->
+            lager:debug("evt ~s not app ~s", [EvtName, CurrApp]),
             {noreply, State};
         true when EvtName =:= <<"noop">>, NoopId =/= CurrMsgId ->
             lager:debug("recieved noop execute complete with incorrect id, ignoring"),
