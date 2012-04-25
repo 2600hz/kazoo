@@ -1,0 +1,12 @@
+{application, killio,
+ [
+  {description, "Skel - A killioeton application useful for quickly creating services"},
+  {vsn, "1"},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib
+                 ]},
+  {mod, { killio_app, []}},
+  {env, []}
+ ]}.
