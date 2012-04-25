@@ -229,7 +229,6 @@ handle_cast({event, MsgId, JObj}, #state{current_msg_id = MsgId
     case VFun(JObj) of
         true ->
             erlang:demonitor(ClientRef, [flush]),
-            lager:info("response after ~b", [timer:now_diff(erlang:now(), StartTime) div 1000]),
             gen_server:reply(From, {ok, JObj}),
             _ = erlang:cancel_timer(ReqRef),
             put(callid, ?LOG_SYSTEM_ID),
@@ -257,10 +256,8 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info(timeout, #state{neg_resp=JObj, neg_resp_count=Thresh, neg_resp_threshold=Thresh
                             ,client_ref=ClientRef, client_from=From, req_timeout_ref=ReqRef
-                            ,req_start_time = StartTime
                            }=State) ->
     lager:debug("negative response threshold reached, returning last negative message"),
-    lager:info("negative after ~b", [timer:now_diff(erlang:now(), StartTime) div 1000]),
     erlang:demonitor(ClientRef, [flush]),
     gen_server:reply(From, {error, JObj}),
     _ = erlang:cancel_timer(ReqRef),
@@ -284,10 +281,8 @@ handle_info({timeout, ReqRef, req_timeout}, #state{current_msg_id = _MsgID
                                                    ,req_timeout_ref = ReqRef
                                                    ,client_from = From
                                                    ,callid = CallID
-                                                   ,req_start_time = StartTime
                                                   }=State) ->
     put(callid, CallID),
-    lager:info("timeout after ~b", [timer:now_diff(erlang:now(), StartTime) div 1000]),
     lager:debug("request timeout exceeded for msg id: ~s", [_MsgID]),
     erlang:demonitor(ClientRef, [flush]),
     gen_server:reply(From, {error, timeout}),
@@ -320,7 +315,6 @@ handle_event(_JObj, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
-    lager:info("~p", [_Reason]),
     lager:debug("amqp worker terminating: ~p", [_Reason]).
 
 %%--------------------------------------------------------------------
