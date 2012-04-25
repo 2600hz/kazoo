@@ -116,6 +116,7 @@
                                ,{<<"execute_extension">>, <<"execute_extension">>}
                                ,{<<"endless_playback">>, <<"hold">>}
                                ,{<<"uuid_record">>, <<"record_call">>}
+                               ,{<<"record">>, <<"record_call">>}
                                ,{<<"presence">>, <<"presence">>}
                               ]).
 
