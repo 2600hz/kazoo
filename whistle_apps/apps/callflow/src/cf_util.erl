@@ -253,7 +253,6 @@ get_prompt(Name, Lang) ->
 %%--------------------------------------------------------------------
 -spec ignore_early_media/1 :: (wh_json:json_objects()) -> 'undefined' | ne_binary().
 ignore_early_media([]) -> undefined;
-ignore_early_media([_]) -> undefined;
 ignore_early_media(Endpoints) ->
     Ignore = lists:foldr(fun(Endpoint, Acc) ->
                                  wh_json:is_true(<<"Ignore-Early-Media">>, Endpoint)
