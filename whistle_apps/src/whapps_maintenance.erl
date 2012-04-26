@@ -308,7 +308,7 @@ migrate_media(Account) ->
     case couch_mgr:get_results(AccountDb, <<"media/listing_by_name">>, []) of
         {ok, []} -> lager:info("no public  media files in db ~s", [AccountDb]);
         {ok, JObjs1}->
-            [migrate_attachment(AccountDb, JObj) || JObj <- JObjs1],
+            _ = [migrate_attachment(AccountDb, JObj) || JObj <- JObjs1],
             ok;
         {error, _}=E1 -> 
             lager:info("unable to fetch media files in db ~s: ~p", [AccountDb, E1])
@@ -316,7 +316,7 @@ migrate_media(Account) ->
     case couch_mgr:get_results(AccountDb, <<"media/listing_private_media">>, []) of
         {ok, []} -> lager:info("no private media files in db ~s", [AccountDb]);
         {ok, JObjs2}->
-            [migrate_attachment(AccountDb, JObj) || JObj <- JObjs2],
+            _ = [migrate_attachment(AccountDb, JObj) || JObj <- JObjs2],
             ok;
         {error, _}=E2 -> 
             lager:info("unable to fetch private media files in db ~s: ~p", [AccountDb, E2])
@@ -339,7 +339,7 @@ migrate_attachment(AccountDb, ViewJObj) ->
                     lager:debug("media doc ~s/~s has no attachments, removing", [AccountDb, Id]),
                     couch_mgr:save_doc(AccountDb, wh_json:set_value(<<"pvt_deleted">>, true, JObj1));
                 Attachments ->
-                    [catch migrate_attachment(AccountDb, JObj1, Attachment, wh_json:get_value(Attachment, Attachments)) 
+                    [catch migrate_attachment(AccountDb, JObj1, Attachment, wh_json:get_value(Attachment, Attachments))
                      || Attachment <- wh_json:get_keys(Attachments)
                     ],
                     ok

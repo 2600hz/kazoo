@@ -74,39 +74,46 @@
 
 -export([flush/0, cache/1, cache/2, retrieve/1]).
 
--record (whapps_call, {call_id = 'undefined' :: 'undefined' | ne_binary()                                %% The UUID of the call
-                       ,call_id_helper = 'undefined' :: 'undefined' | whapps_helper_function()           %% A function used when requesting the call id, to ensure it is up-to-date
-                       ,control_q = 'undefined' :: 'undefined' | ne_binary()                           %% The control queue provided on route win
-                       ,control_q_helper = 'undefined' :: 'undefined' | whapps_helper_function()         %% A function used when requesting the call id, to ensure it is up-to-date
-                       ,controller_q = 'undefined' :: 'undefined' | ne_binary()                        %%
-                       ,caller_id_name = <<"Unknown">> :: binary()                                     %% The caller name
-                       ,caller_id_number = <<"0000000000">> :: binary()                                %% The caller number
-                       ,callee_id_name = <<>> :: binary()                                              %% The callee name
-                       ,callee_id_number = <<>> :: binary()                                            %% The callee number
-                       ,request = <<"nouser@norealm">> :: ne_binary()                                  %% The request of sip_request_user + @ + sip_request_host
-                       ,request_user = <<"nouser">> :: ne_binary()                                     %% SIP request user
-                       ,request_realm = <<"norealm">> :: ne_binary()                                   %% SIP request host
-                       ,from = <<"nouser@norealm">> :: ne_binary()                                     %% Result of sip_from_user + @ + sip_from_host
-                       ,from_user = <<"nouser">> :: ne_binary()                                        %% SIP from user
-                       ,from_realm = <<"norealm">> :: ne_binary()                                      %% SIP from host
-                       ,to = <<"nouser@norealm">> :: ne_binary()                                       %% Result of sip_to_user + @ + sip_to_host
-                       ,to_user = <<"nouser">> :: ne_binary()                                          %% SIP to user
-                       ,to_realm = <<"norealm">> :: ne_binary()                                        %% SIP to host
-                       ,inception = 'undefined' :: 'undefined' | ne_binary()                           %% Origin of the call <<"on-net">> | <<"off-net">>
-                       ,account_db = 'undefined' :: 'undefined'| ne_binary()                           %% The database name of the account that authorized this call
-                       ,account_id = 'undefined' :: 'undefined' | ne_binary()                          %% The account id that authorized this call
-                       ,authorizing_id = 'undefined' :: 'undefined' | ne_binary()                      %% The ID of the record that authorized this call
-                       ,authorizing_type = 'undefined' :: 'undefined' | ne_binary()                    %% The pvt_type of the record that authorized this call
-                       ,app_name = <<"whapps_call">> :: ne_binary()                                    %% The application name used during whapps_call_command
-                       ,app_version = <<"1.0.0">> :: ne_binary()                                       %% The application version used during whapps_call_command
-                       ,custom_publish_fun = 'undefined' :: 'undefined' | whapps_custom_publish()        %% A custom command used to publish whapps_call_command
-                       ,ccvs = wh_json:new() :: wh_json:json_object()                                  %% Any custom channel vars that where provided with the route request
-                       ,kvs = orddict:new() :: orddict:orddict()                                       %% allows callflows to set values that propogate to children
+-export([default_helper_function/2]).
+
+-record(whapps_call, {call_id :: whapps_api_binary()                       %% The UUID of the call
+                       ,call_id_helper = fun ?MODULE:default_helper_function/2 :: whapps_helper_function()         %% A function used when requesting the call id, to ensure it is up-to-date
+                       ,control_q :: whapps_api_binary()                   %% The control queue provided on route win
+                       ,control_q_helper = fun ?MODULE:default_helper_function/2 :: whapps_helper_function()       %% A function used when requesting the call id, to ensure it is up-to-date
+                       ,controller_q :: whapps_api_binary()                %%
+                       ,caller_id_name = <<"Unknown">> :: ne_binary()      %% The caller name
+                       ,caller_id_number = <<"0000000000">> :: ne_binary() %% The caller number
+                       ,callee_id_name = <<>> :: binary()                  %% The callee name
+                       ,callee_id_number = <<>> :: binary()                %% The callee number
+                       ,request = <<"nouser@norealm">> :: ne_binary()      %% The request of sip_request_user + @ + sip_request_host
+                       ,request_user = <<"nouser">> :: ne_binary()         %% SIP request user
+                       ,request_realm = <<"norealm">> :: ne_binary()       %% SIP request host
+                       ,from = <<"nouser@norealm">> :: ne_binary()         %% Result of sip_from_user + @ + sip_from_host
+                       ,from_user = <<"nouser">> :: ne_binary()            %% SIP from user
+                       ,from_realm = <<"norealm">> :: ne_binary()          %% SIP from host
+                       ,to = <<"nouser@norealm">> :: ne_binary()           %% Result of sip_to_user + @ + sip_to_host
+                       ,to_user = <<"nouser">> :: ne_binary()              %% SIP to user
+                       ,to_realm = <<"norealm">> :: ne_binary()            %% SIP to host
+                       ,inception :: whapps_api_binary()                   %% Origin of the call <<"on-net">> | <<"off-net">>
+                       ,account_db :: whapps_api_binary()                  %% The database name of the account that authorized this call
+                       ,account_id :: whapps_api_binary()                  %% The account id that authorized this call
+                       ,authorizing_id :: whapps_api_binary()              %% The ID of the record that authorized this call
+                       ,authorizing_type :: whapps_api_binary()            %% The pvt_type of the record that authorized this call
+                       ,app_name = <<"whapps_call">> :: ne_binary()        %% The application name used during whapps_call_command
+                       ,app_version = <<"1.0.0">> :: ne_binary()           %% The application version used during whapps_call_command
+                       ,custom_publish_fun :: whapps_custom_publish()      %% A custom command used to publish whapps_call_command
+                       ,ccvs = wh_json:new() :: wh_json:json_object()      %% Any custom channel vars that where provided with the route request
+                       ,kvs = orddict:new() :: orddict:orddict()           %% allows callflows to set values that propogate to children
                       }).
 
+-type whapps_helper_function() :: fun((whapps_api_binary(), call()) -> whapps_api_binary()).
+
 -opaque call() :: #whapps_call{}.
--type whapps_helper_function() :: fun(('undefined' | ne_binary(), call()) -> 'undefined' | ne_binary()).
 -export_type([call/0]).
+
+-spec default_helper_function/2 :: (whapps_api_binary(), whapps_call:call()) -> whapps_api_binary().
+default_helper_function(Field, #whapps_call{}) ->
+    Field.
 
 -spec new/0 :: () -> whapps_call:call().
 new() ->
@@ -309,16 +316,16 @@ application_version(#whapps_call{app_version=AppVersion}) ->
     AppVersion.
 
 -spec set_call_id/2 :: (ne_binary(), whapps_call:call()) -> whapps_call:call().
-set_call_id(CallId, #whapps_call{}=Call) when is_binary(CallId) ->
+set_call_id(?NE_BINARY = CallId, #whapps_call{}=Call) ->
     Call#whapps_call{call_id=CallId}.
 
--spec call_id/1 :: (whapps_call:call()) -> 'undefined' | ne_binary().
--spec call_id_direct/1 :: (whapps_call:call()) -> 'undefined' | ne_binary().
+-spec call_id/1 :: (whapps_call:call()) -> whapps_api_binary().
+-spec call_id_direct/1 :: (whapps_call:call()) -> whapps_api_binary().
 
 call_id(#whapps_call{call_id=CallId, call_id_helper=Fun}=Call) when is_function(Fun, 2) ->
     Fun(CallId, Call);
-call_id(#whapps_call{call_id=CallId}) ->
-    CallId.
+call_id(#whapps_call{call_id=CallId}=Call) ->
+    default_helper_function(CallId, Call).
 
 call_id_direct(#whapps_call{call_id=CallId}) ->
     CallId.
@@ -327,19 +334,19 @@ call_id_direct(#whapps_call{call_id=CallId}) ->
 call_id_helper(Fun, #whapps_call{}=Call) when is_function(Fun, 2) ->
     Call#whapps_call{call_id_helper=Fun};
 call_id_helper(_, #whapps_call{}=Call) ->
-    Call#whapps_call{call_id_helper=undefined}.
+    Call#whapps_call{call_id_helper=fun ?MODULE:default_helper_function/2}.
 
 -spec set_control_queue/2 :: (ne_binary(), whapps_call:call()) -> whapps_call:call().
 set_control_queue(ControlQ, #whapps_call{}=Call) when is_binary(ControlQ) ->
     Call#whapps_call{control_q=ControlQ}.
 
--spec control_queue/1 :: (whapps_call:call()) -> 'undefined' | ne_binary().
--spec control_queue_direct/1 :: (whapps_call:call()) -> 'undefined' | ne_binary().
+-spec control_queue/1 :: (whapps_call:call()) -> whapps_api_binary().
+-spec control_queue_direct/1 :: (whapps_call:call()) -> whapps_api_binary().
 
 control_queue(#whapps_call{control_q=ControlQ, control_q_helper=Fun}=Call) when is_function(Fun, 2) ->
     Fun(ControlQ, Call);
-control_queue(#whapps_call{control_q=ControlQ}) ->
-    ControlQ.
+control_queue(#whapps_call{control_q=ControlQ}=Call) ->
+    default_helper_function(ControlQ, Call).
 
 control_queue_direct(#whapps_call{control_q=ControlQ}) ->
     ControlQ.
@@ -348,7 +355,7 @@ control_queue_direct(#whapps_call{control_q=ControlQ}) ->
 control_queue_helper(Fun, #whapps_call{}=Call) when is_function(Fun, 2) ->
     Call#whapps_call{control_q_helper=Fun};
 control_queue_helper(_, #whapps_call{}=Call) ->
-    Call#whapps_call{control_q_helper=undefined}.
+    Call#whapps_call{control_q_helper=fun ?MODULE:default_helper_function/2}.
 
 -spec set_controller_queue/2 :: (ne_binary(), whapps_call:call()) -> whapps_call:call().
 set_controller_queue(ControllerQ, #whapps_call{call_id=CallId, control_q=CtrlQ}=Call) when is_binary(ControllerQ) ->

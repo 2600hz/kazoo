@@ -117,14 +117,15 @@
                                ,{<<"execute_extension">>, <<"execute_extension">>}
                                ,{<<"endless_playback">>, <<"hold">>}
                                ,{<<"uuid_record">>, <<"record_call">>}
+                               ,{<<"record">>, <<"record_call">>}
                                ,{<<"presence">>, <<"presence">>}
                               ]).
 
 -define(FS_EVENTS, [<<"CHANNEL_EXECUTE">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"CHANNEL_HANGUP">>
                         ,<<"CHANNEL_HANGUP_COMPLETE">>, <<"CHANNEL_BRIDGE">>, <<"CHANNEL_UNBRIDGE">>
-                        ,<<"DETECTED_TONE">>, <<"DTMF">>, <<"CALL_UPDATE">>, <<"RECORD_STOP">>, <<"CHANNEL_CREATE">>
-                        %%                      ,<<"CUSTOM">>
-                        ,<<"CHANNEL_DESTROY">>, <<"CHANNEL_EXECUTE_ERROR">>, <<"CHANNEL_PROGRESS_MEDIA">> %% custom error
+                        ,<<"DETECTED_TONE">>, <<"DTMF">>, <<"CALL_UPDATE">>, <<"CHANNEL_CREATE">>
+                        ,<<"RECORD_START">>, <<"RECORD_STOP">>
+                        ,<<"CHANNEL_DESTROY">>, <<"CHANNEL_EXECUTE_ERROR">>, <<"CHANNEL_PROGRESS_MEDIA">>
                    ]).
 
 -define(FS_DEFAULT_HDRS, [<<"Event-Name">>, <<"Core-UUID">>, <<"FreeSWITCH-Hostname">>, <<"FreeSWITCH-Switchname">>

@@ -419,7 +419,7 @@ wait_for_our_channel_status(CallId) ->
 -spec bridge/4 :: (wh_json:json_objects(), whapps_api_binary(), whapps_api_binary(), whapps_call:call()) -> 'ok'.
 -spec bridge/5 :: (wh_json:json_objects(), whapps_api_binary(), whapps_api_binary(), whapps_api_binary(), whapps_call:call()) -> 'ok'.
 -spec bridge/6 :: (wh_json:json_objects(), whapps_api_binary(), whapps_api_binary(), whapps_api_binary(), whapps_api_binary(), whapps_call:call()) -> 'ok'.
--spec bridge/7 :: (wh_json:json_objects(), whapps_api_binary(), whapps_api_binary(), whapps_api_binary(), whapps_api_binary(), wh_json:json_object(), whapps_call:call()) -> 'ok'.
+-spec bridge/7 :: (wh_json:json_objects(), whapps_api_binary(), whapps_api_binary(), whapps_api_binary(), whapps_api_binary(), wh_json:json_object() | 'undefined', whapps_call:call()) -> 'ok'.
 
 -spec b_bridge/2 :: (wh_json:json_objects(), whapps_call:call()) -> whapps_api_bridge_return().
 -spec b_bridge/3 :: (wh_json:json_objects(), whapps_api_binary(), whapps_call:call()) -> whapps_api_bridge_return().
@@ -427,7 +427,7 @@ wait_for_our_channel_status(CallId) ->
 -spec b_bridge/5 :: (wh_json:json_objects(), whapps_api_binary(), whapps_api_binary(), whapps_api_binary(), whapps_call:call()) -> whapps_api_bridge_return().
 -spec b_bridge/6 :: (wh_json:json_objects(), whapps_api_binary(), whapps_api_binary(), whapps_api_binary(), whapps_api_binary(), whapps_call:call()) 
                     -> whapps_api_bridge_return().
--spec b_bridge/7 :: (wh_json:json_objects(), whapps_api_binary(), whapps_api_binary(), whapps_api_binary(), whapps_api_binary(), whapps_call:call(), wh_json:json_object()) 
+-spec b_bridge/7 :: (wh_json:json_objects(), whapps_api_binary(), whapps_api_binary(), whapps_api_binary(), whapps_api_binary(), wh_json:json_object() | 'undefined', whapps_call:call())
                     -> whapps_api_bridge_return().
 
 bridge(Endpoints, Call) ->
