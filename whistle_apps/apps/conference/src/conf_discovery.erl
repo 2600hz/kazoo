@@ -80,46 +80,42 @@ handle_discovery_req(JObj, Props) ->
     whapps_call_command:answer(Call),
     whapps_call_command:b_prompt(<<"conf-welcome">>, Call),
 
-    try
-        Updaters = [fun(C1) ->
-                            {ok, C2} = validate_conference_pin(C1, Call),
-                            C2
-                    end
-                    ,fun(C) ->
-                             case wh_json:is_true(<<"Moderator">>, JObj, undefined) of
-                                 undefined -> C;
-                                 true ->
-                                     lager:debug("discovery request defines participant as moderator, overriding previous value"),
-                                     whapps_conference:moderator(true, C);
-                                 false ->
-                                     lager:debug("discovery request defines participant as member, overriding previous value"),
-                                     whapps_conference:moderator(false, C)
-                             end
-                     end
-                    ,fun(C) -> 
-                             Q = hd(props:get_value(other_queues, Props)),
-                             whapps_conference:set_controller_queue(Q, C) 
-                     end
-                    ,fun(C) -> whapps_conference:set_application_version(<<"2.0.0">>, C) end
-                    ,fun(C) -> whapps_conference:set_application_name(<<"conferences">>, C) end
-                    ,fun(_) -> 
-                             {ok, C} = validate_conference_id(wh_json:get_value(<<"Conference-ID">>, JObj), Call),
-                             C
-                     end
-                   ],
-        Conference = whapps_conference:update(Updaters, whapps_conference:new()),
-        conf_participant:set_conference(Conference, Srv),
-        {ok, Cache} = conference_sup:cache_proc(),
-        SearchId = couch_mgr:get_uuid(),
-        wh_cache:store_local(Cache, {?MODULE, discovery, SearchId}, Srv, 300),
-        lager:debug("publishing conference search request ~s", [SearchId]),
-        whapps_conference_command:search(SearchId, Conference)
-    catch
-        _:_ ->
-            %% TODO: send discovery error
-            %%    {ok, DiscoveryReq} = conf_participant:discovery_event(Srv),
-            ok
-    end,
+    Updaters = [fun(C1) ->
+                        {ok, C2} = validate_conference_pin(C1, Call),
+                        C2
+                end
+                ,fun(C) ->
+                         case wh_json:is_true(<<"Moderator">>, JObj, undefined) of
+                             undefined -> C;
+                             true ->
+                                 lager:debug("discovery request defines participant as moderator, overriding previous value"),
+                                 whapps_conference:moderator(true, C);
+                             false ->
+                                 lager:debug("discovery request defines participant as member, overriding previous value"),
+                                 whapps_conference:moderator(false, C)
+                         end
+                 end
+                ,fun(C) -> 
+                         Q = hd(props:get_value(other_queues, Props)),
+                         whapps_conference:set_controller_queue(Q, C) 
+                 end
+                ,fun(C) -> whapps_conference:set_application_version(<<"2.0.0">>, C) end
+                ,fun(C) -> whapps_conference:set_application_name(<<"conferences">>, C) end
+                ,fun(_) -> 
+                         {ok, C} = validate_conference_id(wh_json:get_value(<<"Conference-ID">>, JObj), Call),
+                         C
+                 end
+               ],
+    Conference = whapps_conference:update(Updaters, whapps_conference:new()),
+    conf_participant:set_conference(Conference, Srv),
+    {ok, Cache} = conference_sup:cache_proc(),
+    SearchId = couch_mgr:get_uuid(),
+    wh_cache:store_local(Cache, {?MODULE, discovery, SearchId}, Srv, 300),
+    lager:debug("publishing conference search request ~s", [SearchId]),
+    whapps_conference_command:search(SearchId, Conference),
+    whapps_call_command:prompt(<<"conf-joining_conference">>, Call), 
+    %% TODO: send discovery event on error
+    %%    {ok, DiscoveryReq} = conf_participant:discovery_event(Srv),
     ok.
 
 -spec handle_search_error/2 :: (wh_json:json_object(), proplist()) -> ok.
