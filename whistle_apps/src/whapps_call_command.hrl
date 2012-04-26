@@ -15,4 +15,4 @@
 -type whapps_api_error() :: {'error', 'channel_hungup' | 'channel_unbridge' | 'timeout' | wh_json:json_object()}.
 -type whapps_api_std_return() :: whapps_api_error() | {'ok', wh_json:json_object()}.
 -type whapps_api_bridge_return() :: {'error', 'timeout' | wh_json:json_object()} | {'fail', wh_json:json_object()} | {'ok', wh_json:json_object()}.
--type whapps_api_binary() :: binary() | 'undefined'.
+-type whapps_api_binary() :: 'undefined' | binary().

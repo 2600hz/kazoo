@@ -229,6 +229,7 @@ handle_cast({event, MsgId, JObj}, #state{current_msg_id = MsgId
     case VFun(JObj) of
         true ->
             erlang:demonitor(ClientRef, [flush]),
+
             gen_server:reply(From, {ok, JObj}),
             _ = erlang:cancel_timer(ReqRef),
             put(callid, ?LOG_SYSTEM_ID),
