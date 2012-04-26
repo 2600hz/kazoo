@@ -35,14 +35,6 @@
             "audio/ogg"
          ]
       },
-      "media_source":{
-         "description":"Source for the media",
-         "type":"string",
-         "enum":[
-            "recorded",
-            "uploaded"
-         ]
-      },
       "source_type":{
          "description":"If the media was generated from a callflow module, this is the module name",
          "type":"string",
