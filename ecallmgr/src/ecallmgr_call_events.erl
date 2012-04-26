@@ -329,6 +329,7 @@ create_event_props(EventName, ApplicationName, Props) ->
                           ,{<<"Presence-ID">>, props:get_value(<<"variable_presence_id">>, Props)}
                           ,{<<"Raw-Application-Name">>, props:get_value(<<"Application">>, Props, ApplicationName)}
                           ,{<<"Raw-Application-Data">>, props:get_value(<<"Application-Data">>, Props)}
+                          ,{<<"Media-Server">>, props:get_value(<<"FreeSWITCH-Hostname">>, Props)}
                           | event_specific(EventName, ApplicationName, Props) 
                          ],
             V =/= undefined
