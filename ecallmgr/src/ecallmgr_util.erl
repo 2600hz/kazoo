@@ -260,13 +260,15 @@ media_path(<<"tone_stream://", _/binary>> = Media, _Type, _UUID) ->
     Media;
 media_path(<<"local_stream://", FSPath/binary>>, _Type, _UUID) ->
     FSPath;
+media_path(<<"http://", _/binary>> = URI, _Type, _UUID) ->
+    get_fs_playback(URI);
 media_path(MediaName, Type, UUID) ->
     case ecallmgr_media_registry:lookup_media(MediaName, Type, UUID) of
         {'error', _E} ->
-            lager:debug("Failed to get media ~s: ~p", [MediaName, _E]),
+            lager:debug("failed to get media ~s: ~p", [MediaName, _E]),
             wh_util:to_binary(MediaName);
         {ok, Url} ->
-            lager:debug("Recevied URL: ~s", [Url]),
+            lager:debug("recevied URL: ~s", [Url]),
             wh_util:to_binary(get_fs_playback(Url))
     end.
 
