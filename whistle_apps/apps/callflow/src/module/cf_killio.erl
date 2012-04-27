@@ -36,8 +36,6 @@ handle(Data, Call) ->
     Method = http_method(wh_json:get_value(<<"http_method">>, Data, get)),
     VoiceUri = wh_json:get_value(<<"voice_url">>, Data),
 
-    ReqTimeout = wh_json:get_integer_value(<<"req_timeout">>, Data, 5),
-
     send_req(whapps_call:kvs_store(voice_uri, VoiceUri, Call), VoiceUri, Method, BaseParams).
 
 -spec send_req/4 :: (whapps_call:call(), nonempty_string() | ne_binary(), 'get' | 'post', wh_json:json_object()) -> any().
@@ -110,13 +108,15 @@ process_element(Call, 'Dial', [#xmlText{value=DialMe, type=text}], #xmlElement{a
                                                               ,{CallerID, fun whapps_call:set_caller_id_number/2}
                                                              ]),
 
-    cf_offnet:offnet_req(wh_json:from_list([{<<"Timeout">>, Timeout}]), Call1),
+    cf_offnet:offnet_req(wh_json:from_list([{<<"Timeout">>, Timeout}
+                                            | offnet_data(RecordCall, StarHangup)
+                                           ])
+                         ,Call1),
 
     Start = erlang:now(),
+    {Status, OtherLeg} = wait_for_offnet(Call1, RecordCall, StarHangup, TimeLimit),
+    Elapsed = wh_util:elapsed_s(Start),
 
-    {Status, OtherLeg} = wait_for_offnet(Call1, StarHangup, TimeLimit),
-
-    Elapsed = elapsed_s(Start),
     lager:debug("other leg ~s done in ~bs: ~s", [OtherLeg, Elapsed, Status]),
 
     case props:get_value(action, Props) of
@@ -126,7 +126,7 @@ process_element(Call, 'Dial', [#xmlText{value=DialMe, type=text}], #xmlElement{a
                                             ,{"DialCallSid", OtherLeg}
                                             ,{<<"DialCallDuration">>, Elapsed}
                                             ,{<<"RecordingUrl">>, <<"url">>}
-                                                | req_params(Call1)
+                                            | req_params(Call1)
                                            ]),
             Uri = resolve_uri(whapps_call:kvs_fetch(voice_uri, Call1), Action),
             Method = http_method(props:get_value(method, Props, post)),
@@ -189,9 +189,7 @@ uri(URI, get, QueryString) ->
             mochiweb_util:urlunsplit({Scheme, Host, Path, QueryString, Fragment});
         {Scheme, Host, Path, QS, Fragment} ->
             mochiweb_util:urlunsplit({Scheme, Host, Path, [QS, "&", QueryString], Fragment})
-    end;
-uri(URI, post, _QueryString) ->
-    URI.
+    end.
 
 http_method(M) when is_atom(M) ->
     true = lists:member(M, ?SUPPORTED_METHODS),
@@ -246,11 +244,11 @@ resolve_uri(RawPath, Relative) ->
 %% Return the Result and the Other Leg's Call-ID
 %% @end
 %%--------------------------------------------------------------------
--spec wait_for_offnet/3 :: (whapps_call:call(), boolean(), pos_integer()) -> {ne_binary(), ne_binary()}.
-wait_for_offnet(Call, HangupOnStar, TimeLimit) ->
-    wait_for_offnet(Call, undefined, HangupOnStar, TimeLimit * 1000, erlang:now()).
+-spec wait_for_offnet/4 :: (whapps_call:call(), boolean(), boolean(), pos_integer()) -> {ne_binary(), ne_binary()}.
+wait_for_offnet(Call, HangupOnStar, RecordCall, TimeLimit) ->
+    wait_for_offnet(Call, undefined, HangupOnStar, RecordCall, TimeLimit * 1000, erlang:now()).
 
-wait_for_offnet(Call, OtherLegCallID, HangupOnStar, TimeLimit, Start) ->
+wait_for_offnet(Call, OtherLegCallID, HangupOnStar, RecordCall, TimeLimit, Start) ->
     receive
         {amqp_msg, {struct, _}=JObj} ->
             case wh_util:get_event_type(JObj) of
@@ -265,20 +263,25 @@ wait_for_offnet(Call, OtherLegCallID, HangupOnStar, TimeLimit, Start) ->
                             whapps_call_command:hangup(true, Call);
                         _DTMF ->
                             lager:debug("ignore '~s' DTMF", [_DTMF]),
-                            wait_for_offnet(Call, HangupOnStar, OtherLegCallID, TimeLimit - elapsed_ms(Start), erlang:now())
+                            wait_for_offnet(Call, HangupOnStar, RecordCall, OtherLegCallID, TimeLimit - wh_util:elapsed_ms(Start), erlang:now())
                     end;
                 {<<"call_event">>, <<"LEG_CREATED">>} ->
                     BLeg = wh_json:get_value(<<"Other-Leg-Unique-ID">>, JObj),
                     lager:debug("b-leg created: ~s", [BLeg]),
-                    wait_for_offnet(Call, HangupOnStar, BLeg, TimeLimit - elapsed_ms(Start), erlang:now());
+                    wait_for_offnet(Call, HangupOnStar, RecordCall, BLeg, TimeLimit - wh_util:elapsed_ms(Start), erlang:now());
+                {<<"call_event">>, <<"CHANNEL_BRIDGE">>} when RecordCall ->
+                    MediaName = media_name(whapps_call:call_id(Call), OtherLegCallID),
+                    lager:debug("channel bridged, start recording the call: ~s", [MediaName]),
+                    whapps_call_command:record_call(MediaName, <<"start">>, <<"remote">>, TimeLimit, Call),
+                    wait_for_offnet(Call, HangupOnStar, RecordCall, OtherLegCallID, TimeLimit - wh_util:elapsed_ms(Start), erlang:now());
                 _Type ->
                     lager:debug("ignore ~p", [_Type]),
-                    wait_for_offnet(Call, HangupOnStar, OtherLegCallID, TimeLimit - elapsed_ms(Start), erlang:now())
+                    wait_for_offnet(Call, HangupOnStar, RecordCall, OtherLegCallID, TimeLimit - wh_util:elapsed_ms(Start), erlang:now())
             end;
         _ ->
             %% dont let the mailbox grow unbounded if
             %%   this process hangs around...
-            wait_for_offnet(Call, HangupOnStar, OtherLegCallID, TimeLimit - elapsed_ms(Start), erlang:now())
+            wait_for_offnet(Call, HangupOnStar, RecordCall, OtherLegCallID, TimeLimit - wh_util:elapsed_ms(Start), erlang:now())
     after
         TimeLimit ->
             lager:debug("time limit for call exceeded"),
@@ -301,16 +304,6 @@ wait_for_offnet(CallID) ->
             wait_for_offnet(CallID)
     end.
 
--spec elapsed_s/1 :: (wh_now()) -> integer().
--spec elapsed_ms/1 :: (wh_now()) -> integer().
--spec elapsed_us/1 :: (wh_now()) -> integer().
-elapsed_s({_,_,_}=Start) ->
-    timer:now_diff(erlang:now(), Start) div 1000000.
-elapsed_ms({_,_,_}=Start) ->
-    timer:now_diff(erlang:now(), Start) div 1000.
-elapsed_us({_,_,_}=Start) ->
-    timer:now_diff(erlang:now(), Start).
-
 call_status(<<"SUCCESS">>, _) ->
     <<"completed">>;
 call_status(<<"NO_ANSWER">>, _) ->
@@ -318,6 +311,18 @@ call_status(<<"NO_ANSWER">>, _) ->
 call_status(_, _) ->
     <<"failed">>.
 
+-spec offnet_data/2 :: (boolean(), boolean()) -> proplist().
+offnet_data(true, _) ->
+    [{<<"Media">>, <<"process">>}
+    ];
+offnet_data(false, true) ->
+    [{<<"Media">>, <<"process">>}
+    ];
+offnet_data(false, false) ->
+    [].
+
+media_name(ALeg, BLeg) ->
+    <<ALeg/binary, "_to_", BLeg/binary, ".mp3">>.
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
