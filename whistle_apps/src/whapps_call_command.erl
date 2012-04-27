@@ -22,6 +22,7 @@
 -export([play/2, play/3]).
 -export([prompt/2, prompt/3]).
 -export([record/2, record/3, record/4, record/5, record/6]).
+-export([record_call/2, record_call/3, record_call/4, record_call/5]).
 -export([store/3, store/4, store/5]).
 -export([tones/2]).
 -export([prompt_and_collect_digit/2]).
@@ -635,6 +636,21 @@ b_record(MediaName, Terminators, TimeLimit, SilenceThreshold, Call) ->
 b_record(MediaName, Terminators, TimeLimit, SilenceThreshold, SilenceHits, Call) ->
     record(MediaName, Terminators, TimeLimit, SilenceThreshold, SilenceHits, Call),
     wait_for_headless_application(<<"record">>, <<"RECORD_STOP">>, <<"call_event">>, infinity).
+
+record_call(MediaName, Call) ->
+    record_call(MediaName, <<"start">>, Call).
+record_call(MediaName, Action, Call) ->
+    record_call(MediaName, Action, <<"remote">>, Call).
+record_call(MediaName, Action, StreamTo, Call) ->
+    record_call(MediaName, Action, StreamTo, 600, Call).
+record_call(MediaName, Action, StreamTo, TimeLimit, Call) ->
+    Command = [{<<"Application-Name">>, <<"record_call">>}
+               ,{<<"Media-Name">>, MediaName}
+               ,{<<"Record-Action">>, Action}
+               ,{<<"Stream-To">>, StreamTo}
+               ,{<<"Time-Limit">>, wh_util:to_binary(TimeLimit)}
+              ],
+    send_command(Command, Call).
 
 %%--------------------------------------------------------------------
 %% @public
