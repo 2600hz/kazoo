@@ -23,7 +23,9 @@
 -export([gregorian_seconds_to_unix_seconds/1, unix_seconds_to_gregorian_seconds/1
          ,pretty_print_datetime/1
         ]).
--export([microseconds_to_seconds/1]).
+-export([microseconds_to_seconds/1
+         ,elapsed_s/1, elapsed_ms/1, elapsed_us/1
+        ]).
 
 -export([put_callid/1]).
 -export([get_event_type/1]).
@@ -543,9 +545,9 @@ pretty_print_datetime({{Y,Mo,D},{H,Mi,S}}) ->
     iolist_to_binary(io_lib:format("~4..0w-~2..0w-~2..0w_~2..0w-~2..0w-~2..0w",
                                    [Y, Mo, D, H, Mi, S])).
 
--spec microseconds_to_seconds/1 :: (integer() | string() | binary()) -> non_neg_integer().
+-spec microseconds_to_seconds/1 :: (float() | integer() | string() | binary()) -> non_neg_integer().
 microseconds_to_seconds(Microseconds) ->
-    erlang:trunc(to_integer(Microseconds) * math:pow(10, -6)).
+    to_integer(Microseconds) div 1000000.
 
 -spec is_ipv4/1 :: (nonempty_string() | ne_binary()) -> boolean().
 is_ipv4(Address) when is_binary(Address) ->
@@ -565,6 +567,17 @@ is_ipv6(Address) when is_list(Address) ->
         {ok, _} -> true;
         {error, _} -> false
     end.
+
+-spec elapsed_s/1 :: (wh_now()) -> integer().
+-spec elapsed_ms/1 :: (wh_now()) -> integer().
+-spec elapsed_us/1 :: (wh_now()) -> integer().
+elapsed_s({_,_,_}=Start) ->
+    timer:now_diff(erlang:now(), Start) div 1000000.
+elapsed_ms({_,_,_}=Start) ->
+    timer:now_diff(erlang:now(), Start) div 1000.
+elapsed_us({_,_,_}=Start) ->
+    timer:now_diff(erlang:now(), Start).
+
 
 %% PROPER TESTING
 prop_to_integer() ->
