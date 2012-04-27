@@ -61,6 +61,7 @@ offnet_req(Data, Call) ->
            ,{<<"Presence-ID">>, cf_attributes:presence_id(Call)}
            ,{<<"Ringback">>, wh_json:get_value(<<"ringback">>, Data)}
            ,{<<"SIP-Headers">>, build_sip_headers(Data, Call)}
+           ,{<<"Media">>, wh_json:get_value(<<"Media">>, Data)}
            | wh_api:default_headers(cf_exe:queue_name(Call), ?APP_NAME, ?APP_VERSION)],
     wapi_offnet_resource:publish_req(Req).
 
