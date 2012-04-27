@@ -93,8 +93,6 @@ process_response(Call, []) ->
 
 process_element(Call, 'Dial', [#xmlText{value=DialMe, type=text}], #xmlElement{attributes=Attrs}) ->
     lager:debug("DIAL: ~s", [DialMe]),
-    lager:debug("asking cf_offnet to dial for us"),
-
     Props = attrs_to_proplist(Attrs),
 
     Timeout = wh_util:to_integer(props:get_value(timeout, Props, 30)),
@@ -113,10 +111,15 @@ process_element(Call, 'Dial', [#xmlText{value=DialMe, type=text}], #xmlElement{a
                                            ])
                          ,Call1),
 
+    %% wait for the bridge to end
     Start = erlang:now(),
-    {Status, OtherLeg} = wait_for_offnet(Call1, RecordCall, StarHangup, TimeLimit),
+    OffnetProp = wait_for_offnet(Call1, RecordCall, StarHangup, TimeLimit),
     Elapsed = wh_util:elapsed_s(Start),
 
+    RecordingId = maybe_save_recording(Call1, props:get_value(media_name, OffnetProp), RecordCall),
+
+    OtherLeg = props:get_value(other_leg, OffnetProp),
+    Status = props:get_value(call_status, OffnetProp),
     lager:debug("other leg ~s done in ~bs: ~s", [OtherLeg, Elapsed, Status]),
 
     case props:get_value(action, Props) of
@@ -125,7 +128,7 @@ process_element(Call, 'Dial', [#xmlText{value=DialMe, type=text}], #xmlElement{a
             BaseParams = wh_json:from_list([{"DialCallStatus", Status}
                                             ,{"DialCallSid", OtherLeg}
                                             ,{<<"DialCallDuration">>, Elapsed}
-                                            ,{<<"RecordingUrl">>, <<"url">>}
+                                            ,{<<"RecordingUrl">>, recorded_url(Call, RecordingId, RecordCall)}
                                             | req_params(Call1)
                                            ]),
             Uri = resolve_uri(whapps_call:kvs_fetch(voice_uri, Call1), Action),
@@ -145,6 +148,7 @@ process_element(Call, 'Gather', [], #xmlElement{attributes=Attrs}) ->
     MaxDigitsBin = wh_util:to_binary(props:get_value(numDigits, Props)),
     MaxDigits = wh_util:to_integer(MaxDigitsBin),
     Timeout = wh_util:to_integer(props:get_value(timeout, Props, 5)),
+    FinishOnKey = props:get_value(finishOnKey, Props, <<"#">>),
 
     case whapps_call_command:collect_digits(MaxDigitsBin, Timeout, Call) of
         {ok, DTMFs} when byte_size(DTMFs) =:= MaxDigits ->
@@ -170,8 +174,14 @@ process_element(Call, 'Play', [#xmlText{value=PlayMe, type=text}], #xmlElement{a
         N when N > 1 ->
             play_loop(Call, N, wh_util:to_binary(PlayMe))
     end;
-process_element(Call, 'Say', [#xmlText{value=SayMe, type=text}], _El) ->
-    lager:debug("SAY: ~s", [SayMe]),
+process_element(Call, 'Say', [#xmlText{value=SayMe, type=text}], #xmlElement{attributes=Attrs}) ->
+    Props = attrs_to_proplist(Attrs),
+    Voice = props:get_value(voice, Props, <<"man">>),
+    Lang = props:get_value(language, Props, <<"en">>),
+    Loop = props:get_value(loop, Props, 1),
+
+    lager:debug("SAY: ~s using voice ~s, in lang ~s, ~b times", [SayMe, Voice, Lang, Loop]),
+
     whapps_call_command:b_say(wh_util:to_binary(SayMe), Call).
 
 play_loop(_, _, 0) ->
@@ -244,18 +254,18 @@ resolve_uri(RawPath, Relative) ->
 %% Return the Result and the Other Leg's Call-ID
 %% @end
 %%--------------------------------------------------------------------
--spec wait_for_offnet/4 :: (whapps_call:call(), boolean(), boolean(), pos_integer()) -> {ne_binary(), ne_binary()}.
+-spec wait_for_offnet/4 :: (whapps_call:call(), boolean(), boolean(), pos_integer()) -> proplist().
 wait_for_offnet(Call, HangupOnStar, RecordCall, TimeLimit) ->
-    wait_for_offnet(Call, undefined, HangupOnStar, RecordCall, TimeLimit * 1000, erlang:now()).
+    wait_for_offnet(Call, HangupOnStar, RecordCall, TimeLimit * 1000, erlang:now(), []).
 
-wait_for_offnet(Call, OtherLegCallID, HangupOnStar, RecordCall, TimeLimit, Start) ->
+wait_for_offnet(Call, HangupOnStar, RecordCall, TimeLimit, Start, Acc) ->
     receive
         {amqp_msg, {struct, _}=JObj} ->
             case wh_util:get_event_type(JObj) of
                 {<<"resource">>, <<"offnet_resp">>} ->
-                    {call_status(wh_json:get_value(<<"Response-Message">>, JObj), wh_json:get_value(<<"Response-Code">>, JObj))
-                     ,OtherLegCallID
-                    };
+                    [{call_status, call_status(wh_json:get_value(<<"Response-Message">>, JObj), wh_json:get_value(<<"Response-Code">>, JObj))}
+                     | Acc
+                    ];
                 {<<"call_event">>, <<"DTMF">>} when HangupOnStar ->
                     case wh_json:get_value(<<"DTMF-Digit">>, JObj) of
                         <<"*">> ->
@@ -263,45 +273,48 @@ wait_for_offnet(Call, OtherLegCallID, HangupOnStar, RecordCall, TimeLimit, Start
                             whapps_call_command:hangup(true, Call);
                         _DTMF ->
                             lager:debug("ignore '~s' DTMF", [_DTMF]),
-                            wait_for_offnet(Call, HangupOnStar, RecordCall, OtherLegCallID, TimeLimit - wh_util:elapsed_ms(Start), erlang:now())
+                            wait_for_offnet(Call, HangupOnStar, RecordCall, TimeLimit - wh_util:elapsed_ms(Start), erlang:now(), Acc)
                     end;
                 {<<"call_event">>, <<"LEG_CREATED">>} ->
                     BLeg = wh_json:get_value(<<"Other-Leg-Unique-ID">>, JObj),
                     lager:debug("b-leg created: ~s", [BLeg]),
-                    wait_for_offnet(Call, HangupOnStar, RecordCall, BLeg, TimeLimit - wh_util:elapsed_ms(Start), erlang:now());
+                    wait_for_offnet(Call, HangupOnStar, RecordCall, TimeLimit - wh_util:elapsed_ms(Start), erlang:now(), [{other_leg, BLeg}|Acc]);
                 {<<"call_event">>, <<"CHANNEL_BRIDGE">>} when RecordCall ->
+                    OtherLegCallID = props:get_value(other_leg, Acc),
                     MediaName = media_name(whapps_call:call_id(Call), OtherLegCallID),
+
                     lager:debug("channel bridged, start recording the call: ~s", [MediaName]),
+
                     whapps_call_command:record_call(MediaName, <<"start">>, <<"remote">>, TimeLimit, Call),
-                    wait_for_offnet(Call, HangupOnStar, RecordCall, OtherLegCallID, TimeLimit - wh_util:elapsed_ms(Start), erlang:now());
+                    wait_for_offnet(Call, HangupOnStar, RecordCall, TimeLimit - wh_util:elapsed_ms(Start), erlang:now(), [{media_name, MediaName}|Acc]);
                 _Type ->
                     lager:debug("ignore ~p", [_Type]),
-                    wait_for_offnet(Call, HangupOnStar, RecordCall, OtherLegCallID, TimeLimit - wh_util:elapsed_ms(Start), erlang:now())
+                    wait_for_offnet(Call, HangupOnStar, RecordCall, TimeLimit - wh_util:elapsed_ms(Start), erlang:now(), Acc)
             end;
         _ ->
             %% dont let the mailbox grow unbounded if
             %%   this process hangs around...
-            wait_for_offnet(Call, HangupOnStar, RecordCall, OtherLegCallID, TimeLimit - wh_util:elapsed_ms(Start), erlang:now())
+            wait_for_offnet(Call, HangupOnStar, RecordCall, TimeLimit - wh_util:elapsed_ms(Start), erlang:now(), Acc)
     after
         TimeLimit ->
             lager:debug("time limit for call exceeded"),
             whapps_call_command:hangup(true, Call),
-            wait_for_offnet(OtherLegCallID)
+            wait_for_offnet(Acc)
     end.
 
-wait_for_offnet(CallID) ->
+wait_for_offnet(Acc) ->
     receive
         {amqp_msg, {struct, _}=JObj} ->
             case wh_util:get_event_type(JObj) of
                 { <<"resource">>, <<"offnet_resp">> } ->
-                    {call_status(wh_json:get_value(<<"Response-Message">>, JObj), wh_json:get_value(<<"Response-Code">>, JObj))
-                     ,CallID
-                    };
+                    [{call_status, call_status(wh_json:get_value(<<"Response-Message">>, JObj), wh_json:get_value(<<"Response-Code">>, JObj))}
+                     | Acc
+                    ];
                 _ ->
-                    wait_for_offnet(CallID)
+                    wait_for_offnet(Acc)
             end;
         _ ->
-            wait_for_offnet(CallID)
+            wait_for_offnet(Acc)
     end.
 
 call_status(<<"SUCCESS">>, _) ->
@@ -322,7 +335,42 @@ offnet_data(false, false) ->
     [].
 
 media_name(ALeg, BLeg) ->
-    <<ALeg/binary, "_to_", BLeg/binary, ".mp3">>.
+    DateTime = wh_util:pretty_print_datetime(calendar:universal_time()),
+    list_to_binary([DateTime, "_", ALeg, "_to_", BLeg, ".mp3"]).
+
+recorded_url(_Call, _DocId, false) ->
+    undefined;
+recorded_url(Call, DocId, true) ->
+    list_to_binary([<<"/v1/accounts/">>, whapps_call:account_id(Call), <<"/recordings/">>, DocId]).
+
+maybe_save_recording(_Call, _MediaName, false) ->
+    undefined;
+maybe_save_recording(Call, MediaName, true) ->
+    MediaDoc = [{<<"name">>, MediaName}
+                ,{<<"description">>, <<"recording ", MediaName/binary>>}
+                ,{<<"content_type">>, <<"audio/mp3">>}
+                ,{<<"media_source">>, <<"recorded">>}
+                ,{<<"source_type">>, wh_util:to_binary(?MODULE)}
+               ],
+    AcctDb = whapps_call:account_db(Call),
+    case couch_mgr:save_doc(AcctDb, wh_json:from_list(MediaDoc)) of
+        {ok, JObj} -> store_recording(Call, MediaName, JObj);
+        _E -> lager:debug("error saving media doc: ~p", [_E])
+    end.
+
+-spec store_recording/3 :: (whapps_call:call(), ne_binary(), wh_json:json_object()) -> ne_binary().
+store_recording(Call, MediaName, JObj) ->
+    AccountDb = whapps_call:account_db(Call),
+    MediaId = wh_json:get_value(<<"_id">>, JObj),
+
+    Rev = wh_json:get_value(<<"_rev">>, JObj),
+    StoreUrl = list_to_binary([couch_mgr:get_url(), AccountDb,
+                               "/", MediaId,
+                               "/", MediaName,
+                               "?rev=", Rev
+                              ]),
+    whapps_call_command:b_store(MediaName, StoreUrl, Call),
+    MediaId.
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
