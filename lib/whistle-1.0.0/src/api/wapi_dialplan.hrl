@@ -274,6 +274,8 @@
 -define(RECORD_REQ_TYPES, [{<<"Terminators">>, fun is_list/1}]).
 
 %% Record Call Leg into MediaName
+%% Stream-To = local results in the recording being stored on the media server
+%% Stream-To = remote will stream the recording to the handling ecallmgr server
 -define(RECORD_CALL_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Media-Name">>
                                       ,<<"Record-Action">>, <<"Stream-To">>
                                  ]).
