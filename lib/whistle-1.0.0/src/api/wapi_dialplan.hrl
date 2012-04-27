@@ -175,11 +175,13 @@
 -define(RING_REQ_TYPES, []).
 
 %% Hangup
+%% Include the Other-Leg-Call-ID to only hangup the other leg
 -define(HANGUP_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>]).
--define(OPTIONAL_HANGUP_REQ_HEADERS, [<<"Insert-At">>]).
+-define(OPTIONAL_HANGUP_REQ_HEADERS, [<<"Insert-At">>, <<"Other-Leg-Only">>]).
 -define(HANGUP_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                             ,{<<"Event-Name">>, <<"command">>}
                             ,{<<"Application-Name">>, <<"hangup">>}
+                            ,{<<"Other-Leg-Only">>, [<<"true">>, <<"false">>, true, false]}
                             ,?INSERT_AT_TUPLE
                            ]).
 -define(HANGUP_REQ_TYPES, []).

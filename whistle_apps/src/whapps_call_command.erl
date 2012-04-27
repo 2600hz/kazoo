@@ -13,7 +13,7 @@
 -export([response/2, response/3, response/4]).
 -export([pickup/2, b_pickup/2]).
 -export([redirect/3]).
--export([answer/1, hangup/1, set/3, fetch/1, fetch/2]).
+-export([answer/1, hangup/1, hangup/2, set/3, fetch/1, fetch/2]).
 -export([ring/1]).
 -export([call_status/1, call_status/2, channel_status/1, channel_status/2]).
 -export([bridge/2, bridge/3, bridge/4, bridge/5, bridge/6, bridge/7]).
@@ -37,7 +37,7 @@
 -export([noop/1]).
 -export([flush/1, flush_dtmf/1]).
 
--export([b_answer/1, b_hangup/1, b_fetch/1, b_fetch/2]).
+-export([b_answer/1, b_hangup/1, b_hangup/2, b_fetch/1, b_fetch/2]).
 -export([b_ring/1]).
 -export([b_call_status/1, b_call_status/2, b_channel_status/1, b_channel_status/2]).
 -export([b_bridge/2, b_bridge/3, b_bridge/4, b_bridge/5, b_bridge/6, b_bridge/7]).
@@ -67,7 +67,7 @@
 -export([wait_for_channel_bridge/0, wait_for_channel_unbridge/0]).
 -export([wait_for_dtmf/1]).
 -export([wait_for_noop/1]).
--export([wait_for_hangup/0]).
+-export([wait_for_hangup/0, wait_for_unbridge/0]).
 -export([wait_for_application_or_dtmf/2]).
 -export([collect_digits/2, collect_digits/3, collect_digits/4, collect_digits/5, collect_digits/6]).
 -export([send_command/2]).
@@ -307,7 +307,10 @@ b_answer(Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec hangup/1 :: (whapps_call:call()) -> 'ok'.
+-spec hangup/2 :: (boolean(), whapps_call:call()) -> 'ok'.
+
 -spec b_hangup/1 :: (whapps_call:call()) -> {'ok', 'channel_hungup'}.
+-spec b_hangup/2 :: (boolean(), whapps_call:call()) -> {'ok', 'channel_hungup' | 'leg_hangup'}.
 
 hangup(Call) ->
     Command = [{<<"Application-Name">>, <<"hangup">>}
@@ -315,9 +318,23 @@ hangup(Call) ->
               ],
     send_command(Command, Call).
 
+hangup(OtherLegOnly, Call) when is_boolean(OtherLegOnly) ->
+    Command = [{<<"Application-Name">>, <<"hangup">>}
+               ,{<<"Other-Leg-Only">>, OtherLegOnly}
+               ,{<<"Insert-At">>, <<"now">>}
+              ],
+    send_command(Command, Call).
+
 b_hangup(Call) ->
     hangup(Call),
     wait_for_hangup().
+b_hangup(false, Call) ->
+    hangup(Call),
+    wait_for_hangup();
+b_hangup(true, Call) ->
+    hangup(true, Call),
+    wait_for_unbridge().
+
 
 %%--------------------------------------------------------------------
 %% @public
@@ -1438,6 +1455,28 @@ wait_for_hangup() ->
             %% dont let the mailbox grow unbounded if
             %%   this process hangs around...
             wait_for_hangup()
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Wait forever for the channel to hangup
+%% @end
+%%--------------------------------------------------------------------
+-spec wait_for_unbridge/0 :: () -> {'ok', 'leg_hungup'}.
+wait_for_unbridge() ->
+    receive
+        {amqp_msg, {struct, _}=JObj} ->
+            case whapps_util:get_event_type(JObj) of
+                { <<"call_event">>, <<"LEG_DESTROYED">> } ->
+                    {ok, leg_hungup};
+                _ ->
+                    wait_for_unbridge()
+            end;
+        _ ->
+            %% dont let the mailbox grow unbounded if
+            %%   this process hangs around...
+            wait_for_unbridge()
     end.
 
 %%--------------------------------------------------------------------
