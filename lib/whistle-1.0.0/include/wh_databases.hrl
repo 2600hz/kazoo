@@ -9,6 +9,7 @@
 -define(WH_PROVISIONER_DB, <<"global_provisioner">>).
 -define(WH_FAXES, <<"faxes">>).
 
+-define(WH_ACCOUNT_CONFIGS, <<"configs_">>).
 
 -define(WHISTLE_DBS_INCLUDED, true).
 -endif.

@@ -53,6 +53,7 @@ migrate() ->
                    ,fun(L) -> [<<"cb_global_provisioner_templates">> | lists:delete(<<"cb_global_provisioner_templates">>, L)] end
                    ,fun(L) -> [<<"cb_queues">> | lists:delete(<<"cb_queues">>, L)] end
                    ,fun(L) -> [<<"cb_schemas">> | lists:delete(<<"cb_schema">>, L)] end
+                   ,fun(L) -> [<<"cb_configs">> | lists:delete(<<"cb_configs">>, L)] end
                   ],
     StartModules = whapps_config:get(<<"crossbar">>, <<"autoload_modules">>, []),
     _ = whapps_config:set_default(<<"crossbar">>

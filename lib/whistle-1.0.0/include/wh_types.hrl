@@ -15,6 +15,8 @@
            (_) -> false
         end).
 
+-type text() :: string() | atom() | binary().
+
 -type api_terms() :: wh_json:json_object() | wh_json:json_proplist().
 
 %% non-empty binary
