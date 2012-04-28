@@ -95,7 +95,7 @@ mute_participant(ParticipantId, Conference) ->
 prompt(Media, Conference) ->
     prompt(Media, undefined, Conference).
 prompt(Media, ParticipantId, Conference) ->
-    play(cf_util:get_prompt(Media), ParticipantId, Conference).
+    play(whapps_util:get_prompt(Media, undefined), ParticipantId, Conference).
 
 
 -spec play/2 :: (ne_binary(), whapps_conference:conference()) -> ok.

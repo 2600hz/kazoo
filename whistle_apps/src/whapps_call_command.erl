@@ -110,9 +110,9 @@ audio_macro([{play, MediaName}|T], Call, Queue) ->
 audio_macro([{play, MediaName, Terminators}|T], Call, Queue) ->
     audio_macro(T, Call, [play_command(MediaName, Terminators, Call) | Queue]);
 audio_macro([{prompt, PromptName}|T], Call, Queue) ->
-    audio_macro(T, Call, [play_command(cf_util:get_prompt(PromptName), ?ANY_DIGIT, Call) | Queue]);
+    audio_macro(T, Call, [play_command(whapps_util:get_prompt(PromptName, Call), ?ANY_DIGIT, Call) | Queue]);
 audio_macro([{prompt, PromptName, Lang}|T], Call, Queue) ->
-    audio_macro(T, Call, [play_command(cf_util:get_prompt(PromptName, Lang), ?ANY_DIGIT, Call) | Queue]);
+    audio_macro(T, Call, [play_command(whapps_util:get_prompt(PromptName, Lang, Call), ?ANY_DIGIT, Call) | Queue]);
 audio_macro([{say, Say}|T], Call, Queue) ->
     audio_macro(T, Call, [say_command(Say, <<"name_spelled">>, <<"pronounced">>, <<"en">>, Call) | Queue]);
 audio_macro([{say, Say, Type}|T], Call, Queue) ->
@@ -528,13 +528,13 @@ prompt(Prompt, Call) ->
     prompt(Prompt, <<"en">>, Call).
 
 prompt(Prompt, Lang, Call) ->
-    play(cf_util:get_prompt(Prompt, Lang), Call).
+    play(whapps_util:get_prompt(Prompt, Lang, Call), Call).
 
 b_prompt(Prompt, Call) ->
     b_prompt(Prompt, <<"en">>, Call).
 
 b_prompt(Prompt, Lang, Call) ->
-    b_play(cf_util:get_prompt(Prompt, Lang), Call).
+    b_play(whapps_util:get_prompt(Prompt, Lang, Call), Call).
     
 %%--------------------------------------------------------------------
 %% @public
@@ -756,7 +756,7 @@ prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, InvalidP
 prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, InvalidPrompt, Regex, Call) ->
     prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, InvalidPrompt, Regex, [<<"#">>], Call).
 prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, InvalidPrompt, Regex, Terminators, Call) ->
-    play_and_collect_digits(MinDigits, MaxDigits, cf_util:get_prompt(Prompt), Tries, Timeout, InvalidPrompt, Regex, Terminators, Call).
+    play_and_collect_digits(MinDigits, MaxDigits, whapps_util:get_prompt(Prompt, Call), Tries, Timeout, InvalidPrompt, Regex, Terminators, Call).
 
 b_prompt_and_collect_digit(Prompt, Call) ->
     b_prompt_and_collect_digits(<<"1">>, <<"1">>, Prompt, Call).
@@ -777,7 +777,7 @@ b_prompt_and_collect_digits(_MinDigits, _MaxDigits, _Prompt, <<"0">>, _Timeout, 
     _ = b_prompt(InvalidPrompt, Call),
     {ok, <<>>};
 b_prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, InvalidPrompt, Regex, Terminators, Call) ->
-    b_play_and_collect_digits(MinDigits, MaxDigits, cf_util:get_prompt(Prompt), Tries, Timeout, InvalidPrompt, Regex, Terminators, Call).
+    b_play_and_collect_digits(MinDigits, MaxDigits, whapps_util:get_prompt(Prompt, Call), Tries, Timeout, InvalidPrompt, Regex, Terminators, Call).
 
 %%--------------------------------------------------------------------
 %% @public

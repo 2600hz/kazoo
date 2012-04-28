@@ -6,15 +6,12 @@
 -export([presence_mwi_query/2]).
 -export([update_mwi/1, update_mwi/2, update_mwi/4]).
 -export([get_call_status/1]).
--export([get_prompt/1, get_prompt/2]).
 -export([alpha_to_dialpad/1, ignore_early_media/1]).
 -export([correct_media_path/2]).
 -export([lookup_callflow/1, lookup_callflow/2]).
 -export([handle_bridge_failure/2, handle_bridge_failure/3]).
 -export([send_default_response/2]).
 -export([get_sip_realm/2, get_sip_realm/3]).
-
--define(PROMPTS_CONFIG_CAT, <<(?CF_CONFIG_CAT)/binary, ".prompts">>).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -229,21 +226,6 @@ dialpad_digit(MNO) when MNO =:= $m orelse MNO =:= $n orelse MNO =:= $o -> $6;
 dialpad_digit(PQRS) when PQRS =:= $p orelse PQRS =:= $q orelse PQRS =:= $r orelse PQRS =:= $s -> $7;
 dialpad_digit(TUV) when TUV =:= $t orelse TUV =:= $u orelse TUV =:= $v -> $8;
 dialpad_digit(WXYZ) when WXYZ =:= $w orelse WXYZ =:= $x orelse WXYZ =:= $y orelse WXYZ =:= $z -> $9.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec get_prompt/1 :: (ne_binary()) -> ne_binary().
--spec get_prompt/2 :: (ne_binary(), ne_binary()) -> ne_binary().
-
-get_prompt(Name) ->
-    get_prompt(Name, <<"en">>).
-
-get_prompt(Name, Lang) ->
-    whapps_config:get(?PROMPTS_CONFIG_CAT, [Lang, Name], <<"/system_media/", Name/binary>>).    
 
 %%--------------------------------------------------------------------
 %% @public
