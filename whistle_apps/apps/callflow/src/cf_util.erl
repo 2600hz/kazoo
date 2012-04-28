@@ -433,7 +433,7 @@ handle_bridge_failure(Cause, Code, Call) ->
 %% Send and wait for a call failure cause response
 %% @end
 %%--------------------------------------------------------------------
--spec send_default_response/2 :: (ne_binary(), whapps_call:call()) -> ok.
+-spec send_default_response/2 :: (ne_binary(), whapps_call:call()) -> 'ok'.
 send_default_response(Cause, Call) ->
     case cf_exe:wildcard_is_empty(Call) of
         false -> ok;
@@ -442,10 +442,9 @@ send_default_response(Cause, Call) ->
             CtrlQ = cf_exe:control_queue(Call),
             case wh_call_response:send_default(CallId, CtrlQ, Cause) of
                 {error, no_response} -> ok;
-                {ok, NoopId} -> whapps_call_command:wait_for_noop(NoopId)
+                {ok, NoopId} -> _ = whapps_call_command:wait_for_noop(NoopId), ok
             end
-    end,
-    ok.
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
