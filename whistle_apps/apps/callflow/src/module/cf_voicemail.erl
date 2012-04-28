@@ -119,7 +119,7 @@ check_mailbox(#mailbox{owner_id=OwnerId}=Box, Call, Loop) ->
 check_mailbox(#mailbox{max_login_attempts=MaxLoginAttempts}, _, Call, Loop) when Loop > MaxLoginAttempts ->
     %% if we have exceeded the maximum loop attempts then terminate this call
     lager:debug("maximum number of invalid attempts to check mailbox"),
-    whapps_call_command:b_prompt(<<"vm-abort">>, Call),
+    _ = whapps_call_command:b_prompt(<<"vm-abort">>, Call),
     ok;
 check_mailbox(#mailbox{exists=false}=Box, _ , Call, Loop) ->
     %% if the callflow did not define the mailbox to check then request the mailbox ID from the user
@@ -138,7 +138,7 @@ check_mailbox(#mailbox{pin = <<>>, exists=true}, false, Call, _) ->
     %% If the caller is not the owner or the mailbox requires a pin to access it but has none set
     %% then terminate this call.
     lager:debug("attempted to sign into a mailbox with no pin"),
-    whapps_call_command:b_prompt(<<"vm-no_access">>, Call),
+    _ = whapps_call_command:b_prompt(<<"vm-no_access">>, Call),
     ok;
 check_mailbox(#mailbox{pin=Pin}=Box, IsOwner, Call, Loop) ->
     lager:debug("requesting pin number to check mailbox"),
@@ -166,7 +166,7 @@ check_mailbox(#mailbox{pin=Pin}=Box, IsOwner, Call, Loop) ->
 find_mailbox(#mailbox{max_login_attempts=MaxLoginAttempts}, Call, Loop) when Loop > MaxLoginAttempts ->
     %% if we have exceeded the maximum loop attempts then terminate this call
     lager:debug("maximum number of invalid attempts to find mailbox"),
-    whapps_call_command:b_prompt(<<"vm-abort">>, Call),
+    _ = whapps_call_command:b_prompt(<<"vm-abort">>, Call),
     ok;
 find_mailbox(Box, Call, Loop) ->
     lager:debug("requesting mailbox number to check"),
@@ -220,11 +220,11 @@ compose_voicemail(#mailbox{check_if_owner=true}=Box, true, Call) ->
     check_mailbox(Box, Call);
 compose_voicemail(#mailbox{exists=false}, _, Call) ->
     lager:debug("attempted to compose voicemail for missing mailbox"),
-    whapps_call_command:b_prompt(<<"vm-not_available_no_voicemail">>, Call),
+    _ = whapps_call_command:b_prompt(<<"vm-not_available_no_voicemail">>, Call),
     ok;
 compose_voicemail(#mailbox{max_message_count=Count, message_count=Count}, _, Call) when Count /= 0->
     lager:debug("voicemail box is full, cannot hold more messages"),
-    whapps_call_command:b_prompt(<<"vm-mailbox_full">>, Call),
+    _ = whapps_call_command:b_prompt(<<"vm-mailbox_full">>, Call),
     ok;
 compose_voicemail(#mailbox{keys=#keys{login=Login}}=Box, _, Call) ->
     lager:debug("playing mailbox greeting to caller"),
@@ -300,26 +300,26 @@ record_voicemail(AttachmentName, #mailbox{max_message_length=MaxMessageLength}=B
                              ]),
     whapps_call_command:tones([Tone], Call),
     lager:debug("composing new voicemail"),
-    case whapps_call_command:b_record(AttachmentName, ?ANY_DIGIT, wh_util:to_binary(MaxMessageLength), Call) of
-        {ok, Msg} ->
-            Length = wh_json:get_integer_value(<<"Length">>, Msg, 0),
-            case review_recording(AttachmentName, Box, Call) of
-                {ok, record} ->
-                    lager:debug("caller choose to re-record the message"),
-                    record_voicemail(tmp_file(), Box, Call);
-                {ok, save} ->
-                    lager:debug("caller choose to save the message"),
-                    new_message(AttachmentName, Length, Box, Call),
-                    whapps_call_command:b_prompt(<<"vm-saved">>, Call);
-                {ok, no_selection} ->
-                    lager:debug("caller made no selection or hungup, saving the message"),
-                    new_message(AttachmentName, Length, Box, Call),
-                    whapps_call_command:b_prompt(<<"vm-saved">>, Call)
-            end;
-        {error, R} ->
-            lager:debug("error while attempting to record a new message: ~p", [R]),
-            ok
-    end,
+    _ = case whapps_call_command:b_record(AttachmentName, ?ANY_DIGIT, wh_util:to_binary(MaxMessageLength), Call) of
+            {ok, Msg} ->
+                Length = wh_json:get_integer_value(<<"Length">>, Msg, 0),
+                case review_recording(AttachmentName, Box, Call) of
+                    {ok, record} ->
+                        lager:debug("caller choose to re-record the message"),
+                        record_voicemail(tmp_file(), Box, Call);
+                    {ok, save} ->
+                        lager:debug("caller choose to save the message"),
+                        _ = new_message(AttachmentName, Length, Box, Call),
+                        whapps_call_command:b_prompt(<<"vm-saved">>, Call);
+                    {ok, no_selection} ->
+                        lager:debug("caller made no selection or hungup, saving the message"),
+                        _ = new_message(AttachmentName, Length, Box, Call),
+                        whapps_call_command:b_prompt(<<"vm-saved">>, Call)
+                end;
+            {error, R} ->
+                lager:debug("error while attempting to record a new message: ~p", [R]),
+                ok
+        end,
     ok.
 
 %%--------------------------------------------------------------------
@@ -359,11 +359,11 @@ main_menu(_, Call, Loop) when Loop > 4 ->
     %% If there have been too may loops with no action from the caller this
     %% is likely a abandonded channel, terminate
     lager:debug("entered main menu with too many invalid entries"),
-    whapps_call_command:b_prompt(<<"vm-goodbye">>, Call),
+    _ = whapps_call_command:b_prompt(<<"vm-goodbye">>, Call),
     ok;
 main_menu(#mailbox{owner_id=OwnerId, keys=#keys{hear_new=HearNew, hear_saved=HearSaved, configure=Configure, exit=Exit}}=Box, Call, Loop) ->
     lager:debug("playing mailbox main menu"),
-    whapps_call_command:b_flush(Call),
+    _ = whapps_call_command:b_flush(Call),
     AccountDb = whapps_call:account_db(Call),
     Messages = get_messages(Box, Call),
     New = count_messages(Messages, ?FOLDER_NEW),
@@ -483,17 +483,17 @@ play_messages([H|T]=Messages, Count, #mailbox{timezone=Timezone}=Box, Call) ->
     case message_menu(Prompt, Box, Call) of
         {ok, keep} ->
             lager:debug("caller choose to save the message"),
-            whapps_call_command:b_prompt(<<"vm-saved">>, Call),
+            _ = whapps_call_command:b_prompt(<<"vm-saved">>, Call),
             set_folder(?FOLDER_SAVED, H, Box, Call),
             play_messages(T, Count, Box, Call);
         {ok, delete} ->
             lager:debug("caller choose to delete the message"),
-            whapps_call_command:b_prompt(<<"vm-deleted">>, Call),
+            _ = whapps_call_command:b_prompt(<<"vm-deleted">>, Call),
             set_folder(?FOLDER_DELETED, H, Box, Call),
             play_messages(T, Count, Box, Call);
         {ok, return} ->
             lager:debug("caller choose to return to the main menu"),
-            whapps_call_command:b_prompt(<<"vm-saved">>, Call),
+            _ = whapps_call_command:b_prompt(<<"vm-saved">>, Call),
             set_folder(?FOLDER_SAVED, H, Box, Call),
             complete;
         {ok, replay} ->
@@ -601,17 +601,17 @@ record_unavailable_greeting(AttachmentName, #mailbox{unavailable_media_id=MediaI
     _NoopId = whapps_call_command:audio_macro([{prompt, <<"vm-record_greeting">>}
                                            ,{tones, [Tone]}
                                           ], Call),
-    whapps_call_command:b_record(AttachmentName, Call),
+    _ = whapps_call_command:b_record(AttachmentName, Call),
     case review_recording(AttachmentName, Box, Call) of
         {ok, record} ->
             record_unavailable_greeting(tmp_file(), Box, Call);
         {ok, save} ->
             _ = store_recording(AttachmentName, MediaId, Call),
             ok = update_doc([<<"media">>, <<"unavailable">>], MediaId, Box, Call),
-            whapps_call_command:b_prompt(<<"vm-saved">>, Call),
+            _ = whapps_call_command:b_prompt(<<"vm-saved">>, Call),
             Box;
         {ok, no_selection} ->
-            whapps_call_command:b_prompt(<<"vm-deleted">>, Call),
+            _ = whapps_call_command:b_prompt(<<"vm-deleted">>, Call),
             ok
     end.
 
@@ -634,17 +634,17 @@ record_name(AttachmentName, #mailbox{name_media_id=MediaId}=Box, Call) ->
     _NoopId = whapps_call_command:audio_macro([{prompt,  <<"vm-record_name">>}
                                                ,{tones, [Tone]}
                                               ], Call),
-    whapps_call_command:b_record(AttachmentName, Call),
+    _ = whapps_call_command:b_record(AttachmentName, Call),
     case review_recording(AttachmentName, Box, Call) of
         {ok, record} ->
             record_name(tmp_file(), Box, Call);
         {ok, save} ->
             _ = store_recording(AttachmentName, MediaId, Call),
             ok = update_doc([<<"media">>, <<"name">>], MediaId, Box, Call),
-            whapps_call_command:b_prompt(<<"vm-saved">>, Call),
+            _ = whapps_call_command:b_prompt(<<"vm-saved">>, Call),
             Box;
         {ok, no_selection} ->
-            whapps_call_command:b_prompt(<<"vm-deleted">>, Call),
+            _ = whapps_call_command:b_prompt(<<"vm-deleted">>, Call),
             ok
     end.
 

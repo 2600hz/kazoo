@@ -19,11 +19,11 @@
 %% call originator.
 %% @end
 %%--------------------------------------------------------------------
--spec handle/2 :: (wh_json:json_object(), whapps_call:call()) -> ok.
+-spec handle/2 :: (wh_json:json_object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     Code = wh_json:get_value(<<"code">>, Data, <<"486">>),
     Cause = wh_json:get_ne_value(<<"message">>, Data),
     Media = wh_json:get_ne_value(<<"media">>, Data),
     lager:debug("repsonding to call with ~s ~s", [Code, Cause]),
-    whapps_call_command:call_response(Code, Cause, Media, Call),
+    whapps_call_command:response(Code, Cause, Media, Call),
     cf_exe:stop(Call).

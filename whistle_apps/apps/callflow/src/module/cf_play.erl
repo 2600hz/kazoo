@@ -44,5 +44,5 @@ play(Data, Call, Media) ->
         false -> whapps_call_command:answer(Call)
     end,
     lager:debug("playing media ~s", [Media]),
-    whapps_call_command:b_play(Media, Call),
+    _ = whapps_call_command:b_play(Media, Call),
     cf_exe:continue(Call).

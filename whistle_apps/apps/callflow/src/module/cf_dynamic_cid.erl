@@ -48,7 +48,7 @@
 handle(Data, Call) ->
     DynamicCID = #dynamic_cid{},
     Prompts = DynamicCID#dynamic_cid.prompts,
-    whapps_call_command:b_play("silence_stream://100", Call),
+    _ = whapps_call_command:b_play(<<"silence_stream://100">>, Call),
     Media = case wh_json:get_ne_value(<<"media_id">>, Data) of
                 undefined ->
                     Prompts#prompts.default_prompt;
@@ -61,13 +61,13 @@ handle(Data, Call) ->
     DefaultCID = DynamicCID#dynamic_cid.default_cid,
     CID = case whapps_call_command:b_play_and_collect_digits(Min, Max, Media, <<"1">>, <<"5000">>, undefined, Regex, Call) of
               {ok, <<>>} ->
-                  whapps_call_command:play(Prompts#prompts.reject_tone, Call),
+                  _ = whapps_call_command:play(Prompts#prompts.reject_tone, Call),
                   DefaultCID;
               {ok, Digits} ->
-                  whapps_call_command:play(Prompts#prompts.accept_tone, Call),
+                  _ = whapps_call_command:play(Prompts#prompts.accept_tone, Call),
                   Digits;
               {error, _} ->
-                  whapps_call_command:play(Prompts#prompts.reject_tone, Call),
+                  _ = whapps_call_command:play(Prompts#prompts.reject_tone, Call),
                   DefaultCID
           end,
     lager:debug("setting the caller id number to ~s", [CID]),

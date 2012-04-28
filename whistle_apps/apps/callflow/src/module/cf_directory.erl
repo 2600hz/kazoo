@@ -143,7 +143,7 @@ handle(Data, Call) ->
 
 -spec directory_start/3 :: (whapps_call:call(), directory(), directory_users()) -> 'ok'.
 directory_start(Call, State, CurrUsers) ->
-    whapps_call_command:flush_dtmf(Call),
+    _ = whapps_call_command:flush_dtmf(Call),
     {ok, DTMF} = play_directory_instructions(Call, sort_by(State)),
     collect_min_digits(Call, add_dtmf(State, DTMF), CurrUsers, min_dtmf(State) - byte_size(DTMF)).
 
@@ -227,7 +227,7 @@ maybe_match_users(Call, State, [U|Us], MatchNum) ->
             directory_start(Call, clear_dtmf(State), users(State));
         invalid ->
             lager:debug("invalid key press"),
-            play_invalid(Call),
+            _ = play_invalid(Call),
             maybe_match_users(Call, State, [U|Us], MatchNum)
     end.
 
@@ -271,7 +271,7 @@ interpret_user_match_dtmf(_) -> invalid.
 -spec maybe_confirm_match/3 :: (whapps_call:call(), directory_user(), boolean()) -> boolean().
 maybe_confirm_match(_, _, false) -> true;
 maybe_confirm_match(Call, User, true) ->
-    whapps_call_command:flush_dtmf(Call),
+    _ = whapps_call_command:flush_dtmf(Call),
     case play_confirm_match(Call, User) of
         {ok, ?DTMF_ACCEPT_MATCH} -> true;
         _ -> false
