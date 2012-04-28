@@ -339,9 +339,9 @@ migrate_attachment(AccountDb, ViewJObj) ->
                     lager:debug("media doc ~s/~s has no attachments, removing", [AccountDb, Id]),
                     couch_mgr:save_doc(AccountDb, wh_json:set_value(<<"pvt_deleted">>, true, JObj1));
                 Attachments ->
-                    [catch migrate_attachment(AccountDb, JObj1, Attachment, wh_json:get_value(Attachment, Attachments))
-                     || Attachment <- wh_json:get_keys(Attachments)
-                    ],
+                    _ = [catch migrate_attachment(AccountDb, JObj1, Attachment, wh_json:get_value(Attachment, Attachments))
+                         || Attachment <- wh_json:get_keys(Attachments)
+                        ],
                     ok
             end
     end,
