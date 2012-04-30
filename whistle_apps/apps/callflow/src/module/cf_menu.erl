@@ -318,7 +318,7 @@ play_exit_prompt(#cf_menu_data{exit_media=Id}, Call) ->
 %%--------------------------------------------------------------------
 -spec get_prompt/2 :: (menu(), whapps_call:call()) -> ne_binary().
 get_prompt(#cf_menu_data{greeting_id=undefined}, _) ->
-    cf_util:get_prompt(<<"menu-no_prompt">>);
+    whapps_util:get_prompt(<<"menu-no_prompt">>);
 get_prompt(#cf_menu_data{greeting_id = <<"local_stream://", _/binary>> = ID}, _) ->
     ID;
 get_prompt(#cf_menu_data{greeting_id=Id}, Call) ->
@@ -384,7 +384,7 @@ tmp_file() ->
 review_recording(MediaName, #cf_menu_data{keys=#menu_keys{listen=ListenKey, record=RecordKey, save=SaveKey}}=Menu, Call) ->
     lager:debug("playing menu greeting review options"),
     whapps_call_command:flush_dtmf(Call),
-    Prompt = cf_util:get_prompt(<<"vm-review_recording">>),
+    Prompt = whapps_util:get_prompt(<<"vm-review_recording">>, Call),
     case whapps_call_command:b_play_and_collect_digit(Prompt, Call) of
         {ok, ListenKey} ->
             whapps_call_command:b_play(MediaName, Call),

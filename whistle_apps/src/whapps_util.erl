@@ -23,12 +23,14 @@
 -export([add_aggregate_device/2]).
 -export([rm_aggregate_device/2]).
 -export([get_destination/3]).
+-export([get_prompt/2, get_prompt/3]).
 
 -include("whistle_apps.hrl").
 
 -define(REPLICATE_ENCODING, encoded).
 -define(AGG_LIST_BY_REALM, <<"accounts/listing_by_realm">>).
 -define(AGG_LIST_BY_NAME, <<"accounts/listing_by_name">>).
+-define(PROMPTS_CONFIG_CAT, <<"prompts">>).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -411,6 +413,25 @@ get_destination(JObj, Cat, Key) ->
                     end
             end
     end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec get_prompt/2 :: (ne_binary(), 'undefined' | whapps_call:call()) -> ne_binary().
+-spec get_prompt/3 :: (ne_binary(), ne_binary(), 'undefined' | whapps_call:call()) -> ne_binary().
+
+get_prompt(Name, Call) ->
+    get_prompt(Name, <<"en">>, Call).
+
+get_prompt(Name, Lang, undefined) ->
+    whapps_config:get(?PROMPTS_CONFIG_CAT, [Lang, Name], <<"/system_media/", Name/binary>>);
+get_prompt(Name, Lang, Call) ->
+    DefaultPrompt = whapps_config:get(?PROMPTS_CONFIG_CAT, [Lang, Name], <<"/system_media/", Name/binary>>),
+    JObj = whapps_account_config:get(whapps_call:account_id(Call), ?PROMPTS_CONFIG_CAT),
+    wh_json:get_value([Lang, Name], JObj, DefaultPrompt).
 
 -spec try_split/2 :: (ne_binary(), wh_json:json_object()) -> {ne_binary(), ne_binary()} | 'undefined'.
 try_split(Key, JObj) ->

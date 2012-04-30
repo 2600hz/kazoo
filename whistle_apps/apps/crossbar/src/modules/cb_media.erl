@@ -42,6 +42,8 @@
 
 -define(CB_LIST, <<"media/crossbar_listing">>).
 
+-define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".media">>).
+
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -162,6 +164,7 @@ validate(#cb_context{req_verb = <<"post">>, req_files=[{_Filename, FileObj}]}=Co
                                                                   ,byte_size(wh_json:get_value(<<"contents">>, FileObj, <<>>))),
                                  wh_json:set_value(<<"content_length">>, Size, J)
                          end
+                        ,fun(J) -> wh_json:set_value(<<"media_source">>, <<"recording">>, J) end
                        ],
             case wh_json_validator:is_valid(lists:foldr(fun(F, J) -> F(J) end, Data, Updaters), <<"media">>) of
                 {fail, Errors} ->
@@ -185,14 +188,79 @@ get(Context, _MediaID, ?BIN_DATA) ->
                                        | Context#cb_context.resp_headers]}.
 
 -spec put/1 :: (#cb_context{}) -> #cb_context{}.
-put(#cb_context{}=Context) ->
-    crossbar_doc:save(Context).
+put(#cb_context{doc=JObj}=Context) ->
+    Text = wh_json:get_value([<<"tts">>, <<"text">>], JObj),
+    PrevText = wh_json:get_value(<<"pvt_previous_tts">>, JObj),
+    TTS = not (wh_util:is_empty(Text) orelse Text =:= PrevText),
+    Routines = [fun(C) -> crossbar_doc:save(C) end
+                ,fun(#cb_context{resp_status=success, doc=J}=C) when TTS ->
+                         Voice = wh_json:get_value([<<"tts">>, <<"voice">>], J, <<"female/en-US">>),
+                         case whapps_speech:create(Text, Voice) of
+                             {error, R} -> crossbar_util:response(error, wh_util:to_binary(R), C);
+                             {ok, ContentType, Content} ->
+                                 MediaId = wh_json:get_value(<<"_id">>, J),
+                                 Headers = wh_json:from_list([{<<"content_type">>, ContentType}
+                                                              ,{<<"content_length">>, byte_size(Content)}
+                                                             ]),
+                                 FileJObj = wh_json:from_list([{<<"headers">>, Headers}
+                                                               ,{<<"contents">>, Content}
+                                                              ]),
+                                 FileName = <<"text_to_speech_"
+                                              ,(wh_util:to_binary(wh_util:current_tstamp()))/binary
+                                              ,".wav">>,
+                                 update_media_binary(MediaId, C#cb_context{req_files=[{FileName, FileJObj}]
+                                                                           ,resp_status=error
+                                                                          }),
+                                 crossbar_doc:load(MediaId, C)
+                         end;
+                    (C) -> C
+                 end
+                ,fun(#cb_context{resp_status=success, doc=J1}=C) when TTS ->
+                         J2 = wh_json:set_value(<<"media_source">>, <<"tts">>, J1),
+                         crossbar_doc:save(C#cb_context{doc=wh_json:set_value(<<"pvt_previous_tts">>, Text, J2)});
+                    (C) -> C
+                 end
+                ],
+    lists:foldl(fun(F, C) -> F(C) end, Context, Routines).
 
 -spec post/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
 -spec post/3 :: (#cb_context{}, path_token(), path_token()) -> #cb_context{}.
 
-post(Context, _MediaID) ->
-    crossbar_doc:save(Context).
+post(#cb_context{doc=JObj}=Context, MediaId) ->
+    Text = wh_json:get_value([<<"tts">>, <<"text">>], JObj),
+    PrevText = wh_json:get_value(<<"pvt_previous_tts">>, JObj),
+    TTS = not (wh_util:is_empty(Text) orelse Text =:= PrevText),
+    Routines = [fun(#cb_context{resp_status=success, doc=J}=C) when TTS ->
+                        Voice = wh_json:get_value([<<"tts">>, <<"voice">>], J, <<"female/en-US">>),
+                        case whapps_speech:create(Text, Voice) of
+                            {error, R} -> crossbar_util:response(error, wh_util:to_binary(R), C);
+                            {ok, ContentType, Content} ->
+                                Headers = wh_json:from_list([{<<"content_type">>, ContentType}
+                                                             ,{<<"content_length">>, byte_size(Content)}
+                                                            ]),
+                                FileJObj = wh_json:from_list([{<<"headers">>, Headers}
+                                                              ,{<<"contents">>, Content}
+                                                              ]),
+                                FileName = <<"text_to_speech_"
+                                             ,(wh_util:to_binary(wh_util:current_tstamp()))/binary
+                                             ,".wav">>,
+                                update_media_binary(MediaId, C#cb_context{req_files=[{FileName, FileJObj}]
+                                                                          ,resp_status=error
+                                                                         }),
+                                crossbar_doc:load_merge(MediaId, wh_json:public_fields(JObj), Context)
+                         end;
+                   (C) -> C
+                end
+                ,fun(#cb_context{resp_status=success, doc=J1}=C) when TTS ->
+                         J2 = wh_json:set_value(<<"media_source">>, <<"tts">>, J1),
+                         crossbar_doc:save(C#cb_context{doc=wh_json:set_value(<<"pvt_previous_tts">>, Text, J2)});
+                    (#cb_context{resp_status=success}=C) -> 
+                         crossbar_doc:save(C);
+                    (C) -> C
+                 end
+               ],
+    lists:foldl(fun(F, C) -> F(C) end, Context, Routines).
+
 post(Context, MediaID, ?BIN_DATA) ->
     update_media_binary(MediaID, Context).
 
@@ -311,6 +379,7 @@ update_media_binary(MediaID, #cb_context{doc=JObj, req_files=[{Filename, FileObj
      || Attachment <- wh_json:get_keys(OldAttachments)
     ],
     crossbar_doc:save_attachment(MediaID, attachment_name(Filename, CT), Contents, Context, Opts).
+    
 
 %%--------------------------------------------------------------------
 %% @private

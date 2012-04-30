@@ -197,7 +197,9 @@ extract_file(Context, ContentType, Req0) ->
                                                   ,{<<"contents">>, FileContents}
                                                  ]),
                     lager:debug("request is a file upload of type: ~s", [ContentType]),
-                    {Context#cb_context{req_files=[{<<"uploaded_file">>, FileJObj}]}, Req2}
+                    FileName = <<"uploaded_file_"
+                                 ,(wh_util:to_binary(wh_util:current_tstamp()))/binary>>,  
+                    {Context#cb_context{req_files=[{FileName, FileJObj}]}, Req2}
             end
     end.
 
@@ -219,7 +221,9 @@ decode_base64(Context, CT, Req0) ->
                                           ,{<<"contents">>, FileContents}
                                          ]),
             lager:debug("request is a base64 file upload of type: ~s", [ContentType]),
-            {Context#cb_context{req_files=[{<<"uploaded_file">>, FileJObj}]}, Req1}
+            FileName = <<"uploaded_file_"
+                         ,(wh_util:to_binary(wh_util:current_tstamp()))/binary>>,  
+            {Context#cb_context{req_files=[{FileName, FileJObj}]}, Req1}
     end.
 
 -spec decode_base64/1 :: (ne_binary()) -> {undefined | ne_binary(), ne_binary()}.

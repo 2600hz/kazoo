@@ -774,6 +774,8 @@ get_mailbox_profile(Data, Call) ->
             LastAct = whapps_call:kvs_fetch(cf_last_action, Call),
             CheckIfOwner = ((undefined =:= LastAct) orelse (cf_device =:= LastAct)),
             #mailbox{mailbox_id = MailboxId
+                     ,exists = true
+                     ,keys = populate_keys(Call)
                      ,skip_instructions =
                          wh_json:is_true(<<"skip_instructions">>, JObj, Default#mailbox.skip_instructions)
                      ,skip_greeting =
@@ -802,12 +804,39 @@ get_mailbox_profile(Data, Call) ->
                          find_max_message_length([Data, JObj])
                      ,message_count =
                          length(wh_json:get_value(<<"messages">>, JObj, []))
-                     ,exists = true
                     };
         {error, R} ->
             lager:debug("failed to load voicemail box ~s, ~p", [Id, R]),
             #mailbox{}
     end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec populate_keys/1 :: (whapps_call:call()) -> #keys{}.
+populate_keys(Call) ->
+    Default = #keys{},
+    JObj = whapps_account_config:get(whapps_call:account_id(Call), <<"keys">>),
+    #keys{operator = wh_json:get_binary_value([<<"voicemail">>, <<"operator">>], JObj, Default#keys.operator)
+          ,login = wh_json:get_binary_value([<<"voicemail">>, <<"login">>], JObj, Default#keys.login)
+          ,save = wh_json:get_binary_value([<<"voicemail">>, <<"save">>], JObj, Default#keys.save)
+          ,listen = wh_json:get_binary_value([<<"voicemail">>, <<"listen">>], JObj, Default#keys.listen)
+          ,record = wh_json:get_binary_value([<<"voicemail">>, <<"record">>], JObj, Default#keys.record)
+          ,hear_new = wh_json:get_binary_value([<<"voicemail">>, <<"hear_new">>], JObj, Default#keys.hear_new)
+          ,hear_saved = wh_json:get_binary_value([<<"voicemail">>, <<"hear_saved">>], JObj, Default#keys.hear_saved)
+          ,configure = wh_json:get_binary_value([<<"voicemail">>, <<"configure">>], JObj, Default#keys.configure)
+          ,exit = wh_json:get_binary_value([<<"voicemail">>, <<"exit">>], JObj, Default#keys.exit)
+          ,rec_unavailable = wh_json:get_binary_value([<<"voicemail">>, <<"record_unavailable">>], JObj, Default#keys.rec_unavailable)
+          ,rec_name = wh_json:get_binary_value([<<"voicemail">>, <<"record_name">>], JObj, Default#keys.rec_name)
+          ,set_pin = wh_json:get_binary_value([<<"voicemail">>, <<"set_pin">>], JObj, Default#keys.set_pin)
+          ,return_main = wh_json:get_binary_value([<<"voicemail">>, <<"return_main_menu">>], JObj, Default#keys.return_main)
+          ,keep = wh_json:get_binary_value([<<"voicemail">>, <<"keep">>], JObj, Default#keys.keep)
+          ,replay = wh_json:get_binary_value([<<"voicemail">>, <<"replay">>], JObj, Default#keys.replay)
+          ,delete = wh_json:get_binary_value([<<"voicemail">>, <<"delete">>], JObj, Default#keys.delete)
+         }.
 
 %%--------------------------------------------------------------------
 %% @private

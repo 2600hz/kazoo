@@ -66,8 +66,8 @@ handle(Data, Call) ->
 cf_menu(#callfwd{keys=#keys{menu_toggle_cf=Toggle, menu_change_number=ChangeNum}}=CF, CaptureGroup, Call) ->
     lager:debug("playing call forwarding menu"),
     Prompt = case CF#callfwd.enabled of
-                 true -> cf_util:get_prompt(<<"cf-enabled_menu">>);
-                 false -> cf_util:get_prompt(<<"cf-disabled_menu">>)
+                 true -> whapps_util:get_prompt(<<"cf-enabled_menu">>, Call);
+                 false -> whapps_util:get_prompt(<<"cf-disabled_menu">>, Call)
              end,
     _  = whapps_call_command:b_flush(Call),
     case whapps_call_command:b_play_and_collect_digit(Prompt, Call) of
@@ -154,7 +154,7 @@ cf_deactivate(CF, Call) ->
 %%--------------------------------------------------------------------
 -spec cf_update_number/3 :: (#callfwd{}, undefined | binary(), whapps_call:call()) -> #callfwd{}.
 cf_update_number(CF, CaptureGroup, Call) when is_atom(CaptureGroup); CaptureGroup =:= <<>> ->
-    EnterNumber = cf_util:get_prompt(<<"cf-enter_number">>),
+    EnterNumber = whapps_util:get_prompt(<<"cf-enter_number">>, Call),
     case whapps_call_command:b_play_and_collect_digits(<<"3">>, <<"20">>, EnterNumber, <<"1">>, <<"8000">>, Call) of
         {ok, <<>>} -> cf_update_number(CF, CaptureGroup, Call);
         {ok, Number} ->
