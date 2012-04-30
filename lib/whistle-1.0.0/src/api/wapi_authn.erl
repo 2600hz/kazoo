@@ -30,7 +30,7 @@
 
 -define(AUTHN_REQ_HEADERS, [<<"Msg-ID">>, <<"To">>, <<"From">>, <<"Orig-IP">>
                                 , <<"Auth-User">>, <<"Auth-Realm">>]).
--define(OPTIONAL_AUTHN_REQ_HEADERS, [<<"Method">>]).
+-define(OPTIONAL_AUTHN_REQ_HEADERS, [<<"Method">>, <<"Media-Server">>]).
 -define(AUTHN_REQ_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
                            ,{<<"Event-Name">>, ?AUTHN_REQ_EVENT_NAME}
                           ]).
