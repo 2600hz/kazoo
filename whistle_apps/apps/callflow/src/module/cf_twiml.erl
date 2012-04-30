@@ -86,6 +86,51 @@ process_element(Call, 'Dial', [#xmlText{value=DialMe, type=text}], #xmlElement{a
             cf_killio:send_req(Call1, Uri, Method, BaseParams)
     end;
 
+process_element(Call, 'Record', [#xmlText{}], #xmlElement{attributes=Attrs}) ->
+    Props = attrs_to_proplist(Attrs),
+    lager:debug("RECORD with attrs: ~p", [Attrs]),
+
+    Action = cf_killio:resolve_uri(whapps_call:kvs_fetch(voice_uri, Call)
+                                   ,props:get_value(action, Props)
+                                  ),
+
+    Method = cf_killio:http_method(props:get_value(method, Props, post)),
+
+    %% Transcribe = props:get_is_true(transcribe, Props, false),
+    %% TranscribeCallback = props:get_value(transcribeCallback, Props),
+
+    case props:get_is_true(playBeep, Props, true) of
+        true -> cf_killio:play_tone(Call);
+        false -> ok
+    end,
+
+    MediaName = media_name(whapps_call:call_id(Call)),
+    _ = case whapps_call_command:b_record(MediaName
+                                          ,props:get_value(finishOnKey, Props, ?ANY_DIGIT)
+                                          ,wh_util:to_binary(props:get_value(maxLength, Props, <<"3600">>))
+                                          ,props:get_value(timeout, Props, <<"5">>)
+                                          ,Call
+                                         ) of
+            {ok, Msg} ->
+                case wh_json:get_integer_value(<<"Length">>, Msg, 0) of
+                    0 -> lager:debug("recorded message length: 0, continuing");
+                    L ->
+                        RecordingId = maybe_save_recording(Call, MediaName, true),
+                        DTMFs = wh_json:get_value(<<"Digit-Pressed">>, Msg),
+
+                        lager:debug("recorded message length: ~bs, stored as ~s", [L, RecordingId]),
+                        BaseParams = wh_json:from_list([{<<"RecordingUrl">>, recorded_url(Call, RecordingId, true)}
+                                                        ,{<<"RecordingDuration">>, L}
+                                                        ,{<<"Digits">>, DTMFs}
+                                                        | cf_killio:req_params(Call)
+                                                       ]),
+                        cf_killio:send_req(Call, Action, Method, BaseParams)
+                end;
+            {error, _E} ->
+                %% TODO: when call hangs up, try to save message
+                lager:debug("failed to record message: ~p", [_E])
+        end;
+
 process_element(Call, 'Gather', [#xmlText{}|T], El) ->
     process_element(Call, 'Gather', T, El);
 process_element(Call, 'Gather', [#xmlElement{name=Name, content=Content}=El1|T], El) ->
@@ -233,6 +278,10 @@ offnet_data(false, true) ->
     ];
 offnet_data(false, false) ->
     [].
+
+media_name(ALeg) ->
+    DateTime = wh_util:pretty_print_datetime(calendar:universal_time()),
+    list_to_binary([DateTime, "_", ALeg, ".mp3"]).
 
 media_name(ALeg, BLeg) ->
     DateTime = wh_util:pretty_print_datetime(calendar:universal_time()),
