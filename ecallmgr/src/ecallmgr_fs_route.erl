@@ -176,6 +176,7 @@ process_route_req(Node, FSID, CallID, FSData) ->
                              ,{<<"From">>, ecallmgr_util:get_sip_from(FSData)}
                              ,{<<"Request">>, ecallmgr_util:get_sip_request(FSData)}
                              ,{<<"Call-ID">>, CallID}
+                             ,{<<"Media-Server">>, wh_util:to_binary(Node)}
                              ,{<<"Custom-Channel-Vars">>, wh_json:from_list(ecallmgr_util:custom_channel_vars(FSData))}
                              | wh_api:default_headers(<<>>, <<"dialplan">>, <<"route_req">>, ?APP_NAME, ?APP_VERSION)],
                   %% Server-ID will be over-written by the pool worker
