@@ -39,6 +39,7 @@
 -export([set_account_db/2, account_db/1]).
 -export([set_account_id/2, account_id/1]).
 
+-export([set_media_server/2, media_server/1]).
 -export([set_inception/2, inception/1]).
 
 -export([set_authorizing_id/2, authorizing_id/1]).
@@ -94,6 +95,7 @@
                        ,to = <<"nouser@norealm">> :: ne_binary()           %% Result of sip_to_user + @ + sip_to_host
                        ,to_user = <<"nouser">> :: ne_binary()              %% SIP to user
                        ,to_realm = <<"norealm">> :: ne_binary()            %% SIP to host
+                       ,media_server :: ne_binary()                        %% What media server is the call on
                        ,inception :: whapps_api_binary()                   %% Origin of the call <<"on-net">> | <<"off-net">>
                        ,account_db :: whapps_api_binary()                  %% The database name of the account that authorized this call
                        ,account_id :: whapps_api_binary()                  %% The account id that authorized this call
@@ -156,6 +158,7 @@ from_route_req(RouteReq, #whapps_call{}=Call) ->
                      ,to=To
                      ,to_user=ToUser
                      ,to_realm=ToRealm
+                     ,media_server = wh_json:get_value(<<"Media-Server">>, RouteReq)
                      ,inception=Inception
                      ,account_id=AccountId
                      ,account_db=AccountDb
@@ -189,6 +192,7 @@ from_route_win(RouteWin, #whapps_call{}=Call) ->
 
     Call#whapps_call{call_id=CallId
                      ,control_q=wh_json:get_value(<<"Control-Queue">>, RouteWin)
+                     ,media_server = wh_json:get_value(<<"Media-Server">>, RouteWin)
                      ,inception=Inception
                      ,account_id=AccountId
                      ,account_db=AccountDb
@@ -229,6 +233,7 @@ from_json(JObj, Call) ->
                      ,to = wh_json:get_ne_value(<<"To">>, JObj, to(Call))
                      ,to_user = wh_json:get_ne_value(<<"To-User">>, JObj, to_user(Call))
                      ,to_realm = wh_json:get_ne_value(<<"To-Realm">>, JObj, to_realm(Call))
+                     ,media_server = wh_json:get_value(<<"Media-Server">>, JObj, media_server(Call))
                      ,inception = wh_json:get_ne_value(<<"Inception">>, JObj, inception(Call))
                      ,account_db = wh_json:get_ne_value(<<"Account-DB">>, JObj, account_db(Call))
                      ,account_id = wh_json:get_ne_value(<<"Account-ID">>, JObj, account_id(Call))
@@ -282,6 +287,7 @@ to_proplist(#whapps_call{}=Call) ->
      ,{<<"To">>, to(Call)}
      ,{<<"To-User">>, to_user(Call)}
      ,{<<"To-Realm">>, to_realm(Call)}
+     ,{<<"Media-Server">>, media_server(Call)}
      ,{<<"Inception">>, inception(Call)}
      ,{<<"Account-DB">>, account_db(Call)}
      ,{<<"Account-ID">>, account_id(Call)}
@@ -461,6 +467,13 @@ to_user(#whapps_call{to_user=ToUser}) ->
 -spec to_realm/1 :: (whapps_call:call()) -> ne_binary().
 to_realm(#whapps_call{to_realm=ToRealm}) ->
     ToRealm.
+
+-spec set_media_server/2 :: (ne_binary(), whapps_call:call()) -> whapps_call:call().
+-spec media_server/1 :: (whapps_call:call()) -> ne_binary().
+set_media_server(Srv, #whapps_call{}=Call) ->
+    Call#whapps_call{media_server=Srv}.
+media_server(#whapps_call{media_server=Srv}) ->
+    Srv.
 
 -spec set_inception/2 :: (ne_binary(), whapps_call:call()) -> whapps_call:call().
 set_inception(<<"on-net">>, #whapps_call{}=Call) ->
