@@ -1,16 +1,20 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2010, VoIP INC
+%%% @copyright (C) 2010-2012, VoIP INC
 %%% @doc
-%%% Replaces proplists get_value/2 and get_value/3 with a faster version
-%%% using lists:keyfind
+%%% Mostly a drop-in replacement and extension of the proplists module,
+%%% but using the lists module to implement
 %%% @end
-%%% Created :  6 Oct 2010 by James Aimonetti <james@2600hz.org>
+%%% @contributors
+%%%   James Aimonetti
+%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(props).
 
 -export([get_value/2, get_value/3, delete/2, is_defined/2]).
 -export([get_integer_value/2, get_integer_value/3]).
+-export([get_is_true/2, get_is_true/3
+         ,get_is_false/2, get_is_false/3
+        ]).
 -export([get_keys/1]).
 -export([unique/1]).
 
@@ -33,6 +37,26 @@ get_value(Key, Prop, Default) when is_list(Prop) ->
             V;
         Other when is_tuple(Other) -> % otherwise return the default
             Default
+    end.
+
+-spec get_is_true/2 :: (wh_proplist_key(), wh_proplist()) -> 'undefined' | boolean().
+-spec get_is_true/3 :: (wh_proplist_key(), wh_proplist(), Default) -> Default | boolean().
+get_is_true(Key, Prop) ->
+    get_is_true(Key, Prop, undefined).
+get_is_true(Key, Prop, Default) ->
+    case get_value(Key, Prop, Default) of
+        Default -> Default;
+        V -> wh_util:is_true(V)
+    end.
+
+-spec get_is_false/2 :: (wh_proplist_key(), wh_proplist()) -> 'undefined' | boolean().
+-spec get_is_false/3 :: (wh_proplist_key(), wh_proplist(), Default) -> Default | boolean().
+get_is_false(Key, Prop) ->
+    get_is_false(Key, Prop, undefined).
+get_is_false(Key, Prop, Default) ->
+    case get_value(Key, Prop, Default) of
+        Default -> Default;
+        V -> wh_util:is_false(V)
     end.
 
 -spec get_integer_value/2 :: (wh_proplist_key(), wh_proplist()) -> integer() | 'undefined'.
