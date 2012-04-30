@@ -15,6 +15,7 @@
          ,send_req/4
          ,req_params/1, req_params/2
          ,http_method/1, resolve_uri/2
+         ,play_tone/1
         ]).
 
 %%--------------------------------------------------------------------
@@ -133,6 +134,13 @@ resolve_uri(RawPath, Relative) ->
                             end
                     end, PathTokensRev, UrlTokens)
        ), <<"/">>).
+
+play_tone(Call) ->
+    Tone = wh_json:from_list([{<<"Frequencies">>, [<<"440">>]}
+                              ,{<<"Duration-ON">>, <<"500">>}
+                              ,{<<"Duration-OFF">>, <<"100">>}
+                             ]),
+    whapps_call_command:tones([Tone], Call).
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
