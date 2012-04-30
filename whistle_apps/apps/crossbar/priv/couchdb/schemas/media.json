@@ -23,6 +23,30 @@
          "minimum":1,
          "maximum":5242880
       },
+      "tts":{
+         "description":"Text-to-speech options used to create audio files from text",
+         "type":"object",
+         "properties":{
+            "text":{
+               "description":"The text to be converted into audio",
+               "type":"string",
+               "minLength":1
+            },
+            "voice":{
+               "description":"The voice to be used during the conversion",
+               "type":"string",
+               "default":"female/en-US",
+               "enum":[
+                  "female/en-US",
+                  "male/en-US",
+                  "female/en-GB",
+                  "male/en-GB"
+               ]
+            }
+         },
+         "default":{
+         }
+      },
       "content_type":{
          "description":"Used to override the automatic upload type",
          "type":"string",
@@ -35,11 +59,19 @@
             "audio/ogg"
          ]
       },
+      "media_source":{
+         "description":"Defines the source of the media",
+         "type":"string",
+         "default":"upload",
+         "enum":[
+            "recording",
+            "upload",
+            "tts"
+         ]
+      },
       "source_type":{
          "description":"If the media was generated from a callflow module, this is the module name",
-         "type":"string",
-         "minLength":5,
-         "maxLength":20
+         "type":"string"
       },
       "source_id":{
          "description":"If the media was generated from a callflow module, this is ID of the properties",
