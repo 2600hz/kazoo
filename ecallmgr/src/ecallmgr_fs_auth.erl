@@ -189,6 +189,7 @@ lookup_user(Node, ID, Data) ->
                                                   ,{<<"Method">>, Method}
                                                   ,{<<"Auth-User">>, AuthUser}
                                                   ,{<<"Auth-Realm">>, AuthRealm}
+                                                  ,{<<"Media-Server">>, wh_util:to_binary(Node)}
                                                   | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                                                  ]
                                                 ,fun wapi_authn:publish_req/1
