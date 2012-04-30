@@ -105,7 +105,7 @@ post(Context, _DocId) ->
                     RemovedNumbers = sets:subtract(Set1, Set2),
                     _ = [wh_number_manager:reconcile_number(Number, AccountId)
                          || Number <- sets:to_list(NewNumbers)],
-                    _ = [wh_number_manager:release_number(Number, AccountId)
+                    _ = [wh_number_manager:release_number(Number)
                          || Number <- sets:to_list(RemovedNumbers)],
                     C
             end;
@@ -125,10 +125,10 @@ put(Context) ->
     end.
 
 -spec delete/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
-delete(#cb_context{doc=JObj, account_id=AccountId}=Context, _DocId) ->
+delete(#cb_context{doc=JObj}=Context, _DocId) ->
     case crossbar_doc:delete(Context) of
         #cb_context{resp_status=success}=C ->
-            _ = [wh_number_manager:release_number(Number, AccountId)
+            _ = [wh_number_manager:release_number(Number)
                  || Number <- wh_json:get_value(<<"numbers">>, JObj, [])],
             C;
         Else ->

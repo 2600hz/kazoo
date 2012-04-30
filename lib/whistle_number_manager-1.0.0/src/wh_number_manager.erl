@@ -13,6 +13,7 @@
 -export([find/1, find/2]).
 -export([reconcile_number/2]).
 -export([assign_number_to_account/2, assign_number_to_account/3]).
+-export([lookup_authorized_account_by_number/1]).
 -export([get_public_fields/1, set_public_fields/2]).
 -export([list_attachments/1]).
 -export([fetch_attachment/2]).
@@ -58,9 +59,12 @@ find(Number, Quanity) ->
                                                      {error, term()}.
 lookup_account_by_number(undefined) ->
     {error, number_undefined};
-lookup_account_by_number(Number) when size(Number) < 5 ->
-    {error, number_too_short};
 lookup_account_by_number(Number) ->
+    lookup_account_by_number(Number, wnm_util:is_reconcilable(Number)).
+
+lookup_account_by_number(_, false) ->
+    {error, not_reconcilable};                                
+lookup_account_by_number(Number, true) ->
     Num = wnm_util:normalize_number(Number),
     Db = wnm_util:number_to_db_name(Num),
     lager:debug("attempting to lookup '~s' in '~s'", [Num, Db]),
@@ -91,6 +95,36 @@ lookup_account_by_number(Number) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec lookup_authorized_account_by_number/1 :: (ne_binary()) -> {ok, ne_binary()} |
+                                                                {error, term()}.
+
+lookup_authorized_account_by_number(undefined) ->
+    {error, number_undefined};
+lookup_authorized_account_by_number(Number) ->
+    lookup_authorized_account_by_number(Number, wnm_util:is_reconcilable(Number)).
+
+lookup_authorized_account_by_number(_, false) ->
+    {error, not_reconcilable};
+lookup_authorized_account_by_number(Number, true) ->
+    Num = wnm_util:normalize_number(Number),
+    Db = wnm_util:number_to_db_name(Num),
+    lager:debug("attempting to lookup '~s' in '~s'", [Num, Db]),
+    case couch_mgr:open_doc(Db, Num) of
+        {ok, JObj} ->
+            case find_account_id(JObj) of
+                undefined -> {error, not_found};
+                AccountId -> {ok, AccountId}
+            end;
+        {error, _}=E ->
+            E
+end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
 %% Assign a number to an account, creating it as a local number if
 %% missing
 %% @end
@@ -110,11 +144,11 @@ reconcile_number(Number, AccountId, true) ->
     Db = wnm_util:number_to_db_name(Num),
     lager:debug("attempting to reconcile number '~s' with account '~s'", [Num, AccountId]),
     case couch_mgr:lookup_doc_rev(Db, Num) of
-        {ok, _} -> assign_number_to_account(Num, AccountId);
+        {ok, _} -> assign_number_to_account(Num, AccountId, wh_json:new(), true);
         {error, _} ->
-            lager:debug("failed to fine number doc for reconcile, creating as reserved", []),
-            case reserve_number(Number, AccountId) of
-                {ok, _} -> assign_number_to_account(Num, AccountId);
+            lager:debug("failed to find number doc for reconcile, creating as reserved", []),
+            case reserve_number(Number, AccountId, wh_json:new(), true) of
+                {ok, _} -> assign_number_to_account(Num, AccountId, wh_json:new(), true);
                 {error, _} -> 
                     lager:debug("unable to reserve number during reconcile", []),
                     {error, not_found}
@@ -164,7 +198,7 @@ reserve_number(Number, AccountId, PublicFields, true) ->
                                 ,fun(J) -> wh_json:set_value(<<"pvt_assigned_to">>, AccountId, J) end
                                 ,fun(J) -> wh_json:merge_jobjs(wh_json:private_fields(J), PublicFields) end
                                ],
-                    save_number(Db, Num, lists:foldr(fun(F, J) -> F(J) end, JObj, Updaters), JObj)
+                    save_number(Db, Num, lists:foldl(fun(F, J) -> F(J) end, JObj, Updaters), JObj)
             end            
     end.
 
@@ -193,13 +227,17 @@ assign_number_to_account(Number, AccountId, PublicFields, true) ->
     Db = wnm_util:number_to_db_name(Num),
     case couch_mgr:open_doc(Db, Num) of
         {error, _R} ->
-            lager:debug("failed to open number doc for assignment to an account: ~p", [_R]),
+            lager:debug("unable to assign to account: ~p", [_R]),
             {error, not_found};
         {ok, JObj} ->
             Routines = [fun(J) ->     
+                                AssignedTo = wh_json:get_value(<<"pvt_assigned_to">>, J),
                                 case wh_json:get_value(<<"pvt_number_state">>, J, <<"unknown">>) of
+                                    <<"in_service">> when AssignedTo =:= AccountId->
+                                        lager:debug("number already assigned to account"),
+                                        {ok, wh_json:public_fields(J)};
                                     <<"in_service">> ->
-                                        lager:debug("number is already in service"),
+                                        lager:debug("unable to assign to account, number is in service for ~s", [AssignedTo]),
                                         {error, unavailable};
                                     _Else ->
                                         lager:debug("allowing assignment of a number currently in state ~s", [_Else]),
@@ -234,10 +272,18 @@ assign_number_to_account(Number, AccountId, PublicFields, true) ->
                             ({ok, J}) -> {ok, wh_json:merge_jobjs(wh_json:private_fields(J), PublicFields)}
                          end
                         ,fun({error, _}=E) -> E;
-                            ({ok, J}) -> save_number(Db, Num, J, JObj)
+                            ({ok, J}) -> 
+                                 case save_number(Db, Num, J, JObj) of
+                                     {error, _R}=E ->
+                                         lager:debug("failed to assign number to account: ~p", [_R]),
+                                         E;
+                                     {ok, _}=Ok ->
+                                         lager:debug("assigned number to account", []),
+                                         Ok
+                                 end
                          end
                        ],
-            lists:foldr(fun(F, J) -> F(J) end, JObj, Routines)
+            lists:foldl(fun(F, J) -> F(J) end, JObj, Routines)
     end.
 
 %%--------------------------------------------------------------------
@@ -258,7 +304,7 @@ release_number(Number, true) ->
     Db = wnm_util:number_to_db_name(Num),
     case couch_mgr:open_doc(Db, Num) of
         {error, _R} ->
-            lager:debug("failed to open number doc for assignment to an account: ~p", [_R]),
+            lager:debug("unable to release number: ~p", [_R]),
             {error, not_found};
         {ok, JObj} ->
             Routines = [fun(J) ->
@@ -296,7 +342,7 @@ release_number(Number, true) ->
                         ,fun({error, _}=E) -> E;
                             ({ok, J}) ->
                                  AccountId = wh_json:get_value(<<"pvt_assigned_to">>, J),
-                                 wh_json:set_value(<<"pvt_previously_assigned_to">>, AccountId, J)
+                                 {ok, wh_json:set_value(<<"pvt_previously_assigned_to">>, AccountId, J)}
                          end    
                         ,fun({error, _}=E) -> E;
                             ({ok, J}) -> {ok, wh_json:delete_key(<<"pvt_assigned_to">>, J)}
@@ -308,10 +354,18 @@ release_number(Number, true) ->
                             ({ok, J}) -> {ok, wh_json:private_fields(J)}
                          end
                         ,fun({error, _}=E) -> E;
-                            ({ok, J}) -> save_number(Db, Num, J, JObj)
+                            ({ok, J}) -> 
+                                 case save_number(Db, Num, J, JObj) of
+                                     {error, _R}=E ->
+                                         lager:debug("failed to release number: ~p", [_R]),
+                                         E;
+                                     {ok, _}=Ok ->
+                                         lager:debug("released number, good luck little guy....", []),
+                                         Ok
+                                 end
                          end
                        ],
-            lists:foldr(fun(F, J) -> F(J) end, JObj, Routines)
+            lists:foldl(fun(F, J) -> F(J) end, JObj, Routines)
     end.
 
 %%--------------------------------------------------------------------
@@ -325,7 +379,7 @@ free_numbers(AccountId) ->
     Db = wh_util:format_account_id(AccountId, encoded),
     case couch_mgr:open_doc(Db, AccountId) of
         {ok, JObj} ->
-            [ok = release_number(Number)
+            [ok = release_number(Number, true)
              || Number <- wh_json:get_value(<<"pvt_wnm_in_service">>, JObj, [])
                     ++ wh_json:get_value(<<"pvt_wnm_in_reserved">>, JObj, [])
             ],
@@ -469,7 +523,7 @@ set_public_fields(Number, PublicFields) ->
             Routines = [fun(J) -> wh_json:set_value(<<"pvt_modified">>, wh_util:current_tstamp(), J) end
                         ,fun(J) -> wh_json:merge_jobjs(wh_json:private_fields(J), PublicFields) end
                        ],
-            save_number(Db, Num, lists:foldr(fun(F, J) -> F(J) end, JObj, Routines), JObj)
+            save_number(Db, Num, lists:foldl(fun(F, J) -> F(J) end, JObj, Routines), JObj)
     end.
 
 %%--------------------------------------------------------------------
@@ -556,7 +610,7 @@ store_discovery(Number, ModuleName, ModuleData, State, PublicFields) ->
                 ,fun(J) -> wh_json:set_value(<<"pvt_db_name">>, Db, J) end
                 ,fun(J) -> wh_json:set_value(<<"pvt_created">>, wh_util:current_tstamp(), J) end
                ],
-    JObj = lists:foldr(fun(F, J) -> F(J) end, PublicFields, Routines),
+    JObj = lists:foldl(fun(F, J) -> F(J) end, PublicFields, Routines),
     case save_number(Db, Number, JObj, wh_json:new()) of
         {ok, _}=Ok ->
             lager:debug("stored newly discovered number '~s'", [Number]),
@@ -608,24 +662,22 @@ update_numbers_on_account(Number, State, AccountId) ->
             lager:debug("failed to load account definition when adding '~s': ~p", [Number, _R]),
             E;
         {ok, JObj} ->
-            lager:debug("setting number ~s to state ~s on the account ~s", [Number, State, AccountId]),
+            lager:debug("updating number ~s pvt state to '~s' on account definition ~s", [Number, State, AccountId]),
             Migrate = wh_json:get_value(<<"pvt_wnm_numbers">>, JObj, []),
-            Updated = lists:foldr(fun(<<"numbers">>, J) when Migrate =/= [] ->
+            Updated = lists:foldl(fun(<<"numbers">>, J) when Migrate =/= [] ->
                                           N = wh_json:get_value(<<"pvt_wnm_in_service">>, J, []),
                                           wh_json:set_value(<<"pvt_wnm_in_service">>, N ++ Migrate,
                                                             wh_json:delete_key(<<"pvt_wnm_numbers">>, J));
                                      (<<"numbers">>, J) when Migrate =:= [] ->
                                           wh_json:delete_key(<<"pvt_wnm_numbers">>, J);
                                      (S, J) when S =:= State ->
-                                          lager:debug("adding number ~s to state ~s", [Number, S]),
                                           N = wh_json:get_value(<<"pvt_wnm_", S/binary>>, JObj, []),
                                           wh_json:set_value(<<"pvt_wnm_", S/binary>>, [Number|lists:delete(Number,N)], J);
                                      (S, J) ->
-                                          lager:debug("removing number ~s from state ~s", [Number, S]),
                                           N = wh_json:get_value(<<"pvt_wnm_", S/binary>>, JObj, []),
                                           wh_json:set_value(<<"pvt_wnm_", S/binary>>, lists:delete(Number,N), J)
                                   end, JObj, [<<"numbers">>|?WNM_NUMBER_STATUS]),
-            Cleaned = lists:foldr(fun(S, J) ->
+            Cleaned = lists:foldl(fun(S, J) ->
                                           Nums = wh_json:get_value(<<"pvt_wnm_", S/binary>>, J, []),
                                           Clean = ordsets:to_list(ordsets:from_list(Nums)),
                                           wh_json:set_value(<<"pvt_wnm_", S/binary>>, Clean, J)

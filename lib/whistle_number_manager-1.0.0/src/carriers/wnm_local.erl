@@ -52,12 +52,10 @@ find_numbers(Number, Quanity) ->
 %%--------------------------------------------------------------------
 -spec acquire_number/3 :: (ne_binary(), ne_binary(), wh_json:json_object()) -> {ok, ne_binary(), wh_json:json_object()}
                                                                            | {error, ne_binary()}.
-acquire_number(_, <<"available">>, JObj) ->
-    {ok, <<"in_service">>, JObj};
-acquire_number(_, <<"claim">>, JObj) ->
-    {ok, <<"in_service">>, JObj};
-acquire_number(_, _, _) ->
-    {error, unavailable}.
+acquire_number(_, <<"in_service">>, _) ->
+    {error, unavailable};
+acquire_number(_, _, JObj) ->
+    {ok, <<"in_service">>, JObj}.
 
 %%--------------------------------------------------------------------
 %% @private

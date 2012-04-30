@@ -83,8 +83,6 @@ find_numbers(Search, Quanity) ->
 %%--------------------------------------------------------------------
 -spec acquire_number/3 :: (ne_binary(), ne_binary(), wh_json:json_object()) -> {ok, ne_binary(), wh_json:json_object()} |
                                                                        {error, ne_binary()}.
-acquire_number(_, <<"available">>, JObj) ->
-    {ok, <<"in_service">>, JObj};
 acquire_number(_, <<"discovery">>, JObj) ->
     case whapps_config:get_is_true(?WNM_BW_CONFIG_CAT, <<"enable_provisioning">>, <<"true">>) of
         true -> 
@@ -92,10 +90,10 @@ acquire_number(_, <<"discovery">>, JObj) ->
         false ->
             {ok, <<"in_service">>, JObj}
     end;
-acquire_number(_, <<"claim">>, JObj) ->
-    {ok, <<"in_service">>, JObj};
-acquire_number(_, _, _) ->
-    {error, unavailable}.
+acquire_number(_, <<"in_service">>, _) ->
+    {error, unavailable};
+acquire_number(_, _, JObj) ->
+    {ok, <<"in_service">>, JObj}.
 
 %%--------------------------------------------------------------------
 %% @private
