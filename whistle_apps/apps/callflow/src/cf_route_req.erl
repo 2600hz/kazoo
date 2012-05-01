@@ -18,8 +18,12 @@ handle_req(JObj, Options) ->
     case is_binary(whapps_call:account_id(Call)) andalso callflow_should_respond(Call) of
         true ->
             lager:debug("received route request"),
+            AllowNoMatch = whapps_call:authorizing_type(Call) =/= undefined
+                orelse whapps_call:custom_channel_var(<<"Referred-By">>, Call) =/= undefined,
             case cf_util:lookup_callflow(Call) of
-                {ok, Flow, NoMatch} ->
+                %% if NoMatch is false then allow the callflow or if it is true and we are able allowed
+                %% to use it for this call
+                {ok, Flow, NoMatch} when (not NoMatch) orelse AllowNoMatch ->
                     lager:debug("callflow ~s in ~s satisfies request", [wh_json:get_value(<<"_id">>, Flow)
                                                                         ,whapps_call:account_id(Call)
                                                                        ]),                    
@@ -38,6 +42,9 @@ handle_req(JObj, Options) ->
                                ],
                     whapps_call:cache(lists:foldr(fun(F, C) -> F(C) end, Call, Updaters)),
                     send_route_response(JObj, ControllerQ);
+                {ok, _, _} ->
+                    lager:debug("only available callflow is a nomatch for a unauthorized call", []),
+                    ok;
                 {error, R} ->
                     lager:debug("unable to find callflow ~p", [R]),
                     ok
