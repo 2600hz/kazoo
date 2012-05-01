@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @Copyright (C) 2010 VoIP INC
+%%% @Copyright (C) 2010-2012 VoIP INC
 %%% @doc
 %%% Whistle API Helpers
 %%%
@@ -13,6 +13,9 @@
 %%% for creating a JSON message.
 %%%
 %%% @end
+%%% @contributors
+%%%   James Aimonetti
+%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(wh_api).
 
