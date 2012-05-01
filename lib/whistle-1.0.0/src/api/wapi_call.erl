@@ -66,7 +66,7 @@
                                           ,<<"Raw-Application-Name">>, <<"Raw-Application-Data">>, <<"Length">>
                                           ,<<"Fax-Success">>, <<"Fax-Result-Code">>, <<"Fax-Result-Text">>, <<"Fax-ECM-Used">>
                                           ,<<"Fax-Transferred-Pages">>, <<"Fax-Total-Pages">>, <<"Fax-Bad-Rows">>, <<"Fax-Transfer-Rate">>
-                                          ,<<"Msg-ID">>, <<"Media-Server">>
+                                          ,<<"Msg-ID">>, <<"Switch-Hostname">>
                                      ]).
 -define(CALL_EVENT_VALUES, [{<<"Event-Category">>, <<"call_event">>}]).
 -define(CALL_EVENT_TYPES, [{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}]).

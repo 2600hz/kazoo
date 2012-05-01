@@ -31,7 +31,7 @@
                                 ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
                                 ,<<"Request">>
                            ]).
--define(OPTIONAL_AUTHZ_REQ_HEADERS, [<<"Custom-Channel-Vars">>]).
+-define(OPTIONAL_AUTHZ_REQ_HEADERS, [<<"Custom-Channel-Vars">>, <<"Switch-Hostname">>]).
 -define(AUTHZ_REQ_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
                            ,{<<"Event-Name">>, ?AUTHZ_REQ_EVENT_NAME}
                           ]).
@@ -55,7 +55,7 @@
 
 %% Authorization Wins
 -define(AUTHZ_WIN_HEADERS, [<<"Call-ID">>]).
--define(OPTIONAL_AUTHZ_WIN_HEADERS, []).
+-define(OPTIONAL_AUTHZ_WIN_HEADERS, [<<"Switch-Hostname">>]).
 -define(AUTHZ_WIN_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
                            ,{<<"Event-Name">>, <<"authz_win">>}
                           ]).

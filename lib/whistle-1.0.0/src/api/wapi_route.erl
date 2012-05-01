@@ -32,7 +32,7 @@
                            ]).
 -define(OPTIONAL_ROUTE_REQ_HEADERS, [<<"Geo-Location">>, <<"Orig-IP">>, <<"Max-Call-Length">>, <<"Media">>
                                          ,<<"Transcode">>, <<"Codecs">>, <<"Custom-Channel-Vars">>
-                                         ,<<"Resource-Type">>, <<"Cost-Parameters">>, <<"Media-Server">>
+                                         ,<<"Resource-Type">>, <<"Cost-Parameters">>, <<"Switch-Hostname">>
                                     ]).
 -define(ROUTE_REQ_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
                            ,{<<"Event-Name">>, ?ROUTE_REQ_EVENT_NAME}
@@ -99,7 +99,7 @@
 
 %% Route Winner
 -define(ROUTE_WIN_HEADERS, [<<"Call-ID">>, <<"Control-Queue">>]).
--define(OPTIONAL_ROUTE_WIN_HEADERS, [<<"Custom-Channel-Vars">>, <<"Media-Server">>]).
+-define(OPTIONAL_ROUTE_WIN_HEADERS, [<<"Custom-Channel-Vars">>, <<"Switch-Hostname">>]).
 -define(ROUTE_WIN_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
                            ,{<<"Event-Name">>, <<"route_win">>}
                           ]).
