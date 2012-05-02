@@ -820,10 +820,6 @@ get_mailbox_profile(Data, Call) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
-<<<<<<< HEAD
--spec get_mailbox_doc/3 :: (binary(), 'undefined' | binary(), 'undefined' | binary()) -> {'ok', wh_json:json_object()} |
-                                                                                         {'error', term()}.
-=======
 -spec populate_keys/1 :: (whapps_call:call()) -> #keys{}.
 populate_keys(Call) ->
     Default = #keys{},
@@ -853,7 +849,6 @@ populate_keys(Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec get_mailbox_doc/3 :: (binary(), undefined | binary(), undefined | binary()) -> {ok, wh_json:json_object()} | {error, term()}.
->>>>>>> WHISTLE-998: created a concept of account configs and supporting crossbar module, update prompt fetch mechanism to honor account overrides if present as well as voicemail key mappings
 get_mailbox_doc(Db, Id, CaptureGroup) ->
     CGIsEmpty = wh_util:is_empty(CaptureGroup),
     case wh_util:is_empty(Id) of 
