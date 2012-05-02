@@ -383,13 +383,10 @@ tmp_file() ->
 -spec review_recording/3 :: (ne_binary(), menu(), whapps_call:call()) -> {'ok', 'record' | 'save' | 'no_selection'}.
 review_recording(MediaName, #cf_menu_data{keys=#menu_keys{listen=ListenKey, record=RecordKey, save=SaveKey}}=Menu, Call) ->
     lager:debug("playing menu greeting review options"),
-<<<<<<< HEAD
+
     _ = whapps_call_command:flush_dtmf(Call),
-    Prompt = cf_util:get_prompt(<<"vm-review_recording">>),
-=======
-    whapps_call_command:flush_dtmf(Call),
     Prompt = whapps_util:get_prompt(<<"vm-review_recording">>, Call),
->>>>>>> WHISTLE-998: created a concept of account configs and supporting crossbar module, update prompt fetch mechanism to honor account overrides if present as well as voicemail key mappings
+
     case whapps_call_command:b_play_and_collect_digit(Prompt, Call) of
         {ok, ListenKey} ->
             _ = whapps_call_command:b_play(MediaName, Call),
