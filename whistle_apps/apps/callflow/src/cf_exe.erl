@@ -1,9 +1,9 @@
 %%%-------------------------------------------------------------------
-%%% @author Karl Anderson <karl@2600hz.org>
-%%% @copyright (C) 2010-2011, VoIP INC
+%%% @copyright (C) 2010-2012, VoIP INC
 %%% @doc
 %%% @end
-%%% Created : 18 Dec 2011 by Karl Anderson <karl@2600hz.org>
+%%% @contributors
+%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(cf_exe).
 
