@@ -91,7 +91,11 @@ start_mod(CBMod) ->
 %%--------------------------------------------------------------------
 -spec stop_mod/1 :: (atom()) -> any().
 stop_mod(CBMod) ->
-    crossbar_bindings:flush_mod(CBMod).
+    crossbar_bindings:flush_mod(CBMod),
+    case erlang:function_exported(CBMod, stop, 0) of
+        true -> CBMod:stop();
+        false -> ok
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
