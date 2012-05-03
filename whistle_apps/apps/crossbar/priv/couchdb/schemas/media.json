@@ -68,21 +68,5 @@
             "upload",
             "tts"
          ]
-      },
-      "source_type":{
-         "description":"If the media was generated from a callflow module, this is the module name",
-         "type":"string"
-      },
-      "source_id":{
-         "description":"If the media was generated from a callflow module, this is ID of the properties",
-         "type":"string",
-         "minLength":32,
-         "maxLength":32
-      },
-      "streamable":{
-         "description":"Determines if the media can be streamed",
-         "type":"boolean",
-         "default":true
       }
-   }
 }
