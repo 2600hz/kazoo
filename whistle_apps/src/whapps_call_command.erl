@@ -3,7 +3,9 @@
 %%% @doc
 %%%
 %%% @end
-%%% Created : 21 Feb 2012 by Karl Anderson <karl@2600hz.org>
+%%% @contributors
+%%%   Karl Anderson
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(whapps_call_command).
 
@@ -535,7 +537,7 @@ b_prompt(Prompt, Call) ->
 
 b_prompt(Prompt, Lang, Call) ->
     b_play(whapps_util:get_prompt(Prompt, Lang, Call), Call).
-    
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
