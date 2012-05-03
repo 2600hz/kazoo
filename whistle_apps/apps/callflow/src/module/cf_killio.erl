@@ -34,8 +34,6 @@
 %%--------------------------------------------------------------------
 -spec handle/2 :: (wh_json:json_object(), whapps_call:call()) -> any().
 handle(Data, Call) ->
-    whapps_call_command:answer(Call),
-
     BaseParams = wh_json:from_list(req_params(Call)),
 
     Method = http_method(wh_json:get_value(<<"http_method">>, Data, get)),
