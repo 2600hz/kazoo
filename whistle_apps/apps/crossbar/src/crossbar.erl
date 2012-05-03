@@ -35,10 +35,13 @@ start_link() ->
                ],
 
     Port = whapps_config:get_integer(?CONFIG_CAT, <<"port">>, 8000),
+    ReqTimeout = whapps_config:get_integer(?CONFIG_CAT, <<"request_timeout_ms">>, 10000),
     %% Name, NbAcceptors, Transport, TransOpts, Protocol, ProtoOpts
     cowboy:start_listener(v1_resource, 100
                           ,cowboy_tcp_transport, [{port, Port}]
-                          ,cowboy_http_protocol, [{dispatch, Dispatch}]
+                          ,cowboy_http_protocol, [{dispatch, Dispatch}
+                                                  ,{timeout, ReqTimeout}
+                                                 ]
                          ),
 
     case whapps_config:get_is_true(?CONFIG_CAT, <<"ssl">>, false) of
