@@ -96,6 +96,11 @@ create_endpoint(DestNum, JObj, Call) ->
               ,(wh_json:get_value(<<"suffix">>, JObj, <<>>))/binary
               ,$@ ,(wh_json:get_value(<<"server">>, JObj))/binary>>,
     lager:debug("attempting resource ~s", [Rule]),
+    CCVs = [KV || {_, V}=KV <- [{<<"Account-ID">>, whapps_call:account_id(Call)}
+                                ,{<<"From-URI">>, maybe_from_uri(AccountDb, JObj, CNum)}
+                               ],
+                  V =/= undefined
+           ],
     Endpoint = [{<<"Invite-Format">>, <<"route">>}
                 ,{<<"Route">>, Rule}
                 ,{<<"Auth-User">>, wh_json:get_value(<<"username">>, JObj)}
@@ -103,10 +108,7 @@ create_endpoint(DestNum, JObj, Call) ->
                 ,{<<"Bypass-Media">>, wh_json:get_value(<<"bypass_media">>, JObj)}
                 ,{<<"Endpoint-Progress-Timeout">>, wh_json:get_value(<<"progress_timeout">>, JObj, <<"6">>)}
                 ,{<<"Codecs">>, wh_json:get_value(<<"codecs">>, JObj)}
-                ,{<<"Custom-Channel-Vars">>, wh_json:from_list([{<<"Account-ID">>, whapps_call:account_id(Call)}
-                                                                ,{<<"From-URI">>, maybe_from_uri(AccountDb, JObj, CNum)}
-                                                                ,{<<"Ignore-Display-Updates">>, <<"true">>}
-                                                               ])}
+                ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
                ],
     wh_json:from_list([ KV || {_, V}=KV <- Endpoint, V =/= undefined ]).
 
