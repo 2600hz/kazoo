@@ -1,0 +1,12 @@
+{application, whistle_translator,
+ [
+  {description, "Bridging various call control formats to the 2600hz JSON APIs"},
+  {vsn, "1.0.0"},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib
+                 ]},
+  {mod, { whistle_translator_app, []}},
+  {env, []}
+ ]}.

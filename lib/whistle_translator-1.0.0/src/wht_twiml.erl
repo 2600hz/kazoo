@@ -7,29 +7,41 @@
 %%% @contributors
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
--module(cf_twiml).
+-module(wht_twiml).
 
--export([process_call/2]).
+-export([does_recognize/1, exec/2]).
 
--include("../callflow.hrl").
--include("cf_killio.hrl").
+-include_lib("whistle/include/wh_types.hrl").
+-include_lib("xmerl/include/xmerl.hrl").
 
-process_call(Call, {Resp, _}) ->
-    case Resp#xmlElement.name =:= 'Response' of
-        true -> process_response(Call, Resp#xmlElement.content);
-        false ->
-            lager:debug("root element not Response tag, ~p", [Resp#xmlElement.name]),
-            cf_exe:continue(Call)
-    end.
+-spec does_recognize/1 :: (#xmlElement{} | term()) -> boolean().
+does_recognize(#xmlElement{name='Response'}) ->
+    true;
+does_recognize(_) ->
+    false.
 
-process_response(Call, [#xmlText{}|T]) ->
-    process_response(Call, T);
-process_response(Call, [#xmlElement{name=Name, content=Content}=El|T]) ->
+-type exec_return() :: 'stop' |
+                       {'request', whapps_call:call(), ne_binary(), 'get' | 'post', wh_proplist()}.
+
+-spec exec/2 :: (whapps_call:call(), #xmlElement{}) -> 'ok' | exec_return().
+                                                       
+exec(Call, #xmlElement{name='Response' content=Elements}) ->
+    exec_response(Call, Elements).
+
+%% {request, Call, URI, Method, BaseParams}
+-spec exec_response/2 :: (whapps_call:call(), [#xmlText{} | #xmlElement{},...] | []) -> exec_return().
+exec_response(Call, [#xmlText{}|T]) ->
+    exec_response(Call, T);
+exec_response(Call, [#xmlElement{name=Name, content=Content}=El|T]) ->
     lager:debug("hname: ~p, content: ~p", [Name, Content]),
-    process_element(Call, Name, Content, El),
-    process_response(Call, T);
-process_response(Call, []) ->
-    cf_exe:continue(Call).
+    case exec_element(Call, Name, Content, El) of
+        ok -> exec_response(Call, T);
+        Other -> Other
+    end;
+exec_response(Call, []) ->
+    stop.
+
+-spec process_element/4 :: (whapps_call:call(), atom(), [#xmlText{},...] | [], #xmlElement{}) -> 'ok' | exec_return().
 
 %%-------------------------------------------------------------------------
 %% @doc Dial
@@ -43,8 +55,6 @@ process_response(Call, []) ->
 %%-------------------------------------------------------------------------
 process_element(Call, 'Dial', [#xmlText{value=DialMe, type=text}], #xmlElement{attributes=Attrs}) ->
     lager:debug("DIAL: ~s", [DialMe]),
-    Call1 = maybe_answer_call(Call),
-
     Props = attrs_to_proplist(Attrs),
 
     Timeout = wh_util:to_integer(props:get_value(timeout, Props, 30)),
@@ -75,7 +85,10 @@ process_element(Call, 'Dial', [#xmlText{value=DialMe, type=text}], #xmlElement{a
     lager:debug("other leg ~s done in ~bs: ~s", [OtherLeg, Elapsed, Status]),
 
     case props:get_value(action, Props) of
-        undefined -> ok;
+        undefined ->
+            %% if action is defined, no commands after Dial are reachable;
+            %% since its not defined, we fall through to the next TwiML command
+            ok;
         Action ->
             BaseParams = wh_json:from_list([{"DialCallStatus", Status}
                                             ,{"DialCallSid", OtherLeg}
@@ -85,14 +98,27 @@ process_element(Call, 'Dial', [#xmlText{value=DialMe, type=text}], #xmlElement{a
                                            ]),
             Uri = cf_killio:resolve_uri(whapps_call:kvs_fetch(voice_uri, Call2), Action),
             Method = cf_killio:http_method(props:get_value(method, Props, post)),
-            cf_killio:send_req(Call2, Uri, Method, BaseParams)
+            cf_killio:send_req(Call2, Uri, Method, BaseParams),
+            stop
     end;
 
-process_element(Call, 'Record', [#xmlText{}], #xmlElement{attributes=Attrs}) ->
+%%-------------------------------------------------------------------------
+%% @doc Record
+%%   action             | relative or absolute URL | current URL
+%%   method             | GET, POST                | POST
+%%   timeout            | positive integer, secs   | 5
+%%   finishOnKey        | any digit, #, *          | 1234567890*#
+%%   maxLength          | positive integer, secs   | 3600 (1 hour)
+%%   transcribe         | true, false              | false (not supported)
+%%   transcribeCallback | relative or absolute URL | none
+%%   playBeep           | true, false              | true
+%%-------------------------------------------------------------------------
+exec_element(Call, 'Record', [#xmlText{}], #xmlElement{attributes=Attrs}) ->
     Call1 = maybe_answer_call(Call),
     Props = attrs_to_proplist(Attrs),
     lager:debug("RECORD with attrs: ~p", [Attrs]),
 
+    %% TODO: remove cf dependency
     Action = cf_killio:resolve_uri(whapps_call:kvs_fetch(voice_uri, Call1)
                                    ,props:get_value(action, Props)
                                   ),
@@ -116,7 +142,7 @@ process_element(Call, 'Record', [#xmlText{}], #xmlElement{attributes=Attrs}) ->
                                          ) of
             {ok, Msg} ->
                 case wh_json:get_integer_value(<<"Length">>, Msg, 0) of
-                    0 -> lager:debug("recorded message length: 0, continuing");
+                    0 -> lager:debug("recorded message length: 0, continuing"), ok;
                     L ->
                         RecordingId = maybe_save_recording(Call1, MediaName, true),
                         DTMFs = wh_json:get_value(<<"Digit-Pressed">>, Msg),
@@ -127,21 +153,23 @@ process_element(Call, 'Record', [#xmlText{}], #xmlElement{attributes=Attrs}) ->
                                                         ,{<<"Digits">>, DTMFs}
                                                         | cf_killio:req_params(Call1)
                                                        ]),
-                        cf_killio:send_req(Call1, Action, Method, BaseParams)
+                        cf_killio:send_req(Call1, Action, Method, BaseParams),
+                        stop
                 end;
             {error, _E} ->
                 %% TODO: when call hangs up, try to save message
-                lager:debug("failed to record message: ~p", [_E])
+                lager:debug("failed to record message: ~p", [_E]),
+                stop
         end;
 
-process_element(Call, 'Gather', [#xmlText{}|T], El) ->
+exec_element(Call, 'Gather', [#xmlText{}|T], El) ->
     Call1 = maybe_answer_call(Call),
-    process_element(Call1, 'Gather', T, El);
-process_element(Call, 'Gather', [#xmlElement{name=Name, content=Content}=El1|T], El) ->
+    exec_element(Call1, 'Gather', T, El);
+exec_element(Call, 'Gather', [#xmlElement{name=Name, content=Content}=El1|T], El) ->
     Call1 = maybe_answer_call(Call),
-    process_element(Call1, Name, Content, El1),
-    process_element(Call1, 'Gather', T, El);
-process_element(Call, 'Gather', [], #xmlElement{attributes=Attrs}) ->
+    exec_element(Call1, Name, Content, El1),
+    exec_element(Call1, 'Gather', T, El);
+exec_element(Call, 'Gather', [], #xmlElement{attributes=Attrs}) ->
     Call1 = maybe_answer_call(Call),
     Props = attrs_to_proplist(Attrs),
 
@@ -163,12 +191,14 @@ process_element(Call, 'Gather', [], #xmlElement{attributes=Attrs}) ->
             Method = cf_killio:http_method(props:get_value(method, Props, post)),
             BaseParams = wh_json:from_list([{<<"Digits">>, DTMFs} | cf_killio:req_params(Call1)]),
 
-            cf_killio:send_req(Call1, NewUri, Method, BaseParams);
+            cf_killio:send_req(Call1, NewUri, Method, BaseParams),
+            stop;
         {ok, _DTMFs} ->
-            lager:debug("failed to collect ~b digits, got ~s", [MaxDigits, _DTMFs])
+            lager:debug("failed to collect ~b digits, got ~s", [MaxDigits, _DTMFs]),
+            ok
     end;
 
-process_element(Call, 'Play', [#xmlText{value=PlayMe, type=text}], #xmlElement{attributes=Attrs}) ->
+exec_element(Call, 'Play', [#xmlText{value=PlayMe, type=text}], #xmlElement{attributes=Attrs}) ->
     Call1 = maybe_answer_call(Call),
     lager:debug("PLAY: ~s", [PlayMe]),
     case props:get_value(loop, attrs_to_proplist(Attrs), 1) of
@@ -179,9 +209,10 @@ process_element(Call, 'Play', [#xmlText{value=PlayMe, type=text}], #xmlElement{a
             whapps_call_command:b_play(wh_util:to_binary(PlayMe), Call1);
         N when N > 1 ->
             play_loop(Call1, N, wh_util:to_binary(PlayMe))
-    end;
+    end,
+    ok;
 
-process_element(Call, 'Say', [#xmlText{value=SayMe, type=text}], #xmlElement{attributes=Attrs}) ->
+exec_element(Call, 'Say', [#xmlText{value=SayMe, type=text}], #xmlElement{attributes=Attrs}) ->
     Call1 = maybe_answer_call(Call),
     Props = attrs_to_proplist(Attrs),
     Voice = props:get_value(voice, Props, <<"man">>),
@@ -190,7 +221,8 @@ process_element(Call, 'Say', [#xmlText{value=SayMe, type=text}], #xmlElement{att
 
     lager:debug("SAY: ~s using voice ~s, in lang ~s, ~b times", [SayMe, Voice, Lang, Loop]),
 
-    whapps_call_command:b_say(wh_util:to_binary(SayMe), Call1);
+    whapps_call_command:b_say(wh_util:to_binary(SayMe), Call1),
+    ok;
 
 process_element(Call, 'Redirect', [#xmlText{value=Url}], #xmlElement{attributes=Attrs}) ->
     Call1 = maybe_answer_call(Call),
@@ -200,9 +232,10 @@ process_element(Call, 'Redirect', [#xmlText{value=Url}], #xmlElement{attributes=
     Method = cf_killio:http_method(props:get_value(method, Props, post)),
     BaseParams = wh_json:from_list(cf_killio:req_params(Call1) ),
 
-    cf_killio:send_req(Call1, NewUri, Method, BaseParams);
+    cf_killio:send_req(Call1, NewUri, Method, BaseParams),
+    stop;
 
-process_element(_Call, 'Pause', _, #xmlElement{attributes=Attrs}) ->
+exec_element(_Call, 'Pause', _, #xmlElement{attributes=Attrs}) ->
     Props = attrs_to_proplist(Attrs),
     Length = props:get_integer_value(length, Props, 1) * 1000,
 
@@ -212,17 +245,18 @@ process_element(_Call, 'Pause', _, #xmlElement{attributes=Attrs}) ->
     after Length -> ok
     end;
 
-process_element(Call, 'Hangup', _, _) ->
+exec_element(Call, 'Hangup', _, _) ->
     Call1 = maybe_answer_call(Call),
     whapps_call_command:hangup(Call1),
-    cf_exe:stop(Call1);
-process_element(Call, 'Reject', _, #xmlElement{attributes=Attrs}) ->
+    stop;
+
+exec_element(Call, 'Reject', _, #xmlElement{attributes=Attrs}) ->
     Props = attrs_to_proplist(Attrs),
     Reason = reject_reason(props:get_value(reason, Props)),
 
     play_reject_reason(Call, Reason), 
     whapps_call_command:response(reject_code(Reason), Reason, Call),
-    cf_exe:stop(Call).
+    stop.
 
 reject_reason(X) when not is_binary(X) ->
     reject_reason(wh_util:to_binary(X));
