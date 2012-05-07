@@ -9,14 +9,12 @@
 -module(cf_killio).
 
 -include("../callflow.hrl").
--include("cf_killio.hrl").
 
 -export([handle/2
          ,send_req/4
-         ,req_params/1, req_params/2
-         ,http_method/1, resolve_uri/2
-         ,play_tone/1
         ]).
+
+-define(DEFAULT_OPTS, [{response_format, list}]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -29,14 +27,16 @@
 %%   http_method: "get" | "post"
 %%   req_timeout: integer(), defaults to 5 seconds
 %%   voice_url: string(), url to get/post to
+%%   req_format: string(), data format and payload expected for initial
+%%     request (defaults to twiml for the moment)
 %%
 %% @end
 %%--------------------------------------------------------------------
 -spec handle/2 :: (wh_json:json_object(), whapps_call:call()) -> any().
 handle(Data, Call) ->
-    BaseParams = wh_json:from_list(req_params(Call)),
+    BaseParams = wh_json:from_list(init_req_params(Data, Call)),
 
-    Method = http_method(wh_json:get_value(<<"http_method">>, Data, get)),
+    Method = wht_util:http_method(wh_json:get_value(<<"http_method">>, Data, get)),
     VoiceUri = wh_json:get_value(<<"voice_url">>, Data),
 
     send_req(whapps_call:kvs_store(voice_uri, VoiceUri, Call), VoiceUri, Method, BaseParams).
@@ -57,7 +57,7 @@ send(Call, Uri, Method, ReqHdrs, ReqBody) ->
         {ok, "302", Hdrs, _RespBody} ->
             Redirect = props:get_value("Location", Hdrs),
             lager:debug("recv 302: redirect to ~s", [Redirect]),
-            Redirect1 = resolve_uri(Uri, Redirect),
+            Redirect1 = wht_util:resolve_uri(Uri, Redirect),
             send(Call, Redirect1, Method, ReqHdrs, ReqBody);
         {ok, _RespCode, _Hdrs, _RespBody} ->
             lager:debug("recv other: ~s: ~s", [_RespCode, _RespBody]),
@@ -69,36 +69,25 @@ send(Call, Uri, Method, ReqHdrs, ReqBody) ->
     end.
 
 handle_resp(Call, Hdrs, RespBody) ->
-    case props:get_value("Content-Type", Hdrs) of
-        "text/xml" ->
-            cf_twiml:process_call(Call, xmerl_scan:string(wh_util:to_list(RespBody)));
-        _CT ->
-            lager:debug("unknown content type response: ~s", [_CT]),
+    CT = props:get_value("Content-Type", Hdrs),
+    try wht_translator:exec(Call, xmerl_scan:string(wh_util:to_list(RespBody)), CT) of
+        {stop, Call1} ->
+            lager:debug("translator says stop"),
+            cf_exe:stop(Call1);
+        {ok, Call1} ->
+            lager:debug("translator says ok, continuing"),
+            cf_exe:continue(Call1);
+        {request, Call1, Uri, Method, Params} ->
+            lager:debug("translator says make request to ~s", [Uri]),
+            send_req(Call1, Uri, Method, Params)
+    catch
+        throw:{error, no_translators} ->
+            lager:debug("unknown content type ~s, no translators", [CT]),
+            cf_exe:continue(Call);
+        throw:{error, unrecognized_cmds} ->
+            lager:debug("no translators recognize the supplied commands: ~s", [RespBody]),
             cf_exe:continue(Call)
     end.
-
--spec req_params/1 :: (whapps_call:call()) -> proplist().
--spec req_params/2 :: (whapps_call:call(), ne_binary()) -> proplist().
-req_params(Call) ->
-    req_params(Call, <<"ringing">>).
-req_params(Call, Status) ->
-    [{<<"CallSid">>, whapps_call:call_id(Call)}
-     ,{<<"AccountSid">>, whapps_call:account_id(Call)}
-     ,{<<"From">>, whapps_call:from_user(Call)}
-     ,{<<"To">>, whapps_call:to_user(Call)}
-     ,{<<"CallStatus">>, Status}
-     ,{<<"ApiVersion">>, <<"2010-04-01">>}
-     ,{<<"Direction">>, <<"inbound">>}
-     ,{<<"CallerName">>, whapps_call:caller_id_name(Call)}
-    ].
-
-http_method(M) when is_atom(M) ->
-    true = lists:member(M, ?SUPPORTED_METHODS),
-    M;
-http_method(M) when is_list(M) ->
-    http_method(wh_util:to_atom(wh_util:to_lower_string(M)));
-http_method(M) when is_binary(M) ->
-    http_method(wh_util:to_atom(wh_util:to_lower_binary(M))).
 
 uri(URI, get, QueryString) ->
     case mochiweb_util:urlsplit(wh_util:to_list(URI)) of
@@ -108,46 +97,17 @@ uri(URI, get, QueryString) ->
             mochiweb_util:urlunsplit({Scheme, Host, Path, [QS, "&", QueryString], Fragment})
     end.
 
--spec resolve_uri/2 :: (nonempty_string() | ne_binary(), nonempty_string() | ne_binary() | 'undefined') -> ne_binary().
-resolve_uri(Raw, undefined) -> wh_util:to_binary(Raw);
-resolve_uri(_Raw, [$h,$t,$t,$p|_]=Abs) -> Abs;
-resolve_uri(_Raw, <<"http", _/binary>> = Abs) -> Abs;
-resolve_uri(RawPath, Relative) ->
-    PathTokensRev = lists:reverse(binary:split(wh_util:to_binary(RawPath), <<"/">>, [global])),
-    UrlTokens = binary:split(wh_util:to_binary(Relative), <<"/">>),
-
-    wh_util:join_binary(
-      lists:reverse(
-        lists:foldl(fun(<<"..">>, []) -> [];
-                       (<<"..">>, [_ | PathTokens]) -> PathTokens;
-                       (<<".">>, PathTokens) -> PathTokens;
-                       (Segment, [LastToken|DirTokens]=PathTokens) ->
-                            case filename:extension(LastToken) of
-                                <<>> ->
-                                    %% no extension, append Segment to Tokens
-                                    [Segment | PathTokens];
-                                _Ext ->
-                                    %% Extension found, append Segment to DirTokens
-                                    [Segment|DirTokens]
-                            end
-                    end, PathTokensRev, UrlTokens)
-       ), <<"/">>).
-
-play_tone(Call) ->
-    Tone = wh_json:from_list([{<<"Frequencies">>, [<<"440">>]}
-                              ,{<<"Duration-ON">>, <<"500">>}
-                              ,{<<"Duration-OFF">>, <<"100">>}
-                             ]),
-    whapps_call_command:tones([Tone], Call).
-
--ifdef(TEST).
--include_lib("eunit/include/eunit.hrl").
-
-get_path_test() ->
-    RawPath = <<"http://killio/script.php">>,
-    Relative = <<"script2.php">>,
-    RawPath1 = <<"http://killio/script2.php">>,
-
-    ?assertEqual(RawPath1, resolve_uri(RawPath, Relative)),
-    ?assertEqual(RawPath1, resolve_uri(RawPath, RawPath1)).
--endif.
+init_req_params(Data, Call) ->
+    FmtBin = <<"wht_", (wh_json:get_value(<<"req_format">>, Data, <<"twiml">>))/binary>>,
+    try 
+        FmtAtom = wh_util:to_atom(FmtBin),
+        FmtAtom:req_params(Call)
+    catch
+        error:badarg ->
+            case code:where_is_file(wh_util:to_list(<<FmtBin/binary, ".beam">>)) of
+                non_existing -> [];
+                _Path -> wh_util:to_atom(FmtBin, true), init_req_params(Data, Call)
+            end;
+        error:undef ->
+            []
+    end.
