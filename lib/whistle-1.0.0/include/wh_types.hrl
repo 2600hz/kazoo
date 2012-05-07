@@ -3,6 +3,12 @@
 -define(MILLISECONDS_IN_DAY, 86400000).
 -define(SECONDS_IN_DAY, 86400).
 
+-define(ANY_DIGIT, [<<"1">>, <<"2">>, <<"3">>
+                    ,<<"4">>, <<"5">>, <<"6">>
+                    ,<<"7">>, <<"8">>, <<"9">>
+                    ,<<"*">>, <<"0">>, <<"#">>
+                   ]).
+
 %% Hangup Causes that are fine
 -define(SUCCESSFUL_HANGUPS, [<<"NORMAL_CLEARING">>, <<"ORIGINATOR_CANCEL">>, <<"SUCCESS">>]).
 
