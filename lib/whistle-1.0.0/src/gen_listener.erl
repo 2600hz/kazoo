@@ -561,19 +561,15 @@ remove_binding(Binding, Props, Q) ->
         ApiMod:unbind_q(Q, Props)
     catch
         error:badarg ->
-            lager:debug("api module ~s not found", [Wapi]),
             case code:where_is_file(wh_util:to_list(<<Wapi/binary, ".beam">>)) of
                 non_existing ->
-                    lager:debug("beam file not found for ~s, trying old method", [Wapi]),
-                    erlang:error(api_module_undefined);
+                    erlang:error({api_module_undefined, Wapi});
                 _Path ->
-                    lager:debug("beam file found: ~s", [_Path]),
                     wh_util:to_atom(Wapi, true), %% put atom into atom table
                     remove_binding(Binding, Props, Q)
             end;
         error:undef ->
-            lager:debug("module ~s doesn't exist or unbind_q/2 isn't exported", [Wapi]),
-            erlang:error(api_call_undefined)
+            erlang:error({api_call_undefined, Wapi})
     end.
 
 -spec create_binding/3 :: (ne_binary(), wh_proplist(), ne_binary()) -> any().
@@ -584,19 +580,15 @@ create_binding(Binding, Props, Q) ->
         ApiMod:bind_q(Q, Props)
     catch
         error:badarg ->
-            lager:debug("api module ~s not found", [Wapi]),
             case code:where_is_file(wh_util:to_list(<<Wapi/binary, ".beam">>)) of
                 non_existing ->
-                    lager:debug("beam file not found for ~s, trying old method", [Wapi]),
-                    erlang:error(api_module_undefined);
+                    erlang:error({api_module_undefined, Wapi});
                 _Path ->
-                    lager:debug("beam file found: ~s", [_Path]),
                     wh_util:to_atom(Wapi, true), %% put atom into atom table
                     create_binding(Binding, Props, Q)
             end;
         error:undef ->
-            lager:debug("module ~s doesn't exist or bind_q/2 isn't exported", [Wapi]),
-            erlang:error(api_call_undefined)
+            erlang:error({api_call_undefined, Wapi})
     end.
 
 -spec stop_timer/1 :: ('undefined' | reference()) -> non_neg_integer() | 'false'.
