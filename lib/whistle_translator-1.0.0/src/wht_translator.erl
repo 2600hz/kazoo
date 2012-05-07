@@ -11,6 +11,10 @@
 
 -export([exec/2, exec/3]).
 
+-include("wht.hrl").
+
+-spec exec/2 :: (whapps_call:call(), list()) -> exec_return().
+-spec exec/3 :: (whapps_call:call(), list(), ne_binary() | list()) -> exec_return().
 exec(Call, Cmds) ->
     exec(Call, Cmds, <<"text/xml">>).
 
