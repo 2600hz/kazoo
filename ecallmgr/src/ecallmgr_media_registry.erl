@@ -39,9 +39,14 @@
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
+-spec register_local_media/2 :: (ne_binary(), ne_binary()) -> ne_binary().
+-spec register_local_media/3 :: (ne_binary(), ne_binary(), 'path' | 'url') -> ne_binary().
 register_local_media(MediaName, CallId) ->
-    gen_server:call(?MODULE, {register_local_media, MediaName, CallId, path}).
+    register_local_media(MediaName, CallId, path).
 
+register_local_media(<<"local_stream://", FSPath/binary>>, _, _) ->
+    lager:debug("local media on media server at ~s", [FSPath]),
+    FSPath;
 register_local_media(MediaName, CallId, Version) when Version =:= path orelse Version =:= url ->
     gen_server:call(?MODULE, {register_local_media, MediaName, CallId, Version}).
 
@@ -92,7 +97,9 @@ init([]) ->
 %%--------------------------------------------------------------------
 handle_call({register_local_media, MediaName, CallId, Version}, {Pid, _Ref}, Dict) ->
     Old = put(callid, CallId),
-    Dict1 = dict:filter(fun({Pid1, CallId1, MediaName1, _}, _) when Pid =:= Pid1 andalso CallId =:= CallId1 andalso MediaName =:= MediaName1 ->
+    Dict1 = dict:filter(fun({Pid1, CallId1, MediaName1, _}, _) when Pid =:= Pid1 andalso
+                                                                    CallId =:= CallId1 andalso
+                                                                    MediaName =:= MediaName1 ->
                                 true;
                            (_, _) -> false
                         end, Dict),
