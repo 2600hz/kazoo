@@ -11,7 +11,6 @@
 %%%-------------------------------------------------------------------
 -module(cb_accounts).
 
-%% Bindings API
 -export([init/0
          ,allowed_methods/0, allowed_methods/1, allowed_methods/2
          ,resource_exists/0, resource_exists/1, resource_exists/2
@@ -20,14 +19,12 @@
          ,post/2, post/3
          ,delete/2
         ]).
-
-%% API
 -export([create_account/1
          ,get_realm_from_db/1
          ,ensure_parent_set/0
         ]).
 
--include("../../include/crossbar.hrl").
+-include_lib("crossbar/include/crossbar.hrl").
 
 -define(SERVER, ?MODULE).
 

@@ -150,12 +150,10 @@ get_trunkstore_account_numbers(AccountId) ->
 %%--------------------------------------------------------------------
 -spec reconcile_numbers/2 :: ([ne_binary(),...] | [], ne_binary()) -> 'ok'.
 reconcile_numbers([Number|Numbers], AccountId) ->
-    try wh_number_manager:reconcile_number(Number, AccountId) of
+    try wh_number_manager:reconcile_number(Number, AccountId, AccountId) of
         _ ->
             reconcile_numbers(Numbers, AccountId)
     catch
-        throw:not_reconcilable ->
-            reconcile_numbers(Numbers, AccountId);
         _E:_R ->
             lager:debug("error reconciling ~s: ~p:~p", [Number, _E, _R]),
             reconcile_numbers(Numbers, AccountId)

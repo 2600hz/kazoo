@@ -37,14 +37,19 @@
 %%--------------------------------------------------------------------
 -spec save/4 :: (wh_json:json_object(), wh_json:json_object(), ne_binary(), ne_binary()) 
                 -> {ok, wh_json:json_object()} | {error, binary()}.
-save(JObj, _, _, <<"reserved">>) ->
-    {ok, JObj};
 save(JObj, _, _, <<"discovery">>) ->
     {ok, JObj};
-save(JObj, PriorJObj, Number, <<"in_service">>) ->
+save(JObj, _, Number, <<"port_in">>) ->
+    case wh_json:get_value(<<"dash_e911">>, JObj) of
+        undefined -> {ok, JObj};
+        Address ->
+            lager:debug("porting number '~s' has e911 address, updating dash", [Number]),
+            update_e911(Number, Address, JObj)
+    end;
+save(JObj, PriorJObj, Number, <<"reserved">>) ->
     EmptyJObj = wh_json:new(),
     Address = wh_json:get_value(<<"dash_e911">>, JObj, EmptyJObj),
-    case Address =/= wh_json:get_value(<<"dash_e911">>, PriorJObj) of
+    case Address =/= wh_json:get_value(<<"dash_e911">>, PriorJObj, EmptyJObj) of
         false -> {ok, JObj};
         true when Address =:= EmptyJObj ->
             lager:debug("e911 address was changed and is now empty"),
@@ -52,26 +57,20 @@ save(JObj, PriorJObj, Number, <<"in_service">>) ->
             {ok, JObj};
         true ->
             lager:debug("e911 address for '~s' was changed, updating dash", [Number]),
-            Location = json_address_to_xml_location(Address),
-            CallerName = wh_json:get_ne_value(<<"caller_name">>, Address, <<"Valued Customer">>),
-            case add_location(Number, Location, CallerName) of
-                {error, R}=E -> 
-                    lager:debug("error provisioning dash e911 address: ~p", [R]),
-                    E;
-                {provisioned, E911} -> 
-                    lager:debug("provisioned dash e911 address"),
-                    {ok, wh_json:set_value(<<"dash_e911">>, E911, JObj)};
-                {geocoded, E911} ->
-                    lager:debug("added location to dash e911, attempting to provision new location"),
-                    case provision_location(wh_json:get_value(<<"location_id">>, E911)) of
-                        undefined -> 
-                            lager:debug("provisioning attempt moved location to status: undefined"),
-                            {ok, wh_json:set_value(<<"dash_e911">>, E911, JObj)};
-                        Status -> 
-                            lager:debug("provisioning attempt moved location to status: ~s", [Status]),
-                            {ok, wh_json:set_value(<<"dash_e911">>, wh_json:set_value(<<"status">>, Status, E911), JObj)}
-                    end
-            end
+            update_e911(Number, Address, JObj)
+    end;
+save(JObj, PriorJObj, Number, <<"in_service">>) ->
+    EmptyJObj = wh_json:new(),
+    Address = wh_json:get_value(<<"dash_e911">>, JObj, EmptyJObj),
+    case Address =/= wh_json:get_value(<<"dash_e911">>, PriorJObj, EmptyJObj) of
+        false -> {ok, JObj};
+        true when Address =:= EmptyJObj ->
+            lager:debug("e911 address was changed and is now empty"),
+            remove_number(Number),
+            {ok, JObj};
+        true ->
+            lager:debug("e911 address for '~s' was changed, updating dash", [Number]),
+            update_e911(Number, Address, JObj)
     end;
 save(JObj, _, Number, _) ->
     remove_number(Number),
@@ -89,6 +88,36 @@ save(JObj, _, Number, _) ->
 delete(JObj, _, Number, _) ->
     remove_number(Number),
     {ok, JObj}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec update_e911/3 :: (ne_binary(), wh_json:json_object(), wh_json:json_object()) -> {'ok', wh_json:json_object()} |
+                                                                                      {'error', term()}.
+update_e911(Number, Address, JObj) ->
+    Location = json_address_to_xml_location(Address),
+    CallerName = wh_json:get_ne_value(<<"caller_name">>, Address, <<"Valued Customer">>),
+    case add_location(Number, Location, CallerName) of
+        {error, R}=E -> 
+            lager:debug("error provisioning dash e911 address: ~p", [R]),
+            E;
+        {provisioned, E911} -> 
+            lager:debug("provisioned dash e911 address"),
+            {ok, wh_json:set_value(<<"dash_e911">>, E911, JObj)};
+        {geocoded, E911} ->
+            lager:debug("added location to dash e911, attempting to provision new location"),
+            case provision_location(wh_json:get_value(<<"location_id">>, E911)) of
+                undefined -> 
+                    lager:debug("provisioning attempt moved location to status: undefined"),
+                    {ok, wh_json:set_value(<<"dash_e911">>, E911, JObj)};
+                Status -> 
+                    lager:debug("provisioning attempt moved location to status: ~s", [Status]),
+                    {ok, wh_json:set_value(<<"dash_e911">>, wh_json:set_value(<<"status">>, Status, E911), JObj)}
+            end
+    end.
 
 %%--------------------------------------------------------------------
 %% @private

@@ -28,6 +28,7 @@
 
 -define(PORT_DOCS, <<"docs">>).
 -define(ACTIVATE, <<"activate">>).
+-define(RESERVE, <<"reserve">>).
 
 -define(WNM_NUMBER_STATUS, [<<"discovery">>, <<"available">>, <<"reserved">>, <<"released">>
                                 ,<<"in_service">>, <<"disconnected">>, <<"cancelled">>
@@ -80,6 +81,8 @@ allowed_methods(_) ->
 
 allowed_methods(_, ?ACTIVATE) ->
     ['PUT'];
+allowed_methods(_, ?RESERVE) ->
+    ['PUT'];
 allowed_methods(_, ?PORT_DOCS) ->
     ['GET', 'PUT'].
 
@@ -103,6 +106,7 @@ resource_exists() -> true.
 resource_exists(_) -> true.
 
 resource_exists(_, ?ACTIVATE) -> true;
+resource_exists(_, ?RESERVE) -> true;
 resource_exists(_, ?PORT_DOCS) -> true;
 resource_exists(_, _) -> false.
  
@@ -125,12 +129,29 @@ content_types_accepted(#cb_context{req_verb = <<"put">>}=Context, _Number, ?PORT
 content_types_accepted(#cb_context{req_verb = <<"post">>}=Context, _Number, ?PORT_DOCS, _Name) ->
     Context#cb_context{content_types_accepted=[{from_binary, ?MIME_TYPES}]}.
 
-
-authorize(#cb_context{req_nouns=[{<<"phone_numbers">>,[]}], req_verb = <<"get">>}) ->
-    true.
-
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Authenticates the incoming request, returning true if the requestor is
+%% known, or false if not.
+%% @end
+%%--------------------------------------------------------------------
+-spec authenticate/1 :: (#cb_context{}) -> boolean().
 authenticate(#cb_context{req_nouns=[{<<"phone_numbers">>,[]}], req_verb = <<"get">>}) ->
-    true.
+    true;
+authenticate(#cb_context{}) -> false.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Authorizes the incoming request, returning true if the requestor is
+%% allowed to access the resource, or false if not.
+%% @end
+%%--------------------------------------------------------------------
+-spec authorize/1 :: (#cb_context{}) -> boolean().
+authorize(#cb_context{req_nouns=[{<<"phone_numbers">>,[]}], req_verb = <<"get">>}) ->
+    true;
+authorize(#cb_context{}) -> false.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -162,6 +183,8 @@ validate(#cb_context{req_verb = <<"delete">>}=Context, _Number) ->
 
 validate(#cb_context{req_verb = <<"put">>}=Context, Number, ?ACTIVATE) ->
     create(Number, Context);
+validate(#cb_context{req_verb = <<"put">>}=Context, Number, ?RESERVE) ->
+    create(Number, Context);
 validate(#cb_context{req_verb = <<"get">>}=Context, Number, ?PORT_DOCS) ->
     list_attachments(Number, Context);
 validate(#cb_context{req_verb = <<"put">>, req_files=[]}=Context, _, ?PORT_DOCS) ->
@@ -185,22 +208,22 @@ validate(#cb_context{req_verb = <<"delete">>}=Context, Number, ?PORT_DOCS, _) ->
 
 -spec post/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
 -spec post/4 :: (#cb_context{}, path_token(), path_token(), path_token()) -> #cb_context{}.
-post(#cb_context{account_id=AccountId, doc=JObj}=Context, Number) ->
-    Result = wh_number_manager:set_public_fields(Number, AccountId, JObj),
+post(#cb_context{doc=JObj, auth_account_id=AuthBy}=Context, Number) ->
+    Result = wh_number_manager:set_public_fields(Number, JObj, AuthBy),
     set_response(Result, Number, Context).
 
-post(#cb_context{account_id=AccountId, req_files=Files}=Context, Number, ?PORT_DOCS, _) ->
-    put_attachments(Number, AccountId, Context, Files).
+post(#cb_context{req_files=Files}=Context, Number, ?PORT_DOCS, _) ->
+    put_attachments(Number, Context, Files).
 
 -spec put/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
 -spec put/3 :: (#cb_context{}, path_token(), path_token()) -> #cb_context{}.
 -spec put/4 :: (#cb_context{}, path_token(), path_token(), path_token()) -> #cb_context{}.
-put(#cb_context{account_id=AccountId, doc=JObj}=Context, Number) ->
-    Result = wh_number_manager:reserve_number(Number, AccountId, JObj),
+put(#cb_context{account_id=AssignTo, auth_account_id=AuthBy, doc=JObj}=Context, Number) ->
+    Result = wh_number_manager:create_number(Number, AssignTo, AuthBy, JObj),
     set_response(Result, Number, Context).
 
-put(#cb_context{account_id=AccountId, doc=JObj}=Context, Number, ?ACTIVATE) ->
-    case wh_number_manager:assign_number_to_account(Number, AccountId, JObj) of
+put(#cb_context{account_id=AssignTo, auth_account_id=AuthBy, doc=JObj}=Context, Number, ?ACTIVATE) ->
+    case wh_number_manager:assign_number_to_account(Number, AssignTo, AuthBy, JObj) of
         {ok, _}=Result ->
             case set_response(Result, Number, Context) of
                 #cb_context{resp_status=success}=C1 ->
@@ -214,19 +237,24 @@ put(#cb_context{account_id=AccountId, doc=JObj}=Context, Number, ?ACTIVATE) ->
         Else ->
             set_response(Else, Number, Context)
     end;
-put(#cb_context{account_id=AccountId, req_files=Files}=Context, Number, ?PORT_DOCS) ->
-    put_attachments(Number, AccountId, Context, Files).
+put(#cb_context{account_id=AssignTo, auth_account_id=AuthBy, doc=JObj}=Context, Number, ?RESERVE) ->
+    Result = wh_number_manager:reserve_number(Number, AssignTo, AuthBy, JObj),
+    set_response(Result, Number, Context);
+put(#cb_context{req_files=Files}=Context, Number, ?PORT_DOCS) ->
+    put_attachments(Number, Context, Files).
 
-put(#cb_context{account_id=AccountId, req_files=Files}=Context, Number, ?PORT_DOCS, _) ->
-    put_attachments(Number, AccountId, Context, Files).
+put(#cb_context{req_files=Files}=Context, Number, ?PORT_DOCS, _) ->
+    put_attachments(Number, Context, Files).
 
 -spec delete/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
 -spec delete/4 :: (#cb_context{}, path_token(), path_token(), path_token()) -> #cb_context{}.
-delete(#cb_context{account_id=AccountId}=Context, Number) ->
-    Result = wh_number_manager:release_number(Number, AccountId),
+
+delete(#cb_context{auth_account_id=AuthBy}=Context, Number) ->
+    Result = wh_number_manager:release_number(Number, AuthBy),
     set_response(Result, Number, Context).
-delete(#cb_context{account_id=AccountId}=Context, Number, ?PORT_DOCS, Name) ->
-    Result = wh_number_manager:delete_attachment(Number, AccountId, Name),
+
+delete(#cb_context{auth_account_id=AuthBy}=Context, Number, ?PORT_DOCS, Name) ->
+    Result = wh_number_manager:delete_attachment(Number, Name, AuthBy),
     set_response(Result, Number, Context).
 
 %%%===================================================================
@@ -297,8 +325,8 @@ create(_, #cb_context{req_data=Data}=Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec read/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
-read(Number, #cb_context{account_id=AccountId}=Context) ->
-    Result = wh_number_manager:get_public_fields(Number, AccountId),
+read(Number, #cb_context{auth_account_id=AuthBy}=Context) ->
+    Result = wh_number_manager:get_public_fields(Number, AuthBy),
     set_response(Result, Number, Context).
 
 %%--------------------------------------------------------------------
@@ -337,8 +365,8 @@ validate_delete(#cb_context{}=Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec list_attachments/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
-list_attachments(Number, #cb_context{account_id=AccountId}=Context) ->
-    Result = wh_number_manager:list_attachments(Number, AccountId),
+list_attachments(Number, #cb_context{auth_account_id=AuthBy}=Context) ->
+    Result = wh_number_manager:list_attachments(Number, AuthBy),
     set_response(Result, Number, Context).
 
 %%--------------------------------------------------------------------
@@ -347,18 +375,18 @@ list_attachments(Number, #cb_context{account_id=AccountId}=Context) ->
 %% 
 %% @end
 %%--------------------------------------------------------------------
--spec put_attachments/4 :: (ne_binary(), ne_binary(), #cb_context{}, proplist()) -> #cb_context{}.
-put_attachments(_, _, Context, []) ->
+-spec put_attachments/3 :: (ne_binary(), #cb_context{}, proplist()) -> #cb_context{}.
+put_attachments(_, Context, []) ->
     Context#cb_context{resp_status=success};
-put_attachments(Number, AccountId, Context, [{Filename, FileObj}|Files]) ->
+put_attachments(Number, #cb_context{auth_account_id=AuthBy}=Context, [{Filename, FileObj}|Files]) ->
     HeadersJObj = wh_json:get_value(<<"headers">>, FileObj),
     Content = wh_json:get_value(<<"contents">>, FileObj),
     CT = wh_json:get_value(<<"content_type">>, HeadersJObj, <<"application/octet-stream">>),
     Options = [{headers, [{content_type, wh_util:to_list(CT)}]}],
     lager:debug("setting Content-Type to ~s", [CT]),   
-    case wh_number_manager:put_attachment(Number, AccountId, Filename, Content, Options) of
+    case wh_number_manager:put_attachment(Number, Filename, Content, Options, AuthBy) of
         {ok, NewDoc} ->
-            put_attachments(Number, AccountId, Context#cb_context{resp_data=NewDoc}, Files);
+            put_attachments(Number, Context#cb_context{resp_data=NewDoc}, Files);
         Result ->
             set_response(Result, Number, Context)
     end.
@@ -372,12 +400,12 @@ put_attachments(Number, AccountId, Context, [{Filename, FileObj}|Files]) ->
 -spec set_response/3 :: ({ok, wh_json:json_object()} | {error, term()}, ne_binary(), #cb_context{}) -> #cb_context{}.
 set_response({error, conflict}, _, Context) ->
     crossbar_util:response_conflicting_docs(Context);
-set_response({error, reserved}, _, Context) ->
+set_response({error, invalid_state_transition}, _, Context) ->
+    crossbar_util:response(error, <<"authenticated account not authorized to preform that operation">>, 403, Context);
+set_response({error, unauthorized}, _, Context) ->
+    crossbar_util:response(error, <<"authenticated account not authorized to administrate this number">>, 403, Context);
+set_response({error, no_change_required}, _, Context) ->
     crossbar_util:response_conflicting_docs(Context);
-set_response({error, unavailable}, _, Context) ->
-    crossbar_util:response_conflicting_docs(Context);
-set_response({error, unauthorized}, Number, Context) ->
-    crossbar_util:response_bad_identifier(Number, Context);
 set_response({error, unknown_carrier}, _, Context) ->
     crossbar_util:response_db_fatal(Context);
 set_response({error, db_not_reachable}, _, Context) ->

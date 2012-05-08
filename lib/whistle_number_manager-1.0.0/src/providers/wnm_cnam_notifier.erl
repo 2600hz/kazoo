@@ -29,9 +29,7 @@ save(JObj, PriorJObj, Number, <<"reserved">>) ->
     EmptyJObj = wh_json:new(),
     Cnam = wh_json:get_value(<<"cnam">>, JObj, EmptyJObj),
     case Cnam =/= EmptyJObj andalso Cnam =/= wh_json:get_value(<<"cnam">>, PriorJObj) of
-        false ->
-            lager:debug("cnam is unchanged or empty on a reserved number"),
-            {ok, JObj};
+        false -> {ok, JObj};
         true ->
             lager:debug("cnam information has been updated"),
             Notify = [{<<"Account-ID">>, wh_json:get_value(<<"pvt_reserved_for">>, JObj)}
@@ -49,9 +47,7 @@ save(JObj, PriorJObj, Number, <<"in_service">>) ->
     EmptyJObj = wh_json:new(),
     Cnam = wh_json:get_value(<<"cnam">>, JObj, EmptyJObj),
     case Cnam =/= EmptyJObj andalso Cnam =/= wh_json:get_value(<<"cnam">>, PriorJObj) of
-        false ->
-            lager:debug("cnam is unchanged or empty on a number in service"), 
-            {ok, JObj};
+        false -> {ok, JObj};
         true ->
             lager:debug("cnam information has been updated"),
             Notify = [{<<"Account-ID">>, wh_json:get_value(<<"pvt_assigned_to">>, JObj)}
@@ -65,9 +61,7 @@ save(JObj, PriorJObj, Number, <<"in_service">>) ->
             wapi_notifications:publish_cnam_request(Notify),
             {ok, JObj}
     end;
-save(JObj, _, _, State) ->
-    lager:debug("ignoring cnam in number with state ~s", [State]),
-    {ok, JObj}.
+save(JObj, _, _, _) -> {ok, JObj}.
 
 %%--------------------------------------------------------------------
 %% @public
