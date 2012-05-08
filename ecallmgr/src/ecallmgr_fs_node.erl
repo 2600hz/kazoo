@@ -64,7 +64,7 @@ start_link(Node) ->
 start_link(Node, Options) ->
     gen_server:start_link(?SERVER, [Node, Options], []).
 
--spec show_channels/1 :: (pid()) -> [proplist(),...] | [].
+-spec show_channels/1 :: (pid()) -> wh_json:json_objects().
 show_channels(Srv) ->
     Node = fs_node(Srv),
     case freeswitch:api(Node, show, "channels") of
@@ -424,7 +424,7 @@ was_not_successful_cmd({ok, _, _}) ->
 was_not_successful_cmd(_) ->
     true.
 
--spec convert_rows/2 :: (atom(), binary()) -> [proplist(),...] | [].
+-spec convert_rows/2 :: (atom(), binary()) -> wh_json:json_objects().
 convert_rows(Node, <<"\n0 total.\n">>) ->
     lager:debug("no channels up on node ~s", [Node]),
     [];
@@ -432,7 +432,7 @@ convert_rows(Node, RowsBin) ->
     [_|Rows] = binary:split(RowsBin, <<"\n">>, [global]),
     return_rows(Node, Rows, []).
 
--spec return_rows/3 :: (atom(), [binary(),...] | [], [proplist(),...] | []) -> [proplist(),...] | [].
+-spec return_rows/3 :: (atom(), [binary(),...] | [], wh_json:json_objects()) -> wh_json:json_objects().
 return_rows(Node, [<<>>|Rs], Acc) ->
     return_rows(Node, Rs, Acc);
 return_rows(Node, [R|Rs], Acc) ->

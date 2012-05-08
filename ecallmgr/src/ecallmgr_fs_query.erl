@@ -50,6 +50,7 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
+-spec start_link/0 :: () -> startlink_ret().
 start_link() ->
     gen_listener:start_link({local, ?SERVER}, ?MODULE, [{responders, ?RESPONDERS}
                                                         ,{bindings, ?BINDINGS}

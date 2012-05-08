@@ -50,6 +50,9 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
+-spec start_link/1 :: (atom()) -> startlink_ret().
+-spec start_link/2 :: (atom(), wh_proplist()) -> startlink_ret().
+
 start_link(Node) ->
     start_link(Node, []).
 

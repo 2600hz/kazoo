@@ -75,13 +75,13 @@ behaviour_info(_) ->
 -type responder_callback_mappings() :: [responder_callback_mapping(),...] | [].
 -type responder_start_params() :: [{responder_callback_mod(), responder_callback_mappings()},...].
 
--type start_params() :: [{responders, responder_start_params()} |
-                         {bindings, bindings()} |
-                         {queue_name, binary()} |
-                         {queue_options, wh_proplist()} |
-                         {consume_options, wh_proplist()} |
-                         {basic_qos, non_neg_integer()}
-                         ,...].
+-type start_params() :: [{'responders', responder_start_params()} |
+                         {'bindings', bindings()} |
+                         {'queue_name', binary()} |
+                         {'queue_options', wh_proplist()} |
+                         {'consume_options', wh_proplist()} |
+                         {'basic_qos', non_neg_integer()}
+                         ].
 
 -record(state, {
           queue = <<>> :: binary()
@@ -135,13 +135,12 @@ reply(From, Msg) ->
     gen_server:reply(From, Msg).
 
 %% Starting the gen_server
--spec start_link/3 :: (atom(), start_params(), term()) -> startlink_ret().
+-spec start_link/3 :: (atom(), start_params(), list()) -> startlink_ret().
+-spec start_link/4 :: ({'local', atom()} | {'global', term()}, atom(), start_params(), list()) -> startlink_ret().
 start_link(Module, Params, InitArgs) ->
     gen_server:start_link(?MODULE, [Module, Params, InitArgs], []).
-
--spec start_link/4 :: ({local, atom()} | {global, term()}, atom(), start_params(), term()) -> startlink_ret().
 start_link(Name, Module, Params, InitArgs) ->
-    gen_server:start_link(Name, ?MODULE, [Module, Params, InitArgs], []).
+    gen_server:start_link(Name, ?MODULE, [Module, Params, InitArgs], [{timeout, infinity}]).
 
 -spec stop/1 :: (pid()) -> 'ok'.
 stop(Srv) when is_pid(Srv) ->
