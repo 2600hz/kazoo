@@ -28,6 +28,7 @@
 
 -define(PORT_DOCS, <<"docs">>).
 -define(ACTIVATE, <<"activate">>).
+-define(RESERVE, <<"reserve">>).
 
 -define(WNM_NUMBER_STATUS, [<<"discovery">>, <<"available">>, <<"reserved">>, <<"released">>
                                 ,<<"in_service">>, <<"disconnected">>, <<"cancelled">>
@@ -80,6 +81,8 @@ allowed_methods(_) ->
 
 allowed_methods(_, ?ACTIVATE) ->
     ['PUT'];
+allowed_methods(_, ?RESERVE) ->
+    ['PUT'];
 allowed_methods(_, ?PORT_DOCS) ->
     ['GET', 'PUT'].
 
@@ -103,6 +106,7 @@ resource_exists() -> true.
 resource_exists(_) -> true.
 
 resource_exists(_, ?ACTIVATE) -> true;
+resource_exists(_, ?RESERVE) -> true;
 resource_exists(_, ?PORT_DOCS) -> true;
 resource_exists(_, _) -> false.
  
@@ -169,71 +173,43 @@ validate(#cb_context{req_verb = <<"get">>}=Context) ->
     summary(Context).
 
 validate(#cb_context{req_verb = <<"get">>}=Context, Number) ->
-    case is_authorized(Context, Number) of
-        false -> crossbar_util:response(error, <<"authenticated account not authorized to administrate this number">>, 403, Context);
-        true -> read(Number, Context)
-    end;
+    read(Number, Context);
 validate(#cb_context{req_verb = <<"put">>}=Context, Number) ->
-    case is_authorized(Context, Number) of
-        false -> crossbar_util:response(error, <<"authenticated account not authorized to administrate this number">>, 403, Context);
-        true -> create(Number, Context)
-    end;
+    create(Number, Context);
 validate(#cb_context{req_verb = <<"post">>}=Context, Number) ->
-    case is_authorized(Context, Number) of
-        false -> crossbar_util:response(error, <<"authenticated account not authorized to administrate this number">>, 403, Context);
-        true -> update(Number, Context)
-    end;
-validate(#cb_context{req_verb = <<"delete">>}=Context, Number) ->
-    case is_authorized(Context, Number) of
-        false -> crossbar_util:response(error, <<"authenticated account not authorized to administrate this number">>, 403, Context);
-        true -> validate_delete(Context)
-    end.
+    update(Number, Context);
+validate(#cb_context{req_verb = <<"delete">>}=Context, _Number) ->
+    validate_delete(Context).
 
 validate(#cb_context{req_verb = <<"put">>}=Context, Number, ?ACTIVATE) ->
-    case is_authorized(Context, Number) of
-        false -> crossbar_util:response(error, <<"authenticated account not authorized to administrate this number">>, 403, Context);
-        true -> create(Number, Context)
-    end;
+    create(Number, Context);
+validate(#cb_context{req_verb = <<"put">>}=Context, Number, ?RESERVE) ->
+    create(Number, Context);
 validate(#cb_context{req_verb = <<"get">>}=Context, Number, ?PORT_DOCS) ->
-    case is_authorized(Context, Number) of
-        false -> crossbar_util:response(error, <<"authenticated account not authorized to administrate this number">>, 403, Context);
-        true -> list_attachments(Number, Context)
-    end;
+    list_attachments(Number, Context);
 validate(#cb_context{req_verb = <<"put">>, req_files=[]}=Context, _, ?PORT_DOCS) ->
     lager:debug("No files in request to save attachment"),
     crossbar_util:response_invalid_data([<<"no_files">>], Context);
 validate(#cb_context{req_verb = <<"put">>}=Context, Number, ?PORT_DOCS) ->
-    case is_authorized(Context, Number) of
-        false -> crossbar_util:response(error, <<"authenticated account not authorized to administrate this number">>, 403, Context);
-        true -> read(Number, Context)
-    end.
+    read(Number, Context).
 
 validate(#cb_context{req_verb = <<"put">>, req_files=[]}=Context, _, ?PORT_DOCS, _) ->
     lager:debug("No files in request to save attachment"),
     crossbar_util:response_invalid_data([<<"no_files">>], Context);
 validate(#cb_context{req_verb = <<"put">>, req_files=[{_, FileObj}]}=Context, Number, ?PORT_DOCS, Name) ->
-    case is_authorized(Context, Number) of
-        false -> crossbar_util:response(error, <<"authenticated account not authorized to administrate this number">>, 403, Context);
-        true -> read(Number, Context#cb_context{req_files=[{Name, FileObj}]})
-    end;
+    read(Number, Context#cb_context{req_files=[{Name, FileObj}]});
 validate(#cb_context{req_verb = <<"post">>, req_files=[]}=Context, _, ?PORT_DOCS, _) ->
     lager:debug("No files in request to save attachment"),
     crossbar_util:response_invalid_data([<<"no_files">>], Context);
 validate(#cb_context{req_verb = <<"post">>, req_files=[{_, FileObj}]}=Context, Number, ?PORT_DOCS, Name) ->
-    case is_authorized(Context, Number) of
-        false -> crossbar_util:response(error, <<"authenticated account not authorized to administrate this number">>, 403, Context);
-        true -> read(Number, Context#cb_context{req_files=[{Name, FileObj}]})
-    end;
+    read(Number, Context#cb_context{req_files=[{Name, FileObj}]});
 validate(#cb_context{req_verb = <<"delete">>}=Context, Number, ?PORT_DOCS, _) ->
-    case is_authorized(Context, Number) of
-        false -> crossbar_util:response(error, <<"authenticated account not authorized to administrate this number">>, 403, Context);
-        true -> read(Number, Context)
-    end.
+    read(Number, Context).
 
 -spec post/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
 -spec post/4 :: (#cb_context{}, path_token(), path_token(), path_token()) -> #cb_context{}.
-post(#cb_context{doc=JObj}=Context, Number) ->
-    Result = wh_number_manager:set_public_fields(Number, JObj),
+post(#cb_context{doc=JObj, auth_account_id=AuthBy}=Context, Number) ->
+    Result = wh_number_manager:set_public_fields(Number, JObj, AuthBy),
     set_response(Result, Number, Context).
 
 post(#cb_context{req_files=Files}=Context, Number, ?PORT_DOCS, _) ->
@@ -242,12 +218,12 @@ post(#cb_context{req_files=Files}=Context, Number, ?PORT_DOCS, _) ->
 -spec put/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
 -spec put/3 :: (#cb_context{}, path_token(), path_token()) -> #cb_context{}.
 -spec put/4 :: (#cb_context{}, path_token(), path_token(), path_token()) -> #cb_context{}.
-put(#cb_context{account_id=AccountId, doc=JObj}=Context, Number) ->
-    Result = wh_number_manager:reserve_number(Number, AccountId, JObj),
+put(#cb_context{account_id=AssignTo, auth_account_id=AuthBy, doc=JObj}=Context, Number) ->
+    Result = wh_number_manager:create_number(Number, AssignTo, AuthBy, JObj),
     set_response(Result, Number, Context).
 
-put(#cb_context{account_id=AccountId, doc=JObj}=Context, Number, ?ACTIVATE) ->
-    case wh_number_manager:assign_number_to_account(Number, AccountId, JObj) of
+put(#cb_context{account_id=AssignTo, auth_account_id=AuthBy, doc=JObj}=Context, Number, ?ACTIVATE) ->
+    case wh_number_manager:assign_number_to_account(Number, AssignTo, AuthBy, JObj) of
         {ok, _}=Result ->
             case set_response(Result, Number, Context) of
                 #cb_context{resp_status=success}=C1 ->
@@ -261,6 +237,9 @@ put(#cb_context{account_id=AccountId, doc=JObj}=Context, Number, ?ACTIVATE) ->
         Else ->
             set_response(Else, Number, Context)
     end;
+put(#cb_context{account_id=AssignTo, auth_account_id=AuthBy, doc=JObj}=Context, Number, ?RESERVE) ->
+    Result = wh_number_manager:reserve_number(Number, AssignTo, AuthBy, JObj),
+    set_response(Result, Number, Context);
 put(#cb_context{req_files=Files}=Context, Number, ?PORT_DOCS) ->
     put_attachments(Number, Context, Files).
 
@@ -270,12 +249,12 @@ put(#cb_context{req_files=Files}=Context, Number, ?PORT_DOCS, _) ->
 -spec delete/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
 -spec delete/4 :: (#cb_context{}, path_token(), path_token(), path_token()) -> #cb_context{}.
 
-delete(Context, Number) ->
-    Result = wh_number_manager:release_number(Number),
+delete(#cb_context{auth_account_id=AuthBy}=Context, Number) ->
+    Result = wh_number_manager:release_number(Number, AuthBy),
     set_response(Result, Number, Context).
 
-delete(Context, Number, ?PORT_DOCS, Name) ->
-    Result = wh_number_manager:delete_attachment(Number, Name),
+delete(#cb_context{auth_account_id=AuthBy}=Context, Number, ?PORT_DOCS, Name) ->
+    Result = wh_number_manager:delete_attachment(Number, Name, AuthBy),
     set_response(Result, Number, Context).
 
 %%%===================================================================
@@ -346,8 +325,8 @@ create(_, #cb_context{req_data=Data}=Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec read/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
-read(Number, Context) ->
-    Result = wh_number_manager:get_public_fields(Number),
+read(Number, #cb_context{auth_account_id=AuthBy}=Context) ->
+    Result = wh_number_manager:get_public_fields(Number, AuthBy),
     set_response(Result, Number, Context).
 
 %%--------------------------------------------------------------------
@@ -386,8 +365,8 @@ validate_delete(#cb_context{}=Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec list_attachments/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
-list_attachments(Number, Context) ->
-    Result = wh_number_manager:list_attachments(Number),
+list_attachments(Number, #cb_context{auth_account_id=AuthBy}=Context) ->
+    Result = wh_number_manager:list_attachments(Number, AuthBy),
     set_response(Result, Number, Context).
 
 %%--------------------------------------------------------------------
@@ -399,13 +378,13 @@ list_attachments(Number, Context) ->
 -spec put_attachments/3 :: (ne_binary(), #cb_context{}, proplist()) -> #cb_context{}.
 put_attachments(_, Context, []) ->
     Context#cb_context{resp_status=success};
-put_attachments(Number, Context, [{Filename, FileObj}|Files]) ->
+put_attachments(Number, #cb_context{auth_account_id=AuthBy}=Context, [{Filename, FileObj}|Files]) ->
     HeadersJObj = wh_json:get_value(<<"headers">>, FileObj),
     Content = wh_json:get_value(<<"contents">>, FileObj),
     CT = wh_json:get_value(<<"content_type">>, HeadersJObj, <<"application/octet-stream">>),
     Options = [{headers, [{content_type, wh_util:to_list(CT)}]}],
     lager:debug("setting Content-Type to ~s", [CT]),   
-    case wh_number_manager:put_attachment(Number, Filename, Content, Options) of
+    case wh_number_manager:put_attachment(Number, Filename, Content, Options, AuthBy) of
         {ok, NewDoc} ->
             put_attachments(Number, Context#cb_context{resp_data=NewDoc}, Files);
         Result ->
@@ -421,11 +400,11 @@ put_attachments(Number, Context, [{Filename, FileObj}|Files]) ->
 -spec set_response/3 :: ({ok, wh_json:json_object()} | {error, term()}, ne_binary(), #cb_context{}) -> #cb_context{}.
 set_response({error, conflict}, _, Context) ->
     crossbar_util:response_conflicting_docs(Context);
-set_response({error, reserved}, _, Context) ->
-    crossbar_util:response_conflicting_docs(Context);
-set_response({error, unavailable}, Number, Context) ->
-    crossbar_util:response_bad_identifier(Number, Context);
+set_response({error, invalid_state_transition}, _, Context) ->
+    crossbar_util:response(error, <<"authenticated account not authorized to preform that operation">>, 403, Context);
 set_response({error, unauthorized}, _, Context) ->
+    crossbar_util:response(error, <<"authenticated account not authorized to administrate this number">>, 403, Context);
+set_response({error, no_change_required}, _, Context) ->
     crossbar_util:response_conflicting_docs(Context);
 set_response({error, unknown_carrier}, _, Context) ->
     crossbar_util:response_db_fatal(Context);
@@ -501,50 +480,3 @@ update_callflows([Update|Updates], Number, Replaces, Context) ->
             lager:debug("failed to replace '~s' with '~s' on callflow ~s", [Replaces, Number, CallflowId]),
             update_callflows(Updates, Number, Replaces, Context)
     end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec is_authorized/2 :: (#cb_context{}, ne_binary()) -> boolean().
-is_authorized(#cb_context{auth_account_id=AuthAccountId}, Number) ->
-    case wh_number_manager:lookup_authorized_account_by_number(Number) of
-        {ok, AssignedTo} -> is_account_descendant(AuthAccountId, AssignedTo);
-        _Else -> true
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec is_account_descendant/2 :: (ne_binary(), ne_binary()) -> boolean().
-is_account_descendant(AuthAccountId, AssignedTo) ->
-    lager:debug("checking if the requestor account ~s is an ancestor or same as the number's account ~s", [AuthAccountId, AssignedTo]),
-    AssignedToDb = wh_util:format_account_id(AssignedTo, encoded),
-    case AssignedTo =:= AuthAccountId orelse crossbar_util:open_doc(AssignedToDb, AssignedTo) of
-        true -> 
-            lager:debug("the requestor is the owner of the number, allowing request"),
-            true;
-        %% if the requested account exists, the second component of the key
-        %% is the parent tree, make sure the authorized account id is in that tree
-        {ok, JObj} ->
-            Tree = wh_json:get_value(<<"pvt_tree">>, JObj, []),
-            case lists:member(AuthAccountId, Tree) of
-                true ->
-                    lager:debug("the requestor is an ancestor of owner of the number, allowing request"),
-                    true;
-                false ->
-                    lager:debug("the requestor has no authority over this number, denying request"),
-                    false
-            end;
-        %% anything else and they are not allowed
-        {error, _R} ->
-            lager:debug("failed to get the ancestory of the number, denying request to be safe: ~p", [_R]),
-            false
-    end.
-        
-
