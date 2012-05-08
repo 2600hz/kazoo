@@ -4,7 +4,8 @@
 -define(WNM_CONFIG_CAT, <<"number_manager">>).
 
 -define(WNM_NUMBER_STATUS, [<<"discovery">>, <<"available">>, <<"reserved">>, <<"released">>
-                                ,<<"porting">> ,<<"in_service">>, <<"disconnected">>, <<"cancelled">>]).
+                                ,<<"port_in">> ,<<"in_service">>, <<"disconnected">>, <<"port_out">>
+                           ]).
 -define(WNM_AVALIABLE_STATES, [<<"discovery">>, <<"available">>]).
 
 -define(WNM_DEAFULT_CARRIER_MODULES, [<<"wnm_local">>]).
@@ -18,6 +19,14 @@
 -define(WNM_USER_AGENT, "Whistle Number Manager 1.0.0").
 
 -define(WNM_DEAFULT_TOLLFREE_RE, "^(\\+?1)?(8[1-4,9]\\d{8}|80[1-9]\\d{7}|85[1-4,6-9]\\d{7}|86[1-5,7-9]\\d{7}|87[1-6,8-9]\\d{7}|88[1-7,9]\\d{7}|([1-7,9]\\d{9}))$").
+
+-type transition_return() :: {'ok', wh_json:json_object()} |
+                             {'error', 'invalid_state_transition'} |
+                             {'error', 'unauthorized'} |
+                             {'error', 'carrier_fault'} |
+                             {'error', 'unknown_carrier'} |
+                             {'error', 'no_change'} |
+                             {'error', 'no_change_required'}.
 
 %%% NUMBER STATES
 %%% discovery    - The number was discovered via a carrier lookup but has not been reserved or purchased.

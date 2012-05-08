@@ -10,10 +10,10 @@
 -module(wnm_local).
 
 -export([find_numbers/2]).
--export([acquire_number/3]).
--export([release_number/2]).
+-export([acquire_number/2]).
+-export([disconnect_number/2]).
 
--include("../../include/wh_number_manager.hrl").
+-include_lib("whistle_number_manager/include/wh_number_manager.hrl").
 
 %%--------------------------------------------------------------------
 %% @public
@@ -50,12 +50,9 @@ find_numbers(Number, Quanity) ->
 %% Acquire a given number from the carrier
 %% @end
 %%--------------------------------------------------------------------
--spec acquire_number/3 :: (ne_binary(), ne_binary(), wh_json:json_object()) -> {ok, ne_binary(), wh_json:json_object()}
-                                                                           | {error, ne_binary()}.
-acquire_number(_, <<"in_service">>, _) ->
-    {error, unavailable};
-acquire_number(_, _, JObj) ->
-    {ok, <<"in_service">>, JObj}.
+-spec acquire_number/2 :: (ne_binary(), wh_json:json_object()) -> {ok, wh_json:json_object()}.
+acquire_number(_, JObj) ->
+    {ok, JObj}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -63,6 +60,6 @@ acquire_number(_, _, JObj) ->
 %% Release a number from the routing table
 %% @end
 %%--------------------------------------------------------------------
--spec release_number/2 :: (ne_binary(), wh_json:json_object()) -> {ok, wh_json:json_object()}.
-release_number(_, JObj) ->
+-spec disconnect_number/2 :: (ne_binary(), wh_json:json_object()) -> {ok, wh_json:json_object()}.
+disconnect_number(_, JObj) ->
     {ok, JObj}.
