@@ -1,6 +1,8 @@
 -module(wh_util).
 
 -export([format_account_id/1, format_account_id/2]).
+-export([is_in_account_hierarchy/2, is_in_account_hierarchy/3]).
+-export([is_system_admin/1]).
 -export([get_account_realm/1, get_account_realm/2]).
 -export([is_account_enabled/1]).
 
@@ -89,6 +91,65 @@ format_account_id(AccountId, encoded) when is_binary(AccountId) ->
     wh_util:to_binary(["account%2F", Id1, Id2, "%2F", Id3, Id4, "%2F", IdRest]);
 format_account_id(AccountId, raw) ->
     AccountId.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Determine if the given account id/db exists in the hierarchy of
+%% the provided account id/db. Optionally consider the account in
+%% its own hierarchy.
+%% @end
+%%--------------------------------------------------------------------
+-spec is_in_account_hierarchy/2 :: ('undefined' | ne_binary(), 'undefined' | ne_binary()) -> boolean().
+-spec is_in_account_hierarchy/3 :: ('undefined' | ne_binary(), 'undefined' | ne_binary(), boolean()) -> boolean().
+
+is_in_account_hierarchy(CheckFor, InAccount) ->
+    is_in_account_hierarchy(CheckFor, InAccount, false).
+
+is_in_account_hierarchy(undefined, _, _) ->
+    false;
+is_in_account_hierarchy(_, undefined, _) ->
+    false;
+is_in_account_hierarchy(CheckFor, InAccount, IncludeSelf) ->
+    CheckId = wh_util:format_account_id(CheckFor, raw),
+    AccountId = wh_util:format_account_id(InAccount, raw),
+    AccountDb = wh_util:format_account_id(InAccount, encoded),
+    case (IncludeSelf andalso AccountId =:= CheckId) orelse crossbar_util:open_doc(AccountDb, AccountId) of
+        true ->
+            lager:debug("account ~s is the same as the account to fetch the hierarchy from", [CheckId]),
+            true;
+        {ok, JObj} ->
+            Tree = wh_json:get_value(<<"pvt_tree">>, JObj, []),
+            case lists:member(CheckId, Tree) of
+                true -> 
+                    lager:debug("account ~s is in the account hierarchy of ~s", [CheckId, AccountId]),
+                    true;
+                false ->
+                    lager:debug("account ~s was not found in the account hierarchy of ~s", [CheckId, AccountId]),
+                    false
+            end;
+        {error, _R} ->
+            lager:debug("failed to get the ancestory of the account ~s: ~p", [AccountId, _R]),
+            false
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec is_system_admin/1 :: ('undefined' | ne_binary()) -> boolean().
+is_system_admin(undefined) -> false;
+is_system_admin(Account) -> 
+    AccountId = wh_util:format_account_id(Account, raw),
+    AccountDb = wh_util:format_account_id(Account, encoded),
+    case couch_mgr:open_doc(AccountDb, AccountId) of
+        {ok, JObj} -> wh_json:is_true(<<"pvt_superduper_admin">>, JObj);
+        {error, _R} ->
+            lager:debug("unable to open account definition for ~s: ~p", [Account, _R]),
+            false
+    end.
 
 %%--------------------------------------------------------------------
 %% @public

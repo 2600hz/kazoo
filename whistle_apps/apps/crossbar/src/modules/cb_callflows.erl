@@ -94,7 +94,7 @@ validate(#cb_context{req_verb = <<"delete">>}=Context, DocId) ->
 -spec post/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
 post(Context, _DocId) ->
     case crossbar_doc:save(Context) of
-        #cb_context{account_id=AccountId, doc=JObj, resp_status=success}=C ->
+        #cb_context{account_id=AssignTo, auth_account_id=AuthBy, doc=JObj, resp_status=success}=C ->
             case whapps_config:get_is_true(?MOD_CONFIG_CAT, <<"default_reconcile_numbers">>, true) of
                 false -> C;
                 true ->
@@ -103,9 +103,9 @@ post(Context, _DocId) ->
                     Set2 = sets:from_list(wh_json:get_value(<<"numbers">>, JObj, [])),
                     NewNumbers = sets:subtract(Set2, Set1),
                     RemovedNumbers = sets:subtract(Set1, Set2),
-                    _ = [wh_number_manager:reconcile_number(Number, AccountId)
+                    _ = [wh_number_manager:reconcile_number(Number, AssignTo, AuthBy)
                          || Number <- sets:to_list(NewNumbers)],
-                    _ = [wh_number_manager:release_number(Number, AccountId)
+                    _ = [wh_number_manager:release_number(Number, AuthBy)
                          || Number <- sets:to_list(RemovedNumbers)],
                     C
             end;
@@ -116,8 +116,8 @@ post(Context, _DocId) ->
 -spec put/1 :: (#cb_context{}) -> #cb_context{}.
 put(Context) ->
     case crossbar_doc:save(Context) of
-        #cb_context{account_id=AccountId, doc=JObj, resp_status=success}=C ->
-            _ = [wh_number_manager:reconcile_number(Number, AccountId)
+        #cb_context{account_id=AssignTo, auth_account_id=AuthBy, doc=JObj, resp_status=success}=C ->
+            _ = [wh_number_manager:reconcile_number(Number, AssignTo, AuthBy)
                  || Number <- wh_json:get_value(<<"numbers">>, JObj, [])],
             C;
         Else ->
@@ -125,10 +125,10 @@ put(Context) ->
     end.
 
 -spec delete/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
-delete(#cb_context{doc=JObj, account_id=AccountId}=Context, _DocId) ->
+delete(#cb_context{doc=JObj}=Context, _DocId) ->
     case crossbar_doc:delete(Context) of
-        #cb_context{resp_status=success}=C ->
-            _ = [wh_number_manager:release_number(Number, AccountId)
+        #cb_context{auth_account_id=AuthBy, resp_status=success}=C ->
+            _ = [wh_number_manager:release_number(Number, AuthBy)
                  || Number <- wh_json:get_value(<<"numbers">>, JObj, [])],
             C;
         Else ->
