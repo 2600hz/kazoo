@@ -85,7 +85,7 @@ find_numbers(Search, Quanity) ->
                                                                   {error, ne_binary()}.
 acquire_number(_, JObj) ->
     case whapps_config:get_is_true(?WNM_BW_CONFIG_CAT, <<"enable_provisioning">>, <<"true">>) of
-        false -> {ok, JObj}; %%{error, number_provisioning_disabled};
+        false -> {error, number_provisioning_disabled};
         true ->  
                       Id = wh_json:get_string_value(<<"number_id">>, JObj),
                       Endpoint = whapps_config:get_binary(?WNM_BW_CONFIG_CAT, <<"endpoint">>, <<"">>),
