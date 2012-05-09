@@ -164,10 +164,11 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec process_route_req/4 :: (atom(), ne_binary(), ne_binary(), proplist()) -> pid().
+-spec process_route_req/4 :: (atom(), ne_binary(), ne_binary(), proplist()) -> 'ok'.
 process_route_req(Node, FSID, CallID, FSData) ->
     put(callid, CallID),
     lager:debug("processing fetch request ~s (call ~s) from ~s", [FSID, CallID, Node]),
+
     DefProp = [{<<"Msg-ID">>, FSID}
                ,{<<"Caller-ID-Name">>, props:get_value(<<"variable_effective_caller_id_name">>, FSData, 
                                                        props:get_value(<<"Caller-Caller-ID-Name">>, FSData, <<"Unknown">>))}
@@ -176,9 +177,10 @@ process_route_req(Node, FSID, CallID, FSData) ->
                ,{<<"To">>, ecallmgr_util:get_sip_to(FSData)}
                ,{<<"From">>, ecallmgr_util:get_sip_from(FSData)}
                ,{<<"Request">>, ecallmgr_util:get_sip_request(FSData)}
+               ,{<<"From-Network-Addr">>,props:get_value(<<"Caller-Network-Addr">>, FSData)}
                ,{<<"Call-ID">>, CallID}
                ,{<<"Custom-Channel-Vars">>, wh_json:from_list(ecallmgr_util:custom_channel_vars(FSData))}
-               | wh_api:default_headers(<<>>, <<"dialplan">>, <<"route_req">>, ?APP_NAME, ?APP_VERSION)],
+               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)],
     %% Server-ID will be over-written by the pool worker
     {ok, AuthZEnabled} = ecallmgr_util:get_setting(authz_enabled, true),
     case wh_util:is_true(AuthZEnabled) of

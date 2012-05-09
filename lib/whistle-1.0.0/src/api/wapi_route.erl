@@ -1,10 +1,10 @@
  %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2012, VoIP INC
 %%% @doc
 %%% Routing requests, responses, and wins!
 %%% @end
-%%% Created : 17 Oct 2011 by James Aimonetti <james@2600hz.org>
+%%% @contributors
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(wapi_route).
 
@@ -31,7 +31,7 @@
                            ]).
 -define(OPTIONAL_ROUTE_REQ_HEADERS, [<<"Geo-Location">>, <<"Orig-IP">>, <<"Max-Call-Length">>, <<"Media">>
                                          ,<<"Transcode">>, <<"Codecs">>, <<"Custom-Channel-Vars">>
-                                         ,<<"Resource-Type">>, <<"Cost-Parameters">>
+                                         ,<<"Resource-Type">>, <<"Cost-Parameters">>, <<"From-Network-Addr">>
                                     ]).
 -define(ROUTE_REQ_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
                            ,{<<"Event-Name">>, ?ROUTE_REQ_EVENT_NAME}
