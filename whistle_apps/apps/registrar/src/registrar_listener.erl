@@ -1,10 +1,10 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2012, VoIP INC
 %%% @doc
 %%% Listener for authn_req, reg_success, and reg_query AMQP requests
 %%% @end
-%%% Created : 13 Jan 2011 by James Aimonetti <james@2600hz.org>
+%%% @contributors
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(registrar_listener).
 
@@ -25,10 +25,12 @@
                      ,{{reg_query, req_query_req}, [{<<"directory">>, <<"reg_query">>}]}
                      ,{{?MODULE, handle_reg_query_resp}, [{<<"directory">>, <<"reg_query_resp">>}]}
                      ,{{reg_query, presence_probe}, [{<<"notification">>, <<"presence_probe">>}]}
+                     ,{{reg_route_req, handle_route_req}, [{<<"dialplan">>, <<"route_req">>}]}
                     ]).
 -define(BINDINGS, [{authn, []}
                    ,{registration, []}
                    ,{notifications, [{restrict_to, [presence_probe]}]}
+                   ,{route, []}
                    ,{self, []}
                   ]).
 
