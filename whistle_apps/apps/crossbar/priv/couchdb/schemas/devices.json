@@ -267,7 +267,7 @@
                "description":"Type of auth",
                "required":true,
                "enum":[
-                  "password"
+                  "password", "ip"
                ],
                "default":"password"
             },
