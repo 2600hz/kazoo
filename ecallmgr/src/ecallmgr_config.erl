@@ -9,7 +9,7 @@
 %%%-------------------------------------------------------------------
 -module(ecallmgr_config).
 
--export([flush/0]).
+-export([flush/0, flush/1]).
 -export([get/1, get/2, get/3]).
 -export([set/2, set/3]).
 
@@ -18,9 +18,36 @@
 -include("ecallmgr.hrl").
 
 -spec flush/0 :: () -> 'ok'.
+-spec flush/1 :: (wh_json:json_string()) -> 'ok'.
 flush() ->
     {ok, Cache} = ecallmgr_util_sup:cache_proc(),
     wh_cache:flush_local(Cache).
+
+flush(Key) ->
+    flush(Key, node()).
+flush(Key0, Node0) ->
+    Key = wh_util:to_binary(Key0),
+    Node = wh_util:to_binary(Node0),
+
+    CacheKey = cache_key(Key, Node),
+    {ok, Cache} = ecallmgr_util_sup:cache_proc(),
+    wh_cache:erase_local(Cache, CacheKey),
+
+    Req = [KV ||
+              {_, V} = KV <- [{<<"Category">>, <<"ecallmgr">>}
+                              ,{<<"Key">>, Key}
+                              ,{<<"Node">>, Node}
+                              ,{<<"Msg-ID">>, wh_util:rand_hex_binary(16)}
+                              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                             ],
+              V =/= undefined],
+
+    lager:debug("flushing ~s from sysconf", [Key]),
+    wh_amqp_worker:cast(?ECALLMGR_AMQP_POOL
+                        ,Req
+                        ,fun wapi_sysconf:publish_flush_req/1
+                       ).
+    
 
 -spec get/1 :: (wh_json:json_string()) -> wh_json:json_term() | 'undefined'.
 -spec get/2 :: (wh_json:json_string(), Default) -> wh_json:json_term() | Default.

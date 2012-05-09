@@ -169,7 +169,8 @@ handle_config_req(Node, ID, FsConf) ->
             ConfigXml = generate_resp_xml(ConfKey, SysconfResp),
 
             lager:debug("sending XML to ~s: ~s", [Node, ConfigXml]),
-            _ = freeswitch:fetch_reply(Node, ID, ConfigXml)
+            _ = freeswitch:fetch_reply(Node, ID, ConfigXml),
+            ecallmgr_config:flush(ConfKey) % ensure we get latest and greatest
     catch
         error:function_clause ->
             lager:debug("config file ~s not supported", [FsConf]),
