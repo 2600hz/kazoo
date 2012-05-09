@@ -11,7 +11,7 @@
 -behaviour(gen_listener).
 
 %% API
--export([start_link/0, lookup/3, handle_req/2]).
+-export([start_link/0, lookup/3, handle_req/2, sip_ip_list/0]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2
@@ -44,6 +44,11 @@ start_link() ->
 lookup(Realm, User, Fields) ->
     {ok, Srv} = ecallmgr_util_sup:registrar_proc(),
     gen_server:call(Srv, {lookup, Realm, User, Fields, get(callid)}).
+
+-spec sip_ip_list/0 :: () -> [ne_binary(),...].
+sip_ip_list() ->
+    {ok, Srv} = ecallmgr_sup:registrar_proc(),
+    gen_server:call(Srv, {sip_ip_list, get(callid)}).
 
 -spec handle_req/2 :: (wh_json:json_object(), proplist()) -> no_return().
 handle_req(JObj, _Props) ->
@@ -92,6 +97,14 @@ handle_call({lookup, Realm, User, Fields, CallId}, From, State) ->
                   gen_server:reply(From, lookup_reg(Realm, User, Fields))
           end),
     {noreply, State};
+
+handle_call({sip_ip_list, CallId}, From, State) ->
+    spawn(fun() ->
+                put(callid, CallId),
+                gen_server:reply(From, get_sip_ip_list())
+         end),
+    {noreply, State};
+
 handle_call(_Msg, _From, State) ->
     {reply, {error, not_implemented}, State}.
 
@@ -204,6 +217,30 @@ lookup_reg(Realm, User, Fields) ->
         {ok, RegFields} ->
             lager:debug("found cached registration information"),
             lists:foldr(FilterFun, [], RegFields)
+    end.
+
+%% Returns a list of SIP IPs as returned by the lookup_by_ip view (in sip_auth)
+%% not using wh_cache since ACLs (and SIP IPs by the same extend) must not be cached)
+-spec get_sip_ip_list/0 :: () -> [ne_binary(),...] | {'error', 'timeout'}.
+get_sip_ip_list() ->
+    lager:debug("looking up SIP IP list from registrations"),
+    QueryProp = [wh_api:default_headers(?APP_NAME, ?APP_VERSION)],
+    try
+        case ecallmgr_amqp_pool:sip_ip_query(QueryProp) of
+            {ok, SipIpJObj} ->
+                true = wapi_registration:sip_ip_query_resp_v(SipIpJObj),
+                [];
+            {error, timeout}=E ->
+                lager:debug("Looking up registration"),
+                E
+        end
+    catch
+        _:{timeout, _} ->
+            lager:debug("looking up registration threw exception: timeout", []),
+            {error, timeout};
+        _:R ->
+            lager:debug("looking up registration threw exception: ~p", [R]),
+            {error, timeout}
     end.
 
 cache_key(Realm, User) ->

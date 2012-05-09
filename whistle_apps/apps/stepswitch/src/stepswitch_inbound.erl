@@ -43,7 +43,18 @@ inbound_handler(JObj, Number) ->
               wh_json:set_value(<<"Custom-Channel-Vars">>, custom_channel_vars(AccountId, undefined, JObj), JObj)
              );
         {error, R} ->
-            lager:notice("unable to get account id for ~s: ~p", [Number, R])
+            lager:notice("unable to get account id for ~s: ~p", [Number, R]),
+            lager:notice("trying to auth by IP"),
+            Ip = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"sip_h_X-AUTH-IP">>], JObj),
+            case couch_mgr:get_results(<<"sip_auth">>, <<"lookup_by_ip">>, [{<<"key">>, Ip}]) of
+                {ok, Doc} -> 
+                            AccountId = wh_json:get_value([<<"value">>,  <<"account_id">>], Doc),
+                            OwnerId = wh_json:get_value([<<"value">>, <<"owner_id">>], Doc),
+                            relay_route_req(
+                                wh_json:set_value(<<"Custom-Channel-Vars">>, custom_channel_vars(AccountId, OwnerId, undefined, JObj), JObj)
+                            ); 
+                {error, _} -> lager:notice("unable to IP auth")
+            end
     end.
 
 %%--------------------------------------------------------------------
@@ -98,6 +109,23 @@ custom_channel_vars(AccountId, AuthId, JObj) ->
               ]
            ],
     wh_json:from_list([ KV || {_, V}=KV <- Vars, V =/= undefined ]).
+
+-spec custom_channel_vars/4 :: ('undefined' | ne_binary(), 'undefined' | ne_binary(), 'undefined' | ne_binary(), wh_json:json_object()) -> wh_json:json_object().
+custom_channel_vars(AccountId, OwnerId, AuthId, JObj) ->
+    CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new()),
+    Vars = [{<<"Account-ID">>, AccountId}
+            ,{<<"Owner-ID">>, OwnerId}
+            ,{<<"Inception">>, <<"off-net">>}
+            ,{<<"Authorizing-ID">>, AuthId}
+            | [Var || {K, _}=Var <- wh_json:to_proplist(CCVs)
+                          ,K =/= <<"Account-ID">>
+                          ,K =/= <<"Owner-ID">>
+                          ,K =/= <<"Inception">>
+                          ,K =/= <<"Authorizing-ID">>
+              ]
+           ],
+    wh_json:from_list([ KV || {_, V}=KV <- Vars, V =/= undefined ]).
+
 
 %%--------------------------------------------------------------------
 %% @private
