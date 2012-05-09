@@ -73,6 +73,7 @@ authn_resp_xml(_Method, _JObj) ->
     lager:debug("unknown method ~s", [_Method]),
     empty_response().
 
+-spec empty_response/0 :: () -> {'ok', []}.
 empty_response() ->
     {ok, ""}. %"<document type=\"freeswitch/xml\"></document>").
 
