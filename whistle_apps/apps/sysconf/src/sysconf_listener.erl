@@ -1,9 +1,10 @@
 %%%-------------------------------------------------------------------
-%%% @author Edouard Swiac <edouard@2600hz.org>
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2012, VoIP INC
 %%% @doc
 %%% Listener for sysconf_read, and sysconf_write AMQP requests
 %%% @end
+%%% @contributors
+%%%   Edouard Swiac
 %%%-------------------------------------------------------------------
 -module(sysconf_listener).
 
@@ -20,6 +21,7 @@
 
 -define(RESPONDERS, [{sysconf_get, [{<<"sysconf">>, <<"get_req">>}]}
                      ,{sysconf_set, [{<<"sysconf">>, <<"set_req">>}]}
+                     ,{sysconf_flush, [{<<"sysconf">>, <<"flush_req">>}]}
                     ]).
 -define(BINDINGS, [
                    {sysconf, []}
