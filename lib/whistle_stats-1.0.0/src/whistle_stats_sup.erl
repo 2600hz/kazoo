@@ -4,33 +4,26 @@
 %%%
 %%% @end
 %%% @contributors
+%%% Jon Blanton <jon@2600hz.com>
 %%%-------------------------------------------------------------------
--module(ecallmgr_sup).
+-module(whistle_stats_sup).
 
 -behaviour(supervisor).
 
--include_lib("ecallmgr/src/ecallmgr.hrl").
+-include_lib("whistle/include/wh_types.hrl").
 
 -export([start_link/0]).
+-export([listener_proc/0]).
 -export([init/1]).
 
--define(POOL_SIZE, 200).
--define(OVERFLOW_POOL_SIZE, 200).
-
--define(CHILD(Name, Type), fun(N, pool) -> {N, {poolboy, start_link, [[{worker_module, wh_amqp_worker}
-								       ,{name, {local, N}}
-                                                                       ,{size, ?POOL_SIZE}
-                                                                       ,{max_overflow, ?OVERFLOW_POOL_SIZE}
-                                                                      ]
-                                                                     ]}
-                                            ,permanent, 5000, worker, [poolboy]
-                                           };
+%% Helper macro for declaring children of supervisor
+-define(CHILD(Name, Type), fun(N, cache) -> {N, {wh_cache, start_link, [N]}, permanent, 5000, worker, [wh_cache]};
                               (N, T) -> {N, {N, start_link, []}, permanent, 5000, T, [N]} end(Name, Type)).
--define(CHILDREN, [{?ECALLMGR_AMQP_POOL, pool}
-                   ,{ecallmgr_util_sup, supervisor}
-                   ,{ecallmgr_call_sup, supervisor}
-                   ,{ecallmgr_fs_sup, supervisor}
-                  ]).
+%% -define(CHILDREN, [{skel_listener, worker}, {skel_cache, cache}]).
+-define(CHILDREN, [{folsom_sup, supervisor}
+		   ,{whistle_stats_couchbeam, worker}
+		   ,{whistle_stats_statsd, worker}
+		  ]).
 
 %% ===================================================================
 %% API functions
@@ -45,6 +38,12 @@
 -spec start_link/0 :: () -> startlink_ret().
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+
+-spec listener_proc/0 :: () -> {'ok', pid()}.
+listener_proc() ->
+    [P] = [P || {Mod, P, _, _} <- supervisor:which_children(?MODULE),
+                Mod =:= whistle_stats_listener],
+    {ok, P}.
 
 %% ===================================================================
 %% Supervisor callbacks

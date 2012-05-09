@@ -403,6 +403,7 @@ get_view(#db{}=Db, DesignDoc, ViewOptions) ->
 retry504s(Fun) when is_function(Fun, 0) ->
     retry504s(Fun, 0).
 retry504s(_Fun, 3) ->
+    wh_counter:inc(<<"couch.requests.failures">>),
     lager:debug("504 retry failed"),
     {'error', 'timeout'};
 retry504s(Fun, Cnt) ->
@@ -410,7 +411,11 @@ retry504s(Fun, Cnt) ->
         {'error', {'ok', "504", _, _}} ->
             timer:sleep(100 * (Cnt+1)),
             retry504s(Fun, Cnt+1);
-        {'error', _}=E -> E;
-        {'ok', _}=OK -> OK;
+        {'error', _Other}=E ->
+	    wh_counter:inc(<<"couch.requests.failures">>),
+	    E;
+        {'ok', _Other}=OK ->
+	    wh_counter:inc(<<"couch.requests.successes">>),
+	    OK;
         'ok' -> 'ok'
     end.
