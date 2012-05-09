@@ -67,13 +67,13 @@ get_new_connection(Host, Port, User, Pass) ->
 -spec get_new_conn/3 :: (nonempty_string(), pos_integer(), proplist()) -> #server{}.
 get_new_conn(Host, Port, Opts) ->
     Conn = couchbeam:server_connection(Host, Port, "", Opts),
-    lager:debug("new connection to Host ~s, testing", [Host]),
+    lager:info("new connection to host ~s:~b, testing", [Host, Port]),
     {'ok', ConnData} = couchbeam:server_info(Conn),
     CouchVersion = wh_json:get_value(<<"version">>, ConnData),
     BigCouchVersion = wh_json:get_value(<<"bigcouch">>, ConnData),
-    lager:debug("connected successfully to ~s", [Host]),
-    lager:debug("CouchDB: ~s", [CouchVersion]),
-    is_binary(BigCouchVersion) andalso lager:debug("BigCouch: ~s", [BigCouchVersion]),
+    lager:info("connected successfully to ~s:~b", [Host, Port]),
+    lager:info("responding CouchDB version: ~s", [CouchVersion]),
+    is_binary(BigCouchVersion) andalso lager:info("responding BigCouch version: ~s", [BigCouchVersion]),
     Conn.
 
 -spec server_url/1 :: (#server{}) -> ne_binary().
