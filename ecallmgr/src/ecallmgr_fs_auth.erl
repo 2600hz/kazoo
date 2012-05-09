@@ -131,14 +131,16 @@ handle_info({fetch, directory, <<"domain">>, <<"name">>, _Value, ID, [undefined 
             lookup_user(Node, ID, Data),
             {noreply, State, hibernate};
         _Other ->
-            _ = freeswitch:fetch_reply(Node, ID, ?EMPTYRESPONSE),
+            {ok, Resp} = ecallmgr_fs_xml:empty_response(),
+            _ = freeswitch:fetch_reply(Node, ID, Resp),
             lager:debug("ignoring request from ~s for ~p", [Node, _Other]),
             {noreply, State}
     end;
 
 handle_info({fetch, _Section, _Something, _Key, _Value, ID, [undefined | _Data]}, #state{node=Node}=State) ->
     lager:debug("sending empyt reply for request (~s) for ~s ~s from ~s", [ID, _Section, _Something, Node]),
-    _ = freeswitch:fetch_reply(Node, ID, ?EMPTYRESPONSE),
+    {ok, Resp} = ecallmgr_fs_xml:empty_response(),
+    _ = freeswitch:fetch_reply(Node, ID, Resp),
     {noreply, State};
 
 handle_info(_Info, State) ->
@@ -197,13 +199,14 @@ lookup_user(Node, ID, Data) ->
                   case ReqResp of
                       {error, _R} ->
                           lager:debug("authn request lookup failed: ~p", [_R]),
-                          freeswitch:fetch_reply(Node, ID, ?ROUTE_NOT_FOUND_RESPONSE);
+                          {ok, RespXML} = ecallmgr_fs_xml:route_not_found(),
+                          freeswitch:fetch_reply(Node, ID, iolist_to_binary(RespXML));
                       {ok, RespJObj} ->
                           {ok, Xml} = ecallmgr_fs_xml:authn_resp_xml(
                                         wh_json:set_value(<<"Auth-Realm">>, AuthRealm
                                                           ,wh_json:set_value(<<"Auth-User">>, AuthUser, RespJObj))
                                        ),
                           lager:debug("sending XML to ~w: ~s", [Node, Xml]),
-                          freeswitch:fetch_reply(Node, ID, Xml)
+                          freeswitch:fetch_reply(Node, ID, iolist_to_binary(Xml))
                   end
           end).

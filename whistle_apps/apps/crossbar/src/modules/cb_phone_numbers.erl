@@ -15,7 +15,7 @@
 -export([init/0
          ,allowed_methods/0, allowed_methods/1, allowed_methods/2, allowed_methods/3
          ,resource_exists/0, resource_exists/1, resource_exists/2, resource_exists/3
-         ,content_types_accepted/3, content_types_accepted/4
+         ,content_types_accepted/4
          ,validate/1, validate/2, validate/3, validate/4
          ,authorize/1
          ,authenticate/1
@@ -27,6 +27,7 @@
 -include_lib("crossbar/include/crossbar.hrl").
 
 -define(PORT_DOCS, <<"docs">>).
+-define(PORT, <<"port">>).
 -define(ACTIVATE, <<"activate">>).
 -define(RESERVE, <<"reserve">>).
 
@@ -43,7 +44,8 @@
                      ,{<<"application">>, <<"x-tar">>}
                      ,{<<"image">>, <<"*">>}
                      ,{<<"text">>, <<"plain">>}
-                     ,{<<"application">>, <<"octet-stream">>}
+                     ,{<<"application">>, <<"base64">>}
+                     ,{<<"application">>, <<"x-base64">>}
                     ]).
 
 %%%===================================================================
@@ -83,8 +85,10 @@ allowed_methods(_, ?ACTIVATE) ->
     ['PUT'];
 allowed_methods(_, ?RESERVE) ->
     ['PUT'];
+allowed_methods(_, ?PORT) ->
+    ['PUT'];
 allowed_methods(_, ?PORT_DOCS) ->
-    ['GET', 'PUT'].
+    ['GET'].
 
 allowed_methods(_, ?PORT_DOCS, _) ->
     ['PUT', 'POST', 'DELETE'].
@@ -119,11 +123,7 @@ resource_exists(_, _, _) -> false.
 %% 
 %% @end
 %%--------------------------------------------------------------------
--spec content_types_accepted/3 :: (#cb_context{}, path_token(), path_token()) -> #cb_context{}.
 -spec content_types_accepted/4 :: (#cb_context{}, path_token(), path_token(), path_token()) -> #cb_context{}.
-content_types_accepted(#cb_context{req_verb = <<"put">>}=Context, _Number, ?PORT_DOCS) ->
-    Context#cb_context{content_types_accepted=[{from_binary, ?MIME_TYPES}]}.
-
 content_types_accepted(#cb_context{req_verb = <<"put">>}=Context, _Number, ?PORT_DOCS, _Name) ->
     Context#cb_context{content_types_accepted=[{from_binary, ?MIME_TYPES}]};
 content_types_accepted(#cb_context{req_verb = <<"post">>}=Context, _Number, ?PORT_DOCS, _Name) ->
@@ -185,26 +185,24 @@ validate(#cb_context{req_verb = <<"put">>}=Context, Number, ?ACTIVATE) ->
     create(Number, Context);
 validate(#cb_context{req_verb = <<"put">>}=Context, Number, ?RESERVE) ->
     create(Number, Context);
+validate(#cb_context{req_verb = <<"put">>}=Context, Number, ?PORT) ->
+    create(Number, Context);
 validate(#cb_context{req_verb = <<"get">>}=Context, Number, ?PORT_DOCS) ->
-    list_attachments(Number, Context);
-validate(#cb_context{req_verb = <<"put">>, req_files=[]}=Context, _, ?PORT_DOCS) ->
-    lager:debug("No files in request to save attachment"),
-    crossbar_util:response_invalid_data([<<"no_files">>], Context);
-validate(#cb_context{req_verb = <<"put">>}=Context, Number, ?PORT_DOCS) ->
-    read(Number, Context).
+    list_attachments(Number, Context).
 
-validate(#cb_context{req_verb = <<"put">>, req_files=[]}=Context, _, ?PORT_DOCS, _) ->
-    lager:debug("No files in request to save attachment"),
-    crossbar_util:response_invalid_data([<<"no_files">>], Context);
-validate(#cb_context{req_verb = <<"put">>, req_files=[{_, FileObj}]}=Context, Number, ?PORT_DOCS, Name) ->
-    read(Number, Context#cb_context{req_files=[{Name, FileObj}]});
-validate(#cb_context{req_verb = <<"post">>, req_files=[]}=Context, _, ?PORT_DOCS, _) ->
-    lager:debug("No files in request to save attachment"),
-    crossbar_util:response_invalid_data([<<"no_files">>], Context);
-validate(#cb_context{req_verb = <<"post">>, req_files=[{_, FileObj}]}=Context, Number, ?PORT_DOCS, Name) ->
-    read(Number, Context#cb_context{req_files=[{Name, FileObj}]});
 validate(#cb_context{req_verb = <<"delete">>}=Context, Number, ?PORT_DOCS, _) ->
-    read(Number, Context).
+    read(Number, Context);
+validate(#cb_context{req_files=[]}=Context, _, ?PORT_DOCS, _) ->
+    lager:debug("No files in request to save attachment"),
+    E = wh_json:set_value([<<"content_size">>, <<"minLength">>], <<"No file uploaded">>, wh_json:new()),
+    crossbar_util:response_invalid_data(E, Context);
+validate(#cb_context{req_files=[{_, FileObj}]}=Context, Number, ?PORT_DOCS, Name) ->
+    FileName = wh_util:to_binary(http_uri:encode(wh_util:to_list(Name))),
+    read(Number, Context#cb_context{req_files=[{FileName, FileObj}]});
+validate(Context, _, ?PORT_DOCS, _) ->
+    lager:debug("Multiple files in request to save attachment"),
+    E = wh_json:set_value([<<"content_size">>, <<"maxLength">>], <<"Uploading multiple files is not supported">>, wh_json:new()),
+    crossbar_util:response_invalid_data(E, Context).
 
 -spec post/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
 -spec post/4 :: (#cb_context{}, path_token(), path_token(), path_token()) -> #cb_context{}.
@@ -222,6 +220,9 @@ put(#cb_context{account_id=AssignTo, auth_account_id=AuthBy, doc=JObj}=Context, 
     Result = wh_number_manager:create_number(Number, AssignTo, AuthBy, JObj),
     set_response(Result, Number, Context).
 
+put(#cb_context{account_id=AssignTo, auth_account_id=AuthBy, doc=JObj}=Context, Number, ?PORT) ->
+    Result = wh_number_manager:port_in(Number, AssignTo, AuthBy, JObj),
+    set_response(Result, Number, Context);
 put(#cb_context{account_id=AssignTo, auth_account_id=AuthBy, doc=JObj}=Context, Number, ?ACTIVATE) ->
     case wh_number_manager:assign_number_to_account(Number, AssignTo, AuthBy, JObj) of
         {ok, _}=Result ->
@@ -254,7 +255,8 @@ delete(#cb_context{auth_account_id=AuthBy}=Context, Number) ->
     set_response(Result, Number, Context).
 
 delete(#cb_context{auth_account_id=AuthBy}=Context, Number, ?PORT_DOCS, Name) ->
-    Result = wh_number_manager:delete_attachment(Number, Name, AuthBy),
+    FileName = wh_util:to_binary(http_uri:encode(wh_util:to_list(Name))),
+    Result = wh_number_manager:delete_attachment(Number, FileName, AuthBy),
     set_response(Result, Number, Context).
 
 %%%===================================================================

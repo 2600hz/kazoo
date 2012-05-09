@@ -38,7 +38,8 @@ start_deps() ->
     ok = wh_util:ensure_started(gproc),
     ok = wh_util:ensure_started(riak_err),
     ok = wh_util:ensure_started(couchbeam),
-    ok = wh_util:ensure_started(whistle_amqp).
+    ok = wh_util:ensure_started(whistle_amqp),
+    ok = wh_util:ensure_started(whistle_stats).
 
 %% @spec stop() -> ok
 %% @doc Stop the whistle_apps server.

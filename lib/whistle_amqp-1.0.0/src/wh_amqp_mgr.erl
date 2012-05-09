@@ -11,6 +11,7 @@
 -behaviour(gen_server).
 
 -export([start_link/0]).
+-export([get_connection/0]).
 -export([publish/2]).
 -export([consume/1]).
 -export([misc_req/1]).

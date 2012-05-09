@@ -13,7 +13,7 @@
 
 %% API
 -export([start_link/1, start_link/2]). 
--export([handle_config_req/4]).
+-export([handle_config_req/3]).
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -26,8 +26,8 @@
 
 -include("ecallmgr.hrl").
 
--record(state, {node = undefined :: atom()
-                ,options = [] :: proplist()
+-record(state, {node :: atom()
+                ,options = [] :: wh_proplist()
                }).
 
 %%%===================================================================
@@ -74,7 +74,7 @@ init([Node, Options]) ->
             lager:warning("failed to bind to config requests on ~s, ~p", [Node, Reason]),
             {stop, Reason};
         timeout ->
-            lager:warning("failed to bind to directory requests on ~s: timeout", [Node]),
+            lager:warning("failed to bind to config requests on ~s: timeout", [Node]),
             {stop, timeout}
     end.
 
@@ -118,16 +118,18 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({fetch, configuration, <<"configuration">>, <<"name">>, Conf, ID, Data}, #state{node=Node}=State) ->
-    %% TODO: move this to a supervisor somewhere....
-    handle_config_req(Node, ID, Conf, Data),
-    lager:debug("fetch configuration request from from ~s", [Node]),
+handle_info({fetch, configuration, <<"configuration">>, <<"name">>, Conf, ID, _Data}, #state{node=Node}=State) ->
+    lager:debug("fetch configuration request from ~s: ~s", [Node, ID]),
+    spawn(?MODULE, handle_config_req, [Node, ID, Conf]),
+
     {noreply, State};
-handle_info({_Fetch, _Section, _Something, _Key, _Value, ID, [undefined | _Data]}, #state{node=Node}=State) ->
-    _ = freeswitch:fetch_reply(Node, ID, ?EMPTYRESPONSE),
-    lager:debug("ignoring request ~s from ~s", [props:get_value(<<"Event-Name">>, _Data), Node]),
+handle_info({_Fetch, _Section, _Something, _Key, _Value, ID, _Data}, #state{node=Node}=State) ->
+    lager:debug("unhandled fetch from section ~s for ~s:~s", [_Section, _Something, _Key]),
+    _ = freeswitch:fetch_reply(Node, ID, ""),
+
     {noreply, State};
 handle_info(_Info, State) ->
+    lager:debug("unhandled message: ~p", [_Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -158,32 +160,41 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec handle_config_req/4 :: (atom(), ne_binary(), ne_binary(), proplist()) -> pid().
-handle_config_req(Node, ID, FsConf, _Data) ->
-    spawn(fun() -> 
-                  put(callid, ID),
-                  try
-                      EcallMgrConf = fsconf_to_sysconf(FsConf),
-                      SysconfResp = ecallmgr_config:get(EcallMgrConf),
-                      lager:debug("received sysconf response for ecallmngr config ~p", [EcallMgrConf]),
-                      {ok, ConfigXml} = case EcallMgrConf of
-                                            <<"acls">> -> ecallmgr_fs_xml:config_acl_xml(SysconfResp)
-                                        end,
-                      lager:debug("sending XML to ~w: ~s", [Node, ConfigXml]),
-                      _ = freeswitch:fetch_reply(Node, ID, ConfigXml)
-                  catch 
-                      throw:_T ->
-                          lager:debug("config request failed: thrown ~w", [_T]),
-                          _ = freeswitch:fetch_reply(Node, ID, ?EMPTYRESPONSE);
-                      error:_E ->
-                          lager:debug("config request failed: error ~p", [_E]),
-                          _ = freeswitch:fetch_reply(Node, ID, ?EMPTYRESPONSE)
-                  end
-          end).
+-spec handle_config_req/3 :: (atom(), ne_binary(), ne_binary()) -> fs_sendmsg_ret().
+handle_config_req(Node, ID, FsConf) ->
+    put(callid, ID),
+    try fsconf_key(FsConf) of
+        ConfKey ->
+            SysconfResp = ecallmgr_config:get(ConfKey, wh_json:new()),
+            ConfigXml = generate_resp_xml(ConfKey, SysconfResp),
+
+            lager:debug("sending XML to ~s: ~s", [Node, ConfigXml]),
+            _ = freeswitch:fetch_reply(Node, ID, ConfigXml),
+            ecallmgr_config:flush(ConfKey) % ensure we get latest and greatest
+    catch
+        error:function_clause ->
+            lager:debug("config file ~s not supported", [FsConf]),
+            {ok, Resp} = ecallmgr_fs_xml:empty_response(),
+            _ = freeswitch:fetch_reply(Node, ID, Resp)
+    end.
 
 %%% FS conf keys are not necessarily the same as we store them, remap it
--spec fsconf_to_sysconf/1 :: (ne_binary()) -> ne_binary().
-fsconf_to_sysconf(FsConf) ->
-  case FsConf of
-    <<"acl.conf">> -> <<"acls">>
-  end.
+-spec fsconf_key/1 :: (ne_binary()) -> ne_binary().
+fsconf_key(<<"acl.conf">>) -> <<"acls">>.
+
+generate_resp_xml(<<"acls">>, Resp) ->
+    case wh_json:is_empty(Resp) of
+        true ->
+            lager:debug("no acls configured in sysconf, returning empty response"),
+            {ok, Empty} = ecallmgr_fs_xml:empty_response(),
+            Empty;
+        false ->
+            try ecallmgr_fs_xml:acl_xml(Resp) of
+                {ok, ConfigXml} -> erlang:iolist_to_binary(ConfigXml)
+            catch
+                error:function_clause ->
+                    lager:debug("acls resp failed to convert to XML: ~p", [Resp]),
+                    {ok, Empty} = ecallmgr_fs_xml:empty_response(),
+                    Empty
+            end
+    end.

@@ -1,10 +1,10 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2012, VoIP INC
 %%% @doc
 %%% Receive route(dialplan) requests from FS, request routes and respond
 %%% @end
-%%% Created : 23 Mar 2011 by James Aimonetti <james@2600hz.org>
+%%% @contributors
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(ecallmgr_fs_route).
 
@@ -118,17 +118,19 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info({fetch, _Section, _Something, _Key, _Value, ID, [undefined | _Data]}, #state{node=Node}=State) ->
     lager:debug("fetch unknown section from ~s: ~p So: ~p, K: ~p V: ~p ID: ~s", [Node, _Section, _Something, _Key, _Value, ID]),
-    _ = freeswitch:fetch_reply(Node, ID, ?EMPTYRESPONSE),
+    {ok, Resp} = ecallmgr_fs_xml:empty_response(),
+    _ = freeswitch:fetch_reply(Node, ID, Resp),
     {noreply, State};
 handle_info({fetch, dialplan, _Tag, _Key, _Value, FSID, [CallID | FSData]}, #state{node=Node}=State) ->
     case {props:get_value(<<"Event-Name">>, FSData), props:get_value(<<"Caller-Context">>, FSData)} of
         {<<"REQUEST_PARAMS">>, ?WHISTLE_CONTEXT} ->
             %% TODO: move this to a supervisor somewhere
-            process_route_req(Node, FSID, CallID, FSData),
+            spawn(?MODULE, process_route_req, [Node, FSID, CallID, FSData]),
             {noreply, State, hibernate};
         {_Other, _Context} ->
             lager:debug("ignoring event ~s in context ~s from ~s", [_Other, _Context, Node]),
-            _ = freeswitch:fetch_reply(Node, FSID, ?EMPTYRESPONSE),
+            {ok, Resp} = ecallmgr_fs_xml:empty_response(),
+            _ = freeswitch:fetch_reply(Node, FSID, Resp),
             {noreply, State, hibernate}
     end;
 handle_info(_Other, State) ->
@@ -162,30 +164,30 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec process_route_req/4 :: (atom(), ne_binary(), ne_binary(), proplist()) -> pid().
+-spec process_route_req/4 :: (atom(), ne_binary(), ne_binary(), proplist()) -> 'ok'.
 process_route_req(Node, FSID, CallID, FSData) ->
-    spawn(fun() ->
-                  put(callid, CallID),
-                  lager:debug("processing fetch request ~s (call ~s) from ~s", [FSID, CallID, Node]),
-                  DefProp = [{<<"Msg-ID">>, FSID}
-                             ,{<<"Caller-ID-Name">>, props:get_value(<<"variable_effective_caller_id_name">>, FSData, 
-                                                                     props:get_value(<<"Caller-Caller-ID-Name">>, FSData, <<"Unknown">>))}
-                             ,{<<"Caller-ID-Number">>, props:get_value(<<"variable_effective_caller_id_number">>, FSData, 
-                                                                       props:get_value(<<"Caller-Caller-ID-Number">>, FSData, <<"0000000000">>))}
-                             ,{<<"To">>, ecallmgr_util:get_sip_to(FSData)}
-                             ,{<<"From">>, ecallmgr_util:get_sip_from(FSData)}
-                             ,{<<"Request">>, ecallmgr_util:get_sip_request(FSData)}
-                             ,{<<"Call-ID">>, CallID}
-                             ,{<<"Media-Server">>, wh_util:to_binary(Node)}
-                             ,{<<"Custom-Channel-Vars">>, wh_json:from_list(ecallmgr_util:custom_channel_vars(FSData))}
-                             | wh_api:default_headers(<<>>, <<"dialplan">>, <<"route_req">>, ?APP_NAME, ?APP_VERSION)],
-                  %% Server-ID will be over-written by the pool worker
-                  {ok, AuthZEnabled} = ecallmgr_util:get_setting(authz_enabled, true),
-                  case wh_util:is_true(AuthZEnabled) of
-                      true -> authorize_and_route(Node, FSID, CallID, FSData, DefProp);
-                      false -> route(Node, FSID, CallID, DefProp, undefined)
-                  end
-          end).
+    put(callid, CallID),
+    lager:debug("processing fetch request ~s (call ~s) from ~s", [FSID, CallID, Node]),
+
+    DefProp = [{<<"Msg-ID">>, FSID}
+               ,{<<"Caller-ID-Name">>, props:get_value(<<"variable_effective_caller_id_name">>, FSData, 
+                                                       props:get_value(<<"Caller-Caller-ID-Name">>, FSData, <<"Unknown">>))}
+               ,{<<"Caller-ID-Number">>, props:get_value(<<"variable_effective_caller_id_number">>, FSData, 
+                                                         props:get_value(<<"Caller-Caller-ID-Number">>, FSData, <<"0000000000">>))}
+               ,{<<"To">>, ecallmgr_util:get_sip_to(FSData)}
+               ,{<<"From">>, ecallmgr_util:get_sip_from(FSData)}
+               ,{<<"Request">>, ecallmgr_util:get_sip_request(FSData)}
+               ,{<<"From-Network-Addr">>,props:get_value(<<"Caller-Network-Addr">>, FSData)}
+               ,{<<"Call-ID">>, CallID}
+               ,{<<"Custom-Channel-Vars">>, wh_json:from_list(ecallmgr_util:custom_channel_vars(FSData))}
+               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)],
+    %% Server-ID will be over-written by the pool worker
+    {ok, AuthZEnabled} = ecallmgr_util:get_setting(authz_enabled, true),
+    case wh_util:is_true(AuthZEnabled) of
+        true -> authorize_and_route(Node, FSID, CallID, FSData, DefProp);
+        false -> route(Node, FSID, CallID, DefProp, undefined)
+    end.
+
 
 -spec authorize_and_route/5 :: (atom(), ne_binary(), ne_binary(), proplist(), proplist()) -> 'ok'.
 authorize_and_route(Node, FSID, CallID, FSData, DefProp) ->
@@ -235,7 +237,10 @@ reply_forbidden(Node, FSID) ->
                                                 ,{<<"Route-Error-Code">>, <<"402">>}
                                                 ,{<<"Route-Error-Message">>, <<"Payment Required">>}
                                                ]),
-    case freeswitch:fetch_reply(Node, FSID, XML) of
+
+    lager:debug("sending XML to ~s: ~s", [Node, XML]),
+
+    case freeswitch:fetch_reply(Node, FSID, iolist_to_binary(XML)) of
         ok ->
             %% only start control if freeswitch recv'd reply
             lager:debug("node ~s accepted our route unauthz", [Node]);
@@ -254,7 +259,9 @@ reply(Node, FSID, CallID, RespJObj, CCVs, AuthZPid) ->
     {ok, XML} = ecallmgr_fs_xml:route_resp_xml(RespJObj),
     ServerQ = wh_json:get_value(<<"Server-ID">>, RespJObj),
 
-    case freeswitch:fetch_reply(Node, FSID, XML) of
+    lager:debug("sending XML to ~s: ~s", [Node, XML]),
+
+    case freeswitch:fetch_reply(Node, FSID, iolist_to_binary(XML)) of
         ok ->
             %% only start control if freeswitch recv'd reply
             lager:debug("node ~s accepted our route (authzed), starting control and events", [Node]),

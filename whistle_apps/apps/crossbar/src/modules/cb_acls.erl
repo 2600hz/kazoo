@@ -1,12 +1,10 @@
 %%%-------------------------------------------------------------------
-%%% @author Karl Anderson <karl@2600hz.org>
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2012, VoIP INC
 %%% @doc
 %%%
 %%% ACLs from 7 to 77
 %%%
 %%% @end
-%%% Created : 05 Jan 2011 by Karl Anderson <karl@2600hz.org>
 %%% Contributors: Karl Anderson
 %%%               James Aimonetti
 %%%               Edouard Swiac 
@@ -39,7 +37,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.acls">>, ?MODULE, allowed_methods),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.acls">>, ?MODULE, resource_exists),
     _ = crossbar_bindings:bind(<<"v1_resource.validate.acls">>, ?MODULE, validate),
-    %_ = crossbar_bindings:bind(<<"v1_resource.execute.put.acls">>, ?MODULE, put),
+    %%_ = crossbar_bindings:bind(<<"v1_resource.execute.put.acls">>, ?MODULE, put),
     _ = crossbar_bindings:bind(<<"v1_resource.execute.delete.acls">>, ?MODULE, delete),
     ok.
 
@@ -129,16 +127,16 @@ delete(Context, Id) ->
 -spec create/1 :: (#cb_context{}) -> #cb_context{}.
 create(#cb_context{req_data=Data}=Context) ->
     case wh_json_validator:is_valid(Data, <<"acls">>) of
-    {fail, Errors} ->
-        crossbar_util:response_invalid_data(Errors, Context);
-    {pass, JObj} ->
-      Acls = whapps_config:get(?ECALLMGR, ?ECALLMGR_ACLS),
-      Key = mochiweb_util:quote_plus(wh_json:get_value(<<"cidr">>, JObj)),
-      Merged = wh_json:set_value(binary:list_to_bin(Key), JObj, Acls),
-      whapps_config:set_default(?ECALLMGR, ?ECALLMGR_ACLS, Merged),
-      wapi_switch:publish_reloadacl(),
+        {fail, Errors} ->
+            crossbar_util:response_invalid_data(Errors, Context);
+        {pass, JObj} ->
+            Acls = whapps_config:get(?ECALLMGR, ?ECALLMGR_ACLS),
+            Key = mochiweb_util:quote_plus(wh_json:get_value(<<"cidr">>, JObj)),
+            Merged = wh_json:set_value(binary:list_to_bin(Key), JObj, Acls),
+            whapps_config:set_default(?ECALLMGR, ?ECALLMGR_ACLS, Merged),
+            wapi_switch:publish_reloadacl(),
     
-        Context#cb_context{doc=JObj, resp_status=success}
+            Context#cb_context{doc=JObj, resp_status=success}
     end.
 
 %%--------------------------------------------------------------------

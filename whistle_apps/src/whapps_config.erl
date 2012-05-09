@@ -20,7 +20,9 @@
 -export([get_non_empty/2, get_non_empty/3, get_non_empty/4]).
 
 -export([set/3, set/4, set_default/3]).
--export([flush/0, flush/1, import/1, couch_ready/0]).
+-export([flush/0, flush/1, flush/2, flush/3
+         ,import/1, couch_ready/0
+        ]).
 
 -type config_category() :: ne_binary() | nonempty_string() | atom().
 -type config_key() :: ne_binary() | nonempty_string() | atom() | [config_key(),...].
@@ -300,6 +302,31 @@ flush(Category) ->
     {ok, Cache} = whistle_apps_sup:config_cache_proc(),
     wh_cache:erase_local(Cache, category_key(Category)).
 
+-spec flush/2 :: (ne_binary(), ne_binary()) -> 'ok'.
+-spec flush/3 :: (ne_binary(), ne_binary() | [ne_binary(),...], atom() | ne_binary()) -> 'ok'.
+flush(Category, Key) ->
+    flush(Category, Key, <<"default">>).
+
+flush(Category, Key, undefined) ->
+    flush(Category, Key, <<"default">>);
+flush(Category, Key, Node) when not is_list(Key) ->
+    flush(Category, [Key], Node);
+flush(Category0, Keys, Node0) ->
+    Category = wh_util:to_binary(Category0),
+    Node = wh_util:to_binary(Node0),
+
+    {ok, Cache} = whistle_apps_sup:config_cache_proc(),
+
+    UpdateFun = fun(J) ->
+                        NodeConfig = wh_json:get_value(Node, J, wh_json:new()),
+                        wh_json:delete_key(Keys, NodeConfig)
+                end,
+
+    {ok, JObj} = wh_cache:peek_local(Cache, category_key(Category)),
+    JObj1 = wh_json:set_value(Node, UpdateFun(JObj), JObj),
+    cache_jobj(Cache, Category, JObj1),
+    ok.
+
 %%-----------------------------------------------------------------------------
 %% @public
 %% @doc
@@ -323,7 +350,8 @@ import(Category) ->
 %% 3. from a flat file
 %% @end
 %%-----------------------------------------------------------------------------
--spec fetch_category/2 :: (ne_binary(), pid()) -> {'ok', wh_json:json_object()} | {'error', 'not_found'}.
+-spec fetch_category/2 :: (ne_binary(), pid()) -> {'ok', wh_json:json_object()} |
+                                                  {'error', 'not_found'}.
 fetch_category(Category, Cache) ->
     Lookups = [fun fetch_file_config/2
                ,fun fetch_db_config/2

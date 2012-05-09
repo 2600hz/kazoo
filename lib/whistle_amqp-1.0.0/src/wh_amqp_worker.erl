@@ -47,6 +47,7 @@
                 ,req_timeout_ref :: reference()
                 ,req_start_time :: wh_now()
                 ,callid :: ne_binary()
+		,pool_ref :: server_ref()
                }).
 
 -define(FUDGE, 2600).
@@ -86,12 +87,15 @@ call(Srv, Req, PubFun, VFun) ->
 call(Srv, Req, PubFun, VFun, Timeout) ->
     case catch poolboy:checkout(Srv, false, 1000) of
         W when is_pid(W) ->
+	    PoolName = pool_name_from_server_ref(Srv),
+	    wh_counter:dec(<<"amqp.pools.", PoolName/binary, ".available">>),
             Prop = case wh_json:is_json_object(Req) of
                        true -> wh_json:to_proplist(Req);
                        false -> Req
                    end,
             Reply = gen_listener:call(W, {request, Prop, PubFun, VFun, Timeout}, Timeout + ?FUDGE),
             poolboy:checkin(Srv, W),
+	    wh_counter:inc(<<"amqp.pools.", PoolName/binary, ".available">>),
             Reply;
         full ->
             lager:debug("failed to checkout worker: full"),
@@ -154,7 +158,10 @@ init([Args]) ->
     put(callid, ?LOG_SYSTEM_ID),
     lager:debug("starting amqp worker"),
     NegThreshold = props:get_value(neg_resp_threshold, Args, 2),
-    {ok, #state{neg_resp_threshold=NegThreshold}}.
+    Pool = props:get_value(name, Args, undefined),
+    PoolName = pool_name_from_server_ref(Pool),
+    wh_counter:inc(<<"amqp.pools.", PoolName/binary, ".available">>),
+    {ok, #state{neg_resp_threshold=NegThreshold,pool_ref=Pool}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -315,7 +322,9 @@ handle_event(_JObj, _State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, _State) ->
+terminate(_Reason, #state{pool_ref=Pool}) ->
+    PoolName = pool_name_from_server_ref(Pool),
+    wh_counter:dec(<<"amqp.pools.", PoolName/binary, ".available">>),
     lager:debug("amqp worker terminating: ~p", [_Reason]).
 
 %%--------------------------------------------------------------------
@@ -345,3 +354,16 @@ reset(State) ->
                 ,req_start_time = undefined
                 ,callid = undefined
                }.
+
+-spec pool_name_from_server_ref/1 :: (server_ref()) -> ne_binary().
+pool_name_from_server_ref({_, Name}) when is_atom(Name)->
+    wh_util:to_binary(Name);
+pool_name_from_server_ref({via, _, Name}) when is_atom(Name) ->
+    wh_util:to_binary(Name);
+pool_name_from_server_ref(Name) when is_atom(Name) ->
+    wh_util:to_binary(Name);
+pool_name_from_server_ref(Pid) when is_pid(Pid) ->
+    wh_util:to_binary(pid_to_list(Pid)).
+
+
+    

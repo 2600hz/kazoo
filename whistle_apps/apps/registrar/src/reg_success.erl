@@ -1,10 +1,10 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2012, VoIP INC
 %%% @doc
 %%% Handle successful registrations
 %%% @end
-%%% Created : 19 Aug 2011 by James Aimonetti <james@2600hz.org>
+%%% @contributors
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(reg_success).
 
@@ -61,10 +61,10 @@ handle_req(ApiJObj, _Props) ->
     end,
 
     {ok, Cache} = registrar_sup:cache_proc(),
-    case wh_cache:peek_local(Cache, reg_util:cache_user_to_reg_key(Realm, Username)) of
-        {ok, _} -> ok;
-        {error, not_found} -> spawn(fun() -> send_new_register(JObj2) end)
-    end,
+    _ = case wh_cache:peek_local(Cache, reg_util:cache_user_to_reg_key(Realm, Username)) of
+            {ok, _} -> ok;
+            {error, not_found} -> spawn(fun() -> send_new_register(JObj2) end)
+        end,
     wh_cache:store_local(Cache, reg_util:cache_user_to_reg_key(Realm, Username), JObj2, Expires, fun reg_util:reg_removed_from_cache/3),
 
     lager:debug("cached registration ~s@~s for ~psec", [Username, Realm, Expires]).

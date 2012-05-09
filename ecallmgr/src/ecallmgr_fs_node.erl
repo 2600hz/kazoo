@@ -84,9 +84,14 @@ hostname(Srv) ->
 -spec reloadacl/1 ::(pid()) -> 'ok'.
 reloadacl(Srv) ->
     Node = fs_node(Srv),
-    lager:debug("reloadacl command sent to FS ~s", [Node]),
-    {ok, <<"+OK acl reloaded\n">>} = freeswitch:api(Node, reloadacl),
-    ok.
+    case freeswitch:bgapi(Node, reloadacl, "") of
+        {ok, Job} ->
+            lager:debug("reloadacl command sent to ~s: JobID: ~s", [Node, Job]);
+        {error, _E} ->
+            lager:debug("reloadacl failed with error: ~p", [_E]);
+        timeout ->
+            lager:debug("reloadacl failed with error: timeout")
+    end.
 
 -spec fs_node/1 :: (pid()) -> atom().
 fs_node(Srv) ->
@@ -198,7 +203,16 @@ handle_cast(_Req, State) ->
 handle_info({event, [UUID | Data]}, State) ->
     catch process_event(UUID, Data),
     {noreply, State, hibernate};
+
+handle_info({bgok, _Job, _Result}, State) ->
+    lager:debug("job ~s finished successfully: ~p", [_Job, _Result]),
+    {noreply, State};
+handle_info({bgerror, _Job, _Result}, State) ->
+    lager:debug("job ~s finished with an error: ~p", [_Job, _Result]),
+    {noreply, State};
+
 handle_info(_Msg, State) ->
+    lager:debug("unhandled message: ~p", [_Msg]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
