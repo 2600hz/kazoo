@@ -13,6 +13,7 @@
 -export([find/1, find/2]).
 -export([lookup_account_by_number/1]).
 -export([create_number/3, create_number/4]).
+-export([port_in/3, port_in/4]).
 -export([reconcile_number/3]).
 -export([free_numbers/1]).
 -export([reserve_number/3, reserve_number/4]).
@@ -126,6 +127,37 @@ create_number(Number, AssignTo, AuthBy, PublicFields) ->
                          E;
                     ({ok, J}) -> 
                          lager:debug("create number successfully completed", []),
+                         {ok, wh_json:public_fields(J)}
+                 end
+               ], 
+    lists:foldl(fun(F, J) -> F(J) end, wnm_number:get(Number, PublicFields), Routines).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Add a port in number for an account
+%% @end
+%%--------------------------------------------------------------------
+-spec port_in/3 :: (ne_binary(), ne_binary(), ne_binary()) -> transition_return().
+-spec port_in/4 :: (ne_binary(), ne_binary(), ne_binary(), wh_json:json_object()) -> transition_return().
+
+port_in(Number, AssignTo, AuthBy) ->
+    port_in(Number, AssignTo, AuthBy, undefined).
+
+port_in(Number, AssignTo, AuthBy, PublicFields) ->
+    lager:debug("attempting to port_in number ~s for account ~s", [Number, AssignTo]),    
+    Routines = [fun({error, not_found}) -> {ok, wnm_number:create_port_in(Number, AssignTo, AuthBy)};
+                   ({error, _}) -> {error, unauthorized};
+                   ({ok, _}) -> {error, unauthorized}
+                 end
+                ,fun({error, _}=E) -> E;
+                    ({ok, J}) -> wnm_number:save(J)
+                 end
+                ,fun({error, _R}=E) -> 
+                         lager:debug("port in number prematurely ended: ~p", [_R]),
+                         E;
+                    ({ok, J}) -> 
+                         lager:debug("port in number successfully completed", []),
                          {ok, wh_json:public_fields(J)}
                  end
                ], 
@@ -326,21 +358,20 @@ list_attachments(Number, AuthBy) ->
 -spec fetch_attachment/3 :: (ne_binary(), ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
 fetch_attachment(Number, Name, AuthBy) ->
     lager:debug("attempting to fetch attachement ~s on ~s for account ~s", [Name, Number]),
-    Routines = [fun(_) -> wnm_number:get(Number) end
-                ,fun({error, _}=E) -> E;
-                    ({ok, J}) -> 
-                         case wh_json:get_value(<<"pvt_number_state">>, J) of
-                             <<"port_in">> -> {ok, J};
-                             _Else -> {error, unauthorized}
-                         end
-                 end
+    Routines = [fun({error, _}=E) -> E;
+                   ({ok, J}) -> 
+                        case wh_json:get_value(<<"pvt_number_state">>, J) of
+                            <<"port_in">> -> {ok, J};
+                            _Else -> {error, unauthorized}
+                        end
+                end
                 ,fun({error, _}=E) -> E;
                     ({ok, J}) ->
-                        AssignedTo = wh_json:get_ne_value(<<"pvt_assigned_to">>, J),
-                        case wh_util:is_in_account_hierarchy(AuthBy, AssignedTo, true) of
-                            false -> {error, unauthorized};
-                            true -> {ok, J}
-                        end
+                         AssignedTo = wh_json:get_ne_value(<<"pvt_assigned_to">>, J),
+                         case wh_util:is_in_account_hierarchy(AuthBy, AssignedTo, true) of
+                             false -> {error, unauthorized};
+                             true -> {ok, J}
+                         end
                  end
                 ,fun({error, _R}=E) -> 
                          lager:debug("fetch attachments prematurely ended: ~p", [_R]),
@@ -351,7 +382,7 @@ fetch_attachment(Number, Name, AuthBy) ->
                          couch_mgr:fetch_attachment(Db, Num, Name)
                  end
                ], 
-    lists:foldl(fun(F, J) -> F(J) end, undefined, Routines).
+    lists:foldl(fun(F, J) -> F(J) end, wnm_number:get(Number), Routines).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -362,21 +393,20 @@ fetch_attachment(Number, Name, AuthBy) ->
 -spec put_attachment/5 :: (ne_binary(), ne_binary(), ne_binary(), proplist(), ne_binary()) -> {'ok', wh_json:json_object()} | {'error', atom}.
 put_attachment(Number, Name, Content, Options, AuthBy) ->
     lager:debug("attempting to add an attachement to ~s", [Number]),
-    Routines = [fun(_) -> wnm_number:get(Number) end
-                ,fun({error, _}=E) -> E;
-                    ({ok, J}) -> 
-                         case wh_json:get_value(<<"pvt_number_state">>, J) of
-                             <<"port_in">> -> {ok, J};
-                             _Else -> {error, unauthorized}
-                         end
-                 end
+    Routines = [fun({error, _}=E) -> E;
+                   ({ok, J}) -> 
+                        case wh_json:get_value(<<"pvt_number_state">>, J) of
+                            <<"port_in">> -> {ok, J};
+                            _Else -> {error, unauthorized}
+                        end
+                end
                 ,fun({error, _}=E) -> E;
                     ({ok, J}) ->
-                        AssignedTo = wh_json:get_ne_value(<<"pvt_assigned_to">>, J),
-                        case wh_util:is_in_account_hierarchy(AuthBy, AssignedTo, true) of
-                            false -> {error, unauthorized};
-                            true -> {ok, J}
-                        end
+                         AssignedTo = wh_json:get_ne_value(<<"pvt_assigned_to">>, J),
+                         case wh_util:is_in_account_hierarchy(AuthBy, AssignedTo, true) of
+                             false -> {error, unauthorized};
+                             true -> {ok, J}
+                         end
                  end
                 ,fun({error, _R}=E) -> 
                          lager:debug("put attachments prematurely ended: ~p", [_R]),
@@ -388,7 +418,7 @@ put_attachment(Number, Name, Content, Options, AuthBy) ->
                          couch_mgr:put_attachment(Db, Num, Name, Content, [{rev, Rev}|Options])
                  end
                ], 
-    lists:foldl(fun(F, J) -> F(J) end, undefined, Routines).
+    lists:foldl(fun(F, J) -> F(J) end, wnm_number:get(Number), Routines).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -399,14 +429,13 @@ put_attachment(Number, Name, Content, Options, AuthBy) ->
 -spec delete_attachment/3 :: (ne_binary(), ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
 delete_attachment(Number, Name, AuthBy) ->
     lager:debug("attempting to delete attachement ~s from ~s", [Name, Number]),
-    Routines = [fun(_) -> wnm_number:get(Number) end
-                ,fun({error, _}=E) -> E;
-                    ({ok, J}) -> 
-                         case wh_json:get_value(<<"pvt_number_state">>, J) of
-                             <<"port_in">> -> {ok, J};
-                             _Else -> {error, unauthorized}
-                         end
-                 end
+    Routines = [fun({error, _}=E) -> E;
+                   ({ok, J}) -> 
+                        case wh_json:get_value(<<"pvt_number_state">>, J) of
+                            <<"port_in">> -> {ok, J};
+                            _Else -> {error, unauthorized}
+                        end
+                end
                 ,fun({error, _}=E) -> E;
                     ({ok, J}) ->
                         AssignedTo = wh_json:get_ne_value(<<"pvt_assigned_to">>, J),
@@ -421,10 +450,11 @@ delete_attachment(Number, Name, AuthBy) ->
                     ({ok, J}) ->
                          Num = wh_json:get_value(<<"_id">>, J),
                          Db = wnm_util:number_to_db_name(Num),
+                         io:format("~p ~p ~p~n", [Db, Num, Name]),
                          couch_mgr:delete_attachment(Db, Num, Name)
                  end
                ], 
-    lists:foldl(fun(F, J) -> F(J) end, undefined, Routines).
+    lists:foldl(fun(F, J) -> F(J) end, wnm_number:get(Number), Routines).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -436,9 +466,8 @@ delete_attachment(Number, Name, AuthBy) ->
                                                            {error, atom()}.
 get_public_fields(Number, AuthBy) ->
     lager:debug("attempting to get public fields for number ~s", [Number]),
-    Routines = [fun(_) -> wnm_number:get(Number) end
-                ,fun({error, _}=E) -> E;
-                    ({ok, J}) -> 
+    Routines = [fun({error, _}=E) -> E;
+                   ({ok, J}) -> 
                         AssignedTo = wh_json:get_ne_value(<<"pvt_assigned_to">>, J),
                         case wh_util:is_in_account_hierarchy(AuthBy, AssignedTo, true) of
                             false -> {error, unauthorized};
@@ -451,7 +480,7 @@ get_public_fields(Number, AuthBy) ->
                     ({ok, J}) -> {ok, wh_json:public_fields(J)}
                  end
                ], 
-    lists:foldl(fun(F, J) -> F(J) end, undefined, Routines).
+    lists:foldl(fun(F, J) -> F(J) end, wnm_number:get(Number), Routines).
 
 %%--------------------------------------------------------------------
 %% @public

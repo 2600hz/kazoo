@@ -97,7 +97,7 @@ behaviour_info(_) ->
          ,last_call_event = [] :: proplist()
          }).
 
--define(TIMEOUT_RETRY_CONN, 1000).
+-define(TIMEOUT_RETRY_CONN, 5000).
 -define(CALLBACK_TIMEOUT_MSG, callback_timeout).
 
 -define(START_TIMEOUT, 500).
@@ -236,23 +236,9 @@ init([Module, Params, InitArgs]) ->
                                  {'stop', term(), #state{}} | {'stop', term(), term(), #state{}}.
 
 -spec handle_call/3 :: (term(), {pid(), reference()}, #state{}) -> gen_l_handle_call_ret().
-handle_call({add_queue, <<>>, QueueProps, Bindings}, _From, #state{other_queues=OtherQueues}=State) ->
-    {ok, Q} = start_amqp(QueueProps),
-    _ = [create_binding(wh_util:to_binary(Type), BindProps, Q) || {Type, BindProps} <- Bindings],
-
-    {reply, {ok, Q}, State#state{other_queues=[{Q, Bindings}|OtherQueues]}};
-
-handle_call({add_queue, QueueName, QueueProps, Bindings}, _From, #state{other_queues=OtherQueues}=State) ->
-    {ok, _} = start_amqp([{queue_name, QueueName} | QueueProps]),
-    _ = [create_binding(wh_util:to_binary(Type), BindProps, QueueName) || {Type, BindProps} <- Bindings],
-    case props:get_value(QueueName, OtherQueues) of
-        undefined ->
-            {reply, {ok, QueueName}, State#state{other_queues=[{QueueName, Bindings}|OtherQueues]}};
-        OldBindings ->
-            {reply, {ok, QueueName}, State#state{other_queues=[{QueueName, Bindings ++ OldBindings}
-                                                          | props:delete(QueueName, OtherQueues)
-                                                          ]}}
-    end;
+handle_call({add_queue, QueueName, QueueProps, Bindings}, _From, State) ->
+    {Q, S} = add_other_queue(QueueName, QueueProps, Bindings, State),
+    {reply, {ok, Q}, S};
 
 handle_call(other_queues, _From, #state{other_queues=OtherQueues}=State) ->
     {reply, props:get_keys(OtherQueues), State};
@@ -340,6 +326,10 @@ handle_cast({rm_binding, Binding, Props}, #state{queue=Q, bindings=Bs}=State) ->
                           end, Bs),
     {noreply, State#state{bindings=KeepBs}};
 
+handle_cast({add_queue, QueueName, QueueProps, Bindings}, State) ->
+    {_, S} = add_other_queue(QueueName, QueueProps, Bindings, State),
+    {noreply, S};
+
 handle_cast(Message, #state{module=Module, module_state=ModState, module_timeout_ref=OldRef}=State) ->
     _ = stop_timer(OldRef),
     case catch Module:handle_cast(Message, ModState) of
@@ -376,14 +366,18 @@ handle_info({amqp_channel_event, initial_conn_failed}, State) ->
     lager:alert("failed to create initial connection to AMQP, waiting for connection"),
     _Ref = erlang:send_after(?START_TIMEOUT, self(), {'$maybe_connect_amqp', ?START_TIMEOUT}),
     {noreply, State#state{queue = <<>>, is_consuming=false}, hibernate};
-handle_info({amqp_channel_event, restarted}, #state{params=Params, bindings=Bindings}=State) ->
+handle_info({amqp_channel_event, restarted}, #state{params=Params, bindings=Bindings, other_queues=OtherQueues}=State) ->
     case start_amqp(Params) of
         {ok, Q} ->
-            Self = self(),
             lager:debug("lost our channel, but its back up; rebinding"),
-            _ = erlang:send_after(?TIMEOUT_RETRY_CONN, Self, is_consuming),
-            proc_lib:spawn(fun() -> [add_binding(Self, Type, BindProps) || {Type, BindProps} <- Bindings] end),
-            {noreply, State#state{queue=Q, is_consuming=false, bindings=[]}, hibernate};
+            [add_binding(self(), Type, BindProps) 
+             || {Type, BindProps} <- Bindings
+            ],
+            [gen_server:cast(self(), {add_queue, Name, Props, Bind})
+             || {Name, {Props, Bind}} <- OtherQueues
+            ],
+            _ = erlang:send_after(?TIMEOUT_RETRY_CONN, self(), is_consuming),
+            {noreply, State#state{queue=Q, is_consuming=false, bindings=[], other_queues=[]}, hibernate};
         {error, _R} ->
             lager:alert("failed to rebind after channel restart: ~p", [_R]),
             _Ref = erlang:send_after(?START_TIMEOUT, self(), {'$maybe_connect_amqp', ?START_TIMEOUT}),
@@ -394,16 +388,18 @@ handle_info({amqp_channel_event, _Reason}, State) ->
     _Ref = erlang:send_after(?START_TIMEOUT, self(), {'$maybe_connect_amqp', ?START_TIMEOUT}),
     {noreply, State#state{queue = <<>>, is_consuming=false}, hibernate};
 
-handle_info({'$maybe_connect_amqp', Timeout}, #state{bindings=Bindings, params=Params}=State) ->
+handle_info({'$maybe_connect_amqp', Timeout}, #state{bindings=Bindings, params=Params, other_queues=OtherQueues}=State) ->
     case start_amqp(Params) of
         {ok, Q} ->            
-            Self = self(),
             lager:info("reconnected to AMQP channel, rebinding"),
-            _ = erlang:send_after(?TIMEOUT_RETRY_CONN, Self, is_consuming),
-            proc_lib:spawn(fun() ->
-                                   [add_binding(Self, Type, BindProps) || {Type, BindProps} <- Bindings]
-                           end),
-            {noreply, State#state{queue=Q, is_consuming=false, bindings=[]}, hibernate};
+            [add_binding(self(), Type, BindProps) 
+             || {Type, BindProps} <- Bindings
+            ],
+            [gen_server:cast(self(), {add_queue, Name, Props, Bind})
+             || {Name, {Bind, Props}} <- OtherQueues
+            ],
+            _ = erlang:send_after(?TIMEOUT_RETRY_CONN, self(), is_consuming),
+            {noreply, State#state{queue=Q, is_consuming=false, bindings=[], other_queues=[]}, hibernate};
         {error, _} ->
             _Ref = erlang:send_after(Timeout, self(), {'$maybe_connect_amqp', next_timeout(Timeout)}),
             {noreply, State#state{queue = <<>>, is_consuming=false}, hibernate}
@@ -500,7 +496,7 @@ process_req(Props, Responders, JObj, BD) ->
 
 -spec handle_callback_event/2 :: (#state{}, wh_json:json_object()) -> 'ignore' | proplist().
 handle_callback_event(#state{module=Module, module_state=ModState, queue=Queue, other_queues=OtherQueues}, JObj) ->
-    OtherQueueNames = [OtherQueueName || {OtherQueueName, _} <- OtherQueues],
+    OtherQueueNames = props:get_keys(OtherQueues),
     case catch Module:handle_event(JObj, ModState) of
         {reply, Props} when is_list(Props) -> [{server, self()}
                                                ,{queue, Queue}
@@ -619,3 +615,21 @@ next_timeout(Timeout) when Timeout < ?START_TIMEOUT ->
     ?START_TIMEOUT;
 next_timeout(Timeout) ->
     Timeout * 2.
+
+
+-spec add_other_queue/4 :: (binary(), proplist(), proplist(), #state{}) -> {ne_binary(), #state{}}.
+add_other_queue(<<>>, QueueProps, Bindings, #state{other_queues=OtherQueues}=State) ->
+    {ok, Q} = start_amqp(QueueProps),
+    _ = [create_binding(wh_util:to_binary(Type), BindProps, Q) || {Type, BindProps} <- Bindings],
+    {Q, State#state{other_queues=[{Q, {Bindings, QueueProps}}|OtherQueues]}};
+add_other_queue(QueueName, QueueProps, Bindings, #state{other_queues=OtherQueues}=State) ->
+    {ok, _} = start_amqp([{queue_name, QueueName} | QueueProps]),
+    _ = [create_binding(wh_util:to_binary(Type), BindProps, QueueName) || {Type, BindProps} <- Bindings],
+    case props:get_value(QueueName, OtherQueues) of
+        undefined ->
+            {QueueName, State#state{other_queues=[{QueueName, {Bindings, QueueProps}}|OtherQueues]}};
+        OldBindings ->
+            {QueueName, State#state{other_queues=[{QueueName, {Bindings ++ OldBindings, QueueProps}}
+                                                  | props:delete(QueueName, OtherQueues)
+                                                 ]}}
+    end.
