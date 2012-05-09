@@ -62,17 +62,16 @@ start_link() ->
 stop(Srv) ->
     gen_listener:stop(Srv).
 
--spec handle_reg_query_resp/2 :: (wh_json:json_object(), proplist()) -> ok.
+-spec handle_reg_query_resp/2 :: (wh_json:json_object(), proplist()) -> any().
 handle_reg_query_resp(JObj, Props) ->
     Reg = wh_json:get_value(<<"Fields">>, JObj),
     Username =  wh_json:get_value(<<"Username">>, Reg),
     Realm =  wh_json:get_value(<<"Realm">>, Reg),
     Consumers = props:get_value(consumers, Props),
-    [Consumer ! {reg_query_resp, Reg}
-     || {User, Consumer, _} <- Consumers
-            ,User =:= {Username, Realm}
-    ],
-    ok.
+    _ = [Consumer ! {reg_query_resp, Reg}
+         || {User, Consumer, _} <- Consumers,
+            User =:= {Username, Realm}
+        ].
 
 %%%===================================================================
 %%% gen_listener callbacks
@@ -148,7 +147,7 @@ handle_cast(_Msg, Consumers) ->
 handle_info({'DOWN', _, _, Consumer, _R}, Consumers) ->
     {noreply, lists:filter(fun({_, C, MRef}) when C =:= Consumer -> 
                                    lager:debug("removed req query response consumer (~p): ~p", [Consumer, _R]),
-                                   erlang:demonitor(MRef, flush),
+                                   erlang:demonitor(MRef, [flush]),
                                    false; 
                               (_) -> true 
                            end, Consumers)};

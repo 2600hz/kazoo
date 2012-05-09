@@ -1,10 +1,10 @@
 %%%-------------------------------------------------------------------
-%%% @author Karl Anderson <karl@2600hz.org>
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2012, VoIP INC
 %%% @doc
 %%%
 %%% @end
-%%% Created : 1 Nov 2011 by Karl Anderson <karl@2600hz.org>
+%%% @contributors
+%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(registrar_maintenance).
 
@@ -18,38 +18,34 @@
 %% look up a cached registration by realm and optionally username
 %% @end
 %%-----------------------------------------------------------------------------
--spec local_summary/0 :: () -> ok.
+-spec local_summary/0 :: () -> 'ok'.
 local_summary() ->
     {ok, Registrations} = reg_util:fetch_all_registrations(),
-    do_summary(Registrations, fun print_summary/1),
+    _ = do_summary(Registrations, fun print_summary/1),
     io:format("~nTotal registrations: ~b~n", [length(Registrations)]),
     ok.
 
--spec local_summary/1 :: (Realm) -> ok when
-      Realm :: binary().
+-spec local_summary/1 :: (ne_binary()) -> 'ok'.
 local_summary(Realm) when not is_binary(Realm) ->
     local_summary(wh_util:to_binary(Realm));
 local_summary(Realm) ->
     {ok, Registrations} = reg_util:lookup_registrations(Realm),
-    do_summary(Registrations, fun print_summary/1),
+    _ = do_summary(Registrations, fun print_summary/1),
     io:format("~nTotal registrations: ~b~n", [length(Registrations)]),
     ok.
 
--spec local_summary/2 :: (Realm, Username) -> ok when
-      Realm :: binary(),
-      Username :: binary().
+-spec local_summary/2 :: (ne_binary(), ne_binary()) -> 'ok'.
 local_summary(Realm, Username) when not is_binary(Realm) ->
     local_summary(wh_util:to_binary(Realm), Username);
 local_summary(Realm, Username) when not is_binary(Username) ->
     local_summary(Realm, wh_util:to_binary(Username));
 local_summary(Realm, Username) ->
-    case reg_util:lookup_registration(Realm, Username) of
-        {ok, Registration} ->
-            do_summary([Registration], fun print_details/1);
-        {error, not_found} ->
-            io:format("registration not found")
-    end,
-    ok.
+    _ = case reg_util:lookup_registration(Realm, Username) of
+            {ok, Registration} ->
+                do_summary([Registration], fun print_details/1);
+            {error, not_found} ->
+                io:format("registration not found")
+        end.
 
 %%-----------------------------------------------------------------------------
 %% @private
@@ -57,9 +53,7 @@ local_summary(Realm, Username) ->
 %%
 %% @end
 %%-----------------------------------------------------------------------------
--spec do_summary/2 :: (Registrations, PrintFun) -> ok when
-      Registrations :: list(),
-      PrintFun :: fun().
+-spec do_summary/2 :: (list(), fun((wh_json:json_object()) -> 'ok')) -> ['ok',...].
 do_summary(Registrations, PrintFun) ->
     [PrintFun(Registration) || Registration <- Registrations].
 
@@ -69,8 +63,7 @@ do_summary(Registrations, PrintFun) ->
 %%
 %% @end
 %%-----------------------------------------------------------------------------
--spec print_summary/1 :: (Registration) -> ok when
-      Registration :: wh_json:json_object().
+-spec print_summary/1 :: (wh_json:json_object()) -> 'ok'.
 print_summary(Registration) ->
     Username = wh_json:get_value(<<"Username">>, Registration),
     Realm = wh_json:get_value(<<"Realm">>, Registration),
@@ -87,8 +80,7 @@ print_summary(Registration) ->
 %%
 %% @end
 %%-----------------------------------------------------------------------------
--spec print_details/1 :: (Registration) -> ok when
-      Registration :: wh_json:json_object().
+-spec print_details/1 :: (api_terms()) -> ['ok',...].
 print_details(Registration) when is_list(Registration) ->
     [io:format("~s: ~s~n", [K, wh_util:to_list(V)]) || {K, V} <- Registration];
 print_details(Registration) ->
