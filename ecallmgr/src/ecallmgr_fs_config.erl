@@ -165,7 +165,7 @@ handle_config_req(Node, ID, FsConf) ->
     put(callid, ID),
     try fsconf_key(FsConf) of
         ConfKey ->
-            SysconfResp = ecallmgr_config:get(ConfKey),
+            SysconfResp = ecallmgr_config:get(ConfKey, wh_json:new()),
             ConfigXml = generate_resp_xml(ConfKey, SysconfResp),
 
             lager:debug("sending XML to ~s: ~s", [Node, ConfigXml]),
@@ -183,11 +183,18 @@ handle_config_req(Node, ID, FsConf) ->
 fsconf_key(<<"acl.conf">>) -> <<"acls">>.
 
 generate_resp_xml(<<"acls">>, Resp) ->
-    try ecallmgr_fs_xml:acl_xml(Resp) of
-        {ok, ConfigXml} -> erlang:iolist_to_binary(ConfigXml)
-    catch
-        error:function_clause ->
-            lager:debug("acls resp failed to convert to XML: ~p", [Resp]),
-            {ok, Resp} = ecallmgr_fs_xml:empty_response(),
-            Resp
+    case wh_json:is_empty(Resp) of
+        true ->
+            lager:debug("no acls configured in sysconf, returning empty response"),
+            {ok, Empty} = ecallmgr_fs_xml:empty_response(),
+            Empty;
+        false ->
+            try ecallmgr_fs_xml:acl_xml(Resp) of
+                {ok, ConfigXml} -> erlang:iolist_to_binary(ConfigXml)
+            catch
+                error:function_clause ->
+                    lager:debug("acls resp failed to convert to XML: ~p", [Resp]),
+                    {ok, Empty} = ecallmgr_fs_xml:empty_response(),
+                    Empty
+            end
     end.
