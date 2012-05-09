@@ -1,0 +1,37 @@
+%%%-------------------------------------------------------------------
+%%% @copyright (C) 2012, VoIP INC
+%%% @doc
+%%% XML-formatter for FreeSWITCH XML responses
+%%% Copy of xmerl/src/xmerl_xml.erl
+%%% @end
+%%% @contributors
+%%%   James Aimonetti
+%%%-------------------------------------------------------------------
+-module(fs_xml).
+
+-export(['#xml-inheritance#'/0
+        ]).
+
+-export(['#root#'/4,
+         '#element#'/5,
+         '#text#'/1
+        ]).
+
+-include_lib("xmerl/include/xmerl.hrl").
+
+'#xml-inheritance#'() ->
+    [].
+
+%% The '#text#' function is called for every text segment.
+
+'#text#'(Text) ->
+    xmerl_lib:export_text(Text).
+
+%% The '#root#' tag is called when the entire structure has been
+%% exported. It does not appear in the structure itself.
+'#root#'(Data, _Attrs, [], _E) ->
+    ["<document type=\"freeswitch/xml\">", Data, "</document>"].
+
+%% The '#element#' function is the default handler for XML elements.
+'#element#'(Tag, Data, Attrs, _Parents, _E) ->
+    xmerl_lib:markup(Tag, Attrs, Data).

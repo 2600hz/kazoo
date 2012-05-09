@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2012, VoIP INC
 %%% @doc
 %%% Generate the XML for various FS responses
 %%% @end
@@ -11,71 +11,90 @@
 
 -export([build_sip_route/2, build_freetdm_route/1
          ,get_leg_vars/1, get_channel_vars/1, get_channel_vars/2
-         ,route_resp_xml/1 ,authn_resp_xml/1, config_acl_xml/1
+         ,route_resp_xml/1 ,authn_resp_xml/1, acl_xml/1
+         ,route_not_found/0, empty_response/0
         ]).
 
 -include("ecallmgr.hrl").
+-include_lib("xmerl/include/xmerl.hrl").
 
+-spec acl_xml/1 :: (wh_json:json_object()) -> {'ok', iolist()}.
+acl_xml(AclsJObj) ->
+    AclsFold = lists:foldl(fun arrange_acl_node/2, orddict:new(), wh_json:to_proplist(AclsJObj)),
+
+    NetworkListEl = network_list_el([V || {_, V} <- orddict:to_list(AclsFold)]),
+
+    ConfigEl = config_el(<<"acl.conf">>, <<"ecallmgr generated ACL lists">>, NetworkListEl),
+
+    SectionEl = section_el(<<"configuration">>, ConfigEl),
+
+    {ok, xmerl:export([SectionEl], fs_xml)}.
+
+-spec authn_resp_xml/1 :: (api_terms()) -> {'ok', iolist()}.
+-spec authn_resp_xml/2 :: (ne_binary(), wh_json:json_object()) -> {'ok', iolist()}.
 authn_resp_xml([_|_]=RespProp) ->
     authn_resp_xml(props:get_value(<<"Auth-Method">>, RespProp), wh_json:from_list(RespProp));
 authn_resp_xml(RespJObj) ->
     authn_resp_xml(wh_json:get_value(<<"Auth-Method">>, RespJObj), RespJObj).
 
 authn_resp_xml(<<"password">>, JObj) ->
-    User = wh_json:get_value(<<"Auth-User">>, JObj),
-    Realm = wh_json:get_value(<<"Auth-Realm">>, JObj),
-    Pass = wh_json:get_value(<<"Auth-Password">>, JObj),
-    ChannelParams = get_channel_params(JObj),
-    {ok, lists:flatten(io_lib:format(?REGISTER_PASS_RESPONSE, [Realm, User, Pass, ChannelParams]))};
+    PassEl = param_el(<<"password">>, wh_json:get_value(<<"Auth-Password">>, JObj)),
+    ParamsEl = params_el([PassEl]),
+
+    VariableEls = [variable_el(K, V) || {K, V} <- get_channel_params(JObj)],
+    VariablesEl = variables_el(VariableEls),
+
+    UserEl = user_el(wh_json:get_value(<<"Auth-User">>, JObj), [VariablesEl, ParamsEl]),
+
+    DomainEl = domain_el(wh_json:get_value(<<"Auth-Realm">>, JObj), UserEl),
+
+    SectionEl = section_el(<<"directory">>, DomainEl),
+
+    {ok, xmerl:export([SectionEl], fs_xml)};
+
 authn_resp_xml(<<"a1-hash">>, JObj) ->
-    User = wh_json:get_value(<<"Auth-User">>, JObj),
-    Realm = wh_json:get_value(<<"Auth-Realm">>, JObj),
-    Hash = wh_json:get_value(<<"Auth-Password">>, JObj),
-    ChannelParams = get_channel_params(JObj),
-    {ok, lists:flatten(io_lib:format(?REGISTER_HASH_RESPONSE, [Realm, User, Hash, ChannelParams]))};
+    PassEl = param_el(<<"a1-hash">>, wh_json:get_value(<<"Auth-Password">>, JObj)),
+    ParamsEl = params_el([PassEl]),
+
+    VariableEls = [variable_el(K, V) || {K, V} <- get_channel_params(JObj)],
+    VariablesEl = variables_el(VariableEls),
+
+    UserEl = user_el(wh_json:get_value(<<"Auth-User">>, JObj), [VariablesEl, ParamsEl]),
+
+    DomainEl = domain_el(wh_json:get_value(<<"Auth-Realm">>, JObj), UserEl),
+
+    SectionEl = section_el(<<"directory">>, DomainEl),
+
+    {ok, xmerl:export([SectionEl], fs_xml)};
+
 authn_resp_xml(<<"ip">>, _JObj) ->
-    {ok, ?EMPTYRESPONSE};
+    empty_response();
 authn_resp_xml(_Method, _JObj) ->
     lager:debug("unknown method ~s", [_Method]),
-    {ok, ?EMPTYRESPONSE}.
+    empty_response().
 
+empty_response() ->
+    {ok, ""}. %"<document type=\"freeswitch/xml\"></document>").
+
+-spec route_resp_xml/1 :: (api_terms()) -> {'ok', iolist()}.
 route_resp_xml([_|_]=RespProp) ->
-    route_resp_xml(props:get_value(<<"Method">>, RespProp), props:get_value(<<"Routes">>, RespProp), wh_json:from_list(RespProp));
+    route_resp_xml(wh_json:from_list(RespProp));
 route_resp_xml(RespJObj) ->
-    route_resp_xml(wh_json:get_value(<<"Method">>, RespJObj), wh_json:get_value(<<"Routes">>, RespJObj), RespJObj).
-
-config_acl_xml({struct, Acls}) ->
-    FNodes = fun({_, JObj}, AccJObj) ->
-                  Type = wh_json:get_value(<<"network-list-name">>, JObj),
-              
-                  %ensure Type exists as a key
-                  Acc = case wh_json:get_value(Type, AccJObj, undefined) of
-                            undefined -> wh_json:set_value(Type, [],  AccJObj);
-                            _ -> AccJObj
-                       end,
-                  
-                  Acl = [wh_json:get_value(<<"type">>, JObj), wh_json:get_value(<<"cidr">>, JObj)],
-                  wh_json:set_value(Type, [io_lib:format(?CONFIG_ACL_NODE, Acl) | wh_json:get_value(Type, Acc)], Acc)
-             end,
-
-    Nodes = lists:foldl(FNodes, wh_json:new(), Acls),
-
-    FLists = fun({ListName, ListNodes}, Acc) ->
-                [io_lib:format(?CONFIG_ACL_LIST, [ListName, lists:flatten(ListNodes)]) |Acc]  
-             end,
-    Lists = lists:foldl(FLists, [], wh_json:to_proplist(Nodes)),
-    {ok, lists:flatten(io_lib:format(?CONFIG_ACL, [lists:flatten(Lists)]))}.
+    route_resp_xml(wh_json:get_value(<<"Method">>, RespJObj)
+                   ,wh_json:get_value(<<"Routes">>, RespJObj, [])
+                   ,RespJObj
+                  ).
 
 %% Prop = Route Response
--spec route_resp_xml/3 :: (binary(), wh_json:json_objects(), wh_json:json_object()) -> {'ok', iolist()}.
+-spec route_resp_xml/3 :: (ne_binary(), wh_json:json_objects(), wh_json:json_object()) -> {'ok', iolist()}.
 route_resp_xml(<<"bridge">>, Routes, _JObj) ->
     lager:debug("creating a bridge XML response"),
     %% format the Route based on protocol
-    {_Idx, Extensions, Errors} = lists:foldr(
-                                   fun(RouteJObj, {Idx, Acc, ErrAcc}) ->
+    {_Idx, Extensions} = lists:foldr(
+                                   fun(RouteJObj, {Idx, Acc}) ->
                                            case build_sip_route(RouteJObj, wh_json:get_value(<<"Invite-Format">>, RouteJObj)) of
                                                {error, timeout} ->
-                                                   {Idx+1, Acc, ErrAcc};
+                                                   {Idx+1, Acc};
                                                Route ->
                                                    BypassMedia = case wh_json:get_value(<<"Media">>, RouteJObj) of
                                                                      <<"bypass">> -> "true";
@@ -91,30 +110,53 @@ route_resp_xml(<<"bridge">>, Routes, _JObj) ->
                                                                 end,
 
                                                    ChannelVars = get_channel_vars(wh_json:to_proplist(RouteJObj1)),
-                                                   {Idx+1
-                                                    ,[io_lib:format(?ROUTE_BRIDGE_EXT, [Idx, BypassMedia, ChannelVars, Route]) | Acc]
-                                                    , ErrAcc}
+
+                                                   BPEl = action_el(<<"set">>, [<<"bypass_media=">>, BypassMedia]),
+                                                   HangupEl = action_el(<<"set">>, <<"hangup_after_bridge=true">>),
+                                                   FailureEl = action_el(<<"set">>, <<"failure_causes=NORMAL_CLEARING,ORIGINATOR_CANCEL,CRASH">>),
+                                                   BridgeEl = action_el(<<"set">>, [ChannelVars, Route]),
+
+                                                   ConditionEl = condition_el([BPEl, HangupEl, FailureEl, BridgeEl]),
+                                                   ExtEl = extension_el([<<"match_">>, Idx+$0], <<"true">>, [ConditionEl]),
+
+                                                   {Idx+1, [ExtEl | Acc]}
                                            end
-                                   end, {1, "", ""}, Routes),
-    case Extensions of
-        [] ->
-            lager:debug("No endpoints to route to"),
-            {ok, lists:flatten(io_lib:format(?ROUTE_BRIDGE_RESPONSE, [?WHISTLE_CONTEXT, Errors]))};
-        _ ->
-            Xml = io_lib:format(?ROUTE_BRIDGE_RESPONSE, [?WHISTLE_CONTEXT, Extensions]),
-            lager:debug("Bridge XML generated: ~s", [Xml]),
-            {ok, lists:flatten(Xml)}
-    end;
+                                   end, {1, []}, Routes),
+
+    FailRespondEl = action_el(<<"respond">>, <<"${bridge_hangup_cause}">>),
+    FailConditionEl = condition_el(FailRespondEl),
+    FailExtEl = extension_el(<<"failed_bridge">>, <<"false">>, [FailConditionEl]),
+
+    ContextEl = context_el(?WHISTLE_CONTEXT, Extensions ++ [FailExtEl]),
+    SectionEl = section_el(<<"dialplan">>, <<"Route Bridge Response">>, ContextEl),
+    {ok, xmerl:export([SectionEl], fs_xml)};
+
 route_resp_xml(<<"park">>, _Routes, _JObj) ->
-    Park = lists:flatten(io_lib:format(?ROUTE_PARK_RESPONSE, [?WHISTLE_CONTEXT])),
-    lager:debug("Creating park XML: ~s", [Park]),
-    {ok, Park};
+    ParkRespondEl = action_el(<<"park">>),
+    ParkConditionEl = condition_el(ParkRespondEl),
+    ParkExtEl = extension_el(<<"park">>, undefined, [ParkConditionEl]),
+
+    ContextEl = context_el(?WHISTLE_CONTEXT, [ParkExtEl]),
+    SectionEl = section_el(<<"dialplan">>, <<"Route Park Response">>, ContextEl),
+    {ok, xmerl:export([SectionEl], fs_xml)};
+
 route_resp_xml(<<"error">>, _Routes, JObj) ->
     ErrCode = wh_json:get_value(<<"Route-Error-Code">>, JObj),
-    ErrMsg = list_to_binary([" ", wh_json:get_value(<<"Route-Error-Message">>, JObj, <<"">>)]),
-    Xml = io_lib:format(?ROUTE_ERROR_RESPONSE, [?WHISTLE_CONTEXT, ErrCode, ErrMsg]),
-    lager:debug("Creating error XML: ~s", [Xml]),
-    {ok, lists:flatten(Xml)}.
+    ErrMsg = [" ", wh_json:get_value(<<"Route-Error-Message">>, JObj, <<"">>)],
+
+    ErrEl = action_el(<<"respond">>, [ErrCode, ErrMsg]),
+    ErrCondEl = condition_el(ErrEl),
+    ErrExtEl = extension_el([ErrCondEl]),
+
+    ContextEl = context_el(?WHISTLE_CONTEXT, [ErrExtEl]),
+    SectionEl = section_el(<<"dialplan">>, <<"Route Error Response">>, ContextEl),
+    {ok, xmerl:export([SectionEl], fs_xml)}.
+
+-spec route_not_found/0 :: () -> {'ok', iolist()}.
+route_not_found() ->
+    ResultEl = result_el(<<"not found">>),
+    SectionEl = section_el(<<"result">>, <<"Route Not Found">>, ResultEl),
+    {ok, xmerl:export([SectionEl], fs_xml)}.
 
 -spec build_sip_route/2 :: (proplist() | wh_json:json_object(), ne_binary() | 'undefined') -> ne_binary() | {'error', 'timeout'}.
 build_sip_route(Route, undefined) ->
@@ -178,13 +220,13 @@ get_leg_vars([_|_]=Prop) ->
     ["[", string:join([wh_util:to_list(V) || V <- lists:foldr(fun get_channel_vars/2, [], Prop)], ","), "]"];
 get_leg_vars(JObj) -> get_leg_vars(wh_json:to_proplist(JObj)).
 
--spec get_channel_vars/1 :: (wh_json:json_object() | proplist()) -> [nonempty_string(),...].
+-spec get_channel_vars/1 :: (wh_json:json_object() | proplist()) -> iolist().
 get_channel_vars([_|_]=Prop) ->
     P = Prop ++ [{<<"Overwrite-Channel-Vars">>, <<"true">>}],
     ["{", string:join([wh_util:to_list(V) || V <- lists:foldr(fun get_channel_vars/2, [], P)], ","), "}"];
 get_channel_vars(JObj) -> get_channel_vars(wh_json:to_proplist(JObj)).
 
--spec get_channel_vars/2 :: ({binary(), binary() | wh_json:json_object()}, [binary(),...] | []) -> [binary(),...] | [].
+-spec get_channel_vars/2 :: ({binary(), binary() | wh_json:json_object()}, [binary(),...] | []) -> iolist().
 get_channel_vars({<<"Custom-Channel-Vars">>, JObj}, Vars) ->
     lists:foldl(fun({K, V}, Acc) ->
                         case lists:keyfind(K, 1, ?SPECIAL_CHANNEL_VARS) of
@@ -241,21 +283,204 @@ get_channel_vars(_, Vars) ->
     Vars.
 
 
+-spec get_channel_params/1 :: (wh_json:json_object()) -> wh_json:json_proplist().
 get_channel_params(JObj) ->
     CV0 = case wh_json:get_value(<<"Tenant-ID">>, JObj) of
               undefined -> [];
-              TID -> [io_lib:format(?REGISTER_CHANNEL_PARAM
-                                    ,[list_to_binary([?CHANNEL_VAR_PREFIX, "Tenant-ID"]), TID])]
+              TID -> [{list_to_binary([?CHANNEL_VAR_PREFIX, "Tenant-ID"]), TID}]
           end,
 
     CV1 = case wh_json:get_value(<<"Access-Group">>, JObj) of
               undefined -> CV0;
-              AG -> [io_lib:format(?REGISTER_CHANNEL_PARAM
-                                   ,[list_to_binary([?CHANNEL_VAR_PREFIX, "Access-Group"]), AG]) | CV0]
+              AG -> [{list_to_binary([?CHANNEL_VAR_PREFIX, "Access-Group"]), AG} | CV0]
           end,
 
     Custom = wh_json:to_proplist(wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new())),
     lists:foldl(fun({K,V}, CV) ->
-                        [io_lib:format(?REGISTER_CHANNEL_PARAM
-                                       ,[list_to_binary([?CHANNEL_VAR_PREFIX, K]), V]) | CV]
+                        [{list_to_binary([?CHANNEL_VAR_PREFIX, K]), V} | CV]
                 end, CV1, Custom).
+
+-spec arrange_acl_node/2 :: ({ne_binary(), wh_json:json_object()}, orddict:orddict()) -> orddict:orddict().
+arrange_acl_node({_, JObj}, Dict) ->
+    AclList = wh_json:get_value(<<"network-list-name">>, JObj),
+
+    NodeEl = acl_node_el(wh_json:get_value(<<"type">>, JObj), wh_json:get_value(<<"cidr">>, JObj)),
+
+    case orddict:find(AclList, Dict) of
+        {ok, ListEl} ->
+            lager:debug("found existing list ~s", [AclList]),
+            orddict:store(AclList, prepend_child(ListEl, NodeEl), Dict);
+        error ->
+            lager:debug("creating new list xml for ~s", [AclList]),
+            orddict:store(AclList, prepend_child(acl_list_el(AclList), NodeEl), Dict)
+    end.
+
+%%%-------------------------------------------------------------------
+%% XML record creators and helpers
+%%%-------------------------------------------------------------------
+-type xml_attrib_name() :: atom().
+-type xml_attrib_value() :: ne_binary() | nonempty_string() | iolist().
+-type xml_attrib() :: #xmlAttribute{}.
+
+-type xml_el() :: #xmlElement{}.
+-type xml_els() :: [xml_el(),...] | [].
+
+-spec acl_node_el/2 :: (xml_attrib_value(), xml_attrib_value()) -> xml_el().
+acl_node_el(Type, CIDR) ->
+    #xmlElement{name='node'
+                ,attributes=[xml_attrib(type, Type)
+                             ,xml_attrib(cidr, CIDR)
+                            ]
+               }.
+
+-spec acl_list_el/1 :: (xml_attrib_value()) -> xml_el().
+-spec acl_list_el/2 :: (xml_attrib_value(), xml_attrib_value()) -> xml_el().
+-spec acl_list_el/3 :: (xml_attrib_value(), xml_attrib_value(), xml_els()) -> xml_el().
+acl_list_el(Name) ->
+    acl_list_el(Name, <<"deny">>).
+acl_list_el(Name, Default) ->
+    acl_list_el(Name, Default, []).
+acl_list_el(Name, Default, Children) ->
+    #xmlElement{name='list'
+                ,attributes=[xml_attrib(name, Name)
+                             ,xml_attrib(default, Default)
+                            ]
+                ,content=Children
+               }.
+
+-spec network_list_el/1 :: (xml_els()) -> xml_el().
+network_list_el(ListsEls) ->
+    #xmlElement{name='network-lists', content=ListsEls}.
+
+config_el(Name, Desc, NetworkListEl) ->
+    #xmlElement{name='configuration'
+                ,attributes=[xml_attrib(name, Name)
+                             ,xml_attrib(description, Desc)
+                            ]
+                ,content=[NetworkListEl]
+               }.
+
+-spec section_el/2 :: (xml_attrib_value(), xml_el()) -> xml_el().
+-spec section_el/3 :: (xml_attrib_value(), xml_attrib_value(), xml_el()) -> xml_el().
+section_el(Name, Content) ->
+    #xmlElement{name='section'
+                ,attributes=[xml_attrib(name, Name)]
+                ,content=[Content]
+               }.
+section_el(Name, Desc, Content) ->
+    #xmlElement{name='section'
+                ,attributes=[xml_attrib(name, Name)
+                             ,xml_attrib(description, Desc)
+                            ]
+                ,content=[Content]
+               }.
+
+-spec domain_el/2 :: (xml_attrib_value(), xml_el() | xml_els()) -> xml_el().
+domain_el(Name, Child) when not is_list(Child) ->
+    domain_el(Name, [Child]);
+domain_el(Name, Children) ->
+    #xmlElement{name='domain'
+                ,attributes=[xml_attrib(name, Name)]
+                ,content=Children
+               }.
+
+-spec user_el/2 :: (xml_attrib_value(), xml_els()) -> xml_el().
+user_el(Id, Children) ->
+    #xmlElement{name='user'
+                ,attributes=[xml_attrib(id, Id)]
+                ,content=Children
+               }.
+
+-spec params_el/1 :: (xml_els()) -> xml_el().
+params_el(Children) ->
+    #xmlElement{name='params'
+                ,content=Children
+               }.
+
+-spec param_el/2 :: (xml_attrib_value(), xml_attrib_value()) -> xml_el().
+param_el(Name, Value) ->
+    #xmlElement{name='param'
+                ,attributes=[xml_attrib(name, Name)
+                             ,xml_attrib(value, Value)
+                            ]
+               }.
+
+-spec variables_el/1 :: (xml_els()) -> xml_el().
+variables_el(Children) ->
+    #xmlElement{name='variables'
+                ,content=Children
+               }.
+
+-spec variable_el/2 :: (xml_attrib_value(), xml_attrib_value()) -> xml_el().
+variable_el(Name, Value) ->
+    #xmlElement{name='variable'
+                ,attributes=[xml_attrib(name, Name)
+                             ,xml_attrib(value, Value)
+                            ]
+               }.
+
+-spec context_el/2 :: (xml_attrib_value(), xml_els()) -> xml_el().
+context_el(Name, Children) ->
+    #xmlElement{name='context'
+                ,attributes=[xml_attrib(name, Name)]
+                ,content=Children
+               }.
+
+-spec extension_el/1 :: (xml_els()) -> xml_el().
+-spec extension_el/3 :: (xml_attrib_value(), xml_attrib_value() | 'undefined', xml_els()) -> xml_el().
+extension_el(Children) ->
+    #xmlElement{name='extension'
+                ,content=Children
+               }.
+
+extension_el(Name, undefined, Children) ->
+    #xmlElement{name='extension'
+                ,attributes=[xml_attrib(name, Name)]
+                ,content=Children
+               };
+extension_el(Name, Continue, Children) ->
+    #xmlElement{name='extension'
+                ,attributes=[xml_attrib(name, Name)
+                             ,xml_attrib(continue, wh_util:is_true(Continue))
+                            ]
+                ,content=Children
+               }.
+
+-spec condition_el/1 :: (xml_el() | xml_els()) -> xml_el().
+condition_el(Child) when not is_list(Child) ->
+    condition_el([Child]);
+condition_el(Children) ->
+    #xmlElement{name='condition'
+                ,content=Children
+               }.
+
+-spec action_el/1 :: (xml_attrib_value()) -> xml_el().
+-spec action_el/2 :: (xml_attrib_value(), xml_attrib_value()) -> xml_el().
+action_el(App) ->
+    #xmlElement{name='action'
+                ,attributes=[xml_attrib(application, App)]
+               }.
+action_el(App, Data) ->
+    #xmlElement{name='action'
+                ,attributes=[xml_attrib(application, App)
+                             ,xml_attrib(data, Data)
+                            ]
+               }.
+
+-spec result_el/1 :: (xml_attrib_value()) -> xml_el().
+result_el(Status) ->
+    #xmlElement{name='result'
+                ,attributes=[xml_attrib(status, Status)]
+               }.
+
+-spec prepend_child/2 :: (xml_el(), xml_el()) -> xml_el().
+prepend_child(#xmlElement{content=Contents}=El, Child) ->
+    El#xmlElement{content=[Child|Contents]}.
+
+-spec reverse_children/1 :: (xml_el()) -> xml_el().
+reverse_children(#xmlElement{content=Contents}=El) ->
+    El#xmlElement{content=lists:reverse(Contents)}.
+
+-spec xml_attrib/2 :: (xml_attrib_name(), xml_attrib_value()) -> xml_attrib().
+xml_attrib(Name, Value) ->
+    #xmlAttribute{name=wh_util:to_atom(Name, true), value=wh_util:to_list(Value)}.
