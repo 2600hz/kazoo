@@ -964,12 +964,15 @@ request(Method, Url, Expect, Options, Headers, Body) ->
     {Headers1, Options1} = maybe_oauth_header(Method, Url, Headers, Options),
     case ibrowse:send_req(Url, [Accept|Headers1], Method, Body, 
             [{response_format, binary}|Options1], ?TIMEOUT) of
-        Resp={ok, Status, _, _} ->
+        Resp={ok, Status, RespHeaders, _} ->
+	    maybe_do_trace(Url, Method, Status, RespHeaders), 
             case lists:member(Status, Expect) of
                 true -> Resp;
                 false -> {error, Resp}
             end;
-        Error -> Error
+        Error={error, {ok, Status, RespHeaders, _}} ->
+	    maybe_do_trace(Url, Method, Status, RespHeaders),
+	    Error
     end.
 
 %% @doc stream an ibrowse request
@@ -1073,5 +1076,11 @@ get_new_uuids(Server=#server{host=Host, port=Port, options=IbrowseOptions}) ->
             Error
     end.
 
-
+maybe_do_trace(Url, Method, Status, RespHeaders) ->
+    case application:get_env(couchbeam, trace) of
+	undefined ->
+	    ok;
+	{ok, Process} ->
+	    catch Process ! {couchbeam_trace, Url, Method, Status, RespHeaders}
+    end.
 
