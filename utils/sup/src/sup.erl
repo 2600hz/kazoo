@@ -7,7 +7,7 @@
 %%% @contributors
 %%%   Karl Anderson
 %%%------------------------------------------------------------------
--module(command_bridge).
+-module(sup).
 
 -include_lib("whistle/include/wh_types.hrl").
 
@@ -32,6 +32,7 @@ main(CommandLineArgs, Loops) ->
             main(CommandLineArgs, Loops + 1);
         _Else ->
             {ok, Options, Args} = parse_args(CommandLineArgs),
+            lists:member(help, Options) andalso display_help(1),
             Verbose = proplists:get_value(verbose, Options) =/= undefined,
             Target = get_target(Options, Verbose),
             Module = list_to_atom(proplists:get_value(module, Options, "nomodule")),
@@ -113,7 +114,7 @@ get_host(Options) ->
 -spec my_name/0 :: () -> atom().
 my_name() ->
     Localhost = net_adm:localhost(),
-    list_to_atom("command_bridge_" ++ os:getpid() ++ "@" ++ Localhost).
+    list_to_atom("sup_" ++ os:getpid() ++ "@" ++ Localhost).
 
 -spec parse_args/1 :: (string()) -> {'ok', proplist(), list()}.
 parse_args(CommandLineArgs) ->
@@ -131,7 +132,7 @@ parse_args(CommandLineArgs) ->
 print_no_setcookie() ->
     io:format(standard_io, "Unable to automatically determine cookie~n", []),
     io:format(standard_io, "Please provide the cookie of the node you are connecting to~n", []),
-    io:format(standard_io, "\"./command_bridge -c <cookie>\"~n", []),
+    io:format(standard_io, "\"./sup -c <cookie>\"~n", []),
     halt(1). 
 
 -spec print_ping_failed/2 :: (string(), string()) -> no_return(). 
@@ -139,7 +140,7 @@ print_ping_failed(Target, Cookie) ->
     io:format(standard_io, "Failed to connect to service '~s' with cookie '~s'~n", [Target, Cookie]),
     io:format(standard_io, "  Possible fixes:~n", []),
     io:format(standard_io, "    * Ensure the whistle service you are trying to connect to is running on the host~n", []),
-    io:format(standard_io, "    * Ensure that you are using the same cookie as the whistle node, \"./command_bridge -c <cookie>\"~n", []),
+    io:format(standard_io, "    * Ensure that you are using the same cookie as the whistle node, \"./sup -c <cookie>\"~n", []),
     io:format(standard_io, "    * Verify that the hostname being used is a whistle node~n", []),
     halt(1).
 
@@ -147,7 +148,7 @@ print_ping_failed(Target, Cookie) ->
 print_unresolvable_host(Host) ->
     io:format(standard_io, "If you can not run \"ping ~s\" then this program will not be able to connect.~n", [Host]),
     io:format(standard_io, "  Possible fixes:~n", []),
-    io:format(standard_io, "    * Use \"./command_bridge -h <hostname>\" argument of this script to specify a different host~n", []),
+    io:format(standard_io, "    * Use \"./sup -h <hostname>\" argument of this script to specify a different host~n", []),
     io:format(standard_io, "    * Add \"{IP_OF_WHISTLE_NODE}  ~s\" to your /etc/hosts file~n", [Host]),
     io:format(standard_io, "    * Create a DNS record for \"~s\"~n", [Host]),
     halt(1).
@@ -155,7 +156,7 @@ print_unresolvable_host(Host) ->
 -spec display_help/1 :: (non_neg_integer()) -> no_return().
 display_help(Return) ->
     OptSpecList = option_spec_list(),
-    getopt:usage(OptSpecList, "command_bridge", "[args ...]"),
+    getopt:usage(OptSpecList, "sup", "[args ...]"),
     erlang:halt(Return).
 
 -spec option_spec_list/0 :: () -> proplist().
