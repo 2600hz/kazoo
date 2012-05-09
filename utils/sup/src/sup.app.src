@@ -1,4 +1,4 @@
-{application, command_bridge,
+{application, sup,
  [
   {description, ""},
   {vsn, "1"},
@@ -7,6 +7,6 @@
                   kernel,
                   stdlib
                  ]},
-  {mod, { command_bridge_app, []}},
+  {mod, { sup_app, []}},
   {env, []}
  ]}.

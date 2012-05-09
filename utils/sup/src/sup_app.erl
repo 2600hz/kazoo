@@ -1,4 +1,4 @@
--module(command_bridge_app).
+-module(sup_app).
 
 -behaviour(application).
 
@@ -10,7 +10,7 @@
 %% ===================================================================
 
 start(_StartType, _StartArgs) ->
-    command_bridge_sup:start_link().
+    sup_sup:start_link().
 
 stop(_State) ->
     ok.

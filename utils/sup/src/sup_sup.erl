@@ -1,5 +1,5 @@
 
--module(command_bridge_sup).
+-module(sup_sup).
 
 -behaviour(supervisor).
 
