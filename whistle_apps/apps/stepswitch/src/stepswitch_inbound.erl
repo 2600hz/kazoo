@@ -43,18 +43,7 @@ inbound_handler(JObj, Number) ->
               wh_json:set_value(<<"Custom-Channel-Vars">>, custom_channel_vars(AccountId, undefined, JObj), JObj)
              );
         {error, R} ->
-            lager:notice("unable to get account id for ~s: ~p", [Number, R]),
-            lager:notice("trying to auth by IP"),
-            Ip = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"sip_h_X-AUTH-IP">>], JObj),
-            case couch_mgr:get_results(<<"sip_auth">>, <<"lookup_by_ip">>, [{<<"key">>, Ip}]) of
-                {ok, Doc} -> 
-                            AccountId = wh_json:get_value([<<"value">>,  <<"account_id">>], Doc),
-                            OwnerId = wh_json:get_value([<<"value">>, <<"owner_id">>], Doc),
-                            relay_route_req(
-                                wh_json:set_value(<<"Custom-Channel-Vars">>, custom_channel_vars(AccountId, OwnerId, undefined, JObj), JObj)
-                            ); 
-                {error, _} -> lager:notice("unable to IP auth")
-            end
+            lager:debug("failed to find account for number ~s", [Number])
     end.
 
 %%--------------------------------------------------------------------
