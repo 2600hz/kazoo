@@ -316,13 +316,13 @@ stream_attachment(#server{}=Conn, DbName, DocId, AName, Caller) ->
 put_attachment(#server{}=Conn, DbName, DocId, AName, Contents) ->
     Db = get_db(Conn, DbName),
     {'ok', Rev} = do_fetch_rev(Db, DocId),
-    do_put_attachment(Db, DocId, AName, Contents, [{rev, Rev}]).
+    do_put_attachment(Db, DocId, AName, Contents, [{<<"rev">>, Rev}]).
 put_attachment(#server{}=Conn, DbName, DocId, AName, Contents, Options) ->
     Db = get_db(Conn, DbName),
     case props:get_value(rev, Options) of
         undefined ->
             {'ok', Rev} = do_fetch_rev(Db, DocId),
-            do_put_attachment(Db, DocId, AName, Contents, [{rev, Rev} | Options]);
+            do_put_attachment(Db, DocId, AName, Contents, [{<<"rev">>, Rev} | Options]);
         _ ->
             do_put_attachment(Db, DocId, AName, Contents, Options)
     end.
@@ -332,13 +332,13 @@ put_attachment(#server{}=Conn, DbName, DocId, AName, Contents, Options) ->
 delete_attachment(#server{}=Conn, DbName, DocId, AName) ->
     Db = get_db(Conn, DbName),
     {'ok', Rev} = do_fetch_rev(Db, DocId),
-    do_del_attachment(Db, DocId, AName, [{rev, Rev}]).
+    do_del_attachment(Db, DocId, AName, [{<<"rev">>, Rev}]).
 delete_attachment(#server{}=Conn, DbName, DocId, AName, Options) ->
     Db = get_db(Conn, DbName),
     case props:get_value(rev, Options) of
         undefined ->
             {'ok', Rev} = do_fetch_rev(Db, DocId),
-            do_del_attachment(Db, DocId, AName, [{rev, Rev} | Options]);
+            do_del_attachment(Db, DocId, AName, [{<<"rev">>, Rev} | Options]);
         _ ->
             do_del_attachment(Db, DocId, AName, Options)
     end.
@@ -358,7 +358,8 @@ do_put_attachment(#db{}=Db, DocId, AName, Contents, Options) ->
 
 -spec do_del_attachment/4 :: (#db{}, ne_binary(), ne_binary(), proplist()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
 do_del_attachment(#db{}=Db, DocId, AName, Options) ->
-    ?RETRY_504(couchbeam:delete_attachment(Db, DocId, AName, Options)).
+    Doc = wh_util:to_binary(http_uri:encode(wh_util:to_list(DocId))),
+    ?RETRY_504(couchbeam:delete_attachment(Db, Doc, AName, Options)).
 
 %% Helpers for getting Couchbeam records ---------------------------------------
 

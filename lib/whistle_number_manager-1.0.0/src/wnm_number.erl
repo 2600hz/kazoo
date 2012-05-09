@@ -13,6 +13,7 @@
 -export([get/1, get/2]).
 -export([create_available/2]).
 -export([create_discovery/3]).
+-export([create_port_in/3]).
 -export([save/1, save/2]).
 -export([discovery/3, discovery/4]).
 -export([port_in/3, port_in/4]).
@@ -100,6 +101,28 @@ create_available(Number, AuthBy) ->
                 ,fun(J) -> wh_json:set_value(<<"pvt_db_name">>, Db, J) end
                 ,fun(J) -> wh_json:set_value(<<"pvt_created">>, wh_util:current_tstamp(), J) end
                 ,fun(J) -> wh_json:set_value(<<"pvt_authorizing_account">>, AuthBy, J) end
+               ],
+    lists:foldl(fun(F, J) -> F(J) end, wh_json:new(), Routines).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Creates a new wnm_local with the intial state of available
+%% @end
+%%--------------------------------------------------------------------
+-spec create_port_in/3 :: (ne_binary(), ne_binary(), ne_binary()) -> wh_json:json_object().
+create_port_in(Number, AssignTo, AuthBy) ->
+    Num = wnm_util:normalize_number(Number),
+    Db = wnm_util:number_to_db_name(Number),
+    Routines = [fun(J) -> wh_json:set_value(<<"_id">>, Num, J) end
+                ,fun(J) -> wh_json:set_value(<<"pvt_module_name">>, <<"wnm_local">>, J) end
+                ,fun(J) -> wh_json:set_value(<<"pvt_module_data">>, wh_json:new(), J) end
+                ,fun(J) -> wh_json:set_value(<<"pvt_number_state">>, <<"port_in">>, J) end
+                ,fun(J) -> wh_json:set_value(<<"pvt_ported_in">>, true, J) end
+                ,fun(J) -> wh_json:set_value(<<"pvt_db_name">>, Db, J) end
+                ,fun(J) -> wh_json:set_value(<<"pvt_created">>, wh_util:current_tstamp(), J) end
+                ,fun(J) -> wh_json:set_value(<<"pvt_authorizing_account">>, AuthBy, J) end
+                ,fun(J) -> wh_json:set_value(<<"pvt_assigned_to">>, AssignTo, J) end
                ],
     lists:foldl(fun(F, J) -> F(J) end, wh_json:new(), Routines).
 
