@@ -2,7 +2,7 @@
    "_id": "_design/resources",
    "language": "javascript",
    "views": {
-       "listing_active_by_weigth": {
+       "listing_active_by_weight": {
            "map": "function(doc) { if (doc.pvt_type != 'resource' || ! doc.enabled || doc.pvt_deleted) return; emit([doc.weight_cost, doc._id], doc.name); }"
        },
        "listing_by_id": {
