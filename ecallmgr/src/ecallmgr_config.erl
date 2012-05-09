@@ -16,7 +16,6 @@
 -compile([{no_auto_import, [get/1]}]).
 
 -include("ecallmgr.hrl").
--define(DO_NOT_CACHE, [<<"ecallmgr.acls">>]).
 
 -spec flush/0 :: () -> 'ok'.
 flush() ->
@@ -34,8 +33,10 @@ get(Key0, Default, Node0) ->
     Key = wh_util:to_binary(Key0),
     Node = wh_util:to_binary(Node0),
 
+    CacheKey = cache_key(Key, Node),
+
     {ok, Cache} = ecallmgr_util_sup:cache_proc(),
-    case wh_cache:fetch_local(Cache, cache_key(Key, Node)) of
+    case wh_cache:fetch_local(Cache, CacheKey) of
         {ok, V} -> V;
         {error, E} when E =:= not_found orelse E =:= undefined ->
             Req = [KV ||
@@ -52,7 +53,8 @@ get(Key0, Default, Node0) ->
             ReqResp = wh_amqp_worker:call(?ECALLMGR_AMQP_POOL
                                           ,Req
                                           ,fun wapi_sysconf:publish_get_req/1
-                                          ,fun wapi_sysconf:get_resp_v/1),
+                                          ,fun wapi_sysconf:get_resp_v/1
+                                         ),
             case ReqResp of
                 {error, _R} -> 
                     lager:debug("unable to get config for key '~s' failed: ~p", [Key0, _R]),
@@ -64,10 +66,7 @@ get(Key0, Default, Node0) ->
                             <<"undefined">> -> Default;
                             <<"null">> -> Default;
                             Value ->
-                                case lists:member(Key, ?DO_NOT_CACHE) of
-                                    false -> wh_cache:store_local(Cache, cache_key(Key, Node), Value);
-                                    true -> nothing
-                                end,
+                                wh_cache:store_local(Cache, CacheKey, Value),
                                 Value
                         end,
                     V
