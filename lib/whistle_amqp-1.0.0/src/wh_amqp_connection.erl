@@ -63,12 +63,17 @@ start_link(Broker) ->
 
 -spec publish/3 :: (atom(), #'basic.publish'{}, ne_binary() | iolist()) -> 'ok' | {'error', _}.
 publish(Srv, #'basic.publish'{exchange=_Exchange, routing_key=_RK}=BasicPub, AmqpMsg) ->
-    FindChannel = [fun(_) -> my_channel(Srv, false) end
+    FindChannel = [fun(Pid) when is_pid(Pid) -> my_channel(Srv, Pid, false);
+                      (_) -> {error, not_found}
+                   end
+                   ,fun({error, _}) -> my_channel(Srv, false);
+                       ({ok, _, _}=Ok) -> Ok
+                    end
                    ,fun({error, _}) -> publish_channel(Srv);
                        ({ok, C, _}) -> {ok, C}
                     end
                   ],
-    case lists:foldl(fun(F, C) -> F(C) end, {error, no_channel}, FindChannel) of 
+    case lists:foldl(fun(F, C) -> F(C) end, get(amqp_publish_as), FindChannel) of 
         {error, _}=E -> E;
         {ok, Channel} ->
             lager:debug("publish to exchange '~s' with routing key '~s' via channel ~p", [_Exchange, _RK, Channel]),
@@ -173,10 +178,13 @@ my_channel(Srv) ->
     my_channel(Srv, true).
 
 my_channel(Srv, Create) ->
-    case ets:lookup(Srv, self()) of
+    my_channel(Srv, self(), Create).
+    
+my_channel(Srv, Pid, Create) ->
+    case ets:lookup(Srv, Pid) of
         [#wh_amqp_channel{channel=C, tag=T}] -> {ok, C, T};
         [] when Create ->
-            case gen_server:call(Srv, {create_channel, self()}) of
+            case gen_server:call(Srv, {create_channel, Pid}) of
                 {ok, C} -> {ok, C, <<>>};
                 {error, _}=E -> E
             end;            

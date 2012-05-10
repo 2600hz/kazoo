@@ -471,8 +471,10 @@ process_req(#state{responders=Responders, active_responders=ARs}=State, JObj, BD
     case handle_callback_event(State, JObj) of
         ignore -> State;
         Props ->
+            PublishAs = self(),
             Pid = proc_lib:spawn_link(fun() -> 
                                               _ = wh_util:put_callid(JObj),
+                                              put(amqp_publish_as, PublishAs),
                                               process_req(Props, Responders, JObj, BD) 
                                       end),
             State#state{active_responders=[Pid | ARs]}
@@ -481,9 +483,10 @@ process_req(#state{responders=Responders, active_responders=ARs}=State, JObj, BD
 -spec process_req/4 :: (wh_proplist(), listener_utils:responders(), wh_json:json_object(), #'basic.deliver'{}) -> 'ok'.
 process_req(Props, Responders, JObj, BD) ->
     Key = wh_util:get_event_type(JObj),
-
+    PublishAs = get(amqp_publish_as),
     Handlers = [spawn_monitor(fun() ->
                                       _ = wh_util:put_callid(JObj),
+                                      put(amqp_publish_as, PublishAs),
                                       case erlang:function_exported(Responder, Fun, 3) of
                                           true -> Responder:Fun(JObj, Props, BD);
                                           false -> Responder:Fun(JObj, Props)

@@ -1512,6 +1512,10 @@ send_command(Command, Call) when is_list(Command) ->
             CallId = whapps_call:call_id(Call),
             AppName = whapps_call:application_name(Call),
             AppVersion = whapps_call:application_version(Call),
+            case whapps_call:kvs_fetch(cf_exe_pid, Call) of
+                Pid when is_pid(Pid) -> put(amqp_publish_as, Pid);
+                _Else -> ok
+            end,
             Prop = Command ++ [{<<"Call-ID">>, CallId}
                                | wh_api:default_headers(Q, <<"call">>, <<"command">>, AppName, AppVersion)
                               ],
@@ -1519,4 +1523,8 @@ send_command(Command, Call) when is_list(Command) ->
         false -> ok
     end;
 send_command(JObj, Call) ->
+    case whapps_call:kvs_fetch(cf_exe_pid, Call) of
+        Pid when is_pid(Pid) -> put(amqp_publish_as, Pid);
+        _Else -> ok
+    end,
     send_command(wh_json:to_proplist(JObj), Call).
