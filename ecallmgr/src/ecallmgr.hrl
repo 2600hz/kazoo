@@ -8,6 +8,8 @@
 
 -define(ECALLMGR_AMQP_POOL, ecallmgr_amqp_pool).
 
+-define(ECALLMGR_UTIL_CACHE, ecallmgr_util_cache).
+
 -type fs_api_ret() :: {'ok', binary()} | {'error', binary()} | 'timeout'.
 -type fs_sendmsg_ret() :: 'ok' | {'error', binary()} | 'timeout'.
 

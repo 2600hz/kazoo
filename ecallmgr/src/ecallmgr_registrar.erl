@@ -47,11 +47,10 @@ lookup(Realm, User, Fields) ->
 
 -spec handle_req/2 :: (wh_json:json_object(), proplist()) -> no_return().
 handle_req(JObj, _Props) ->
-    {ok, Cache} = ecallmgr_util_sup:cache_proc(),
     User = wh_json:get_value(<<"Username">>, JObj),
     Realm = wh_json:get_value(<<"Realm">>, JObj),
     lager:debug("received successful registration for ~s@~s, erasing cache", [User, Realm]),
-    wh_cache:erase_local(Cache, cache_key(Realm, User)).
+    wh_cache:erase_local(?ECALLMGR_UTIL_CACHE, cache_key(Realm, User)).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -120,8 +119,7 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info({cache_registrations, Realm, User, RegFields}, State) ->
     lager:debug("storing registration information for ~s@~s", [User, Realm]),
-    {ok, Cache} = ecallmgr_util_sup:cache_proc(),
-    wh_cache:store_local(Cache, cache_key(Realm, User), RegFields
+    wh_cache:store_local(?ECALLMGR_UTIL_CACHE, cache_key(Realm, User), RegFields
                          ,wh_util:to_integer(props:get_value(<<"Expires">>, RegFields, 300)) %% 5 minute default
                         ),
     {noreply, State, hibernate};
@@ -172,14 +170,13 @@ code_change(_OldVsn, State, _Extra) ->
 -spec lookup_reg/3 :: (ne_binary(), ne_binary(), [ne_binary(),...] | []) -> proplist() | {'error', 'timeout'}.
 lookup_reg(Realm, User, Fields) ->
     lager:debug("looking up registration information for ~s@~s", [User, Realm]),
-    {ok, Cache} = ecallmgr_util_sup:cache_proc(),
     FilterFun = fun({K, _}=V, Acc) ->
                         case lists:member(K, Fields) of
                             true -> [V | Acc];
                             false -> Acc
                         end
                 end,
-    case wh_cache:fetch_local(Cache, cache_key(Realm, User)) of
+    case wh_cache:fetch_local(?ECALLMGR_UTIL_CACHE, cache_key(Realm, User)) of
         {error, not_found} ->
             lager:debug("valid cached registration not found, querying whapps"),
             ReqResp = wh_amqp_worker:call(?ECALLMGR_AMQP_POOL

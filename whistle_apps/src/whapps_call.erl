@@ -8,7 +8,7 @@
 %%%============================================================================
 -module(whapps_call).
 
--include("whapps_call_command.hrl").
+-include_lib("whistle_apps/src/whapps_call_command.hrl").
 
 -export([new/0]).
 -export([from_route_req/1, from_route_req/2]).
@@ -618,8 +618,7 @@ kvs_update_counter(Key, Number, #whapps_call{kvs=Dict}=Call) ->
 
 -spec flush/0 :: () -> 'ok'.
 flush() ->
-    {ok, Cache} = whistle_apps_sup:whapps_call_cache_proc(),
-    wh_cache:flush_local(Cache).
+    wh_cache:flush_local(?WHAPPS_CALL_CACHE).
 
 -spec cache/1 :: (whapps_call:call()) -> 'ok'.
 -spec cache/2 :: (whapps_call:call(), pos_integer()) -> 'ok'.
@@ -628,13 +627,11 @@ cache(#whapps_call{}=Call) ->
     cache(Call, 300).
 
 cache(#whapps_call{call_id=CallId}=Call, Expires) ->
-    {ok, Cache} = whistle_apps_sup:whapps_call_cache_proc(),
-    wh_cache:store_local(Cache, {?MODULE, call, CallId}, Call, Expires).
+    wh_cache:store_local(?WHAPPS_CALL_CACHE, {?MODULE, call, CallId}, Call, Expires).
 
 -spec retrieve/1 :: (ne_binary()) -> {'ok', whapps_call:call()} | {'error', 'not_found'}.
 retrieve(CallId) ->
-    {ok, Cache} = whistle_apps_sup:whapps_call_cache_proc(),
-    wh_cache:fetch_local(Cache, {?MODULE, call, CallId}).
+    wh_cache:fetch_local(?WHAPPS_CALL_CACHE, {?MODULE, call, CallId}).
 
 %% EUNIT TESTING
 -ifdef(TEST).

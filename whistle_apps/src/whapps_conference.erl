@@ -7,7 +7,7 @@
 %%%============================================================================
 -module(whapps_conference).
 
--include("whapps_call_command.hrl").
+-include_lib("whistle_apps/src/whapps_call_command.hrl").
 
 -export([new/0]).
 -export([from_conference_doc/1, from_conference_doc/2]).
@@ -416,8 +416,7 @@ kvs_update_counter(Key, Number, #whapps_conference{kvs=Dict}=Conference) ->
 
 -spec flush/0 :: () -> 'ok'.
 flush() ->
-    {ok, Cache} = whistle_apps_sup:whapps_call_cache_proc(),
-    wh_cache:flush_local(Cache).
+    wh_cache:flush_local(?WHAPPS_CALL_CACHE).
 
 -spec cache/1 :: (conference()) -> 'ok'.
 -spec cache/2 :: (conference(), pos_integer()) -> 'ok'.
@@ -426,10 +425,8 @@ cache(#whapps_conference{}=Conference) ->
     cache(Conference, 300000).
     
 cache(#whapps_conference{id=ConferenceId}=Conference, Expires) ->
-    {ok, Cache} = whistle_apps_sup:whapps_call_cache_proc(),
-    wh_cache:store_local(Cache, {?MODULE, conference, ConferenceId}, Conference, Expires).
+    wh_cache:store_local(?WHAPPS_CALL_CACHE, {?MODULE, conference, ConferenceId}, Conference, Expires).
 
 -spec retrieve/1 :: (ne_binary()) -> {'ok', conference()} | {'error', 'not_found'}.
 retrieve(ConferenceId) ->
-    {ok, Cache} = whistle_apps_sup:whapps_call_cache_proc(),
-    wh_cache:fetch_local(Cache, {?MODULE, conference, ConferenceId}).
+    wh_cache:fetch_local(?WHAPPS_CALL_CACHE, {?MODULE, conference, ConferenceId}).

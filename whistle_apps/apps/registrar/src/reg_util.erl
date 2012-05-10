@@ -16,7 +16,7 @@
 -export([reg_removed_from_cache/3]).
 -export([search_for_registration/2]).
 
--include("reg.hrl").
+-include_lib("registrar/src/reg.hrl").
 
 cache_reg_key(Id) -> {?MODULE, registration, Id}.
 cache_user_to_reg_key(Realm, User) -> {?MODULE, registration, Realm, User}.
@@ -33,12 +33,11 @@ cache_user_key(Realm, User) -> {?MODULE, sip_credentials, Realm, User}.
 lookup_registrations(Realm) when not is_binary(Realm) ->
     lookup_registrations(wh_util:to_binary(Realm));
 lookup_registrations(Realm) ->
-    {ok, Cache} = registrar_sup:cache_proc(),
-    Registrations = wh_cache:filter_local(Cache, fun({?MODULE, registration, Realm1, _}, _) when Realm =:= Realm1 ->
-                                                 true;
-                                            (_K, _V) ->
-                                                 false
-                                         end),
+    Registrations = wh_cache:filter_local(?REGISTRAR_CACHE, fun({?MODULE, registration, Realm1, _}, _) when Realm =:= Realm1 ->
+                                                                    true;
+                                                               (_K, _V) ->
+                                                                    false
+                                                            end),
     case [V || {_, V} <- Registrations] of 
         [] -> {error, not_found};
         Else -> {'ok', Else}
@@ -53,8 +52,7 @@ lookup_registration(Realm, Username) when not is_binary(Realm) ->
 lookup_registration(Realm, Username) when not is_binary(Username) ->
     lookup_registration(Realm, wh_util:to_binary(Username));
 lookup_registration(Realm, Username) ->
-    {ok, Cache} = registrar_sup:cache_proc(),
-    wh_cache:peek_local(Cache, cache_user_to_reg_key(Realm, Username)).
+    wh_cache:peek_local(?REGISTRAR_CACHE, cache_user_to_reg_key(Realm, Username)).
 
 %%-----------------------------------------------------------------------------
 %% @public
@@ -64,8 +62,7 @@ lookup_registration(Realm, Username) ->
 %%-----------------------------------------------------------------------------
 -spec fetch_all_registrations/0 :: () -> {'ok', wh_json:json_objects()}.
 fetch_all_registrations() ->
-    {ok, Cache} = registrar_sup:cache_proc(),
-    Registrations = wh_cache:filter_local(Cache, fun({?MODULE, registration, _, _}, _) ->
+    Registrations = wh_cache:filter_local(?REGISTRAR_CACHE, fun({?MODULE, registration, _, _}, _) ->
                                                  true;
                                             (_K, _V) ->
                                                  false
@@ -105,9 +102,8 @@ hash_contact(Contact) ->
                                                           {'error', 'not_found'}.
 lookup_auth_user(Name, Realm) ->
     lager:debug("looking up auth creds for ~s@~s", [Name, Realm]),
-    {ok, Cache} = registrar_sup:cache_proc(),
     CacheKey = cache_user_key(Realm, Name),
-    case wh_cache:fetch_local(Cache, CacheKey) of
+    case wh_cache:fetch_local(?REGISTRAR_CACHE, CacheKey) of
         {'error', not_found} ->
             case get_auth_user(Name, Realm) of
                 {'ok', UserJObj}=OK ->
@@ -115,7 +111,7 @@ lookup_auth_user(Name, Realm) ->
                         true -> 
                             CacheTTL = whapps_config:get_integer(?CONFIG_CAT, <<"credentials_cache_ttl">>, 300),
                             lager:debug("storing ~s@~s in cache", [Name, Realm]),
-                            wh_cache:store_local(Cache, CacheKey, UserJObj, CacheTTL),
+                            wh_cache:store_local(?REGISTRAR_CACHE, CacheKey, UserJObj, CacheTTL),
                             OK;
                         false -> 
                             {error, not_found}

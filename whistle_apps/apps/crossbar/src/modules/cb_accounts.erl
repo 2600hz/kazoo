@@ -621,10 +621,9 @@ add_pvt_tree(JObj, #cb_context{auth_doc=Token}) ->
 load_account_db([AccountId|_], Context) ->
     load_account_db(AccountId, Context);
 load_account_db(AccountId, Context) when is_binary(AccountId) ->
-    {ok, Srv} = crossbar_sup:cache_proc(),
     AccountDb = wh_util:format_account_id(AccountId, encoded),
     lager:debug("account determined that db name: ~s", [AccountDb]),
-    case wh_cache:peek_local(Srv, {crossbar, exists, AccountId}) of
+    case wh_cache:peek_local(?CROSSBAR_CACHE, {crossbar, exists, AccountId}) of
         {ok, true} ->
             lager:debug("check succeeded for db_exists on ~s", [AccountId]),
             Context#cb_context{
@@ -638,7 +637,7 @@ load_account_db(AccountId, Context) when is_binary(AccountId) ->
                     lager:debug("check failed for db_exists on ~s", [AccountId]),
                     crossbar_util:response_db_missing(Context);
                 true ->
-                    wh_cache:store_local(Srv, {crossbar, exists, AccountId}, true, ?CACHE_TTL),
+                    wh_cache:store_local(?CROSSBAR_CACHE, {crossbar, exists, AccountId}, true, ?CACHE_TTL),
                     lager:debug("check succeeded for db_exists on ~s", [AccountId]),
                     Context#cb_context{
                       resp_status = success

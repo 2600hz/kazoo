@@ -12,14 +12,13 @@
 -include_lib("whistle/include/wh_types.hrl").
 
 -export([start_link/0]).
--export([cache_proc/0]).
 -export([listener_proc/0]).
 -export([init/1]).
 
 %% Helper macro for declaring children of supervisor
 -define(CHILD(Name, Type), fun(N, cache) -> {N, {wh_cache, start_link, [N]}, permanent, 5000, worker, [wh_cache]};
                               (N, T) -> {N, {N, start_link, []}, permanent, 5000, T, [N]} end(Name, Type)).
--define(CHILDREN, [{skel_listener, worker}, {skel_cache, cache}]).
+-define(CHILDREN, [{skel_cache, cache}, {skel_listener, worker}]).
 
 %% ===================================================================
 %% API functions
@@ -34,12 +33,6 @@
 -spec start_link/0 :: () -> startlink_ret().
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
-
--spec cache_proc/0 :: () -> {'ok', pid()}.
-cache_proc() ->
-    [P] = [P || {Mod, P, _, _} <- supervisor:which_children(?MODULE),
-                Mod =:= skel_cache],
-    {ok, P}.
 
 -spec listener_proc/0 :: () -> {'ok', pid()}.
 listener_proc() ->
