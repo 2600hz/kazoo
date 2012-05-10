@@ -99,41 +99,21 @@ post(#cb_context{}=Context, _DocId) ->
     _ = crossbar_util:put_reqid(Context),
     case crossbar_doc:save(Context) of
         #cb_context{resp_status=success, doc=Doc1, account_id=AcctId}=Context1 ->
-            DeviceId = wh_json:get_value(<<"_id">>, Doc1),
-            IsRealmDefined = wh_json:get_ne_value([<<"sip">>, <<"realm">>], Doc1) =/= undefined,
-            DeviceIP = wh_json:get_value([<<"sip">>, <<"ip">>], Doc1),
-            IsIpDefined = not wh_util:is_empty(DeviceIP),
-
-            case couch_mgr:lookup_doc_rev(?WH_SIP_DB, DeviceId) of
-                {ok, Rev} when IsRealmDefined orelse not IsIpDefined->
-                    lager:debug("removing device from sip auth aggregate as it is using the account realm or does not have an IP"),
-                    couch_mgr:del_doc(?WH_SIP_DB, wh_json:set_value(<<"_rev">>, Rev, Doc1)); 
-                {ok, Rev} ->
-                    lager:debug("updating device in sip auth aggregate"),
-                    couch_mgr:ensure_saved(?WH_SIP_DB, wh_json:set_value(<<"_rev">>, Rev, Doc1));
-                {error, not_found} ->
+            case wh_json:get_ne_value([<<"sip">>, <<"realm">>], Doc1) of
+                undefined -> ok;
+                _Else ->
                     lager:debug("adding device to the sip auth aggregate"),
                     couch_mgr:ensure_saved(?WH_SIP_DB, wh_json:delete_key(<<"_rev">>, Doc1))
             end,
-
-            case IsIpDefined of
-                false -> ok;
-                true ->
-                    CIDR = <<DeviceIP/binary, "/32">>,
-                    Acls = wh_json:set_value(CIDR
-                                             ,wh_json:from_list([{<<"network-list-name">>, <<"trusted">>}
-                                                                 ,{<<"type">>, <<"allow">>}
-                                                                 ,{<<"cidr">>, CIDR}
-                                                                 ,{<<"account_id">>, AcctId}
-                                                                 ,{<<"device_id">>, DeviceId}
-                                                                ])
-                                             ,whapps_config:get(<<"ecallmgr">>, <<"acls">>, wh_json:new())
-                                            ),
-                    lager:debug("setting ~s into system acls", [CIDR]),
-                    whapps_config:set_default(<<"ecallmgr">>, <<"acls">>, Acls)
+            
+            case wh_json:get_ne_value([<<"sip">>, <<"ip">>], Doc1) of
+                undefined -> ok;
+                DeviceIP ->
+                    lager:debug("adding device to the sip auth aggregate"),
+                    {ok, D} = couch_mgr:ensure_saved(?WH_SIP_DB, wh_json:delete_key(<<"_rev">>, Doc1)),
+                    maybe_update_acls(true, DeviceIP, AcctId, wh_json:get_value(<<"_id">>, D))
             end,
 
-            wapi_switch:publish_reloadacl(),
             spawn(fun() -> do_simple_provision(Context1) end),
             Context1;
         Else ->
@@ -144,7 +124,7 @@ post(#cb_context{}=Context, _DocId) ->
 put(#cb_context{}=Context) ->
     _ = crossbar_util:put_reqid(Context),
     case crossbar_doc:save(Context) of
-        #cb_context{resp_status=success, doc=Doc1}=Context1 ->
+        #cb_context{resp_status=success, doc=Doc1, account_id=AcctId}=Context1 ->
             case wh_json:get_ne_value([<<"sip">>, <<"realm">>], Doc1) of
                 undefined -> ok;
                 _Else ->
@@ -154,11 +134,12 @@ put(#cb_context{}=Context) ->
             
             case wh_json:get_ne_value([<<"sip">>, <<"ip">>], Doc1) of
                 undefined -> ok;
-                _ ->
+                DeviceIP ->
                     lager:debug("adding device to the sip auth aggregate"),
-                    couch_mgr:ensure_saved(?WH_SIP_DB, wh_json:delete_key(<<"_rev">>, Doc1))
+                    {ok, D} = couch_mgr:ensure_saved(?WH_SIP_DB, wh_json:delete_key(<<"_rev">>, Doc1)),
+                    maybe_update_acls(true, DeviceIP, AcctId, wh_json:get_value(<<"_id">>, D))
             end,
-            wapi_switch:publish_reloadacl(),
+
             spawn(fun() -> do_simple_provision(Context1) end),
             Context1;
         Else ->
@@ -407,3 +388,20 @@ do_simple_provision(#cb_context{doc=JObj}=Context) ->
             lager:debug("posting to ~s with ~s", [Url, Encoded]),
             ibrowse:send_req(Url, Headers, post, Encoded, HTTPOptions)
     end.
+
+-spec maybe_update_acls/4 :: (boolean(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+maybe_update_acls(true, DeviceIP, AcctId, DeviceId) ->
+    CIDR = <<DeviceIP/binary, "/32">>,
+    Acls = wh_json:set_value(CIDR
+                             ,wh_json:from_list([{<<"network-list-name">>, <<"trusted">>}
+                                                 ,{<<"type">>, <<"allow">>}
+                                                 ,{<<"cidr">>, CIDR}
+                                                 ,{<<"account_id">>, AcctId}
+                                                 ,{<<"device_id">>, DeviceId}
+                                                ])
+                             ,whapps_config:get(<<"ecallmgr">>, <<"acls">>, wh_json:new())
+                            ),
+    lager:debug("setting ~s into system acls", [CIDR]),
+    whapps_config:set_default(<<"ecallmgr">>, <<"acls">>, Acls),
+    wapi_switch:publish_reloadacl();
+maybe_update_acls(false, _, _, _) -> ok.
