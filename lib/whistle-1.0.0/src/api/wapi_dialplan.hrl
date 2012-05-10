@@ -358,8 +358,17 @@
 -define(SLEEP_REQ_TYPES, []).
 
 %% NoOp Request
+%% Filter-Applications: will remove applications in the ecallmgr command queue matching those in this list
+%% So, if you want to remove Play commands, set Filter-Applications = [<<"play">>]. This will filter
+%% the command queue until a non-Play command is encountered.
+%% Alternatively, you can specify the elements in the Filter-Applications list as:
+%% [ {"Application-Name":"play", "Fields":{"Terminators":["#"]}}, ...]
+%% This says, filter Play commands terminate-able with the "#" key
+%%
+%% IMPORTANT: to use the filter-applications list, Insert-At must be "now"
+
 -define(NOOP_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>]).
--define(OPTIONAL_NOOP_REQ_HEADERS, [<<"Msg-ID">>, <<"Insert-At">>]).
+-define(OPTIONAL_NOOP_REQ_HEADERS, [<<"Msg-ID">>, <<"Insert-At">>, <<"Filter-Applications">>]).
 -define(NOOP_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                           ,{<<"Event-Name">>, <<"command">>}
                           ,{<<"Application-Name">>, <<"noop">>}

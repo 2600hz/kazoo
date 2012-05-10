@@ -615,6 +615,9 @@ insert_command(#state{node=Node, callid=CallId, command_q=CommandQ, is_node_up=I
                                   end
                           end, wh_json:get_value(<<"Commands">>, JObj)),
             CommandQ;
+        <<"noop">> ->
+            execute_control_request(JObj, State),
+            maybe_filter_queue(wh_json:get_value(<<"Filter-Applications">>, JObj), CommandQ);
         _ ->
             execute_control_request(JObj, State),
             CommandQ
@@ -630,7 +633,37 @@ insert_command(Q, Pos, _) ->
     lager:debug("received command for an unknown queue position: ~p", [Pos]),
     Q.
 
--spec insert_command_into_queue/3 :: (queue(), tail | head, wh_json:json_object()) -> queue().
+-spec maybe_filter_queue/2 :: ('undefined' | list(), queue()) -> queue().
+maybe_filter_queue(undefined, CommandQ) -> CommandQ;
+maybe_filter_queue([], CommandQ) -> CommandQ;
+maybe_filter_queue([AppName|T]=Apps, CommandQ) when is_binary(AppName) ->
+    case queue:out(CommandQ) of
+        {empty, _} -> CommandQ;
+        {{value, NextJObj}, CommandQ1} ->
+            case wh_json:get_value(<<"Application-Name">>, NextJObj) =:= AppName of
+                true -> maybe_filter_queue(Apps, CommandQ1); % popped command off queue
+                false -> maybe_filter_queue(T, CommandQ) % no match, move to next app in filter
+            end
+    end;
+maybe_filter_queue([AppJObj|T]=Apps, CommandQ) ->
+    case queue:out(CommandQ) of
+        {empty, _} -> CommandQ;
+        {{value, NextJObj}, CommandQ1} ->
+            case wh_json:get_value(<<"Application-Name">>, NextJObj) =:=
+                wh_json:get_value(<<"Application-Name">>, AppJObj) of
+                false -> maybe_filter_queue(T, CommandQ);
+                true ->
+                    Fields = wh_json:get_value(<<"Fields">>, AppJObj),
+                    case lists:all(fun({AppField, AppValue}) -> 
+                                           wh_json:get_value(AppField, NextJObj) =:= AppValue
+                                   end, wh_json:to_proplist(Fields)) of
+                        true -> maybe_filter_queue(Apps, CommandQ1); % same app and all fields matched
+                        false -> maybe_filter_queue(T, CommandQ)
+                    end
+            end
+    end.
+
+-spec insert_command_into_queue/3 :: (queue(), 'tail' | 'head', wh_json:json_object()) -> queue().
 insert_command_into_queue(Q, Position, JObj) ->
     InsertFun = queue_insert_fun(Position),
     case wh_json:get_value(<<"Application-Name">>, JObj) of
