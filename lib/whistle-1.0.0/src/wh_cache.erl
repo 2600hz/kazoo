@@ -298,7 +298,8 @@ handle_info(_Info, Cache) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, _State) ->
+terminate(_Reason, Cache) ->
+    ets:delete(Cache),
     ok.
 
 %%--------------------------------------------------------------------

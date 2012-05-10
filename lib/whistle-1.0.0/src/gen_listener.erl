@@ -616,20 +616,19 @@ next_timeout(Timeout) when Timeout < ?START_TIMEOUT ->
 next_timeout(Timeout) ->
     Timeout * 2.
 
-
 -spec add_other_queue/4 :: (binary(), proplist(), proplist(), #state{}) -> {ne_binary(), #state{}}.
 add_other_queue(<<>>, QueueProps, Bindings, #state{other_queues=OtherQueues}=State) ->
     {ok, Q} = start_amqp(QueueProps),
     _ = [create_binding(wh_util:to_binary(Type), BindProps, Q) || {Type, BindProps} <- Bindings],
     {Q, State#state{other_queues=[{Q, {Bindings, QueueProps}}|OtherQueues]}};
 add_other_queue(QueueName, QueueProps, Bindings, #state{other_queues=OtherQueues}=State) ->
-    {ok, _} = start_amqp([{queue_name, QueueName} | QueueProps]),
-    _ = [create_binding(wh_util:to_binary(Type), BindProps, QueueName) || {Type, BindProps} <- Bindings],
+    {ok, Q} = start_amqp([{queue_name, QueueName} | QueueProps]),
+    _ = [create_binding(wh_util:to_binary(Type), BindProps, Q) || {Type, BindProps} <- Bindings],
     case props:get_value(QueueName, OtherQueues) of
         undefined ->
-            {QueueName, State#state{other_queues=[{QueueName, {Bindings, QueueProps}}|OtherQueues]}};
+            {Q, State#state{other_queues=[{Q, {Bindings, QueueProps}}|OtherQueues]}};
         OldBindings ->
-            {QueueName, State#state{other_queues=[{QueueName, {Bindings ++ OldBindings, QueueProps}}
-                                                  | props:delete(QueueName, OtherQueues)
-                                                 ]}}
+            {Q, State#state{other_queues=[{Q, {Bindings ++ OldBindings, QueueProps}}
+                                          | props:delete(QueueName, OtherQueues)
+                                         ]}}
     end.

@@ -17,7 +17,6 @@
 -export([misc_req/2]).
 -export([my_channel/1]).
 -export([update_my_tag/2]).
--export([fetch_my_tag/1]).
 -export([use_federation/1]).
 -export([stop/1]).
 -export([init/1
@@ -33,22 +32,6 @@
 -define(SERVER, ?MODULE).
 -define(START_TIMEOUT, 500).
 -define(MAX_TIMEOUT, 5000).
--define(KNOWN_EXCHANGES, [{?EXCHANGE_TARGETED, ?TYPE_TARGETED}
-                          ,{?EXCHANGE_CALLCTL, ?TYPE_CALLCTL}
-                          ,{?EXCHANGE_CALLEVT, ?TYPE_CALLEVT}
-                          ,{?EXCHANGE_CALLMGR, ?TYPE_CALLMGR}
-                          ,{?EXCHANGE_MONITOR, ?TYPE_MONITOR}
-                          ,{?EXCHANGE_RESOURCE, ?TYPE_RESOURCE}
-                          ,{?EXCHANGE_CONFIGURATION, ?TYPE_CONFIGURATION}
-                          ,{?EXCHANGE_CONFERENCE, ?TYPE_CONFERENCE}
-                          ,{?EXCHANGE_WHAPPS, ?TYPE_WHAPPS}
-                          ,{?EXCHANGE_SYSCONF, ?TYPE_SYSCONF}
-                         ]).
-
-%% Channel, ChannelRef
-%% Channel, ChannelRef, Tag, FromRef
--type channel_data() :: {pid(), reference()}.
--type consumer_data() :: {pid(), reference(), binary(), reference()}.
 
 -type consume_records() :: #'queue.declare'{} | #'queue.bind'{} | #'queue.unbind'{} | #'queue.delete'{} |
                            #'basic.consume'{} | #'basic.cancel'{} | #'basic.ack'{} | #'basic.nack'{} |
@@ -59,10 +42,8 @@
 -export_type([consume_records/0, misc_records/0]).
 
 -record(state, {connection = 'undefined' :: 'undefined' | {pid(), reference()}
-                ,publish_channel = 'undefined' :: 'undefined' | channel_data()
-                ,misc_channel = 'undefined' :: 'undefined' | channel_data()
-                ,consumers = dict:new() :: dict()
                 ,broker = 'undefined' :: 'undefined' | wh_amqp_broker:broker()
+                ,broker_name = 'undefined' :: atom()
                }).
 
 %%%===================================================================
@@ -83,8 +64,8 @@ start_link(Broker) ->
 -spec publish/3 :: (atom(), #'basic.publish'{}, ne_binary() | iolist()) -> 'ok' | {'error', _}.
 publish(Srv, #'basic.publish'{exchange=_Exchange, routing_key=_RK}=BasicPub, AmqpMsg) ->
     FindChannel = [fun(_) -> my_channel(Srv, false) end
-                   ,fun({error, _}) -> gen_server:call(Srv, publish_channel);
-                       ({ok, _}=OK) -> OK
+                   ,fun({error, _}) -> publish_channel(Srv);
+                       ({ok, C, _}) -> {ok, C}
                     end
                   ],
     case lists:foldl(fun(F, C) -> F(C) end, {error, no_channel}, FindChannel) of 
@@ -99,25 +80,21 @@ publish(Srv, #'basic.publish'{exchange=_Exchange, routing_key=_RK}=BasicPub, Amq
 consume(Srv, #'basic.consume'{consumer_tag=CTag}=BasicConsume) ->
     case my_channel(Srv) of
         {error, _}=E -> E;
-        {ok, Channel} ->
-            case fetch_my_tag(Srv) of
-                {ok, CTag} -> ok;
-                _Else -> 
-                    try_to_subscribe(Srv, Channel, BasicConsume)
-            end
+        {ok, _, CTag} -> ok;
+        {ok, Channel, _} ->
+            try_to_subscribe(Srv, Channel, BasicConsume)
     end;
 consume(Srv, #'basic.cancel'{}=BasicCancel) ->
-    case fetch_my_tag(Srv) of
+    case my_channel(Srv) of
         {error, _}=E -> E;
-        {ok, Tag} ->
-            {ok, Channel} = my_channel(Srv),
-            amqp_channel:call(Channel, BasicCancel#'basic.cancel'{consumer_tag=Tag}),
-            ok
+        {ok, _, <<>>} -> {error, not_consuming};
+        {ok, Channel, Tag} ->
+            amqp_channel:call(Channel, BasicCancel#'basic.cancel'{consumer_tag=Tag})
     end;
 consume(Srv, #'queue.bind'{}=QueueBind) ->
     case my_channel(Srv) of
         {error, _}=E -> E;
-        {ok, Channel} ->
+        {ok, Channel, _} ->
             case amqp_channel:call(Channel, QueueBind) of
                 #'queue.bind_ok'{} -> ok;
                 {error, _}=E -> E;
@@ -127,7 +104,7 @@ consume(Srv, #'queue.bind'{}=QueueBind) ->
 consume(Srv, #'queue.unbind'{}=QueueUnbind) ->
     case my_channel(Srv) of
         {error, _}=E -> E;
-        {ok, Channel} ->
+        {ok, Channel, _} ->
             case amqp_channel:call(Channel, QueueUnbind) of
                 #'queue.unbind_ok'{} -> ok;
                 {error, _}=E -> E;
@@ -137,7 +114,7 @@ consume(Srv, #'queue.unbind'{}=QueueUnbind) ->
 consume(Srv, #'queue.declare'{}=QueueDeclare) ->
     case my_channel(Srv) of
         {error, _}=E -> E;
-        {ok, Channel} ->
+        {ok, Channel, _} ->
             case amqp_channel:call(Channel, QueueDeclare) of
                 #'queue.declare_ok'{queue=Q} -> {ok, Q};
                 {error, _}=E -> E;
@@ -147,7 +124,7 @@ consume(Srv, #'queue.declare'{}=QueueDeclare) ->
 consume(Srv, #'queue.delete'{}=QueueDelete) ->
     case my_channel(Srv) of
         {error, _}=E -> E;
-        {ok, Channel} ->
+        {ok, Channel, _} ->
             case amqp_channel:call(Channel, QueueDelete) of
                 #'queue.delete_ok'{} -> ok;
                 {error, _}=E -> E;
@@ -157,7 +134,7 @@ consume(Srv, #'queue.delete'{}=QueueDelete) ->
 consume(Srv, #'basic.qos'{}=BasicQos) ->
     case my_channel(Srv) of
         {error, _}=E -> E;
-        {ok, Channel} ->
+        {ok, Channel, _} ->
             case amqp_channel:call(Channel, BasicQos) of
                 #'basic.qos_ok'{} -> ok;
                 {error, _}=E -> E;
@@ -167,21 +144,19 @@ consume(Srv, #'basic.qos'{}=BasicQos) ->
 consume(Srv, #'basic.ack'{}=BasicAck) ->
     case my_channel(Srv) of
         {error, _}=E -> E;
-        {ok, Channel} ->
-            amqp_channel:cast(Channel, BasicAck),
-            ok
+        {ok, Channel, _} ->
+            amqp_channel:cast(Channel, BasicAck)
     end;
 consume(Srv, #'basic.nack'{}=BasicAck) ->
     case my_channel(Srv) of
         {error, _}=E -> E;
-        {ok, Channel} ->
-            amqp_channel:cast(Channel, BasicAck),
-            ok
+        {ok, Channel, _} ->
+            amqp_channel:cast(Channel, BasicAck)
     end.
 
 -spec misc_req/2 :: (atom(), misc_records()) -> 'ok'.
 misc_req(Srv,  #'exchange.declare'{exchange=_Ex, type=_Ty}=ExchangeDeclare) ->
-    {ok, Channel} = gen_server:call(Srv, misc_channel),
+    {ok, Channel} = misc_channel(Srv),
     lager:debug("attempting to create new ~s exchange '~s' via channel ~p", [_Ty, _Ex, Channel]),
     UseFederation = use_federation(Srv),
     case amqp_channel:call(Channel, exchange_declare(ExchangeDeclare, UseFederation)) of
@@ -190,24 +165,43 @@ misc_req(Srv,  #'exchange.declare'{exchange=_Ex, type=_Ty}=ExchangeDeclare) ->
         Err -> {error, Err}
     end.
 
--spec my_channel/1 :: (atom()) -> {'ok', pid()} |
+-spec my_channel/1 :: (atom()) -> {'ok', pid(), 'undefined' | ne_binary()} |
                                   {'error', term()}.
--spec my_channel/2 :: (atom(), boolean()) -> {'ok', pid()} |
+-spec my_channel/2 :: (atom(), boolean()) -> {'ok', pid(), 'undefined' | ne_binary()} |
                                              {'error', term()}.
 my_channel(Srv) ->
     my_channel(Srv, true).
 
 my_channel(Srv, Create) ->
-    gen_server:call(Srv, {my_channel, self(), Create}).
+    case ets:lookup(Srv, self()) of
+        [#wh_amqp_channel{channel=C, tag=T}] -> {ok, C, T};
+        [] when Create ->
+            case gen_server:call(Srv, {create_channel, self()}) of
+                {ok, C} -> {ok, C, <<>>};
+                {error, _}=E -> E
+            end;            
+        [] -> {error, not_found}
+    end.
+
+-spec publish_channel/1 :: (atom()) -> {'ok', pid()} |
+                                       {'error', 'not_found'}.
+publish_channel(Srv) ->
+    case ets:lookup(Srv, publish) of
+        [#wh_amqp_channel{channel=C}] -> {ok, C};
+        [] -> {error, not_found}
+    end.
+
+-spec misc_channel/1 :: (atom()) -> {'ok', pid()} |
+                                    {'error', 'not_found'}.
+misc_channel(Srv) ->
+    case ets:lookup(Srv, misc) of
+        [#wh_amqp_channel{channel=C}] -> {ok, C};
+        [] -> {error, not_found}
+    end.
 
 -spec update_my_tag/2 :: (atom(), ne_binary()) -> 'ok'.
 update_my_tag(Srv, Tag) ->
     gen_server:cast(Srv, {update_my_tag, self(), Tag}).
-
--spec fetch_my_tag/1 :: (atom()) -> {'ok', binary()} |
-                                    {'error', 'not_consuming'}.
-fetch_my_tag(Srv) ->
-    gen_server:call(Srv, {fetch_my_tag, self()}).
 
 -spec use_federation/1 :: (atom()) -> boolean().
 use_federation(Srv) ->
@@ -239,7 +233,9 @@ init([Broker]) ->
     process_flag(trap_exit, true),
     put(callid, ?LOG_SYSTEM_ID),
     self() ! {connect, ?START_TIMEOUT},
-    {ok, #state{broker=Broker}}.
+    Name = wh_amqp_broker:name(Broker),
+    ets:new(Name, [set, protected, named_table, {keypos, #wh_amqp_channel.consumer}]),
+    {ok, #state{broker=Broker, broker_name=Name}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -261,39 +257,19 @@ handle_call(use_federation, _, #state{broker=Broker}=State) ->
 handle_call(_, _, #state{connection=undefined}=State) ->
     %% If we are diconnected dont pay attention to requests
     {reply, {error, amqp_down}, State};
-handle_call(publish_channel, _, #state{publish_channel={C,_}}=State) ->
-    {reply, {ok, C}, State};
-handle_call(misc_channel, _, #state{misc_channel={C,_}}=State) ->
-    {reply, {ok, C}, State};
-handle_call({my_channel, OwnerPid, Create}, _, #state{connection=Conn, consumers=Consumers}=State) ->
-    case dict:find(OwnerPid, Consumers) of
-        error when not Create->
-            {reply, {error, not_found}, State};
-        error ->
-            case start_channel(Conn) of
-                {C,R} when is_pid(C) andalso is_reference(R) -> % channel, channel ref
-                    lager:debug("started new AMQP channel ~p for process ~p", [C, OwnerPid]),
-                    FromRef = erlang:monitor(process, OwnerPid),
-                    amqp_selective_consumer:register_default_consumer(C, self()),
-                    {reply
-                     ,{ok, C}
-                     ,State#state{consumers=dict:store(OwnerPid, {C,R,<<>>,FromRef}, Consumers)}
-                     ,hibernate
-                    };
-                closing ->
-                    lager:debug("failed to start channel for ~p: closing", [OwnerPid]),
-                    {reply, {error, closing}, State};
-                {error, _}=E ->
-                    lager:debug("failed to start new channel for ~p: ~p", [OwnerPid, E]),
-                    {reply, E, State}
-            end;
-        {ok, {C,_,_,_}} ->
-            {reply, {ok, C}, State}
-    end;
-handle_call({fetch_my_tag, OwnerPid}, _, #state{consumers=Consumers}=State) ->
-    case dict:find(OwnerPid, Consumers) of
-        error -> {reply, {error, not_consuming}, State};
-        {ok, {_C, _R, T, _FromRef}} -> {reply, {ok, T}, State}
+handle_call({create_channel, Consumer}, _, #state{connection=Conn, broker_name=Name}=State) ->
+    lager:debug("starting new AMQP channel for process ~p", [Consumer]),
+    case start_channel(Conn) of
+        #wh_amqp_channel{channel=C}=Channel ->
+            ets:insert(Name, Channel#wh_amqp_channel{consumer = Consumer
+                                                     ,consumer_ref = erlang:monitor(process, Consumer)
+                                                    }),
+            {reply, {ok, C}, State, hibernate};
+        closing ->
+            lager:debug("failed to start channel for ~p: closing", [Consumer]),
+            {reply, {error, closing}, State};
+        {error, _}=E ->
+            {reply, E, State}
     end;
 handle_call(stop, _, State) ->
     {stop, normal, ok, State};
@@ -313,13 +289,9 @@ handle_call(_Msg, _From, State) ->
 handle_cast(_, #state{connection=undefined}=State) ->
     %% If we are diconnected dont pay attention to requests
     {noreply, State};
-handle_cast({update_my_tag, FromPid, Tag}, #state{consumers=Consumers}=State) ->
-    case dict:find(FromPid, Consumers) of
-        error -> {noreply, State};
-        {ok, {C, R, _T, FromRef}} ->
-            lager:debug("updating tag for ~p from ~p to ~p", [FromPid, _T, Tag]),
-            {noreply, State#state{consumers=dict:store(FromPid, {C, R, Tag, FromRef}, Consumers)}, hibernate}
-    end;
+handle_cast({update_my_tag, Consumer, Tag}, #state{broker_name=Name}=State) ->
+    ets:update_element(Name, Consumer, {#wh_amqp_channel.tag, Tag}),
+    {noreply, State};
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
@@ -333,23 +305,80 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({'DOWN', Ref, process, ConnPid, Reason}, #state{connection={ConnPid, Ref}, consumers=Consumers, broker=Broker}=State) ->
+handle_info({'DOWN', Ref, process, ConnPid, Reason}, #state{connection={ConnPid, Ref}, broker_name=Name}=State) ->
     lager:info("connection to the AMQP broker died: ~p", [Reason]),
-    Name = wh_amqp_broker:name(Broker),
     gen_server:cast(wh_amqp_mgr, {broker_unavailable, Name}),
-    notify_consumers({amqp_channel_event, Reason}, Consumers),
+    notify_consumers({amqp_channel_event, Reason}, Name),
     self() ! {connect, ?START_TIMEOUT},
     {noreply, State#state{connection=undefined}};
-handle_info({'DOWN', Ref, process, _Pid, _Reason}, State) ->
-    lager:debug("recieved notification monitored process ~p  died ~p, searching for reference", [_Pid, _Reason]),
+handle_info({'DOWN', Ref, process, _Pid, _Reason}, #state{connection={Connection, _}, broker_name=Name}=State) ->
     erlang:demonitor(Ref, [flush]),
-    {noreply, remove_ref(Ref, State), hibernate};
+    MatchSpec = [{#wh_amqp_channel{consumer = '_', channel = '_', tag = '_',
+                                   channel_ref = '$1', consumer_ref = '_'},
+                  [{'=:=', '$1', {const, Ref}}],
+                  [{{channel, '$_'}}]},
+                 {#wh_amqp_channel{consumer = '_', channel = '_', tag = '_',
+                                   channel_ref = '_', consumer_ref = '$1'},
+                  [{'=:=', '$1', {const, Ref}}],
+                  [{{consumer, '$_'}}]}
+                ],
+    case ets:select(Name, MatchSpec) of
+        [{channel, #wh_amqp_channel{consumer=Consumer, consumer_ref=OtherRef}}] ->
+            case start_channel(Connection) of
+                #wh_amqp_channel{channel=C, channel_ref=CRef} ->
+                    lager:debug("channel ~p for ~p died, restarted", [_Pid, Consumer]),
+                    is_pid(Consumer) andalso (Consumer ! {amqp_channel_event, restarted}),
+                    ets:update_element(Name, Consumer, [{#wh_amqp_channel.channel, C}
+                                                        ,{#wh_amqp_channel.channel_ref, CRef}
+                                                       ]);
+                {error, no_connection} ->
+                    lager:debug("channel ~p for ~p died, connection is no longer available", [_Pid, Consumer]),
+                    is_pid(Consumer) andalso (Consumer ! {amqp_channel_event, no_connection}),
+                    is_reference(OtherRef) andalso erlang:demonitor(OtherRef, [flush]),
+                    ets:delete(Name, Consumer);
+                closing ->
+                    lager:debug("channel ~p for ~p died, connection is closing", [_Pid, Consumer]),
+                    is_pid(Consumer) andalso (Consumer ! {amqp_channel_event, closing}),
+                    is_reference(OtherRef) andalso erlang:demonitor(OtherRef, [flush]),
+                    ets:delete(Name, Consumer)
+            end;
+        [{consumer, #wh_amqp_channel{consumer=Consumer, channel=C, channel_ref=OtherRef}}] ->
+            erlang:is_process_alive(C) andalso amqp_channel:close(C),
+            is_reference(OtherRef) andalso erlang:demonitor(OtherRef, [flush]),
+            ets:delete(Name, Consumer);
+        [] -> ok
+    end,
+    {noreply, State, hibernate};
+handle_info({'DOWN', Ref, process, _Pid, _Reason}, #state{broker_name=Name}=State) ->
+    erlang:demonitor(Ref, [flush]),
+    MatchSpec = [{#wh_amqp_channel{consumer = '_', channel = '_', tag = '_',
+                                   channel_ref = '$1', consumer_ref = '_'},
+                  [{'=:=', '$1', {const, Ref}}],
+                  [{{channel, '$_'}}]},
+                 {#wh_amqp_channel{consumer = '_', channel = '_', tag = '_',
+                                   channel_ref = '_', consumer_ref = '$1'},
+                  [{'=:=', '$1', {const, Ref}}],
+                  [{{consumer, '$_'}}]}
+                ],
+    case ets:select(Name, MatchSpec) of
+        [{channel, #wh_amqp_channel{consumer=Consumer, consumer_ref=OtherRef}}] -> 
+            lager:debug("channel for ~p went down during AMQP disconnect", [Consumer]),            
+            is_pid(Consumer) andalso (Consumer ! {amqp_channel_event, lost_connection}),
+            is_reference(OtherRef) andalso erlang:demonitor(OtherRef, [flush]),
+            ets:delete(Name, Consumer);
+        [{consumer, #wh_amqp_channel{consumer=Consumer, channel=C, channel_ref=OtherRef}}] ->
+            lager:debug("consumer ~p went down during AMQP disconnect", [Consumer]),            
+            erlang:is_process_alive(C) andalso amqp_channel:close(C),
+            is_reference(OtherRef) andalso erlang:demonitor(OtherRef, [flush]),
+            ets:delete(Name, Consumer);
+        [] -> ok
+    end,
+    {noreply, State, hibernate};
 handle_info({#'basic.return'{}, #amqp_msg{}}=ReturnMsg, State) ->
     wh_amqp_mgr:notify_return_handlers(ReturnMsg),
     {noreply, State};
-handle_info({connect, Timeout}, #state{broker=Broker}=State) ->
+handle_info({connect, Timeout}, #state{broker=Broker, broker_name=Name}=State) ->
     Params = wh_amqp_broker:params(Broker),
-    Name = wh_amqp_broker:name(Broker),
     case amqp_connection:start(Params) of
         {error, _Reason} -> 
             lager:debug("failed to connect to AMQP broker '~s' will retry in ~p: ~p", [Name, Timeout, _Reason]),
@@ -357,19 +386,17 @@ handle_info({connect, Timeout}, #state{broker=Broker}=State) ->
             {noreply, State#state{connection=undefined}};
         {ok, Connection} ->
             Ref = erlang:monitor(process, Connection),
-            case start_channel(Connection) of
-                {Channel, _} = PubChan when is_pid(Channel) ->
-                    amqp_channel:register_return_handler(Channel, self()),
-                    lager:info("connected to AMQP broker '~s'", [Name]),
-                    gen_server:cast(wh_amqp_mgr, {broker_available, Name}),
-                    {noreply, #state{connection = {Connection, Ref}
-                                     ,publish_channel = PubChan
-                                     ,misc_channel = start_channel(Connection)
-                                     ,consumers = dict:new()
-                                     ,broker = Broker
-                                    }, hibernate};
-                {error, _Cause} ->
-                    lager:debug("unable to initialize publish channel on AMQP broker '~s' will retry in ~p: ~p", [Name, Timeout, _Cause]),
+            try
+                #wh_amqp_channel{}=PublishChannel = start_channel(Connection),
+                #wh_amqp_channel{}=MiscChannel = start_channel(Connection),
+                ets:insert(Name, PublishChannel#wh_amqp_channel{consumer = publish}),
+                ets:insert(Name, MiscChannel#wh_amqp_channel{consumer = misc}),
+                lager:info("connected to AMQP broker '~s'", [Name]),
+                gen_server:cast(wh_amqp_mgr, {broker_available, Name}),                
+                {noreply, State#state{connection = {Connection, Ref}}, hibernate}
+            catch
+                _:_ ->
+                    lager:debug("unable to initialize publish channel on AMQP broker '~s' will retry in ~p", [Name, Timeout]),
                     erlang:demonitor(Ref, [flush]),
                     _Ref = erlang:send_after(Timeout, self(), {connect, next_timeout(Timeout)}),
                     {noreply, State#state{connection=undefined}}
@@ -393,12 +420,10 @@ handle_info(_Info, State) ->
 terminate(_Reason, {_H, _Conn, _UseF}) ->
     lager:debug("amqp host failed to startup: ~p", [_Reason]),
     lager:debug("params: ~s on conn ~p, use federation: ~s", [_H, _Conn, _UseF]);
-terminate(_Reason, #state{consumers=Consumers, broker=Broker}) ->
-    Name = wh_amqp_broker:name(Broker),
-    _ = spawn(fun() ->
-                      put(callid, ?LOG_SYSTEM_ID),
-                      notify_consumers({amqp_channel_event, terminated}, Consumers)
-              end),
+terminate(_Reason, #state{broker_name=Name}) ->
+    put(callid, ?LOG_SYSTEM_ID),
+    notify_consumers({amqp_channel_event, terminated}, Name),
+    ets:delete(Name),
     lager:debug("connection to AMQP broker '~s' terminated: ~p", [Name, _Reason]).
 
 %%--------------------------------------------------------------------
@@ -415,7 +440,9 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec start_channel/1 :: ('undefined' | {pid(), reference()} | pid()) -> channel_data() | {'error', 'no_connection'} | 'closing'.
+-spec start_channel/1 :: ('undefined' | {pid(), reference()} | pid()) -> #wh_amqp_channel{} | 
+                                                                         {'error', 'no_connection'} |
+                                                                         'closing'.
 start_channel(undefined) ->
     {error, no_connection};
 start_channel({Connection, _}) ->
@@ -424,90 +451,25 @@ start_channel(Connection) when is_pid(Connection) ->
     case erlang:is_process_alive(Connection) 
         andalso amqp_connection:open_channel(Connection) of
         {ok, Channel} ->
-            ChanMRef = erlang:monitor(process, Channel),
-            {Channel, ChanMRef};
-        false -> {error, no_connection};
-        E -> E
+            amqp_selective_consumer:register_default_consumer(Channel, self()),
+            #wh_amqp_channel{channel = Channel
+                             ,channel_ref = erlang:monitor(process, Channel)
+                            };
+        false -> 
+            lager:debug("unabled to start new channel: no_connection", []),
+            {error, no_connection};
+        E -> 
+            lager:debug("unabled to start new channel: ~p", [E]),
+            E
     end.
 
--spec remove_ref/2 :: (reference(), #state{}) -> #state{}.
-remove_ref(Ref, #state{connection=undefined, publish_channel={C,Ref}}=State) ->
-    lager:debug("reference was for publish channel ~p due to AMQP disconnect", [C]),
-    State#state{publish_channel=undefined};
-remove_ref(Ref, #state{connection=undefined, misc_channel={C,Ref}}=State) ->
-    lager:debug("reference was for misc channel ~p due to AMQP disconnect", [C]),
-    State#state{publish_channel=undefined};
-remove_ref(Ref, #state{connection={Conn, _}, publish_channel={C,Ref}}=State) ->
-    lager:debug("reference was for publish channel ~p, restarting", [C]),
-    State#state{publish_channel=start_channel(Conn)};
-remove_ref(Ref, #state{connection={Conn, _}, misc_channel={C,Ref}}=State) ->
-    lager:debug("reference was for misc channel ~p, restarting", [C]),
-    State#state{misc_channel=start_channel(Conn)};
-remove_ref(Ref, #state{connection=Connection, consumers=Cs}=State) ->
-    State#state{consumers=dict:fold(fun(K, V, Acc) -> 
-                                            clean_consumers(K, V, Acc, Ref, Connection)
-                                    end, Cs, Cs)}.
-
--spec notify_consumers/2 :: ({'amqp_channel_event', atom()}, dict()) -> 'ok'.
-notify_consumers(Msg, Dict) ->
-    lists:foreach(fun({Pid,_}) -> Pid ! Msg end, dict:to_list(Dict)).
-
--spec clean_consumers/5 :: (pid(), consumer_data(), dict(), reference(), 'undefined' | pid()) -> dict().
-%% Channel died while disconnected
-clean_consumers(ConsumerPid, {C, ChannelRef, _, ConsumerRef}, Dict, ChannelRef, undefined) ->
-    lager:debug("reference was for channel ~p for ~p due to AMQP disconnect", [C, ConsumerPid]),
-    erlang:demonitor(ChannelRef, [flush]),
-    erlang:demonitor(ConsumerRef, [flush]),
-    ConsumerPid ! {amqp_channel_event, lost_connection},
-    dict:erase(ConsumerPid, Dict);
-
-%% Channel died while connected
-clean_consumers(ConsumerPid, {C, ChannelRef, _, ConsumerRef}=Consumer, Dict, ChannelRef, {Conn, _}) ->
-    case is_process_alive(Conn) of
-        false -> clean_consumers(ConsumerPid, Consumer, Dict, ChannelRef, undefined);
-        true ->
-            lager:debug("reference was for channel ~p for ~p, restarting", [C, ConsumerPid]),
-            erlang:demonitor(ChannelRef, [flush]),
-            erlang:is_process_alive(C) andalso amqp_channel:close(C),
-            case start_channel(Conn) of
-                {CNew, RefNew} when is_pid(CNew) andalso is_reference(RefNew) ->
-                    lager:debug("new channel started for ~p", [ConsumerPid]),
-                    ConsumerPid ! {amqp_channel_event, restarted},
-                    dict:store(ConsumerPid, {CNew, RefNew, <<>>, ConsumerRef}, Dict);
-                {error, no_connection} ->
-                    lager:debug("no connection available"),
-                    ConsumerPid ! {amqp_channel_event, no_connection},
-                    dict:erase(ConsumerPid, Dict);
-                closing ->
-                    lager:debug("closing, no connection"),
-                    ConsumerPid ! {amqp_channel_event, closing},
-                    dict:erase(ConsumerPid, Dict)
-            end
-    end;
-
-%% Consumer died
-clean_consumers(ConsumerPid, {C, ChannelRef, _, ConsumerRef}, Dict, ConsumerRef, _) ->
-    lager:debug("reference was for consumer ~p, removing channel ~p", [ConsumerPid, C]),
-    erlang:demonitor(ChannelRef, [flush]),
-    erlang:demonitor(ConsumerRef, [flush]),
-    erlang:is_process_alive(C) andalso amqp_channel:close(C),
-    dict:erase(ConsumerPid, Dict);
-
-%% Generic channel cleanup when ConsumerPid isn't alive
-clean_consumers(ConsumerPid, {C, ChannelRef, _, ConsumerRef}, Dict, _, _) ->
-    case erlang:is_process_alive(ConsumerPid) of
-        true -> Dict;
-        false ->
-            lager:debug("reference was a consumer ~p that shutdown, removing channel ~p", [ConsumerPid, C]),
-            erlang:demonitor(ChannelRef, [flush]),
-            erlang:demonitor(ConsumerRef, [flush]),
-            erlang:is_process_alive(C) andalso amqp_channel:close(C),
-            dict:erase(ConsumerPid, Dict)
-    end;
-
-%% Simple catchall
-clean_consumers(_, _, Dict,_,_) ->
-    Dict.
+-spec notify_consumers/2 :: ({'amqp_channel_event', atom()}, atom()) -> 'ok'.
+notify_consumers(Msg, Name) ->
+    ets:foldl(fun(#wh_amqp_channel{consumer = Consumer}, ok) when is_pid(Consumer) ->
+                      Consumer ! Msg,
+                      ok;
+                 (_, ok) -> ok
+              end, ok, Name).
 
 -spec try_to_subscribe/3 :: (atom(), pid(), #'basic.consume'{}) -> 'ok' | {'error', term()}.
 try_to_subscribe(Srv, Channel, BasicConsume) ->

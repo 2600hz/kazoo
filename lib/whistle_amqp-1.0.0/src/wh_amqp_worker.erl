@@ -90,7 +90,8 @@ call(Srv, Req, PubFun, VFun, Timeout) ->
                        true -> wh_json:to_proplist(Req);
                        false -> Req
                    end,
-            Reply = gen_listener:call(W, {request, Prop, PubFun, VFun, Timeout}, Timeout + ?FUDGE),
+            Q = gen_listener:queue_name(W),
+            Reply = gen_listener:call(W, {request, Prop, PubFun, VFun, Q, Timeout}, Timeout + ?FUDGE),
             poolboy:checkin(Srv, W),
             Reply;
         full ->
@@ -126,10 +127,10 @@ any_resp(_) -> true.
 handle_resp(JObj, Props) ->
     gen_listener:cast(props:get_value(server, Props), {event, wh_json:get_value(<<"Msg-ID">>, JObj), JObj}).
 
--spec send_request/4 :: (ne_binary(), pid(), function(), proplist()) -> 'ok'.
+-spec send_request/4 :: (ne_binary(), ne_binary(), function(), proplist()) -> 'ok'.
 send_request(CallID, Self, PublishFun, ReqProp) ->
     put(callid, CallID),
-    Prop = [{<<"Server-ID">>, gen_listener:queue_name(Self)}
+    Prop = [{<<"Server-ID">>, Self}
             ,{<<"Call-ID">>, CallID}
             | ReqProp],
     PublishFun(Prop).
@@ -170,7 +171,7 @@ init([Args]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({request, ReqProp, PublishFun, VFun, Timeout}, {ClientPid, _}=From, State) ->
+handle_call({request, ReqProp, PublishFun, VFun, Q, Timeout}, {ClientPid, _}=From, State) ->
     _ = wh_util:put_callid(ReqProp),
     CallID = get(callid),
     Self = self(),
@@ -183,8 +184,7 @@ handle_call({request, ReqProp, PublishFun, VFun, Timeout}, {ClientPid, _}=From, 
                             M -> {ReqProp, M}
                         end,
     lager:debug("published request with msg id ~s for ~p", [MsgID, ClientPid]),
-    P = proc_lib:spawn(?MODULE, send_request, [CallID, Self, PublishFun, ReqProp1]),
-    _R = erlang:monitor(process, P),
+    ?MODULE:send_request(CallID, Q, PublishFun, ReqProp1),
     {noreply, State#state{
                 client_pid = ClientPid
                 ,client_ref = ClientRef
