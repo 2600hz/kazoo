@@ -529,14 +529,14 @@ handle_info({force_queue_advance, CallId}, #state{callid=CallId, current_app=Cur
 handle_info(keep_alive_expired, State) ->
     lager:debug("no new commands received after channel destruction, our job here is done"),
     {stop, normal, State};
-handle_info({sanity_check}, #state{node=Node, callid=CallId, keep_alive_ref=undefined}=State) ->
-    case freeswitch:api(Node, uuid_exists, wh_util:to_list(CallId)) of
-        {'ok', <<"true">>} -> 
+handle_info({sanity_check}, #state{callid=CallId, keep_alive_ref=undefined}=State) ->
+    case ecallmgr_fs_nodes:channel_exists(CallId) of
+        true -> 
             lager:debug("listener passed sanity check, call is still up"),
             TRef = erlang:send_after(?SANITY_CHECK_PERIOD, self(), {sanity_check}),
             {'noreply', State#state{sanity_check_tref=TRef}};
-        _E ->
-            lager:debug("call uuid does not exist, executing post-hangup events and terminating: ~p", [_E]),
+        false ->
+            lager:debug("call uuid does not exist, executing post-hangup events and terminating", []),
             gen_listener:cast(self(), {channel_destroyed, wh_json:new()}),
             {'noreply', State}
     end;

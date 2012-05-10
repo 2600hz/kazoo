@@ -316,7 +316,11 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>) ->
                                    case wh_json:get_value(<<"Hold-Media">>, JObj) of
                                        undefined ->
                                            case wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Hold-Media">>], JObj) of
-                                               undefined -> DP;
+                                               undefined ->
+                                                   case ecallmgr_fs_nodes:channel_import_moh(UUID) of
+                                                       true -> [{"application", "set import=hold_music"}|DP];
+                                                       false -> DP
+                                                   end;
                                                Media ->
                                                    Stream = ecallmgr_util:media_path(Media, extant, UUID),
                                                    lager:debug("bridge has custom music-on-hold in channel vars: ~s", [Stream]),
@@ -348,20 +352,6 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>) ->
                                             || {K, V} <- wh_json:to_proplist(CCVs),
                                                (Var = props:get_value(K, ?SPECIAL_CHANNEL_VARS)) =/= undefined
                                            ] ++ DP;
-                                       _ ->
-                                           DP
-                                   end
-                           end
-                          ,fun(DP) ->
-                                   case freeswitch:api(Node, uuid_dump, wh_util:to_list(UUID)) of
-                                       {'ok', Result} ->
-                                           Props = ecallmgr_util:eventstr_to_proplist(Result),
-                                           case props:get_value(<<"variable_hold_music">>, Props) of
-                                               undefined ->
-                                                   [{"application", "set import=hold_music"}|DP];
-                                               _E ->
-                                                   DP
-                                           end;
                                        _ ->
                                            DP
                                    end
@@ -752,6 +742,11 @@ set_terminators(Node, UUID, Ts) ->
 %%--------------------------------------------------------------------
 -spec set/3 :: (atom(), ne_binary(), ne_binary()) -> send_cmd_ret().
 set(Node, UUID, Arg) ->
+    case wh_util:to_binary(Arg) of
+        <<"hold_music=", _/binary>> -> 
+            ecallmgr_fs_nodes:channel_set_import_moh(UUID, false);
+        _Else -> ok
+    end,
     send_cmd(Node, UUID, "set", Arg).
 
 %%--------------------------------------------------------------------
@@ -761,6 +756,11 @@ set(Node, UUID, Arg) ->
 %%--------------------------------------------------------------------
 -spec export/3 :: (atom(), ne_binary(), binary()) -> send_cmd_ret().
 export(Node, UUID, Arg) ->
+    case wh_util:to_binary(Arg) of
+        <<"hold_music=", _/binary>> -> 
+            ecallmgr_fs_nodes:channel_set_import_moh(UUID, false);
+        _Else -> ok
+    end,
     send_cmd(Node, UUID, "export", wh_util:to_list(Arg)).
 
 %%--------------------------------------------------------------------

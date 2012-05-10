@@ -135,11 +135,7 @@ is_node_up(Node) ->
 
 -spec is_node_up/2 :: (atom(), ne_binary()) -> boolean().
 is_node_up(Node, UUID) ->
-    case ecallmgr_fs_nodes:is_node_up(Node) andalso freeswitch:api(Node, uuid_exists, wh_util:to_list(UUID)) of
-        {'ok', IsUp} -> wh_util:is_true(IsUp);
-        timeout -> timer:sleep(100), is_node_up(Node, UUID);
-        _ -> false
-    end.
+    ecallmgr_fs_nodes:is_node_up(Node) andalso ecallmgr_fs_nodes:channel_exists(UUID).
 
 -spec fs_log/3 :: (atom(), nonempty_string(), list()) -> fs_api_ret().
 fs_log(Node, Format, Args) ->

@@ -14,8 +14,6 @@
 -export([start_link/1, start_link/2]).
 -export([show_channels/1]).
 -export([fs_node/1]).
--export([uuid_exists/2]).
--export([uuid_dump/2]).
 -export([hostname/1]).
 -export([reloadacl/1]).
 -export([process_custom_data/2]).
@@ -64,14 +62,6 @@ start_link(Node) ->
 start_link(Node, Options) ->
     gen_server:start_link(?SERVER, [Node, Options], []).
 
--spec show_channels/1 :: (pid()) -> [proplist(),...] | [].
-show_channels(Srv) ->
-    Node = fs_node(Srv),
-    case freeswitch:api(Node, show, "channels") of
-        {ok, Rows} -> convert_rows(Node, Rows);
-        _ -> []
-    end.
-
 -spec hostname/1 :: (pid()) -> 'undefined' | ne_binary().
 hostname(Srv) ->
     case fs_node(Srv) of
@@ -81,13 +71,6 @@ hostname(Srv) ->
             Hostname
     end.
 
--spec reloadacl/1 ::(pid()) -> 'ok'.
-reloadacl(Srv) ->
-    Node = fs_node(Srv),
-    lager:debug("reloadacl command sent to FS ~s", [Node]),
-    {ok, <<"+OK acl reloaded\n">>} = freeswitch:api(Node, reloadacl),
-    ok.
-
 -spec fs_node/1 :: (pid()) -> atom().
 fs_node(Srv) ->
     case catch(gen_server:call(Srv, node, ?FS_TIMEOUT)) of
@@ -95,27 +78,19 @@ fs_node(Srv) ->
         Else -> Else
     end.
 
--spec uuid_exists/2 :: (pid(), ne_binary()) -> boolean() | 'error'.
-uuid_exists(Srv, UUID) ->
-    case catch(freeswitch:api(fs_node(Srv), uuid_exists, wh_util:to_list(UUID))) of
-        {'ok', Result} ->
-            lager:debug("result of uuid_exists(~s): ~s", [UUID, Result]),
-            wh_util:is_true(Result);
-        _Else ->
-            lager:debug("failed to get result from uuid_exists(~s): ~p", [UUID, _Else]),
-            error
-    end.
+-spec show_channels/1 :: (pid() | atom()) -> wh_json:json_objects().
+show_channels(Srv) when is_pid(Srv) ->
+    show_channels(fs_node(Srv));
+show_channels(Node) ->
+    show_channels_as_json(Node).
 
--spec uuid_dump/2 :: (pid(), ne_binary()) -> {'ok', proplist()} | 'error'.
-uuid_dump(Srv, UUID) ->
-    case catch(freeswitch:api(fs_node(Srv), uuid_dump, wh_util:to_list(UUID))) of
-        {'ok', Result} ->
-            Props = ecallmgr_util:eventstr_to_proplist(Result),
-            {ok, Props};
-        _Else ->
-            lager:debug("failed to get result from uuid_dump(~s): ~p", [UUID, _Else]),
-            error
-    end.
+-spec reloadacl/1 ::(pid() | atom()) -> 'ok'.
+reloadacl(Srv) when is_pid(Srv) ->
+    reloadacl(fs_node(Srv));
+reloadacl(Node) ->
+    lager:debug("reloadacl command sent to FS ~s", [Node]),
+    {ok, <<"+OK acl reloaded\n">>} = freeswitch:api(Node, reloadacl),
+    ok.
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -238,19 +213,19 @@ process_event(UUID, Data, Node) ->
     process_event(EventName, UUID, Data, Node).
 
 process_event(<<"CUSTOM">>, _, Data, Node) ->
-    spawn_link(?MODULE, process_custom_data, [Data, Node]),
+    spawn(?MODULE, process_custom_data, [Data, Node]),
     ok;
-process_event(<<"CHANNEL_CREATE">>, UUID, Data, _) ->
+process_event(<<"CHANNEL_CREATE">>, UUID, Data, Node) ->
     lager:debug("received channel create event: ~s", [UUID]),
-    ecallmgr_call_control:add_leg(Data);
-process_event(<<"CHANNEL_DESTROY">>, UUID, Data, _) ->
+    spawn(ecallmgr_fs_nodes, new_channel, [Data, Node]),
+    ok;
+process_event(<<"CHANNEL_DESTROY">>, UUID, Data, Node) ->
     case props:get_value(<<"Channel-State">>, Data) of
         <<"CS_NEW">> -> 
             lager:debug("ignoring channel destroy because of CS_NEW: ~s", [UUID]);
         <<"CS_DESTROY">> ->
             lager:debug("received channel destroyed: ~s", [UUID]),
-            _ = ecallmgr_call_control:rm_leg(Data),
-            ecallmgr_call_events:publish_channel_destroy(Data)
+            spawn(ecallmgr_fs_nodes, destroy_channel, [Data, Node])
     end;
 process_event(<<"CHANNEL_HANGUP_COMPLETE">>, UUID, Data, _) ->
     spawn(ecallmgr_call_cdr, new_cdr, [UUID, Data]),
@@ -425,39 +400,6 @@ was_not_successful_cmd({ok, _, _}) ->
 was_not_successful_cmd(_) ->
     true.
 
--spec convert_rows/2 :: (atom(), binary()) -> [proplist(),...] | [].
-convert_rows(Node, <<"\n0 total.\n">>) ->
-    lager:debug("no channels up on node ~s", [Node]),
-    [];
-convert_rows(Node, RowsBin) ->
-    [_|Rows] = binary:split(RowsBin, <<"\n">>, [global]),
-    return_rows(Node, Rows, []).
-
--spec return_rows/3 :: (atom(), [binary(),...] | [], [proplist(),...] | []) -> [proplist(),...] | [].
-return_rows(Node, [<<>>|Rs], Acc) ->
-    return_rows(Node, Rs, Acc);
-return_rows(Node, [R|Rs], Acc) ->
-    case binary:split(R, <<",">>) of
-        [_Total] ->
-            lager:debug("found ~s calls on node ~s", [_Total, Node]),
-            return_rows(Node, Rs, Acc);
-        [UUID|_] ->
-            case freeswitch:api(Node, uuid_dump, wh_util:to_list(UUID)) of
-                {'ok', Result} ->
-                    Props = ecallmgr_util:eventstr_to_proplist(Result),
-                    ApplicationName = props:get_value(<<"variable_current_application">>, Props),
-                    JObj = wh_json:from_list([{<<"Switch-Hostname">>, Node}
-                                              ,{<<"Answer-State">>, props:get_value(<<"Answer-State">>, Props)}
-                                              | ecallmgr_call_events:create_event_props(<<>>, ApplicationName, Props)
-                                             ]),
-                    return_rows(Node, Rs, [JObj|Acc]);
-                Error ->
-                    lager:debug("failed to get result from uuid_dump(~s): ~p", [UUID, Error]),
-                    return_rows(Node, Rs, Acc)
-            end
-    end;
-return_rows(_Node, [], Acc) -> Acc.
-
 -spec print_api_responses/1 :: (cmd_results()) -> 'ok'.
 print_api_responses(Res) ->
     lager:debug("start cmd results:"),
@@ -471,3 +413,19 @@ print_api_response({error, {Cmd, Args}, Res}) ->
     lager:debug("error: ~s(~s) => ~s", [Cmd, Args, Res]);
 print_api_response({timeout, {Cmd, Arg}}) ->
     lager:debug("timeout: ~s(~s)", [Cmd, Arg]).
+
+-spec show_channels_as_json/1 :: (atom()) -> wh_json:json_objects().
+show_channels_as_json(Node) ->
+    case freeswitch:api(Node, show, "channels as delim |||") of
+        {ok, Lines} ->
+            case binary:split(Lines, <<"\n">>, [global]) of
+                [<<>>|_] -> [];
+                [Header|Rest] ->
+                    Keys = binary:split(Header, <<"|||">>, [global]),
+                    [lists:zip(Keys, Values)
+                     || Line <- Rest
+                            ,((Values = binary:split(Line, <<"|||">>, [global])) =/= [Line]) 
+                    ]
+            end;
+        {error, _} -> []
+    end.

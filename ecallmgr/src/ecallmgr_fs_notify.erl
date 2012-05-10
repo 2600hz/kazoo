@@ -97,8 +97,8 @@ mwi_update(JObj, _Props) ->
     Username = wh_json:get_value(<<"Notify-User">>, JObj),
     Realm  = wh_json:get_value(<<"Notify-Realm">>, JObj),
     case get_endpoint(Username, Realm) of
-        {error, timeout} ->
-            lager:debug("MWI update timed out fetching contact for ~s@~s", [Username, Realm]);
+        {error, _R} ->
+            lager:debug("MWI update error ~s  while fetching contact for ~s@~s", [_R, Username, Realm]);
         Endpoint ->
             NewMessages = wh_json:get_integer_value(<<"Messages-New">>, JObj, 0),
             Body = io_lib:format(?MWI_BODY, [case NewMessages of 0 -> "no"; _ -> "yes" end
