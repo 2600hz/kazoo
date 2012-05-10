@@ -103,7 +103,7 @@ hash_contact(Contact) ->
 lookup_auth_user(Name, Realm) ->
     lager:debug("looking up auth creds for ~s@~s", [Name, Realm]),
     CacheKey = cache_user_key(Realm, Name),
-    case wh_cache:fetch_local(?REGISTRAR_CACHE, CacheKey) of
+    case wh_cache:peek_local(?REGISTRAR_CACHE, CacheKey) of
         {'error', not_found} ->
             case get_auth_user(Name, Realm) of
                 {'ok', UserJObj}=OK ->
@@ -111,7 +111,7 @@ lookup_auth_user(Name, Realm) ->
                         true -> 
                             CacheTTL = whapps_config:get_integer(?CONFIG_CAT, <<"credentials_cache_ttl">>, 300),
                             lager:debug("storing ~s@~s in cache", [Name, Realm]),
-                            wh_cache:store_local(?REGISTRAR_CACHE, CacheKey, UserJObj, CacheTTL),
+                            wh_cache:store_local(?REGISTRAR_CACHE, CacheKey, UserJObj, CacheTTL, fun reg_util:reg_removed_from_cache/3),
                             OK;
                         false -> 
                             {error, not_found}
