@@ -214,9 +214,8 @@ reg_removed_from_cache(_, _, _) ->
 -spec search_for_registration/2 :: (ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} |
                                                                  {'error', 'timeout'}.
 search_for_registration(User, Realm) ->
-    {ok, Srv} = registrar_sup:listener_proc(),
-    Q = gen_listener:queue_name(Srv),
-    gen_server:cast(Srv, {add_consumer, User, Realm, self()}),
+    Q = gen_listener:queue_name(registrar_listener),
+    gen_server:cast(registrar_listener, {add_consumer, User, Realm, self()}),
     Req = [{<<"Username">>, User}
            ,{<<"Realm">>, Realm}
            ,{<<"Fields">>, [<<"Username">>, <<"Realm">>]}
@@ -228,5 +227,5 @@ search_for_registration(User, Realm) ->
              after
                  2000 -> {error, timeout}
              end,
-    gen_server:cast(Srv, {remove_consumer, self()}),
+    gen_server:cast(registrar_listener, {remove_consumer, self()}),
     Result.

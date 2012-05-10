@@ -245,9 +245,8 @@ handle_cast({flush}, Cache) ->
                   [{'=/=', '$3', undefined}],
                   [{{'$3', '$1', '$2'}}]}
                 ],
-    Flushed = ets:select(Cache, MatchSpec),
     [spawn(fun() -> Callback(K, V, flush) end)
-     || {Callback, K, V} <- Flushed
+     || {Callback, K, V} <- ets:select(Cache, MatchSpec)
     ],
     ets:delete_all_objects(Cache),
     {noreply, Cache, hibernate};
@@ -272,9 +271,8 @@ handle_info(expire, Cache) ->
                   {'>', {const, Now}, {'+', '$4', '$3'}}],
                  [{{'$5', '$1', '$2'}}]}
                 ],
-    Expired = ets:select(Cache, FindSpec),
     [spawn(fun() -> Callback(K, V, expire) end)
-     || {Callback, K, V} <- Expired
+     || {Callback, K, V} <- ets:select(Cache, FindSpec)
             ,is_function(Callback)
     ],
     DeleteSpec = [{#cache_obj{key = '_', value = '_', expires = '$3',

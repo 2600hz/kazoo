@@ -20,8 +20,8 @@
                               (N, T) -> {N, {N, start_link, []}, permanent, 5000, T, [N]} end(Name, Type)).
 -define(CHILDREN, [{wh_alert, worker}
                    ,{?ECALLMGR_UTIL_CACHE, cache}
+                   ,{?ECALLMGR_REG_CACHE, cache}
                    ,{ecallmgr_shout_sup, supervisor}
-                   ,{ecallmgr_registrar, worker}
                    ,{ecallmgr_media_registry, worker}
                   ]).
 

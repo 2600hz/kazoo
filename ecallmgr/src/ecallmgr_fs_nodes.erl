@@ -95,6 +95,7 @@ init([]) ->
     put(callid, ?LOG_SYSTEM_ID),
     lager:debug("starting new fs handler"),
     Pid = spawn(fun() -> start_preconfigured_servers() end),
+    ets:new(sip_subscriptions, [set, public, named_table, {keypos, #sip_subscription.key}]),
     {ok, #state{preconfigured_lookup=Pid}}.
 
 %%--------------------------------------------------------------------

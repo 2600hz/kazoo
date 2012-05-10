@@ -18,7 +18,7 @@
 -export([uuid_dump/2]).
 -export([hostname/1]).
 -export([reloadacl/1]).
--export([process_custom_data/1]).
+-export([process_custom_data/2]).
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -139,7 +139,7 @@ init([Node, Options]) ->
     case freeswitch:register_event_handler(Node) of
         ok ->
             lager:debug("event handler registered on node ~s", [Node]),            
-            ok = freeswitch:event(Node, ['CHANNEL_CREATE', 'CHANNEL_DESTROY', 'HEARTBEAT', 'CHANNEL_HANGUP_COMPLETE'
+            ok = freeswitch:event(Node, ['CHANNEL_CREATE', 'CHANNEL_DESTROY', 'CHANNEL_HANGUP_COMPLETE'
                                          ,'CUSTOM', 'sofia::register', 'sofia::transfer'
                                         ]),
             lager:debug("bound to switch events on node ~s", [Node]),
@@ -195,8 +195,8 @@ handle_cast(_Req, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({event, [UUID | Data]}, State) ->
-    catch process_event(UUID, Data),
+handle_info({event, [UUID | Data]}, #state{node=Node}=State) ->
+    catch process_event(UUID, Data, Node),
     {noreply, State, hibernate};
 handle_info(_Msg, State) ->
     {noreply, State}.
@@ -229,21 +229,21 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec process_event/2 :: ('undefined' | ne_binary(), proplist()) -> 'ok'.
--spec process_event/3 :: (ne_binary(), 'undefined' | ne_binary(), proplist()) -> 'ok'.
+-spec process_event/3 :: ('undefined' | ne_binary(), proplist(), atom()) -> 'ok'.
+-spec process_event/4 :: (ne_binary(), 'undefined' | ne_binary(), proplist(), atom()) -> 'ok'.
 
-process_event(UUID, Data) ->
+process_event(UUID, Data, Node) ->
     EventName = props:get_value(<<"Event-Name">>, Data),
-    gproc:send({p, l, {call_event, EventName}}, {event, [UUID | Data]}),
-    process_event(EventName, UUID, Data).
+    gproc:send({p, l, {call_event, Node, EventName}}, {event, [UUID | Data]}),
+    process_event(EventName, UUID, Data, Node).
 
-process_event(<<"CUSTOM">>, _, Data) ->
-    spawn_link(?MODULE, process_custom_data, [Data]),
+process_event(<<"CUSTOM">>, _, Data, Node) ->
+    spawn_link(?MODULE, process_custom_data, [Data, Node]),
     ok;
-process_event(<<"CHANNEL_CREATE">>, UUID, Data) ->
+process_event(<<"CHANNEL_CREATE">>, UUID, Data, _) ->
     lager:debug("received channel create event: ~s", [UUID]),
     ecallmgr_call_control:add_leg(Data);
-process_event(<<"CHANNEL_DESTROY">>, UUID, Data) ->
+process_event(<<"CHANNEL_DESTROY">>, UUID, Data, _) ->
     case props:get_value(<<"Channel-State">>, Data) of
         <<"CS_NEW">> -> 
             lager:debug("ignoring channel destroy because of CS_NEW: ~s", [UUID]);
@@ -252,19 +252,20 @@ process_event(<<"CHANNEL_DESTROY">>, UUID, Data) ->
             _ = ecallmgr_call_control:rm_leg(Data),
             ecallmgr_call_events:publish_channel_destroy(Data)
     end;
-process_event(<<"CHANNEL_HANGUP_COMPLETE">>, UUID, Data) ->
+process_event(<<"CHANNEL_HANGUP_COMPLETE">>, UUID, Data, _) ->
     spawn(ecallmgr_call_cdr, new_cdr, [UUID, Data]),
     ok;
-process_event(_, _, _) ->
+process_event(_, _, _, _) ->
     ok.
 
--spec process_custom_data/1 :: (proplist()) -> 'ok'.
-process_custom_data(Data) ->
+-spec process_custom_data/2 :: (proplist(), atom()) -> 'ok'.
+process_custom_data(Data, Node) ->
     put(callid, props:get_value(<<"call-id">>, Data)),
     Subclass = props:get_value(<<"Event-Subclass">>, Data),
     case Subclass of
         <<"sofia::register">> ->
             lager:debug("received registration event"),
+            ecallmgr_registrar:reg_success(Data, Node),
             publish_register_event(Data);
         <<"sofia::transfer">> ->
             lager:debug("received transfer event"),

@@ -49,12 +49,12 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    gen_listener:start_link(?MODULE, [{responders, ?RESPONDERS}
-                                      ,{bindings, ?BINDINGS}
-                                      ,{queue_name, ?REG_QUEUE_NAME}
-                                      ,{queue_options, ?REG_QUEUE_OPTIONS}
-                                      ,{consume_options, ?REG_CONSUME_OPTIONS}
-                                     ], []).
+    gen_listener:start_link({local, ?SERVER}, ?MODULE, [{responders, ?RESPONDERS}
+                                                        ,{bindings, ?BINDINGS}
+                                                        ,{queue_name, ?REG_QUEUE_NAME}
+                                                        ,{queue_options, ?REG_QUEUE_OPTIONS}
+                                                        ,{consume_options, ?REG_CONSUME_OPTIONS}
+                                                       ], []).
 
 -spec stop/1 :: (pid()) -> 'ok'.
 stop(Srv) ->
