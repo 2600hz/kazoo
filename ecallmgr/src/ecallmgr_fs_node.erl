@@ -76,9 +76,10 @@ hostname(Srv) ->
             Hostname
     end.
 
--spec reloadacl/1 ::(pid()) -> 'ok'.
-reloadacl(Srv) ->
-    Node = fs_node(Srv),
+-spec reloadacl/1 ::(atom() | pid()) -> 'ok'.
+reloadacl(Srv) when is_pid(Srv) ->
+    reloadacl(fs_node(Srv));
+reloadacl(Node) ->
     case freeswitch:bgapi(Node, reloadacl, "") of
         {ok, Job} ->
             lager:debug("reloadacl command sent to ~s: JobID: ~s", [Node, Job]);
@@ -100,14 +101,6 @@ show_channels(Srv) when is_pid(Srv) ->
     show_channels(fs_node(Srv));
 show_channels(Node) ->
     show_channels_as_json(Node).
-
--spec reloadacl/1 ::(pid() | atom()) -> 'ok'.
-reloadacl(Srv) when is_pid(Srv) ->
-    reloadacl(fs_node(Srv));
-reloadacl(Node) ->
-    lager:debug("reloadacl command sent to FS ~s", [Node]),
-    {ok, <<"+OK acl reloaded\n">>} = freeswitch:api(Node, reloadacl),
-    ok.
 
 %%%===================================================================
 %%% gen_server callbacks
