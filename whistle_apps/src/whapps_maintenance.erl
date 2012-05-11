@@ -140,12 +140,12 @@ refresh(?WH_SIP_DB) ->
              ,whapps_util:get_view_json(registrar, <<"auth.json">>)
             ],
     whapps_util:update_views(?WH_SIP_DB, Views, true),
-    case couch_mgr:all_docs(?WH_SIP_DB, [{<<"include_docs">>, true}]) of
-        {ok, JObjs} ->
-            [cleanup_aggregated_device(wh_json:get_value(<<"doc">>, JObj)) || JObj <- JObjs];
-        _ ->
-            ok
-    end,
+    _ = case couch_mgr:all_docs(?WH_SIP_DB, [{<<"include_docs">>, true}]) of
+            {ok, JObjs} ->
+                [cleanup_aggregated_device(wh_json:get_value(<<"doc">>, JObj)) || JObj <- JObjs];
+            _ ->
+                ok
+        end,
     wapi_switch:publish_reloadacl();
 refresh(?WH_SCHEMA_DB) ->
     couch_mgr:db_create(?WH_SCHEMA_DB),
@@ -200,21 +200,21 @@ refresh(Account, Views) ->
         {ok, JObj} ->
             _ = couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, JObj),
             AccountRealm = crossbar_util:get_account_realm(AccountDb, AccountId),
-            case couch_mgr:get_results(AccountDb, ?DEVICES_CB_LIST, [{<<"include_docs">>, true}]) of
-                {ok, Devices} ->
-                    _ = [whapps_util:add_aggregate_device(AccountDb, wh_json:get_value(<<"doc">>, Device))
-                         || Device <- Devices
-                                ,wh_json:get_ne_value([<<"doc">>, <<"sip">>, <<"realm">>], Device, AccountRealm) =/= AccountRealm
-                                orelse wh_json:get_ne_value([<<"doc">>, <<"sip">>, <<"ip">>], Device, undefined) =/= undefined
-                        ],
-                    _ = [whapps_util:rm_aggregate_device(AccountDb, wh_json:get_value(<<"doc">>, Device))
-                         || Device <- Devices
-                                ,wh_json:get_ne_value([<<"doc">>, <<"sip">>, <<"realm">>], Device, AccountRealm) =:= AccountRealm
-                                orelse wh_json:get_ne_value([<<"doc">>, <<"sip">>, <<"ip">>], Device, undefined) =:= undefined
-                        ];
-                {error, _} ->
-                    ok
-            end,
+            _ = case couch_mgr:get_results(AccountDb, ?DEVICES_CB_LIST, [{<<"include_docs">>, true}]) of
+                    {ok, Devices} ->
+                        _ = [whapps_util:add_aggregate_device(AccountDb, wh_json:get_value(<<"doc">>, Device))
+                             || Device <- Devices
+                                    ,wh_json:get_ne_value([<<"doc">>, <<"sip">>, <<"realm">>], Device, AccountRealm) =/= AccountRealm
+                                    orelse wh_json:get_ne_value([<<"doc">>, <<"sip">>, <<"ip">>], Device, undefined) =/= undefined
+                            ],
+                        _ = [whapps_util:rm_aggregate_device(AccountDb, wh_json:get_value(<<"doc">>, Device))
+                             || Device <- Devices
+                                    ,wh_json:get_ne_value([<<"doc">>, <<"sip">>, <<"realm">>], Device, AccountRealm) =:= AccountRealm
+                                    orelse wh_json:get_ne_value([<<"doc">>, <<"sip">>, <<"ip">>], Device, undefined) =:= undefined
+                            ];
+                    {error, _} ->
+                        ok
+                end,
             whapps_util:update_views(AccountDb, Views, true)
     end.
 
@@ -343,9 +343,9 @@ migrate_attachment(AccountDb, ViewJObj) ->
                     lager:debug("media doc ~s/~s has no attachments, removing", [AccountDb, Id]),
                     couch_mgr:save_doc(AccountDb, wh_json:set_value(<<"pvt_deleted">>, true, JObj1));
                 Attachments ->
-                    [catch migrate_attachment(AccountDb, JObj1, Attachment, wh_json:get_value(Attachment, Attachments))
-                     || Attachment <- wh_json:get_keys(Attachments)
-                    ],
+                    _ = [catch migrate_attachment(AccountDb, JObj1, Attachment, wh_json:get_value(Attachment, Attachments))
+                         || Attachment <- wh_json:get_keys(Attachments)
+                        ],
                     ok
             end
     end,
