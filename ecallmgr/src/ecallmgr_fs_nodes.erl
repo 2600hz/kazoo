@@ -23,6 +23,7 @@
 
 -export([show_channels/0]).
 -export([new_channel/2]).
+-export([channel_match_presence/1]).
 -export([channel_exists/1]).
 -export([channel_import_moh/1]).
 -export([channel_set_import_moh/2]).
@@ -136,6 +137,19 @@ channel_import_moh(UUID) ->
     catch
         error:badarg -> false
     end.
+
+-spec channel_match_presence/1 :: (ne_binary()) -> [ne_binary(),...] | [].
+channel_match_presence(PresenceId) ->
+    MatchSpec = [{#channel{uuid = '$1', destination = '_', direction = '_'
+                           ,account_id = '_', authorizing_id = '_'
+                           ,authorizing_type = '_', owner_id = '_'
+                           ,presence_id = '$2', realm = '_', username = '_'
+                           ,import_moh = '_', node = '$3', timestamp = '_'
+                          },
+                  [{'=:=', '$2', {const, PresenceId}}],
+                  [{{'$1', '$3'}}]}
+                ],  
+    ets:select(ecallmgr_channels, MatchSpec).
 
 -spec channel_set_import_moh/2 :: (ne_binary(), boolean()) -> 'ok'.                                                          
 channel_set_import_moh(UUID, Import) ->

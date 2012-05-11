@@ -26,7 +26,7 @@
         ]).
 
 -record(state, {node :: atom()
-               ,options :: proplist()}).
+                        ,options :: proplist()}).
 
 -define(SERVER, ?MODULE).
 -define(MWI_BODY, "Messages-Waiting: ~s\r\nMessage-Account: sip:~s\r\nVoice-Message: ~b/~b (~b/~b)\r\n\r\n").
@@ -71,14 +71,14 @@ presence_update(JObj, Props) ->
     PresenceId = wh_json:get_value(<<"Presence-ID">>, JObj),
     Event = case wh_json:get_value(<<"State">>, JObj) of
                 undefined ->
-                    Channels = ecallmgr_fs_query:channel_query(wh_json:from_list([{<<"Presence-ID">>, PresenceId}])),
-                    case try_find_ringing_channel(Channels) of
-                        undefined -> 
+                    case ecallmgr_fs_nodes:channel_match_presence(PresenceId) of
+                        [] ->
                             create_presence_in(PresenceId, "Available", undefined, wh_json:new());
-                        Channel -> 
-                            State = wh_json:get_string_value(<<"Answer-State">>, Channel),
-                            Status = case State of "answered" -> "answered"; _Else -> "CS_ROUTING" end, 
-                            create_presence_in(PresenceId, Status, State, Channel)
+                        [{CallId, _}|_] ->
+                            Channel = wh_json:set_values([{<<"Channel-State">>, <<"CS_EXECUTE">>}
+                                                          ,{<<"Call-ID">>, CallId}
+                                                         ], wh_json:new()),
+                            create_presence_in(PresenceId, "answered", "confirmed", Channel)
                     end;
                 <<"early">> -> create_presence_in(PresenceId, "CS_ROUTING", "early", JObj);
                 <<"confirmed">> -> create_presence_in(PresenceId, "CS_ROUTING", "confirmed", JObj);
@@ -87,7 +87,7 @@ presence_update(JObj, Props) ->
                 _ -> create_presence_in(PresenceId, "Available", undefined, wh_json:new())
             end,
     Node = props:get_value(node, Props),
-    lager:debug("sending presence in event to ~p~n", [Node]),
+    lager:debug("sending presence in event to ~p", [Node]),
     ok = freeswitch:sendevent(Node, 'PRESENCE_IN', [{"Distributed-From", wh_util:to_list(Node)} | Event]).
 
 -spec mwi_update/2 :: (wh_json:json_object(), proplist()) -> no_return().
@@ -98,12 +98,12 @@ mwi_update(JObj, _Props) ->
     Realm  = wh_json:get_value(<<"Notify-Realm">>, JObj),
     case get_endpoint(Username, Realm) of
         {error, _R} ->
-            lager:debug("MWI update error ~s  while fetching contact for ~s@~s", [_R, Username, Realm]);
+            lager:debug("MWI update error ~s while fetching contact for ~s@~s", [_R, Username, Realm]);
         Endpoint ->
             NewMessages = wh_json:get_integer_value(<<"Messages-New">>, JObj, 0),
             Body = io_lib:format(?MWI_BODY, [case NewMessages of 0 -> "no"; _ -> "yes" end
                                              ,<<Username/binary, "@", Realm/binary>>
-                                             ,NewMessages
+                                                 ,NewMessages
                                              ,wh_json:get_integer_value(<<"Messages-Saved">>, JObj, 0)
                                              ,wh_json:get_integer_value(<<"Messages-Urgent">>, JObj, 0)
                                              ,wh_json:get_integer_value(<<"Messages-Urgent-Saved">>, JObj, 0)
@@ -119,7 +119,7 @@ mwi_update(JObj, _Props) ->
                       ],
             {ok, Node} = ecallmgr_registrar:endpoint_node(Realm, Username),
             Resp = freeswitch:sendevent(Node, 'NOTIFY', Headers),
-            lager:debug("sent MWI update to ~s for '~s@~s': ~p", [Username, Realm, Node, Resp])
+            lager:debug("sent MWI update to '~s@~s' via ~s: ~p", [Username, Realm, Node, Resp])
     end.
 
 %%%===================================================================
@@ -197,10 +197,10 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info({event, [_ | Props]}, #state{node=Node}=State) ->
     case props:get_value(<<"Event-Name">>, Props) of
-        <<"PRESENCE_PROBE">> -> 
+        <<"PRESENCE_PROBE">> ->
             To = props:get_value(<<"to">>, Props, <<"noname@nodomain">>),
             From = props:get_value(<<"from">>, Props, <<"noname@nodomain">>),
-            Key = wh_util:to_hex_binary(crypto:md5(<<To/binary, "|", From/binary>>)), 
+            Key = wh_util:to_hex_binary(crypto:md5(<<To/binary, "|", From/binary>>)),
             Expires = ecallmgr_util:get_expires(Props),
             lager:debug("sip subscription from '~s' subscribing to '~s' via node '~s' for ~ps", [From, To, Node, Expires]),
             ets:insert(sip_subscriptions, #sip_subscription{key=Key
@@ -210,7 +210,7 @@ handle_info({event, [_ | Props]}, #state{node=Node}=State) ->
                                                             ,expires=Expires
                                                            }),
             spawn_link(?MODULE, publish_presence_event, [<<"PRESENCE_PROBE">>, Props, Node]),
-            {noreply, State, hibernate};                     
+            {noreply, State, hibernate};
         <<"PRESENCE_IN">> ->
             case props:get_value(<<"Distributed-From">>, Props) of
                 undefined ->
@@ -296,33 +296,17 @@ get_endpoint(Username, Realm) ->
             E
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Returns the first channel in a list of channels with the answer
-%% state, ringing or the last channel if no prior was ringing.  If
-%% the list is empty it returns undefined
-%% @end
-%%--------------------------------------------------------------------
--spec try_find_ringing_channel/1 :: (wh_json:json_objects()) -> undefined | wh_json:json_object().
-try_find_ringing_channel([]) -> undefined;
-try_find_ringing_channel([Channel]) -> Channel; 
-try_find_ringing_channel([Channel|Channels]) -> 
-    case wh_json:get_value(<<"Answer-State">>, Channel) of
-        <<"ringing">> -> Channel;
-        _Else -> try_find_ringing_channel(Channels)
-    end.
-
 -spec create_presence_in/4 :: (ne_binary(), undefined | string(), undefined | string(), wh_json:json_object()) -> proplist().
 create_presence_in(PresenceId, Status, State, JObj) ->
+    lager:debug("creating presence in event for '~s' with status ~s and state ~s", [PresenceId, Status, State]),
     [KV || {_, V}=KV <- [{"unique-id", wh_json:get_string_value(<<"Call-ID">>, JObj)}
                          ,{"channel-state", wh_json:get_string_value(<<"Channel-State">>, JObj, State)}
-                         ,{"answer-state", State}
+                         ,{"answer-state", wh_util:to_list(State)}
                          ,{"proto", "any"}
                          ,{"login", "src/mod/event_handlers/mod_erlang_event/handle_msg.c"}
                          ,{"from", wh_util:to_list(PresenceId)}
                          ,{"rpid", "unknown"}
-                         ,{"status", Status}
+                         ,{"status", wh_util:to_list(Status)}
                          ,{"event_type", "presence"}
                          ,{"alt_event_type", "dialog"}
                          ,{"presence-call-direction", "outbound"}
@@ -366,14 +350,14 @@ relay_presence(EventName, PresenceId, Props, Node) ->
                  || {K, V} <- lists:foldr(fun(Header, Prop) ->
                                                   proplists:delete(Header, Prop)
                                           end, Props, ?FS_DEFAULT_HDRS)
-                        ]
+                ]
               ],
     [begin
          lager:debug("relay presence event from '~s' to '~s'", [Node, Switch]),
          freeswitch:sendevent(Switch, EventName, Headers)
      end
      || Switch <- sets:to_list(sets:del_element(Node, sets:from_list(Subs)))
-    ].    
+    ].
 
 -spec process_message_query_event/2 :: (proplist(), atom()) -> 'ok'.
 process_message_query_event(Data, Node) ->
