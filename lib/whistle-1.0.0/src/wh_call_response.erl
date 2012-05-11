@@ -17,10 +17,12 @@
 %% played as part of the error.
 %% @end
 %%--------------------------------------------------------------------
--spec send/3 :: (ne_binary(), ne_binary(), 'undefined' | ne_binary()) -> {'ok', ne_binary()} | {'error', 'no_response'}.
--spec send/4 :: (ne_binary(), ne_binary(), 'undefined' | ne_binary(), 'undefined' | binary()) ->  {'ok', ne_binary()} | {'error', 'no_response'}.
--spec send/5 :: (ne_binary(), ne_binary(), 'undefined' | ne_binary(), 'undefined' | binary(), 'undefined' | binary()) 
-                ->  {'ok', ne_binary()} | {'error', 'no_response'}.
+-spec send/3 :: (ne_binary(), ne_binary(), 'undefined' | ne_binary()) -> {'ok', ne_binary()} |
+                                                                         {'error', 'no_response'}.
+-spec send/4 :: (ne_binary(), ne_binary(), 'undefined' | ne_binary(), 'undefined' | binary()) ->  {'ok', ne_binary()} |
+                                                                                                  {'error', 'no_response'}.
+-spec send/5 :: (ne_binary(), ne_binary(), 'undefined' | ne_binary(), 'undefined' | binary(), 'undefined' | binary()) ->  {'ok', ne_binary()} |
+                                                                                                                          {'error', 'no_response'}.
 
 send(CallId, CtrlQ, Code) ->
     send(CallId, CtrlQ, Code, <<>>).
