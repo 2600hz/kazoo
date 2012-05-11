@@ -93,7 +93,7 @@ behaviour_info(_) ->
          ,module_state = 'undefined' :: term()
          ,module_timeout_ref = 'undefined' :: 'undefined' | reference() % when the client sets a timeout, gen_listener calls shouldn't negate it, only calls that pass through to the client
          ,active_responders = [] :: [pid(),...] | [] %% list of pids processing requests
-         ,other_queues = [] :: [{ne_binary(), bindings()},...] | [] %% {QueueName, Binding()}
+         ,other_queues = [] :: [{ne_binary(), {proplist(), proplist()}},...] | [] %% {QueueName, {proplist(), proplist()}}
          ,last_call_event = [] :: proplist()
          }).
 
@@ -369,12 +369,12 @@ handle_info({amqp_channel_event, restarted}, #state{params=Params, bindings=Bind
     case start_amqp(Params) of
         {ok, Q} ->
             lager:debug("lost our channel, but its back up; rebinding"),
-            [add_binding(self(), Type, BindProps) 
-             || {Type, BindProps} <- Bindings
-            ],
-            [gen_server:cast(self(), {add_queue, Name, Props, Bind})
-             || {Name, {Props, Bind}} <- OtherQueues
-            ],
+            _ = [add_binding(self(), Type, BindProps) 
+                 || {Type, BindProps} <- Bindings
+                ],
+            _ = [gen_server:cast(self(), {add_queue, Name, Props, Bind})
+                 || {Name, {Props, Bind}} <- OtherQueues
+                ],
             _ = erlang:send_after(?TIMEOUT_RETRY_CONN, self(), is_consuming),
             {noreply, State#state{queue=Q, is_consuming=false, bindings=[], other_queues=[]}, hibernate};
         {error, _R} ->
@@ -391,12 +391,12 @@ handle_info({'$maybe_connect_amqp', Timeout}, #state{bindings=Bindings, params=P
     case start_amqp(Params) of
         {ok, Q} ->            
             lager:info("reconnected to AMQP channel, rebinding"),
-            [add_binding(self(), Type, BindProps) 
-             || {Type, BindProps} <- Bindings
-            ],
-            [gen_server:cast(self(), {add_queue, Name, Props, Bind})
-             || {Name, {Bind, Props}} <- OtherQueues
-            ],
+            _ = [add_binding(self(), Type, BindProps) 
+                 || {Type, BindProps} <- Bindings
+                ],
+            _ = [gen_server:cast(self(), {add_queue, Name, Props, Bind})
+                 || {Name, {Bind, Props}} <- OtherQueues
+                ],
             _ = erlang:send_after(?TIMEOUT_RETRY_CONN, self(), is_consuming),
             {noreply, State#state{queue=Q, is_consuming=false, bindings=[], other_queues=[]}, hibernate};
         {error, _} ->
@@ -615,7 +615,6 @@ next_timeout(Timeout) when Timeout < ?START_TIMEOUT ->
     ?START_TIMEOUT;
 next_timeout(Timeout) ->
     Timeout * 2.
-
 
 -spec add_other_queue/4 :: (binary(), proplist(), proplist(), #state{}) -> {ne_binary(), #state{}}.
 add_other_queue(<<>>, QueueProps, Bindings, #state{other_queues=OtherQueues}=State) ->
