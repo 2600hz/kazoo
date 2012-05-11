@@ -70,7 +70,7 @@ send(Call, Uri, Method, ReqHdrs, ReqBody) ->
 
 handle_resp(Call, Hdrs, RespBody) ->
     CT = props:get_value("Content-Type", Hdrs),
-    try wht_translator:exec(Call, xmerl_scan:string(wh_util:to_list(RespBody)), CT) of
+    try wht_translator:exec(Call, wh_util:to_list(RespBody), CT) of
         {stop, Call1} ->
             lager:debug("translator says stop"),
             cf_exe:stop(Call1);

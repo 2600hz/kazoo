@@ -14,11 +14,14 @@
 -include("wht.hrl").
 -include_lib("xmerl/include/xmerl.hrl").
 
--spec does_recognize/1 :: (term()) -> boolean().
-does_recognize(#xmlElement{name='Response'}) ->
-    true;
-does_recognize(_) ->
-    false.
+-spec does_recognize/1 :: (string()) -> {boolean(), term()}.
+does_recognize(Cmds) ->
+    case xmerl_scan:string(Cmds) of
+        {#xmlElement{name='Response'}=Cs, _} -> {true, Cs};
+        _E ->
+            lager:debug("don't recognize: ~p", [_E]),
+            false
+    end.
 
 -spec exec/2 :: (whapps_call:call(), #xmlElement{}) -> exec_return().
 exec(Call, #xmlElement{name='Response', content=Elements}) ->
