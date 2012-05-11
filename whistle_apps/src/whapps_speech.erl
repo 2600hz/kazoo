@@ -16,7 +16,7 @@
 -spec create/1 :: (ne_binary()) -> {'ok', ne_binary(), ne_binary()} | {'error', atom()}.
 -spec create/2 :: (ne_binary(), ne_binary()) -> {'ok', ne_binary(), ne_binary()} | {'error', atom()}.
 -spec create/3 :: (ne_binary(), ne_binary(), ne_binary()) -> {'ok', ne_binary(), ne_binary()} | {'error', atom()}.
--spec create/4 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> {'ok', ne_binary(), ne_binary()} | {'error', atom()}.
+-spec create/4 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> ibrowse_ret().
 
 create(Text) ->
     create(Text, <<"female/en-US">>).

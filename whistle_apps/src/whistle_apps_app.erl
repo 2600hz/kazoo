@@ -12,7 +12,7 @@
 %% ===================================================================
 
 start(_StartType, _StartArgs) ->
-    wh_util:write_pid(?PIDFILE),
+    _ = wh_util:write_pid(?PIDFILE),
     whistle_apps:start_link().
 
 stop(_State) ->
