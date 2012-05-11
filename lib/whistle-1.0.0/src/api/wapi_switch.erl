@@ -39,12 +39,12 @@ reloadacl_v(JObj) ->
     reloadacl_v(wh_json:to_proplist(JObj)).
 
 -spec bind_q/2 :: (binary(), proplist()) -> 'ok'.
-bind_q(Queue, Props) ->
+bind_q(Queue, _Props) ->
     amqp_util:configuration_exchange(),
     amqp_util:bind_q_to_configuration(Queue, ?SWITCH_RELOADACL_KEY).
 
 -spec unbind_q/2 :: (ne_binary(), proplist()) -> 'ok'.
-unbind_q(Queue, Props) ->
+unbind_q(Queue, _Props) ->
     amqp_util:unbind_q_from_configuration(Queue, ?SWITCH_RELOADACL_KEY).
 
 -spec publish_reloadacl/0 :: () -> 'ok'.
