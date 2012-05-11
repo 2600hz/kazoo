@@ -96,6 +96,7 @@
 %% Ibrowse-related types
 -type ibrowse_ret() :: {'ok', string(), wh_proplist(), string() | binary()} |
                        {'error', 'req_timedout' | 'sel_conn_closed' | {'EXIT', term()}}.
+
 %% When using the stream_to option, ibrowse:send_req returns this tuple ReqID
 -type ibrowse_req_id() :: {pos_integer(), pos_integer(), pos_integer()}.
 
