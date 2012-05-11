@@ -143,7 +143,7 @@ get_fs_app(Node, UUID, JObj, <<"record_call">>) ->
                     RecArg = binary_to_list(list_to_binary([
                                                             UUID, <<" start ">>
                                                            ,Media, <<" ">>
-                                                           ,wh_json:get_string_value(<<"Time-Limit">>, JObj, "20")
+                                                           ,wh_json:get_string_value(<<"Time-Limit">>, JObj, "3600") % one hour
                                                            ])),
                     {<<"record_call">>, RecArg};
                 <<"stop">> ->
