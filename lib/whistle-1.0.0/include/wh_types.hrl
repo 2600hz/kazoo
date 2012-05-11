@@ -87,5 +87,9 @@
 
 -type server_ref() :: atom() | {atom(), atom()} | {global, term()} | {via, atom(), term()} | pid().
 
+%% Ibrowse-related types
+-type ibrowse_ret() :: {'ok', string(), wh_proplist(), string() | binary()} |
+                       {'error', 'req_timedout' | 'sel_conn_closed' | {'EXIT', term()}}.
+
 -define(WHISTLE_TYPES_INCLUDED, true).
 -endif.
