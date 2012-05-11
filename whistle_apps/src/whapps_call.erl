@@ -543,7 +543,7 @@ custom_channel_vars(#whapps_call{ccvs=CCVs}) ->
     CCVs.
 
 -spec set_custom_publish_function/2 :: (whapps_custom_publish(), whapps_call:call()) -> whapps_call:call().
-set_custom_publish_function(Fun, #whapps_call{}=Call) when is_function(Fun) ->
+set_custom_publish_function(Fun, #whapps_call{}=Call) when is_function(Fun, 2) ->
     Call#whapps_call{custom_publish_fun=Fun}.
 
 -spec clear_custom_publish_function/1 :: (whapps_call:call()) -> whapps_call:call().
