@@ -604,17 +604,18 @@ insert_command(#state{node=Node, callid=CallId, command_q=CommandQ, is_node_up=I
         <<"queue">> ->
             true = wapi_dialplan:queue_v(JObj),
             DefJObj = wh_json:from_list(wh_api:extract_defaults(JObj)),
-            lists:foreach(fun(CmdJObj) ->
-                                  case wh_json:is_empty(CmdJObj) of
-                                      true -> 'ok';
-                                      false ->
-                                          put(callid, CallId),
-                                          AppCmd = wh_json:merge_jobjs(DefJObj, CmdJObj),
-                                          true = wapi_dialplan:v(AppCmd),
-                                          execute_control_request(CmdJObj, State)
-                                  end
-                          end, wh_json:get_value(<<"Commands">>, JObj)),
-            CommandQ;
+            #state{command_q=CommandQ1} = lists:foldl(fun(CmdJObj, StateAcc) ->
+                                                              case wh_json:is_empty(CmdJObj) of
+                                                                  true -> 'ok';
+                                                                  false ->
+                                                                      put(callid, CallId),
+                                                                      AppCmd = wh_json:merge_jobjs(DefJObj, CmdJObj),
+                                                                      true = wapi_dialplan:v(AppCmd),
+                                                                      CmdQ = insert_command(StateAcc, now, AppCmd),
+                                                                      State#state{command_q=CmdQ}
+                                                              end
+                                                      end, State, wh_json:get_value(<<"Commands">>, JObj)),
+            CommandQ1;
         <<"noop">> ->
             execute_control_request(JObj, State),
             maybe_filter_queue(wh_json:get_value(<<"Filter-Applications">>, JObj), CommandQ);
@@ -632,36 +633,6 @@ insert_command(#state{command_q=CommandQ}, tail, JObj) ->
 insert_command(Q, Pos, _) ->
     lager:debug("received command for an unknown queue position: ~p", [Pos]),
     Q.
-
--spec maybe_filter_queue/2 :: ('undefined' | list(), queue()) -> queue().
-maybe_filter_queue(undefined, CommandQ) -> CommandQ;
-maybe_filter_queue([], CommandQ) -> CommandQ;
-maybe_filter_queue([AppName|T]=Apps, CommandQ) when is_binary(AppName) ->
-    case queue:out(CommandQ) of
-        {empty, _} -> CommandQ;
-        {{value, NextJObj}, CommandQ1} ->
-            case wh_json:get_value(<<"Application-Name">>, NextJObj) =:= AppName of
-                true -> maybe_filter_queue(Apps, CommandQ1); % popped command off queue
-                false -> maybe_filter_queue(T, CommandQ) % no match, move to next app in filter
-            end
-    end;
-maybe_filter_queue([AppJObj|T]=Apps, CommandQ) ->
-    case queue:out(CommandQ) of
-        {empty, _} -> CommandQ;
-        {{value, NextJObj}, CommandQ1} ->
-            case wh_json:get_value(<<"Application-Name">>, NextJObj) =:=
-                wh_json:get_value(<<"Application-Name">>, AppJObj) of
-                false -> maybe_filter_queue(T, CommandQ);
-                true ->
-                    Fields = wh_json:get_value(<<"Fields">>, AppJObj),
-                    case lists:all(fun({AppField, AppValue}) -> 
-                                           wh_json:get_value(AppField, NextJObj) =:= AppValue
-                                   end, wh_json:to_proplist(Fields)) of
-                        true -> maybe_filter_queue(Apps, CommandQ1); % same app and all fields matched
-                        false -> maybe_filter_queue(T, CommandQ)
-                    end
-            end
-    end.
 
 -spec insert_command_into_queue/3 :: (queue(), 'tail' | 'head', wh_json:json_object()) -> queue().
 insert_command_into_queue(Q, Position, JObj) ->
@@ -691,6 +662,42 @@ queue_insert_fun(tail) ->
     fun queue:in/2;
 queue_insert_fun(head) ->
     fun queue:in_r/2.
+
+%% See Noop documentation for Filter-Applications to get an idea of this function's purpose
+-spec maybe_filter_queue/2 :: ('undefined' | list(), queue()) -> queue().
+maybe_filter_queue(undefined, CommandQ) -> CommandQ;
+maybe_filter_queue([], CommandQ) -> CommandQ;
+maybe_filter_queue([AppName|T]=Apps, CommandQ) when is_binary(AppName) ->
+    case queue:out(CommandQ) of
+        {empty, _} -> CommandQ;
+        {{value, NextJObj}, CommandQ1} ->
+            case wh_json:get_value(<<"Application-Name">>, NextJObj) =:= AppName of
+                false -> maybe_filter_queue(T, CommandQ);
+                true ->
+                    lager:debug("app ~s matched next command, popping off", [AppName]),
+                    maybe_filter_queue(Apps, CommandQ1)
+            end
+    end;
+maybe_filter_queue([AppJObj|T]=Apps, CommandQ) ->
+    case queue:out(CommandQ) of
+        {empty, _} -> CommandQ;
+        {{value, NextJObj}, CommandQ1} ->
+            case (AppName = wh_json:get_value(<<"Application-Name">>, NextJObj)) =:=
+                wh_json:get_value(<<"Application-Name">>, AppJObj) of
+                false -> maybe_filter_queue(T, CommandQ);
+                true ->
+                    lager:debug("app ~s matched next command, checking fields", [AppName]),
+                    Fields = wh_json:get_value(<<"Fields">>, AppJObj),
+                    case lists:all(fun({AppField, AppValue}) -> 
+                                           wh_json:get_value(AppField, NextJObj) =:= AppValue
+                                   end, wh_json:to_proplist(Fields)) of
+                        false -> maybe_filter_queue(T, CommandQ);
+                        true ->
+                            lager:debug("all fields matched next command, popping it off"),
+                            maybe_filter_queue(Apps, CommandQ1) % same app and all fields matched
+                    end
+            end
+    end.
 
 -spec is_post_hangup_command/1 :: (ne_binary()) -> boolean().
 is_post_hangup_command(AppName) ->
