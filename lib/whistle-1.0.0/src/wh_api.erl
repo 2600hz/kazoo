@@ -23,7 +23,8 @@
 -export([default_headers/2
          ,default_headers/3
          ,default_headers/4
-         ,default_headers/5]).
+         ,default_headers/5
+        ]).
 -export([prepare_api_payload/3]).
 -export([set_missing_values/2]).
 -export([remove_empty_values/1]).
@@ -160,7 +161,6 @@ is_empty([]) -> true;
 is_empty(<<>>) -> true;
 is_empty(_) -> false.
 
-
 %%--------------------------------------------------------------------
 %% @doc Extract just the default headers from a message
 %% @end
@@ -286,8 +286,8 @@ headers_to_json(HeadersProp) ->
 
 %% Checks Prop for all default headers, throws error if one is missing
 %% defaults(PassedProps) -> { Headers, NewPropList } | {error, Reason}
--spec defaults/1 :: (Prop) -> {proplist(), proplist()} | {'error', string()} when
-      Prop :: api_terms().
+-spec defaults/1 :: (api_terms()) -> {proplist(), proplist()} |
+                                     {'error', string()}.
 defaults(Prop) ->
     defaults(Prop, []).
 defaults(Prop, Headers) ->
@@ -298,10 +298,8 @@ defaults(Prop, Headers) ->
             update_optional_headers(Prop1, ?OPTIONAL_DEFAULT_HEADERS, Headers1)
     end.
 
--spec update_required_headers/3 :: (Prop, Fields, Headers) -> {proplist(), proplist()} | {'error', string()} when
-      Prop :: proplist(),
-      Fields :: api_headers(),
-      Headers :: proplist().
+-spec update_required_headers/3 :: (proplist(), api_headers(), proplist()) -> {proplist(), proplist()} |
+                                                                              {'error', string()}.
 update_required_headers(Prop, Fields, Headers) ->
     case has_all(Prop, Fields) of
         true ->
@@ -310,10 +308,7 @@ update_required_headers(Prop, Fields, Headers) ->
             {error, "All required headers not defined"}
     end.
 
--spec update_optional_headers/3 :: (Prop, Fields, Headers) -> {proplist(), proplist()} when
-      Prop :: proplist(),
-      Fields :: api_headers(),
-      Headers :: proplist().
+-spec update_optional_headers/3 :: (proplist(), api_headers(), proplist()) -> {proplist(), proplist()}.
 update_optional_headers(Prop, Fields, Headers) ->
     case has_any(Prop, Fields) of
         true ->
