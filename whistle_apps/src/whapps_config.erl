@@ -324,7 +324,7 @@ flush(Category0, Keys, Node0) ->
 
     {ok, JObj} = wh_cache:peek_local(Cache, category_key(Category)),
     JObj1 = wh_json:set_value(Node, UpdateFun(JObj), JObj),
-    cache_jobj(Cache, Category, JObj1),
+    {ok, _} = cache_jobj(Cache, Category, JObj1),
     ok.
 
 %%-----------------------------------------------------------------------------
@@ -491,6 +491,7 @@ update_category(Category, JObj, Cache) ->
     lager:debug("saved cat ~s to db ~s", [Category, ?WH_CONFIG_DB]),
     cache_jobj(Cache, Category, SavedJObj).
 
+-spec cache_jobj/3 :: (atom() | pid(), ne_binary(), wh_json:json_object()) -> {'ok', wh_json:json_object()}.
 cache_jobj(Cache, Category, JObj) ->
     wh_cache:store_local(Cache, category_key(Category), JObj),
     {ok, JObj}.
