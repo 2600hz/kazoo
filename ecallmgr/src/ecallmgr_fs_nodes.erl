@@ -29,6 +29,10 @@
 -export([channel_set_import_moh/2]).
 -export([fetch_channel/1]).
 -export([destroy_channel/2]).
+-export([props_to_channel_record/2]).
+-export([channel_record_to_json/1]).
+-export([sync_channels/0, sync_channels/1]).
+-export([flush_node_channels/1]).
 
 -export([init/1
          ,handle_call/3
@@ -100,22 +104,7 @@ show_channels() ->
 
 -spec new_channel/2 :: (proplist(), atom()) -> 'ok'.
 new_channel(Props, Node) ->
-    Channel = #channel{uuid=props:get_value(<<"Unique-ID">>, Props)
-                       ,destination=props:get_value(<<"Caller-Destination-Number">>, Props)
-                       ,direction=props:get_value(<<"Call-Direction">>, Props)
-                       ,account_id=props:get_value(<<"variable_", ?CHANNEL_VAR_PREFIX, "Account-ID">>, Props)
-                       ,authorizing_id=props:get_value(<<"variable_", ?CHANNEL_VAR_PREFIX, "Authorizing-ID">>, Props)
-                       ,authorizing_type=props:get_value(<<"variable_", ?CHANNEL_VAR_PREFIX, "Authorizing-Type">>, Props)
-                       ,owner_id=props:get_value(<<"variable_", ?CHANNEL_VAR_PREFIX, "Owner-ID">>, Props)
-                       ,presence_id=props:get_value(<<"Channel-Presence-ID">>, Props)
-                       ,realm=props:get_value(<<"variable_", ?CHANNEL_VAR_PREFIX, "Username">>, Props
-                                              ,props:get_value(<<"variable_domain_name">>, Props))
-                       ,username=props:get_value(<<"variable_", ?CHANNEL_VAR_PREFIX, "Realm">>, Props
-                                                 ,props:get_value(<<"variable_user_name">>, Props))
-                       ,node=Node
-                       ,timestamp=wh_util:current_tstamp()
-                      },
-    gen_server:cast(?MODULE, {new_channel, Channel}),
+    gen_server:cast(?MODULE, {new_channel, props_to_channel_record(Props, Node)}),
     ecallmgr_call_control:add_leg(Props).
 
 -spec fetch_channel/1 :: (ne_binary()) -> {'ok', wh_json:json_object()} |
@@ -162,6 +151,25 @@ destroy_channel(Props, _) ->
     ecallmgr_call_control:rm_leg(Props),
     ecallmgr_call_events:publish_channel_destroy(Props).
 
+-spec props_to_channel_record/2 :: (proplist(), atom()) -> #channel{}.
+props_to_channel_record(Props, Node) ->
+    #channel{uuid=props:get_value(<<"Unique-ID">>, Props)
+             ,destination=props:get_value(<<"Caller-Destination-Number">>, Props)
+             ,direction=props:get_value(<<"Call-Direction">>, Props)
+             ,account_id=props:get_value(<<"variable_", ?CHANNEL_VAR_PREFIX, "Account-ID">>, Props)
+             ,authorizing_id=props:get_value(<<"variable_", ?CHANNEL_VAR_PREFIX, "Authorizing-ID">>, Props)
+             ,authorizing_type=props:get_value(<<"variable_", ?CHANNEL_VAR_PREFIX, "Authorizing-Type">>, Props)
+             ,owner_id=props:get_value(<<"variable_", ?CHANNEL_VAR_PREFIX, "Owner-ID">>, Props)
+             ,presence_id=props:get_value(<<"Channel-Presence-ID">>, Props)
+             ,realm=props:get_value(<<"variable_", ?CHANNEL_VAR_PREFIX, "Username">>, Props
+                                    ,props:get_value(<<"variable_domain_name">>, Props))
+             ,username=props:get_value(<<"variable_", ?CHANNEL_VAR_PREFIX, "Realm">>, Props
+                                       ,props:get_value(<<"variable_user_name">>, Props))
+             ,import_moh=props:get_value(<<"variable_hold_music">>, Props) =:= undefined 
+             ,node=Node
+             ,timestamp=wh_util:current_tstamp()
+            }.
+    
 -spec channel_record_to_json/1 :: (#channel{}) -> wh_json:json_object().
 channel_record_to_json(Channel) -> 
     wh_json:from_list([{<<"uuid">>, Channel#channel.uuid}
@@ -177,6 +185,27 @@ channel_record_to_json(Channel) ->
                        ,{<<"node">>, Channel#channel.node}
                        ,{<<"timestamp">>, Channel#channel.timestamp}
                       ]).
+
+-spec sync_channels/0 :: () -> 'ok'.
+-spec sync_channels/1 :: (string() | binary() | atom()) -> 'ok'.
+
+sync_channels() ->
+    [ecallmgr_fs_node:sync_channels(Srv)
+     || Srv <- gproc:lookup_pids({p, l, fs_node})
+    ],
+    ok.
+
+sync_channels(Node) ->
+    N = wh_util:to_atom(Node, true),
+    [ecallmgr_fs_node:sync_channels(Srv)
+     || Srv <- gproc:lookup_pids({p, l, fs_node})
+            ,ecallmgr_fs_node:fs_node(Srv) =:= N
+    ],
+    ok.
+
+-spec flush_node_channels/1 :: (string() | binary() | atom()) -> 'ok'.
+flush_node_channels(Node) ->
+    gen_server:cast(?MODULE, {flush_node_channels, wh_util:to_atom(Node, true)}).
         
 %%%===================================================================
 %%% gen_server callbacks
@@ -254,6 +283,50 @@ handle_cast({destroy_channel, UUID}, State) ->
     {noreply, State, hibernate};
 handle_cast({rm_fs_node, Node}, State) ->
     {noreply, rm_fs_node(Node, State), hibernate};
+handle_cast({sync_channels, Node, Channels}, State) ->
+    lager:debug("ensuring channel cache is in sync with ~s", [Node]),
+    MatchSpec = [{#channel{uuid = '$1', destination = '_', direction = '_'
+                           ,account_id = '_', authorizing_id = '_'
+                           ,authorizing_type = '_', owner_id = '_'
+                           ,presence_id = '_', realm = '_', username = '_'
+                           ,import_moh = '_', node = '$2', timestamp = '_'
+                          },
+                  [{'=:=', '$2', {const, Node}}],
+                  ['$1']}
+                ],  
+    CachedChannels = sets:from_list(ets:select(ecallmgr_channels, MatchSpec)),
+    SyncChannels = sets:from_list(Channels),
+    Remove = sets:subtract(CachedChannels, SyncChannels),
+    Add = sets:subtract(SyncChannels, CachedChannels),
+    [begin
+         lager:debug("removed channel ~s from cache during sync with ~s", [UUID, Node]),
+         ets:delete(ecallmgr_channels, UUID)
+     end
+     || UUID <- sets:to_list(Remove)
+    ],
+    [begin
+         lager:debug("added channel ~s to cache during sync with ~s", [UUID, Node]),
+         case build_channel_record(Node, UUID) of
+             {ok, C} -> ets:insert(ecallmgr_channels, C);
+             {error, _R} -> lager:warning("failed to sync channel ~s: ~p", [UUID, _R])
+         end
+     end
+     || UUID <- sets:to_list(Add)
+    ],
+    {noreply, State, hibernate};
+handle_cast({flush_node_channels, Node}, State) ->
+    lager:debug("flushing all channels in cache associated to node ~s", [Node]),
+    MatchSpec = [{#channel{uuid = '_', destination = '_', direction = '_'
+                           ,account_id = '_', authorizing_id = '_'
+                           ,authorizing_type = '_', owner_id = '_'
+                           ,presence_id = '_', realm = '_', username = '_'
+                           ,import_moh = '_', node = '$1', timestamp = '_'
+                          },
+                  [{'=:=', '$1', {const, Node}}],
+                  ['true']}
+                ],
+    ets:select_delete(ecallmgr_channels, MatchSpec),
+    {noreply, State};
 handle_cast(_, State) ->
     {noreply, State, hibernate}.
 
@@ -412,3 +485,13 @@ maybe_stop_preconfigured_lookup(ok, Pid) ->
     end;
 maybe_stop_preconfigured_lookup(_, Pid) ->
     Pid.
+
+-spec build_channel_record/2 :: (atom(), ne_binary()) -> #channel{}.
+build_channel_record(Node, UUID) ->
+    case freeswitch:api(Node, uuid_dump, wh_util:to_list(UUID)) of
+        {ok, Dump} ->
+            Props = ecallmgr_util:eventstr_to_proplist(Dump),
+            {ok, ?MODULE:props_to_channel_record(Props, Node)};
+        {error, _}=E -> E;
+        timeout -> {error, timeout}
+    end.

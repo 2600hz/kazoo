@@ -12,6 +12,7 @@
 -behaviour(gen_server).
 
 -export([start_link/1, start_link/2]).
+-export([sync_channels/1]).
 -export([show_channels/1]).
 -export([fs_node/1]).
 -export([hostname/1]).
@@ -61,6 +62,10 @@ start_link(Node) ->
 
 start_link(Node, Options) ->
     gen_server:start_link(?SERVER, [Node, Options], []).
+
+-spec sync_channels/1 :: (pid()) -> 'ok'.
+sync_channels(Srv) ->
+    gen_server:cast(Srv, {sync_channels}).
 
 -spec hostname/1 :: (pid()) -> 'undefined' | ne_binary().
 hostname(Srv) ->
@@ -120,6 +125,7 @@ init([Node, Options]) ->
             lager:debug("bound to switch events on node ~s", [Node]),
             gproc:reg({p, l, fs_node}),
             run_start_cmds(Node),
+            sync_channels(self()),
             {ok, #state{node=Node, options=Options}};
         {error, Reason} ->
             lager:warning("error when trying to register event handler on node ~s: ~p", [Node, Reason]),
@@ -157,6 +163,13 @@ handle_call(node, _From, #state{node=Node}=State) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_cast/2 :: (term(), #state{}) -> {'noreply', #state{}}.
+handle_cast({sync_channels}, #state{node=Node}=State) ->
+    Calls = [wh_json:get_value(<<"uuid">>, J)
+             || J <- show_channels_as_json(Node)
+            ],
+    Msg = {sync_channels, Node, [Call || Call <- Calls, Call =/= undefined]},
+    gen_server:cast(ecallmgr_fs_nodes, Msg),
+    {noreply, State};
 handle_cast(_Req, State) ->
     {noreply, State}.
 
@@ -422,7 +435,7 @@ show_channels_as_json(Node) ->
                 [<<>>|_] -> [];
                 [Header|Rest] ->
                     Keys = binary:split(Header, <<"|||">>, [global]),
-                    [lists:zip(Keys, Values)
+                    [wh_json:from_list(lists:zip(Keys, Values))
                      || Line <- Rest
                             ,((Values = binary:split(Line, <<"|||">>, [global])) =/= [Line]) 
                     ]
