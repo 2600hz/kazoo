@@ -15,6 +15,7 @@
 -export([find_account_by_realm/1]).
 -export([enable_account/1, disable_account/1]).
 -export([promote_account/1, demote_account/1]).
+-export([allow_account_number_additions/1, disallow_account_number_additions/1]).
 -export([create_account/4]).
 
 -include_lib("crossbar/include/crossbar.hrl").
@@ -124,6 +125,40 @@ find_account_by_realm(Realm) ->
         {error, Reason}=E ->
             lager:info("failed to find account: ~p", [Reason]),
             E
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec allow_account_number_additions/1 :: (input_term()) -> 'ok' | 'failed'.
+allow_account_number_additions(AccountId) ->
+    case update_account(AccountId, <<"pvt_wnm_allow_additions">>, true) of
+        {ok, _} ->
+            lager:info("allowing account '~s' to added numbers", [AccountId]),
+            ok;
+        {error, Reason} ->
+            lager:info("failed to find account: ~p", [Reason]),
+            failed
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec disallow_account_number_additions/1 :: (input_term()) -> 'ok' | 'failed'.
+disallow_account_number_additions(AccountId) ->
+    case update_account(AccountId, <<"pvt_wnm_allow_additions">>, false) of
+        {ok, _} ->
+            lager:info("disallowed account '~s' to added numbers", [AccountId]),
+            ok;
+        {error, Reason} ->
+            lager:info("failed to find account: ~p", [Reason]),
+            failed
     end.
 
 %%--------------------------------------------------------------------

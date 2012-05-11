@@ -1,12 +1,11 @@
-{application, command_bridge,
+{application, folsom,
  [
   {description, ""},
-  {vsn, "1"},
+  {vsn, git},
   {registered, []},
   {applications, [
                   kernel,
                   stdlib
                  ]},
-  {mod, { command_bridge_app, []}},
   {env, []}
  ]}.

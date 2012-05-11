@@ -191,8 +191,11 @@ writer_loop(Sock, Data, Parent, SrvRef) ->
 -spec(send_loop/4 :: (Sock :: port(), Path :: binary(), Parent :: pid(), SrvRef :: reference()) -> ok).
 send_loop(Sock, Path, Parent, SrvRef) ->
     case wh_shout:get_request(Sock) of
-        void ->
+        tcp_closed ->
             lager:debug("ECALL_SHOUT_SEND: Socket ~p closed", [Sock]),
+            gen_tcp:close(Sock);
+        timeout ->
+            lager:debug("slow client detected, closing down"),
             gen_tcp:close(Sock);
         _Request ->
             {ok, Contents} = file:read_file(Path),

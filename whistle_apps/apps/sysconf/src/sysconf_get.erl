@@ -1,11 +1,12 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2012, VoIP INC
 %%% @doc
 %%% Handle requests to read configuration data
 %%% Support nested keys a la wh_json, with a # 
 %%% as a separator i.e key#subkey#subsubkey
 %%% @end
+%%% @contributors
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(sysconf_get).
 

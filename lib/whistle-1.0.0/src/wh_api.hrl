@@ -49,11 +49,11 @@
 %% Default Headers
 %% All messages MUST include the DEFAULT_HEADERS list.
 -define(DEFAULT_HEADERS, [<<"Server-ID">>, <<"Event-Category">>, <<"Event-Name">>
-                              ,<<"App-Name">>, <<"App-Version">>, <<"Node">>
+                              ,<<"App-Name">>, <<"App-Version">>
                          ]).
 -define(OPTIONAL_DEFAULT_HEADERS, [<<"Raw-Headers">>, <<"Destination-Server">>
                                        ,<<"Geo-Location">>, <<"Access-Group">>
-                                       ,<<"Tenant-ID">>
+                                       ,<<"Tenant-ID">>, <<"Node">>
                                   ]).
 -define(DEFAULT_VALUES, [{<<"Node">>, wh_util:to_binary(node())}]).
 -define(DEFAULT_TYPES, [{<<"Server-ID">>, fun is_binary/1}
@@ -70,7 +70,7 @@
 
 %% Error Responses
 -define(ERROR_RESP_HEADERS, [<<"Msg-ID">>, <<"Error-Message">>]).
--define(OPTIONAL_ERROR_RESP_HEADERS, [<<"Request">>]).
+-define(OPTIONAL_ERROR_RESP_HEADERS, [<<"Request">>, <<"Call-ID">>]).
 -define(ERROR_RESP_VALUES, [{<<"Event-Category">>, <<"error">>}]).
 -define(ERROR_RESP_TYPES, []).
 

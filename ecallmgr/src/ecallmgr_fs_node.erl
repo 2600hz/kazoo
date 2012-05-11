@@ -64,7 +64,7 @@ start_link(Node) ->
 start_link(Node, Options) ->
     gen_server:start_link(?SERVER, [Node, Options], []).
 
--spec show_channels/1 :: (pid()) -> [proplist(),...] | [].
+-spec show_channels/1 :: (pid()) -> wh_json:json_objects().
 show_channels(Srv) ->
     Node = fs_node(Srv),
     case freeswitch:api(Node, show, "channels") of
@@ -84,9 +84,14 @@ hostname(Srv) ->
 -spec reloadacl/1 ::(pid()) -> 'ok'.
 reloadacl(Srv) ->
     Node = fs_node(Srv),
-    lager:debug("reloadacl command sent to FS ~s", [Node]),
-    {ok, <<"+OK acl reloaded\n">>} = freeswitch:api(Node, reloadacl),
-    ok.
+    case freeswitch:bgapi(Node, reloadacl, "") of
+        {ok, Job} ->
+            lager:debug("reloadacl command sent to ~s: JobID: ~s", [Node, Job]);
+        {error, _E} ->
+            lager:debug("reloadacl failed with error: ~p", [_E]);
+        timeout ->
+            lager:debug("reloadacl failed with error: timeout")
+    end.
 
 -spec fs_node/1 :: (pid()) -> atom().
 fs_node(Srv) ->
@@ -198,7 +203,16 @@ handle_cast(_Req, State) ->
 handle_info({event, [UUID | Data]}, State) ->
     catch process_event(UUID, Data),
     {noreply, State, hibernate};
+
+handle_info({bgok, _Job, _Result}, State) ->
+    lager:debug("job ~s finished successfully: ~p", [_Job, _Result]),
+    {noreply, State};
+handle_info({bgerror, _Job, _Result}, State) ->
+    lager:debug("job ~s finished with an error: ~p", [_Job, _Result]),
+    {noreply, State};
+
 handle_info(_Msg, State) ->
+    lager:debug("unhandled message: ~p", [_Msg]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -424,7 +438,7 @@ was_not_successful_cmd({ok, _, _}) ->
 was_not_successful_cmd(_) ->
     true.
 
--spec convert_rows/2 :: (atom(), binary()) -> [proplist(),...] | [].
+-spec convert_rows/2 :: (atom(), binary()) -> wh_json:json_objects().
 convert_rows(Node, <<"\n0 total.\n">>) ->
     lager:debug("no channels up on node ~s", [Node]),
     [];
@@ -432,7 +446,7 @@ convert_rows(Node, RowsBin) ->
     [_|Rows] = binary:split(RowsBin, <<"\n">>, [global]),
     return_rows(Node, Rows, []).
 
--spec return_rows/3 :: (atom(), [binary(),...] | [], [proplist(),...] | []) -> [proplist(),...] | [].
+-spec return_rows/3 :: (atom(), [binary(),...] | [], wh_json:json_objects()) -> wh_json:json_objects().
 return_rows(Node, [<<>>|Rs], Acc) ->
     return_rows(Node, Rs, Acc);
 return_rows(Node, [R|Rs], Acc) ->

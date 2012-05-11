@@ -3,7 +3,6 @@
 -include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_amqp.hrl").
 -include_lib("whistle/include/wh_log.hrl").
--include_lib("whistle/include/freeswitch_xml.hrl").
 -include_lib("whistle/src/wh_api.hrl").
 
 -define(ECALLMGR_AMQP_POOL, ecallmgr_amqp_pool).

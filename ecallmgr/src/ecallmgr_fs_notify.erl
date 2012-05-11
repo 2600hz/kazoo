@@ -49,20 +49,21 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec start_link/1 :: (atom()) -> startlink_ret().
--spec start_link/2 :: (atom(), proplist()) -> startlink_ret().
+-spec start_link/2 :: (atom(), wh_proplist()) -> startlink_ret().
 
 start_link(Node) ->
     start_link(Node, []).
 
 start_link(Node, Options) ->
-    gen_listener:start_link(?MODULE,
-                            [{responders, ?RESPONDERS}
-                             ,{bindings, ?BINDINGS}
-                             ,{queue_name, ?QUEUE_NAME}
-                             ,{queue_options, ?QUEUE_OPTIONS}
-                             ,{consume_options, ?CONSUME_OPTIONS}
-                             ,{basic_qos, 1}
-                            ], [Node, Options]).
+    gen_listener:start_link(?MODULE
+                            ,[{responders, ?RESPONDERS}
+                              ,{bindings, ?BINDINGS}
+                              ,{queue_name, ?QUEUE_NAME}
+                              ,{queue_options, ?QUEUE_OPTIONS}
+                              ,{consume_options, ?CONSUME_OPTIONS}
+                              ,{basic_qos, 1}
+                             ]
+                            ,[Node, Options]).
 
 -spec distributed_presence/3 :: (pid(), ne_binary(), proplist()) -> 'ok'.
 distributed_presence(Srv, Type, Event) ->
@@ -208,12 +209,12 @@ handle_cast(_Msg, State) ->
 handle_info({event, [_ | Data]}, #state{node=Node}=State) ->
     case props:get_value(<<"Event-Name">>, Data) of
         <<"PRESENCE_", _/binary>> = EvtName ->
-            wh_util:put_callid(Data),
+            _ = wh_util:put_callid(Data),
             ShouldDistribute = ecallmgr_config:get(<<"distribute_presence">>, true),
             ShouldDistribute andalso process_presence_event(EvtName, Data, Node),
             {noreply, State, hibernate};
         <<"MESSAGE_QUERY">> ->
-            wh_util:put_callid(Data),
+            _ = wh_util:put_callid(Data),
             process_message_query_event(Data, Node),
             {noreply, State, hibernate};
         _ ->

@@ -10,10 +10,10 @@
 -module(wnm_bandwidth).
 
 -export([find_numbers/2]).
--export([acquire_number/3]).
--export([release_number/2]).
+-export([acquire_number/2]).
+-export([disconnect_number/2]).
 
--include("../../include/wh_number_manager.hrl").
+-include_lib("whistle_number_manager/include/wh_number_manager.hrl").
 -include_lib("xmerl/include/xmerl.hrl").
 
 -define(WNM_BW_CONFIG_CAT, <<(?WNM_CONFIG_CAT)/binary, ".bandwidth">>).
@@ -81,21 +81,30 @@ find_numbers(Search, Quanity) ->
 %% Acquire a given number from the carrier
 %% @end
 %%--------------------------------------------------------------------
--spec acquire_number/3 :: (ne_binary(), ne_binary(), wh_json:json_object()) -> {ok, ne_binary(), wh_json:json_object()} |
-                                                                       {error, ne_binary()}.
-acquire_number(_, <<"available">>, JObj) ->
-    {ok, <<"in_service">>, JObj};
-acquire_number(_, <<"discovery">>, JObj) ->
+-spec acquire_number/2 :: (ne_binary(), wh_json:json_object()) -> {ok, wh_json:json_object()} |
+                                                                  {error, ne_binary()}.
+acquire_number(_, JObj) ->
     case whapps_config:get_is_true(?WNM_BW_CONFIG_CAT, <<"enable_provisioning">>, <<"true">>) of
-        true -> 
-            order_number(JObj);
-        false ->
-            {ok, <<"in_service">>, JObj}
-    end;
-acquire_number(_, <<"claim">>, JObj) ->
-    {ok, <<"in_service">>, JObj};
-acquire_number(_, _, _) ->
-    {error, unavailable}.
+        false -> {error, number_provisioning_disabled};
+        true ->  
+                      Id = wh_json:get_string_value(<<"number_id">>, JObj),
+                      Endpoint = whapps_config:get_binary(?WNM_BW_CONFIG_CAT, <<"endpoint">>, <<"">>),
+                      OrderNamePrefix = whapps_config:get_binary(?WNM_BW_CONFIG_CAT, <<"order_name_prefix">>, <<"Whistle">>),
+                      OrderName = list_to_binary([OrderNamePrefix, "-", wh_util:to_binary(wh_util:current_tstamp())]),
+                      AcquireFor = wh_json:get_ne_value(<<"authorizing_account">>, JObj, <<"no_authorizing_account">>), 
+                      Props = [{'orderName', [wh_util:to_list(OrderName)]}
+                               ,{'extRefID', [wh_util:to_list(AcquireFor)]}
+                               ,{'numberIDs', [{'id', [Id]}]}
+                               ,{'subscriber', [wh_util:to_list(AcquireFor)]}
+                               ,{'endPoints', [{'host', [wh_util:to_list(Endpoint)]}]}
+                              ],
+                      case make_numbers_request('basicNumberOrder', Props) of
+                          {error, _}=E -> E;
+                          {ok, Xml} ->
+                              Response = xmerl_xpath:string("/numberOrderResponse/numberOrder", Xml),
+                              {ok, number_order_response_to_json(Response)}
+                      end
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -103,37 +112,9 @@ acquire_number(_, _, _) ->
 %% Release a number from the routing table
 %% @end
 %%--------------------------------------------------------------------
--spec release_number/2 :: (ne_binary(), wh_json:json_object()) -> {ok, wh_json:json_object()}.
-release_number(_, JObj) ->
+-spec disconnect_number/2 :: (ne_binary(), wh_json:json_object()) -> {ok, wh_json:json_object()}.
+disconnect_number(_, JObj) ->
     {ok, JObj}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Order a number given the discovery json object
-%% @end
-%%--------------------------------------------------------------------
--spec order_number/1 :: (wh_json:json_object()) -> {ok, ne_binary(), wh_json:json_object()} |
-                                           {error, ne_binary()}.
-order_number(JObj) ->
-    Id = wh_json:get_string_value(<<"number_id">>, JObj),
-    Endpoint = whapps_config:get_binary(?WNM_BW_CONFIG_CAT, <<"endpoint">>, <<"">>),
-    OrderNamePrefix = whapps_config:get_binary(?WNM_BW_CONFIG_CAT, <<"order_name_prefix">>, <<"Whistle">>),
-    OrderName = list_to_binary([OrderNamePrefix, "-", wh_util:to_binary(wh_util:current_tstamp())]),
-    AcquireFor = wh_json:get_ne_value(<<"acquire_for">>, JObj, <<"no_subscriber">>), 
-    Props = [{'orderName', [wh_util:to_list(OrderName)]}
-             ,{'extRefID', [wh_util:to_list(AcquireFor)]}
-             ,{'numberIDs', [{'id', [Id]}]}
-             ,{'subscriber', [wh_util:to_list(AcquireFor)]}
-             ,{'endPoints', [{'host', [wh_util:to_list(Endpoint)]}]}
-            ],
-    case make_numbers_request('basicNumberOrder', Props) of
-        {error, _}=E -> 
-            E;
-        {ok, Xml} ->
-            Response = xmerl_xpath:string("/numberOrderResponse/numberOrder", Xml),
-            {ok, <<"in_service">>, number_order_response_to_json(Response)}
-    end.
         
 %%--------------------------------------------------------------------
 %% @private

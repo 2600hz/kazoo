@@ -13,7 +13,9 @@
 
 -export([audio_macro/2]).
 -export([response/2, response/3, response/4]).
--export([pickup/2, b_pickup/2]).
+-export([pickup/2, pickup/3
+         ,b_pickup/2, b_pickup/3
+        ]).
 -export([redirect/3]).
 -export([answer/1, hangup/1, hangup/2, set/3, fetch/1, fetch/2]).
 -export([ring/1]).
@@ -150,14 +152,27 @@ response(Code, Cause, Media, Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec pickup/2 :: (ne_binary(), whapps_call:call()) -> 'ok'.
+-spec pickup/3 :: (ne_binary(), ne_binary(), whapps_call:call()) -> 'ok'.
 pickup(TargetCallId, Call) ->
     Command = [{<<"Application-Name">>, <<"call_pickup">>}
                ,{<<"Target-Call-ID">>, TargetCallId}
               ],
     send_command(Command, Call).
- 
+
+pickup(TargetCallId, Insert, Call) ->
+    Command = [{<<"Application-Name">>, <<"call_pickup">>}
+               ,{<<"Target-Call-ID">>, TargetCallId}
+               ,{<<"Insert-At">>, Insert}
+              ],
+    send_command(Command, Call).
+
+-spec b_pickup/2 :: (ne_binary(), whapps_call:call()) -> {'ok', wh_json:json_object()}.
+-spec b_pickup/3 :: (ne_binary(), ne_binary(), whapps_call:call()) -> {'ok', wh_json:json_object()}.
 b_pickup(TargetCallId, Call) ->
     pickup(TargetCallId, Call),
+    wait_for_channel_unbridge().
+b_pickup(TargetCallId, Insert, Call) ->
+    pickup(TargetCallId, Insert, Call),
     wait_for_channel_unbridge().
 
 %%--------------------------------------------------------------------
@@ -1560,9 +1575,10 @@ get_event_type(JObj) ->
 %%--------------------------------------------------------------------
 -spec send_command/2 :: (api_terms(), whapps_call:call()) -> 'ok'.
 send_command(Command, Call) when is_list(Command) ->
+    true = whapps_call:is_call(Call),
     CustomPublisher = whapps_call:custom_publish_function(Call),
     CtrlQ = whapps_call:control_queue(Call),    
-    case is_function(CustomPublisher) of
+    case is_function(CustomPublisher, 2) of
         true -> CustomPublisher(Command, Call);
         false when is_binary(CtrlQ) ->
             Q = whapps_call:controller_queue(Call),

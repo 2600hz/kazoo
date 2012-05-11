@@ -137,10 +137,7 @@ get_fs_app(Node, UUID, JObj, <<"record_call">>) ->
 
             case wh_json:get_value(<<"Record-Action">>, JObj) of
                 <<"start">> ->
-                    Media = case wh_json:get_value(<<"Stream-To">>, JObj, <<"remote">>) of
-                                <<"local">> -> MediaName;
-                                _ -> ecallmgr_media_registry:register_local_media(MediaName, UUID)
-                            end,
+                    Media = ecallmgr_media_registry:register_local_media(MediaName, UUID),
 
                     _ = set(Node, UUID, <<"RECORD_APPEND=true">>), % allow recording to be appended to
                     _ = set(Node, UUID, <<"enable_file_write_buffering=false">>), % disable buffering to see if we get all the media
@@ -149,14 +146,12 @@ get_fs_app(Node, UUID, JObj, <<"record_call">>) ->
                     RecArg = binary_to_list(list_to_binary([
                                                             UUID, <<" start ">>
                                                            ,Media, <<" ">>
-                                                           ,wh_json:get_string_value(<<"Time-Limit">>, JObj, "20")
+                                                           ,wh_json:get_string_value(<<"Time-Limit">>, JObj, "3600") % one hour
                                                            ])),
                     {<<"record_call">>, RecArg};
                 <<"stop">> ->
-                    Media = case wh_json:get_value(<<"Stream-To">>, JObj, <<"remote">>) of
-                                <<"local">> -> MediaName;
-                                _ -> ecallmgr_media_registry:register_local_media(MediaName, UUID, url)
-                            end,
+                    Media = ecallmgr_media_registry:register_local_media(MediaName, UUID, url),
+
                     %% UUID stop path/to/media
                     RecArg = binary_to_list(list_to_binary([UUID, <<" stop ">>, Media])),
                     {<<"record_call">>, RecArg}

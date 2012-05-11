@@ -277,14 +277,13 @@
 %% Stream-To = local results in the recording being stored on the media server
 %% Stream-To = remote will stream the recording to the handling ecallmgr server
 -define(RECORD_CALL_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Media-Name">>
-                                      ,<<"Record-Action">>, <<"Stream-To">>
+                                      ,<<"Record-Action">>
                                  ]).
 -define(OPTIONAL_RECORD_CALL_REQ_HEADERS, [<<"Time-Limit">>, <<"Insert-At">>]).
 -define(RECORD_CALL_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                                  ,{<<"Event-Name">>, <<"command">>}
                                  ,{<<"Application-Name">>, <<"record_call">>}
                                  ,{<<"Record-Action">>, [<<"start">>, <<"stop">>]}
-                                 ,{<<"Stream-To">>, [<<"local">>, <<"remote">>]}
                                  ,?INSERT_AT_TUPLE
                                 ]).
 -define(RECORD_CALL_REQ_TYPES, []).
@@ -363,8 +362,17 @@
 -define(SLEEP_REQ_TYPES, []).
 
 %% NoOp Request
+%% Filter-Applications: will remove applications in the ecallmgr command queue matching those in this list
+%% So, if you want to remove Play commands, set Filter-Applications = [<<"play">>]. This will filter
+%% the command queue until a non-Play command is encountered.
+%% Alternatively, you can specify the elements in the Filter-Applications list as:
+%% [ {"Application-Name":"play", "Fields":{"Terminators":["#"]}}, ...]
+%% This says, filter Play commands terminate-able with the "#" key
+%%
+%% IMPORTANT: to use the filter-applications list, Insert-At must be "now"
+
 -define(NOOP_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>]).
--define(OPTIONAL_NOOP_REQ_HEADERS, [<<"Msg-ID">>, <<"Insert-At">>]).
+-define(OPTIONAL_NOOP_REQ_HEADERS, [<<"Msg-ID">>, <<"Insert-At">>, <<"Filter-Applications">>]).
 -define(NOOP_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                           ,{<<"Event-Name">>, <<"command">>}
                           ,{<<"Application-Name">>, <<"noop">>}

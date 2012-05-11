@@ -1,10 +1,10 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2012, VoIP INC
 %%% @doc
 %%% Serve up registration information
 %%% @end
-%%% Created : 25 Mar 2011 by James Aimonetti <james@2600hz.org>
+%%% @contributors
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(ecallmgr_registrar).
 
@@ -92,6 +92,7 @@ handle_call({lookup, Realm, User, Fields, CallId}, From, State) ->
                   gen_server:reply(From, lookup_reg(Realm, User, Fields))
           end),
     {noreply, State};
+
 handle_call(_Msg, _From, State) ->
     {reply, {error, not_implemented}, State}.
 

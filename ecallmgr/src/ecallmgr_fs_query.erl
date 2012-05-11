@@ -50,6 +50,7 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
+-spec start_link/0 :: () -> startlink_ret().
 start_link() ->
     gen_listener:start_link({local, ?SERVER}, ?MODULE, [{responders, ?RESPONDERS}
                                                         ,{bindings, ?BINDINGS}
@@ -161,10 +162,24 @@ channel_query(JObj) ->
 
 -spec handle_switch_reloadacl/2 ::(wh_json:json_object(), proplist()) -> any().
 handle_switch_reloadacl(JObj, _Props) ->
-  true = wapi_switch:reloadacl_v(JObj),
-  [ecallmgr_fs_node:reloadacl(Srv) 
-   || Srv <- gproc:lookup_pids({p, l, fs_node})
-  ].
+    true = wapi_switch:reloadacl_v(JObj),
+    Reqs = [ecallmgr_fs_node:reloadacl(Srv) || Srv <- gproc:lookup_pids({p, l, fs_node})],
+    wait_for_resps(Reqs).
+
+wait_for_resps([]) -> ok;
+wait_for_resps([_|T]) ->
+    receive
+        {bgok, _Job, _Result} ->
+            lager:debug("job ~s finished successfully: ~p", [_Job, _Result]);
+        {bgerror, _Job, _Result} ->
+            lager:debug("job ~s finished with an error: ~p", [_Job, _Result])
+    after
+        5000 ->
+            lager:debug("waited enough for a response, moving on")
+    end,
+    wait_for_resps(T).
+
+    
 
 %%%===================================================================
 %%% gen_server callbacks

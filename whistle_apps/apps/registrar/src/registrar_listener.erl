@@ -1,10 +1,10 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2012, VoIP INC
 %%% @doc
 %%% Listener for authn_req, reg_success, and reg_query AMQP requests
 %%% @end
-%%% Created : 13 Jan 2011 by James Aimonetti <james@2600hz.org>
+%%% @contributors
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(registrar_listener).
 
@@ -25,10 +25,12 @@
                      ,{{reg_query, req_query_req}, [{<<"directory">>, <<"reg_query">>}]}
                      ,{{?MODULE, handle_reg_query_resp}, [{<<"directory">>, <<"reg_query_resp">>}]}
                      ,{{reg_query, presence_probe}, [{<<"notification">>, <<"presence_probe">>}]}
+                     ,{{reg_route_req, handle_route_req}, [{<<"dialplan">>, <<"route_req">>}]}
                     ]).
 -define(BINDINGS, [{authn, []}
                    ,{registration, []}
                    ,{notifications, [{restrict_to, [presence_probe]}]}
+                   ,{route, []}
                    ,{self, []}
                   ]).
 
@@ -60,17 +62,16 @@ start_link() ->
 stop(Srv) ->
     gen_listener:stop(Srv).
 
--spec handle_reg_query_resp/2 :: (wh_json:json_object(), proplist()) -> ok.
+-spec handle_reg_query_resp/2 :: (wh_json:json_object(), proplist()) -> any().
 handle_reg_query_resp(JObj, Props) ->
     Reg = wh_json:get_value(<<"Fields">>, JObj),
     Username =  wh_json:get_value(<<"Username">>, Reg),
     Realm =  wh_json:get_value(<<"Realm">>, Reg),
     Consumers = props:get_value(consumers, Props),
-    [Consumer ! {reg_query_resp, Reg}
-     || {User, Consumer, _} <- Consumers
-            ,User =:= {Username, Realm}
-    ],
-    ok.
+    _ = [Consumer ! {reg_query_resp, Reg}
+         || {User, Consumer, _} <- Consumers,
+            User =:= {Username, Realm}
+        ].
 
 %%%===================================================================
 %%% gen_listener callbacks
@@ -146,7 +147,7 @@ handle_cast(_Msg, Consumers) ->
 handle_info({'DOWN', _, _, Consumer, _R}, Consumers) ->
     {noreply, lists:filter(fun({_, C, MRef}) when C =:= Consumer -> 
                                    lager:debug("removed req query response consumer (~p): ~p", [Consumer, _R]),
-                                   erlang:demonitor(MRef, flush),
+                                   erlang:demonitor(MRef, [flush]),
                                    false; 
                               (_) -> true 
                            end, Consumers)};
