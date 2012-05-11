@@ -132,9 +132,12 @@ audio_macro([{tones, Tones}|T], Call, Queue) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec response/2 :: (ne_binary(), whapps_call:call()) -> 'ok'.
--spec response/3 :: (ne_binary(), 'undefined' | ne_binary(), whapps_call:call()) -> 'ok'.
--spec response/4 :: (ne_binary(), 'undefined' | binary(), 'undefined' | binary(), whapps_call:call()) -> 'ok'.
+-spec response/2 :: (ne_binary(), whapps_call:call()) -> {'ok', ne_binary()} |
+                                                         {'error', 'no_response'}.
+-spec response/3 :: (ne_binary(), 'undefined' | ne_binary(), whapps_call:call()) -> {'ok', ne_binary()} |
+                                                                                    {'error', 'no_response'}.
+-spec response/4 :: (ne_binary(), 'undefined' | binary(), 'undefined' | binary(), whapps_call:call()) -> {'ok', ne_binary()} |
+                                                                                                         {'error', 'no_response'}.
 
 response(Code, Call) ->
     response(Code, undefined, Call).
