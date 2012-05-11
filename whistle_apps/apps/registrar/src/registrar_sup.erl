@@ -1,27 +1,24 @@
-%%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2011 James Aimonetti
+%%%-------------------------------------------------------------------
+%%% @copyright (C) 2012, VoIP, INC
 %%% @doc
 %%%
 %%% @end
-%%% Created :  Thu, 13 Jan 2011 22:12:40 GMT: James Aimonetti <james@2600hz.org>
+%%% @contributors
+%%%-------------------------------------------------------------------
 -module(registrar_sup).
 
 -behaviour(supervisor).
 
 -include_lib("whistle/include/wh_types.hrl").
+-include_lib("registrar/src/reg.hrl").
 
-%% API
 -export([start_link/0]).
--export([listener_proc/0]).
--export([cache_proc/0]).
-
-%% Supervisor callbacks
 -export([init/1]).
 
 %% Helper macro for declaring children of supervisor
--define(SERVER, ?MODULE).
--define(CHILD(I, Type), {I, {I, start_link, []}, transient, 5000, Type, [I]}).
--define(CACHE(Name), {Name, {wh_cache, start_link, [Name]}, permanent, 5000, worker, [wh_cache]}).
+-define(CHILD(Name, Type), fun(N, cache) -> {N, {wh_cache, start_link, [N]}, permanent, 5000, worker, [wh_cache]};
+                              (N, T) -> {N, {N, start_link, []}, permanent, 5000, T, [N]} end(Name, Type)).
+-define(CHILDREN, [{?REGISTRAR_CACHE, cache}, {registrar_listener, worker}]).
 
 %% ===================================================================
 %% API functions
@@ -37,18 +34,6 @@
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
--spec cache_proc/0 :: () -> {'ok', pid()}.
-cache_proc() ->
-    [P] = [P || {Mod, P, _, _} <- supervisor:which_children(?MODULE),
-                Mod =:= reg_cache],
-    {ok, P}.
-
--spec listener_proc/0 :: () -> {'ok', pid()}.
-listener_proc() ->
-    [P] = [P || {Mod, P, _, _} <- supervisor:which_children(?MODULE),
-                Mod =:= registrar_listener],
-    {ok, P}.
-
 %% ===================================================================
 %% Supervisor callbacks
 %% ===================================================================
@@ -56,7 +41,7 @@ listener_proc() ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Whenever a supervisor is started using supervisor:start_link/N,
+%% Whenever a supervisor is started using supervisor:start_link/[2,3],
 %% this function is called by the new process to find out about
 %% restart strategy, maximum restart frequency and child
 %% specifications.
@@ -69,9 +54,6 @@ init([]) ->
     MaxSecondsBetweenRestarts = 10,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
-    Children = [?CACHE(reg_cache)
-                ,?CHILD(registrar_listener, worker)
-               ],
+    Children = [?CHILD(Name, Type) || {Name, Type} <- ?CHILDREN],
 
     {ok, {SupFlags, Children}}.
-

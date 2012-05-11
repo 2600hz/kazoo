@@ -225,13 +225,13 @@ handle_info(timeout, #state{node=Node, callid=CallId, failed_node_checks=FNC}=St
             lager:debug("failed to setup listener for channel events from ~s: ~p", [Node, _E]),
             {stop, normal, State}
     end;
-handle_info({sanity_check}, #state{node=Node, callid=CallId}=State) ->
-    case freeswitch:api(Node, uuid_exists, wh_util:to_list(CallId)) of
-        {'ok', <<"true">>} -> 
+handle_info({sanity_check}, #state{callid=CallId}=State) ->
+    case ecallmgr_fs_nodes:channel_exists(CallId) of
+        true -> 
             lager:debug("listener passed sanity check, call is still up"),
             TRef = erlang:send_after(?SANITY_CHECK_PERIOD, self(), {sanity_check}),
             {'noreply', State#state{sanity_check_tref=TRef}};
-        _E ->
+        false ->
             lager:debug("call no longer exists, shutting down immediately"),
             {stop, normal, State#state{sanity_check_tref=undefined}}
     end;
@@ -407,6 +407,10 @@ event_specific(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"record">>, Prop) ->
     [{<<"Application-Name">>, <<"bridge">>}
      ,{<<"Application-Response">>, props:get_value(<<"variable_originate_disposition">>, Prop, <<"FAIL">>)}
      ,{<<"Length">>, props:get_value(<<"variable_record_ms">>, Prop)}
+    ];
+event_specific(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"set">>, Prop) ->
+    [{<<"Application-Name">>, props:get_value(<<"set">>, ?FS_APPLICATION_NAMES)}
+     ,{<<"Application-Response">>, props:get_value(<<"Application-Response">>, Prop)}
     ];
 event_specific(<<"RECORD_STOP">>, _, Prop) ->
     [{<<"Application-Name">>, <<"record">>}

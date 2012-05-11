@@ -16,9 +16,24 @@
 
 -export([start_link/0]).
 -export([connected/0]).
+-export([all_nodes_connected/0]).
 -export([add/1, add/2, add/3]).
 -export([remove/1]).
 -export([is_node_up/1]).
+
+-export([show_channels/0]).
+-export([new_channel/2]).
+-export([channel_match_presence/1]).
+-export([channel_exists/1]).
+-export([channel_import_moh/1]).
+-export([channel_set_import_moh/2]).
+-export([fetch_channel/1]).
+-export([destroy_channel/2]).
+-export([props_to_channel_record/2]).
+-export([channel_record_to_json/1]).
+-export([sync_channels/0, sync_channels/1]).
+-export([flush_node_channels/1]).
+
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -30,6 +45,7 @@
 -include("ecallmgr.hrl").
 
 -define(SERVER, ?MODULE).
+-define(EXPIRE_CHECK, 60000).
 
 -record(node, {node = 'undefined' :: atom()
                ,cookie = 'undefined' :: atom()
@@ -76,6 +92,121 @@ connected() ->
 is_node_up(Node) ->
     gen_server:call(?MODULE, {is_node_up, Node}).
 
+-spec all_nodes_connected/0 :: () -> boolean().
+all_nodes_connected() ->
+    length(ecallmgr_config:get(<<"fs_nodes">>, [])) =:= length(connected()).
+
+-spec show_channels/0 :: () -> wh_json:json_objects().
+show_channels() ->
+    ets:foldl(fun(Channel, Acc) ->
+                      [channel_record_to_json(Channel) | Acc]
+              end, [], ecallmgr_channels).
+
+-spec new_channel/2 :: (proplist(), atom()) -> 'ok'.
+new_channel(Props, Node) ->
+    gen_server:cast(?MODULE, {new_channel, props_to_channel_record(Props, Node)}),
+    ecallmgr_call_control:add_leg(Props).
+
+-spec fetch_channel/1 :: (ne_binary()) -> {'ok', wh_json:json_object()} |
+                                          {'error', 'not_found'}.
+fetch_channel(UUID) ->
+    case ets:lookup(ecallmgr_channels, UUID) of
+        [Channel] -> {ok, channel_record_to_json(Channel)};
+        _Else -> {error, not_found}
+    end.
+
+-spec channel_exists/1 :: (ne_binary()) -> boolean().
+channel_exists(UUID) ->
+    ets:member(ecallmgr_channels, UUID).
+
+-spec channel_import_moh/1 :: (ne_binary()) -> boolean().
+channel_import_moh(UUID) ->
+    try ets:lookup_element(ecallmgr_channels, UUID, #channel.import_moh) of
+        Import -> Import
+    catch
+        error:badarg -> false
+    end.
+
+-spec channel_match_presence/1 :: (ne_binary()) -> [ne_binary(),...] | [].
+channel_match_presence(PresenceId) ->
+    MatchSpec = [{#channel{uuid = '$1', destination = '_', direction = '_'
+                           ,account_id = '_', authorizing_id = '_'
+                           ,authorizing_type = '_', owner_id = '_'
+                           ,presence_id = '$2', realm = '_', username = '_'
+                           ,import_moh = '_', node = '$3', timestamp = '_'
+                          },
+                  [{'=:=', '$2', {const, PresenceId}}],
+                  [{{'$1', '$3'}}]}
+                ],  
+    ets:select(ecallmgr_channels, MatchSpec).
+
+-spec channel_set_import_moh/2 :: (ne_binary(), boolean()) -> 'ok'.                                                          
+channel_set_import_moh(UUID, Import) ->
+    gen_server:cast(?MODULE, {channel_update, UUID, {#channel.import_moh, Import}}).    
+
+-spec destroy_channel/2 :: (proplist(), atom()) -> 'ok'.
+destroy_channel(Props, _) ->
+    UUID = props:get_value(<<"Unique-ID">>, Props),
+    gen_server:cast(?MODULE, {destroy_channel, UUID}),
+    ecallmgr_call_control:rm_leg(Props),
+    ecallmgr_call_events:publish_channel_destroy(Props).
+
+-spec props_to_channel_record/2 :: (proplist(), atom()) -> #channel{}.
+props_to_channel_record(Props, Node) ->
+    #channel{uuid=props:get_value(<<"Unique-ID">>, Props)
+             ,destination=props:get_value(<<"Caller-Destination-Number">>, Props)
+             ,direction=props:get_value(<<"Call-Direction">>, Props)
+             ,account_id=props:get_value(<<"variable_", ?CHANNEL_VAR_PREFIX, "Account-ID">>, Props)
+             ,authorizing_id=props:get_value(<<"variable_", ?CHANNEL_VAR_PREFIX, "Authorizing-ID">>, Props)
+             ,authorizing_type=props:get_value(<<"variable_", ?CHANNEL_VAR_PREFIX, "Authorizing-Type">>, Props)
+             ,owner_id=props:get_value(<<"variable_", ?CHANNEL_VAR_PREFIX, "Owner-ID">>, Props)
+             ,presence_id=props:get_value(<<"Channel-Presence-ID">>, Props)
+             ,realm=props:get_value(<<"variable_", ?CHANNEL_VAR_PREFIX, "Username">>, Props
+                                    ,props:get_value(<<"variable_domain_name">>, Props))
+             ,username=props:get_value(<<"variable_", ?CHANNEL_VAR_PREFIX, "Realm">>, Props
+                                       ,props:get_value(<<"variable_user_name">>, Props))
+             ,import_moh=props:get_value(<<"variable_hold_music">>, Props) =:= undefined 
+             ,node=Node
+             ,timestamp=wh_util:current_tstamp()
+            }.
+    
+-spec channel_record_to_json/1 :: (#channel{}) -> wh_json:json_object().
+channel_record_to_json(Channel) -> 
+    wh_json:from_list([{<<"uuid">>, Channel#channel.uuid}
+                       ,{<<"destination">>, Channel#channel.destination}
+                       ,{<<"direction">>, Channel#channel.direction}
+                       ,{<<"account_id">>, Channel#channel.account_id}
+                       ,{<<"authorizing_id">>, Channel#channel.authorizing_id}
+                       ,{<<"authorizing_type">>, Channel#channel.authorizing_type}
+                       ,{<<"owner_id">>, Channel#channel.owner_id}
+                       ,{<<"presence_id">>, Channel#channel.presence_id}
+                       ,{<<"realm">>, Channel#channel.realm}                                          
+                       ,{<<"username">>, Channel#channel.username}
+                       ,{<<"node">>, Channel#channel.node}
+                       ,{<<"timestamp">>, Channel#channel.timestamp}
+                      ]).
+
+-spec sync_channels/0 :: () -> 'ok'.
+-spec sync_channels/1 :: (string() | binary() | atom()) -> 'ok'.
+
+sync_channels() ->
+    [ecallmgr_fs_node:sync_channels(Srv)
+     || Srv <- gproc:lookup_pids({p, l, fs_node})
+    ],
+    ok.
+
+sync_channels(Node) ->
+    N = wh_util:to_atom(Node, true),
+    [ecallmgr_fs_node:sync_channels(Srv)
+     || Srv <- gproc:lookup_pids({p, l, fs_node})
+            ,ecallmgr_fs_node:fs_node(Srv) =:= N
+    ],
+    ok.
+
+-spec flush_node_channels/1 :: (string() | binary() | atom()) -> 'ok'.
+flush_node_channels(Node) ->
+    gen_server:cast(?MODULE, {flush_node_channels, wh_util:to_atom(Node, true)}).
+        
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -95,6 +226,9 @@ init([]) ->
     put(callid, ?LOG_SYSTEM_ID),
     lager:debug("starting new fs handler"),
     Pid = spawn(fun() -> start_preconfigured_servers() end),
+    ets:new(sip_subscriptions, [set, public, named_table, {keypos, #sip_subscription.key}]),
+    ets:new(ecallmgr_channels, [set, protected, named_table, {keypos, #channel.uuid}]),
+    _ = erlang:send_after(?EXPIRE_CHECK, self(), expire_sip_subscriptions),
     {ok, #state{preconfigured_lookup=Pid}}.
 
 %%--------------------------------------------------------------------
@@ -138,8 +272,63 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast({new_channel, Channel}, State) ->
+    ets:insert(ecallmgr_channels, Channel),
+    {noreply, State, hibernate};
+handle_cast({channel_update, UUID, Update}, State) ->
+    ets:update_element(ecallmgr_channels, UUID, Update),
+    {noreply, State, hibernate};
+handle_cast({destroy_channel, UUID}, State) ->
+    ets:delete(ecallmgr_channels, UUID),
+    {noreply, State, hibernate};
 handle_cast({rm_fs_node, Node}, State) ->
-    {noreply, rm_fs_node(Node, State), hibernate}.
+    {noreply, rm_fs_node(Node, State), hibernate};
+handle_cast({sync_channels, Node, Channels}, State) ->
+    lager:debug("ensuring channel cache is in sync with ~s", [Node]),
+    MatchSpec = [{#channel{uuid = '$1', destination = '_', direction = '_'
+                           ,account_id = '_', authorizing_id = '_'
+                           ,authorizing_type = '_', owner_id = '_'
+                           ,presence_id = '_', realm = '_', username = '_'
+                           ,import_moh = '_', node = '$2', timestamp = '_'
+                          },
+                  [{'=:=', '$2', {const, Node}}],
+                  ['$1']}
+                ],  
+    CachedChannels = sets:from_list(ets:select(ecallmgr_channels, MatchSpec)),
+    SyncChannels = sets:from_list(Channels),
+    Remove = sets:subtract(CachedChannels, SyncChannels),
+    Add = sets:subtract(SyncChannels, CachedChannels),
+    [begin
+         lager:debug("removed channel ~s from cache during sync with ~s", [UUID, Node]),
+         ets:delete(ecallmgr_channels, UUID)
+     end
+     || UUID <- sets:to_list(Remove)
+    ],
+    [begin
+         lager:debug("added channel ~s to cache during sync with ~s", [UUID, Node]),
+         case build_channel_record(Node, UUID) of
+             {ok, C} -> ets:insert(ecallmgr_channels, C);
+             {error, _R} -> lager:warning("failed to sync channel ~s: ~p", [UUID, _R])
+         end
+     end
+     || UUID <- sets:to_list(Add)
+    ],
+    {noreply, State, hibernate};
+handle_cast({flush_node_channels, Node}, State) ->
+    lager:debug("flushing all channels in cache associated to node ~s", [Node]),
+    MatchSpec = [{#channel{uuid = '_', destination = '_', direction = '_'
+                           ,account_id = '_', authorizing_id = '_'
+                           ,authorizing_type = '_', owner_id = '_'
+                           ,presence_id = '_', realm = '_', username = '_'
+                           ,import_moh = '_', node = '$1', timestamp = '_'
+                          },
+                  [{'=:=', '$1', {const, Node}}],
+                  ['true']}
+                ],
+    ets:select_delete(ecallmgr_channels, MatchSpec),
+    {noreply, State};
+handle_cast(_, State) ->
+    {noreply, State, hibernate}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -151,6 +340,16 @@ handle_cast({rm_fs_node, Node}, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info(expire_sip_subscriptions, Cache) ->
+    Now = wh_util:current_tstamp(),
+    DeleteSpec = [{#sip_subscription{key = '_', to = '_', expires = '$3',
+                                     timestamp = '$4', from = '_', node = '_'},
+                   [{'>', {const, Now}, {'+', '$4', '$3'}}],
+                   [true]}
+                 ],
+    ets:select_delete(sip_subscriptions, DeleteSpec),
+    _ = erlang:send_after(?EXPIRE_CHECK, self(), expire_sip_subscriptions),
+    {noreply, Cache, hibernate};
 handle_info({nodedown, Node}, #state{nodes=Nodes}=State) ->
     _ = ecallmgr_fs_sup:remove_node(Node),
     Opts = case lists:keyfind(Node, #node.node, Nodes) of 
@@ -191,6 +390,8 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
+    ets:delete(sip_subscriptions),
+    ets:delete(ecallmgr_channels),
     lager:debug("fs nodes termination: ~p", [ _Reason]).
 
 %%--------------------------------------------------------------------
@@ -301,3 +502,13 @@ maybe_stop_preconfigured_lookup(ok, Pid) ->
     end;
 maybe_stop_preconfigured_lookup(_, Pid) ->
     Pid.
+
+-spec build_channel_record/2 :: (atom(), ne_binary()) -> #channel{}.
+build_channel_record(Node, UUID) ->
+    case freeswitch:api(Node, uuid_dump, wh_util:to_list(UUID)) of
+        {ok, Dump} ->
+            Props = ecallmgr_util:eventstr_to_proplist(Dump),
+            {ok, ?MODULE:props_to_channel_record(Props, Node)};
+        {error, _}=E -> E;
+        timeout -> {error, timeout}
+    end.

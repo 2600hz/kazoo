@@ -10,16 +10,15 @@
 
 -export([init/0, handle_req/2]).
 
--include("dth.hrl").
+-include_lib("dth/src/dth.hrl").
 
 init() ->
     ok.
 
-handle_req(JObj, Props) ->
+handle_req(JObj, _Props) ->
     true = dth_api:blacklist_req_v(JObj),
-    Cache = props:get_value(cache, Props),
 
-    {ok, Blacklist} = wh_cache:fetch_local(Cache, dth_util:blacklist_cache_key()),
+    {ok, Blacklist} = wh_cache:fetch_local(?DTH_CACHE, dth_util:blacklist_cache_key()),
     {ok, JSON} = dth_api:blacklist_resp([{<<"Accounts">>, Blacklist}
                                          | wh_api:default_headers(<<>>, <<"dth">>, <<"blacklist_resp">>, ?APP_NAME, ?APP_VERSION)
                                         ]),

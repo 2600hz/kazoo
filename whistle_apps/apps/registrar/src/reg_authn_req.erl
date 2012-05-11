@@ -52,8 +52,10 @@ send_auth_resp(AuthJObj, AuthU, AuthR, ApiJObj) ->
             ,{<<"Account-ID">>, get_account_id(AuthDoc)}
             ,{<<"Authorizing-Type">>, wh_json:get_value(<<"authorizing_type">>, AuthValue, <<"anonymous">>)}
             ,{<<"Inception">>, <<"on-net">>}
-            ,{<<"Authorizing-ID">>, wh_json:get_value(<<"_id">>, AuthDoc)}],
-
+            ,{<<"Authorizing-ID">>, wh_json:get_value(<<"_id">>, AuthDoc)}
+            ,{<<"Owner-ID">>, wh_json:get_value(<<"owner_id">>, AuthDoc)}            
+           ],
+    
     Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, ApiJObj)}
             ,{<<"Auth-Password">>, wh_json:get_value(<<"password">>, AuthValue)}
             ,{<<"Auth-Method">>, get_auth_method(AuthValue)}

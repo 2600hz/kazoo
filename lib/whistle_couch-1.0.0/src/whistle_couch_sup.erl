@@ -1,47 +1,62 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2012, VoIP INC
+%%% @copyright (C) 2012, VoIP, INC
 %%% @doc
 %%%
 %%% @end
 %%% @contributors
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(whistle_couch_sup).
 
 -behaviour(supervisor).
 
-%% API
--export([start_link/0, cache_proc/0]).
+-include_lib("whistle_couch/include/wh_couch.hrl").
 
-%% Supervisor callbacks
+-export([start_link/0]).
 -export([init/1]).
 
-%% Helper macro for declaring children of supervisor
--define(CHILD(I, Type), {I, {I, start_link, []}, permanent, 5000, Type, [I]}).
--define(CACHE(Name), {Name, {wh_cache, start_link, [Name]}, permanent, 5000, worker, [wh_cache]}).
+-define(CHILD(Name, Type), fun(N, cache) -> {N, {wh_cache, start_link, [N]}, permanent, 5000, worker, [wh_cache]};
+                              (N, T) -> {N, {N, start_link, []}, permanent, 5000, T, [N]} end(Name, Type)).
+-define(CHILDREN, [{?WH_COUCH_CACHE, cache}
+                   ,{couch_config, worker}
+                   ,{couch_mgr, worker}
+                   ,{change_mgr_sup, supervisor}
+                   ,{couch_compactor, worker}
+                  ]).
 
 %% ===================================================================
 %% API functions
 %% ===================================================================
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Starts the supervisor
+%% @end
+%%--------------------------------------------------------------------
+-spec start_link/0 :: () -> startlink_ret().
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
-
-cache_proc() ->
-    [P] = [P || {Mod, P, _, _} <- supervisor:which_children(?MODULE),
-                Mod =:= wh_couch_cache],
-    {ok, P}.
 
 %% ===================================================================
 %% Supervisor callbacks
 %% ===================================================================
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Whenever a supervisor is started using supervisor:start_link/[2,3],
+%% this function is called by the new process to find out about
+%% restart strategy, maximum restart frequency and child
+%% specifications.
+%% @end
+%%--------------------------------------------------------------------
+-spec init([]) -> sup_init_ret().
 init([]) ->
-    {ok, { {one_for_one, 5, 10}, [
-                                  ?CACHE(wh_couch_cache)
-                                  ,?CHILD(couch_config, worker) % load configs from file into Cache/DB
-                                  ,?CHILD(couch_mgr, worker)
-                                  ,?CHILD(change_mgr_sup, supervisor)
-                                  ,?CHILD(couch_compactor, worker)
-                                 ]} }.
+    RestartStrategy = one_for_one,
+    MaxRestarts = 5,
+    MaxSecondsBetweenRestarts = 10,
 
+    SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
+    Children = [?CHILD(Name, Type) || {Name, Type} <- ?CHILDREN],
+
+    {ok, {SupFlags, Children}}.

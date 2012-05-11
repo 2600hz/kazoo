@@ -13,6 +13,10 @@
 -export([add_fs_node/1]).
 -export([list_fs_nodes/0]).
 -export([remove_fs_node/1]).
+-export([show_channels/0]).
+-export([sync_channels/0]).
+-export([sync_channels/1]).
+-export([flush_node_channels/1]).
 
 -spec add_fs_node/1 :: (string() | binary() | atom()) -> 'ok'.
 add_fs_node(Node) when not is_atom(Node) ->
@@ -29,6 +33,34 @@ remove_fs_node(Node) ->
 -spec list_fs_nodes/0 :: () -> [atom(),...] | [].
 list_fs_nodes() ->
     ecallmgr_fs_nodes:connected().
+
+-spec show_channels/0 :: () -> 'ok'.
+show_channels() ->
+    case ecallmgr_fs_nodes:show_channels() of
+        [] -> "no channels";
+        [Channel|_]=Channels ->
+            Header = string:join([wh_util:to_list(K) || {K, _} <- wh_json:to_proplist(Channel)], ","),
+            do_show_channels(Channels, io_lib:format("~s~n", [Header]))
+    end.
+
+do_show_channels([], String) ->
+    lists:flatten(String);
+do_show_channels([Channel|Channels], String) ->
+    Values = string:join([wh_util:to_list(V) || {_, V} <- wh_json:to_proplist(Channel)], ","),
+    do_show_channels(Channels, io_lib:format("~s~s~n", [String, Values])).
+
+-spec sync_channels/0 :: () -> 'ok'.
+-spec sync_channels/1 :: (string() | binary() | atom()) -> 'ok'.
+
+sync_channels() ->
+    ecallmgr_fs_nodes:sync_channels().
+
+sync_channels(Node) ->
+    ecallmgr_fs_nodes:sync_channels(Node).
+
+-spec flush_node_channels/1 :: (string() | binary() | atom()) -> 'ok'.
+flush_node_channels(Node) ->
+    ecallmgr_fs_nodes:flush_node_channels(Node).
 
 -spec show_calls/0 :: () -> 'ok'.
 show_calls() ->
@@ -48,3 +80,5 @@ show_calls() ->
          || ControlWorker <- ControlWorkers],    
     ok.
     
+
+

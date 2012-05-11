@@ -12,10 +12,10 @@
 
 -export([start_link/0, ready/0]).
 -export([load_config/1]).
--export([fetch/1, fetch/2]).
+-export([fetch/1, fetch/2, fetch/3]).
 -export([store/2, store/3]).
 
--include("wh_couch.hrl").
+-include_lib("whistle_couch/include/wh_couch.hrl").
 
 -define(CONFIG_CAT, <<"whistle_couch">>).
 
@@ -41,11 +41,10 @@ ready() ->
     whapps_config:flush(?CONFIG_CAT),
     whapps_config:couch_ready().
 
+
 fetch(Key) ->
     fetch(Key, undefined).
 
-fetch(Key, Cache) when is_pid(Cache) ->
-    fetch(Key, undefined, Cache);
 fetch(Key, Default) ->
     whapps_config:get(?CONFIG_CAT, Key, Default).
 
@@ -60,5 +59,5 @@ store(Key, Value) ->
     whapps_config:set(?CONFIG_CAT, wh_util:to_binary(Key), Value).
 
 -spec store/3 :: (term(), term(), pid()) -> 'ok'.
-store(Key, Value, Cache) when is_pid(Cache) ->
-    wh_cache:store_local(Cache, {?MODULE, Key}, Value, ?MILLISECONDS_IN_DAY).
+store(Key, Value, Cache) ->
+    wh_cache:store_local(Cache, {?MODULE, wh_util:to_binary(Key)}, Value, ?MILLISECONDS_IN_DAY).

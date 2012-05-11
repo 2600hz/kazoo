@@ -10,11 +10,10 @@
 
 -behaviour(supervisor).
 
-%% API
--export([start_link/0, upgrade/0]).
--export([cache_proc/0, child_spec/1, find_proc/1]).
-
-%% Supervisor callbacks
+-export([start_link/0]).
+-export([upgrade/0]).
+-export([child_spec/1]).
+-export([find_proc/1]).
 -export([init/1]).
 
 -include_lib("crossbar/include/crossbar.hrl").
@@ -22,7 +21,7 @@
 %% Helper macro for declaring children of supervisor
 -define(CHILD(I, Type), {I, {I, start_link, []}, permanent, 5000, Type, [I]}).
 -define(CHILD(I, Type, Args), {I, {I, start, [Args]}, permanent, 5000, Type, dynamic}).
--define(CACHE(Name), {Name, {wh_cache, start_link, [Name]}, permanent, 5000, worker, [wh_cache]}).
+-define(CACHE(), {?CROSSBAR_CACHE, {wh_cache, start_link, [?CROSSBAR_CACHE]}, permanent, 5000, worker, [wh_cache]}).
 -define(DISPATCH_FILE, [code:lib_dir(crossbar, priv), "/dispatch.conf"]).
 -define(DEFAULT_LOG_DIR, wh_util:to_binary(code:lib_dir(crossbar, log))).
 
@@ -48,12 +47,6 @@ child_spec(Mod) ->
 find_proc(Mod) ->
     [P] = [P || {Mod1, P, _, _} <- supervisor:which_children(?MODULE), Mod =:= Mod1],
     P.
-
--spec cache_proc/0 :: () -> {'ok', pid()}.
-cache_proc() ->
-    [P] = [P || {Mod, P, _, _} <- supervisor:which_children(?MODULE),
-                Mod =:= crossbar_cache],
-    {ok, P}.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -91,6 +84,6 @@ upgrade() ->
 -spec init(Args) -> sup_init_ret() when
       Args :: [].
 init([]) ->
-    {ok, {{one_for_one, 10, 10}, [?CACHE(crossbar_cache)
+    {ok, {{one_for_one, 10, 10}, [?CACHE()
                                   ,?CHILD(crossbar_bindings, worker)
                                  ]}}.

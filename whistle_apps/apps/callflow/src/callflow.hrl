@@ -29,3 +29,5 @@
                    ]).
 
 -define(CF_CONFIG_CAT, <<"callflow">>).
+
+-define(MANUAL_PRESENCE_DOC, <<"manual_presence">>).

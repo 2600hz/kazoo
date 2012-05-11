@@ -108,9 +108,8 @@ handle_discovery_req(JObj, Props) ->
                ],
     Conference = whapps_conference:update(Updaters, whapps_conference:new()),
     conf_participant:set_conference(Conference, Srv),
-    {ok, Cache} = conference_sup:cache_proc(),
     SearchId = couch_mgr:get_uuid(),
-    wh_cache:store_local(Cache, {?MODULE, discovery, SearchId}, Srv, 300),
+    wh_cache:store_local(?CONFERENCE_CACHE, {?MODULE, discovery, SearchId}, Srv, 300),
     lager:debug("publishing conference search request ~s", [SearchId]),
     whapps_conference_command:search(SearchId, Conference),
     whapps_call_command:prompt(<<"conf-joining_conference">>, Call), 
@@ -125,8 +124,7 @@ handle_search_error(JObj, _Props) ->
     SearchId = wh_json:get_value(<<"Msg-ID">>, JObj),
     lager:debug("recieved search request error for ~s", [SearchId]),
 
-    {ok, Cache} = conference_sup:cache_proc(),
-    {ok, Srv} = wh_cache:fetch_local(Cache, {?MODULE, discovery, SearchId}),
+    {ok, Srv} = wh_cache:fetch_local(?CONFERENCE_CACHE, {?MODULE, discovery, SearchId}),
     lager:debug("found participant process as ~p", [Srv]),
 
     {ok, Conference} = conf_participant:conference(Srv),
@@ -157,8 +155,7 @@ handle_search_resp(JObj, _Props) ->
     SearchId = wh_json:get_value(<<"Msg-ID">>, JObj),
     lager:debug("recieved search response for ~s", [SearchId]),
 
-    {ok, Cache} = conference_sup:cache_proc(),
-    {ok, Srv} = wh_cache:fetch_local(Cache, {?MODULE, discovery, SearchId}),
+    {ok, Srv} = wh_cache:fetch_local(?CONFERENCE_CACHE, {?MODULE, discovery, SearchId}),
     lager:debug("found participant process as ~p", [Srv]),
 
     {ok, Call} = conf_participant:call(Srv),

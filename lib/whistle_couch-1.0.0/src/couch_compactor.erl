@@ -201,14 +201,13 @@ get_db_design_docs(Conn, DBEncoded) ->
 
 -spec get_db_shards/2 :: (#server{}, ne_binary()) -> [ne_binary()].
 get_db_shards(AdminConn, DBEncoded) ->
-    {ok, Cache} = whistle_couch_sup:cache_proc(),
-    case couch_config:fetch({shards, DBEncoded}, Cache) of
+    case couch_config:fetch({shards, DBEncoded}, undefined, ?WH_COUCH_CACHE) of
         undefined ->
             case couch_util:db_info(AdminConn) of
                 {ok, []} -> lager:debug("no shards found on admin conn? That's odd"), [];
                 {ok, Shards} ->
                     Encoded = [ ShardEncoded || Shard <- Shards, is_a_shard(ShardEncoded=binary:replace(Shard, <<"/">>, <<"%2f">>, [global]), DBEncoded) ],
-                    couch_config:store({shards, DBEncoded}, Encoded, Cache),
+                    couch_config:store({shards, DBEncoded}, Encoded, ?WH_COUCH_CACHE),
                     lager:debug("cached encoded shards for ~s", [DBEncoded]),
                     Encoded
             end;

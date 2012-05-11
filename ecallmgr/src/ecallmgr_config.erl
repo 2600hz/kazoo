@@ -20,8 +20,7 @@
 -spec flush/0 :: () -> 'ok'.
 -spec flush/1 :: (wh_json:json_string()) -> 'ok'.
 flush() ->
-    {ok, Cache} = ecallmgr_util_sup:cache_proc(),
-    wh_cache:flush_local(Cache).
+    wh_cache:flush_local(?ECALLMGR_UTIL_CACHE).
 
 flush(Key) ->
     flush(Key, node()).
@@ -59,11 +58,7 @@ get(Key, Default) ->
 get(Key0, Default, Node0) ->
     Key = wh_util:to_binary(Key0),
     Node = wh_util:to_binary(Node0),
-
-    CacheKey = cache_key(Key, Node),
-
-    {ok, Cache} = ecallmgr_util_sup:cache_proc(),
-    case wh_cache:fetch_local(Cache, CacheKey) of
+    case wh_cache:fetch_local(?ECALLMGR_UTIL_CACHE, cache_key(Key, Node)) of
         {ok, V} -> V;
         {error, E} when E =:= not_found orelse E =:= undefined ->
             Req = [KV ||
@@ -93,7 +88,7 @@ get(Key0, Default, Node0) ->
                             <<"undefined">> -> Default;
                             <<"null">> -> Default;
                             Value ->
-                                wh_cache:store_local(Cache, CacheKey, Value),
+                                wh_cache:store_local(?ECALLMGR_UTIL_CACHE, cache_key(Key, Node), Value),
                                 Value
                         end,
                     V
@@ -107,10 +102,7 @@ set(Key, Value) ->
 set(Key0, Value, Node0) ->
     Key = wh_util:to_binary(Key0),
     Node = wh_util:to_binary(Node0),
-
-    {ok, Cache} = ecallmgr_util_sup:cache_proc(),
-    wh_cache:store_local(Cache, cache_key(Key, Node), Value),
-
+    wh_cache:store_local(?ECALLMGR_UTIL_CACHE, cache_key(Key, Node), Value),
     Req = [KV ||
               {_, V} = KV <- [{<<"Category">>, <<"ecallmgr">>}
                               ,{<<"Key">>, Key}

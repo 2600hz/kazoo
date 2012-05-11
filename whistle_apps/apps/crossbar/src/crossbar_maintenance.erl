@@ -30,8 +30,7 @@
 %%--------------------------------------------------------------------
 -spec flush/0 :: () -> 'ok'.
 flush() ->
-    {ok, Srv} = crossbar_sup:cache_proc(),
-    wh_cache:flush_local(Srv).
+    wh_cache:flush_local(?CROSSBAR_CACHE).
 
 %%--------------------------------------------------------------------
 %% @public

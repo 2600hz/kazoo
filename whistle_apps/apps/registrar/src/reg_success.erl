@@ -10,7 +10,7 @@
 
 -export([init/0, handle_req/2]).
 
--include("reg.hrl").
+-include_lib("registrar/src/reg.hrl").
 
 init() ->
     ok.
@@ -60,12 +60,11 @@ handle_req(ApiJObj, _Props) ->
                     JObj1
     end,
 
-    {ok, Cache} = registrar_sup:cache_proc(),
-    _ = case wh_cache:peek_local(Cache, reg_util:cache_user_to_reg_key(Realm, Username)) of
-            {ok, _} -> ok;
-            {error, not_found} -> spawn(fun() -> send_new_register(JObj2) end)
-        end,
-    wh_cache:store_local(Cache, reg_util:cache_user_to_reg_key(Realm, Username), JObj2, Expires, fun reg_util:reg_removed_from_cache/3),
+    case wh_cache:peek_local(?REGISTRAR_CACHE, reg_util:cache_user_to_reg_key(Realm, Username)) of
+        {ok, _} -> ok;
+        {error, not_found} -> spawn(fun() -> send_new_register(JObj2) end)
+    end,
+    wh_cache:store_local(?REGISTRAR_CACHE, reg_util:cache_user_to_reg_key(Realm, Username), JObj2, Expires, fun reg_util:reg_removed_from_cache/3),
 
     lager:debug("cached registration ~s@~s for ~psec", [Username, Realm, Expires]).
 

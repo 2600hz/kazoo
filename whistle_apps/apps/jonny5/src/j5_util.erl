@@ -20,16 +20,11 @@
          ,write_debit_to_ledger/6, write_credit_to_ledger/6
         ]).
 
--include("jonny5.hrl").
+-include_lib("jonny5/src/jonny5.hrl").
 
 -spec fetch_all_accounts/0 :: () -> wh_json:json_objects().
 fetch_all_accounts() ->
-    {ok, Cache} = jonny5_sup:cache_proc(),
-    fetch_all_accounts(Cache).
-
--spec fetch_all_accounts/1 :: (pid()) -> wh_json:json_objects().
-fetch_all_accounts(Cache) ->
-    AcctPids = wh_cache:filter_local(Cache, fun({j5_authz, _}, _) -> true;
+    AcctPids = wh_cache:filter_local(?JONNY5_CACHE, fun({j5_authz, _}, _) -> true;
                                                 (_, _) -> false
                                              end),
     [j5_acctmgr:status(AcctPid) || {{j5_authz, _AcctID}, AcctPid} <- AcctPids, erlang:is_process_alive(AcctPid)].
@@ -42,22 +37,14 @@ fetch_account(AcctID) ->
     end.
 
 -spec fetch_account_handler/1 :: (ne_binary()) -> {'ok', pid()} | {'error', 'not_found'}.
--spec fetch_account_handler/2 :: (ne_binary(), pid()) -> {'ok', pid()} | {'error', 'not_found'}.
 fetch_account_handler(AcctID) ->
-    {ok, Cache} = jonny5_sup:cache_proc(),
-    fetch_account_handler(AcctID, Cache).
-fetch_account_handler(AcctID, Cache) when is_pid(Cache) ->
-    wh_cache:fetch_local(Cache, cache_account_handler_key(AcctID)).
+    wh_cache:fetch_local(?JONNY5_CACHE, cache_account_handler_key(AcctID)).
 
 -spec store_account_handler/2 :: (ne_binary(), pid() | 'undefined') -> 'ok'.
--spec store_account_handler/3 :: (ne_binary(), pid() | 'undefined', pid()) -> 'ok'.
-store_account_handler(AcctID, J5Pid) ->
-    {ok, Cache} = jonny5_sup:cache_proc(),
-    store_account_handler(AcctID, J5Pid, Cache).
-store_account_handler(AcctID, undefined, Cache) when is_pid(Cache) ->
-    wh_cache:erase_local(Cache, cache_account_handler_key(AcctID));
-store_account_handler(AcctID, J5Pid, Cache) when is_pid(J5Pid), is_pid(Cache) ->
-    wh_cache:store_local(Cache, cache_account_handler_key(AcctID), J5Pid, infinity).
+store_account_handler(AcctID, undefined) ->
+    wh_cache:erase_local(?JONNY5_CACHE, cache_account_handler_key(AcctID));
+store_account_handler(AcctID, J5Pid) when is_pid(J5Pid) ->
+    wh_cache:store_local(?JONNY5_CACHE, cache_account_handler_key(AcctID), J5Pid, infinity).
 
 cache_account_handler_key(AcctID) ->
     {j5_authz, AcctID}.
@@ -69,11 +56,10 @@ preload_accounts() ->
     preload_accounts(Accts).
 
 preload_accounts(JObjs) ->
-    {ok, Cache} = jonny5_sup:cache_proc(),
-    [ preload_account(wh_json:get_value(<<"id">>, JObj), Cache) || JObj <- JObjs].
+    [ preload_account(wh_json:get_value(<<"id">>, JObj)) || JObj <- JObjs].
 
-preload_account(AcctID, Cache) ->
-    case fetch_account_handler(AcctID, Cache) of
+preload_account(AcctID) ->
+    case fetch_account_handler(AcctID) of
         {ok, _} -> ok;
         {error, not_found} ->
             jonny5_acct_sup:start_proc(AcctID)
@@ -87,10 +73,9 @@ preload_trunkstore() ->
 
 -spec refresh_all_accounts/0 :: () -> no_return().
 refresh_all_accounts() ->
-    {ok, Cache} = jonny5_sup:cache_proc(),
-    AcctPids = wh_cache:filter_local(Cache, fun({j5_authz, _}, _) -> true;
-                                               (_, _) -> false
-                                            end),
+    AcctPids = wh_cache:filter_local(?JONNY5_CACHE, fun({j5_authz, _}, _) -> true;
+                                                       (_, _) -> false
+                                                    end),
     [j5_acctmgr:refresh(AcctPid) || {{j5_authz, _AcctID}, AcctPid} <- AcctPids].
 
 -spec refresh_account/1 :: (ne_binary()) -> 'ok'.

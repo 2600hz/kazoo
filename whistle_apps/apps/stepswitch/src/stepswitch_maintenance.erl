@@ -1,3 +1,4 @@
+
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2010-2011, VoIP INC
 %%% @doc
@@ -23,8 +24,7 @@
 %%--------------------------------------------------------------------
 -spec flush/0 :: () -> ok.
 flush() ->
-    {ok, Pid} = stepswitch_sup:cache_proc(),
-    wh_cache:flush_local(Pid).
+    wh_cache:flush_local(?STEPSWITCH_CACHE).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -57,8 +57,7 @@ refresh() ->
 %%--------------------------------------------------------------------
 -spec lookup_number/1 :: (string()) -> {ok, binary()} | {error, atom()}.
 lookup_number(Number) ->
-    {ok, Srv} = stepswitch_sup:listener(),
-    gen_server:call(Srv, {lookup_number, Number}).
+    gen_server:call(stepswitch_listener, {lookup_number, Number}).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -69,8 +68,7 @@ lookup_number(Number) ->
 %%--------------------------------------------------------------------
 -spec reload_resources/0 :: () -> ok.
 reload_resources() ->
-    {ok, Srv} = stepswitch_sup:listener(),
-    gen_server:call(Srv, {reload_resrcs}).
+    gen_server:call(stepswitch_listener, {reload_resrcs}).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -84,9 +82,7 @@ reload_resources() ->
 -spec process_number/2 :: (string(), list()) -> list() | {error, atom()}.
 
 process_number(Number) ->
-    {ok, Srv} = stepswitch_sup:listener(),
-    gen_server:call(Srv, {process_number, Number}).
+    gen_server:call(stepswitch_listener, {process_number, Number}).
 
 process_number(Number, Flags) ->
-    {ok, Srv} = stepswitch_sup:listener(),
-    gen_server:call(Srv, {process_number, Number, Flags}).
+    gen_server:call(stepswitch_listener, {process_number, Number, Flags}).

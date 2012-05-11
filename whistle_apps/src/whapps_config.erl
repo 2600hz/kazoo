@@ -7,7 +7,7 @@
 %%%-------------------------------------------------------------------
 -module(whapps_config).
 
--include("whistle_apps.hrl").
+-include_lib("whistle_apps/src/whistle_apps.hrl").
 
 -export([get/2, get/3, get/4, get_all_kvs/1]).
 -export([get_string/2, get_string/3, get_string/4]).
@@ -204,9 +204,7 @@ get(Category, Key, Default, Node) when not is_list(Key) ->
 get(Category0, Keys, Default, Node0) ->
     Category = wh_util:to_binary(Category0),
     Node = wh_util:to_binary(Node0),
-
-    {ok, Cache} = whistle_apps_sup:config_cache_proc(),
-    case fetch_category(Category, Cache) of
+    case fetch_category(Category, ?WHAPPS_CONFIG_CACHE) of
         {ok, JObj} ->
             case wh_json:get_value([Node | Keys], JObj) of
                 undefined ->
@@ -236,8 +234,7 @@ get(Category0, Keys, Default, Node0) ->
 %%-----------------------------------------------------------------------------
 -spec get_all_kvs/1 :: (ne_binary()) -> proplist().
 get_all_kvs(Category) ->
-    {ok, Cache} = whistle_apps_sup:config_cache_proc(),
-    case fetch_category(Category, Cache) of
+    case fetch_category(Category, ?WHAPPS_CONFIG_CACHE) of
         {error, _} ->
             lager:debug("missing category ~s(~s)", [Category, "default"]),
             [];
@@ -294,13 +291,11 @@ set_default(Category, Key, Value) ->
 %%-----------------------------------------------------------------------------
 -spec flush/0 :: () -> 'ok'.
 flush() ->
-    {ok, Cache} = whistle_apps_sup:config_cache_proc(),
-    wh_cache:flush_local(Cache).
+    wh_cache:flush_local(?WHAPPS_CONFIG_CACHE).
 
 -spec flush/1 :: (ne_binary()) -> 'ok'.
 flush(Category) ->
-    {ok, Cache} = whistle_apps_sup:config_cache_proc(),
-    wh_cache:erase_local(Cache, category_key(Category)).
+    wh_cache:erase_local(?WHAPPS_CONFIG_CACHE, category_key(Category)).
 
 -spec flush/2 :: (ne_binary(), ne_binary()) -> 'ok'.
 -spec flush/3 :: (ne_binary(), ne_binary() | [ne_binary(),...], atom() | ne_binary()) -> 'ok'.
@@ -338,8 +333,7 @@ flush(Category0, Keys, Node0) ->
 import(Category) when not is_binary(Category) ->
     import(wh_util:to_binary(Category));
 import(Category) ->
-    {ok, Cache} = whistle_apps_sup:config_cache_proc(),
-    fetch_file_config(Category, Cache).
+    fetch_file_config(Category, ?WHAPPS_CONFIG_CACHE).
 
 %%-----------------------------------------------------------------------------
 %% @private
@@ -432,13 +426,12 @@ do_set(Category0, Keys, Value, Node0) ->
 
     lager:debug("setting ~s(~p): ~p", [Category, Keys, Value]),
 
-    {ok, Cache} = whistle_apps_sup:config_cache_proc(),
     UpdateFun = fun(J) ->
                         NodeConfig = wh_json:get_value(Node, J, wh_json:new()),
                         wh_json:set_value(Keys, Value, NodeConfig)
                 end,
 
-    update_category_node(Category, Node, UpdateFun, Cache).
+    update_category_node(Category, Node, UpdateFun, ?WHAPPS_CONFIG_CACHE).
 
 %%-----------------------------------------------------------------------------
 %% @private
@@ -539,8 +532,7 @@ category_to_file(_) ->
 couch_ready() ->
     case whereis(couch_mgr) =:= self() of
         true ->
-            {ok, Cache} = whistle_apps_sup:config_cache_proc(),
-            wh_cache:store_local(Cache, couch_ready_key(), true
+            wh_cache:store_local(?WHAPPS_CONFIG_CACHE, couch_ready_key(), true
                                  ,fun(_, _, _) ->
                                           couch_mgr:load_configs()
                                   end);

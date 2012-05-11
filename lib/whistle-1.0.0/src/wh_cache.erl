@@ -10,7 +10,6 @@
 
 -behaviour(gen_server).
 
-%% API
 -export([start_link/0, start_link/1]).
 -export([store/2, store/3, store/4]).
 -export([peek/1]).
@@ -19,7 +18,6 @@
 -export([flush/0]).
 -export([filter/1]).
 
--export([start_local_link/0]).
 -export([store_local/3, store_local/4, store_local/5]).
 -export([peek_local/2]).
 -export([fetch_local/2, fetch_keys_local/1]).
@@ -27,16 +25,27 @@
 -export([flush_local/1]). 
 -export([filter_local/2]).
 
-%% gen_server callbacks
--export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-         terminate/2, code_change/3]).
+-export([init/1
+         ,handle_call/3
+         ,handle_cast/2
+         ,handle_info/2
+         ,terminate/2
+         ,code_change/3
+        ]).
 
 -include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_log.hrl").
 
 -define(SERVER, ?MODULE).
 -define(EXPIRES, 3600). %% an hour
--define(EXPIRE_CHECK, 30000).
+-define(EXPIRE_CHECK, 10000).
+
+-record(cache_obj, {key
+                    ,value
+                    ,expires=?EXPIRES
+                    ,timestamp=wh_util:current_tstamp()
+                    ,callback=undefined
+                   }).
 
 %%%===================================================================
 %%% API
@@ -55,9 +64,6 @@ start_link() ->
 start_link(Name) ->
     gen_server:start_link({local, Name}, ?MODULE, [Name], []).
 
-start_local_link() ->
-    gen_server:start_link(?MODULE, [local], []).
-
 %% T - seconds to store the pair
 -spec store/2 :: (term(), term()) -> 'ok'.
 -spec store/3 :: (term(), term(), pos_integer() | 'infinity' | function()) -> 'ok'.
@@ -69,74 +75,104 @@ store(K, V) ->
 store(K, V, Fun) when is_function(Fun, 3) ->
     store(K, V, ?EXPIRES, Fun);
 store(K, V, T) ->
-    gen_server:cast(?SERVER, {store, K, V, T, undefined}).
+    store_local(?SERVER, K, V, T).
 
 store(K, V, T, Fun) when is_function(Fun, 3) ->
-    gen_server:cast(?SERVER, {store, K, V, T, Fun}).
+    store_local(?SERVER, K, V, T, Fun).
 
 -spec peek/1 :: (term()) -> {'ok', term()} | {'error', 'not_found'}.
 peek(K) ->
-    gen_server:call(?SERVER, {peek, K}).
+    peek_local(?SERVER, K).
 
 -spec fetch/1 :: (term()) -> {'ok', term()} | {'error', 'not_found'}.
 fetch(K) ->
-    gen_server:call(?SERVER, {fetch, K}).
+    fetch_local(?SERVER, K).
 
 -spec erase/1 :: (term()) -> 'ok'.
 erase(K) ->
-    gen_server:cast(?SERVER, {erase, K}).
+    erase_local(?SERVER, K).
 
 -spec flush/0 :: () -> 'ok'.
 flush() ->
-    gen_server:cast(?SERVER, {flush}).
+    flush_local(?SERVER).
 
 -spec fetch_keys/0 :: () -> [term(),...] | [].
 fetch_keys() ->
-    gen_server:call(?SERVER, fetch_keys).
+    fetch_keys_local(?SERVER).
 
 -spec filter/1 :: (fun((term(), term()) -> boolean())) -> proplist().
 filter(Pred) when is_function(Pred, 2) ->
-    gen_server:call(?SERVER, {filter, Pred}).
+    filter_local(?SERVER, Pred).
 
 %% Local cache API
--spec store_local/3 :: (pid(), term(), term()) -> 'ok'.
--spec store_local/4 :: (pid(), term(), term(), pos_integer() | 'infinity' | function() | {atom(), atom()}) -> 'ok'.
--spec store_local/5 :: (pid(), term(), term(), pos_integer() | 'infinity', function() | {atom(), atom()}) -> 'ok'.
+-spec store_local/3 :: (atom(), term(), term()) -> 'ok'.
+-spec store_local/4 :: (atom(), term(), term(), pos_integer() | 'infinity' | function() | {atom(), atom()}) -> 'ok'.
+-spec store_local/5 :: (atom(), term(), term(), pos_integer() | 'infinity', function() | {atom(), atom()}) -> 'ok'.
 
-store_local(Srv, K, V) when is_pid(Srv) ->
+store_local(Srv, K, V) ->
     store_local(Srv, K, V, ?EXPIRES).
 
-store_local(Srv, K, V, Fun) when is_pid(Srv), is_function(Fun, 3) ->
+store_local(Srv, K, V, Fun) when is_function(Fun, 3) ->
     store_local(Srv, K, V, ?EXPIRES, Fun);
-store_local(Srv, K, V, T) when is_pid(Srv) ->
-    gen_server:cast(Srv, {store, K, V, T, undefined}).
+store_local(Srv, K, V, T) ->
+    gen_server:cast(Srv, {store, #cache_obj{key=K
+                                            ,value=V
+                                            ,expires=T
+                                           }}).
 
-store_local(Srv, K, V, T, Fun) when is_pid(Srv), is_function(Fun, 3) ->
-    gen_server:cast(Srv, {store, K, V, T, Fun}).
+store_local(Srv, K, V, T, Fun) when is_function(Fun, 3) ->
+    gen_server:cast(Srv, {store, #cache_obj{key=K
+                                            ,value=V
+                                            ,expires=T
+                                            ,callback=Fun
+                                           }}).
 
--spec peek_local/2 :: (pid(), term()) -> {'ok', term()} | {'error', 'not_found'}.
-peek_local(Srv, K) when is_pid(Srv) ->
-    gen_server:call(Srv, {peek, K}).
+-spec peek_local/2 :: (atom(), term()) -> {'ok', term()} | {'error', 'not_found'}.
+peek_local(Srv, K) ->
+    try ets:lookup_element(Srv, K, #cache_obj.value) of
+        Value -> 
+            {ok, Value}
+    catch
+        error:badarg -> 
+            {error, not_found}
+    end.
 
--spec fetch_local/2 :: (pid(), term()) -> {'ok', term()} | {'error', 'not_found'}.
-fetch_local(Srv, K) when is_pid(Srv) ->
-    gen_server:call(Srv, {fetch, K}).
+-spec fetch_local/2 :: (atom(), term()) -> {'ok', term()} | {'error', 'not_found'}.
+fetch_local(Srv, K) ->
+    try ets:lookup_element(Srv, K, #cache_obj.value) of
+        Value -> 
+            gen_server:cast(Srv, {update_timestamp, K, wh_util:current_tstamp()}),
+            {ok, Value}
+    catch
+        error:badarg ->
+            {error, not_found}
+    end.
 
--spec erase_local/2 :: (pid(), term()) -> 'ok'.
-erase_local(Srv, K) when is_pid(Srv) ->
+-spec erase_local/2 :: (atom(), term()) -> 'ok'.
+erase_local(Srv, K) ->
     gen_server:cast(Srv, {erase, K}).
 
--spec flush_local/1 :: (pid()) -> 'ok'.
-flush_local(Srv) when is_pid(Srv) ->
+-spec flush_local/1 :: (atom()) -> 'ok'.
+flush_local(Srv) ->
     gen_server:cast(Srv, {flush}).
 
--spec fetch_keys_local/1 :: (pid()) -> [term(),...] | [].
-fetch_keys_local(Srv) when is_pid(Srv) ->
-    gen_server:call(Srv, fetch_keys).
+-spec fetch_keys_local/1 :: (atom()) -> [term(),...] | [].
+fetch_keys_local(Srv) ->
+    lists:concat(ets:match(Srv, #cache_obj{key='$1'
+                                           ,value='_'
+                                           ,expires='_'
+                                           ,timestamp='_'
+                                           ,callback='_'
+                                          })).
 
--spec filter_local/2 :: (pid(), fun((term(), term()) -> boolean())) -> proplist().
-filter_local(Srv, Pred)  when is_pid(Srv) andalso is_function(Pred, 2) ->
-    gen_server:call(Srv, {filter, Pred}).
+-spec filter_local/2 :: (atom(), fun((term(), term()) -> boolean())) -> proplist().
+filter_local(Srv, Pred)  when is_function(Pred, 2) ->
+    ets:foldl(fun(#cache_obj{key=K, value=V}, Acc) ->
+                      case Pred(K, V) of
+                          true -> [{K, V}|Acc];
+                          false -> Acc
+                      end
+              end, [], Srv).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -155,9 +191,9 @@ filter_local(Srv, Pred)  when is_pid(Srv) andalso is_function(Pred, 2) ->
 %%--------------------------------------------------------------------
 init([Name]) ->
     put(callid, ?LOG_SYSTEM_ID),
-    _ = erlang:send_after(?EXPIRE_CHECK, self(), flush),
+    _ = erlang:send_after(?EXPIRE_CHECK, self(), expire),
     lager:debug("started new cache proc: ~s", [Name]),
-    {ok, dict:new()}.
+    {ok, ets:new(Name, [set, protected, named_table, {keypos, #cache_obj.key}])}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -173,22 +209,8 @@ init([Name]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({peek, K}, _, Dict) ->
-    case dict:find(K, Dict) of
-        {ok, {_, V, _, _}} -> {reply, {ok, V}, Dict};
-        error -> {reply, {error, not_found}, Dict}
-    end;
-handle_call({fetch, K}, _, Dict) ->
-    case dict:find(K, Dict) of
-        {ok, {infinity=T, V, T, _}} -> {reply, {ok, V}, Dict};
-        {ok, {_, V, T, F}} -> {reply, {ok, V}, dict:update(K, fun(_) -> {wh_util:current_tstamp()+T, V, T, F} end, Dict), hibernate};
-        error -> {reply, {error, not_found}, Dict}
-    end;
-handle_call(fetch_keys, _, Dict) ->
-    {reply, dict:fetch_keys(Dict), Dict};
-handle_call({filter, Pred}, _, Dict) ->
-    KV = dict:map(fun(_, {_,V,_, _}) -> V end, Dict),
-    {reply, dict:to_list(dict:filter(Pred, KV)), Dict}.
+handle_call(_, _, Cache) ->
+    {reply, {error, not_implemented}, Cache}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -200,24 +222,36 @@ handle_call({filter, Pred}, _, Dict) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({store, K, V, infinity=T, F}, Dict) ->
-    {noreply, dict:store(K, {T, V, T, F}, Dict), hibernate};
-handle_cast({store, K, V, T, F}, Dict) ->
-    {noreply, dict:store(K, {wh_util:current_tstamp()+T, V, T, F}, Dict), hibernate};
-handle_cast({erase, K}, Dict) ->
-    ok = case dict:find(K, Dict) of
-             {ok, {_, _, _, undefined}} -> ok;
-             {ok, {_, V, _, F}} -> spawn(fun() -> F(K, V, erase) end), ok;
-             _ -> ok
-         end,
-    {noreply, dict:erase(K, Dict), hibernate};
-handle_cast({flush}, Dict) ->
-    _ = [(fun({_, {_, _, _, undefined}}) -> ok;
-             ({K, {_, V, _, F}}) -> spawn(fun() -> F(K, V, flush) end) 
-          end)(Elem)
-         || Elem <- dict:to_list(Dict) 
-        ],
-    {noreply, dict:new(), hibernate}.
+handle_cast({store, CacheObj}, Cache) ->
+    ets:insert(Cache, CacheObj),
+    {noreply, Cache, hibernate};
+handle_cast({update_timestamp, K, Timestamp}, Cache) ->
+    ets:update_element(Cache, K, {#cache_obj.timestamp, Timestamp}),
+    {noreply, Cache, hibernate};
+handle_cast({erase, K}, Cache) ->
+    try ets:lookup_element(Cache, K, #cache_obj.callback) of
+        undefined -> ok;
+        Callback ->
+            V = ets:lookup_element(Cache, K, #cache_obj.value),
+            spawn(fun() -> Callback(K, V, erase) end)
+    catch
+        error:badarg -> ok
+    end,
+    ets:delete(Cache, K),
+    {noreply, Cache, hibernate};
+handle_cast({flush}, Cache) ->
+    MatchSpec = [{#cache_obj{key = '$1', value = '$2', expires = '_',
+                             timestamp = '_', callback = '$3'},
+                  [{'=/=', '$3', undefined}],
+                  [{{'$3', '$1', '$2'}}]}
+                ],
+    [spawn(fun() -> Callback(K, V, flush) end)
+     || {Callback, K, V} <- ets:select(Cache, MatchSpec)
+    ],
+    ets:delete_all_objects(Cache),
+    {noreply, Cache, hibernate};
+handle_cast(_, Cache) ->
+    {noreply, Cache, hibernate}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -229,19 +263,29 @@ handle_cast({flush}, Dict) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info(flush, Dict) ->
+handle_info(expire, Cache) ->
     Now = wh_util:current_tstamp(),
-    Filter = fun(_, {infinity, _, _, _}) -> true;
-                (_, {T, _, _, _}) when Now < T -> true;
-                (_, {_, _, _, undefined}) -> false;
-                (K, {_, V, _, F}) -> 
-                     spawn(fun() -> F(K, V, expire) end),
-                     false
-             end,
-    _ = erlang:send_after(?EXPIRE_CHECK, self(), flush),
-    {noreply, dict:filter(Filter, Dict), hibernate};
-handle_info(_Info, State) ->
-    {noreply, State}.
+    FindSpec = [{#cache_obj{key = '$1', value = '$2', expires = '$3',
+                            timestamp = '$4', callback = '$5'},
+                 [{'=/=', '$3', infinity},
+                  {'>', {const, Now}, {'+', '$4', '$3'}}],
+                 [{{'$5', '$1', '$2'}}]}
+                ],
+    [spawn(fun() -> Callback(K, V, expire) end)
+     || {Callback, K, V} <- ets:select(Cache, FindSpec)
+            ,is_function(Callback)
+    ],
+    DeleteSpec = [{#cache_obj{key = '_', value = '_', expires = '$3',
+                              timestamp = '$4', callback = '_'},
+                   [{'=/=', '$3', infinity},
+                    {'>', {const, Now}, {'+', '$4', '$3'}}],
+                   [true]}
+                 ],
+    ets:select_delete(Cache, DeleteSpec),
+    _ = erlang:send_after(?EXPIRE_CHECK, self(), expire),
+    {noreply, Cache, hibernate};
+handle_info(_Info, Cache) ->
+    {noreply, Cache, hibernate}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -254,7 +298,8 @@ handle_info(_Info, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, _State) ->
+terminate(_Reason, Cache) ->
+    ets:delete(Cache),
     ok.
 
 %%--------------------------------------------------------------------

@@ -28,6 +28,7 @@ presence_probe(JObj, _Props) ->
     Subscription = wh_json:get_value(<<"Subscription">>, JObj),
     ProbeRepliers = [fun presence_mwi_update/4
                      ,fun presence_parking_slot/4
+                     ,fun manual_presence/4
                     ],
     [Fun(Subscription, {FromUser, FromRealm}, {ToUser, ToRealm}, JObj) || Fun <- ProbeRepliers].
 
@@ -77,6 +78,24 @@ presence_parking_slot(_, {_, FromRealm}, {ToUser, ToRealm}, _) ->
         _E -> ok
     end.
 
+-spec manual_presence/4 :: (ne_binary(), {ne_binary(), ne_binary()}, {ne_binary(), ne_binary()}, wh_json:json_object()) -> ok.
+manual_presence(<<"message-summary">>, _, _, _) ->
+    ok;
+manual_presence(_, {_, FromRealm}, {ToUser, ToRealm}, _) ->
+    case whapps_util:get_account_by_realm(FromRealm) of
+        {ok, AccountDb} ->
+            case couch_mgr:open_doc(AccountDb, ?MANUAL_PRESENCE_DOC) of
+                {error, _} -> ok;
+                {ok, JObj} ->
+                    PresenceId = <<ToUser/binary, "@", ToRealm/binary>>,
+                    case wh_json:get_value(PresenceId, JObj) of
+                        undefined -> ok;
+                        State ->
+                            whapps_call_command:presence(State, PresenceId, wh_util:to_hex_binary(crypto:md5(PresenceId)))
+                        end
+            end;
+        _E -> ok
+    end.
 %%--------------------------------------------------------------------
 %% @public
 %% @doc

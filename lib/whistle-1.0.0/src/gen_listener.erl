@@ -470,8 +470,10 @@ process_req(#state{responders=Responders, active_responders=ARs}=State, JObj, BD
     case handle_callback_event(State, JObj) of
         ignore -> State;
         Props ->
+            PublishAs = self(),
             Pid = proc_lib:spawn_link(fun() -> 
                                               _ = wh_util:put_callid(JObj),
+                                              put(amqp_publish_as, PublishAs),
                                               process_req(Props, Responders, JObj, BD) 
                                       end),
             State#state{active_responders=[Pid | ARs]}
@@ -480,9 +482,10 @@ process_req(#state{responders=Responders, active_responders=ARs}=State, JObj, BD
 -spec process_req/4 :: (wh_proplist(), listener_utils:responders(), wh_json:json_object(), #'basic.deliver'{}) -> 'ok'.
 process_req(Props, Responders, JObj, BD) ->
     Key = wh_util:get_event_type(JObj),
-
+    PublishAs = get(amqp_publish_as),
     Handlers = [spawn_monitor(fun() ->
                                       _ = wh_util:put_callid(JObj),
+                                      put(amqp_publish_as, PublishAs),
                                       case erlang:function_exported(Responder, Fun, 3) of
                                           true -> Responder:Fun(JObj, Props, BD);
                                           false -> Responder:Fun(JObj, Props)
@@ -616,20 +619,19 @@ next_timeout(Timeout) when Timeout < ?START_TIMEOUT ->
 next_timeout(Timeout) ->
     Timeout * 2.
 
-
 -spec add_other_queue/4 :: (binary(), proplist(), proplist(), #state{}) -> {ne_binary(), #state{}}.
 add_other_queue(<<>>, QueueProps, Bindings, #state{other_queues=OtherQueues}=State) ->
     {ok, Q} = start_amqp(QueueProps),
     _ = [create_binding(wh_util:to_binary(Type), BindProps, Q) || {Type, BindProps} <- Bindings],
     {Q, State#state{other_queues=[{Q, {Bindings, QueueProps}}|OtherQueues]}};
 add_other_queue(QueueName, QueueProps, Bindings, #state{other_queues=OtherQueues}=State) ->
-    {ok, _} = start_amqp([{queue_name, QueueName} | QueueProps]),
-    _ = [create_binding(wh_util:to_binary(Type), BindProps, QueueName) || {Type, BindProps} <- Bindings],
+    {ok, Q} = start_amqp([{queue_name, QueueName} | QueueProps]),
+    _ = [create_binding(wh_util:to_binary(Type), BindProps, Q) || {Type, BindProps} <- Bindings],
     case props:get_value(QueueName, OtherQueues) of
         undefined ->
-            {QueueName, State#state{other_queues=[{QueueName, {Bindings, QueueProps}}|OtherQueues]}};
+            {Q, State#state{other_queues=[{Q, {Bindings, QueueProps}}|OtherQueues]}};
         OldBindings ->
-            {QueueName, State#state{other_queues=[{QueueName, {Bindings ++ OldBindings, QueueProps}}
-                                                  | props:delete(QueueName, OtherQueues)
-                                                 ]}}
+            {Q, State#state{other_queues=[{Q, {Bindings ++ OldBindings, QueueProps}}
+                                          | props:delete(QueueName, OtherQueues)
+                                         ]}}
     end.

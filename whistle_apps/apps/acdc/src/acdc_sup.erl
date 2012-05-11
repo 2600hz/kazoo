@@ -1,25 +1,26 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012, VoIP, INC
 %%% @doc
 %%%
 %%% @end
 %%% @contributors
-%%%   James Aimonetti
-%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(acdc_sup).
 
 -behaviour(supervisor).
 
--include_lib("whistle/include/wh_types.hrl").
+-include_lib("acdc/src/acdc.hrl").
 
 -export([start_link/0]).
--export([cache_proc/0]).
--export([listener_proc/0]).
 -export([init/1]).
 
--define(CACHE(Name), {Name, {wh_cache, start_link, [Name]}, permanent, 5000, worker, [wh_cache]}).
--define(CHILD(Name, Type), {Name, {Name, start_link, []}, permanent, 5000, Type, [Name]}).
+-define(CHILD(Name, Type), fun(N, cache) -> {N, {wh_cache, start_link, [N]}, permanent, 5000, worker, [wh_cache]};
+                              (N, T) -> {N, {N, start_link, []}, permanent, 5000, T, [N]} end(Name, Type)).
+-define(CHILDREN, [{?ACDC_CACHE, cache}
+                   ,{acdc_agent_sup, supervisor}
+                   ,{acdc_agents, worker}
+                   ,{acdc_listener, worker}
+                  ]).
 
 %% ===================================================================
 %% API functions
@@ -34,18 +35,6 @@
 -spec start_link/0 :: () -> startlink_ret().
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
-
--spec cache_proc/0 :: () -> {'ok', pid()}.
-cache_proc() ->
-    [P] = [P || {Mod, P, _, _} <- supervisor:which_children(?MODULE),
-                Mod =:= acdc_cache],
-    {ok, P}.
-
--spec listener_proc/0 :: () -> {'ok', pid()}.
-listener_proc() ->
-    [P] = [P || {Mod, P, _, _} <- supervisor:which_children(?MODULE),
-                Mod =:= acdc_listener],
-    {ok, P}.
 
 %% ===================================================================
 %% Supervisor callbacks
@@ -67,9 +56,6 @@ init([]) ->
     MaxSecondsBetweenRestarts = 10,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
+    Children = [?CHILD(Name, Type) || {Name, Type} <- ?CHILDREN],
 
-    {ok, {SupFlags, [?CACHE(acdc_cache) %% generally, we create a local cache process per whapps
-                     ,?CHILD(acdc_listener, worker) %% the listener, we always want this running
-                     ,?CHILD(acdc_agents, worker)
-                     ,?CHILD(acdc_agent_sup, supervisor)
-                    ]}}.
+    {ok, {SupFlags, Children}}.
