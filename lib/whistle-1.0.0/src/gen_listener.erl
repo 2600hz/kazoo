@@ -540,6 +540,7 @@ start_amqp(Props) ->
                     ConsumeProps = props:get_value(consume_options, Props, []),
                     set_qos(props:get_value(basic_qos, Props)),
                     ok = amqp_util:basic_consume(Q, ConsumeProps),
+                    lager:debug("started amqp with queue ~s", [Q]),
                     {ok, Q}
             end
     end.
