@@ -24,10 +24,12 @@ exec(Call, Cmds, CT) ->
     case find_candidate_translators(CT) of
         [] -> throw({error, no_translators, CT});
         Mods ->
-            case [M || M <- Mods, is_recognized(M, Cmds)] of
+            case [{M, Cmd1} || M <- Mods,
+                               begin {IsRecognized, Cmd1} = is_recognized(M, Cmds), IsRecognized end
+                 ] of
                 [] -> throw({error, unrecognized_cmds});
-                [Translator|_] ->
-                    Translator:exec(Call, Cmds)
+                [{Translator, Cmds1}|_] ->
+                    Translator:exec(Call, Cmds1)
             end
     end.
 
@@ -42,6 +44,6 @@ find_candidate_translators(_) ->
 
 is_recognized(M, Cmds) ->
     case catch M:does_recognize(Cmds) of
-        true -> true;
-        _ -> false
+        {true, _}=True -> lager:debug("true: ~p", [True]), True;
+        _F -> lager:debug("fail: ~p", [_F]), {false, []}
     end.
