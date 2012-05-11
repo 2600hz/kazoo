@@ -75,7 +75,7 @@ is_empty(MaybeJObj) ->
     MaybeJObj =:= ?EMPTY_JSON_OBJECT.
 
 -spec is_json_object/1 :: (term()) -> boolean().
-is_json_object({struct, P}) when is_list(P) -> true;
+is_json_object(?JSON_WRAPPER(P)) when is_list(P) -> true;
 is_json_object(_) -> false.
 
 -spec is_valid_json_object/1 :: (term()) -> boolean().
@@ -112,12 +112,12 @@ is_json_term(MaybeJObj) ->
 from_list([]) ->
     new();
 from_list(L) when is_list(L) ->
-    {struct, L}.
+    ?JSON_WRAPPER(L).
 
 %% only a top-level merge
 %% merges JObj1 into JObj2
 -spec merge_jobjs/2 :: (json_object(), json_object()) -> json_object().
-merge_jobjs({struct, Props1}=_JObj1, {struct, _}=JObj2) ->
+merge_jobjs(?JSON_WRAPPER(Props1)=_JObj1, ?JSON_WRAPPER(_)=JObj2) ->
     lists:foldr(fun({K, V}, JObj2Acc) ->
                         set_value(K, V, JObj2Acc)
                 end, JObj2, Props1).
@@ -141,7 +141,7 @@ merge_recursive(JObj1, Value, Keys) ->
 %% only top-level conversion is supported
 to_proplist(JObjs) when is_list(JObjs) ->
     [to_proplist(JObj) || JObj <- JObjs];
-to_proplist({struct, Prop}) ->
+to_proplist(?JSON_WRAPPER(Prop)) ->
     Prop.
 
 %% convert everything starting at a specific key
@@ -149,7 +149,7 @@ to_proplist(Key, JObj) ->
     to_proplist(get_json_value(Key, JObj, new())).
 
 -spec recursive_to_proplist/1 :: (json_object() | proplist()) -> proplist().
-recursive_to_proplist({struct, Props}) ->
+recursive_to_proplist(?JSON_WRAPPER(Props)) ->
     [{K, recursive_to_proplist(V)} || {K, V} <- Props];
 recursive_to_proplist(Props) when is_list(Props) ->
     [recursive_to_proplist(V) || V <- Props];
@@ -223,7 +223,7 @@ get_json_value(Key, JObj, Default) ->
 
 -spec filter/2 :: (fun( ({json_string(), json_term()}) -> boolean() ), json_object()) -> json_object().
 -spec filter/3 :: (fun( ({json_string(), json_term()}) -> boolean() ), json_object(), json_string() | json_strings()) -> json_object().
-filter(Pred, {struct, Prop}) when is_function(Pred, 1) ->
+filter(Pred, ?JSON_WRAPPER(Prop)) when is_function(Pred, 1) ->
     from_list([ E || {_,_}=E <- Prop, Pred(E) ]).
 
 filter(Pred, JObj, Keys) when is_list(Keys),
@@ -234,7 +234,7 @@ filter(Pred, JObj, Key) ->
     filter(Pred, JObj, [Key]).
 
 -spec map/2 :: (fun((json_string(), json_term()) -> term()), json_object()) -> json_object().
-map(F, {struct, Prop}) ->
+map(F, ?JSON_WRAPPER(Prop)) ->
     from_list([ F(K, V) || {K,V} <- Prop]).
 
 -spec get_string_value/2 :: (json_string() | json_strings(), json_object() | json_objects()) -> 'undefined' | list().
@@ -420,7 +420,7 @@ get_value1([K|Ks], JObjs, Default) when is_list(JObjs) ->
     catch
         _:_ -> Default
     end;
-get_value1([K|Ks], {struct, Props}=_JObj, Default) ->
+get_value1([K|Ks], ?JSON_WRAPPER(Props)=_JObj, Default) ->
     get_value1(Ks, props:get_value(K, Props, Default), Default);
 get_value1(_, _, Default) -> Default.
 
@@ -475,29 +475,29 @@ set_value1([Key|T], Value, JObjs) when is_list(JObjs) ->
                                       end, {1, Key1}, JObjs))
     end;
 %% Figure out how to set the current key in an existing object
-set_value1([Key1|T], Value, {struct, Props}) ->
+set_value1([Key1|T], Value, ?JSON_WRAPPER(Props)) ->
     case lists:keyfind(Key1, 1, Props) of
-        {Key1, {struct, _}=V1} ->
+        {Key1, ?JSON_WRAPPER(_)=V1} ->
             %% Replace or add a property in an object in the object at this key
-            {struct, lists:keyreplace(Key1, 1, Props, {Key1, set_value1(T, Value, V1)})};
+            ?JSON_WRAPPER(lists:keyreplace(Key1, 1, Props, {Key1, set_value1(T, Value, V1)}));
         {Key1, V1} when is_list(V1) ->
             %% Replace or add a member in an array in the object at this key
-            {struct, lists:keyreplace(Key1, 1, Props, {Key1, set_value1(T, Value, V1)})};
+            ?JSON_WRAPPER(lists:keyreplace(Key1, 1, Props, {Key1, set_value1(T, Value, V1)}));
         {Key1, _} when T == [] ->
             %% This is the final key and the objects property should just be replaced
-            {struct, lists:keyreplace(Key1, 1, Props, {Key1, Value})};
+            ?JSON_WRAPPER(lists:keyreplace(Key1, 1, Props, {Key1, Value}));
         {Key1, _} ->
             %% This is not the final key and the objects property should just be
             %% replaced so continue looping the keys creating the necessary json as we go
-            {struct, lists:keyreplace(Key1, 1, Props, {Key1, set_value1(T, Value, new())})};
+            ?JSON_WRAPPER(lists:keyreplace(Key1, 1, Props, {Key1, set_value1(T, Value, new())}));
         false when T == [] ->
             %% This is the final key and doesnt already exist, just add it to this
             %% objects existing properties
-            {struct, Props ++ [{Key1, Value}]};
+            ?JSON_WRAPPER(Props ++ [{Key1, Value}]);
         false ->
             %% This is not the final key and this object does not have this key
             %% so continue looping the keys creating the necessary json as we go
-            {struct, Props ++ [{Key1, set_value1(T, Value, new())}]}
+            ?JSON_WRAPPER(Props ++ [{Key1, set_value1(T, Value, new())}])
     end;
 %% There are no more keys to iterate through! Override the value here...
 set_value1([], Value, _JObj) -> Value.
@@ -726,17 +726,17 @@ prop_to_proplist() ->
 %% EUNIT TESTING
 -ifdef(TEST).
 
--define(D1, {struct, [{<<"d1k1">>, <<"d1v1">>}, {<<"d1k2">>, d1v2}, {<<"d1k3">>, [<<"d1v3.1">>, <<"d1v3.2">>, <<"d1v3.3">>]}]}).
--define(D2, {struct, [{<<"d2k1">>, 1}, {<<"d2k2">>, 3.14}, {<<"sub_d1">>, ?D1}]}).
--define(D3, {struct, [{<<"d3k1">>, <<"d3v1">>}, {<<"d3k2">>, []}, {<<"sub_docs">>, [?D1, ?D2]}]}).
+-define(D1, ?JSON_WRAPPER([{<<"d1k1">>, <<"d1v1">>}, {<<"d1k2">>, d1v2}, {<<"d1k3">>, [<<"d1v3.1">>, <<"d1v3.2">>, <<"d1v3.3">>]}])).
+-define(D2, ?JSON_WRAPPER([{<<"d2k1">>, 1}, {<<"d2k2">>, 3.14}, {<<"sub_d1">>, ?D1}])).
+-define(D3, ?JSON_WRAPPER([{<<"d3k1">>, <<"d3v1">>}, {<<"d3k2">>, []}, {<<"sub_docs">>, [?D1, ?D2]}])).
 -define(D4, [?D1, ?D2, ?D3]).
 
--define(D6, {struct, [{<<"d2k1">>, 1}
-                      ,{<<"d2k2">>, 3.14}
-                      ,{<<"sub_d1">>, {struct, [{<<"d1k1">>, <<"d1v1">>}]}}
-                     ]
-            }).
--define(D7, {struct, [{<<"d1k1">>, <<"d1v1">>}]}).
+-define(D6, ?JSON_WRAPPER([{<<"d2k1">>, 1}
+                           ,{<<"d2k2">>, 3.14}
+                           ,{<<"sub_d1">>, ?JSON_WRAPPER([{<<"d1k1">>, <<"d1v1">>}])}
+                          ]
+                         )).
+-define(D7, ?JSON_WRAPPER([{<<"d1k1">>, <<"d1v1">>}])).
 
 is_json_object_proper_test_() ->
     {"Runs wh_json PropEr tests for is_json_object/1",
@@ -758,6 +758,7 @@ merge_jobjs_test() ->
 
 merge_recursive_test() ->
     JObj = merge_recursive(?D1, set_value(<<"d1k2">>, d2k2, ?D2)),
+    ?assertEqual(true, is_json_object(JObj)),
     ?assertEqual(true, undefined =/= get_value(<<"d1k1">>, JObj)),
     ?assertEqual(true, undefined =/= get_value(<<"d2k1">>, JObj)),
     ?assertEqual(true, undefined =/= get_value([<<"d1k3">>, 2], JObj)),
@@ -786,20 +787,20 @@ get_float_value_test() ->
 
 get_binary_boolean_test() ->
     ?assertEqual(undefined, get_binary_boolean(<<"d1k1">>, ?D2)),
-    ?assertEqual(<<"false">>, get_binary_boolean(<<"a_key">>, {struct, [{<<"a_key">>, false}]})),
-    ?assertEqual(<<"true">>, get_binary_boolean(<<"a_key">>, {struct, [{<<"a_key">>, true}]})).
+    ?assertEqual(<<"false">>, get_binary_boolean(<<"a_key">>, ?JSON_WRAPPER([{<<"a_key">>, false}]))),
+    ?assertEqual(<<"true">>, get_binary_boolean(<<"a_key">>, ?JSON_WRAPPER([{<<"a_key">>, true}]))).
 
 is_false_test() ->
     ?assertEqual(false, is_false(<<"d1k1">>, ?D1)),
-    ?assertEqual(true, is_false(<<"a_key">>, {struct, [{<<"a_key">>, false}]})).
+    ?assertEqual(true, is_false(<<"a_key">>, ?JSON_WRAPPER([{<<"a_key">>, false}]))).
 
 is_true_test() ->
     ?assertEqual(false, is_true(<<"d1k1">>, ?D1)),
-    ?assertEqual(true, is_true(<<"a_key">>, {struct, [{<<"a_key">>, true}]})).
+    ?assertEqual(true, is_true(<<"a_key">>, ?JSON_WRAPPER([{<<"a_key">>, true}]))).
 
--define(D1_FILTERED, {struct, [{<<"d1k2">>, d1v2}, {<<"d1k3">>, [<<"d1v3.1">>, <<"d1v3.2">>, <<"d1v3.3">>]}]}).
--define(D2_FILTERED, {struct, [{<<"sub_d1">>, ?D1}]}).
--define(D3_FILTERED, {struct, [{<<"d3k1">>, <<"d3v1">>}, {<<"d3k2">>, []}, {<<"sub_docs">>, [?D1, ?D2_FILTERED]}]}).
+-define(D1_FILTERED, ?JSON_WRAPPER([{<<"d1k2">>, d1v2}, {<<"d1k3">>, [<<"d1v3.1">>, <<"d1v3.2">>, <<"d1v3.3">>]}])).
+-define(D2_FILTERED, ?JSON_WRAPPER([{<<"sub_d1">>, ?D1}])).
+-define(D3_FILTERED, ?JSON_WRAPPER([{<<"d3k1">>, <<"d3v1">>}, {<<"d3k2">>, []}, {<<"sub_docs">>, [?D1, ?D2_FILTERED]}])).
 filter_test() ->
     ?assertEqual(?D1_FILTERED, filter(fun({<<"d1k1">>, _}) -> false; (_) -> true end, ?D1)),
     ?assertEqual(?D2_FILTERED, filter(fun({_, V}) when is_number(V) -> false; (_) -> true end, ?D2)),
@@ -823,24 +824,24 @@ is_json_object_test() ->
     ?assertEqual(true, is_json_object(?D7)).
 
 %% delete results
--define(D1_AFTER_K1, {struct, [{<<"d1k2">>, d1v2}, {<<"d1k3">>, [<<"d1v3.1">>, <<"d1v3.2">>, <<"d1v3.3">>]}]}).
--define(D1_AFTER_K3_V2, {struct, [{<<"d1k3">>, [<<"d1v3.1">>, <<"d1v3.3">>]}, {<<"d1k1">>, <<"d1v1">>}, {<<"d1k2">>, d1v2}]}).
+-define(D1_AFTER_K1, ?JSON_WRAPPER([{<<"d1k2">>, d1v2}, {<<"d1k3">>, [<<"d1v3.1">>, <<"d1v3.2">>, <<"d1v3.3">>]}])).
+-define(D1_AFTER_K3_V2, ?JSON_WRAPPER([{<<"d1k3">>, [<<"d1v3.1">>, <<"d1v3.3">>]}, {<<"d1k1">>, <<"d1v1">>}, {<<"d1k2">>, d1v2}])).
 
--define(D6_AFTER_SUB, {struct, [{<<"sub_d1">>, {struct, []}}
-                                ,{<<"d2k1">>, 1}
-                                ,{<<"d2k2">>, 3.14}
-                               ]
-                         }).
--define(D6_AFTER_SUB_PRUNE, {struct, [{<<"d2k1">>, 1}
-                                      ,{<<"d2k2">>, 3.14}
-                                     ]
-                            }).
+-define(D6_AFTER_SUB, ?JSON_WRAPPER([{<<"sub_d1">>, ?EMPTY_JSON_OBJECT}
+                                     ,{<<"d2k1">>, 1}
+                                     ,{<<"d2k2">>, 3.14}
+                                    ]
+                                   )).
+-define(D6_AFTER_SUB_PRUNE, ?JSON_WRAPPER([{<<"d2k1">>, 1}
+                                           ,{<<"d2k2">>, 3.14}
+                                          ]
+                                         )).
 
 -define(P1, [{<<"d1k1">>, <<"d1v1">>}, {<<"d1k2">>, d1v2}, {<<"d1k3">>, [<<"d1v3.1">>, <<"d1v3.2">>, <<"d1v3.3">>]}]).
--define(P2, [{<<"d2k1">>, 1}, {<<"d2k2">>, 3.14}, {<<"sub_d1">>, {struct, ?P1}}]).
--define(P3, [{<<"d3k1">>, <<"d3v1">>}, {<<"d3k2">>, []}, {<<"sub_docs">>, [{struct, ?P1}, {struct, ?P2}]}]).
+-define(P2, [{<<"d2k1">>, 1}, {<<"d2k2">>, 3.14}, {<<"sub_d1">>, ?JSON_WRAPPER(?P1)}]).
+-define(P3, [{<<"d3k1">>, <<"d3v1">>}, {<<"d3k2">>, []}, {<<"sub_docs">>, [?JSON_WRAPPER(?P1), ?JSON_WRAPPER(?P2)]}]).
 -define(P4, [?P1, ?P2, ?P3]).
--define(P6, [{<<"d2k1">>, 1},{<<"d2k2">>, 3.14},{<<"sub_d1">>, {struct, [{<<"d1k1">>, <<"d1v1">>}]}}]).
+-define(P6, [{<<"d2k1">>, 1},{<<"d2k2">>, 3.14},{<<"sub_d1">>, ?JSON_WRAPPER([{<<"d1k1">>, <<"d1v1">>}])}]).
 -define(P7, [{<<"d1k1">>, <<"d1v1">>}]).
 
 -define(P8, [{<<"d1k1">>, <<"d1v1">>}, {<<"d1k2">>, d1v2}, {<<"d1k3">>, [<<"d1v3.1">>, <<"d1v3.2">>, <<"d1v3.3">>]}]).
@@ -851,8 +852,8 @@ is_json_object_test() ->
 -define(P13, [{<<"d1k1">>, <<"d1v1">>}]).
 
 %% deleting [k1, 1] should return empty json object
--define(D_ARR, {struct, [{<<"k1">>, [1]}]}).
--define(P_ARR, {struct, [{<<"k1">>, []}]}).
+-define(D_ARR, ?JSON_WRAPPER([{<<"k1">>, [1]}])).
+-define(P_ARR, ?JSON_WRAPPER([{<<"k1">>, []}])).
 
 -spec get_keys_test/0 :: () -> no_return().
 get_keys_test() ->
@@ -928,10 +929,10 @@ get_value_test() ->
     ?assertEqual(<<"not">>, get_value([3, <<"sub_docs">>, <<"2">>, <<"d2k2">>], ?D3, <<"not">>)),
     ?assertEqual(3.14,      get_value([3, <<"sub_docs">>, 2, <<"d2k2">>], ?D4, <<"not">>)).
 
--define(T2R1, {struct, [{<<"d1k1">>, <<"d1v1">>}, {<<"d1k2">>, <<"update">>}, {<<"d1k3">>, [<<"d1v3.1">>, <<"d1v3.2">>, <<"d1v3.3">>]}]}).
--define(T2R2, {struct, [{<<"d1k1">>, <<"d1v1">>}, {<<"d1k2">>, d1v2}, {<<"d1k3">>, [<<"d1v3.1">>, <<"d1v3.2">>, <<"d1v3.3">>]}, {<<"d1k4">>, new_value}]}).
--define(T2R3, {struct, [{<<"d1k1">>, <<"d1v1">>}, {<<"d1k2">>, {struct, [{<<"new_key">>, added_value}]}}, {<<"d1k3">>, [<<"d1v3.1">>, <<"d1v3.2">>, <<"d1v3.3">>]}]}).
--define(T2R4, {struct, [{<<"d1k1">>, <<"d1v1">>}, {<<"d1k2">>, d1v2}, {<<"d1k3">>, [<<"d1v3.1">>, <<"d1v3.2">>, <<"d1v3.3">>]}, {<<"d1k4">>, {struct, [{<<"new_key">>, added_value}]}}]}).
+-define(T2R1, ?JSON_WRAPPER([{<<"d1k1">>, <<"d1v1">>}, {<<"d1k2">>, <<"update">>}, {<<"d1k3">>, [<<"d1v3.1">>, <<"d1v3.2">>, <<"d1v3.3">>]}])).
+-define(T2R2, ?JSON_WRAPPER([{<<"d1k1">>, <<"d1v1">>}, {<<"d1k2">>, d1v2}, {<<"d1k3">>, [<<"d1v3.1">>, <<"d1v3.2">>, <<"d1v3.3">>]}, {<<"d1k4">>, new_value}])).
+-define(T2R3, ?JSON_WRAPPER([{<<"d1k1">>, <<"d1v1">>}, {<<"d1k2">>, ?JSON_WRAPPER([{<<"new_key">>, added_value}])}, {<<"d1k3">>, [<<"d1v3.1">>, <<"d1v3.2">>, <<"d1v3.3">>]}])).
+-define(T2R4, ?JSON_WRAPPER([{<<"d1k1">>, <<"d1v1">>}, {<<"d1k2">>, d1v2}, {<<"d1k3">>, [<<"d1v3.1">>, <<"d1v3.2">>, <<"d1v3.3">>]}, {<<"d1k4">>, ?JSON_WRAPPER([{<<"new_key">>, added_value}])}])).
 
 set_value_object_test() ->
     %% Test setting an existing key
@@ -943,12 +944,12 @@ set_value_object_test() ->
     %% Test setting a non-existing key followed by another non-existant key
     ?assertEqual(?T2R4, set_value([<<"d1k4">>, <<"new_key">>], added_value, ?D1)).
 
--define(D5,   [{struct,[{<<"k1">>, v1}]}, {struct, [{<<"k2">>, v2}]}]).
--define(T3R1, [{struct,[{<<"k1">>,test}]},{struct,[{<<"k2">>,v2}]}]).
--define(T3R2, [{struct,[{<<"k1">>,v1},{<<"pi">>, 3.14}]},{struct,[{<<"k2">>,v2}]}]).
--define(T3R3, [{struct,[{<<"k1">>,v1},{<<"callerid">>,{struct,[{<<"name">>,<<"2600hz">>}]}}]},{struct,[{<<"k2">>,v2}]}]).
--define(T3R4, [{struct,[{<<"k1">>,v1}]},{struct,[{<<"k2">>,<<"updated">>}]}]).
--define(T3R5, [{struct,[{<<"k1">>,v1}]},{struct,[{<<"k2">>,v2}]},{struct,[{<<"new_key">>,<<"added">>}]}]).
+-define(D5,   [?JSON_WRAPPER([{<<"k1">>, v1}]), ?JSON_WRAPPER([{<<"k2">>, v2}])]).
+-define(T3R1, [?JSON_WRAPPER([{<<"k1">>,test}]),?JSON_WRAPPER([{<<"k2">>,v2}])]).
+-define(T3R2, [?JSON_WRAPPER([{<<"k1">>,v1},{<<"pi">>, 3.14}]),?JSON_WRAPPER([{<<"k2">>,v2}])]).
+-define(T3R3, [?JSON_WRAPPER([{<<"k1">>,v1},{<<"callerid">>,?JSON_WRAPPER([{<<"name">>,<<"2600hz">>}])}]),?JSON_WRAPPER([{<<"k2">>,v2}])]).
+-define(T3R4, [?JSON_WRAPPER([{<<"k1">>,v1}]),?JSON_WRAPPER([{<<"k2">>,<<"updated">>}])]).
+-define(T3R5, [?JSON_WRAPPER([{<<"k1">>,v1}]),?JSON_WRAPPER([{<<"k2">>,v2}]),?JSON_WRAPPER([{<<"new_key">>,<<"added">>}])]).
 
 set_value_multiple_object_test() ->
     %% Set an existing key in the first json_object()
@@ -963,18 +964,18 @@ set_value_multiple_object_test() ->
     ?assertEqual(?T3R5, set_value([3, <<"new_key">>], <<"added">>, ?D5)).
 
 %% <<"ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ"
--define(T4R1,  {struct, [{<<"Caller-ID">>, 1234},{list_to_binary(lists:seq(16#C0, 16#D6)), <<"Smith">>} ]}).
+-define(T4R1,  ?JSON_WRAPPER([{<<"Caller-ID">>, 1234},{list_to_binary(lists:seq(16#C0, 16#D6)), <<"Smith">>} ])).
 %% <<"àáâãäåæçèéêëìíîïðñòóôõö"
--define(T4R1V, {struct, [{<<"caller_id">>, 1234},{list_to_binary(lists:seq(16#E0, 16#F6)), <<"Smith">>} ]}).
+-define(T4R1V, ?JSON_WRAPPER([{<<"caller_id">>, 1234},{list_to_binary(lists:seq(16#E0, 16#F6)), <<"Smith">>} ])).
 %% <<"ØÙÚÛÜÝÞ"
--define(T5R1,  {struct, [{<<"Caller-ID">>, 1234},{list_to_binary(lists:seq(16#D8, 16#DE)), <<"Smith">>} ]}).
+-define(T5R1,  ?JSON_WRAPPER([{<<"Caller-ID">>, 1234},{list_to_binary(lists:seq(16#D8, 16#DE)), <<"Smith">>} ])).
 %% <<"øùúûüýþ"
--define(T5R1V, {struct, [{<<"caller_id">>, 1234},{list_to_binary(lists:seq(16#F8, 16#FE)), <<"Smith">>} ]}).
+-define(T5R1V, ?JSON_WRAPPER([{<<"caller_id">>, 1234},{list_to_binary(lists:seq(16#F8, 16#FE)), <<"Smith">>} ])).
 
--define(T4R2,  {struct, [{<<"Account-ID">>, <<"45AHGJDF8DFDS2130S">>}, {<<"TRUNK">>, false}, {<<"Node1">>, ?T4R1 }, {<<"Node2">>, ?T4R1 }]}).
--define(T4R2V, {struct, [{<<"account_id">>, <<"45AHGJDF8DFDS2130S">>}, {<<"trunk">>, false}, {<<"node1">>, ?T4R1V}, {<<"node2">>, ?T4R1V}]}).
--define(T4R3,  {struct, [{<<"Node-1">>, {struct, [{<<"Node-2">>, ?T4R2  }] }}, {<<"Another-Node">>, ?T4R1 }] }).
--define(T4R3V, {struct, [{<<"node_1">>, {struct, [{<<"node_2">>, ?T4R2V }] }}, {<<"another_node">>, ?T4R1V}] }).
+-define(T4R2,  ?JSON_WRAPPER([{<<"Account-ID">>, <<"45AHGJDF8DFDS2130S">>}, {<<"TRUNK">>, false}, {<<"Node1">>, ?T4R1 }, {<<"Node2">>, ?T4R1 }])).
+-define(T4R2V, ?JSON_WRAPPER([{<<"account_id">>, <<"45AHGJDF8DFDS2130S">>}, {<<"trunk">>, false}, {<<"node1">>, ?T4R1V}, {<<"node2">>, ?T4R1V}])).
+-define(T4R3,  ?JSON_WRAPPER([{<<"Node-1">>, ?JSON_WRAPPER([{<<"Node-2">>, ?T4R2  }])}, {<<"Another-Node">>, ?T4R1 }] )).
+-define(T4R3V, ?JSON_WRAPPER([{<<"node_1">>, ?JSON_WRAPPER([{<<"node_2">>, ?T4R2V }])}, {<<"another_node">>, ?T4R1V}] )).
 
 set_value_normalizer_test() ->
     %% Normalize a flat JSON object
@@ -1006,11 +1007,11 @@ to_querystring_test() ->
 get_values_test() ->
     ?assertEqual(true, are_all_there(?D1, [<<"d1v1">>, d1v2, [<<"d1v3.1">>, <<"d1v3.2">>, <<"d1v3.3">>]], [<<"d1k1">>, <<"d1k2">>, <<"d1k3">>])).
 
--define(CODEC_JOBJ, {struct, [{<<"k1">>, <<"v1">>}
-                              ,{<<"k2">>, {struct, []}}
-                              ,{<<"k3">>, {struct, [{<<"k3.1">>, <<"v3.1">>}]}}
-                              ,{<<"k4">>, [1,2,3]}
-                             ]}).
+-define(CODEC_JOBJ, ?JSON_WRAPPER([{<<"k1">>, <<"v1">>}
+                                   ,{<<"k2">>, ?EMPTY_JSON_OBJECT}
+                                   ,{<<"k3">>, ?JSON_WRAPPER([{<<"k3.1">>, <<"v3.1">>}])}
+                                   ,{<<"k4">>, [1,2,3]}
+                                  ])).
 codec_test() ->
     ?assertEqual(?CODEC_JOBJ, decode(encode(?CODEC_JOBJ))).
 

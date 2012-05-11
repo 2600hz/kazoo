@@ -6,12 +6,19 @@
 -include_lib("whistle/include/wh_amqp.hrl").
 -include_lib("proper/include/proper.hrl").
 
+%% How do we wrap proplists to denote they're json objects?
+-define(JSON_WRAPPER(Proplist), {struct, Proplist}).
 -define(IS_JSON_GUARD(Obj), is_tuple(Obj)
         andalso element(1, Obj) =:= 'struct'
         andalso is_list(element(2, Obj))
        ).
 
--type json_object() :: {'struct', json_proplist()}.
+%-define(JSON_WRAPPER(Proplist), {Proplist}).
+%-define(IS_JSON_GUARD(Obj), is_tuple(Obj)
+%        andalso is_list(element(1, Obj))
+%       ).
+
+-type json_object() :: ?JSON_WRAPPER(json_proplist()).
 -type json_objects() :: [json_object()].
 
 -type json_string() :: ne_binary() | atom().
