@@ -40,7 +40,7 @@
 -type fail() :: {'fail', {error_key(), ne_binary()} | wh_json:json_object() | error_proplist()}.
 
 -type error_acc() :: [] | [{[ne_binary(),...], ne_binary()},...].
--type jkey_acc() :: wh_json:json_strings().
+-type jkey_acc() :: wh_json:json_proplist_key().
 
 -define(SIMPLE_TYPES, [<<"string">>,<<"number">>,<<"integer">>,<<"boolean">>,<<"object">>
                            ,<<"array">>,<<"null">>,<<"any">>]).
@@ -1101,7 +1101,7 @@ validate_test(Succeed, Fail, Schema) ->
                                           ,(begin
                                                 Result = is_valid_attribute({AttName, AttValue, SJObj}
                                                                             ,wh_json:set_value(<<"eunit">>, Elem, wh_json:new())
-                                                                            ,<<"eunit">>),
+                                                                            ,[<<"eunit">>]),
                                                 not passed(Result)
                                             end)],
               Results = lists:flatten(Validation),
