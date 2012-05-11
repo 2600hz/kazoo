@@ -110,7 +110,7 @@
 
 -type whapps_helper_function() :: fun((whapps_api_binary(), call()) -> whapps_api_binary()).
 
--opaque call() :: #whapps_call{}.
+-type call() :: #whapps_call{}.
 -export_type([call/0]).
 
 -spec default_helper_function/2 :: (whapps_api_binary(), whapps_call:call()) -> whapps_api_binary().
@@ -642,7 +642,8 @@ cache(#whapps_call{}=Call) ->
 cache(#whapps_call{call_id=CallId}=Call, Expires) ->
     wh_cache:store_local(?WHAPPS_CALL_CACHE, {?MODULE, call, CallId}, Call, Expires).
 
--spec retrieve/1 :: (ne_binary()) -> {'ok', whapps_call:call()} | {'error', 'not_found'}.
+-spec retrieve/1 :: (ne_binary()) -> {'ok', whapps_call:call()} |
+                                     {'error', 'not_found'}.
 retrieve(CallId) ->
     wh_cache:fetch_local(?WHAPPS_CALL_CACHE, {?MODULE, call, CallId}).
 
