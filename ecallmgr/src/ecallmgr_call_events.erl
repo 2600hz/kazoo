@@ -18,7 +18,8 @@
 -define(MAX_FAILED_NODE_CHECKS, 10).
 -define(NODE_CHECK_PERIOD, 1000).
 
--export([start_link/2]).
+-export([start_link/2, start_link/3]).
+
 -export([swap_call_legs/1]).
 -export([create_event/3]).
 -export([create_event_props/3]).
@@ -45,6 +46,7 @@
           ,failed_node_checks = 0 :: non_neg_integer()
           ,node_down_tref = 'undefined' :: 'undefined' | reference()
           ,sanity_check_tref = 'undefined' :: 'undefined' | reference()
+          ,wait_for_originate = 'false' :: boolean()
          }).
 
 %%%===================================================================
@@ -59,8 +61,11 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec start_link/2 :: (atom(), ne_binary()) -> {'ok', pid()}.
+-spec start_link/3 :: (atom(), ne_binary(), boolean()) -> {'ok', pid()}.
 start_link(Node, CallId) ->
-    gen_server:start_link(?MODULE, [Node, CallId], []).
+    start_link(Node, CallId, false).
+start_link(Node, CallId, WaitForOriginate) ->
+    gen_server:start_link(?MODULE, [Node, CallId, WaitForOriginate], []).
 
 -spec callid/1 :: (pid()) -> ne_binary().
 callid(Srv) ->
@@ -110,13 +115,17 @@ publish_channel_destroy(Props) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec init/1 :: ([atom() | ne_binary(),...]) -> {'ok', #state{}, 0}.
-init([Node, CallId]) when is_atom(Node) andalso is_binary(CallId) ->
+init([Node, CallId, WaitForOriginate]) when is_atom(Node) andalso is_binary(CallId) ->
     put(callid, CallId),
     lager:debug("starting call events listener"),
     gproc:reg({p, l, call_events}),
     gproc:reg({p, l, {call_events, CallId}}),
     TRef = erlang:send_after(?SANITY_CHECK_PERIOD, self(), {sanity_check}),
-    {'ok', #state{node=Node, callid=CallId, sanity_check_tref=TRef, self=self()}, 0}.
+    {'ok'
+     ,#state{node=Node, callid=CallId, sanity_check_tref=TRef, self=self()
+             ,wait_for_originate=wh_util:is_true(WaitForOriginate)
+            }
+     ,0}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -208,7 +217,7 @@ handle_info({check_node_status}, #state{node=Node, callid=CallId, is_node_up=fal
 handle_info(timeout, #state{failed_node_checks=FNC}=State) when (FNC+1) > ?MAX_FAILED_NODE_CHECKS ->
     lager:debug("unable to establish initial connectivity to the media node, laterz"),
     {stop, normal, State};
-handle_info(timeout, #state{node=Node, callid=CallId, failed_node_checks=FNC}=State) ->
+handle_info(timeout, #state{node=Node, callid=CallId, failed_node_checks=FNC, wait_for_originate=MaybeWait}=State) ->
     erlang:monitor_node(Node, true),
     %% TODO: die if there is already a event producer on the AMPQ queue... ping/pong?
     case freeswitch:handlecall(Node, CallId) of
@@ -218,9 +227,12 @@ handle_info(timeout, #state{node=Node, callid=CallId, failed_node_checks=FNC}=St
         timeout ->
             lager:debug("timed out trying to listen to channel events from ~s, trying again", [Node]),
             {'noreply', State#state{failed_node_checks=FNC+1}, 1000};
-        {'error', badsession} ->
+        {'error', badsession} when not MaybeWait ->
             lager:debug("bad session received when setting up listener for events from ~s", [Node]),
             {stop, normal, State};
+        {'error', badsession} ->
+            lager:debug("we're waiting on an origination, treat like a failed node check"),
+            {'noreply', State#state{failed_node_checks=FNC+1}, 50}; % this is going to need tweaking
         _E ->
             lager:debug("failed to setup listener for channel events from ~s: ~p", [Node, _E]),
             {stop, normal, State}
@@ -270,7 +282,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec process_channel_event/2 :: (proplist(), #state{}) -> ok.
+-spec process_channel_event/2 :: (proplist(), #state{}) -> 'ok'.
 process_channel_event(Props, #state{node=Node}) ->
     CallId = props:get_value(<<"Caller-Unique-ID">>, Props,
                             props:get_value(<<"Unique-ID">>, Props)),
@@ -279,7 +291,7 @@ process_channel_event(Props, #state{node=Node}) ->
     EventName = get_event_name(Props, Masqueraded),
     ApplicationName = get_event_application(Props, Masqueraded),
     case should_publish(EventName, ApplicationName, Masqueraded) of
-        false -> 
+        false ->
             ok;
         true ->
             %% TODO: the adding of the node to the props is for event_specific conference
@@ -414,7 +426,7 @@ event_specific(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"set">>, Prop) ->
     ];
 event_specific(<<"RECORD_STOP">>, _, Prop) ->
     [{<<"Application-Name">>, <<"record">>}
-     ,{<<"Application-Response">>, props:get_value(<<"Record-File-Path">>, Prop)}
+     ,{<<"Application-Response">>, props:get_value(<<"Record-File-Path">>, Prop, props:get_value(<<"whistle_application_response">>, Prop))}
      ,{<<"Terminator">>, props:get_value(<<"variable_playback_terminator_used">>, Prop)}
      ,{<<"Length">>, props:get_value(<<"variable_record_ms">>, Prop)}
     ];

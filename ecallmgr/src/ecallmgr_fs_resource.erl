@@ -407,9 +407,9 @@ execute_originate_park(JObj, Node, ServerId, DialStrings, UUID, CtlPid) ->
 
     lager:debug("originate(~s)", [Args]),
 
+    {ok, _EvtPid} = ecallmgr_call_sup:start_event_process(Node, UUID, true),
     case freeswitch:api(Node, 'originate', wh_util:to_list(Args)) of
         {ok, <<"+OK ", UUID:UUIDSize/binary, _/binary>>} ->
-            {ok, _EvtPid} = ecallmgr_call_sup:start_event_process(Node, UUID),
             lager:debug("originate completed");
         {ok, Error} ->
             E = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
