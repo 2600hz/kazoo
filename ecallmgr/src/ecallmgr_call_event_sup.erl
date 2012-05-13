@@ -1,10 +1,10 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2012, VoIP INC
 %%% @doc
 %%% Simple-One-For-One strategy for restarting call event processes
 %%% @end
-%%% Created :  2 Jan 2011 by James Aimonetti <james@2600hz.org>
+%%% @contributors
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(ecallmgr_call_event_sup).
 
@@ -32,7 +32,7 @@
 start_link() ->
     supervisor:start_link({local, ?SERVER}, ?MODULE, []).
 
-start_proc([_, CallId]=Args) ->
+start_proc([_, CallId|_]=Args) ->
     case gproc:lookup_pids({p, l, {call_events, CallId}}) of
         [] -> supervisor:start_child(?SERVER, Args);
         [Pid] -> 
