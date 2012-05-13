@@ -588,11 +588,30 @@ send_cmd(Node, UUID, <<"hangup">>, _) ->
     lager:debug("terminate call on node ~s", [Node]),
     _ = ecallmgr_util:fs_log(Node, "whistle terminating call", []),
     freeswitch:api(Node, uuid_kill, wh_util:to_list(UUID));
-send_cmd(Node, _UUID, <<"record_call">>, Cmd) ->
+send_cmd(Node, UUID, <<"record_call">>, Cmd) ->
     lager:debug("execute on node ~s: uuid_record(~s)", [Node, Cmd]),
-    Ret = freeswitch:api(Node, uuid_record, wh_util:to_list(Cmd)),
-    lager:debug("executing uuid_record returned ~p", [Ret]),
-    Ret;
+    case freeswitch:api(Node, uuid_record, wh_util:to_list(Cmd)) of
+        {ok, _}=Ret ->
+            lager:debug("executing uuid_record returned ~p", [Ret]),
+            Ret;
+        {error, <<"-ERR ", E/binary>>} ->
+            lager:debug("error executing uuid_record: ~s", [E]),
+            Evt = list_to_binary([ecallmgr_util:create_masquerade_event(<<"record_call">>, <<"RECORD_STOP">>)
+                                  ,",whistle_application_response="
+                                  ,E
+                                 ]),
+            lager:debug("publishing event: ~s", [Evt]),
+            send_cmd(Node, UUID, "application", Evt),
+            {error, E};
+        timeout ->
+            lager:debug("timeout executing uuid_record"),
+            Evt = list_to_binary([ecallmgr_util:create_masquerade_event(<<"record_call">>, <<"RECORD_STOP">>)
+                                  ,",whistle_application_response=timeout"
+                                 ]),
+            lager:debug("publishing event: ~s", [Evt]),
+            send_cmd(Node, UUID, "application", Evt),
+            {error, timeout}
+    end;
 send_cmd(Node, UUID, <<"playstop">>, Args) ->
     lager:debug("execute on node ~s: uuid_break(~s)", [Node, UUID]),
     freeswitch:api(Node, uuid_break, wh_util:to_list(Args));
