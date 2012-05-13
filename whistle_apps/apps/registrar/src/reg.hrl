@@ -8,3 +8,5 @@
 -define(APP_VERSION, <<"0.4.2">>).
 
 -define(CONFIG_CAT, <<"registrar">>).
+
+-define(REGISTRAR_CACHE, registrar_cache).

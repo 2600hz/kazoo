@@ -45,13 +45,13 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    gen_listener:start_link(?MODULE, [{bindings, ?BINDINGS}
-                                      ,{responders, ?RESPONDERS}
-                                      ,{queue_name, ?QUEUE_NAME}
-                                      ,{queue_options, ?QUEUE_OPTIONS}
-                                      ,{consume_options, ?CONSUME_OPTIONS}
-                                      ,{basic_qos, 1}
-                                     ], []).
+    gen_listener:start_link({local, ?SERVER}, ?MODULE, [{bindings, ?BINDINGS}
+                                                        ,{responders, ?RESPONDERS}
+                                                        ,{queue_name, ?QUEUE_NAME}
+                                                        ,{queue_options, ?QUEUE_OPTIONS}
+                                                        ,{consume_options, ?CONSUME_OPTIONS}
+                                                        ,{basic_qos, 1}
+                                                       ], []).
 
 %%%===================================================================
 %%% gen_server callbacks

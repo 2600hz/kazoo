@@ -458,40 +458,36 @@ change_pvt_enabled(State, AccountId) ->
     
 -spec cache_view/3 :: (ne_binary(), proplist(), wh_json:json_object()) -> false | ok.
 cache_view(Db, ViewOptions, JObj) ->
-    {ok, Srv} = crossbar_sup:cache_proc(),
     (?CACHE_TTL =/= 0) andalso
         begin
             lager:debug("caching views results in cache"),
-            wh_cache:store_local(Srv, {crossbar, view, {Db, ?MODULE}}, {ViewOptions, JObj}, ?CACHE_TTL)
+            wh_cache:store_local(?CROSSBAR_CACHE, {crossbar, view, {Db, ?MODULE}}, {ViewOptions, JObj}, ?CACHE_TTL)
         end.
 
 -spec cache_doc/2 :: (ne_binary(), wh_json:json_object()) -> false | ok.
 cache_doc(Db, JObj) ->
-    {ok, Srv} = crossbar_sup:cache_proc(),
     Id = wh_json:get_value(<<"_id">>, JObj),
     (?CACHE_TTL =/= 0) andalso
         begin 
             lager:debug("caching document and flushing related views in cache"),
-            wh_cache:store_local(Srv, {crossbar, doc, {Db, Id}}, JObj, ?CACHE_TTL),
-            wh_cache:erase_local(Srv, {crossbar, view, {Db, ?MODULE}})
+            wh_cache:store_local(?CROSSBAR_CACHE, {crossbar, doc, {Db, Id}}, JObj, ?CACHE_TTL),
+            wh_cache:erase_local(?CROSSBAR_CACHE, {crossbar, view, {Db, ?MODULE}})
         end.
 
 -spec flush_doc_cache/2 :: (ne_binary(), ne_binary() | wh_json:json_object()) -> false | ok.
 flush_doc_cache(Db, <<Id>>) ->
-    {ok, Srv} = crossbar_sup:cache_proc(),
     (?CACHE_TTL =/= 0) andalso
         begin
             lager:debug("flushing document and related views from cache"),
-            wh_cache:erase_local(Srv, {crossbar, doc, {Db, Id}}),
-            wh_cache:erase_local(Srv, {crossbar, view, {Db, ?MODULE}})
+            wh_cache:erase_local(?CROSSBAR_CACHE, {crossbar, doc, {Db, Id}}),
+            wh_cache:erase_local(?CROSSBAR_CACHE, {crossbar, view, {Db, ?MODULE}})
         end;
 flush_doc_cache(Db, JObj) ->
     flush_doc_cache(Db, wh_json:get_value(<<"_id">>, JObj)).
 
 -spec open_doc/2 :: (ne_binary(), ne_binary()) -> {ok, wh_json:json_object()} | {error, term()}.
 open_doc(Db, Id) ->
-    {ok, Srv} = crossbar_sup:cache_proc(),
-    case wh_cache:peek_local(Srv, {crossbar, doc, {Db, Id}}) of
+    case wh_cache:peek_local(?CROSSBAR_CACHE, {crossbar, doc, {Db, Id}}) of
         {ok, _}=Ok -> 
             lager:debug("found document in cache"),
             Ok;
@@ -507,8 +503,7 @@ open_doc(Db, Id) ->
     end.
 -spec get_results/3 :: (ne_binary(), ne_binary(), proplist()) -> {ok, wh_json:json_object()} | {error, term()}.
 get_results(Db, View, ViewOptions) ->
-    {ok, Srv} = crossbar_sup:cache_proc(),
-    case wh_cache:peek_local(Srv, {crossbar, view, {Db, ?MODULE}}) of
+    case wh_cache:peek_local(?CROSSBAR_CACHE, {crossbar, view, {Db, ?MODULE}}) of
         {ok, {ViewOptions, ViewResults}} -> 
             lager:debug("found view results in cache"),
             {ok, ViewResults};

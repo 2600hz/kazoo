@@ -517,6 +517,9 @@ new_queue() ->
     new_queue(<<>>). % lets the client lib create a random queue name
 new_queue(Queue) ->
     new_queue(Queue, []).
+
+new_queue(<<"amq.", _/binary>>, Options) ->
+    new_queue(<<>>, Options);
 new_queue(Queue, Options) when is_binary(Queue) ->
     QD = #'queue.declare'{
       queue = Queue

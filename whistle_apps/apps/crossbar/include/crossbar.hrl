@@ -34,6 +34,8 @@
                           ,'HEAD'
                          ]).
 
+-define(CROSSBAR_CACHE, crossbar_cache).
+
 -record(cb_context, {
            content_types_provided = ?CONTENT_PROVIDED :: [crossbar_content_handler(),...] | []
           ,content_types_accepted = ?CONTENT_ACCEPTED :: [crossbar_content_handler(),...] | []

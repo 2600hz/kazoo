@@ -29,7 +29,6 @@
                      ,{{?MODULE, handle_channel_query}, [{<<"call_event">>, <<"channel_query_req">>}]}
                      ,{{?MODULE, handle_switch_reloadacl}, [{<<"switch_event">>, <<"reloadacl">>}]}
                     ]).
-%% ?? Bindings
 -define(BINDINGS, [{call, [{restrict_to, [query_req, status_req]}]}
                    ,{switch, []}
                   ]).
@@ -67,27 +66,26 @@ handle_channel_status(JObj, _Props) ->
     CallID = wh_json:get_value(<<"Call-ID">>, JObj),
     lager:debug("channel status request received"),
 
-    SearchResults = [{ecallmgr_fs_node:uuid_exists(Srv, CallID), Srv} 
-                     || Srv <- gproc:lookup_pids({p, l, fs_node})
-                    ],
-
-    case was_uuid_found(SearchResults) of
-        {error, not_found} ->
-            lager:debug("no node found with channel ~s, but we are not authoritative", [CallID]);
-        {error, does_not_exist} -> 
+    AllNodesConnected = ecallmgr_fs_nodes:all_nodes_connected(),
+    case ecallmgr_fs_nodes:fetch_channel(CallID) of
+        {error, not_found} when AllNodesConnected ->
             lager:debug("no node found with channel ~s", [CallID]),
             Resp = [{<<"Call-ID">>, CallID}
                     ,{<<"Status">>, <<"terminated">>}
                     ,{<<"Error-Msg">>, <<"no node found with channel">>}
                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)],
             wapi_call:publish_channel_status_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp);
-        {ok, NodeHandler} ->
-            Hostname = ecallmgr_fs_node:hostname(NodeHandler),
+        {error, not_found} ->
+            lager:debug("no node found with channel ~s, but we are not authoritative", [CallID]);
+        {ok, Channel} ->
+            Node = wh_json:get_binary_value(<<"node">>, Channel),
+            [_, Hostname] = binary:split(Node, <<"@">>),
             lager:debug("call is on ~s", [Hostname]),
             Resp = [{<<"Call-ID">>, CallID}
                     ,{<<"Status">>, <<"active">>}
                     ,{<<"Switch-Hostname">>, Hostname}
                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)],
+            io:format("Resp: ~p~n", [Resp]),
             wapi_call:publish_channel_status_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp)
     end.
 
@@ -99,22 +97,20 @@ handle_call_status(JObj, _Props) ->
     CallID = wh_json:get_value(<<"Call-ID">>, JObj),
     lager:debug("call status request received"),
 
-    SearchResults = [{ecallmgr_fs_node:uuid_exists(Srv, CallID), Srv} 
-                     || Srv <- gproc:lookup_pids({p, l, fs_node})
-                    ],
-
-    case was_uuid_found(SearchResults) of
-        {error, not_found} ->    
-            lager:debug("no node found with call leg ~s, but we are not authoritative", [CallID]); 
-        {error, does_not_exist} -> 
-            lager:debug("no node found with call having leg ~s", [CallID]),
+    AllNodesConnected = ecallmgr_fs_nodes:all_nodes_connected(),
+    case ecallmgr_fs_nodes:fetch_channel(CallID) of
+        {error, not_found} when AllNodesConnected ->
+            lager:debug("no node found with channel ~s", [CallID]),
             Resp = [{<<"Call-ID">>, CallID}
                     ,{<<"Status">>, <<"terminated">>}
                     ,{<<"Error-Msg">>, <<"no node found with call id">>}
                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)],
-            wapi_call:publish_call_status_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp);
-        {ok, NodeHandler} ->
-            case ecallmgr_fs_node:uuid_dump(NodeHandler, CallID) of
+            wapi_call:publish_channel_status_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp);
+        {error, not_found} ->
+            lager:debug("no node found with channel ~s, but we are not authoritative", [CallID]);
+        {ok, Channel} ->
+            Node = wh_json:get_binary_value(<<"node">>, Channel),
+            case uuid_dump(Node, CallID) of
                 error ->
                     lager:debug("failed to get channel info for ~s", [CallID]),
                     Resp = [{<<"Call-ID">>, CallID}
@@ -144,21 +140,22 @@ handle_channel_query(JObj, _Props) ->
 
 -spec channel_query/1 :: (wh_json:json_object()) -> wh_json:json_objects().
 channel_query(JObj) ->
-    Channels = lists:concat([ecallmgr_fs_node:show_channels(Srv)
-                             || Srv <- gproc:lookup_pids({p, l, fs_node})
-                            ]),
-    SearchParams = lists:foldl(fun(Field, Acc) ->
-                                       case wh_json:get_value(Field, JObj) of
-                                           undefined -> Acc;
-                                           Value -> [{Field, Value} | Acc]
-                                       end
-                               end, [], wapi_call:channel_query_search_fields()),
-    lists:foldl(fun(Channel, Results) ->
-                        case lists:any(fun({K, V}) -> wh_json:get_value(K, Channel) =:= V end, SearchParams) of
-                            true -> [Channel|Results];
-                            false -> Results
-                        end
-                end, [], Channels).    
+    [].
+%%    Channels = lists:concat([ecallmgr_fs_node:show_channels(Srv)
+%%                             || Srv <- gproc:lookup_pids({p, l, fs_node})
+%%                            ]),
+%%    SearchParams = lists:foldl(fun(Field, Acc) ->
+%%                                       case wh_json:get_value(Field, JObj) of
+%%                                           undefined -> Acc;
+%%                                           Value -> [{Field, Value} | Acc]
+%%                                       end
+%%                               end, [], wapi_call:channel_query_search_fields()),
+%%    lists:foldl(fun(Channel, Results) ->
+%%                        case lists:any(fun({K, V}) -> wh_json:get_value(K, Channel) =:= V end, SearchParams) of
+%%                            true -> [Channel|Results];
+%%                            false -> Results
+%%                        end
+%%                end, [], Channels).    
 
 -spec handle_switch_reloadacl/2 ::(wh_json:json_object(), proplist()) -> any().
 handle_switch_reloadacl(JObj, _Props) ->
@@ -334,23 +331,26 @@ create_call_status_resp(Props, false) ->
      ,{<<"Presence-ID">>, props:get_value(<<"variable_presence_id">>, Props)}
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)].
 
--spec was_uuid_found/1 :: ([{boolean(), pid()} | timeout,...]) -> {error, not_found} | 
-                                                                  {error, does_not_exist} | 
-                                                                  {ok, pid()}.
--spec was_uuid_found/2 :: ([{boolean(), pid()} | timeout,...], integer()) -> {error, not_found} | 
-                                                                             {error, does_not_exist} | 
-                                                                             {ok, pid()}.
-was_uuid_found(NodeHandlers) ->
-    was_uuid_found(NodeHandlers, length(ecallmgr_config:get(<<"fs_nodes">>, []))).
 
-was_uuid_found([], 0) ->
-    {error, does_not_exist};
-was_uuid_found([], _) ->
-    {error, not_found};
-was_uuid_found([{true, NodeHandler}|_], _) ->
-    {ok, NodeHandler};
-was_uuid_found([{false, _}|NodeHandlers], Count) ->
-    was_uuid_found(NodeHandlers, Count - 1);
-was_uuid_found([_|NodeHandlers], Count) ->
-    was_uuid_found(NodeHandlers, Count).
+-spec uuid_exists/2 :: (atom(), string() | binary()) -> boolean() | 'error'.
+uuid_exists(Node, UUID) ->
+    case catch(freeswitch:api(Node, uuid_exists, wh_util:to_list(UUID))) of
+        {'ok', Result} ->
+            lager:debug("result of uuid_exists(~s): ~s", [UUID, Result]),
+            wh_util:is_true(Result);
+        _Else ->
+            lager:debug("failed to get result from uuid_exists(~s): ~p", [UUID, _Else]),
+            error
+    end.
 
+-spec uuid_dump/2 :: (atom(), string() | binary()) -> {'ok', proplist()} |
+                                                      'error'.
+uuid_dump(Node, UUID) ->
+    case catch(freeswitch:api(Node, uuid_dump, wh_util:to_list(UUID))) of
+        {'ok', Result} ->
+            Props = ecallmgr_util:eventstr_to_proplist(Result),
+            {ok, Props};
+        _Else ->
+            lager:debug("failed to get result from uuid_dump(~s): ~p", [UUID, _Else]),
+            error
+    end.

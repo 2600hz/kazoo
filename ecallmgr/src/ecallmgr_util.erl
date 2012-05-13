@@ -11,6 +11,7 @@
 %%%-------------------------------------------------------------------
 -module(ecallmgr_util).
 
+-export([get_expires/1]).
 -export([get_interface_properties/1, get_interface_properties/2]).
 -export([get_sip_to/1, get_sip_from/1, get_sip_request/1, get_orig_ip/1, custom_channel_vars/1]).
 -export([eventstr_to_proplist/1, varstr_to_proplist/1, get_setting/1, get_setting/2]).
@@ -23,6 +24,12 @@
 -export([convert_fs_evt_name/1, convert_whistle_app_name/1]).
 
 -include("ecallmgr.hrl").
+
+
+-spec get_expires/1 :: (proplist()) -> number().
+get_expires(Props) ->
+    Expiry = wh_util:to_integer(props:get_value(<<"Expires">>, Props, 300)),
+    round(Expiry * 1.25) + 120.
 
 -spec get_interface_properties/1 :: (atom()) -> proplist().
 -spec get_interface_properties/2 :: (atom(), string() | ne_binary()) -> proplist().
@@ -128,11 +135,7 @@ is_node_up(Node) ->
 
 -spec is_node_up/2 :: (atom(), ne_binary()) -> boolean().
 is_node_up(Node, UUID) ->
-    case ecallmgr_fs_nodes:is_node_up(Node) andalso freeswitch:api(Node, uuid_exists, wh_util:to_list(UUID)) of
-        {'ok', IsUp} -> wh_util:is_true(IsUp);
-        timeout -> timer:sleep(100), is_node_up(Node, UUID);
-        _ -> false
-    end.
+    ecallmgr_fs_nodes:is_node_up(Node) andalso ecallmgr_fs_nodes:channel_exists(UUID).
 
 -spec fs_log/3 :: (atom(), nonempty_string(), list()) -> fs_api_ret().
 fs_log(Node, Format, Args) ->

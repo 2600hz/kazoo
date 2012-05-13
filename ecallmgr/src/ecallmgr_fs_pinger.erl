@@ -56,6 +56,8 @@ start_link(Node, Options) ->
 init([Node, Options]) ->
     put(callid, Node),
     lager:debug("starting new fs pinger for ~s", [Node]),
+    GracePeriod = wh_util:to_integer(ecallmgr_config:get(<<"node_down_grace_period">>, 10000)),
+    erlang:send_after(GracePeriod, self(), {flush_channels, Node}),
     {ok, #state{node=Node, options=Options}, 1000}.
 
 %%--------------------------------------------------------------------
@@ -99,6 +101,10 @@ handle_cast(_Msg, #state{timeout=Timeout}=State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info({flush_channels, Node}, #state{timeout=Timeout}=State) ->
+    lager:info("node ~s has been down past the grace period, flushing channels", [Node]),
+    ecallmgr_fs_nodes:flush_node_channels(Node),
+    {noreply, State, Timeout};
 handle_info(timeout, #state{node=Node, options=Options, timeout=Timeout}=State) ->
     T = Timeout * 2,
     case is_node_up(Node, Options) of

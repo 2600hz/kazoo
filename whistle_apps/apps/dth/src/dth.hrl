@@ -15,3 +15,5 @@
 -define(DTH_CALL_TYPE_OTHER, "Other").
 -define(DTH_CALL_TYPE_LOCAL, "Local").
 -define(DTH_CALL_TYPE_TIERED, "TieredOrigination").
+
+-define(DTH_CACHE, dth_cache).

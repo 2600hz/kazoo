@@ -37,6 +37,7 @@
 
 %% Document manipulation
 -export([save_doc/2, save_doc/3, save_docs/2, save_docs/3, open_doc/2, open_doc/3, del_doc/2, del_docs/2, lookup_doc_rev/2]).
+-export([update_doc/3]).
 -export([add_change_handler/2, add_change_handler/3, rm_change_handler/2]).
 -export([load_doc_from_file/3, update_doc_from_file/3]).
 -export([revise_doc_from_file/3]).
@@ -60,7 +61,7 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
--include("wh_couch.hrl").
+-include_lib("whistle_couch/include/wh_couch.hrl").
 
 -define(SERVER, ?MODULE).
 
@@ -414,6 +415,22 @@ save_docs(DbName, Docs) when is_list(Docs) ->
     save_docs(DbName, Docs, []).
 save_docs(DbName, Docs, Opts) when is_list(Docs) ->
     couch_util:save_docs(get_conn(), DbName, Docs, Opts).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% fetch, update and save a doc (creating if not present)
+%% @end
+%%--------------------------------------------------------------------
+-spec update_doc/3 :: (ne_binary(), ne_binary(), proplist()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
+update_doc(DbName, Id, Props) ->
+    case open_doc(DbName, Id) of
+        {error, not_found} ->
+            save_doc(DbName, wh_json:set_values([{<<"_id">>, Id}|Props], wh_json:new()));
+        {error, _}=E -> E;
+        {ok, JObj} ->
+            save_doc(DbName, wh_json:set_values(Props, JObj))
+    end.
 
 %%--------------------------------------------------------------------
 %% @public

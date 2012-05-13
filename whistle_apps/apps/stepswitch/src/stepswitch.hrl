@@ -17,6 +17,8 @@
 -define(APP_NAME, <<"stepswitch">>).
 -define(APP_VERSION, <<"0.2.0">>).
 
+-define(STEPSWITCH_CACHE, stepswitch_cache).
+
 -record(gateway, {
            resource_id = 'undefined'
           ,server = 'undefined'

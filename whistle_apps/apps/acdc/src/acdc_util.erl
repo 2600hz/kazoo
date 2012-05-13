@@ -74,15 +74,12 @@ get_agents(AcctDb, QueueId) ->
     end.
 
 find_queue(AcctDb, QueueId) ->
-    {ok, Cache} = acdc_sup:cache_proc(),
-    find_queue(AcctDb, QueueId, Cache).
-find_queue(AcctDb, QueueId, Cache) ->
-    case wh_cache:fetch_local(Cache, queue_cache_key(AcctDb, QueueId)) of
+    case wh_cache:fetch_local(?ACDC_CACHE, queue_cache_key(AcctDb, QueueId)) of
         {ok, _QueueJObj}=OK -> OK;
         {error, not_found} ->
             case couch_mgr:open_doc(AcctDb, QueueId) of
                 {ok, JObj}=OK ->
-                    wh_cache:store_local(Cache, queue_cache_key(AcctDb, QueueId), JObj),
+                    wh_cache:store_local(?ACDC_CACHE, queue_cache_key(AcctDb, QueueId), JObj),
                     OK;
                 E -> E
             end

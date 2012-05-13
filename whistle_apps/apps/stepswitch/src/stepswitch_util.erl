@@ -11,7 +11,7 @@
 -export([evaluate_flags/2]).
 -export([get_dialstring/2]).
 
--include("stepswitch.hrl").
+-include_lib("stepswitch/src/stepswitch.hrl").
 
 %%--------------------------------------------------------------------
 %% @public
@@ -22,13 +22,12 @@
 -spec lookup_number/1 :: (ne_binary()) -> {'ok', ne_binary(), boolean()} | {'error', term()}.
 lookup_number(Number) ->
     Num = wnm_util:normalize_number(Number),
-    {ok, Cache} = stepswitch_sup:cache_proc(),
-    case wh_cache:fetch_local(Cache, cache_key_number(Number)) of
+    case wh_cache:fetch_local(?STEPSWITCH_CACHE, cache_key_number(Number)) of
         {ok, {AccountId, ForceOut}} -> {ok, AccountId, ForceOut};
         {error, not_found} ->
             case wh_number_manager:lookup_account_by_number(Num) of
                 {ok, AccountId, ForceOut}=Ok ->
-                    wh_cache:store_local(Cache, cache_key_number(Number), {AccountId, ForceOut}),
+                    wh_cache:store_local(?STEPSWITCH_CACHE, cache_key_number(Number), {AccountId, ForceOut}),
                     lager:debug("~s is associated with account ~s", [Num, AccountId]),            
                     Ok;
                 {error, Reason}=E ->

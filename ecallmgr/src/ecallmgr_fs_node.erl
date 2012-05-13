@@ -12,13 +12,12 @@
 -behaviour(gen_server).
 
 -export([start_link/1, start_link/2]).
+-export([sync_channels/1]).
 -export([show_channels/1]).
 -export([fs_node/1]).
--export([uuid_exists/2]).
--export([uuid_dump/2]).
 -export([hostname/1]).
 -export([reloadacl/1]).
--export([process_custom_data/1]).
+-export([process_custom_data/2]).
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -64,13 +63,9 @@ start_link(Node) ->
 start_link(Node, Options) ->
     gen_server:start_link(?SERVER, [Node, Options], []).
 
--spec show_channels/1 :: (pid()) -> wh_json:json_objects().
-show_channels(Srv) ->
-    Node = fs_node(Srv),
-    case freeswitch:api(Node, show, "channels") of
-        {ok, Rows} -> convert_rows(Node, Rows);
-        _ -> []
-    end.
+-spec sync_channels/1 :: (pid()) -> 'ok'.
+sync_channels(Srv) ->
+    gen_server:cast(Srv, {sync_channels}).
 
 -spec hostname/1 :: (pid()) -> 'undefined' | ne_binary().
 hostname(Srv) ->
@@ -81,9 +76,10 @@ hostname(Srv) ->
             Hostname
     end.
 
--spec reloadacl/1 ::(pid()) -> 'ok'.
-reloadacl(Srv) ->
-    Node = fs_node(Srv),
+-spec reloadacl/1 ::(atom() | pid()) -> 'ok'.
+reloadacl(Srv) when is_pid(Srv) ->
+    reloadacl(fs_node(Srv));
+reloadacl(Node) ->
     case freeswitch:bgapi(Node, reloadacl, "") of
         {ok, Job} ->
             lager:debug("reloadacl command sent to ~s: JobID: ~s", [Node, Job]);
@@ -100,27 +96,11 @@ fs_node(Srv) ->
         Else -> Else
     end.
 
--spec uuid_exists/2 :: (pid(), ne_binary()) -> boolean() | 'error'.
-uuid_exists(Srv, UUID) ->
-    case catch(freeswitch:api(fs_node(Srv), uuid_exists, wh_util:to_list(UUID))) of
-        {'ok', Result} ->
-            lager:debug("result of uuid_exists(~s): ~s", [UUID, Result]),
-            wh_util:is_true(Result);
-        _Else ->
-            lager:debug("failed to get result from uuid_exists(~s): ~p", [UUID, _Else]),
-            error
-    end.
-
--spec uuid_dump/2 :: (pid(), ne_binary()) -> {'ok', proplist()} | 'error'.
-uuid_dump(Srv, UUID) ->
-    case catch(freeswitch:api(fs_node(Srv), uuid_dump, wh_util:to_list(UUID))) of
-        {'ok', Result} ->
-            Props = ecallmgr_util:eventstr_to_proplist(Result),
-            {ok, Props};
-        _Else ->
-            lager:debug("failed to get result from uuid_dump(~s): ~p", [UUID, _Else]),
-            error
-    end.
+-spec show_channels/1 :: (pid() | atom()) -> wh_json:json_objects().
+show_channels(Srv) when is_pid(Srv) ->
+    show_channels(fs_node(Srv));
+show_channels(Node) ->
+    show_channels_as_json(Node).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -144,12 +124,13 @@ init([Node, Options]) ->
     case freeswitch:register_event_handler(Node) of
         ok ->
             lager:debug("event handler registered on node ~s", [Node]),            
-            ok = freeswitch:event(Node, ['CHANNEL_CREATE', 'CHANNEL_DESTROY', 'HEARTBEAT', 'CHANNEL_HANGUP_COMPLETE'
+            ok = freeswitch:event(Node, ['CHANNEL_CREATE', 'CHANNEL_DESTROY', 'CHANNEL_HANGUP_COMPLETE'
                                          ,'CUSTOM', 'sofia::register', 'sofia::transfer'
                                         ]),
             lager:debug("bound to switch events on node ~s", [Node]),
             gproc:reg({p, l, fs_node}),
             run_start_cmds(Node),
+            sync_channels(self()),
             {ok, #state{node=Node, options=Options}};
         {error, Reason} ->
             lager:warning("error when trying to register event handler on node ~s: ~p", [Node, Reason]),
@@ -187,6 +168,13 @@ handle_call(node, _From, #state{node=Node}=State) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_cast/2 :: (term(), #state{}) -> {'noreply', #state{}}.
+handle_cast({sync_channels}, #state{node=Node}=State) ->
+    Calls = [wh_json:get_value(<<"uuid">>, J)
+             || J <- show_channels_as_json(Node)
+            ],
+    Msg = {sync_channels, Node, [Call || Call <- Calls, Call =/= undefined]},
+    gen_server:cast(ecallmgr_fs_nodes, Msg),
+    {noreply, State};
 handle_cast(_Req, State) ->
     {noreply, State}.
 
@@ -200,8 +188,8 @@ handle_cast(_Req, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({event, [UUID | Data]}, State) ->
-    catch process_event(UUID, Data),
+handle_info({event, [UUID | Data]}, #state{node=Node}=State) ->
+    catch process_event(UUID, Data, Node),
     {noreply, State, hibernate};
 
 handle_info({bgok, _Job, _Result}, State) ->
@@ -243,42 +231,43 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec process_event/2 :: ('undefined' | ne_binary(), proplist()) -> 'ok'.
--spec process_event/3 :: (ne_binary(), 'undefined' | ne_binary(), proplist()) -> 'ok'.
+-spec process_event/3 :: ('undefined' | ne_binary(), proplist(), atom()) -> 'ok'.
+-spec process_event/4 :: (ne_binary(), 'undefined' | ne_binary(), proplist(), atom()) -> 'ok'.
 
-process_event(UUID, Data) ->
+process_event(UUID, Data, Node) ->
     EventName = props:get_value(<<"Event-Name">>, Data),
-    gproc:send({p, l, {call_event, EventName}}, {event, [UUID | Data]}),
-    process_event(EventName, UUID, Data).
+    gproc:send({p, l, {call_event, Node, EventName}}, {event, [UUID | Data]}),
+    process_event(EventName, UUID, Data, Node).
 
-process_event(<<"CUSTOM">>, _, Data) ->
-    spawn_link(?MODULE, process_custom_data, [Data]),
+process_event(<<"CUSTOM">>, _, Data, Node) ->
+    spawn(?MODULE, process_custom_data, [Data, Node]),
     ok;
-process_event(<<"CHANNEL_CREATE">>, UUID, Data) ->
+process_event(<<"CHANNEL_CREATE">>, UUID, Data, Node) ->
     lager:debug("received channel create event: ~s", [UUID]),
-    ecallmgr_call_control:add_leg(Data);
-process_event(<<"CHANNEL_DESTROY">>, UUID, Data) ->
+    spawn(ecallmgr_fs_nodes, new_channel, [Data, Node]),
+    ok;
+process_event(<<"CHANNEL_DESTROY">>, UUID, Data, Node) ->
     case props:get_value(<<"Channel-State">>, Data) of
         <<"CS_NEW">> -> 
             lager:debug("ignoring channel destroy because of CS_NEW: ~s", [UUID]);
         <<"CS_DESTROY">> ->
             lager:debug("received channel destroyed: ~s", [UUID]),
-            _ = ecallmgr_call_control:rm_leg(Data),
-            ecallmgr_call_events:publish_channel_destroy(Data)
+            spawn(ecallmgr_fs_nodes, destroy_channel, [Data, Node])
     end;
-process_event(<<"CHANNEL_HANGUP_COMPLETE">>, UUID, Data) ->
+process_event(<<"CHANNEL_HANGUP_COMPLETE">>, UUID, Data, _) ->
     spawn(ecallmgr_call_cdr, new_cdr, [UUID, Data]),
     ok;
-process_event(_, _, _) ->
+process_event(_, _, _, _) ->
     ok.
 
--spec process_custom_data/1 :: (proplist()) -> 'ok'.
-process_custom_data(Data) ->
+-spec process_custom_data/2 :: (proplist(), atom()) -> 'ok'.
+process_custom_data(Data, Node) ->
     put(callid, props:get_value(<<"call-id">>, Data)),
     Subclass = props:get_value(<<"Event-Subclass">>, Data),
     case Subclass of
         <<"sofia::register">> ->
             lager:debug("received registration event"),
+            ecallmgr_registrar:reg_success(Data, Node),
             publish_register_event(Data);
         <<"sofia::transfer">> ->
             lager:debug("received transfer event"),
@@ -438,39 +427,6 @@ was_not_successful_cmd({ok, _, _}) ->
 was_not_successful_cmd(_) ->
     true.
 
--spec convert_rows/2 :: (atom(), binary()) -> wh_json:json_objects().
-convert_rows(Node, <<"\n0 total.\n">>) ->
-    lager:debug("no channels up on node ~s", [Node]),
-    [];
-convert_rows(Node, RowsBin) ->
-    [_|Rows] = binary:split(RowsBin, <<"\n">>, [global]),
-    return_rows(Node, Rows, []).
-
--spec return_rows/3 :: (atom(), [binary(),...] | [], wh_json:json_objects()) -> wh_json:json_objects().
-return_rows(Node, [<<>>|Rs], Acc) ->
-    return_rows(Node, Rs, Acc);
-return_rows(Node, [R|Rs], Acc) ->
-    case binary:split(R, <<",">>) of
-        [_Total] ->
-            lager:debug("found ~s calls on node ~s", [_Total, Node]),
-            return_rows(Node, Rs, Acc);
-        [UUID|_] ->
-            case freeswitch:api(Node, uuid_dump, wh_util:to_list(UUID)) of
-                {'ok', Result} ->
-                    Props = ecallmgr_util:eventstr_to_proplist(Result),
-                    ApplicationName = props:get_value(<<"variable_current_application">>, Props),
-                    JObj = wh_json:from_list([{<<"Switch-Hostname">>, Node}
-                                              ,{<<"Answer-State">>, props:get_value(<<"Answer-State">>, Props)}
-                                              | ecallmgr_call_events:create_event_props(<<>>, ApplicationName, Props)
-                                             ]),
-                    return_rows(Node, Rs, [JObj|Acc]);
-                Error ->
-                    lager:debug("failed to get result from uuid_dump(~s): ~p", [UUID, Error]),
-                    return_rows(Node, Rs, Acc)
-            end
-    end;
-return_rows(_Node, [], Acc) -> Acc.
-
 -spec print_api_responses/1 :: (cmd_results()) -> 'ok'.
 print_api_responses(Res) ->
     lager:debug("start cmd results:"),
@@ -484,3 +440,19 @@ print_api_response({error, {Cmd, Args}, Res}) ->
     lager:debug("error: ~s(~s) => ~s", [Cmd, Args, Res]);
 print_api_response({timeout, {Cmd, Arg}}) ->
     lager:debug("timeout: ~s(~s)", [Cmd, Arg]).
+
+-spec show_channels_as_json/1 :: (atom()) -> wh_json:json_objects().
+show_channels_as_json(Node) ->
+    case freeswitch:api(Node, show, "channels as delim |||") of
+        {ok, Lines} ->
+            case binary:split(Lines, <<"\n">>, [global]) of
+                [<<>>|_] -> [];
+                [Header|Rest] ->
+                    Keys = binary:split(Header, <<"|||">>, [global]),
+                    [wh_json:from_list(lists:zip(Keys, Values))
+                     || Line <- Rest
+                            ,((Values = binary:split(Line, <<"|||">>, [global])) =/= [Line]) 
+                    ]
+            end;
+        {error, _} -> []
+    end.

@@ -1,27 +1,27 @@
 %%%-------------------------------------------------------------------
-%%% @author Karl Anderson <karl@2600hz.org>
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2012, VoIP, INC
 %%% @doc
 %%%
 %%% @end
-%%% Created :  27 June 2011 by Karl Anderson <karl@2600hz.org>
+%%% @contributors
 %%%-------------------------------------------------------------------
 -module(conference_sup).
 
 -behaviour(supervisor).
 
--include_lib("whistle/include/wh_types.hrl").
+-include_lib("conference/src/conference.hrl").
 
-%% API
 -export([start_link/0]).
--export([cache_proc/0]).
-
-%% Supervisor callbacks
+-export([listener_proc/0]).
 -export([init/1]).
 
 %% Helper macro for declaring children of supervisor
--define(CHILD(Name, Type), {Name, {Name, start_link, []}, permanent, 5000, Type, [Name]}).
--define(CACHE(Name), {Name, {wh_cache, start_link, [Name]}, permanent, 5000, worker, [wh_cache]}).
+-define(CHILD(Name, Type), fun(N, cache) -> {N, {wh_cache, start_link, [N]}, permanent, 5000, worker, [wh_cache]};
+                              (N, T) -> {N, {N, start_link, []}, permanent, 5000, T, [N]} end(Name, Type)).
+-define(CHILDREN, [{?CONFERENCE_CACHE, cache}
+                   ,{conf_participant_sup, supervisor}
+                   ,{conf_discovery, worker}
+                  ]).
 
 %% ===================================================================
 %% API functions
@@ -37,10 +37,10 @@
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
--spec cache_proc/0 :: () -> {'ok', pid()}.
-cache_proc() ->
+-spec listener_proc/0 :: () -> {'ok', pid()}.
+listener_proc() ->
     [P] = [P || {Mod, P, _, _} <- supervisor:which_children(?MODULE),
-                Mod =:= conference_cache],
+                Mod =:= skel_listener],
     {ok, P}.
 
 %% ===================================================================
@@ -50,7 +50,7 @@ cache_proc() ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Whenever a supervisor is started using supervisor:start_link/N,
+%% Whenever a supervisor is started using supervisor:start_link/[2,3],
 %% this function is called by the new process to find out about
 %% restart strategy, maximum restart frequency and child
 %% specifications.
@@ -59,13 +59,10 @@ cache_proc() ->
 -spec init([]) -> sup_init_ret().
 init([]) ->
     RestartStrategy = one_for_one,
-    MaxRestarts = 3,
-    MaxSecondsBetweenRestarts = 5,
+    MaxRestarts = 5,
+    MaxSecondsBetweenRestarts = 10,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
-    Children = [?CACHE(conference_cache)
-                ,?CHILD(conf_discovery, worker)
-                ,?CHILD(conf_participant_sup, supervisor)
-               ],
+    Children = [?CHILD(Name, Type) || {Name, Type} <- ?CHILDREN],
 
     {ok, {SupFlags, Children}}.

@@ -7,22 +7,35 @@
 
 -define(ECALLMGR_AMQP_POOL, ecallmgr_amqp_pool).
 
+-define(ECALLMGR_UTIL_CACHE, ecallmgr_util_cache).
+-define(ECALLMGR_REG_CACHE, ecallmgr_reg_cache).
+-define(ECALLMGR_CALL_CACHE, ecallmgr_call_cache).
+
 -type fs_api_ret() :: {'ok', binary()} | {'error', binary()} | 'timeout'.
 -type fs_sendmsg_ret() :: 'ok' | {'error', binary()} | 'timeout'.
 
--record(handler_stats, {lookups_success = 0 :: integer()
-                        ,lookups_failed = 0 :: integer()
-                        ,lookups_timeout = 0 :: integer()
-                        ,lookups_requested = 0 :: integer()
-                        ,started = {0,0,0} :: wh_now()
-                       }).
+-record(sip_subscription, {key=undefined
+                           ,to=undefined
+                           ,from=undefined
+                           ,node=undefined
+                           ,expires=300
+                           ,timestamp=wh_util:current_tstamp()
+                          }).
 
--record(node_stats, {started = {0,0,0} :: wh_now()
-                     ,last_heartbeat = {0,0,0} :: wh_now()
-                     ,created_channels = 0 :: integer()
-                     ,destroyed_channels = 0 :: integer()
-                     ,fs_uptime = 0 :: integer() % in microseconds
-                    }).
+-record(channel, {uuid=undefined
+                  ,destination=undefined
+                  ,direction=undefined
+                  ,account_id=undefined
+                  ,authorizing_id=undefined
+                  ,authorizing_type=undefined
+                  ,owner_id=undefined
+                  ,presence_id=undefined
+                  ,realm=undefined
+                  ,username=undefined
+                  ,import_moh=true
+                  ,node=undefined
+                  ,timestamp=wh_util:current_tstamp()
+                 }).
 
 -define(DEFAULT_DOMAIN, <<"whistle.2600hz.org">>).
 -define(MAX_TIMEOUT_FOR_NODE_RESTART, 10000). % 10 seconds
@@ -130,7 +143,8 @@
 -define(FS_DEFAULT_HDRS, [<<"Event-Name">>, <<"Core-UUID">>, <<"FreeSWITCH-Hostname">>, <<"FreeSWITCH-Switchname">>
                               ,<<"FreeSWITCH-IPv4">>, <<"FreeSWITCH-IPv6">>, <<"Event-Date-Local">>
                               ,<<"Event-Date-GMT">>, <<"Event-Date-Timestamp">>, <<"Event-Calling-File">>
-                              ,<<"Event-Calling-Function">>, <<"Event-Calling-Line-Number">>]).
+                              ,<<"Event-Calling-Function">>, <<"Event-Calling-Line-Number">>, <<"Event-Sequence">>
+                         ]).
 
 -define(FS_CHANNEL_STATES, [{<<"CS_NEW">>, <<"new">>}
                             ,{<<"CS_INIT">>, <<"initialize">>}

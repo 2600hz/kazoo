@@ -10,10 +10,10 @@
 -behaviour(supervisor).
 
 -include_lib("whistle/include/wh_types.hrl").
+-include_lib("whistle_apps/src/whapps_call_command.hrl").
+-include_lib("whistle_apps/src/whistle_apps.hrl").
 
 -export([start_link/0]).
--export([config_cache_proc/0]).
--export([whapps_call_cache_proc/0]).
 -export([initialize_whapps/1]).
 -export([init/1]).
 
@@ -24,8 +24,8 @@
 -define(WHAPPS(Whapps), {whapps_sup, {whapps_sup, start_link, [Whapps]}, permanent, 5000, supervisor, [whapps_sup]}).
 -define(CHILDREN, [{wh_alert, worker}
                    ,{wh_cache, worker}
-                   ,{config_cache, cache}
-                   ,{whapps_call_cache, cache}
+                   ,{?WHAPPS_CONFIG_CACHE, cache}
+                   ,{?WHAPPS_CALL_CACHE, cache}
                    ,{whistle_couch_sup, supervisor}
                    ,{whapps_controller, worker}
                   ]).
@@ -43,15 +43,6 @@
 -spec start_link/0 :: () -> startlink_ret().
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
-
-
--spec config_cache_proc/0 :: () -> {'ok', pid()}.
-config_cache_proc() ->
-    {ok, whereis(config_cache)}.
-
--spec whapps_call_cache_proc/0 :: () -> {'ok', pid()}.
-whapps_call_cache_proc() ->
-    {ok, whereis(whapps_call_cache)}.
 
 -spec initialize_whapps/1 :: ([atom(),...]) -> {'error', term()} | 
                                                {'ok','undefined' | pid()} | 

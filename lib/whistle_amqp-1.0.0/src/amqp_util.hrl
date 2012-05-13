@@ -89,3 +89,10 @@
 %% For system configuration events (read/write)
 -define(EXCHANGE_SYSCONF, <<"sysconf">>).
 -define(TYPE_SYSCONF, <<"topic">>).
+
+-record(wh_amqp_channel, {consumer = 'undefined' :: 'undefined' | 'publish' | 'misc' | pid()
+                          ,channel = 'undefined' :: 'undefined' | pid()
+                          ,tag = <<>> :: binary()
+                          ,channel_ref = 'undefined' :: 'undefined' | reference()
+                          ,consumer_ref = 'undefined' :: 'undefined' | reference()
+                         }).

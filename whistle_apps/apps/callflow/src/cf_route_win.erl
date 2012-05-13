@@ -61,13 +61,6 @@ execute_callflow(Call) ->
 -spec get_channel_ccvs_updaters/1 :: (whapps_call:call()) -> [fun((wh_json:json_object()) -> wh_json:json_object()),...].
 get_channel_ccvs_updaters(Call) ->
     [fun(J) ->
-             case whapps_call:kvs_fetch(owner_id, Call) of
-                 undefined -> J;
-                 OwnerId ->
-                     wh_json:set_value(<<"Owner-ID">>, OwnerId, J)
-             end
-     end
-     ,fun(J) ->
               case cf_attributes:moh_attributes(<<"media_id">>, Call) of
                   undefined -> J;
                   MediaId ->

@@ -11,30 +11,30 @@
 -behaviour(gen_listener).
 
 %% API
--export([start_link/0, stop/1]).
+-export([start_link/0]).
+-export([stop/1]).
+-export([init/1
+         ,handle_call/3
+         ,handle_cast/2
+         ,handle_info/2
+         ,handle_event/2
+         ,terminate/2
+         ,code_change/3
+        ]).
 
-%% gen_listener callbacks
--export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2
-         ,terminate/2, code_change/3]).
+-include_lib("dth/src/dth.hrl").
 
--include("dth.hrl").
-
--define(RESPONDERS, [
-                     {dth_cdr_handler, [{<<"call_detail">>, <<"cdr">>}]}
+-define(RESPONDERS, [{dth_cdr_handler, [{<<"call_detail">>, <<"cdr">>}]}
                      ,{dth_blacklist_req, [{<<"dth">>, <<"blacklist_req">>}]}
                     ]).
--define(BINDINGS, [
-                   {call, [{restrict_to, [cdr]}]}
-                  ]).
+-define(BINDINGS, [{call, [{restrict_to, [cdr]}]}]).
 
 -define(SERVER, ?MODULE).
 -define(BLACKLIST_REFRESH, 60000).
 
--record(state, {
-          wsdl_model = undefined :: 'undefined' | term()
-         ,cache = undefined :: 'undefined' | pid()
-         ,dth_cdr_url = <<>> :: binary()
-         }).
+-record(state, {wsdl_model = undefined :: 'undefined' | term()
+                ,dth_cdr_url = <<>> :: binary()
+               }).
 
 %%%===================================================================
 %%% API
@@ -89,12 +89,8 @@ init([]) ->
             ok = detergent:write_hrl(WSDLFile, WSDLHrlFile)
     end,
 
-    Cache = whereis(dth_cache),
-    erlang:monitor(process, Cache),
-
     {ok, #state{wsdl_model=detergent:initModel(WSDLFile)
                 ,dth_cdr_url=URL
-                ,cache=Cache
                }}.
 
 %%--------------------------------------------------------------------
@@ -137,15 +133,11 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info(blacklist_refresh, #state{wsdl_model=WSDL, cache=Cache}=State) ->
+handle_info(blacklist_refresh, #state{wsdl_model=WSDL}=State) ->
     erlang:send_after(?BLACKLIST_REFRESH, self(), blacklist_refresh),
-    spawn(fun() -> refresh_blacklist(Cache, WSDL) end),
+    spawn(fun() -> refresh_blacklist(WSDL) end),
     {noreply, State};
-handle_info({'DOWN', _, process, Pid, Reason}, #state{cache=Pid}=State) ->
-    lager:debug("Cache ~p went down: ~p", [Pid, Reason]),
-    {noreply, State#state{cache=undefined}, 0};
 handle_info(_Info, State) ->
-    lager:debug("Unhandled message: ~p", [_Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -156,8 +148,8 @@ handle_info(_Info, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Props}
 %% @end
 %%--------------------------------------------------------------------
-handle_event(_JObj, #state{dth_cdr_url=Url, cache=Cache, wsdl_model=WSDL}) ->
-    {reply, [{cdr_url, Url}, {cache, Cache}, {wsdl, WSDL}]}.
+handle_event(_JObj, #state{dth_cdr_url=Url, wsdl_model=WSDL}) ->
+    {reply, [{cdr_url, Url}, {wsdl, WSDL}]}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -188,12 +180,12 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec refresh_blacklist/2 :: (pid(), _) -> 'ok'.
-refresh_blacklist(Cache, WSDL) ->
+-spec refresh_blacklist/1 :: (_) -> 'ok'.
+refresh_blacklist(WSDL) ->
     {ok, _, [Response]} = detergent:call(WSDL, "GetBlockList", []),
     BlockListEntries = get_blocklist_entries(Response),
     lager:debug("Entries: ~p", [BlockListEntries]),
-    wh_cache:store_local(Cache, dth_util:blacklist_cache_key(), BlockListEntries).
+    wh_cache:store_local(?DTH_CACHE, dth_util:blacklist_cache_key(), BlockListEntries).
 
 -spec get_blocklist_entries/1 :: (#'p:GetBlockListResponse'{}) -> wh_json:json_object().
 get_blocklist_entries(#'p:GetBlockListResponse'{

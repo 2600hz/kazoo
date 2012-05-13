@@ -172,8 +172,8 @@ build_sip_route(RouteJObj, <<"route">>) ->
 build_sip_route(RouteJObj, <<"username">>) ->
     User = wh_json:get_value(<<"To-User">>, RouteJObj),
     Realm = wh_json:get_value(<<"To-Realm">>, RouteJObj),
-    case ecallmgr_registrar:lookup(Realm, User, [<<"Contact">>]) of
-        [{<<"Contact">>, Contact}] ->
+    case ecallmgr_registrar:lookup_contact(Realm, User) of
+        {ok, Contact} ->
             RURI = binary:replace(re:replace(Contact, "^[^\@]+", User, [{return, binary}]), <<">">>, <<"">>),
             <<?SIP_INTERFACE, (RURI)/binary>>;
         {error, timeout}=E ->
@@ -184,8 +184,8 @@ build_sip_route(RouteJObj, DIDFormat) ->
     User = wh_json:get_value(<<"To-User">>, RouteJObj),
     Realm = wh_json:get_value(<<"To-Realm">>, RouteJObj),
     DID = format_did(wh_json:get_value(<<"To-DID">>, RouteJObj), DIDFormat),
-    case ecallmgr_registrar:lookup(Realm, User, [<<"Contact">>]) of
-        [{<<"Contact">>, Contact}] ->
+    case ecallmgr_registrar:lookup_contact(Realm, User) of
+        {ok, Contact} ->
             RURI = binary:replace(re:replace(Contact, "^[^\@]+", DID, [{return, binary}]), <<">">>, <<"">>),
             <<?SIP_INTERFACE, (RURI)/binary>>;
         {error, timeout}=E ->

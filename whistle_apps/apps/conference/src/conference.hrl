@@ -4,3 +4,5 @@
 
 -define(APP_NAME, <<"conference">>).
 -define(APP_VERSION, <<"2.0.0">>).
+
+-define(CONFERENCE_CACHE, conference_cache).

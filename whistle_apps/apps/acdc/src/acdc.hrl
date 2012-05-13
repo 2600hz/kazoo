@@ -10,4 +10,7 @@
 -define(APP_VERSION, <<"0.2.0">>).
 
 -define(ACDC_HRL, true).
+
+-define(ACDC_CACHE, acdc_cache).
+
 -endif.

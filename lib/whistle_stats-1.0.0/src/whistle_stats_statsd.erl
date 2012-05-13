@@ -35,6 +35,7 @@
 	        ,port = ?PORT :: pos_integer()
 		,polling_interval = ?POLLING_INTERVAL :: pos_integer()
 		,node_key :: nonempty_string()
+		,socket :: gen_udp:socket()
 	       }).
 -type state() :: #state{}.
 
@@ -72,7 +73,10 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    State = refresh(#state{node_key=get_node_key()}),
+    {ok, Socket} = gen_udp:open(0, [binary]),
+    State = refresh(#state{node_key = get_node_key()
+			   ,socket = Socket
+			  }),
     erlang:send_after(State#state.polling_interval, ?MODULE, interval),
     {ok, State}.
 
@@ -118,18 +122,14 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info(interval, State) ->
-    State1 = case State#state.host of
-		 undefined ->
-		     lager:debug("no url is set for statsd, trying to refresh configuration"),
-		     refresh(State);
-		 Host ->
-		     lager:debug("statsd url is set, sending stats to: ~p", [Host]),
-		     send_stats(Host, State#state.port, State#state.node_key),
-		     State
-	     end,
+handle_info(interval, #state{host='undefined'}=State) ->
+    State1 = refresh(State),
     erlang:send_after(State1#state.polling_interval, ?MODULE, interval),
     {noreply, State1};
+handle_info(interval, #state{host=Host, port=Port, node_key=NodeKey, polling_interval=PollingInterval, socket=Socket}=State) ->
+    send_stats(Socket, Host, Port, NodeKey),
+    erlang:send_after(PollingInterval, ?MODULE, interval),
+    {noreply, State};
 handle_info(_Info, State) ->
     {noreply, State}.
 
@@ -144,7 +144,8 @@ handle_info(_Info, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, _State) ->
+terminate(_Reason, #state{socket=Socket}) ->
+    gen_udp:close(Socket),
     ok.
 
 %%--------------------------------------------------------------------
@@ -163,11 +164,11 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 -spec get_node_key/0 :: () -> nonempty_string().
 get_node_key() ->
-    Node = list_to_binary(atom_to_list(node())),
+    Node = wh_util:to_binary(node()),
     [User | [Hostname]] = binary:split(Node, <<"@">>),
     [ShortName | [DomainName]] = binary:split(Hostname, <<".">>),
     DomainName1 = binary:replace(DomainName, <<".">>, <<"_">>, [global]),
-    binary_to_list(<<DomainName1/binary, ".", ShortName/binary, ".", User/binary>>).
+    wh_util:to_list(<<DomainName1/binary, ".", ShortName/binary, ".", User/binary>>).
 
 -spec refresh/1 :: (state()) -> state().
 refresh(State) ->
@@ -215,29 +216,21 @@ get_config(Cat, Key, Default) ->
 	    end
     end.
 
--spec send_stats/3 :: (nonempty_string(), pos_integer(), nonempty_string()) -> ok.
-send_stats(Host, Port, NodeKey) ->
-    send_stats(Host, Port, NodeKey, folsom_metrics:get_metrics()).
+-spec send_stats/4 :: (gen_udp:socket(), nonempty_string(), pos_integer(), nonempty_string()) -> ok.
+send_stats(Socket, Host, Port, NodeKey) ->
+    send_stats(Socket, Host, Port, NodeKey, folsom_metrics:get_metrics()).
 
--spec send_stats/4 :: (nonempty_string(), pos_integer(), nonempty_string(), list()) -> ok.
-send_stats(_Host, _Port, _NodeKey, []) ->
+-spec send_stats/5 :: (gen_udp:socket(), nonempty_string(), pos_integer(), nonempty_string(), list()) -> ok.
+send_stats(_Socket, _Host, _Port, _NodeKey, []) ->
     ok;
-send_stats(Host, Port, NodeKey, [NamespacedStatKey | Tail]) ->
+send_stats(Socket, Host, Port, NodeKey, [NamespacedStatKey | Tail]) ->
     [StatType | [StatKey]] = binary:split(NamespacedStatKey, <<".">>),
-    StatMod = list_to_atom(binary_to_list(StatType)),
+    StatMod = wh_util:to_atom(StatType),
     StatsdKey = lists:flatten([NodeKey
 			       ,"."
-			       ,binary_to_list(StatKey)
+			       ,wh_util:to_list(StatKey)
 			      ]),
-    lager:debug("~p:~p|g", [StatsdKey, StatMod:get(StatKey)]),
-    send_udp_message(Host, Port, io_lib:format("~p:~p|g", [StatsdKey
-							   ,StatMod:get(StatKey)
-							  ])),
-    send_stats(Host, Port, NodeKey, Tail).
-
--spec send_udp_message/3 :: (nonempty_string(), pos_integer(), nonempty_string()) -> ok.
-send_udp_message(Host, Port, Msg) when is_integer(Port), is_list(Host) ->
-    {ok, Socket} = gen_udp:open(0, [binary]),
-    ok = gen_udp:send(Socket, Host, Port, Msg),
-    gen_udp:close(Socket),
-    ok.
+    gen_udp:send(Socket, Host, Port, io_lib:format("~p:~p|g", [StatsdKey
+							       ,StatMod:get(StatKey)
+							      ])),
+    send_stats(Socket, Host, Port, NodeKey, Tail).
