@@ -93,5 +93,9 @@
 
 -type server_ref() :: atom() | {atom(), atom()} | {global, term()} | {via, atom(), term()} | pid().
 
+
+%% When using the stream_to option, ibrowse:send_req returns this tuple ReqID
+-type ibrowse_req_id() :: {pos_integer(), pos_integer(), pos_integer()}.
+
 -define(WHISTLE_TYPES_INCLUDED, true).
 -endif.
