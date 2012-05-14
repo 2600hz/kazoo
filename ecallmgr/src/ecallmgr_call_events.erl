@@ -232,7 +232,7 @@ handle_info(timeout, #state{node=Node, callid=CallId, failed_node_checks=FNC, wa
             {stop, normal, State};
         {'error', badsession} ->
             lager:debug("we're waiting on an origination, treat like a failed node check"),
-            {'noreply', State#state{failed_node_checks=FNC+1}, 50}; % this is going to need tweaking
+            {'noreply', State#state{failed_node_checks=FNC+1}, 5}; % this is going to need tweaking
         _E ->
             lager:debug("failed to setup listener for channel events from ~s: ~p", [Node, _E]),
             {stop, normal, State}
