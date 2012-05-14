@@ -4,19 +4,27 @@
 %%% 
 %%% @end
 %%% @contributors
+%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(whapps_speech).
 
 -include("whistle_apps.hrl").
 
--export([create/1, create/2, create/3]).
+-export([create/1, create/2, create/3, create/4]).
 
 -define(MOD_CONFIG_CAT, <<"speech">>).
 
--spec create/1 :: (ne_binary()) -> {'ok', ne_binary(), ne_binary()} | {'error', atom()}.
--spec create/2 :: (ne_binary(), ne_binary()) -> {'ok', ne_binary(), ne_binary()} | {'error', atom()}.
--spec create/3 :: (ne_binary(), ne_binary(), ne_binary()) -> {'ok', ne_binary(), ne_binary()} | {'error', atom()}.
--spec create/4 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> {'ok', ne_binary(), ne_binary()} | {'error', atom()}.
+%% {'ok', ContentType, BinaryData}
+
+-type create_resp() :: {'ok', ibrowse_req_id()} |
+                       {'ok', ne_binary(), ne_binary()} |
+                       {'error', atom()}.
+
+-spec create/1 :: (ne_binary()) -> create_resp().
+-spec create/2 :: (ne_binary(), ne_binary()) -> create_resp().
+-spec create/3 :: (ne_binary(), ne_binary(), ne_binary()) -> create_resp().
+-spec create/4 :: (ne_binary(), ne_binary(), ne_binary(), proplist()) -> create_resp().
+-spec create/5 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), proplist()) -> create_resp().
 
 create(Text) ->
     create(Text, <<"female/en-US">>).
@@ -25,11 +33,17 @@ create(Text, Voice) ->
     create(Text, Voice, <<"wav">>).
 
 create(Text, Voice, Format) ->
+    create(Text, Voice, Format, []).
+
+create(Text, Voice, Format, Options) ->
     Provider = whapps_config:get_binary(?MOD_CONFIG_CAT, <<"tts_provider">>, <<"ispeech">>),
-    case create(Provider, Text, Voice, Format) of
+    case create(Provider, Text, Voice, Format, Options) of
         {error, _R}=E ->
             lager:debug("creating speech file failed with error ~s", [_R]),
             E;
+        {ibrowse_req_id, ReqID} ->
+            lager:debug("streaming response ~p to provided option: ~p", [ReqID, props:get_value(stream_to, Options)]),
+            {ok, ReqID};
         {ok, "200", Headers, Content} ->
             ContentType = props:get_value("Content-Type", Headers),
             ContentLength = props:get_value("Content-Length", Headers),
@@ -40,7 +54,7 @@ create(Text, Voice, Format) ->
             {error, tts_provider_failure}
     end.
 
-create(<<"ispeech">>, Text, Voice, Format) ->
+create(<<"ispeech">>, Text, Voice, Format, Options) ->
     VoiceMappings = [{<<"female/en-US">>, <<"usenglishfemale">>}
                      ,{<<"male/en-US">>, <<"usenglishmale">>}
                      ,{<<"female/en-GB">>, <<"ukenglishfemale">>}
@@ -62,10 +76,10 @@ create(<<"ispeech">>, Text, Voice, Format) ->
             Headers = [{"Host", <<"api.ispeech.org">>}
                        ,{"Content-Type", "application/json; charset=UTF-8"}
                       ],
-            HTTPOptions = [{response_format, binary}],
+            HTTPOptions = [{response_format, binary} | Options],
             Body = wh_json:encode(wh_json:from_list(Props)),
             ibrowse:send_req(Url, Headers, post, Body, HTTPOptions)            
     end;
-create(_, _, _, _) ->
+create(_, _, _, _, _) ->
     {error, unknown_provider}.
 
