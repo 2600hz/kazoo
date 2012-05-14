@@ -21,6 +21,7 @@
 -export([refresh/0]).
 
 -include_lib("whistle/include/wh_types.hrl").
+-include_lib("whistle/include/wh_log.hrl").
 
 -define(HOST, undefined).
 -define(PORT, 8125).
@@ -32,16 +33,16 @@
 -define(APP_VERSION, <<"0.8.0">>).
 
 -record(state, {host = ?HOST :: 'undefined' | nonempty_string()
-	        ,port = ?PORT :: pos_integer()
-		,polling_interval = ?POLLING_INTERVAL :: pos_integer()
-		,node_key :: nonempty_string()
-		,socket :: gen_udp:socket()
-	       }).
+                ,port = ?PORT :: pos_integer()
+                ,polling_interval = ?POLLING_INTERVAL :: pos_integer()
+                ,node_key :: nonempty_string()
+                ,socket :: gen_udp:socket()
+               }).
 -type state() :: #state{}.
 
 %%%===================================================================
 %%% API
-%%%===================================================================	    
+%%%===================================================================      
 -spec refresh/0 :: () -> ok.
 refresh() ->
     gen_server:call(?MODULE, refresh),
@@ -73,10 +74,12 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
+    put(callid, ?LOG_SYSTEM_ID),
+
     {ok, Socket} = gen_udp:open(0, [binary]),
     State = refresh(#state{node_key = get_node_key()
-			   ,socket = Socket
-			  }),
+                           ,socket = Socket
+                          }),
     erlang:send_after(State#state.polling_interval, ?MODULE, interval),
     {ok, State}.
 
@@ -173,47 +176,47 @@ get_node_key() ->
 -spec refresh/1 :: (state()) -> state().
 refresh(State) ->
     StatsdInfo = case erlang:module_loaded(whapps_config) of 
-		     true ->
-			 whapps_config:get(<<"whistle_stats">>, <<"statsd">>, wh_json:new());	    
-		     false ->
-			 get_config(<<"whistle_stats">>, <<"statsd">>, wh_json:new())
-		 end,
+                     true ->
+                         whapps_config:get(<<"whistle_stats">>, <<"statsd">>, wh_json:new());       
+                     false ->
+                         get_config(<<"whistle_stats">>, <<"statsd">>, wh_json:new())
+                 end,
 
      State#state{host = wh_json:get_string_value(<<"host">>, StatsdInfo, ?HOST)
-		 ,port = wh_json:get_integer_value(<<"port">>, StatsdInfo, ?PORT)
-		 ,polling_interval = wh_json:get_integer_value(<<"polling_interval">>, StatsdInfo, ?POLLING_INTERVAL)
+                 ,port = wh_json:get_integer_value(<<"port">>, StatsdInfo, ?PORT)
+                 ,polling_interval = wh_json:get_integer_value(<<"polling_interval">>, StatsdInfo, ?POLLING_INTERVAL)
                }.
 
 -spec get_config/3 :: (ne_binary(), ne_binary(), term()) -> term(). 
 get_config(Cat, Key, Default) ->
     Node = wh_util:to_binary(node()),
     Req = [KV ||
-	      {_, V} = KV <- [{<<"Category">>, Cat}
-			      ,{<<"Key">>, Key}
-			      ,{<<"Default">>, Default}
-			      ,{<<"Node">>, Node}
-			      ,{<<"Msg-ID">>, wh_util:rand_hex_binary(16)}
-			      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-			     ],
-	      V =/= undefined],
+              {_, V} = KV <- [{<<"Category">>, Cat}
+                              ,{<<"Key">>, Key}
+                              ,{<<"Default">>, Default}
+                              ,{<<"Node">>, Node}
+                              ,{<<"Msg-ID">>, wh_util:rand_hex_binary(16)}
+                              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                             ],
+              V =/= undefined],
     
     ReqResp = wh_amqp_worker:call(?ECALLMGR_AMQP_POOL
-				  ,Req
-				  ,fun wapi_sysconf:publish_get_req/1
-				  ,fun wapi_sysconf:get_resp_v/1),
+                                  ,Req
+                                  ,fun wapi_sysconf:publish_get_req/1
+                                  ,fun wapi_sysconf:get_resp_v/1),
 
     case ReqResp of
-	{error, _R} ->
-	    Default;
-	{ok, RespJObj} ->
-	    case wh_json:get_value(<<"Value">>, RespJObj) of
-		undefined -> Default;
-		null -> Default;
-		<<"undefined">> -> Default;
-		<<"null">> -> Default;
-		Value ->
-		    Value
-	    end
+        {error, _R} ->
+            Default;
+        {ok, RespJObj} ->
+            case wh_json:get_value(<<"Value">>, RespJObj) of
+                undefined -> Default;
+                null -> Default;
+                <<"undefined">> -> Default;
+                <<"null">> -> Default;
+                Value ->
+                    Value
+            end
     end.
 
 -spec send_stats/4 :: (gen_udp:socket(), nonempty_string(), pos_integer(), nonempty_string()) -> ok.
@@ -227,10 +230,11 @@ send_stats(Socket, Host, Port, NodeKey, [NamespacedStatKey | Tail]) ->
     [StatType | [StatKey]] = binary:split(NamespacedStatKey, <<".">>),
     StatMod = wh_util:to_atom(StatType),
     StatsdKey = lists:flatten([NodeKey
-			       ,"."
-			       ,wh_util:to_list(StatKey)
-			      ]),
-    gen_udp:send(Socket, Host, Port, io_lib:format("~p:~p|g", [StatsdKey
-							       ,StatMod:get(StatKey)
-							      ])),
+                               ,"."
+                               ,wh_util:to_list(StatKey)
+                              ]),
+
+    StatToSend = io_lib:format("~p:~p|g", [StatsdKey, StatMod:get(StatKey)]),
+    _Resp = gen_udp:send(Socket, Host, Port, StatToSend),
+
     send_stats(Socket, Host, Port, NodeKey, Tail).
