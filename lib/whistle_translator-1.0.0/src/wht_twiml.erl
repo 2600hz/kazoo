@@ -196,7 +196,7 @@ exec_element(Call, 'Gather', [], #xmlElement{attributes=Attrs}) ->
 exec_element(Call, 'Play', [#xmlText{value=PlayMe, type=text}], #xmlElement{attributes=Attrs}) ->
     Call1 = maybe_answer_call(Call),
     lager:debug("PLAY: ~s", [PlayMe]),
-    case props:get_value(loop, attrs_to_proplist(Attrs), 1) of
+    case get_loop_count(props:get_value(loop, attrs_to_proplist(Attrs), 1)) of
         0 ->
             %% play music in a loop
             whapps_call_command:b_play(wh_util:to_binary(PlayMe), Call1);
@@ -210,13 +210,16 @@ exec_element(Call, 'Play', [#xmlText{value=PlayMe, type=text}], #xmlElement{attr
 exec_element(Call, 'Say', [#xmlText{value=SayMe, type=text}], #xmlElement{attributes=Attrs}) ->
     Call1 = maybe_answer_call(Call),
     Props = attrs_to_proplist(Attrs),
-    Voice = props:get_value(voice, Props, <<"man">>),
-    Lang = props:get_value(language, Props, <<"en">>),
-    Loop = props:get_value(loop, Props, 1),
+    Voice = get_voice(props:get_value(voice, Props)),
+    Lang = get_lang(props:get_value(language, Props)),
 
-    lager:debug("SAY: ~s using voice ~s, in lang ~s, ~b times", [SayMe, Voice, Lang, Loop]),
+    lager:debug("SAY: ~s using voice ~s, in lang ~s", [SayMe, Voice, Lang]),
 
-    whapps_call_command:b_say(wh_util:to_binary(SayMe), Call1),
+    case get_loop_count(wh_util:to_integer(props:get_value(loop, Props, 1))) of
+        0 -> say_loop(whapps_call_command:b_tts(wh_util:to_binary(SayMe), Voice, Lang, Call1), infinity);
+        1 -> whapps_call_command:b_tts(wh_util:to_binary(SayMe), Voice, Lang, Call1);
+        N -> say_loop(fun() -> whapps_call_command:b_tts(wh_util:to_binary(SayMe), Voice, Lang, Call1) end, N)
+    end,
     {ok, Call1};
 
 exec_element(Call, 'Redirect', [#xmlText{value=Url}], #xmlElement{attributes=Attrs}) ->
@@ -251,6 +254,14 @@ exec_element(Call, 'Reject', _, #xmlElement{attributes=Attrs}) ->
     play_reject_reason(Call, Reason), 
     whapps_call_command:response(reject_code(Reason), Reason, Call),
     {stop, Call}.
+
+say_loop(F, infinity) ->
+    F(),
+    say_loop(F, infinity);
+say_loop(_, 0) -> ok;
+say_loop(F, N) ->
+    F(),
+    say_loop(F, N-1).
 
 reject_reason(X) when not is_binary(X) ->
     reject_reason(wh_util:to_binary(X));
@@ -440,7 +451,21 @@ play_tone(Call) ->
                              ]),
     whapps_call_command:tones([Tone], Call).
 
+get_voice(undefined) -> <<"female">>;
+get_voice(<<"man">>) -> <<"male">>;
+get_voice(<<"woman">>) -> <<"female">>.
 
+get_lang(undefined) -> <<"en-US">>;
+get_lang(<<"en">>) -> <<"en-US">>;
+get_lang(<<"en-gb">>) -> <<"en-GB">>;
+get_lang(<<"es">> = ES) -> ES;
+get_lang(<<"fr">> = FR) -> FR;
+get_lang(<<"de">> = DE) -> DE.
+
+%% contstrain loop to 10
+get_loop_count(N) when N =< 0 -> 0;
+get_loop_count(N) when N =< 10 -> N;
+get_loop_count(_) -> 10.
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
