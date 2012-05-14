@@ -115,12 +115,12 @@ login(Devices, H, Call) ->
 
 login(_, #hotdesk{prompts=#prompts{abort_login=AbortLogin}}, undefined, Call, _) ->
     %% sanitize authorizing_id
-    whapps_call_command:b_play(AbortLogin, Call),
+    _ = whapps_call_command:b_play(AbortLogin, Call),
     ok;
 login(_, #hotdesk{prompts=#prompts{abort_login=AbortLogin}}, _, Call, Loop) when Loop > ?MAX_LOGIN_ATTEMPTS->
     %% if we have exceeded the maximum loop attempts then terminate this call
     lager:debug("maximum number of invalid attempts to check mailbox"),
-    whapps_call_command:b_play(AbortLogin, Call),
+    _ = whapps_call_command:b_play(AbortLogin, Call),
     ok;
 login(Devices, #hotdesk{prompts=#prompts{enter_password=EnterPass, invalid_login=InvalidLogin}
                         ,require_pin=true, pin=Pin}=H, AuthorizingId, Call, Loop) ->
@@ -130,7 +130,7 @@ login(Devices, #hotdesk{prompts=#prompts{enter_password=EnterPass, invalid_login
         {ok, _} ->
             case whapps_call_command:b_play(InvalidLogin, Call) of
                 {ok, _} ->
-                    login(Devices, H, Call, AuthorizingId, Loop + 1);
+                    login(Devices, H, AuthorizingId, Call, Loop + 1);
                 {error, _} ->
                     lager:debug("caller hungup during login")
             end;
@@ -156,16 +156,16 @@ login(Devices, #hotdesk{require_pin=false}=H, _, Call, _) ->
 do_login(_, #hotdesk{keep_logged_in_elsewhere=true, owner_id=OwnerId, prompts=#prompts{hotdesk_login=HotdeskLogin, goodbye=Bye}}, Call) ->
     %% keep logged in elsewhere, so we update only the device used to call
     ok = set_device_owner(OwnerId, whapps_call:authorizing_id(Call), Call),
-    whapps_call_command:b_play(HotdeskLogin, Call),
-    whapps_call_command:b_play(Bye, Call),
+    _ = whapps_call_command:b_play(HotdeskLogin, Call),
+    _ = whapps_call_command:b_play(Bye, Call),
     ok;
 do_login(Devices, #hotdesk{keep_logged_in_elsewhere=false, owner_id=OwnerId
                            ,prompts=#prompts{hotdesk_login=HotdeskLogin, goodbye=Bye}}, Call) ->
     %% log out from owned devices , since we don't want to keep logged in elsewhere, then log unto the device currently used
     _ = logout_from_elsewhere(Devices, Call),
     ok = set_device_owner(OwnerId, whapps_call:authorizing_id(Call), Call),
-    whapps_call_command:b_play(HotdeskLogin, Call),
-    whapps_call_command:b_play(Bye, Call),
+    _ = whapps_call_command:b_play(HotdeskLogin, Call),
+    _ = whapps_call_command:b_play(Bye, Call),
     ok.
 
 %%--------------------------------------------------------------------
@@ -184,14 +184,14 @@ do_login(Devices, #hotdesk{keep_logged_in_elsewhere=false, owner_id=OwnerId
 -spec logout/3 :: ([ne_binary(),...], #hotdesk{}, whapps_call:call()) -> 'ok'.
 logout(_, #hotdesk{keep_logged_in_elsewhere=true, prompts=#prompts{hotdesk_logout=HotdeskLogout, goodbye=Bye}}, Call) ->
     ok = set_device_owner(undefined, whapps_call:authorizing_id(Call), Call),
-    whapps_call_command:b_play(HotdeskLogout, Call),
-    whapps_call_command:b_play(Bye, Call),
+    _ = whapps_call_command:b_play(HotdeskLogout, Call),
+    _ = whapps_call_command:b_play(Bye, Call),
     ok;
 logout(Devices, #hotdesk{keep_logged_in_elsewhere=false, prompts=#prompts{hotdesk_logout=HotdeskLogout, goodbye=Bye}}, Call) ->
     _ = logout_from_elsewhere(Devices, Call),
     ok = set_device_owner(undefined, whapps_call:authorizing_id(Call), Call),
-    whapps_call_command:b_play(HotdeskLogout, Call),
-    whapps_call_command:b_play(Bye, Call),
+    _ = whapps_call_command:b_play(HotdeskLogout, Call),
+    _ = whapps_call_command:b_play(Bye, Call),
     ok.
 
 %%--------------------------------------------------------------------

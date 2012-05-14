@@ -1,10 +1,10 @@
 %%%-------------------------------------------------------------------
-%%% @author Karl Anderson <karl@2600hz.org>
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2012, VoIP INC
 %%% @doc
 %%%
 %%% @end
-%%% Created : 4 Oct 2011 by Karl Anderson <karl@2600hz.org>
+%%% @contributors
+%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(cf_park).
 
@@ -25,7 +25,7 @@
 %% call originator.
 %% @end
 %%--------------------------------------------------------------------
--spec update_presence/3 :: (ne_binary(), ne_binary(), ne_binary()) -> ok.
+-spec update_presence/3 :: (ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 update_presence(SlotNumber, PresenceId, AccountDb) ->
     AccountId = wh_util:format_account_id(AccountDb, raw),
     ParkedCalls = get_parked_calls(AccountDb, AccountId),
@@ -65,8 +65,8 @@ handle(Data, Call) ->
                     case retrieve(SlotNumber, ParkedCalls, Call) of
                         {ok, _} -> ok;
                         _Else ->
-                            whapps_call_command:b_answer(Call),
-                            whapps_call_command:b_prompt(<<"park-no_caller">>, Call),
+                            _ = whapps_call_command:b_answer(Call),
+                            _ = whapps_call_command:b_prompt(<<"park-no_caller">>, Call),
                             cf_exe:continue(Call)
                     end;
                 <<"auto">> ->
@@ -92,8 +92,8 @@ handle(Data, Call) ->
 %% Determine the hostname of the switch
 %% @end
 %%--------------------------------------------------------------------
--spec get_switch_hostname/1 :: (whapps_call:call()) -> undefined | ne_binary().
--spec get_switch_hostname/2 :: (undefined | ne_binary(), whapps_call:call()) -> undefined | ne_binary().
+-spec get_switch_hostname/1 :: (whapps_call:call()) -> 'undefined' | ne_binary().
+-spec get_switch_hostname/2 :: ('undefined' | ne_binary(), whapps_call:call()) -> 'undefined' | ne_binary().
 
 get_switch_hostname(Call) ->
     get_switch_hostname(undefined, Call).
@@ -112,9 +112,9 @@ get_switch_hostname(CallId, Call) ->
 %% Determine the appropriate action to retrieve a parked call
 %% @end
 %%--------------------------------------------------------------------
--spec retrieve/3 :: (ne_binary(), wh_json:json_object(), whapps_call:call()) -> {ok, wh_json:json_object()} | 
-                                                                        {hungup, wh_json:json_object()} |
-                                                                        {error, term()}.
+-spec retrieve/3 :: (ne_binary(), wh_json:json_object(), whapps_call:call()) -> {'ok', wh_json:json_object()} | 
+                                                                                {'hungup', wh_json:json_object()} |
+                                                                                {'error', term()}.
 retrieve(SlotNumber, ParkedCalls, Call) ->
     case wh_json:get_value([<<"slots">>, SlotNumber], ParkedCalls) of
         undefined ->
@@ -144,7 +144,7 @@ retrieve(SlotNumber, ParkedCalls, Call) ->
                                       ,{<<"Callee-ID-Number">>, Number}
                                      ],
                             whapps_call_command:set(wh_json:from_list(Update), undefined, Call),
-                            whapps_call_command:b_pickup(ParkedCall, Call),
+                            _ = whapps_call_command:b_pickup(ParkedCall, Call),
                             cf_exe:continue(Call),
                             Ok;
                         %% if we cant clean up the slot then someone beat us to it
@@ -167,7 +167,7 @@ retrieve(SlotNumber, ParkedCalls, Call) ->
 %% Determine the appropriate action to park the current call scenario
 %% @end
 %%--------------------------------------------------------------------
--spec park_call/4 :: (ne_binary(), wh_json:json_object(), undefined | ne_binary(), whapps_call:call()) -> ok.
+-spec park_call/4 :: (ne_binary(), wh_json:json_object(), 'undefined' | ne_binary(), whapps_call:call()) -> 'ok'.
 park_call(SlotNumber, ParkedCalls, ReferredTo, Call) ->
     lager:debug("attempting to park call in slot ~p", [SlotNumber]),
     Slot = create_slot(ReferredTo, Call),
@@ -177,9 +177,9 @@ park_call(SlotNumber, ParkedCalls, ReferredTo, Call) ->
         {undefined, {error, occupied}} ->
             lager:debug("selected slot is occupied"),
             %% Update screen with error that the slot is occupied
-            whapps_call_command:b_answer(Call),
+            _ = whapps_call_command:b_answer(Call),
             %% playback message that caller will have to try a different slot
-            whapps_call_command:b_prompt(<<"park-already_in_use">>, Call),
+            _ = whapps_call_command:b_prompt(<<"park-already_in_use">>, Call),
             cf_exe:continue(Call),
             ok;
         %% attended transfer and allowed to update the provided slot number, we are still connected to the 'parker'
@@ -187,10 +187,10 @@ park_call(SlotNumber, ParkedCalls, ReferredTo, Call) ->
         {undefined, _} ->
             lager:debug("playback slot number to caller"),
             %% Update screen with new slot number
-            whapps_call_command:b_answer(Call),
+            _ = whapps_call_command:b_answer(Call),
             %% Caller parked in slot number...
-            whapps_call_command:b_prompt(<<"park-call_placed_in_spot">>, Call),
-            whapps_call_command:b_say(wh_util:to_binary(SlotNumber), Call),
+            _ = whapps_call_command:b_prompt(<<"park-call_placed_in_spot">>, Call),
+            _ = whapps_call_command:b_say(wh_util:to_binary(SlotNumber), Call),
             cf_exe:transfer(Call),
             ok;
         %% blind transfer and but the provided slot number is occupied
@@ -282,8 +282,10 @@ get_slot_number(ParkedCalls, _) ->
 %% and tries again, determining the new slot.
 %% @end
 %%--------------------------------------------------------------------
--spec save_slot/4 :: (ne_binary(), wh_json:json_object(), wh_json:json_object(), whapps_call:call()) -> {ok, integer()} | {error, atom()}.
--spec do_save_slot/4 :: (ne_binary(), wh_json:json_object(), wh_json:json_object(), whapps_call:call()) -> {ok, integer()} | {error, atom()}.
+-spec save_slot/4 :: (ne_binary(), wh_json:json_object(), wh_json:json_object(), whapps_call:call()) -> {'ok', integer()} |
+                                                                                                        {'error', atom()}.
+-spec do_save_slot/4 :: (ne_binary(), wh_json:json_object(), wh_json:json_object(), whapps_call:call()) -> {'ok', integer()} |
+                                                                                                           {'error', atom()}.
 
 save_slot(SlotNumber, Slot, ParkedCalls, Call) ->
     case wh_json:get_value([<<"slots">>, SlotNumber, <<"Call-ID">>], ParkedCalls) of
@@ -422,7 +424,8 @@ get_parked_calls(AccountDb, AccountId) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec cleanup_slot/3 :: (ne_binary(), ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} | {'error', term()}.
+-spec cleanup_slot/3 :: (ne_binary(), ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} |
+                                                                   {'error', term()}.
 cleanup_slot(SlotNumber, ParkedCall, AccountDb) ->
     case couch_mgr:open_doc(AccountDb, ?DB_DOC_NAME) of
         {ok, JObj} ->
@@ -458,7 +461,7 @@ cleanup_slot(SlotNumber, ParkedCall, AccountDb) ->
 -spec wait_for_pickup/3 :: (ne_binary(), 'undefined' | ne_binary(), whapps_call:call()) -> any().
 wait_for_pickup(SlotNumber, undefined, Call) ->
     lager:debug("(no ringback) waiting for parked caller to be picked up or hangup"),
-    whapps_call_command:b_hold(Call),
+    _ = whapps_call_command:b_hold(Call),
     lager:debug("(no ringback) parked caller has been picked up or hungup"),    
     cleanup_slot(SlotNumber, cf_exe:callid(Call), whapps_call:account_db(Call));
 wait_for_pickup(SlotNumber, RingbackId, Call) ->
@@ -537,7 +540,7 @@ publish_usurp_control(CallId, Call) ->
 %% Ringback the device that parked the call
 %% @end
 %%--------------------------------------------------------------------
--spec get_endpoint_id/2 :: (ne_binary(), whapps_call:call()) -> undefined | ne_binary().
+-spec get_endpoint_id/2 :: (ne_binary(), whapps_call:call()) -> 'undefined' | ne_binary().
 get_endpoint_id(undefined, _) ->
     undefined;
 get_endpoint_id(Username, Call) ->
@@ -556,7 +559,7 @@ get_endpoint_id(Username, Call) ->
 %% Ringback the device that parked the call
 %% @end
 %%--------------------------------------------------------------------
--spec ringback_parker/4 :: (undefined | ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> answered | failed.
+-spec ringback_parker/4 :: ('undefined' | ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> 'answered' | 'failed'.
 ringback_parker(undefined, _, _, _) ->
     failed;
 ringback_parker(EndpointId, SlotNumber, TmpCID, Call) ->
@@ -566,13 +569,11 @@ ringback_parker(EndpointId, SlotNumber, TmpCID, Call) ->
             OriginalCID = whapps_call:caller_id_name(Call),
             CleanUpFun = fun(_) ->
                                  _ = cleanup_slot(SlotNumber, cf_exe:callid(Call), whapps_call:account_db(Call)),
-                                 whapps_call:set_caller_id_name(OriginalCID, Call),
                                  whapps_call:set_caller_id_name(OriginalCID, Call)
                          end,
-            whapps_call:set_caller_id_name(TmpCID, Call),
-            whapps_call:set_caller_id_name(TmpCID, Call),
-            whapps_call_command:bridge(Endpoints, <<"20">>, Call),
-            case whapps_call_command:wait_for_bridge(30000, CleanUpFun, Call) of
+            Call1 = whapps_call:set_caller_id_name(TmpCID, Call),
+            whapps_call_command:bridge(Endpoints, <<"20">>, Call1),
+            case whapps_call_command:wait_for_bridge(30000, CleanUpFun, Call1) of
                 {ok, _} ->
                     lager:debug("completed successful bridge to the ringback device"),
                     answered;

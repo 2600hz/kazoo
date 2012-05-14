@@ -122,7 +122,8 @@ db_delete(#server{}=Conn, DbName) ->
         {'ok', _} -> true
     end.
 
--spec db_replicate/2 :: (#server{}, wh_json:json_object() | proplist()) -> {'ok', wh_json:json_object()} | {'error', term()}.
+-spec db_replicate/2 :: (#server{}, wh_json:json_object() | proplist()) -> {'ok', wh_json:json_object()} |
+                                                                           {'error', term()}.
 db_replicate(#server{}=Conn, Prop) when is_list(Prop) ->
     couchbeam:replicate(Conn, wh_json:from_list(Prop));
 db_replicate(#server{}=Conn, JObj) ->
@@ -133,11 +134,13 @@ db_view_cleanup(#server{}=Conn, DbName) ->
     Db = get_db(Conn, DbName),
     do_db_view_cleanup(Db).
 
--spec db_info/1 :: (#server{}) -> {'ok', [ne_binary(),...] | []} | {'error', term()}.
+-spec db_info/1 :: (#server{}) -> {'ok', [ne_binary(),...] | []} |
+                                  {'error', term()}.
 db_info(#server{}=Conn) ->
     ?RETRY_504(couchbeam:all_dbs(Conn)).
 
--spec db_info/2 :: (#server{}, ne_binary()) -> {'ok', wh_json:json_object()} | {'error', term()}.
+-spec db_info/2 :: (#server{}, ne_binary()) -> {'ok', wh_json:json_object()} |
+                                               {'error', term()}.
 db_info(#server{}=Conn, DbName) ->
     ?RETRY_504(couchbeam:db_info(get_db(Conn, DbName))).
 
@@ -165,23 +168,27 @@ design_compact(#server{}=Conn, DbName, Design) ->
         ok -> true
     end.
 
--spec design_info/3 :: (#server{}, ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
+-spec design_info/3 :: (#server{}, ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} |
+                                                                {'error', atom()}.
 design_info(#server{}=Conn, DBName, Design) ->
     Db = get_db(Conn, DBName),
     do_get_design_info(Db, Design).
 
--spec all_design_docs/3 :: (#server{}, ne_binary(), proplist()) -> {'ok', wh_json:json_objects()} | {'error', atom()}.
+-spec all_design_docs/3 :: (#server{}, ne_binary(), proplist()) -> {'ok', wh_json:json_objects()} |
+                                                                   {'error', atom()}.
 all_design_docs(#server{}=Conn, DBName, Options) ->
     Db = get_db(Conn, DBName),
     {'ok', View} = couchbeam:view(Db, "_design_docs", Options),
     do_fetch_results(View).
 
--spec all_docs/3 :: (#server{}, ne_binary(), proplist()) -> {'ok', wh_json:json_objects()} | {'error', atom()}.
+-spec all_docs/3 :: (#server{}, ne_binary(), proplist()) -> {'ok', wh_json:json_objects()} |
+                                                            {'error', atom()}.
 all_docs(#server{}=Conn, DbName, Options) ->
     {'ok', View} = couchbeam:all_docs(get_db(Conn, DbName), Options),
     do_fetch_results(View).
 
--spec get_results/4 :: (#server{}, ne_binary(), ne_binary(), proplist()) -> {'ok', wh_json:json_objects() | [ne_binary(),...]} | {'error', atom()}.
+-spec get_results/4 :: (#server{}, ne_binary(), ne_binary(), proplist()) -> {'ok', wh_json:json_objects() | [ne_binary(),...]} |
+                                                                            {'error', atom()}.
 get_results(#server{}=Conn, DbName, DesignDoc, ViewOptions) ->
     Db = get_db(Conn, DbName),
     View = get_view(Db, DesignDoc, ViewOptions),
@@ -189,7 +196,8 @@ get_results(#server{}=Conn, DbName, DesignDoc, ViewOptions) ->
 
 %% Design Doc/View internal functions
 
--spec do_fetch_results/1 :: (#view{}) -> {'ok', wh_json:json_objects() | [ne_binary(),...]} | {'error', atom()}.
+-spec do_fetch_results/1 :: (#view{}) -> {'ok', wh_json:json_objects() | [ne_binary(),...]} |
+                                         {'error', atom()}.
 do_fetch_results(#view{}=View) ->
     ?RETRY_504(case couchbeam_view:fetch(View) of
                    {'ok', JObj} ->
@@ -199,17 +207,20 @@ do_fetch_results(#view{}=View) ->
                end
               ).
 
--spec do_get_design_info/2 :: (#db{}, ne_binary()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
+-spec do_get_design_info/2 :: (#db{}, ne_binary()) -> {'ok', wh_json:json_object()} |
+                                                      {'error', atom()}.
 do_get_design_info(#db{}=Db, Design) ->
     ?RETRY_504(couchbeam:design_info(Db, Design)).
 
 %% Document related functions --------------------------------------------------
--spec open_doc/4 :: (#server{}, ne_binary(), ne_binary(), proplist()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
+-spec open_doc/4 :: (#server{}, ne_binary(), ne_binary(), proplist()) -> {'ok', wh_json:json_object()} |
+                                                                         {'error', atom()}.
 open_doc(#server{}=Conn, DbName, DocId, Options) ->
     Db = get_db(Conn, DbName),
     do_fetch_doc(Db, DocId, Options).
 
--spec save_doc/4 :: (#server{}, ne_binary(), wh_json:json_object(), proplist()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
+-spec save_doc/4 :: (#server{}, ne_binary(), wh_json:json_object(), proplist()) -> {'ok', wh_json:json_object()} |
+                                                                                   {'error', atom()}.
 save_doc(#server{}=Conn, DbName, Doc, Options) ->
     Db = get_db(Conn, DbName),
     do_save_doc(Db, Doc, Options).
@@ -219,17 +230,20 @@ save_docs(#server{}=Conn, DbName, Docs, Options) ->
     Db = get_db(Conn, DbName),
     do_save_docs(Db, Docs, Options).
 
--spec lookup_doc_rev/3 :: (#server{}, ne_binary(), ne_binary()) -> {'ok', binary()} | {'error', atom()}.
+-spec lookup_doc_rev/3 :: (#server{}, ne_binary(), ne_binary()) -> {'ok', binary()} |
+                                                                   {'error', atom()}.
 lookup_doc_rev(#server{}=Conn, DbName, DocId) ->
     Db = get_db(Conn, DbName),
     do_fetch_rev(Db, DocId).
 
--spec ensure_saved/4 :: (#server{}, ne_binary(), wh_json:json_object(), proplist()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
+-spec ensure_saved/4 :: (#server{}, ne_binary(), wh_json:json_object(), proplist()) -> {'ok', wh_json:json_object()} |
+                                                                                       {'error', atom()}.
 ensure_saved(#server{}=Conn, DbName, Doc, Opts) ->
     Db = get_db(Conn, DbName),
     do_ensure_saved(Db, Doc, Opts).
 
--spec del_doc/3 :: (#server{}, ne_binary(), wh_json:json_object() | ne_binary()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
+-spec del_doc/3 :: (#server{}, ne_binary(), wh_json:json_object() | ne_binary()) -> {'ok', wh_json:json_object()} |
+                                                                                    {'error', atom()}.
 del_doc(#server{}=Conn, DbName, DocId) when is_binary(DocId) ->
     case lookup_doc_rev(Conn, DbName, DocId) of
         {'error', _}=Err -> Err;
@@ -240,25 +254,27 @@ del_doc(#server{}=Conn, DbName, Doc) ->
     Db = get_db(Conn, DbName),
     do_delete_doc(Db, Doc).
 
--spec del_docs/3 :: (#server{}, ne_binary(), wh_json:json_objects()) -> {'ok', wh_json:json_objects()} | {'error', atom()}.
+-spec del_docs/3 :: (#server{}, ne_binary(), wh_json:json_objects()) -> {'ok', wh_json:json_objects()}.
 del_docs(#server{}=Conn, DbName, Doc) ->
     Db = get_db(Conn, DbName),
     do_delete_docs(Db, Doc).
 
 %% Internal Doc functions
 
--spec do_delete_doc/2 :: (#db{}, wh_json:json_object()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
+-spec do_delete_doc/2 :: (#db{}, wh_json:json_object()) -> {'ok', wh_json:json_object()} |
+                                                           {'error', atom()}.
 do_delete_doc(#db{}=Db, Doc) ->
     case do_delete_docs(Db, [Doc]) of
         {'ok', [JObj]} -> {'ok', JObj};
         E -> E
     end.
 
--spec do_delete_docs/2 :: (#db{}, wh_json:json_objects()) -> {'ok', wh_json:json_objects()} | {'error', atom()}.
+-spec do_delete_docs/2 :: (#db{}, wh_json:json_objects()) -> {'ok', wh_json:json_objects()}.
 do_delete_docs(#db{}=Db, Docs) ->
-    ?RETRY_504(couchbeam:save_docs(Db, [wh_json:set_value(<<"_deleted">>, true, Doc) || Doc <- Docs])).
+    do_save_docs(Db, [wh_json:set_value(<<"_deleted">>, true, Doc) || Doc <- Docs], []).
 
--spec do_ensure_saved/3 :: (#db{}, wh_json:json_object(), proplist()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
+-spec do_ensure_saved/3 :: (#db{}, wh_json:json_object(), proplist()) -> {'ok', wh_json:json_object()} |
+                                                                         {'error', atom()}.
 do_ensure_saved(#db{}=Db, Doc, Opts) ->
     case do_save_doc(Db, Doc, Opts) of
         {'ok', _}=Saved -> Saved;
@@ -273,15 +289,18 @@ do_ensure_saved(#db{}=Db, Doc, Opts) ->
         {'error', _}=E -> E
     end.
 
--spec do_fetch_rev/2 :: (#db{}, ne_binary()) -> {'ok', binary()} | {'error', atom()}.
+-spec do_fetch_rev/2 :: (#db{}, ne_binary()) -> {'ok', binary()} |
+                                                {'error', atom()}.
 do_fetch_rev(#db{}=Db, DocId) ->
     ?RETRY_504(couchbeam:lookup_doc_rev(Db, DocId)).
 
--spec do_fetch_doc/3 :: (#db{}, ne_binary(), proplist()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
+-spec do_fetch_doc/3 :: (#db{}, ne_binary(), proplist()) -> {'ok', wh_json:json_object()} |
+                                                            {'error', atom()}.
 do_fetch_doc(#db{}=Db, DocId, Options) ->
     ?RETRY_504(couchbeam:open_doc(Db, DocId, Options)).
 
--spec do_save_doc/3 :: (#db{}, wh_json:json_object() | wh_json:json_objects(), proplist()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
+-spec do_save_doc/3 :: (#db{}, wh_json:json_object() | wh_json:json_objects(), proplist()) -> {'ok', wh_json:json_object()} |
+                                                                                              {'error', atom()}.
 do_save_doc(#db{}=Db, Docs, Options) when is_list(Docs) ->
     do_save_docs(Db, Docs, Options);
 do_save_doc(#db{}=Db, Doc, Options) ->
@@ -302,17 +321,21 @@ do_save_docs(#db{}=Db, Docs, Options, Acc) ->
     end.
 
 %% Attachment-related functions ------------------------------------------------
--spec fetch_attachment/4 :: (#server{}, ne_binary(), ne_binary(), ne_binary()) -> {'ok', binary()} | {'error', atom()}.
+-spec fetch_attachment/4 :: (#server{}, ne_binary(), ne_binary(), ne_binary()) -> {'ok', binary()} |
+                                                                                  {'error', atom()}.
 fetch_attachment(#server{}=Conn, DbName, DocId, AName) ->
     Db = get_db(Conn, DbName),
     do_fetch_attachment(Db, DocId, AName).
 
--spec stream_attachment/5 :: (#server{}, ne_binary(), ne_binary(), ne_binary(), pid()) -> {'ok', reference()} | {'error', term()}.
+-spec stream_attachment/5 :: (#server{}, ne_binary(), ne_binary(), ne_binary(), pid()) -> {'ok', reference()} |
+                                                                                          {'error', term()}.
 stream_attachment(#server{}=Conn, DbName, DocId, AName, Caller) ->
     do_stream_attachment(get_db(Conn, DbName), DocId, AName, Caller).
 
--spec put_attachment/5 :: (#server{}, ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
--spec put_attachment/6 :: (#server{}, ne_binary(), ne_binary(), ne_binary(), ne_binary(), proplist()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
+-spec put_attachment/5 :: (#server{}, ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} |
+                                                                                             {'error', atom()}.
+-spec put_attachment/6 :: (#server{}, ne_binary(), ne_binary(), ne_binary(), ne_binary(), proplist()) -> {'ok', wh_json:json_object()} |
+                                                                                                         {'error', atom()}.
 put_attachment(#server{}=Conn, DbName, DocId, AName, Contents) ->
     Db = get_db(Conn, DbName),
     {'ok', Rev} = do_fetch_rev(Db, DocId),
@@ -327,8 +350,10 @@ put_attachment(#server{}=Conn, DbName, DocId, AName, Contents, Options) ->
             do_put_attachment(Db, DocId, AName, Contents, Options)
     end.
 
--spec delete_attachment/4 :: (#server{}, ne_binary(), ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
--spec delete_attachment/5 :: (#server{}, ne_binary(), ne_binary(), ne_binary(), proplist()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
+-spec delete_attachment/4 :: (#server{}, ne_binary(), ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} |
+                                                                                   {'error', atom()}.
+-spec delete_attachment/5 :: (#server{}, ne_binary(), ne_binary(), ne_binary(), proplist()) -> {'ok', wh_json:json_object()} |
+                                                                                               {'error', atom()}.
 delete_attachment(#server{}=Conn, DbName, DocId, AName) ->
     Db = get_db(Conn, DbName),
     {'ok', Rev} = do_fetch_rev(Db, DocId),
@@ -344,19 +369,23 @@ delete_attachment(#server{}=Conn, DbName, DocId, AName, Options) ->
     end.
 
 %% Internal Attachment-related functions ---------------------------------------
--spec do_fetch_attachment/3 :: (#db{}, ne_binary(), ne_binary()) -> {'ok', binary()} | {'error', atom()}.
+-spec do_fetch_attachment/3 :: (#db{}, ne_binary(), ne_binary()) -> {'ok', binary()} |
+                                                                    {'error', atom()}.
 do_fetch_attachment(#db{}=Db, DocId, AName) ->
     ?RETRY_504(couchbeam:fetch_attachment(Db, DocId, AName)).
 
--spec do_stream_attachment/4 :: (#db{}, ne_binary(), ne_binary(), pid()) -> {'ok', reference()} | {'error', term()}.
+-spec do_stream_attachment/4 :: (#db{}, ne_binary(), ne_binary(), pid()) -> {'ok', reference()} |
+                                                                            {'error', term()}.
 do_stream_attachment(#db{}=Db, DocId, AName, Caller) ->
     couchbeam:stream_fetch_attachment(Db, DocId, AName, Caller).
 
--spec do_put_attachment/5 :: (#db{}, ne_binary(), ne_binary(), ne_binary(), proplist()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
+-spec do_put_attachment/5 :: (#db{}, ne_binary(), ne_binary(), ne_binary(), proplist()) -> {'ok', wh_json:json_object()} |
+                                                                                           {'error', atom()}.
 do_put_attachment(#db{}=Db, DocId, AName, Contents, Options) ->
     ?RETRY_504(couchbeam:put_attachment(Db, DocId, AName, Contents, Options)).
 
--spec do_del_attachment/4 :: (#db{}, ne_binary(), ne_binary(), proplist()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
+-spec do_del_attachment/4 :: (#db{}, ne_binary(), ne_binary(), proplist()) -> {'ok', wh_json:json_object()} |
+                                                                              {'error', atom()}.
 do_del_attachment(#db{}=Db, DocId, AName, Options) ->
     Doc = wh_util:to_binary(http_uri:encode(wh_util:to_list(DocId))),
     ?RETRY_504(couchbeam:delete_attachment(Db, Doc, AName, Options)).

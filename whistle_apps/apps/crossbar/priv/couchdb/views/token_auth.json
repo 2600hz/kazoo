@@ -2,11 +2,11 @@
    "_id": "_design/token_auth",
    "language": "javascript",
    "views": {
-       "listing_by_token": {
-           "map": "function(doc) { if(doc.pvt_deleted) return; emit( doc._id, {'account_id': doc.account_id, 'user_id': doc.user_id, 'api_id': doc.api_id } ); }"
+       "listing_by_ctime": {
+           "map": "function(doc) { if(doc.pvt_deleted) return; emit(doc.created, doc._rev); }"
        },
-       "listing_by_peer": {
-           "map": "function(doc) { if(doc.pvt_deleted) return; emit(doc.peer, {'account_id': doc.account_id, 'user_id': doc.user_id, 'api_id': doc.api_id}); }"
-       },
+       "soft_deleted": {
+           "map": "function(doc) { if(doc.pvt_deleted) emit(doc._id, doc._rev); }"
+       }
    }
 }

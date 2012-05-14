@@ -15,6 +15,7 @@
         ]).
 -export([to_boolean/1, is_true/1, is_false/1, is_empty/1, is_proplist/1]).
 -export([to_lower_binary/1, to_upper_binary/1, binary_join/2]).
+-export([to_lower_string/1, to_upper_string/1]).
 -export([ucfirst_binary/1, lcfirst_binary/1]).
 
 -export([pad_binary/3, join_binary/1, join_binary/2]).
@@ -24,7 +25,9 @@
 -export([gregorian_seconds_to_unix_seconds/1, unix_seconds_to_gregorian_seconds/1
          ,pretty_print_datetime/1
         ]).
--export([microseconds_to_seconds/1]).
+-export([microseconds_to_seconds/1
+         ,elapsed_s/1, elapsed_ms/1, elapsed_us/1
+        ]).
 
 -export([put_callid/1]).
 -export([get_event_type/1]).
@@ -468,38 +471,54 @@ is_proplist(_) ->
 to_lower_binary(undefined) ->
     undefined;
 to_lower_binary(Bin) when is_binary(Bin) ->
-    << <<(binary_to_lower_char(B))>> || <<B>> <= Bin>>;
+    << <<(to_lower_char(B))>> || <<B>> <= Bin>>;
 to_lower_binary(Else) ->
     to_lower_binary(to_binary(Else)).
 
+-spec to_lower_string/1 :: (term()) -> 'undefined' | list().
+to_lower_string(undefined) ->
+    undefined;
+to_lower_string(L) when is_list(L) ->
+    [to_lower_char(C) || C <- L];
+to_lower_string(Else) ->
+    to_lower_string(to_list(Else)).
+
 -spec ucfirst_binary/1 :: (ne_binary()) -> ne_binary().
 ucfirst_binary(<<F:8, Bin/binary>>) ->
-    <<(binary_to_upper_char(F)):8, Bin/binary>>.
+    <<(to_upper_char(F)):8, Bin/binary>>.
 
 -spec lcfirst_binary/1 :: (ne_binary()) -> ne_binary().
 lcfirst_binary(<<F:8, Bin/binary>>) ->
-    <<(binary_to_lower_char(F)):8, Bin/binary>>.
+    <<(to_lower_char(F)):8, Bin/binary>>.
     
--spec binary_to_lower_char/1 :: (char()) -> char().
-binary_to_lower_char(C) when is_integer(C), $A =< C, C =< $Z -> C + 32;
+-spec to_lower_char/1 :: (char()) -> char().
+to_lower_char(C) when is_integer(C), $A =< C, C =< $Z -> C + 32;
 %% Converts latin capital letters to lowercase, skipping 16#D7 (extended ascii 215) "multiplication sign: x"
-binary_to_lower_char(C) when is_integer(C), 16#C0 =< C, C =< 16#D6 -> C + 32; % from string:to_lower
-binary_to_lower_char(C) when is_integer(C), 16#D8 =< C, C =< 16#DE -> C + 32; % so we only loop once
-binary_to_lower_char(C) -> C.
+to_lower_char(C) when is_integer(C), 16#C0 =< C, C =< 16#D6 -> C + 32; % from string:to_lower
+to_lower_char(C) when is_integer(C), 16#D8 =< C, C =< 16#DE -> C + 32; % so we only loop once
+to_lower_char(C) -> C.
 
 -spec to_upper_binary/1 :: (term()) -> 'undefined' | binary().
 to_upper_binary(undefined) ->
     undefined;
 to_upper_binary(Bin) when is_binary(Bin) ->
-    << <<(binary_to_upper_char(B))>> || <<B>> <= Bin>>;
+    << <<(to_upper_char(B))>> || <<B>> <= Bin>>;
 to_upper_binary(Else) ->
     to_upper_binary(to_binary(Else)).
 
--spec binary_to_upper_char/1 :: (char()) -> char().
-binary_to_upper_char(C) when is_integer(C), $a =< C, C =< $z -> C - 32;
-binary_to_upper_char(C) when is_integer(C), 16#E0 =< C, C =< 16#F6 -> C - 32;
-binary_to_upper_char(C) when is_integer(C), 16#F8 =< C, C =< 16#FE -> C - 32;
-binary_to_upper_char(C) -> C.
+-spec to_upper_string/1 :: (term()) -> 'undefined' | list().
+to_upper_string(undefined) ->
+    undefined;
+to_upper_string(L) when is_list(L) ->
+    [to_upper_char(C) || C <- L];
+to_upper_string(Else) ->
+    to_upper_string(to_list(Else)).
+
+-spec to_upper_char/1 :: (char()) -> char().
+to_upper_char(C) when is_integer(C), $a =< C, C =< $z -> C - 32;
+to_upper_char(C) when is_integer(C), 16#E0 =< C, C =< 16#F6 -> C - 32;
+to_upper_char(C) when is_integer(C), 16#F8 =< C, C =< 16#FE -> C - 32;
+to_upper_char(C) -> C.
 
 -spec binary_join/2 :: ([ne_binary(),...], binary()) -> ne_binary().
 binary_join([H|T], Glue) when is_binary(Glue) ->
@@ -589,9 +608,9 @@ pretty_print_datetime({{Y,Mo,D},{H,Mi,S}}) ->
     iolist_to_binary(io_lib:format("~4..0w-~2..0w-~2..0w_~2..0w-~2..0w-~2..0w",
                                    [Y, Mo, D, H, Mi, S])).
 
--spec microseconds_to_seconds/1 :: (integer() | string() | binary()) -> non_neg_integer().
+-spec microseconds_to_seconds/1 :: (float() | integer() | string() | binary()) -> non_neg_integer().
 microseconds_to_seconds(Microseconds) ->
-    erlang:trunc(to_integer(Microseconds) * math:pow(10, -6)).
+    to_integer(Microseconds) div 1000000.
 
 -spec is_ipv4/1 :: (nonempty_string() | ne_binary()) -> boolean().
 is_ipv4(Address) when is_binary(Address) ->
@@ -611,6 +630,17 @@ is_ipv6(Address) when is_list(Address) ->
         {ok, _} -> true;
         {error, _} -> false
     end.
+
+-spec elapsed_s/1 :: (wh_now()) -> integer().
+-spec elapsed_ms/1 :: (wh_now()) -> integer().
+-spec elapsed_us/1 :: (wh_now()) -> integer().
+elapsed_s({_,_,_}=Start) ->
+    timer:now_diff(erlang:now(), Start) div 1000000.
+elapsed_ms({_,_,_}=Start) ->
+    timer:now_diff(erlang:now(), Start) div 1000.
+elapsed_us({_,_,_}=Start) ->
+    timer:now_diff(erlang:now(), Start).
+
 
 %% PROPER TESTING
 prop_to_integer() ->
@@ -696,5 +726,33 @@ lcfirst_binary_test() ->
     ?assertEqual(<<"1oo">>, lcfirst_binary(<<"1oo">>)),
     ?assertEqual(<<"100">>, lcfirst_binary(<<"100">>)),
     ?assertEqual(<<"1FF">>, lcfirst_binary(<<"1FF">>)).
+
+to_lower_binary_test() ->
+    ?assertEqual(<<"foo">>, to_lower_binary(<<"foo">>)),
+    ?assertEqual(<<"foo">>, to_lower_binary(<<"Foo">>)),
+    ?assertEqual(<<"foo">>, to_lower_binary(<<"FoO">>)),
+    ?assertEqual(<<"f00">>, to_lower_binary(<<"f00">>)),
+    ?assertEqual(<<"f00">>, to_lower_binary(<<"F00">>)).
+
+to_upper_binary_test() ->
+    ?assertEqual(<<"FOO">>, to_upper_binary(<<"foo">>)),
+    ?assertEqual(<<"FOO">>, to_upper_binary(<<"Foo">>)),
+    ?assertEqual(<<"FOO">>, to_upper_binary(<<"FoO">>)),
+    ?assertEqual(<<"F00">>, to_upper_binary(<<"f00">>)),
+    ?assertEqual(<<"F00">>, to_upper_binary(<<"F00">>)).
+
+to_lower_string_test() ->
+    ?assertEqual("foo", to_lower_string("foo")),
+    ?assertEqual("foo", to_lower_string("Foo")),
+    ?assertEqual("foo", to_lower_string("FoO")),
+    ?assertEqual("f00", to_lower_string("f00")),
+    ?assertEqual("f00", to_lower_string("F00")).
+
+to_upper_string_test() ->
+    ?assertEqual("FOO", to_upper_string("foo")),
+    ?assertEqual("FOO", to_upper_string("Foo")),
+    ?assertEqual("FOO", to_upper_string("FoO")),
+    ?assertEqual("F00", to_upper_string("f00")),
+    ?assertEqual("F00", to_upper_string("F00")).
 
 -endif.

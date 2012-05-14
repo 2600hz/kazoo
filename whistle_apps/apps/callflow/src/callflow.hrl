@@ -22,11 +22,6 @@
 -define(NO_MATCH_CF, <<"no_match">>).
 
 -define(DEFAULT_TIMEOUT, <<"20">>).
--define(ANY_DIGIT, [<<"1">>, <<"2">>, <<"3">>
-                    ,<<"4">>, <<"5">>, <<"6">>
-                    ,<<"7">>, <<"8">>, <<"9">>
-                    ,<<"*">>, <<"0">>, <<"#">>
-                   ]).
 
 -define(CF_CONFIG_CAT, <<"callflow">>).
 

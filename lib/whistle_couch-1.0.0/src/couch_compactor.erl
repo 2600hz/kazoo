@@ -73,6 +73,7 @@ compact_all(ConflictStrategy, F) ->
 compact_node(Node) when is_atom(Node) ->
     compact_node(wh_util:to_binary(Node));
 compact_node(NodeBin) ->
+    put(callid, NodeBin),
     lager:debug("compacting node ~s", [NodeBin]),
 
     {Conn, AdminConn} = get_node_connections(NodeBin),
@@ -83,6 +84,7 @@ compact_node(NodeBin) ->
 compact_node(Node, ConflictStrategy) when is_atom(Node) ->
     compact_node(wh_util:to_binary(Node), ConflictStrategy);
 compact_node(NodeBin, ConflictStrategy) ->
+    put(callid, NodeBin),
     lager:debug("compacting node ~s", [NodeBin]),
 
     {Conn, _AdminConn} = get_node_connections(NodeBin),
@@ -94,6 +96,7 @@ compact_node(NodeBin, ConflictStrategy) ->
 compact_node(Node, ConflictStrategy, F) when is_atom(Node) ->
     compact_node(wh_util:to_binary(Node), ConflictStrategy, F);
 compact_node(NodeBin, ConflictStrategy, F) ->
+    put(callid, NodeBin),
     lager:debug("compacting node ~s", [NodeBin]),
 
     {Conn, _AdminConn} = get_node_connections(NodeBin),
@@ -117,6 +120,7 @@ compact_db(DB) ->
 compact_db(Node, DB) when is_atom(Node) ->
     compact_db(wh_util:to_binary(Node), DB);
 compact_db(NodeBin, DB) ->
+    put(callid, NodeBin),
     {Conn, AdminConn} = get_node_connections(NodeBin),
     ok = compact_node_db(NodeBin, DB, Conn, AdminConn),
     done.
@@ -124,6 +128,7 @@ compact_db(NodeBin, DB) ->
 compact_db(Node, DB, ConflictStrategy) when is_atom(Node) ->
     compact_db(wh_util:to_binary(Node), DB, ConflictStrategy);
 compact_db(NodeBin, DB, ConflictStrategy) ->
+    put(callid, NodeBin),
     {Conn, AdminConn} = get_node_connections(NodeBin),
 
     _ = couch_conflict:resolve(Conn, DB, couch_conflict:default_view(), ConflictStrategy),

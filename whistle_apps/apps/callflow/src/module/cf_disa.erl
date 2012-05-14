@@ -48,7 +48,7 @@ try_collect_pin(Call, Pin, Retries) ->
             allow;
         {ok, _Digits} ->
             lager:debug("caller entered ~s for pin", [_Digits]),
-            whapps_call_command:b_play(<<"local_stream://en/us/callie/ivr/ivr-pin_or_extension_is-invalid.wav">>, Call),
+            _ = whapps_call_command:b_play(<<"local_stream://en/us/callie/ivr/ivr-pin_or_extension_is-invalid.wav">>, Call),
             try_collect_pin(Call, Pin, Retries - 1)
     end.
 
@@ -77,7 +77,7 @@ allow_dial(Call, Retries) ->
             cf_exe:branch(wh_json:get_value(<<"flow">>, Flow), Call);
         _ ->
             lager:debug("failed to find a callflow to satisfy ~s", [Number]),
-            whapps_call_command:b_play(<<"local_stream://en/us/callie/ivr/ivr-you_have_dialed_an_invalid_extension.wav">>, Call),
+            _ = whapps_call_command:b_play(<<"local_stream://en/us/callie/ivr/ivr-you_have_dialed_an_invalid_extension.wav">>, Call),
             allow_dial(Call, Retries - 1)
     end.
 

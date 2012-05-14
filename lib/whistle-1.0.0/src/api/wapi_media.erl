@@ -21,10 +21,16 @@
 
 %% Media Request - when streaming is needed
 -define(MEDIA_REQ_HEADERS, [<<"Media-Name">>]).
--define(OPTIONAL_MEDIA_REQ_HEADERS, [<<"Stream-Type">>, <<"Call-ID">>, <<"Msg-ID">>]).
+-define(OPTIONAL_MEDIA_REQ_HEADERS, [<<"Stream-Type">>, <<"Call-ID">>, <<"Msg-ID">>
+                                         %% TTS-related flags
+                                         ,<<"Voice">>, <<"Language">>, <<"Format">>
+                                         ,<<"Account-ID">>
+                                    ]).
 -define(MEDIA_REQ_VALUES, [{<<"Event-Category">>, <<"media">>}
                            ,{<<"Event-Name">>, <<"media_req">>}
                            ,{<<"Stream-Type">>, [<<"new">>, <<"extant">>]}
+                           ,{<<"Voice">>, [<<"male">>, <<"female">>]}
+                           ,{<<"Format">>, [<<"mp3">>, <<"wav">>]}
                           ]).
 -define(MEDIA_REQ_TYPES, []).
 

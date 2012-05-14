@@ -2,11 +2,6 @@
 -include_lib("whistle/include/wh_log.hrl").
 
 -define(DEFAULT_TIMEOUT, <<"20">>).
--define(ANY_DIGIT, [<<"1">>, <<"2">>, <<"3">>
-                    ,<<"4">>, <<"5">>, <<"6">>
-                    ,<<"7">>, <<"8">>, <<"9">>
-                    ,<<"*">>, <<"0">>, <<"#">>
-                   ]).
 
 -define(APP_NAME, <<"whapps_call_command">>).
 -define(APP_VERSION, <<"1.0.0">>).

@@ -39,7 +39,18 @@ start_link() ->
 handle_media_req(JObj, _Props) ->
     true = wapi_media:req_v(JObj),
 
-    case find_attachment(binary:split(wh_json:get_value(<<"Media-Name">>, JObj, <<>>), <<"/">>, [global, trim])) of
+    case wh_json:get_value(<<"Media-Name">>, JObj) of
+        undefined ->
+            send_error_resp(JObj, <<"invalid_media_name">>, <<>>);
+        <<"tts://", Text/binary>> ->
+            lager:debug("tts request for ~s", [Text]),
+            load_from_tts(Text, JObj);
+        Media ->
+            load_from_db(JObj, Media)
+    end.
+
+load_from_db(JObj, Media) ->
+    case find_attachment(binary:split(Media, <<"/">>, [global, trim])) of
         not_found ->
             send_error_resp(JObj, <<"not_found">>, <<>>);
         no_data ->
@@ -48,11 +59,26 @@ handle_media_req(JObj, _Props) ->
             Id = wh_util:format_account_id(Db, raw),
             send_media_resp(JObj, Id, Doc, Attachment, Meta),
 
-            {ok, FileServer} = media_files_sup:find_file_server(Id, Doc, Attachment, Meta),
-            lager:debug("file server at ~p for ~s/~s/~s", [FileServer, Id, Doc, Attachment])
+            {ok, _FileServer} = media_files_sup:find_file_server(Id, Doc, Attachment, Meta),
+            lager:debug("file server at ~p for ~s/~s/~s", [_FileServer, Id, Doc, Attachment])
     end.
 
+load_from_tts(Text, JObj) ->
+    {ok, _TTSServer} = media_files_sup:find_tts_server(Text, JObj),
+
+    Format = wh_json:get_value(<<"Format">>, JObj, <<"wav">>),
+    Path = iolist_to_binary([<<"tts/">>, wh_util:to_hex_binary(Text), $., Format]),
+
+    Meta = wh_json:from_list([{<<"content_type">>, media_util:content_type_of(Format)}]),
+
+    lager:debug("tts server at ~p for ~s", [_TTSServer, Path]),
+
+    send_media_resp(JObj, Path, Meta).
+
 send_media_resp(JObj, Id, Doc, Attachment, Meta) ->
+    send_media_resp(JObj, [Id, <<"/">>, Doc, <<"/">>, Attachment], Meta).
+
+send_media_resp(JObj, Path, Meta) ->
     Hostname = wh_util:get_hostname(),
     Port = whapps_config:get_binary(?CONFIG_CAT, <<"port">>),
 
@@ -67,9 +93,7 @@ send_media_resp(JObj, Id, Doc, Attachment, Meta) ->
                                 ,Hostname, <<":">>
                                 ,Port, <<"/">>
                                 ,StreamType, <<"/">>
-                                ,Id, <<"/">>
-                                ,Doc, <<"/">>
-                                ,Attachment
+                                ,Path
                                ]),
 
     lager:debug("final stream URL: ~s", [StreamURL]),

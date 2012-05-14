@@ -1,9 +1,9 @@
 %%%-------------------------------------------------------------------
-%%% @author Karl Anderson <karl@2600hz.org>
-%%% @copyright (C) 2010-2011, VoIP INC
+%%% @copyright (C) 2010-2012, VoIP INC
 %%% @doc
 %%% @end
-%%% Created : 18 Dec 2011 by Karl Anderson <karl@2600hz.org>
+%%% @contributors
+%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(cf_exe).
 
@@ -70,7 +70,7 @@ start_link(Call) ->
                                       ,{consume_options, ?CONSUME_OPTIONS}
                                      ], [Call]).
 
--spec get_call/1 :: (pid()) -> {ok, whapps_call:call()}.
+-spec get_call/1 :: (pid() | whapps_call:call()) -> {'ok', whapps_call:call()}.
 get_call(Srv) when is_pid(Srv) ->
     gen_server:call(Srv, {get_call}, 1000);
 get_call(Call) ->

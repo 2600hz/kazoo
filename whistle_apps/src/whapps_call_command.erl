@@ -17,7 +17,7 @@
          ,b_pickup/2, b_pickup/3
         ]).
 -export([redirect/3]).
--export([answer/1, hangup/1, set/3, fetch/1, fetch/2]).
+-export([answer/1, hangup/1, hangup/2, set/3, fetch/1, fetch/2]).
 -export([ring/1]).
 -export([call_status/1, call_status/2, channel_status/1, channel_status/2]).
 -export([bridge/2, bridge/3, bridge/4, bridge/5, bridge/6, bridge/7]).
@@ -25,7 +25,13 @@
 -export([presence/2, presence/3]).
 -export([play/2, play/3]).
 -export([prompt/2, prompt/3]).
+
+-export([tts/2, tts/3, tts/4, tts/5
+         ,b_tts/2, b_tts/3, b_tts/4, b_tts/5
+        ]).
+
 -export([record/2, record/3, record/4, record/5, record/6]).
+-export([record_call/2, record_call/3, record_call/4, record_call/5]).
 -export([store/3, store/4, store/5]).
 -export([tones/2]).
 -export([prompt_and_collect_digit/2]).
@@ -41,7 +47,7 @@
 -export([noop/1]).
 -export([flush/1, flush_dtmf/1]).
 
--export([b_answer/1, b_hangup/1, b_fetch/1, b_fetch/2]).
+-export([b_answer/1, b_hangup/1, b_hangup/2, b_fetch/1, b_fetch/2]).
 -export([b_ring/1]).
 -export([b_call_status/1, b_call_status/2, b_channel_status/1, b_channel_status/2]).
 -export([b_bridge/2, b_bridge/3, b_bridge/4, b_bridge/5, b_bridge/6, b_bridge/7]).
@@ -71,7 +77,7 @@
 -export([wait_for_channel_bridge/0, wait_for_channel_unbridge/0]).
 -export([wait_for_dtmf/1]).
 -export([wait_for_noop/1]).
--export([wait_for_hangup/0]).
+-export([wait_for_hangup/0, wait_for_unbridge/0]).
 -export([wait_for_application_or_dtmf/2]).
 -export([collect_digits/2, collect_digits/3, collect_digits/4, collect_digits/5, collect_digits/6]).
 -export([send_command/2]).
@@ -327,7 +333,10 @@ b_answer(Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec hangup/1 :: (whapps_call:call()) -> 'ok'.
+-spec hangup/2 :: (boolean(), whapps_call:call()) -> 'ok'.
+
 -spec b_hangup/1 :: (whapps_call:call()) -> {'ok', 'channel_hungup'}.
+-spec b_hangup/2 :: (boolean(), whapps_call:call()) -> {'ok', 'channel_hungup' | 'leg_hangup'}.
 
 hangup(Call) ->
     Command = [{<<"Application-Name">>, <<"hangup">>}
@@ -335,9 +344,23 @@ hangup(Call) ->
               ],
     send_command(Command, Call).
 
+hangup(OtherLegOnly, Call) when is_boolean(OtherLegOnly) ->
+    Command = [{<<"Application-Name">>, <<"hangup">>}
+               ,{<<"Other-Leg-Only">>, OtherLegOnly}
+               ,{<<"Insert-At">>, <<"now">>}
+              ],
+    send_command(Command, Call).
+
 b_hangup(Call) ->
     hangup(Call),
     wait_for_hangup().
+b_hangup(false, Call) ->
+    hangup(Call),
+    wait_for_hangup();
+b_hangup(true, Call) ->
+    hangup(true, Call),
+    wait_for_unbridge().
+
 
 %%--------------------------------------------------------------------
 %% @public
@@ -537,7 +560,7 @@ b_prompt(Prompt, Call) ->
 
 b_prompt(Prompt, Lang, Call) ->
     b_play(whapps_util:get_prompt(Prompt, Lang, Call), Call).
-    
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -593,6 +616,68 @@ play_command(Media, Terminators, Call) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
+%% requests the TTS engine to create an audio file to play the desired
+%% text.
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec tts/2 :: (ne_binary(), whapps_call:call()) -> ne_binary().
+-spec tts/3 :: (ne_binary(), ne_binary(), whapps_call:call()) -> ne_binary().
+-spec tts/4 :: (ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> ne_binary().
+-spec tts/5 :: (ne_binary(), ne_binary(), ne_binary(), [ne_binary(),...], whapps_call:call()) -> ne_binary().
+
+tts(SayMe, Call) ->
+    tts(SayMe, <<"female">>, Call).
+tts(SayMe, Voice, Call) ->
+    tts(SayMe, Voice, <<"en-US">>, Call).
+tts(SayMe, Voice, Lang, Call) ->
+    tts(SayMe, Voice, Lang, ?ANY_DIGIT, Call).
+
+tts(SayMe, Voice, Lang, Terminators, Call) ->
+    NoopId = couch_mgr:get_uuid(),
+    CallId = whapps_call:call_id(Call),
+    Q = whapps_call:controller_queue(Call),
+    Commands = [wh_json:from_list([{<<"Application-Name">>, <<"noop">>}
+                                   ,{<<"Call-ID">>, CallId}
+                                   ,{<<"Msg-ID">>, NoopId}
+                                   | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+                                  ])
+                ,wh_json:from_list([{<<"Application-Name">>, <<"play">>}
+                                    ,{<<"Media-Name">>, list_to_binary([<<"tts://">>, SayMe])}
+                                    ,{<<"Terminators">>, Terminators}
+                                    ,{<<"Voice">>, Voice}
+                                    ,{<<"Language">>, Lang}
+                                    ,{<<"Call-ID">>, CallId}
+                                    | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+                                   ])
+               ],
+    Command = [{<<"Application-Name">>, <<"queue">>}
+               ,{<<"Commands">>, Commands}
+              ],
+    send_command(Command, Call),
+    NoopId.
+
+-spec b_tts/2 :: (ne_binary(), whapps_call:call()) -> ne_binary().
+-spec b_tts/3 :: (ne_binary(), ne_binary(), whapps_call:call()) -> ne_binary().
+-spec b_tts/4 :: (ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> ne_binary().
+-spec b_tts/5 :: (ne_binary(), ne_binary(), ne_binary(), [ne_binary(),...], whapps_call:call()) -> ne_binary().
+
+b_tts(SayMe, Call) ->
+    NoopId = tts(SayMe, Call),
+    wait_for_noop(NoopId).
+b_tts(SayMe, Voice, Call) ->
+    NoopId = tts(SayMe, Voice, Call),
+    wait_for_noop(NoopId).
+b_tts(SayMe, Voice, Lang, Call) ->
+    NoopId = tts(SayMe, Voice, Lang, Call),
+    wait_for_noop(NoopId).
+b_tts(SayMe, Voice, Lang, Terminators, Call) ->
+    NoopId = tts(SayMe, Voice, Lang, Terminators, Call),
+    wait_for_noop(NoopId).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
 %% Produces the low level wh_api request to record a file.
 %% A list of keys can be used as the terminator or a silence threshold.
 %% @end
@@ -638,6 +723,21 @@ b_record(MediaName, Terminators, TimeLimit, SilenceThreshold, Call) ->
 b_record(MediaName, Terminators, TimeLimit, SilenceThreshold, SilenceHits, Call) ->
     record(MediaName, Terminators, TimeLimit, SilenceThreshold, SilenceHits, Call),
     wait_for_headless_application(<<"record">>, <<"RECORD_STOP">>, <<"call_event">>, infinity).
+
+record_call(MediaName, Call) ->
+    record_call(MediaName, <<"start">>, Call).
+record_call(MediaName, Action, Call) ->
+    record_call(MediaName, Action, <<"remote">>, Call).
+record_call(MediaName, Action, StreamTo, Call) ->
+    record_call(MediaName, Action, StreamTo, 600, Call).
+record_call(MediaName, Action, StreamTo, TimeLimit, Call) ->
+    Command = [{<<"Application-Name">>, <<"record_call">>}
+               ,{<<"Media-Name">>, MediaName}
+               ,{<<"Record-Action">>, Action}
+               ,{<<"Stream-To">>, StreamTo}
+               ,{<<"Time-Limit">>, wh_util:to_binary(TimeLimit)}
+              ],
+    send_command(Command, Call).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -1458,6 +1558,28 @@ wait_for_hangup() ->
             %% dont let the mailbox grow unbounded if
             %%   this process hangs around...
             wait_for_hangup()
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Wait forever for the channel to hangup
+%% @end
+%%--------------------------------------------------------------------
+-spec wait_for_unbridge/0 :: () -> {'ok', 'leg_hungup'}.
+wait_for_unbridge() ->
+    receive
+        {amqp_msg, {struct, _}=JObj} ->
+            case whapps_util:get_event_type(JObj) of
+                { <<"call_event">>, <<"LEG_DESTROYED">> } ->
+                    {ok, leg_hungup};
+                _ ->
+                    wait_for_unbridge()
+            end;
+        _ ->
+            %% dont let the mailbox grow unbounded if
+            %%   this process hangs around...
+            wait_for_unbridge()
     end.
 
 %%--------------------------------------------------------------------

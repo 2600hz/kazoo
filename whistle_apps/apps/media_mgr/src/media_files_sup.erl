@@ -13,6 +13,7 @@
 %% API
 -export([start_link/0
          ,find_file_server/3, find_file_server/4
+         ,find_tts_server/1, find_tts_server/2
         ]).
 
 %% Supervisor callbacks
@@ -21,6 +22,7 @@
 -define(SERVER, ?MODULE).
 
 -define(CHILD(Name, Id, Doc, Attachment, Meta), {Name, {media_file, start_link, [Id, Doc, Attachment, Meta]}, temporary, 5000, worker, [media_file]}).
+-define(CHILD(Name, Text, JObj), {Name, {media_tts, start_link, [Text, JObj]}, temporary, 5000, worker, [media_tts]}).
 
 %%%===================================================================
 %%% API functions
@@ -42,10 +44,24 @@ find_file_server(Id, Doc, Attachment) ->
         [] -> {error, no_file_server};
         [P] -> {ok, P}
     end.
-             
+
 find_file_server(Id, Doc, Attachment, Meta) ->
     Name = [Id,Doc,Attachment],
     case supervisor:start_child(?MODULE, ?CHILD(Name, Id, Doc, Attachment, Meta)) of
+        {ok, _Pid}=OK -> OK;
+        {error, {already_started, Pid}} -> {ok, Pid};
+        {error, _}=E -> E
+    end.
+
+find_tts_server(Id) ->
+    case [P||{N,P,_,_} <- supervisor:which_children(?MODULE), N =:= Id] of
+        [] -> {error, no_file_server};
+        [P] -> {ok, P}
+    end.
+
+find_tts_server(Text, JObj) ->
+    Id = list_to_binary([wh_util:to_hex_binary(Text), $., wh_json:get_value(<<"Format">>, JObj, <<"wav">>)]),
+    case supervisor:start_child(?MODULE, ?CHILD(Id, Text, JObj)) of
         {ok, _Pid}=OK -> OK;
         {error, {already_started, Pid}} -> {ok, Pid};
         {error, _}=E -> E

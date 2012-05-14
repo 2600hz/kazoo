@@ -64,16 +64,16 @@ handle(Data, Call) ->
 -spec menu_loop/2 :: (menu(), whapps_call:call()) -> 'ok'.
 menu_loop(#cf_menu_data{retries=Retries}=Menu, Call) when Retries =< 0 ->
     lager:debug("maxium number of retries reached"),
-    whapps_call_command:flush_dtmf(Call),
+    _ = whapps_call_command:flush_dtmf(Call),
     _ = play_exit_prompt(Menu, Call),
     case cf_exe:attempt(<<"max_retries">>, Call) of
         {attempt_resp, ok} ->
             ok;
         {attempt_resp, {error, _}} ->
-            case cf_exe:wildcard_is_empty(Call) of
-                true -> whapps_call_command:b_prompt(<<"vm-goodbye">>, Call);
-                false -> play_transferring_prompt(Menu, Call)
-            end,
+            _ = case cf_exe:wildcard_is_empty(Call) of
+                    true -> whapps_call_command:b_prompt(<<"vm-goodbye">>, Call);
+                    false -> play_transferring_prompt(Menu, Call)
+                end,
             cf_exe:continue(Call)
     end;
 menu_loop(#cf_menu_data{retries=Retries, max_length=MaxLength, timeout=Timeout
@@ -101,7 +101,7 @@ menu_loop(#cf_menu_data{retries=Retries, max_length=MaxLength, timeout=Timeout
                     case record_greeting(tmp_file(), Menu, Call) of
                         {ok, M} ->
                             lager:debug("returning caller to menu"),
-                            whapps_call_command:b_prompt(<<"menu-return">>, Call),
+                            _ = whapps_call_command:b_prompt(<<"menu-return">>, Call),
                             menu_loop(M, Call);
                         {error, _} -> 
                             cf_exe:stop(Call)
@@ -212,7 +212,7 @@ hunt_for_callflow(Digits, Menu, Call) ->
     case cf_util:lookup_callflow(Digits, AccountId) of
         {ok, Flow, false} ->
             lager:debug("callflow hunt succeeded, branching"),
-            whapps_call_command:flush_dtmf(Call),
+            _ = whapps_call_command:flush_dtmf(Call),
             _ = play_transferring_prompt(Menu, Call),
             cf_exe:branch(wh_json:get_value(<<"flow">>, Flow, wh_json:new()), Call),
             true;
@@ -234,13 +234,13 @@ record_greeting(AttachmentName, #cf_menu_data{greeting_id=undefined}=Menu, Call)
     record_greeting(AttachmentName, Menu#cf_menu_data{greeting_id=MediaId}, Call);
 record_greeting(AttachmentName, #cf_menu_data{greeting_id=MediaId}=Menu, Call) ->
     lager:debug("recording new menu greeting"),
-    whapps_call_command:audio_macro([{prompt, <<"vm-record_greeting">>}
-                                 ,{tones, [wh_json:from_list([{<<"Frequencies">>, [440]}
-                                                              ,{<<"Duration-ON">>, 500}
-                                                              ,{<<"Duration-OFF">>, 100}
-                                                             ])
-                                          ]}
-                                ], Call),
+    _ = whapps_call_command:audio_macro([{prompt, <<"vm-record_greeting">>}
+                                         ,{tones, [wh_json:from_list([{<<"Frequencies">>, [440]}
+                                                                      ,{<<"Duration-ON">>, 500}
+                                                                      ,{<<"Duration-OFF">>, 100}
+                                                                     ])
+                                                  ]}
+                                        ], Call),
     case whapps_call_command:b_record(AttachmentName, Call) of
         {error, _}=E -> E;
         {ok, JObj} ->
@@ -250,16 +250,16 @@ record_greeting(AttachmentName, #cf_menu_data{greeting_id=MediaId}=Menu, Call) -
                 {ok, record} ->
                     record_greeting(tmp_file(), Menu, Call);
                 {ok, save} when NoRec ->
-                    whapps_call_command:b_prompt(<<"vm-recording_to_short">>, Call),
+                    _ = whapps_call_command:b_prompt(<<"vm-recording_to_short">>, Call),
                     record_greeting(tmp_file(), Menu, Call);
                 {ok, save} ->
                     {ok, _} = store_recording(AttachmentName, MediaId, Call),
                     ok = update_doc([<<"media">>, <<"greeting">>], MediaId, Menu, Call),
-                    whapps_call_command:b_prompt(<<"vm-saved">>, Call),
+                    _ = whapps_call_command:b_prompt(<<"vm-saved">>, Call),
                     {ok, Menu};
                 {ok, no_selection} ->
                     lager:debug("abandoning recorded greeting"),
-                    whapps_call_command:b_prompt(<<"vm-deleted">>, Call),
+                    _ = whapps_call_command:b_prompt(<<"vm-deleted">>, Call),
                     {ok, Menu}
             end
     end.
@@ -383,11 +383,13 @@ tmp_file() ->
 -spec review_recording/3 :: (ne_binary(), menu(), whapps_call:call()) -> {'ok', 'record' | 'save' | 'no_selection'}.
 review_recording(MediaName, #cf_menu_data{keys=#menu_keys{listen=ListenKey, record=RecordKey, save=SaveKey}}=Menu, Call) ->
     lager:debug("playing menu greeting review options"),
-    whapps_call_command:flush_dtmf(Call),
+
+    _ = whapps_call_command:flush_dtmf(Call),
     Prompt = whapps_util:get_prompt(<<"vm-review_recording">>, Call),
+
     case whapps_call_command:b_play_and_collect_digit(Prompt, Call) of
         {ok, ListenKey} ->
-            whapps_call_command:b_play(MediaName, Call),
+            _ = whapps_call_command:b_play(MediaName, Call),
             review_recording(MediaName, Menu, Call);
         {ok, RecordKey} ->
             {ok, record};

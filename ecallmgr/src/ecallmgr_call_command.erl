@@ -86,8 +86,11 @@ get_fs_app(_Node, UUID, JObj, <<"playstop">>) ->
             {<<"playstop">>, UUID}
     end;
 
-get_fs_app(_Node, _UUID, _JObj, <<"hangup">>) ->
-    {<<"hangup">>, <<>>};
+get_fs_app(_Node, _UUID, JObj, <<"hangup">>) ->
+    case wh_json:is_true(<<"Other-Leg-Only">>, JObj, false) of
+        false -> {<<"hangup">>, <<>>};
+        true ->  {<<"unbridge">>, <<>>}
+    end;
 
 get_fs_app(_Node, UUID, JObj, <<"play_and_collect_digits">>) ->
     case wapi_dialplan:play_and_collect_digits_v(JObj) of
@@ -612,6 +615,9 @@ send_cmd(Node, UUID, <<"record_call">>, Cmd) ->
 send_cmd(Node, UUID, <<"playstop">>, Args) ->
     lager:debug("execute on node ~s: uuid_break(~s)", [Node, UUID]),
     freeswitch:api(Node, uuid_break, wh_util:to_list(Args));
+send_cmd(Node, UUID, <<"unbridge">>, _) ->
+    lager:debug("execute on node ~s: uuid_park(~s)", [Node, UUID]),
+    freeswitch:api(Node, uuid_park, wh_util:to_list(UUID));
 send_cmd(Node, UUID, <<"xferext">>, Dialplan) ->
     XferExt = [begin
                    _ = ecallmgr_util:fs_log(Node, "whistle queuing command in 'xferext' extension: ~s", [V]),

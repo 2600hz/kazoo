@@ -57,7 +57,7 @@
 -export([kvs_append/3
          ,kvs_append_list/3
          ,kvs_erase/2
-         ,kvs_fetch/2
+         ,kvs_fetch/2, kvs_fetch/3
          ,kvs_fetch_keys/1
          ,kvs_filter/2
          ,kvs_find/2
@@ -567,11 +567,14 @@ kvs_erase(Key, #whapps_call{kvs=Dict}=Call) ->
     Call#whapps_call{kvs=orddict:erase(wh_util:to_binary(Key), Dict)}.
 
 -spec kvs_fetch/2 :: (term(), whapps_call:call()) -> term().
-kvs_fetch(Key, #whapps_call{kvs=Dict}) ->
+-spec kvs_fetch/3 :: (term(), Default, whapps_call:call()) -> term() | Default.
+kvs_fetch(Key, Call) ->
+    kvs_fetch(Key, undefined, Call).
+kvs_fetch(Key, Default, #whapps_call{kvs=Dict}) ->
     try orddict:fetch(wh_util:to_binary(Key), Dict) of
         Ok -> Ok
     catch
-        error:function_clause -> undefined
+        error:function_clause -> Default
     end.
 
 -spec kvs_fetch_keys/1 :: (whapps_call:call()) -> [term(),...].
