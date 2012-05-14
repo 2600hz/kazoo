@@ -15,17 +15,34 @@
 init({_Transport, _Proto}, Req0, _Opts) ->
     put(callid, wh_util:rand_hex_binary(16)),
 
-    {[Id, Doc, Attachment], Req1} = cowboy_http_req:path_info(Req0),
+    case cowboy_http_req:path_info(Req0) of
+        {[<<"tts">>, Id], Req1} ->
+            init_from_tts(Id, Req1);
+        {[Id, Doc, Attachment], Req1} ->
+            init_from_doc(Id, Doc, Attachment, Req1)
+    end.
 
+init_from_tts(Id, Req) ->
+    lager:debug("fetching tts/~s", [Id]),
+    case media_files_sup:find_tts_server(Id) of
+        {ok, Pid} ->
+            {ok, Req, media_file:single(Pid)};
+        {error, _} ->
+            lager:debug("missing tts server"),
+            {ok, Req1} = cowboy_http_req:reply(404, Req),
+            {shutdown, Req1, ok}
+    end.
+
+init_from_doc(Id, Doc, Attachment, Req) ->
     lager:debug("fetching ~s/~s/~s", [Id, Doc, Attachment]),
 
     case media_files_sup:find_file_server(Id, Doc, Attachment) of
         {ok, Pid} ->
-            {ok, Req1, media_file:single(Pid)};
+            {ok, Req, media_file:single(Pid)};
         {error, _} ->
             lager:debug("missing file server"),
-            {ok, Req2} = cowboy_http_req:reply(404, Req1),
-            {shutdown, Req2, ok}
+            {ok, Req1} = cowboy_http_req:reply(404, Req),
+            {shutdown, Req1, ok}
     end.
 
 handle(Req0, {Meta, Bin}) ->
