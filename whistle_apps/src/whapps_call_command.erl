@@ -25,6 +25,11 @@
 -export([presence/2, presence/3]).
 -export([play/2, play/3]).
 -export([prompt/2, prompt/3]).
+
+-export([tts/2, tts/3, tts/4, tts/5
+         ,b_tts/2, b_tts/3, b_tts/4, b_tts/5
+        ]).
+
 -export([record/2, record/3, record/4, record/5, record/6]).
 -export([record_call/2, record_call/3, record_call/4, record_call/5]).
 -export([store/3, store/4, store/5]).
@@ -604,6 +609,68 @@ play_command(Media, Terminators, Call) ->
                        ,{<<"Terminators">>, Terminators}
                        ,{<<"Call-ID">>, whapps_call:call_id(Call)}
                       ]).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% requests the TTS engine to create an audio file to play the desired
+%% text.
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec tts/2 :: (ne_binary(), whapps_call:call()) -> ne_binary().
+-spec tts/3 :: (ne_binary(), ne_binary(), whapps_call:call()) -> ne_binary().
+-spec tts/4 :: (ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> ne_binary().
+-spec tts/5 :: (ne_binary(), ne_binary(), ne_binary(), [ne_binary(),...], whapps_call:call()) -> ne_binary().
+
+tts(SayMe, Call) ->
+    tts(SayMe, <<"female">>, Call).
+tts(SayMe, Voice, Call) ->
+    tts(SayMe, Voice, <<"en-US">>, Call).
+tts(SayMe, Voice, Lang, Call) ->
+    tts(SayMe, Voice, Lang, ?ANY_DIGIT, Call).
+
+tts(SayMe, Voice, Lang, Terminators, Call) ->
+    NoopId = couch_mgr:get_uuid(),
+    CallId = whapps_call:call_id(Call),
+    Q = whapps_call:controller_queue(Call),
+    Commands = [wh_json:from_list([{<<"Application-Name">>, <<"noop">>}
+                                   ,{<<"Call-ID">>, CallId}
+                                   ,{<<"Msg-ID">>, NoopId}
+                                   | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+                                  ])
+                ,wh_json:from_list([{<<"Application-Name">>, <<"play">>}
+                                    ,{<<"Media-Name">>, list_to_binary([<<"tts://">>, SayMe])}
+                                    ,{<<"Terminators">>, Terminators}
+                                    ,{<<"Voice">>, Voice}
+                                    ,{<<"Language">>, Lang}
+                                    ,{<<"Call-ID">>, CallId}
+                                    | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+                                   ])
+               ],
+    Command = [{<<"Application-Name">>, <<"queue">>}
+               ,{<<"Commands">>, Commands}
+              ],
+    send_command(Command, Call),
+    NoopId.
+
+-spec b_tts/2 :: (ne_binary(), whapps_call:call()) -> ne_binary().
+-spec b_tts/3 :: (ne_binary(), ne_binary(), whapps_call:call()) -> ne_binary().
+-spec b_tts/4 :: (ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> ne_binary().
+-spec b_tts/5 :: (ne_binary(), ne_binary(), ne_binary(), [ne_binary(),...], whapps_call:call()) -> ne_binary().
+
+b_tts(SayMe, Call) ->
+    NoopId = tts(SayMe, Call),
+    wait_for_noop(NoopId).
+b_tts(SayMe, Voice, Call) ->
+    NoopId = tts(SayMe, Voice, Call),
+    wait_for_noop(NoopId).
+b_tts(SayMe, Voice, Lang, Call) ->
+    NoopId = tts(SayMe, Voice, Lang, Call),
+    wait_for_noop(NoopId).
+b_tts(SayMe, Voice, Lang, Terminators, Call) ->
+    NoopId = tts(SayMe, Voice, Lang, Terminators, Call),
+    wait_for_noop(NoopId).
 
 %%--------------------------------------------------------------------
 %% @public
