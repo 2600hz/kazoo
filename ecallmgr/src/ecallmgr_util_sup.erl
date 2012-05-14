@@ -4,6 +4,7 @@
 %%%
 %%% @end
 %%% @contributors
+%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(ecallmgr_util_sup).
 
@@ -12,7 +13,7 @@
 -include_lib("ecallmgr/src/ecallmgr.hrl").
 
 -export([start_link/0]).
--export([registrar_proc/0]).
+-export([registrar_proc/0, cache_proc/0]).
 -export([init/1]).
 
 %% Helper macro for declaring children of supervisor
@@ -44,6 +45,9 @@ registrar_proc() ->
     [P] = [P || {Mod, P, _, _} <- supervisor:which_children(?MODULE),
                 Mod =:= ecallmgr_registrar],
     {ok, P}.
+
+cache_proc() ->
+    ?ECALLMGR_UTIL_CACHE.
 
 %% ===================================================================
 %% Supervisor callbacks
