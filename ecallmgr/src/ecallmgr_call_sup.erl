@@ -17,7 +17,6 @@
          ,start_control_process/3
         ]).
 -export([start_event_process/2
-         ,start_event_process/3
         ]).
 -export([init/1]).
 
@@ -40,9 +39,7 @@ start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
 start_event_process(Node, UUID) ->
-    start_event_process(Node, UUID, false).
-start_event_process(Node, UUID, MaybeWait) ->
-    ecallmgr_call_event_sup:start_proc([Node, UUID, MaybeWait]).
+    ecallmgr_call_event_sup:start_proc([Node, UUID]).
 
 start_control_process(Node, UUID) ->
     ecallmgr_call_control_sup:start_proc([Node, UUID, undefined]).
