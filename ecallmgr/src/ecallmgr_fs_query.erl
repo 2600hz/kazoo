@@ -139,23 +139,8 @@ handle_channel_query(JObj, _Props) ->
     wapi_call:publish_channel_query_resp(RespQ, Resp).
 
 -spec channel_query/1 :: (wh_json:json_object()) -> wh_json:json_objects().
-channel_query(JObj) ->
+channel_query(_JObj) ->
     [].
-%%    Channels = lists:concat([ecallmgr_fs_node:show_channels(Srv)
-%%                             || Srv <- gproc:lookup_pids({p, l, fs_node})
-%%                            ]),
-%%    SearchParams = lists:foldl(fun(Field, Acc) ->
-%%                                       case wh_json:get_value(Field, JObj) of
-%%                                           undefined -> Acc;
-%%                                           Value -> [{Field, Value} | Acc]
-%%                                       end
-%%                               end, [], wapi_call:channel_query_search_fields()),
-%%    lists:foldl(fun(Channel, Results) ->
-%%                        case lists:any(fun({K, V}) -> wh_json:get_value(K, Channel) =:= V end, SearchParams) of
-%%                            true -> [Channel|Results];
-%%                            false -> Results
-%%                        end
-%%                end, [], Channels).    
 
 -spec handle_switch_reloadacl/2 ::(wh_json:json_object(), proplist()) -> any().
 handle_switch_reloadacl(JObj, _Props) ->
@@ -330,18 +315,6 @@ create_call_status_resp(Props, false) ->
      ,{<<"Other-Leg-Destination-Number">>, props:get_value(<<"Caller-Destination-Number">>, Props)}
      ,{<<"Presence-ID">>, props:get_value(<<"variable_presence_id">>, Props)}
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)].
-
-
--spec uuid_exists/2 :: (atom(), string() | binary()) -> boolean() | 'error'.
-uuid_exists(Node, UUID) ->
-    case catch(freeswitch:api(Node, uuid_exists, wh_util:to_list(UUID))) of
-        {'ok', Result} ->
-            lager:debug("result of uuid_exists(~s): ~s", [UUID, Result]),
-            wh_util:is_true(Result);
-        _Else ->
-            lager:debug("failed to get result from uuid_exists(~s): ~p", [UUID, _Else]),
-            error
-    end.
 
 -spec uuid_dump/2 :: (atom(), string() | binary()) -> {'ok', proplist()} |
                                                       'error'.

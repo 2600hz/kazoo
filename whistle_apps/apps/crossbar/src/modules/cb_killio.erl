@@ -106,7 +106,7 @@ put(#cb_context{}=Context, ?TOKEN_CALL) ->
 post(#cb_context{}=Context, ?TOKEN_CALL) ->
     start_call(Context).
 
-setup_call(#cb_context{req_data=Req}=Context) ->
+setup_call(#cb_context{req_data=_Req}=Context) ->
     Context#cb_context{resp_status=success}.
 
 

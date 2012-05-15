@@ -1,13 +1,12 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2011, VoIP INC
+%%% @copyright (C) 2010-2012, VoIP INC
 %%% @doc
 %%% Listen for CDR events publish non-normal termination notifications 
 %%% @end
 %%%
-%%% Contributors:
+%%% @contributors
 %%%   James Aimonetti
 %%%   Karl Anderson
-%%% Created : 23 Nov 2010 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
 -module(hangups_listener).
 
@@ -66,12 +65,14 @@ handle_cdr(JObj, _Props) ->
         true -> ok;
         false -> 
             AccountId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj),
-            lager:debug("abnormal call termination: ~s", [HangupCause])
-            %% ?LOG(hangup_cause_to_alert_level(HangupCause)
-            %%      ,"abnormal call termination ~s"
-            %%      ,[HangupCause, {extra_data, [{details, wh_json:to_proplist(JObj)}
-            %%                                   ,{account_id, AccountId}
-            %%                                  ]}])
+            hangup_cause_to_alert_level(HangupCause
+                                        ,"abnormal call termination ~s"
+                                        ,[HangupCause
+                                          ,{extra_data, [{details, wh_json:to_proplist(JObj)}
+                                                         ,{account_id, AccountId}
+                                                        ]
+                                           }]
+                                       )
     end.
 
 %%%===================================================================
@@ -169,24 +170,24 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec hangup_cause_to_alert_level/1 :: (ne_binary()) -> atom().
-hangup_cause_to_alert_level(<<"UNALLOCATED_NUMBER">>) ->
-    warning;
-hangup_cause_to_alert_level(<<"NO_ROUTE_DESTINATION">>) ->
-    warning;
-hangup_cause_to_alert_level(<<"NORMAL_UNSPECIFIED">>) ->
-    warning;
-hangup_cause_to_alert_level(<<"USER_BUSY">>) ->
-    info;
-hangup_cause_to_alert_level(<<"ORIGINATOR_CANCEL">>) ->
-    info;
-hangup_cause_to_alert_level(<<"NO_ANSWER">>) ->
-    info;
-hangup_cause_to_alert_level(<<"LOSE_RACE">>) ->
-    info;
-hangup_cause_to_alert_level(<<"ATTENDED_TRANSFER">>) ->
-    info;
-hangup_cause_to_alert_level(<<"CALL_REJECTED">>) ->
-    info;
-hangup_cause_to_alert_level(_) ->
-    error.
+-spec hangup_cause_to_alert_level/3 :: (ne_binary(), nonempty_string(), list()) -> 'ok'.
+hangup_cause_to_alert_level(<<"UNALLOCATED_NUMBER">>, FmtStr, [HangupCause|_]=_Data) ->
+    lager:warning(FmtStr, [HangupCause]);
+hangup_cause_to_alert_level(<<"NO_ROUTE_DESTINATION">>, FmtStr, [HangupCause|_]=_Data) ->
+    lager:warning(FmtStr, [HangupCause]);
+hangup_cause_to_alert_level(<<"NORMAL_UNSPECIFIED">>, FmtStr, [HangupCause|_]=_Data) ->
+    lager:warning(FmtStr, [HangupCause]);
+hangup_cause_to_alert_level(<<"USER_BUSY">>, FmtStr, [HangupCause|_]=_Data) ->
+    lager:info(FmtStr, [HangupCause]);
+hangup_cause_to_alert_level(<<"ORIGINATOR_CANCEL">>, FmtStr, [HangupCause|_]=_Data) ->
+    lager:info(FmtStr, [HangupCause]);
+hangup_cause_to_alert_level(<<"NO_ANSWER">>, FmtStr, [HangupCause|_]=_Data) ->
+    lager:info(FmtStr, [HangupCause]);
+hangup_cause_to_alert_level(<<"LOSE_RACE">>, FmtStr, [HangupCause|_]=_Data) ->
+    lager:info(FmtStr, [HangupCause]);
+hangup_cause_to_alert_level(<<"ATTENDED_TRANSFER">>, FmtStr, [HangupCause|_]=_Data) ->
+    lager:info(FmtStr, [HangupCause]);
+hangup_cause_to_alert_level(<<"CALL_REJECTED">>, FmtStr, [HangupCause|_]=_Data) ->
+    lager:info(FmtStr, [HangupCause]);
+hangup_cause_to_alert_level(_, FmtStr, [HangupCause|_]=_Data) ->
+    lager:error(FmtStr, [HangupCause]).

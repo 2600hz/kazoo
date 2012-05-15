@@ -42,7 +42,7 @@ inbound_handler(JObj, Number) ->
             relay_route_req(
               wh_json:set_value(<<"Custom-Channel-Vars">>, custom_channel_vars(AccountId, undefined, JObj), JObj)
              );
-        {error, R} ->
+        {error, _R} ->
             lager:debug("failed to find account for number ~s", [Number])
     end.
 
@@ -98,23 +98,6 @@ custom_channel_vars(AccountId, AuthId, JObj) ->
               ]
            ],
     wh_json:from_list([ KV || {_, V}=KV <- Vars, V =/= undefined ]).
-
--spec custom_channel_vars/4 :: ('undefined' | ne_binary(), 'undefined' | ne_binary(), 'undefined' | ne_binary(), wh_json:json_object()) -> wh_json:json_object().
-custom_channel_vars(AccountId, OwnerId, AuthId, JObj) ->
-    CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new()),
-    Vars = [{<<"Account-ID">>, AccountId}
-            ,{<<"Owner-ID">>, OwnerId}
-            ,{<<"Inception">>, <<"off-net">>}
-            ,{<<"Authorizing-ID">>, AuthId}
-            | [Var || {K, _}=Var <- wh_json:to_proplist(CCVs)
-                          ,K =/= <<"Account-ID">>
-                          ,K =/= <<"Owner-ID">>
-                          ,K =/= <<"Inception">>
-                          ,K =/= <<"Authorizing-ID">>
-              ]
-           ],
-    wh_json:from_list([ KV || {_, V}=KV <- Vars, V =/= undefined ]).
-
 
 %%--------------------------------------------------------------------
 %% @private
