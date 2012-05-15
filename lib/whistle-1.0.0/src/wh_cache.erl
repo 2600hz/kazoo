@@ -40,7 +40,7 @@
 
 -define(SERVER, ?MODULE).
 -define(EXPIRES, 3600). %% an hour
--define(EXPIRE_CHECK, 1000).
+-define(EXPIRE_PERIOD, 10000).
 -define(DEFAULT_WAIT_TIMEOUT, 5).
 
 -define(NOTIFY_KEY(Key), {monitor_key, Key}).
@@ -64,10 +64,13 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    gen_server:start_link({local, ?SERVER}, ?MODULE, [?MODULE], []).
+    start_link(?SERVER).
 
 start_link(Name) ->
-    gen_server:start_link({local, Name}, ?MODULE, [Name], []).
+    start_link(Name, ?EXPIRE_PERIOD).
+
+start_link(Name, ExpirePeriod) ->
+    gen_server:start_link({local, Name}, ?MODULE, [Name, ExpirePeriod], []).
 
 %% T - seconds to store the pair
 -spec store/2 :: (term(), term()) -> 'ok'.
@@ -219,9 +222,9 @@ wait_for_key_local(Srv, Key, Timeout) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init([Name]) ->
+init([Name, ExpirePeriod]) ->
     put(callid, ?LOG_SYSTEM_ID),
-    _ = erlang:send_after(?EXPIRE_CHECK, self(), expire),
+    _ = erlang:send_after(ExpirePeriod, self(), {expire, ExpirePeriod}),
     lager:debug("started new cache proc: ~s", [Name]),
     {ok, ets:new(Name, [set, protected, named_table, {keypos, #cache_obj.key}])}.
 
@@ -328,7 +331,7 @@ handle_cast(_, Cache) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info(expire, Cache) ->
+handle_info({expire, ExpirePeriod}, Cache) ->
     Now = wh_util:current_tstamp(),
     FindSpec = [{#cache_obj{key = '$1', value = '$2', expires = '$3',
                             timestamp = '$4', callback = '$5'},
@@ -351,7 +354,7 @@ handle_info(expire, Cache) ->
                          ],
             ets:select_delete(Cache, DeleteSpec)
     end,
-    _ = erlang:send_after(?EXPIRE_CHECK, self(), expire),
+    _ = erlang:send_after(ExpirePeriod, self(), {expire, ExpirePeriod}),
     {noreply, Cache, hibernate};
 handle_info(_Info, Cache) ->
     {noreply, Cache, hibernate}.
