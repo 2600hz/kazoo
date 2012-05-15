@@ -407,11 +407,15 @@ execute_originate_park(JObj, Node, ServerId, DialStrings, UUID, CtlPid) ->
 
     lager:debug("originate(~s)", [Args]),
 
-    {ok, _EvtPid} = ecallmgr_call_sup:start_event_process(Node, UUID, true),
-    case freeswitch:api(Node, 'originate', wh_util:to_list(Args)) of
-        {ok, <<"+OK ", UUID:UUIDSize/binary, _/binary>>} ->
+    %{ok, _EvtPid} = ecallmgr_call_sup:start_event_process(Node, UUID, true),
+    wh_cache:store_local(?ECALLMGR_UTIL_CACHE, {UUID, start_listener}, true),
+
+    {ok, BGApiID} = freeswitch:bgapi(Node, 'originate', wh_util:to_list(Args)),
+
+    receive
+        {bgok, BGApiID, <<"+OK ", UUID:UUIDSize/binary, _/binary>>} ->
             lager:debug("originate completed");
-        {ok, Error} ->
+        {bgok, BGApiID, Error} ->
             E = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
                  ,{<<"Request">>, JObj}
                  ,{<<"Call-ID">>, UUID}
@@ -421,7 +425,17 @@ execute_originate_park(JObj, Node, ServerId, DialStrings, UUID, CtlPid) ->
             wh_api:publish_error(ServerId, E),
             ecallmgr_call_control:stop(CtlPid),
             lager:debug("something other than +OK from FS: ~s", [Error]);
-        timeout ->
+        {bgerror, BGApiID, Err} ->
+            E = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+                 ,{<<"Request">>, JObj}
+                 ,{<<"Call-ID">>, UUID}
+                 ,{<<"Error-Message">>, Err}
+                 | wh_api:default_headers(<<"error">>, <<"originate_resp">>, ?APP_NAME, ?APP_VERSION)
+                ],
+            wh_api:publish_error(ServerId, E),
+            ecallmgr_call_control:stop(CtlPid),
+            lager:debug("received an originate error: ~s", [Err])
+    after 10000 ->
             E = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
                  ,{<<"Request">>, JObj}
                  ,{<<"Call-ID">>, UUID}
@@ -430,27 +444,5 @@ execute_originate_park(JObj, Node, ServerId, DialStrings, UUID, CtlPid) ->
                 ],
             wh_api:publish_error(ServerId, E),
             ecallmgr_call_control:stop(CtlPid),
-            lager:debug("timed out waiting for FS");
-        {error, Error} when is_binary(Error) ->
-            lager:debug("error originating to ~s: ~s", [Node, Error]),
-            E = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, wh_util:to_binary(wh_util:current_tstamp()))}
-                 ,{<<"Request">>, JObj}
-                 ,{<<"Error-Message">>, Error}
-                 ,{<<"Call-ID">>, UUID}
-                 | wh_api:default_headers(<<"error">>, <<"originate_resp">>, ?APP_NAME, ?APP_VERSION)
-                ],
-            lager:debug("sending error to ~s: ~p", [ServerId, E]),
-            wh_api:publish_error(ServerId, E),
-            lager:debug("sent, stopping ctlpid"),
-            ecallmgr_call_control:stop(CtlPid);
-        {error, Error} ->
-            lager:debug("error originating to ~s: ~p", [Node, Error]),
-            E = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, wh_util:to_binary(wh_util:current_tstamp()))}
-                 ,{<<"Request">>, JObj}
-                 ,{<<"Call-ID">>, UUID}
-                 ,{<<"Error-Message">>, Error}
-                 | wh_api:default_headers(<<"error">>, <<"originate_resp">>, ?APP_NAME, ?APP_VERSION)
-                ],
-            wh_api:publish_error(ServerId, E),
-            ecallmgr_call_control:stop(CtlPid)
+            lager:debug("timed out waiting for FS")
     end.
