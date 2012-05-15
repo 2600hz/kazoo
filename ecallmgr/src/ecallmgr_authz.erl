@@ -28,10 +28,10 @@ maybe_authorize_channel(Props, Node) ->
                     end,
     case RequiresAuthz andalso wh_util:is_true(ecallmgr_config:get(<<"authz_enabled">>, false)) of
         false when RequiresAuthz ->
-            lager:debug("channel does not require authorization, allowing call", []),
+            lager:debug("config ecallmgr.authz_enabled is 'false', allowing call", []),
             true;
         false ->
-            lager:debug("config ecallmgr.authz_enabled is 'false', allowing call", []),
+            lager:debug("channel does not require authorization, allowing call", []),
             true;
         true -> 
             case authorize(Props) of
