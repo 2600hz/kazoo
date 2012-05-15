@@ -195,25 +195,24 @@ to_e164(Other) ->
 -spec to_npan/1 :: (ne_binary()) -> ne_binary().
 to_npan(<<"011", N/binary>>) ->
     to_npan(N);
-to_npan(<<$+, $1, N/bitstring>>) when erlang:bit_size(N) =:= 80 ->
+to_npan(<<$+, $1, N/binary>>) when erlang:byte_size(N) =:= 10 ->
     N;
-to_npan(<<$1, N/bitstring>>) when erlang:bit_size(N) =:= 80 ->
+to_npan(<<$1, N/binary>>) when erlang:byte_size(N) =:= 10 ->
     N;
-to_npan(NPAN) when erlang:bit_size(NPAN) =:= 80 ->
+to_npan(NPAN) when erlang:byte_size(NPAN) =:= 10 ->
     NPAN;
 to_npan(Other) ->
     Other.
 
--spec to_1npan/1 :: (NPAN) -> binary() when
-      NPAN :: binary().
+-spec to_1npan/1 :: (ne_binary()) -> ne_binary().
 to_1npan(<<"011", N/binary>>) ->
     to_1npan(N);
-to_1npan(<<$+, $1, N/bitstring>>) when erlang:bit_size(N) =:= 80 ->
-    <<$1, N/bitstring>>;
-to_1npan(<<$1, N/bitstring>>=NPAN1) when erlang:bit_size(N) =:= 80 ->
+to_1npan(<<$+, $1, N/binary>>) when erlang:byte_size(N) =:= 10 ->
+    <<$1, N/binary>>;
+to_1npan(<<$1, N/binary>>=NPAN1) when erlang:byte_size(N) =:= 10 ->
     NPAN1;
-to_1npan(NPAN) when erlang:bit_size(NPAN) =:= 80 ->
-    <<$1, NPAN/bitstring>>;
+to_1npan(NPAN) when erlang:byte_size(NPAN) =:= 10 ->
+    <<$1, NPAN/binary>>;
 to_1npan(Other) ->
     Other.
 
@@ -224,8 +223,8 @@ to_1npan(Other) ->
 %% them and collecting any errors...
 %% @end
 %%--------------------------------------------------------------------
--spec exec_providers_save/4 :: (wh_json:json_object(), wh_json:json_object(), ne_binary(), ne_binary()) -> {ok | error, wh_json:json_object()}.
--spec exec_providers_save/6 :: (list(), wh_json:json_object(), wh_json:json_object(), ne_binary(), ne_binary(), list()) -> {ok | error, wh_json:json_object()}.
+-spec exec_providers_save/4 :: (wh_json:json_object(), wh_json:json_object(), ne_binary(), ne_binary()) -> {'ok' | 'error', wh_json:json_object()}.
+-spec exec_providers_save/6 :: (list(), wh_json:json_object(), wh_json:json_object(), ne_binary(), ne_binary(), list()) -> {'ok' | 'error', wh_json:json_object()}.
 
 exec_providers_save(JObj, PriorJObj, Number, State) ->
     Providers = whapps_config:get(?WNM_CONFIG_CAT, <<"providers">>, []),
