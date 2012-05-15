@@ -11,6 +11,7 @@
 %%%-------------------------------------------------------------------
 -module(ecallmgr_util).
 
+-export([send_cmd/4]).
 -export([get_expires/1]).
 -export([get_interface_properties/1, get_interface_properties/2]).
 -export([get_sip_to/1, get_sip_from/1, get_sip_request/1, get_orig_ip/1, custom_channel_vars/1]).
@@ -25,6 +26,41 @@
 
 -include("ecallmgr.hrl").
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% send the SendMsg proplist to the freeswitch node
+%% @end
+%%--------------------------------------------------------------------
+-type send_cmd_ret() :: fs_sendmsg_ret() | fs_api_ret().
+-spec send_cmd/4 :: (atom(), ne_binary(), ne_binary() | string(), ne_binary() | string()) -> send_cmd_ret().
+send_cmd(Node, UUID, <<"hangup">>, _) ->
+    lager:debug("terminate call on node ~s", [Node]),
+    _ = ecallmgr_util:fs_log(Node, "whistle terminating call", []),
+    freeswitch:api(Node, uuid_kill, wh_util:to_list(UUID));
+send_cmd(Node, _UUID, <<"record_call">>, Cmd) ->
+    lager:debug("execute on node ~s: uuid_record(~s)", [Node, Cmd]),
+    Ret = freeswitch:api(Node, uuid_record, wh_util:to_list(Cmd)),
+    lager:debug("executing uuid_record returned ~p", [Ret]),
+    Ret;
+send_cmd(Node, UUID, <<"playstop">>, Args) ->
+    lager:debug("execute on node ~s: uuid_break(~s)", [Node, UUID]),
+    freeswitch:api(Node, uuid_break, wh_util:to_list(Args));
+send_cmd(Node, UUID, <<"xferext">>, Dialplan) ->
+    XferExt = [begin
+                   _ = ecallmgr_util:fs_log(Node, "whistle queuing command in 'xferext' extension: ~s", [V]),
+                   lager:debug("building xferext on node ~s: ~s", [Node, V]),
+                   {wh_util:to_list(K), wh_util:to_list(V)}
+               end || {K, V} <- Dialplan],
+    ok = freeswitch:sendmsg(Node, UUID, [{"call-command", "xferext"} | XferExt]),
+    ecallmgr_util:fs_log(Node, "whistle transfered call to 'xferext' extension", []);
+send_cmd(Node, UUID, AppName, Args) ->
+    lager:debug("execute on node ~s: ~s(~s)", [Node, AppName, Args]),
+    _ = ecallmgr_util:fs_log(Node, "whistle executing ~s ~s", [AppName, Args]),
+    freeswitch:sendmsg(Node, UUID, [{"call-command", "execute"}
+                                    ,{"execute-app-name", wh_util:to_list(AppName)}
+                                    ,{"execute-app-arg", wh_util:to_list(Args)}
+                                   ]).
 
 -spec get_expires/1 :: (proplist()) -> number().
 get_expires(Props) ->

@@ -29,7 +29,10 @@
                   ,authorizing_id=undefined
                   ,authorizing_type=undefined
                   ,owner_id=undefined
+                  ,resource_id=undefined
                   ,presence_id=undefined
+                  ,billing_id=undefined
+                  ,bridge_id=undefined
                   ,realm=undefined
                   ,username=undefined
                   ,import_moh=true
@@ -55,6 +58,8 @@
 
 -define(STARTUP_FILE, [code:lib_dir(ecallmgr, priv), "/startup.config"]).
 -define(SETTINGS_FILE, [code:lib_dir(ecallmgr, priv), "/settings.config"]).
+
+-define(AUTHZ_RESPONSE_KEY(CallId), {authz_response, CallId}).
 
 -define(STARTUP_FILE_CONTENTS, <<"{'fs_nodes', []}.
 {'fs_cmds', [{'load', \"mod_sofia\"}

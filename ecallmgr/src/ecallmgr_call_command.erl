@@ -34,7 +34,7 @@ exec_cmd(Node, UUID, JObj, ControlPID) ->
                 {AppName, noop} ->
                     ecallmgr_call_control:event_execute_complete(ControlPID, UUID, AppName);
                 {AppName, AppData} ->
-                    send_cmd(Node, UUID, AppName, AppData)
+                    ecallmgr_util:send_cmd(Node, UUID, AppName, AppData)
             end;
         false ->
             lager:debug("command ~s not meant for us but for ~s", [wh_json:get_value(<<"Application-Name">>, JObj), DestID]),
@@ -243,7 +243,7 @@ get_fs_app(Node, UUID, JObj, <<"ring">>) ->
             Ringback ->
                 Stream = ecallmgr_util:media_path(Ringback, extant, UUID),
                 lager:debug("custom ringback: ~s", [Stream]),
-                _ = send_cmd(Node, UUID, <<"set">>, <<"ringback=", Stream/binary>>)
+                _ = ecallmgr_util:send_cmd(Node, UUID, <<"set">>, <<"ringback=", Stream/binary>>)
         end,
     {<<"ring_ready">>, <<>>};
 
@@ -286,7 +286,7 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>) ->
                                 <<"simultaneous">> when length(Endpoints) > 1 ->
                                     lager:debug("bridge is simultaneous to multiple endpoints, starting local ringing"),
                                     %% we don't really care if this succeeds, the call will fail later on
-                                    _ = send_cmd(Node, UUID, <<"ring_ready">>, ""),
+                                    _ = ecallmgr_util:send_cmd(Node, UUID, <<"ring_ready">>, ""),
                                     <<",">>;
                                 _Else ->
                                     <<"|">>
@@ -368,7 +368,8 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>) ->
                                    ]
                            end
                           ,fun(DP) ->
-                                   BridgeCmd = list_to_binary(["bridge ", ecallmgr_fs_xml:get_channel_vars(JObj), DialStrings]),
+                                   J = wh_json:set_value([<<"Custom-Channel-Vars">>, <<"Bridge-ID">>], wh_util:rand_hex_binary(16), JObj),
+                                   BridgeCmd = list_to_binary(["bridge ", ecallmgr_fs_xml:get_channel_vars(J), DialStrings]),
                                    [{"application", BridgeCmd}|DP]
                            end
                           ,fun(DP) ->
@@ -782,28 +783,28 @@ set_terminators(Node, UUID, Ts) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec set/3 :: (atom(), ne_binary(), ne_binary()) -> send_cmd_ret().
+-spec set/3 :: (atom(), ne_binary(), ne_binary()) -> ecallmgr_util:send_cmd_ret().
 set(Node, UUID, Arg) ->
     case wh_util:to_binary(Arg) of
         <<"hold_music=", _/binary>> -> 
             ecallmgr_fs_nodes:channel_set_import_moh(UUID, false);
         _Else -> ok
     end,
-    send_cmd(Node, UUID, "set", Arg).
+    ecallmgr_util:send_cmd(Node, UUID, "set", Arg).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec export/3 :: (atom(), ne_binary(), binary()) -> send_cmd_ret().
+-spec export/3 :: (atom(), ne_binary(), binary()) -> ecallmgr_util:send_cmd_ret().
 export(Node, UUID, Arg) ->
     case wh_util:to_binary(Arg) of
         <<"hold_music=", _/binary>> -> 
             ecallmgr_fs_nodes:channel_set_import_moh(UUID, false);
         _Else -> ok
     end,
-    send_cmd(Node, UUID, "export", wh_util:to_list(Arg)).
+    ecallmgr_util:send_cmd(Node, UUID, "export", wh_util:to_list(Arg)).
 
 %%--------------------------------------------------------------------
 %% @private
