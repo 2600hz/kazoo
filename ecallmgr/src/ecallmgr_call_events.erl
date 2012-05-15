@@ -18,7 +18,7 @@
 -define(MAX_FAILED_NODE_CHECKS, 10).
 -define(NODE_CHECK_PERIOD, 1000).
 
--export([start_link/2, start_link/3]).
+-export([start_link/2]).
 
 -export([swap_call_legs/1]).
 -export([create_event/3]).
@@ -46,7 +46,6 @@
           ,failed_node_checks = 0 :: non_neg_integer()
           ,node_down_tref = 'undefined' :: 'undefined' | reference()
           ,sanity_check_tref = 'undefined' :: 'undefined' | reference()
-          ,wait_for_originate = 'false' :: boolean()
          }).
 
 %%%===================================================================
@@ -61,11 +60,8 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec start_link/2 :: (atom(), ne_binary()) -> {'ok', pid()}.
--spec start_link/3 :: (atom(), ne_binary(), boolean()) -> {'ok', pid()}.
 start_link(Node, CallId) ->
-    start_link(Node, CallId, false).
-start_link(Node, CallId, WaitForOriginate) ->
-    gen_server:start_link(?MODULE, [Node, CallId, WaitForOriginate], []).
+    gen_server:start_link(?MODULE, [Node, CallId], []).
 
 -spec callid/1 :: (pid()) -> ne_binary().
 callid(Srv) ->
@@ -115,17 +111,13 @@ publish_channel_destroy(Props) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec init/1 :: ([atom() | ne_binary(),...]) -> {'ok', #state{}, 0}.
-init([Node, CallId, WaitForOriginate]) when is_atom(Node) andalso is_binary(CallId) ->
+init([Node, CallId]) when is_atom(Node) andalso is_binary(CallId) ->
     put(callid, CallId),
     lager:debug("starting call events listener"),
     gproc:reg({p, l, call_events}),
     gproc:reg({p, l, {call_events, CallId}}),
     TRef = erlang:send_after(?SANITY_CHECK_PERIOD, self(), {sanity_check}),
-    {'ok'
-     ,#state{node=Node, callid=CallId, sanity_check_tref=TRef, self=self()
-             ,wait_for_originate=wh_util:is_true(WaitForOriginate)
-            }
-     ,0}.
+    {'ok', #state{node=Node, callid=CallId, sanity_check_tref=TRef, self=self()}, 0}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -217,7 +209,7 @@ handle_info({check_node_status}, #state{node=Node, callid=CallId, is_node_up=fal
 handle_info(timeout, #state{failed_node_checks=FNC}=State) when (FNC+1) > ?MAX_FAILED_NODE_CHECKS ->
     lager:debug("unable to establish initial connectivity to the media node, laterz"),
     {stop, normal, State};
-handle_info(timeout, #state{node=Node, callid=CallId, failed_node_checks=FNC, wait_for_originate=MaybeWait}=State) ->
+handle_info(timeout, #state{node=Node, callid=CallId, failed_node_checks=FNC}=State) ->
     erlang:monitor_node(Node, true),
     %% TODO: die if there is already a event producer on the AMPQ queue... ping/pong?
     case freeswitch:handlecall(Node, CallId) of
@@ -227,12 +219,18 @@ handle_info(timeout, #state{node=Node, callid=CallId, failed_node_checks=FNC, wa
         timeout ->
             lager:debug("timed out trying to listen to channel events from ~s, trying again", [Node]),
             {'noreply', State#state{failed_node_checks=FNC+1}, 1000};
-        {'error', badsession} when not MaybeWait ->
+        {'error', badsession} ->
             lager:debug("bad session received when setting up listener for events from ~s", [Node]),
             {stop, normal, State};
-        {'error', badsession} ->
-            lager:debug("we're waiting on an origination, treat like a failed node check"),
-            {'noreply', State#state{failed_node_checks=FNC+1}, 5}; % this is going to need tweaking
+        {'error', 'session_attach_failed'} ->
+            lager:debug("failed to attach ourselves to the session on ~s", [Node]),
+            {stop, normal, State};
+        {'error', 'baduuid'} ->
+            lager:debug("supplied uuid(~s) was invalid", [CallId]),
+            {stop, normal, State};
+        {'error', 'badarg'} ->
+            lager:debug("bad arg returned when trying to handle call, check message passed to ~s", [Node]),
+            {stop, normal, State};
         _E ->
             lager:debug("failed to setup listener for channel events from ~s: ~p", [Node, _E]),
             {stop, normal, State}
