@@ -8,22 +8,11 @@
 %%%-------------------------------------------------------------------
 -module(ecallmgr_authz).
 
--export([authorize/3, is_authorized/1, default/0, authz_win/1]).
+-export([enable_authz/0]).
+-export([disable_authz/0]).
+-export([maybe_authorize_channel/2]).
 
--export([init_authorize/4, enable_authz/0, disable_authz/0]).
-
--include("ecallmgr.hrl").
-
--define(AUTHZ_LOOP_TIMEOUT, 5000).
-
-%% If authz_default is set to allow, the call is authorized
-%% otherwise, the call is not authorized
--spec default/0 :: () -> {boolean(), []}.
-default() ->
-    case ecallmgr_util:get_setting(<<"authz_default">>, <<"deny">>) of
-        {ok, <<"allow">>} -> {true, []};
-        _ -> {false, []}
-    end.
+-include_lib("ecallmgr/src/ecallmgr.hrl").
 
 enable_authz() ->
     ecallmgr_config:set(<<"authz_enabled">>, true).
@@ -31,81 +20,89 @@ enable_authz() ->
 disable_authz() ->
     ecallmgr_config:set(<<"authz_enabled">>, false).
 
--spec authorize/3 :: (ne_binary(), ne_binary(), proplist()) -> {'ok', pid()}.
-authorize(FSID, CallID, FSData) ->
-    proc_lib:start_link(?MODULE, init_authorize, [self(), FSID, CallID, FSData]).
-
--spec is_authorized/1 :: (pid() | 'undefined') -> {boolean(), wh_json:json_object()}.
-is_authorized(Pid) when is_pid(Pid) ->
-    Ref = make_ref(),
-    Pid ! {is_authorized, self(), Ref},
-    receive
-        {is_authorized, Ref, IsAuth, CCV} -> {IsAuth, CCV}
-    after
-        1000 -> default()
-    end;
-is_authorized(undefined) -> {false, []}.
-
--spec authz_win/1 :: (pid() | 'undefined') -> 'ok'.
-authz_win(undefined) -> 'ok';
-authz_win(Pid) when is_pid(Pid) ->
-    Ref = make_ref(),
-    Pid ! {authz_win, self(), Ref},
-    receive
-        {authz_win_sent, Ref} -> ok
-    after 1000 ->
-            lager:debug("Timed out sending authz_win, odd")
+-spec maybe_authorize_channel/2 :: (proplist(), atom()) -> boolean().
+maybe_authorize_channel(Props, Node) ->
+    RequiresAuthz = case props:get_value(<<"Call-Direction">>, Props) of
+                        <<"inbound">> -> props:get_value(<<"variable_", ?CHANNEL_VAR_PREFIX, "Authorizing-ID">>, Props) =:= undefined;
+                        <<"outbound">> -> props:get_value(<<"variable_", ?CHANNEL_VAR_PREFIX, "Resource-ID">>, Props) =/= undefined
+                    end,
+    case RequiresAuthz andalso wh_util:is_true(ecallmgr_config:get(<<"authz_enabled">>, false)) of
+        false when RequiresAuthz ->
+            lager:debug("channel does not require authorization, allowing call", []),
+            true;
+        false ->
+            lager:debug("config ecallmgr.authz_enabled is 'false', allowing call", []),
+            true;
+        true -> 
+            case authorize(Props) of
+                true -> true;
+                false -> 
+                    kill_uuid(Props, Node),
+                    false
+            end
     end.
 
-
--spec init_authorize/4 :: (pid(), ne_binary(), ne_binary(), proplist()) -> no_return().
-init_authorize(Parent, FSID, CallID, FSData) ->
-    proc_lib:init_ack(Parent, {ok, self()}),
-    put(callid, CallID),
-    lager:debug("authorize started"),
+-spec authorize/1 :: (proplist()) -> 'ok'.
+authorize(Props) ->
+    lager:debug("channel authorization request started"),
     ReqResp = wh_amqp_worker:call(?ECALLMGR_AMQP_POOL
-                                  ,request(FSID, CallID, FSData)
+                                  ,request(Props)
                                   ,fun wapi_authz:publish_req/1
-                                  ,fun wapi_authz:is_authorized/1),
+                                  ,fun wapi_authz:resp_v/1),
     case ReqResp of 
         {error, _R} -> 
             lager:debug("authz request lookup failed: ~p", [_R]),
-            default();
+            default();                 
         {ok, RespJObj} ->
-            authorize_loop(RespJObj)
+            handle_authz_response(RespJObj)
     end.
 
--spec authorize_loop/1 :: (wh_json:json_object()) -> no_return().
-authorize_loop(JObj) ->
-    receive
-        {is_authorized, From, Ref} ->
-            IsAuthz = wh_util:is_true(wh_json:get_value(<<"Is-Authorized">>, JObj)),
-            CCV = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, []),
-            lager:debug("Is authz: ~s", [IsAuthz]),
-            From ! {is_authorized, Ref, IsAuthz, CCV},
-            authorize_loop(JObj);
-
-        {authz_win, From, Ref} ->
-            wapi_authz:publish_win(wh_json:get_value(<<"Server-ID">>, JObj), wh_json:delete_key(<<"Event-Name">>, JObj)),
-            lager:debug("sent authz_win, nice"),
-
-            From ! {authz_win_sent, Ref},
-
-            authorize_loop(JObj);
-
-        _ -> authorize_loop(JObj)
-    after ?AUTHZ_LOOP_TIMEOUT ->
-            lager:debug("going down from timeout")
+-spec handle_authz_response/1 :: (wh_json:json_object()) -> boolean().
+handle_authz_response(JObj) ->
+    case wh_util:is_true(wh_json:get_value(<<"Is-Authorized">>, JObj)) of
+        true -> 
+            lager:debug("channel authorization received affirmative response, allowing call", []),
+            wapi_authz:publish_win(wh_json:get_value(<<"Server-ID">>, JObj)
+                                   ,wh_json:delete_key(<<"Event-Name">>, JObj)),
+            true;
+        false ->
+            lager:debug("channel authorization received negative response", []),
+            false
     end.
 
--spec request/3 :: (ne_binary(), ne_binary(), proplist()) -> proplist().
-request(FSID, CallID, FSData) ->
-    [{<<"Msg-ID">>, FSID}
-     ,{<<"Caller-ID-Name">>, props:get_value(<<"Caller-Caller-ID-Name">>, FSData, <<"noname">>)}
-     ,{<<"Caller-ID-Number">>, props:get_value(<<"Caller-Caller-ID-Number">>, FSData, <<"0000000000">>)}
-     ,{<<"To">>, ecallmgr_util:get_sip_to(FSData)}
-     ,{<<"From">>, ecallmgr_util:get_sip_from(FSData)}
-     ,{<<"Request">>, ecallmgr_util:get_sip_request(FSData)}
-     ,{<<"Call-ID">>, CallID}
-     ,{<<"Custom-Channel-Vars">>, wh_json:from_list(ecallmgr_util:custom_channel_vars(FSData))}
-     | wh_api:default_headers(<<>>, <<"dialplan">>, <<"authz_req">>, ?APP_NAME, ?APP_VERSION)].
+-spec default/0 :: () -> boolean().
+default() ->
+    Default = ecallmgr_config:get(<<"authz_default">>, <<"deny">>),
+    lager:debug("channel authorization did not received response, config ecallmgr.authz_default is '~s'", [Default]),
+    Default =/= <<"deny">>.
+
+-spec kill_uuid/2 :: (proplist(), atom()) -> 'ok'.
+-spec kill_uuid/3 :: (ne_binary(), ne_binary(), atom()) -> 'ok'.
+
+kill_uuid(Props, Node) ->
+    Direction = props:get_value(<<"Call-Direction">>, Props),
+    CallId = props:get_value(<<"Unique-ID">>, Props),    
+    kill_uuid(Direction, CallId, Node).
+
+kill_uuid(<<"inbound">>, CallId, Node) ->
+    _ = ecallmgr_util:fs_log(Node, "whistle terminating unathorized inbound call", []),
+    freeswitch:api(Node, uuid_kill, wh_util:to_list(<<CallId/binary, " INCOMING_CALL_BARRED">>)),
+    ok;
+kill_uuid(<<"outbound">>, CallId, Node) ->
+    _ = ecallmgr_util:fs_log(Node, "whistle terminating unathorized outbound call", []),
+    freeswitch:api(Node, uuid_kill, wh_util:to_list(<<CallId/binary, " OUTGOING_CALL_BARRED">>)),
+    ok.
+
+-spec request/1 :: (proplist()) -> proplist().
+request(Props) ->
+    AccountId = props:get_value(<<"variable_", ?CHANNEL_VAR_PREFIX, "Account-ID">>, Props),
+    [{<<"Caller-ID-Name">>, props:get_value(<<"Caller-Caller-ID-Name">>, Props, <<"noname">>)}
+     ,{<<"Caller-ID-Number">>, props:get_value(<<"Caller-Caller-ID-Number">>, Props, <<"0000000000">>)}
+     ,{<<"To">>, ecallmgr_util:get_sip_to(Props)}
+     ,{<<"From">>, ecallmgr_util:get_sip_from(Props)}
+     ,{<<"Request">>, ecallmgr_util:get_sip_request(Props)}
+     ,{<<"Call-ID">>, props:get_value(<<"Unique-ID">>, Props)}
+     ,{<<"Custom-Channel-Vars">>, wh_json:from_list(ecallmgr_util:custom_channel_vars(Props))}
+     ,{<<"Usage">>, ecallmgr_fs_nodes:account_summary(AccountId)}
+     | wh_api:default_headers(<<>>, <<"dialplan">>, <<"authz_req">>, ?APP_NAME, ?APP_VERSION)
+    ].
