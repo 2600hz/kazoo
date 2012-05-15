@@ -253,10 +253,11 @@
 
 %% Play Request
 -define(PLAY_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Media-Name">>]).
--define(OPTIONAL_PLAY_REQ_HEADERS, [<<"Terminators">>, <<"Insert-At">>]).
+-define(OPTIONAL_PLAY_REQ_HEADERS, [<<"Terminators">>, <<"Insert-At">>, <<"Leg">>]).
 -define(PLAY_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                           ,{<<"Event-Name">>, <<"command">>}
                           ,{<<"Application-Name">>, <<"play">>}
+                          ,{<<"Leg">>, [<<"A">>, <<"B">>, <<"Both">>]}
                           ,?INSERT_AT_TUPLE
                          ]).
 -define(PLAY_REQ_TYPES, [{<<"Terminators">>, fun is_list/1}]).
