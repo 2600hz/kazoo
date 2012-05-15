@@ -59,7 +59,6 @@
 -define(STARTUP_FILE_CONTENTS, <<"{'fs_nodes', []}.
 {'fs_cmds', [{'load', \"mod_sofia\"}
              ,{'load', \"mod_shout\"}
-             ,{'load', \"mod_shell_stream\"}
 ]}.">>).
 
 %% We pass Application custom channel variables with our own prefix
