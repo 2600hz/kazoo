@@ -244,6 +244,7 @@ process_event(<<"CUSTOM">>, _, Data, Node) ->
     ok;
 process_event(<<"CHANNEL_CREATE">>, UUID, Data, Node) ->
     lager:debug("received channel create event: ~s", [UUID]),
+    maybe_start_event_listener(Node, UUID),
     spawn(ecallmgr_fs_nodes, new_channel, [Data, Node]),
     ok;
 process_event(<<"CHANNEL_DESTROY">>, UUID, Data, Node) ->
@@ -455,4 +456,13 @@ show_channels_as_json(Node) ->
                     ]
             end;
         {error, _} -> []
+    end.
+
+maybe_start_event_listener(Node, UUID) ->
+    case wh_cache:fetch_local(?ECALLMGR_UTIL_CACHE, {UUID, start_listener}) of
+        {ok, true} ->
+            lager:debug("starting events for ~s", [UUID]),
+            ecallmgr_call_sup:start_event_process(Node, UUID);
+        _E ->
+            lager:debug("ignoring start events for ~s: ~p", [UUID, _E]), ok
     end.
