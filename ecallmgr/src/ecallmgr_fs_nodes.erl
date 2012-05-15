@@ -26,6 +26,7 @@
 -export([show_channels/0]).
 -export([new_channel/2]).
 -export([channel_node/1]).
+
 -export([channel_account_summary/1]).
 -export([channel_match_presence/1]).
 -export([channel_exists/1]).
@@ -146,6 +147,7 @@ new_channel(Props, Node) ->
         end,
     gen_server:cast(?MODULE, {new_channel, props_to_channel_record(P, Node)}),
     ecallmgr_call_control:add_leg(P),
+
     Authorized = ecallmgr_authz:maybe_authorize_channel(P, Node),
     wh_cache:store_local(?ECALLMGR_UTIL_CACHE, ?AUTHZ_RESPONSE_KEY(CallId), Authorized).
 
@@ -287,6 +289,8 @@ props_to_channel_record(Props, Node) ->
              ,username=props:get_value(?GET_CCV(<<"Username">>), Props
                                        ,props:get_value(<<"variable_user_name">>, Props))
              ,import_moh=props:get_value(<<"variable_hold_music">>, Props) =:= undefined 
+             ,billing_id=props:get_value(<<"variable_", ?CHANNEL_VAR_PREFIX, "Billing-ID">>, Props)
+             ,bridge_id=props:get_value(<<"variable_", ?CHANNEL_VAR_PREFIX, "Bridge-ID">>, Props)
              ,node=Node
              ,timestamp=wh_util:current_tstamp()
             }.
@@ -311,10 +315,6 @@ channel_record_to_json(Channel) ->
                        ,{<<"username">>, Channel#channel.username}
                        ,{<<"billing_id">>, Channel#channel.billing_id}
                        ,{<<"bridge_id">>, Channel#channel.bridge_id}
-                       ,{<<"reseller_id">>, Channel#channel.reseller_id}
-                       ,{<<"reseller_billing">>, Channel#channel.reseller_billing}
-                       ,{<<"realm">>, Channel#channel.realm}                                          
-                       ,{<<"username">>, Channel#channel.username}
                        ,{<<"node">>, Channel#channel.node}
                        ,{<<"timestamp">>, Channel#channel.timestamp}
                       ]).
