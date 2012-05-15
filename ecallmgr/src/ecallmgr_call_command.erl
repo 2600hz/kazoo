@@ -76,7 +76,14 @@ get_fs_app(Node, UUID, JObj, <<"play">>) ->
         true ->
             F = ecallmgr_util:media_path(wh_json:get_value(<<"Media-Name">>, JObj), UUID),
             'ok' = set_terminators(Node, UUID, wh_json:get_value(<<"Terminators">>, JObj)),
-            {<<"playback">>, F}
+
+            %% if Leg is set, use uuid_broadcast; otherwise use playback
+            case wh_json:get_value(<<"Leg">>, JObj) of
+                <<"A">> -> {<<"broadcast">>, list_to_binary([UUID, <<" ">>, F, <<" aleg">>])};
+                <<"B">> -> {<<"broadcast">>, list_to_binary([UUID, <<" ">>, F, <<" bleg">>])};
+                <<"Both">> -> {<<"broadcast">>, list_to_binary([UUID, <<" ">>, F, <<" both">>])};
+                _ -> {<<"playback">>, F}
+            end
     end;
 
 get_fs_app(_Node, UUID, JObj, <<"playstop">>) ->
@@ -615,9 +622,17 @@ send_cmd(Node, UUID, <<"record_call">>, Cmd) ->
 send_cmd(Node, UUID, <<"playstop">>, Args) ->
     lager:debug("execute on node ~s: uuid_break(~s)", [Node, UUID]),
     freeswitch:api(Node, uuid_break, wh_util:to_list(Args));
+
 send_cmd(Node, UUID, <<"unbridge">>, _) ->
     lager:debug("execute on node ~s: uuid_park(~s)", [Node, UUID]),
     freeswitch:api(Node, uuid_park, wh_util:to_list(UUID));
+
+send_cmd(Node, _UUID, <<"broadcast">>, Args) ->
+    lager:debug("execute on node ~s: uuid_broadcast(~s)", [Node, Args]),
+    Resp = freeswitch:api(Node, uuid_broadcast, wh_util:to_list(iolist_to_binary(Args))),
+    lager:debug("broadcast resulted in: ~p", [Resp]),
+    Resp;
+
 send_cmd(Node, UUID, <<"xferext">>, Dialplan) ->
     XferExt = [begin
                    _ = ecallmgr_util:fs_log(Node, "whistle queuing command in 'xferext' extension: ~s", [V]),
