@@ -296,4 +296,3 @@ route_req(CallId, FSID, Props) ->
      ,{<<"Custom-Channel-Vars">>, wh_json:from_list(ecallmgr_util:custom_channel_vars(Props))}
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
-    
