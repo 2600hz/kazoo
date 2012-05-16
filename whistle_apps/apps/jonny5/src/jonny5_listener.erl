@@ -23,8 +23,12 @@
 
 -record(state, {}).
 
--define(RESPONDERS, [{j5_authz_req, [{<<"dialplan">>, <<"authz_req">>}]}]).
--define(BINDINGS, [{authz, []}
+-define(RESPONDERS, [{j5_authz_req, [{<<"authz">>, <<"req">>}]}
+                     ,{j5_authz_update, [{<<"authz">>, <<"update">>}]}
+                     ,{j5_call_cdr, [{<<"call_detail">>, <<"cdr">>}]}
+                    ]).
+-define(BINDINGS, [{call, [{restrict_to, [cdr]}, {callid, <<"*">>}]}
+                   ,{authz, []}
                    ,{self, []}
                   ]).
 -define(QUEUE_NAME, <<>>).

@@ -110,7 +110,7 @@ bridge_to_endpoints([], _, _, _) ->
     {error, no_resources};
 bridge_to_endpoints(Endpoints, IsEmergency, CtrlQ, JObj) ->
     lager:debug("found resources that bridge the number...to the cloud!"),
-    Q = create_queue(JObj),
+    Q = create_queue(),
 
     {CIDNum, CIDName} = case IsEmergency of
                             'true' ->
@@ -177,7 +177,7 @@ originate_to_endpoints([], _) ->
     {error, no_resources};
 originate_to_endpoints(Endpoints, JObj) ->
     lager:debug("found resources that can originate the number...to the cloud!"),
-    Q = create_queue(JObj),
+    Q = create_queue(),
 
     CIDNum = wh_json:get_value(<<"Outgoing-Caller-ID-Number">>, JObj),
 
@@ -234,7 +234,7 @@ originate_to_endpoints(Endpoints, JObj) ->
 -spec execute_local_extension/4 :: (ne_binary(), ne_binary(), ne_binary(), wh_json:json_object()) -> execute_ext_resp().
 execute_local_extension(Number, AccountId, CtrlQ, JObj) ->
     lager:debug("number belongs to another account, executing callflow from that account"),
-    Q = create_queue(JObj),
+    Q = create_queue(),
     CIDNum = wh_json:get_value(<<"Outgoing-Caller-ID-Number">>, JObj),
     CIDName = wh_json:get_value(<<"Outgoing-Caller-ID-Name">>, JObj),
     CCVs = [{<<"Account-ID">>, AccountId}
@@ -375,8 +375,8 @@ hangup_result(JObj) ->
 %% try to rate this call...
 %% @end
 %%--------------------------------------------------------------------
--spec create_queue/1 :: (wh_json:json_object()) -> ne_binary().
-create_queue(JObj) ->
+-spec create_queue/0 :: () -> ne_binary().
+create_queue() ->
     Q = amqp_util:new_queue(),
 
     ok = amqp_util:basic_consume(Q),
@@ -384,30 +384,7 @@ create_queue(JObj) ->
                               ,{callid, get(callid)}
                              ]),
     ok = wapi_self:bind_q(Q, []),
-    ok = request_rating(JObj),
     Q.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Make a whistle API request to rate this call
-%% @end
-%%--------------------------------------------------------------------
--spec request_rating/1 :: (wh_json:json_object()) -> 'ok'.
-request_rating(JObj) ->
-    _ = wh_util:put_callid(JObj),
-    CallID = wh_json:get_value(<<"Call-ID">>, JObj),
-    lager:debug("sending rate request"),
-    Req = [{<<"To-DID">>, wh_json:get_value(<<"To-DID">>, JObj)}
-           ,{<<"From-DID">>, wh_json:get_value(<<"From-DID">>, JObj)}
-           ,{<<"Call-ID">>, CallID}
-           ,{<<"Control-Queue">>, wh_json:get_value(<<"Control-Queue">>, JObj)}
-           ,{<<"Account-ID">>, wh_json:get_value(<<"Account-ID">>, JObj)}
-           ,{<<"Options">>, wh_json:get_value(<<"Flags">>, JObj, [])}
-           ,{<<"Direction">>, <<"outbound">>}
-           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-          ],
-    wapi_call:publish_rate_req(CallID, [KV || {_,V}=KV <- Req, V =/= undefined]).
 
 %%--------------------------------------------------------------------
 %% @private

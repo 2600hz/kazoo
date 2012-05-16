@@ -10,7 +10,6 @@
 -define(DEFAULT_CONTENT_TYPE, <<"application/json">>).
 
 %% routing keys to use in the callmgr exchange
--define(KEY_AUTHZ_REQ, <<"authz.req">>). %% corresponds to the authz_req/1 api call
 -define(KEY_ROUTE_REQ, <<"route.req">>). %% corresponds to the route_req/1 api call
 
 -define(KEY_RESOURCE_REQ, <<"originate.resource.req">>). %% corresponds to resource_req/1 api call
