@@ -25,6 +25,7 @@
 
 -export([show_channels/0]).
 -export([new_channel/2]).
+-export([channel_node/1]).
 -export([channel_account_summary/1]).
 -export([channel_match_presence/1]).
 -export([channel_exists/1]).
@@ -145,6 +146,23 @@ fetch_channel(UUID) ->
         [Channel] -> {ok, channel_record_to_json(Channel)};
         _Else -> {error, not_found}
     end.
+
+-spec channel_node/1 :: (ne_binary()) -> {'ok', atom()} | {'error', _}.
+channel_node(UUID) ->
+    MatchSpec = [{#channel{uuid = '$1', destination = '_', direction = '_'
+                           ,account_id = '_', authorizing_id = '_', resource_id = '_'
+                           ,authorizing_type = '_', owner_id = '_', presence_id = '$2'
+                           ,billing_id = '_', bridge_id = '_', realm = '_', username = '_'
+                           ,import_moh = '_', node = '$3', timestamp = '_'
+                          },
+                  [{'=:=', '$1', {const, UUID}}],
+                  ['$3']}
+                ],  
+    case ets:select(ecallmgr_channels, MatchSpec) of
+        [Node] -> {ok, Node};
+        _ -> {error, not_found}
+    end.
+        
 
 -spec channel_exists/1 :: (ne_binary()) -> boolean().
 channel_exists(UUID) ->
