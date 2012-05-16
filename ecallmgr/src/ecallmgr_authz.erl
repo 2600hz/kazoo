@@ -102,6 +102,7 @@ request(Props) ->
      ,{<<"From">>, ecallmgr_util:get_sip_from(Props)}
      ,{<<"Request">>, ecallmgr_util:get_sip_request(Props)}
      ,{<<"Call-ID">>, props:get_value(<<"Unique-ID">>, Props)}
+     ,{<<"Account-ID">>, AccountId}
      ,{<<"Custom-Channel-Vars">>, wh_json:from_list(ecallmgr_util:custom_channel_vars(Props))}
      ,{<<"Usage">>, ecallmgr_fs_nodes:account_summary(AccountId)}
      | wh_api:default_headers(<<>>, <<"dialplan">>, <<"authz_req">>, ?APP_NAME, ?APP_VERSION)

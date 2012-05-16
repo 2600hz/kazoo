@@ -29,7 +29,7 @@
 %% Authorization Requests
 -define(AUTHZ_REQ_HEADERS, [<<"Msg-ID">>, <<"To">>, <<"From">>, <<"Call-ID">>
                                 ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
-                                ,<<"Request">>, <<"Usage">>
+                                ,<<"Account-ID">>, <<"Request">>, <<"Usage">>
                            ]).
 -define(OPTIONAL_AUTHZ_REQ_HEADERS, [<<"Custom-Channel-Vars">>, <<"Switch-Hostname">>]).
 -define(AUTHZ_REQ_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
@@ -39,6 +39,7 @@
                           ,{<<"To">>, fun is_binary/1}
                           ,{<<"From">>, fun is_binary/1}
                           ,{<<"Call-ID">>, fun is_binary/1}
+                          ,{<<"Account-ID">>, fun is_binary/1}
                           ,{<<"Caller-ID-Name">>, fun is_binary/1}
                           ,{<<"Caller-ID-Number">>, fun is_binary/1}
                           ,{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}
