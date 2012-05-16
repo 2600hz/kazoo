@@ -161,7 +161,6 @@ kill_channel(<<"outbound">>, CallId, Node) ->
     freeswitch:api(Node, uuid_kill, wh_util:to_list(<<CallId/binary, " OUTGOING_CALL_BARRED">>)),
     ok.
 
-
 -spec authorize/2 :: ('undefined' | ne_binary(), proplist()) -> {'ok', ne_binary()} |
                                                                 {'error', 'account_limited'} |
                                                                 {'error', 'default_is_deny'}.
