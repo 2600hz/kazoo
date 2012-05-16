@@ -233,7 +233,9 @@
 %% Call Pickup
 -define(CALL_PICKUP_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Target-Call-ID">>]).
 -define(OPTIONAL_CALL_PICKUP_REQ_HEADERS, [<<"Insert-At">>, <<"Unbridged-Only">>, <<"Unanswered-Only">>
-                                               ,<<"Other-Leg">>]).
+                                               ,<<"Other-Leg">>
+                                               ,<<"Continue-On-Fail">>, <<"Continue-On-Cancel">>
+                                          ]).
 -define(CALL_PICKUP_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                                  ,{<<"Event-Name">>, <<"command">>}
                                  ,{<<"Application-Name">>, <<"call_pickup">>}
