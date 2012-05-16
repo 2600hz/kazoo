@@ -12,7 +12,6 @@
 -include_lib("whistle/include/wh_types.hrl").
 
 -export([start_link/0]).
--export([listener_proc/0]).
 -export([init/1]).
 
 %% Helper macro for declaring children of supervisor
@@ -33,12 +32,6 @@
 -spec start_link/0 :: () -> startlink_ret().
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
-
--spec listener_proc/0 :: () -> {'ok', pid()}.
-listener_proc() ->
-    [P] = [P || {Mod, P, _, _} <- supervisor:which_children(?MODULE),
-                Mod =:= skel_listener],
-    {ok, P}.
 
 %% ===================================================================
 %% Supervisor callbacks
