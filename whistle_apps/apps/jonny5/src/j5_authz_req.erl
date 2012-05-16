@@ -33,23 +33,19 @@ handle_req(JObj, Props) ->
                 ,fun({error, _}=E) -> E;
                     ({ok, _}) ->
                          case trunks_at_limit(Limits, JObj) of
-                             false -> 
-                                 Q = props:get_value(queue, Props),
-                                 {ok, flat_rate, Q}; 
+                             false -> {ok, flat_rate}; 
                              true -> {error, trunk_limit}
                          end
                  end
                 ,fun({error, trunk_limit}) -> 
                          case credit_is_available(Limits, JObj) of
-                             {ok, Pid} -> 
-                                 Q = gen_listener:queue_name(Pid),
-                                 {ok, per_minute, Q};
+                             true -> {ok, per_minute};
                              false -> {error, trunk_limit}
                          end;
                     (Else) -> Else
                  end
                ],
-    send_resp(JObj, lists:foldl(fun(F, A) -> F(A) end, ok, Routines)).
+    send_resp(JObj, props:get_value(queue, Props), lists:foldl(fun(F, A) -> F(A) end, ok, Routines)).
 
 -spec calls_at_limit/2 :: (#limits{}, wh_json:json_object()) -> boolean().
 calls_at_limit(#limits{calls=-1}, _) ->
@@ -72,32 +68,36 @@ trunks_at_limit(Limits, JObj) ->
     OutboundResources = wh_json:get_integer_value([<<"Usage">>, <<"Outbound-Resources">>], JObj, 0),
     consume_twoway_limits(Limits, RemainingInbound + OutboundResources) < 0.    
 
--spec credit_is_available/2 :: (#limits{}, wh_json:json_object()) -> false | {'ok', pid()}.
+-spec credit_is_available/2 :: (#limits{}, wh_json:json_object()) -> boolean().
 credit_is_available(Limits, JObj) ->
     AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
     Balance = j5_util:current_balance(AccountId),
     case prepay_is_available(Limits, Balance, JObj) of
-        {ok, _}=Ok -> Ok;
+        true -> true;
         false -> postpay_is_available(Limits, Balance, JObj)
     end.             
              
--spec prepay_is_available/3 :: (#limits{}, integer(), wh_json:json_object()) -> false | {'ok', pid()}.
+-spec prepay_is_available/3 :: (#limits{}, integer(), wh_json:json_object()) -> boolean().
 prepay_is_available(#limits{allow_prepay=false}, _, _) ->
     false;
 prepay_is_available(#limits{allow_prepay=true, reserve_amount=ReserveAmount}, Balance,JObj) ->
     case (Balance - ReserveAmount) > 0 of
         false -> false;             
-        true -> j5_call_monitor_sup:start_monitor(prepay, ReserveAmount, JObj)
+        true -> 
+            j5_util:write_debit_to_ledger(JObj, ReserveAmount),
+            true
     end.
 
--spec postpay_is_available/3 :: (#limits{}, integer(), wh_json:json_object()) -> false | {'ok', pid()}.
+-spec postpay_is_available/3 :: (#limits{}, integer(), wh_json:json_object()) -> boolean().
 postpay_is_available(#limits{allow_postpay=false}, _, _) ->
     false;
 postpay_is_available(#limits{allow_postpay=true, max_postpay_amount=MaxPostpay
                              ,reserve_amount=ReserveAmount}, Balance, JObj) ->
     case (Balance - ReserveAmount) > MaxPostpay of
         false -> false;             
-        true -> j5_call_monitor_sup:start_monitor(postpay, ReserveAmount, JObj)
+        true -> 
+            j5_util:write_debit_to_ledger(JObj, ReserveAmount),
+            true
     end.
 
 -spec consume_inbound_limits/2 :: (#limits{}, wh_json:json_object()) -> integer().
@@ -118,16 +118,16 @@ consume_twoway_limits(#limits{twoway_trunks=Trunks}, Resources) ->
         Count -> Count
     end.
 
--spec send_resp/2 :: (wh_json:json_object(), {'ok', 'credit' | 'flatrate', ne_binary()} | {'error', _}) -> 'ok'.
-send_resp(JObj, {error, _R}) ->
+-spec send_resp/3 :: (wh_json:json_object(),  ne_binary(), {'ok', 'credit' | 'flatrate'} | {'error', _}) -> 'ok'.
+send_resp(JObj, Q, {error, _R}) ->
     lager:debug("call is unauthorize due to ~s", [_R]),
     Resp = [{<<"Is-Authorized">>, <<"false">>}
             ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
             ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
-            | wh_api:default_headers(<<>>, ?APP_NAME, ?APP_VERSION)
+            | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
            ],
     wapi_authz:publish_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp);
-send_resp(JObj, {ok, Type, Q}) ->
+send_resp(JObj, Q, {ok, Type}) ->
     lager:debug("call is authorized as ~s", [Type]),
     Resp = [{<<"Is-Authorized">>, <<"true">>}
             ,{<<"Type">>, wh_util:to_binary(Type)}

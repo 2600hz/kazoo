@@ -10,20 +10,27 @@
 
 -behaviour(gen_listener).
 
-%% API
--export([start_link/0, stop/1]).
-
-%% gen_server callbacks
--export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2
-         ,terminate/2, code_change/3]).
+-export([start_link/0
+         ,stop/1
+        ]).
+-export([init/1
+         ,handle_call/3
+         ,handle_cast/2
+         ,handle_info/2
+         ,handle_event/2
+         ,terminate/2
+         ,code_change/3
+        ]).
 
 -include("hotornot.hrl").
 
 -define(SERVER, ?MODULE).
 
--define(BINDINGS, [ {call, [{restrict_to, [rating]}]} ]).
--define(RESPONDERS, [{hon_rater, [{<<"call_mgmt">>, <<"rating_req">>}]}]).
+-define(BINDINGS, [ {rate, []} ]).
+-define(RESPONDERS, [{hon_rater, [{<<"rate">>, <<"req">>}]}]).
 -define(QUEUE_NAME, <<"hotornot_rating">>).
+-define(QUEUE_OPTIONS, []).
+-define(CONSUME_OPTIONS, []).
 
 %%%===================================================================
 %%% API
@@ -38,9 +45,12 @@
 %%--------------------------------------------------------------------
 -spec start_link/0 :: () -> startlink_ret().
 start_link() ->
-    gen_listener:start_link(?MODULE, [{responders, ?RESPONDERS}
-                                      ,{bindings, ?BINDINGS}
+    gen_listener:start_link(?MODULE, [
+                                      {bindings, ?BINDINGS}
+                                      ,{responders, ?RESPONDERS}
                                       ,{queue_name, ?QUEUE_NAME}
+                                      ,{queue_options, ?QUEUE_OPTIONS}
+                                      ,{consume_options, ?CONSUME_OPTIONS}
                                       ,{basic_qos, 1}
                                      ], []).
 
@@ -82,7 +92,7 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call(_Request, _From, State) ->
-    {reply, ok, State}.
+    {reply, {error, not_implemented}, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -108,7 +118,6 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info(_Info, State) ->
-    lager:debug("unhandled message: ~p", [_Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------

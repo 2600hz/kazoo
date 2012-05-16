@@ -125,7 +125,7 @@ init([Node, Options]) ->
         ok ->
             lager:debug("event handler registered on node ~s", [Node]),            
             ok = freeswitch:event(Node, ['CHANNEL_CREATE', 'CHANNEL_DESTROY', 'CHANNEL_HANGUP_COMPLETE'
-                                         ,'CUSTOM', 'sofia::register', 'sofia::transfer'
+                                         ,'SESSION_HEARTBEAT', 'CUSTOM', 'sofia::register', 'sofia::transfer'
                                         ]),
             lager:debug("bound to switch events on node ~s", [Node]),
             gproc:reg({p, l, fs_node}),
@@ -257,6 +257,9 @@ process_event(<<"CHANNEL_DESTROY">>, UUID, Data, Node) ->
     end;
 process_event(<<"CHANNEL_HANGUP_COMPLETE">>, UUID, Data, _) ->
     spawn(ecallmgr_call_cdr, new_cdr, [UUID, Data]),
+    ok;
+process_event(<<"SESSION_HEARTBEAT">>, _, Data, Node) ->
+    spawn(ecallmgr_authz, update, [Data, Node]),
     ok;
 process_event(_, _, _, _) ->
     ok.

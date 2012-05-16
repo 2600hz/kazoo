@@ -281,20 +281,21 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 -spec process_channel_event/2 :: (proplist(), #state{}) -> 'ok'.
-process_channel_event(Props, #state{node=Node}) ->
+process_channel_event(Props, _) ->
     CallId = props:get_value(<<"Caller-Unique-ID">>, Props,
                             props:get_value(<<"Unique-ID">>, Props)),
     put(callid, CallId),
     Masqueraded = is_masquerade(Props),
     EventName = get_event_name(Props, Masqueraded),
     ApplicationName = get_event_application(Props, Masqueraded),
+
     case should_publish(EventName, ApplicationName, Masqueraded) of
         false ->
             ok;
         true ->
             %% TODO: the adding of the node to the props is for event_specific conference
             %% clause until we can break the conference stuff into its own module
-            Event = create_event(EventName, ApplicationName, [{<<"Node">>, Node}|Props]),
+            Event = create_event(EventName, ApplicationName, Props),
             publish_event(Event)
     end.
 
