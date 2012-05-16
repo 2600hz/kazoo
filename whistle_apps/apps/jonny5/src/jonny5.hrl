@@ -7,8 +7,6 @@
 
 -define(JONNY5_CACHE, jonny5_cache).
 
--define(MONITOR_CALL(CallId), {monitor_call, CallId}).
-
 -define(JONNY5_HRL, true).
 
 -define(APP_VERSION, <<"2.0.0">>).
