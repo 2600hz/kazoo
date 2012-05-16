@@ -13,18 +13,20 @@
 -export([req/1, req_v/1
          ,resp/1, resp_v/1
          ,win/1, win_v/1
+         ,update/1, update_v/1
          ,bind_q/2, unbind_q/2
          ,publish_req/1, publish_req/2
          ,publish_resp/2, publish_resp/3
          ,publish_win/2, publish_win/3
-         ,get_auth_realm/1, is_authorized/1
-         ,req_event_type/0
+         ,publish_update/1, publish_update/2
         ]).
 
 -include("../wh_api.hrl").
 
--define(EVENT_CATEGORY, <<"dialplan">>).
--define(AUTHZ_REQ_EVENT_NAME, <<"authz_req">>).
+-define(EVENT_CATEGORY, <<"authz">>).
+-define(KEY_AUTHZ_REQ, <<"authz.req">>).
+-define(KEY_AUTHZ_UPDATE, <<"authz.update">>).
+-define(KEY_AUTHZ_CALL_COMMAND, <<"authz.call_command">>).
 
 %% Authorization Requests
 -define(AUTHZ_REQ_HEADERS, [<<"Msg-ID">>, <<"To">>, <<"From">>, <<"Call-ID">>
@@ -33,7 +35,7 @@
                            ]).
 -define(OPTIONAL_AUTHZ_REQ_HEADERS, [<<"Custom-Channel-Vars">>, <<"Switch-Hostname">>]).
 -define(AUTHZ_REQ_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
-                           ,{<<"Event-Name">>, ?AUTHZ_REQ_EVENT_NAME}
+                           ,{<<"Event-Name">>, <<"req">>}
                           ]).
 -define(AUTHZ_REQ_TYPES, [{<<"Msg-ID">>, fun is_binary/1}
                           ,{<<"To">>, fun is_binary/1}
@@ -50,7 +52,7 @@
 -define(AUTHZ_RESP_HEADERS, [<<"Msg-ID">>, <<"Call-ID">>, <<"Is-Authorized">>]).
 -define(OPTIONAL_AUTHZ_RESP_HEADERS, [<<"Custom-Channel-Vars">>, <<"Type">>]).
 -define(AUTHZ_RESP_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
-                            ,{<<"Event-Name">>, <<"authz_resp">>}
+                            ,{<<"Event-Name">>, <<"resp">>}
                             ,{<<"Type">>, [<<"flat_rate">>, <<"per_minute">>]}
                             ,{<<"Is-Authorized">>, [<<"true">>, <<"false">>]}
                            ]).
@@ -60,9 +62,26 @@
 -define(AUTHZ_WIN_HEADERS, [<<"Call-ID">>]).
 -define(OPTIONAL_AUTHZ_WIN_HEADERS, [<<"Switch-Hostname">>]).
 -define(AUTHZ_WIN_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
-                           ,{<<"Event-Name">>, <<"authz_win">>}
+                           ,{<<"Event-Name">>, <<"win">>}
                           ]).
 -define(AUTHZ_WIN_TYPES, []).
+
+%% Authorization Update
+-define(AUTHZ_UPDATE_HEADERS, [<<"Call-ID">>]).
+-define(OPTIONAL_AUTHZ_UPDATE_HEADERS, [<<"Handling-Server-Name">>, <<"Custom-Channel-Vars">>
+                                            ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
+                                            ,<<"Callee-ID-Name">>, <<"Callee-ID-Number">>
+                                            ,<<"Other-Leg-Call-ID">>, <<"Timestamp">>
+                                            ,<<"Call-Direction">>, <<"To-Uri">>, <<"From-Uri">>
+                                            ,<<"Created-Time">>, <<"Answered-Time">>, <<"Progress-Time">>
+                                            ,<<"Progress-Media-Time">>, <<"Hangup-Time">>
+                                            ,<<"Transfer-Time">>
+                                       ]).
+-define(AUTHZ_UPDATE_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
+                              ,{<<"Event-Name">>, <<"update">>}
+                              ,{<<"Call-Direction">>, [<<"inbound">>, <<"outbound">>]}
+                             ]).
+-define(AUTHZ_UPDATE_TYPES, [{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}]).
 
 %%--------------------------------------------------------------------
 %% @doc Authorization Request - see wiki
@@ -71,9 +90,9 @@
 %%--------------------------------------------------------------------
 -spec req/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
 req(Prop) when is_list(Prop) ->
-        case req_v(Prop) of
-            true -> wh_api:build_message(Prop, ?AUTHZ_REQ_HEADERS, ?OPTIONAL_AUTHZ_REQ_HEADERS);
-            false -> {error, "Proplist failed validation for authz_req"}
+    case req_v(Prop) of
+        true -> wh_api:build_message(Prop, ?AUTHZ_REQ_HEADERS, ?OPTIONAL_AUTHZ_REQ_HEADERS);
+        false -> {error, "Proplist failed validation for authz_req"}
     end;
 req(JObj) ->
     req(wh_json:to_proplist(JObj)).
@@ -84,9 +103,25 @@ req_v(Prop) when is_list(Prop) ->
 req_v(JObj) ->
     req_v(wh_json:to_proplist(JObj)).
 
--spec req_event_type/0 :: () -> {ne_binary(), ne_binary()}.
-req_event_type() ->
-    {?EVENT_CATEGORY, ?AUTHZ_REQ_EVENT_NAME}.
+%%--------------------------------------------------------------------
+%% @doc Authorization Request - see wiki
+%% Takes proplist, creates JSON iolist or error
+%% @end
+%%--------------------------------------------------------------------
+-spec update/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
+update(Prop) when is_list(Prop) ->
+    case update_v(Prop) of
+        true -> wh_api:build_message(Prop, ?AUTHZ_UPDATE_HEADERS, ?OPTIONAL_AUTHZ_UPDATE_HEADERS);
+        false -> {error, "Proplist failed validation for authz_update"}
+    end;
+update(JObj) ->
+    update(wh_json:to_proplist(JObj)).
+
+-spec update_v/1 :: (api_terms()) -> boolean().
+update_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?AUTHZ_UPDATE_HEADERS, ?AUTHZ_UPDATE_VALUES, ?AUTHZ_UPDATE_TYPES);
+update_v(JObj) ->
+    update_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc Authorization Response - see wiki
@@ -121,9 +156,9 @@ is_authorized(JObj) ->
 %%--------------------------------------------------------------------
 -spec win/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
 win(Prop) when is_list(Prop) ->
-        case win_v(Prop) of
-            true -> wh_api:build_message(Prop, ?AUTHZ_WIN_HEADERS, ?OPTIONAL_AUTHZ_WIN_HEADERS);
-            false -> {error, "Proplist failed validation for authz_win"}
+    case win_v(Prop) of
+        true -> wh_api:build_message(Prop, ?AUTHZ_WIN_HEADERS, ?OPTIONAL_AUTHZ_WIN_HEADERS);
+        false -> {error, "Proplist failed validation for authz_win"}
     end;
 win(JObj) ->
     win(wh_json:to_proplist(JObj)).
@@ -139,21 +174,42 @@ win_v(JObj) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec bind_q/2 :: (ne_binary(), proplist()) -> 'ok'.
-bind_q(Q, Props) ->
-    Realm = props:get_value(realm, Props, <<"*">>),
 
+bind_q(Queue, Props) ->
     amqp_util:callmgr_exchange(),
-    amqp_util:bind_q_to_callmgr(Q, get_authz_req_routing(Realm)).
+    bind_to_q(Queue, props:get_value(restrict_to, Props)).
+
+bind_to_q(Q, undefined) ->
+    ok = amqp_util:bind_q_to_callmgr(Q, <<"authz.*">>);
+bind_to_q(Q, [reqs|T]) ->
+    ok = amqp_util:bind_q_to_callmgr(Q, ?KEY_AUTHZ_REQ),
+    bind_to_q(Q, T);
+bind_to_q(Q, [updates|T]) ->
+    ok = amqp_util:bind_q_to_callmgr(Q, ?KEY_AUTHZ_UPDATE),
+    bind_to_q(Q, T);
+bind_to_q(Q, [call_command|T]) ->
+    ok = amqp_util:bind_q_to_callmgr(Q, ?KEY_AUTHZ_CALL_COMMAND),
+    bind_to_q(Q, T);
+bind_to_q(_Q, []) ->
+    ok.
 
 -spec unbind_q/2 :: (ne_binary(), proplist()) -> 'ok'.
 unbind_q(Q, Props) ->
-    Realm = props:get_value(realm, Props, <<"*">>),
-    amqp_util:unbind_q_from_callmgr(Q, get_authz_req_routing(Realm)).
+    unbind_q_from(Q, props:get_value(restrict_to, Props)).
 
-get_authz_req_routing(Realm) when is_binary(Realm) ->
-    list_to_binary([?KEY_AUTHZ_REQ, ".", amqp_util:encode(Realm)]);
-get_authz_req_routing(Api) ->
-    get_authz_req_routing(get_auth_realm(Api)).
+unbind_q_from(Q, undefined) ->
+    ok = amqp_util:unbind_q_from_callmgr(Q, <<"authz.*">>);
+unbind_q_from(Q, [reqs|T]) ->
+    ok = amqp_util:unbind_q_from_callmgr(Q, ?KEY_AUTHZ_REQ),
+    unbind_q_from(Q, T);
+unbind_q_from(Q, [updates|T]) ->
+    ok = amqp_util:unbind_q_from_callmgr(Q, ?KEY_AUTHZ_UPDATE),
+    unbind_q_from(Q, T);
+unbind_q_from(Q, [call_command|T]) ->
+    ok = amqp_util:unbind_q_from_callmgr(Q, ?KEY_AUTHZ_CALL_COMMAND),
+    unbind_q_from(Q, T);
+unbind_q_from(_Q, []) ->
+    ok.
 
 %%--------------------------------------------------------------------
 %% @doc Publish the JSON iolist() to the proper Exchange
@@ -165,7 +221,15 @@ publish_req(JObj) ->
     publish_req(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_req(Req, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(Req, ?AUTHZ_REQ_VALUES, fun ?MODULE:req/1),
-    amqp_util:callmgr_publish(Payload, ContentType, get_authz_req_routing(Req)).
+    amqp_util:callmgr_publish(Payload, ContentType, ?KEY_AUTHZ_REQ).
+
+-spec publish_update/1 :: (api_terms()) -> 'ok'.
+-spec publish_update/2 :: (api_terms(), ne_binary()) -> 'ok'.
+publish_update(JObj) ->
+    publish_update(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_update(Update, ContentType) ->
+    {ok, Payload} = wh_api:prepare_api_payload(Update, ?AUTHZ_UPDATE_VALUES, fun ?MODULE:update/1),
+    amqp_util:callmgr_publish(Payload, ContentType, ?KEY_AUTHZ_UPDATE).
 
 -spec publish_resp/2 :: (ne_binary(), api_terms()) -> 'ok'.
 -spec publish_resp/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
@@ -182,18 +246,3 @@ publish_win(Queue, JObj) ->
 publish_win(Queue, Resp, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(Resp, ?AUTHZ_WIN_VALUES, fun ?MODULE:win/1),
     amqp_util:targeted_publish(Queue, Payload, ContentType).
-
-%%-----------------------------------------------------------------------------
-%% @private
-%% @doc
-%% extract the auth realm from the API request, using the requests to domain
-%% when provided with an IP
-%% @end
-%%-----------------------------------------------------------------------------
--spec get_auth_realm/1  :: (wh_json:json_object()) -> ne_binary().
-get_auth_realm(ApiProp) when is_list(ApiProp) ->
-    [_ReqUser, ReqDomain] = binary:split(props:get_value(<<"Request">>, ApiProp), <<"@">>),
-    ReqDomain;
-get_auth_realm(ApiJObj) ->
-    [_ReqUser, ReqDomain] = binary:split(wh_json:get_value(<<"Request">>, ApiJObj), <<"@">>),
-    ReqDomain.

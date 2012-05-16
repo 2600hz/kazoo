@@ -17,7 +17,6 @@
 -define(CHILD(Name, Type), fun(N, cache) -> {N, {wh_cache, start_link, [N]}, permanent, 5000, worker, [wh_cache]};
                               (N, T) -> {N, {N, start_link, []}, permanent, 5000, T, [N]} end(Name, Type)).
 -define(CHILDREN, [{?JONNY5_CACHE, cache}
-                   ,{j5_call_monitor_sup, supervisor}
                    ,{jonny5_listener, worker}
                   ]).
 

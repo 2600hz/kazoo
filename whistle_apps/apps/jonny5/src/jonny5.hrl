@@ -9,6 +9,8 @@
 
 -define(JONNY5_HRL, true).
 
+-define(DEFAULT_RATE, 0.5).
+
 -define(APP_VERSION, <<"2.0.0">>).
 -define(APP_NAME, <<"jonny5">>).
 

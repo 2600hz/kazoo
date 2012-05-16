@@ -8,8 +8,8 @@
 -module(j5_util).
 
 -export([get_limits/1]).
--export([write_debit_to_ledger/3]).
--export([write_credit_to_ledger/3]).
+-export([write_debit_to_ledger/2]).
+%%-export([write_credit_to_ledger/3]).
 -export([current_balance/1]).
 
 -include_lib("jonny5/src/jonny5.hrl").
@@ -32,8 +32,7 @@ get_limits(Account) ->
             DefaultUsePrepay = whapps_config:get_is_true(<<"jonny5">>, <<"default_use_prepay">>, true),
             DefaultPostpay = whapps_config:get_is_true(<<"jonny5">>, <<"default_allow_postpay">>, false),
             DefaultMaxPostpay = whapps_config:get_float(<<"jonny5">>, <<"default_max_postpay_amount">>, 0.0),
-            DefaultPerMin = wapi_money:default_per_min_charge(),
-            DefaultReserve = whapps_config:get_float(<<"jonny5">>, <<"default_credit_reserve_amount">>, DefaultPerMin),
+            DefaultReserve = whapps_config:get_float(<<"jonny5">>, <<"default_reserve_amount">>, ?DEFAULT_RATE),
             Limits = #limits{twoway_trunks = get_limit(<<"twoway_trunks">>, JObj)
                              ,inbound_trunks = get_limit(<<"inbound_trunks">>, JObj)
                              ,resource_consuming_calls = get_limit(<<"resource_consuming_calls">>, JObj)
@@ -41,7 +40,7 @@ get_limits(Account) ->
                              ,allow_prepay = wh_json:is_true(<<"allow_prepay">>, JObj, DefaultUsePrepay)
                              ,allow_postpay = wh_json:is_true(<<"pvt_allow_postpay">>, JObj, DefaultPostpay)
                              ,max_postpay_amount = wh_json:get_float_value(<<"pvt_max_postpay_amount">>, JObj, DefaultMaxPostpay)
-                             ,reserve_amount = wh_json:get_float_value(<<"pvt_credit_reserve_amount">>, JObj, DefaultReserve)
+                             ,reserve_amount = wh_json:get_float_value(<<"pvt_reserve_amount">>, JObj, DefaultReserve)
                             },
             wh_cache:store_local(?JONNY5_CACHE, ?LIMITS_KEY(AccountId), Limits, 900),
             Limits
@@ -78,34 +77,39 @@ create_init_limits(AccountDb) ->
             wh_json:new()
     end.
 
--spec write_debit_to_ledger/3 :: (ne_binary(), ne_binary(), integer()) -> {'ok', wh_json:json_object()} |
-                                                                          {'error', _}.
-write_debit_to_ledger(Account, CallId, Units) ->
-    write_to_ledger(Account, CallId, Units, debit).
+-spec write_debit_to_ledger/2 :: (wh_json:json_object(), float()) -> {'ok', wh_json:json_object()} |
+                                                                       {'error', _}.
+write_debit_to_ledger(JObj, Units) ->
+    write_to_ledger(JObj, Units, debit).
 
--spec write_credit_to_ledger/3 :: (ne_binary(), ne_binary(), integer()) -> {'ok', wh_json:json_object()} |
-                                                                           {'error', _}.
-write_credit_to_ledger(Account, CallId, Units) ->
-    write_to_ledger(Account, CallId, Units, credit).
+%%-spec write_credit_to_ledger/3 :: (ne_binary(), ne_binary(), integer()) -> {'ok', wh_json:json_object()} |
+%%                                                                           {'error', _}.
+%%write_credit_to_ledger(Id, Account, Units) ->
+%%    write_to_ledger(Id, Account, Units, credit).
 
--spec write_to_ledger/4 :: (ne_binary(), ne_binary(), integer(), debit | credit) -> {'ok', wh_json:json_object()} |
-                                                                                    {'error', _}.
-write_to_ledger(Account, CallId, Units, Type) ->
-    AccountId = wh_util:format_account_id(Account, raw),
-    AccountDb = wh_util:format_account_id(Account, encoded),    
-    Timestamp = calendar:datetime_to_gregorian_seconds(calendar:universal_time()),
-    JObj = wh_json:from_list([{<<"call_id">>, CallId}
-                              ,{<<"reason">>, <<"create_call">>}
-                              ,{<<"amount">>, wh_util:to_integer(Units)}
-                              ,{<<"pvt_account_id">>, AccountId}
-                              ,{<<"pvt_account_db">>, AccountDb}
-                              ,{<<"pvt_type">>, wh_util:to_binary(Type)}
-                              ,{<<"pvt_created">>, Timestamp}
-                              ,{<<"pvt_modified">>, Timestamp}
-                              ,{<<"pvt_vsn">>, 1}
-                              ,{<<"pvt_whapp">>, ?APP_NAME}
-                             ]),
-    couch_mgr:save_doc(AccountDb, JObj).
+-spec write_to_ledger/3 :: (wh_json:json_object(), float(), debit | credit) -> {'ok', wh_json:json_object()} |
+                                                                                 {'error', _}.
+write_to_ledger(JObj, Units, Type) ->
+    AccountId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj),
+    AccountDb = wh_util:format_account_id(AccountId, encoded),    
+    Timestamp = wh_json:get_binary_value(<<"Timestamp">>, JObj, <<"start">>),
+    BridgeId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Bridge-ID">>], JObj),
+    Id = <<BridgeId/binary, "-", Timestamp/binary>>,
+    Entry = wh_json:from_list([{<<"_id">>, Id}
+                               ,{<<"reason">>, <<"per_minute_call">>}
+                               ,{<<"bridge_id">>, BridgeId}
+                               ,{<<"amount">>, wapi_money:dollars_to_units(Units)}
+                               ,{<<"pvt_account_id">>, AccountId}
+                               ,{<<"pvt_account_db">>, AccountDb}
+                               ,{<<"pvt_type">>, wh_util:to_binary(Type)}
+                               ,{<<"pvt_created">>, wh_util:current_tstamp()}
+                               ,{<<"pvt_modified">>, wh_util:current_tstamp()}
+                               ,{<<"pvt_vsn">>, 1}
+                               ,{<<"pvt_whapp">>, ?APP_NAME}
+                              ]),
+    io:format("SAVE: ~p~n", [Entry]),
+    {ok, Entry}.
+%%    couch_mgr:save_doc(AccountDb, JObj).
 
 -spec current_balance/1 :: (ne_binary()) -> integer().
 current_balance(Account) ->
