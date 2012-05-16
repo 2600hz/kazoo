@@ -17,6 +17,7 @@
 -export([blocking_refresh/0]).
 -export([purge_doc_type/2]).
 -export([cleanup_aggregated_account/1]).
+-export([migrate_limits/0, migrate_limits/1]).
 -export([migrate_media/0, migrate_media/1]).
 
 -define(DEVICES_CB_LIST, <<"devices/crossbar_listing">>).
@@ -37,6 +38,7 @@ migrate() ->
     couch_mgr:db_delete(<<"registrations">>),
     couch_mgr:db_delete(<<"crossbar%2Fsessions">>),
     stepswitch_maintenance:refresh(),
+    migrate_limits(),
     blocking_refresh(),
 %%    whistle_number_manager_maintenance:reconcile(all),
     whapps_config:flush(),
@@ -54,6 +56,7 @@ migrate() ->
                    ,fun(L) -> [<<"cb_queues">> | lists:delete(<<"cb_queues">>, L)] end
                    ,fun(L) -> [<<"cb_schemas">> | lists:delete(<<"cb_schema">>, L)] end
                    ,fun(L) -> [<<"cb_configs">> | lists:delete(<<"cb_configs">>, L)] end
+                   ,fun(L) -> [<<"cb_limits">> | lists:delete(<<"cb_limits">>, L)] end
                   ],
     StartModules = whapps_config:get(<<"crossbar">>, <<"autoload_modules">>, []),
     _ = whapps_config:set_default(<<"crossbar">>
@@ -186,6 +189,10 @@ refresh(Account) ->
 refresh(Account, Views) ->
     AccountDb = wh_util:format_account_id(Account, encoded),
     AccountId = wh_util:format_account_id(Account, raw),
+
+    %% Remove old views
+    couch_mgr:del_doc(AccountDb, <<"_design/limits">>),
+
     case couch_mgr:open_doc(AccountDb, AccountId) of
         {error, not_found} ->
             case couch_mgr:open_doc(?WH_ACCOUNTS_DB, AccountId) of
@@ -281,6 +288,93 @@ purge_doc_type(Type, Account) ->
         {error, _}=E ->
             E
     end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec migrate_limits/0 :: () -> 'ok'.
+-spec migrate_limits/1 :: (atom() | string() | binary()) -> 'ok'.
+
+migrate_limits() ->
+    Accounts = whapps_util:get_all_accounts(),
+    Total = length(Accounts),
+    lists:foldr(fun(AccountDb, Current) ->
+                        lager:info("migrating limits doc in database (~p/~p) '~s'", [Current, Total, AccountDb]),
+                        _ = migrate_limits(AccountDb),
+                        Current + 1
+                end, 1, Accounts),
+    ok.    
+
+migrate_limits(Account) when not is_binary(Account) ->
+    migrate_limits(wh_util:to_binary(Account));
+migrate_limits(Account) ->
+    TStamp = wh_util:current_tstamp(),
+
+    TwowayTrunks = whapps_config:get(<<"jonny5">>, <<"default_twoway_trunks">>),
+    InboundTrunks = whapps_config:get(<<"jonny5">>, <<"default_inbound_trunks">>),
+
+    AccountDb = case couch_mgr:db_exists(Account) of
+                    true -> Account;
+                    false -> wh_util:format_account_id(Account, encoded)
+                end,
+    {TT, IT} = clean_trunkstore_docs(AccountDb, TwowayTrunks, InboundTrunks),
+    JObj = wh_json:from_list([KV || {_, V}= KV <- [{<<"_id">>, <<"limits">>}
+                                                   ,{<<"twoway_trunks">>, TT}
+                                                   ,{<<"inbound_trunks">>, IT}
+                                                   ,{<<"pvt_account_db">>, AccountDb}
+                                                   ,{<<"pvt_account_id">>, wh_util:format_account_id(Account, raw)}
+                                                   ,{<<"pvt_type">>, <<"limits">>}
+                                                   ,{<<"pvt_created">>, TStamp}
+                                                   ,{<<"pvt_modified">>, TStamp}
+                                                   ,{<<"pvt_vsn">>, 1}
+                                                  ]
+                                        ,V =/= undefined
+                             ]),
+    couch_mgr:save_doc(AccountDb, JObj),
+    ok.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec clean_trunkstore_docs/3 :: (ne_binary(), integer(), integer()) -> {integer(), integer()}.
+-spec clean_trunkstore_docs/4 :: (ne_binary(), wh_json:json_objects(), integer(), integer())
+                                 -> {integer(), integer()}.
+
+clean_trunkstore_docs(AccountDb, TwowayTrunks, InboundTrunks) ->
+    ViewOptions = [{<<"include_docs">>, true}
+                   ,{<<"reduce">>, false}
+                  ],
+    case couch_mgr:get_results(AccountDb, <<"trunkstore/crossbar_listing">>, ViewOptions) of
+        {ok, JObjs} -> clean_trunkstore_docs(AccountDb, JObjs, TwowayTrunks, InboundTrunks);
+        {error, _}=E -> E
+    end.
+
+clean_trunkstore_docs(_, [], Trunks, InboundTrunks) ->
+    {Trunks, InboundTrunks};
+clean_trunkstore_docs(AccountDb, [JObj|JObjs], Trunks, InboundTrunks) ->
+    Doc = wh_json:get_value(<<"doc">>, JObj),
+    %% if there are no servers and it was created by jonny5 softdelete the doc
+    case wh_json:get_ne_value(<<"servers">>, Doc) =:= undefined
+        andalso wh_json:get_ne_value(<<"pvt_created_by">>, Doc) =:= <<"jonny5">>
+    of
+        true -> couch_mgr:save_doc(AccountDb, wh_json:set_value(<<"pvt_deleted">>, true, Doc));
+        false -> ok
+    end,
+    NewTrunks = case wh_json:get_integer_value([<<"account">>, <<"trunks">>], Doc, 0) of
+               OldTrunks when OldTrunks > Trunks -> OldTrunks;
+               _ -> Trunks
+           end,
+    NewInboundTrunks = case wh_json:get_integer_value([<<"account">>, <<"inbound_trunks">>], Doc, 0) of
+                           OldInboundTrunks when OldInboundTrunks > InboundTrunks -> OldInboundTrunks;
+                           _ -> Trunks
+                       end,
+    clean_trunkstore_docs(AccountDb, JObjs, NewTrunks, NewInboundTrunks).    
 
 %%--------------------------------------------------------------------
 %% @public
