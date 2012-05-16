@@ -13,8 +13,8 @@
 
 -export([audio_macro/2]).
 -export([response/2, response/3, response/4]).
--export([pickup/2, pickup/3
-         ,b_pickup/2, b_pickup/3
+-export([pickup/2, pickup/3, pickup/4
+         ,b_pickup/2, b_pickup/3, b_pickup/4
         ]).
 -export([redirect/3]).
 -export([answer/1, hangup/1, hangup/2, set/3, fetch/1, fetch/2]).
@@ -164,6 +164,7 @@ response(Code, Cause, Media, Call) ->
 %%--------------------------------------------------------------------
 -spec pickup/2 :: (ne_binary(), whapps_call:call()) -> 'ok'.
 -spec pickup/3 :: (ne_binary(), ne_binary(), whapps_call:call()) -> 'ok'.
+-spec pickup/4 :: (ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> 'ok'.
 pickup(TargetCallId, Call) ->
     Command = [{<<"Application-Name">>, <<"call_pickup">>}
                ,{<<"Target-Call-ID">>, TargetCallId}
@@ -177,13 +178,25 @@ pickup(TargetCallId, Insert, Call) ->
               ],
     send_command(Command, Call).
 
+pickup(TargetCallId, Insert, ContinueOnFail, Call) ->
+    Command = [{<<"Application-Name">>, <<"call_pickup">>}
+               ,{<<"Target-Call-ID">>, TargetCallId}
+               ,{<<"Insert-At">>, Insert}
+               ,{<<"Continue-On-Fail">>, ContinueOnFail}
+              ],
+    send_command(Command, Call).
+
 -spec b_pickup/2 :: (ne_binary(), whapps_call:call()) -> {'ok', wh_json:json_object()}.
 -spec b_pickup/3 :: (ne_binary(), ne_binary(), whapps_call:call()) -> {'ok', wh_json:json_object()}.
+-spec b_pickup/4 :: (ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> {'ok', wh_json:json_object()}.
 b_pickup(TargetCallId, Call) ->
     pickup(TargetCallId, Call),
     wait_for_channel_unbridge().
 b_pickup(TargetCallId, Insert, Call) ->
     pickup(TargetCallId, Insert, Call),
+    wait_for_channel_unbridge().
+b_pickup(TargetCallId, Insert, ContinueOnFail, Call) ->
+    pickup(TargetCallId, Insert, ContinueOnFail, Call),
     wait_for_channel_unbridge().
 
 %%--------------------------------------------------------------------

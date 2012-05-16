@@ -400,32 +400,39 @@ get_fs_app(_Node, _UUID, JObj, <<"call_pickup">>) ->
     case wapi_dialplan:call_pickup_v(JObj) of
         false -> {'error', <<"intercept failed to execute as JObj did not validate">>};
         true ->
+            ContinueOnFail = wh_json:is_true(<<"Continue-On-Fail">>, JObj, true),
+            ContinueOnCancel = wh_json:is_true(<<"Continue-On-Cancel">>, JObj, true),
+            UnbridgedOnly = wh_json:is_true(<<"Unbridged-Only">>, JObj),
+            UnansweredOnly = wh_json:is_true(<<"Unanswered-Only">>, JObj),
+            Target = wh_json:get_value(<<"Target-Call-ID">>, JObj),
+            OtherLeg = wh_json:is_true(<<"Other-Leg">>, JObj),
+
             Generators = [fun(DP) ->
-                                  case wh_json:is_true(<<"Unbridged-Only">>, JObj) of
-                                      false ->
-                                          DP;
-                                      true ->
-                                          [{"application", "set intercept_unbridged_only=true"}|DP]
+                                  case UnbridgedOnly of
+                                      false -> DP;
+                                      true -> [{"application", "set intercept_unbridged_only=true"}|DP]
                                   end
                           end
                           ,fun(DP) ->
-                                   case wh_json:is_true(<<"Unanswered-Only">>, JObj) of
-                                       false ->
-                                           DP;
-                                       true ->
-                                           [{"application", "set intercept_unanswered_only=true"}|DP]
+                                   case UnansweredOnly of
+                                       false -> DP;
+                                       true -> [{"application", "set intercept_unanswered_only=true"}|DP]
                                    end
                            end
                           ,fun(DP) ->
                                    [{"application", "export failure_causes=NORMAL_CLEARING,ORIGINATOR_CANCEL,CRASH"}
-                                    ,{"application", "export uuid_bridge_continue_on_cancel=true"}
-                                    ,{"application", "export continue_on_fail=true"}
+                                    ,{"application", list_to_binary(["export uuid_bridge_continue_on_cancel="
+                                                                     ,wh_util:to_binary(ContinueOnCancel)
+                                                                    ])}
+                                    ,{"application", list_to_binary(["export continue_on_fail="
+                                                                     ,wh_util:to_binary(ContinueOnFail)
+                                                                    ])}
                                     |DP
                                    ]
                            end
                           ,fun(DP) ->
-                                   Target = wh_json:get_value(<<"Target-Call-ID">>, JObj),
-                                   Arg = case wh_json:is_true(<<"Other-Leg">>, JObj) of
+                                   
+                                   Arg = case OtherLeg of
                                              true -> <<"-bleg ", Target/binary>>;
                                              false -> Target
                                          end,
