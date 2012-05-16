@@ -15,7 +15,6 @@
 handle_req(JObj, Props) ->
     true = wapi_authz:req_v(JObj),
     wh_util:put_callid(JObj),
-
     AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
     Limits = j5_util:get_limits(AccountId),
     Routines = [fun(_) -> 
