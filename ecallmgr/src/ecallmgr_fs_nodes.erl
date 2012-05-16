@@ -25,6 +25,7 @@
 
 -export([show_channels/0]).
 -export([new_channel/2]).
+-export([channel_node/1]).
 -export([channel_account_summary/1]).
 -export([channel_match_presence/1]).
 -export([channel_exists/1]).
