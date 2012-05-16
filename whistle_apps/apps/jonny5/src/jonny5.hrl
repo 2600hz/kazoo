@@ -1,14 +1,27 @@
--include_lib("couchbeam/include/couchbeam.hrl").
--include_lib("amqp_client/include/amqp_client.hrl").
--include_lib("whistle/include/wh_types.hrl").
+-ifndef(JONNY5_HRL).
+
 -include_lib("whistle/include/wh_amqp.hrl").
+-include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_log.hrl").
 -include_lib("whistle/include/wh_databases.hrl").
 
--define(APP_NAME, <<"jonny5">>).
--define(APP_VERSION, <<"0.2.0">>).
--define(BLACKLIST_SERVER, blacklist_server).
-
 -define(JONNY5_CACHE, jonny5_cache).
 
--type call_types() :: 'per_min' | 'twoway' | 'inbound'.
+-define(MONITOR_CALL(CallId), {monitor_call, CallId}).
+
+-define(JONNY5_HRL, true).
+
+-define(APP_VERSION, <<"2.0.0">>).
+-define(APP_NAME, <<"jonny5">>).
+
+-record(limits, {twoway_trunks = -1
+                 ,inbound_trunks = 0
+                 ,resource_consuming_calls = -1
+                 ,calls = -1
+                 ,allow_prepay = true
+                 ,allow_postpay = false
+                 ,max_postpay_amount = 0.0
+                 ,reserve_amount = 0.0
+                }).
+
+-endif.

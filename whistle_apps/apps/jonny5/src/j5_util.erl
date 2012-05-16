@@ -1,157 +1,118 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2012, VoIP INC
 %%% @doc
-%%% Util functions for shared actions
+%%% Handlers for various AMQP payloads
 %%% @end
-%%% Created :  2 Nov 2011 by James Aimonetti <james@2600hz.org>
+%%% @contributors
 %%%-------------------------------------------------------------------
 -module(j5_util).
 
--export([fetch_all_accounts/0, fetch_account/1, fetch_account_handler/1]).
-
--export([store_account_handler/2, uptime/1, current_usage/1]).
-
--export([preload_accounts/0, preload_trunkstore/0]).
-
--export([refresh_all_accounts/0, refresh_account/1]).
-
--export([write_debit_to_ledger/5, write_credit_to_ledger/5
-         ,write_debit_to_ledger/6, write_credit_to_ledger/6
-        ]).
+-export([get_limits/1]).
+-export([write_debit_to_ledger/3]).
+-export([write_credit_to_ledger/3]).
+-export([current_balance/1]).
 
 -include_lib("jonny5/src/jonny5.hrl").
 
--spec fetch_all_accounts/0 :: () -> wh_json:json_objects().
-fetch_all_accounts() ->
-    AcctPids = wh_cache:filter_local(?JONNY5_CACHE, fun({j5_authz, _}, _) -> true;
-                                                (_, _) -> false
-                                             end),
-    [j5_acctmgr:status(AcctPid) || {{j5_authz, _AcctID}, AcctPid} <- AcctPids, erlang:is_process_alive(AcctPid)].
+-define(LIMITS_KEY(AccountId), {limits, AccountId}).
 
--spec fetch_account/1 :: (ne_binary()) -> wh_json:json_object() | {'error', 'not_found'}.
-fetch_account(AcctID) ->
-    case fetch_account_handler(AcctID) of
-        {ok, Pid} -> j5_acctmgr:status(Pid);
-        {error, _}=E -> E
-    end.
-
--spec fetch_account_handler/1 :: (ne_binary()) -> {'ok', pid()} | {'error', 'not_found'}.
-fetch_account_handler(AcctID) ->
-    wh_cache:fetch_local(?JONNY5_CACHE, cache_account_handler_key(AcctID)).
-
--spec store_account_handler/2 :: (ne_binary(), pid() | 'undefined') -> 'ok'.
-store_account_handler(AcctID, undefined) ->
-    wh_cache:erase_local(?JONNY5_CACHE, cache_account_handler_key(AcctID));
-store_account_handler(AcctID, J5Pid) when is_pid(J5Pid) ->
-    wh_cache:store_local(?JONNY5_CACHE, cache_account_handler_key(AcctID), J5Pid, infinity).
-
-cache_account_handler_key(AcctID) ->
-    {j5_authz, AcctID}.
-
--spec preload_accounts/0 :: () -> [{'ok', pid()},...].
-preload_accounts() ->
-    {ok, Accts} = couch_mgr:get_results(?WH_ACCOUNTS_DB, <<"accounts/listing_by_id">>, []),
-    lager:debug("Loading ~b accounts", [length(Accts)]),
-    preload_accounts(Accts).
-
-preload_accounts(JObjs) ->
-    [ preload_account(wh_json:get_value(<<"id">>, JObj)) || JObj <- JObjs].
-
-preload_account(AcctID) ->
-    case fetch_account_handler(AcctID) of
-        {ok, _} -> ok;
+-spec get_limits/1 :: (ne_binary()) -> #limits{}.
+get_limits(Account) ->    
+    AccountId = wh_util:format_account_id(Account, raw),
+    AccountDb = wh_util:format_account_id(Account, encoded),
+    case wh_cache:peek_local(?JONNY5_CACHE, ?LIMITS_KEY(AccountId)) of
+        {ok, Limits} -> Limits; 
         {error, not_found} ->
-            jonny5_acct_sup:start_proc(AcctID)
+            JObj = case couch_mgr:open_doc(AccountDb, <<"limits">>) of
+                       {ok, J} -> J;
+                       {error, _R} ->
+                           lager:debug("failed to open limits doc in account db ~s", [AccountDb]),
+                           create_init_limits(AccountDb)
+                   end,
+            DefaultUsePrepay = whapps_config:get_is_true(<<"jonny5">>, <<"default_use_prepay">>, true),
+            DefaultPostpay = whapps_config:get_is_true(<<"jonny5">>, <<"default_allow_postpay">>, false),
+            DefaultMaxPostpay = whapps_config:get_float(<<"jonny5">>, <<"default_max_postpay_amount">>, 0.0),
+            DefaultPerMin = wapi_money:default_per_min_charge(),
+            DefaultReserve = whapps_config:get_float(<<"jonny5">>, <<"default_credit_reserve_amount">>, DefaultPerMin),
+            Limits = #limits{twoway_trunks = get_limit(<<"twoway_trunks">>, JObj)
+                             ,inbound_trunks = get_limit(<<"inbound_trunks">>, JObj)
+                             ,resource_consuming_calls = get_limit(<<"resource_consuming_calls">>, JObj)
+                             ,calls = get_limit(<<"calls">>, JObj)
+                             ,allow_prepay = wh_json:is_true(<<"allow_prepay">>, JObj, DefaultUsePrepay)
+                             ,allow_postpay = wh_json:is_true(<<"pvt_allow_postpay">>, JObj, DefaultPostpay)
+                             ,max_postpay_amount = wh_json:get_float_value(<<"pvt_max_postpay_amount">>, JObj, DefaultMaxPostpay)
+                             ,reserve_amount = wh_json:get_float_value(<<"pvt_credit_reserve_amount">>, JObj, DefaultReserve)
+                            },
+            wh_cache:store_local(?JONNY5_CACHE, ?LIMITS_KEY(AccountId), Limits, 900),
+            Limits
     end.
 
--spec preload_trunkstore/0 :: () -> [{'ok', pid()},...].
-preload_trunkstore() ->
-    {ok, TSAccts} = couch_mgr:get_results(<<"ts">>, <<"LookUpDID/DIDsByAcct">>, []), %% crappy way, make new view
-    lager:debug("Loading ~b trunkstore accounts", [length(TSAccts)]),
-    preload_accounts(TSAccts).
-
--spec refresh_all_accounts/0 :: () -> no_return().
-refresh_all_accounts() ->
-    AcctPids = wh_cache:filter_local(?JONNY5_CACHE, fun({j5_authz, _}, _) -> true;
-                                                       (_, _) -> false
-                                                    end),
-    [j5_acctmgr:refresh(AcctPid) || {{j5_authz, _AcctID}, AcctPid} <- AcctPids].
-
--spec refresh_account/1 :: (ne_binary()) -> 'ok'.
-refresh_account(AcctID) ->
-    {ok, AcctPid} = fetch_account_handler(AcctID),
-    j5_acctmgr:refresh(AcctPid).
-
--spec uptime/1 :: (pos_integer()) -> pos_integer().
-uptime(StartTime) ->
-    case wh_util:current_tstamp() - StartTime of
-        X when X =< 0 ->
-            1;
-        X -> X
+-spec get_limit/2 :: (ne_binary(), wh_json:json_object()) -> integer().
+get_limit(Key, JObj) ->
+    DefaultValue = whapps_config:get_integer(<<"jonny5">>, <<"default_", Key/binary>>, -1),
+    PublicValue =  wh_json:get_integer_value(Key, JObj, DefaultValue),
+    case wh_json:get_integer_value(<<"pvt_", Key/binary>>, JObj) of
+        undefined -> PublicValue;
+        -1 -> -1;
+        PrivateValue when PrivateValue < PublicValue -> PrivateValue;
+        _Else -> PublicValue
     end.
 
-write_debit_to_ledger(DB, CallID, CallType, DebitUnits, Duration) ->
-    write_debit_to_ledger(DB, CallID, CallType, DebitUnits, Duration, wh_json:new()).
-write_debit_to_ledger(DB, CallID, CallType, DebitUnits, Duration, JObj) ->
-    write_transaction_to_ledger(DB, CallID, CallType, DebitUnits, Duration, JObj, debit).
+-spec create_init_limits/1 :: (ne_binary()) -> wh_json:json_object().
+create_init_limits(AccountDb) ->
+    TStamp = wh_util:current_tstamp(),
+    JObj = wh_json:from_list([{<<"_id">>, <<"limits">>}
+                              ,{<<"pvt_account_db">>, AccountDb}
+                              ,{<<"pvt_account_id">>, wh_util:format_account_id(AccountDb, raw)}
+                              ,{<<"pvt_type">>, <<"limits">>}
+                              ,{<<"pvt_created">>, TStamp}
+                              ,{<<"pvt_modified">>, TStamp}
+                              ,{<<"pvt_vsn">>, 1}
+                             ]),
+    case couch_mgr:save_doc(AccountDb, JObj) of
+        {ok, J} -> 
+            lager:debug("created initial limits document in db ~s", [AccountDb]),
+            J;
+         {error, _R} ->
+            lager:debug("failed to create initial limits document in db ~s: ~p", [AccountDb, _R]),
+            wh_json:new()
+    end.
 
-write_credit_to_ledger(DB, CallID, CallType, CreditUnits, Duration) ->
-    write_credit_to_ledger(DB, CallID, CallType, CreditUnits, Duration, wh_json:new()).
-write_credit_to_ledger(DB, CallID, CallType, CreditUnits, Duration, JObj) ->
-    write_transaction_to_ledger(DB, CallID, CallType, CreditUnits, Duration, JObj, credit).
+-spec write_debit_to_ledger/3 :: (ne_binary(), ne_binary(), integer()) -> {'ok', wh_json:json_object()} |
+                                                                          {'error', _}.
+write_debit_to_ledger(Account, CallId, Units) ->
+    write_to_ledger(Account, CallId, Units, debit).
 
--spec write_transaction_to_ledger/7 :: (ne_binary(), ne_binary(), call_types(), integer(), integer(), wh_json:json_object(), 'debit' | 'credit') -> {'ok', wh_json:json_object()} | {'error', atom()}.
-write_transaction_to_ledger(DB, CallID, CallType, Units, Duration, JObj, DocType) when (CallType =:= twoway orelse CallType =:= inbound)
-                                                                                       andalso Units =/= 0 ->
-    write_transaction_to_ledger(DB, CallID, CallType, 0, Duration, JObj, DocType);
-write_transaction_to_ledger(DB, CallID, CallType, Units, Duration, JObj, DocType) ->
+-spec write_credit_to_ledger/3 :: (ne_binary(), ne_binary(), integer()) -> {'ok', wh_json:json_object()} |
+                                                                           {'error', _}.
+write_credit_to_ledger(Account, CallId, Units) ->
+    write_to_ledger(Account, CallId, Units, credit).
+
+
+-spec write_to_ledger/4 :: (ne_binary(), ne_binary(), integer(), debit | credit) -> {'ok', wh_json:json_object()} |
+                                                                                    {'error', _}.
+write_to_ledger(Account, CallId, Units, Type) ->
+    AccountId = wh_util:format_account_id(Account, raw),
+    AccountDb = wh_util:format_account_id(Account, encoded),    
     Timestamp = calendar:datetime_to_gregorian_seconds(calendar:universal_time()),
+    JObj = wh_json:from_list([{<<"call_id">>, CallId}
+                              ,{<<"reason">>, <<"create_call">>}
+                              ,{<<"amount">>, wh_util:to_integer(Units)}
+                              ,{<<"pvt_account_id">>, AccountId}
+                              ,{<<"pvt_account_db">>, AccountDb}
+                              ,{<<"pvt_type">>, wh_util:to_binary(Type)}
+                              ,{<<"pvt_created">>, Timestamp}
+                              ,{<<"pvt_modified">>, Timestamp}
+                              ,{<<"pvt_vsn">>, 1}
+                              ,{<<"pvt_whapp">>, ?APP_NAME}
+                             ]),
+    couch_mgr:save_doc(AccountDb, JObj).
 
-    AcctID = wh_json:get_value(<<"Account-ID">>, JObj, DB),
-    EvtTimestamp = wh_json:get_value(<<"Timestamp">>, JObj, <<>>),
-
-    ID = mk_id(CallID, AcctID, EvtTimestamp),
-
-    lager:debug("trying to write ~s to ~s for doc ~s", [ID, DB, DocType]),
-
-    TransactionJObj = wh_json:from_list([{<<"call_id">>, CallID}
-                                         ,{<<"call_type">>, CallType}
-                                         ,{<<"call_duration">>, wh_util:to_integer(Duration)}
-                                         ,{<<"amount">>, wh_util:to_integer(Units)}
-                                         ,{<<"pvt_account_id">>, wh_util:format_account_id(AcctID, raw)}
-                                         ,{<<"pvt_account_db">>, wh_util:format_account_id(AcctID, encoded)}
-                                         ,{<<"pvt_type">>, DocType}
-                                         ,{<<"pvt_created">>, Timestamp}
-                                         ,{<<"pvt_modified">>, Timestamp}
-                                         ,{<<"pvt_vsn">>, ?APP_VERSION}
-                                         ,{<<"pvt_whapp">>, ?APP_NAME}
-                                         ,{<<"_id">>, ID}
-                                        ]),
-    couch_mgr:save_doc(DB, TransactionJObj).
-
--spec mk_id/3 :: (ne_binary(), ne_binary(), ne_binary() | pos_integer()) -> ne_binary() | 'undefined'.
-mk_id(CallID, AcctID, Tstamp) ->
-    Suffix = case wh_util:is_empty(Tstamp) of
-                 true -> <<>>;
-                 false -> [<<"-">>, (wh_util:to_binary(Tstamp))]
-             end,
-    case wh_util:is_empty(CallID) of
-        true -> mk_id(AcctID, Suffix);
-        false -> mk_id(CallID, Suffix)
-    end.
-
--spec mk_id/2 :: (binary(), binary()) -> ne_binary() | 'undefined'.
-mk_id(Prefix, Suffix) ->
-    case wh_util:is_empty(Prefix) of
-        true -> undefined;
-        false -> list_to_binary(["transaction-", Prefix, Suffix])
-    end.
-
--spec current_usage/1 :: (ne_binary()) -> integer().
-current_usage(AcctID) ->
-    DB = wh_util:format_account_id(AcctID, encoded),
-    case couch_mgr:get_results(DB, <<"transactions/credit_remaining">>, [{<<"reduce">>, true}]) of
+-spec current_balance/1 :: (ne_binary()) -> integer().
+current_balance(Account) ->
+    AccountDb = wh_util:format_account_id(Account, encoded),    
+    ViewOptions = [{<<"reduce">>, true}],
+    case couch_mgr:get_results(AccountDb, <<"transactions/credit_remaining">>, ViewOptions) of
         {ok, []} -> 0;
         {ok, [ViewRes|_]} -> wh_json:get_integer_value(<<"value">>, ViewRes, 0);
         {error, _} -> 0

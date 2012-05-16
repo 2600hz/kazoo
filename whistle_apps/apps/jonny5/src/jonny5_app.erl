@@ -1,29 +1,38 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2012, VoIP, INC
 %%% @doc
 %%%
 %%% @end
-%%% Created :  7 Jul 2011 by James Aimonetti <james@2600hz.org>
+%%% @contributors
 %%%-------------------------------------------------------------------
 -module(jonny5_app).
 
 -behaviour(application).
 
-%% Application callbacks
+-include_lib("whistle/include/wh_types.hrl").
+
 -export([start/2, stop/1]).
 
-%% ===================================================================
-%% Application callbacks
-%% ===================================================================
-
--spec(start/2 :: (StartType :: term(), StartArgs :: term()) -> tuple(ok, pid()) | tuple(error, term())).
-start(_StartType, _StartArgs) ->
-    case jonny5:start_link() of
-	{ok, P} -> {ok, P};
-	{error, {already_started, P} } -> {ok, P};
-	{error, _}=E -> E
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Implement the application start behaviour
+%% @end
+%%--------------------------------------------------------------------
+-spec start/2 :: (term(), term()) -> {'ok', pid()} | {'error', startlink_err()}.
+start(_Type, _Args) ->
+    case jonny5_sup:start_link() of
+        {ok, P} -> {ok, P};
+        {error, {already_started, P} } -> {ok, P};
+        {error, _}=E -> E
     end.
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Implement the application stop behaviour
+%% @end
+%%--------------------------------------------------------------------
+-spec stop/1 :: (term()) -> 'ok'.
 stop(_State) ->
     ok.
