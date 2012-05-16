@@ -34,7 +34,7 @@ maybe_authorize_channel(Props, Node) ->
             lager:debug("channel does not require authorization, allowing call", []),
             true;
         true -> 
-            case authorize(Props) of
+            case authorize(Props, Node) of
                 true -> true;
                 false -> 
                     kill_uuid(Props, Node),
@@ -42,8 +42,8 @@ maybe_authorize_channel(Props, Node) ->
             end
     end.
 
--spec authorize/1 :: (proplist()) -> 'ok'.
-authorize(Props) ->
+-spec authorize/2 :: (proplist(), atom()) -> 'ok'.
+authorize(Props, Node) ->
     lager:debug("channel authorization request started"),
     ReqResp = wh_amqp_worker:call(?ECALLMGR_AMQP_POOL
                                   ,request(Props)
@@ -54,16 +54,23 @@ authorize(Props) ->
             lager:debug("authz request lookup failed: ~p", [_R]),
             default();                 
         {ok, RespJObj} ->
-            handle_authz_response(RespJObj)
+            handle_authz_response(RespJObj, Node)
     end.
 
--spec handle_authz_response/1 :: (wh_json:json_object()) -> boolean().
-handle_authz_response(JObj) ->
+-spec handle_authz_response/2 :: (wh_json:json_object(), atom()) -> boolean().
+handle_authz_response(JObj, Node) ->
     case wh_util:is_true(wh_json:get_value(<<"Is-Authorized">>, JObj)) of
         true -> 
             lager:debug("channel authorization received affirmative response, allowing call", []),
             wapi_authz:publish_win(wh_json:get_value(<<"Server-ID">>, JObj)
                                    ,wh_json:delete_key(<<"Event-Name">>, JObj)),
+            case wh_json:get_value(<<"Type">>, JObj) of
+                <<"per_minute">> ->
+                    CallId = wh_json:get_value(<<"Call-ID">>, JObj),    
+                    lager:debug("call authorized as per-minute, ensuring call event process for ~s exists", [CallId]),
+                    {ok, _} = ecallmgr_call_sup:start_event_process(Node, CallId);
+                _Else -> ok
+            end,
             true;
         false ->
             lager:debug("channel authorization received negative response", []),

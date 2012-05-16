@@ -23,9 +23,7 @@
 
 -record(state, {}).
 
--define(RESPONDERS, [{j5_authz_req, [{<<"dialplan">>, <<"authz_req">>}]}
-                     ,{j5_authz_win, [{<<"dialplan">>, <<"authz_win">>}]}
-                    ]).
+-define(RESPONDERS, [{j5_authz_req, [{<<"dialplan">>, <<"authz_req">>}]}]).
 -define(BINDINGS, [{authz, []}
                    ,{self, []}
                   ]).

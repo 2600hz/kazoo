@@ -88,7 +88,6 @@ write_debit_to_ledger(Account, CallId, Units) ->
 write_credit_to_ledger(Account, CallId, Units) ->
     write_to_ledger(Account, CallId, Units, credit).
 
-
 -spec write_to_ledger/4 :: (ne_binary(), ne_binary(), integer(), debit | credit) -> {'ok', wh_json:json_object()} |
                                                                                     {'error', _}.
 write_to_ledger(Account, CallId, Units, Type) ->
