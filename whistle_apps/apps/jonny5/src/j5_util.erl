@@ -144,4 +144,3 @@ get_session_id(JObj) ->
             wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Billing-ID">>], JObj, CallId);
         BridgeId -> BridgeId
     end.
-    
