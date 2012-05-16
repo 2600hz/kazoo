@@ -140,7 +140,7 @@ rate_channel(Props) ->
             lager:debug("rate request lookup failed: ~p", [_R]);
         {ok, RespJObj} ->
             set_rating_ccvs(RespJObj)
-    end.    
+    end.
 
 -spec kill_channel/2 :: (proplist(), atom()) -> 'ok'.
 -spec kill_channel/3 :: (ne_binary(), ne_binary(), atom()) -> 'ok'.

@@ -74,11 +74,11 @@ credit_is_available(Limits, JObj) ->
     AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
     Balance = j5_util:current_balance(AccountId),
     case prepay_is_available(Limits, Balance, JObj) of
-        true -> true;
+        {ok, _}=Ok -> Ok;
         false -> postpay_is_available(Limits, Balance, JObj)
     end.             
              
--spec prepay_is_available/3 :: (#limits{}, integer(), wh_json:json_object()) -> boolean().
+-spec prepay_is_available/3 :: (#limits{}, integer(), wh_json:json_object()) -> false | {'ok', pid()}.
 prepay_is_available(#limits{allow_prepay=false}, _, _) ->
     false;
 prepay_is_available(#limits{allow_prepay=true, reserve_amount=ReserveAmount}, Balance,JObj) ->
@@ -90,7 +90,7 @@ prepay_is_available(#limits{allow_prepay=true, reserve_amount=ReserveAmount}, Ba
             true
     end.
 
--spec postpay_is_available/3 :: (#limits{}, integer(), wh_json:json_object()) -> boolean().
+-spec postpay_is_available/3 :: (#limits{}, integer(), wh_json:json_object()) -> false | {'ok', pid()}.
 postpay_is_available(#limits{allow_postpay=false}, _, _) ->
     false;
 postpay_is_available(#limits{allow_postpay=true, max_postpay_amount=MaxPostpay
