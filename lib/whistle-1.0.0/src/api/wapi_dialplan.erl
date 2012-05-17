@@ -25,6 +25,7 @@
 -export([redirect/1, redirect_v/1]).
 -export([progress/1, progress_v/1]).
 -export([ring/1, ring_v/1]).
+-export([receive_fax/1, receive_fax_v/1]).
 -export([execute_extension/1, execute_extension_v/1]).
 -export([play/1, play_v/1, playstop/1, playstop_v/1]).
 -export([record/1, record_v/1]).
@@ -419,6 +420,26 @@ ring_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?RING_REQ_HEADERS, ?RING_REQ_VALUES, ?RING_REQ_TYPES);
 ring_v(JObj) ->
     ring_v(wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
+%% @doc Receive a fax, storing it to local disk - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec receive_fax/1 :: (api_terms()) -> api_formatter_return().
+receive_fax(Prop) when is_list(Prop) ->
+    case receive_fax_v(Prop) of
+        true -> wh_api:build_message(Prop, ?RECV_FAX_HEADERS, ?OPTIONAL_RECV_FAX_HEADERS);
+        false -> {error, "Proplist failed validation for receive_fax"}
+    end;
+receive_fax(JObj) ->
+    receive_fax(wh_json:to_proplist(JObj)).
+
+-spec receive_fax_v/1 :: (api_terms()) -> boolean().
+receive_fax_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?RECV_FAX_HEADERS, ?RECV_FAX_VALUES, ?RECV_FAX_TYPES);
+receive_fax_v(JObj) ->
+    receive_fax_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc Hangup a call - see wiki
