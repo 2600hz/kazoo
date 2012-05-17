@@ -540,7 +540,7 @@ rm_fs_node(Node, #state{nodes=Nodes}=State) ->
 close_node(#node{node=Node}) ->
     close_node(Node);
 close_node(Node) ->
-    erlang:monitor_node(Node, false),
+    catch erlang:monitor_node(Node, false), % will crash if Node is down already
     _ = ecallmgr_fs_pinger_sup:remove_node(Node),
     ecallmgr_fs_sup:remove_node(Node).
 
