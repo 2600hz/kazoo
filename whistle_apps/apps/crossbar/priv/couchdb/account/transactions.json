@@ -5,9 +5,9 @@
         "credit_remaining": {
             "map": "function(doc) { if ( (doc.pvt_type != 'credit' && doc.pvt_type != 'debit') || doc.pvt_deleted) return; var modifier = (doc.pvt_type == 'credit' ? 1 : -1); emit(null, doc.amount * modifier); }"
             ,"reduce": "_sum"
-        },
-        "minutes_consumed": {
-            "map": "function(doc) { if ( (doc.pvt_type != 'credit' && doc.pvt_type != 'debit') || doc.pvt_deleted || typeof doc.call_duration === 'undefined') return; emit(doc.call_type, doc.call_duration || 0); }"
+        }
+        ,"bridge_cost": {
+            "map": "function(doc) { if ( (doc.pvt_type != 'credit' && doc.pvt_type != 'debit') || doc.pvt_deleted || !doc.bridge_id) return; var modifier = (doc.pvt_type == 'credit' ? 1 : -1); emit(doc.bridge_id, doc.amount * modifier);  }"
             ,"reduce": "_sum"
         }
         ,"by_timestamp": {

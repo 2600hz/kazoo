@@ -15,6 +15,7 @@
 handle_req(JObj, _Props) ->
     true = wapi_authz:update_v(JObj),
     wh_util:put_callid(JObj),
+    timer:sleep(crypto:rand_uniform(0, 1000)),
     case wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Per-Minute">>], JObj) of
         <<"true">> -> reconcile(JObj);
         _Else -> ok
@@ -35,6 +36,9 @@ reconcile(JObj) ->
         Time ->
             Debit = whapps_util:calculate_cost(Rate, RateIncr, 0, 0.0, Time + 60)
                 - whapps_util:calculate_cost(Rate, RateIncr, 0, 0.0, Time),
-            j5_util:write_debit_to_ledger(JObj, Debit),
-            io:format("debit ~p for ~p + ~p seconds as of talk time...~n", [Debit, Time, RateIncr])
+            case j5_util:write_debit_to_ledger(Timestamp, Debit, JObj) of
+                {error, conflict} -> ok;
+                {ok, _} ->
+                    lager:debug("debited $~w for an additional 60 seconds of talk time at $~w/~ws", [Debit, Rate, RateIncr])
+            end
     end.    
