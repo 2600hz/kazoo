@@ -87,6 +87,7 @@ handle_authz_response(Props, JObj, Node) ->
             case wh_json:get_value(<<"Type">>, JObj) of
                 <<"per_minute">> ->
                     lager:debug("call authorized as per_minute, setting flag", []),
+                    ecallmgr_fs_nodes:channel_set_per_minute(CallId, true),
                     spawn(fun() -> request_rating(Props) end),
                     ecallmgr_util:send_cmd(Node, CallId, "set", <<?CHANNEL_VAR_PREFIX, "Per-Minute=true">>);
                 _Else -> 

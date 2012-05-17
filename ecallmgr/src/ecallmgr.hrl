@@ -37,6 +37,7 @@
                   ,username=undefined
                   ,import_moh=true
                   ,node=undefined
+                  ,per_minute=false
                   ,timestamp=wh_util:current_tstamp()
                  }).
 
