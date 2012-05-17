@@ -30,6 +30,7 @@
 -export([channel_match_presence/1]).
 -export([channel_exists/1]).
 -export([channel_import_moh/1]).
+-export([channel_set_per_minute/2]).
 -export([channel_set_import_moh/2]).
 -export([fetch_channel/1]).
 -export([destroy_channel/2]).
@@ -59,8 +60,10 @@
 -record(astats, {billing_ids=[]
                  ,using_res=[]
                  ,outbound_bridges=[]
-                 ,outbound_res=0
-                 ,inbound_res=0
+                 ,outbound_fr=0
+                 ,inbound_fr=0
+                 ,outbound_pm=0
+                 ,inbound_pm=0
                  ,calls_using_res=0
                 }).
 
@@ -153,7 +156,7 @@ channel_node(UUID) ->
                            ,account_id = '_', authorizing_id = '_', resource_id = '_'
                            ,authorizing_type = '_', owner_id = '_', presence_id = '$2'
                            ,billing_id = '_', bridge_id = '_', realm = '_', username = '_'
-                           ,import_moh = '_', node = '$3', timestamp = '_'
+                           ,import_moh = '_', node = '$3', per_minute = '_', timestamp = '_'
                           },
                   [{'=:=', '$1', {const, UUID}}],
                   ['$3']}
@@ -183,10 +186,10 @@ channel_account_summary(AccountId) ->
                            ,account_id = '$2', authorizing_id = '$3', resource_id = '$4'
                            ,authorizing_type = '_', owner_id = '_', presence_id = '_'
                            ,billing_id = '$5', bridge_id = '$6', realm = '_', username = '_'
-                           ,import_moh = '_', node = '_', timestamp = '_'
+                           ,import_moh = '_', node = '_', per_minute = '$7', timestamp = '_'
                           },
                   [{'=:=', '$2', {const, AccountId}}],
-                  [{{'$1', '$5', '$3', '$6', '$4'}}]}
+                  [{{'$1', '$5', '$3', '$6', '$4', '$7'}}]}
                 ],  
     ets:select(ecallmgr_channels, MatchSpec).    
  
@@ -196,12 +199,16 @@ channel_match_presence(PresenceId) ->
                            ,account_id = '_', authorizing_id = '_', resource_id = '_'
                            ,authorizing_type = '_', owner_id = '_', presence_id = '$2'
                            ,billing_id = '_', bridge_id = '_', realm = '_', username = '_'
-                           ,import_moh = '_', node = '$3', timestamp = '_'
+                           ,import_moh = '_', node = '$3', per_minute = '_', timestamp = '_'
                           },
                   [{'=:=', '$2', {const, PresenceId}}],
                   [{{'$1', '$3'}}]}
                 ],  
     ets:select(ecallmgr_channels, MatchSpec).
+
+-spec channel_set_per_minute/2 :: (ne_binary(), boolean()) -> 'ok'.                                                          
+channel_set_per_minute(UUID, PerMinute) ->
+    gen_server:cast(?MODULE, {channel_update, UUID, {#channel.per_minute, PerMinute}}).    
 
 -spec channel_set_import_moh/2 :: (ne_binary(), boolean()) -> 'ok'.                                                          
 channel_set_import_moh(UUID, Import) ->
@@ -233,6 +240,7 @@ props_to_channel_record(Props, Node) ->
              ,billing_id=props:get_value(<<"variable_", ?CHANNEL_VAR_PREFIX, "Billing-ID">>, Props)
              ,bridge_id=props:get_value(<<"variable_", ?CHANNEL_VAR_PREFIX, "Bridge-ID">>, Props)
              ,node=Node
+             ,per_minute=props:get_value(<<"variable_", ?CHANNEL_VAR_PREFIX, "Per-Minute">>, Props) =:= <<"true">>
              ,timestamp=wh_util:current_tstamp()
             }.
     
@@ -252,6 +260,7 @@ channel_record_to_json(Channel) ->
                        ,{<<"billing_id">>, Channel#channel.billing_id}
                        ,{<<"bridge_id">>, Channel#channel.bridge_id}
                        ,{<<"node">>, Channel#channel.node}
+                       ,{<<"per_minute">>, Channel#channel.per_minute}
                        ,{<<"timestamp">>, Channel#channel.timestamp}
                       ]).
 
@@ -358,7 +367,7 @@ handle_cast({sync_channels, Node, Channels}, State) ->
                            ,account_id = '_', authorizing_id = '_', resource_id = '_'
                            ,authorizing_type = '_', owner_id = '_', presence_id = '_'
                            ,billing_id = '_', bridge_id = '_', realm = '_', username = '_'
-                           ,import_moh = '_', node = '$2', timestamp = '_'
+                           ,import_moh = '_', node = '$2', per_minute = '_', timestamp = '_'
                           },
                   [{'=:=', '$2', {const, Node}}],
                   ['$1']}
@@ -389,7 +398,7 @@ handle_cast({flush_node_channels, Node}, State) ->
                            ,account_id = '_', authorizing_id = '_', resource_id = '_'
                            ,authorizing_type = '_', owner_id = '_', presence_id = '_'
                            ,billing_id = '_', bridge_id = '_', realm = '_', username = '_'
-                           ,import_moh = '_', node = '$1', timestamp = '_'
+                           ,import_moh = '_', node = '$1', per_minute = '_', timestamp = '_'
                           },
                   [{'=:=', '$1', {const, Node}}],
                   ['true']}
@@ -587,22 +596,24 @@ summarize_account_usage(Channels) ->
     AStats = summarize_account_usage(Channels, #astats{}),
     wh_json:from_list([{<<"Calls">>, length(AStats#astats.billing_ids)}
                        ,{<<"Channels">>,  length(Channels)}
-                       ,{<<"Outbound-Resources">>, AStats#astats.outbound_res}
-                       ,{<<"Inbound-Resources">>, AStats#astats.inbound_res}
+                       ,{<<"Outbound-Flat-Rate">>, AStats#astats.outbound_fr}
+                       ,{<<"Inbound-Flat-Rate">>, AStats#astats.inbound_fr}
+                       ,{<<"Outbound-Per-Minute">>, AStats#astats.outbound_pm}
+                       ,{<<"Inbound-Per-Minute">>, AStats#astats.inbound_pm}
                        ,{<<"Resource-Consuming-Calls">>, AStats#astats.calls_using_res}
                       ]).
 
 -spec summarize_account_usage/2 :: (_, #astats{}) -> #astats{}.
 summarize_account_usage([], AStats) ->
     AStats;
-summarize_account_usage([{<<"outbound">>, BillingId, _, BridgeId, ResourceId}|Channels], AStats) when ResourceId =/= undefined -> 
+summarize_account_usage([{<<"outbound">>, BillingId, _, BridgeId, ResourceId, true}|Channels], AStats) when ResourceId =/= undefined -> 
     Routines = [fun(#astats{billing_ids=I}=A) -> 
                         A#astats{billing_ids=[BillingId|lists:delete(BillingId, I)]}
                  end
-                ,fun(#astats{outbound_res=O, outbound_bridges=B}=A) ->
+                ,fun(#astats{outbound_pm=O, outbound_bridges=B}=A) ->
                          case lists:member(BridgeId, B) of
                              true -> A;
-                             false -> A#astats{outbound_res=O + 1
+                             false -> A#astats{outbound_pm=O + 1
                                                ,outbound_bridges=[BridgeId|lists:delete(BridgeId, B)]
                                               }
                          end
@@ -617,11 +628,11 @@ summarize_account_usage([{<<"outbound">>, BillingId, _, BridgeId, ResourceId}|Ch
                  end
                ],
     summarize_account_usage(Channels, lists:foldr(fun(F, A) -> F(A) end, AStats, Routines));
-summarize_account_usage([{<<"inbound">>, BillingId, undefined, _, _}|Channels], AStats) -> 
+summarize_account_usage([{<<"inbound">>, BillingId, undefined, _, _, true}|Channels], AStats) -> 
     Routines = [fun(#astats{billing_ids=I}=A) -> 
                         A#astats{billing_ids=[BillingId|lists:delete(BillingId, I)]}
                  end
-                ,fun(#astats{inbound_res=O}=A) -> A#astats{inbound_res=O + 1} end
+                ,fun(#astats{inbound_pm=O}=A) -> A#astats{inbound_pm=O + 1} end
                 ,fun(#astats{calls_using_res=C, using_res=U}=A) ->
                          case lists:member(BillingId, U) of
                              true -> A;
@@ -632,7 +643,45 @@ summarize_account_usage([{<<"inbound">>, BillingId, undefined, _, _}|Channels], 
                  end
                ],
     summarize_account_usage(Channels, lists:foldr(fun(F, A) -> F(A) end, AStats, Routines));
-summarize_account_usage([{_, BillingId, _, _, _}|Channels], AStats) ->
+
+summarize_account_usage([{<<"outbound">>, BillingId, _, BridgeId, ResourceId, _}|Channels], AStats) when ResourceId =/= undefined -> 
+    Routines = [fun(#astats{billing_ids=I}=A) -> 
+                        A#astats{billing_ids=[BillingId|lists:delete(BillingId, I)]}
+                 end
+                ,fun(#astats{outbound_fr=O, outbound_bridges=B}=A) ->
+                         case lists:member(BridgeId, B) of
+                             true -> A;
+                             false -> A#astats{outbound_fr=O + 1
+                                               ,outbound_bridges=[BridgeId|lists:delete(BridgeId, B)]
+                                              }
+                         end
+                 end
+                ,fun(#astats{calls_using_res=C, using_res=U}=A) ->
+                         case lists:member(BillingId, U) of
+                             true -> A;
+                             false -> A#astats{calls_using_res=C + 1
+                                               ,using_res=[BillingId|lists:delete(BillingId, U)]
+                                              }
+                         end
+                 end
+               ],
+    summarize_account_usage(Channels, lists:foldr(fun(F, A) -> F(A) end, AStats, Routines));
+summarize_account_usage([{<<"inbound">>, BillingId, undefined, _, _, _}|Channels], AStats) -> 
+    Routines = [fun(#astats{billing_ids=I}=A) -> 
+                        A#astats{billing_ids=[BillingId|lists:delete(BillingId, I)]}
+                 end
+                ,fun(#astats{inbound_fr=O}=A) -> A#astats{inbound_fr=O + 1} end
+                ,fun(#astats{calls_using_res=C, using_res=U}=A) ->
+                         case lists:member(BillingId, U) of
+                             true -> A;
+                             false -> A#astats{calls_using_res=C + 1
+                                               ,using_res=[BillingId|lists:delete(BillingId, U)]
+                                              }
+                         end
+                 end
+               ],
+    summarize_account_usage(Channels, lists:foldr(fun(F, A) -> F(A) end, AStats, Routines));
+summarize_account_usage([{_, BillingId, _, _, _, _}|Channels], AStats) ->
     Routines = [fun(#astats{billing_ids=I}=A) -> 
                         A#astats{billing_ids=[BillingId|lists:delete(BillingId, I)]}
                  end
