@@ -63,9 +63,9 @@ resource_consumption_at_limit(#limits{resource_consuming_calls=Resources}, JObj)
 
 -spec trunks_at_limit/2 :: (#limits{}, wh_json:json_object()) -> boolean().
 trunks_at_limit(Limits, JObj) ->
-    InboundResources = wh_json:get_integer_value([<<"Usage">>, <<"Inbound-Resources">>], JObj, 0),
+    InboundResources = wh_json:get_integer_value([<<"Usage">>, <<"Inbound-Flat-Rate">>], JObj, 0),
     RemainingInbound = consume_inbound_limits(Limits, InboundResources),
-    OutboundResources = wh_json:get_integer_value([<<"Usage">>, <<"Outbound-Resources">>], JObj, 0),
+    OutboundResources = wh_json:get_integer_value([<<"Usage">>, <<"Outbound-Flat-Rate">>], JObj, 0),
     consume_twoway_limits(Limits, RemainingInbound + OutboundResources) < 0.    
 
 -spec credit_is_available/2 :: (#limits{}, wh_json:json_object()) -> boolean().
