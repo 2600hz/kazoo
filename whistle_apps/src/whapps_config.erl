@@ -213,9 +213,7 @@ get(Category0, Keys, Default, Node0) ->
                             lager:debug("missing key ~s(~s) ~p: ~p", [Category, Node, Keys, Default]),
                             _ = set_default(Category, Keys, Default),
                             Default;
-                        Else ->
-                            lager:debug("fetched config ~s(default) ~p: ~p", [Category, Keys, Else]),
-                            Else
+                        Else -> Else
                     end;
                 Else ->
                     lager:debug("fetched config ~s(~s) ~p: ~p", [Category, Node, Keys, Else]),
