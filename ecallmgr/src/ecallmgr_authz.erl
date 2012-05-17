@@ -35,9 +35,7 @@ maybe_authorize_channel(Props, Node) ->
             CallId = props:get_value(<<"Unique-ID">>, Props),
             ecallmgr_util:send_cmd(Node, CallId, "set", <<"api_on_answer=uuid_session_heartbeat ", CallId/binary, " 60">>),
             case authorize(Props, Node) of
-                true -> 
-                    spawn(fun() -> request_rating(Props) end),
-                    true;
+                true -> true;
                 false -> 
                     kill_uuid(Props, Node),
                     false
@@ -61,7 +59,7 @@ authorize(Props, Node) ->
             lager:debug("authz request lookup failed: ~p", [_R]),
             default();                 
         {ok, RespJObj} ->
-            handle_authz_response(RespJObj, Node)
+            handle_authz_response(Props, RespJObj, Node)
     end.
 
 -spec request_rating/1 :: (proplist()) -> 'ok'.
@@ -78,8 +76,8 @@ request_rating(Props) ->
             set_rating_ccvs(RespJObj)
     end.    
 
--spec handle_authz_response/2 :: (wh_json:json_object(), atom()) -> boolean().
-handle_authz_response(JObj, Node) ->
+-spec handle_authz_response/3 :: (proplist(), wh_json:json_object(), atom()) -> boolean().
+handle_authz_response(Props, JObj, Node) ->
     case wh_util:is_true(wh_json:get_value(<<"Is-Authorized">>, JObj)) of
         true -> 
             lager:debug("channel authorization received affirmative response, allowing call", []),
@@ -89,9 +87,12 @@ handle_authz_response(JObj, Node) ->
             case wh_json:get_value(<<"Type">>, JObj) of
                 <<"per_minute">> ->
                     lager:debug("call authorized as per_minute, setting flag", []),
+                    spawn(fun() -> request_rating(Props) end),
                     ecallmgr_util:send_cmd(Node, CallId, "set", <<?CHANNEL_VAR_PREFIX, "Per-Minute=true">>);
                 _Else -> 
                     lager:debug("call authorized as ~s", [_Else]),
+                    %% this may fail, depends how fast they answered. Doesnt really matter tho...
+                    ecallmgr_util:send_cmd(Node, CallId, "set", <<"api_on_answer=">>),
                     ok
             end,
             true;
