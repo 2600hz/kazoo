@@ -247,6 +247,14 @@ get_fs_app(Node, UUID, JObj, <<"ring">>) ->
         end,
     {<<"ring_ready">>, <<>>};
 
+%% receive a fax from the caller
+get_fs_app(_Node, UUID, _JObj, <<"receive_fax">>) ->
+    [{<<"playback">>, <<"silce_stream://2000">>}
+     ,{<<"rxfax">>, filename:join([ecallmgr_config:get(<<"fax_file_path">>, <<"/tmp/">>)
+                                   ,<<(amqp_util:encode(UUID))/binary, ".tiff">>
+                                  ])}
+    ];
+
 get_fs_app(_Node, _UUID, _JObj, <<"hold">>) ->
     {<<"endless_playback">>, <<"${hold_music}">>};
 
