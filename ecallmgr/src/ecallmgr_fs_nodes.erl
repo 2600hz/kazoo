@@ -291,6 +291,7 @@ props_to_channel_record(Props, Node) ->
              ,billing_id=props:get_value(<<"variable_", ?CHANNEL_VAR_PREFIX, "Billing-ID">>, Props)
              ,bridge_id=props:get_value(<<"variable_", ?CHANNEL_VAR_PREFIX, "Bridge-ID">>, Props)
              ,node=Node
+             ,per_minute=props:get_value(<<"variable_", ?CHANNEL_VAR_PREFIX, "Per-Minute">>, Props) =:= <<"true">>
              ,timestamp=wh_util:current_tstamp()
             }.
     
@@ -315,6 +316,7 @@ channel_record_to_json(Channel) ->
                        ,{<<"billing_id">>, Channel#channel.billing_id}
                        ,{<<"bridge_id">>, Channel#channel.bridge_id}
                        ,{<<"node">>, Channel#channel.node}
+                       ,{<<"per_minute">>, Channel#channel.per_minute}
                        ,{<<"timestamp">>, Channel#channel.timestamp}
                       ]).
 
@@ -421,7 +423,7 @@ handle_cast({sync_channels, Node, Channels}, State) ->
     MatchSpec = [{#channel{uuid = '$1', node = '$2'}
                   ,[{'=:=', '$2', {const, Node}}]
                   ,['$1']}
-                ],  
+                ],
     CachedChannels = sets:from_list(ets:select(ecallmgr_channels, MatchSpec)),
     SyncChannels = sets:from_list(Channels),
     Remove = sets:subtract(CachedChannels, SyncChannels),
@@ -675,6 +677,7 @@ summarize_account_usage([{<<"outbound">>, BillingId, _, BridgeId, ResourceId, <<
                  end
                ],
     summarize_account_usage(Channels, lists:foldr(fun(F, A) -> F(A) end, AStats, Routines));
+
 summarize_account_usage([{<<"inbound">>, BillingId, undefined, _, _, <<"per_minute">>}|Channels], AStats) -> 
     Routines = [fun(#astats{billing_ids=I}=A) -> 
                         A#astats{billing_ids=[BillingId|lists:delete(BillingId, I)]}
