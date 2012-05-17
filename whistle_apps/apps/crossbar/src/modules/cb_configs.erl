@@ -67,7 +67,7 @@ allowed_methods(_) ->
 %%    /configs/foo/bar => [<<"foo">>, <<"bar">>]
 %% @end
 %%--------------------------------------------------------------------
--spec resource_exists/0 :: () -> 'true'.
+-spec resource_exists/0 :: () -> 'false'.
 -spec resource_exists/1 :: (path_tokens()) -> 'true'.
 resource_exists() -> false.
 resource_exists(_) -> true.
