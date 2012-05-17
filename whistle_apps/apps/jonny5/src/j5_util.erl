@@ -8,9 +8,10 @@
 -module(j5_util).
 
 -export([get_limits/1]).
--export([write_debit_to_ledger/2]).
-%%-export([write_credit_to_ledger/3]).
+-export([write_debit_to_ledger/3]).
+-export([write_credit_to_ledger/3]).
 -export([current_balance/1]).
+-export([bridge_cost/2]).
 
 -include_lib("jonny5/src/jonny5.hrl").
 
@@ -77,45 +78,59 @@ create_init_limits(AccountDb) ->
             wh_json:new()
     end.
 
--spec write_debit_to_ledger/2 :: (wh_json:json_object(), float()) -> {'ok', wh_json:json_object()} |
-                                                                       {'error', _}.
-write_debit_to_ledger(JObj, Units) ->
-    write_to_ledger(JObj, Units, debit).
+-spec write_debit_to_ledger/3 :: (ne_binary(), float(), wh_json:json_object()) -> {'ok', wh_json:json_object()} |
+                                                                                  {'error', _}.
+write_debit_to_ledger(Suffix, Units, JObj) ->
+    write_to_ledger(Suffix, Units, JObj, debit).
 
-%%-spec write_credit_to_ledger/3 :: (ne_binary(), ne_binary(), integer()) -> {'ok', wh_json:json_object()} |
-%%                                                                           {'error', _}.
-%%write_credit_to_ledger(Id, Account, Units) ->
-%%    write_to_ledger(Id, Account, Units, credit).
+-spec write_credit_to_ledger/3 :: (ne_binary(), float(), wh_json:json_object()) -> {'ok', wh_json:json_object()} |
+                                                                                     {'error', _}.
+write_credit_to_ledger(Suffix, Units, JObj) ->
+    write_to_ledger(Suffix, Units, JObj, credit).
 
--spec write_to_ledger/3 :: (wh_json:json_object(), float(), debit | credit) -> {'ok', wh_json:json_object()} |
-                                                                                 {'error', _}.
-write_to_ledger(JObj, Units, Type) ->
+-spec write_to_ledger/4 :: (ne_binary(), float(), wh_json:json_object(), debit | credit) -> {'ok', wh_json:json_object()} |
+                                                                                            {'error', _}.
+write_to_ledger(Suffix, Units, JObj, Type) ->
     AccountId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj),
     AccountDb = wh_util:format_account_id(AccountId, encoded),    
-    Timestamp = wh_json:get_binary_value(<<"Timestamp">>, JObj, <<"start">>),
+    Timestamp = wh_json:get_binary_value(<<"Timestamp">>, JObj, wh_util:current_tstamp()),
+    CallId = wh_json:get_value(<<"Call-ID">>, JObj),
     BridgeId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Bridge-ID">>], JObj),
-    Id = <<BridgeId/binary, "-", Timestamp/binary>>,
+    Id = <<BridgeId/binary, "-", (wh_util:to_binary(Suffix))/binary>>,
     Entry = wh_json:from_list([{<<"_id">>, Id}
                                ,{<<"reason">>, <<"per_minute_call">>}
                                ,{<<"bridge_id">>, BridgeId}
+                               ,{<<"call_id">>, CallId}
                                ,{<<"amount">>, wapi_money:dollars_to_units(Units)}
                                ,{<<"pvt_account_id">>, AccountId}
                                ,{<<"pvt_account_db">>, AccountDb}
                                ,{<<"pvt_type">>, wh_util:to_binary(Type)}
-                               ,{<<"pvt_created">>, wh_util:current_tstamp()}
-                               ,{<<"pvt_modified">>, wh_util:current_tstamp()}
+                               ,{<<"pvt_created">>, Timestamp}
+                               ,{<<"pvt_modified">>, Timestamp}
                                ,{<<"pvt_vsn">>, 1}
                                ,{<<"pvt_whapp">>, ?APP_NAME}
                               ]),
-    io:format("SAVE: ~p~n", [Entry]),
-    {ok, Entry}.
-%%    couch_mgr:save_doc(AccountDb, JObj).
+    couch_mgr:save_doc(AccountDb, Entry).
 
 -spec current_balance/1 :: (ne_binary()) -> integer().
 current_balance(Account) ->
     AccountDb = wh_util:format_account_id(Account, encoded),    
     ViewOptions = [{<<"reduce">>, true}],
     case couch_mgr:get_results(AccountDb, <<"transactions/credit_remaining">>, ViewOptions) of
+        {ok, []} -> 0;
+        {ok, [ViewRes|_]} -> wh_json:get_integer_value(<<"value">>, ViewRes, 0);
+        {error, _} -> 0
+    end.
+
+
+-spec bridge_cost/2 :: (ne_binary(), ne_binary()) -> integer().
+bridge_cost(BridgeId, Account) ->
+    AccountDb = wh_util:format_account_id(Account, encoded),    
+    ViewOptions = [{<<"reduce">>, true}
+                   ,{<<"group">>, true}
+                   ,{<<"key">>, BridgeId}
+                  ],
+    case couch_mgr:get_results(AccountDb, <<"transactions/bridge_cost">>, ViewOptions) of
         {ok, []} -> 0;
         {ok, [ViewRes|_]} -> wh_json:get_integer_value(<<"value">>, ViewRes, 0);
         {error, _} -> 0
