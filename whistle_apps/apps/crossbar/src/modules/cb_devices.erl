@@ -111,7 +111,7 @@ post(#cb_context{}=Context, _DocId) ->
                 DeviceIP ->
                     lager:debug("adding device to the sip auth aggregate"),
                     {ok, D} = couch_mgr:ensure_saved(?WH_SIP_DB, wh_json:delete_key(<<"_rev">>, Doc1)),
-                    maybe_update_acls(true, DeviceIP, AcctId, wh_json:get_value(<<"_id">>, D))
+                    maybe_update_acls(DeviceIP, AcctId, wh_json:get_value(<<"_id">>, D))
             end,
 
             spawn(fun() -> do_simple_provision(Context1) end),
@@ -137,7 +137,7 @@ put(#cb_context{}=Context) ->
                 DeviceIP ->
                     lager:debug("adding device to the sip auth aggregate"),
                     {ok, D} = couch_mgr:ensure_saved(?WH_SIP_DB, wh_json:delete_key(<<"_rev">>, Doc1)),
-                    maybe_update_acls(true, DeviceIP, AcctId, wh_json:get_value(<<"_id">>, D))
+                    maybe_update_acls(DeviceIP, AcctId, wh_json:get_value(<<"_id">>, D))
             end,
 
             spawn(fun() -> do_simple_provision(Context1) end),
@@ -389,8 +389,8 @@ do_simple_provision(#cb_context{doc=JObj}=Context) ->
             ibrowse:send_req(Url, Headers, post, Encoded, HTTPOptions)
     end.
 
--spec maybe_update_acls/4 :: (boolean(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
-maybe_update_acls(true, DeviceIP, AcctId, DeviceId) ->
+-spec maybe_update_acls/3 :: (ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+maybe_update_acls(DeviceIP, AcctId, DeviceId) ->
     CIDR = <<DeviceIP/binary, "/32">>,
     Acls = wh_json:set_value(CIDR
                              ,wh_json:from_list([{<<"network-list-name">>, <<"trusted">>}
@@ -403,5 +403,4 @@ maybe_update_acls(true, DeviceIP, AcctId, DeviceId) ->
                             ),
     lager:debug("setting ~s into system acls", [CIDR]),
     whapps_config:set_default(<<"ecallmgr">>, <<"acls">>, Acls),
-    wapi_switch:publish_reloadacl();
-maybe_update_acls(false, _, _, _) -> ok.
+    wapi_switch:publish_reloadacl().
