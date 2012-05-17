@@ -359,15 +359,15 @@ handle_info({nodedown, Node}, #state{nodes=Nodes}=State) ->
     case ecallmgr_fs_pinger_sup:add_node(Node, Opts) of
         {ok, _} -> 
             lager:debug("started fs pinger for node '~s'", [Node]),
-	    NodeBin = amqp_util:encode(wh_util:to_binary(Node)),
-	    wh_gauge:set(<<"freeswitch.nodes.", NodeBin/binary, ".up">>, 0),
-	    wh_timer:delete(<<"freeswitch.nodes.", NodeBin/binary, ".uptime">>),
+            NodeBin = amqp_util:encode(wh_util:to_binary(Node)),
+            wh_gauge:set(<<"freeswitch.nodes.", NodeBin/binary, ".up">>, 0),
+            wh_timer:delete(<<"freeswitch.nodes.", NodeBin/binary, ".uptime">>),
             {noreply, State#state{nodes=lists:keydelete(Node, #node.node, Nodes)}};
-	{error, {already_started, _}} ->
+        {error, {already_started, _}} ->
             lager:debug("fs pinger for node '~s' already exists", [Node]),
-	    NodeBin = amqp_util:encode(wh_util:to_binary(Node)),
-	    wh_gauge:set(<<"freeswitch.nodes.", NodeBin/binary, ".up">>, 0),
-	    wh_timer:delete(<<"freeswitch.nodes.", NodeBin/binary, ".uptime">>),
+            NodeBin = amqp_util:encode(wh_util:to_binary(Node)),
+            wh_gauge:set(<<"freeswitch.nodes.", NodeBin/binary, ".up">>, 0),
+            wh_timer:delete(<<"freeswitch.nodes.", NodeBin/binary, ".uptime">>),
             {noreply, State#state{nodes=lists:keydelete(Node, #node.node, Nodes)}};
         _Else ->
             _ = ecallmgr_fs_pinger_sup:remove_node(Node),
@@ -422,17 +422,17 @@ add_fs_node(Node, Cookie, Options, #state{nodes=Nodes}=State) ->
                         {ok, _} -> 
                             erlang:monitor_node(Node, true),
                             lager:info("successfully connected to node '~s'", [Node]),
-			    NodeBin = amqp_util:encode(wh_util:to_binary(Node)),
-			    wh_gauge:set(<<"freeswitch.nodes.", NodeBin/binary, ".up">>, 1),
-			    wh_timer:update(<<"freeswitch.nodes.", NodeBin/binary, ".uptime">>),
-			    wh_timer:update(<<"freeswitch.nodes.", NodeBin/binary, ".last_connected">>),
+                            NodeBin = amqp_util:encode(wh_util:to_binary(Node)),
+                            wh_gauge:set(<<"freeswitch.nodes.", NodeBin/binary, ".up">>, 1),
+                            wh_timer:update(<<"freeswitch.nodes.", NodeBin/binary, ".uptime">>),
+                            wh_timer:update(<<"freeswitch.nodes.", NodeBin/binary, ".last_connected">>),
                             {ok, State#state{nodes=[#node{node=Node, cookie=Cookie, options=Options} | Nodes]}};
                         {error, {already_started, _}} ->
                             lager:info("already connected to node '~s'", [Node]),
-			    NodeBin = amqp_util:encode(wh_util:to_binary(Node)),
-			    wh_gauge:set(<<"freeswitch.nodes.", NodeBin/binary, ".up">>, 1),
-			    wh_timer:update(<<"freeswitch.nodes.", NodeBin/binary, ".uptime">>),
-			    wh_timer:update(<<"freeswitch.nodes.", NodeBin/binary, ".last_connected">>),
+                            NodeBin = amqp_util:encode(wh_util:to_binary(Node)),
+                            wh_gauge:set(<<"freeswitch.nodes.", NodeBin/binary, ".up">>, 1),
+                            wh_timer:update(<<"freeswitch.nodes.", NodeBin/binary, ".uptime">>),
+                            wh_timer:update(<<"freeswitch.nodes.", NodeBin/binary, ".last_connected">>),
                             {ok, State#state{nodes=[#node{node=Node, cookie=Cookie, options=Options} | Nodes]}};
                         _Else ->
                             lager:warning("failed to add node '~s'", [Node]),
@@ -462,7 +462,7 @@ rm_fs_node(Node, #state{nodes=Nodes}=State) ->
 close_node(#node{node=Node}) ->
     close_node(Node);
 close_node(Node) ->
-    erlang:monitor_node(Node, false),
+    catch erlang:monitor_node(Node, false), % will crash if Node is down already
     _ = ecallmgr_fs_pinger_sup:remove_node(Node),
     ecallmgr_fs_sup:remove_node(Node).
 
