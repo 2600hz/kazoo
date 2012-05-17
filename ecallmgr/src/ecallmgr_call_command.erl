@@ -34,7 +34,9 @@ exec_cmd(Node, UUID, JObj, ControlPID) ->
                 {AppName, noop} ->
                     ecallmgr_call_control:event_execute_complete(ControlPID, UUID, AppName);
                 {AppName, AppData} ->
-                    send_cmd(Node, UUID, AppName, AppData)
+                    send_cmd(Node, UUID, AppName, AppData);
+                [{_AppName, _AppData}|_]=Apps ->
+                    [send_cmd(Node, UUID, AppName, AppData) || {AppName, AppData} <- Apps]
             end;
         false ->
             lager:debug("command ~s not meant for us but for ~s", [wh_json:get_value(<<"Application-Name">>, JObj), DestID]),
@@ -239,6 +241,14 @@ get_fs_app(Node, UUID, JObj, <<"ring">>) ->
                 _ = send_cmd(Node, UUID, <<"set">>, <<"ringback=", Stream/binary>>)
         end,
     {<<"ring_ready">>, <<>>};
+
+%% receive a fax from the caller
+get_fs_app(_Node, UUID, _JObj, <<"receive_fax">>) ->
+    [{<<"playback">>, <<"silce_stream://2000">>}
+     ,{<<"rxfax">>, filename:join([ecallmgr_config:get(<<"fax_file_path">>, <<"/tmp/">>)
+                                   ,<<(amqp_util:encode(UUID))/binary, ".tiff">>
+                                  ])}
+    ];
 
 get_fs_app(_Node, _UUID, _JObj, <<"hold">>) ->
     {<<"endless_playback">>, <<"${hold_music}">>};
