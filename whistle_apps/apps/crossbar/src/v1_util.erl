@@ -21,7 +21,7 @@
          ,finish_request/2, request_terminated/2
          ,create_push_response/2, set_resp_headers/2
          ,create_resp_content/2, create_pull_response/2
-         ,halt/2, content_type_matches/2
+         ,halt/2, content_type_matches/2, ensure_content_type/1
         ]).
 
 -include_lib("crossbar/include/crossbar.hrl").
@@ -109,8 +109,13 @@ get_req_data(Context, Req0) ->
     QS = wh_json:from_list(QS0),
     case cowboy_http_req:parse_header('Content-Type', Req1) of
         {undefined, Req2} ->
-            lager:debug("undefined content type when getting req data"),
-            {Context#cb_context{query_json=QS}, Req2};
+            lager:debug("undefined content type when getting req data, assuming application/json"),
+            {JSON, Req3_1} = get_json_body(Req2),
+            {Context#cb_context{req_json=JSON
+                                ,req_data=wh_json:get_value(<<"data">>, JSON, wh_json:new())
+                                ,query_json=QS
+                               }
+             ,Req3_1};
         {{<<"multipart">>, <<"form-data">>, _}, Req2} ->
             lager:debug("multipart/form-data content type when getting req data"),
             case catch extract_multipart(Context#cb_context{query_json=QS}, Req2) of
@@ -472,13 +477,25 @@ is_known_content_type(Req, #cb_context{req_verb = <<"delete">>}=Context) ->
     lager:debug("ignore content type for delete"),
     {true, Req, Context};
 is_known_content_type(Req0, #cb_context{req_nouns=Nouns}=Context0) ->
-    #cb_context{content_types_accepted=CTAs}=Context1 =
+    lager:debug("is_known_content_type"),
+
+    Context1 =
         lists:foldr(fun({Mod, Params}, ContextAcc) ->
                             Event = <<"v1_resource.content_types_accepted.", Mod/binary>>,
                             Payload = [ContextAcc | Params],
                             crossbar_bindings:fold(Event, Payload)
                     end, Context0, Nouns),
 
+    {CT, Req1} = cowboy_http_req:parse_header('Content-Type', Req0),
+
+    is_known_content_type(Req1, Context1, ensure_content_type(CT)).
+
+-spec is_known_content_type/3 :: (#http_req{}, #cb_context{}, content_type()) -> {boolean(), #http_req{}, #cb_context{}}.
+is_known_content_type(Req, #cb_context{content_types_accepted=[]}=Context, CT) ->
+    lager:debug("no ctas, using defaults"),
+    is_known_content_type(Req, Context#cb_context{content_types_accepted=?CONTENT_ACCEPTED}, CT);
+
+is_known_content_type(Req, #cb_context{content_types_accepted=CTAs}=Context, CT) ->
     CTA = lists:foldr(fun({_Fun, L}, Acc) ->
                               lists:foldl(fun({Type, Sub}, Acc1) ->
                                                   [{Type, Sub, []} | Acc1]
@@ -489,16 +506,17 @@ is_known_content_type(Req0, #cb_context{req_nouns=Nouns}=Context0) ->
                                           end, Acc, L)
                       end, [], CTAs),
 
-    {CT, Req1} = cowboy_http_req:parse_header('Content-Type', Req0),
+    lager:debug("is ~p in ~p", [CT, CTA]),
 
     IsAcceptable = is_acceptable_content_type(CT, CTA),
     lager:debug("is acceptable content type: ~s", [IsAcceptable]),
-    {IsAcceptable, Req1, Context1#cb_context{content_types_accepted=CTAs}}.
+    {IsAcceptable, Req, Context}.
 
 -spec is_acceptable_content_type/2 :: (content_type(), [content_type(),...] | []) -> boolean().
 is_acceptable_content_type(CTA, CTAs) ->
     [ true || ModCTA <- CTAs, content_type_matches(CTA, ModCTA)] =/= [].
 
+%% (ReqContentType, ModuleContentType)
 -spec content_type_matches/2 :: (content_type(), content_type()) -> boolean().
 content_type_matches({Type, _, _}, {Type, <<"*">>, []}) ->
     true;
@@ -510,6 +528,11 @@ content_type_matches({Type, SubType, Opts}, {Type, SubType, ModOpts}) ->
               end, ModOpts);
 content_type_matches(_CTA, _CTAs) ->
     false.
+
+-spec ensure_content_type/1 :: (any()) -> content_type().
+ensure_content_type(undefined) -> ?CROSSBAR_DEFAULT_CONTENT_TYPE;
+ensure_content_type(CT) -> CT.
+
 
 %%--------------------------------------------------------------------
 %% @private

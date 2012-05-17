@@ -205,45 +205,73 @@ content_types_provided(Req, #cb_context{req_nouns=Nouns}=Context0) ->
                             Payload = [ContextAcc | Params],
                             crossbar_bindings:fold(Event, Payload)
                     end, Context0, Nouns),
+
+    content_types_provided(Req, Context1, CTPs).
+
+content_types_provided(Req, Context, []) ->
+    Def = ?CONTENT_PROVIDED,
+    content_types_provided(Req, Context#cb_context{content_types_provided=Def}, Def);
+content_types_provided(Req, Context, CTPs) ->
     CTP =
         lists:foldr(fun({Fun, L}, Acc) ->
                             lists:foldr(fun({Type, SubType}, Acc1) ->
                                                 [{{Type, SubType, []}, Fun} | Acc1];
-                                           (EncType, Acc1) ->
+                                           ({_,_,_}=EncType, Acc1) ->
                                                 [ {EncType, Fun} | Acc1 ]
                                         end, Acc, L)
                     end, [], CTPs),
 
-    {CTP, Req, Context1}.
+    {CTP, Req, Context}.
 
 -spec content_types_accepted/2 :: (#http_req{}, #cb_context{}) -> {content_type_callbacks(), #http_req{}, #cb_context{}}.
 content_types_accepted(Req0, #cb_context{req_nouns=Nouns}=Context0) ->
-    #cb_context{content_types_accepted=CTAs}=Context1 =
+    lager:debug("run: content_types_accepted"),
+    Context1 =
         lists:foldr(fun({Mod, Params}, ContextAcc) ->
                             Event = <<"v1_resource.content_types_accepted.", Mod/binary>>,
                             Payload = [ContextAcc | Params],
-                            ContextAcc1 = crossbar_bindings:fold(Event, Payload),
-                            ContextAcc1
+                            crossbar_bindings:fold(Event, Payload)
                     end, Context0, Nouns),
 
-    {CT, Req1} = cowboy_http_req:parse_header('Content-Type', Req0),
+    case cowboy_http_req:parse_header('Content-Type', Req0) of
+        {undefined, Req1} -> default_content_types_accepted(Req1, Context1);
+        {CT, Req1} -> content_types_accepted(CT, Req1, Context1)
+    end.
 
-    CTA = lists:foldr(fun({Fun, L}, Acc) ->
-                              lists:foldr(fun({Type, SubType}, Acc1) ->
+-spec default_content_types_accepted/2 :: (#http_req{}, #cb_context{}) -> {[{'undefined', atom()},...], #http_req{}, #cb_context{}}.
+default_content_types_accepted(Req, #cb_context{content_types_accepted=CTAs}=Context) ->
+    CTA = [ {undefined, Fun} || {Fun, L} <- CTAs,
+                                lists:any(fun({Type, SubType}) ->
+                                                  v1_util:content_type_matches(?CROSSBAR_DEFAULT_CONTENT_TYPE
+                                                                               ,{Type, SubType, []});
+                                             ({_,_,_}=ModCT) ->
+                                                  v1_util:content_type_matches(?CROSSBAR_DEFAULT_CONTENT_TYPE
+                                                                               ,ModCT)
+                                          end, L) % check each type against the default
+          ],
+
+    {ok, Req1} = cowboy_http_req:set_resp_header(<<"X-RFC2616">>
+                                                     ,<<"§14.17 (Try it, you'll like it)">>
+                                                     ,Req),
+    {CTA, Req1, Context}.
+
+-spec content_types_accepted/3 :: (content_type(), #http_req{}, #cb_context{}) -> {[{content_type(), atom()},...], #http_req{}, #cb_context{}}.
+content_types_accepted(CT, Req, #cb_context{content_types_accepted=CTAs}=Context) ->
+    CTA = lists:foldl(fun({Fun, L}, Acc) ->
+                              lists:foldl(fun({Type, SubType}, Acc1) ->
                                                   case v1_util:content_type_matches(CT, {Type, SubType, []}) of
-                                                      true ->
-                                                          [{CT, Fun} | Acc1];
-                                                      false ->
-                                                          Acc1
+                                                      true -> [{CT, Fun} | Acc1];
+                                                      false -> Acc1
                                                   end;
-                                             (EncType, Acc1) ->
+                                             ({_,_,_}=EncType, Acc1) ->
                                                   [ {EncType, Fun} | Acc1 ]
                                           end, Acc, L)
                       end, [], CTAs),
-    {CTA, Req1, Context1}.
+    {CTA, Req, Context}.
 
 -spec languages_provided/2 :: (#http_req{}, #cb_context{}) -> {[ne_binary(),...], #http_req{}, #cb_context{}}.
 languages_provided(Req0, #cb_context{req_nouns=Nouns}=Context0) ->
+    lager:debug("run: languages_provided"),
     {Req1, #cb_context{languages_provided=LangsProvided}=Context1} = 
         lists:foldr(fun({Mod, Params}, {ReqAcc, ContextAcc}) ->
                             Event = <<"v1_resource.languages_provided.", Mod/binary>>,
@@ -255,6 +283,7 @@ languages_provided(Req0, #cb_context{req_nouns=Nouns}=Context0) ->
 
 %% -spec charsets_provided/2 :: (#http_req{}, #cb_context{}) -> {[ne_binary(),...], #http_req{}, #cb_context{}}.
 %% charsets_provided(Req0, #cb_context{req_nouns=Nouns}=Context0) ->
+%%     lager:debug("run: charsets_provided"),
 %%     {Req1, #cb_context{charsets_provided=CharsetsProvided}=Context1} = 
 %%         lists:foldr(fun({Mod, Params}, {ReqAcc, ContextAcc}) ->
 %%                             Event = <<"v1_resource.charsets_provided.", Mod/binary>>,
@@ -268,6 +297,7 @@ charsets_provided(_Req, _Context) ->
 
 -spec encodings_provided/2 :: (#http_req{}, #cb_context{}) -> {[ne_binary(),...], #http_req{}, #cb_context{}}.
 encodings_provided(Req0, #cb_context{req_nouns=Nouns}=Context0) ->
+    lager:debug("run: encodings_provided"),
     {Req1, #cb_context{encodings_provided=EncodingsProvided}=Context1} = 
         lists:foldr(fun({Mod, Params}, {ReqAcc, ContextAcc}) ->
                             Event = <<"v1_resource.encodings_provided.", Mod/binary>>,
@@ -305,14 +335,17 @@ resource_exists(Req0, Context0) ->
 
 -spec moved_temporarily/2 :: (#http_req{}, #cb_context{}) -> {false, #http_req{}, #cb_context{}}.
 moved_temporarily(Req, Context) ->
+    lager:debug("run: moved_temporarily"),
     {false, Req, Context}.
 
 -spec moved_permanently/2 :: (#http_req{}, #cb_context{}) -> {false, #http_req{}, #cb_context{}}.
 moved_permanently(Req, Context) ->
+    lager:debug("run: moved_permanently"),
     {false, Req, Context}.
 
 -spec previously_existed/2 :: (#http_req{}, #cb_context{}) -> {false, #http_req{}, #cb_context{}}.
 previously_existed(Req, State) ->
+    lager:debug("run: previously_existed"),
     {false, Req, State}.
 
 %% If we're tunneling PUT through POST, 
@@ -326,10 +359,12 @@ allow_missing_post(Req0, #cb_context{req_verb=_Verb}=Context) ->
 
 -spec delete_resource/2 :: (#http_req{}, #cb_context{}) -> {boolean() | 'halt', #http_req{}, #cb_context{}}.
 delete_resource(Req, Context) ->
+    lager:debug("run: delete_resource"),
     v1_util:execute_request(Req, Context).
 
 -spec delete_completed/2 :: (#http_req{}, #cb_context{}) -> {boolean(), #http_req{}, #cb_context{}}.
 delete_completed(Req, Context) ->
+    lager:debug("run: delete_completed"),
     v1_util:create_push_response(Req, Context).
 
 %% If allow_missing_post returned true (cause it was a POST) and PUT has been tunnelled,
@@ -339,11 +374,13 @@ post_is_create(Req, #cb_context{req_verb = <<"put">>}=Context) ->
     lager:debug("treating post request as a create"),
     {true, Req, Context};
 post_is_create(Req, Context) ->
+    lager:debug("run: post_is_create: false"),
     {false, Req, Context}.
 
 %% set the location header
 -spec create_path/2 :: (#http_req{}, #cb_context{}) -> {ne_binary(), #http_req{}, #cb_context{}}.
 create_path(Req, #cb_context{resp_headers=RespHeaders}=Context) ->
+    lager:debug("run: create_path"),
     %% Location header goes here, I believe?
     Path = props:get_value(<<"Location">>, RespHeaders, <<>>),
     lager:debug("setting path to: ~s", [Path]),
@@ -351,6 +388,7 @@ create_path(Req, #cb_context{resp_headers=RespHeaders}=Context) ->
 
 -spec process_post/2 :: (#http_req{}, #cb_context{}) -> {boolean(), #http_req{}, #cb_context{}}.
 process_post(Req0, Context0) ->
+    lager:debug("run: process_post"),
     case v1_util:execute_request(Req0, Context0) of
         {true, Req1, Context1} ->
             Event = <<"v1_resource.process_post">>,
@@ -365,10 +403,12 @@ is_conflict(Req, #cb_context{resp_error_code=409}=Context) ->
     lager:debug("request resulted in conflict"),
     {true, Req, Context};
 is_conflict(Req, Context) ->
+    lager:debug("run: is_conflict: false"),
     {false, Req, Context}.
 
 -spec from_binary/2 :: (#http_req{}, #cb_context{}) -> {boolean(), #http_req{}, #cb_context{}}.
 from_binary(Req0, Context0) ->
+    lager:debug("run: from_binary"),
     case v1_util:execute_request(Req0, Context0) of
         {true, Req1, Context1} ->
             Event = <<"v1_resource.from_binary">>,
@@ -380,6 +420,7 @@ from_binary(Req0, Context0) ->
 
 -spec from_json/2 :: (#http_req{}, #cb_context{}) -> {boolean(), #http_req{}, #cb_context{}}.
 from_json(Req0, Context0) ->
+    lager:debug("run: from_json"),
     case v1_util:execute_request(Req0, Context0) of
         {true, Req1, Context1} ->
             Event = <<"v1_resource.from_json">>,
@@ -391,6 +432,7 @@ from_json(Req0, Context0) ->
 
 -spec from_form/2 :: (#http_req{}, #cb_context{}) -> {boolean(), #http_req{}, #cb_context{}}.
 from_form(Req0, Context0) ->
+    lager:debug("run: from_form"),
     case v1_util:execute_request(Req0, Context0) of
         {true, Req1, Context1} ->
             Event = <<"v1_resource.from_form">>,
