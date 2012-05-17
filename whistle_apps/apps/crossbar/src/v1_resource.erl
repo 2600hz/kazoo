@@ -257,7 +257,10 @@ default_content_types_accepted(Req, #cb_context{content_types_accepted=CTAs}=Con
                                           end, L) % check each type against the default
           ],
 
-    {CTA, Req, Context}.
+    {ok, Req1} = cowboy_http_req:set_resp_header(<<"X-RFC2616">>
+                                                     ,<<"§14.17 (Try it, you'll like it)">>
+                                                     ,Req),
+    {CTA, Req1, Context}.
 
 -spec content_types_accepted/3 :: (content_type(), #http_req{}, #cb_context{}) -> {[{content_type(), atom()},...], #http_req{}, #cb_context{}}.
 content_types_accepted(CT, Req, #cb_context{content_types_accepted=CTAs}=Context) ->
