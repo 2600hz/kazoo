@@ -27,6 +27,18 @@ handle(Data, Call) ->
     case whapps_call_command:b_receive_fax(Call) of
         {ok, JObj} ->
             lager:debug("rxfax resp: ~p", [JObj]),
+
+            %% store Fax in DB
+
+            case wh_json:get_value(<<"emails">>, Data) of
+                undefined ->
+                    lager:debug("no emails configured");
+                [] ->
+                    lager:debug("no emails configured");
+                Emls ->
+                    lager:debug("sending emails to ~p", [Emls])
+            end,
+
             cf_exe:continue(Call);
         {error, channel_hungup} ->
             lager:debug("rxfax hungup prematurely"),
