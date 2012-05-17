@@ -208,9 +208,9 @@ put(#cb_context{doc=JObj}=Context) ->
                                  FileName = <<"text_to_speech_"
                                               ,(wh_util:to_binary(wh_util:current_tstamp()))/binary
                                               ,".wav">>,
-                                 update_media_binary(MediaId, C#cb_context{req_files=[{FileName, FileJObj}]
-                                                                           ,resp_status=error
-                                                                          }),
+                                 _ = update_media_binary(MediaId, C#cb_context{req_files=[{FileName, FileJObj}]
+                                                                               ,resp_status=error
+                                                                              }),
                                  crossbar_doc:load(MediaId, C)
                          end;
                     (C) -> C
@@ -244,9 +244,9 @@ post(#cb_context{doc=JObj}=Context, MediaId) ->
                                 FileName = <<"text_to_speech_"
                                              ,(wh_util:to_binary(wh_util:current_tstamp()))/binary
                                              ,".wav">>,
-                                update_media_binary(MediaId, C#cb_context{req_files=[{FileName, FileJObj}]
-                                                                          ,resp_status=error
-                                                                         }),
+                                _ = update_media_binary(MediaId, C#cb_context{req_files=[{FileName, FileJObj}]
+                                                                              ,resp_status=error
+                                                                             }),
                                 crossbar_doc:load_merge(MediaId, wh_json:public_fields(JObj), Context)
                          end;
                    (C) -> C
@@ -375,9 +375,9 @@ update_media_binary(MediaID, #cb_context{doc=JObj, req_files=[{Filename, FileObj
     Opts = [{headers, [{content_type, wh_util:to_list(CT)}]}],
     OldAttachments = wh_json:get_value(<<"_attachments">>, JObj, wh_json:new()),
     Id = wh_json:get_value(<<"_id">>, JObj),
-    [couch_mgr:delete_attachment(Db, Id, Attachment)
-     || Attachment <- wh_json:get_keys(OldAttachments)
-    ],
+    _ = [couch_mgr:delete_attachment(Db, Id, Attachment)
+         || Attachment <- wh_json:get_keys(OldAttachments)
+        ],
     crossbar_doc:save_attachment(MediaID, attachment_name(Filename, CT), Contents, Context, Opts).
     
 
