@@ -19,6 +19,9 @@
 -export([redirect/3]).
 -export([answer/1, hangup/1, hangup/2, set/3, fetch/1, fetch/2]).
 -export([ring/1]).
+-export([receive_fax/1
+         ,b_receive_fax/1
+        ]).
 -export([call_status/1, call_status/2, channel_status/1, channel_status/2]).
 -export([bridge/2, bridge/3, bridge/4, bridge/5, bridge/6, bridge/7]).
 -export([hold/1, b_hold/1, b_hold/2]).
@@ -307,6 +310,25 @@ ring(Call) ->
 b_ring(Call) ->
     ring(Call),
     wait_for_message(<<"ring">>).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Instructs the switch to expect to receive a fax
+%% @end
+%%--------------------------------------------------------------------
+-spec receive_fax/1 :: (whapps_call:call()) -> 'ok'.
+-spec b_receive_fax/1 :: (whapps_call:call()) -> whapps_api_error() |
+                                                 {'ok', wh_json:json_object()}.
+
+receive_fax(Call) ->
+    Command = [{<<"Application-Name">>, <<"receive_fax">>}],
+    send_command(Command, Call).
+
+b_receive_fax(Call) ->
+    receive_fax(Call),
+    wait_for_message(<<"receive_fax">>).
+
 
 %%--------------------------------------------------------------------
 %% @public

@@ -174,6 +174,16 @@
                            ]).
 -define(RING_REQ_TYPES, []).
 
+%% Recv Fax
+-define(RECV_FAX_HEADERS, [<<"Application-Name">>, <<"Call-ID">>]).
+-define(OPTIONAL_RECV_FAX_HEADERS, []).
+-define(RECV_FAX_VALUES, [{<<"Event-Category">>, <<"call">>}
+                          ,{<<"Event-Name">>, <<"command">>}
+                          ,{<<"Application-Name">>, <<"receive_fax">>}
+                          ,?INSERT_AT_TUPLE
+                         ]).
+-define(RECV_FAX_TYPES, []).
+
 %% Hangup
 %% Include the Other-Leg-Call-ID to only hangup the other leg
 -define(HANGUP_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>]).
