@@ -194,7 +194,7 @@ reply_forbidden(Node, FSID) ->
     lager:debug("sending XML to ~s: ~s", [Node, XML]),
     case freeswitch:fetch_reply(Node, FSID, iolist_to_binary(XML)) of
         ok ->
-            _ = ecallmgr_util:fs_log(Node, "whistle node ~s won control arbitration with forbidden reply", [node()]),
+            _ = ecallmgr_util:fs_log(Node, "whistle node ~s won control with forbidden reply", [node()]),
             lager:debug("node ~s accepted our route unauthz", [Node]);
         {error, Reason} -> lager:debug("node ~s rejected our route unauthz, ~p", [Node, Reason]);
         timeout -> lager:debug("received no reply from node ~s, timeout", [Node])
@@ -208,7 +208,7 @@ reply_affirmative(Node, FSID, CallId, RespJObj, CCVs) ->
     case freeswitch:fetch_reply(Node, FSID, iolist_to_binary(XML)) of
         ok ->
             lager:debug("node ~s accepted our route (authzed), starting control and events", [Node]),
-            _ = ecallmgr_util:fs_log(Node, "whistle node ~s won control arbitration with affimative reply", [node()]),
+            _ = ecallmgr_util:fs_log(Node, "whistle ~s won control with affimative reply", [node()]),
             start_control_and_events(Node, CallId, ServerQ, CCVs);
         {error, Reason} -> lager:debug("node ~s rejected our route response, ~p", [Node, Reason]);
         timeout -> lager:debug("received no reply from node ~s, timeout", [Node])
