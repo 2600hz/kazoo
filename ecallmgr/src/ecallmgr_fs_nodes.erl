@@ -146,7 +146,6 @@ new_channel(Props, Node) ->
         end,
     gen_server:cast(?MODULE, {new_channel, props_to_channel_record(P, Node)}),
     ecallmgr_call_control:add_leg(P),
-
     Authorized = ecallmgr_authz:maybe_authorize_channel(P, Node),
     wh_cache:store_local(?ECALLMGR_UTIL_CACHE, ?AUTHZ_RESPONSE_KEY(CallId), Authorized).
 
@@ -289,7 +288,6 @@ props_to_channel_record(Props, Node) ->
                                        ,props:get_value(<<"variable_user_name">>, Props))
              ,import_moh=props:get_value(<<"variable_hold_music">>, Props) =:= undefined 
              ,node=Node
-             ,per_minute=props:get_value(<<"variable_", ?CHANNEL_VAR_PREFIX, "Per-Minute">>, Props) =:= <<"true">>
              ,timestamp=wh_util:current_tstamp()
             }.
     
@@ -312,7 +310,6 @@ channel_record_to_json(Channel) ->
                        ,{<<"realm">>, Channel#channel.realm}                                          
                        ,{<<"username">>, Channel#channel.username}
                        ,{<<"node">>, Channel#channel.node}
-                       ,{<<"per_minute">>, Channel#channel.per_minute}
                        ,{<<"timestamp">>, Channel#channel.timestamp}
                       ]).
 
@@ -673,7 +670,6 @@ summarize_account_usage([{<<"outbound">>, BillingId, _, BridgeId, ResourceId, <<
                  end
                ],
     summarize_account_usage(Channels, lists:foldr(fun(F, A) -> F(A) end, AStats, Routines));
-
 summarize_account_usage([{<<"inbound">>, BillingId, undefined, _, _, <<"per_minute">>}|Channels], AStats) -> 
     Routines = [fun(#astats{billing_ids=I}=A) -> 
                         A#astats{billing_ids=[BillingId|lists:delete(BillingId, I)]}
