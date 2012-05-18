@@ -288,7 +288,6 @@ props_to_channel_record(Props, Node) ->
                                        ,props:get_value(<<"variable_user_name">>, Props))
              ,import_moh=props:get_value(<<"variable_hold_music">>, Props) =:= undefined 
              ,node=Node
-             ,per_minute=props:get_value(<<"variable_", ?CHANNEL_VAR_PREFIX, "Per-Minute">>, Props) =:= <<"true">>
              ,timestamp=wh_util:current_tstamp()
             }.
     
@@ -311,7 +310,6 @@ channel_record_to_json(Channel) ->
                        ,{<<"realm">>, Channel#channel.realm}                                          
                        ,{<<"username">>, Channel#channel.username}
                        ,{<<"node">>, Channel#channel.node}
-                       ,{<<"per_minute">>, Channel#channel.per_minute}
                        ,{<<"timestamp">>, Channel#channel.timestamp}
                       ]).
 
