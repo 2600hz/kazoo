@@ -165,29 +165,11 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 -spec process_route_req/4 :: (atom(), ne_binary(), ne_binary(), proplist()) -> 'ok'.
-process_route_req(Node, FSID, CallId, FSData) ->
+process_route_req(Node, FSID, CallId, Props) ->
     put(callid, CallId),
     lager:debug("processing fetch request ~s (call ~s) from ~s", [FSID, CallId, Node]),
-
-    DefProp = [{<<"Msg-ID">>, FSID}
-               ,{<<"Caller-ID-Name">>, props:get_value(<<"variable_effective_caller_id_name">>, FSData, 
-                                                       props:get_value(<<"Caller-Caller-ID-Name">>, FSData, <<"Unknown">>))}
-               ,{<<"Caller-ID-Number">>, props:get_value(<<"variable_effective_caller_id_number">>, FSData, 
-                                                         props:get_value(<<"Caller-Caller-ID-Number">>, FSData, <<"0000000000">>))}
-               ,{<<"To">>, ecallmgr_util:get_sip_to(FSData)}
-               ,{<<"From">>, ecallmgr_util:get_sip_from(FSData)}
-               ,{<<"Request">>, ecallmgr_util:get_sip_request(FSData)}
-               ,{<<"From-Network-Addr">>,props:get_value(<<"Caller-Network-Addr">>, FSData)}
-               ,{<<"Call-ID">>, CallId}
-               ,{<<"Custom-Channel-Vars">>, wh_json:from_list(ecallmgr_util:custom_channel_vars(FSData))}
-               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)],
-    route(Node, FSID, CallId, DefProp).
-
--spec route/4 :: (atom(), ne_binary(), ne_binary(), proplist()) -> 'ok'.
-route(Node, FSID, CallId, DefProp) ->
-    lager:debug("starting route request from node ~s", [Node]),
     ReqResp = wh_amqp_worker:call(?ECALLMGR_AMQP_POOL
-                                  ,DefProp
+                                  ,route_req(CallId, FSID, Props)
                                   ,fun wapi_route:publish_req/1
                                   ,fun wapi_route:is_actionable_resp/1),
     case ReqResp of
@@ -195,9 +177,10 @@ route(Node, FSID, CallId, DefProp) ->
         {ok, RespJObj} ->
             true = wapi_route:resp_v(RespJObj),
             RouteCCV = wh_json:get_value(<<"Custom-Channel-Vars">>, RespJObj, wh_json:new()),
-            case wh_cache:wait_for_key_local(?ECALLMGR_UTIL_CACHE, ?AUTHZ_RESPONSE_KEY(CallId)) of
-                {ok, true} -> reply_affirmative(Node, FSID, CallId, RespJObj, RouteCCV);
-                {ok, false} -> reply_forbidden(Node, FSID)
+            AuthzEnabled = wh_util:is_true(ecallmgr_config:get(<<"authz_enabled">>, false)),
+            case AuthzEnabled andalso wh_cache:wait_for_key_local(?ECALLMGR_UTIL_CACHE, ?AUTHZ_RESPONSE_KEY(CallId)) of
+                {ok, false} -> reply_forbidden(Node, FSID);
+                _Else -> reply_affirmative(Node, FSID, CallId, RespJObj, RouteCCV)
             end
     end.
 
@@ -210,7 +193,9 @@ reply_forbidden(Node, FSID) ->
                                                ]),
     lager:debug("sending XML to ~s: ~s", [Node, XML]),
     case freeswitch:fetch_reply(Node, FSID, iolist_to_binary(XML)) of
-        ok -> lager:debug("node ~s accepted our route unauthz", [Node]);
+        ok ->
+            _ = ecallmgr_util:fs_log(Node, "whistle node ~s won control arbitration with forbidden reply", [node()]),
+            lager:debug("node ~s accepted our route unauthz", [Node]);
         {error, Reason} -> lager:debug("node ~s rejected our route unauthz, ~p", [Node, Reason]);
         timeout -> lager:debug("received no reply from node ~s, timeout", [Node])
     end.
@@ -223,6 +208,7 @@ reply_affirmative(Node, FSID, CallId, RespJObj, CCVs) ->
     case freeswitch:fetch_reply(Node, FSID, iolist_to_binary(XML)) of
         ok ->
             lager:debug("node ~s accepted our route (authzed), starting control and events", [Node]),
+            _ = ecallmgr_util:fs_log(Node, "whistle node ~s won control arbitration with affimative reply", [node()]),
             start_control_and_events(Node, CallId, ServerQ, CCVs);
         {error, Reason} -> lager:debug("node ~s rejected our route response, ~p", [Node, Reason]);
         timeout -> lager:debug("received no reply from node ~s, timeout", [Node])
@@ -250,3 +236,20 @@ start_control_and_events(Node, CallId, SendTo, CCVs) ->
 send_control_queue(SendTo, CtlProp) ->
     lager:debug("sending route_win to ~s", [SendTo]),
     wapi_route:publish_win(SendTo, CtlProp).
+
+-spec route_req/3 :: (ne_binary(), ne_binary(), proplist()) -> proplist().
+route_req(CallId, FSID, Props) ->
+    [{<<"Msg-ID">>, FSID}
+     ,{<<"Caller-ID-Name">>, props:get_value(<<"variable_effective_caller_id_name">>, Props, 
+                                             props:get_value(<<"Caller-Caller-ID-Name">>, Props, <<"Unknown">>))}
+     ,{<<"Caller-ID-Number">>, props:get_value(<<"variable_effective_caller_id_number">>, Props, 
+                                               props:get_value(<<"Caller-Caller-ID-Number">>, Props, <<"0000000000">>))}
+     ,{<<"To">>, ecallmgr_util:get_sip_to(Props)}
+     ,{<<"From">>, ecallmgr_util:get_sip_from(Props)}
+     ,{<<"Request">>, ecallmgr_util:get_sip_request(Props)}
+     ,{<<"From-Network-Addr">>,props:get_value(<<"Caller-Network-Addr">>, Props)}
+     ,{<<"Call-ID">>, CallId}
+     ,{<<"Custom-Channel-Vars">>, wh_json:from_list(ecallmgr_util:custom_channel_vars(Props))}
+     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+    ].
+    

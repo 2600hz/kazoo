@@ -25,6 +25,7 @@
 
 -define(RESPONDERS, [{j5_authz_req, [{<<"authz">>, <<"req">>}]}
                      ,{j5_authz_update, [{<<"authz">>, <<"update">>}]}
+                     ,{j5_authz_identify, [{<<"authz">>, <<"identify_req">>}]}
                      ,{j5_call_cdr, [{<<"call_detail">>, <<"cdr">>}]}
                     ]).
 -define(BINDINGS, [{call, [{restrict_to, [cdr]}, {callid, <<"*">>}]}

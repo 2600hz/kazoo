@@ -30,7 +30,15 @@
 -export([channel_match_presence/1]).
 -export([channel_exists/1]).
 -export([channel_import_moh/1]).
--export([channel_set_per_minute/2]).
+-export([channel_set_account_id/2]).
+-export([channel_set_account_billing/2]).
+-export([channel_set_reseller_id/2]).
+-export([channel_set_reseller_billing/2]).
+-export([channel_set_authorizing_id/2]).
+-export([channel_set_resource_id/2]).
+-export([channel_set_authorizing_type/2]).
+-export([channel_set_owner_id/2]).
+-export([channel_set_presence_id/2]).
 -export([channel_set_import_moh/2]).
 -export([fetch_channel/1]).
 -export([destroy_channel/2]).
@@ -126,21 +134,20 @@ show_channels() ->
 new_channel(Props, Node) ->
     CallId = props:get_value(<<"Unique-ID">>, Props),
     put(callid, CallId),
-    BillingVar = <<?CHANNEL_VAR_PREFIX, "Billing-ID">>,
-    P = case props:get_value(<<"variable_", BillingVar/binary>>, Props) of
+    P = case props:get_value(?GET_CCV(<<"Billing-ID">>), Props) of
             undefined -> 
                 BillingId = wh_util:rand_hex_binary(16),
                 lager:debug("created new billing id ~s for channel ~s", [BillingId, CallId]),
-                ecallmgr_util:send_cmd(Node, CallId, <<"export">>, <<BillingVar/binary, "=", BillingId/binary>>),                
-                [{<<"variable_", BillingVar/binary>>, BillingId}|Props];
+                ecallmgr_util:send_cmd(Node, CallId, <<"export">>, ?SET_CCV(<<"Billing-ID">>, BillingId)),
+                [{?GET_CCV(<<"Billing-ID">>), BillingId}|Props];
             _Else -> 
                 lager:debug("channel ~s already has billing id ~s", [CallId, _Else]),
                 Props
         end,
     gen_server:cast(?MODULE, {new_channel, props_to_channel_record(P, Node)}),
     ecallmgr_call_control:add_leg(P),
-    Result = ecallmgr_authz:maybe_authorize_channel(Props, Node),
-    wh_cache:store_local(?ECALLMGR_UTIL_CACHE, ?AUTHZ_RESPONSE_KEY(CallId), Result).
+    Authorized = ecallmgr_authz:maybe_authorize_channel(P, Node),
+    wh_cache:store_local(?ECALLMGR_UTIL_CACHE, ?AUTHZ_RESPONSE_KEY(CallId), Authorized).
 
 -spec fetch_channel/1 :: (ne_binary()) -> {'ok', wh_json:json_object()} |
                                           {'error', 'not_found'}.
@@ -152,14 +159,9 @@ fetch_channel(UUID) ->
 
 -spec channel_node/1 :: (ne_binary()) -> {'ok', atom()} | {'error', _}.
 channel_node(UUID) ->
-    MatchSpec = [{#channel{uuid = '$1', destination = '_', direction = '_'
-                           ,account_id = '_', authorizing_id = '_', resource_id = '_'
-                           ,authorizing_type = '_', owner_id = '_', presence_id = '$2'
-                           ,billing_id = '_', bridge_id = '_', realm = '_', username = '_'
-                           ,import_moh = '_', node = '$3', per_minute = '_', timestamp = '_'
-                          },
-                  [{'=:=', '$1', {const, UUID}}],
-                  ['$3']}
+    MatchSpec = [{#channel{uuid = '$1', node = '$2'}
+                  ,[{'=:=', '$1', {const, UUID}}]
+                  ,['$2']}
                 ],  
     case ets:select(ecallmgr_channels, MatchSpec) of
         [Node] -> {ok, Node};
@@ -182,33 +184,76 @@ channel_import_moh(UUID) ->
 -type channel_summary() :: {ne_binary(), ne_binary(), 'undefined' | ne_binary(), 'undefined' | ne_binary(), 'undefined' | ne_binary()}.
 -spec channel_account_summary/1 :: (ne_binary()) -> [channel_summary(),...] | channel_summary().
 channel_account_summary(AccountId) ->
-    MatchSpec = [{#channel{uuid = '_', destination = '_', direction = '$1'
-                           ,account_id = '$2', authorizing_id = '$3', resource_id = '$4'
-                           ,authorizing_type = '_', owner_id = '_', presence_id = '_'
-                           ,billing_id = '$5', bridge_id = '$6', realm = '_', username = '_'
-                           ,import_moh = '_', node = '_', per_minute = '$7', timestamp = '_'
-                          },
-                  [{'=:=', '$2', {const, AccountId}}],
-                  [{{'$1', '$5', '$3', '$6', '$4', '$7'}}]}
+    MatchSpec = [{#channel{direction = '$1', account_id = '$2', account_billing = '$7'
+                           ,authorizing_id = '$3', resource_id = '$4', billing_id = '$5'
+                           ,bridge_id = '$6'
+                          }
+                  ,[{'=:=', '$2', {const, AccountId}}]
+                  ,[{{'$1', '$5', '$3', '$6', '$4', '$7'}}]}
                 ],  
     ets:select(ecallmgr_channels, MatchSpec).    
  
 -spec channel_match_presence/1 :: (ne_binary()) -> [ne_binary(),...] | [].
 channel_match_presence(PresenceId) ->
-    MatchSpec = [{#channel{uuid = '$1', destination = '_', direction = '_'
-                           ,account_id = '_', authorizing_id = '_', resource_id = '_'
-                           ,authorizing_type = '_', owner_id = '_', presence_id = '$2'
-                           ,billing_id = '_', bridge_id = '_', realm = '_', username = '_'
-                           ,import_moh = '_', node = '$3', per_minute = '_', timestamp = '_'
-                          },
-                  [{'=:=', '$2', {const, PresenceId}}],
-                  [{{'$1', '$3'}}]}
+    MatchSpec = [{#channel{uuid = '$1', presence_id = '$2', node = '$3'}
+                  ,[{'=:=', '$2', {const, PresenceId}}]
+                  ,[{{'$1', '$3'}}]}
                 ],  
     ets:select(ecallmgr_channels, MatchSpec).
 
--spec channel_set_per_minute/2 :: (ne_binary(), boolean()) -> 'ok'.                                                          
-channel_set_per_minute(UUID, PerMinute) ->
-    gen_server:cast(?MODULE, {channel_update, UUID, {#channel.per_minute, PerMinute}}).    
+-spec channel_set_account_id/2 :: (ne_binary(), string() | ne_binary()) -> 'ok'.    
+channel_set_account_id(UUID, Value) when is_binary(Value) ->
+    gen_server:cast(?MODULE, {channel_update, UUID, {#channel.account_id, Value}});
+channel_set_account_id(UUID, Value) ->
+    channel_set_account_id(UUID, wh_util:to_binary(Value)). 
+
+-spec channel_set_account_billing/2 :: (ne_binary(), string() | ne_binary()) -> 'ok'.    
+channel_set_account_billing(UUID, Value) when is_binary(Value) ->
+    gen_server:cast(?MODULE, {channel_update, UUID, {#channel.account_billing, Value}});
+channel_set_account_billing(UUID, Value) ->
+    channel_set_account_billing(UUID, wh_util:to_binary(Value)). 
+
+-spec channel_set_reseller_id/2 :: (ne_binary(), string() | ne_binary()) -> 'ok'.    
+channel_set_reseller_id(UUID, Value) when is_binary(Value) ->
+    gen_server:cast(?MODULE, {channel_update, UUID, {#channel.reseller_id, Value}});
+channel_set_reseller_id(UUID, Value) ->
+    channel_set_reseller_id(UUID, wh_util:to_binary(Value)). 
+
+-spec channel_set_reseller_billing/2 :: (ne_binary(), string() | ne_binary()) -> 'ok'.    
+channel_set_reseller_billing(UUID, Value) when is_binary(Value) ->
+    gen_server:cast(?MODULE, {channel_update, UUID, {#channel.reseller_billing, Value}});
+channel_set_reseller_billing(UUID, Value) ->
+    channel_set_reseller_billing(UUID, wh_util:to_binary(Value)). 
+
+-spec channel_set_resource_id/2 :: (ne_binary(), string() | ne_binary()) -> 'ok'.
+channel_set_resource_id(UUID, Value) when is_binary(Value) ->
+    gen_server:cast(?MODULE, {channel_update, UUID, {#channel.resource_id, Value}});
+channel_set_resource_id(UUID, Value) ->
+    channel_set_resource_id(UUID, wh_util:to_binary(Value)).
+
+-spec channel_set_authorizing_id/2 :: (ne_binary(), string() | ne_binary()) -> 'ok'.    
+channel_set_authorizing_id(UUID, Value) when is_binary(Value) ->
+    gen_server:cast(?MODULE, {channel_update, UUID, {#channel.authorizing_id, Value}});
+channel_set_authorizing_id(UUID, Value) ->
+    channel_set_authorizing_id(UUID, wh_util:to_binary(Value)). 
+
+-spec channel_set_authorizing_type/2 :: (ne_binary(), string() | ne_binary()) -> 'ok'.    
+channel_set_authorizing_type(UUID, Value) when is_binary(Value) ->
+    gen_server:cast(?MODULE, {channel_update, UUID, {#channel.authorizing_type, Value}});
+channel_set_authorizing_type(UUID, Value) ->
+    channel_set_authorizing_type(UUID, wh_util:to_binary(Value)). 
+
+-spec channel_set_owner_id/2 :: (ne_binary(), string() | ne_binary()) -> 'ok'.    
+channel_set_owner_id(UUID, Value) when is_binary(Value) ->
+    gen_server:cast(?MODULE, {channel_update, UUID, {#channel.owner_id, Value}});
+channel_set_owner_id(UUID, Value) ->
+    channel_set_owner_id(UUID, wh_util:to_binary(Value)).
+
+-spec channel_set_presence_id/2 :: (ne_binary(), string() | ne_binary()) -> 'ok'.    
+channel_set_presence_id(UUID, Value) when is_binary(Value) ->
+    gen_server:cast(?MODULE, {channel_update, UUID, {#channel.presence_id, Value}});
+channel_set_presence_id(UUID, Value) ->
+    channel_set_presence_id(UUID, wh_util:to_binary(Value)). 
 
 -spec channel_set_import_moh/2 :: (ne_binary(), boolean()) -> 'ok'.                                                          
 channel_set_import_moh(UUID, Import) ->
@@ -226,21 +271,23 @@ props_to_channel_record(Props, Node) ->
     #channel{uuid=props:get_value(<<"Unique-ID">>, Props)
              ,destination=props:get_value(<<"Caller-Destination-Number">>, Props)
              ,direction=props:get_value(<<"Call-Direction">>, Props)
-             ,account_id=props:get_value(<<"variable_", ?CHANNEL_VAR_PREFIX, "Account-ID">>, Props)
-             ,authorizing_id=props:get_value(<<"variable_", ?CHANNEL_VAR_PREFIX, "Authorizing-ID">>, Props)
-             ,authorizing_type=props:get_value(<<"variable_", ?CHANNEL_VAR_PREFIX, "Authorizing-Type">>, Props)
-             ,owner_id=props:get_value(<<"variable_", ?CHANNEL_VAR_PREFIX, "Owner-ID">>, Props)
-             ,resource_id=props:get_value(<<"variable_", ?CHANNEL_VAR_PREFIX, "Resource-ID">>, Props)
-             ,presence_id=props:get_value(<<"Channel-Presence-ID">>, Props)
-             ,realm=props:get_value(<<"variable_", ?CHANNEL_VAR_PREFIX, "Username">>, Props
+             ,account_id=props:get_value(?GET_CCV(<<"Account-ID">>), Props)
+             ,account_billing=props:get_value(?GET_CCV(<<"Account-Billing">>), Props)
+             ,authorizing_id=props:get_value(?GET_CCV(<<"Authorizing-ID">>), Props)
+             ,authorizing_type=props:get_value(?GET_CCV(<<"Authorizing-Type">>), Props)
+             ,owner_id=props:get_value(?GET_CCV(<<"Owner-ID">>), Props)
+             ,resource_id=props:get_value(?GET_CCV(<<"Resource-ID">>), Props)
+             ,presence_id=props:get_value(?GET_CCV(<<"Channel-Presence-ID">>), Props)
+             ,billing_id=props:get_value(?GET_CCV(<<"Billing-ID">>), Props)
+             ,bridge_id=props:get_value(?GET_CCV(<<"Bridge-ID">>), Props)
+             ,reseller_id=props:get_value(?GET_CCV(<<"Reseller-ID">>), Props)
+             ,reseller_billing=props:get_value(?GET_CCV(<<"Reseller-Billing">>), Props)
+             ,realm=props:get_value(?GET_CCV(<<"Realm">>), Props
                                     ,props:get_value(<<"variable_domain_name">>, Props))
-             ,username=props:get_value(<<"variable_", ?CHANNEL_VAR_PREFIX, "Realm">>, Props
+             ,username=props:get_value(?GET_CCV(<<"Username">>), Props
                                        ,props:get_value(<<"variable_user_name">>, Props))
              ,import_moh=props:get_value(<<"variable_hold_music">>, Props) =:= undefined 
-             ,billing_id=props:get_value(<<"variable_", ?CHANNEL_VAR_PREFIX, "Billing-ID">>, Props)
-             ,bridge_id=props:get_value(<<"variable_", ?CHANNEL_VAR_PREFIX, "Bridge-ID">>, Props)
              ,node=Node
-             ,per_minute=props:get_value(<<"variable_", ?CHANNEL_VAR_PREFIX, "Per-Minute">>, Props) =:= <<"true">>
              ,timestamp=wh_util:current_tstamp()
             }.
     
@@ -250,17 +297,19 @@ channel_record_to_json(Channel) ->
                        ,{<<"destination">>, Channel#channel.destination}
                        ,{<<"direction">>, Channel#channel.direction}
                        ,{<<"account_id">>, Channel#channel.account_id}
+                       ,{<<"account_billing">>, Channel#channel.account_billing}
                        ,{<<"authorizing_id">>, Channel#channel.authorizing_id}
                        ,{<<"authorizing_type">>, Channel#channel.authorizing_type}
                        ,{<<"owner_id">>, Channel#channel.owner_id}
-                       ,{<<"presence_id">>, Channel#channel.presence_id}
                        ,{<<"resource_id">>, Channel#channel.resource_id}
-                       ,{<<"realm">>, Channel#channel.realm}                                          
-                       ,{<<"username">>, Channel#channel.username}
+                       ,{<<"presence_id">>, Channel#channel.presence_id}
                        ,{<<"billing_id">>, Channel#channel.billing_id}
                        ,{<<"bridge_id">>, Channel#channel.bridge_id}
+                       ,{<<"reseller_id">>, Channel#channel.reseller_id}
+                       ,{<<"reseller_billing">>, Channel#channel.reseller_billing}
+                       ,{<<"realm">>, Channel#channel.realm}                                          
+                       ,{<<"username">>, Channel#channel.username}
                        ,{<<"node">>, Channel#channel.node}
-                       ,{<<"per_minute">>, Channel#channel.per_minute}
                        ,{<<"timestamp">>, Channel#channel.timestamp}
                       ]).
 
@@ -363,14 +412,9 @@ handle_cast({rm_fs_node, Node}, State) ->
     {noreply, rm_fs_node(Node, State), hibernate};
 handle_cast({sync_channels, Node, Channels}, State) ->
     lager:debug("ensuring channel cache is in sync with ~s", [Node]),
-    MatchSpec = [{#channel{uuid = '$1', destination = '_', direction = '_'
-                           ,account_id = '_', authorizing_id = '_', resource_id = '_'
-                           ,authorizing_type = '_', owner_id = '_', presence_id = '_'
-                           ,billing_id = '_', bridge_id = '_', realm = '_', username = '_'
-                           ,import_moh = '_', node = '$2', per_minute = '_', timestamp = '_'
-                          },
-                  [{'=:=', '$2', {const, Node}}],
-                  ['$1']}
+    MatchSpec = [{#channel{uuid = '$1', node = '$2'}
+                  ,[{'=:=', '$2', {const, Node}}]
+                  ,['$1']}
                 ],  
     CachedChannels = sets:from_list(ets:select(ecallmgr_channels, MatchSpec)),
     SyncChannels = sets:from_list(Channels),
@@ -394,14 +438,9 @@ handle_cast({sync_channels, Node, Channels}, State) ->
     {noreply, State, hibernate};
 handle_cast({flush_node_channels, Node}, State) ->
     lager:debug("flushing all channels in cache associated to node ~s", [Node]),
-    MatchSpec = [{#channel{uuid = '_', destination = '_', direction = '_'
-                           ,account_id = '_', authorizing_id = '_', resource_id = '_'
-                           ,authorizing_type = '_', owner_id = '_', presence_id = '_'
-                           ,billing_id = '_', bridge_id = '_', realm = '_', username = '_'
-                           ,import_moh = '_', node = '$1', per_minute = '_', timestamp = '_'
-                          },
-                  [{'=:=', '$1', {const, Node}}],
-                  ['true']}
+    MatchSpec = [{#channel{node = '$1'}
+                  ,[{'=:=', '$1', {const, Node}}]
+                  ,['true']}
                 ],
     ets:select_delete(ecallmgr_channels, MatchSpec),
     {noreply, State};
@@ -604,9 +643,11 @@ summarize_account_usage(Channels) ->
                       ]).
 
 -spec summarize_account_usage/2 :: (_, #astats{}) -> #astats{}.
+%%summarize_account_usage([{Direction, BillingId, AuthorizingId, BridgeId, ResourceId, BillingType}|Channels], ) 
+
 summarize_account_usage([], AStats) ->
     AStats;
-summarize_account_usage([{<<"outbound">>, BillingId, _, BridgeId, ResourceId, true}|Channels], AStats) when ResourceId =/= undefined -> 
+summarize_account_usage([{<<"outbound">>, BillingId, _, BridgeId, ResourceId, <<"per_minute">>}|Channels], AStats) when ResourceId =/= undefined -> 
     Routines = [fun(#astats{billing_ids=I}=A) -> 
                         A#astats{billing_ids=[BillingId|lists:delete(BillingId, I)]}
                  end
@@ -628,7 +669,7 @@ summarize_account_usage([{<<"outbound">>, BillingId, _, BridgeId, ResourceId, tr
                  end
                ],
     summarize_account_usage(Channels, lists:foldr(fun(F, A) -> F(A) end, AStats, Routines));
-summarize_account_usage([{<<"inbound">>, BillingId, undefined, _, _, true}|Channels], AStats) -> 
+summarize_account_usage([{<<"inbound">>, BillingId, undefined, _, _, <<"per_minute">>}|Channels], AStats) -> 
     Routines = [fun(#astats{billing_ids=I}=A) -> 
                         A#astats{billing_ids=[BillingId|lists:delete(BillingId, I)]}
                  end
