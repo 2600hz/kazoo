@@ -29,7 +29,7 @@ maybe_authorize_channel(Props, Node) ->
                         case wh_util:is_true(ecallmgr_config:get(<<"authz_enabled">>, false)) of
                             true -> {ok, P};
                             false -> 
-                                lager:debug("config ecallmgr.authz_enabled is 'false', allowing call", []),
+                                lager:debug("config ecallmgr.authz_enabled is 'false', allowing", []),
                                 {error, authz_disabled}
                         end
                 end
@@ -40,14 +40,14 @@ maybe_authorize_channel(Props, Node) ->
                                  case props:get_value(?GET_CCV(<<"Resource-ID">>), Props) =/= undefined of
                                      true -> {ok, P};
                                      false -> 
-                                         lager:debug("outbound channel is not consuming a resource, allowing call", []),
+                                         lager:debug("outbound channel is not consuming a resource, allowing", []),
                                          {error, not_required}
                                  end;
                              <<"inbound">> ->
                                  case props:get_value(?GET_CCV(<<"Authorizing-ID">>), Props) =:= undefined of
                                      true -> {ok, P};
                                      false -> 
-                                         lager:debug("inbound channel is not consuming a resource, allowing call", []),
+                                         lager:debug("inbound channel is not consuming a resource, allowing", []),
                                          {error, not_required}
                                  end
                              end
@@ -114,14 +114,19 @@ maybe_authorize_channel(Props, Node) ->
 
 -spec update/2 :: (proplist(), atom()) -> 'ok'.
 update(Props, Node) ->
-    Update = authz_update(Props, Node),
+    CallId = props:get_value(<<"Unique-ID">>, Props),
+    put(callid, CallId),
+    lager:debug("received session heartbeat", []),
+    Update = authz_update(CallId, Props, Node),
     wapi_authz:publish_update([KV || {_, V}=KV <- Update, V =/= undefined]).
 
 -spec rate_channel/1 :: (proplist()) -> 'ok'.
 rate_channel(Props) ->
+    CallId = props:get_value(<<"Unique-ID">>, Props),
+    put(callid, CallId),
     lager:debug("sending rate request"),
     ReqResp = wh_amqp_worker:call(?ECALLMGR_AMQP_POOL
-                                  ,rating_req(Props)
+                                  ,rating_req(CallId, Props)
                                   ,fun wapi_rate:publish_req/1
                                   ,fun wapi_rate:resp_v/1),
     case ReqResp of 
@@ -249,9 +254,9 @@ authz_identify_req(Props) ->
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
--spec authz_update/2 :: (proplist(), atom()) -> proplist().
-authz_update(Props, Node) ->
-    [{<<"Call-ID">>, props:get_value(<<"Caller-Unique-ID">>, Props)}
+-spec authz_update/3 :: (ne_binary(), proplist(), atom()) -> proplist().
+authz_update(CallId, Props, Node) ->
+    [{<<"Call-ID">>, CallId}
      ,{<<"Handling-Server-Name">>, wh_util:to_binary(Node)}
      ,{<<"Timestamp">>, get_time_value(<<"Event-Date-Timestamp">>, Props)}
      ,{<<"Custom-Channel-Vars">>, wh_json:from_list(ecallmgr_util:custom_channel_vars(Props))}
@@ -277,13 +282,13 @@ authz_update(Props, Node) ->
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
--spec rating_req/1 :: (proplist()) -> proplist().
-rating_req(Props) ->
+-spec rating_req/2 :: (ne_binary(), proplist()) -> proplist().
+rating_req(CallId, Props) ->
     AccountId = props:get_value(<<"variable_", ?CHANNEL_VAR_PREFIX, "Account-ID">>, Props),
     [{<<"To-DID">>, props:get_value(<<"Caller-Destination-Number">>, Props)}
      ,{<<"From-DID">>, props:get_value(<<"variable_effective_caller_id_number">>, Props
                                        ,props:get_value(<<"Caller-Caller-ID-Number">>, Props))}
-     ,{<<"Call-ID">>, props:get_value(<<"Caller-Unique-ID">>, Props)}
+     ,{<<"Call-ID">>, CallId}
      ,{<<"Account-ID">>, AccountId}
      ,{<<"Direction">>, props:get_value(<<"Call-Direction">>, Props)}
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
