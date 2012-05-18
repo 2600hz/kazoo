@@ -84,7 +84,8 @@ prepay_is_available(#limits{allow_prepay=true, reserve_amount=ReserveAmount}, Ba
     case (Balance - ReserveAmount) > 0 of
         false -> false;             
         true -> 
-            j5_util:write_debit_to_ledger(<<"start">>, ReserveAmount, JObj),
+            AccountId = wh_json:get_value(<<"Account-ID">>, JObj),            
+            j5_util:write_debit_to_ledger(<<"start">>, ReserveAmount, JObj, AccountId),
             true
     end.
 
@@ -96,7 +97,8 @@ postpay_is_available(#limits{allow_postpay=true, max_postpay_amount=MaxPostpay
     case (Balance - ReserveAmount) > MaxPostpay of
         false -> false;             
         true -> 
-            j5_util:write_debit_to_ledger(<<"start">>, ReserveAmount, JObj),
+            AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
+            j5_util:write_debit_to_ledger(<<"start">>, ReserveAmount, JObj, AccountId),
             true
     end.
 

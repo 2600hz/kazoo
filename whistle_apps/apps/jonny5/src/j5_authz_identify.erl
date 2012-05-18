@@ -52,7 +52,7 @@ assume_e164(Number) ->
 
 -spec send_resp/3 :: (wh_json:json_object(), 'undefined' | ne_binary(), 'undefined' | ne_binary()) -> 'ok'.
 send_resp(JObj, AccountId, _ResellerId) ->
-    lager:debug("call is identified as account ~s", [AccountId]),
+    lager:debug("channel identified as account ~s", [AccountId]),
     Resp = [{<<"Account-ID">>, AccountId}
             ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
             ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
