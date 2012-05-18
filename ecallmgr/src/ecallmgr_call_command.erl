@@ -76,7 +76,14 @@ get_fs_app(Node, UUID, JObj, <<"play">>) ->
         true ->
             F = ecallmgr_util:media_path(wh_json:get_value(<<"Media-Name">>, JObj), UUID),
             'ok' = set_terminators(Node, UUID, wh_json:get_value(<<"Terminators">>, JObj)),
-            {<<"playback">>, F}
+
+            %% if Leg is set, use uuid_broadcast; otherwise use playback
+            case wh_json:get_value(<<"Leg">>, JObj) of
+                <<"A">> -> {<<"broadcast">>, list_to_binary([UUID, <<" ">>, F, <<" aleg">>])};
+                <<"B">> -> {<<"broadcast">>, list_to_binary([UUID, <<" ">>, F, <<" bleg">>])};
+                <<"Both">> -> {<<"broadcast">>, list_to_binary([UUID, <<" ">>, F, <<" both">>])};
+                _ -> {<<"playback">>, F}
+            end
     end;
 
 get_fs_app(_Node, UUID, JObj, <<"playstop">>) ->
@@ -385,32 +392,39 @@ get_fs_app(_Node, _UUID, JObj, <<"call_pickup">>) ->
     case wapi_dialplan:call_pickup_v(JObj) of
         false -> {'error', <<"intercept failed to execute as JObj did not validate">>};
         true ->
+            ContinueOnFail = wh_json:is_true(<<"Continue-On-Fail">>, JObj, true),
+            ContinueOnCancel = wh_json:is_true(<<"Continue-On-Cancel">>, JObj, true),
+            UnbridgedOnly = wh_json:is_true(<<"Unbridged-Only">>, JObj),
+            UnansweredOnly = wh_json:is_true(<<"Unanswered-Only">>, JObj),
+            Target = wh_json:get_value(<<"Target-Call-ID">>, JObj),
+            OtherLeg = wh_json:is_true(<<"Other-Leg">>, JObj),
+
             Generators = [fun(DP) ->
-                                  case wh_json:is_true(<<"Unbridged-Only">>, JObj) of
-                                      false ->
-                                          DP;
-                                      true ->
-                                          [{"application", "set intercept_unbridged_only=true"}|DP]
+                                  case UnbridgedOnly of
+                                      false -> DP;
+                                      true -> [{"application", "set intercept_unbridged_only=true"}|DP]
                                   end
                           end
                           ,fun(DP) ->
-                                   case wh_json:is_true(<<"Unanswered-Only">>, JObj) of
-                                       false ->
-                                           DP;
-                                       true ->
-                                           [{"application", "set intercept_unanswered_only=true"}|DP]
+                                   case UnansweredOnly of
+                                       false -> DP;
+                                       true -> [{"application", "set intercept_unanswered_only=true"}|DP]
                                    end
                            end
                           ,fun(DP) ->
                                    [{"application", "export failure_causes=NORMAL_CLEARING,ORIGINATOR_CANCEL,CRASH"}
-                                    ,{"application", "export uuid_bridge_continue_on_cancel=true"}
-                                    ,{"application", "export continue_on_fail=true"}
+                                    ,{"application", list_to_binary(["export uuid_bridge_continue_on_cancel="
+                                                                     ,wh_util:to_binary(ContinueOnCancel)
+                                                                    ])}
+                                    ,{"application", list_to_binary(["export continue_on_fail="
+                                                                     ,wh_util:to_binary(ContinueOnFail)
+                                                                    ])}
                                     |DP
                                    ]
                            end
                           ,fun(DP) ->
-                                   Target = wh_json:get_value(<<"Target-Call-ID">>, JObj),
-                                   Arg = case wh_json:is_true(<<"Other-Leg">>, JObj) of
+                                   
+                                   Arg = case OtherLeg of
                                              true -> <<"-bleg ", Target/binary>>;
                                              false -> Target
                                          end,
@@ -576,6 +590,72 @@ get_fs_kv(Key, Val, _) ->
         {_, Prefix} ->
             list_to_binary([Prefix, "=", wh_util:to_list(Val)])
     end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% send the SendMsg proplist to the freeswitch node
+%% @end
+%%--------------------------------------------------------------------
+-type send_cmd_ret() :: fs_sendmsg_ret() | fs_api_ret().
+-spec send_cmd/4 :: (atom(), ne_binary(), ne_binary() | string(), ne_binary() | string()) -> send_cmd_ret().
+send_cmd(Node, UUID, <<"hangup">>, _) ->
+    lager:debug("terminate call on node ~s", [Node]),
+    _ = ecallmgr_util:fs_log(Node, "whistle terminating call", []),
+    freeswitch:api(Node, uuid_kill, wh_util:to_list(UUID));
+send_cmd(Node, UUID, <<"record_call">>, Cmd) ->
+    lager:debug("execute on node ~s: uuid_record(~s)", [Node, Cmd]),
+    case freeswitch:api(Node, uuid_record, wh_util:to_list(Cmd)) of
+        {ok, _}=Ret ->
+            lager:debug("executing uuid_record returned ~p", [Ret]),
+            Ret;
+        {error, <<"-ERR ", E/binary>>} ->
+            lager:debug("error executing uuid_record: ~s", [E]),
+            Evt = list_to_binary([ecallmgr_util:create_masquerade_event(<<"record_call">>, <<"RECORD_STOP">>)
+                                  ,",whistle_application_response="
+                                  ,E
+                                 ]),
+            lager:debug("publishing event: ~s", [Evt]),
+            send_cmd(Node, UUID, "application", Evt),
+            {error, E};
+        timeout ->
+            lager:debug("timeout executing uuid_record"),
+            Evt = list_to_binary([ecallmgr_util:create_masquerade_event(<<"record_call">>, <<"RECORD_STOP">>)
+                                  ,",whistle_application_response=timeout"
+                                 ]),
+            lager:debug("publishing event: ~s", [Evt]),
+            send_cmd(Node, UUID, "application", Evt),
+            {error, timeout}
+    end;
+send_cmd(Node, UUID, <<"playstop">>, Args) ->
+    lager:debug("execute on node ~s: uuid_break(~s)", [Node, UUID]),
+    freeswitch:api(Node, uuid_break, wh_util:to_list(Args));
+
+send_cmd(Node, UUID, <<"unbridge">>, _) ->
+    lager:debug("execute on node ~s: uuid_park(~s)", [Node, UUID]),
+    freeswitch:api(Node, uuid_park, wh_util:to_list(UUID));
+
+send_cmd(Node, _UUID, <<"broadcast">>, Args) ->
+    lager:debug("execute on node ~s: uuid_broadcast(~s)", [Node, Args]),
+    Resp = freeswitch:api(Node, uuid_broadcast, wh_util:to_list(iolist_to_binary(Args))),
+    lager:debug("broadcast resulted in: ~p", [Resp]),
+    Resp;
+
+send_cmd(Node, UUID, <<"xferext">>, Dialplan) ->
+    XferExt = [begin
+                   _ = ecallmgr_util:fs_log(Node, "whistle queuing command in 'xferext' extension: ~s", [V]),
+                   lager:debug("building xferext on node ~s: ~s", [Node, V]),
+                   {wh_util:to_list(K), wh_util:to_list(V)}
+               end || {K, V} <- Dialplan],
+    ok = freeswitch:sendmsg(Node, UUID, [{"call-command", "xferext"} | XferExt]),
+    ecallmgr_util:fs_log(Node, "whistle transfered call to 'xferext' extension", []);
+send_cmd(Node, UUID, AppName, Args) ->
+    lager:debug("execute on node ~s: ~s(~s)", [Node, AppName, Args]),
+    _ = ecallmgr_util:fs_log(Node, "whistle executing ~s ~s", [AppName, Args]),
+    freeswitch:sendmsg(Node, UUID, [{"call-command", "execute"}
+                                    ,{"execute-app-name", wh_util:to_list(AppName)}
+                                    ,{"execute-app-arg", wh_util:to_list(Args)}
+                                   ]).
 
 %%--------------------------------------------------------------------
 %% @private

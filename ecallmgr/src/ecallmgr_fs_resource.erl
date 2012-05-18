@@ -435,7 +435,7 @@ execute_originate_park(JObj, Node, ServerId, DialStrings, UUID, CtlPid) ->
             wh_api:publish_error(ServerId, E),
             ecallmgr_call_control:stop(CtlPid),
             lager:debug("received an originate error: ~s", [Err])
-    after 10000 ->
+    after 120000 ->
             E = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
                  ,{<<"Request">>, JObj}
                  ,{<<"Call-ID">>, UUID}
