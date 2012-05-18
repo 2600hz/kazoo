@@ -16,7 +16,6 @@ handle_req(JObj, _Props) ->
     true = wapi_authz:update_v(JObj),
     wh_util:put_callid(JObj),
     timer:sleep(crypto:rand_uniform(0, 1000)),
-
     CCV = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new()),
     case wh_json:get_value(<<"Account-Billing">>, CCV) of
         <<"per_minute">> -> reconcile(wh_json:get_value(<<"Account-ID">>, CCV), CCV, JObj);
