@@ -62,9 +62,3 @@ extract_cost(JObj) ->
     lager:debug("final call rating at $~p/~ps with minumim ~ps and surcharge $~p for ~p secs: $~p"
                 ,[Rate, RateIncr, RateMin, Surcharge, BillingSecs, Cost]),
     Cost.
-
--spec bridge_cost/1 :: (wh_json:json_object()) -> float().
-bridge_cost(JObj) ->
-    BridgeId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Bridge-ID">>], JObj),
-    AccountId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj),
-    abs(wapi_money:units_to_dollars(j5_util:bridge_cost(BridgeId, AccountId))).
