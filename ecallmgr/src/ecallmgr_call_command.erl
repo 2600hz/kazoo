@@ -34,7 +34,7 @@ exec_cmd(Node, UUID, JObj, ControlPID) ->
                 {AppName, noop} ->
                     ecallmgr_call_control:event_execute_complete(ControlPID, UUID, AppName);
                 {AppName, AppData} ->
-                    send_cmd(Node, UUID, AppName, AppData)
+                    ecallmgr_util:send_cmd(Node, UUID, AppName, AppData)
             end;
         false ->
             lager:debug("command ~s not meant for us but for ~s", [wh_json:get_value(<<"Application-Name">>, JObj), DestID]),
@@ -236,7 +236,7 @@ get_fs_app(Node, UUID, JObj, <<"ring">>) ->
             Ringback ->
                 Stream = ecallmgr_util:media_path(Ringback, extant, UUID),
                 lager:debug("custom ringback: ~s", [Stream]),
-                _ = send_cmd(Node, UUID, <<"set">>, <<"ringback=", Stream/binary>>)
+                _ = ecallmgr_util:send_cmd(Node, UUID, <<"set">>, <<"ringback=", Stream/binary>>)
         end,
     {<<"ring_ready">>, <<>>};
 
@@ -279,7 +279,7 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>) ->
                                 <<"simultaneous">> when length(Endpoints) > 1 ->
                                     lager:debug("bridge is simultaneous to multiple endpoints, starting local ringing"),
                                     %% we don't really care if this succeeds, the call will fail later on
-                                    _ = send_cmd(Node, UUID, <<"ring_ready">>, ""),
+                                    _ = ecallmgr_util:send_cmd(Node, UUID, <<"ring_ready">>, ""),
                                     <<",">>;
                                 _Else ->
                                     <<"|">>
@@ -361,7 +361,8 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>) ->
                                    ]
                            end
                           ,fun(DP) ->
-                                   BridgeCmd = list_to_binary(["bridge ", ecallmgr_fs_xml:get_channel_vars(JObj), DialStrings]),
+                                   J = wh_json:set_value([<<"Custom-Channel-Vars">>, <<"Bridge-ID">>], wh_util:rand_hex_binary(16), JObj),
+                                   BridgeCmd = list_to_binary(["bridge ", ecallmgr_fs_xml:get_channel_vars(J), DialStrings]),
                                    [{"application", BridgeCmd}|DP]
                            end
                           ,fun(DP) ->
@@ -579,64 +580,6 @@ get_fs_kv(Key, Val, _) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% send the SendMsg proplist to the freeswitch node
-%% @end
-%%--------------------------------------------------------------------
--type send_cmd_ret() :: fs_sendmsg_ret() | fs_api_ret().
--spec send_cmd/4 :: (atom(), ne_binary(), ne_binary() | string(), ne_binary() | string()) -> send_cmd_ret().
-send_cmd(Node, UUID, <<"hangup">>, _) ->
-    lager:debug("terminate call on node ~s", [Node]),
-    _ = ecallmgr_util:fs_log(Node, "whistle terminating call", []),
-    freeswitch:api(Node, uuid_kill, wh_util:to_list(UUID));
-send_cmd(Node, UUID, <<"record_call">>, Cmd) ->
-    lager:debug("execute on node ~s: uuid_record(~s)", [Node, Cmd]),
-    case freeswitch:api(Node, uuid_record, wh_util:to_list(Cmd)) of
-        {ok, _}=Ret ->
-            lager:debug("executing uuid_record returned ~p", [Ret]),
-            Ret;
-        {error, <<"-ERR ", E/binary>>} ->
-            lager:debug("error executing uuid_record: ~s", [E]),
-            Evt = list_to_binary([ecallmgr_util:create_masquerade_event(<<"record_call">>, <<"RECORD_STOP">>)
-                                  ,",whistle_application_response="
-                                  ,E
-                                 ]),
-            lager:debug("publishing event: ~s", [Evt]),
-            send_cmd(Node, UUID, "application", Evt),
-            {error, E};
-        timeout ->
-            lager:debug("timeout executing uuid_record"),
-            Evt = list_to_binary([ecallmgr_util:create_masquerade_event(<<"record_call">>, <<"RECORD_STOP">>)
-                                  ,",whistle_application_response=timeout"
-                                 ]),
-            lager:debug("publishing event: ~s", [Evt]),
-            send_cmd(Node, UUID, "application", Evt),
-            {error, timeout}
-    end;
-send_cmd(Node, UUID, <<"playstop">>, Args) ->
-    lager:debug("execute on node ~s: uuid_break(~s)", [Node, UUID]),
-    freeswitch:api(Node, uuid_break, wh_util:to_list(Args));
-send_cmd(Node, UUID, <<"unbridge">>, _) ->
-    lager:debug("execute on node ~s: uuid_park(~s)", [Node, UUID]),
-    freeswitch:api(Node, uuid_park, wh_util:to_list(UUID));
-send_cmd(Node, UUID, <<"xferext">>, Dialplan) ->
-    XferExt = [begin
-                   _ = ecallmgr_util:fs_log(Node, "whistle queuing command in 'xferext' extension: ~s", [V]),
-                   lager:debug("building xferext on node ~s: ~s", [Node, V]),
-                   {wh_util:to_list(K), wh_util:to_list(V)}
-               end || {K, V} <- Dialplan],
-    ok = freeswitch:sendmsg(Node, UUID, [{"call-command", "xferext"} | XferExt]),
-    ecallmgr_util:fs_log(Node, "whistle transfered call to 'xferext' extension", []);
-send_cmd(Node, UUID, AppName, Args) ->
-    lager:debug("execute on node ~s: ~s(~s)", [Node, AppName, Args]),
-    _ = ecallmgr_util:fs_log(Node, "whistle executing ~s ~s", [AppName, Args]),
-    freeswitch:sendmsg(Node, UUID, [{"call-command", "execute"}
-                                    ,{"execute-app-name", wh_util:to_list(AppName)}
-                                    ,{"execute-app-arg", wh_util:to_list(Args)}
-                                   ]).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
 %% @end
 %%--------------------------------------------------------------------
 -spec stream_over_amqp/5 :: (atom(), ne_binary(), ne_binary(), wh_json:json_object(), proplist()) -> 'ok'.
@@ -760,28 +703,28 @@ set_terminators(Node, UUID, Ts) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec set/3 :: (atom(), ne_binary(), ne_binary()) -> send_cmd_ret().
+-spec set/3 :: (atom(), ne_binary(), ne_binary()) -> ecallmgr_util:send_cmd_ret().
 set(Node, UUID, Arg) ->
     case wh_util:to_binary(Arg) of
         <<"hold_music=", _/binary>> -> 
             ecallmgr_fs_nodes:channel_set_import_moh(UUID, false);
         _Else -> ok
     end,
-    send_cmd(Node, UUID, "set", Arg).
+    ecallmgr_util:send_cmd(Node, UUID, "set", Arg).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec export/3 :: (atom(), ne_binary(), binary()) -> send_cmd_ret().
+-spec export/3 :: (atom(), ne_binary(), binary()) -> ecallmgr_util:send_cmd_ret().
 export(Node, UUID, Arg) ->
     case wh_util:to_binary(Arg) of
         <<"hold_music=", _/binary>> -> 
             ecallmgr_fs_nodes:channel_set_import_moh(UUID, false);
         _Else -> ok
     end,
-    send_cmd(Node, UUID, "export", wh_util:to_list(Arg)).
+    ecallmgr_util:send_cmd(Node, UUID, "export", wh_util:to_list(Arg)).
 
 %%--------------------------------------------------------------------
 %% @private

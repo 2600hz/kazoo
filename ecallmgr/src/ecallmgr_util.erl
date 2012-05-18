@@ -1,3 +1,4 @@
+
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2010-2012, VoIP INC
 %%% @doc
@@ -11,6 +12,7 @@
 %%%-------------------------------------------------------------------
 -module(ecallmgr_util).
 
+-export([send_cmd/4]).
 -export([get_expires/1]).
 -export([get_interface_properties/1, get_interface_properties/2]).
 -export([get_sip_to/1, get_sip_from/1, get_sip_request/1, get_orig_ip/1, custom_channel_vars/1]).
@@ -25,6 +27,72 @@
 
 -include("ecallmgr.hrl").
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% send the SendMsg proplist to the freeswitch node
+%% @end
+%%--------------------------------------------------------------------
+-type send_cmd_ret() :: fs_sendmsg_ret() | fs_api_ret().
+-spec send_cmd/4 :: (atom(), ne_binary(), ne_binary() | string(), ne_binary() | string()) -> send_cmd_ret().
+send_cmd(Node, UUID, App, Args) when not is_list(App) ->
+    send_cmd(Node, UUID, wh_util:to_list(App), Args);
+send_cmd(Node, UUID, "xferext", Dialplan) ->
+    XferExt = [begin
+                   _ = ecallmgr_util:fs_log(Node, "whistle queuing command in 'xferext' extension: ~s", [V]),
+                   lager:debug("building xferext on node ~s: ~s", [Node, V]),
+                   {wh_util:to_list(K), wh_util:to_list(V)}
+               end || {K, V} <- Dialplan],
+    ok = freeswitch:sendmsg(Node, UUID, [{"call-command", "xferext"} | XferExt]),
+    ecallmgr_util:fs_log(Node, "whistle transfered call to 'xferext' extension", []);
+send_cmd(Node, UUID, App, Args) when not is_list(Args) ->
+    send_cmd(Node, UUID, App, wh_util:to_list(Args));
+send_cmd(Node, UUID, "hangup", _) ->
+    lager:debug("terminate call on node ~s", [Node]),
+    _ = ecallmgr_util:fs_log(Node, "whistle terminating call", []),
+    freeswitch:api(Node, uuid_kill, wh_util:to_list(UUID));
+send_cmd(Node, _UUID, "record_call", Args) ->
+    lager:debug("execute on node ~s: uuid_record(~s)", [Node, Args]),
+    Ret = freeswitch:api(Node, uuid_record, Args),
+    lager:debug("executing uuid_record returned ~p", [Ret]),
+    Ret;
+send_cmd(Node, UUID, "playstop", Args) ->
+    lager:debug("execute on node ~s: uuid_break(~s)", [Node, UUID]),
+    freeswitch:api(Node, uuid_break, Args);
+send_cmd(Node, UUID, AppName, Args) ->
+    lager:debug("execute on node ~s: ~s(~s)", [Node, AppName, Args]),
+    _ = ecallmgr_util:fs_log(Node, "whistle executing ~s ~s", [AppName, Args]),
+    case AppName of
+        "set" -> maybe_update_channel_cache(Args, UUID);
+        "export" -> maybe_update_channel_cache(Args, UUID);
+        _Else -> ok
+    end,
+    freeswitch:sendmsg(Node, UUID, [{"call-command", "execute"}
+                                    ,{"execute-app-name", AppName}
+                                    ,{"execute-app-arg", wh_util:to_list(Args)}
+                                   ]).
+
+-spec maybe_update_channel_cache/2 :: (string(), ne_binary()) -> 'ok'.
+maybe_update_channel_cache("ecallmgr_Account-ID=" ++ Value, UUID) ->
+    ecallmgr_fs_nodes:channel_set_account_id(UUID, Value);
+maybe_update_channel_cache("ecallmgr_Account-Billing=" ++ Value, UUID) ->
+    ecallmgr_fs_nodes:channel_set_account_billing(UUID, Value);
+maybe_update_channel_cache("ecallmgr_Reseller-ID=" ++ Value, UUID) ->
+    ecallmgr_fs_nodes:channel_set_reseller_id(UUID, Value);
+maybe_update_channel_cache("ecallmgr_Reseller-Billing=" ++ Value, UUID) ->
+    ecallmgr_fs_nodes:channel_set_reseller_billing(UUID, Value);
+maybe_update_channel_cache("ecallmgr_Authorizing-ID=" ++ Value, UUID) ->
+    ecallmgr_fs_nodes:channel_set_authorizing_id(UUID, Value);
+maybe_update_channel_cache("ecallmgr_Resource-ID=" ++ Value, UUID) ->
+    ecallmgr_fs_nodes:channel_set_resource_id(UUID, Value);
+maybe_update_channel_cache("ecallmgr_Authorizing-Type=" ++ Value, UUID) ->
+    ecallmgr_fs_nodes:channel_set_authorizing_type(UUID, Value);
+maybe_update_channel_cache("ecallmgr_Owner-ID=" ++ Value, UUID) ->
+    ecallmgr_fs_nodes:channel_set_owner_id(UUID, Value);
+maybe_update_channel_cache("ecallmgr_Presence-ID=" ++ Value, UUID) ->
+    ecallmgr_fs_nodes:channel_set_presence_id(UUID, Value);
+maybe_update_channel_cache(_, _) ->
+    ok.
 
 -spec get_expires/1 :: (proplist()) -> number().
 get_expires(Props) ->

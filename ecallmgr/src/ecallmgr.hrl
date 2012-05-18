@@ -22,19 +22,25 @@
                            ,timestamp=wh_util:current_tstamp()
                           }).
 
--record(channel, {uuid=undefined
-                  ,destination=undefined
-                  ,direction=undefined
-                  ,account_id=undefined
-                  ,authorizing_id=undefined
-                  ,authorizing_type=undefined
-                  ,owner_id=undefined
-                  ,presence_id=undefined
-                  ,realm=undefined
-                  ,username=undefined
-                  ,import_moh=true
-                  ,node=undefined
-                  ,timestamp=wh_util:current_tstamp()
+-record(channel, {uuid = '_'
+                  ,destination = '_'
+                  ,direction = '_'
+                  ,account_id = '_'
+                  ,account_billing = '_'
+                  ,authorizing_id = '_'
+                  ,authorizing_type = '_'
+                  ,owner_id = '_'
+                  ,resource_id = '_'
+                  ,presence_id = '_'
+                  ,billing_id = '_'
+                  ,bridge_id = '_'
+                  ,reseller_id = '_'
+                  ,reseller_billing = '_'
+                  ,realm = '_'
+                  ,username = '_'
+                  ,import_moh = '_'
+                  ,node = '_'
+                  ,timestamp = '_'
                  }).
 
 -define(DEFAULT_DOMAIN, <<"whistle.2600hz.org">>).
@@ -56,6 +62,8 @@
 -define(STARTUP_FILE, [code:lib_dir(ecallmgr, priv), "/startup.config"]).
 -define(SETTINGS_FILE, [code:lib_dir(ecallmgr, priv), "/settings.config"]).
 
+-define(AUTHZ_RESPONSE_KEY(CallId), {authz_response, CallId}).
+
 -define(STARTUP_FILE_CONTENTS, <<"{'fs_nodes', []}.
 {'fs_cmds', [{'load', \"mod_sofia\"}
              ,{'load', \"mod_shout\"}
@@ -64,6 +72,9 @@
 %% We pass Application custom channel variables with our own prefix
 %% When an event occurs, we include all prefixed vars in the API message
 -define(CHANNEL_VAR_PREFIX, "ecallmgr_").
+
+-define(GET_CCV(Key), <<"variable_", ?CHANNEL_VAR_PREFIX, Key/binary>>).
+-define(SET_CCV(Key, Value), <<?CHANNEL_VAR_PREFIX, Key/binary, "=", Value/binary>>).
 
 %% Call and Channel Vars that have a special prefix instead of the standard CHANNEL_VAR_PREFIX prefix
 %% [{AMQP-Header, FS-var-name}]

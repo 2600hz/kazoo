@@ -165,69 +165,23 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 -spec process_route_req/4 :: (atom(), ne_binary(), ne_binary(), proplist()) -> 'ok'.
-process_route_req(Node, FSID, CallID, FSData) ->
-    put(callid, CallID),
-    lager:debug("processing fetch request ~s (call ~s) from ~s", [FSID, CallID, Node]),
-
-    DefProp = [{<<"Msg-ID">>, FSID}
-               ,{<<"Caller-ID-Name">>, props:get_value(<<"variable_effective_caller_id_name">>, FSData, 
-                                                       props:get_value(<<"Caller-Caller-ID-Name">>, FSData, <<"Unknown">>))}
-               ,{<<"Caller-ID-Number">>, props:get_value(<<"variable_effective_caller_id_number">>, FSData, 
-                                                         props:get_value(<<"Caller-Caller-ID-Number">>, FSData, <<"0000000000">>))}
-               ,{<<"To">>, ecallmgr_util:get_sip_to(FSData)}
-               ,{<<"From">>, ecallmgr_util:get_sip_from(FSData)}
-               ,{<<"Request">>, ecallmgr_util:get_sip_request(FSData)}
-               ,{<<"From-Network-Addr">>,props:get_value(<<"Caller-Network-Addr">>, FSData)}
-               ,{<<"Call-ID">>, CallID}
-               ,{<<"Custom-Channel-Vars">>, wh_json:from_list(ecallmgr_util:custom_channel_vars(FSData))}
-               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)],
-    %% Server-ID will be over-written by the pool worker
-    {ok, AuthZEnabled} = ecallmgr_util:get_setting(authz_enabled, true),
-    case wh_util:is_true(AuthZEnabled) of
-        true -> authorize_and_route(Node, FSID, CallID, FSData, DefProp);
-        false -> route(Node, FSID, CallID, DefProp, undefined)
-    end.
-
-
--spec authorize_and_route/5 :: (atom(), ne_binary(), ne_binary(), proplist(), proplist()) -> 'ok'.
-authorize_and_route(Node, FSID, CallID, FSData, DefProp) ->
-    lager:debug("starting authorization request from node ~s", [Node]),
-    {ok, AuthZPid} = ecallmgr_authz:authorize(FSID, CallID, FSData),
-    route(Node, FSID, CallID, DefProp, AuthZPid).
-    
--spec route/5 :: (atom(), ne_binary(), ne_binary(), proplist(), pid() | 'undefined') -> 'ok'.
-route(Node, FSID, CallID, DefProp, AuthZPid) ->
-    lager:debug("starting route request from node ~s", [Node]),
+process_route_req(Node, FSID, CallId, Props) ->
+    put(callid, CallId),
+    lager:debug("processing fetch request ~s (call ~s) from ~s", [FSID, CallId, Node]),
     ReqResp = wh_amqp_worker:call(?ECALLMGR_AMQP_POOL
-                                  ,DefProp
+                                  ,route_req(CallId, FSID, Props)
                                   ,fun wapi_route:publish_req/1
                                   ,fun wapi_route:is_actionable_resp/1),
     case ReqResp of
         {error, _R} -> lager:debug("did not receive route response: ~p", [_R]);
         {ok, RespJObj} ->
-            RouteCCV = wh_json:get_value(<<"Custom-Channel-Vars">>, RespJObj, wh_json:new()),
-            authorize(Node, FSID, CallID, RespJObj, AuthZPid, RouteCCV)
-    end.
-
--spec authorize/6 :: (atom(), ne_binary(), ne_binary(), wh_json:json_object(), pid() | 'undefined', wh_json:json_object()) -> 'ok'.
-authorize(Node, FSID, CallID, RespJObj, undefined, RouteCCV) ->
-    lager:debug("no authz available, validating route_resp on node ~s", [Node]),
-    true = wapi_route:resp_v(RespJObj),
-    reply(Node, FSID, CallID, RespJObj, RouteCCV);
-authorize(Node, FSID, CallID, RespJObj, AuthZPid, RouteCCV) ->
-    lager:debug("checking authz_resp on node ~s", [Node]),
-    case ecallmgr_authz:is_authorized(AuthZPid) of
-        {false, _} ->
-            lager:debug("sending reply to node ~s: authz is false", [Node]),
-            reply_forbidden(Node, FSID);
-        {true, CCVJObj} ->
-            CCV = wh_json:to_proplist(CCVJObj),
-            lager:debug("sending reply to node ~s: authz is true", [Node]),
             true = wapi_route:resp_v(RespJObj),
-            lager:debug("sending reply to node ~s: valid route resp", [Node]),
-            RouteCCV1 = lists:foldl(fun({K,V}, RouteCCV0) -> wh_json:set_value(K, V, RouteCCV0) end, RouteCCV, CCV),
-
-            reply(Node, FSID, CallID, RespJObj, RouteCCV1, AuthZPid)
+            RouteCCV = wh_json:get_value(<<"Custom-Channel-Vars">>, RespJObj, wh_json:new()),
+            AuthzEnabled = wh_util:is_true(ecallmgr_config:get(<<"authz_enabled">>, false)),
+            case AuthzEnabled andalso wh_cache:wait_for_key_local(?ECALLMGR_UTIL_CACHE, ?AUTHZ_RESPONSE_KEY(CallId)) of
+                {ok, false} -> reply_forbidden(Node, FSID);
+                _Else -> reply_affirmative(Node, FSID, CallId, RespJObj, RouteCCV)
+            end
     end.
 
 %% Reply with a 402 for unauthzed calls
@@ -237,52 +191,37 @@ reply_forbidden(Node, FSID) ->
                                                 ,{<<"Route-Error-Code">>, <<"402">>}
                                                 ,{<<"Route-Error-Message">>, <<"Payment Required">>}
                                                ]),
-
     lager:debug("sending XML to ~s: ~s", [Node, XML]),
-
     case freeswitch:fetch_reply(Node, FSID, iolist_to_binary(XML)) of
         ok ->
-            %% only start control if freeswitch recv'd reply
+            _ = ecallmgr_util:fs_log(Node, "whistle node ~s won control with forbidden reply", [node()]),
             lager:debug("node ~s accepted our route unauthz", [Node]);
-        {error, Reason} ->
-            lager:debug("node ~s rejected our route unauthz, ~p", [Node, Reason]);
-        timeout ->
-            lager:debug("received no reply from node ~s, timeout", [Node])
+        {error, Reason} -> lager:debug("node ~s rejected our route unauthz, ~p", [Node, Reason]);
+        timeout -> lager:debug("received no reply from node ~s, timeout", [Node])
     end.
 
--spec reply/5 :: (atom(), ne_binary(), ne_binary(), wh_json:json_object(), wh_json:json_object()) -> 'ok'.
--spec reply/6 :: (atom(), ne_binary(), ne_binary(), wh_json:json_object(), wh_json:json_object(), pid() | 'undefined') -> 'ok'.
-reply(Node, FSID, CallID, RespJObj, CCVs) ->
-    reply(Node, FSID, CallID, RespJObj, CCVs, undefined).
-
-reply(Node, FSID, CallID, RespJObj, CCVs, AuthZPid) ->
+-spec reply_affirmative/5 :: (atom(), ne_binary(), ne_binary(), proplist(), wh_json:json_object()) -> 'ok'.
+reply_affirmative(Node, FSID, CallId, RespJObj, CCVs) ->
     {ok, XML} = ecallmgr_fs_xml:route_resp_xml(RespJObj),
     ServerQ = wh_json:get_value(<<"Server-ID">>, RespJObj),
-
     lager:debug("sending XML to ~s: ~s", [Node, XML]),
-
     case freeswitch:fetch_reply(Node, FSID, iolist_to_binary(XML)) of
         ok ->
-            %% only start control if freeswitch recv'd reply
             lager:debug("node ~s accepted our route (authzed), starting control and events", [Node]),
-            start_control_and_events(Node, CallID, ServerQ, CCVs),
-            ecallmgr_authz:authz_win(AuthZPid);
-        {error, Reason} ->
-            lager:debug("node ~s rejected our route response, ~p", [Node, Reason]);
-        timeout ->
-            lager:debug("received no reply from node ~s, timeout", [Node])
+            _ = ecallmgr_util:fs_log(Node, "whistle ~s won control with affimative reply", [node()]),
+            start_control_and_events(Node, CallId, ServerQ, CCVs);
+        {error, Reason} -> lager:debug("node ~s rejected our route response, ~p", [Node, Reason]);
+        timeout -> lager:debug("received no reply from node ~s, timeout", [Node])
     end.
 
 -spec start_control_and_events/4 :: (atom(), ne_binary(), ne_binary(), wh_json:json_object()) -> 'ok'.
-start_control_and_events(Node, CallID, SendTo, CCVs) ->
+start_control_and_events(Node, CallId, SendTo, CCVs) ->
     try
-        {ok, CtlPid} = ecallmgr_call_sup:start_control_process(Node, CallID, SendTo),
-        {ok, _EvtPid} = ecallmgr_call_sup:start_event_process(Node, CallID),
-
+        {ok, CtlPid} = ecallmgr_call_sup:start_control_process(Node, CallId, SendTo),
+        {ok, _EvtPid} = ecallmgr_call_sup:start_event_process(Node, CallId),
         CtlQ = ecallmgr_call_control:queue_name(CtlPid),
-
-        CtlProp = [{<<"Msg-ID">>, CallID}
-                   ,{<<"Call-ID">>, CallID}
+        CtlProp = [{<<"Msg-ID">>, CallId}
+                   ,{<<"Call-ID">>, CallId}
                    ,{<<"Control-Queue">>, CtlQ}
                    ,{<<"Custom-Channel-Vars">>, CCVs}
                    | wh_api:default_headers(CtlQ, <<"dialplan">>, <<"route_win">>, ?APP_NAME, ?APP_VERSION)],
@@ -297,3 +236,20 @@ start_control_and_events(Node, CallID, SendTo, CCVs) ->
 send_control_queue(SendTo, CtlProp) ->
     lager:debug("sending route_win to ~s", [SendTo]),
     wapi_route:publish_win(SendTo, CtlProp).
+
+-spec route_req/3 :: (ne_binary(), ne_binary(), proplist()) -> proplist().
+route_req(CallId, FSID, Props) ->
+    [{<<"Msg-ID">>, FSID}
+     ,{<<"Caller-ID-Name">>, props:get_value(<<"variable_effective_caller_id_name">>, Props, 
+                                             props:get_value(<<"Caller-Caller-ID-Name">>, Props, <<"Unknown">>))}
+     ,{<<"Caller-ID-Number">>, props:get_value(<<"variable_effective_caller_id_number">>, Props, 
+                                               props:get_value(<<"Caller-Caller-ID-Number">>, Props, <<"0000000000">>))}
+     ,{<<"To">>, ecallmgr_util:get_sip_to(Props)}
+     ,{<<"From">>, ecallmgr_util:get_sip_from(Props)}
+     ,{<<"Request">>, ecallmgr_util:get_sip_request(Props)}
+     ,{<<"From-Network-Addr">>,props:get_value(<<"Caller-Network-Addr">>, Props)}
+     ,{<<"Call-ID">>, CallId}
+     ,{<<"Custom-Channel-Vars">>, wh_json:from_list(ecallmgr_util:custom_channel_vars(Props))}
+     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+    ].
+    

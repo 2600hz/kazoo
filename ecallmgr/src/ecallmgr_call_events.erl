@@ -10,7 +10,8 @@
 %%%   Karl Anderson <karl@2600hz.org>
 %%%-------------------------------------------------------------------
 -module(ecallmgr_call_events).
--behaviour(gen_server).
+
+-behaviour(gen_listener).
 
 -include("ecallmgr.hrl").
 
@@ -32,9 +33,16 @@
          ,handle_call/3
          ,handle_cast/2
          ,handle_info/2
+         ,handle_event/2
          ,terminate/2
          ,code_change/3
         ]).
+
+-define(BINDINGS, []).
+-define(RESPONDERS, []).
+-define(QUEUE_NAME, <<>>).
+-define(QUEUE_OPTIONS, []).
+-define(CONSUME_OPTIONS, []).
 
 -define(SERVER, ?MODULE).
 
@@ -61,7 +69,12 @@
 %%--------------------------------------------------------------------
 -spec start_link/2 :: (atom(), ne_binary()) -> {'ok', pid()}.
 start_link(Node, CallId) ->
-    gen_server:start_link(?MODULE, [Node, CallId], []).
+    gen_listener:start_link(?MODULE, [{bindings, ?BINDINGS}
+                                      ,{responders, ?RESPONDERS}
+                                      ,{queue_name, ?QUEUE_NAME}
+                                      ,{queue_options, ?QUEUE_OPTIONS}
+                                      ,{consume_options, ?CONSUME_OPTIONS}
+                                     ], [Node, CallId]).
 
 -spec callid/1 :: (pid()) -> ne_binary().
 callid(Srv) ->
@@ -253,6 +266,17 @@ handle_info(_Info, State) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
+%% Allows listener to pass options to handlers
+%%
+%% @spec handle_event(JObj, State) -> {reply, Options}
+%% @end
+%%--------------------------------------------------------------------
+handle_event(_JObj, _State) ->
+    {reply, []}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
 %% This function is called by a gen_server when it is about to
 %% terminate. It should be the opposite of Module:init/1 and do any
 %% necessary cleaning up. When it returns, the gen_server terminates
@@ -281,20 +305,21 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 -spec process_channel_event/2 :: (proplist(), #state{}) -> 'ok'.
-process_channel_event(Props, #state{node=Node}) ->
+process_channel_event(Props, _) ->
     CallId = props:get_value(<<"Caller-Unique-ID">>, Props,
                             props:get_value(<<"Unique-ID">>, Props)),
     put(callid, CallId),
     Masqueraded = is_masquerade(Props),
     EventName = get_event_name(Props, Masqueraded),
     ApplicationName = get_event_application(Props, Masqueraded),
+
     case should_publish(EventName, ApplicationName, Masqueraded) of
         false ->
             ok;
         true ->
             %% TODO: the adding of the node to the props is for event_specific conference
             %% clause until we can break the conference stuff into its own module
-            Event = create_event(EventName, ApplicationName, [{<<"Node">>, Node}|Props]),
+            Event = create_event(EventName, ApplicationName, Props),
             publish_event(Event)
     end.
 
@@ -367,7 +392,7 @@ publish_event(Props) ->
             ApplicationData = props:get_value(<<"Raw-Application-Data">>, Props, <<>>),
             lager:debug("publishing call event ~s '~s(~s)'", [EventName, ApplicationName, ApplicationData])
     end,
-    wh_amqp_worker:cast(?ECALLMGR_AMQP_POOL, Props, fun(P) -> wapi_call:publish_event(CallId, P) end).
+    wapi_call:publish_event(CallId, Props).
 
 -spec is_masquerade/1 :: (proplist()) -> boolean().
 is_masquerade(Props) ->
