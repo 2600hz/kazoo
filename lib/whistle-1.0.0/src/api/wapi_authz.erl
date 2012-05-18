@@ -4,19 +4,20 @@
 %%% Handles authorization requests, responses, queue bindings
 %%% @end
 %%% @contributors
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(wapi_authz).
 
--compile({no_auto_import, [error/1]}).
-
 -export([req/1, req_v/1
          ,resp/1, resp_v/1
+         ,identify_req/1, identify_req_v/1
+         ,identify_resp/1, identify_resp_v/1
          ,win/1, win_v/1
          ,update/1, update_v/1
          ,bind_q/2, unbind_q/2
          ,publish_req/1, publish_req/2
          ,publish_resp/2, publish_resp/3
+         ,publish_identify_req/1, publish_identify_req/2
+         ,publish_identify_resp/2, publish_identify_resp/3
          ,publish_win/2, publish_win/3
          ,publish_update/1, publish_update/2
         ]).
@@ -27,6 +28,7 @@
 -define(KEY_AUTHZ_REQ, <<"authz.req">>).
 -define(KEY_AUTHZ_UPDATE, <<"authz.update">>).
 -define(KEY_AUTHZ_CALL_COMMAND, <<"authz.call_command">>).
+-define(KEY_AUTHZ_IDENT_REQ, <<"authz.ident_req">>).
 
 %% Authorization Requests
 -define(AUTHZ_REQ_HEADERS, [<<"Msg-ID">>, <<"To">>, <<"From">>, <<"Call-ID">>
@@ -57,6 +59,35 @@
                             ,{<<"Is-Authorized">>, [<<"true">>, <<"false">>]}
                            ]).
 -define(AUTHZ_RESP_TYPES, [{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}]).
+
+%% Authorization Identify Requests
+-define(AUTHZ_IDENT_REQ_HEADERS, [<<"Msg-ID">>, <<"To">>, <<"From">>, <<"Request">>, <<"Call-ID">>
+                                      ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
+                                 ]).
+-define(OPTIONAL_AUTHZ_IDENT_REQ_HEADERS, [<<"Custom-Channel-Vars">>]).
+-define(AUTHZ_IDENT_REQ_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
+                                 ,{<<"Event-Name">>, <<"identify_req">>}
+                                ]).
+-define(AUTHZ_IDENT_REQ_TYPES, [{<<"Msg-ID">>, fun is_binary/1}
+                                ,{<<"To">>, fun is_binary/1}
+                                ,{<<"From">>, fun is_binary/1}
+                                ,{<<"Call-ID">>, fun is_binary/1}
+                                ,{<<"Caller-ID-Name">>, fun is_binary/1}
+                                ,{<<"Caller-ID-Number">>, fun is_binary/1}
+                                ,{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}
+                               ]).
+
+%% Authorization Identify Responses
+-define(AUTHZ_IDENT_RESP_HEADERS, [<<"Msg-ID">>, <<"Call-ID">>, <<"Account-ID">>]).
+-define(OPTIONAL_AUTHZ_IDENT_RESP_HEADERS, [<<"Reseller-ID">>]).
+-define(AUTHZ_IDENT_RESP_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
+                                  ,{<<"Event-Name">>, <<"identify_resp">>}
+                                 ]).
+-define(AUTHZ_IDENT_RESP_TYPES, [{<<"Msg-ID">>, fun is_binary/1}
+                                 ,{<<"Call-ID">>, fun is_binary/1}
+                                 ,{<<"Account-ID">>, fun is_binary/1}
+                                 ,{<<"Reseller-ID">>, fun is_binary/1}
+                                ]).
 
 %% Authorization Wins
 -define(AUTHZ_WIN_HEADERS, [<<"Call-ID">>]).
@@ -143,11 +174,46 @@ resp_v(Prop) when is_list(Prop) ->
 resp_v(JObj) ->
     resp_v(wh_json:to_proplist(JObj)).
 
--spec is_authorized/1 :: (api_terms()) -> boolean().
-is_authorized(Prop) when is_list(Prop) ->
-    wh_util:is_true(props:get_value(<<"Is-Authorized">>, Prop, false));
-is_authorized(JObj) ->
-    wh_json:is_true(<<"Is-Authorized">>, JObj, false).
+%%--------------------------------------------------------------------
+%% @doc Authorization Request - see wiki
+%% Takes proplist, creates JSON iolist or error
+%% @end
+%%--------------------------------------------------------------------
+-spec identify_req/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
+identify_req(Prop) when is_list(Prop) ->
+    case identify_req_v(Prop) of
+        true -> wh_api:build_message(Prop, ?AUTHZ_IDENT_REQ_HEADERS, ?OPTIONAL_AUTHZ_IDENT_REQ_HEADERS);
+        false -> {error, "Proplist failed validation for authz_identify_req"}
+    end;
+identify_req(JObj) ->
+    identify_req(wh_json:to_proplist(JObj)).
+
+-spec identify_req_v/1 :: (api_terms()) -> boolean().
+identify_req_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?AUTHZ_IDENT_REQ_HEADERS, ?AUTHZ_IDENT_REQ_VALUES, ?AUTHZ_IDENT_REQ_TYPES);
+identify_req_v(JObj) ->
+    identify_req_v(wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
+%% @doc Authorization Response - see wiki
+%% Takes proplist, creates JSON iolist or error
+%% @end
+%%--------------------------------------------------------------------
+-spec identify_resp/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
+identify_resp(Prop) when is_list(Prop) ->
+    case identify_resp_v(Prop) of
+        true -> wh_api:build_message(Prop, ?AUTHZ_IDENT_RESP_HEADERS, ?OPTIONAL_AUTHZ_IDENT_RESP_HEADERS);
+        false -> {error, "Proplist failed validation for authz_identify_resp"}
+    end;
+identify_resp(JObj) ->
+    identify_resp(wh_json:to_proplist(JObj)).
+
+-spec identify_resp_v/1 :: (api_terms()) -> boolean().
+identify_resp_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?AUTHZ_IDENT_RESP_HEADERS, ?AUTHZ_IDENT_RESP_VALUES, ?AUTHZ_IDENT_RESP_TYPES);
+identify_resp_v(JObj) ->
+    identify_resp_v(wh_json:to_proplist(JObj)).
+
 
 %%--------------------------------------------------------------------
 %% @doc Authorization Win - see wiki
@@ -190,6 +256,9 @@ bind_to_q(Q, [updates|T]) ->
 bind_to_q(Q, [call_command|T]) ->
     ok = amqp_util:bind_q_to_callmgr(Q, ?KEY_AUTHZ_CALL_COMMAND),
     bind_to_q(Q, T);
+bind_to_q(Q, [identify|T]) ->
+    ok = amqp_util:bind_q_to_callmgr(Q, ?KEY_AUTHZ_IDENT_REQ),
+    bind_to_q(Q, T);
 bind_to_q(_Q, []) ->
     ok.
 
@@ -207,6 +276,9 @@ unbind_q_from(Q, [updates|T]) ->
     unbind_q_from(Q, T);
 unbind_q_from(Q, [call_command|T]) ->
     ok = amqp_util:unbind_q_from_callmgr(Q, ?KEY_AUTHZ_CALL_COMMAND),
+    unbind_q_from(Q, T);
+unbind_q_from(Q, [identify|T]) ->
+    ok = amqp_util:unbind_q_from_callmgr(Q, ?KEY_AUTHZ_IDENT_REQ),
     unbind_q_from(Q, T);
 unbind_q_from(_Q, []) ->
     ok.
@@ -237,6 +309,22 @@ publish_resp(Queue, JObj) ->
     publish_resp(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_resp(Queue, Resp, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(Resp, ?AUTHZ_RESP_VALUES, fun ?MODULE:resp/1),
+    amqp_util:targeted_publish(Queue, Payload, ContentType).
+
+-spec publish_identify_req/1 :: (api_terms()) -> 'ok'.
+-spec publish_identify_req/2 :: (api_terms(), ne_binary()) -> 'ok'.
+publish_identify_req(JObj) ->
+    publish_identify_req(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_identify_req(Req, ContentType) ->
+    {ok, Payload} = wh_api:prepare_api_payload(Req, ?AUTHZ_IDENT_REQ_VALUES, fun ?MODULE:identify_req/1),
+    amqp_util:callmgr_publish(Payload, ContentType, ?KEY_AUTHZ_IDENT_REQ).
+
+-spec publish_identify_resp/2 :: (ne_binary(), api_terms()) -> 'ok'.
+-spec publish_identify_resp/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+publish_identify_resp(Queue, JObj) ->
+    publish_identify_resp(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_identify_resp(Queue, Resp, ContentType) ->
+    {ok, Payload} = wh_api:prepare_api_payload(Resp, ?AUTHZ_IDENT_RESP_VALUES, fun ?MODULE:identify_resp/1),
     amqp_util:targeted_publish(Queue, Payload, ContentType).
 
 -spec publish_win/2 :: (ne_binary(), api_terms()) -> 'ok'.
