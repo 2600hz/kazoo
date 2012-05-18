@@ -472,7 +472,7 @@ code_change(_OldVsn, State, _Extra) ->
 -spec launch_cf_module/1 :: (#state{}) -> #state{}.
 launch_cf_module(#state{call=Call, flow=Flow}=State) ->
     Module = <<"cf_", (wh_json:get_value(<<"module">>, Flow))/binary>>,
-    Data = wh_json:get_value(<<"data">>, Flow),
+    Data = wh_json:get_value(<<"data">>, Flow, wh_json:new()),
     {Pid, Action} =
         try
             CFModule = wh_util:to_atom(Module, true),
