@@ -82,7 +82,9 @@ stop() ->
 %% Load a crossbar module's bindings into the bindings server
 %% @end
 %%--------------------------------------------------------------------
--spec start_mod/1 :: (atom()) -> any().
+-spec start_mod/1 :: (atom() | string() | binary()) -> any().
+start_mod(CBMod) when not is_atom(CBMod) ->
+    start_mod(wh_util:to_atom(CBMod, true));
 start_mod(CBMod) ->
     CBMod:init().
 
@@ -92,7 +94,10 @@ start_mod(CBMod) ->
 %% Load a crossbar module's bindings into the bindings server
 %% @end
 %%--------------------------------------------------------------------
--spec stop_mod/1 :: (atom()) -> any().
+-spec stop_mod/1 :: (atom() | string() | binary()) -> any().
+
+stop_mod(CBMod) when not is_atom(CBMod) ->
+    stop_mod(wh_util:to_atom(CBMod, true));
 stop_mod(CBMod) ->
     crossbar_bindings:flush_mod(CBMod),
     case erlang:function_exported(CBMod, stop, 0) of
