@@ -8,10 +8,11 @@
 -module(j5_util).
 
 -export([get_limits/1]).
--export([write_debit_to_ledger/3]).
--export([write_credit_to_ledger/3]).
+-export([write_debit_to_ledger/4]).
+-export([write_credit_to_ledger/4]).
 -export([current_balance/1]).
--export([bridge_cost/2]).
+-export([session_cost/2]).
+-export([get_session_id/1]).
 
 -include_lib("jonny5/src/jonny5.hrl").
 
@@ -78,60 +79,69 @@ create_init_limits(AccountDb) ->
             wh_json:new()
     end.
 
--spec write_debit_to_ledger/3 :: (ne_binary(), float(), wh_json:json_object()) -> {'ok', wh_json:json_object()} |
-                                                                                  {'error', _}.
-write_debit_to_ledger(Suffix, Units, JObj) ->
-    write_to_ledger(Suffix, Units, JObj, debit).
+-spec write_debit_to_ledger/4 :: (ne_binary(), float(), wh_json:json_object(), ne_binary()) -> {'ok', wh_json:json_object()} |
+                                                                                               {'error', _}.
+write_debit_to_ledger(Suffix, Units, JObj, Ledger) ->
+    write_to_ledger(Suffix, Units, JObj, Ledger, debit).
 
--spec write_credit_to_ledger/3 :: (ne_binary(), float(), wh_json:json_object()) -> {'ok', wh_json:json_object()} |
-                                                                                     {'error', _}.
-write_credit_to_ledger(Suffix, Units, JObj) ->
-    write_to_ledger(Suffix, Units, JObj, credit).
+-spec write_credit_to_ledger/4 :: (ne_binary(), float(), wh_json:json_object(), ne_binary()) -> {'ok', wh_json:json_object()} |
+                                                                                                {'error', _}.
+write_credit_to_ledger(Suffix, Units, JObj, Ledger) ->
+    write_to_ledger(Suffix, Units, JObj, Ledger, credit).
 
--spec write_to_ledger/4 :: (ne_binary(), float(), wh_json:json_object(), debit | credit) -> {'ok', wh_json:json_object()} |
-                                                                                            {'error', _}.
-write_to_ledger(Suffix, Units, JObj, Type) ->
-    AccountId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj),
-    AccountDb = wh_util:format_account_id(AccountId, encoded),    
+-spec write_to_ledger/5 :: (ne_binary(), float(), wh_json:json_object(), ne_binary(), debit | credit) -> {'ok', wh_json:json_object()} |
+                                                                                                         {'error', _}.
+write_to_ledger(Suffix, Units, JObj, Ledger, Type) ->
+    LedgerId = wh_util:format_account_id(Ledger, raw),
+    LedgerDb = wh_util:format_account_id(Ledger, encoded),
     Timestamp = wh_json:get_binary_value(<<"Timestamp">>, JObj, wh_util:current_tstamp()),
-    CallId = wh_json:get_value(<<"Call-ID">>, JObj),
-    BridgeId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Bridge-ID">>], JObj),
-    Id = <<BridgeId/binary, "-", (wh_util:to_binary(Suffix))/binary>>,
+    SessionId = get_session_id(JObj),
+    Id = <<SessionId/binary, "-", (wh_util:to_binary(Suffix))/binary>>,
     Entry = wh_json:from_list([{<<"_id">>, Id}
-                               ,{<<"reason">>, <<"per_minute_call">>}
-                               ,{<<"bridge_id">>, BridgeId}
-                               ,{<<"call_id">>, CallId}
+                               ,{<<"reason">>, <<"per_minute_channel">>}
+                               ,{<<"session_id">>, SessionId}
+                               ,{<<"account_id">>, wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj)}
+                               ,{<<"call_id">>, wh_json:get_value(<<"Call-ID">>, JObj)}
                                ,{<<"amount">>, wapi_money:dollars_to_units(Units)}
-                               ,{<<"pvt_account_id">>, AccountId}
-                               ,{<<"pvt_account_db">>, AccountDb}
+                               ,{<<"pvt_account_id">>, LedgerId}
+                               ,{<<"pvt_account_db">>, LedgerDb}
                                ,{<<"pvt_type">>, wh_util:to_binary(Type)}
                                ,{<<"pvt_created">>, Timestamp}
                                ,{<<"pvt_modified">>, Timestamp}
                                ,{<<"pvt_vsn">>, 1}
                                ,{<<"pvt_whapp">>, ?APP_NAME}
                               ]),
-    couch_mgr:save_doc(AccountDb, Entry).
+    couch_mgr:save_doc(LedgerDb, Entry).
 
 -spec current_balance/1 :: (ne_binary()) -> integer().
-current_balance(Account) ->
-    AccountDb = wh_util:format_account_id(Account, encoded),    
+current_balance(Ledger) ->
+    LedgerDb = wh_util:format_account_id(Ledger, encoded),    
     ViewOptions = [{<<"reduce">>, true}],
-    case couch_mgr:get_results(AccountDb, <<"transactions/credit_remaining">>, ViewOptions) of
+    case couch_mgr:get_results(LedgerDb, <<"transactions/credit_remaining">>, ViewOptions) of
         {ok, []} -> 0;
         {ok, [ViewRes|_]} -> wh_json:get_integer_value(<<"value">>, ViewRes, 0);
         {error, _} -> 0
     end.
 
-
--spec bridge_cost/2 :: (ne_binary(), ne_binary()) -> integer().
-bridge_cost(BridgeId, Account) ->
-    AccountDb = wh_util:format_account_id(Account, encoded),    
+-spec session_cost/2 :: (ne_binary(), ne_binary()) -> integer().
+session_cost(SessionId, Ledger) ->
+    LedgerDb = wh_util:format_account_id(Ledger, encoded),    
     ViewOptions = [{<<"reduce">>, true}
                    ,{<<"group">>, true}
-                   ,{<<"key">>, BridgeId}
+                   ,{<<"key">>, SessionId}
                   ],
-    case couch_mgr:get_results(AccountDb, <<"transactions/bridge_cost">>, ViewOptions) of
+    case couch_mgr:get_results(LedgerDb, <<"transactions/session_cost">>, ViewOptions) of
         {ok, []} -> 0;
         {ok, [ViewRes|_]} -> wh_json:get_integer_value(<<"value">>, ViewRes, 0);
         {error, _} -> 0
     end.
+
+-spec get_session_id/1 :: (wh_json:json_object()) -> ne_binary().
+get_session_id(JObj) ->
+    case wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Bridge-ID">>], JObj) of
+        undefined ->
+            CallId = wh_json:get_value(<<"Call-ID">>, JObj),
+            wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Billing-ID">>], JObj, CallId);
+        BridgeId -> BridgeId
+    end.
+    
