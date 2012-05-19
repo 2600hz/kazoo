@@ -1,6 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2010-2011, VoIP INC
+%%% @copyright (C) 2010-2012, VoIP INC
 %%% @doc
 %%% Store routing keys/pid bindings. When a binding is fired,
 %%% pass the payload to the pid for evaluation, accumulating
@@ -15,26 +14,44 @@
 %%%   init() <- [Resp]
 %%%   init() -> Decides what to do with responses
 %%% @end
-%%% Created :  7 Dec 2010 by James Aimonetti <james@2600hz.org>
+%%% @contributors
+%%%   James Aimonetti
+%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(crossbar_bindings).
 
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, bind/3
-         ,map/2, fold/2
+-export([start_link/0
+         ,bind/3
+         ,map/2
+         ,fold/2
          ,flush/0, flush/1, flush_mod/1
          ,stop/0
          ,modules_loaded/0
         ]).
 
 %% Helper Functions for Results of a map/2
--export([any/1, all/1, succeeded/1, failed/1]).
+-export([any/1
+         ,all/1
+         ,succeeded/1
+         ,failed/1
+        ]).
+
+%% Internally-used functions
+-export([map_processor/5
+         ,fold_processor/5
+        ]).
 
 %% gen_server callbacks
--export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-         terminate/2, code_change/3]).
+-export([init/1
+         ,handle_call/3
+         ,handle_cast/2
+         ,handle_info/2
+         ,terminate/2
+         ,code_change/3
+        ]).
 
 %% PropEr needs to be included before eunit. Both modules create a ?LET macro,
 %% but the PropEr one is the useful one. Also needs to be included before any
@@ -50,6 +67,14 @@
 -type binding() :: {ne_binary(), [ne_binary(),...], queue()}. %% queue(Module::atom() | pid())
 -type bindings() :: [binding(),...] | [].
 
+-type payload() :: path_tokens() | % mapping over path tokens in URI
+                   [#cb_context{} | path_token(),...] |
+                   #cb_context{} |
+                   {#cb_context{}, proplist()} | % v1_resource:rest_init/2
+                   {wh_json:json_strings(), #cb_context{}, path_tokens()} |
+                   {wh_datetime(), #http_req{}, #cb_context{}} | % v1_resource:expires/2
+                   {#http_req{}, #cb_context{}}. % mapping over the request/context records
+
 -record(state, {bindings = [] :: bindings()}).
 
 %%%===================================================================
@@ -63,9 +88,9 @@
 %% is the payload, possibly modified
 %% @end
 %%--------------------------------------------------------------------
--spec map/2 :: (ne_binary(), term()) -> [boolean() | http_method(),...] | [].
+-spec map/2 :: (ne_binary(), payload()) -> [boolean() | http_method(),...] | [].
 map(Routing, Payload) ->
-    gen_server:call(?MODULE, {map, Routing, Payload, get(callid)}, infinity).
+    map_processor(Routing, Payload, gen_server:call(?MODULE, current_bindings)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -74,9 +99,9 @@ map(Routing, Payload) ->
 %% all matching bindings
 %% @end
 %%--------------------------------------------------------------------
--spec fold/2 :: (ne_binary(), term()) -> term().
+-spec fold/2 :: (ne_binary(), payload()) -> term().
 fold(Routing, Payload) ->
-    gen_server:call(?MODULE, {fold, Routing, Payload, get(callid)}, infinity).
+    fold_processor(Routing, Payload, gen_server:call(?MODULE, current_bindings)).
 
 %%-------------------------------------------------------------------
 %% @doc
@@ -193,54 +218,21 @@ handle_call(modules_loaded, _, #state{bindings=Bs}=State) ->
                        end, [], Bs),
     {reply, lists:usort(Mods), State};
 
+handle_call(current_bindings, _, #state{bindings=Bs}=State) ->
+    {reply, Bs, State};
+
 handle_call({map, Routing, Payload, ReqId}, From, State) when not is_list(Payload) ->
     handle_call({map, Routing, [Payload], ReqId}, From, State);
 handle_call({map, Routing, Payload, ReqId}, From , #state{bindings=Bs}=State) ->
-    spawn(fun() ->
-                  put(callid, ReqId),
-                  RoutingParts = lists:reverse(binary:split(Routing, <<".">>, [global])),
-                  Map = fun({Mod, Fun}) when is_atom(Mod) ->
-                                put(callid, ReqId),
-                                lager:debug("sending routing ~s to ~s:~s", [Routing, Mod, Fun]),
-                                apply(Mod, Fun, Payload)
-                        end,
-                  Reply = lists:foldl(fun({B, _, MFs}, Acc) when B =:= Routing ->
-                                              lager:debug("exact match ~p to ~p", [B, Routing]),
-                                              [catch Map(MF) || MF <- queue:to_list(MFs)] ++ Acc;
-                                         ({_, BParts, MFs}, Acc) ->
-                                              case matches(BParts, RoutingParts) of
-                                                  true ->
-                                                      lager:debug("matched ~p to ~p", [BParts, RoutingParts]),
-                                                      [catch Map(MF) || MF <- queue:to_list(MFs)] ++ Acc;
-                                                 false -> Acc
-                                             end
-                                     end, [], Bs),
-
-                  gen_server:reply(From, Reply)
-          end),
+    spawn(?MODULE, map_processor, [Routing, Payload, ReqId, From, Bs]),
     {noreply, State};
+
 handle_call({fold, Routing, Payload, ReqId}, From, State) when not is_list(Payload) ->
     handle_call({fold, Routing, [Payload], ReqId}, From, State);
 handle_call({fold, Routing, Payload, ReqId}, From, #state{bindings=Bs}=State) ->
-    spawn(fun() ->
-                  put(callid, ReqId),
-                  lager:debug("running fold for binding ~s", [Routing]),
-
-                  RoutingParts = lists:reverse(binary:split(Routing, <<".">>, [global])),
-
-                  [Reply|_] = lists:foldl(
-                                fun({B, BParts, MFs}, Acc) ->
-                                        case B =:= Routing orelse matches(BParts, RoutingParts) of
-                                            true ->
-                                                lager:debug("routing ~s matches ~s", [Routing, B]),
-                                                fold_bind_results(MFs, Acc, Routing);
-                                            false -> Acc
-                                        end
-                                end, Payload, Bs),
-
-                  gen_server:reply(From, Reply)
-          end),
+    spawn(?MODULE, fold_processor, [Routing, Payload, ReqId, From, Bs]),
     {noreply, State};
+
 handle_call({bind, Binding, Mod, Fun}, _, #state{bindings=[]}=State) ->
     BParts = lists:reverse(binary:split(Binding, <<".">>, [global])),
     {reply, ok, State#state{bindings=[{Binding, BParts, queue:in({Mod, Fun}, queue:new())}]}, hibernate};
@@ -462,6 +454,51 @@ filter_out_succeeded({false, _}) -> true;
 filter_out_succeeded(false) -> true;
 filter_out_succeeded({'EXIT', _}) -> true;
 filter_out_succeeded(Term) -> wh_util:is_empty(Term).
+
+-spec map_processor/3 :: (ne_binary(), payload(), wh_json:json_strings()) -> list().
+-spec map_processor/5 :: (ne_binary(), payload(), ne_binary(), call_from(), wh_json:json_strings()) -> any().
+map_processor(Routing, Payload, ReqId, From, Bs) ->
+    put(callid, ReqId),
+    Reply = map_processor(Routing, Payload, Bs),
+    gen_server:reply(From, Reply).
+
+map_processor(Routing, Payload, Bs) ->
+    RoutingParts = lists:reverse(binary:split(Routing, <<".">>, [global])),
+    Map = fun({Mod, Fun}) when is_atom(Mod) ->
+                  apply(Mod, Fun, Payload)
+          end,
+    lists:foldl(fun({B, _, MFs}, Acc) when B =:= Routing ->
+                        lager:debug("exact match ~p to ~p", [B, Routing]),
+                        [catch Map(MF) || MF <- queue:to_list(MFs)] ++ Acc;
+                   ({_, BParts, MFs}, Acc) ->
+                        case matches(BParts, RoutingParts) of
+                            true ->
+                                lager:debug("matched ~p to ~p", [BParts, RoutingParts]),
+                                [catch Map(MF) || MF <- queue:to_list(MFs)] ++ Acc;
+                            false -> Acc
+                        end
+                end, [], Bs).
+
+-spec fold_processor/3 :: (ne_binary(), payload(), wh_json:json_strings()) -> any().
+-spec fold_processor/5 :: (ne_binary(), payload(), ne_binary(), call_from(), wh_json:json_strings()) -> any().
+fold_processor(Routing, Payload, ReqId, From, Bs) ->
+    put(callid, ReqId),
+    Reply = fold_processor(Routing, Payload, Bs),
+    gen_server:reply(From, Reply).
+
+fold_processor(Routing, Payload, Bs) ->
+    RoutingParts = lists:reverse(binary:split(Routing, <<".">>, [global])),
+
+    [Reply|_] = lists:foldl(
+                  fun({B, BParts, MFs}, Acc) ->
+                          case B =:= Routing orelse matches(BParts, RoutingParts) of
+                              true ->
+                                  lager:debug("routing ~s matches ~s", [Routing, B]),
+                                  fold_bind_results(MFs, Acc, Routing);
+                              false -> Acc
+                          end
+                  end, Payload, Bs),
+    Reply.
 
 %% EUNIT and PropEr TESTING %%
 
