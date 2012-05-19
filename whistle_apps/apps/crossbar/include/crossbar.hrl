@@ -50,7 +50,7 @@
           ,auth_account_id = 'undefined' :: 'undefined' | ne_binary()
           ,auth_doc = 'undefined' :: wh_json:json_object() | 'undefined'
           ,req_verb = <<"get">> :: ne_binary() % <<"get">>, <<"post">>, <<"put">>, <<"delete">>, <<"head">>
-          ,req_nouns = [{<<"404">>, []}] :: [{ne_binary(), list()},...] | []
+          ,req_nouns = [{<<"404">>, []}] :: [{ne_binary(), wh_json:json_strings()},...] | [] % {module, [id]} most typical
           ,req_json = wh_json:new() :: wh_json:json_object() | {'malformed', binary()} %% the request JSON envelope
           ,req_files = [] :: [{ne_binary(), wh_json:json_object()},...] | [] %% {file_name, {"contents":<<bin>>, "headers":{"content-type":"", "content-length":1}}}
           ,req_data = wh_json:new() :: wh_json:json_objects()  % the "data" from the request JSON envelope
