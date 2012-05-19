@@ -176,7 +176,7 @@ refresh(?WH_FAXES) ->
     couch_mgr:db_create(?WH_FAXES),
     couch_mgr:revise_doc_from_file(?WH_FAXES, whistle_apps, ?FAXES_VIEW_FILE),
     ok;
-refresh(<<Account/binary>>) ->
+refresh(?NE_BINARY = Account) ->
     Views = [whapps_util:get_view_json(whistle_apps, ?MAINTENANCE_VIEW_FILE)
              ,whapps_util:get_view_json(conference, <<"views/conference.json">>)
              |whapps_util:get_views_json(crossbar, "account")
