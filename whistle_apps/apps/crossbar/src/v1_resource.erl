@@ -177,7 +177,14 @@ valid_content_headers(Req, Context) ->
 
 -spec known_content_type/2 :: (#http_req{}, #cb_context{}) -> {boolean(), #http_req{}, #cb_context{}}.
 known_content_type(Req, Context) ->
-    v1_util:is_known_content_type(Req, Context).
+    {ok, Req2} = case cowboy_http_req:header('Content-Type', Req) of
+                     {undefined, Req1} ->
+                         cowboy_http_req:set_resp_header(<<"X-RFC2616">>
+                                                             ,<<"§14.17 (Try it, you'll like it)">>
+                                                             ,Req1);
+                     {_, Req1} -> {ok, Req1}
+                 end,
+    v1_util:is_known_content_type(Req2, Context).
 
 -spec valid_entity_length/2 :: (#http_req{}, #cb_context{}) -> {'true', #http_req{}, #cb_context{}}.
 valid_entity_length(Req, Context) ->
@@ -250,10 +257,7 @@ default_content_types_accepted(Req, #cb_context{content_types_accepted=CTAs}=Con
                                           end, L) % check each type against the default
           ],
 
-    {ok, Req1} = cowboy_http_req:set_resp_header(<<"X-RFC2616">>
-                                                     ,<<"§14.17 (Try it, you'll like it)">>
-                                                     ,Req),
-    {CTA, Req1, Context}.
+    {CTA, Req, Context}.
 
 -spec content_types_accepted/3 :: (content_type(), #http_req{}, #cb_context{}) -> {[{content_type(), atom()},...], #http_req{}, #cb_context{}}.
 content_types_accepted(CT, Req, #cb_context{content_types_accepted=CTAs}=Context) ->
