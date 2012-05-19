@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2012, VoIP INC
 %%% @doc
 %%%
 %%% CDR
@@ -101,7 +101,7 @@ load_cdr_summary(#cb_context{req_nouns=Nouns, query_json=QJObj}=Context) ->
                     crossbar_doc:load_view(?CB_LIST
                                            ,ViewOptions
                                            ,Context#cb_context{query_json=wh_json:delete_keys([<<"created_to">>
-                                                                                              ,<<"created_from">>
+                                                                                               ,<<"created_from">>
                                                                                               ], QJObj)}
                                            ,fun normalize_view_results/2)
             end;
@@ -148,8 +148,8 @@ normalize_view_results(JObj, Acc) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec create_view_options/2 :: (undefined | ne_binary(), #cb_context{}) -> {error, #cb_context{}} |
-                                                                           {ok, proplist()}.
+-spec create_view_options/2 :: ('undefined' | ne_binary(), #cb_context{}) -> {'error', #cb_context{}} |
+                                                                             {'ok', proplist()}.
 create_view_options(OwnerId, #cb_context{query_json=JObj}=Context) ->
     MaxRange = whapps_config:get_integer(?MOD_CONFIG_CAT, <<"maximum_range">>, 6048000),
     To = wh_json:get_integer_value(<<"created_to">>, JObj, wh_util:current_tstamp()),
@@ -159,17 +159,18 @@ create_view_options(OwnerId, #cb_context{query_json=JObj}=Context) ->
         {true, _} -> 
             Error = wh_json:set_value([<<"created_from">>, <<"invalid">>]
                                       ,<<"created_from is prior to created_to">>
-                                      ,wh_json:new()),
+                                      ,wh_json:new()
+                                     ),
             {error, crossbar_util:response_invalid_data(Error, Context)};
         {_, true} -> 
             Error = wh_json:set_value([<<"created_to">>, <<"invalid">>]
                                       ,<<"created_to is more than "
                                          ,(wh_util:to_binary(MaxRange))/binary
                                          ," seconds from created_from">>
-                                      ,wh_json:new()),
+                                         ,wh_json:new()),
             {error, crossbar_util:response_invalid_data(Error, Context)};
         {false, false} when OwnerId =:= undefined ->
             {ok, [{<<"startkey">>, From}, {<<"endkey">>, To}]};
-         {false, false} ->
+        {false, false} ->
             {ok, [{<<"startkey">>, [OwnerId, From]}, {<<"endkey">>, [OwnerId, To]}]}
     end.
