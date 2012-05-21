@@ -343,7 +343,12 @@ originate_to_dialstrings(JObj, Node, ServerId, Endpoints, ?ORIGINATE_PARK) ->
                 ],
             wh_api:publish_error(ServerId, E)
     end;
-originate_to_dialstrings(JObj, Node, ServerId, DialStrings, Action) ->
+originate_to_dialstrings(JObj, Node, ServerId, Endpoints, Action) ->
+    DialSeparator = case wh_json:get_value(<<"Dial-Endpoint-Method">>, JObj, <<"single">>) of
+                        <<"simultaneous">> when length(Endpoints) > 1 -> <<",">>;
+                        _Else -> <<"|">>
+                    end,
+    DialStrings = ecallmgr_util:build_bridge_string(Endpoints, DialSeparator),
     Args = list_to_binary([ecallmgr_fs_xml:get_channel_vars(JObj), DialStrings, " ", Action]),
     _ = ecallmgr_util:fs_log(Node, "whistle originating call: ~s", [Args]),
     case handle_originate_return(Node, freeswitch:api(Node, 'originate', wh_util:to_list(Args))) of
