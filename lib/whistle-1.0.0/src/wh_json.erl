@@ -761,8 +761,11 @@ merge_recursive_test() ->
     ?assertEqual(true, is_json_object(JObj)),
     ?assertEqual(true, undefined =/= get_value(<<"d1k1">>, JObj)),
     ?assertEqual(true, undefined =/= get_value(<<"d2k1">>, JObj)),
+
     ?assertEqual(true, undefined =/= get_value([<<"d1k3">>, 2], JObj)),
+
     ?assertEqual(true, undefined =/= get_value(<<"sub_d1">>, JObj)),
+
     ?assertEqual(true, undefined =/= get_value([<<"sub_d1">>, <<"d1k1">>], JObj)),
     ?assertEqual(true, d2k2 =:= get_value(<<"d1k2">>, JObj)), %% second JObj takes precedence
     ?assertEqual(true, undefined =:= get_value(<<"missing_k">>, JObj)).
