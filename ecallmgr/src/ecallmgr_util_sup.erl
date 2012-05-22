@@ -16,11 +16,9 @@
 -export([registrar_proc/0, cache_proc/0]).
 -export([init/1]).
 
-%% Helper macro for declaring children of supervisor
 -define(CHILD(Name, Type), fun(N, cache) -> {N, {wh_cache, start_link, [N]}, permanent, 5000, worker, [wh_cache]};
                               (N, T) -> {N, {N, start_link, []}, permanent, 5000, T, [N]} end(Name, Type)).
--define(CHILDREN, [{wh_alert, worker}
-                   ,{?ECALLMGR_UTIL_CACHE, cache}
+-define(CHILDREN, [{?ECALLMGR_UTIL_CACHE, cache}
                    ,{?ECALLMGR_REG_CACHE, cache}
                    ,{ecallmgr_shout_sup, supervisor}
                    ,{ecallmgr_media_registry, worker}

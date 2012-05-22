@@ -29,7 +29,7 @@
                      ,{{?MODULE, handle_call_status}, [{<<"call_event">>, <<"call_status_req">>}]}
                      ,{{?MODULE, handle_switch_reloadacl}, [{<<"switch_event">>, <<"reloadacl">>}]}
                     ]).
--define(BINDINGS, [{call, [{restrict_to, [query_req, status_req]}]}
+-define(BINDINGS, [{call, [{restrict_to, [status_req]}]}
                    ,{switch, []}
                   ]).
 -define(QUEUE_NAME, <<>>).

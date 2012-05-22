@@ -21,6 +21,7 @@
 -export([control_transfer/1, control_transfer_v/1]).
 -export([controller_queue/1, controller_queue_v/1]).
 -export([usurp_control/1, usurp_control_v/1]).
+-export([usurp_publisher/1, usurp_publisher_v/1]).
 
 -export([bind_q/2, unbind_q/2]).
 
@@ -34,14 +35,14 @@
 -export([publish_control_transfer/2, publish_control_transfer/3]).
 -export([publish_controller_queue/2, publish_controller_queue/3]).
 -export([publish_usurp_control/2, publish_usurp_control/3]).
+-export([publish_usurp_publisher/2, publish_usurp_publisher/3]).
 
 -export([get_status/1]).
 
 -include("../wh_api.hrl").
 
 %% Routing key prefix for rating
--define(KEY_RATING_REQ, <<"call.rating">>). %% Routing key to bind with in AMQP
--define(KEY_CHANNEL_QUERY, <<"channel.query">>). %% Routing key to bind with in AMQP
+-define(KEY_RATING_REQ, <<"call.rating">>).
 
 %% Call Events
 -define(CALL_EVENT_HEADERS, [<<"Call-ID">>, <<"Channel-Call-State">>]).
@@ -140,6 +141,14 @@
                                     ,{<<"Event-Name">>, <<"usurp_control">>}
                                    ]).
 -define(CALL_USURP_CONTROL_TYPES, []).
+
+%% Usurp Call Event Publisher
+-define(PUBLISHER_USURP_CONTROL_HEADERS, [<<"Call-ID">>, <<"Reference">>]).
+-define(OPTIONAL_PUBLISHER_USURP_CONTROL_HEADERS, [<<"Reason">>]).
+-define(PUBLISHER_USURP_CONTROL_VALUES, [{<<"Event-Category">>, <<"call_event">>}
+                                         ,{<<"Event-Name">>, <<"usurp_publisher">>}
+                                        ]).
+-define(PUBLISHER_USURP_CONTROL_TYPES, []).
 
 %% Controller Queue Update
 -define(CONTROLLER_QUEUE_HEADERS, [<<"Call-ID">>, <<"Controller-Queue">>]).
@@ -333,6 +342,28 @@ usurp_control_v(Prop) when is_list(Prop) ->
 usurp_control_v(JObj) ->
     usurp_control_v(wh_json:to_proplist(JObj)).
 
+
+%%--------------------------------------------------------------------
+%% @doc Format a call id update from the switch for the listener
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec usurp_publisher/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
+usurp_publisher(Prop) when is_list(Prop) ->
+    case usurp_publisher_v(Prop) of
+        true -> wh_api:build_message(Prop, ?PUBLISHER_USURP_CONTROL_HEADERS, ?OPTIONAL_PUBLISHER_USURP_CONTROL_HEADERS);
+        false -> {error, "Proplist failed validation for usurp_publisher"}
+    end;
+usurp_publisher(JObj) ->
+    usurp_publisher(wh_json:to_proplist(JObj)).
+
+-spec usurp_publisher_v/1 :: (api_terms()) -> boolean().
+usurp_publisher_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?PUBLISHER_USURP_CONTROL_HEADERS, ?PUBLISHER_USURP_CONTROL_VALUES, ?PUBLISHER_USURP_CONTROL_TYPES);
+usurp_publisher_v(JObj) ->
+    usurp_publisher_v(wh_json:to_proplist(JObj)).
+
+
 %%--------------------------------------------------------------------
 %% @doc Format a call id update from the switch for the listener
 %% Takes proplist, creates JSON string or error
@@ -363,7 +394,7 @@ bind_q(Queue, Props) ->
 bind_q(Q, undefined, CallID) ->
     ok = amqp_util:bind_q_to_callevt(Q, CallID),
     ok = amqp_util:bind_q_to_callevt(Q, CallID, cdr),
-    ok = amqp_util:bind_q_to_callmgr(Q, ?KEY_CHANNEL_QUERY);
+    ok = amqp_util:bind_q_to_callevt(Q, CallID, publisher_usurp);
 
 bind_q(Q, [events|T], CallID) ->
     _ = amqp_util:bind_q_to_callevt(Q, CallID),
@@ -374,8 +405,8 @@ bind_q(Q, [cdr|T], CallID) ->
 bind_q(Q, [status_req|T], CallID) ->
     ok = amqp_util:bind_q_to_callevt(Q, CallID, status_req),
     bind_q(Q, T, CallID);
-bind_q(Q, [query_req|T], CallID) ->
-    ok = amqp_util:bind_q_to_callmgr(Q, ?KEY_CHANNEL_QUERY),
+bind_q(Q, [publisher_usurp|T], CallID) ->
+    ok = amqp_util:bind_q_to_callevt(Q, CallID, publisher_usurp),
     bind_q(Q, T, CallID);
 bind_q(Q, [_|T], CallID) ->
     bind_q(Q, T, CallID);
@@ -390,7 +421,7 @@ unbind_q(Queue, Props) ->
 unbind_q(Q, undefined, CallID) ->
     ok = amqp_util:unbind_q_from_callevt(Q, CallID),
     ok = amqp_util:unbind_q_from_callevt(Q, CallID, cdr),
-    ok = amqp_util:unbind_q_from_callmgr(Q, ?KEY_CHANNEL_QUERY);
+    ok = amqp_util:unbind_q_from_callevt(Q, CallID, publisher_usurp);
 
 unbind_q(Q, [events|T], CallID) ->
     ok = amqp_util:unbind_q_from_callevt(Q, CallID),
@@ -401,8 +432,8 @@ unbind_q(Q, [cdr|T], CallID) ->
 unbind_q(Q, [status_req|T], CallID) ->
     ok = amqp_util:unbind_q_from_callevt(Q, CallID, status_req),
     unbind_q(Q, T, CallID);
-unbind_q(Q, [query_req|T], CallID) ->
-    ok = amqp_util:unbind_q_from_callmgr(Q, ?KEY_CHANNEL_QUERY),
+unbind_q(Q, [publisher_usurp|T], CallID) ->
+    ok = amqp_util:unbind_q_from_callevt(Q, CallID, publisher_usurp),
     unbind_q(Q, T, CallID);
 unbind_q(Q, [_|T], CallID) ->
     unbind_q(Q, T, CallID);
@@ -500,6 +531,14 @@ publish_usurp_control(CallID, JObj) ->
 publish_usurp_control(CallID, JObj, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(JObj, ?CALL_USURP_CONTROL_VALUES, fun ?MODULE:usurp_control/1),
     amqp_util:callevt_publish(CallID, Payload, event, ContentType).
+
+-spec publish_usurp_publisher/2 :: (ne_binary(), api_terms()) -> 'ok'.
+-spec publish_usurp_publisher/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+publish_usurp_publisher(CallID, JObj) ->
+    publish_usurp_publisher(CallID, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_usurp_publisher(CallID, JObj, ContentType) ->
+    {ok, Payload} = wh_api:prepare_api_payload(JObj, ?PUBLISHER_USURP_CONTROL_VALUES, fun ?MODULE:usurp_publisher/1),
+    amqp_util:callevt_publish(CallID, Payload, publisher_usurp, ContentType).
 
 -spec get_status/1 :: (api_terms()) -> ne_binary().
 get_status(API) when is_list(API) ->
