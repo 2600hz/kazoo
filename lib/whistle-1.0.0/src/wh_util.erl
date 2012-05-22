@@ -117,7 +117,7 @@ is_in_account_hierarchy(CheckFor, InAccount, IncludeSelf) ->
     CheckId = wh_util:format_account_id(CheckFor, raw),
     AccountId = wh_util:format_account_id(InAccount, raw),
     AccountDb = wh_util:format_account_id(InAccount, encoded),
-    case (IncludeSelf andalso AccountId =:= CheckId) orelse crossbar_util:open_doc(AccountDb, AccountId) of
+    case (IncludeSelf andalso AccountId =:= CheckId) orelse couch_mgr:open_cache_doc(AccountDb, AccountId) of
         true ->
             lager:debug("account ~s is the same as the account to fetch the hierarchy from", [CheckId]),
             true;
@@ -147,7 +147,7 @@ is_system_admin(undefined) -> false;
 is_system_admin(Account) -> 
     AccountId = wh_util:format_account_id(Account, raw),
     AccountDb = wh_util:format_account_id(Account, encoded),
-    case couch_mgr:open_doc(AccountDb, AccountId) of
+    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
         {ok, JObj} -> wh_json:is_true(<<"pvt_superduper_admin">>, JObj);
         {error, _R} ->
             lager:debug("unable to open account definition for ~s: ~p", [Account, _R]),
@@ -202,7 +202,7 @@ get_account_realm(AccountId) ->
 get_account_realm(undefined, _) ->
     undefined;
 get_account_realm(Db, AccountId) ->
-    case couch_mgr:open_doc(Db, AccountId) of
+    case couch_mgr:open_cache_doc(Db, AccountId) of
         {ok, JObj} ->
             wh_json:get_ne_value(<<"realm">>, JObj);
         {error, R} ->

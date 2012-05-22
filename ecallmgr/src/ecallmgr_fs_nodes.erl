@@ -309,6 +309,12 @@ channel_record_to_json(Channel) ->
                        ,{<<"reseller_billing">>, Channel#channel.reseller_billing}
                        ,{<<"realm">>, Channel#channel.realm}                                          
                        ,{<<"username">>, Channel#channel.username}
+                       ,{<<"billing_id">>, Channel#channel.billing_id}
+                       ,{<<"bridge_id">>, Channel#channel.bridge_id}
+                       ,{<<"reseller_id">>, Channel#channel.reseller_id}
+                       ,{<<"reseller_billing">>, Channel#channel.reseller_billing}
+                       ,{<<"realm">>, Channel#channel.realm}                                          
+                       ,{<<"username">>, Channel#channel.username}
                        ,{<<"node">>, Channel#channel.node}
                        ,{<<"timestamp">>, Channel#channel.timestamp}
                       ]).
@@ -412,10 +418,11 @@ handle_cast({rm_fs_node, Node}, State) ->
     {noreply, rm_fs_node(Node, State), hibernate};
 handle_cast({sync_channels, Node, Channels}, State) ->
     lager:debug("ensuring channel cache is in sync with ~s", [Node]),
+
     MatchSpec = [{#channel{uuid = '$1', node = '$2'}
                   ,[{'=:=', '$2', {const, Node}}]
                   ,['$1']}
-                ],  
+                ],
     CachedChannels = sets:from_list(ets:select(ecallmgr_channels, MatchSpec)),
     SyncChannels = sets:from_list(Channels),
     Remove = sets:subtract(CachedChannels, SyncChannels),
@@ -723,8 +730,8 @@ summarize_account_usage([{<<"inbound">>, BillingId, undefined, _, _, _}|Channels
                ],
     summarize_account_usage(Channels, lists:foldr(fun(F, A) -> F(A) end, AStats, Routines));
 summarize_account_usage([{_, BillingId, _, _, _, _}|Channels], AStats) ->
-    Routines = [fun(#astats{billing_ids=I}=A) -> 
+    Routines = [fun(#astats{billing_ids=I}=A) ->
                         A#astats{billing_ids=[BillingId|lists:delete(BillingId, I)]}
-                 end
+                end
                ],
     summarize_account_usage(Channels, lists:foldr(fun(F, A) -> F(A) end, AStats, Routines)).

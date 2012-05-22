@@ -59,8 +59,9 @@
 
 %% Store Request
 -define(STORE_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Media-Name">>, <<"Media-Transfer-Method">>
-                                ,<<"Media-Transfer-Destination">>]).
--define(OPTIONAL_STORE_REQ_HEADERS, [<<"Media-Additional-Headers">>, <<"Insert-At">>]).
+                                ,<<"Media-Transfer-Destination">>
+                           ]).
+-define(OPTIONAL_STORE_REQ_HEADERS, [<<"Additional-Headers">>, <<"Insert-At">>]).
 -define(STORE_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                            ,{<<"Event-Name">>, <<"command">>}
                            ,{<<"Application-Name">>, <<"store">>}
@@ -69,11 +70,25 @@
                           ]).
 -define(STORE_REQ_TYPES, [{<<"Additional-Headers">>, fun is_list/1}]).
 
+%% Store Fax
+-define(STORE_FAX_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Fax-Transfer-Method">>
+                                ,<<"Fax-Transfer-Destination">>
+                           ]).
+-define(OPTIONAL_STORE_FAX_HEADERS, [<<"Additional-Headers">>, <<"Insert-At">>]).
+-define(STORE_FAX_VALUES, [{<<"Event-Category">>, <<"call">>}
+                           ,{<<"Event-Name">>, <<"command">>}
+                           ,{<<"Application-Name">>, <<"store_fax">>}
+                           ,{<<"Media-Transfer-Method">>, <<"put">>}
+                           ,?INSERT_AT_TUPLE
+                          ]).
+-define(STORE_FAX_TYPES, [{<<"Additional-Headers">>, fun is_list/1}]).
+
+
 %% Store (via AMQP) Response
 -define(STORE_AMQP_RESP_HEADERS, [<<"Call-ID">>, <<"Application-Name">>, <<"Media-Transfer-Method">>
-                                      ,<<"Media-Name">>, <<"Media-Sequence-ID">>, <<"Media-Content">>
+                                      ,<<"Media-Name">>, <<"Media-Content">>
                                  ]).
--define(OPTIONAL_STORE_AMQP_RESP_HEADERS, []).
+-define(OPTIONAL_STORE_AMQP_RESP_HEADERS, [<<"Media-Sequence-ID">>]).
 -define(STORE_AMQP_RESP_VALUES, [{<<"Application-Name">>, <<"store">>}
                                  ,{<<"Media-Transfer-Method">>, <<"stream">>}
                                 ]).
@@ -173,6 +188,16 @@
                             ,?INSERT_AT_TUPLE
                            ]).
 -define(RING_REQ_TYPES, []).
+
+%% Recv Fax
+-define(RECV_FAX_HEADERS, [<<"Application-Name">>, <<"Call-ID">>]).
+-define(OPTIONAL_RECV_FAX_HEADERS, []).
+-define(RECV_FAX_VALUES, [{<<"Event-Category">>, <<"call">>}
+                          ,{<<"Event-Name">>, <<"command">>}
+                          ,{<<"Application-Name">>, <<"receive_fax">>}
+                          ,?INSERT_AT_TUPLE
+                         ]).
+-define(RECV_FAX_TYPES, []).
 
 %% Hangup
 %% Include the Other-Leg-Call-ID to only hangup the other leg

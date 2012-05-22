@@ -14,6 +14,8 @@
 -export([get_all_accounts/0, get_all_accounts/1]).
 -export([get_account_by_realm/1,get_accounts_by_name/1]).
 -export([calculate_cost/5]).
+-export([get_master_account_id/0]).
+-export([find_oldest_doc/1]).
 -export([get_event_type/1, put_callid/1]).
 -export([get_call_termination_reason/1]).
 -export([hangup_cause_to_alert_level/1]).
@@ -103,6 +105,53 @@ replicate_from_account(AccountDb, TargetDb, FilterDoc) ->
         _:_ ->
             lager:debug("replicate ~s to ~s using filter ~s error", [AccountDb, TargetDb, FilterDoc])
     end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Find the system admin from the system_config if set, if not
+%% set it to the oldest acccount and return that.
+%% @end
+%%--------------------------------------------------------------------
+-spec get_master_account_id/0 :: () -> {'ok', ne_binary()} | {'error', _}.
+get_master_account_id() ->
+    case whapps_config:get(?WH_SYSTEM_CONFIG_ACCOUNT, <<"master_account_id">>) of
+        undefined ->            
+            case couch_mgr:get_results(?WH_ACCOUNTS_DB, <<"accounts/listing_by_id">>, [{<<"include_docs">>, true}]) of
+                {error, _R}=E -> E;
+                {ok, Accounts} ->
+                    case find_oldest_doc([wh_json:get_value(<<"doc">>, Account) || Account <- Accounts]) of
+                        {error, _}=E -> E;
+                        {ok, OldestAccountId}=Ok ->
+                            lager:debug("setting ~s.master_account_id to ~s", [?WH_SYSTEM_CONFIG_ACCOUNT, OldestAccountId]),
+                            whapps_config:set(?WH_SYSTEM_CONFIG_ACCOUNT, <<"master_account_id">>, OldestAccountId),
+                            Ok
+                    end
+            end;
+        Default -> {ok, Default}
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Given a list of accounts this returns the id of the oldest
+%% @end
+%%--------------------------------------------------------------------  
+-spec find_oldest_doc/1 :: (wh_json:json_objects()) -> {'ok', ne_binary()} | {'error', _}.        
+find_oldest_doc([]) ->
+    {error, no_docs};
+find_oldest_doc(Docs) ->
+    First = hd(Docs),
+    {_, OldestDocID} = lists:foldl(fun(Doc, {Created, _}=Eldest) ->
+                                           case wh_json:get_integer_value(<<"pvt_created">>, Doc) of
+                                               Older when Older < Created  -> {Older, wh_json:get_value(<<"id">>, Doc)};
+                                               _ -> Eldest
+                                           end
+                                   end
+                                   ,{wh_json:get_integer_value(<<"pvt_created">>, First), wh_json:get_value(<<"id">>, First)}
+                                   ,Docs),
+    
+    {ok, OldestDocID}.
 
 %%--------------------------------------------------------------------
 %% @public

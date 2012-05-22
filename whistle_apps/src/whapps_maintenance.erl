@@ -22,6 +22,7 @@
 
 -define(DEVICES_CB_LIST, <<"devices/crossbar_listing">>).
 -define(MAINTENANCE_VIEW_FILE, <<"views/maintenance.json">>).
+-define(RESELLER_VIEW_FILE, <<"views/reseller.json">>).
 -define(FAXES_VIEW_FILE, <<"views/faxes.json">>).
 -define(ACCOUNTS_AGG_VIEW_FILE, <<"views/accounts.json">>).
 -define(ACCOUNTS_AGG_NOTIFY_VIEW_FILE, <<"views/notify.json">>).
@@ -34,14 +35,29 @@
 %%--------------------------------------------------------------------
 -spec migrate/0 :: () -> ok.
 migrate() ->
+    %% Remove depreciated dbs
     couch_mgr:db_delete(<<"crossbar_schemas">>),
     couch_mgr:db_delete(<<"registrations">>),
     couch_mgr:db_delete(<<"crossbar%2Fsessions">>),
+
+    %% Ensure the offnet db exists and has all the necessary views
     stepswitch_maintenance:refresh(),
+
+    %% Create missing limits doc
     migrate_limits(),
-    blocking_refresh(),
+
+    %% Ensure the pvt_wnm_XXX fields on the account definition is up-to-date and
+    %% any number assignments exist
 %%    whistle_number_manager_maintenance:reconcile(all),
+
+    %% Ensure the views in each DB are update-to-date, depreciated view removed, sip_auth docs
+    %% that need to be aggregated have been, and the account definition is aggregated
+    blocking_refresh(),
+
+    %% Clear the config cache as to ensure we manipulate what is actually in the db...
     whapps_config:flush(),
+
+    %% Remove depreciated crossbar modules from the startup list and add new defaults
     XbarUpdates = [fun(L) -> lists:delete(<<"cb_cdr">>, L) end
                    ,fun(L) -> lists:delete(<<"cb_signups">>, L) end
                    ,fun(L) -> lists:delete(<<"cb_resources">>, L) end
@@ -62,6 +78,8 @@ migrate() ->
     _ = whapps_config:set_default(<<"crossbar">>
                                       ,<<"autoload_modules">>
                                       ,lists:foldr(fun(F, L) -> F(L) end, StartModules, XbarUpdates)),
+
+    %% Remove depreciated whapps from the startup list and add new defaults
     WhappsUpdates = [fun(L) -> [<<"sysconf">> | lists:delete(<<"sysconf">>, L)] end
                     ,fun(L) -> [<<"acdc">> | lists:delete(<<"acdc">>, L)] end
                     ],
@@ -69,6 +87,8 @@ migrate() ->
     _ = whapps_config:set_default(<<"whapps_controller">>
                                       ,<<"whapps">>
                                       ,lists:foldr(fun(F, L) -> F(L) end, StartWhapps, WhappsUpdates)),
+
+    %% Ensure the new settings are applied and the new defaults are running
     _ = whapps_controller:restart_app(crossbar),
     _ = whapps_controller:restart_app(sysconf),
     _ = whapps_controller:restart_app(notify),
@@ -137,6 +157,8 @@ do_refresh() ->
                         Current + 1
                 end, 1, Accounts).
 
+refresh(Database) when not is_binary(Database) ->
+    refresh(wh_util:to_binary(Database));
 refresh(?WH_SIP_DB) ->
     couch_mgr:db_create(?WH_SIP_DB),
     Views = [whapps_util:get_view_json(whistle_apps, ?MAINTENANCE_VIEW_FILE)
@@ -176,15 +198,14 @@ refresh(?WH_FAXES) ->
     couch_mgr:db_create(?WH_FAXES),
     couch_mgr:revise_doc_from_file(?WH_FAXES, whistle_apps, ?FAXES_VIEW_FILE),
     ok;
-refresh(?NE_BINARY = Account) ->
+refresh(Account) ->
     Views = [whapps_util:get_view_json(whistle_apps, ?MAINTENANCE_VIEW_FILE)
+             ,whapps_util:get_view_json(whistle_apps, ?RESELLER_VIEW_FILE)
              ,whapps_util:get_view_json(conference, <<"views/conference.json">>)
              |whapps_util:get_views_json(crossbar, "account")
              ++ whapps_util:get_views_json(callflow, "views")
             ],
-    refresh(Account, Views);
-refresh(Account) ->
-    refresh(wh_util:to_binary(Account)).
+    refresh(Account, Views).
 
 refresh(Account, Views) ->
     AccountDb = wh_util:format_account_id(Account, encoded),
@@ -192,6 +213,7 @@ refresh(Account, Views) ->
 
     %% Remove old views
     couch_mgr:del_doc(AccountDb, <<"_design/limits">>),
+    couch_mgr:del_doc(AccountDb, <<"_design/sub_account_reps">>),
 
     case couch_mgr:open_doc(AccountDb, AccountId) of
         {error, not_found} ->

@@ -207,6 +207,23 @@ get_fs_app(Node, UUID, JObj, <<"store">>) ->
             end
     end;
 
+get_fs_app(_Node, UUID, JObj, <<"store_fax">>) ->
+    case wapi_dialplan:store_fax_v(JObj) of
+        false -> {'error', <<"store_fax failed to execute as JObj did not validate">>};
+        true ->
+            File = ecallmgr_util:fax_filename(UUID),
+            lager:debug("attempting to store fax on ~s: ~s", [_Node, File]),
+            case wh_json:get_value(<<"Media-Transfer-Method">>, JObj) of
+                <<"put">> = Method ->
+                    Url = wh_util:to_list(wh_json:get_value(<<"Media-Transfer-Destination">>, JObj)),
+                    lager:debug("streaming via HTTP(~s) to ~s", [Method, Url]),
+                    {<<"http_put">>, list_to_binary([Url, <<" ">>, File])};
+                _Method ->
+                    lager:debug("invalid media transfer method for storing fax: ~s", [_Method]),
+                    {error, <<"invalid media transfer method">>}
+            end
+    end;
+
 get_fs_app(_Node, _UUID, JObj, <<"tones">>) ->
     case wapi_dialplan:tones_v(JObj) of
         false -> {'error', <<"tones failed to execute as JObj did not validate">>};
@@ -246,6 +263,12 @@ get_fs_app(Node, UUID, JObj, <<"ring">>) ->
                 _ = ecallmgr_util:send_cmd(Node, UUID, <<"set">>, <<"ringback=", Stream/binary>>)
         end,
     {<<"ring_ready">>, <<>>};
+
+%% receive a fax from the caller
+get_fs_app(_Node, UUID, _JObj, <<"receive_fax">>) ->
+    [{<<"playback">>, <<"silence_stream://2000">>}
+     ,{<<"rxfax">>, ecallmgr_util:fax_filename(UUID)}
+    ];
 
 get_fs_app(_Node, _UUID, _JObj, <<"hold">>) ->
     {<<"endless_playback">>, <<"${hold_music}">>};
@@ -732,11 +755,23 @@ stream_over_http(Node, UUID, File, Method, JObj) ->
                                         ,{<<"Event-Category">>, <<"call">>}
                                        ], JObj),
 
+            case lists:member(StatusCode, ["200", "201", "202"]) of
+                true -> ok;
+                false ->                    
+                    wh_notify:system_alert("Failed to store media file ~s for call ~s on ~s "
+                                           ,[File, UUID, Node]
+                                           ,[{<<"Status-Code">>, wh_util:to_binary(StatusCode)}
+                                             |[{wh_util:to_binary(K), wh_util:to_binary(V)} || {K,V} <- RespHeaders]
+                                            ]
+                                          )
+            end,
+
             case wapi_dialplan:store_http_resp(JObj1) of
                 {ok, Payload} ->
                     lager:debug("ibrowse 'OK'ed with ~p publishing to ~s: ~s", [StatusCode, AppQ, Payload]),
                     amqp_util:targeted_publish(AppQ, Payload, <<"application/json">>);
                 {'error', Msg} ->
+
                     lager:debug("store via HTTP ~s errored: ~p", [Method, Msg])
             end;
         {'error', Error} ->

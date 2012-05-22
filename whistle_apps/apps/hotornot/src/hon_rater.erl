@@ -34,8 +34,12 @@ get_rate_data(JObj) ->
     ToDID = wh_json:get_value(<<"To-DID">>, JObj),
     FromDID = wh_json:get_value(<<"From-DID">>, JObj),
     case hon_util:candidate_rates(ToDID, FromDID) of
-        {ok, []} -> lager:debug("rate lookup had no results"), {error, no_rate_found};
-        {error, _E} -> lager:debug("rate lookup error: ~p", [_E]), {error, no_rate_found};
+        {ok, []} -> 
+            wh_notify:system_alert("no rate found for ~s to ~s", [FromDID, ToDID]),
+            lager:debug("rate lookup had no results"), {error, no_rate_found};
+        {error, _E} -> 
+            wh_notify:system_alert("no rate found for ~s to ~s", [FromDID, ToDID]),
+            lager:debug("rate lookup error: ~p", [_E]), {error, no_rate_found};
         {ok, Rates} ->
             RouteOptions = wh_json:get_value(<<"Options">>, JObj, []),
             Direction = wh_json:get_value(<<"Direction">>, JObj),

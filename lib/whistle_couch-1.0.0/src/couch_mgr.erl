@@ -13,7 +13,11 @@
 
 %% API
 -export([start_link/0
-         ,set_host/1, set_host/2, set_host/3, set_host/4, set_host/5
+         ,set_host/1
+         ,set_host/2
+         ,set_host/3
+         ,set_host/4
+         ,set_host/5
          ,get_host/0
          ,get_port/0
          ,get_creds/0
@@ -30,36 +34,90 @@
         ]).
 
 %% System manipulation
--export([db_exists/1, db_info/0, db_info/1, db_create/1, db_create/2, db_compact/1, db_view_cleanup/1, db_delete/1, db_replicate/1]).
--export([admin_db_info/0, admin_db_info/1, admin_db_compact/1, admin_db_view_cleanup/1]).
+-export([db_exists/1
+         ,db_info/0
+         ,db_info/1
+         ,db_create/1
+         ,db_create/2
+         ,db_compact/1
+         ,db_view_cleanup/1
+         ,db_delete/1
+         ,db_replicate/1
+        ]).
+-export([admin_db_info/0
+         ,admin_db_info/1
+         ,admin_db_compact/1
+         ,admin_db_view_cleanup/1
+        ]).
 
--export([design_info/2, admin_design_info/2, design_compact/2, admin_design_compact/2]).
+-export([design_info/2
+         ,admin_design_info/2
+         ,design_compact/2
+         ,admin_design_compact/2
+        ]).
 
 %% Document manipulation
--export([save_doc/2, save_doc/3, save_docs/2, save_docs/3, open_doc/2, open_doc/3, del_doc/2, del_docs/2, lookup_doc_rev/2]).
+-export([save_doc/2
+         ,save_doc/3
+         ,save_docs/2
+         ,save_docs/3
+         ,open_cache_doc/2
+         ,open_cache_doc/3
+         ,open_doc/2
+         ,open_doc/3
+         ,del_doc/2
+         ,del_docs/2
+         ,lookup_doc_rev/2
+        ]).
 -export([update_doc/3]).
--export([add_change_handler/2, add_change_handler/3, rm_change_handler/2]).
--export([load_doc_from_file/3, update_doc_from_file/3]).
+-export([add_change_handler/2
+         ,add_change_handler/3
+         ,rm_change_handler/2
+        ]).
+-export([load_doc_from_file/3
+         ,update_doc_from_file/3
+        ]).
 -export([revise_doc_from_file/3]).
--export([revise_docs_from_folder/3, revise_docs_from_folder/4]).
--export([revise_views_from_folder/2, ensure_saved/2, ensure_saved/3]).
+-export([revise_docs_from_folder/3
+         ,revise_docs_from_folder/4
+        ]).
+-export([revise_views_from_folder/2
+         ,ensure_saved/2
+         ,ensure_saved/3
+        ]).
 
--export([all_docs/1, all_design_docs/1, admin_all_docs/1]).
--export([all_docs/2, all_design_docs/2, admin_all_docs/2]).
+-export([all_docs/1
+         ,all_design_docs/1
+         ,admin_all_docs/1
+        ]).
+-export([all_docs/2
+         ,all_design_docs/2
+         ,admin_all_docs/2
+        ]).
 
 %% attachments
--export([fetch_attachment/3, stream_attachment/3
-         ,put_attachment/4, put_attachment/5
-         ,delete_attachment/3, delete_attachment/4
+-export([fetch_attachment/3
+         ,stream_attachment/3
+         ,put_attachment/4
+         ,put_attachment/5
+         ,delete_attachment/3
+         ,delete_attachment/4
         ]).
 
 %% Views
--export([get_all_results/2, get_results/3]).
+-export([get_all_results/2
+         ,get_results/3
+        ]).
 -export([get_result_keys/1]).
 
 %% gen_server callbacks
--export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-         terminate/2, code_change/3]).
+-export([init/1
+         ,handle_call/3
+         ,handle_cast/2
+         ,handle_info/2
+         ,terminate/2
+         ,code_change/3
+        ]).
 
 -include_lib("whistle_couch/include/wh_couch.hrl").
 
@@ -337,6 +395,22 @@ db_delete(DbName) ->
 %%%===================================================================
 %%% Document Functions
 %%%===================================================================
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% fetch a cached doc or open it if not available.
+%% @end
+%%--------------------------------------------------------------------
+-spec open_cache_doc/2 :: (ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} | {'error', 'not_found' | 'db_not_reachable'}.
+-spec open_cache_doc/3 :: (ne_binary(), ne_binary(), proplist()) -> {'ok', wh_json:json_object()} | {'error', 'not_found' | 'db_not_reachable'}.
+
+open_cache_doc(DbName, DocId) ->
+    open_cache_doc(DbName, DocId, []).
+
+open_cache_doc(DbName, DocId, Options) ->
+    couch_util:open_cache_doc(get_conn(), DbName, DocId, Options).
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -448,7 +522,7 @@ del_doc(DbName, Doc) ->
 %% remove documents from the db
 %% @end
 %%--------------------------------------------------------------------
--spec del_docs/2 :: (ne_binary(), wh_json:json_objects()) -> {'ok', wh_json:json_objects()} | {'error', atom()}.
+-spec del_docs/2 :: (ne_binary(), wh_json:json_objects()) -> {'ok', wh_json:json_objects()}.
 del_docs(DbName, Docs) ->
     couch_util:del_docs(get_conn(), DbName, Docs).
 

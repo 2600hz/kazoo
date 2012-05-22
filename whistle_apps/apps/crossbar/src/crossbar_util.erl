@@ -28,7 +28,7 @@
 -export([put_reqid/1]).
 -export([cache_doc/2, cache_view/3]).
 -export([flush_doc_cache/2]).
--export([get_results/3, open_doc/2]).
+-export([get_results/3]).
 -export([store/3, fetch/2, get_path/2]).
 -export([find_account_id/3, find_account_id/4]).
 -export([find_account_db/3, find_account_db/4]).
@@ -382,7 +382,7 @@ get_account_realm(AccountId) ->
 get_account_realm(undefined, _) ->
     undefined;
 get_account_realm(Db, AccountId) ->
-    case couch_mgr:open_doc(Db, AccountId) of
+    case couch_mgr:open_cache_doc(Db, AccountId) of
         {ok, JObj} ->
             wh_json:get_ne_value(<<"realm">>, JObj);
         {error, R} ->
@@ -485,22 +485,6 @@ flush_doc_cache(Db, <<Id>>) ->
 flush_doc_cache(Db, JObj) ->
     flush_doc_cache(Db, wh_json:get_value(<<"_id">>, JObj)).
 
--spec open_doc/2 :: (ne_binary(), ne_binary()) -> {ok, wh_json:json_object()} | {error, term()}.
-open_doc(Db, Id) ->
-    case wh_cache:peek_local(?CROSSBAR_CACHE, {crossbar, doc, {Db, Id}}) of
-        {ok, _}=Ok -> 
-            lager:debug("found document in cache"),
-            Ok;
-        {error, not_found} ->
-            case couch_mgr:open_doc(Db, Id) of
-                {ok, JObj}=Ok ->
-                    cache_doc(Db, JObj),
-                    Ok;
-                {error, R}=E ->
-                    lager:debug("error fetching ~s/~s: ~p", [Db, Id, R]),
-                    E
-            end
-    end.
 -spec get_results/3 :: (ne_binary(), ne_binary(), proplist()) -> {ok, wh_json:json_object()} | {error, term()}.
 get_results(Db, View, ViewOptions) ->
     case wh_cache:peek_local(?CROSSBAR_CACHE, {crossbar, view, {Db, ?MODULE}}) of

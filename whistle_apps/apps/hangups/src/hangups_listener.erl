@@ -1,13 +1,9 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2011, VoIP INC
+%%% @copyright (C) 2012, VoIP INC
 %%% @doc
-%%% Listen for CDR events publish non-normal termination notifications 
+%%% 
 %%% @end
-%%%
-%%% Contributors:
-%%%   James Aimonetti
-%%%   Karl Anderson
-%%% Created : 23 Nov 2010 by James Aimonetti <james@2600hz.org>
+%%% @contributors
 %%%-------------------------------------------------------------------
 -module(hangups_listener).
 
@@ -15,13 +11,18 @@
 
 -include_lib("whistle/include/wh_log.hrl").
 -include_lib("whistle/include/wh_types.hrl").
+-include_lib("whistle/include/wh_databases.hrl").
 
-%% API
--export([start_link/0, handle_cdr/2]).
-
-%% gen_server callbacks
--export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2
-         ,terminate/2, code_change/3]).
+-export([start_link/0]).
+-export([handle_cdr/2]).
+-export([init/1
+         ,handle_call/3
+         ,handle_cast/2
+         ,handle_info/2
+         ,handle_event/2
+         ,terminate/2
+         ,code_change/3
+        ]).
 
 -define(SERVER, ?MODULE).
 
@@ -60,18 +61,21 @@ handle_cdr(JObj, _Props) ->
                                                                                      ,<<"ATTENDED_TRANSFER">>
                                                                                      ,<<"ORIGINATOR_CANCEL">>
                                                                                      ,<<"NORMAL_CLEARING">>
+                                                                                     ,<<"ALLOTTED_TIMEOUT">>
                                                                                 ]),
     HangupCause = wh_json:get_value(<<"Hangup-Cause">>, JObj, <<"unknown">>),
     case lists:member(HangupCause, IgnoreCauses) of
         true -> ok;
         false -> 
             AccountId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj),
-            lager:debug("abnormal call termination: ~s", [HangupCause])
-            %% ?LOG(hangup_cause_to_alert_level(HangupCause)
-            %%      ,"abnormal call termination ~s"
-            %%      ,[HangupCause, {extra_data, [{details, wh_json:to_proplist(JObj)}
-            %%                                   ,{account_id, AccountId}
-            %%                                  ]}])
+            lager:debug("abnormal call termination: ~s", [HangupCause]),
+            [FromNumber|_] = binary:split(wh_json:get_value(<<"From-Uri">>, JObj), <<"@">>),
+            [ToNumber|_] = binary:split(wh_json:get_value(<<"To-Uri">>, JObj), <<"@">>),
+            Direction = wh_json:get_value(<<"Call-Direction">>, JObj),
+            Realm = get_account_realm(AccountId),
+            wh_notify:system_alert("~s ~s to ~s (~s) on ~s"
+                                   ,[wh_util:to_lower_binary(HangupCause), FromNumber, ToNumber, Direction, Realm]
+                                   ,wh_json:to_proplist(JObj))
     end.
 
 %%%===================================================================
@@ -137,6 +141,14 @@ handle_cast(_Msg, State) ->
 handle_info(_Info, State) ->
     {noreply, State}.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Allows listener to pass options to handlers
+%%
+%% @spec handle_event(JObj, State) -> {reply, Options}
+%% @end
+%%--------------------------------------------------------------------
 handle_event(_JObj, _State) ->
     {reply, []}.
 
@@ -169,24 +181,11 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec hangup_cause_to_alert_level/1 :: (ne_binary()) -> atom().
-hangup_cause_to_alert_level(<<"UNALLOCATED_NUMBER">>) ->
-    warning;
-hangup_cause_to_alert_level(<<"NO_ROUTE_DESTINATION">>) ->
-    warning;
-hangup_cause_to_alert_level(<<"NORMAL_UNSPECIFIED">>) ->
-    warning;
-hangup_cause_to_alert_level(<<"USER_BUSY">>) ->
-    info;
-hangup_cause_to_alert_level(<<"ORIGINATOR_CANCEL">>) ->
-    info;
-hangup_cause_to_alert_level(<<"NO_ANSWER">>) ->
-    info;
-hangup_cause_to_alert_level(<<"LOSE_RACE">>) ->
-    info;
-hangup_cause_to_alert_level(<<"ATTENDED_TRANSFER">>) ->
-    info;
-hangup_cause_to_alert_level(<<"CALL_REJECTED">>) ->
-    info;
-hangup_cause_to_alert_level(_) ->
-    error.
+-spec get_account_realm/1 :: (ne_binary()) -> 'undefined' | ne_binary().
+get_account_realm(AccountId) ->
+    case couch_mgr:open_cache_doc(?WH_ACCOUNTS_DB, AccountId) of
+        {ok, JObj} ->
+            wh_json:get_value(<<"realm">>, JObj);
+        {error, _} ->
+            undefined
+    end.

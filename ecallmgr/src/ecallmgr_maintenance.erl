@@ -17,6 +17,9 @@
 -export([sync_channels/0]).
 -export([sync_channels/1]).
 -export([flush_node_channels/1]).
+-export([flush_registrar/0]).
+
+-include("ecallmgr.hrl").
 
 -spec add_fs_node/1 :: (string() | binary() | atom()) -> 'ok'.
 add_fs_node(Node) when not is_atom(Node) ->
@@ -61,6 +64,10 @@ sync_channels(Node) ->
 -spec flush_node_channels/1 :: (string() | binary() | atom()) -> 'ok'.
 flush_node_channels(Node) ->
     ecallmgr_fs_nodes:flush_node_channels(Node).
+
+-spec flush_registrar/0 :: () -> 'ok'.
+flush_registrar() ->
+    wh_cache:flush_local(?ECALLMGR_REG_CACHE).
 
 -spec show_calls/0 :: () -> 'ok'.
 show_calls() ->

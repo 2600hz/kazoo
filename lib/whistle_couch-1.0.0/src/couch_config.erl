@@ -58,6 +58,6 @@ fetch(Key, Default, Cache) ->
 store(Key, Value) ->
     whapps_config:set(?CONFIG_CAT, wh_util:to_binary(Key), Value).
 
--spec store/3 :: (term(), term(), pid()) -> 'ok'.
+-spec store/3 :: (term(), term(), atom()) -> 'ok'.
 store(Key, Value, Cache) ->
     wh_cache:store_local(Cache, {?MODULE, wh_util:to_binary(Key)}, Value, ?MILLISECONDS_IN_DAY).

@@ -172,7 +172,7 @@
 -define(LOW_BALANCE_TYPES, []).
 
 %% Notify System Alert
--define(SYSTEM_ALERT_HEADERS, [<<"Level">>, <<"Message">>]).
+-define(SYSTEM_ALERT_HEADERS, [<<"Subject">>, <<"Message">>]).
 -define(OPTIONAL_SYSTEM_ALERT_HEADERS, [<<"Pid">>, <<"Module">>, <<"Line">>, <<"Request-ID">>, <<"Section">>
                                             ,<<"Node">>, <<"Details">>, <<"Account-ID">>
                                        ]).

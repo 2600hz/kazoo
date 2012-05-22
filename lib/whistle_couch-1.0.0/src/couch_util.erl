@@ -8,34 +8,56 @@
 %%%-----------------------------------------------------------------------------
 -module(couch_util).
 
--export([get_new_connection/4, get_db/2, server_url/1, db_url/2]).
+-export([get_new_connection/4
+         ,get_db/2
+         ,server_url/1
+         ,db_url/2
+        ]).
 
 %% DB operations
--export([db_compact/2, db_create/2, db_create/3, db_delete/2
-         ,db_replicate/2, db_view_cleanup/2, db_info/1, db_info/2
+-export([db_compact/2
+         ,db_create/2
+         ,db_create/3
+         ,db_delete/2
+         ,db_replicate/2
+         ,db_view_cleanup/2
+         ,db_info/1
+         ,db_info/2
          ,db_exists/2
         ]).
 
 %% Doc related
--export([open_doc/4, lookup_doc_rev/3, save_doc/4, save_docs/4, del_doc/3
-         ,del_docs/3, ensure_saved/4
+-export([open_cache_doc/4
+         ,open_doc/4
+         ,lookup_doc_rev/3
+         ,save_doc/4
+         ,save_docs/4
+         ,del_doc/3
+         ,del_docs/3
+         ,ensure_saved/4
         ]).
 
 %% View-related
--export([design_compact/3, design_info/3, all_design_docs/3, get_results/4
-        ,all_docs/3
+-export([design_compact/3
+         ,design_info/3
+         ,all_design_docs/3
+         ,get_results/4
+         ,all_docs/3
         ]).
 
 %% Attachment-related
--export([fetch_attachment/4, stream_attachment/5
-         ,put_attachment/5, put_attachment/6
-         ,delete_attachment/4, delete_attachment/5
+-export([fetch_attachment/4
+         ,stream_attachment/5
+         ,put_attachment/5
+         ,put_attachment/6
+         ,delete_attachment/4
+         ,delete_attachment/5
         ]).
 
 %% Settings-related
 -export([max_bulk_insert/0]).
 
--include("wh_couch.hrl").
+-include_lib("whistle_couch/include/wh_couch.hrl").
 
 %% Throttle how many docs we bulk insert to BigCouch
 -define(MAX_BULK_INSERT, 2000).
@@ -213,6 +235,21 @@ do_get_design_info(#db{}=Db, Design) ->
     ?RETRY_504(couchbeam:design_info(Db, Design)).
 
 %% Document related functions --------------------------------------------------
+
+-spec open_cache_doc/4 :: (#server{}, ne_binary(), ne_binary(), proplist()) -> {'ok', wh_json:json_object()} |
+                                                                               {'error', atom()}.
+open_cache_doc(#server{}=Conn, DbName, DocId, Options) ->
+    case wh_cache:peek({?MODULE, DbName, DocId}) of
+        {ok, _}=Ok -> Ok;
+        {error, not_found} ->
+            case open_doc(Conn, DbName, DocId, Options) of
+                {error, _}=E -> E;
+                {ok, JObj}=Ok ->
+                    wh_cache:store({?MODULE, DbName, DocId}, JObj, 900),
+                    Ok
+            end
+    end.
+
 -spec open_doc/4 :: (#server{}, ne_binary(), ne_binary(), proplist()) -> {'ok', wh_json:json_object()} |
                                                                          {'error', atom()}.
 open_doc(#server{}=Conn, DbName, DocId, Options) ->
@@ -261,13 +298,9 @@ del_docs(#server{}=Conn, DbName, Doc) ->
 
 %% Internal Doc functions
 
--spec do_delete_doc/2 :: (#db{}, wh_json:json_object()) -> {'ok', wh_json:json_object()} |
-                                                           {'error', atom()}.
+-spec do_delete_doc/2 :: (#db{}, wh_json:json_object()) -> {'ok', wh_json:json_object()}.
 do_delete_doc(#db{}=Db, Doc) ->
-    case do_delete_docs(Db, [Doc]) of
-        {'ok', [JObj]} -> {'ok', JObj};
-        E -> E
-    end.
+    do_delete_docs(Db, [Doc]).
 
 -spec do_delete_docs/2 :: (#db{}, wh_json:json_objects()) -> {'ok', wh_json:json_objects()}.
 do_delete_docs(#db{}=Db, Docs) ->
@@ -441,10 +474,10 @@ retry504s(Fun, Cnt) ->
             timer:sleep(100 * (Cnt+1)),
             retry504s(Fun, Cnt+1);
         {'error', _Other}=E ->
-	    wh_counter:inc(<<"couch.requests.failures">>),
-	    E;
+            wh_counter:inc(<<"couch.requests.failures">>),
+            E;
         {'ok', _Other}=OK ->
-	    wh_counter:inc(<<"couch.requests.successes">>),
-	    OK;
+            wh_counter:inc(<<"couch.requests.successes">>),
+            OK;
         'ok' -> 'ok'
     end.
