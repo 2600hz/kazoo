@@ -21,7 +21,7 @@
 -type json_object() :: ?JSON_WRAPPER(json_proplist()).
 -type json_objects() :: [json_object()].
 
--type json_string() :: ne_binary() | atom().
+-type json_string() :: ne_binary() | atom() | pos_integer().
 -type json_strings() :: [json_string()].
 -type json_number() :: integer() | float().
 -type json_array() :: [json_term()].
