@@ -1,4 +1,3 @@
-
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2010-2012, VoIP INC
 %%% @doc
@@ -24,6 +23,7 @@
 -export([media_path/2, media_path/3]).
 -export([unserialize_fs_array/1]).
 -export([convert_fs_evt_name/1, convert_whistle_app_name/1]).
+-export([fax_filename/1]).
 
 -include("ecallmgr.hrl").
 
@@ -373,6 +373,11 @@ media_path(MediaName, Type, UUID) ->
             lager:debug("recevied URL: ~s", [Url]),
             wh_util:to_binary(get_fs_playback(Url))
     end.
+
+fax_filename(UUID) ->
+    filename:join([ecallmgr_config:get(<<"fax_file_path">>, <<"/tmp/">>)
+                   ,<<(amqp_util:encode(UUID))/binary, ".tiff">>
+                  ]).
 
 %%--------------------------------------------------------------------
 %% @private
