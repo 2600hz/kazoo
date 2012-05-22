@@ -462,6 +462,8 @@ map_processor(Routing, Payload, ReqId, From, Bs) ->
     Reply = map_processor(Routing, Payload, Bs),
     gen_server:reply(From, Reply).
 
+map_processor(Routing, Payload, Bs) when not is_list(Payload) ->
+    map_processor(Routing, [Payload], Bs);
 map_processor(Routing, Payload, Bs) ->
     RoutingParts = lists:reverse(binary:split(Routing, <<".">>, [global])),
     Map = fun({Mod, Fun}) when is_atom(Mod) ->
@@ -486,6 +488,8 @@ fold_processor(Routing, Payload, ReqId, From, Bs) ->
     Reply = fold_processor(Routing, Payload, Bs),
     gen_server:reply(From, Reply).
 
+fold_processor(Routing, Payload, Bs) when not is_list(Payload) ->
+    fold_processor(Routing, [Payload], Bs);
 fold_processor(Routing, Payload, Bs) ->
     RoutingParts = lists:reverse(binary:split(Routing, <<".">>, [global])),
 
