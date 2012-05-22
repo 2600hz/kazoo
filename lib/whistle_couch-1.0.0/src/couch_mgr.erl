@@ -448,7 +448,7 @@ del_doc(DbName, Doc) ->
 %% remove documents from the db
 %% @end
 %%--------------------------------------------------------------------
--spec del_docs/2 :: (ne_binary(), wh_json:json_objects()) -> {'ok', wh_json:json_objects()} | {'error', atom()}.
+-spec del_docs/2 :: (ne_binary(), wh_json:json_objects()) -> {'ok', wh_json:json_objects()}.
 del_docs(DbName, Docs) ->
     couch_util:del_docs(get_conn(), DbName, Docs).
 

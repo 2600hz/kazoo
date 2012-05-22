@@ -261,13 +261,9 @@ del_docs(#server{}=Conn, DbName, Doc) ->
 
 %% Internal Doc functions
 
--spec do_delete_doc/2 :: (#db{}, wh_json:json_object()) -> {'ok', wh_json:json_object()} |
-                                                           {'error', atom()}.
+-spec do_delete_doc/2 :: (#db{}, wh_json:json_object()) -> {'ok', wh_json:json_object()}.
 do_delete_doc(#db{}=Db, Doc) ->
-    case do_delete_docs(Db, [Doc]) of
-        {'ok', [JObj]} -> {'ok', JObj};
-        E -> E
-    end.
+    do_delete_docs(Db, [Doc]).
 
 -spec do_delete_docs/2 :: (#db{}, wh_json:json_objects()) -> {'ok', wh_json:json_objects()}.
 do_delete_docs(#db{}=Db, Docs) ->
@@ -441,10 +437,10 @@ retry504s(Fun, Cnt) ->
             timer:sleep(100 * (Cnt+1)),
             retry504s(Fun, Cnt+1);
         {'error', _Other}=E ->
-	    wh_counter:inc(<<"couch.requests.failures">>),
-	    E;
+            wh_counter:inc(<<"couch.requests.failures">>),
+            E;
         {'ok', _Other}=OK ->
-	    wh_counter:inc(<<"couch.requests.successes">>),
-	    OK;
+            wh_counter:inc(<<"couch.requests.successes">>),
+            OK;
         'ok' -> 'ok'
     end.
