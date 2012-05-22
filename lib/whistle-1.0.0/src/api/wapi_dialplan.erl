@@ -18,14 +18,17 @@
 
 -export([bridge/1, bridge_v/1, bridge_endpoint/1, bridge_endpoint_v/1]).
 -export([store/1, store_v/1, store_amqp_resp/1, store_amqp_resp_v/1
-         ,store_http_resp/1, store_http_resp_v/1]).
+         ,store_http_resp/1, store_http_resp_v/1
+        ]).
 -export([noop/1, noop_v/1]).
 -export([fetch/1, fetch_v/1]).
 -export([respond/1, respond_v/1]).
 -export([redirect/1, redirect_v/1]).
 -export([progress/1, progress_v/1]).
 -export([ring/1, ring_v/1]).
--export([receive_fax/1, receive_fax_v/1]).
+-export([receive_fax/1, receive_fax_v/1
+         ,store_fax/1, store_fax_v/1
+        ]).
 -export([execute_extension/1, execute_extension_v/1]).
 -export([play/1, play_v/1, playstop/1, playstop_v/1]).
 -export([record/1, record_v/1]).
@@ -440,6 +443,26 @@ receive_fax_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?RECV_FAX_HEADERS, ?RECV_FAX_VALUES, ?RECV_FAX_TYPES);
 receive_fax_v(JObj) ->
     receive_fax_v(wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
+%% @doc Store a fax, storing it to the DB - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec store_fax/1 :: (api_terms()) -> api_formatter_return().
+store_fax(Prop) when is_list(Prop) ->
+    case store_fax_v(Prop) of
+        true -> wh_api:build_message(Prop, ?STORE_FAX_HEADERS, ?OPTIONAL_STORE_FAX_HEADERS);
+        false -> {error, "Proplist failed validation for store_fax"}
+    end;
+store_fax(JObj) ->
+    store_fax(wh_json:to_proplist(JObj)).
+
+-spec store_fax_v/1 :: (api_terms()) -> boolean().
+store_fax_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?STORE_FAX_HEADERS, ?STORE_FAX_VALUES, ?STORE_FAX_TYPES);
+store_fax_v(JObj) ->
+    store_fax_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc Hangup a call - see wiki
