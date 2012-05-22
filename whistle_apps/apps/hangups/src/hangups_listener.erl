@@ -1,7 +1,7 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2010-2012, VoIP INC
 %%% @doc
-%%% Listen for CDR events publish non-normal termination notifications 
+%%% 
 %%% @end
 %%%
 %%% @contributors
@@ -14,13 +14,18 @@
 
 -include_lib("whistle/include/wh_log.hrl").
 -include_lib("whistle/include/wh_types.hrl").
+-include_lib("whistle/include/wh_databases.hrl").
 
-%% API
--export([start_link/0, handle_cdr/2]).
-
-%% gen_server callbacks
--export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2
-         ,terminate/2, code_change/3]).
+-export([start_link/0]).
+-export([handle_cdr/2]).
+-export([init/1
+         ,handle_call/3
+         ,handle_cast/2
+         ,handle_info/2
+         ,handle_event/2
+         ,terminate/2
+         ,code_change/3
+        ]).
 
 -define(SERVER, ?MODULE).
 
@@ -59,6 +64,7 @@ handle_cdr(JObj, _Props) ->
                                                                                      ,<<"ATTENDED_TRANSFER">>
                                                                                      ,<<"ORIGINATOR_CANCEL">>
                                                                                      ,<<"NORMAL_CLEARING">>
+                                                                                     ,<<"ALLOTTED_TIMEOUT">>
                                                                                 ]),
     HangupCause = wh_json:get_value(<<"Hangup-Cause">>, JObj, <<"unknown">>),
     case lists:member(HangupCause, IgnoreCauses) of
@@ -138,6 +144,14 @@ handle_cast(_Msg, State) ->
 handle_info(_Info, State) ->
     {noreply, State}.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Allows listener to pass options to handlers
+%%
+%% @spec handle_event(JObj, State) -> {reply, Options}
+%% @end
+%%--------------------------------------------------------------------
 handle_event(_JObj, _State) ->
     {reply, []}.
 

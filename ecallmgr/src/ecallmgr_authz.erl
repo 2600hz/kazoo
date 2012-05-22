@@ -54,16 +54,18 @@ maybe_authorize_channel(Props, Node) ->
                  end
                 ,fun({error, _}=E) -> E;
                     ({ok, P}) ->
-                         case props:get_value(?GET_CCV(<<"Account-ID">>), P) =/= undefined of
-                             true -> {ok, P};
-                             false ->
+                         case props:get_value(?GET_CCV(<<"Account-ID">>), P) of
+                             undefined ->
                                  case identify_account(undefined, P) of
                                      {error, _}=E -> E;
                                      {ok, _}=Ok ->
                                          update_account_id(Ok, CallId, Node),
                                          update_reseller_id(Ok, CallId, Node),
                                          Ok
-                                 end
+                                 end;
+                             AccountId ->
+                                 put(account_id, AccountId),
+                                 {ok, P}
                          end
                  end                
                 ,fun({error, _}=E) -> E;
@@ -108,6 +110,10 @@ maybe_authorize_channel(Props, Node) ->
         {error, _R} ->
             _ = ecallmgr_util:fs_log(Node, "whistle channel authorization failed: ~s", [_R]),
             lager:info("channel authorization failed: ~s", [_R]),
+            AccountId = get(account_id),
+            wh_notify:system_alert("authz blocked account ~s, ~s"
+                                   ,[AccountId, _R]
+                                   ,authz_req(AccountId, Props)),
             spawn(?MODULE, kill_channel, [Props, Node]),
             false
     end.
@@ -304,6 +310,7 @@ update_account_id({ok, Props}, CallId, Node) ->
         undefined -> ok;
         AccountId ->
             ecallmgr_util:send_cmd(Node, CallId, "set", ?SET_CCV(<<"Account-ID">>, AccountId)),
+            put(account_id, AccountId),
             ok
     end.
 

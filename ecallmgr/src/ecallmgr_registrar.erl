@@ -37,7 +37,11 @@ lookup_contact(Realm, Username) ->
         {error, not_found} -> 
             case lookup(Realm, Username, [<<"Contact">>]) of
                 [{<<"Contact">>, Contact}] -> {ok, Contact};
-                {error, _}=E -> E
+                {error, Reason}=E -> 
+                    wh_notify:system_alert("Failed to find registration for ~s@~s"
+                                           ,[Username, Realm]
+                                           ,[{<<"Reason">>, wh_util:to_binary(Reason)}]),
+                    E
             end
     end.
 
