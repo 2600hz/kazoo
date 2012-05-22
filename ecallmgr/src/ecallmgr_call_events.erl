@@ -120,7 +120,6 @@ handle_publisher_usurp(JObj, Props) ->
         false -> ok;
         true ->
             put(callid, CallId),
-            io:format("~p~n~p~n", [JObj, Props]),
             Srv = props:get_value(server, Props),
             lager:debug("call event publisher has been usurp'd by newer process on another ecallmgr killing ~p", [Srv]),
             Srv ! {shutdown},
