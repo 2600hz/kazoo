@@ -28,6 +28,7 @@
 -export([transfer/3]).
 -export([get_fs_var/4]).
 -export([publish_channel_destroy/1]).
+-export([handle_publisher_usurp/2]).
 -export([queue_name/1, callid/1, node/1]).
 -export([init/1
          ,handle_call/3
@@ -38,8 +39,8 @@
          ,code_change/3
         ]).
 
--define(BINDINGS, []).
--define(RESPONDERS, []).
+-define(BINDINGS, [{call, [{restrict_to, [publisher_usurp]}]}]).
+-define(RESPONDERS, [{{?MODULE, handle_publisher_usurp}, [{<<"call_event">>, <<"usurp_publisher">>}]}]).
 -define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).
@@ -54,6 +55,7 @@
           ,failed_node_checks = 0 :: non_neg_integer()
           ,node_down_tref = 'undefined' :: 'undefined' | reference()
           ,sanity_check_tref = 'undefined' :: 'undefined' | reference()
+          ,ref = wh_util:rand_hex_binary(12)
          }).
 
 %%%===================================================================
@@ -105,6 +107,23 @@ publish_channel_destroy(Props) ->
         [] -> ok;
         Pids ->
             _ = [erlang:send_after(5000, Pid, {shutdown}) || Pid <- Pids],
+            ok
+    end.
+
+-spec handle_publisher_usurp/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
+handle_publisher_usurp(JObj, Props) ->
+    CallId = props:get_value(call_id, Props),
+    Ref = props:get_value(reference, Props),
+    case CallId =:= wh_json:get_value(<<"Call-ID">>, JObj)
+        andalso Ref =/= wh_json:get_value(<<"Reference">>, JObj)
+    of
+        false -> ok;
+        true ->
+            put(callid, CallId),
+            io:format("~p~n~p~n", [JObj, Props]),
+            Srv = props:get_value(server, Props),
+            lager:debug("call event publisher has been usurp'd by newer process on another ecallmgr killing ~p", [Srv]),
+            Srv ! {shutdown},
             ok
     end.
 
@@ -222,12 +241,17 @@ handle_info({check_node_status}, #state{node=Node, callid=CallId, is_node_up=fal
 handle_info(timeout, #state{failed_node_checks=FNC}=State) when (FNC+1) > ?MAX_FAILED_NODE_CHECKS ->
     lager:debug("unable to establish initial connectivity to the media node, laterz"),
     {stop, normal, State};
-handle_info(timeout, #state{node=Node, callid=CallId, failed_node_checks=FNC}=State) ->
+handle_info(timeout, #state{node=Node, callid=CallId, failed_node_checks=FNC, ref=Ref}=State) ->
     erlang:monitor_node(Node, true),
     %% TODO: die if there is already a event producer on the AMPQ queue... ping/pong?
     case freeswitch:handlecall(Node, CallId) of
         ok ->
             lager:debug("listening to channel events from ~s", [Node]),
+            Usurp = [{<<"Call-ID">>, CallId}
+                     ,{<<"Reference">>, Ref}
+                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION) 
+                    ],
+            wapi_call:publish_usurp_publisher(CallId, Usurp),
             {'noreply', State, hibernate};
         timeout ->
             lager:debug("timed out trying to listen to channel events from ~s, trying again", [Node]),
@@ -271,8 +295,10 @@ handle_info(_Info, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Options}
 %% @end
 %%--------------------------------------------------------------------
-handle_event(_JObj, _State) ->
-    {reply, []}.
+handle_event(_JObj, #state{ref=Ref, callid=CallId}) ->
+    {reply, [{reference, Ref}
+             ,{call_id, CallId}
+            ]}.
 
 %%--------------------------------------------------------------------
 %% @private
