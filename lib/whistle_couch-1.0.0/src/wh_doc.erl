@@ -1,10 +1,11 @@
 %%%-------------------------------------------------------------------
-%%% @author Edouard Swiac <edouard@2600hz.org>
-%%% @copyright (C) 2011, Edouard Swiac
+%%% @copyright (C) 2011-2012, VoIP INC
 %%% @doc
-%%% Utilities fonction for whistle documents (crossbar docs without a context)
+%%% Utilities for manipulating Kazoo/Whistle documents
 %%% @end
-%%% Created : 14 July 2011 by Edouard Swiac <edouard@2600hz.org>
+%%% @contributors
+%%%   Edouard Swiac
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(wh_doc).
 
@@ -14,7 +15,6 @@
 
 -export([update_pvt_parameters/2, update_pvt_parameters/3, public_fields/1, private_fields/1]).
 -export([update_pvt_modified/1]).
--export([jobj_to_list/1]).
 
 -define(PVT_FUNS, [fun add_pvt_vsn/3, fun add_pvt_account_id/3, fun add_pvt_account_db/3
                    ,fun add_pvt_created/3, fun add_pvt_modified/3, fun add_pvt_type/3
@@ -27,11 +27,11 @@
 %% parameters on all crossbar documents
 %% @end
 %%--------------------------------------------------------------------
--spec update_pvt_parameters/2 :: (JObj0 :: wh_json:json_object(), DBName :: binary()) -> wh_json:json_object().
+-spec update_pvt_parameters/2 :: (wh_json:json_object(), ne_binary()) -> wh_json:json_object().
 update_pvt_parameters(JObj0, DBName) ->
     update_pvt_parameters(JObj0, DBName, []).
 
--spec update_pvt_parameters/3 :: (JObj0 :: wh_json:json_object(), DBName :: binary(), Options :: proplist()) -> wh_json:json_object().
+-spec update_pvt_parameters/3 :: (wh_json:json_object(), ne_binary(), wh_proplist()) -> wh_json:json_object().
 update_pvt_parameters(JObj0, DBName, Options) ->
     lists:foldl(fun(Fun, JObj) -> Fun(JObj, DBName, Options) end, JObj0, ?PVT_FUNS).
 
@@ -75,14 +75,11 @@ add_pvt_modified(JObj, _, _) ->
 %% json proplist
 %% @end
 %%--------------------------------------------------------------------
--spec public_fields/1 :: (Json :: wh_json:json_object() | wh_json:json_objects()) -> wh_json:json_object() | wh_json:json_objects().
-public_fields([{struct, _}|_]=Json)->
-    lists:map(fun public_fields/1, Json);
-public_fields({struct, Prop}) ->
-    {struct, [ Tuple || {K, _}=Tuple <- Prop, not is_private_key(K)]};
-public_fields(Json) ->
-    lager:debug("Unhandled JSON format in public_fields: ~p", [Json]),
-    Json.
+-spec public_fields/1 :: (wh_json:json_object() | wh_json:json_objects()) -> wh_json:json_object() | wh_json:json_objects().
+public_fields(JObjs) when is_list(JObjs) ->
+    lists:map(fun public_fields/1, JObjs);
+public_fields(JObj) ->
+    wh_json:filter(fun({K, _}) -> not is_private_key(K) end, JObj).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -104,13 +101,7 @@ is_private_key(_) -> false.
 %% @end
 %%--------------------------------------------------------------------
 -spec private_fields/1 :: (wh_json:json_object() | wh_json:json_objects()) -> wh_json:json_object() | wh_json:json_objects().
-private_fields([{struct, _}|_]=Json)->
-    lists:map(fun public_fields/1, Json);
-private_fields({struct, Prop}) ->
-    {struct, [ Tuple || {K,_}=Tuple <- Prop, is_private_key(K)]};
-private_fields(Json) ->
-    lager:debug("Unhandled JSON format in private fields: ~p", [Json]),
-    Json.
-
-jobj_to_list({struct, List}=_) ->
-    List.
+private_fields(JObjs) when is_list(JObjs) ->
+    lists:map(fun public_fields/1, JObjs);
+private_fields(JObj) ->
+    wh_json:filter(fun({K, _}) -> is_private_key(K) end, JObj).
