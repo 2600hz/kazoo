@@ -105,7 +105,7 @@ authenticate(#cb_context{auth_token=AuthToken}=Context) ->
     _ = crossbar_util:put_reqid(Context),
 
     lager:debug("checking auth token: ~s", [AuthToken]),
-    case crossbar_util:open_doc(?TOKEN_DB, AuthToken) of
+    case couch_mgr:open_cache_doc(?TOKEN_DB, AuthToken) of
         {ok, JObj} ->
             lager:debug("token auth is valid, authenticating"),
             {true, Context#cb_context{auth_account_id=wh_json:get_ne_value(<<"account_id">>, JObj)

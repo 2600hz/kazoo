@@ -81,7 +81,7 @@ account_is_descendant(false, #cb_context{auth_account_id=AuthAccountId, req_noun
             %% with a complex key (whose alternate value is useful to use on retrieval)
             lager:debug("checking if account ~s is a descendant of ~s", [ReqAccountId, AuthAccountId]),
             ReqAccountDb = wh_util:format_account_id(ReqAccountId, encoded),
-            case ReqAccountId =:= AuthAccountId orelse crossbar_util:open_doc(ReqAccountDb, ReqAccountId) of
+            case ReqAccountId =:= AuthAccountId orelse couch_mgr:open_cache_doc(ReqAccountDb, ReqAccountId) of
                 true -> 
                     lager:debug("authorizing, requested account is the same as the auth token account"),
                     true;
@@ -140,7 +140,7 @@ is_superduper_admin(undefined) ->
     false;
 is_superduper_admin(AccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, encoded),
-    case crossbar_util:open_doc(AccountDb, AccountId) of
+    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
         {ok, JObj} ->
             %% more logging was called for
             case wh_json:is_true(<<"pvt_superduper_admin">>, JObj) of
