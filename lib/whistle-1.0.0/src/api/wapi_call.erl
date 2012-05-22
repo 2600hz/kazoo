@@ -16,8 +16,6 @@
 -export([channel_status_resp/1, channel_status_resp_v/1]).
 -export([call_status_req/1, call_status_req_v/1]).
 -export([call_status_resp/1, call_status_resp_v/1]).
--export([channel_query_req/1, channel_query_req_v/1]).
--export([channel_query_resp/1, channel_query_resp_v/1]).
 -export([cdr/1, cdr_v/1]).
 -export([callid_update/1, callid_update_v/1]).
 -export([control_transfer/1, control_transfer_v/1]).
@@ -36,10 +34,6 @@
 -export([publish_control_transfer/2, publish_control_transfer/3]).
 -export([publish_controller_queue/2, publish_controller_queue/3]).
 -export([publish_usurp_control/2, publish_usurp_control/3]).
--export([publish_channel_query_req/1, publish_channel_query_req/2]).
--export([publish_channel_query_resp/2, publish_channel_query_resp/3]).
-
--export([channel_query_search_fields/0]).
 
 -export([get_status/1]).
 
@@ -104,28 +98,6 @@
                                   ,{<<"Status">>, [<<"active">>, <<"tmpdown">>, <<"terminated">>]}
                                  ]).
 -define(CALL_STATUS_RESP_TYPES, [{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}]).
-
-%% Channel Query Request
--define(CHANNEL_QUERY_REQ_HEADERS, []).
--define(OPTIONAL_CHANNEL_QUERY_REQ_HEADERS, [<<"Call-ID">>, <<"Call-Direction">>, <<"Created">>, <<"Channel-State">>
-                                                 ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>, <<"IP-Address">>
-                                                 ,<<"Destination-Number">>, <<"Application">>, <<"Application-Data">>
-                                                 ,<<"Secure">>, <<"Switch-Hostname">>, <<"Presence-ID">>, <<"Callee-ID-Name">>
-                                                 ,<<"Callee-ID-Number">>, <<"Other-Leg-Direction">>
-                                            ]).
--define(CHANNEL_QUERY_REQ_VALUES, [{<<"Event-Category">>, <<"call_event">>}
-                                   ,{<<"Event-Name">>, <<"channel_query_req">>}
-                                   ,{<<"Call-Direction">>, [<<"inbound">>, <<"outbound">>]}
-                                  ]).
--define(CHANNEL_QUERY_REQ_TYPES, []).
-
-%% Channel Query Response
--define(CHANNEL_QUERY_RESP_HEADERS, [<<"Active-Calls">>]).
--define(OPTIONAL_CHANNEL_QUERY_RESP_HEADERS, []).
--define(CHANNEL_QUERY_RESP_VALUES, [{<<"Event-Category">>, <<"call_event">>}
-                                    ,{<<"Event-Name">>, <<"channel_query_resp">>}
-                                   ]).
--define(CHANNEL_QUERY_RESP_TYPES, []).
 
 %% Call CDR
 -define(CALL_CDR_HEADERS, [ <<"Call-ID">>]).
@@ -241,9 +213,6 @@ channel_status_resp_v(Prop) when is_list(Prop) ->
 channel_status_resp_v(JObj) ->
     channel_status_resp_v(wh_json:to_proplist(JObj)).
 
-channel_query_search_fields() ->
-    ?OPTIONAL_CHANNEL_QUERY_REQ_HEADERS.
-
 %%--------------------------------------------------------------------
 %% @doc Inquire into the status of a call
 %% Takes proplist, creates JSON string or error
@@ -283,48 +252,6 @@ call_status_resp_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?CALL_STATUS_RESP_HEADERS, ?CALL_STATUS_RESP_VALUES, ?CALL_STATUS_RESP_TYPES);
 call_status_resp_v(JObj) ->
     call_status_resp_v(wh_json:to_proplist(JObj)).
-
-
-%%--------------------------------------------------------------------
-%% @doc Channel Query Request - see wiki
-%% Takes proplist, creates JSON string or error
-%% @end
-%%--------------------------------------------------------------------
--spec channel_query_req/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
-channel_query_req(Prop) when is_list(Prop) ->    
-    case channel_query_req_v(Prop) of
-        true ->
-            wh_api:build_message(Prop, ?CHANNEL_QUERY_REQ_HEADERS, ?OPTIONAL_CHANNEL_QUERY_REQ_HEADERS);
-        false -> {error, "Proplist failed validation for channel_query_req_req"}
-    end;
-channel_query_req(JObj) ->
-    channel_query_req(wh_json:to_proplist(JObj)).
-
--spec channel_query_req_v/1 :: (api_terms()) -> boolean().
-channel_query_req_v(Prop) when is_list(Prop) ->
-    wh_api:validate(Prop, ?CHANNEL_QUERY_REQ_HEADERS, ?CHANNEL_QUERY_REQ_VALUES, ?CHANNEL_QUERY_REQ_TYPES);
-channel_query_req_v(JObj) ->
-    channel_query_req_v(wh_json:to_proplist(JObj)).
-
-%%--------------------------------------------------------------------
-%% @doc Channel Query Response - see wiki
-%% Takes proplist, creates JSON string or error
-%% @end
-%%--------------------------------------------------------------------
--spec channel_query_resp/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
-channel_query_resp(Prop) when is_list(Prop) ->
-    case channel_query_resp_v(Prop) of
-        true -> wh_api:build_message(Prop, ?CHANNEL_QUERY_RESP_HEADERS, ?OPTIONAL_CHANNEL_QUERY_RESP_HEADERS);
-        false -> {error, "Proplist failed validation for channel_query_resp"}
-    end;
-channel_query_resp(JObj) ->
-    channel_query_resp(wh_json:to_proplist(JObj)).
-
--spec channel_query_resp_v/1 :: (api_terms()) -> boolean().
-channel_query_resp_v(Prop) when is_list(Prop) ->
-    wh_api:validate(Prop, ?CHANNEL_QUERY_RESP_HEADERS, ?CHANNEL_QUERY_RESP_VALUES, ?CHANNEL_QUERY_RESP_TYPES);
-channel_query_resp_v(JObj) ->
-    channel_query_resp_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc Format a CDR for a call
@@ -573,23 +500,6 @@ publish_usurp_control(CallID, JObj) ->
 publish_usurp_control(CallID, JObj, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(JObj, ?CALL_USURP_CONTROL_VALUES, fun ?MODULE:usurp_control/1),
     amqp_util:callevt_publish(CallID, Payload, event, ContentType).
-
--spec publish_channel_query_req/1 :: (api_terms()) -> 'ok'.
--spec publish_channel_query_req/2 :: (api_terms(), ne_binary()) -> 'ok'.
-publish_channel_query_req(JObj) ->
-    publish_channel_query_req(JObj, ?DEFAULT_CONTENT_TYPE).
-publish_channel_query_req(Req, ContentType) ->
-    {ok, Payload} = wh_api:prepare_api_payload(Req, ?CHANNEL_QUERY_REQ_VALUES, fun ?MODULE:channel_query_req/1),
-    amqp_util:callmgr_publish(Payload, ContentType, ?KEY_CHANNEL_QUERY).
-
--spec publish_channel_query_resp/2 :: (ne_binary(), api_terms()) -> 'ok'.
--spec publish_channel_query_resp/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
-publish_channel_query_resp(RespQ, JObj) ->
-    
-    publish_channel_query_resp(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
-publish_channel_query_resp(RespQ, Resp, ContentType) ->
-    {ok, Payload} = wh_api:prepare_api_payload(Resp, ?CHANNEL_QUERY_RESP_VALUES, fun ?MODULE:channel_query_resp/1),
-    amqp_util:targeted_publish(RespQ, Payload, ContentType).
 
 -spec get_status/1 :: (api_terms()) -> ne_binary().
 get_status(API) when is_list(API) ->

@@ -43,7 +43,7 @@ inbound_handler(JObj, Number) ->
               wh_json:set_value(<<"Custom-Channel-Vars">>, custom_channel_vars(AccountId, undefined, JObj), JObj)
              );
         {error, _R} ->
-            lager:debug("failed to find account for number ~s", [Number])
+            lager:debug("failed to find account for number ~s: ~p", [Number, _R])
     end.
 
 %%--------------------------------------------------------------------

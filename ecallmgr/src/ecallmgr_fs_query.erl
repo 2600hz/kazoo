@@ -8,15 +8,10 @@
 
 -behaviour(gen_listener).
 
-%% API
 -export([start_link/0]).
--export([handle_channel_query/2]).
 -export([handle_channel_status/2]).
 -export([handle_call_status/2]).
 -export([handle_switch_reloadacl/2]).
--export([channel_query/1]).
-
-%% gen_server callbacks
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -32,7 +27,6 @@
 
 -define(RESPONDERS, [{{?MODULE, handle_channel_status}, [{<<"call_event">>, <<"channel_status_req">>}]}
                      ,{{?MODULE, handle_call_status}, [{<<"call_event">>, <<"call_status_req">>}]}
-                     ,{{?MODULE, handle_channel_query}, [{<<"call_event">>, <<"channel_query_req">>}]}
                      ,{{?MODULE, handle_switch_reloadacl}, [{<<"switch_event">>, <<"reloadacl">>}]}
                     ]).
 -define(BINDINGS, [{call, [{restrict_to, [query_req, status_req]}]}
@@ -132,22 +126,6 @@ handle_call_status(JObj, _Props) ->
             end
     end.
 
--spec handle_channel_query/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
-handle_channel_query(JObj, _Props) ->
-    true = wapi_call:channel_query_req_v(JObj),
-    _ = wh_util:put_callid(JObj),
-
-    lager:debug("channel query received"),
-
-    RespQ = wh_json:get_value(<<"Server-ID">>, JObj),
-    Resp = [{<<"Active-Calls">>, channel_query(JObj)}
-            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)],
-    wapi_call:publish_channel_query_resp(RespQ, Resp).
-
--spec channel_query/1 :: (wh_json:json_object()) -> wh_json:json_objects().
-channel_query(_JObj) ->
-    [].
-
 -spec handle_switch_reloadacl/2 ::(wh_json:json_object(), proplist()) -> any().
 handle_switch_reloadacl(JObj, _Props) ->
     true = wapi_switch:reloadacl_v(JObj),
@@ -166,8 +144,6 @@ wait_for_resps([_|T]) ->
             lager:debug("waited enough for a response, moving on")
     end,
     wait_for_resps(T).
-
-    
 
 %%%===================================================================
 %%% gen_server callbacks
