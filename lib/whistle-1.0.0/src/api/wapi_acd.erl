@@ -1,10 +1,10 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <>
-%%% @copyright (C) 2012, James Aimonetti
+%%% @copyright (C) 2012, VoIP INC
 %%% @doc
 %%%
 %%% @end
-%%% Created : 11 Jan 2012 by James Aimonetti <>
+%%% @contributors
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(wapi_acd).
 
