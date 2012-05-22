@@ -207,6 +207,23 @@ get_fs_app(Node, UUID, JObj, <<"store">>) ->
             end
     end;
 
+get_fs_app(_Node, UUID, JObj, <<"store_fax">>) ->
+    case wapi_dialplan:store_fax_v(JObj) of
+        false -> {'error', <<"store_fax failed to execute as JObj did not validate">>};
+        true ->
+            File = ecallmgr_util:fax_filename(UUID),
+            lager:debug("attempting to store fax on ~s: ~s", [_Node, File]),
+            case wh_json:get_value(<<"Media-Transfer-Method">>, JObj) of
+                <<"put">> = Method ->
+                    Url = wh_util:to_list(wh_json:get_value(<<"Media-Transfer-Destination">>, JObj)),
+                    lager:debug("streaming via HTTP(~s) to ~s", [Method, Url]),
+                    {<<"http_put">>, list_to_binary([Url, <<" ">>, File])};
+                _Method ->
+                    lager:debug("invalid media transfer method for storing fax: ~s", [_Method]),
+                    {error, <<"invalid media transfer method">>}
+            end
+    end;
+
 get_fs_app(_Node, _UUID, JObj, <<"tones">>) ->
     case wapi_dialplan:tones_v(JObj) of
         false -> {'error', <<"tones failed to execute as JObj did not validate">>};
@@ -250,9 +267,7 @@ get_fs_app(Node, UUID, JObj, <<"ring">>) ->
 %% receive a fax from the caller
 get_fs_app(_Node, UUID, _JObj, <<"receive_fax">>) ->
     [{<<"playback">>, <<"silence_stream://2000">>}
-     ,{<<"rxfax">>, filename:join([ecallmgr_config:get(<<"fax_file_path">>, <<"/tmp/">>)
-                                   ,<<(amqp_util:encode(UUID))/binary, ".tiff">>
-                                  ])}
+     ,{<<"rxfax">>, ecallmgr_util:fax_filename(UUID)}
     ];
 
 get_fs_app(_Node, _UUID, _JObj, <<"hold">>) ->
