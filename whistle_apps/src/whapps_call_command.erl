@@ -35,7 +35,9 @@
 
 -export([record/2, record/3, record/4, record/5, record/6]).
 -export([record_call/2, record_call/3, record_call/4, record_call/5]).
--export([store/3, store/4, store/5]).
+-export([store/3, store/4, store/5
+         store_fax/2
+        ]).
 -export([tones/2]).
 -export([prompt_and_collect_digit/2]).
 -export([prompt_and_collect_digits/4, prompt_and_collect_digits/5, prompt_and_collect_digits/6,
@@ -57,7 +59,9 @@
 -export([b_play/2, b_play/3]).
 -export([b_prompt/2, b_prompt/3]).
 -export([b_record/2, b_record/3, b_record/4, b_record/5, b_record/6]).
--export([b_store/3, b_store/4, b_store/5]).
+-export([b_store/3, b_store/4, b_store/5
+         b_store_fax/2
+        ]).
 -export([b_prompt_and_collect_digit/2]).
 -export([b_prompt_and_collect_digits/4, b_prompt_and_collect_digits/5, b_prompt_and_collect_digits/6,
          b_prompt_and_collect_digits/7, b_prompt_and_collect_digits/8, b_prompt_and_collect_digits/9
@@ -811,6 +815,27 @@ b_store(MediaName, Transfer, Method, Call) ->
 b_store(MediaName, Transfer, Method, Headers, Call) ->
     store(MediaName, Transfer, Method, Headers, Call),
     wait_for_headless_application(<<"store">>).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Produces the low level wh_api request to store a fax document
+%% caller
+%% @end
+%%--------------------------------------------------------------------
+-spec store_fax/2 :: (ne_binary(), whapps_call:call()) -> 'ok'.
+store_fax(URL, Call) ->
+    Command = [{<<"Application-Name">>, <<"store_fax">>}
+               ,{<<"Fax-Transfer-Method">>, <<"put">>}
+               ,{<<"Fax-Transfer-Destination">>, URL}
+               ,{<<"Insert-At">>, <<"now">>}
+              ],
+    send_command(Command, Call).
+
+-spec b_store_fax/2 :: (ne_binary(), whapps_call:call()) -> b_store_return().
+b_store_fax(URL, Call) ->
+    store_fax(URL, Call),
+    wait_for_headless_application(<<"store_fax">>).
 
 %%--------------------------------------------------------------------
 %% @public
