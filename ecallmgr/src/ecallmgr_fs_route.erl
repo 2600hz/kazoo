@@ -173,14 +173,21 @@ process_route_req(Node, FSID, CallId, Props) ->
                                   ,fun wapi_route:publish_req/1
                                   ,fun wapi_route:is_actionable_resp/1),
     case ReqResp of
-        {error, _R} -> lager:debug("did not receive route response: ~p", [_R]);
+        {error, _R} -> 
+            lager:debug("did not receive route response: ~p", [_R]),
+            Request = ecallmgr_util:get_sip_request(Props),
+            wh_notify:system_alert("Failed to find route for ~s as ~s on ~s"
+                                   ,[Request, CallId, Node]
+                                   ,route_req(CallId, FSID, Props));
         {ok, RespJObj} ->
             true = wapi_route:resp_v(RespJObj),
             RouteCCV = wh_json:get_value(<<"Custom-Channel-Vars">>, RespJObj, wh_json:new()),
             AuthzEnabled = wh_util:is_true(ecallmgr_config:get(<<"authz_enabled">>, false)),
             case AuthzEnabled andalso wh_cache:wait_for_key_local(?ECALLMGR_UTIL_CACHE, ?AUTHZ_RESPONSE_KEY(CallId)) of
-                {ok, false} -> reply_forbidden(Node, FSID);
-                _Else -> reply_affirmative(Node, FSID, CallId, RespJObj, RouteCCV)
+                {ok, false} -> 
+                    reply_forbidden(Node, FSID);
+                _Else -> 
+                    reply_affirmative(Node, FSID, CallId, RespJObj, RouteCCV)
             end
     end.
 

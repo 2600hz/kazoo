@@ -46,49 +46,13 @@ init() ->
 handle_req(JObj, _Props) ->
     true = wapi_notifications:system_alert_v(JObj),
     whapps_util:put_callid(JObj),
-
-    lager:debug("an alert has occured, sending email notification"),
-
-    Account = case notify_util:get_account_doc(JObj) of
-                  undefined -> wh_json:new();
-                  {ok, Else} -> Else
-              end,
-
-    {To, MinLevel} = case wh_json:get_value([<<"notifications">>, <<"alert">>, <<"send_to">>], Account) of
-                         undefined ->
-                             {whapps_config:get(?MOD_CONFIG_CAT, <<"default_to">>, <<"">>)
-                              ,whapps_config:get(?MOD_CONFIG_CAT, <<"default_level">>, <<"critical">>)};
-                         Admin ->
-                             {Admin
-                              ,wh_json:get_value([<<"notifications">>, <<"alert">>, <<"send_to">>], Account
-                                                 ,whapps_config:get(?MOD_CONFIG_CAT, <<"default_level">>, <<"critical">>))}
-                     end,
-
-    AlertLevel = wh_json:get_value(<<"Level">>, JObj),
-    
-    case alert_level_to_integer(AlertLevel) >= alert_level_to_integer(MinLevel) of
-        false -> ok;
-        true ->
-            lager:debug("creating system alert notice"),
-            
-            Props = [{<<"Level">>, AlertLevel}
-                     |create_template_props(JObj, Account)
-                    ],
-            
-            CustomTxtTemplate = wh_json:get_value([<<"notifications">>, <<"alert">>, <<"email_text_template">>], Account),
-            {ok, TxtBody} = notify_util:render_template(CustomTxtTemplate, ?DEFAULT_TEXT_TMPL, Props),
-            
-            CustomHtmlTemplate = wh_json:get_value([<<"notifications">>, <<"alert">>, <<"email_html_template">>], Account),
-            {ok, HTMLBody} = notify_util:render_template(CustomHtmlTemplate, ?DEFAULT_HTML_TMPL, Props),
-            
-            CustomSubjectTemplate = wh_json:get_value([<<"notifications">>, <<"alert">>, <<"email_subject_template">>], Account),
-            {ok, Subject} = notify_util:render_template(CustomSubjectTemplate, ?DEFAULT_SUBJ_TMPL, Props),
-            
-            To = wh_json:get_value([<<"notifications">>, <<"alert">>, <<"send_to">>], Account
-                                   ,whapps_config:get(?MOD_CONFIG_CAT, <<"default_to">>, <<"">>)),
-            
-            build_and_send_email(TxtBody, HTMLBody, Subject, To, Props)
-    end.
+    lager:debug("creating system alert notice"),   
+    Props = create_template_props(JObj),   
+    {ok, TxtBody} = notify_util:render_template(undefined, ?DEFAULT_TEXT_TMPL, Props),    
+    {ok, HTMLBody} = notify_util:render_template(undefined, ?DEFAULT_HTML_TMPL, Props),           
+    Subject = wh_json:get_ne_value(<<"Subject">>, JObj),    
+    To = whapps_config:get(?MOD_CONFIG_CAT, <<"default_to">>, <<"">>),
+    build_and_send_email(TxtBody, HTMLBody, Subject, To, Props).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -96,9 +60,8 @@ handle_req(JObj, _Props) ->
 %% create the props used by the template render function
 %% @end
 %%--------------------------------------------------------------------
--spec create_template_props/2 :: (wh_json:json_object(), wh_json:json_objects()) -> proplist().
-create_template_props(Event, Account) ->
-    Admin = notify_util:find_admin(Account),    
+-spec create_template_props/1 :: (wh_json:json_object()) -> proplist().
+create_template_props(Event) ->
     [{<<"request">>, notify_util:json_to_template_props(wh_json:delete_keys([<<"Details">>
                                                                                  ,<<"App-Version">>
                                                                                  ,<<"App-Name">>
@@ -106,12 +69,11 @@ create_template_props(Event, Account) ->
                                                                                  ,<<"Event-Category">>
                                                                                  ,<<"Server-ID">>
                                                                                  ,<<"Message">>
+                                                                                 ,<<"Subject">>
                                                                             ], Event))}
      ,{<<"message">>, wh_json:get_binary_value(<<"Message">>, Event)}
      ,{<<"details">>, notify_util:json_to_template_props(wh_json:get_value(<<"Details">>, Event))}
-     ,{<<"account">>, notify_util:json_to_template_props(Account)}
-     ,{<<"admin">>, notify_util:json_to_template_props(Admin)}
-     ,{<<"service">>, notify_util:get_service_props(Account, ?MOD_CONFIG_CAT)}
+     ,{<<"service">>, notify_util:get_service_props(wh_json:new(), ?MOD_CONFIG_CAT)}
     ].
 
 %%--------------------------------------------------------------------
@@ -143,27 +105,3 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
             },
     notify_util:send_email(From, To, Email),
     ok.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% convert the textual alert level to an interger value
-%% @end
-%%--------------------------------------------------------------------
--spec alert_level_to_integer/1 :: (ne_binary()) -> 0..8.
-alert_level_to_integer(<<"emergency">>) ->
-    8;
-alert_level_to_integer(<<"critical">>) ->
-    7;
-alert_level_to_integer(<<"alert">>) ->
-    6;
-alert_level_to_integer(<<"error">>) ->
-    5;
-alert_level_to_integer(<<"warning">>) ->
-    4;
-alert_level_to_integer(<<"notice">>) ->
-    3;
-alert_level_to_integer(<<"info">>) ->
-    2;
-alert_level_to_integer(<<"debug">>) ->
-    1.

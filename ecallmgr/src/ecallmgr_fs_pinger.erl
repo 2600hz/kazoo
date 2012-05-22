@@ -56,6 +56,7 @@ start_link(Node, Options) ->
 init([Node, Options]) ->
     put(callid, Node),
     lager:debug("starting new fs pinger for ~s", [Node]),
+    wh_notify:system_alert("node ~s disconnected from ~s", [Node, node()]),
     GracePeriod = wh_util:to_integer(ecallmgr_config:get(<<"node_down_grace_period">>, 10000)),
     erlang:send_after(GracePeriod, self(), {flush_channels, Node}),
     {ok, #state{node=Node, options=Options}, 1000}.
@@ -153,6 +154,7 @@ is_node_up(Node, Opts) ->
     case net_adm:ping(Node) of
         pong ->
             lager:info("node ~s has risen", [Node]),
+            wh_notify:system_alert("node ~s connected to ~s", [Node, node()]),
             ok =:= ecallmgr_fs_nodes:add(Node, Opts);
         pang ->
             false
