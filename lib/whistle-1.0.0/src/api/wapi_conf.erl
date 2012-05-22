@@ -1,11 +1,11 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2012, VoIP INC
 %%% @doc
 %%% Configuration updates (like DB doc changes) can be communicated across
 %%% the AMQP bus so WhApps can flush cache entries, update settings, etc.
 %%% @end
-%%% Created : 21 Oct 2011 by James Aimonetti <james@2600hz.org>
+%%% @contributors
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(wapi_conf).
 
@@ -84,6 +84,8 @@ doc_update_v(JObj) ->
 
 -spec bind_q/2 :: (binary(), proplist()) -> 'ok'.
 bind_q(Q, Props) ->
+    amqp_util:configuration_exchange(),
+
     RoutingKey = get_routing_key(Props),
     amqp_util:bind_q_to_configuration(Q, RoutingKey).
 
