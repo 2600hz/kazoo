@@ -85,7 +85,6 @@ handle_channel_status(JObj, _Props) ->
                     ,{<<"Status">>, <<"active">>}
                     ,{<<"Switch-Hostname">>, Hostname}
                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)],
-            io:format("Resp: ~p~n", [Resp]),
             wapi_call:publish_channel_status_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp)
     end.
 
