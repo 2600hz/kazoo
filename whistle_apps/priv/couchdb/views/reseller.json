@@ -1,5 +1,5 @@
 {
-    "_id": "_design/sub_account_reps"
+    "_id": "_design/reseller"
     ,"language": "javascript"
     ,"views": {
         "list_reps": {
