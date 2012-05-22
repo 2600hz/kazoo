@@ -36,7 +36,7 @@
 -export([record/2, record/3, record/4, record/5, record/6]).
 -export([record_call/2, record_call/3, record_call/4, record_call/5]).
 -export([store/3, store/4, store/5
-         store_fax/2
+         ,store_fax/2
         ]).
 -export([tones/2]).
 -export([prompt_and_collect_digit/2]).
@@ -60,7 +60,7 @@
 -export([b_prompt/2, b_prompt/3]).
 -export([b_record/2, b_record/3, b_record/4, b_record/5, b_record/6]).
 -export([b_store/3, b_store/4, b_store/5
-         b_store_fax/2
+         ,b_store_fax/2
         ]).
 -export([b_prompt_and_collect_digit/2]).
 -export([b_prompt_and_collect_digits/4, b_prompt_and_collect_digits/5, b_prompt_and_collect_digits/6,
