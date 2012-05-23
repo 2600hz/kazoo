@@ -20,3 +20,4 @@ utils/*/ebin/*.app
 #*
 .#*
 /whistle_apps/erl_crash.dump
+/utils/sup/deps/getopt/
