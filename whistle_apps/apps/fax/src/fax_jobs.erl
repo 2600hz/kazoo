@@ -10,6 +10,7 @@
 -behaviour(gen_server).
 
 -export([start_link/0]).
+-export([cleanup_jobs/0]).
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -54,6 +55,9 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
+    spawn(?MODULE, cleanup_jobs, []),
+    MaxTime = whapps_config:get_integer(?CONFIG_CAT, <<"job_timeout">>, 900000),
+    _ = erlang:send_after(MaxTime, self(), expire_jobs),    
     {ok, #state{}, 0}.
 
 %%--------------------------------------------------------------------
@@ -71,7 +75,7 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call(_Request, _From, State) ->
-    {reply, {error, not_implemented}, State}.
+    {reply, {error, not_implemented}, State, ?POLLING_INTERVAL}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -83,14 +87,11 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({job_complete, Worker}, #state{jobs=[]}=State) ->
+handle_cast({job_complete, Worker}, #state{jobs=Jobs}=State) ->
     poolboy:checkin(fax_worker_pool, Worker),
-    {noreply, State, ?POLLING_INTERVAL};
-handle_cast({job_complete, Worker}, #state{jobs=[Job|Jobs]}=State) ->
-    gen_server:cast(Worker, {attempt_transmission, self(), Job}),
-    {noreply, State#state{jobs=Jobs}};
+    {noreply, State#state{jobs=distribute_jobs(Jobs)}, ?POLLING_INTERVAL};
 handle_cast(_Msg, State) ->
-    {noreply, State}.
+    {noreply, State, ?POLLING_INTERVAL}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -102,6 +103,26 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info(expire_jobs, State) ->
+    MaxTime = whapps_config:get_integer(?CONFIG_CAT, <<"job_timeout">>, 900000),
+    ViewOptions = [{<<"key">>, wh_util:to_binary(node())}],
+    case couch_mgr:get_results(?WH_FAXES, <<"faxes/processing_by_node">>, ViewOptions) of
+        {ok, JObjs} ->
+            [begin
+                 DocId = wh_json:get_value(<<"id">>, JObj),
+                 lager:debug("moving expired job ~s status to pending", [DocId]),
+                 couch_mgr:update_doc(?WH_FAXES, DocId, [{<<"pvt_job_status">>, <<"pending">>}])
+             end
+             || JObj <- JObjs
+                    ,(wh_util:current_tstamp() - wh_json:get_integer_value(<<"pvt_modified">>, JObj, 0)) > (MaxTime div 1000)
+            ],
+            ok;
+        {error, _R} ->
+            lager:debug("unable to expire jobs: ~p", [_R]),
+            ok
+    end,
+    _ = erlang:send_after(MaxTime, self(), expire_jobs),
+    {noreply, State, ?POLLING_INTERVAL};
 handle_info(timeout, #state{jobs=[]}=State) ->
     ViewOptions = [{<<"limit">>, 100}],
     case couch_mgr:get_results(?WH_FAXES, <<"faxes/jobs">>, ViewOptions) of
@@ -114,7 +135,7 @@ handle_info(timeout, #state{jobs=[]}=State) ->
             {noreply, State, ?POLLING_INTERVAL}
     end;
 handle_info(_Info, State) ->
-    {noreply, State}.
+    {noreply, State, ?POLLING_INTERVAL}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -152,4 +173,22 @@ distribute_jobs([Job|Jobs]) ->
             gen_server:cast(Worker, {attempt_transmission, self(), Job}),
             distribute_jobs(Jobs);
         _Else -> Jobs
+    end.
+
+-spec cleanup_jobs/0 :: () -> 'ok'.
+cleanup_jobs() ->
+    ViewOptions = [{<<"key">>, wh_util:to_binary(node())}],
+    case couch_mgr:get_results(?WH_FAXES, <<"faxes/processing_by_node">>, ViewOptions) of
+        {ok, JObjs} ->
+            [begin
+                 DocId = wh_json:get_value(<<"id">>, JObj),
+                 lager:debug("moving zombie job ~s status to pending", [DocId]),
+                 couch_mgr:update_doc(?WH_FAXES, DocId, [{<<"pvt_job_status">>, <<"pending">>}])
+             end
+             || JObj <- JObjs
+            ],
+            ok;
+        {error, _R} ->
+            lager:debug("unable to cleanup jobs: ~p", [_R]),
+            ok
     end.
