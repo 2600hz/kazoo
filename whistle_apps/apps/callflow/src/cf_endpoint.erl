@@ -174,7 +174,7 @@ create_sip_endpoint(Endpoint, Properties, Call) ->
             ,{<<"To-Realm">>, cf_util:get_sip_realm(Endpoint, whapps_call:account_id(Call))}
             ,{<<"To-DID">>, wh_json:get_value([<<"sip">>, <<"number">>], Endpoint, whapps_call:request_user(Call))}
             ,{<<"Route">>, wh_json:get_value([<<"sip">>, <<"route">>], Endpoint)}
-            ,{<<"Outgoing-Caller-ID-Number">>, IntCIDNumber}
+            ,{<<"Outgoing-Caller-ID-Number">>, maybe_format_caller_id_number(Endpoint, IntCIDNumber, Call)}
             ,{<<"Outgoing-Caller-ID-Name">>, IntCIDName}
             ,{<<"Callee-ID-Number">>, CalleeNum}
             ,{<<"Callee-ID-Name">>, CalleeName}
@@ -334,3 +334,29 @@ generate_ccvs(Endpoint, Call, CallFwd) ->
                 end
               ],
     lists:foldr(fun(F, J) -> F(J) end, wh_json:new(), CCVFuns).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Conditionally formats the caller id number
+%% @end
+%%--------------------------------------------------------------------
+-spec maybe_format_caller_id_number/3 :: (wh_json:json_object(), ne_binary(), whapps_call:call()) -> ne_binary().
+maybe_format_caller_id_number(Endpoint, CIDNum, Call) ->
+    case cf_attributes:caller_id_attributes(Endpoint, <<"format">>, Call) of
+	undefined ->
+	    CIDNum;
+	FormatObj ->
+	    case wh_json:is_json_object(FormatObj) of
+		true ->
+		    wh_json:foldl(fun(Key, Value, CIDNum1) -> format_caller_id_number_flag(Key, Value, CIDNum1) end, CIDNum, FormatObj);
+		_ ->
+		    CIDNum
+	    end
+    end.
+
+-spec format_caller_id_number_flag/3 :: (ne_binary(), term(), ne_binary()) -> ne_binary().
+format_caller_id_number_flag(<<"remove_plus">>, true, <<$+, CIDNum/binary>>) ->
+    CIDNum;
+format_caller_id_number_flag(_Key, _Value, CIDNum) ->
+    CIDNum.
