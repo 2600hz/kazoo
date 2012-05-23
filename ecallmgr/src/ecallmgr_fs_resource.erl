@@ -227,7 +227,6 @@ get_originate_action(_, _) ->
 get_unset_vars(JObj) ->
     %% Refactor (Karl wishes he had unit tests here for you to use)
     ExportProps = [{K, <<>>} || K <- wh_json:get_value(<<"Export-Custom-Channel-Vars">>, JObj, [])],
-
     Export = [K || KV <- lists:foldr(fun ecallmgr_fs_xml:get_channel_vars/2, [], [{<<"Custom-Channel-Vars">>, wh_json:from_list(ExportProps)}])
                        ,([K, _] = string:tokens(binary_to_list(KV), "=")) =/= undefined],
     case [[$u,$n,$s,$e,$t,$: | K] || KV <- lists:foldr(fun ecallmgr_fs_xml:get_channel_vars/2, [], wh_json:to_proplist(JObj))
@@ -326,8 +325,9 @@ originate_to_dialstrings(JObj, Node, ServerId, Endpoints, ?ORIGINATE_PARK) ->
                             end,
             DialStrings = ecallmgr_util:build_bridge_string([wh_json:set_value(<<"origination_uuid">>, UUID, E) || E <- Endpoints]
                                                             ,DialSeparator),
-
-            originate_and_park(JObj, Node, ServerId, DialStrings, UUID);
+            BillingId = wh_util:rand_hex_binary(16),
+            J = wh_json:set_value([<<"Custom-Channel-Vars">>, <<"Billing-ID">>], BillingId, JObj),
+            originate_and_park(J, Node, ServerId, DialStrings, UUID);
         {error, E} ->
             lager:debug("failed to create uuid on node ~s: ~p", [Node, E]),
             E = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, wh_util:to_binary(wh_util:current_tstamp()))}
@@ -349,7 +349,9 @@ originate_to_dialstrings(JObj, Node, ServerId, Endpoints, Action) ->
                         _Else -> <<"|">>
                     end,
     DialStrings = ecallmgr_util:build_bridge_string(Endpoints, DialSeparator),
-    Args = list_to_binary([ecallmgr_fs_xml:get_channel_vars(JObj), DialStrings, " ", Action]),
+    BillingId = wh_util:rand_hex_binary(16),
+    J = wh_json:set_value([<<"Custom-Channel-Vars">>, <<"Billing-ID">>], BillingId, JObj),
+    Args = list_to_binary([ecallmgr_fs_xml:get_channel_vars(J), DialStrings, " ", Action]),
     _ = ecallmgr_util:fs_log(Node, "whistle originating call: ~s", [Args]),
     case handle_originate_return(Node, freeswitch:api(Node, 'originate', wh_util:to_list(Args))) of
         {ok, Resp} ->

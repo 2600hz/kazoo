@@ -27,6 +27,8 @@
                 ,pool :: 'undefined' | pid()
                 ,job_id :: 'undefined' | ne_binary()
                 ,job :: 'undefined' | wh_json:json_object()
+                ,keep_alive :: 'undefined' | reference() 
+                ,max_time :: 'undefined' | reference()               
                }).
 
 %% By convention, we put the options here in macros, but not required.
@@ -138,7 +140,10 @@ handle_cast({attempt_transmission, Pid, Job}, #state{queue_name=Q}=State) ->
             lager:debug("acquired job, attempting to send fax ~s", [JobId]),
             try execute_job(JObj, Q) of
                 ok -> 
-                    {noreply, State#state{job_id=JobId, pool=Pid, job=JObj}};
+                    KeepAliveRef = erlang:send_after(60000, self(), keep_alive),
+                    MaxTime = whapps_config:get_integer(?CONFIG_CAT, <<"job_timeout">>, 900000),
+                    MaxTimeRef = erlang:send_after(MaxTime, self(), job_timeout),
+                    {noreply, State#state{job_id=JobId, pool=Pid, job=JObj, keep_alive=KeepAliveRef, max_time=MaxTimeRef}};
                 failure -> 
                     gen_server:cast(Pid, {job_complete, self()}),
                     {noreply, reset(State)}
@@ -170,6 +175,19 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info(keep_alive, #state{pool=Pid, job_id=JobId}=State) ->
+    case bump_modified(JobId) of
+        {ok, _} ->
+            KeepAliveRef = erlang:send_after(60000, self(), keep_alive),
+            {noreply, State#state{keep_alive=KeepAliveRef}};
+        {error, _R} ->
+            lager:debug("prematurely terminating job: ~p", [_R]),
+            gen_server:cast(Pid, {job_complete, self()}),
+            {noreply, reset(State)}
+    end;
+handle_info(job_timeout, #state{job=JObj}=State) ->
+    release_failed_job(job_timeout, undefined, JObj),
+    {noreply, reset(State)};
 handle_info(_Info, State) ->
     {noreply, State}.
 
@@ -220,18 +238,37 @@ attempt_to_acquire_job(Id) ->
         {ok, JObj} ->
             case wh_json:get_value(<<"pvt_job_status">>, JObj) of
                 <<"pending">> ->
-                    couch_mgr:save_doc(?WH_FAXES, wh_json:set_value(<<"pvt_job_status">>, <<"processing">>, JObj));
+                    couch_mgr:save_doc(?WH_FAXES, wh_json:set_values([{<<"pvt_job_status">>, <<"processing">>}
+                                                                      ,{<<"pvt_job_node">>, wh_util:to_binary(node())}
+                                                                      ,{<<"pvt_modified">>, wh_util:current_tstamp()}
+                                                                     ],JObj));
                 _Else -> 
                     lager:debug("job not in an available status: ~s", [_Else]),
                     {error, job_not_available}
             end
     end.
-             
+        
+-spec bump_modified/1 :: (ne_binary()) -> {'ok', wh_json:json_object()} | {'error', _}.
+bump_modified(JobId) ->
+    case couch_mgr:open_doc(?WH_FAXES, JobId) of
+        {error, _}=E -> E;
+        {ok, JObj} ->
+            case wh_json:get_value(<<"pvt_job_status">>, JObj) of
+                <<"processing">> ->
+                    lager:debug("bumped modified time for fax job ~s", [JobId]),
+                    couch_mgr:save_doc(?WH_FAXES, wh_json:set_value(<<"pvt_modified">>, wh_util:current_tstamp(), JObj));
+                _Else ->
+                    lager:debug("job not in an available status: ~s", [_Else]),
+                    {error, invalid_job_status}
+            end
+    end.    
+     
 -spec release_failed_job/3 :: ('fetch_failed', string(), wh_json:json_object()) -> 'failure';
                               ('bad_file', ne_binary(), wh_json:json_object()) -> 'failure';
-                              ('fetch_error', {atom(), term()}, wh_json:json_object()) -> 'failure';
+                              ('fetch_error', {atom(), _}, wh_json:json_object()) -> 'failure';
                               ('tx_resp', wh_json:json_object(), wh_json:json_object()) -> 'failure';
-                              ('exception', term(), wh_json:json_object()) -> 'failure'.
+                              ('exception', _, wh_json:json_object()) -> 'failure';
+                              ('timeout', _, wh_json:json_object()) -> 'failure'.
 release_failed_job(fetch_failed, Status, JObj) ->
     Msg = wh_util:to_binary(io_lib:format("could not retrieve file, http response ~s", [Status])),
     Result = [{<<"success">>, false}
@@ -257,7 +294,6 @@ release_failed_job(bad_file, Msg, JObj) ->
               ,{<<"fax_error_correction">>, false}              
              ],
     release_job(Result, JObj);
-
 release_failed_job(fetch_error, {conn_failed, _}, JObj) ->
     Result = [{<<"success">>, false}
               ,{<<"result_code">>, 0}
@@ -307,19 +343,31 @@ release_failed_job(exception, _Error, JObj) ->
               ,{<<"fax_receiver_id">>, <<>>}
               ,{<<"fax_error_correction">>, false}              
              ],
+    release_job(Result, JObj);
+release_failed_job(job_timeout, _Error, JObj) ->
+    Result = [{<<"success">>, false}
+              ,{<<"result_code">>, 0}
+              ,{<<"result_text">>, <<"fax job timed out">>}
+              ,{<<"pages_sent">>, 0}
+              ,{<<"time_elapsed">>, elapsed_time(JObj)}
+              ,{<<"fax_bad_rows">>, 0}
+              ,{<<"fax_speed">>, 0}
+              ,{<<"fax_receiver_id">>, <<>>}
+              ,{<<"fax_error_correction">>, false}              
+             ],
     release_job(Result, JObj).
 
 -spec release_successful_job/2 :: (wh_json:json_object(), wh_json:json_object()) -> 'ok'.
 release_successful_job(Resp, JObj) ->
-    Result = [{<<"success">>, wh_json:is_true([<<"Resource-Response">>, <<"Fax-Success">>], Resp)}
-              ,{<<"result_code">>,  wh_json:get_value([<<"Resource-Response">>, <<"Fax-Result-Code">>], Resp)}
-              ,{<<"result_message">>,  wh_json:get_value([<<"Resource-Response">>, <<"Fax-Result-Text">>], Resp)}
-              ,{<<"pages_sent">>,  wh_json:get_integer_value([<<"Resource-Response">>, <<"Fax-Transferred-Pages">>], Resp, 0)}
+    Result = [{<<"success">>, wh_json:is_true([<<"Resource-Response">>, <<"Fax-Success">>], Resp, false)}
+              ,{<<"result_code">>, wh_json:get_value([<<"Resource-Response">>, <<"Fax-Result-Code">>], Resp, 0)}
+              ,{<<"result_message">>, wh_json:get_value([<<"Resource-Response">>, <<"Fax-Result-Text">>], Resp, <<>>)}
+              ,{<<"pages_sent">>, wh_json:get_integer_value([<<"Resource-Response">>, <<"Fax-Transferred-Pages">>], Resp, 0)}
               ,{<<"time_elapsed">>, elapsed_time(JObj)}
               ,{<<"fax_bad_rows">>, wh_json:get_integer_value([<<"Resource-Response">>, <<"Fax-Bad-Rows">>], Resp, 0)}
               ,{<<"fax_speed">>, wh_json:get_integer_value([<<"Resource-Response">>, <<"Fax-Transfer-Rate">>], Resp, 0)}
               ,{<<"fax_receiver_id">>, <<>>}
-              ,{<<"fax_error_correction">>, wh_json:is_true([<<"Resource-Response">>, <<"Fax-ECM-Used">>], Resp)}              
+              ,{<<"fax_error_correction">>, wh_json:is_true([<<"Resource-Response">>, <<"Fax-ECM-Used">>], Resp, false)}              
              ],
     release_job(Result, JObj).
 
@@ -443,6 +491,10 @@ send_fax(JobId, JObj, Q) ->
                ,{<<"To-DID">>, wnm_util:to_e164(wh_json:get_value(<<"to_number">>, JObj))}
                ,{<<"Resource-Type">>, <<"originate">>}
                ,{<<"Msg-ID">>, JobId}
+               ,{<<"Custom-Channel-Vars">>, wh_json:from_list([{<<"Authorizing-ID">>, JobId}
+                                                               ,{<<"Authorizing-Type">>, <<"outbound_fax">>}
+                                                              ])}
+               ,{<<"Export-Custom-Channel-Vars">>, [<<"Account-ID">>]}
                ,{<<"Application-Name">>, <<"fax">>}
                ,{<<"Application-Data">>, get_proxy_url(JobId)}
                | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
@@ -456,6 +508,12 @@ get_proxy_url(JobId) ->
     list_to_binary(["http://", Hostname, ":", Port, "/fax/", JobId, ".tiff"]).
     
 -spec reset/1 :: (#state{}) -> #state{}.
+reset(#state{keep_alive=KeepAliveRef}=State) when is_reference(KeepAliveRef) ->
+    erlang:cancel_timer(KeepAliveRef),
+    reset(State#state{keep_alive=undefined});
+reset(#state{max_time=MaxTimeRef}=State) when is_reference(MaxTimeRef) ->
+    erlang:cancel_timer(MaxTimeRef),
+    reset(State#state{max_time=undefined});
 reset(State) ->
     put(callid, <<"00000000000">>),
     State#state{job_id=undefined, job=undefined, pool=undefined}.
