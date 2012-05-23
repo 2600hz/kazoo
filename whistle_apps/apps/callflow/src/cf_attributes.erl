@@ -217,7 +217,7 @@ caller_id_attributes(EndpointId, Attribute, Call) ->
 caller_id_attributes(EndpointId, OwnerId, Attribute, Call) ->
     Ids = [EndpointId, OwnerId, whapps_call:account_id(Call)],
     lager:debug("find caller id attr ~s on ~s", [Attribute, wh_util:join_binary(Ids)]),
-    Attributes = fetch_attributes(caller_id_options, Call),
+    Attributes = fetch_attributes(caller_id, Call),
     case search_attributes(Attribute, Ids, Attributes) of
         undefined ->
             lager:debug("unable to find caller id attribute ~s", [Attribute]),
