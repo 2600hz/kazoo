@@ -22,7 +22,7 @@
 -export([get_json_value/2, get_json_value/3]).
 -export([is_true/2, is_true/3, is_false/2, is_false/3, is_empty/1]).
 
--export([filter/2, filter/3, map/2, find/2, find/3]).
+-export([filter/2, filter/3, map/2, foldl/3, find/2, find/3]).
 -export([get_ne_value/2, get_ne_value/3]).
 -export([get_value/2, get_value/3, get_values/1]).
 -export([get_keys/1, get_keys/2]).
@@ -236,6 +236,10 @@ filter(Pred, JObj, Key) ->
 -spec map/2 :: (fun((json_string(), json_term()) -> term()), json_object()) -> json_object().
 map(F, ?JSON_WRAPPER(Prop)) ->
     from_list([ F(K, V) || {K,V} <- Prop]).
+
+-spec foldl/3 :: (fun((json_string(), json_term(), Any) -> Any), Any, json_object()) -> Any.
+foldl(F, Acc0, ?JSON_WRAPPER(Prop)) ->
+    lists:foldl(fun({Key, Value}, Acc1) -> F(Key, Value, Acc1) end, Acc0, Prop).
 
 -spec get_string_value/2 :: (json_string() | json_strings(), json_object() | json_objects()) -> 'undefined' | list().
 -spec get_string_value/3 :: (json_string() | json_strings(), json_object(), Default) -> list() | Default.
