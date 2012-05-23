@@ -58,27 +58,29 @@ migrate() ->
     whapps_config:flush(),
 
     %% Remove depreciated crossbar modules from the startup list and add new defaults
-    XbarUpdates = [fun(L) -> lists:delete(<<"cb_cdr">>, L) end
-                   ,fun(L) -> lists:delete(<<"cb_signups">>, L) end
-                   ,fun(L) -> lists:delete(<<"cb_resources">>, L) end
-                   ,fun(L) -> lists:delete(<<"cb_provisioner_templates">>, L) end
-                   ,fun(L) -> lists:delete(<<"cb_ts_accounts">>, L) end
-                   ,fun(L) -> [<<"cb_phone_numbers">> | lists:delete(<<"cb_phone_numbers">>, L)] end
-                   ,fun(L) -> [<<"cb_templates">> | lists:delete(<<"cb_templates">>, L)] end
-                   ,fun(L) -> [<<"cb_onboard">> | lists:delete(<<"cb_onboard">>, L)] end
-                   ,fun(L) -> [<<"cb_connectivity">> | lists:delete(<<"cb_connectivity">>, L)] end
-                   ,fun(L) -> [<<"cb_local_provisioner_templates">> | lists:delete(<<"cb_local_provisioner_templates">>, L)] end
-                   ,fun(L) -> [<<"cb_global_provisioner_templates">> | lists:delete(<<"cb_global_provisioner_templates">>, L)] end
-                   ,fun(L) -> [<<"cb_queues">> | lists:delete(<<"cb_queues">>, L)] end
-                   ,fun(L) -> [<<"cb_schemas">> | lists:delete(<<"cb_schema">>, L)] end
-                   ,fun(L) -> [<<"cb_configs">> | lists:delete(<<"cb_configs">>, L)] end
-                   ,fun(L) -> [<<"cb_limits">> | lists:delete(<<"cb_limits">>, L)] end
-                   ,fun(L) -> [<<"cb_whitelabel">> | lists:delete(<<"cb_whitelabel">>, L)] end
+    
+    StartModules = sets:from_list(whapps_config:get(<<"crossbar">>, <<"autoload_modules">>, [])),
+    XbarUpdates = [fun(L) -> sets:del_element(<<"cb_cdr">>, L) end
+                   ,fun(L) -> sets:del_element(<<"cb_signups">>, L) end
+                   ,fun(L) -> sets:del_element(<<"cb_resources">>, L) end
+                   ,fun(L) -> sets:del_element(<<"cb_provisioner_templates">>, L) end
+                   ,fun(L) -> sets:del_element(<<"cb_ts_accounts">>, L) end
+                   ,fun(L) -> sets:add_element(<<"cb_phone_numbers">>, L) end
+                   ,fun(L) -> sets:add_element(<<"cb_templates">>, L) end
+                   ,fun(L) -> sets:add_element(<<"cb_onboard">>, L) end
+                   ,fun(L) -> sets:add_element(<<"cb_connectivity">>, L) end
+                   ,fun(L) -> sets:add_element(<<"cb_local_provisioner_templates">>, L) end
+                   ,fun(L) -> sets:add_element(<<"cb_global_provisioner_templates">>, L) end
+                   ,fun(L) -> sets:add_element(<<"cb_queues">>, L) end
+                   ,fun(L) -> sets:add_element(<<"cb_schemas">>, L) end
+                   ,fun(L) -> sets:add_element(<<"cb_configs">>, L) end
+                   ,fun(L) -> sets:add_element(<<"cb_limits">>, L) end
+                   ,fun(L) -> sets:add_element(<<"cb_whitelabel">>, L) end
                   ],
-    StartModules = whapps_config:get(<<"crossbar">>, <<"autoload_modules">>, []),
+
     _ = whapps_config:set_default(<<"crossbar">>
                                       ,<<"autoload_modules">>
-                                      ,lists:foldr(fun(F, L) -> F(L) end, StartModules, XbarUpdates)),
+                                      ,sets:to_list(lists:foldr(fun(F, L) -> F(L) end, StartModules, XbarUpdates))),
 
     %% Remove depreciated whapps from the startup list and add new defaults
     WhappsUpdates = [fun(L) -> [<<"sysconf">> | lists:delete(<<"sysconf">>, L)] end
