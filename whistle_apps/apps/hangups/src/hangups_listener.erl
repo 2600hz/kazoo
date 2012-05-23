@@ -69,8 +69,14 @@ handle_cdr(JObj, _Props) ->
         false -> 
             AccountId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj),
             lager:debug("abnormal call termination: ~s", [HangupCause]),
-            [FromNumber|_] = binary:split(wh_json:get_value(<<"From-Uri">>, JObj), <<"@">>),
-            [ToNumber|_] = binary:split(wh_json:get_value(<<"To-Uri">>, JObj), <<"@">>),
+            FromNumber = case catch binary:split(wh_json:get_value(<<"From-Uri">>, JObj), <<"@">>) of
+                             [FNum|_] -> FNum;
+                             _ -> wh_json:get_value(<<"Caller-ID-Number">>, JObj)
+                         end,
+            ToNumber = case catch binary:split(wh_json:get_value(<<"To-Uri">>, JObj), <<"@">>) of
+                             [TNum|_] -> TNum;
+                             _ -> wh_json:get_value(<<"Callee-ID-Number">>, JObj)
+                         end,
             Direction = wh_json:get_value(<<"Call-Direction">>, JObj),
             Realm = get_account_realm(AccountId),
             wh_notify:system_alert("~s ~s to ~s (~s) on ~s"
