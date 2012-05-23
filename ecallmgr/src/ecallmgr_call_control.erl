@@ -110,6 +110,7 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
+-spec start_link/3 :: (atom(), ne_binary(), ne_binary() | 'undefined') -> startlink_ret().
 start_link(Node, CallId, WhAppQ) ->
     %% We need to become completely decoupled from ecallmgr_call_events
     %% because the call_events process might have been spun up with A->B
@@ -127,8 +128,10 @@ start_link(Node, CallId, WhAppQ) ->
                                       ,{queue_name, ?QUEUE_NAME}
                                       ,{queue_options, ?QUEUE_OPTIONS}
                                       ,{consume_options, ?CONSUME_OPTIONS}
-                                     ], [Node, CallId, WhAppQ]).
+                                     ]
+                            ,[Node, CallId, WhAppQ]).
 
+-spec stop/1 :: (pid()) -> 'ok'.
 stop(Srv) ->
     gen_listener:stop(Srv).
 
@@ -791,10 +794,8 @@ get_keep_alive_ref(#state{keep_alive_ref=TRef, is_call_up=false}) ->
 -spec publish_leg_addition/1 :: (wh_json:json_object()) -> 'ok'.
 publish_leg_addition(JObj) ->
     Props = case wh_json:get_value(<<"Event-Name">>, JObj) of
-                <<"CHANNEL_BRIDGE">> ->
-                    wh_json:to_proplist(JObj);
-                <<"CHANNEL_CREATE">> ->
-                    ecallmgr_call_events:swap_call_legs(JObj)
+                <<"CHANNEL_BRIDGE">> -> wh_json:to_proplist(JObj);
+                <<"CHANNEL_CREATE">> -> ecallmgr_call_events:swap_call_legs(JObj)
             end,
     Event = ecallmgr_call_events:create_event(<<"LEG_CREATED">>, undefined, Props),
     case props:get_value(<<"Call-ID">>, Event) of
@@ -805,17 +806,13 @@ publish_leg_addition(JObj) ->
 -spec publish_leg_removal/1 :: (wh_json:json_object()) -> 'ok'.
 publish_leg_removal(JObj) ->
     Props = case wh_json:get_value(<<"Event-Name">>, JObj) of
-                <<"CHANNEL_UNBRIDGE">> ->
-                    wh_json:to_proplist(JObj);
-                <<"CHANNEL_DESTROY">> ->
-                    ecallmgr_call_events:swap_call_legs(JObj)
+                <<"CHANNEL_UNBRIDGE">> -> wh_json:to_proplist(JObj);
+                <<"CHANNEL_DESTROY">> -> ecallmgr_call_events:swap_call_legs(JObj)
             end,
     Event = ecallmgr_call_events:create_event(<<"LEG_DESTROYED">>, undefined, Props),
     case props:get_value(<<"Call-ID">>, Event) of
-        undefined ->
-            ok;
-        _Else ->
-            ecallmgr_call_events:publish_event(Event)
+        undefined -> ok;
+        _Else -> ecallmgr_call_events:publish_event(Event)
     end.
 
 -spec publish_callid_update/3 :: (ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
