@@ -34,7 +34,9 @@ exec_cmd(Node, UUID, JObj, ControlPID) ->
                 {AppName, noop} ->
                     ecallmgr_call_control:event_execute_complete(ControlPID, UUID, AppName);
                 {AppName, AppData} ->
-                    ecallmgr_util:send_cmd(Node, UUID, AppName, AppData)
+                    ecallmgr_util:send_cmd(Node, UUID, AppName, AppData);
+                Apps when is_list(Apps) ->
+                    [ecallmgr_util:send_cmd(Node, UUID, AppName, AppData) || {AppName, AppData} <- Apps]
             end;
         false ->
             lager:debug("command ~s not meant for us but for ~s", [wh_json:get_value(<<"Application-Name">>, JObj), DestID]),
