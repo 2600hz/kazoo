@@ -66,13 +66,14 @@ migrate() ->
                    ,fun(L) -> [<<"cb_phone_numbers">> | lists:delete(<<"cb_phone_numbers">>, L)] end
                    ,fun(L) -> [<<"cb_templates">> | lists:delete(<<"cb_templates">>, L)] end
                    ,fun(L) -> [<<"cb_onboard">> | lists:delete(<<"cb_onboard">>, L)] end
-                   ,fun(L) -> [<<"cb_connectivity">> | lists:delete(<<"cb_ts_accounts">>, L)] end
+                   ,fun(L) -> [<<"cb_connectivity">> | lists:delete(<<"cb_connectivity">>, L)] end
                    ,fun(L) -> [<<"cb_local_provisioner_templates">> | lists:delete(<<"cb_local_provisioner_templates">>, L)] end
                    ,fun(L) -> [<<"cb_global_provisioner_templates">> | lists:delete(<<"cb_global_provisioner_templates">>, L)] end
                    ,fun(L) -> [<<"cb_queues">> | lists:delete(<<"cb_queues">>, L)] end
                    ,fun(L) -> [<<"cb_schemas">> | lists:delete(<<"cb_schema">>, L)] end
                    ,fun(L) -> [<<"cb_configs">> | lists:delete(<<"cb_configs">>, L)] end
                    ,fun(L) -> [<<"cb_limits">> | lists:delete(<<"cb_limits">>, L)] end
+                   ,fun(L) -> [<<"cb_whitelabel">> | lists:delete(<<"cb_whitelabel">>, L)] end
                   ],
     StartModules = whapps_config:get(<<"crossbar">>, <<"autoload_modules">>, []),
     _ = whapps_config:set_default(<<"crossbar">>

@@ -3,25 +3,28 @@
     ,"language":"javascript"
     ,"views": {
         "listing_by_id": {
-            "map":"function(doc) { if (doc.pvt_type != 'account' || doc.pvt_deleted) return; var t = doc.pvt_tree.slice(0); t.push(doc._id); emit([doc._id, t], {'id': doc._id, 'name': doc.name, 'realm' : doc.realm}); }"
+            "map":"function(doc) { if (doc.pvt_type != 'account' || doc.pvt_deleted) return; var t = doc.pvt_tree.slice(0); t.push(doc.pvt_account_id); emit([doc.pvt_account_id, t], {'id': doc.pvt_account_id, 'name': doc.name, 'realm' : doc.realm}); }"
         }
         ,"listing_by_parent": {
-            "map":"function(doc) { if (doc.pvt_type != 'account' || doc.pvt_deleted) return; var t = doc.pvt_tree.slice(0); t.push(doc._id); emit(doc._id, {'id': t.slice(-2,-1)[0]}); }"
+            "map":"function(doc) { if (doc.pvt_type != 'account' || doc.pvt_deleted) return; var t = doc.pvt_tree.slice(0); t.push(doc.pvt_account_id); emit(doc.pvt_account_id, {'id': t.slice(-2,-1)[0]}); }"
         }
         ,"listing_by_children": {
-            "map":"function(doc) { if (doc.pvt_type != 'account' || doc.pvt_deleted) return; var t = doc.pvt_tree.slice(0); t.push(doc._id); emit([t.slice(-2,-1)[0], t], {'id': doc._id, 'name': doc.name, 'realm' : doc.realm}); }"
+            "map":"function(doc) { if (doc.pvt_type != 'account' || doc.pvt_deleted) return; var t = doc.pvt_tree.slice(0); t.push(doc.pvt_account_id); emit([t.slice(-2,-1)[0], t], {'id': doc.pvt_account_id, 'name': doc.name, 'realm' : doc.realm}); }"
         }
         ,"listing_by_descendants": {
-            "map":"function(doc) { if (doc.pvt_type != 'account' || doc.pvt_deleted) return; var t = doc.pvt_tree.slice(0); t.push(doc._id); for (var i in t) { emit([t[i], t], {'id': doc._id, 'name': doc.name, 'realm' : doc.realm}); } }"
+            "map":"function(doc) { if (doc.pvt_type != 'account' || doc.pvt_deleted) return; var t = doc.pvt_tree.slice(0); t.push(doc.pvt_account_id); for (var i in t) { emit([t[i], t], {'id': doc.pvt_account_id, 'name': doc.name, 'realm' : doc.realm}); } }"
         },
         "listing_by_api": {
-            "map":"function(doc) { if (doc.pvt_type != 'account' || doc.pvt_deleted) return; emit(doc.pvt_api_key, {'account_id': doc._id}); }"
+            "map":"function(doc) { if (doc.pvt_type != 'account' || doc.pvt_deleted) return; emit(doc.pvt_api_key, {'account_id': doc.pvt_account_id}); }"
         },
         "listing_by_realm": {
-            "map":"function(doc) { if (doc.pvt_type != 'account' || doc.pvt_deleted) return; emit(doc.realm, {'account_id': doc._id, 'account_db': doc.pvt_account_db}); }"
+            "map":"function(doc) { if (doc.pvt_type != 'account' || doc.pvt_deleted) return; emit(doc.realm, {'account_id': doc.pvt_account_id, 'account_db': doc.pvt_account_db}); }"
         },
         "listing_by_name": {
-            "map":"function(doc) { if (doc.pvt_type != 'account' || doc.pvt_deleted) return; var name = doc.name.toLowerCase(); name = name.replace(/[^a-z0-9]/g, ''); emit(name, {'account_id': doc._id, 'account_db': doc.pvt_account_db}); }"
+            "map":"function(doc) { if (doc.pvt_type != 'account' || doc.pvt_deleted) return; var name = doc.name.toLowerCase(); name = name.replace(/[^a-z0-9]/g, ''); emit(name, {'account_id': doc.pvt_account_id, 'account_db': doc.pvt_account_db}); }"
+        },
+        "list_by_whitelabel_domain": {
+            "map": "function(doc) { if (doc.pvt_type != 'account' || doc.pvt_deleted || !doc.pvt_whitelabel_domain) return; var domain = doc.pvt_whitelabel_domain.toLowerCase(); emit(domain, {'account_id': doc.pvt_account_id, 'account_db': doc.pvt_account_db}); }"
         }
     }
     ,"filters": {
