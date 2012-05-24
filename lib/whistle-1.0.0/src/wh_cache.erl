@@ -46,11 +46,12 @@
 
 -define(NOTIFY_KEY(Key), {monitor_key, Key}).
 
--record(cache_obj, {key
-                    ,value
-                    ,expires=?EXPIRES
-                    ,timestamp=wh_util:current_tstamp()
-                    ,callback=undefined
+%% NOTE: the use of atom() in the specs are for ets match specs and not otherwise valid types
+-record(cache_obj, {key :: term()
+                    ,value :: term()
+                    ,expires=?EXPIRES :: pos_integer() | 'infinity' | atom()
+                    ,timestamp=wh_util:current_tstamp() :: pos_integer() | atom()
+                    ,callback=undefined :: 'undefined' | fun((_, _, flush | erase | expire) -> _) | atom()
                    }).
 
 %%%===================================================================
@@ -175,13 +176,13 @@ flush_local(Srv) ->
 
 -spec fetch_keys_local/1 :: (atom()) -> [term(),...] | [].
 fetch_keys_local(Srv) ->
-    Keys = ets:match(Srv, #cache_obj{key='$1'
-                                     ,value='_'
-                                     ,expires='_'
-                                     ,timestamp='_'
-                                     ,callback='_'
-                                    }),
-    [K || K <- lists:concat(Keys), (is_tuple(K) andalso element(1, K) =/= monitor_key)].
+    MatchSpec = [{#cache_obj{key = '$1', _ = '_'},
+                  [{'orelse', {'not', {is_tuple, '$1'}},
+                    {'=/=',{element, 1, '$1'}, monitor_key}}
+                  ],
+                  ['$1']}
+                ],
+    ets:select(Srv, MatchSpec).
 
 -spec filter_local/2 :: (atom(), fun((term(), term()) -> boolean())) -> proplist().
 filter_local(Srv, Pred)  when is_function(Pred, 2) ->
@@ -189,7 +190,7 @@ filter_local(Srv, Pred)  when is_function(Pred, 2) ->
                  (#cache_obj{key=K, value=V}, Acc) ->
                       case Pred(K, V) of
                           true -> [{K, V}|Acc];
-                          false -> Acc
+                          fals0e -> Acc
                       end;
                  (_, Acc) -> Acc
               end, [], Srv).
@@ -271,9 +272,11 @@ handle_call({wait_for_key, Key, Timeout}, {Pid, _}, Cache) ->
 %%--------------------------------------------------------------------
 handle_cast({store, #cache_obj{key=Key, value=Value}=CacheObj}, Cache) ->
     ets:insert(Cache, CacheObj),
-    MatchSpec = [{#cache_obj{key = {monitor_key, '_'}, value = '$1'
-                             ,expires = '_', timestamp = '_'
-                             ,callback = '$2'},
+    MatchSpec = [{#cache_obj{key = {monitor_key, '_'}
+                             ,value = '$1'
+                             ,callback = '$2'
+                             ,_ = '_'
+                            },
                   [{'=:=', '$1', {const, Key}}],
                   ['$2']}
                 ],
@@ -283,9 +286,11 @@ handle_cast({store, #cache_obj{key=Key, value=Value}=CacheObj}, Cache) ->
                 _ = [spawn(fun() -> Callback(Key, Value, store) end)
                      || Callback <- Monitors
                     ],
-                DeleteSpec = [{#cache_obj{key = {monitor_key, '_'}, value = '$1'
-                                          ,expires = '_', timestamp = '_'
-                                          ,callback = '$1'},
+                DeleteSpec = [{#cache_obj{key = {monitor_key, '_'}
+                                          ,value = '$1'
+                                          ,callback = '$1'
+                                          ,_ = '_'
+                                         },
                                [{'=:=', '$1', {const, Key}}],
                                [true]}
                              ],
@@ -307,8 +312,10 @@ handle_cast({erase, K}, Cache) ->
     ets:delete(Cache, K),
     {noreply, Cache, hibernate};
 handle_cast({flush}, Cache) ->
-    MatchSpec = [{#cache_obj{key = '$1', value = '$2', expires = '_',
-                             timestamp = '_', callback = '$3'},
+    MatchSpec = [{#cache_obj{key = '$1'
+                             ,value = '$2'
+                             ,callback = '$3'
+                             , _ = '_'},
                   [{'=/=', '$3', undefined}],
                   [{{'$3', '$1', '$2'}}]}
                 ],
@@ -345,8 +352,9 @@ handle_info({expire, ExpirePeriod}, Cache) ->
                      || {Callback, K, V} <- Expired
                             ,is_function(Callback)
                     ],
-                DeleteSpec = [{#cache_obj{key = '_', value = '_', expires = '$3',
-                                          timestamp = '$4', callback = '_'},
+                DeleteSpec = [{#cache_obj{expires = '$3'
+                                          ,timestamp = '$4'
+                                          ,_ = '_'},
                                [{'=/=', '$3', infinity},
                                 {'>', {const, Now}, {'+', '$4', '$3'}}],
                                [true]}

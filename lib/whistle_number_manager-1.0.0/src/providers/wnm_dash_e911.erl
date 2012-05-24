@@ -53,7 +53,7 @@ save(JObj, PriorJObj, Number, <<"reserved">>) ->
         false -> {ok, JObj};
         true when Address =:= EmptyJObj ->
             lager:debug("e911 address was changed and is now empty"),
-            remove_number(Number),
+            _ = remove_number(Number),
             {ok, JObj};
         true ->
             lager:debug("e911 address for '~s' was changed, updating dash", [Number]),
@@ -66,14 +66,14 @@ save(JObj, PriorJObj, Number, <<"in_service">>) ->
         false -> {ok, JObj};
         true when Address =:= EmptyJObj ->
             lager:debug("e911 address was changed and is now empty"),
-            remove_number(Number),
+            _ = remove_number(Number),
             {ok, JObj};
         true ->
             lager:debug("e911 address for '~s' was changed, updating dash", [Number]),
             update_e911(Number, Address, JObj)
     end;
 save(JObj, _, Number, _) ->
-    remove_number(Number),
+    _ = remove_number(Number),
     {ok, JObj}.
 
 %%--------------------------------------------------------------------
@@ -83,10 +83,9 @@ save(JObj, _, Number, _) ->
 %% provision e911 or remove the number depending on the state
 %% @end
 %%--------------------------------------------------------------------
--spec delete/4 :: (wh_json:json_object(), wh_json:json_object(), ne_binary(), ne_binary()) 
-                  -> {ok, wh_json:json_object()} | {error, binary()}.
+-spec delete/4 :: (wh_json:json_object(), wh_json:json_object(), ne_binary(), ne_binary()) -> {ok, wh_json:json_object()}.
 delete(JObj, _, Number, _) ->
-    remove_number(Number),
+    _ = remove_number(Number),
     {ok, JObj}.
 
 %%--------------------------------------------------------------------

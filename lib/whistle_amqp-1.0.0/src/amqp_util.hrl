@@ -90,9 +90,10 @@
 -define(EXCHANGE_SYSCONF, <<"sysconf">>).
 -define(TYPE_SYSCONF, <<"topic">>).
 
--record(wh_amqp_channel, {consumer = 'undefined' :: 'undefined' | 'publish' | 'misc' | pid()
-                          ,channel = 'undefined' :: 'undefined' | pid()
-                          ,tag = <<>> :: binary()
-                          ,channel_ref = 'undefined' :: 'undefined' | reference()
-                          ,consumer_ref = 'undefined' :: 'undefined' | reference()
+%% NOTE: the use of atom() in the specs are for ets match specs and not otherwise valid types
+-record(wh_amqp_channel, {consumer = 'undefined' :: 'undefined' | 'publish' | 'misc' | pid() | atom()
+                          ,channel = 'undefined' :: 'undefined' | pid() | atom()
+                          ,tag = <<>> :: binary() | atom()
+                          ,channel_ref = 'undefined' :: 'undefined' | reference() | atom()
+                          ,consumer_ref = 'undefined' :: 'undefined' | reference() | atom()
                          }).
