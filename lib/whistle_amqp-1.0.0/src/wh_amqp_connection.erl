@@ -242,7 +242,7 @@ init([Broker]) ->
     put(callid, ?LOG_SYSTEM_ID),
     self() ! {connect, ?START_TIMEOUT},
     Name = wh_amqp_broker:name(Broker),
-    ets:new(Name, [set, protected, named_table, {keypos, #wh_amqp_channel.consumer}]),
+    _ = ets:new(Name, [set, protected, named_table, {keypos, #wh_amqp_channel.consumer}]),
     {ok, #state{broker=Broker, broker_name=Name}}.
 
 %%--------------------------------------------------------------------
@@ -321,12 +321,10 @@ handle_info({'DOWN', Ref, process, ConnPid, Reason}, #state{connection={ConnPid,
     {noreply, State#state{connection=undefined}};
 handle_info({'DOWN', Ref, process, _Pid, _Reason}, #state{connection={Connection, _}, broker_name=Name}=State) ->
     erlang:demonitor(Ref, [flush]),
-    MatchSpec = [{#wh_amqp_channel{consumer = '_', channel = '_', tag = '_',
-                                   channel_ref = '$1', consumer_ref = '_'},
+    MatchSpec = [{#wh_amqp_channel{channel_ref = '$1', _ = '_'},
                   [{'=:=', '$1', {const, Ref}}],
                   [{{channel, '$_'}}]},
-                 {#wh_amqp_channel{consumer = '_', channel = '_', tag = '_',
-                                   channel_ref = '_', consumer_ref = '$1'},
+                 {#wh_amqp_channel{consumer_ref = '$1', _ = '_'},
                   [{'=:=', '$1', {const, Ref}}],
                   [{{consumer, '$_'}}]}
                 ],
@@ -359,12 +357,10 @@ handle_info({'DOWN', Ref, process, _Pid, _Reason}, #state{connection={Connection
     {noreply, State, hibernate};
 handle_info({'DOWN', Ref, process, _Pid, _Reason}, #state{broker_name=Name}=State) ->
     erlang:demonitor(Ref, [flush]),
-    MatchSpec = [{#wh_amqp_channel{consumer = '_', channel = '_', tag = '_',
-                                   channel_ref = '$1', consumer_ref = '_'},
+    MatchSpec = [{#wh_amqp_channel{channel_ref = '$1', _ = '_'},
                   [{'=:=', '$1', {const, Ref}}],
                   [{{channel, '$_'}}]},
-                 {#wh_amqp_channel{consumer = '_', channel = '_', tag = '_',
-                                   channel_ref = '_', consumer_ref = '$1'},
+                 {#wh_amqp_channel{consumer_ref = '$1', _ = '_'},
                   [{'=:=', '$1', {const, Ref}}],
                   [{{consumer, '$_'}}]}
                 ],

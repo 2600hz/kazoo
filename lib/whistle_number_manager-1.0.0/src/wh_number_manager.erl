@@ -205,13 +205,13 @@ free_numbers(AccountId) ->
     Db = wh_util:format_account_id(AccountId, encoded),
     case couch_mgr:open_doc(Db, AccountId) of
         {ok, JObj} ->
-            [case release_number(Number, AccountId) of
-                 {ok, _} -> ok;
-                 {error, _} -> wnm_util:update_numbers_on_account(Number, <<"released">>, AccountId)
-             end
-             || Number <- wh_json:get_value(<<"pvt_wnm_in_service">>, JObj, [])
-                    ++ wh_json:get_value(<<"pvt_wnm_reserved">>, JObj, [])
-            ],
+            _ = [case release_number(Number, AccountId) of
+                     {ok, _} -> ok;
+                     {error, _} -> wnm_util:update_numbers_on_account(Number, <<"released">>, AccountId)
+                 end
+                 || Number <- wh_json:get_value(<<"pvt_wnm_in_service">>, JObj, [])
+                        ++ wh_json:get_value(<<"pvt_wnm_reserved">>, JObj, [])
+                ],
             ok;
         _ -> ok
     end.
@@ -287,7 +287,7 @@ assign_number_to_account(Number, AssignTo, AuthBy, PublicFields) ->
 %% recycled or cancled after a buffer period
 %% @end
 %%--------------------------------------------------------------------
--spec release_number/2 :: (ne_binary(), ne_binary()) -> ok | {error, atom()}.
+-spec release_number/2 :: (ne_binary(), ne_binary()) -> {ok, wh_json:json_object()} | {error, _}.
 release_number(Number, AuthBy) ->    
     lager:debug("attempting to release ~s", [Number]),
     Routines = [fun({error, _}=E) -> E;
@@ -305,7 +305,7 @@ release_number(Number, AuthBy) ->
                          end
                  end
                 ,fun({error, _R}=E) ->
-                         wnm_util:update_numbers_on_account(Number, <<"released">>),
+                         _ = wnm_util:update_numbers_on_account(Number, <<"released">>),
                          lager:debug("release prematurely ended: ~p", [_R]),
                          E;
                     ({ok, J}) -> 

@@ -193,8 +193,8 @@ save(JObj, PriorJObj) ->
 %% 
 %% @end
 %%--------------------------------------------------------------------
--spec discovery/3 :: (wh_json:json_object(), 'undefined' | ne_binary(), 'undefined' | ne_binary()) -> transition_return().
--spec discovery/4 :: (ne_binary(), wh_json:json_object(), 'undefined' | ne_binary(), 'undefined' | ne_binary()) -> transition_return().
+-spec discovery/3 :: (wh_json:json_object(), 'undefined' | ne_binary(), 'undefined' | ne_binary()) -> {'error', 'invalid_state_transition'}.
+-spec discovery/4 :: (ne_binary(), wh_json:json_object(), 'undefined' | ne_binary(), 'undefined' | ne_binary()) -> {'error', 'invalid_state_transition'}.
 
 discovery(JObj, AssignTo, AuthBy) ->
     discovery(wh_json:get_value(<<"pvt_number_state">>, JObj), JObj, AssignTo, AuthBy).
@@ -222,8 +222,8 @@ discovery(<<"disconnected">>, _, _, _) ->
 %% 
 %% @end
 %%--------------------------------------------------------------------
--spec port_in/3 :: (wh_json:json_object(), 'undefined' | ne_binary(), 'undefined' | ne_binary()) -> transition_return().
--spec port_in/4 :: (ne_binary(), wh_json:json_object(), 'undefined' | ne_binary(), 'undefined' | ne_binary()) -> transition_return().
+-spec port_in/3 :: (wh_json:json_object(), 'undefined' | ne_binary(), 'undefined' | ne_binary()) -> {'error','invalid_state_transition' | 'no_change_required' | 'unauthorized'}.
+-spec port_in/4 :: (ne_binary(), wh_json:json_object(), 'undefined' | ne_binary(), 'undefined' | ne_binary()) -> {'error','invalid_state_transition' | 'no_change_required' | 'unauthorized'}.
 
 port_in(JObj, AssignTo, AuthBy) ->
     port_in(wh_json:get_value(<<"pvt_number_state">>, JObj), JObj, AssignTo, AuthBy).
@@ -712,8 +712,8 @@ released(<<"disconnected">>, _, _) ->
 %% 
 %% @end
 %%--------------------------------------------------------------------
--spec port_out/2 :: (wh_json:json_object(), 'undefined' | ne_binary()) -> transition_return().
--spec port_out/3 :: (ne_binary(), wh_json:json_object(), 'undefined' | ne_binary()) -> transition_return().
+-spec port_out/2 :: (wh_json:json_object(), 'undefined' | ne_binary()) -> {'error','invalid_state_transition'}.
+-spec port_out/3 :: (ne_binary(), wh_json:json_object(), 'undefined' | ne_binary()) -> {'error','invalid_state_transition'}.
 
 port_out(JObj, AuthBy) ->
     port_out(wh_json:get_value(<<"pvt_number_state">>, JObj), JObj, AuthBy).
@@ -741,8 +741,8 @@ port_out(<<"disconnected">>, _, _) ->
 %% 
 %% @end
 %%--------------------------------------------------------------------
--spec disconnected/2 :: (wh_json:json_object(), 'undefined' | ne_binary()) -> transition_return().
--spec disconnected/3 :: (ne_binary(), wh_json:json_object(), 'undefined' | ne_binary()) -> transition_return().
+-spec disconnected/2 :: (wh_json:json_object(), 'undefined' | ne_binary()) -> {'error','invalid_state_transition'}.
+-spec disconnected/3 :: (ne_binary(), wh_json:json_object(), 'undefined' | ne_binary()) -> {'error','invalid_state_transition'}.
 
 disconnected(JObj, AuthBy) ->
     disconnected(wh_json:get_value(<<"pvt_number_state">>, JObj), JObj, AuthBy).
