@@ -190,7 +190,7 @@ filter_local(Srv, Pred)  when is_function(Pred, 2) ->
                  (#cache_obj{key=K, value=V}, Acc) ->
                       case Pred(K, V) of
                           true -> [{K, V}|Acc];
-                          fals0e -> Acc
+                          false -> Acc
                       end;
                  (_, Acc) -> Acc
               end, [], Srv).
