@@ -69,7 +69,9 @@
          ,del_docs/2
          ,lookup_doc_rev/2
         ]).
--export([update_doc/3]).
+-export([update_doc/3
+        ,update_doc/4
+        ]).
 -export([add_change_handler/2
          ,add_change_handler/3
          ,rm_change_handler/2
@@ -497,13 +499,23 @@ save_docs(DbName, Docs, Opts) when is_list(Docs) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec update_doc/3 :: (ne_binary(), ne_binary(), proplist()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
-update_doc(DbName, Id, Props) ->
+-spec update_doc/4 :: (ne_binary(), ne_binary(), proplist(), proplist()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
+
+update_doc(DbName, Id, UpdateProps) ->
+    update_doc(DbName, Id, UpdateProps, []).
+
+update_doc(DbName, Id, UpdateProps, CreateProps) ->
     case open_doc(DbName, Id) of
         {error, not_found} ->
-            save_doc(DbName, wh_json:set_values([{<<"_id">>, Id}|Props], wh_json:new()));
+            JObj = wh_json:from_list(lists:append([[{<<"_id">>, Id}], CreateProps, UpdateProps])),
+            save_doc(DbName, JObj);
         {error, _}=E -> E;
-        {ok, JObj} ->
-            save_doc(DbName, wh_json:set_values(Props, JObj))
+        {ok, JObj}=Ok ->
+            case wh_json:set_values(UpdateProps, JObj) of
+                JObj -> Ok;
+                UpdatedJObj ->
+                    save_doc(DbName, UpdatedJObj)
+            end
     end.
 
 %%--------------------------------------------------------------------

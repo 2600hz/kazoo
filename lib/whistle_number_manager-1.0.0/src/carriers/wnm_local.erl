@@ -13,7 +13,7 @@
 -export([acquire_number/2]).
 -export([disconnect_number/2]).
 
--include_lib("whistle_number_manager/include/wh_number_manager.hrl").
+-include("../wh_number_manager.hrl").
 
 %%--------------------------------------------------------------------
 %% @public

@@ -46,9 +46,8 @@ migrate() ->
     %% Create missing limits doc
     migrate_limits(),
 
-    %% Ensure the pvt_wnm_XXX fields on the account definition is up-to-date and
-    %% any number assignments exist
-%%    whistle_number_manager_maintenance:reconcile(all),
+    %% Ensure the phone_numbers doc in the account db is up-to-date
+    whistle_number_manager_maintenance:reconcile_numbers(),
 
     %% Ensure the views in each DB are update-to-date, depreciated view removed, sip_auth docs
     %% that need to be aggregated have been, and the account definition is aggregated
@@ -58,7 +57,6 @@ migrate() ->
     whapps_config:flush(),
 
     %% Remove depreciated crossbar modules from the startup list and add new defaults
-    
     StartModules = sets:from_list(whapps_config:get(<<"crossbar">>, <<"autoload_modules">>, [])),
     XbarUpdates = [fun(L) -> sets:del_element(<<"cb_cdr">>, L) end
                    ,fun(L) -> sets:del_element(<<"cb_signups">>, L) end
