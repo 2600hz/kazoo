@@ -176,11 +176,17 @@ valid_content_headers(Req, Context) ->
     {true, Req, Context}.
 
 -spec known_content_type/2 :: (#http_req{}, #cb_context{}) -> {boolean(), #http_req{}, #cb_context{}}.
+known_content_type(Req, #cb_context{req_verb = <<"options">>}=Context) ->
+    {true, Req, Context};
+known_content_type(Req, #cb_context{req_verb = <<"get">>}=Context) ->
+    {true, Req, Context};
+known_content_type(Req, #cb_context{req_verb = <<"delete">>}=Context) ->
+    {true, Req, Context};
 known_content_type(Req, Context) ->
     {ok, Req2} = case cowboy_http_req:header('Content-Type', Req) of
                      {undefined, Req1} ->
                          cowboy_http_req:set_resp_header(<<"X-RFC2616">>
-                                                             ,<<"§14.17 (Try it, you'll like it)">>
+                                                             ,<<"Section 14.17 (Try it, you'll like it)">>
                                                              ,Req1);
                      {_, Req1} -> {ok, Req1}
                  end,
