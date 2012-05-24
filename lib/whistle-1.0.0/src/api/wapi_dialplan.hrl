@@ -424,8 +424,8 @@
                               ]).
 
 %% Originate Ready
--define(ORIGINATE_READY_HEADERS, [<<"Msg-ID">>, <<"Call-ID">>, <<"Control-Queue">>]).
--define(OPTIONAL_ORIGINATE_READY_HEADERS, []).
+-define(ORIGINATE_READY_HEADERS, [<<"Call-ID">>, <<"Control-Queue">>]).
+-define(OPTIONAL_ORIGINATE_READY_HEADERS, [<<"Msg-ID">>]).
 -define(ORIGINATE_READY_VALUES, [{<<"Event-Category">>, <<"dialplan">>}
                                  ,{<<"Event-Name">>, <<"originate_ready">>}
                                 ]).
