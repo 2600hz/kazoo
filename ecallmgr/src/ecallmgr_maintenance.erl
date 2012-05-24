@@ -37,7 +37,7 @@ remove_fs_node(Node) ->
 list_fs_nodes() ->
     ecallmgr_fs_nodes:connected().
 
--spec show_channels/0 :: () -> 'ok'.
+-spec show_channels/0 :: () -> iolist().
 show_channels() ->
     case ecallmgr_fs_nodes:show_channels() of
         [] -> "no channels";

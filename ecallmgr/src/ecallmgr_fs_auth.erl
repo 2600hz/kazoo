@@ -174,7 +174,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec lookup_user/3 :: (atom(), ne_binary(), proplist()) -> pid().
+-spec lookup_user/3 :: (atom(), ne_binary(), proplist()) ->  'ok' | 'timeout' | {'error', _}.
 lookup_user(Node, ID, Data) ->
     put(callid, ID),
     %% build req for rabbit

@@ -1,3 +1,4 @@
+
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2010-2012, VoIP INC
 %%% @doc
@@ -244,7 +245,7 @@ process_event(<<"CUSTOM">>, _, Data, Node) ->
     ok;
 process_event(<<"CHANNEL_CREATE">>, UUID, Data, Node) ->
     lager:debug("received channel create event: ~s", [UUID]),
-    maybe_start_event_listener(Node, UUID),
+    _ = maybe_start_event_listener(Node, UUID),
     spawn(ecallmgr_fs_nodes, new_channel, [Data, Node]),
     ok;
 process_event(<<"CHANNEL_DESTROY">>, UUID, Data, Node) ->
@@ -461,6 +462,7 @@ show_channels_as_json(Node) ->
         {error, _} -> []
     end.
 
+-spec maybe_start_event_listener/2 :: (atom(), ne_binary()) -> 'ok' | {'error', _} | {'ok', _} | {'ok', 'undefined' | pid(), _}.
 maybe_start_event_listener(Node, UUID) ->
     case wh_cache:fetch_local(?ECALLMGR_UTIL_CACHE, {UUID, start_listener}) of
         {ok, true} ->

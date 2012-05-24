@@ -144,11 +144,11 @@ find_oldest_doc(Docs) ->
     First = hd(Docs),
     {_, OldestDocID} = lists:foldl(fun(Doc, {Created, _}=Eldest) ->
                                            case wh_json:get_integer_value(<<"pvt_created">>, Doc) of
-                                               Older when Older < Created  -> {Older, wh_json:get_value(<<"id">>, Doc)};
+                                               Older when Older < Created  -> {Older, wh_json:get_value(<<"_id">>, Doc)};
                                                _ -> Eldest
                                            end
                                    end
-                                   ,{wh_json:get_integer_value(<<"pvt_created">>, First), wh_json:get_value(<<"id">>, First)}
+                                   ,{wh_json:get_integer_value(<<"pvt_created">>, First), wh_json:get_value(<<"_id">>, First)}
                                    ,Docs),
     
     {ok, OldestDocID}.

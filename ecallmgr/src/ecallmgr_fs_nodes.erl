@@ -138,7 +138,7 @@ new_channel(Props, Node) ->
             undefined -> 
                 BillingId = wh_util:rand_hex_binary(16),
                 lager:debug("created new billing id ~s for channel ~s", [BillingId, CallId]),
-                ecallmgr_util:send_cmd(Node, CallId, <<"export">>, ?SET_CCV(<<"Billing-ID">>, BillingId)),
+                _ = ecallmgr_util:send_cmd(Node, CallId, <<"export">>, ?SET_CCV(<<"Billing-ID">>, BillingId)),
                 [{?GET_CCV(<<"Billing-ID">>), BillingId}|Props];
             _Else -> 
                 lager:debug("channel ~s already has billing id ~s", [CallId, _Else]),
@@ -181,8 +181,8 @@ channel_import_moh(UUID) ->
         error:badarg -> false
     end.
 
--type channel_summary() :: {ne_binary(), ne_binary(), 'undefined' | ne_binary(), 'undefined' | ne_binary(), 'undefined' | ne_binary()}.
--spec channel_account_summary/1 :: (ne_binary()) -> [channel_summary(),...] | channel_summary().
+-type channel_summary() :: {ne_binary(), ne_binary(), 'undefined' | ne_binary(), 'undefined' | ne_binary(), 'undefined' | ne_binary(), ne_binary()}.
+-spec channel_account_summary/1 :: (ne_binary()) -> [channel_summary(),...].
 channel_account_summary(AccountId) ->
     MatchSpec = [{#channel{direction = '$1', account_id = '$2', account_billing = '$7'
                            ,authorizing_id = '$3', resource_id = '$4', billing_id = '$5'
@@ -193,7 +193,7 @@ channel_account_summary(AccountId) ->
                 ],  
     ets:select(ecallmgr_channels, MatchSpec).    
  
--spec channel_match_presence/1 :: (ne_binary()) -> [ne_binary(),...] | [].
+-spec channel_match_presence/1 :: (ne_binary()) -> [{ne_binary(), atom()},...] | [].
 channel_match_presence(PresenceId) ->
     MatchSpec = [{#channel{uuid = '$1', presence_id = '$2', node = '$3'}
                   ,[{'=:=', '$2', {const, PresenceId}}]
@@ -323,17 +323,17 @@ channel_record_to_json(Channel) ->
 -spec sync_channels/1 :: (string() | binary() | atom()) -> 'ok'.
 
 sync_channels() ->
-    [ecallmgr_fs_node:sync_channels(Srv)
-     || Srv <- gproc:lookup_pids({p, l, fs_node})
-    ],
+    _ = [ecallmgr_fs_node:sync_channels(Srv)
+         || Srv <- gproc:lookup_pids({p, l, fs_node})
+        ],
     ok.
 
 sync_channels(Node) ->
     N = wh_util:to_atom(Node, true),
-    [ecallmgr_fs_node:sync_channels(Srv)
-     || Srv <- gproc:lookup_pids({p, l, fs_node})
-            ,ecallmgr_fs_node:fs_node(Srv) =:= N
-    ],
+    _ = [ecallmgr_fs_node:sync_channels(Srv)
+         || Srv <- gproc:lookup_pids({p, l, fs_node})
+                ,ecallmgr_fs_node:fs_node(Srv) =:= N
+        ],
     ok.
 
 -spec flush_node_channels/1 :: (string() | binary() | atom()) -> 'ok'.
@@ -359,8 +359,8 @@ init([]) ->
     put(callid, ?LOG_SYSTEM_ID),
     lager:debug("starting new fs handler"),
     Pid = spawn(fun() -> start_preconfigured_servers() end),
-    ets:new(sip_subscriptions, [set, public, named_table, {keypos, #sip_subscription.key}]),
-    ets:new(ecallmgr_channels, [set, protected, named_table, {keypos, #channel.uuid}]),
+    _ = ets:new(sip_subscriptions, [set, public, named_table, {keypos, #sip_subscription.key}]),
+    _ = ets:new(ecallmgr_channels, [set, protected, named_table, {keypos, #channel.uuid}]),
     _ = erlang:send_after(?EXPIRE_CHECK, self(), expire_sip_subscriptions),
     {ok, #state{preconfigured_lookup=Pid}}.
 
@@ -427,21 +427,21 @@ handle_cast({sync_channels, Node, Channels}, State) ->
     SyncChannels = sets:from_list(Channels),
     Remove = sets:subtract(CachedChannels, SyncChannels),
     Add = sets:subtract(SyncChannels, CachedChannels),
-    [begin
-         lager:debug("removed channel ~s from cache during sync with ~s", [UUID, Node]),
-         ets:delete(ecallmgr_channels, UUID)
-     end
-     || UUID <- sets:to_list(Remove)
-    ],
-    [begin
-         lager:debug("added channel ~s to cache during sync with ~s", [UUID, Node]),
-         case build_channel_record(Node, UUID) of
-             {ok, C} -> ets:insert(ecallmgr_channels, C);
-             {error, _R} -> lager:warning("failed to sync channel ~s: ~p", [UUID, _R])
+    _ = [begin
+             lager:debug("removed channel ~s from cache during sync with ~s", [UUID, Node]),
+             ets:delete(ecallmgr_channels, UUID)
          end
-     end
-     || UUID <- sets:to_list(Add)
-    ],
+         || UUID <- sets:to_list(Remove)
+        ],
+    _ = [begin
+             lager:debug("added channel ~s to cache during sync with ~s", [UUID, Node]),
+             case build_channel_record(Node, UUID) of
+                 {ok, C} -> ets:insert(ecallmgr_channels, C);
+                 {error, _R} -> lager:warning("failed to sync channel ~s: ~p", [UUID, _R])
+             end
+         end
+         || UUID <- sets:to_list(Add)
+        ],
     {noreply, State, hibernate};
 handle_cast({flush_node_channels, Node}, State) ->
     lager:debug("flushing all channels in cache associated to node ~s", [Node]),
@@ -627,7 +627,7 @@ maybe_stop_preconfigured_lookup(ok, Pid) ->
 maybe_stop_preconfigured_lookup(_, Pid) ->
     Pid.
 
--spec build_channel_record/2 :: (atom(), ne_binary()) -> #channel{}.
+-spec build_channel_record/2 :: (atom(), ne_binary()) -> {'ok', #channel{}} | {'error', _}.
 build_channel_record(Node, UUID) ->
     case freeswitch:api(Node, uuid_dump, wh_util:to_list(UUID)) of
         {ok, Dump} ->
