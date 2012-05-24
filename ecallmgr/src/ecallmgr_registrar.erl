@@ -45,7 +45,7 @@ lookup_contact(Realm, Username) ->
             end
     end.
 
--spec endpoint_node/2 :: (ne_binary(), ne_binary()) -> {'ok', ne_binary()} | {'error', 'not_found'}.
+-spec endpoint_node/2 :: (ne_binary(), ne_binary()) -> {'ok', atom()} | {'error', 'not_found'}.
 endpoint_node(Realm, Username) ->
     wh_cache:fetch_local(?ECALLMGR_REG_CACHE, ?NODE_KEY(Realm, Username)).    
 

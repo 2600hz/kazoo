@@ -210,27 +210,27 @@ handle_info({event, [_ | Props]}, #state{node=Node}=State) ->
                                                             ,node=Node
                                                             ,expires=Expires
                                                            }),
-            spawn_link(?MODULE, publish_presence_event, [<<"PRESENCE_PROBE">>, Props, Node]),
+            _ = spawn_link(?MODULE, publish_presence_event, [<<"PRESENCE_PROBE">>, Props, Node]),
             {noreply, State, hibernate};
         <<"PRESENCE_IN">> ->
-            case props:get_value(<<"Distributed-From">>, Props) of
-                undefined ->
-                    PresenceId = props:get_value(<<"Channel-Presence-ID">>, Props,
-                                                 props:get_value(<<"from">>, Props)),
-                    spawn_link(?MODULE, relay_presence, ['PRESENCE_IN', PresenceId, Props, Node]);
-                _Else -> ok
-            end,
+            _ = case props:get_value(<<"Distributed-From">>, Props) of
+                    undefined ->
+                        PresenceId = props:get_value(<<"Channel-Presence-ID">>, Props,
+                                                     props:get_value(<<"from">>, Props)),
+                        spawn_link(?MODULE, relay_presence, ['PRESENCE_IN', PresenceId, Props, Node]);
+                    _Else -> ok
+                end,
             {noreply, State, hibernate};
         <<"PRESENCE_OUT">> ->
-            case props:get_value(<<"Distributed-From">>, Props) of
-                undefined ->
-                    PresenceId = props:get_value(<<"to">>, Props),
-                    spawn_link(?MODULE, relay_presence, ['PRESENCE_OUT', PresenceId, Props, Node]);
-                _Else -> ok
-            end,
+            _ = case props:get_value(<<"Distributed-From">>, Props) of
+                    undefined ->
+                        PresenceId = props:get_value(<<"to">>, Props),
+                        spawn_link(?MODULE, relay_presence, ['PRESENCE_OUT', PresenceId, Props, Node]);
+                    _Else -> ok
+                end,
             {noreply, State, hibernate};
         <<"MESSAGE_QUERY">> ->
-            spawn_link(?MODULE, process_message_query_event, [Props, Node]),
+            _ = spawn_link(?MODULE, process_message_query_event, [Props, Node]),
             {noreply, State, hibernate};
         _ ->
             {noreply, State}

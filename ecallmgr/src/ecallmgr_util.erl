@@ -25,7 +25,10 @@
 -export([convert_fs_evt_name/1, convert_whistle_app_name/1]).
 -export([fax_filename/1]).
 
--include("ecallmgr.hrl").
+-include_lib("ecallmgr/src/ecallmgr.hrl").
+
+-type send_cmd_ret() :: fs_sendmsg_ret() | fs_api_ret().
+-export_type([send_cmd_ret/0]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -33,7 +36,6 @@
 %% send the SendMsg proplist to the freeswitch node
 %% @end
 %%--------------------------------------------------------------------
--type send_cmd_ret() :: fs_sendmsg_ret() | fs_api_ret().
 -spec send_cmd/4 :: (atom(), ne_binary(), ne_binary() | string(), ne_binary() | string()) -> send_cmd_ret().
 send_cmd(Node, UUID, App, Args) when not is_list(App) ->
     send_cmd(Node, UUID, wh_util:to_list(App), Args);
@@ -61,7 +63,7 @@ send_cmd(Node, UUID, <<"record_call">>, Args) ->
                                   ,E
                                  ]),
             lager:debug("publishing event: ~s", [Evt]),
-            send_cmd(Node, UUID, "application", Evt),
+            _ = send_cmd(Node, UUID, "application", Evt),
             {error, E};
         timeout ->
             lager:debug("timeout executing uuid_record"),
@@ -69,7 +71,7 @@ send_cmd(Node, UUID, <<"record_call">>, Args) ->
                                   ,",whistle_application_response=timeout"
                                  ]),
             lager:debug("publishing event: ~s", [Evt]),
-            send_cmd(Node, UUID, "application", Evt),
+            _ = send_cmd(Node, UUID, "application", Evt),
             {error, timeout}
     end;
 send_cmd(Node, UUID, <<"playstop">>, Args) ->
@@ -125,7 +127,7 @@ maybe_update_channel_cache("ecallmgr_Presence-ID=" ++ Value, UUID) ->
 maybe_update_channel_cache(_, _) ->
     ok.
 
--spec get_expires/1 :: (proplist()) -> number().
+-spec get_expires/1 :: (proplist()) -> integer().
 get_expires(Props) ->
     Expiry = wh_util:to_integer(props:get_value(<<"Expires">>, Props, 300)),
     round(Expiry * 1.25) + 120.
