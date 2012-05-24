@@ -12,7 +12,7 @@
 -export([save/4]).
 -export([delete/4]).
 
--include("../../include/wh_number_manager.hrl").
+-include("../wh_number_manager.hrl").
 
 -define(SERVER, ?MODULE).
 
@@ -41,7 +41,11 @@ save(JObj, PriorJObj, Number, <<"reserved">>) ->
                       | wh_api:default_headers(?APP_VERSION, ?APP_NAME)
                      ],
             wapi_notifications:publish_cnam_request(Notify),
-            {ok, JObj}
+            Features = [Feature 
+                        || Feature <- wh_json:get_value(<<"pvt_features">>, JObj, [])
+                               ,Feature =/= <<"cnam">>
+                       ],
+            {ok, wh_json:set_value(<<"pvt_features">>, [<<"cnam">> | Features], JObj)}
     end;
 save(JObj, PriorJObj, Number, <<"in_service">>) ->
     EmptyJObj = wh_json:new(),
@@ -59,7 +63,11 @@ save(JObj, PriorJObj, Number, <<"in_service">>) ->
                       | wh_api:default_headers(?APP_VERSION, ?APP_NAME)
                      ],
             wapi_notifications:publish_cnam_request(Notify),
-            {ok, JObj}
+            Features = [Feature 
+                        || Feature <- wh_json:get_value(<<"pvt_features">>, JObj, [])
+                               ,Feature =/= <<"cnam">>
+                       ],
+            {ok, wh_json:set_value(<<"pvt_features">>, [<<"cnam">> | Features], JObj)}
     end;
 save(JObj, _, _, _) -> {ok, JObj}.
 
