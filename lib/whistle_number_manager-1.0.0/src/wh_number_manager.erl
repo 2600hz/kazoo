@@ -25,7 +25,7 @@
 -export([delete_attachment/3]).
 -export([get_public_fields/2, set_public_fields/3]).
 
--include_lib("whistle_number_manager/include/wh_number_manager.hrl").
+-include("wh_number_manager.hrl").
 
 -define(SERVER, ?MODULE).
 
@@ -109,7 +109,7 @@ create_number(Number, AssignTo, AuthBy, PublicFields) ->
                                  case wh_json:is_true(<<"pvt_wnm_allow_additions">>, JObj) of
                                      true -> 
                                          lager:debug("number doesnt exist but account ~s is authorized to create it", [AuthBy]),
-                                         {ok, wnm_number:create_available(Number, AuthBy)};
+                                         wnm_number:create_available(Number, AuthBy);
                                      false -> {error, unauthorized}
                                  end
                          end;
@@ -172,13 +172,25 @@ port_in(Number, AssignTo, AuthBy, PublicFields) ->
 %%--------------------------------------------------------------------
 -spec reconcile_number/3 :: (ne_binary(), ne_binary(), ne_binary()) -> transition_return().
 reconcile_number(Number, AssignTo, AuthBy) ->
-    lager:debug("attempting to reconcile number ~s with account ~s", [Number, AssignTo]),
-    Routines = [fun({error, not_found}) -> {ok, wnm_number:create_available(Number, AuthBy)};
+    Routines = [fun({error, not_found}) -> wnm_number:create_available(Number, AuthBy);
                     ({error, _}=E) -> E;
                     ({ok, _}=Ok) -> Ok
                  end
                 ,fun({error, _}=E) -> E;
-                    ({ok, J}) -> wnm_number:in_service(J, AssignTo, AuthBy)
+                    ({ok, J}) -> 
+                         Assignment = case wh_util:is_empty(AssignTo) 
+                                          andalso wh_json:get_ne_value(<<"pvt_assigned_to">>, J, AuthBy)
+                                      of
+                                          false -> AssignTo;
+                                          Assign -> Assign
+                                      end,
+                         lager:debug("attempting to reconcile number ~s with account ~s", [Number, Assignment]),
+                         case wnm_number:in_service(J, Assignment, AuthBy) of
+                             {error, no_change_required}=E ->
+                                 wnm_number:update_account_phone_numbers(J, Assignment),
+                                 E;
+                             Else -> Else
+                         end
                  end
                 ,fun({error, _}=E) -> E;
                     ({ok, J}) -> wnm_number:save(J)
@@ -202,15 +214,23 @@ reconcile_number(Number, AssignTo, AuthBy) ->
 -spec free_numbers/1 :: (ne_binary()) -> ok.
 free_numbers(AccountId) ->
     lager:debug("attempting to free all numbers assigned to account ~s", [AccountId]),
-    Db = wh_util:format_account_id(AccountId, encoded),
-    case couch_mgr:open_doc(Db, AccountId) of
+    AccountDb = wh_util:format_account_id(AccountId, encoded),
+    case couch_mgr:open_doc(AccountDb, ?WNM_PHONE_NUMBER_DOC) of
         {ok, JObj} ->
-            _ = [case release_number(Number, AccountId) of
+            _ = [case release_number(Key, AccountId) of
                      {ok, _} -> ok;
-                     {error, _} -> wnm_util:update_numbers_on_account(Number, <<"released">>, AccountId)
+                     {error, no_change_required} -> 
+                         wnm_number:remove_account_phone_numbers(Key, AccountId);
+                     {error, unauthorized} -> 
+                         wnm_number:remove_account_phone_numbers(Key, AccountId);
+                     {error, not_reconcilable} -> 
+                         wnm_number:remove_account_phone_numbers(Key, AccountId);
+                     {error, not_found} -> 
+                         wnm_number:remove_account_phone_numbers(Key, AccountId);
+                     {error, _} -> ok
                  end
-                 || Number <- wh_json:get_value(<<"pvt_wnm_in_service">>, JObj, [])
-                        ++ wh_json:get_value(<<"pvt_wnm_reserved">>, JObj, [])
+                 || Key <- wh_json:get_keys(JObj)
+                    ,wnm_util:is_reconcilable(Key)
                 ],
             ok;
         _ -> ok
@@ -297,15 +317,10 @@ release_number(Number, AuthBy) ->
                     ({ok, J}) -> 
                          case wh_json:is_true(<<"pvt_deleted">>, J) of
                              false -> wnm_number:save(J);
-                             true -> 
-                                 Num = wh_json:get_value(<<"_id">>, J),
-                                 Db = wnm_util:number_to_db_name(Num),
-                                 lager:debug("executing hard delete of number ~s", [Num]),
-                                 couch_mgr:del_doc(Db, J)
+                             true -> wnm_number:delete(J)
                          end
                  end
                 ,fun({error, _R}=E) ->
-                         _ = wnm_util:update_numbers_on_account(Number, <<"released">>),
                          lager:debug("release prematurely ended: ~p", [_R]),
                          E;
                     ({ok, J}) -> 
@@ -450,7 +465,6 @@ delete_attachment(Number, Name, AuthBy) ->
                     ({ok, J}) ->
                          Num = wh_json:get_value(<<"_id">>, J),
                          Db = wnm_util:number_to_db_name(Num),
-                         io:format("~p ~p ~p~n", [Db, Num, Name]),
                          couch_mgr:delete_attachment(Db, Num, Name)
                  end
                ], 

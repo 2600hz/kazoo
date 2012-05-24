@@ -9,8 +9,10 @@
 -module(whistle_number_manager_maintenance).
 
 -export([reconcile/0, reconcile/1]).
+-export([reconcile_numbers/0, reconcile_numbers/1]).
+-export([reconcile_accounts/0, reconcile_accounts/1]).
 
--include("../include/wh_number_manager.hrl").
+-include("wh_number_manager.hrl").
 -include_lib("whistle/include/wh_databases.hrl").
 
 %% These are temporary until the viewing of numbers in an account can
@@ -32,34 +34,72 @@
 %%--------------------------------------------------------------------
 -spec reconcile/0 :: () -> 'done'.
 -spec reconcile/1 :: (string() | ne_binary() | 'all') -> 'done'.
-
+ 
 reconcile() ->
-    reconcile(all).
+    io_lib:format("This command is depreciated, please use reconcile_numbers() or for older systems reconcile_accounts(). See the wiki for details on the differences.", []).
 
-reconcile(all) ->
-    reconcile_accounts(),
+reconcile(Arg) ->
+    io_lib:format("This command is depreciated, please use reconcile_numbers() or for older systems reconcile_accounts(~s). See the wiki for details on the differences.", [Arg]).    
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Seach the number databases and ensure all assignments are reflected
+%% in the accounts
+%% @end
+%%--------------------------------------------------------------------
+-spec reconcile_numbers/0 :: () -> 'done'.
+-spec reconcile_numbers/1 :: (string() | ne_binary() | 'all') -> 'done'.
+ 
+reconcile_numbers() ->
+    reconcile_numbers(all).
+
+reconcile_numbers(all) ->
+    _ = [reconcile_numbers(Db) 
+         || Db <- wnm_util:get_all_number_dbs()
+        ],
+    ok;
+reconcile_numbers(NumberDb) when not is_binary(NumberDb) ->
+    reconcile_numbers(wh_util:to_binary(NumberDb));
+reconcile_numbers(NumberDb) ->
+    Db = wh_util:to_binary(http_uri:encode(wh_util:to_list(NumberDb))),
+    case couch_mgr:all_docs(Db) of
+        {error, _R}=E -> E;
+        {ok, JObjs} ->
+            Numbers = [Number 
+                       || JObj <- JObjs
+                              ,case (Number = wh_json:get_value(<<"id">>, JObj)) of
+                                   <<"_design/", _/binary>> -> false;
+                                   _Else -> true
+                               end
+                      ],
+            reconcile_numbers(Numbers, undefined)
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Seach the accounts for phone numbers and ensure the number is routed
+%% to the account (first account found with a duplicate number will win)
+%% @end
+%%--------------------------------------------------------------------
+-spec reconcile_accounts/0 :: () -> 'done'.
+-spec reconcile_accounts/1 :: (string() | ne_binary() | 'all') -> 'done'.
+ 
+reconcile_accounts() ->
+    reconcile_accounts(all).
+
+reconcile_accounts(all) ->
+    _ = [reconcile_accounts(AccountId) || AccountId <- whapps_util:get_all_accounts(raw)],
     done;
-reconcile(AccountId) when not is_binary(AccountId) ->
-    reconcile(wh_util:to_binary(AccountId));
-reconcile(AccountId) ->
+reconcile_accounts(AccountId) when not is_binary(AccountId) ->
+    reconcile_accounts(wh_util:to_binary(AccountId));
+reconcile_accounts(AccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, encoded),
     Numbers = get_callflow_account_numbers(AccountDb),
     Numbers1 = get_trunkstore_account_numbers(AccountId, AccountDb) ++ Numbers,
     _ = reconcile_numbers(Numbers1, wh_util:format_account_id(AccountId, raw)),
     done.
-
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Loop over the accounts and try to reconcile the stepswitch routes
-%% with the numbers assigned in the account
-%% @end
-%%--------------------------------------------------------------------
--spec reconcile_accounts/0 :: () -> 'ok'.
-reconcile_accounts() ->
-    _ = [reconcile(AccountId) || AccountId <- whapps_util:get_all_accounts(raw)],
-    ok.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -148,7 +188,7 @@ get_trunkstore_account_numbers(AccountId) ->
 %% provided numbers
 %% @end
 %%--------------------------------------------------------------------
--spec reconcile_numbers/2 :: ([ne_binary(),...] | [], ne_binary()) -> 'ok'.
+-spec reconcile_numbers/2 :: ([ne_binary(),...] | [], 'undefined' | ne_binary()) -> 'ok'.
 reconcile_numbers([Number|Numbers], AccountId) ->
     try wh_number_manager:reconcile_number(Number, AccountId, AccountId) of
         _ ->

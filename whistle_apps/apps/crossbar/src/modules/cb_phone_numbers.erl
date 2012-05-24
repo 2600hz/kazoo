@@ -25,15 +25,12 @@
         ]).
 
 -include_lib("crossbar/include/crossbar.hrl").
+-include_lib("whistle_number_manager/include/wh_number_manager.hrl").
 
 -define(PORT_DOCS, <<"docs">>).
 -define(PORT, <<"port">>).
 -define(ACTIVATE, <<"activate">>).
 -define(RESERVE, <<"reserve">>).
-
--define(WNM_NUMBER_STATUS, [<<"discovery">>, <<"available">>, <<"reserved">>, <<"released">>
-                                ,<<"in_service">>, <<"disconnected">>, <<"cancelled">>
-                           ]).
 
 -define(FIND_NUMBER_SCHEMA, "{\"$schema\": \"http://json-schema.org/draft-03/schema#\", \"id\": \"http://json-schema.org/draft-03/schema#\", \"properties\": {\"prefix\": {\"required\": \"true\", \"type\": \"string\", \"minLength\": 3, \"maxLength\": 8}, \"quantity\": {\"default\": 1, \"type\": \"integer\", \"minimum\": 1}}}").
 
@@ -291,18 +288,9 @@ find_numbers(#cb_context{query_json=Data}=Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec summary/1 :: (#cb_context{}) -> #cb_context{}.
-summary(#cb_context{account_id=AccountId}=Context) ->
-    case crossbar_doc:load(AccountId, Context) of
-        #cb_context{resp_status=success, doc=JObj}=Context1 ->
-            Numbers = [{S, Num} 
-                       || S <- [<<"numbers">>|?WNM_NUMBER_STATUS]
-                              ,(Num = wh_json:get_value(<<"pvt_wnm_", S/binary>>, JObj, [])) =/= []
-                      ],
-            crossbar_util:response(wh_json:from_list(Numbers), Context1);
-        Else ->
-            Else
-    end.
- 
+summary(Context) ->
+    crossbar_doc:load(?WNM_PHONE_NUMBER_DOC, Context).
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc

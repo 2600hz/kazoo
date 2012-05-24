@@ -12,7 +12,7 @@
 -export([save/4]).
 -export([delete/4]).
 
--include("../../include/wh_number_manager.hrl").
+-include("../wh_number_manager.hrl").
 
 -define(SERVER, ?MODULE).
 
