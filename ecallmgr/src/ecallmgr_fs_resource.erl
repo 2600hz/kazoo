@@ -69,10 +69,8 @@ start_link(Node, Options) ->
 -spec handle_originate_req/2 :: (wh_json:json_object(), wh_proplist()) -> 'ok'.
 handle_originate_req(JObj, Props) ->
     _ = wh_util:put_callid(JObj),
-    true = wapi_resource:originate_req_v(JObj),
 
     Node = props:get_value(node, Props),
-
     ServerId = wh_json:get_value(<<"Server-ID">>, JObj),
     Endpoints = wh_json:get_ne_value(<<"Endpoints">>, JObj, []),
 
@@ -318,6 +316,7 @@ originate_to_dialstrings(JObj, Node, ServerId, Endpoints, ?ORIGINATE_PARK) ->
     case freeswitch:api(Node, 'create_uuid', "") of
         {ok, UUID} ->
             put(callid, UUID),
+            lager:debug("created uuid ~s", [UUID]),
 
             DialSeparator = case wh_json:get_value(<<"Dial-Endpoint-Method">>, JObj, <<"single">>) of
                                 <<"simultaneous">> when length(Endpoints) > 1 -> <<",">>;
@@ -353,6 +352,7 @@ originate_to_dialstrings(JObj, Node, ServerId, Endpoints, Action) ->
     J = wh_json:set_value([<<"Custom-Channel-Vars">>, <<"Billing-ID">>], BillingId, JObj),
     Args = list_to_binary([ecallmgr_fs_xml:get_channel_vars(J), DialStrings, " ", Action]),
     _ = ecallmgr_util:fs_log(Node, "whistle originating call: ~s", [Args]),
+
     case handle_originate_return(Node, freeswitch:api(Node, 'originate', wh_util:to_list(Args))) of
         {ok, Resp} ->
             lager:debug("originate completed, sending notice to requestor", []),
@@ -371,13 +371,15 @@ originate_and_park(JObj, Node, ServerId, DialStrings, UUID) ->
 
     CtlQ = ecallmgr_call_control:queue_name(CtlPid),
 
-    CtlProp = [{<<"Msg-ID">>, UUID}
+    MsgId = wh_json:get_value(<<"Msg-ID">>, JObj, UUID),
+
+    CtlProp = [{<<"Msg-ID">>, MsgId}
                ,{<<"Call-ID">>, UUID}
                ,{<<"Control-Queue">>, CtlQ}
                | wh_api:default_headers(<<>>, <<"dialplan">>, <<"originate_ready">>, ?APP_NAME, ?APP_VERSION)
               ],
 
-    case maybe_confirm_originate(ServerId, CtlProp) of %ecallmgr_amqp_pool:originate_ready(ServerId, CtlProp) of
+    case maybe_confirm_originate(ServerId, CtlProp) of
         {ok, ExecJObj} ->
             ServerId1 = wh_json:get_value(<<"Server-ID">>, ExecJObj),
             lager:debug("recv originate_execute for ~s", [UUID]),
@@ -388,14 +390,14 @@ originate_and_park(JObj, Node, ServerId, DialStrings, UUID) ->
                  ,{<<"Request">>, JObj}
                  ,{<<"Call-ID">>, UUID}
                  ,{<<"Error-Message">>, <<"Failed to receive valid originate_execute in time">>}
-                 | wh_api:default_headers(<<>>, <<"dialplan">>, <<"originate_ready">>, ?APP_NAME, ?APP_VERSION)
+                 | wh_api:default_headers(<<>>, <<"error">>, <<"originate_ready">>, ?APP_NAME, ?APP_VERSION)
                 ],
             wh_api:publish_error(ServerId, E),
             ecallmgr_call_control:stop(CtlPid)
     end.
 
 -spec maybe_confirm_originate/2 :: (ne_binary(), wh_json:json_proplist()) -> {'ok', wh_json:json_object()} |
-                                                                            {'error', _}.
+                                                                             {'error', _}.
 maybe_confirm_originate(ServerId, CtlProp) ->
     wh_amqp_worker:call(?ECALLMGR_AMQP_POOL
                         ,CtlProp
