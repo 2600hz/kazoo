@@ -18,7 +18,7 @@
 -include("ecallmgr.hrl").
 
 -spec flush/0 :: () -> 'ok'.
--spec flush/1 :: (wh_json:json_string()) -> 'ok'.
+-spec flush/1 :: (wh_json:json_string()) -> 'ok' | {'error', _}.
 flush() ->
     wh_cache:flush_local(?ECALLMGR_UTIL_CACHE).
 
@@ -29,8 +29,7 @@ flush(Key0, Node0) ->
     Node = wh_util:to_binary(Node0),
 
     CacheKey = cache_key(Key, Node),
-    {ok, Cache} = ecallmgr_util_sup:cache_proc(),
-    wh_cache:erase_local(Cache, CacheKey),
+    wh_cache:erase_local(?ECALLMGR_UTIL_CACHE, CacheKey),
 
     Req = [KV ||
               {_, V} = KV <- [{<<"Category">>, <<"ecallmgr">>}

@@ -72,13 +72,13 @@ maybe_authorize_channel(Props, Node) ->
                     ({ok, P}) ->
                          %% Ensure that even if the call is answered while we are authorizing it
                          %% the session will hearbeat.
-                         ecallmgr_util:send_cmd(Node, CallId, "set", ?HEARTBEAT_ON_ANSWER(CallId)),
+                         _ = ecallmgr_util:send_cmd(Node, CallId, "set", ?HEARTBEAT_ON_ANSWER(CallId)),
                          AccountId = props:get_value(?GET_CCV(<<"Account-ID">>), P),
                          case authorize(AccountId, P) of
                              {error, _}=E -> E;
                              {ok, Type} ->
                                  lager:debug("call authorized by account ~s as ~s", [AccountId, Type]),
-                                 ecallmgr_util:send_cmd(Node, CallId, "set", ?SET_CCV(<<"Account-Billing">>, Type)),
+                                 _ = ecallmgr_util:send_cmd(Node, CallId, "set", ?SET_CCV(<<"Account-Billing">>, Type)),
                                  {ok, P}
                          end
                  end
@@ -86,10 +86,10 @@ maybe_authorize_channel(Props, Node) ->
                     ({ok, P}) ->
                          ResellerId = props:get_value(?GET_CCV(<<"Reseller-ID">>), P),
                          case authorize(ResellerId, P) of
-                             {error, reseller_limited}=E -> E;
+                             {error, account_limited}=E -> E;
                              {ok, Type} ->
                                  lager:debug("call authorized by reseller ~s as ~s", [ResellerId, Type]),
-                                 ecallmgr_util:send_cmd(Node, CallId, "set", ?SET_CCV(<<"Reseller-Billing">>, Type)),
+                                 _ = ecallmgr_util:send_cmd(Node, CallId, "set", ?SET_CCV(<<"Reseller-Billing">>, Type)),
                                  {ok, P}; 
                              _Else -> 
                                  {ok, P}
@@ -154,11 +154,11 @@ kill_channel(<<"inbound">>, CallId, Node) ->
     %% Give any pending route requests a chance to cleanly terminate this call,
     %% if it has not been processed yet.  Then chop its head off....
     timer:sleep(1000),
-    freeswitch:api(Node, uuid_kill, wh_util:to_list(<<CallId/binary, " INCOMING_CALL_BARRED">>)),
+    _ = freeswitch:api(Node, uuid_kill, wh_util:to_list(<<CallId/binary, " INCOMING_CALL_BARRED">>)),
     ok;
 kill_channel(<<"outbound">>, CallId, Node) ->
     _ = ecallmgr_util:fs_log(Node, "whistle terminating unathorized outbound call", []),
-    freeswitch:api(Node, uuid_kill, wh_util:to_list(<<CallId/binary, " OUTGOING_CALL_BARRED">>)),
+    _ = freeswitch:api(Node, uuid_kill, wh_util:to_list(<<CallId/binary, " OUTGOING_CALL_BARRED">>)),
     ok.
 
 -spec authorize/2 :: ('undefined' | ne_binary(), proplist()) -> {'ok', ne_binary()} |
@@ -187,7 +187,7 @@ authorize(AccountId, Props) ->
             end
     end.
 
--spec identify_account/2 :: (ne_binary(), proplist()) -> {'ok', proplist()} | {'error', 'unidentified_channel'}.
+-spec identify_account/2 :: ('undefined' | ne_binary(), proplist()) -> {'ok', proplist()} | {'error', 'unidentified_channel'}.
 identify_account(_, Props) ->
     lager:debug("requesting account identification"),
     ReqResp = wh_amqp_worker:call(?ECALLMGR_AMQP_POOL
@@ -223,10 +223,10 @@ set_rating_ccvs(JObj) ->
         {error, _} -> ok;
         {ok, Node} ->
             lager:debug("setting rating information", []),
-            [ecallmgr_util:send_cmd(Node, CallId, "set", ?SET_CCV(Key, Value))
-             || Key <- ?RATE_VARS
-                    ,(Value = wh_json:get_binary_value(Key, JObj)) =/= undefined
-            ],
+            _ = [ecallmgr_util:send_cmd(Node, CallId, "set", ?SET_CCV(Key, Value))
+                 || Key <- ?RATE_VARS
+                        ,(Value = wh_json:get_binary_value(Key, JObj)) =/= undefined
+                ],
             ok
     end.
             
@@ -309,7 +309,7 @@ update_account_id({ok, Props}, CallId, Node) ->
     case props:get_value(?GET_CCV(<<"Account-ID">>), Props) of
         undefined -> ok;
         AccountId ->
-            ecallmgr_util:send_cmd(Node, CallId, "set", ?SET_CCV(<<"Account-ID">>, AccountId)),
+            _ = ecallmgr_util:send_cmd(Node, CallId, "set", ?SET_CCV(<<"Account-ID">>, AccountId)),
             put(account_id, AccountId),
             ok
     end.
@@ -319,6 +319,6 @@ update_reseller_id({ok, Props}, CallId, Node) ->
     case props:get_value(?GET_CCV(<<"Reseller-ID">>), Props) of
         undefined -> ok;
         ResellerId ->
-            ecallmgr_util:send_cmd(Node, CallId, "set", ?SET_CCV(<<"Reseller-ID">>, ResellerId)),
+            _ = ecallmgr_util:send_cmd(Node, CallId, "set", ?SET_CCV(<<"Reseller-ID">>, ResellerId)),
             ok
     end.
