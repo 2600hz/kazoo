@@ -187,7 +187,7 @@ reconcile_number(Number, AssignTo, AuthBy) ->
                          lager:debug("attempting to reconcile number ~s with account ~s", [Number, Assignment]),
                          case wnm_number:in_service(J, Assignment, AuthBy) of
                              {error, no_change_required}=E ->
-                                 wnm_number:update_account_phone_numbers(J, Assignment),
+                                 _ = wnm_number:update_account_phone_numbers(J, Assignment),
                                  E;
                              Else -> Else
                          end
