@@ -15,7 +15,7 @@
 -export([create_discovery/3]).
 -export([create_port_in/3]).
 -export([save/1, save/2]).
--export([delete/2]).
+-export([delete/1, delete/2]).
 -export([remove_account_phone_numbers/2]).
 -export([update_account_phone_numbers/2]).
 -export([discovery/3, discovery/4]).
@@ -197,8 +197,13 @@ save(JObj, PriorJObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec delete/2 :: (wh_json:json_object(), ne_binary()) -> {'ok', wh_json:json_object()} |
-                                                          {'error', _}.
+-spec delete/1 :: (wh_json:json_object()) -> {'ok', wh_json:json_object()} |
+                                             {'error', _}.
+-spec delete/2 :: (wh_json:json_object(), 'undefined' | ne_binary()) -> {'ok', wh_json:json_object()} |
+                                                                        {'error', _}.
+delete(JObj) -> 
+    delete(JObj, wh_json:get_value(<<"pvt_assigned_to">>, JObj)).
+
 delete(JObj, AccountId) ->
     Num = wh_json:get_value(<<"_id">>, JObj),
     Db = wnm_util:number_to_db_name(Num),
@@ -218,8 +223,10 @@ delete(JObj, AccountId) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec remove_account_phone_numbers/2 :: (ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} |
-                                                                      {'error', _}.
+-spec remove_account_phone_numbers/2 :: (ne_binary(), 'undefined' | ne_binary()) -> {'ok', wh_json:json_object()} |
+                                                                                    {error, _}.
+remove_account_phone_numbers(_, undefined) ->
+    {error, no_account_id};
 remove_account_phone_numbers(Number, Account) ->
     AccountDb = wh_util:format_account_id(Account, encoded),    
     case couch_mgr:open_doc(AccountDb, ?WNM_PHONE_NUMBER_DOC) of
@@ -238,7 +245,7 @@ remove_account_phone_numbers(Number, Account) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec update_account_phone_numbers/2 :: (wh_json:json_object(), 'undefined' | ne_binary()) -> {ok, wh_json:json_object()} |
-                                                                                           {error, _}.
+                                                                                              {error, _}.
 update_account_phone_numbers(_, undefined) ->
     {error, no_account_id};
 update_account_phone_numbers(JObj, Account) ->
