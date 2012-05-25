@@ -1,10 +1,10 @@
 %%%-------------------------------------------------------------------
-%%% @author Karl Anderson <karl@2600hz.org>
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2012, VoIP INC
 %%% @doc
 %%%
 %%% @end
-%%% Created : 6 May 2011 by Karl Anderson <karl@2600hz.org>
+%%% @contributors
+%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(cf_endpoint).
 
@@ -344,15 +344,15 @@ generate_ccvs(Endpoint, Call, CallFwd) ->
 -spec maybe_format_caller_id_number/3 :: (wh_json:json_object(), ne_binary(), whapps_call:call()) -> ne_binary().
 maybe_format_caller_id_number(Endpoint, CIDNum, Call) ->
     case cf_attributes:caller_id_attributes(Endpoint, <<"format">>, Call) of
-	undefined ->
-	    CIDNum;
-	FormatObj ->
-	    case wh_json:is_json_object(FormatObj) of
-		true ->
-		    wh_json:foldl(fun(Key, Value, CIDNum1) -> format_caller_id_number_flag(Key, Value, CIDNum1) end, CIDNum, FormatObj);
-		_ ->
-		    CIDNum
-	    end
+        undefined ->
+            CIDNum;
+        FormatObj ->
+            case wh_json:is_json_object(FormatObj) of
+                true ->
+                    wh_json:foldl(fun(Key, Value, CIDNum1) -> format_caller_id_number_flag(Key, Value, CIDNum1) end, CIDNum, FormatObj);
+                _ ->
+                    CIDNum
+            end
     end.
 
 -spec format_caller_id_number_flag/3 :: (ne_binary(), term(), ne_binary()) -> ne_binary().

@@ -1,3 +1,12 @@
+%%%-------------------------------------------------------------------
+%%% @copyright (C) 2011-2012, VoIP INC
+%%% @doc
+%%%
+%%% @end
+%%% @contributors
+%%%   Karl Anderson
+%%%   James Aimonetti
+%%%-------------------------------------------------------------------
 -module(cf_util).
 
 -include("callflow.hrl").
@@ -318,11 +327,11 @@ do_lookup_callflow(Number, Db) ->
             end;
         {ok, []} ->
             {error, not_found};
-        {ok, [{struct, _}=JObj]} ->
+        {ok, [JObj]} ->
             Flow = wh_json:get_value(<<"doc">>, JObj),
             wh_cache:store({cf_flow, Number, Db}, Flow),
             {ok, Flow, Number =:= ?NO_MATCH_CF};
-        {ok, [{struct, _}=JObj | _Rest]} ->
+        {ok, [JObj | _Rest]} ->
             lager:debug("lookup resulted in more than one result, using the first"),
             Flow = wh_json:get_value(<<"doc">>, JObj),
             wh_cache:store({cf_flow, Number, Db}, Flow),
