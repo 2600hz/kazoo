@@ -32,8 +32,8 @@
 %% exist
 %% @end
 %%--------------------------------------------------------------------
--spec reconcile/0 :: () -> 'done'.
--spec reconcile/1 :: (string() | ne_binary() | 'all') -> 'done'.
+-spec reconcile/0 :: () -> iolist().
+-spec reconcile/1 :: (string() | ne_binary() | 'all') -> iolist().
  
 reconcile() ->
     io_lib:format("This command is depreciated, please use reconcile_numbers() or for older systems reconcile_accounts(). See the wiki for details on the differences.", []).
@@ -48,8 +48,8 @@ reconcile(Arg) ->
 %% in the accounts
 %% @end
 %%--------------------------------------------------------------------
--spec reconcile_numbers/0 :: () -> 'done'.
--spec reconcile_numbers/1 :: (string() | ne_binary() | 'all') -> 'done'.
+-spec reconcile_numbers/0 :: () -> 'done' | {'error', _}.
+-spec reconcile_numbers/1 :: (string() | ne_binary() | 'all') -> 'done' | {'error', _}.
  
 reconcile_numbers() ->
     reconcile_numbers(all).
@@ -58,7 +58,7 @@ reconcile_numbers(all) ->
     _ = [reconcile_numbers(Db) 
          || Db <- wnm_util:get_all_number_dbs()
         ],
-    ok;
+    done;
 reconcile_numbers(NumberDb) when not is_binary(NumberDb) ->
     reconcile_numbers(wh_util:to_binary(NumberDb));
 reconcile_numbers(NumberDb) ->
@@ -73,7 +73,8 @@ reconcile_numbers(NumberDb) ->
                                    _Else -> true
                                end
                       ],
-            reconcile_numbers(Numbers, undefined)
+            _ = reconcile_numbers(Numbers, undefined),
+            done
     end.
 
 %%--------------------------------------------------------------------
