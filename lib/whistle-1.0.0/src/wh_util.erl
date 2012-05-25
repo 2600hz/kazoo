@@ -193,11 +193,13 @@ is_account_enabled(AccountId) ->
 %% Retrieves the account realm
 %% @end
 %%--------------------------------------------------------------------
--spec get_account_realm/1 :: (undefined | ne_binary()) -> undefined | ne_binary().
--spec get_account_realm/2 :: (undefined | ne_binary(), ne_binary()) -> undefined | ne_binary().
-
+-spec get_account_realm/1 :: ('undefined' | ne_binary()) -> 'undefined' | ne_binary().
+-spec get_account_realm/2 :: ('undefined' | ne_binary(), ne_binary()) -> 'undefined' | ne_binary().
 get_account_realm(AccountId) ->
-    get_account_realm(wh_util:format_account_id(AccountId, encoded), AccountId).
+    get_account_realm(
+      wh_util:format_account_id(AccountId, encoded)
+      ,wh_util:format_account_id(AccountId, raw)
+     ).
 
 get_account_realm(undefined, _) ->
     undefined;
