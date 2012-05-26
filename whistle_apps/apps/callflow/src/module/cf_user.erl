@@ -23,7 +23,7 @@
 -spec handle/2 :: (wh_json:json_object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     UserId = wh_json:get_ne_value(<<"id">>, Data),
-    Endpoints = get_endpoints(UserId, Call),
+    Endpoints = get_endpoints(UserId, Data, Call),
     Timeout = wh_json:get_binary_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT),
     Strategy = wh_json:get_binary_value(<<"strategy">>, Data, <<"simultaneous">>),
     IgnoreEarlyMedia = cf_util:ignore_early_media(Endpoints),
@@ -49,12 +49,13 @@ handle(Data, Call) ->
 %% json object used in the bridge API
 %% @end
 %%--------------------------------------------------------------------
--spec get_endpoints/2 :: ('undefined' | ne_binary(), whapps_call:call()) -> wh_json:json_objects().
-get_endpoints(undefined, _) ->
+-spec get_endpoints/3 :: ('undefined' | ne_binary(), wh_json:json_object(), whapps_call:call()) -> wh_json:json_objects().
+get_endpoints(undefined, _, _) ->
     [];
-get_endpoints(UserId, Call) ->
+get_endpoints(UserId, Data, Call) ->
+    Params = wh_json:set_value(<<"source">>, ?MODULE, Data),
     lists:foldr(fun(EndpointId, Acc) ->
-                        case cf_endpoint:build(EndpointId, Call) of
+                        case cf_endpoint:build(EndpointId, Params, Call) of
                             {ok, Endpoint} -> Endpoint ++ Acc;
                             {error, _E} -> Acc
                         end

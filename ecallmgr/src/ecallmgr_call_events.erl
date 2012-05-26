@@ -56,6 +56,7 @@
           ,node_down_tref = 'undefined' :: 'undefined' | reference()
           ,sanity_check_tref = 'undefined' :: 'undefined' | reference()
           ,ref = wh_util:rand_hex_binary(12)
+          ,passive = false
          }).
 
 %%%===================================================================
@@ -121,8 +122,7 @@ handle_publisher_usurp(JObj, Props) ->
         true ->
             put(callid, CallId),
             Srv = props:get_value(server, Props),
-            lager:debug("call event publisher has been usurp'd by newer process on another ecallmgr killing ~p", [Srv]),
-            Srv ! {shutdown},
+            gen_listener:cast(Srv, {passive}),
             ok
     end.
 
@@ -181,6 +181,9 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast({passive}, State) ->
+    lager:debug("publisher has been usurp'd by newer process on another ecallmgr, moving to passive mode", []),
+    {noreply, State#state{passive=true}};
 handle_cast({channel_redirected, Props}, State) ->
     lager:debug("our channel has been redirected, shutting down immediately"),
     process_channel_event(Props, State),
@@ -205,12 +208,16 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info({call, _}, #state{passive=true}=State) ->
+    {'noreply', State};
 handle_info({call, {event, [CallId | Props]}}, #state{callid=CallId}=State) ->   
     case {props:get_value(<<"Event-Name">>, Props), props:get_value(<<"Application">>, Props)} of
         {_, <<"redirect">>} -> gen_server:cast(self(), {channel_redirected, Props});
         {<<"CHANNEL_DESTROY">>, _} -> gen_server:cast(self(), {channel_destroyed, Props});
         {_, _} -> process_channel_event(Props, State)
     end,
+    {'noreply', State};
+handle_info({call_event, _}, #state{passive=true}=State) ->
     {'noreply', State};
 handle_info({call_event, {event, [CallId | Props]}}, #state{callid=CallId}=State) ->
     case {props:get_value(<<"Event-Name">>, Props), props:get_value(<<"Application">>, Props)} of
