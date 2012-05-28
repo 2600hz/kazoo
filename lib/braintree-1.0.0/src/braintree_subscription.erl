@@ -8,14 +8,43 @@
 %%%-------------------------------------------------------------------
 -module(braintree_subscription).
 
--include("braintree.hrl").
-
--export([create/1, create/2, update/1, cancel/1]).
+-export([new/3]).
+-export([get_id/1]).
+-export([create/1, create/2]).
+-export([update/1]).
+-export([cancel/1]).
 -export([find/1]).
--export([xml_to_record/1, xml_to_record/2, record_to_xml/1]).
+-export([xml_to_record/1, xml_to_record/2]).
+-export([record_to_xml/1]).
 -export([update_addon_quantity/3]).
 
 -import(braintree_util, [get_xml_value/2, make_doc_xml/2]).
+
+-include_lib("braintree/include/braintree.hrl").
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Creates a new subscription record
+%% @end
+%%--------------------------------------------------------------------
+-spec new/3 :: (ne_binary(), ne_binary(), ne_binary()) -> #bt_subscription{}.
+new(SubscriptionId, PlanId, PaymentToken) ->
+    #bt_subscription{id=SubscriptionId
+                     ,payment_token=PaymentToken
+                     ,plan_id=PlanId
+                     ,create=true
+                    }.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Get the subscription id
+%% @end
+%%--------------------------------------------------------------------
+-spec get_id/1 :: (#bt_subscription{}) -> string().
+get_id(#bt_subscription{id=SubscriptionId}) ->
+    SubscriptionId.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -23,15 +52,12 @@
 %% Creates a new subscription using the given record
 %% @end
 %%--------------------------------------------------------------------
--spec create/1 :: (Subscription) -> bt_result() when
-      Subscription :: #bt_subscription{}.
--spec create/2 :: (Plan, Token) -> bt_result() when
-      Plan :: string() | binary(),
-      Token :: string() | binary().
+-spec create/1 :: (#bt_subscription{}) -> bt_result().
+-spec create/2 :: (string() | ne_binary(), string() | ne_binary()) -> bt_result().
 
-create(Subscription) ->
+create(#bt_subscription{id=SubscriptionId}=Subscription) ->
     try
-        true = validate_id(Subscription#bt_subscription.payment_token),
+        true = validate_id(SubscriptionId, true),
         Request = record_to_xml(Subscription, true),
         case braintree_request:post("/subscriptions", Request) of
             {ok, Xml} ->
@@ -53,13 +79,14 @@ create(Plan, Token) ->
 %% Updates a subscription with the given record
 %% @end
 %%--------------------------------------------------------------------
--spec update/1 :: (Subscription) -> bt_result() when
-      Subscription :: #bt_subscription{}.
-update(#bt_subscription{id=Id}=Subscription) ->
+-spec update/1 :: (#bt_subscription{}) -> bt_result().
+update(#bt_subscription{create=true}=Subscription) ->
+    create(Subscription);
+update(#bt_subscription{id=SubscriptionId}=Subscription) ->
     try
-        true = validate_id(Id),
+        true = validate_id(SubscriptionId),
         Request = record_to_xml(Subscription, true),
-        case braintree_request:put("/subscriptions/" ++ wh_util:to_list(Id), Request) of
+        case braintree_request:put("/subscriptions/" ++ wh_util:to_list(SubscriptionId), Request) of
             {ok, Xml} ->
                 {ok, xml_to_record(Xml)};
             {error, _}=E ->
@@ -76,14 +103,13 @@ update(#bt_subscription{id=Id}=Subscription) ->
 %% Deletes a subscription id from braintree's system
 %% @end
 %%--------------------------------------------------------------------
--spec cancel/1 :: (Id) -> bt_result() when
-      Id :: #bt_subscription{} | binary() | string().
-cancel(#bt_subscription{id=Id}) ->
-    cancel(Id);
-cancel(Id) ->
+-spec cancel/1 :: (#bt_subscription{} | ne_binary() | string()) -> bt_result().
+cancel(#bt_subscription{id=SubscriptionId}) ->
+    cancel(SubscriptionId);
+cancel(SubscriptionId) ->
     try
-        true = validate_id(Id),
-        case braintree_request:put("/subscriptions/" ++ wh_util:to_list(Id) ++ "/cancel", <<>>) of
+        true = validate_id(SubscriptionId),
+        case braintree_request:put("/subscriptions/" ++ wh_util:to_list(SubscriptionId) ++ "/cancel", <<>>) of
             {ok, _} ->
                 {ok, #bt_subscription{}};
             {error, _}=E ->
@@ -100,12 +126,11 @@ cancel(Id) ->
 %% Find a subscription by id
 %% @end
 %%--------------------------------------------------------------------
--spec find/1 :: (Id) -> bt_result() when
-      Id :: binary() | string().
-find(Id) ->
+-spec find/1 :: (ne_binary() | string()) -> bt_result().
+find(SubscriptionId) ->
         try
-            true = validate_id(Id),
-            case braintree_request:get("/subscriptions/" ++ wh_util:to_list(Id)) of
+            true = validate_id(SubscriptionId),
+            case braintree_request:get("/subscriptions/" ++ wh_util:to_list(SubscriptionId)) of
                 {ok, Xml} ->
                     {ok, xml_to_record(Xml)};
                 {error, _}=E ->
@@ -123,14 +148,14 @@ find(Id) ->
 %% or subscription id
 %% @end
 %%--------------------------------------------------------------------
--spec update_addon_quantity/3 :: (Subscription, AddOnId, Quantity) -> bt_result() when
-      Subscription :: #bt_subscription{} | binary() | string(),
-      AddOnId :: binary() | string(),
-      Quantity :: integer() | binary() | string().
-
+-spec update_addon_quantity/3 :: (#bt_subscription{} | ne_binary() | string()
+                                  ,ne_binary() | string()
+                                  ,integer() | ne_binary() | string()) -> bt_result().
 update_addon_quantity(Subscription, AddOnId, Quantity) when not is_list(Quantity) ->
     update_addon_quantity(Subscription, AddOnId, wh_util:to_list(Quantity));
-update_addon_quantity(#bt_subscription{add_ons=AddOns}=Subscription, AddOnId, Quantity) when is_list(AddOns) ->
+update_addon_quantity(Subscription, AddOnId, Quantity) when not is_list(AddOnId) ->
+    update_addon_quantity(Subscription, wh_util:to_list(AddOnId), Quantity);
+update_addon_quantity(#bt_subscription{add_ons=AddOns}=Subscription, AddOnId, Quantity) ->
     case lists:keyfind(AddOnId, #bt_addon.id, AddOns) of
         false ->
             AddOn = #bt_addon{inherited_from=AddOnId, quantity=Quantity},
@@ -139,7 +164,7 @@ update_addon_quantity(#bt_subscription{add_ons=AddOns}=Subscription, AddOnId, Qu
             AddOn1 = AddOn#bt_addon{existing_id=AddOnId, quantity=Quantity},
             {ok, Subscription#bt_subscription{add_ons=[AddOn1|lists:keydelete(AddOnId, #bt_addon.id, AddOns)]}}
     end;
-update_addon_quantity(SubscriptionId, AddOnId, Quantity) when is_binary(SubscriptionId); is_list(SubscriptionId) ->
+update_addon_quantity(SubscriptionId, AddOnId, Quantity) ->
     case find(SubscriptionId) of
         {ok, Subscription} ->
             update_addon_quantity(Subscription, AddOnId, Quantity);
@@ -153,20 +178,17 @@ update_addon_quantity(SubscriptionId, AddOnId, Quantity) when is_binary(Subscrip
 %% Verifies that the id being used is valid
 %% @end
 %%--------------------------------------------------------------------
--spec validate_id/1 :: (Id) -> boolean() when
-      Id :: string() | binary().
--spec validate_id/2 :: (Id, AllowUndefined) -> boolean() when
-      Id :: string() | binary(),
-      AllowUndefined :: boolean().
+-spec validate_id/1 :: (string() | ne_binary()) -> boolean().
+-spec validate_id/2 :: (string() | ne_binary(), boolean()) -> boolean().
 
-validate_id(Id) ->
-    validate_id(Id, false).
+validate_id(SubscriptionId) ->
+    validate_id(SubscriptionId, false).
 
 validate_id(undefined, false) ->
     false;
-validate_id(Id, _) ->
-    (Id =/= <<>> andalso Id =/= "")
-        andalso (re:run(Id, "^[0-9A-Za-z_-]+$") =/= nomatch).
+validate_id(SubscriptionId, _) ->
+    (SubscriptionId =/= <<>> andalso SubscriptionId =/= "")
+        andalso (re:run(SubscriptionId, "^[0-9A-Za-z_-]+$") =/= nomatch).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -174,11 +196,8 @@ validate_id(Id, _) ->
 %% Contert the given XML to a subscription record
 %% @end
 %%--------------------------------------------------------------------
--spec xml_to_record/1 :: (Xml) -> #bt_subscription{} when
-      Xml :: bt_xml().
--spec xml_to_record/2 :: (Xml, Base) -> #bt_subscription{} when
-      Xml :: bt_xml(),
-      Base :: string().
+-spec xml_to_record/1 :: (bt_xml()) -> #bt_subscription{}.
+-spec xml_to_record/2 :: (bt_xml(), string()) -> #bt_subscription{}.
 
 xml_to_record(Xml) ->
     xml_to_record(Xml, "/subscription").
@@ -211,8 +230,9 @@ xml_to_record(Xml, Base) ->
                                  || Addon <- xmerl_xpath:string(Base ++ "/add-ons/add-on", Xml)]
 %%                     ,discounts = get_xml_value(Base ++ "/token/text()", Xml)
 %%                     ,descriptor = get_xml_value(Base ++ "/token/text()", Xml)
-                     ,transactions = [braintree_transaction:xml_to_record(Trans)
-                                      || Trans <- xmerl_xpath:string(Base ++ "/transactions/transaction", Xml)]}.
+                     }.
+%%                     ,transactions = [braintree_transaction:xml_to_record(Trans)
+%%                                      || Trans <- xmerl_xpath:string(Base ++ "/transactions/transaction", Xml)]}.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -220,16 +240,13 @@ xml_to_record(Xml, Base) ->
 %% Contert the given XML to a subscription record
 %% @end
 %%--------------------------------------------------------------------
--spec record_to_xml/1 :: (Subscription) -> bt_xml() when
-      Subscription :: #bt_subscription{}.
--spec record_to_xml/2 :: (Subscription, ToString) -> bt_xml() when
-      Subscription :: #bt_subscription{},
-      ToString :: boolean().
+-spec record_to_xml/1 :: (#bt_subscription{}) -> bt_xml().
+-spec record_to_xml/2 :: (#bt_subscription{}, boolean()) -> bt_xml().
 
 record_to_xml(Subscription) ->
     record_to_xml(Subscription, false).
 
-record_to_xml(Subscription, ToString) ->
+record_to_xml(#bt_subscription{}=Subscription, ToString) ->
     Props = [{'id', Subscription#bt_subscription.id}
              ,{'merchant-account-id', Subscription#bt_subscription.merchant_account_id}
              ,{'never-expires', Subscription#bt_subscription.never_expires}

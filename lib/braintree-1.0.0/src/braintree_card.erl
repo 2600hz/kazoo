@@ -8,14 +8,33 @@
 %%%-------------------------------------------------------------------
 -module(braintree_card).
 
--include("braintree.hrl").
+-include_lib("braintree/include/braintree.hrl").
 
--export([create/1, create/2, update/1, delete/1]).
--export([find/1, expired/0, expiring/2]).
--export([xml_to_record/1, xml_to_record/2, record_to_xml/1, record_to_xml/2]).
--export([json_to_record/1, record_to_json/1]).
+-export([default_payment_token/1]).
+-export([create/1, create/2]).
+-export([update/1]).
+-export([delete/1]).
+-export([find/1]).
+-export([expired/0, expiring/2]).
+-export([xml_to_record/1, xml_to_record/2]).
+-export([record_to_xml/1, record_to_xml/2]).
+-export([json_to_record/1]).
+-export([record_to_json/1]).
 
 -import(braintree_util, [get_xml_value/2, make_doc_xml/2]).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Given a list of #bt_cards{} find the current default payment token.
+%% @end
+%%--------------------------------------------------------------------
+-spec default_payment_token/1 :: ([#bt_card{},...] | []) -> 'undefined' | string().
+default_payment_token(Cards) ->
+    case lists:keyfind(true, #bt_card.default, Cards) of
+        false -> undefined;
+        Card -> Card#bt_card.token
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -23,15 +42,12 @@
 %% Creates a new credit card using the given record
 %% @end
 %%--------------------------------------------------------------------
--spec create/1 :: (Card) -> bt_result() when
-      Card :: #bt_card{}.
--spec create/2 :: (CustomerId, Card) -> bt_result() when
-      CustomerId :: string() | binary(),
-      Card :: #bt_card{}.
+-spec create/1 :: (#bt_card{}) -> bt_result().
+-spec create/2 :: (string() | ne_binary(), #bt_card{}) -> bt_result().
 
-create(Card) ->
+create(#bt_card{customer_id=CustomerId}=Card) ->
     try
-        true = validate_id(Card#bt_card.customer_id, true),
+        true = validate_id(CustomerId, true),
         Request = record_to_xml(Card, true),
         case braintree_request:post("/payment_methods", Request) of
             {ok, Xml} ->
@@ -53,8 +69,7 @@ create(CustomerId, Card) ->
 %% Updates a credit card with the given record
 %% @end
 %%--------------------------------------------------------------------
--spec update/1 :: (Card) -> bt_result() when
-      Card :: #bt_card{}.
+-spec update/1 :: (#bt_card{}) -> bt_result().
 update(#bt_card{token=Token}=Card) ->
     try
         true = validate_id(Token),
@@ -76,8 +91,7 @@ update(#bt_card{token=Token}=Card) ->
 %% Deletes a credit card id from braintree's system
 %% @end
 %%--------------------------------------------------------------------
--spec delete/1 :: (Token) -> bt_result() when
-      Token :: #bt_card{} | binary() | string().
+-spec delete/1 :: (#bt_card{} | binary() | string()) -> bt_result().
 delete(#bt_card{token=Token}) ->
     delete(Token);
 delete(Token) ->
@@ -100,8 +114,7 @@ delete(Token) ->
 %% Find a credit card by id
 %% @end
 %%--------------------------------------------------------------------
--spec find/1 :: (Token) -> bt_result() when
-      Token :: binary() | string().
+-spec find/1 :: (binary() | string()) -> bt_result().
 find(Token) ->
         try
             true = validate_id(Token),
@@ -122,7 +135,7 @@ find(Token) ->
 %% Finds the tokens of credit cards that have all expired
 %% @end
 %%--------------------------------------------------------------------
--spec expired/0 :: () -> tuple(ok, list()) | tuple(error, term()).
+-spec expired/0 :: () -> {'ok', [bt_xml(),...] | []} | {'error', _}.
 expired() ->
     case braintree_request:post("/payment_methods/all/expired_ids", <<>>) of
         {ok, Xml} ->
@@ -139,9 +152,8 @@ expired() ->
 %% start and end dates. Dates are given as MMYYYY
 %% @end
 %%--------------------------------------------------------------------
--spec expiring/2 :: (Start, End) -> tuple(ok, list()) | tuple(error, term()) when
-      Start :: string() | binary(),
-      End :: string() | binary().
+-spec expiring/2 :: (string() | binary(), string() | binary()) -> {'ok', [bt_xml(),...] | []} | 
+                                                                  {'error', _}.
 expiring(Start, End) ->
     case braintree_request:post("/payment_methods/all/expiring?start="
                                 ++ wh_util:to_list(Start)
@@ -160,11 +172,8 @@ expiring(Start, End) ->
 %% Verifies that the id being used is valid
 %% @end
 %%--------------------------------------------------------------------
--spec validate_id/1 :: (Id) -> boolean() when
-      Id :: string() | binary().
--spec validate_id/2 :: (Id, AllowUndefined) -> boolean() when
-      Id :: string() | binary(),
-      AllowUndefined :: boolean().
+-spec validate_id/1 :: (string() | binary()) -> boolean().
+-spec validate_id/2 :: (string() | binary(), boolean()) -> boolean().
 
 validate_id(Id) ->
     validate_id(Id, false).
@@ -181,11 +190,8 @@ validate_id(Id, _) ->
 %% Convert the given XML to a record
 %% @end
 %%--------------------------------------------------------------------
--spec xml_to_record/1 :: (Xml) -> #bt_card{} when
-      Xml :: bt_xml().
--spec xml_to_record/2 :: (Xml, Base) -> #bt_card{} when
-      Xml :: bt_xml(),
-      Base :: string().
+-spec xml_to_record/1 :: (bt_xml()) -> #bt_card{}.
+-spec xml_to_record/2 :: (bt_xml(), string()) -> #bt_card{}.
 
 xml_to_record(Xml) ->
     xml_to_record(Xml, "/credit-card").
@@ -214,16 +220,13 @@ xml_to_record(Xml, Base) ->
 %% Convert the given record to XML
 %% @end
 %%--------------------------------------------------------------------
--spec record_to_xml/1 :: (Card) -> bt_xml() when
-      Card :: #bt_card{}.
--spec record_to_xml/2 :: (Card, ToString) -> bt_xml() when
-      Card :: #bt_card{},
-      ToString :: boolean().
+-spec record_to_xml/1 :: (#bt_card{}) -> bt_xml().
+-spec record_to_xml/2 :: (#bt_card{}, boolean()) -> bt_xml().
 
 record_to_xml(Card) ->
     record_to_xml(Card, false).
 
-record_to_xml(Card, ToString) ->
+record_to_xml(#bt_card{}=Card, ToString) ->
     Props = [{'token', Card#bt_card.token}
              ,{'cardholder-name', Card#bt_card.cardholder_name}
              ,{'expiration-date', Card#bt_card.expiration_date}
@@ -291,8 +294,7 @@ record_to_xml(Card, ToString) ->
 %% Convert a given json object into a record
 %% @end
 %%--------------------------------------------------------------------
--spec json_to_record/1 :: (JObj) -> #bt_card{} when
-      JObj :: undefined | wh_json:json_object().
+-spec json_to_record/1 :: ('undefined' | wh_json:json_object()) -> #bt_card{}.
 json_to_record(undefined) ->
     undefined;
 json_to_record(JObj) ->
@@ -316,9 +318,8 @@ json_to_record(JObj) ->
 %% Convert a given record into a json object
 %% @end
 %%--------------------------------------------------------------------
--spec record_to_json/1 :: (Card) -> wh_json:json_object() when
-      Card :: #bt_card{}.
-record_to_json(Card) ->
+-spec record_to_json/1 :: (#bt_card{}) -> wh_json:json_object().
+record_to_json(#bt_card{}=Card) ->
     Props =[{<<"id">>, Card#bt_card.token}
              ,{<<"bin">>, Card#bt_card.bin}
              ,{<<"cardholder_name">>, Card#bt_card.cardholder_name}
@@ -346,8 +347,7 @@ record_to_json(Card) ->
 %% a uuid to use during creation.
 %% @end
 %%--------------------------------------------------------------------
--spec create_or_get_json_id/1 :: (JObj) ->  undefined | string() when
-      JObj :: wh_json:json_object().
+-spec create_or_get_json_id/1 :: (wh_json:json_object()) ->  'undefined' | string().
 create_or_get_json_id(JObj) ->
     case wh_json:get_value(<<"number">>, JObj) of
         undefined ->
