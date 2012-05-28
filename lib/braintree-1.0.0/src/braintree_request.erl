@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(braintree_request).
 
--include("braintree.hrl").
+-include_lib("braintree/include/braintree.hrl").
 -include_lib("xmerl/include/xmerl.hrl").
 
 -export([get/1, post/2, put/2, delete/1]).
@@ -67,6 +67,7 @@ delete(Path) ->
 
 -spec do_request/3 :: ('put' | 'post' | 'get' | 'delete', nonempty_string(), binary()) -> do_request_ret().
 do_request(Method, Path, Body) ->
+    StartTime = erlang:now(),
     lager:debug("making ~s request to braintree ~s", [Method, Path]),
     Url = lists:flatten(["https://"
                          ,braintree_server_url(whapps_config:get_string(<<"braintree">>, <<"default_environment">>, <<>>))
@@ -88,61 +89,63 @@ do_request(Method, Path, Body) ->
             ?BT_DEBUG andalso file:write_file("/tmp/braintree.xml"
                                               ,io_lib:format("Response:~n401~n~s~n", [_Response])
                                               ,[append]),
-            lager:debug("braintree request error: 401 (unauthenticated)"),
+            lager:debug("braintree error response(~pms): 401 Unauthenticated", [timer:now_diff(erlang:now(), StartTime) div 1000]),
             {error, authentication};
         {ok, "403", _, _Response} ->
             ?BT_DEBUG andalso file:write_file("/tmp/braintree.xml"
                                               ,io_lib:format("Response:~n403~n~s~n", [_Response])
                                               ,[append]),
-            lager:debug("braintree request error: 403 (unauthorized)"),
+            lager:debug("braintree error response(~pms): 403 Unauthorized", [timer:now_diff(erlang:now(), StartTime) div 1000]),
             {error, authorization};
         {ok, "404", _, _Response} ->
             ?BT_DEBUG andalso file:write_file("/tmp/braintree.xml"
                                               ,io_lib:format("Response:~n404~n~s~n", [_Response])
                                               ,[append]),
-            lager:debug("braintree request error: 404 (not found)"),
+            lager:debug("braintree error response(~pms): 404 Not Found", [timer:now_diff(erlang:now(), StartTime) div 1000]),
             {error, not_found};
         {ok, "426", _, _Response} ->
             ?BT_DEBUG andalso file:write_file("/tmp/braintree.xml"
                                               ,io_lib:format("Response:~n426~n~s~n", [_Response])
                                               ,[append]),
-            lager:debug("braintree request error: 426 (upgrade required)"),
+            lager:debug("braintree error response(~pms): 426 Upgrade Required", [timer:now_diff(erlang:now(), StartTime) div 1000]),
             {error, upgrade_required};
         {ok, "500", _, _Response} ->
             ?BT_DEBUG andalso file:write_file("/tmp/braintree.xml"
                                               ,io_lib:format("Response:~n500~n~s~n", [_Response])
                                               ,[append]),
-            lager:debug("braintree request error: 500 (server error)"),
+            lager:debug("braintree error response(~pms): 500 Server Error", [timer:now_diff(erlang:now(), StartTime) div 1000]),
             {error, server_error};
         {ok, "503", _, _Response} ->
             ?BT_DEBUG andalso file:write_file("/tmp/braintree.xml"
                                               ,io_lib:format("Response:~n503~n~s~n", [_Response])
                                               ,[append]),
-            lager:debug("braintree request error: 503 (maintenance)"),
+            lager:debug("braintree error response(~pms): 503 Maintenance", [timer:now_diff(erlang:now(), StartTime) div 1000]),
             {error, maintenance};
         {ok, Code, _, [$<,$?,$x,$m,$l|_]=Response} ->
             ?BT_DEBUG andalso file:write_file("/tmp/braintree.xml"
                                               ,io_lib:format("Response:~n~p~n~s~n", [Code, Response])
                                               ,[append]),
             {Xml, _} = xmerl_scan:string(Response),
+            lager:debug("braintree xml response(~pms)", [timer:now_diff(erlang:now(), StartTime) div 1000]),
             verify_response(Xml);
         {ok, Code, _, [$<,$s,$e,$a,$r,$c,$h|_]=Response} ->
             ?BT_DEBUG andalso file:write_file("/tmp/braintree.xml"
                                               ,io_lib:format("Response:~n~p~n~s~n", [Code, Response])
                                               ,[append]),
             {Xml, _} = xmerl_scan:string(Response),
+            lager:debug("braintree xml response(~pms)", [timer:now_diff(erlang:now(), StartTime) div 1000]),
             verify_response(Xml);
         {ok, Code, _, _Response} ->
             ?BT_DEBUG andalso file:write_file("/tmp/braintree.xml"
                                               ,io_lib:format("Response:~n~p~n~s~n", [Code, _Response])
                                               ,[append]),
-            lager:debug("braintree empty response: ~p", [Code]),
+            lager:debug("braintree empty response(~pms): ~p", [timer:now_diff(erlang:now(), StartTime) div 1000, Code]),
             {ok, ?BT_EMPTY_XML};
         {error, _}=E ->
             ?BT_DEBUG andalso file:write_file("/tmp/braintree.xml"
                                               ,io_lib:format("Response:~nerror~n~p~n", [E])
                                               ,[append]),
-            lager:debug("braintree request error: ~p", [E]),
+            lager:debug("braintree request error(~pms): ~p", [timer:now_diff(erlang:now(), StartTime) div 1000, E]),
             E
     end.
 

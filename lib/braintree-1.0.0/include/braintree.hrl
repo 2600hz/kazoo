@@ -98,6 +98,51 @@
                   ,billing_address = 'undefined' :: 'undefined' | #bt_address{}
                  }).
 
+-record(bt_addon, {id
+                   ,amount
+                   ,never_expires = 'true'
+                   ,billing_cycle
+                   ,number_of_cycles
+                   ,quantity
+                   ,inherited_from
+                   ,existing_id
+                  }).
+
+-record(bt_subscription, {id = 'undefined' :: 'undefined' | string()
+                          ,balance = 'undefined' :: 'undefined' | string()
+                          ,billing_dom = 'undefined' :: 'undefined' | string()
+                          ,billing_first_date = 'undefined' :: 'undefined' | string()
+                          ,billing_end_date = 'undefined' :: 'undefined' | string()
+                          ,billing_start_date = 'undefined' :: 'undefined' | string()
+                          ,billing_cycle = 'undefined' :: 'undefined' | string()
+                          ,number_of_cycles = 'undefined' :: 'undefined' | string()
+                          ,days_past_due = 'undefined' :: 'undefined' | string()
+                          ,failure_count = 'undefined' :: 'undefined' | string()
+                          ,merchant_account_id = 'undefined' :: 'undefined' | string()
+                          ,never_expires = 'true' :: boolean()
+                          ,next_bill_amount = 'undefined' :: 'undefined' | string()
+                          ,next_cycle_amount = 'undefined' :: 'undefined' | string()
+                          ,next_bill_date = 'undefined' :: 'undefined' | string()
+                          ,paid_through_date = 'undefined' :: 'undefined' | string()
+                          ,payment_token = 'undefined' :: 'undefined' | string()
+                          ,plan_id = 'undefined' :: 'undefined' | string()
+                          ,price = 'undefined' :: 'undefined' | string()
+                          ,status = 'undefined' :: 'undefined' | string()
+                          ,trial_duration = 'undefined' :: 'undefined' | string()
+                          ,trial_duration_unit = 'undefined' :: 'undefined' | string()
+                          ,trial_period = 'undefined' :: 'undefined' | string()
+                          ,add_ons = [] :: [#bt_addon{},...] | []
+                          ,discounts = 'undefined' :: 'undefined' | string()
+                          ,descriptor = 'undefined' :: 'undefined' | string()
+                          ,transactions = 'undefined' :: 'undefined' | string()
+                          ,do_not_inherit = 'false' :: boolean()
+                          ,start_immediately = 'true' :: boolean()
+                          ,prorate_charges = 'true' :: boolean()
+                          ,revert_on_prorate_fail = 'true' :: boolean()
+                          ,replace_add_ons = 'false' :: boolean()
+                          ,create = 'false' :: boolean() 
+                         }).
+
 -record(bt_customer, {id = 'undefined' :: 'undefined' | string()
                       ,first_name = 'undefined' :: 'undefined' | string()
                       ,last_name = 'undefined' :: 'undefined' | string()
@@ -110,17 +155,8 @@
                       ,updated_at = 'undefined' :: 'undefined' | string()
                       ,credit_cards = [] :: list(#bt_card{})
                       ,addresses = [] :: list(#bt_address{})
+                      ,subscriptions = [] :: list(#bt_subscription{})
                      }).
-
--record(bt_addon, {id
-                   ,amount
-                   ,never_expires = 'true'
-                   ,billing_cycle
-                   ,number_of_cycles
-                   ,quantity
-                   ,inherited_from
-                   ,existing_id
-                  }).
 
 -record(bt_transaction, {id = 'undefined' :: 'undefined' | string()
                          ,status = 'undefined' :: 'undefined' | string()
@@ -163,40 +199,6 @@
                          ,change_billing_address = 'false' :: boolean()
                          ,store_shipping_address = 'false' :: boolean()
                         }).
-
--record(bt_subscription, {id = 'undefined' :: 'undefined' | string()
-                          ,balance = 'undefined' :: 'undefined' | string()
-                          ,billing_dom = 'undefined' :: 'undefined' | string()
-                          ,billing_first_date = 'undefined' :: 'undefined' | string()
-                          ,billing_end_date = 'undefined' :: 'undefined' | string()
-                          ,billing_start_date = 'undefined' :: 'undefined' | string()
-                          ,billing_cycle = 'undefined' :: 'undefined' | string()
-                          ,number_of_cycles = 'undefined' :: 'undefined' | string()
-                          ,days_past_due = 'undefined' :: 'undefined' | string()
-                          ,failure_count = 'undefined' :: 'undefined' | string()
-                          ,merchant_account_id = 'undefined' :: 'undefined' | string()
-                          ,never_expires = 'true' :: boolean()
-                          ,next_bill_amount = 'undefined' :: 'undefined' | string()
-                          ,next_cycle_amount = 'undefined' :: 'undefined' | string()
-                          ,next_bill_date = 'undefined' :: 'undefined' | string()
-                          ,paid_through_date = 'undefined' :: 'undefined' | string()
-                          ,payment_token = 'undefined' :: 'undefined' | string()
-                          ,plan_id = 'undefined' :: 'undefined' | string()
-                          ,price = 'undefined' :: 'undefined' | string()
-                          ,status = 'undefined' :: 'undefined' | string()
-                          ,trial_duration = 'undefined' :: 'undefined' | string()
-                          ,trial_duration_unit = 'undefined' :: 'undefined' | string()
-                          ,trial_period = 'undefined' :: 'undefined' | string()
-                          ,add_ons = [] :: [#bt_addon{},...] | []
-                          ,discounts = 'undefined' :: 'undefined' | string()
-                          ,descriptor = 'undefined' :: 'undefined' | string()
-                          ,transactions = 'undefined' :: 'undefined' | string()
-                          ,do_not_inherit = 'false' :: boolean()
-                          ,start_immediately = 'true' :: boolean()
-                          ,prorate_charges = 'true' :: boolean()
-                          ,revert_on_prorate_fail = 'true' :: boolean()
-                          ,replace_add_ons = 'false' :: boolean()
-                         }).
 
 -record(bt_error, {code = 'undefined' :: 'undefined' | string()
                    ,message = 'undefined' :: 'undefined' | string()
