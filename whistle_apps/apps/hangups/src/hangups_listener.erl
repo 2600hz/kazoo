@@ -28,9 +28,9 @@
 
 -define(RESPONDERS, [{{?MODULE, handle_cdr}, [{<<"call_detail">>, <<"cdr">>}]}]).
 -define(BINDINGS, [{call, [{restrict_to, [cdr]}, {callid, <<"*">>}]}]).
--define(QUEUE_NAME, <<"">>).
--define(QUEUE_OPTIONS, []).
--define(CONSUME_OPTIONS, []).
+-define(QUEUE_NAME, <<"hangups_listener">>).
+-define(QUEUE_OPTIONS, [{exclusive, false}]).
+-define(CONSUME_OPTIONS, [{exclusive, false}]).
 
 %%%===================================================================
 %%% API
@@ -49,6 +49,7 @@ start_link() ->
                                       ,{queue_name, ?QUEUE_NAME}
                                       ,{queue_options, ?QUEUE_OPTIONS}
                                       ,{consume_options, ?CONSUME_OPTIONS}
+                                      ,{basic_qos, 1}
                                      ], []).
 
 -spec handle_cdr/2 :: (wh_json:json_object(), proplist()) -> no_return().
