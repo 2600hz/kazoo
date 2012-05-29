@@ -109,7 +109,6 @@ lookup_auth_user(Name, Realm) ->
                 {error, _}=E -> E
             end;
         {'ok', UserJObj}=OK ->
-            lager:debug("user jobj: ~p", [UserJObj]),
             case wh_util:is_account_enabled(wh_json:get_value([<<"doc">>, <<"pvt_account_id">>], UserJObj)) of
                 true -> OK;
                 false -> {error, not_found}
@@ -117,8 +116,6 @@ lookup_auth_user(Name, Realm) ->
     end.
 
 check_user_doc(UserJObj, CacheKey) ->
-    lager:debug("user jobj: ~p", [UserJObj]),
-
     case wh_util:is_account_enabled(wh_json:get_value([<<"doc">>, <<"pvt_account_id">>], UserJObj)) of
         true -> 
             CacheTTL = whapps_config:get_integer(?CONFIG_CAT, <<"credentials_cache_ttl">>, 300),
