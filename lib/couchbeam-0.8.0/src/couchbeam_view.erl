@@ -148,6 +148,7 @@ stream(Db, ViewName, Client) ->
 %% when needed.</p>
 stream(#db{options=IbrowseOpts}=Db, ViewName, ClientPid, Options) ->
     make_view(Db, ViewName, Options, fun(Args, Url) ->
+                                             io:format("stream to ~s~nargs: ~p~n", [Url, Args]),
         StartRef = make_ref(),
         UserFun = fun
             (done) ->
@@ -400,6 +401,8 @@ parse_view_options([{Key, Value}|Rest], #view_query_args{options=Opts}=Args)
         when is_list(Key) ->
     Opts1 = [{Key, Value}|Opts],
     parse_view_options(Rest, Args#view_query_args{options=Opts1});
+parse_view_options([{<<_/binary>> = Key, Value}|Rest], Args) ->
+    parse_view_options([{list_to_existing_atom(binary_to_list(Key)), Value}|Rest], Args);
 parse_view_options([_|Rest], Args) ->
     parse_view_options(Rest, Args).
 
@@ -425,6 +428,7 @@ view_loop(UserFun, Params) ->
 make_view(#db{server=Server}=Db, ViewName, Options, Fun) ->
     case parse_view_options(Options) of
         {error, _} = Error ->
+            io:format("make error: ~p~n", [Error]),
             Error;
         Args ->
             case ViewName of
@@ -434,6 +438,15 @@ make_view(#db{server=Server}=Db, ViewName, Options, Fun) ->
                             Args#view_query_args.options),
                     Fun(Args, Url);
                 {DName, VName} ->
+                    Url = couchbeam:make_url(Server, [couchbeam:db_url(Db),
+                            "/_design/", DName, "/_view/", VName],
+                            Args#view_query_args.options),
+                    Fun(Args, Url);
+                <<_/binary>> ->
+                    [DName, VName] = binary:split(ViewName, <<"/">>),
+                    io:format("view: ~s design: ~s v: ~s~n", [ViewName, DName, VName]),
+                    io:format("db url: ~s~n", [couchbeam:db_url(Db)]),
+
                     Url = couchbeam:make_url(Server, [couchbeam:db_url(Db),
                             "/_design/", DName, "/_view/", VName],
                             Args#view_query_args.options),
@@ -481,6 +494,7 @@ collect_view_results(Ref, Acc) ->
         {row, Ref, Row} ->
             collect_view_results(Ref, [Row|Acc]);
         {error, Ref, Error} ->
+            io:format("recv error: ~p~n", [Error]),
             %% in case we got some results
             Rows = lists:reverse(Acc),
             {error, Rows, Error}
@@ -501,6 +515,8 @@ process_view_results(ReqId, Params, UserFun, Callback) ->
                     catch
                         throw:http_response_end -> ok;
                         _:Error ->
+                            io:format("caught error: ~p~n", [Error]),
+                            io:format("st: ~p~n", [erlang:get_stacktrace()]),
                             UserFun({error, Error})
                     after
                         ibrowse:stream_close(ReqId)
@@ -510,11 +526,14 @@ process_view_results(ReqId, Params, UserFun, Callback) ->
                     do_redirect(Headers, UserFun, Callback, Params),
                     ibrowse:stream_close(ReqId);
                 Error ->
+                    io:format("resp error: ~p~n", [Error]),
+                    io:format("hdrs: ~p~n", [Headers]),
                     UserFun({error, {http_error, {status,
                                     Error}}})
 
             end;
         {ibrowse_async_response, ReqId, {error, _} = Error} ->
+            io:format("ibrowse error: ~p~n", [Error]),
             UserFun({error, Error})
     end.
 
