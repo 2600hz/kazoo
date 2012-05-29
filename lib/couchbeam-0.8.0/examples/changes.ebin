@@ -1,0 +1,32 @@
+#!/usr/bin/env escript
+%% -*- erlang -*-
+%%! -pa ./ebin 
+
+-module(changes).
+
+main(_) ->
+    couchbeam:start(),
+    Server = couchbeam:server_connection(),
+    {ok, Db} = couchbeam:open_or_create_db(Server, "testdb"),
+    {ok, StartRef, ChangesPid} = couchbeam_changes:stream(Db, self(), [continuous, heartbeat]),
+    io:format("StartRef ~p~n", [ChangesPid]),
+    get_changes(StartRef).
+    
+    
+get_changes(StartRef) ->
+    receive
+        {change, StartRef, {done, LastSeq}} ->
+            io:format("stopped, last seq is ~p~n", [LastSeq]),
+            ok;
+        {change, StartRef, Row} ->
+            io:format("change row ~p ~n", [Row]),
+            get_changes(StartRef);    
+        {error, StartRef, LastSeq, Error}->
+            io:format("error ? ~p ~n, last seq: ~p~n", [Error, LastSeq])
+    end.
+    
+
+
+    
+    
+    

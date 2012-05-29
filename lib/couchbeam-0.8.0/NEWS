@@ -1,0 +1,27 @@
+couchbeam NEWS
+--------------
+
+version 0.7.0 / 2011-07-05
+--------------------------
+
+This release contains backwards incompatible changes.
+
+ * New and more efficient couchbeam_changes API, we now parse json
+   stream instead of the try catch steps we used before. 
+ * New and more efficient couchbeam_view API. we now parse json
+   stream instead of getting all results. New couchbeam_view:stream and
+   couchbeam_view fetch functions have been added. We also don't use
+   any more a view record in other functions
+ * HTTP functions have been moved to couchbeam_httpc modules
+ * gen_changes behaviour has been updated to use the couchbeam_changes
+   API. It's also abble to restart a lost connection for longpoll and
+   continuous feeds.
+
+Breaking Changes:
+
+ * couchbeam:view and couchbeam:all_docs have been deprecated. Old views
+   functions using the #view{} record from these functions have been
+   moved in couchbeam_oldview module.
+ * couchbeam:wait_changes, couchbeam:wait_changes_once,
+   couchbeam:changes functions have been deprecated and are now replaced
+   by couchbeam_changes:stream and couchbeam_changes:fetch functions.
