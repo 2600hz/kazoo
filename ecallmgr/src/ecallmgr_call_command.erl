@@ -323,9 +323,12 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>) ->
                                   case wh_json:get_integer_value(<<"Timeout">>, JObj) of
                                       undefined ->
                                           DP;
-                                      TO when TO > 0 ->
+                                      TO when TO > 2 ->
                                           lager:debug("bridge will be attempted for ~p seconds", [TO]),
-                                          [{"application", "set call_timeout=" ++ wh_util:to_list(TO)}|DP]
+                                          [{"application", "set call_timeout=" ++ wh_util:to_list(TO)}|DP];
+                                      _ ->
+                                          lager:debug("bridge timeout invalid overwritting with 20 seconds", []),
+                                          [{"application", "set call_timeout=20"}|DP]
                                   end
                           end
                           ,fun(DP) ->
