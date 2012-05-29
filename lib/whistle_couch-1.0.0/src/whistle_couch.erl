@@ -10,7 +10,11 @@
 
 -behaviour(application).
 
--export([start/2, start/0, start_link/0, stop/0, stop/1]).
+-export([start/2, start/0
+         ,start_link/0
+         ,start_deps/0
+         ,stop/0, stop/1
+        ]).
 
 -define(DEPS, [sasl, crypto, public_key, ibrowse, couchbeam]).
 

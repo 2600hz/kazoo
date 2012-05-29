@@ -57,7 +57,7 @@
 %% Settings-related
 -export([max_bulk_insert/0]).
 
--include_lib("whistle_couch/include/wh_couch.hrl").
+-include_lib("wh_couch.hrl").
 
 %% Throttle how many docs we bulk insert to BigCouch
 -define(MAX_BULK_INSERT, 2000).
@@ -90,14 +90,14 @@ get_new_connection(Host, Port, User, Pass) ->
 get_new_conn(Host, Port, Opts) ->
     Conn = couchbeam:server_connection(Host, Port, "", Opts),
     lager:info("new connection to host ~s:~b, testing: ~p", [Host, Port, Conn]),
-    D = couchbeam:server_info(Conn), % {'ok', ConnData} = 
-    lager:debug("server_info: ~p", [D]),
+    {'ok', ConnData} = couchbeam:server_info(Conn),
 
-    %% CouchVersion = wh_json:get_value(<<"version">>, ConnData),
-    %% BigCouchVersion = wh_json:get_value(<<"bigcouch">>, ConnData),
-    %% lager:info("connected successfully to ~s:~b", [Host, Port]),
-    %% lager:info("responding CouchDB version: ~s", [CouchVersion]),
-    %% is_binary(BigCouchVersion) andalso lager:info("responding BigCouch version: ~s", [BigCouchVersion]),
+    CouchVersion = wh_json:get_value(<<"version">>, ConnData),
+    BigCouchVersion = wh_json:get_value(<<"bigcouch">>, ConnData),
+    lager:info("connected successfully to ~s:~b", [Host, Port]),
+    lager:info("responding CouchDB version: ~s", [CouchVersion]),
+    is_binary(BigCouchVersion) andalso lager:info("responding BigCouch version: ~s", [BigCouchVersion]),
+
     Conn.
 
 -spec server_url/1 :: (server()) -> ne_binary().
@@ -202,32 +202,34 @@ design_info(#server{}=Conn, DBName, Design) ->
                                                                    {'error', atom()}.
 all_design_docs(#server{}=Conn, DBName, Options) ->
     Db = get_db(Conn, DBName),
-    {'ok', View} = couchbeam:view(Db, "_design_docs", Options),
-    do_fetch_results(View).
+    do_fetch_results(Db, "_design_docs", Options).
 
 -spec all_docs/3 :: (server(), ne_binary(), proplist()) -> {'ok', wh_json:json_objects()} |
                                                             {'error', atom()}.
 all_docs(#server{}=Conn, DbName, Options) ->
-    {'ok', View} = couchbeam:all_docs(get_db(Conn, DbName), Options),
-    do_fetch_results(View).
+    Db = get_db(Conn, DbName),
+    do_fetch_results(Db, 'all_docs', Options).
 
 -spec get_results/4 :: (server(), ne_binary(), ne_binary(), proplist()) -> {'ok', wh_json:json_objects() | [ne_binary(),...]} |
                                                                             {'error', atom()}.
 get_results(#server{}=Conn, DbName, DesignDoc, ViewOptions) ->
     Db = get_db(Conn, DbName),
-    View = get_view(Db, DesignDoc, ViewOptions),
-    do_fetch_results(View).
+    do_fetch_results(Db, DesignDoc, ViewOptions).
 
 %% Design Doc/View internal functions
 
--spec do_fetch_results/1 :: (#view{}) -> {'ok', wh_json:json_objects() | [ne_binary(),...]} |
+-spec do_fetch_results/3 :: (db(), ne_binary() | 'all_docs', proplist()) -> {'ok', wh_json:json_objects() | [ne_binary(),...]} |
                                          {'error', atom()}.
-do_fetch_results(#view{}=View) ->
-    ?RETRY_504(case couchbeam_view:fetch(View) of
+do_fetch_results(Db, DesignDoc, Options) ->
+    ?RETRY_504(case couchbeam_view:fetch(Db, DesignDoc, Options) of
                    {'ok', JObj} ->
-                       Rows = wh_json:get_value(<<"rows">>, JObj, []),
+                       Rows = wh_json:get_value(<<"rows">>, JObj, JObj),
                        {'ok', Rows};
-                   Other -> Other
+                   {error, _, R} ->
+                       {error, R};
+                   Other ->
+                       io:format("other fetch: ~p~n", [Other]),
+                       Other
                end
               ).
 
@@ -435,20 +437,9 @@ do_del_attachment(#db{}=Db, DocId, AName, Options) ->
 %%------------------------------------------------------------------------------
 -spec get_db/2 :: (server(), ne_binary()) -> db().
 get_db(#server{}=Conn, DbName) ->
+    io:format("get_db: ~s~n", [DbName]),
     {'ok', Db} = couchbeam:open_db(Conn, DbName),
     Db.
-
-%%------------------------------------------------------------------------------
-%% @private
-%% @doc
-%% get_view, if Db/DesignDoc is known, return {#view{}, Views},
-%% else returns {#view{}, [{{#db{}, DesignDoc, ViewOpts}, #view{}} | Views]}
-%% @end
-%%------------------------------------------------------------------------------
--spec get_view/3 :: (db(), ne_binary(), proplist()) -> view().
-get_view(#db{}=Db, DesignDoc, ViewOptions) ->
-    {'ok', View} = couchbeam:view(Db, DesignDoc, ViewOptions),
-    View.
 
 %%------------------------------------------------------------------------------
 %% @private
