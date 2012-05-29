@@ -1,10 +1,11 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2012, VoIP INC
 %%% @doc
 %%% Utilities shared by a subset of whapps
 %%% @end
-%%% Created :  3 May 2011 by James Aimonetti <james@2600hz.org>
+%%% @contributors
+%%%   James Aimonetti
+%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(whapps_util).
 
@@ -184,7 +185,7 @@ get_account_by_realm(Realm) ->
     case wh_cache:peek({?MODULE, account_by_realm, Realm}) of
         {ok, _}=Ok -> Ok;
         {error, not_found} ->
-            case couch_mgr:get_results(?WH_ACCOUNTS_DB, ?AGG_LIST_BY_REALM, [{<<"key">>, Realm}]) of
+            case couch_mgr:get_results(?WH_ACCOUNTS_DB, ?AGG_LIST_BY_REALM, [{key, Realm}]) of
                 {ok, [JObj]} ->
                     AccountDb = wh_json:get_value([<<"value">>, <<"account_db">>], JObj),
                     wh_cache:store({?MODULE, account_by_realm, Realm}, AccountDb),
