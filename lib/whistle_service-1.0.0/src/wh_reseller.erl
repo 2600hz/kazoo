@@ -35,6 +35,7 @@
                       ,bt_merchant_id = 'undefined' :: 'undefined' | ne_binary()
                       ,bt_public_key = 'undefined' :: 'undefined' | ne_binary()
                       ,bt_private_key = 'undefined' :: 'undefined' | ne_binary()
+                      ,addons_incremented = sets:new()
                      }).
 
 -type(reseller() :: [#wh_reseller{},...] | []).
@@ -82,21 +83,15 @@ update_quantity(Category, Name, Quantity, #wh_reseller{plans=Plans}=Reseller) ->
 
 update_quantity(_, _, _, Reseller, []) ->
     Reseller;
-update_quantity(Category, Name, Quantity, Reseller, [Plan|Plans]) ->
-    Routines = [fun(#wh_reseller{account_id=AccountId}=R) -> 
-                        PlanId = wh_service_plan:get_plan_id(Category, Name, Plan),
-                        AddOnId = wh_service_plan:get_addon_id(Category, Name, Plan),
-                        case wh_util:is_empty(PlanId) orelse wh_util:is_empty(AddOnId) of
-                            true -> R;
-                            false ->
-                                SubscriptionId = <<AccountId/binary, "_", PlanId/binary>>,
-                                {ok, Subscription} = get_subscription(SubscriptionId, PlanId, AddOnId, Reseller),
-                                update_subscription_quanity(SubscriptionId, Subscription, AddOnId, Quantity, R)
-                        end
-                end
-               ],
-    R = lists:foldl(fun(F, R) -> F(R) end, Reseller, Routines),
-    update_quantity(Category, Name, Quantity, R, Plans).
+update_quantity(Category, Name, Quantity, #wh_reseller{account_id=AccountId}=Reseller, [Plan|Plans]) ->
+    case wh_service_plan:get_recurring_plan(Category, Name, Plan) of
+        undefined -> update_quantity(Category, Name, Quantity, Reseller, Plans);
+        {PlanId, AddOnId} ->
+            SubscriptionId = <<AccountId/binary, "_", PlanId/binary>>,
+            {ok, Subscription} = get_subscription(SubscriptionId, PlanId, Reseller),
+            R = update_subscription_quanity(SubscriptionId, Subscription, AddOnId, Quantity, Reseller),
+            update_quantity(Category, Name, Quantity, R, Plans)
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -110,21 +105,23 @@ increment_quantity(Category, Name, #wh_reseller{plans=Plans}=Reseller) ->
 
 increment_quantity(_, _, Reseller, []) ->
     Reseller;
-increment_quantity(Category, Name, Reseller, [Plan|Plans]) ->
-    Routines = [fun(#wh_reseller{account_id=AccountId}=R) -> 
-                        PlanId = wh_service_plan:get_plan_id(Category, Name, Plan),
-                        AddOnId = wh_service_plan:get_addon_id(Category, Name, Plan),
-                        case wh_util:is_empty(PlanId) orelse wh_util:is_empty(AddOnId) of
-                            true -> R;
-                            false ->
-                                SubscriptionId = <<AccountId/binary, "_", PlanId/binary>>,
-                                {ok, Subscription} = get_subscription(SubscriptionId, PlanId, AddOnId, Reseller),
-                                increment_subscription_quanity(SubscriptionId, Subscription, AddOnId, R)
-                        end
-                end
-               ],
-    R = lists:foldl(fun(F, R) -> F(R) end, Reseller, Routines),
-    increment_quantity(Category, Name, R, Plans).
+increment_quantity(Category, Name, #wh_reseller{account_id=AccountId
+                                                ,addons_incremented=AddOnsIncr}=Reseller
+                   ,[Plan|Plans]) ->
+    case wh_service_plan:get_recurring_plan(Category, Name, Plan) of
+        undefined -> increment_quantity(Category, Name, Reseller, Plans);
+        {PlanId, AddOnId} ->
+            SubscriptionId = <<AccountId/binary, "_", PlanId/binary>>,
+            {ok, Subscription} = get_subscription(SubscriptionId, PlanId, Reseller),
+            AddOn = wh_util:to_list(AddOnId),
+            R = case sets:is_element(AddOn, AddOnsIncr) of
+                    false -> 
+                        update_subscription_quanity(SubscriptionId, Subscription, AddOnId, 1, Reseller);
+                    true ->  
+                        increment_subscription_quanity(SubscriptionId, Subscription, AddOnId, Reseller)
+                end,
+            increment_quantity(Category, Name, R#wh_reseller{addons_incremented=sets:add_element(AddOn, AddOnsIncr)}, Plans)            
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -135,7 +132,6 @@ increment_quantity(Category, Name, Reseller, [Plan|Plans]) ->
 -spec commit_changes/1 :: (reseller()) -> ok.
 commit_changes(#wh_reseller{bt_subscriptions=Subscriptions}) ->
     [begin
-         io:format("~p~n", [Subscription]),
          case braintree_subscription:update(Subscription) of
              {ok, _} -> 
                  SubscriptionId = braintree_subscription:get_id(Subscription),
@@ -424,16 +420,15 @@ find_reseller([ParentId|Tree], MasterAccountId) ->
             find_reseller(Tree, MasterAccountId)
     end.
 
--spec get_subscription/4 :: (ne_binary(), ne_binary(), ne_binary(), reseller()) -> {'ok', #bt_subscription{}} | {'error', _}.
-get_subscription(SubscriptionId, PlanId, AddOnId, #wh_reseller{bt_subscriptions=Subscriptions, bt_customer=Customer}) ->
+-spec get_subscription/3 :: (ne_binary(), ne_binary(), reseller()) -> {'ok', #bt_subscription{}} | {'error', _}.
+get_subscription(SubscriptionId, PlanId, #wh_reseller{bt_subscriptions=Subscriptions, bt_customer=Customer}) ->
     case dict:find(SubscriptionId, Subscriptions) of
         {ok, _}=Ok -> Ok; 
         error ->
             case braintree_customer:get_subscription(SubscriptionId, Customer) of
                 {error, not_found} -> 
                     braintree_customer:new_subscription(SubscriptionId, PlanId, Customer);
-                {ok, Subscription} -> 
-                    braintree_subscription:update_addon_quantity(Subscription, AddOnId, 0)
+                {ok, _}=Ok -> Ok
             end
     end.
 
