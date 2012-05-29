@@ -9,6 +9,9 @@
 -module(crossbar_maintenance).
 
 -export([flush/0]).
+-export([start_module/1]).
+-export([stop_module/1]).
+-export([running_modules/0]).
 -export([refresh/0, refresh/1]).
 -export([find_account_by_number/1]).
 -export([find_account_by_name/1]).
@@ -46,6 +49,36 @@ refresh() ->
 
 refresh(Value) ->
     lager:info("please use whapps_maintenance:refresh(~p).", [Value]).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec start_module/1 :: (text()) -> 'ok' | {'error', _}.
+start_module(Module) ->
+    crossbar:start_mod(Module).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec stop_module/1 :: (text()) -> 'ok' | {'error', _}.
+stop_module(Module) ->
+    crossbar:stop_mod(Module).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec running_modules/0 :: () -> [atom(),...] | [].
+running_modules() ->
+    crossbar_bindings:modules_loaded().
 
 %%--------------------------------------------------------------------
 %% @public
