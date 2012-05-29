@@ -1,10 +1,10 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <>
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2012, VoIP INC
 %%% @doc
 %%%
 %%% @end
-%%% Created : 18 Mar 2011 by James Aimonetti <>
+%%% @contributors
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(change_mgr_sup).
 
@@ -64,7 +64,7 @@ init([]) ->
     Type = worker,
 
     AChild = {change_handler, {change_handler, start_link, []},
-	      Restart, Shutdown, Type, [change_handler]},
+              Restart, Shutdown, Type, [change_handler]},
 
     {ok, {SupFlags, [AChild]}}.
 

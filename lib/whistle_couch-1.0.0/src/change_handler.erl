@@ -1,11 +1,11 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2012, VoIP INC
 %%% @doc
 %%% One change handler with BigCouch, stream changes to interested PIDs
 %%% via Erlang messaging
 %%% @end
-%%% Created : 18 Mar 2011 by James Aimonetti <james@2600hz.org>
+%%% @contributors
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(change_handler).
 
@@ -23,8 +23,8 @@
 -define(SERVER, ?MODULE). 
 
 -record(listener, {
-          pid = undefined :: undefined | pid()
-          ,monitor_ref = undefined :: undefined | reference()
+          pid = 'undefined' :: 'undefined' | pid()
+          ,monitor_ref = 'undefined' :: 'undefined' | reference()
           ,doc = <<>> :: binary()
          }).
 -record(state, {
