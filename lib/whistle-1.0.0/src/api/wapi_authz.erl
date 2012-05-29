@@ -4,6 +4,8 @@
 %%% Handles authorization requests, responses, queue bindings
 %%% @end
 %%% @contributors
+%%%   James Aimonetti
+%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(wapi_authz).
 
@@ -46,8 +48,8 @@
                           ,{<<"Account-ID">>, fun is_binary/1}
                           ,{<<"Caller-ID-Name">>, fun is_binary/1}
                           ,{<<"Caller-ID-Number">>, fun is_binary/1}
-                          ,{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}
-                          ,{<<"Usage">>, ?IS_JSON_OBJECT}
+                          ,{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}
+                          ,{<<"Usage">>, fun wh_json:is_json_object/1}
                          ]).
 
 %% Authorization Responses
@@ -58,7 +60,7 @@
                             ,{<<"Type">>, [<<"flat_rate">>, <<"per_minute">>]}
                             ,{<<"Is-Authorized">>, [<<"true">>, <<"false">>]}
                            ]).
--define(AUTHZ_RESP_TYPES, [{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}]).
+-define(AUTHZ_RESP_TYPES, [{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}]).
 
 %% Authorization Identify Requests
 -define(AUTHZ_IDENT_REQ_HEADERS, [<<"Msg-ID">>, <<"To">>, <<"From">>, <<"Request">>, <<"Call-ID">>
@@ -74,7 +76,7 @@
                                 ,{<<"Call-ID">>, fun is_binary/1}
                                 ,{<<"Caller-ID-Name">>, fun is_binary/1}
                                 ,{<<"Caller-ID-Number">>, fun is_binary/1}
-                                ,{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}
+                                ,{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}
                                ]).
 
 %% Authorization Identify Responses
@@ -112,7 +114,7 @@
                               ,{<<"Event-Name">>, <<"update">>}
                               ,{<<"Call-Direction">>, [<<"inbound">>, <<"outbound">>]}
                              ]).
--define(AUTHZ_UPDATE_TYPES, [{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}]).
+-define(AUTHZ_UPDATE_TYPES, [{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}]).
 
 %%--------------------------------------------------------------------
 %% @doc Authorization Request - see wiki
