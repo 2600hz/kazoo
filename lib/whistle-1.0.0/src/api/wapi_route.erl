@@ -40,6 +40,9 @@
                            ,{<<"Resource-Type">>, [<<"MMS">>, <<"SMS">>, <<"audio">>, <<"video">>, <<"chat">>]}
                            ,{<<"Media">>, [<<"process">>, <<"proxy">>, <<"bypass">>]}
                           ]).
+-define(ROUTE_REQ_COST_PARAMS, [<<"Min-Increment-Cost">>, <<"Max-Incremental-Cost">>
+                                    ,<<"Min-Setup-Cost">>, <<"Max-Setup-Cost">>
+                               ]).
 -define(ROUTE_REQ_TYPES, [{<<"Msg-ID">>, fun is_binary/1}
                           ,{<<"To">>, fun is_binary/1}
                           ,{<<"From">>, fun is_binary/1}
@@ -48,17 +51,14 @@
                           ,{<<"Event-Queue">>, fun is_binary/1}
                           ,{<<"Caller-ID-Name">>, fun is_binary/1}
                           ,{<<"Caller-ID-Number">>, fun is_binary/1}
-                          ,{<<"Cost-Parameters">>, fun({struct, L}) when is_list(L) ->
-                                                           lists:all(fun({K, _V}) ->
-                                                                             lists:member(K, ?ROUTE_REQ_COST_PARAMS)
-                                                                     end, L);
-                                                      (_) -> false
+                          ,{<<"Cost-Parameters">>, fun(JObj) ->
+                                                           wh_json:is_json_object(JObj) andalso
+                                                               lists:all(fun({K, _V}) ->
+                                                                                 lists:member(K, ?ROUTE_REQ_COST_PARAMS)
+                                                                         end, wh_json:to_proplist(JObj))
                                                    end}
                           ,{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}
                          ]).
--define(ROUTE_REQ_COST_PARAMS, [<<"Min-Increment-Cost">>, <<"Max-Incremental-Cost">>
-                                    ,<<"Min-Setup-Cost">>, <<"Max-Setup-Cost">>
-                               ]).
 
 %% Route Responses
 -define(ROUTE_RESP_ROUTE_HEADERS, [<<"Invite-Format">>]).
