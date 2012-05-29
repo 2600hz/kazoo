@@ -345,7 +345,12 @@ validate_conference_pin(Conference, Call) ->
                     validate_conference_pin(false, Conference, Call, 1)
             end;
         _Else ->
-            validate_conference_pin(undefined, Conference, Call, 1)            
+            case wh_util:is_empty(whapps_conference:moderator_pins(Conference))
+                andalso wh_util:is_empty(whapps_conference:member_pins(Conference))
+            of
+                true -> {ok, whapps_conference:set_moderator(false, Conference)};
+                false -> validate_conference_pin(undefined, Conference, Call, 1)
+            end
     end.
 
 validate_conference_pin(_, _, Call, Loop) when Loop > 3->
@@ -358,7 +363,9 @@ validate_conference_pin(true, Conference, Call, Loop) ->
         {error, _}=E -> E;
         {ok, Digits} ->
             Pins = whapps_conference:moderator_pins(Conference),
-            case lists:member(Digits, Pins) of
+            case lists:member(Digits, Pins) 
+                orelse (Pins =:= [] andalso Digits =:= <<>>) 
+            of
                 true ->            
                     lager:debug("caller entered a valid moderator pin"),
                     {ok, Conference};
@@ -374,7 +381,9 @@ validate_conference_pin(false, Conference, Call, Loop) ->
         {error, _}=E -> E;
         {ok, Digits} ->
             Pins = whapps_conference:member_pins(Conference),
-            case lists:member(Digits, Pins) of
+            case lists:member(Digits, Pins) 
+                orelse (Pins =:= [] andalso Digits =:= <<>>) 
+            of
                 true ->            
                     lager:debug("caller entered a valid member pin"),
                     {ok, Conference};
@@ -391,7 +400,11 @@ validate_conference_pin(_, Conference, Call, Loop) ->
         {ok, Digits} ->
             MemberPins = whapps_conference:member_pins(Conference),
             ModeratorPins = whapps_conference:moderator_pins(Conference),
-            case {lists:member(Digits, MemberPins), lists:member(Digits, ModeratorPins)} of
+            case {(lists:member(Digits, MemberPins)
+                   orelse (MemberPins =:= [] andalso Digits =:= <<>>))
+                  ,(lists:member(Digits, ModeratorPins)
+                    orelse (MemberPins =:= [] andalso Digits =:= <<>>))}
+            of
                 {true, _} ->
                     lager:debug("caller entered a pin belonging to a member"),
                     {ok, whapps_conference:set_moderator(false, Conference)};
