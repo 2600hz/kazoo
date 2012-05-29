@@ -5,17 +5,17 @@
 -include_lib("amqp_client/include/amqp_client.hrl").
 
 -define(ROUTES_DB, <<"offnet">>).
--define(LIST_ROUTES_BY_NUMBER, {<<"routes">>, <<"listing_by_number">>}).
--define(LIST_ROUTE_DUPS, {<<"routes">>, <<"listing_by_assignment">>}).
--define(LIST_ROUTE_ACCOUNTS, {<<"routes">>, <<"listing_by_account">>}).
+-define(RESOURCES_DB, <<"offnet">>).
+
+-define(LIST_ROUTES_BY_NUMBER, <<"routes/listing_by_number">>).
+-define(LIST_ROUTE_DUPS, <<"routes/listing_by_assignment">>).
+-define(LIST_ROUTE_ACCOUNTS, <<"routes/listing_by_account">>).
+-define(LIST_RESOURCES_BY_ID, <<"resources/listing_by_id">>).
 
 -define(SUCCESSFUL_HANGUP_CAUSES, [<<"NORMAL_CLEARING">>, <<"ORIGINATOR_CANCEL">>, <<"SUCCESS">>]).
 
--define(RESOURCES_DB, <<"offnet">>).
--define(LIST_RESOURCES_BY_ID, {<<"resources">>, <<"listing_by_id">>}).
-
 -define(APP_NAME, <<"stepswitch">>).
--define(APP_VERSION, <<"0.2.0">>).
+-define(APP_VERSION, <<"0.5.0">>).
 
 -define(STEPSWITCH_CACHE, stepswitch_cache).
 
