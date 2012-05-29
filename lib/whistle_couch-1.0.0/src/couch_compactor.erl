@@ -16,7 +16,7 @@
 -export([compact_all/1, compact_all/2, compact_node/2, compact_node/3
          ,compact_db/3, compact_db/4]).
 
--include_lib("whistle_couch/include/wh_couch.hrl").
+-include_lib("wh_couch.hrl").
 -define(SLEEP_BETWEEN_COMPACTION, 60000). %% sleep 60 seconds between shard compactions
 -define(SLEEP_BETWEEN_POLL, 5000). %% sleep 5 seconds before polling the shard for compaction status
 
@@ -148,7 +148,7 @@ compact_db(NodeBin, DB, ConflictStrategy, F) ->
     done.
 
 %% Internal Functions ----------------------------------------------------------
--spec compact_node_db/4 :: (ne_binary(), ne_binary(), #server{}, #server{}) -> 'ok'.
+-spec compact_node_db/4 :: (ne_binary(), ne_binary(), server(), server()) -> 'ok'.
 compact_node_db(NodeBin, DB, Conn, AdminConn) ->
     DBEncoded = binary:replace(DB, <<"/">>, <<"%2f">>, [global]),
     lager:debug("compacting db ~s node ~s", [DBEncoded, NodeBin]),
@@ -164,7 +164,7 @@ compact_node_db(NodeBin, DB, Conn, AdminConn) ->
             ok
     end.
 
--spec compact_shard/3 :: (#server{}, ne_binary(), [ne_binary(),...] | []) -> 'ok'.
+-spec compact_shard/3 :: (server(), ne_binary(), [ne_binary(),...] | []) -> 'ok'.
 compact_shard(AdminConn, Shard, DesignDocs) ->
     wait_for_compaction(AdminConn, Shard),
     lager:debug("compacting shard ~s", [Shard]),
@@ -179,7 +179,7 @@ compact_shard(AdminConn, Shard, DesignDocs) ->
     ok = timer:sleep(couch_config:fetch(<<"sleep_between_compaction">>, ?SLEEP_BETWEEN_COMPACTION)),
     ok.
 
--spec wait_for_compaction/2 :: (#server{}, ne_binary()) -> 'ok'.
+-spec wait_for_compaction/2 :: (server(), ne_binary()) -> 'ok'.
 wait_for_compaction(AdminConn, Shard) ->
     case couch_util:db_info(AdminConn, Shard) of
         {ok, ShardData} ->
@@ -233,7 +233,7 @@ get_db_shards(AdminConn, DBEncoded) ->
 is_a_shard(Shard, DB) ->
     binary:match(Shard, <<"%2f", DB/binary, ".">>) =/= nomatch.
 
--spec get_node_connections/1 :: (ne_binary()) -> {#server{}, #server{}}.
+-spec get_node_connections/1 :: (ne_binary()) -> {server(), server()}.
 get_node_connections(NodeBin) ->
     [_Name, H] = binary:split(NodeBin, <<"@">>),
     Host = wh_util:to_list(H),
@@ -282,7 +282,7 @@ get_ports(_Node, pang) ->
     lager:debug("using same ports as couch_mgr"),
     {couch_mgr:get_port(), couch_mgr:get_admin_port()}.
 
--spec get_conns/5 :: (nonempty_string(), pos_integer(), string(), string(), pos_integer()) -> {#server{}, #server{}}.
+-spec get_conns/5 :: (nonempty_string(), pos_integer(), string(), string(), pos_integer()) -> {server(), server()}.
 get_conns(Host, Port, User, Pass, AdminPort) ->
     {couch_util:get_new_connection(Host, Port, User, Pass),
      couch_util:get_new_connection(Host, AdminPort, User, Pass)}.

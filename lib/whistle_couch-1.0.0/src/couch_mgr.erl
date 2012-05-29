@@ -929,7 +929,7 @@ init_state_from_config({H, Port, User, Pass, AdminPort}) ->
         A:B ->
             ST = erlang:get_stacktrace(),
             lager:debug("init failed to connect: ~p:~p", [A, B]),
-            [lager:debug("st: ~p", [S]) || S <- ST],
+            _ = [lager:debug("st: ~p", [S]) || S <- ST],
             A(B)
     end.
 
