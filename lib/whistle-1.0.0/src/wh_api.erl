@@ -241,10 +241,8 @@ build_message(Prop, ReqH, OptH) when is_list(Prop) ->
 build_message(JObj, ReqH, OptH) ->
     build_message(wh_json:to_proplist(JObj), ReqH, OptH).
 
--spec build_message_specific_headers/3 :: (Msg, ReqHeaders, OptHeaders) -> {'ok', proplist()} | {'error', string()} when
-      Msg :: proplist() | {api_headers(), proplist()},
-      ReqHeaders :: api_headers(),
-      OptHeaders :: api_headers().
+-spec build_message_specific_headers/3 :: (proplist() | {api_headers(), proplist()}, api_headers(), api_headers()) -> {'ok', proplist()} |
+                                                                                                                      {'error', string()}.
 build_message_specific_headers({Headers, Prop}, ReqH, OptH) ->
     case update_required_headers(Prop, ReqH, Headers) of
         {error, _Reason} = Error ->
