@@ -1,0 +1,18 @@
+Couchdbeam
+----------
+
+2009-2012 (c) Benoît Chesneau <benoitc@e-engura.org>
+
+couchbeam is released under the MIT license. See the LICENSE file for the complete license.
+
+
+couchbeam:couchbeam_deps
+------------------------
+Copyright  2007-2008 Basho Technologies
+
+couchbeam_json_stream
+---------------------
+
+Copyright 2011 The Apache Fundation
+From couchdb/json_stream_parse.erl
+
