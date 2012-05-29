@@ -26,6 +26,7 @@
 
 -export([fetch/1]).
 -export([update_quantity/4]).
+-export([increment_quantity/3]).
 -export([commit_changes/1]).
 
 -include("wh_service.hrl").
@@ -64,6 +65,19 @@ fetch(Account, Resellers) ->
 -spec update_quantity/4 :: (ne_binary(), ne_binary(), ne_binary() | integer(), resellers()) -> resellers().
 update_quantity(Category, Name, Quantity, Resellers) ->
     [wh_reseller:update_quantity(Category, Name, Quantity, Reseller) 
+     || Reseller <- Resellers
+    ].
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Given the plans that apply to this account update the quanity, and
+%% accumulate any transactions as required.
+%% @end
+%%--------------------------------------------------------------------
+-spec increment_quantity/3 :: (ne_binary(), ne_binary(), resellers()) -> resellers().
+increment_quantity(Category, Name, Resellers) ->
+    [wh_reseller:increment_quantity(Category, Name, Reseller) 
      || Reseller <- Resellers
     ].
 

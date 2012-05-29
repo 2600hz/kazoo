@@ -17,6 +17,7 @@
 -export([xml_to_record/1, xml_to_record/2]).
 -export([record_to_xml/1]).
 -export([update_addon_quantity/3]).
+-export([increment_addon_quantity/2]).
 
 -import(braintree_util, [get_xml_value/2, make_doc_xml/2]).
 
@@ -144,7 +145,7 @@ find(SubscriptionId) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Really ugly function to update a add on for a given subscription
+%% Really ugly function to update an addon for a given subscription
 %% or subscription id
 %% @end
 %%--------------------------------------------------------------------
@@ -158,16 +159,56 @@ update_addon_quantity(Subscription, AddOnId, Quantity) when not is_list(AddOnId)
 update_addon_quantity(#bt_subscription{add_ons=AddOns}=Subscription, AddOnId, Quantity) ->
     case lists:keyfind(AddOnId, #bt_addon.id, AddOns) of
         false ->
-            AddOn = #bt_addon{inherited_from=AddOnId, quantity=Quantity},
-            {ok, Subscription#bt_subscription{add_ons=[AddOn|AddOns]}};
-        AddOn ->
+            case lists:keyfind(AddOnId, #bt_addon.inherited_from, AddOns) of
+                false ->
+                    AddOn = #bt_addon{inherited_from=AddOnId, quantity=Quantity},
+                    {ok, Subscription#bt_subscription{add_ons=[AddOn|AddOns]}};
+                #bt_addon{}=AddOn ->
+                    AddOn1 = AddOn#bt_addon{quantity=Quantity},
+                    {ok, Subscription#bt_subscription{add_ons=lists:keyreplace(AddOnId, #bt_addon.inherited_from, AddOns, AddOn1)}}
+            end;
+        #bt_addon{}=AddOn ->
             AddOn1 = AddOn#bt_addon{existing_id=AddOnId, quantity=Quantity},
-            {ok, Subscription#bt_subscription{add_ons=[AddOn1|lists:keydelete(AddOnId, #bt_addon.id, AddOns)]}}
+            {ok, Subscription#bt_subscription{add_ons=lists:keyreplace(AddOnId, #bt_addon.id, AddOns, AddOn1)}}
     end;
 update_addon_quantity(SubscriptionId, AddOnId, Quantity) ->
     case find(SubscriptionId) of
         {ok, Subscription} ->
             update_addon_quantity(Subscription, AddOnId, Quantity);
+        {error, _}=E ->
+            E
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Really ugly function to increment an addon for a given subscription
+%% or subscription id
+%% @end
+%%--------------------------------------------------------------------
+-spec increment_addon_quantity/2 :: (#bt_subscription{} | ne_binary() | string()
+                                     ,ne_binary() | string()) -> bt_result().
+increment_addon_quantity(Subscription, AddOnId) when not is_list(AddOnId) ->
+    increment_addon_quantity(Subscription, wh_util:to_list(AddOnId));
+increment_addon_quantity(#bt_subscription{add_ons=AddOns}=Subscription, AddOnId) ->
+    case lists:keyfind(AddOnId, #bt_addon.id, AddOns) of
+        false ->
+            case lists:keyfind(AddOnId, #bt_addon.inherited_from, AddOns) of
+                false ->
+                    AddOn = #bt_addon{inherited_from=AddOnId, quantity=1},
+                    {ok, Subscription#bt_subscription{add_ons=[AddOn|AddOns]}};
+                #bt_addon{quantity=Quantity}=AddOn ->
+                    AddOn1 = AddOn#bt_addon{quantity=wh_util:to_integer(Quantity) + 1},
+                    {ok, Subscription#bt_subscription{add_ons=lists:keyreplace(AddOnId, #bt_addon.inherited_from, AddOns, AddOn1)}}
+            end;
+        #bt_addon{quantity=Quantity}=AddOn ->
+            AddOn1 = AddOn#bt_addon{existing_id=AddOnId, quantity=wh_util:to_integer(Quantity) + 1},
+            {ok, Subscription#bt_subscription{add_ons=lists:keyreplace(AddOnId, #bt_addon.id, AddOns, AddOn1)}}
+    end;
+increment_addon_quantity(SubscriptionId, AddOnId) ->
+    case find(SubscriptionId) of
+        {ok, Subscription} ->
+            increment_addon_quantity(Subscription, AddOnId);
         {error, _}=E ->
             E
     end.
