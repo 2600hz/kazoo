@@ -35,7 +35,7 @@
                       ,bt_merchant_id = 'undefined' :: 'undefined' | ne_binary()
                       ,bt_public_key = 'undefined' :: 'undefined' | ne_binary()
                       ,bt_private_key = 'undefined' :: 'undefined' | ne_binary()
-                      ,addons_incremented = sets:new()
+                      ,addons_incremented = sets:new() :: set()
                      }).
 
 -type(reseller() :: [#wh_reseller{},...] | []).

@@ -7,12 +7,19 @@
 %%%-------------------------------------------------------------------
 -module(wh_service_limits).
 
--export([update/1]).
+-export([update/1, update/2]).
 
--spec update/1 :: (wh_json:json_object()) -> ok.
+-include("wh_service.hrl").
+
+-spec update/1 :: (wh_json:json_object()) -> wh_resellers:resellers().
+-spec update/2 :: (wh_json:json_object(), wh_resellers:resellers()) -> wh_resellers:resellers().
+
 update(JObj) ->
     AccountId = wh_json:get_value(<<"pvt_account_id">>, JObj),
     {ok, Resellers} = wh_resellers:fetch(AccountId),
+    update(JObj, Resellers).
+
+update(JObj, Resellers) ->
     Limits = wh_json:get_keys(wh_json:public_fields(JObj)),
     lists:foldr(fun(Limit, R) ->
                         Quantity = wh_json:get_value(Limit, JObj, 0), 
