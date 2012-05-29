@@ -38,6 +38,21 @@
                "default":[
 
                ]
+            },
+            "join_muted":{
+               "description":"Determines if a member will join muted",
+               "type":"boolean",
+               "default":true
+            },
+            "join_deaf":{
+               "description":"Determines if a member will join deaf",
+               "type":"boolean",
+               "default":false
+            },
+            "play_name_on_join":{
+               "description":"Determines if a member should be prompted to record their name on entry for later playback",
+               "type":"boolean",
+               "default":false
             }
          },
          "default":{
@@ -71,6 +86,16 @@
                "default":[
 
                ]
+            },
+            "join_muted":{
+               "description":"Determines if a moderator will join muted",
+               "type":"boolean",
+               "default":false
+            },
+            "join_deaf":{
+               "description":"Determines if a moderator will join deaf",
+               "type":"boolean",
+               "default":false
             }
          },
          "default":{
@@ -88,31 +113,6 @@
          "default":[
 
          ]
-      },
-      "member_play_name":{
-         "description":"Determines if a member should be prompted to record their name on entry for later playback",
-         "type":"boolean",
-         "default":false
-      },
-      "member_join_muted":{
-         "description":"Determines if a member will join muted",
-         "type":"boolean",
-         "default":true
-      },
-      "member_join_deaf":{
-         "description":"Determines if a member will join deaf",
-         "type":"boolean",
-         "default":false
-      },
-      "moderator_join_muted":{
-         "description":"Determines if a moderator will join muted",
-         "type":"boolean",
-         "default":false
-      },
-      "moderator_join_deaf":{
-         "description":"Determines if a moderator will join deaf",
-         "type":"boolean",
-         "default":false
       },
       "require_moderator":{
          "description":"Determines if a moderator is required before the conference will begin",
