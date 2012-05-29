@@ -21,10 +21,10 @@ handle_req(ApiJObj, _Props) ->
 
     put(callid, wh_json:get_value(<<"Msg-ID">>, ApiJObj, <<"000000000000">>)),
 
-    lager:info("received SIP authentication request"),
-
     AuthU = wapi_authn:get_auth_user(ApiJObj),
     AuthR = wapi_authn:get_auth_realm(ApiJObj),
+
+    lager:info("trying to authenticate ~s@~s", [AuthU, AuthR]),
 
     case reg_util:lookup_auth_user(AuthU, AuthR) of
         {ok, AuthJObj} ->
