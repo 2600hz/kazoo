@@ -459,7 +459,7 @@ terminate(Reason, #state{module=Module, module_state=ModState
 
 -spec handle_event/4 :: (ne_binary(), ne_binary(), #'basic.deliver'{}, #state{}) ->  #state{}.
 handle_event(Payload, <<"application/json">>, BD, State) ->
-    JObj = mochijson2:decode(Payload),
+    JObj = wh_json:decode(Payload),
     process_req(State, JObj, BD);
 handle_event(Payload, <<"application/erlang">>, BD, State) ->
     JObj = binary_to_term(Payload),
