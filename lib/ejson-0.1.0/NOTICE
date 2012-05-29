@@ -1,0 +1,18 @@
+Apache CouchDB
+Copyright 2009 The Apache Software Foundation
+
+This product includes software developed at
+The Apache Software Foundation (http://www.apache.org/).
+
+Converted to an independant module by Benoît Chesneau
+<benoitc@e-engura.org>.
+
+This product also includes the following third-party components:
+
+ * MochiWeb (http://code.google.com/p/mochiweb/)
+
+   Copyright 2007, Mochi Media Coporation
+ 
+ * yajl (http://lloyd.github.com/yajl/)
+
+  Copyright 2010, Lloyd Hilaiel

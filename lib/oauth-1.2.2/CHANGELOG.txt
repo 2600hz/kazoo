@@ -1,0 +1,35 @@
+v1.2.2 (2011-11-18) 994f3d4
+
+  * Add support for new tagged tuple returned by http_uri:parse/1 (R15B)
+
+
+v1.2.1 (2011-10-17) 7969309
+
+  * Updated to use a constant time algorithm to compare signature strings
+
+
+v1.2.0 (2011-06-23) 29cb478
+
+  * Added oauth:get/3 and oauth:post/3 functions
+
+  * Collapsed into just a single module
+
+
+v1.1.1 (2011-01-29) 18cee77
+
+  * Updated to use the correct request parameter normalization algorithm
+
+
+v1.1.0 (2011-01-24) 3bea612
+
+  * Updated to use the new public key API introduced in R14B (public_key-0.8)
+
+
+v1.0.2 (2010-11-26) d9bfb30
+
+  * Added oauth:get/6 and oauth:post/6 with additional HttpcOptions parameter
+
+
+v1.0.1 (2010-11-26) 2c9269b
+
+  * First version numbered version!

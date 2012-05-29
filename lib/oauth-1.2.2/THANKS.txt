@@ -1,0 +1,15 @@
+Thanks to the following for patches and suggestions:
+
+* Fernando Benavides <github.com/elbrujohalcon>
+
+* Jan Lehnardt <github.com/janl>
+
+* Jason Davies <github.com/jasondavies>
+
+* Jebu Ittiachen <github.com/jebu>
+
+* Paul Bonser <github.com/pib>
+
+* Roberto Aloi <github.com/prof3ta>
+
+* naoya_t <github.com/naoyat>
