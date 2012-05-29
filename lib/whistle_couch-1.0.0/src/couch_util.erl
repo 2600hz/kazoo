@@ -193,33 +193,33 @@ design_compact(#server{}=Conn, DbName, Design) ->
     end.
 
 -spec design_info/3 :: (server(), ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} |
-                                                                {'error', atom()}.
+                                                               {'error', atom()}.
 design_info(#server{}=Conn, DBName, Design) ->
     Db = get_db(Conn, DBName),
     do_get_design_info(Db, Design).
 
 -spec all_design_docs/3 :: (server(), ne_binary(), proplist()) -> {'ok', wh_json:json_objects()} |
-                                                                   {'error', atom()}.
+                                                                  {'error', atom()}.
 all_design_docs(#server{}=Conn, DBName, Options) ->
     Db = get_db(Conn, DBName),
-    do_fetch_results(Db, "_design_docs", Options).
+    do_fetch_results(Db, 'design_docs', Options).
 
 -spec all_docs/3 :: (server(), ne_binary(), proplist()) -> {'ok', wh_json:json_objects()} |
-                                                            {'error', atom()}.
+                                                           {'error', atom()}.
 all_docs(#server{}=Conn, DbName, Options) ->
     Db = get_db(Conn, DbName),
     do_fetch_results(Db, 'all_docs', Options).
 
 -spec get_results/4 :: (server(), ne_binary(), ne_binary(), proplist()) -> {'ok', wh_json:json_objects() | [ne_binary(),...]} |
-                                                                            {'error', atom()}.
+                                                                           {'error', atom()}.
 get_results(#server{}=Conn, DbName, DesignDoc, ViewOptions) ->
     Db = get_db(Conn, DbName),
     do_fetch_results(Db, DesignDoc, ViewOptions).
 
 %% Design Doc/View internal functions
 
--spec do_fetch_results/3 :: (db(), ne_binary() | 'all_docs', proplist()) -> {'ok', wh_json:json_objects() | [ne_binary(),...]} |
-                                         {'error', atom()}.
+-spec do_fetch_results/3 :: (db(), ne_binary() | 'all_docs' | 'design_docs', proplist()) -> {'ok', wh_json:json_objects() | [ne_binary(),...]} |
+                                                                                            {'error', atom()}.
 do_fetch_results(Db, DesignDoc, Options) ->
     ?RETRY_504(case couchbeam_view:fetch(Db, DesignDoc, Options) of
                    {'ok', JObj} ->
@@ -233,14 +233,14 @@ do_fetch_results(Db, DesignDoc, Options) ->
               ).
 
 -spec do_get_design_info/2 :: (db(), ne_binary()) -> {'ok', wh_json:json_object()} |
-                                                      {'error', atom()}.
+                                                     {'error', atom()}.
 do_get_design_info(#db{}=Db, Design) ->
     ?RETRY_504(couchbeam:design_info(Db, Design)).
 
 %% Document related functions --------------------------------------------------
 
 -spec open_cache_doc/4 :: (server(), ne_binary(), ne_binary(), proplist()) -> {'ok', wh_json:json_object()} |
-                                                                               {'error', atom()}.
+                                                                              {'error', atom()}.
 open_cache_doc(#server{}=Conn, DbName, DocId, Options) ->
     case wh_cache:peek({?MODULE, DbName, DocId}) of
         {ok, _}=Ok -> Ok;
@@ -254,13 +254,13 @@ open_cache_doc(#server{}=Conn, DbName, DocId, Options) ->
     end.
 
 -spec open_doc/4 :: (server(), ne_binary(), ne_binary(), proplist()) -> {'ok', wh_json:json_object()} |
-                                                                         {'error', atom()}.
+                                                                        {'error', atom()}.
 open_doc(#server{}=Conn, DbName, DocId, Options) ->
     Db = get_db(Conn, DbName),
     do_fetch_doc(Db, DocId, Options).
 
 -spec save_doc/4 :: (server(), ne_binary(), wh_json:json_object(), proplist()) -> {'ok', wh_json:json_object()} |
-                                                                                   {'error', atom()}.
+                                                                                  {'error', atom()}.
 save_doc(#server{}=Conn, DbName, Doc, Options) ->
     Db = get_db(Conn, DbName),
     do_save_doc(Db, Doc, Options).
