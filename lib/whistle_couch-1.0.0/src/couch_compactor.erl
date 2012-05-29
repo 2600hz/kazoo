@@ -199,20 +199,28 @@ wait_for_compaction(AdminConn, Shard) ->
             wait_for_compaction(AdminConn, Shard)
     end.
 
--spec get_db_design_docs/2 :: (#server{}, ne_binary()) -> [ne_binary(),...] | [].
+-spec get_db_design_docs/2 :: (server(), ne_binary()) -> [ne_binary(),...] | [].
 get_db_design_docs(Conn, DBEncoded) ->
     {ok, Designs} = couch_util:all_design_docs(Conn, DBEncoded, []),
-    [ binary:replace(wh_json:get_value(<<"id">>, Design), <<"_design/">>, <<>>, [global]) || Design <- Designs ].
+    [ binary:replace(wh_json:get_value(<<"id">>, Design), <<"_design/">>, <<>>, [global])
+      || Design <- Designs
+    ].
 
--spec get_db_shards/2 :: (#server{}, ne_binary()) -> [ne_binary()].
+-spec get_db_shards/2 :: (server(), ne_binary()) -> [ne_binary()].
 get_db_shards(AdminConn, DBEncoded) ->
-    case couch_config:fetch({shards, DBEncoded}, undefined, ?WH_COUCH_CACHE) of
+    case couch_config:fetch(DBEncoded, undefined, ?WH_COUCH_CACHE) of
         undefined ->
             case couch_util:db_info(AdminConn) of
                 {ok, []} -> lager:debug("no shards found on admin conn? That's odd"), [];
                 {ok, Shards} ->
-                    Encoded = [ ShardEncoded || Shard <- Shards, is_a_shard(ShardEncoded=binary:replace(Shard, <<"/">>, <<"%2f">>, [global]), DBEncoded) ],
-                    couch_config:store({shards, DBEncoded}, Encoded, ?WH_COUCH_CACHE),
+                    Encoded = [ ShardEncoded
+                                || Shard <- Shards,
+                                   begin
+                                       ShardEncoded = binary:replace(Shard, <<"/">>, <<"%2f">>, [global]),
+                                       is_a_shard(ShardEncoded, DBEncoded)
+                                   end
+                              ],
+                    _ = couch_config:store(DBEncoded, Encoded, ?WH_COUCH_CACHE),
                     lager:debug("cached encoded shards for ~s", [DBEncoded]),
                     Encoded
             end;
