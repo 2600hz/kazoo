@@ -384,6 +384,9 @@ parse_view_options([{reduce, false}|Rest], #view_query_args{options=Opts}=Args) 
 parse_view_options([include_docs|Rest], #view_query_args{options=Opts}=Args) ->
     Opts1 = [{"include_docs", "true"}|Opts],
     parse_view_options(Rest, Args#view_query_args{options=Opts1});
+parse_view_options([{include_docs, _}|Rest], #view_query_args{options=Opts}=Args) ->
+    Opts1 = [{"include_docs", "true"}|Opts],
+    parse_view_options(Rest, Args#view_query_args{options=Opts1});
 parse_view_options([conflicts|Rest], #view_query_args{options=Opts}=Args) ->
     Opts1 = [{"conflicts", "true"}|Opts],
     parse_view_options(Rest, Args#view_query_args{options=Opts1});
