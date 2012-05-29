@@ -54,7 +54,7 @@
                                                                      end, L);
                                                       (_) -> false
                                                    end}
-                          ,{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}
+                          ,{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}
                          ]).
 -define(ROUTE_REQ_COST_PARAMS, [<<"Min-Increment-Cost">>, <<"Max-Incremental-Cost">>
                                     ,<<"Min-Setup-Cost">>, <<"Max-Setup-Cost">>
@@ -78,8 +78,8 @@
                                   ,{<<"Route">>, fun is_binary/1}
                                   ,{<<"To-User">>, fun is_binary/1}
                                   ,{<<"To-Realm">>, fun is_binary/1}
-                                  ,{<<"SIP-Headers">>, ?IS_JSON_OBJECT}
-                                  ,{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}
+                                  ,{<<"SIP-Headers">>, fun wh_json:is_json_object/1}
+                                  ,{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}
                                 ]).
 
 %% Route Responses
@@ -95,7 +95,7 @@
                            ,{<<"Routes">>, fun(L) when is_list(L) -> true;
                                               (_) -> false
                                            end}
-                           ,{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}
+                           ,{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}
                           ]).
 
 %% Route Winner
@@ -106,7 +106,7 @@
                           ]).
 -define(ROUTE_WIN_TYPES, [{<<"Call-ID">>, fun is_binary/1}
                           ,{<<"Control-Queue">>, fun is_binary/1}
-                          ,{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}
+                          ,{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}
                          ]).
 
 %%--------------------------------------------------------------------

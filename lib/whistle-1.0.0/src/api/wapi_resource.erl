@@ -33,8 +33,8 @@
                                ,{<<"Application-Name">>, [<<"park">>, <<"bridge">>, <<"transfer">>, <<"fax">>]}
                               ]).
 -define(ORIGINATE_REQ_TYPES, [{<<"Endpoints">>, fun is_list/1}
-                              ,{<<"SIP-Headers">>, ?IS_JSON_OBJECT}
-                              ,{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}
+                              ,{<<"SIP-Headers">>, fun wh_json:is_json_object/1}
+                              ,{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}
                              ]).
 
 %% Originate Endpoints
@@ -44,9 +44,9 @@
                                         ,{<<"Bypass-Media">>, [<<"true">>, <<"false">>]}
                                         ,{<<"Endpoint-Type">>, [<<"sip">>, <<"freetdm">>]}
                                        ]).
--define(ORIGINATE_REQ_ENDPOINT_TYPES, [{<<"SIP-Headers">>, ?IS_JSON_OBJECT}
-                                       ,{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}
-                                       ,{<<"Endpoint-Options">>, ?IS_JSON_OBJECT}
+-define(ORIGINATE_REQ_ENDPOINT_TYPES, [{<<"SIP-Headers">>, fun wh_json:is_json_object/1}
+                                       ,{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}
+                                       ,{<<"Endpoint-Options">>, fun wh_json:is_json_object/1}
                                       ]).
 
 
@@ -56,7 +56,7 @@
 -define(ORIGINATE_RESP_VALUES, [{<<"Event-Category">>, <<"resource">>}
                                ,{<<"Event-Name">>, <<"originate_resp">>}
                                ]).
--define(ORIGINATE_RESP_TYPES, [{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}]).
+-define(ORIGINATE_RESP_TYPES, [{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}]).
 
 %%--------------------------------------------------------------------
 %% @doc Resource Request - see wiki
