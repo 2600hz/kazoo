@@ -49,7 +49,7 @@
                "type":"boolean",
                "default":false
             },
-            "play_name_on_join":{
+            "play_name":{
                "description":"Determines if a member should be prompted to record their name on entry for later playback",
                "type":"boolean",
                "default":false
