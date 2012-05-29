@@ -172,12 +172,12 @@ from_conference_doc(JObj, Conference) ->
                                  ,moderator_pins = wh_json:get_ne_value(<<"pins">>, Moderator, moderator_pins(Conference))
                                  ,member_join_muted = wh_json:is_true(<<"join_muted">>, Member, member_join_muted(Conference))
                                  ,member_join_deaf = wh_json:is_true(<<"join_deaf">>, Member, member_join_deaf(Conference))
+                                 ,play_name_on_join = wh_json:is_true(<<"play_name_on_join">>, Member, play_name_on_join(Conference))
                                  ,moderator_join_muted = wh_json:is_true(<<"join_muted">>, Moderator, moderator_join_muted(Conference))
                                  ,moderator_join_deaf = wh_json:is_true(<<"join_deaf">>, Moderator, moderator_join_deaf(Conference))
                                  ,max_participants = wh_json:get_integer_value(<<"max_participants">>, JObj, max_participants(Conference))
                                  ,require_moderator = wh_json:is_true(<<"require_moderator">>, JObj, require_moderator(Conference))
                                  ,wait_for_moderator = wh_json:is_true(<<"wait_for_moderator">>, JObj, wait_for_moderator(Conference))
-                                 ,play_name_on_join = wh_json:is_true(<<"play_name_on_join">>, JObj, play_name_on_join(Conference))
                                  ,conference_doc = JObj
                                 }.
 
