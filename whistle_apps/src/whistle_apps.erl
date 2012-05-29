@@ -1,13 +1,14 @@
-%%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2010-2011, VoIP INC
+%%%-------------------------------------------------------------------
+%%% @copyright (C) 2010-2012, VoIP INC
 %%% @doc
 %%% WHISTLE_APPS logger
 %%% @end
-%%% Created :  8 Nov 2010 by James Aimonetti <james@2600hz.org>
-
+%%% @contributors
+%%%   James Aimonetti
+%%%   Karl Anderson
+%%%-------------------------------------------------------------------
 -module(whistle_apps).
 
--author('James Aimonetti <james@2600hz.org>').
 -export([start/0, start_link/0, stop/0]).
 
 %% @spec start_link() -> {ok,Pid::pid()}
@@ -34,10 +35,7 @@ start_deps() ->
 
     ok = wh_util:ensure_started(sasl),
     ok = wh_util:ensure_started(crypto),
-    ok = wh_util:ensure_started(ibrowse),
     ok = wh_util:ensure_started(gproc),
-    ok = wh_util:ensure_started(riak_err),
-    ok = wh_util:ensure_started(couchbeam),
     ok = wh_util:ensure_started(whistle_amqp),
     ok = wh_util:ensure_started(whistle_stats).
 

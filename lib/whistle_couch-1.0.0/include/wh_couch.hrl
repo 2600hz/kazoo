@@ -9,8 +9,8 @@
          ,shards = [] :: list(binary()) | []
          ,disk_size = 0 :: non_neg_integer()
          ,data_size = 0 :: non_neg_integer()
-         ,conn = #server{} :: #server{}
-         ,admin_conn = #server{} :: #server{}
+         ,conn = #server{} :: server()
+         ,admin_conn = #server{} :: server()
          ,do_compaction = false :: boolean()
          }).
 -record(db_data, {
@@ -18,8 +18,8 @@
          ,node = undefined :: atom()
          ,disk_size = 0 :: non_neg_integer()
          ,data_size = 0 :: non_neg_integer()
-         ,conn = #server{} :: #server{}
-         ,admin_conn = #server{} :: #server{}
+         ,conn = #server{} :: server()
+         ,admin_conn = #server{} :: server()
          ,do_compaction = false :: boolean()
          }).
 

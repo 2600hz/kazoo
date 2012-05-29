@@ -121,7 +121,7 @@
          ,code_change/3
         ]).
 
--include_lib("whistle_couch/include/wh_couch.hrl").
+-include_lib("wh_couch.hrl").
 
 -define(SERVER, ?MODULE).
 
