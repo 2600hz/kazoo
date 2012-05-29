@@ -130,8 +130,8 @@
 %% Change handler {DBName :: string(), {Srv :: pid(), SrvRef :: reference()}
 -record(state, {
           host = {"", ?DEFAULT_PORT, ?DEFAULT_ADMIN_PORT} :: {nonempty_string(), pos_integer(), pos_integer()}
-          ,connection = #server{} :: #server{}
-          ,admin_connection = #server{} :: #server{}
+          ,connection = #server{} :: server()
+          ,admin_connection = #server{} :: server()
           ,creds = {"", ""} :: {string(), string()} % {User, Pass}
           ,change_handlers = dict:new() :: dict()
          }).
@@ -574,8 +574,10 @@ delete_attachment(DbName, DocId, AName, Options) ->
 %% {Total, Offset, Meta, Rows}
 %% @end
 %%--------------------------------------------------------------------
--spec get_all_results/2 :: (ne_binary(), ne_binary()) -> {'ok', wh_json:json_objects() | [ne_binary(),...]} | {'error', atom()}.
--spec get_results/3 :: (ne_binary(), ne_binary(), proplist()) -> {'ok', wh_json:json_objects() | [ne_binary(),...]} | {'error', atom()}.
+-spec get_all_results/2 :: (ne_binary(), ne_binary()) -> {'ok', wh_json:json_objects() | wh_json:json_strings()} |
+                                                         {'error', atom()}.
+-spec get_results/3 :: (ne_binary(), ne_binary(), wh_proplist()) -> {'ok', wh_json:json_objects() | wh_json:json_strings()} |
+                                                                 {'error', atom()}.
 get_all_results(DbName, DesignDoc) ->
     get_results(DbName, DesignDoc, []).
 get_results(DbName, DesignDoc, ViewOptions) ->
@@ -925,7 +927,9 @@ init_state_from_config({H, Port, User, Pass, AdminPort}) ->
             lager:info("We tried to connect to BigCouch at ~s:~p and ~p but were refused. Is BigCouch/HAProxy running at these host:port combos?", [H, Port, AdminPort]),
             exit(couch_connection_failed);
         A:B ->
+            ST = erlang:get_stacktrace(),
             lager:debug("init failed to connect: ~p:~p", [A, B]),
+            [lager:debug("st: ~p", [S]) || S <- ST],
             A(B)
     end.
 
