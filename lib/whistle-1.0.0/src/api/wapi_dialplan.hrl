@@ -105,10 +105,7 @@
                                  ,{<<"Event-Name">>, <<"response">>}
                                  ,{<<"Event-Category">>, <<"call">>}
                                 ]).
--define(STORE_HTTP_RESP_TYPES, [{<<"Media-Transfer-Results">>, fun({struct, L}) when is_list(L) ->
-                                                                       true;
-                                                                  (_) -> false
-                                                               end}]).
+-define(STORE_HTTP_RESP_TYPES, [{<<"Media-Transfer-Results">>, fun wh_json:is_json_object/1}]).
 
 %% Tones Request
 -define(TONES_REQ_HEADERS, [<<"Call-ID">>, <<"Application-Name">>, <<"Tones">>]).
