@@ -435,6 +435,13 @@ make_view(#db{server=Server}=Db, ViewName, Options, Fun) ->
                             "/_all_docs"],
                             Args#view_query_args.options),
                     Fun(Args, Url);
+                'design_docs' ->
+                    Url = couchbeam:make_url(Server, [couchbeam:db_url(Db)
+                                                      ,"/_all_docs?startkey=\"_design\"&endkey=\"_design0\""
+                                                     ],
+                                             Args#view_query_args.options),
+                    io:format("all design docs URL: ~s~n", [Url]),
+                    Fun(Args, Url);
                 {DName, VName} ->
                     Url = couchbeam:make_url(Server, [couchbeam:db_url(Db),
                             "/_design/", DName, "/_view/", VName],
