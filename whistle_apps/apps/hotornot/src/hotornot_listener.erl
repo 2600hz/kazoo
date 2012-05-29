@@ -29,8 +29,8 @@
 -define(BINDINGS, [ {rate, []} ]).
 -define(RESPONDERS, [{hon_rater, [{<<"rate">>, <<"req">>}]}]).
 -define(QUEUE_NAME, <<"hotornot_rating">>).
--define(QUEUE_OPTIONS, []).
--define(CONSUME_OPTIONS, []).
+-define(QUEUE_OPTIONS, [{exclusive, false}]).
+-define(CONSUME_OPTIONS, [{exclusive, false}]).
 
 %%%===================================================================
 %%% API
