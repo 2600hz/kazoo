@@ -89,7 +89,7 @@ authorize(_) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec authenticate/1 :: (#cb_context{}) -> boolean().
-authenticate(#cb_context{req_nouns=[{<<"shared_auth">>, []}]}) ->
+authenticate(#cb_context{req_nouns=[{<<"shared_auth">>, []}], req_verb = <<"put">>}) ->
     true;
 authenticate(_) ->
     false.
