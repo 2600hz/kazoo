@@ -13,6 +13,7 @@
 -export([get_reseller_id/1]).
 -export([is_master_reseller/1]).
 -export([update_quantity/4]).
+-export([increment_quantity/3]).
 -export([commit_changes/1]).
 -export([assign/1]).
 -export([unassign/1]).
@@ -89,7 +90,7 @@ update_quantity(Category, Name, Quantity, Reseller, [Plan|Plans]) ->
                             true -> R;
                             false ->
                                 SubscriptionId = <<AccountId/binary, "_", PlanId/binary>>,
-                                {ok, Subscription} = get_subscription(SubscriptionId, PlanId, Reseller),
+                                {ok, Subscription} = get_subscription(SubscriptionId, PlanId, AddOnId, Reseller),
                                 update_subscription_quanity(SubscriptionId, Subscription, AddOnId, Quantity, R)
                         end
                 end
@@ -97,6 +98,33 @@ update_quantity(Category, Name, Quantity, Reseller, [Plan|Plans]) ->
     R = lists:foldl(fun(F, R) -> F(R) end, Reseller, Routines),
     update_quantity(Category, Name, Quantity, R, Plans).
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec increment_quantity/3 :: (ne_binary(), ne_binary(), reseller()) -> reseller().
+increment_quantity(Category, Name, #wh_reseller{plans=Plans}=Reseller) ->
+    increment_quantity(Category, Name, Reseller, Plans).
+
+increment_quantity(_, _, Reseller, []) ->
+    Reseller;
+increment_quantity(Category, Name, Reseller, [Plan|Plans]) ->
+    Routines = [fun(#wh_reseller{account_id=AccountId}=R) -> 
+                        PlanId = wh_service_plan:get_plan_id(Category, Name, Plan),
+                        AddOnId = wh_service_plan:get_addon_id(Category, Name, Plan),
+                        case wh_util:is_empty(PlanId) orelse wh_util:is_empty(AddOnId) of
+                            true -> R;
+                            false ->
+                                SubscriptionId = <<AccountId/binary, "_", PlanId/binary>>,
+                                {ok, Subscription} = get_subscription(SubscriptionId, PlanId, AddOnId, Reseller),
+                                increment_subscription_quanity(SubscriptionId, Subscription, AddOnId, R)
+                        end
+                end
+               ],
+    R = lists:foldl(fun(F, R) -> F(R) end, Reseller, Routines),
+    increment_quantity(Category, Name, R, Plans).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -107,6 +135,7 @@ update_quantity(Category, Name, Quantity, Reseller, [Plan|Plans]) ->
 -spec commit_changes/1 :: (reseller()) -> ok.
 commit_changes(#wh_reseller{bt_subscriptions=Subscriptions}) ->
     [begin
+         io:format("~p~n", [Subscription]),
          case braintree_subscription:update(Subscription) of
              {ok, _} -> 
                  SubscriptionId = braintree_subscription:get_id(Subscription),
@@ -395,14 +424,16 @@ find_reseller([ParentId|Tree], MasterAccountId) ->
             find_reseller(Tree, MasterAccountId)
     end.
 
--spec get_subscription/3 :: (ne_binary(), ne_binary(), reseller()) -> {'ok', #bt_subscription{}} | {'error', _}.
-get_subscription(SubscriptionId, PlanId, #wh_reseller{bt_subscriptions=Subscriptions, bt_customer=Customer}) ->
+-spec get_subscription/4 :: (ne_binary(), ne_binary(), ne_binary(), reseller()) -> {'ok', #bt_subscription{}} | {'error', _}.
+get_subscription(SubscriptionId, PlanId, AddOnId, #wh_reseller{bt_subscriptions=Subscriptions, bt_customer=Customer}) ->
     case dict:find(SubscriptionId, Subscriptions) of
-        {ok, _}=Ok -> Ok;
+        {ok, _}=Ok -> Ok; 
         error ->
             case braintree_customer:get_subscription(SubscriptionId, Customer) of
-                {error, not_found} -> braintree_customer:new_subscription(SubscriptionId, PlanId, Customer);
-                {ok, _}=Ok -> Ok
+                {error, not_found} -> 
+                    braintree_customer:new_subscription(SubscriptionId, PlanId, Customer);
+                {ok, Subscription} -> 
+                    braintree_subscription:update_addon_quantity(Subscription, AddOnId, 0)
             end
     end.
 
@@ -412,4 +443,12 @@ update_subscription_quanity(SubscriptionId, Subscription, AddOnId, Quantity, #wh
     CustomerId = braintree_customer:get_id(Customer),
     lager:info("updating customer ~s subscription ~s addon ~s quantity to ~p", [CustomerId, SubscriptionId, AddOnId, Quantity]),
     {ok, UpdatedSubscription} = braintree_subscription:update_addon_quantity(Subscription, AddOnId, Quantity),
+    Reseller#wh_reseller{bt_subscriptions=dict:store(SubscriptionId, UpdatedSubscription, Subscriptions)}.
+
+-spec increment_subscription_quanity/4 :: (ne_binary(), #bt_subscription{}, ne_binary(), reseller()) -> reseller().
+increment_subscription_quanity(SubscriptionId, Subscription, AddOnId, #wh_reseller{bt_subscriptions=Subscriptions
+                                                                                   ,bt_customer=Customer}=Reseller) ->
+    CustomerId = braintree_customer:get_id(Customer),
+    lager:info("increment customer ~s subscription ~s addon ~s", [CustomerId, SubscriptionId, AddOnId]),
+    {ok, UpdatedSubscription} = braintree_subscription:increment_addon_quantity(Subscription, AddOnId),
     Reseller#wh_reseller{bt_subscriptions=dict:store(SubscriptionId, UpdatedSubscription, Subscriptions)}.

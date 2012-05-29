@@ -9,6 +9,7 @@
 
 -export([update/1]).
 
+-spec update/1 :: (wh_json:json_object()) -> ok.
 update(JObj) ->
     AccountId = wh_json:get_value(<<"pvt_account_id">>, JObj),
     {ok, Resellers} = wh_resellers:fetch(AccountId),
