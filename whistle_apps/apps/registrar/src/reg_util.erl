@@ -101,32 +101,33 @@ hash_contact(Contact) ->
 -spec lookup_auth_user/2 :: (ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} |
                                                           {'error', 'not_found'}.
 lookup_auth_user(Name, Realm) ->
-    lager:debug("looking up auth creds for ~s@~s", [Name, Realm]),
     CacheKey = cache_user_key(Realm, Name),
     case wh_cache:peek_local(?REGISTRAR_CACHE, CacheKey) of
         {'error', not_found} ->
             case get_auth_user(Name, Realm) of
-                {'ok', UserJObj}=OK ->
-                    case wh_util:is_account_enabled(wh_json:get_value([<<"doc">>, <<"pvt_account_id">>], UserJObj)) of
-                        true -> 
-                            CacheTTL = whapps_config:get_integer(?CONFIG_CAT, <<"credentials_cache_ttl">>, 300),
-                            lager:debug("storing ~s@~s in cache", [Name, Realm]),
-                            wh_cache:store_local(?REGISTRAR_CACHE, CacheKey, UserJObj, CacheTTL, fun reg_util:reg_removed_from_cache/3),
-                            OK;
-                        false -> 
-                            {error, not_found}
-                    end;
-                {error, _}=E ->
-                    E
+                {'ok', UserJObj} -> check_user_doc(UserJObj, CacheKey);
+                {error, _}=E -> E
             end;
         {'ok', UserJObj}=OK ->
+            lager:debug("user jobj: ~p", [UserJObj]),
             case wh_util:is_account_enabled(wh_json:get_value([<<"doc">>, <<"pvt_account_id">>], UserJObj)) of
-                true -> 
-                    lager:debug("pulling auth user from cache"),
-                    OK;
-                false -> 
-                    {error, not_found}
+                true -> OK;
+                false -> {error, not_found}
             end
+    end.
+
+check_user_doc(UserJObj, CacheKey) ->
+    lager:debug("user jobj: ~p", [UserJObj]),
+
+    case wh_util:is_account_enabled(wh_json:get_value([<<"doc">>, <<"pvt_account_id">>], UserJObj)) of
+        true -> 
+            CacheTTL = whapps_config:get_integer(?CONFIG_CAT, <<"credentials_cache_ttl">>, 300),
+            wh_cache:store_local(?REGISTRAR_CACHE, CacheKey, UserJObj, CacheTTL
+                                 ,fun reg_util:reg_removed_from_cache/3
+                                ),
+            {ok, UserJObj};
+        false ->
+            {error, not_found}
     end.
 
 -spec get_auth_user/2 :: (ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} |
@@ -147,7 +148,7 @@ get_auth_user(Name, Realm) ->
                                                               {'error', 'not_found'}.
 get_auth_user_in_agg(Name, Realm) ->
     UseAggregate = whapps_config:get_is_true(?CONFIG_CAT, <<"use_aggregate">>, false),
-    ViewOptions = [{<<"key">>, [Realm, Name]}, {<<"include_docs">>, true}],
+    ViewOptions = [{key, [Realm, Name]}, include_docs],
     case UseAggregate andalso couch_mgr:get_results(?WH_SIP_DB, <<"credentials/lookup">>, ViewOptions) of
         false ->
             lager:debug("SIP credential aggregate db is disabled"),
@@ -166,7 +167,7 @@ get_auth_user_in_agg(Name, Realm) ->
 -spec get_auth_user_in_account/3 :: (ne_binary(), ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} |
                                                                                {'error', 'not_found'}.
 get_auth_user_in_account(Name, Realm, AccountDB) ->
-    case couch_mgr:get_results(AccountDB, <<"devices/sip_credentials">>, [{<<"key">>, Name}, {<<"include_docs">>, true}]) of
+    case couch_mgr:get_results(AccountDB, <<"devices/sip_credentials">>, [{key, Name}, include_docs]) of
         {'error', R} ->
             lager:debug("failed to look up SIP credentials in ~s: ~p", [AccountDB, R]),
             get_auth_user_in_agg(Name, Realm);

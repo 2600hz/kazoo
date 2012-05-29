@@ -55,6 +55,9 @@ send_auth_resp(AuthJObj, AuthU, AuthR, ApiJObj) ->
             ,{<<"Authorizing-ID">>, wh_json:get_value(<<"_id">>, AuthDoc)}
             ,{<<"Owner-ID">>, wh_json:get_value(<<"owner_id">>, AuthDoc)}            
            ],
+
+    lager:debug("authn doc: ~p", [AuthDoc]),
+    lager:debug("authn ccvs: ~p", [CCVs]),
     
     Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, ApiJObj)}
             ,{<<"Auth-Password">>, wh_json:get_value(<<"password">>, AuthValue)}
