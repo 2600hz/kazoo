@@ -228,7 +228,6 @@ do_fetch_results(Db, DesignDoc, Options) ->
                    {error, _, R} ->
                        {error, R};
                    Other ->
-                       io:format("other fetch: ~p~n", [Other]),
                        Other
                end
               ).
@@ -437,7 +436,6 @@ do_del_attachment(#db{}=Db, DocId, AName, Options) ->
 %%------------------------------------------------------------------------------
 -spec get_db/2 :: (server(), ne_binary()) -> db().
 get_db(#server{}=Conn, DbName) ->
-    io:format("get_db: ~s~n", [DbName]),
     {'ok', Db} = couchbeam:open_db(Conn, DbName),
     Db.
 
