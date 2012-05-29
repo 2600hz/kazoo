@@ -30,7 +30,7 @@ handle_req(ApiJObj, _Props) ->
         {ok, AuthJObj} ->
             send_auth_resp(AuthJObj, AuthU, AuthR, ApiJObj);
         {error, not_found} ->            
-            lager:debug("user ~s@~s is unknown", [AuthU, AuthR]),
+            lager:info("user ~s@~s is unknown", [AuthU, AuthR]),
             send_auth_error(ApiJObj)
     end.
 
@@ -56,9 +56,6 @@ send_auth_resp(AuthJObj, AuthU, AuthR, ApiJObj) ->
             ,{<<"Owner-ID">>, wh_json:get_value(<<"owner_id">>, AuthDoc)}            
            ],
 
-    lager:debug("authn doc: ~p", [AuthDoc]),
-    lager:debug("authn ccvs: ~p", [CCVs]),
-    
     Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, ApiJObj)}
             ,{<<"Auth-Password">>, wh_json:get_value(<<"password">>, AuthValue)}
             ,{<<"Auth-Method">>, get_auth_method(AuthValue)}
