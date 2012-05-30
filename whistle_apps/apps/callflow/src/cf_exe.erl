@@ -203,7 +203,8 @@ relay_amqp(JObj, Props) ->
             ok;
         _Else ->
             %% TODO: queue?
-            lager:debug("received event to relay while no module running, dropping: ~s", [wh_json:encode(JObj)]),
+            {Category, Name} = wh_util:get_event_type(JObj),
+            lager:debug("received event to relay while no module running, dropping: ~s ~s", [Category, Name]),
             ok
     end.
 
@@ -497,7 +498,15 @@ launch_cf_module(#state{call=Call, flow=Flow}=State) ->
 spawn_cf_module(CFModule, Data, Call) ->
     {spawn_link(fun() ->
                         put(callid, whapps_call:call_id_direct(Call)),
-                        CFModule:handle(Data, Call)
+                        try
+                            CFModule:handle(Data, Call)
+                        catch
+                            _E:_R ->
+                                ST = erlang:get_stacktrace(),
+                                lager:debug("action ~s died unexpectedly (~s): ~p", [CFModule, _E, _R]),
+                                [lager:debug("stacktrace: ~p", [S]) || S <- ST],
+                                throw(_R)
+                        end
                 end), CFModule}.
 
 %%--------------------------------------------------------------------
