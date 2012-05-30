@@ -2,11 +2,8 @@
 %%% @copyright (C) 2012, VoIP INC
 %%% @doc
 %%% @end
-%%%
 %%% @contributors
-%%% Karl Anderson <karl@2600hz.org>
-%%%
-%%% Created : 23 Jan 2012 by Karl Anderson <karl@2600hz.org>
+%%%   Karl Anderson <karl@2600hz.org>
 %%%-------------------------------------------------------------------
 -module(notify_util).
 
@@ -32,7 +29,7 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec send_email/3 :: (ne_binary(), undefined | binary(), term()) -> ok.
+-spec send_email/3 :: (ne_binary(), 'undefined' | binary(), term()) -> 'ok'.
 send_email(_, undefined, _) ->
     ok;
 send_email(_, <<>>, _) ->
@@ -43,7 +40,9 @@ send_email(From, To, Email) ->
     lager:debug("sending email to ~s from ~s via ~s", [To, From, Relay]),
     ReqId = get(callid),
     gen_smtp_client:send({From, [To], Encoded}, [{relay, Relay}]
-                         ,fun(X) -> put(callid, ReqId), lager:debug("email relay responded: ~p", [X]) end).
+                         ,fun(X) -> put(callid, ReqId),
+                                    lager:debug("email relay responded: ~p", [X])
+                          end).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -52,7 +51,7 @@ send_email(From, To, Email) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec json_to_template_props/1 :: (wh_json:json_object()) -> proplist().
-json_to_template_props(JObj) ->    
+json_to_template_props(JObj) ->
     normalize_proplist(wh_json:recursive_to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
@@ -65,28 +64,28 @@ json_to_template_props(JObj) ->
 normalize_proplist(Props) ->
     [normalize_proplist_element(Elem) || Elem <- Props].
 
-normalize_proplist_element({K, V}) when is_list(V) -> 
+normalize_proplist_element({K, V}) when is_list(V) ->
     {normalize_value(K), normalize_proplist(V)};
-normalize_proplist_element({K, V}) when is_binary(V) -> 
+normalize_proplist_element({K, V}) when is_binary(V) ->
     {normalize_value(K), mochiweb_html:escape(V)};
-normalize_proplist_element({K, V}) -> 
+normalize_proplist_element({K, V}) ->
     {normalize_value(K), V};
 normalize_proplist_element(Else) ->
     Else.
 
 normalize_value(Value) ->
     binary:replace(wh_util:to_lower_binary(Value), <<"-">>, <<"_">>, [global]).
-    
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec compile_default_text_template/2 :: (atom(), ne_binary()) -> {ok, atom()}.
--spec compile_default_html_template/2 :: (atom(), ne_binary()) -> {ok, atom()}.
--spec compile_default_subject_template/2 :: (atom(), ne_binary()) -> {ok, atom()}.
--spec compile_default_template/3 :: (atom(), ne_binary(), atom()) -> {ok, atom()}.
+-spec compile_default_text_template/2 :: (atom(), ne_binary()) -> {'ok', atom()}.
+-spec compile_default_html_template/2 :: (atom(), ne_binary()) -> {'ok', atom()}.
+-spec compile_default_subject_template/2 :: (atom(), ne_binary()) -> {'ok', atom()}.
+-spec compile_default_template/3 :: (atom(), ne_binary(), atom()) -> {'ok', atom()}.
 
 compile_default_text_template(TemplateModule, Category) ->
     compile_default_template(TemplateModule, Category, default_text_template).
@@ -99,7 +98,7 @@ compile_default_subject_template(TemplateModule, Category) ->
 
 compile_default_template(TemplateModule, Category, Key) ->
     {ok, TemplateModule} = erlydtl:compile(whapps_config:get(Category, Key), TemplateModule).
- 
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -111,15 +110,17 @@ render_template(undefined, DefaultTemplate, Props) ->
     lager:debug("rendering default ~s template", [DefaultTemplate]),
     DefaultTemplate:render(Props);
 render_template(Template, DefaultTemplate, Props) ->
-    try       
+    try
         CustomTemplate = wh_util:to_atom(list_to_binary([couch_mgr:get_uuid(), "_"
                                                         ,wh_util:to_binary(DefaultTemplate)
                                                         ])
                                          ,true),
         lager:debug("compiling custom ~s template", [DefaultTemplate]),
         {ok, CustomTemplate} = erlydtl:compile(Template, CustomTemplate),
+
         lager:debug("rendering custom template ~s", [CustomTemplate]),
         Result = CustomTemplate:render(Props),
+
         code:purge(CustomTemplate),
         code:delete(CustomTemplate),
         Result
@@ -132,7 +133,7 @@ render_template(Template, DefaultTemplate, Props) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% determine the service name, provider, and url. Hunts (in order) 
+%% determine the service name, provider, and url. Hunts (in order)
 %% in the event, parent account notification object, and then default.
 %% @end
 %%--------------------------------------------------------------------
@@ -179,7 +180,7 @@ get_service_props(Request, Account, ConfigCat) ->
              ,{<<"send_from">>, DefaultFrom}
              ,{<<"host">>, wh_util:to_binary(net_adm:localhost())}
             ]
-    end.         
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -188,7 +189,7 @@ get_service_props(Request, Account, ConfigCat) ->
 %% account object
 %% @end
 %%--------------------------------------------------------------------
--spec get_rep_email/1 :: (wh_json:json_object()) -> undefined | ne_binary().
+-spec get_rep_email/1 :: (wh_json:json_object()) -> 'undefined' | ne_binary().
 get_rep_email(JObj) ->
     AccountId = wh_json:get_value(<<"pvt_account_id">>, JObj),
     case wh_json:get_value(<<"pvt_tree">>, JObj, []) of
@@ -200,8 +201,8 @@ get_rep_email([], _) ->
     undefined;
 get_rep_email([Parent|Parents], AccountId) ->
     ParentDb = wh_util:format_account_id(Parent, encoded),
-    ViewOptions = [{<<"include_docs">>, true}
-                   ,{<<"key">>, AccountId}
+    ViewOptions = [include_docs
+                   ,{key, AccountId}
                   ],
     lager:debug("attempting to find sub account rep for ~s in parent account ~s", [AccountId, Parent]),
     case couch_mgr:get_results(ParentDb, <<"sub_account_reps/find_assignments">>, ViewOptions) of
@@ -211,14 +212,13 @@ get_rep_email([Parent|Parents], AccountId) ->
                     lager:debug("found rep but they have no email, attempting to get email of admin"),
                     wh_json:get_value(<<"email">>, find_admin(ParentDb));
                 Else ->
-                    lager:debug("found rep but email: ~s", [Else]), 
+                    lager:debug("found rep but email: ~s", [Else]),
                     Else
             end;
-        _E -> 
+        _E ->
             lager:debug("failed to find rep for sub account, attempting next parent"),
             get_rep_email(Parents, Parents)
     end.
-    
 
 %%--------------------------------------------------------------------
 %% @public
@@ -227,27 +227,27 @@ get_rep_email([Parent|Parents], AccountId) ->
 %% a sub account object or sub account db name.
 %% @end
 %%--------------------------------------------------------------------
--spec find_admin/1 :: (undefined | ne_binary() | wh_json:json_object()) -> wh_json:json_object().
+-spec find_admin/1 :: ('undefined' | ne_binary() | wh_json:json_object()) -> wh_json:json_object().
 find_admin(undefined) ->
     wh_json:new();
 find_admin(AccountDb) when is_binary(AccountDb) ->
-    ViewOptions = [{<<"key">>, <<"user">>}
-                   ,{<<"include_docs">>, true}
+    ViewOptions = [{key, <<"user">>}
+                   ,include_docs
                   ],
     case couch_mgr:get_results(AccountDb, <<"maintenance/listing_by_type">>, ViewOptions) of
-        {ok, Users} -> 
+        {ok, Users} ->
             Admins = [User || User <- Users
                                   ,wh_json:get_value([<<"doc">>, <<"priv_level">>], User) =:= <<"admin">>
-                                  ,wh_json:get_ne_value([<<"doc">>, <<"email">>], User) =/= undefined 
+                                  ,wh_json:get_ne_value([<<"doc">>, <<"email">>], User) =/= undefined
                      ],
             case Admins of
                 [] ->
                     lager:debug("failed to find any admins with email addresses in ~s", [AccountDb]),
                     wh_json:new();
-                Else -> 
+                Else ->
                     wh_json:get_value(<<"doc">>, hd(Else))
             end;
-        _E -> 
+        _E ->
             lager:debug("faild to find users in ~s: ~p", [AccountDb, _E]),
             wh_json:new()
     end;
@@ -260,7 +260,9 @@ find_admin(Account) ->
 %% given a notification event try to open the account definition doc
 %% @end
 %%--------------------------------------------------------------------
--spec get_account_doc/1 :: (wh_json:json_object()) -> {ok, wh_json:json_object()} | {error, term()}.
+-spec get_account_doc/1 :: (wh_json:json_object()) -> {'ok', wh_json:json_object()} |
+                                                      {'error', term()} |
+                                                      'undefined'.
 get_account_doc(JObj) ->
     case {wh_json:get_value(<<"Account-DB">>, JObj), wh_json:get_value(<<"Account-ID">>, JObj)} of
         {undefined, undefined} -> undefined;
@@ -268,6 +270,6 @@ get_account_doc(JObj) ->
             couch_mgr:open_doc(wh_util:format_account_id(Id1, encoded), Id1);
         {Id2, undefined} ->
             couch_mgr:open_doc(Id2, wh_util:format_account_id(Id2, raw));
-        {Db, AccountId} -> 
+        {Db, AccountId} ->
             couch_mgr:open_doc(Db, AccountId)
     end.

@@ -3,7 +3,8 @@
 %%% @doc
 %%%
 %%% @end
-%%% Created : 25 Jan 2012 by Karl Anderson <karl@2600hz.org>
+%%% @contributors
+%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(notify_maintenance).
 

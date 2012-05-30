@@ -1,10 +1,11 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2010-2011, VoIP INC
+%%% @copyright (C) 2010-2012, VoIP INC
 %%% @doc
 %%%
 %%% @end
-%%% Created :  1 Dec 2010 by James Aimonetti <james@2600hz.org>
+%%% @contributors
+%%%   James Aimonetti
+%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(whapps_controller).
 
