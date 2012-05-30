@@ -39,6 +39,7 @@
 -export([set_account_db/2, account_db/1]).
 -export([set_account_id/2, account_id/1]).
 
+-export([set_switch_nodename/2, switch_nodename/1]).
 -export([set_switch_hostname/2, switch_hostname/1]).
 -export([set_inception/2, inception/1]).
 
@@ -86,6 +87,8 @@
                        ,caller_id_number = <<"0000000000">> :: ne_binary() %% The caller number
                        ,callee_id_name = <<>> :: binary()                  %% The callee name
                        ,callee_id_number = <<>> :: binary()                %% The callee number
+                       ,switch_nodename = <<>> :: binary()                 %% The switch node name (as known in ecallmgr)
+                       ,switch_hostname :: ne_binary()                     %% The switch hostname (as reported by the switch)
                        ,request = <<"nouser@norealm">> :: ne_binary()      %% The request of sip_request_user + @ + sip_request_host
                        ,request_user = <<"nouser">> :: ne_binary()         %% SIP request user
                        ,request_realm = <<"norealm">> :: ne_binary()       %% SIP request host
@@ -95,7 +98,6 @@
                        ,to = <<"nouser@norealm">> :: ne_binary()           %% Result of sip_to_user + @ + sip_to_host
                        ,to_user = <<"nouser">> :: ne_binary()              %% SIP to user
                        ,to_realm = <<"norealm">> :: ne_binary()            %% SIP to host
-                       ,switch_hostname :: ne_binary()                        %% What media server is the call on
                        ,inception :: whapps_api_binary()                   %% Origin of the call <<"on-net">> | <<"off-net">>
                        ,account_db :: whapps_api_binary()                  %% The database name of the account that authorized this call
                        ,account_id :: whapps_api_binary()                  %% The account id that authorized this call
@@ -158,10 +160,11 @@ from_route_req(RouteReq, #whapps_call{}=Call) ->
                      ,to=To
                      ,to_user=ToUser
                      ,to_realm=ToRealm
-                     ,switch_hostname = wh_json:get_value(<<"Media-Server">>, RouteReq)
                      ,inception=Inception
                      ,account_id=AccountId
                      ,account_db=AccountDb
+                     ,switch_hostname = wh_json:get_value(<<"Switch-Hostname">>, RouteReq, Call#whapps_call.switch_hostname)
+                     ,switch_nodename = wh_json:get_ne_value(<<"Switch-Nodename">>, RouteReq, Call#whapps_call.switch_nodename)
                      ,authorizing_id = wh_json:get_ne_value(<<"Authorizing-ID">>, CCVs, Call#whapps_call.authorizing_id)
                      ,authorizing_type = wh_json:get_ne_value(<<"Authorizing-Type">>, CCVs, Call#whapps_call.authorizing_type)
                      ,caller_id_name = wh_json:get_value(<<"Caller-ID-Name">>, RouteReq, Call#whapps_call.caller_id_name)
@@ -233,7 +236,8 @@ from_json(JObj, Call) ->
                      ,to = wh_json:get_ne_value(<<"To">>, JObj, to(Call))
                      ,to_user = wh_json:get_ne_value(<<"To-User">>, JObj, to_user(Call))
                      ,to_realm = wh_json:get_ne_value(<<"To-Realm">>, JObj, to_realm(Call))
-                     ,switch_hostname = wh_json:get_value(<<"Media-Server">>, JObj, switch_hostname(Call))
+                     ,switch_hostname = wh_json:get_value(<<"Switch-Hostname">>, JObj, switch_hostname(Call))
+                     ,switch_nodename = wh_json:get_value(<<"Switch-Nodename">>, JObj, switch_nodename(Call))
                      ,inception = wh_json:get_ne_value(<<"Inception">>, JObj, inception(Call))
                      ,account_db = wh_json:get_ne_value(<<"Account-DB">>, JObj, account_db(Call))
                      ,account_id = wh_json:get_ne_value(<<"Account-ID">>, JObj, account_id(Call))
@@ -287,7 +291,8 @@ to_proplist(#whapps_call{}=Call) ->
      ,{<<"To">>, to(Call)}
      ,{<<"To-User">>, to_user(Call)}
      ,{<<"To-Realm">>, to_realm(Call)}
-     ,{<<"Media-Server">>, switch_hostname(Call)}
+     ,{<<"Switch-Hostname">>, switch_hostname(Call)}
+     ,{<<"Switch-Nodename">>, switch_nodename(Call)}
      ,{<<"Inception">>, inception(Call)}
      ,{<<"Account-DB">>, account_db(Call)}
      ,{<<"Account-ID">>, account_id(Call)}
@@ -469,10 +474,19 @@ to_realm(#whapps_call{to_realm=ToRealm}) ->
     ToRealm.
 
 -spec set_switch_hostname/2 :: (ne_binary(), whapps_call:call()) -> whapps_call:call().
--spec switch_hostname/1 :: (whapps_call:call()) -> ne_binary().
 set_switch_hostname(Srv, #whapps_call{}=Call) ->
     Call#whapps_call{switch_hostname=Srv}.
+
+-spec switch_hostname/1 :: (whapps_call:call()) -> ne_binary().
 switch_hostname(#whapps_call{switch_hostname=Srv}) ->
+    Srv.
+
+-spec set_switch_nodename/2 :: (ne_binary(), whapps_call:call()) -> whapps_call:call().
+set_switch_nodename(Srv, #whapps_call{}=Call) ->
+    Call#whapps_call{switch_nodename=Srv}.
+
+-spec switch_nodename/1 :: (whapps_call:call()) -> ne_binary().
+switch_nodename(#whapps_call{switch_nodename=Srv}) ->
     Srv.
 
 -spec set_inception/2 :: (ne_binary(), whapps_call:call()) -> whapps_call:call().
