@@ -1,10 +1,11 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2012, VoIP INC
 %%% @doc
 %%%
 %%% @end
-%%% Created :  3 May 2011 by James Aimonetti <james@2600hz.org>
+%%% @contributors
+%%%   James Aimonetti
+%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(notify_sup).
 
@@ -56,8 +57,7 @@ listener_proc() ->
 %% specifications.
 %% @end
 %%--------------------------------------------------------------------
--spec init(Args) -> sup_init_ret() when
-      Args :: [].
+-spec init([]) -> sup_init_ret().
 init([]) ->
     RestartStrategy = one_for_one,
     MaxRestarts = 5,

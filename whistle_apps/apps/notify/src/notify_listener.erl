@@ -79,6 +79,7 @@ stop(Srv) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
+    put(callid, ?LOG_SYSTEM_ID),
     lager:debug("starting new vm notify process"),
     {ok, #state{}}.
 
@@ -123,7 +124,7 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info(_Info, State) ->
-    lager:debug("Unhandled message: ~p", [_Info]),
+    lager:debug("unhandled message: ~p", [_Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -149,8 +150,7 @@ handle_event(_JObj, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
-    lager:debug("vm notify process ~p termination", [_Reason]),
-    ok.
+    lager:debug("vm notify process ~p termination", [_Reason]).
 
 %%--------------------------------------------------------------------
 %% @private
