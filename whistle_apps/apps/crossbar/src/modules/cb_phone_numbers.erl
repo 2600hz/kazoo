@@ -204,7 +204,7 @@ validate(Context, _, ?PORT_DOCS, _) ->
 -spec post/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
 -spec post/4 :: (#cb_context{}, path_token(), path_token(), path_token()) -> #cb_context{}.
 post(#cb_context{doc=JObj, auth_account_id=AuthBy}=Context, Number) ->
-    Result = wh_number_manager:set_public_fields(Number, JObj, AuthBy),
+    Result = (catch wh_number_manager:set_public_fields(Number, JObj, AuthBy)),
     set_response(Result, Number, Context).
 
 post(#cb_context{req_files=Files}=Context, Number, ?PORT_DOCS, _) ->
@@ -214,14 +214,14 @@ post(#cb_context{req_files=Files}=Context, Number, ?PORT_DOCS, _) ->
 -spec put/3 :: (#cb_context{}, path_token(), path_token()) -> #cb_context{}.
 -spec put/4 :: (#cb_context{}, path_token(), path_token(), path_token()) -> #cb_context{}.
 put(#cb_context{account_id=AssignTo, auth_account_id=AuthBy, doc=JObj}=Context, Number) ->
-    Result = wh_number_manager:create_number(Number, AssignTo, AuthBy, JObj),
+    Result = (catch wh_number_manager:create_number(Number, AssignTo, AuthBy, JObj)),
     set_response(Result, Number, Context).
 
 put(#cb_context{account_id=AssignTo, auth_account_id=AuthBy, doc=JObj}=Context, Number, ?PORT) ->
-    Result = wh_number_manager:port_in(Number, AssignTo, AuthBy, JObj),
+    Result = (catch wh_number_manager:port_in(Number, AssignTo, AuthBy, JObj)),
     set_response(Result, Number, Context);
 put(#cb_context{account_id=AssignTo, auth_account_id=AuthBy, doc=JObj}=Context, Number, ?ACTIVATE) ->
-    case wh_number_manager:assign_number_to_account(Number, AssignTo, AuthBy, JObj) of
+    case (catch wh_number_manager:assign_number_to_account(Number, AssignTo, AuthBy, JObj)) of
         {ok, _}=Result ->
             case set_response(Result, Number, Context) of
                 #cb_context{resp_status=success}=C1 ->
@@ -236,7 +236,7 @@ put(#cb_context{account_id=AssignTo, auth_account_id=AuthBy, doc=JObj}=Context, 
             set_response(Else, Number, Context)
     end;
 put(#cb_context{account_id=AssignTo, auth_account_id=AuthBy, doc=JObj}=Context, Number, ?RESERVE) ->
-    Result = wh_number_manager:reserve_number(Number, AssignTo, AuthBy, JObj),
+    Result = (catch wh_number_manager:reserve_number(Number, AssignTo, AuthBy, JObj)),
     set_response(Result, Number, Context);
 put(#cb_context{req_files=Files}=Context, Number, ?PORT_DOCS) ->
     put_attachments(Number, Context, Files).
@@ -248,12 +248,12 @@ put(#cb_context{req_files=Files}=Context, Number, ?PORT_DOCS, _) ->
 -spec delete/4 :: (#cb_context{}, path_token(), path_token(), path_token()) -> #cb_context{}.
 
 delete(#cb_context{auth_account_id=AuthBy}=Context, Number) ->
-    Result = wh_number_manager:release_number(Number, AuthBy),
+    Result = (catch wh_number_manager:release_number(Number, AuthBy)),
     set_response(Result, Number, Context).
 
 delete(#cb_context{auth_account_id=AuthBy}=Context, Number, ?PORT_DOCS, Name) ->
     FileName = wh_util:to_binary(http_uri:encode(wh_util:to_list(Name))),
-    Result = wh_number_manager:delete_attachment(Number, FileName, AuthBy),
+    Result = (catch wh_number_manager:delete_attachment(Number, FileName, AuthBy)),
     set_response(Result, Number, Context).
 
 %%%===================================================================
@@ -409,6 +409,7 @@ set_response(ok, _, Context) ->
 set_response({error, Else}, _, Context) when is_binary(Else) ->
     crossbar_util:response_invalid_data(Else, Context);
 set_response(_Else, _, Context) ->
+    lager:debug("unexpected response: ~p", [_Else]),
     crossbar_util:response_db_fatal(Context).
 
 %%--------------------------------------------------------------------

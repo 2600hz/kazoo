@@ -46,16 +46,16 @@ get(Number) ->
 
 get(Number, PublicFields) ->
     Num = wnm_util:normalize_number(Number),
-    Routines = [fun(J) ->    
+    Routines = [fun(J) ->
                         case wnm_util:is_reconcilable(Num) of
                             false -> {error, not_reconcilable};
                             true -> {ok, J}
                         end
                 end
                 ,fun({error, _}=E) -> E;
-                    ({ok, _}) -> 
+                    ({ok, _}) ->
                          Db = wnm_util:number_to_db_name(Num),
-                         couch_mgr:open_doc(Db, Num) 
+                         couch_mgr:open_doc(Db, Num)
                  end
                 ,fun({error, _}=E) -> E;
                     ({ok, J}) ->
@@ -138,9 +138,9 @@ create_port_in(Number, AssignTo, AuthBy) ->
 %% and run any providers
 %% @end
 %%--------------------------------------------------------------------
--spec save/1 :: (wh_json:json_object()) -> {ok, wh_json:json_object()} | 
+-spec save/1 :: (wh_json:json_object()) -> {ok, wh_json:json_object()} |
                                            {error, term()}.
--spec save/2 :: (wh_json:json_object(), {'error', _} | {'ok', wh_json:json_object()} | wh_json:json_object()) -> {ok, wh_json:json_object()} | 
+-spec save/2 :: (wh_json:json_object(), {'error', _} | {'ok', wh_json:json_object()} | wh_json:json_object()) -> {ok, wh_json:json_object()} |
                                                                                                                  {error, term()}.
 save(JObj) ->
     Num = wh_json:get_value(<<"_id">>, JObj),
@@ -153,43 +153,34 @@ save(JObj, {ok, PriorJObj}) ->
     save(JObj, PriorJObj);
 save(JObj, PriorJObj) ->
     Num = wh_json:get_value(<<"_id">>, JObj),
-    Db = wnm_util:number_to_db_name(Num), 
     Routines = [fun(J) -> {ok, wh_json:set_value(<<"pvt_modified">>, wh_util:current_tstamp(), J)} end
-                ,fun({ok, J}) ->
-                         lager:debug("attempting to save '~s' in '~s'", [Num, Db]),
-                         case couch_mgr:save_doc(Db, J) of
-                             {error, not_found} ->
-                                 lager:debug("storing number '~s' in a new database '~s'", [Num, Db]),
-                                 couch_mgr:db_create(Db),
-                                 couch_mgr:revise_views_from_folder(Db, whistle_number_manager),
-                                 couch_mgr:save_doc(Db, J);
-                             Else -> Else
+                ,fun({error, _}=E) -> E;
+                    ({ok, J}) ->
+                         State = wh_json:get_value(<<"pvt_number_state">>, J),
+                         case wnm_util:exec_providers_save(J, PriorJObj, Num, State) of
+                             {ok, _}=Ok -> Ok;
+                             {error, _R} ->
+                                 lager:debug("providers failed: ~p", [_R]),
+                                 {ok, J}
                          end
                  end
                 ,fun({error, _}=E) -> E;
-                    ({ok, J}) -> 
-                         State = wh_json:get_value(<<"pvt_number_state">>, J),
-                         case wnm_util:exec_providers_save(J, PriorJObj, Num, State) of
-                             {ok, J} -> 
-                                 lager:debug("service providers did not modify number document skipping second save operation"),
-                                 {ok, J};
-                             {ok, JObj2} ->
-                                 couch_mgr:save_doc(Db, JObj2);
-                             {error, _R} -> 
-                                 lager:debug("providers failed: ~p", [_R]),
-                                 {ok, J}
-                         end                                                   
+                    ({ok, J}) ->
+                         AccountId = wnm_util:find_account_id(J),
+                         case update_account_phone_numbers(J, AccountId) of
+                             {error, _}=E -> E;
+                             {ok, _} -> save_phone_number(J)
+                         end
                  end
-                ,fun({error, _R}=E) -> 
+                ,fun({error, _R}=E) ->
                          lager:debug("failed to save number: ~p", [_R]),
                          E;
-                    ({ok, J}) -> 
-                         AccountId = wnm_util:find_account_id(JObj),
-                         update_account_phone_numbers(J, AccountId)
+                    ({ok, _}=Ok) ->
+                         lager:debug("updated phone number ~s", [Num]),
+                         Ok
                  end
                ],
     lists:foldl(fun(F, J) -> F(J) end, JObj, Routines).
-
 
 %%--------------------------------------------------------------------
 %% @public
@@ -201,7 +192,7 @@ save(JObj, PriorJObj) ->
                                              {'error', _}.
 -spec delete/2 :: (wh_json:json_object(), 'undefined' | ne_binary()) -> {'ok', wh_json:json_object()} |
                                                                         {'error', _}.
-delete(JObj) -> 
+delete(JObj) ->
     delete(JObj, wh_json:get_value(<<"pvt_assigned_to">>, JObj)).
 
 delete(JObj, AccountId) ->
@@ -228,20 +219,21 @@ delete(JObj, AccountId) ->
 remove_account_phone_numbers(_, undefined) ->
     {error, no_account_id};
 remove_account_phone_numbers(Number, Account) ->
-    AccountDb = wh_util:format_account_id(Account, encoded),    
+    AccountDb = wh_util:format_account_id(Account, encoded),
     case couch_mgr:open_doc(AccountDb, ?WNM_PHONE_NUMBER_DOC) of
-        {error, _R} -> 
+        {error, _R} ->
             lager:debug("failed to open account ~s document for removal of ~s: ~p", [?WNM_PHONE_NUMBER_DOC, Number, _R]),
             ok;
         {ok, PhoneNumbers} ->
-            couch_mgr:save_doc(AccountDb, wh_json:delete_key(Number, PhoneNumbers))
+            UpdatedPhoneNumbers = wh_json:delete_key(Number, PhoneNumbers),
+            _ = wh_service_numbers:update(UpdatedPhoneNumbers),
+            couch_mgr:save_doc(AccountDb, UpdatedPhoneNumbers)
     end.
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Adds a number to the list kept on the account defintion doc, then
-%% aggregates the new document to the accounts db.
+%% Creates the account phone_numbers document to be saved later.
 %% @end
 %%--------------------------------------------------------------------
 -spec update_account_phone_numbers/2 :: (wh_json:json_object(), 'undefined' | ne_binary()) -> {ok, wh_json:json_object()} |
@@ -249,40 +241,16 @@ remove_account_phone_numbers(Number, Account) ->
 update_account_phone_numbers(_, undefined) ->
     {error, no_account_id};
 update_account_phone_numbers(JObj, Account) ->
-    AccountId = wh_util:format_account_id(Account, raw),
-    AccountDb = wh_util:format_account_id(Account, encoded),
-    Features = wh_json:get_value(<<"pvt_features">>, JObj, []),
-    Number = wh_json:get_value(<<"_id">>, JObj),
-    State = wh_json:get_value(<<"pvt_number_state">>, JObj),
-    Summary = wh_json:from_list([{<<"state">>, wh_json:get_value(<<"pvt_number_state">>, JObj)}
-                                 ,{<<"e911">>, lists:member(<<"dash_e911">>, Features)}
-                                 ,{<<"cnam">>, lists:member(<<"cnam">>, Features)}
-                                 ,{<<"failover">>, lists:member(<<"failover">>, Features)}
-                                 ,{<<"local_number">>, wh_json:get_value(<<"pvt_module_name">>, JObj) =:= <<"wnm_local">>}
-                                 ,{<<"force_outbound">>, wh_json:is_true(<<"force_outbound">>, JObj, false) 
-                                   orelse State =:= <<"port_in">>
-                                       orelse State =:= <<"port_out">>
-                                  }
-                                ]),
-    OnCreate = [{<<"pvt_type">>, <<"phone_numbers">>}
-                ,{<<"pvt_created">>, wh_util:current_tstamp()}
-                ,{<<"pvt_modified">>, wh_util:current_tstamp()}
-                ,{<<"pvt_vsn">>, <<"1">>}
-                ,{<<"pvt_account_db">>, AccountDb}
-                ,{<<"pvt_account_id">>, AccountId}
-               ],
-    case couch_mgr:update_doc(AccountDb, ?WNM_PHONE_NUMBER_DOC, [{Number, Summary}], OnCreate) of
-        {ok, _} ->
-            lager:debug("updated the account ~s document", [?WNM_PHONE_NUMBER_DOC]);
-        {error, _R}=E ->
-            lager:debug("failed to save account ~s document for ~s: ~p", [?WNM_PHONE_NUMBER_DOC, Number, _R]),
-            E
+    case get_phone_numbers_doc(JObj, Account) of
+        {error, _}=E -> E;
+        {ok, PhoneNumbersDoc} -> 
+            save_phone_numbers_doc(JObj, PhoneNumbersDoc)
     end.
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec discovery/3 :: (wh_json:json_object(), 'undefined' | ne_binary(), 'undefined' | ne_binary()) -> {'error', 'invalid_state_transition'}.
@@ -296,7 +264,7 @@ discovery(<<"discovery">>, _, _, _) ->
 discovery(<<"port_in">>, _, _, _) ->
     {error, invalid_state_transition};
 discovery(<<"available">>, _, _, _) ->
-    {error, invalid_state_transition};    
+    {error, invalid_state_transition};
 discovery(<<"reserved">>, _, _, _) ->
     {error, invalid_state_transition};
 discovery(<<"in_service">>, _, _, _) ->
@@ -311,7 +279,7 @@ discovery(<<"disconnected">>, _, _, _) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec port_in/3 :: (wh_json:json_object(), 'undefined' | ne_binary(), 'undefined' | ne_binary()) -> {'error','invalid_state_transition' | 'no_change_required' | 'unauthorized'}.
@@ -321,7 +289,7 @@ port_in(JObj, AssignTo, AuthBy) ->
     port_in(wh_json:get_value(<<"pvt_number_state">>, JObj), JObj, AssignTo, AuthBy).
 
 port_in(<<"discovery">>, _, _, _) ->
-    {error, invalid_state_transition};    
+    {error, invalid_state_transition};
 port_in(<<"port_in">>, JObj, AssignTo, _) ->
     case wh_json:get_value(<<"pvt_assigned_to">>, JObj) of
         AssignTo -> {error, no_change_required};
@@ -343,7 +311,7 @@ port_in(<<"disconnected">>, _, _, _) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec available/3 :: (wh_json:json_object(), 'undefined' | ne_binary(), 'undefined' | ne_binary()) -> transition_return().
@@ -353,7 +321,7 @@ available(JObj, AssignTo, AuthBy) ->
     available(wh_json:get_value(<<"pvt_number_state">>, JObj), JObj, AssignTo, AuthBy).
 
 available(<<"discovery">>, _, _, _) ->
-    {error, invalid_state_transition};    
+    {error, invalid_state_transition};
 available(<<"port_in">>, _, _, _) ->
     {error, invalid_state_transition};
 available(<<"available">>, _, _, _) ->
@@ -372,7 +340,7 @@ available(<<"released">>, JObj, _, AuthBy) ->
                         end
                 end
                 ,fun({error, _}=E) -> E;
-                    ({ok, J}) -> 
+                    ({ok, J}) ->
                          {ok, wh_json:set_value(<<"pvt_number_state">>, <<"available">>, J)}
                  end
                ],
@@ -385,7 +353,7 @@ available(<<"disconnected">>, _, _, _) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec reserved/3 :: (wh_json:json_object(), 'undefined' | ne_binary(), 'undefined' | ne_binary()) -> transition_return().
@@ -395,10 +363,10 @@ reserved(JObj, AssignTo, AuthBy) ->
     reserved(wh_json:get_value(<<"pvt_number_state">>, JObj), JObj, AssignTo, AuthBy).
 
 reserved(<<"discovery">>, JObj, AssignTo, AuthBy) ->
-    Routines = [fun(J) -> 
-                        case wh_util:is_empty(AssignTo) orelse wh_util:is_empty(AuthBy) of 
+    Routines = [fun(J) ->
+                        case wh_util:is_empty(AssignTo) orelse wh_util:is_empty(AuthBy) of
                             true -> {error, unauthorized};
-                            false -> {ok, J} 
+                            false -> {ok, J}
                         end
                 end
                 ,fun({error, _}=E) -> E;
@@ -416,11 +384,11 @@ reserved(<<"discovery">>, JObj, AssignTo, AuthBy) ->
                          end
                  end
                 ,fun({error, _}=E) -> E;
-                    ({ok, J}) -> 
+                    ({ok, J}) ->
                          {ok, wh_json:set_value(<<"pvt_assigned_to">>, AssignTo, J)}
                  end
                 ,fun({error, _}=E) -> E;
-                    ({ok, J}) -> 
+                    ({ok, J}) ->
                          {ok, wh_json:set_value(<<"pvt_number_state">>, <<"reserved">>, J)}
                  end
                 ,fun({error, _}=E) -> E;
@@ -448,10 +416,10 @@ reserved(<<"discovery">>, JObj, AssignTo, AuthBy) ->
 reserved(<<"port_in">>, _, _, _) ->
     {error, invalid_state_transition};
 reserved(<<"available">>, JObj, AssignTo, _) ->
-    Routines = [fun(J) -> 
-                        case wh_util:is_empty(AssignTo) of 
+    Routines = [fun(J) ->
+                        case wh_util:is_empty(AssignTo) of
                             true -> {error, unauthorized};
-                            false -> {ok, J} 
+                            false -> {ok, J}
                         end
                 end
                 ,fun({error, _}=E) -> E;
@@ -469,11 +437,11 @@ reserved(<<"available">>, JObj, AssignTo, _) ->
                          end
                  end
                 ,fun({error, _}=E) -> E;
-                    ({ok, J}) -> 
+                    ({ok, J}) ->
                          {ok, wh_json:set_value(<<"pvt_assigned_to">>, AssignTo, J)}
                  end
                 ,fun({error, _}=E) -> E;
-                    ({ok, J}) -> 
+                    ({ok, J}) ->
                          {ok, wh_json:set_value(<<"pvt_number_state">>, <<"reserved">>, J)}
                  end
                ],
@@ -481,23 +449,23 @@ reserved(<<"available">>, JObj, AssignTo, _) ->
 reserved(<<"reserved">>, _, _, undefined) ->
     {error, unauthorized};
 reserved(<<"reserved">>, JObj, AssignTo, AuthBy) ->
-    Routines = [fun(J) -> 
-                        case wh_util:is_empty(AssignTo) orelse wh_util:is_empty(AuthBy) of 
+    Routines = [fun(J) ->
+                        case wh_util:is_empty(AssignTo) orelse wh_util:is_empty(AuthBy) of
                             true -> {error, unauthorized};
-                            false -> {ok, J} 
+                            false -> {ok, J}
                         end
                 end
-                ,fun(J) -> 
-                        case wh_json:get_value(<<"pvt_assigned_to">>, J) of
-                            AssignTo -> {error, no_change_required};
-                            _Else -> {ok, J}
-                        end
-                end
+                ,fun(J) ->
+                         case wh_json:get_value(<<"pvt_assigned_to">>, J) of
+                             AssignTo -> {error, no_change_required};
+                             _Else -> {ok, J}
+                         end
+                 end
                 ,fun({error, _}=E) -> E;
                     ({ok, J}) ->
                          AssignedTo = wh_json:get_ne_value(<<"pvt_assigned_to">>, J),
-                         case wh_util:is_in_account_hierarchy(AssignedTo, AuthBy) 
-                             orelse wh_util:is_in_account_hierarchy(AuthBy, AssignedTo) 
+                         case wh_util:is_in_account_hierarchy(AssignedTo, AuthBy)
+                             orelse wh_util:is_in_account_hierarchy(AuthBy, AssignedTo)
                          of
                              false -> {error, unauthorized};
                              true ->  {ok, J}
@@ -516,36 +484,36 @@ reserved(<<"reserved">>, JObj, AssignTo, AuthBy) ->
                              _ when AssignedTo =:= undefined -> {ok, J};
                              _Else -> {ok, wh_json:set_value(<<"pvt_previously_assigned_to">>, AssignedTo, J)}
                          end
-                 end    
+                 end
                 ,fun({error, _}=E) -> E;
-                    ({ok, J}) -> 
+                    ({ok, J}) ->
                          {ok, wh_json:set_value(<<"pvt_assigned_to">>, AssignTo, J)}
                  end
                 ,fun({error, _}=E) -> E;
-                    ({ok, J}) -> 
+                    ({ok, J}) ->
                          {ok, wh_json:set_value(<<"pvt_number_state">>, <<"reserved">>, J)}
                  end
                ],
     lists:foldl(fun(F, J) -> F(J) end, JObj, Routines);
 reserved(<<"in_service">>, JObj, _, AuthBy) ->
-    Routines = [fun(J) -> 
-                        case wh_util:is_empty(AuthBy) of 
+    Routines = [fun(J) ->
+                        case wh_util:is_empty(AuthBy) of
                             true -> {error, unauthorized};
-                            false -> {ok, J} 
+                            false -> {ok, J}
                         end
                 end
                 ,fun(J) ->
-                        %% Only the account that the number belongs to or an ancestor of that
-                        %% account is authorized to move a in_service number back to reserved
-                        %% for the current account.
-                        AssignedTo = wh_json:get_ne_value(<<"pvt_assigned_to">>, J),
-                        case wh_util:is_in_account_hierarchy(AuthBy, AssignedTo, true) of
-                            false -> {error, unauthorized};
-                            true ->  {ok, J}
-                        end
-                end
+                         %% Only the account that the number belongs to or an ancestor of that
+                         %% account is authorized to move a in_service number back to reserved
+                         %% for the current account.
+                         AssignedTo = wh_json:get_ne_value(<<"pvt_assigned_to">>, J),
+                         case wh_util:is_in_account_hierarchy(AuthBy, AssignedTo, true) of
+                             false -> {error, unauthorized};
+                             true ->  {ok, J}
+                         end
+                 end
                 ,fun({error, _}=E) -> E;
-                    ({ok, J}) -> 
+                    ({ok, J}) ->
                          {ok, wh_json:set_value(<<"pvt_number_state">>, <<"reserved">>, J)}
                  end
                ],
@@ -560,7 +528,7 @@ reserved(<<"disconnected">>, _, _, _) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec in_service/3 :: (wh_json:json_object(), 'undefined' | ne_binary(), 'undefined' | ne_binary()) -> transition_return().
@@ -570,10 +538,10 @@ in_service(JObj, AssignTo, AuthBy) ->
     in_service(wh_json:get_value(<<"pvt_number_state">>, JObj), JObj, AssignTo, AuthBy).
 
 in_service(<<"discovery">>, JObj, AssignTo, AuthBy) ->
-    Routines = [fun(J) -> 
-                        case wh_util:is_empty(AssignTo) orelse wh_util:is_empty(AuthBy) of 
+    Routines = [fun(J) ->
+                        case wh_util:is_empty(AssignTo) orelse wh_util:is_empty(AuthBy) of
                             true -> {error, unauthorized};
-                            false -> {ok, J} 
+                            false -> {ok, J}
                         end
                 end
                 ,fun({error, _}=E) -> E;
@@ -586,11 +554,11 @@ in_service(<<"discovery">>, JObj, AssignTo, AuthBy) ->
                          end
                  end
                 ,fun({error, _}=E) -> E;
-                    ({ok, J}) -> 
+                    ({ok, J}) ->
                          {ok, wh_json:set_value(<<"pvt_assigned_to">>, AssignTo, J)}
                  end
                 ,fun({error, _}=E) -> E;
-                    ({ok, J}) -> 
+                    ({ok, J}) ->
                          {ok, wh_json:set_value(<<"pvt_number_state">>, <<"in_service">>, J)}
                  end
                 ,fun({error, _}=E) -> E;
@@ -618,16 +586,16 @@ in_service(<<"discovery">>, JObj, AssignTo, AuthBy) ->
 in_service(<<"port_in">>, JObj, _, _) ->
     Routines = [fun(J) -> {ok, J} end
                 ,fun({error, _}=E) -> E;
-                    ({ok, J}) -> 
+                    ({ok, J}) ->
                          {ok, wh_json:set_value(<<"pvt_number_state">>, <<"in_service">>, J)}
                  end
                ],
     lists:foldl(fun(F, J) -> F(J) end, JObj, Routines);
 in_service(<<"available">>, JObj, AssignTo, _) ->
-    Routines = [fun(J) -> 
-                        case wh_util:is_empty(AssignTo) of 
+    Routines = [fun(J) ->
+                        case wh_util:is_empty(AssignTo) of
                             true -> {error, unauthorized};
-                            false -> {ok, J} 
+                            false -> {ok, J}
                         end
                 end
                 ,fun({error, _}=E) -> E;
@@ -640,32 +608,32 @@ in_service(<<"available">>, JObj, AssignTo, _) ->
                          end
                  end
                 ,fun({error, _}=E) -> E;
-                    ({ok, J}) -> 
+                    ({ok, J}) ->
                          {ok, wh_json:set_value(<<"pvt_assigned_to">>, AssignTo, J)}
                  end
                 ,fun({error, _}=E) -> E;
-                    ({ok, J}) -> 
+                    ({ok, J}) ->
                          {ok, wh_json:set_value(<<"pvt_number_state">>, <<"in_service">>, J)}
                  end
                ],
     lists:foldl(fun(F, J) -> F(J) end, JObj, Routines);
 in_service(<<"reserved">>, JObj, AssignTo, AuthBy) ->
-    Routines = [fun(J) -> 
-                        case wh_util:is_empty(AssignTo) orelse wh_util:is_empty(AuthBy) of 
+    Routines = [fun(J) ->
+                        case wh_util:is_empty(AssignTo) orelse wh_util:is_empty(AuthBy) of
                             true -> {error, unauthorized};
-                            false -> {ok, J} 
+                            false -> {ok, J}
                         end
                 end
                 ,fun(J) ->
-                        AssignedTo = wh_json:get_ne_value(<<"pvt_assigned_to">>, J),
-                        case (wh_util:is_in_account_hierarchy(AssignedTo, AuthBy, true) 
-                              orelse wh_util:is_in_account_hierarchy(AuthBy, AssignedTo)) 
-                            andalso wh_util:is_in_account_hierarchy(AssignedTo, AssignTo, true)
-                        of
-                            false -> {error, unauthorized};
-                            true ->  {ok, J}
-                        end
-                end
+                         AssignedTo = wh_json:get_ne_value(<<"pvt_assigned_to">>, J),
+                         case (wh_util:is_in_account_hierarchy(AssignedTo, AuthBy, true)
+                               orelse wh_util:is_in_account_hierarchy(AuthBy, AssignedTo))
+                             andalso wh_util:is_in_account_hierarchy(AssignedTo, AssignTo, true)
+                         of
+                             false -> {error, unauthorized};
+                             true ->  {ok, J}
+                         end
+                 end
                 ,fun({error, _}=E) -> E;
                     ({ok, J}) ->
                          AssignedTo = wh_json:get_ne_value(<<"pvt_assigned_to">>, J),
@@ -674,13 +642,13 @@ in_service(<<"reserved">>, JObj, AssignTo, AuthBy) ->
                              _ when AssignedTo =:= undefined -> {ok, J};
                              _Else -> {ok, wh_json:set_value(<<"pvt_previously_assigned_to">>, AssignedTo, J)}
                          end
-                 end    
+                 end
                 ,fun({error, _}=E) -> E;
-                    ({ok, J}) -> 
+                    ({ok, J}) ->
                          {ok, wh_json:set_value(<<"pvt_assigned_to">>, AssignTo, J)}
                  end
                 ,fun({error, _}=E) -> E;
-                    ({ok, J}) -> 
+                    ({ok, J}) ->
                          {ok, wh_json:set_value(<<"pvt_number_state">>, <<"in_service">>, J)}
                  end
                ],
@@ -700,7 +668,7 @@ in_service(<<"disconnected">>, _, _, _) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec released/2 :: (wh_json:json_object(), 'undefined' | ne_binary()) -> transition_return().
@@ -710,7 +678,7 @@ released(JObj, AuthBy) ->
     released(wh_json:get_value(<<"pvt_number_state">>, JObj), JObj, AuthBy).
 
 released(<<"discovery">>, _, _) ->
-    {error, invalid_state_transition};    
+    {error, invalid_state_transition};
 released(<<"port_in">>, _, _) ->
     {error, invalid_state_transition};
 released(<<"available">>, _, _) ->
@@ -759,18 +727,18 @@ released(<<"reserved">>, JObj, AuthBy) ->
                                  {ok, wh_json:set_value(<<"pvt_deleted">>, true, J)};
                              [PrevAssignedTo] ->
                                  {ok, J};
-                             [PrevAccount] -> 
+                             [PrevAccount] ->
                                  Prop = [{<<"pvt_assigned_to">>, PrevAccount}
                                          ,{<<"pvt_number_state">>, <<"reserved">>}
                                         ],
                                  {ok, wh_json:set_values(Prop, J)};
-                             [PrevAccount|PrevAssignments] -> 
+                             [PrevAccount|PrevAssignments] ->
                                  Prop = [{<<"pvt_assigned_to">>, PrevAccount}
                                          ,{<<"pvt_number_state">>, <<"reserved">>}
                                          ,{<<"pvt_wnm_prev_assignments">>, PrevAssignments}
                                         ],
                                  {ok, wh_json:set_values(Prop, J)};
-                             _Else -> {ok, J}    
+                             _Else -> {ok, J}
                          end
                  end
                ],
@@ -819,12 +787,12 @@ released(<<"in_service">>, JObj, AuthBy) ->
                                  {ok, wh_json:set_value(<<"pvt_deleted">>, true, J)};
                              [PrevAssignedTo] ->
                                  {ok, J};
-                             [PrevAccount] -> 
+                             [PrevAccount] ->
                                  Prop = [{<<"pvt_assigned_to">>, PrevAccount}
                                          ,{<<"pvt_number_state">>, <<"reserved">>}
                                         ],
                                  {ok, wh_json:set_values(Prop, J)};
-                             [PrevAccount|PrevAssignments] -> 
+                             [PrevAccount|PrevAssignments] ->
                                  Prop = [{<<"pvt_assigned_to">>, PrevAccount}
                                          ,{<<"pvt_number_state">>, <<"reserved">>}
                                          ,{<<"pvt_wnm_prev_assignments">>, PrevAssignments}
@@ -845,7 +813,7 @@ released(<<"disconnected">>, _, _) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec port_out/2 :: (wh_json:json_object(), 'undefined' | ne_binary()) -> {'error','invalid_state_transition'}.
@@ -855,7 +823,7 @@ port_out(JObj, AuthBy) ->
     port_out(wh_json:get_value(<<"pvt_number_state">>, JObj), JObj, AuthBy).
 
 port_out(<<"discovery">>, _, _) ->
-    {error, invalid_state_transition};    
+    {error, invalid_state_transition};
 port_out(<<"port_in">>, _, _) ->
     {error, invalid_state_transition};
 port_out(<<"available">>, _, _) ->
@@ -874,7 +842,7 @@ port_out(<<"disconnected">>, _, _) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec disconnected/2 :: (wh_json:json_object(), 'undefined' | ne_binary()) -> {'error','invalid_state_transition'}.
@@ -884,7 +852,7 @@ disconnected(JObj, AuthBy) ->
     disconnected(wh_json:get_value(<<"pvt_number_state">>, JObj), JObj, AuthBy).
 
 disconnected(<<"discovery">>, _, _) ->
-    {error, invalid_state_transition};    
+    {error, invalid_state_transition};
 disconnected(<<"port_in">>, _, _) ->
     {error, invalid_state_transition};
 disconnected(<<"available">>, _, _) ->
@@ -899,3 +867,119 @@ disconnected(<<"port_out">>, _, _) ->
     {error, invalid_state_transition};
 disconnected(<<"disconnected">>, _, _) ->
     {error, invalid_state_transition}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Fetch and update the accounts phone_numbers document with the new
+%% number
+%% @end
+%%--------------------------------------------------------------------
+-spec get_phone_numbers_doc/2 :: (wh_json:json_object(), 'undefined' | ne_binary()) -> {ok, wh_json:json_object()} |
+                                                                                       {error, _}.
+get_phone_numbers_doc(_, undefined) ->
+    {error, no_account_id};
+get_phone_numbers_doc(JObj, Account) ->
+    State = wh_json:get_value(<<"pvt_number_state">>, JObj),
+    Available = lists:member(State, ?WNM_UNAVAILABLE_STATES),
+    get_phone_numbers_doc(JObj, Account, State, Available).
+
+get_phone_numbers_doc(JObj, Account, State, true) ->
+    AccountId = wh_util:format_account_id(Account, raw),
+    AccountDb = wh_util:format_account_id(Account, encoded),
+    Features = wh_json:get_value(<<"pvt_features">>, JObj, []),
+    Number = wh_json:get_value(<<"_id">>, JObj),
+    Summary = wh_json:from_list([{<<"state">>, wh_json:get_value(<<"pvt_number_state">>, JObj)}
+                                 ,{<<"e911">>, lists:member(<<"dash_e911">>, Features)}
+                                 ,{<<"cnam">>, lists:member(<<"cnam">>, Features)}
+                                 ,{<<"failover">>, lists:member(<<"failover">>, Features)}
+                                 ,{<<"local_number">>, wh_json:get_value(<<"pvt_module_name">>, JObj) =:= <<"wnm_local">>}
+                                 ,{<<"force_outbound">>, wh_json:is_true(<<"force_outbound">>, JObj, false)
+                                   orelse State =:= <<"port_in">>
+                                       orelse State =:= <<"port_out">>
+                                  }
+                                ]),
+    Updates = [{<<"_id">>, <<"phone_numbers">>}
+               ,{Number, Summary}
+               ,{<<"pvt_type">>, <<"phone_numbers">>}
+               ,{<<"pvt_modified">>, wh_util:current_tstamp()}
+               ,{<<"pvt_vsn">>, <<"1">>}
+               ,{<<"pvt_account_db">>, AccountDb}
+               ,{<<"pvt_account_id">>, AccountId}
+              ],
+    case couch_mgr:open_doc(AccountDb, ?WNM_PHONE_NUMBER_DOC) of
+        {ok, PhoneNumbers} ->
+            {ok, wh_json:set_values(Updates, PhoneNumbers)};
+        {error, not_found} ->
+            {ok, wh_json:from_list(Updates)};
+        {error, _R}=E ->
+            lager:debug("failed to open ~s/~s: ~p", [AccountDb, ?WNM_PHONE_NUMBER_DOC, _R]),
+            E
+    end;
+get_phone_numbers_doc(JObj, Account, _, false) ->
+    AccountId = wh_util:format_account_id(Account, raw),
+    AccountDb = wh_util:format_account_id(Account, encoded),
+    Number = wh_json:get_value(<<"_id">>, JObj),
+    case couch_mgr:open_doc(AccountDb, ?WNM_PHONE_NUMBER_DOC) of
+        {ok, PhoneNumbers} ->
+            {ok, wh_json:delete_key(Number, PhoneNumbers)};
+        {error, not_found} ->
+            {ok, wh_json:from_list([{<<"_id">>, <<"phone_numbers">>}
+                                    ,{<<"pvt_type">>, <<"phone_numbers">>}
+                                    ,{<<"pvt_modified">>, wh_util:current_tstamp()}
+                                    ,{<<"pvt_vsn">>, <<"1">>}
+                                    ,{<<"pvt_account_db">>, AccountDb}
+                                    ,{<<"pvt_account_id">>, AccountId}
+                                   ])};
+        {error, _R}=E ->
+            lager:debug("failed to open ~s/~s: ~p", [AccountDb, ?WNM_PHONE_NUMBER_DOC, _R]),
+            E
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Save the accounts phone_numbers document, merging changes if it
+%% conflicts
+%% @end
+%%-------------------------------------------------------------------- 
+-spec save_phone_numbers_doc/2 :: (wh_json:json_object(), wh_json:json_object()) -> {'ok', wh_json:json_object()} |
+                                                                                    {'error', _}.
+save_phone_numbers_doc(JObj, PhoneNumbersDoc) ->
+    AccountDb = wh_json:get_value(<<"pvt_account_db">>, PhoneNumbersDoc),
+    case wh_service_numbers:update(PhoneNumbersDoc) of
+        {error, _}=E -> E;
+        ok ->
+            case couch_mgr:save_doc(AccountDb, PhoneNumbersDoc) of
+                {ok, _}=Ok -> Ok;
+                {error, conflict} ->
+                    save_phone_numbers_doc(JObj, get_phone_numbers_doc(JObj, AccountDb));
+                {error, _R}=E ->
+                    lager:info("failed to update phone numbers doc in account ~s: ~p", [AccountDb, _R]),
+                    E
+            end
+    end.
+
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Update the phone number document creating the database if it doesnt
+%% already exist
+%% @end
+%%--------------------------------------------------------------------
+-spec save_phone_number/1 :: (wh_json:json_object()) -> {'ok', wh_json:json_object()} |
+                                                        {'error', _}.
+save_phone_number(JObj) ->
+    Num = wh_json:get_value(<<"_id">>, JObj),
+    Db = wnm_util:number_to_db_name(Num),
+    lager:debug("attempting to save '~s' in '~s'", [Num, Db]),
+    case couch_mgr:save_doc(Db, JObj) of
+        {ok, _}=Ok -> Ok;
+        {error, not_found} ->
+            lager:debug("storing number '~s' in a new database '~s'", [Num, Db]),
+            couch_mgr:db_create(Db),
+            couch_mgr:revise_views_from_folder(Db, whistle_number_manager),
+            save_phone_number(JObj);
+        {error, _R}=E -> E
+    end.

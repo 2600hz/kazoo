@@ -48,8 +48,7 @@
 %% the account and possibly a reseller are subscribed to.
 %% @end
 %%--------------------------------------------------------------------
--spec fetch/1 :: (ne_binary()) -> {'ok', reseller()}.
-
+-spec fetch/1 :: (ne_binary()) -> {'ok', reseller()} | {'error', 'no_service_plan'}.
 fetch(Account) ->
     AccountId = wh_util:format_account_id(Account, raw),    
     AccountDb = wh_util:format_account_id(Account, encoded),
@@ -60,13 +59,17 @@ fetch(Account) ->
         {ok, JObj} ->
             Reseller = wh_reseller:get_reseller_id(JObj),
             BillingId = wh_json:get_value(<<"pvt_billing_id">>, JObj, AccountId),
-            lager:debug("found reseller ~s for account ~s with billing id ~s", [Reseller, AccountId, BillingId]),
-            {ok, #wh_reseller{reseller = Reseller
-                              ,plans = get_plans(Reseller, JObj)
-                              ,bt_customer = bt_customer(BillingId)
-                              ,account_id = AccountId
-                              ,billing_id = BillingId
-                             }}
+            case get_plans(Reseller, JObj) of
+                [] -> {error, no_service_plan};
+                Plans ->
+                    lager:debug("found reseller ~s for account ~s with billing id ~s", [Reseller, AccountId, BillingId]),
+                    {ok, #wh_reseller{reseller = Reseller
+                                      ,plans = Plans
+                                      ,bt_customer = bt_customer(BillingId)
+                                      ,account_id = AccountId
+                                      ,billing_id = BillingId
+                                     }}
+            end
     end.
 
 %%--------------------------------------------------------------------
@@ -126,20 +129,32 @@ increment_quantity(Category, Name, #wh_reseller{account_id=AccountId
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
+%% Set the quantity of all addons on a given category to 0
+%% @end
+%%--------------------------------------------------------------------
+-spec reset_category_addons/2 :: (ne_binary(), resellers()) -> resellers().
+reset_category_addons(Category, Resellers) ->
+    [wh_reseller:reset_category(Category, Reseller) 
+     || Reseller <- Resellers
+    ].    
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
 %% 
 %% @end
 %%--------------------------------------------------------------------
 -spec commit_changes/1 :: (reseller()) -> ok.
-commit_changes(#wh_reseller{bt_subscriptions=Subscriptions}) ->
-    [begin
-         case braintree_subscription:update(Subscription) of
-             {ok, _} -> 
-                 SubscriptionId = braintree_subscription:get_id(Subscription),
-                 lager:debug("commited changes to subscription ~s", [SubscriptionId]),
-                 ok;
-             {error, _}=E ->
-                 throw(E)
-         end
+commit_changes(#wh_reseller{bt_subscriptions=Subscriptions, billing_id=BillingId}) ->
+    [case braintree_subscription:update(Subscription) of
+         {ok, _} -> ok;
+         {error, #bt_api_error{}=ApiError} ->
+             Resp = braintree_util:bt_api_error_to_json(ApiError),
+             lager:debug("billing error updating braintree: ~s", [wh_json:encode(Resp)]),
+             throw(wh_json:set_value(<<"billing_id">>, BillingId, Resp));
+         {error, _R} ->
+             lager:debug("billing error updating braintree: ~p", [_R]),
+             throw(wh_json:from_list([{<<"billing_id">>, BillingId}]))
      end
      || {_, Subscription} <- dict:to_list(Subscriptions)
     ].
