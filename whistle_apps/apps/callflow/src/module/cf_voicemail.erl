@@ -171,18 +171,20 @@ find_mailbox(#mailbox{max_login_attempts=MaxLoginAttempts}, Call, Loop) when Loo
 find_mailbox(Box, Call, Loop) ->
     lager:debug("requesting mailbox number to check"),
     case whapps_call_command:b_prompt_and_collect_digits(<<"1">>, <<"6">>, <<"vm-enter_id">>, <<"1">>, Call) of 
-        {ok, <<>>} -> find_mailbox(Box, Call, Loop + 1);
+        {ok, <<>>} ->
+            find_mailbox(Box, Call, Loop + 1);
         {ok, Mailbox} ->
             BoxNum = try wh_util:to_integer(Mailbox) catch _:_ -> 0 end,
             %% find the voicemail box, by making a fake 'callflow data payload' we look for it now because if the
             %% caller is the owner, and the pin is not required then we skip requesting the pin
-            ViewOptions = [{<<"key">>, BoxNum}],
+            ViewOptions = [{key, BoxNum}],
             AccountDb = whapps_call:account_db(Call),
             case couch_mgr:get_results(AccountDb, {<<"vmboxes">>, <<"listing_by_mailbox">>}, ViewOptions) of
                 {ok, []} ->
                     lager:debug("mailbox ~s doesnt exist", [Mailbox]),
                     find_mailbox(Box, Call, Loop + 1);
                 {ok, [JObj]} ->
+                    lager:debug("get profile of ~p", [JObj]),
                     ReqBox = get_mailbox_profile(wh_json:from_list([{<<"id">>, wh_json:get_value(<<"id">>, JObj)}]), Call),
                     check_mailbox(ReqBox, Call, Loop);
                 {ok, _} ->
@@ -192,7 +194,9 @@ find_mailbox(Box, Call, Loop) ->
                     lager:debug("failed to find mailbox ~s: ~p", [Mailbox, _E]),
                     find_mailbox(Box, Call, Loop + 1)
             end;
-        _ -> ok       
+        _E ->
+            lager:debug("recv other: ~p", [_E]),
+            ok
     end,
     ok.
 
@@ -264,9 +268,9 @@ play_greeting(#mailbox{skip_greeting=true}, _) ->
 play_greeting(#mailbox{unavailable_media_id=undefined, mailbox_number=Mailbox}, Call) ->
     lager:debug("mailbox has no greeting, playing the generic"),
     whapps_call_command:audio_macro([{prompt, <<"vm-person">>}
-                                 ,{say,  Mailbox}
-                                 ,{prompt, <<"vm-not_available">>}
-                                ], Call);
+                                     ,{say, Mailbox}
+                                     ,{prompt, <<"vm-not_available">>}
+                                    ], Call);
 play_greeting(#mailbox{unavailable_media_id = <<"local_stream://", _/binary>> = Id}, Call) ->
     lager:debug("mailbox has a greeting file on the softswitch: ~s", Id),
     whapps_call_command:play(Id, Call);
@@ -331,13 +335,17 @@ record_voicemail(AttachmentName, #mailbox{max_message_length=MaxMessageLength}=B
 setup_mailbox(#mailbox{}=Box, Call) ->
     lager:debug("starting voicemail configuration wizard"),
     {ok, _} = whapps_call_command:b_prompt(<<"vm-setup_intro">>, Call),
+
     lager:debug("prompting caller to set a pin"),
     _ = change_pin(Box, Call),
+
     {ok, _} = whapps_call_command:b_prompt(<<"vm-setup_rec_greeting">>, Call),
     lager:debug("prompting caller to record an unavailable greeting"),
+
     #mailbox{}=Box1 = record_unavailable_greeting(tmp_file(), Box, Call),
     ok = update_doc(<<"is_setup">>, true, Box1, Call),
     lager:debug("voicemail configuration wizard is complete"),
+
     {ok, _} = whapps_call_command:b_prompt(<<"vm-setup_complete">>, Call),
     Box1#mailbox{is_setup=true}.
 
@@ -768,15 +776,18 @@ has_message_meta(NewMsgCallId, Messages) ->
 get_mailbox_profile(Data, Call) ->
     Id = wh_json:get_value(<<"id">>, Data),
     AccountDb = whapps_call:account_db(Call),
+
     case get_mailbox_doc(AccountDb, Id, whapps_call:kvs_fetch(cf_capture_group, Call)) of
         {ok, JObj} ->
             MailboxId = wh_json:get_value(<<"_id">>, JObj),
             lager:debug("loaded voicemail box ~s", [MailboxId]),
             Default = #mailbox{},
+
             %% dont check if the voicemail box belongs to the owner (by default) if the call was not
             %% specificly to him, IE: calling a ring group and going to voicemail should not check
             LastAct = whapps_call:kvs_fetch(cf_last_action, Call),
             CheckIfOwner = ((undefined =:= LastAct) orelse (cf_device =:= LastAct)),
+
             #mailbox{mailbox_id = MailboxId
                      ,exists = true
                      ,keys = populate_keys(Call)
@@ -848,13 +859,17 @@ populate_keys(Call) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_mailbox_doc/3 :: (binary(), undefined | binary(), undefined | binary()) -> {ok, wh_json:json_object()} | {error, term()}.
+-spec get_mailbox_doc/3 :: (binary(), 'undefined' | binary(), 'undefined' | binary()) -> {'ok', wh_json:json_object()} |
+                                                                                         {'error', term()}.
 get_mailbox_doc(Db, Id, CaptureGroup) ->
     CGIsEmpty = wh_util:is_empty(CaptureGroup),
     case wh_util:is_empty(Id) of 
-        false -> couch_mgr:open_doc(Db, Id);
-        true when not CGIsEmpty -> 
-            Opts = [{<<"key">>, CaptureGroup}, {<<"include_docs">>, true}], 
+        false ->
+            lager:debug("opening ~s", [Id]),
+            couch_mgr:open_doc(Db, Id);
+        true when not CGIsEmpty ->
+            lager:debug("capture group not empty: ~s", [CaptureGroup]),
+            Opts = [{key, CaptureGroup}, include_docs], 
             case couch_mgr:get_results(Db, {<<"cf_attributes">>, <<"mailbox_number">>}, Opts) of
                 {ok, []} -> {error, not_found};
                 {ok, [JObj|_]} -> {ok, wh_json:get_value(<<"doc">>, JObj, wh_json:new())};
