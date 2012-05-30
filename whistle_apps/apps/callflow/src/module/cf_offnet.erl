@@ -74,7 +74,7 @@ offnet_req(Data, Call) ->
 -spec wait_for_offnet/0 :: () -> {ne_binary(), ne_binary() | 'undefined'}.
 wait_for_offnet() ->
     receive
-        {amqp_msg, {struct, _}=JObj} ->
+        {amqp_msg, JObj} ->
             case wh_util:get_event_type(JObj) of
                 { <<"resource">>, <<"offnet_resp">> } ->
                     {wh_json:get_value(<<"Response-Message">>, JObj)

@@ -156,8 +156,10 @@ validate(#cb_context{auth_doc=JObj, req_verb = <<"get">>}=Context) ->
             case couch_mgr:open_doc(Db, UserId) of
                 {ok, User} ->
                     Context#cb_context{resp_status=success
-                                       ,resp_data={struct, [{<<"account">>, Account}
-                                                            ,{<<"user">>, User}]}};
+                                       ,resp_data=wh_json:from_list([{<<"account">>, Account}
+                                                                     ,{<<"user">>, User}
+                                                                    ])
+                                      };
                 {error, R} ->
                     lager:debug("failed to get user for response ~p", [R]),
                     crossbar_util:response_db_fatal(Context)

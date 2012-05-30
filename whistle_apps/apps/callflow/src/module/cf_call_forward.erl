@@ -179,11 +179,11 @@ update_callfwd(#callfwd{doc_id=Id, enabled=Enabled, number=Num, require_keypress
     lager:debug("updating call forwarding settings on ~s", [Id]),
     AccountDb = whapps_call:account_db(Call),
     {ok, JObj} = couch_mgr:open_doc(AccountDb, Id),
-    CF1 = {struct, [{<<"enabled">>, Enabled}
-                    ,{<<"number">>, Num}
-                    ,{<<"require_keypress">>, RK}
-                    ,{<<"keep_caller_id">>, KCI}
-                   ]},
+    CF1 = wh_json:from_list([{<<"enabled">>, Enabled}
+                             ,{<<"number">>, Num}
+                             ,{<<"require_keypress">>, RK}
+                             ,{<<"keep_caller_id">>, KCI}
+                            ]),
     case couch_mgr:save_doc(AccountDb, wh_json:set_value(<<"call_forward">>, CF1, JObj)) of
         {error, conflict} ->
             lager:debug("update conflicted, trying again"),
