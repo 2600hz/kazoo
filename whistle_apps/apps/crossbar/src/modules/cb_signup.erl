@@ -199,14 +199,15 @@ validate_new_signup(#cb_context{req_data=JObj}=Context) ->
     {UserErrors, User} = validate_user(wh_json:get_value(<<"user">>, JObj), Context),
     case {AccountErrors, UserErrors} of
         {[], []} ->
-            Context#cb_context{doc={struct, [{<<"pvt_user">>, User}
-                                             ,{<<"pvt_account">>, Account}
-                                             ,{<<"pvt_activation_key">>, create_activation_key()}
-                                            ]}
+            Context#cb_context{doc=wh_json:from_list([{<<"pvt_user">>, User}
+                                                      ,{<<"pvt_account">>, Account}
+                                                      ,{<<"pvt_activation_key">>, create_activation_key()}
+                                                     ])
                                ,resp_status=success};
         _Else ->
-            crossbar_util:response_invalid_data({struct, [{<<"account">>, AccountErrors}
-                                                          ,{<<"user">>, UserErrors}]}, Context)
+            crossbar_util:response_invalid_data(wh_json:from_list([{<<"account">>, AccountErrors}
+                                                                   ,{<<"user">>, UserErrors}
+                                                                  ]), Context)
     end.
 
 %%--------------------------------------------------------------------
