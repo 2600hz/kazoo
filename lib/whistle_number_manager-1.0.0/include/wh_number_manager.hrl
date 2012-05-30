@@ -2,6 +2,9 @@
                                 ,<<"port_in">> ,<<"in_service">>, <<"disconnected">>, <<"port_out">>
                            ]).
 -define(WNM_AVALIABLE_STATES, [<<"discovery">>, <<"available">>]).
+-define(WNM_UNAVAILABLE_STATES, [<<"reserved">>, <<"in_service">>
+                                     ,<<"port_in">>, <<"port_out">>
+                                ]).
 
 -define(WNM_DEAFULT_CARRIER_MODULES, [<<"wnm_local">>]).
 

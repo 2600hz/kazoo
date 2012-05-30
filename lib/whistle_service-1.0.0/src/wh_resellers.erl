@@ -27,6 +27,7 @@
 -export([fetch/1]).
 -export([update_quantity/4]).
 -export([increment_quantity/3]).
+-export([reset_category/2]).
 -export([commit_changes/1]).
 
 -include("wh_service.hrl").
@@ -48,11 +49,14 @@ fetch(Account) ->
     fetch(Account, []).
 
 fetch(Account, Resellers) ->
-    {ok, Reseller} = wh_reseller:fetch(Account),
-    case wh_reseller:is_master_reseller(Reseller) of
-        true -> {ok, [Reseller|Resellers]};
-        false ->
-            fetch(wh_reseller:get_reseller_id(Reseller), [Reseller|Resellers])
+    case wh_reseller:fetch(Account) of
+        {error, no_service_plan} -> {ok, Resellers};
+        {ok, Reseller} ->
+            case wh_reseller:is_master_reseller(Reseller) of
+                true -> {ok, [Reseller|Resellers]};
+                false ->
+                    fetch(wh_reseller:get_reseller_id(Reseller), [Reseller|Resellers])
+            end
     end.
         
 %%--------------------------------------------------------------------
@@ -84,14 +88,32 @@ increment_quantity(Category, Name, Resellers) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
+%% Set the quantity of all addons on a given category to 0
+%% @end
+%%--------------------------------------------------------------------
+-spec reset_category/2 :: (ne_binary(), resellers()) -> resellers().
+reset_category(Category, Resellers) ->
+    [wh_reseller:reset_category(Category, Reseller) 
+     || Reseller <- Resellers
+    ].    
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
 %% Commit any billing changes to the resellers.
 %% @end
 %%--------------------------------------------------------------------
--spec commit_changes/1 :: (resellers()) -> ok.
+-spec commit_changes/1 :: (resellers()) -> ok | {'error', wh_json:json_object()}.
 commit_changes(Resellers) ->
-    [wh_reseller:commit_changes(Reseller) 
-     || Reseller <- Resellers
-    ].    
+    try
+        [wh_reseller:commit_changes(Reseller) 
+         || Reseller <- Resellers
+        ],
+        ok
+    catch
+        throw:Error ->
+            {error, Error}
+    end.
 
 %%%===================================================================
 %%% Internal functions

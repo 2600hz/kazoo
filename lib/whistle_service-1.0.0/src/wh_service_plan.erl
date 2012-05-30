@@ -9,6 +9,7 @@
 
 -export([fetch/2]).
 -export([get_plan_ids/1]).
+-export([get_category_addons/2]).
 -export([get_recurring_plan/3]).
 
 -include("wh_service.hrl").
@@ -51,6 +52,20 @@ fetch(Reseller, PlanId) ->
 get_plan_ids(JObj) ->
     wh_json:get_value(?WH_SERVICE_PLANS_FIELD, JObj, []).
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Given an service category get a listing of all the addons
+%% @end
+%%--------------------------------------------------------------------
+-spec get_category_addons/2 :: (ne_binary(), #wh_service_plan{}) -> [ne_binary(),...] | [].
+get_category_addons(Category, #wh_service_plan{plan=JObj}) ->
+    Category = wh_json:get_value(Category, JObj, wh_json:new()),
+    [AddOn
+     || Key <- wh_json:get_keys(Category)
+            ,(AddOn = wh_json:get_ne_value([Key, <<"add_on">>], Category)) =/= undefined
+    ].
+    
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
