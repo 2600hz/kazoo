@@ -134,7 +134,7 @@ trace_file(File, Filter, Level) ->
                     supervisor:start_child(lager_handler_watcher_sup,
                         [lager_event, {lager_file_backend, File}, {File, none}]);
                 _ ->
-                    ok
+                    {ok, exists}
             end,
             case Res of
               {ok, _} ->
