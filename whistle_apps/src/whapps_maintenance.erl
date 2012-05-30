@@ -166,7 +166,7 @@ refresh(?WH_SIP_DB) ->
              ,whapps_util:get_view_json(registrar, <<"auth.json">>)
             ],
     whapps_util:update_views(?WH_SIP_DB, Views, true),
-    _ = case couch_mgr:all_docs(?WH_SIP_DB, [{<<"include_docs">>, true}]) of
+    _ = case couch_mgr:all_docs(?WH_SIP_DB, [include_docs]) of
             {ok, JObjs} ->
                 [cleanup_aggregated_device(wh_json:get_value(<<"doc">>, JObj)) || JObj <- JObjs];
             _ ->
@@ -184,7 +184,7 @@ refresh(?WH_ACCOUNTS_DB) ->
              ,whapps_util:get_view_json(notify, ?ACCOUNTS_AGG_NOTIFY_VIEW_FILE)
             ],
     whapps_util:update_views(?WH_ACCOUNTS_DB, Views, true),
-    _ = case couch_mgr:all_docs(?WH_ACCOUNTS_DB, [{<<"include_docs">>, true}]) of
+    _ = case couch_mgr:all_docs(?WH_ACCOUNTS_DB, [include_docs]) of
             {ok, JObjs} ->
                 _ = [cleanup_aggregated_account(wh_json:get_value(<<"doc">>, JObj)) || JObj <- JObjs];
             _ ->
@@ -230,7 +230,7 @@ refresh(Account, Views) ->
         {ok, JObj} ->
             _ = couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, JObj),
             AccountRealm = crossbar_util:get_account_realm(AccountDb, AccountId),
-            _ = case couch_mgr:get_results(AccountDb, ?DEVICES_CB_LIST, [{<<"include_docs">>, true}]) of
+            _ = case couch_mgr:get_results(AccountDb, ?DEVICES_CB_LIST, [include_docs]) of
                     {ok, Devices} ->
                         _ = [whapps_util:add_aggregate_device(AccountDb, wh_json:get_value(<<"doc">>, Device))
                              || Device <- Devices
@@ -305,7 +305,7 @@ purge_doc_type(Type, Account) when not is_binary(Account) ->
     purge_doc_type(Type, wh_util:to_binary(Account));
 purge_doc_type(Type, Account) ->
     Db = wh_util:format_account_id(Account, encoded),
-    case couch_mgr:get_results(Db, {<<"maintenance">>, <<"listing_by_type">>}, [{<<"key">>, Type}, {<<"include_docs">>, true}]) of
+    case couch_mgr:get_results(Db, <<"maintenance/listing_by_type">>, [{key, Type}, include_docs]) of
         {ok, JObjs} ->
             couch_mgr:del_docs(Db, [wh_json:get_value(<<"doc">>, JObj) || JObj <- JObjs]);
         {error, _}=E ->
@@ -370,8 +370,8 @@ migrate_limits(Account) ->
                                  -> {integer(), integer()}.
 
 clean_trunkstore_docs(AccountDb, TwowayTrunks, InboundTrunks) ->
-    ViewOptions = [{<<"include_docs">>, true}
-                   ,{<<"reduce">>, false}
+    ViewOptions = [include_docs
+                   ,{reduce, false}
                   ],
     case couch_mgr:get_results(AccountDb, <<"trunkstore/crossbar_listing">>, ViewOptions) of
         {ok, JObjs} -> clean_trunkstore_docs(AccountDb, JObjs, TwowayTrunks, InboundTrunks);

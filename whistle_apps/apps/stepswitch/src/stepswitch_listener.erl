@@ -209,7 +209,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 -spec get_resrcs/0 :: () -> [#resrc{}].
 get_resrcs() ->
-    case couch_mgr:get_results(?RESOURCES_DB, ?LIST_RESOURCES_BY_ID, [{<<"include_docs">>, 'true'}]) of
+    case couch_mgr:get_results(?RESOURCES_DB, ?LIST_RESOURCES_BY_ID, [include_docs]) of
         {ok, Resrcs} ->
             _ = [couch_mgr:add_change_handler(?RESOURCES_DB, wh_json:get_value(<<"id">>, R))
                  || R <- Resrcs],
