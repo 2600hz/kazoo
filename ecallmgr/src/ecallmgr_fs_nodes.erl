@@ -277,7 +277,8 @@ props_to_channel_record(Props, Node) ->
              ,authorizing_type=props:get_value(?GET_CCV(<<"Authorizing-Type">>), Props)
              ,owner_id=props:get_value(?GET_CCV(<<"Owner-ID">>), Props)
              ,resource_id=props:get_value(?GET_CCV(<<"Resource-ID">>), Props)
-             ,presence_id=props:get_value(?GET_CCV(<<"Channel-Presence-ID">>), Props)
+             ,presence_id=props:get_value(?GET_CCV(<<"Channel-Presence-ID">>), Props
+                                          ,props:get_value(<<"variable_presence_id">>, Props))
              ,billing_id=props:get_value(?GET_CCV(<<"Billing-ID">>), Props)
              ,bridge_id=props:get_value(?GET_CCV(<<"Bridge-ID">>), Props)
              ,reseller_id=props:get_value(?GET_CCV(<<"Reseller-ID">>), Props)
