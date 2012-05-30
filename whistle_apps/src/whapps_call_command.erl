@@ -1205,7 +1205,7 @@ collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call) ->
 collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call, Digits, After) ->
     Start = erlang:now(),
     receive
-        {amqp_msg, {struct, _}=JObj} ->
+        {amqp_msg, JObj} ->
             case get_event_type(JObj) of
                 { <<"call_event">>, <<"CHANNEL_UNBRIDGE">>, _ } ->
                     lager:debug("channel was unbridged while collecting digits"),
@@ -1353,7 +1353,7 @@ wait_for_application(Application, Event, Type) ->
 wait_for_application(Application, Event, Type, Timeout) ->
     Start = erlang:now(),
     receive
-        {amqp_msg, {struct, _}=JObj} ->
+        {amqp_msg, JObj} ->
             case get_event_type(JObj) of
                 { <<"error">>, _, Application } ->
                     lager:debug("channel execution error while waiting for ~s: ~s", [Application, wh_json:encode(JObj)]),
@@ -1403,7 +1403,7 @@ wait_for_headless_application(Application, Event, Type) ->
 wait_for_headless_application(Application, Event, Type, Timeout) ->
     Start = erlang:now(),
     receive
-        {amqp_msg, {struct, _}=JObj} ->
+        {amqp_msg, JObj} ->
             case get_event_type(JObj) of
                 { <<"error">>, _, Application } ->
                     lager:debug("channel execution error while waiting for ~s: ~s", [Application, wh_json:encode(JObj)]),
@@ -1438,7 +1438,7 @@ wait_for_dtmf(Timeout) ->
 
     Start = erlang:now(),
     receive
-        {amqp_msg, {struct, _}=JObj} ->
+        {amqp_msg, JObj} ->
             case whapps_util:get_event_type(JObj) of
                 { <<"call_event">>, <<"CHANNEL_DESTROY">> } ->
                     lager:debug("channel was destroyed while waiting for DTMF"),
@@ -1487,7 +1487,7 @@ wait_for_bridge(Timeout, Call) ->
 wait_for_bridge(Timeout, Fun, Call) ->
     Start = erlang:now(),
     receive
-        {amqp_msg, {struct, _}=JObj} ->
+        {amqp_msg, JObj} ->
             AppResponse = wh_json:get_value(<<"Application-Response">>, JObj,
                                             wh_json:get_value(<<"Hangup-Cause">>, JObj)),
             Result = case lists:member(AppResponse, ?SUCCESSFUL_HANGUPS) of
@@ -1559,7 +1559,7 @@ wait_for_noop(NoopId) ->
 -spec wait_for_channel_unbridge/0 :: () -> {'ok', wh_json:json_object()}.
 wait_for_channel_unbridge() ->
     receive
-        {amqp_msg, {struct, _}=JObj} ->
+        {amqp_msg, JObj} ->
             case whapps_util:get_event_type(JObj) of
                 { <<"call_event">>, <<"CHANNEL_UNBRIDGE">> } ->
                     {ok, JObj};
@@ -1583,7 +1583,7 @@ wait_for_channel_unbridge() ->
 -spec wait_for_channel_bridge/0 :: () -> {'ok', wh_json:json_object()}.
 wait_for_channel_bridge() ->
     receive
-        {amqp_msg, {struct, _}=JObj} ->
+        {amqp_msg, JObj} ->
             case whapps_util:get_event_type(JObj) of
                 { <<"call_event">>, <<"CHANNEL_BRIDGE">> } ->
                     {ok, JObj};
@@ -1607,7 +1607,7 @@ wait_for_channel_bridge() ->
 -spec wait_for_hangup/0 :: () -> {'ok', 'channel_hungup'}.
 wait_for_hangup() ->
     receive
-        {amqp_msg, {struct, _}=JObj} ->
+        {amqp_msg, JObj} ->
             case whapps_util:get_event_type(JObj) of
                 { <<"call_event">>, <<"CHANNEL_HANGUP">> } ->
                     {ok, channel_hungup};
@@ -1629,7 +1629,7 @@ wait_for_hangup() ->
 -spec wait_for_unbridge/0 :: () -> {'ok', 'leg_hungup'}.
 wait_for_unbridge() ->
     receive
-        {amqp_msg, {struct, _}=JObj} ->
+        {amqp_msg, JObj} ->
             case whapps_util:get_event_type(JObj) of
                 { <<"call_event">>, <<"LEG_DESTROYED">> } ->
                     {ok, leg_hungup};
@@ -1652,7 +1652,7 @@ wait_for_unbridge() ->
 wait_for_application_or_dtmf(Application, Timeout) ->
     Start = erlang:now(),
     receive
-        {amqp_msg, {struct, _}=JObj} ->
+        {amqp_msg, JObj} ->
             case get_event_type(JObj) of
                 { <<"call_event">>, <<"CHANNEL_DESTROY">>, _ } ->
                     lager:debug("channel was destroyed while waiting for ~s or DTMF", [Application]),
