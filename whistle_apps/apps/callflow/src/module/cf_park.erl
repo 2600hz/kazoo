@@ -86,8 +86,8 @@ handle(Data, Call) ->
             park_call(SlotNumber, Slot, ParkedCalls, ReferredTo, Call);
         {match, [Replaces]} ->
             lager:debug("call was the result of an attended-transfer completion, updating call id"),
-            {ok, SlotNumber, Slot} = update_call_id(Replaces, ParkedCalls, Call),
-            wait_for_pickup(SlotNumber, wh_json:get_value(<<"Ringback-ID">>, Slot), Call)
+            {ok, FoundInSlotNumber, Slot} = update_call_id(Replaces, ParkedCalls, Call),
+            wait_for_pickup(FoundInSlotNumber, wh_json:get_value(<<"Ringback-ID">>, Slot), Call)
     end.
 
 %%--------------------------------------------------------------------
@@ -334,11 +334,18 @@ do_save_slot(SlotNumber, Slot, ParkedCalls, Call) ->
 %%--------------------------------------------------------------------
 -spec update_call_id/3 :: (ne_binary(), wh_json:json_object(), whapps_call:call()) -> {'ok', ne_binary(), wh_json:json_object()}.
 update_call_id(Replaces, ParkedCalls, Call) ->
+    update_call_id(Replaces, ParkedCalls, Call, 0).
+
+update_call_id(_, _, _, Loops) when Loops > 5 ->
+    lager:debug("unable to update parked call id after ~p tries", [Loops]),
+    {error, update_failed};
+update_call_id(Replaces, ParkedCalls, Call, Loops) ->
     CallId = cf_exe:callid(Call),
+    lager:debug("update parked call id ~s with new call id ~s", [Replaces, CallId]),
     Slots = wh_json:get_value(<<"slots">>, ParkedCalls, wh_json:new()),
     case find_slot_by_callid(Slots, Replaces) of
         {ok, SlotNumber, Slot} ->
-            lager:debug("update slot ~s parked call id ~s with new call id ~s", [SlotNumber, Replaces, CallId]),
+            lager:debug("found parked call id ~s in slot ~s", [Replaces, SlotNumber]),
             CallerNode = whapps_call:switch_nodename(Call),
             Updaters = [fun(J) -> wh_json:set_value(<<"Call-ID">>, CallId, J) end
                         ,fun(J) -> wh_json:set_value(<<"Node">>, CallerNode, J) end
@@ -369,10 +376,16 @@ update_call_id(Replaces, ParkedCalls, Call) ->
                     whapps_call_command:presence(<<"early">>, PresenceId, ParkingId),
                     {ok, SlotNumber, UpdatedSlot};
                 {error, conflict} ->
-                    update_call_id(Replaces, get_parked_calls(Call), Call)
+                    update_call_id(Replaces, get_parked_calls(Call), Call);
+                {error, _R} ->
+                    lager:debug("failed to update parking slot with call id ~s: ~p", [Replaces, _R]),
+                    timer:sleep(250),
+                    update_call_id(Replaces, get_parked_calls(Call), Call, Loops + 1)
             end;
-        {error, not_found}=E ->
-            E
+        {error, _R} ->
+            lager:debug("failed to find parking slot with call id ~s: ~p", [Replaces]),
+            timer:sleep(250),
+            update_call_id(Replaces, get_parked_calls(Call), Call, Loops + 1)
     end.
 
 %%--------------------------------------------------------------------
@@ -426,7 +439,10 @@ get_parked_calls(AccountDb, AccountId) ->
                           ,fun(J) -> wh_json:set_value(<<"slots">>, wh_json:new(), J) end],
             lists:foldr(fun(F, J) -> F(J) end, wh_json:new(), Generators);
         {ok, JObj} ->
-            JObj
+            JObj;
+        {error, _R}=E ->
+            lager:debug("unable to get parked calls: ~p", [_R]),
+            E
     end.
 
 %%--------------------------------------------------------------------
