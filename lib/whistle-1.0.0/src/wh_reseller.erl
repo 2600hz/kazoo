@@ -54,12 +54,11 @@ assign(JObj) ->
         
 assign(ResellerId, JObj) ->
     ResellerDb = wh_util:format_account_id(ResellerId, encoded),
-    case couch_mgr:db_exist(ResellerDb) of
+    case couch_mgr:db_exists(ResellerDb) of
         false -> {error, bad_reseller_id};
         true ->
             AccountId = wh_json:get_value(<<"_id">>, JObj),
             AccountDb = wh_util:format_account_id(AccountId, encoded),
-            _ =  assign_representative(JObj),
             case couch_mgr:save_doc(AccountDb, wh_json:set_value(<<"pvt_reseller_id">>, ResellerId, JObj)) of
                 {error, _}=E -> E;
                 {ok, JObj} -> 
@@ -82,11 +81,10 @@ unassign(JObj) ->
         {ok, MasterAccountId} ->
             AccountId = wh_json:get_value(<<"_id">>, JObj),
             AccountDb = wh_util:format_account_id(AccountId, encoded),
-            _ = unassign_representative(JObj),
             case couch_mgr:save_doc(AccountDb, wh_json:set_value(<<"pvt_reseller_id">>, MasterAccountId, JObj)) of
                 {error, _}=E -> E;
-                {ok, JObj} -> 
-                    couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, JObj)
+                {ok, J} -> 
+                    couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, J)
             end
     end.
 
