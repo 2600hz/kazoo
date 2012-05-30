@@ -169,7 +169,7 @@ process_route_req(Node, FSID, CallId, Props) ->
     put(callid, CallId),
     lager:debug("processing fetch request ~s (call ~s) from ~s", [FSID, CallId, Node]),
     ReqResp = wh_amqp_worker:call(?ECALLMGR_AMQP_POOL
-                                  ,route_req(CallId, FSID, Props)
+                                  ,route_req(CallId, FSID, Props, Node)
                                   ,fun wapi_route:publish_req/1
                                   ,fun wapi_route:is_actionable_resp/1),
     case ReqResp of
@@ -240,8 +240,8 @@ send_control_queue(SendTo, CtlProp) ->
     lager:debug("sending route_win to ~s", [SendTo]),
     wapi_route:publish_win(SendTo, CtlProp).
 
--spec route_req/3 :: (ne_binary(), ne_binary(), proplist()) -> proplist().
-route_req(CallId, FSID, Props) ->
+-spec route_req/4 :: (ne_binary(), ne_binary(), proplist(), atom()) -> proplist().
+route_req(CallId, FSID, Props, Node) ->
     [{<<"Msg-ID">>, FSID}
      ,{<<"Caller-ID-Name">>, props:get_value(<<"variable_effective_caller_id_name">>, Props, 
                                              props:get_value(<<"Caller-Caller-ID-Name">>, Props, <<"Unknown">>))}
@@ -251,6 +251,8 @@ route_req(CallId, FSID, Props) ->
      ,{<<"From">>, ecallmgr_util:get_sip_from(Props)}
      ,{<<"Request">>, ecallmgr_util:get_sip_request(Props)}
      ,{<<"From-Network-Addr">>,props:get_value(<<"Caller-Network-Addr">>, Props)}
+     ,{<<"Switch-Nodename">>, wh_util:to_binary(Node)}
+     ,{<<"Switch-Hostname">>, props:get_value(<<"FreeSWITCH-Hostname">>, Props)}
      ,{<<"Call-ID">>, CallId}
      ,{<<"Custom-Channel-Vars">>, wh_json:from_list(ecallmgr_util:custom_channel_vars(Props))}
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
