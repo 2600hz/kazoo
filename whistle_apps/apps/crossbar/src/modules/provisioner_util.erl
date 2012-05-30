@@ -213,8 +213,8 @@ set_device_overrides(#cb_context{doc=Device}) ->
 -spec send_provisioning_request/2 :: (wh_json:json_object(), ne_binary()) -> 'ok'.
 send_provisioning_request(Template, MACAddress) ->
     ProvisionRequest = wh_json:encode(Template),
-    Url = whapps_config:get_string(?MOD_CONFIG_CAT, <<"provisioning_url">>),
-    UrlString = lists:flatten([Url, MACAddress]),
+    UrlTmpl = whapps_config:get_string(?MOD_CONFIG_CAT, <<"provisioning_url">>),
+    UrlString = re:replace(UrlTmpl, "{{mac_address}}", MACAddress, [global, {return, list}]),
     Headers = [KV || {_, V}=KV <- [{"Content-Type", "application/json"}
                                    ,{"Host", whapps_config:get_string(?MOD_CONFIG_CAT, <<"provisioner_host">>)}
                                    ,{"Referer", whapps_config:get_string(?MOD_CONFIG_CAT, <<"provisioner_referer">>)}
