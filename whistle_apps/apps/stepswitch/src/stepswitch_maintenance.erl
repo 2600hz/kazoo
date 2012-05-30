@@ -1,9 +1,10 @@
-
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2011, VoIP INC
+%%% @copyright (C) 2010-2012, VoIP INC
 %%% @doc
 %%% Preforms maintenance operations against the stepswitch dbs
 %%% @end
+%%% @contributors
+%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(stepswitch_maintenance).
 
@@ -38,7 +39,7 @@ refresh() ->
     couch_mgr:db_create(?RESOURCES_DB),
     Views = whapps_util:get_views_json(stepswitch, "views"),
     whapps_util:update_views(?RESOURCES_DB, Views, true),
-    case couch_mgr:all_docs(?RESOURCES_DB, [include_docs]) of
+    case catch couch_mgr:all_docs(?RESOURCES_DB, [include_docs]) of
         {ok, JObjs} ->
             _ = couch_mgr:del_docs(?RESOURCES_DB
                                    ,[Doc
@@ -50,6 +51,9 @@ refresh() ->
                                     ]),
             ok;
         {error, _} ->
+            ok;
+        {'EXIT', _E} ->
+            lager:debug("failure looking up all docs in ~s: ~p", [?RESOURCES_DB, _E]),
             ok
     end.
 

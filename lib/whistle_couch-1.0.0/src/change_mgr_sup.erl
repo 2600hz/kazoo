@@ -16,6 +16,8 @@
 %% Supervisor callbacks
 -export([init/1]).
 
+-include_lib("wh_couch.hrl").
+
 -define(SERVER, ?MODULE).
 
 %%%===================================================================
@@ -32,6 +34,7 @@
 start_link() ->
     supervisor:start_link({local, ?SERVER}, ?MODULE, []).
 
+-spec start_handler/2 :: (db(), proplist()) -> sup_startchild_ret().
 start_handler(Db, Options) ->
     supervisor:start_child(?SERVER, [Db, Options]).
 

@@ -88,33 +88,33 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call({lookup_number, Number}, From, State) ->
-    spawn(fun() ->
-                  gen_server:reply(From, stepswitch_util:lookup_number(Number))
-          end),
+    P = proc_lib:spawn(fun() ->
+                               gen_server:reply(From, stepswitch_util:lookup_number(Number))
+                       end),
+    lager:debug("spawned lookup_number req: ~p", [P]),
     {noreply, State};
 
 handle_call({reload_resrcs}, _, State) ->
     {reply, ok, State#state{resrcs=get_resrcs()}};
 
 handle_call({process_number, Number}, From, #state{resrcs=Resrcs}=State) ->
-    spawn(fun() ->
-                  Num = wnm_util:to_e164(wh_util:to_binary(Number)),
-                  EPs = print_endpoints(stepswitch_util:evaluate_number(Num, Resrcs), 0, []),
-                  gen_server:reply(From, EPs)
-          end),
+    P = proc_lib:spawn(fun() ->
+                               Num = wnm_util:to_e164(wh_util:to_binary(Number)),
+                               EPs = print_endpoints(stepswitch_util:evaluate_number(Num, Resrcs), 0, []),
+                               gen_server:reply(From, EPs)
+                       end),
+    lager:debug("spawned process_number req for ~s: ~p", [Number, P]),
     {noreply, State};
 
 handle_call({process_number, Number, Flags}, From, #state{resrcs=R1}=State) ->
-    spawn(fun() ->
-                  R2 = stepswitch_util:evaluate_flags(Flags, R1),
-                  Num = wnm_util:to_e164(wh_util:to_binary(Number)),
-                  EPs = print_endpoints(stepswitch_util:evaluate_number(Num, R2), 0, []),
-                  gen_server:reply(From, EPs)
-          end),
-    {noreply, State};
-
-handle_call(_Request, _From, State) ->
-    {reply, {error, not_implemented}, State}.
+    P = proc_lib:spawn(fun() ->
+                               R2 = stepswitch_util:evaluate_flags(Flags, R1),
+                               Num = wnm_util:to_e164(wh_util:to_binary(Number)),
+                               EPs = print_endpoints(stepswitch_util:evaluate_number(Num, R2), 0, []),
+                               gen_server:reply(From, EPs)
+                       end),
+    lager:debug("spawned process_number req for ~s w/ flags: ~p", [Number, P]),
+    {noreply, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -159,8 +159,13 @@ handle_info({document_deleted, DocId}, #state{resrcs=Resrcs}=State) ->
             {noreply, State#state{resrcs=lists:keydelete(DocId, #resrc.id, Resrcs)}, hibernate}
     end;
 
+handle_info({change_handler_terminating, ?RESOURCES_DB, DocId}, State) ->
+    lager:debug("change handler down for ~s:~s", [?RESOURCES_DB, DocId]),
+    _ = couch_mgr:add_change_handler(?RESOURCES_DB, DocId),
+    {noreply, State};
+
 handle_info(_Info, State) ->
-    lager:debug("Unhandled message: ~p", [_Info]),
+    lager:debug("unhandled message: ~p", [_Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------

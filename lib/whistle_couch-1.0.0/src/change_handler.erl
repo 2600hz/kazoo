@@ -12,11 +12,22 @@
 -behaviour(gen_changes).
 
 %% API
--export([start_link/2, stop/1, add_listener/2, add_listener/3, rm_listener/3]).
+-export([start_link/2
+         ,stop/1
+         ,add_listener/2, add_listener/3
+         ,rm_listener/3
+         ,alert_listeners/2 % internal
+        ]).
 
 %% gen_server callbacks
--export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_change/2
-         ,terminate/2, code_change/3]).
+-export([init/1
+         ,handle_call/3
+         ,handle_cast/2
+         ,handle_info/2
+         ,handle_change/2
+         ,terminate/2
+         ,code_change/3
+        ]).
 
 -include("wh_couch.hrl").
 
@@ -43,8 +54,12 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
+-spec start_link/2 :: (db(), proplist()) -> startlink_ret().
 start_link(#db{name=DbName}=Db, Options) ->
-    gen_changes:start_link(?MODULE, Db, [ {heartbeat, 500} | Options], [DbName]).
+    gen_changes:start_link(?MODULE, Db, [continuous % we want the continuous feed
+                                         ,{heartbeat, 500} % keep the connection alive
+                                         | Options
+                                        ], [DbName]).
 
 stop(Srv) ->
     gen_changes:stop(Srv).
@@ -76,6 +91,7 @@ rm_listener(Srv, Pid, Doc) ->
 %% @end
 %%--------------------------------------------------------------------
 init([DbName]) ->
+    _ = put(callid, list_to_binary([<<"changes_">>, DbName])),
     lager:debug("starting change handler for ~s", [DbName]),
     {ok, #state{db=DbName}}.
 
@@ -108,17 +124,16 @@ handle_call(_Request, _From, State) ->
 %%--------------------------------------------------------------------
 handle_cast({add_listener, Pid, Doc}, #state{listeners=Ls}=State) ->
     case lists:any(fun(#listener{pid=Pid1, doc=Doc1}) when Pid =:= Pid1 andalso Doc =:= Doc1 -> true;
-                      (_) -> false end, Ls) of
+                      (_) -> false
+                   end, Ls) of
         true -> {noreply, State};
         false ->
             Ref = erlang:monitor(process, Pid),
-            {noreply, State#state{listeners=[#listener{pid=Pid,doc=Doc,monitor_ref=Ref} | Ls]}}
+            {noreply, State#state{listeners=[#listener{pid=Pid,doc=Doc,monitor_ref=Ref} | Ls]}, hibernate}
     end;
 handle_cast({rm_listener, Pid, Doc}, #state{listeners=Ls}=State) ->
     Ls1 = [ V || V <- Ls, keep_listener(V, Doc, Pid)],
-    {noreply, State#state{listeners=Ls1}};
-handle_cast(_, State) ->
-    {noreply, State}.
+    {noreply, State#state{listeners=Ls1}, hibernate}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -133,8 +148,12 @@ handle_cast(_, State) ->
 handle_info({'DOWN', _Ref, process, Pid, Info}, #state{listeners=Ls}=State) ->
     lager:debug("DOWN recv for ~p(~p)", [Pid, Info]),
     Ls1 = [ V || V <- Ls, keep_listener(V, Pid)],
-    {noreply, State#state{listeners=Ls1}};
+    {noreply, State#state{listeners=Ls1}, hibernate};
+handle_info({error, {_, connection_closed}}, State) ->
+    lager:debug("connection closed on us, so sad"),
+    {stop, connection_closed, State};
 handle_info(_Info, State) ->
+    lager:debug("unhandled message: ~p", [_Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -147,26 +166,12 @@ handle_info(_Info, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_change(_, #state{listeners=[]}=State) ->
+handle_change(_JObj, #state{listeners=[]}=State) ->
+    {noreply, State};
+handle_change({done, _}, State) ->
     {noreply, State};
 handle_change(JObj, #state{listeners=Ls}=State) ->
-    Change = wh_json:to_proplist(JObj),
-    spawn(fun() ->
-                  DocID = props:get_value(<<"id">>, Change),
-                  Send = case props:get_value(<<"deleted">>, Change) of
-                             undefined ->
-                                 {document_changes, DocID, [ wh_json:to_proplist(C) || C <- props:get_value(<<"changes">>, Change)]};
-                             true ->
-                                 {document_deleted, DocID}
-                         end,
-
-                  lists:foreach(fun(#listener{pid=Pid, doc=DocID1}) when DocID =:= DocID1 ->
-                                        Pid ! Send;
-                                   (#listener{pid=Pid, doc = <<>>}) ->
-                                        Pid ! Send;
-                                   (_) -> ok
-                                end, Ls)
-          end),
+    spawn(?MODULE, alert_listeners, [JObj, Ls]),
     {noreply, State, hibernate}.
 
 %%--------------------------------------------------------------------
@@ -181,7 +186,7 @@ handle_change(JObj, #state{listeners=Ls}=State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, #state{listeners=Ls, db=DbName}) ->
-    lager:debug("going down, down, down for ~p(~p)", [DbName, _Reason]),
+    lager:debug("going down, down, down for ~s(~p)", [DbName, _Reason]),
     lists:foreach(fun(#listener{pid=Pid, monitor_ref=Ref, doc=Doc}) ->
                           Pid ! {change_handler_terminating, DbName, Doc},
                           erlang:demonitor(Ref, [flush])
@@ -212,3 +217,20 @@ keep_listener(#listener{pid=Pid, doc=Doc, monitor_ref=Ref}, Doc, Pid) ->
     erlang:demonitor(Ref, [flush]),
     false;
 keep_listener(_, _, _) -> true.
+
+alert_listeners(JObj, Ls) ->
+    DocID = wh_json:get_value(<<"id">>, JObj),
+    Msg = case wh_json:is_true(<<"deleted">>, JObj, false) of
+              false ->
+                  {document_changes, DocID, [wh_json:to_proplist(C)
+                                             || C <- wh_json:get_value(<<"changes">>, JObj, [])
+                                            ]};
+              true ->
+                  {document_deleted, DocID}
+          end,
+
+    [ Pid ! Msg || #listener{pid=Pid, doc=D} <- Ls, is_listener_interested(D, DocID)].
+
+is_listener_interested(<<>>, _) -> true;
+is_listener_interested(DocID, DocID) -> true;
+is_listener_interested(_, _) -> false.
