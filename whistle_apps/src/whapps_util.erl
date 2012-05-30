@@ -355,15 +355,9 @@ update_views(Db, Views) ->
     update_views(Db, Views, false).
 
 update_views(Db, Views, Remove) ->
-    ViewOptions = [{startkey, <<"_design/">>}
-                   ,{endkey, <<"_e">>}
-                   ,include_docs
-                  ],
-    case couch_mgr:get_results(Db, <<"_all_docs">>, ViewOptions) of
-        {ok, Found} ->
-            update_views(Found, Db, Views, Remove);
-        {error, _} ->
-            ok
+    case couch_mgr:all_design_docs(Db, [include_docs]) of
+        {ok, Found} -> update_views(Found, Db, Views, Remove);
+        {error, _} -> ok
     end.
 
 update_views([], _, [], _) ->
