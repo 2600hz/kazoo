@@ -84,6 +84,7 @@ handle_channel_status(JObj, _Props) ->
             Resp = [{<<"Call-ID">>, CallID}
                     ,{<<"Status">>, <<"active">>}
                     ,{<<"Switch-Hostname">>, Hostname}
+                    ,{<<"Switch-Nodename">>, wh_util:to_binary(Node)}
                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)],
             wapi_call:publish_channel_status_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp)
     end.

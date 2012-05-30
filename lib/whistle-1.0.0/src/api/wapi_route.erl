@@ -32,9 +32,8 @@
                            ]).
 -define(OPTIONAL_ROUTE_REQ_HEADERS, [<<"Geo-Location">>, <<"Orig-IP">>, <<"Max-Call-Length">>, <<"Media">>
                                          ,<<"Transcode">>, <<"Codecs">>, <<"Custom-Channel-Vars">>
-
-                                         ,<<"Resource-Type">>, <<"Cost-Parameters">>, <<"Switch-Hostname">>
-                                         ,<<"From-Network-Addr">>
+                                         ,<<"Resource-Type">>, <<"Cost-Parameters">>, <<"From-Network-Addr">>
+                                         ,<<"Switch-Hostname">>, <<"Switch-Nodename">>
                                     ]).
 -define(ROUTE_REQ_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
                            ,{<<"Event-Name">>, ?ROUTE_REQ_EVENT_NAME}
