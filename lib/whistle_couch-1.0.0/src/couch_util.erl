@@ -225,8 +225,6 @@ do_fetch_results(Db, DesignDoc, Options) ->
                    {'ok', JObj} ->
                        Rows = wh_json:get_value(<<"rows">>, JObj, JObj),
                        {'ok', Rows};
-                   {error, _, R} ->
-                       {error, R};
                    Other ->
                        Other
                end
@@ -273,8 +271,11 @@ save_docs(#server{}=Conn, DbName, Docs, Options) ->
 -spec lookup_doc_rev/3 :: (server(), ne_binary(), ne_binary()) -> {'ok', binary()} |
                                                                    {'error', atom()}.
 lookup_doc_rev(#server{}=Conn, DbName, DocId) ->
-    Db = get_db(Conn, DbName),
-    do_fetch_rev(Db, DocId).
+    case do_fetch_rev(get_db(Conn, DbName), DocId) of
+        <<_/binary>> = Rev -> {ok, Rev};
+        {ok, _}=OK -> OK;
+        {error, _}=E -> E
+    end.
 
 -spec ensure_saved/4 :: (server(), ne_binary(), wh_json:json_object(), proplist()) -> {'ok', wh_json:json_object()} |
                                                                                        {'error', atom()}.
@@ -326,7 +327,8 @@ do_ensure_saved(#db{}=Db, Doc, Opts) ->
         {'error', _}=E -> E
     end.
 
--spec do_fetch_rev/2 :: (db(), ne_binary()) -> {'ok', binary()} |
+-spec do_fetch_rev/2 :: (db(), ne_binary()) -> {'ok', ne_binary()} |
+                                               ne_binary() |
                                                {'error', atom()}.
 do_fetch_rev(#db{}=Db, DocId) ->
     ?RETRY_504(couchbeam:lookup_doc_rev(Db, DocId)).
