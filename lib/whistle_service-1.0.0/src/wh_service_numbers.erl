@@ -24,13 +24,15 @@ update(JObj) ->
     end.
 
 update(JObj, Resellers) ->
+    R1 = wh_resellers:reset_category_addons(<<"phone_numbers">>, Resellers),
+    R2 = wh_resellers:reset_category_addons(<<"number_services">>, R1),
     lists:foldr(fun(PhoneNumber, R) ->
-                        update_number(R, JObj, PhoneNumber)
-                end, Resellers, wh_json:get_keys(wh_json:public_fields(JObj))).
+                        update_number(JObj, PhoneNumber, R)
+                end, R2, wh_json:get_keys(wh_json:public_fields(JObj))).
 
 
--spec update_number/3 :: (wh_resellers:resellers(), wh_json:json_object(), ne_binary()) ->  wh_resellers:resellers().
-update_number(Resellers, JObj, PhoneNumber) ->
+-spec update_number/3 :: (wh_json:json_object(), ne_binary(), wh_resellers:resellers()) ->  wh_resellers:resellers().
+update_number(JObj, PhoneNumber, Resellers) ->
     case wh_json:is_true([PhoneNumber, <<"local_number">>], JObj) of
         true -> Resellers;
         false ->
@@ -43,14 +45,14 @@ update_number(Resellers, JObj, PhoneNumber) ->
                                              || Service <- wh_json:get_keys(Number)
                                                     ,wh_json:is_true(Service, Number)
                                             ],
-                                 update_number_services(R, Services)
+                                 update_number_services(Services, R)
                          end
                        ],
-            lists:foldr(fun(F, R) -> F(R) end, Resellers, Routines)
+            lists:foldr(fun(F, R) -> F(R) end, Resellers , Routines)
     end.
 
--spec update_number_services/2 :: (wh_resellers:resellers(), [ne_binary(),...] | []) ->  wh_resellers:resellers().
-update_number_services(Resellers, Services) ->    
+-spec update_number_services/2 :: ([ne_binary(),...] | [], wh_resellers:resellers()) ->  wh_resellers:resellers().
+update_number_services(Services, Resellers) ->    
     lists:foldr(fun(Service, R) ->
                         wh_resellers:increment_quantity(<<"number_services">>, Service, R)
                 end, Resellers, Services).

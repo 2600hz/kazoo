@@ -10,6 +10,7 @@
 
 -export([new/3]).
 -export([get_id/1]).
+-export([get_addon/2]).
 -export([create/1, create/2]).
 -export([update/1]).
 -export([cancel/1]).
@@ -46,6 +47,26 @@ new(SubscriptionId, PlanId, PaymentToken) ->
 -spec get_id/1 :: (#bt_subscription{}) -> string().
 get_id(#bt_subscription{id=SubscriptionId}) ->
     SubscriptionId.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Get the subscription id
+%% @end
+%%--------------------------------------------------------------------
+-spec get_addon/2 :: (#bt_subscription{}, ne_binary() | string()) -> {'ok', #bt_addon{}} |
+                                                                     {'error', 'not_found'}.
+get_addon(Subscription, AddOnId) when not is_list(AddOnId) ->
+    get_addon(Subscription, wh_util:to_list(AddOnId));
+get_addon(#bt_subscription{add_ons=AddOns}, AddOnId) ->
+    case lists:keyfind(AddOnId, #bt_addon.id, AddOns) of
+        false ->
+            case lists:keyfind(AddOnId, #bt_addon.inherited_from, AddOns) of
+                false -> {error, not_found};
+                #bt_addon{}=AddOn -> {ok, AddOn}
+            end;
+        #bt_addon{}=AddOn -> {ok, AddOn}
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
