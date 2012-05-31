@@ -383,7 +383,7 @@ update_call_id(Replaces, ParkedCalls, Call, Loops) ->
                     update_call_id(Replaces, get_parked_calls(Call), Call, Loops + 1)
             end;
         {error, _R} ->
-            lager:debug("failed to find parking slot with call id ~s: ~p", [Replaces]),
+            lager:debug("failed to find parking slot with call id ~s: ~p", [Replaces, _R]),
             timer:sleep(250),
             update_call_id(Replaces, get_parked_calls(Call), Call, Loops + 1)
     end.
@@ -472,7 +472,7 @@ cleanup_slot(SlotNumber, ParkedCallId, AccountDb) ->
                             E
                     end;
                 _Else ->
-                    lager:debug("call ~s is parked in slot ~s and we expected ~s", [_Else, SlotNumber, ParkedCallId, SlotNumber]),
+                    lager:debug("call ~s is parked in slot ~s and we expected ~s", [_Else, SlotNumber, ParkedCallId]),
                     {error, unexpected_callid}
             end;
         {error, _R}=E ->
