@@ -371,28 +371,6 @@ reserved(<<"discovery">>, JObj, AssignTo, AuthBy) ->
                 end
                 ,fun({error, _}=E) -> E;
                     ({ok, J}) ->
-                         History = wh_json:get_value(<<"pvt_wnm_prev_assignments">>, J, []),
-                         {ok, wh_json:set_value(<<"pvt_wnm_prev_assignments">>, [AssignTo|History], J)}
-                 end
-                ,fun({error, _}=E) -> E;
-                    ({ok, J}) ->
-                         AssignedTo = wh_json:get_ne_value(<<"pvt_assigned_to">>, J),
-                         case wh_json:get_value(<<"pvt_previously_assigned_to">>, J) of
-                             AssignedTo -> {ok, J};
-                             _ when AssignedTo =:= undefined -> {ok, J};
-                             _Else -> {ok, wh_json:set_value(<<"pvt_previously_assigned_to">>, AssignedTo, J)}
-                         end
-                 end
-                ,fun({error, _}=E) -> E;
-                    ({ok, J}) ->
-                         {ok, wh_json:set_value(<<"pvt_assigned_to">>, AssignTo, J)}
-                 end
-                ,fun({error, _}=E) -> E;
-                    ({ok, J}) ->
-                         {ok, wh_json:set_value(<<"pvt_number_state">>, <<"reserved">>, J)}
-                 end
-                ,fun({error, _}=E) -> E;
-                    ({ok, J}) ->
                          Number = wh_json:get_value(<<"_id">>, J),
                          case wnm_util:get_carrier_module(J) of
                              {ok, Module, Data} ->
@@ -410,6 +388,32 @@ reserved(<<"discovery">>, JObj, AssignTo, AuthBy) ->
                                  lager:debug("carrier module specified on number document does not exist"),
                                  {error, unknown_carrier}
                          end
+                 end
+                ,fun({error, _}=E) -> E;
+                    ({ok, J}) ->
+                         History = wh_json:get_value(<<"pvt_wnm_prev_assignments">>, J, []),
+                         {ok, wh_json:set_value(<<"pvt_wnm_prev_assignments">>, [AssignTo|History], J)}
+                 end
+                ,fun({error, _}=E) -> E;
+                    ({ok, J}) ->
+                         {ok, wh_json:set_value(<<"pvt_number_state">>, <<"reserved">>, J)}
+                 end
+                ,fun({error, _}=E) -> E;
+                    ({ok, J}) ->
+                         AssignedTo = wh_json:get_ne_value(<<"pvt_assigned_to">>, J),
+                         case AssignedTo =:= undefined 
+                             orelse wh_json:get_ne_value(<<"pvt_previously_assigned_to">>, J) 
+                         of
+                             true -> {ok, J};
+                             AssignedTo -> {ok, J};
+                             _Else ->
+                                 _ = update_account_phone_numbers(wh_json:set_value(<<"pvt_number_state">>, <<"released">>, J), AssignedTo),
+                                 {ok, wh_json:set_value(<<"pvt_previously_assigned_to">>, AssignedTo, J)}
+                         end
+                 end
+                ,fun({error, _}=E) -> E;
+                    ({ok, J}) ->
+                         {ok, wh_json:set_value(<<"pvt_assigned_to">>, AssignTo, J)}
                  end
                ],
     lists:foldl(fun(F, J) -> F(J) end, JObj, Routines);
@@ -429,20 +433,24 @@ reserved(<<"available">>, JObj, AssignTo, _) ->
                  end
                 ,fun({error, _}=E) -> E;
                     ({ok, J}) ->
+                         {ok, wh_json:set_value(<<"pvt_number_state">>, <<"reserved">>, J)}
+                 end
+                ,fun({error, _}=E) -> E;
+                    ({ok, J}) ->
                          AssignedTo = wh_json:get_ne_value(<<"pvt_assigned_to">>, J),
-                         case wh_json:get_value(<<"pvt_previously_assigned_to">>, J) of
+                         case AssignedTo =:= undefined 
+                             orelse wh_json:get_ne_value(<<"pvt_previously_assigned_to">>, J) 
+                         of
+                             true -> {ok, J};
                              AssignedTo -> {ok, J};
-                             _ when AssignedTo =:= undefined -> {ok, J};
-                             _Else -> {ok, wh_json:set_value(<<"pvt_previously_assigned_to">>, AssignedTo, J)}
+                             _Else ->
+                                 _ = update_account_phone_numbers(wh_json:set_value(<<"pvt_number_state">>, <<"released">>, J), AssignedTo),
+                                 {ok, wh_json:set_value(<<"pvt_previously_assigned_to">>, AssignedTo, J)}
                          end
                  end
                 ,fun({error, _}=E) -> E;
                     ({ok, J}) ->
                          {ok, wh_json:set_value(<<"pvt_assigned_to">>, AssignTo, J)}
-                 end
-                ,fun({error, _}=E) -> E;
-                    ({ok, J}) ->
-                         {ok, wh_json:set_value(<<"pvt_number_state">>, <<"reserved">>, J)}
                  end
                ],
     lists:foldl(fun(F, J) -> F(J) end, JObj, Routines);
@@ -478,20 +486,24 @@ reserved(<<"reserved">>, JObj, AssignTo, AuthBy) ->
                  end
                 ,fun({error, _}=E) -> E;
                     ({ok, J}) ->
+                         {ok, wh_json:set_value(<<"pvt_number_state">>, <<"reserved">>, J)}
+                 end
+                ,fun({error, _}=E) -> E;
+                    ({ok, J}) ->
                          AssignedTo = wh_json:get_ne_value(<<"pvt_assigned_to">>, J),
-                         case wh_json:get_value(<<"pvt_previously_assigned_to">>, J) of
+                         case AssignedTo =:= undefined 
+                             orelse wh_json:get_ne_value(<<"pvt_previously_assigned_to">>, J) 
+                         of
+                             true -> {ok, J};
                              AssignedTo -> {ok, J};
-                             _ when AssignedTo =:= undefined -> {ok, J};
-                             _Else -> {ok, wh_json:set_value(<<"pvt_previously_assigned_to">>, AssignedTo, J)}
+                             _Else ->
+                                 _ = update_account_phone_numbers(wh_json:set_value(<<"pvt_number_state">>, <<"released">>, J), AssignedTo),
+                                 {ok, wh_json:set_value(<<"pvt_previously_assigned_to">>, AssignedTo, J)}
                          end
                  end
                 ,fun({error, _}=E) -> E;
                     ({ok, J}) ->
                          {ok, wh_json:set_value(<<"pvt_assigned_to">>, AssignTo, J)}
-                 end
-                ,fun({error, _}=E) -> E;
-                    ({ok, J}) ->
-                         {ok, wh_json:set_value(<<"pvt_number_state">>, <<"reserved">>, J)}
                  end
                ],
     lists:foldl(fun(F, J) -> F(J) end, JObj, Routines);
@@ -546,23 +558,6 @@ in_service(<<"discovery">>, JObj, AssignTo, AuthBy) ->
                 end
                 ,fun({error, _}=E) -> E;
                     ({ok, J}) ->
-                         AssignedTo = wh_json:get_ne_value(<<"pvt_assigned_to">>, J),
-                         case wh_json:get_value(<<"pvt_previously_assigned_to">>, J) of
-                             AssignedTo -> {ok, J};
-                             _ when AssignedTo =:= undefined -> {ok, J};
-                             _Else -> {ok, wh_json:set_value(<<"pvt_previously_assigned_to">>, AssignedTo, J)}
-                         end
-                 end
-                ,fun({error, _}=E) -> E;
-                    ({ok, J}) ->
-                         {ok, wh_json:set_value(<<"pvt_assigned_to">>, AssignTo, J)}
-                 end
-                ,fun({error, _}=E) -> E;
-                    ({ok, J}) ->
-                         {ok, wh_json:set_value(<<"pvt_number_state">>, <<"in_service">>, J)}
-                 end
-                ,fun({error, _}=E) -> E;
-                    ({ok, J}) ->
                          Number = wh_json:get_value(<<"_id">>, J),
                          case wnm_util:get_carrier_module(J) of
                              {ok, Module, Data} ->
@@ -580,6 +575,27 @@ in_service(<<"discovery">>, JObj, AssignTo, AuthBy) ->
                                  lager:debug("carrier module specified on number document does not exist"),
                                  {error, unknown_carrier}
                          end
+                 end
+                ,fun({error, _}=E) -> E;
+                    ({ok, J}) ->
+                         {ok, wh_json:set_value(<<"pvt_number_state">>, <<"in_service">>, J)}
+                 end
+                ,fun({error, _}=E) -> E;
+                    ({ok, J}) ->
+                         AssignedTo = wh_json:get_ne_value(<<"pvt_assigned_to">>, J),
+                         case AssignedTo =:= undefined 
+                             orelse wh_json:get_ne_value(<<"pvt_previously_assigned_to">>, J) 
+                         of
+                             true -> {ok, J};
+                             AssignedTo -> {ok, J};
+                             _Else ->
+                                 _ = update_account_phone_numbers(wh_json:set_value(<<"pvt_number_state">>, <<"released">>, J), AssignedTo),
+                                 {ok, wh_json:set_value(<<"pvt_previously_assigned_to">>, AssignedTo, J)}
+                         end
+                 end
+                ,fun({error, _}=E) -> E;
+                    ({ok, J}) ->
+                         {ok, wh_json:set_value(<<"pvt_assigned_to">>, AssignTo, J)}
                  end
                ],
     lists:foldl(fun(F, J) -> F(J) end, JObj, Routines);
@@ -600,20 +616,24 @@ in_service(<<"available">>, JObj, AssignTo, _) ->
                 end
                 ,fun({error, _}=E) -> E;
                     ({ok, J}) ->
+                         {ok, wh_json:set_value(<<"pvt_number_state">>, <<"in_service">>, J)}
+                 end
+                ,fun({error, _}=E) -> E;
+                    ({ok, J}) ->
                          AssignedTo = wh_json:get_ne_value(<<"pvt_assigned_to">>, J),
-                         case wh_json:get_value(<<"pvt_previously_assigned_to">>, J) of
+                         case AssignedTo =:= undefined 
+                             orelse wh_json:get_ne_value(<<"pvt_previously_assigned_to">>, J) 
+                         of
+                             true -> {ok, J};
                              AssignedTo -> {ok, J};
-                             _ when AssignedTo =:= undefined -> {ok, J};
-                             _Else -> {ok, wh_json:set_value(<<"pvt_previously_assigned_to">>, AssignedTo, J)}
+                             _Else ->
+                                 _ = update_account_phone_numbers(wh_json:set_value(<<"pvt_number_state">>, <<"released">>, J), AssignedTo),
+                                 {ok, wh_json:set_value(<<"pvt_previously_assigned_to">>, AssignedTo, J)}
                          end
                  end
                 ,fun({error, _}=E) -> E;
                     ({ok, J}) ->
                          {ok, wh_json:set_value(<<"pvt_assigned_to">>, AssignTo, J)}
-                 end
-                ,fun({error, _}=E) -> E;
-                    ({ok, J}) ->
-                         {ok, wh_json:set_value(<<"pvt_number_state">>, <<"in_service">>, J)}
                  end
                ],
     lists:foldl(fun(F, J) -> F(J) end, JObj, Routines);
@@ -624,7 +644,8 @@ in_service(<<"reserved">>, JObj, AssignTo, AuthBy) ->
                             false -> {ok, J}
                         end
                 end
-                ,fun(J) ->
+                ,fun({error, _}=E) -> E;
+                    ({ok, J}) ->
                          AssignedTo = wh_json:get_ne_value(<<"pvt_assigned_to">>, J),
                          case (wh_util:is_in_account_hierarchy(AssignedTo, AuthBy, true)
                                orelse wh_util:is_in_account_hierarchy(AuthBy, AssignedTo))
@@ -636,20 +657,24 @@ in_service(<<"reserved">>, JObj, AssignTo, AuthBy) ->
                  end
                 ,fun({error, _}=E) -> E;
                     ({ok, J}) ->
+                         {ok, wh_json:set_value(<<"pvt_number_state">>, <<"in_service">>, J)}
+                 end
+                ,fun({error, _}=E) -> E;
+                    ({ok, J}) ->
                          AssignedTo = wh_json:get_ne_value(<<"pvt_assigned_to">>, J),
-                         case wh_json:get_value(<<"pvt_previously_assigned_to">>, J) of
+                         case AssignedTo =:= undefined 
+                             orelse wh_json:get_ne_value(<<"pvt_previously_assigned_to">>, J) 
+                         of
+                             true -> {ok, J};
                              AssignedTo -> {ok, J};
-                             _ when AssignedTo =:= undefined -> {ok, J};
-                             _Else -> {ok, wh_json:set_value(<<"pvt_previously_assigned_to">>, AssignedTo, J)}
+                             _Else ->
+                                 _ = update_account_phone_numbers(wh_json:set_value(<<"pvt_number_state">>, <<"released">>, J), AssignedTo),
+                                 {ok, wh_json:set_value(<<"pvt_previously_assigned_to">>, AssignedTo, J)}
                          end
                  end
                 ,fun({error, _}=E) -> E;
                     ({ok, J}) ->
                          {ok, wh_json:set_value(<<"pvt_assigned_to">>, AssignTo, J)}
-                 end
-                ,fun({error, _}=E) -> E;
-                    ({ok, J}) ->
-                         {ok, wh_json:set_value(<<"pvt_number_state">>, <<"in_service">>, J)}
                  end
                ],
     lists:foldl(fun(F, J) -> F(J) end, JObj, Routines);
@@ -705,10 +730,14 @@ released(<<"reserved">>, JObj, AuthBy) ->
                 ,fun({error, _}=E) -> E;
                     ({ok, J}) ->
                          AssignedTo = wh_json:get_ne_value(<<"pvt_assigned_to">>, J),
-                         case wh_json:get_value(<<"pvt_previously_assigned_to">>, J) of
+                         case AssignedTo =:= undefined 
+                             orelse wh_json:get_ne_value(<<"pvt_previously_assigned_to">>, J) 
+                         of
+                             true -> {ok, J};
                              AssignedTo -> {ok, J};
-                             _ when AssignedTo =:= undefined -> {ok, J};
-                             _Else -> {ok, wh_json:set_value(<<"pvt_previously_assigned_to">>, AssignedTo, J)}
+                             _Else ->
+                                 _ = update_account_phone_numbers(wh_json:set_value(<<"pvt_number_state">>, <<"released">>, J), AssignedTo),
+                                 {ok, wh_json:set_value(<<"pvt_previously_assigned_to">>, AssignedTo, J)}
                          end
                  end
                 ,fun({error, _}=E) -> E;
@@ -726,7 +755,7 @@ released(<<"reserved">>, JObj, AuthBy) ->
                                  lager:debug("flagging number for hard delete", []),
                                  {ok, wh_json:set_value(<<"pvt_deleted">>, true, J)};
                              [PrevAssignedTo] ->
-                                 {ok, J};
+                                 {ok, wh_json:set_value(<<"pvt_wnm_prev_assignments">>, [], J)};
                              [PrevAccount] ->
                                  Prop = [{<<"pvt_assigned_to">>, PrevAccount}
                                          ,{<<"pvt_number_state">>, <<"reserved">>}
@@ -765,10 +794,14 @@ released(<<"in_service">>, JObj, AuthBy) ->
                 ,fun({error, _}=E) -> E;
                     ({ok, J}) ->
                          AssignedTo = wh_json:get_ne_value(<<"pvt_assigned_to">>, J),
-                         case wh_json:get_value(<<"pvt_previously_assigned_to">>, J) of
+                         case AssignedTo =:= undefined 
+                             orelse wh_json:get_ne_value(<<"pvt_previously_assigned_to">>, J) 
+                         of
+                             true -> {ok, J};
                              AssignedTo -> {ok, J};
-                             _ when AssignedTo =:= undefined -> {ok, J};
-                             _Else -> {ok, wh_json:set_value(<<"pvt_previously_assigned_to">>, AssignedTo, J)}
+                             _Else ->
+                                 _ = update_account_phone_numbers(wh_json:set_value(<<"pvt_number_state">>, <<"released">>, J), AssignedTo),
+                                 {ok, wh_json:set_value(<<"pvt_previously_assigned_to">>, AssignedTo, J)}
                          end
                  end
                 ,fun({error, _}=E) -> E;
@@ -786,7 +819,7 @@ released(<<"in_service">>, JObj, AuthBy) ->
                                  lager:debug("flagging number for hard delete", []),
                                  {ok, wh_json:set_value(<<"pvt_deleted">>, true, J)};
                              [PrevAssignedTo] ->
-                                 {ok, J};
+                                 {ok, wh_json:set_value(<<"pvt_wnm_prev_assignments">>, [], J)};
                              [PrevAccount] ->
                                  Prop = [{<<"pvt_assigned_to">>, PrevAccount}
                                          ,{<<"pvt_number_state">>, <<"reserved">>}
@@ -951,7 +984,9 @@ save_phone_numbers_doc(JObj, PhoneNumbersDoc) ->
         {error, _}=E -> E;
         ok ->
             case couch_mgr:save_doc(AccountDb, PhoneNumbersDoc) of
-                {ok, _}=Ok -> Ok;
+                {ok, _}=Ok -> 
+                    lager:debug("saved updated phone_numbers doc in account db ~s", [AccountDb]),
+                    Ok;
                 {error, conflict} ->
                     save_phone_numbers_doc(JObj, get_phone_numbers_doc(JObj, AccountDb));
                 {error, _R}=E ->

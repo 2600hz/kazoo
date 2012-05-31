@@ -14,6 +14,7 @@
 -export([is_master_reseller/1]).
 -export([update_quantity/4]).
 -export([increment_quantity/3]).
+-export([reset_category_addons/2]).
 -export([commit_changes/1]).
 -export([assign/1]).
 -export([unassign/1]).
@@ -35,7 +36,7 @@
                       ,bt_merchant_id = 'undefined' :: 'undefined' | ne_binary()
                       ,bt_public_key = 'undefined' :: 'undefined' | ne_binary()
                       ,bt_private_key = 'undefined' :: 'undefined' | ne_binary()
-                      ,addons_incremented = sets:new() :: set()
+                      ,addons_reset = sets:new() :: set()
                      }).
 
 -type(reseller() :: [#wh_reseller{},...] | []).
@@ -109,7 +110,7 @@ increment_quantity(Category, Name, #wh_reseller{plans=Plans}=Reseller) ->
 increment_quantity(_, _, Reseller, []) ->
     Reseller;
 increment_quantity(Category, Name, #wh_reseller{account_id=AccountId
-                                                ,addons_incremented=AddOnsIncr}=Reseller
+                                                ,addons_reset=ResetAddOns}=Reseller
                    ,[Plan|Plans]) ->
     case wh_service_plan:get_recurring_plan(Category, Name, Plan) of
         undefined -> increment_quantity(Category, Name, Reseller, Plans);
@@ -117,26 +118,38 @@ increment_quantity(Category, Name, #wh_reseller{account_id=AccountId
             SubscriptionId = <<AccountId/binary, "_", PlanId/binary>>,
             {ok, Subscription} = get_subscription(SubscriptionId, PlanId, Reseller),
             AddOn = wh_util:to_list(AddOnId),
-            R = case sets:is_element(AddOn, AddOnsIncr) of
+            R = case sets:is_element(AddOn, ResetAddOns) of
                     false -> 
                         update_subscription_quanity(SubscriptionId, Subscription, AddOnId, 1, Reseller);
                     true ->  
                         increment_subscription_quanity(SubscriptionId, Subscription, AddOnId, Reseller)
                 end,
-            increment_quantity(Category, Name, R#wh_reseller{addons_incremented=sets:add_element(AddOn, AddOnsIncr)}, Plans)            
+            increment_quantity(Category, Name, R#wh_reseller{addons_reset=sets:add_element(AddOn, ResetAddOns)}, Plans)            
     end.
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Set the quantity of all addons on a given category to 0
+%% Set the quantity of any subscribed addons on a given category to 0
 %% @end
 %%--------------------------------------------------------------------
--spec reset_category_addons/2 :: (ne_binary(), resellers()) -> resellers().
-reset_category_addons(Category, Resellers) ->
-    [wh_reseller:reset_category(Category, Reseller) 
-     || Reseller <- Resellers
-    ].    
+-spec reset_category_addons/2 :: (ne_binary(), reseller()) -> reseller().
+reset_category_addons(Category, #wh_reseller{plans=Plans}=Reseller) ->
+    reset_category_addons(Category, Plans, Reseller).
+
+reset_category_addons(_, [], Reseller) ->
+    Reseller;
+reset_category_addons(Category, [Plan|Plans], #wh_reseller{account_id=AccountId}=Reseller) ->
+    Updated = lists:foldr(fun({PlanId, AddOnId}, #wh_reseller{addons_reset=ResetAddOns}=R) ->
+                                  SubscriptionId = <<AccountId/binary, "_", PlanId/binary>>,
+                                  case subscribed_to_addon(SubscriptionId, AddOnId, R) of
+                                      false -> R;
+                                      true ->
+                                          {ok, Subscription} = get_subscription(SubscriptionId, PlanId, Reseller),
+                                          update_subscription_quanity(SubscriptionId, Subscription, AddOnId, 0, Reseller)
+                                  end
+                          end, Reseller, wh_service_plan:get_category_addons(Category, Plan)),
+    reset_category_addons(Category, Plans, Updated).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -444,6 +457,17 @@ get_subscription(SubscriptionId, PlanId, #wh_reseller{bt_subscriptions=Subscript
                 {error, not_found} -> 
                     braintree_customer:new_subscription(SubscriptionId, PlanId, Customer);
                 {ok, _}=Ok -> Ok
+            end
+    end.
+
+-spec subscribed_to_addon/3 :: (ne_binary(), ne_binary(), reseller()) -> boolean().
+subscribed_to_addon(SubscriptionId, AddOnId, #wh_reseller{bt_customer=Customer}) ->
+    case braintree_customer:get_subscription(SubscriptionId, Customer) of
+        {error, _} -> false;
+        {ok, Subscription} -> 
+            case braintree_subscription:get_addon(Subscription, AddOnId) of
+                {error, _} -> false;
+                {ok, _} -> true
             end
     end.
 

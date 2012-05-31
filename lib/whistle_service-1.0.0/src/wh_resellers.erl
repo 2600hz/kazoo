@@ -27,7 +27,7 @@
 -export([fetch/1]).
 -export([update_quantity/4]).
 -export([increment_quantity/3]).
--export([reset_category/2]).
+-export([reset_category_addons/2]).
 -export([commit_changes/1]).
 
 -include("wh_service.hrl").
@@ -91,9 +91,9 @@ increment_quantity(Category, Name, Resellers) ->
 %% Set the quantity of all addons on a given category to 0
 %% @end
 %%--------------------------------------------------------------------
--spec reset_category/2 :: (ne_binary(), resellers()) -> resellers().
-reset_category(Category, Resellers) ->
-    [wh_reseller:reset_category(Category, Reseller) 
+-spec reset_category_addons/2 :: (ne_binary(), resellers()) -> resellers().
+reset_category_addons(Category, Resellers) ->
+    [wh_reseller:reset_category_addons(Category, Reseller) 
      || Reseller <- Resellers
     ].    
 
