@@ -1,12 +1,12 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2012, VoIP INC
 %%% @doc
-%%% Provide a direct replacement for Twilio-based servers
+%%% Accept third-party dialplan
 %%% @end
 %%% @contributors
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
--module(cf_killio).
+-module(cf_pivot).
 
 -include("../callflow.hrl").
 
@@ -28,7 +28,8 @@
 %%   req_timeout: integer(), defaults to 5 seconds
 %%   voice_url: string(), url to get/post to
 %%   req_format: string(), data format and payload expected for initial
-%%     request (defaults to twiml for the moment)
+%%     request (defaults to twiml for the moment),
+%%     formats: twiml, kazoo
 %%
 %% @end
 %%--------------------------------------------------------------------
