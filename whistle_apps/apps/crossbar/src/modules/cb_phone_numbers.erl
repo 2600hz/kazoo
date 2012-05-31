@@ -26,6 +26,7 @@
 
 -include_lib("crossbar/include/crossbar.hrl").
 -include_lib("whistle_number_manager/include/wh_number_manager.hrl").
+-include_lib("whistle/src/wh_json.hrl").
 
 -define(PORT_DOCS, <<"docs">>).
 -define(PORT, <<"port">>).
@@ -406,6 +407,8 @@ set_response({ok, Doc}, _, Context) ->
     crossbar_util:response(Doc, Context);
 set_response(ok, _, Context) ->
     crossbar_util:response(wh_json:new(), Context);
+set_response({error, JObj}, _, Context) when ?IS_JSON_GUARD(JObj) ->
+    crossbar_util:response_invalid_data(JObj, Context);    
 set_response({error, Else}, _, Context) when is_binary(Else) ->
     crossbar_util:response_invalid_data(Else, Context);
 set_response(_Else, _, Context) ->

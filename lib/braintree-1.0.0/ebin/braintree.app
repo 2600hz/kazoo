@@ -8,5 +8,4 @@
               {modules,[braintree_addon,braintree_address,braintree_app,
                         braintree_card,braintree_customer,braintree_request,
                         braintree_subscription,braintree_sup,
-                        braintree_transaction,braintree_util,
-                        braintree_uuid]}]}.
+                        braintree_transaction,braintree_util]}]}.
