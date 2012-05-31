@@ -41,7 +41,6 @@ ready() ->
     whapps_config:flush(?CONFIG_CAT),
     whapps_config:couch_ready().
 
-
 fetch(Key) ->
     fetch(Key, undefined).
 

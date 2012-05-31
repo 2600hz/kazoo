@@ -241,10 +241,8 @@ build_message(Prop, ReqH, OptH) when is_list(Prop) ->
 build_message(JObj, ReqH, OptH) ->
     build_message(wh_json:to_proplist(JObj), ReqH, OptH).
 
--spec build_message_specific_headers/3 :: (Msg, ReqHeaders, OptHeaders) -> {'ok', proplist()} | {'error', string()} when
-      Msg :: proplist() | {api_headers(), proplist()},
-      ReqHeaders :: api_headers(),
-      OptHeaders :: api_headers().
+-spec build_message_specific_headers/3 :: (proplist() | {api_headers(), proplist()}, api_headers(), api_headers()) -> {'ok', proplist()} |
+                                                                                                                      {'error', string()}.
 build_message_specific_headers({Headers, Prop}, ReqH, OptH) ->
     case update_required_headers(Prop, ReqH, Headers) of
         {error, _Reason} = Error ->
@@ -275,13 +273,12 @@ build_message_specific({Headers, Prop}, ReqH, OptH) ->
 build_message_specific(Prop, ReqH, OptH) ->
     build_message_specific({[], Prop}, ReqH, OptH).
 
--spec headers_to_json/1 :: (HeadersProp) -> api_formatter_return() when
-      HeadersProp :: proplist().
-headers_to_json(HeadersProp) ->
-    try
-        {ok, mochijson2:encode({struct, HeadersProp})}
+-spec headers_to_json/1 :: (proplist()) -> api_formatter_return().
+headers_to_json([_|_]=HeadersProp) ->
+    try wh_json:encode(wh_json:from_list(HeadersProp)) of
+        JSON -> {ok, JSON}
     catch
-        _What:_Why -> {error, io_lib:format("WHISTLE TO_JSON ERROR(~p): ~p~n~p", [_What, _Why, HeadersProp])}
+        _What:_Why -> {error, io_lib:format("WHISTLE TO_JSON ~p: ~p~n~p~n", [_What, _Why, HeadersProp])}
     end.
 
 %% Checks Prop for all default headers, throws error if one is missing

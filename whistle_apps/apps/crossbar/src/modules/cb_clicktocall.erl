@@ -26,7 +26,7 @@
          ,delete/2
         ]).
 
--include_lib("crossbar/include/crossbar.hrl").
+-include_lib("crossbar.hrl").
 
 -define(CONNECT_CALL, <<"connect">>).
 -define(HISTORY, <<"history">>).
@@ -166,8 +166,7 @@ load_c2c(C2CId, Context) ->
 load_c2c_history(C2CId, Context) ->
     case crossbar_doc:load(C2CId, Context) of
         #cb_context{doc=JObj, resp_status=success}=Context1 ->
-            History = wh_json:get_value(<<"pvt_history">>, JObj, []),
-            Context1#cb_context{resp_data=History};
+            Context1#cb_context{resp_data=wh_json:get_value(<<"pvt_history">>, JObj, [])};
         Else ->
             Else
     end.

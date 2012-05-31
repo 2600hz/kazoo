@@ -63,7 +63,9 @@ handle_req(<<"originate">>, JObj, Props) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec attempt_to_fulfill_bridge_req/4 :: (ne_binary(), ne_binary(), wh_json:json_object(), proplist()) -> bridge_resp() | execute_ext_resp() | {'error', 'no_resources'}.
+-spec attempt_to_fulfill_bridge_req/4 :: (ne_binary(), ne_binary(), wh_json:json_object(), proplist()) -> bridge_resp() |
+                                                                                                          execute_ext_resp() |
+                                                                                                          {'error', 'no_resources'}.
 attempt_to_fulfill_bridge_req(Number, CtrlQ, JObj, Props) ->
     Result = case stepswitch_util:lookup_number(Number) of
                  {ok, AccountId, false} ->

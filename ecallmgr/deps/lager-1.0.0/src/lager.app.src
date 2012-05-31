@@ -20,7 +20,7 @@
                         ,{lager_file_backend, [
                                                {"log/error.log", error, 10485760, "$D0", 5}
                                               ]}
-                        ,{lager_syslog_backend, ["2600hz", local0, debug]}
+                        ,{lager_syslog_backend, ["ecallmgr", local0, debug]}
                        ]},
 
             %% Whether to write a crash log, and where. Undefined means no crash logger.

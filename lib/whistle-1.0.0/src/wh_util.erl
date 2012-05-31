@@ -193,11 +193,13 @@ is_account_enabled(AccountId) ->
 %% Retrieves the account realm
 %% @end
 %%--------------------------------------------------------------------
--spec get_account_realm/1 :: (undefined | ne_binary()) -> undefined | ne_binary().
--spec get_account_realm/2 :: (undefined | ne_binary(), ne_binary()) -> undefined | ne_binary().
-
+-spec get_account_realm/1 :: ('undefined' | ne_binary()) -> 'undefined' | ne_binary().
+-spec get_account_realm/2 :: ('undefined' | ne_binary(), ne_binary()) -> 'undefined' | ne_binary().
 get_account_realm(AccountId) ->
-    get_account_realm(wh_util:format_account_id(AccountId, encoded), AccountId).
+    get_account_realm(
+      wh_util:format_account_id(AccountId, encoded)
+      ,wh_util:format_account_id(AccountId, raw)
+     ).
 
 get_account_realm(undefined, _) ->
     undefined;
@@ -419,7 +421,8 @@ to_atom(X) -> to_atom(to_list(X)).
 to_atom(X, _) when is_atom(X) -> X;
 to_atom(X, true) when is_list(X) -> list_to_atom(X);
 to_atom(X, true) -> to_atom(to_list(X), true);
-to_atom(X, SafeList) ->
+to_atom(X, false) -> to_atom(X);
+to_atom(X, SafeList) when is_list(SafeList) ->
     to_atom(to_list(X), lists:member(X, SafeList)).
 
 -spec to_boolean/1 :: (binary() | string() | atom()) -> boolean().

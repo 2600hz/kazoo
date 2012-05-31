@@ -3,11 +3,8 @@
 %%% @doc
 %%% Craws accounts and triggers 'first' registration and call emails
 %%% @end
-%%%
 %%% @contributors
-%%% Karl Anderson <karl@2600hz.org>
-%%%
-%%% Created : 25 Jan 2012 by Karl Anderson <karl@2600hz.org>
+%%%   Karl Anderson <karl@2600hz.org>
 %%%-------------------------------------------------------------------
 -module(notify_first_occurrence).
 
@@ -30,11 +27,13 @@
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
--spec init/0 :: () -> ok.
+-spec init/0 :: () -> 'ok'.
 init() ->
+    put(callid, ?LOG_SYSTEM_ID),
+
     %% ensure the vm template can compile, otherwise crash the processes
     notify_util:compile_default_text_template(?DEFAULT_TEXT_TMPL, ?MOD_CONFIG_CAT),
     notify_util:compile_default_html_template(?DEFAULT_HTML_TMPL, ?MOD_CONFIG_CAT),
@@ -57,7 +56,7 @@ init() ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec start_crawler/0 :: () -> {ok, pid()}.
+-spec start_crawler/0 :: () -> {'ok', pid()}.
 start_crawler() ->
     {ok, proc_lib:spawn_link(fun crawler_loop/0)}.
 
@@ -89,7 +88,7 @@ handle_req(JObj, _Props) ->
 %% another process does it first (ie: generating a 409 conflict).
 %% @end
 %%--------------------------------------------------------------------
--spec notify_initial_registration/2 :: (ne_binary(), wh_json:json_object()) -> ok.
+-spec notify_initial_registration/2 :: (ne_binary(), wh_json:json_object()) -> 'ok'.
 notify_initial_registration(AccountDb, JObj) ->
     Account = wh_json:set_value([<<"notifications">>, <<"first_occurrence">>, <<"sent_initial_registration">>]
                                 ,true
@@ -109,11 +108,12 @@ notify_initial_registration(AccountDb, JObj) ->
 %% another process does it first (ie: generating a 409 conflict).
 %% @end
 %%--------------------------------------------------------------------
--spec notify_initial_call/2 :: (ne_binary(), wh_json:json_object()) -> ok.
+-spec notify_initial_call/2 :: (ne_binary(), wh_json:json_object()) -> 'ok'.
 notify_initial_call(AccountDb, JObj) ->
     Account = wh_json:set_value([<<"notifications">>, <<"first_occurrence">>, <<"sent_initial_call">>]
                                 ,true
                                 ,JObj),
+
     case couch_mgr:save_doc(AccountDb, Account) of
         {ok, _} ->
             couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, Account),
@@ -124,12 +124,12 @@ notify_initial_call(AccountDb, JObj) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Send an email notifying that a first occurrence event has happened. 
+%% Send an email notifying that a first occurrence event has happened.
 %% @end
 %%--------------------------------------------------------------------
 first_occurrence_notice(Account, Occurrence) ->
     lager:debug("creating first occurrence notice"),
-    
+
     Props = create_template_props(Account, Occurrence),
 
     CustomTxtTemplate = wh_json:get_value([<<"notifications">>, <<"first_occurrence">>, <<"email_text_template">>], Account),
@@ -140,7 +140,7 @@ first_occurrence_notice(Account, Occurrence) ->
 
     CustomSubjectTemplate = wh_json:get_value([<<"notifications">>, <<"first_occurrence">>, <<"email_subject_template">>], Account),
     {ok, Subject} = notify_util:render_template(CustomSubjectTemplate, ?DEFAULT_SUBJ_TMPL, Props),
-    
+
     To = wh_json:get_value([<<"notifications">>, <<"first_occurrence">>, <<"send_to">>], Account
                            ,whapps_config:get(?MOD_CONFIG_CAT, <<"default_to">>, <<"">>)),
     RepEmail = notify_util:get_rep_email(Account),
@@ -169,7 +169,7 @@ create_template_props(Account, Occurrence) ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
--spec build_and_send_email/5 :: (iolist(), iolist(), iolist(), undefined | binary() | [ne_binary(),...], proplist()) -> 'ok'.
+-spec build_and_send_email/5 :: (iolist(), iolist(), iolist(), 'undefined' | binary() | [ne_binary(),...], proplist()) -> 'ok'.
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) when is_list(To) ->
     [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props) || T <- To],
     ok;
@@ -191,7 +191,7 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
               ]
             },
     notify_util:send_email(From, To, Email),
-    ok.                
+    ok.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -200,16 +200,16 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
 %% notifications and test if any should be sent.
 %% @end
 %%--------------------------------------------------------------------
--spec crawler_loop/0 :: () -> ok.
+-spec crawler_loop/0 :: () -> 'ok'.
 crawler_loop() ->
     case couch_mgr:get_all_results(?WH_ACCOUNTS_DB, <<"notify/first_occurance">>) of
         {ok, Results} ->
             [test_for_initial_occurrences(Result)
              || Result <- Results
             ];
-        _ ->
-            ok
+        _ -> ok
     end,
+
     Cycle = whapps_config:get_integer(?MOD_CONFIG_CAT, <<"crawler_sleep_time">>, 300000),
     erlang:send_after(Cycle, self(), wakeup),
     flush(),
@@ -219,20 +219,21 @@ crawler_loop() ->
 %% @private
 %% @doc
 %% Check if the account has yet to send an initial call/registration
-%% notification. 
+%% notification.
 %% If the account has not sent the notification for calls then check
 %% if there are any cdrs, and send the notice if so.
 %% If the account has not sent the notification for registrations
 %% then request the current registrations for the realm.  When/if
-%% the response comes in a notification will be sent. 
+%% the response comes in a notification will be sent.
 %% @end
 %%--------------------------------------------------------------------
--spec test_for_initial_occurrences/1 :: (wh_json:json_object()) -> ok.
+-spec test_for_initial_occurrences/1 :: (wh_json:json_object()) -> 'ok'.
 test_for_initial_occurrences(Result) ->
     Realm = wh_json:get_value([<<"value">>, <<"realm">>], Result),
     {ok, Srv} = notify_sup:listener_proc(),
-    lager:debug("testing realm '~s' for intial occurrences~n", [Realm]),
-    case wh_json:is_true([<<"value">>, <<"sent_initial_registration">>], Result) orelse wh_util:is_empty(Realm) of
+    lager:debug("testing realm '~s' for intial occurrences", [Realm]),
+    case wh_json:is_true([<<"value">>, <<"sent_initial_registration">>], Result) orelse
+        wh_util:is_empty(Realm) of
         true -> ok;
         false ->
             Q = gen_listener:queue_name(Srv),
@@ -246,18 +247,18 @@ test_for_initial_occurrences(Result) ->
         true -> ok;
         false ->
             AccountDb = wh_json:get_value([<<"value">>, <<"account_db">>], Result),
-            ViewOptions = [{<<"key">>, <<"cdr">>}
-                           ,{<<"limit">>, <<"1">>}
+            ViewOptions = [{key, <<"cdr">>}
+                           ,{limit, <<"1">>}
                           ],
             case couch_mgr:get_results(AccountDb, <<"maintenance/listing_by_type">>, ViewOptions) of
-                {ok, [_|_]} -> 
+                {ok, [_|_]} ->
                     AccountId = wh_json:get_value(<<"id">>, Result),
                     case couch_mgr:open_doc(AccountDb, AccountId) of
-                        {ok, JObj} ->
-                            notify_initial_call(AccountDb, JObj);
+                        {ok, JObj} -> notify_initial_call(AccountDb, JObj);
                         _ -> ok
-                    end;
-                _ -> ok 
+                    end;                    
+                _ ->
+                    ok
             end
     end,
     Delay = whapps_config:get_integer(?MOD_CONFIG_CAT, <<"crawler_interaccount_delay">>, 1000),
@@ -266,13 +267,11 @@ test_for_initial_occurrences(Result) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Ensure there are no messages in the process queue 
+%% Ensure there are no messages in the process queue
 %% @end
 %%--------------------------------------------------------------------
--spec flush/0 :: () -> true.
+-spec flush/0 :: () -> 'true'.
 flush() ->
-    receive
-        _ -> flush()
-    after
-        0 -> true
+    receive _ -> flush()
+    after 0 -> true
     end.

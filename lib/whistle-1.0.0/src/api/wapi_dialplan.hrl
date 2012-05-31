@@ -30,8 +30,8 @@
                             ,?INSERT_AT_TUPLE
                            ]).
 -define(BRIDGE_REQ_TYPES, [{<<"Endpoints">>, fun is_list/1}
-                           ,{<<"SIP-Headers">>, ?IS_JSON_OBJECT}
-                           ,{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}
+                           ,{<<"SIP-Headers">>, fun wh_json:is_json_object/1}
+                           ,{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}
                           ]).
 
 %% Bridge Endpoints
@@ -52,9 +52,9 @@
                                      ,{<<"Bypass-Media">>, [<<"true">>, <<"false">>]}
                                      ,{<<"Endpoint-Type">>, [<<"sip">>, <<"freetdm">>]}
                                     ]).
--define(BRIDGE_REQ_ENDPOINT_TYPES, [{<<"SIP-Headers">>, ?IS_JSON_OBJECT}
-                                    ,{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}
-                                    ,{<<"Endpoint-Options">>, ?IS_JSON_OBJECT}
+-define(BRIDGE_REQ_ENDPOINT_TYPES, [{<<"SIP-Headers">>, fun wh_json:is_json_object/1}
+                                    ,{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}
+                                    ,{<<"Endpoint-Options">>, fun wh_json:is_json_object/1}
                                    ]).
 
 %% Store Request
@@ -105,10 +105,7 @@
                                  ,{<<"Event-Name">>, <<"response">>}
                                  ,{<<"Event-Category">>, <<"call">>}
                                 ]).
--define(STORE_HTTP_RESP_TYPES, [{<<"Media-Transfer-Results">>, fun({struct, L}) when is_list(L) ->
-                                                                       true;
-                                                                  (_) -> false
-                                                               end}]).
+-define(STORE_HTTP_RESP_TYPES, [{<<"Media-Transfer-Results">>, fun wh_json:is_json_object/1}]).
 
 %% Tones Request
 -define(TONES_REQ_HEADERS, [<<"Call-ID">>, <<"Application-Name">>, <<"Tones">>]).
@@ -239,8 +236,8 @@
                          ,{<<"Application-Name">>, <<"set">>}
                          ,?INSERT_AT_TUPLE
                          ]).
--define(SET_REQ_TYPES, [{<<"Custom-Channel-Vars">>,?IS_JSON_OBJECT}
-                        ,{<<"Custom-Call-Vars">>, ?IS_JSON_OBJECT}
+-define(SET_REQ_TYPES, [{<<"Custom-Channel-Vars">>,fun wh_json:is_json_object/1}
+                        ,{<<"Custom-Call-Vars">>, fun wh_json:is_json_object/1}
                        ]).
 
 %% Fetch
@@ -424,8 +421,8 @@
                               ]).
 
 %% Originate Ready
--define(ORIGINATE_READY_HEADERS, [<<"Msg-ID">>, <<"Call-ID">>, <<"Control-Queue">>]).
--define(OPTIONAL_ORIGINATE_READY_HEADERS, []).
+-define(ORIGINATE_READY_HEADERS, [<<"Call-ID">>, <<"Control-Queue">>]).
+-define(OPTIONAL_ORIGINATE_READY_HEADERS, [<<"Msg-ID">>]).
 -define(ORIGINATE_READY_VALUES, [{<<"Event-Category">>, <<"dialplan">>}
                                  ,{<<"Event-Name">>, <<"originate_ready">>}
                                 ]).

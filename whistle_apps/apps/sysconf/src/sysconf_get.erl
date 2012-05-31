@@ -19,7 +19,6 @@ init() ->
 
 -spec handle_req/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
 handle_req(ApiJObj, _Props) ->
-    lager:debug("received sysconf get"),
     true = wapi_sysconf:get_req_v(ApiJObj),
 
     Category = wh_json:get_value(<<"Category">>, ApiJObj),
@@ -27,6 +26,8 @@ handle_req(ApiJObj, _Props) ->
     Default = wh_json:get_value(<<"Default">>, ApiJObj, null),
     Node = wh_json:get_value(<<"Node">>, ApiJObj),
     MsgID = wh_json:get_value(<<"Msg-ID">>, ApiJObj),
+
+    lager:debug("received sysconf get for ~s:~s from ~s", [Category, Key, Node]),
 
     RespQ =  wh_json:get_value(<<"Server-ID">>, ApiJObj), 
     Resp = [{<<"Category">>, Category}

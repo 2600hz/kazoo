@@ -59,7 +59,7 @@
                                           ,<<"Msg-ID">>, <<"Switch-Hostname">>
                                      ]).
 -define(CALL_EVENT_VALUES, [{<<"Event-Category">>, <<"call_event">>}]).
--define(CALL_EVENT_TYPES, [{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}]).
+-define(CALL_EVENT_TYPES, [{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}]).
 
 %% Channel Status Request
 -define(CHANNEL_STATUS_REQ_HEADERS, [<<"Call-ID">>]).
@@ -78,7 +78,7 @@
                                   ,{<<"Event-Name">>, <<"channel_status_resp">>}
                                   ,{<<"Status">>, [<<"active">>, <<"tmpdown">>, <<"terminated">>]}
                                  ]).
--define(CHANNEL_STATUS_RESP_TYPES, [{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}]).
+-define(CHANNEL_STATUS_RESP_TYPES, [{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}]).
 
 %% Call Status Request
 -define(CALL_STATUS_REQ_HEADERS, [<<"Call-ID">>]).
@@ -100,7 +100,7 @@
                                   ,{<<"Event-Name">>, <<"call_status_resp">>}
                                   ,{<<"Status">>, [<<"active">>, <<"tmpdown">>, <<"terminated">>]}
                                  ]).
--define(CALL_STATUS_RESP_TYPES, [{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}]).
+-define(CALL_STATUS_RESP_TYPES, [{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}]).
 
 %% Call CDR
 -define(CALL_CDR_HEADERS, [ <<"Call-ID">>]).
@@ -118,7 +118,7 @@
                           ,{<<"Call-Direction">>, [<<"inbound">>, <<"outbound">>]}
                           ,{<<"Caller-ID-Type">>, [<<"pid">>, <<"rpid">>, <<"from">>]}
                          ]).
--define(CALL_CDR_TYPES, [{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}]).
+-define(CALL_CDR_TYPES, [{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}]).
 
 %% Call ID Update
 -define(CALL_ID_UPDATE_HEADERS, [<<"Call-ID">>, <<"Replaces-Call-ID">>, <<"Control-Queue">>]).

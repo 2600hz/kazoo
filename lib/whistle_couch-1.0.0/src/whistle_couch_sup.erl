@@ -9,7 +9,7 @@
 
 -behaviour(supervisor).
 
--include_lib("whistle_couch/include/wh_couch.hrl").
+-include_lib("wh_couch.hrl").
 
 -export([start_link/0]).
 -export([init/1]).
@@ -52,6 +52,7 @@ start_link() ->
 %%--------------------------------------------------------------------
 -spec init([]) -> sup_init_ret().
 init([]) ->
+    _ = whistle_couch:start_deps(),
     RestartStrategy = one_for_one,
     MaxRestarts = 5,
     MaxSecondsBetweenRestarts = 10,

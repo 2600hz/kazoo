@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2012, VoIP INC
 %%% @doc
 %%%
 %%% @end
@@ -128,7 +128,8 @@ get_endpoint(Number, #resrc{weight_cost=WC, gateways=Gtws, rules=Rules
 %% number.  In the event that no rules match then return an error.
 %% @end
 %%--------------------------------------------------------------------
--spec evaluate_rules/2 :: (re:mp(), ne_binary()) -> {'ok', ne_binary()} | {'error', 'no_match'}.
+-spec evaluate_rules/2 :: (re:mp(), ne_binary()) -> {'ok', ne_binary()} |
+                                                    {'error', 'no_match'}.
 evaluate_rules([], _) ->
     {error, no_match};
 evaluate_rules([Regex|T], Number) ->
@@ -150,6 +151,6 @@ evaluate_rules([Regex|T], Number) ->
 %% 
 %% @end
 %%--------------------------------------------------------------------
--spec cache_key_number/1 :: (ne_binary()) -> {stepswitch_number, ne_binary()}.
+-spec cache_key_number/1 :: (ne_binary()) -> {'stepswitch_number', ne_binary()}.
 cache_key_number(Number) ->
     {stepswitch_number, Number}.

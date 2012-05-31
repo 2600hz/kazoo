@@ -1,9 +1,22 @@
+%%%-------------------------------------------------------------------
+%%% @copyright (C) 2010-2012, VoIP INC
+%%% @doc
+%%%
+%%% @end
+%%% @contributors
+%%%   James Aimonetti
+%%%-------------------------------------------------------------------
 -module(whistle_couch).
+
 -behaviour(application).
 
--author('James Aimonetti <james@2600hz.org>').
+-export([start/2, start/0
+         ,start_link/0
+         ,start_deps/0
+         ,stop/0, stop/1
+        ]).
 
--export([start/2, start/0, start_link/0, stop/0, stop/1]).
+-define(DEPS, [sasl, crypto, public_key, ibrowse, couchbeam]).
 
 %%
 start(_Type, _Args) ->
@@ -22,13 +35,10 @@ start() ->
     _ = start_deps(),
     application:start(whistle_couch).
 
+-spec start_deps/0 :: () -> any().
 start_deps() ->
     whistle_couch_deps:ensure(?MODULE),
-    ok = wh_util:ensure_started(sasl),
-    ok = wh_util:ensure_started(crypto),
-    ok = wh_util:ensure_started(riak_err),
-    ok = wh_util:ensure_started(ibrowse),
-    ok = wh_util:ensure_started(couchbeam).
+    [begin lager:info("starting ~s", [Dep]), wh_util:ensure_started(Dep) end || Dep <- ?DEPS].
 
 %% @spec stop() -> ok
 %% @doc Stop the couch server.

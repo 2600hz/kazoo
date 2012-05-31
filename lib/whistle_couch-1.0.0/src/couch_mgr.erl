@@ -121,7 +121,7 @@
          ,code_change/3
         ]).
 
--include_lib("whistle_couch/include/wh_couch.hrl").
+-include_lib("wh_couch.hrl").
 
 -define(SERVER, ?MODULE).
 
@@ -130,8 +130,8 @@
 %% Change handler {DBName :: string(), {Srv :: pid(), SrvRef :: reference()}
 -record(state, {
           host = {"", ?DEFAULT_PORT, ?DEFAULT_ADMIN_PORT} :: {nonempty_string(), pos_integer(), pos_integer()}
-          ,connection = #server{} :: #server{}
-          ,admin_connection = #server{} :: #server{}
+          ,connection = #server{} :: server()
+          ,admin_connection = #server{} :: server()
           ,creds = {"", ""} :: {string(), string()} % {User, Pass}
           ,change_handlers = dict:new() :: dict()
          }).
@@ -145,7 +145,8 @@
 %% Load a file into couch as a document (not an attachement)
 %% @end
 %%--------------------------------------------------------------------
--spec load_doc_from_file/3 :: (ne_binary(), atom(), nonempty_string() | ne_binary()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
+-spec load_doc_from_file/3 :: (ne_binary(), atom(), nonempty_string() | ne_binary()) -> {'ok', wh_json:json_object()} |
+                                                                                        {'error', atom()}.
 load_doc_from_file(DbName, App, File) ->
     Path = list_to_binary([code:priv_dir(App), "/couchdb/", wh_util:to_list(File)]),
     lager:debug("read into db ~s from CouchDB JSON file: ~s", [DbName, Path]),
@@ -168,7 +169,8 @@ load_doc_from_file(DbName, App, File) ->
 %% a file
 %% @end
 %%--------------------------------------------------------------------
--spec update_doc_from_file/3 :: (ne_binary(), atom(), nonempty_string() | ne_binary()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
+-spec update_doc_from_file/3 :: (ne_binary(), atom(), nonempty_string() | ne_binary()) -> {'ok', wh_json:json_object()} |
+                                                                                          {'error', atom()}.
 update_doc_from_file(DbName, App, File) ->
     Path = list_to_binary([code:priv_dir(App), "/couchdb/", File]),
     lager:debug("update db ~s from CouchDB file: ~s", [DbName, Path]),
@@ -193,7 +195,8 @@ update_doc_from_file(DbName, App, File) ->
 %% contents of a file
 %% @end
 %%--------------------------------------------------------------------
--spec revise_doc_from_file/3 :: (ne_binary(), atom(), ne_binary() | nonempty_string()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
+-spec revise_doc_from_file/3 :: (ne_binary(), atom(), ne_binary() | nonempty_string()) -> {'ok', wh_json:json_object()} |
+                                                                                          {'error', atom()}.
 revise_doc_from_file(DbName, App, File) ->
     case ?MODULE:update_doc_from_file(DbName, App, File) of
         {error, _E} ->
@@ -271,8 +274,10 @@ db_exists(DbName) ->
 %% Retrieve information regarding all databases
 %% @end
 %%--------------------------------------------------------------------
--spec db_info/0 :: () -> {'ok', [ne_binary(),...] | []} | {'error', atom()}.
--spec admin_db_info/0 :: () -> {'ok', [ne_binary(),...] | []} | {'error', atom()}.
+-spec db_info/0 :: () -> {'ok', [ne_binary(),...] | []} |
+                         {'error', atom()}.
+-spec admin_db_info/0 :: () -> {'ok', [ne_binary(),...] | []} |
+                               {'error', atom()}.
 db_info() ->
     couch_util:db_info(get_conn()).
 admin_db_info() ->
@@ -284,8 +289,10 @@ admin_db_info() ->
 %% Retrieve information regarding a database
 %% @end
 %%--------------------------------------------------------------------
--spec db_info/1 :: (ne_binary()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
--spec admin_db_info/1 :: (ne_binary()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
+-spec db_info/1 :: (ne_binary()) -> {'ok', wh_json:json_object()} |
+                                    {'error', atom()}.
+-spec admin_db_info/1 :: (ne_binary()) -> {'ok', wh_json:json_object()} |
+                                          {'error', atom()}.
 db_info(DbName) ->
     couch_util:db_info(get_conn(), DbName).
 admin_db_info(DbName) ->
@@ -297,8 +304,10 @@ admin_db_info(DbName) ->
 %% Retrieve information regarding a database design doc
 %% @end
 %%--------------------------------------------------------------------
--spec design_info/2 :: (ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
--spec admin_design_info/2 :: (ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
+-spec design_info/2 :: (ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} |
+                                                     {'error', atom()}.
+-spec admin_design_info/2 :: (ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} |
+                                                           {'error', atom()}.
 design_info(DbName, DesignName) ->
     couch_util:design_info(get_conn(), DbName, DesignName).
 admin_design_info(DbName, DesignName) ->
@@ -351,7 +360,8 @@ admin_db_view_cleanup(DbName) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec db_replicate/1 :: (proplist() | wh_json:json_object()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
+-spec db_replicate/1 :: (proplist() | wh_json:json_object()) -> {'ok', wh_json:json_object()} |
+                                                                {'error', atom()}.
 db_replicate(Prop) when is_list(Prop) ->
     db_replicate(wh_json:from_list(Prop));
 db_replicate(JObj) ->
@@ -404,8 +414,10 @@ db_delete(DbName) ->
 %% fetch a cached doc or open it if not available.
 %% @end
 %%--------------------------------------------------------------------
--spec open_cache_doc/2 :: (ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} | {'error', 'not_found' | 'db_not_reachable'}.
--spec open_cache_doc/3 :: (ne_binary(), ne_binary(), proplist()) -> {'ok', wh_json:json_object()} | {'error', 'not_found' | 'db_not_reachable'}.
+-spec open_cache_doc/2 :: (ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} |
+                                                        {'error', 'not_found' | 'db_not_reachable'}.
+-spec open_cache_doc/3 :: (ne_binary(), ne_binary(), proplist()) -> {'ok', wh_json:json_object()} |
+                                                                    {'error', 'not_found' | 'db_not_reachable'}.
 
 open_cache_doc(DbName, DocId) ->
     open_cache_doc(DbName, DocId, []).
@@ -419,32 +431,40 @@ open_cache_doc(DbName, DocId, Options) ->
 %% open a document given a doc id returns an error tuple or the json
 %% @end
 %%--------------------------------------------------------------------
--spec open_doc/2 :: (ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} | {'error', 'not_found' | 'db_not_reachable'}.
--spec open_doc/3 :: (ne_binary(), ne_binary(), proplist()) -> {'ok', wh_json:json_object()} | {'error', 'not_found' | 'db_not_reachable'}.
+-spec open_doc/2 :: (ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} |
+                                                  {'error', 'not_found' | 'db_not_reachable'}.
+-spec open_doc/3 :: (ne_binary(), ne_binary(), proplist()) -> {'ok', wh_json:json_object()} |
+                                                              {'error', 'not_found' | 'db_not_reachable'}.
 open_doc(DbName, DocId) ->
     open_doc(DbName, DocId, []).
 open_doc(DbName, DocId, Options) ->
     couch_util:open_doc(get_conn(), DbName, DocId, Options).
 
--spec all_docs/1 :: (ne_binary()) -> {'ok', wh_json:json_objects()} | {'error', atom()}.
--spec admin_all_docs/1 :: (ne_binary()) -> {'ok', wh_json:json_objects()} | {'error', atom()}.
+-spec all_docs/1 :: (ne_binary()) -> {'ok', wh_json:json_objects()} |
+                                     {'error', atom()}.
+-spec admin_all_docs/1 :: (ne_binary()) -> {'ok', wh_json:json_objects()} |
+                                           {'error', atom()}.
 all_docs(DbName) ->
     couch_util:all_docs(get_conn(), DbName, []).
 admin_all_docs(DbName) ->
     couch_util:all_docs(get_admin_conn(), DbName, []).
 
--spec all_docs/2 :: (ne_binary(), proplist()) -> {'ok', wh_json:json_objects()} | {'error', atom()}.
--spec admin_all_docs/2 :: (ne_binary(), proplist()) -> {'ok', wh_json:json_objects()} | {'error', atom()}.
+-spec all_docs/2 :: (ne_binary(), proplist()) -> {'ok', wh_json:json_objects()} |
+                                                 {'error', atom()}.
+-spec admin_all_docs/2 :: (ne_binary(), proplist()) -> {'ok', wh_json:json_objects()} |
+                                                       {'error', atom()}.
 all_docs(DbName, Options) ->
     couch_util:all_docs(get_conn(), DbName, Options).
 admin_all_docs(DbName, Options) ->
     couch_util:all_docs(get_admin_conn(), DbName, Options).
 
--spec all_design_docs/1 :: (ne_binary()) -> {'ok', wh_json:json_objects()} | {'error', atom()}.
+-spec all_design_docs/1 :: (ne_binary()) -> {'ok', wh_json:json_objects()} |
+                                            {'error', atom()}.
 all_design_docs(DbName) ->
     couch_util:all_design_docs(get_conn(), DbName, []).
 
--spec all_design_docs/2 :: (ne_binary(), proplist()) -> {'ok', wh_json:json_objects()} | {'error', atom()}.
+-spec all_design_docs/2 :: (ne_binary(), proplist()) -> {'ok', wh_json:json_objects()} |
+                                                        {'error', atom()}.
 all_design_docs(DbName, Options) ->
     couch_util:all_design_docs(get_conn(), DbName, Options).
 
@@ -454,7 +474,8 @@ all_design_docs(DbName, Options) ->
 %% get the revision of a document (much faster than requesting the whole document)
 %% @end
 %%--------------------------------------------------------------------
--spec lookup_doc_rev/2 :: (ne_binary(), ne_binary()) -> {'error', atom()} | {'ok', ne_binary()}.
+-spec lookup_doc_rev/2 :: (ne_binary(), ne_binary()) -> {'ok', ne_binary()} |
+                                                        {'error', atom()}.
 lookup_doc_rev(DbName, DocId) ->
     couch_util:lookup_doc_rev(get_conn(), DbName, DocId).
 
@@ -464,7 +485,8 @@ lookup_doc_rev(DbName, DocId) ->
 %% save document to the db
 %% @end
 %%--------------------------------------------------------------------
--spec save_doc/2 :: (ne_binary(), wh_json:json_object() | wh_json:json_objects()) -> {'ok', wh_json:json_object() | wh_json:json_objects()} | {'error', atom()}.
+-spec save_doc/2 :: (ne_binary(), wh_json:json_object() | wh_json:json_objects()) -> {'ok', wh_json:json_object() | wh_json:json_objects()} |
+                                                                                     {'error', atom()}.
 save_doc(DbName, Docs) when is_list(Docs) ->
     save_docs(DbName, Docs, []);
 save_doc(DbName, Doc) ->
@@ -472,8 +494,10 @@ save_doc(DbName, Doc) ->
 
 %% save a document; if it fails to save because of conflict, pull the latest revision and try saving again.
 %% any other error is returned
--spec ensure_saved/2 :: (ne_binary(), wh_json:json_object()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
--spec ensure_saved/3 :: (ne_binary(), wh_json:json_object(), proplist()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
+-spec ensure_saved/2 :: (ne_binary(), wh_json:json_object()) -> {'ok', wh_json:json_object()} |
+                                                                {'error', atom()}.
+-spec ensure_saved/3 :: (ne_binary(), wh_json:json_object(), proplist()) -> {'ok', wh_json:json_object()} |
+                                                                            {'error', atom()}.
 
 ensure_saved(DbName, Doc) ->
     ensure_saved(DbName, Doc, []).
@@ -481,7 +505,8 @@ ensure_saved(DbName, Doc) ->
 ensure_saved(DbName, Doc, Options) ->
     couch_util:ensure_saved(get_conn(), DbName, Doc, Options).
 
--spec save_doc/3 :: (ne_binary(), wh_json:json_object(), proplist()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
+-spec save_doc/3 :: (ne_binary(), wh_json:json_object(), proplist()) -> {'ok', wh_json:json_object()} |
+                                                                        {'error', atom()}.
 save_doc(DbName, Doc, Opts) ->
     couch_util:save_doc(get_conn(), DbName, Doc, Opts).
 
@@ -498,8 +523,10 @@ save_docs(DbName, Docs, Opts) when is_list(Docs) ->
 %% fetch, update and save a doc (creating if not present)
 %% @end
 %%--------------------------------------------------------------------
--spec update_doc/3 :: (ne_binary(), ne_binary(), proplist()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
--spec update_doc/4 :: (ne_binary(), ne_binary(), proplist(), proplist()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
+-spec update_doc/3 :: (ne_binary(), ne_binary(), proplist()) -> {'ok', wh_json:json_object()} |
+                                                                {'error', atom()}.
+-spec update_doc/4 :: (ne_binary(), ne_binary(), proplist(), proplist()) -> {'ok', wh_json:json_object()} |
+                                                                            {'error', atom()}.
 
 update_doc(DbName, Id, UpdateProps) ->
     update_doc(DbName, Id, UpdateProps, []).
@@ -524,7 +551,8 @@ update_doc(DbName, Id, UpdateProps, CreateProps) ->
 %% remove document from the db
 %% @end
 %%--------------------------------------------------------------------
--spec del_doc/2 :: (ne_binary(), wh_json:json_object() | ne_binary()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
+-spec del_doc/2 :: (ne_binary(), wh_json:json_object() | ne_binary()) -> {'ok', wh_json:json_object()} |
+                                                                         {'error', atom()}.
 del_doc(DbName, Doc) ->
     couch_util:del_doc(get_conn(), DbName, Doc).
 
@@ -541,24 +569,30 @@ del_docs(DbName, Docs) ->
 %%%===================================================================
 %%% Attachment Functions
 %%%===================================================================
--spec fetch_attachment/3 :: (ne_binary(), ne_binary(), ne_binary()) -> {'ok', ne_binary()} | {'error', atom()}.
+-spec fetch_attachment/3 :: (ne_binary(), ne_binary(), ne_binary()) -> {'ok', ne_binary()} |
+                                                                       {'error', atom()}.
 fetch_attachment(DbName, DocId, AName) ->
     couch_util:fetch_attachment(get_conn(), DbName, DocId, AName).
 
--spec stream_attachment/3 :: (ne_binary(), ne_binary(), ne_binary()) -> {'ok', reference()} | {'error', term()}.
+-spec stream_attachment/3 :: (ne_binary(), ne_binary(), ne_binary()) -> {'ok', reference()} |
+                                                                        {'error', term()}.
 stream_attachment(DbName, DocId, AName) ->
     couch_util:stream_attachment(get_conn(), DbName, DocId, AName, self()).
 
--spec put_attachment/4 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
+-spec put_attachment/4 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} |
+                                                                                  {'error', atom()}.
 %% Options = [ {'content_type', Type}, {'content_length', Len}, {'rev', Rev}] <- note atoms as keys in proplist
--spec put_attachment/5 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), proplist()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
+-spec put_attachment/5 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), proplist()) -> {'ok', wh_json:json_object()} |
+                                                                                              {'error', atom()}.
 put_attachment(DbName, DocId, AName, Contents) ->
     couch_util:put_attachment(get_conn(), DbName, DocId, AName, Contents).
 put_attachment(DbName, DocId, AName, Contents, Options) ->
     couch_util:put_attachment(get_conn(), DbName, DocId, AName, Contents, Options).
 
--spec delete_attachment/3 :: (ne_binary(), ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
--spec delete_attachment/4 :: (ne_binary(), ne_binary(), ne_binary(), proplist()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
+-spec delete_attachment/3 :: (ne_binary(), ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} |
+                                                                        {'error', atom()}.
+-spec delete_attachment/4 :: (ne_binary(), ne_binary(), ne_binary(), proplist()) -> {'ok', wh_json:json_object()} |
+                                                                                    {'error', atom()}.
 delete_attachment(DbName, DocId, AName) ->
     couch_util:delete_attachment(get_conn(), DbName, DocId, AName).
 delete_attachment(DbName, DocId, AName, Options) ->
@@ -574,8 +608,10 @@ delete_attachment(DbName, DocId, AName, Options) ->
 %% {Total, Offset, Meta, Rows}
 %% @end
 %%--------------------------------------------------------------------
--spec get_all_results/2 :: (ne_binary(), ne_binary()) -> {'ok', wh_json:json_objects() | [ne_binary(),...]} | {'error', atom()}.
--spec get_results/3 :: (ne_binary(), ne_binary(), proplist()) -> {'ok', wh_json:json_objects() | [ne_binary(),...]} | {'error', atom()}.
+-spec get_all_results/2 :: (ne_binary(), ne_binary()) -> {'ok', wh_json:json_objects() | wh_json:json_strings()} |
+                                                         {'error', atom()}.
+-spec get_results/3 :: (ne_binary(), ne_binary(), wh_proplist()) -> {'ok', wh_json:json_objects() | wh_json:json_strings()} |
+                                                                    {'error', atom()}.
 get_all_results(DbName, DesignDoc) ->
     get_results(DbName, DesignDoc, []).
 get_results(DbName, DesignDoc, ViewOptions) ->
@@ -605,23 +641,28 @@ start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 %% set the host to connect to
--spec set_host/1 :: (string()) -> 'ok' | {'error', 'unable_to_connect'}.
+-spec set_host/1 :: (string()) -> 'ok' |
+                                  {'error', 'unable_to_connect'}.
 set_host(HostName) ->
     set_host(HostName, ?DEFAULT_PORT, "", "", ?DEFAULT_ADMIN_PORT).
 
--spec set_host/2 :: (string(), non_neg_integer()) -> 'ok' | {'error', 'unable_to_connect'}.
+-spec set_host/2 :: (string(), non_neg_integer()) -> 'ok' |
+                                                     {'error', 'unable_to_connect'}.
 set_host(HostName, Port) ->
     set_host(HostName, Port, "", "", ?DEFAULT_ADMIN_PORT).
 
--spec set_host/3 :: (string(), string(), string()) -> 'ok' | {'error', 'unable_to_connect'}.
+-spec set_host/3 :: (string(), string(), string()) -> 'ok' |
+                                                      {'error', 'unable_to_connect'}.
 set_host(HostName, UserName, Password) ->
     set_host(HostName, ?DEFAULT_PORT, UserName, Password, ?DEFAULT_ADMIN_PORT).
 
--spec set_host/4 :: (string(), non_neg_integer(), string(), string()) -> 'ok' | {'error', 'unable_to_connect'}.
+-spec set_host/4 :: (string(), non_neg_integer(), string(), string()) -> 'ok' |
+                                                                         {'error', 'unable_to_connect'}.
 set_host(HostName, Port, UserName, Password) ->
     set_host(HostName, Port, UserName, Password, ?DEFAULT_ADMIN_PORT).
 
--spec set_host/5 :: (string(), non_neg_integer(), string(), string(), non_neg_integer()) -> 'ok' | {'error', 'unable_to_connect'}.
+-spec set_host/5 :: (string(), non_neg_integer(), string(), string(), non_neg_integer()) -> 'ok' |
+                                                                                            {'error', 'unable_to_connect'}.
 set_host(HostName, Port, UserName, Password, AdminPort) ->
     gen_server:call(?SERVER, {set_host, HostName, Port, UserName, Password, AdminPort}, infinity).
 
@@ -822,7 +863,7 @@ handle_cast({add_change_handler, DBName, DocID, Pid}, #state{change_handlers=CH,
             change_handler:add_listener(Srv, Pid, DocID),
             {noreply, State};
         error ->
-            {ok, Srv} = change_handler:start_link(couch_util:get_db(S, DBName), []),
+            {ok, Srv} = change_mgr_sup:start_handler(couch_util:get_db(S, DBName), []),
             lager:debug("started change handler(~p): adding listener(~p) for ~s:~s", [Srv, Pid, DBName, DocID]),
             SrvRef = erlang:monitor(process, Srv),
             change_handler:add_listener(Srv, Pid, DocID),
@@ -925,7 +966,9 @@ init_state_from_config({H, Port, User, Pass, AdminPort}) ->
             lager:info("We tried to connect to BigCouch at ~s:~p and ~p but were refused. Is BigCouch/HAProxy running at these host:port combos?", [H, Port, AdminPort]),
             exit(couch_connection_failed);
         A:B ->
+            ST = erlang:get_stacktrace(),
             lager:debug("init failed to connect: ~p:~p", [A, B]),
+            _ = [lager:debug("st: ~p", [S]) || S <- ST],
             A(B)
     end.
 

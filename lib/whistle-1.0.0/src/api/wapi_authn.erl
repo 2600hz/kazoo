@@ -51,7 +51,7 @@
                          ]).
 -define(AUTHN_RESP_TYPES, [{<<"Msg-ID">>, fun is_binary/1}
                           ,{<<"Auth-Password">>, fun is_binary/1}
-                          ,{<<"Custom-Channel-Vars">>, ?IS_JSON_OBJECT}
+                          ,{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}
                           ,{<<"Access-Group">>, fun is_binary/1}
                           ,{<<"Tenant-ID">>, fun is_binary/1}
                          ]).

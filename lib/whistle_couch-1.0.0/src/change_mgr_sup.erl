@@ -1,10 +1,10 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <>
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2012, VoIP INC
 %%% @doc
 %%%
 %%% @end
-%%% Created : 18 Mar 2011 by James Aimonetti <>
+%%% @contributors
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(change_mgr_sup).
 
@@ -15,6 +15,8 @@
 
 %% Supervisor callbacks
 -export([init/1]).
+
+-include_lib("wh_couch.hrl").
 
 -define(SERVER, ?MODULE).
 
@@ -32,6 +34,7 @@
 start_link() ->
     supervisor:start_link({local, ?SERVER}, ?MODULE, []).
 
+-spec start_handler/2 :: (db(), proplist()) -> sup_startchild_ret().
 start_handler(Db, Options) ->
     supervisor:start_child(?SERVER, [Db, Options]).
 
@@ -64,7 +67,7 @@ init([]) ->
     Type = worker,
 
     AChild = {change_handler, {change_handler, start_link, []},
-	      Restart, Shutdown, Type, [change_handler]},
+              Restart, Shutdown, Type, [change_handler]},
 
     {ok, {SupFlags, [AChild]}}.
 

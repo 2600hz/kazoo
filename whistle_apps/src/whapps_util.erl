@@ -1,10 +1,11 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2012, VoIP INC
 %%% @doc
 %%% Utilities shared by a subset of whapps
 %%% @end
-%%% Created :  3 May 2011 by James Aimonetti <james@2600hz.org>
+%%% @contributors
+%%%   James Aimonetti
+%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(whapps_util).
 
@@ -117,7 +118,7 @@ replicate_from_account(AccountDb, TargetDb, FilterDoc) ->
 get_master_account_id() ->
     case whapps_config:get(?WH_SYSTEM_CONFIG_ACCOUNT, <<"master_account_id">>) of
         undefined ->            
-            case couch_mgr:get_results(?WH_ACCOUNTS_DB, <<"accounts/listing_by_id">>, [{<<"include_docs">>, true}]) of
+            case couch_mgr:get_results(?WH_ACCOUNTS_DB, <<"accounts/listing_by_id">>, [include_docs]) of
                 {error, _R}=E -> E;
                 {ok, Accounts} ->
                     case find_oldest_doc([wh_json:get_value(<<"doc">>, Account) || Account <- Accounts]) of
@@ -184,7 +185,7 @@ get_account_by_realm(Realm) ->
     case wh_cache:peek({?MODULE, account_by_realm, Realm}) of
         {ok, _}=Ok -> Ok;
         {error, not_found} ->
-            case couch_mgr:get_results(?WH_ACCOUNTS_DB, ?AGG_LIST_BY_REALM, [{<<"key">>, Realm}]) of
+            case couch_mgr:get_results(?WH_ACCOUNTS_DB, ?AGG_LIST_BY_REALM, [{key, Realm}]) of
                 {ok, [JObj]} ->
                     AccountDb = wh_json:get_value([<<"value">>, <<"account_db">>], JObj),
                     wh_cache:store({?MODULE, account_by_realm, Realm}, AccountDb),
@@ -212,7 +213,7 @@ get_accounts_by_name(Name) ->
     case wh_cache:peek({?MODULE, account_by_name, Name}) of
         {ok, _}=Ok -> Ok;
         {error, not_found} ->
-            case couch_mgr:get_results(?WH_ACCOUNTS_DB, ?AGG_LIST_BY_NAME, [{<<"key">>, Name}]) of
+            case couch_mgr:get_results(?WH_ACCOUNTS_DB, ?AGG_LIST_BY_NAME, [{key, Name}]) of
                 {ok, [JObj]} -> 
                     AccountDb = wh_json:get_value([<<"value">>, <<"account_db">>], JObj),
                     wh_cache:store({?MODULE, account_by_name, Name}, AccountDb),                    
@@ -354,16 +355,10 @@ update_views(Db, Views) ->
     update_views(Db, Views, false).
 
 update_views(Db, Views, Remove) ->
-    ViewOptions = [{<<"startkey">>, <<"_design/">>}
-                   ,{<<"endkey">>, <<"_e">>}
-                   ,{<<"include_docs">>, true}
-                  ],
-    case couch_mgr:get_results(Db, <<"_all_docs">>, ViewOptions) of
-        {ok, Found} ->
-            update_views(Found, Db, Views, Remove);
-        {error, _} ->
-            ok
-    end. 
+    case couch_mgr:all_design_docs(Db, [include_docs]) of
+        {ok, Found} -> update_views(Found, Db, Views, Remove);
+        {error, _} -> ok
+    end.
 
 update_views([], _, [], _) ->
     ok;

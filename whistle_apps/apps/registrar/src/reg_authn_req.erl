@@ -1,10 +1,10 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2012, VoIP INC
 %%% @doc
 %%% Handle authn_req messages
 %%% @end
-%%% Created : 19 Aug 2011 by James Aimonetti <james@2600hz.org>
+%%% @contributors
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(reg_authn_req).
 
@@ -21,16 +21,16 @@ handle_req(ApiJObj, _Props) ->
 
     put(callid, wh_json:get_value(<<"Msg-ID">>, ApiJObj, <<"000000000000">>)),
 
-    lager:debug("received SIP authentication request"),
-
     AuthU = wapi_authn:get_auth_user(ApiJObj),
     AuthR = wapi_authn:get_auth_realm(ApiJObj),
+
+    lager:info("trying to authenticate ~s@~s", [AuthU, AuthR]),
 
     case reg_util:lookup_auth_user(AuthU, AuthR) of
         {ok, AuthJObj} ->
             send_auth_resp(AuthJObj, AuthU, AuthR, ApiJObj);
         {error, not_found} ->            
-            lager:debug("user ~s@~s is unknown", [AuthU, AuthR]),
+            lager:info("user ~s@~s is unknown", [AuthU, AuthR]),
             send_auth_error(ApiJObj)
     end.
 
@@ -55,7 +55,7 @@ send_auth_resp(AuthJObj, AuthU, AuthR, ApiJObj) ->
             ,{<<"Authorizing-ID">>, wh_json:get_value(<<"_id">>, AuthDoc)}
             ,{<<"Owner-ID">>, wh_json:get_value(<<"owner_id">>, AuthDoc)}            
            ],
-    
+
     Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, ApiJObj)}
             ,{<<"Auth-Password">>, wh_json:get_value(<<"password">>, AuthValue)}
             ,{<<"Auth-Method">>, get_auth_method(AuthValue)}

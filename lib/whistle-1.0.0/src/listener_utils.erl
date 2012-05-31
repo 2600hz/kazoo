@@ -43,7 +43,8 @@ rm_responder(Responders, Responder, Keys) ->
 -spec is_responder_known/2 :: (responders(), responder_callback()) -> boolean().
 is_responder_known(Responders, {Responder,_}=Callback) ->
     _ = maybe_load_responder(Responder),
-    erlang:function_exported(Responder, init, 0) andalso wh_util:is_false(lists:keyfind(Callback, 2, Responders)).
+    erlang:function_exported(Responder, init, 0) andalso
+        wh_util:is_false(lists:keyfind(Callback, 2, Responders)).
 
 maybe_load_responder(Responder) ->
     case erlang:module_loaded(Responder) of
@@ -60,6 +61,6 @@ maybe_add_mapping(Mapping, Acc) ->
 
 -spec maybe_init_responder/2 :: (responder_callback(), boolean()) -> 'ok'.
 maybe_init_responder({Responder, _Fun}, true) when is_atom(Responder) ->
-    catch(Responder:init()), ok;
+    catch Responder:init(), ok;
 maybe_init_responder(_,_) ->
     ok.

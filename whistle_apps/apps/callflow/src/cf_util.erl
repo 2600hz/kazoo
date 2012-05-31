@@ -1,3 +1,12 @@
+%%%-------------------------------------------------------------------
+%%% @copyright (C) 2011-2012, VoIP INC
+%%% @doc
+%%%
+%%% @end
+%%% @contributors
+%%%   Karl Anderson
+%%%   James Aimonetti
+%%%-------------------------------------------------------------------
 -module(cf_util).
 
 -include("callflow.hrl").
@@ -36,8 +45,8 @@ presence_probe(JObj, _Props) ->
 presence_mwi_update(<<"message-summary">>, {FromUser, FromRealm}, _, _) ->
     case whapps_util:get_account_by_realm(FromRealm) of
         {ok, AccountDb} ->
-            ViewOptions = [{<<"include_docs">>, true}
-                           ,{<<"key">>, FromUser}
+            ViewOptions = [include_docs
+                           ,{key, FromUser}
                           ],
             case couch_mgr:get_results(AccountDb, <<"cf_attributes/sip_credentials">>, ViewOptions) of
                 {ok, []} ->
@@ -109,8 +118,8 @@ presence_mwi_query(JObj, _Props) ->
     Realm = wh_json:get_value(<<"Realm">>, JObj),
     case whapps_util:get_account_by_realm(Realm) of
         {ok, AccountDb} ->
-            ViewOptions = [{<<"include_docs">>, true}
-                           ,{<<"key">>, Username}
+            ViewOptions = [include_docs
+                           ,{key, Username}
                           ],
             case couch_mgr:get_results(AccountDb, <<"cf_attributes/sip_credentials">>, ViewOptions) of
                 {ok, []} ->  ok;
@@ -138,11 +147,11 @@ update_mwi(Call) ->
 update_mwi(undefined, _) ->
     ok;
 update_mwi(OwnerId, AccountDb) ->
-    ViewOptions = [{<<"reduce">>, true}
-                   ,{<<"group">>, true}
-                   ,{<<"startkey">>, [OwnerId]}
-                   ,{<<"endkey">>, [OwnerId, "\ufff0"]}
-                  ],    
+    ViewOptions = [{reduce, true}
+                   ,{group, true}
+                   ,{startkey, [OwnerId]}
+                   ,{endkey, [OwnerId, "\ufff0"]}
+                  ],
     case couch_mgr:get_results(AccountDb, <<"cf_attributes/vm_count_by_owner">>, ViewOptions) of
         {ok, MessageCounts} -> 
             Props = [{wh_json:get_value([<<"key">>, 2], MessageCount), wh_json:get_value(<<"value">>, MessageCount)}
@@ -156,9 +165,9 @@ update_mwi(OwnerId, AccountDb) ->
 
 update_mwi(New, Saved, OwnerId, AccountDb) ->
     AccountId = wh_util:format_account_id(AccountDb, raw),
-    ViewOptions = [{<<"key">>, [OwnerId, <<"device">>]}
-                   ,{<<"include_docs">>, true}
-                  ],    
+    ViewOptions = [{key, [OwnerId, <<"device">>]}
+                   ,include_docs
+                  ],
     case couch_mgr:get_results(AccountDb, <<"cf_attributes/owned">>, ViewOptions) of
         {ok, Devices} -> 
             lager:debug("updating MWI for owner ~s: (~b/~b) on ~b devices", [OwnerId, New, Saved, length(Devices)]),
@@ -305,7 +314,7 @@ lookup_callflow(Number, AccountId) ->
 
 do_lookup_callflow(Number, Db) ->
     lager:debug("searching for callflow in ~s to satisfy '~s'", [Db, Number]),
-    Options = [{<<"key">>, Number}, {<<"include_docs">>, true}],
+    Options = [{key, Number}, include_docs],
     case couch_mgr:get_results(Db, ?LIST_BY_NUMBER, Options) of
         {ok, []} when Number =/= ?NO_MATCH_CF ->
             case lookup_callflow_patterns(Number, Db) of
@@ -318,11 +327,11 @@ do_lookup_callflow(Number, Db) ->
             end;
         {ok, []} ->
             {error, not_found};
-        {ok, [{struct, _}=JObj]} ->
+        {ok, [JObj]} ->
             Flow = wh_json:get_value(<<"doc">>, JObj),
             wh_cache:store({cf_flow, Number, Db}, Flow),
             {ok, Flow, Number =:= ?NO_MATCH_CF};
-        {ok, [{struct, _}=JObj | _Rest]} ->
+        {ok, [JObj | _Rest]} ->
             lager:debug("lookup resulted in more than one result, using the first"),
             Flow = wh_json:get_value(<<"doc">>, JObj),
             wh_cache:store({cf_flow, Number, Db}, Flow),
@@ -342,7 +351,7 @@ do_lookup_callflow(Number, Db) ->
                                     -> {'ok', {wh_json:json_object(), ne_binary()}} | {'error', term()}.
 lookup_callflow_patterns(Number, Db) ->
     lager:debug("lookup callflow patterns for ~s in ~s", [Number, Db]),
-    case couch_mgr:get_results(Db, ?LIST_BY_PATTERN, [{<<"include_docs">>, true}]) of
+    case couch_mgr:get_results(Db, ?LIST_BY_PATTERN, [include_docs]) of
         {ok, Patterns} ->
             case test_callflow_patterns(Patterns, Number, {undefined, <<>>}) of
                 {undefined, <<>>} -> {error, not_found};

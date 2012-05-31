@@ -1,15 +1,13 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2012, VoIP INC
 %%% @doc
 %%% Renders a custom account email template, or the system default,
 %%% and sends the email with voicemail attachment to the user.
 %%% @end
 %%%
 %%% @contributors
-%%% James Aimonetti <james@2600hz.org>
-%%% Karl Anderson <karl@2600hz.org>
-%%%
-%%% Created : 22 Dec 2011 by Karl Anderson <karl@2600hz.org>
+%%%   James Aimonetti <james@2600hz.org>
+%%%   Karl Anderson <karl@2600hz.org>
 %%%-------------------------------------------------------------------
 -module(notify_vm).
 

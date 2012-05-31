@@ -55,11 +55,11 @@
 
 -spec new/0 :: () -> json_object().
 new() ->
-    ?EMPTY_JSON_OBJECT.
+    ?JSON_WRAPPER([]).
 
 -spec encode/1 :: (json_object()) -> iolist() | ne_binary().
 encode(JObj) ->
-    mochijson2:encode(JObj).
+    ejson:encode(JObj).
 
 -spec decode/1 :: (iolist() | ne_binary()) -> json_object().
 -spec decode/2 :: (iolist() | ne_binary(), ne_binary()) -> json_object().
@@ -68,7 +68,7 @@ decode(Thing) when is_list(Thing) orelse is_binary(Thing) ->
     decode(Thing, ?DEFAULT_CONTENT_TYPE).
 
 decode(JSON, <<"application/json">>) ->
-    mochijson2:decode(JSON).
+    ejson:decode(JSON).
 
 -spec is_empty/1 :: (term()) -> boolean().
 is_empty(MaybeJObj) ->
