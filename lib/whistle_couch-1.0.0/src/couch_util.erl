@@ -345,19 +345,25 @@ do_fetch_doc(#db{}=Db, DocId, Options) ->
 do_save_doc(#db{}=Db, Docs, Options) when is_list(Docs) ->
     do_save_docs(Db, Docs, Options);
 do_save_doc(#db{}=Db, Doc, Options) ->
-    ?RETRY_504(couchbeam:save_doc(Db, Doc, Options)).
+    ?RETRY_504(couchbeam:save_doc(Db, maybe_set_docid(Doc), Options)).
 
 -spec do_save_docs/3 :: (db(), wh_json:json_objects(), proplist()) -> {'ok', wh_json:json_objects()}.
 do_save_docs(#db{}=Db, Docs, Options) ->
     do_save_docs(Db, Docs, Options, []).
 
+maybe_set_docid(Doc) ->
+    case wh_json:get_value(<<"_id">>, Doc) of
+        undefined -> wh_json:set_value(<<"_id">>, couch_mgr:get_uuid(), Doc);
+        _ -> Doc
+    end.
+
 do_save_docs(#db{}=Db, Docs, Options, Acc) ->
     case catch(lists:split(?MAX_BULK_INSERT, Docs)) of
         {'EXIT', _} ->
-            {ok, Res} = ?RETRY_504(couchbeam:save_docs(Db, Docs, Options)),
+            {ok, Res} = ?RETRY_504(couchbeam:save_docs(Db, [maybe_set_docid(D) || D <- Docs], Options)),
             {ok, Res++Acc};
         {Save, Cont} ->
-            {ok, Res} = ?RETRY_504(couchbeam:save_docs(Db, Save, Options)),
+            {ok, Res} = ?RETRY_504(couchbeam:save_docs(Db, [maybe_set_docid(D) || D <- Save], Options)),
             do_save_docs(Db, Cont, Options, Res++Acc)
     end.
 
