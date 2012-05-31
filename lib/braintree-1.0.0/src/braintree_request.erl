@@ -155,8 +155,7 @@ do_request(Method, Path, Body) ->
 %% Get the base URL for the braintree service
 %% @end
 %%--------------------------------------------------------------------
--spec braintree_server_url/1 :: (Env) -> string() when
-      Env :: string().
+-spec braintree_server_url/1 :: (string()) -> string().
 braintree_server_url(Env) ->
     proplists:get_value(Env, ?BT_SERVER_URL).
 
@@ -175,27 +174,28 @@ verify_response(Xml) ->
             {ok, Xml};
         _ ->
             lager:debug("braintree api error response"),
-            Errors = [#bt_error{code = braintree_util:get_xml_value("/error/code/text()", Error)
-                                ,message = braintree_util:get_xml_value("/error/message/text()", Error)
-                                ,attribute = braintree_util:get_xml_value("/error/attribute/text()", Error)}
-                      || Error <- xmerl_xpath:string("/api-error-response/errors//errors/error", Xml)],
+            Errors = [#bt_error{code = wh_util:get_xml_value("/error/code/text()", Error)
+                                ,message = wh_util:get_xml_value("/error/message/text()", Error)
+                                ,attribute = wh_util:get_xml_value("/error/attribute/text()", Error)}
+                      || Error <- xmerl_xpath:string("/api-error-response/errors//errors/error", Xml)
+                     ],
             Verif = #bt_verification{verification_status =
-                                         braintree_util:get_xml_value("/api-error-response/verification/status/text()", Xml)
+                                         wh_util:get_xml_value("/api-error-response/verification/status/text()", Xml)
                                      ,processor_response_code =
-                                         braintree_util:get_xml_value("/api-error-response/verification/processor-response-code/text()", Xml)
+                                         wh_util:get_xml_value("/api-error-response/verification/processor-response-code/text()", Xml)
                                      ,processor_response_text =
-                                         braintree_util:get_xml_value("/api-error-response/verification/processor-response-text/text()", Xml)
+                                         wh_util:get_xml_value("/api-error-response/verification/processor-response-text/text()", Xml)
                                      ,cvv_response_code =
-                                         braintree_util:get_xml_value("/api-error-response/verification/cvv-response-code/text()", Xml)
+                                         wh_util:get_xml_value("/api-error-response/verification/cvv-response-code/text()", Xml)
                                      ,avs_response_code =
-                                         braintree_util:get_xml_value("/api-error-response/verification/avs-error-response-code/text()", Xml)
+                                         wh_util:get_xml_value("/api-error-response/verification/avs-error-response-code/text()", Xml)
                                      ,postal_response_code =
-                                         braintree_util:get_xml_value("/api-error-response/verification/avs-postal-code-response-code/text()", Xml)
+                                         wh_util:get_xml_value("/api-error-response/verification/avs-postal-code-response-code/text()", Xml)
                                      ,street_response_code =
-                                         braintree_util:get_xml_value("/api-error-response/verification/avs-street-address-response-code/text()", Xml)
+                                         wh_util:get_xml_value("/api-error-response/verification/avs-street-address-response-code/text()", Xml)
                                      ,gateway_rejection_reason =
-                                         braintree_util:get_xml_value("/api-error-response/verification/gateway-rejection-reason/text()", Xml)},
+                                         wh_util:get_xml_value("/api-error-response/verification/gateway-rejection-reason/text()", Xml)},
             {error, #bt_api_error{errors = Errors
                                   ,verification=Verif
-                                  ,message = braintree_util:get_xml_value("/api-error-response/message/text()", Xml)}}
+                                  ,message = wh_util:get_xml_value("/api-error-response/message/text()", Xml)}}
     end.
