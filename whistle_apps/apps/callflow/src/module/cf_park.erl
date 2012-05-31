@@ -34,9 +34,7 @@ update_presence(SlotNumber, PresenceId, AccountDb) ->
                 ParkedCallId -> 
                     case cf_util:get_call_status(ParkedCallId) of
                         {ok, _} -> <<"early">>;
-                        {error, _} ->
-                            _ = cleanup_slot(SlotNumber, ParkedCallId, AccountDb),
-                            <<"terminated">>
+                        {error, _} -> <<"terminated">>
                     end
             end,
     ParkingId = wh_util:to_hex_binary(crypto:md5(PresenceId)),
