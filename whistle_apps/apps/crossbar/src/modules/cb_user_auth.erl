@@ -141,8 +141,10 @@ validate(#cb_context{req_data=Data, req_verb = <<"put">>}=Context, <<"recovery">
                 {ok, AccountDb} ->
                     lager:debug("attempting to load username in db: ~s", [AccountDb]),
                     Username = wh_json:get_value(<<"username">>, JObj),
-                    case couch_mgr:get_results(AccountDb, ?USERNAME_LIST, [{<<"key">>, Username}, {<<"include_docs">>, true}]) of
-                        {ok, [User]} -> 
+                    case couch_mgr:get_results(AccountDb, ?USERNAME_LIST, [{key, Username}
+                                                                           ,include_docs
+                                                                          ]) of
+                        {ok, [User]} ->
                             case wh_json:is_false([<<"doc">>, <<"enabled">>], JObj) of
                                 false ->
                                     lager:debug("the username '~s' was found and is not disabled, continue", [Username]),
