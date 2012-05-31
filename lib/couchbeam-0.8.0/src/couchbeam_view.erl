@@ -70,7 +70,6 @@ fetch(Db, ViewName, Options) ->
             Error
     end.
 
-
 -spec stream(Db::db(), Client::pid()) -> {ok, StartRef::term(),
         ViewPid::pid()} | {error, term()}.
 %% @equiv stream(Db, 'all_docs', Client, [])

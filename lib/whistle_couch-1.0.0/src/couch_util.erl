@@ -225,6 +225,8 @@ do_fetch_results(Db, DesignDoc, Options) ->
                    {'ok', JObj} ->
                        Rows = wh_json:get_value(<<"rows">>, JObj, JObj),
                        {'ok', Rows};
+                   {'error', _, E} ->
+                       {'error', E};
                    Other ->
                        Other
                end
