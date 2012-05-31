@@ -27,7 +27,7 @@
         open_db/2, open_db/3,
         open_or_create_db/2, open_or_create_db/3, open_or_create_db/4,
         delete_db/1, delete_db/2,
-        db_info/1,
+        db_info/1, design_info/2,
         save_doc/2, save_doc/3,
         doc_exists/2,
         open_doc/2, open_doc/3,
@@ -40,7 +40,8 @@
         delete_attachment/4, put_attachment/4, put_attachment/5,
         all_docs/1, all_docs/2, view/2, view/3,
         ensure_full_commit/1, ensure_full_commit/2,
-        compact/1, compact/2]).
+        compact/1, compact/2, view_cleanup/1
+        ]).
 
 
 %% --------------------------------------------------------------------
@@ -50,7 +51,7 @@
 %% @doc Start the couchbeam process. Useful when testing using the shell.
 start() ->
     couchbeam_deps:ensure(),
-    application:load(couchbeam),
+    _ = application:load(couchbeam),
     couchbeam_util:start_app_deps(couchbeam),
     application:start(couchbeam).
 
@@ -324,6 +325,17 @@ db_info(#db{server=Server, name=DbName, options=IbrowseOpts}) ->
             {error, db_not_found};
        Error ->
           Error
+    end.
+
+design_info(#db{server=Server, options=IbrowseOpts}=Db, DesignDoc) ->
+    Url = make_url(Server, [db_url(Db), "/_design/", DesignDoc, "/_bulk_docs"], []),
+    case couchbeam_httpc:request(get, Url, ["200"], IbrowseOpts) of
+        {ok, _Status, _Headers, Body} ->
+            {ok, ejson:decode(Body)}; 
+        {error, {ok, "404", _, _}} ->
+            {error, design_not_found};
+        Error ->
+            Error
     end.
 
 %% @doc test if doc with uuid exists in the given db
@@ -773,6 +785,16 @@ compact(#db{server=Server, options=IbrowseOpts}=Db, DesignName) ->
             Error
     end.
 
+-spec view_cleanup/1 :: (db()) -> 'ok' | {'error', term()}.
+view_cleanup(#db{server=Server, options=IbrowseOpts}=Db) ->
+    Url = make_url(Server, [db_url(Db), "/_view_cleanup/"], []),
+    Headers = [{"Content-Type", "application/json"}],
+    case db_request(post, Url, ["202"], IbrowseOpts, Headers) of
+        {ok, _, _, _} ->
+            ok;
+        Error ->
+            Error
+    end.
 
 %% --------------------------------------------------------------------
 %% Utilities functions.

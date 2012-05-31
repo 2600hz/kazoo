@@ -428,37 +428,33 @@ view_loop(UserFun, Params) ->
 %% @private
 
 make_view(#db{server=Server}=Db, ViewName, Options, Fun) ->
-    case parse_view_options(Options) of
-        {error, _} = Error ->
-            Error;
-        Args ->
-            case ViewName of
-                'all_docs' ->
-                    Url = couchbeam:make_url(Server, [couchbeam:db_url(Db),
-                            "/_all_docs"],
-                            Args#view_query_args.options),
-                    Fun(Args, Url);
-                'design_docs' ->
-                    Url = couchbeam:make_url(Server, [couchbeam:db_url(Db)
-                                                      ,"/_all_docs?startkey=\"_design\"&endkey=\"_design0\""
-                                                     ],
-                                             Args#view_query_args.options),
-                    Fun(Args, Url);
-                {DName, VName} ->
-                    Url = couchbeam:make_url(Server, [couchbeam:db_url(Db),
-                            "/_design/", DName, "/_view/", VName],
-                            Args#view_query_args.options),
-                    Fun(Args, Url);
-                <<_/binary>> ->
-                    [DName, VName] = binary:split(ViewName, <<"/">>),
+    #view_query_args{options=Options1}=Args = parse_view_options(Options),
+    case ViewName of
+        'all_docs' ->
+            Url = couchbeam:make_url(Server, [couchbeam:db_url(Db),
+                                              "/_all_docs"],
+                                     Options1),
+            Fun(Args, Url);
+        'design_docs' ->
+            Url = couchbeam:make_url(Server, [couchbeam:db_url(Db)
+                                              ,"/_all_docs?startkey=\"_design\"&endkey=\"_design0\""
+                                             ],
+                                     Options1),
+            Fun(Args, Url);
+        {DName, VName} ->
+            Url = couchbeam:make_url(Server, [couchbeam:db_url(Db),
+                                              "/_design/", DName, "/_view/", VName],
+                                     Options1),
+            Fun(Args, Url);
+        <<_/binary>> ->
+            [DName, VName] = binary:split(ViewName, <<"/">>),
 
-                    Url = couchbeam:make_url(Server, [couchbeam:db_url(Db),
-                            "/_design/", DName, "/_view/", VName],
-                            Args#view_query_args.options),
-                    Fun(Args, Url);
-                _ ->
-                    {error, invalid_view_name}
-            end
+            Url = couchbeam:make_url(Server, [couchbeam:db_url(Db),
+                                              "/_design/", DName, "/_view/", VName],
+                                     Options1),
+            Fun(Args, Url);
+        _ ->
+            {error, invalid_view_name}
     end.
 
 collect_view_first(Ref, Pid) ->
@@ -514,7 +510,7 @@ process_view_results(ReqId, Params, UserFun, Callback) ->
                     end,
                     ibrowse:stream_next(IbrowseRef),
                     try
-                        Callback(Ok, Headers, StreamDataFun),
+                        _ = Callback(Ok, Headers, StreamDataFun),
                         couchbeam_httpc:clean_mailbox_req(ReqId)
                     catch
                         throw:http_response_end -> ok;
