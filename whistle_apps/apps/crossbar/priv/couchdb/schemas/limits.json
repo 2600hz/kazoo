@@ -3,7 +3,7 @@
    "id":"http://json-schema.org/draft-03/schema#",
    "description":"Limit an account's ability to place concurrent calls using flat rate trunks",
    "properties":{
-      "trunks":{
+      "twoway_trunks":{
          "type":"integer",
          "required":true,
          "default":0,

@@ -20,6 +20,7 @@
 -export([ensure_saved/1, ensure_saved/2]).
 -export([public_fields/1, private_fields/1, is_private_key/1]).
 -export([rev_to_etag/1, current_doc_vsn/0]).
+-export([update_pvt_parameters/2]).
 
 -include("../include/crossbar.hrl").
 

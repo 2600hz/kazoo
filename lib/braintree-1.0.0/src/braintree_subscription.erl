@@ -374,6 +374,9 @@ create_addon_changes(AddOns) ->
     lists:foldr(fun(#bt_addon{id=Id, quantity=0}, C) ->
                         append_items('remove', Id, C);
                    (#bt_addon{existing_id=undefined
+                              ,inherited_from=undefined}, C) ->
+                        C;
+                   (#bt_addon{existing_id=undefined
                               ,inherited_from=Id
                               ,quantity=Q}, C) ->
                         Item = [{'inherited_from_id', Id}

@@ -7,10 +7,39 @@
 %%%-------------------------------------------------------------------
 -module(wh_service_numbers).
 
+-export([activate/1, activate/2]).
 -export([update/1, update/2]).
 
 -include("wh_service.hrl").
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% This function is called each time a number is saved, and will 
+%% produce notifications if the cnam object changes
+%% @end
+%%--------------------------------------------------------------------
+-spec activate/1 :: (wh_json:json_object()) -> 'ok' | {'error', _}.
+-spec activate/2 :: (wh_json:json_object(), wh_resellers:resellers()) -> wh_resellers:resellers().
+
+activate(JObj) ->
+    AccountId = wh_json:get_value(<<"pvt_account_id">>, JObj),
+    case wh_resellers:fetch(AccountId) of
+        {ok, []} -> ok;
+        {ok, Resellers} ->
+            activate(JObj, Resellers)
+    end.
+
+activate(JObj, Resellers) ->        
+    wh_resellers:process_activation_charges(<<"">>, <<"">>, Resellers).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Given the account phone_number document reconcile the service
+%% charges
+%% @end
+%%--------------------------------------------------------------------
 -spec update/1 :: (wh_json:json_object()) -> 'ok' | {'error', _}.
 -spec update/2 :: (wh_json:json_object(), wh_resellers:resellers()) -> wh_resellers:resellers().
 
