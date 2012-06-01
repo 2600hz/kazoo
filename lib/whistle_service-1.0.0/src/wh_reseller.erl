@@ -12,6 +12,7 @@
 -export([get_plans/1, get_plans/2]).
 -export([get_reseller_id/1]).
 -export([is_master_reseller/1]).
+-export([process_activation_charges/3]).
 -export([update_quantity/4]).
 -export([increment_quantity/3]).
 -export([reset_category_addons/2]).
@@ -70,6 +71,36 @@ fetch(Account) ->
                                       ,account_id = AccountId
                                       ,billing_id = BillingId
                                      }}
+            end
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Given the category and name of a service element process any 
+%% activation charges
+%% @end
+%%--------------------------------------------------------------------
+-spec process_activation_charges/3 :: (ne_binary(), ne_binary(), reseller()) -> reseller().
+process_activation_charges(Category, Name, #wh_reseller{plans=Plans}=Reseller) ->
+    process_activation_charges(Category, Name, Reseller, Plans).     
+
+process_activation_charges(_, _, Reseller, []) ->
+    Reseller;
+process_activation_charges(Category, Name, #wh_reseller{billing_id=BillingId}=Reseller, [Plan|Plans]) ->
+    case wh_service_plan:get_activation_charge(Category, Name, Plan) of
+        undefined -> process_activation_charges(Category, Name, Reseller, Plans);
+        Amount ->
+            case braintree_transaction:quick_sale(BillingId, Amount) of
+                {ok, #bt_transaction{}} -> 
+                    process_activation_charges(Category, Name, Reseller, Plans);
+                {error, #bt_api_error{}=ApiError} ->
+                    Resp = braintree_util:bt_api_error_to_json(ApiError),
+                    lager:debug("billing error updating braintree: ~s", [wh_json:encode(Resp)]),
+                    throw(wh_json:set_value(<<"billing_id">>, BillingId, Resp));
+                {error, _R} ->
+                    lager:debug("billing error updating braintree: ~p", [_R]),
+                    throw(wh_json:from_list([{<<"billing_id">>, BillingId}]))
             end
     end.
 
