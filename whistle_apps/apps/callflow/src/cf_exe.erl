@@ -195,7 +195,7 @@ wildcard_is_empty(Call) ->
     Srv = whapps_call:kvs_fetch(cf_exe_pid, Call),
     wildcard_is_empty(Srv).
 
--spec relay_amqp/2 :: (wh_json:json_object(), proplist()) -> ok.
+-spec relay_amqp/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
 relay_amqp(JObj, Props) ->
     case props:get_value(cf_module_pid, Props) of
         Pid when is_pid(Pid) ->
@@ -504,7 +504,7 @@ spawn_cf_module(CFModule, Data, Call) ->
                             _E:_R ->
                                 ST = erlang:get_stacktrace(),
                                 lager:debug("action ~s died unexpectedly (~s): ~p", [CFModule, _E, _R]),
-                                [lager:debug("stacktrace: ~p", [S]) || S <- ST],
+                                _ = [lager:debug("stacktrace: ~p", [S]) || S <- ST],
                                 throw(_R)
                         end
                 end), CFModule}.

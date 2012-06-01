@@ -1,9 +1,12 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2010-2012, VoIP INC
 %%% @doc
 %%% 
 %%% @end
+%%%
 %%% @contributors
+%%%   James Aimonetti
+%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(hangups_listener).
 
@@ -69,6 +72,7 @@ handle_cdr(JObj, _Props) ->
         true -> ok;
         false -> 
             AccountId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj),
+
             lager:debug("abnormal call termination: ~s", [HangupCause]),
             FromNumber = case catch binary:split(wh_json:get_value(<<"From-Uri">>, JObj), <<"@">>) of
                              [FNum|_] -> FNum;

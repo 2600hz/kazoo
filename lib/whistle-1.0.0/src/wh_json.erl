@@ -237,7 +237,7 @@ filter(Pred, JObj, Key) ->
 map(F, ?JSON_WRAPPER(Prop)) ->
     from_list([ F(K, V) || {K,V} <- Prop]).
 
--spec foldl/3 :: (fun((json_string(), json_term(), Any) -> Any), Any, json_object()) -> Any.
+-spec foldl/3 :: (fun((json_string() | json_strings(), json_term(), any()) -> any()), any(), json_object()) -> any().
 foldl(F, Acc0, ?JSON_WRAPPER(Prop)) ->
     lists:foldl(fun({Key, Value}, Acc1) -> F(Key, Value, Acc1) end, Acc0, Prop).
 

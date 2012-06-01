@@ -1,10 +1,10 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2012, VoIP INC
 %%% @doc
 %%%
 %%% @end
-%%% Created : 29 Nov 2011 by James Aimonetti <james@2600hz.org>
+%%% @contributors
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(webhooks_maintenance).
 
@@ -25,7 +25,7 @@ local_summary() ->
 -spec local_summary/1 :: (ne_binary()) -> 'ok'.
 local_summary(AcctId) when not is_binary(AcctId) ->
     local_summary(wh_util:to_binary(AcctId));
-local_summary(AcctId) ->
+local_summary(_AcctId) ->
     ok.
 
 %%-----------------------------------------------------------------------------
@@ -36,7 +36,7 @@ local_summary(AcctId) ->
 %%-----------------------------------------------------------------------------
 -spec do_summary/2 :: (wh_json:json_objects(), fun()) -> 'ok'.
 do_summary(Accts, PrintFun) ->
-    [PrintFun(Accts) || Acct <- Accts].
+    [PrintFun(Acct) || Acct <- Accts].
 
 %%-----------------------------------------------------------------------------
 %% @private
@@ -45,7 +45,7 @@ do_summary(Accts, PrintFun) ->
 %% @end
 %%-----------------------------------------------------------------------------
 -spec print_summary/1 :: (wh_json:json_object()) -> 'ok'.
-print_summary(Acct) ->
+print_summary(_Acct) ->
     io:format("No Summary~n", []).
 
 %%-----------------------------------------------------------------------------

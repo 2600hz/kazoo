@@ -66,10 +66,10 @@ exec_element(Call0, 'Dial', [#xmlText{value=DialMe, type=text}], #xmlElement{att
                                                               ]),
 
     %% remove reliance on cf_offnet...
-    cf_offnet:offnet_req(wh_json:from_list([{<<"Timeout">>, Timeout}
-                                            | offnet_data(RecordCall, StarHangup)
-                                           ])
-                         ,Call1),
+    OffnetResp = cf_offnet:offnet_req(wh_json:from_list([{<<"Timeout">>, Timeout}
+                                                         | offnet_data(RecordCall, StarHangup)
+                                                        ])
+                                      ,Call1),
 
     %% wait for the bridge to end
     Start = erlang:now(),
@@ -86,7 +86,7 @@ exec_element(Call0, 'Dial', [#xmlText{value=DialMe, type=text}], #xmlElement{att
         undefined ->
             %% if action is defined, no commands after Dial are reachable;
             %% since its not defined, we fall through to the next TwiML command
-            {ok, Call1};
+            maybe_stop(Call1, OffnetResp, {ok, Call1});
         Action ->
             BaseParams = wh_json:from_list([{"DialCallStatus", Status}
                                             ,{"DialCallSid", OtherLeg}
@@ -96,7 +96,7 @@ exec_element(Call0, 'Dial', [#xmlText{value=DialMe, type=text}], #xmlElement{att
                                            ]),
             Uri = wht_util:resolve_uri(whapps_call:kvs_fetch(voice_uri, Call1), Action),
             Method = wht_util:http_method(props:get_value(method, Props, post)),
-            {request, Call1, Uri, Method, BaseParams}
+            maybe_stop(Call1, OffnetResp, {request, Call1, Uri, Method, BaseParams})
     end;
 
 %%-------------------------------------------------------------------------
@@ -131,36 +131,35 @@ exec_element(Call, 'Record', [#xmlText{}], #xmlElement{attributes=Attrs}) ->
     end,
 
     MediaName = media_name(whapps_call:call_id(Call1)),
-    _ = case whapps_call_command:b_record(MediaName
-                                          ,props:get_value(finishOnKey, Props, ?ANY_DIGIT)
-                                          ,wh_util:to_binary(props:get_value(maxLength, Props, <<"3600">>))
-                                          ,props:get_value(timeout, Props, <<"5">>)
-                                          ,Call1
-                                         ) of
-            {ok, Msg} ->
-                case wh_json:get_integer_value(<<"Length">>, Msg, 0) of
-                    0 -> lager:debug("recorded message length: 0, continuing"), ok;
-                    L ->
-                        RecordingId = maybe_save_recording(Call1, MediaName, true),
-                        DTMFs = wh_json:get_value(<<"Digit-Pressed">>, Msg),
+    case whapps_call_command:b_record(MediaName
+                                      ,props:get_value(finishOnKey, Props, ?ANY_DIGIT)
+                                      ,wh_util:to_binary(props:get_value(maxLength, Props, <<"3600">>))
+                                      ,props:get_value(timeout, Props, <<"5">>)
+                                      ,Call1
+                                     ) of
+        {ok, Msg} ->
+            case wh_json:get_integer_value(<<"Length">>, Msg, 0) of
+                0 -> lager:debug("recorded message length: 0, continuing"), ok;
+                L ->
+                    RecordingId = maybe_save_recording(Call1, MediaName, true),
+                    DTMFs = wh_json:get_value(<<"Digit-Pressed">>, Msg),
 
-                        lager:debug("recorded message length: ~bs, stored as ~s", [L, RecordingId]),
-                        BaseParams = wh_json:from_list([{<<"RecordingUrl">>, recorded_url(Call1, RecordingId, true)}
-                                                        ,{<<"RecordingDuration">>, L}
-                                                        ,{<<"Digits">>, DTMFs}
-                                                        | req_params(Call1)
-                                                       ]),
-                        {request, Call1, Action, Method, BaseParams}
-                end;
-            {error, _E} ->
-                %% TODO: when call hangs up, try to save message
-                lager:debug("failed to record message: ~p", [_E]),
-                {stop, Call1}
-        end;
+                    lager:debug("recorded message length: ~bs, stored as ~s", [L, RecordingId]),
+                    BaseParams = wh_json:from_list([{<<"RecordingUrl">>, recorded_url(Call1, RecordingId, true)}
+                                                    ,{<<"RecordingDuration">>, L}
+                                                    ,{<<"Digits">>, DTMFs}
+                                                    | req_params(Call1)
+                                                   ]),
+                    {request, Call1, Action, Method, BaseParams}
+            end;
+        {error, _E} ->
+            %% TODO: when call hangs up, try to save message
+            lager:debug("failed to record message: ~p", [_E]),
+            {stop, Call1}
+    end;
 
 exec_element(Call, 'Gather', [#xmlText{}|T], El) ->
-    Call1 = maybe_answer_call(Call),
-    exec_element(Call1, 'Gather', T, El);
+    exec_element(maybe_answer_call(Call), 'Gather', T, El);
 exec_element(Call, 'Gather', [#xmlElement{name=Name, content=Content}=El1|T], El) ->
     Call1 = maybe_answer_call(Call),
     _ = exec_element(Call1, Name, Content, El1),
@@ -190,22 +189,22 @@ exec_element(Call, 'Gather', [], #xmlElement{attributes=Attrs}) ->
             {request, Call1, NewUri, Method, BaseParams};
         {ok, _DTMFs} ->
             lager:debug("failed to collect ~b digits, got ~s", [MaxDigits, _DTMFs]),
-            {ok, Call1}
+            {ok, Call1};
+        {error, _E} ->
+            lager:debug("failed to collect ~b digits, error: ~p", [MaxDigits, _E]),
+            {stop, Call1}
     end;
 
 exec_element(Call, 'Play', [#xmlText{value=PlayMe, type=text}], #xmlElement{attributes=Attrs}) ->
     Call1 = maybe_answer_call(Call),
     lager:debug("PLAY: ~s", [PlayMe]),
-    case get_loop_count(props:get_value(loop, attrs_to_proplist(Attrs), 1)) of
-        0 ->
-            %% play music in a loop
-            whapps_call_command:b_play(wh_util:to_binary(PlayMe), Call1);
-        1 ->
-            whapps_call_command:b_play(wh_util:to_binary(PlayMe), Call1);
-        N when N > 1 ->
-            play_loop(Call1, N, wh_util:to_binary(PlayMe))
-    end,
-    {ok, Call1};
+    Res = case get_loop_count(props:get_value(loop, attrs_to_proplist(Attrs), 1)) of
+              %% TODO: play music in a continuous loop
+              0 -> whapps_call_command:b_play(wh_util:to_binary(PlayMe), Call1);
+              1 -> whapps_call_command:b_play(wh_util:to_binary(PlayMe), Call1);
+              N when N > 1 -> play_loop(Call1, N, wh_util:to_binary(PlayMe))
+          end,
+    maybe_stop(Call1, Res, {ok, Call1});
 
 exec_element(Call, 'Say', [#xmlText{value=SayMe, type=text}], #xmlElement{attributes=Attrs}) ->
     Call1 = maybe_answer_call(Call),
@@ -215,12 +214,13 @@ exec_element(Call, 'Say', [#xmlText{value=SayMe, type=text}], #xmlElement{attrib
 
     lager:debug("SAY: ~s using voice ~s, in lang ~s", [SayMe, Voice, Lang]),
 
-    case get_loop_count(wh_util:to_integer(props:get_value(loop, Props, 1))) of
-        0 -> say_loop(whapps_call_command:b_tts(wh_util:to_binary(SayMe), Voice, Lang, Call1), infinity);
-        1 -> whapps_call_command:b_tts(wh_util:to_binary(SayMe), Voice, Lang, Call1);
-        N -> say_loop(fun() -> whapps_call_command:b_tts(wh_util:to_binary(SayMe), Voice, Lang, Call1) end, N)
-    end,
-    {ok, Call1};
+    Result = case get_loop_count(wh_util:to_integer(props:get_value(loop, Props, 1))) of
+                 0 -> say_loop(whapps_call_command:b_tts(wh_util:to_binary(SayMe), Voice, Lang, Call1), infinity);
+                 1 -> whapps_call_command:b_tts(wh_util:to_binary(SayMe), Voice, Lang, Call1);
+                 N -> say_loop(fun() -> whapps_call_command:b_tts(wh_util:to_binary(SayMe), Voice, Lang, Call1) end, N)
+             end,
+
+    maybe_stop(Call, Result, {ok, Call1});
 
 exec_element(Call, 'Redirect', [#xmlText{value=Url}], #xmlElement{attributes=Attrs}) ->
     Call1 = maybe_answer_call(Call),
@@ -312,7 +312,7 @@ wait_for_offnet(Call, HangupOnStar, RecordCall, TimeLimit) ->
 
 wait_for_offnet(Call, HangupOnStar, RecordCall, TimeLimit, Start, Acc) ->
     receive
-        {amqp_msg, {struct, _}=JObj} ->
+        {amqp_msg, JObj} ->
             case wh_util:get_event_type(JObj) of
                 {<<"resource">>, <<"offnet_resp">>} ->
                     [{call_status, call_status(wh_json:get_value(<<"Response-Message">>, JObj), wh_json:get_value(<<"Response-Code">>, JObj))}
@@ -356,7 +356,7 @@ wait_for_offnet(Call, HangupOnStar, RecordCall, TimeLimit, Start, Acc) ->
 
 wait_for_offnet(Acc) ->
     receive
-        {amqp_msg, {struct, _}=JObj} ->
+        {amqp_msg, JObj} ->
             case wh_util:get_event_type(JObj) of
                 { <<"resource">>, <<"offnet_resp">> } ->
                     [{call_status, call_status(wh_json:get_value(<<"Response-Message">>, JObj), wh_json:get_value(<<"Response-Code">>, JObj))}
@@ -450,6 +450,12 @@ play_tone(Call) ->
                               ,{<<"Duration-OFF">>, <<"100">>}
                              ]),
     whapps_call_command:tones([Tone], Call).
+
+maybe_stop(Call, {error, channel_hungup}, _) -> {stop, Call};
+maybe_stop(_, {error, _R}, Result) ->
+    lager:debug("error in result, but continuing anyway: ~p", [_R]),
+    Result;
+maybe_stop(_, _, Result) -> Result.
 
 get_voice(undefined) -> <<"female">>;
 get_voice(<<"man">>) -> <<"male">>;

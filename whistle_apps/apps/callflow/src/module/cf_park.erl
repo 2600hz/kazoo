@@ -225,14 +225,14 @@ park_call(SlotNumber, Slot, ParkedCalls, ReferredTo, Call) ->
 %% Builds the json object representing the call in the parking slot
 %% @end
 %%--------------------------------------------------------------------
--spec create_slot/2 :: (undefined | ne_binary(), whapps_call:call()) -> wh_json:json_object().
+-spec create_slot/2 :: (undefined | binary(), whapps_call:call()) -> wh_json:json_object().
 create_slot(undefined, Call) ->
     CallId = cf_exe:callid(Call),
     AccountDb = whapps_call:account_db(Call),
     AccountId = whapps_call:account_id(Call),
     wh_json:from_list([{<<"Call-ID">>, CallId}
                        ,{<<"Presence-ID">>, <<(whapps_call:request_user(Call))/binary
-                                              ,"@", (wh_util:get_account_realm(AccountDb, AccountId))/binary>>}
+                                              ,"@", (whapps_call:from_realm(Call))/binary>>}
                        ,{<<"Node">>, whapps_call:switch_nodename(Call)}
                        ,{<<"CID-Number">>, whapps_call:caller_id_number(Call)}
                        ,{<<"CID-Name">>, whapps_call:caller_id_name(Call)}

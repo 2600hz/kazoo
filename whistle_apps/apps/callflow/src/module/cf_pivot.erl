@@ -1,12 +1,12 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2012, VoIP INC
 %%% @doc
-%%% Provide a direct replacement for Twilio-based servers
+%%% Accept third-party dialplan
 %%% @end
 %%% @contributors
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
--module(cf_killio).
+-module(cf_pivot).
 
 -include("../callflow.hrl").
 
@@ -14,7 +14,7 @@
          ,send_req/4
         ]).
 
--define(DEFAULT_OPTS, [{response_format, list}]).
+-define(DEFAULT_OPTS, [{response_format, binary}]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -28,7 +28,8 @@
 %%   req_timeout: integer(), defaults to 5 seconds
 %%   voice_url: string(), url to get/post to
 %%   req_format: string(), data format and payload expected for initial
-%%     request (defaults to twiml for the moment)
+%%     request (defaults to twiml for the moment),
+%%     formats: twiml, kazoo
 %%
 %% @end
 %%--------------------------------------------------------------------
@@ -48,6 +49,8 @@ send_req(Call, Uri, post, BaseParams) ->
     send(Call, Uri, post, [{"Content-Type", "application/x-www-form-urlencoded"}], wh_json:to_querystring(BaseParams)).
 
 send(Call, Uri, Method, ReqHdrs, ReqBody) ->
+    true = is_call_active(),
+
     lager:debug("sending req to ~s via ~s", [iolist_to_binary(Uri), Method]),
 
     case ibrowse:send_req(wh_util:to_list(Uri), ReqHdrs, Method, ReqBody, ?DEFAULT_OPTS) of
@@ -66,6 +69,24 @@ send(Call, Uri, Method, ReqHdrs, ReqBody) ->
         {error, _Reason} ->
             lager:debug("error with req: ~p", [_Reason]),
             cf_exe:continue(Call)
+    end.
+
+%% scan our existing message queue for the channel hangup event
+%% its possible that we could get stuck in here if there are lots of events
+%% to process...a more robust solution is needed, maybe :)
+-spec is_call_active/0 :: () -> boolean().
+is_call_active() ->
+    receive
+        {amqp_msg, JObj} ->
+            case whapps_util:get_event_type(JObj) of
+                { <<"call_event">>, <<"CHANNEL_HANGUP">> } ->
+                    lager:debug("hangup received, done here"),
+                    false;
+                _T -> is_call_active()
+            end;
+        _M ->
+            is_call_active()
+    after 0 -> true
     end.
 
 handle_resp(Call, Hdrs, RespBody) ->

@@ -125,7 +125,7 @@ handle_call_status(JObj, _Props) ->
                     wapi_call:publish_call_status_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp)
             end
     end.
- 
+
 -spec handle_switch_reloadacl/2 ::(wh_json:json_object(), proplist()) -> any().
 handle_switch_reloadacl(JObj, _Props) ->
     true = wapi_switch:reloadacl_v(JObj),
