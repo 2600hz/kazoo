@@ -24,13 +24,13 @@ handle_req(ApiJObj, _Props) ->
     AuthU = wapi_authn:get_auth_user(ApiJObj),
     AuthR = wapi_authn:get_auth_realm(ApiJObj),
 
-    lager:info("trying to authenticate ~s@~s", [AuthU, AuthR]),
+    lager:debug("trying to authenticate ~s@~s", [AuthU, AuthR]),
 
     case reg_util:lookup_auth_user(AuthU, AuthR) of
         {ok, AuthJObj} ->
             send_auth_resp(AuthJObj, AuthU, AuthR, ApiJObj);
         {error, not_found} ->            
-            lager:info("user ~s@~s is unknown", [AuthU, AuthR]),
+            lager:debug("user ~s@~s is unknown", [AuthU, AuthR]),
             send_auth_error(ApiJObj)
     end.
 
