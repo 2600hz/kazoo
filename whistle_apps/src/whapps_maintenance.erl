@@ -166,10 +166,7 @@ refresh(?WH_SIP_DB) ->
              ,whapps_util:get_view_json(registrar, <<"auth.json">>)
             ],
     whapps_util:update_views(?WH_SIP_DB, Views, true),
-<<<<<<< HEAD
-=======
 
->>>>>>> WHISTLE-1186
     _ = case couch_mgr:all_docs(?WH_SIP_DB, [include_docs]) of
             {ok, JObjs} ->
                 [cleanup_aggregated_device(wh_json:get_value(<<"doc">>, JObj)) || JObj <- JObjs];
@@ -203,11 +200,7 @@ refresh(?WH_FAXES) ->
     couch_mgr:db_create(?WH_FAXES),
     couch_mgr:revise_doc_from_file(?WH_FAXES, whistle_apps, ?FAXES_VIEW_FILE),
     ok;
-<<<<<<< HEAD
-refresh(Account) ->
-=======
 refresh(?NE_BINARY = Account) ->
->>>>>>> WHISTLE-1186
     Views = [whapps_util:get_view_json(whistle_apps, ?MAINTENANCE_VIEW_FILE)
              ,whapps_util:get_view_json(whistle_apps, ?RESELLER_VIEW_FILE)
              ,whapps_util:get_view_json(conference, <<"views/conference.json">>)
@@ -238,10 +231,7 @@ refresh(Account, Views) ->
         {ok, JObj} ->
             _ = couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, JObj),
             AccountRealm = crossbar_util:get_account_realm(AccountDb, AccountId),
-<<<<<<< HEAD
-=======
 
->>>>>>> WHISTLE-1186
             _ = case couch_mgr:get_results(AccountDb, ?DEVICES_CB_LIST, [include_docs]) of
                     {ok, Devices} ->
                         _ = [whapps_util:add_aggregate_device(AccountDb, wh_json:get_value(<<"doc">>, Device))
