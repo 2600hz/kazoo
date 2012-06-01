@@ -225,7 +225,7 @@ park_call(SlotNumber, Slot, ParkedCalls, ReferredTo, Call) ->
 %% Builds the json object representing the call in the parking slot
 %% @end
 %%--------------------------------------------------------------------
--spec create_slot/2 :: (undefined | ne_binary(), whapps_call:call()) -> wh_json:json_object().
+-spec create_slot/2 :: (undefined | binary(), whapps_call:call()) -> wh_json:json_object().
 create_slot(undefined, Call) ->
     CallId = cf_exe:callid(Call),
     wh_json:from_list([{<<"Call-ID">>, CallId}

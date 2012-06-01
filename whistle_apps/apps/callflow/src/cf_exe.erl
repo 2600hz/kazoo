@@ -504,7 +504,7 @@ spawn_cf_module(CFModule, Data, Call) ->
                             _E:_R ->
                                 ST = erlang:get_stacktrace(),
                                 lager:debug("action ~s died unexpectedly (~s): ~p", [CFModule, _E, _R]),
-                                [lager:debug("stacktrace: ~p", [S]) || S <- ST],
+                                _ = [lager:debug("stacktrace: ~p", [S]) || S <- ST],
                                 throw(_R)
                         end
                 end), CFModule}.
