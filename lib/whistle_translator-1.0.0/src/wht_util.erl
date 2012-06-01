@@ -27,6 +27,7 @@ resolve_uri(Raw, undefined) -> wh_util:to_binary(Raw);
 resolve_uri(_Raw, [$h,$t,$t,$p|_]=Abs) -> Abs;
 resolve_uri(_Raw, <<"http", _/binary>> = Abs) -> Abs;
 resolve_uri(RawPath, Relative) ->
+    lager:debug("taking url ~s and applying path ~s", [RawPath, Relative]),
     PathTokensRev = lists:reverse(binary:split(wh_util:to_binary(RawPath), <<"/">>, [global])),
     UrlTokens = binary:split(wh_util:to_binary(Relative), <<"/">>),
 
