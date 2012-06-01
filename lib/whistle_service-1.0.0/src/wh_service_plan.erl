@@ -11,6 +11,7 @@
 -export([get_plan_ids/1]).
 -export([get_category_addons/2]).
 -export([get_recurring_plan/3]).
+-export([get_activation_charge/3]).
 
 -include("wh_service.hrl").
 
@@ -100,3 +101,31 @@ get_recurring_plan(Category, Name, #wh_service_plan{plan=JObj}) ->
         true -> undefined;
         false ->  {PlanId, AddOnId}
     end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Find the subscription name on a service plan for a given service 
+%% element
+%% @end
+%%--------------------------------------------------------------------
+-spec get_activation_charge/3 :: (ne_binary(), ne_binary(), plan()) -> 'undefined' | {ne_binary(), ne_binary()}. 
+get_activation_charge(<<"phone_numbers">>, PhoneNumber, #wh_service_plan{plan=JObj}) ->
+    case wh_json:get_value(<<"phone_numbers">>, JObj) of
+        undefined -> undefined;
+        PhoneNumbers ->
+            Regexs = wh_json:get_keys(PhoneNumbers),
+            case [Amount
+                  || Regex <- Regexs
+                         ,re:run(PhoneNumber, Regex) =/= nomatch
+                         ,(Amount = wh_json:get_value([<<"phone_numbers">>, Regex, <<"activation_charge">>], JObj)) =/= undefined
+                 ]
+            of
+                [] -> undefined;
+                [Amount|_] -> 
+                    lager:debug("found activation chanrge ~p for phone number ~s", [Amount, PhoneNumber]),
+                    Amount
+            end
+    end;
+get_activation_charge(Category, Name, #wh_service_plan{plan=JObj}) ->
+    wh_json:get_ne_value([Category, Name, <<"activation_charge">>], JObj).
