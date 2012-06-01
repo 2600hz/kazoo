@@ -113,7 +113,7 @@ manual_presence(_, {_, FromRealm}, {ToUser, ToRealm}, _) ->
 %%--------------------------------------------------------------------
 -spec presence_mwi_query/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
 presence_mwi_query(JObj, _Props) -> 
-    wh_util:put_callid(JObj),
+    _ = wh_util:put_callid(JObj),
     Username = wh_json:get_value(<<"Username">>, JObj), 
     Realm = wh_json:get_value(<<"Realm">>, JObj),
     case whapps_util:get_account_by_realm(Realm) of

@@ -1,9 +1,9 @@
 %%%-------------------------------------------------------------------
-%%% @author Karl Anderson <karl@2600hz.org>
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2012, VoIP INC
 %%% @doc
 %%% @end
-%%% Created : 7 April 2011 by Karl Anderson <karl@2600hz.org>
+%%% @contributors
+%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(cf_attributes).
 
@@ -29,8 +29,7 @@
 -spec temporal_rules/1 :: (whapps_call:call()) -> wh_json:json_objects().
 temporal_rules(Call) ->
     AccountDb = whapps_call:account_db(Call),
-    case couch_mgr:get_results(AccountDb, <<"cf_attributes/temporal_rules">>
-                                   ,[{<<"include_docs">>, true}]) of
+    case couch_mgr:get_results(AccountDb, <<"cf_attributes/temporal_rules">>, [include_docs]) of
         {ok, JObjs} -> JObjs;
         {error, _} -> []
     end.
@@ -481,10 +480,10 @@ fetch_attributes(Attribute, Call) ->
 -spec prepend_caller_id_name/2 :: (whapps_call:call(), ne_binary()) -> ne_binary().
 prepend_caller_id_name(Call, CIDName) ->
     case whapps_call:kvs_fetch(prepend_cid_name, Call) of
-	undefined ->
-	    CIDName;
-	Prefix ->
-	    <<Prefix/binary, CIDName/binary>>
+        undefined ->
+            CIDName;
+        Prefix ->
+            <<Prefix/binary, CIDName/binary>>
     end.
 
 %%-----------------------------------------------------------------------------
@@ -495,8 +494,8 @@ prepend_caller_id_name(Call, CIDName) ->
 -spec prepend_caller_id_number/2 :: (whapps_call:call(), ne_binary()) -> ne_binary().
 prepend_caller_id_number(Call, CIDNum) ->
     case whapps_call:kvs_fetch(prepend_cid_number, Call) of
-	undefined ->
-	    CIDNum;
-	Prefix ->
-	    <<Prefix/binary, CIDNum/binary>>
+        undefined ->
+            CIDNum;
+        Prefix ->
+            <<Prefix/binary, CIDNum/binary>>
     end.
