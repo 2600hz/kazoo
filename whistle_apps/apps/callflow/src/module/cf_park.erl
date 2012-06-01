@@ -228,9 +228,11 @@ park_call(SlotNumber, Slot, ParkedCalls, ReferredTo, Call) ->
 -spec create_slot/2 :: (undefined | ne_binary(), whapps_call:call()) -> wh_json:json_object().
 create_slot(undefined, Call) ->
     CallId = cf_exe:callid(Call),
+    AccountDb = whapps_call:account_db(Call),
+    AccountId = whapps_call:account_id(Call),
     wh_json:from_list([{<<"Call-ID">>, CallId}
                        ,{<<"Presence-ID">>, <<(whapps_call:request_user(Call))/binary
-                                              ,"@", (whapps_call:from_realm(Call))/binary>>}
+                                              ,"@", (wh_util:get_account_realm(AccountDb, AccountId))/binary>>}
                        ,{<<"Node">>, whapps_call:switch_nodename(Call)}
                        ,{<<"CID-Number">>, whapps_call:caller_id_number(Call)}
                        ,{<<"CID-Name">>, whapps_call:caller_id_name(Call)}
@@ -530,7 +532,8 @@ wait_for_pickup(SlotNumber, RingbackId, Call) ->
 %%--------------------------------------------------------------------
 -spec get_node_ip/1 :: (ne_binary()) -> ne_binary().
 get_node_ip(Node) ->
-    {ok, Addresses} = inet:getaddrs(wh_util:to_list(Node), inet),
+    [_, Hostname] = binary:split(wh_util:to_binary(Node), <<"@">>),
+    {ok, Addresses} = inet:getaddrs(wh_util:to_list(Hostname), inet),
     {A, B, C, D} = hd(Addresses),
     <<(wh_util:to_binary(A))/binary, "."
       ,(wh_util:to_binary(B))/binary, "."
