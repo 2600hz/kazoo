@@ -89,7 +89,7 @@ presence_update(JObj, Props) ->
             end,
     Node = props:get_value(node, Props),
     lager:debug("sending presence in event to ~p", [Node]),
-    ok = freeswitch:sendevent(Node, 'PRESENCE_IN', Event).
+    relay_presence('PRESENCE_IN', PresenceId, Event, 'nonode@nodomain').
 
 -spec mwi_update/2 :: (wh_json:json_object(), proplist()) -> no_return().
 mwi_update(JObj, _Props) ->

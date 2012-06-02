@@ -29,7 +29,6 @@
                     ]).
 -define(BINDINGS, [{authn, []}
                    ,{registration, []}
-                   ,{notifications, [{restrict_to, [presence_probe]}]}
                    ,{route, []}
                    ,{self, []}
                   ]).
@@ -91,6 +90,16 @@ handle_reg_query_resp(JObj, Props) ->
 init([]) ->
     process_flag(trap_exit, true),
     lager:debug("starting new registrar server"),
+    Self = self(),
+    spawn(fun() -> 
+                  QueueName = <<"registrar_presence_probe">>,
+                  Options = [{queue_options, [{exclusive, false}]}
+                             ,{consume_options, [{exclusive, false}]}
+                             ,{basic_qos, 1}
+                            ],
+                  Bindings= [{notifications, [{restrict_to, [presence_probe]}]}],
+                  gen_listener:add_queue(Self, QueueName, Options, Bindings)
+          end),
     {ok, []}.
 
 %%--------------------------------------------------------------------

@@ -34,7 +34,6 @@
                      ,{{?MODULE, handle_call_status_resp}, [{<<"call_event">>, <<"channel_status_resp">>}]}
                     ]).
 -define(BINDINGS, [{route, []}
-                   ,{notifications, [{restrict_to, [presence_probe, mwi_query]}]}
                    ,{self, []}
                   ]).
 -define(QUEUE_NAME, <<"">>).
@@ -102,6 +101,16 @@ handle_call_status_resp(JObj, Props) ->
 init([]) ->
     process_flag(trap_exit, true),
     lager:debug("starting new callflow listener"),
+    Self = self(),
+    spawn(fun() -> 
+                  QueueName = <<"callflow_presence_probe">>,
+                  Options = [{queue_options, [{exclusive, false}]}
+                             ,{consume_options, [{exclusive, false}]}
+                             ,{basic_qos, 1}
+                            ],
+                  Bindings= [{notifications, [{restrict_to, [presence_probe, mwi_query]}]}],
+                  gen_listener:add_queue(Self, QueueName, Options, Bindings)
+          end),
     {ok, []}.
 
 %%--------------------------------------------------------------------
