@@ -222,7 +222,12 @@ get_db_shards(AdminConn, DBEncoded) ->
                               ],
                     _ = couch_config:store(DBEncoded, Encoded, ?WH_COUCH_CACHE),
                     lager:debug("cached encoded shards for ~s", [DBEncoded]),
-                    Encoded
+                    Encoded;
+                {error, _E} ->
+                    %% TODO: check this error for terminal cases
+                    lager:debug("unable to get shards atm: ~p", [_E]),
+                    ok = timer:sleep(couch_config:fetch(<<"sleep_between_poll">>, ?SLEEP_BETWEEN_POLL)),
+                    get_db_shards(AdminConn, DBEncoded)
             end;
         Encoded ->
             lager:debug("pulled encoded shards from cache for ~s", [DBEncoded]),
@@ -285,4 +290,5 @@ get_ports(_Node, pang) ->
 -spec get_conns/5 :: (nonempty_string(), pos_integer(), string(), string(), pos_integer()) -> {server(), server()}.
 get_conns(Host, Port, User, Pass, AdminPort) ->
     {couch_util:get_new_connection(Host, Port, User, Pass),
-     couch_util:get_new_connection(Host, AdminPort, User, Pass)}.
+     couch_util:get_new_connection(Host, AdminPort, User, Pass)
+    }.
