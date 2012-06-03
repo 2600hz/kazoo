@@ -28,7 +28,7 @@ init(Parent) ->
 
     lager:debug("starting compactor"),
 
-    case {couch_config:fetch(compact_automatically, false), couch_config:fetch(conflict_strategy, null)} of
+    case {couch_config:fetch(<<"compact_automatically">>, false), couch_config:fetch(<<"conflict_strategy">>, null)} of
         {true, null} ->
             lager:debug("just compacting"),
             proc_lib:init_ack(Parent, {ok, self()}),
@@ -43,7 +43,7 @@ init(Parent) ->
         {null, _Strategy} ->
             lager:debug("auto-compaction not enabled"),
             proc_lib:init_ack(Parent, ignore),
-            couch_config:store(compact_automatically, false);
+            couch_config:store(<<"compact_automatically">>, false);
         _Other ->
             lager:debug("unexpected values for auto-compaction: ~p", [_Other])
     end.
@@ -248,7 +248,7 @@ get_node_connections(NodeBin) ->
 -spec get_ports/1 :: (atom()) -> {non_neg_integer(), non_neg_integer()}.
 -spec get_ports/2 :: (atom(), 'pong' | 'pang') -> {non_neg_integer(), non_neg_integer()}.
 get_ports(Node) ->
-    Cookie = couch_config:fetch(bigcouch_cookie),
+    Cookie = couch_config:fetch(<<"bigcouch_cookie">>),
     lager:debug("using cookie ~s on node ~s", [Cookie, Node]),
     try
         erlang:set_cookie(Node, wh_util:to_atom(Cookie, true)),
