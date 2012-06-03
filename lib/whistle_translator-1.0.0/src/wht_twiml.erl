@@ -14,7 +14,7 @@
 -include("wht.hrl").
 -include_lib("xmerl/include/xmerl.hrl").
 
--spec does_recognize/1 :: (string()) -> {boolean(), term()}.
+-spec does_recognize/1 :: (string()) -> {'true', term()} | 'false'.
 does_recognize(Cmds) ->
     case xmerl_scan:string(Cmds) of
         {#xmlElement{name='Response'}=Cs, _} -> {true, Cs};
@@ -168,31 +168,12 @@ exec_element(Call, 'Gather', [], #xmlElement{attributes=Attrs}) ->
     Call1 = maybe_answer_call(Call),
     Props = attrs_to_proplist(Attrs),
 
-    lager:debug("attrs: ~p", [Props]),
-    MaxDigitsBin = wh_util:to_binary(props:get_value(numDigits, Props)),
-    MaxDigits = wh_util:to_integer(MaxDigitsBin),
     Timeout = wh_util:to_integer(props:get_value(timeout, Props, 5)),
     FinishOnKey = props:get_value(finishOnKey, Props, <<"#">>),
 
-    case whapps_call_command:collect_digits(MaxDigitsBin, Timeout, 2000
-                                            ,undefined, [FinishOnKey], Call
-                                           ) of
-        {ok, DTMFs} when byte_size(DTMFs) =:= MaxDigits ->
-            lager:debug("recv DTMFs: ~s", [DTMFs]),
-
-            NewUri = wht_util:resolve_uri(whapps_call:kvs_fetch(voice_uri, Call1)
-                                           ,props:get_value(action, Props)
-                                          ),
-            Method = wht_util:http_method(props:get_value(method, Props, post)),
-            BaseParams = wh_json:from_list([{<<"Digits">>, DTMFs} | req_params(Call1)]),
-
-            {request, Call1, NewUri, Method, BaseParams};
-        {ok, _DTMFs} ->
-            lager:debug("failed to collect ~b digits, got ~s", [MaxDigits, _DTMFs]),
-            {ok, Call1};
-        {error, _E} ->
-            lager:debug("failed to collect ~b digits, error: ~p", [MaxDigits, _E]),
-            {stop, Call1}
+    case props:get_value(numDigits, Props) of
+        undefined -> collect_until_terminator(Call1, FinishOnKey, Timeout, Props);
+        MaxDigits -> collect_digits(Call1, wh_util:to_integer(MaxDigits), FinishOnKey, Timeout, Props)
     end;
 
 exec_element(Call, 'Play', [#xmlText{value=PlayMe, type=text}], #xmlElement{attributes=Attrs}) ->
@@ -202,7 +183,7 @@ exec_element(Call, 'Play', [#xmlText{value=PlayMe, type=text}], #xmlElement{attr
               %% TODO: play music in a continuous loop
               0 -> whapps_call_command:b_play(wh_util:to_binary(PlayMe), Call1);
               1 -> whapps_call_command:b_play(wh_util:to_binary(PlayMe), Call1);
-              N when N > 1 -> play_loop(Call1, N, wh_util:to_binary(PlayMe))
+              N when N > 1 -> play_loop(Call1, wh_util:to_binary(PlayMe), N)
           end,
     maybe_stop(Call1, Res, {ok, Call1});
 
@@ -215,9 +196,9 @@ exec_element(Call, 'Say', [#xmlText{value=SayMe, type=text}], #xmlElement{attrib
     lager:debug("SAY: ~s using voice ~s, in lang ~s", [SayMe, Voice, Lang]),
 
     Result = case get_loop_count(wh_util:to_integer(props:get_value(loop, Props, 1))) of
-                 0 -> say_loop(whapps_call_command:b_tts(wh_util:to_binary(SayMe), Voice, Lang, Call1), infinity);
+                 0 -> say_loop(Call1, fun() -> whapps_call_command:b_tts(wh_util:to_binary(SayMe), Voice, Lang, Call1) end, infinity);
                  1 -> whapps_call_command:b_tts(wh_util:to_binary(SayMe), Voice, Lang, Call1);
-                 N -> say_loop(fun() -> whapps_call_command:b_tts(wh_util:to_binary(SayMe), Voice, Lang, Call1) end, N)
+                 N -> say_loop(Call1, fun() -> whapps_call_command:b_tts(wh_util:to_binary(SayMe), Voice, Lang, Call1) end, N)
              end,
 
     maybe_stop(Call, Result, {ok, Call1});
@@ -255,13 +236,72 @@ exec_element(Call, 'Reject', _, #xmlElement{attributes=Attrs}) ->
     whapps_call_command:response(reject_code(Reason), Reason, Call),
     {stop, Call}.
 
-say_loop(F, infinity) ->
-    F(),
-    say_loop(F, infinity);
-say_loop(_, 0) -> ok;
-say_loop(F, N) ->
-    F(),
-    say_loop(F, N-1).
+collect_digits(Call, MaxDigits, FinishOnKey, Timeout, Props) ->
+    MaxDigitsBin = wh_util:to_binary(MaxDigits),
+    case whapps_call_command:collect_digits(MaxDigitsBin, Timeout, 2000
+                                            ,undefined, [FinishOnKey], Call
+                                           ) of
+        {ok, DTMFs} when byte_size(DTMFs) =:= MaxDigits ->
+            lager:debug("recv DTMFs: ~s", [DTMFs]),
+
+            NewUri = wht_util:resolve_uri(whapps_call:kvs_fetch(voice_uri, Call)
+                                          ,props:get_value(action, Props)
+                                         ),
+            Method = wht_util:http_method(props:get_value(method, Props, post)),
+            BaseParams = wh_json:from_list([{<<"Digits">>, DTMFs} | req_params(Call)]),
+
+            {request, Call, NewUri, Method, BaseParams};
+        {ok, _DTMFs} ->
+            lager:debug("failed to collect ~b digits, got ~s", [MaxDigits, _DTMFs]),
+            {ok, Call};
+        {error, _E} ->
+            lager:debug("failed to collect ~b digits, error: ~p", [MaxDigits, _E]),
+            {stop, Call}
+    end.
+
+collect_until_terminator(Call, FinishOnKey, Timeout, Props) ->
+    collect_until_terminator(Call, FinishOnKey, Timeout, Props, []).
+collect_until_terminator(Call, FinishOnKey, Timeout, Props, DTMFs) ->
+    case whapps_call_command:collect_digits(1, Timeout, 2000, undefined, [FinishOnKey], Call) of
+        {ok, FinishOnKey} ->
+            Digits = lists:reverse(DTMFs),
+            lager:debug("recv finish key ~s, responding with ~s", [Digits]),
+            NewUri = wht_util:resolve_uri(whapps_call:kvs_fetch(voice_uri, Call)
+                                          ,props:get_value(action, Props)
+                                         ),
+            Method = wht_util:http_method(props:get_value(method, Props, post)),
+            BaseParams = wh_json:from_list([{<<"Digits">>, Digits} | req_params(Call)]),
+
+            {request, Call, NewUri, Method, BaseParams};
+        {ok, <<>>} ->
+            Digits = lists:reverse(DTMFs),
+            lager:debug("timeout waiting for digits, working with what we got: ~s", [Digits]),
+            NewUri = wht_util:resolve_uri(whapps_call:kvs_fetch(voice_uri, Call)
+                                          ,props:get_value(action, Props)
+                                         ),
+            Method = wht_util:http_method(props:get_value(method, Props, post)),
+            BaseParams = wh_json:from_list([{<<"Digits">>, Digits} | req_params(Call)]),
+
+            {request, Call, NewUri, Method, BaseParams};
+        {ok, Digit} ->
+            lager:debug("recv dtmf ~s", [Digit]),
+            collect_until_terminator(Call, FinishOnKey, Timeout, [Digit | DTMFs]);
+        {error, _E} ->
+            lager:debug("failed to collect unlimited digits, error: ~p", [_E]),
+            {stop, Call}
+    end.
+
+say_loop(Call, F, infinity) ->
+    case maybe_stop(Call, F(), ok) of
+        ok -> say_loop(Call, F, infinity);
+        Result -> Result
+    end;
+say_loop(_, _, 0) -> ok;
+say_loop(Call, F, N) ->
+    case maybe_stop(call, F(), ok) of
+        ok -> say_loop(Call, F, N-1);
+        Result -> Result
+    end.
 
 reject_reason(X) when not is_binary(X) ->
     reject_reason(wh_util:to_binary(X));
@@ -469,6 +509,8 @@ get_lang(<<"fr">> = FR) -> FR;
 get_lang(<<"de">> = DE) -> DE.
 
 %% contstrain loop to 10
+-spec get_loop_count/1 :: (integer() | binary()) -> 0..10.
+get_loop_count(N) when not is_integer(N) -> get_loop_count(wh_util:to_integer(N));
 get_loop_count(N) when N =< 0 -> 0;
 get_loop_count(N) when N =< 10 -> N;
 get_loop_count(_) -> 10.
