@@ -266,7 +266,12 @@ get_db_shards(AdminConn, DBEncoded) ->
                     Encoded = [ ShardEncoded || Shard <- Shards, is_a_shard(ShardEncoded=binary:replace(Shard, <<"/">>, <<"%2f">>, [global]), DBEncoded) ],
                     couch_config:store({shards, DBEncoded}, Encoded, ?WH_COUCH_CACHE),
                     lager:debug("cached encoded shards for ~s", [DBEncoded]),
-                    Encoded
+                    Encoded;
+                {error, _E} ->
+                    %% TODO: check this error for terminal cases
+                    lager:debug("unable to get shards atm: ~p", [_E]),
+                    ok = timer:sleep(couch_config:fetch(<<"sleep_between_poll">>, ?SLEEP_BETWEEN_POLL)),
+                    get_db_shards(AdminConn, DBEncoded)
             end;
         Encoded ->
             lager:debug("pulled encoded shards from cache for ~s", [DBEncoded]),
