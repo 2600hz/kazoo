@@ -758,4 +758,20 @@ to_upper_string_test() ->
     ?assertEqual("F00", to_upper_string("f00")),
     ?assertEqual("F00", to_upper_string("F00")).
 
+to_boolean_test() ->
+    All = [<<"true">>, "true", true, <<"false">>, "false", false],
+    NotAll = [0, 123, 1.23, "123", "abc", abc, <<"abc">>, <<"123">>, {what, is, this, doing, here}],
+    ?assertEqual(true, lists:all(fun(X) ->
+                                         try to_boolean(X) of
+                                             _ -> true
+                                         catch _:_ -> false
+                                         end
+                                 end, All)),
+    ?assertEqual(true, lists:all(fun(X) ->
+                                         try to_boolean(X) of
+                                             _ -> false
+                                         catch _:_ -> true
+                                         end
+                                 end, NotAll)).
+
 -endif.
