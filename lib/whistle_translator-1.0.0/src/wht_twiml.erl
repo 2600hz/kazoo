@@ -15,7 +15,7 @@
 -include_lib("xmerl/include/xmerl.hrl").
 
 %% What actions can be nested inside of a given tag
--define(NESTABLE_ACTIONS, [{'Gather', ['Say', 'Play']}]).
+-define(NESTABLE_ACTIONS, [{'Gather', ['Say', 'Play', 'Pause']}]).
 
 -define(STATUS_QUEUED, <<"queued">>).
 -define(STATUS_RINGING, <<"ringing">>).
@@ -167,7 +167,7 @@ exec_element(Call, 'Record', [#xmlText{}], #xmlElement{attributes=Attrs}) ->
         {error, _E} ->
             %% TODO: when call hangs up, try to save message
             lager:debug("failed to record message: ~p", [_E]),
-            {stop, Call1}
+            {stop, update_call_status(Call1, ?STATUS_FAILED)}
     end;
 
 exec_element(Call, 'Gather', [#xmlText{}|T], El) ->
@@ -178,8 +178,11 @@ exec_element(Call, 'Gather', [#xmlElement{name=Name, content=Content}=El1|T], El
     case lists:member(Name, props:get_value('Gather', ?NESTABLE_ACTIONS, [])) of
         true ->
             lager:debug("nested action ~s in Gather, executing", [Name]),
-            _ = exec_element(Call1, Name, Content, El1),
-            exec_element(Call1, 'Gather', T, El);
+
+            case maybe_stop(Call1, exec_gather_element(Call1, Name, Content, El1), ok) of
+                {stop, _Call}=Stop -> Stop;
+                _ -> exec_element(Call1, 'Gather', T, El)
+            end;
         false ->
             lager:debug("invalid nested action ~s in Gather, ignoring", [Name]),
             exec_element(Call1, 'Gather', T, El)
@@ -197,31 +200,10 @@ exec_element(Call, 'Gather', [], #xmlElement{attributes=Attrs}) ->
     end;
 
 exec_element(Call, 'Play', [#xmlText{value=PlayMe, type=text}], #xmlElement{attributes=Attrs}) ->
-    Call1 = maybe_answer_call(Call),
-    lager:debug("PLAY: ~s", [PlayMe]),
-    Res = case get_loop_count(props:get_value(loop, attrs_to_proplist(Attrs), 1)) of
-              %% TODO: play music in a continuous loop
-              0 -> whapps_call_command:b_play(wh_util:to_binary(PlayMe), Call1);
-              1 -> whapps_call_command:b_play(wh_util:to_binary(PlayMe), Call1);
-              N when N > 1 -> play_loop(Call1, wh_util:to_binary(PlayMe), N)
-          end,
-    maybe_stop(Call1, Res, {ok, Call1});
+    play(Call, PlayMe, Attrs);
 
 exec_element(Call, 'Say', [#xmlText{value=SayMe, type=text}], #xmlElement{attributes=Attrs}) ->
-    Call1 = maybe_answer_call(Call),
-    Props = attrs_to_proplist(Attrs),
-    Voice = get_voice(props:get_value(voice, Props)),
-    Lang = get_lang(props:get_value(language, Props)),
-
-    lager:debug("SAY: ~s using voice ~s, in lang ~s", [SayMe, Voice, Lang]),
-
-    Result = case get_loop_count(wh_util:to_integer(props:get_value(loop, Props, 1))) of
-                 0 -> say_loop(Call1, fun() -> whapps_call_command:b_tts(wh_util:to_binary(SayMe), Voice, Lang, Call1) end, infinity);
-                 1 -> whapps_call_command:b_tts(wh_util:to_binary(SayMe), Voice, Lang, Call1);
-                 N -> say_loop(Call1, fun() -> whapps_call_command:b_tts(wh_util:to_binary(SayMe), Voice, Lang, Call1) end, N)
-             end,
-
-    maybe_stop(Call, Result, {ok, Call1});
+    say(Call, SayMe, Attrs);
 
 exec_element(Call, 'Redirect', [#xmlText{value=Url}], #xmlElement{attributes=Attrs}) ->
     Call1 = maybe_answer_call(Call),
@@ -234,19 +216,12 @@ exec_element(Call, 'Redirect', [#xmlText{value=Url}], #xmlElement{attributes=Att
     {request, Call1, NewUri, Method, BaseParams};
 
 exec_element(Call, 'Pause', _, #xmlElement{attributes=Attrs}) ->
-    Props = attrs_to_proplist(Attrs),
-    Length = props:get_integer_value(length, Props, 1) * 1000,
-
-    lager:debug("SLEEP: for ~b ms", [Length]),
-
-    receive
-    after Length -> {ok, Call}
-    end;
+    pause(Call, Attrs);
 
 exec_element(Call, 'Hangup', _, _) ->
     Call1 = maybe_answer_call(Call),
     whapps_call_command:hangup(Call1),
-    {stop, Call1};
+    {stop, update_call_status(Call1, ?STATUS_COMPLETED)};
 
 exec_element(Call, 'Reject', _, #xmlElement{attributes=Attrs}) ->
     Props = attrs_to_proplist(Attrs),
@@ -254,7 +229,65 @@ exec_element(Call, 'Reject', _, #xmlElement{attributes=Attrs}) ->
 
     play_reject_reason(Call, Reason), 
     whapps_call_command:response(reject_code(Reason), Reason, Call),
-    {stop, Call}.
+    {stop, update_call_status(Call, ?STATUS_BUSY)}.
+
+exec_gather_element(Call, 'Say', [#xmlText{value=SayMe, type=text}], #xmlElement{attributes=Attrs}) ->
+    say(Call, SayMe, Attrs, ?ANY_DIGIT);
+exec_gather_element(Call, 'Play', [#xmlText{value=PlayMe, type=text}], #xmlElement{attributes=Attrs}) ->
+    play(Call, PlayMe, Attrs, ?ANY_DIGIT);
+exec_gather_element(Call, 'Pause', _, #xmlElement{attributes=Attrs}) ->
+    pause(Call, Attrs);
+exec_gather_element(Call, _Action, _, _) ->
+    lager:debug("unhandled nested action ~s in Gather", [_Action]),
+    {ok, Call}.
+
+-spec pause/2 :: (whapps_call:call(), proplist()) -> {'ok', whapps_call:call()}.
+pause(Call, Attrs) ->
+    Props = attrs_to_proplist(Attrs),
+    Length = props:get_integer_value(length, Props, 1) * 1000,
+
+    Call1 = maybe_answer_call(Call),
+
+    lager:debug("PAUSE: for ~b ms", [Length]),
+
+    receive
+    after Length -> {ok, Call1}
+    end.
+
+-spec play/3 :: (whapps_call:call(), ne_binary(), proplist()) -> exec_element_return().
+-spec play/4 :: (whapps_call:call(), ne_binary(), proplist(), list() | binary()) -> exec_element_return().
+play(Call, PlayMe, Attrs) ->
+    play(Call, PlayMe, Attrs, <<>>).
+play(Call, PlayMe, Attrs, Terminators) ->
+    Call1 = maybe_answer_call(Call),
+    lager:debug("PLAY: ~s", [PlayMe]),
+    Res = case get_loop_count(props:get_value(loop, attrs_to_proplist(Attrs), 1)) of
+              %% TODO: play music in a continuous loop
+              0 -> whapps_call_command:b_play(wh_util:to_binary(PlayMe), Terminators, Call1);
+              1 -> whapps_call_command:b_play(wh_util:to_binary(PlayMe), Terminators, Call1);
+              N when N > 1 -> play_loop(Call1, wh_util:to_binary(PlayMe), Terminators, N)
+          end,
+    maybe_stop(Call1, Res, {ok, Call1}).
+
+-spec say/3 :: (whapps_call:call(), ne_binary(), proplist()) -> exec_element_return().
+-spec say/4 :: (whapps_call:call(), ne_binary(), proplist(), list() | binary()) -> exec_element_return().
+say(Call, SayMe, Attrs) ->
+    say(Call, SayMe, Attrs, <<>>).
+say(Call, SayMe, Attrs, Terminators) ->
+    Call1 = maybe_answer_call(Call),
+    Props = attrs_to_proplist(Attrs),
+    Voice = get_voice(props:get_value(voice, Props)),
+    Lang = get_lang(props:get_value(language, Props)),
+
+    lager:debug("SAY: ~s using voice ~s, in lang ~s", [SayMe, Voice, Lang]),
+
+    Result = case get_loop_count(wh_util:to_integer(props:get_value(loop, Props, 1))) of
+                 0 -> say_loop(Call1, fun() -> whapps_call_command:b_tts(wh_util:to_binary(SayMe), Voice, Lang, Terminators, Call1) end, infinity);
+                 1 -> whapps_call_command:b_tts(wh_util:to_binary(SayMe), Voice, Lang, Terminators, Call1);
+                 N -> say_loop(Call1, fun() -> whapps_call_command:b_tts(wh_util:to_binary(SayMe), Voice, Lang, Terminators, Call1) end, N)
+             end,
+
+    maybe_stop(Call, Result, {ok, Call1}).
 
 collect_digits(Call, MaxDigits, FinishOnKey, Timeout, Props) ->
     MaxDigitsBin = wh_util:to_binary(MaxDigits),
@@ -342,11 +375,11 @@ reject_code(<<"busy">>) ->
 reject_code(<<"rejected">>) ->
     <<"503">>.
 
-play_loop(_, _, 0) ->
+play_loop(_, _, _, 0) ->
     ok;
-play_loop(Call, PlayMe, N) ->
-    _ = whapps_call_command:b_play(wh_util:to_binary(PlayMe), Call),
-    play_loop(Call, PlayMe, N-1).
+play_loop(Call, PlayMe, Terminators, N) ->
+    _ = whapps_call_command:b_play(wh_util:to_binary(PlayMe), Terminators, Call),
+    play_loop(Call, PlayMe, Terminators, N-1).
 
 attrs_to_proplist(L) ->
     [{K, V} || #xmlAttribute{name=K, value=V} <- L].
@@ -489,6 +522,10 @@ store_recording(Call, MediaName, JObj) ->
                               ]),
     {ok, _} = whapps_call_command:b_store(MediaName, StoreUrl, Call),
     MediaId.
+
+-spec update_call_status/2 :: (whapps_call:call(), ne_binary()) -> whapps_call:call().
+update_call_status(Call, Status) ->
+    whapps_call:kvs_store(<<"call_status">>, Status, Call).
 
 -spec req_params/1 :: (whapps_call:call()) -> proplist().
 req_params(Call) ->
