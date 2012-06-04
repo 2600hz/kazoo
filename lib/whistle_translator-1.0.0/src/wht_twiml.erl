@@ -175,29 +175,12 @@ exec_element(Call, 'Gather', [#xmlText{}|T], El) ->
 exec_element(Call, 'Gather', [#xmlElement{name=Name, content=Content}=El1|T], El) ->
     Call1 = maybe_answer_call(Call),
 
-    case lists:member(Name, props:get_value('Gather', ?NESTABLE_ACTIONS, [])) of
-        true ->
-            lager:debug("nested action ~s in Gather, executing", [Name]),
-
-            case maybe_stop(Call1, exec_gather_element(Call1, Name, Content, El1), ok) of
-                {stop, _Call}=Stop -> Stop;
-                _ -> exec_element(Call1, 'Gather', T, El)
-            end;
-        false ->
-            lager:debug("invalid nested action ~s in Gather, ignoring", [Name]),
-            exec_element(Call1, 'Gather', T, El)
+    case maybe_stop(Call1, exec_gather_element(Call1, Name, Content, El1), ok) of
+        {stop, _Call}=Stop -> Stop;
+        _ -> exec_element(Call1, 'Gather', T, El)
     end;
 exec_element(Call, 'Gather', [], #xmlElement{attributes=Attrs}) ->
-    Call1 = maybe_answer_call(Call),
-    Props = attrs_to_proplist(Attrs),
-
-    Timeout = wh_util:to_integer(props:get_value(timeout, Props, 5)),
-    FinishOnKey = props:get_value(finishOnKey, Props, <<"#">>),
-
-    case props:get_value(numDigits, Props) of
-        undefined -> collect_until_terminator(Call1, FinishOnKey, Timeout, Props);
-        MaxDigits -> collect_digits(Call1, wh_util:to_integer(MaxDigits), FinishOnKey, Timeout, Props)
-    end;
+    gather(Call, Attrs);
 
 exec_element(Call, 'Play', [#xmlText{value=PlayMe, type=text}], #xmlElement{attributes=Attrs}) ->
     play(Call, PlayMe, Attrs);
@@ -230,6 +213,19 @@ exec_element(Call, 'Reject', _, #xmlElement{attributes=Attrs}) ->
     play_reject_reason(Call, Reason), 
     whapps_call_command:response(reject_code(Reason), Reason, Call),
     {stop, update_call_status(Call, ?STATUS_BUSY)}.
+
+-spec gather/2 :: (whapps_call:call(), proplist()) -> exec_element_return().
+gather(Call, Attrs) ->
+    Call1 = maybe_answer_call(Call),
+    Props = attrs_to_proplist(Attrs),
+
+    Timeout = wh_util:to_integer(props:get_value(timeout, Props, 5)),
+    FinishOnKey = props:get_value(finishOnKey, Props, <<"#">>),
+
+    case props:get_value(numDigits, Props) of
+        undefined -> collect_until_terminator(Call1, FinishOnKey, Timeout, Props);
+        MaxDigits -> collect_digits(Call1, wh_util:to_integer(MaxDigits), FinishOnKey, Timeout, Props)
+    end.
 
 exec_gather_element(Call, 'Say', [#xmlText{value=SayMe, type=text}], #xmlElement{attributes=Attrs}) ->
     say(Call, SayMe, Attrs, ?ANY_DIGIT);
