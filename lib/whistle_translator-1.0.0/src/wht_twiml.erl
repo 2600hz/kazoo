@@ -17,6 +17,15 @@
 %% What actions can be nested inside of a given tag
 -define(NESTABLE_ACTIONS, [{'Gather', ['Say', 'Play']}]).
 
+-define(STATUS_QUEUED, <<"queued">>).
+-define(STATUS_RINGING, <<"ringing">>).
+-define(STATUS_ANSWERED, <<"in-progress">>).
+-define(STATUS_COMPLETED, <<"completed">>).
+-define(STATUS_BUSY, <<"busy">>).
+-define(STATUS_FAILED, <<"failed">>).
+-define(STATUS_NOANSWER, <<"no-answer">>).
+-define(STATUS_CANCELED, <<"canceled">>).
+
 -spec does_recognize/1 :: (string()) -> {'true', term()} | 'false'.
 does_recognize(Cmds) ->
     case xmerl_scan:string(Cmds) of
@@ -97,7 +106,7 @@ exec_element(Call0, 'Dial', [#xmlText{value=DialMe, type=text}], #xmlElement{att
                                             ,{<<"RecordingUrl">>, recorded_url(Call1, RecordingId, RecordCall)}
                                             | req_params(Call1)
                                            ]),
-            Uri = wht_util:resolve_uri(whapps_call:kvs_fetch(voice_uri, Call1), Action),
+            Uri = wht_util:resolve_uri(whapps_call:kvs_fetch(<<"voice_uri">>, Call1), Action),
             Method = wht_util:http_method(props:get_value(method, Props, post)),
             maybe_stop(Call1, OffnetResp, {request, Call1, Uri, Method, BaseParams})
     end;
@@ -119,7 +128,7 @@ exec_element(Call, 'Record', [#xmlText{}], #xmlElement{attributes=Attrs}) ->
     lager:debug("RECORD with attrs: ~p", [Attrs]),
 
     %% TODO: remove cf dependency
-    Action = wht_util:resolve_uri(whapps_call:kvs_fetch(voice_uri, Call1)
+    Action = wht_util:resolve_uri(whapps_call:kvs_fetch(<<"voice_uri">>, Call1)
                                    ,props:get_value(action, Props)
                                   ),
 
@@ -218,7 +227,7 @@ exec_element(Call, 'Redirect', [#xmlText{value=Url}], #xmlElement{attributes=Att
     Call1 = maybe_answer_call(Call),
     Props = attrs_to_proplist(Attrs),
 
-    NewUri = wht_util:resolve_uri(whapps_call:kvs_fetch(voice_uri, Call1), Url),
+    NewUri = wht_util:resolve_uri(whapps_call:kvs_fetch(<<"voice_uri">>, Call1), Url),
     Method = wht_util:http_method(props:get_value(method, Props, post)),
     BaseParams = wh_json:from_list(req_params(Call1) ),
 
@@ -255,7 +264,7 @@ collect_digits(Call, MaxDigits, FinishOnKey, Timeout, Props) ->
         {ok, DTMFs} when byte_size(DTMFs) =:= MaxDigits ->
             lager:debug("recv DTMFs: ~s", [DTMFs]),
 
-            NewUri = wht_util:resolve_uri(whapps_call:kvs_fetch(voice_uri, Call)
+            NewUri = wht_util:resolve_uri(whapps_call:kvs_fetch(<<"voice_uri">>, Call)
                                           ,props:get_value(action, Props)
                                          ),
             Method = wht_util:http_method(props:get_value(method, Props, post)),
@@ -277,7 +286,7 @@ collect_until_terminator(Call, FinishOnKey, Timeout, Props, DTMFs) ->
         {ok, FinishOnKey} ->
             Digits = lists:reverse(DTMFs),
             lager:debug("recv finish key ~s, responding with ~s", [Digits]),
-            NewUri = wht_util:resolve_uri(whapps_call:kvs_fetch(voice_uri, Call)
+            NewUri = wht_util:resolve_uri(whapps_call:kvs_fetch(<<"voice_uri">>, Call)
                                           ,props:get_value(action, Props)
                                          ),
             Method = wht_util:http_method(props:get_value(method, Props, post)),
@@ -287,7 +296,7 @@ collect_until_terminator(Call, FinishOnKey, Timeout, Props, DTMFs) ->
         {ok, <<>>} ->
             Digits = lists:reverse(DTMFs),
             lager:debug("timeout waiting for digits, working with what we got: ~s", [Digits]),
-            NewUri = wht_util:resolve_uri(whapps_call:kvs_fetch(voice_uri, Call)
+            NewUri = wht_util:resolve_uri(whapps_call:kvs_fetch(<<"voice_uri">>, Call)
                                           ,props:get_value(action, Props)
                                          ),
             Method = wht_util:http_method(props:get_value(method, Props, post)),
@@ -343,11 +352,13 @@ attrs_to_proplist(L) ->
     [{K, V} || #xmlAttribute{name=K, value=V} <- L].
 
 maybe_answer_call(Call) ->
-    case whapps_call:kvs_fetch(is_answered, Call) of
+    case whapps_call:kvs_fetch(<<"is_answered">>, Call) of
         true -> Call;
         _ ->
             whapps_call_command:answer(Call),
-            whapps_call:kvs_store(is_answered, true, Call)
+            whapps_call:kvs_store_proplist([{<<"is_answered">>, true}
+                                            ,{<<"call_status">>, ?STATUS_ANSWERED}
+                                           ], Call)
     end.
 
 %%--------------------------------------------------------------------
@@ -480,15 +491,12 @@ store_recording(Call, MediaName, JObj) ->
     MediaId.
 
 -spec req_params/1 :: (whapps_call:call()) -> proplist().
--spec req_params/2 :: (whapps_call:call(), ne_binary()) -> proplist().
 req_params(Call) ->
-    req_params(Call, <<"ringing">>).
-req_params(Call, Status) ->
     [{<<"CallSid">>, whapps_call:call_id(Call)}
      ,{<<"AccountSid">>, whapps_call:account_id(Call)}
      ,{<<"From">>, whapps_call:from_user(Call)}
      ,{<<"To">>, whapps_call:to_user(Call)}
-     ,{<<"CallStatus">>, Status}
+     ,{<<"CallStatus">>, whapps_call:kvs_fetch(<<"call_status">>, ?STATUS_RINGING, Call)}
      ,{<<"ApiVersion">>, <<"2010-04-01">>}
      ,{<<"Direction">>, <<"inbound">>}
      ,{<<"CallerName">>, whapps_call:caller_id_name(Call)}
