@@ -14,6 +14,9 @@
 -include("wht.hrl").
 -include_lib("xmerl/include/xmerl.hrl").
 
+%% What actions can be nested inside of a given tag
+-define(NESTABLE_ACTIONS, [{'Gather', ['Say', 'Play']}]).
+
 -spec does_recognize/1 :: (string()) -> {'true', term()} | 'false'.
 does_recognize(Cmds) ->
     case xmerl_scan:string(Cmds) of
@@ -162,8 +165,16 @@ exec_element(Call, 'Gather', [#xmlText{}|T], El) ->
     exec_element(maybe_answer_call(Call), 'Gather', T, El);
 exec_element(Call, 'Gather', [#xmlElement{name=Name, content=Content}=El1|T], El) ->
     Call1 = maybe_answer_call(Call),
-    _ = exec_element(Call1, Name, Content, El1),
-    exec_element(Call1, 'Gather', T, El);
+
+    case lists:member(Name, props:get_value('Gather', ?NESTABLE_ACTIONS, [])) of
+        true ->
+            lager:debug("nested action ~s in Gather, executing", [Name]),
+            _ = exec_element(Call1, Name, Content, El1),
+            exec_element(Call1, 'Gather', T, El);
+        false ->
+            lager:debug("invalid nested action ~s in Gather, ignoring", [Name]),
+            exec_element(Call1, 'Gather', T, El)
+    end;
 exec_element(Call, 'Gather', [], #xmlElement{attributes=Attrs}) ->
     Call1 = maybe_answer_call(Call),
     Props = attrs_to_proplist(Attrs),
