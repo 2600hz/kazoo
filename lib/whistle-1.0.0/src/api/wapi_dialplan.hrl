@@ -11,6 +11,10 @@
 
 %% For dialplan messages, an optional insert-at tuple is common across all requests
 -define(INSERT_AT_TUPLE, {<<"Insert-At">>, [<<"head">>, <<"tail">>, <<"flush">>, <<"now">>]}).
+-define(IS_TERMINATOR, fun(X) when is_list(X) -> true;
+                          (<<>>) -> true;
+                          (_) -> false
+                       end).
 
 -define(BRIDGE_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Endpoints">>]).
 -define(OPTIONAL_BRIDGE_REQ_HEADERS, [<<"Timeout">>, <<"Continue-On-Fail">>, <<"Ignore-Early-Media">>
@@ -274,7 +278,7 @@
                           ,{<<"Leg">>, [<<"A">>, <<"B">>, <<"Both">>]}
                           ,?INSERT_AT_TUPLE
                          ]).
--define(PLAY_REQ_TYPES, [{<<"Terminators">>, fun is_list/1}]).
+-define(PLAY_REQ_TYPES, [{<<"Terminators">>, ?IS_TERMINATOR}]).
 
 %% PlayStop Request
 -define(PLAY_STOP_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>]).
@@ -284,7 +288,7 @@
                                ,{<<"Application-Name">>, <<"playstop">>}
                                ,{<<"Insert-At">>, <<"now">>}
                               ]).
--define(PLAY_STOP_REQ_TYPES, [{<<"Terminators">>, fun is_list/1}]).
+-define(PLAY_STOP_REQ_TYPES, [{<<"Terminators">>, ?IS_TERMINATOR}]).
 
 %% Record Request
 -define(RECORD_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Media-Name">>]).
@@ -296,7 +300,7 @@
                             ,{<<"Application-Name">>, <<"record">>}
                             ,?INSERT_AT_TUPLE
                            ]).
--define(RECORD_REQ_TYPES, [{<<"Terminators">>, fun is_list/1}]).
+-define(RECORD_REQ_TYPES, [{<<"Terminators">>, ?IS_TERMINATOR}]).
 
 %% Record Call Leg into MediaName
 %% Stream-To = local results in the recording being stored on the media server
