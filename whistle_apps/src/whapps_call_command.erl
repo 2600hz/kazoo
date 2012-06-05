@@ -1455,7 +1455,6 @@ wait_for_dtmf(Timeout) ->
                     wait_for_dtmf(Timeout);
                 _ ->
                     DiffMicro = timer:now_diff(erlang:now(), Start),
-                    lager:debug("ignoring amqp jobj"),
                     wait_for_dtmf(Timeout - (DiffMicro div 1000))
             end;
         _E when Timeout =:= infinity ->
