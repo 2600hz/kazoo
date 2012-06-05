@@ -14,9 +14,6 @@
 -include("wht.hrl").
 -include_lib("xmerl/include/xmerl.hrl").
 
-%% What actions can be nested inside of a given tag
--define(NESTABLE_ACTIONS, [{'Gather', ['Say', 'Play', 'Pause']}]).
-
 -define(STATUS_QUEUED, <<"queued">>).
 -define(STATUS_RINGING, <<"ringing">>).
 -define(STATUS_ANSWERED, <<"in-progress">>).
@@ -37,7 +34,15 @@ does_recognize(Cmds) ->
 
 -spec exec/2 :: (whapps_call:call(), #xmlElement{}) -> exec_return().
 exec(Call, #xmlElement{name='Response', content=Elements}) ->
-    exec_response(Call, Elements).
+    try exec_response(Call, Elements) of
+        Resp -> Resp
+    catch
+        _C:_R ->
+            ST = erlang:get_stacktrace(),
+            lager:debug("failed to exec: ~p: ~p", [_C, _R]),
+            [lager:debug("st: ~p", [S]) || S <- ST],
+            {stop, Call}
+    end.
 
 -spec exec_response/2 :: (whapps_call:call(), [#xmlText{} | #xmlElement{},...] | []) -> exec_return().
 exec_response(Call, [#xmlText{}|T]) ->
@@ -177,7 +182,9 @@ exec_element(Call, 'Gather', [#xmlElement{name=Name, content=Content}=El1|T], El
 
     case maybe_stop(Call1, exec_gather_element(Call1, Name, Content, El1), ok) of
         {stop, _Call}=Stop -> Stop;
-        _ -> exec_element(Call1, 'Gather', T, El)
+        _R ->
+            lager:debug("exec_gather_element resp: ~p", [_R]),
+            exec_element(Call1, 'Gather', T, El)
     end;
 exec_element(Call, 'Gather', [], #xmlElement{attributes=Attrs}) ->
     gather(Call, Attrs);
@@ -186,7 +193,7 @@ exec_element(Call, 'Play', [#xmlText{value=PlayMe, type=text}], #xmlElement{attr
     play(Call, PlayMe, Attrs);
 
 exec_element(Call, 'Say', [#xmlText{value=SayMe, type=text}], #xmlElement{attributes=Attrs}) ->
-    say(Call, SayMe, Attrs);
+    maybe_stop(Call, say(Call, SayMe, Attrs), {ok, Call});
 
 exec_element(Call, 'Redirect', [#xmlText{value=Url}], #xmlElement{attributes=Attrs}) ->
     Call1 = maybe_answer_call(Call),
@@ -219,7 +226,7 @@ gather(Call, Attrs) ->
     Call1 = maybe_answer_call(Call),
     Props = attrs_to_proplist(Attrs),
 
-    Timeout = wh_util:to_integer(props:get_value(timeout, Props, 5)),
+    Timeout = wh_util:to_integer(props:get_value(timeout, Props, 5)) * 1000,
     FinishOnKey = props:get_value(finishOnKey, Props, <<"#">>),
 
     case props:get_value(numDigits, Props) of
@@ -227,8 +234,11 @@ gather(Call, Attrs) ->
         MaxDigits -> collect_digits(Call1, wh_util:to_integer(MaxDigits), FinishOnKey, Timeout, Props)
     end.
 
-exec_gather_element(Call, 'Say', [#xmlText{value=SayMe, type=text}], #xmlElement{attributes=Attrs}) ->
-    say(Call, SayMe, Attrs, ?ANY_DIGIT);
+exec_gather_element(Call, 'Say', [#xmlText{value=SayMe, type=text}], #xmlElement{attributes=Attrs}) ->    
+    Result = say(Call, SayMe, Attrs, ?ANY_DIGIT),
+    lager:debug("say returned: ~p", [Result]),
+    maybe_stop(Call, Result, {ok, Call});
+
 exec_gather_element(Call, 'Play', [#xmlText{value=PlayMe, type=text}], #xmlElement{attributes=Attrs}) ->
     play(Call, PlayMe, Attrs, ?ANY_DIGIT);
 exec_gather_element(Call, 'Pause', _, #xmlElement{attributes=Attrs}) ->
@@ -253,14 +263,23 @@ pause(Call, Attrs) ->
 -spec play/3 :: (whapps_call:call(), ne_binary(), proplist()) -> exec_element_return().
 -spec play/4 :: (whapps_call:call(), ne_binary(), proplist(), list() | binary()) -> exec_element_return().
 play(Call, PlayMe, Attrs) ->
-    play(Call, PlayMe, Attrs, <<>>).
+    Call1 = maybe_answer_call(Call),
+    lager:debug("PLAY: ~s", [PlayMe]),
+    Res = case get_loop_count(props:get_value(loop, attrs_to_proplist(Attrs), 1)) of
+              %% TODO: play music in a continuous loop
+              0 -> whapps_call_command:b_play(wh_util:to_binary(PlayMe), Call1);
+              1 -> whapps_call_command:b_play(wh_util:to_binary(PlayMe), Call1);
+              N when N > 1 -> play_loop(Call1, wh_util:to_binary(PlayMe), N)
+          end,
+    maybe_stop(Call1, Res, {ok, Call1}).
+
 play(Call, PlayMe, Attrs, Terminators) ->
     Call1 = maybe_answer_call(Call),
     lager:debug("PLAY: ~s", [PlayMe]),
     Res = case get_loop_count(props:get_value(loop, attrs_to_proplist(Attrs), 1)) of
               %% TODO: play music in a continuous loop
-              0 -> whapps_call_command:b_play(wh_util:to_binary(PlayMe), Terminators, Call1);
-              1 -> whapps_call_command:b_play(wh_util:to_binary(PlayMe), Terminators, Call1);
+              0 -> whapps_call_command:play(wh_util:to_binary(PlayMe), Terminators, Call1);
+              1 -> whapps_call_command:play(wh_util:to_binary(PlayMe), Terminators, Call1);
               N when N > 1 -> play_loop(Call1, wh_util:to_binary(PlayMe), Terminators, N)
           end,
     maybe_stop(Call1, Res, {ok, Call1}).
@@ -268,7 +287,19 @@ play(Call, PlayMe, Attrs, Terminators) ->
 -spec say/3 :: (whapps_call:call(), ne_binary(), proplist()) -> exec_element_return().
 -spec say/4 :: (whapps_call:call(), ne_binary(), proplist(), list() | binary()) -> exec_element_return().
 say(Call, SayMe, Attrs) ->
-    say(Call, SayMe, Attrs, <<>>).
+    Call1 = maybe_answer_call(Call),
+    Props = attrs_to_proplist(Attrs),
+    Voice = get_voice(props:get_value(voice, Props)),
+    Lang = get_lang(props:get_value(language, Props)),
+
+    lager:debug("SAY: ~s using voice ~s, in lang ~s", [SayMe, Voice, Lang]),
+
+    case get_loop_count(wh_util:to_integer(props:get_value(loop, Props, 1))) of
+        0 -> say_loop(Call1, fun() -> whapps_call_command:b_tts(wh_util:to_binary(SayMe), Voice, Lang, Call1) end, infinity);
+        1 -> whapps_call_command:b_tts(wh_util:to_binary(SayMe), Voice, Lang, Call1);
+        N -> say_loop(Call1, fun() -> whapps_call_command:b_tts(wh_util:to_binary(SayMe), Voice, Lang, Call1) end, N)
+    end.
+
 say(Call, SayMe, Attrs, Terminators) ->
     Call1 = maybe_answer_call(Call),
     Props = attrs_to_proplist(Attrs),
@@ -277,13 +308,11 @@ say(Call, SayMe, Attrs, Terminators) ->
 
     lager:debug("SAY: ~s using voice ~s, in lang ~s", [SayMe, Voice, Lang]),
 
-    Result = case get_loop_count(wh_util:to_integer(props:get_value(loop, Props, 1))) of
-                 0 -> say_loop(Call1, fun() -> whapps_call_command:b_tts(wh_util:to_binary(SayMe), Voice, Lang, Terminators, Call1) end, infinity);
-                 1 -> whapps_call_command:b_tts(wh_util:to_binary(SayMe), Voice, Lang, Terminators, Call1);
-                 N -> say_loop(Call1, fun() -> whapps_call_command:b_tts(wh_util:to_binary(SayMe), Voice, Lang, Terminators, Call1) end, N)
-             end,
-
-    maybe_stop(Call, Result, {ok, Call1}).
+    case get_loop_count(wh_util:to_integer(props:get_value(loop, Props, 1))) of
+        0 -> say_loop(Call1, fun() -> whapps_call_command:tts(wh_util:to_binary(SayMe), Voice, Lang, Terminators, Call1) end, infinity);
+        1 -> whapps_call_command:tts(wh_util:to_binary(SayMe), Voice, Lang, Terminators, Call1);
+        N -> say_loop(Call1, fun() -> whapps_call_command:tts(wh_util:to_binary(SayMe), Voice, Lang, Terminators, Call1) end, N)
+    end.
 
 collect_digits(Call, MaxDigits, FinishOnKey, Timeout, Props) ->
     MaxDigitsBin = wh_util:to_binary(MaxDigits),
@@ -311,20 +340,20 @@ collect_digits(Call, MaxDigits, FinishOnKey, Timeout, Props) ->
 collect_until_terminator(Call, FinishOnKey, Timeout, Props) ->
     collect_until_terminator(Call, FinishOnKey, Timeout, Props, []).
 collect_until_terminator(Call, FinishOnKey, Timeout, Props, DTMFs) ->
-    case whapps_call_command:collect_digits(1, Timeout, 2000, undefined, [FinishOnKey], Call) of
+    case whapps_call_command:wait_for_dtmf(Timeout) of
         {ok, FinishOnKey} ->
             Digits = lists:reverse(DTMFs),
-            lager:debug("recv finish key ~s, responding with ~s", [Digits]),
+            lager:debug("recv finish key ~s, responding with ~p", [FinishOnKey, Digits]),
             NewUri = wht_util:resolve_uri(whapps_call:kvs_fetch(<<"voice_uri">>, Call)
                                           ,props:get_value(action, Props)
                                          ),
             Method = wht_util:http_method(props:get_value(method, Props, post)),
-            BaseParams = wh_json:from_list([{<<"Digits">>, Digits} | req_params(Call)]),
+            BaseParams = wh_json:from_list([{<<"Digits">>, iolist_to_binary(Digits)} | req_params(Call)]),
 
             {request, Call, NewUri, Method, BaseParams};
         {ok, <<>>} ->
             Digits = lists:reverse(DTMFs),
-            lager:debug("timeout waiting for digits, working with what we got: ~s", [Digits]),
+            lager:debug("timeout waiting for digits, working with what we got: '~s'", [Digits]),
             NewUri = wht_util:resolve_uri(whapps_call:kvs_fetch(<<"voice_uri">>, Call)
                                           ,props:get_value(action, Props)
                                          ),
@@ -334,7 +363,7 @@ collect_until_terminator(Call, FinishOnKey, Timeout, Props, DTMFs) ->
             {request, Call, NewUri, Method, BaseParams};
         {ok, Digit} ->
             lager:debug("recv dtmf ~s", [Digit]),
-            collect_until_terminator(Call, FinishOnKey, Timeout, [Digit | DTMFs]);
+            collect_until_terminator(Call, FinishOnKey, Timeout, Props, [Digit | DTMFs]);
         {error, _E} ->
             lager:debug("failed to collect unlimited digits, error: ~p", [_E]),
             {stop, Call}
@@ -345,11 +374,15 @@ say_loop(Call, F, infinity) ->
         ok -> say_loop(Call, F, infinity);
         Result -> Result
     end;
-say_loop(_, _, 0) -> ok;
 say_loop(Call, F, N) ->
-    case maybe_stop(call, F(), ok) of
-        ok -> say_loop(Call, F, N-1);
-        Result -> Result
+    say_loop(Call, F, ok, N).
+
+say_loop(_, _, Resp, 0) -> Resp;
+say_loop(Call, F, _, N) ->
+    Resp = F(),
+    case maybe_stop(Call, Resp, Resp) of
+        {stop, _}=Stop -> Stop;
+        Result -> say_loop(Call, F, Result, N-1)
     end.
 
 reject_reason(X) when not is_binary(X) ->
@@ -371,17 +404,27 @@ reject_code(<<"busy">>) ->
 reject_code(<<"rejected">>) ->
     <<"503">>.
 
-play_loop(_, _, _, 0) ->
-    ok;
+play_loop(_, _, 0) -> ok;
+play_loop(Call, PlayMe, N) ->
+    _ = whapps_call_command:b_play(wh_util:to_binary(PlayMe), Call),
+    play_loop(Call, PlayMe, N-1).
+
+play_loop(_, _, _, 0) -> ok;
 play_loop(Call, PlayMe, Terminators, N) ->
-    _ = whapps_call_command:b_play(wh_util:to_binary(PlayMe), Terminators, Call),
+    NoopId = whapps_call_command:audio_macro([
+                                              {play, wh_util:to_binary(PlayMe), Terminators}
+                                             ]
+                                             ,Terminators
+                                             ,Call
+                                            ),
+    lager:debug("play loop ~b with terminators: ~p: noop: ~p", [N, Terminators, NoopId]),
     play_loop(Call, PlayMe, Terminators, N-1).
 
 attrs_to_proplist(L) ->
     [{K, V} || #xmlAttribute{name=K, value=V} <- L].
 
 maybe_answer_call(Call) ->
-    case whapps_call:kvs_fetch(<<"is_answered">>, Call) of
+    case wh_util:is_true(whapps_call:kvs_fetch(<<"is_answered">>, false, Call)) of
         true -> Call;
         _ ->
             whapps_call_command:answer(Call),
