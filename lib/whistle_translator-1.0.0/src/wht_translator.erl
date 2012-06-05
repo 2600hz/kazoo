@@ -44,6 +44,6 @@ find_candidate_translators(_) ->
 
 is_recognized(M, Cmds) ->
     case catch M:does_recognize(Cmds) of
-        {true, _}=True -> lager:debug("true: ~p", [True]), True;
-        _F -> lager:debug("fail: ~p", [_F]), {false, []}
+        {true, _}=True -> True;
+        _F -> {false, []}
     end.
