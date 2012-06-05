@@ -30,7 +30,7 @@ handle_req(ApiJObj, _Props) ->
         {ok, AuthJObj} ->
             send_auth_resp(AuthJObj, AuthU, AuthR, ApiJObj);
         {error, not_found} ->            
-            lager:info("user ~s@~s is unknown", [AuthU, AuthR]),
+            lager:debug("user ~s@~s is unknown", [AuthU, AuthR]),
             send_auth_error(ApiJObj)
     end.
 
