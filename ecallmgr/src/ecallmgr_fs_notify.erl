@@ -34,7 +34,7 @@
 -define(RESPONDERS, [{{?MODULE, mwi_update}, [{<<"notification">>, <<"mwi">>}]}
                      ,{{?MODULE, presence_update}, [{<<"notification">>, <<"presence_update">>}]}
                     ]).
--define(BINDINGS, [{notifications, [{restrict_to, [mwi_update, presence_update]}]}]).
+-define(BINDINGS, [{notifications, [{restrict_to, [mwi_update]}]}]).
 -define(QUEUE_NAME, <<"ecallmgr_notify">>).
 -define(QUEUE_OPTIONS, [{exclusive, false}]).
 -define(CONSUME_OPTIONS, [{exclusive, false}]).
@@ -68,7 +68,7 @@ start_link(Node, Options) ->
                             ,[Node, Options]).
 
 -spec presence_update/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
-presence_update(JObj, Props) ->
+presence_update(JObj, _Props) ->
     PresenceId = wh_json:get_value(<<"Presence-ID">>, JObj),
     Event = case wh_json:get_value(<<"State">>, JObj) of
                 undefined ->
@@ -87,8 +87,6 @@ presence_update(JObj, Props) ->
                 <<"terminated">> -> create_presence_in(PresenceId, "CS_ROUTING", "terminated", JObj);
                 _ -> create_presence_in(PresenceId, "Available", undefined, wh_json:new())
             end,
-    Node = props:get_value(node, Props),
-    lager:debug("sending presence in event to ~p", [Node]),
     relay_presence('PRESENCE_IN', PresenceId, Event, 'nonode@nodomain').
 
 -spec mwi_update/2 :: (wh_json:json_object(), proplist()) -> no_return().
@@ -145,6 +143,7 @@ init([Node, Options]) ->
             gproc:reg({p, l, {call_event, Node, <<"PRESENCE_IN">>}}),
             gproc:reg({p, l, {call_event, Node, <<"PRESENCE_OUT">>}}),
             gproc:reg({p, l, {call_event, Node, <<"PRESENCE_PROBE">>}}),
+            gen_listener:add_binding(self(), notifications, [{restrict_to, [presence_update]}]),
             lager:debug("bound to presence events on node ~s", [Node])
     end,
     case ecallmgr_config:get(<<"distribute_message_query">>, false) of
