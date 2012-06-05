@@ -10,8 +10,8 @@
 -module(wnm_bandwidth).
 
 -export([find_numbers/2]).
--export([acquire_number/2]).
--export([disconnect_number/2]).
+-export([acquire_number/1]).
+-export([disconnect_number/1]).
 
 -include("../wh_number_manager.hrl").
 -include_lib("xmerl/include/xmerl.hrl").
@@ -81,28 +81,32 @@ find_numbers(Search, Quanity) ->
 %% Acquire a given number from the carrier
 %% @end
 %%--------------------------------------------------------------------
--spec acquire_number/2 :: (ne_binary(), wh_json:json_object()) -> {ok, wh_json:json_object()} |
-                                                                  {error, ne_binary()}.
-acquire_number(_, JObj) ->
+-spec acquire_number/1 :: (wnm_number()) -> wnm_number().
+acquire_number(#number{auth_by=AuthBy, assigned_to=AssignedTo, module_data=Data}=N) ->
     case whapps_config:get_is_true(?WNM_BW_CONFIG_CAT, <<"enable_provisioning">>, <<"true">>) of
         false -> {error, number_provisioning_disabled};
         true ->  
-                      Id = wh_json:get_string_value(<<"number_id">>, JObj),
+                      Id = wh_json:get_string_value(<<"number_id">>, Data),
                       Endpoint = whapps_config:get_binary(?WNM_BW_CONFIG_CAT, <<"endpoint">>, <<"">>),
                       OrderNamePrefix = whapps_config:get_binary(?WNM_BW_CONFIG_CAT, <<"order_name_prefix">>, <<"Whistle">>),
                       OrderName = list_to_binary([OrderNamePrefix, "-", wh_util:to_binary(wh_util:current_tstamp())]),
-                      AcquireFor = wh_json:get_ne_value(<<"authorizing_account">>, JObj, <<"no_authorizing_account">>), 
+                      ExtRef = case wh_util:is_empty(AuthBy) of true -> "no_authorizing_account"; false -> wh_util:to_list(AuthBy) end, 
+                      AcquireFor = case wh_util:is_empty(AuthBy) of true -> "no_assigned_account"; false -> wh_util:to_list(AssignedTo) end, 
                       Props = [{'orderName', [wh_util:to_list(OrderName)]}
-                               ,{'extRefID', [wh_util:to_list(AcquireFor)]}
+                               ,{'extRefID', [wh_util:to_list(ExtRef)]}
                                ,{'numberIDs', [{'id', [Id]}]}
                                ,{'subscriber', [wh_util:to_list(AcquireFor)]}
                                ,{'endPoints', [{'host', [wh_util:to_list(Endpoint)]}]}
                               ],
                       case make_numbers_request('basicNumberOrder', Props) of
-                          {error, _}=E -> E;
+                          {error, Reason} ->
+                              Error = <<"Unable to acquire number: ", (wh_json:to_binary(Reason))/binary>>,
+                              throw(N#number{error=carrier_fault
+                                             ,error_jobj=wh_json:from_list([{<<"carrier">>, Error}])
+                                            });
                           {ok, Xml} ->
                               Response = xmerl_xpath:string("/numberOrderResponse/numberOrder", Xml),
-                              {ok, number_order_response_to_json(Response)}
+                              N#number{module_data=number_order_response_to_json(Response)}
                       end
     end.
 
@@ -112,9 +116,8 @@ acquire_number(_, JObj) ->
 %% Release a number from the routing table
 %% @end
 %%--------------------------------------------------------------------
--spec disconnect_number/2 :: (ne_binary(), wh_json:json_object()) -> {ok, wh_json:json_object()}.
-disconnect_number(_, JObj) ->
-    {ok, JObj}.
+-spec disconnect_number/1 :: (wnm_number()) -> wnm_number().
+disconnect_number(Number) -> Number.
         
 %%--------------------------------------------------------------------
 %% @private

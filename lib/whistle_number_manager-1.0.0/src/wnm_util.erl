@@ -72,14 +72,18 @@ is_tollfree(Number) ->
 -spec get_carrier_module/1 :: (wh_json:json_object()) -> {ok, atom(), wh_json:json_object()} 
                                                      | {error, not_specified | unknown_module}.
 get_carrier_module(JObj) ->
-    case wh_json:get_value(<<"pvt_module_name">>, JObj) of
-        undefined -> {error, not_specified};
+    case wh_json:get_ne_value(<<"pvt_module_name">>, JObj) of
+        undefined -> 
+            lager:debug("carrier module not specified on number document"),
+            undefined;
         Module ->
             Carriers = list_carrier_modules(),
             Carrier = try_load_module(Module),
             case lists:member(Carrier, Carriers) of
-                true -> {ok, Carrier, wh_json:get_value(<<"pvt_module_data">>, JObj, wh_json:new())};
-                false -> {error, unknown_module}
+                true -> Carrier;
+                false -> 
+                    lager:debug("carrier module ~s specified on number document does not exist", [Carrier]),
+                    undefined
             end
     end.
 

@@ -10,8 +10,8 @@
 -module(wnm_local).
 
 -export([find_numbers/2]).
--export([acquire_number/2]).
--export([disconnect_number/2]).
+-export([acquire_number/1]).
+-export([disconnect_number/1]).
 
 -include("../wh_number_manager.hrl").
 
@@ -50,9 +50,8 @@ find_numbers(Number, Quanity) ->
 %% Acquire a given number from the carrier
 %% @end
 %%--------------------------------------------------------------------
--spec acquire_number/2 :: (ne_binary(), wh_json:json_object()) -> {ok, wh_json:json_object()}.
-acquire_number(_, JObj) ->
-    {ok, JObj}.
+-spec acquire_number/1 :: (wnm_number()) -> wnm_number().
+acquire_number(Number) -> Number.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -60,6 +59,5 @@ acquire_number(_, JObj) ->
 %% Release a number from the routing table
 %% @end
 %%--------------------------------------------------------------------
--spec disconnect_number/2 :: (ne_binary(), wh_json:json_object()) -> {ok, wh_json:json_object()}.
-disconnect_number(_, JObj) ->
-    {ok, JObj}.
+-spec disconnect_number/1 :: (wnm_number()) -> wnm_number().
+disconnect_number(Number) -> Number.
