@@ -89,6 +89,9 @@ is_call_active() ->
     after 0 -> true
     end.
 
+handle_resp(Call, _, <<>>) ->
+    lager:debug("no response body, continuing the flow"),
+    cf_exe:continue(Call);
 handle_resp(Call, Hdrs, RespBody) ->
     CT = props:get_value("Content-Type", Hdrs),
     try wht_translator:exec(Call, wh_util:to_list(RespBody), CT) of
