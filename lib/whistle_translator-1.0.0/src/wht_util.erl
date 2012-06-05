@@ -36,6 +36,7 @@ resolve_uri(RawPath, Relative) ->
         lists:foldl(fun(<<"..">>, []) -> [];
                        (<<"..">>, [_ | PathTokens]) -> PathTokens;
                        (<<".">>, PathTokens) -> PathTokens;
+                       (<<>>, PathTokens) -> PathTokens;
                        (Segment, [LastToken|DirTokens]=PathTokens) ->
                             case filename:extension(LastToken) of
                                 <<>> ->
@@ -52,10 +53,11 @@ resolve_uri(RawPath, Relative) ->
 -include_lib("eunit/include/eunit.hrl").
 
 get_path_test() ->
-    RawPath = <<"http://killio/script.php">>,
+    RawPath = <<"http://pivot/script.php">>,
     Relative = <<"script2.php">>,
-    RawPath1 = <<"http://killio/script2.php">>,
+    RawPath1 = <<"http://pivot/script2.php">>,
 
     ?assertEqual(RawPath1, resolve_uri(RawPath, Relative)),
-    ?assertEqual(RawPath1, resolve_uri(RawPath, RawPath1)).
+    ?assertEqual(RawPath1, resolve_uri(RawPath, RawPath1)),
+    ?assertEqual(RawPath1, resolve_uri(RawPath, <<"/", Relative/binary>>)).
 -endif.
