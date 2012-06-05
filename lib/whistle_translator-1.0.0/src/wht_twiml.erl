@@ -6,6 +6,9 @@
 %%% @end
 %%% @contributors
 %%%   James Aimonetti
+%%%
+%%% @todo
+%%%   Finish support for Number tag
 %%%-------------------------------------------------------------------
 -module(wht_twiml).
 
@@ -81,6 +84,8 @@ exec_element(Call, 'Dial', [#xmlText{value=DialMe, type=text}], #xmlElement{attr
     dial_number(Call, DialMe, Attrs);
 exec_element(Call, 'Dial', [#xmlElement{name='Number'}=El1], #xmlElement{attributes=Attrs}) ->
     dial_number(Call, El1, Attrs);
+exec_element(Call, 'Dial', [#xmlElement{}|_]=Numbers, #xmlElement{attributes=Attrs}) ->
+    dial_ring_group(Call, Numbers, Attrs);
 
 %%-------------------------------------------------------------------------
 %% @doc Record
@@ -214,6 +219,10 @@ exec_gather_element(Call, 'Pause', _, #xmlElement{attributes=Attrs}) ->
     pause(Call, Attrs);
 exec_gather_element(Call, _Action, _, _) ->
     lager:debug("unhandled nested action ~s in Gather", [_Action]),
+    {ok, Call}.
+
+dial_ring_group(Call, _Numbers, _Attrs) ->
+    lager:debug("DIAL ring group"),
     {ok, Call}.
 
 -spec dial_number/3 :: (whapps_call:call(), ne_binary() | #xmlElement{}, proplist()) -> exec_element_return().
