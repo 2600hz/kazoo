@@ -53,6 +53,11 @@
 -export([queue/1, queue_v/1]).
 -export([error/1, error_v/1]).
 
+%% API Helpers
+-export([dial_method_single/0
+         ,dial_method_simultaneous/0
+        ]).
+
 -export([bind_q/2, unbind_q/2]).
 
 -export([publish_action/2, publish_action/3]).
@@ -851,6 +856,12 @@ publish_originate_execute(ServerId, JObj) ->
 publish_originate_execute(ServerId, API, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(API, ?ORIGINATE_EXECUTE_VALUES, fun ?MODULE:originate_execute/1),
     amqp_util:targeted_publish(ServerId, Payload, ContentType).
+
+dial_method_single() ->
+    ?DIAL_METHOD_SINGLE.
+
+dial_method_simultaneous() ->
+    ?DIAL_METHOD_SIMUL.
 
 bind_q(Queue, _Prop) ->
     _ = amqp_util:callctl_exchange(),

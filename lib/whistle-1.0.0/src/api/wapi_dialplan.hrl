@@ -16,6 +16,9 @@
                           (_) -> false
                        end).
 
+-define(DIAL_METHOD_SINGLE, <<"single">>).
+-define(DIAL_METHOD_SIMUL, <<"simultaneous">>).
+
 -define(BRIDGE_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Endpoints">>]).
 -define(OPTIONAL_BRIDGE_REQ_HEADERS, [<<"Timeout">>, <<"Continue-On-Fail">>, <<"Ignore-Early-Media">>
                                           ,<<"Outgoing-Caller-ID-Name">>, <<"Outgoing-Caller-ID-Number">>
@@ -28,7 +31,7 @@
 -define(BRIDGE_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                             ,{<<"Event-Name">>, <<"command">>}
                             ,{<<"Application-Name">>, <<"bridge">>}
-                            ,{<<"Dial-Endpoint-Method">>, [<<"single">>, <<"simultaneous">>]}
+                            ,{<<"Dial-Endpoint-Method">>, [?DIAL_METHOD_SINGLE, ?DIAL_METHOD_SIMUL]}
                             ,{<<"Media">>, [<<"process">>, <<"bypass">>, <<"auto">>]}
                             ,{<<"Continue-On-Fail">>, [<<"true">>, <<"false">>]}
                             ,?INSERT_AT_TUPLE
