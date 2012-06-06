@@ -35,7 +35,7 @@
                      ,{{?MODULE, presence_update}, [{<<"notification">>, <<"presence_update">>}]}
                     ]).
 -define(BINDINGS, [{notifications, [{restrict_to, [mwi_update]}]}]).
--define(QUEUE_NAME, <<"ecallmgr_notify">>).
+-define(QUEUE_NAME, <<"ecallmgr_fs_notify">>).
 -define(QUEUE_OPTIONS, [{exclusive, false}]).
 -define(CONSUME_OPTIONS, [{exclusive, false}]).
 
@@ -140,11 +140,21 @@ init([Node, Options]) ->
         false -> ok;
         true ->
             ok = freeswitch:event(Node, ['PRESENCE_IN', 'PRESENCE_OUT', 'PRESENCE_PROBE']),
+            lager:debug("bound to presence events on node ~s", [Node]),
             gproc:reg({p, l, {call_event, Node, <<"PRESENCE_IN">>}}),
             gproc:reg({p, l, {call_event, Node, <<"PRESENCE_OUT">>}}),
             gproc:reg({p, l, {call_event, Node, <<"PRESENCE_PROBE">>}}),
-            gen_listener:add_binding(self(), notifications, [{restrict_to, [presence_update]}]),
-            lager:debug("bound to presence events on node ~s", [Node])
+            Self = self(),
+            spawn(fun() -> 
+                          QueueName = <<"ecallmgr_fs_notify_presence">>,
+                          QOptions = [{queue_options, [{exclusive, false}]}
+                                      ,{consume_options, [{exclusive, false}]}
+                                      ,{basic_qos, 1}
+                                     ],
+                          Bindings= [{notifications, [{restrict_to, [presence_update]}]}],
+                          gen_listener:add_queue(Self, QueueName, QOptions, Bindings),
+                          lager:debug("handling presence updates", [])
+             end)
     end,
     case ecallmgr_config:get(<<"distribute_message_query">>, false) of
         false -> ok;
