@@ -17,6 +17,9 @@
 -include("wht.hrl").
 -include_lib("xmerl/include/xmerl.hrl").
 
+-define(NAME, <<"wht_twiml">>).
+-define(VERSION, <<"0.2.0">>).
+
 -define(STATUS_QUEUED, <<"queued">>).
 -define(STATUS_RINGING, <<"ringing">>).
 -define(STATUS_ANSWERED, <<"in-progress">>).
@@ -221,9 +224,66 @@ exec_gather_element(Call, _Action, _, _) ->
     lager:debug("unhandled nested action ~s in Gather", [_Action]),
     {ok, Call}.
 
-dial_ring_group(Call, _Numbers, _Attrs) ->
+dial_ring_group(Call, Numbers, Attrs) ->
     lager:debug("DIAL ring group"),
-    {ok, Call}.
+    Props = attrs_to_proplist(Attrs),
+
+    try build_ring_group_endpoints(Numbers) of
+        [] ->
+            lager:debug("no endpoints were created for ring group"),
+            {ok, Call};
+        EPs ->
+            lager:debug("endpoints generated: ~p", [EPs]),
+
+            case ring_group_bridge_req(Call, EPs, Props) of
+                {ok, JObj} ->
+                    RecordCall = wh_util:is_true(props:get_value(record, Props, false)),
+                    StarHangup = wh_util:is_true(props:get_value(hangupOnStar, Props, false)),
+                    lager:debug("call bridged, do we need record: ~s or allow *-hangup: ~s", [RecordCall, StarHangup]);
+                {error, JObj} ->
+                    lager:debug("error bridging"),
+                    {stop, Call};
+                {stop, _}=Stop ->
+                    Stop
+            end
+    catch
+        error:function_clause ->
+            lager:debug("invalid tag in list of numbers"),
+            {stop, Call}
+    end.
+
+-spec ring_group_bridge_req/3 :: (whapps_call:call(), wh_json:json_objects(), proplist()) -> {'ok' | 'error' | 'stop', wh_json:json_object()}.
+ring_group_bridge_req(Call, EPs, Props) ->
+    Timeout = wh_util:to_integer(props:get_value(timeout, Props, 30)),
+    CallerID = props:get_value(callerId, Props, whapps_call:caller_id_number(Call)),
+
+    CCVs = [{<<"Account-ID">>, whapps_call:account_id(Call)}],
+
+    Req = [{<<"Call-ID">>, whapps_call:call_id(Call)}
+           ,{<<"Endpoints">>, EPs}
+           ,{<<"Timeout">>, Timeout}
+           ,{<<"Dial-Endpoint-Method">>, wapi_dialplan:dial_method_simultaneous()}
+           ,{<<"Ignore-Early-Media">>, <<"true">>}
+           ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
+           ,{<<"Application-Name">>, <<"bridge">>}
+           ,{<<"Outgoing-Caller-ID-Number">>, CallerID}
+           | wh_api:default_headers(?NAME, ?VERSION)
+          ],
+    whapps_call_command:send_command(Req, Call),
+    wait_for_bridge_start(Call, Timeout).
+
+-spec build_ring_group_endpoints/1 :: ([#xmlElement{},...]|[]) -> wh_json:json_objects().
+build_ring_group_endpoints(Numbers) ->
+    build_ring_group_endpoints(Numbers, []).
+build_ring_group_endpoints([], Acc) ->
+    Acc;
+build_ring_group_endpoints([#xmlElement{name='Number', content=[#xmlText{value=DialMe, type=text}]}|Numbers], Acc) ->
+    lager:debug("adding ~s to ring group endpoints", [DialMe]),
+    EP = wh_json:from_list([{<<"Invite-Format">>, <<"route">>}
+                            ,{<<"Route">>, <<"loopback/", DialMe/binary, "/context_2">>}
+                            ,{<<"To-DID">>, DialMe}
+                           ]),
+    build_ring_group_endpoints(Numbers, [EP|Acc]).
 
 -spec dial_number/3 :: (whapps_call:call(), ne_binary() | #xmlElement{}, proplist()) -> exec_element_return().
 dial_number(Call, #xmlElement{name='Number', content=[#xmlText{value=DialMe, type=text}]}, Attrs) ->
@@ -556,6 +616,43 @@ wait_for_offnet(Acc) ->
         _ ->
             wait_for_offnet(Acc)
     end.
+
+-spec wait_for_bridge_start/2 :: (whapps_call:call(), integer()) -> {'ok' | 'error' | 'stop', wh_json:json_object()}.
+wait_for_bridge_start(Call, Timeout) ->
+    Start = erlang:now(),
+    receive
+        {amqp_msg, JObj} ->
+            case wait_for_bridge_event(wh_util:get_event_type(JObj), JObj) of
+                {error, _}=Err -> Err;
+                {ok, _}=OK -> OK;
+                ignore ->
+                    wait_for_bridge_start(Call, Timeout - wh_util:elapsed_ms(Start))
+            end;
+        _Type ->
+            lager:debug("ignore ~p", [_Type]),
+            wait_for_bridge_start(Call, Timeout - wh_util:elapsed_ms(Start))
+    after Timeout ->
+            lager:debug("time limit for call exceeded"),
+            whapps_call_command:hangup(true, Call),
+            {stop, Call}
+    end.
+
+wait_for_bridge_event({<<"error">>,_}, EvtJObj) ->
+    case wh_json:get_value(<<"Application-Name">>, EvtJObj) of
+        <<"bridge">> -> {error, EvtJObj};
+        _App ->
+            lager:debug("error on application ~s", [_App]),
+            ignore
+    end;
+wait_for_bridge_event({<<"call_event">>, <<"CHANNEL_BRIDGE">>}, EvtJObj) ->
+    lager:debug("call bridge started: ~p", [EvtJObj]),
+    {ok, EvtJObj};
+wait_for_bridge_event({<<"call_event">>, <<"CHANNEL_DESTROY">>}, EvtJObj) ->
+    lager:debug("call destroyed: ~p", [EvtJObj]),
+    {ok, EvtJObj};
+wait_for_bridge_event(_Type, _EvtJObj) ->
+    lager:debug("ignored call event: ~p ~p", [_Type, _EvtJObj]),
+    ignore.
 
 call_status(<<"SUCCESS">>, _) ->
     <<"completed">>;
