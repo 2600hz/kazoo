@@ -724,6 +724,7 @@ new_message(AttachmentName, Length, #mailbox{mailbox_id=Id, owner_id=OwnerId}=Bo
                                           ,{<<"Call-ID">>, CallID}
                                           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                                          ]),
+    timer:sleep(1000),
     cf_util:update_mwi(OwnerId, AccountDb).
 
 %%--------------------------------------------------------------------
