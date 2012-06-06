@@ -125,7 +125,7 @@ get_master_account_id() ->
                         {error, _}=E -> E;
                         {ok, OldestAccountId}=Ok ->
                             lager:debug("setting ~s.master_account_id to ~s", [?WH_SYSTEM_CONFIG_ACCOUNT, OldestAccountId]),
-                            whapps_config:set(?WH_SYSTEM_CONFIG_ACCOUNT, <<"master_account_id">>, OldestAccountId),
+                            {ok, _} = whapps_config:set(?WH_SYSTEM_CONFIG_ACCOUNT, <<"master_account_id">>, OldestAccountId),
                             Ok
                     end
             end;
