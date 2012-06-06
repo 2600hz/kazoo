@@ -144,7 +144,6 @@ init([Node, Options]) ->
             gproc:reg({p, l, {call_event, Node, <<"PRESENCE_IN">>}}),
             gproc:reg({p, l, {call_event, Node, <<"PRESENCE_OUT">>}}),
             gproc:reg({p, l, {call_event, Node, <<"PRESENCE_PROBE">>}}),
-
             Self = self(),
             spawn(fun() -> 
                           QueueName = <<"ecallmgr_fs_notify_presence">>,
