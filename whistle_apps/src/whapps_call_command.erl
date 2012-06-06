@@ -515,7 +515,7 @@ wait_for_our_channel_status(CallId) ->
 bridge(Endpoints, Call) ->
     bridge(Endpoints, ?DEFAULT_TIMEOUT, Call).
 bridge(Endpoints, Timeout, Call) ->
-    bridge(Endpoints, Timeout, <<"single">>, Call).
+    bridge(Endpoints, Timeout, wapi_dialplan:dial_method_single(), Call).
 bridge(Endpoints, Timeout, Strategy, Call) ->
     bridge(Endpoints, Timeout, Strategy, <<"false">>, Call).
 bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Call) ->
@@ -536,7 +536,7 @@ bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, Cal
 b_bridge(Endpoints, Call) ->
     b_bridge(Endpoints, ?DEFAULT_TIMEOUT, Call).
 b_bridge(Endpoints, Timeout, Call) ->
-    b_bridge(Endpoints, Timeout, <<"single">>, Call).
+    b_bridge(Endpoints, Timeout, wapi_dialplan:dial_method_single(), Call).
 b_bridge(Endpoints, Timeout, Strategy, Call) ->
     b_bridge(Endpoints, Timeout, Strategy, <<"false">>, Call).
 b_bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Call) ->
