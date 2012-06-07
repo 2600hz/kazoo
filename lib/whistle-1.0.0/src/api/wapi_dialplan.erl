@@ -16,54 +16,56 @@
 -export([optional_bridge_req_headers/0]).
 -export([optional_bridge_req_endpoint_headers/0]).
 
--export([bridge/1, bridge_v/1, bridge_endpoint/1, bridge_endpoint_v/1]).
--export([store/1, store_v/1, store_amqp_resp/1, store_amqp_resp_v/1
+-export([bridge/1, bridge_v/1, bridge_endpoint/1, bridge_endpoint_v/1
+         ,store/1, store_v/1, store_amqp_resp/1, store_amqp_resp_v/1
          ,store_http_resp/1, store_http_resp_v/1
-        ]).
--export([noop/1, noop_v/1]).
--export([fetch/1, fetch_v/1]).
--export([respond/1, respond_v/1]).
--export([redirect/1, redirect_v/1]).
--export([progress/1, progress_v/1]).
--export([ring/1, ring_v/1]).
--export([receive_fax/1, receive_fax_v/1
+         ,noop/1, noop_v/1
+         ,fetch/1, fetch_v/1
+         ,respond/1, respond_v/1
+         ,redirect/1, redirect_v/1
+         ,progress/1, progress_v/1
+         ,ring/1, ring_v/1
+         ,receive_fax/1, receive_fax_v/1
          ,store_fax/1, store_fax_v/1
-        ]).
--export([execute_extension/1, execute_extension_v/1]).
--export([play/1, play_v/1, playstop/1, playstop_v/1]).
--export([record/1, record_v/1]).
--export([record_call/1, record_call_v/1]).
--export([answer/1, answer_v/1]).
--export([hold/1, hold_v/1]).
--export([park/1, park_v/1]).
--export([play_and_collect_digits/1, play_and_collect_digits_v/1]).
--export([call_pickup/1, call_pickup_v/1]).
--export([hangup/1, hangup_v/1]).
--export([say/1, say_v/1]).
--export([sleep/1, sleep_v/1]).
--export([tone_detect/1, tone_detect_v/1]).
--export([set/1, set_v/1]).
--export([tones/1, tones_req_tone/1, tones_v/1, tones_req_tone_v/1]).
--export([tones_req_tone_headers/1]).
--export([conference/1, conference_v/1]).
--export([originate_ready/1, originate_ready_v/1
+         ,execute_extension/1, execute_extension_v/1
+         ,play/1, play_v/1, playstop/1, playstop_v/1
+         ,record/1, record_v/1
+         ,record_call/1, record_call_v/1
+         ,answer/1, answer_v/1
+         ,hold/1, hold_v/1
+         ,park/1, park_v/1
+         ,play_and_collect_digits/1, play_and_collect_digits_v/1
+         ,call_pickup/1, call_pickup_v/1
+         ,hangup/1, hangup_v/1
+         ,say/1, say_v/1
+         ,sleep/1, sleep_v/1
+         ,tone_detect/1, tone_detect_v/1
+         ,set/1, set_v/1
+         ,send_dtmf/1, send_dtmf_v/1
+         ,tones/1, tones_req_tone/1, tones_v/1, tones_req_tone_v/1
+         ,tones_req_tone_headers/1
+         ,conference/1, conference_v/1
+         ,originate_ready/1, originate_ready_v/1
          ,originate_execute/1, originate_execute_v/1
         ]).
 
--export([queue/1, queue_v/1]).
--export([error/1, error_v/1]).
+-export([queue/1, queue_v/1
+         ,error/1, error_v/1
+        ]).
 
 %% API Helpers
 -export([dial_method_single/0
          ,dial_method_simultaneous/0
         ]).
 
--export([bind_q/2, unbind_q/2]).
+-export([bind_q/2
+         ,unbind_q/2
+        ]).
 
--export([publish_action/2, publish_action/3]).
--export([publish_event/2, publish_event/3]).
--export([publish_command/2, publish_command/3]).
--export([publish_originate_ready/2, publish_originate_ready/3
+-export([publish_action/2, publish_action/3
+         ,publish_event/2, publish_event/3
+         ,publish_command/2, publish_command/3
+         ,publish_originate_ready/2, publish_originate_ready/3
          ,publish_originate_execute/2, publish_originate_execute/3
         ]).
 
@@ -195,6 +197,26 @@ store_http_resp_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?STORE_HTTP_RESP_HEADERS, ?STORE_HTTP_RESP_VALUES, ?STORE_HTTP_RESP_TYPES);
 store_http_resp_v(JObj) ->
     store_http_resp_v(wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
+%% @doc Create a DTMF (or DTMFs) on the channel - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec send_dtmf/1 :: (api_terms()) -> api_formatter_return() .
+send_dtmf(Prop) when is_list(Prop) ->
+    case send_dtmf_v(Prop) of
+        true -> wh_api:build_message(Prop, ?SEND_DTMF_HEADERS, ?OPTIONAL_SEND_DTMF_HEADERS);
+        false -> {error, "Prop failed validation for send_dtmf"}
+    end;
+send_dtmf(JObj) ->
+    send_dtmf(wh_json:to_proplist(JObj)).
+
+-spec send_dtmf_v/1 :: (api_terms()) -> boolean().
+send_dtmf_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?SEND_DTMF_HEADERS, ?SEND_DTMF_VALUES, ?SEND_DTMF_TYPES);
+send_dtmf_v(JObj) ->
+    send_dtmf_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc Create a tone on the channel - see wiki
