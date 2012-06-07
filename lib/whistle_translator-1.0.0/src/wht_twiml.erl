@@ -47,7 +47,7 @@ exec(Call, #xmlElement{name='Response', content=Elements}) ->
             ST = erlang:get_stacktrace(),
             lager:debug("failed to exec: ~p: ~p", [_C, _R]),
             [lager:debug("st: ~p", [S]) || S <- ST],
-            {stop, Call}
+            {stop, update_call_status(Call, ?STATUS_FAILED)}
     end.
 
 -spec exec_response/2 :: (whapps_call:call(), [#xmlText{} | #xmlElement{},...] | []) -> exec_return().
@@ -59,30 +59,10 @@ exec_response(Call, [#xmlElement{name=Name, content=Content}=El|T]) ->
         Other -> Other
     end;
 exec_response(Call, []) ->
-    {stop, Call}.
+    {stop, update_call_status(Call, ?STATUS_COMPLETED)}.
 
 -spec exec_element/4 :: (whapps_call:call(), atom(), [#xmlText{},...] | [], #xmlElement{}) -> exec_element_return().
 
-%%-------------------------------------------------------------------------
-%% @doc Dial
-%%   action       | relative or absolute URL | no default action
-%%   method       | GET, POST                | POST
-%%   timeout      | positive integer, secs   | 30
-%%   hangupOnStar | true, false              | false
-%%   timeLimit    | positive integer, secs   | 14400
-%%   callerId     | e164                     | caller's caller-id-number
-%%   record       | true, false              | false
-%%
-%%   value        | DID to dial              | DID
-%%                | <Number>                 |
-%%-------------------------------------------------------------------------
-
-%%-------------------------------------------------------------------------
-%% @doc Number
-%%   sendDigits   | digits and pause ('w') characters | "ww123" or "123"
-%%
-%%   value        | DID to dial                       | DID
-%%-------------------------------------------------------------------------
 exec_element(Call, 'Dial', [#xmlText{value=DialMe, type=text}], #xmlElement{attributes=Attrs}) ->
     dial_number(Call, DialMe, Attrs);
 exec_element(Call, 'Dial', [#xmlElement{name='Number'}=El1], #xmlElement{attributes=Attrs}) ->
@@ -224,6 +204,49 @@ exec_gather_element(Call, _Action, _, _) ->
     lager:debug("unhandled nested action ~s in Gather", [_Action]),
     {ok, Call}.
 
+
+%%-------------------------------------------------------------------------
+%% @doc Dial
+%%   action       | relative or absolute URL | no default action
+%%   method       | GET, POST                | POST
+%%   timeout      | positive integer, secs   | 30
+%%   hangupOnStar | true, false              | false
+%%   timeLimit    | positive integer, secs   | 14400
+%%   callerId     | e164                     | caller's caller-id-number
+%%   record       | true, false              | false
+%%
+%%   value        | DID to dial              | DID
+%%                | <Number>                 |
+%%-------------------------------------------------------------------------
+
+%%-------------------------------------------------------------------------
+%% @doc Number
+%%   sendDigits   | digits and pause ('w') characters | "ww123" or "123"
+%%
+%%   value        | DID to dial                       | DID
+%%-------------------------------------------------------------------------
+-spec dial_number/3 :: (whapps_call:call(), ne_binary() | #xmlElement{}, proplist()) -> exec_element_return().
+dial_number(Call, #xmlElement{name='Number', content=[#xmlText{value=DialMe, type=text}]}, Attrs) ->
+    lager:debug("DIAL number tag: ~s", [DialMe]),
+    Props = attrs_to_proplist(Attrs),
+
+    Call1 = send_call(Call, DialMe, Props),
+    case props:get_value(sendDigits, Props) of
+        undefined ->
+            lager:debug("no sendDigits attributes, waiting for call to end..."),
+            finish_dial(Call1, Props);
+        ?NE_BINARY = SendDigits ->
+            lager:debug("sendDigits: ~s", [SendDigits]),
+            send_digits(Call1, SendDigits),
+            finish_dial(Call1, Props)
+    end;
+dial_number(Call0, DialMe, Attrs) ->
+    lager:debug("DIAL number: ~s", [DialMe]),
+    Props = attrs_to_proplist(Attrs),
+
+    Call1 = send_call(Call0, DialMe, Props),
+    finish_dial(Call1, Props).
+
 dial_ring_group(Call, Numbers, Attrs) ->
     lager:debug("DIAL ring group"),
     Props = attrs_to_proplist(Attrs),
@@ -285,30 +308,13 @@ build_ring_group_endpoints([#xmlElement{name='Number', content=[#xmlText{value=D
                            ]),
     build_ring_group_endpoints(Numbers, [EP|Acc]).
 
--spec dial_number/3 :: (whapps_call:call(), ne_binary() | #xmlElement{}, proplist()) -> exec_element_return().
-dial_number(Call, #xmlElement{name='Number', content=[#xmlText{value=DialMe, type=text}]}, Attrs) ->
-    lager:debug("DIAL number tag: ~s", [DialMe]),
-    Props = attrs_to_proplist(Attrs),
-
-    Call1 = send_call(Call, DialMe, Props),
-    case props:get_value(sendDigits, Props) of
-        undefined ->
-            lager:debug("no sendDigits attributes, waiting for call to end..."),
-            finish_dial(Call1, Props);
-        ?NE_BINARY = SendDigits ->
-            lager:debug("sendDigits: ~s", [SendDigits]),
-            send_digits(Call1, SendDigits),
-            finish_dial(Call1, Props)
-    end;
-dial_number(Call0, DialMe, Attrs) ->
-    lager:debug("DIAL number: ~s", [DialMe]),
-    Props = attrs_to_proplist(Attrs),
-
-    Call1 = send_call(Call0, DialMe, Props),
-    finish_dial(Call1, Props).
-
-send_digits(_Call, _SendDigits) ->
-    ok.
+send_digits(Call, SendDigits) ->
+    lager:debug("sending DTMFs: ~s", [SendDigits]),
+    Req = [{<<"Application-Name">>, <<"send_dtmf">>}
+           ,{<<"DTMFs">>, SendDigits}
+           ,{<<"Duration">>, 500}
+          ],
+    whapps_call_command:send_command(Req, Call).
 
 send_call(Call0, DialMe, Props) ->
     Timeout = wh_util:to_integer(props:get_value(timeout, Props, 30)),
