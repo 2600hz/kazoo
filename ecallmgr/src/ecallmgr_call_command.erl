@@ -226,6 +226,18 @@ get_fs_app(_Node, UUID, JObj, <<"store_fax">>) ->
             end
     end;
 
+get_fs_app(_Node, _UUID, JObj, <<"send_dtmf">>) ->
+    case wapi_dialplan:send_dtmf_v(JObj) of
+        false -> {'error', <<"send_dtmf failed to execute as JObj did not validate">>};
+        true ->
+            DTMFs = wh_json:get_value(<<"DTMFs">>, JObj),
+            Duration = case wh_json:get_binary_value(<<"Duration">>, JObj) of
+                           undefined -> <<>>;
+                           D -> [<<"@">>, D]
+                       end,
+            {<<"send_dtmf">>, iolist_to_binary([DTMFs, Duration])}
+    end;
+
 get_fs_app(_Node, _UUID, JObj, <<"tones">>) ->
     case wapi_dialplan:tones_v(JObj) of
         false -> {'error', <<"tones failed to execute as JObj did not validate">>};
