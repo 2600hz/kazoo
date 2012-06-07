@@ -175,16 +175,16 @@ cf_update_number(CF, CaptureGroup, _) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec update_callfwd/2 :: (#callfwd{}, whapps_call:call()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
-update_callfwd(#callfwd{doc_id=Id, enabled=Enabled, number=Num, require_keypress=RK, keep_caller_id=KCI}=CF, Call) ->
+update_callfwd(#callfwd{doc_id=Id, enabled=Enabled, number=Num, require_keypress=_RK, keep_caller_id=_KCI}=CF, Call) ->
     lager:debug("updating call forwarding settings on ~s", [Id]),
     AccountDb = whapps_call:account_db(Call),
     {ok, JObj} = couch_mgr:open_doc(AccountDb, Id),
-    CF1 = wh_json:from_list([{<<"enabled">>, Enabled}
-                             ,{<<"number">>, Num}
-                             ,{<<"require_keypress">>, RK}
-                             ,{<<"keep_caller_id">>, KCI}
-                            ]),
-    case couch_mgr:save_doc(AccountDb, wh_json:set_value(<<"call_forward">>, CF1, JObj)) of
+    CFObj = wh_json:get_ne_value(<<"call_forward">>, JObj, wh_json:new()),
+    Updates = [fun(J) -> wh_json:set_value(<<"enabled">>, Enabled, J) end
+               ,fun(J) -> wh_json:set_value(<<"number">>, Num, J) end
+              ],
+    CFObj1 = lists:foldl(fun(F, Acc) -> F(Acc) end, CFObj, Updates),
+    case couch_mgr:save_doc(AccountDb, wh_json:set_value(<<"call_forward">>, CFObj1, JObj)) of
         {error, conflict} ->
             lager:debug("update conflicted, trying again"),
             update_callfwd(CF, Call);
