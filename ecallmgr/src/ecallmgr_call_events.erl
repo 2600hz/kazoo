@@ -144,10 +144,8 @@ handle_publisher_usurp(JObj, Props) ->
 -spec init/1 :: ([atom() | ne_binary(),...]) -> {'ok', #state{}, 0}.
 init([Node, CallId]) when is_atom(Node) andalso is_binary(CallId) ->
     put(callid, CallId),
-    lager:debug("starting call events listener"),
-    gproc:reg({p, l, call_events}),
-    gproc:reg({p, l, {call_events, CallId}}),
     TRef = erlang:send_after(?SANITY_CHECK_PERIOD, self(), {sanity_check}),
+    lager:debug("starting call events listener"),
     {'ok', #state{node=Node, callid=CallId, sanity_check_tref=TRef, self=self()}, 0}.
 
 %%--------------------------------------------------------------------
@@ -258,6 +256,8 @@ handle_info(timeout, #state{node=Node, callid=CallId, failed_node_checks=FNC, re
                      | wh_api:default_headers(?APP_NAME, ?APP_VERSION) 
                     ],
             wapi_call:publish_usurp_publisher(CallId, Usurp),
+            gproc:reg({p, l, call_events}),
+            gproc:reg({p, l, {call_events, CallId}}),
             {'noreply', State, hibernate};
         timeout ->
             lager:debug("timed out trying to listen to channel events from ~s, trying again", [Node]),
