@@ -619,17 +619,15 @@ play(Media, Call) ->
 play(Media, Terminators, Call) ->
     NoopId = couch_mgr:get_uuid(),
     CallId = whapps_call:call_id(Call),
-    Q = whapps_call:controller_queue(Call),
+
     Commands = [wh_json:from_list([{<<"Application-Name">>, <<"noop">>}
                                    ,{<<"Call-ID">>, CallId}
                                    ,{<<"Msg-ID">>, NoopId}
-                                   | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
                                   ])
                 ,wh_json:from_list([{<<"Application-Name">>, <<"play">>}
                                     ,{<<"Media-Name">>, Media}
                                     ,{<<"Terminators">>, Terminators}
                                     ,{<<"Call-ID">>, CallId}
-                                    | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
                                    ])
                ],
     Command = [{<<"Application-Name">>, <<"queue">>}
@@ -696,10 +694,10 @@ tts(SayMe, Voice, Lang, Terminators, Call) ->
     send_command(Command, Call),
     NoopId.
 
--spec b_tts/2 :: (ne_binary(), whapps_call:call()) -> ne_binary().
--spec b_tts/3 :: (ne_binary(), ne_binary(), whapps_call:call()) -> ne_binary().
--spec b_tts/4 :: (ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> ne_binary().
--spec b_tts/5 :: (ne_binary(), ne_binary(), ne_binary(), [ne_binary(),...], whapps_call:call()) -> ne_binary().
+-spec b_tts/2 :: (ne_binary(), whapps_call:call()) -> whapps_api_std_return().
+-spec b_tts/3 :: (ne_binary(), ne_binary(), whapps_call:call()) -> whapps_api_std_return().
+-spec b_tts/4 :: (ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> whapps_api_std_return().
+-spec b_tts/5 :: (ne_binary(), ne_binary(), ne_binary(), [ne_binary(),...], whapps_call:call()) -> whapps_api_std_return().
 
 b_tts(SayMe, Call) ->
     NoopId = tts(SayMe, Call),
@@ -941,7 +939,7 @@ b_prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, Invali
 -spec play_and_collect_digits/6 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> 'ok'.
 -spec play_and_collect_digits/7 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), whapps_api_binary(), whapps_call:call()) -> 'ok'.
 -spec play_and_collect_digits/8 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), whapps_api_binary(), ne_binary()
-                                    ,whapps_call:call()) -> ok.
+                                    ,whapps_call:call()) -> 'ok'.
 -spec play_and_collect_digits/9 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), whapps_api_binary(), ne_binary()
                                     ,[ne_binary(),...], whapps_call:call()) -> 'ok'.
 

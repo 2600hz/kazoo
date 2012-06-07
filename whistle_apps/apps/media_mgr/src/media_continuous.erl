@@ -6,7 +6,7 @@
 %%% @contributors
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
--module(media_single).
+-module(media_continuous).
 
 -export([init/3
          ,terminate/2

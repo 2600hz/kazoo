@@ -14,17 +14,19 @@
 
 -define(MOD_CONFIG_CAT, <<"speech">>).
 
-%% {'ok', ContentType, BinaryData}
-
+-type provider_errors() :: 'invalid_voice' | 'unknown_provider'.
+-type provider_return() :: {'error', provider_errors()} |
+                           ibrowse_ret() |
+                           {'ibrowse_req_id', ibrowse_req_id()}.
 -type create_resp() :: {'ok', ibrowse_req_id()} |
-                       {'ok', ne_binary(), ne_binary()} |
-                       {'error', atom()}.
+                       {'ok', ne_binary(), ne_binary()} | %% {'ok', ContentType, BinaryData}
+                       {'error', provider_errors() | 'tts_provider_failure'}.
 
 -spec create/1 :: (ne_binary()) -> create_resp().
 -spec create/2 :: (ne_binary(), ne_binary()) -> create_resp().
 -spec create/3 :: (ne_binary(), ne_binary(), ne_binary()) -> create_resp().
 -spec create/4 :: (ne_binary(), ne_binary(), ne_binary(), proplist()) -> create_resp().
--spec create/5 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), proplist()) -> create_resp().
+-spec create/5 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), proplist()) -> provider_return().
 
 create(Text) ->
     create(Text, <<"female/en-US">>).
