@@ -63,6 +63,7 @@
 -export([call/2
          ,call/3
          ,cast/2
+         ,delayed_cast/3
          ,reply/2
         ]).
 
@@ -129,6 +130,8 @@ behaviour_info(_) ->
 -define(START_TIMEOUT, 500).
 -define(MAX_TIMEOUT, 5000).
 
+-define(BIND_WAIT, 100).
+
 %% API functions for requesting data from the gen_listener
 -spec queue_name/1 :: (pid()) -> ne_binary().
 queue_name(Srv) ->
@@ -155,6 +158,14 @@ call(Name, Request, Timeout) ->
 -spec cast/2 :: (pid(), term()) -> 'ok'.
 cast(Name, Request) ->
     gen_server:cast(Name, Request).
+
+-spec delayed_cast/3 :: (pid(), term(), pos_integer()) -> 'ok'.
+delayed_cast(Name, Request, Wait) when is_integer(Wait), Wait > 0 ->
+    spawn(fun() ->
+                  timer:sleep(Wait),
+                  cast(Name, Request)
+          end),
+    ok.
 
 -spec reply/2 :: ({pid(), reference()}, term()) -> no_return().
 reply(From, Msg) ->
@@ -345,8 +356,9 @@ handle_cast({rm_responder, Responder, Keys}, #state{responders=Responders}=State
     {noreply, State#state{responders=listener_utils:rm_responder(Responders, Responder, Keys)}, hibernate};
 
 handle_cast({add_binding, _, _}=AddBinding, #state{is_consuming=false}=State) ->
-    lager:debug("not consuming yet, put binding to end of message queue"),
-    gen_server:cast(self(), AddBinding),
+    Time = ?BIND_WAIT + (crypto:rand_uniform(100, 500)), % wait 100 + [100,500) ms before replaying the binding request
+    lager:debug("not consuming yet, put binding to end of message queue after ~b ms", [Time]),
+    ?MODULE:delayed_cast(self(), AddBinding, Time),
     {noreply, State};
 handle_cast({add_binding, Binding, Props}, #state{queue=Q, bindings=Bs}=State) ->
     case lists:keyfind(Binding, 1, Bs) of
