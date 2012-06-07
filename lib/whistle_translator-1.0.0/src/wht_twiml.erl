@@ -70,17 +70,6 @@ exec_element(Call, 'Dial', [#xmlElement{name='Number'}=El1], #xmlElement{attribu
 exec_element(Call, 'Dial', [#xmlElement{}|_]=Numbers, #xmlElement{attributes=Attrs}) ->
     dial_ring_group(Call, Numbers, Attrs);
 
-%%-------------------------------------------------------------------------
-%% @doc Record
-%%   action             | relative or absolute URL | current URL
-%%   method             | GET, POST                | POST
-%%   timeout            | positive integer, secs   | 5
-%%   finishOnKey        | any digit, #, *          | 1234567890*#
-%%   maxLength          | positive integer, secs   | 3600 (1 hour)
-%%   transcribe         | true, false              | false (not supported)
-%%   transcribeCallback | relative or absolute URL | none
-%%   playBeep           | true, false              | true
-%%-------------------------------------------------------------------------
 exec_element(Call, 'Record', [#xmlText{}], #xmlElement{attributes=Attrs}) ->
     record_call(Call, Attrs);
 
@@ -130,6 +119,17 @@ exec_element(Call, 'Reject', _, #xmlElement{attributes=Attrs}) ->
     whapps_call_command:response(reject_code(Reason), Reason, Call),
     {stop, update_call_status(Call, ?STATUS_BUSY)}.
 
+%%-------------------------------------------------------------------------
+%% @doc Record
+%%   action             | relative or absolute URL | current URL
+%%   method             | GET, POST                | POST
+%%   timeout            | positive integer, secs   | 5
+%%   finishOnKey        | any digit, #, *          | 1234567890*#
+%%   maxLength          | positive integer, secs   | 3600 (1 hour)
+%%   transcribe         | true, false              | false (not supported)
+%%   transcribeCallback | relative or absolute URL | none
+%%   playBeep           | true, false              | true
+%%-------------------------------------------------------------------------
 record_call(Call, Attrs) ->
     Call1 = maybe_answer_call(Call),
     Props = attrs_to_proplist(Attrs),
@@ -170,7 +170,7 @@ record_call(Call, Attrs) ->
                                                     ,{<<"Digits">>, DTMFs}
                                                     | req_params(Call1)
                                                    ]),
-                    {request, Call1, Action, Method, BaseParams}
+                    {request, update_call_status(Call1, ?STATUS_ANSWERED), Action, Method, BaseParams}
             end;
         {error, _E} ->
             %% TODO: when call hangs up, try to save message
@@ -262,17 +262,19 @@ dial_ring_group(Call, Numbers, Attrs) ->
                 {ok, JObj} ->
                     RecordCall = wh_util:is_true(props:get_value(record, Props, false)),
                     StarHangup = wh_util:is_true(props:get_value(hangupOnStar, Props, false)),
-                    lager:debug("call bridged, do we need record: ~s or allow *-hangup: ~s", [RecordCall, StarHangup]);
+                    lager:debug("call bridged, do we need record: ~s or allow *-hangup: ~s", [RecordCall, StarHangup]),
+                    lager:debug("bridge resp: ~p", [JObj]),
+                    {ok, update_call_status(Call, ?STATUS_ANSWERED)};
                 {error, JObj} ->
-                    lager:debug("error bridging"),
-                    {stop, Call};
+                    lager:debug("error bridging: ~p", [JObj]),
+                    {stop, update_call_status(Call, ?STATUS_FAILED)};
                 {stop, _}=Stop ->
                     Stop
             end
     catch
         error:function_clause ->
             lager:debug("invalid tag in list of numbers"),
-            {stop, Call}
+            {stop, update_call_status(Call, ?STATUS_FAILED)}
     end.
 
 -spec ring_group_bridge_req/3 :: (whapps_call:call(), wh_json:json_objects(), proplist()) -> {'ok' | 'error' | 'stop', wh_json:json_object()}.
