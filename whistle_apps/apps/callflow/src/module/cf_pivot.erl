@@ -44,9 +44,16 @@ handle(Data, Call) ->
 
 -spec send_req/4 :: (whapps_call:call(), nonempty_string() | ne_binary(), 'get' | 'post', wh_json:json_object()) -> any().
 send_req(Call, Uri, get, BaseParams) ->
-    send(Call, uri(Uri, get, wh_json:to_querystring(BaseParams)), get, [], []);
+    UserParams = wht_translator:get_user_vars(Call),
+    Params = wh_json:set_values(wh_json:to_proplist(BaseParams), UserParams),
+
+    send(Call, uri(Uri, get, wh_json:to_querystring(Params)), get, [], []);
+
 send_req(Call, Uri, post, BaseParams) ->
-    send(Call, Uri, post, [{"Content-Type", "application/x-www-form-urlencoded"}], wh_json:to_querystring(BaseParams)).
+    UserParams = wht_translator:get_user_vars(Call),
+    Params = wh_json:set_values(wh_json:to_proplist(BaseParams), UserParams),
+
+    send(Call, Uri, post, [{"Content-Type", "application/x-www-form-urlencoded"}], wh_json:to_querystring(Params)).
 
 send(Call, Uri, Method, ReqHdrs, ReqBody) ->
     true = is_call_active(),
