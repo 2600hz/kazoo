@@ -20,7 +20,7 @@
 -export([fs_log/3, put_callid/1]).
 -export([build_bridge_string/1, build_bridge_string/2]).
 -export([create_masquerade_event/2, create_masquerade_event/3]).
--export([media_path/2, media_path/3]).
+-export([media_path/3, media_path/4]).
 -export([unserialize_fs_array/1]).
 -export([convert_fs_evt_name/1, convert_whistle_app_name/1]).
 -export([fax_filename/1]).
@@ -350,25 +350,25 @@ create_masquerade_event(Application, EventName, Boolean) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec media_path/2 :: (ne_binary(), ne_binary()) -> ne_binary().
--spec media_path/3 :: (ne_binary(), 'extant' | 'new', ne_binary()) -> ne_binary().
-media_path(MediaName, UUID) ->
-    media_path(MediaName, new, UUID).
+-spec media_path/3 :: (ne_binary(), ne_binary(), wh_json:json_object()) -> ne_binary().
+-spec media_path/4 :: (ne_binary(), 'extant' | 'new', ne_binary(), wh_json:json_object()) -> ne_binary().
+media_path(MediaName, UUID, JObj) ->
+    media_path(MediaName, new, UUID, JObj).
 
-media_path(undefined, _Type, _UUID) ->
+media_path(undefined, _Type, _UUID, _) ->
     <<"silence_stream://5">>;
-media_path(MediaName, Type, UUID) when not is_binary(MediaName) ->
-    media_path(wh_util:to_binary(MediaName), Type, UUID);
-media_path(<<"silence_stream://", _/binary>> = Media, _Type, _UUID) ->
+media_path(MediaName, Type, UUID, JObj) when not is_binary(MediaName) ->
+    media_path(wh_util:to_binary(MediaName), Type, UUID, JObj);
+media_path(<<"silence_stream://", _/binary>> = Media, _Type, _UUID, _) ->
     Media;
-media_path(<<"tone_stream://", _/binary>> = Media, _Type, _UUID) ->
+media_path(<<"tone_stream://", _/binary>> = Media, _Type, _UUID, _) ->
     Media;
-media_path(<<"local_stream://", FSPath/binary>>, _Type, _UUID) ->
+media_path(<<"local_stream://", FSPath/binary>>, _Type, _UUID, _) ->
     FSPath;
-media_path(<<"http://", _/binary>> = URI, _Type, _UUID) ->
+media_path(<<"http://", _/binary>> = URI, _Type, _UUID, _) ->
     get_fs_playback(URI);
-media_path(MediaName, Type, UUID) ->
-    case ecallmgr_media_registry:lookup_media(MediaName, Type, UUID) of
+media_path(MediaName, Type, UUID, JObj) ->
+    case ecallmgr_media_registry:lookup_media(MediaName, Type, UUID, JObj) of
         {'error', _E} ->
             lager:debug("failed to get media ~s: ~p", [MediaName, _E]),
             wh_util:to_binary(MediaName);
