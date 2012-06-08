@@ -41,7 +41,7 @@ create(Text, Voice, Format, Options) ->
     Provider = whapps_config:get_binary(?MOD_CONFIG_CAT, <<"tts_provider">>, <<"ispeech">>),
     case create(Provider, Text, Voice, Format, Options) of
         {error, _R}=E ->
-            lager:debug("creating speech file failed with error ~s", [_R]),
+            lager:debug("creating speech file failed with error ~p", [_R]),
             E;
         {ibrowse_req_id, ReqID} ->
             lager:debug("streaming response ~p to provided option: ~p", [ReqID, props:get_value(stream_to, Options)]),
@@ -63,14 +63,15 @@ create(<<"ispeech">>, Text, Voice, Format, Options) ->
                      ,{<<"male/en-GB">>, <<"ukenglishmale">>}
                     ],
     case props:get_value(Voice, VoiceMappings) of
-        undefined -> {error, invalid_voice};
+        undefined ->
+            {error, invalid_voice};
         ISpeechVoice ->
-            Url = whapps_config:get_string(?MOD_CONFIG_CAT, <<"tts_url">>, <<"http://api.ispeech.org/api/json">>),
+            BaseUrl = whapps_config:get_string(?MOD_CONFIG_CAT, <<"tts_url">>, <<"http://api.ispeech.org/api/json">>),
             Props = [{<<"text">>, Text}
                      ,{<<"voice">>, ISpeechVoice}
                      ,{<<"format">>, Format}
                      ,{<<"action">>, <<"convert">>}
-                     ,{<<"apikey">>, whapps_config:get_binary(?MOD_CONFIG_CAT, <<"tts_api_key">>, <<"">>)}
+                     ,{<<"apikey">>, whapps_config:get_binary(?MOD_CONFIG_CAT, <<"tts_api_key">>, <<>>)}
                      ,{<<"speed">>, whapps_config:get_integer(?MOD_CONFIG_CAT, <<"tts_speed">>, 0)}
                      ,{<<"startpadding">>, whapps_config:get_integer(?MOD_CONFIG_CAT, <<"tts_start_padding">>, 1)}
                      ,{<<"endpadding">>, whapps_config:get_integer(?MOD_CONFIG_CAT, <<"tts_end_padding">>, 0)} 
@@ -79,8 +80,9 @@ create(<<"ispeech">>, Text, Voice, Format, Options) ->
                        ,{"Content-Type", "application/json; charset=UTF-8"}
                       ],
             HTTPOptions = [{response_format, binary} | Options],
+
             Body = wh_json:encode(wh_json:from_list(Props)),
-            ibrowse:send_req(Url, Headers, post, Body, HTTPOptions)            
+            ibrowse:send_req(BaseUrl, Headers, post, Body, HTTPOptions)
     end;
 create(_, _, _, _, _) ->
     {error, unknown_provider}.
