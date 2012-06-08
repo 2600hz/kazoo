@@ -12,5 +12,7 @@
         {'stop', whapps_call:call()} |
         {'request', whapps_call:call(), ne_binary(), 'get' | 'post', wh_proplist()}.
 
+-define(WHT_USER_VARS, <<"user_vars">>).
+
 -define(WHT_HRL, true).
 -endif.

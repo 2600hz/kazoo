@@ -93,20 +93,26 @@ exec_element(Call, 'Play', [#xmlText{value=PlayMe, type=text}], #xmlElement{attr
 exec_element(Call, 'Say', [#xmlText{value=SayMe, type=text}], #xmlElement{attributes=Attrs}) ->
     maybe_stop(Call, say(Call, SayMe, Attrs), {ok, Call});
 
-exec_element(Call, 'Redirect', [#xmlText{}|_]=Texts, #xmlElement{attributes=Attrs}) ->
+exec_element(Call, 'Redirect', [_|_]=Texts, #xmlElement{attributes=Attrs}) ->
     Call1 = maybe_answer_call(Call),
     Props = attrs_to_proplist(Attrs),
 
     Url = wh_util:join_binary([wh_util:to_binary(Frag) || #xmlText{value=Frag} <- Texts], <<>>),
 
+    Call2 = set_variables(Call1, Texts),
+
     NewUri = wht_util:resolve_uri(whapps_call:kvs_fetch(<<"voice_uri">>, Call1), Url),
     Method = wht_util:http_method(props:get_value(method, Props, post)),
     BaseParams = wh_json:from_list(req_params(Call1) ),
 
-    {request, Call1, NewUri, Method, BaseParams};
+    {request, Call2, NewUri, Method, BaseParams};
 
 exec_element(Call, 'Pause', _, #xmlElement{attributes=Attrs}) ->
     pause(Call, Attrs);
+
+exec_element(Call, 'Variable', _, #xmlElement{attributes=Attrs}) ->
+    Props = attrs_to_proplist(Attrs),
+    {ok, set_variable(Call, props:get_value(key, Props), props:get_value(value, Props))};
 
 exec_element(Call, 'Hangup', _, _) ->
     Call1 = maybe_answer_call(Call),
@@ -120,6 +126,29 @@ exec_element(Call, 'Reject', _, #xmlElement{attributes=Attrs}) ->
     play_reject_reason(Call, Reason), 
     whapps_call_command:response(reject_code(Reason), Reason, Call),
     {stop, update_call_status(Call, ?STATUS_BUSY)}.
+
+%%-------------------------------------------------------------------------
+%% @doc Variable
+%%   name  | the name of the variable
+%%   value | the value of the variable
+%%-------------------------------------------------------------------------
+-spec set_variable/3 :: (whapps_call:call(), wh_json:json_string(), wh_json:json_term()) -> whapps_call:call().
+-spec set_variables/2 :: (whapps_call:call(), list()) -> whapps_call:call().
+set_variable(Call, Key, Value) ->
+    wht_translator:set_user_vars([{Key, Value}], Call).
+
+set_variables(Call, Els) ->
+    case [begin
+              Props = attrs_to_proplist(Attrs),
+              {wh_util:to_binary(props:get_value(key, Props))
+               ,wh_util:to_binary(props:get_value(value, Props))
+              }
+          end
+          || #xmlElement{name='Variable', attributes=Attrs} <- Els
+         ] of
+        [] -> Call;
+        Vars -> wht_translator:set_user_vars(Vars, Call)
+    end.
 
 %%-------------------------------------------------------------------------
 %% @doc Record
