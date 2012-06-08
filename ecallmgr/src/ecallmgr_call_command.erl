@@ -77,7 +77,7 @@ get_fs_app(Node, UUID, JObj, <<"play">>) ->
     case wapi_dialplan:play_v(JObj) of
         false -> {'error', <<"play failed to execute as JObj did not validate">>};
         true ->
-            F = ecallmgr_util:media_path(wh_json:get_value(<<"Media-Name">>, JObj), UUID),
+            F = ecallmgr_util:media_path(wh_json:get_value(<<"Media-Name">>, JObj), UUID, JObj),
             'ok' = set_terminators(Node, UUID, wh_json:get_value(<<"Terminators">>, JObj)),
 
             %% if Leg is set, use uuid_broadcast; otherwise use playback
@@ -109,8 +109,8 @@ get_fs_app(_Node, UUID, JObj, <<"play_and_collect_digits">>) ->
             Max = wh_json:get_value(<<"Maximum-Digits">>, JObj),
             Timeout = wh_json:get_value(<<"Timeout">>, JObj),
             Terminators = wh_json:get_value(<<"Terminators">>, JObj),
-            Media = <<$', (ecallmgr_util:media_path(wh_json:get_value(<<"Media-Name">>, JObj), UUID))/binary, $'>>,
-            InvalidMedia = <<$', (ecallmgr_util:media_path(wh_json:get_value(<<"Failed-Media-Name">>, JObj), UUID))/binary, $'>>,
+            Media = <<$', (ecallmgr_util:media_path(wh_json:get_value(<<"Media-Name">>, JObj), UUID, JObj))/binary, $'>>,
+            InvalidMedia = <<$', (ecallmgr_util:media_path(wh_json:get_value(<<"Failed-Media-Name">>, JObj), UUID, JObj))/binary, $'>>,
             Tries = wh_json:get_value(<<"Media-Tries">>, JObj),
             Regex = wh_json:get_value(<<"Digits-Regex">>, JObj),
             Storage = <<"collected_digits">>,
@@ -260,7 +260,7 @@ get_fs_app(Node, UUID, JObj, <<"ring">>) ->
     _ = case wh_json:get_value(<<"Ringback">>, JObj) of
             undefined -> ok;
             Ringback ->
-                Stream = ecallmgr_util:media_path(Ringback, extant, UUID),
+                Stream = ecallmgr_util:media_path(Ringback, extant, UUID, JObj),
                 lager:debug("custom ringback: ~s", [Stream]),
                 _ = ecallmgr_util:send_cmd(Node, UUID, <<"set">>, <<"ringback=", Stream/binary>>)
         end,
@@ -337,7 +337,7 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>) ->
                                            {ok, RBSetting} = ecallmgr_util:get_setting(<<"default_ringback">>, <<"%(2000,4000,440,480)">>),
                                            [{"application", "set ringback=" ++ wh_util:to_list(RBSetting)}|DP];
                                        Ringback ->
-                                           Stream = ecallmgr_util:media_path(Ringback, extant, UUID),
+                                           Stream = ecallmgr_util:media_path(Ringback, extant, UUID, JObj),
                                            lager:debug("bridge has custom ringback: ~s", [Stream]),
                                            [{"application", <<"set ringback=", Stream/binary>>},
                                             {"application", "set instant_ringback=true"}
@@ -355,12 +355,12 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>) ->
                                                        false -> DP
                                                    end;
                                                Media ->
-                                                   Stream = ecallmgr_util:media_path(Media, extant, UUID),
+                                                   Stream = ecallmgr_util:media_path(Media, extant, UUID, JObj),
                                                    lager:debug("bridge has custom music-on-hold in channel vars: ~s", [Stream]),
                                                    [{"application", <<"set hold_music=", Stream/binary>>}|DP]
                                            end;
                                        Media ->
-                                           Stream = ecallmgr_util:media_path(Media, extant, UUID),
+                                           Stream = ecallmgr_util:media_path(Media, extant, UUID, JObj),
                                            lager:debug("bridge has custom music-on-hold: ~s", [Stream]),
                                            [{"application", <<"set hold_music=", Stream/binary>>}|DP]
                                    end
@@ -609,7 +609,7 @@ get_fs_app(_Node, _UUID, _JObj, _App) ->
 -spec get_fs_kv/3 :: (ne_binary(), ne_binary(), ne_binary()) -> binary().
 get_fs_kv(<<"Hold-Media">>, Media, UUID) ->
     list_to_binary(["hold_music="
-                    ,wh_util:to_list(ecallmgr_util:media_path(Media, extant, UUID))
+                    ,wh_util:to_list(ecallmgr_util:media_path(Media, extant, UUID, wh_json:new()))
                    ]);
 get_fs_kv(Key, Val, _) ->
     case lists:keyfind(Key, 1, ?SPECIAL_CHANNEL_VARS) of
