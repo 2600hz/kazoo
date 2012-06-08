@@ -40,7 +40,7 @@ start_link() ->
 
 find_file_server(Id, Doc, Attachment) ->
     Name = [Id,Doc,Attachment],
-    case [P||{N,P,_,_} <- supervisor:which_children(?MODULE), N =:= Name] of
+    case [P||{N,P,_,_} <- supervisor:which_children(?MODULE), N =:= Name, is_pid(P)] of
         [] -> {error, no_file_server};
         [P] -> {ok, P}
     end.
@@ -59,7 +59,7 @@ find_file_server(Id, Doc, Attachment, Meta, Name) ->
     end.
 
 find_tts_server(Id) ->
-    case [P||{N,P,_,_} <- supervisor:which_children(?MODULE), N =:= Id] of
+    case [P||{N,P,_,_} <- supervisor:which_children(?MODULE), N =:= Id, is_pid(P)] of
         [] -> {error, no_file_server};
         [P] -> {ok, P}
     end.
