@@ -284,7 +284,9 @@
 
 %% Play Request
 -define(PLAY_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Media-Name">>]).
--define(OPTIONAL_PLAY_REQ_HEADERS, [<<"Terminators">>, <<"Insert-At">>, <<"Leg">>]).
+-define(OPTIONAL_PLAY_REQ_HEADERS, [<<"Terminators">>, <<"Insert-At">>, <<"Leg">>
+                                        ,<<"Voice">>, <<"Language">>, <<"Format">>
+                                   ]).
 -define(PLAY_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                           ,{<<"Event-Name">>, <<"command">>}
                           ,{<<"Application-Name">>, <<"play">>}
