@@ -47,12 +47,14 @@ find_file_server(Id, Doc, Attachment) ->
 
 find_file_server(Id, Doc, Attachment, Meta) ->
     Name = [Id,Doc,Attachment],
+    find_file_server(Id, Doc, Attachment, Meta, Name).
+find_file_server(Id, Doc, Attachment, Meta, Name) ->
     case supervisor:start_child(?MODULE, ?CHILD(Name, Id, Doc, Attachment, Meta)) of
         {ok, _Pid}=OK -> OK;
         {error, {already_started, Pid}} -> {ok, Pid};
         {error, already_present} ->
             _ = supervisor:delete_child(?MODULE, Name),
-            find_file_server(Id, Doc, Attachment, Meta);
+            find_file_server(Id, Doc, Attachment, Meta, Name);
         {error, _}=E -> E
     end.
 
@@ -64,9 +66,14 @@ find_tts_server(Id) ->
 
 find_tts_server(Text, JObj) ->
     Id = list_to_binary([wh_util:to_hex_binary(Text), $., wh_json:get_value(<<"Format">>, JObj, <<"wav">>)]),
+    find_tts_server(Text, JObj, Id).
+find_tts_server(Text, JObj, Id) ->
     case supervisor:start_child(?MODULE, ?CHILD(Id, Text, JObj)) of
         {ok, _Pid}=OK -> OK;
         {error, {already_started, Pid}} -> {ok, Pid};
+        {error, already_present} ->
+            _ = supervisor:delete_child(?MODULE, Id),
+            find_tts_server(Text, JObj, Id);
         {error, _}=E -> E
     end.
 
