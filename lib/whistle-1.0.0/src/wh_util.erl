@@ -1,3 +1,12 @@
+%%%-------------------------------------------------------------------
+%%% @copyright (C) 2010-2012, VoIP INC
+%%% @doc
+%%% Various utilities - a veritable cornicopia
+%%% @end
+%%% @contributors
+%%%   James Aimonetti
+%%%   Karl Anderson
+%%%-------------------------------------------------------------------
 -module(wh_util).
 
 -export([format_account_id/1, format_account_id/2]).
