@@ -93,9 +93,11 @@ exec_element(Call, 'Play', [#xmlText{value=PlayMe, type=text}], #xmlElement{attr
 exec_element(Call, 'Say', [#xmlText{value=SayMe, type=text}], #xmlElement{attributes=Attrs}) ->
     maybe_stop(Call, say(Call, SayMe, Attrs), {ok, Call});
 
-exec_element(Call, 'Redirect', [#xmlText{value=Url}], #xmlElement{attributes=Attrs}) ->
+exec_element(Call, 'Redirect', [#xmlText{}|_]=Texts, #xmlElement{attributes=Attrs}) ->
     Call1 = maybe_answer_call(Call),
     Props = attrs_to_proplist(Attrs),
+
+    Url = wh_util:join_binary([wh_util:to_binary(Frag) || #xmlText{value=Frag} <- Texts], <<>>),
 
     NewUri = wht_util:resolve_uri(whapps_call:kvs_fetch(<<"voice_uri">>, Call1), Url),
     Method = wht_util:http_method(props:get_value(method, Props, post)),
