@@ -50,6 +50,9 @@ find_file_server(Id, Doc, Attachment, Meta) ->
     case supervisor:start_child(?MODULE, ?CHILD(Name, Id, Doc, Attachment, Meta)) of
         {ok, _Pid}=OK -> OK;
         {error, {already_started, Pid}} -> {ok, Pid};
+        {error, already_present} ->
+            _ = supervisor:delete_child(?MODULE, Name),
+            find_file_server(Id, Doc, Attachment, Meta);
         {error, _}=E -> E
     end.
 
