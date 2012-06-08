@@ -85,7 +85,7 @@ get_conf_command(<<"play">>, _Focus, ConferenceId, JObj) ->
             {'error', <<"conference play failed to execute as JObj did not validate.">>};
         true ->
             UUID = wh_json:get_ne_value(<<"Call-ID">>, JObj, ConferenceId),
-            Media = list_to_binary(["'", ecallmgr_util:media_path(wh_json:get_value(<<"Media-Name">>, JObj), UUID), "'"]),
+            Media = list_to_binary(["'", ecallmgr_util:media_path(wh_json:get_value(<<"Media-Name">>, JObj), UUID, JObj), "'"]),
             Args = case wh_json:get_value(<<"Participant">>, JObj) of
                        undefined -> Media;                       
                        Participant -> list_to_binary([Media, " ", Participant])
