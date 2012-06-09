@@ -135,7 +135,9 @@ exec_element(Call, 'Reject', _, #xmlElement{attributes=Attrs}) ->
 -spec set_variable/3 :: (whapps_call:call(), wh_json:json_string(), wh_json:json_term()) -> whapps_call:call().
 -spec set_variables/2 :: (whapps_call:call(), list()) -> whapps_call:call().
 set_variable(Call, Key, Value) ->
-    wht_translator:set_user_vars([{Key, Value}], Call).
+    wht_translator:set_user_vars([{wh_util:to_binary(Key)
+                                   ,wh_util:to_binary(Value)
+                                  }], Call).
 
 set_variables(Call, Els) ->
     case [begin
