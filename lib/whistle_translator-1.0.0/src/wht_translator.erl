@@ -43,7 +43,7 @@ get_user_vars(Call) ->
 
 set_user_vars(Prop, Call) ->
     UserVars = get_user_vars(Call),
-    whapps_call:kvs_store_proplist(?WHT_USER_VARS, wh_json:set_values(Prop, UserVars), Call).
+    whapps_call:kvs_store(?WHT_USER_VARS, wh_json:set_values(Prop, UserVars), Call).
 
 find_candidate_translators(<<"text/xml">>) ->
     [wht_twiml];
