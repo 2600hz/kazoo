@@ -16,9 +16,12 @@
 -export([compact_all/1, compact_all/2, compact_node/2, compact_node/3
          ,compact_db/3, compact_db/4]).
 
--include_lib("wh_couch.hrl").
--define(SLEEP_BETWEEN_COMPACTION, 60000). %% sleep 60 seconds between shard compactions
--define(SLEEP_BETWEEN_POLL, 5000). %% sleep 5 seconds before polling the shard for compaction status
+-include_lib("whistle_couch/include/wh_couch.hrl").
+-define(SLEEP_BETWEEN_COMPACTION, 60000).
+-define(SLEEP_BETWEEN_POLL, 1000).
+-define(MAX_COMPACTING_SHARDS, 10).
+-define(MAX_COMPACTING_VIEWS, 5).
+-define(SLEEP_BETWEEN_VIEWS, 2000).
 
 start_link() ->
     proc_lib:start_link(?MODULE, init, [self()], infinity, []).
@@ -75,12 +78,16 @@ compact_node(Node) when is_atom(Node) ->
 compact_node(NodeBin) ->
     put(callid, NodeBin),
     lager:debug("compacting node ~s", [NodeBin]),
-
     {Conn, AdminConn} = get_node_connections(NodeBin),
     {ok, DBs} = couch_util:db_info(Conn),
-    lager:debug("found ~b DBs to compact", [length(DBs)]),
-    _ = [ compact_node_db(NodeBin, DB, Conn, AdminConn) || DB <- DBs ],
+    Total = length(DBs),
+    _ = lists:foldl(fun(DB, Count) ->
+                            lager:debug("compacting database (~p/~p) '~s'", [Count, Total, DB]),
+                            _ = (catch compact_node_db(NodeBin, DB, Conn, AdminConn)),
+                            Count + 1
+                    end, 1, shuffle(DBs)),
     done.
+
 compact_node(Node, ConflictStrategy) when is_atom(Node) ->
     compact_node(wh_util:to_binary(Node), ConflictStrategy);
 compact_node(NodeBin, ConflictStrategy) ->
@@ -148,11 +155,10 @@ compact_db(NodeBin, DB, ConflictStrategy, F) ->
     done.
 
 %% Internal Functions ----------------------------------------------------------
--spec compact_node_db/4 :: (ne_binary(), ne_binary(), server(), server()) -> 'ok'.
+-spec compact_node_db/4 :: (ne_binary(), ne_binary(), #server{}, #server{}) -> 'ok'.
 compact_node_db(NodeBin, DB, Conn, AdminConn) ->
     DBEncoded = binary:replace(DB, <<"/">>, <<"%2f">>, [global]),
     lager:debug("compacting db ~s node ~s", [DBEncoded, NodeBin]),
-
     case couch_util:db_exists(Conn, DBEncoded) andalso get_db_shards(AdminConn, DBEncoded) of
         false -> lager:debug("db ~s not on node ~s", [DBEncoded, NodeBin]);
         [] -> lager:debug("no shards found matching ~s", [DBEncoded]);
@@ -160,36 +166,82 @@ compact_node_db(NodeBin, DB, Conn, AdminConn) ->
             DesignDocs = try get_db_design_docs(Conn, DBEncoded)
                          catch _:_ -> []
                          end,
-            _ = [ catch(compact_shard(AdminConn, Shard, DesignDocs)) || Shard <- Shards ],
+            compact_node_shards(Shards, AdminConn, DesignDocs),
             ok
     end.
 
+-spec compact_node_shards/3 :: ([ne_binary(),...], server(), [ne_binary(),...] | []) -> 'ok'. 
+compact_node_shards(Shards, AdminConn, DesignDocs) ->
+    case catch(lists:split(?MAX_COMPACTING_SHARDS, Shards)) of
+        {'EXIT', _} -> 
+            compact_shards(Shards, AdminConn, DesignDocs),
+            ok;
+        {Compact, Remaining} ->
+            compact_shards(Compact, AdminConn, DesignDocs),
+            compact_node_shards(Remaining, AdminConn, DesignDocs)
+    end.             
+
+-spec compact_shards/3 :: ([ne_binary(),...], server(), [ne_binary(),...] | []) -> 'ok'. 
+compact_shards(Shards, AdminConn, DesignDocs) ->
+    S = self(),
+    _ = [receive {Pid, _} -> ok end
+         || Pid <- [spawn(fun() ->
+                                  S ! {self(), catch(compact_shard(AdminConn, Shard, DesignDocs))}
+                          end)
+                    || Shard <- Shards
+                   ]
+        ],
+    ok = timer:sleep(couch_config:fetch(<<"sleep_between_compaction">>, ?SLEEP_BETWEEN_COMPACTION)).
+
 -spec compact_shard/3 :: (server(), ne_binary(), [ne_binary(),...] | []) -> 'ok'.
 compact_shard(AdminConn, Shard, DesignDocs) ->
-    wait_for_compaction(AdminConn, Shard),
     lager:debug("compacting shard ~s", [Shard]),
+    wait_for_compaction(AdminConn, Shard),
     couch_util:db_compact(AdminConn, Shard),
     wait_for_compaction(AdminConn, Shard),
-
-    lager:debug("view cleanup"),
+    lager:debug("cleanup views in shard ~s", [Shard]),
     couch_util:db_view_cleanup(AdminConn, Shard),
-
-    lager:debug("design cleanup"),
-    _ = [ couch_util:design_compact(AdminConn, Shard, Design) || Design <- DesignDocs ],
-    ok = timer:sleep(couch_config:fetch(<<"sleep_between_compaction">>, ?SLEEP_BETWEEN_COMPACTION)),
+    wait_for_compaction(AdminConn, Shard),
+    compact_design_docs(AdminConn, Shard, DesignDocs),
+    wait_for_compaction(AdminConn, Shard),
     ok.
+
+-spec compact_design_docs/3 :: (server(), ne_binary(), [ne_binary(),...] | []) -> 'ok'.
+compact_design_docs(AdminConn, Shard, DesignDocs) ->
+    case catch(lists:split(?MAX_COMPACTING_VIEWS, DesignDocs)) of
+        {'EXIT', _} -> 
+            _ = [begin
+                     lager:debug("cleanup design doc ~s in shard ~s", [Design, Shard]),
+                     couch_util:design_compact(AdminConn, Shard, Design) 
+                 end
+                  || Design <- DesignDocs
+                ],
+            ok = timer:sleep(couch_config:fetch(<<"sleep_between_views">>, ?SLEEP_BETWEEN_VIEWS)),
+            wait_for_compaction(AdminConn, Shard),
+            ok;
+        {Compact, Remaining} ->
+            _ = [begin
+                     lager:debug("cleanup design doc ~s in shard ~s", [Design, Shard]),
+                     couch_util:design_compact(AdminConn, Shard, Design)
+                 end
+                  || Design <- Compact
+                ],
+            ok = timer:sleep(couch_config:fetch(<<"sleep_between_views">>, ?SLEEP_BETWEEN_VIEWS)),
+            wait_for_compaction(AdminConn, Shard),
+            compact_design_docs(AdminConn, Shard, Remaining)
+    end.
 
 -spec wait_for_compaction/2 :: (server(), ne_binary()) -> 'ok'.
 wait_for_compaction(AdminConn, Shard) ->
+    ok = timer:sleep(1500),
     case couch_util:db_info(AdminConn, Shard) of
         {ok, ShardData} ->
             case wh_json:is_true(<<"compact_running">>, ShardData, false) of
+                false -> ok;
                 true ->
-                    lager:debug("compaction running for shard"),
+                    lager:debug("waiting for compaction of shard ~s", [Shard]),
                     ok = timer:sleep(couch_config:fetch(<<"sleep_between_poll">>, ?SLEEP_BETWEEN_POLL)),
-                    wait_for_compaction(AdminConn, Shard);
-                false ->
-                    lager:debug("compaction is not running for shard")
+                    wait_for_compaction(AdminConn, Shard)
             end;
         {error, db_not_found} ->
             lager:debug("db shard ~s not found, skipping", [Shard]);
@@ -199,28 +251,20 @@ wait_for_compaction(AdminConn, Shard) ->
             wait_for_compaction(AdminConn, Shard)
     end.
 
--spec get_db_design_docs/2 :: (server(), ne_binary()) -> [ne_binary(),...] | [].
+-spec get_db_design_docs/2 :: (#server{}, ne_binary()) -> [ne_binary(),...] | [].
 get_db_design_docs(Conn, DBEncoded) ->
     {ok, Designs} = couch_util:all_design_docs(Conn, DBEncoded, []),
-    [ binary:replace(wh_json:get_value(<<"id">>, Design), <<"_design/">>, <<>>, [global])
-      || Design <- Designs
-    ].
+    [ binary:replace(wh_json:get_value(<<"id">>, Design), <<"_design/">>, <<>>, [global]) || Design <- Designs ].
 
--spec get_db_shards/2 :: (server(), ne_binary()) -> [ne_binary()].
+-spec get_db_shards/2 :: (#server{}, ne_binary()) -> [ne_binary()].
 get_db_shards(AdminConn, DBEncoded) ->
-    case couch_config:fetch(DBEncoded, undefined, ?WH_COUCH_CACHE) of
+    case couch_config:fetch({shards, DBEncoded}, undefined, ?WH_COUCH_CACHE) of
         undefined ->
             case couch_util:db_info(AdminConn) of
                 {ok, []} -> lager:debug("no shards found on admin conn? That's odd"), [];
                 {ok, Shards} ->
-                    Encoded = [ ShardEncoded
-                                || Shard <- Shards,
-                                   begin
-                                       ShardEncoded = binary:replace(Shard, <<"/">>, <<"%2f">>, [global]),
-                                       is_a_shard(ShardEncoded, DBEncoded)
-                                   end
-                              ],
-                    _ = couch_config:store(DBEncoded, Encoded, ?WH_COUCH_CACHE),
+                    Encoded = [ ShardEncoded || Shard <- Shards, is_a_shard(ShardEncoded=binary:replace(Shard, <<"/">>, <<"%2f">>, [global]), DBEncoded) ],
+                    couch_config:store({shards, DBEncoded}, Encoded, ?WH_COUCH_CACHE),
                     lager:debug("cached encoded shards for ~s", [DBEncoded]),
                     Encoded
             end;
@@ -233,7 +277,7 @@ get_db_shards(AdminConn, DBEncoded) ->
 is_a_shard(Shard, DB) ->
     binary:match(Shard, <<"%2f", DB/binary, ".">>) =/= nomatch.
 
--spec get_node_connections/1 :: (ne_binary()) -> {server(), server()}.
+-spec get_node_connections/1 :: (ne_binary()) -> {#server{}, #server{}}.
 get_node_connections(NodeBin) ->
     [_Name, H] = binary:split(NodeBin, <<"@">>),
     Host = wh_util:to_list(H),
@@ -282,7 +326,27 @@ get_ports(_Node, pang) ->
     lager:debug("using same ports as couch_mgr"),
     {couch_mgr:get_port(), couch_mgr:get_admin_port()}.
 
--spec get_conns/5 :: (nonempty_string(), pos_integer(), string(), string(), pos_integer()) -> {server(), server()}.
+-spec get_conns/5 :: (nonempty_string(), pos_integer(), string(), string(), pos_integer()) -> {#server{}, #server{}}.
 get_conns(Host, Port, User, Pass, AdminPort) ->
     {couch_util:get_new_connection(Host, Port, User, Pass),
      couch_util:get_new_connection(Host, AdminPort, User, Pass)}.
+
+-spec shuffle/1 :: (list()) -> list().
+shuffle(List) ->
+    randomize(round(math:log(length(List)) + 0.5), List).
+
+-spec randomize/2 :: (pos_integer(), list()) -> list().
+randomize(1, List) ->
+    randomize(List);
+randomize(T, List) ->
+    lists:foldl(fun(_E, Acc) ->
+                        randomize(Acc)
+                end, randomize(List), lists:seq(1, (T - 1))).
+
+-spec randomize/1 :: (list()) -> list().
+randomize(List) ->
+    D = lists:map(fun(A) ->
+                          {random:uniform(), A}
+                  end, List),
+    {_, D1} = lists:unzip(lists:keysort(1, D)), 
+    D1.
