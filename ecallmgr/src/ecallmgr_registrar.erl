@@ -37,7 +37,7 @@ lookup_contact(Realm, Username) ->
     lookup_contact(Realm, Username, true).
 
 lookup_contact(Realm, Username, Notify) ->
-    case wh_cache:fetch_local(?ECALLMGR_REG_CACHE, ?CONTACT_KEY(Realm, Username)) of
+    case wh_cache:peek_local(?ECALLMGR_REG_CACHE, ?CONTACT_KEY(Realm, Username)) of
         {ok, Contact} -> {ok, Contact};
         {error, not_found} -> 
             case lookup(Realm, Username, [<<"Contact">>]) of
