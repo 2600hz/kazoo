@@ -105,7 +105,7 @@ list_carrier_modules() ->
 %% Given a number determine the database name that it should belong to.
 %% @end
 %%--------------------------------------------------------------------
--spec number_to_db_name/1 :: (ne_binary()) -> ne_binary().
+-spec number_to_db_name/1 :: (ne_binary()) -> 'undefined' | ne_binary().
 number_to_db_name(<<NumPrefix:5/binary, _/binary>>) ->
     wh_util:to_binary(
       http_uri:encode(
@@ -113,7 +113,9 @@ number_to_db_name(<<NumPrefix:5/binary, _/binary>>) ->
           list_to_binary([?WNM_DB_PREFIX, NumPrefix])
          )
        )
-     ).
+     );
+number_to_db_name(_) ->
+    undefined.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -292,7 +294,6 @@ is_number_db(<<"numbers/", _/binary>>) -> true;
 is_number_db(<<"numbers%2f", _/binary>>) -> true;
 is_number_db(<<"numbers%2F", _/binary>>) -> true;
 is_number_db(_) -> false.
-
 
 %% PROPER TESTING
 %%

@@ -12,7 +12,7 @@
 
 -export([get/1, get/2]).
 -export([create_available/2]).
--export([create_discovery/3]).
+-export([create_discovery/4]).
 -export([create_port_in/3]).
 -export([save/1, save/2]).
 -export([delete/1, delete/2]).
@@ -28,6 +28,14 @@
 -export([port_out/1]).
 -export([disconnected/1]).
 
+-export([error_invalid_state_transition/2]).
+-export([error_unauthorized/1]).
+-export([error_no_change_required/1]).
+-export([error_not_reconcilable/1]).
+-export([error_number_database/2]).
+-export([error_carrier_not_specified/1]).
+-export([error_number_not_found/1]).
+
 -include("wh_number_manager.hrl").
 
 -export_type([wnm_number/0]).
@@ -42,7 +50,7 @@
 -spec get/2 :: (ne_binary(), 'undefined' | wh_json:json_object()) -> wnm_number().
 
 get(Number) ->
-    get(Number, undefined).
+    get(Number, wh_json:new()).
 
 get(Number, PublicFields) ->
     Routines = [fun(#number{number=Num}=N) -> 
@@ -54,6 +62,7 @@ get(Number, PublicFields) ->
                 ,fun(#number{number=Num, number_db=Db}=N) ->
                          case couch_mgr:open_doc(Db, Num) of
                              {ok, JObj} -> merge_public_fields(PublicFields, json_to_record(JObj, N));
+                             {error, not_found} -> error_number_not_found(N);
                              {error, Reason} -> error_number_database(Reason, N)
                          end
                  end
@@ -67,8 +76,8 @@ get(Number, PublicFields) ->
 %% Creates a new number record with the intial state of discovery
 %% @end
 %%--------------------------------------------------------------------
--spec create_discovery/3 :: (ne_binary(), ne_binary(), wh_json:json_object()) -> wnm_number().
-create_discovery(Number, ModuleName, ModuleData) ->
+-spec create_discovery/4 :: (ne_binary(), ne_binary(), wh_json:json_object(), wh_json:json_object()) -> wnm_number().
+create_discovery(Number, ModuleName, ModuleData, PublicFields) ->
     Num = wnm_util:normalize_number(Number),
     Db = wnm_util:number_to_db_name(Number),
     Routines = [fun(J) -> wh_json:set_value(<<"_id">>, Num, J) end
@@ -78,7 +87,7 @@ create_discovery(Number, ModuleName, ModuleData) ->
                 ,fun(J) -> wh_json:set_value(<<"pvt_db_name">>, Db, J) end
                 ,fun(J) -> wh_json:set_value(<<"pvt_created">>, wh_util:current_tstamp(), J) end
                ],
-    JObj = lists:foldl(fun(F, J) -> F(J) end, wh_json:new(), Routines),
+    JObj = lists:foldl(fun(F, J) -> F(J) end, wh_json:public_fields(PublicFields), Routines),
     json_to_record(JObj).
 
 %%--------------------------------------------------------------------
@@ -89,10 +98,7 @@ create_discovery(Number, ModuleName, ModuleData) ->
 %%--------------------------------------------------------------------
 -spec create_available/2 :: (ne_binary(), 'undefined' | ne_binary()) -> wnm_number().
 create_available(_, undefined) ->
-    Error = <<"Can not create an available number without an authorizing id">>,
-    throw(#number{error=unauthorized
-                  ,error_jobj=wh_json:from_list([{<<"unauthorized">>, Error}])
-                 });
+    error_unauthorized(#number{});
 create_available(Number, AuthBy) ->
     Num = wnm_util:normalize_number(Number),
     Db = wnm_util:number_to_db_name(Number),
@@ -760,7 +766,7 @@ json_to_record(JObj) ->
 
 json_to_record(JObj, #number{number=Num, number_db=Db}=Number) ->
     Number#number{number=wh_json:get_value(<<"_id">>, JObj, Num)
-                  ,number_db=wh_json:get_vaue(<<"pvt_db_name">>, JObj, Db)
+                  ,number_db=wh_json:get_value(<<"pvt_db_name">>, JObj, Db)
                   ,state=wh_json:get_ne_value(<<"pvt_number_state">>, JObj)
                   ,reserve_history=ordsets:from_list(wh_json:get_ne_value(<<"pvt_reserve_history">>, JObj, []))
                   ,assigned_to=wh_json:get_ne_value(<<"pvt_assigned_to">>, JObj)
@@ -782,54 +788,44 @@ merge_public_fields(PublicFields, #number{number=JObj}=N) ->
     case wh_json:is_json_object(PublicFields) of
         false -> N;
         true ->
-            N#number{number=wh_json:merge_jobjs(wh_json:private_fields(JObj), PublicFields)}
+            N#number{number=wh_json:merge_jobjs(wh_json:private_fields(JObj)
+                                                ,wh_json:public_fields(PublicFields))}
     end.
 
-
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% create invalid state error
 %% @end
 %%--------------------------------------------------------------------
 error_invalid_state_transition(Transition, #number{state = State}=N) ->
     Error = list_to_binary(["Invalid state transition from ", Transition, " to ", State]),
-    throw(N#number{error=invalid_state_transition
-                   ,error_jobj=wh_json:from_list([{<<"state_transition">>, Error}])
-                  }).
-    
+    throw({invalid_state_transition, N#number{error=invalid_state_transition
+                                              ,error_jobj=wh_json:from_list([{<<"state_transition">>, Error}])
+                                             }}).
+
 error_unauthorized(N) ->
-    Error = <<"Not authorized to manage number">>,
-    throw(N#number{error=unauthorized
-                   ,error_jobj=wh_json:from_list([{<<"unauthorized">>, Error}])
-                  }).
+    Error = <<"Not authorized to preform requested number operation">>,
+    throw({unauthorized, N#number{error=unauthorized
+                           ,error_jobj=wh_json:from_list([{<<"unauthorized">>, Error}])
+                          }}).
 
 error_no_change_required(N) ->
     Error = <<"Number is already in state port_in">>,
-    throw(N#number{error=no_change_required
-                   ,error_jobj=wh_json:from_list([{<<"no_change">>, Error}])
-                  }).
+    throw({no_change_required, N#number{error_jobj=wh_json:from_list([{<<"no_change">>, Error}])}}).
 
 error_not_reconcilable(N) ->
     Error = <<"The number does not met the minium requirements for reconciliation">>,
-    throw(N#number{error=not_reconcilable
-                   ,error_jobj=wh_json:from_list([{<<"not_routable">>, Error}])
-                  }).
+    throw({not_reconcilable, N#number{error_jobj=wh_json:from_list([{<<"not_routable">>, Error}])}}).
 
 error_number_database(Reason, N) ->
     Error = <<"The number database returned an error ", (wh_util:to_binary(Reason))/binary>>,
-    throw(N#number{error=database_error
-                   ,error_jobj=wh_json:from_list([{<<"number_database">>, Error}])
-                  }).
+    throw({database_error, N#number{error_jobj=wh_json:from_list([{<<"number_database">>, Error}])}}).
 
 error_carrier_not_specified(N) ->
     Error = <<"The number does not have a known/valid carrier associated with it">>,
-    throw(N#number{error=unknown_carrier
-                   ,error_jobj=wh_json:from_list([{<<"unknown_carrier">>, Error}])
-                  }).    
+    throw({unknown_carrier, N#number{error_jobj=wh_json:from_list([{<<"unknown_carrier">>, Error}])}}).
 
-error_carrier_fault(N) ->
-    Error = <<"Carrier failed to preform a required operation">>,
-    throw(N#number{error=carrier_fault
-                   ,error_jobj=wh_json:from_list([{<<"carrier_fault">>, Error}])
-                  }).
+error_number_not_found(N) ->
+    Error = <<"The number could not be found">>,
+    throw({not_found, N#number{error_jobj=wh_json:from_list([{<<"not_found">>, Error}])}}).    
