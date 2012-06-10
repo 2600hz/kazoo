@@ -253,6 +253,31 @@ compact_design_docs(AdminConn, Shard, DesignDocs) ->
             compact_design_docs(AdminConn, Shard, Remaining)
     end.
 
+-spec compact_design_docs/3 :: (server(), ne_binary(), [ne_binary(),...] | []) -> 'ok'.
+compact_design_docs(AdminConn, Shard, DesignDocs) ->
+    case catch(lists:split(?MAX_COMPACTING_VIEWS, DesignDocs)) of
+        {'EXIT', _} -> 
+            _ = [begin
+                     lager:debug("cleanup design doc ~s in shard ~s", [Design, Shard]),
+                     couch_util:design_compact(AdminConn, Shard, Design) 
+                 end
+                  || Design <- DesignDocs
+                ],
+            ok = timer:sleep(couch_config:fetch(<<"sleep_between_views">>, ?SLEEP_BETWEEN_VIEWS)),
+            wait_for_compaction(AdminConn, Shard),
+            ok;
+        {Compact, Remaining} ->
+            _ = [begin
+                     lager:debug("cleanup design doc ~s in shard ~s", [Design, Shard]),
+                     couch_util:design_compact(AdminConn, Shard, Design)
+                 end
+                  || Design <- Compact
+                ],
+            ok = timer:sleep(couch_config:fetch(<<"sleep_between_views">>, ?SLEEP_BETWEEN_VIEWS)),
+            wait_for_compaction(AdminConn, Shard),
+            compact_design_docs(AdminConn, Shard, Remaining)
+    end.
+
 -spec wait_for_compaction/2 :: (server(), ne_binary()) -> 'ok'.
 wait_for_compaction(AdminConn, Shard) ->
     ok = timer:sleep(1500),
@@ -280,7 +305,7 @@ get_db_design_docs(Conn, DBEncoded) ->
 
 -spec get_db_shards/2 :: (#server{}, ne_binary()) -> [ne_binary()].
 get_db_shards(AdminConn, DBEncoded) ->
-    case couch_config:fetch(DBEncoded, undefined, ?WH_COUCH_CACHE) of
+    case couch_config:fetch({shards, DBEncoded}, undefined, ?WH_COUCH_CACHE) of
         undefined ->
             case couch_util:db_info(AdminConn) of
                 {ok, []} -> lager:debug("no shards found on admin conn? That's odd"), [];
