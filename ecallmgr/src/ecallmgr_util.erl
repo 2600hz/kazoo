@@ -131,7 +131,7 @@ maybe_update_channel_cache(_, _) ->
 get_expires(Props) ->
     Expiry = wh_util:to_integer(props:get_value(<<"Expires">>, Props
                                                 ,props:get_value(<<"expires">>, Props, 300))),
-    round(Expiry * 1.25) + 20.
+    round(Expiry * 1.25).
 
 -spec get_interface_properties/1 :: (atom()) -> proplist().
 -spec get_interface_properties/2 :: (atom(), string() | ne_binary()) -> proplist().
