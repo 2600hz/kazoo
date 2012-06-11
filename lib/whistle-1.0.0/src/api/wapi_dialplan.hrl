@@ -11,6 +11,13 @@
 
 %% For dialplan messages, an optional insert-at tuple is common across all requests
 -define(INSERT_AT_TUPLE, {<<"Insert-At">>, [<<"head">>, <<"tail">>, <<"flush">>, <<"now">>]}).
+-define(IS_TERMINATOR, fun(X) when is_list(X) -> true;
+                          (<<>>) -> true;
+                          (_) -> false
+                       end).
+
+-define(DIAL_METHOD_SINGLE, <<"single">>).
+-define(DIAL_METHOD_SIMUL, <<"simultaneous">>).
 
 -define(BRIDGE_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Endpoints">>]).
 -define(OPTIONAL_BRIDGE_REQ_HEADERS, [<<"Timeout">>, <<"Continue-On-Fail">>, <<"Ignore-Early-Media">>
@@ -24,7 +31,7 @@
 -define(BRIDGE_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                             ,{<<"Event-Name">>, <<"command">>}
                             ,{<<"Application-Name">>, <<"bridge">>}
-                            ,{<<"Dial-Endpoint-Method">>, [<<"single">>, <<"simultaneous">>]}
+                            ,{<<"Dial-Endpoint-Method">>, [?DIAL_METHOD_SINGLE, ?DIAL_METHOD_SIMUL]}
                             ,{<<"Media">>, [<<"process">>, <<"bypass">>, <<"auto">>]}
                             ,{<<"Continue-On-Fail">>, [<<"true">>, <<"false">>]}
                             ,?INSERT_AT_TUPLE
@@ -106,6 +113,16 @@
                                  ,{<<"Event-Category">>, <<"call">>}
                                 ]).
 -define(STORE_HTTP_RESP_TYPES, [{<<"Media-Transfer-Results">>, fun wh_json:is_json_object/1}]).
+
+%% Send DTMF Request
+-define(SEND_DTMF_HEADERS, [<<"Call-ID">>, <<"Application-Name">>, <<"DTMFs">>]).
+-define(OPTIONAL_SEND_DTMF_HEADERS, [<<"Insert-At">>, <<"Duration">>]).
+-define(SEND_DTMF_VALUES, [{<<"Event-Category">>, <<"call">>}
+                           ,{<<"Event-Name">>, <<"command">>}
+                           ,{<<"Application-Name">>, <<"send_dtmf">>}
+                           ,?INSERT_AT_TUPLE
+                          ]).
+-define(SEND_DTMF_TYPES, []).
 
 %% Tones Request
 -define(TONES_REQ_HEADERS, [<<"Call-ID">>, <<"Application-Name">>, <<"Tones">>]).
@@ -276,7 +293,7 @@
                           ,{<<"Leg">>, [<<"A">>, <<"B">>, <<"Both">>]}
                           ,?INSERT_AT_TUPLE
                          ]).
--define(PLAY_REQ_TYPES, [{<<"Terminators">>, fun is_list/1}]).
+-define(PLAY_REQ_TYPES, [{<<"Terminators">>, ?IS_TERMINATOR}]).
 
 %% PlayStop Request
 -define(PLAY_STOP_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>]).
@@ -286,7 +303,7 @@
                                ,{<<"Application-Name">>, <<"playstop">>}
                                ,{<<"Insert-At">>, <<"now">>}
                               ]).
--define(PLAY_STOP_REQ_TYPES, [{<<"Terminators">>, fun is_list/1}]).
+-define(PLAY_STOP_REQ_TYPES, [{<<"Terminators">>, ?IS_TERMINATOR}]).
 
 %% Record Request
 -define(RECORD_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Media-Name">>]).
@@ -298,7 +315,7 @@
                             ,{<<"Application-Name">>, <<"record">>}
                             ,?INSERT_AT_TUPLE
                            ]).
--define(RECORD_REQ_TYPES, [{<<"Terminators">>, fun is_list/1}]).
+-define(RECORD_REQ_TYPES, [{<<"Terminators">>, ?IS_TERMINATOR}]).
 
 %% Record Call Leg into MediaName
 %% Stream-To = local results in the recording being stored on the media server

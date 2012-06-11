@@ -9,7 +9,10 @@
 %%%-------------------------------------------------------------------
 -module(wht_translator).
 
--export([exec/2, exec/3]).
+-export([exec/2, exec/3
+         ,get_user_vars/1
+         ,set_user_vars/2
+        ]).
 
 -include("wht.hrl").
 
@@ -33,6 +36,15 @@ exec(Call, Cmds, CT) ->
             end
     end.
 
+-spec get_user_vars/1 :: (whapps_call:call()) -> wh_json:json_object().
+-spec set_user_vars/2 :: (proplist(), whapps_call:call()) -> wh_json:json_object().
+get_user_vars(Call) ->
+    whapps_call:kvs_fetch(?WHT_USER_VARS, wh_json:new(), Call).
+
+set_user_vars(Prop, Call) ->
+    UserVars = get_user_vars(Call),
+    whapps_call:kvs_store(?WHT_USER_VARS, wh_json:set_values(Prop, UserVars), Call).
+
 find_candidate_translators(<<"text/xml">>) ->
     [wht_twiml];
 find_candidate_translators(<<"application/xml">>) ->
@@ -44,6 +56,6 @@ find_candidate_translators(_) ->
 
 is_recognized(M, Cmds) ->
     case catch M:does_recognize(Cmds) of
-        {true, _}=True -> lager:debug("true: ~p", [True]), True;
-        _F -> lager:debug("fail: ~p", [_F]), {false, []}
+        {true, _}=True -> True;
+        _F -> {false, []}
     end.

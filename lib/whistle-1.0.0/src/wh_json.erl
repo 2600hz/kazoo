@@ -160,7 +160,7 @@ recursive_to_proplist(Else) ->
 %%   key=val&key2[]=v2_1&key2[]=v2_2&key3[key3_1]=v3_1
 -spec to_querystring/1 :: (json_object()) -> iolist().
 to_querystring(JObj) ->
-    to_querystring(normalize(JObj), <<>>).
+    to_querystring(JObj, <<>>).
 
 %% if Prefix is empty, don't wrap keys in array tags, otherwise Prefix[key]=value
 -spec to_querystring/2 :: (json_object(), iolist() | binary()) -> iolist().
