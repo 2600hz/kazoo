@@ -232,7 +232,7 @@ create_slot(undefined, Call) ->
     AccountId = whapps_call:account_id(Call),
     wh_json:from_list([{<<"Call-ID">>, CallId}
                        ,{<<"Presence-ID">>, <<(whapps_call:request_user(Call))/binary
-                                              ,"@", (whapps_call:from_realm(Call))/binary>>}
+                                              ,"@", (wh_util:get_account_realm(AccountDb, AccountId))/binary>>}
                        ,{<<"Node">>, whapps_call:switch_nodename(Call)}
                        ,{<<"CID-Number">>, whapps_call:caller_id_number(Call)}
                        ,{<<"CID-Name">>, whapps_call:caller_id_name(Call)}
