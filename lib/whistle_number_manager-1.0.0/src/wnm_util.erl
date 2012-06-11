@@ -18,7 +18,6 @@
 -export([normalize_number/1]).
 -export([to_e164/1, to_npan/1, to_1npan/1]).
 -export([is_e164/1, is_npan/1, is_1npan/1]).
--export([exec_providers_save/4]).
 -export([find_account_id/1]).
 -export([get_all_number_dbs/0]).
 
@@ -219,46 +218,6 @@ to_1npan(NPAN) when erlang:byte_size(NPAN) =:= 10 ->
     <<$1, NPAN/binary>>;
 to_1npan(Other) ->
     Other.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% execute the save function of all providers, folding the jobj through
-%% them and collecting any errors...
-%% @end
-%%--------------------------------------------------------------------
--spec exec_providers_save/4 :: (wh_json:json_object(), wh_json:json_object(), ne_binary(), ne_binary()) -> {'ok' | 'error', wh_json:json_object()}.
--spec exec_providers_save/6 :: (list(), wh_json:json_object(), wh_json:json_object(), ne_binary(), ne_binary(), list()) -> {'ok' | 'error', wh_json:json_object()}.
-
-exec_providers_save(JObj, PriorJObj, Number, State) ->
-    Providers = whapps_config:get(?WNM_CONFIG_CAT, <<"providers">>, []),
-    exec_providers_save(Providers, JObj, PriorJObj, Number, State, []).
-
-exec_providers_save([], JObj, _, _, _, []) ->
-    {ok, JObj};
-exec_providers_save([], _, _, _, _, Result) ->
-    {error, wh_json:from_list(Result)};
-exec_providers_save([Provider|Providers], JObj, PriorJObj, Number, State, Result) ->
-    try
-        lager:debug("executing provider ~s", [Provider]),
-        case try_load_module(<<"wnm_", Provider/binary>>) of
-            false ->
-                lager:debug("provider ~s is unknown, skipping", [Provider]),
-                exec_providers_save(Providers, JObj, PriorJObj, Number, State, Result);
-            Mod ->
-                case Mod:save(JObj, PriorJObj, Number, State) of
-                    {ok, J} ->
-                        exec_providers_save(Providers, J, PriorJObj, Number, State, Result);
-                    {error, Error} ->
-                        lager:debug("provider ~s created error: ~p", [Provider, Error]),
-                        exec_providers_save(Providers, JObj, PriorJObj, Number, State, [{Provider, Error}|Result])
-                end
-        end
-    catch
-        _:R ->
-            lager:debug("executing provider ~s threw exception: ~p", [Provider, R]),
-            exec_providers_save(Providers, JObj, PriorJObj, Number, State, [{Provider, <<"threw exception">>}|Result])
-    end.
 
 %%--------------------------------------------------------------------
 %% @public

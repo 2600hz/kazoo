@@ -83,9 +83,15 @@ find_numbers(Search, Quanity) ->
 %%--------------------------------------------------------------------
 -spec acquire_number/1 :: (wnm_number()) -> wnm_number().
 acquire_number(#number{auth_by=AuthBy, assigned_to=AssignedTo, module_data=Data}=N) ->
+    Debug = whapps_config:get_is_true(?WNM_BW_CONFIG_CAT, <<"sandbox_provisioning">>, <<"true">>),
     case whapps_config:get_is_true(?WNM_BW_CONFIG_CAT, <<"enable_provisioning">>, <<"true">>) of
-        false -> {error, number_provisioning_disabled};
-        true ->  
+        false when Debug -> 
+            lager:debug("allowing sandbox provisioning", []),
+            N;
+        false -> 
+            Error = <<"Unable to acquire numbers on this system, carrier provisioning is disabled">>,
+            wnm_number:error_carrier_fault(Error, N);
+        true ->
                       Id = wh_json:get_string_value(<<"number_id">>, Data),
                       Endpoint = whapps_config:get_binary(?WNM_BW_CONFIG_CAT, <<"endpoint">>, <<"">>),
                       OrderNamePrefix = whapps_config:get_binary(?WNM_BW_CONFIG_CAT, <<"order_name_prefix">>, <<"Whistle">>),
@@ -101,9 +107,7 @@ acquire_number(#number{auth_by=AuthBy, assigned_to=AssignedTo, module_data=Data}
                       case make_numbers_request('basicNumberOrder', Props) of
                           {error, Reason} ->
                               Error = <<"Unable to acquire number: ", (wh_json:to_binary(Reason))/binary>>,
-                              throw(N#number{error=carrier_fault
-                                             ,error_jobj=wh_json:from_list([{<<"carrier">>, Error}])
-                                            });
+                              wnm_number:error_carrier_fault(Error, N);
                           {ok, Xml} ->
                               Response = xmerl_xpath:string("/numberOrderResponse/numberOrder", Xml),
                               N#number{module_data=number_order_response_to_json(Response)}

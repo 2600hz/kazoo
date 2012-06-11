@@ -80,10 +80,7 @@ maybe_update_dash_e911(#number{current_number_doc=CurrentJObj, number_doc=JObj
                 {ok, J} -> N#number{features=sets:add_element(<<"dash_e911">>, Features)
                                     ,number_doc=J};
                 {error, Reason} ->
-                    Error = <<"Unable to provision e911 address: ", (wh_json:to_binary(Reason))/binary>>,
-                    throw(N#number{error=provider_fault
-                                   ,error_jobj=wh_json:from_list([{<<"dash_e911">>, Error}])
-                                  })
+                    {error, <<"Unable to provision e911 address: ", (wh_json:to_binary(Reason))/binary>>}
             end
     end.
 
