@@ -55,8 +55,8 @@ find(Number, Quanity) ->
 %% assignment
 %% @end
 %%--------------------------------------------------------------------
--spec lookup_account_by_number/1 :: (ne_binary()) -> {ok, ne_binary(), boolean()} |
-                                                     {error, term()}.
+-spec lookup_account_by_number/1 :: (ne_binary()) -> {'ok', ne_binary(), boolean()} |
+                                                     {'error', _}.
 lookup_account_by_number(undefined) ->
     {error, not_reconcilable};
 lookup_account_by_number(Number) ->
@@ -97,7 +97,7 @@ lookup_account_by_number(Number) ->
 -spec create_number/4 :: (ne_binary(), ne_binary(), ne_binary(), wh_json:json_object()) -> transition_return().
 
 create_number(Number, AssignTo, AuthBy) ->
-    create_number(Number, AssignTo, AuthBy, undefined).
+    create_number(Number, AssignTo, AuthBy, wh_json:new()).
 
 create_number(Number, AssignTo, AuthBy, PublicFields) ->
     lager:debug("attempting to create number ~s for account ~s", [Number, AssignTo]),    
@@ -121,13 +121,13 @@ create_number(Number, AssignTo, AuthBy, PublicFields) ->
                                  wnm_number:error_unauthorized(N)
                          end;
                     ({_, #number{}}=E) -> E;
-                    (#number{}=N) -> wnm_number:error_unauthorized(N)
+                    (#number{}=N) -> wnm_number:error_number_exists(N)
                  end
                 ,fun({_, #number{}}=E) -> E;
-                    (N) -> wnm_number:reserved(N#number{assign_to=AssignTo, auth_by=AuthBy})
+                    (#number{}=N) -> wnm_number:reserved(N#number{assign_to=AssignTo, auth_by=AuthBy})
                  end
                 ,fun({_, #number{}}=E) -> E;
-                    (N) -> wnm_number:save(N)
+                    (#number{}=N) -> wnm_number:save(N)
                  end
                 ,fun({E, #number{}}) -> 
                          lager:debug("create number prematurely ended: ~p", [E]),
@@ -149,15 +149,20 @@ create_number(Number, AssignTo, AuthBy, PublicFields) ->
 -spec port_in/4 :: (ne_binary(), ne_binary(), ne_binary(), wh_json:json_object()) -> transition_return().
 
 port_in(Number, AssignTo, AuthBy) ->
-    port_in(Number, AssignTo, AuthBy, undefined).
+    port_in(Number, AssignTo, AuthBy, wh_json:new()).
 
 port_in(Number, AssignTo, AuthBy, PublicFields) ->
     lager:debug("attempting to port_in number ~s for account ~s", [Number, AssignTo]),    
     Routines = [fun(_) -> wnm_number:get(Number, PublicFields) end
-                ,fun({not_found, #number{}}) ->
-                         wnm_number:create_port_in(Number, AssignTo, AuthBy);
+                ,fun({not_found, #number{}=N}) ->
+                         NewNumber = N#number{number=Number
+                                              ,assign_to=AssignTo
+                                              ,auth_by=AuthBy
+                                              ,number_doc=PublicFields
+                                             },
+                         wnm_number:create_port_in(NewNumber);
                     ({_, #number{}}=E) -> E;
-                    (#number{}=N) -> wnm_number:error_unauthorized(N)
+                    (#number{}=N) -> wnm_number:error_number_exists(N)
                  end
                 ,fun({_, #number{}}=E) -> E;
                     (#number{}=N) -> wnm_number:save(N)
@@ -181,38 +186,37 @@ port_in(Number, AssignTo, AuthBy, PublicFields) ->
 %%--------------------------------------------------------------------
 -spec reconcile_number/3 :: (ne_binary(), ne_binary(), ne_binary()) -> transition_return().
 reconcile_number(Number, AssignTo, AuthBy) ->
-    Routines = [fun({error, not_found}) -> wnm_number:create_available(Number, AuthBy);
-                    ({error, _}=E) -> E;
-                    ({ok, _}=Ok) -> Ok
+    Routines = [fun(_) -> wnm_number:get(Number) end
+                ,fun({not_found, #number{}=N}) -> 
+                         NewNumber = N#number{number=Number
+                                              ,assign_to=AssignTo
+                                              ,auth_by=AuthBy
+                                             },
+                         wnm_number:create_available(NewNumber);
+                    ({_, #number{}}=E) -> E;
+                    (#number{}=N) -> N#number{assign_to=AssignTo
+                                              ,auth_by=AuthBy
+                                             }
                  end
-                ,fun({error, _}=E) -> E;
-                    ({ok, J}) -> 
-                         Assignment = case wh_util:is_empty(AssignTo) 
-                                          andalso wh_json:get_ne_value(<<"pvt_assigned_to">>, J, AuthBy)
-                                      of
-                                          false -> AssignTo;
-                                          Assign -> Assign
-                                      end,
-                         lager:debug("attempting to reconcile number ~s with account ~s", [Number, Assignment]),
-                         case wnm_number:in_service(J, Assignment, AuthBy) of
-                             {error, no_change_required}=E ->
-                                 _ = wnm_number:update_account_phone_numbers(J, Assignment),
-                                 E;
-                             Else -> Else
-                         end
+                ,fun({_, #number{}}=E) -> E;
+                    (#number{assign_to=Assign}=N) ->
+                         lager:debug("attempting to reconcile number ~s with account ~s", [Number, Assign]),
+                         wnm_number:in_service(N)
                  end
-                ,fun({error, _}=E) -> E;
-                    ({ok, J}) -> wnm_number:save(J)
+                ,fun({no_change_required, #number{}=N}) ->
+                         wnm_number:save_account_phone_numbers(N);
+                    ({_, #number{}}=E) -> E;
+                    (#number{}=N) -> wnm_number:save(N)
                  end
-                ,fun({error, _R}=E) -> 
-                         lager:debug("reconcile prematurely ended: ~p", [_R]),
-                         E;
-                    ({ok, J}) -> 
-                         lager:debug("reconcile successfully completed", []),
-                         {ok, wh_json:public_fields(J)}
+                ,fun({E, #number{}}) -> 
+                         lager:debug("reconcile number prematurely ended: ~p", [E]),
+                         {error, E};
+                    (#number{number_doc=JObj}) -> 
+                         lager:debug("reconcile number successfully completed", []),
+                         {ok, wh_json:public_fields(JObj)}
                  end
                ], 
-    lists:foldl(fun(F, J) -> F(J) end, wnm_number:get(Number), Routines).
+    lists:foldl(fun(F, J) -> catch F(J) end, ok, Routines).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -226,23 +230,14 @@ free_numbers(AccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, encoded),
     case couch_mgr:open_doc(AccountDb, ?WNM_PHONE_NUMBER_DOC) of
         {ok, JObj} ->
-            _ = [case release_number(Key, AccountId) of
-                     {ok, _} -> ok;
-                     {error, no_change_required} -> 
-                         wnm_number:remove_account_phone_numbers(Key, AccountId);
-                     {error, unauthorized} -> 
-                         wnm_number:remove_account_phone_numbers(Key, AccountId);
-                     {error, not_reconcilable} -> 
-                         wnm_number:remove_account_phone_numbers(Key, AccountId);
-                     {error, not_found} -> 
-                         wnm_number:remove_account_phone_numbers(Key, AccountId);
-                     {error, _} -> ok
-                 end
+            _ = [release_number(Key, AccountId)
                  || Key <- wh_json:get_keys(JObj)
-                    ,wnm_util:is_reconcilable(Key)
+                        ,wnm_util:is_reconcilable(Key)
                 ],
             ok;
-        _ -> ok
+        {error, _R} -> 
+            lager:debug("failed to open account ~s ~s document: ~p", [AccountId, ?WNM_PHONE_NUMBER_DOC, _R]),
+            ok
     end.
 
 %%--------------------------------------------------------------------
@@ -259,24 +254,22 @@ reserve_number(Number, AssignTo, AuthBy) ->
 
 reserve_number(Number, AssignTo, AuthBy, PublicFields) ->
     lager:debug("attempting to reserve ~s for account ~s", [Number, AssignTo]),    
-    Routines = [fun({error, _}=E) -> E;
-                    ({ok, _}=Ok) -> Ok
+    Routines = [fun(_) -> wnm_number:get(Number, PublicFields) end
+                ,fun({_, #number{}}=E) -> E;
+                    (#number{}=N) -> wnm_number:reserved(N#number{assign_to=AssignTo, auth_by=AuthBy})
                  end
-                ,fun({error, _}=E) -> E;
-                    ({ok, J}) -> wnm_number:reserved(J, AssignTo, AuthBy)
+                ,fun({_, #number{}}=E) -> E;
+                    (#number{}=N) -> wnm_number:save(N)
                  end
-                ,fun({error, _}=E) -> E;
-                    ({ok, J}) ->  wnm_number:save(J)
-                 end
-                ,fun({error, _R}=E) -> 
-                         lager:debug("reserve prematurely ended: ~p", [_R]),
-                         E;
-                    ({ok, J}) -> 
+                ,fun({E, #number{}}) -> 
+                         lager:debug("reserve prematurely ended: ~p", [E]),
+                         {error, E};
+                    (#number{number_doc=JObj}) -> 
                          lager:debug("reserve successfully completed", []),
-                         {ok, wh_json:public_fields(J)}
+                         {ok, wh_json:public_fields(JObj)}
                  end
                ], 
-    lists:foldl(fun(F, J) -> F(J) end, wnm_number:get(Number, PublicFields), Routines).
+    lists:foldl(fun(F, J) -> catch F(J) end, ok, Routines).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -293,21 +286,22 @@ assign_number_to_account(Number, AssignTo, AuthBy) ->
 
 assign_number_to_account(Number, AssignTo, AuthBy, PublicFields) ->
     lager:debug("attempting to assign ~s to account ~s", [Number, AssignTo]),
-    Routines = [fun({error, _}=E) -> E;
-                    ({ok, J}) -> wnm_number:in_service(J, AssignTo, AuthBy)
+    Routines = [fun(_) -> wnm_number:get(Number, PublicFields) end
+                ,fun({_, #number{}}=E) -> E;
+                    (#number{}=N) -> wnm_number:in_service(N#number{assign_to=AssignTo, auth_by=AuthBy})
                  end
-                ,fun({error, _}=E) -> E;
-                    ({ok, J}) -> wnm_number:save(J)
+                ,fun({_, #number{}}=E) -> E;
+                    (#number{}=N) -> wnm_number:save(N)
                  end
-                ,fun({error, _R}=E) -> 
-                         lager:debug("assign number to account prematurely ended: ~p", [_R]),
-                         E;
-                    ({ok, J}) -> 
+                ,fun({E, #number{}}) -> 
+                         lager:debug("assign number to account prematurely ended: ~p", [E]),
+                         {error, E};
+                    (#number{number_doc=JObj}) -> 
                          lager:debug("assign number to account successfully completed", []),
-                         {ok, wh_json:public_fields(J)}
+                         {ok, wh_json:public_fields(JObj)}
                  end
-               ], 
-    lists:foldl(fun(F, J) -> F(J) end, wnm_number:get(Number, PublicFields), Routines).
+               ],
+    lists:foldl(fun(F, J) -> catch F(J) end, ok, Routines).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -319,25 +313,27 @@ assign_number_to_account(Number, AssignTo, AuthBy, PublicFields) ->
 -spec release_number/2 :: (ne_binary(), ne_binary()) -> {ok, wh_json:json_object()} | {error, _}.
 release_number(Number, AuthBy) ->    
     lager:debug("attempting to release ~s", [Number]),
-    Routines = [fun({error, _}=E) -> E;
-                    ({ok, J}) -> wnm_number:released(J, AuthBy)
+    Routines = [fun(_) -> wnm_number:get(Number) end
+                ,fun({_, #number{}}=E) -> E;
+                    (#number{}=N) -> wnm_number:released(N#number{auth_by=AuthBy})
                  end
-                ,fun({error, _}=E) -> E;
-                    ({ok, J}) -> 
-                         case wh_json:is_true(<<"pvt_deleted">>, J) of
-                             false -> wnm_number:save(J);
-                             true -> wnm_number:delete(J)
-                         end
+                ,fun({no_change_required, #number{}=N}) ->
+                         wnm_number:save_account_phone_numbers(N);
+                    ({invalid_state_transition, #number{}=N}) ->
+                         wnm_number:save_account_phone_numbers(N);
+                    ({_, #number{}}=E) -> E;
+                    (#number{hard_delete=false}=N) -> wnm_number:save(N);
+                    (#number{hard_delete=true}=N) -> wnm_number:delete(N)
                  end
-                ,fun({error, _R}=E) ->
-                         lager:debug("release prematurely ended: ~p", [_R]),
-                         E;
-                    ({ok, J}) -> 
+                ,fun({E, #number{}}) -> 
+                         lager:debug("release prematurely ended: ~p", [E]),
+                         {error, E};
+                    (#number{number_doc=JObj}) -> 
                          lager:debug("release successfully completed", []),
-                         {ok, wh_json:public_fields(J)}
+                         {ok, wh_json:public_fields(JObj)}
                  end
-               ], 
-    lists:foldl(fun(F, J) -> F(J) end, wnm_number:get(Number), Routines).
+               ],
+    lists:foldl(fun(F, J) -> catch F(J) end, ok, Routines).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -489,21 +485,23 @@ delete_attachment(Number, Name, AuthBy) ->
                                                            {error, atom()}.
 get_public_fields(Number, AuthBy) ->
     lager:debug("attempting to get public fields for number ~s", [Number]),
-    Routines = [fun({error, _}=E) -> E;
-                   ({ok, J}) -> 
-                        AssignedTo = wh_json:get_ne_value(<<"pvt_assigned_to">>, J),
-                        case wh_util:is_in_account_hierarchy(AuthBy, AssignedTo, true) of
-                            false -> {error, unauthorized};
-                            true -> {ok, J}
-                        end
+    Routines = [fun(_) -> wnm_number:get(Number) end
+                ,fun({_, #number{}}=E) -> E;
+                    (#number{assigned_to=AssignedTo}=N) ->
+                         case wh_util:is_in_account_hierarchy(AuthBy, AssignedTo, true) of
+                             false -> wnm_number:error_unauthorized(N);
+                             true -> N
+                         end
                  end
-                ,fun({error, _R}=E) -> 
-                         lager:debug("fetch public fields prematurely ended: ~p", [_R]),
-                         E;
-                    ({ok, J}) -> {ok, wh_json:public_fields(J)}
+                ,fun({E, #number{}}) -> 
+                         lager:debug("fetch public fields prematurely ended: ~p", [E]),
+                         {error, E};
+                    (#number{number_doc=JObj}) -> 
+                         lager:debug("fetch public fields successfully completed", []),
+                         {ok, wh_json:public_fields(JObj)}
                  end
                ], 
-    lists:foldl(fun(F, J) -> F(J) end, wnm_number:get(Number), Routines).
+    lists:foldl(fun(F, J) -> catch F(J) end, ok, Routines).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -515,24 +513,26 @@ get_public_fields(Number, AuthBy) ->
                                                                                   {error, atom()}.
 set_public_fields(Number, PublicFields, AuthBy) ->
     lager:debug("attempting to set public fields for number ~s", [Number]),
-    Routines = [fun({error, _}=E) -> E;
-                    ({ok, J}) -> 
-                        AssignedTo = wh_json:get_ne_value(<<"pvt_assigned_to">>, J),
-                        case wh_util:is_in_account_hierarchy(AuthBy, AssignedTo, true) of
-                            false -> {error, unauthorized};
-                            true -> {ok, J}
-                        end
+    Routines = [fun(_) -> wnm_number:get(Number, PublicFields) end
+                ,fun({_, #number{}}=E) -> E;
+                    (#number{assigned_to=AssignedTo}=N) ->
+                         case wh_util:is_in_account_hierarchy(AuthBy, AssignedTo, true) of
+                             false -> wnm_number:error_unauthorized(N);
+                             true -> N
+                         end
                  end
-                ,fun({error, _}=E) -> E;
-                    ({ok, J}) -> wnm_number:save(J)
+                ,fun({_, #number{}}=E) -> E;
+                    (#number{}=N) -> wnm_number:save(N)
                  end
-                ,fun({error, _R}=E) -> 
-                         lager:debug("set public fields prematurely ended: ~p", [_R]),
-                         E;
-                    ({ok, J}) -> {ok, wh_json:public_fields(J)}
+                ,fun({E, #number{}}) -> 
+                         lager:debug("set public fields prematurely ended: ~p", [E]),
+                         {error, E};
+                    (#number{number_doc=JObj}) -> 
+                         lager:debug("set public fields successfully completed", []),
+                         {ok, wh_json:public_fields(JObj)}
                  end
                ], 
-    lists:foldl(fun(F, J) -> F(J) end, wnm_number:get(Number, PublicFields), Routines).
+    lists:foldl(fun(F, J) -> catch F(J) end, ok, Routines).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -564,17 +564,7 @@ prepare_find_results([], _, _, Found) ->
     Found;
 prepare_find_results([Number|Numbers], ModuleName, ModuleResults, Found) ->
     case wnm_number:get(Number) of
-        {error, not_found} ->
-            ModuleData = wh_json:get_value(Number, ModuleResults),
-            JObj = wnm_number:create_discovery(Number, ModuleName, ModuleData, wh_json:new()),
-            case wnm_number:save(JObj, wh_json:new()) of
-                {ok, _} -> prepare_find_results(Numbers, ModuleName, ModuleResults, [Number|Found]);
-                {error, _R} ->
-                    lager:debug("failed to store discovery ~s: ~p", [Number, _R]),
-                    prepare_find_results(Numbers, ModuleName, ModuleResults, Found)
-            end;
-        {ok, JObj} ->
-            State = wh_json:get_value(<<"pvt_number_state">>, JObj),
+        {#number{state=State}} ->
             case lists:member(State, ?WNM_AVALIABLE_STATES) of
                 true ->
                     prepare_find_results(Numbers, ModuleName, ModuleResults, [Number|Found]);
@@ -582,7 +572,19 @@ prepare_find_results([Number|Numbers], ModuleName, ModuleResults, Found) ->
                     lager:debug("the discovery '~s' is not available: ~s", [Number, State]),
                     prepare_find_results(Numbers, ModuleName, ModuleResults, Found)
             end;
-        {error, _R} ->
+        {not_found, #number{}=N} ->
+            NewNumber = N#number{number=Number
+                                 ,module_name=ModuleName
+                                 ,module_data=wh_json:get_value(Number, ModuleResults)
+                                },
+            case wnm_number:save(wnm_number:create_discovery(NewNumber)) of
+                {#number{}} -> 
+                    prepare_find_results(Numbers, ModuleName, ModuleResults, [Number|Found]);
+                {_R, #number{}} ->
+                    lager:debug("failed to store discovery ~s: ~p", [Number, _R]),
+                    prepare_find_results(Numbers, ModuleName, ModuleResults, Found)
+            end;
+        {_R, #number{}} ->
             lager:debug("failed to determine state of discovery ~s: ~p", [Number, _R]),
             prepare_find_results(Numbers, ModuleName, ModuleResults, Found)    
     end.

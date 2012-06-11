@@ -9,10 +9,12 @@
 
 -type wnm_failures() :: invalid_state_transition |  
                         unauthorized |
+                        number_exists |
                         no_change_required |
                         not_reconcilable |
                         database_error |
                         unknown_carrier |
+                        service_restriction |
                         provider_fault |
                         carrier_fault.
 
