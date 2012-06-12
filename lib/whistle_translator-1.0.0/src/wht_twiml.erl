@@ -470,6 +470,7 @@ say(Call, SayMe, Attrs, Terminators) ->
     end.
 
 collect_digits(Call, MaxDigits, FinishOnKey, Timeout, Props) ->
+    lager:debug("GATHER: ~p max, finish: ~p with timeout ~p", [MaxDigits, FinishOnKey, Timeout]),
     MaxDigitsBin = wh_util:to_binary(MaxDigits),
     case whapps_call_command:collect_digits(MaxDigitsBin, Timeout, 2000
                                             ,undefined, [FinishOnKey], Call
