@@ -176,6 +176,8 @@ save(#number{}=Number) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec save_phone_number_docs/1 :: (wnm_number()) -> wnm_number().
+save_phone_number_docs(#number{phone_number_docs=undefined}=Number) ->
+    save_phone_number_docs(get_updated_phone_number_docs(Number));
 save_phone_number_docs(#number{phone_number_docs=PhoneNumberDocs}=Number) ->
     case dict:size(PhoneNumberDocs) > 0 of
         false -> Number;
@@ -737,6 +739,8 @@ error_carrier_fault(Reason, N) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec get_updated_phone_number_docs/1 :: (wnm_number()) -> wnm_number().
+get_updated_phone_number_docs(#number{phone_number_docs=undefined}=Number) ->
+    get_updated_phone_number_docs(Number#number{phone_number_docs=dict:new()});
 get_updated_phone_number_docs(#number{state=State}=Number) ->
     Unavailable = lists:member(State, ?WNM_UNAVAILABLE_STATES),
     Routines = [fun(#number{prev_assigned_to=undefined}=N) -> N;

@@ -34,7 +34,7 @@
                  ,auth_by = 'undefined' :: 'undefined' | ne_binary()
                  ,number_doc = wh_json:new() :: wh_json:json_object()
                  ,current_number_doc = wh_json:new() :: wh_json:json_object()
-                 ,phone_number_docs = dict:new() :: dict()
+                 ,phone_number_docs = 'undefined' :: 'undefined' | dict()
                  ,hard_delete = false :: boolean()
                 }).
 
