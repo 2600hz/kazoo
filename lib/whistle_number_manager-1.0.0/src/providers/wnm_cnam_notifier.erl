@@ -24,11 +24,11 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec save/1 :: (wnm_number()) -> wnm_number().
-save(#number{number = <<"reserved">>} = Number) ->
+save(#number{state = <<"reserved">>} = Number) ->
     maybe_publish_cnam(Number);
-save(#number{number = <<"in_service">>} = Number) ->
+save(#number{state = <<"in_service">>} = Number) ->
     maybe_publish_cnam(Number);
-save(#number{number = <<"port_in">>} = Number) ->
+save(#number{state = <<"port_in">>} = Number) ->
     maybe_publish_cnam(Number);
 save(Number) -> Number.
 
@@ -55,7 +55,7 @@ maybe_publish_cnam(#number{current_number_doc=CurrentJObj, number_doc=JObj
     Cnam = wh_json:get_ne_value(<<"cnam">>, JObj),
     case wh_util:is_empty(Cnam) of
         true -> N#number{features=sets:del_element(<<"cnam">>, Features)};
-        false when CurrentCnam =:= Cnam -> N;
+        false when CurrentCnam =:= Cnam -> N#number{features=sets:add_element(<<"cnam">>, Features)};
         false ->
             lager:debug("cnam information has been changed: ~s", [wh_json:encode(Cnam)]),
             publish_cnam_update(Cnam, N),

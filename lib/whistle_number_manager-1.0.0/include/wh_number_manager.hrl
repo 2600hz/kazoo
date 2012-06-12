@@ -17,12 +17,20 @@
 
 -define(WNM_PHONE_NUMBER_DOC, <<"phone_numbers">>).
 
--type transition_return() :: {'ok', wh_json:json_object()} |
-                             {'error', 'invalid_state_transition'} |
-                             {'error', 'unauthorized'} |
-                             {'error', 'carrier_fault'} |
-                             {'error', 'unknown_carrier'} |
-                             {'error', 'no_change_required'}.
+-type wnm_failures() :: invalid_state_transition |  
+                        unauthorized |
+                        number_exists |
+                        not_found |
+                        no_change_required |
+                        not_reconcilable |
+                        database_error |
+                        unknown_carrier |
+                        service_restriction |
+                        provider_fault |
+                        carrier_fault.
+
+-type operation_return() :: {'ok', wh_json:json_object()} |
+                            {wnm_failures(), wh_json:json_object()}.
 
 %%% NUMBER STATES
 %%% discovery    - The number was discovered via a carrier lookup but has not been reserved or purchased.

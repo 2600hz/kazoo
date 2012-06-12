@@ -602,8 +602,8 @@ merge_public_fields(PublicFields, #number{number_doc=JObj}=N) ->
     case wh_json:is_json_object(PublicFields) of
         false -> N;
         true ->
-            N#number{number=wh_json:merge_jobjs(wh_json:private_fields(JObj)
-                                                ,wh_json:public_fields(PublicFields))}
+            N#number{number_doc=wh_json:merge_jobjs(wh_json:private_fields(JObj)
+                                                    ,wh_json:public_fields(PublicFields))}
     end.
 
 %%--------------------------------------------------------------------
@@ -674,38 +674,26 @@ resolve_account_phone_numbers_conflict(JObj, Num, AccountDb) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec exec_providers/2 :: (wnm_number(), atom()) -> wnm_number().
--spec exec_providers/4 :: ([ne_binary(),...] | [], atom(), wh_json:json_object(), wnm_number()) -> wnm_number().
+-spec exec_providers/3 :: ([ne_binary(),...] | [], atom(), wnm_number()) -> wnm_number().
 
 exec_providers(Number, Action) ->
     Providers = whapps_config:get(?WNM_CONFIG_CAT, <<"providers">>, []),
-    exec_providers(Providers, Action, wh_json:new(), Number).
+    exec_providers(Providers, Action, Number).
 
-exec_providers([], _, Errors, #number{}=Number) ->
-    case wh_util:is_empty(Errors) of
-        false -> wnm_number:error_provider_fault(Errors, Number);
-        true -> Number
-    end;
-exec_providers([Provider|Providers], Action, Errors, Number) ->
-    try
-        lager:debug("executing provider ~s", [Provider]),
-        case wnm_util:try_load_module(<<"wnm_", Provider/binary>>) of
-            false ->
-                lager:debug("provider ~s is unknown, skipping", [Provider]),
-                exec_providers(Providers, Action, Errors, Number);
-            Mod ->
-                case apply(Mod, Action, [Number]) of
-                    #number{}=N -> exec_providers(Providers, Action, Errors, N);
-                    {error, Reason} ->
-                        lager:debug("provider ~s created error: ~p", [Provider, Reason]),
-                        E1 = wh_json:set_value(Provider, Reason, Errors), 
-                        exec_providers(Providers, Action, E1, Number)
-                end
-        end
-    catch
-        _:R ->
-            lager:debug("executing provider ~s threw exception: ~p", [Provider, R]),
-            E2 = wh_json:set_value(Provider, <<"feature provider threw exception">>, Errors), 
-            exec_providers(Providers, Action, E2, Number)
+exec_providers([], _, Number) -> Number;
+exec_providers([Provider|Providers], Action, Number) ->
+    lager:debug("executing provider ~s", [Provider]),
+    case wnm_util:try_load_module(<<"wnm_", Provider/binary>>) of
+        false ->
+            lager:debug("provider ~s is unknown, skipping", [Provider]),
+            exec_providers(Providers, Action, Number);
+        Mod ->
+            case apply(Mod, Action, [Number]) of
+                #number{}=N -> exec_providers(Providers, Action, N);
+                {error, Reason} ->
+                    Errors = wh_json:from_list([{Provider, Reason}]), 
+                    wnm_number:error_provider_fault(Errors, Number)
+            end
     end.
 
 %%--------------------------------------------------------------------
@@ -716,7 +704,7 @@ exec_providers([Provider|Providers], Action, Errors, Number) ->
 %%--------------------------------------------------------------------
 -spec error_invalid_state_transition/2 :: (ne_binary(), wnm_number()) -> no_return().
 error_invalid_state_transition(Transition, #number{state = State}=N) ->
-    Error = list_to_binary(["Invalid state transition from ", Transition, " to ", State]),
+    Error = list_to_binary(["Invalid state transition from ", State, " to ", Transition]),
     lager:debug("~s", [Error]),
     throw({invalid_state_transition, N#number{error=invalid_state_transition
                                               ,error_jobj=wh_json:from_list([{<<"state_transition">>, Error}])
@@ -876,7 +864,7 @@ get_phone_number_doc(Account, #number{phone_number_docs=Docs}) ->
 -spec create_number_summary/2 :: (ne_binary(), wnm_number()) -> wh_json:json_object().
 create_number_summary(Account, #number{state=State, features=Features, assigned_to=AssignedTo}) ->        
     Routines = [fun(J) -> wh_json:set_value(<<"state">>, State, J) end
-                ,fun(J) -> wh_json:set_value(<<"features">>, [wh_util:to_bianry(F) || F <- sets:to_list(Features)], J) end
+                ,fun(J) -> wh_json:set_value(<<"features">>, [wh_util:to_binary(F) || F <- sets:to_list(Features)], J) end
                 ,fun(J) -> wh_json:set_value(<<"on_subaccount">>, Account =/= AssignedTo, J) end
                 ,fun(J) -> wh_json:set_value(<<"assigned_to">>, AssignedTo, J) end
                ],
