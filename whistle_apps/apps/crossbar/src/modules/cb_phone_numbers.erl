@@ -205,7 +205,7 @@ validate(Context, _, ?PORT_DOCS, _) ->
 -spec post/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
 -spec post/4 :: (#cb_context{}, path_token(), path_token(), path_token()) -> #cb_context{}.
 post(#cb_context{doc=JObj, auth_account_id=AuthBy}=Context, Number) ->
-    Result = (catch wh_number_manager:set_public_fields(Number, JObj, AuthBy)),
+    Result = wh_number_manager:set_public_fields(Number, JObj, AuthBy),
     set_response(Result, Number, Context).
 
 post(#cb_context{req_files=Files}=Context, Number, ?PORT_DOCS, _) ->
@@ -215,14 +215,14 @@ post(#cb_context{req_files=Files}=Context, Number, ?PORT_DOCS, _) ->
 -spec put/3 :: (#cb_context{}, path_token(), path_token()) -> #cb_context{}.
 -spec put/4 :: (#cb_context{}, path_token(), path_token(), path_token()) -> #cb_context{}.
 put(#cb_context{account_id=AssignTo, auth_account_id=AuthBy, doc=JObj}=Context, Number) ->
-    Result = (catch wh_number_manager:create_number(Number, AssignTo, AuthBy, JObj)),
+    Result = wh_number_manager:create_number(Number, AssignTo, AuthBy, JObj),
     set_response(Result, Number, Context).
 
 put(#cb_context{account_id=AssignTo, auth_account_id=AuthBy, doc=JObj}=Context, Number, ?PORT) ->
-    Result = (catch wh_number_manager:port_in(Number, AssignTo, AuthBy, JObj)),
+    Result = wh_number_manager:port_in(Number, AssignTo, AuthBy, JObj),
     set_response(Result, Number, Context);
 put(#cb_context{account_id=AssignTo, auth_account_id=AuthBy, doc=JObj}=Context, Number, ?ACTIVATE) ->
-    case (catch wh_number_manager:assign_number_to_account(Number, AssignTo, AuthBy, JObj)) of
+    case wh_number_manager:assign_number_to_account(Number, AssignTo, AuthBy, JObj) of
         {ok, _}=Result ->
             case set_response(Result, Number, Context) of
                 #cb_context{resp_status=success}=C1 ->
@@ -237,7 +237,7 @@ put(#cb_context{account_id=AssignTo, auth_account_id=AuthBy, doc=JObj}=Context, 
             set_response(Else, Number, Context)
     end;
 put(#cb_context{account_id=AssignTo, auth_account_id=AuthBy, doc=JObj}=Context, Number, ?RESERVE) ->
-    Result = (catch wh_number_manager:reserve_number(Number, AssignTo, AuthBy, JObj)),
+    Result = wh_number_manager:reserve_number(Number, AssignTo, AuthBy, JObj),
     set_response(Result, Number, Context);
 put(#cb_context{req_files=Files}=Context, Number, ?PORT_DOCS) ->
     put_attachments(Number, Context, Files).
@@ -249,12 +249,12 @@ put(#cb_context{req_files=Files}=Context, Number, ?PORT_DOCS, _) ->
 -spec delete/4 :: (#cb_context{}, path_token(), path_token(), path_token()) -> #cb_context{}.
 
 delete(#cb_context{auth_account_id=AuthBy}=Context, Number) ->
-    Result = (catch wh_number_manager:release_number(Number, AuthBy)),
+    Result = wh_number_manager:release_number(Number, AuthBy),
     set_response(Result, Number, Context).
 
 delete(#cb_context{auth_account_id=AuthBy}=Context, Number, ?PORT_DOCS, Name) ->
     FileName = wh_util:to_binary(http_uri:encode(wh_util:to_list(Name))),
-    Result = (catch wh_number_manager:delete_attachment(Number, FileName, AuthBy)),
+    Result = wh_number_manager:delete_attachment(Number, FileName, AuthBy),
     set_response(Result, Number, Context).
 
 %%%===================================================================
@@ -389,28 +389,10 @@ put_attachments(Number, #cb_context{auth_account_id=AuthBy}=Context, [{Filename,
 %% @end
 %%--------------------------------------------------------------------
 -spec set_response/3 :: ({ok, wh_json:json_object()} | {error, term()}, ne_binary(), #cb_context{}) -> #cb_context{}.
-set_response({error, conflict}, _, Context) ->
-    crossbar_util:response_conflicting_docs(Context);
-set_response({error, invalid_state_transition}, _, Context) ->
-    crossbar_util:response(error, <<"authenticated account not authorized to preform that operation">>, 403, Context);
-set_response({error, unauthorized}, _, Context) ->
-    crossbar_util:response(error, <<"authenticated account not authorized to administrate this number">>, 403, Context);
-set_response({error, no_change_required}, _, Context) ->
-    crossbar_util:response_conflicting_docs(Context);
-set_response({error, unknown_carrier}, _, Context) ->
-    crossbar_util:response_db_fatal(Context);
-set_response({error, db_not_reachable}, _, Context) ->
-    crossbar_util:response_datastore_timeout(Context);
-set_response({error, not_found}, Number, Context) ->
-    crossbar_util:response_bad_identifier(Number, Context);
 set_response({ok, Doc}, _, Context) ->
     crossbar_util:response(Doc, Context);
-set_response(ok, _, Context) ->
-    crossbar_util:response(wh_json:new(), Context);
-set_response({error, JObj}, _, Context) when ?IS_JSON_GUARD(JObj) ->
-    crossbar_util:response_invalid_data(JObj, Context);    
-set_response({error, Else}, _, Context) when is_binary(Else) ->
-    crossbar_util:response_invalid_data(Else, Context);
+set_response({Error, Reason}, _, Context) ->
+    crossbar_util:response(error, wh_util:to_binary(Error), 500, Reason, Context);
 set_response(_Else, _, Context) ->
     lager:debug("unexpected response: ~p", [_Else]),
     crossbar_util:response_db_fatal(Context).

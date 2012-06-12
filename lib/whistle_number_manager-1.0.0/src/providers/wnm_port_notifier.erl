@@ -24,7 +24,7 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec save/1 :: (wnm_number()) -> wnm_number().
-save(#number{number = <<"port_in">>} = Number) ->
+save(#number{state = <<"port_in">>} = Number) ->
     maybe_publish_port(Number);
 save(Number) -> Number.
 
@@ -51,7 +51,7 @@ maybe_publish_port(#number{current_number_doc=CurrentJObj, number_doc=JObj
     Port = wh_json:get_ne_value(<<"port">>, JObj),
     case wh_util:is_empty(Port) of
         true -> N#number{features=sets:del_element(<<"port">>, Features)};
-        false when CurrentPort =:= Port -> N;
+        false when CurrentPort =:= Port -> N#number{features=sets:add_element(<<"port">>, Features)};
         false ->
             lager:debug("port information has been changed: ~s", [wh_json:encode(Port)]),
             publish_port_update(Port, N),

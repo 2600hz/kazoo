@@ -36,11 +36,11 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec save/1 :: (wnm_number()) -> wnm_number().
-save(#number{number = <<"port_in">>} = Number) ->
+save(#number{state = <<"port_in">>} = Number) ->
     maybe_update_dash_e911(Number);
-save(#number{number = <<"reserved">>} = Number) ->
+save(#number{state = <<"reserved">>} = Number) ->
     maybe_update_dash_e911(Number);
-save(#number{number = <<"in_service">>} = Number) ->
+save(#number{state = <<"in_service">>} = Number) ->
     maybe_update_dash_e911(Number);
 save(Number) -> Number.
 
@@ -73,14 +73,14 @@ maybe_update_dash_e911(#number{current_number_doc=CurrentJObj, number_doc=JObj
             lager:debug("dash e911 information has been removed, updating dash"),
             _ = remove_number(Number),
             N#number{features=sets:del_element(<<"dash_e911">>, Features)};
-        false when CurrentE911 =:= E911 -> N;
+        false when CurrentE911 =:= E911 -> N#number{features=sets:add_element(<<"dash_e911">>, Features)};
         false ->
             lager:debug("e911 information has been changed: ~s", [wh_json:encode(E911)]),
             case update_e911(Number, E911, JObj) of
-                {ok, J} -> N#number{features=sets:add_element(<<"dash_e911">>, Features)
-                                    ,number_doc=J};
-                {error, Reason} ->
-                    {error, <<"Unable to provision e911 address: ", (wh_json:to_binary(Reason))/binary>>}
+                {error, _}=E -> E;
+                {ok, J} -> 
+                    N#number{features=sets:add_element(<<"dash_e911">>, Features)
+                             ,number_doc=J}
             end
     end.
 

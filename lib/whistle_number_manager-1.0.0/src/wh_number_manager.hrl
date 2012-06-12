@@ -7,17 +7,6 @@
 -define(APP_VERSION, <<"1.0.0">>).
 -define(APP_NAME, <<"whistle_number_manager">>).
 
--type wnm_failures() :: invalid_state_transition |  
-                        unauthorized |
-                        number_exists |
-                        no_change_required |
-                        not_reconcilable |
-                        database_error |
-                        unknown_carrier |
-                        service_restriction |
-                        provider_fault |
-                        carrier_fault.
-
 -record(number, {number = 'undefined' :: 'undefined' | ne_binary()
                  ,number_db = 'undefined' :: 'undefined' | ne_binary()
                  ,state = <<"discovery">> :: ne_binary()
