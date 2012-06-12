@@ -98,7 +98,8 @@
                               {'prompt', binary()} | {'prompt', binary(), binary()} |
                               {'say', binary()} | {'say', binary(), binary()} |
                               {'say', binary(), binary(), binary()} | {'say', binary(), binary(), binary(), binary()} |
-                              {'tones', wh_json:json_objects()}.
+                              {'tones', wh_json:json_objects()} |
+                              {'tts', ne_binary()} | {'tts', ne_binary(), ne_binary()} | {'tts', ne_binary(), ne_binary(), ne_binary()}.
 -export_type([audio_macro_prompt/0]).
 
 -spec audio_macro/2 :: ([audio_macro_prompt(),...], whapps_call:call()) -> ne_binary().
@@ -138,7 +139,13 @@ audio_macro([{say, Say, Type, Method}|T], Call, Queue) ->
 audio_macro([{say, Say, Type, Method, Language}|T], Call, Queue) ->
     audio_macro(T, Call, [say_command(Say, Type, Method, Language, Call) | Queue]);
 audio_macro([{tones, Tones}|T], Call, Queue) ->
-    audio_macro(T, Call, [tones_command(Tones, Call) | Queue]).
+    audio_macro(T, Call, [tones_command(Tones, Call) | Queue]);
+audio_macro([{tts, Text}|T], Call, Queue) ->
+    audio_macro(T, Call, [tts_command(Text, Call) | Queue]);
+audio_macro([{tts, Text, Voice}|T], Call, Queue) ->
+    audio_macro(T, Call, [tts_command(Text, Voice, Call) | Queue]);
+audio_macro([{tts, Text, Voice, Lang}|T], Call, Queue) ->
+    audio_macro(T, Call, [tts_command(Text, Voice, Lang, Call) | Queue]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -672,27 +679,37 @@ tts(SayMe, Voice, Lang, Call) ->
 
 tts(SayMe, Voice, Lang, Terminators, Call) ->
     NoopId = couch_mgr:get_uuid(),
-    CallId = whapps_call:call_id(Call),
-    Q = whapps_call:controller_queue(Call),
+
     Commands = [wh_json:from_list([{<<"Application-Name">>, <<"noop">>}
-                                   ,{<<"Call-ID">>, CallId}
+                                   ,{<<"Call-ID">>, whapps_call:call_id(Call)}
                                    ,{<<"Msg-ID">>, NoopId}
-                                   | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
                                   ])
-                ,wh_json:from_list([{<<"Application-Name">>, <<"play">>}
-                                    ,{<<"Media-Name">>, list_to_binary([<<"tts://">>, SayMe])}
-                                    ,{<<"Terminators">>, Terminators}
-                                    ,{<<"Voice">>, Voice}
-                                    ,{<<"Language">>, Lang}
-                                    ,{<<"Call-ID">>, CallId}
-                                    | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
-                                   ])
+                ,tts_command(SayMe, Voice, Lang, Terminators, Call)
                ],
     Command = [{<<"Application-Name">>, <<"queue">>}
                ,{<<"Commands">>, Commands}
               ],
     send_command(Command, Call),
     NoopId.
+
+-spec tts_command/2 :: (ne_binary(), whapps_call:call()) -> wh_json:json_object().
+-spec tts_command/3 :: (ne_binary(), ne_binary(), whapps_call:call()) -> wh_json:json_object().
+-spec tts_command/4 :: (ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> wh_json:json_object().
+-spec tts_command/5 :: (ne_binary(), ne_binary(), ne_binary(), list(), whapps_call:call()) -> wh_json:json_object().
+tts_command(SayMe, Call) ->
+    tts_command(SayMe, <<"female">>, Call).
+tts_command(SayMe, Voice, Call) ->
+    tts_command(SayMe, Voice, <<"en-US">>, Call).
+tts_command(SayMe, Voice, Lang, Call) ->
+    tts_command(SayMe, Voice, Lang, ?ANY_DIGIT, Call).
+tts_command(SayMe, Voice, Lang, Terminators, Call) ->
+    wh_json:from_list([{<<"Application-Name">>, <<"play">>}
+                       ,{<<"Media-Name">>, list_to_binary([<<"tts://">>, SayMe])}
+                       ,{<<"Terminators">>, Terminators}
+                       ,{<<"Voice">>, Voice}
+                       ,{<<"Language">>, Lang}
+                       ,{<<"Call-ID">>, whapps_call:call_id(Call)}
+                      ]).
 
 -spec b_tts/2 :: (ne_binary(), whapps_call:call()) -> whapps_api_std_return().
 -spec b_tts/3 :: (ne_binary(), ne_binary(), whapps_call:call()) -> whapps_api_std_return().
