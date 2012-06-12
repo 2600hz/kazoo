@@ -10,7 +10,7 @@
 %%%-------------------------------------------------------------------
 -module(wnm_number).
 
--export([create_discovery/4]).
+-export([create_discovery/1]).
 -export([create_available/1]).
 -export([create_port_in/1]).
 -export([get/1, get/2]).
@@ -49,8 +49,8 @@
 %% Creates a new number record with the intial state of discovery
 %% @end
 %%--------------------------------------------------------------------
--spec create_discovery/4 :: (ne_binary(), ne_binary(), wh_json:json_object(), wh_json:json_object()) -> wnm_number().
-create_discovery(Number, ModuleName, ModuleData, PublicFields) ->
+-spec create_discovery/1 :: (wnm_number()) -> wnm_number().
+create_discovery(#number{number=Number, number_doc=Doc, module_name=ModuleName, module_data=ModuleData}) ->
     Num = wnm_util:normalize_number(Number),
     Db = wnm_util:number_to_db_name(Num),
     Routines = [fun(J) -> wh_json:set_value(<<"_id">>, Num, J) end
@@ -61,7 +61,7 @@ create_discovery(Number, ModuleName, ModuleData, PublicFields) ->
                 ,fun(J) -> wh_json:set_value(<<"pvt_db_name">>, Db, J) end
                 ,fun(J) -> wh_json:set_value(<<"pvt_created">>, wh_util:current_tstamp(), J) end
                ],
-    JObj = lists:foldl(fun(F, J) -> F(J) end, wh_json:public_fields(PublicFields), Routines),
+    JObj = lists:foldl(fun(F, J) -> F(J) end, wh_json:public_fields(Doc), Routines),
     json_to_record(JObj).
 
 %%--------------------------------------------------------------------
@@ -218,7 +218,7 @@ delete(Number) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec discovery/1 :: (wnm_number()) -> wnm_number().
+-spec discovery/1 :: (wnm_number()) -> no_return().
 discovery(#number{state = <<"discovery">>}=Number) ->
     error_no_change_required(<<"discovery">>, Number);
 discovery(Number) ->
@@ -230,7 +230,7 @@ discovery(Number) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec port_in/1 :: (wnm_number()) -> wnm_number().
+-spec port_in/1 :: (wnm_number()) -> no_return().
 port_in(#number{state = <<"port_in">>, assigned_to=AssignTo, assign_to=AssignTo}=Number) ->
     error_no_change_required(<<"port_in">>, Number);
 port_in(#number{state = <<"port_in">>}=Number) ->
@@ -452,7 +452,7 @@ released(#number{state = <<"reserved">>}=Number) ->
                 ,fun(#number{module_name=ModuleName, prev_assigned_to=AssignedTo, reserve_history=ReserveHistory}=N) ->
                     History = ordsets:del_element(AssignedTo, ReserveHistory),
                     case ordsets:to_list(History) of
-                        [] when ModuleName =:= <<"wnm_local">> -> 
+                        [] when ModuleName =:= wnm_local -> 
                             lager:debug("flagging released local number for hard delete", []),
                             N#number{state = <<"released">>, reserve_history=ordsets:new(), hard_delete=true};
                         [] -> 
@@ -484,7 +484,7 @@ released(#number{state = <<"in_service">>}=Number) ->
                 ,fun(#number{module_name=ModuleName, prev_assigned_to=AssignedTo, reserve_history=ReserveHistory}=N) ->
                     History = ordsets:del_element(AssignedTo, ReserveHistory),
                     case ordsets:to_list(History) of
-                        [] when ModuleName =:= <<"wnm_local">> -> 
+                        [] when ModuleName =:= wnm_local -> 
                             lager:debug("flagging local number for hard delete", []),
                             N#number{state = <<"released">>, reserve_history=ordsets:new(), hard_delete=true};
                         [] -> 
@@ -511,7 +511,7 @@ released(Number) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec port_out/1 :: (wnm_number()) -> wnm_number().
+-spec port_out/1 :: (wnm_number()) -> no_return().
 port_out(Number) ->
     error_invalid_state_transition(<<"port_out">>, Number).
 
@@ -521,7 +521,7 @@ port_out(Number) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec disconnected/1 :: (wnm_number()) -> wnm_number().
+-spec disconnected/1 :: (wnm_number()) -> no_return().
 disconnected(Number) ->
     error_invalid_state_transition(<<"disconnected">>, Number).
 
@@ -531,6 +531,9 @@ disconnected(Number) ->
 %% convert a json object to the number record
 %% @end
 %%--------------------------------------------------------------------
+-spec json_to_record/1 :: (wh_json:json_object()) -> wnm_number().
+-spec json_to_record/2 :: (wh_json:json_object(), wnm_number()) -> wnm_number().
+
 json_to_record(JObj) ->
     json_to_record(JObj, #number{}).
 
@@ -554,6 +557,7 @@ json_to_record(JObj, #number{number=Num, number_db=Db}=Number) ->
 %% convert a json object to the number record
 %% @end
 %%--------------------------------------------------------------------
+-spec record_to_json/1 :: (wnm_number()) -> wh_json:json_object().
 record_to_json(#number{number_doc=JObj}=N) ->
     Updates = [{<<"_id">>, N#number.number}
                ,{<<"pvt_number_state">>, N#number.state}
@@ -577,6 +581,7 @@ record_to_json(#number{number_doc=JObj}=N) ->
 %% conditionally merge the public fields with a number record
 %% @end
 %%--------------------------------------------------------------------
+-spec merge_public_fields/2 :: (_, wnm_number()) -> wnm_number().
 merge_public_fields(PublicFields, #number{number_doc=JObj}=N) ->
     case wh_json:is_json_object(PublicFields) of
         false -> N;
@@ -676,6 +681,7 @@ exec_providers_save([Provider|Providers], Errors, Number) ->
 %% create invalid state error
 %% @end
 %%--------------------------------------------------------------------
+-spec error_invalid_state_transition/2 :: (ne_binary(), wnm_number()) -> no_return().
 error_invalid_state_transition(Transition, #number{state = State}=N) ->
     Error = list_to_binary(["Invalid state transition from ", Transition, " to ", State]),
     lager:debug("~s", [Error]),
@@ -683,6 +689,7 @@ error_invalid_state_transition(Transition, #number{state = State}=N) ->
                                               ,error_jobj=wh_json:from_list([{<<"state_transition">>, Error}])
                                              }}).
 
+-spec error_unauthorized/1 :: (wnm_number()) -> no_return().
 error_unauthorized(N) ->
     Error = <<"Not authorized to preform requested number operation">>, 
     lager:debug("~s", [Error]),
@@ -690,44 +697,53 @@ error_unauthorized(N) ->
                            ,error_jobj=wh_json:from_list([{<<"unauthorized">>, Error}])
                           }}).
 
+-spec error_no_change_required/2 :: (ne_binary(), wnm_number()) -> no_return().
 error_no_change_required(State, N) ->
     Error = <<"Number is already in state ", State/binary>>,
     lager:debug("~s", [Error]),
     throw({no_change_required, N#number{error_jobj=wh_json:from_list([{<<"no_change">>, Error}])}}).
 
+-spec error_not_reconcilable/1 :: (wnm_number()) -> no_return().
 error_not_reconcilable(N) ->
     Error = <<"The number does not met the minium requirements for reconciliation">>,
     lager:debug("~s", [Error]),
     throw({not_reconcilable, N#number{error_jobj=wh_json:from_list([{<<"not_routable">>, Error}])}}).
 
+-spec error_number_database/2 :: (atom(), wnm_number()) -> no_return().
 error_number_database(Reason, N) ->
     Error = <<"The number database returned an error ", (wh_util:to_binary(Reason))/binary>>,
     lager:debug("~s", [Error]),
     throw({database_error, N#number{error_jobj=wh_json:from_list([{<<"number_database">>, Error}])}}).
 
+-spec error_carrier_not_specified/1 :: (wnm_number()) -> no_return().
 error_carrier_not_specified(N) ->
     Error = <<"The number does not have a known/valid carrier associated with it">>,
     lager:debug("~s", [Error]),
     throw({unknown_carrier, N#number{error_jobj=wh_json:from_list([{<<"unknown_carrier">>, Error}])}}).
 
+-spec error_number_not_found/1 :: (wnm_number()) -> no_return().
 error_number_not_found(N) ->
     Error = <<"The number could not be found">>,
     lager:debug("~s", [Error]),
     throw({not_found, N#number{error_jobj=wh_json:from_list([{<<"not_found">>, Error}])}}).    
 
+-spec error_number_exists/1 :: (wnm_number()) -> no_return().
 error_number_exists(N) ->
     Error = <<"The number already exists">>,
     lager:debug("~s", [Error]),
     throw({number_exists, N#number{error_jobj=wh_json:from_list([{<<"number_exists">>, Error}])}}).    
 
+-spec error_service_restriction/2 :: (wh_json:json_object(), wnm_number()) -> no_return().
 error_service_restriction(Reason, N) ->
     lager:debug("number billing restriction: ~p", [wh_json:encode(Reason)]),
     throw({service_restriction, N#number{error_jobj=wh_json:from_list([{<<"service_restriction">>, Reason}])}}).
 
+-spec error_provider_fault/2 :: (wh_json:json_object(), wnm_number()) -> no_return().
 error_provider_fault(Reason, N) ->
     lager:debug("feature provider(s) fault: ~p", [wh_json:encode(Reason)]),
     throw({provider_fault, N#number{error_jobj=wh_json:from_list([{<<"provider_fault">>, Reason}])}}).
 
+-spec error_carrier_fault/2 :: (wh_json:json_object(), wnm_number()) -> no_return().
 error_carrier_fault(Reason, N) ->
     lager:debug("carrier provider fault: ~p", [wh_json:encode(Reason)]),
     throw({carrier_fault, N#number{error_jobj=wh_json:from_list([{<<"carrier_fault">>, Reason}])}}).
@@ -770,7 +786,7 @@ get_updated_phone_number_docs(#number{state=State}=Number) ->
 -spec remove_from_phone_number_doc/2 :: (ne_binary(), wnm_number()) -> wnm_number().
 remove_from_phone_number_doc(Account, #number{number=Num, phone_number_docs=PhoneNumberDocs}=Number) ->
     case get_phone_number_doc(Account, Number) of
-        {error, not_found} -> Number;
+        {error, _} -> Number;
         {ok, JObj} -> 
             case wh_json:delete_key(Num, JObj) of
                 JObj -> 
@@ -791,7 +807,7 @@ remove_from_phone_number_doc(Account, #number{number=Num, phone_number_docs=Phon
 -spec update_phone_number_doc/2 :: (ne_binary(), wnm_number()) -> wnm_number().
 update_phone_number_doc(Account, #number{number=Num, phone_number_docs=PhoneNumberDocs}=Number) ->
     case get_phone_number_doc(Account, Number) of
-        {error, not_found} -> Number;
+        {error, _} -> Number;
         {ok, JObj} -> 
             Features = create_number_summary(Account, Number),
             case wh_json:set_value(Num, Features, JObj) of
@@ -810,7 +826,8 @@ update_phone_number_doc(Account, #number{number=Num, phone_number_docs=PhoneNumb
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_phone_number_doc/2 :: (ne_binary(), wnm_number()) -> wnm_number().
+-spec get_phone_number_doc/2 :: (ne_binary(), wnm_number()) -> {'ok', wh_json:json_object()} |
+                                                               {'error', _}.
 get_phone_number_doc(Account, #number{phone_number_docs=Docs}) ->
     case dict:find(Account, Docs) of
         error -> load_phone_number_doc(Account);
@@ -823,7 +840,7 @@ get_phone_number_doc(Account, #number{phone_number_docs=Docs}) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec create_number_summary/2 :: (ne_binary(), wnm_number()) -> wnm_number().
+-spec create_number_summary/2 :: (ne_binary(), wnm_number()) -> wh_json:json_object().
 create_number_summary(Account, #number{state=State, features=Features, assigned_to=AssignedTo}) ->        
     Routines = [fun(J) -> wh_json:set_value(<<"state">>, State, J) end
                 ,fun(J) -> wh_json:set_value(<<"features">>, [wh_util:to_bianry(F) || F <- sets:to_list(Features)], J) end

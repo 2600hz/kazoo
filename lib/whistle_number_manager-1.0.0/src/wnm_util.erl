@@ -68,8 +68,7 @@ is_tollfree(Number) ->
 %% and if return the name as well as the data
 %% @end
 %%--------------------------------------------------------------------
--spec get_carrier_module/1 :: (wh_json:json_object()) -> {ok, atom(), wh_json:json_object()} 
-                                                     | {error, not_specified | unknown_module}.
+-spec get_carrier_module/1 :: (wh_json:json_object()) -> atom().
 get_carrier_module(JObj) ->
     case wh_json:get_ne_value(<<"pvt_module_name">>, JObj) of
         undefined -> 
@@ -104,7 +103,7 @@ list_carrier_modules() ->
 %% Given a number determine the database name that it should belong to.
 %% @end
 %%--------------------------------------------------------------------
--spec number_to_db_name/1 :: (ne_binary()) -> 'undefined' | ne_binary().
+-spec number_to_db_name/1 :: (binary()) -> 'undefined' | ne_binary().
 number_to_db_name(<<NumPrefix:5/binary, _/binary>>) ->
     wh_util:to_binary(
       http_uri:encode(

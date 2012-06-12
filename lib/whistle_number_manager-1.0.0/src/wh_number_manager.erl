@@ -310,7 +310,8 @@ assign_number_to_account(Number, AssignTo, AuthBy, PublicFields) ->
 %% recycled or cancled after a buffer period
 %% @end
 %%--------------------------------------------------------------------
--spec release_number/2 :: (ne_binary(), ne_binary()) -> {ok, wh_json:json_object()} | {error, _}.
+-spec release_number/2 :: (ne_binary(), ne_binary()) -> {ok, wh_json:json_object()} |
+                                                        {error, _}.
 release_number(Number, AuthBy) ->    
     lager:debug("attempting to release ~s", [Number]),
     Routines = [fun(_) -> wnm_number:get(Number) end
@@ -341,33 +342,31 @@ release_number(Number, AuthBy) ->
 %% Lists attachments on a number
 %% @end
 %%--------------------------------------------------------------------
--spec list_attachments/2 :: (ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
+-spec list_attachments/2 :: (ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} |
+                                                          {'error', _}.
 list_attachments(Number, AuthBy) ->
     lager:debug("attempting to list attachements on ~s", [Number]),
     Routines = [fun(_) -> wnm_number:get(Number) end
-                ,fun({error, _}=E) -> E;
-                    ({ok, J}) -> 
-                         case wh_json:get_value(<<"pvt_number_state">>, J) of
-                             <<"port_in">> -> {ok, J};
-                             _Else -> {error, unauthorized}
-                         end
+                ,fun({_, #number{}}=E) -> E; 
+                    (#number{state = <<"port_in">>}=N) -> N;
+                    (#number{}=N) -> wnm_number:error_unauthorized(N)
                  end
-                ,fun({error, _}=E) -> E;
-                    ({ok, J}) ->
-                        AssignedTo = wh_json:get_ne_value(<<"pvt_assigned_to">>, J),
+                ,fun({_, #number{}}=E) -> E;
+                    (#number{assigned_to=AssignedTo}=N) ->
                         case wh_util:is_in_account_hierarchy(AuthBy, AssignedTo, true) of
-                            false -> {error, unauthorized};
-                            true -> {ok, J}
+                            false -> wnm_number:error_unauthorized(N);
+                            true -> N
                         end
                  end
-                ,fun({error, _R}=E) -> 
-                         lager:debug("list attachments prematurely ended: ~p", [_R]),
-                         E;
-                    ({ok, J}) -> 
-                         {ok, wh_json:get_value(<<"_attachments">>, J, wh_json:new())}
+                ,fun({E, #number{}}) -> 
+                         lager:debug("list attachements prematurely ended: ~p", [E]),
+                         {error, E};
+                    (#number{number_doc=JObj}) -> 
+                         lager:debug("list attachements successfully completed", []),
+                         {ok, wh_json:get_value(<<"_attachments">>, JObj, wh_json:new())}
                  end
                ], 
-    lists:foldl(fun(F, J) -> F(J) end, undefined, Routines).
+    lists:foldl(fun(F, J) -> F(J) end, ok, Routines).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -375,34 +374,32 @@ list_attachments(Number, AuthBy) ->
 %% Fetch an attachment on a number
 %% @end
 %%--------------------------------------------------------------------
--spec fetch_attachment/3 :: (ne_binary(), ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
+-spec fetch_attachment/3 :: (ne_binary(), ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} |
+                                                                       {'error', _}.
 fetch_attachment(Number, Name, AuthBy) ->
-    lager:debug("attempting to fetch attachement ~s on ~s for account ~s", [Name, Number]),
-    Routines = [fun({error, _}=E) -> E;
-                   ({ok, J}) -> 
-                        case wh_json:get_value(<<"pvt_number_state">>, J) of
-                            <<"port_in">> -> {ok, J};
-                            _Else -> {error, unauthorized}
-                        end
-                end
-                ,fun({error, _}=E) -> E;
-                    ({ok, J}) ->
-                         AssignedTo = wh_json:get_ne_value(<<"pvt_assigned_to">>, J),
-                         case wh_util:is_in_account_hierarchy(AuthBy, AssignedTo, true) of
-                             false -> {error, unauthorized};
-                             true -> {ok, J}
-                         end
+    lager:debug("fetch attachement on ~s", [Number]),
+    Routines = [fun(_) -> wnm_number:get(Number) end
+                ,fun({_, #number{}}=E) -> E; 
+                    (#number{state = <<"port_in">>}=N) -> N;
+                    (#number{}=N) -> wnm_number:error_unauthorized(N)
                  end
-                ,fun({error, _R}=E) -> 
-                         lager:debug("fetch attachments prematurely ended: ~p", [_R]),
-                         E;
-                    ({ok, J}) -> 
-                         Num = wh_json:get_value(<<"_id">>, J),
+                ,fun({_, #number{}}=E) -> E;
+                    (#number{assigned_to=AssignedTo}=N) ->
+                        case wh_util:is_in_account_hierarchy(AuthBy, AssignedTo, true) of
+                            false -> wnm_number:error_unauthorized(N);
+                            true -> N
+                        end
+                 end
+                ,fun({E, #number{}}) -> 
+                         lager:debug("fetch attachements prematurely ended: ~p", [E]),
+                         {error, E};
+                    (#number{number=Num}) -> 
                          Db = wnm_util:number_to_db_name(Num),
+                         lager:debug("attempting to fetch attachement ~s", [Name]),
                          couch_mgr:fetch_attachment(Db, Num, Name)
                  end
-               ], 
-    lists:foldl(fun(F, J) -> F(J) end, wnm_number:get(Number), Routines).
+               ],
+    lists:foldl(fun(F, J) -> F(J) end, ok, Routines).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -410,35 +407,33 @@ fetch_attachment(Number, Name, AuthBy) ->
 %% Add an attachment to a number
 %% @end
 %%--------------------------------------------------------------------
--spec put_attachment/5 :: (ne_binary(), ne_binary(), ne_binary(), proplist(), ne_binary()) -> {'ok', wh_json:json_object()} | {'error', atom}.
+-spec put_attachment/5 :: (ne_binary(), ne_binary(), ne_binary(), proplist(), ne_binary()) -> {'ok', wh_json:json_object()} |
+                                                                                              {'error', _}.
 put_attachment(Number, Name, Content, Options, AuthBy) ->
-    lager:debug("attempting to add an attachement to ~s", [Number]),
-    Routines = [fun({error, _}=E) -> E;
-                   ({ok, J}) -> 
-                        case wh_json:get_value(<<"pvt_number_state">>, J) of
-                            <<"port_in">> -> {ok, J};
-                            _Else -> {error, unauthorized}
-                        end
-                end
-                ,fun({error, _}=E) -> E;
-                    ({ok, J}) ->
-                         AssignedTo = wh_json:get_ne_value(<<"pvt_assigned_to">>, J),
-                         case wh_util:is_in_account_hierarchy(AuthBy, AssignedTo, true) of
-                             false -> {error, unauthorized};
-                             true -> {ok, J}
-                         end
+    lager:debug("add attachement to ~s", [Number]),
+    Routines = [fun(_) -> wnm_number:get(Number) end
+                ,fun({_, #number{}}=E) -> E; 
+                    (#number{state = <<"port_in">>}=N) -> N;
+                    (#number{}=N) -> wnm_number:error_unauthorized(N)
                  end
-                ,fun({error, _R}=E) -> 
-                         lager:debug("put attachments prematurely ended: ~p", [_R]),
-                         E;
-                    ({ok, J}) -> 
-                         Rev = wh_json:get_value(<<"_rev">>, J),
-                         Num = wh_json:get_value(<<"_id">>, J),
+                ,fun({_, #number{}}=E) -> E;
+                    (#number{assigned_to=AssignedTo}=N) ->
+                        case wh_util:is_in_account_hierarchy(AuthBy, AssignedTo, true) of
+                            false -> wnm_number:error_unauthorized(N);
+                            true -> N
+                        end
+                 end
+                ,fun({E, #number{}}) -> 
+                         lager:debug("put attachements prematurely ended: ~p", [E]),
+                         {error, E};
+                    (#number{number=Num, number_doc=JObj}) -> 
+                         lager:debug("attempting to put attachement ~s", [Name]),
                          Db = wnm_util:number_to_db_name(Num),
+                         Rev = wh_json:get_value(<<"_rev">>, JObj),
                          couch_mgr:put_attachment(Db, Num, Name, Content, [{rev, Rev}|Options])
                  end
-               ], 
-    lists:foldl(fun(F, J) -> F(J) end, wnm_number:get(Number), Routines).
+               ],
+    lists:foldl(fun(F, J) -> F(J) end, ok, Routines).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -448,32 +443,29 @@ put_attachment(Number, Name, Content, Options, AuthBy) ->
 %%--------------------------------------------------------------------
 -spec delete_attachment/3 :: (ne_binary(), ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
 delete_attachment(Number, Name, AuthBy) ->
-    lager:debug("attempting to delete attachement ~s from ~s", [Name, Number]),
-    Routines = [fun({error, _}=E) -> E;
-                   ({ok, J}) -> 
-                        case wh_json:get_value(<<"pvt_number_state">>, J) of
-                            <<"port_in">> -> {ok, J};
-                            _Else -> {error, unauthorized}
-                        end
-                end
-                ,fun({error, _}=E) -> E;
-                    ({ok, J}) ->
-                        AssignedTo = wh_json:get_ne_value(<<"pvt_assigned_to">>, J),
+    lager:debug("delete attachement from ~s", [Number]),
+    Routines = [fun(_) -> wnm_number:get(Number) end
+                ,fun({_, #number{}}=E) -> E; 
+                    (#number{state = <<"port_in">>}=N) -> N;
+                    (#number{}=N) -> wnm_number:error_unauthorized(N)
+                 end
+                ,fun({_, #number{}}=E) -> E;
+                    (#number{assigned_to=AssignedTo}=N) ->
                         case wh_util:is_in_account_hierarchy(AuthBy, AssignedTo, true) of
-                            false -> {error, unauthorized};
-                            true -> {ok, J}
+                            false -> wnm_number:error_unauthorized(N);
+                            true -> N
                         end
                  end
-                ,fun({error, _R}=E) -> 
-                         lager:debug("delete attachment prematurely ended: ~p", [_R]),
-                         E;
-                    ({ok, J}) ->
-                         Num = wh_json:get_value(<<"_id">>, J),
+                ,fun({E, #number{}}) -> 
+                         lager:debug("delete attachements prematurely ended: ~p", [E]),
+                         {error, E};
+                    (#number{number=Num}) -> 
+                         lager:debug("attempting to delete attachement ~s", [Name]),
                          Db = wnm_util:number_to_db_name(Num),
                          couch_mgr:delete_attachment(Db, Num, Name)
                  end
-               ], 
-    lists:foldl(fun(F, J) -> F(J) end, wnm_number:get(Number), Routines).
+               ],
+    lists:foldl(fun(F, J) -> F(J) end, ok, Routines).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -541,8 +533,8 @@ set_public_fields(Number, PublicFields, AuthBy) ->
 %% ensure the modules data is stored for later acquisition.
 %% @end
 %%--------------------------------------------------------------------
--spec prepare_find_results/2 :: (proplist(), [] | [ne_binary(),...]) -> [] | [ne_binary(),...].
--spec prepare_find_results/4 :: ([] | [ne_binary(),...], ne_binary(), wh_json:json_object(), [] | [ne_binary(),...])
+-spec prepare_find_results/2 :: (proplist(), [] | [[ne_binary(),...],...]) -> [] | [ne_binary(),...].
+-spec prepare_find_results/4 :: ([] | [ne_binary(),...], atom(), wh_json:json_object(), [] | [ne_binary(),...])
                                 -> [] | [ne_binary(),...].
 
 prepare_find_results([], Found) ->
@@ -563,8 +555,8 @@ prepare_find_results([_|T], Found) ->
 prepare_find_results([], _, _, Found) ->
     Found;
 prepare_find_results([Number|Numbers], ModuleName, ModuleResults, Found) ->
-    case wnm_number:get(Number) of
-        {#number{state=State}} ->
+    case catch wnm_number:get(Number) of
+        #number{state=State} ->
             case lists:member(State, ?WNM_AVALIABLE_STATES) of
                 true ->
                     prepare_find_results(Numbers, ModuleName, ModuleResults, [Number|Found]);
@@ -577,8 +569,8 @@ prepare_find_results([Number|Numbers], ModuleName, ModuleResults, Found) ->
                                  ,module_name=ModuleName
                                  ,module_data=wh_json:get_value(Number, ModuleResults)
                                 },
-            case wnm_number:save(wnm_number:create_discovery(NewNumber)) of
-                {#number{}} -> 
+            case catch wnm_number:save(wnm_number:create_discovery(NewNumber)) of
+                #number{} -> 
                     prepare_find_results(Numbers, ModuleName, ModuleResults, [Number|Found]);
                 {_R, #number{}} ->
                     lager:debug("failed to store discovery ~s: ~p", [Number, _R]),
