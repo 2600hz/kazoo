@@ -152,7 +152,7 @@ get(Number, PublicFields) ->
 -spec save/1 :: (wnm_number()) -> wnm_number().
 save(#number{}=Number) ->
     Routines = [fun(#number{}=N) -> N#number{number_doc=record_to_json(N)} end
-                ,fun(#number{}=N) -> exec_providers_save(N) end
+                ,fun(#number{}=N) -> exec_providers(N, save) end
                 ,fun(#number{}=N) -> get_updated_phone_number_docs(N) end
 %%                ,fun(#number{phone_number_doc=PhoneNumbers}=N) -> 
 %%                         case wh_service_numbers:update(PhoneNumbers) of
@@ -210,7 +210,23 @@ save_phone_number_docs([{Account, JObj}|Props], #number{number=Num}=Number) ->
 %%--------------------------------------------------------------------
 -spec delete/1 :: (wnm_number()) -> wnm_number().
 delete(Number) ->
-    Number.
+    Routines = [fun(#number{}=N) -> N#number{number_doc=record_to_json(N)} end
+                ,fun(#number{}=N) -> exec_providers(N, delete) end
+                ,fun(#number{}=N) -> get_updated_phone_number_docs(N) end
+%%                ,fun(#number{phone_number_doc=PhoneNumbers}=N) -> 
+%%                         case wh_service_numbers:update(PhoneNumbers) of
+%%                             {error, Reason} -> error_service_restriction(Reason, N);
+%%                             ok -> N
+%%                         end
+%%                 end
+                ,fun({_, #number{}}=E) -> E;
+                    (#number{}=N) -> delete_number_doc(N)
+                 end
+                ,fun({_, #number{}}=E) -> E;
+                    (#number{}=N) -> save_phone_number_docs(N)
+                 end
+               ],
+    lists:foldl(fun(F, J) -> F(J) end, Number, Routines).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -270,7 +286,7 @@ available(Number) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec reserved/1 :: (wnm_number()) -> wnm_number().
-reserved(#number{state = <<"discovery">>}=Number) -> %%, JObj, AssignTo, AuthBy) ->
+reserved(#number{state = <<"discovery">>}=Number) ->
     Routines = [fun(#number{assign_to=AssignTo, auth_by=AuthBy}=N) ->
                         case wh_util:is_in_account_hierarchy(AuthBy, AssignTo, true) of
                             false -> error_unauthorized(N);
@@ -295,7 +311,7 @@ reserved(#number{state = <<"discovery">>}=Number) -> %%, JObj, AssignTo, AuthBy)
 
                ],
     lists:foldl(fun(F, J) -> F(J) end, Number, Routines);
-reserved(#number{state = <<"available">>}=Number) -> %%, JObj, AssignTo, AuthBy) ->
+reserved(#number{state = <<"available">>}=Number) ->
     Routines = [fun(#number{assign_to=AssignTo, auth_by=AuthBy}=N) ->
                         case wh_util:is_in_account_hierarchy(AuthBy, AssignTo, true) of
                             false -> error_unauthorized(N);
@@ -615,6 +631,23 @@ save_number_doc(#number{number_db=Db, number=Num, number_doc=JObj}=Number) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
+%% Delete the number doc in the numbers db
+%% @end
+%%--------------------------------------------------------------------
+-spec delete_number_doc/1 :: (wnm_number()) -> wnm_number().
+delete_number_doc(#number{number_db=Db, number=Num, number_doc=JObj}=Number) ->
+    case couch_mgr:del_doc(Db, JObj) of
+        {ok, _} -> 
+            lager:debug("deleted '~s' from '~s'", [Num, Db]),
+            Number#number{number_doc=wh_json:new()};
+        {error, Reason} ->
+            lager:debug("failed to delete '~s' in '~s': ~p", [Num, Db, Reason]),
+            error_number_database(Reason, Number)
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
 %% Merge the changes to this number in the account phone_numbers doc
 %% into the current phone_numbers doc.
 %% @end
@@ -640,39 +673,39 @@ resolve_account_phone_numbers_conflict(JObj, Num, AccountDb) ->
 %% them and collecting any errors...
 %% @end
 %%--------------------------------------------------------------------
--spec exec_providers_save/1 :: (wnm_number()) -> wnm_number().
--spec exec_providers_save/3 :: ([ne_binary(),...] | [], wh_json:json_object(), wnm_number()) -> wnm_number().
+-spec exec_providers/2 :: (wnm_number(), atom()) -> wnm_number().
+-spec exec_providers/4 :: ([ne_binary(),...] | [], atom(), wh_json:json_object(), wnm_number()) -> wnm_number().
 
-exec_providers_save(Number) ->
+exec_providers(Number, Action) ->
     Providers = whapps_config:get(?WNM_CONFIG_CAT, <<"providers">>, []),
-    exec_providers_save(Providers, wh_json:new(), Number).
+    exec_providers(Providers, Action, wh_json:new(), Number).
 
-exec_providers_save([], Errors, #number{}=Number) ->
+exec_providers([], _, Errors, #number{}=Number) ->
     case wh_util:is_empty(Errors) of
         false -> wnm_number:error_provider_fault(Errors, Number);
         true -> Number
     end;
-exec_providers_save([Provider|Providers], Errors, Number) ->
+exec_providers([Provider|Providers], Action, Errors, Number) ->
     try
         lager:debug("executing provider ~s", [Provider]),
         case wnm_util:try_load_module(<<"wnm_", Provider/binary>>) of
             false ->
                 lager:debug("provider ~s is unknown, skipping", [Provider]),
-                exec_providers_save(Providers, Errors, Number);
+                exec_providers(Providers, Action, Errors, Number);
             Mod ->
-                case Mod:save(Number) of
-                    #number{}=N -> exec_providers_save(Providers, Errors, N);
+                case apply(Mod, Action, [Number]) of
+                    #number{}=N -> exec_providers(Providers, Action, Errors, N);
                     {error, Reason} ->
                         lager:debug("provider ~s created error: ~p", [Provider, Reason]),
                         E1 = wh_json:set_value(Provider, Reason, Errors), 
-                        exec_providers_save(Providers, E1, Number)
+                        exec_providers(Providers, Action, E1, Number)
                 end
         end
     catch
         _:R ->
             lager:debug("executing provider ~s threw exception: ~p", [Provider, R]),
             E2 = wh_json:set_value(Provider, <<"feature provider threw exception">>, Errors), 
-            exec_providers_save(Providers, E2, Number)
+            exec_providers(Providers, Action, E2, Number)
     end.
 
 %%--------------------------------------------------------------------
