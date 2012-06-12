@@ -33,9 +33,8 @@
                  ,assign_to = 'undefined' :: 'undefined' | ne_binary()
                  ,auth_by = 'undefined' :: 'undefined' | ne_binary()
                  ,number_doc = wh_json:new() :: wh_json:json_object()
-                 ,phone_number_doc = wh_json:new() :: wh_json:json_object()
                  ,current_number_doc = wh_json:new() :: wh_json:json_object()
-                 ,current_phone_number_doc = wh_json:new() :: wh_json:json_object()
+                 ,phone_number_docs = dict:new() :: dict()
                  ,hard_delete = false :: boolean()
                 }).
 

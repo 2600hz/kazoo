@@ -204,7 +204,7 @@ reconcile_number(Number, AssignTo, AuthBy) ->
                          wnm_number:in_service(N)
                  end
                 ,fun({no_change_required, #number{}=N}) ->
-                         wnm_number:save_account_phone_numbers(N);
+                         wnm_number:save_phone_number_docs(N);
                     ({_, #number{}}=E) -> E;
                     (#number{}=N) -> wnm_number:save(N)
                  end
@@ -318,9 +318,9 @@ release_number(Number, AuthBy) ->
                     (#number{}=N) -> wnm_number:released(N#number{auth_by=AuthBy})
                  end
                 ,fun({no_change_required, #number{}=N}) ->
-                         wnm_number:save_account_phone_numbers(N);
+                         wnm_number:save_phone_number_docs(N);
                     ({invalid_state_transition, #number{}=N}) ->
-                         wnm_number:save_account_phone_numbers(N);
+                         wnm_number:save_phone_number_docs(N);
                     ({_, #number{}}=E) -> E;
                     (#number{hard_delete=false}=N) -> wnm_number:save(N);
                     (#number{hard_delete=true}=N) -> wnm_number:delete(N)
