@@ -69,7 +69,7 @@ publish_port_update(Port, #number{number=Number, state=State, assigned_to=Assign
                                   ,module_name=ModuleName, auth_by=AuthBy}) ->
     Notify = [{<<"Account-ID">>, AssignedTo}
               ,{<<"Number-State">>, State}
-              ,{<<"Local-Number">>, ModuleName =:= <<"wnm_local">>}
+              ,{<<"Local-Number">>, ModuleName =:= wnm_local}
               ,{<<"Number">>, Number}
               ,{<<"Acquired-For">>, AuthBy}
               ,{<<"Port">>, Port}
