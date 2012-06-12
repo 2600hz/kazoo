@@ -6,6 +6,7 @@
 %%% @contributors
 %%%   Karl Anderson
 %%%   James Aimonetti
+%%%   Jon Blanton
 %%%-------------------------------------------------------------------
 -module(v1_resource).
 
@@ -137,9 +138,20 @@ check_preflight(Req0, #cb_context{allowed_methods=Methods, req_nouns=[{Mod, Para
                 {false, Req2} ->
                     lager:debug("not CORS preflight"),
                     {ok, Req3} = v1_util:add_cors_headers(Req2, Context),
-                    {Methods1, Req3, Context#cb_context{allow_methods=Methods1
-                                                        ,req_verb=Verb
-                                                       }}
+		    VerbAtom = wh_util:to_atom(wh_util:to_upper_binary(Verb)),
+		    case lists:member(VerbAtom, Methods1) of
+			true ->
+			    {Methods1, Req3, Context#cb_context{allow_methods=Methods1
+								,req_verb=Verb
+							       }};
+			false ->
+			    Context1 = crossbar_util:response(error, "method not allowed", 405, Context),
+			    {Content, Req3} = v1_util:create_resp_content(Req3, Context1),
+			    {ok, Req4} = cowboy_http_req:set_resp_body(Content, Req3),
+			    {Methods1, Req4, Context1#cb_context{allow_methods=Methods1
+								 ,req_verb=Verb
+								}}
+		    end
             end
     end.
 
