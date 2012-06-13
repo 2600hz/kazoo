@@ -69,11 +69,7 @@ update_number(JObj, PhoneNumber, Resellers) ->
                                 wh_resellers:increment_quantity(<<"phone_numbers">>, PhoneNumber, R)
                         end
                         ,fun(R) ->
-                                 Number = wh_json:get_value(PhoneNumber, JObj, wh_json:new()),
-                                 Services = [Service
-                                             || Service <- wh_json:get_keys(Number)
-                                                    ,wh_json:is_true(Service, Number)
-                                            ],
+                                 Services = wh_json:get_value([PhoneNumber, <<"features">>], JObj, []),
                                  update_number_services(Services, R)
                          end
                        ],
