@@ -33,11 +33,11 @@ init() ->
     _ = crossbar_bindings:bind(<<"v1_resource.authenticate">>, ?MODULE, authenticate),
     _ = crossbar_bindings:bind(<<"v1_resource.validate.schemas">>, ?MODULE, validate).
 
-authorize(#cb_context{req_nouns=[{<<"schema">>,_}]}) ->
+authorize(#cb_context{req_nouns=[{<<"schemas">>,_}]}) ->
     lager:debug("authorizing request to fetch schema(s)"),
     true.
 
-authenticate(#cb_context{req_nouns=[{<<"schema">>,_}]}) ->
+authenticate(#cb_context{req_nouns=[{<<"schemas">>,_}]}) ->
     lager:debug("authenticating request to fetch schema(s)"),
     true.
 
