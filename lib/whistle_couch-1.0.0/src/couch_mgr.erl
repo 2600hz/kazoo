@@ -551,8 +551,8 @@ update_doc(DbName, Id, UpdateProps, CreateProps) ->
 %% remove document from the db
 %% @end
 %%--------------------------------------------------------------------
--spec del_doc/2 :: (ne_binary(), wh_json:json_object() | ne_binary()) -> {'ok', wh_json:json_object()} |
-                                                                         {'error', atom()}.
+-spec del_doc/2 :: (ne_binary(), wh_json:json_object() | ne_binary()) -> {'ok', wh_json:json_objects()} |
+                                                                         couchbeam_error().
 del_doc(DbName, Doc) ->
     couch_util:del_doc(get_conn(), DbName, Doc).
 

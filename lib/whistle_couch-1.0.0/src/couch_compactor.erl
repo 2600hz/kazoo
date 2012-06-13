@@ -10,11 +10,23 @@
 
 -export([start_link/0, init/1]).
 
--export([compact_all/0, compact_node/1, compact_db/1, compact_db/2]).
+-export([compact_all/0
+         ,compact_node/1
+         ,compact_db/1
+         ,compact_db/2
+        ]).
 
 %% Conflict resolution-enabled API
--export([compact_all/1, compact_all/2, compact_node/2, compact_node/3
-         ,compact_db/3, compact_db/4]).
+-export([compact_all/1
+         ,compact_all/2
+         ,compact_node/2
+         ,compact_node/3
+         ,compact_db/3
+         ,compact_db/4
+        ]).
+
+%% internal API functions
+-export([compact_shard/3]).
 
 -include_lib("whistle_couch/include/wh_couch.hrl").
 -define(SLEEP_BETWEEN_COMPACTION, 60000).
@@ -22,6 +34,7 @@
 -define(MAX_COMPACTING_SHARDS, 10).
 -define(MAX_COMPACTING_VIEWS, 5).
 -define(SLEEP_BETWEEN_VIEWS, 2000).
+-define(MAX_WAIT_FOR_COMPACTION_PID, 360000). % five minutes
 
 start_link() ->
     proc_lib:start_link(?MODULE, init, [self()], infinity, []).
@@ -183,13 +196,18 @@ compact_node_shards(Shards, AdminConn, DesignDocs) ->
 
 -spec compact_shards/3 :: ([ne_binary(),...], server(), [ne_binary(),...] | []) -> 'ok'. 
 compact_shards(Shards, AdminConn, DesignDocs) ->
-    S = self(),
-    _ = [receive {Pid, _} -> ok end
-         || Pid <- [spawn(fun() ->
-                                  S ! {self(), catch(compact_shard(AdminConn, Shard, DesignDocs))}
-                          end)
-                    || Shard <- Shards
-                   ]
+    Pids = [spawn_monitor(?MODULE, compact_shard, [AdminConn, Shard, DesignDocs])
+            || Shard <- Shards
+           ],
+
+    MaxWait = wh_util:to_integer(
+                couch_config:fetch(<<"max_wait_for_compaction_pid">>, ?MAX_WAIT_FOR_COMPACTION_PID)
+               ),
+
+    _ = [receive {'DOWN', Ref, process, Pid, _} -> ok
+         after MaxWait ->
+                 lager:debug("tired of waiting on ~p(~p), moving on", [Pid, Ref])
+         end || {Pid,Ref} <- Pids
         ],
     ok = timer:sleep(couch_config:fetch(<<"sleep_between_compaction">>, ?SLEEP_BETWEEN_COMPACTION)).
 
@@ -199,12 +217,41 @@ compact_shard(AdminConn, Shard, DesignDocs) ->
     wait_for_compaction(AdminConn, Shard),
     couch_util:db_compact(AdminConn, Shard),
     wait_for_compaction(AdminConn, Shard),
+
     lager:debug("cleanup views in shard ~s", [Shard]),
     couch_util:db_view_cleanup(AdminConn, Shard),
     wait_for_compaction(AdminConn, Shard),
+
+    lager:debug("cleanup design docs in shard ~s", [Shard]),
     compact_design_docs(AdminConn, Shard, DesignDocs),
     wait_for_compaction(AdminConn, Shard),
-    ok.
+
+    lager:debug("finished compacting shard ~s", [Shard]).
+
+-spec compact_design_docs/3 :: (server(), ne_binary(), [ne_binary(),...] | []) -> 'ok'.
+compact_design_docs(AdminConn, Shard, DesignDocs) ->
+    case catch(lists:split(?MAX_COMPACTING_VIEWS, DesignDocs)) of
+        {'EXIT', _} -> 
+            _ = [begin
+                     lager:debug("cleanup design doc ~s in shard ~s", [Design, Shard]),
+                     couch_util:design_compact(AdminConn, Shard, Design) 
+                 end
+                  || Design <- DesignDocs
+                ],
+            ok = timer:sleep(couch_config:fetch(<<"sleep_between_views">>, ?SLEEP_BETWEEN_VIEWS)),
+            wait_for_compaction(AdminConn, Shard),
+            ok;
+        {Compact, Remaining} ->
+            _ = [begin
+                     lager:debug("cleanup design doc ~s in shard ~s", [Design, Shard]),
+                     couch_util:design_compact(AdminConn, Shard, Design)
+                 end
+                  || Design <- Compact
+                ],
+            ok = timer:sleep(couch_config:fetch(<<"sleep_between_views">>, ?SLEEP_BETWEEN_VIEWS)),
+            wait_for_compaction(AdminConn, Shard),
+            compact_design_docs(AdminConn, Shard, Remaining)
+    end.
 
 -spec compact_design_docs/3 :: (server(), ne_binary(), [ne_binary(),...] | []) -> 'ok'.
 compact_design_docs(AdminConn, Shard, DesignDocs) ->
@@ -258,13 +305,13 @@ get_db_design_docs(Conn, DBEncoded) ->
 
 -spec get_db_shards/2 :: (#server{}, ne_binary()) -> [ne_binary()].
 get_db_shards(AdminConn, DBEncoded) ->
-    case couch_config:fetch({shards, DBEncoded}, undefined, ?WH_COUCH_CACHE) of
+    case couch_config:fetch(DBEncoded, undefined, ?WH_COUCH_CACHE) of
         undefined ->
             case couch_util:db_info(AdminConn) of
                 {ok, []} -> lager:debug("no shards found on admin conn? That's odd"), [];
                 {ok, Shards} ->
                     Encoded = [ ShardEncoded || Shard <- Shards, is_a_shard(ShardEncoded=binary:replace(Shard, <<"/">>, <<"%2f">>, [global]), DBEncoded) ],
-                    couch_config:store({shards, DBEncoded}, Encoded, ?WH_COUCH_CACHE),
+                    couch_config:store(DBEncoded, Encoded, ?WH_COUCH_CACHE),
                     lager:debug("cached encoded shards for ~s", [DBEncoded]),
                     Encoded;
                 {error, _E} ->
