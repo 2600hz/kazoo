@@ -10,14 +10,21 @@
 -behaviour(gen_listener).
 
 %% API
--export([start_link/0]).
--export([conferences_on_node/1]).
--export([handle_command/2]).
--export([handle_search_req/2]).
+-export([start_link/0
+         ,conferences_on_node/1
+         ,handle_command/2
+         ,handle_search_req/2
+        ]).
 
 %% gen_server callbacks
--export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2,
-         terminate/2, code_change/3]).
+-export([init/1
+         ,handle_call/3
+         ,handle_cast/2
+         ,handle_info/2
+         ,handle_event/2
+         ,terminate/2
+         ,code_change/3
+        ]).
 
 -define(RESPONDERS, [{{?MODULE, handle_command}, [{<<"conference">>, <<"command">>}]}
                      ,{{?MODULE, handle_search_req}, [{<<"conference">>, <<"search_req">>}]}
@@ -61,14 +68,14 @@ conferences_on_node(Node) ->
     Props = ecallmgr_util:get_interface_properties(Node),
     conferences_xml_to_json(Xml, [{<<"Hostname">>, Hostname}|Props], wh_json:new()).
 
--spec handle_command/2 :: (wh_json:json_object(), proplist()) -> ok.
+-spec handle_command/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
 handle_command(JObj, _Props) ->
     ConferenceId = wh_json:get_value(<<"Conference-ID">>, JObj),
     Focus = get_conference_focus(ConferenceId),
     ecallmgr_conference_command:exec(Focus, ConferenceId, JObj),
     ok.
 
--spec handle_search_req/2 :: (wh_json:json_object(), proplist()) -> ok.
+-spec handle_search_req/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
 handle_search_req(JObj, _Props) ->
     ConferenceId = wh_json:get_value(<<"Conference-ID">>, JObj),
     lager:debug("received search request for conference id ~s", [ConferenceId]),
@@ -87,8 +94,7 @@ handle_search_req(JObj, _Props) ->
                                        |wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                                       ], Conference),
             wapi_conference:publish_search_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp)
-    end,
-    ok.
+    end.
 
 %%%===================================================================
 %%% gen_server callbacks
