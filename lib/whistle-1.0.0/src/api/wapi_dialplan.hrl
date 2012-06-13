@@ -27,6 +27,7 @@
                                           ,<<"Callee-ID-Name">>, <<"Callee-ID-Number">>
                                           ,<<"Ringback">>, <<"Dial-Endpoint-Method">>, <<"Insert-At">>
                                           ,<<"Media">>, <<"Hold-Media">>, <<"SIP-Headers">>, <<"Custom-Channel-Vars">>
+                                          ,<<"SIP-Transport">>, <<"Secure-RTP">>
                                      ]).
 -define(BRIDGE_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                             ,{<<"Event-Name">>, <<"command">>}
@@ -34,6 +35,8 @@
                             ,{<<"Dial-Endpoint-Method">>, [?DIAL_METHOD_SINGLE, ?DIAL_METHOD_SIMUL]}
                             ,{<<"Media">>, [<<"process">>, <<"bypass">>, <<"auto">>]}
                             ,{<<"Continue-On-Fail">>, [<<"true">>, <<"false">>]}
+                            ,{<<"SIP-Transport">>, [<<"udp">>, <<"tcp">>, <<"tls">>]}
+                            ,{<<"Secure-RTP">>, [<<"true">>, <<"false">>]}
                             ,?INSERT_AT_TUPLE
                            ]).
 -define(BRIDGE_REQ_TYPES, [{<<"Endpoints">>, fun is_list/1}

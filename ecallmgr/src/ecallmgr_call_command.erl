@@ -377,6 +377,12 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>) ->
                                            [{"application", <<"set hold_music=", Stream/binary>>}|DP]
                                    end
                            end
+                          ,fun(DB) ->
+                                   case wh_json:is_true(<<"Secure-RTP">>, JObj, false) of
+                                       true -> [{"application", "set sip_secure_media=true"}|DP];
+                                       false -> DP
+                                   end
+                           end
                           ,fun(DP) ->
                                    case wh_json:get_value(<<"Media">>, JObj) of
                                        <<"process">> ->
