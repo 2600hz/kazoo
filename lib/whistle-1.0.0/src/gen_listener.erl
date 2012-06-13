@@ -233,7 +233,7 @@ rm_binding(Srv, Binding, Props) ->
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
--spec init/1 :: ([atom() | wh_proplist(),...]) -> {'ok', #state{}, 'hibernate'}.
+-spec init/1 :: ([atom() | wh_proplist(),...]) -> {'ok', #state{}}.
 init([Module, Params, InitArgs]) ->
     process_flag(trap_exit, true),
     put(callid, ?LOG_SYSTEM_ID),
