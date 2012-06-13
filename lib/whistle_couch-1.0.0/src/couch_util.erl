@@ -271,7 +271,7 @@ save_docs(#server{}=Conn, DbName, Docs, Options) ->
     do_save_docs(Db, Docs, Options).
 
 -spec lookup_doc_rev/3 :: (server(), ne_binary(), ne_binary()) -> {'ok', binary()} |
-                                                                   {'error', atom()}.
+                                                                  couchbeam_error().
 lookup_doc_rev(#server{}=Conn, DbName, DocId) ->
     case do_fetch_rev(get_db(Conn, DbName), DocId) of
         <<_/binary>> = Rev -> {ok, Rev};
@@ -280,13 +280,13 @@ lookup_doc_rev(#server{}=Conn, DbName, DocId) ->
     end.
 
 -spec ensure_saved/4 :: (server(), ne_binary(), wh_json:json_object(), proplist()) -> {'ok', wh_json:json_object()} |
-                                                                                       {'error', atom()}.
+                                                                                      couchbeam_error().
 ensure_saved(#server{}=Conn, DbName, Doc, Opts) ->
     Db = get_db(Conn, DbName),
     do_ensure_saved(Db, Doc, Opts).
 
--spec del_doc/3 :: (server(), ne_binary(), wh_json:json_object() | ne_binary()) -> {'ok', wh_json:json_object()} |
-                                                                                    {'error', atom()}.
+-spec del_doc/3 :: (server(), ne_binary(), wh_json:json_object() | ne_binary()) -> {'ok', wh_json:json_objects()} |
+                                                                                   couchbeam_error().
 del_doc(#server{}=Conn, DbName, DocId) when is_binary(DocId) ->
     case lookup_doc_rev(Conn, DbName, DocId) of
         {'error', _}=Err -> Err;
@@ -304,7 +304,7 @@ del_docs(#server{}=Conn, DbName, Doc) ->
 
 %% Internal Doc functions
 
--spec do_delete_doc/2 :: (db(), wh_json:json_object()) -> {'ok', wh_json:json_object()}.
+-spec do_delete_doc/2 :: (db(), wh_json:json_object()) -> {'ok', wh_json:json_objects()}.
 do_delete_doc(#db{}=Db, Doc) ->
     do_delete_docs(Db, [Doc]).
 
