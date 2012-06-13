@@ -456,6 +456,11 @@ is_permitted(Req, #cb_context{req_verb = <<"options">>}=Context) ->
     lager:debug("options requests are permitted by default"),
     %% all all OPTIONS, they are harmless (I hope) and required for CORS preflight
     {true, Req, Context};
+is_permitted(Req0, #cb_context{req_nouns=[{<<"404">>, []}]}=Context0) ->
+    Context1 = crossbar_util:response(error, "not found", 404, Context0),
+    {Content, Req0} = create_resp_content(Req0, Context1),
+    {ok, Req1} = cowboy_http_req:set_resp_body(Content, Req0),
+    {false, Req1, Context1};
 is_permitted(Req0, Context0) ->
     Event = <<"v1_resource.authorize">>,
     case crossbar_bindings:succeeded(crossbar_bindings:map(Event, Context0)) of

@@ -6,6 +6,7 @@
 %%% @contributors
 %%%   Karl Anderson
 %%%   James Aimonetti
+%%%   Jon Blanton
 %%%-------------------------------------------------------------------
 -module(crossbar).
 
@@ -41,6 +42,8 @@ start_link() ->
                           ,cowboy_tcp_transport, [{port, Port}]
                           ,cowboy_http_protocol, [{dispatch, Dispatch}
                                                   ,{timeout, ReqTimeout}
+						  ,{onrequest, fun on_request/1}
+						  ,{onresponse, fun on_response/3}
                                                  ]
                          ),
 
@@ -69,7 +72,10 @@ start_link() ->
                                                               ,{keyfile, find_file(SSLKey, RootDir)}
                                                               ,{password, SSLPassword}
                                                              ]
-                                      ,cowboy_http_protocol, [{dispatch, Dispatch}]
+                                      ,cowboy_http_protocol, [{dispatch, Dispatch}
+							      ,{onrequest, fun on_request/1}
+							      ,{onresponse, fun on_response/3}
+							     ]
                                      )
             catch
                 throw:{invalid_file, _File} ->
@@ -144,3 +150,33 @@ start_deps() ->
     whistle_apps_deps:ensure(?MODULE), % if started by the whistle_controller, this will exist
     _ = [ wh_util:ensure_started(App) || App <- [sasl, crypto, inets, cowboy, whistle_amqp]],
     ok.
+
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Functions for onrequest and onresponse callbacks
+%% @end
+%%--------------------------------------------------------------------
+-spec on_request/1 :: (#http_req{}) -> #http_req{}.
+on_request(Req0) ->
+    {Method, Req1} = cowboy_http_req:method(Req0),
+    case Method of
+	'OPTIONS' ->
+	    Req1;
+	_ ->
+	    wh_counter:inc(<<"crossbar.requests.methods.", (wh_util:to_upper_binary(Method))/binary>>),
+	    Req1
+    end.
+
+-spec on_response/3 :: (cowboy_http:status(), cowboy_http:headers(), #http_req{}) -> #http_req{}.
+on_response(Status, _Headers, Req0) ->
+    {Method, Req1} = cowboy_http_req:method(Req0),
+    case Method of
+        'OPTIONS' ->
+	    Req1;
+	_ ->
+	    wh_counter:inc(<<"crossbar.responses.", (wh_util:to_binary(Status))/binary>>),
+	    Req1
+    end.
+    
