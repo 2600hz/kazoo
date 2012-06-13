@@ -344,7 +344,7 @@ arrange_acl_node({_, JObj}, Dict) ->
 %% XML record creators and helpers
 %%%-------------------------------------------------------------------
 -type xml_attrib_name() :: atom().
--type xml_attrib_value() :: ne_binary() | nonempty_string() | iolist().
+-type xml_attrib_value() :: ne_binary() | nonempty_string() | iolist() | atom().
 -type xml_attrib() :: #xmlAttribute{}.
 
 -type xml_el() :: #xmlElement{}.
