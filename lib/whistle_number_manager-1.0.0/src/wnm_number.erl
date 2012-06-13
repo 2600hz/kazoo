@@ -154,12 +154,12 @@ save(#number{}=Number) ->
     Routines = [fun(#number{}=N) -> N#number{number_doc=record_to_json(N)} end
                 ,fun(#number{}=N) -> exec_providers(N, save) end
                 ,fun(#number{}=N) -> get_updated_phone_number_docs(N) end
-%%                ,fun(#number{phone_number_doc=PhoneNumbers}=N) -> 
-%%                         case wh_service_numbers:update(PhoneNumbers) of
-%%                             {error, Reason} -> error_service_restriction(Reason, N);
-%%                             ok -> N
-%%                         end
-%%                 end
+                ,fun(#number{phone_number_docs=PhoneNumbers}=N) -> 
+                         _ = [wh_service_numbers:update(PhoneNumber) 
+                              || {_, PhoneNumber} <- dict:to_list(PhoneNumbers)
+                             ],
+                         N
+                 end
                 ,fun({_, #number{}}=E) -> E;
                     (#number{}=N) -> save_number_doc(N)
                  end
@@ -213,12 +213,12 @@ delete(Number) ->
     Routines = [fun(#number{}=N) -> N#number{number_doc=record_to_json(N)} end
                 ,fun(#number{}=N) -> exec_providers(N, delete) end
                 ,fun(#number{}=N) -> get_updated_phone_number_docs(N) end
-%%                ,fun(#number{phone_number_doc=PhoneNumbers}=N) -> 
-%%                         case wh_service_numbers:update(PhoneNumbers) of
-%%                             {error, Reason} -> error_service_restriction(Reason, N);
-%%                             ok -> N
-%%                         end
-%%                 end
+                ,fun(#number{phone_number_docs=PhoneNumbers}=N) -> 
+                         _ = [wh_service_numbers:update(PhoneNumber) 
+                              || {_, PhoneNumber} <- dict:to_list(PhoneNumbers)
+                             ],
+                         N
+                 end
                 ,fun({_, #number{}}=E) -> E;
                     (#number{}=N) -> delete_number_doc(N)
                  end
