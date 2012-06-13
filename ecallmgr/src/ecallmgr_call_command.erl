@@ -96,7 +96,7 @@ get_fs_app(_Node, _UUID, JObj, <<"playstop">>) ->
     end;
 
 get_fs_app(_Node, _UUID, JObj, <<"hangup">>) ->
-    case wh_json:is_true(<<"Other-Leg-Only">>, JObj, false) of
+    case wh_json:is_true(<<"Other-Leg-Only">>, JObj, true) of
         false -> {<<"hangup">>, <<>>};
         true ->  {<<"unbridge">>, <<>>}
     end;
