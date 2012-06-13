@@ -174,8 +174,11 @@ build_sip_route(RouteJObj, <<"username">>) ->
     Realm = wh_json:get_value(<<"To-Realm">>, RouteJObj),
     case ecallmgr_registrar:lookup_contact(Realm, User) of
         {ok, Contact} ->
-            RURI = binary:replace(re:replace(Contact, "^[^\@]+", User, [{return, binary}]), <<">">>, <<"">>),
-            <<?SIP_INTERFACE, (RURI)/binary>>;
+            RURI = binary:replace(
+                     re:replace(Contact, "^[^\@]+", User, [{return, binary}])
+                     ,<<">">>, <<>>
+                    ),
+            list_to_binary([?SIP_INTERFACE, RURI, sip_transport(RouteJObj)]);
         {error, timeout}=E ->
             lager:debug("failed to lookup user ~s@~s in the registrar", [User, Realm]),
             E
@@ -186,8 +189,11 @@ build_sip_route(RouteJObj, DIDFormat) ->
     DID = format_did(wh_json:get_value(<<"To-DID">>, RouteJObj), DIDFormat),
     case ecallmgr_registrar:lookup_contact(Realm, User) of
         {ok, Contact} ->
-            RURI = binary:replace(re:replace(Contact, "^[^\@]+", DID, [{return, binary}]), <<">">>, <<"">>),
-            <<?SIP_INTERFACE, (RURI)/binary>>;
+            RURI = binary:replace(
+                     re:replace(Contact, "^[^\@]+", DID, [{return, binary}])
+                     ,<<">">>, <<>>
+                    ),
+            list_to_binary([?SIP_INTERFACE, RURI, sip_transport(RouteJObj)]);
         {error, timeout}=E ->
             lager:debug("failed to lookup user ~s@~s in the registrar", [User, Realm]),
             E
@@ -283,6 +289,22 @@ get_channel_vars({AMQPHeader, V}, Vars) when not is_list(V) ->
 get_channel_vars(_, Vars) ->
     Vars.
 
+
+-spec sip_transport/1 :: (wh_json:json_object() | ne_binary() | 'undefined') -> binary().
+sip_transport(<<"tcp">>) ->
+    <<";transport=tcp">>;
+sip_transport(<<"udp">>) ->
+    <<";transport=udp">>;
+sip_transport(<<"tls">>) ->
+    <<";transport=tls">>;
+sip_transport(<<"sctp">>) ->
+    <<";transport=sctp">>;
+sip_transport(undefined) ->
+    <<>>;
+sip_transport(JObj) when not is_binary(JObj) ->
+    sip_transport(wh_util:to_lower_binary(wh_json:get_value(<<"Transport">>, JObj)));
+sip_transport(_) ->
+    <<>>.
 
 -spec get_channel_params/1 :: (wh_json:json_object()) -> wh_json:json_proplist().
 get_channel_params(JObj) ->
