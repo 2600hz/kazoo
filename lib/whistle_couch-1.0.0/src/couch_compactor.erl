@@ -305,7 +305,7 @@ get_db_design_docs(Conn, DBEncoded) ->
 
 -spec get_db_shards/2 :: (#server{}, ne_binary()) -> [ne_binary()].
 get_db_shards(AdminConn, DBEncoded) ->
-    case couch_config:fetch({shards, DBEncoded}, undefined, ?WH_COUCH_CACHE) of
+    case couch_config:fetch(DBEncoded, undefined, ?WH_COUCH_CACHE) of
         undefined ->
             case couch_util:db_info(AdminConn) of
                 {ok, []} -> lager:debug("no shards found on admin conn? That's odd"), [];
