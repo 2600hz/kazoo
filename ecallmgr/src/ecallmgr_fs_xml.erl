@@ -159,7 +159,8 @@ route_not_found() ->
     SectionEl = section_el(<<"result">>, <<"Route Not Found">>, ResultEl),
     {ok, xmerl:export([SectionEl], fs_xml)}.
 
--spec build_sip_route/2 :: (proplist() | wh_json:json_object(), ne_binary() | 'undefined') -> ne_binary() | {'error', 'timeout'}.
+-spec build_sip_route/2 :: (api_terms(), ne_binary() | 'undefined') -> ne_binary() |
+                                                                       {'error', 'timeout'}.
 build_sip_route(Route, undefined) ->
     build_sip_route(Route, <<"username">>);
 build_sip_route([_|_]=RouteProp, DIDFormat) ->
@@ -261,8 +262,9 @@ get_channel_vars({<<"origination_uuid">> = K, UUID}, Vars) ->
 
 get_channel_vars({<<"Hold-Media">>, Media}, Vars) ->
     [list_to_binary(["hold_music="
-                     ,wh_util:to_list(ecallmgr_util:media_path(Media, extant, get(callid)))
-                    ]) | Vars];
+                     ,wh_util:to_list(ecallmgr_util:media_path(Media, extant, get(callid), wh_json:new()))
+                    ])
+     | Vars];
 
 get_channel_vars({<<"Codecs">>, []}, Vars) ->
     Vars;
@@ -505,5 +507,5 @@ reverse_children(#xmlElement{content=Contents}=El) ->
     El#xmlElement{content=lists:reverse(Contents)}.
 
 -spec xml_attrib/2 :: (xml_attrib_name(), xml_attrib_value()) -> xml_attrib().
-xml_attrib(Name, Value) ->
-    #xmlAttribute{name=wh_util:to_atom(Name, true), value=wh_util:to_list(Value)}.
+xml_attrib(Name, Value) when is_atom(Name) ->
+    #xmlAttribute{name=Name, value=wh_util:to_list(Value)}.

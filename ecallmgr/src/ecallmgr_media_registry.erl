@@ -253,6 +253,8 @@ request_media(MediaName, Type, CallID, JObj) ->
             lookup_remote(MediaName, Type, CallID, JObj)
     end.
 
+-spec lookup_remote/4 :: (ne_binary(), 'extant' | 'new', ne_binary(), wh_json:json_object()) -> {'ok', ne_binary()} |
+                                                                                                {'error', 'not_local' | 'timeout'}.
 lookup_remote(MediaName, extant, CallID, JObj) ->
     Request = wh_json:set_values(
                 [{<<"Media-Name">>, MediaName}
@@ -274,7 +276,7 @@ lookup_remote(MediaName, new, CallID, JObj) ->
                 ,JObj),
     lookup_remote(MediaName, Request).
 
--spec lookup_remote/2 :: (ne_binary(), proplist()) -> {'ok', ne_binary()} | {'error', 'not_local'}.
+-spec lookup_remote/2 :: (ne_binary(), proplist()) -> {'ok', ne_binary()} | {'error', 'not_local' | 'timeout'}.
 lookup_remote(MediaName, Request) ->
     ReqResp = wh_amqp_worker:call(?ECALLMGR_AMQP_POOL
                                   ,Request

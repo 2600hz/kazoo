@@ -11,8 +11,21 @@
 -define(ECALLMGR_REG_CACHE, ecallmgr_reg_cache).
 -define(ECALLMGR_CALL_CACHE, ecallmgr_call_cache).
 
--type fs_api_ret() :: {'ok', binary()} | {'error', binary()} | 'timeout'.
--type fs_sendmsg_ret() :: 'ok' | {'error', binary()} | 'timeout'.
+-type fs_api_ret()       :: {'ok', binary()} |
+                            {'error', 'badarg'} |
+                            'timeout'.
+-type fs_sendmsg_ret()   :: 'ok' |
+                            {'error', 'badarg' | 'badmem' | 'nosession'} |
+                            'timeout'.
+-type fs_sendevent_ret() :: 'ok' |
+                            {'error', 'badarg' | 'badmem'} |
+                            'timeout'.
+-type fs_bind_ret()      :: 'ok' |
+                            {'error', 'badarg' | 'badmem'} |
+                            'timeout'.
+-type fs_handlecall_ret() :: 'ok' |
+                             {'error', 'badarg' | 'session_attach_failed' | 'badsession' | 'baduuid'} |
+                             'timeout'.
 
 -record(sip_subscription, {key=undefined
                            ,to=undefined
