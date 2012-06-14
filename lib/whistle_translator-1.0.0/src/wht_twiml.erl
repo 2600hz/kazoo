@@ -424,7 +424,7 @@ finish_dial(Call, Props) ->
                                            ]),
             Uri = wht_util:resolve_uri(whapps_call:kvs_fetch(<<"voice_uri">>, Call), Action),
             Method = wht_util:http_method(props:get_value(method, Props, post)),
-            maybe_stop(Call, ok, {request, Call, Uri, Method, BaseParams})
+            {request, Call, Uri, Method, BaseParams}
     end.
 
 -spec pause/2 :: (whapps_call:call(), proplist()) -> {'ok', whapps_call:call()}.
