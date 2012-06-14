@@ -72,7 +72,7 @@ billing(#cb_context{req_nouns=[{<<"limits">>, _}|_], doc=JObj, account_id=Accoun
         {ok, Resellers} ->
             try 
                 UpdatedResellers = wh_service_limits:update(JObj, Resellers),
-                ok = wh_resellers:commit_updates(UpdatedResellers)
+                ok = wh_resellers:commit_changes(UpdatedResellers)
             catch
                 throw:{Error, Reason} ->
                     crossbar_util:response(error, wh_util:to_binary(Error), 500, Reason, Context)
