@@ -55,12 +55,13 @@ fetch(Account) ->
 fetch(Account, Resellers) ->
     case wh_reseller:fetch(Account) of
         {error, _} -> Resellers;
-        {ok, Reseller} ->
-            case wh_reseller:is_master_reseller(Reseller) of
-                true -> [Reseller|Resellers];
-                false ->
-                    fetch(wh_reseller:get_reseller_id(Reseller), [Reseller|Resellers])
-            end
+        {ok, Reseller} -> [Reseller|Resellers]
+%% TODO: This support cascades but needs to be made optional.
+%%            case wh_reseller:is_master_reseller(Reseller) of
+%%                true -> [Reseller|Resellers];
+%%                false ->
+%%                    fetch(wh_reseller:get_reseller_id(Reseller), [Reseller|Resellers])
+%%            end
     end.
 
 %%--------------------------------------------------------------------
