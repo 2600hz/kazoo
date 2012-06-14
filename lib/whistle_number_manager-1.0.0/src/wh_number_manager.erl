@@ -231,7 +231,7 @@ free_numbers(AccountId) ->
     case couch_mgr:open_doc(AccountDb, ?WNM_PHONE_NUMBER_DOC) of
         {ok, JObj} ->
             _ = [release_number(Key, AccountId)
-                 || Key <- wh_json:get_keys(JObj)
+                 || Key <- wh_json:get_keys(wh_json:public_fields(JObj))
                         ,wnm_util:is_reconcilable(Key)
                 ],
             ok;

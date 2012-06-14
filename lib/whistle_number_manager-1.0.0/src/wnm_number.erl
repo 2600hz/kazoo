@@ -951,9 +951,11 @@ update_service_plan(PhoneNumber, #number{resellers=Resellers}=N) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec activate_feature/2 :: (ne_binary(), wnm_number()) -> wnm_number().
-activate_feature(Feature, #number{resellers=undefined, assigned_to=Account}=N) ->
+activate_feature(Feature, #number{resellers=undefined, assigned_to=Account, activations=Activations
+                                  ,features=Features}=N) ->
     case wh_resellers:fetch(Account) of
-        {error, no_service_plan} -> N;
+        {error, no_service_plan} ->  N#number{activations=sets:add_element({features, Feature}, Activations)
+                                              ,features=sets:add_element(Feature, Features)};
         {ok, Resellers} ->
             activate_feature(Feature, N#number{resellers=Resellers})
     end;
@@ -975,9 +977,9 @@ activate_feature(Feature, #number{resellers=Resellers, activations=Activations
 %% @end
 %%--------------------------------------------------------------------
 -spec activate_phone_number/1 :: (wnm_number()) -> wnm_number().
-activate_phone_number(#number{resellers=undefined, assigned_to=Account}=N) ->
+activate_phone_number(#number{number=Num, resellers=undefined, assigned_to=Account, activations=Activations}=N) ->
     case wh_resellers:fetch(Account) of
-        {error, no_service_plan} -> N;
+        {error, no_service_plan} -> N#number{activations=sets:add_element({phone_number, Num}, Activations)};
         {ok, Resellers} ->
             activate_phone_number(N#number{resellers=Resellers})
     end;

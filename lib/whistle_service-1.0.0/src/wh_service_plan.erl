@@ -65,10 +65,11 @@ get_plan_ids(JObj) ->
 -spec add_plan_id/3 :: (wh_json:json_object(), ne_binary(), ne_binary()) -> wh_json:json_object().
 add_plan_id(JObj, PlanId, Reseller) ->
     case is_valid_plan_id(PlanId, Reseller) of
-        {error, _} -> JObj;
-        {ok, _} ->
+        false -> JObj;
+        true ->
+            lager:debug("adding service plan id ~s", [PlanId]),
             Plans = [PlanId|lists:delete(PlanId, get_plan_ids(JObj))],
-            wh_json:set_value(?WH_SERVICE_PLANS_FIELD, JObj, Plans)
+            wh_json:set_value(?WH_SERVICE_PLANS_FIELD, Plans, JObj)
     end.
 
 
@@ -88,7 +89,7 @@ set_service_plans(JObj, undefined, Reseller) ->
 set_service_plans(JObj, ServicePlan, Reseller) when not is_list(ServicePlan) ->
     set_service_plans(JObj, [ServicePlan], Reseller);
 set_service_plans(JObj, ServicePlans, Reseller) ->
-    lists:foldl(fun(J, P) -> add_plan_id(J, P, Reseller) end, JObj, ServicePlans).
+    lists:foldl(fun(P, J) -> add_plan_id(J, P, Reseller) end, JObj, ServicePlans).
 
 %%--------------------------------------------------------------------
 %% @public
