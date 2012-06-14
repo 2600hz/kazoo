@@ -953,7 +953,7 @@ update_service_plan(PhoneNumber, #number{resellers=Resellers}=N) ->
 -spec activate_feature/2 :: (ne_binary(), wnm_number()) -> wnm_number().
 activate_feature(Feature, #number{resellers=undefined, assigned_to=Account}=N) ->
     case wh_resellers:fetch(Account) of
-        {error, no_service_plan} -> ok;
+        {error, no_service_plan} -> N;
         {ok, Resellers} ->
             activate_feature(Feature, N#number{resellers=Resellers})
     end;

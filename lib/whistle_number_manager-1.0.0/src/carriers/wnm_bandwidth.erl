@@ -86,7 +86,8 @@ acquire_number(#number{auth_by=AuthBy, assigned_to=AssignedTo, module_data=Data}
     Debug = whapps_config:get_is_true(?WNM_BW_CONFIG_CAT, <<"sandbox_provisioning">>, <<"true">>),
     case whapps_config:get_is_true(?WNM_BW_CONFIG_CAT, <<"enable_provisioning">>, <<"true">>) of
         false when Debug -> 
-            lager:debug("allowing sandbox provisioning", []);
+            lager:debug("allowing sandbox provisioning", []),
+            N;
         false -> 
             Error = <<"Unable to acquire numbers on this system, carrier provisioning is disabled">>,
             wnm_number:error_carrier_fault(Error, N);

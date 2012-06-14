@@ -655,7 +655,6 @@ create_new_account_db(#cb_context{doc=Doc}=Context) ->
                     whapps_maintenance:refresh(AccountDb),
                     _ = crossbar_bindings:map(<<"account.created">>, Context1),
                     _ = couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, JObj),
-                    _ = wh_reseller:assign(JObj),
                     _ = notfy_new_account(Context1),
                     Context1;
                 Else ->

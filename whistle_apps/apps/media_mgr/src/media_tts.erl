@@ -169,7 +169,7 @@ handle_info({ibrowse_async_response_end, ReqID}, #state{ibrowse_req_id=ReqID, co
     case Contents of
         <<>> ->
             lager:debug("no tts contents were received, going down"),
-            {stop, State, normal};
+            {stop, normal, State};
         _ ->
             Res = {Meta, Contents},
             _ = [gen_server:reply(From, Res) || From <- Reqs],

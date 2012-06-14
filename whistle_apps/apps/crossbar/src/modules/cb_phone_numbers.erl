@@ -22,6 +22,7 @@
          ,put/2, put/3, put/4
          ,post/2, post/4
          ,delete/2, delete/4
+         ,populate_phone_numbers/1
         ]).
 
 -include_lib("crossbar/include/crossbar.hrl").
@@ -50,6 +51,7 @@
 %%% API
 %%%===================================================================
 init() ->
+    _ = crossbar_bindings:bind(<<"account.created">>, ?MODULE, populate_phone_numbers),
     _ = crossbar_bindings:bind(<<"v1_resource.content_types_accepted.phone_numbers">>, ?MODULE, content_types_accepted),
     _ = crossbar_bindings:bind(<<"v1_resource.authenticate">>, ?MODULE, authenticate),
     _ = crossbar_bindings:bind(<<"v1_resource.authorize">>, ?MODULE, authorize),
@@ -59,6 +61,18 @@ init() ->
     _ = crossbar_bindings:bind(<<"v1_resource.execute.put.phone_numbers">>, ?MODULE, put),
     _ = crossbar_bindings:bind(<<"v1_resource.execute.post.phone_numbers">>, ?MODULE, post),
     crossbar_bindings:bind(<<"v1_resource.execute.delete.phone_numbers">>, ?MODULE, delete).
+
+
+populate_phone_numbers(#cb_context{db_name=AccountDb, account_id=AccountId}) ->
+    PVTs = [{<<"_id">>, ?WNM_PHONE_NUMBER_DOC}
+            ,{<<"pvt_account_db">>, AccountDb}
+            ,{<<"pvt_account_id">>, AccountId}
+            ,{<<"pvt_vsn">>, <<"1">>}
+            ,{<<"pvt_type">>, ?WNM_PHONE_NUMBER_DOC}
+            ,{<<"pvt_modified">>, wh_util:current_tstamp()}
+            ,{<<"pvt_created">>, wh_util:current_tstamp()}
+           ],
+    couch_mgr:save_doc(AccountDb, wh_json:from_list(PVTs)).
 
 %%--------------------------------------------------------------------
 %% @private
