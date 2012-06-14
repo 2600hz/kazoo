@@ -70,17 +70,17 @@ init(Parent) ->
 compact_all() ->
     lager:debug("compacting all nodes"),
     {ok, Nodes} = couch_mgr:admin_all_docs(<<"nodes">>),
-    _ = [ compact_node(wh_json:get_value(<<"id">>, Node)) || Node <- Nodes],
+    _ = [ compact_node(wh_json:get_value(<<"id">>, Node)) || Node <- shuffle(Nodes)],
     done.
 compact_all(ConflictStrategy) ->
     lager:debug("compacting all nodes"),
     {ok, Nodes} = couch_mgr:admin_all_docs(<<"nodes">>),
-    _ = [ compact_node(wh_json:get_value(<<"id">>, Node), ConflictStrategy) || Node <- Nodes],
+    _ = [ compact_node(wh_json:get_value(<<"id">>, Node), ConflictStrategy) || Node <- shuffle(Nodes)],
     done.
 compact_all(ConflictStrategy, F) ->
     lager:debug("compacting all nodes"),
     {ok, Nodes} = couch_mgr:admin_all_docs(<<"nodes">>),
-    _ = [ compact_node(wh_json:get_value(<<"id">>, Node), ConflictStrategy, F) || Node <- Nodes],
+    _ = [ compact_node(wh_json:get_value(<<"id">>, Node), ConflictStrategy, F) || Node <- shuffle(Nodes)],
     done.
 
 -spec compact_node/1 :: (ne_binary() | atom()) -> 'done'.
@@ -98,7 +98,7 @@ compact_node(NodeBin) ->
                             lager:debug("compacting database (~p/~p) '~s'", [Count, Total, DB]),
                             _ = (catch compact_node_db(NodeBin, DB, Conn, AdminConn)),
                             Count + 1
-                    end, 1, shuffle(DBs)),
+                    end, 1, shuffle(DBs, Total)),
     done.
 
 compact_node(Node, ConflictStrategy) when is_atom(Node) ->
@@ -359,8 +359,11 @@ get_conns(Host, Port, User, Pass, AdminPort) ->
      couch_util:get_new_connection(Host, AdminPort, User, Pass)}.
 
 -spec shuffle/1 :: (list()) -> list().
+-spec shuffle/2 :: (list(), integer()) -> list().
 shuffle(List) ->
-    randomize(round(math:log(length(List)) + 0.5), List).
+    shuffle(List, length(List)).
+shuffle(List, Len) ->
+    randomize(round(math:log(Len) + 0.5), List).
 
 -spec randomize/2 :: (pos_integer(), list()) -> list().
 randomize(1, List) ->
@@ -372,8 +375,6 @@ randomize(T, List) ->
 
 -spec randomize/1 :: (list()) -> list().
 randomize(List) ->
-    D = lists:map(fun(A) ->
-                          {random:uniform(), A}
-                  end, List),
-    {_, D1} = lists:unzip(lists:keysort(1, D)), 
+    D = lists:keysort(1, [{random:uniform(), A} || A <- List]),
+    {_, D1} = lists:unzip(D),
     D1.
