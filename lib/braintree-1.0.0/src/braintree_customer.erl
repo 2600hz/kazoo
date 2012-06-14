@@ -61,14 +61,10 @@ new(CustomerId) ->
 %% Creates a new subscription record
 %% @end
 %%--------------------------------------------------------------------
--spec new_subscription/3 :: (ne_binary(), ne_binary(), #bt_customer{}) -> {'ok', #bt_subscription{}} |
-                                                                          {'error', _}.
+-spec new_subscription/3 :: (ne_binary(), ne_binary(), #bt_customer{}) -> #bt_subscription{}.
 new_subscription(SubscriptionId, PlanId, Customer) ->
-    case default_payment_token(Customer) of
-        undefined -> {error, no_payment_token};
-        PaymentToken ->
-            {ok, braintree_subscription:new(SubscriptionId, PlanId, PaymentToken)}
-    end.
+    PaymentToken = default_payment_token(Customer),
+    braintree_subscription:new(SubscriptionId, PlanId, PaymentToken).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -76,7 +72,7 @@ new_subscription(SubscriptionId, PlanId, Customer) ->
 %% Given a cutomer record find (if any) the default payment token
 %% @end
 %%--------------------------------------------------------------------
--spec default_payment_token/1 :: (#bt_customer{}) -> 'undefined' | string().
+-spec default_payment_token/1 :: (#bt_customer{}) -> 'undefined' | ne_binary().
 default_payment_token(#bt_customer{}=Customer) ->
     braintree_card:default_payment_token(get_cards(Customer)).
 
@@ -86,7 +82,7 @@ default_payment_token(#bt_customer{}=Customer) ->
 %% Get the customer id
 %% @end
 %%--------------------------------------------------------------------
--spec get_id/1 :: (#bt_customer{}) -> string().
+-spec get_id/1 :: (#bt_customer{}) -> 'undefined' | ne_binary().
 get_id(#bt_customer{id=CustomerId}) ->
     CustomerId.
 
@@ -116,11 +112,11 @@ get_subscriptions(#bt_customer{subscriptions=Subscriptions}) ->
 %% Get a subscription
 %% @end
 %%--------------------------------------------------------------------
--spec get_subscription/2 :: (ne_binary(), #bt_customer{}) -> {'ok', #bt_subscription{}} | {'error', 'not_found'}.
+-spec get_subscription/2 :: (ne_binary(), #bt_customer{}) -> #bt_subscription{}.
 get_subscription(SubscriptionId, Customer) ->
     case lists:keyfind(SubscriptionId, #bt_subscription.id, get_subscriptions(Customer)) of
-        false -> {error, not_found};
-        Subscription -> {ok, Subscription}
+        false -> braintree_util:error_not_found(<<"Subscription">>);
+        Subscription -> Subscription
     end.
 
 %%--------------------------------------------------------------------
@@ -129,16 +125,13 @@ get_subscription(SubscriptionId, Customer) ->
 %% Find a customer by id
 %% @end
 %%--------------------------------------------------------------------
--spec all/0 :: () -> {'ok', [#bt_customer{},...]} | {'error', term()}.
+-spec all/0 :: () -> [#bt_customer{},...].
 all() ->
     Url = url(),
-    case braintree_request:get(Url) of
-        {error, _}=E -> E;
-        {ok, Xml} ->
-            {ok, [xml_to_record(Customer)
-                  || Customer <- xmerl_xpath:string("/customers/customer", Xml)
-                 ]}
-    end.
+    Xml = braintree_request:get(Url),
+    [xml_to_record(Customer)
+     || Customer <- xmerl_xpath:string("/customers/customer", Xml)
+    ].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -146,17 +139,11 @@ all() ->
 %% Find a customer by id
 %% @end
 %%--------------------------------------------------------------------
--spec find/1 :: (ne_binary() | nonempty_string()) -> bt_result().
+-spec find/1 :: (ne_binary() | nonempty_string()) -> #bt_customer{}.
 find(CustomerId) ->
-    case braintree_util:validate_id(CustomerId) of
-        {error, _}=E -> E;
-        ok ->
-            Url = url(CustomerId),
-            case braintree_request:get(Url) of
-                {ok, Xml} -> {ok, xml_to_record(Xml)};
-                {error, _}=E -> E
-            end
-    end.
+    Url = url(CustomerId),
+    Xml = braintree_request:get(Url),
+    xml_to_record(Xml).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -164,18 +151,12 @@ find(CustomerId) ->
 %% Creates a new customer using the given record
 %% @end
 %%--------------------------------------------------------------------
--spec create/1 :: (#bt_customer{} | ne_binary()) -> bt_result().
-create(#bt_customer{id=CustomerId}=Customer) ->
-    case braintree_util:validate_id(CustomerId) of
-        {error, _}=E -> E;
-        ok ->
-            Url = url(CustomerId),
-            Request = record_to_xml(Customer, true),
-            case braintree_request:post(Url, Request) of
-                {ok, Xml} -> {ok, xml_to_record(Xml)};
-                {error, _}=E -> E
-            end
-    end;
+-spec create/1 :: (#bt_customer{} | ne_binary()) -> #bt_customer{}.
+create(#bt_customer{}=Customer) ->
+    Url = url(),
+    Request = record_to_xml(Customer, true),
+    Xml = braintree_request:post(Url, Request),
+    xml_to_record(Xml);
 create(CustomerId) ->
     create(new(CustomerId)).
 
@@ -185,18 +166,12 @@ create(CustomerId) ->
 %% Updates a customer with the given record
 %% @end
 %%--------------------------------------------------------------------
--spec update/1 :: (#bt_customer{}) -> bt_result().
+-spec update/1 :: (#bt_customer{}) -> #bt_customer{}.
 update(#bt_customer{id=CustomerId}=Customer) ->
-    case braintree_util:validate_id(CustomerId) of
-        {error, _}=E -> E;
-        ok ->
-            Url = url(CustomerId),
-            Request = record_to_xml(Customer, true),
-            case braintree_request:put(Url, Request) of
-                {ok, Xml} -> {ok, xml_to_record(Xml)};
-                {error, _}=E -> E
-            end
-    end.
+    Url = url(CustomerId),
+    Request = record_to_xml(Customer, true),
+    Xml = braintree_request:put(Url, Request),
+    xml_to_record(Xml).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -204,19 +179,13 @@ update(#bt_customer{id=CustomerId}=Customer) ->
 %% Deletes a customer id from braintree's system
 %% @end
 %%--------------------------------------------------------------------
--spec delete/1 :: (#bt_customer{} | binary() | string()) -> bt_result().
+-spec delete/1 :: (#bt_customer{} | binary() | string()) -> #bt_customer{}.
 delete(#bt_customer{id=CustomerId}) ->
     delete(CustomerId);
 delete(CustomerId) ->
-    case braintree_util:validate_id(CustomerId) of
-        {error, _}=E -> E;
-        ok ->
-            Url = url(CustomerId),
-            case braintree_request:delete(Url) of
-                {ok, _} -> {ok, #bt_customer{}};
-                {error, _}=E -> E
-            end
-    end.
+    Url = url(CustomerId),
+    _ = braintree_request:delete(Url),
+    #bt_customer{}.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -225,7 +194,7 @@ delete(CustomerId) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec xml_to_record/1 :: (bt_xml()) -> #bt_customer{}.
--spec xml_to_record/2 :: (bt_xml(), string()) -> #bt_customer{}.
+-spec xml_to_record/2 :: (bt_xml(), wh_deeplist()) -> #bt_customer{}.
 
 xml_to_record(Xml) ->
     xml_to_record(Xml, "/customer").
@@ -260,8 +229,8 @@ xml_to_record(Xml, Base) ->
 %% Convert the given record to XML
 %% @end
 %%--------------------------------------------------------------------
--spec record_to_xml/1 :: (#bt_customer{}) -> bt_xml().
--spec record_to_xml/2 :: (#bt_customer{}, boolean()) -> bt_xml().
+-spec record_to_xml/1 :: (#bt_customer{}) -> proplist() | bt_xml().
+-spec record_to_xml/2 :: (#bt_customer{}, boolean()) -> proplist() | bt_xml().
 
 record_to_xml(Customer) ->
     record_to_xml(Customer, false).

@@ -44,17 +44,11 @@ url(CustomerId, AddressId) ->
 %% Find a customer by id
 %% @end
 %%--------------------------------------------------------------------
--spec find/2 :: (ne_binary() | nonempty_string(), ne_binary() | nonempty_string()) -> {'ok', #bt_address{}} | {'error', _}.
+-spec find/2 :: (ne_binary() | nonempty_string(), ne_binary() | nonempty_string()) -> #bt_address{}.
 find(CustomerId, AddressId) ->
-    case braintree_util:validate_id(AddressId) of
-        {error, _}=E -> E;
-        ok ->
-            Url = url(CustomerId, AddressId),
-            case braintree_request:get(Url) of
-                {ok, Xml} -> {ok, xml_to_record(Xml)};
-                {error, _}=E -> E
-            end
-    end.
+    Url = url(CustomerId, AddressId),
+    Xml = braintree_request:get(Url),
+    xml_to_record(Xml).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -62,20 +56,14 @@ find(CustomerId, AddressId) ->
 %% Creates a new customer using the given record
 %% @end
 %%--------------------------------------------------------------------
--spec create/1 :: (#bt_address{}) ->  {'ok', #bt_address{}} | {'error', _}.
--spec create/2 :: (nonempty_string() | ne_binary(), #bt_address{}) ->  {'ok', #bt_address{}} | {'error', _}.
+-spec create/1 :: (#bt_address{}) -> #bt_address{}.
+-spec create/2 :: (nonempty_string() | ne_binary(), #bt_address{}) -> #bt_address{}.
 
 create(#bt_address{customer_id=CustomerId}=Address) ->
-    case braintree_util:validate_id(CustomerId) of
-        {error, _}=E -> E;
-        ok ->
-            Request = record_to_xml(Address, true),
-            Url = url(CustomerId),
-            case braintree_request:post(Url, Request) of
-                {ok, Xml} -> {ok, xml_to_record(Xml)};
-                {error, _}=E -> E
-            end
-    end.
+    Url = url(CustomerId),
+    Request = record_to_xml(Address, true),
+    Xml = braintree_request:post(Url, Request),
+    xml_to_record(Xml).
 
 create(CustomerId, Address) ->
     create(Address#bt_address{customer_id=CustomerId}).
@@ -86,18 +74,12 @@ create(CustomerId, Address) ->
 %% Updates a customer with the given record
 %% @end
 %%--------------------------------------------------------------------
--spec update/1 :: (#bt_address{}) -> {'ok', #bt_address{}} | {'error', _}.
+-spec update/1 :: (#bt_address{}) -> #bt_address{}.
 update(#bt_address{id=AddressId, customer_id=CustomerId}=Address) ->
-    case braintree_util:validate_id(CustomerId) of
-        {error, _}=E -> E;
-        ok ->
-            Request = record_to_xml(Address#bt_address{id=undefined}, true),
-            Url = url(CustomerId, AddressId),
-            case braintree_request:put(Url, Request) of
-                {ok, Xml} -> {ok, xml_to_record(Xml)};
-                {error, _}=E -> E
-            end
-    end.
+    Url = url(CustomerId, AddressId),
+    Request = record_to_xml(Address#bt_address{id=undefined}, true),
+    Xml = braintree_request:put(Url, Request),
+    xml_to_record(Xml).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -105,22 +87,16 @@ update(#bt_address{id=AddressId, customer_id=CustomerId}=Address) ->
 %% Deletes a customer id from braintree's system
 %% @end
 %%--------------------------------------------------------------------
--spec delete/1 :: (#bt_address{}) ->  {'ok', #bt_address{}} | {'error', _}.
--spec delete/2 :: (ne_binary() | nonempty_string(), ne_binary() | nonempty_string()) ->  {'ok', #bt_address{}} | {'error', _}.
+-spec delete/1 :: (#bt_address{}) -> #bt_address{}.
+-spec delete/2 :: (ne_binary() | nonempty_string(), ne_binary() | nonempty_string()) ->  #bt_address{}.
 
 delete(#bt_address{customer_id=CustomerId, id=AddressId}) ->
     delete(CustomerId, AddressId).
 
 delete(CustomerId, AddressId) ->
-    case braintree_util:validate_id(AddressId) of
-        {error, _}=E -> E;
-        ok ->
-            Url = url(CustomerId, AddressId),
-            case braintree_request:delete(Url) of
-                {ok, _} -> {ok, #bt_address{}};
-                {error, _}=E -> E
-            end
-    end.
+    Url = url(CustomerId, AddressId),
+    _ = braintree_request:delete(Url),
+    #bt_address{}.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -129,7 +105,7 @@ delete(CustomerId, AddressId) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec xml_to_record/1 :: (bt_xml()) -> #bt_address{}.
--spec xml_to_record/2 :: (bt_xml(), string()) -> #bt_address{}.
+-spec xml_to_record/2 :: (bt_xml(), wh_deeplist()) -> #bt_address{}.
 
 xml_to_record(Xml) ->
     xml_to_record(Xml, "/address").
@@ -158,13 +134,8 @@ xml_to_record(Xml, Base) ->
 %% Contert the given XML to a customer record
 %% @end
 %%--------------------------------------------------------------------
--type record_proplist() :: [{'first-name' | 'last-name' | 'company' | 'street-address'
-                             | 'extended-address' | 'locality' | 'region' | 'postal-code'
-                             | 'country-code-alpha2' | 'country-code-alpha3' | 'country-code-numeric'
-                             | 'country-name'
-                             ,'undefined' | [char() | {_,_}]},...].
--spec record_to_xml/1 :: (#bt_address{}) -> record_proplist() | braintree_util:char_to_bin_res().
--spec record_to_xml/2 :: (#bt_address{}, boolean()) -> record_proplist() | braintree_util:char_to_bin_res().
+-spec record_to_xml/1 :: (#bt_address{}) -> proplist() | bt_xml().
+-spec record_to_xml/2 :: (#bt_address{}, boolean()) -> proplist() | bt_xml().
 
 record_to_xml(Address) ->
     record_to_xml(Address, false).

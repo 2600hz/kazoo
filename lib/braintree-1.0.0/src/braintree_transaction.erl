@@ -55,17 +55,11 @@ url(TransactionId, Options) ->
 %% Find a transaction by id
 %% @end
 %%--------------------------------------------------------------------
--spec find/1 :: (ne_binary()) -> bt_result().
+-spec find/1 :: (ne_binary()) -> #bt_transaction{}.
 find(TransactionId) ->
-    case braintree_util:validate_id(TransactionId) of
-        {error, _}=E -> E;
-        ok ->
-            Url = url(TransactionId),
-            case braintree_request:get(Url) of
-                {ok, Xml} -> {ok, xml_to_record(Xml)};
-                {error, _}=E -> E
-            end
-    end.
+    Url = url(TransactionId),
+    Xml = braintree_request:get(Url),
+    xml_to_record(Xml).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -73,22 +67,15 @@ find(TransactionId) ->
 %% Find transactions by customer id
 %% @end
 %%--------------------------------------------------------------------
--spec find_by_customer/1 :: (ne_binary()) -> bt_result().
+-spec find_by_customer/1 :: (ne_binary()) -> [#bt_transaction{},...].
 find_by_customer(CustomerId) ->
-    case braintree_util:validate_id(CustomerId) of
-        {error, _}=E -> E;
-        ok ->
-            Url = url(<<"advanced_search">>),
-            Props = [{'customer_id', [{'is', CustomerId}]}],
-            Request = make_doc_xml(Props, 'search'),
-            case braintree_request:post(Url, Request) of
-                {error, _}=E -> E;
-                {ok, Xml} -> 
-                    {ok, [xml_to_record(Transaction)
-                          || Transaction <- xmerl_xpath:string("/credit-card-transactions/transaction", Xml)
-                         ]}        
-            end
-    end.
+    Url = url(<<"advanced_search">>),
+    Props = [{'customer_id', [{'is', CustomerId}]}],
+    Request = make_doc_xml(Props, 'search'),
+    Xml = braintree_request:post(Url, Request),
+    [xml_to_record(Transaction)
+     || Transaction <- xmerl_xpath:string("/credit-card-transactions/transaction", Xml)
+    ].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -96,20 +83,14 @@ find_by_customer(CustomerId) ->
 %% Creates a new transaction using the given record
 %% @end
 %%--------------------------------------------------------------------
--spec create/1 :: (#bt_transaction{}) -> bt_result().
--spec create/2 :: (ne_binary(), #bt_transaction{}) -> bt_result().
+-spec create/1 :: (#bt_transaction{}) -> #bt_transaction{}.
+-spec create/2 :: (ne_binary(), #bt_transaction{}) -> #bt_transaction{}.
 
-create(#bt_transaction{id=TransactionId}=Transaction) ->
-    case braintree_util:validate_id(TransactionId, true) of
-        {error, _}=E -> E;
-        ok ->
-            Url = url(),
-            Request = record_to_xml(Transaction, true),
-            case braintree_request:post(Url, Request) of
-                {ok, Xml} -> {ok, xml_to_record(Xml)};
-                {error, _}=E -> E
-            end
-    end.
+create(#bt_transaction{}=Transaction) ->
+    Url = url(),
+    Request = record_to_xml(Transaction, true),
+    Xml = braintree_request:post(Url, Request),
+    xml_to_record(Xml).
 
 create(CustomerId, Transaction) ->
     create(Transaction#bt_transaction{customer_id=CustomerId}).
@@ -120,9 +101,9 @@ create(CustomerId, Transaction) ->
 %% Create a sale transaction
 %% @end
 %%--------------------------------------------------------------------
--spec sale/1 :: (#bt_transaction{}) -> bt_result().
--spec sale/2 :: (ne_binary(), #bt_transaction{}) -> bt_result().
--spec quick_sale/2 :: (ne_binary(), ne_binary()) -> bt_result().
+-spec sale/1 :: (#bt_transaction{}) -> #bt_transaction{}.
+-spec sale/2 :: (ne_binary(), #bt_transaction{}) -> #bt_transaction{}.
+-spec quick_sale/2 :: (ne_binary(), ne_binary()) -> #bt_transaction{}.
 
 sale(Transaction) ->
     create(Transaction#bt_transaction{type=?BT_TRANS_SALE}).
@@ -142,9 +123,9 @@ quick_sale(CustomerId, Token, Amount) ->
 %% Create a credit transaction
 %% @end
 %%--------------------------------------------------------------------
--spec credit/1 :: (#bt_transaction{}) -> bt_result().
--spec credit/2 :: (ne_binary(), ne_binary()) -> bt_result().
--spec quick_credit/2 :: (ne_binary(), ne_binary()) -> bt_result().
+-spec credit/1 :: (#bt_transaction{}) -> #bt_transaction{}.
+-spec credit/2 :: (ne_binary(), #bt_transaction{}) -> #bt_transaction{}.
+-spec quick_credit/2 :: (ne_binary(), ne_binary()) -> #bt_transaction{}.
 
 credit(Transaction) ->
     create(Transaction#bt_transaction{type=?BT_TRANS_CREDIT}).
@@ -161,19 +142,13 @@ quick_credit(CustomerId, Amount) ->
 %% Void transactions that have a status:authorized or submitted_for_settlement
 %% @end
 %%--------------------------------------------------------------------
--spec void/1 :: (#bt_transaction{} | ne_binary()) -> bt_result().
+-spec void/1 :: (#bt_transaction{} | ne_binary()) -> #bt_transaction{}.
 void(#bt_transaction{id=TransactionId}) ->
     void(TransactionId);
 void(TransactionId) ->
-    case braintree_util:validate_id(TransactionId) of
-        {error, _}=E -> E;
-        ok ->
-            Url = url(TransactionId, <<"void">>),
-            case braintree_request:put(Url, <<>>) of
-                {ok, Xml} -> {ok, xml_to_record(Xml)};
-                {error, _}=E -> E
-            end
-    end.
+    Url = url(TransactionId, <<"void">>),
+    Xml = braintree_request:put(Url, <<>>),
+    xml_to_record(Xml).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -181,8 +156,8 @@ void(TransactionId) ->
 %% Refund a transaction with status: settled or settling
 %% @end
 %%--------------------------------------------------------------------
--spec refund/1 :: (#bt_transaction{} | ne_binary()) -> bt_result().
--spec refund/2 :: (#bt_transaction{} | ne_binary(), 'undefined' | ne_binary()) -> bt_result().
+-spec refund/1 :: (#bt_transaction{} | ne_binary()) -> #bt_transaction{}.
+-spec refund/2 :: (#bt_transaction{} | ne_binary(), 'undefined' | ne_binary()) -> #bt_transaction{}.
 
 refund(TransactionId) ->
     refund(TransactionId, undefined).
@@ -190,16 +165,10 @@ refund(TransactionId) ->
 refund(#bt_transaction{id=TransactionId}, Amount) ->
     refund(TransactionId, Amount);
 refund(TransactionId, Amount) ->
-    case braintree_util:validate_id(TransactionId) of
-        {error, _}=E -> E;
-        ok ->
-            Url = url(TransactionId, <<"refund">>),
-            Request = record_to_xml(#bt_transaction{amount=Amount}, true),
-            case braintree_request:put(Url, Request) of
-                {ok, Xml} -> {ok, xml_to_record(Xml)};
-                {error, _}=E -> E
-            end
-    end.
+    Url = url(TransactionId, <<"refund">>),
+    Request = record_to_xml(#bt_transaction{amount=Amount}, true),
+    Xml = braintree_request:put(Url, Request),
+    xml_to_record(Xml).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -208,7 +177,7 @@ refund(TransactionId, Amount) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec xml_to_record/1 :: (bt_xml()) -> #bt_transaction{}.
--spec xml_to_record/2 :: (bt_xml(), string()) -> #bt_transaction{}.
+-spec xml_to_record/2 :: (bt_xml(), wh_deeplist()) -> #bt_transaction{}.
 
 xml_to_record(Xml) ->
     xml_to_record(Xml, "/transaction").
@@ -258,8 +227,8 @@ xml_to_record(Xml, Base) ->
 %% Contert the given XML to a transaction record
 %% @end
 %%--------------------------------------------------------------------
--spec record_to_xml/1 :: (#bt_transaction{}) -> bt_xml().
--spec record_to_xml/2 :: (#bt_transaction{}, boolean()) -> bt_xml().
+-spec record_to_xml/1 :: (#bt_transaction{}) -> proplist() | bt_xml().
+-spec record_to_xml/2 :: (#bt_transaction{}, boolean()) -> proplist() | bt_xml().
 
 record_to_xml(Transaction) ->
     record_to_xml(Transaction, false).

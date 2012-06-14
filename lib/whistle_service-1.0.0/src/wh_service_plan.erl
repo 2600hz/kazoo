@@ -123,9 +123,15 @@ get_activation_charge(<<"phone_numbers">>, PhoneNumber, #wh_service_plan{plan=JO
             of
                 [] -> undefined;
                 [Amount|_] -> 
-                    lager:debug("found activation chanrge ~p for phone number ~s", [Amount, PhoneNumber]),
+                    lager:debug("found activation charge $~s for phone number ~s", [Amount, PhoneNumber]),
                     Amount
             end
     end;
 get_activation_charge(Category, Name, #wh_service_plan{plan=JObj}) ->
-    wh_json:get_ne_value([Category, Name, <<"activation_charge">>], JObj).
+    case wh_json:get_ne_value([Category, Name, <<"activation_charge">>], JObj) of
+        undefined -> undefined;
+        Amount ->
+            lager:debug("found activation charge $~s for ~s ~s", [Amount, Category, Name]),
+            Amount
+    end.
+             

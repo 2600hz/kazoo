@@ -7,7 +7,7 @@
 %%%-------------------------------------------------------------------
 -module(wh_service_limits).
 
--export([update/1, update/2]).
+-export([update/2]).
 
 -include("wh_service.hrl").
 
@@ -18,18 +18,7 @@
 %% charges
 %% @end
 %%--------------------------------------------------------------------
--spec update/1 :: (wh_json:json_object()) -> 'ok' | {'error', _}.
 -spec update/2 :: (wh_json:json_object(), wh_resellers:resellers()) -> wh_resellers:resellers().
-
-update(JObj) ->
-    AccountId = wh_json:get_value(<<"pvt_account_id">>, JObj),
-    case wh_resellers:fetch(AccountId) of
-        {ok, []} -> ok;
-        {ok, Resellers} ->
-            Updates = update(JObj, Resellers),
-            wh_resellers:commit_changes(Updates)
-    end.
-
 update(JObj, Resellers) ->
     R1 = wh_resellers:reset_category_addons(<<"limits">>, Resellers),
     Limits = wh_json:get_keys(wh_json:public_fields(JObj)),

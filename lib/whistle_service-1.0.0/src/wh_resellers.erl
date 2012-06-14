@@ -25,6 +25,7 @@
 -module(wh_resellers).
 
 -export([fetch/1]).
+-export([process_activation_charges/3]).
 -export([update_quantity/4]).
 -export([increment_quantity/3]).
 -export([reset_category_addons/2]).
@@ -42,23 +43,38 @@
 %% the account and possibly a reseller are subscribed to.
 %% @end
 %%--------------------------------------------------------------------
--spec fetch/1 :: (ne_binary()) -> {'ok', resellers()}.
--spec fetch/2 :: (ne_binary(), resellers()) -> {'ok', resellers()}.
+-spec fetch/1 :: (ne_binary()) -> {'ok', resellers()} | {'error', 'no_service_plan'}.
+-spec fetch/2 :: (ne_binary(), resellers()) -> resellers().
 
 fetch(Account) ->
-    fetch(Account, []).
-
+    case fetch(Account, []) of
+        [] -> {error, no_service_plan};
+        Resellers -> {ok, Resellers}
+    end.
+ 
 fetch(Account, Resellers) ->
     case wh_reseller:fetch(Account) of
-        {error, no_service_plan} -> {ok, Resellers};
+        {error, _} -> Resellers;
         {ok, Reseller} ->
             case wh_reseller:is_master_reseller(Reseller) of
-                true -> {ok, [Reseller|Resellers]};
+                true -> [Reseller|Resellers];
                 false ->
                     fetch(wh_reseller:get_reseller_id(Reseller), [Reseller|Resellers])
             end
     end.
-        
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec process_activation_charges/3 :: (ne_binary(), ne_binary(), resellers()) -> resellers().
+process_activation_charges(Category, Name, Resellers) ->
+    [wh_reseller:process_activation_charges(Category, Name, Reseller)
+     || Reseller <- Resellers
+    ].    
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -103,17 +119,12 @@ reset_category_addons(Category, Resellers) ->
 %% Commit any billing changes to the resellers.
 %% @end
 %%--------------------------------------------------------------------
--spec commit_changes/1 :: (resellers()) -> ok | {'error', wh_json:json_object()}.
+-spec commit_changes/1 :: (resellers()) -> 'ok'.
 commit_changes(Resellers) ->
-    try
-        [wh_reseller:commit_changes(Reseller) 
+    _ = [wh_reseller:commit_changes(Reseller) 
          || Reseller <- Resellers
         ],
-        ok
-    catch
-        throw:Error ->
-            {error, Error}
-    end.
+    ok.
 
 %%%===================================================================
 %%% Internal functions

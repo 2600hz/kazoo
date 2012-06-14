@@ -40,7 +40,7 @@
                       ,reset_addons = sets:new() :: set()
                      }).
 
--type(reseller() :: [#wh_reseller{},...] | []).
+-type(reseller() :: #wh_reseller{}).
 -export_type([reseller/0]).
 
 %%--------------------------------------------------------------------
@@ -91,17 +91,8 @@ process_activation_charges(Category, Name, #wh_reseller{billing_id=BillingId}=Re
     case wh_service_plan:get_activation_charge(Category, Name, Plan) of
         undefined -> process_activation_charges(Category, Name, Reseller, Plans);
         Amount ->
-            case braintree_transaction:quick_sale(BillingId, Amount) of
-                {ok, #bt_transaction{}} -> 
-                    process_activation_charges(Category, Name, Reseller, Plans);
-                {error, #bt_api_error{}=ApiError} ->
-                    Resp = braintree_util:bt_api_error_to_json(ApiError),
-                    lager:debug("billing error updating braintree: ~s", [wh_json:encode(Resp)]),
-                    throw(wh_json:set_value(<<"billing_id">>, BillingId, Resp));
-                {error, _R} ->
-                    lager:debug("billing error updating braintree: ~p", [_R]),
-                    throw(wh_json:from_list([{<<"billing_id">>, BillingId}]))
-            end
+            _ = braintree_transaction:quick_sale(BillingId, Amount),
+            process_activation_charges(Category, Name, Reseller, Plans)
     end.
 
 %%--------------------------------------------------------------------
@@ -123,7 +114,7 @@ update_quantity(Category, Name, Quantity, #wh_reseller{account_id=AccountId}=Res
         undefined -> update_quantity(Category, Name, Quantity, Reseller, Plans);
         {PlanId, AddOnId} ->
             SubscriptionId = <<AccountId/binary, "_", PlanId/binary>>,
-            {ok, Subscription} = get_subscription(SubscriptionId, PlanId, Reseller),
+            Subscription = get_subscription(SubscriptionId, PlanId, Reseller),
             R = update_subscription_quanity(SubscriptionId, Subscription, AddOnId, Quantity, Reseller),
             update_quantity(Category, Name, Quantity, R, Plans)
     end.
@@ -147,7 +138,7 @@ increment_quantity(Category, Name, #wh_reseller{account_id=AccountId
         undefined -> increment_quantity(Category, Name, Reseller, Plans);
         {PlanId, AddOnId} ->
             SubscriptionId = <<AccountId/binary, "_", PlanId/binary>>,
-            {ok, Subscription} = get_subscription(SubscriptionId, PlanId, Reseller),
+            Subscription = get_subscription(SubscriptionId, PlanId, Reseller),
             AddOn = wh_util:to_list(AddOnId),
             R = case sets:is_element(AddOn, ResetAddOns) of
                     false -> 
@@ -176,7 +167,7 @@ reset_category_addons(Category, [Plan|Plans], #wh_reseller{account_id=AccountId}
                                   case subscribed_to_addon(SubscriptionId, AddOnId, R) of
                                       false -> R;
                                       true ->
-                                          {ok, Subscription} = get_subscription(SubscriptionId, PlanId, R),
+                                          Subscription = get_subscription(SubscriptionId, PlanId, R),
                                           (update_subscription_quanity(SubscriptionId, Subscription, AddOnId, 0, R))
                                               #wh_reseller{reset_addons=sets:add_element(AddOnId, ResetAddOns)}
                                   end
@@ -190,19 +181,11 @@ reset_category_addons(Category, [Plan|Plans], #wh_reseller{account_id=AccountId}
 %% @end
 %%--------------------------------------------------------------------
 -spec commit_changes/1 :: (reseller()) -> ok.
-commit_changes(#wh_reseller{bt_subscriptions=Subscriptions, billing_id=BillingId}) ->
-    [case braintree_subscription:update(Subscription) of
-         {ok, _} -> ok;
-         {error, #bt_api_error{}=ApiError} ->
-             Resp = braintree_util:bt_api_error_to_json(ApiError),
-             lager:debug("billing error updating braintree: ~s", [wh_json:encode(Resp)]),
-             throw(wh_json:set_value(<<"billing_id">>, BillingId, Resp));
-         {error, _R} ->
-             lager:debug("billing error updating braintree: ~p", [_R]),
-             throw(wh_json:from_list([{<<"billing_id">>, BillingId}]))
-     end
-     || {_, Subscription} <- dict:to_list(Subscriptions)
-    ].
+commit_changes(#wh_reseller{bt_subscriptions=Subscriptions}) ->
+    _ = [braintree_subscription:update(Subscription)
+         || {_, Subscription} <- dict:to_list(Subscriptions)
+        ],
+    ok.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -288,7 +271,7 @@ assign(JObj) ->
         
 assign(ResellerId, JObj) ->
     ResellerDb = wh_util:format_account_id(ResellerId, encoded),
-    case couch_mgr:db_exist(ResellerDb) of
+    case couch_mgr:db_exists(ResellerDb) of
         false -> {error, bad_reseller_id};
         true ->
             AccountId = wh_json:get_value(<<"_id">>, JObj),
@@ -394,20 +377,17 @@ unassign_representative(JObj) ->
 -spec get_represenative/1 :: (wh_json:json_object()) -> {'ok', wh_json:json_object()} | {'error', _}.
 get_represenative(JObj) ->
     AccountId = wh_json:get_value(<<"_id">>, JObj),
-    case get_reseller_id(JObj) of
-        undefined -> {error, no_reseller};
-        ResellerId ->
-            ResellerDb = wh_util:format_account_id(ResellerId, encoded),    
-            ViewOptions = [{<<"include_docs">>, true}
-                           ,{<<"key">>, AccountId}
-                          ],
-            case couch_mgr:get_results(ResellerDb, <<"reseller/find_assignments">>, ViewOptions) of
-                {error, _R}=E -> 
-                    lager:debug("unable to find reseller account represenatives: ~p", [_R]),
-                    E;
-                {ok, []} -> assign_representative(JObj);
-                {ok, [Rep|_]} -> {ok, wh_json:get_value(<<"doc">>, Rep, wh_json:new())}
-            end
+    ResellerId = get_reseller_id(JObj),
+    ResellerDb = wh_util:format_account_id(ResellerId, encoded),    
+    ViewOptions = [{<<"include_docs">>, true}
+                   ,{<<"key">>, AccountId}
+                  ],
+    case couch_mgr:get_results(ResellerDb, <<"reseller/find_assignments">>, ViewOptions) of
+        {error, _R}=E -> 
+            lager:debug("unable to find reseller account represenatives: ~p", [_R]),
+            E;
+        {ok, []} -> assign_representative(JObj);
+        {ok, [Rep|_]} -> {ok, wh_json:get_value(<<"doc">>, Rep, wh_json:new())}
     end.
 
 %%--------------------------------------------------------------------
@@ -418,24 +398,21 @@ get_represenative(JObj) ->
 %%--------------------------------------------------------------------
 -spec admins/1 :: (wh_json:json_object()) -> {'ok', wh_json:json_objects()} | {'error', _}.
 admins(JObj) ->
-    case get_reseller_id(JObj) of
-        undefined -> {error, no_reseller};
-        ResellerId ->
-            ResellerDb = wh_util:format_account_id(ResellerId, encoded),
-            ViewOptions = [{<<"key">>, <<"user">>}
-                           ,{<<"include_docs">>, true}
-                          ],
-            case couch_mgr:get_results(ResellerDb, <<"maintenance/listing_by_type">>, ViewOptions) of
-                {ok, Users} -> 
-                    Admins = [wh_json:get_value(<<"doc">>, User) 
-                              || User <- Users
-                                     ,wh_json:get_value([<<"doc">>, <<"priv_level">>], User) =:= <<"admin">>
-                             ],
-                    {ok, Admins};
-                {error, _R}=E -> 
-                    lager:debug("failed to find reseller ~s account admins: ~p", [ResellerId, _R]),
-                    E
-            end
+    ResellerId = get_reseller_id(JObj),
+    ResellerDb = wh_util:format_account_id(ResellerId, encoded),
+    ViewOptions = [{<<"key">>, <<"user">>}
+                   ,{<<"include_docs">>, true}
+                  ],
+    case couch_mgr:get_results(ResellerDb, <<"maintenance/listing_by_type">>, ViewOptions) of
+        {ok, Users} -> 
+            Admins = [wh_json:get_value(<<"doc">>, User) 
+                      || User <- Users
+                             ,wh_json:get_value([<<"doc">>, <<"priv_level">>], User) =:= <<"admin">>
+                     ],
+            {ok, Admins};
+        {error, _R}=E -> 
+            lager:debug("failed to find reseller ~s account admins: ~p", [ResellerId, _R]),
+            E
     end.
 
 %%--------------------------------------------------------------------
@@ -446,25 +423,35 @@ admins(JObj) ->
 %%--------------------------------------------------------------------
 -spec settings/2 :: (ne_binary(), wh_json:json_object()) -> wh_json:json_objects().
 settings(Key, JObj) ->
-    case get_reseller_id(JObj) of
-        undefined -> wh_json:new();
-        ResellerId -> whapps_account_config:get(ResellerId, Key)
-    end.
+    ResellerId = get_reseller_id(JObj),
+    whapps_account_config:get(ResellerId, Key).
 
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
 -spec bt_customer/1 :: (ne_binary()) -> #bt_customer{}.
 bt_customer(BillingId) ->
     lager:debug("requesting braintree customer ~s", [BillingId]),
-    case braintree_customer:find(BillingId) of
-        {ok, Customer} -> Customer;
-        {error, not_found} ->
+    try braintree_customer:find(BillingId) of
+        Customer -> Customer
+    catch
+        throw:{not_found, _} ->
             lager:debug("braintree customer ~s not found, creating new account", [BillingId]),
-            {ok, Customer} =  braintree_customer:create(BillingId),
-            Customer
+            braintree_customer:create(BillingId)
     end.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
 -spec find_reseller/2 :: ([ne_binary(),...] | [], ne_binary()) -> ne_binary().
 find_reseller([], MasterAccountId) ->             
     MasterAccountId;
@@ -480,41 +467,65 @@ find_reseller([ParentId|Tree], MasterAccountId) ->
             find_reseller(Tree, MasterAccountId)
     end.
 
--spec get_subscription/3 :: (ne_binary(), ne_binary(), reseller()) -> {'ok', #bt_subscription{}} | {'error', _}.
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec get_subscription/3 :: (ne_binary(), ne_binary(), reseller()) -> #bt_subscription{}.
 get_subscription(SubscriptionId, PlanId, #wh_reseller{bt_subscriptions=Subscriptions, bt_customer=Customer}) ->
     case dict:find(SubscriptionId, Subscriptions) of
-        {ok, _}=Ok -> Ok; 
+        {ok, Subscription} -> Subscription; 
         error ->
-            case braintree_customer:get_subscription(SubscriptionId, Customer) of
-                {error, not_found} -> 
-                    braintree_customer:new_subscription(SubscriptionId, PlanId, Customer);
-                {ok, _}=Ok -> Ok
+            try braintree_customer:get_subscription(SubscriptionId, Customer) of
+                Subscription -> Subscription
+            catch
+                throw:{not_found, _} ->                        
+                    braintree_customer:new_subscription(SubscriptionId, PlanId, Customer)
             end
     end.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
 -spec subscribed_to_addon/3 :: (ne_binary(), ne_binary(), reseller()) -> boolean().
 subscribed_to_addon(SubscriptionId, AddOnId, #wh_reseller{bt_customer=Customer}) ->
-    case braintree_customer:get_subscription(SubscriptionId, Customer) of
-        {error, _} -> false;
-        {ok, Subscription} -> 
-            case braintree_subscription:get_addon(Subscription, AddOnId) of
-                {error, _} -> false;
-                {ok, _} -> true
-            end
+    try
+        Subscription = braintree_customer:get_subscription(SubscriptionId, Customer),
+        _ = braintree_subscription:get_addon(Subscription, AddOnId),
+        true
+    catch
+        throw:{not_found, _} -> false
     end.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
 -spec update_subscription_quanity/5 :: (ne_binary(), #bt_subscription{}, ne_binary(), ne_binary() | integer(), reseller()) -> reseller().
 update_subscription_quanity(SubscriptionId, Subscription, AddOnId, Quantity, #wh_reseller{bt_subscriptions=Subscriptions
                                                                                          ,bt_customer=Customer}=Reseller) ->
     CustomerId = braintree_customer:get_id(Customer),
     lager:info("updating customer ~s subscription ~s addon ~s quantity to ~p", [CustomerId, SubscriptionId, AddOnId, Quantity]),
-    {ok, UpdatedSubscription} = braintree_subscription:update_addon_quantity(Subscription, AddOnId, Quantity),
+    UpdatedSubscription = braintree_subscription:update_addon_quantity(Subscription, AddOnId, Quantity),
     Reseller#wh_reseller{bt_subscriptions=dict:store(SubscriptionId, UpdatedSubscription, Subscriptions)}.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
 -spec increment_subscription_quanity/4 :: (ne_binary(), #bt_subscription{}, ne_binary(), reseller()) -> reseller().
 increment_subscription_quanity(SubscriptionId, Subscription, AddOnId, #wh_reseller{bt_subscriptions=Subscriptions
                                                                                    ,bt_customer=Customer}=Reseller) ->
     CustomerId = braintree_customer:get_id(Customer),
     lager:info("increment customer ~s subscription ~s addon ~s", [CustomerId, SubscriptionId, AddOnId]),
-    {ok, UpdatedSubscription} = braintree_subscription:increment_addon_quantity(Subscription, AddOnId),
+    UpdatedSubscription = braintree_subscription:increment_addon_quantity(Subscription, AddOnId),
     Reseller#wh_reseller{bt_subscriptions=dict:store(SubscriptionId, UpdatedSubscription, Subscriptions)}.

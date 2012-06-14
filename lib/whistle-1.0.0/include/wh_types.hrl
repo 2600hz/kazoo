@@ -25,6 +25,8 @@
 
 -type api_terms() :: wh_json:json_object() | wh_json:json_proplist().
 
+-type wh_deeplist() :: [term() | wh_deeplist()].
+
 %% non-empty binary
 -define(NE_BINARY, <<_:8,_/binary>>).
 -type ne_binary() :: <<_:8,_:_*8>>.

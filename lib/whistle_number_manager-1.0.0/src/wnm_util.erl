@@ -20,6 +20,7 @@
 -export([is_e164/1, is_npan/1, is_1npan/1]).
 -export([find_account_id/1]).
 -export([get_all_number_dbs/0]).
+-export([are_jobjs_identical/2]).
 
 -include("wh_number_manager.hrl").
 -include_lib("proper/include/proper.hrl").
@@ -252,6 +253,21 @@ is_number_db(<<"numbers/", _/binary>>) -> true;
 is_number_db(<<"numbers%2f", _/binary>>) -> true;
 is_number_db(<<"numbers%2F", _/binary>>) -> true;
 is_number_db(_) -> false.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec are_jobjs_identical/2 :: ('undefined' | wh_json:json_object(), 'undefined' | wh_json:json_object()) -> boolean().
+are_jobjs_identical(undefined, undefined) -> true;
+are_jobjs_identical(undefined, _) -> false;
+are_jobjs_identical(_, undefined) -> false;
+are_jobjs_identical(JObj1, JObj2) ->
+    [KV || {_, V}=KV <- wh_json:to_proplist(JObj1), (not wh_util:is_empty(V))]
+        =:=
+    [KV || {_, V}=KV <- wh_json:to_proplist(JObj2), (not wh_util:is_empty(V))].
 
 %% PROPER TESTING
 %%

@@ -68,19 +68,19 @@ maybe_update_dash_e911(#number{current_number_doc=CurrentJObj, number_doc=JObj
                                ,features=Features, number=Number}=N) ->
     CurrentE911 = wh_json:get_ne_value(<<"dash_e911">>, CurrentJObj),
     E911 = wh_json:get_ne_value(<<"dash_e911">>, JObj),
+    NotChanged = wnm_util:are_jobjs_identical(CurrentE911, E911),
     case wh_util:is_empty(E911) of
         true -> 
             lager:debug("dash e911 information has been removed, updating dash"),
             _ = remove_number(Number),
             N#number{features=sets:del_element(<<"dash_e911">>, Features)};
-        false when CurrentE911 =:= E911 -> N#number{features=sets:add_element(<<"dash_e911">>, Features)};
+        false when NotChanged  -> N#number{features=sets:add_element(<<"dash_e911">>, Features)};
         false ->
             lager:debug("e911 information has been changed: ~s", [wh_json:encode(E911)]),
+            N1 = wnm_number:activate_feature(<<"dash_e911">>, N),
             case update_e911(Number, E911, JObj) of
                 {error, _}=E -> E;
-                {ok, J} -> 
-                    N#number{features=sets:add_element(<<"dash_e911">>, Features)
-                             ,number_doc=J}
+                {ok, J} -> N1#number{number_doc=J}
             end
     end.
 

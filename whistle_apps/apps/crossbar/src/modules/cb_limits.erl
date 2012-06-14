@@ -66,13 +66,17 @@ resource_exists() ->
 %%--------------------------------------------------------------------
 billing(#cb_context{req_nouns=[{<<"limits">>, _}|_], req_verb = <<"get">>}=Context) ->
     Context;
-billing(#cb_context{req_nouns=[{<<"limits">>, _}|_], doc=JObj}=Context) ->
-    case catch wh_service_limits:update(JObj) of
-        ok -> Context;
-        {error, JObj} when ?IS_JSON_GUARD(JObj) -> 
-            crossbar_util:response_invalid_data(JObj, Context);    
-        {error, Else} ->
-            crossbar_util:response_invalid_data(wh_util:to_binary(Else), Context)
+billing(#cb_context{req_nouns=[{<<"limits">>, _}|_], doc=JObj, account_id=AccountId}=Context) ->
+    case wh_resellers:fetch(AccountId) of
+        {error, no_service_plan} -> Context;
+        {ok, Resellers} ->
+            try 
+                UpdatedResellers = wh_service_limits:update(JObj, Resellers),
+                ok = wh_resellers:commit_updates(UpdatedResellers)
+            catch
+                throw:{Error, Reason} ->
+                    crossbar_util:response(error, wh_util:to_binary(Error), 500, Reason, Context)
+            end
     end;
 billing(Context) -> Context.
 
