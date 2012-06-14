@@ -1008,7 +1008,7 @@ b_play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Call) ->
 b_play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, Call) ->
     b_play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, undefined, Call).
 b_play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, MediaInvalid, Call) ->
-    b_play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, MediaInvalid, <<"\\d+">>, Call).
+    b_play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, MediaInvalid, <<"[\\d\\*\\#]+">>, Call).
 b_play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, MediaInvalid, Regex, Call) ->
     b_play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, MediaInvalid, Regex, ?ANY_DIGIT, Call).
 
@@ -1023,7 +1023,7 @@ b_play_and_collect_digits(MinDigits, MaxDigits, Media, Tries, Timeout, MediaInva
         {ok, Digits} ->
             MinSize = wh_util:to_integer(MinDigits),
             case re:run(Digits, Regex) of
-                {match, _} when size(Digits) >= MinSize ->
+                {match, _} when byte_size(Digits) >= MinSize ->
                     {ok, Digits};
                 _ ->
                     RemainingTries = wh_util:to_binary(wh_util:to_integer(Tries) - 1),
@@ -1259,6 +1259,7 @@ collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call, Digits
                 { <<"call_event">>, <<"DTMF">>, _ } ->
                     %% remove any queued prompts, and start collecting digits
                     Digits =:= <<>> andalso flush(Call),
+
                     %% DTMF received, collect and start interdigit timeout
                     Digit = wh_json:get_value(<<"DTMF-Digit">>, JObj, <<>>),
                     case lists:member(Digit, Terminators) of
@@ -1449,8 +1450,6 @@ wait_for_headless_application(Application, Event, Type, Timeout) ->
 %%--------------------------------------------------------------------
 -spec wait_for_dtmf/1 :: ('infinity' | pos_integer()) -> {'error', 'channel_hungup' | wh_json:json_object()} | {'ok', binary()}.
 wait_for_dtmf(Timeout) ->
-    lager:debug("waiting ~p for DTMF", [Timeout]),
-
     Start = erlang:now(),
     receive
         {amqp_msg, JObj} ->
