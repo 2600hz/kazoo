@@ -898,6 +898,14 @@ load_phone_number_doc(Account) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec update_service_plans/1 :: (wnm_number()) -> wnm_number().
+update_service_plans(#number{phone_number_docs=PhoneNumbers, assigned_to=undefined
+                             ,prev_assigned_to=PrevAssignedTo}=N) ->
+    case dict:find(PrevAssignedTo, PhoneNumbers) of
+        error -> N;
+        {ok, PhoneNumber} ->
+            update_service_plan(PhoneNumber, N)
+    end;
 update_service_plans(#number{phone_number_docs=PhoneNumbers, assigned_to=AssignedTo}=N) ->
     case dict:find(AssignedTo, PhoneNumbers) of
         error -> N;
@@ -911,6 +919,7 @@ update_service_plans(#number{phone_number_docs=PhoneNumbers, assigned_to=Assigne
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec update_service_plan/2 :: (wh_json:json_object(), wnm_number()) -> wnm_number().
 update_service_plan(PhoneNumber, #number{resellers=undefined, assigned_to=undefined
                                         ,prev_assigned_to=Account}=N) ->
     case wh_resellers:fetch(Account) of
@@ -941,6 +950,7 @@ update_service_plan(PhoneNumber, #number{resellers=Resellers}=N) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec activate_feature/2 :: (ne_binary(), wnm_number()) -> wnm_number().
 activate_feature(Feature, #number{resellers=undefined, assigned_to=Account}=N) ->
     case wh_resellers:fetch(Account) of
         {error, no_service_plan} -> ok;
@@ -964,6 +974,7 @@ activate_feature(Feature, #number{resellers=Resellers, activations=Activations
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec activate_phone_number/1 :: (wnm_number()) -> wnm_number().
 activate_phone_number(#number{resellers=undefined, assigned_to=Account}=N) ->
     case wh_resellers:fetch(Account) of
         {error, no_service_plan} -> N;

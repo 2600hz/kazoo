@@ -42,7 +42,7 @@ save(#number{state = <<"reserved">>} = Number) ->
     maybe_update_dash_e911(Number);
 save(#number{state = <<"in_service">>} = Number) ->
     maybe_update_dash_e911(Number);
-save(Number) -> Number.
+save(Number) -> delete(Number). 
 
 %%--------------------------------------------------------------------
 %% @public
@@ -52,10 +52,16 @@ save(Number) -> Number.
 %% @end
 %%--------------------------------------------------------------------
 -spec delete/1 :: (wnm_number()) -> wnm_number().
-delete(#number{features=Features, number=Number}=N) -> 
-    lager:debug("number has been deleted, removing any e911 information"),
-    _ = remove_number(Number),
-    N#number{features=sets:del_element(<<"dash_e911">>, Features)}.
+delete(#number{features=Features, number=Num
+               ,current_number_doc=CurrentDoc, number_doc=Doc}=Number) -> 
+    case wh_json:get_ne_value(<<"dash_e911">>, CurrentDoc) of
+        undefined -> Number;
+        _Else -> 
+            lager:debug("removing e911 information"),
+            _ = remove_number(Num),
+            Number#number{features=sets:del_element(<<"dash_e911">>, Features)
+                          ,number_doc=wh_json:delete_key(<<"dash_e911">>, Doc)}
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
