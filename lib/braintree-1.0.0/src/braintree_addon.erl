@@ -24,7 +24,7 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec xml_to_record/1 :: (bt_xml()) -> #bt_addon{}.
--spec xml_to_record/2 :: (bt_xml(), string()) -> #bt_addon{}.
+-spec xml_to_record/2 :: (bt_xml(), wh_deeplist()) -> #bt_addon{}.
 
 xml_to_record(Xml) ->
     xml_to_record(Xml, "/add-on").
@@ -43,9 +43,8 @@ xml_to_record(Xml, Base) ->
 %% Contert the given XML to a customer record
 %% @end
 %%--------------------------------------------------------------------
--type record_proplist() :: [{'amount' | 'existing-id' | 'id' | 'never-expires' | 'number-of-billing-cycles' | 'quantity',_},...].
--spec record_to_xml/1 :: (#bt_addon{}) -> record_proplist() | braintree_util:char_to_bin_res().
--spec record_to_xml/2 :: (#bt_addon{}, boolean()) -> record_proplist() | braintree_util:char_to_bin_res().
+-spec record_to_xml/1 :: (#bt_addon{}) -> proplist() | bt_xml().
+-spec record_to_xml/2 :: (#bt_addon{}, boolean()) -> proplist() | bt_xml().
 
 record_to_xml(Addon) ->
     record_to_xml(Addon, false).

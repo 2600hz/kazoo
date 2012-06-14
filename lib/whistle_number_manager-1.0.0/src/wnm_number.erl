@@ -17,6 +17,7 @@
 -export([save/1]).
 -export([save_phone_number_docs/1]).
 -export([delete/1]).
+-export([activate_feature/2]).
 
 -export([discovery/1]).
 -export([port_in/1]).
@@ -154,12 +155,7 @@ save(#number{}=Number) ->
     Routines = [fun(#number{}=N) -> N#number{number_doc=record_to_json(N)} end
                 ,fun(#number{}=N) -> exec_providers(N, save) end
                 ,fun(#number{}=N) -> get_updated_phone_number_docs(N) end
-                ,fun(#number{phone_number_docs=PhoneNumbers}=N) -> 
-                         _ = [wh_service_numbers:update(PhoneNumber) 
-                              || {_, PhoneNumber} <- dict:to_list(PhoneNumbers)
-                             ],
-                         N
-                 end
+                ,fun(#number{}=N) -> update_service_plans(N) end
                 ,fun({_, #number{}}=E) -> E;
                     (#number{}=N) -> save_number_doc(N)
                  end
@@ -213,12 +209,7 @@ delete(Number) ->
     Routines = [fun(#number{}=N) -> N#number{number_doc=record_to_json(N)} end
                 ,fun(#number{}=N) -> exec_providers(N, delete) end
                 ,fun(#number{}=N) -> get_updated_phone_number_docs(N) end
-                ,fun(#number{phone_number_docs=PhoneNumbers}=N) -> 
-                         _ = [wh_service_numbers:update(PhoneNumber) 
-                              || {_, PhoneNumber} <- dict:to_list(PhoneNumbers)
-                             ],
-                         N
-                 end
+                ,fun(#number{}=N) -> update_service_plans(N) end
                 ,fun({_, #number{}}=E) -> E;
                     (#number{}=N) -> delete_number_doc(N)
                  end
@@ -293,11 +284,6 @@ reserved(#number{state = <<"discovery">>}=Number) ->
                             true -> N
                         end
                 end
-                ,fun(#number{module_name=undefined}=N) ->
-                         error_carrier_not_specified(N);
-                    (#number{module_name=Module}=N) ->
-                         Module:acquire_number(N)
-                 end
                 ,fun(#number{reserve_history=ReserveHistory, assign_to=AssignTo}=N) ->
                          N#number{reserve_history=ordsets:add_element(AssignTo, ReserveHistory)}
                  end
@@ -308,7 +294,12 @@ reserved(#number{state = <<"discovery">>}=Number) ->
                     (#number{assigned_to=AssignedTo, assign_to=AssignTo}=N) -> 
                          N#number{state = <<"reserved">>, assigned_to=AssignTo, prev_assigned_to=AssignedTo}
                  end
-
+                ,fun(#number{}=N) -> activate_phone_number(N) end
+                ,fun(#number{module_name=undefined}=N) ->
+                         error_carrier_not_specified(N);
+                    (#number{module_name=Module}=N) ->
+                         Module:acquire_number(N)
+                 end
                ],
     lists:foldl(fun(F, J) -> F(J) end, Number, Routines);
 reserved(#number{state = <<"available">>}=Number) ->
@@ -328,6 +319,7 @@ reserved(#number{state = <<"available">>}=Number) ->
                     (#number{assigned_to=AssignedTo, assign_to=AssignTo}=N) -> 
                          N#number{state = <<"reserved">>, assigned_to=AssignTo, prev_assigned_to=AssignedTo}
                  end
+                ,fun(#number{}=N) -> activate_phone_number(N) end
                ],
     lists:foldl(fun(F, J) -> F(J) end, Number, Routines);
 reserved(#number{state = <<"reserved">>, assigned_to=AssignedTo, assign_to=AssignedTo}=Number) ->
@@ -341,7 +333,7 @@ reserved(#number{state = <<"reserved">>}=Number) ->
                             false -> error_unauthorized(N);
                             true -> N
                         end
-                end           
+                end          
                 ,fun(#number{reserve_history=ReserveHistory, assign_to=AssignTo}=N) ->
                          N#number{reserve_history=ordsets:add_element(AssignTo, ReserveHistory)}
                  end
@@ -352,6 +344,7 @@ reserved(#number{state = <<"reserved">>}=Number) ->
                     (#number{assigned_to=AssignedTo, assign_to=AssignTo}=N) -> 
                          N#number{state = <<"reserved">>, assigned_to=AssignTo, prev_assigned_to=AssignedTo}
                  end
+                ,fun(#number{}=N) -> activate_phone_number(N) end
                ],
     lists:foldl(fun(F, J) -> F(J) end, Number, Routines);
 reserved(#number{state = <<"in_service">>}=Number) ->
@@ -380,17 +373,18 @@ in_service(#number{state = <<"discovery">>}=Number) ->
                             true -> N
                         end
                 end
-                ,fun(#number{module_name=undefined}=N) ->
-                         error_carrier_not_specified(N);
-                    (#number{module_name=Module}=N) ->
-                         Module:acquire_number(N)
-                 end
                 ,fun(#number{assigned_to=undefined, assign_to=AssignTo}=N) -> 
                          N#number{state = <<"in_service">>, assigned_to=AssignTo};
                     (#number{assigned_to=AssignedTo, assign_to=AssignedTo}=N) -> 
                          N#number{state = <<"in_service">>};
                     (#number{assigned_to=AssignedTo, assign_to=AssignTo}=N) ->
                          N#number{state = <<"in_service">>, assigned_to=AssignTo, prev_assigned_to=AssignedTo}
+                 end
+                ,fun(#number{}=N) -> activate_phone_number(N) end
+                ,fun(#number{module_name=undefined}=N) ->
+                         error_carrier_not_specified(N);
+                    (#number{module_name=Module}=N) ->
+                         Module:acquire_number(N)
                  end
                ],
     lists:foldl(fun(F, J) -> F(J) end, Number, Routines);
@@ -417,6 +411,7 @@ in_service(#number{state = <<"available">>}=Number) ->
                     (#number{assigned_to=AssignedTo, assign_to=AssignTo}=N) ->
                          N#number{state = <<"in_service">>, assigned_to=AssignTo, prev_assigned_to=AssignedTo}
                  end
+                ,fun(#number{}=N) -> activate_phone_number(N) end
                ],
     lists:foldl(fun(F, J) -> F(J) end, Number, Routines);
 in_service(#number{state = <<"reserved">>}=Number) ->
@@ -436,6 +431,7 @@ in_service(#number{state = <<"reserved">>}=Number) ->
                     (#number{assigned_to=AssignedTo, assign_to=AssignTo}=N) ->
                          N#number{state = <<"in_service">>, assigned_to=AssignTo, prev_assigned_to=AssignedTo}
                  end
+                ,fun(#number{}=N) -> activate_phone_number(N) end
                ],
     lists:foldl(fun(F, J) -> F(J) end, Number, Routines);
 in_service(#number{state = <<"in_service">>, assigned_to=AssignedTo, assign_to=AssignedTo}=Number) ->
@@ -563,6 +559,7 @@ json_to_record(JObj, #number{number=Num, number_db=Db}=Number) ->
                   ,module_name=wnm_util:get_carrier_module(JObj)
                   ,module_data=wh_json:get_ne_value(<<"pvt_module_data">>, JObj) 
                   ,features=sets:from_list(wh_json:get_ne_value(<<"pvt_features">>, JObj, [])) 
+                  ,current_features=sets:from_list(wh_json:get_ne_value(<<"pvt_features">>, JObj, []))
                   ,number_doc=JObj
                   ,current_number_doc=JObj
                  }.
@@ -706,17 +703,13 @@ exec_providers([Provider|Providers], Action, Number) ->
 error_invalid_state_transition(Transition, #number{state = State}=N) ->
     Error = list_to_binary(["Invalid state transition from ", State, " to ", Transition]),
     lager:debug("~s", [Error]),
-    throw({invalid_state_transition, N#number{error=invalid_state_transition
-                                              ,error_jobj=wh_json:from_list([{<<"state_transition">>, Error}])
-                                             }}).
+    throw({invalid_state_transition, N#number{error_jobj=wh_json:from_list([{<<"state_transition">>, Error}])}}).
 
 -spec error_unauthorized/1 :: (wnm_number()) -> no_return().
 error_unauthorized(N) ->
     Error = <<"Not authorized to preform requested number operation">>, 
     lager:debug("~s", [Error]),
-    throw({unauthorized, N#number{error=unauthorized
-                           ,error_jobj=wh_json:from_list([{<<"unauthorized">>, Error}])
-                          }}).
+    throw({unauthorized, N#number{error_jobj=wh_json:from_list([{<<"unauthorized">>, Error}])}}).
 
 -spec error_no_change_required/2 :: (ne_binary(), wnm_number()) -> no_return().
 error_no_change_required(State, N) ->
@@ -896,4 +889,92 @@ load_phone_number_doc(Account) ->
             lager:debug("creating phone_numbers in ~s", [AccountId]),
             {ok, wh_json:from_list([{<<"pvt_created">>, wh_util:current_tstamp()} | PVTs])};
         {error, _}=E -> E
+    end.
+
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+update_service_plans(#number{phone_number_docs=PhoneNumbers, assigned_to=AssignedTo}=N) ->
+    case dict:find(AssignedTo, PhoneNumbers) of
+        error -> N;
+        {ok, PhoneNumber} ->
+            update_service_plan(PhoneNumber, N)
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+update_service_plan(PhoneNumber, #number{resellers=undefined, assigned_to=undefined
+                                        ,prev_assigned_to=Account}=N) ->
+    case wh_resellers:fetch(Account) of
+        {error, no_service_plan} -> N;
+        {ok, Resellers} ->
+            update_service_plan(PhoneNumber, N#number{resellers=Resellers})
+    end;
+update_service_plan(PhoneNumber, #number{resellers=undefined, assigned_to=Account}=N) ->
+    case wh_resellers:fetch(Account) of
+        {error, no_service_plan} -> N;
+        {ok, Resellers} ->
+            update_service_plan(PhoneNumber, N#number{resellers=Resellers})
+    end;
+update_service_plan(PhoneNumber, #number{resellers=Resellers}=N) ->
+    Routines = [fun(R) -> wh_service_numbers:update(PhoneNumber, R) end
+                ,fun(R) -> wh_resellers:commit_changes(R) end
+               ],
+    try lists:foldl(fun(F, R) -> F(R) end, Resellers, Routines) of
+        ok -> N
+    catch
+        throw:{_, Reason} ->
+            error_service_restriction(Reason, N)
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+activate_feature(Feature, #number{resellers=undefined, assigned_to=Account}=N) ->
+    case wh_resellers:fetch(Account) of
+        {error, no_service_plan} -> ok;
+        {ok, Resellers} ->
+            activate_feature(Feature, N#number{resellers=Resellers})
+    end;
+activate_feature(Feature, #number{resellers=Resellers, activations=Activations
+                                  ,features=Features}=N) ->
+    try wh_service_numbers:activate_feature(Feature, Resellers) of
+        R -> N#number{activations=sets:add_element({features, Feature}, Activations)
+                      ,features=sets:add_element(Feature, Features)
+                      ,resellers=R}
+    catch
+        throw:{_, Reason} ->
+            error_service_restriction(Reason, N)
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+activate_phone_number(#number{resellers=undefined, assigned_to=Account}=N) ->
+    case wh_resellers:fetch(Account) of
+        {error, no_service_plan} -> N;
+        {ok, Resellers} ->
+            activate_phone_number(N#number{resellers=Resellers})
+    end;
+activate_phone_number(#number{number=Num, resellers=Resellers, activations=Activations}=N) ->
+    try wh_service_numbers:activate_phone_number(Num, Resellers) of
+        R -> N#number{activations=sets:add_element({phone_number, Num}, Activations)
+                      ,resellers=R}
+    catch
+        throw:{_, Reason} ->
+            error_service_restriction(Reason, N)
     end.

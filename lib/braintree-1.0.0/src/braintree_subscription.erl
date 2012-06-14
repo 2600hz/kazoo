@@ -69,7 +69,7 @@ new(SubscriptionId, PlanId, PaymentToken) ->
 %% Get the subscription id
 %% @end
 %%--------------------------------------------------------------------
--spec get_id/1 :: (#bt_subscription{}) -> string().
+-spec get_id/1 :: (#bt_subscription{}) -> 'undefined' | ne_binary().
 get_id(#bt_subscription{id=SubscriptionId}) ->
     SubscriptionId.
 
@@ -79,16 +79,15 @@ get_id(#bt_subscription{id=SubscriptionId}) ->
 %% Get the subscription id
 %% @end
 %%--------------------------------------------------------------------
--spec get_addon/2 :: (#bt_subscription{}, ne_binary()) -> {'ok', #bt_addon{}} |
-                                                          {'error', 'not_found'}.
+-spec get_addon/2 :: (#bt_subscription{}, ne_binary()) -> #bt_addon{}.
 get_addon(#bt_subscription{add_ons=AddOns}, AddOnId) ->
     case lists:keyfind(AddOnId, #bt_addon.id, AddOns) of
         false ->
             case lists:keyfind(AddOnId, #bt_addon.inherited_from, AddOns) of
-                false -> {error, not_found};
-                #bt_addon{}=AddOn -> {ok, AddOn}
+                false -> braintree_util:error_not_found(<<"Add-On">>);
+                #bt_addon{}=AddOn -> AddOn
             end;
-        #bt_addon{}=AddOn -> {ok, AddOn}
+        #bt_addon{}=AddOn -> AddOn
     end.
 
 %%--------------------------------------------------------------------
@@ -97,17 +96,11 @@ get_addon(#bt_subscription{add_ons=AddOns}, AddOnId) ->
 %% Find a subscription by id
 %% @end
 %%--------------------------------------------------------------------
--spec find/1 :: (ne_binary()) -> bt_result().
+-spec find/1 :: (ne_binary()) -> #bt_subscription{}.
 find(SubscriptionId) ->
-    case braintree_util:validate_id(SubscriptionId) of
-        {error, _}=E -> E;
-        ok ->
-            Url = url(SubscriptionId),
-            case braintree_request:get(Url) of
-                {ok, Xml} -> {ok, xml_to_record(Xml)};
-                {error, _}=E -> E
-            end
-    end.
+    Url = url(SubscriptionId),
+    Xml = braintree_request:get(Url),
+    xml_to_record(Xml).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -115,20 +108,14 @@ find(SubscriptionId) ->
 %% Creates a new subscription using the given record
 %% @end
 %%--------------------------------------------------------------------
--spec create/1 :: (#bt_subscription{}) -> bt_result().
--spec create/2 :: (ne_binary(), ne_binary()) -> bt_result().
+-spec create/1 :: (#bt_subscription{}) -> #bt_subscription{}.
+-spec create/2 :: (ne_binary(), ne_binary()) -> #bt_subscription{}.
 
-create(#bt_subscription{id=SubscriptionId}=Subscription) ->
-    case braintree_util:validate_id(SubscriptionId) of
-        {error, _}=E -> E;
-        ok ->
-            Url = url(),
-            Request = record_to_xml(Subscription, true),
-            case braintree_request:post(Url, Request) of
-                {ok, Xml} -> {ok, xml_to_record(Xml)};
-                {error, _}=E -> E
-            end
-    end.
+create(#bt_subscription{}=Subscription) ->
+    Url = url(),
+    Request = record_to_xml(Subscription, true),
+    Xml = braintree_request:post(Url, Request),
+    xml_to_record(Xml).
 
 create(Plan, Token) ->
     create(#bt_subscription{payment_token=Token, plan_id=Plan}).
@@ -139,20 +126,14 @@ create(Plan, Token) ->
 %% Updates a subscription with the given record
 %% @end
 %%--------------------------------------------------------------------
--spec update/1 :: (#bt_subscription{}) -> bt_result().
+-spec update/1 :: (#bt_subscription{}) -> #bt_subscription{}.
 update(#bt_subscription{create=true}=Subscription) ->
     create(Subscription);
 update(#bt_subscription{id=SubscriptionId}=Subscription) ->
-    case braintree_util:validate_id(SubscriptionId) of
-        {error, _}=E -> E;
-        ok ->
-            Url = url(SubscriptionId),
-            Request = record_to_xml(Subscription, true),
-            case braintree_request:put(Url, Request) of
-                {ok, Xml} -> {ok, xml_to_record(Xml)};
-                {error, _}=E -> E
-            end
-    end.
+    Url = url(SubscriptionId),
+    Request = record_to_xml(Subscription, true),
+    Xml = braintree_request:put(Url, Request),
+    xml_to_record(Xml).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -160,19 +141,13 @@ update(#bt_subscription{id=SubscriptionId}=Subscription) ->
 %% Deletes a subscription id from braintree's system
 %% @end
 %%--------------------------------------------------------------------
--spec cancel/1 :: (#bt_subscription{} | ne_binary()) -> bt_result().
+-spec cancel/1 :: (#bt_subscription{} | ne_binary()) -> #bt_subscription{}.
 cancel(#bt_subscription{id=SubscriptionId}) ->
     cancel(SubscriptionId);
 cancel(SubscriptionId) ->
-    case braintree_util:validate_id(SubscriptionId) of
-        {error, _}=E -> E;
-        ok ->
-            Url = url(SubscriptionId, <<"cancel">>),
-            case braintree_request:put(Url, <<>>) of
-                {ok, _} -> {ok, #bt_subscription{}};
-                {error, _}=E -> E
-            end
-    end.
+    Url = url(SubscriptionId, <<"cancel">>),
+    _ = braintree_request:put(Url, <<>>),
+    #bt_subscription{}.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -181,7 +156,7 @@ cancel(SubscriptionId) ->
 %% or subscription id
 %% @end
 %%--------------------------------------------------------------------
--spec update_addon_quantity/3 :: (#bt_subscription{} | ne_binary(), ne_binary(), integer()) -> bt_result().
+-spec update_addon_quantity/3 :: (#bt_subscription{} | ne_binary(), ne_binary(), integer()) -> #bt_subscription{}.
 update_addon_quantity(Subscription, AddOnId, Quantity) when not is_integer(Quantity) ->
     update_addon_quantity(Subscription, AddOnId, wh_util:to_integer(Quantity));
 update_addon_quantity(#bt_subscription{add_ons=AddOns}=Subscription, AddOnId, Quantity) ->
@@ -190,22 +165,18 @@ update_addon_quantity(#bt_subscription{add_ons=AddOns}=Subscription, AddOnId, Qu
             case lists:keyfind(AddOnId, #bt_addon.inherited_from, AddOns) of
                 false ->
                     AddOn = #bt_addon{inherited_from=AddOnId, quantity=Quantity},
-                    {ok, Subscription#bt_subscription{add_ons=[AddOn|AddOns]}};
+                    Subscription#bt_subscription{add_ons=[AddOn|AddOns]};
                 #bt_addon{}=AddOn ->
                     AddOn1 = AddOn#bt_addon{quantity=Quantity},
-                    {ok, Subscription#bt_subscription{add_ons=lists:keyreplace(AddOnId, #bt_addon.inherited_from, AddOns, AddOn1)}}
+                    Subscription#bt_subscription{add_ons=lists:keyreplace(AddOnId, #bt_addon.inherited_from, AddOns, AddOn1)}
             end;
         #bt_addon{}=AddOn ->
             AddOn1 = AddOn#bt_addon{existing_id=AddOnId, quantity=Quantity},
-            {ok, Subscription#bt_subscription{add_ons=lists:keyreplace(AddOnId, #bt_addon.id, AddOns, AddOn1)}}
+            Subscription#bt_subscription{add_ons=lists:keyreplace(AddOnId, #bt_addon.id, AddOns, AddOn1)}
     end;
 update_addon_quantity(SubscriptionId, AddOnId, Quantity) ->
-    case find(SubscriptionId) of
-        {ok, Subscription} ->
-            update_addon_quantity(Subscription, AddOnId, Quantity);
-        {error, _}=E ->
-            E
-    end.
+    Subscription = find(SubscriptionId),
+    update_addon_quantity(Subscription, AddOnId, Quantity).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -214,29 +185,25 @@ update_addon_quantity(SubscriptionId, AddOnId, Quantity) ->
 %% or subscription id
 %% @end
 %%--------------------------------------------------------------------
--spec increment_addon_quantity/2 :: (#bt_subscription{} | ne_binary(), ne_binary()) -> bt_result().
+-spec increment_addon_quantity/2 :: (#bt_subscription{} | ne_binary(), ne_binary()) -> #bt_subscription{}.
 increment_addon_quantity(#bt_subscription{add_ons=AddOns}=Subscription, AddOnId) ->
     case lists:keyfind(AddOnId, #bt_addon.id, AddOns) of
         false ->
             case lists:keyfind(AddOnId, #bt_addon.inherited_from, AddOns) of
                 false ->
                     AddOn = #bt_addon{inherited_from=AddOnId, quantity=1},
-                    {ok, Subscription#bt_subscription{add_ons=[AddOn|AddOns]}};
+                    Subscription#bt_subscription{add_ons=[AddOn|AddOns]};
                 #bt_addon{quantity=Quantity}=AddOn ->
                     AddOn1 = AddOn#bt_addon{quantity=wh_util:to_integer(Quantity) + 1},
-                    {ok, Subscription#bt_subscription{add_ons=lists:keyreplace(AddOnId, #bt_addon.inherited_from, AddOns, AddOn1)}}
+                    Subscription#bt_subscription{add_ons=lists:keyreplace(AddOnId, #bt_addon.inherited_from, AddOns, AddOn1)}
             end;
         #bt_addon{quantity=Quantity}=AddOn ->
             AddOn1 = AddOn#bt_addon{existing_id=AddOnId, quantity=wh_util:to_integer(Quantity) + 1},
-            {ok, Subscription#bt_subscription{add_ons=lists:keyreplace(AddOnId, #bt_addon.id, AddOns, AddOn1)}}
+            Subscription#bt_subscription{add_ons=lists:keyreplace(AddOnId, #bt_addon.id, AddOns, AddOn1)}
     end;
 increment_addon_quantity(SubscriptionId, AddOnId) ->
-    case find(SubscriptionId) of
-        {ok, Subscription} ->
-            increment_addon_quantity(Subscription, AddOnId);
-        {error, _}=E ->
-            E
-    end.
+    Subscription = find(SubscriptionId),
+    increment_addon_quantity(Subscription, AddOnId).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -245,7 +212,7 @@ increment_addon_quantity(SubscriptionId, AddOnId) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec xml_to_record/1 :: (bt_xml()) -> #bt_subscription{}.
--spec xml_to_record/2 :: (bt_xml(), string()) -> #bt_subscription{}.
+-spec xml_to_record/2 :: (bt_xml(), wh_deeplist()) -> #bt_subscription{}.
 
 xml_to_record(Xml) ->
     xml_to_record(Xml, "/subscription").
@@ -290,8 +257,8 @@ xml_to_record(Xml, Base) ->
 %% Contert the given XML to a subscription record
 %% @end
 %%--------------------------------------------------------------------
--spec record_to_xml/1 :: (#bt_subscription{}) -> bt_xml().
--spec record_to_xml/2 :: (#bt_subscription{}, boolean()) -> bt_xml().
+-spec record_to_xml/1 :: (#bt_subscription{}) -> proplist() | bt_xml().
+-spec record_to_xml/2 :: (#bt_subscription{}, boolean()) -> proplist() | bt_xml().
 
 record_to_xml(Subscription) ->
     record_to_xml(Subscription, false).

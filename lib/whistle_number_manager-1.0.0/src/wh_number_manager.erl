@@ -129,9 +129,9 @@ create_number(Number, AssignTo, AuthBy, PublicFields) ->
                 ,fun({_, #number{}}=E) -> E;
                     (#number{}=N) -> wnm_number:save(N)
                  end
-                ,fun({E, #number{error_jobj=JObj}}) -> 
+                ,fun({E, #number{error_jobj=Reason}}) -> 
                          lager:debug("create number prematurely ended: ~p", [E]),
-                         {E, JObj};
+                         {E, Reason};
                     (#number{number_doc=JObj}) -> 
                          lager:debug("create number successfully completed", []),
                          {ok, wh_json:public_fields(JObj)}
@@ -167,9 +167,9 @@ port_in(Number, AssignTo, AuthBy, PublicFields) ->
                 ,fun({_, #number{}}=E) -> E;
                     (#number{}=N) -> wnm_number:save(N)
                  end
-                ,fun({E, #number{error_jobj=JObj}}) -> 
+                ,fun({E, #number{error_jobj=Reason}}) -> 
                          lager:debug("create number prematurely ended: ~p", [E]),
-                         {E, JObj};
+                         {E, Reason};
                     (#number{number_doc=JObj}) -> 
                          lager:debug("port in number successfully completed", []),
                          {ok, wh_json:public_fields(JObj)}
@@ -208,9 +208,9 @@ reconcile_number(Number, AssignTo, AuthBy) ->
                     ({_, #number{}}=E) -> E;
                     (#number{}=N) -> wnm_number:save(N)
                  end
-                ,fun({E, #number{error_jobj=JObj}}) -> 
+                ,fun({E, #number{error_jobj=Reason}}) -> 
                          lager:debug("create number prematurely ended: ~p", [E]),
-                         {E, JObj};
+                         {E, Reason};
                     (#number{number_doc=JObj}) -> 
                          lager:debug("reconcile number successfully completed", []),
                          {ok, wh_json:public_fields(JObj)}
@@ -261,9 +261,9 @@ reserve_number(Number, AssignTo, AuthBy, PublicFields) ->
                 ,fun({_, #number{}}=E) -> E;
                     (#number{}=N) -> wnm_number:save(N)
                  end
-                ,fun({E, #number{error_jobj=JObj}}) -> 
+                ,fun({E, #number{error_jobj=Reason}}) -> 
                          lager:debug("create number prematurely ended: ~p", [E]),
-                         {E, JObj};
+                         {E, Reason};
                     (#number{number_doc=JObj}) -> 
                          lager:debug("reserve successfully completed", []),
                          {ok, wh_json:public_fields(JObj)}
@@ -293,9 +293,9 @@ assign_number_to_account(Number, AssignTo, AuthBy, PublicFields) ->
                 ,fun({_, #number{}}=E) -> E;
                     (#number{}=N) -> wnm_number:save(N)
                  end
-                ,fun({E, #number{error_jobj=JObj}}) -> 
+                ,fun({E, #number{error_jobj=Reason}}) -> 
                          lager:debug("create number prematurely ended: ~p", [E]),
-                         {E, JObj};
+                         {E, Reason};
                     (#number{number_doc=JObj}) -> 
                          lager:debug("assign number to account successfully completed", []),
                          {ok, wh_json:public_fields(JObj)}
@@ -323,9 +323,9 @@ release_number(Number, AuthBy) ->
                     (#number{hard_delete=false}=N) -> wnm_number:save(N);
                     (#number{hard_delete=true}=N) -> wnm_number:delete(N)
                  end
-                ,fun({E, #number{error_jobj=JObj}}) -> 
+                ,fun({E, #number{error_jobj=Reason}}) -> 
                          lager:debug("create number prematurely ended: ~p", [E]),
-                         {E, JObj};
+                         {E, Reason};
                     (#number{number_doc=JObj}) -> 
                          lager:debug("release successfully completed", []),
                          {ok, wh_json:public_fields(JObj)}
@@ -354,9 +354,9 @@ list_attachments(Number, AuthBy) ->
                             true -> N
                         end
                  end
-                ,fun({E, #number{error_jobj=JObj}}) -> 
+                ,fun({E, #number{error_jobj=Reason}}) -> 
                          lager:debug("create number prematurely ended: ~p", [E]),
-                         {E, JObj};
+                         {E, Reason};
                     (#number{number_doc=JObj}) -> 
                          lager:debug("list attachements successfully completed", []),
                          {ok, wh_json:get_value(<<"_attachments">>, JObj, wh_json:new())}
@@ -385,9 +385,9 @@ fetch_attachment(Number, Name, AuthBy) ->
                             true -> N
                         end
                  end
-                ,fun({E, #number{error_jobj=JObj}}) -> 
+                ,fun({E, #number{error_jobj=Reason}}) -> 
                          lager:debug("create number prematurely ended: ~p", [E]),
-                         {E, JObj};
+                         {E, Reason};
                     (#number{number=Num}) -> 
                          Db = wnm_util:number_to_db_name(Num),
                          lager:debug("attempting to fetch attachement ~s", [Name]),
@@ -450,9 +450,9 @@ delete_attachment(Number, Name, AuthBy) ->
                             true -> N
                         end
                  end
-                ,fun({E, #number{error_jobj=JObj}}) -> 
+                ,fun({E, #number{error_jobj=Reason}}) -> 
                          lager:debug("create number prematurely ended: ~p", [E]),
-                         {E, JObj};
+                         {E, Reason};
                     (#number{number=Num}) -> 
                          lager:debug("attempting to delete attachement ~s", [Name]),
                          Db = wnm_util:number_to_db_name(Num),
@@ -478,15 +478,15 @@ get_public_fields(Number, AuthBy) ->
                              true -> N
                          end
                  end
-                ,fun({E, #number{error_jobj=JObj}}) -> 
+                ,fun({E, #number{error_jobj=Reason}}) -> 
                          lager:debug("create number prematurely ended: ~p", [E]),
-                         {E, JObj};
+                         {E, Reason};
                     (#number{number_doc=JObj}) -> 
                          lager:debug("fetch public fields successfully completed", []),
                          {ok, wh_json:public_fields(JObj)}
                  end
                ], 
-    lists:foldl(fun(F, J) -> catch F(J) end, ok, Routines).
+    lists:foldl(fun(F, J) -> F(J) end, ok, Routines).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -508,9 +508,9 @@ set_public_fields(Number, PublicFields, AuthBy) ->
                 ,fun({_, #number{}}=E) -> E;
                     (#number{}=N) -> wnm_number:save(N)
                  end
-                ,fun({E, #number{error_jobj=JObj}}) -> 
+                ,fun({E, #number{error_jobj=Reason}}) -> 
                          lager:debug("create number prematurely ended: ~p", [E]),
-                         {E, JObj};
+                         {E, Reason};
                     (#number{number_doc=JObj}) -> 
                          lager:debug("set public fields successfully completed", []),
                          {ok, wh_json:public_fields(JObj)}

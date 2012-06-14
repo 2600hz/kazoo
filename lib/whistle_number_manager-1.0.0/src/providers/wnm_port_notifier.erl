@@ -49,13 +49,15 @@ maybe_publish_port(#number{current_number_doc=CurrentJObj, number_doc=JObj
                            ,features=Features}=N) ->
     CurrentPort = wh_json:get_ne_value(<<"port">>, CurrentJObj),
     Port = wh_json:get_ne_value(<<"port">>, JObj),
+    NotChanged = wnm_util:are_jobjs_identical(CurrentPort, Port),
     case wh_util:is_empty(Port) of
         true -> N#number{features=sets:del_element(<<"port">>, Features)};
-        false when CurrentPort =:= Port -> N#number{features=sets:add_element(<<"port">>, Features)};
+        false when NotChanged -> N#number{features=sets:add_element(<<"port">>, Features)};
         false ->
             lager:debug("port information has been changed: ~s", [wh_json:encode(Port)]),
+            N1 = wnm_number:activate_feature(<<"port">>, N),
             publish_port_update(Port, N),
-            N#number{features=sets:add_element(<<"port">>, Features)}
+            N1
     end.
 
 %%--------------------------------------------------------------------

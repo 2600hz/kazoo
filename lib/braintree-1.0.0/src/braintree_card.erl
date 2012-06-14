@@ -46,10 +46,10 @@ url(Token) ->
 %% Given a list of #bt_cards{} find the current default payment token.
 %% @end
 %%--------------------------------------------------------------------
--spec default_payment_token/1 :: ([#bt_card{},...] | []) -> 'undefined' | string().
+-spec default_payment_token/1 :: ([#bt_card{},...] | []) -> 'undefined' | ne_binary().
 default_payment_token(Cards) ->
     case lists:keyfind(true, #bt_card.default, Cards) of
-        false -> undefined;
+        false -> braintree_util:error_no_payment_token();
         Card -> Card#bt_card.token
     end.
 
@@ -59,17 +59,11 @@ default_payment_token(Cards) ->
 %% Find a credit card by id
 %% @end
 %%--------------------------------------------------------------------
--spec find/1 :: (binary() | string()) -> bt_result().
+-spec find/1 :: (binary() | string()) -> #bt_card{}.
 find(Token) ->
-    case braintree_util:validate_id(Token) of
-        {error, _}=E -> E;
-        ok ->
-            Url = url(Token),
-            case braintree_request:get(Url) of
-                {ok, Xml} -> {ok, xml_to_record(Xml)};
-                {error, _}=E -> E
-            end
-    end.
+    _Url = url(Token),
+%%    Xml = braintree_request:get(Url),
+    xml_to_record([]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -77,20 +71,14 @@ find(Token) ->
 %% Creates a new credit card using the given record
 %% @end
 %%--------------------------------------------------------------------
--spec create/1 :: (#bt_card{}) -> bt_result().
--spec create/2 :: (string() | ne_binary(), #bt_card{}) -> bt_result().
+-spec create/1 :: (#bt_card{}) -> #bt_card{}.
+-spec create/2 :: (string() | ne_binary(), #bt_card{}) -> #bt_card{}.
 
-create(#bt_card{customer_id=CustomerId}=Card) ->
-    case braintree_util:validate_id(CustomerId) of
-        {error, _}=E -> E;
-        ok ->
-            Request = record_to_xml(Card, true),
-            Url = url(),
-            case braintree_request:post(Url, Request) of
-                {ok, Xml} -> {ok, xml_to_record(Xml)};
-                {error, _}=E -> E
-            end
-    end.
+create(#bt_card{}=Card) ->
+    Url = url(),
+    Request = record_to_xml(Card, true),
+    Xml = braintree_request:post(Url, Request),
+    xml_to_record(Xml).
 
 create(CustomerId, Card) ->
     create(Card#bt_card{customer_id=CustomerId}).
@@ -101,18 +89,12 @@ create(CustomerId, Card) ->
 %% Updates a credit card with the given record
 %% @end
 %%--------------------------------------------------------------------
--spec update/1 :: (#bt_card{}) -> bt_result().
+-spec update/1 :: (#bt_card{}) -> #bt_card{}.
 update(#bt_card{token=Token}=Card) ->
-    case braintree_util:validate_id(Token) of
-        {error, _}=E -> E;
-        ok ->
-            Request = record_to_xml(Card, true),
-            Url = url(Token),
-            case braintree_request:put(Url, Request) of
-                {ok, Xml} -> {ok, xml_to_record(Xml)};
-                {error, _}=E -> E
-            end
-    end.
+    Url = url(Token),
+    Request = record_to_xml(Card, true),
+    Xml = braintree_request:put(Url, Request),
+    xml_to_record(Xml).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -120,19 +102,13 @@ update(#bt_card{token=Token}=Card) ->
 %% Deletes a credit card id from braintree's system
 %% @end
 %%--------------------------------------------------------------------
--spec delete/1 :: (#bt_card{} | binary() | string()) -> bt_result().
+-spec delete/1 :: (#bt_card{} | binary() | string()) -> #bt_card{}.
 delete(#bt_card{token=Token}) ->
     delete(Token);
 delete(Token) ->
-    case braintree_util:validate_id(Token) of
-        {error, _}=E -> E;
-        ok ->
-            Url = url(Token),
-            case braintree_request:delete(Url) of
-                {ok, _} -> {ok, #bt_card{}};
-                {error, _}=E -> E
-            end
-    end.
+    Url = url(Token),
+    _ = braintree_request:delete(Url),
+    #bt_card{}.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -140,15 +116,12 @@ delete(Token) ->
 %% Finds the tokens of credit cards that have all expired
 %% @end
 %%--------------------------------------------------------------------
--spec expired/0 :: () -> {'ok', [bt_xml(),...] | []} | {'error', _}.
+-spec expired/0 :: () -> [bt_xml(),...] | [].
 expired() ->
-    case braintree_request:post("/payment_methods/all/expired_ids", <<>>) of
-        {error, _}=E -> E;
-        {ok, Xml} ->
-            {ok, [get_xml_value("/item/text()", Item)
-                  || Item <- xmerl_xpath:string("/search-results/ids/item", Xml)
-                 ]}
-    end.
+    Xml = braintree_request:post("/payment_methods/all/expired_ids", <<>>),
+    [get_xml_value("/item/text()", Item)
+     || Item <- xmerl_xpath:string("/search-results/ids/item", Xml)
+    ].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -157,21 +130,17 @@ expired() ->
 %% start and end dates. Dates are given as MMYYYY
 %% @end
 %%--------------------------------------------------------------------
--spec expiring/2 :: (string() | binary(), string() | binary()) -> {'ok', [bt_xml(),...] | []} | 
-                                                                  {'error', _}.
+-spec expiring/2 :: (string() | binary(), string() | binary()) -> [bt_xml(),...] | [].
 expiring(Start, End) ->
     Url = lists:append(["/payment_methods/all/expiring?start="
                         ,wh_util:to_list(Start)
                         ,"&end="
                         ,wh_util:to_list(End)
                        ]),
-    case braintree_request:post(Url, <<>>) of
-        {error, _}=E -> E;
-        {ok, Xml} ->
-            {ok, [xml_to_record(Item)
-                  || Item <- xmerl_xpath:string("/payment-methods/credit-card", Xml)
-                 ]}
-    end.
+    Xml = braintree_request:post(Url, <<>>),
+    [xml_to_record(Item)
+     || Item <- xmerl_xpath:string("/payment-methods/credit-card", Xml)
+    ].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -180,7 +149,7 @@ expiring(Start, End) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec xml_to_record/1 :: (bt_xml()) -> #bt_card{}.
--spec xml_to_record/2 :: (bt_xml(), string()) -> #bt_card{}.
+-spec xml_to_record/2 :: (bt_xml(), wh_deeplist()) -> #bt_card{}.
 
 xml_to_record(Xml) ->
     xml_to_record(Xml, "/credit-card").
@@ -209,8 +178,8 @@ xml_to_record(Xml, Base) ->
 %% Convert the given record to XML
 %% @end
 %%--------------------------------------------------------------------
--spec record_to_xml/1 :: (#bt_card{}) -> bt_xml().
--spec record_to_xml/2 :: (#bt_card{}, boolean()) -> bt_xml().
+-spec record_to_xml/1 :: (#bt_card{}) -> proplist() | bt_xml().
+-spec record_to_xml/2 :: (#bt_card{}, boolean()) -> proplist() | bt_xml().
 
 record_to_xml(Card) ->
     record_to_xml(Card, false).
@@ -230,7 +199,7 @@ record_to_xml(#bt_card{}=Card, ToString) ->
                             [{'billing-address', braintree_address:record_to_xml(BA)}|P]
                     end
                     ,fun(#bt_card{update_existing=false}, P) -> P;
-                        (#bt_card{update_existing=Token}, P) when is_list(Token) ->
+                        (#bt_card{update_existing=Token}, P) when is_binary(Token) ->
                              case proplists:get_value('options', P) of
                                  undefined ->
                                      [{'options', [{'update-existing-token', Token}]}

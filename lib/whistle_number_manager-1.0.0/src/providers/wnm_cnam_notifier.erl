@@ -53,13 +53,15 @@ maybe_publish_cnam(#number{current_number_doc=CurrentJObj, number_doc=JObj
                            ,features=Features}=N) ->
     CurrentCnam = wh_json:get_ne_value(<<"cnam">>, CurrentJObj),
     Cnam = wh_json:get_ne_value(<<"cnam">>, JObj),
+    NotChanged = wnm_util:are_jobjs_identical(CurrentCnam, Cnam),
     case wh_util:is_empty(Cnam) of
         true -> N#number{features=sets:del_element(<<"cnam">>, Features)};
-        false when CurrentCnam =:= Cnam -> N#number{features=sets:add_element(<<"cnam">>, Features)};
+        false when NotChanged -> N#number{features=sets:add_element(<<"cnam">>, Features)};
         false ->
             lager:debug("cnam information has been changed: ~s", [wh_json:encode(Cnam)]),
+            N1 = wnm_number:activate_feature(<<"cnam">>, N),
             publish_cnam_update(Cnam, N),
-            N#number{features=sets:add_element(<<"cnam">>, Features)}
+            N1
     end.
 
 %%--------------------------------------------------------------------

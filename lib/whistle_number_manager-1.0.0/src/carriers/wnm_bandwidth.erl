@@ -86,32 +86,31 @@ acquire_number(#number{auth_by=AuthBy, assigned_to=AssignedTo, module_data=Data}
     Debug = whapps_config:get_is_true(?WNM_BW_CONFIG_CAT, <<"sandbox_provisioning">>, <<"true">>),
     case whapps_config:get_is_true(?WNM_BW_CONFIG_CAT, <<"enable_provisioning">>, <<"true">>) of
         false when Debug -> 
-            lager:debug("allowing sandbox provisioning", []),
-            N;
+            lager:debug("allowing sandbox provisioning", []);
         false -> 
             Error = <<"Unable to acquire numbers on this system, carrier provisioning is disabled">>,
             wnm_number:error_carrier_fault(Error, N);
         true ->
-                      Id = wh_json:get_string_value(<<"number_id">>, Data),
-                      Endpoint = whapps_config:get_binary(?WNM_BW_CONFIG_CAT, <<"endpoint">>, <<"">>),
-                      OrderNamePrefix = whapps_config:get_binary(?WNM_BW_CONFIG_CAT, <<"order_name_prefix">>, <<"Whistle">>),
-                      OrderName = list_to_binary([OrderNamePrefix, "-", wh_util:to_binary(wh_util:current_tstamp())]),
-                      ExtRef = case wh_util:is_empty(AuthBy) of true -> "no_authorizing_account"; false -> wh_util:to_list(AuthBy) end, 
-                      AcquireFor = case wh_util:is_empty(AuthBy) of true -> "no_assigned_account"; false -> wh_util:to_list(AssignedTo) end, 
-                      Props = [{'orderName', [wh_util:to_list(OrderName)]}
-                               ,{'extRefID', [wh_util:to_list(ExtRef)]}
-                               ,{'numberIDs', [{'id', [Id]}]}
-                               ,{'subscriber', [wh_util:to_list(AcquireFor)]}
-                               ,{'endPoints', [{'host', [wh_util:to_list(Endpoint)]}]}
-                              ],
-                      case make_numbers_request('basicNumberOrder', Props) of
-                          {error, Reason} ->
-                              Error = <<"Unable to acquire number: ", (wh_json:to_binary(Reason))/binary>>,
-                              wnm_number:error_carrier_fault(Error, N);
-                          {ok, Xml} ->
-                              Response = xmerl_xpath:string("/numberOrderResponse/numberOrder", Xml),
-                              N#number{module_data=number_order_response_to_json(Response)}
-                      end
+            Id = wh_json:get_string_value(<<"number_id">>, Data),
+            Endpoint = whapps_config:get_binary(?WNM_BW_CONFIG_CAT, <<"endpoint">>, <<"">>),
+            OrderNamePrefix = whapps_config:get_binary(?WNM_BW_CONFIG_CAT, <<"order_name_prefix">>, <<"Whistle">>),
+            OrderName = list_to_binary([OrderNamePrefix, "-", wh_util:to_binary(wh_util:current_tstamp())]),
+            ExtRef = case wh_util:is_empty(AuthBy) of true -> "no_authorizing_account"; false -> wh_util:to_list(AuthBy) end, 
+            AcquireFor = case wh_util:is_empty(AuthBy) of true -> "no_assigned_account"; false -> wh_util:to_list(AssignedTo) end, 
+            Props = [{'orderName', [wh_util:to_list(OrderName)]}
+                     ,{'extRefID', [wh_util:to_list(ExtRef)]}
+                     ,{'numberIDs', [{'id', [Id]}]}
+                     ,{'subscriber', [wh_util:to_list(AcquireFor)]}
+                     ,{'endPoints', [{'host', [wh_util:to_list(Endpoint)]}]}
+                    ],
+            case make_numbers_request('basicNumberOrder', Props) of
+                {error, Reason} ->
+                    Error = <<"Unable to acquire number: ", (wh_json:to_binary(Reason))/binary>>,
+                    wnm_number:error_carrier_fault(Error, N);
+                {ok, Xml} ->
+                    Response = xmerl_xpath:string("/numberOrderResponse/numberOrder", Xml),
+                    N#number{module_data=number_order_response_to_json(Response)}
+            end
     end.
 
 %%--------------------------------------------------------------------
