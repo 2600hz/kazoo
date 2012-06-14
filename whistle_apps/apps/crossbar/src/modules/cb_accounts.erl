@@ -529,7 +529,11 @@ update_doc_tree([_|_]=ParentTree, JObj, Acc) ->
 set_private_fields(JObj0, Context, undefined) ->
     lists:foldl(fun(Fun, JObj1) ->
                         Fun(JObj1, Context)
-                end, JObj0, [fun add_pvt_type/2, fun add_pvt_api_key/2, fun add_pvt_tree/2]);
+                end, JObj0, [fun add_pvt_type/2
+                             ,fun add_pvt_api_key/2
+                             ,fun add_pvt_tree/2
+                             ,fun add_pvt_service_plan/2
+                            ]);
 set_private_fields(JObj0, Context, ParentId) ->
     case is_binary(ParentId) andalso couch_mgr:open_doc(wh_util:format_account_id(ParentId, encoded), ParentId) of
         {ok, ParentJObj} ->
@@ -578,6 +582,11 @@ add_pvt_tree(JObj, #cb_context{auth_doc=Token}) ->
             wh_json:set_value(<<"pvt_tree">>, [AuthAccId]
                               ,wh_json:set_value(<<"pvt_enabled">>, false, JObj))
     end.
+
+
+add_pvt_service_plan(JObj, _) ->
+    wh_reseller:set_service_plans(wh_json:delete_key(<<"service_plan">>, JObj)
+                                  ,wh_json:get_ne_value(<<"service_plan">>, JObj)).
 
 %%--------------------------------------------------------------------
 %% @private

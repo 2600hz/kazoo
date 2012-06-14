@@ -9,6 +9,9 @@
 
 -export([fetch/2]).
 -export([get_plan_ids/1]).
+-export([add_plan_id/3]).
+-export([set_service_plans/3]).
+-export([is_valid_plan_id/2]).
 -export([get_category_addons/2]).
 -export([get_recurring_plan/3]).
 -export([get_activation_charge/3]).
@@ -52,6 +55,53 @@ fetch(Reseller, PlanId) ->
 -spec get_plan_ids/1 :: (wh_json:json_object()) -> [ne_binary(),...] | [].
 get_plan_ids(JObj) ->
     wh_json:get_value(?WH_SERVICE_PLANS_FIELD, JObj, []).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec add_plan_id/3 :: (wh_json:json_object(), ne_binary(), ne_binary()) -> wh_json:json_object().
+add_plan_id(JObj, PlanId, Reseller) ->
+    case is_valid_plan_id(PlanId, Reseller) of
+        {error, _} -> JObj;
+        {ok, _} ->
+            Plans = [PlanId|lists:delete(PlanId, get_plan_ids(JObj))],
+            wh_json:set_value(?WH_SERVICE_PLANS_FIELD, JObj, Plans)
+    end.
+
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec set_service_plans/3 :: (wh_json:json_object(), 'undefined' | ne_binary() | [ne_binary(),...], ne_binary()) 
+                            -> wh_json:json_object().
+set_service_plans(JObj, undefined, Reseller) ->
+    case wh_reseller:get_default_service_plan(Reseller) of
+        undefined -> JObj;
+        ServicePlan -> set_service_plans(JObj, [ServicePlan], Reseller)
+    end;
+set_service_plans(JObj, ServicePlan, Reseller) when not is_list(ServicePlan) ->
+    set_service_plans(JObj, [ServicePlan], Reseller);
+set_service_plans(JObj, ServicePlans, Reseller) ->
+    lists:foldl(fun(J, P) -> add_plan_id(J, P, Reseller) end, JObj, ServicePlans).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec is_valid_plan_id/2 :: (ne_binary(), ne_binary()) -> boolean().
+is_valid_plan_id(PlanId, Reseller) ->
+    case fetch(Reseller, PlanId) of
+        {ok, _} -> true;
+        {error, _} -> false
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
