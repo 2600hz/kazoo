@@ -26,6 +26,7 @@
 
 -include_lib("crossbar/include/crossbar.hrl").
 -include_lib("whistle_number_manager/include/wh_number_manager.hrl").
+-include_lib("whistle/src/wh_json.hrl").
 
 -define(PORT_DOCS, <<"docs">>).
 -define(PORT, <<"port">>).
@@ -388,27 +389,12 @@ put_attachments(Number, #cb_context{auth_account_id=AuthBy}=Context, [{Filename,
 %% @end
 %%--------------------------------------------------------------------
 -spec set_response/3 :: ({ok, wh_json:json_object()} | {error, term()}, ne_binary(), #cb_context{}) -> #cb_context{}.
-set_response({error, conflict}, _, Context) ->
-    crossbar_util:response_conflicting_docs(Context);
-set_response({error, invalid_state_transition}, _, Context) ->
-    crossbar_util:response(error, <<"authenticated account not authorized to preform that operation">>, 403, Context);
-set_response({error, unauthorized}, _, Context) ->
-    crossbar_util:response(error, <<"authenticated account not authorized to administrate this number">>, 403, Context);
-set_response({error, no_change_required}, _, Context) ->
-    crossbar_util:response_conflicting_docs(Context);
-set_response({error, unknown_carrier}, _, Context) ->
-    crossbar_util:response_db_fatal(Context);
-set_response({error, db_not_reachable}, _, Context) ->
-    crossbar_util:response_datastore_timeout(Context);
-set_response({error, not_found}, Number, Context) ->
-    crossbar_util:response_bad_identifier(Number, Context);
 set_response({ok, Doc}, _, Context) ->
     crossbar_util:response(Doc, Context);
-set_response(ok, _, Context) ->
-    crossbar_util:response(wh_json:new(), Context);
-set_response({error, Else}, _, Context) when is_binary(Else) ->
-    crossbar_util:response_invalid_data(Else, Context);
+set_response({Error, Reason}, _, Context) ->
+    crossbar_util:response(error, wh_util:to_binary(Error), 500, Reason, Context);
 set_response(_Else, _, Context) ->
+    lager:debug("unexpected response: ~p", [_Else]),
     crossbar_util:response_db_fatal(Context).
 
 %%--------------------------------------------------------------------

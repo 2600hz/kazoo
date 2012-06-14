@@ -8,12 +8,14 @@
 %%%-------------------------------------------------------------------
 -module(braintree_addon).
 
--include("braintree.hrl").
-
--export([xml_to_record/1, xml_to_record/2, record_to_xml/1, record_to_xml/2]).
+-export([xml_to_record/1, xml_to_record/2]).
+-export([record_to_xml/1, record_to_xml/2]).
 -export([record_to_json/1]).
 
--import(braintree_util, [get_xml_value/2, make_doc_xml/2]).
+-import(braintree_util, [make_doc_xml/2]).
+-import(wh_util, [get_xml_value/2]).
+
+-include_lib("braintree/include/braintree.hrl").
 
 %%--------------------------------------------------------------------
 %% @public
@@ -21,22 +23,19 @@
 %% Contert the given XML to a customer record
 %% @end
 %%--------------------------------------------------------------------
--spec xml_to_record/1 :: (Xml) -> #bt_addon{} when
-      Xml :: bt_xml().
--spec xml_to_record/2 :: (Xml, Base) -> #bt_addon{} when
-      Xml :: bt_xml(),
-      Base :: string().
+-spec xml_to_record/1 :: (bt_xml()) -> #bt_addon{}.
+-spec xml_to_record/2 :: (bt_xml(), wh_deeplist()) -> #bt_addon{}.
 
 xml_to_record(Xml) ->
     xml_to_record(Xml, "/add-on").
 
 xml_to_record(Xml, Base) ->
-    #bt_addon{id = get_xml_value(Base ++ "/id/text()", Xml)
-              ,amount = get_xml_value(Base ++ "/amount/text()", Xml)
-              ,never_expires = wh_util:is_true(get_xml_value(Base ++ "/never-expires/text()", Xml))
-              ,billing_cycle = get_xml_value(Base ++ "/current-billing-cycle/text()", Xml)
-              ,number_of_cycles = get_xml_value(Base ++ "/number-of-billing-cycles/text()", Xml)
-              ,quantity = get_xml_value(Base ++ "/quantity/text()", Xml)}.
+    #bt_addon{id = get_xml_value([Base, "/id/text()"], Xml)
+              ,amount = get_xml_value([Base, "/amount/text()"], Xml)
+              ,never_expires = wh_util:is_true(get_xml_value([Base, "/never-expires/text()"], Xml))
+              ,billing_cycle = get_xml_value([Base, "/current-billing-cycle/text()"], Xml)
+              ,number_of_cycles = get_xml_value([Base, "/number-of-billing-cycles/text()"], Xml)
+              ,quantity = wh_util:to_integer(get_xml_value([Base, "/quantity/text()"], Xml))}.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -44,9 +43,8 @@ xml_to_record(Xml, Base) ->
 %% Contert the given XML to a customer record
 %% @end
 %%--------------------------------------------------------------------
--type record_proplist() :: [{'amount' | 'existing-id' | 'id' | 'never-expires' | 'number-of-billing-cycles' | 'quantity',_},...].
--spec record_to_xml/1 :: (#bt_addon{}) -> record_proplist() | braintree_util:char_to_bin_res().
--spec record_to_xml/2 :: (#bt_addon{}, boolean()) -> record_proplist() | braintree_util:char_to_bin_res().
+-spec record_to_xml/1 :: (#bt_addon{}) -> proplist() | bt_xml().
+-spec record_to_xml/2 :: (#bt_addon{}, boolean()) -> proplist() | bt_xml().
 
 record_to_xml(Addon) ->
     record_to_xml(Addon, false).
@@ -57,8 +55,9 @@ record_to_xml(Addon, ToString) ->
              ,{'never-expires', Addon#bt_addon.never_expires}
              ,{'number-of-billing-cycles', Addon#bt_addon.number_of_cycles}
              ,{'quantity', Addon#bt_addon.quantity}
-             ,{'quantity', Addon#bt_addon.inherited_from}
-             ,{'existing-id', Addon#bt_addon.id}],
+             ,{'inherited-from-id', Addon#bt_addon.inherited_from}
+             ,{'existing-id', Addon#bt_addon.id}
+            ],
     case ToString of
         true -> make_doc_xml(Props, 'add-on');
         false -> Props
@@ -74,6 +73,6 @@ record_to_xml(Addon, ToString) ->
 record_to_json(#bt_addon{id=Id, amount=Amount, quantity=Q}) ->
     Props = [{<<"id">>, Id}
              ,{<<"amount">>, Amount}
-             ,{<<"quantity">>, Q}
-	    ],
-    braintree_util:props_to_json(Props).
+             ,{<<"quantity">>, wh_util:to_integer(Q)}
+            ],
+    wh_json:from_list([KV || {_, V}=KV <- Props, V =/= undefined]).

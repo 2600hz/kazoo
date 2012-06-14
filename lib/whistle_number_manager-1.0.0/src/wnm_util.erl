@@ -18,9 +18,9 @@
 -export([normalize_number/1]).
 -export([to_e164/1, to_npan/1, to_1npan/1]).
 -export([is_e164/1, is_npan/1, is_1npan/1]).
--export([exec_providers_save/4]).
 -export([find_account_id/1]).
 -export([get_all_number_dbs/0]).
+-export([are_jobjs_identical/2]).
 
 -include("wh_number_manager.hrl").
 -include_lib("proper/include/proper.hrl").
@@ -69,17 +69,20 @@ is_tollfree(Number) ->
 %% and if return the name as well as the data
 %% @end
 %%--------------------------------------------------------------------
--spec get_carrier_module/1 :: (wh_json:json_object()) -> {ok, atom(), wh_json:json_object()} 
-                                                     | {error, not_specified | unknown_module}.
+-spec get_carrier_module/1 :: (wh_json:json_object()) -> atom().
 get_carrier_module(JObj) ->
-    case wh_json:get_value(<<"pvt_module_name">>, JObj) of
-        undefined -> {error, not_specified};
+    case wh_json:get_ne_value(<<"pvt_module_name">>, JObj) of
+        undefined -> 
+            lager:debug("carrier module not specified on number document"),
+            undefined;
         Module ->
             Carriers = list_carrier_modules(),
             Carrier = try_load_module(Module),
             case lists:member(Carrier, Carriers) of
-                true -> {ok, Carrier, wh_json:get_value(<<"pvt_module_data">>, JObj, wh_json:new())};
-                false -> {error, unknown_module}
+                true -> Carrier;
+                false -> 
+                    lager:debug("carrier module ~s specified on number document does not exist", [Carrier]),
+                    undefined
             end
     end.
 
@@ -101,7 +104,7 @@ list_carrier_modules() ->
 %% Given a number determine the database name that it should belong to.
 %% @end
 %%--------------------------------------------------------------------
--spec number_to_db_name/1 :: (ne_binary()) -> ne_binary().
+-spec number_to_db_name/1 :: (binary()) -> 'undefined' | ne_binary().
 number_to_db_name(<<NumPrefix:5/binary, _/binary>>) ->
     wh_util:to_binary(
       http_uri:encode(
@@ -109,7 +112,9 @@ number_to_db_name(<<NumPrefix:5/binary, _/binary>>) ->
           list_to_binary([?WNM_DB_PREFIX, NumPrefix])
          )
        )
-     ).
+     );
+number_to_db_name(_) ->
+    undefined.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -217,46 +222,6 @@ to_1npan(Other) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% execute the save function of all providers, folding the jobj through
-%% them and collecting any errors...
-%% @end
-%%--------------------------------------------------------------------
--spec exec_providers_save/4 :: (wh_json:json_object(), wh_json:json_object(), ne_binary(), ne_binary()) -> {'ok' | 'error', wh_json:json_object()}.
--spec exec_providers_save/6 :: (list(), wh_json:json_object(), wh_json:json_object(), ne_binary(), ne_binary(), list()) -> {'ok' | 'error', wh_json:json_object()}.
-
-exec_providers_save(JObj, PriorJObj, Number, State) ->
-    Providers = whapps_config:get(?WNM_CONFIG_CAT, <<"providers">>, []),
-    exec_providers_save(Providers, JObj, PriorJObj, Number, State, []).
-
-exec_providers_save([], JObj, _, _, _, []) ->
-    {ok, JObj};
-exec_providers_save([], _, _, _, _, Result) ->
-    {error, wh_json:from_list(Result)};
-exec_providers_save([Provider|Providers], JObj, PriorJObj, Number, State, Result) ->
-    try
-        lager:debug("executing provider ~s", [Provider]),
-        case try_load_module(<<"wnm_", Provider/binary>>) of
-            false ->
-                lager:debug("provider ~s is unknown, skipping", [Provider]),
-                exec_providers_save(Providers, JObj, PriorJObj, Number, State, Result);
-            Mod ->
-                case Mod:save(JObj, PriorJObj, Number, State) of
-                    {ok, J} ->
-                        exec_providers_save(Providers, J, PriorJObj, Number, State, Result);
-                    {error, Error} ->
-                        lager:debug("provider ~s created error: ~p", [Provider, Error]),
-                        exec_providers_save(Providers, JObj, PriorJObj, Number, State, [{Provider, Error}|Result])
-                end
-        end
-    catch
-        _:R ->
-            lager:debug("executing provider ~s threw exception: ~p", [Provider, R]),
-            exec_providers_save(Providers, JObj, PriorJObj, Number, State, [{Provider, <<"threw exception">>}|Result])
-    end.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
 %% Check all the fields that might have an account id in hierarchical
 %% order
 %% @end
@@ -289,6 +254,20 @@ is_number_db(<<"numbers%2f", _/binary>>) -> true;
 is_number_db(<<"numbers%2F", _/binary>>) -> true;
 is_number_db(_) -> false.
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec are_jobjs_identical/2 :: ('undefined' | wh_json:json_object(), 'undefined' | wh_json:json_object()) -> boolean().
+are_jobjs_identical(undefined, undefined) -> true;
+are_jobjs_identical(undefined, _) -> false;
+are_jobjs_identical(_, undefined) -> false;
+are_jobjs_identical(JObj1, JObj2) ->
+    [KV || {_, V}=KV <- wh_json:to_proplist(JObj1), (not wh_util:is_empty(V))]
+        =:=
+    [KV || {_, V}=KV <- wh_json:to_proplist(JObj2), (not wh_util:is_empty(V))].
 
 %% PROPER TESTING
 %%
