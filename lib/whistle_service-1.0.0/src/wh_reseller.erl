@@ -17,6 +17,9 @@
 -export([increment_quantity/3]).
 -export([reset_category_addons/2]).
 -export([commit_changes/1]).
+-export([find_reseller/1, find_reseller/2]).
+-export([get_default_service_plan/1]).
+-export([set_service_plans/2, set_service_plans/3]).
 -export([assign/1]).
 -export([unassign/1]).
 -export([assign_representative/1]).
@@ -190,6 +193,33 @@ commit_changes(#wh_reseller{bt_subscriptions=Subscriptions}) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec find_reseller/1 :: ([ne_binary(),...] | []) -> ne_binary().
+-spec find_reseller/2 :: ([ne_binary(),...] | [], ne_binary()) -> ne_binary().
+
+find_reseller(Tree) ->
+    {ok, MasterAccountId} = whapps_util:get_master_account_id(),
+    find_reseller(Tree, MasterAccountId).                                                   
+
+find_reseller([], MasterAccountId) ->             
+    MasterAccountId;
+find_reseller([ParentId|Tree], MasterAccountId) ->
+    case couch_mgr:open_doc(?WH_ACCOUNTS_DB, ParentId) of
+        {ok, JObj} ->
+            case get_reseller_id(JObj) =:= MasterAccountId of
+                true -> ParentId;
+                false -> find_reseller(Tree, MasterAccountId)
+            end;
+        {error, _R} ->
+            lager:debug("ignoring the ancestor ~s during reseller hunt, unable to open the account definition: ~p", [ParentId, _R]),
+            find_reseller(Tree, MasterAccountId)
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
 %% Given an account get all the service plans subscribed to
 %% from the resellers account.
 %% @end
@@ -205,7 +235,7 @@ get_plans(Account) ->
             lager:debug("unabled to open account definition for ~s: ~p", [Account, _R]),
             E;
         {ok, JObj} ->
-            Reseller = wh_reseller:get_reseller_id(JObj),
+            Reseller = get_reseller_id(JObj),
             get_plans(Reseller, JObj)
     end.
         
@@ -217,7 +247,45 @@ get_plans(Reseller, JObj) ->
                  true
              end
     ].
-    
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec set_service_plans/2 :: (wh_json:json_object(), 'undefined' | ne_binary() | [ne_binary(),...]) -> wh_json:json_object().
+-spec set_service_plans/3 :: (wh_json:json_object(), 'undefined' | ne_binary() | [ne_binary(),...], 'undefined' | ne_binary()) 
+                            -> wh_json:json_object().
+
+set_service_plans(JObj, ServicePlans) ->
+    set_service_plans(JObj, ServicePlans, undefined).
+
+set_service_plans(JObj, ServicePlans, undefined) ->
+    case find_reseller(wh_json:get_value(<<"pvt_tree">>, JObj, [])) of
+        undefined -> JObj;
+        Reseller -> set_service_plans(JObj, ServicePlans, Reseller)
+    end;
+set_service_plans(JObj, ServicePlans, Reseller) ->
+    wh_service_plan:set_service_plans(wh_json:set_value(<<"pvt_reseller_id">>, Reseller, JObj)
+                                      ,ServicePlans
+                                      ,Reseller).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec get_default_service_plan/1 :: (ne_binary()) -> 'undefined' | ne_binary().
+get_default_service_plan(Reseller) ->
+    AccountId = wh_util:format_account_id(Reseller, raw),    
+    AccountDb = wh_util:format_account_id(Reseller, encoded),
+    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+        {error, _} -> undefined;
+        {ok, JObj} -> wh_json:get_ne_value(<<"default_service_plan">>, JObj)
+    end.
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -444,27 +512,6 @@ bt_customer(BillingId) ->
         throw:{not_found, _} ->
             lager:debug("braintree customer ~s not found, creating new account", [BillingId]),
             braintree_customer:create(BillingId)
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec find_reseller/2 :: ([ne_binary(),...] | [], ne_binary()) -> ne_binary().
-find_reseller([], MasterAccountId) ->             
-    MasterAccountId;
-find_reseller([ParentId|Tree], MasterAccountId) ->
-    case couch_mgr:open_doc(?WH_ACCOUNTS_DB, ParentId) of
-        {ok, JObj} ->
-            case get_reseller_id(JObj) =:= MasterAccountId of
-                true -> ParentId;
-                false -> find_reseller(Tree, MasterAccountId)
-            end;
-        {error, _R} ->
-            lager:debug("ignoring the ancestor ~s during reseller hunt, unable to open the account definition: ~p", [ParentId, _R]),
-            find_reseller(Tree, MasterAccountId)
     end.
 
 %%--------------------------------------------------------------------
