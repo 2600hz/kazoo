@@ -1662,7 +1662,8 @@ wait_for_unbridge() ->
 %% Waits for and determines the status of the bridge command
 %% @end
 %%--------------------------------------------------------------------
--spec wait_for_application_or_dtmf/2 :: (ne_binary(), 'infinity' | pos_integer()) -> whapps_api_std_return() | {'dtmf', binary()}.
+-spec wait_for_application_or_dtmf/2 :: (ne_binary(), 'infinity' | pos_integer()) -> whapps_api_std_return() |
+                                                                                     {'dtmf', binary()}.
 wait_for_application_or_dtmf(Application, Timeout) ->
     Start = erlang:now(),
     receive
