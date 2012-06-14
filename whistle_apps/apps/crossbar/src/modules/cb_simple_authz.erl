@@ -22,7 +22,7 @@
 
 -define(SERVER, ?MODULE).
 -define(VIEW_SUMMARY, <<"accounts/listing_by_id">>).
--define(SYS_ADMIN_MODS, [<<"global_resources">>, <<"limits">>, <<"templates">>, <<"rates">>, <<"acls">>, <<"global_provisioner_templates">>]).
+-define(SYS_ADMIN_MODS, [<<"global_resources">>, <<"templates">>, <<"rates">>, <<"acls">>, <<"global_provisioner_templates">>]).
 
 %%%===================================================================
 %%% API
