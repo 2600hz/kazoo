@@ -475,7 +475,7 @@ collect_digits(Call, MaxDigits, FinishOnKey, Timeout, Props) ->
     case whapps_call_command:collect_digits(MaxDigitsBin, Timeout, 2000
                                             ,undefined, [FinishOnKey], Call
                                            ) of
-        {ok, DTMFs} when byte_size(DTMFs) =:= MaxDigits ->
+        {ok, DTMFs} ->
             lager:debug("recv DTMFs: ~s", [DTMFs]),
 
             NewUri = wht_util:resolve_uri(whapps_call:kvs_fetch(<<"voice_uri">>, Call)
@@ -485,9 +485,6 @@ collect_digits(Call, MaxDigits, FinishOnKey, Timeout, Props) ->
             BaseParams = wh_json:from_list([{<<"Digits">>, DTMFs} | req_params(Call)]),
 
             {request, Call, NewUri, Method, BaseParams};
-        {ok, _DTMFs} ->
-            lager:debug("failed to collect ~b digits, got ~s", [MaxDigits, _DTMFs]),
-            {ok, Call};
         {error, _E} ->
             lager:debug("failed to collect ~b digits, error: ~p", [MaxDigits, _E]),
             {stop, Call}
