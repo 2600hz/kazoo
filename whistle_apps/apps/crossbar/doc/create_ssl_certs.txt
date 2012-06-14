@@ -82,9 +82,11 @@ Getting Private key
 
 Now modify the "crossbar" doc in the "system_config" database with the following values:
 
-"ssl_port":"8443"
-,"ssl_cert":"priv/ssl/crossbar.crt"
-,"ssl_key":"priv/ssl/crossbar.key"
+"default":{
+  "ssl_port":"8443"
+  ,"ssl_cert":"priv/ssl/crossbar.crt"
+  ,"ssl_key":"priv/ssl/crossbar.key"
+}
 
 Start Crossbar. You can now test your new SSL-enabled APIs via:
 
