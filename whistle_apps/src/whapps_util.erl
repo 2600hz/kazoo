@@ -357,7 +357,9 @@ update_views(Db, Views) ->
 update_views(Db, Views, Remove) ->
     case couch_mgr:all_design_docs(Db, [include_docs]) of
         {ok, Found} -> update_views(Found, Db, Views, Remove);
-        {error, _} -> ok
+        {error, _R} -> 
+            lager:debug("unable to fetch current design docs: ~p", [_R]),
+            ok
     end.
 
 update_views([], _, [], _) ->
