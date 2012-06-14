@@ -311,7 +311,10 @@ build_bridge_endpoints([{_, Endpoint}|Endpoints], Channels) ->
 -spec build_bridge_endpoint/1 :: (wh_json:json_object()) -> binary().
 -spec build_bridge_endpoint/3 :: (wh_json:json_object(), ne_binary(), [nonempty_string(),...] | []) -> binary().
 build_bridge_endpoint(JObj) ->
-    build_bridge_endpoint(JObj, wh_json:get_value(<<"Endpoint-Type">>, JObj, <<"sip">>), ecallmgr_fs_xml:get_leg_vars(JObj)).
+    build_bridge_endpoint(JObj
+                          ,wh_json:get_value(<<"Endpoint-Type">>, JObj, <<"sip">>)
+                          ,ecallmgr_fs_xml:get_leg_vars(JObj)
+                         ).
 
 build_bridge_endpoint(JObj, <<"sip">>, CVs) ->
     case ecallmgr_fs_xml:build_sip_route(JObj, wh_json:get_value(<<"Invite-Format">>, JObj)) of

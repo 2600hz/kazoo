@@ -67,7 +67,7 @@ start_link(Node, Options) ->
                              ]
                             ,[Node, Options]).
 
--spec presence_update/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
+-spec presence_update/2 :: (wh_json:json_object(), proplist()) -> any().
 presence_update(JObj, _Props) ->
     PresenceId = wh_json:get_value(<<"Presence-ID">>, JObj),
     Event = case wh_json:get_value(<<"State">>, JObj) of
@@ -344,7 +344,7 @@ publish_presence_event(EventName, Props, Node) ->
           ],
     wapi_notifications:publish_presence_probe(Req).
 
--spec relay_presence/4 :: (atom(), ne_binary(), proplist(), atom()) -> term().
+-spec relay_presence/4 :: (atom(), ne_binary(), proplist(), atom()) -> [fs_sendevent_ret(),...].
 relay_presence(EventName, PresenceId, Props, Node) ->
     Match = #sip_subscription{key='_'
                               ,to=PresenceId

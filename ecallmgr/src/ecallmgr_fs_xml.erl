@@ -159,7 +159,8 @@ route_not_found() ->
     SectionEl = section_el(<<"result">>, <<"Route Not Found">>, ResultEl),
     {ok, xmerl:export([SectionEl], fs_xml)}.
 
--spec build_sip_route/2 :: (proplist() | wh_json:json_object(), ne_binary() | 'undefined') -> ne_binary() | {'error', 'timeout'}.
+-spec build_sip_route/2 :: (api_terms(), ne_binary() | 'undefined') -> ne_binary() |
+                                                                       {'error', 'timeout'}.
 build_sip_route(Route, undefined) ->
     build_sip_route(Route, <<"username">>);
 build_sip_route([_|_]=RouteProp, DIDFormat) ->
@@ -174,8 +175,11 @@ build_sip_route(RouteJObj, <<"username">>) ->
     Realm = wh_json:get_value(<<"To-Realm">>, RouteJObj),
     case ecallmgr_registrar:lookup_contact(Realm, User) of
         {ok, Contact} ->
-            RURI = binary:replace(re:replace(Contact, "^[^\@]+", User, [{return, binary}]), <<">">>, <<"">>),
-            <<?SIP_INTERFACE, (RURI)/binary>>;
+            RURI = binary:replace(
+                     re:replace(Contact, "^[^\@]+", User, [{return, binary}])
+                     ,<<">">>, <<>>
+                    ),
+            list_to_binary([?SIP_INTERFACE, RURI, sip_transport(RouteJObj)]);
         {error, timeout}=E ->
             lager:debug("failed to lookup user ~s@~s in the registrar", [User, Realm]),
             E
@@ -186,8 +190,11 @@ build_sip_route(RouteJObj, DIDFormat) ->
     DID = format_did(wh_json:get_value(<<"To-DID">>, RouteJObj), DIDFormat),
     case ecallmgr_registrar:lookup_contact(Realm, User) of
         {ok, Contact} ->
-            RURI = binary:replace(re:replace(Contact, "^[^\@]+", DID, [{return, binary}]), <<">">>, <<"">>),
-            <<?SIP_INTERFACE, (RURI)/binary>>;
+            RURI = binary:replace(
+                     re:replace(Contact, "^[^\@]+", DID, [{return, binary}])
+                     ,<<">">>, <<>>
+                    ),
+            list_to_binary([?SIP_INTERFACE, RURI, sip_transport(RouteJObj)]);
         {error, timeout}=E ->
             lager:debug("failed to lookup user ~s@~s in the registrar", [User, Realm]),
             E
@@ -255,8 +262,9 @@ get_channel_vars({<<"origination_uuid">> = K, UUID}, Vars) ->
 
 get_channel_vars({<<"Hold-Media">>, Media}, Vars) ->
     [list_to_binary(["hold_music="
-                     ,wh_util:to_list(ecallmgr_util:media_path(Media, extant, get(callid)))
-                    ]) | Vars];
+                     ,wh_util:to_list(ecallmgr_util:media_path(Media, extant, get(callid), wh_json:new()))
+                    ])
+     | Vars];
 
 get_channel_vars({<<"Codecs">>, []}, Vars) ->
     Vars;
@@ -283,6 +291,22 @@ get_channel_vars({AMQPHeader, V}, Vars) when not is_list(V) ->
 get_channel_vars(_, Vars) ->
     Vars.
 
+
+-spec sip_transport/1 :: (wh_json:json_object() | ne_binary() | 'undefined') -> binary().
+sip_transport(<<"tcp">>) ->
+    <<";transport=tcp">>;
+sip_transport(<<"udp">>) ->
+    <<";transport=udp">>;
+sip_transport(<<"tls">>) ->
+    <<";transport=tls">>;
+sip_transport(<<"sctp">>) ->
+    <<";transport=sctp">>;
+sip_transport(undefined) ->
+    <<>>;
+sip_transport(JObj) when not is_binary(JObj) ->
+    sip_transport(wh_util:to_lower_binary(wh_json:get_value(<<"Transport">>, JObj)));
+sip_transport(_) ->
+    <<>>.
 
 -spec get_channel_params/1 :: (wh_json:json_object()) -> wh_json:json_proplist().
 get_channel_params(JObj) ->
@@ -320,7 +344,7 @@ arrange_acl_node({_, JObj}, Dict) ->
 %% XML record creators and helpers
 %%%-------------------------------------------------------------------
 -type xml_attrib_name() :: atom().
--type xml_attrib_value() :: ne_binary() | nonempty_string() | iolist().
+-type xml_attrib_value() :: ne_binary() | nonempty_string() | iolist() | atom().
 -type xml_attrib() :: #xmlAttribute{}.
 
 -type xml_el() :: #xmlElement{}.
@@ -483,5 +507,5 @@ reverse_children(#xmlElement{content=Contents}=El) ->
     El#xmlElement{content=lists:reverse(Contents)}.
 
 -spec xml_attrib/2 :: (xml_attrib_name(), xml_attrib_value()) -> xml_attrib().
-xml_attrib(Name, Value) ->
-    #xmlAttribute{name=wh_util:to_atom(Name, true), value=wh_util:to_list(Value)}.
+xml_attrib(Name, Value) when is_atom(Name) ->
+    #xmlAttribute{name=Name, value=wh_util:to_list(Value)}.

@@ -10,8 +10,8 @@
 -module(wnm_local).
 
 -export([find_numbers/2]).
--export([acquire_number/2]).
--export([disconnect_number/2]).
+-export([acquire_number/1]).
+-export([disconnect_number/1]).
 
 -include("../wh_number_manager.hrl").
 
@@ -22,26 +22,31 @@
 %% in a rate center
 %% @end
 %%--------------------------------------------------------------------
--spec find_numbers/2 :: (ne_binary(), pos_integer()) -> {ok, json_object} | {error, term()}.
+-spec find_numbers/2 :: (ne_binary(), pos_integer()) -> {'ok', wh_json:json_object()} |
+                                                        {'error', _}.
 find_numbers(Number, Quanity) when size(Number) < 5 ->
     find_numbers(<<"+1", Number/binary>>, Quanity);
 find_numbers(Number, Quanity) ->
-    Db = wnm_util:number_to_db_name(Number),
-    case couch_mgr:get_results(Db, <<"numbers/status">>, [{<<"startkey">>, [<<"available">>, Number]}
-                                                          ,{<<"endkey">>, [<<"available">>, <<Number/binary, "\ufff0">>]}
-                                                          ,{<<"limit">>, Quanity}
-                                                         ]) of
-        {ok, []} -> 
-            lager:debug("found no available local numbers"),
-            {error, non_available};
-        {ok, JObjs} ->
-            lager:debug("found ~p available local numbers", [length(JObjs)]),
-            {ok, wh_json:from_list([{wh_json:get_value(<<"id">>, JObj), wh_json:new()}
-                                    || JObj <- JObjs
-                                   ])};
-        {error, R}=E ->
-            lager:debug("failed to lookup available local numbers: ~p", [R]),
-            E
+    case wnm_util:number_to_db_name(Number) of
+        undefined -> {error, indeterminable_db};
+        Db ->
+            ViewOptions = [{<<"startkey">>, [<<"available">>, Number]}
+                           ,{<<"endkey">>, [<<"available">>, <<Number/binary, "\ufff0">>]}
+                           ,{<<"limit">>, Quanity}
+                          ],
+            case couch_mgr:get_results(Db, <<"numbers/status">>, ViewOptions) of
+                {ok, []} -> 
+                    lager:debug("found no available local numbers"),
+                    {error, non_available};
+                {ok, JObjs} ->
+                    lager:debug("found ~p available local numbers", [length(JObjs)]),
+                    {ok, wh_json:from_list([{wh_json:get_value(<<"id">>, JObj), wh_json:new()}
+                                            || JObj <- JObjs
+                                           ])};
+                {error, _R}=E ->
+                    lager:debug("failed to lookup available local numbers: ~p", [_R]),
+                    E
+            end
     end.
 
 %%--------------------------------------------------------------------
@@ -50,9 +55,8 @@ find_numbers(Number, Quanity) ->
 %% Acquire a given number from the carrier
 %% @end
 %%--------------------------------------------------------------------
--spec acquire_number/2 :: (ne_binary(), wh_json:json_object()) -> {ok, wh_json:json_object()}.
-acquire_number(_, JObj) ->
-    {ok, JObj}.
+-spec acquire_number/1 :: (wnm_number()) -> wnm_number().
+acquire_number(Number) -> Number.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -60,6 +64,5 @@ acquire_number(_, JObj) ->
 %% Release a number from the routing table
 %% @end
 %%--------------------------------------------------------------------
--spec disconnect_number/2 :: (ne_binary(), wh_json:json_object()) -> {ok, wh_json:json_object()}.
-disconnect_number(_, JObj) ->
-    {ok, JObj}.
+-spec disconnect_number/1 :: (wnm_number()) -> wnm_number().
+disconnect_number(Number) -> Number.

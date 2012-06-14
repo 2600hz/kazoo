@@ -290,13 +290,15 @@ get_event_type(JObj) when not is_list(JObj) -> % guard against json_objects() be
 %% @end
 %%--------------------------------------------------------------------
 -spec get_xml_value/2 :: (string(), term()) -> undefined | binary().    
-get_xml_value(Path, Xml) ->
+get_xml_value(Paths, Xml) ->
+    Path = lists:flatten(Paths),
     try xmerl_xpath:string(Path, Xml) of
         [#xmlText{value=Value}] ->
             wh_util:to_binary(Value);
         [#xmlText{}|_]=Values ->
             [wh_util:to_binary(Value) 
-             || #xmlText{value=Value} <- Values];
+             || #xmlText{value=Value} <- Values
+            ];
         _ -> undefined
     catch
         E:R ->

@@ -378,6 +378,12 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>) ->
                                    end
                            end
                           ,fun(DP) ->
+                                   case wh_json:is_true(<<"Secure-RTP">>, JObj, false) of
+                                       true -> [{"application", "set sip_secure_media=true"}|DP];
+                                       false -> DP
+                                   end
+                           end
+                          ,fun(DP) ->
                                    case wh_json:get_value(<<"Media">>, JObj) of
                                        <<"process">> ->
                                            lager:debug("bridge will process media through host switch"),

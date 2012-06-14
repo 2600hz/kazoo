@@ -9,10 +9,10 @@
 %%%-------------------------------------------------------------------
 -module(wnm_cnam_notifier).
 
--export([save/4]).
--export([delete/4]).
+-export([save/1]).
+-export([delete/1]).
 
--include("../wh_number_manager.hrl").
+-include_lib("whistle_number_manager/src/wh_number_manager.hrl").
 
 -define(SERVER, ?MODULE).
 
@@ -23,53 +23,14 @@
 %% produce notifications if the cnam object changes
 %% @end
 %%--------------------------------------------------------------------
--spec save/4 :: (wh_json:json_object(), wh_json:json_object(), ne_binary(), ne_binary()) 
-                -> {ok, wh_json:json_object()}.
-save(JObj, PriorJObj, Number, <<"reserved">>) ->
-    EmptyJObj = wh_json:new(),
-    Cnam = wh_json:get_value(<<"cnam">>, JObj, EmptyJObj),
-    case Cnam =/= EmptyJObj andalso Cnam =/= wh_json:get_value(<<"cnam">>, PriorJObj) of
-        false -> {ok, JObj};
-        true ->
-            lager:debug("cnam information has been updated"),
-            Notify = [{<<"Account-ID">>, wh_json:get_value(<<"pvt_reserved_for">>, JObj)}
-                      ,{<<"Number-State">>, wh_json:get_value(<<"pvt_number_state">>, JObj)}
-                      ,{<<"Local-Number">>, wh_json:get_value(<<"pvt_module_name">>, JObj) =:= <<"wnm_local">>}
-                      ,{<<"Number">>, Number}
-                      ,{<<"Acquired-For">>, wh_json:get_value([<<"pvt_module_data">>, <<"acquire_for">>], JObj)}
-                      ,{<<"Cnam">>, Cnam}
-                      | wh_api:default_headers(?APP_VERSION, ?APP_NAME)
-                     ],
-            wapi_notifications:publish_cnam_request(Notify),
-            Features = [Feature 
-                        || Feature <- wh_json:get_value(<<"pvt_features">>, JObj, [])
-                               ,Feature =/= <<"cnam">>
-                       ],
-            {ok, wh_json:set_value(<<"pvt_features">>, [<<"cnam">> | Features], JObj)}
-    end;
-save(JObj, PriorJObj, Number, <<"in_service">>) ->
-    EmptyJObj = wh_json:new(),
-    Cnam = wh_json:get_value(<<"cnam">>, JObj, EmptyJObj),
-    case Cnam =/= EmptyJObj andalso Cnam =/= wh_json:get_value(<<"cnam">>, PriorJObj) of
-        false -> {ok, JObj};
-        true ->
-            lager:debug("cnam information has been updated"),
-            Notify = [{<<"Account-ID">>, wh_json:get_value(<<"pvt_assigned_to">>, JObj)}
-                      ,{<<"Number-State">>, wh_json:get_value(<<"pvt_number_state">>, JObj)}
-                      ,{<<"Local-Number">>, wh_json:get_value(<<"pvt_module_name">>, JObj) =:= <<"wnm_local">>}
-                      ,{<<"Number">>, Number}
-                      ,{<<"Acquired-For">>, wh_json:get_value([<<"pvt_module_data">>, <<"acquire_for">>], JObj)}
-                      ,{<<"Cnam">>, Cnam}
-                      | wh_api:default_headers(?APP_VERSION, ?APP_NAME)
-                     ],
-            wapi_notifications:publish_cnam_request(Notify),
-            Features = [Feature 
-                        || Feature <- wh_json:get_value(<<"pvt_features">>, JObj, [])
-                               ,Feature =/= <<"cnam">>
-                       ],
-            {ok, wh_json:set_value(<<"pvt_features">>, [<<"cnam">> | Features], JObj)}
-    end;
-save(JObj, _, _, _) -> {ok, JObj}.
+-spec save/1 :: (wnm_number()) -> wnm_number().
+save(#number{state = <<"reserved">>} = Number) ->
+    maybe_publish_cnam(Number);
+save(#number{state = <<"in_service">>} = Number) ->
+    maybe_publish_cnam(Number);
+save(#number{state = <<"port_in">>} = Number) ->
+    maybe_publish_cnam(Number);
+save(Number) -> Number.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -77,7 +38,47 @@ save(JObj, _, _, _) -> {ok, JObj}.
 %% This function is called each time a number is deleted
 %% @end
 %%--------------------------------------------------------------------
--spec delete/4 :: (wh_json:json_object(), wh_json:json_object(), ne_binary(), ne_binary()) 
-                  -> {ok, wh_json:json_object()}.
-delete(JObj, _, _, _) ->
-    {ok, JObj}.
+-spec delete/1 :: (wnm_number()) -> wnm_number().
+delete(#number{features=Features}=N) -> 
+    N#number{features=sets:del_element(<<"cnam">>, Features)}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec maybe_publish_cnam/1 :: (wnm_number()) -> wnm_number().
+maybe_publish_cnam(#number{current_number_doc=CurrentJObj, number_doc=JObj
+                           ,features=Features}=N) ->
+    CurrentCnam = wh_json:get_ne_value(<<"cnam">>, CurrentJObj),
+    Cnam = wh_json:get_ne_value(<<"cnam">>, JObj),
+    NotChanged = wnm_util:are_jobjs_identical(CurrentCnam, Cnam),
+    case wh_util:is_empty(Cnam) of
+        true -> N#number{features=sets:del_element(<<"cnam">>, Features)};
+        false when NotChanged -> N#number{features=sets:add_element(<<"cnam">>, Features)};
+        false ->
+            lager:debug("cnam information has been changed: ~s", [wh_json:encode(Cnam)]),
+            N1 = wnm_number:activate_feature(<<"cnam">>, N),
+            publish_cnam_update(Cnam, N),
+            N1
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec publish_cnam_update/2 :: (wh_json:json_object(), wnm_number()) -> 'ok'.
+publish_cnam_update(Cnam, #number{number=Number, state=State, assigned_to=AssignedTo
+                                  ,module_name=ModuleName, auth_by=AuthBy}) ->
+    Notify = [{<<"Account-ID">>, AssignedTo}
+              ,{<<"Number-State">>, State}
+              ,{<<"Local-Number">>, ModuleName =:= wnm_local}
+              ,{<<"Number">>, Number}
+              ,{<<"Acquired-For">>, AuthBy}
+              ,{<<"Cnam">>, Cnam}
+              | wh_api:default_headers(?APP_VERSION, ?APP_NAME)
+             ],
+    wapi_notifications:publish_cnam_request(Notify). 

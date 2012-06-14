@@ -8,15 +8,13 @@
 %%%-------------------------------------------------------------------
 -module(braintree_request).
 
--include("braintree.hrl").
+-export([get/1]).
+-export([post/2]).
+-export([put/2]).
+-export([delete/1]).
+
+-include_lib("braintree/include/braintree.hrl").
 -include_lib("xmerl/include/xmerl.hrl").
-
--export([get/1, post/2, put/2, delete/1]).
-
--type error_types() :: 'authentication' | 'authorization' | 'not_found' | 'upgrade_required' | 'server_error' | 'maintenance' | #bt_api_error{}.
--type do_request_ret() :: {'error', error_types()} | {'ok', bt_xml()}.
-
--export_type([error_types/0]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -24,7 +22,7 @@
 %% Preform a get request to braintree's system
 %% @end
 %%--------------------------------------------------------------------
--spec get/1 :: (nonempty_string()) -> do_request_ret().
+-spec get/1 :: (nonempty_string()) -> bt_xml().
 get(Path) ->
     do_request(get, Path, <<>>).
 
@@ -34,7 +32,7 @@ get(Path) ->
 %% Preform a post request to braintree's system
 %% @end
 %%--------------------------------------------------------------------
--spec post/2 :: (nonempty_string(), ne_binary()) -> do_request_ret().
+-spec post/2 :: (nonempty_string(), binary()) -> bt_xml().
 post(Path, Request) ->
     do_request(post, Path, Request).
 
@@ -44,7 +42,7 @@ post(Path, Request) ->
 %% Preform a put request to braintree's system
 %% @end
 %%--------------------------------------------------------------------
--spec put/2 :: (nonempty_string(), ne_binary()) -> do_request_ret().
+-spec put/2 :: (nonempty_string(), binary()) -> bt_xml().
 put(Path, Request) ->
     do_request(put, Path, Request).
 
@@ -54,7 +52,7 @@ put(Path, Request) ->
 %% Preform a delete request to braintree's system
 %% @end
 %%--------------------------------------------------------------------
--spec delete/1 :: (nonempty_string()) -> do_request_ret().
+-spec delete/1 :: (nonempty_string()) -> bt_xml().
 delete(Path) ->
     do_request(delete, Path, <<>>).
 
@@ -64,9 +62,9 @@ delete(Path) ->
 %% Preform a request to the braintree service
 %% @end
 %%--------------------------------------------------------------------
-
--spec do_request/3 :: ('put' | 'post' | 'get' | 'delete', nonempty_string(), binary()) -> do_request_ret().
+-spec do_request/3 :: ('put' | 'post' | 'get' | 'delete', nonempty_string(), binary()) -> bt_xml().
 do_request(Method, Path, Body) ->
+    StartTime = erlang:now(),
     lager:debug("making ~s request to braintree ~s", [Method, Path]),
     Url = lists:flatten(["https://"
                          ,braintree_server_url(whapps_config:get_string(<<"braintree">>, <<"default_environment">>, <<>>))
@@ -81,69 +79,66 @@ do_request(Method, Path, Body) ->
                    ,{basic_auth, {whapps_config:get_string(<<"braintree">>, <<"default_public_key">>, <<>>)
                                   ,whapps_config:get_string(<<"braintree">>, <<"default_private_key">>, <<>>)}}
                   ],
-    ?BT_DEBUG andalso file:write_file("/tmp/braintree.xml"
-                                      ,io_lib:format("Request:~n~s ~s~n~s~n", [Method, Url, Body])),
+    verbose_debug("Request:~n~s ~s~n~s~n", [Method, Url, Body]),
     case ibrowse:send_req(Url, Headers, Method, Body, HTTPOptions) of
         {ok, "401", _, _Response} ->
-            ?BT_DEBUG andalso file:write_file("/tmp/braintree.xml"
-                                              ,io_lib:format("Response:~n401~n~s~n", [_Response])
-                                              ,[append]),
-            lager:debug("braintree request error: 401 (unauthenticated)"),
-            {error, authentication};
+            verbose_debug("Response:~n401~n~s~n", [_Response]),
+            lager:debug("braintree error response(~pms): 401 Unauthenticated", [timer:now_diff(erlang:now(), StartTime) div 1000]),
+            braintree_util:error_authentication();
         {ok, "403", _, _Response} ->
-            ?BT_DEBUG andalso file:write_file("/tmp/braintree.xml"
-                                              ,io_lib:format("Response:~n403~n~s~n", [_Response])
-                                              ,[append]),
-            lager:debug("braintree request error: 403 (unauthorized)"),
-            {error, authorization};
+            verbose_debug("Response:~n403~n~s~n", [_Response]),
+            lager:debug("braintree error response(~pms): 403 Unauthorized", [timer:now_diff(erlang:now(), StartTime) div 1000]),
+            braintree_util:error_authorization();
         {ok, "404", _, _Response} ->
-            ?BT_DEBUG andalso file:write_file("/tmp/braintree.xml"
-                                              ,io_lib:format("Response:~n404~n~s~n", [_Response])
-                                              ,[append]),
-            lager:debug("braintree request error: 404 (not found)"),
-            {error, not_found};
+            verbose_debug("Response:~n404~n~s~n", [_Response]),
+            lager:debug("braintree error response(~pms): 404 Not Found", [timer:now_diff(erlang:now(), StartTime) div 1000]),
+            braintree_util:error_not_found(<<>>);
         {ok, "426", _, _Response} ->
-            ?BT_DEBUG andalso file:write_file("/tmp/braintree.xml"
-                                              ,io_lib:format("Response:~n426~n~s~n", [_Response])
-                                              ,[append]),
-            lager:debug("braintree request error: 426 (upgrade required)"),
-            {error, upgrade_required};
+            verbose_debug("Response:~n426~n~s~n", [_Response]),
+            lager:debug("braintree error response(~pms): 426 Upgrade Required", [timer:now_diff(erlang:now(), StartTime) div 1000]),
+            braintree_util:error_upgrade_required();
         {ok, "500", _, _Response} ->
-            ?BT_DEBUG andalso file:write_file("/tmp/braintree.xml"
-                                              ,io_lib:format("Response:~n500~n~s~n", [_Response])
-                                              ,[append]),
-            lager:debug("braintree request error: 500 (server error)"),
-            {error, server_error};
+            verbose_debug("Response:~n500~n~s~n", [_Response]),
+            lager:debug("braintree error response(~pms): 500 Server Error", [timer:now_diff(erlang:now(), StartTime) div 1000]),
+            braintree_util:error_server_error();
         {ok, "503", _, _Response} ->
-            ?BT_DEBUG andalso file:write_file("/tmp/braintree.xml"
-                                              ,io_lib:format("Response:~n503~n~s~n", [_Response])
-                                              ,[append]),
-            lager:debug("braintree request error: 503 (maintenance)"),
-            {error, maintenance};
+            verbose_debug("Response:~n503~n~s~n", [_Response]),
+            lager:debug("braintree error response(~pms): 503 Maintenance", [timer:now_diff(erlang:now(), StartTime) div 1000]),
+            braintree_util:error_maintenance();
         {ok, Code, _, [$<,$?,$x,$m,$l|_]=Response} ->
-            ?BT_DEBUG andalso file:write_file("/tmp/braintree.xml"
-                                              ,io_lib:format("Response:~n~p~n~s~n", [Code, Response])
-                                              ,[append]),
+            verbose_debug("Response:~n~p~n~s~n", [Code, Response]),
             {Xml, _} = xmerl_scan:string(Response),
+            lager:debug("braintree xml response(~pms)", [timer:now_diff(erlang:now(), StartTime) div 1000]),
             verify_response(Xml);
         {ok, Code, _, [$<,$s,$e,$a,$r,$c,$h|_]=Response} ->
-            ?BT_DEBUG andalso file:write_file("/tmp/braintree.xml"
-                                              ,io_lib:format("Response:~n~p~n~s~n", [Code, Response])
-                                              ,[append]),
+            verbose_debug("Response:~n~p~n~s~n", [Code, Response]),
             {Xml, _} = xmerl_scan:string(Response),
+            lager:debug("braintree xml response(~pms)", [timer:now_diff(erlang:now(), StartTime) div 1000]),
             verify_response(Xml);
         {ok, Code, _, _Response} ->
-            ?BT_DEBUG andalso file:write_file("/tmp/braintree.xml"
-                                              ,io_lib:format("Response:~n~p~n~s~n", [Code, _Response])
-                                              ,[append]),
-            lager:debug("braintree empty response: ~p", [Code]),
-            {ok, ?BT_EMPTY_XML};
-        {error, _}=E ->
-            ?BT_DEBUG andalso file:write_file("/tmp/braintree.xml"
-                                              ,io_lib:format("Response:~nerror~n~p~n", [E])
-                                              ,[append]),
-            lager:debug("braintree request error: ~p", [E]),
-            E
+            verbose_debug("Response:~n~p~n~s~n", [Code, _Response]),
+            lager:debug("braintree empty response(~pms): ~p", [timer:now_diff(erlang:now(), StartTime) div 1000, Code]),
+            ?BT_EMPTY_XML;
+        {error, _R} ->
+            verbose_debug("Response:~nerror~n~p~n", [_R]),
+            lager:debug("braintree request error(~pms): ~p", [timer:now_diff(erlang:now(), StartTime) div 1000, _R]),
+            braintree_util:error_io_fault()
+    end.
+
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% If braintree verbose debuging is enabled write the log line to the file
+%% @end
+%%--------------------------------------------------------------------
+-spec verbose_debug/2 :: (string(), [term()]) -> 'ok'.
+verbose_debug(Format, Args) ->
+    case ?BT_DEBUG of
+        false -> ok;
+        true -> 
+            _ = file:write_file("/tmp/braintree.xml", io_lib:format(Format, Args), [append]),
+            ok
     end.
 
 %%--------------------------------------------------------------------
@@ -152,8 +147,7 @@ do_request(Method, Path, Body) ->
 %% Get the base URL for the braintree service
 %% @end
 %%--------------------------------------------------------------------
--spec braintree_server_url/1 :: (Env) -> string() when
-      Env :: string().
+-spec braintree_server_url/1 :: (string()) -> string().
 braintree_server_url(Env) ->
     proplists:get_value(Env, ?BT_SERVER_URL).
 
@@ -163,36 +157,34 @@ braintree_server_url(Env) ->
 %% Determine if the response was valid
 %% @end
 %%--------------------------------------------------------------------
--spec verify_response/1 :: (Xml) -> {'ok', Xml} | {'error', #bt_api_error{}}.
-
+-spec verify_response/1 :: (bt_xml()) -> bt_xml().
 verify_response(Xml) ->
     case xmerl_xpath:string("/api-error-response", Xml) of
-        [] ->
-            lager:debug("braintree affirmative response"),
-            {ok, Xml};
+        [] -> Xml;
         _ ->
             lager:debug("braintree api error response"),
-            Errors = [#bt_error{code = braintree_util:get_xml_value("/error/code/text()", Error)
-                                ,message = braintree_util:get_xml_value("/error/message/text()", Error)
-                                ,attribute = braintree_util:get_xml_value("/error/attribute/text()", Error)}
-                      || Error <- xmerl_xpath:string("/api-error-response/errors//errors/error", Xml)],
+            Errors = [#bt_error{code = wh_util:get_xml_value("/error/code/text()", Error)
+                                ,message = wh_util:get_xml_value("/error/message/text()", Error)
+                                ,attribute = wh_util:get_xml_value("/error/attribute/text()", Error)}
+                      || Error <- xmerl_xpath:string("/api-error-response/errors//errors/error", Xml)
+                     ],
             Verif = #bt_verification{verification_status =
-                                         braintree_util:get_xml_value("/api-error-response/verification/status/text()", Xml)
+                                         wh_util:get_xml_value("/api-error-response/verification/status/text()", Xml)
                                      ,processor_response_code =
-                                         braintree_util:get_xml_value("/api-error-response/verification/processor-response-code/text()", Xml)
+                                         wh_util:get_xml_value("/api-error-response/verification/processor-response-code/text()", Xml)
                                      ,processor_response_text =
-                                         braintree_util:get_xml_value("/api-error-response/verification/processor-response-text/text()", Xml)
+                                         wh_util:get_xml_value("/api-error-response/verification/processor-response-text/text()", Xml)
                                      ,cvv_response_code =
-                                         braintree_util:get_xml_value("/api-error-response/verification/cvv-response-code/text()", Xml)
+                                         wh_util:get_xml_value("/api-error-response/verification/cvv-response-code/text()", Xml)
                                      ,avs_response_code =
-                                         braintree_util:get_xml_value("/api-error-response/verification/avs-error-response-code/text()", Xml)
+                                         wh_util:get_xml_value("/api-error-response/verification/avs-error-response-code/text()", Xml)
                                      ,postal_response_code =
-                                         braintree_util:get_xml_value("/api-error-response/verification/avs-postal-code-response-code/text()", Xml)
+                                         wh_util:get_xml_value("/api-error-response/verification/avs-postal-code-response-code/text()", Xml)
                                      ,street_response_code =
-                                         braintree_util:get_xml_value("/api-error-response/verification/avs-street-address-response-code/text()", Xml)
+                                         wh_util:get_xml_value("/api-error-response/verification/avs-street-address-response-code/text()", Xml)
                                      ,gateway_rejection_reason =
-                                         braintree_util:get_xml_value("/api-error-response/verification/gateway-rejection-reason/text()", Xml)},
-            {error, #bt_api_error{errors = Errors
-                                  ,verification=Verif
-                                  ,message = braintree_util:get_xml_value("/api-error-response/message/text()", Xml)}}
+                                         wh_util:get_xml_value("/api-error-response/verification/gateway-rejection-reason/text()", Xml)},
+            braintree_util:error_api(#bt_api_error{errors = Errors
+                                                   ,verification=Verif
+                                                   ,message = wh_util:get_xml_value("/api-error-response/message/text()", Xml)})
     end.

@@ -9,11 +9,11 @@
 %%%-------------------------------------------------------------------
 -module(wnm_dash_e911).
 
--export([save/4]).
--export([delete/4]).
+-export([save/1]).
+-export([delete/1]).
 -export([is_valid_location/1]).
 
--include("../wh_number_manager.hrl").
+-include_lib("whistle_number_manager/src/wh_number_manager.hrl").
 -include_lib("xmerl/include/xmerl.hrl").
 
 -define(WNM_DASH_CONFIG_CAT, <<(?WNM_CONFIG_CAT)/binary, ".dash_e911">>).
@@ -35,82 +35,14 @@
 %% provision e911 or remove the number depending on the state
 %% @end
 %%--------------------------------------------------------------------
--spec save/4 :: (wh_json:json_object(), wh_json:json_object(), ne_binary(), ne_binary()) 
-                -> {ok, wh_json:json_object()} | {error, binary()}.
-save(JObj, _, _, <<"discovery">>) ->
-    {ok, JObj};
-save(JObj, _, Number, <<"port_in">>) ->
-    case wh_json:get_value(<<"dash_e911">>, JObj) of
-        undefined -> {ok, JObj};
-        Address ->
-            lager:debug("porting number '~s' has e911 address, updating dash", [Number]),
-            case update_e911(Number, Address, JObj) of
-                {error, _}=E -> E;
-                {ok, J} ->
-                    Features = [Feature 
-                                || Feature <- wh_json:get_value(<<"pvt_features">>, J, [])
-                                       ,Feature =/= <<"dash_e911">>
-                               ],
-                    {ok, wh_json:set_value(<<"pvt_features">>, [<<"dash_e911">> | Features], J)}
-            end
-    end;
-save(JObj, PriorJObj, Number, <<"reserved">>) ->
-    EmptyJObj = wh_json:new(),
-    Address = wh_json:get_value(<<"dash_e911">>, JObj, EmptyJObj),
-    case Address =/= wh_json:get_value(<<"dash_e911">>, PriorJObj, EmptyJObj) of
-        false -> {ok, JObj};
-        true when Address =:= EmptyJObj ->
-            lager:debug("e911 address was changed and is now empty"),
-            _ = remove_number(Number),
-            Features = [Feature 
-                        || Feature <- wh_json:get_value(<<"pvt_features">>, JObj, [])
-                               ,Feature =/= <<"dash_e911">>
-                       ],
-            {ok, wh_json:set_value(<<"pvt_features">>, Features, JObj)};
-        true ->
-            lager:debug("e911 address for '~s' was changed, updating dash", [Number]),
-            case update_e911(Number, Address, JObj) of
-                {error, _}=E -> E;
-                {ok, J} ->
-                    Features = [Feature 
-                                || Feature <- wh_json:get_value(<<"pvt_features">>, J, [])
-                                       ,Feature =/= <<"dash_e911">>
-                               ],
-                    {ok, wh_json:set_value(<<"pvt_features">>, [<<"dash_e911">> | Features], J)}
-            end
-    end;
-save(JObj, PriorJObj, Number, <<"in_service">>) ->
-    EmptyJObj = wh_json:new(),
-    Address = wh_json:get_value(<<"dash_e911">>, JObj, EmptyJObj),
-    case Address =/= wh_json:get_value(<<"dash_e911">>, PriorJObj, EmptyJObj) of
-        false -> {ok, JObj};
-        true when Address =:= EmptyJObj ->
-            lager:debug("e911 address was changed and is now empty"),
-            _ = remove_number(Number),
-            Features = [Feature 
-                        || Feature <- wh_json:get_value(<<"pvt_features">>, JObj, [])
-                               ,Feature =/= <<"dash_e911">>
-                       ],
-            {ok, wh_json:set_value(<<"pvt_features">>, Features, JObj)};
-        true ->
-            lager:debug("e911 address for '~s' was changed, updating dash", [Number]),
-            case update_e911(Number, Address, JObj) of
-                {error, _}=E -> E;
-                {ok, J} ->
-                    Features = [Feature 
-                                || Feature <- wh_json:get_value(<<"pvt_features">>, J, [])
-                                       ,Feature =/= <<"dash_e911">>
-                               ],
-                    {ok, wh_json:set_value(<<"pvt_features">>, [<<"dash_e911">> | Features], J)}
-            end
-    end;
-save(JObj, _, Number, _) ->
-    _ = remove_number(Number),
-    Features = [Feature 
-                || Feature <- wh_json:get_value(<<"pvt_features">>, JObj, [])
-                       ,Feature =/= <<"dash_e911">>
-               ],
-    {ok, wh_json:set_value(<<"pvt_features">>, Features, JObj)}.
+-spec save/1 :: (wnm_number()) -> wnm_number().
+save(#number{state = <<"port_in">>} = Number) ->
+    maybe_update_dash_e911(Number);
+save(#number{state = <<"reserved">>} = Number) ->
+    maybe_update_dash_e911(Number);
+save(#number{state = <<"in_service">>} = Number) ->
+    maybe_update_dash_e911(Number);
+save(Number) -> Number.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -119,10 +51,38 @@ save(JObj, _, Number, _) ->
 %% provision e911 or remove the number depending on the state
 %% @end
 %%--------------------------------------------------------------------
--spec delete/4 :: (wh_json:json_object(), wh_json:json_object(), ne_binary(), ne_binary()) -> {ok, wh_json:json_object()}.
-delete(JObj, _, Number, _) ->
+-spec delete/1 :: (wnm_number()) -> wnm_number().
+delete(#number{features=Features, number=Number}=N) -> 
+    lager:debug("number has been deleted, removing any e911 information"),
     _ = remove_number(Number),
-    {ok, JObj}.
+    N#number{features=sets:del_element(<<"dash_e911">>, Features)}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec maybe_update_dash_e911/1 :: (wnm_number()) -> wnm_number().
+maybe_update_dash_e911(#number{current_number_doc=CurrentJObj, number_doc=JObj
+                               ,features=Features, number=Number}=N) ->
+    CurrentE911 = wh_json:get_ne_value(<<"dash_e911">>, CurrentJObj),
+    E911 = wh_json:get_ne_value(<<"dash_e911">>, JObj),
+    NotChanged = wnm_util:are_jobjs_identical(CurrentE911, E911),
+    case wh_util:is_empty(E911) of
+        true -> 
+            lager:debug("dash e911 information has been removed, updating dash"),
+            _ = remove_number(Number),
+            N#number{features=sets:del_element(<<"dash_e911">>, Features)};
+        false when NotChanged  -> N#number{features=sets:add_element(<<"dash_e911">>, Features)};
+        false ->
+            lager:debug("e911 information has been changed: ~s", [wh_json:encode(E911)]),
+            N1 = wnm_number:activate_feature(<<"dash_e911">>, N),
+            case update_e911(Number, E911, JObj) of
+                {error, _}=E -> E;
+                {ok, J} -> N1#number{number_doc=J}
+            end
+    end.
 
 %%--------------------------------------------------------------------
 %% @private

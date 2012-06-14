@@ -70,7 +70,7 @@
 %% @spec start_link() -> {'ok', Pid} | ignore | {'error', Error}
 %% @end
 %%--------------------------------------------------------------------
--spec start_link/2 :: (atom(), ne_binary()) -> {'ok', pid()}.
+-spec start_link/2 :: (atom(), ne_binary()) -> startlink_ret().
 start_link(Node, CallId) ->
     gen_listener:start_link(?MODULE, [{bindings, ?BINDINGS}
                                       ,{responders, ?RESPONDERS}
@@ -262,7 +262,7 @@ handle_info(timeout, #state{node=Node, callid=CallId, failed_node_checks=FNC, re
         timeout ->
             lager:debug("timed out trying to listen to channel events from ~s, trying again", [Node]),
             {'noreply', State#state{failed_node_checks=FNC+1}, 1000};
-        {'error', badsession} ->
+        {'error', 'badsession'} ->
             lager:debug("bad session received when setting up listener for events from ~s", [Node]),
             {stop, normal, State};
         {'error', 'session_attach_failed'} ->

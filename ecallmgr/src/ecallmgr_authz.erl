@@ -299,7 +299,7 @@ rating_req(CallId, Props) ->
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
--spec get_time_value/2 :: (ne_binary(), proplist()) -> integer() | 'undefined'.
+-spec get_time_value/2 :: (ne_binary(), proplist()) -> non_neg_integer().
 get_time_value(Key, Props) ->
     V = props:get_value(Key, Props, 0),
     wh_util:unix_seconds_to_gregorian_seconds(wh_util:microseconds_to_seconds(V)).

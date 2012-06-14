@@ -23,6 +23,10 @@
          ,do_compaction = false :: boolean()
          }).
 
+-type couchbeam_errors() :: 'not_found' | 'conflict' | 'precondition_failed' |
+                            {'ok', string(), _, _}.
+-type couchbeam_error() :: {'error', couchbeam_errors()}.
+
 -define(TIMEOUT, 1000 * 60 * 60). %% check every hour
 
 -define(COMPACT_THRESHOLD, 500). 
