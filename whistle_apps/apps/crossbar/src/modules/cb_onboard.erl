@@ -467,7 +467,7 @@ populate_new_account(Props, _) ->
     Payload = [Context],
     case crossbar_bindings:fold(<<"v1_resource.execute.put.accounts">>, Payload) of
         #cb_context{resp_status=success, db_name=AccountDb, account_id=AccountId, doc=JObj}=Context1 ->
-            Results = populate_new_account(proplists:delete(?WH_ACCOUNTS_DB, Props), AccountDb, wh_json:new()),
+            Results = populate_new_account(prepare_props(Props), AccountDb, wh_json:new()),
             notfy_new_account(JObj),
             Context1#cb_context{doc=wh_json:set_value(<<"account_id">>, AccountId, Results)};
         ErrorContext ->
@@ -480,8 +480,10 @@ populate_new_account([], _, Results) ->
     Results;
 
 populate_new_account([{<<"phone_numbers">>, #cb_context{storage=[{number, Number}]}=Context}|Props], AccountDb, Results) ->
+    AccountId = wh_util:format_account_id(AccountDb, raw),
     Payload = [Context#cb_context{db_name=AccountDb
-                                  ,account_id=wh_util:format_account_id(AccountDb, raw)}
+                                  ,auth_account_id=AccountId
+                                  ,account_id=AccountId}
                ,Number, <<"activate">>
               ],
     case crossbar_bindings:fold(<<"v1_resource.execute.put.phone_numbers">>, Payload) of
@@ -526,6 +528,11 @@ populate_new_account([{Event, #cb_context{storage=[{iteration, Iteration}]}=Cont
             populate_new_account(Props, AccountDb
                                  ,wh_json:set_value([<<"errors">>, Event, Iteration], Error, Results))
     end.
+
+prepare_props(Props) ->
+    lists:sort(fun({<<"braintree">>, _}, {_, _}) -> true;
+                   (_, _) -> false
+               end, proplists:delete(?WH_ACCOUNTS_DB, Props)).
 
 %%--------------------------------------------------------------------
 %% @private

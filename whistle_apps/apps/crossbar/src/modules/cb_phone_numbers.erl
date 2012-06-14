@@ -62,7 +62,13 @@ init() ->
     _ = crossbar_bindings:bind(<<"v1_resource.execute.post.phone_numbers">>, ?MODULE, post),
     crossbar_bindings:bind(<<"v1_resource.execute.delete.phone_numbers">>, ?MODULE, delete).
 
-
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec populate_phone_numbers/1 :: (#cb_context{}) -> 'ok'.
 populate_phone_numbers(#cb_context{db_name=AccountDb, account_id=AccountId}) ->
     PVTs = [{<<"_id">>, ?WNM_PHONE_NUMBER_DOC}
             ,{<<"pvt_account_db">>, AccountDb}
@@ -72,7 +78,8 @@ populate_phone_numbers(#cb_context{db_name=AccountDb, account_id=AccountId}) ->
             ,{<<"pvt_modified">>, wh_util:current_tstamp()}
             ,{<<"pvt_created">>, wh_util:current_tstamp()}
            ],
-    couch_mgr:save_doc(AccountDb, wh_json:from_list(PVTs)).
+    couch_mgr:save_doc(AccountDb, wh_json:from_list(PVTs)),
+    ok.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -304,7 +311,11 @@ find_numbers(#cb_context{query_json=Data}=Context) ->
 %%--------------------------------------------------------------------
 -spec summary/1 :: (#cb_context{}) -> #cb_context{}.
 summary(Context) ->
-    crossbar_doc:load(?WNM_PHONE_NUMBER_DOC, Context).
+    case crossbar_doc:load(?WNM_PHONE_NUMBER_DOC, Context) of
+        #cb_context{resp_error_code=404}=C ->
+            crossbar_util:response(wh_json:new(), C);
+        Else -> Else
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
