@@ -34,7 +34,6 @@
 %%%===================================================================
 init() ->
     _ = ssl:start(),
-    _ = crossbar_bindings:bind(<<"v1_resource.billing">>, ?MODULE, billing),
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.braintree">>, ?MODULE, allowed_methods),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.braintree">>, ?MODULE, resource_exists),
     _ = crossbar_bindings:bind(<<"v1_resource.validate.braintree">>, ?MODULE, validate),
