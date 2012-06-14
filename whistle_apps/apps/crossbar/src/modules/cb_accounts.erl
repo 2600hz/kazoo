@@ -254,7 +254,6 @@ delete(Context, AccountId) ->
             {ok, JObj1} ->
                 ?PVT_TYPE = wh_json:get_value(<<"pvt_type">>, JObj1),
                 lager:debug("opened ~s in ~s", [DbName, AccountId]),
-                _ = wh_reseller:unassign(JObj1),
                 true = couch_mgr:db_delete(DbName),
                 lager:debug("deleted db ~s", [DbName]);
             _ -> ok
@@ -266,6 +265,7 @@ delete(Context, AccountId) ->
                                                           });
                 _ -> ok
             end,
+        _ = (catch braintree_customer:delete(AccountId)),
         Context
     catch
         _:_E ->
@@ -543,7 +543,12 @@ set_private_fields(JObj0, Context, ParentId) ->
             AddPvtEnabled = fun(JObj, _) -> wh_json:set_value(<<"pvt_enabled">>, Enabled, JObj) end,
             lists:foldl(fun(Fun, JObj1) ->
                                 Fun(JObj1, Context)
-                        end, JObj0, [fun add_pvt_type/2, fun add_pvt_api_key/2, AddPvtTree, AddPvtEnabled]);
+                        end, JObj0, [fun add_pvt_type/2
+                                     ,fun add_pvt_api_key/2
+                                     ,AddPvtTree
+                                     ,AddPvtEnabled
+                                     ,fun add_pvt_service_plan/2
+                                    ]);
         false ->
             set_private_fields(JObj0, Context, undefined);
         _ ->

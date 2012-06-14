@@ -201,16 +201,19 @@ commit_changes(#wh_reseller{bt_subscriptions=Subscriptions}) ->
 
 find_reseller(Tree) ->
     {ok, MasterAccountId} = whapps_util:get_master_account_id(),
-    find_reseller(Tree, MasterAccountId).                                                   
+    find_reseller(lists:reverse(Tree), MasterAccountId).                                                   
 
-find_reseller([], MasterAccountId) ->             
+find_reseller([], MasterAccountId) ->
+    lager:debug("the master account ~s is the reseller for this account", [MasterAccountId]),
     MasterAccountId;
 find_reseller([ParentId|Tree], MasterAccountId) ->
     case couch_mgr:open_doc(?WH_ACCOUNTS_DB, ParentId) of
         {ok, JObj} ->
-            case get_reseller_id(JObj) =:= MasterAccountId of
-                true -> ParentId;
-                false -> find_reseller(Tree, MasterAccountId)
+            case wh_json:is_true(<<"pvt_reseller">>, JObj) andalso get_reseller_id(JObj) =:= MasterAccountId of
+                false -> find_reseller(Tree, MasterAccountId);
+                true ->
+                    lager:debug("parent ~s is the reseller for this account", [ParentId]),
+                    ParentId
             end;
         {error, _R} ->
             lager:debug("ignoring the ancestor ~s during reseller hunt, unable to open the account definition: ~p", [ParentId, _R]),
@@ -267,6 +270,7 @@ set_service_plans(JObj, ServicePlans, undefined) ->
         Reseller -> set_service_plans(JObj, ServicePlans, Reseller)
     end;
 set_service_plans(JObj, ServicePlans, Reseller) ->
+    lager:debug("setting reseller id to ~s", [Reseller]),
     wh_service_plan:set_service_plans(wh_json:set_value(<<"pvt_reseller_id">>, Reseller, JObj)
                                       ,ServicePlans
                                       ,Reseller).
