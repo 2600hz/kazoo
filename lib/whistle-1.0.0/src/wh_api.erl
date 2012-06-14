@@ -20,7 +20,8 @@
 -module(wh_api).
 
 %% API
--export([default_headers/2
+-export([default_headers_v/1
+         ,default_headers/2
          ,default_headers/3
          ,default_headers/4
          ,default_headers/5
@@ -54,6 +55,8 @@
 %% All fields are required general headers.
 %% @end
 %%--------------------------------------------------------------------
+-spec default_headers_v/1 :: (api_terms()) -> boolean().
+
 -spec default_headers/2 :: (ne_binary(), ne_binary()) -> proplist().
 -spec default_headers/3 :: (binary(), ne_binary(), ne_binary()) -> proplist().
 -spec default_headers/4 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> proplist().
@@ -80,6 +83,14 @@ default_headers(ServerID, EvtCat, EvtName, AppName, AppVsn) ->
      ,{<<"App-Version">>, AppVsn}
      ,{<<"Node">>, wh_util:to_binary(node())}
     ].
+
+default_headers_v(Prop) ->
+    props:get_value(<<"Server-ID">>, Prop) =/= undefined
+        andalso (not wh_util:is_empty(props:get_value(<<"Event-Category">>, Prop)))
+        andalso (not wh_util:is_empty(props:get_value(<<"Event-Name">>, Prop)))
+        andalso (not wh_util:is_empty(props:get_value(<<"App-Name">>, Prop)))
+        andalso (not wh_util:is_empty(props:get_value(<<"App-Version">>, Prop)))
+        andalso (not wh_util:is_empty(props:get_value(<<"Node">>, Prop))).
 
 disambiguate_and_publish(ReqJObj, RespJObj, Binding) ->
     Wapi = list_to_binary([<<"wapi_">>, wh_util:to_binary(Binding)]),
