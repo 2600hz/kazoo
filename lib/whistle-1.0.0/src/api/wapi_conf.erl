@@ -16,7 +16,7 @@
          ,get_type/1, get_doc/1, get_id/1
         ]).
 
--include("../wh_api.hrl").
+-include_lib("wh_api.hrl").
 
 %% Configuration Document Update
 -define(CONF_DOC_UPDATE_HEADERS, [<<"ID">>, <<"Rev">>, <<"Doc">>]).

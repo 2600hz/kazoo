@@ -18,7 +18,7 @@
 -export([publish_originate_req/1, publish_originate_req/2]).
 -export([publish_originate_resp/2, publish_originate_resp/3]).
  
--include("../wh_api.hrl").
+-include_lib("wh_api.hrl").
 
 -define(ORIGINATE_REQ_HEADERS, [<<"Endpoints">>, <<"Application-Name">>]).
 -define(OPTIONAL_ORIGINATE_REQ_HEADERS, [<<"Application-Data">>, <<"Custom-Channel-Vars">>

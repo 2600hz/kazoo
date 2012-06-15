@@ -11,7 +11,7 @@
 -export([bind_q/2, unbind_q/2]).
 -export([publish_reloadacl/0]).
 
--include("../wh_api.hrl").
+-include_lib("wh_api.hrl").
 
 -define(SWITCH_EVENT_VALUES, [{<<"Event-Category">>, <<"switch_event">>}]).
 

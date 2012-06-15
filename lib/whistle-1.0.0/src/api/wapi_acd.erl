@@ -18,7 +18,7 @@
 -export([publish_agent_offline/1, publish_agent_offline/2]).
 -export([publish_agent_connect/1, publish_agent_connect/2]).
 
--include("../wh_api.hrl").
+-include_lib("wh_api.hrl").
 
 -define(AGENT_ONLINE_HEADERS, [<<"Agent-ID">>, <<"Call-ID">>, <<"Control-Queue">>, <<"Account-DB">>]).
 -define(OPTIONAL_AGENT_ONLINE_HEADERS, [<<"Skills">>]).
