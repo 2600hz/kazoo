@@ -10,6 +10,7 @@
 
 -export([handle_route_req/2
          ,handle_route_win/2
+         ,handle_pivot_req/2
         ]).
 
 -include("pivot.hrl").
@@ -43,3 +44,7 @@ handle_route_win(JObj, _Props) ->
     %% the return of this function is ignored anyway, and the call is finished, so no need
     %% to match the return here.
     whapps_call:hangup(Call1).
+
+handle_pivot_req(JObj, _Props) ->
+    Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, JObj)),
+    ok.
