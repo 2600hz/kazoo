@@ -54,7 +54,7 @@ unbind_q(Queue, Props) ->
 get_pivot_req_routing(Realm) when is_binary(Realm) ->
     list_to_binary([?KEY_PIVOT_REQ, ".", amqp_util:encode(Realm)]);
 get_pivot_req_routing(Api) ->
-    get_route_req_routing(get_from_realm(Api)).
+    get_pivot_req_routing(get_from_realm(Api)).
 
 -spec publish_req/1 :: (api_terms()) -> 'ok'.
 -spec publish_req/2 :: (api_terms(), binary()) -> 'ok'.
