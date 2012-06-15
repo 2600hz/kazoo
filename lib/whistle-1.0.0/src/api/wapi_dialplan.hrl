@@ -13,6 +13,7 @@
 -define(INSERT_AT_TUPLE, {<<"Insert-At">>, [<<"head">>, <<"tail">>, <<"flush">>, <<"now">>]}).
 -define(IS_TERMINATOR, fun(X) when is_list(X) -> true;
                           (<<>>) -> true;
+                          (<<"none">>) -> true;
                           (_) -> false
                        end).
 

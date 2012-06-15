@@ -762,10 +762,12 @@ stream_file({Iod, _File}=State) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec set_terminators/3 :: (atom(), ne_binary(), 'undefined' | binary()) -> 'ok' |
-                                                                            fs_api_ret().
+-spec set_terminators/3 :: (atom(), ne_binary(), 'undefined' | binary() | list()) -> 'ok' |
+                                                                                     fs_api_ret().
 set_terminators(_Node, _UUID, undefined) -> 'ok';
 set_terminators(Node, UUID, <<>>) -> set(Node, UUID, <<"playback_terminators=none">>);
+set_terminators(Node, UUID, <<"none">>) -> set(Node, UUID, <<"playback_terminators=none">>);
+set_terminators(Node, UUID, []) -> set(Node, UUID, <<"playback_terminators=none">>);
 set_terminators(Node, UUID, Ts) ->
     Terms = list_to_binary(["playback_terminators=", Ts]),
     set(Node, UUID, Terms).
