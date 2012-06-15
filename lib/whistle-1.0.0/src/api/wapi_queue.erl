@@ -18,7 +18,7 @@
 -export([publish_new_member/1, publish_new_member/2, publish_new_member/3]).
 -export([publish_result/2, publish_result/3]).
 
--include("../wh_api.hrl").
+-include_lib("wh_api.hrl").
 
 -define(LISTENER_QUEUE_NAME, <<"queue.listener">>).
 -define(NEW_MEMBER_ROUTING_KEY, <<"queue.new_member">>).

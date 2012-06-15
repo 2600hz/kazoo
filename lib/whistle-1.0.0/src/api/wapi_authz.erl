@@ -24,7 +24,7 @@
          ,publish_update/1, publish_update/2
         ]).
 
--include("../wh_api.hrl").
+-include_lib("wh_api.hrl").
 
 -define(EVENT_CATEGORY, <<"authz">>).
 -define(KEY_AUTHZ_REQ, <<"authz.req">>).

@@ -9,7 +9,7 @@
 %%%-------------------------------------------------------------------
 -module(wapi_route).
 
--include("../wh_api.hrl").
+-include_lib("wh_api.hrl").
 
 -export([req/1, req_v/1
          ,resp/1, resp_v/1
@@ -114,7 +114,8 @@
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec req/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec req/1 :: (api_terms()) -> {'ok', iolist()} |
+                                {'error', string()}.
 req(Prop) when is_list(Prop) ->
     case req_v(Prop) of
         true -> wh_api:build_message(Prop, ?ROUTE_REQ_HEADERS, ?OPTIONAL_ROUTE_REQ_HEADERS);

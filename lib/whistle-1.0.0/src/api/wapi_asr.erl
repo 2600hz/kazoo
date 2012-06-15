@@ -17,7 +17,7 @@
 -export([publish_req/1, publish_req/2, publish_resp/2, publish_resp/3
          ,publish_error/2, publish_error/3]).
 
--include("../wh_api.hrl").
+-include_lib("wh_api.hrl").
 
 %% ASR Request - when Speech to text is desired
 -define(ASR_REQ_HEADERS, [<<"ASR-Endpoint">>, <<"ASR-Account-ID">>, <<"ASR-Account-Password">>, <<"Call-ID">>

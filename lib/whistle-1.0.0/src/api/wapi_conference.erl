@@ -56,7 +56,7 @@
 -export([publish_error/2, publish_error/3]).
 -export([publish_command/2, publish_command/3]).
 
--include("../wh_api.hrl").
+-include_lib("wh_api.hrl").
 
 %% Conference Search Request
 -define(SEARCH_REQ_HEADERS, [<<"Conference-ID">>]).
