@@ -106,16 +106,25 @@ handle_discovery_req(JObj, Props) ->
                          C
                  end
                ],
-    Conference = whapps_conference:update(Updaters, whapps_conference:new()),
+    try whapps_conference:update(Updaters, whapps_conference:new()) of
+        Conference -> search_for_conference(Call, Conference, Srv)
+    catch
+        _:_E ->
+            lager:debug("failed to update conference record: ~p", [_E]),
+            whapps_call_command:hangup(Call)
+    end.
+
+-spec search_for_conference/3 :: (whapps_call:call(), whapps_conference:conference(), pid()) -> any().
+search_for_conference(Call, Conference, Srv) ->
     conf_participant:set_conference(Conference, Srv),
     SearchId = couch_mgr:get_uuid(),
     wh_cache:store_local(?CONFERENCE_CACHE, {?MODULE, discovery, SearchId}, Srv, 300),
     lager:debug("publishing conference search request ~s", [SearchId]),
     whapps_conference_command:search(SearchId, Conference),
-    whapps_call_command:prompt(<<"conf-joining_conference">>, Call), 
+    whapps_call_command:prompt(<<"conf-joining_conference">>, Call).
+
     %% TODO: send discovery event on error
     %%    {ok, DiscoveryReq} = conf_participant:discovery_event(Srv),
-    ok.
 
 -spec handle_search_error/2 :: (wh_json:json_object(), proplist()) -> ok.
 handle_search_error(JObj, _Props) ->
