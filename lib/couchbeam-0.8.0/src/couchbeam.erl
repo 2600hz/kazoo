@@ -248,7 +248,7 @@ create_db(Server, DbName, Options) ->
 create_db(#server{options=IbrowseOpts}=Server, DbName, Options, Params) ->
     Options1 = couchbeam_util:propmerge1(Options, IbrowseOpts),
     Url = make_url(Server, dbname(DbName), Params),
-    case couchbeam_httpc:request(put, Url, ["201"], Options1) of
+    case couchbeam_httpc:request(put, Url, ["201", "202"], Options1) of
         {ok, _Status, _Headers, _Body} ->
             {ok, #db{server=Server, name=DbName, options=Options1}};
         {error, {ok, "412", _, _}} ->
@@ -477,7 +477,7 @@ save_docs(#db{server=Server, options=IbrowseOpts}=Db, Docs, Options) ->
         end,
     Url = make_url(Server, [db_url(Db), "/", "_bulk_docs"], Options2),
     Headers = [{"Content-Type", "application/json"}],
-    case db_request(post, Url, ["201"], IbrowseOpts, Headers, Body) of
+    case db_request(post, Url, ["201", "202"], IbrowseOpts, Headers, Body) of
         {ok, _, _, RespBody} ->
             {ok, ejson:decode(RespBody)};
         Error ->
@@ -598,7 +598,7 @@ put_attachment(#db{server=Server, options=IbrowseOpts}=Db, DocId, Name, Body, Op
             couchbeam_util:encode_docid(DocId), "/",
             couchbeam_util:encode_att_name(Name)], QueryArgs),
 
-    case db_request(put, Url, ["201"], IbrowseOpts, FinalHeaders, Body) of
+    case db_request(put, Url, ["201", "202"], IbrowseOpts, FinalHeaders, Body) of
         {ok, _, _, RespBody} ->
             {[{<<"ok">>, true}|R]} = ejson:decode(RespBody),
             {ok, {R}};
@@ -635,7 +635,7 @@ delete_attachment(#db{server=Server, options=IbrowseOpts}=Db, DocOrDocId, Name, 
                     Options1
             end,
             Url = make_url(Server, [db_url(Db), "/", DocId, "/", Name], Options2),
-            case db_request(delete, Url, ["200"], IbrowseOpts) of
+            case db_request(delete, Url, ["200", "202"], IbrowseOpts) of
             {ok, _, _, RespBody} ->
                 {[{<<"ok">>,true}|R]} = ejson:decode(RespBody),
                 {ok, {R}};
