@@ -89,6 +89,9 @@ is_call_active() ->
                 { <<"call_event">>, <<"CHANNEL_HANGUP">> } ->
                     lager:debug("hangup received, done here"),
                     false;
+                { <<"call_event">>, <<"CHANNEL_DESTROY">> } ->
+                    lager:debug("destroy received, done here"),
+                    false;
                 _T -> is_call_active()
             end;
         _M ->
