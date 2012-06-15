@@ -110,6 +110,9 @@ exec_element(Call, 'Redirect', [_|_]=Texts, #xmlElement{attributes=Attrs}) ->
 
     NewUri = wht_util:resolve_uri(whapps_call:kvs_fetch(<<"voice_uri">>, Call1), Url),
     Method = wht_util:http_method(props:get_value(method, Props, post)),
+
+    lager:debug("Redirect: using ~s to ~s(~s)", [Method, NewUri, Url]),
+
     BaseParams = wh_json:from_list(req_params(Call1) ),
 
     {request, Call2, NewUri, Method, BaseParams};
@@ -416,12 +419,15 @@ finish_dial(Call, Props) ->
             %% since its not defined, we fall through to the next TwiML command
             maybe_stop(Call, ok, {ok, Call});
         Action ->
-            BaseParams = wh_json:from_list([{"DialCallStatus", Status}
-                                            ,{"DialCallSid", OtherLeg}
-                                            ,{<<"DialCallDuration">>, Elapsed}
-                                            ,{<<"RecordingUrl">>, recorded_url(Call, RecordingId, RecordCall)}
-                                            | req_params(Call)
-                                           ]),
+            BaseParams = wh_json:from_list(
+                           props:filter_empty([{"DialCallStatus", Status}
+                                               ,{"DialCallSid", OtherLeg}
+                                               ,{"ParentCallSid", whapps_call:call_id(Call)}
+                                               ,{<<"DialCallDuration">>, Elapsed}
+                                               ,{<<"RecordingUrl">>, recorded_url(Call, RecordingId, RecordCall)}
+                                               | req_params(Call)
+                                              ])
+                          ),
             Uri = wht_util:resolve_uri(whapps_call:kvs_fetch(<<"voice_uri">>, Call), Action),
             Method = wht_util:http_method(props:get_value(method, Props, post)),
             {request, Call, Uri, Method, BaseParams}
@@ -500,6 +506,9 @@ collect_digits(Call, InitDigit, MaxDigits, FinishOnKey, Timeout, Props) ->
     case whapps_call_command:collect_digits(MaxDigitsBin, Timeout, 2000
                                             ,undefined, [FinishOnKey], Call
                                            ) of
+        {ok, <<>>} ->
+            lager:debug("no dtmfs received, moving to next verb"),
+            {ok, Call};
         {ok, DTMFs} ->
             lager:debug("recv DTMFs: ~s", [DTMFs]),
 
@@ -517,6 +526,8 @@ collect_digits(Call, InitDigit, MaxDigits, FinishOnKey, Timeout, Props) ->
             {stop, Call}
     end.
 
+collect_until_terminator(Call, <<>>, FinishOnKey, Timeout, Props) ->
+    collect_until_terminator_1(Call, FinishOnKey, Timeout, Props, []);
 collect_until_terminator(Call, InitDigit, FinishOnKey, Timeout, Props) ->
     collect_until_terminator_1(Call, FinishOnKey, Timeout, Props, [InitDigit]).
 
@@ -532,7 +543,7 @@ collect_until_terminator_1(Call, FinishOnKey, Timeout, Props, DTMFs) ->
             BaseParams = wh_json:from_list([{<<"Digits">>, iolist_to_binary(Digits)} | req_params(Call)]),
 
             {request, Call, NewUri, Method, BaseParams};
-        {ok, <<>>} ->
+        {ok, <<>>} when DTMFs =/= [] ->
             Digits = lists:reverse(DTMFs),
             lager:debug("timeout waiting for digits, working with what we got: '~s'", [Digits]),
             NewUri = wht_util:resolve_uri(whapps_call:kvs_fetch(<<"voice_uri">>, Call)
@@ -542,6 +553,9 @@ collect_until_terminator_1(Call, FinishOnKey, Timeout, Props, DTMFs) ->
             BaseParams = wh_json:from_list([{<<"Digits">>, Digits} | req_params(Call)]),
 
             {request, Call, NewUri, Method, BaseParams};
+        {ok, <<>>} ->
+            lager:debug("no dtmfs collected, going to next verb"),
+            {ok, Call};
         {ok, Digit} ->
             lager:debug("recv dtmf ~s", [Digit]),
             collect_until_terminator_1(Call, FinishOnKey, Timeout, Props, [Digit | DTMFs]);
