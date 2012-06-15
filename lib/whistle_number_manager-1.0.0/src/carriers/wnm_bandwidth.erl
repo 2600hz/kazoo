@@ -93,7 +93,8 @@ acquire_number(#number{auth_by=AuthBy, assigned_to=AssignedTo, module_data=Data}
             wnm_number:error_carrier_fault(Error, N);
         true ->
             Id = wh_json:get_string_value(<<"number_id">>, Data),
-            Endpoint = whapps_config:get_binary(?WNM_BW_CONFIG_CAT, <<"endpoint">>, <<"">>),
+            PrimaryEndpoint = whapps_config:get_binary(?WNM_BW_CONFIG_CAT, <<"primary_endpoint">>, <<"">>),
+            SecondaryEndpoint = whapps_config:get_binary(?WNM_BW_CONFIG_CAT, <<"secondary_endpoint">>, <<"">>),
             OrderNamePrefix = whapps_config:get_binary(?WNM_BW_CONFIG_CAT, <<"order_name_prefix">>, <<"Whistle">>),
             OrderName = list_to_binary([OrderNamePrefix, "-", wh_util:to_binary(wh_util:current_tstamp())]),
             ExtRef = case wh_util:is_empty(AuthBy) of true -> "no_authorizing_account"; false -> wh_util:to_list(AuthBy) end, 
@@ -102,7 +103,9 @@ acquire_number(#number{auth_by=AuthBy, assigned_to=AssignedTo, module_data=Data}
                      ,{'extRefID', [wh_util:to_list(ExtRef)]}
                      ,{'numberIDs', [{'id', [Id]}]}
                      ,{'subscriber', [wh_util:to_list(AcquireFor)]}
-                     ,{'endPoints', [{'host', [wh_util:to_list(Endpoint)]}]}
+                     ,{'endPoints', [{'host', [wh_util:to_list(PrimaryEndpoint)]}
+                                     ,{'host', [wh_util:to_list(SecondaryEndpoint)]}
+                                    ]}
                     ],
             case make_numbers_request('basicNumberOrder', Props) of
                 {error, Reason} ->

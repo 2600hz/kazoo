@@ -46,7 +46,7 @@ exec(Call, #xmlElement{name='Response', content=Elements}) ->
         _C:_R ->
             ST = erlang:get_stacktrace(),
             lager:debug("failed to exec: ~p: ~p", [_C, _R]),
-            [lager:debug("st: ~p", [S]) || S <- ST],
+            _ = [lager:debug("st: ~p", [S]) || S <- ST],
             {stop, update_call_status(Call, ?STATUS_FAILED)}
     end.
 
@@ -78,11 +78,18 @@ exec_element(Call, 'Gather', [#xmlText{}|T], El) ->
 exec_element(Call, 'Gather', [#xmlElement{name=Name, content=Content}=El1|T], El) ->
     Call1 = maybe_answer_call(Call),
 
-    case maybe_stop(Call1, exec_gather_element(Call1, Name, Content, El1), ok) of
-        {stop, _Call}=Stop -> Stop;
-        _R ->
-            lager:debug("exec_gather_element resp: ~p", [_R]),
-            exec_element(Call1, 'Gather', T, El)
+    case exec_gather_element(Call1, Name, Content, El1) of
+        {ok, Digit, Call2} ->
+            lager:debug("maybe recv dtmf ~s for gather", [Digit]),
+            exec_element(whapps_call:kvs_store(digits_collected, Digit, Call2), 'Gather', T, El);
+        {ok, Call2} ->
+            exec_element(Call2, 'Gather', T, El);
+        {error, channel_hungup, Call2} ->
+            {stop, Call2};
+        {error, channel_destroy, Call2} ->
+            {stop, Call2};
+        {error, _, Call2} ->
+            exec_element(Call2, 'Gather', T, El)
     end;
 exec_element(Call, 'Gather', [], #xmlElement{attributes=Attrs}) ->
     gather(Call, Attrs);
@@ -211,7 +218,7 @@ record_call(Call, Attrs) ->
             {stop, update_call_status(Call1, ?STATUS_FAILED)}
     end.
 
--spec gather/2 :: (whapps_call:call(), proplist()) -> exec_element_return().
+-spec gather/2 :: (whapps_call:call(), proplist()) -> exec_return().
 gather(Call, Attrs) ->
     Call1 = maybe_answer_call(Call),
     Props = attrs_to_proplist(Attrs),
@@ -219,24 +226,42 @@ gather(Call, Attrs) ->
     Timeout = wh_util:to_integer(props:get_value(timeout, Props, 5)) * 1000,
     FinishOnKey = props:get_value(finishOnKey, Props, <<"#">>),
 
+    InitDigit = whapps_call:kvs_fetch(digits_collected, <<>>, Call1),
+
     case props:get_value(numDigits, Props) of
-        undefined -> collect_until_terminator(Call1, FinishOnKey, Timeout, Props);
-        MaxDigits -> collect_digits(Call1, wh_util:to_integer(MaxDigits), FinishOnKey, Timeout, Props)
+        undefined -> collect_until_terminator(Call1, InitDigit, FinishOnKey, Timeout, Props);
+        MaxDigits -> collect_digits(Call1, InitDigit, wh_util:to_integer(MaxDigits), FinishOnKey, Timeout, Props)
     end.
 
+-spec exec_gather_element/4 :: (whapps_call:call(), atom(), list(), #xmlElement{}) -> {'ok', binary(), whapps_call:call()} |
+                                                                                      {'ok', whapps_call:call()} |
+                                                                                      {'error', atom() | wh_json:json_object(), whapps_call:call()}.
 exec_gather_element(Call, 'Say', [#xmlText{value=SayMe, type=text}], #xmlElement{attributes=Attrs}) ->    
     Result = say(Call, SayMe, Attrs, ?ANY_DIGIT),
     lager:debug("say returned: ~p", [Result]),
     maybe_stop(Call, Result, {ok, Call});
 
 exec_gather_element(Call, 'Play', [#xmlText{value=PlayMe, type=text}], #xmlElement{attributes=Attrs}) ->
-    play(Call, PlayMe, Attrs, ?ANY_DIGIT);
+    Call1 = case play(Call, PlayMe, Attrs, ?ANY_DIGIT) of
+                {ok, Call0} -> Call0;
+                {stop, Call0} -> Call0;
+                {request, Call0, _, _, _} -> Call0
+            end,
+    case whapps_call_command:wait_for_application_or_dtmf(<<"play">>, infinity) of
+        {dtmf, Digit} ->
+            lager:debug("gather/play recv DTMF ~s", [Digit]),
+            {ok, Digit, Call1};
+        {ok, _} ->
+            lager:debug("gather/play finished"),
+            {ok, <<>>, Call1};
+        {error, E} ->
+            {error, E, Call1}
+    end;
 exec_gather_element(Call, 'Pause', _, #xmlElement{attributes=Attrs}) ->
     pause(Call, Attrs);
 exec_gather_element(Call, _Action, _, _) ->
     lager:debug("unhandled nested action ~s in Gather", [_Action]),
     {ok, Call}.
-
 
 %%-------------------------------------------------------------------------
 %% @doc Dial
@@ -399,7 +424,7 @@ finish_dial(Call, Props) ->
                                            ]),
             Uri = wht_util:resolve_uri(whapps_call:kvs_fetch(<<"voice_uri">>, Call), Action),
             Method = wht_util:http_method(props:get_value(method, Props, post)),
-            maybe_stop(Call, ok, {request, Call, Uri, Method, BaseParams})
+            {request, Call, Uri, Method, BaseParams}
     end.
 
 -spec pause/2 :: (whapps_call:call(), proplist()) -> {'ok', whapps_call:call()}.
@@ -430,7 +455,7 @@ play(Call, PlayMe, Attrs) ->
 
 play(Call, PlayMe, Attrs, Terminators) ->
     Call1 = maybe_answer_call(Call),
-    lager:debug("PLAY: ~s", [PlayMe]),
+    lager:debug("PLAY: ~s with terminators: ~p", [PlayMe, Terminators]),
     Res = case get_loop_count(props:get_value(loop, attrs_to_proplist(Attrs), 1)) of
               %% TODO: play music in a continuous loop
               0 -> whapps_call_command:play(wh_util:to_binary(PlayMe), Terminators, Call1);
@@ -469,8 +494,8 @@ say(Call, SayMe, Attrs, Terminators) ->
         N -> say_loop(Call1, fun() -> whapps_call_command:tts(wh_util:to_binary(SayMe), Voice, Lang, Terminators, Call1) end, N)
     end.
 
-collect_digits(Call, MaxDigits, FinishOnKey, Timeout, Props) ->
-    lager:debug("GATHER: ~p max, finish: ~p with timeout ~p", [MaxDigits, FinishOnKey, Timeout]),
+collect_digits(Call, InitDigit, MaxDigits, FinishOnKey, Timeout, Props) ->
+    lager:debug("GATHER: ~p max, finish: ~p with timeout ~p and init ~s", [MaxDigits, FinishOnKey, Timeout, InitDigit]),
     MaxDigitsBin = wh_util:to_binary(MaxDigits),
     case whapps_call_command:collect_digits(MaxDigitsBin, Timeout, 2000
                                             ,undefined, [FinishOnKey], Call
@@ -482,7 +507,9 @@ collect_digits(Call, MaxDigits, FinishOnKey, Timeout, Props) ->
                                           ,props:get_value(action, Props)
                                          ),
             Method = wht_util:http_method(props:get_value(method, Props, post)),
-            BaseParams = wh_json:from_list([{<<"Digits">>, DTMFs} | req_params(Call)]),
+            BaseParams = wh_json:from_list([{<<"Digits">>, <<InitDigit/binary, DTMFs/binary>>}
+                                            | req_params(Call)
+                                           ]),
 
             {request, Call, NewUri, Method, BaseParams};
         {error, _E} ->
@@ -490,9 +517,10 @@ collect_digits(Call, MaxDigits, FinishOnKey, Timeout, Props) ->
             {stop, Call}
     end.
 
-collect_until_terminator(Call, FinishOnKey, Timeout, Props) ->
-    collect_until_terminator(Call, FinishOnKey, Timeout, Props, []).
-collect_until_terminator(Call, FinishOnKey, Timeout, Props, DTMFs) ->
+collect_until_terminator(Call, InitDigit, FinishOnKey, Timeout, Props) ->
+    collect_until_terminator_1(Call, FinishOnKey, Timeout, Props, [InitDigit]).
+
+collect_until_terminator_1(Call, FinishOnKey, Timeout, Props, DTMFs) ->
     case whapps_call_command:wait_for_dtmf(Timeout) of
         {ok, FinishOnKey} ->
             Digits = lists:reverse(DTMFs),
@@ -516,7 +544,7 @@ collect_until_terminator(Call, FinishOnKey, Timeout, Props, DTMFs) ->
             {request, Call, NewUri, Method, BaseParams};
         {ok, Digit} ->
             lager:debug("recv dtmf ~s", [Digit]),
-            collect_until_terminator(Call, FinishOnKey, Timeout, Props, [Digit | DTMFs]);
+            collect_until_terminator_1(Call, FinishOnKey, Timeout, Props, [Digit | DTMFs]);
         {error, _E} ->
             lager:debug("failed to collect unlimited digits, error: ~p", [_E]),
             {stop, Call}
