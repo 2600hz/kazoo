@@ -213,6 +213,7 @@ compact_shards(Shards, AdminConn, DesignDocs) ->
 
 -spec compact_shard/3 :: (server(), ne_binary(), [ne_binary(),...] | []) -> 'ok'.
 compact_shard(AdminConn, Shard, DesignDocs) ->
+    put(callid, ?LOG_SYSTEM_ID),
     lager:debug("compacting shard ~s", [Shard]),
     wait_for_compaction(AdminConn, Shard),
     couch_util:db_compact(AdminConn, Shard),
