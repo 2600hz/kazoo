@@ -19,7 +19,8 @@
 -define(KEY_PIVOT_REQ, <<"pivot.req">>).
 
 -define(PIVOT_REQ_HEADERS, [<<"Call">>, <<"Voice-URI">>]).
--define(OPTIONAL_PIVOT_REQ_HEADERS, [<<"CDR-URI">>]).
+-define(OPTIONAL_PIVOT_REQ_HEADERS, [<<"CDR-URI">>, <<"Request-Format">>, <<"HTTP-Method">>
+                                    ]).
 -define(PIVOT_REQ_VALUES, []).
 -define(PIVOT_REQ_TYPES, [{<<"Call">>, fun wh_json:is_json_object/1}]).
 
