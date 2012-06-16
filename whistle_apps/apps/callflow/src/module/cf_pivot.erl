@@ -35,12 +35,19 @@
 %%--------------------------------------------------------------------
 -spec handle/2 :: (wh_json:json_object(), whapps_call:call()) -> any().
 handle(Data, Call) ->
-    BaseParams = wh_json:from_list(init_req_params(Data, Call)),
+    Prop = props:filter_empty(
+             [{<<"Call">>, whapps_call:to_json(whapps_call:kvs_store(voice_uri, VoiceUri, Call))}
+              ,{<<"Voice-URI">>, wh_json:get_value(<<"voice_url">>, Data)}
+              ,{<<"CDR-URI">>, wh_json:get_value(<<"cdr_url">>, Data)}
+              ,{<<"Request-Format">>, wh_json:get_value(<<"req_format">>, Data)}
+              ,{<<"HTTP-Method">>, wht_util:http_method(wh_json:get_value(<<"http_method">>, Data, get))}
+              | wh_api:default_headers(<<"dialplan">>, <<"pivot">>, ?APP_NAME, ?APP_VERSION)
+             ]),
+    wapi_pivot:publish_req(Prop),
+    cf_exe:control_usurped(Call).
 
-    Method = wht_util:http_method(wh_json:get_value(<<"http_method">>, Data, get)),
-    VoiceUri = wh_json:get_value(<<"voice_url">>, Data),
-
-    send_req(whapps_call:kvs_store(voice_uri, VoiceUri, Call), VoiceUri, Method, BaseParams).
+    %BaseParams = wh_json:from_list(init_req_params(Data, Call)),
+    %send_req(, VoiceUri, Method, BaseParams).
 
 -spec send_req/4 :: (whapps_call:call(), nonempty_string() | ne_binary(), 'get' | 'post', wh_json:json_object()) -> any().
 send_req(Call, Uri, get, BaseParams) ->
