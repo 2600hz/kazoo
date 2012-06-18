@@ -6,6 +6,7 @@
 %%%
 %%% @contributors
 %%%   Karl Anderson <karl@2600hz.org>
+%%%   Jon Blanton <jon@2600hz.com>
 %%%-------------------------------------------------------------------
 -module(ecallmgr_maintenance).
 
@@ -18,6 +19,7 @@
 -export([sync_channels/1]).
 -export([flush_node_channels/1]).
 -export([flush_registrar/0]).
+-export([status/0]).
 
 -include("ecallmgr.hrl").
 
@@ -86,6 +88,47 @@ show_calls() ->
                                        ])
          || ControlWorker <- ControlWorkers],    
     ok.
-    
+
+-spec status/0 :: () -> no_return.
+status() ->
+    FolsomMetrics = folsom_metrics:get_metrics(),
+    FsMetrics = lists:foldl(fun(FMetric, Acc) ->
+				    case binary:split(FMetric, <<".">>, [global]) of
+					[Type, <<"freeswitch">>, <<"nodes">>, EncodedNode, StatKey] ->
+					    Metric = <<"freeswitch.nodes.", EncodedNode/binary, ".",StatKey/binary>>,
+					    StatMod = wh_util:to_atom(Type),
+					    Node = cowboy_http:urldecode(EncodedNode),
+					    Stat = case StatMod of
+						       wh_timer ->
+							   DateTime = calendar:now_to_datetime(wh_timer:get_timestamp(Metric)),
+							   wh_util:pretty_print_datetime(DateTime);
+						       _ ->
+							   StatMod:get(Metric)
+						   end,
+					    dict:update(Node, fun(List) -> [{StatKey, Stat} | List] end, [{StatKey, Stat}], Acc);
+					_ -> Acc
+				    end
+			    end
+			    ,dict:new()
+			    ,FolsomMetrics
+			   ),
+    lists:foreach(fun(Node) ->
+			  Stats = dict:fetch(Node, FsMetrics),
+			  io:format("----- ~s stats -----~n", [Node]),
+			  lists:foreach(fun({Key, Val}) when is_binary(Val) ->
+						io:format("~s: ~s~n", [Key, Val]);
+					   ({Key, Val}) ->
+						io:format("~s: ~p~n", [Key, Val])
+					end
+					,Stats
+				       ),
+			  io:format("~n")
+		  end
+		  ,dict:fetch_keys(FsMetrics)
+		 ),
+    no_return.
+
+
+	       
 
 
