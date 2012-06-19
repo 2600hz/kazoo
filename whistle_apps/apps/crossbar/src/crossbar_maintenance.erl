@@ -8,6 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(crossbar_maintenance).
 
+-export([migrate/0]).
 -export([flush/0]).
 -export([start_module/1]).
 -export([stop_module/1]).
@@ -24,6 +25,44 @@
 -include_lib("crossbar/include/crossbar.hrl").
 
 -type input_term() :: atom() | string() | ne_binary().
+
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec migrate/0 :: () -> 'no_return'.
+migrate() ->
+    io:format("updating default crossbar modules~n", []),
+    whapps_config:flush(),
+    StartModules = sets:from_list(whapps_config:get(<<"crossbar">>, <<"autoload_modules">>, [])),
+    XbarUpdates = [fun(L) -> sets:del_element(<<"cb_cdr">>, L) end
+                   ,fun(L) -> sets:del_element(<<"cb_signups">>, L) end
+                   ,fun(L) -> sets:del_element(<<"cb_resources">>, L) end
+                   ,fun(L) -> sets:del_element(<<"cb_provisioner_templates">>, L) end
+                   ,fun(L) -> sets:del_element(<<"cb_ts_accounts">>, L) end
+                   ,fun(L) -> sets:add_element(<<"cb_phone_numbers">>, L) end
+                   ,fun(L) -> sets:add_element(<<"cb_templates">>, L) end
+                   ,fun(L) -> sets:add_element(<<"cb_onboard">>, L) end
+                   ,fun(L) -> sets:add_element(<<"cb_connectivity">>, L) end
+                   ,fun(L) -> sets:add_element(<<"cb_local_provisioner_templates">>, L) end
+                   ,fun(L) -> sets:add_element(<<"cb_global_provisioner_templates">>, L) end
+                   ,fun(L) -> sets:add_element(<<"cb_queues">>, L) end
+                   ,fun(L) -> sets:add_element(<<"cb_schemas">>, L) end
+                   ,fun(L) -> sets:add_element(<<"cb_configs">>, L) end
+                   ,fun(L) -> sets:add_element(<<"cb_limits">>, L) end
+                   ,fun(L) -> sets:add_element(<<"cb_whitelabel">>, L) end
+                   ,fun(L) -> sets:add_element(<<"cb_braintree">>, L) end
+                  ],
+    UpdatedModules = sets:to_list(lists:foldr(fun(F, L) -> F(L) end, StartModules, XbarUpdates)),
+    _ = whapps_config:set_default(<<"crossbar">>, <<"autoload_modules">>, UpdatedModules),
+    case whapps_controller:stop_app(crossbar) of 
+        ok -> whapps_controller:start_app(crossbar);
+        _Else -> ok
+    end,
+    no_return.
 
 %%--------------------------------------------------------------------
 %% @public
