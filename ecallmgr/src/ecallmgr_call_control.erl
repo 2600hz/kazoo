@@ -325,18 +325,14 @@ handle_cast({transferer, _}, #state{callid=CallId, controller_q=ControllerQ}=Sta
     {stop, normal, State};
 handle_cast({transferee, JObj}, #state{other_legs=Legs, node=Node, callid=PrevCallId, self=Self}=State) ->
     lager:debug("this call control process is a transferee, updating call id..."),
-    NewCallId = case {wh_json:get_value(<<"Bridge-With">>, JObj), wh_json:get_value(<<"Transferee-UUID">>, JObj)} of
-                    {undefined, CallId} -> CallId;
-                    {CallId, _} -> CallId
-                end,
-    case NewCallId of
+    case wh_json:get_value(<<"Transferee-UUID">>, JObj) of
         undefined ->
             lager:debug("could not determin new call id"),
             {noreply, State};
         PrevCallId ->
             lager:debug("new callid is the same as the old callid"),
             {noreply, State};
-        _Else ->            
+        NewCallId ->            
             spawn(fun() -> publish_callid_update(PrevCallId, NewCallId, queue_name(Self)) end),
             lager:debug("updating callid from ~s to ~s", [PrevCallId, NewCallId]),
             put(callid, NewCallId),
