@@ -77,7 +77,6 @@ migrate() ->
                                       ,<<"whapps">>
                                       ,lists:foldr(fun(F, L) -> F(L) end, StartWhapps, WhappsUpdates)),
 
-    io:format("restarting updated modules~n", []),
     %% Ensure the new settings are applied and the new defaults are running
     io:format("restarting updated modules~n", []),
     _ = whapps_controller:restart_app(sysconf),
