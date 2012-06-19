@@ -481,9 +481,19 @@ say(Call, SayMe, Attrs) ->
     lager:debug("SAY: ~s using voice ~s, in lang ~s", [SayMe, Voice, Lang]),
 
     case get_loop_count(wh_util:to_integer(props:get_value(loop, Props, 1))) of
-        0 -> say_loop(Call1, fun() -> whapps_call_command:b_tts(wh_util:to_binary(SayMe), Voice, Lang, Call1) end, infinity);
-        1 -> whapps_call_command:b_tts(wh_util:to_binary(SayMe), Voice, Lang, Call1);
-        N -> say_loop(Call1, fun() -> whapps_call_command:b_tts(wh_util:to_binary(SayMe), Voice, Lang, Call1) end, N)
+        0 ->
+            lager:debug("looping for ever (loop: 0)"),
+            say_loop(Call1, fun() ->
+                                    whapps_call_command:b_tts(wh_util:to_binary(SayMe), Voice, Lang, Call1)
+                            end, infinity);
+        1 ->
+            lager:debug("say once"),
+            whapps_call_command:b_tts(wh_util:to_binary(SayMe), Voice, Lang, Call1);
+        N ->
+            lager:debug("saying, then looping ~b more times", [N-1]),
+            say_loop(Call1, fun() ->
+                                    whapps_call_command:b_tts(wh_util:to_binary(SayMe), Voice, Lang, Call1)
+                            end, N)
     end.
 
 say(Call, SayMe, Attrs, Terminators) ->
