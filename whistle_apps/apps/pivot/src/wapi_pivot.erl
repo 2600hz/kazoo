@@ -21,12 +21,14 @@
 -define(PIVOT_REQ_HEADERS, [<<"Call">>, <<"Voice-URI">>]).
 -define(OPTIONAL_PIVOT_REQ_HEADERS, [<<"CDR-URI">>, <<"Request-Format">>, <<"HTTP-Method">>
                                     ]).
--define(PIVOT_REQ_VALUES, []).
+-define(PIVOT_REQ_VALUES, [{<<"Event-Category">>,<<"dialplan">>}
+                           ,{<<"Event-Name">>, <<"pivot_req">>}
+                          ]).
 -define(PIVOT_REQ_TYPES, [{<<"Call">>, fun wh_json:is_json_object/1}]).
 
 -spec req/1 :: (api_terms()) -> {'ok', iolist()} |
                                 {'error', string()}.
-req([_|_]=Prop) ->
+req(Prop) when is_list(Prop) ->
     case req_v(Prop) of
         false -> {error, "Proplist failed validation for pivot_req"};
         true -> wh_api:build_message(Prop, ?PIVOT_REQ_HEADERS, ?OPTIONAL_PIVOT_REQ_HEADERS)
@@ -35,7 +37,7 @@ req(JObj) ->
     req(wh_json:to_proplist(JObj)).
 
 -spec req_v/1 :: (api_terms()) -> boolean().
-req_v([_|_]=Prop) ->
+req_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?PIVOT_REQ_HEADERS, ?PIVOT_REQ_VALUES, ?PIVOT_REQ_TYPES);
 req_v(JObj) ->
     req_v(wh_json:to_proplist(JObj)).
@@ -66,7 +68,7 @@ publish_req(Req, ContentType) ->
     amqp_util:callmgr_publish(Payload, ContentType, get_pivot_req_routing(Req)).
 
 -spec get_from_realm/1 :: (api_terms()) -> ne_binary().
-get_from_realm([_|_]=Prop) ->
-    props:get_value(<<"From-Realm">>, Prop);
+get_from_realm(Prop) when is_list(Prop) ->
+    wh_json:get_value(<<"From-Realm">>, props:get_value(<<"Call">>, Prop));
 get_from_realm(JObj) ->
-    wh_json:get_value(<<"From-Realm">>, JObj).
+    wh_json:get_value([<<"Call">>, <<"From-Realm">>], JObj).
