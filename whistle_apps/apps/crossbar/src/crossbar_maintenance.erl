@@ -45,10 +45,10 @@ flush() ->
 -spec refresh/1 :: (input_term()) -> 'ok'.
 
 refresh() ->
-    lager:info("please use whapps_maintenance:refresh().", []).
+    io:format("please use whapps_maintenance:refresh().", []).
 
 refresh(Value) ->
-    lager:info("please use whapps_maintenance:refresh(~p).", [Value]).
+    io:format("please use whapps_maintenance:refresh(~p).", [Value]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -101,7 +101,7 @@ find_account_by_number(Number) ->
             AccountDb = wh_util:format_account_id(AssignedTo, encoded),
             print_account_info(AccountDb, AssignedTo);
         {error, Reason}=E ->
-            lager:info("failed to find account assigned to number '~s': ~p", [Number, Reason]),
+            io:format("failed to find account assigned to number '~s': ~p~n", [Number, Reason]),
             E
     end.
 
@@ -128,7 +128,7 @@ find_account_by_name(Name) ->
                          ],
             {multiples, AccountIds};
         {error, Reason}=E ->
-            lager:info("failed to find account: ~p", [Reason]),
+            io:format("failed to find account: ~p~n", [Reason]),
             E
     end.
 
@@ -155,7 +155,7 @@ find_account_by_realm(Realm) ->
                          ],
             {multiples, AccountIds};
         {error, Reason}=E ->
-            lager:info("failed to find account: ~p", [Reason]),
+            io:format("failed to find account: ~p~n", [Reason]),
             E
     end.
 
@@ -169,10 +169,10 @@ find_account_by_realm(Realm) ->
 allow_account_number_additions(AccountId) ->
     case update_account(AccountId, <<"pvt_wnm_allow_additions">>, true) of
         {ok, _} ->
-            lager:info("allowing account '~s' to added numbers", [AccountId]),
+            io:format("allowing account '~s' to added numbers~n", [AccountId]),
             ok;
         {error, Reason} ->
-            lager:info("failed to find account: ~p", [Reason]),
+            io:format("failed to find account: ~p~n", [Reason]),
             failed
     end.
 
@@ -186,10 +186,10 @@ allow_account_number_additions(AccountId) ->
 disallow_account_number_additions(AccountId) ->
     case update_account(AccountId, <<"pvt_wnm_allow_additions">>, false) of
         {ok, _} ->
-            lager:info("disallowed account '~s' to added numbers", [AccountId]),
+            io:format("disallowed account '~s' to added numbers~n", [AccountId]),
             ok;
         {error, Reason} ->
-            lager:info("failed to find account: ~p", [Reason]),
+            io:format("failed to find account: ~p~n", [Reason]),
             failed
     end.
 
@@ -203,10 +203,10 @@ disallow_account_number_additions(AccountId) ->
 enable_account(AccountId) ->
     case update_account(AccountId, <<"pvt_enabled">>, true) of
         {ok, _} ->
-            lager:info("enabled account '~s'", [AccountId]),
+            io:format("enabled account '~s'~n", [AccountId]),
             ok;
         {error, Reason} ->
-            lager:info("failed to enable account: ~p", [Reason]),
+            io:format("failed to enable account: ~p~n", [Reason]),
             failed
     end.
 
@@ -220,10 +220,10 @@ enable_account(AccountId) ->
 disable_account(AccountId) ->
     case update_account(AccountId, <<"pvt_enabled">>, false) of
         {ok, _} ->
-            lager:info("disabled account '~s'", [AccountId]),
+            io:format("disabled account '~s'~n", [AccountId]),
             ok;
         {error, Reason} ->
-            lager:info("failed to disable account: ~p", [Reason]),
+            io:format("failed to disable account: ~p~n", [Reason]),
             failed
     end.
 
@@ -237,10 +237,10 @@ disable_account(AccountId) ->
 promote_account(AccountId) ->
     case update_account(AccountId, <<"pvt_superduper_admin">>, true) of
         {ok, _} ->
-            lager:info("promoted account '~s', this account now has permission to change system settings", [AccountId]),
+            io:format("promoted account '~s', this account now has permission to change system settings~n", [AccountId]),
             ok;
         {error, Reason} ->
-            lager:info("failed to promote account: ~p", [Reason]),
+            io:format("failed to promote account: ~p~n", [Reason]),
             failed
     end.
 
@@ -254,10 +254,10 @@ promote_account(AccountId) ->
 demote_account(AccountId) ->
     case update_account(AccountId, <<"pvt_superduper_admin">>, false) of
         {ok, _} ->
-            lager:info("promoted account '~s', this account can no longer change system settings", [AccountId]),
+            io:format("promoted account '~s', this account can no longer change system settings~n", [AccountId]),
             ok;
         {error, Reason} ->
-            lager:info("failed to demote account: ~p", [Reason]),
+            io:format("failed to demote account: ~p~n", [Reason]),
             failed
     end.
 
@@ -320,7 +320,7 @@ validate_account(JObj, Context) ->
     case crossbar_bindings:fold(<<"v1_resource.validate.accounts">>, Payload) of
         #cb_context{resp_status=success}=Context1 -> {ok, Context1};
         #cb_context{resp_data=Errors} -> 
-            lager:info("failed to validate account properties: '~s'", [list_to_binary(wh_json:encode(Errors))]),
+            io:format("failed to validate account properties: '~s'~n", [wh_json:encode(Errors)]),
             {error, Errors}
     end.
     
@@ -342,7 +342,7 @@ validate_user(JObj, Context) ->
     case crossbar_bindings:fold(<<"v1_resource.validate.users">>, Payload) of
         #cb_context{resp_status=success}=Context1 -> {ok, Context1};
         #cb_context{resp_data=Errors} -> 
-            lager:info("failed to validate user properties: '~s'", [list_to_binary(wh_json:encode(Errors))]),
+            io:format("failed to validate user properties: '~s'~n", [wh_json:encode(Errors)]),
             {error, Errors}
     end.
 
@@ -357,10 +357,10 @@ validate_user(JObj, Context) ->
 create_account(Context) ->
     case crossbar_bindings:fold(<<"v1_resource.execute.put.accounts">>, [Context]) of
         #cb_context{resp_status=success, db_name=AccountDb, account_id=AccountId}=Context1 ->
-            lager:info("created new account '~s' in db '~s'", [AccountId, AccountDb]),
+            io:format("created new account '~s' in db '~s'~n", [AccountId, AccountDb]),
             {ok, Context1};
         #cb_context{resp_data=Errors} ->
-            lager:info("failed to create account: '~s'", [list_to_binary(wh_json:encode(Errors))]),
+            io:format("failed to create account: '~s'~n", [list_to_binary(wh_json:encode(Errors))]),
             AccountId = wh_json:get_value(<<"_id">>, Context#cb_context.req_data),
             couch_mgr:db_delete(wh_util:format_account_id(AccountId, encoded)),
             {error, Errors}
@@ -377,10 +377,10 @@ create_account(Context) ->
 create_user(Context) ->
     case crossbar_bindings:fold(<<"v1_resource.execute.put.users">>, [Context]) of
         #cb_context{resp_status=success, doc=JObj}=Context1 ->
-            lager:info("created new account admin user '~s'", [wh_json:get_value(<<"_id">>, JObj)]),
+            io:format("created new account admin user '~s'~n", [wh_json:get_value(<<"_id">>, JObj)]),
             {ok, Context1};
         #cb_context{resp_data=Errors} ->
-            lager:info("failed to create account admin user: '~s'", [list_to_binary(wh_json:encode(Errors))]),
+            io:format("failed to create account admin user: '~s'~n", [list_to_binary(wh_json:encode(Errors))]),
             {error, Errors}
     end.
 
@@ -411,14 +411,12 @@ print_account_info(AccountDb) ->
 print_account_info(AccountDb, AccountId) ->
     case couch_mgr:open_doc(AccountDb, AccountId) of
         {ok, JObj} ->
-            lager:info("Account ID: ~s (~s)", [AccountId, AccountDb]),
-            lager:info("  Name: ~s", [wh_json:get_value(<<"name">>, JObj)]),
-            lager:info("  Realm: ~s", [wh_json:get_value(<<"realm">>, JObj)]),
-            lager:info("  Enabled: ~s", [not wh_json:is_false(<<"pvt_enabled">>, JObj)]),
-            lager:info("  System Admin: ~s", [wh_json:is_true(<<"pvt_superduper_admin">>, JObj)]),
-            lager:info("  In Service Numbers", []),
-            [lager:info("    ~s", [Number]) || Number <- wh_json:get_value(<<"pvt_wnm_in_service">>, JObj, [])];
+            io:format("Account ID: ~s (~s)~n", [AccountId, AccountDb]),
+            io:format("  Name: ~s~n", [wh_json:get_value(<<"name">>, JObj)]),
+            io:format("  Realm: ~s~n", [wh_json:get_value(<<"realm">>, JObj)]),
+            io:format("  Enabled: ~s~n", [not wh_json:is_false(<<"pvt_enabled">>, JObj)]),
+            io:format("  System Admin: ~s~n", [wh_json:is_true(<<"pvt_superduper_admin">>, JObj)]);
         {error, _} ->
-            lager:info("Account ID: ~s (~s)", [AccountId, AccountDb])
+            io:format("Account ID: ~s (~s)~n", [AccountId, AccountDb])
     end,
     {ok, AccountId}.
