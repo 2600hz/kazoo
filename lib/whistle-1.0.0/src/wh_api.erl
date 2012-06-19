@@ -218,9 +218,9 @@ publish_error(TargetQ, Error, ContentType) ->
 %%%===================================================================
 -spec validate/4 :: (api_terms(), api_headers(), proplist(), proplist()) -> boolean().
 validate(Prop, ReqH, Vals, Types) when is_list(Prop) ->
-    case has_all(Prop, ?DEFAULT_HEADERS) andalso validate_message(Prop, ReqH, Vals, Types) of
-        true ->
-            true;
+    case has_all(Prop, ?DEFAULT_HEADERS) andalso
+        validate_message(Prop, ReqH, Vals, Types) of
+        true -> true;
         false ->
             lager:debug("failing API JSON: ~s", [wh_json:encode(wh_json:from_list(Prop))]),
             false
@@ -310,10 +310,8 @@ defaults(Prop, Headers) ->
                                                                               {'error', string()}.
 update_required_headers(Prop, Fields, Headers) ->
     case has_all(Prop, Fields) of
-        true ->
-            add_headers(Prop, Fields, Headers);
-        false ->
-            {error, "All required headers not defined"}
+        true -> add_headers(Prop, Fields, Headers);
+        false -> {error, "All required headers not defined"}
     end.
 
 -spec update_optional_headers/3 :: (proplist(), api_headers(), proplist()) -> {proplist(), proplist()}.
@@ -326,19 +324,13 @@ update_optional_headers(Prop, Fields, Headers) ->
     end.
 
 %% add [Header] from Prop to HeadProp
--spec add_headers/3 :: (Prop, Fields, Headers) -> {proplist(), proplist()} when
-      Prop :: proplist(),
-      Fields :: api_headers(),
-      Headers :: proplist().
+-spec add_headers/3 :: (proplist(), api_headers(), proplist()) -> {proplist(), proplist()}.
 add_headers(Prop, Fields, Headers) ->
     lists:foldl(fun(K, {Headers1, KVs}) ->
                         {[{K, props:get_value(K, KVs)} | Headers1], props:delete(K, KVs)}
                 end, {Headers, Prop}, Fields).
 
--spec add_optional_headers/3 :: (Prop, Fields, Headers) -> {proplist(), proplist()} when
-      Prop :: proplist(),
-      Fields :: api_headers(),
-      Headers :: proplist().
+-spec add_optional_headers/3 :: (proplist(), api_headers(), proplist()) -> {proplist(), proplist()}.
 add_optional_headers(Prop, Fields, Headers) ->
     lists:foldl(fun(K, {Headers1, KVs}) ->
                         case props:get_value(K, KVs) of
