@@ -37,7 +37,7 @@ main(CommandLineArgs, Loops) ->
             Target = get_target(Options, Verbose),
             Module = list_to_atom(proplists:get_value(module, Options, "nomodule")),
             Function = list_to_atom(proplists:get_value(function, Options, "nofunction")),
-            Timeout = proplists:get_value(timeout, Options, 5) * 1000,
+            Timeout = case proplists:get_value(timeout, Options) of undefined -> infinity; T -> T * 1000 end,
             Verbose andalso io:format(standard_io, "Running ~s:~s(~s)~n", [Module, Function, string:join(Args, ", ")]),
             case rpc:call(Target, Module, Function, [list_to_binary(Arg) || Arg <- Args], Timeout) of
                 {badrpc, {'EXIT',{undef, _}}} ->
@@ -47,6 +47,8 @@ main(CommandLineArgs, Loops) ->
                     String = io_lib:print(Reason, 1, ?MAX_CHARS, -1),
                     io:format(standard_error, "Command failed: ~s~n", [String]),
                     halt(1);
+                no_return ->
+                    erlang:halt(0);
                 Result when Verbose ->
                     String = io_lib:print(Result, 1, ?MAX_CHARS, -1),
                     io:format(standard_io, "Result: ~s~n", [String]),
@@ -165,7 +167,7 @@ option_spec_list() ->
      {host, $h, "host", {string, net_adm:localhost()}, "System hostname, defaults to system hostname"},
      {node, $n, "node", {string, "whistle_apps"}, "Node name, default \"whistle_apps\""},
      {cookie, $c, "cookie", {string, ""}, "Erlang cookie"},
-     {timeout, $t, "timeout", {integer, 5}, "Command timeout, default 5"},
+     {timeout, $t, "timeout", integer, "Command timeout, default 5"},
      {verbose, $v, "verbose", undefined, "Be verbose"},
      {module, undefined, undefined, string, "The name of the remote module"},
      {function, undefined, undefined, string, "The name of the remote module's function"}

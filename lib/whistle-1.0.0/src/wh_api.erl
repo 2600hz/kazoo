@@ -222,7 +222,7 @@ validate(Prop, ReqH, Vals, Types) when is_list(Prop) ->
         true ->
             true;
         false ->
-            lager:debug("failing API JSON: ~s", [list_to_binary(wh_json:encode(wh_json:from_list(Prop)))]),
+            lager:debug("failing API JSON: ~s", [wh_json:encode(wh_json:from_list(Prop))]),
             false
     end;
 validate(JObj, ReqH, Vals, Types) ->
