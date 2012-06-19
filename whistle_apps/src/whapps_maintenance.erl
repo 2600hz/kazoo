@@ -43,45 +43,23 @@ migrate() ->
 
     %% Ensure the offnet db exists and has all the necessary views
     io:format("refreshing views used by Stepswitch...~n", []),
-    stepswitch_maintenance:refresh(),
+    _ = stepswitch_maintenance:refresh(),
 
     %% Create missing limits doc
-    migrate_limits(),
+    _ = migrate_limits(),
 
     %% Ensure the phone_numbers doc in the account db is up-to-date
-    whistle_number_manager_maintenance:reconcile_numbers(),
+    _ = whistle_number_manager_maintenance:reconcile_numbers(),
 
     %% Ensure the views in each DB are update-to-date, depreciated view removed, sip_auth docs
     %% that need to be aggregated have been, and the account definition is aggregated
-    blocking_refresh(),
+    _ = blocking_refresh(),
 
     %% Clear the config cache as to ensure we manipulate what is actually in the db...
-    whapps_config:flush(),
+    _ = whapps_config:flush(),
 
     %% Remove depreciated crossbar modules from the startup list and add new defaults
-    io:format("updating default crossbar modules~n", []),
-    StartModules = sets:from_list(whapps_config:get(<<"crossbar">>, <<"autoload_modules">>, [])),
-    XbarUpdates = [fun(L) -> sets:del_element(<<"cb_cdr">>, L) end
-                   ,fun(L) -> sets:del_element(<<"cb_signups">>, L) end
-                   ,fun(L) -> sets:del_element(<<"cb_resources">>, L) end
-                   ,fun(L) -> sets:del_element(<<"cb_provisioner_templates">>, L) end
-                   ,fun(L) -> sets:del_element(<<"cb_ts_accounts">>, L) end
-                   ,fun(L) -> sets:add_element(<<"cb_phone_numbers">>, L) end
-                   ,fun(L) -> sets:add_element(<<"cb_templates">>, L) end
-                   ,fun(L) -> sets:add_element(<<"cb_onboard">>, L) end
-                   ,fun(L) -> sets:add_element(<<"cb_connectivity">>, L) end
-                   ,fun(L) -> sets:add_element(<<"cb_local_provisioner_templates">>, L) end
-                   ,fun(L) -> sets:add_element(<<"cb_global_provisioner_templates">>, L) end
-                   ,fun(L) -> sets:add_element(<<"cb_queues">>, L) end
-                   ,fun(L) -> sets:add_element(<<"cb_schemas">>, L) end
-                   ,fun(L) -> sets:add_element(<<"cb_configs">>, L) end
-                   ,fun(L) -> sets:add_element(<<"cb_limits">>, L) end
-                   ,fun(L) -> sets:add_element(<<"cb_whitelabel">>, L) end
-                  ],
-
-    _ = whapps_config:set_default(<<"crossbar">>
-                                      ,<<"autoload_modules">>
-                                      ,sets:to_list(lists:foldr(fun(F, L) -> F(L) end, StartModules, XbarUpdates))),
+    _ = crossbar_maintenance:migrate(),
 
     %% Remove depreciated whapps from the startup list and add new defaults
     io:format("updating default kazoo modules~n", []),
@@ -93,9 +71,8 @@ migrate() ->
                                       ,<<"whapps">>
                                       ,lists:foldr(fun(F, L) -> F(L) end, StartWhapps, WhappsUpdates)),
 
-    io:format("restarting updated modules~n", []),
     %% Ensure the new settings are applied and the new defaults are running
-    _ = whapps_controller:restart_app(crossbar),
+    io:format("restarting updated modules~n", []),
     _ = whapps_controller:restart_app(sysconf),
     _ = whapps_controller:restart_app(notify),
     _ = whapps_controller:restart_app(acdc),
