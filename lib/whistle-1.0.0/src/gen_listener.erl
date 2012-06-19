@@ -83,6 +83,8 @@
          ,nack/2
         ]).
 
+-export_type([handle_event_return/0]).
+
 behaviour_info(callbacks) ->
     [{init, 1}
      ,{handle_event, 2} %% Module passes back {reply, Proplist}, passed as 2nd param to Responder:handle_req/2
@@ -93,6 +95,8 @@ behaviour_info(callbacks) ->
     ];
 behaviour_info(_) ->
     undefined.
+
+-type handle_event_return() :: {'reply', proplist()} | 'ignore'.
 
 -type binding() :: {atom() | ne_binary(), wh_proplist()}. %% {wapi_module, options}
 -type bindings() :: [binding(),...] | [].
