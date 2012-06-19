@@ -17,10 +17,10 @@
 
 -spec handle_route_req/2 :: (wh_json:json_object(), wh_proplist()) -> any().
 handle_route_req(JObj, Props) ->
-    Q = props:get_value(queue, Props),
+    _Q = props:get_value(queue, Props),
 
     %% sends route_resp with "park" by default
-    whapps_call:route_response(JObj, Q, park).
+    ok.
 
 %% receiving the route_win means we are in control of the call
 -spec handle_route_win/2 :: (wh_json:json_object(), wh_proplist()) -> any().
@@ -46,5 +46,7 @@ handle_route_win(JObj, _Props) ->
     whapps_call:hangup(Call1).
 
 handle_pivot_req(JObj, _Props) ->
+    true = wapi_pivot:req_v(JObj),
+
     Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, JObj)),
-    ok.
+    pivot_calls_sup:new(Call, JObj).
