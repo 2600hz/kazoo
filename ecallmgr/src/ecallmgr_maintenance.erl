@@ -104,7 +104,7 @@ status() ->
 					    Stat = case StatMod of
 						       wh_timer ->
 							   DateTime = calendar:now_to_datetime(wh_timer:get_timestamp(Metric)),
-							   wh_util:pretty_print_datetime(DateTime);
+							   {wh_timer:get(Metric), wh_util:pretty_print_datetime(DateTime)};
 						       _ ->
 							   StatMod:get(Metric)
 						   end,
@@ -118,8 +118,10 @@ status() ->
     lists:foreach(fun(Node) ->
 			  Stats = dict:fetch(Node, FsMetrics),
 			  io:format("----- ~s stats -----~n", [Node]),
-			  lists:foreach(fun({Key, Val}) when is_binary(Val) ->
-						io:format("~s: ~s~n", [Key, Val]);
+			  lists:foreach(fun({Key, {Val1, Val2}}) when is_binary(Val2) ->
+						io:format("~s: ~p (~s)~n", [Key, Val1, Val2]);
+					   ({Key, {Val1, Val2}}) ->
+						io:format("~s: ~p (~s)~n", [Key, Val1, Val2]);
 					   ({Key, Val}) ->
 						io:format("~s: ~p~n", [Key, Val])
 					end
