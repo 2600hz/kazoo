@@ -32,14 +32,14 @@
 %% exist
 %% @end
 %%--------------------------------------------------------------------
--spec reconcile/0 :: () -> iolist().
--spec reconcile/1 :: (string() | ne_binary() | 'all') -> iolist().
+-spec reconcile/0 :: () -> 'no_return'.
+-spec reconcile/1 :: (string() | ne_binary() | 'all') -> 'no_return'.
  
 reconcile() ->
-    io_lib:format("This command is depreciated, please use reconcile_numbers() or for older systems reconcile_accounts(). See the wiki for details on the differences.", []).
+    io:format("This command is depreciated, please use reconcile_numbers() or for older systems reconcile_accounts(). See the wiki for details on the differences.", []).
 
 reconcile(Arg) ->
-    io_lib:format("This command is depreciated, please use reconcile_numbers() or for older systems reconcile_accounts(~s). See the wiki for details on the differences.", [Arg]).    
+    io:format("This command is depreciated, please use reconcile_numbers() or for older systems reconcile_accounts(~s). See the wiki for details on the differences.", [Arg]).    
 
 %%--------------------------------------------------------------------
 %% @public
@@ -73,7 +73,7 @@ reconcile_numbers(NumberDb) ->
                                    _Else -> true
                                end
                       ],
-            _ = reconcile_numbers(Numbers, undefined),
+            _ = reconcile_numbers(Numbers, system),
             done
     end.
 
@@ -190,14 +190,19 @@ get_trunkstore_account_numbers(AccountId) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec reconcile_numbers/2 :: ([ne_binary(),...] | [], 'undefined' | ne_binary()) -> 'ok'.
-reconcile_numbers([Number|Numbers], AccountId) ->
+reconcile_numbers(Numbers, AccountId) ->
+    reconcile_numbers(Numbers, AccountId, length(Numbers), 1).
+
+reconcile_numbers([Number|Numbers], AccountId, Total, Count) ->
+    Db = wnm_util:number_to_db_name(Number),
     try wh_number_manager:reconcile_number(Number, AccountId, AccountId) of
         _ ->
-            reconcile_numbers(Numbers, AccountId)
+            io:format("reconciled ~s number (~p/~p): ~s~n", [Db, Count, Total, Number]),
+            reconcile_numbers(Numbers, AccountId, Total, Count + 1)
     catch
         _E:_R ->
-            lager:debug("error reconciling ~s: ~p:~p", [Number, _E, _R]),
-            reconcile_numbers(Numbers, AccountId)
+            io:format("error reconciling ~s number (~p/~p) ~s: ~p:~p~n", [Db, Count, Total, Number, _E, _R]),
+            reconcile_numbers(Numbers, AccountId, Total, Count + 1)
     end;
-reconcile_numbers([], _) ->
+reconcile_numbers([], _, _, _) ->
     ok.

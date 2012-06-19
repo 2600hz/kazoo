@@ -37,20 +37,23 @@ remove_fs_node(Node) ->
 list_fs_nodes() ->
     ecallmgr_fs_nodes:connected().
 
--spec show_channels/0 :: () -> iolist().
+-spec show_channels/0 :: () -> 'no_return'.
 show_channels() ->
     case ecallmgr_fs_nodes:show_channels() of
-        [] -> "no channels";
+        [] -> io:format("no channels~n", []);
         [Channel|_]=Channels ->
-            Header = string:join([wh_util:to_list(K) || {K, _} <- wh_json:to_proplist(Channel)], ","),
-            do_show_channels(Channels, io_lib:format("~s~n", [Header]))
-    end.
+            Headers = string:join([wh_util:to_list(K) || {K, _} <- wh_json:to_proplist(Channel)], ","),
+            io:format("~s~n", [Headers]),
+            do_show_channels(Channels)
+    end,
+    no_return.
 
-do_show_channels([], String) ->
-    lists:flatten(String);
-do_show_channels([Channel|Channels], String) ->
+do_show_channels([]) ->
+    ok;
+do_show_channels([Channel|Channels]) ->
     Values = string:join([wh_util:to_list(V) || {_, V} <- wh_json:to_proplist(Channel)], ","),
-    do_show_channels(Channels, io_lib:format("~s~s~n", [String, Values])).
+    io:format("~s~n", [Values]),
+    do_show_channels(Channels).
 
 -spec sync_channels/0 :: () -> 'ok'.
 -spec sync_channels/1 :: (string() | binary() | atom()) -> 'ok'.
@@ -69,23 +72,23 @@ flush_node_channels(Node) ->
 flush_registrar() ->
     wh_cache:flush_local(?ECALLMGR_REG_CACHE).
 
--spec show_calls/0 :: () -> 'ok'.
+-spec show_calls/0 :: () -> 'no_return'.
 show_calls() ->
     EventWorkers = gproc:lookup_pids({p, l, call_events}),
-    lager:info("Call Event Process: ~p ~n", [length(EventWorkers)]),
-    _ = [lager:info("    ~p: ~s ~s~n", [EventWorker
-                                        ,ecallmgr_call_events:node(EventWorker)
-                                        ,ecallmgr_call_events:callid(EventWorker)
-                                       ])
+    io:format("Call Event Process: ~p ~n", [length(EventWorkers)]),
+    _ = [io:format("    ~p: ~s ~s~n", [EventWorker
+                                       ,ecallmgr_call_events:node(EventWorker)
+                                       ,ecallmgr_call_events:callid(EventWorker)
+                                      ])
          || EventWorker <- EventWorkers],
     ControlWorkers = gproc:lookup_pids({p, l, call_control}),
-    lager:info("Call Control Process: ~p~n", [length(ControlWorkers)]),
-    _ = [lager:info("    ~p: ~s ~s~n", [ControlWorker
-                                        ,ecallmgr_call_control:node(ControlWorker)
-                                        ,ecallmgr_call_control:callid(ControlWorker)
-                                       ])
+    io:format("Call Control Process: ~p~n", [length(ControlWorkers)]),
+    _ = [io:format("    ~p: ~s ~s~n", [ControlWorker
+                                       ,ecallmgr_call_control:node(ControlWorker)
+                                       ,ecallmgr_call_control:callid(ControlWorker)
+                                      ])
          || ControlWorker <- ControlWorkers],    
-    ok.
+    no_return.
     
 
 

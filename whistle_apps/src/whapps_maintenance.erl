@@ -33,14 +33,16 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec migrate/0 :: () -> ok.
+-spec migrate/0 :: () -> 'no_return'.
 migrate() ->
     %% Remove depreciated dbs
+    io:format("removing depreciated databases...~n", []),
     couch_mgr:db_delete(<<"crossbar_schemas">>),
     couch_mgr:db_delete(<<"registrations">>),
     couch_mgr:db_delete(<<"crossbar%2Fsessions">>),
 
     %% Ensure the offnet db exists and has all the necessary views
+    io:format("refreshing views used by Stepswitch...~n", []),
     stepswitch_maintenance:refresh(),
 
     %% Create missing limits doc
@@ -57,6 +59,7 @@ migrate() ->
     whapps_config:flush(),
 
     %% Remove depreciated crossbar modules from the startup list and add new defaults
+    io:format("updating default crossbar modules~n", []),
     StartModules = sets:from_list(whapps_config:get(<<"crossbar">>, <<"autoload_modules">>, [])),
     XbarUpdates = [fun(L) -> sets:del_element(<<"cb_cdr">>, L) end
                    ,fun(L) -> sets:del_element(<<"cb_signups">>, L) end
@@ -81,6 +84,7 @@ migrate() ->
                                       ,sets:to_list(lists:foldr(fun(F, L) -> F(L) end, StartModules, XbarUpdates))),
 
     %% Remove depreciated whapps from the startup list and add new defaults
+    io:format("updating default kazoo modules~n", []),
     WhappsUpdates = [fun(L) -> [<<"sysconf">> | lists:delete(<<"sysconf">>, L)] end
                     ,fun(L) -> [<<"acdc">> | lists:delete(<<"acdc">>, L)] end
                     ],
@@ -89,12 +93,13 @@ migrate() ->
                                       ,<<"whapps">>
                                       ,lists:foldr(fun(F, L) -> F(L) end, StartWhapps, WhappsUpdates)),
 
+    io:format("restarting updated modules~n", []),
     %% Ensure the new settings are applied and the new defaults are running
     _ = whapps_controller:restart_app(crossbar),
     _ = whapps_controller:restart_app(sysconf),
     _ = whapps_controller:restart_app(notify),
     _ = whapps_controller:restart_app(acdc),
-    ok.
+    no_return.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -153,7 +158,7 @@ do_refresh() ->
     Accounts = whapps_util:get_all_accounts(),
     Total = length(Accounts),
     lists:foldr(fun(AccountDb, Current) ->
-                        lager:debug("refreshing database (~p/~p) '~s'", [Current, Total, AccountDb]),
+                        io:format("refreshing database (~p/~p) '~s'~n", [Current, Total, AccountDb]),
                         _ = refresh(AccountDb, Views),
                         Current + 1
                 end, 1, Accounts).
@@ -221,10 +226,10 @@ refresh(Account, Views) ->
         {error, not_found} ->
             case couch_mgr:open_doc(?WH_ACCOUNTS_DB, AccountId) of
                 {ok, Def} ->
-                    lager:debug("account ~s is missing its local account definition, but it was recovered from the accounts db", [AccountId]),
+                    io:format("    account ~s is missing its local account definition, but it was recovered from the accounts db~n", [AccountId]),
                     couch_mgr:ensure_saved(AccountDb, wh_json:delete_key(<<"_rev">>, Def));
                 {error, not_found} ->
-                    lager:debug("account ~s is missing its local account definition, and not in the accounts db. REMOVING!", [AccountId])
+                    io:format("    account ~s is missing its local account definition, and not in the accounts db~n", [AccountId])
                     %%                    couch_mgr:db_delete(AccountDb)
             end,
             remove;
@@ -247,6 +252,7 @@ refresh(Account, Views) ->
                     {error, _} ->
                         ok
                 end,
+            io:format("    updating views in ~s~n", [AccountDb]),
             whapps_util:update_views(AccountDb, Views, true)
     end.
 
@@ -265,7 +271,7 @@ cleanup_aggregated_account(Account) ->
     AccountDb = wh_json:get_value(<<"pvt_account_db">>, Account, Default),
     case AccountDb =/= undefined andalso (couch_mgr:db_exists(AccountDb) =/= true) of
         true ->
-            lager:debug("removing aggregated account for missing db ~s", [AccountDb]),
+            io:format("    removing aggregated account for missing db ~s~n", [AccountDb]),
             couch_mgr:del_doc(?WH_ACCOUNTS_DB, Account);
         false ->
             ok
@@ -287,7 +293,7 @@ cleanup_aggregated_device(Device) ->
     AccountDb = wh_json:get_value(<<"pvt_account_db">>, Device, Default),
     case AccountDb =/= undefined andalso (couch_mgr:db_exists(AccountDb) =/= true) of
         true ->
-            lager:debug("removing aggregated device for missing db ~s", [AccountDb]),
+            io:format("    removing aggregated device for missing db ~s~n", [AccountDb]),
             couch_mgr:del_doc(?WH_SIP_DB, Device);
         false ->
             ok
@@ -327,7 +333,7 @@ migrate_limits() ->
     Accounts = whapps_util:get_all_accounts(),
     Total = length(Accounts),
     lists:foldr(fun(AccountDb, Current) ->
-                        lager:info("migrating limits doc in database (~p/~p) '~s'", [Current, Total, AccountDb]),
+                        io:format("migrating limits doc in database (~p/~p) '~s'~n", [Current, Total, AccountDb]),
                         _ = migrate_limits(AccountDb),
                         Current + 1
                 end, 1, Accounts),
@@ -414,7 +420,7 @@ migrate_media() ->
     Accounts = whapps_util:get_all_accounts(),
     Total = length(Accounts),
     lists:foldr(fun(AccountDb, Current) ->
-                        lager:info("migrating media in database (~p/~p) '~s'", [Current, Total, AccountDb]),
+                        io:format("migrating media in database (~p/~p) '~s'", [Current, Total, AccountDb]),
                         _ = migrate_media(AccountDb),
                         couch_compactor:compact_db(AccountDb),
                         Current + 1
@@ -429,20 +435,20 @@ migrate_media(Account) ->
                     false -> wh_util:format_account_id(Account, encoded)
                 end,
     case couch_mgr:get_results(AccountDb, <<"media/listing_by_name">>, []) of
-        {ok, []} -> lager:info("no public  media files in db ~s", [AccountDb]);
+        {ok, []} -> io:format("no public media files in db ~s~n", [AccountDb]);
         {ok, JObjs1}->
             _ = [migrate_attachment(AccountDb, JObj) || JObj <- JObjs1],
             ok;
         {error, _}=E1 -> 
-            lager:info("unable to fetch media files in db ~s: ~p", [AccountDb, E1])
+            io:format("unable to fetch media files in db ~s: ~p~n", [AccountDb, E1])
     end,
     case couch_mgr:get_results(AccountDb, <<"media/listing_private_media">>, []) of
-        {ok, []} -> lager:info("no private media files in db ~s", [AccountDb]);
+        {ok, []} -> io:format("no private media files in db ~s~n", [AccountDb]);
         {ok, JObjs2}->
             _ = [migrate_attachment(AccountDb, JObj) || JObj <- JObjs2],
             ok;
         {error, _}=E2 -> 
-            lager:info("unable to fetch private media files in db ~s: ~p", [AccountDb, E2])
+            io:format("unable to fetch private media files in db ~s: ~p~n", [AccountDb, E2])
     end.
 
 %%--------------------------------------------------------------------
@@ -455,11 +461,11 @@ migrate_media(Account) ->
 migrate_attachment(AccountDb, ViewJObj) ->
     Id = wh_json:get_value(<<"id">>, ViewJObj),
     case couch_mgr:open_doc(AccountDb, Id) of
-        {error, _}=E1 -> lager:info("unable to open media for attachment migration ~s/~s: ~p", [AccountDb, Id, E1]);
+        {error, _}=E1 -> io:format("unable to open media for attachment migration ~s/~s: ~p~n", [AccountDb, Id, E1]);
         {ok, JObj1} ->
             case wh_json:get_ne_value(<<"_attachments">>, JObj1) of
                 undefined ->
-                    lager:debug("media doc ~s/~s has no attachments, removing", [AccountDb, Id]),
+                    io:format("media doc ~s/~s has no attachments, removing~n", [AccountDb, Id]),
                     couch_mgr:save_doc(AccountDb, wh_json:set_value(<<"pvt_deleted">>, true, JObj1));
                 Attachments ->
                     _ = [catch migrate_attachment(AccountDb, JObj1, Attachment, wh_json:get_value(Attachment, Attachments))
@@ -470,7 +476,7 @@ migrate_attachment(AccountDb, ViewJObj) ->
     end,
     %% we must reopen the doc since the _attachments has changed or we will effectively remove all attachments!
     case couch_mgr:open_doc(AccountDb, Id) of
-        {error, _}=E2 -> lager:info("unable to open media for depreciated field removal ~s/~s: ~p", [AccountDb, Id, E2]);
+        {error, _}=E2 -> io:format("unable to open media for depreciated field removal ~s/~s: ~p~n", [AccountDb, Id, E2]);
         {ok, JObj2} ->
             J = wh_json:delete_keys([<<"status">>, <<"content_size">>, <<"size">>, <<"content_type">>
                                          ,<<"content_length">>, <<"format">>, <<"sample">>, <<"media_type">>
@@ -485,9 +491,9 @@ migrate_attachment(AccountDb, ViewJObj) ->
             case Result of
                 no_need -> ok;
                 {ok, _} ->
-                    lager:info("removed depreciated properties from ~s/~s", [AccountDb, Id]);
+                    io:format("removed depreciated properties from ~s/~s~n", [AccountDb, Id]);
                 {error, _}=E3 ->
-                    lager:info("removal of depreciated properties from ~s/~s failed: ~p", [AccountDb, Id, E3])
+                    io:format("removal of depreciated properties from ~s/~s failed: ~p~n", [AccountDb, Id, E3])
             end
     end.
 
@@ -547,7 +553,7 @@ maybe_update_attachment(AccountDb, Id, {OrigAttch, _CT1}, {NewAttch, CT}) ->
                         case couch_mgr:fetch_attachment(AccountDb, Id, OrigAttch) of
                             {ok, _}=Ok -> Ok;
                             {error, _}=E ->
-                                lager:info("unable to fetch attachment ~s/~s/~s: ~p", [AccountDb, Id, OrigAttch, E]),
+                                io:format("unable to fetch attachment ~s/~s/~s: ~p~n", [AccountDb, Id, OrigAttch, E]),
                                 E
                             end
                 end
@@ -562,14 +568,14 @@ maybe_update_attachment(AccountDb, Id, {OrigAttch, _CT1}, {NewAttch, CT}) ->
                          {ok, JObj} = couch_mgr:open_doc(AccountDb, Id),
                          case wh_json:get_value([<<"_attachments">>, OrigAttch, <<"length">>], JObj) =:= wh_json:get_value([<<"_attachments">>, NewAttch, <<"length">>], JObj) of
                              false -> 
-                                 lager:info("unable to put new attachment ~s/~s/~s: ~p", [AccountDb, Id, NewAttch, Result]),
+                                 io:format("unable to put new attachment ~s/~s/~s: ~p~n", [AccountDb, Id, NewAttch, Result]),
                                  {error, length_mismatch};
                              true -> 
                                  Filename = wh_util:to_list(<<"/tmp/media_", Id/binary, "_", OrigAttch/binary>>),
                                  case file:write_file(Filename, Content1) of
                                      ok -> ok;
                                      {error, _}=E2 ->
-                                         lager:info("unable to backup attachment ~s/~s/~s: ~p", [AccountDb, Id, NewAttch, E2]),
+                                         io:format("unable to backup attachment ~s/~s/~s: ~p~n", [AccountDb, Id, NewAttch, E2]),
                                          E2
                                  end
                          end
@@ -579,14 +585,14 @@ maybe_update_attachment(AccountDb, Id, {OrigAttch, _CT1}, {NewAttch, CT}) ->
                              true ->
                                  case couch_mgr:delete_attachment(AccountDb, Id, OrigAttch) of
                                      {ok, _} ->
-                                         lager:info("updated attachment name ~s/~s/~s", [AccountDb, Id, NewAttch]),
+                                         io:format("updated attachment name ~s/~s/~s~n", [AccountDb, Id, NewAttch]),
                                          ok;
                                      {error, _}=E ->
-                                         lager:info("unable to remove original attachment ~s/~s/~s: ~p", [AccountDb, Id, OrigAttch, E]),
+                                         io:format("unable to remove original attachment ~s/~s/~s: ~p~n", [AccountDb, Id, OrigAttch, E]),
                                          error
                                  end;
                              false ->
-                                 lager:info("updated content type for ~s/~s/~s", [AccountDb, Id, NewAttch]),
+                                 io:format("updated content type for ~s/~s/~s~n", [AccountDb, Id, NewAttch]),
                                  ok
                          end
                  end
