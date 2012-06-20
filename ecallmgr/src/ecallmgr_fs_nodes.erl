@@ -30,16 +30,16 @@
 -export([channel_match_presence/1]).
 -export([channel_exists/1]).
 -export([channel_import_moh/1]).
--export([channel_set_account_id/2]).
--export([channel_set_account_billing/2]).
--export([channel_set_reseller_id/2]).
--export([channel_set_reseller_billing/2]).
--export([channel_set_authorizing_id/2]).
--export([channel_set_resource_id/2]).
--export([channel_set_authorizing_type/2]).
--export([channel_set_owner_id/2]).
--export([channel_set_presence_id/2]).
--export([channel_set_import_moh/2]).
+-export([channel_set_account_id/3]).
+-export([channel_set_account_billing/3]).
+-export([channel_set_reseller_id/3]).
+-export([channel_set_reseller_billing/3]).
+-export([channel_set_authorizing_id/3]).
+-export([channel_set_resource_id/3]).
+-export([channel_set_authorizing_type/3]).
+-export([channel_set_owner_id/3]).
+-export([channel_set_presence_id/3]).
+-export([channel_set_import_moh/3]).
 -export([fetch_channel/1]).
 -export([destroy_channel/2]).
 -export([props_to_channel_record/2]).
@@ -191,62 +191,71 @@ channel_match_presence(PresenceId) ->
                 ],  
     ets:select(ecallmgr_channels, MatchSpec).
 
--spec channel_set_account_id/2 :: (ne_binary(), string() | ne_binary()) -> 'ok'.    
-channel_set_account_id(UUID, Value) when is_binary(Value) ->
-    gen_server:cast(?MODULE, {channel_update, UUID, {#channel.account_id, Value}});
-channel_set_account_id(UUID, Value) ->
-    channel_set_account_id(UUID, wh_util:to_binary(Value)). 
+-spec channel_set_account_id/3 :: (atom(), ne_binary(), string() | ne_binary()) -> 'ok'.    
+channel_set_account_id(Node, UUID, Value) when is_binary(Value) ->
+    gen_server:cast(?MODULE, {channel_update, UUID, {#channel.account_id, Value}}),
+    broadcast_channel_update(Node, UUID, <<"account_id">>, Value);
+channel_set_account_id(Node, UUID, Value) ->
+    channel_set_account_id(Node, UUID, wh_util:to_binary(Value)). 
 
--spec channel_set_account_billing/2 :: (ne_binary(), string() | ne_binary()) -> 'ok'.    
-channel_set_account_billing(UUID, Value) when is_binary(Value) ->
-    gen_server:cast(?MODULE, {channel_update, UUID, {#channel.account_billing, Value}});
-channel_set_account_billing(UUID, Value) ->
-    channel_set_account_billing(UUID, wh_util:to_binary(Value)). 
+-spec channel_set_account_billing/3 :: (atom(), ne_binary(), string() | ne_binary()) -> 'ok'.    
+channel_set_account_billing(Node, UUID, Value) when is_binary(Value) ->
+    gen_server:cast(?MODULE, {channel_update, UUID, {#channel.account_billing, Value}}),
+    broadcast_channel_update(Node, UUID, <<"account_billing">>, Value);
+channel_set_account_billing(Node, UUID, Value) ->
+    channel_set_account_billing(Node, UUID, wh_util:to_binary(Value)). 
 
--spec channel_set_reseller_id/2 :: (ne_binary(), string() | ne_binary()) -> 'ok'.    
-channel_set_reseller_id(UUID, Value) when is_binary(Value) ->
-    gen_server:cast(?MODULE, {channel_update, UUID, {#channel.reseller_id, Value}});
-channel_set_reseller_id(UUID, Value) ->
-    channel_set_reseller_id(UUID, wh_util:to_binary(Value)). 
+-spec channel_set_reseller_id/3 :: (atom(), ne_binary(), string() | ne_binary()) -> 'ok'.    
+channel_set_reseller_id(Node, UUID, Value) when is_binary(Value) ->
+    gen_server:cast(?MODULE, {channel_update, UUID, {#channel.reseller_id, Value}}),
+    broadcast_channel_update(Node, UUID, <<"resller_id">>, Value);
+channel_set_reseller_id(Node, UUID, Value) ->
+    channel_set_reseller_id(Node, UUID, wh_util:to_binary(Value)). 
 
--spec channel_set_reseller_billing/2 :: (ne_binary(), string() | ne_binary()) -> 'ok'.    
-channel_set_reseller_billing(UUID, Value) when is_binary(Value) ->
-    gen_server:cast(?MODULE, {channel_update, UUID, {#channel.reseller_billing, Value}});
-channel_set_reseller_billing(UUID, Value) ->
-    channel_set_reseller_billing(UUID, wh_util:to_binary(Value)). 
+-spec channel_set_reseller_billing/3 :: (atom(), ne_binary(), string() | ne_binary()) -> 'ok'.    
+channel_set_reseller_billing(Node, UUID, Value) when is_binary(Value) ->
+    gen_server:cast(?MODULE, {channel_update, UUID, {#channel.reseller_billing, Value}}),
+    broadcast_channel_update(Node, UUID, <<"reseller_billing">>, Value);
+channel_set_reseller_billing(Node, UUID, Value) ->
+    channel_set_reseller_billing(Node, UUID, wh_util:to_binary(Value)). 
 
--spec channel_set_resource_id/2 :: (ne_binary(), string() | ne_binary()) -> 'ok'.
-channel_set_resource_id(UUID, Value) when is_binary(Value) ->
-    gen_server:cast(?MODULE, {channel_update, UUID, {#channel.resource_id, Value}});
-channel_set_resource_id(UUID, Value) ->
-    channel_set_resource_id(UUID, wh_util:to_binary(Value)).
+-spec channel_set_resource_id/3 :: (atom(), ne_binary(), string() | ne_binary()) -> 'ok'.
+channel_set_resource_id(Node, UUID, Value) when is_binary(Value) ->
+    gen_server:cast(?MODULE, {channel_update, UUID, {#channel.resource_id, Value}}),
+    broadcast_channel_update(Node, UUID, <<"resource_id">>, Value);
+channel_set_resource_id(Node, UUID, Value) ->
+    channel_set_resource_id(Node, UUID, wh_util:to_binary(Value)).
 
--spec channel_set_authorizing_id/2 :: (ne_binary(), string() | ne_binary()) -> 'ok'.    
-channel_set_authorizing_id(UUID, Value) when is_binary(Value) ->
-    gen_server:cast(?MODULE, {channel_update, UUID, {#channel.authorizing_id, Value}});
-channel_set_authorizing_id(UUID, Value) ->
-    channel_set_authorizing_id(UUID, wh_util:to_binary(Value)). 
+-spec channel_set_authorizing_id/3 :: (atom(), ne_binary(), string() | ne_binary()) -> 'ok'.    
+channel_set_authorizing_id(Node, UUID, Value) when is_binary(Value) ->
+    gen_server:cast(?MODULE, {channel_update, UUID, {#channel.authorizing_id, Value}}),
+    broadcast_channel_update(Node, UUID, <<"authorizing_id">>, Value);
+channel_set_authorizing_id(Node, UUID, Value) ->
+    channel_set_authorizing_id(Node, UUID, wh_util:to_binary(Value)). 
 
--spec channel_set_authorizing_type/2 :: (ne_binary(), string() | ne_binary()) -> 'ok'.    
-channel_set_authorizing_type(UUID, Value) when is_binary(Value) ->
-    gen_server:cast(?MODULE, {channel_update, UUID, {#channel.authorizing_type, Value}});
-channel_set_authorizing_type(UUID, Value) ->
-    channel_set_authorizing_type(UUID, wh_util:to_binary(Value)). 
+-spec channel_set_authorizing_type/3 :: (atom(), ne_binary(), string() | ne_binary()) -> 'ok'.    
+channel_set_authorizing_type(Node, UUID, Value) when is_binary(Value) ->
+    gen_server:cast(?MODULE, {channel_update, UUID, {#channel.authorizing_type, Value}}),
+    broadcast_channel_update(Node, UUID, <<"authorizing_type">>, Value);
+channel_set_authorizing_type(Node, UUID, Value) ->
+    channel_set_authorizing_type(Node, UUID, wh_util:to_binary(Value)). 
 
--spec channel_set_owner_id/2 :: (ne_binary(), string() | ne_binary()) -> 'ok'.    
-channel_set_owner_id(UUID, Value) when is_binary(Value) ->
-    gen_server:cast(?MODULE, {channel_update, UUID, {#channel.owner_id, Value}});
-channel_set_owner_id(UUID, Value) ->
-    channel_set_owner_id(UUID, wh_util:to_binary(Value)).
+-spec channel_set_owner_id/3 :: (atom(), ne_binary(), string() | ne_binary()) -> 'ok'.    
+channel_set_owner_id(Node, UUID, Value) when is_binary(Value) ->
+    gen_server:cast(?MODULE, {channel_update, UUID, {#channel.owner_id, Value}}),
+    broadcast_channel_update(Node, UUID, <<"owner_id">>, Value);
+channel_set_owner_id(Node, UUID, Value) ->
+    channel_set_owner_id(Node, UUID, wh_util:to_binary(Value)).
 
--spec channel_set_presence_id/2 :: (ne_binary(), string() | ne_binary()) -> 'ok'.    
-channel_set_presence_id(UUID, Value) when is_binary(Value) ->
-    gen_server:cast(?MODULE, {channel_update, UUID, {#channel.presence_id, Value}});
-channel_set_presence_id(UUID, Value) ->
-    channel_set_presence_id(UUID, wh_util:to_binary(Value)). 
+-spec channel_set_presence_id/3 :: (atom(), ne_binary(), string() | ne_binary()) -> 'ok'.    
+channel_set_presence_id(Node, UUID, Value) when is_binary(Value) ->
+    gen_server:cast(?MODULE, {channel_update, UUID, {#channel.presence_id, Value}}),
+    broadcast_channel_update(Node, UUID, <<"presence_id">>, Value);
+channel_set_presence_id(Node, UUID, Value) ->
+    channel_set_presence_id(Node, UUID, wh_util:to_binary(Value)). 
 
--spec channel_set_import_moh/2 :: (ne_binary(), boolean()) -> 'ok'.                                                          
-channel_set_import_moh(UUID, Import) ->
+-spec channel_set_import_moh/3 :: (atom(), ne_binary(), boolean()) -> 'ok'.                                                          
+channel_set_import_moh(_Node, UUID, Import) ->
     gen_server:cast(?MODULE, {channel_update, UUID, {#channel.import_moh, Import}}).    
 
 -spec destroy_channel/2 :: (proplist(), atom()) -> 'ok'.
@@ -726,3 +735,21 @@ summarize_account_usage([{_, BillingId, _, _, _, _}|Channels], AStats) ->
                 end
                ],
     summarize_account_usage(Channels, lists:foldr(fun(F, A) -> F(A) end, AStats, Routines)).
+
+-spec broadcast_channel_update/4 :: (atom(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+broadcast_channel_update(undefined, _, _, _) ->
+    ok;
+broadcast_channel_update(Node, UUID, Name, Value) ->
+    Arg = <<"Event-Name=CUSTOM,Event-Subclass=whistle::broadcast"
+            ,",whistle_broadcast_type=channel_update"
+            ,",whistle_broadcast_parameter_name=", Name/binary
+            ,",whistle_broadcast_parameter_value=", Value/binary
+            ,",whistle_broadcast_call_id=", UUID/binary
+            ,",whistle_broadcast_node=", (wh_util:to_binary(node()))/binary>>,
+    _ = freeswitch:sendmsg(Node, UUID, [{"call-command", "execute"}
+                                        ,{"execute-app-name", "event"}
+                                        ,{"execute-app-arg", wh_util:to_list(Arg)}
+                                       ]),
+    ok.
+
+    
