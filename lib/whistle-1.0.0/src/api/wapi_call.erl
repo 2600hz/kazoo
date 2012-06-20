@@ -56,7 +56,7 @@
                                           ,<<"Raw-Application-Name">>, <<"Raw-Application-Data">>, <<"Length">>
                                           ,<<"Fax-Success">>, <<"Fax-Result-Code">>, <<"Fax-Result-Text">>, <<"Fax-ECM-Used">>
                                           ,<<"Fax-Transferred-Pages">>, <<"Fax-Total-Pages">>, <<"Fax-Bad-Rows">>, <<"Fax-Transfer-Rate">>
-                                          ,<<"Msg-ID">>, <<"Switch-Hostname">>
+                                          ,<<"Msg-ID">>, <<"Switch-Hostname">>, <<"Group-ID">>
                                      ]).
 -define(CALL_EVENT_VALUES, [{<<"Event-Category">>, <<"call_event">>}]).
 -define(CALL_EVENT_TYPES, [{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}]).
