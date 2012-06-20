@@ -365,7 +365,7 @@ reserved(Number) ->
 -spec in_service/1 :: (wnm_number()) -> wnm_number().
 in_service(#number{state = <<"discovery">>}=Number) ->
     Routines = [fun(#number{assign_to=AssignTo, auth_by=AuthBy}=N) ->
-                        case AuthBy =:= system orelse wh_util:is_in_account_hierarchy(AuthBy, AssignTo, true) of
+                        case wh_util:is_in_account_hierarchy(AuthBy, AssignTo, true) of
                             false -> error_unauthorized(N);
                             true -> N
                         end
@@ -396,7 +396,7 @@ in_service(#number{state = <<"port_in">>}=Number) ->
     lists:foldl(fun(F, J) -> F(J) end, Number, Routines);
 in_service(#number{state = <<"available">>}=Number) ->
     Routines = [fun(#number{assign_to=AssignTo, auth_by=AuthBy}=N) ->
-                        case AuthBy =:= system orelse wh_util:is_in_account_hierarchy(AuthBy, AssignTo, true) of
+                        case wh_util:is_in_account_hierarchy(AuthBy, AssignTo, true) of
                             false -> error_unauthorized(N);
                             true -> N
                         end
