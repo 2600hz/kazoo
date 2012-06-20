@@ -98,8 +98,8 @@ send_cmd(Node, UUID, AppName, Args) ->
     lager:debug("execute on node ~s: ~s(~s)", [Node, AppName, Args]),
     _ = ecallmgr_util:fs_log(Node, "whistle executing ~s ~s", [AppName, Args]),
     case AppName of
-        "set" -> maybe_update_channel_cache(Args, UUID);
-        "export" -> maybe_update_channel_cache(Args, UUID);
+        "set" -> maybe_update_channel_cache(Args, Node, UUID);
+        "export" -> maybe_update_channel_cache(Args, Node, UUID);
         _Else -> ok
     end,
     freeswitch:sendmsg(Node, UUID, [{"call-command", "execute"}
@@ -107,26 +107,26 @@ send_cmd(Node, UUID, AppName, Args) ->
                                     ,{"execute-app-arg", wh_util:to_list(Args)}
                                    ]).
 
--spec maybe_update_channel_cache/2 :: (string(), ne_binary()) -> 'ok'.
-maybe_update_channel_cache("ecallmgr_Account-ID=" ++ Value, UUID) ->
-    ecallmgr_fs_nodes:channel_set_account_id(UUID, Value);
-maybe_update_channel_cache("ecallmgr_Account-Billing=" ++ Value, UUID) ->
-    ecallmgr_fs_nodes:channel_set_account_billing(UUID, Value);
-maybe_update_channel_cache("ecallmgr_Reseller-ID=" ++ Value, UUID) ->
-    ecallmgr_fs_nodes:channel_set_reseller_id(UUID, Value);
-maybe_update_channel_cache("ecallmgr_Reseller-Billing=" ++ Value, UUID) ->
-    ecallmgr_fs_nodes:channel_set_reseller_billing(UUID, Value);
-maybe_update_channel_cache("ecallmgr_Authorizing-ID=" ++ Value, UUID) ->
-    ecallmgr_fs_nodes:channel_set_authorizing_id(UUID, Value);
-maybe_update_channel_cache("ecallmgr_Resource-ID=" ++ Value, UUID) ->
-    ecallmgr_fs_nodes:channel_set_resource_id(UUID, Value);
-maybe_update_channel_cache("ecallmgr_Authorizing-Type=" ++ Value, UUID) ->
-    ecallmgr_fs_nodes:channel_set_authorizing_type(UUID, Value);
-maybe_update_channel_cache("ecallmgr_Owner-ID=" ++ Value, UUID) ->
-    ecallmgr_fs_nodes:channel_set_owner_id(UUID, Value);
-maybe_update_channel_cache("ecallmgr_Presence-ID=" ++ Value, UUID) ->
-    ecallmgr_fs_nodes:channel_set_presence_id(UUID, Value);
-maybe_update_channel_cache(_, _) ->
+-spec maybe_update_channel_cache/3 :: (string(), atom(), ne_binary()) -> 'ok'.
+maybe_update_channel_cache("ecallmgr_Account-ID=" ++ Value, Node, UUID) ->
+    ecallmgr_fs_nodes:channel_set_account_id(Node, UUID, Value);
+maybe_update_channel_cache("ecallmgr_Account-Billing=" ++ Value, Node, UUID) ->
+    ecallmgr_fs_nodes:channel_set_account_billing(Node, UUID, Value);
+maybe_update_channel_cache("ecallmgr_Reseller-ID=" ++ Value, Node, UUID) ->
+    ecallmgr_fs_nodes:channel_set_reseller_id(Node, UUID, Value);
+maybe_update_channel_cache("ecallmgr_Reseller-Billing=" ++ Value, Node, UUID) ->
+    ecallmgr_fs_nodes:channel_set_reseller_billing(Node, UUID, Value);
+maybe_update_channel_cache("ecallmgr_Authorizing-ID=" ++ Value, Node, UUID) ->
+    ecallmgr_fs_nodes:channel_set_authorizing_id(Node, UUID, Value);
+maybe_update_channel_cache("ecallmgr_Resource-ID=" ++ Value, Node, UUID) ->
+    ecallmgr_fs_nodes:channel_set_resource_id(Node, UUID, Value);
+maybe_update_channel_cache("ecallmgr_Authorizing-Type=" ++ Value, Node, UUID) ->
+    ecallmgr_fs_nodes:channel_set_authorizing_type(Node, UUID, Value);
+maybe_update_channel_cache("ecallmgr_Owner-ID=" ++ Value, Node, UUID) ->
+    ecallmgr_fs_nodes:channel_set_owner_id(Node, UUID, Value);
+maybe_update_channel_cache("ecallmgr_Presence-ID=" ++ Value, Node, UUID) ->
+    ecallmgr_fs_nodes:channel_set_presence_id(Node, UUID, Value);
+maybe_update_channel_cache(_, _, _) ->
     ok.
 
 -spec get_expires/1 :: (proplist()) -> integer().
