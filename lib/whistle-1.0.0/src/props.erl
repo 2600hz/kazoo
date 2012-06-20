@@ -31,7 +31,6 @@ filter(Fun, Prop) when is_function(Fun, 1), is_list(Prop) ->
 filter_empty(Prop) ->
     [KV || {_, V}=KV <- Prop, (not wh_util:is_empty(V))].
 
-
 -spec filter_undefined/1 :: (proplist()) -> proplist().
 filter_undefined(Prop) ->
     [KV || {_, V}=KV <- Prop, V =/= undefined].
