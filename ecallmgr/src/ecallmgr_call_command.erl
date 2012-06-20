@@ -17,9 +17,11 @@
 -type io_device() :: pid() | fd().
 -type file_stream_state() :: {'undefined' | io_device(), binary()}.
 
--spec exec_cmd/4 :: (atom(), ne_binary(), wh_json:json_object(), pid()) -> 'ok' |
-                                                                           'timeout' |
-                                                                           {'error', ne_binary()}.
+-spec exec_cmd/4 :: (atom(), ne_binary(), wh_json:json_object(), pid()) ->
+                            'ok' |
+                            'error' |
+                            ecallmgr_util:send_cmd_ret() |
+                            [ecallmgr_util:send_cmd_ret(),...].
 exec_cmd(Node, UUID, JObj, ControlPID) ->
     DestID = wh_json:get_value(<<"Call-ID">>, JObj),
     App = wh_json:get_value(<<"Application-Name">>, JObj),
@@ -51,7 +53,7 @@ exec_cmd(Node, UUID, JObj, ControlPID) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec get_fs_app/4 :: (atom(), ne_binary(), wh_json:json_object(), ne_binary()) -> {ne_binary(), ne_binary() | 'noop'} |
-                                                                                   {'return', 'ok'} |
+                                                                                   {'return', 'error'} |
                                                                                    {'error', ne_binary()} |
                                                                                    [{ne_binary(), ne_binary() | 'noop'},...].
 get_fs_app(_Node, _UUID, JObj, <<"noop">>) ->
@@ -79,6 +81,11 @@ get_fs_app(Node, UUID, JObj, <<"play">>) ->
         true ->
             F = ecallmgr_util:media_path(wh_json:get_value(<<"Media-Name">>, JObj), UUID, JObj),
             'ok' = set_terminators(Node, UUID, wh_json:get_value(<<"Terminators">>, JObj)),
+
+            _ = case wh_json:get_value(<<"Group-ID">>, JObj) of
+                    undefined -> ok;
+                    GID -> set(Node, UUID, <<"media_group_id=", (GID)/binary>>)
+                end,
 
             %% if Leg is set, use uuid_broadcast; otherwise use playback
             case wh_json:get_value(<<"Leg">>, JObj) of
