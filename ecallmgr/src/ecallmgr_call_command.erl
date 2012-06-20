@@ -788,7 +788,7 @@ set_terminators(Node, UUID, Ts) ->
 set(Node, UUID, Arg) ->
     case wh_util:to_binary(Arg) of
         <<"hold_music=", _/binary>> -> 
-            ecallmgr_fs_nodes:channel_set_import_moh(UUID, false);
+            ecallmgr_fs_nodes:channel_set_import_moh(Node, UUID, false);
         _Else -> ok
     end,
     ecallmgr_util:send_cmd(Node, UUID, "set", Arg).
@@ -802,7 +802,7 @@ set(Node, UUID, Arg) ->
 export(Node, UUID, Arg) ->
     case wh_util:to_binary(Arg) of
         <<"hold_music=", _/binary>> -> 
-            ecallmgr_fs_nodes:channel_set_import_moh(UUID, false);
+            ecallmgr_fs_nodes:channel_set_import_moh(Node, UUID, false);
         _Else -> ok
     end,
     ecallmgr_util:send_cmd(Node, UUID, "export", wh_util:to_list(Arg)).

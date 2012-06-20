@@ -223,7 +223,8 @@ reply_affirmative(Node, FSID, CallId, RespJObj, CCVs) ->
                                   CCVs
                           end,
             start_control_and_events(Node, CallId, ServerQ, UpdatedCCVs);
-        {error, Reason} -> lager:debug("node ~s rejected our route response, ~p", [Node, Reason]);
+        {error, Reason} -> 
+            lager:debug("node ~s rejected our route response, ~p", [Node, Reason]);
         timeout -> lager:debug("received no reply from node ~s, timeout", [Node])
     end.
 
