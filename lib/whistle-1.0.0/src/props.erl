@@ -27,7 +27,7 @@ filter(Fun, Prop) when is_function(Fun, 1), is_list(Prop) ->
     lists:filter(Fun, Prop).
 
 filter_empty(Prop) ->
-    lists:filter(fun({_, V}) -> not wh_util:is_empty(V) end, Prop).
+    [KV || {_, V}=KV <- Prop, (not wh_util:is_empty(V))].
 
 -spec get_value/2 :: (wh_proplist_key(), wh_proplist()) -> term().
 -spec get_value/3 :: (wh_proplist_key(), wh_proplist(), Default) -> Default | term().
