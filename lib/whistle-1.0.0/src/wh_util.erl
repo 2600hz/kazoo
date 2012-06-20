@@ -23,7 +23,7 @@
          ,to_atom/1, to_atom/2
         ]).
 -export([to_boolean/1, is_true/1, is_false/1, is_empty/1, is_proplist/1]).
--export([to_lower_binary/1, to_upper_binary/1, binary_join/2]).
+-export([to_lower_binary/1, to_upper_binary/1]).
 -export([to_lower_string/1, to_upper_string/1]).
 -export([ucfirst_binary/1, lcfirst_binary/1]).
 
@@ -251,22 +251,30 @@ pad_binary(Bin, _, _) ->
 %% @public
 %% @doc
 %% Join a binary together with a seperator.
+%% Changed to Accumulator from the binary-contruction for speed reasons:
+%%
+%% Bins = [to_binary(N) || N <- lists:seq(1,10000)]
+%% Old join_binary(Bins): 171.1ms fastest, 221.9ms slowest
+%% New join_binary(Bins):   1.1ms fastest,   2.6ms slowest
+%% Obvious winner
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec join_binary/1 :: ([binary(),...]) -> binary().
 -spec join_binary/2 :: ([binary(),...], binary()) -> binary().
 
 join_binary(Bins) ->
-    join_binary(Bins, <<", ">>).
+    join_binary(Bins, <<", ">>, []).
+join_binary(Bins, Sep) ->
+    join_binary(Bins, Sep, []).
 
-join_binary([], _) ->
-    <<>>;
-join_binary([Bin], _) ->
-    Bin;
-join_binary([Bin|Rest], Sep) when is_binary(Bin) ->
-    <<Bin/binary, Sep/binary, (join_binary(Rest, Sep))/binary>>;
-join_binary([_|Rest], Sep) ->
-    join_binary(Rest, Sep).
+join_binary([], _, Acc) -> iolist_to_binary(lists:reverse(Acc));
+join_binary([Bin], _, Acc) when is_binary(Bin) ->
+    iolist_to_binary(lists:reverse([Bin | Acc]));
+join_binary([Bin|Bins], Sep, Acc) when is_binary(Bin) ->
+    join_binary(Bins, Sep, [Sep, Bin |Acc]);
+join_binary([_|Bins], Sep, Acc) ->
+    join_binary(Bins, Sep, Acc).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -534,10 +542,6 @@ to_upper_char(C) when is_integer(C), 16#E0 =< C, C =< 16#F6 -> C - 32;
 to_upper_char(C) when is_integer(C), 16#F8 =< C, C =< 16#FE -> C - 32;
 to_upper_char(C) -> C.
 
--spec binary_join/2 :: ([ne_binary(),...], binary()) -> ne_binary().
-binary_join([H|T], Glue) when is_binary(Glue) ->
-    list_to_binary([H, [ [Glue, I] || I <- T]]).
-
 -spec a1hash/3 :: (ne_binary(), ne_binary(), ne_binary()) -> nonempty_string().
 a1hash(User, Realm, Password) ->
     to_hex(erlang:md5(list_to_binary([User,":",Realm,":",Password]))).
@@ -720,10 +724,10 @@ microsecs_to_secs_test() ->
 no_whistle_version_test() ->
     ?assertEqual(<<"not available">>, whistle_version(<<"/path/to/nonexistent/file">>)).
 
-binary_join_test() ->
-    ?assertEqual(<<"foo">>, binary_join([<<"foo">>], <<", ">>)),
-    ?assertEqual(<<"foo, bar">>, binary_join([<<"foo">>, <<"bar">>], <<", ">>)),
-    ?assertEqual(<<"foo, bar, baz">>, binary_join([<<"foo">>, <<"bar">>, <<"baz">>], <<", ">>)).
+join_binary_test() ->
+    ?assertEqual(<<"foo">>, join_binary([<<"foo">>], <<", ">>)),
+    ?assertEqual(<<"foo, bar">>, join_binary([<<"foo">>, <<"bar">>], <<", ">>)),
+    ?assertEqual(<<"foo, bar, baz">>, join_binary([<<"foo">>, <<"bar">>, <<"baz">>], <<", ">>)).
 
 ucfirst_binary_test() ->
     ?assertEqual(<<"Foo">>, ucfirst_binary(<<"foo">>)),
