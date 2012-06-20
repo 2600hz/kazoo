@@ -127,6 +127,7 @@ init([Node, Options]) ->
             lager:debug("event handler registered on node ~s", [Node]),            
             ok = freeswitch:event(Node, ['CHANNEL_CREATE', 'CHANNEL_DESTROY', 'CHANNEL_HANGUP_COMPLETE'
                                          ,'SESSION_HEARTBEAT', 'CUSTOM', 'sofia::register', 'sofia::transfer'
+                                         ,'whistle::broadcast'
                                         ]),
             lager:debug("bound to switch events on node ~s", [Node]),
             gproc:reg({p, l, fs_node}),
@@ -277,6 +278,13 @@ process_custom_data(Data, Node) ->
         <<"sofia::transfer">> ->
             lager:debug("received transfer event"),
             process_transfer_event(props:get_value(<<"Type">>, Data), Data);
+        <<"whistle::broadcast">> ->
+            Self = wh_util:to_binary(node()),
+            case props:get_value(<<"whistle_broadcast_node">>, Data, Self) of
+                Self -> ok;
+                _Else ->
+                    process_broadcast_event(props:get_value(<<"whistle_broadcast_type">>, Data), Data)
+            end;
         _ ->
             ok
     end.
@@ -350,6 +358,16 @@ process_transfer_event(_Type, Data) ->
              || Pid <- ReplacesPids
             ]
     end.
+
+-spec process_broadcast_event/2 :: (ne_binary(), proplist()) -> ok.
+process_broadcast_event(<<"channel_update">>, Data) ->
+    UUID = props:get_value(<<"whistle_broadcast_call_id">>, Data),
+    put(callid, UUID),
+    Name = props:get_value(<<"whistle_broadcast_parameter_name">>, Data),
+    Value = props:get_value(<<"whistle_broadcast_parameter_value">>, Data),
+    Function = wh_util:to_atom(<<"channel_set_", Name/binary>>),
+    lager:debug("remote update for channel ~s parameter ~s: ~s~n", [UUID, Name, Value]),
+    ecallmgr_fs_nodes:Function(undefined, UUID, Value).
 
 -type cmd_result() :: {'ok', {atom(), nonempty_string()}, ne_binary()} |
                       {'error', {atom(), nonempty_string()}, ne_binary()} |
