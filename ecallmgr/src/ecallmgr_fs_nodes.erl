@@ -134,19 +134,9 @@ show_channels() ->
 new_channel(Props, Node) ->
     CallId = props:get_value(<<"Unique-ID">>, Props),
     put(callid, CallId),
-    P = case props:get_value(?GET_CCV(<<"Billing-ID">>), Props) of
-            undefined -> 
-                BillingId = wh_util:rand_hex_binary(16),
-                lager:debug("created new billing id ~s for channel ~s", [BillingId, CallId]),
-                _ = ecallmgr_util:send_cmd(Node, CallId, <<"export">>, ?SET_CCV(<<"Billing-ID">>, BillingId)),
-                [{?GET_CCV(<<"Billing-ID">>), BillingId}|Props];
-            _Else -> 
-                lager:debug("channel ~s already has billing id ~s", [CallId, _Else]),
-                Props
-        end,
-    gen_server:cast(?MODULE, {new_channel, props_to_channel_record(P, Node)}),
-    ecallmgr_call_control:add_leg(P),
-    Authorized = ecallmgr_authz:maybe_authorize_channel(P, Node),
+    gen_server:cast(?MODULE, {new_channel, props_to_channel_record(Props, Node)}),
+    ecallmgr_call_control:add_leg(Props),
+    Authorized = ecallmgr_authz:maybe_authorize_channel(Props, Node),
     wh_cache:store_local(?ECALLMGR_UTIL_CACHE, ?AUTHZ_RESPONSE_KEY(CallId), Authorized).
 
 -spec fetch_channel/1 :: (ne_binary()) -> {'ok', wh_json:json_object()} |
