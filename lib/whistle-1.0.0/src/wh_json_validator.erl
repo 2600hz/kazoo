@@ -86,7 +86,7 @@ format_errors(Errors) ->
 format_errors([], JObj) ->
     JObj;
 format_errors([{K, V}|T], JObj) when is_list(K) ->
-    Property = wh_util:binary_join(K, <<".">>),
+    Property = wh_util:join_binary(K, <<".">>),
     [Attr, Msg] = binary:split(V, <<":">>),
     format_errors(T, wh_json:set_value([Property, Attr], Msg, JObj));
 format_errors([{Property, V}|T], JObj) ->

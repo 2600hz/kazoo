@@ -432,8 +432,11 @@ handle_cast({dialplan, JObj}, #state{callid=CallId, is_node_up=INU, is_call_up=C
         false ->
             {noreply, State#state{command_q=NewCmdQ, keep_alive_ref=get_keep_alive_ref(State)}, hibernate}
     end;
-handle_cast({event_execute_complete, CallId, EvtName, JObj}, #state{callid=CallId, is_node_up=INU, is_call_up=CallUp
-                                                                    ,command_q=CmdQ, current_app=CurrApp, msg_id=CurrMsgId}=State) ->
+handle_cast({event_execute_complete, CallId, EvtName, JObj}, #state{callid=CallId
+                                                                    ,current_app=CurrApp
+                                                                    ,msg_id=CurrMsgId
+                                                                    ,command_q=CmdQ
+                                                                   }=State) ->
     NoopId = wh_json:get_value(<<"Application-Response">>, JObj),
     case lists:member(EvtName, ecallmgr_util:convert_whistle_app_name(CurrApp)) of
         false ->
@@ -442,31 +445,40 @@ handle_cast({event_execute_complete, CallId, EvtName, JObj}, #state{callid=CallI
         true when EvtName =:= <<"noop">>, NoopId =/= CurrMsgId ->
             lager:debug("recieved noop execute complete with incorrect id, ignoring"),
             {noreply, State};
+        true when EvtName =:= <<"playback">> ->
+            lager:debug("playback finished, checking for group-id/DTMF termination"),
+
+            State1 = case wh_json:get_value(<<"DTMF-Digit">>, JObj) of
+                         undefined ->
+                             lager:debug("command finished playing, continuing"),
+                             State;
+                         _DTMF ->
+                             GroupId = wh_json:get_value(<<"Group-ID">>, JObj),
+                             lager:debug("DTMF ~s terminated playback, flushing all with group id ~s", [_DTMF, GroupId]),
+                             State#state{command_q=flush_group_id(CmdQ, GroupId, CurrApp)}
+                     end,
+
+            case forward_queue(State1) of
+                {ok, NextApp} -> {noreply, State1#state{current_app=NextApp}, hibernate};
+                {ok, NextApp, NextCmdQ, NextCmd, NextMsgId} ->
+                    {noreply, State1#state{command_q = NextCmdQ
+                                           ,current_app = NextApp
+                                           ,current_cmd = NextCmd
+                                          ,msg_id = NextMsgId
+                                          }, hibernate}
+            end;
         true ->
             lager:debug("execution complete '~s' for command '~s'", [EvtName, CurrApp]),
-            case INU andalso queue:out(CmdQ) of
-                false ->
-                    %% if the node is down, don't inject the next FS event
-                    lager:debug("not continuing until the media node becomes avaliable"),
-                    {noreply, State#state{current_app=undefined}, hibernate};
-                {empty, _} ->
-                    lager:debug("no call commands remain queued, hibernating"),
-                    {noreply, State#state{current_app=undefined}, hibernate};
-                {{value, Cmd}, CmdQ1} ->
-                    AppName = wh_json:get_value(<<"Application-Name">>, Cmd),
-                    _ = case CallUp orelse is_post_hangup_command(AppName) of
-                            true -> execute_control_request(Cmd, State);
-                            false ->
-                                lager:debug("command '~s' is not valid after hangup, skipping", [AppName]),
-                                send_error_resp(CallId, Cmd),
-                                self() ! {force_queue_advance, CallId}
-                        end,
-                    MsgId = wh_json:get_value(<<"Msg-ID">>, Cmd, <<>>),
-                    {noreply, State#state{command_q = CmdQ1, current_app = AppName, current_cmd = Cmd, msg_id=MsgId}, hibernate}
+            case forward_queue(State) of
+                {ok, NextApp} -> {noreply, State#state{current_app=NextApp}, hibernate};
+                {ok, NextApp, NextCmdQ, NextCmd, NextMsgId} ->
+                    {noreply, State#state{command_q = NextCmdQ
+                                          ,current_app = NextApp
+                                          ,current_cmd = NextCmd
+                                          ,msg_id = NextMsgId
+                                         }, hibernate}
             end
-    end;
-handle_cast(_Msg, State) ->
-    {noreply, State}.
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -582,6 +594,43 @@ terminate(_Reason, #state{start_time=StartTime,  sanity_check_tref=SCTRef, keep_
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
+-spec flush_group_id/3 :: (queue(), ne_binary() | 'undefined', ne_binary()) -> queue().
+flush_group_id(CmdQ, undefined, _) -> CmdQ;
+flush_group_id(CmdQ, GroupId, AppName) ->
+    Filter = wh_json:from_list([{<<"Application-Name">>, AppName}
+                                ,{<<"Fields">>, wh_json:from_list([{<<"Group-ID">>, GroupId}])}
+                               ]),
+    maybe_filter_queue([Filter], CmdQ).
+
+-spec forward_queue/1 :: (#state{}) -> {'ok', 'undefined'} |
+                                       {'ok', ne_binary(), queue(), wh_json:json_object(), binary()}.
+forward_queue(#state{
+                 callid = CallId
+                 ,is_node_up = INU
+                 ,is_call_up = CallUp
+                 ,command_q = CmdQ
+                }=State) ->
+    case INU andalso queue:out(CmdQ) of
+        false ->
+            %% if the node is down, don't inject the next FS event
+            lager:debug("not continuing until the media node becomes avaliable"),
+            {ok, undefined};
+        {empty, _} ->
+            lager:debug("no call commands remain queued, hibernating"),
+            {ok, undefined};
+        {{value, Cmd}, CmdQ1} ->
+            AppName = wh_json:get_value(<<"Application-Name">>, Cmd),
+            _ = case CallUp orelse is_post_hangup_command(AppName) of
+                    true -> execute_control_request(Cmd, State);
+                    false ->
+                        lager:debug("command '~s' is not valid after hangup, skipping", [AppName]),
+                        send_error_resp(CallId, Cmd),
+                        self() ! {force_queue_advance, CallId}
+                end,
+            MsgId = wh_json:get_value(<<"Msg-ID">>, Cmd, <<>>),
+            {ok, AppName, CmdQ1, Cmd, MsgId}
+    end.
+
 %% execute all commands in JObj immediately, irregardless of what is running (if anything).
 -spec insert_command/3 :: (#state{}, insert_at_options(), wh_json:json_object()) -> queue().
 insert_command(#state{node=Node, callid=CallId, command_q=CommandQ, is_node_up=IsNodeUp}=State, now, JObj) ->
@@ -687,6 +736,7 @@ maybe_filter_queue([AppJObj|T]=Apps, CommandQ) ->
                 true ->
                     lager:debug("app ~s matched next command, checking fields", [AppName]),
                     Fields = wh_json:get_value(<<"Fields">>, AppJObj),
+                    lager:debug("fields: ~p", [Fields]),
                     case lists:all(fun({AppField, AppValue}) -> 
                                            wh_json:get_value(AppField, NextJObj) =:= AppValue
                                    end, wh_json:to_proplist(Fields)) of
