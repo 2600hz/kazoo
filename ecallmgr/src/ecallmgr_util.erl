@@ -92,6 +92,8 @@ send_cmd(Node, UUID, "hangup", _) ->
     lager:debug("terminate call on node ~s", [Node]),
     _ = ecallmgr_util:fs_log(Node, "whistle terminating call", []),
     freeswitch:api(Node, uuid_kill, wh_util:to_list(UUID));
+send_cmd(Node, UUID, "set", "ecallmgr_Account-ID=" ++ Value) ->
+    send_cmd(Node, UUID, "export", "ecallmgr_Account-ID=" ++ Value);
 send_cmd(Node, UUID, AppName, Args) ->
     lager:debug("execute on node ~s: ~s(~s)", [Node, AppName, Args]),
     _ = ecallmgr_util:fs_log(Node, "whistle executing ~s ~s", [AppName, Args]),

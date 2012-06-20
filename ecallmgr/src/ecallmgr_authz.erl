@@ -309,7 +309,7 @@ update_account_id({ok, Props}, CallId, Node) ->
     case props:get_value(?GET_CCV(<<"Account-ID">>), Props) of
         undefined -> ok;
         AccountId ->
-            _ = ecallmgr_util:send_cmd(Node, CallId, "set", ?SET_CCV(<<"Account-ID">>, AccountId)),
+            _ = ecallmgr_util:send_cmd(Node, CallId, "export", ?SET_CCV(<<"Account-ID">>, AccountId)),
             put(account_id, AccountId),
             ok
     end.

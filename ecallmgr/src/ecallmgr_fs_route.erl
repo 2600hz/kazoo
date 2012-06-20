@@ -212,7 +212,17 @@ reply_affirmative(Node, FSID, CallId, RespJObj, CCVs) ->
         ok ->
             lager:debug("node ~s accepted our route (authzed), starting control and events", [Node]),
             _ = ecallmgr_util:fs_log(Node, "whistle ~s won control with affimative reply", [node()]),
-            start_control_and_events(Node, CallId, ServerQ, CCVs);
+            UpdatedCCVs = case wh_json:get_value(<<"Billing-ID">>, CCVs) of
+                              undefined -> 
+                                  BillingId = wh_util:rand_hex_binary(16),
+                                  lager:debug("created new billing id ~s for channel ~s", [BillingId, CallId]),
+                                  _ = ecallmgr_util:send_cmd(Node, CallId, <<"export">>, ?SET_CCV(<<"Billing-ID">>, BillingId)),
+                                  wh_json:set_value(<<"Billing-ID">>, BillingId, CCVs);
+                              _Else -> 
+                                  lager:debug("channel ~s already has billing id ~s", [CallId, _Else]),
+                                  CCVs
+                          end,
+            start_control_and_events(Node, CallId, ServerQ, UpdatedCCVs);
         {error, Reason} -> lager:debug("node ~s rejected our route response, ~p", [Node, Reason]);
         timeout -> lager:debug("received no reply from node ~s, timeout", [Node])
     end.
