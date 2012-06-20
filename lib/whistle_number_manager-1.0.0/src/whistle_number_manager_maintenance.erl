@@ -36,10 +36,12 @@
 -spec reconcile/1 :: (string() | ne_binary() | 'all') -> 'no_return'.
  
 reconcile() ->
-    io:format("This command is depreciated, please use reconcile_numbers() or for older systems reconcile_accounts(). See the wiki for details on the differences.", []).
+    io:format("This command is depreciated, please use reconcile_numbers() or for older systems reconcile_accounts(). See the wiki for details on the differences.", []),
+    no_return.
 
 reconcile(Arg) ->
-    io:format("This command is depreciated, please use reconcile_numbers() or for older systems reconcile_accounts(~s). See the wiki for details on the differences.", [Arg]).    
+    io:format("This command is depreciated, please use reconcile_numbers() or for older systems reconcile_accounts(~s). See the wiki for details on the differences.", [Arg]),
+    no_return.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -48,8 +50,8 @@ reconcile(Arg) ->
 %% in the accounts
 %% @end
 %%--------------------------------------------------------------------
--spec reconcile_numbers/0 :: () -> 'done' | {'error', _}.
--spec reconcile_numbers/1 :: (string() | ne_binary() | 'all') -> 'done' | {'error', _}.
+-spec reconcile_numbers/0 :: () -> 'no_return' | {'error', _}.
+-spec reconcile_numbers/1 :: (string() | ne_binary() | 'all') -> 'no_return' | {'error', _}.
  
 reconcile_numbers() ->
     reconcile_numbers(all).
@@ -58,7 +60,7 @@ reconcile_numbers(all) ->
     _ = [reconcile_numbers(Db) 
          || Db <- wnm_util:get_all_number_dbs()
         ],
-    done;
+    no_return;
 reconcile_numbers(NumberDb) when not is_binary(NumberDb) ->
     reconcile_numbers(wh_util:to_binary(NumberDb));
 reconcile_numbers(NumberDb) ->
@@ -74,7 +76,7 @@ reconcile_numbers(NumberDb) ->
                                end
                       ],
             _ = reconcile_numbers(Numbers, system),
-            done
+            no_return
     end.
 
 %%--------------------------------------------------------------------
@@ -84,15 +86,15 @@ reconcile_numbers(NumberDb) ->
 %% to the account (first account found with a duplicate number will win)
 %% @end
 %%--------------------------------------------------------------------
--spec reconcile_accounts/0 :: () -> 'done'.
--spec reconcile_accounts/1 :: (string() | ne_binary() | 'all') -> 'done'.
+-spec reconcile_accounts/0 :: () -> 'no_return'.
+-spec reconcile_accounts/1 :: (string() | ne_binary() | 'all') -> 'no_return'.
  
 reconcile_accounts() ->
     reconcile_accounts(all).
 
 reconcile_accounts(all) ->
     _ = [reconcile_accounts(AccountId) || AccountId <- whapps_util:get_all_accounts(raw)],
-    done;
+    no_return;
 reconcile_accounts(AccountId) when not is_binary(AccountId) ->
     reconcile_accounts(wh_util:to_binary(AccountId));
 reconcile_accounts(AccountId) ->
@@ -100,7 +102,7 @@ reconcile_accounts(AccountId) ->
     Numbers = get_callflow_account_numbers(AccountDb),
     Numbers1 = get_trunkstore_account_numbers(AccountId, AccountDb) ++ Numbers,
     _ = reconcile_numbers(Numbers1, wh_util:format_account_id(AccountId, raw)),
-    done.
+    no_return.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -189,19 +191,20 @@ get_trunkstore_account_numbers(AccountId) ->
 %% provided numbers
 %% @end
 %%--------------------------------------------------------------------
--spec reconcile_numbers/2 :: ([ne_binary(),...] | [], 'undefined' | ne_binary()) -> 'ok'.
+-spec reconcile_numbers/2 :: ([ne_binary(),...] | [], 'system' | ne_binary()) -> 'ok'.
 reconcile_numbers(Numbers, AccountId) ->
     reconcile_numbers(Numbers, AccountId, length(Numbers), 1).
 
 reconcile_numbers([Number|Numbers], AccountId, Total, Count) ->
     Db = wnm_util:number_to_db_name(Number),
+    ReconcileWith = case is_binary(AccountId) of true -> AccountId; false -> Db end,
     try wh_number_manager:reconcile_number(Number, AccountId, AccountId) of
         _ ->
-            io:format("reconciled ~s number (~p/~p): ~s~n", [Db, Count, Total, Number]),
+            io:format("reconciled ~s number (~p/~p): ~s~n", [ReconcileWith, Count, Total, Number]),
             reconcile_numbers(Numbers, AccountId, Total, Count + 1)
     catch
         _E:_R ->
-            io:format("error reconciling ~s number (~p/~p) ~s: ~p:~p~n", [Db, Count, Total, Number, _E, _R]),
+            io:format("error reconciling ~s number (~p/~p) ~s: ~p:~p~n", [ReconcileWith, Count, Total, Number, _E, _R]),
             reconcile_numbers(Numbers, AccountId, Total, Count + 1)
     end;
 reconcile_numbers([], _, _, _) ->

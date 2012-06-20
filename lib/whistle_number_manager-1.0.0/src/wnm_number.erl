@@ -83,7 +83,7 @@ create_available(#number{number=Number, auth_by=AuthBy, number_doc=Doc}=N) ->
                 ,fun(J) -> wh_json:set_value(<<"pvt_number_state">>, <<"available">>, J) end
                 ,fun(J) -> wh_json:set_value(<<"pvt_db_name">>, Db, J) end
                 ,fun(J) -> wh_json:set_value(<<"pvt_created">>, wh_util:current_tstamp(), J) end
-                ,fun(J) -> wh_json:set_value(<<"pvt_authorizing_account">>, wh_util:to_binary(AuthBy), J) end
+                ,fun(J) -> wh_json:set_value(<<"pvt_authorizing_account">>, AuthBy, J) end
                ],
     JObj = lists:foldl(fun(F, J) -> F(J) end, wh_json:public_fields(Doc), Routines),
     json_to_record(JObj, N).
@@ -368,7 +368,7 @@ reserved(Number) ->
 -spec in_service/1 :: (wnm_number()) -> wnm_number().
 in_service(#number{state = <<"discovery">>}=Number) ->
     Routines = [fun(#number{assign_to=AssignTo, auth_by=AuthBy}=N) ->
-                        case AuthBy =:= system orelse wh_util:is_in_account_hierarchy(AuthBy, AssignTo, true) of
+                        case wh_util:is_in_account_hierarchy(AuthBy, AssignTo, true) of
                             false -> error_unauthorized(N);
                             true -> N
                         end
@@ -399,7 +399,7 @@ in_service(#number{state = <<"port_in">>}=Number) ->
     lists:foldl(fun(F, J) -> F(J) end, Number, Routines);
 in_service(#number{state = <<"available">>}=Number) ->
     Routines = [fun(#number{assign_to=AssignTo, auth_by=AuthBy}=N) ->
-                        case AuthBy =:= system orelse wh_util:is_in_account_hierarchy(AuthBy, AssignTo, true) of
+                        case wh_util:is_in_account_hierarchy(AuthBy, AssignTo, true) of
                             false -> error_unauthorized(N);
                             true -> N
                         end

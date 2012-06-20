@@ -187,25 +187,34 @@ port_in(Number, AssignTo, AuthBy, PublicFields) ->
 -spec reconcile_number/3 :: (ne_binary(), ne_binary(), ne_binary()) -> operation_return().
 reconcile_number(Number, AssignTo, AuthBy) ->
     Routines = [fun(_) -> wnm_number:get(Number) end
-                ,fun({not_found, #number{}=N}) -> 
+                ,fun({not_found, #number{}=N}) when is_binary(AssignTo) ->
                          NewNumber = N#number{number=Number
                                               ,assign_to=AssignTo
-                                              ,auth_by=AuthBy
+                                              ,auth_by=wh_util:to_binary(AuthBy)
                                              },
                          wnm_number:create_available(NewNumber);
                     ({_, #number{}}=E) -> E;
-                    (#number{}=N) -> N#number{assign_to=AssignTo
-                                              ,auth_by=AuthBy
-                                             }
+                    (#number{}=N) when is_binary(AssignTo) ->
+                         N#number{assign_to=AssignTo};
+                    (#number{assigned_to=undefined}=N)  ->
+                         wnm_number:error_unauthorized(N);
+                    (#number{assigned_to=AssignedTo}=N) ->
+                         N#number{assign_to=AssignedTo}
+                 end
+                ,fun({_, #number{}}=E) -> E;
+                    (#number{}=N) when is_binary(AuthBy) -> 
+                         N#number{auth_by=AuthBy};
+                    (#number{assign_to=ATo}=N) -> 
+                         N#number{auth_by=ATo}
                  end
                 ,fun({_, #number{}}=E) -> E;
                     (#number{assign_to=Assign}=N) ->
                          lager:debug("attempting to reconcile number ~s with account ~s", [Number, Assign]),
                          wnm_number:in_service(N)
                  end
-                ,fun({no_change_required, #number{}=N}) ->
-                         wnm_number:save_phone_number_docs(N);
-                    ({unauthorized, #number{auth_by=system}=N}) ->
+                ,fun({no_change_required, #number{assigned_to=undefined}}=E) ->
+                         E;
+                    ({no_change_required, #number{}=N}) ->
                          wnm_number:save_phone_number_docs(N);
                     ({_, #number{}}=E) -> E;
                     (#number{}=N) -> wnm_number:save(N)
