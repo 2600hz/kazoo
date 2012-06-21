@@ -82,8 +82,8 @@
 -define(STORE_REQ_TYPES, [{<<"Additional-Headers">>, fun is_list/1}]).
 
 %% Store Fax
--define(STORE_FAX_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Fax-Transfer-Method">>
-                                ,<<"Fax-Transfer-Destination">>
+-define(STORE_FAX_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Media-Transfer-Method">>
+                                ,<<"Media-Transfer-Destination">>
                            ]).
 -define(OPTIONAL_STORE_FAX_HEADERS, [<<"Additional-Headers">>, <<"Insert-At">>]).
 -define(STORE_FAX_VALUES, [{<<"Event-Category">>, <<"call">>}
