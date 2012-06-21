@@ -351,8 +351,7 @@ receive_fax(Call) ->
 
 b_receive_fax(Call) ->
     receive_fax(Call),
-    wait_for_message(<<"receive_fax">>).
-
+    wait_for_fax().
 
 %%--------------------------------------------------------------------
 %% @public
@@ -841,8 +840,8 @@ b_store(MediaName, Transfer, Method, Headers, Call) ->
 -spec store_fax/2 :: (ne_binary(), whapps_call:call()) -> 'ok'.
 store_fax(URL, Call) ->
     Command = [{<<"Application-Name">>, <<"store_fax">>}
-               ,{<<"Fax-Transfer-Method">>, <<"put">>}
-               ,{<<"Fax-Transfer-Destination">>, URL}
+               ,{<<"Media-Transfer-Method">>, <<"put">>}
+               ,{<<"Media-Transfer-Destination">>, URL}
                ,{<<"Insert-At">>, <<"now">>}
               ],
     send_command(Command, Call).
@@ -1278,16 +1277,14 @@ collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call, Digits
                 _ when After =:= infinity ->
                     collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call, Digits, After);
                 _ ->
-                    DiffMicro = timer:now_diff(erlang:now(), Start),
-                    collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call, Digits, After - (DiffMicro div 1000))
+                    collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call, Digits, After - wh_util:elapsed_ms(Start))
             end;
         _ when After =:= infinity ->
             collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call, Digits, After);
         _ ->
             %% dont let the mailbox grow unbounded if
             %%   this process hangs around...
-            DiffMicro = timer:now_diff(erlang:now(), Start),
-            collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call, Digits, After - (DiffMicro div 1000))
+            collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call, Digits, After - wh_util:elapsed_ms(Start))
     after
         After ->
             lager:debug("collect digits timeout"),
@@ -1333,14 +1330,12 @@ wait_for_message(Application, Event, Type, Timeout) ->
                 _ when Timeout =:= infinity ->
                     wait_for_message(Application, Event, Type, Timeout);
                 _ ->
-                    DiffMicro = timer:now_diff(erlang:now(), Start),
-                    wait_for_message(Application, Event, Type, Timeout - (DiffMicro div 1000))
+                    wait_for_message(Application, Event, Type, Timeout - wh_util:elapsed_ms(Start))
             end;
         _ when Timeout =:= infinity ->
             wait_for_message(Application, Event, Type, Timeout);
         _ ->
-            DiffMicro = timer:now_diff(erlang:now(), Start),
-            wait_for_message(Application, Event, Type, Timeout - (DiffMicro div 1000))
+            wait_for_message(Application, Event, Type, Timeout - wh_util:elapsed_ms(Start))
     after
         Timeout ->
             {error, timeout}
@@ -1382,14 +1377,12 @@ wait_for_application(Application, Event, Type, Timeout) ->
                 _ when Timeout =:= infinity ->
                     wait_for_application(Application, Event, Type, Timeout);
                 _ ->
-                    DiffMicro = timer:now_diff(erlang:now(), Start),
-                    wait_for_application(Application, Event, Type, Timeout - (DiffMicro div 1000))
+                    wait_for_application(Application, Event, Type, Timeout - wh_util:elapsed_ms(Start))
             end;
         _ when Timeout =:= infinity ->
             wait_for_application(Application, Event, Type, Timeout);
         _ ->
-            DiffMicro = timer:now_diff(erlang:now(), Start),
-            wait_for_application(Application, Event, Type, Timeout - (DiffMicro div 1000))
+            wait_for_application(Application, Event, Type, Timeout - wh_util:elapsed_ms(Start))
     after
         Timeout ->
             {error, timeout}
@@ -1429,14 +1422,12 @@ wait_for_headless_application(Application, Event, Type, Timeout) ->
                 _ when Timeout =:= infinity ->
                     wait_for_headless_application(Application, Event, Type, Timeout);
                 _ ->
-                    DiffMicro = timer:now_diff(erlang:now(), Start),
-                    wait_for_headless_application(Application, Event, Type, Timeout - (DiffMicro div 1000))
+                    wait_for_headless_application(Application, Event, Type, Timeout - wh_util:elapsed_ms(Start))
             end;
         _ when Timeout =:= infinity ->
             wait_for_headless_application(Application, Event, Type, Timeout);
         _ ->
-            DiffMicro = timer:now_diff(erlang:now(), Start),
-            wait_for_headless_application(Application, Event, Type, Timeout - (DiffMicro div 1000))
+            wait_for_headless_application(Application, Event, Type, Timeout - wh_util:elapsed_ms(Start))
     after
         Timeout ->
             {error, timeout}
@@ -1468,8 +1459,7 @@ wait_for_dtmf(Timeout) ->
                 _ when Timeout =:= infinity ->
                     wait_for_dtmf(Timeout);
                 _ ->
-                    DiffMicro = timer:now_diff(erlang:now(), Start),
-                    wait_for_dtmf(Timeout - (DiffMicro div 1000))
+                    wait_for_dtmf(Timeout - wh_util:elapsed_ms(Start))
             end;
         _E when Timeout =:= infinity ->
             lager:debug("unexpected ~p", [_E]),
@@ -1478,8 +1468,7 @@ wait_for_dtmf(Timeout) ->
             lager:debug("unexpected ~p", [_E]),
             %% dont let the mailbox grow unbounded if
             %%   this process hangs around...
-            DiffMicro = timer:now_diff(erlang:now(), Start),
-            wait_for_dtmf(Timeout - (DiffMicro div 1000))
+            wait_for_dtmf(Timeout - wh_util:elapsed_ms(Start))
     after
         Timeout ->
             {ok, <<>>}
@@ -1527,16 +1516,14 @@ wait_for_bridge(Timeout, Fun, Call) ->
                 _ when Timeout =:= infinity ->
                     wait_for_bridge(Timeout, Fun, Call);
                 _ ->
-                    DiffMicro = timer:now_diff(erlang:now(), Start),
-                    wait_for_bridge(Timeout - (DiffMicro div 1000), Fun, Call)
+                    wait_for_bridge(Timeout - wh_util:elapsed_ms(Start), Fun, Call)
             end;
         _ when Timeout =:= infinity ->
             wait_for_bridge(Timeout, Fun, Call);
         _ ->
             %% dont let the mailbox grow unbounded if
             %%   this process hangs around...
-            DiffMicro = timer:now_diff(erlang:now(), Start),
-            wait_for_bridge(Timeout - (DiffMicro div 1000), Fun, Call)
+            wait_for_bridge(Timeout - wh_util:elapsed_ms(Start), Fun, Call)
     after
         Timeout ->
             {error, timeout}
@@ -1684,20 +1671,53 @@ wait_for_application_or_dtmf(Application, Timeout) ->
                 _ when Timeout =:= infinity ->
                     wait_for_application_or_dtmf(Application, Timeout);
                 _ ->
-                    DiffMicro = timer:now_diff(erlang:now(), Start),
-                    wait_for_application_or_dtmf(Application, Timeout - (DiffMicro div 1000))
+                    wait_for_application_or_dtmf(Application, Timeout - wh_util:elapsed_ms(Start))
             end;
         _ when Timeout =:= infinity ->
             wait_for_application_or_dtmf(Application, Timeout);
         _ ->
             %% dont let the mailbox grow unbounded if
             %%   this process hangs around...
-            DiffMicro = timer:now_diff(erlang:now(), Start),
-            wait_for_application_or_dtmf(Application, Timeout - (DiffMicro div 1000))
+            wait_for_application_or_dtmf(Application, Timeout - wh_util:elapsed_ms(Start))
     after
         Timeout ->
             {error, timeout}
     end.
+
+wait_for_fax() ->
+    wait_for_fax(5000).
+wait_for_fax(Timeout) ->
+    Start = erlang:now(),
+    receive
+        {amqp_msg, JObj} ->
+            case get_event_type(JObj) of
+                { <<"call_event">>, <<"CHANNEL_DESTROY">>, _ } ->
+                    lager:debug("channel was destroyed while waiting for fax"),
+                    {error, channel_destroy};
+                { <<"call_event">>, <<"CHANNEL_HANGUP">>, _ } ->
+                    lager:debug("channel was hungup while waiting for fax"),
+                    {error, channel_hungup};
+                { <<"error">>, _, <<"receive_fax">> } ->
+                    lager:debug("channel execution error while waiting for fax: ~s", [wh_json:encode(JObj)]),
+                    {error, JObj};
+                { <<"call_event">>, <<"CHANNEL_EXECUTE">>, <<"receive_fax">> } ->
+                    wait_for_fax(infinity);
+                { <<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"receive_fax">> } ->
+                    {ok, JObj};
+                _ when Timeout =:= infinity ->
+                    wait_for_fax(Timeout);
+                _ ->
+                    wait_for_fax(Timeout - wh_util:elapsed_ms(Start))
+            end;
+        _ when Timeout =:= infinity ->
+            wait_for_fax(Timeout);
+        _ ->
+            wait_for_fax(Timeout - wh_util:elapsed_ms(Start))
+    after
+        Timeout ->
+            {error, timeout}
+    end.
+
 
 %%--------------------------------------------------------------------
 %% @public
