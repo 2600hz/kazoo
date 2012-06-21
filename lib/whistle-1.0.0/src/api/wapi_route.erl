@@ -23,6 +23,9 @@
          ,is_actionable_resp/1
         ]).
 
+%% routing keys to use in the callmgr exchange
+-define(KEY_ROUTE_REQ, <<"route.req">>). %% corresponds to the route_req/1 api call
+
 -define(EVENT_CATEGORY, <<"dialplan">>).
 -define(ROUTE_REQ_EVENT_NAME, <<"route_req">>).
 
