@@ -11,6 +11,8 @@
 
 -include("./whapps_call_command.hrl").
 
+-export([relay_event/2]).
+
 -export([audio_macro/2]).
 -export([response/2, response/3, response/4]).
 -export([pickup/2, pickup/3, pickup/4
@@ -88,6 +90,16 @@
 -export([wait_for_application_or_dtmf/2]).
 -export([collect_digits/2, collect_digits/3, collect_digits/4, collect_digits/5, collect_digits/6]).
 -export([send_command/2]).
+
+%%--------------------------------------------------------------------
+%% @pubic
+%% @doc How amqp messages are sent to the mailboxes of processes waiting
+%%      for them in the receive blocks below.
+%% @end
+%%--------------------------------------------------------------------
+-spec relay_event/2 :: (pid(), wh_json:json_object()) -> any().
+relay_event(Pid, JObj) ->
+    Pid ! {amqp_msg, JObj}.
 
 %%--------------------------------------------------------------------
 %% @pubic
