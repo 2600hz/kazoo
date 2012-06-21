@@ -75,9 +75,9 @@ start_link(AccountDb, AgentId, QueueIDs) ->
 
 -spec handle_call_event/2 :: (wh_json:json_object(), proplist()) -> any().
 handle_call_event(JObj, Props) ->
-    _ = [Pid ! {amqp_msg, JObj}
-         || Pid <- props:get_value(call_event_consumers, Props, [])
-                ,is_pid(Pid)
+    _ = [whapps_call_command:relay_event(Pid, JObj)
+         || Pid <- props:get_value(call_event_consumers, Props, []),
+            is_pid(Pid)
         ].
 
 -spec maybe_handle_call/3 :: (acdc_call:caller(), integer(), ne_binary()) -> boolean().
