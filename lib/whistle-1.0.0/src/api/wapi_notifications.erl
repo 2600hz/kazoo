@@ -1,16 +1,18 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2012, VoIP INC
 %%% @doc
 %%% Notification messages, like voicemail left
 %%% @end
-%%% Created :  6 Dec 2011 by James Aimonetti <james@2600hz.org>
+%%% @contributors
+%%%   James Aimonetti
+%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(wapi_notifications).
 
 -export([bind_q/2, unbind_q/1, unbind_q/2]).
 
 -export([voicemail/1, voicemail_v/1]).
+-export([fax/1, fax_v/1]).
 -export([mwi_update/1, mwi_update_v/1]).
 -export([mwi_query/1, mwi_query_v/1]).
 -export([register/1, register_v/1]).
@@ -25,6 +27,7 @@
 -export([system_alert/1, system_alert_v/1]).
 
 -export([publish_voicemail/1, publish_voicemail/2]).
+-export([publish_fax/1, publish_fax/2]).
 -export([publish_mwi_update/1, publish_mwi_update/2]).
 -export([publish_mwi_query/1, publish_mwi_query/2]).
 -export([publish_register/1, publish_register/2]).
@@ -41,6 +44,7 @@
 -include("../wh_api.hrl").
 
 -define(NOTIFY_VOICEMAIL_NEW, <<"notifications.voicemail.new">>).
+-define(NOTIFY_FAX_NEW, <<"notifications.fax.new">>).
 -define(NOTIFY_MWI_UPDATE, <<"notifications.sip.mwi_update">>).
 -define(NOTIFY_MWI_QUERY, <<"notifications.sip.mwi_query">>).
 -define(NOTIFY_DEREGISTER, <<"notifications.sip.deregister">>).
@@ -59,12 +63,27 @@
 
 %% Notify New Voicemail
 -define(VOICEMAIL_HEADERS, [<<"From-User">>, <<"From-Realm">>, <<"To-User">>, <<"To-Realm">>
-                                    ,<<"Account-DB">>, <<"Voicemail-Box">>, <<"Voicemail-Name">>, <<"Voicemail-Timestamp">>]).
--define(OPTIONAL_VOICEMAIL_HEADERS, [<<"Voicemail-Length">>, <<"Caller-ID-Name">>, <<"Caller-ID-Number">>, <<"Call-ID">>]).
+                                ,<<"Account-DB">>, <<"Voicemail-Box">>, <<"Voicemail-Name">>
+                                ,<<"Voicemail-Timestamp">>
+                           ]).
+-define(OPTIONAL_VOICEMAIL_HEADERS, [<<"Voicemail-Length">>, <<"Call-ID">>
+                                         ,<<"Caller-ID-Number">>, <<"Caller-ID-Name">>
+                                    ]).
 -define(VOICEMAIL_VALUES, [{<<"Event-Category">>, <<"notification">>}
-                               ,{<<"Event-Name">>, <<"new_voicemail">>}
-                              ]).
+                           ,{<<"Event-Name">>, <<"new_voicemail">>}
+                          ]).
 -define(VOICEMAIL_TYPES, []).
+
+%% Notify New Fax
+-define(FAX_HEADERS, [<<"From-User">>, <<"From-Realm">>
+                          ,<<"To-User">>, <<"To-Realm">>
+                          ,<<"Account-DB">>, <<"Fax-ID">>
+                     ]).
+-define(OPTIONAL_FAX_HEADERS, [<<"Caller-ID-Name">>, <<"Caller-ID-Number">>, <<"Call-ID">>]).
+-define(FAX_VALUES, [{<<"Event-Category">>, <<"notification">>}
+                           ,{<<"Event-Name">>, <<"new_fax">>}
+                          ]).
+-define(FAX_TYPES, []).
 
 %% Notify updated MWI
 -define(MWI_REQ_HEADERS, [<<"Notify-User">>, <<"Notify-Realm">>, <<"Messages-New">>, <<"Messages-Saved">>]).
@@ -182,7 +201,7 @@
 -define(SYSTEM_ALERT_TYPES, []).
 
 %%--------------------------------------------------------------------
-%% @doc MWI - Update the Message Waiting Indicator on a device - see wiki
+%% @doc
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
@@ -199,6 +218,25 @@ voicemail_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?VOICEMAIL_HEADERS, ?VOICEMAIL_VALUES, ?VOICEMAIL_TYPES);
 voicemail_v(JObj) ->
     voicemail_v(wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
+%% @doc
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+fax(Prop) when is_list(Prop) ->
+    case fax_v(Prop) of
+        true -> wh_api:build_message(Prop, ?FAX_HEADERS, ?OPTIONAL_FAX_HEADERS);
+        false -> {error, "Proplist failed validation for fax"}
+    end;
+fax(JObj) ->
+    fax(wh_json:to_proplist(JObj)).
+
+-spec fax_v/1 :: (api_terms()) -> boolean().
+fax_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?FAX_HEADERS, ?FAX_VALUES, ?FAX_TYPES);
+fax_v(JObj) ->
+    fax_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc MWI - Update the Message Waiting Indicator on a device - see wiki
@@ -440,6 +478,9 @@ bind_to_q(Q, undefined) ->
 bind_to_q(Q, [new_voicemail|T]) ->
     ok = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_VOICEMAIL_NEW),
     bind_to_q(Q, T);
+bind_to_q(Q, [new_fax|T]) ->
+    ok = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_FAX_NEW),
+    bind_to_q(Q, T);
 bind_to_q(Q, [mwi_update|T]) ->
     ok = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_MWI_UPDATE),
     bind_to_q(Q, T);
@@ -499,6 +540,9 @@ unbind_q_from(Q, undefined) ->
 unbind_q_from(Q, [new_voicemail|T]) ->
     ok = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_VOICEMAIL_NEW),
     unbind_q_from(Q, T);
+unbind_q_from(Q, [new_fax|T]) ->
+    ok = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_FAX_NEW),
+    unbind_q_from(Q, T);
 unbind_q_from(Q, [mwi_update|T]) ->
     ok = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_MWI_UPDATE),
     unbind_q_from(Q, T);
@@ -551,6 +595,14 @@ publish_voicemail(JObj) ->
 publish_voicemail(Voicemail, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(Voicemail, ?VOICEMAIL_VALUES, fun ?MODULE:voicemail/1),
     amqp_util:notifications_publish(?NOTIFY_VOICEMAIL_NEW, Payload, ContentType).
+
+-spec publish_fax/1 :: (api_terms()) -> 'ok'.
+-spec publish_fax/2 :: (api_terms(), ne_binary()) -> 'ok'.
+publish_fax(JObj) ->
+    publish_fax(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_fax(Fax, ContentType) ->
+    {ok, Payload} = wh_api:prepare_api_payload(Fax, ?FAX_VALUES, fun ?MODULE:fax/1),
+    amqp_util:notifications_publish(?NOTIFY_FAX_NEW, Payload, ContentType).
 
 -spec publish_mwi_update/1 :: (api_terms()) -> 'ok'.
 -spec publish_mwi_update/2 :: (api_terms(), ne_binary()) -> 'ok'.
