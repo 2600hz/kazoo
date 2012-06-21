@@ -26,13 +26,17 @@
 -export([wildcard_is_empty/1]).
 -export([callid_update/3]).
 
-%% gen_server callbacks
--export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2
-         ,terminate/2, code_change/3]).
+%% gen_listener callbacks
+-export([init/1
+         ,handle_call/3
+         ,handle_cast/2
+         ,handle_info/2
+         ,handle_event/2
+         ,terminate/2
+         ,code_change/3
+        ]).
 
 -include("callflow.hrl").
-
--define(SERVER, ?MODULE).
 
 -define(CALL_SANITY_CHECK, 30000).
 
