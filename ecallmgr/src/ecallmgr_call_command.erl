@@ -226,7 +226,9 @@ get_fs_app(_Node, UUID, JObj, <<"store_fax">>) ->
                 <<"put">> = Method ->
                     Url = wh_util:to_list(wh_json:get_value(<<"Media-Transfer-Destination">>, JObj)),
                     lager:debug("streaming via HTTP(~s) to ~s", [Method, Url]),
-                    {<<"http_put">>, list_to_binary([Url, <<" ">>, File])};
+                    [{<<"http_put">>, list_to_binary([Url, <<" ">>, File])}
+                     ,{"application", ecallmgr_util:create_masquerade_event(<<"store_fax">>, <<"CHANNEL_EXECUTE_COMPLETE">>)}
+                    ];
                 _Method ->
                     lager:debug("invalid media transfer method for storing fax: ~s", [_Method]),
                     {error, <<"invalid media transfer method">>}
@@ -286,7 +288,10 @@ get_fs_app(Node, UUID, JObj, <<"ring">>) ->
     {<<"ring_ready">>, <<>>};
 
 %% receive a fax from the caller
-get_fs_app(_Node, UUID, _JObj, <<"receive_fax">>) ->
+get_fs_app(Node, UUID, _JObj, <<"receive_fax">>) ->
+    set(Node, UUID, "fax_enable_t38_request=true"),
+    set(Node, UUID, "fax_enable_t38=true"),
+
     [{<<"playback">>, <<"silence_stream://2000">>}
      ,{<<"rxfax">>, ecallmgr_util:fax_filename(UUID)}
     ];
