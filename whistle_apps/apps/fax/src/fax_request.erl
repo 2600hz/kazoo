@@ -58,7 +58,7 @@ start_link(Call, JObj) ->
 relay_event(JObj, Props) ->
     case props:get_value(handler, Props) of
         undefined -> ignore;
-        {Pid, _} -> Pid ! {event, JObj}
+        {Pid, _} -> whapps_call_command:relay_event(Pid, JObj)
     end.
 
 %%%===================================================================

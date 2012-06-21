@@ -93,16 +93,6 @@
 
 %%--------------------------------------------------------------------
 %% @pubic
-%% @doc How amqp messages are sent to the mailboxes of processes waiting
-%%      for them in the receive blocks below.
-%% @end
-%%--------------------------------------------------------------------
--spec relay_event/2 :: (pid(), wh_json:json_object()) -> any().
-relay_event(Pid, JObj) ->
-    Pid ! {amqp_msg, JObj}.
-
-%%--------------------------------------------------------------------
-%% @pubic
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
@@ -113,6 +103,16 @@ relay_event(Pid, JObj) ->
                               {'tones', wh_json:json_objects()} |
                               {'tts', ne_binary()} | {'tts', ne_binary(), ne_binary()} | {'tts', ne_binary(), ne_binary(), ne_binary()}.
 -export_type([audio_macro_prompt/0]).
+
+%%--------------------------------------------------------------------
+%% @pubic
+%% @doc How amqp messages are sent to the mailboxes of processes waiting
+%%      for them in the receive blocks below.
+%% @end
+%%--------------------------------------------------------------------
+-spec relay_event/2 :: (pid(), wh_json:json_object()) -> any().
+relay_event(Pid, JObj) ->
+    Pid ! {amqp_msg, JObj}.
 
 -spec audio_macro/2 :: ([audio_macro_prompt(),...], whapps_call:call()) -> ne_binary().
 -spec audio_macro/3 :: ([audio_macro_prompt(),...], whapps_call:call(), wh_json:json_objects()) -> binary().
