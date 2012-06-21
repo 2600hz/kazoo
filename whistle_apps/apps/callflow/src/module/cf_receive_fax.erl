@@ -29,7 +29,7 @@ handle(Data, Call) ->
             lager:debug("rxfax resp: ~p", [RecvJObj]),
 
             %% store Fax in DB
-            case store_fax(Call) of
+            case store_fax(Call, RecvJObj) of
                 {ok, StoreJObj} ->
                     lager:debug("store fax resp: ~p", [StoreJObj]),
 
@@ -55,24 +55,40 @@ handle(Data, Call) ->
             cf_exe:continue(Call)
     end.
 
-store_fax(Call) ->
-    FaxFile = tmp_file(),
-    FaxDocId = fax_doc(Call),
-    FaxUrl = attachment_url(Call, FaxFile, FaxDocId),
+store_fax(Call, JObj) ->
+    case should_store_fax(JObj) of
+        false -> {error, unable_to_store_fax};
+        true ->
+            FaxFile = tmp_file(),
+            FaxDocId = fax_doc(Call, JObj),
+            FaxUrl = attachment_url(Call, FaxFile, FaxDocId),
 
-    lager:debug("storing fax to ~s", [FaxFile, FaxUrl]),
+            lager:debug("storing fax ~s to ~s", [FaxFile, FaxUrl]),
 
-    case whapps_call_command:b_store_fax(FaxUrl, Call) of
-        {ok, _JObj}=OK ->
-            lager:debug("store_fax returned: ~p", [_JObj]),
-            OK;
-        E ->
-            lager:debug("store_fax error: ~p", [E]),
-            E
+            case whapps_call_command:b_store_fax(FaxUrl, Call) of
+                {ok, _JObj}=OK ->
+                    lager:debug("store_fax returned: ~p", [_JObj]),
+                    OK;
+                E ->
+                    lager:debug("store_fax error: ~p", [E]),
+                    E
+            end
+    end.
+
+should_store_fax(JObj) ->
+    case wh_json:get_integer_value(<<"Fax-Result-Code">>, JObj, 0) of
+        0 -> true;
+        48 ->
+            lager:debug("failed to receive fax(48): ~s", [wh_json:get_value(<<"Fax-Result-Text">>, JObj)]),
+            false;
+        _Code ->
+            lager:debug("received fax(~b): ~s", [_Code, wh_json:get_value(<<"Fax-Result-Text">>, JObj)]),
+            true
     end.
             
+            
 
-fax_doc(Call) ->
+fax_doc(Call, JObj) ->
     AccountDb = whapps_call:account_db(Call),
 
     TStamp = wh_util:current_tstamp(),
@@ -87,15 +103,21 @@ fax_doc(Call) ->
     Props = [{<<"name">>, Name}
              ,{<<"description">>, <<"fax document received">>}
              ,{<<"source_type">>, <<"incoming_fax">>}
+             ,{<<"timestamp">>, wh_json:get_value(<<"Timestamp">>, JObj)}
+             | fax_properties(JObj)
             ],
 
-    Doc = wh_doc:update_pvt_parameters(wh_json:from_list(Props), AccountDb
+    Doc = wh_doc:update_pvt_parameters(wh_json:from_list(Props)
+                                       ,AccountDb
                                        ,[{type, <<"private_media">>}]
                                       ),
 
     {ok, JObj} = couch_mgr:save_doc(AccountDb, Doc),
     wh_json:get_value(<<"_id">>, JObj).
 
+-spec fax_properties/1 :: (wh_json:json_object()) -> proplist().
+fax_properties(JObj) ->
+    [{wh_json:normalize_key(K), V} || {<<"Fax-", K/binary>>, V} <- wh_json:to_proplist(JObj)].
 
 attachment_url(Call, File, FaxDocId) ->
     AccountDb = whapps_call:account_db(Call),
