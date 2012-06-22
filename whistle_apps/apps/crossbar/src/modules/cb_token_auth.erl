@@ -65,6 +65,7 @@ clean_expired(Expiry) ->
 
     case couch_mgr:get_results(?TOKEN_DB, <<"token_auth/listing_by_ctime">>, [{startkey, 0}
                                                                               ,{endkey, CreatedBefore}
+                                                                              ,{limit, 1000}
                                                                              ]) of
         {ok, []} -> lager:debug("no expired tokens found"), ok;
         {ok, L} ->
@@ -83,7 +84,7 @@ prepare_token_for_deletion(Token) ->
                       ]).
 
 clean_soft_deleted() ->
-    case couch_mgr:get_results(?TOKEN_DB, <<"token_auth/soft_deleted">>, []) of
+    case couch_mgr:get_results(?TOKEN_DB, <<"token_auth/soft_deleted">>, [{limit, 1000}]) of
         {ok, []} -> lager:debug("no soft-deleted tokens found"), ok;
         {ok, L} ->
             lager:debug("removing ~b soft-deleted tokens", [length(L)]),

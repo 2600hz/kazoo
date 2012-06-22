@@ -1,21 +1,20 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2012, VoIP INC
+%%% @copyright (C) 2012, VoIP INC
 %%% @doc
 %%%
 %%% @end
 %%% @contributors
-%%%   Karl Anderson
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
--module(cf_exe_sup).
+-module(fax_requests_sup).
 
 -behaviour(supervisor).
 
--include_lib("whistle/include/wh_types.hrl").
--include("callflow.hrl").
+-include("fax.hrl").
 
 %% API
 -export([start_link/0]).
--export([new/1]).
+-export([new/2]).
 -export([workers/0]).
 
 %% Supervisor callbacks
@@ -39,9 +38,9 @@
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
--spec new/1 :: (whapps_call:call()) -> sup_startchild_ret().
-new(Call) ->
-    supervisor:start_child(?MODULE, [Call]).
+-spec new/2 :: (whapps_call:call(), wh_json:json_object()) -> sup_startchild_ret().
+new(Call, JObj) ->
+    supervisor:start_child(?MODULE, [Call, JObj]).
 
 -spec workers/0 :: () -> [pid(),...] | [].
 workers() ->
@@ -60,8 +59,7 @@ workers() ->
 %% specifications.
 %% @end
 %%--------------------------------------------------------------------
--spec init(Args) -> sup_init_ret() when
-      Args :: [].
+-spec init([]) -> sup_init_ret().
 init([]) ->
     RestartStrategy = simple_one_for_one,
     MaxRestarts = 0,
@@ -69,4 +67,4 @@ init([]) ->
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    {ok, {SupFlags, [?CHILD(cf_exe, temporary, 2000, worker)]}}.
+    {ok, {SupFlags, [?CHILD(fax_request, temporary, 2000, worker)]}}.

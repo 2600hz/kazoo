@@ -9,7 +9,7 @@
 
 -behaviour(supervisor).
 
--include_lib("whistle/include/wh_types.hrl").
+-include("fax.hrl").
 
 -export([start_link/0]).
 -export([cache_proc/0]).
@@ -25,7 +25,13 @@
                                                                       ]]}
                                             ,permanent, 5000, worker, [poolboy]};
                               (N, T) -> {N, {N, start_link, []}, permanent, 5000, T, [N]} end(Name, Type)).
--define(CHILDREN, [{fax_worker_pool, pool}, {fax_cache, cache}, {fax_jobs, worker}]).
+
+-define(CHILDREN, [{fax_worker_pool, pool}
+                   ,{fax_cache, cache}
+                   ,{fax_jobs, worker}
+                   ,{fax_requests_sup, supervisor}
+                   ,{fax_listener, worker}
+                  ]).
 
 %% ===================================================================
 %% API functions
@@ -41,11 +47,9 @@
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
--spec cache_proc/0 :: () -> {'ok', pid()}.
+-spec cache_proc/0 :: () -> {'ok', ?FAX_CACHE}.
 cache_proc() ->
-    [P] = [P || {Mod, P, _, _} <- supervisor:which_children(?MODULE),
-                Mod =:= fax_cache],
-    {ok, P}.
+    {ok, ?FAX_CACHE}.
 
 -spec listener_proc/0 :: () -> {'ok', pid()}.
 listener_proc() ->

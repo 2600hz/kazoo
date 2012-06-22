@@ -1,46 +1,30 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2012, VoIP INC
+%%% @copyright (C) 2012, VoIP INC
 %%% @doc
-%%% Handle updating devices and emails about voicemails
+%%%
 %%% @end
 %%% @contributors
 %%%   James Aimonetti
-%%%   Karl Anderson
 %%%-------------------------------------------------------------------
--module(notify_listener).
+-module(fax_listener).
 
 -behaviour(gen_listener).
 
 %% API
--export([start_link/0, stop/1]).
+-export([start_link/0, new_request/3]).
 
-%% gen_server callbacks
--export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2
-         ,terminate/2, code_change/3]).
+%% gen_listener callbacks
+-export([init/1
+         ,handle_call/3
+         ,handle_cast/2
+         ,handle_info/2
+         ,handle_event/2
+         ,terminate/2
+         ,code_change/3
+        ]).
 
--include("notify.hrl").
+-include("fax.hrl").
 
--define(SERVER, ?MODULE).
-
--define(RESPONDERS, [{notify_vm, [{<<"notification">>, <<"new_voicemail">>}]}
-                     ,{notify_fax, [{<<"notification">>, <<"new_fax">>}]}
-                     ,{notify_deregister, [{<<"notification">>, <<"deregister">>}]}
-                     ,{notify_pwd_recovery, [{<<"notification">>, <<"password_recovery">>}]}
-                     ,{notify_new_account, [{<<"notification">>, <<"new_account">>}]}
-                     ,{notify_cnam_request, [{<<"notification">>, <<"cnam_request">>}]}
-                     ,{notify_port_request, [{<<"notification">>, <<"port_request">>}]}
-                     ,{notify_first_occurrence, [{<<"directory">>, <<"reg_query_resp">>}]}
-                     ,{notify_low_balance, [{<<"notification">>, <<"low_balance">>}]}
-                     ,{notify_system_alert, [{<<"notification">>, <<"system_alert">>}]}
-                    ]).
--define(BINDINGS, [{notifications, []}
-                   ,{self, []}
-                  ]).
--define(QUEUE_NAME, <<"notify_listener">>).
--define(QUEUE_OPTIONS, [{exclusive, false}]).
--define(CONSUME_OPTIONS, [{exclusive, false}]).
-
--record(state, {}).
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -52,17 +36,19 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
+-spec start_link/0 :: () -> startlink_ret().
 start_link() ->
-    gen_listener:start_link(?MODULE, [{responders, ?RESPONDERS}
-                                      ,{bindings, ?BINDINGS}
-                                      ,{queue_name, ?QUEUE_NAME}
-                                      ,{queue_options, ?QUEUE_OPTIONS}
-                                      ,{consume_options, ?CONSUME_OPTIONS}
-                                      ,{basic_qos, 1} %% process one notification at a time (will round-robin amongst notify whapps)
+    gen_listener:start_link(?MODULE, [{bindings, [{fax, []}]}
+                                      ,{responders, [{{?MODULE, new_request}
+                                                      ,{<<"*">>, <<"*">>}}
+                                                    ]}
                                      ], []).
 
-stop(Srv) ->
-    gen_listener:stop(Srv).
+-spec new_request/3 :: (wh_json:json_object(), proplist(), _) -> sup_startchild_ret().
+new_request(JObj, _Props, _RK) ->
+    true = wapi_fax:req_v(JObj),
+    Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, JObj)),
+    fax_requests_sup:new(Call, JObj).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -80,9 +66,7 @@ stop(Srv) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    put(callid, ?LOG_SYSTEM_ID),
-    lager:debug("starting new vm notify process"),
-    {ok, #state{}}.
+    {ok, ok}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -99,7 +83,8 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call(_Request, _From, State) ->
-    {reply, ok, State}.
+    Reply = ok,
+    {reply, Reply, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -125,17 +110,8 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info(_Info, State) ->
-    lager:debug("unhandled message: ~p", [_Info]),
     {noreply, State}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling AMQP event objects
-%%
-%% @spec handle_event(JObj, State) -> {reply, Props}
-%% @end
-%%--------------------------------------------------------------------
 handle_event(_JObj, _State) ->
     {reply, []}.
 
@@ -151,7 +127,7 @@ handle_event(_JObj, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
-    lager:debug("vm notify process ~p termination", [_Reason]).
+    lager:debug("fax listener terminating: ~p", [_Reason]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -163,3 +139,7 @@ terminate(_Reason, _State) ->
 %%--------------------------------------------------------------------
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
+
+%%%===================================================================
+%%% Internal functions
+%%%===================================================================

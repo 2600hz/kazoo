@@ -26,13 +26,17 @@
 -export([wildcard_is_empty/1]).
 -export([callid_update/3]).
 
-%% gen_server callbacks
--export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2
-         ,terminate/2, code_change/3]).
+%% gen_listener callbacks
+-export([init/1
+         ,handle_call/3
+         ,handle_cast/2
+         ,handle_info/2
+         ,handle_event/2
+         ,terminate/2
+         ,code_change/3
+        ]).
 
 -include("callflow.hrl").
-
--define(SERVER, ?MODULE).
 
 -define(CALL_SANITY_CHECK, 30000).
 
@@ -195,17 +199,15 @@ wildcard_is_empty(Call) ->
     Srv = whapps_call:kvs_fetch(cf_exe_pid, Call),
     wildcard_is_empty(Srv).
 
--spec relay_amqp/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
+-spec relay_amqp/2 :: (wh_json:json_object(), proplist()) -> any().
 relay_amqp(JObj, Props) ->
     case props:get_value(cf_module_pid, Props) of
         Pid when is_pid(Pid) ->
-            Pid ! {amqp_msg, JObj},
-            ok;
+            whapps_call_command:relay_event(Pid, JObj);
         _Else ->
             %% TODO: queue?
             {Category, Name} = wh_util:get_event_type(JObj),
-            lager:debug("received event to relay while no module running, dropping: ~s ~s", [Category, Name]),
-            ok
+            lager:debug("received event to relay while no module running, dropping: ~s ~s", [Category, Name])
     end.
 
 %%%===================================================================

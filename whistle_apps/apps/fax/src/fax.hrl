@@ -12,6 +12,7 @@
 -define(APP_NAME, <<"fax">>).
 -define(APP_VERSION, <<"1.0.0">>).
 
--define(FAX_HRL, true).
+-define(FAX_CACHE, fax_cache).
 
+-define(FAX_HRL, true).
 -endif.

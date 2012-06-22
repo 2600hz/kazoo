@@ -216,17 +216,37 @@ get_fs_app(Node, UUID, JObj, <<"store">>) ->
             end
     end;
 
-get_fs_app(_Node, UUID, JObj, <<"store_fax">>) ->
+get_fs_app(Node, UUID, JObj, <<"store_fax">> = App) ->
     case wapi_dialplan:store_fax_v(JObj) of
         false -> {'error', <<"store_fax failed to execute as JObj did not validate">>};
         true ->
             File = ecallmgr_util:fax_filename(UUID),
-            lager:debug("attempting to store fax on ~s: ~s", [_Node, File]),
+            lager:debug("attempting to store fax on ~s: ~s", [Node, File]),
             case wh_json:get_value(<<"Media-Transfer-Method">>, JObj) of
                 <<"put">> = Method ->
                     Url = wh_util:to_list(wh_json:get_value(<<"Media-Transfer-Destination">>, JObj)),
                     lager:debug("streaming via HTTP(~s) to ~s", [Method, Url]),
-                    {<<"http_put">>, list_to_binary([Url, <<" ">>, File])};
+
+                    Args = list_to_binary([Url, <<" ">>, File]),
+                    lager:debug("execute on node ~s: http_put(~s)", [Node, Args]),
+                    case freeswitch:api(Node, http_put, wh_util:to_list(Args)) of
+                        {ok, <<"+OK", _/binary>>} ->
+                            lager:debug("successfully stored fax"),
+                            send_store_fax_call_event(UUID, <<"success">>),
+                            {App, noop};
+                        {ok, _Err} ->
+                            lager:debug("store fax failed: ~s", [_Err]),
+                            send_store_fax_call_event(UUID, <<"failure">>),
+                            {App, noop};
+                        {error, _E} ->
+                            lager:debug("error executing http_put: ~p", [_E]),
+                            send_store_fax_call_event(UUID, <<"failure">>),
+                            {App, noop};
+                        timeout ->
+                            lager:debug("timeout waiting for http_put"),
+                            send_store_fax_call_event(UUID, <<"timeout">>),
+                            {App, noop}
+                    end;
                 _Method ->
                     lager:debug("invalid media transfer method for storing fax: ~s", [_Method]),
                     {error, <<"invalid media transfer method">>}
@@ -286,7 +306,10 @@ get_fs_app(Node, UUID, JObj, <<"ring">>) ->
     {<<"ring_ready">>, <<>>};
 
 %% receive a fax from the caller
-get_fs_app(_Node, UUID, _JObj, <<"receive_fax">>) ->
+get_fs_app(Node, UUID, _JObj, <<"receive_fax">>) ->
+    set(Node, UUID, "fax_enable_t38_request=true"),
+    set(Node, UUID, "fax_enable_t38=true"),
+
     [{<<"playback">>, <<"silence_stream://2000">>}
      ,{<<"rxfax">>, ecallmgr_util:fax_filename(UUID)}
     ];
@@ -864,7 +887,7 @@ send_store_call_event(Node, UUID, MediaTransResults) ->
                ecallmgr_util:eventstr_to_proplist(Dump)
            catch
                _E:_R ->
-                   lager:debug("Failed get params from uuid_dump"),
+                   lager:debug("failed get params from uuid_dump"),
                    lager:debug("~p : ~p", [_E, _R]),
                    lager:debug("sending less interesting call_event message"),
                    []
@@ -882,6 +905,17 @@ send_store_call_event(Node, UUID, MediaTransResults) ->
                    CustomProp -> [{<<"Custom-Channel-Vars">>, wh_json:from_list(CustomProp)} | EvtProp1]
                end,
     wapi_call:publish_event(UUID, EvtProp2).
+
+-spec send_store_fax_call_event/2 :: (ne_binary(), ne_binary()) -> 'ok'.
+send_store_fax_call_event(UUID, Results) ->
+    Timestamp = wh_util:to_binary(wh_util:current_tstamp()),
+    Prop = [{<<"Msg-ID">>, Timestamp}
+            ,{<<"Call-ID">>, UUID}
+            ,{<<"Application-Name">>, <<"store_fax">>}
+            ,{<<"Application-Response">>, Results}
+            | wh_api:default_headers(<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, ?APP_NAME, ?APP_VERSION)
+           ],
+    wapi_call:publish_event(UUID, Prop).
 
 -spec create_dialplan_move_ccvs/4 :: (ne_binary(), atom(), ne_binary(), proplist()) -> proplist().
 create_dialplan_move_ccvs(Root, Node, UUID, DP) ->
