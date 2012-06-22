@@ -12,7 +12,7 @@
 
 -export([handle_req/2]).
 
--spec handle_req/2 :: (wh_json:json_object(), proplist()) -> no_return().
+-spec handle_req/2 :: (wh_json:json_object(), proplist()) -> any().
 handle_req(JObj, _Options) ->
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
     put(callid, CallId),
@@ -25,9 +25,9 @@ handle_req(JObj, _Options) ->
                                 CCVUpdaters = get_channel_ccvs_updaters(C),
                                 whapps_call:update_custom_channel_vars(CCVUpdaters, C)
                         end
-                        ,fun(C) -> 
+                        ,fun(C) ->
                                  {CIDNumber, CIDName} = cf_attributes:caller_id(<<"external">>, C),
-                                 whapps_call:set_caller_id_name(CIDName, whapps_call:set_caller_id_number(CIDNumber, C)) 
+                                 whapps_call:set_caller_id_name(CIDName, whapps_call:set_caller_id_number(CIDNumber, C))
                          end
                         ,fun(C) -> 
                                  OwnerId = cf_attributes:owner_id(C),
