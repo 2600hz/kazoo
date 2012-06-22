@@ -25,8 +25,9 @@
 -spec maybe_authorize_channel/2 :: (proplist(), atom()) -> boolean().
 maybe_authorize_channel(Props, Node) ->
     CallId = props:get_value(<<"Unique-ID">>, Props),
+    DryRun = wh_util:is_true(ecallmgr_config:get(<<"authz_dry_run">>, false)),
     Routines = [fun(P) ->
-                        case wh_util:is_true(ecallmgr_config:get(<<"authz_enabled">>, false)) of
+                        case DryRun orelse wh_util:is_true(ecallmgr_config:get(<<"authz_enabled">>, false)) of
                             true -> {ok, P};
                             false -> 
                                 lager:debug("config ecallmgr.authz_enabled is 'false', allowing", []),
@@ -72,13 +73,13 @@ maybe_authorize_channel(Props, Node) ->
                     ({ok, P}) ->
                          %% Ensure that even if the call is answered while we are authorizing it
                          %% the session will hearbeat.
-                         _ = ecallmgr_util:send_cmd(Node, CallId, "set", ?HEARTBEAT_ON_ANSWER(CallId)),
+                         _ = DryRun orelse ecallmgr_util:send_cmd(Node, CallId, "set", ?HEARTBEAT_ON_ANSWER(CallId)),
                          AccountId = props:get_value(?GET_CCV(<<"Account-ID">>), P),
                          case authorize(AccountId, P) of
                              {error, _}=E -> E;
                              {ok, Type} ->
                                  lager:debug("call authorized by account ~s as ~s", [AccountId, Type]),
-                                 _ = ecallmgr_util:send_cmd(Node, CallId, "set", ?SET_CCV(<<"Account-Billing">>, Type)),
+                                 _ = DryRun orelse ecallmgr_util:send_cmd(Node, CallId, "set", ?SET_CCV(<<"Account-Billing">>, Type)),
                                  {ok, P}
                          end
                  end
@@ -89,7 +90,7 @@ maybe_authorize_channel(Props, Node) ->
                              {error, account_limited}=E -> E;
                              {ok, Type} ->
                                  lager:debug("call authorized by reseller ~s as ~s", [ResellerId, Type]),
-                                 _ = ecallmgr_util:send_cmd(Node, CallId, "set", ?SET_CCV(<<"Reseller-Billing">>, Type)),
+                                 _ = DryRun orelse ecallmgr_util:send_cmd(Node, CallId, "set", ?SET_CCV(<<"Reseller-Billing">>, Type)),
                                  {ok, P}; 
                              _Else -> 
                                  {ok, P}
@@ -108,13 +109,9 @@ maybe_authorize_channel(Props, Node) ->
             lager:debug("channel authorization succeeded, allowing call", []),
             true;
         {error, _R} ->
-            _ = ecallmgr_util:fs_log(Node, "whistle channel authorization failed: ~s", [_R]),
-            lager:info("channel authorization failed: ~s", [_R]),
-            AccountId = get(account_id),
-            wh_notify:system_alert("authz blocked account ~s, ~s"
-                                   ,[AccountId, _R]
-                                   ,authz_req(AccountId, Props)),
-            spawn(?MODULE, kill_channel, [Props, Node]),
+            _ = ecallmgr_util:fs_log(Node, "channel authorization failed (allowed ~s): ~s", [DryRun, _R]),
+            lager:info("channel authorization failed (allowed ~s): ~s", [DryRun, _R]),
+            _ = DryRun orelse spawn(?MODULE, kill_channel, [Props, Node]),
             false
     end.
 
