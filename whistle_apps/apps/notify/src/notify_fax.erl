@@ -34,10 +34,22 @@ handle_req(JObj, _Props) ->
     whapps_util:put_callid(JObj),
 
     lager:debug("new fax left, sending to email if enabled"),
+    lager:debug("notification: ~p", [JObj]),
 
     AcctDB = wh_json:get_value(<<"Account-DB">>, JObj),
-    {ok, FaxDoc} = couch_mgr:open_doc(AcctDB, wh_json:get_value(<<"Fax-ID">>, JObj)),
-    {ok, UserJObj} = couch_mgr:open_doc(AcctDB, wh_json:get_value(<<"owner_id">>, FaxDoc)),
+    FaxId = wh_json:get_value(<<"Fax-ID">>, JObj),
+
+    lager:debug("account-db: ~s, fax-id: ~s", [AcctDB, FaxId]),
+
+    {ok, FaxDoc} = couch_mgr:open_doc(AcctDB, FaxId),
+
+    OwnerId = case wh_json:get_value(<<"owner_id">>, FaxDoc) of
+                  undefined -> wh_json:get_value(<<"Owner-ID">>, JObj);
+                  OID -> OID
+              end,
+    lager:debug("owner: ~s", [OwnerId]),
+
+    {ok, UserJObj} = couch_mgr:open_doc(AcctDB, OwnerId),
     case {wh_json:get_ne_value(<<"email">>, UserJObj)
           ,wh_json:is_true(<<"fax_to_email_enabled">>, UserJObj)
          } of
@@ -47,7 +59,7 @@ handle_req(JObj, _Props) ->
             lager:debug("fax to email disabled for ~s", [_Email]);
         {Email, true} ->
             lager:debug("Fax->Email enabled for user, sending to ~s", [Email]),
-            {ok, AcctObj} = couch_mgr:open_doc(AcctDB, wh_util:format_account_id(AcctDB, raw)),
+            {ok, AcctObj} = couch_mgr:open_doc(?WH_ACCOUNTS_DB, wh_util:format_account_id(AcctDB, raw)),
             Docs = [FaxDoc, UserJObj, AcctObj],
 
             Props = [{<<"email_address">>, Email}
@@ -63,7 +75,14 @@ handle_req(JObj, _Props) ->
             CustomSubjectTemplate = wh_json:get_value([<<"notifications">>, <<"fax_to_email">>, <<"email_subject_template">>], AcctObj),
             {ok, Subject} = notify_util:render_template(CustomSubjectTemplate, ?DEFAULT_SUBJ_TMPL, Props),
 
-            build_and_send_email(TxtBody, HTMLBody, Subject, Email, props:filter_empty(Props))
+            try build_and_send_email(TxtBody, HTMLBody, Subject, Email, props:filter_empty(Props)) of
+                _ -> lager:debug("built and sent")
+            catch
+                C:R ->
+                    ST = erlang:get_stacktrace(),
+                    lager:debug("failed: ~s:~p", [C, R]),
+                    [lager:debug("st: ~p", [S]) || S <- ST]
+            end
     end.
 
 %%--------------------------------------------------------------------
@@ -74,11 +93,13 @@ handle_req(JObj, _Props) ->
 %%--------------------------------------------------------------------
 -spec create_template_props/3 :: (wh_json:json_object(), wh_json:json_objects(), wh_json:json_objects()) -> proplist().
 create_template_props(Event, Docs, Account) ->
+    Now = wh_util:current_tstamp(),
+
     CIDName = wh_json:get_value(<<"Caller-ID-Name">>, Event),
     CIDNum = wh_json:get_value(<<"Caller-ID-Number">>, Event),
     ToE164 = wnm_util:to_e164(wh_json:get_value(<<"To-User">>, Event)),
     FromE164 = wnm_util:to_e164(wh_json:get_value(<<"From-User">>, Event)),
-    DateCalled = wh_util:to_integer(wh_json:get_value(<<"Fax-Timestamp">>, Event)),
+    DateCalled = wh_util:to_integer(wh_json:get_value(<<"Fax-Timestamp">>, Event, Now)),
     DateTime = calendar:gregorian_seconds_to_datetime(DateCalled),
 
     Timezone = wh_util:to_list(wh_json:find(<<"timezone">>, Docs, <<"UTC">>)),
@@ -115,27 +136,22 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
     Fax = props:get_value(<<"fax">>, Props),
     Service = props:get_value(<<"service">>, Props),
     DB = props:get_value(<<"account_db">>, Props),
-    FaxId = props:get_value(<<"fax_id">>, Fax),
+    To = props:get_value(<<"email_address">>, Props),
+    AttachmentFileName = get_file_name(Props),
 
     From = props:get_value(<<"send_from">>, Service),
-    To = props:get_value(<<"email_address">>, Props),
 
-    lager:debug("attempting to attach media ~s in ~s", [FaxId, DB]),
+    FaxId = props:get_value(<<"fax_id">>, Fax),
     {ok, FaxJObj} = couch_mgr:open_doc(DB, FaxId),
-
     [AttachmentId] = wh_json:get_keys(<<"_attachments">>, FaxJObj),
-    lager:debug("attachment id ~s", [AttachmentId]),
     {ok, AttachmentBin} = couch_mgr:fetch_attachment(DB, FaxId, AttachmentId),
-
-    AttachmentFileName = get_file_name(Props),
-    lager:debug("attachment renamed to ~s", [AttachmentFileName]),
 
     %% Content Type, Subtype, Headers, Parameters, Body
     Email = {<<"multipart">>, <<"mixed">>
                  ,[{<<"From">>, From}
                    ,{<<"To">>, To}
                    ,{<<"Subject">>, Subject}
-                   ,{<<"X-Call-ID">>, props:get_value(<<"call_id">>, Fax)}
+                   ,{<<"X-Call-ID">>, wh_json:get_value(<<"call_id">>, FaxJObj, <<>>)}
                   ]
              ,[]
              ,[{<<"multipart">>, <<"alternative">>, [], []
