@@ -45,7 +45,8 @@ find(Number, Quanity) ->
     Num = wnm_util:normalize_number(Number),
     lager:debug("attempting to find ~p numbers with prefix '~s'", [Quanity, Number]),
     Results = [{Module, catch(Module:find_numbers(Num, Quanity))}
-               || Module <- wnm_util:list_carrier_modules()],
+               || Module <- wnm_util:list_carrier_modules()
+              ],
     prepare_find_results(Results, []).
 
 %%--------------------------------------------------------------------
