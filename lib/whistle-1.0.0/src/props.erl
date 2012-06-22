@@ -17,7 +17,9 @@
          ,get_is_false/2, get_is_false/3
          ,get_keys/1
          ,unique/1
-         ,filter/2, filter_empty/1
+         ,filter/2
+         ,filter_empty/1
+         ,filter_undefined/1
         ]).
 
 -include_lib("whistle/include/wh_types.hrl").
@@ -28,6 +30,11 @@ filter(Fun, Prop) when is_function(Fun, 1), is_list(Prop) ->
 
 filter_empty(Prop) ->
     [KV || {_, V}=KV <- Prop, (not wh_util:is_empty(V))].
+
+
+-spec filter_undefined/1 :: (proplist()) -> proplist().
+filter_undefined(Prop) ->
+    [KV || {_, V}=KV <- Prop, V =/= undefined].
 
 -spec get_value/2 :: (wh_proplist_key(), wh_proplist()) -> term().
 -spec get_value/3 :: (wh_proplist_key(), wh_proplist(), Default) -> Default | term().
@@ -116,6 +123,11 @@ filter_empty_test() ->
     ?assertEqual([], filter_empty([])),
     ?assertEqual([{a, 10}, {b, 8}, {c, 6}], filter_empty([{a, 10}, {b, 8}, {c, 6}])),
     ?assertEqual([], filter_empty([{a, 0}, {b, []}, {c, <<>>}, {z, undefined}])).
+
+filter_undefined_test() ->
+    ?assertEqual([], filter_undefined([])),
+    ?assertEqual([{a, 10}, {b, 8}, {c, 6}], filter_undefined([{a, 10}, {b, 8}, {c, 6}])),
+    ?assertEqual([{a, 0}, {b, []}, {c, <<>>}], filter_undefined([{a, 0}, {b, []}, {c, <<>>}, {z, undefined}])).
 
 unique_test() ->
     L = [{a, b}, {a, b}, {a, c}, {b,c}, {b,d}],
