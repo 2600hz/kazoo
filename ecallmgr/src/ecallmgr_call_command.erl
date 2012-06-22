@@ -811,6 +811,17 @@ send_store_call_event(Node, UUID, MediaTransResults) ->
                end,
     wapi_call:publish_event(UUID, EvtProp2).
 
+-spec send_store_fax_call_event/2 :: (ne_binary(), ne_binary()) -> 'ok'.
+send_store_fax_call_event(UUID, Results) ->
+    Timestamp = wh_util:to_binary(wh_util:current_tstamp()),
+    Prop = [{<<"Msg-ID">>, Timestamp}
+            ,{<<"Call-ID">>, UUID}
+            ,{<<"Application-Name">>, <<"store_fax">>}
+            ,{<<"Application-Response">>, Results}
+            | wh_api:default_headers(<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, ?APP_NAME, ?APP_VERSION)
+           ],
+    wapi_call:publish_event(UUID, Prop).
+
 -spec create_dialplan_move_ccvs/4 :: (ne_binary(), atom(), ne_binary(), proplist()) -> proplist().
 create_dialplan_move_ccvs(Root, Node, UUID, DP) ->
     case freeswitch:api(Node, uuid_dump, wh_util:to_list(UUID)) of
