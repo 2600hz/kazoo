@@ -16,7 +16,7 @@
 -include("fax.hrl").
 
 -define(FAX_REQ_HEADERS, [<<"Call">>, <<"Action">>]).
--define(OPTIONAL_FAX_REQ_HEADERS, []).
+-define(OPTIONAL_FAX_REQ_HEADERS, [<<"Owner-ID">>]).
 -define(FAX_REQ_VALUES, [{<<"Event-Category">>,<<"dialplan">>}
                          ,{<<"Event-Name">>, <<"fax_req">>}
                          ,{<<"Action">>, [<<"receive">>, <<"transmit">>]}
