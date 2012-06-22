@@ -23,6 +23,7 @@
 -define(SERVER, ?MODULE).
 
 -define(RESPONDERS, [{notify_vm, [{<<"notification">>, <<"new_voicemail">>}]}
+                     ,{notify_fax, [{<<"notification">>, <<"new_fax">>}]}
                      ,{notify_deregister, [{<<"notification">>, <<"deregister">>}]}
                      ,{notify_pwd_recovery, [{<<"notification">>, <<"password_recovery">>}]}
                      ,{notify_new_account, [{<<"notification">>, <<"new_account">>}]}
