@@ -48,7 +48,7 @@ start_link() ->
 new_request(JObj, _Props, _RK) ->
     true = wapi_fax:req_v(JObj),
     Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, JObj)),
-    fax_requests_sup:new_worker(Call, JObj).
+    fax_requests_sup:new(Call, JObj).
 
 %%%===================================================================
 %%% gen_server callbacks
