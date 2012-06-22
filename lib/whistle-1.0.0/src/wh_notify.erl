@@ -16,6 +16,7 @@
 -export([abnormal_hangup/2]).
 -export([first_call/1]).
 -export([first_registration/1]).
+-export([transaction/2, transaction/3]).
 -export([system_alert/2, system_alert/3]).
 
 -define(APP_NAME, <<"whistle">>).
@@ -114,6 +115,20 @@ first_call(_Account) ->
 
 first_registration(_Account) ->
     ok.
+
+-spec transaction/2 :: (ne_binary(), wh_json:json_object()) -> 'ok'.
+-spec transaction/3 :: (ne_binary(), wh_json:json_object(), 'undefined' | wh_json:json_object()) -> 'ok'.
+
+transaction(Account, Transaction) ->
+    transaction(Account, Transaction, undefined).
+
+transaction(Account, Transaction, ServicePlan) ->
+    Notify = [{<<"Account-ID">>, wh_util:format_account_id(Account, raw)}
+              ,{<<"Transaction">>, Transaction}
+              ,{<<"Service-Plan">>, ServicePlan}
+              | wh_api:default_headers(?APP_VERSION, ?APP_NAME)
+             ],
+    wapi_notifications:publish_transaction(props:filter_undefined(Notify)).
 
 -spec system_alert/2 :: (atom() | string() | binary(), [term()]) -> 'ok'.
 -spec system_alert/3 :: (atom() | string() | binary(), [term()], proplist()) -> 'ok'.

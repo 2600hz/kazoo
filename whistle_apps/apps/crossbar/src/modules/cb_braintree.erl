@@ -198,6 +198,7 @@ validate(#cb_context{req_verb = <<"put">>, account_id=AccountId, req_data=JObj}=
     Amount = wh_json:get_value(<<"amount">>, JObj, <<"0.0">>),
     try braintree_transaction:quick_sale(BillingId, Amount) of
        #bt_transaction{}=Transaction ->
+            wh_notify:transaction(AccountId, braintree_transaction:record_to_json(Transaction)),
             crossbar_util:response(braintree_transaction:record_to_json(Transaction), Context)
     catch
         throw:{api_error, Reason} ->
