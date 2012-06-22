@@ -26,28 +26,10 @@
                                                         {'error', _}.
 find_numbers(Number, Quanity) when size(Number) < 5 ->
     find_numbers(<<"+1", Number/binary>>, Quanity);
-find_numbers(Number, Quanity) ->
-    case wnm_util:number_to_db_name(Number) of
-        undefined -> {error, indeterminable_db};
-        Db ->
-            ViewOptions = [{<<"startkey">>, [<<"available">>, Number]}
-                           ,{<<"endkey">>, [<<"available">>, <<Number/binary, "\ufff0">>]}
-                           ,{<<"limit">>, Quanity}
-                          ],
-            case couch_mgr:get_results(Db, <<"numbers/status">>, ViewOptions) of
-                {ok, []} -> 
-                    lager:debug("found no available local numbers"),
-                    {error, non_available};
-                {ok, JObjs} ->
-                    lager:debug("found ~p available local numbers", [length(JObjs)]),
-                    {ok, wh_json:from_list([{wh_json:get_value(<<"id">>, JObj), wh_json:new()}
-                                            || JObj <- JObjs
-                                           ])};
-                {error, _R}=E ->
-                    lager:debug("failed to lookup available local numbers: ~p", [_R]),
-                    E
-            end
-    end.
+find_numbers(_Number, _Quanity) ->
+    %% TODO: given the requestors account number discovery wnm_local numbers that are
+    %%       available but managed by accendants of the account.
+    {error, non_available}.
 
 %%--------------------------------------------------------------------
 %% @private

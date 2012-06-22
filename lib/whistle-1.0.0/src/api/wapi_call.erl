@@ -45,17 +45,23 @@
 -define(KEY_RATING_REQ, <<"call.rating">>).
 
 %% Call Events
--define(CALL_EVENT_HEADERS, [<<"Call-ID">>, <<"Channel-Call-State">>]).
--define(OPTIONAL_CALL_EVENT_HEADERS, [<<"Application-Name">>, <<"Application-Response">>, <<"Custom-Channel-Vars">>, <<"Timestamp">>
-                                          ,<<"Msg-ID">>, <<"Channel-State">>, <<"Call-Direction">>, <<"Transfer-History">>
+-define(CALL_EVENT_HEADERS, [<<"Call-ID">>]).
+-define(OPTIONAL_CALL_EVENT_HEADERS, [<<"Application-Name">>, <<"Application-Response">>
+                                          ,<<"Custom-Channel-Vars">>, <<"Timestamp">>
+                                          ,<<"Msg-ID">>, <<"Channel-State">>
+                                          ,<<"Call-Direction">>, <<"Transfer-History">>
                                           ,<<"Other-Leg-Direction">>, <<"Other-Leg-Caller-ID-Name">>
                                           ,<<"Other-Leg-Caller-ID-Number">>, <<"Other-Leg-Destination-Number">>
                                           ,<<"Other-Leg-Unique-ID">> %% BRIDGE
                                           ,<<"Detected-Tone">>, <<"DTMF-Duration">>, <<"DTMF-Digit">> %% DTMF and Tones
-                                          ,<<"Terminator">>, <<"Disposition">>, <<"Hangup-Cause">>, <<"Hangup-Code">> %% Hangup
-                                          ,<<"Raw-Application-Name">>, <<"Raw-Application-Data">>, <<"Length">>
-                                          ,<<"Fax-Success">>, <<"Fax-Result-Code">>, <<"Fax-Result-Text">>, <<"Fax-ECM-Used">>
-                                          ,<<"Fax-Transferred-Pages">>, <<"Fax-Total-Pages">>, <<"Fax-Bad-Rows">>, <<"Fax-Transfer-Rate">>
+                                          ,<<"Terminator">>, <<"Disposition">>
+                                          ,<<"Hangup-Cause">>, <<"Hangup-Code">> %% Hangup
+                                          ,<<"Raw-Application-Name">>, <<"Raw-Application-Data">>
+                                          ,<<"Length">>, <<"Channel-Call-State">>
+                                          ,<<"Fax-Success">>, <<"Fax-Result-Code">>
+                                          ,<<"Fax-Result-Text">>, <<"Fax-ECM-Used">>
+                                          ,<<"Fax-Transferred-Pages">>, <<"Fax-Total-Pages">>
+                                          ,<<"Fax-Bad-Rows">>, <<"Fax-Transfer-Rate">>
                                           ,<<"Msg-ID">>, <<"Switch-Hostname">>, <<"Group-ID">>
                                      ]).
 -define(CALL_EVENT_VALUES, [{<<"Event-Category">>, <<"call_event">>}]).

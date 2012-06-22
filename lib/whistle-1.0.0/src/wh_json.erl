@@ -32,7 +32,13 @@
 
 -export([from_list/1, merge_jobjs/2]).
 
--export([normalize_jobj/1, normalize/1, is_json_object/1, is_valid_json_object/1, is_json_term/1]).
+-export([normalize_jobj/1
+         ,normalize/1
+         ,normalize_key/1
+         ,is_json_object/1
+         ,is_valid_json_object/1
+         ,is_json_term/1
+        ]).
 -export([public_fields/1, private_fields/1, is_private_key/1]).
 
 -export([encode/1]).
@@ -641,7 +647,6 @@ normalize_key_char(C) when is_integer(C), $A =< C, C =< $Z -> C + 32;
 normalize_key_char(C) when is_integer(C), 16#C0 =< C, C =< 16#D6 -> C + 32; % from string:to_lower
 normalize_key_char(C) when is_integer(C), 16#D8 =< C, C =< 16#DE -> C + 32; % so we only loop once
 normalize_key_char(C) -> C.
-
 
 %%--------------------------------------------------------------------
 %% @public

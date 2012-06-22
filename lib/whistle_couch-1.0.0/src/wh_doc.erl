@@ -16,8 +16,12 @@
 -export([update_pvt_parameters/2, update_pvt_parameters/3, public_fields/1, private_fields/1]).
 -export([update_pvt_modified/1]).
 
--define(PVT_FUNS, [fun add_pvt_vsn/3, fun add_pvt_account_id/3, fun add_pvt_account_db/3
-                   ,fun add_pvt_created/3, fun add_pvt_modified/3, fun add_pvt_type/3
+-define(PVT_FUNS, [fun add_pvt_vsn/3
+                   ,fun add_pvt_account_id/3
+                   ,fun add_pvt_account_db/3
+                   ,fun add_pvt_created/3
+                   ,fun add_pvt_modified/3
+                   ,fun add_pvt_type/3
                   ]).
 
 %%--------------------------------------------------------------------
