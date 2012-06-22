@@ -149,6 +149,7 @@ update_mwi(undefined, _) ->
 update_mwi(OwnerId, AccountDb) ->
     ViewOptions = [{reduce, true}
                    ,{group, true}
+                   ,{group_level, 2}
                    ,{startkey, [OwnerId]}
                    ,{endkey, [OwnerId, "\ufff0"]}
                   ],
