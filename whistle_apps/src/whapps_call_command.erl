@@ -1696,6 +1696,10 @@ wait_for_application_or_dtmf(Application, Timeout) ->
             {error, timeout}
     end.
 
+-type wait_for_fax_ret() :: {'ok' | 'failed', wh_json:json_object()} |
+                            {'error', 'channel_destroy' | 'channel_hungup' | wh_json:json_object()}.
+-spec wait_for_fax/0 :: () -> wait_for_fax_ret().
+-spec wait_for_fax/1 :: (integer() | 'infinity') -> wait_for_fax_ret().
 wait_for_fax() ->
     wait_for_fax(5000).
 wait_for_fax(Timeout) ->
@@ -1715,7 +1719,10 @@ wait_for_fax(Timeout) ->
                 { <<"call_event">>, <<"CHANNEL_EXECUTE">>, <<"receive_fax">> } ->
                     wait_for_fax(infinity);
                 { <<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"receive_fax">> } ->
-                    {ok, JObj};
+                    case wh_json:is_true(<<"Fax-Success">>, JObj, false) of
+                        true -> {ok, JObj};
+                        false -> {failed, JObj}
+                    end;
                 _ when Timeout =:= infinity ->
                     wait_for_fax(Timeout);
                 _ ->
