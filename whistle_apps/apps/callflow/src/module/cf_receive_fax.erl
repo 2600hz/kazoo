@@ -22,8 +22,12 @@
 %%--------------------------------------------------------------------
 -spec handle/2 :: (wh_json:json_object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
-    CallJObj = whapps_call:to_json(Call),
-    wapi_fax:publish_req([{<<"Call">>, CallJObj}
+    lager:debug("receive fax for owner: ~s", [wh_json:get_value(<<"owner_id">>, Data)]),
+    wapi_fax:publish_req(
+      props:filter_empty([{<<"Call">>, whapps_call:to_json(Call)}
                           ,{<<"Action">>, <<"receive">>}
-                         ]),
+                          ,{<<"Owner-ID">>, wh_json:get_value(<<"owner_id">>, Data)}
+                          | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                         ])
+     ),
     cf_exe:control_usurped(Call).
