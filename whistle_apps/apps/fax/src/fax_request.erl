@@ -259,6 +259,7 @@ create_fax_doc(Call, OwnerId, JObj) ->
              ,{<<"timestamp">>, wh_json:get_value(<<"Timestamp">>, JObj)}
              ,{<<"owner_id">>, OwnerId}
              ,{<<"media_type">>, <<"tiff">>}
+             ,{<<"call_id">>, whapps_call:call_id(Call)}
              | fax_properties(JObj)
             ],
 
