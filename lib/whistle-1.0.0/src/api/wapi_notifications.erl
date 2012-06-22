@@ -79,10 +79,14 @@
                           ,<<"To-User">>, <<"To-Realm">>
                           ,<<"Account-DB">>, <<"Fax-ID">>
                      ]).
--define(OPTIONAL_FAX_HEADERS, [<<"Caller-ID-Name">>, <<"Caller-ID-Number">>, <<"Call-ID">>]).
+-define(OPTIONAL_FAX_HEADERS, [<<"Caller-ID-Name">>, <<"Caller-ID-Number">>, <<"Call-ID">>
+                                   ,<<"Total-Pages">>, <<"Transferred-Pages">>
+                                   ,<<"Transfer-Rate">>, <<"Result-Text">>, <<"ECM-Used">>
+                                   ,<<"Owner-ID">>, <<"Fax-Timestamp">>
+                              ]).
 -define(FAX_VALUES, [{<<"Event-Category">>, <<"notification">>}
-                           ,{<<"Event-Name">>, <<"new_fax">>}
-                          ]).
+                     ,{<<"Event-Name">>, <<"new_fax">>}
+                    ]).
 -define(FAX_TYPES, []).
 
 %% Notify updated MWI
