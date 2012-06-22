@@ -90,11 +90,15 @@ process_activation_charges(Category, Name, #wh_reseller{plans=Plans}=Reseller) -
 
 process_activation_charges(_, _, Reseller, []) ->
     Reseller;
-process_activation_charges(Category, Name, #wh_reseller{billing_id=BillingId}=Reseller, [Plan|Plans]) ->
+process_activation_charges(Category, Name, #wh_reseller{billing_id=BillingId
+                                                        ,account_id=AccountId}=Reseller, [Plan|Plans]) ->
     case wh_service_plan:get_activation_charge(Category, Name, Plan) of
         undefined -> process_activation_charges(Category, Name, Reseller, Plans);
         Amount ->
-            _ = braintree_transaction:quick_sale(BillingId, Amount),
+            #bt_transaction{}=Transaction = braintree_transaction:quick_sale(BillingId, Amount),
+            wh_notify:transaction(AccountId
+                                  ,braintree_transaction:record_to_json(Transaction)
+                                  ,wh_service_plan:get_item(Category, Name, Plan)),
             process_activation_charges(Category, Name, Reseller, Plans)
     end.
 

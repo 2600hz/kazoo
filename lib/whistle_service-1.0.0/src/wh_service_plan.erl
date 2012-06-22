@@ -15,6 +15,7 @@
 -export([get_category_addons/2]).
 -export([get_recurring_plan/3]).
 -export([get_activation_charge/3]).
+-export([get_item/3]).
 
 -include("wh_service.hrl").
 
@@ -127,30 +128,16 @@ get_category_addons(Category, #wh_service_plan{plan=JObj}) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec get_recurring_plan/3 :: (ne_binary(), ne_binary(), plan()) -> 'undefined' | {ne_binary(), ne_binary()}. 
-get_recurring_plan(<<"phone_numbers">>, PhoneNumber, #wh_service_plan{plan=JObj}) ->
-    case wh_json:get_value(<<"phone_numbers">>, JObj) of
+get_recurring_plan(Category, Name, Plan) ->
+    case get_item(Category, Name, Plan) of
         undefined -> undefined;
-        PhoneNumbers ->
-            Regexs = wh_json:get_keys(PhoneNumbers),
-            case [{PlanId, AddOnId}
-                  || Regex <- Regexs
-                         ,re:run(PhoneNumber, Regex) =/= nomatch
-                         ,(PlanId = wh_json:get_value([<<"phone_numbers">>, Regex, <<"plan">>], JObj)) =/= undefined
-                         ,(AddOnId = wh_json:get_value([<<"phone_numbers">>, Regex, <<"add_on">>], JObj)) =/= undefined
-                 ]
-            of
-                [] -> undefined;
-                [{P, A}=Recurring|_] -> 
-                    lager:debug("found plan ~s addon ~s for phone number ~s", [P, A, PhoneNumber]),
-                    Recurring
+        Item -> 
+            PlanId = wh_json:get_value(<<"plan">>, Item),
+            AddOnId = wh_json:get_value(<<"add_on">>, Item),
+            case wh_util:is_empty(PlanId) orelse wh_util:is_empty(AddOnId) of
+                true -> undefined;
+                false ->  {PlanId, AddOnId}
             end
-    end;
-get_recurring_plan(Category, Name, #wh_service_plan{plan=JObj}) ->
-    PlanId = wh_json:get_value([Category, Name, <<"plan">>], JObj),
-    AddOnId = wh_json:get_value([Category, Name, <<"add_on">>], JObj),
-    case wh_util:is_empty(PlanId) orelse wh_util:is_empty(AddOnId) of
-        true -> undefined;
-        false ->  {PlanId, AddOnId}
     end.
 
 %%--------------------------------------------------------------------
@@ -160,29 +147,45 @@ get_recurring_plan(Category, Name, #wh_service_plan{plan=JObj}) ->
 %% element
 %% @end
 %%--------------------------------------------------------------------
--spec get_activation_charge/3 :: (ne_binary(), ne_binary(), plan()) -> 'undefined' | {ne_binary(), ne_binary()}. 
-get_activation_charge(<<"phone_numbers">>, PhoneNumber, #wh_service_plan{plan=JObj}) ->
+-spec get_activation_charge/3 :: (ne_binary(), ne_binary(), plan()) -> 'undefined' | ne_binary(). 
+get_activation_charge(Category, Name, Plan) ->
+    case get_item(Category, Name, Plan) of
+        undefined -> undefined;
+        Item -> wh_json:get_ne_value(<<"activation_charge">>, Item)
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Find the subscription name on a service plan for a given service 
+%% element
+%% @end
+%%--------------------------------------------------------------------
+-spec get_item/3 :: (ne_binary(), ne_binary(), #wh_service_plan{}) -> 'undefined' | wh_json:json_object().
+get_item(<<"phone_numbers">>, PhoneNumber, #wh_service_plan{plan=JObj}) ->
     case wh_json:get_value(<<"phone_numbers">>, JObj) of
         undefined -> undefined;
         PhoneNumbers ->
             Regexs = wh_json:get_keys(PhoneNumbers),
-            case [Amount
+            case [wh_json:get_value(Regex, PhoneNumbers)
                   || Regex <- Regexs
                          ,re:run(PhoneNumber, Regex) =/= nomatch
-                         ,(Amount = wh_json:get_value([<<"phone_numbers">>, Regex, <<"activation_charge">>], JObj)) =/= undefined
                  ]
             of
                 [] -> undefined;
-                [Amount|_] -> 
-                    lager:debug("found activation charge $~s for phone number ~s", [Amount, PhoneNumber]),
-                    Amount
+                [Item|_] -> 
+                    wh_json:set_values([{<<"category">>, <<"phone_numbers">>}
+                                        ,{<<"item">>, PhoneNumber}
+                                        ,{<<"id">>, wh_json:get_value(<<"_id">>, JObj)}
+                                       ], Item)
             end
     end;
-get_activation_charge(Category, Name, #wh_service_plan{plan=JObj}) ->
-    case wh_json:get_ne_value([Category, Name, <<"activation_charge">>], JObj) of
+get_item(Category, Name, #wh_service_plan{plan=JObj}) ->
+    case wh_json:get_ne_value([Category, Name], JObj) of
         undefined -> undefined;
-        Amount ->
-            lager:debug("found activation charge $~s for ~s ~s", [Amount, Category, Name]),
-            Amount
+        Item -> 
+            wh_json:set_values([{<<"category">>, Category}
+                                ,{<<"item">>, Name}
+                                ,{<<"id">>, wh_json:get_value(<<"_id">>, JObj)}
+                               ], Item)
     end.
-             

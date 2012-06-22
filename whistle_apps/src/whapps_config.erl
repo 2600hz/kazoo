@@ -514,6 +514,8 @@ category_to_file(<<"notify.low_balance">>) ->
     [code:lib_dir(notify, priv), "/notify_low_balance.config"];
 category_to_file(<<"notify.system_alert">>) ->
     [code:lib_dir(notify, priv), "/notify_system_alert.config"];
+category_to_file(<<"notify.transaction">>) ->
+    [code:lib_dir(notify, priv), "/notify_transaction.config"];
 category_to_file(<<"smtp_client">>) ->
     [code:lib_dir(whistle_apps, priv), "/smtp_client.config"];
 category_to_file(<<"alerts">>) ->
