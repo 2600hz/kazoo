@@ -1,6 +1,7 @@
 -include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_amqp.hrl").
 -include_lib("whistle/include/wh_log.hrl").
+-include_lib("whistle_number_manager/include/wh_number_manager.hrl").
 -include_lib("amqp_client/include/amqp_client.hrl").
 
 -type cf_exe_response() :: {'stop'} | {'continue'} | {'continue', integer()} | {'heartbeat'}.
@@ -22,6 +23,7 @@
 -define(NO_MATCH_CF, <<"no_match">>).
 
 -define(DEFAULT_TIMEOUT, <<"20">>).
+-define(DEFAULT_CALLER_ID_NUMBER, <<"0000000000">>).
 
 -define(CF_CONFIG_CAT, <<"callflow">>).
 
