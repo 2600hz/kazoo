@@ -8,7 +8,7 @@
 -module(ecallmgr_registrar).
 
 -export([reg_success/2]).
--export([lookup_contact/2, lookup_contact/3]).
+-export([lookup_contact/2]).
 -export([endpoint_node/2]).
 -export([lookup/3]).
 
@@ -31,25 +31,14 @@ reg_success(Props, Node) ->
     wh_cache:store_local(?ECALLMGR_REG_CACHE, ?NODE_KEY(Realm, Username), Node, ecallmgr_util:get_expires(Props)).
 
 -spec lookup_contact/2 :: (ne_binary(), ne_binary()) -> {'ok', ne_binary()} | {'error', 'timeout'}.
--spec lookup_contact/3 :: (ne_binary(), ne_binary(), boolean()) -> {'ok', ne_binary()} | {'error', 'timeout'}.
-
 lookup_contact(Realm, Username) ->
-    lookup_contact(Realm, Username, true).
-
-lookup_contact(Realm, Username, Notify) ->
     case wh_cache:peek_local(?ECALLMGR_REG_CACHE, ?CONTACT_KEY(Realm, Username)) of
         {ok, Contact} -> {ok, Contact};
         {error, not_found} -> 
             case lookup(Realm, Username, [<<"Contact">>]) of
                 [{<<"Contact">>, Contact}] -> {ok, Contact};
-                {error, Reason}=E when Notify -> 
-                    lager:debug("failed to find registration for ~s@~s: ~p", [Username, Realm, Reason]),
-                    wh_notify:system_alert("Failed to find registration for ~s@~s"
-                                           ,[Username, Realm]
-                                           ,[{<<"Reason">>, wh_util:to_binary(Reason)}]),
-                    E;
                 {error, _R}=E -> 
-                    lager:debug("failed to find registration for ~s@~s: ~p", [Username, Realm, _R]),
+                    lager:notice("failed to find registration for ~s@~s: ~p", [Username, Realm, _R]),
                     E
             end
     end.

@@ -297,7 +297,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 -spec get_endpoint/2 :: (ne_binary(), ne_binary()) -> {'error', 'timeout'} | nonempty_string().
 get_endpoint(Username, Realm) ->
-    case ecallmgr_registrar:lookup_contact(Realm, Username, false) of
+    case ecallmgr_registrar:lookup_contact(Realm, Username) of
         {ok, Contact} ->
             RURI = binary:replace(re:replace(Contact, "^[^\@]+", Username, [{return, binary}]), <<">">>, <<"">>),
             wh_util:to_list(<<"sip:", (RURI)/binary>>);
