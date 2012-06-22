@@ -139,10 +139,9 @@ handle_search_error(JObj, _Props) ->
     {ok, Conference} = conf_participant:conference(Srv),
     {ok, Call} = conf_participant:call(Srv),
     put(callid, whapps_call:call_id(Call)),
-    conf_participant:consume_call_events(Srv),
-    
-    {ok, Status} = whapps_call_command:b_channel_status(Call),        
-    SwitchHostname = wh_json:get_value(<<"Switch-Hostname">>, Status),
+
+    lager:debug("participant switch nodename ~p", [whapps_call:switch_nodename(Call)]),
+    [_, SwitchHostname] = binary:split(whapps_call:switch_nodename(Call), <<"@">>),
     case negotiate_focus(SwitchHostname, Conference, Call) of
         {ok, _} -> 
             lager:debug("conference is not currently running but our update was accepted, starting on ~s", [SwitchHostname]),
@@ -170,9 +169,8 @@ handle_search_resp(JObj, _Props) ->
     {ok, Call} = conf_participant:call(Srv),
     put(callid, whapps_call:call_id(Call)),
 
-    conf_participant:consume_call_events(Srv),
-    {ok, Status} = whapps_call_command:b_channel_status(Call),        
-    SwitchHostname = wh_json:get_value(<<"Switch-Hostname">>, Status),
+    lager:debug("participant switch nodename ~p", [whapps_call:switch_nodename(Call)]),
+    [_, SwitchHostname] = binary:split(whapps_call:switch_nodename(Call), <<"@">>),
     case wh_json:get_value(<<"Switch-Hostname">>, JObj) of
         SwitchHostname -> 
             lager:debug("running conference is on the same switch, joining on ~s", [SwitchHostname]),
