@@ -180,11 +180,11 @@ my_channel(Srv) ->
 my_channel(Srv, Create) ->
     my_channel(Srv, self(), Create).
     
-my_channel(Srv, Pid, Create) ->
-    case ets:lookup(Srv, Pid) of
+my_channel(Srv, Consumer, Create) ->
+    case ets:lookup(Srv, Consumer) of
         [#wh_amqp_channel{channel=C, tag=T}] -> {ok, C, T};
         [] when Create ->
-            case gen_server:call(Srv, {create_channel, Pid}) of
+            case create_channel(Srv, Consumer) of
                 {ok, C} -> {ok, C, <<>>};
                 {error, _}=E -> E
             end;            
@@ -205,6 +205,23 @@ misc_channel(Srv) ->
     case ets:lookup(Srv, misc) of
         [#wh_amqp_channel{channel=C}] -> {ok, C};
         [] -> {error, not_found}
+    end.
+
+-spec create_channel/2 :: (atom(), pid()) -> {'ok', pid()} | {'error', _}.
+create_channel(Srv, Consumer) ->
+    case gen_server:call(Srv, {get_connection}) of
+        {error, _}=E -> E;
+        {ok, Conn} ->
+            lager:debug("starting new AMQP channel for process ~p", [Consumer]),
+            case start_channel(Conn, whereis(Srv)) of
+                {error, _}=E -> E;
+                closing ->
+                    lager:debug("failed to start channel for ~p: closing", [Consumer]),
+                    {error, closing};
+                #wh_amqp_channel{channel=C}=Channel ->
+                    gen_server:call(Srv, {register_channel, Channel, Consumer}),
+                    {ok, C}
+            end
     end.
 
 -spec update_my_tag/2 :: (atom(), ne_binary()) -> 'ok'.
@@ -265,20 +282,15 @@ handle_call(use_federation, _, #state{broker=Broker}=State) ->
 handle_call(_, _, #state{connection=undefined}=State) ->
     %% If we are diconnected dont pay attention to requests
     {reply, {error, amqp_down}, State};
-handle_call({create_channel, Consumer}, _, #state{connection=Conn, broker_name=Name}=State) ->
-    lager:debug("starting new AMQP channel for process ~p", [Consumer]),
-    case start_channel(Conn) of
-        #wh_amqp_channel{channel=C}=Channel ->
-            ets:insert(Name, Channel#wh_amqp_channel{consumer = Consumer
-                                                     ,consumer_ref = erlang:monitor(process, Consumer)
-                                                    }),
-            {reply, {ok, C}, State, hibernate};
-        closing ->
-            lager:debug("failed to start channel for ~p: closing", [Consumer]),
-            {reply, {error, closing}, State};
-        {error, _}=E ->
-            {reply, E, State}
-    end;
+handle_call({get_connection}, _, #state{connection=Conn}=State) ->
+    {reply, {ok, Conn}, State};
+handle_call({register_channel, #wh_amqp_channel{channel=C}=Channel, Consumer}, _
+            ,#state{broker_name=Name}=State) ->
+    ets:insert(Name, Channel#wh_amqp_channel{consumer = Consumer
+                                             ,consumer_ref = erlang:monitor(process, Consumer)
+                                             ,channel_ref = erlang:monitor(process, C)
+                                            }),
+    {reply, ok, State};
 handle_call(stop, _, State) ->
     {stop, normal, ok, State};
 handle_call(_Msg, _From, State) ->
@@ -447,15 +459,21 @@ code_change(_OldVsn, State, _Extra) ->
 -spec start_channel/1 :: ('undefined' | {pid(), reference()} | pid()) -> #wh_amqp_channel{} | 
                                                                          {'error', 'no_connection'} |
                                                                          'closing'.
-start_channel(undefined) ->
+-spec start_channel/2 :: ('undefined' | {pid(), reference()} | pid(), pid()) -> #wh_amqp_channel{} | 
+                                                                                {'error', 'no_connection'} |
+                                                                                'closing'.
+start_channel(Connection) ->
+    start_channel(Connection, self()).
+
+start_channel(undefined, _) ->
     {error, no_connection};
-start_channel({Connection, _}) ->
-    start_channel(Connection);
-start_channel(Connection) when is_pid(Connection) ->
+start_channel({Connection, _}, Srv) ->
+    start_channel(Connection, Srv);
+start_channel(Connection, Srv) when is_pid(Connection) ->
     case erlang:is_process_alive(Connection) 
         andalso amqp_connection:open_channel(Connection) of
         {ok, Channel} ->
-            amqp_selective_consumer:register_default_consumer(Channel, self()),
+            amqp_selective_consumer:register_default_consumer(Channel, Srv),
             #wh_amqp_channel{channel = Channel
                              ,channel_ref = erlang:monitor(process, Channel)
                             };
