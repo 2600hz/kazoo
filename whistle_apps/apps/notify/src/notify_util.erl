@@ -50,7 +50,9 @@ send_email(From, To, Email) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec json_to_template_props/1 :: (wh_json:json_object()) -> proplist().
+-spec json_to_template_props/1 :: ('undefined' | wh_json:json_object()) -> 'undefined' | proplist().
+json_to_template_props(undefined) ->
+    undefined;
 json_to_template_props(JObj) ->
     normalize_proplist(wh_json:recursive_to_proplist(JObj)).
 
