@@ -8,6 +8,7 @@
 -module(wh_service_plan).
 
 -export([fetch/2]).
+-export([get_id/1]).
 -export([get_plan_ids/1]).
 -export([add_plan_id/3]).
 -export([set_service_plans/3]).
@@ -57,6 +58,15 @@ fetch(Reseller, PlanId) ->
 -spec get_plan_ids/1 :: (wh_json:json_object()) -> [ne_binary(),...] | [].
 get_plan_ids(JObj) ->
     wh_json:get_value(?WH_SERVICE_PLANS_FIELD, JObj, []).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Given a service plan retreive the id
+%% @end
+%%--------------------------------------------------------------------
+-spec get_id/1 :: (#wh_service_plan{}) -> ne_binary().
+get_id(#wh_service_plan{id=Id}) -> Id.
 
 %%--------------------------------------------------------------------
 %% @public
