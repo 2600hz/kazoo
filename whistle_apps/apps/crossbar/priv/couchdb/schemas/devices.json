@@ -22,6 +22,17 @@
          "type":"boolean",
          "default":true
       },
+      "device_type":{
+         "description":"The device classification",
+         "required":"true",
+         "type":"string",
+         "enum": [
+            "sip_device",
+            "softphone",
+            "cellphone"
+         ],
+         "default": "sip_device"
+      },
       "suppress_unregister_notifications":{
          "description":"When true disables deregister notifications",
          "type":"boolean",

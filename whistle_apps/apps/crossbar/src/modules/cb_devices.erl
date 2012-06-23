@@ -83,12 +83,10 @@ billing(#cb_context{req_nouns=[{<<"devices">>, _}|_], req_verb = <<"put">>, doc=
         {error, no_service_plan} -> Context;
         {ok, Resellers} ->
             try 
-                DeviceType = wh_json:get_value(<<"device_type">>, JObj, <<"sip_device">>),
+                DeviceType = get_device_type(JObj),
                 R1 = wh_service_devices:activate_device_type(DeviceType, Resellers),
                 {ok, Devices} = couch_mgr:get_all_results(Db, ?CB_LIST),
-                DeviceTypes = [wh_json:get_value([<<"value">>, <<"device_type">>], Device, <<"sip_device">>)
-                               || Device <- Devices
-                              ],
+                DeviceTypes = [get_device_type(Device) || Device <- Devices],
                 R2 = wh_service_devices:update([DeviceType | DeviceTypes], R1),
                 ok = wh_resellers:commit_changes(R2)
             catch
@@ -103,9 +101,7 @@ billing(#cb_context{req_nouns=[{<<"devices">>, _}|_], req_verb = <<"post">>
         {ok, Resellers} ->
             try 
                 {ok, Devices} = couch_mgr:get_all_results(Db, ?CB_LIST),
-                DeviceTypes = [wh_json:get_value([<<"value">>, <<"device_type">>], Device, <<"sip_device">>)
-                               || Device <- Devices
-                              ],
+                DeviceTypes = [get_device_type(Device) || Device <- Devices],
                 R = wh_service_devices:update(DeviceTypes, Resellers),
                 ok = wh_resellers:commit_changes(R)
             catch
@@ -119,11 +115,9 @@ billing(#cb_context{req_nouns=[{<<"devices">>, _}|_], req_verb = <<"delete">>, d
         {error, no_service_plan} -> Context;
         {ok, Resellers} ->
             try 
-                DeviceType = wh_json:get_value(<<"device_type">>, JObj, <<"sip_device">>),
+                DeviceType = get_device_type(JObj),
                 {ok, Devices} = couch_mgr:get_all_results(Db, ?CB_LIST),
-                DeviceTypes = [wh_json:get_value([<<"value">>, <<"device_type">>], Device, <<"sip_device">>)
-                               || Device <- Devices
-                              ],
+                DeviceTypes = [get_device_type(Device) || Device <- Devices],
                 R = wh_service_devices:update(lists:delete(DeviceType, DeviceTypes), Resellers),
                 ok = wh_resellers:commit_changes(R)
             catch
@@ -468,3 +462,12 @@ maybe_update_acls(DeviceIP, AcctId, DeviceId) ->
     lager:debug("setting ~s into system acls", [CIDR]),
     whapps_config:set_default(<<"ecallmgr">>, <<"acls">>, Acls),
     wapi_switch:publish_reloadacl().
+
+-spec get_device_type/1 :: (wh_json:json_object()) -> ne_binary().
+get_device_type(JObj) ->
+    DeviceType = wh_json:get_value(<<"device_type">>, JObj
+                                   ,wh_json:get_value([<<"value">>, <<"device_type">>], JObj, <<"sip_device">>)),
+    case lists:member(DeviceType, [<<"sip_device">>, <<"cellphone">>, <<"softphone">>]) of
+        true -> DeviceType;
+        false -> <<"sip_device">>
+    end.
