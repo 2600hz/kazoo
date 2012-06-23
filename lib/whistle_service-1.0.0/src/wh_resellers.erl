@@ -25,6 +25,8 @@
 -module(wh_resellers).
 
 -export([fetch/1]).
+-export([set_created_flag/2]).
+-export([set_deleted_flag/2]).
 -export([process_activation_charges/3]).
 -export([update_quantity/4]).
 -export([increment_quantity/3]).
@@ -63,6 +65,30 @@ fetch(Account, Resellers) ->
 %%                    fetch(wh_reseller:get_reseller_id(Reseller), [Reseller|Resellers])
 %%            end
     end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec set_created_flag/2 :: (ne_binary(), resellers()) -> resellers().
+set_created_flag(Created, Resellers) ->
+    [wh_reseller:set_created_flag(Created, Reseller) 
+     || Reseller <- Resellers
+    ].
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec set_deleted_flag/2 :: (ne_binary(), resellers()) -> resellers().
+set_deleted_flag(Deleted, Resellers) ->
+    [wh_reseller:set_deleted_flag(Deleted, Reseller) 
+     || Reseller <- Resellers
+    ].
 
 %%--------------------------------------------------------------------
 %% @public
