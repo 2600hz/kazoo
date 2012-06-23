@@ -117,7 +117,7 @@ acquire_number(#number{auth_by=AuthBy, assigned_to=AssignedTo, module_data=Data}
             wnm_number:error_carrier_fault(Error, N);
         true ->
             Id = wh_json:get_string_value(<<"number_id">>, Data),
-            Hosts = case whapps_config:get(?WNM_BW_CONFIG_CAT, <<"endpoint">>) of
+            Hosts = case whapps_config:get(?WNM_BW_CONFIG_CAT, <<"endpoints">>) of
                         undefined -> [];
                         Endpoint when is_binary(Endpoint) ->
                             [{'endPoints', [{'host', [wh_util:to_list(Endpoint)]}]}];
