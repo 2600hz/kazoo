@@ -119,11 +119,28 @@ process_activation_charges(Category, Name, #wh_reseller{billing_id=BillingId
     case wh_service_plan:get_activation_charge(Category, Name, Plan) of
         undefined -> process_activation_charges(Category, Name, Reseller, Plans);
         Amount ->
-            #bt_transaction{}=Transaction = braintree_transaction:quick_sale(BillingId, Amount),
-            wh_notify:transaction(AccountId
-                                  ,braintree_transaction:record_to_json(Transaction)
-                                  ,wh_service_plan:get_item(Category, Name, Plan)),
-            process_activation_charges(Category, Name, Reseller, Plans)
+            case current_balance(BillingId) >= wapi_money:dollars_to_units(wh_util:to_float(Amount)) of
+                false -> 
+                    lager:debug("insufficient credit on ledger ~s for activation charges $~s", [BillingId, wh_util:to_list(Amount)]),
+                    Error = wh_json:from_list([{<<"errors">>, []}
+                                               ,{<<"verification">>, wh_json:new()}
+                                               ,{<<"message">>, <<"Insufficient Funds">>}
+                                              ]),
+                    throw({api_error, wh_json:from_list([{<<"api_error">>, Error}])});
+                true ->
+                    case write_to_ledger(BillingId, Category, Name, wh_service_plan:get_id(Plan), AccountId, Amount) of
+                        {ok, _} -> 
+                            lager:debug("debited ledger ~s for activation charges $~s", [BillingId, wh_util:to_list(Amount)]),
+                            process_activation_charges(Category, Name, Reseller, Plans);
+                        {error, _R} -> 
+                            lager:debug("unable to debit $~s from ledger ~s: ~p", [wh_util:to_list(Amount), BillingId, _R]),
+                            Error = wh_json:from_list([{<<"errors">>, []}
+                                                       ,{<<"verification">>, wh_json:new()}
+                                                       ,{<<"message">>, <<"Database Fault">>}
+                                                      ]),
+                            throw({api_error, wh_json:from_list([{<<"api_error">>, Error}])})
+                    end
+            end
     end.
 
 %%--------------------------------------------------------------------
@@ -673,3 +690,34 @@ get_price(JObj, Count, Type, #wh_reseller{deleted=Type}) ->
 get_price(JObj, Count, _, _) ->
     get_price(JObj, Count).    
 
+
+-spec write_to_ledger/6 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} |
+                                                                                                             {'error', _}.
+write_to_ledger(Ledger, Category, Item, ServicePlanId, AccountId, Units) ->
+    LedgerId = wh_util:format_account_id(Ledger, raw),
+    LedgerDb = wh_util:format_account_id(Ledger, encoded),
+    Timestamp = wh_util:current_tstamp(),
+    Entry = wh_json:from_list([{<<"reason">>, <<"service plan transaction">>}
+                               ,{<<"category">>, Category}
+                               ,{<<"item">>, Item}
+                               ,{<<"service_plan_id">>, ServicePlanId}
+                               ,{<<"account_id">>, AccountId}
+                               ,{<<"amount">>, wapi_money:dollars_to_units(wh_util:to_float(Units))}
+                               ,{<<"pvt_account_id">>, LedgerId}
+                               ,{<<"pvt_account_db">>, LedgerDb}
+                               ,{<<"pvt_type">>, <<"debit">>}
+                               ,{<<"pvt_created">>, Timestamp}
+                               ,{<<"pvt_modified">>, Timestamp}
+                               ,{<<"pvt_vsn">>, 1}
+                              ]),
+    couch_mgr:save_doc(LedgerDb, Entry).
+
+-spec current_balance/1 :: (ne_binary()) -> integer().
+current_balance(Ledger) ->
+    LedgerDb = wh_util:format_account_id(Ledger, encoded),    
+    ViewOptions = [{<<"reduce">>, true}],
+    case couch_mgr:get_results(LedgerDb, <<"transactions/credit_remaining">>, ViewOptions) of
+        {ok, []} -> 0;
+        {ok, [ViewRes|_]} -> wh_json:get_integer_value(<<"value">>, ViewRes, 0);
+        {error, _} -> 0
+    end.
