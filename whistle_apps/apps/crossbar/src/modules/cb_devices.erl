@@ -87,7 +87,7 @@ billing(#cb_context{req_nouns=[{<<"devices">>, _}|_], req_verb = <<"put">>, doc=
                 R1 = wh_service_devices:activate_device_type(DeviceType, Resellers),
                 {ok, Devices} = couch_mgr:get_all_results(Db, ?CB_LIST),
                 DeviceTypes = [get_device_type(Device) || Device <- Devices],
-                R2 = wh_service_devices:update([DeviceType | DeviceTypes], R1),
+                R2 = wh_service_devices:update([DeviceType | DeviceTypes], R1, created),
                 ok = wh_resellers:commit_changes(R2)
             catch
                 throw:{Error, Reason} ->
@@ -118,7 +118,7 @@ billing(#cb_context{req_nouns=[{<<"devices">>, _}|_], req_verb = <<"delete">>, d
                 DeviceType = get_device_type(JObj),
                 {ok, Devices} = couch_mgr:get_all_results(Db, ?CB_LIST),
                 DeviceTypes = [get_device_type(Device) || Device <- Devices],
-                R = wh_service_devices:update(lists:delete(DeviceType, DeviceTypes), Resellers),
+                R = wh_service_devices:update(lists:delete(DeviceType, DeviceTypes), Resellers, deleted),
                 ok = wh_resellers:commit_changes(R)
             catch
                 throw:{Error, Reason} ->
