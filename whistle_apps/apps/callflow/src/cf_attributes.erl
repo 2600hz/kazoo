@@ -100,51 +100,35 @@ caller_id(EndpointId, Attribute, Call) ->
     OwnerId = owner_id(EndpointId, Call),
     caller_id(EndpointId, OwnerId, Attribute, Call).
 
-caller_id(EndpointId, OwnerId, <<"external">> = Attribute, Call) ->
-    CID = get_cid(EndpointId, OwnerId, Attribute, Call),
-    CIDNumber = case wh_json:get_ne_value(<<"number">>, CID) of
-                    undefined -> whapps_call:caller_id_number(Call);
-                    Number -> Number
-                end,
-
-    CIDName = case wh_json:get_ne_value(<<"name">>, CID) of
-                  undefined -> friendly_name(EndpointId, OwnerId, Call);
-                  Name -> Name
-              end,
-
-    {ok, PNJObj} = couch_mgr:open_cache_doc(whapps_call:account_db(Call), ?WNM_PHONE_NUMBER_DOC),
-    case wh_json:get_value(wnm_util:to_e164(CIDNumber), PNJObj) of
-        undefined ->
-            lager:debug("failed to find CID ~s in phone_numbers doc", [CIDNumber]),
-            {ok, AcctDoc} = couch_mgr:open_cache_doc(whapps_call:account_db(Call), whapps_call:account_id(Call)),
-
-            case wh_json:get_value([<<"caller_id">>, <<"external">>, <<"number">>], AcctDoc) of
-                undefined ->
-                    lager:debug("failed to find default account CID, finding first phone number in service"),
-                    Pub = wh_json:public_fields(PNJObj),
-
-                    case [Num || {Num, NumJObj} <- wh_json:to_proplist(Pub),
-                                 wh_json:is_json_object(NumJObj) andalso
-                                     wh_json:get_value(<<"state">>, NumJObj) =:= <<"in_service">>
-                         ] of
-                        [] ->
-                            lager:debug("failed to find any in-service numbers, using default"),
-                            {CIDName, ?DEFAULT_CALLER_ID_NUMBER};
-                        [ActiveNum|_] ->
-                            lager:debug("setting to first number in service: ~s", [ActiveNum]),
-                            {CIDName, ActiveNum}
-                    end;
-                DefaultAcctCID ->
-                    lager:debug("setting to account doc's CID: ~s", [DefaultAcctCID]),
-                    {CIDName, DefaultAcctCID}
-            end;
-        _ ->
-            lager:debug("found CID ~s in phone_numbers doc", [CIDNumber]),
-            {CIDName, CIDNumber}
-    end;
-
 caller_id(EndpointId, OwnerId, Attribute, Call) ->
-    CID = get_cid(EndpointId, OwnerId, Attribute, Call),
+    AccountId = whapps_call:account_id(Call),
+    CCVs = whapps_call:custom_channel_vars(Call),
+    Inception = whapps_call:inception(Call),
+    Ids = [EndpointId, OwnerId, AccountId],
+    CID = case (Inception =:= <<"off-net">> andalso not wh_json:is_true(<<"Call-Forward">>, CCVs))
+              orelse wh_json:is_true(<<"Retain-CID">>, CCVs) of
+              true ->
+                  lager:debug("retaining original caller id"),
+                  wh_json:from_list([{<<"number">>, whapps_call:caller_id_number(Call)}
+                                     ,{<<"name">>, whapps_call:caller_id_name(Call)}
+                                    ]);
+              false ->
+                  lager:debug("find ~s caller id on ~s", [Attribute, wh_util:join_binary(Ids)]),
+                  Attributes = fetch_attributes(caller_id, Call),
+                  case search_attributes(Attribute, Ids, Attributes) of
+                      undefined ->
+                          case search_attributes(<<"default">>, [AccountId], Attributes) of
+                              undefined ->
+                                  wh_json:new();
+                              {Id, Value} ->
+                                  lager:debug("found default caller id on ~s", [Id]),
+                                  Value
+                          end;
+                      {Id, Value} ->
+                          lager:debug("found ~s caller id on ~s", [Attribute, Id]),
+                          Value
+                  end
+          end,
     CIDNum = case wh_json:get_ne_value(<<"number">>, CID) of
                  undefined -> whapps_call:caller_id_number(Call);
                  Number -> Number
@@ -160,32 +144,6 @@ caller_id(EndpointId, OwnerId, Attribute, Call) ->
 
     lager:debug("using caller id ~s '~s'", [CIDNum1, CIDName1]),
     {CIDNum1, CIDName1}.
-
--spec get_cid/4 :: (ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> wh_json:json_object().
-get_cid(EndpointId, OwnerId, Attribute, Call) ->
-        AccountId = whapps_call:account_id(Call),
-    CCVs = whapps_call:custom_channel_vars(Call),
-    Inception = whapps_call:inception(Call),
-    Ids = [EndpointId, OwnerId, AccountId],
-    case (Inception =:= <<"off-net">> andalso not wh_json:is_true(<<"Call-Forward">>, CCVs))
-        orelse wh_json:is_true(<<"Retain-CID">>, CCVs) of
-        true ->
-            lager:debug("retaining original caller id"),
-            wh_json:from_list([{<<"number">>, whapps_call:caller_id_number(Call)}
-                               ,{<<"name">>, whapps_call:caller_id_name(Call)}
-                              ]);
-        false ->
-            lager:debug("find ~s caller id on ~s", [Attribute, wh_util:join_binary(Ids)]),
-            Attributes = fetch_attributes(caller_id, Call),
-            case search_attributes(Attribute, Ids, Attributes) of
-                undefined ->
-                    case search_attributes(<<"default">>, [AccountId], Attributes) of
-                        undefined -> wh_json:new();
-                        {_Id, Value} -> lager:debug("found default caller id on ~s", [_Id]), Value
-                    end;
-                {_Id, Value} -> lager:debug("found ~s caller id on ~s", [Attribute, _Id]), Value
-            end
-    end.
 
 %%-----------------------------------------------------------------------------
 %% @public
