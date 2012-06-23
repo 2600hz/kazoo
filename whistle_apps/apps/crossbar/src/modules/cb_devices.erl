@@ -15,6 +15,7 @@
 -export([init/0
          ,allowed_methods/0, allowed_methods/1
          ,resource_exists/0, resource_exists/1
+         ,billing/1
          ,validate/1, validate/2
          ,put/1
          ,post/2
@@ -33,6 +34,7 @@
 init() ->
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.devices">>, ?MODULE, allowed_methods),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.devices">>, ?MODULE, resource_exists),
+    _ = crossbar_bindings:bind(<<"v1_resource.billing">>, ?MODULE, billing),
     _ = crossbar_bindings:bind(<<"v1_resource.validate.devices">>, ?MODULE, validate),
     _ = crossbar_bindings:bind(<<"v1_resource.execute.put.devices">>, ?MODULE, put),
     _ = crossbar_bindings:bind(<<"v1_resource.execute.post.devices">>, ?MODULE, post),
@@ -68,6 +70,68 @@ allowed_methods(_) ->
 -spec resource_exists/1 :: (path_token()) -> 'true'.
 resource_exists() -> true.
 resource_exists(_) -> true.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Bill for limits
+%% @end
+%%--------------------------------------------------------------------
+billing(#cb_context{req_nouns=[{<<"devices">>, _}|_], req_verb = <<"put">>, doc=JObj
+                    ,account_id=AccountId, db_name=Db}=Context) ->
+    case wh_resellers:fetch(AccountId) of
+        {error, no_service_plan} -> Context;
+        {ok, Resellers} ->
+            try 
+                DeviceType = wh_json:get_value(<<"device_type">>, JObj, <<"sip_device">>),
+                R1 = wh_service_devices:activate_device_type(DeviceType, Resellers),
+                {ok, Devices} = couch_mgr:get_all_results(Db, ?CB_LIST),
+                DeviceTypes = [wh_json:get_value([<<"value">>, <<"device_type">>], Device, <<"sip_device">>)
+                               || Device <- Devices
+                              ],
+                R2 = wh_service_devices:update([DeviceType | DeviceTypes], R1),
+                ok = wh_resellers:commit_changes(R2)
+            catch
+                throw:{Error, Reason} ->
+                    crossbar_util:response(error, wh_util:to_binary(Error), 500, Reason, Context)
+            end
+    end;
+billing(#cb_context{req_nouns=[{<<"devices">>, _}|_], req_verb = <<"post">>
+                        ,account_id=AccountId, db_name=Db}=Context) ->
+    case wh_resellers:fetch(AccountId) of
+        {error, no_service_plan} -> Context;
+        {ok, Resellers} ->
+            try 
+                {ok, Devices} = couch_mgr:get_all_results(Db, ?CB_LIST),
+                DeviceTypes = [wh_json:get_value([<<"value">>, <<"device_type">>], Device, <<"sip_device">>)
+                               || Device <- Devices
+                              ],
+                R = wh_service_devices:update(DeviceTypes, Resellers),
+                ok = wh_resellers:commit_changes(R)
+            catch
+                throw:{Error, Reason} ->
+                    crossbar_util:response(error, wh_util:to_binary(Error), 500, Reason, Context)
+            end
+    end;
+billing(#cb_context{req_nouns=[{<<"devices">>, _}|_], req_verb = <<"delete">>, doc=JObj
+                    ,account_id=AccountId, db_name=Db}=Context) ->
+    case wh_resellers:fetch(AccountId) of
+        {error, no_service_plan} -> Context;
+        {ok, Resellers} ->
+            try 
+                DeviceType = wh_json:get_value(<<"device_type">>, JObj, <<"sip_device">>),
+                {ok, Devices} = couch_mgr:get_all_results(Db, ?CB_LIST),
+                DeviceTypes = [wh_json:get_value([<<"value">>, <<"device_type">>], Device, <<"sip_device">>)
+                               || Device <- Devices
+                              ],
+                R = wh_service_devices:update(lists:delete(DeviceType, DeviceTypes), Resellers),
+                ok = wh_resellers:commit_changes(R)
+            catch
+                throw:{Error, Reason} ->
+                    crossbar_util:response(error, wh_util:to_binary(Error), 500, Reason, Context)
+            end
+    end;
+billing(Context) -> Context.
 
 %%--------------------------------------------------------------------
 %% @public
