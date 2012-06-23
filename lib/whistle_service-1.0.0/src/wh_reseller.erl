@@ -722,7 +722,6 @@ get_price(JObj, Count, Type, #wh_reseller{deleted=Type}) ->
 get_price(JObj, Count, _, _) ->
     get_price(JObj, Count).    
 
-
 -spec write_to_ledger/6 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} |
                                                                                                              {'error', _}.
 write_to_ledger(Ledger, Category, Item, ServicePlanId, AccountId, Units) ->
