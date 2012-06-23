@@ -15,6 +15,7 @@
 -export([get_category_addons/2]).
 -export([get_recurring_plan/3]).
 -export([get_activation_charge/3]).
+-export([get_base_mrc/1]).
 -export([get_item/3]).
 
 -include("wh_service.hrl").
@@ -153,6 +154,16 @@ get_activation_charge(Category, Name, Plan) ->
         undefined -> undefined;
         Item -> wh_json:get_ne_value(<<"activation_charge">>, Item)
     end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec get_base_mrc/1 :: (#wh_service_plan{}) -> wh_json:json_objects().
+get_base_mrc(#wh_service_plan{plan=JObj}) ->
+    wh_json:get_value(<<"base_mrc">>, JObj, []).
 
 %%--------------------------------------------------------------------
 %% @public

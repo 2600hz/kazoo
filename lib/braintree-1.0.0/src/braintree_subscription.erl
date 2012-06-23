@@ -12,6 +12,7 @@
 -export([new/3]).
 -export([get_id/1]).
 -export([get_addon/2]).
+-export([update_addon_amount/3]).
 -export([find/1]).
 -export([create/1, create/2]).
 -export([update/1]).
@@ -88,6 +89,27 @@ get_addon(#bt_subscription{add_ons=AddOns}, AddOnId) ->
                 #bt_addon{}=AddOn -> AddOn
             end;
         #bt_addon{}=AddOn -> AddOn
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Get the subscription id
+%% @end
+%%--------------------------------------------------------------------
+-spec update_addon_amount/3 :: (#bt_subscription{}, ne_binary(), ne_binary()) -> #bt_subscription{}.
+update_addon_amount(#bt_subscription{add_ons=AddOns}=Subscription, AddOnId, Amount) ->
+    case lists:keyfind(AddOnId, #bt_addon.id, AddOns) of
+        false ->
+            case lists:keyfind(AddOnId, #bt_addon.inherited_from, AddOns) of
+                false -> braintree_util:error_not_found(<<"Add-On">>);
+                #bt_addon{}=AddOn -> 
+                    AddOn1 = AddOn#bt_addon{amount=Amount},
+                    Subscription#bt_subscription{add_ons=lists:keyreplace(AddOnId, #bt_addon.inherited_from, AddOns, AddOn1)}
+            end;
+        #bt_addon{}=AddOn -> 
+            AddOn1 = AddOn#bt_addon{existing_id=AddOnId, amount=Amount},
+            Subscription#bt_subscription{add_ons=lists:keyreplace(AddOnId, #bt_addon.id, AddOns, AddOn1)}
     end.
 
 %%--------------------------------------------------------------------
@@ -345,16 +367,19 @@ create_addon_changes(AddOns) ->
                         C;
                    (#bt_addon{existing_id=undefined
                               ,inherited_from=Id
-                              ,quantity=Q}, C) ->
+                              ,quantity=Q
+                              ,amount=A}, C) ->
                         Item = [{'inherited_from_id', Id}
                                 ,{'quantity', Q}
+                                ,{'amount', A}
                                ],
-                        append_items('add', Item, C);
-                   (#bt_addon{existing_id=Id, quantity=Q}, C) ->
+                        append_items('add', props:filter_undefined(Item), C);
+                   (#bt_addon{existing_id=Id, quantity=Q, amount=A}, C) ->
                         Item = [{'existing_id', Id}
                                 ,{'quantity', Q}
+                                ,{'amount', A}
                                ],
-                        append_items('update', Item, C)
+                        append_items('update', props:filter_undefined(Item), C)
                 end, [], AddOns).
 
 %%--------------------------------------------------------------------

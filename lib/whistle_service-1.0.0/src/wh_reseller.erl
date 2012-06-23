@@ -11,6 +11,8 @@
 -export([fetch/1]).
 -export([get_plans/1, get_plans/2]).
 -export([get_reseller_id/1]).
+-export([set_created_flag/2]).
+-export([set_deleted_flag/2]).
 -export([is_master_reseller/1]).
 -export([process_activation_charges/3]).
 -export([update_quantity/4]).
@@ -31,6 +33,8 @@
 -include("wh_service.hrl").
 
 -record(wh_reseller, {reseller = 'undefined' :: 'undefined' | ne_binary()
+                      ,created = 'undefined' :: 'undefined' | ne_binary()
+                      ,deleted = 'undefined' :: 'undefined' | ne_binary()
                       ,plans = [] :: [] | [wh_service_plan:plan(),...]
                       ,billing_id = 'undefined' :: 'undefined' | ne_binary()
                       ,account_id = 'undefined' :: 'undefined' | ne_binary()
@@ -76,6 +80,26 @@ fetch(Account) ->
                                      }}
             end
     end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec set_created_flag/2 :: (ne_binary(), #wh_reseller{}) -> #wh_reseller{}.
+set_created_flag(Type, #wh_reseller{}=Reseller) ->
+    Reseller#wh_reseller{created=Type}.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec set_deleted_flag/2 :: (ne_binary(), #wh_reseller{}) -> #wh_reseller{}.
+set_deleted_flag(Type, #wh_reseller{}=Reseller) ->
+    Reseller#wh_reseller{deleted=Type}.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -187,8 +211,48 @@ reset_category_addons(Category, [Plan|Plans], #wh_reseller{account_id=AccountId}
 %% 
 %% @end
 %%--------------------------------------------------------------------
+update_base_mrc(#wh_reseller{plans=Plans}=Reseller) ->
+    update_base_mrc(Plans, Reseller).
+
+update_base_mrc([], Reseller) ->
+    Reseller;
+update_base_mrc([Plan|Plans], Reseller) ->
+    update_base_mrc(Plans, lists:foldr(fun(JObj, R) -> 
+                                               base_mrc(JObj, R)
+                                       end, Reseller, wh_service_plan:get_base_mrc(Plan))).
+
+base_mrc(JObj, #wh_reseller{account_id=AccountId, bt_subscriptions=Subscriptions, bt_customer=Customer}=Reseller) ->
+    PlanId = wh_json:get_value(<<"plan">>, JObj),
+    AddOnId = wh_json:get_value(<<"add_on">>, JObj),
+    AccountDb = wh_util:format_account_id(AccountId, encoded),
+    Type = wh_json:get_value(<<"type">>, JObj),
+    ViewOptions = [{key, Type}],
+    case couch_mgr:get_results(AccountDb, <<"maintenance/listing_by_type">>, ViewOptions) of
+        {error, _R} -> 
+            lager:debug("unable to get count for document type ~s: ~p", [Type, _R]),
+            Reseller;
+        {ok, J} ->
+            SubscriptionId = <<AccountId/binary, "_", PlanId/binary>>,
+            Subscription = get_subscription(SubscriptionId, PlanId, Reseller),
+            CustomerId = braintree_customer:get_id(Customer),
+            Price = get_price(JObj, length(J), Type, Reseller),
+            lager:debug("updating customer ~s subscription ~s addon ~s base mrc price to $~s", [CustomerId, SubscriptionId, AddOnId
+                                                                                                ,wh_util:to_list(Price)
+                                                                                               ]),
+            S1 = braintree_subscription:update_addon_quantity(Subscription, AddOnId, 1),
+            S2 = braintree_subscription:update_addon_amount(S1, AddOnId, Price),
+            Reseller#wh_reseller{bt_subscriptions=dict:store(SubscriptionId, S2, Subscriptions)}
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
 -spec commit_changes/1 :: (reseller()) -> ok.
-commit_changes(#wh_reseller{bt_subscriptions=Subscriptions}) ->
+commit_changes(#wh_reseller{}=Reseller) ->
+    #wh_reseller{bt_subscriptions=Subscriptions} = update_base_mrc(Reseller),
     _ = [braintree_subscription:update(Subscription)
          || {_, Subscription} <- dict:to_list(Subscriptions)
         ],
@@ -567,7 +631,7 @@ subscribed_to_addon(SubscriptionId, AddOnId, #wh_reseller{bt_customer=Customer})
 update_subscription_quanity(SubscriptionId, Subscription, AddOnId, Quantity, #wh_reseller{bt_subscriptions=Subscriptions
                                                                                          ,bt_customer=Customer}=Reseller) ->
     CustomerId = braintree_customer:get_id(Customer),
-    lager:info("updating customer ~s subscription ~s addon ~s quantity to ~p", [CustomerId, SubscriptionId, AddOnId, Quantity]),
+    lager:debug("updating customer ~s subscription ~s addon ~s quantity to ~p", [CustomerId, SubscriptionId, AddOnId, Quantity]),
     UpdatedSubscription = braintree_subscription:update_addon_quantity(Subscription, AddOnId, Quantity),
     Reseller#wh_reseller{bt_subscriptions=dict:store(SubscriptionId, UpdatedSubscription, Subscriptions)}.
 
@@ -581,6 +645,31 @@ update_subscription_quanity(SubscriptionId, Subscription, AddOnId, Quantity, #wh
 increment_subscription_quanity(SubscriptionId, Subscription, AddOnId, #wh_reseller{bt_subscriptions=Subscriptions
                                                                                    ,bt_customer=Customer}=Reseller) ->
     CustomerId = braintree_customer:get_id(Customer),
-    lager:info("increment customer ~s subscription ~s addon ~s", [CustomerId, SubscriptionId, AddOnId]),
+    lager:debug("increment customer ~s subscription ~s addon ~s", [CustomerId, SubscriptionId, AddOnId]),
     UpdatedSubscription = braintree_subscription:increment_addon_quantity(Subscription, AddOnId),
     Reseller#wh_reseller{bt_subscriptions=dict:store(SubscriptionId, UpdatedSubscription, Subscriptions)}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec get_price/2 :: (wh_json:json_object(), non_neg_integer()) -> ne_binary().
+-spec get_price/4 :: (wh_json:json_object(), non_neg_integer(), ne_binary(), #wh_reseller{}) -> ne_binary().
+
+get_price(JObj, Count) ->
+    Prices = wh_json:get_value(<<"price_increments">>, JObj),
+    L1 = [wh_util:to_integer(K) || K <- wh_json:get_keys(Prices)],
+    case lists:dropwhile(fun(K) -> Count > K end, lists:sort(L1)) of
+        [] -> wh_json:get_binary_value(<<"default_price">>, JObj);
+        Range -> wh_json:get_binary_value(wh_util:to_binary(hd(Range)), Prices)
+    end.
+
+get_price(JObj, Count, Type, #wh_reseller{created=Type}) ->
+    get_price(JObj, Count + 1);    
+get_price(JObj, Count, Type, #wh_reseller{deleted=Type}) ->
+    get_price(JObj, Count - 1);    
+get_price(JObj, Count, _, _) ->
+    get_price(JObj, Count).    
+
