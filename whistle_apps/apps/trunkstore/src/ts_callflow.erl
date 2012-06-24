@@ -92,7 +92,7 @@ wait_for_win(#ts_callflow_state{aleg_callid=CallID}=State) ->
 
         %% call events come from callevt exchange, ignore for now
         {#'basic.deliver'{exchange = <<"targeted">>}, #amqp_msg{payload=Payload}} ->
-            WinJObj = mochijson2:decode(Payload),
+            WinJObj = wh_json:decode(Payload),
             true = wapi_route:win_v(WinJObj),
             CallID = wh_json:get_value(<<"Call-ID">>, WinJObj),
 
@@ -113,7 +113,7 @@ wait_for_bridge(State, Timeout) ->
     receive
         #'basic.consume_ok'{} -> wait_for_bridge(State, Timeout);
         {_, #amqp_msg{payload=Payload}} ->
-            JObj = mochijson2:decode(Payload),
+            JObj = wh_json:decode(Payload),
             case process_event_for_bridge(State, JObj) of
                 ignore ->
                     wait_for_bridge(State, Timeout - (timer:now_diff(erlang:now(), Start) div 1000));
@@ -197,7 +197,7 @@ wait_for_cdr(State, Timeout) ->
     receive
         #'basic.consume_ok'{} -> wait_for_cdr(State, Timeout);
         {_, #amqp_msg{payload=Payload}} ->
-            JObj = mochijson2:decode(Payload),
+            JObj = wh_json:decode(Payload),
             case process_event_for_cdr(State, JObj) of
                 {cdr, _, _, _}=CDR -> CDR;
                 {hangup, State1} ->
