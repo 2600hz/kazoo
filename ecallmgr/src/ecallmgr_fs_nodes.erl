@@ -31,6 +31,7 @@
 -export([channel_exists/1]).
 -export([channel_import_moh/1]).
 -export([channel_set_account_id/3]).
+-export([channel_set_billing_id/3]).
 -export([channel_set_account_billing/3]).
 -export([channel_set_reseller_id/3]).
 -export([channel_set_reseller_billing/3]).
@@ -198,6 +199,13 @@ channel_set_account_id(Node, UUID, Value) when is_binary(Value) ->
 channel_set_account_id(Node, UUID, Value) ->
     channel_set_account_id(Node, UUID, wh_util:to_binary(Value)). 
 
+-spec channel_set_billing_id/3 :: (atom(), ne_binary(), string() | ne_binary()) -> 'ok'.    
+channel_set_billing_id(Node, UUID, Value) when is_binary(Value) ->
+    gen_server:cast(?MODULE, {channel_update, UUID, {#channel.billing_id, Value}}),
+    broadcast_channel_update(Node, UUID, <<"billing_id">>, Value);
+channel_set_billing_id(Node, UUID, Value) ->
+    channel_set_billing_id(Node, UUID, wh_util:to_binary(Value)). 
+
 -spec channel_set_account_billing/3 :: (atom(), ne_binary(), string() | ne_binary()) -> 'ok'.    
 channel_set_account_billing(Node, UUID, Value) when is_binary(Value) ->
     gen_server:cast(?MODULE, {channel_update, UUID, {#channel.account_billing, Value}}),
@@ -303,12 +311,6 @@ channel_record_to_json(Channel) ->
                        ,{<<"owner_id">>, Channel#channel.owner_id}
                        ,{<<"resource_id">>, Channel#channel.resource_id}
                        ,{<<"presence_id">>, Channel#channel.presence_id}
-                       ,{<<"billing_id">>, Channel#channel.billing_id}
-                       ,{<<"bridge_id">>, Channel#channel.bridge_id}
-                       ,{<<"reseller_id">>, Channel#channel.reseller_id}
-                       ,{<<"reseller_billing">>, Channel#channel.reseller_billing}
-                       ,{<<"realm">>, Channel#channel.realm}                                          
-                       ,{<<"username">>, Channel#channel.username}
                        ,{<<"billing_id">>, Channel#channel.billing_id}
                        ,{<<"bridge_id">>, Channel#channel.bridge_id}
                        ,{<<"reseller_id">>, Channel#channel.reseller_id}

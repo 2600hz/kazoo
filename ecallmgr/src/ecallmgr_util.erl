@@ -110,6 +110,8 @@ send_cmd(Node, UUID, AppName, Args) ->
 -spec maybe_update_channel_cache/3 :: (string(), atom(), ne_binary()) -> 'ok'.
 maybe_update_channel_cache("ecallmgr_Account-ID=" ++ Value, Node, UUID) ->
     ecallmgr_fs_nodes:channel_set_account_id(Node, UUID, Value);
+maybe_update_channel_cache("ecallmgr_Billing-ID=" ++ Value, Node, UUID) ->
+    ecallmgr_fs_nodes:channel_set_billing_id(Node, UUID, Value);
 maybe_update_channel_cache("ecallmgr_Account-Billing=" ++ Value, Node, UUID) ->
     ecallmgr_fs_nodes:channel_set_account_billing(Node, UUID, Value);
 maybe_update_channel_cache("ecallmgr_Reseller-ID=" ++ Value, Node, UUID) ->
