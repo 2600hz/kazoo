@@ -112,7 +112,7 @@ maybe_authorize_channel(Props, Node) ->
             _ = ecallmgr_util:fs_log(Node, "channel authorization failed (allowed ~s): ~s", [DryRun, _R]),
             lager:info("channel authorization failed (allowed ~s): ~s", [DryRun, _R]),
             _ = DryRun orelse spawn(?MODULE, kill_channel, [Props, Node]),
-            false
+            DryRun orelse false
     end.
 
 -spec update/2 :: (proplist(), atom()) -> 'ok'.
