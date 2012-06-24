@@ -96,39 +96,39 @@ show_calls() ->
 status() ->
     FolsomMetrics = folsom_metrics:get_metrics(),
     FsMetrics = lists:foldl(fun(FMetric, Acc) ->
-				    case binary:split(FMetric, <<".">>, [global]) of
-					[Type, <<"freeswitch">>, <<"nodes">>, EncodedNode, StatKey] ->
-					    Metric = <<"freeswitch.nodes.", EncodedNode/binary, ".",StatKey/binary>>,
-					    StatMod = wh_util:to_atom(Type),
-					    Node = cowboy_http:urldecode(EncodedNode),
-					    Stat = case StatMod of
-						       wh_timer ->
-							   DateTime = calendar:now_to_datetime(wh_timer:get_timestamp(Metric)),
-							   {wh_timer:get(Metric), wh_util:pretty_print_datetime(DateTime)};
-						       _ ->
-							   StatMod:get(Metric)
-						   end,
-					    dict:update(Node, fun(List) -> [{StatKey, Stat} | List] end, [{StatKey, Stat}], Acc);
-					_ -> Acc
-				    end
-			    end
-			    ,dict:new()
-			    ,FolsomMetrics
-			   ),
+                                    case binary:split(FMetric, <<".">>, [global]) of
+                                        [Type, <<"freeswitch">>, <<"nodes">>, EncodedNode, StatKey] ->
+                                            Metric = <<"freeswitch.nodes.", EncodedNode/binary, ".",StatKey/binary>>,
+                                            StatMod = wh_util:to_atom(Type),
+                                            Node = cowboy_http:urldecode(EncodedNode),
+                                            Stat = case StatMod of
+                                                       wh_timer ->
+                                                           DateTime = calendar:now_to_datetime(wh_timer:get_timestamp(Metric)),
+                                                           {wh_timer:get(Metric), wh_util:pretty_print_datetime(DateTime)};
+                                                       _ ->
+                                                           StatMod:get(Metric)
+                                                   end,
+                                            dict:update(Node, fun(List) -> [{StatKey, Stat} | List] end, [{StatKey, Stat}], Acc);
+                                        _ -> Acc
+                                    end
+                            end
+                            ,dict:new()
+                            ,FolsomMetrics
+                           ),
     lists:foreach(fun(Node) ->
-			  Stats = dict:fetch(Node, FsMetrics),
-			  io:format("----- ~s stats -----~n", [Node]),
-			  lists:foreach(fun({Key, {Val1, Val2}}) when is_binary(Val2) ->
-						io:format("~s: ~p (~s)~n", [Key, Val1, Val2]);
-					   ({Key, {Val1, Val2}}) ->
-						io:format("~s: ~p (~s)~n", [Key, Val1, Val2]);
-					   ({Key, Val}) ->
-						io:format("~s: ~p~n", [Key, Val])
-					end
-					,Stats
-				       ),
-			  io:format("~n")
-		  end
-		  ,dict:fetch_keys(FsMetrics)
-		 ),
+                          Stats = dict:fetch(Node, FsMetrics),
+                          io:format("----- ~s stats -----~n", [Node]),
+                          lists:foreach(fun({Key, {Val1, Val2}}) when is_binary(Val2) ->
+                                                io:format("~s: ~p (~s)~n", [Key, Val1, Val2]);
+                                           ({Key, {Val1, Val2}}) ->
+                                                io:format("~s: ~p (~s)~n", [Key, Val1, Val2]);
+                                           ({Key, Val}) ->
+                                                io:format("~s: ~p~n", [Key, Val])
+                                        end
+                                        ,Stats
+                                       ),
+                          io:format("~n")
+                  end
+                  ,dict:fetch_keys(FsMetrics)
+                 ),
     no_return.
