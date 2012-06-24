@@ -23,7 +23,7 @@ handle_req(JObj, Props) ->
                         case calls_at_limit(Limits, JObj) of
                             false -> {ok, under_limit}; 
                             true -> 
-                                send_system_alert(<<"call limit">>, JObj, Limits),
+                                send_system_alert(<<"call limit">>, JObj, Limits, AccountId),
                                 {error, call_limit}
                         end
                 end
@@ -32,7 +32,7 @@ handle_req(JObj, Props) ->
                          case resource_consumption_at_limit(Limits, JObj) of
                              false -> {ok, under_limit}; 
                              true -> 
-                                 send_system_alert(<<"max resource consumption limit">>, JObj, Limits),
+                                 send_system_alert(<<"max resource consumption limit">>, JObj, Limits, AccountId),
                                  {error, resource_consumption_limit}
                          end
                  end
@@ -49,7 +49,7 @@ handle_req(JObj, Props) ->
                          case credit_is_available(Limits, JObj) of
                              true -> {ok, per_minute};
                              false -> 
-                                 send_system_alert(<<"no flat rate or credit">>, JObj, Limits),
+                                 send_system_alert(<<"no flat rate or credit">>, JObj, Limits, AccountId),
                                  {error, trunk_limit}
                          end;
                     (Else) -> Else
@@ -67,8 +67,8 @@ inellegable_for_flat_rate(JObj) ->
         andalso 
           (wh_util:is_empty(TrunkBlacklist) orelse re:run(Number, TrunkBlacklist) =:= nomatch).
 
--spec send_system_alert/3 :: (ne_binary(), wh_json:json_object(), #limits{}) -> pid().
-send_system_alert(Reason, JObj, Limits) ->
+-spec send_system_alert/4 :: (ne_binary(), wh_json:json_object(), #limits{}, ne_binary()) -> pid().
+send_system_alert(Reason, JObj, Limits, AccountId) ->
     spawn(fun() ->
                   AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
                   Routines = [fun(J) -> wh_json:set_value(<<"Request">>, wh_json:get_value(<<"Request">>, JObj), J) end
@@ -88,7 +88,16 @@ send_system_alert(Reason, JObj, Limits) ->
                                end
                              ],
                   Details = lists:foldl(fun(F, A) -> F(A) end, wh_json:get_value(<<"Usage">>, JObj, wh_json:new()), Routines),
-                  wh_notify:system_alert("authz blocked ~s ~s", [AccountId, Reason], wh_json:to_proplist(Details))
+                  CallerIdName = wh_json:get_value(<<"Caller-ID-Name">>, JObj, <<>>),
+                  CallerIdNumber = wh_json:get_value(<<"Caller-ID-Number">>, JObj, <<>>),
+                  [To, _] = binary:split(wh_json:get_value(<<"Request">>, JObj), <<"@">>),
+                  case couch_mgr:open_cache_doc(?WH_ACCOUNTS_DB, AccountId) of
+                      {error, _} ->
+                          wh_notify:system_alert("blocked undefined / ~s ~s to ~s / Account ~s / ~s", [CallerIdName, CallerIdNumber, To, AccountId, Reason], wh_json:to_proplist(Details));
+                      {ok, Account} ->
+                          AccountName = wh_json:get_value(<<"name">>, Account, <<>>), 
+                          wh_notify:system_alert("blocked ~s / ~s ~s to ~s / Account ~s / ~s", [AccountName, CallerIdName, CallerIdNumber, To, AccountId, Reason], wh_json:to_proplist(Details))
+                  end
           end).
 
 -spec calls_at_limit/2 :: (#limits{}, wh_json:json_object()) -> boolean().
