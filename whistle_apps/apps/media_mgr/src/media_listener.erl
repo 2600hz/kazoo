@@ -12,11 +12,19 @@
 -behaviour(gen_listener).
 
 %% API
--export([start_link/0, handle_media_req/2]).
+-export([start_link/0
+         ,handle_media_req/2
+        ]).
 
 %% gen_server callbacks
--export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2
-         ,terminate/2, code_change/3]).
+-export([init/1
+         ,handle_call/3
+         ,handle_cast/2
+         ,handle_info/2
+         ,handle_event/2
+         ,terminate/2
+         ,code_change/3
+        ]).
 
 -include("media.hrl").
 
@@ -33,11 +41,16 @@
 %%--------------------------------------------------------------------
 start_link() ->
     gen_listener:start_link(?MODULE, [{bindings, [{media, []}]}
-                                    ,{responders, [{{?MODULE, handle_media_req}, [{<<"media">>, <<"media_req">>}]}]}
-                                   ], []).
+                                      ,{responders, [{{?MODULE, handle_media_req}
+                                                      ,[{<<"media">>, <<"media_req">>}]}
+                                                    ]}
+                                     ], []).
 
 handle_media_req(JObj, _Props) ->
     true = wapi_media:req_v(JObj),
+    wh_util:put_callid(JObj),
+
+    lager:debug("recv media req for msg id: ~s", [wh_json:get_value(<<"Msg-ID">>, JObj)]),
 
     case wh_json:get_value(<<"Media-Name">>, JObj) of
         undefined ->
