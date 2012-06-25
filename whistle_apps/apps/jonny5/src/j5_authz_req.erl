@@ -38,11 +38,13 @@ handle_req(JObj, Props) ->
                  end
                 ,fun({error, _}=E) -> E;
                     ({ok, _}) ->
-                         case inellegable_for_flat_rate(JObj) 
-                             orelse trunks_at_limit(Limits, JObj) 
+                         case eligible_for_flat_rate(JObj) 
+                             andalso (not trunks_at_limit(Limits, JObj)) 
                          of
-                             false -> {ok, flat_rate}; 
-                             true -> {error, trunk_limit}
+                             true -> {ok, flat_rate}; 
+                             false -> 
+                                 lager:debug("inellegable for flat rate trunks or at trunk limit", []),
+                                 {error, trunk_limit}
                          end
                  end
                 ,fun({error, trunk_limit}) -> 
@@ -57,8 +59,8 @@ handle_req(JObj, Props) ->
                ],
     send_resp(JObj, props:get_value(queue, Props), lists:foldl(fun(F, A) -> F(A) end, ok, Routines)).
 
--spec inellegable_for_flat_rate/1 :: (wh_json:json_object()) -> boolean().
-inellegable_for_flat_rate(JObj) ->
+-spec eligible_for_flat_rate/1 :: (wh_json:json_object()) -> boolean().
+eligible_for_flat_rate(JObj) ->
     [Number, _] = binary:split(wh_json:get_value(<<"Request">>, JObj), <<"@">>),
     TrunkWhitelist = whapps_config:get(<<"jonny5">>, <<"flat_rate_whitelist">>, <<"^\\+?1\\d{10}$">>),
     %% Example blacklist "^\\+?1(900|800)\\d{7}$"

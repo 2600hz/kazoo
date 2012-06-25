@@ -19,11 +19,14 @@
 -define(LIMITS_KEY(AccountId), {limits, AccountId}).
 
 -spec get_limits/1 :: (ne_binary()) -> #limits{}.
-get_limits(Account) ->    
+get_limits(Account) ->
+        
     AccountId = wh_util:format_account_id(Account, raw),
     AccountDb = wh_util:format_account_id(Account, encoded),
-    case wh_cache:peek_local(?JONNY5_CACHE, ?LIMITS_KEY(AccountId)) of
-        {ok, Limits} -> Limits; 
+        case wh_cache:peek_local(?JONNY5_CACHE, ?LIMITS_KEY(AccountId)) of
+        {ok, Limits} ->
+                Limits;
+             
         {error, not_found} ->
             JObj = case couch_mgr:open_doc(AccountDb, <<"limits">>) of
                        {ok, J} -> J;
@@ -91,6 +94,9 @@ write_credit_to_ledger(Suffix, Units, JObj, Ledger) ->
 
 -spec write_to_ledger/5 :: (ne_binary(), float(), wh_json:json_object(), ne_binary(), debit | credit) -> {'ok', wh_json:json_object()} |
                                                                                                          {'error', _}.
+write_to_ledger(_, 0.0, _, _, _) ->
+    lager:debug("skipping update, units are zero", []),
+    {ok, wh_json:new()};
 write_to_ledger(Suffix, Units, JObj, Ledger, Type) ->
     LedgerId = wh_util:format_account_id(Ledger, raw),
     LedgerDb = wh_util:format_account_id(Ledger, encoded),
@@ -111,6 +117,7 @@ write_to_ledger(Suffix, Units, JObj, Ledger, Type) ->
                                ,{<<"pvt_vsn">>, 1}
                                ,{<<"pvt_whapp">>, ?APP_NAME}
                               ]),
+%%    lager:debug("write ledger ~s", [wh_json:encode(Entry)]),
     couch_mgr:save_doc(LedgerDb, Entry).
 
 -spec current_balance/1 :: (ne_binary()) -> integer().
@@ -118,9 +125,16 @@ current_balance(Ledger) ->
     LedgerDb = wh_util:format_account_id(Ledger, encoded),    
     ViewOptions = [{<<"reduce">>, true}],
     case couch_mgr:get_results(LedgerDb, <<"transactions/credit_remaining">>, ViewOptions) of
-        {ok, []} -> 0;
-        {ok, [ViewRes|_]} -> wh_json:get_integer_value(<<"value">>, ViewRes, 0);
-        {error, _} -> 0
+        {ok, []} -> 
+            lager:debug("no current balance for ~s", [Ledger]),
+            0;
+        {ok, [ViewRes|_]} -> 
+            Credit = wh_json:get_integer_value(<<"value">>, ViewRes, 0),
+            lager:debug("current balance for ~s is ~p", [Ledger, Credit]),
+            Credit;
+        {error, _R} -> 
+            lager:debug("unable to get current balance for ~s: ~p", [Ledger, _R]),
+            0
     end.
 
 -spec session_cost/2 :: (ne_binary(), ne_binary()) -> integer().
@@ -131,16 +145,21 @@ session_cost(SessionId, Ledger) ->
                    ,{<<"key">>, SessionId}
                   ],
     case couch_mgr:get_results(LedgerDb, <<"transactions/session_cost">>, ViewOptions) of
-        {ok, []} -> 0;
-        {ok, [ViewRes|_]} -> wh_json:get_integer_value(<<"value">>, ViewRes, 0);
-        {error, _} -> 0
+        {ok, []} -> 
+            lager:debug("no prior expenses for session ~s", [SessionId]),
+            0;
+        {ok, [ViewRes|_]} -> 
+            Cost = wh_json:get_integer_value(<<"value">>, ViewRes, 0),
+            lager:debug("session cost for ~s is ~p", [SessionId, Cost]),
+            Cost;
+        {error, _R} -> 
+            lager:debug("unable to get session cost for ~s: ~p", [SessionId, _R]),
+            0
     end.
 
 -spec get_session_id/1 :: (wh_json:json_object()) -> ne_binary().
 get_session_id(JObj) ->
     case wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Bridge-ID">>], JObj) of
-        undefined ->
-            CallId = wh_json:get_value(<<"Call-ID">>, JObj),
-            wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Billing-ID">>], JObj, CallId);
+        undefined -> wh_util:to_hex_binary(crypto:md5(wh_json:get_value(<<"Call-ID">>, JObj)));
         BridgeId -> BridgeId
     end.

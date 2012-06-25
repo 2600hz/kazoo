@@ -26,7 +26,9 @@ handle_req(JObj, _Props) ->
         _ -> ok
     end.
 
--spec reconcile_cost/2 :: (ne_binary(), wh_json:json_object()) -> 'ok'.
+-spec reconcile_cost/2 :: ('undefined' | ne_binary(), wh_json:json_object()) -> 'ok'.
+reconcile_cost(undefined, _) ->
+    lager:debug("unable to find account id for call", []);
 reconcile_cost(Ledger, JObj) ->
     Cost = extract_cost(JObj),
     SessionId = j5_util:get_session_id(JObj),
@@ -37,14 +39,20 @@ reconcile_cost(Ledger, JObj) ->
             case j5_util:write_credit_to_ledger(<<"end">>, Diff, JObj, Ledger) of
                 {ok, _} -> lager:debug("bridge cost $~w but we charged $~w, credited account ~s $~w"
                                        ,[Cost, Billed, Ledger, Diff]);
-                {error, conflict} -> ok
+                {error, conflict} -> ok;
+                {error, _R} ->
+                    lager:debug("unable to update ledger ~s: ~p", [Ledger, _R]),
+                    reconcile_cost(Ledger, JObj)
             end;
         false ->
             case j5_util:write_debit_to_ledger(<<"end">>, Diff, JObj, Ledger) of
                 {ok, _} ->
                     lager:debug("bridge cost $~w but we charged $~w, debited account ~s $~w"
                                 ,[Cost, Billed, Ledger, Diff]);
-                {error, conflict} -> ok
+                {error, conflict} -> ok;
+                {error, _R} ->
+                    lager:debug("unable to update ledger ~s: ~p", [Ledger, _R]),
+                    reconcile_cost(Ledger, JObj)
             end
     end.
 
