@@ -214,7 +214,7 @@ reply_affirmative(Node, FSID, CallId, RespJObj, CCVs) ->
             _ = ecallmgr_util:fs_log(Node, "whistle ~s won control with affimative reply", [node()]),
             UpdatedCCVs = case wh_json:get_value(<<"Billing-ID">>, CCVs) of
                               undefined -> 
-                                  BillingId = wh_util:rand_hex_binary(16),
+                                  BillingId = wh_util:to_hex_binary(crypto:md5(CallId)),
                                   lager:debug("created new billing id ~s for channel ~s", [BillingId, CallId]),
                                   _ = ecallmgr_util:send_cmd(Node, CallId, <<"export">>, ?SET_CCV(<<"Billing-ID">>, BillingId)),
                                   wh_json:set_value(<<"Billing-ID">>, BillingId, CCVs);
