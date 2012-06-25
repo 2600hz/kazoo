@@ -274,8 +274,7 @@ save_docs(#server{}=Conn, DbName, Docs, Options) ->
                                                                   couchbeam_error().
 lookup_doc_rev(#server{}=Conn, DbName, DocId) ->
     case do_fetch_rev(get_db(Conn, DbName), DocId) of
-        <<_/binary>> = Rev -> {ok, Rev};
-        {ok, _}=OK -> OK;
+        ?NE_BINARY = Rev -> {ok, Rev};
         {error, _}=E -> E
     end.
 
@@ -319,9 +318,7 @@ do_ensure_saved(#db{}=Db, Doc, Opts) ->
         {'ok', _}=Saved -> lager:debug("saved doc"), Saved;
         {'error', conflict} ->
             case do_fetch_rev(Db, wh_json:get_value(<<"_id">>, Doc, <<>>)) of
-                <<_/binary>> = Rev ->
-                    do_ensure_saved(Db, wh_json:set_value(<<"_rev">>, Rev, Doc), Opts);
-                {'ok', Rev} ->
+                ?NE_BINARY = Rev ->
                     do_ensure_saved(Db, wh_json:set_value(<<"_rev">>, Rev, Doc), Opts);
                 {'error', not_found} ->
                     do_ensure_saved(Db, wh_json:delete_key(<<"_rev">>, Doc), Opts)
@@ -329,8 +326,7 @@ do_ensure_saved(#db{}=Db, Doc, Opts) ->
         {'error', _}=E -> E
     end.
 
--spec do_fetch_rev/2 :: (db(), ne_binary()) -> {'ok', ne_binary()} |
-                                               ne_binary() |
+-spec do_fetch_rev/2 :: (db(), ne_binary()) -> ne_binary() |
                                                {'error', atom()}.
 do_fetch_rev(#db{}=Db, DocId) ->
     ?RETRY_504(couchbeam:lookup_doc_rev(Db, DocId)).
@@ -385,13 +381,13 @@ stream_attachment(#server{}=Conn, DbName, DocId, AName, Caller) ->
                                                                                                         {'error', atom()}.
 put_attachment(#server{}=Conn, DbName, DocId, AName, Contents) ->
     Db = get_db(Conn, DbName),
-    {'ok', Rev} = do_fetch_rev(Db, DocId),
+    Rev = do_fetch_rev(Db, DocId),
     do_put_attachment(Db, DocId, AName, Contents, [{<<"rev">>, Rev}]).
 put_attachment(#server{}=Conn, DbName, DocId, AName, Contents, Options) ->
     Db = get_db(Conn, DbName),
     case props:get_value(rev, Options) of
         undefined ->
-            {'ok', Rev} = do_fetch_rev(Db, DocId),
+            Rev = do_fetch_rev(Db, DocId),
             do_put_attachment(Db, DocId, AName, Contents, [{<<"rev">>, Rev} | Options]);
         _ ->
             do_put_attachment(Db, DocId, AName, Contents, Options)
@@ -403,14 +399,19 @@ put_attachment(#server{}=Conn, DbName, DocId, AName, Contents, Options) ->
                                                                                               {'error', atom()}.
 delete_attachment(#server{}=Conn, DbName, DocId, AName) ->
     Db = get_db(Conn, DbName),
-    {'ok', Rev} = do_fetch_rev(Db, DocId),
-    do_del_attachment(Db, DocId, AName, [{<<"rev">>, Rev}]).
+    case do_fetch_rev(Db, DocId) of
+        {'error', _}=E -> E;
+        ?NE_BINARY = Rev -> do_del_attachment(Db, DocId, AName, [{<<"rev">>, Rev}])
+    end.
+
 delete_attachment(#server{}=Conn, DbName, DocId, AName, Options) ->
     Db = get_db(Conn, DbName),
     case props:get_value(rev, Options) of
         undefined ->
-            {'ok', Rev} = do_fetch_rev(Db, DocId),
-            do_del_attachment(Db, DocId, AName, [{<<"rev">>, Rev} | Options]);
+            case do_fetch_rev(Db, DocId) of
+                {'error', _}=E -> E;
+                Rev -> do_del_attachment(Db, DocId, AName, [{<<"rev">>, Rev} | Options])
+            end;
         _ ->
             do_del_attachment(Db, DocId, AName, Options)
     end.
