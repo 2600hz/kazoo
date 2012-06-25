@@ -478,7 +478,9 @@ handle_cast({event_execute_complete, CallId, EvtName, JObj}, #state{callid=CallI
                                           ,msg_id = NextMsgId
                                          }, hibernate}
             end
-    end.
+    end;
+handle_cast(_, State) ->
+    {noreply, State}.
 
 %%--------------------------------------------------------------------
 %% @private
