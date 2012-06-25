@@ -302,6 +302,9 @@ handle_cast({init_amqp, Params, Responders, Bindings}, State) ->
         {error, _R} ->
             lager:debug("failed to init AMQP: ~p", [_R]),
             _Ref = erlang:send_after(?TIMEOUT_RETRY_CONN, self(), {amqp_channel_event, initial_conn_failed}),
+
+            _ = [add_responder(self(), Mod, Evts) || {Mod, Evts} <- Responders],
+
             {noreply
              ,State#state{
                 responders=[]
@@ -577,9 +580,9 @@ handle_callback_event(#state{module=Module, module_state=ModState, queue=Queue, 
 %% allow wildcard (<<"*">>) in the Key to match either (or both) Category and Name
 -spec maybe_event_matches_key/2 :: (responder_callback_mapping(), responder_callback_mapping()) -> boolean().
 maybe_event_matches_key(Evt, Evt) -> true;
+maybe_event_matches_key({_,_}, {<<"*">>, <<"*">>}) -> true;
 maybe_event_matches_key({_, Name}, {<<"*">>, Name}) -> true;
 maybe_event_matches_key({Cat, _}, {Cat, <<"*">>}) -> true;
-maybe_event_matches_key({_,_}, {<<"*">>, <<"*">>}) -> true;
 maybe_event_matches_key(_A, _B) -> false.
 
 %% Collect the spawned handlers going down so the main process_req proc doesn't end until all
