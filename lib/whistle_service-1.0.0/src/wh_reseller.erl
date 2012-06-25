@@ -350,10 +350,8 @@ set_service_plans(JObj, ServicePlans) ->
     set_service_plans(JObj, ServicePlans, undefined).
 
 set_service_plans(JObj, ServicePlans, undefined) ->
-    case find_reseller(wh_json:get_value(<<"pvt_tree">>, JObj, [])) of
-        undefined -> JObj;
-        Reseller -> set_service_plans(JObj, ServicePlans, Reseller)
-    end;
+    Reseller = find_reseller(wh_json:get_value(<<"pvt_tree">>, JObj, [])),
+    set_service_plans(JObj, ServicePlans, Reseller);
 set_service_plans(JObj, ServicePlans, Reseller) ->
     lager:debug("setting reseller id to ~s", [Reseller]),
     wh_service_plan:set_service_plans(wh_json:set_value(<<"pvt_reseller_id">>, Reseller, JObj)
