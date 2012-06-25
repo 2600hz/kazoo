@@ -937,7 +937,13 @@ get_new_attachment_url(AttachmentName, MediaId, Call) ->
             {ok, JObj} ->
                 case wh_json:get_keys(wh_json:get_value(<<"_attachments">>, JObj, wh_json:new())) of
                     [] -> ok;
-                    Existing -> [couch_mgr:delete_attachment(AccountDb, MediaId, Attach) || Attach <- Existing]
+                    Existing ->
+                        [begin
+                             lager:debug("need to remove ~s/~s/~s first", [AccountDb, MediaId, Attach]),
+                             couch_mgr:delete_attachment(AccountDb, MediaId, Attach)
+                         end
+                         || Attach <- Existing
+                        ]
                 end;
             {error, _} -> ok
         end,
