@@ -1,16 +1,18 @@
 %%%-------------------------------------------------------------------
-%%% @author Karl Anderson <karl@2600hz.org>
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2012, VoIP INC
 %%% @doc
 %%%
 %%% @end
-%%% Created : 15 Aug 2011 by Karl Anderson <karl@2600hz.org>
+%%% @contributors
+%%%   Karl Anderson
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(callflow_maintenance).
 
 -export([blocking_refresh/0]).
 -export([refresh/0, refresh/1]).
 -export([migrate_menus/0, migrate_menus/1]).
+-export([migrate_recorded_name/0, migrate_recorded_name/1]).
 -export([show_calls/0]).
 -export([flush/0]).
 
@@ -83,6 +85,47 @@ refresh(<<Account/binary>>) ->
 refresh(Account) ->
     refresh(wh_util:to_binary(Account)).
 
+-spec migrate_recorded_name/0 :: () -> any().
+-spec migrate_recorded_name/1 :: (ne_binary()) -> any().
+migrate_recorded_name() ->
+    [catch migrate_recorded_name(AccountDb) || AccountDb <- whapps_util:get_all_accounts(encoded)].
+migrate_recorded_name(Db) ->
+    lager:info("migrating all name recordings from vmboxes w/ owner_id in ~s", [Db]),
+
+    case couch_mgr:get_results(Db, <<"vmboxes/crossbar_listing">>, [include_docs]) of
+        {ok, []} -> lager:debug("no vmboxes in ~s", [Db]);
+        {error, _E} -> lager:debug("unable to get vm box list: ~p", [_E]);
+        {ok, VMBoxes} -> [do_recorded_name_migration(Db, wh_json:get_value(<<"doc">>, VMBox)) || VMBox <- VMBoxes]
+    end.
+
+-spec do_recorded_name_migration/2 :: (ne_binary(), wh_json:json_object()) -> any().
+-spec do_recorded_name_migration/3 :: (ne_binary(), wh_json:json_object(), 'undefined' | ne_binary()) -> any().
+do_recorded_name_migration(Db, VMBox) ->
+    VMBoxId = wh_json:get_value(<<"_id">>, VMBox),
+    case wh_json:get_value(?RECORDED_NAME_KEY, VMBox) of
+        undefined -> lager:debug("vm box ~s has no recorded name to migrate", [VMBoxId]);
+        MediaId ->
+            lager:debug("vm box ~s has recorded name in doc ~s", [VMBoxId, MediaId]),
+            do_recorded_name_migration(Db, MediaId, wh_json:get_value(<<"owner_id">>, VMBox)),
+            {ok, _} = couch_mgr:save_doc(Db, wh_json:delete_key(?RECORDED_NAME_KEY, VMBox))
+    end.
+
+do_recorded_name_migration(_Db, _MediaId, undefined) ->
+    lager:debug("no owner id on vm box");
+do_recorded_name_migration(Db, MediaId, OwnerId) ->
+    {ok, Owner} = couch_mgr:open_doc(Db, OwnerId),
+    case wh_json:get_value(?RECORDED_NAME_KEY, Owner) of
+        undefined ->
+            lager:debug("no recorded name on owner, setting to ~s", [MediaId]),
+            {ok, _} = couch_mgr:save_doc(Db, wh_json:set_value(?RECORDED_NAME_KEY, MediaId, Owner)),
+            lager:debug("updated owner doc with recorded name doc id ~s", [MediaId]);
+        MediaId ->
+            lager:debug("owner already has recorded name at ~s", [MediaId]);
+        OwnerMediaId ->
+            lager:debug("owner has recorded name at ~s(not ~s), using owners", [OwnerMediaId, MediaId]),
+            couch_mgr:del_doc(Db, MediaId)
+    end.
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -97,7 +140,7 @@ migrate_menus() ->
 migrate_menus(Account) ->
     Db = wh_util:format_account_id(Account, encoded),
     lager:info("migrating all menus in ~s", [Db]),
-    case couch_mgr:get_results(Db, <<"menus/crossbar_listing">>, [{<<"include_docs">>, true}]) of
+    case couch_mgr:get_results(Db, <<"menus/crossbar_listing">>, [include_docs]) of
         {ok, []} ->
             lager:info("db ~s has no menus", [Db]),
             done;

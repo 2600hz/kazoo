@@ -61,6 +61,9 @@ migrate() ->
     %% Remove depreciated crossbar modules from the startup list and add new defaults
     _ = crossbar_maintenance:migrate(),
 
+    %% Migrate recorded name doc ids from VM Boxes to the Owner ID's doc (if exists)
+    _ = callflow_maintenance:migrate_recorded_name(),
+
     %% Remove depreciated whapps from the startup list and add new defaults
     io:format("updating default kazoo modules~n", []),
     WhappsUpdates = [fun(L) -> [<<"sysconf">> | lists:delete(<<"sysconf">>, L)] end
