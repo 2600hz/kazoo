@@ -43,7 +43,7 @@ handle_req(JObj, Props) ->
                          of
                              true -> {ok, flat_rate}; 
                              false -> 
-                                 lager:debug("inellegable for flat rate trunks or at trunk limit", []),
+                                 lager:debug("inellegable for flat rate trunks", []),
                                  {error, trunk_limit}
                          end
                  end
@@ -107,21 +107,21 @@ calls_at_limit(#limits{calls=-1}, _) ->
     false;
 calls_at_limit(#limits{calls=Resources}, JObj) ->
     ConsumedResources = wh_json:get_integer_value([<<"Usage">>, <<"Calls">>], JObj, 0),
-    Resources - ConsumedResources < 0.    
+    Resources - ConsumedResources =< 0.    
 
 -spec resource_consumption_at_limit/2 :: (#limits{}, wh_json:json_object()) -> boolean().
 resource_consumption_at_limit(#limits{resource_consuming_calls=-1}, _) ->
     false;
 resource_consumption_at_limit(#limits{resource_consuming_calls=Resources}, JObj) ->
     ConsumedResources = wh_json:get_integer_value([<<"Usage">>, <<"Resource-Consuming-Calls">>], JObj, 0),
-    Resources - ConsumedResources < 0.
+    Resources - ConsumedResources =< 0.
 
 -spec trunks_at_limit/2 :: (#limits{}, wh_json:json_object()) -> boolean().
 trunks_at_limit(Limits, JObj) ->
     InboundResources = wh_json:get_integer_value([<<"Usage">>, <<"Inbound-Flat-Rate">>], JObj, 0),
     RemainingInbound = consume_inbound_limits(Limits, InboundResources),
     OutboundResources = wh_json:get_integer_value([<<"Usage">>, <<"Outbound-Flat-Rate">>], JObj, 0),
-    consume_twoway_limits(Limits, RemainingInbound + OutboundResources) < 0.    
+    consume_twoway_limits(Limits, RemainingInbound + OutboundResources).    
 
 -spec credit_is_available/2 :: (#limits{}, wh_json:json_object()) -> boolean().
 credit_is_available(Limits, JObj) ->
@@ -159,20 +159,40 @@ postpay_is_available(#limits{allow_postpay=true, max_postpay_amount=MaxPostpay
 
 -spec consume_inbound_limits/2 :: (#limits{}, wh_json:json_object()) -> integer().
 consume_inbound_limits(#limits{inbound_trunks=-1}, _) ->
+    lager:debug("account has unlimited inbound trunks", []),
+    0;
+consume_inbound_limits(#limits{inbound_trunks=0}, Resources) ->
+    Resources;
+consume_inbound_limits(_, 0) -> 
+    lager:debug("not using any inbound only trunks yet", []),
     0;
 consume_inbound_limits(#limits{inbound_trunks=Trunks}, Resources) ->
     case Trunks - Resources of
-        Count when Count >= 0 -> 0;
-        Count -> abs(Count)
+        Count when Count >= 0 -> 
+            lager:debug("already using ~p of ~p inbound only trunks", [Resources, Trunks]),
+            0;
+        Count ->
+            RemainingInbound = abs(Count),
+            lager:debug("already using all ~p inbound only trunks, with ~p unaccounted for inbound channels", [Trunks, RemainingInbound]),
+            RemainingInbound
     end.
 
--spec consume_twoway_limits/2 :: (#limits{}, wh_json:json_object()) -> integer().
+-spec consume_twoway_limits/2 :: (#limits{}, wh_json:json_object()) -> boolean().
 consume_twoway_limits(#limits{twoway_trunks=-1}, _) ->
-    0;
+    lager:debug("account has unlimited twoway trunks", []),
+    false;
+consume_twoway_limits(#limits{twoway_trunks=0}, _) -> true;
+consume_twoway_limits(_, 0) -> 
+    lager:debug("not using any twoway trunks yet", []),
+    false;
 consume_twoway_limits(#limits{twoway_trunks=Trunks}, Resources) ->
-    case Trunks - Resources of
-        Count when Count >= 0 -> 0;
-        Count -> Count
+    case Resources >= Trunks of
+        true -> 
+            lager:debug("already using all ~p twoway trunks", [Trunks]),            
+            true;
+        false ->
+            lager:debug("already using ~p of ~p twoway trunks", [Resources, Trunks]),
+            false
     end.
 
 -spec send_resp/3 :: (wh_json:json_object(),  ne_binary(), {'ok', 'credit' | 'flatrate'} | {'error', _}) -> 'ok'.
