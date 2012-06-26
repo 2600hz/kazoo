@@ -630,10 +630,17 @@ record_unavailable_greeting(AttachmentName, #mailbox{unavailable_media_id=MediaI
 %% @end
 %%--------------------------------------------------------------------
 -spec record_name/3 :: (ne_binary(), #mailbox{}, whapps_call:call()) -> 'ok' | #mailbox{}.
-record_name(AttachmentName, #mailbox{name_media_id=undefined}=Box, Call) ->
+record_name(AttachmentName, #mailbox{owner_id=undefined, name_media_id=undefined}=Box, Call) ->
     MediaId = recording_media_doc(<<"users name">>, Box, Call),
     record_name(AttachmentName, Box#mailbox{name_media_id=MediaId}, Call);
-record_name(AttachmentName, #mailbox{name_media_id=MediaId}=Box, Call) ->
+record_name(AttachmentName, #mailbox{owner_id=undefined, name_media_id=MediaId}=Box, Call) ->
+    lager:debug("no owner_id set on mailbox, saving into mailbox"),
+    record_name(AttachmentName, Box, Call, MediaId);
+record_name(AttachmentName, #mailbox{owner_id=OwnerId}=Box, Call) ->
+    lager:debug("owner_id (~s) set on mailbox, saving into owner's doc", [OwnerId]),
+    record_name(AttachmentName, Box, Call, OwnerId).
+
+record_name(AttachmentName, Box, Call, DocId) ->
     lager:debug("recording name as ~s", [AttachmentName]),
     Tone = wh_json:from_list([{<<"Frequencies">>, [<<"440">>]}
                               ,{<<"Duration-ON">>, <<"500">>}
@@ -647,8 +654,8 @@ record_name(AttachmentName, #mailbox{name_media_id=MediaId}=Box, Call) ->
         {ok, record} ->
             record_name(tmp_file(), Box, Call);
         {ok, save} ->
-            _ = store_recording(AttachmentName, MediaId, Call),
-            ok = update_doc([<<"media">>, <<"name">>], MediaId, Box, Call),
+            _ = store_recording(AttachmentName, DocId, Call),
+            ok = update_doc([<<"media">>, <<"name">>], DocId, Box, Call),
             _ = whapps_call_command:b_prompt(<<"vm-saved">>, Call),
             Box;
         {ok, no_selection} ->
