@@ -60,7 +60,7 @@
           ,max_login_attempts = 3 :: non_neg_integer()
           ,require_pin = false :: boolean()
           ,check_if_owner = true :: boolean()
-          ,owner_id = <<>> :: binary()
+          ,owner_id :: 'undefined' | binary()
           ,is_setup = false :: boolean()
           ,message_count = 0 :: non_neg_integer()
           ,max_message_count = 0 :: non_neg_integer()
