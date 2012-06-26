@@ -66,14 +66,12 @@
                ,options = [] :: proplist()
               }).
 
--record(astats, {billing_ids=[]
-                 ,using_res=[]
-                 ,outbound_bridges=[]
-                 ,outbound_fr=0
-                 ,inbound_fr=0
-                 ,outbound_pm=0
-                 ,inbound_pm=0
-                 ,calls_using_res=0
+-record(astats, {billing_ids=sets:new() :: set()
+                 ,outbound_flat_rate=sets:new() :: set()
+                 ,inbound_flat_rate=sets:new() :: set()
+                 ,outbound_per_minute=sets:new() :: set()
+                 ,inbound_per_minute=sets:new() :: set()
+                 ,resource_consumers=sets:new() :: set()
                 }).
 
 -record(state, {nodes = [] :: [#node{},...] | []
@@ -180,7 +178,7 @@ channel_account_summary(AccountId) ->
                            ,bridge_id = '$6'
                           }
                   ,[{'=:=', '$2', {const, AccountId}}]
-                  ,[{{'$1', '$5', '$3', '$6', '$4', '$7'}}]}
+                  ,['$_']}
                 ],  
     ets:select(ecallmgr_channels, MatchSpec).    
  
@@ -639,104 +637,55 @@ build_channel_record(Node, UUID) ->
         timeout -> {error, timeout}
     end.
 
--spec summarize_account_usage/1 :: (_) -> wh_json:json_object().
+-spec summarize_account_usage/1 :: ([#channel{},...] | []) -> wh_json:json_object().
 summarize_account_usage(Channels) ->
-    AStats = summarize_account_usage(Channels, #astats{}),
-    wh_json:from_list([{<<"Calls">>, length(AStats#astats.billing_ids)}
+    AStats = lists:foldr(fun classify_channel/2, #astats{}, Channels),
+    wh_json:from_list([{<<"Calls">>, sets:size(AStats#astats.billing_ids)}
                        ,{<<"Channels">>,  length(Channels)}
-                       ,{<<"Outbound-Flat-Rate">>, AStats#astats.outbound_fr}
-                       ,{<<"Inbound-Flat-Rate">>, AStats#astats.inbound_fr}
-                       ,{<<"Outbound-Per-Minute">>, AStats#astats.outbound_pm}
-                       ,{<<"Inbound-Per-Minute">>, AStats#astats.inbound_pm}
-                       ,{<<"Resource-Consuming-Calls">>, AStats#astats.calls_using_res}
+                       ,{<<"Outbound-Flat-Rate">>, sets:size(AStats#astats.outbound_flat_rate)}
+                       ,{<<"Inbound-Flat-Rate">>, sets:size(AStats#astats.inbound_flat_rate)}
+                       ,{<<"Outbound-Per-Minute">>, sets:size(AStats#astats.outbound_per_minute)}
+                       ,{<<"Inbound-Per-Minute">>, sets:size(AStats#astats.inbound_per_minute)}
+                       ,{<<"Resource-Consuming-Calls">>, sets:size(AStats#astats.resource_consumers)}
                       ]).
 
--spec summarize_account_usage/2 :: (_, #astats{}) -> #astats{}.
-%%summarize_account_usage([{Direction, BillingId, AuthorizingId, BridgeId, ResourceId, BillingType}|Channels], ) 
-
-summarize_account_usage([], AStats) ->
-    AStats;
-summarize_account_usage([{<<"outbound">>, BillingId, _, BridgeId, ResourceId, <<"per_minute">>}|Channels], AStats) when ResourceId =/= undefined -> 
-    Routines = [fun(#astats{billing_ids=I}=A) -> 
-                        A#astats{billing_ids=[BillingId|lists:delete(BillingId, I)]}
-                 end
-                ,fun(#astats{outbound_pm=O, outbound_bridges=B}=A) ->
-                         case lists:member(BridgeId, B) of
-                             true -> A;
-                             false -> A#astats{outbound_pm=O + 1
-                                               ,outbound_bridges=[BridgeId|lists:delete(BridgeId, B)]
-                                              }
-                         end
-                 end
-                ,fun(#astats{calls_using_res=C, using_res=U}=A) ->
-                         case lists:member(BillingId, U) of
-                             true -> A;
-                             false -> A#astats{calls_using_res=C + 1
-                                               ,using_res=[BillingId|lists:delete(BillingId, U)]
-                                              }
-                         end
-                 end
-               ],
-    summarize_account_usage(Channels, lists:foldr(fun(F, A) -> F(A) end, AStats, Routines));
-summarize_account_usage([{<<"inbound">>, BillingId, undefined, _, _, <<"per_minute">>}|Channels], AStats) -> 
-    Routines = [fun(#astats{billing_ids=I}=A) -> 
-                        A#astats{billing_ids=[BillingId|lists:delete(BillingId, I)]}
-                 end
-                ,fun(#astats{inbound_pm=O}=A) -> A#astats{inbound_pm=O + 1} end
-                ,fun(#astats{calls_using_res=C, using_res=U}=A) ->
-                         case lists:member(BillingId, U) of
-                             true -> A;
-                             false -> A#astats{calls_using_res=C + 1
-                                               ,using_res=[BillingId|lists:delete(BillingId, U)]
-                                              }
-                         end
-                 end
-               ],
-    summarize_account_usage(Channels, lists:foldr(fun(F, A) -> F(A) end, AStats, Routines));
-
-summarize_account_usage([{<<"outbound">>, BillingId, _, BridgeId, ResourceId, _}|Channels], AStats) when ResourceId =/= undefined -> 
-    Routines = [fun(#astats{billing_ids=I}=A) -> 
-                        A#astats{billing_ids=[BillingId|lists:delete(BillingId, I)]}
-                 end
-                ,fun(#astats{outbound_fr=O, outbound_bridges=B}=A) ->
-                         case lists:member(BridgeId, B) of
-                             true -> A;
-                             false -> A#astats{outbound_fr=O + 1
-                                               ,outbound_bridges=[BridgeId|lists:delete(BridgeId, B)]
-                                              }
-                         end
-                 end
-                ,fun(#astats{calls_using_res=C, using_res=U}=A) ->
-                         case lists:member(BillingId, U) of
-                             true -> A;
-                             false -> A#astats{calls_using_res=C + 1
-                                               ,using_res=[BillingId|lists:delete(BillingId, U)]
-                                              }
-                         end
-                 end
-               ],
-    summarize_account_usage(Channels, lists:foldr(fun(F, A) -> F(A) end, AStats, Routines));
-summarize_account_usage([{<<"inbound">>, BillingId, undefined, _, _, _}|Channels], AStats) -> 
-    Routines = [fun(#astats{billing_ids=I}=A) -> 
-                        A#astats{billing_ids=[BillingId|lists:delete(BillingId, I)]}
-                 end
-                ,fun(#astats{inbound_fr=O}=A) -> A#astats{inbound_fr=O + 1} end
-                ,fun(#astats{calls_using_res=C, using_res=U}=A) ->
-                         case lists:member(BillingId, U) of
-                             true -> A;
-                             false -> A#astats{calls_using_res=C + 1
-                                               ,using_res=[BillingId|lists:delete(BillingId, U)]
-                                              }
-                         end
-                 end
-               ],
-    summarize_account_usage(Channels, lists:foldr(fun(F, A) -> F(A) end, AStats, Routines));
-summarize_account_usage([{_, BillingId, _, _, _, _}|Channels], AStats) ->
-    Routines = [fun(#astats{billing_ids=I}=A) ->
-                        A#astats{billing_ids=[BillingId|lists:delete(BillingId, I)]}
-                end
-               ],
-    summarize_account_usage(Channels, lists:foldr(fun(F, A) -> F(A) end, AStats, Routines)).
+-spec classify_channel/2 :: (#channel{}, #astats{}) -> #astats{}.
+classify_channel(#channel{billing_id=undefined, uuid=UUID}=Channel, AStats) ->
+    classify_channel(Channel#channel{billing_id=wh_util:to_hex_binary(crypto:md5(UUID))}, AStats);
+classify_channel(#channel{bridge_id=undefined, billing_id=BillingId}=Channel, AStats) ->
+    classify_channel(Channel#channel{bridge_id=BillingId}, AStats);
+classify_channel(#channel{direction = <<"outbound">>, account_billing = <<"flat_rate">>, bridge_id=BridgeId, billing_id=BillingId}
+                 ,#astats{outbound_flat_rate=OutboundFlatRates, resource_consumers=ResourceConsumers, billing_ids=BillingIds}=AStats) -> 
+    AStats#astats{outbound_flat_rate=sets:add_element(BridgeId, OutboundFlatRates)
+                  ,resource_consumers=sets:add_element(BillingId, ResourceConsumers)
+                  ,billing_ids=sets:add_element(BillingId, BillingIds)};
+classify_channel(#channel{direction = <<"inbound">>, account_billing = <<"flat_rate">>, bridge_id=BridgeId, billing_id=BillingId}
+                         ,#astats{inbound_flat_rate=InboundFlatRates, resource_consumers=ResourceConsumers, billing_ids=BillingIds}=AStats) -> 
+    AStats#astats{inbound_flat_rate=sets:add_element(BridgeId, InboundFlatRates)
+                  ,resource_consumers=sets:add_element(BillingId, ResourceConsumers)
+                  ,billing_ids=sets:add_element(BillingId, BillingIds)};
+classify_channel(#channel{direction = <<"outbound">>, account_billing = <<"per_minute">>, bridge_id=BridgeId, billing_id=BillingId}
+                         ,#astats{outbound_per_minute=OutboundPerMinute, resource_consumers=ResourceConsumers, billing_ids=BillingIds}=AStats) -> 
+    AStats#astats{outbound_per_minute=sets:add_element(BridgeId, OutboundPerMinute)
+                  ,resource_consumers=sets:add_element(BillingId, ResourceConsumers)
+                  ,billing_ids=sets:add_element(BillingId, BillingIds)};
+classify_channel(#channel{direction = <<"inbound">>, account_billing = <<"per_minute">>, bridge_id=BridgeId, billing_id=BillingId}
+                         ,#astats{inbound_per_minute=InboundPerMinute, resource_consumers=ResourceConsumers, billing_ids=BillingIds}=AStats) -> 
+    AStats#astats{inbound_per_minute=sets:add_element(BridgeId, InboundPerMinute)
+                  ,resource_consumers=sets:add_element(BillingId, ResourceConsumers)
+                  ,billing_ids=sets:add_element(BillingId, BillingIds)};
+classify_channel(#channel{direction = <<"inbound">>, authorizing_id=undefined, billing_id=BillingId}
+                           ,#astats{resource_consumers=ResourceConsumers, billing_ids=BillingIds}=AStats) ->
+    AStats#astats{resource_consumers=sets:add_element(BillingId, ResourceConsumers)
+                  ,billing_ids=sets:add_element(BillingId, BillingIds)};
+classify_channel(#channel{direction = <<"inbound">>, billing_id=BillingId}, #astats{billing_ids=BillingIds}=AStats) ->
+    AStats#astats{billing_ids=sets:add_element(BillingId, BillingIds)};
+classify_channel(#channel{direction = <<"outbound">>, resource_id=undefined, billing_id=BillingId}, #astats{billing_ids=BillingIds}=AStats) ->
+    AStats#astats{billing_ids=sets:add_element(BillingId, BillingIds)};
+classify_channel(#channel{direction = <<"outbound">>, billing_id=BillingId}
+                           ,#astats{resource_consumers=ResourceConsumers, billing_ids=BillingIds}=AStats) ->
+    AStats#astats{resource_consumers=sets:add_element(BillingId, ResourceConsumers)
+                  ,billing_ids=sets:add_element(BillingId, BillingIds)}.
 
 -spec broadcast_channel_update/4 :: (atom(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 broadcast_channel_update(undefined, _, _, _) ->
