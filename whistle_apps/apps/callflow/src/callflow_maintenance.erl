@@ -100,6 +100,7 @@ migrate_recorded_name(Db) ->
 
 -spec do_recorded_name_migration/2 :: (ne_binary(), wh_json:json_object()) -> any().
 -spec do_recorded_name_migration/3 :: (ne_binary(), wh_json:json_object(), 'undefined' | ne_binary()) -> any().
+ present)
 do_recorded_name_migration(Db, VMBox) ->
     VMBoxId = wh_json:get_value(<<"_id">>, VMBox),
     case wh_json:get_value(?RECORDED_NAME_KEY, VMBox) of
