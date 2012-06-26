@@ -238,7 +238,7 @@ maybe_match_users(Call, State, [U|Us], MatchNum) ->
                                                                                      'continue'.
 maybe_match_user(Call, U, MatchNum) ->
     UserName = case media_name(U) of
-                   undefined -> {speak, <<$', (full_name(U))/binary, $'>>};
+                   undefined -> {tts, <<$', (full_name(U))/binary, $'>>};
                    MediaID -> {play, <<$/, (whapps_call:account_db(Call))/binary
                                        ,$/, MediaID/binary>>}
                end,
