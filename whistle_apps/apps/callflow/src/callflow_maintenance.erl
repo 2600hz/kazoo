@@ -85,10 +85,10 @@ refresh(<<Account/binary>>) ->
 refresh(Account) ->
     refresh(wh_util:to_binary(Account)).
 
+-spec migrate_recorded_name/0 :: () -> any().
+-spec migrate_recorded_name/1 :: (ne_binary()) -> any().
 migrate_recorded_name() ->
-    _ = [catch migrate_recorded_name(AccountDb) || AccountDb <- whapps_util:get_all_accounts(encoded)],
-    ok.
-
+    [catch migrate_recorded_name(AccountDb) || AccountDb <- whapps_util:get_all_accounts(encoded)].
 migrate_recorded_name(Db) ->
     lager:info("migrating all name recordings from vmboxes w/ owner_id in ~s", [Db]),
 
@@ -98,6 +98,8 @@ migrate_recorded_name(Db) ->
         {ok, VMBoxes} -> [do_recorded_name_migration(Db, wh_json:get_value(<<"doc">>, VMBox)) || VMBox <- VMBoxes]
     end.
 
+-spec do_recorded_name_migration/2 :: (ne_binary(), wh_json:json_object()) -> any().
+-spec do_recorded_name_migration/3 :: (ne_binary(), wh_json:json_object(), 'undefined' | ne_binary()) -> any().
 do_recorded_name_migration(Db, VMBox) ->
     VMBoxId = wh_json:get_value(<<"_id">>, VMBox),
     case wh_json:get_value(?RECORDED_NAME_KEY, VMBox) of
