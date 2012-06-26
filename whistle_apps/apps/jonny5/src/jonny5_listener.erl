@@ -32,9 +32,9 @@
                    ,{authz, []}
                    ,{self, []}
                   ]).
--define(QUEUE_NAME, <<>>).
--define(QUEUE_OPTIONS, []).
--define(CONSUME_OPTIONS, []).
+-define(QUEUE_NAME, <<"jonny5_listener">>).
+-define(QUEUE_OPTIONS, [{exclusive, false}]).
+-define(CONSUME_OPTIONS, [{exclusive, false}]).
 
 -define(SERVER, ?MODULE).
 
@@ -55,6 +55,7 @@ start_link() ->
                                                         ,{queue_name, ?QUEUE_NAME}
                                                         ,{queue_options, ?QUEUE_OPTIONS}
                                                         ,{consume_options, ?CONSUME_OPTIONS}
+                                                        ,{basic_qos, 1}
                                                        ], []).
 
 %%%===================================================================
