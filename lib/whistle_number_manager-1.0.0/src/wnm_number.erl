@@ -53,16 +53,15 @@
 -spec create_discovery/1 :: (wnm_number()) -> wnm_number().
 create_discovery(#number{number=Number, number_doc=Doc, module_name=ModuleName, module_data=ModuleData}) ->
     Num = wnm_util:normalize_number(Number),
-    Db = wnm_util:number_to_db_name(Num),
-    Routines = [fun(J) -> wh_json:set_value(<<"_id">>, Num, J) end
-                ,fun(J) -> wh_json:set_value(<<"pvt_module_name">>, ModuleName, J) end
-                ,fun(J) -> wh_json:set_value(<<"pvt_module_data">>, ModuleData, J) end
-                ,fun(J) -> wh_json:set_value(<<"pvt_number_state">>, <<"discovery">>, J) end
-                ,fun(J) -> wh_json:set_value(<<"pvt_ported_in">>, false, J) end
-                ,fun(J) -> wh_json:set_value(<<"pvt_db_name">>, Db, J) end
-                ,fun(J) -> wh_json:set_value(<<"pvt_created">>, wh_util:current_tstamp(), J) end
-               ],
-    JObj = lists:foldl(fun(F, J) -> F(J) end, wh_json:public_fields(Doc), Routines),
+    Updates = [{<<"_id">>, Num}
+               ,{<<"pvt_module_name">>, ModuleName}
+               ,{<<"pvt_module_data">>, ModuleData}
+               ,{<<"pvt_number_state">>, <<"discovery">>}
+               ,{<<"pvt_ported_in">>, false}
+               ,{<<"pvt_db_name">>, wnm_util:number_to_db_name(Num)}
+               ,{<<"pvt_created">>, wh_util:current_tstamp()}
+              ],
+    JObj = wh_json:set_values(Updates, wh_json:public_fields(Doc)),
     json_to_record(JObj).
 
 %%--------------------------------------------------------------------
@@ -76,16 +75,15 @@ create_available(#number{auth_by=undefined}=N) ->
     error_unauthorized(N);
 create_available(#number{number=Number, auth_by=AuthBy, number_doc=Doc}=N) ->
     Num = wnm_util:normalize_number(Number),
-    Db = wnm_util:number_to_db_name(Num),
-    Routines = [fun(J) -> wh_json:set_value(<<"_id">>, Num, J) end
-                ,fun(J) -> wh_json:set_value(<<"pvt_module_name">>, <<"wnm_local">>, J) end
-                ,fun(J) -> wh_json:set_value(<<"pvt_module_data">>, wh_json:new(), J) end
-                ,fun(J) -> wh_json:set_value(<<"pvt_number_state">>, <<"available">>, J) end
-                ,fun(J) -> wh_json:set_value(<<"pvt_db_name">>, Db, J) end
-                ,fun(J) -> wh_json:set_value(<<"pvt_created">>, wh_util:current_tstamp(), J) end
-                ,fun(J) -> wh_json:set_value(<<"pvt_authorizing_account">>, AuthBy, J) end
-               ],
-    JObj = lists:foldl(fun(F, J) -> F(J) end, wh_json:public_fields(Doc), Routines),
+    Updates = [{<<"_id">>, Num}
+               ,{<<"pvt_module_name">>, <<"wnm_local">>}
+               ,{<<"pvt_module_data">>, wh_json:new()}
+               ,{<<"pvt_number_state">>, <<"available">>}
+               ,{<<"pvt_db_name">>, wnm_util:number_to_db_name(Num)}
+               ,{<<"pvt_created">>, wh_util:current_tstamp()}
+               ,{<<"pvt_authorizing_account">>, AuthBy}
+              ],
+    JObj = wh_json:set_values(Updates, wh_json:public_fields(Doc)),
     json_to_record(JObj, N).
 
 %%--------------------------------------------------------------------
@@ -100,18 +98,17 @@ create_port_in(#number{auth_by=undefined}=N) ->
 create_port_in(#number{number=Number, assign_to=AssignTo
                        ,auth_by=AuthBy, number_doc=Doc}=N) ->
     Num = wnm_util:normalize_number(Number),
-    Db = wnm_util:number_to_db_name(Num),
-    Routines = [fun(J) -> wh_json:set_value(<<"_id">>, Num, J) end
-                ,fun(J) -> wh_json:set_value(<<"pvt_module_name">>, <<"wnm_local">>, J) end
-                ,fun(J) -> wh_json:set_value(<<"pvt_module_data">>, wh_json:new(), J) end
-                ,fun(J) -> wh_json:set_value(<<"pvt_number_state">>, <<"port_in">>, J) end
-                ,fun(J) -> wh_json:set_value(<<"pvt_ported_in">>, true, J) end
-                ,fun(J) -> wh_json:set_value(<<"pvt_db_name">>, Db, J) end
-                ,fun(J) -> wh_json:set_value(<<"pvt_created">>, wh_util:current_tstamp(), J) end
-                ,fun(J) -> wh_json:set_value(<<"pvt_authorizing_account">>, AuthBy, J) end
-                ,fun(J) -> wh_json:set_value(<<"pvt_assigned_to">>, AssignTo, J) end
-               ],
-    JObj = lists:foldl(fun(F, J) -> F(J) end, wh_json:public_fields(Doc), Routines),
+    Updates = [{<<"_id">>, Num}
+               ,{<<"pvt_module_name">>, <<"wnm_local">>}
+               ,{<<"pvt_module_data">>, wh_json:new()}
+               ,{<<"pvt_number_state">>, <<"port_in">>}
+               ,{<<"pvt_ported_in">>, true}
+               ,{<<"pvt_db_name">>, wnm_util:number_to_db_name(Num)}
+               ,{<<"pvt_created">>, wh_util:current_tstamp()}
+               ,{<<"pvt_authorizing_account">>, AuthBy}
+               ,{<<"pvt_assigned_to">>, AssignTo}
+              ],
+    JObj = wh_json:set_values(Updates, wh_json:public_fields(Doc)),
     json_to_record(JObj, N).
 
 %%--------------------------------------------------------------------
@@ -856,12 +853,11 @@ get_phone_number_doc(Account, #number{phone_number_docs=Docs}) ->
 %%--------------------------------------------------------------------
 -spec create_number_summary/2 :: (ne_binary(), wnm_number()) -> wh_json:json_object().
 create_number_summary(Account, #number{state=State, features=Features, assigned_to=AssignedTo}) ->        
-    Routines = [fun(J) -> wh_json:set_value(<<"state">>, State, J) end
-                ,fun(J) -> wh_json:set_value(<<"features">>, [wh_util:to_binary(F) || F <- sets:to_list(Features)], J) end
-                ,fun(J) -> wh_json:set_value(<<"on_subaccount">>, Account =/= AssignedTo, J) end
-                ,fun(J) -> wh_json:set_value(<<"assigned_to">>, AssignedTo, J) end
-               ],
-    lists:foldl(fun(F, J) -> F(J) end, wh_json:new(), Routines).
+    wh_json:from_list([{<<"state">>, State}
+                       ,{<<"features">>, [wh_util:to_binary(F) || F <- sets:to_list(Features)]}
+                       ,{<<"on_subaccount">>, Account =/= AssignedTo}
+                       ,{<<"assigned_to">>, AssignedTo}
+                      ]).
 
 %%--------------------------------------------------------------------
 %% @private
