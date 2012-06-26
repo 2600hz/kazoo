@@ -296,9 +296,15 @@ play_invalid(Call) ->
     whapps_call_command:audio_macro([{play, ?PROMPT_INVALID_KEY}], Call).
 
 play_confirm_match(Call, User) ->
+    UserName = case media_name(User) of
+                   undefined -> {tts, <<$', (full_name(User))/binary, $'>>};
+                   MediaID -> {play, <<$/, (whapps_call:account_db(Call))/binary
+                                       ,$/, MediaID/binary>>}
+               end,
+    lager:debug("playing confirm_match with username: ~p", [UserName]),
+
     play_and_collect(Call, [{play, ?PROMPT_FOUND}
-                            ,{say, first_name(User)}
-                            ,{say, last_name(User)}
+                            ,UserName
                             ,{play, ?PROMPT_CONFIRM_MENU, ?ANY_DIGIT}
                            ]).
 
