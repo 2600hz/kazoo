@@ -296,7 +296,8 @@ record_to_xml(#bt_subscription{}=Subscription, ToString) ->
              ,{'trial-duration', Subscription#bt_subscription.trial_duration}
              ,{'trial-duration-unit', Subscription#bt_subscription.trial_duration_unit}
              ,{'trial-period', Subscription#bt_subscription.trial_period}
-             ,{'add-ons', create_addon_changes(Subscription#bt_subscription.add_ons)}],
+             ,{'add-ons', create_addon_changes(Subscription#bt_subscription.add_ons)}
+            ],
     Conditionals = [fun(#bt_subscription{do_not_inherit=true}, P) ->
                             case proplists:get_value('options', P) of
                                 undefined ->
@@ -307,44 +308,45 @@ record_to_xml(#bt_subscription{}=Subscription, ToString) ->
                                     ]
                             end;
                        (_, P) -> P
-                    end,
-                    fun(#bt_subscription{prorate_charges=true}, P) ->
-                            case proplists:get_value('options', P) of
-                                undefined ->
-                                    [{'options', [{'prorate-charges', true}]}|P];
-                                Options ->
-                                    [{'options', [{'prorate-charges', true}|Options]}
-                                     |proplists:delete('options', P)
-                                    ]
-                            end;
-                       (_, P) -> P
-                    end,
-                    fun(#bt_subscription{revert_on_prorate_fail=true}, P) ->
-                            case proplists:get_value('options', P) of
-                                undefined ->
-                                    [{'options', [{'revert-subscription-on-proration-failure', true}]}|P];
-                                Options ->
-                                    [{'options', [{'revert-subscription-on-proration-failure', true}|Options]}
-                                     |proplists:delete('options', P)
-                                    ]
-                            end;
-                       (_, P) -> P
-                    end,
-                    fun(#bt_subscription{replace_add_ons=true}, P) ->
-                            case proplists:get_value('options', P) of
-                                undefined ->
-                                    [{'options', [{'replace-all-add-ons-and-discounts', true}]}|P];
-                                Options ->
-                                    [{'options', [{'replace-all-add-ons-and-discounts', true}|Options]}
-                                     |proplists:delete('options', P)
-                                    ]
-                            end;
-                       (_, P) -> P
-                    end,
-                    fun(#bt_subscription{start_immediately=true}, P) ->
-                            [{'options', [{'start-immediately', true}]}|P];
-                       (_, P) -> P
-                    end],
+                    end
+                    ,fun(#bt_subscription{prorate_charges=true}, P) ->
+                             case proplists:get_value('options', P) of
+                                 undefined ->
+                                     [{'options', [{'prorate-charges', true}]}|P];
+                                 Options ->
+                                     [{'options', [{'prorate-charges', true}|Options]}
+                                      |proplists:delete('options', P)
+                                     ]
+                             end;
+                        (_, P) -> P
+                     end
+                    ,fun(#bt_subscription{revert_on_prorate_fail=true}, P) ->
+                             case proplists:get_value('options', P) of
+                                 undefined ->
+                                     [{'options', [{'revert-subscription-on-proration-failure', true}]}|P];
+                                 Options ->
+                                     [{'options', [{'revert-subscription-on-proration-failure', true}|Options]}
+                                      |proplists:delete('options', P)
+                                     ]
+                             end;
+                        (_, P) -> P
+                     end
+                    ,fun(#bt_subscription{replace_add_ons=true}, P) ->
+                             case proplists:get_value('options', P) of
+                                 undefined ->
+                                     [{'options', [{'replace-all-add-ons-and-discounts', true}]}|P];
+                                 Options ->
+                                     [{'options', [{'replace-all-add-ons-and-discounts', true}|Options]}
+                                      |proplists:delete('options', P)
+                                     ]
+                             end;
+                        (_, P) -> P
+                     end
+                    ,fun(#bt_subscription{start_immediately=true}, P) ->
+                             [{'options', [{'start-immediately', true}]}|P];
+                        (_, P) -> P
+                     end
+                   ],
     Props1 = lists:foldr(fun(F, P) -> F(Subscription, P) end, Props, Conditionals),
     case ToString of
         true -> make_doc_xml(Props1, 'subscription');
