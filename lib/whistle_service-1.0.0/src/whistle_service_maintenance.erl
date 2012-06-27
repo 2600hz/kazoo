@@ -8,8 +8,10 @@
 
 -export([credit/2, credit/3]).
 -export([debit/2, debit/3]).
+-export([sync_account/1]).
 
 -include_lib("whistle/include/wh_types.hrl").
+-include_lib("whistle/include/wh_databases.hrl").
 
 %%--------------------------------------------------------------------
 %% @public
@@ -90,3 +92,47 @@ debit(Account, Amount, Description) ->
         {error, R} -> io:format("failed to update account ~s ledger: ~p~n", [AccountId, R])
     end,
     no_return.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec sync_account/1 :: (text()) -> 'no_return'.
+sync_account(Account) when not is_binary(Account) ->
+    sync_account(wh_util:to_binary(Account));
+sync_account(Account) ->
+    AccountId = wh_util:format_account_id(Account, raw),
+    AccountDb = wh_util:format_account_id(Account, encoded),
+    case wh_resellers:fetch(AccountId) of
+        {error, no_service_plan} -> 
+            io:format("account has no service plans~n", []),
+            no_return;
+        {ok, R1} ->
+            lager:debug("sync devices~n", []),
+            {ok, Devices} = couch_mgr:get_all_results(AccountDb, <<"devices/crossbar_listing">>),
+            DeviceTypes = [get_device_type(Device) || Device <- Devices],
+            R2 = wh_service_devices:update(DeviceTypes, R1, updated),
+            
+            lager:debug("sync numbers~n", []),
+            {ok, PhoneNumbers} = couch_mgr:open_doc(AccountDb, <<"phone_numbers">>),
+            R3 = wh_service_numbers:update(PhoneNumbers, R2),
+
+            lager:debug("sync limits~n", []),
+            {ok, Limits} = couch_mgr:open_doc(AccountDb, <<"limits">>),
+            R4 = wh_service_numbers:update(Limits, R3),
+
+            lager:debug("commit changess~n", []),
+            ok = wh_resellers:commit_changes(R4)
+    end.
+
+
+-spec get_device_type/1 :: (wh_json:json_object()) -> ne_binary().
+get_device_type(JObj) ->
+    DeviceType = wh_json:get_value(<<"device_type">>, JObj
+                                   ,wh_json:get_value([<<"value">>, <<"device_type">>], JObj, <<"sip_device">>)),
+    case lists:member(DeviceType, [<<"sip_device">>, <<"cellphone">>, <<"softphone">>]) of
+        true -> DeviceType;
+        false -> <<"sip_device">>
+    end.
