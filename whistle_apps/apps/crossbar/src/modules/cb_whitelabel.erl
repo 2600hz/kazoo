@@ -12,7 +12,7 @@
 -export([init/0
          ,allowed_methods/0, allowed_methods/1, allowed_methods/2
          ,resource_exists/0, resource_exists/1, resource_exists/2
-	 ,authorize/1, authenticate/1
+         ,authorize/1, authenticate/1
          ,validate/1, validate/2, validate/3
          ,content_types_provided/2, content_types_provided/3
          ,content_types_accepted/2
@@ -20,7 +20,7 @@
          ,put/1
          ,post/1, post/2
          ,delete/1
-	]).
+        ]).
 
 -include_lib("crossbar/include/crossbar.hrl").
 
@@ -244,18 +244,18 @@ get(Context, _, ?LOGO_REQ) ->
 -spec put/1 :: (#cb_context{}) -> #cb_context{}.
 put(#cb_context{doc=JObj, account_id=AccountId}=Context) ->
     case crossbar_doc:save(Context) of
-	#cb_context{resp_status=success}=Context1 ->
-	    case crossbar_doc:load(AccountId, Context) of
-		#cb_context{resp_status=success, doc=AccountDoc}=AccountContext ->
-		    Domain = wh_json:get_ne_value(<<"domain">>, JObj),
-		    AccountDoc1 = wh_json:set_value(<<"pvt_whitelabel_domain">>, Domain, AccountDoc),
-		    cb_accounts:post(AccountContext#cb_context{doc=AccountDoc1}, AccountId),
-		    Context1;
-		Else ->
-		    Else
-	    end;
-	Else ->
-	    Else
+        #cb_context{resp_status=success}=Context1 ->
+            case crossbar_doc:load(AccountId, Context) of
+                #cb_context{resp_status=success, doc=AccountDoc}=AccountContext ->
+                    Domain = wh_json:get_ne_value(<<"domain">>, JObj),
+                    AccountDoc1 = wh_json:set_value(<<"pvt_whitelabel_domain">>, Domain, AccountDoc),
+                    _ = cb_accounts:post(AccountContext#cb_context{doc=AccountDoc1}, AccountId),
+                    Context1;
+                Else ->
+                    Else
+            end;
+        Else ->
+            Else
     end.
 
 -spec post/1 :: (#cb_context{}) -> #cb_context{}.
@@ -263,18 +263,18 @@ put(#cb_context{doc=JObj, account_id=AccountId}=Context) ->
 
 post(#cb_context{doc=JObj, account_id=AccountId}=Context) ->
     case crossbar_doc:save(Context) of
-	#cb_context{resp_status=success}=Context1 ->
-	    case crossbar_doc:load(AccountId, Context) of
-		#cb_context{resp_status=success, doc=AccountDoc}=AccountContext ->
-		    Domain = wh_json:get_ne_value(<<"domain">>, JObj),
-		    AccountDoc1 = wh_json:set_value(<<"pvt_whitelabel_domain">>, Domain, AccountDoc),
-		    cb_accounts:post(AccountContext#cb_context{doc=AccountDoc1}, AccountId),
-		    Context1;
-		Else ->
-		    Else
-	    end;
-	Else ->
-	    Else
+        #cb_context{resp_status=success}=Context1 ->
+            case crossbar_doc:load(AccountId, Context) of
+                #cb_context{resp_status=success, doc=AccountDoc}=AccountContext ->
+                    Domain = wh_json:get_ne_value(<<"domain">>, JObj),
+                    AccountDoc1 = wh_json:set_value(<<"pvt_whitelabel_domain">>, Domain, AccountDoc),
+                    _ = cb_accounts:post(AccountContext#cb_context{doc=AccountDoc1}, AccountId),
+                    Context1;
+                Else ->
+                    Else
+            end;
+        Else ->
+            Else
     end.
 
 post(Context, ?LOGO_REQ) ->
@@ -283,17 +283,17 @@ post(Context, ?LOGO_REQ) ->
 -spec delete/1 :: (#cb_context{}) -> #cb_context{}.
 delete(#cb_context{account_id=AccountId}=Context) ->
     case crossbar_doc:delete(Context, permanent) of 
-	#cb_context{resp_status=success}=Context1 ->
-	    case crossbar_doc:load(AccountId, Context) of
-		#cb_context{resp_status=success, doc=AccountDoc}=AccountContext ->
-		    AccountDoc1 = wh_json:delete_key(<<"pvt_whitelabel_domain">>, AccountDoc),
-		    cb_accounts:post(AccountContext#cb_context{doc=AccountDoc1}, AccountId),
-		    Context1;
-		Else ->
-		    Else
-	    end;
-	Else ->
-	    Else
+        #cb_context{resp_status=success}=Context1 ->
+            case crossbar_doc:load(AccountId, Context) of
+                #cb_context{resp_status=success, doc=AccountDoc}=AccountContext ->
+                    AccountDoc1 = wh_json:delete_key(<<"pvt_whitelabel_domain">>, AccountDoc),
+                    _ = cb_accounts:post(AccountContext#cb_context{doc=AccountDoc1}, AccountId),
+                    Context1;
+                Else ->
+                    Else
+            end;
+        Else ->
+            Else
     end.
 
 %%--------------------------------------------------------------------
@@ -317,14 +317,14 @@ load_whitelabel_meta(WhitelabelId, Context) ->
 find_whitelabel_meta(Domain, Context) ->
     Domain1 = wh_util:to_lower_binary(Domain),
     case couch_mgr:get_results(?WH_ACCOUNTS_DB, ?AGG_VIEW_WHITELABEL_DOMAIN, [{<<"key">>, Domain1}]) of
-	{ok, []} ->
-	    crossbar_util:response(error, <<"domain not found">>, 404, Context);
-	{ok, [_ | [_]]} ->
-	    crossbar_util:response(error, <<"multiple domains found">>, 409, Context);
-	{ok, [JObj]} ->
-	    Db = wh_json:get_ne_value([<<"value">>, <<"account_db">>], JObj),
-	    Id = wh_json:get_ne_value([<<"value">>, <<"account_id">>], JObj),
-	    load_whitelabel_meta(?WHITELABEL_ID, Context#cb_context{db_name=Db, account_id=Id})
+        {ok, []} ->
+            crossbar_util:response(error, <<"domain not found">>, 404, Context);
+        {ok, [_ | [_]]} ->
+            crossbar_util:response(error, <<"multiple domains found">>, 409, Context);
+        {ok, [JObj]} ->
+            Db = wh_json:get_ne_value([<<"value">>, <<"account_db">>], JObj),
+            Id = wh_json:get_ne_value([<<"value">>, <<"account_id">>], JObj),
+            load_whitelabel_meta(?WHITELABEL_ID, Context#cb_context{db_name=Db, account_id=Id})
     end.
 
 %%--------------------------------------------------------------------
@@ -339,19 +339,19 @@ create_whitelabel_meta(#cb_context{req_data=Data, account_id=AccountId}=Context)
         {fail, Errors} ->
             crossbar_util:response_invalid_data(Errors, Context);
         {pass, JObj} ->
-	    Domain = wh_json:get_ne_value(<<"domain">>, JObj),
-	    case is_domain_unique(AccountId, Domain) of
-		true ->
-		    {JObj1, _} = lists:foldr(fun(F, {J, C}) ->
-						     {F(J, C), C}
-					     end
-					     ,{JObj, Context}
-					     ,?PVT_FUNS),
-		    Context#cb_context{doc=JObj1, resp_status=success};
-		false ->
-		    E = wh_json:set_value([<<"domain">>, <<"unique">>], <<"Whitelabel domain is not unique for this system">>, wh_json:new()),
-		    crossbar_util:response_invalid_data(E, Context)
-	    end
+            Domain = wh_json:get_ne_value(<<"domain">>, JObj),
+            case is_domain_unique(AccountId, Domain) of
+                true ->
+                    {JObj1, _} = lists:foldr(fun(F, {J, C}) ->
+                                                     {F(J, C), C}
+                                             end
+                                             ,{JObj, Context}
+                                             ,?PVT_FUNS),
+                    Context#cb_context{doc=JObj1, resp_status=success};
+                false ->
+                    E = wh_json:set_value([<<"domain">>, <<"unique">>], <<"Whitelabel domain is not unique for this system">>, wh_json:new()),
+                    crossbar_util:response_invalid_data(E, Context)
+            end
     end.
 
 %%--------------------------------------------------------------------
@@ -367,14 +367,14 @@ update_whitelabel_meta(WhitelabelId, #cb_context{req_data=Data, account_id=Accou
         {fail, Errors} ->
             crossbar_util:response_invalid_data(Errors, Context);
         {pass, JObj} ->
-	    Domain = wh_json:get_ne_value(<<"domain">>, JObj),
-	    case is_domain_unique(AccountId, Domain) of
-		true ->
-		    crossbar_doc:load_merge(WhitelabelId, add_pvt_type(JObj, Context), Context);
-		false ->
-		    E = wh_json:set_value([<<"domain">>, <<"unique">>], <<"Whitelabel domain is not unique for this system">>, wh_json:new()),
-		    crossbar_util:response_invalid_data(E, Context)
-	    end
+            Domain = wh_json:get_ne_value(<<"domain">>, JObj),
+            case is_domain_unique(AccountId, Domain) of
+                true ->
+                    crossbar_doc:load_merge(WhitelabelId, add_pvt_type(JObj, Context), Context);
+                false ->
+                    E = wh_json:set_value([<<"domain">>, <<"unique">>], <<"Whitelabel domain is not unique for this system">>, wh_json:new()),
+                    crossbar_util:response_invalid_data(E, Context)
+            end
     end.
 
 %%--------------------------------------------------------------------
@@ -412,14 +412,14 @@ load_whitelabel_binary(WhitelabelId, #cb_context{resp_headers=RespHeaders}=Conte
 find_whitelabel_binary(Domain, Context) ->
     Domain1 = wh_util:to_lower_binary(Domain),
     case couch_mgr:get_results(?WH_ACCOUNTS_DB, ?AGG_VIEW_WHITELABEL_DOMAIN, [{<<"key">>, Domain1}]) of
-	{ok, []} ->
-	    crossbar_util:response(error, <<"domain not found">>, 404, Context);
-	{ok, [_ | [_]]} ->
-	    crossbar_util:response(error, <<"multiple domains found">>, 409, Context);
-	{ok, [JObj]} ->
-	    Db = wh_json:get_ne_value([<<"value">>, <<"account_db">>], JObj),
-	    Id = wh_json:get_ne_value([<<"value">>, <<"account_id">>], JObj),
-	    load_whitelabel_binary(?WHITELABEL_ID, Context#cb_context{db_name=Db, account_id=Id})
+        {ok, []} ->
+            crossbar_util:response(error, <<"domain not found">>, 404, Context);
+        {ok, [_ | [_]]} ->
+            crossbar_util:response(error, <<"multiple domains found">>, 409, Context);
+        {ok, [JObj]} ->
+            Db = wh_json:get_ne_value([<<"value">>, <<"account_db">>], JObj),
+            Id = wh_json:get_ne_value([<<"value">>, <<"account_id">>], JObj),
+            load_whitelabel_binary(?WHITELABEL_ID, Context#cb_context{db_name=Db, account_id=Id})
     end.
 
 %%--------------------------------------------------------------------
@@ -436,9 +436,9 @@ update_whitelabel_binary(WhitelabelId, #cb_context{doc=JObj, req_files=[{Filenam
     Opts = [{headers, [{content_type, wh_util:to_list(CT)}]}],
     OldAttachments = wh_json:get_value(<<"_attachments">>, JObj, wh_json:new()),
     Id = wh_json:get_value(<<"_id">>, JObj),
-    [couch_mgr:delete_attachment(Db, Id, Attachment)
-     || Attachment <- wh_json:get_keys(OldAttachments)
-    ],
+    _ = [couch_mgr:delete_attachment(Db, Id, Attachment)
+         || Attachment <- wh_json:get_keys(OldAttachments)
+        ],
     crossbar_doc:save_attachment(WhitelabelId, attachment_name(Filename, CT), Contents, Context, Opts).
 
 %%--------------------------------------------------------------------
@@ -502,16 +502,16 @@ set_id(JObj, _) ->
 -spec is_domain_unique/2 :: (ne_binary(), ne_binary()) -> boolean().
 is_domain_unique(AccountId, Domain) ->
     case couch_mgr:get_results(?WH_ACCOUNTS_DB, ?AGG_VIEW_WHITELABEL_DOMAIN, [{<<"key">>, Domain}]) of
-	{ok, [JObj|[]]} ->
-	    case wh_json:get_ne_value([<<"value">>, <<"account_id">>], JObj) of
-		AccountId ->
-		    true;
-		_ ->
-		    false
-	    end;
-	{ok, [_|_]} ->
-	    false;
-	{ok, []} ->
-	    true
+        {ok, [JObj|[]]} ->
+            case wh_json:get_ne_value([<<"value">>, <<"account_id">>], JObj) of
+                AccountId ->
+                    true;
+                _ ->
+                    false
+            end;
+        {ok, [_|_]} ->
+            false;
+        {ok, []} ->
+            true
     end.
 
