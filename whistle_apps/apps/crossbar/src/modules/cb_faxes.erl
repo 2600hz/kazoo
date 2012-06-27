@@ -11,10 +11,10 @@
 -module(cb_faxes).
 
 -export([init/0
-         ,allowed_methods/0, allowed_methods/1
-         ,resource_exists/0, resource_exists/1
-         ,validate/1, validate/2
-         ,get/1, get/2
+         ,allowed_methods/0, allowed_methods/1, allowed_methods/2
+         ,resource_exists/0, resource_exists/1, resource_exists/2
+         ,validate/1, validate/2, validate/3
+         ,get/1, get/2, get/3
          ,put/1, put/2
          ,post/1, post/2
          ,delete/1, delete/2
@@ -29,7 +29,8 @@
                    ,fun add_pvt_account_id/2
                    ,fun reset_attempts/2
                   ]).
--define(CB_LIST, <<"faxes/crossbar_listing">>).
+-define(CB_LIST, <<"media/listing_private_media">>).
+-define(FAX_FILE_TYPE, <<"tiff">>).
 
 %%%===================================================================
 %%% API
@@ -60,9 +61,18 @@ init() ->
 %%--------------------------------------------------------------------
 -spec allowed_methods/0 :: () -> http_methods() | [].
 -spec allowed_methods/1 :: (path_token()) -> http_methods() | [].
+-spec allowed_methods/2 :: (path_token(), path_token()) -> http_methods() | [].
 allowed_methods() ->
-    ['GET', 'PUT'].
-allowed_methods(_) ->
+    ['PUT'].
+
+allowed_methods(<<"incoming">>) ->
+    ['GET'];
+allowed_methods(<<"outgoing">>) ->
+    ['GET'].
+
+allowed_methods(<<"incoming">>, _ID) ->
+    ['GET'];
+allowed_methods(<<"outgoing">>, _ID) ->
     ['GET', 'POST', 'DELETE'].
 
 %%--------------------------------------------------------------------
@@ -75,9 +85,13 @@ allowed_methods(_) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec resource_exists/0 :: () -> 'true'.
--spec resource_exists/1 :: (path_tokens()) -> 'true'.
+-spec resource_exists/1 :: (path_token()) -> 'true'.
+-spec resource_exists/2 :: (path_token(), path_token()) -> 'true'.
 resource_exists() -> true.
-resource_exists(_) -> true.
+resource_exists(<<"incoming">>) -> true;
+resource_exists(<<"outgoing">>) -> true.
+resource_exists(<<"incoming">>, _Id) -> true;
+resource_exists(<<"outgoing">>, _Id) -> true.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -91,16 +105,21 @@ resource_exists(_) -> true.
 %%--------------------------------------------------------------------
 -spec validate/1 :: (#cb_context{}) -> #cb_context{}.
 -spec validate/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
-validate(#cb_context{req_verb = <<"get">>}=Context) ->
-    summary(Context#cb_context{db_name=?WH_FAXES});
 validate(#cb_context{req_verb = <<"put">>}=Context) ->
     create(Context#cb_context{db_name=?WH_FAXES}).
 
-validate(#cb_context{req_verb = <<"get">>}=Context, Id) ->
-    read(Id, Context#cb_context{db_name=?WH_FAXES});
-validate(#cb_context{req_verb = <<"post">>}=Context, Id) ->
+validate(#cb_context{req_verb = <<"get">>}=Context, <<"outgoing">>) ->
+    outgoing_summary(Context#cb_context{db_name=?WH_FAXES});
+validate(#cb_context{req_verb = <<"get">>}=Context, <<"incoming">>) ->
+    incoming_summary(Context).
+
+validate(#cb_context{req_verb = <<"get">>}=Context, <<"incoming">>, Id) ->
+    read(Id, Context);
+validate(#cb_context{req_verb = <<"get">>}=Context, <<"outgoing">>, Id) ->
+    read(Id, Context);
+validate(#cb_context{req_verb = <<"post">>}=Context, <<"outgoing">>, Id) ->
     update(Id, Context#cb_context{db_name=?WH_FAXES});
-validate(#cb_context{req_verb = <<"delete">>}=Context, Id) ->
+validate(#cb_context{req_verb = <<"delete">>}=Context, <<"outgoing">>, Id) ->
     read(Id, Context#cb_context{db_name=?WH_FAXES}).
 
 %%--------------------------------------------------------------------
@@ -113,9 +132,12 @@ validate(#cb_context{req_verb = <<"delete">>}=Context, Id) ->
 %%--------------------------------------------------------------------
 -spec get/1 :: (#cb_context{}) -> #cb_context{}.
 -spec get/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+-spec get/3 :: (#cb_context{}, path_token(), path_token()) -> #cb_context{}.
 get(#cb_context{}=Context) ->
     Context.
 get(#cb_context{}=Context, _) ->
+    Context.
+get(#cb_context{}=Context, _, _) ->
     Context.
 
 %%--------------------------------------------------------------------
@@ -212,12 +234,35 @@ update(Id, #cb_context{req_data=Data}=Context) ->
 %% resource.
 %% @end
 %%--------------------------------------------------------------------
--spec summary/1 :: (#cb_context{}) -> #cb_context{}.
-summary(#cb_context{account_id=AccountId}=Context) ->
+-spec incoming_summary/1 :: (#cb_context{}) -> #cb_context{}.
+incoming_summary(#cb_context{}=Context) ->
     crossbar_doc:load_view(?CB_LIST
-                           ,[{<<"key">>, AccountId}]
+                           ,[{startkey, [?FAX_FILE_TYPE]}
+                             ,{endkey, [?FAX_FILE_TYPE, wh_json:new()]}
+                             ,include_docs
+                            ]
                            ,Context
-                           ,fun normalize_view_results/2).
+                           ,fun normalize_incoming_view_results/2
+                          ).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Attempt to load a summarized listing of all instances of this
+%% resource.
+%% @end
+%%--------------------------------------------------------------------
+-spec outgoing_summary/1 :: (#cb_context{}) -> #cb_context{}.
+outgoing_summary(#cb_context{}=Context) ->
+    crossbar_doc:load_view(<<"faxes/crossbar_listing">>
+                           ,[include_docs]
+                           ,Context
+                           ,fun normalize_view_results/2
+                          ).
+
+-spec normalize_view_results/2 :: (wh_json:json_object(), wh_json:json_objects()) -> wh_json:json_objects().
+normalize_view_results(JObj, Acc) ->
+    [wh_json:get_value(<<"value">>, JObj)|Acc].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -225,9 +270,9 @@ summary(#cb_context{account_id=AccountId}=Context) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_view_results/2 :: (wh_json:json_object(), wh_json:json_objects()) -> wh_json:json_objects().
-normalize_view_results(JObj, Acc) ->
-    [wh_json:get_value(<<"value">>, JObj)|Acc].
+-spec normalize_incoming_view_results/2 :: (wh_json:json_object(), wh_json:json_objects()) -> wh_json:json_objects().
+normalize_incoming_view_results(JObj, Acc) ->
+    [wh_json:public_fields(wh_json:get_value(<<"doc">>, JObj))|Acc].
 
 %%--------------------------------------------------------------------
 %% @private
