@@ -145,16 +145,21 @@ init([Node, Options]) ->
             gproc:reg({p, l, {call_event, Node, <<"PRESENCE_OUT">>}}),
             gproc:reg({p, l, {call_event, Node, <<"PRESENCE_PROBE">>}}),
             Self = self(),
-            spawn(fun() -> 
-                          QueueName = <<"ecallmgr_fs_notify_presence">>,
-                          QOptions = [{queue_options, [{exclusive, false}]}
-                                      ,{consume_options, [{exclusive, false}]}
-                                      ,{basic_qos, 1}
-                                     ],
-                          Bindings= [{notifications, [{restrict_to, [presence_update]}]}],
-                          gen_listener:add_queue(Self, QueueName, QOptions, Bindings),
-                          lager:debug("handling presence updates", [])
-             end)
+            spawn(
+              fun() ->
+                      put(callid, Node),
+                      QueueName = <<"ecallmgr_fs_notify_presence">>,
+                      QOptions = [{queue_options, [{exclusive, false}]}
+                                  ,{consume_options, [{exclusive, false}]}
+                                  ,{basic_qos, 1}
+                                 ],
+                      Bindings= [{notifications, [{restrict_to, [presence_update]}]}],
+                      case gen_listener:add_queue(Self, QueueName, QOptions, Bindings) of
+                          {ok, _NewQ} -> lager:debug("handling presence updates on queue ~s", [_NewQ]);
+                          {error, _E} -> lager:debug("failed to add queue ~s to ~p: ~p", [QueueName, Self, _E])
+                      end
+              end),
+            ok
     end,
     case ecallmgr_config:get(<<"distribute_message_query">>, false) of
         false -> ok;

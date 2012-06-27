@@ -55,6 +55,8 @@
                   ,node = '_'
                   ,timestamp = '_'
                  }).
+-type channel() :: #channel{}.
+-type channels() :: [channel(),...] | [].
 
 -define(DEFAULT_DOMAIN, <<"whistle.2600hz.org">>).
 -define(MAX_TIMEOUT_FOR_NODE_RESTART, 10000). % 10 seconds
