@@ -1,10 +1,11 @@
 %%%-------------------------------------------------------------------
-%%% @author Karl Anderson <karl@2600hz.org>
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2012, VoIP INC
 %%% @doc
 %%%
 %%% @end
-%%% Created : 26 Jan 2011 by Karl Anderson <karl@2600hz.org>
+%%% @contributors
+%%%   Karl Anderson
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(crossbar_doc).
 
@@ -142,7 +143,7 @@ load_view(View, Options, #cb_context{db_name=DB, query_json=RJ}=Context) ->
     ViewOptions = case HasFilter of
                       false -> Options;
                       true -> 
-                          [{<<"include_docs">>, true} | props:delete(<<"include_docs">>, Options)]
+                          [include_docs | props:delete(include_docs, Options)]
                   end,
     case couch_mgr:get_results(DB, View, ViewOptions) of
         {error, invalid_view_name} ->
