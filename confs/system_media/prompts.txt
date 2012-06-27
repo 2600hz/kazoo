@@ -41,8 +41,8 @@ temporal-reset_rules: Call routing returned to normal operation. Calls will be r
 temporal-menu: Time based call routing. To mark the office as open, press 1. To mark the office as closed, press 2. To resume normal operation, press 3.
 
 conf-welcome: Welcome to the conference.
-conf-enter_conf_number: Please enter the conference number, followed by the pound key.
-conf-enter_conf_pin: Please enter the conference pin number, followed by the pound key.
+conf-enter_conf_number: Please enter the conference number, then press pound.
+conf-enter_conf_pin: Please enter your pin, then press pound.
 conf-bad_pin: Invalid pin number.
 conf-bad_conf: Invalid conference number.
 conf-to_many_attempts: I'm sorry; there have been to many attempts to access the conference..
