@@ -83,13 +83,13 @@ maybe_authorize_channel(Props, Node) ->
                     ({ok, P}) ->
                          %% Ensure that even if the call is answered while we are authorizing it
                          %% the session will hearbeat.
-                         ecallmgr_util:send_cmd(Node, CallId, "set", ?HEARTBEAT_ON_ANSWER(CallId)),
+                         _ = ecallmgr_util:send_cmd(Node, CallId, "set", ?HEARTBEAT_ON_ANSWER(CallId)),
                          AccountId = props:get_value(?GET_CCV(<<"Account-ID">>), P),
                          case authorize(AccountId, P) of
                              {error, _}=E -> E;
                              {ok, Type} ->
                                  lager:debug("call authorized by account ~s as ~s", [AccountId, Type]),
-                                 ecallmgr_util:send_cmd(Node, CallId, "set", ?SET_CCV(<<"Account-Billing">>, Type)),
+                                 _ = ecallmgr_util:send_cmd(Node, CallId, "set", ?SET_CCV(<<"Account-Billing">>, Type)),
                                  {ok, P}
                          end
                  end
