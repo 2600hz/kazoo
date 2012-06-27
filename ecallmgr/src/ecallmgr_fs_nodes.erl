@@ -90,7 +90,7 @@ start_link() ->
 -spec add/2 :: (atom(), proplist() | atom()) -> 'ok' | {'error', 'no_connection'}.
 -spec add/3 :: (atom(), atom(), proplist() | atom()) -> 'ok' | {'error', 'no_connection'}.
 
-add(Node) -> 
+add(Node) ->
     add(Node, []).
 
 add(Node, Opts) when is_list(Opts) ->
@@ -120,8 +120,7 @@ all_nodes_connected() ->
 
 -spec account_summary/1 :: (ne_binary()) -> wh_json:json_object().
 account_summary(AccountId) ->
-    Channels = channel_account_summary(AccountId),
-    summarize_account_usage(Channels).
+    summarize_account_usage(channel_account_summary(AccountId)).
 
 -spec show_channels/0 :: () -> wh_json:json_objects().
 show_channels() ->
@@ -151,12 +150,11 @@ channel_node(UUID) ->
     MatchSpec = [{#channel{uuid = '$1', node = '$2'}
                   ,[{'=:=', '$1', {const, UUID}}]
                   ,['$2']}
-                ],  
+                ],
     case ets:select(ecallmgr_channels, MatchSpec) of
         [Node] -> {ok, Node};
         _ -> {error, not_found}
     end.
-        
 
 -spec channel_exists/1 :: (ne_binary()) -> boolean().
 channel_exists(UUID) ->
@@ -170,8 +168,7 @@ channel_import_moh(UUID) ->
         error:badarg -> false
     end.
 
--type channel_summary() :: {ne_binary(), ne_binary(), 'undefined' | ne_binary(), 'undefined' | ne_binary(), 'undefined' | ne_binary(), ne_binary()}.
--spec channel_account_summary/1 :: (ne_binary()) -> [channel_summary(),...].
+-spec channel_account_summary/1 :: (ne_binary()) -> channels().
 channel_account_summary(AccountId) ->
     MatchSpec = [{#channel{direction = '$1', account_id = '$2', account_billing = '$7'
                            ,authorizing_id = '$3', resource_id = '$4', billing_id = '$5'
@@ -179,51 +176,51 @@ channel_account_summary(AccountId) ->
                           }
                   ,[{'=:=', '$2', {const, AccountId}}]
                   ,['$_']}
-                ],  
-    ets:select(ecallmgr_channels, MatchSpec).    
- 
+                ],
+    ets:select(ecallmgr_channels, MatchSpec).
+
 -spec channel_match_presence/1 :: (ne_binary()) -> [{ne_binary(), atom()},...] | [].
 channel_match_presence(PresenceId) ->
     MatchSpec = [{#channel{uuid = '$1', presence_id = '$2', node = '$3'}
                   ,[{'=:=', '$2', {const, PresenceId}}]
                   ,[{{'$1', '$3'}}]}
-                ],  
+                ],
     ets:select(ecallmgr_channels, MatchSpec).
 
--spec channel_set_account_id/3 :: (atom(), ne_binary(), string() | ne_binary()) -> 'ok'.    
+-spec channel_set_account_id/3 :: (atom(), ne_binary(), string() | ne_binary()) -> 'ok'.
 channel_set_account_id(Node, UUID, Value) when is_binary(Value) ->
     gen_server:cast(?MODULE, {channel_update, UUID, {#channel.account_id, Value}}),
     broadcast_channel_update(Node, UUID, <<"account_id">>, Value);
 channel_set_account_id(Node, UUID, Value) ->
-    channel_set_account_id(Node, UUID, wh_util:to_binary(Value)). 
+    channel_set_account_id(Node, UUID, wh_util:to_binary(Value)).
 
--spec channel_set_billing_id/3 :: (atom(), ne_binary(), string() | ne_binary()) -> 'ok'.    
+-spec channel_set_billing_id/3 :: (atom(), ne_binary(), string() | ne_binary()) -> 'ok'.
 channel_set_billing_id(Node, UUID, Value) when is_binary(Value) ->
     gen_server:cast(?MODULE, {channel_update, UUID, {#channel.billing_id, Value}}),
     broadcast_channel_update(Node, UUID, <<"billing_id">>, Value);
 channel_set_billing_id(Node, UUID, Value) ->
-    channel_set_billing_id(Node, UUID, wh_util:to_binary(Value)). 
+    channel_set_billing_id(Node, UUID, wh_util:to_binary(Value)).
 
--spec channel_set_account_billing/3 :: (atom(), ne_binary(), string() | ne_binary()) -> 'ok'.    
+-spec channel_set_account_billing/3 :: (atom(), ne_binary(), string() | ne_binary()) -> 'ok'.
 channel_set_account_billing(Node, UUID, Value) when is_binary(Value) ->
     gen_server:cast(?MODULE, {channel_update, UUID, {#channel.account_billing, Value}}),
     broadcast_channel_update(Node, UUID, <<"account_billing">>, Value);
 channel_set_account_billing(Node, UUID, Value) ->
-    channel_set_account_billing(Node, UUID, wh_util:to_binary(Value)). 
+    channel_set_account_billing(Node, UUID, wh_util:to_binary(Value)).
 
--spec channel_set_reseller_id/3 :: (atom(), ne_binary(), string() | ne_binary()) -> 'ok'.    
+-spec channel_set_reseller_id/3 :: (atom(), ne_binary(), string() | ne_binary()) -> 'ok'.
 channel_set_reseller_id(Node, UUID, Value) when is_binary(Value) ->
     gen_server:cast(?MODULE, {channel_update, UUID, {#channel.reseller_id, Value}}),
     broadcast_channel_update(Node, UUID, <<"resller_id">>, Value);
 channel_set_reseller_id(Node, UUID, Value) ->
-    channel_set_reseller_id(Node, UUID, wh_util:to_binary(Value)). 
+    channel_set_reseller_id(Node, UUID, wh_util:to_binary(Value)).
 
--spec channel_set_reseller_billing/3 :: (atom(), ne_binary(), string() | ne_binary()) -> 'ok'.    
+-spec channel_set_reseller_billing/3 :: (atom(), ne_binary(), string() | ne_binary()) -> 'ok'.
 channel_set_reseller_billing(Node, UUID, Value) when is_binary(Value) ->
     gen_server:cast(?MODULE, {channel_update, UUID, {#channel.reseller_billing, Value}}),
     broadcast_channel_update(Node, UUID, <<"reseller_billing">>, Value);
 channel_set_reseller_billing(Node, UUID, Value) ->
-    channel_set_reseller_billing(Node, UUID, wh_util:to_binary(Value)). 
+    channel_set_reseller_billing(Node, UUID, wh_util:to_binary(Value)).
 
 -spec channel_set_resource_id/3 :: (atom(), ne_binary(), string() | ne_binary()) -> 'ok'.
 channel_set_resource_id(Node, UUID, Value) when is_binary(Value) ->
@@ -232,37 +229,37 @@ channel_set_resource_id(Node, UUID, Value) when is_binary(Value) ->
 channel_set_resource_id(Node, UUID, Value) ->
     channel_set_resource_id(Node, UUID, wh_util:to_binary(Value)).
 
--spec channel_set_authorizing_id/3 :: (atom(), ne_binary(), string() | ne_binary()) -> 'ok'.    
+-spec channel_set_authorizing_id/3 :: (atom(), ne_binary(), string() | ne_binary()) -> 'ok'.
 channel_set_authorizing_id(Node, UUID, Value) when is_binary(Value) ->
     gen_server:cast(?MODULE, {channel_update, UUID, {#channel.authorizing_id, Value}}),
     broadcast_channel_update(Node, UUID, <<"authorizing_id">>, Value);
 channel_set_authorizing_id(Node, UUID, Value) ->
-    channel_set_authorizing_id(Node, UUID, wh_util:to_binary(Value)). 
+    channel_set_authorizing_id(Node, UUID, wh_util:to_binary(Value)).
 
--spec channel_set_authorizing_type/3 :: (atom(), ne_binary(), string() | ne_binary()) -> 'ok'.    
+-spec channel_set_authorizing_type/3 :: (atom(), ne_binary(), string() | ne_binary()) -> 'ok'.
 channel_set_authorizing_type(Node, UUID, Value) when is_binary(Value) ->
     gen_server:cast(?MODULE, {channel_update, UUID, {#channel.authorizing_type, Value}}),
     broadcast_channel_update(Node, UUID, <<"authorizing_type">>, Value);
 channel_set_authorizing_type(Node, UUID, Value) ->
-    channel_set_authorizing_type(Node, UUID, wh_util:to_binary(Value)). 
+    channel_set_authorizing_type(Node, UUID, wh_util:to_binary(Value)).
 
--spec channel_set_owner_id/3 :: (atom(), ne_binary(), string() | ne_binary()) -> 'ok'.    
+-spec channel_set_owner_id/3 :: (atom(), ne_binary(), string() | ne_binary()) -> 'ok'.
 channel_set_owner_id(Node, UUID, Value) when is_binary(Value) ->
     gen_server:cast(?MODULE, {channel_update, UUID, {#channel.owner_id, Value}}),
     broadcast_channel_update(Node, UUID, <<"owner_id">>, Value);
 channel_set_owner_id(Node, UUID, Value) ->
     channel_set_owner_id(Node, UUID, wh_util:to_binary(Value)).
 
--spec channel_set_presence_id/3 :: (atom(), ne_binary(), string() | ne_binary()) -> 'ok'.    
+-spec channel_set_presence_id/3 :: (atom(), ne_binary(), string() | ne_binary()) -> 'ok'.
 channel_set_presence_id(Node, UUID, Value) when is_binary(Value) ->
     gen_server:cast(?MODULE, {channel_update, UUID, {#channel.presence_id, Value}}),
     broadcast_channel_update(Node, UUID, <<"presence_id">>, Value);
 channel_set_presence_id(Node, UUID, Value) ->
-    channel_set_presence_id(Node, UUID, wh_util:to_binary(Value)). 
+    channel_set_presence_id(Node, UUID, wh_util:to_binary(Value)).
 
--spec channel_set_import_moh/3 :: (atom(), ne_binary(), boolean()) -> 'ok'.                                                          
+-spec channel_set_import_moh/3 :: (atom(), ne_binary(), boolean()) -> 'ok'.
 channel_set_import_moh(_Node, UUID, Import) ->
-    gen_server:cast(?MODULE, {channel_update, UUID, {#channel.import_moh, Import}}).    
+    gen_server:cast(?MODULE, {channel_update, UUID, {#channel.import_moh, Import}}).
 
 -spec destroy_channel/2 :: (proplist(), atom()) -> 'ok'.
 destroy_channel(Props, _) ->
@@ -271,7 +268,7 @@ destroy_channel(Props, _) ->
     ecallmgr_call_control:rm_leg(Props),
     ecallmgr_call_events:publish_channel_destroy(Props).
 
--spec props_to_channel_record/2 :: (proplist(), atom()) -> #channel{}.
+-spec props_to_channel_record/2 :: (proplist(), atom()) -> channel().
 props_to_channel_record(Props, Node) ->
     #channel{uuid=props:get_value(<<"Unique-ID">>, Props)
              ,destination=props:get_value(<<"Caller-Destination-Number">>, Props)
@@ -292,13 +289,13 @@ props_to_channel_record(Props, Node) ->
                                     ,props:get_value(<<"variable_domain_name">>, Props))
              ,username=props:get_value(?GET_CCV(<<"Username">>), Props
                                        ,props:get_value(<<"variable_user_name">>, Props))
-             ,import_moh=props:get_value(<<"variable_hold_music">>, Props) =:= undefined 
+             ,import_moh=props:get_value(<<"variable_hold_music">>, Props) =:= undefined
              ,node=Node
              ,timestamp=wh_util:current_tstamp()
             }.
-    
--spec channel_record_to_json/1 :: (#channel{}) -> wh_json:json_object().
-channel_record_to_json(Channel) -> 
+
+-spec channel_record_to_json/1 :: (channel()) -> wh_json:json_object().
+channel_record_to_json(Channel) ->
     wh_json:from_list([{<<"uuid">>, Channel#channel.uuid}
                        ,{<<"destination">>, Channel#channel.destination}
                        ,{<<"direction">>, Channel#channel.direction}
@@ -313,7 +310,7 @@ channel_record_to_json(Channel) ->
                        ,{<<"bridge_id">>, Channel#channel.bridge_id}
                        ,{<<"reseller_id">>, Channel#channel.reseller_id}
                        ,{<<"reseller_billing">>, Channel#channel.reseller_billing}
-                       ,{<<"realm">>, Channel#channel.realm}                                          
+                       ,{<<"realm">>, Channel#channel.realm}
                        ,{<<"username">>, Channel#channel.username}
                        ,{<<"node">>, Channel#channel.node}
                        ,{<<"timestamp">>, Channel#channel.timestamp}
@@ -339,7 +336,7 @@ sync_channels(Node) ->
 -spec flush_node_channels/1 :: (string() | binary() | atom()) -> 'ok'.
 flush_node_channels(Node) ->
     gen_server:cast(?MODULE, {flush_node_channels, wh_util:to_atom(Node, true)}).
-        
+
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -476,12 +473,12 @@ handle_info(expire_sip_subscriptions, Cache) ->
     {noreply, Cache, hibernate};
 handle_info({nodedown, Node}, #state{nodes=Nodes}=State) ->
     _ = ecallmgr_fs_sup:remove_node(Node),
-    Opts = case lists:keyfind(Node, #node.node, Nodes) of 
+    Opts = case lists:keyfind(Node, #node.node, Nodes) of
                #node{options=O} -> O;
                false -> []
            end,
     case ecallmgr_fs_pinger_sup:add_node(Node, Opts) of
-        {ok, _} -> 
+        {ok, _} ->
             lager:debug("started fs pinger for node '~s'", [Node]),
             NodeBin = amqp_util:encode(wh_util:to_binary(Node)),
             wh_gauge:set(<<"freeswitch.nodes.", NodeBin/binary, ".up">>, 0),
@@ -532,7 +529,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec add_fs_node/4 :: (atom(), atom(), proplist(), #state{}) -> {'ok', #state{}} | 
+-spec add_fs_node/4 :: (atom(), atom(), proplist(), #state{}) -> {'ok', #state{}} |
                                                                  {{'error', 'no_connection'}, #state{}} |
                                                                  {{'error', 'failed_starting_handlers'}, #state{}}.
 add_fs_node(Node, Cookie, Options, #state{nodes=Nodes}=State) ->
@@ -543,7 +540,7 @@ add_fs_node(Node, Cookie, Options, #state{nodes=Nodes}=State) ->
                 pong ->
                     lager:debug("no node matching ~p found, adding", [Node]),
                     case ecallmgr_fs_sup:add_node(Node, Options) of
-                        {ok, _} -> 
+                        {ok, _} ->
                             erlang:monitor_node(Node, true),
                             lager:info("successfully connected to node '~s'", [Node]),
                             NodeBin = amqp_util:encode(wh_util:to_binary(Node)),
@@ -580,7 +577,7 @@ rm_fs_node(Node, #state{nodes=Nodes}=State) ->
     NodeBin = amqp_util:encode(wh_util:to_binary(Node)),
     wh_gauge:set(<<"freeswitch.nodes.", NodeBin/binary, ".up">>, 0),
     wh_timer:delete(<<"freeswitch.nodes.", NodeBin/binary, ".uptime">>),
-    State#state{nodes=lists:keydelete(Node, 2, Nodes)}.    
+    State#state{nodes=lists:keydelete(Node, 2, Nodes)}.
 
 -spec close_node/1 :: (atom() | #node{}) -> 'ok' | {'error','not_found' | 'running' | 'simple_one_for_one'}.
 close_node(#node{node=Node}) ->
@@ -613,7 +610,7 @@ start_node_from_config(MaybeJObj) ->
             {[Cookie], [Node]} = wh_json:get_values(MaybeJObj),
             ?MODULE:add(wh_util:to_atom(Node, true), wh_util:to_atom(Cookie, true))
     end.
-            
+
 -spec maybe_stop_preconfigured_lookup/2 :: ('ok' | {'error', _}, pid() | 'undefined') -> pid() | 'undefined'.
 maybe_stop_preconfigured_lookup(_, undefined) -> undefined;
 maybe_stop_preconfigured_lookup(ok, Pid) ->
@@ -627,7 +624,8 @@ maybe_stop_preconfigured_lookup(ok, Pid) ->
 maybe_stop_preconfigured_lookup(_, Pid) ->
     Pid.
 
--spec build_channel_record/2 :: (atom(), ne_binary()) -> {'ok', #channel{}} | {'error', _}.
+-spec build_channel_record/2 :: (atom(), ne_binary()) -> {'ok', channel()} |
+                                                         {'error', 'timeout' | 'badarg'}.
 build_channel_record(Node, UUID) ->
     case freeswitch:api(Node, uuid_dump, wh_util:to_list(UUID)) of
         {ok, Dump} ->
@@ -637,7 +635,7 @@ build_channel_record(Node, UUID) ->
         timeout -> {error, timeout}
     end.
 
--spec summarize_account_usage/1 :: ([#channel{},...] | []) -> wh_json:json_object().
+-spec summarize_account_usage/1 :: (channels()) -> wh_json:json_object().
 summarize_account_usage(Channels) ->
     AStats = lists:foldr(fun classify_channel/2, #astats{}, Channels),
     wh_json:from_list([{<<"Calls">>, sets:size(AStats#astats.billing_ids)}
@@ -649,28 +647,28 @@ summarize_account_usage(Channels) ->
                        ,{<<"Resource-Consuming-Calls">>, sets:size(AStats#astats.resource_consumers)}
                       ]).
 
--spec classify_channel/2 :: (#channel{}, #astats{}) -> #astats{}.
+-spec classify_channel/2 :: (channel(), #astats{}) -> #astats{}.
 classify_channel(#channel{billing_id=undefined, uuid=UUID}=Channel, AStats) ->
     classify_channel(Channel#channel{billing_id=wh_util:to_hex_binary(crypto:md5(UUID))}, AStats);
 classify_channel(#channel{bridge_id=undefined, billing_id=BillingId}=Channel, AStats) ->
     classify_channel(Channel#channel{bridge_id=BillingId}, AStats);
 classify_channel(#channel{direction = <<"outbound">>, account_billing = <<"flat_rate">>, bridge_id=BridgeId, billing_id=BillingId}
-                 ,#astats{outbound_flat_rate=OutboundFlatRates, resource_consumers=ResourceConsumers, billing_ids=BillingIds}=AStats) -> 
+                 ,#astats{outbound_flat_rate=OutboundFlatRates, resource_consumers=ResourceConsumers, billing_ids=BillingIds}=AStats) ->
     AStats#astats{outbound_flat_rate=sets:add_element(BridgeId, OutboundFlatRates)
                   ,resource_consumers=sets:add_element(BillingId, ResourceConsumers)
                   ,billing_ids=sets:add_element(BillingId, BillingIds)};
 classify_channel(#channel{direction = <<"inbound">>, account_billing = <<"flat_rate">>, bridge_id=BridgeId, billing_id=BillingId}
-                         ,#astats{inbound_flat_rate=InboundFlatRates, resource_consumers=ResourceConsumers, billing_ids=BillingIds}=AStats) -> 
+                         ,#astats{inbound_flat_rate=InboundFlatRates, resource_consumers=ResourceConsumers, billing_ids=BillingIds}=AStats) ->
     AStats#astats{inbound_flat_rate=sets:add_element(BridgeId, InboundFlatRates)
                   ,resource_consumers=sets:add_element(BillingId, ResourceConsumers)
                   ,billing_ids=sets:add_element(BillingId, BillingIds)};
 classify_channel(#channel{direction = <<"outbound">>, account_billing = <<"per_minute">>, bridge_id=BridgeId, billing_id=BillingId}
-                         ,#astats{outbound_per_minute=OutboundPerMinute, resource_consumers=ResourceConsumers, billing_ids=BillingIds}=AStats) -> 
+                         ,#astats{outbound_per_minute=OutboundPerMinute, resource_consumers=ResourceConsumers, billing_ids=BillingIds}=AStats) ->
     AStats#astats{outbound_per_minute=sets:add_element(BridgeId, OutboundPerMinute)
                   ,resource_consumers=sets:add_element(BillingId, ResourceConsumers)
                   ,billing_ids=sets:add_element(BillingId, BillingIds)};
 classify_channel(#channel{direction = <<"inbound">>, account_billing = <<"per_minute">>, bridge_id=BridgeId, billing_id=BillingId}
-                         ,#astats{inbound_per_minute=InboundPerMinute, resource_consumers=ResourceConsumers, billing_ids=BillingIds}=AStats) -> 
+                         ,#astats{inbound_per_minute=InboundPerMinute, resource_consumers=ResourceConsumers, billing_ids=BillingIds}=AStats) ->
     AStats#astats{inbound_per_minute=sets:add_element(BridgeId, InboundPerMinute)
                   ,resource_consumers=sets:add_element(BillingId, ResourceConsumers)
                   ,billing_ids=sets:add_element(BillingId, BillingIds)};
@@ -702,5 +700,3 @@ broadcast_channel_update(Node, UUID, Name, Value) ->
                                         ,{"execute-app-arg", wh_util:to_list(Arg)}
                                        ]),
     ok.
-
-    

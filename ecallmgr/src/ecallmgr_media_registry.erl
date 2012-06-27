@@ -12,12 +12,22 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, lookup_media/3, lookup_media/4,
-         register_local_media/2, register_local_media/3, is_local/2]).
+-export([start_link/0
+         ,lookup_media/3
+         ,lookup_media/4
+         ,register_local_media/2
+         ,register_local_media/3
+         ,is_local/2
+        ]).
 
 %% gen_server callbacks
--export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-         terminate/2, code_change/3]).
+-export([init/1
+         ,handle_call/3
+         ,handle_cast/2
+         ,handle_info/2
+         ,terminate/2
+         ,code_change/3
+        ]).
 
 -include("ecallmgr.hrl").
 
@@ -50,10 +60,10 @@ register_local_media(<<"local_stream://", FSPath/binary>>, _, _) ->
 register_local_media(MediaName, CallId, Version) when Version =:= path orelse Version =:= url ->
     gen_server:call(?MODULE, {register_local_media, MediaName, CallId, Version}).
 
--spec lookup_media/3 :: (ne_binary(), ne_binary(), wh_json:json_object()) -> {'ok', ne_binary()} |
-                                                                             {'error', 'not_local'}.
--spec lookup_media/4 :: (ne_binary() , 'extant' | 'new', ne_binary(), wh_json:json_object()) -> {'ok', ne_binary()} |
-                                                                                                {'error', 'not_local'}.
+-spec lookup_media/3 :: (ne_binary(), ne_binary(), wh_json:json_object()) -> {'ok', binary()} |
+                                                                             {'error', 'timeout'}.
+-spec lookup_media/4 :: (ne_binary() , 'extant' | 'new', ne_binary(), wh_json:json_object()) -> {'ok', binary()} |
+                                                                                                {'error', 'timeout'}.
 lookup_media(MediaName, CallId, JObj) ->
     request_media(MediaName, new, CallId, JObj).
 lookup_media(MediaName, Type, CallId, JObj) ->
@@ -241,20 +251,22 @@ generate_local_path(MediaName) ->
     M = wh_util:to_binary(MediaName),
     <<?LOCAL_MEDIA_PATH, M/binary>>.
 
--spec request_media/4 :: (ne_binary(), 'extant' | 'new', ne_binary(), wh_json:json_object()) -> {'ok', ne_binary()} |
-                                                                                                {'error', 'not_local'}.
+-spec request_media/4 :: (ne_binary(), 'extant' | 'new', ne_binary(), wh_json:json_object()) -> {'ok', binary()} |
+                                                                                                {'error', 'timeout'}.
 request_media(MediaName, Type, CallID, JObj) ->
     case gen_server:call(?MODULE, {lookup_local, MediaName, CallID}, infinity) of
         {ok, Path} ->
             {ok, Srv} = ecallmgr_shout_sup:start_srv(Path),
-            Url = ecallmgr_shout:get_srv_url(Srv),
-            {ok, Url};
+            case ecallmgr_shout:get_srv_url(Srv) of
+                timeout -> {'error', 'timeout'};
+                Url -> {ok, Url}
+            end;
         {error, _} ->
             lookup_remote(MediaName, Type, CallID, JObj)
     end.
 
--spec lookup_remote/4 :: (ne_binary(), 'extant' | 'new', ne_binary(), wh_json:json_object()) -> {'ok', ne_binary()} |
-                                                                                                {'error', 'not_local' | 'timeout'}.
+-spec lookup_remote/4 :: (ne_binary(), 'extant' | 'new', ne_binary(), wh_json:json_object()) -> {'ok', binary()} |
+                                                                                                {'error', 'timeout'}.
 lookup_remote(MediaName, extant, CallID, JObj) ->
     Request = wh_json:set_values(
                 [{<<"Media-Name">>, MediaName}
@@ -276,14 +288,15 @@ lookup_remote(MediaName, new, CallID, JObj) ->
                 ,JObj),
     lookup_remote(MediaName, Request).
 
--spec lookup_remote/2 :: (ne_binary(), proplist()) -> {'ok', ne_binary()} | {'error', 'not_local' | 'timeout'}.
+-spec lookup_remote/2 :: (ne_binary(), api_terms()) -> {'ok', binary()} |
+                                                       {'error', 'timeout'}.
 lookup_remote(MediaName, Request) ->
     ReqResp = wh_amqp_worker:call(?ECALLMGR_AMQP_POOL
                                   ,Request
                                   ,fun wapi_media:publish_req/1
                                   ,fun wapi_media:resp_v/1),
-    case ReqResp of 
-        {error, _R}=E -> 
+    case ReqResp of
+        {error, _R}=E ->
             lager:debug("media lookup for '~s' failed: ~p", [MediaName, _R]),
             E;
         {ok, MediaResp} ->

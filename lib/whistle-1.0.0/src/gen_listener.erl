@@ -213,7 +213,8 @@ add_binding(Srv, Binding, Props) when is_binary(Binding) orelse is_atom(Binding)
     gen_server:cast(Srv, {add_binding, wh_util:to_binary(Binding), Props}).
 
 %% It is expected that responders have been set up already, prior to binding the new queue
--spec add_queue/4 :: (pid(), binary(), proplist(), binding() | bindings()) -> {'ok', ne_binary()} | {'error', term()}.
+-spec add_queue/4 :: (pid(), binary(), proplist(), binding() | bindings()) -> {'ok', ne_binary()} |
+                                                                              {'error', term()}.
 add_queue(Srv, QueueName, QueueProps, {_Type, _Props}=Binding) ->
     add_queue(Srv, QueueName, QueueProps, [Binding]);
 add_queue(Srv, QueueName, QueueProps, [{_,_}|_]=Bindings) ->
