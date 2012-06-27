@@ -285,7 +285,7 @@ build_bridge_string(Endpoints, Seperator) ->
                   ,wh_json:get_value(<<"Route">>, Endpoint)
                  ]
                  ,Endpoint}
-                || Endpoint <- Endpoints
+                || Endpoint <- Endpoints, wh_json:is_json_object(Endpoint)
                ],
     BridgeStrings = build_bridge_endpoints(props:unique(KeyedEPs), []),
     %% NOTE: dont use binary_join here as it will crash on an empty list...
