@@ -4,7 +4,7 @@
 %%% @end
 %%%
 %%% @contributors
-%%% Karl Anderson <karl@2600hz.org>
+%%%   Karl Anderson <karl@2600hz.org>
 %%%-------------------------------------------------------------------
 -module(wh_reseller).
 

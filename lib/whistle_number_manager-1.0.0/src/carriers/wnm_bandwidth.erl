@@ -62,7 +62,8 @@ get_number_data(Number) ->
 %% in a rate center
 %% @end
 %%--------------------------------------------------------------------
--spec find_numbers/2 :: (ne_binary(), pos_integer()) -> {ok, json_object} | {error, term()}.
+-spec find_numbers/2 :: (ne_binary(), pos_integer()) -> {'ok', wh_json:json_object()} |
+                                                        {'error', term()}.
 find_numbers(<<"+", Rest/binary>>, Quanity) ->
     find_numbers(Rest, Quanity);
 find_numbers(<<"1", Rest/binary>>, Quanity) ->
@@ -136,7 +137,7 @@ acquire_number(#number{auth_by=AuthBy, assigned_to=AssignedTo, module_data=Data}
                     ],
             case make_numbers_request('basicNumberOrder', Props) of
                 {error, Reason} ->
-                    Error = <<"Unable to acquire number: ", (wh_json:to_binary(Reason))/binary>>,
+                    Error = <<"Unable to acquire number: ", (wh_util:to_binary(Reason))/binary>>,
                     wnm_number:error_carrier_fault(Error, N);
                 {ok, Xml} ->
                     Response = xmerl_xpath:string("/numberOrderResponse/numberOrder", Xml),
