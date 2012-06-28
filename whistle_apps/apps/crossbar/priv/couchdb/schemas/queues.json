@@ -5,6 +5,7 @@
    "description":"Call Queues - FIFO call queues for serializing callers connecting to agents",
    "properties":{
       "name":{
+         "name":"Name",
          "description":"A friendly name for the queue",
          "required":"true",
          "type":"string",
@@ -12,48 +13,72 @@
          "maxLength":128
       },
       "connection_timeout":{
-          "description":"In seconds, how long to try to connect the caller before progressing past the queue callflow action",
-          "type":"integer",
-          "default":30,
-          "minimum":1
+         "name":"Connection Timeout",
+         "description":"In seconds, how long to try to connect the caller before progressing past the queue callflow action",
+         "type":"integer",
+         "default":30,
+         "minimum":1
       },
-       "member_timeout":{
-           "description":"In seconds, how long to ring an agent of the queue before progressing to the next agent available",
-           "type":"integer",
-           "default":5,
-           "minimum":1
-       },
-       "ring_simultaneously":{
-           "description":"The number of agents to try in parallel when connecting a caller",
-           "type":"integer",
-           "default":1,
-           "minimum":1
-       },
-       "wrapup_time":{
-           "description":"How long to wait after the caller hangs up before adding the agent back into the available agent queue",
-           "type":"integer",
-           "default":0,
-           "minimum":0
-       },
-       "moh":{
-           "description":"Media ID (or appropriate media URI) of media to play while caller is on hold.",
-           "type":"string"
-       },
-       "announce":{
-           "description":"Media ID (or appropriate media URI) of media to play when caller is about to be connected.",
-           "type":"string"
-       },
-       "strategy":{
-           "description":"The queue strategy for connecting agents to callers"
-           ,"type":"string"
-           ,"enum":["round_robin", "most_idle"]
-           ,"default":"round_robin"
-       },
-       "caller_exit_key":{
-           "description":"Key caller can press while on hold to exit the queue and continue in the callflow"
-           ,"type":"string"
-           ,"enum":["#","*","1","2","3","4","5","6","7","8","9","0"]
-           ,"default":"#"
-       }
+      "member_timeout":{
+         "name":"Member Timeout",
+         "description":"In seconds, how long to ring an agent of the queue before progressing to the next agent available",
+         "type":"integer",
+         "default":5,
+         "minimum":1
+      },
+      "ring_simultaneously":{
+         "name":"Ring Simultaneously",
+         "description":"The number of agents to try in parallel when connecting a caller",
+         "type":"integer",
+         "default":1,
+         "minimum":1
+      },
+      "wrapup_time":{
+         "name":"Wrapup Time",
+         "description":"How long to wait after the caller hangs up before adding the agent back into the available agent queue",
+         "type":"integer",
+         "default":0,
+         "minimum":0
+      },
+      "moh":{
+         "name":"Moh",
+         "description":"Media ID (or appropriate media URI) of media to play while caller is on hold.",
+         "type":"string"
+      },
+      "announce":{
+         "name":"Annouce",
+         "description":"Media ID (or appropriate media URI) of media to play when caller is about to be connected.",
+         "type":"string"
+      },
+      "strategy":{
+         "name":"Stategy",
+         "description":"The queue strategy for connecting agents to callers",
+         "type":"string",
+         "enum":[
+            "round_robin",
+            "most_idle"
+         ],
+         "default":"round_robin"
+      },
+      "caller_exit_key":{
+         "name":"Caller Exit Key",
+         "description":"Key caller can press while on hold to exit the queue and continue in the callflow",
+         "type":"string",
+         "enum":[
+            "#",
+            "*",
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8",
+            "9",
+            "0"
+         ],
+         "default":"#"
+      }
    }
 }
