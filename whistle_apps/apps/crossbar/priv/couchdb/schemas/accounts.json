@@ -445,7 +445,7 @@
                "description":"The ID of a media object that should be used as the default music on hold",
                "type":"string",
                "minLength":32,
-               "maxLength":66
+               "maxLength":32
             }
          },
          "default":{
