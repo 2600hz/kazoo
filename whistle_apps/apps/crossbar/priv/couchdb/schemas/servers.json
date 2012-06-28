@@ -5,6 +5,7 @@
    "description":"Schema for a server",
    "properties":{
       "hostname":{
+         "name":"Hostname",
          "description":"The servers hostname",
          "required":"true",
          "type":"string",
@@ -12,6 +13,7 @@
          "maxLength":128
       },
       "ip":{
+         "name":"IP",
          "description":"The servers ip address",
          "required":"true",
          "type":"string",
@@ -19,6 +21,7 @@
          "maxLength":128
       },
       "password":{
+         "name":"Password",
          "description":"The servers initial ssh password",
          "required":"true",
          "type":"string",
@@ -26,6 +29,7 @@
          "maxLength":128
       },
       "ssh_port":{
+         "name":"SSH Port",
          "description":"The servers initial ssh port",
          "required":"true",
          "type":"string",
@@ -33,17 +37,20 @@
          "maxLength":5
       },
       "roles":{
+         "name":"Roles",
          "description":"The roles the server will fulfill",
          "required":"true",
          "type":"array"
       },
       "type":{
+         "name":"Type",
          "description":"The server type",
          "type":"string",
          "minLength":1,
          "maxLength":32
       },
       "os":{
+         "name":"OS",
          "description":"The server operating system",
          "type":"string",
          "minLength":1,

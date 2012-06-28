@@ -4,12 +4,14 @@
    "description":"Allow a caller to search for a user/device by name instead of extension/DID",
    "properties":{
       "name":{
+         "name":"Name",
          "type":"string",
          "minLength":1,
          "required":true,
          "description":"The name of the directory"
       },
       "sort_by":{
+         "name":"Sort By",
          "type":"string",
          "enum":[
             "first_name",
@@ -19,18 +21,21 @@
          "description":"What field to sort on in matching documents when a caller enters characters"
       },
       "min_dtmf":{
+         "name":"Min DTMF",
          "type":"integer",
          "default":3,
          "minimum":1,
          "description":"How many DTMF characters to collect from a caller before processing the directory"
       },
       "max_dtmf":{
+         "name":"Max DTMF",
          "type":"integer",
          "description":"Cap the number of DTMF characters collected from a caller, 0 for unlimited",
          "minimum":0,
          "default":0
       },
       "confirm_match":{
+         "name":"Confirm Match",
          "type":"boolean",
          "default":false,
          "description":"When one match is found, require caller to confirm the match before connecting"

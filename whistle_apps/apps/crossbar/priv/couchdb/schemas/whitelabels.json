@@ -1,0 +1,12 @@
+{
+   "_id":"whitelabels",
+   "id":"http://json-schema.org/draft-03/schema#",
+   "description":"Whitelabeling information for accounts (aggregates and is globally accessible)",
+   "properties":{
+      "domain":{
+         "type":"string",
+         "required":true,
+         "description":"The domain name you wish to whitelabel"
+      }
+   }
+}
