@@ -240,6 +240,10 @@ get_channel_vars({<<"Custom-Channel-Vars">>, JObj}, Vars) ->
                         case lists:keyfind(K, 1, ?SPECIAL_CHANNEL_VARS) of
                             false -> [list_to_binary([?CHANNEL_VAR_PREFIX, wh_util:to_list(K)
                                                       ,"='", wh_util:to_list(V), "'"]) | Acc];
+                            {_, <<"group_confirm_file">>} -> [list_to_binary(["group_confirm_file='"
+									     ,wh_util:to_list(ecallmgr_util:media_path(V, extant, get(callid), wh_json:new()))
+									     ,"'"
+									    ]) | Acc];
                             {_, Prefix} -> [list_to_binary([Prefix, "='", wh_util:to_list(V), "'"]) | Acc]
                         end
                 end, Vars, wh_json:to_proplist(JObj));
