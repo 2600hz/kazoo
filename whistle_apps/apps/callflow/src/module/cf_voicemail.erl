@@ -179,7 +179,7 @@ find_mailbox(Box, Call, Loop) ->
             %% caller is the owner, and the pin is not required then we skip requesting the pin
             ViewOptions = [{key, BoxNum}],
             AccountDb = whapps_call:account_db(Call),
-            case couch_mgr:get_results(AccountDb, {<<"vmboxes">>, <<"listing_by_mailbox">>}, ViewOptions) of
+            case couch_mgr:get_results(AccountDb, <<"vmboxes/listing_by_mailbox">>, ViewOptions) of
                 {ok, []} ->
                     lager:debug("mailbox ~s doesnt exist", [Mailbox]),
                     find_mailbox(Box, Call, Loop + 1);
@@ -818,6 +818,17 @@ get_mailbox_profile(Data, Call) ->
                           {wh_json:find(?RECORDED_NAME_KEY, [Owner, JObj]), OId}
                   end,
 
+            MaxMessageCount =
+                case whapps_account_config:get(whapps_call:account_id(Call)
+                                               ,?CF_CONFIG_CAT
+                                               ,[<<"voicemail">>, <<"max_message_count">>]
+                                              ) of
+                    undefined ->
+                        whapps_config:get(?CF_CONFIG_CAT, [<<"voicemail">>, <<"max_message_count">>], ?MAILBOX_DEFAULT_SIZE);
+                    MMC -> MMC
+                end,
+            lager:debug("mailbox limited to ~p voicemail messages", [MaxMessageCount]),
+
             #mailbox{mailbox_id = MailboxId
                      ,exists = true
                      ,keys = populate_keys(Call)
@@ -844,7 +855,7 @@ get_mailbox_profile(Data, Call) ->
                      ,is_setup =
                          wh_json:is_true(<<"is_setup">>, JObj, false)
                      ,max_message_count =
-                         wh_json:get_integer_value(<<"max_message_count">>, JObj, ?MAILBOX_DEFAULT_SIZE)
+                         wh_util:to_integer(MaxMessageCount)
                      ,max_message_length =
                          find_max_message_length([Data, JObj])
                      ,message_count =
@@ -900,7 +911,7 @@ get_mailbox_doc(Db, Id, CaptureGroup) ->
         true when not CGIsEmpty ->
             lager:debug("capture group not empty: ~s", [CaptureGroup]),
             Opts = [{key, CaptureGroup}, include_docs], 
-            case couch_mgr:get_results(Db, {<<"cf_attributes">>, <<"mailbox_number">>}, Opts) of
+            case couch_mgr:get_results(Db, <<"cf_attributes/mailbox_number">>, Opts) of
                 {ok, []} -> {error, not_found};
                 {ok, [JObj|_]} -> {ok, wh_json:get_value(<<"doc">>, JObj, wh_json:new())};
                 Else -> Else
