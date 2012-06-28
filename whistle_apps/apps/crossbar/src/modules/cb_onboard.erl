@@ -468,8 +468,17 @@ populate_new_account(Props, _) ->
     case crossbar_bindings:fold(<<"v1_resource.execute.put.accounts">>, Payload) of
         #cb_context{resp_status=success, db_name=AccountDb, account_id=AccountId, doc=JObj}=Context1 ->
             Results = populate_new_account(prepare_props(Props), AccountDb, wh_json:new()),
-            notfy_new_account(JObj),
-            Context1#cb_context{doc=wh_json:set_value(<<"account_id">>, AccountId, Results)};
+            Errors = wh_json:get_value(<<"errors">>, Results),
+            case wh_util:is_empty(Errors) of
+                true ->
+                    lager:debug("new account created ~s (~s)", [AccountId, AccountDb]),
+                    notfy_new_account(JObj),
+                    Context1#cb_context{doc=wh_json:set_value(<<"account_id">>, AccountId, Results)};
+                false ->
+                    lager:debug("account creation errors: ~s", [wh_json:encode(Errors)]),
+                    catch (crossbar_bindings:fold(<<"v1_resource.execute.delete.accounts">>, [Context1, AccountId])),
+                    Context1#cb_context{doc=wh_json:delete_key(<<"owner_id">>, Results), account_id=undefined}
+            end;
         ErrorContext ->
             AccountId = wh_json:get_value(<<"_id">>, Context#cb_context.req_data),
             couch_mgr:db_delete(wh_util:format_account_id(AccountId, encoded)),
@@ -556,7 +565,7 @@ get_context_jobj(Key, Pass) ->
 %%--------------------------------------------------------------------
 -spec create_response/1 :: (#cb_context{}) -> #cb_context{}.
 create_response(#cb_context{doc=JObj, account_id=undefined}=Context) ->
-    crossbar_util:response(error, JObj, 400, Context);
+    crossbar_util:response_invalid_data(JObj, Context);
 create_response(#cb_context{doc=JObj, account_id=AccountId}=Context) ->
     Token = [{<<"account_id">>, AccountId}
              ,{<<"owner_id">>, wh_json:get_value(<<"owner_id">>, JObj)}
