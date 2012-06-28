@@ -5,6 +5,7 @@
    "description":"Schema for a menus",
    "properties":{
       "name":{
+         "name":"Name",
          "description":"A friendly name for the menu",
          "required":"true",
          "type":"string",
@@ -12,6 +13,7 @@
          "maxLength":128
       },
       "retries":{
+         "name":"Retries",
          "description":"The number of times a menu should be played until a valid entry is collected",
          "type":"integer",
          "default":3,
@@ -19,6 +21,7 @@
          "maximum":10
       },
       "max_extension_length":{
+         "name":"Max Extension Length",
          "description":"The maximum number of digits that can be collected",
          "type":"integer",
          "default":3,
@@ -26,31 +29,37 @@
          "maximum":6
       },
       "record_pin":{
+         "name":"Record Pin",
          "description":"The pin number used to record the menu prompt",
          "type":"string",
          "minLength":3,
          "maxLength":6
       },
       "allow_record_from_offnet":{
+         "name":"Allow Record From Offnet",
          "description":"Determines if the record pin can be used by external calls",
          "type":"boolean",
          "default":false
       },
       "hunt":{
+         "name":"Hunt",
          "description":"Determines if the callers can dial internal extensions directly",
          "type":"boolean",
          "default":true
       },
       "timeout":{
+         "name":"Timeout",
          "type":"integer",
          "minimum":3
       },
       "hunt_deny":{
+         "name":"Hunt Deny",
          "type":"string",
          "minLength":1,
          "maxLength":32
       },
       "hunt_allow":{
+         "name":"Hun Allow",
          "type":"string",
          "minLength":1,
          "maxLength":32
@@ -60,12 +69,14 @@
          "type":"object",
          "properties":{
             "greeting":{
+               "name":"Greeting",
                "description":"The ID of a media object that should be used as the menu greeting",
                "type":"string",
                "minLength":32,
                "maxLength":32
             },
             "transfer_media":{
+               "name":"Transfert Media",
                "description":"When a call is transfered from the menu, either after all retries exhausted or a successful hunt, this media can be played",
                "type":[
                   "boolean",
@@ -75,6 +86,7 @@
                "maxLength":32
             },
             "exit_media":{
+               "name":"Exit Media",
                "description":"When a call is transfered from the menu after all retries exhausted this media can be played (prior to transfer if enabled)",
                "type":[
                   "boolean",
@@ -84,6 +96,7 @@
                "maxLength":32
             },
             "invalid_media":{
+               "name":"Invalid Media",
                "description":"When the collected digits dont result in a match or hunt this media can be played",
                "type":[
                   "boolean",

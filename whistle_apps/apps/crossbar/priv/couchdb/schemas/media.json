@@ -5,6 +5,7 @@
    "description":"Schema for media",
    "properties":{
       "name":{
+         "name":"Name",
          "description":"A friendly name for the media",
          "required":"true",
          "type":"string",
@@ -12,12 +13,14 @@
          "maxLength":128
       },
       "description":{
+         "name":"Description",
          "description":"A breif description of the media update, usally the original file name",
          "type":"string",
          "minLength":1,
          "maxLength":128
       },
       "content_length":{
+         "name":"Content Length",
          "description":"length, in bytes, of the file",
          "type":"integer",
          "minimum":1,
@@ -28,11 +31,13 @@
          "type":"object",
          "properties":{
             "text":{
+               "name":"Text TTS",
                "description":"The text to be converted into audio",
                "type":"string",
                "minLength":1
             },
             "voice":{
+               "name":"Voice TTS",
                "description":"The voice to be used during the conversion",
                "type":"string",
                "default":"female/en-US",
@@ -45,9 +50,11 @@
             }
          },
          "default":{
+
          }
       },
       "content_type":{
+         "name":"Content Type",
          "description":"Used to override the automatic upload type",
          "type":"string",
          "enum":[
@@ -60,6 +67,7 @@
          ]
       },
       "media_source":{
+         "name":"Media Source",
          "description":"Defines the source of the media",
          "type":"string",
          "default":"upload",
@@ -68,5 +76,24 @@
             "upload",
             "tts"
          ]
+      },
+      "source_type":{
+         "name":"Source Type",
+         "description":"If the media was generated from a callflow module, this is the module name",
+         "type":"string"
+      },
+      "source_id":{
+         "name":"Source ID",
+         "description":"If the media was generated from a callflow module, this is ID of the properties",
+         "type":"string",
+         "minLength":32,
+         "maxLength":32
+      },
+      "streamable":{
+         "name":"Streamable",
+         "description":"Determines if the media can be streamed",
+         "type":"boolean",
+         "default":true
       }
+   }
 }
