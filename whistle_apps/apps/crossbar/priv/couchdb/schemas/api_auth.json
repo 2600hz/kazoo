@@ -12,5 +12,5 @@
          "maxLength":64
       }
    },
-   "additionalProperties": false
+   "additionalProperties":false
 }
