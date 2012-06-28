@@ -18,12 +18,12 @@ handle_req(JObj, _Props) ->
     timer:sleep(crypto:rand_uniform(0, 1000)),
     CCV = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new()),
     case wh_json:get_value(<<"Account-Billing">>, CCV) of
-        <<"per_minute">> -> reconcile_cost(wh_json:get_value(<<"Account-ID">>, CCV), JObj);
-        _ -> ok
+        <<"flat_rate">> -> ok;
+        _ -> reconcile_cost(wh_json:get_value(<<"Account-ID">>, CCV), JObj)
     end,
     case wh_json:get_value(<<"Reseller-Billing">>, CCV) of
-        <<"per_minute">> -> reconcile_cost(wh_json:get_value(<<"Reseller-ID">>, CCV), JObj);
-        _ -> ok
+        <<"flat_rate">> -> ok;
+        _ -> reconcile_cost(wh_json:get_value(<<"Reseller-ID">>, CCV), JObj)
     end.
 
 -spec reconcile_cost/2 :: ('undefined' | ne_binary(), wh_json:json_object()) -> 'ok'.
@@ -60,9 +60,8 @@ reconcile_cost(Ledger, JObj) ->
 extract_cost(JObj) ->    
     BillingSecs = wh_json:get_integer_value(<<"Billing-Seconds">>, JObj),
     CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj),
-    DefaultRate = whapps_config:get_float(<<"jonny5">>, <<"default_rate">>, ?DEFAULT_RATE),
     DefaultRateIncr = whapps_config:get_integer(<<"jonny5">>, <<"default_rate_increment">>, 60),
-    Rate = wh_json:get_float_value(<<"Rate">>, CCVs, DefaultRate),
+    Rate = wh_json:get_float_value(<<"Rate">>, CCVs, 0.0),
     RateIncr = wh_json:get_integer_value(<<"Rate-Increment">>, CCVs, DefaultRateIncr),
     RateMin = wh_json:get_integer_value(<<"Rate-Minimum">>, CCVs, 0),
     Surcharge = wh_json:get_float_value(<<"Surcharge">>, CCVs, 0.0),
