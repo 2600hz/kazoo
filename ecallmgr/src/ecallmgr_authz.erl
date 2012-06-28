@@ -168,8 +168,9 @@ authorize(AccountId, Props) ->
     ReqResp = wh_amqp_worker:call(?ECALLMGR_AMQP_POOL
                                   ,authz_req(AccountId, Props)
                                   ,fun wapi_authz:publish_req/1
-                                  ,fun wapi_authz:resp_v/1),
-    case ReqResp of 
+                                  ,fun wapi_authz:resp_v/1
+                                  ,5000),
+    case ReqResp of
         {error, _R} ->
             lager:debug("authz request lookup failed: ~p", [_R]),
             authz_default();                 
