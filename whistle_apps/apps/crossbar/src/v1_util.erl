@@ -409,9 +409,9 @@ is_authentic(Req0, Context0) ->
     case crossbar_bindings:succeeded(crossbar_bindings:map(Event, Context1)) of
         [] ->
             lager:debug("failed to authenticate"),
-	    Context2 = crossbar_util:response(error, "unauthorized", 401, Context1),
-	    {Content, Req1} = create_resp_content(Req1, Context2),
-	    {ok, Req2} = cowboy_http_req:set_resp_body(Content, Req1),
+            Context2 = crossbar_util:response(error, "unauthorized", 401, Context1),
+            {Content, Req1} = create_resp_content(Req1, Context2),
+            {ok, Req2} = cowboy_http_req:set_resp_body(Content, Req1),
             {{false, <<>>}, Req2, Context2};
         [true|_] ->
             lager:debug("is_authentic: true"),
@@ -466,9 +466,9 @@ is_permitted(Req0, Context0) ->
     case crossbar_bindings:succeeded(crossbar_bindings:map(Event, Context0)) of
         [] ->
             lager:debug("no on authz the request"),
-	    Context1 = crossbar_util:response(error, "forbidden", 403, Context0),
-	    {Content, Req0} = create_resp_content(Req0, Context1),
-	    {ok, Req1} = cowboy_http_req:set_resp_body(Content, Req0),
+            Context1 = crossbar_util:response(error, "forbidden", 403, Context0),
+            {Content, Req0} = create_resp_content(Req0, Context1),
+            {ok, Req1} = cowboy_http_req:set_resp_body(Content, Req0),
             {false, Req1, Context1};
         [true|_] ->
             lager:debug("request was authz"),
