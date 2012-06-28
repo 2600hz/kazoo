@@ -226,7 +226,7 @@ compose_voicemail(#mailbox{exists=false}, _, Call) ->
     lager:debug("attempted to compose voicemail for missing mailbox"),
     _ = whapps_call_command:b_prompt(<<"vm-not_available_no_voicemail">>, Call),
     ok;
-compose_voicemail(#mailbox{max_message_count=Count, message_count=Count}, _, Call) when Count /= 0->
+compose_voicemail(#mailbox{max_message_count=Count, message_count=Count}, _, Call) when Count > 0 ->
     lager:debug("voicemail box is full, cannot hold more messages"),
     _ = whapps_call_command:b_prompt(<<"vm-mailbox_full">>, Call),
     ok;
