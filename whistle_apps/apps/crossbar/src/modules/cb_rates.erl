@@ -278,6 +278,8 @@ csv_to_rates(CSV, Context) ->
                                 ).
 
 -spec process_row/2 :: ([string(),...], {integer(), wh_json:json_objects()}) -> {integer(), wh_json:json_objects()}.
+process_row([Prefix, ISO, Desc, Rate], Acc) ->
+    process_row([Prefix, ISO, Desc, Rate, Rate], Acc);
 process_row([Prefix, ISO, Desc, InternalCost, Rate], {Cnt, RateDocs}=Acc) ->
     case catch wh_util:to_integer(Prefix) of
         {'EXIT', _} -> Acc;
@@ -305,13 +307,14 @@ process_row([Prefix, ISO, Desc, InternalCost, Rate], {Cnt, RateDocs}=Acc) ->
                                           ,{<<"rate_surcharge">>, 0}
                                           ,{<<"pvt_rate_cost">>, wh_util:to_float(InternalCost1)}
                                           ,{<<"weight">>, constrain_weight(byte_size(Prefix1) * 10 - CostF)}
-                                          
                                           ,{<<"options">>, []}
                                           ,{<<"routes">>, [<<"^\\+", (wh_util:to_binary(Prefix1))/binary, "(\\d*)$">>]}
+                                          ,{<<"pvt_carrier">>, <<"default">>}
                                          ]))
                      | RateDocs]}
     end;
-process_row(_, Acc) ->
+process_row(_Row, Acc) ->
+    lager:debug("ignoring row ~p", [_Row]),
     Acc.
 
 -spec strip_quotes/1 :: (ne_binary()) -> ne_binary().
