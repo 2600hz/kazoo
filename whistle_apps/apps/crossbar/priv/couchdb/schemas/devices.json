@@ -5,6 +5,7 @@
    "description":"Schema for a device",
    "properties":{
       "name":{
+         "name":"Name",
          "description":"A friendly name for the device",
          "required":"true",
          "type":"string",
@@ -12,28 +13,20 @@
          "maxLength":128
       },
       "owner_id":{
+         "name":"Owner ID",
          "description":"The ID of the user object that 'owns' the device",
          "type":"string",
          "minLength":32,
          "maxLength":32
       },
       "enabled":{
+         "name":"Enabled",
          "description":"Determines if the device is currently enabled",
          "type":"boolean",
          "default":true
       },
-      "device_type":{
-         "description":"The device classification",
-         "required":"true",
-         "type":"string",
-         "enum": [
-            "sip_device",
-            "softphone",
-            "cellphone"
-         ],
-         "default": "sip_device"
-      },
       "suppress_unregister_notifications":{
+         "name":"Suppress unregister Notifications",
          "description":"When true disables deregister notifications",
          "type":"boolean",
          "default":false
@@ -47,6 +40,7 @@
                "type":"object",
                "properties":{
                   "name":{
+                     "name":"Called ID Internal Name",
                      "description":"The caller id name for the object type",
                      "type":"string",
                      "maxLength":30,
@@ -59,6 +53,7 @@
                "type":"object",
                "properties":{
                   "name":{
+                     "name":"Caller ID External Name",
                      "description":"The caller id name for the object type",
                      "type":"string",
                      "maxLength":15,
@@ -71,6 +66,7 @@
                "type":"object",
                "properties":{
                   "name":{
+                     "name":"Caller ID Emergency Name",
                      "description":"The caller id name for the object type",
                      "type":"string",
                      "maxLength":15,
@@ -88,6 +84,7 @@
          "type":"object",
          "properties":{
             "reformat":{
+               "name":"Caller ID Reformat",
                "description":"A regular expression that if can reformat the displayed caller id",
                "type":"string",
                "maxLength":64
@@ -102,11 +99,13 @@
          "type":"object",
          "properties":{
             "external":{
+               "name":"External Ringtones",
                "description":"The alert info SIP header added when the call is from external sources",
                "type":"string",
                "maxLength":32
             },
             "internal":{
+               "name":"Internal Ringtones",
                "description":"The alert info SIP header added when the call is from internal sources",
                "type":"string",
                "maxLength":32
@@ -121,6 +120,7 @@
          "type":"object",
          "properties":{
             "bypass_media":{
+               "name":"Bypass Media",
                "description":"The device bypass media mode",
                "type":"string",
                "enum":[
@@ -131,10 +131,12 @@
                "default":"auto"
             },
             "ignore_early_media":{
+               "name":"Ignore Early Media",
                "description":"The option to determine if early media from the device should always be ignored",
                "type":"boolean"
             },
             "progress_timeout":{
+               "name":"Progress Timeout",
                "description":"The progress timeout to apply to the device",
                "type":"integer"
             },
@@ -143,6 +145,7 @@
                "type":"object",
                "properties":{
                   "codecs":{
+                     "name":"Audio Codecs",
                      "description":"A list of audio codecs to use",
                      "type":"array",
                      "enum":[
@@ -165,6 +168,7 @@
                "type":"object",
                "properties":{
                   "codecs":{
+                     "name":"Video Codecs",
                      "description":"A list of video codecs to use",
                      "type":"array",
                      "enum":[
@@ -183,6 +187,7 @@
                "type":"object",
                "properties":{
                   "option":{
+                     "name":"Fax",
                      "description":"The fax mode to option",
                      "type":"string",
                      "enum":[
@@ -204,6 +209,7 @@
          "type":"object",
          "properties":{
             "media_id":{
+               "name":"Music On Hold (ID)",
                "description":"The ID of a media object that should be used as the device music on hold",
                "type":"string",
                "minLength":32,
@@ -219,36 +225,43 @@
          "type":"object",
          "properties":{
             "enabled":{
+               "name":"Enabled (call forward)",
                "description":"Determines if the call forwarding should be used",
                "type":"boolean",
                "default":false
             },
             "number":{
+               "name":"Number (call forward)",
                "description":"The number to forward calls to",
                "type":"string",
                "maxLength":15
             },
             "substitute":{
+               "name":"Substitute (call forward)",
                "description":"Determines if the call forwarding replaces the device",
                "type":"boolean",
                "default":true
             },
             "require_keypress":{
+               "name":"Require Kyepress (call forward)",
                "description":"Determines if the callee is prompted to press 1 to accept the call",
                "type":"boolean",
                "default":true
             },
             "keep_caller_id":{
+               "name":"Keep Caller ID (call forward)",
                "description":"Determines if the caller id is kept when the call is forwarded, if not the devices caller id is used",
                "type":"boolean",
                "default":true
             },
             "direct_calls_only":{
+               "name":"Direct Calls Only (call forward)",
                "description":"Determines if the calls that are not directly sent to the device should be forwarded",
                "type":"boolean",
                "default":false
             },
             "ignore_early_media":{
+               "name":"Ignore Early Media (call forward)",
                "description":"The option to determine if early media from the call forwarded number should ignored",
                "type":"boolean",
                "default":true
@@ -262,39 +275,47 @@
          "type":"object",
          "properties":{
             "realm":{
+               "name":"Reaml (sip)",
                "type":"string",
                "description":"The realm this device should use, overriding the account realm"
             },
             "route":{
+               "name":"Route (sip)",
                "type":"string",
                "description":"The SIP URL used if the invite format is 'route'"
             },
             "number":{
+               "name":"Number (sip)",
                "type":"string",
                "description":"The number used if the invite format is 1npan, npan, or e164 (if not set the dialed number is used)"
             },
             "method":{
+               "name":"Method (sip)",
                "type":"string",
                "description":"Type of auth",
                "required":true,
                "enum":[
-                  "password", "ip"
+                  "password",
+                  "ip"
                ],
                "default":"password"
             },
             "username":{
+               "name":"Username (sip)",
                "type":"string",
                "description":"SIP authentication username",
                "minLength":2,
                "maxLength":32
             },
             "password":{
+               "name":"Password (sip)",
                "type":"string",
                "description":"SIP authentication password",
                "minLength":5,
                "maxLength":32
             },
             "invite_format":{
+               "name":"Invit Format (sip)",
                "type":"string",
                "required":true,
                "enum":[
@@ -313,15 +334,17 @@
                }
             },
             "registration_expiration":{
+               "name":"Registration Expiration (sip)",
                "type":"integer",
                "description":"The time in seconds to force registrations to expire",
                "default":300
             },
-            "ip" : {
-              "type":"string", 
-              "description":"IP address for this device",
-              "required":false,
-              "pattern" : "^([1]?[1-9]?[1-9]|2[0-4][0-9]|25[0-5])\\.([1]?[1-9]?[1-9]|2[0-4][0-9]|25[0-5])\\.([1]?[1-9]?[1-9]|2[0-4][0-9]|25[0-5])\\.([1]?[1-9]?[1-9]|2[0-4][0-9]|25[0-4])$"
+            "ip":{
+               "name":"IP (sip)",
+               "type":"string",
+               "description":"IP address for this device",
+               "required":false,
+               "pattern":"^([1]?[1-9]?[1-9]|2[0-4][0-9]|25[0-5])\\.([1]?[1-9]?[1-9]|2[0-4][0-9]|25[0-5])\\.([1]?[1-9]?[1-9]|2[0-4][0-9]|25[0-5])\\.([1]?[1-9]?[1-9]|2[0-4][0-9]|25[0-4])$"
             }
          },
          "default":{

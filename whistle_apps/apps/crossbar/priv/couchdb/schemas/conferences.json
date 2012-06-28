@@ -5,6 +5,7 @@
    "description":"Schema for conferences",
    "properties":{
       "name":{
+         "name":"Name",
          "description":"A friendly name for the conference",
          "required":"true",
          "type":"string",
@@ -16,6 +17,7 @@
          "type":"object",
          "properties":{
             "pins":{
+               "name":"Pins (member)",
                "description":"Defines the pin number(s) for members",
                "type":"array",
                "items":[
@@ -28,6 +30,7 @@
                ]
             },
             "numbers":{
+               "name":"Numbers (member)",
                "description":"Defines the conference number(s) for members",
                "type":"array",
                "items":[
@@ -40,16 +43,19 @@
                ]
             },
             "join_muted":{
+               "name":"Join Muted (member)",
                "description":"Determines if a member will join muted",
                "type":"boolean",
                "default":true
             },
             "join_deaf":{
+               "name":"Join Deaf (member)",
                "description":"Determines if a member will join deaf",
                "type":"boolean",
                "default":false
             },
             "play_name":{
+               "name":"Play Name (member)",
                "description":"Determines if a member should be prompted to record their name on entry for later playback",
                "type":"boolean",
                "default":false
@@ -64,6 +70,7 @@
          "type":"object",
          "properties":{
             "pins":{
+               "name":"Pins (moderator)",
                "description":"Defines the pin number(s) for moderators",
                "type":"array",
                "items":[
@@ -76,6 +83,7 @@
                ]
             },
             "numbers":{
+               "name":"Numbers (moderator)",
                "description":"Defines the conference number(s) for moderators",
                "type":"array",
                "items":[
@@ -88,11 +96,13 @@
                ]
             },
             "join_muted":{
+               "name":"Join Muted (moderator)",
                "description":"Determines if a moderator will join muted",
                "type":"boolean",
                "default":false
             },
             "join_deaf":{
+               "name":"Join Deaf (moderator)",
                "description":"Determines if a moderator will join deaf",
                "type":"boolean",
                "default":false
@@ -105,6 +115,7 @@
       "conference_numbers":{
          "description":"Defines conference numbers that can be used by members or moderators",
          "type":"array",
+         "name":"Coference Numbers",
          "items":[
             {
                "type":"string"
@@ -115,16 +126,19 @@
          ]
       },
       "require_moderator":{
+         "name":"Required Moderator",
          "description":"Determines if a moderator is required before the conference will begin",
          "type":"boolean",
          "default":false
       },
       "wait_for_moderator":{
+         "name":"Wait For Moderator",
          "description":"Determines if members are allowed to remain on the line while waiting for a moderator",
          "type":"boolean",
          "default":true
       },
       "max_members":{
+         "name":"Max Members",
          "description":"Sets the maximum number of members that can join a conference",
          "type":"integer",
          "minimum":1,

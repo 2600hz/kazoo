@@ -1,19 +1,39 @@
 {
-   "_id":"connectivity",
+   "_id":"trunkstore",
    "id":"http://json-schema.org/draft-03/schema#",
    "description":"Trunkstore configuration document - this is old stuff; do not recommend building off this if possible",
    "properties":{
       "name":{
          "type":"string",
+         "required":true,
          "description":"Human-friendly name of the trunkstore account"
+      },
+      "type":{
+         "type":"string",
+         "required":true,
+         "enum":[
+            "sys_info"
+         ],
+         "description":"The type of the document (pvt_type in Crossbar docs)"
       },
       "account":{
          "type":"object",
          "required":true,
          "properties":{
+            "credits":{
+               "type":"object",
+               "required":true,
+               "properties":{
+                  "prepay":{
+                     "type":"number",
+                     "required":true
+                  }
+               }
+            },
             "auth_realm":{
                "type":"string",
                "minLength":1,
+               "required":true,
                "description":"The realm any device in the account will use to authenticate with"
             },
             "trunks":{

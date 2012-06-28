@@ -5,11 +5,13 @@
    "description":"Schema for a user",
    "properties":{
       "enabled":{
+         "name":"Enabled",
          "description":"Determines if the user is currently enabled",
          "type":"boolean",
          "default":true
       },
       "username":{
+         "name":"Username",
          "description":"The GUI login username - alpha-numeric, dashes, at symbol, periods, plusses, and underscores allowed",
          "type":"string",
          "minLength":1,
@@ -17,6 +19,7 @@
          "pattern":"^([+@.\\w_-]+)$"
       },
       "first_name":{
+         "name":"First Name",
          "description":"The first name of the user",
          "required":"true",
          "type":"string",
@@ -24,6 +27,7 @@
          "maxLength":32
       },
       "last_name":{
+         "name":"Last Name",
          "description":"The last name of the user",
          "required":"true",
          "type":"string",
@@ -31,27 +35,32 @@
          "maxLength":32
       },
       "email":{
+         "name":"Email",
          "description":"The email of the user",
          "type":"string",
          "minLength":1,
          "maxLength":256
       },
       "vm_to_email_enabled":{
+         "name":"VM To Emain Enabled",
          "description":"Determines if the user would like voicemails emailed to them",
          "type":"boolean",
          "default":true
       },
       "verified":{
+         "name":"Verified",
          "description":"Determines if the user has been verified",
          "type":"boolean",
          "default":false
       },
       "require_password_update":{
+         "name":"Require Password Update",
          "description":"UI flag that the user should update their password.",
          "type":"boolean",
          "default":false
       },
       "priv_level":{
+         "name":"Priv Level",
          "description":"The privilege level of the user",
          "type":"string",
          "enum":[
@@ -61,6 +70,7 @@
          "default":"user"
       },
       "is_sub_account_rep":{
+         "name":"Is Sub Account Rep",
          "description":"Determines if the user should be in the pool of users that recieve emails when sub accounts are created",
          "type":"boolean",
          "default":false
@@ -70,6 +80,7 @@
          "type":"object",
          "properties":{
             "internal":{
+               "name":"Internal Called ID",
                "description":"The default caller ID used when dialing internal extensions",
                "type":"object",
                "properties":{
@@ -82,6 +93,7 @@
                }
             },
             "external":{
+               "name":"External Caller ID",
                "description":"The default caller ID used when dialing external numbers",
                "type":"object",
                "properties":{
@@ -94,6 +106,7 @@
                }
             },
             "emergency":{
+               "name":"Emergency Caller ID",
                "description":"The caller ID used when external, internal, or emergency is not defined",
                "type":"object",
                "properties":{
@@ -115,6 +128,7 @@
          "type":"object",
          "properties":{
             "reformat":{
+               "name":"Caller ID Reformat",
                "description":"A regular expression that if can reformat the displayed caller id",
                "type":"string",
                "maxLength":64
@@ -133,6 +147,7 @@
                "type":"object",
                "properties":{
                   "codecs":{
+                     "name":"Audio Codecs",
                      "description":"A list of audio codecs to use",
                      "type":"array",
                      "enum":[
@@ -155,6 +170,7 @@
                "type":"object",
                "properties":{
                   "codecs":{
+                     "name":"Video Codecs",
                      "description":"A list of video codecs to use",
                      "type":"array",
                      "enum":[
@@ -178,6 +194,7 @@
          "type":"object",
          "properties":{
             "media_id":{
+               "name":"Music On Hold (ID)",
                "description":"The ID of a media object that should be used as the user music on hold",
                "type":"string",
                "minLength":32,
@@ -193,27 +210,32 @@
          "type":"object",
          "properties":{
             "enabled":{
+               "name":"Enabled (hotdesk)",
                "description":"Determines if the user has hotdesking enabled",
                "type":"boolean",
                "default":false
             },
             "id":{
+               "name":"ID (hotdesk)",
                "description":"The users hotdesk id",
                "type":"string",
                "maxLength":15
             },
             "require_pin":{
+               "name":"Require Pin (hotdesk)",
                "description":"Determines if user requires a pin to change the hotdesk state",
                "type":"boolean",
                "default":false
             },
             "pin":{
+               "name":"Pin (hotdesk)",
                "description":"The users hotdesk pin number",
                "type":"string",
                "minLength":4,
                "maxLength":15
             },
             "keep_logged_in_elsewhere":{
+               "name":"Keep Logged (hotdesk)",
                "description":"Determines if user should be able to login to mutliple phones simultaneously",
                "type":"boolean",
                "default":false
@@ -228,36 +250,43 @@
          "type":"object",
          "properties":{
             "enabled":{
+               "name":"Enabled (callforward)",
                "description":"Determines if the call forwarding should be used",
                "type":"boolean",
                "default":false
             },
             "number":{
+               "name":"Number (callforward)",
                "description":"The number to forward calls to",
                "type":"string",
                "maxLength":15
             },
             "substitute":{
+               "name":"Substitute (callforward)",
                "description":"Determines if the call forwarding replaces the user",
                "type":"boolean",
                "default":true
             },
             "require_keypress":{
+               "name":"Require Keypress (callforward)",
                "description":"Determines if the callee is prompted to press 1 to accept the call",
                "type":"boolean",
                "default":true
             },
             "keep_caller_id":{
+               "name":"Keep Caller ID (callforward)",
                "description":"Determines if the caller id is kept when the call is forwarded, if not the users caller id is used",
                "type":"boolean",
                "default":true
             },
             "direct_calls_only":{
+               "name":"Direct Calls Only (callforward)",
                "description":"Determines if the calls that are not directly sent to the user should be forwarded",
                "type":"boolean",
                "default":false
             },
             "ignore_early_media":{
+               "name":"Ignore Early Media (callforward)",
                "description":"The option to determine if early media from the call forwarded number should ignored",
                "type":"boolean",
                "default":true
@@ -276,43 +305,52 @@
                "type":"object",
                "properties":{
                   "email_text_template":{
+                     "name":"Email Text Template",
                      "description":"The email html body template.  Has access to an acccount, service, and voicemail object",
                      "type":"string"
                   },
                   "email_html_template":{
+                     "name":"Email HTML Template",
                      "description":"The email text body template.  Has access to an acccount, service, and voicemail object",
                      "type":"string"
                   },
                   "email_subject_template":{
+                     "name":"Email Subject Template",
                      "description":"The email subject template.  Has access to an acccount, service, and voicemail object",
                      "type":"string"
                   },
                   "support_number":{
+                     "name":"Support Number",
                      "description":"The support number provided to the templates",
                      "type":"string",
                      "maxLength":128
                   },
                   "support_email":{
+                     "name":"Support Email",
                      "description":"The support email provided to the templates",
                      "type":"string",
                      "maxLength":256
                   },
                   "service_url":{
+                     "name":"Serice URL",
                      "description":"The support number provided to the templates",
                      "type":"string",
                      "maxLength":128
                   },
                   "service_name":{
+                     "name":"Service Name",
                      "description":"The service name provided",
                      "type":"string",
                      "maxLength":128
                   },
                   "service_provider":{
+                     "name":"Service Provider",
                      "description":"The service provider name",
                      "type":"string",
                      "maxLength":128
                   },
                   "send_from":{
+                     "name":"Send From",
                      "description":"The from address used when sending the email",
                      "type":"string",
                      "maxLength":256
@@ -325,6 +363,7 @@
          }
       },
       "directories":{
+         "name":"Directories",
          "type":"object",
          "description":"Provides the mappings for what directory the user is a part of (the key), and what callflow (the value) to invoke if the user is selected by the caller."
       }
