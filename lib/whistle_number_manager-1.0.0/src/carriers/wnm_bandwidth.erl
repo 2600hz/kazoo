@@ -136,7 +136,7 @@ acquire_number(#number{auth_by=AuthBy, assigned_to=AssignedTo, module_data=Data}
                     ],
             case make_numbers_request('basicNumberOrder', Props) of
                 {error, Reason} ->
-                    Error = <<"Unable to acquire number: ", (wh_json:to_binary(Reason))/binary>>,
+                    Error = <<"Unable to acquire number: ", (wh_util:to_binary(Reason))/binary>>,
                     wnm_number:error_carrier_fault(Error, N);
                 {ok, Xml} ->
                     Response = xmerl_xpath:string("/numberOrderResponse/numberOrder", Xml),
