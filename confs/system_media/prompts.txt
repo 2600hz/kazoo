@@ -69,3 +69,5 @@ park-call_placed_in_spot: Call placed in parking spot
 fault-can_not_be_completed_as_dialed: Your call can not be completed as dialed. Please check the number and dial again.
 fault-facility_trouble: Due to telephone company facility trouble your call can not be completed at this time.  Please try your call again later.
 fault-can_not_be_completed_at_this_time: Your call can not be completed at this time. Please try again later.
+
+ivr-group_confirm: This is a forwarded call. Press 1 to accept, or hangup to ignore.
