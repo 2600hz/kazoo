@@ -366,7 +366,7 @@ update_views([], _, [], _) ->
     ok;
 update_views([], Db, [{Id,View}|Views], Remove) ->
     lager:debug("adding view '~s' to '~s'", [Id, Db]),
-    couch_mgr:ensure_saved(Db, View),
+    _ = couch_mgr:ensure_saved(Db, View),
     update_views([], Db, Views, Remove);
 update_views([Found|Finds], Db, Views, Remove) ->
     Id = wh_json:get_value(<<"id">>, Found),
@@ -375,7 +375,7 @@ update_views([Found|Finds], Db, Views, Remove) ->
     case props:get_value(Id, Views) of
         undefined when Remove -> 
             lager:debug("removing view '~s' from '~s'", [Id, Db]),
-            couch_mgr:del_doc(Db, Doc),
+            _ = couch_mgr:del_doc(Db, Doc),
             update_views(Finds, Db, props:delete(Id, Views), Remove);
         undefined ->
             update_views(Finds, Db, props:delete(Id, Views), Remove);
@@ -385,7 +385,7 @@ update_views([Found|Finds], Db, Views, Remove) ->
         View2 ->
             lager:debug("updating view '~s' in '~s'", [Id, Db]),
             Rev = wh_json:get_value(<<"_rev">>, Doc),
-            couch_mgr:ensure_saved(Db, wh_json:set_value(<<"_rev">>, Rev, View2)),
+            _ = couch_mgr:ensure_saved(Db, wh_json:set_value(<<"_rev">>, Rev, View2)),
             update_views(Finds, Db, props:delete(Id, Views), Remove)
     end.
 
