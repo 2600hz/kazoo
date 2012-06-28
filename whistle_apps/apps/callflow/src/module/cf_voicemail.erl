@@ -827,7 +827,9 @@ get_mailbox_profile(Data, Call) ->
                         whapps_config:get(?CF_CONFIG_CAT, [<<"voicemail">>, <<"max_message_count">>], ?MAILBOX_DEFAULT_SIZE);
                     MMC -> MMC
                 end,
-            lager:debug("mailbox limited to ~p voicemail messages", [MaxMessageCount]),
+            MsgCount = length(wh_json:get_value(<<"messages">>, JObj, [])),
+
+            lager:debug("mailbox limited to ~p voicemail messages (has ~b currently)", [MaxMessageCount, MsgCount]),
 
             #mailbox{mailbox_id = MailboxId
                      ,exists = true
@@ -859,7 +861,7 @@ get_mailbox_profile(Data, Call) ->
                      ,max_message_length =
                          find_max_message_length([Data, JObj])
                      ,message_count =
-                         length(wh_json:get_value(<<"messages">>, JObj, []))
+                         MsgCount
                     };
         {error, R} ->
             lager:debug("failed to load voicemail box ~s, ~p", [Id, R]),
