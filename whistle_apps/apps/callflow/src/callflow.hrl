@@ -15,7 +15,7 @@
 
 -define(RECORDED_NAME_KEY, [<<"media">>, <<"name">>]).
 
--define(CONFIRM_FILE, <<"/opt/freeswitch/sounds/en/us/callie/ivr/8000/ivr-accept_reject_voicemail.wav">>).
+-define(CONFIRM_FILE, <<"/system_media/ivr-group_confirm">>).
 
 -define(DIALPLAN_MAP, [{<<"tone">>, <<"tones">>}]).
 
