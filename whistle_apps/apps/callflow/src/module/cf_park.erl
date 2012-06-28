@@ -291,9 +291,9 @@ get_slot_number(ParkedCalls, _) ->
 %% and tries again, determining the new slot.
 %% @end
 %%--------------------------------------------------------------------
--spec save_slot/4 :: (ne_binary(), wh_json:json_object(), wh_json:json_object(), whapps_call:call()) -> {'ok', integer()} |
+-spec save_slot/4 :: (ne_binary(), wh_json:json_object(), wh_json:json_object(), whapps_call:call()) -> {'ok', wh_json:json_object()} |
                                                                                                         {'error', atom()}.
--spec do_save_slot/4 :: (ne_binary(), wh_json:json_object(), wh_json:json_object(), whapps_call:call()) -> {'ok', integer()} |
+-spec do_save_slot/4 :: (ne_binary(), wh_json:json_object(), wh_json:json_object(), whapps_call:call()) -> {'ok', wh_json:json_object()} |
                                                                                                            {'error', atom()}.
 
 save_slot(SlotNumber, Slot, ParkedCalls, Call) ->

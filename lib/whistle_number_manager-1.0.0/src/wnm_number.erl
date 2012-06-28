@@ -754,7 +754,7 @@ error_provider_fault(Reason, N) ->
     lager:debug("feature provider(s) fault: ~p", [wh_json:encode(Reason)]),
     throw({provider_fault, N#number{error_jobj=wh_json:from_list([{<<"provider_fault">>, Reason}])}}).
 
--spec error_carrier_fault/2 :: (wh_json:json_object(), wnm_number()) -> no_return().
+-spec error_carrier_fault/2 :: (wh_json:json_object() | ne_binary(), wnm_number()) -> no_return().
 error_carrier_fault(Reason, N) ->
     lager:debug("carrier provider fault: ~p", [wh_json:encode(Reason)]),
     throw({carrier_fault, N#number{error_jobj=wh_json:from_list([{<<"carrier_fault">>, Reason}])}}).

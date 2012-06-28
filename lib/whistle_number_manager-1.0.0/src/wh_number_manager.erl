@@ -414,7 +414,7 @@ fetch_attachment(Number, Name, AuthBy) ->
 %% Add an attachment to a number
 %% @end
 %%--------------------------------------------------------------------
--spec put_attachment/5 :: (ne_binary(), ne_binary(), ne_binary(), proplist(), ne_binary()) -> operation_return().
+-spec put_attachment/5 :: (ne_binary(), ne_binary(), ne_binary(), wh_proplist(), ne_binary()) -> operation_return().
 put_attachment(Number, Name, Content, Options, AuthBy) ->
     lager:debug("add attachement to ~s", [Number]),
     Routines = [fun(_) -> wnm_number:get(Number) end
@@ -537,7 +537,7 @@ set_public_fields(Number, PublicFields, AuthBy) ->
 %% ensure the modules data is stored for later acquisition.
 %% @end
 %%--------------------------------------------------------------------
--spec prepare_find_results/2 :: (proplist(), [] | [[ne_binary(),...],...]) -> [] | [ne_binary(),...].
+-spec prepare_find_results/2 :: (wh_proplist(), [] | [[ne_binary(),...],...]) -> [] | [ne_binary(),...].
 -spec prepare_find_results/4 :: ([] | [ne_binary(),...], atom(), wh_json:json_object(), [] | [ne_binary(),...])
                                 -> [] | [ne_binary(),...].
 

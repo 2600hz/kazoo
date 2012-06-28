@@ -32,9 +32,7 @@
 %%% API
 %%%===================================================================
 init() ->
-    _ = couch_mgr:db_create(?WH_RATES_DB),
-    _ = couch_mgr:revise_doc_from_file(?WH_RATES_DB, crossbar, "views/rates.json"),
-    _ = couch_mgr:load_doc_from_file(?WH_RATES_DB, crossbar, "fixtures/us-1.json"),
+    init_db(),
 
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.rates">>, ?MODULE, allowed_methods),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.rates">>, ?MODULE, resource_exists),
@@ -43,6 +41,12 @@ init() ->
     _ = crossbar_bindings:bind(<<"v1_resource.execute.put.rates">>, ?MODULE, put),
     _ = crossbar_bindings:bind(<<"v1_resource.execute.post.rates">>, ?MODULE, post),
     crossbar_bindings:bind(<<"v1_resource.execute.delete.rates">>, ?MODULE, delete).
+
+init_db() ->
+    _ = couch_mgr:db_create(?WH_RATES_DB),
+    _ = couch_mgr:revise_doc_from_file(?WH_RATES_DB, crossbar, "views/rates.json"),
+    _ = couch_mgr:load_doc_from_file(?WH_RATES_DB, crossbar, "fixtures/us-1.json").
+
 
 %%--------------------------------------------------------------------
 %% @private
@@ -105,6 +109,7 @@ validate(#cb_context{req_verb = <<"delete">>}=Context, Id) ->
 -spec post/1 :: (#cb_context{}) -> #cb_context{}.
 -spec post/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
 post(#cb_context{}=Context) ->
+    init_db(),
     spawn(fun() -> upload_csv(Context) end),
     crossbar_util:response_202(list_to_binary(["attempting to insert rates from the uploaded document"]), Context).
 post(#cb_context{}=Context, _RateId) ->
@@ -245,6 +250,7 @@ add_pvt_type(JObj, _) ->
 %%--------------------------------------------------------------------
 -spec process_upload_file/1 :: (#cb_context{}) -> {'ok', {non_neg_integer(), wh_json:json_objects()}}.
 process_upload_file(#cb_context{req_files=[{_Name, File}|_]}=Context) ->
+    lager:debug("converting file ~s", [_Name]),
     convert_file(wh_json:get_binary_value([<<"headers">>, <<"content_type">>], File)
                  ,wh_json:get_value(<<"contents">>, File)
                  ,Context
@@ -252,6 +258,8 @@ process_upload_file(#cb_context{req_files=[{_Name, File}|_]}=Context) ->
 
 -spec convert_file/3 :: (ne_binary(), ne_binary(), #cb_context{}) -> {'ok', {non_neg_integer(), wh_json:json_objects()}}.
 convert_file(<<"text/csv">>, FileContents, Context) ->
+    csv_to_rates(FileContents, Context);
+convert_file(<<"text/comma-separated-values">>, FileContents, Context) ->
     csv_to_rates(FileContents, Context);
 convert_file(ContentType, _, _) ->
     lager:debug("unknown content type: ~s", [ContentType]),
@@ -262,22 +270,14 @@ csv_to_rates(CSV, Context) ->
     BulkInsert = couch_util:max_bulk_insert(),
     ecsv:process_csv_binary_with(CSV
                                  ,fun(Row, {Cnt, RateDocs}) ->
-                                          RateDocs1 = case Cnt > 1 andalso Cnt rem BulkInsert =:= 0 of
-                                                          true ->
-                                                              spawn(fun() ->
-                                                                            _ = crossbar_util:put_reqid(Context),
-                                                                            _ = crossbar_doc:save(Context#cb_context{doc=RateDocs}),
-                                                                            lager:debug("saved up to ~b docs", [Cnt])
-                                                                    end),
-                                                              [];
-                                                          false -> RateDocs
-                                                      end,
-                                          process_row(Row, {Cnt, RateDocs1})
+                                          process_row(Context, Row, Cnt, RateDocs, BulkInsert)
                                   end
                                  ,{0, []}
                                 ).
 
 -spec process_row/2 :: ([string(),...], {integer(), wh_json:json_objects()}) -> {integer(), wh_json:json_objects()}.
+process_row([Prefix, ISO, Desc, Rate], Acc) ->
+    process_row([Prefix, ISO, Desc, Rate, Rate], Acc);
 process_row([Prefix, ISO, Desc, InternalCost, Rate], {Cnt, RateDocs}=Acc) ->
     case catch wh_util:to_integer(Prefix) of
         {'EXIT', _} -> Acc;
@@ -305,13 +305,14 @@ process_row([Prefix, ISO, Desc, InternalCost, Rate], {Cnt, RateDocs}=Acc) ->
                                           ,{<<"rate_surcharge">>, 0}
                                           ,{<<"pvt_rate_cost">>, wh_util:to_float(InternalCost1)}
                                           ,{<<"weight">>, constrain_weight(byte_size(Prefix1) * 10 - CostF)}
-                                          
                                           ,{<<"options">>, []}
                                           ,{<<"routes">>, [<<"^\\+", (wh_util:to_binary(Prefix1))/binary, "(\\d*)$">>]}
+                                          ,{<<"pvt_carrier">>, <<"default">>}
                                          ]))
                      | RateDocs]}
     end;
-process_row(_, Acc) ->
+process_row(_Row, Acc) ->
+    lager:debug("ignoring row ~p", [_Row]),
     Acc.
 
 -spec strip_quotes/1 :: (ne_binary()) -> ne_binary().
@@ -328,7 +329,25 @@ upload_csv(Context) ->
     Now = erlang:now(),
     {ok, {Count, Rates}} = process_upload_file(Context),
 
-    lager:debug("trying to save ~b rates (took ~b ms to process)", [Count, timer:now_diff(erlang:now(), Now) div 1000]),
+    lager:debug("trying to save ~b rates (took ~b ms to process)", [Count, wh_util:elapsed_ms(Now)]),
     _  = crossbar_doc:save(Context#cb_context{doc=Rates}, [{publish_doc, false}]),
 
-    lager:debug("it took ~b milli to process and save ~b rates", [timer:now_diff(erlang:now(), Now) div 1000, Count]).
+    lager:debug("it took ~b milli to process and save ~b rates", [wh_util:elapsed_ms(Now), Count]).
+
+save_processed_rates(Context, Cnt) ->
+    spawn(fun() ->
+                  Now = erlang:now(),
+                  _ = crossbar_util:put_reqid(Context),
+                  _ = crossbar_doc:save(Context, [{publish_doc, false}]),
+                  lager:debug("saved up to ~b docs (took ~b ms)", [Cnt, wh_util:elapsed_ms(Now)])
+          end).
+
+-spec process_row/5 :: (#cb_context{}, [string(),...], integer(), wh_json:json_objects(), integer()) -> {integer(), wh_json:json_objects()}.
+process_row(Context, Row, Cnt, RateDocs, BulkInsert) ->
+    RateDocs1 = case Cnt > 1 andalso (Cnt rem BulkInsert) =:= 0 of
+                    false -> RateDocs;
+                    true ->
+                        save_processed_rates(Context#cb_context{doc=RateDocs}, Cnt),
+                        []
+                end,
+    process_row(Row, {Cnt, RateDocs1}).
