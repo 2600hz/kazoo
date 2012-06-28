@@ -253,7 +253,6 @@ get_all_kvs(Category) ->
                     wh_json:to_proplist(NodeJObj)
             end
     end.
-    
 
 %%-----------------------------------------------------------------------------
 %% @public
@@ -472,7 +471,7 @@ update_category_node(Category, Node, UpdateFun, Cache) ->
 %% update the entire category in both the db and cache
 %% @end
 %%-----------------------------------------------------------------------------
--spec update_category/3 :: (ne_binary(), wh_json:json_object(), pid()) -> {'ok', wh_json:json_object()}.
+-spec update_category/3 :: (ne_binary(), wh_json:json_object(), atom()) -> {'ok', wh_json:json_object()}.
 update_category(Category, JObj, Cache) ->
     lager:debug("updating configuration category ~s", [Category]),
     JObj1 = wh_json:set_value(<<"_id">>, Category, JObj),

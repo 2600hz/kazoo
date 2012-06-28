@@ -395,12 +395,6 @@ first_last_dtmfs(#directory_user{first_last_keys=FL}) ->
 last_first_dtmfs(#directory_user{last_first_keys=LF}) ->
     LF.
 
-first_name(#directory_user{first_name=FN}) ->
-    FN.
-
-last_name(#directory_user{last_name=LN}) ->
-    LN.
-
 full_name(#directory_user{full_name=FN}) ->
     FN.
 

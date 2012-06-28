@@ -25,14 +25,14 @@ handle(Data, Call) ->
 
 -spec update_presence/3 :: (ne_binary(), ne_binary(), whapps_call:call()) -> 'ok'.
 update_presence(<<"idle">>, PresenceId, Call) ->
-    couch_mgr:update_doc(whapps_call:account_db(Call), ?MANUAL_PRESENCE_DOC, [{PresenceId, <<"available">>}]),
+    _ = couch_mgr:update_doc(whapps_call:account_db(Call), ?MANUAL_PRESENCE_DOC, [{PresenceId, <<"available">>}]),
     whapps_call_command:presence(<<"available">>, PresenceId, wh_util:to_hex_binary(crypto:md5(PresenceId))),
     ok;
 update_presence(<<"ringing">>, PresenceId, Call) ->
     whapps_call_command:presence(<<"early">>, PresenceId, wh_util:to_hex_binary(crypto:md5(PresenceId))),
-    couch_mgr:update_doc(whapps_call:account_db(Call), ?MANUAL_PRESENCE_DOC, [{PresenceId, <<"early">>}]),
+    _ = couch_mgr:update_doc(whapps_call:account_db(Call), ?MANUAL_PRESENCE_DOC, [{PresenceId, <<"early">>}]),
     ok;
 update_presence(<<"busy">>, PresenceId, Call) ->
     whapps_call_command:presence(<<"answered">>, PresenceId, wh_util:to_hex_binary(crypto:md5(PresenceId))),
-    couch_mgr:update_doc(whapps_call:account_db(Call), ?MANUAL_PRESENCE_DOC, [{PresenceId, <<"answered">>}]),
+    _ = couch_mgr:update_doc(whapps_call:account_db(Call), ?MANUAL_PRESENCE_DOC, [{PresenceId, <<"answered">>}]),
     ok.

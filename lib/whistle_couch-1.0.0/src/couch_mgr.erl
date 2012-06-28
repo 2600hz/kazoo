@@ -704,7 +704,7 @@ get_uuids(Count) ->
 get_node_cookie() ->
     couch_config:fetch(bigcouch_cookie, monster).
 
--spec set_node_cookie/1 :: (atom()) -> 'ok'.
+-spec set_node_cookie/1 :: (atom()) -> {'ok', wh_json:json_object()}.
 set_node_cookie(Cookie) when is_atom(Cookie) ->
     couch_config:store(bigcouch_cookie, Cookie).
 
@@ -790,7 +790,7 @@ handle_call({set_host, Host, Port, User, Pass, AdminPort}, _From, #state{host={O
     try {couch_util:get_new_connection(Host, Port, User, Pass)
          ,couch_util:get_new_connection(Host, AdminPort, User, Pass)} of
         {Conn, AdminConn} ->
-            couch_config:store(couch_host, {Host, Port, User, Pass, AdminPort}),
+            _ = couch_config:store(couch_host, {Host, Port, User, Pass, AdminPort}),
 
             {reply, ok, State#state{host={Host, Port, AdminPort}
                                     ,connection=Conn
@@ -811,7 +811,7 @@ handle_call({set_host, Host, Port, User, Pass, AdminPort}, _From, State) ->
     try {couch_util:get_new_connection(Host, Port, User, Pass)
          ,couch_util:get_new_connection(Host, AdminPort, User, Pass)} of
         {Conn, AdminConn} ->
-            couch_config:store(couch_host, {Host, Port, User, Pass, AdminPort}),
+            _ = couch_config:store(couch_host, {Host, Port, User, Pass, AdminPort}),
 
             {reply, ok, State#state{host={Host,Port,AdminPort}
                                     ,connection=Conn
