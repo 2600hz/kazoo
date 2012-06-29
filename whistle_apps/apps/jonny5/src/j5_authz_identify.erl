@@ -19,14 +19,14 @@ handle_req(JObj, _Props) ->
     wh_util:put_callid(JObj),
     Number = get_dest_number(JObj),
     case wh_cache:peek_local(?JONNY5_CACHE, ?IDENT_KEY(Number)) of
-        {ok, {AccountId, ResellerId}} ->
-            send_resp(JObj, AccountId, ResellerId);
+        {ok, {AccountId, ResellerId, GlobalResource}} ->
+            send_resp(JObj, AccountId, ResellerId, GlobalResource);
         {error, not_found} ->
             case wh_number_manager:lookup_account_by_number(Number) of
                 {error, _} -> ok;
-                {ok, AccountId, _} ->
-                    wh_cache:store_local(?JONNY5_CACHE, ?IDENT_KEY(Number), {AccountId, undefined}),
-                    send_resp(JObj, AccountId, undefined)
+                {ok, AccountId, _, GlobalResource} ->
+                    wh_cache:store_local(?JONNY5_CACHE, ?IDENT_KEY(Number), {AccountId, undefined, GlobalResource}),
+                    send_resp(JObj, AccountId, undefined, GlobalResource)
             end
     end.
 
@@ -50,12 +50,13 @@ assume_e164(<<$+, _/binary>> = Number) ->
 assume_e164(Number) ->
     <<$+, Number/binary>>.
 
--spec send_resp/3 :: (wh_json:json_object(), 'undefined' | ne_binary(), 'undefined' | ne_binary()) -> 'ok'.
-send_resp(JObj, AccountId, _ResellerId) ->
+-spec send_resp/4 :: (wh_json:json_object(), 'undefined' | ne_binary(), 'undefined' | ne_binary(), boolean()) -> 'ok'.
+send_resp(JObj, AccountId, _ResellerId, GlobalResource) ->
     lager:debug("channel identified as account ~s", [AccountId]),
     Resp = [{<<"Account-ID">>, AccountId}
             ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
             ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
+            ,{<<"Global-Resource">>, wh_util:to_binary(GlobalResource)}
             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     wapi_authz:publish_identify_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp).

@@ -37,7 +37,7 @@ inbound_handler(JObj) ->
     inbound_handler(JObj, get_dest_number(JObj)).
 inbound_handler(JObj, Number) ->
     case wh_number_manager:lookup_account_by_number(Number) of
-        {ok, AccountId, _} ->
+        {ok, AccountId, _, _} ->
             lager:debug("number associated with account ~s", [AccountId]),
             relay_route_req(
               wh_json:set_value(<<"Custom-Channel-Vars">>, custom_channel_vars(AccountId, undefined, JObj), JObj)
