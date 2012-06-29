@@ -102,11 +102,9 @@ post(Context, _DocId) ->
                     Set1 = sets:from_list(wh_json:get_value(<<"numbers">>, DbDoc, [])),
                     Set2 = sets:from_list(wh_json:get_value(<<"numbers">>, JObj, [])),
                     NewNumbers = sets:subtract(Set2, Set1),
-                    RemovedNumbers = sets:subtract(Set1, Set2),
                     _ = [wh_number_manager:reconcile_number(Number, AssignTo, AuthBy)
-                         || Number <- sets:to_list(NewNumbers)],
-                    _ = [wh_number_manager:release_number(Number, AuthBy)
-                         || Number <- sets:to_list(RemovedNumbers)],
+                         || Number <- sets:to_list(NewNumbers)
+                        ],
                     C
             end;
         Else ->
@@ -125,15 +123,8 @@ put(Context) ->
     end.
 
 -spec delete/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
-delete(#cb_context{doc=JObj}=Context, _DocId) ->
-    case crossbar_doc:delete(Context) of
-        #cb_context{auth_account_id=AuthBy, resp_status=success}=C ->
-            _ = [wh_number_manager:release_number(Number, AuthBy)
-                 || Number <- wh_json:get_value(<<"numbers">>, JObj, [])],
-            C;
-        Else ->
-            Else
-    end.
+delete(Context, _DocId) ->
+    crossbar_doc:delete(Context).
 
 %%--------------------------------------------------------------------
 %% @private
