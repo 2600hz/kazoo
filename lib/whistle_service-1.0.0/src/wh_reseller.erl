@@ -67,7 +67,7 @@ fetch(Account) ->
             E;
         {ok, JObj} ->
             Reseller = wh_reseller:get_reseller_id(JObj),
-            BillingId = wh_json:get_value(<<"pvt_billing_id">>, JObj, AccountId),
+            BillingId = wh_json:get_value(<<"billing_id">>, JObj, AccountId),
             case get_plans(Reseller, JObj) of
                 [] -> {error, no_service_plan};
                 Plans ->
