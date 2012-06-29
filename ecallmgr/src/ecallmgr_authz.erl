@@ -35,6 +35,16 @@ maybe_authorize_channel(Props, Node) ->
                         end
                 end
                 ,fun({error, _}=E) -> E;
+                    ({ok, _}=Ok) ->
+                         GlobalResource = props:get_value(?GET_CCV(<<"Global-Resource">>), Props, true),
+                         case wh_util:is_true(GlobalResource) of
+                             true -> Ok;
+                             false -> 
+                                 lager:debug("channel is a local resource, allowing", []),
+                                 {error, not_required}
+                         end
+                 end
+                ,fun({error, _}=E) -> E;
                     ({ok, P}) ->
                          case props:get_value(<<"Call-Direction">>, P) of
                              <<"outbound">> ->
@@ -191,16 +201,23 @@ identify_account(_, Props) ->
     ReqResp = wh_amqp_worker:call(?ECALLMGR_AMQP_POOL
                                   ,authz_identify_req(Props)
                                   ,fun wapi_authz:publish_identify_req/1
-                                  ,fun wapi_authz:identify_resp_v/1),
-    case ReqResp of 
-        {error, _R} -> 
+                                  ,fun wapi_authz:identify_resp_v/1
+                                  ,5000),
+    case ReqResp of
+        {error, _R} ->
             lager:debug("authz identify request lookup failed: ~p", [_R]),
             {error, unidentified_channel};
         {ok, RespJObj} ->
-            {ok, [{?GET_CCV(<<"Account-ID">>), wh_json:get_value(<<"Account-ID">>, RespJObj)}
-                  ,{?GET_CCV(<<"Reseller-ID">>), wh_json:get_value(<<"Reseller-ID">>, RespJObj)}
-                  |Props
-                 ]}
+            case wh_json:is_false(<<"Global-Resource">>, RespJObj) of
+                true -> 
+                    lager:debug("identified channel as a local resource, allowing", []),
+                    {error, not_required};
+                false ->
+                    {ok, [{?GET_CCV(<<"Account-ID">>), wh_json:get_value(<<"Account-ID">>, RespJObj)}
+                          ,{?GET_CCV(<<"Reseller-ID">>), wh_json:get_value(<<"Reseller-ID">>, RespJObj)}
+                          |Props
+                         ]}
+            end
     end.
     
 -spec authz_default/0 :: () -> {'ok', ne_binary()} | {'error', 'default_is_deny'}.

@@ -68,7 +68,7 @@ handle_req(<<"originate">>, JObj, Props) ->
                                                                                                           {'error', 'no_resources'}.
 attempt_to_fulfill_bridge_req(Number, CtrlQ, JObj, Props) ->
     Result = case stepswitch_util:lookup_number(Number) of
-                 {ok, AccountId, false} ->
+                 {ok, AccountId, false, _} ->
                      lager:debug("found local extension, keeping onnet"),
                      execute_local_extension(Number, AccountId, CtrlQ, JObj);
                  _ ->
@@ -141,6 +141,7 @@ bridge_to_endpoints(Endpoints, IsEmergency, CtrlQ, JObj) ->
     CCVs = wh_json:set_values([ KV || {_,V}=KV <- [{<<"Account-ID">>, wh_json:get_value(<<"Account-ID">>, JObj, <<>>)}
                                                    ,{<<"From-URI">>, FromURI}
                                                    ,{<<"Ignore-Display-Updates">>, <<"true">>}
+                                                   ,{<<"Global-Resource">>, true}
                                                   ],
                                       V =/= undefined
                               ], wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new())),
@@ -197,6 +198,7 @@ originate_to_endpoints(Endpoints, JObj) ->
 
     CCVs = wh_json:set_values([ KV || {_,V}=KV <- [{<<"Account-ID">>, wh_json:get_value(<<"Account-ID">>, JObj, <<>>)}
                                                    ,{<<"From-URI">>, FromURI}
+                                                   ,{<<"Global-Resource">>, true}
                                                   ],
                                       V =/= undefined
                               ], wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new())),
@@ -246,6 +248,7 @@ execute_local_extension(Number, AccountId, CtrlQ, JObj) ->
             ,{<<"Caller-ID-Name">>, CIDName}
             ,{<<"Callee-ID-Number">>, wh_util:to_binary(Number)}
             ,{<<"Callee-ID-Name">>, get_account_name(Number, AccountId)}
+            ,{<<"Global-Resource">>, false}
            ],
     lager:debug("set outbound caller id to ~s '~s'", [CIDNum, CIDName]),
     Command = [{<<"Call-ID">>, get(callid)}
