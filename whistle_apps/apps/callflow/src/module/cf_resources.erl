@@ -98,6 +98,7 @@ create_endpoint(DestNum, JObj, Call) ->
     lager:debug("attempting resource ~s", [Rule]),
     CCVs = [KV || {_, V}=KV <- [{<<"Account-ID">>, whapps_call:account_id(Call)}
                                 ,{<<"From-URI">>, maybe_from_uri(AccountDb, JObj, CNum)}
+                                ,{<<"Global-Resource">>, false}
                                ],
                   V =/= undefined
            ],

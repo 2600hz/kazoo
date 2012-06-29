@@ -26,7 +26,7 @@ lookup_number(Number) ->
         {ok, {AccountId, ForceOut}} -> {ok, AccountId, ForceOut};
         {error, not_found} ->
             case wh_number_manager:lookup_account_by_number(Num) of
-                {ok, AccountId, ForceOut}=Ok ->
+                {ok, AccountId, ForceOut, _}=Ok ->
                     wh_cache:store_local(?STEPSWITCH_CACHE, cache_key_number(Number), {AccountId, ForceOut}),
                     lager:debug("~s is associated with account ~s", [Num, AccountId]),            
                     Ok;

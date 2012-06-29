@@ -130,7 +130,7 @@ find_account_by_number(Number) when not is_binary(Number) ->
     find_account_by_number(wh_util:to_binary(Number));
 find_account_by_number(Number) ->
     case wh_number_manager:lookup_account_by_number(Number) of
-        {ok, AccountId, _} -> 
+        {ok, AccountId, _, _} -> 
             AccountDb = wh_util:format_account_id(AccountId, encoded),
             print_account_info(AccountDb, AccountId);
         {error, {not_in_service, AssignedTo}} ->
