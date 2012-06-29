@@ -109,35 +109,35 @@ authorize(#cb_context{req_nouns=[{<<"onboard">>,[]}]
                       ,req_verb = <<"put">>}) ->
     true;
 authorize(#cb_context{req_nouns=[{<<"onboard">>,[?INVITE_API,_]}]
-		      ,req_verb = <<"get">>}) ->
+                      ,req_verb = <<"get">>}) ->
     true.
 
 authenticate(#cb_context{req_nouns=[{<<"onboard">>,[]}]
-			 ,req_verb = <<"put">>}) ->
+                         ,req_verb = <<"put">>}) ->
     true;
 authenticate(#cb_context{req_nouns=[{<<"onboard">>,[?INVITE_API,_]}]
-			 ,req_verb = <<"get">>}) ->
+                         ,req_verb = <<"get">>}) ->
     true.
 
 put(#cb_context{req_data=JObj, doc=Data}=Context) ->
     case wh_json:get_ne_value(<<"invite_code">>, JObj) of
-	undefined ->
-	    crossbar_util:response(error, <<"request must contain valid invite code">>, 401, Context);
-	InviteId ->
-	    case load_invite_code(Context, InviteId) of
-		#cb_context{resp_status=success, doc=Doc}=IContext ->
-		    IContext1 = save_invite_code(IContext, wh_json:set_value(<<"status">>, <<"used">>, Doc)),
-		    case populate_new_account(Data, Context) of
-			#cb_context{account_id=undefined}=Else ->
-			    save_invite_code(IContext1, wh_json:set_value(<<"status">>, <<"unused">>, IContext1#cb_context.doc)),
-			    create_response(Else);
-			#cb_context{account_id=AcctId}=Context1 ->
-			    save_invite_code(IContext1, wh_json:set_value(<<"used_by">>, AcctId, IContext1#cb_context.doc)),
-			    create_response(Context1)
-		    end;
-		Else ->
-		    Else
-	    end
+        undefined ->
+            crossbar_util:response(error, <<"request must contain valid invite code">>, 401, Context);
+        InviteId ->
+            case load_invite_code(Context, InviteId) of
+                #cb_context{resp_status=success, doc=Doc}=IContext ->
+                    IContext1 = save_invite_code(IContext, wh_json:set_value(<<"status">>, <<"used">>, Doc)),
+                    case populate_new_account(Data, Context) of
+                        #cb_context{account_id=undefined}=Else ->
+                            save_invite_code(IContext1, wh_json:set_value(<<"status">>, <<"unused">>, IContext1#cb_context.doc)),
+                            create_response(Else);
+                        #cb_context{account_id=AcctId}=Context1 ->
+                            save_invite_code(IContext1, wh_json:set_value(<<"used_by">>, AcctId, IContext1#cb_context.doc)),
+                            create_response(Context1)
+                    end;
+                Else ->
+                    Else
+            end
     end.
 
 %%--------------------------------------------------------------------
@@ -518,10 +518,10 @@ populate_new_account(Props, _) ->
                     catch (crossbar_bindings:fold(<<"v1_resource.execute.delete.accounts">>, [Context1, AccountId])),
                     Context1#cb_context{doc=wh_json:delete_key(<<"owner_id">>, Results), account_id=undefined}
             end;
-        ErrorContext ->
+        #cb_context{resp_error_msg=ErrorMsg, resp_data=ErrorData}=ErrorContext ->
             AccountId = wh_json:get_value(<<"_id">>, Context#cb_context.req_data),
             couch_mgr:db_delete(wh_util:format_account_id(AccountId, encoded)),
-            ErrorContext#cb_context{account_id=undefined}
+            ErrorContext#cb_context{doc=wh_json:set_value(wh_util:to_binary(ErrorMsg), ErrorData, wh_json:new()), account_id=undefined}
     end.
 
 populate_new_account([], _, Results) ->
@@ -646,7 +646,7 @@ load_invite_code(Context, Id) ->
             case wh_json:get_ne_value(<<"status">>, Doc) of
                 undefined ->
                     Context1#cb_context{resp_data=wh_json:set_value(<<"status">>, <<"unused">>, wh_json:new())};
-		<<"unused">> ->
+                <<"unused">> ->
                     Context1#cb_context{resp_data=wh_json:set_value(<<"status">>, <<"unused">>, wh_json:new())};
                 _Else ->
                     crossbar_util:response(error, <<"invite code has already been used">>, 410, Context)
