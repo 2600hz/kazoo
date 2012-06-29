@@ -56,7 +56,7 @@ find(Number, Quanity) ->
 %% assignment
 %% @end
 %%--------------------------------------------------------------------
--spec lookup_account_by_number/1 :: (ne_binary()) -> {'ok', ne_binary(), boolean()} |
+-spec lookup_account_by_number/1 :: (ne_binary()) -> {'ok', ne_binary(), boolean(), boolean()} |
                                                      {'error', _}.
 lookup_account_by_number(undefined) ->
     {error, not_reconcilable};
@@ -65,21 +65,21 @@ lookup_account_by_number(Number) ->
         #number{assigned_to=undefined} -> 
             lager:debug("number ~s not assigned to an account", [Number]),
             {error, unassigned};            
-        #number{assigned_to=AssignedTo, state = <<"port_in">>} -> 
+        #number{assigned_to=AssignedTo, state = <<"port_in">>, module_name=Name} -> 
             lager:debug("number ~s is assigned to ~s in state port_in", [Number, AssignedTo]),
-            {ok, AssignedTo, true};
-        #number{assigned_to=AssignedTo, state = <<"in_service">>, number_doc=JObj} -> 
+            {ok, AssignedTo, true, Name =/= wnm_local};
+        #number{assigned_to=AssignedTo, state = <<"in_service">>, number_doc=JObj, module_name=Name} -> 
             case wh_json:is_true(<<"force_outbound">>, JObj, false) of
                 true -> 
                     lager:debug("number ~s is assigned to ~s in state in_serivce and is forced outbound", [Number, AssignedTo]),
-                    {ok, AssignedTo, true};
+                    {ok, AssignedTo, true, Name =/= wnm_local};
                 false -> 
                     lager:debug("number ~s is assigned to ~s in state in_serivce", [Number, AssignedTo]),
-                    {ok, AssignedTo, false}
+                    {ok, AssignedTo, false, Name =/= wnm_local}
             end;
-        #number{assigned_to=AssignedTo, state = <<"port_out">>} -> 
+        #number{assigned_to=AssignedTo, state = <<"port_out">>, module_name=Name} -> 
             lager:debug("number ~s is assigned to ~s in state port_in", [Number, AssignedTo]),
-            {ok, AssignedTo, true};
+            {ok, AssignedTo, true, Name =/= wnm_local};
         #number{assigned_to=AssignedTo, state=State} -> 
             lager:debug("number ~s assigned to acccount id ~s but in state ~s", [Number, AssignedTo, State]),
             {error, {not_in_service, AssignedTo}}
