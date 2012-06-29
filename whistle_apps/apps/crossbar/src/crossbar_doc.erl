@@ -1,10 +1,11 @@
 %%%-------------------------------------------------------------------
-%%% @author Karl Anderson <karl@2600hz.org>
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2012, VoIP INC
 %%% @doc
 %%%
 %%% @end
-%%% Created : 26 Jan 2011 by Karl Anderson <karl@2600hz.org>
+%%% @contributors
+%%%   Karl Anderson
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(crossbar_doc).
 
@@ -142,7 +143,7 @@ load_view(View, Options, #cb_context{db_name=DB, query_json=RJ}=Context) ->
     ViewOptions = case HasFilter of
                       false -> Options;
                       true -> 
-                          [{<<"include_docs">>, true} | props:delete(<<"include_docs">>, Options)]
+                          [include_docs | props:delete(include_docs, Options)]
                   end,
     case couch_mgr:get_results(DB, View, ViewOptions) of
         {error, invalid_view_name} ->
@@ -299,7 +300,6 @@ save(#cb_context{db_name=DB, doc=JObj, req_verb=Verb, resp_headers=RespHs}=Conte
             lager:debug("failed to save json: conflicts with existing doc"),
             crossbar_util:response_conflicting_docs(Context);
         {ok, JObj1} when Verb =:= <<"put">> ->
-            lager:debug("saved a put request, setting location headers"),
             _ = send_document_change(created, DB, JObj1, Options),
             Context#cb_context{doc=JObj1
                                ,resp_status=success
@@ -308,7 +308,6 @@ save(#cb_context{db_name=DB, doc=JObj, req_verb=Verb, resp_headers=RespHs}=Conte
                                ,resp_etag=rev_to_etag(JObj1)
                               };
         {ok, JObj2} ->
-            lager:debug("saved json doc"),
             _ = send_document_change(edited, DB, JObj2, Options),
             Context#cb_context{doc=JObj2
                                ,resp_status=success
@@ -557,14 +556,8 @@ delete_attachment(DocId, AName, #cb_context{db_name=DB}=Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec public_fields/1 :: (wh_json:json_object() | wh_json:json_objects()) -> wh_json:json_object() | wh_json:json_objects().
-public_fields([_|_]=JObjs)->
-    lists:map(fun public_fields/1, JObjs);
-public_fields(JObj) ->
-    PubJObj = wh_json:filter(fun({K, _}) -> not is_private_key(K) end, JObj),
-    case wh_json:get_value(<<"_id">>, JObj) of
-        undefined -> PubJObj;
-        Id -> wh_json:set_value(<<"id">>, Id, PubJObj)
-    end.
+public_fields(JObjs)->
+    wh_json:public_fields(JObjs).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -574,10 +567,8 @@ public_fields(JObj) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec private_fields/1 :: (wh_json:json_object() | wh_json:json_objects()) -> wh_json:json_object() | wh_json:json_objects().
-private_fields([_|_]=JObjs)->
-    lists:map(fun public_fields/1, JObjs);
-private_fields(JObj) ->
-    wh_json:filter(fun({K, _}) -> is_private_key(K) end, JObj).
+private_fields(JObjs)->
+    wh_json:private_fields(JObjs).
 
 %%--------------------------------------------------------------------
 %% @public

@@ -238,7 +238,7 @@ maybe_match_users(Call, State, [U|Us], MatchNum) ->
                                                                                      'continue'.
 maybe_match_user(Call, U, MatchNum) ->
     UserName = case media_name(U) of
-                   undefined -> {say, <<$', (full_name(U))/binary, $'>>};
+                   undefined -> {tts, <<$', (full_name(U))/binary, $'>>};
                    MediaID -> {play, <<$/, (whapps_call:account_db(Call))/binary
                                        ,$/, MediaID/binary>>}
                end,
@@ -296,9 +296,15 @@ play_invalid(Call) ->
     whapps_call_command:audio_macro([{play, ?PROMPT_INVALID_KEY}], Call).
 
 play_confirm_match(Call, User) ->
+    UserName = case media_name(User) of
+                   undefined -> {tts, <<$', (full_name(User))/binary, $'>>};
+                   MediaID -> {play, <<$/, (whapps_call:account_db(Call))/binary
+                                       ,$/, MediaID/binary>>}
+               end,
+    lager:debug("playing confirm_match with username: ~p", [UserName]),
+
     play_and_collect(Call, [{play, ?PROMPT_FOUND}
-                            ,{say, first_name(User)}
-                            ,{say, last_name(User)}
+                            ,UserName
                             ,{play, ?PROMPT_CONFIRM_MENU, ?ANY_DIGIT}
                            ]).
 
@@ -389,12 +395,6 @@ first_last_dtmfs(#directory_user{first_last_keys=FL}) ->
 last_first_dtmfs(#directory_user{last_first_keys=LF}) ->
     LF.
 
-first_name(#directory_user{first_name=FN}) ->
-    FN.
-
-last_name(#directory_user{last_name=LN}) ->
-    LN.
-
 full_name(#directory_user{full_name=FN}) ->
     FN.
 
@@ -411,7 +411,7 @@ get_sort_by(_) -> last.
 -spec get_directory_listing/2 :: (ne_binary(), ne_binary()) -> {'ok', directory_users()} |
                                                                {'error', term()}.
 get_directory_listing(Db, DirId) ->
-    case couch_mgr:get_results(Db, ?DIR_DOCS_VIEW, [{<<"key">>, DirId}, {<<"include_docs">>, true}]) of
+    case couch_mgr:get_results(Db, ?DIR_DOCS_VIEW, [{key, DirId}, include_docs]) of
         {ok, []} ->
             lager:debug("no users have been assigned to directory ~s", [DirId]),
             %% play no users in this directory
@@ -435,7 +435,7 @@ get_directory_user(U, CallflowId) ->
                      ,first_last_keys = cf_util:alpha_to_dialpad(<<First/binary, Last/binary>>)
                      ,last_first_keys = cf_util:alpha_to_dialpad(<<Last/binary, First/binary>>)
                      ,callflow_id = CallflowId
-                     ,name_audio_id = wh_json:get_value([<<"media">>, <<"name">>], U)
+                     ,name_audio_id = wh_json:get_value(?RECORDED_NAME_KEY, U)
                    }.
 
 

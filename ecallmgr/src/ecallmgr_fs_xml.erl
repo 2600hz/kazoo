@@ -506,10 +506,6 @@ result_el(Status) ->
 prepend_child(#xmlElement{content=Contents}=El, Child) ->
     El#xmlElement{content=[Child|Contents]}.
 
--spec reverse_children/1 :: (xml_el()) -> xml_el().
-reverse_children(#xmlElement{content=Contents}=El) ->
-    El#xmlElement{content=lists:reverse(Contents)}.
-
 -spec xml_attrib/2 :: (xml_attrib_name(), xml_attrib_value()) -> xml_attrib().
 xml_attrib(Name, Value) when is_atom(Name) ->
     #xmlAttribute{name=Name, value=wh_util:to_list(Value)}.

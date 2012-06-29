@@ -283,7 +283,9 @@ join_binary([_|Bins], Sep, Acc) ->
 %% dictionary, failing that the Msg-ID and finally a generic
 %% @end
 %%--------------------------------------------------------------------
--spec put_callid/1 :: (wh_json:json_object() | wh_proplist()) -> ne_binary() | 'undefined'.
+-spec put_callid/1 :: (wh_json:json_object() | wh_proplist() | ne_binary()) -> ne_binary() | 'undefined'.
+put_callid(?NE_BINARY = CallId) ->
+    erlang:put(callid, CallId);
 put_callid(Prop) when is_list(Prop) ->
     erlang:put(callid, props:get_value(<<"Call-ID">>, Prop, props:get_value(<<"Msg-ID">>, Prop, ?LOG_SYSTEM_ID)));
 put_callid(JObj) ->

@@ -253,7 +253,6 @@ get_all_kvs(Category) ->
                     wh_json:to_proplist(NodeJObj)
             end
     end.
-    
 
 %%-----------------------------------------------------------------------------
 %% @public
@@ -472,7 +471,7 @@ update_category_node(Category, Node, UpdateFun, Cache) ->
 %% update the entire category in both the db and cache
 %% @end
 %%-----------------------------------------------------------------------------
--spec update_category/3 :: (ne_binary(), wh_json:json_object(), pid()) -> {'ok', wh_json:json_object()}.
+-spec update_category/3 :: (ne_binary(), wh_json:json_object(), atom()) -> {'ok', wh_json:json_object()}.
 update_category(Category, JObj, Cache) ->
     lager:debug("updating configuration category ~s", [Category]),
     JObj1 = wh_json:set_value(<<"_id">>, Category, JObj),
@@ -498,6 +497,8 @@ category_to_file(<<"whapps_controller">>) ->
     [code:lib_dir(whistle_apps, priv), "/startup.config"];
 category_to_file(<<"notify.voicemail_to_email">>) ->
     [code:lib_dir(notify, priv), "/notify_vm.config"];
+category_to_file(<<"notify.fax_to_email">>) ->
+    [code:lib_dir(notify, priv), "/notify_fax.config"];
 category_to_file(<<"notify.deregister">>) ->
     [code:lib_dir(notify, priv), "/notify_deregister.config"];
 category_to_file(<<"notify.password_recovery">>) ->

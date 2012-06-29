@@ -61,6 +61,9 @@ migrate() ->
     %% Remove depreciated crossbar modules from the startup list and add new defaults
     _ = crossbar_maintenance:migrate(),
 
+    %% Migrate recorded name doc ids from VM Boxes to the Owner ID's doc (if exists)
+    _ = callflow_maintenance:migrate_recorded_name(),
+
     %% Remove depreciated whapps from the startup list and add new defaults
     io:format("updating default kazoo modules~n", []),
     WhappsUpdates = [fun(L) -> [<<"sysconf">> | lists:delete(<<"sysconf">>, L)] end
@@ -176,11 +179,11 @@ refresh(?WH_ACCOUNTS_DB) ->
     ok;
 refresh(?WH_PROVISIONER_DB) ->
     couch_mgr:db_create(?WH_PROVISIONER_DB),
-    couch_mgr:revise_doc_from_file(?WH_PROVISIONER_DB, crossbar, "account/provisioner_templates.json"),
+    _ = couch_mgr:revise_doc_from_file(?WH_PROVISIONER_DB, crossbar, "account/provisioner_templates.json"),
     ok;
 refresh(?WH_FAXES) ->
     couch_mgr:db_create(?WH_FAXES),
-    couch_mgr:revise_doc_from_file(?WH_FAXES, whistle_apps, ?FAXES_VIEW_FILE),
+    _ = couch_mgr:revise_doc_from_file(?WH_FAXES, whistle_apps, ?FAXES_VIEW_FILE),
     ok;
 refresh(?NE_BINARY = Account) ->
     Views = [whapps_util:get_view_json(whistle_apps, ?MAINTENANCE_VIEW_FILE)
@@ -196,19 +199,19 @@ refresh(Account, Views) ->
     AccountId = wh_util:format_account_id(Account, raw),
 
     %% Remove old views
-    couch_mgr:del_doc(AccountDb, <<"_design/limits">>),
-    couch_mgr:del_doc(AccountDb, <<"_design/sub_account_reps">>),
+    _ = couch_mgr:del_doc(AccountDb, <<"_design/limits">>),
+    _ = couch_mgr:del_doc(AccountDb, <<"_design/sub_account_reps">>),
 
     case couch_mgr:open_doc(AccountDb, AccountId) of
         {error, not_found} ->
-            case couch_mgr:open_doc(?WH_ACCOUNTS_DB, AccountId) of
-                {ok, Def} ->
-                    io:format("    account ~s is missing its local account definition, but it was recovered from the accounts db~n", [AccountId]),
-                    couch_mgr:ensure_saved(AccountDb, wh_json:delete_key(<<"_rev">>, Def));
-                {error, not_found} ->
-                    io:format("    account ~s is missing its local account definition, and not in the accounts db~n", [AccountId])
-                    %%                    couch_mgr:db_delete(AccountDb)
-            end,
+            _ = case couch_mgr:open_doc(?WH_ACCOUNTS_DB, AccountId) of
+                    {ok, Def} ->
+                        io:format("    account ~s is missing its local account definition, but it was recovered from the accounts db~n", [AccountId]),
+                        couch_mgr:ensure_saved(AccountDb, wh_json:delete_key(<<"_rev">>, Def));
+                    {error, not_found} ->
+                        io:format("    account ~s is missing its local account definition, and not in the accounts db~n", [AccountId])
+                        %%                    couch_mgr:db_delete(AccountDb)
+                end,
             remove;
         {ok, JObj} ->
             _ = couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, JObj),
@@ -246,13 +249,13 @@ cleanup_aggregated_account(Account) ->
                   Else -> wh_util:format_account_id(Else, encoded)
               end,
     AccountDb = wh_json:get_value(<<"pvt_account_db">>, Account, Default),
-    case AccountDb =/= undefined andalso (couch_mgr:db_exists(AccountDb) =/= true) of
-        true ->
-            io:format("    removing aggregated account for missing db ~s~n", [AccountDb]),
-            couch_mgr:del_doc(?WH_ACCOUNTS_DB, Account);
-        false ->
-            ok
-    end,
+    _ = case AccountDb =/= undefined andalso (couch_mgr:db_exists(AccountDb) =/= true) of
+            true ->
+                io:format("    removing aggregated account for missing db ~s~n", [AccountDb]),
+                couch_mgr:del_doc(?WH_ACCOUNTS_DB, Account);
+            false ->
+                ok
+        end,
     ok.
 
 %%--------------------------------------------------------------------
@@ -261,20 +264,20 @@ cleanup_aggregated_account(Account) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec cleanup_aggregated_device/1 :: (wh_json:json_object()) -> ok.
+-spec cleanup_aggregated_device/1 :: (wh_json:json_object()) -> 'ok'.
 cleanup_aggregated_device(Device) ->
     Default = case wh_json:get_value(<<"pvt_account_id">>, Device) of
                   undefined -> undefined;
                   Else -> wh_util:format_account_id(Else, encoded)
               end,
     AccountDb = wh_json:get_value(<<"pvt_account_db">>, Device, Default),
-    case AccountDb =/= undefined andalso (couch_mgr:db_exists(AccountDb) =/= true) of
-        true ->
-            io:format("    removing aggregated device for missing db ~s~n", [AccountDb]),
-            couch_mgr:del_doc(?WH_SIP_DB, Device);
-        false ->
-            ok
-    end,
+    _ = case AccountDb =/= undefined andalso (couch_mgr:db_exists(AccountDb) =/= true) of
+            true ->
+                io:format("    removing aggregated device for missing db ~s~n", [AccountDb]),
+                couch_mgr:del_doc(?WH_SIP_DB, Device);
+            false ->
+                ok
+        end,
     ok.
 
 %%--------------------------------------------------------------------
@@ -283,7 +286,8 @@ cleanup_aggregated_device(Device) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec purge_doc_type/2 :: (ne_binary(), ne_binary()) -> ok | {error, term()}.
+-spec purge_doc_type/2 :: (ne_binary(), ne_binary()) -> {'ok', wh_json:json_objects()} |
+                                                        {'error', term()}.
 purge_doc_type(Type, Account) when not is_binary(Type) ->
     purge_doc_type(wh_util:to_binary(Type), Account);
 purge_doc_type(Type, Account) when not is_binary(Account) ->
@@ -314,7 +318,7 @@ migrate_limits() ->
                         _ = migrate_limits(AccountDb),
                         Current + 1
                 end, 1, Accounts),
-    ok.    
+    ok.
 
 migrate_limits(Account) when not is_binary(Account) ->
     migrate_limits(wh_util:to_binary(Account));
@@ -341,7 +345,7 @@ migrate_limits(Account) ->
                                                   ]
                                         ,V =/= undefined
                              ]),
-    couch_mgr:save_doc(AccountDb, JObj),
+    _ = couch_mgr:save_doc(AccountDb, JObj),
     ok.
 
 %%--------------------------------------------------------------------
@@ -368,21 +372,21 @@ clean_trunkstore_docs(_, [], Trunks, InboundTrunks) ->
 clean_trunkstore_docs(AccountDb, [JObj|JObjs], Trunks, InboundTrunks) ->
     Doc = wh_json:get_value(<<"doc">>, JObj),
     %% if there are no servers and it was created by jonny5 softdelete the doc
-    case wh_json:get_ne_value(<<"servers">>, Doc) =:= undefined
-        andalso wh_json:get_ne_value(<<"pvt_created_by">>, Doc) =:= <<"jonny5">>
-    of
-        true -> couch_mgr:save_doc(AccountDb, wh_json:set_value(<<"pvt_deleted">>, true, Doc));
-        false -> ok
-    end,
+    _ = case wh_json:get_ne_value(<<"servers">>, Doc) =:= undefined
+            andalso wh_json:get_ne_value(<<"pvt_created_by">>, Doc) =:= <<"jonny5">>
+        of
+            true -> couch_mgr:save_doc(AccountDb, wh_json:set_value(<<"pvt_deleted">>, true, Doc));
+            false -> ok
+        end,
     NewTrunks = case wh_json:get_integer_value([<<"account">>, <<"trunks">>], Doc, 0) of
-               OldTrunks when OldTrunks > Trunks -> OldTrunks;
-               _ -> Trunks
+                    OldTrunks when OldTrunks > Trunks -> OldTrunks;
+                    _ -> Trunks
            end,
     NewInboundTrunks = case wh_json:get_integer_value([<<"account">>, <<"inbound_trunks">>], Doc, 0) of
                            OldInboundTrunks when OldInboundTrunks > InboundTrunks -> OldInboundTrunks;
                            _ -> Trunks
                        end,
-    clean_trunkstore_docs(AccountDb, JObjs, NewTrunks, NewInboundTrunks).    
+    clean_trunkstore_docs(AccountDb, JObjs, NewTrunks, NewInboundTrunks).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -416,7 +420,7 @@ migrate_media(Account) ->
         {ok, JObjs1}->
             _ = [migrate_attachment(AccountDb, JObj) || JObj <- JObjs1],
             ok;
-        {error, _}=E1 -> 
+        {error, _}=E1 ->
             io:format("unable to fetch media files in db ~s: ~p~n", [AccountDb, E1])
     end,
     case couch_mgr:get_results(AccountDb, <<"media/listing_private_media">>, []) of
@@ -424,7 +428,7 @@ migrate_media(Account) ->
         {ok, JObjs2}->
             _ = [migrate_attachment(AccountDb, JObj) || JObj <- JObjs2],
             ok;
-        {error, _}=E2 -> 
+        {error, _}=E2 ->
             io:format("unable to fetch private media files in db ~s: ~p~n", [AccountDb, E2])
     end.
 
@@ -437,26 +441,26 @@ migrate_media(Account) ->
 -spec migrate_attachment/2 :: (ne_binary(), wh_json:json_objects()) -> 'ok'.
 migrate_attachment(AccountDb, ViewJObj) ->
     Id = wh_json:get_value(<<"id">>, ViewJObj),
-    case couch_mgr:open_doc(AccountDb, Id) of
-        {error, _}=E1 -> io:format("unable to open media for attachment migration ~s/~s: ~p~n", [AccountDb, Id, E1]);
-        {ok, JObj1} ->
-            case wh_json:get_ne_value(<<"_attachments">>, JObj1) of
-                undefined ->
-                    io:format("media doc ~s/~s has no attachments, removing~n", [AccountDb, Id]),
-                    couch_mgr:save_doc(AccountDb, wh_json:set_value(<<"pvt_deleted">>, true, JObj1));
+    _ = case couch_mgr:open_doc(AccountDb, Id) of
+            {error, _}=E1 -> io:format("unable to open media for attachment migration ~s/~s: ~p~n", [AccountDb, Id, E1]);
+            {ok, JObj1} ->
+                case wh_json:get_ne_value(<<"_attachments">>, JObj1) of
+                    undefined ->
+                        io:format("media doc ~s/~s has no attachments, removing~n", [AccountDb, Id]),
+                        couch_mgr:save_doc(AccountDb, wh_json:set_value(<<"pvt_deleted">>, true, JObj1));
                 Attachments ->
-                    _ = [catch migrate_attachment(AccountDb, JObj1, Attachment, wh_json:get_value(Attachment, Attachments))
-                         || Attachment <- wh_json:get_keys(Attachments)
-                        ],
-                    ok
-            end
-    end,
+                        _ = [catch migrate_attachment(AccountDb, JObj1, Attachment, wh_json:get_value(Attachment, Attachments))
+                             || Attachment <- wh_json:get_keys(Attachments)
+                            ],
+                        ok
+                end
+        end,
     %% we must reopen the doc since the _attachments has changed or we will effectively remove all attachments!
     case couch_mgr:open_doc(AccountDb, Id) of
         {error, _}=E2 -> io:format("unable to open media for depreciated field removal ~s/~s: ~p~n", [AccountDb, Id, E2]);
         {ok, JObj2} ->
             J = wh_json:delete_keys([<<"status">>, <<"content_size">>, <<"size">>, <<"content_type">>
-                                         ,<<"content_length">>, <<"format">>, <<"sample">>, <<"media_type">>
+                                    ,<<"content_length">>, <<"format">>, <<"sample">>, <<"media_type">>
                                     ], JObj2),
             Result = case J =/= JObj2 andalso wh_json:get_value(<<"source_id">>, J) of
                          false -> no_need;
@@ -464,7 +468,7 @@ migrate_attachment(AccountDb, ViewJObj) ->
                              couch_mgr:save_doc(AccountDb, wh_json:set_value(<<"media_source">>, <<"upload">>, J));
                          _Else ->
                              couch_mgr:save_doc(AccountDb, wh_json:set_value(<<"media_source">>, <<"recording">>, J))
-                end,
+                     end,
             case Result of
                 no_need -> ok;
                 {ok, _} ->
@@ -495,13 +499,13 @@ migrate_attachment(AccountDb, JObj, Attachment, MetaData) ->
                                       MIME -> {A, wh_util:to_binary(MIME)}
                                   end
                           end
-                  end  
+                  end
                   ,fun({A, CT}) ->
                            case wh_util:is_empty(filename:extension(A)) of
                                false -> {A, CT};
                                true -> {add_extension(A, CT), CT}
                            end
-                   end],          
+                   end],
     Migrate = lists:foldl(fun(F, Acc) -> F(Acc) end
                           ,{Attachment, MetaCT}
                           ,Migrations),
@@ -526,7 +530,7 @@ maybe_update_attachment(AccountDb, Id, {OrigAttch, _CT1}, {NewAttch, CT}) ->
     %% 4. Remove the original (erronous) attachment
     %% However, if it failes at any of those stages it will leave the media doc with multiple
     %%    attachments and require manual intervention
-    Updaters = [fun(_) -> 
+    Updaters = [fun(_) ->
                         case couch_mgr:fetch_attachment(AccountDb, Id, OrigAttch) of
                             {ok, _}=Ok -> Ok;
                             {error, _}=E ->
@@ -540,14 +544,14 @@ maybe_update_attachment(AccountDb, Id, {OrigAttch, _CT1}, {NewAttch, CT}) ->
                                     ,{rev, Rev}
                                    ],
                          %% bigcouch is awesome in that it sometimes returns 409 (conflict) but does the work anyway..
-                         %%   so rather than check the put return fetch the new attachment and compare it to the old 
+                         %%   so rather than check the put return fetch the new attachment and compare it to the old
                          Result = couch_mgr:put_attachment(AccountDb, Id, NewAttch, Content1, Options),
                          {ok, JObj} = couch_mgr:open_doc(AccountDb, Id),
                          case wh_json:get_value([<<"_attachments">>, OrigAttch, <<"length">>], JObj) =:= wh_json:get_value([<<"_attachments">>, NewAttch, <<"length">>], JObj) of
-                             false -> 
+                             false ->
                                  io:format("unable to put new attachment ~s/~s/~s: ~p~n", [AccountDb, Id, NewAttch, Result]),
                                  {error, length_mismatch};
-                             true -> 
+                             true ->
                                  Filename = wh_util:to_list(<<"/tmp/media_", Id/binary, "_", OrigAttch/binary>>),
                                  case file:write_file(Filename, Content1) of
                                      ok -> ok;

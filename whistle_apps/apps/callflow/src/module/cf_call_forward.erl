@@ -202,12 +202,13 @@ update_callfwd(#callfwd{doc_id=Id, enabled=Enabled, number=Num, require_keypress
 %% This function will load the call forwarding record
 %% @end
 %%--------------------------------------------------------------------
--spec get_call_forward/1 :: (whapps_call:call()) -> #callfwd{} | {'error', #callfwd{}}.
+-spec get_call_forward/1 :: (whapps_call:call()) -> #callfwd{} |
+                                                    {'error', #callfwd{}}.
 get_call_forward(Call) ->
     AccountDb = whapps_call:account_db(Call),
     AuthorizingId = whapps_call:authorizing_id(Call),
     ViewOptions = [{<<"key">>, AuthorizingId}],
-    Id = case couch_mgr:get_results(AccountDb, {<<"cf_attributes">>, <<"owner">>}, ViewOptions) of
+    Id = case couch_mgr:get_results(AccountDb, <<"cf_attributes/owner">>, ViewOptions) of
              {ok, [Owner]} -> wh_json:get_value(<<"value">>, Owner, AuthorizingId);
              _E -> AuthorizingId
          end,

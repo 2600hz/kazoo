@@ -62,7 +62,8 @@ get_number_data(Number) ->
 %% in a rate center
 %% @end
 %%--------------------------------------------------------------------
--spec find_numbers/2 :: (ne_binary(), pos_integer()) -> {ok, json_object} | {error, term()}.
+-spec find_numbers/2 :: (ne_binary(), pos_integer()) -> {'ok', wh_json:json_object()} |
+                                                        {'error', term()}.
 find_numbers(<<"+", Rest/binary>>, Quanity) ->
     find_numbers(Rest, Quanity);
 find_numbers(<<"1", Rest/binary>>, Quanity) ->

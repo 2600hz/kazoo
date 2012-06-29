@@ -52,10 +52,11 @@ exec_cmd(Node, UUID, JObj, ControlPID) ->
 %% the FS ESL via mod_erlang_event
 %% @end
 %%--------------------------------------------------------------------
--spec get_fs_app/4 :: (atom(), ne_binary(), wh_json:json_object(), ne_binary()) -> {ne_binary(), ne_binary() | 'noop'} |
+-type fs_app() :: {ne_binary(), ne_binary() | 'noop'}.
+-spec get_fs_app/4 :: (atom(), ne_binary(), wh_json:json_object(), ne_binary()) -> fs_app() |
                                                                                    {'return', 'error'} |
                                                                                    {'error', ne_binary()} |
-                                                                                   [{ne_binary(), ne_binary() | 'noop'},...].
+                                                                                   [fs_app(),...].
 get_fs_app(_Node, _UUID, JObj, <<"noop">>) ->
     case wapi_dialplan:noop_v(JObj) of
         false ->
@@ -307,8 +308,8 @@ get_fs_app(Node, UUID, JObj, <<"ring">>) ->
 
 %% receive a fax from the caller
 get_fs_app(Node, UUID, _JObj, <<"receive_fax">>) ->
-    set(Node, UUID, "fax_enable_t38_request=true"),
-    set(Node, UUID, "fax_enable_t38=true"),
+    _ = set(Node, UUID, <<"fax_enable_t38_request=true">>),
+    _ = set(Node, UUID, <<"fax_enable_t38=true">>),
 
     [{<<"playback">>, <<"silence_stream://2000">>}
      ,{<<"rxfax">>, ecallmgr_util:fax_filename(UUID)}
