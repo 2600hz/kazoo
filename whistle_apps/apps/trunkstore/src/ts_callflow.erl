@@ -53,11 +53,12 @@ init(RouteReqJObj) ->
             AcctID = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], RouteReqJObj),
 
             lager:debug("init done for route req for account ~s", [AcctID]),
-            #ts_callflow_state{aleg_callid=CallID
-                   ,route_req_jobj=RouteReqJObj
-                   ,acctid=AcctID
-                   ,acctdb=wh_util:format_account_id(AcctID, encoded)
-                  }
+            #ts_callflow_state{
+                         aleg_callid=CallID
+                         ,route_req_jobj=RouteReqJObj
+                         ,acctid=AcctID
+                         ,acctdb=wh_util:format_account_id(AcctID, encoded)
+                        }
     end.
 
 -spec start_amqp/1 :: (#ts_callflow_state{}) -> #ts_callflow_state{}.
