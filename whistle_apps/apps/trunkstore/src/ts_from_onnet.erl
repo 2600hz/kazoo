@@ -88,7 +88,7 @@ onnet_data(State) ->
 
     DIDFlags = ts_util:offnet_flags([wh_json:get_value(<<"DID_Opts">>, DIDOptions)
                                      ,wh_json:get_value(<<"flags">>, SrvOptions)
-                                     ,wh_json:get_value(<<"flags">> AcctOptions)
+                                     ,wh_json:get_value(<<"flags">>, AcctOptions)
                                     ]),
 
     Q = ts_callflow:get_my_queue(State),

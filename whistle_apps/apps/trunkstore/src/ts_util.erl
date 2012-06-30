@@ -193,7 +193,7 @@ ep_timeout(L) -> simple_extract(L).
 
 -spec offnet_flags/1 :: (list()) -> 'undefined' | list().
 offnet_flags([]) -> undefined;
-offnet_flags([H|T]) when is_list(H) -> H;
+offnet_flags([H|_]) when is_list(H) -> H;
 offnet_flags([_|T]) -> offnet_flags(T).
 
 -spec simple_extract/1 :: (['undefined' | wh_json:json_object() | ne_binary(),...]) -> 'undefined' | wh_json:json_object() | ne_binary().
