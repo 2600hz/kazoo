@@ -117,13 +117,15 @@ bridge_to_endpoints(Endpoints, IsEmergency, CtrlQ, JObj) ->
     {CIDNum, CIDName} = case IsEmergency of
                             'true' ->
                                 lager:debug("outbound call is using an emergency route, attempting to set CID accordingly"),
-                                {wh_json:get_value(<<"Emergency-Caller-ID-Number">>, JObj,
-                                                   wh_json:get_value(<<"Outgoing-Caller-ID-Number">>, JObj)),
-                                 wh_json:get_value(<<"Emergency-Caller-ID-Name">>, JObj,
-                                                   wh_json:get_value(<<"Outgoing-Caller-ID-Name">>, JObj))};
+                                {wh_json:get_ne_value(<<"Emergency-Caller-ID-Number">>, JObj,
+                                                      wh_json:get_ne_value(<<"Outgoing-Caller-ID-Number">>, JObj))
+                                 ,wh_json:get_ne_value(<<"Emergency-Caller-ID-Name">>, JObj,
+                                                       wh_json:get_ne_value(<<"Outgoing-Caller-ID-Name">>, JObj))};
                             'false'  ->
-                                {wh_json:get_value(<<"Outgoing-Caller-ID-Number">>, JObj),
-                                 wh_json:get_value(<<"Outgoing-Caller-ID-Name">>, JObj)}
+                                {wh_json:get_ne_value(<<"Outgoing-Caller-ID-Number">>, JObj
+                                                      ,wh_json:get_ne_value(<<"Emergency-Caller-ID-Number">>, JObj))
+                                 ,wh_json:get_ne_value(<<"Outgoing-Caller-ID-Name">>, JObj
+                                                       ,wh_json:get_ne_value(<<"Emergency-Caller-ID-Name">>, JObj))}
                         end,
     lager:debug("set outbound caller id to ~s '~s'", [CIDNum, CIDName]),
 
@@ -182,7 +184,10 @@ originate_to_endpoints(Endpoints, JObj) ->
     lager:debug("found resources that can originate the number...to the cloud!"),
     Q = create_queue(),
 
-    CIDNum = wh_json:get_value(<<"Outgoing-Caller-ID-Number">>, JObj),
+    CIDNum = wh_json:get_ne_value(<<"Outgoing-Caller-ID-Number">>, JObj
+                                  ,wh_json:get_ne_value(<<"Emergency-Caller-ID-Number">>, JObj)),
+    CIDName = wh_json:get_ne_value(<<"Outgoing-Caller-ID-Name">>, JObj
+                                   ,wh_json:get_ne_value(<<"Emergency-Caller-ID-Name">>, JObj)),
 
     FromURI = case whapps_config:get_is_true(?APP_NAME, <<"format_from_uri">>, false) of
                   true ->
@@ -215,7 +220,7 @@ originate_to_endpoints(Endpoints, JObj) ->
                ,{<<"Hold-Media">>, wh_json:get_value(<<"Hold-Media">>, JObj)}
                ,{<<"Presence-ID">>, wh_json:get_value(<<"Presence-ID">>, JObj)}
                ,{<<"Outgoing-Caller-ID-Number">>, CIDNum}
-               ,{<<"Outgoing-Caller-ID-Name">>, wh_json:get_value(<<"Outgoing-Caller-ID-Name">>, JObj)}
+               ,{<<"Outgoing-Caller-ID-Name">>, CIDName}
                ,{<<"Ringback">>, wh_json:get_value(<<"Ringback">>, JObj)}
                ,{<<"Dial-Endpoint-Method">>, <<"single">>}
                ,{<<"Continue-On-Fail">>, <<"true">>}
@@ -239,8 +244,10 @@ originate_to_endpoints(Endpoints, JObj) ->
 execute_local_extension(Number, AccountId, CtrlQ, JObj) ->
     lager:debug("number belongs to another account, executing callflow from that account"),
     Q = create_queue(),
-    CIDNum = wh_json:get_value(<<"Outgoing-Caller-ID-Number">>, JObj),
-    CIDName = wh_json:get_value(<<"Outgoing-Caller-ID-Name">>, JObj),
+    CIDNum = wh_json:get_ne_value(<<"Outgoing-Caller-ID-Number">>, JObj
+                                  ,wh_json:get_ne_value(<<"Emergency-Caller-ID-Number">>, JObj)),
+    CIDName = wh_json:get_ne_value(<<"Outgoing-Caller-ID-Name">>, JObj
+                                   ,wh_json:get_ne_value(<<"Emergency-Caller-ID-Name">>, JObj)),
     CCVs = [{<<"Account-ID">>, AccountId}
             ,{<<"Inception">>, <<"off-net">>}
             ,{<<"Retain-CID">>, <<"true">>}
@@ -572,8 +579,8 @@ response({error, Error}, JObj) ->
 %%--------------------------------------------------------------------
 -spec correct_shortdial/2 :: (ne_binary(), wh_json:json_object()) -> ne_binary() | 'fail'.
 correct_shortdial(Number, JObj) ->
-    CIDNum = wh_json:get_value(<<"Outgoing-Caller-ID-Number">>, JObj
-                               ,wh_json:get_value(<<"Emergency-Caller-ID-Number">>, JObj)),
+    CIDNum = wh_json:get_ne_value(<<"Outgoing-Caller-ID-Number">>, JObj
+                               ,wh_json:get_ne_value(<<"Emergency-Caller-ID-Number">>, JObj)),
     MaxCorrection = whapps_config:get_integer(<<"stepswitch">>, <<"max_shortdial_correction">>, 5),
     case is_binary(CIDNum) andalso (size(CIDNum) - size(Number)) of
         Length when Length =< MaxCorrection, Length > 0 ->
