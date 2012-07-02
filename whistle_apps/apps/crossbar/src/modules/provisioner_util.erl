@@ -42,6 +42,7 @@ send_provisioning_template(JObj, #cb_context{doc=Device}=Context) ->
     DefaultTemplate = lists:foldr(fun(F, J) -> F(J) end, JObj, TmplUpdaters),
     LineLoop = wh_json:get_value([<<"data">>, <<"globals">>, <<"globals">>, Line], DefaultTemplate),
     LineTemplate = lists:foldr(fun(F, J) -> F(J) end, LineLoop, LineUpdaters),
+
     Template = wh_json:set_value([<<"data">>, <<"globals">>, <<"globals">>, Line], LineTemplate, DefaultTemplate),
     send_provisioning_request(Template, MAC).
 
@@ -63,8 +64,9 @@ set_account_id(#cb_context{auth_account_id=AccountId}) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec set_account_line_defaults/1 :: (#cb_context{}) -> [fun((wh_json:json_object()) -> wh_json:json_object()),...].
-set_account_line_defaults(#cb_context{db_name=Db, auth_account_id=AccountId}) ->
-    Account = case couch_mgr:open_doc(Db, AccountId) of
+set_account_line_defaults(#cb_context{account_id=AccountId}) ->
+    AccountDb = wh_util:format_account_id(AccountId, encoded),
+    Account = case couch_mgr:open_cache_doc(AccountDb, AccountId) of
                   {ok, JObj} -> JObj;
                   {error, _} -> wh_json:new()
               end,
@@ -131,7 +133,7 @@ set_device_line_defaults(#cb_context{doc=Device}) ->
 %%--------------------------------------------------------------------
 -spec set_global_overrides/1 :: (#cb_context{}) -> [fun((wh_json:json_object()) -> wh_json:json_object()),...].
 set_global_overrides(_) ->
-    GlobalDefaults = case couch_mgr:open_doc(?WH_PROVISIONER_DB, <<"base_properties">>) of
+    GlobalDefaults = case couch_mgr:open_cache_doc(?WH_PROVISIONER_DB, <<"base_properties">>) of
                          {ok, JObj} -> JObj;
                          {error, _} -> wh_json:new()
                      end,
@@ -151,8 +153,9 @@ set_global_overrides(_) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec set_account_overrides/1 :: (#cb_context{}) -> [fun((wh_json:json_object()) -> wh_json:json_object()),...].
-set_account_overrides(#cb_context{db_name=Db, auth_account_id=AccountId}) ->
-    Account = case couch_mgr:open_doc(Db, AccountId) of
+set_account_overrides(#cb_context{account_id=AccountId}) ->
+    AccountDb = wh_util:format_account_id(AccountId, encoded),
+    Account = case couch_mgr:open_cache_doc(AccountDb, AccountId) of
                   {ok, JObj} -> JObj;
                   {error, _} -> wh_json:new()
               end,
@@ -172,9 +175,10 @@ set_account_overrides(#cb_context{db_name=Db, auth_account_id=AccountId}) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec set_user_overrides/1 :: (#cb_context{}) -> [fun((wh_json:json_object()) -> wh_json:json_object()),...].
-set_user_overrides(#cb_context{doc=Device, db_name=Db}) ->
+set_user_overrides(#cb_context{doc=Device, account_id=AccountId}) ->
+    AccountDb = wh_util:format_account_id(AccountId, encoded),
     OwnerId = wh_json:get_ne_value(<<"owner_id">>, Device),
-    User = case is_binary(OwnerId) andalso couch_mgr:open_doc(Db, OwnerId) of
+    User = case is_binary(OwnerId) andalso couch_mgr:open_doc(AccountDb, OwnerId) of
                {ok, JObj} -> JObj;
                _Else -> wh_json:new()
            end,
