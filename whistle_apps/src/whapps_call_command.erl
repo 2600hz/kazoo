@@ -290,6 +290,15 @@ pickup(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, ParkAfterPickup, 
               ],
     send_command(Command, Call).
 
+pickup(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, Call) ->
+    Command = [{<<"Application-Name">>, <<"call_pickup">>}
+               ,{<<"Target-Call-ID">>, TargetCallId}
+               ,{<<"Insert-At">>, Insert}
+               ,{<<"Continue-On-Fail">>, ContinueOnFail}
+               ,{<<"Continue-On-Cancel">>, ContinueOnCancel}
+              ],
+    send_command(Command, Call).
+
 -spec b_pickup/2 :: (ne_binary(), whapps_call:call()) -> {'ok', wh_json:json_object()}.
 -spec b_pickup/3 :: (ne_binary(), ne_binary(), whapps_call:call()) -> {'ok', wh_json:json_object()}.
 -spec b_pickup/4 :: (ne_binary(), ne_binary(), ne_binary() | boolean(), whapps_call:call()) -> {'ok', wh_json:json_object()}.
@@ -309,6 +318,10 @@ b_pickup(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, Call) ->
     wait_for_channel_unbridge().
 b_pickup(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, ParkAfterPickup, Call) ->
     pickup(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, ParkAfterPickup, Call),
+    wait_for_channel_unbridge().
+
+b_pickup(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, Call) ->
+    pickup(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, Call),
     wait_for_channel_unbridge().
 
 %%--------------------------------------------------------------------
