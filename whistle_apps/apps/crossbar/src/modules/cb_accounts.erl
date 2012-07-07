@@ -17,7 +17,7 @@
          ,resource_exists/0, resource_exists/1, resource_exists/2
          ,validate/1, validate/2, validate/3
          ,put/1, put/2
-         ,post/2, post/3
+         ,post/2
          ,delete/2
         ]).
 -export([create_account/1
@@ -113,11 +113,9 @@ init() ->
 -spec allowed_methods/1 :: (path_token()) -> http_methods().
 -spec allowed_methods/2 :: (path_token(), ne_binary()) -> http_methods().
 allowed_methods() ->
-    ['GET', 'PUT'].
+    ['PUT'].
 allowed_methods(_) ->
     ['GET', 'PUT', 'POST', 'DELETE'].
-allowed_methods(_, <<"parent">>) ->
-    ['GET', 'POST', 'DELETE'];
 allowed_methods(_, Path) ->
     case lists:member(Path, [<<"ancestors">>, <<"children">>, <<"descendants">>, <<"siblings">>]) of
         true -> ['GET'];
@@ -138,7 +136,7 @@ allowed_methods(_, Path) ->
 resource_exists() -> true.
 resource_exists(_) -> true.
 resource_exists(_, Path) ->
-    lists:member(Path, [<<"parent">>, <<"ancestors">>, <<"children">>, <<"descendants">>, <<"siblings">>]).
+    lists:member(Path, [<<"ancestors">>, <<"children">>, <<"descendants">>, <<"siblings">>]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -168,8 +166,6 @@ validate(Context, Id, Relationship) ->
 -spec validate_req/1 :: (#cb_context{}) -> #cb_context{}.
 -spec validate_req/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
 -spec validate_req/3 :: (#cb_context{}, path_token(), path_token()) -> #cb_context{}.
-validate_req(#cb_context{req_verb = <<"get">>}=Context) ->
-    load_account_summary([], Context);
 validate_req(#cb_context{req_verb = <<"put">>}=Context) ->
     create_account(Context).
 
@@ -182,12 +178,6 @@ validate_req(#cb_context{req_verb = <<"post">>}=Context, AccountId) ->
 validate_req(#cb_context{req_verb = <<"delete">>}=Context, AccountId) ->
     load_account(AccountId, Context).
 
-validate_req(#cb_context{req_verb = <<"get">>}=Context, AccountId, <<"parent">>) ->
-    load_parent(AccountId, Context);
-validate_req(#cb_context{req_verb = <<"post">>}=Context, AccountId, <<"parent">>) ->
-    update_parent(AccountId, Context);
-validate_req(#cb_context{req_verb = <<"delete">>}=Context, AccountId, <<"parent">>) ->
-    load_account(AccountId, Context);
 validate_req(#cb_context{req_verb = <<"get">>}=Context, AccountId, <<"children">>) ->
     load_children(AccountId, Context);
 validate_req(#cb_context{req_verb = <<"get">>}=Context, AccountId, <<"descendants">>) ->
@@ -196,7 +186,6 @@ validate_req(#cb_context{req_verb = <<"get">>}=Context, AccountId, <<"siblings">
     load_siblings(AccountId, Context).
 
 -spec post/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
--spec post/3 :: (#cb_context{}, path_token(), path_token()) -> #cb_context{}.
 post(#cb_context{doc=Doc}=Context, AccountId) ->
     _ = crossbar_util:put_reqid(Context),
     %% this just got messy
@@ -226,13 +215,6 @@ post(#cb_context{doc=Doc}=Context, AccountId) ->
                 Else ->
                     Else
             end
-    end.
-post(Context, AccountId, <<"parent">>) ->
-    case crossbar_doc:save(Context#cb_context{db_name=wh_util:format_account_id(AccountId, encoded)}) of
-        #cb_context{resp_status=success}=Context1 ->
-            Context1#cb_context{resp_data = wh_json:new()};
-        Else ->
-            Else
     end.
 
 -spec put/1 :: (#cb_context{}) -> #cb_context{}.
@@ -272,21 +254,6 @@ delete(Context, AccountId) ->
             lager:debug("exception while deleting account: ~p", [_E]),
             crossbar_util:response_bad_identifier(AccountId, Context)
     end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Attempt to load list of accounts, each summarized.  Or a specific
-%% account summary.
-%% @end
-%%--------------------------------------------------------------------
--spec load_account_summary/2 :: (ne_binary() | [], #cb_context{}) -> #cb_context{}.
-load_account_summary([], Context) ->
-    crossbar_doc:load_view(?AGG_VIEW_SUMMARY, [], Context, fun normalize_view_results/2);
-load_account_summary(AccountId, Context) ->
-    crossbar_doc:load_view(?AGG_VIEW_SUMMARY, [{<<"startkey">>, [AccountId]}
-                                               ,{<<"endkey">>, [AccountId, wh_json:new()]}
-                                              ], Context, fun normalize_view_results/2).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -366,42 +333,6 @@ update_account(AccountId, #cb_context{req_data=Data}=Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Attempt to load a summary of the parent of the account
-%% @end
-%%--------------------------------------------------------------------
--spec load_parent/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
-load_parent(AccountId, Context) ->
-    case crossbar_doc:load_view(?AGG_VIEW_PARENT, [{<<"startkey">>, AccountId}
-                                                   ,{<<"endkey">>, AccountId}
-                                                  ], Context) of
-        #cb_context{resp_status=success, doc=[JObj|_]} ->
-            Parent = wh_json:get_value([<<"value">>, <<"id">>], JObj),
-            load_account_summary(Parent, Context);
-        _Else ->
-            crossbar_util:response_bad_identifier(AccountId, Context)
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Update the tree with a new parent, cascading when necessary, if the
-%% new parent is valid
-%% @end
-%%--------------------------------------------------------------------
--spec update_parent/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
-update_parent(AccountId, #cb_context{req_data=Data}=Context) ->
-    case is_valid_parent(Data) of
-        %% {false, Fields} ->
-        %%     crossbar_util:response_invalid_data(Fields, Context);
-        {true, []} ->
-            %% OMGBBQ! NO CHECKS FOR CYCLIC REFERENCES WATCH OUT!
-            ParentId = wh_json:get_value(<<"parent">>, Data),
-            update_tree(AccountId, ParentId, Context)
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
 %% Load a summary of the children of this account
 %% @end
 %%--------------------------------------------------------------------
@@ -450,46 +381,6 @@ load_siblings(AccountId, Context) ->
 -spec normalize_view_results/2 :: (wh_json:json_object(), wh_json:json_objects()) -> wh_json:json_objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec is_valid_parent/1 :: (wh_json:json_object()) -> {'true', []}.
-is_valid_parent(_JObj) ->
-    {true, []}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Updates AccountID's parent's tree with the AccountID as a descendant
-%% @end
-%%--------------------------------------------------------------------
--spec update_tree/3 :: (ne_binary(), ne_binary() | 'undefined', #cb_context{}) -> #cb_context{}.
-update_tree(_AccountId, undefined, Context) ->
-    lager:debug("parent ID is undefined"),
-    Context;
-update_tree(AccountId, ParentId, Context) ->
-    case crossbar_doc:load(ParentId, Context) of
-        #cb_context{resp_status=success, doc=Parent} ->
-            lager:debug("loaded parent account: ~s", [ParentId]),
-            case load_descendants(AccountId, Context) of
-                #cb_context{resp_status=success, doc=[]} ->
-                    lager:debug("no descendants loaded for ~s", [AccountId]),
-                    crossbar_util:response_bad_identifier(AccountId, Context);
-                #cb_context{resp_status=success, doc=DescDocs}=Context1 when is_list(DescDocs) ->
-                    lager:debug("descendants found for ~s", [AccountId]),
-                    Tree = wh_json:get_value(<<"pvt_tree">>, Parent, []) ++ [ParentId, AccountId],
-                    Updater = fun(Desc, Acc) -> update_doc_tree(Tree, Desc, Acc) end,
-                    Updates = lists:foldr(Updater, [], DescDocs),
-                    Context1#cb_context{doc=Updates};
-                Context1 -> Context1
-            end;
-        Else ->
-            Else
-    end.
 
 %%--------------------------------------------------------------------
 %% @private
