@@ -8,7 +8,8 @@
 %%%-------------------------------------------------------------------
 -module(wh_reseller).
 
--export([fetch/1]).
+-export([fetch/1, fetch/2]).
+-export([find_reseller_id/1]).
 -export([get_plans/1, get_plans/2]).
 -export([get_reseller_id/1]).
 -export([set_created_flag/2]).
@@ -57,8 +58,13 @@
 %% the account and possibly a reseller are subscribed to.
 %% @end
 %%--------------------------------------------------------------------
--spec fetch/1 :: (ne_binary()) -> {'ok', reseller()} | {'error', 'no_service_plan'}.
+-spec fetch/1 :: (ne_binary()) -> {'ok', reseller()} | {'error', _}.
+-spec fetch/2 :: (ne_binary(), ne_binary()) -> {'ok', reseller()} | {'error', _}.
+
 fetch(Account) ->
+    fetch(Account, wh_util:format_account_id(Account, raw)).
+    
+fetch(Account, InvokingAccountId) ->
     AccountId = wh_util:format_account_id(Account, raw),    
     AccountDb = wh_util:format_account_id(Account, encoded),
     case couch_mgr:open_cache_doc(AccountDb, AccountId) of
@@ -66,18 +72,42 @@ fetch(Account) ->
             lager:debug("unabled to open account definition for ~s: ~p", [Account, _R]),
             E;
         {ok, JObj} ->
-            Reseller = wh_reseller:get_reseller_id(JObj),
+            ResellerId = get_reseller_id(JObj),
             BillingId = wh_json:get_value(<<"billing_id">>, JObj, AccountId),
-            case get_plans(Reseller, JObj) of
-                [] -> {error, no_service_plan};
+            case get_plans(ResellerId, InvokingAccountId =/= AccountId, JObj) of
+                [] -> {error, {no_service_plan, ResellerId}};
                 Plans ->
-                    lager:debug("found reseller ~s for account ~s with billing id ~s", [Reseller, AccountId, BillingId]),
-                    {ok, #wh_reseller{reseller = Reseller
+                    lager:debug("found reseller ~s for account ~s with billing id ~s", [ResellerId, AccountId, BillingId]),
+                    {ok, #wh_reseller{reseller = ResellerId
                                       ,plans = Plans
                                       ,bt_customer = bt_customer(BillingId)
-                                      ,account_id = AccountId
+                                      ,account_id = InvokingAccountId
                                       ,billing_id = BillingId
                                      }}
+            end
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec find_reseller_id/1 :: ('undefined' | ne_binary()) -> 'undefined' | ne_binary().
+find_reseller_id(undefined) -> undefined;
+find_reseller_id(Account) ->
+    AccountId = wh_util:format_account_id(Account, raw),
+    AccountDb = wh_util:format_account_id(Account, encoded),
+    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+        {error, _R} ->
+            lager:debug("unable to open account definition for ~s: ~p", [AccountId, _R]),
+            undefined;
+        {ok, JObj} ->
+            {ok, MasterAccountId} = whapps_util:get_master_account_id(),
+            case wh_json:get_value(<<"pvt_reseller_id">>, JObj) of
+                AccountId -> undefined;
+                MasterAccountId -> undefined;
+                Else -> Else
             end
     end.
 
@@ -327,11 +357,15 @@ get_plans(Account) ->
             get_plans(Reseller, JObj)
     end.
         
+
 get_plans(Reseller, JObj) ->
+    get_plans(Reseller, false, JObj).
+
+get_plans(Reseller, CascadeOnly, JObj) ->
     [Plan
      || PlanId <- wh_service_plan:get_plan_ids(JObj)
             ,begin
-                 {ok, Plan} = wh_service_plan:fetch(Reseller, PlanId),
+                 {ok, Plan} = wh_service_plan:fetch(Reseller, CascadeOnly, PlanId),
                  true
              end
     ].

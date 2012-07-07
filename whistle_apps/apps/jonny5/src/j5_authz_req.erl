@@ -61,7 +61,8 @@ handle_req(JObj, Props) ->
 
 -spec eligible_for_flat_rate/1 :: (wh_json:json_object()) -> boolean().
 eligible_for_flat_rate(JObj) ->
-    [Number, _] = binary:split(wh_json:get_value(<<"Request">>, JObj), <<"@">>),
+    [Num, _] = binary:split(wh_json:get_value(<<"Request">>, JObj), <<"@">>),
+    Number = wnm_util:to_e164(Num),
     TrunkWhitelist = whapps_config:get(<<"jonny5">>, <<"flat_rate_whitelist">>, <<"^\\+?1\\d{10}$">>),
     %% Example blacklist "^\\+?1(900|800)\\d{7}$"
     TrunkBlacklist = whapps_config:get(<<"jonny5">>, <<"flat_rate_blacklist">>),
@@ -82,8 +83,14 @@ send_system_alert(Reason, JObj, Limits, AccountId) ->
                               ,fun(J) -> wh_json:set_value(<<"Call-Limit">>, wh_util:to_binary(Limits#limits.calls), J) end
                               ,fun(J) -> wh_json:set_value(<<"Allow-Prepay">>, wh_util:to_binary(Limits#limits.allow_prepay), J) end
                               ,fun(J) -> wh_json:set_value(<<"Allow-Postpay">>, wh_util:to_binary(Limits#limits.allow_postpay), J) end
-                              ,fun(J) -> wh_json:set_value(<<"Max-Postpay">>, <<"$", (wh_util:to_binary(Limits#limits.max_postpay_amount))/binary>>, J) end
-                              ,fun(J) -> wh_json:set_value(<<"Reserve-Amount">>, <<"$", (wh_util:to_binary(Limits#limits.reserve_amount))/binary>>, J) end
+                              ,fun(J) ->
+                                       MaxPostPay = wapi_money:units_to_dollars(Limits#limits.max_postpay_amount),
+                                       wh_json:set_value(<<"Max-Postpay">>, <<"$", (wh_util:to_binary(MaxPostPay))/binary>>, J)
+                               end
+                              ,fun(J) -> 
+                                       ReserveAmount = wapi_money:units_to_dollars(Limits#limits.reserve_amount),
+                                       wh_json:set_value(<<"Reserve-Amount">>, <<"$", (wh_util:to_binary(ReserveAmount))/binary>>, J)
+                               end
                               ,fun(J) -> 
                                        Balance = wapi_money:units_to_dollars(j5_util:current_balance(AccountId)),
                                        wh_json:set_value(<<"Available-Balance">>, <<"$", (wh_util:to_binary(Balance))/binary>>, J) 
