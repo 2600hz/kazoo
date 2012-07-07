@@ -140,13 +140,15 @@ bridge_to_endpoints(Endpoints, IsEmergency, CtrlQ, JObj) ->
               end,
     lager:debug("setting from-uri to ~s", [FromURI]),
 
-    CCVs = wh_json:set_values([ KV || {_,V}=KV <- [{<<"Account-ID">>, wh_json:get_value(<<"Account-ID">>, JObj, <<>>)}
-                                                   ,{<<"From-URI">>, FromURI}
-                                                   ,{<<"Ignore-Display-Updates">>, <<"true">>}
-                                                   ,{<<"Global-Resource">>, true}
-                                                  ],
-                                      V =/= undefined
-                              ], wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new())),
+    AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
+    Updates = [{<<"Account-ID">>, AccountId}
+               ,{<<"Reseller-ID">>, wh_reseller:find_reseller_id(AccountId)}
+               ,{<<"From-URI">>, FromURI}
+               ,{<<"Ignore-Display-Updates">>, <<"true">>}
+               ,{<<"Global-Resource">>, true}
+              ],
+    CCVs = wh_json:set_values(props:filter_undefined(Updates)
+                              ,wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new())),
 
     Command = [{<<"Application-Name">>, <<"bridge">>}
                ,{<<"Endpoints">>, Endpoints}
@@ -201,12 +203,14 @@ originate_to_endpoints(Endpoints, JObj) ->
 
     lager:debug("setting from-uri to ~s", [FromURI]),
 
-    CCVs = wh_json:set_values([ KV || {_,V}=KV <- [{<<"Account-ID">>, wh_json:get_value(<<"Account-ID">>, JObj, <<>>)}
-                                                   ,{<<"From-URI">>, FromURI}
-                                                   ,{<<"Global-Resource">>, true}
-                                                  ],
-                                      V =/= undefined
-                              ], wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new())),
+    AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
+    Updates = [{<<"Account-ID">>, AccountId}
+               ,{<<"Reseller-ID">>, wh_reseller:find_reseller_id(AccountId)}
+               ,{<<"From-URI">>, FromURI}
+               ,{<<"Global-Resource">>, true}
+              ],
+    CCVs = wh_json:set_values(props:filter_undefined(Updates)
+                              ,wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new())),
 
     MsgId = wh_json:get_value(<<"Msg-ID">>, JObj, wh_util:rand_hex_binary(16)),
     Application = wh_json:get_value(<<"Application-Name">>, JObj, <<"park">>),
@@ -248,7 +252,9 @@ execute_local_extension(Number, AccountId, CtrlQ, JObj) ->
                                   ,wh_json:get_ne_value(<<"Emergency-Caller-ID-Number">>, JObj)),
     CIDName = wh_json:get_ne_value(<<"Outgoing-Caller-ID-Name">>, JObj
                                    ,wh_json:get_ne_value(<<"Emergency-Caller-ID-Name">>, JObj)),
+
     CCVs = [{<<"Account-ID">>, AccountId}
+            ,{<<"Reseller-ID">>, wh_reseller:find_reseller_id(AccountId)}
             ,{<<"Inception">>, <<"off-net">>}
             ,{<<"Retain-CID">>, <<"true">>}
             ,{<<"Caller-ID-Number">>, CIDNum}
