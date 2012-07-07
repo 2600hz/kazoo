@@ -46,24 +46,30 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec fetch/1 :: (ne_binary()) -> {'ok', resellers()} | {'error', 'no_service_plan'}.
--spec fetch/2 :: (ne_binary(), resellers()) -> resellers().
+-spec fetch/3 :: ('undefined'| ne_binary(), ne_binary(), resellers()) -> {'ok', resellers()} | {'error', 'no_service_plan'}.
 
-fetch(Account) ->
-    case fetch(Account, []) of
-        [] -> {error, no_service_plan};
-        Resellers -> {ok, Resellers}
-    end.
- 
-fetch(Account, Resellers) ->
-    case wh_reseller:fetch(Account) of
-        {error, _} -> Resellers;
-        {ok, Reseller} -> [Reseller|Resellers]
-%% TODO: This support cascades but needs to be made optional.
-%%            case wh_reseller:is_master_reseller(Reseller) of
-%%                true -> [Reseller|Resellers];
-%%                false ->
-%%                    fetch(wh_reseller:get_reseller_id(Reseller), [Reseller|Resellers])
-%%            end
+fetch(AccountId) ->
+    fetch(AccountId, AccountId, []).
+                            
+fetch(undefined, _, []) ->  
+    {error, no_service_plan};
+fetch(undefined, _, Resellers) ->  
+    {ok, Resellers};
+fetch(AccountId, InvokingAccountId, Resellers) ->  
+    case wh_reseller:fetch(AccountId, InvokingAccountId) of
+        {error, {no_service_plan, AccountId}} ->
+            fetch(undefined, InvokingAccountId, Resellers); 
+        {error, {no_service_plan, ResellerId}} ->
+            fetch(ResellerId, InvokingAccountId, Resellers);
+        {error, _R} ->
+            fetch(undefined, InvokingAccountId, Resellers);
+        {ok, Reseller} ->
+            case  wh_reseller:get_reseller_id(Reseller) of
+                AccountId ->
+                    fetch(undefined, InvokingAccountId, [Reseller|Resellers]);
+                ResellerId ->
+                    fetch(ResellerId, InvokingAccountId, [Reseller|Resellers])
+            end
     end.
 
 %%--------------------------------------------------------------------

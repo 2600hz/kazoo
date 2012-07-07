@@ -44,8 +44,8 @@ get_limits(Account) ->
                              ,calls = get_limit(<<"calls">>, JObj)
                              ,allow_prepay = wh_json:is_true(<<"allow_prepay">>, JObj, DefaultUsePrepay)
                              ,allow_postpay = wh_json:is_true(<<"pvt_allow_postpay">>, JObj, DefaultPostpay)
-                             ,max_postpay_amount = wh_json:get_float_value(<<"pvt_max_postpay_amount">>, JObj, DefaultMaxPostpay)
-                             ,reserve_amount = wh_json:get_float_value(<<"pvt_reserve_amount">>, JObj, DefaultReserve)
+                             ,max_postpay_amount = wapi_money:dollars_to_units(wh_json:get_float_value(<<"pvt_max_postpay_amount">>, JObj, DefaultMaxPostpay))
+                             ,reserve_amount = wapi_money:dollars_to_units(wh_json:get_float_value(<<"pvt_reserve_amount">>, JObj, DefaultReserve))
                             },
             wh_cache:store_local(?JONNY5_CACHE, ?LIMITS_KEY(AccountId), Limits, 900),
             Limits
@@ -108,7 +108,7 @@ write_to_ledger(Suffix, Units, JObj, Ledger, Type) ->
                                ,{<<"session_id">>, SessionId}
                                ,{<<"account_id">>, wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj)}
                                ,{<<"call_id">>, wh_json:get_value(<<"Call-ID">>, JObj)}
-                               ,{<<"amount">>, wapi_money:dollars_to_units(Units)}
+                               ,{<<"amount">>, abs(Units)}
                                ,{<<"pvt_account_id">>, LedgerId}
                                ,{<<"pvt_account_db">>, LedgerDb}
                                ,{<<"pvt_type">>, wh_util:to_binary(Type)}
@@ -145,13 +145,8 @@ session_cost(SessionId, Ledger) ->
                    ,{<<"key">>, SessionId}
                   ],
     case couch_mgr:get_results(LedgerDb, <<"transactions/session_cost">>, ViewOptions) of
-        {ok, []} -> 
-            lager:debug("no prior expenses for session ~s", [SessionId]),
-            0;
-        {ok, [ViewRes|_]} -> 
-            Cost = wh_json:get_integer_value(<<"value">>, ViewRes, 0),
-            lager:debug("session cost for ~s is ~p", [SessionId, Cost]),
-            Cost;
+        {ok, []} -> 0;
+        {ok, [ViewRes|_]} -> wh_json:get_integer_value(<<"value">>, ViewRes, 0);
         {error, _R} -> 
             lager:debug("unable to get session cost for ~s: ~p", [SessionId, _R]),
             0
@@ -159,7 +154,4 @@ session_cost(SessionId, Ledger) ->
 
 -spec get_session_id/1 :: (wh_json:json_object()) -> ne_binary().
 get_session_id(JObj) ->
-    case wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Bridge-ID">>], JObj) of
-        undefined -> wh_util:to_hex_binary(crypto:md5(wh_json:get_value(<<"Call-ID">>, JObj)));
-        BridgeId -> BridgeId
-    end.
+    wh_util:to_hex_binary(crypto:md5(wh_json:get_value(<<"Call-ID">>, JObj))).

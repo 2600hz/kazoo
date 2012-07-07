@@ -7,7 +7,7 @@
 %%%-------------------------------------------------------------------
 -module(wh_service_plan).
 
--export([fetch/2]).
+-export([fetch/2, fetch/3]).
 -export([get_id/1]).
 -export([get_plan_ids/1]).
 -export([add_plan_id/3]).
@@ -23,6 +23,7 @@
 
 -record(wh_service_plan, {id = 'undefined' :: 'undefined' | ne_binary()
                           ,reseller = 'undefined' :: 'undefined' | ne_binary()
+                          ,cascade_only = false :: boolean()
                           ,plan = wh_json:new() :: wh_json:json_object()
                          }).
 
@@ -37,12 +38,17 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec fetch/2 :: (ne_binary(), ne_binary()) -> {'ok', plan()} | {'error', _}.
+-spec fetch/3 :: (ne_binary(), boolean(), ne_binary()) -> {'ok', plan()} | {'error', _}.
+
 fetch(Reseller, PlanId) ->
-    lager:debug("fetching service plan ~s from reseller ~s", [PlanId, Reseller]),
+    fetch(Reseller, false, PlanId).
+
+fetch(Reseller, CascadeOnly, PlanId) ->
+    lager:debug("fetching service plan ~s from reseller ~s (cascades only ~s)", [PlanId, Reseller, CascadeOnly]),
     ResellerDb = wh_util:format_account_id(Reseller, encoded),    
     case couch_mgr:open_cache_doc(ResellerDb, PlanId) of
         {ok, JObj} ->
-            {ok, #wh_service_plan{id=PlanId, reseller=Reseller, plan=JObj}};
+            {ok, #wh_service_plan{id=PlanId, reseller=Reseller, plan=JObj, cascade_only=CascadeOnly}};
         {error, _R}=E ->
             lager:debug("unable to open reseller ~s service plan ~s: ~p", [Reseller, PlanId, _R]),
             E
@@ -123,12 +129,13 @@ is_valid_plan_id(PlanId, Reseller) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec get_category_addons/2 :: (ne_binary(), #wh_service_plan{}) -> [{ne_binary(), ne_binary()},...] | [].
-get_category_addons(Category, #wh_service_plan{plan=JObj}) ->
+get_category_addons(Category, #wh_service_plan{plan=JObj, cascade_only=CascadeOnly}) ->
     Plan = wh_json:get_value(Category, JObj, wh_json:new()),
     [{PlanId, AddOnId}
      || Key <- wh_json:get_keys(Plan)
             ,(AddOnId = wh_json:get_ne_value([Key, <<"add_on">>], Plan)) =/= undefined
             ,(PlanId = wh_json:get_ne_value([Key, <<"plan">>], Plan)) =/= undefined
+            ,((not CascadeOnly) orelse wh_json:is_true([Key, <<"cascade">>], Plan))
     ].
     
 %%--------------------------------------------------------------------
@@ -183,7 +190,7 @@ get_base_mrc(#wh_service_plan{plan=JObj}) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec get_item/3 :: (ne_binary(), ne_binary(), #wh_service_plan{}) -> 'undefined' | wh_json:json_object().
-get_item(<<"phone_numbers">>, PhoneNumber, #wh_service_plan{plan=JObj}) ->
+get_item(<<"phone_numbers">>, PhoneNumber, #wh_service_plan{plan=JObj, cascade_only=CascadeOnly}) ->
     case wh_json:get_value(<<"phone_numbers">>, JObj) of
         undefined -> undefined;
         PhoneNumbers ->
@@ -194,19 +201,31 @@ get_item(<<"phone_numbers">>, PhoneNumber, #wh_service_plan{plan=JObj}) ->
                  ]
             of
                 [] -> undefined;
-                [Item|_] -> 
-                    wh_json:set_values([{<<"category">>, <<"phone_numbers">>}
-                                        ,{<<"item">>, PhoneNumber}
-                                        ,{<<"id">>, wh_json:get_value(<<"_id">>, JObj)}
-                                       ], Item)
+                [Item|_] ->
+                    case (not CascadeOnly) orelse wh_json:is_true(<<"cascade">>, Item) of
+                        false -> 
+                            lager:debug("ignoring none cascade phone_number ~s", [PhoneNumber]),
+                            undefined;
+                        true ->
+                            wh_json:set_values([{<<"category">>, <<"phone_numbers">>}
+                                                ,{<<"item">>, PhoneNumber}
+                                                ,{<<"id">>, wh_json:get_value(<<"_id">>, JObj)}
+                                               ], Item)
+                    end
             end
     end;
-get_item(Category, Name, #wh_service_plan{plan=JObj}) ->
+get_item(Category, Name, #wh_service_plan{plan=JObj, cascade_only=CascadeOnly}) ->
     case wh_json:get_ne_value([Category, Name], JObj) of
         undefined -> undefined;
         Item -> 
-            wh_json:set_values([{<<"category">>, Category}
-                                ,{<<"item">>, Name}
-                                ,{<<"id">>, wh_json:get_value(<<"_id">>, JObj)}
-                               ], Item)
+            case (not CascadeOnly) orelse wh_json:is_true(<<"cascade">>, Item) of
+                false -> 
+                    lager:debug("ignoring none cascade item ~s ~s", [Category, Name]),
+                    undefined;
+                true ->
+                    wh_json:set_values([{<<"category">>, Category}
+                                        ,{<<"item">>, Name}
+                                        ,{<<"id">>, wh_json:get_value(<<"_id">>, JObj)}
+                                       ], Item)
+            end
     end.

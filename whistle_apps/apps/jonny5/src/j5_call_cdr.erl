@@ -15,44 +15,54 @@
 handle_req(JObj, _Props) ->
     true = wapi_call:cdr_v(JObj),
     wh_util:put_callid(JObj),
-    timer:sleep(crypto:rand_uniform(0, 1000)),
+    timer:sleep(crypto:rand_uniform(1000, 3000)),
+    Cost = extract_cost(JObj),
     CCV = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new()),
     case wh_json:get_value(<<"Account-Billing">>, CCV) of
         <<"flat_rate">> -> ok;
-        _ -> reconcile_cost(wh_json:get_value(<<"Account-ID">>, CCV), JObj)
+        _ -> reconcile_cost(wh_json:get_value(<<"Account-ID">>, CCV), Cost, JObj)
     end,
     case wh_json:get_value(<<"Reseller-Billing">>, CCV) of
         <<"flat_rate">> -> ok;
-        _ -> reconcile_cost(wh_json:get_value(<<"Reseller-ID">>, CCV), JObj)
+        _ -> reconcile_cost(wh_json:get_value(<<"Reseller-ID">>, CCV), Cost, JObj)
     end.
 
--spec reconcile_cost/2 :: ('undefined' | ne_binary(), wh_json:json_object()) -> 'ok'.
-reconcile_cost(undefined, _) ->
-    lager:debug("unable to find account id for call", []);
-reconcile_cost(Ledger, JObj) ->
-    Cost = extract_cost(JObj),
+-spec reconcile_cost/3 :: ('undefined' | ne_binary(), float(), wh_json:json_object()) -> 'ok'.
+reconcile_cost(undefined, _, _) -> ok;
+reconcile_cost(Ledger, Cost, JObj) ->
+    lager:debug("reconciling bridge cost wiht account ~s", [Ledger]),
     SessionId = j5_util:get_session_id(JObj),
-    Billed = abs(wapi_money:units_to_dollars(j5_util:session_cost(SessionId, Ledger))),
-    Diff = abs(Billed - Cost),
-    case Billed > Cost of
-        true ->
-            case j5_util:write_credit_to_ledger(<<"end">>, Diff, JObj, Ledger) of
-                {ok, _} -> lager:debug("bridge cost $~w but we charged $~w, credited account ~s $~w"
-                                       ,[Cost, Billed, Ledger, Diff]);
+    Billed = j5_util:session_cost(SessionId, Ledger),
+    case Billed - (-1 * wapi_money:dollars_to_units(Cost)) of
+        Diff1 when Diff1 == 0 -> 
+            lager:debug("no difference between bridge cost $~w and charges $~w", [abs(wapi_money:units_to_dollars(Diff1))
+                                                                                  ,abs(wapi_money:units_to_dollars(Billed))
+                                                                                 ]),
+            ok;
+        Diff2 when Diff2 < 0 ->
+            case j5_util:write_credit_to_ledger(<<"end">>, Diff2, JObj, Ledger) of
+                {ok, _} -> lager:debug("bridge cost $~w but we charged $~w, credited account $~w"
+                                       ,[Cost
+                                         ,abs(wapi_money:units_to_dollars(Billed))
+                                         ,abs(wapi_money:units_to_dollars(Diff2))
+                                        ]);
                 {error, conflict} -> ok;
                 {error, _R} ->
                     lager:debug("unable to update ledger ~s: ~p", [Ledger, _R]),
-                    reconcile_cost(Ledger, JObj)
+                    reconcile_cost(Ledger, Cost, JObj)
             end;
-        false ->
-            case j5_util:write_debit_to_ledger(<<"end">>, Diff, JObj, Ledger) of
+        Diff3 when Diff3 > 0 ->
+            case j5_util:write_debit_to_ledger(<<"end">>, Diff3, JObj, Ledger) of
                 {ok, _} ->
-                    lager:debug("bridge cost $~w but we charged $~w, debited account ~s $~w"
-                                ,[Cost, Billed, Ledger, Diff]);
+                    lager:debug("bridge cost $~w but we charged $~w, debited account $~w"
+                                ,[Cost
+                                  ,abs(wapi_money:units_to_dollars(Billed))
+                                  ,abs(wapi_money:units_to_dollars(Diff3))
+                                 ]);
                 {error, conflict} -> ok;
                 {error, _R} ->
                     lager:debug("unable to update ledger ~s: ~p", [Ledger, _R]),
-                    reconcile_cost(Ledger, JObj)
+                    reconcile_cost(Ledger, Cost, JObj)
             end
     end.
 
