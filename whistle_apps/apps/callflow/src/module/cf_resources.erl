@@ -96,11 +96,12 @@ create_endpoint(DestNum, JObj, Call) ->
               ,(wh_json:get_value(<<"suffix">>, JObj, <<>>))/binary
               ,$@ ,(wh_json:get_value(<<"server">>, JObj))/binary>>,
     lager:debug("attempting resource ~s", [Rule]),
-    CCVs = [KV || {_, V}=KV <- [{<<"Account-ID">>, whapps_call:account_id(Call)}
-                                ,{<<"From-URI">>, maybe_from_uri(AccountDb, JObj, CNum)}
-                                ,{<<"Global-Resource">>, false}
-                               ],
-                  V =/= undefined
+    AccountId = whapps_call:account_id(Call),
+    CCVs = [{<<"Account-ID">>, AccountId}
+            ,{<<"Reseller-ID">>, wh_reseller:find_reseller_id(AccountId)}
+            ,{<<"From-URI">>, maybe_from_uri(AccountDb, JObj, CNum)}
+            ,{<<"Ignore-Display-Updates">>, <<"true">>}
+            ,{<<"Global-Resource">>, false}
            ],
     Endpoint = [{<<"Invite-Format">>, <<"route">>}
                 ,{<<"Route">>, Rule}
@@ -109,7 +110,7 @@ create_endpoint(DestNum, JObj, Call) ->
                 ,{<<"Bypass-Media">>, wh_json:get_value(<<"bypass_media">>, JObj)}
                 ,{<<"Endpoint-Progress-Timeout">>, wh_json:get_value(<<"progress_timeout">>, JObj, <<"6">>)}
                 ,{<<"Codecs">>, wh_json:get_value(<<"codecs">>, JObj)}
-                ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
+                ,{<<"Custom-Channel-Vars">>, wh_json:from_list(props:filter_undefined(CCVs))}
                ],
     wh_json:from_list([ KV || {_, V}=KV <- Endpoint, V =/= undefined ]).
 
