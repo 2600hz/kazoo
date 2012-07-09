@@ -145,7 +145,7 @@ bridge_to_endpoints(Endpoints, IsEmergency, CtrlQ, JObj) ->
                ,{<<"Reseller-ID">>, wh_reseller:find_reseller_id(AccountId)}
                ,{<<"From-URI">>, FromURI}
                ,{<<"Ignore-Display-Updates">>, <<"true">>}
-               ,{<<"Global-Resource">>, true}
+               ,{<<"Global-Resource">>, <<"true">>}
               ],
     CCVs = wh_json:set_values(props:filter_undefined(Updates)
                               ,wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new())),
@@ -207,7 +207,7 @@ originate_to_endpoints(Endpoints, JObj) ->
     Updates = [{<<"Account-ID">>, AccountId}
                ,{<<"Reseller-ID">>, wh_reseller:find_reseller_id(AccountId)}
                ,{<<"From-URI">>, FromURI}
-               ,{<<"Global-Resource">>, true}
+               ,{<<"Global-Resource">>, <<"true">>}
               ],
     CCVs = wh_json:set_values(props:filter_undefined(Updates)
                               ,wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new())),
@@ -261,7 +261,7 @@ execute_local_extension(Number, AccountId, CtrlQ, JObj) ->
             ,{<<"Caller-ID-Name">>, CIDName}
             ,{<<"Callee-ID-Number">>, wh_util:to_binary(Number)}
             ,{<<"Callee-ID-Name">>, get_account_name(Number, AccountId)}
-            ,{<<"Global-Resource">>, false}
+            ,{<<"Global-Resource">>, <<"false">>}
            ],
     lager:debug("set outbound caller id to ~s '~s'", [CIDNum, CIDName]),
     Command = [{<<"Call-ID">>, get(callid)}
