@@ -250,7 +250,9 @@ test_for_initial_occurrences(Result) ->
             ViewOptions = [{key, <<"cdr">>}
                            ,{limit, <<"1">>}
                           ],
-            case couch_mgr:get_results(AccountDb, <<"maintenance/listing_by_type">>, ViewOptions) of
+            case wh_util:is_empty(AccountDb) orelse
+                couch_mgr:get_results(AccountDb, <<"maintenance/listing_by_type">>, ViewOptions) 
+            of
                 {ok, [_|_]} ->
                     AccountId = wh_json:get_value(<<"id">>, Result),
                     case couch_mgr:open_doc(AccountDb, AccountId) of
