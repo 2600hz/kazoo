@@ -114,7 +114,7 @@ caller_id(EndpointId, OwnerId, <<"external">> = Attribute, Call) ->
         true -> ensure_valid_caller_id(CIDNumber, CIDName, Call);
         false ->
             lager:debug("found CID ~s in phone_numbers doc", [CIDNumber]),
-            {wnm_util:to_e164(CIDNumber), CIDName}
+            {CIDNumber, CIDName}
     end;
 caller_id(EndpointId, OwnerId, Attribute, Call) ->
     CID = get_cid(EndpointId, OwnerId, Attribute, Call),
@@ -160,11 +160,11 @@ ensure_valid_caller_id(CIDNumber, CIDName, Call) ->
                     end;
                 DefaultAcctCID ->
                     lager:debug("setting to account doc's CID: ~s", [DefaultAcctCID]),
-                    {wnm_util:to_e164(DefaultAcctCID), CIDName}
+                    {DefaultAcctCID, CIDName}
             end;
         _ ->
             lager:debug("found CID ~s in phone_numbers doc", [CIDNumber]),
-            {wnm_util:to_e164(CIDNumber), CIDName}
+            {CIDNumber, CIDName}
     end.
 
 -spec get_cid/4 :: (ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> wh_json:json_object().
