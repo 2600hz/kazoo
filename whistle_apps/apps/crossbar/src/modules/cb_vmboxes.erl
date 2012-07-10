@@ -178,10 +178,17 @@ create_vmbox(#cb_context{req_data=Data}=Context) ->
         {fail, Errors} ->
             crossbar_util:response_invalid_data(Errors, Context);
         {pass, JObj} ->
-            Context#cb_context{
-              doc=wh_json:set_value(<<"pvt_type">>, <<"vmbox">>, JObj)
-              ,resp_status=success
-             }
+            case mailbox_exists(Context, JObj) of
+                true ->
+                    crossbar_util:response_invalid_data(
+                      wh_json:from_list([{<<"mailbox">>, <<"invalid mailbox number or number exists">>}])
+                      ,Context);
+                false ->
+                    Context#cb_context{
+                      doc=wh_json:set_value(<<"pvt_type">>, <<"vmbox">>, JObj)
+                      ,resp_status=success
+                     }
+            end
     end.
 
 %%--------------------------------------------------------------------
@@ -207,8 +214,38 @@ update_vmbox(DocId, #cb_context{req_data=Data}=Context) ->
         {fail, Errors} ->
             crossbar_util:response_invalid_data(Errors, Context);
         {pass, JObj} ->
-            crossbar_doc:load_merge(DocId, JObj, Context)
-    end. 
+            case mailbox_exists(Context, JObj) of
+                true ->
+                    crossbar_util:response_invalid_data(
+                      wh_json:from_list([{<<"mailbox">>, <<"invalid mailbox number or number exists">>}])
+                      ,Context);
+                false ->
+                    crossbar_doc:load_merge(DocId, JObj, Context)
+            end
+    end.
+
+-spec mailbox_exists/2 :: (#cb_context{}, wh_json:json_object()) -> boolean().
+mailbox_exists(#cb_context{db_name=Db}, JObj) ->
+    Mailbox = wh_json:get_value(<<"mailbox">>, JObj),
+
+    try wh_util:to_integer(Mailbox) of
+        BoxNum ->
+            lager:debug("does a mailbox with number ~b exist?", [BoxNum]),
+            case couch_mgr:get_results(Db, <<"vmboxes/listing_by_mailbox">>, [{key, BoxNum}]) of
+                {ok, []} -> false;
+                {ok, [VMBox]} ->
+                    lager:debug("found existing vm box: ~p", [wh_json:get_value(<<"id">>, VMBox)]),
+                    lager:debug("compared to submitted: ~p", [wh_json:get_value(<<"id">>, JObj)]),
+                    wh_json:get_value(<<"id">>, JObj) =/= wh_json:get_value(<<"id">>, VMBox);
+                {error, _E} ->
+                    lager:debug("failed to load listing_by_mailbox view: ~p", [_E]),
+                    true
+            end
+    catch
+        _:_ ->
+            lager:debug("can't convert mailbox to integer: ~p", [Mailbox]),
+            false
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
