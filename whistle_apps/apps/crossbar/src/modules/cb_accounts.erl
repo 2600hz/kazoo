@@ -23,6 +23,7 @@
 -export([create_account/1
          ,get_realm_from_db/1
          ,ensure_parent_set/0
+         ,add_pvt_service_plan/2
         ]).
 
 -include_lib("crossbar/include/crossbar.hrl").
@@ -485,7 +486,7 @@ add_pvt_service_plan(JObj, _) ->
                                              ,wh_json:get_ne_value(<<"service_plan">>, JObj)) of
         {'EXIT', _E} ->
             lager:info("failed to set service plans: ~p", [_E]),
-            JObj;
+            wh_json:delete_key(<<"service_plan">>, JObj);
         JObj1 -> JObj1
     end.
 
