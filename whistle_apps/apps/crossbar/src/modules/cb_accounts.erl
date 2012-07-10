@@ -23,7 +23,6 @@
 -export([create_account/1
          ,get_realm_from_db/1
          ,ensure_parent_set/0
-         ,add_pvt_service_plan/2
         ]).
 
 -include_lib("crossbar/include/crossbar.hrl").
