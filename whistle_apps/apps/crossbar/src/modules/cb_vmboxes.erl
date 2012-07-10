@@ -232,11 +232,15 @@ update_vmbox(DocId, #cb_context{req_data=Data}=Context) ->
                       wh_json:from_list([{<<"mailbox">>, <<"invalid mailbox number or number exists">>}])
                       ,Context);
                 false ->
+<<<<<<< HEAD
                     Context1 = #cb_context{doc=VMBox, db_name=Db, account_id=AccountId} = crossbar_doc:load_merge(DocId, JObj, Context),
-		    
-		    _ = spawn(fun() -> _ = crossbar_util:put_reqid(Context1), update_mwi(VMBox, AccountId, Db) end),
-		    
-		    Context1
+                    
+                    _ = spawn(fun() -> _ = crossbar_util:put_reqid(Context1), update_mwi(VMBox, AccountId, Db) end),
+                    
+                    Context1
+=======
+                    crossbar_doc:load_merge(DocId, JObj, Context)
+>>>>>>> WHISTLE-1364: check the voicemail box number on creation/modification for whether it exists already.
             end
     end.
 
@@ -419,11 +423,11 @@ update_mwi(VMBox, AccountId, DB) ->
     lists:foreach(fun(Device) ->
                           User = wh_json:get_value([<<"sip">>, <<"username">>], Device),
                           Realm = case wh_json:get_ne_value([<<"sip">>, <<"realm">>], Device) of
-				      undefined ->
-					  wh_util:get_account_realm(AccountId);
-				      DeviceRealm ->
-					  DeviceRealm
-				  end,
+                                      undefined ->
+                                          wh_util:get_account_realm(AccountId);
+                                      DeviceRealm ->
+                                          DeviceRealm
+                                  end,
 
                           Command = wh_json:from_list([{<<"Notify-User">>, User}
                                                        ,{<<"Notify-Realm">>, Realm}
