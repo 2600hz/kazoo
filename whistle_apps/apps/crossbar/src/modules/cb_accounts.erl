@@ -481,8 +481,13 @@ add_pvt_tree(JObj, #cb_context{auth_doc=Token}) ->
 
 
 add_pvt_service_plan(JObj, _) ->
-    wh_reseller:set_service_plans(wh_json:delete_key(<<"service_plan">>, JObj)
-                                  ,wh_json:get_ne_value(<<"service_plan">>, JObj)).
+    case catch wh_reseller:set_service_plans(wh_json:delete_key(<<"service_plan">>, JObj)
+                                             ,wh_json:get_ne_value(<<"service_plan">>, JObj)) of
+        {'EXIT', _E} ->
+            lager:info("failed to set service plans: ~p", [_E]),
+            JObj;
+        JObj1 -> JObj1
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
