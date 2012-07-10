@@ -308,18 +308,18 @@ load_account(AccountId, Context) ->
     #cb_context{resp_data=RespData, doc=Doc}=Context1=crossbar_doc:load(AccountId, Context),
     PvtIncludes=[<<"pvt_wnm_allow_additions">>],
     RespData1 = lists:foldl(fun(<<"pvt_", Key/binary>> = Pvt, Data) ->
-				    case wh_json:get_ne_value(Pvt, Doc) of
-					undefined ->
-					    wh_json:delete_key(Key, Data);
-					Value ->
-					    wh_json:set_value(Key, Value, Data)
-				    end;
-			       (_NotPvt, Data) ->
-				    Data
-			    end
-			    ,RespData
-			    ,PvtIncludes
-			   ),
+                                    case wh_json:get_ne_value(Pvt, Doc) of
+                                        undefined ->
+                                            wh_json:delete_key(Key, Data);
+                                        Value ->
+                                            wh_json:set_value(Key, Value, Data)
+                                    end;
+                               (_NotPvt, Data) ->
+                                    Data
+                            end
+                            ,RespData
+                            ,PvtIncludes
+                           ),
     Context1#cb_context{resp_data=RespData1}.
      
 
