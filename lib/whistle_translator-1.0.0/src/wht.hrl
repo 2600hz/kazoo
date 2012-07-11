@@ -14,5 +14,8 @@
 
 -define(WHT_USER_VARS, <<"user_vars">>).
 
+-define(APP_NAME, <<"translator">>).
+-define(APP_VERSION, <<"0.4.0">>).
+
 -define(WHT_HRL, true).
 -endif.

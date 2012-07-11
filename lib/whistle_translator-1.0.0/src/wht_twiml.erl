@@ -389,12 +389,11 @@ send_call(Call0, DialMe, Props) ->
                                                                ,{CallerID, fun whapps_call:set_caller_id_number/2}
                                                               ]),
 
-    %% remove reliance on cf_offnet...
-    ok = cf_offnet:offnet_req(wh_json:from_list([{<<"Timeout">>, Timeout}
-                                                 | offnet_data(RecordCall, StarHangup)
-                                                ])
-                              ,Call1
-                             ),
+    ok = wht_util:offnet_req(wh_json:from_list([{<<"Timeout">>, Timeout}
+                                                | offnet_data(RecordCall, StarHangup)
+                                               ])
+                             ,Call1
+                            ),
     Call1.
 
 finish_dial(Call, Props) ->
