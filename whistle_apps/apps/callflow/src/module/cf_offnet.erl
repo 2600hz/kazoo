@@ -10,7 +10,10 @@
 
 -include("../callflow.hrl").
 
--export([handle/2, offnet_req/2, wait_for_offnet/0]).
+-export([handle/2
+         ,offnet_req/2
+         ,wait_for_offnet/0
+        ]).
 
 %%--------------------------------------------------------------------
 %% @public
