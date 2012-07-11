@@ -305,7 +305,23 @@ create_account(#cb_context{req_data=ReqData}=Context, ParentId) ->
 %%--------------------------------------------------------------------
 -spec load_account/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
 load_account(AccountId, Context) ->
-    crossbar_doc:load(AccountId, Context).
+    #cb_context{resp_data=RespData, doc=Doc}=Context1=crossbar_doc:load(AccountId, Context),
+    PvtIncludes=[<<"pvt_wnm_allow_additions">>],
+    RespData1 = lists:foldl(fun(<<"pvt_", Key/binary>> = Pvt, Data) ->
+				    case wh_json:get_ne_value(Pvt, Doc) of
+					undefined ->
+					    wh_json:delete_key(Key, Data);
+					Value ->
+					    wh_json:set_value(Key, Value, Data)
+				    end;
+			       (_NotPvt, Data) ->
+				    Data
+			    end
+			    ,RespData
+			    ,PvtIncludes
+			   ),
+    Context1#cb_context{resp_data=RespData1}.
+     
 
 %%--------------------------------------------------------------------
 %% @private
