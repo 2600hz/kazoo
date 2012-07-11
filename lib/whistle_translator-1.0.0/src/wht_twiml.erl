@@ -70,6 +70,8 @@ exec_element(Call, 'Dial', [#xmlElement{name='Number'}=El1], #xmlElement{attribu
 exec_element(Call, 'Dial', [#xmlElement{}|_]=Numbers, #xmlElement{attributes=Attrs}) ->
     dial_ring_group(Call, Numbers, Attrs);
 
+exec_element(Call, 'Record', [], #xmlElement{attributes=Attrs}) ->
+    record_call(Call, Attrs);
 exec_element(Call, 'Record', [#xmlText{}], #xmlElement{attributes=Attrs}) ->
     record_call(Call, Attrs);
 
@@ -772,7 +774,7 @@ media_name(ALeg, BLeg) ->
 recorded_url(_Call, _DocId, false) ->
     undefined;
 recorded_url(Call, DocId, true) ->
-    list_to_binary([<<"/v1/accounts/">>, whapps_call:account_id(Call), <<"/media/">>, DocId]).
+    list_to_binary([<<"/v1/accounts/">>, whapps_call:account_id(Call), <<"/media/">>, DocId, <<"/raw">>]).
 
 maybe_save_recording(_Call, _MediaName, false) ->
     undefined;
