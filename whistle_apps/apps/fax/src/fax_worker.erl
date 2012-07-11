@@ -374,7 +374,7 @@ release_successful_job(Resp, JObj) ->
 -spec release_job/2 :: (proplist(), wh_json:json_object()) -> 'ok' | 'failure'.
 release_job(Result, JObj) ->
     Success = props:get_value(<<"success">>, Result, false),
-    Updaters = [fun(J) -> wh_json:set_value(<<"tx_result">>, Result, J) end
+    Updaters = [fun(J) -> wh_json:set_value(<<"tx_result">>, wh_json:from_list(Result), J) end
                 ,fun(J) ->
                          Attempts = wh_json:get_integer_value(<<"attempts">>, J, 0),
                          Retries = wh_json:get_integer_value(<<"retries">>, J, 1),
