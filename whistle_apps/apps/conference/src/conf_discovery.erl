@@ -65,12 +65,12 @@ start_link() ->
                              ,{basic_qos, 1}
                             ], []).
 
--spec handle_discovery_req/2 :: (wh_json:json_object(), proplist()) -> ok.
+-spec handle_discovery_req/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
 handle_discovery_req(JObj, Props) ->
     true = wapi_conference:discovery_req_v(JObj),
     Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, JObj)),
     put(callid, whapps_call:call_id(Call)),
-    lager:debug("received conference discovery request"),
+    lager:debug("received conference discovery request: ~p", [wh_json:delete_key(<<"Call">>, JObj)]),
 
     {ok, Srv} = conf_participant_sup:start_participant(Call),
     conf_participant:set_discovery_event(JObj, Srv),
@@ -101,16 +101,32 @@ handle_discovery_req(JObj, Props) ->
                  end
                 ,fun(C) -> whapps_conference:set_application_version(<<"2.0.0">>, C) end
                 ,fun(C) -> whapps_conference:set_application_name(<<"conferences">>, C) end
-                ,fun(_) -> 
-                         {ok, C} = validate_conference_id(wh_json:get_value(<<"Conference-ID">>, JObj), Call),
-                         C
+                ,fun(C0) ->
+                         case wh_json:get_value(<<"Conference-Doc">>, JObj) of
+                             undefined ->
+                                 {ok, C} = validate_conference_id(wh_json:get_value(<<"Conference-ID">>, JObj), Call),
+                                 C;
+                             Doc ->
+                                 N = wh_json:get_value(<<"name">>, Doc),
+                                 lager:debug("conf doc (~s) set instead of conf id", [N]),
+                                 whapps_conference:set_id(N, C0)
+                         end
                  end
                ],
-    try whapps_conference:update(Updaters, whapps_conference:new()) of
+
+    Conf0 = case wh_json:get_value(<<"Conference-Doc">>, JObj) of
+                undefined -> whapps_conference:new();
+                Doc -> whapps_conference:from_conference_doc(Doc)
+            end,
+
+    lager:debug("conference0: ~p", [Conf0]),
+    try whapps_conference:update(Updaters, Conf0) of
         Conference -> search_for_conference(Call, Conference, Srv)
     catch
         _:_E ->
+            ST = erlang:get_stacktrace(),
             lager:debug("failed to update conference record: ~p", [_E]),
+            _ = [lager:debug("st: ~p", [S]) || S <- ST],
             whapps_call_command:hangup(Call)
     end.
 
@@ -120,7 +136,7 @@ search_for_conference(Call, Conference, Srv) ->
     SearchId = couch_mgr:get_uuid(),
     wh_cache:store_local(?CONFERENCE_CACHE, {?MODULE, discovery, SearchId}, Srv, 300),
     lager:debug("publishing conference search request ~s", [SearchId]),
-    whapps_conference_command:search(SearchId, Conference),
+    _ = whapps_conference_command:search(SearchId, Conference),
     whapps_call_command:prompt(<<"conf-joining_conference">>, Call).
 
     %% TODO: send discovery event on error
