@@ -67,6 +67,8 @@ exec_element(Call, 'Dial', [#xmlText{value=DialMe, type=text}], #xmlElement{attr
     dial_number(Call, DialMe, Attrs);
 exec_element(Call, 'Dial', [#xmlElement{name='Number'}=El1], #xmlElement{attributes=Attrs}) ->
     dial_number(Call, El1, Attrs);
+exec_element(Call, 'Dial', [#xmlElement{name='Conference'}=El1], #xmlElement{attributes=Attrs}) ->
+    dial_conference(Call, El1, Attrs);
 exec_element(Call, 'Dial', [#xmlElement{}|_]=Numbers, #xmlElement{attributes=Attrs}) ->
     dial_ring_group(Call, Numbers, Attrs);
 
@@ -280,7 +282,99 @@ exec_gather_element(Call, _Action, _, _) ->
 %%
 %%   value        | DID to dial              | DID
 %%                | <Number>                 |
+%%                | <Conference>             |
 %%-------------------------------------------------------------------------
+
+%%-------------------------------------------------------------------------
+%% @doc Conference
+%%   muted                  | true, false            | false
+%%   beep                   | true, false            | true
+%%   startConferenceOnEnter | true, false            | true
+%%   endConferenceOnExit    | true, false            | false
+%%   waitUrl                | URL, empty string      | Default hold music
+%%   waitMethod             | GET, POST              | POST
+%%   maxParticipants        | int <= 40              | 40
+%%
+%%   value                  | Name of the conference | string
+%%-------------------------------------------------------------------------
+dial_conference(Call, #xmlElement{name='Conference'
+                                  ,content=[#xmlText{value=ConfRoom, type=text}]
+                                  ,attributes=ConfAttrs
+                                 }, DialAttrs) ->
+    lager:debug("DIAL conference room: ~s", [ConfRoom]),
+
+    connect_caller_to_conference(Call, ConfRoom, attrs_to_proplist(ConfAttrs)),
+    {ok, Call}.
+
+connect_caller_to_conference(Call, ConfRoom, ConfProps) ->
+    {ok, ConfId} = find_conference_id(Call, ConfRoom, ConfProps),
+
+    Command = [{<<"Call">>, whapps_call:to_json(Call)}
+               ,{<<"Conference-ID">>, ConfId}
+               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+              ],
+
+    wapi_conference:publish_discovery_req(Command),
+
+    lager:debug("conference discovery sent for conf ~s", [ConfId]).
+
+find_conference_id(Call, ConfRoom, Props) ->
+    AcctDb = whapps_call:account_db(Call),
+    case couch_mgr:get_results(AcctDb, <<"conferences/listing_by_name">>, [{key, ConfRoom}]) of
+        {ok, []} -> create_conference(AcctDb, ConfRoom, Props);
+        {ok, [JObj]} -> {ok, wh_json:get_value(<<"id">>, JObj)};
+        {error, _}=E -> E
+    end.
+
+create_conference(Db, ConfRoom, ConfProps) ->
+    Muted = props:get_is_true('muted', ConfProps, false),
+    Beep = props:get_is_true('beep', ConfProps, true),
+    StartConferenceOnEnter = props:get_is_true('startConferenceOnEnter', ConfProps, true),
+    EndConferenceOnExit = props:get_is_true('endOnConferenceOnExit', ConfProps, false),
+    WaitUrl = conf_wait_url(props:get_value('waitUrl', ConfProps)),
+    WaitMethod = wht_util:http_method(props:get_value('waitMethod', ConfProps, post)),
+    MaxParticipants = conf_max_participants(props:get_integer_value('maxParticipants', ConfProps, 40)),
+
+    IsModerator = (StartConferenceOnEnter =:= true),
+
+    %% Put this doc info on the discovery request, rather depending on the DB lookup
+
+    ConfDoc = wh_json:from_list([{<<"name">>, ConfRoom}
+                                 ,{<<"play_name_on_join">>, <<"true">>}
+                                 ,{<<"member">>, wh_json:from_list([{<<"join_muted">>, <<"true">>}
+                                                                    ,{<<"join_deaf">>, <<"true">>}
+                                                                    ,{<<"pins">>, []}
+                                                                    ,{<<"numbers">>, []}
+                                                                    ,{<<"play_name">>, <<"false">>}
+                                                                   ])}
+                                 ,{<<"moderator">>, wh_json:from_list([{<<"join_muted">>, <<"false">>}
+                                                                       ,{<<"join_deaf">>, <<"false">>}
+                                                                       ,{<<"pins">>, []}
+                                                                       ,{<<"numbers">>, []}
+                                                                       ,{<<"play_name">>, <<"false">>}
+                                                                      ])}
+                                 ,{<<"conference_numbers">>, []}
+                                 ,{<<"require_moderator">>, <<"false">>}
+                                 ,{<<"wait_for_moderator">>, <<"true">>}
+                                 ,{<<"max_members">>, MaxParticipants}
+                                ]),
+
+    ConfDoc1 = wh_doc:update_pvt_parameters(ConfDoc, Db, [{type, <<"conference">>}]),
+    case couch_mgr:save_doc(Db, ConfDoc1) of
+        {ok, ConfDoc2} -> {ok, wh_json:get_value(<<"_id">>, ConfDoc2)};
+        {error, _}=E -> E
+    end.
+
+-spec conf_max_participants/1 :: (1..40) -> 1..40.
+conf_max_participants(X) when X < 1 -> throw({error, max_participants_too_low});
+conf_max_participants(X) when X > 40 -> throw({error, max_participants_too_high});
+conf_max_participants(X) when is_integer(X) -> X.
+
+-define(DEFAULT_HOLD_MUSIC, <<"http://twimlets.com/holdmusic?Bucket=com.twilio.music.classical">>).
+-spec conf_wait_url/1 :: ('undefined' | binary()) -> ne_binary().
+conf_wait_url(undefined) -> ?DEFAULT_HOLD_MUSIC;
+conf_wait_url(<<>>) -> ?DEFAULT_HOLD_MUSIC;
+conf_wait_url(Url) -> Url. % can return audio data or TwiML
 
 %%-------------------------------------------------------------------------
 %% @doc Number
