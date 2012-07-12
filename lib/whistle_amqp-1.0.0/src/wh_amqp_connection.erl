@@ -96,10 +96,11 @@ consume(Srv, #'basic.cancel'{}=BasicCancel) ->
         {ok, Channel, Tag} ->
             amqp_channel:call(Channel, BasicCancel#'basic.cancel'{consumer_tag=Tag})
     end;
-consume(Srv, #'queue.bind'{}=QueueBind) ->
+consume(Srv, #'queue.bind'{exchange=_Exchange, routing_key=_RK, queue=_Q}=QueueBind) ->
     case my_channel(Srv) of
         {error, _}=E -> E;
         {ok, Channel, _} ->
+            lager:debug("bind '~s' to exchange '~s' with routing key '~s'", [_Q, _Exchange, _RK]),
             case amqp_channel:call(Channel, QueueBind) of
                 #'queue.bind_ok'{} -> ok;
                 {error, _}=E -> E;
