@@ -3,7 +3,8 @@
 %%% @doc
 %%% Conference participant process
 %%% @end
-%%% Created : 20 Feb 2012 by Karl Anderson <karl@2600hz.org>
+%%% @contributors
+%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(conf_participant).
 
