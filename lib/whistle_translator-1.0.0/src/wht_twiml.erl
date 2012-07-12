@@ -308,10 +308,11 @@ dial_conference(Call
                 ,DialAttrs) ->
     lager:debug("DIAL conference room: ~s", [ConfRoom]),
 
-    connect_caller_to_conference(Call, ConfRoom, attrs_to_proplist(ConfAttrs)),
+    connect_caller_to_conference(Call, wh_util:to_binary(ConfRoom), attrs_to_proplist(ConfAttrs)),
 
     finish_dial(Call, DialAttrs).
 
+-spec connect_caller_to_conference/3 :: (whapps_call:call(), ne_binary(), wh_proplist()) -> 'ok'.
 connect_caller_to_conference(Call, ConfRoom, ConfProps) ->
     Command = [{<<"Call">>, whapps_call:to_json(Call)}
                ,{<<"Conference-Doc">>, conference_config(ConfRoom, ConfProps)}
@@ -322,6 +323,7 @@ connect_caller_to_conference(Call, ConfRoom, ConfProps) ->
 
     lager:debug("conference discovery sent for conf ~s", [ConfRoom]).
 
+-spec conference_config/2 :: (ne_binary(), wh_proplist()) -> wh_json:json_object().
 conference_config(ConfRoom, ConfProps) ->
     MaxParticipants = conf_max_participants(props:get_integer_value('maxParticipants', ConfProps, 40)),
     StartConferenceOnEnter = props:get_is_true('startConferenceOnEnter', ConfProps, true),
