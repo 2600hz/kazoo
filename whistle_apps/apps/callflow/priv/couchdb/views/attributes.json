@@ -15,7 +15,7 @@
            "map": "function(doc) { if (!doc.music_on_hold || doc.pvt_deleted) return; emit(doc._id, doc.music_on_hold); }"
        },
        "call_forward": {
-           "map": "function(doc) { if (!doc.call_forward.enabled || doc.pvt_deleted) return; emit(doc._id, doc.call_forward); }"
+           "map": "function(doc) { if (!doc.call_forward || !doc.call_forward.enabled || doc.pvt_deleted) return; emit(doc._id, doc.call_forward); }"
        },
        "owner": {
            "map": "function(doc) { if (!doc.owner_id || doc.pvt_deleted) return; emit(doc._id, doc.owner_id); }"
