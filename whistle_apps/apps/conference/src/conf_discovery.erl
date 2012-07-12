@@ -1,6 +1,5 @@
 %%%============================================================================
-%%% @author Karl Anderson <karl@2600hz.org>
-%%% @copyright (C) 2011 VoIP Inc
+%%% @copyright (C) 2011-2012 VoIP Inc
 %%% @doc
 %%% This module is responsible for the second stage in the conference process:
 %%% 1. Determine if an arbitrary call (on an arbitrary server) is for a
@@ -10,7 +9,8 @@
 %%% 3. Execute the conference, move new members to a conference focus, provide
 %%%    in conference features, location services, and state.
 %%% @end
-%%% Created : 28 Jun 2011 by Karl Anderson <karl@2600hz.org>
+%%% @contributors
+%%%   Karl Anderson <karl@2600hz.org>
 %%%============================================================================
 -module(conf_discovery).
 
@@ -136,8 +136,8 @@ search_for_conference(Call, Conference, Srv) ->
     SearchId = couch_mgr:get_uuid(),
     wh_cache:store_local(?CONFERENCE_CACHE, {?MODULE, discovery, SearchId}, Srv, 300),
     lager:debug("publishing conference search request ~s", [SearchId]),
-    _ = whapps_conference_command:search(SearchId, Conference),
-    whapps_call_command:prompt(<<"conf-joining_conference">>, Call).
+    _ = whapps_conference_command:search(SearchId, Conference).
+%% whapps_call_command:prompt(<<"conf-joining_conference">>, Call).
 
     %% TODO: send discovery event on error
     %%    {ok, DiscoveryReq} = conf_participant:discovery_event(Srv),
@@ -156,7 +156,7 @@ handle_search_error(JObj, _Props) ->
     {ok, Call} = conf_participant:call(Srv),
     put(callid, whapps_call:call_id(Call)),
 
-    lager:debug("participant switch nodename ~p", [whapps_call:switch_nodename(Call)]),
+    lager:debug("participant switch nodename '~p'", [whapps_call:switch_nodename(Call)]),
     [_, SwitchHostname] = binary:split(whapps_call:switch_nodename(Call), <<"@">>),
     case negotiate_focus(SwitchHostname, Conference, Call) of
         {ok, _} -> 
