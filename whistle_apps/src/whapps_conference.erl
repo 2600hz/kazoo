@@ -3,7 +3,8 @@
 %%% @doc
 %%%
 %%% @end
-%%% Created : 28 Jun 2011 by Karl Anderson <karl@2600hz.org>
+%%% @contributors
+%%%   Karl Anderson
 %%%============================================================================
 -module(whapps_conference).
 

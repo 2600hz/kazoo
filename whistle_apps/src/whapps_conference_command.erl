@@ -3,7 +3,8 @@
 %%% @doc
 %%%
 %%% @end
-%%% Created : 21 Feb 2012 by Karl Anderson <karl@2600hz.org>
+%%% @contributors
+%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(whapps_conference_command).
 
@@ -27,8 +28,8 @@
 -export([participant_volume_in/3]).
 -export([participant_volume_out/3]).
 
--spec search/1 :: (whapps_conference:conference()) -> ok.
--spec search/2 :: (undefined | ne_binary(), whapps_conference:conference()) -> ok.
+-spec search/1 :: (whapps_conference:conference()) -> 'undefined'.
+-spec search/2 :: (SearchId, whapps_conference:conference()) -> SearchId.
 
 search(Conference) ->
     search(undefined, Conference).
@@ -39,6 +40,8 @@ search(SearchId, Conference) ->
     Q = whapps_conference:controller_queue(Conference),
     AppName = whapps_conference:application_name(Conference),
     AppVersion = whapps_conference:application_version(Conference),
+
+    lager:debug("searching for conference: ~s", [whapps_conference:id(Conference)]),
     Search = [{<<"Conference-ID">>, whapps_conference:id(Conference)}
               ,{<<"Msg-ID">>, SearchId}
               | wh_api:default_headers(Q, AppName, AppVersion)
