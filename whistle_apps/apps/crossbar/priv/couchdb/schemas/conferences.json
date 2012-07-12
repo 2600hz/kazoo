@@ -115,7 +115,7 @@
       "conference_numbers":{
          "description":"Defines conference numbers that can be used by members or moderators",
          "type":"array",
-         "name":"Coference Numbers",
+         "name":"Conference Numbers",
          "items":[
             {
                "type":"string"
