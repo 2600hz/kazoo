@@ -9,6 +9,7 @@
 
 -export([flush/0]).
 -export([get_limits/1]).
+-export([reconcile/1]).
 
 -include("jonny5.hrl").
 
@@ -23,3 +24,8 @@ get_limits(Account) ->
     Limits = j5_util:get_limits(Account),
     lists:zip(record_info(fields, limits), tl(tuple_to_list(Limits))).
     
+-spec reconcile/1 :: (ne_binary()) -> 'ok' | {'error', _}.
+reconcile(Account) when not is_binary(Account) ->
+    reconcile(wh_util:to_binary(Account));
+reconcile(Account) ->
+    j5_reconciler:process_account(Account).

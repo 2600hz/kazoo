@@ -140,8 +140,8 @@ current_balance(Ledger) ->
 -spec session_cost/2 :: (ne_binary(), ne_binary()) -> integer().
 session_cost(SessionId, Ledger) ->
     LedgerDb = wh_util:format_account_id(Ledger, encoded),    
-    ViewOptions = [{<<"reduce">>, true}
-                   ,{<<"group">>, true}
+    ViewOptions = [reduce
+                   ,group
                    ,{<<"key">>, SessionId}
                   ],
     case couch_mgr:get_results(LedgerDb, <<"transactions/session_cost">>, ViewOptions) of
