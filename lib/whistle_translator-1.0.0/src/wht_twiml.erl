@@ -295,75 +295,71 @@ exec_gather_element(Call, _Action, _, _) ->
 %%   waitMethod             | GET, POST              | POST
 %%   maxParticipants        | int <= 40              | 40
 %%
+%%   2600Hz extensions
+%%   entryPin               | pin # to enter         | empty (no pin)
+%%
 %%   value                  | Name of the conference | string
 %%-------------------------------------------------------------------------
-dial_conference(Call, #xmlElement{name='Conference'
-                                  ,content=[#xmlText{value=ConfRoom, type=text}]
-                                  ,attributes=ConfAttrs
-                                 }, DialAttrs) ->
+dial_conference(Call
+                ,#xmlElement{name='Conference'
+                             ,content=[#xmlText{value=ConfRoom, type=text}]
+                             ,attributes=ConfAttrs
+                            }
+                ,DialAttrs) ->
     lager:debug("DIAL conference room: ~s", [ConfRoom]),
 
     connect_caller_to_conference(Call, ConfRoom, attrs_to_proplist(ConfAttrs)),
-    {ok, Call}.
+
+    finish_dial(Call, DialAttrs).
 
 connect_caller_to_conference(Call, ConfRoom, ConfProps) ->
-    {ok, ConfId} = find_conference_id(Call, ConfRoom, ConfProps),
-
     Command = [{<<"Call">>, whapps_call:to_json(Call)}
-               ,{<<"Conference-ID">>, ConfId}
+               ,{<<"Conference-Doc">>, conference_config(ConfRoom, ConfProps)}
                | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
 
     wapi_conference:publish_discovery_req(Command),
 
-    lager:debug("conference discovery sent for conf ~s", [ConfId]).
+    lager:debug("conference discovery sent for conf ~s", [ConfRoom]).
 
-find_conference_id(Call, ConfRoom, Props) ->
-    AcctDb = whapps_call:account_db(Call),
-    case couch_mgr:get_results(AcctDb, <<"conferences/listing_by_name">>, [{key, ConfRoom}]) of
-        {ok, []} -> create_conference(AcctDb, ConfRoom, Props);
-        {ok, [JObj]} -> {ok, wh_json:get_value(<<"id">>, JObj)};
-        {error, _}=E -> E
+conference_config(ConfRoom, ConfProps) ->
+    MaxParticipants = conf_max_participants(props:get_integer_value('maxParticipants', ConfProps, 40)),
+    StartConferenceOnEnter = props:get_is_true('startConferenceOnEnter', ConfProps, true),
+
+    ConfDoc = [{<<"name">>, ConfRoom}
+               ,{<<"play_name_on_join">>, <<"true">>}
+               ,{<<"conference_numbers">>, []}
+               ,{<<"wait_for_moderator">>, <<"true">>}
+               ,{<<"require_moderator">>, <<"true">>}
+               ,{<<"max_members">>, MaxParticipants}
+              ],
+
+    case (StartConferenceOnEnter =:= true) of % if the conf can begin when the caller enters
+        true -> wh_json:from_list([{<<"moderator">>, caller_config(ConfProps, false)} | ConfDoc]);
+        false -> wh_json:from_list([{<<"member">>, caller_config(ConfProps, true)} | ConfDoc])
     end.
 
-create_conference(Db, ConfRoom, ConfProps) ->
-    Muted = props:get_is_true('muted', ConfProps, false),
-    Beep = props:get_is_true('beep', ConfProps, true),
-    StartConferenceOnEnter = props:get_is_true('startConferenceOnEnter', ConfProps, true),
-    EndConferenceOnExit = props:get_is_true('endOnConferenceOnExit', ConfProps, false),
+-spec caller_config/2 :: (wh_proplist(), boolean()) -> wh_json:json_object().
+caller_config(ConfProps, JoinDeaf) ->
     WaitUrl = conf_wait_url(props:get_value('waitUrl', ConfProps)),
     WaitMethod = wht_util:http_method(props:get_value('waitMethod', ConfProps, post)),
-    MaxParticipants = conf_max_participants(props:get_integer_value('maxParticipants', ConfProps, 40)),
+    EndConferenceOnExit = props:get_is_true('endOnConferenceOnExit', ConfProps, false),
+    EntryPin = conf_entry_pin(props:get_value('entryPin', ConfProps)),
 
-    IsModerator = (StartConferenceOnEnter =:= true),
+    wh_json:from_list([{<<"join_muted">>, props:get_is_true('muted', ConfProps, false)}
+                       ,{<<"join_deaf">>, JoinDeaf}
+                       ,{<<"pins">>, EntryPin}
+                       ,{<<"play_name">>, WaitUrl =/= <<"none">>}
+                       ,{<<"play_beep">>, props:get_is_true('beep', ConfProps, true)}
+                       ,{<<"hold_music">>, WaitUrl}
+                       ,{<<"hold_music_method">>, WaitMethod}
+                       ,{<<"end_conference_on_hangup">>, EndConferenceOnExit}
+                      ]).
 
-    %% Put this doc info on the discovery request, rather depending on the DB lookup
-
-    ConfDoc = wh_json:from_list([{<<"name">>, ConfRoom}
-                                 ,{<<"play_name_on_join">>, <<"true">>}
-                                 ,{<<"member">>, wh_json:from_list([{<<"join_muted">>, <<"true">>}
-                                                                    ,{<<"join_deaf">>, <<"true">>}
-                                                                    ,{<<"pins">>, []}
-                                                                    ,{<<"numbers">>, []}
-                                                                    ,{<<"play_name">>, <<"false">>}
-                                                                   ])}
-                                 ,{<<"moderator">>, wh_json:from_list([{<<"join_muted">>, <<"false">>}
-                                                                       ,{<<"join_deaf">>, <<"false">>}
-                                                                       ,{<<"pins">>, []}
-                                                                       ,{<<"numbers">>, []}
-                                                                       ,{<<"play_name">>, <<"false">>}
-                                                                      ])}
-                                 ,{<<"conference_numbers">>, []}
-                                 ,{<<"require_moderator">>, <<"false">>}
-                                 ,{<<"wait_for_moderator">>, <<"true">>}
-                                 ,{<<"max_members">>, MaxParticipants}
-                                ]),
-
-    ConfDoc1 = wh_doc:update_pvt_parameters(ConfDoc, Db, [{type, <<"conference">>}]),
-    case couch_mgr:save_doc(Db, ConfDoc1) of
-        {ok, ConfDoc2} -> {ok, wh_json:get_value(<<"_id">>, ConfDoc2)};
-        {error, _}=E -> E
-    end.
+-spec conf_entry_pin/1 :: ('undefined' | binary()) -> [] | [ne_binary()].
+conf_entry_pin(undefined) -> [];
+conf_entry_pin(<<>>) -> [];
+conf_entry_pin(?NE_BINARY = Pin) -> [Pin].
 
 -spec conf_max_participants/1 :: (1..40) -> 1..40.
 conf_max_participants(X) when X < 1 -> throw({error, max_participants_too_low});
@@ -373,7 +369,7 @@ conf_max_participants(X) when is_integer(X) -> X.
 -define(DEFAULT_HOLD_MUSIC, <<"http://twimlets.com/holdmusic?Bucket=com.twilio.music.classical">>).
 -spec conf_wait_url/1 :: ('undefined' | binary()) -> ne_binary().
 conf_wait_url(undefined) -> ?DEFAULT_HOLD_MUSIC;
-conf_wait_url(<<>>) -> ?DEFAULT_HOLD_MUSIC;
+conf_wait_url(<<>>) -> <<"none">>;
 conf_wait_url(Url) -> Url. % can return audio data or TwiML
 
 %%-------------------------------------------------------------------------
@@ -936,9 +932,9 @@ get_voice(<<"woman">>) -> <<"female">>.
 get_lang(undefined) -> <<"en-US">>;
 get_lang(<<"en">>) -> <<"en-US">>;
 get_lang(<<"en-gb">>) -> <<"en-GB">>;
-get_lang(<<"es">> = ES) -> ES;
-get_lang(<<"fr">> = FR) -> FR;
-get_lang(<<"de">> = DE) -> DE.
+get_lang(<<"es">>) -> <<"es">>;
+get_lang(<<"fr">>) -> <<"fr">>;
+get_lang(<<"de">>) -> <<"de">>.
 
 %% contstrain loop to 10
 -spec get_loop_count/1 :: (integer() | binary()) -> 0..10.
