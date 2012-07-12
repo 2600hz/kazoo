@@ -3,7 +3,8 @@
 %%% @doc
 %%%
 %%% @end
-%%% Created :  15 Feb 2012 by Karl Anderson <karl@2600hz.org>
+%%% @contributors
+%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(ecallmgr_conference_listener).
 
@@ -61,10 +62,13 @@ start_link() ->
 conferences_on_node(Node) ->
     lager:debug("looking for conferences on node ~s", [Node]),
     [_, Hostname] = binary:split(wh_util:to_binary(Node), <<"@">>),
-    lager:debug("requesting xml list of conferences"),
+    lager:debug("requesting xml list of conferences on ~s", [Hostname]),
     {ok, Response} = freeswitch:api(Node, 'conference', "xml_list"),
+
+    %% send search error back
+
     {Xml, _} = xmerl_scan:string(binary_to_list(binary:replace(Response, <<"\n">>, <<>>, [global]))),
-    lager:debug("got xml list of conferences"),
+    lager:debug("got xml list of conferences: ~s", [Response]),
     Props = ecallmgr_util:get_interface_properties(Node),
     conferences_xml_to_json(Xml, [{<<"Hostname">>, Hostname}|Props], wh_json:new()).
 
