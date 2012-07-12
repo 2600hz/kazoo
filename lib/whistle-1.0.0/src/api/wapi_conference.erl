@@ -3,7 +3,8 @@
 %%% @doc
 %%% 
 %%% @end
-%%% Created : 15 Feb 2012 by Karl Anderson <karl@2600hz.org>
+%%% @contributors
+%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(wapi_conference).
 
@@ -70,7 +71,8 @@
 -define(SEARCH_RESP_HEADERS, [<<"Conference-ID">>, <<"Participant-Count">>, <<"Switch-Hostname">>]).
 -define(OPTIONAL_SEARCH_RESP_HEADERS, [<<"Switch-URL">>, <<"Switch-External-IP">>, <<"Rate">>
                                            ,<<"UUID">>, <<"Running">>, <<"Answered">>, <<"Dynamic">>
-                                           ,<<"Run-Time">>, <<"Participants">>, <<"Locked">>, <<"Msg-ID">>]).
+                                           ,<<"Run-Time">>, <<"Participants">>, <<"Locked">>, <<"Msg-ID">>
+                                      ]).
 -define(SEARCH_RESP_VALUES, [{<<"Event-Category">>, <<"conference">>}
                              ,{<<"Event-Name">>, <<"search_resp">>}
                             ]).
@@ -78,7 +80,9 @@
 
 %% Conference Discovery Request
 -define(DISCOVERY_REQ_HEADERS, [<<"Call">>]).
--define(OPTIONAL_DISCOVERY_REQ_HEADERS, [<<"Conference-ID">>, <<"Moderator">>]).
+-define(OPTIONAL_DISCOVERY_REQ_HEADERS, [<<"Conference-ID">>, <<"Moderator">>
+                                             ,<<"Conference-Definition">> % ad-hoc conferencing
+                                        ]).
 -define(DISCOVERY_REQ_VALUES, [{<<"Event-Category">>, <<"conference">>}
                                ,{<<"Event-Name">>, <<"discovery_req">>}
                                ,{<<"Moderator">>, [<<"true">>, <<"false">>]}
