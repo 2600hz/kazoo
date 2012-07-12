@@ -300,8 +300,13 @@ handle_cast({remove_consumer, Consumer}, #participant{call_event_consumers=Consu
 handle_cast({set_conference, Conference}, Participant) ->
     lager:debug("received conference record for conference ~s", [whapps_conference:id(Conference)]),
     {noreply, Participant#participant{conference=Conference}};
+
 handle_cast({set_discovery_event, DiscoveryEvent}, Participant) ->
-    {noreply, Participant#participant{discovery_event=DiscoveryEvent}};
+    case wh_json:get_value(<<"Conference-Doc">>, DiscoveryEvent) of
+        undefined -> {noreply, Participant#participant{discovery_event=DiscoveryEvent}};
+        Doc -> {noreply, update_participant_from_conf_doc(Participant#participant{discovery_event=DiscoveryEvent}, Doc)}
+    end;
+
 handle_cast(join_local, #participant{call=Call, conference=DiscoveryConference}=Participant) ->
     ControllerQ = whapps_call:controller_queue(Call),
     Conference = whapps_conference:set_controller_queue(ControllerQ, DiscoveryConference),
@@ -312,12 +317,15 @@ handle_cast(join_local, #participant{call=Call, conference=DiscoveryConference}=
                   lager:debug("answering conference call"),
                   whapps_call_command:b_answer(Call),
                   ConferenceId = whapps_conference:id(Conference),
+
                   case whapps_conference:moderator(Conference) of 
                       true ->
                           lager:debug("moderator is joining conference ~s", [ConferenceId]),
+                          whapps_call_command:prompt(<<"conf-joining_conference">>, Call),
                           whapps_call_command:b_conference(ConferenceId, <<"false">>, <<"false">>, <<"true">>, Call);
                       false ->
                           lager:debug("member is joining conference ~s", [ConferenceId]),
+                          whapps_call_command:prompt(<<"conf-joining_conference">>, Call),
                           whapps_call_command:b_conference(ConferenceId, <<"false">>, <<"false">>, <<"false">>, Call)
                   end,
                   lager:debug("requesting conference participants"),
@@ -597,3 +605,20 @@ send_authn_response(MsgId, ServerId, Conference, Call) ->
             ,{<<"Custom-Channel-Vars">>, wh_json:from_list([CCV || {_, V}=CCV <- CCVs, V =/= 'undefined' ])}
             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)],
     wapi_authn:publish_resp(ServerId, Resp).
+
+update_participant_from_conf_doc(Participant, Doc) ->
+    IsModerator = wh_json:get_value(<<"moderator">>, Doc) =/= undefined,
+    Member = case IsModerator of
+                 true -> wh_json:get_value(<<"moderator">>, Doc);
+                 false -> wh_json:get_value(<<"member">>, Doc)
+             end,
+
+    Muted = wh_json:is_true(<<"join_muted">>, Member, false),
+    Deaf = wh_json:is_true(<<"join_deaf">>, Member, false),
+
+    Participant#participant{
+      ,moderator = IsModerator
+      ,muted = Muted
+      ,deaf = Deaf
+      ,waiting_for_mod = (IsModerator =:= true)
+     }.
