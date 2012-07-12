@@ -13,6 +13,8 @@
 Whistle
 =======
 
+https://secure.travis-ci.org/2600hz/2600hz-platform.png
+
 What is Whistle?
 ----------------
 
