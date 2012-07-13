@@ -617,7 +617,7 @@ update_participant_from_conf_doc(Participant, Doc) ->
     Deaf = wh_json:is_true(<<"join_deaf">>, Member, false),
 
     Participant#participant{
-      ,moderator = IsModerator
+      moderator = IsModerator
       ,muted = Muted
       ,deaf = Deaf
       ,waiting_for_mod = (IsModerator =:= true)
