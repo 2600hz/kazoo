@@ -58,76 +58,76 @@
 
 -export([flush/0, cache/1, cache/2, retrieve/1]).
 
--record(whapps_conference, {id = 'undefined' :: 'undefined' | ne_binary()                                 %% the conference id
-                            ,focus = 'undefined' :: 'undefined' | ne_binary()                             %% the conference focus
-                            ,controller_q = 'undefined' :: 'undefined' | ne_binary()                      %% the controller queue, for responses
-                            ,bridge_username = <<"test">> :: ne_binary()                                  %% the username used for a conference bridge
-                            ,bridge_password = <<"\/\/|-|157L3_(0|\|Ph3R3|\|(3">> :: ne_binary()          %% the password used for a conference bridge
-                            ,member_pins = [] :: [ne_binary(),...] | []                                   %% a list of pins for use by members
-                            ,moderator_pins = [] :: [ne_binary(),...] | []                                %% a list of pins for use by the moderators
-                            ,moderator = 'undefined' :: 'undefined' | boolean()                           %% tri-state true/false if the caller is known to be a moderator, otherwise 'undefined' 
-                            ,member_join_muted = false :: boolean()                                       %% should the member join muted
-                            ,member_join_deaf = false :: boolean()                                        %% should the member join deaf
-                            ,moderator_join_muted = false :: boolean()                                    %% should the moderator join muted
-                            ,moderator_join_deaf = false :: boolean()                                     %% should the moderator join deaf
-                            ,max_participants = 0 :: non_neg_integer()                                    %% max number of participants
-                            ,require_moderator = false :: boolean()                                       %% does the conference require a moderator
-                            ,wait_for_moderator = false :: boolean()                                      %% can members wait for a moderator
-                            ,play_name_on_join = false :: boolean()                                       %% should participants have their name played on join
-                            ,conference_doc = 'undefined' :: 'undefined' | wh_json:json_object()          %% the complete conference doc used to create the record (when and if)
-                            ,app_name = <<"whapps_conference">> :: ne_binary()                            %% The application name used during whapps_conference_command
-                            ,app_version = <<"1.0.0">> :: ne_binary()                                     %% The application version used during whapps_conference_command
-                            ,kvs = orddict:new() :: orddict:orddict()                                     %% allows conferences to set values that propogate to children
-                           }).
+-record(whapps_conference, {
+          id = 'undefined' :: 'undefined' | ne_binary()                       %% the conference id
+         ,focus = 'undefined' :: 'undefined' | ne_binary()                    %% the conference focus
+         ,controller_q = 'undefined' :: 'undefined' | ne_binary()             %% the controller queue, for responses
+         ,bridge_username = <<"test">> :: ne_binary()                         %% the username used for a conference bridge
+         ,bridge_password = <<"\/\/|-|157L3_(0|\|Ph3R3|\|(3">> :: ne_binary() %% the password used for a conference bridge
+         ,member_pins = [] :: [ne_binary(),...] | []                          %% a list of pins for use by members
+         ,moderator_pins = [] :: [ne_binary(),...] | []                       %% a list of pins for use by the moderators
+         ,moderator = 'undefined' :: 'undefined' | boolean()                  %% tri-state true/false if the caller is known to be a moderator, otherwise 'undefined' 
+         ,member_join_muted = false :: boolean()                              %% should the member join muted
+         ,member_join_deaf = false :: boolean()                               %% should the member join deaf
+         ,moderator_join_muted = false :: boolean()                           %% should the moderator join muted
+         ,moderator_join_deaf = false :: boolean()                            %% should the moderator join deaf
+         ,max_participants = 0 :: non_neg_integer()                           %% max number of participants
+         ,require_moderator = false :: boolean()                              %% does the conference require a moderator
+         ,wait_for_moderator = false :: boolean()                             %% can members wait for a moderator
+         ,play_name_on_join = false :: boolean()                              %% should participants have their name played on join
+         ,conference_doc = 'undefined' :: 'undefined' | wh_json:json_object() %% the complete conference doc used to create the record (when and if)
+         ,app_name = <<"whapps_conference">> :: ne_binary()                   %% The application name used during whapps_conference_command
+         ,app_version = <<"1.0.0">> :: ne_binary()                            %% The application version used during whapps_conference_command
+         ,kvs = orddict:new() :: orddict:orddict()                            %% allows conferences to set values that propogate to children
+         }).
 
 -opaque conference() :: #whapps_conference{}.
 -export_type([conference/0]).
 
 -spec new/0 :: () -> conference().
-new() ->
-    #whapps_conference{}.
+new() -> #whapps_conference{}.
 
 -spec from_json/1 :: (wh_json:json_object()) -> conference().
-from_json(JObj) ->
-    from_json(JObj, #whapps_conference{}).
+from_json(JObj) -> from_json(JObj, #whapps_conference{}).
 
 -spec from_json/2 :: (wh_json:json_object(), conference()) -> conference().    
 from_json(JObj, Conference) ->
     KVS = orddict:from_list(wh_json:to_proplist(wh_json:get_value(<<"Key-Value-Store">>, JObj, wh_json:new()))),
-    Conference#whapps_conference{id = wh_json:get_ne_value(<<"Conference-ID">>, JObj, id(Conference))
-                                 ,focus = wh_json:get_ne_value(<<"Conference-Focus">>, JObj, focus(Conference))
-                                 ,controller_q = wh_json:get_ne_value(<<"Controller-Queue">>, JObj, controller_queue(Conference))
-                                 ,bridge_username = wh_json:get_ne_value(<<"Bridge-Username">>, JObj, bridge_username(Conference))
-                                 ,bridge_password = wh_json:get_ne_value(<<"Bridge-Password">>, JObj, bridge_password(Conference))
-                                 ,member_pins = wh_json:get_ne_value(<<"Member-Pins">>, JObj, member_pins(Conference))
-                                 ,moderator_pins = wh_json:get_ne_value(<<"Moderator-Pins">>, JObj, moderator_pins(Conference))
-                                 ,moderator = wh_json:get_value(<<"Moderator">>, JObj, moderator(Conference))
-                                 ,member_join_muted = wh_json:is_true(<<"Member-Join-Muted">>, JObj, member_join_muted(Conference))
-                                 ,member_join_deaf = wh_json:is_true(<<"Member-Join-Deaf">>, JObj, member_join_deaf(Conference))
-                                 ,moderator_join_muted = wh_json:is_true(<<"Moderator-Join-Muted">>, JObj, moderator_join_muted(Conference))
-                                 ,moderator_join_deaf = wh_json:is_true(<<"Moderator-Join-Deaf">>, JObj, moderator_join_deaf(Conference))
-                                 ,max_participants = wh_json:get_integer_value(<<"Max-Participants">>, JObj, max_participants(Conference))
-                                 ,require_moderator = wh_json:is_true(<<"Require-Moderator">>, JObj, require_moderator(Conference))
-                                 ,wait_for_moderator = wh_json:is_true(<<"Wait-For-Moderator">>, JObj, wait_for_moderator(Conference))
-                                 ,play_name_on_join = wh_json:is_true(<<"Play-Name-On-Join">>, JObj, play_name_on_join(Conference))
-                                 ,conference_doc = wh_json:is_true(<<"Conference-Doc">>, JObj, conference_doc(Conference))
-                                 ,kvs = orddict:merge(fun(_, _, V2) -> V2 end, Conference#whapps_conference.kvs, KVS)
-                                }.
+    Conference#whapps_conference{
+      id = wh_json:get_ne_value(<<"Conference-ID">>, JObj, id(Conference))
+      ,focus = wh_json:get_ne_value(<<"Conference-Focus">>, JObj, focus(Conference))
+      ,controller_q = wh_json:get_ne_value(<<"Controller-Queue">>, JObj, controller_queue(Conference))
+      ,bridge_username = wh_json:get_ne_value(<<"Bridge-Username">>, JObj, bridge_username(Conference))
+      ,bridge_password = wh_json:get_ne_value(<<"Bridge-Password">>, JObj, bridge_password(Conference))
+      ,member_pins = wh_json:get_ne_value(<<"Member-Pins">>, JObj, member_pins(Conference))
+      ,moderator_pins = wh_json:get_ne_value(<<"Moderator-Pins">>, JObj, moderator_pins(Conference))
+      ,moderator = wh_json:get_value(<<"Moderator">>, JObj, moderator(Conference))
+      ,member_join_muted = wh_json:is_true(<<"Member-Join-Muted">>, JObj, member_join_muted(Conference))
+      ,member_join_deaf = wh_json:is_true(<<"Member-Join-Deaf">>, JObj, member_join_deaf(Conference))
+      ,moderator_join_muted = wh_json:is_true(<<"Moderator-Join-Muted">>, JObj, moderator_join_muted(Conference))
+      ,moderator_join_deaf = wh_json:is_true(<<"Moderator-Join-Deaf">>, JObj, moderator_join_deaf(Conference))
+      ,max_participants = wh_json:get_integer_value(<<"Max-Participants">>, JObj, max_participants(Conference))
+      ,require_moderator = wh_json:is_true(<<"Require-Moderator">>, JObj, require_moderator(Conference))
+      ,wait_for_moderator = wh_json:is_true(<<"Wait-For-Moderator">>, JObj, wait_for_moderator(Conference))
+      ,play_name_on_join = wh_json:is_true(<<"Play-Name-On-Join">>, JObj, play_name_on_join(Conference))
+      ,conference_doc = wh_json:is_true(<<"Conference-Doc">>, JObj, conference_doc(Conference))
+      ,kvs = orddict:merge(fun(_, _, V2) -> V2 end, Conference#whapps_conference.kvs, KVS)
+     }.
 
 -spec to_json/1 :: (conference()) -> wh_json:json_object().
 to_json(#whapps_conference{}=Conference) ->
     Props = to_proplist(Conference),
     KVS = [KV 
-           || {_, V}=KV <- props:get_value(<<"Key-Value-Store">>, Props, [])
-                  ,V =/= 'undefined'
-                  ,wh_json:is_json_term(V)
+           || {_, V}=KV <- props:get_value(<<"Key-Value-Store">>, Props, []),
+              V =/= 'undefined',
+              wh_json:is_json_term(V)
           ],
     wh_json:from_list([KV 
                        || {_, V}=KV <- [{<<"Key-Value-Store">>, wh_json:from_list(KVS)} |
                                         proplists:delete(<<"Key-Value-Store">>, Props)
-                                       ]
-                              ,V =/= 'undefined'
-                              ,wh_json:is_json_term(V)
+                                       ],
+                          V =/= 'undefined',
+                          wh_json:is_json_term(V)
                       ]).
 
 -spec to_proplist/1 :: (conference()) -> proplist().
@@ -165,22 +165,23 @@ from_conference_doc(JObj) ->
 from_conference_doc(JObj, Conference) ->
     Member = wh_json:get_value(<<"member">>, JObj),
     Moderator = wh_json:get_value(<<"moderator">>, JObj),
-    Conference#whapps_conference{id = wh_json:get_ne_value(<<"_id">>, JObj, id(Conference))
-                                 ,focus = wh_json:get_ne_value(<<"focus">>, JObj, focus(Conference))
-                                 ,bridge_username = wh_json:get_ne_value(<<"bridge_username">>, JObj, bridge_username(Conference))
-                                 ,bridge_password = wh_json:get_ne_value(<<"bridge_password">>, JObj, bridge_password(Conference))
-                                 ,member_pins = wh_json:get_ne_value(<<"pins">>, Member, member_pins(Conference))
-                                 ,moderator_pins = wh_json:get_ne_value(<<"pins">>, Moderator, moderator_pins(Conference))
-                                 ,member_join_muted = wh_json:is_true(<<"join_muted">>, Member, member_join_muted(Conference))
-                                 ,member_join_deaf = wh_json:is_true(<<"join_deaf">>, Member, member_join_deaf(Conference))
-                                 ,play_name_on_join = wh_json:is_true(<<"play_name">>, Member, play_name_on_join(Conference))
-                                 ,moderator_join_muted = wh_json:is_true(<<"join_muted">>, Moderator, moderator_join_muted(Conference))
-                                 ,moderator_join_deaf = wh_json:is_true(<<"join_deaf">>, Moderator, moderator_join_deaf(Conference))
-                                 ,max_participants = wh_json:get_integer_value(<<"max_participants">>, JObj, max_participants(Conference))
-                                 ,require_moderator = wh_json:is_true(<<"require_moderator">>, JObj, require_moderator(Conference))
-                                 ,wait_for_moderator = wh_json:is_true(<<"wait_for_moderator">>, JObj, wait_for_moderator(Conference))
-                                 ,conference_doc = JObj
-                                }.
+    Conference#whapps_conference{
+      id = wh_json:get_ne_value(<<"_id">>, JObj, id(Conference))
+      ,focus = wh_json:get_ne_value(<<"focus">>, JObj, focus(Conference))
+      ,bridge_username = wh_json:get_ne_value(<<"bridge_username">>, JObj, bridge_username(Conference))
+      ,bridge_password = wh_json:get_ne_value(<<"bridge_password">>, JObj, bridge_password(Conference))
+      ,member_pins = wh_json:get_ne_value(<<"pins">>, Member, member_pins(Conference))
+      ,moderator_pins = wh_json:get_ne_value(<<"pins">>, Moderator, moderator_pins(Conference))
+      ,member_join_muted = wh_json:is_true(<<"join_muted">>, Member, member_join_muted(Conference))
+      ,member_join_deaf = wh_json:is_true(<<"join_deaf">>, Member, member_join_deaf(Conference))
+      ,play_name_on_join = wh_json:is_true(<<"play_name">>, Member, play_name_on_join(Conference))
+      ,moderator_join_muted = wh_json:is_true(<<"join_muted">>, Moderator, moderator_join_muted(Conference))
+      ,moderator_join_deaf = wh_json:is_true(<<"join_deaf">>, Moderator, moderator_join_deaf(Conference))
+      ,max_participants = wh_json:get_integer_value(<<"max_participants">>, JObj, max_participants(Conference))
+      ,require_moderator = wh_json:is_true(<<"require_moderator">>, JObj, require_moderator(Conference))
+      ,wait_for_moderator = wh_json:is_true(<<"wait_for_moderator">>, JObj, wait_for_moderator(Conference))
+      ,conference_doc = JObj
+     }.
 
 -spec update/2 :: ([fun(),...], conference()) -> conference().
 update(Updaters, Conference) ->
@@ -428,6 +429,7 @@ cache(#whapps_conference{}=Conference) ->
 cache(#whapps_conference{id=ConferenceId}=Conference, Expires) ->
     wh_cache:store_local(?WHAPPS_CALL_CACHE, {?MODULE, conference, ConferenceId}, Conference, Expires).
 
--spec retrieve/1 :: (ne_binary()) -> {'ok', conference()} | {'error', 'not_found'}.
+-spec retrieve/1 :: (ne_binary()) -> {'ok', conference()} |
+                                     {'error', 'not_found'}.
 retrieve(ConferenceId) ->
     wh_cache:fetch_local(?WHAPPS_CALL_CACHE, {?MODULE, conference, ConferenceId}).
