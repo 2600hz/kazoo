@@ -242,7 +242,7 @@ bridge_password(#whapps_conference{bridge_password=BridgePassword}) ->
 set_bridge_password(BridgePassword, Conference) when is_binary(BridgePassword) ->
     Conference#whapps_conference{bridge_password=BridgePassword}.
 
--spec member_pins/1 :: (conference()) -> [ne_binary(),...].
+-spec member_pins/1 :: (conference()) -> [ne_binary(),...] | [].
 member_pins(#whapps_conference{member_pins=MemberPins}) ->
     MemberPins.
 
@@ -250,7 +250,7 @@ member_pins(#whapps_conference{member_pins=MemberPins}) ->
 set_member_pins(MemberPins, Conference) when is_list(MemberPins) ->
     Conference#whapps_conference{member_pins=MemberPins}.
 
--spec moderator_pins/1 :: (conference()) -> [ne_binary(),...].
+-spec moderator_pins/1 :: (conference()) -> [ne_binary(),...] | [].
 moderator_pins(#whapps_conference{moderator_pins=ModeratorPins}) ->
     ModeratorPins.
 
@@ -360,7 +360,7 @@ kvs_fetch(Key, #whapps_conference{kvs=Dict}) ->
         error:function_clause -> 'undefined'
     end.     
 
--spec kvs_fetch_keys/1 :: (conference()) -> [term(),...].
+-spec kvs_fetch_keys/1 :: (conference()) -> [term(),...] | [].
 kvs_fetch_keys( #whapps_conference{kvs=Dict}) ->
     orddict:fetch_keys(Dict).
 
