@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2012, VoIP INC
 %%% @doc
 %%% Conferences module
 %%%
@@ -119,15 +119,8 @@ load_conference_summary(#cb_context{req_nouns=Nouns}=Context) ->
     LastNoun  = lists:nth(2, Nouns),
     case LastNoun of
         {<<"users">>, [UserId]} ->
-            crossbar_doc:load_view(?CB_LIST, [], Context, fun(JObj, Acc) ->
-                                                                  case wh_json:get_value([<<"value">>, <<"owner_id">>], JObj) of
-                                                                      undefined ->
-                                                                          normalize_view_results(JObj, Acc);
-                                                                      UserId ->
-                                                                          normalize_view_results(JObj, Acc);
-                                                                      _ ->
-                                                                          [undefined|Acc]
-                                                                  end
+            crossbar_doc:load_view(?CB_LIST, [], Context, fun(J, A) ->
+                                                                  normalize_users_results(J, A, UserId)
                                                           end);
         {?WH_ACCOUNTS_DB, _} ->
             crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2);
@@ -187,3 +180,12 @@ update_conference(DocId, #cb_context{req_data=Data}=Context) ->
 -spec normalize_view_results/2 :: (wh_json:json_object(), wh_json:json_objects()) -> wh_json:json_objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
+
+-spec normalize_users_results/3 :: (wh_json:json_object(), wh_json:json_objects(), ne_binary()) ->
+                                          ['undefined' | wh_json:json_object(),...] | [].
+normalize_users_results(JObj, Acc, UserId) ->
+    case wh_json:get_value([<<"value">>, <<"owner_id">>], JObj) of
+        undefined -> normalize_view_results(JObj, Acc);
+        UserId -> normalize_view_results(JObj, Acc);
+        _ -> [undefined|Acc]
+    end.
