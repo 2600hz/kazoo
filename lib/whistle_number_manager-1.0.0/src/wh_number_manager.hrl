@@ -10,7 +10,7 @@
 -record(number, {number = 'undefined' :: 'undefined' | ne_binary()
                  ,number_db = 'undefined' :: 'undefined' | ne_binary()
                  ,state = <<"discovery">> :: ne_binary()
-                 ,reserve_history = ordsets:new() :: ordsets:ordset()
+                 ,reserve_history = ordsets:new() :: ordsets:ordset(ne_binary())
                  ,assign_to = 'undefined' :: 'undefined' | ne_binary()
                  ,assigned_to = 'undefined' :: 'undefined' | ne_binary()
                  ,prev_assigned_to = 'undefined' :: 'undefined' | ne_binary()
