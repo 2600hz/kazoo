@@ -42,6 +42,8 @@
          ,code_change/3
         ]).
 
+-export([join_conference/3]).
+
 -define(SERVER, ?MODULE).
 
 -define(RESPONDERS, [{{?MODULE, relay_amqp}, [{<<"call_event">>, <<"*">>}]}
@@ -302,35 +304,13 @@ handle_cast({set_conference, Conference}, Participant) ->
     {noreply, Participant#participant{conference=Conference}};
 
 handle_cast({set_discovery_event, DiscoveryEvent}, Participant) ->
-    case wh_json:get_value(<<"Conference-Doc">>, DiscoveryEvent) of
-        undefined -> {noreply, Participant#participant{discovery_event=DiscoveryEvent}};
-        Doc -> {noreply, update_participant_from_conf_doc(Participant#participant{discovery_event=DiscoveryEvent}, Doc)}
-    end;
+    {noreply, Participant#participant{discovery_event=DiscoveryEvent}};
 
 handle_cast(join_local, #participant{call=Call, conference=DiscoveryConference}=Participant) ->
     ControllerQ = whapps_call:controller_queue(Call),
     Conference = whapps_conference:set_controller_queue(ControllerQ, DiscoveryConference),
     Self = self(),
-    spawn(fun() ->
-                  put(callid, whapps_call:call_id(Call)),
-                  consume_call_events(Self),
-                  lager:debug("answering conference call"),
-                  whapps_call_command:b_answer(Call),
-                  ConferenceId = whapps_conference:id(Conference),
-
-                  case whapps_conference:moderator(Conference) of 
-                      true ->
-                          lager:debug("moderator is joining conference ~s", [ConferenceId]),
-                          whapps_call_command:prompt(<<"conf-joining_conference">>, Call),
-                          whapps_call_command:b_conference(ConferenceId, <<"false">>, <<"false">>, <<"true">>, Call);
-                      false ->
-                          lager:debug("member is joining conference ~s", [ConferenceId]),
-                          whapps_call_command:prompt(<<"conf-joining_conference">>, Call),
-                          whapps_call_command:b_conference(ConferenceId, <<"false">>, <<"false">>, <<"false">>, Call)
-                  end,
-                  lager:debug("requesting conference participants"),
-                  whapps_conference_command:participants(Conference)
-          end),
+    _ = spawn(?MODULE, join_conference, [Self, Call, Conference]),
     {noreply, Participant#participant{conference=Conference}};
 handle_cast({join_remote, JObj}, #participant{call=Call, conference=DiscoveryConference}=Participant) ->
     gen_listener:add_binding(self(), route, []),
@@ -606,19 +586,25 @@ send_authn_response(MsgId, ServerId, Conference, Call) ->
             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)],
     wapi_authn:publish_resp(ServerId, Resp).
 
-update_participant_from_conf_doc(Participant, Doc) ->
-    IsModerator = wh_json:get_value(<<"moderator">>, Doc) =/= undefined,
-    Member = case IsModerator of
-                 true -> wh_json:get_value(<<"moderator">>, Doc);
-                 false -> wh_json:get_value(<<"member">>, Doc)
-             end,
+-spec join_conference/3 :: (pid(), whapps_call:call(), whapps_conference:conference()) -> 'ok'.
+join_conference(Srv, Call, Conference) ->
+    put(callid, whapps_call:call_id(Call)),
+    consume_call_events(Srv),
 
-    Muted = wh_json:is_true(<<"join_muted">>, Member, false),
-    Deaf = wh_json:is_true(<<"join_deaf">>, Member, false),
+    lager:debug("answering conference call"),
+    _ = whapps_call_command:b_answer(Call),
+    ConferenceId = whapps_conference:id(Conference),
 
-    Participant#participant{
-      moderator = IsModerator
-      ,muted = Muted
-      ,deaf = Deaf
-      ,waiting_for_mod = (IsModerator =:= true)
-     }.
+    _ = case whapps_conference:moderator(Conference) of 
+            true ->
+                lager:debug("moderator is joining conference ~s", [ConferenceId]),
+                _ = whapps_call_command:prompt(<<"conf-joining_conference">>, Call),
+                whapps_call_command:b_conference(ConferenceId, <<"false">>, <<"false">>, <<"true">>, Call);
+            false ->
+                lager:debug("member is joining conference ~s", [ConferenceId]),
+            _ = whapps_call_command:prompt(<<"conf-joining_conference">>, Call),
+                whapps_call_command:b_conference(ConferenceId, <<"false">>, <<"false">>, <<"false">>, Call)
+        end,
+
+    lager:debug("requesting conference participants"),
+    whapps_conference_command:participants(Conference).
