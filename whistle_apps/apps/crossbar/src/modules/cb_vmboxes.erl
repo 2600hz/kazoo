@@ -173,7 +173,19 @@ load_vmbox_summary(Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec create_vmbox/1 :: (#cb_context{}) -> #cb_context{}.
+create_vmbox(#cb_context{db_name=undefined, req_data=Data}=Context) ->
+    %% for onboarding and the like, if no DB, just validate Data
+    case wh_json_validator:is_valid(Data, <<"vmboxes">>) of
+        {fail, Errors} ->
+            crossbar_util:response_invalid_data(Errors, Context);
+        {pass, JObj} ->
+            Context#cb_context{
+              doc=wh_json:set_value(<<"pvt_type">>, <<"vmbox">>, JObj)
+              ,resp_status=success
+             }
+    end;
 create_vmbox(#cb_context{req_data=Data}=Context) ->
+    %% if a REST request, lookup the vm box #
     case wh_json_validator:is_valid(Data, <<"vmboxes">>) of
         {fail, Errors} ->
             crossbar_util:response_invalid_data(Errors, Context);
