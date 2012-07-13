@@ -22,7 +22,10 @@
          ,to_list/1, to_binary/1
          ,to_atom/1, to_atom/2
         ]).
--export([to_boolean/1, is_true/1, is_false/1, is_empty/1, is_proplist/1]).
+-export([to_boolean/1, is_boolean/1
+         ,is_true/1, is_false/1
+         ,is_empty/1, is_proplist/1
+        ]).
 -export([to_lower_binary/1, to_upper_binary/1]).
 -export([to_lower_string/1, to_upper_string/1]).
 -export([ucfirst_binary/1, lcfirst_binary/1]).
@@ -465,6 +468,15 @@ is_false(<<"false">>) -> true;
 is_false("false") -> true;
 is_false(false) -> true;
 is_false(_) -> false.
+
+-spec is_boolean/1 :: (binary() | string() | atom()) -> boolean().
+is_boolean(<<"true">>) -> true;
+is_boolean("true") -> true;
+is_boolean(true) -> true;
+is_boolean(<<"false">>) -> true;
+is_boolean("false") -> true;
+is_boolean(false) -> true;
+is_boolean(_) -> false.
 
 -spec is_empty/1 :: (term()) -> boolean().
 is_empty(0) -> true;
