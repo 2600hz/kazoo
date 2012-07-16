@@ -232,7 +232,7 @@ revise_docs_from_folder(DbName, App, Folder) ->
     revise_docs_from_folder(DbName, App, Folder, true).
 
 revise_docs_from_folder(DbName, App, Folder, Sleep) ->
-    Files = filelib:wildcard(lists:flatten([code:priv_dir(App), "/couchdb/", Folder, "/*.json"])),
+    Files = filelib:wildcard([code:priv_dir(App), "/couchdb/", Folder, "/*.json"]),
     do_revise_docs_from_folder(DbName, Sleep, Files).
 
 -spec do_revise_docs_from_folder/3 :: (ne_binary(), boolean(), [ne_binary() | nonempty_string(),...]) -> 'ok'.
