@@ -54,7 +54,7 @@ find_proc(Mod) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec upgrade/0 :: () -> ok.
+-spec upgrade/0 :: () -> 'ok'.
 upgrade() ->
     {ok, {_, Specs}} = init([]),
 
@@ -82,9 +82,9 @@ upgrade() ->
 %% specifications.
 %% @end
 %%--------------------------------------------------------------------
--spec init(Args) -> sup_init_ret() when
-      Args :: [].
+-spec init([]) -> sup_init_ret().
 init([]) ->
     {ok, {{one_for_one, 10, 10}, [?CACHE()
                                   ,?CHILD(crossbar_bindings, worker)
+                                  ,?CHILD(crossbar_cleanup, worker)
                                  ]}}.

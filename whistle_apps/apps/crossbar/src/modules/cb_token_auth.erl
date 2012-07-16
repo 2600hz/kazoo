@@ -56,14 +56,13 @@ cleanup_loop(Expiry) ->
     after
         Timeout ->
             clean_expired(Expiry),
-            clean_soft_deleted(),
             cleanup_loop(whapps_config:get_integer(?APP_NAME, <<"token_auth_expiry">>, ?SECONDS_IN_DAY))
     end.
 
 clean_expired(Expiry) ->
     CreatedBefore = wh_util:current_tstamp() - Expiry, % gregorian seconds - Expiry time
 
-    case couch_mgr:get_results(?TOKEN_DB, <<"token_auth/listing_by_ctime">>, [{startkey, 0}
+    case couch_mgr:get_results(?TOKEN_DB, <<"token_auth/listing_by_mtime">>, [{startkey, 0}
                                                                               ,{endkey, CreatedBefore}
                                                                               ,{limit, 1000}
                                                                              ]) of
@@ -82,17 +81,6 @@ prepare_token_for_deletion(Token) ->
     wh_json:from_list([{<<"_id">>, wh_json:get_value(<<"id">>, Token)}
                        ,{<<"_rev">>, wh_json:get_value(<<"value">>, Token)}
                       ]).
-
-clean_soft_deleted() ->
-    case couch_mgr:get_results(?TOKEN_DB, <<"token_auth/soft_deleted">>, [{limit, 1000}]) of
-        {ok, []} -> lager:debug("no soft-deleted tokens found"), ok;
-        {ok, L} ->
-            lager:debug("removing ~b soft-deleted tokens", [length(L)]),
-            couch_mgr:del_docs(?TOKEN_DB, prepare_tokens_for_deletion(L)),
-            ok;
-        {error, _E} ->
-            lager:debug("failed to lookup soft-deleted tokens: ~p", [_E])
-    end.
 
 %%--------------------------------------------------------------------
 %% @public
