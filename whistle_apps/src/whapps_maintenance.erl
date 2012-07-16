@@ -51,6 +51,9 @@ migrate() ->
     %% Ensure the phone_numbers doc in the account db is up-to-date
     _ = whistle_number_manager_maintenance:reconcile_numbers(),
 
+    %% Load available providers into system_config
+    _ = whistle_number_manager_maintenance:reconcile_providers(),
+
     %% Ensure the views in each DB are update-to-date, depreciated view removed, sip_auth docs
     %% that need to be aggregated have been, and the account definition is aggregated
     _ = blocking_refresh(),
