@@ -12,6 +12,8 @@
 -export([reconcile_numbers/0, reconcile_numbers/1]).
 -export([reconcile_accounts/0, reconcile_accounts/1]).
 
+-export([reconcile_providers/0]).
+
 -include("wh_number_manager.hrl").
 -include_lib("whistle/include/wh_databases.hrl").
 
@@ -103,6 +105,36 @@ reconcile_accounts(AccountId) ->
     Numbers1 = get_trunkstore_account_numbers(AccountId, AccountDb) ++ Numbers,
     _ = reconcile_numbers(Numbers1, wh_util:format_account_id(AccountId, raw)),
     no_return.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Load known provider modules into system_config
+%% exist
+%% @end
+%%--------------------------------------------------------------------
+-spec reconcile_providers/0 :: () -> any().
+-spec reconcile_providers/2 :: ([ne_binary(),...] | [], [ne_binary(),...] | []) -> any().
+reconcile_providers() ->
+    Paths = filelib:wildcard([code:lib_dir(whistle_number_manager), "/src/providers/*.erl"]),
+    Mods = [wh_util:to_binary(filename:rootname(filename:basename(P))) || P <- Paths],
+
+    lager:debug("Mods: ~p", [Mods]),
+
+    Providers = whapps_config:get(?WNM_CONFIG_CAT, <<"providers">>, []),
+    lager:debug("prov: ~p", [Providers]),
+
+    reconcile_providers(Mods, Providers).
+
+reconcile_providers([<<"wnm_", P/binary>>|Avail], Config) ->
+    case lists:member(P, Config) of
+        true -> reconcile_providers(Avail, Config);
+        false -> reconcile_providers(Avail, [P | Config])
+    end;
+reconcile_providers([_|Avail], Config) ->
+    reconcile_providers(Avail, Config);
+reconcile_providers([], Config) ->
+    whapps_config:set_default(?WNM_CONFIG_CAT, <<"providers">>, Config).
 
 %%--------------------------------------------------------------------
 %% @private
