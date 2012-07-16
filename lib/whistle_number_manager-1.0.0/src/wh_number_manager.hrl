@@ -7,7 +7,7 @@
 -define(APP_VERSION, <<"1.0.0">>).
 -define(APP_NAME, <<"whistle_number_manager">>).
 
--record(number, {number = 'undefined' :: 'undefined' | ne_binary()
+-record(number, {number = 'undefined' :: 'undefined' | wh_json:json_string()
                  ,number_db = 'undefined' :: 'undefined' | ne_binary()
                  ,state = <<"discovery">> :: ne_binary()
                  ,reserve_history = ordsets:new() :: ordsets:ordset(ne_binary())
@@ -15,7 +15,7 @@
                  ,assigned_to = 'undefined' :: 'undefined' | ne_binary()
                  ,prev_assigned_to = 'undefined' :: 'undefined' | ne_binary()
                  ,auth_by = 'undefined' :: 'undefined' | 'system' | ne_binary()
-                 ,module_name = 'undefined' :: 'undefined' | atom()
+                 ,module_name = 'undefined' :: atom()
                  ,module_data = wh_json:new() :: wh_json:json_object()
                  ,features = sets:new() :: set()
                  ,current_features = sets:new() :: set()
