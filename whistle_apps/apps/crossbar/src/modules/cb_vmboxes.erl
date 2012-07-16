@@ -232,7 +232,11 @@ update_vmbox(DocId, #cb_context{req_data=Data}=Context) ->
                       wh_json:from_list([{<<"mailbox">>, <<"invalid mailbox number or number exists">>}])
                       ,Context);
                 false ->
-                    crossbar_doc:load_merge(DocId, JObj, Context)
+                    Context1 = #cb_context{doc=VMBox, db_name=Db, account_id=AccountId} = crossbar_doc:load_merge(DocId, JObj, Context),
+		    
+		    _ = spawn(fun() -> _ = crossbar_util:put_reqid(Context1), update_mwi(VMBox, AccountId, Db) end),
+		    
+		    Context1
             end
     end.
 
@@ -327,7 +331,7 @@ load_message(DocId, MediaId, Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec load_message_binary/3 :: (ne_binary(), ne_binary(), #cb_context{}) -> #cb_context{}.
-load_message_binary(VMBoxId, VMId, #cb_context{req_data=ReqData, db_name=Db, resp_headers=RespHeaders}=Context) ->
+load_message_binary(VMBoxId, VMId, #cb_context{req_data=ReqData, db_name=Db, account_id=AccountId, resp_headers=RespHeaders}=Context) ->
     {ok, VMJObj} = couch_mgr:open_doc(Db, VMId),
     [AttachmentId] = wh_json:get_keys(<<"_attachments">>, VMJObj),
 
@@ -353,7 +357,7 @@ load_message_binary(VMBoxId, VMId, #cb_context{req_data=ReqData, db_name=Db, res
                               Context1 = update_message1(VMBoxId, VMId, Context),
                               #cb_context{resp_status=success}=crossbar_doc:save(Context1),
                               lager:debug("Saved message to new folder ~s", [Folder]),
-                              update_mwi(VMBoxJObj, Db)
+                              update_mwi(VMBoxJObj, AccountId, Db)
                       end)
         end,
 
@@ -372,7 +376,7 @@ load_message_binary(VMBoxId, VMId, #cb_context{req_data=ReqData, db_name=Db, res
 %% @end
 %%--------------------------------------------------------------------
 -spec delete_message/3 :: (ne_binary(), ne_binary(), #cb_context{}) -> #cb_context{}.
-delete_message(VMBoxId, MediaId, #cb_context{db_name=Db}=Context) ->
+delete_message(VMBoxId, MediaId, #cb_context{db_name=Db, account_id=AccountId}=Context) ->
     Context1 = #cb_context{doc=VMBox} = crossbar_doc:load(VMBoxId, Context),
     Messages = wh_json:get_value(<<"messages">>, VMBox, []),
 
@@ -384,15 +388,15 @@ delete_message(VMBoxId, MediaId, #cb_context{db_name=Db}=Context) ->
             {ok, D} = couch_mgr:open_doc(Db, MediaId),
             couch_mgr:save_doc(Db, wh_json:set_value(<<"pvt_deleted">>, true, D)),
 
-            _ = spawn(fun() -> _ = crossbar_util:put_reqid(Context), update_mwi(VMBox1, Db) end),
+            _ = spawn(fun() -> _ = crossbar_util:put_reqid(Context), update_mwi(VMBox1, AccountId, Db) end),
 
             Context1#cb_context{doc=VMBox1};
         _ ->
             crossbar_util:response_bad_identifier(MediaId, Context)
     end.
 
--spec update_mwi/2 :: (wh_json:json_object(), ne_binary()) -> 'ok'.
-update_mwi(VMBox, DB) ->
+-spec update_mwi/3 :: (wh_json:json_object(), ne_binary(), ne_binary()) -> 'ok'.
+update_mwi(VMBox, AccountId, DB) ->
     OwnerID = wh_json:get_value(<<"owner_id">>, VMBox),
     false = wh_util:is_empty(OwnerID),
 
@@ -400,7 +404,7 @@ update_mwi(VMBox, DB) ->
 
     Messages = wh_json:get_value(<<"messages">>, VMBox, []),
 
-    Devices = cb_module_util:get_devices_owned_by(OwnerID, DB),
+    Devices = cb_modules_util:get_devices_owned_by(OwnerID, DB),
 
     New = count_messages(Messages, <<"new">>),
     Saved = count_messages(Messages, <<"saved">>),
@@ -414,7 +418,12 @@ update_mwi(VMBox, DB) ->
 
     lists:foreach(fun(Device) ->
                           User = wh_json:get_value([<<"sip">>, <<"username">>], Device),
-                          Realm = wh_json:get_value([<<"sip">>, <<"realm">>], Device),
+                          Realm = case wh_json:get_ne_value([<<"sip">>, <<"realm">>], Device) of
+				      undefined ->
+					  wh_util:get_account_realm(AccountId);
+				      DeviceRealm ->
+					  DeviceRealm
+				  end,
 
                           Command = wh_json:from_list([{<<"Notify-User">>, User}
                                                        ,{<<"Notify-Realm">>, Realm}
@@ -471,7 +480,7 @@ update_message(DocId, MediaId, #cb_context{req_data=Data}=Context) ->
     end. 
 
 -spec update_message1/3 :: (ne_binary(), ne_binary(), #cb_context{}) -> #cb_context{}.
-update_message1(VMBoxId, MediaId, #cb_context{req_data=ReqData}=Context) ->
+update_message1(VMBoxId, MediaId, #cb_context{req_data=ReqData, db_name=Db, account_id=AccountId}=Context) ->
     RequestedValue = wh_json:get_value(<<"folder">>, ReqData),
 
     Context1 = #cb_context{doc=VMBox} = crossbar_doc:load(VMBoxId, Context),
@@ -481,6 +490,9 @@ update_message1(VMBoxId, MediaId, #cb_context{req_data=ReqData}=Context) ->
     case get_message_index(MediaId, Messages) of
         Index when Index > 0 ->
             VMBox1 = wh_json:set_value([<<"messages">>, Index, <<"folder">>], RequestedValue, VMBox),
+
+            _ = spawn(fun() -> _ = crossbar_util:put_reqid(Context1), update_mwi(VMBox1, AccountId, Db) end),
+
             Context1#cb_context{doc=VMBox1};
         _Idx ->
             crossbar_util:response_bad_identifier(MediaId, Context)
