@@ -1,7 +1,6 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2012, VoIP INC
 %%% @doc
-%%%
 %%%
 %%% Handle client requests for phone_number documents
 %%%
