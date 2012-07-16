@@ -1,11 +1,12 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2012, VoIP INC
 %%% @doc
 %%%
 %%% Handle e911 provisioning
 %%%
 %%% @end
-%%% Created : 08 Jan 2012 by Karl Anderson <karl@2600hz.org>
+%%% @contributors
+%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(wnm_dash_e911).
 
@@ -18,8 +19,6 @@
 
 -define(WNM_DASH_CONFIG_CAT, <<(?WNM_CONFIG_CAT)/binary, ".dash_e911">>).
 
--define(SERVER, ?MODULE).
-
 -define(DASH_XML_PROLOG, "<?xml version=\"1.0\"?>").
 -define(DASH_AUTH_USERNAME, whapps_config:get_string(?WNM_DASH_CONFIG_CAT, <<"auth_username">>, <<>>)).
 -define(DASH_AUTH_PASSWORD, whapps_config:get_string(?WNM_DASH_CONFIG_CAT, <<"auth_password">>, <<>>)).
@@ -31,7 +30,7 @@
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% This function is called each time a number is saved, and will 
+%% This function is called each time a number is saved, and will
 %% provision e911 or remove the number depending on the state
 %% @end
 %%--------------------------------------------------------------------
@@ -42,21 +41,21 @@ save(#number{state = <<"reserved">>} = Number) ->
     maybe_update_dash_e911(Number);
 save(#number{state = <<"in_service">>} = Number) ->
     maybe_update_dash_e911(Number);
-save(Number) -> delete(Number). 
+save(Number) -> delete(Number).
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% This function is called each time a number is deleted, and will 
+%% This function is called each time a number is deleted, and will
 %% provision e911 or remove the number depending on the state
 %% @end
 %%--------------------------------------------------------------------
 -spec delete/1 :: (wnm_number()) -> wnm_number().
 delete(#number{features=Features, number=Num
-               ,current_number_doc=CurrentDoc, number_doc=Doc}=Number) -> 
+               ,current_number_doc=CurrentDoc, number_doc=Doc}=Number) ->
     case wh_json:get_ne_value(<<"dash_e911">>, CurrentDoc) of
         undefined -> Number;
-        _Else -> 
+        _Else ->
             lager:debug("removing e911 information"),
             _ = remove_number(Num),
             Number#number{features=sets:del_element(<<"dash_e911">>, Features)
@@ -76,7 +75,7 @@ maybe_update_dash_e911(#number{current_number_doc=CurrentJObj, number_doc=JObj
     E911 = wh_json:get_ne_value(<<"dash_e911">>, JObj),
     NotChanged = wnm_util:are_jobjs_identical(CurrentE911, E911),
     case wh_util:is_empty(E911) of
-        true -> 
+        true ->
             lager:debug("dash e911 information has been removed, updating dash"),
             _ = remove_number(Number),
             N#number{features=sets:del_element(<<"dash_e911">>, Features)};
@@ -102,19 +101,19 @@ update_e911(Number, Address, JObj) ->
     Location = json_address_to_xml_location(Address),
     CallerName = wh_json:get_ne_value(<<"caller_name">>, Address, <<"Valued Customer">>),
     case add_location(Number, Location, CallerName) of
-        {error, R}=E -> 
+        {error, R}=E ->
             lager:debug("error provisioning dash e911 address: ~p", [R]),
             E;
-        {provisioned, E911} -> 
+        {provisioned, E911} ->
             lager:debug("provisioned dash e911 address"),
             {ok, wh_json:set_value(<<"dash_e911">>, E911, JObj)};
         {geocoded, E911} ->
             lager:debug("added location to dash e911, attempting to provision new location"),
             case provision_location(wh_json:get_value(<<"location_id">>, E911)) of
-                undefined -> 
+                undefined ->
                     lager:debug("provisioning attempt moved location to status: undefined"),
                     {ok, wh_json:set_value(<<"dash_e911">>, E911, JObj)};
-                Status -> 
+                Status ->
                     lager:debug("provisioning attempt moved location to status: ~s", [Status]),
                     {ok, wh_json:set_value(<<"dash_e911">>, wh_json:set_value(<<"status">>, Status, E911), JObj)}
             end
@@ -199,7 +198,7 @@ emergency_provisioning_request(Verb, Props) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec is_valid_location/1 :: (term()) -> {geocoded, wh_json:json_object()} | 
+-spec is_valid_location/1 :: (term()) -> {geocoded, wh_json:json_object()} |
                                                  {provisioned, wh_json:json_object()} |
                                                  {error, binary()}.
 is_valid_location(Location) ->
@@ -223,7 +222,7 @@ is_valid_location(Location) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec add_location/3 :: (ne_binary(), term(), ne_binary()) -> {geocoded, wh_json:json_object()} | 
+-spec add_location/3 :: (ne_binary(), term(), ne_binary()) -> {geocoded, wh_json:json_object()} |
                                                               {provisioned, wh_json:json_object()} |
                                                               {error, binary()}.
 add_location(Number, Location, CallerName) ->
@@ -268,12 +267,12 @@ remove_number(Number) ->
     lager:debug("removing dash e911 number '~s'", [Number]),
     Props = [{'uri', [wh_util:to_list(<<"tel:", (wnm_util:to_1npan(Number))/binary>>)]}],
     case emergency_provisioning_request('removeURI', Props) of
-        {error, server_error} -> 
+        {error, server_error} ->
             lager:debug("removed number from dash e911"),
             <<"REMOVED">>;
         Response ->
             case wh_util:get_xml_value("//URIStatus/code/text()", Response) of
-                <<"REMOVED">> = R -> 
+                <<"REMOVED">> = R ->
                     lager:debug("removed number from dash e911"),
                     R;
                 Else ->
@@ -316,11 +315,11 @@ location_xml_to_json_address(Xml) ->
     Props = [{<<"street_address">>, wh_util:get_xml_value("address1/text()", Xml)}
              ,{<<"extended_address">>, wh_util:get_xml_value("address2/text()", Xml)}
              ,{<<"activated_time">>, wh_util:get_xml_value("activated_time/text()", Xml)}
-             ,{<<"caller_name">>, wh_util:get_xml_value("callername/text()", Xml)} 
-             ,{<<"comments">>, wh_util:get_xml_value("comments/text()", Xml)} 
-             ,{<<"locality">>, wh_util:get_xml_value("community/text()", Xml)} 
-             ,{<<"order_id">>, wh_util:get_xml_value("customerorderid/text()", Xml)} 
-             ,{<<"latitude">>, wh_util:get_xml_value("latitude/text()", Xml)} 
+             ,{<<"caller_name">>, wh_util:get_xml_value("callername/text()", Xml)}
+             ,{<<"comments">>, wh_util:get_xml_value("comments/text()", Xml)}
+             ,{<<"locality">>, wh_util:get_xml_value("community/text()", Xml)}
+             ,{<<"order_id">>, wh_util:get_xml_value("customerorderid/text()", Xml)}
+             ,{<<"latitude">>, wh_util:get_xml_value("latitude/text()", Xml)}
              ,{<<"longitude">>, wh_util:get_xml_value("longitude/text()", Xml)}
              ,{<<"location_id">>, wh_util:get_xml_value("locationid/text()", Xml)}
              ,{<<"plus_four">>, wh_util:get_xml_value("plusfour/text()", Xml)}
