@@ -143,7 +143,7 @@ reconcile_providers([], Config) ->
 %% external (TODO: currently just uses US rules).
 %% @end
 %%--------------------------------------------------------------------
--spec get_callflow_account_numbers/1 :: (ne_binary()) -> wh_json:json_object().
+-spec get_callflow_account_numbers/1 :: (ne_binary()) -> wh_json:json_strings().
 get_callflow_account_numbers(AccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, encoded),
     case couch_mgr:get_all_results(AccountDb, ?CALLFLOW_VIEW) of

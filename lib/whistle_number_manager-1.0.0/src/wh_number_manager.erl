@@ -267,7 +267,8 @@ free_numbers(AccountId) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec reserve_number/3 :: (ne_binary(), ne_binary(), ne_binary()) -> operation_return().
--spec reserve_number/4 :: (ne_binary(), ne_binary(), ne_binary(), wh_json:json_object()) -> operation_return().
+-spec reserve_number/4 :: (ne_binary(), ne_binary(), ne_binary(), wh_json:json_object() | 'undefined')
+                          -> operation_return().
 
 reserve_number(Number, AssignTo, AuthBy) ->
     reserve_number(Number, AssignTo, AuthBy, undefined).
@@ -298,7 +299,8 @@ reserve_number(Number, AssignTo, AuthBy, PublicFields) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec assign_number_to_account/3 :: (ne_binary(), ne_binary(), ne_binary()) -> operation_return().
--spec assign_number_to_account/4 :: (ne_binary(), ne_binary(), ne_binary(), wh_json:json_object()) -> operation_return().
+-spec assign_number_to_account/4 :: (ne_binary(), ne_binary(), ne_binary(), wh_json:json_object() | 'undefined')
+                                    -> operation_return().
 
 assign_number_to_account(Number, AssignTo, AuthBy) ->
     assign_number_to_account(Number, AssignTo, AuthBy, undefined).
@@ -542,9 +544,9 @@ set_public_fields(Number, PublicFields, AuthBy) ->
 %% ensure the modules data is stored for later acquisition.
 %% @end
 %%--------------------------------------------------------------------
--spec prepare_find_results/2 :: (wh_proplist(), [] | [[ne_binary(),...],...]) -> [] | [ne_binary(),...].
--spec prepare_find_results/4 :: ([] | [ne_binary(),...], atom(), wh_json:json_object(), [] | [ne_binary(),...])
-                                -> [] | [ne_binary(),...].
+-spec prepare_find_results/2 :: (wh_proplist(), [] | [wh_json:json_strings(),...]) -> wh_json:json_strings().
+-spec prepare_find_results/4 :: (wh_json:json_strings(), atom(), wh_json:json_object(), wh_json:json_strings())
+                                -> wh_json:json_strings().
 
 prepare_find_results([], Found) ->
     Results = lists:flatten(Found),
@@ -554,7 +556,7 @@ prepare_find_results([{Module, {ok, ModuleResults}}|T], Found) ->
     case wh_json:get_keys(ModuleResults) of
         [] -> prepare_find_results(T, Found);
         Numbers ->
-            Results = prepare_find_results(Numbers, wh_util:to_binary(Module)
+            Results = prepare_find_results(Numbers, Module
                                            ,ModuleResults, Found),
             prepare_find_results(T, [Results|Found])
     end;
@@ -575,7 +577,7 @@ prepare_find_results([Number|Numbers], ModuleName, ModuleResults, Found) ->
             end;
         {not_found, #number{}=N} ->
             NewNumber = N#number{number=Number
-                                 ,module_name=ModuleName
+                                 ,module_name = ModuleName
                                  ,module_data=wh_json:get_value(Number, ModuleResults)
                                 },
             case catch wnm_number:save(wnm_number:create_discovery(NewNumber)) of
