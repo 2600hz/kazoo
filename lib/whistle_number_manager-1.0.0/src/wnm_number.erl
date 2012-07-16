@@ -125,7 +125,7 @@ get(Number) ->
 
 get(Number, PublicFields) ->
     Num = wnm_util:normalize_number(Number),
-    Routines = [fun(#number{}=N) -> 
+    Routines = [fun(#number{}=N) ->
                         case wnm_util:is_reconcilable(Num) of
                             false -> error_not_reconcilable(N);
                             true -> N
@@ -181,7 +181,7 @@ save_phone_number_docs([], Number) -> Number;
 save_phone_number_docs([{Account, JObj}|Props], #number{number=Num}=Number) ->
     AccountDb = wh_util:format_account_id(Account, encoded),
     case couch_mgr:save_doc(AccountDb, JObj) of
-        {ok, _} -> 
+        {ok, _} ->
             lager:debug("saved updated phone_numbers doc in account db ~s", [AccountDb]),
             save_phone_number_docs(Props, Number);
         {error, conflict} ->
@@ -253,15 +253,15 @@ available(#number{state = <<"released">>}=Number) ->
     Routines = [fun(#number{auth_by=AuthBy}=N) ->
                         %% Only the 'system' maintenance routines or a system admin can
                         %% move a released (aging) number back to available.
-                        case AuthBy =:= system 
-                            orelse wh_util:is_system_admin(AuthBy) 
+                        case AuthBy =:= system
+                            orelse wh_util:is_system_admin(AuthBy)
                         of
                             true -> N#number{state = <<"available">>};
                             false -> error_unauthorized(N)
                         end
                 end
                ],
-    lists:foldl(fun(F, N) -> F(N) end, Number, Routines);    
+    lists:foldl(fun(F, N) -> F(N) end, Number, Routines);
 available(#number{state = <<"available">>}=Number) ->
     error_no_change_required(<<"available">>, Number);
 available(Number) ->
@@ -284,11 +284,11 @@ reserved(#number{state = <<"discovery">>}=Number) ->
                 ,fun(#number{reserve_history=ReserveHistory, assign_to=AssignTo}=N) ->
                          N#number{reserve_history=ordsets:add_element(AssignTo, ReserveHistory)}
                  end
-                ,fun(#number{assigned_to=undefined, assign_to=AssignTo}=N) -> 
+                ,fun(#number{assigned_to=undefined, assign_to=AssignTo}=N) ->
                          N#number{state = <<"reserved">>, assigned_to=AssignTo};
-                    (#number{assigned_to=AssignedTo, prev_assigned_to=AssignedTo}=N) -> 
+                    (#number{assigned_to=AssignedTo, prev_assigned_to=AssignedTo}=N) ->
                          N#number{state = <<"reserved">>};
-                    (#number{assigned_to=AssignedTo, assign_to=AssignTo}=N) -> 
+                    (#number{assigned_to=AssignedTo, assign_to=AssignTo}=N) ->
                          N#number{state = <<"reserved">>, assigned_to=AssignTo, prev_assigned_to=AssignedTo}
                  end
                 ,fun(#number{}=N) -> activate_phone_number(N) end
@@ -309,11 +309,11 @@ reserved(#number{state = <<"available">>}=Number) ->
                 ,fun(#number{reserve_history=ReserveHistory, assign_to=AssignTo}=N) ->
                          N#number{reserve_history=ordsets:add_element(AssignTo, ReserveHistory)}
                  end
-                ,fun(#number{assigned_to=undefined, assign_to=AssignTo}=N) -> 
+                ,fun(#number{assigned_to=undefined, assign_to=AssignTo}=N) ->
                          N#number{state = <<"reserved">>, assigned_to=AssignTo};
-                    (#number{assigned_to=AssignedTo, prev_assigned_to=AssignedTo}=N) -> 
+                    (#number{assigned_to=AssignedTo, prev_assigned_to=AssignedTo}=N) ->
                          N#number{state = <<"reserved">>};
-                    (#number{assigned_to=AssignedTo, assign_to=AssignTo}=N) -> 
+                    (#number{assigned_to=AssignedTo, assign_to=AssignTo}=N) ->
                          N#number{state = <<"reserved">>, assigned_to=AssignTo, prev_assigned_to=AssignedTo}
                  end
                 ,fun(#number{}=N) -> activate_phone_number(N) end
@@ -330,15 +330,15 @@ reserved(#number{state = <<"reserved">>}=Number) ->
                             false -> error_unauthorized(N);
                             true -> N
                         end
-                end          
+                end
                 ,fun(#number{reserve_history=ReserveHistory, assign_to=AssignTo}=N) ->
                          N#number{reserve_history=ordsets:add_element(AssignTo, ReserveHistory)}
                  end
-                ,fun(#number{assigned_to=undefined, assign_to=AssignTo}=N) -> 
+                ,fun(#number{assigned_to=undefined, assign_to=AssignTo}=N) ->
                          N#number{state = <<"reserved">>, assigned_to=AssignTo};
-                    (#number{assigned_to=AssignedTo, prev_assigned_to=AssignedTo}=N) -> 
+                    (#number{assigned_to=AssignedTo, prev_assigned_to=AssignedTo}=N) ->
                          N#number{state = <<"reserved">>};
-                    (#number{assigned_to=AssignedTo, assign_to=AssignTo}=N) -> 
+                    (#number{assigned_to=AssignedTo, assign_to=AssignTo}=N) ->
                          N#number{state = <<"reserved">>, assigned_to=AssignTo, prev_assigned_to=AssignedTo}
                  end
                 ,fun(#number{}=N) -> activate_phone_number(N) end
@@ -355,7 +355,7 @@ reserved(#number{state = <<"in_service">>}=Number) ->
     lists:foldl(fun(F, J) -> F(J) end, Number, Routines);
 reserved(Number) ->
     error_invalid_state_transition(<<"reserved">>, Number).
- 
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -370,9 +370,9 @@ in_service(#number{state = <<"discovery">>}=Number) ->
                             true -> N
                         end
                 end
-                ,fun(#number{assigned_to=undefined, assign_to=AssignTo}=N) -> 
+                ,fun(#number{assigned_to=undefined, assign_to=AssignTo}=N) ->
                          N#number{state = <<"in_service">>, assigned_to=AssignTo};
-                    (#number{assigned_to=AssignedTo, assign_to=AssignedTo}=N) -> 
+                    (#number{assigned_to=AssignedTo, assign_to=AssignedTo}=N) ->
                          N#number{state = <<"in_service">>};
                     (#number{assigned_to=AssignedTo, assign_to=AssignTo}=N) ->
                          N#number{state = <<"in_service">>, assigned_to=AssignTo, prev_assigned_to=AssignedTo}
@@ -401,9 +401,9 @@ in_service(#number{state = <<"available">>}=Number) ->
                             true -> N
                         end
                 end
-                ,fun(#number{assigned_to=undefined, assign_to=AssignTo}=N) -> 
+                ,fun(#number{assigned_to=undefined, assign_to=AssignTo}=N) ->
                          N#number{state = <<"in_service">>, assigned_to=AssignTo};
-                    (#number{assigned_to=AssignedTo, assign_to=AssignedTo}=N) -> 
+                    (#number{assigned_to=AssignedTo, assign_to=AssignedTo}=N) ->
                          N#number{state = <<"in_service">>};
                     (#number{assigned_to=AssignedTo, assign_to=AssignTo}=N) ->
                          N#number{state = <<"in_service">>, assigned_to=AssignTo, prev_assigned_to=AssignedTo}
@@ -421,9 +421,9 @@ in_service(#number{state = <<"reserved">>}=Number) ->
                             true -> N
                         end
                 end
-                ,fun(#number{assigned_to=undefined, assign_to=AssignTo}=N) -> 
+                ,fun(#number{assigned_to=undefined, assign_to=AssignTo}=N) ->
                          N#number{state = <<"in_service">>, assigned_to=AssignTo};
-                    (#number{assigned_to=AssignedTo, assign_to=AssignedTo}=N) -> 
+                    (#number{assigned_to=AssignedTo, assign_to=AssignedTo}=N) ->
                          N#number{state = <<"in_service">>};
                     (#number{assigned_to=AssignedTo, assign_to=AssignTo}=N) ->
                          N#number{state = <<"in_service">>, assigned_to=AssignTo, prev_assigned_to=AssignedTo}
@@ -461,10 +461,10 @@ released(#number{state = <<"reserved">>}=Number) ->
                 ,fun(#number{module_name=ModuleName, prev_assigned_to=AssignedTo, reserve_history=ReserveHistory}=N) ->
                     History = ordsets:del_element(AssignedTo, ReserveHistory),
                     case ordsets:to_list(History) of
-                        [] when ModuleName =:= wnm_local -> 
+                        [] when ModuleName =:= wnm_local ->
                             lager:debug("flagging released local number for hard delete", []),
                             N#number{state = <<"released">>, reserve_history=ordsets:new(), hard_delete=true};
-                        [] -> 
+                        [] ->
                             lager:debug("moving ~p number to number_manager.released_state '~s'", [ModuleName, NewState]),
                             N#number{state = NewState, reserve_history=ordsets:new()};
                         [PrevReservation|_] ->
@@ -493,10 +493,10 @@ released(#number{state = <<"in_service">>}=Number) ->
                 ,fun(#number{module_name=ModuleName, prev_assigned_to=AssignedTo, reserve_history=ReserveHistory}=N) ->
                     History = ordsets:del_element(AssignedTo, ReserveHistory),
                     case ordsets:to_list(History) of
-                        [] when ModuleName =:= wnm_local -> 
+                        [] when ModuleName =:= wnm_local ->
                             lager:debug("flagging local number for hard delete", []),
                             N#number{state = <<"released">>, reserve_history=ordsets:new(), hard_delete=true};
-                        [] -> 
+                        [] ->
                             lager:debug("moving ~p number to number_manager.released_state '~s'", [ModuleName, NewState]),
                             N#number{state = NewState, reserve_history=ordsets:new()};
                         [PrevReservation|_] ->
@@ -554,8 +554,8 @@ json_to_record(JObj, #number{number=Num, number_db=Db}=Number) ->
                   ,assigned_to=wh_json:get_ne_value(<<"pvt_assigned_to">>, JObj)
                   ,prev_assigned_to=wh_json:get_ne_value(<<"pvt_previously_assigned_to">>, JObj)
                   ,module_name=wnm_util:get_carrier_module(JObj)
-                  ,module_data=wh_json:get_ne_value(<<"pvt_module_data">>, JObj) 
-                  ,features=sets:from_list(wh_json:get_ne_value(<<"pvt_features">>, JObj, [])) 
+                  ,module_data=wh_json:get_ne_value(<<"pvt_module_data">>, JObj)
+                  ,features=sets:from_list(wh_json:get_ne_value(<<"pvt_features">>, JObj, []))
                   ,current_features=sets:from_list(wh_json:get_ne_value(<<"pvt_features">>, JObj, []))
                   ,number_doc=JObj
                   ,current_number_doc=JObj
@@ -614,10 +614,10 @@ save_number_doc(#number{number_db=Db, number=Num, number_doc=JObj}=Number) ->
             true = couch_mgr:db_create(Db),
             couch_mgr:revise_views_from_folder(Db, whistle_number_manager),
             save_number_doc(Number);
-        {error, Reason} ->  
+        {error, Reason} ->
             lager:debug("failed to save '~s' in '~s': ~p", [Num, Db, Reason]),
             error_number_database(Reason, Number);
-        {ok, J} -> 
+        {ok, J} ->
             lager:debug("saved '~s' in '~s'", [Num, Db]),
             Number#number{number_doc=J}
     end.
@@ -631,7 +631,7 @@ save_number_doc(#number{number_db=Db, number=Num, number_doc=JObj}=Number) ->
 -spec delete_number_doc/1 :: (wnm_number()) -> wnm_number().
 delete_number_doc(#number{number_db=Db, number=Num, number_doc=JObj}=Number) ->
     case couch_mgr:del_doc(Db, JObj) of
-        {ok, _} -> 
+        {ok, _} ->
             lager:debug("deleted '~s' from '~s'", [Num, Db]),
             Number#number{number_doc=wh_json:new()};
         {error, Reason} ->
@@ -676,7 +676,6 @@ exec_providers(Number, Action) ->
 
 exec_providers([], _, Number) -> Number;
 exec_providers([Provider|Providers], Action, Number) ->
-    lager:debug("executing provider ~s", [Provider]),
     case wnm_util:try_load_module(<<"wnm_", Provider/binary>>) of
         false ->
             lager:debug("provider ~s is unknown, skipping", [Provider]),
@@ -685,7 +684,7 @@ exec_providers([Provider|Providers], Action, Number) ->
             case apply(Mod, Action, [Number]) of
                 #number{}=N -> exec_providers(Providers, Action, N);
                 {error, Reason} ->
-                    Errors = wh_json:from_list([{Provider, Reason}]), 
+                    Errors = wh_json:from_list([{Provider, Reason}]),
                     wnm_number:error_provider_fault(Errors, Number)
             end
     end.
@@ -704,7 +703,7 @@ error_invalid_state_transition(Transition, #number{state = State}=N) ->
 
 -spec error_unauthorized/1 :: (wnm_number()) -> no_return().
 error_unauthorized(N) ->
-    Error = <<"Not authorized to preform requested number operation">>, 
+    Error = <<"Not authorized to preform requested number operation">>,
     lager:debug("~s", [Error]),
     throw({unauthorized, N#number{error_jobj=wh_json:from_list([{<<"unauthorized">>, Error}])}}).
 
@@ -736,13 +735,13 @@ error_carrier_not_specified(N) ->
 error_number_not_found(N) ->
     Error = <<"The number could not be found">>,
     lager:debug("~s", [Error]),
-    throw({not_found, N#number{error_jobj=wh_json:from_list([{<<"not_found">>, Error}])}}).    
+    throw({not_found, N#number{error_jobj=wh_json:from_list([{<<"not_found">>, Error}])}}).
 
 -spec error_number_exists/1 :: (wnm_number()) -> no_return().
 error_number_exists(N) ->
     Error = <<"The number already exists">>,
     lager:debug("~s", [Error]),
-    throw({number_exists, N#number{error_jobj=wh_json:from_list([{<<"number_exists">>, Error}])}}).    
+    throw({number_exists, N#number{error_jobj=wh_json:from_list([{<<"number_exists">>, Error}])}}).
 
 -spec error_service_restriction/2 :: (wh_json:json_object(), wnm_number()) -> no_return().
 error_service_restriction(Reason, N) ->
@@ -798,9 +797,9 @@ get_updated_phone_number_docs(#number{state=State}=Number) ->
 remove_from_phone_number_doc(Account, #number{number=Num, phone_number_docs=PhoneNumberDocs}=Number) ->
     case get_phone_number_doc(Account, Number) of
         {error, _} -> Number;
-        {ok, JObj} -> 
+        {ok, JObj} ->
             case wh_json:delete_key(Num, JObj) of
-                JObj -> 
+                JObj ->
                     lager:debug("no need to remove ~s on phone_numbers for account ~s", [Num, Account]),
                     Number;
                 UpdatedJObj ->
@@ -819,10 +818,10 @@ remove_from_phone_number_doc(Account, #number{number=Num, phone_number_docs=Phon
 update_phone_number_doc(Account, #number{number=Num, phone_number_docs=PhoneNumberDocs}=Number) ->
     case get_phone_number_doc(Account, Number) of
         {error, _} -> Number;
-        {ok, JObj} -> 
+        {ok, JObj} ->
             Features = create_number_summary(Account, Number),
             case wh_json:set_value(Num, Features, JObj) of
-                JObj -> 
+                JObj ->
                     lager:debug("no need to update ~s on phone_numbers for account ~s", [Num, Account]),
                     Number;
                 UpdatedJObj ->
@@ -852,7 +851,7 @@ get_phone_number_doc(Account, #number{phone_number_docs=Docs}) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec create_number_summary/2 :: (ne_binary(), wnm_number()) -> wh_json:json_object().
-create_number_summary(Account, #number{state=State, features=Features, assigned_to=AssignedTo}) ->        
+create_number_summary(Account, #number{state=State, features=Features, assigned_to=AssignedTo}) ->
     wh_json:from_list([{<<"state">>, State}
                        ,{<<"features">>, [wh_util:to_binary(F) || F <- sets:to_list(Features)]}
                        ,{<<"on_subaccount">>, Account =/= AssignedTo}
@@ -878,7 +877,7 @@ load_phone_number_doc(Account) ->
             ,{<<"pvt_modified">>, wh_util:current_tstamp()}
            ],
     case couch_mgr:open_doc(AccountDb, ?WNM_PHONE_NUMBER_DOC) of
-        {ok, J} -> 
+        {ok, J} ->
             lager:debug("loaded phone_numbers from ~s", [AccountId]),
             {ok, wh_json:set_values(PVTs, J)};
         {error, not_found} ->
