@@ -117,14 +117,16 @@ wait_for_bridge(State, Timeout) ->
             JObj = wh_json:decode(Payload),
             case process_event_for_bridge(State, JObj) of
                 ignore ->
-                    wait_for_bridge(State, Timeout - (timer:now_diff(erlang:now(), Start) div 1000));
+                    wait_for_bridge(State, Timeout - wh_util:elapsed_ms(Start));
                 {bridged, _}=Success -> Success;
                 {error, _}=Error -> Error;
-                {hangup, _}=Hangup -> Hangup
+                {hangup, _}=Hangup -> Hangup;
+                E -> lager:debug("unhandled return: ~p", [E]),
+                     throw(E)
             end;
         _E ->
-            lager:debug("Unexpected msg: ~p", [_E]),
-            wait_for_bridge(State, Timeout - (timer:now_diff(erlang:now(), Start) div 1000))
+            lager:debug("unexpected msg: ~p", [_E]),
+            wait_for_bridge(State, Timeout - wh_util:elapsed_ms(Start))
     after Timeout ->
             lager:debug("timeout waiting for bridge"),
             {timeout, State}
@@ -138,14 +140,14 @@ process_event_for_bridge(#ts_callflow_state{aleg_callid=ALeg, my_q=Q, callctl_q=
 
         {_, <<"offnet_resp">>, <<"resource">>} ->
             case wh_json:get_value(<<"Response-Message">>, JObj) of
-                <<"ERROR">> ->
-                    Failure = wh_json:get_value(<<"Error-Message">>, JObj, wh_json:get_value(<<"Response-Code">>, JObj)),
-                    lager:debug("offnet failed: ~s", [Failure]),
-                    {error, State};
                 <<"SUCCESS">> ->
                     lager:debug("offnet bridge has completed"),
                     lager:debug("~p", [JObj]),
-                    {hangup, State}
+                    {hangup, State};
+                _Err ->
+                    Failure = wh_json:get_value(<<"Error-Message">>, JObj, wh_json:get_value(<<"Response-Code">>, JObj)),
+                    lager:debug("offnet failed: ~s(~s)", [Failure, _Err]),
+                    {error, State}
             end;
 
         { _, <<"CHANNEL_BRIDGE">>, <<"call_event">> } ->
@@ -233,6 +235,10 @@ process_event_for_cdr(#ts_callflow_state{aleg_callid=ALeg}=State, JObj) ->
             lager:debug("Unbridge received, waiting on CDR"),
             {hangup, State};
 
+        { <<"call_event">>, <<"CHANNEL_DESTROY">> } ->
+            lager:debug("channel has been destroyed"),
+            {hangup, State};
+
         { <<"error">>, _ } ->
             lager:debug("Error received, waiting on CDR"),
             {hangup, State};
@@ -240,11 +246,11 @@ process_event_for_cdr(#ts_callflow_state{aleg_callid=ALeg}=State, JObj) ->
         { <<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>} ->
             case {wh_json:get_value(<<"Application-Name">>, JObj), wh_json:get_value(<<"Application-Response">>, JObj)} of
                 {<<"bridge">>, <<"SUCCESS">>} ->
-                    lager:debug("Bridge event finished successfully, sending hangup"),
+                    lager:debug("bridge event finished successfully, sending hangup"),
                     send_hangup(State),
                     ignore;
                 {<<"bridge">>, Cause} ->
-                    lager:debug("Failed to bridge: ~s", [Cause]),
+                    lager:debug("failed to bridge: ~s", [Cause]),
                     {error, State};
                 {_,_} ->
                     ignore
@@ -256,26 +262,24 @@ process_event_for_cdr(#ts_callflow_state{aleg_callid=ALeg}=State, JObj) ->
             Duration = ts_util:get_call_duration(JObj),
 
             lager:debug("CDR received for leg ~s", [Leg]),
-            lager:debug("Leg to be billed for ~b seconds", [Duration]),
+            lager:debug("leg to be billed for ~b seconds", [Duration]),
 
             case Leg =:= ALeg of
                 true -> {cdr, aleg, JObj, State};
                 false -> {cdr, bleg, JObj, State}
             end;
         _E ->
-            lager:debug("Ignorable event: ~p", [_E]),
+            lager:debug("ignorable event: ~p", [_E]),
             ignore
     end.
 
 -spec finish_leg/2 :: (#ts_callflow_state{}, 'undefined' | ne_binary()) -> 'ok'.
-finish_leg(_State, undefined) ->
-    ok;
+finish_leg(_State, undefined) -> ok;
 finish_leg(#ts_callflow_state{}=State, _Leg) ->
     send_hangup(State).
 
 -spec send_hangup/1 :: (#ts_callflow_state{}) -> 'ok'.
-send_hangup(#ts_callflow_state{callctl_q = <<>>}) ->
-    ok;
+send_hangup(#ts_callflow_state{callctl_q = <<>>}) -> ok;
 send_hangup(#ts_callflow_state{callctl_q=CtlQ, my_q=Q, aleg_callid=CallID}) ->
     Command = [
                {<<"Application-Name">>, <<"hangup">>}
