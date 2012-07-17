@@ -327,7 +327,6 @@ routing_data(ToDID, AcctID, Settings) ->
                          ,wh_json:get_value(<<"failover">>, SrvOptions)
                          ,wh_json:get_value(<<"failover">>, AcctStuff)
                         ],
-    lager:debug("looking for failover in ~p", [FailoverLocations]),
 
     Failover = ts_util:failover(FailoverLocations),
     lager:debug("failover found: ~p", [Failover]),
