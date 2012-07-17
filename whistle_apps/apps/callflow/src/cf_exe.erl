@@ -387,11 +387,7 @@ handle_info(_, State) ->
 %%--------------------------------------------------------------------
 handle_event(JObj, #state{cf_module_pid=Pid, call=Call}) ->
     CallId = whapps_call:call_id_direct(Call),
-    case {whapps_util:get_event_type(JObj), wh_json:get_value(<<"Call-ID">>, JObj)}of
-        {{<<"call_event">>, <<"channel_status_resp">>}, _} ->
-            {reply, [{cf_module_pid, Pid}]};
-        {{<<"call_event">>, <<"call_status_resp">>}, _} ->
-            {reply, [{cf_module_pid, Pid}]};
+    case {whapps_util:get_event_type(JObj), wh_json:get_value(<<"Call-ID">>, JObj)} of
         {{<<"call_event">>, <<"call_id_update">>},_} ->
             NewCallId = wh_json:get_value(<<"Call-ID">>, JObj),
             NewCtrlQ = wh_json:get_value(<<"Control-Queue">>, JObj),

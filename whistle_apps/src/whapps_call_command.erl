@@ -11,12 +11,15 @@
 
 -include("./whapps_call_command.hrl").
 
+-export([presence/2, presence/3]).
+-export([call_status/1, channel_status/1]).
+-export([response/2, response/3, response/4]).
+
 -export([relay_event/2]).
 
 -export([audio_macro/2]).
--export([response/2, response/3, response/4]).
--export([pickup/2, pickup/3, pickup/4, pickup/5
-         ,b_pickup/2, b_pickup/3, b_pickup/4, b_pickup/5
+-export([pickup/2, pickup/3, pickup/4
+         ,b_pickup/2, b_pickup/3, b_pickup/4
         ]).
 -export([redirect/3]).
 -export([answer/1, hangup/1, hangup/2, set/3, fetch/1, fetch/2]).
@@ -24,10 +27,8 @@
 -export([receive_fax/1
          ,b_receive_fax/1
         ]).
--export([call_status/1, call_status/2, channel_status/1, channel_status/2]).
 -export([bridge/2, bridge/3, bridge/4, bridge/5, bridge/6, bridge/7]).
 -export([hold/1, b_hold/1, b_hold/2]).
--export([presence/2, presence/3]).
 -export([play/2, play/3]).
 -export([prompt/2, prompt/3]).
 
@@ -56,7 +57,6 @@
 
 -export([b_answer/1, b_hangup/1, b_hangup/2, b_fetch/1, b_fetch/2]).
 -export([b_ring/1]).
--export([b_call_status/1, b_call_status/2, b_channel_status/1, b_channel_status/2]).
 -export([b_bridge/2, b_bridge/3, b_bridge/4, b_bridge/5, b_bridge/6, b_bridge/7]).
 -export([b_play/2, b_play/3]).
 -export([b_prompt/2, b_prompt/3]).
@@ -91,11 +91,6 @@
 -export([collect_digits/2, collect_digits/3, collect_digits/4, collect_digits/5, collect_digits/6]).
 -export([send_command/2]).
 
-%%--------------------------------------------------------------------
-%% @pubic
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
 -type audio_macro_prompt() :: {'play', binary()} | {'play', binary(), [binary(),...]} |
                               {'prompt', binary()} | {'prompt', binary(), binary()} |
                               {'say', binary()} | {'say', binary(), binary()} |
@@ -103,6 +98,87 @@
                               {'tones', wh_json:json_objects()} |
                               {'tts', ne_binary()} | {'tts', ne_binary(), ne_binary()} | {'tts', ne_binary(), ne_binary(), ne_binary()}.
 -export_type([audio_macro_prompt/0]).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec presence/2 :: (ne_binary(), ne_binary() | whapps_call:call()) -> 'ok'.
+-spec presence/3 :: (ne_binary(), ne_binary() | whapps_call:call(), ne_binary() | whapps_call:call() | 'undefined') -> 'ok'.
+
+presence(State, PresenceId) when is_binary(PresenceId) ->
+    presence(State, PresenceId, undefined);
+presence(State, Call) ->
+    presence(State, whapps_call:from(Call)).
+
+presence(State, PresenceId, CallId) when is_binary(CallId) orelse CallId =:= 'undefined' ->
+    Command = [{<<"Presence-ID">>, PresenceId}
+               ,{<<"State">>, State}
+               ,{<<"Call-ID">>, CallId}
+               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+              ],
+    wapi_notifications:publish_presence_update(Command);
+presence(State, PresenceId, Call) ->
+    presence(State, PresenceId, whapps_call:call_id(Call)).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Produces the low level wh_api request to get the call status.
+%% This request will execute immediately
+%% @end
+%%--------------------------------------------------------------------
+-spec call_status/1 :: ('undefined' | ne_binary() | whapps_call:call()) -> whapps_api_std_return().
+call_status(undefined) ->
+    {error, no_call_id};
+call_status(CallId) when is_binary(CallId) ->
+    Command = [{<<"Call-ID">>, CallId}
+               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+              ],
+    Resp = wh_amqp_worker:call(whapps_amqp_pool
+                               ,Command
+                               ,fun(C) -> wapi_call:publish_call_status_req(CallId, C) end
+                               ,fun wapi_call:call_status_resp_v/1),
+    case Resp of
+        {error, _}=E -> E;
+        {ok, JObj}=Ok ->
+            case wh_json:get_value(<<"Status">>, JObj) of
+                <<"active">> -> Ok;
+                _Else -> {error, JObj}
+            end
+    end;
+call_status(Call) ->
+    call_status(whapps_call:call_id(Call)).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Produces the low level wh_api request to get the channel status.
+%% This request will execute immediately
+%% @end
+%%--------------------------------------------------------------------
+-spec channel_status/1 :: ('undefined' | ne_binary() | whapps_call:call()) -> whapps_api_std_return().
+channel_status(undefined) ->
+    {error, no_channel_id};
+channel_status(ChannelId) when is_binary(ChannelId) ->
+    Command = [{<<"Call-ID">>, ChannelId}
+               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+              ],
+    Resp = wh_amqp_worker:call(whapps_amqp_pool
+                               ,Command
+                               ,fun(C) -> wapi_call:publish_channel_status_req(ChannelId, C) end
+                               ,fun wapi_call:channel_status_resp_v/1),
+    case Resp of
+        {error, _}=E -> E;
+        {ok, JObj}=Ok ->
+            case wh_json:get_value(<<"Status">>, JObj) of
+                <<"active">> -> Ok;
+                _Else -> {error, JObj}
+            end
+    end;
+channel_status(Call) ->
+    channel_status(whapps_call:call_id(Call)).
 
 %%--------------------------------------------------------------------
 %% @pubic
@@ -266,29 +342,6 @@ flush_dtmf(Call) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec presence/2 :: (ne_binary(), ne_binary() | whapps_call:call()) -> 'ok'.
--spec presence/3 :: (ne_binary(), ne_binary() | whapps_call:call(), ne_binary() | whapps_call:call() | 'undefined') -> 'ok'.
-
-presence(State, PresenceId) when is_binary(PresenceId) ->
-    presence(State, PresenceId, undefined);
-presence(State, Call) ->
-    presence(State, whapps_call:from(Call)).
-
-presence(State, PresenceId, CallId) when is_binary(CallId) orelse CallId =:= 'undefined' ->
-    Command = [{<<"Presence-ID">>, PresenceId}
-               ,{<<"State">>, State}
-               ,{<<"Call-ID">>, CallId}
-               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-              ],
-    wapi_notifications:publish_presence_update(Command);
-presence(State, PresenceId, Call) ->
-    presence(State, PresenceId, whapps_call:call_id(Call)).
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
 %% Produces the low level wh_api request to set channel/call vars
 %% NOTICE: These are 'custom' channel vars for state info only, and
 %%   can not be used to set system settings
@@ -432,96 +485,6 @@ b_hangup(false, Call) ->
 b_hangup(true, Call) ->
     hangup(true, Call),
     wait_for_unbridge().
-
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Produces the low level wh_api request to get the call status.
-%% This request will execute immediately
-%% @end
-%%--------------------------------------------------------------------
--spec call_status/1 :: (whapps_call:call()) -> 'ok'.
--spec call_status/2 :: ('undefined' | ne_binary(), whapps_call:call()) -> 'ok'.
--spec b_call_status/1 :: (whapps_call:call()) -> whapps_api_std_return().
--spec b_call_status/2 :: ('undefined' | ne_binary(), whapps_call:call()) -> whapps_api_std_return().
-
-
-call_status(Call) ->    
-    call_status(undefined, Call).
-
-call_status(undefined, Call) ->
-    call_status(whapps_call:call_id(Call), Call);
-call_status(CallId, Call) ->
-    Command = [{<<"Call-ID">>, CallId}
-               | wh_api:default_headers(whapps_call:controller_queue(Call), ?APP_NAME, ?APP_VERSION)
-              ],
-    wapi_call:publish_call_status_req(CallId, Command).
-
-b_call_status(Call) ->
-    b_call_status(undefined, Call).
-
-b_call_status(undefined, Call) ->
-    b_call_status(whapps_call:call_id(Call), Call);
-b_call_status(CallId, Call) ->
-    call_status(CallId, Call),
-    wait_for_our_call_status(CallId).
-
-wait_for_our_call_status(CallId) ->
-    case wait_for_message(<<>>, <<"call_status_resp">>, <<"call_event">>, 2000) of
-        {ok, JObj}=Ok ->
-            case wh_json:get_value(<<"Call-ID">>, JObj) of
-                CallId -> Ok;
-                _Else -> wait_for_our_call_status(CallId)
-            end;
-        Else -> Else
-    end.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Produces the low level wh_api request to get the channel status.
-%% This request will execute immediately
-%% @end
-%%--------------------------------------------------------------------
--spec channel_status/1 :: (whapps_call:call()) -> 'ok'.
--spec channel_status/2 :: (undefined | ne_binary(), whapps_call:call()) -> 'ok'.
--spec b_channel_status/1 :: (whapps_call:call()) -> whapps_api_std_return().
--spec b_channel_status/2 :: (undefined | ne_binary(), whapps_call:call()) -> whapps_api_std_return().
-
-channel_status(Call) ->
-    channel_status(undefined, Call).
-
-channel_status(undefined, Call) ->
-    channel_status(whapps_call:call_id(Call), Call);
-channel_status(CallId, Call) ->
-    Command = [{<<"Call-ID">>, CallId}
-               | wh_api:default_headers(whapps_call:controller_queue(Call), ?APP_NAME, ?APP_VERSION)
-              ],
-    wapi_call:publish_channel_status_req(CallId, Command).
-
-b_channel_status(Call) ->
-    b_channel_status(undefined, Call).
-
-b_channel_status(undefined, Call) ->
-    b_channel_status(whapps_call:call_id(Call), Call);
-b_channel_status(CallId, Call) ->
-    channel_status(CallId, Call),
-    wait_for_our_channel_status(CallId).
-
-wait_for_our_channel_status(CallId) ->
-    case wait_for_message(<<>>, <<"channel_status_resp">>, <<"call_event">>, 2000) of
-        {ok, JObj}=Ok ->
-            case wh_json:get_value(<<"Call-ID">>, JObj) of
-                CallId -> 
-                    case wh_json:get_value(<<"Status">>, JObj) of 
-                        <<"active">> -> Ok;
-                        _Else -> {error, JObj}
-                    end;
-                _Else -> wait_for_our_channel_status(CallId)
-            end;
-        Else -> Else
-    end.
 
 %%--------------------------------------------------------------------
 %% @public

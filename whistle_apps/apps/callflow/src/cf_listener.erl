@@ -10,16 +10,16 @@
 
 -behaviour(gen_listener).
 
-%% API
 -export([start_link/0]).
 -export([stop/0]).
 -export([pause/0]).
 -export([resume/0]).
--export([handle_call_status_resp/2]).
-
-%% gen_listener callbacks
--export([init/1, handle_call/3, handle_cast/2
-         ,handle_info/2, handle_event/2, terminate/2
+-export([init/1
+         ,handle_call/3
+         ,handle_cast/2
+         ,handle_info/2
+         ,handle_event/2
+         ,terminate/2
          ,code_change/3
         ]).
 
@@ -31,7 +31,6 @@
                      ,{cf_route_win, [{<<"dialplan">>, <<"route_win">>}]}
                      ,{{cf_util, presence_probe}, [{<<"notification">>, <<"presence_probe">>}]}
                      ,{{cf_util, presence_mwi_query}, [{<<"notification">>, <<"mwi_query">>}]}
-                     ,{{?MODULE, handle_call_status_resp}, [{<<"call_event">>, <<"channel_status_resp">>}]}
                     ]).
 -define(BINDINGS, [{route, []}
                    ,{self, []}
@@ -73,15 +72,6 @@ resume() ->
 stop() ->
     {ok, Srv} = callflow_sup:listener_proc(),
     gen_listener:stop(Srv).
-
--spec handle_call_status_resp/2 :: (wh_json:json_object(), proplist()) -> any().
-handle_call_status_resp(JObj, Props) ->
-    Consumers = props:get_value(consumers, Props),
-    StatusCallId = wh_json:get_value(<<"Call-ID">>, JObj),
-    [Consumer ! {call_status_resp, JObj}
-     || {CallId, Consumer, _} <- Consumers
-            ,CallId =:= StatusCallId
-    ].
 
 %%%===================================================================
 %%% gen_listener callbacks
@@ -127,8 +117,8 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call(_Msg, _From, Consumers) ->
-    {noreply, Consumers}.
+handle_call(_Msg, _From, State) ->
+    {noreply, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -140,19 +130,8 @@ handle_call(_Msg, _From, Consumers) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({add_consumer, CallId, Consumer}, Consumers) ->
-    MRef = erlang:monitor(process, Consumer),
-    lager:debug("added call status response consumer (~p) for ~s", [Consumer, CallId]),
-    {noreply, [{CallId, Consumer, MRef}|Consumers]};
-handle_cast({remove_consumer, Consumer}, Consumers) ->
-    {noreply, lists:filter(fun({_, C, MRef}) when C =:= Consumer -> 
-                                   lager:debug("removed call status response consumer (~p): response sent", [Consumer]),
-                                   erlang:demonitor(MRef, [flush]),
-                                   false; 
-                              (_) -> true 
-                           end, Consumers)};
-handle_cast(_Msg, Consumers) ->
-    {noreply, Consumers}.
+handle_cast(_Msg, State) ->
+    {noreply, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -164,16 +143,9 @@ handle_cast(_Msg, Consumers) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({'DOWN', _, _, Consumer, _R}, Consumers) ->
-    {noreply, lists:filter(fun({_, C, MRef}) when C =:= Consumer -> 
-                                   lager:debug("removed call status response consumer (~p): ~p", [Consumer, _R]),
-                                   erlang:demonitor(MRef, [flush]),
-                                   false; 
-                              (_) -> true 
-                           end, Consumers)};
-handle_info(_Info, Consumers) ->
+handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
-    {noreply, Consumers}.
+    {noreply, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -183,8 +155,8 @@ handle_info(_Info, Consumers) ->
 %% @spec handle_event(JObj, State) -> {reply, Props}
 %% @end
 %%--------------------------------------------------------------------
-handle_event(_JObj, Consumers) ->
-    {reply, [{consumers, Consumers}]}.
+handle_event(_JObj, _State) ->
+    {reply, []}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -209,8 +181,8 @@ terminate(_Reason, _) ->
 %% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
 %% @end
 %%--------------------------------------------------------------------
-code_change(_OldVsn, Consumers, _Extra) ->
-    {ok, Consumers}.
+code_change(_OldVsn, State, _Extra) ->
+    {ok, State}.
 
 %%%===================================================================
 %%% Internal functions
