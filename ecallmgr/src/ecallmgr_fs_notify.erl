@@ -13,7 +13,7 @@
 -export([start_link/1, start_link/2]).
 -export([presence_update/2]).
 -export([mwi_update/2]).
--export([relay_presence/4]).
+-export([relay_presence/5]).
 -export([publish_presence_event/3]).
 -export([process_message_query_event/2]).
 -export([init/1
@@ -29,7 +29,7 @@
                         ,options :: proplist()}).
 
 -define(SERVER, ?MODULE).
--define(MWI_BODY, "Messages-Waiting: ~s\r\nMessage-Account: sip:~s\r\nVoice-Message: ~b/~b (~b/~b)\r\n\r\n").
+-define(MWI_BODY, "~b/~b (~b/~b)").
 
 -define(RESPONDERS, [{{?MODULE, mwi_update}, [{<<"notification">>, <<"mwi">>}]}
                      ,{{?MODULE, presence_update}, [{<<"notification">>, <<"presence_update">>}]}
@@ -39,7 +39,7 @@
 -define(QUEUE_OPTIONS, [{exclusive, false}]).
 -define(CONSUME_OPTIONS, [{exclusive, false}]).
 
--include("ecallmgr.hrl").
+-include_lib("ecallmgr.hrl").
 
 %%%===================================================================
 %%% API
@@ -69,57 +69,66 @@ start_link(Node, Options) ->
 
 -spec presence_update/2 :: (wh_json:json_object(), proplist()) -> any().
 presence_update(JObj, _Props) ->
+    do_presence_update(wh_json:get_value(<<"State">>, JObj), JObj).
+
+-spec do_presence_update/2 :: ('undefined' | ne_binary(), wh_json:json_object()) -> any().
+do_presence_update(undefined, JObj) ->
     PresenceId = wh_json:get_value(<<"Presence-ID">>, JObj),
-    Event = case wh_json:get_value(<<"State">>, JObj) of
-                undefined ->
-                    case ecallmgr_fs_nodes:channel_match_presence(PresenceId) of
-                        [] ->
-                            create_presence_in(PresenceId, "Available", undefined, wh_json:new());
-                        [{CallId, _}|_] ->
-                            Channel = wh_json:set_values([{<<"Channel-State">>, <<"CS_EXECUTE">>}
-                                                          ,{<<"Call-ID">>, CallId}
-                                                         ], wh_json:new()),
-                            create_presence_in(PresenceId, "answered", "confirmed", Channel)
-                    end;
-                <<"early">> -> create_presence_in(PresenceId, "CS_ROUTING", "early", JObj);
-                <<"confirmed">> -> create_presence_in(PresenceId, "CS_ROUTING", "confirmed", JObj);
-                <<"answered">> -> create_presence_in(PresenceId, "answered", "confirmed", JObj);
-                <<"terminated">> -> create_presence_in(PresenceId, "CS_ROUTING", "terminated", JObj);
-                _ -> create_presence_in(PresenceId, "Available", undefined, wh_json:new())
-            end,
-    relay_presence('PRESENCE_IN', PresenceId, Event, 'nonode@nodomain').
+    Switch = wh_json:get_string_value(<<"Switch-Nodename">>, JObj),
+    case ecallmgr_fs_nodes:channel_match_presence(PresenceId) of
+        [] -> 
+            Event = empty_presence_event(PresenceId),
+            relay_presence('PRESENCE_IN', PresenceId, Event, wh_util:to_list(node()), Switch);
+        Channels ->
+            case wh_json:get_value(<<"Dialog-State">>, JObj, <<"new">>) of
+                <<"new">> ->
+                    lists:foreach(fun({CallId, Node}) ->
+                                          Channel = wh_json:from_list([{<<"Call-ID">>, CallId}]),
+                                          Event = confirmed_presence_event(PresenceId, Channel),
+                                          relay_presence('PRESENCE_IN', PresenceId, Event, wh_util:to_list(Node), Switch)
+                                  end, Channels);
+                _Else ->
+                    lager:info("skipping channel updates for ~s subscription dialog", [_Else])
+            end
+    end;
+do_presence_update(State, JObj) ->
+    PresenceId = wh_json:get_value(<<"Presence-ID">>, JObj),
+    Switch = wh_json:get_string_value(<<"Switch-Nodename">>, JObj),
+    Event = case State of 
+                <<"early">> -> early_presence_event(PresenceId, JObj);
+                <<"confirmed">> -> confirmed_presence_event(PresenceId, JObj);
+                <<"terminated">> -> terminated_presence_event(PresenceId, JObj)
+            end,        
+    relay_presence('PRESENCE_IN', PresenceId, Event, wh_util:to_list(node()), Switch).
 
 -spec mwi_update/2 :: (wh_json:json_object(), proplist()) -> no_return().
 mwi_update(JObj, _Props) ->
     _ = wh_util:put_callid(JObj),
     true = wapi_notifications:mwi_update_v(JObj),
-    Username = wh_json:get_value(<<"Notify-User">>, JObj),
-    Realm  = wh_json:get_value(<<"Notify-Realm">>, JObj),
-    case get_endpoint(Username, Realm) of
-        {error, _R} ->
-            lager:debug("MWI update error ~s while fetching contact for ~s@~s", [_R, Username, Realm]);
-        Endpoint ->
-            NewMessages = wh_json:get_integer_value(<<"Messages-New">>, JObj, 0),
-            Body = io_lib:format(?MWI_BODY, [case NewMessages of 0 -> "no"; _ -> "yes" end
-                                             ,<<Username/binary, "@", Realm/binary>>
-                                                 ,NewMessages
-                                             ,wh_json:get_integer_value(<<"Messages-Saved">>, JObj, 0)
-                                             ,wh_json:get_integer_value(<<"Messages-Urgent">>, JObj, 0)
-                                             ,wh_json:get_integer_value(<<"Messages-Urgent-Saved">>, JObj, 0)
-                                            ]),
-            lager:debug("created mwi notify body ~s", [Body]),
-            Headers = [{"profile", ?DEFAULT_FS_PROFILE}
-                       ,{"to-uri", Endpoint}
-                       ,{"from-uri", "sip:2600hz@2600hz.com"}
-                       ,{"event-str", "message-summary"}
-                       ,{"content-type", "application/simple-message-summary"}
-                       ,{"content-length", wh_util:to_list(length(Body))}
-                       ,{"body", lists:flatten(Body)}
-                      ],
-            {ok, Node} = ecallmgr_registrar:endpoint_node(Realm, Username),
-            Resp = freeswitch:sendevent(Node, 'NOTIFY', Headers),
-            lager:debug("sent MWI update to '~s@~s' via ~s: ~p", [Username, Realm, Node, Resp])
-    end.
+    Node = case wh_json:get_value(<<"Switch-Nodename">>, JObj) of
+               undefined ->
+                   Username = wh_json:get_value(<<"Notify-User">>, JObj),
+                   Realm = wh_json:get_value(<<"Notify-Realm">>, JObj),                   
+                   {ok, N} = ecallmgr_registrar:endpoint_node(Realm, Username),
+                   N;
+               N -> wh_util:to_atom(N)
+           end,
+    NewMessages = wh_json:get_integer_value(<<"Messages-New">>, JObj, 0),
+    MessageAccount = wh_json:get_value(<<"Message-Account">>, JObj),
+    Body = io_lib:format(?MWI_BODY, [NewMessages
+                                     ,wh_json:get_integer_value(<<"Messages-Saved">>, JObj, 0)
+                                     ,wh_json:get_integer_value(<<"Messages-Urgent">>, JObj, 0)
+                                     ,wh_json:get_integer_value(<<"Messages-Urgent-Saved">>, JObj, 0)
+                                    ]),
+    Headers = [{"MWI-Message-Account", wh_json:get_string_value(<<"Message-Account">>, JObj)}
+               ,{"MWI-Messages-Waiting", case NewMessages of 0 -> "no"; _ -> "yes" end}
+               ,{"MWI-Voice-Message", lists:flatten(Body)}
+               ,{"Sofia-Profile", ?DEFAULT_FS_PROFILE}
+               ,{"Call-ID", wh_json:get_string_value(<<"Call-ID">>, JObj)}
+               ,{"Sub-Call-ID", wh_json:get_string_value(<<"Subscription-Call-ID">>, JObj)}
+              ],
+    Resp = freeswitch:sendevent(Node, 'MESSAGE_WAITING', props:filter_undefined(Headers)),
+    lager:debug("send MWI update for ~s to node ~s: ~p", [MessageAccount, Node, Resp]).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -161,7 +170,7 @@ init([Node, Options]) ->
               end),
             ok
     end,
-    case ecallmgr_config:get(<<"distribute_message_query">>, false) of
+    case ecallmgr_config:get(<<"distribute_message_query">>, true) of
         false -> ok;
         true ->
             ok = freeswitch:event(Node, ['MESSAGE_QUERY']),
@@ -213,25 +222,45 @@ handle_cast(_Msg, State) ->
 handle_info({event, [_ | Props]}, #state{node=Node}=State) ->
     case props:get_value(<<"Event-Name">>, Props) of
         <<"PRESENCE_PROBE">> ->
-            To = props:get_value(<<"to">>, Props, <<"noname@nodomain">>),
-            From = props:get_value(<<"from">>, Props, <<"noname@nodomain">>),
-            Key = wh_util:to_hex_binary(crypto:md5(<<To/binary, "|", From/binary>>)),
-            Expires = ecallmgr_util:get_expires(Props),
-            lager:debug("sip subscription from '~s' subscribing to '~s' via node '~s' for ~ps", [From, To, Node, Expires]),
-            ets:insert(sip_subscriptions, #sip_subscription{key=Key
-                                                            ,to=To
-                                                            ,from=From
-                                                            ,node=Node
-                                                            ,expires=Expires
-                                                           }),
-            _ = spawn_link(?MODULE, publish_presence_event, [<<"PRESENCE_PROBE">>, Props, Node]),
-            {noreply, State, hibernate};
+            %% New logic: if it is not a presence_probe for a subscription then ignore it...
+            case wh_util:is_empty(props:get_value(<<"sub-call-id">>, Props)) of
+                true -> {noreply, State, hibernate};
+                false ->
+                    To = props:get_value(<<"to">>, Props, <<"noname@nodomain">>),
+                    From = props:get_value(<<"from">>, Props, <<"noname@nodomain">>),
+                    Key = wh_util:to_hex_binary(crypto:md5(<<To/binary, "|", From/binary>>)),
+                    Expires = ecallmgr_util:get_expires(Props),
+                    case wh_util:is_empty(Expires)  of
+                        true -> 
+                            %% If the expires was empty or 0 then delete the subscription, might need to 
+                            %% remove the specific sub-call-id... lets see how it goes
+                            lager:debug("removing sip subscription from '~s' to '~s'", [From, To]),
+                            DeleteSpec = [{#sip_subscription{to = '$1', from = '$2', _ = '_'}
+                                           ,[{'=:=', '$1', {const, To}}
+                                             ,{'=:=', '$2', {const, From}}
+                                            ]
+                                           ,[true]}
+                                         ],
+                            ets:select_delete(sip_subscriptions, DeleteSpec),
+                            {noreply, State, hibernate};
+                        false ->
+                            lager:debug("sip subscription from '~s' subscribing to '~s' via node '~s' for ~ps", [From, To, Node, Expires]),
+                            ets:insert(sip_subscriptions, #sip_subscription{key=Key
+                                                                            ,to=To
+                                                                            ,from=From
+                                                                            ,node=Node
+                                                                            ,expires=Expires
+                                                                           }),
+                            _ = spawn_link(?MODULE, publish_presence_event, [<<"PRESENCE_PROBE">>, Props, Node]),
+                            {noreply, State, hibernate}
+                    end
+            end;
         <<"PRESENCE_IN">> ->
             _ = case props:get_value(<<"Distributed-From">>, Props) of
                     undefined ->
                         PresenceId = props:get_value(<<"Channel-Presence-ID">>, Props,
                                                      props:get_value(<<"from">>, Props)),
-                        spawn_link(?MODULE, relay_presence, ['PRESENCE_IN', PresenceId, Props, Node]);
+                        spawn_link(?MODULE, relay_presence, ['PRESENCE_IN', PresenceId, Props, Node, undefined]);
                     _Else -> ok
                 end,
             {noreply, State, hibernate};
@@ -239,7 +268,7 @@ handle_info({event, [_ | Props]}, #state{node=Node}=State) ->
             _ = case props:get_value(<<"Distributed-From">>, Props) of
                     undefined ->
                         PresenceId = props:get_value(<<"to">>, Props),
-                        spawn_link(?MODULE, relay_presence, ['PRESENCE_OUT', PresenceId, Props, Node]);
+                        spawn_link(?MODULE, relay_presence, ['PRESENCE_OUT', PresenceId, Props, Node, undefined]);
                     _Else -> ok
                 end,
             {noreply, State, hibernate};
@@ -291,42 +320,95 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+-spec confirmed_presence_event/2 :: (ne_binary(), wh_json:json_object()) -> proplist().
+-spec confirmed_presence_event/3 :: (ne_binary(), ne_binary(), wh_json:json_object()) -> proplist().
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Request the current registration contact string for the user/realm
-%% replacing everything before the first '@' with:
-%% 'sip:{User}'
-%% @end
-%%--------------------------------------------------------------------
--spec get_endpoint/2 :: (ne_binary(), ne_binary()) -> {'error', 'timeout'} | nonempty_string().
-get_endpoint(Username, Realm) ->
-    case ecallmgr_registrar:lookup_contact(Realm, Username) of
-        {ok, Contact} ->
-            RURI = binary:replace(re:replace(Contact, "^[^\@]+", Username, [{return, binary}]), <<">">>, <<"">>),
-            wh_util:to_list(<<"sip:", (RURI)/binary>>);
-        {error, timeout}=E ->
-            E
-    end.
+confirmed_presence_event(PresenceId, JObj) ->
+    UniqueId = case wh_json:get_ne_value(<<"Call-ID">>, JObj) of
+                   undefined  -> wh_util:to_hex_binary(crypto:md5(PresenceId));
+                   Else -> Else
+               end,
+    confirmed_presence_event(PresenceId, UniqueId, JObj).
 
--spec create_presence_in/4 :: (ne_binary(), undefined | string(), undefined | string(), wh_json:json_object()) -> proplist().
-create_presence_in(PresenceId, Status, State, JObj) ->
-    lager:debug("creating presence in event for '~s' with status ~s and state ~s", [PresenceId, Status, State]),
-    [KV || {_, V}=KV <- [{"unique-id", wh_json:get_string_value(<<"Call-ID">>, JObj)}
-                         ,{"channel-state", wh_json:get_string_value(<<"Channel-State">>, JObj, State)}
-                         ,{"answer-state", wh_util:to_list(State)}
-                         ,{"proto", "any"}
-                         ,{"login", "src/mod/event_handlers/mod_erlang_event/handle_msg.c"}
-                         ,{"from", wh_util:to_list(PresenceId)}
-                         ,{"rpid", "unknown"}
-                         ,{"status", wh_util:to_list(Status)}
-                         ,{"event_type", "presence"}
-                         ,{"alt_event_type", "dialog"}
-                         ,{"presence-call-direction", "outbound"}
-                        ]
-               ,V =/= undefined
+confirmed_presence_event(PresenceId, UniqueId, JObj) ->
+    [{"unique-id", wh_util:to_list(UniqueId)}
+     ,{"channel-state", "CS_ROUTING"}
+     ,{"answer-state", "confirmed"}
+     ,{"proto", "any"}
+     ,{"login", "kazoo by 2600hz"}
+     ,{"from", wh_util:to_list(PresenceId)}
+     ,{"rpid", "unknown"}
+     ,{"status", "Active"}
+     ,{"event_type", "presence"}
+     ,{"alt_event_type", "dialog"}
+     ,{"presence-call-direction", wh_json:get_string_value(<<"Direction">>, JObj, "inbound")}
+     ,{"Caller-Caller-ID-Number", wh_json:get_string_value(<<"Caller-ID-Number">>, JObj)}
+     ,{"Caller-Caller-ID-Name", wh_json:get_string_value(<<"Caller-ID-Name">>, JObj)}
     ].
+
+-spec early_presence_event/2 :: (ne_binary(), wh_json:json_object()) -> proplist().
+-spec early_presence_event/3 :: (ne_binary(), ne_binary(), wh_json:json_object()) -> proplist().
+
+early_presence_event(PresenceId, JObj) ->
+    UniqueId = case wh_json:get_ne_value(<<"Call-ID">>, JObj) of
+                   undefined  -> wh_util:to_hex_binary(crypto:md5(PresenceId));
+                   Else -> Else
+               end,
+    early_presence_event(PresenceId, UniqueId, JObj).
+
+early_presence_event(PresenceId, UniqueId, JObj) ->
+    [{"unique-id", wh_util:to_list(UniqueId)}
+     ,{"channel-state", "CS_ROUTING"}
+     ,{"answer-state", "early"}
+     ,{"proto", "any"}
+     ,{"login", "kazoo by 2600hz"}
+     ,{"from", wh_util:to_list(PresenceId)}
+     ,{"rpid", "unknown"}
+     ,{"status", "Active"}
+     ,{"event_type", "presence"}
+     ,{"alt_event_type", "dialog"}
+     ,{"presence-call-direction", wh_json:get_string_value(<<"Direction">>, JObj, "inbound")}
+     ,{"Caller-Caller-ID-Number", wh_json:get_string_value(<<"Caller-ID-Number">>, JObj)}
+     ,{"Caller-Caller-ID-Name", wh_json:get_string_value(<<"Caller-ID-Name">>, JObj)}
+    ].
+
+-spec terminated_presence_event/2 :: (ne_binary(), wh_json:json_object()) -> proplist().
+-spec terminated_presence_event/3 :: (ne_binary(), ne_binary(), wh_json:json_object()) -> proplist().
+
+terminated_presence_event(PresenceId, JObj) ->
+    UniqueId = case wh_json:get_ne_value(<<"Call-ID">>, JObj) of
+                   undefined  -> wh_util:to_hex_binary(crypto:md5(PresenceId));
+                   Else -> Else
+               end,
+    terminated_presence_event(PresenceId, UniqueId, JObj).
+
+terminated_presence_event(PresenceId, UniqueId, JObj) ->
+    [{"unique-id", wh_util:to_list(UniqueId)}
+     ,{"channel-state", "CS_HANGUP"}
+     ,{"answer-state", "terminated"}
+     ,{"proto", "any"}
+     ,{"login", "kazoo by 2600hz"}
+     ,{"from", wh_util:to_list(PresenceId)}
+     ,{"rpid", "unknown"}
+     ,{"status", "Inactive"}
+     ,{"event_type", "presence"}
+     ,{"alt_event_type", "dialog"}
+     ,{"presence-call-direction", wh_json:get_string_value(<<"Direction">>, JObj, "inbound")}
+     ,{"Caller-Caller-ID-Number", wh_json:get_string_value(<<"Caller-ID-Number">>, JObj)}
+     ,{"Caller-Caller-ID-Name", wh_json:get_string_value(<<"Caller-ID-Name">>, JObj)}
+    ].
+
+-spec empty_presence_event/1 :: (ne_binary()) -> proplist().
+empty_presence_event(PresenceId) ->
+    [{"proto", "any"}
+     ,{"login", "kazoo by 2600hz"}
+     ,{"from", wh_util:to_list(PresenceId)}
+     ,{"rpid", "unknown"}
+     ,{"status", "Idle"}
+     ,{"event_type", "presence"}
+     ,{"alt_event_type", "dialog"}
+     ,{"force-full-dialog", "true"}
+    ].    
 
 -spec publish_presence_event/3 :: (ne_binary(), proplist(), ne_binary() | atom()) -> 'ok'.
 publish_presence_event(EventName, Props, Node) ->
@@ -340,17 +422,18 @@ publish_presence_event(EventName, Props, Node) ->
            ,{<<"To">>, To}
            ,{<<"To-User">>, ToUser}
            ,{<<"To-Realm">>, ToRealm}
-           ,{<<"Node">>, wh_util:to_binary(Node)}
+           ,{<<"Switch-Nodename">>, wh_util:to_binary(Node)}
            ,{<<"Expires">>, props:get_value(<<"expires">>, Props)}
            ,{<<"Subscription-Call-ID">>, props:get_value(<<"sub-call-id">>, Props)}
            ,{<<"Subscription-Type">>, props:get_value(<<"alt_event_type">>, Props)}
            ,{<<"Subscription">>, props:get_value(<<"proto-specific-event-name">>, Props)}
+           ,{<<"Dialog-State">>, props:get_value(<<"dialog_state">>, Props)}
            | wh_api:default_headers(<<>>, <<"notification">>, wh_util:to_lower_binary(EventName), ?APP_NAME, ?APP_VERSION)
           ],
     wapi_notifications:publish_presence_probe(Req).
 
--spec relay_presence/4 :: (atom(), ne_binary(), proplist(), atom()) -> [fs_sendevent_ret(),...].
-relay_presence(EventName, PresenceId, Props, Node) ->
+-spec relay_presence/5 :: (atom(), ne_binary(), proplist(), atom(), 'undefined' | ne_binary()) -> [fs_sendevent_ret(),...].
+relay_presence(EventName, PresenceId, Props, Node, undefined) ->
     Match = #sip_subscription{key='_'
                               ,to=PresenceId
                               ,from='_'
@@ -371,18 +454,32 @@ relay_presence(EventName, PresenceId, Props, Node) ->
          freeswitch:sendevent(Switch, EventName, Headers)
      end
      || Switch <- sets:to_list(sets:del_element(Node, sets:from_list(Subs)))
-    ].
+    ];
+relay_presence(_, _, _, Switch, Switch) ->
+    lager:info("skipping presence relay for a call on the same node as the intended recipient (~s):", [Switch]);
+relay_presence(EventName, _, Props, Node, Switch) ->
+    lager:debug("send presence event to '~s'", [Switch]),
+    Headers = [{"Distributed-From", wh_util:to_list(Node)}
+               |[{wh_util:to_list(K), wh_util:to_list(V)}
+                 || {K, V} <- lists:foldr(fun(Header, Prop) ->
+                                                  proplists:delete(Header, Prop)
+                                          end, Props, ?FS_DEFAULT_HDRS)
+                ]
+              ],
+    freeswitch:sendevent(wh_util:to_atom(Switch), EventName, Headers).
 
 -spec process_message_query_event/2 :: (proplist(), atom()) -> 'ok'.
 process_message_query_event(Data, Node) ->
-    MessageAccount = props:get_value(<<"Message-Account">>, Data),
+    MessageAccount = props:get_value(<<"VM-User">>, Data, props:get_value(<<"Message-Account">>, Data)),
     case re:run(MessageAccount, <<"(?:sip:)?(.*)@(.*)$">>, [{capture, all, binary}]) of
         {match, [_, Username, Realm]} ->
             lager:debug("publishing message query for ~s@~s", [Username, Realm]),
             Query = [{<<"Username">>, Username}
                      ,{<<"Realm">>, Realm}
                      ,{<<"Call-ID">>, props:get_value(<<"VM-Call-ID">>, Data)}
-                     ,{<<"Node">>, wh_util:to_binary(Node)}
+                     ,{<<"Switch-Nodename">>, wh_util:to_binary(Node)}
+                     ,{<<"Subscription-Call-ID">>, props:get_value(<<"VM-sub-call-id">>, Data)}
+                     ,{<<"Message-Account">>, props:get_value(<<"Message-Account">>, Data)}    
                      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                     ],
             wapi_notifications:publish_mwi_query(Query),

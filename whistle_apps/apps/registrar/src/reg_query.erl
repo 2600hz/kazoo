@@ -30,12 +30,18 @@ presence_probe(ApiJObj, _Props) ->
                 {ok, RegJObjs} when is_list(RegJObjs) ->
                     PresenceUpdate = [{<<"Presence-ID">>, list_to_binary([ToUser, "@", ToRealm])}
                                       ,{<<"To">>, list_to_binary([FromUser, "@", FromRealm])}
+                                      ,{<<"Switch-Nodename">>, wh_json:get_ne_value(<<"Switch-Nodename">>, ApiJObj)}
+                                      ,{<<"Subscription-Call-ID">>, wh_json:get_ne_value(<<"Subscription-Call-ID">>, ApiJObj)}
+                                      ,{<<"Dialog-State">>, wh_json:get_ne_value(<<"Dialog-State">>, ApiJObj)}
                                       | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                                      ],
                     wapi_notifications:publish_presence_update(PresenceUpdate);
                 {ok, _} ->
                     PresenceUpdate = [{<<"Presence-ID">>, list_to_binary([ToUser, "@", ToRealm])}
                                       ,{<<"To">>, list_to_binary([FromUser, "@", FromRealm])}
+                                      ,{<<"Switch-Nodename">>, wh_json:get_ne_value(<<"Switch-Nodename">>, ApiJObj)}
+                                      ,{<<"Subscription-Call-ID">>, wh_json:get_ne_value(<<"Subscription-Call-ID">>, ApiJObj)}
+                                      ,{<<"Dialog-State">>, wh_json:get_ne_value(<<"Dialog-State">>, ApiJObj)}
                                       | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                                      ],
                     wapi_notifications:publish_presence_update(PresenceUpdate);
