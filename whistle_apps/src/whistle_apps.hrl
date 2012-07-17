@@ -4,3 +4,5 @@
 -include_lib("whistle/include/wh_system_config.hrl").
 
 -define(WHAPPS_CONFIG_CACHE, whapps_config_cache).
+
+-define(WHAPPS_AMQP_POOL, whapps_amqp_pool).
