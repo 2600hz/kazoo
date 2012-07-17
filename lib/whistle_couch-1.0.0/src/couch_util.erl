@@ -242,13 +242,13 @@ do_get_design_info(#db{}=Db, Design) ->
 -spec open_cache_doc/4 :: (server(), ne_binary(), ne_binary(), proplist()) -> {'ok', wh_json:json_object()} |
                                                                               {'error', atom()}.
 open_cache_doc(#server{}=Conn, DbName, DocId, Options) ->
-    case wh_cache:peek({?MODULE, DbName, DocId}) of
+    case wh_cache:peek({?MODULE, Conn, DbName, DocId}) of
         {ok, _}=Ok -> Ok;
         {error, not_found} ->
             case open_doc(Conn, DbName, DocId, Options) of
                 {error, _}=E -> E;
                 {ok, JObj}=Ok ->
-                    wh_cache:store({?MODULE, DbName, DocId}, JObj, 900),
+                    wh_cache:store({?MODULE, Conn, DbName, DocId}, JObj, 900),
                     Ok
             end
     end.
