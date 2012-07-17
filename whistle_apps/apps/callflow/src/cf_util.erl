@@ -42,7 +42,7 @@ presence_probe(JObj, _Props) ->
     [Fun(Subscription, {FromUser, FromRealm}, {ToUser, ToRealm}, JObj) || Fun <- ProbeRepliers].
 
 -spec presence_mwi_update/4 :: (ne_binary(), {ne_binary(), ne_binary()}, {ne_binary(), ne_binary()}, wh_json:json_object()) -> ok.
-presence_mwi_update(<<"message-summary">>, {FromUser, FromRealm}, _, _) ->
+presence_mwi_update(<<"message-summary">>, {FromUser, FromRealm}, _, JObj) ->
     case whapps_util:get_account_by_realm(FromRealm) of
         {ok, AccountDb} ->
             ViewOptions = [include_docs
@@ -53,7 +53,9 @@ presence_mwi_update(<<"message-summary">>, {FromUser, FromRealm}, _, _) ->
                     lager:debug("sip credentials not in account db ~s", [AccountDb]),
                     ok;
                 {ok, [Device]} -> 
-                    update_mwi(wh_json:get_value([<<"doc">>, <<"owner_id">>], Device), AccountDb);
+                    lager:debug("replying to mwi presence probe"),
+                    OwnerId = wh_json:get_value([<<"doc">>, <<"owner_id">>], Device),
+                    presence_mwi_resp(FromUser, FromRealm, OwnerId, AccountDb, JObj);
                 {error, _R} -> 
                     lager:debug("unable to lookup sip credentials for owner id: ~p", [_R]),
                     ok
@@ -90,7 +92,7 @@ presence_parking_slot(_, {_, FromRealm}, {ToUser, ToRealm}, _) ->
 -spec manual_presence/4 :: (ne_binary(), {ne_binary(), ne_binary()}, {ne_binary(), ne_binary()}, wh_json:json_object()) -> ok.
 manual_presence(<<"message-summary">>, _, _, _) ->
     ok;
-manual_presence(_, {_, FromRealm}, {ToUser, ToRealm}, _) ->
+manual_presence(_, {_, FromRealm}, {ToUser, ToRealm}, Event) ->
     case whapps_util:get_account_by_realm(FromRealm) of
         {ok, AccountDb} ->
             case couch_mgr:open_doc(AccountDb, ?MANUAL_PRESENCE_DOC) of
@@ -100,7 +102,14 @@ manual_presence(_, {_, FromRealm}, {ToUser, ToRealm}, _) ->
                     case wh_json:get_value(PresenceId, JObj) of
                         undefined -> ok;
                         State ->
-                            whapps_call_command:presence(State, PresenceId, wh_util:to_hex_binary(crypto:md5(PresenceId)))
+                            PresenceUpdate = [{<<"Presence-ID">>, PresenceId}
+                                              ,{<<"State">>, State}
+                                              ,{<<"Call-ID">>, wh_util:to_hex_binary(crypto:md5(PresenceId))}
+                                              ,{<<"Switch-Nodename">>, wh_json:get_ne_value(<<"Switch-Nodename">>, Event)}
+                                              ,{<<"Subscription-Call-ID">>, wh_json:get_ne_value(<<"Subscription-Call-ID">>, Event)}
+                                              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                                             ],
+                            wapi_notifications:publish_presence_update(PresenceUpdate)
                         end
             end;
         _E -> ok
@@ -125,10 +134,51 @@ presence_mwi_query(JObj, _Props) ->
                 {ok, []} ->  ok;
                 {ok, [Device]} -> 
                     lager:debug("replying to mwi query"),
-                    update_mwi(wh_json:get_value([<<"doc">>, <<"owner_id">>], Device), AccountDb);
+                    OwnerId = wh_json:get_value([<<"doc">>, <<"owner_id">>], Device),
+                    presence_mwi_resp(Username, Realm, OwnerId, AccountDb, JObj);
                 {error, _R} -> ok
             end;
         _Else -> ok
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec presence_mwi_resp/5 :: (ne_binary(), ne_binary(), 'undefined' | ne_binary(), ne_binary(), wh_json:json_object()) -> 'ok'.
+presence_mwi_resp(_, _, undefined, _, _) -> ok;
+presence_mwi_resp(Username, Realm, OwnerId, AccountDb, JObj) ->
+    ViewOptions = [{reduce, true}
+                   ,{group, true}
+                   ,{group_level, 2}
+                   ,{startkey, [OwnerId]}
+                   ,{endkey, [OwnerId, "\ufff0"]}
+                  ],
+    case couch_mgr:get_results(AccountDb, <<"cf_attributes/vm_count_by_owner">>, ViewOptions) of
+        {ok, MessageCounts} -> 
+            Props = [{wh_json:get_value([<<"key">>, 2], MessageCount), wh_json:get_value(<<"value">>, MessageCount)}
+                     || MessageCount <- MessageCounts
+                    ],
+            New = props:get_value(<<"new">>, Props, 0),
+            Saved = props:get_value(<<"saved">>, Props, 0),
+            DefaultAccount = <<"sip:", Username/binary, "@", Realm/binary>>,
+            Command = [{<<"Messages-New">>, New}
+                       ,{<<"Messages-Saved">>, Saved}
+                       ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
+                       ,{<<"Switch-Nodename">>, wh_json:get_value(<<"Switch-Nodename">>, JObj)}
+                       ,{<<"Subscription-Call-ID">>, wh_json:get_value(<<"Subscription-Call-ID">>, JObj)}
+                       ,{<<"Notify-User">>, Username}
+                       ,{<<"Notify-Realm">>, Realm}
+                       ,{<<"Message-Account">>, wh_json:get_value(<<"Message-Account">>, JObj, DefaultAccount)}
+                       | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                      ],
+            lager:debug("updating MWI for owner ~s: (~b/~b)", [OwnerId, New, Saved]),
+            wapi_notifications:publish_mwi_update(Command);
+        {error, _R} ->
+            lager:debug("unable to lookup vm counts by owner: ~p", [_R]),
+            ok
     end.
 
 %%--------------------------------------------------------------------
@@ -182,6 +232,7 @@ update_mwi(New, Saved, OwnerId, AccountDb) ->
                                   Realm = cf_util:get_sip_realm(Device, AccountId),
                                   Command = wh_json:from_list([{<<"Notify-User">>, User}
                                                                ,{<<"Notify-Realm">>, Realm}
+                                                               ,{<<"Message-Account">>, <<"sip:", User/binary, "@", Realm/binary>>}
                                                                | CommonHeaders
                                                               ]),
                                   catch (wapi_notifications:publish_mwi_update(Command))
@@ -191,7 +242,6 @@ update_mwi(New, Saved, OwnerId, AccountDb) ->
             lager:debug("failed to find devices owned by ~s: ~p", [OwnerId, _R]),
             ok
     end.
-
 
 %%--------------------------------------------------------------------
 %% @public
