@@ -14,7 +14,6 @@
 -export([presence_probe/2]).
 -export([presence_mwi_query/2]).
 -export([update_mwi/1, update_mwi/2, update_mwi/4]).
--export([get_call_status/1]).
 -export([alpha_to_dialpad/1, ignore_early_media/1]).
 -export([correct_media_path/2]).
 -export([lookup_callflow/1, lookup_callflow/2]).
@@ -242,32 +241,6 @@ update_mwi(New, Saved, OwnerId, AccountDb) ->
             lager:debug("failed to find devices owned by ~s: ~p", [OwnerId, _R]),
             ok
     end.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% 
-%% @end
-%%--------------------------------------------------------------------
--spec get_call_status/1 :: (ne_binary()) -> {ok, wh_json:json_object()} | {error, timeout | wh_json:json_object()}.
-get_call_status(CallId) ->
-    {ok, Srv} = callflow_sup:listener_proc(),
-    gen_server:cast(Srv, {add_consumer, CallId, self()}),
-    Command = [{<<"Call-ID">>, CallId}
-               | wh_api:default_headers(gen_listener:queue_name(Srv), ?APP_NAME, ?APP_VERSION)
-              ],
-    wapi_call:publish_channel_status_req(CallId, Command),
-    Result = receive
-                 {call_status_resp, JObj} -> 
-                    case wh_json:get_value(<<"Status">>, JObj) of 
-                        <<"active">> -> {ok, JObj};
-                        _Else -> {error, JObj}
-                    end
-             after
-                 2000 -> {error, timeout}
-             end,
-    gen_server:cast(Srv, {remove_consumer, self()}),
-    Result.
 
 %%--------------------------------------------------------------------
 %% @public
