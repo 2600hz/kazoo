@@ -28,14 +28,13 @@
 -define(EVENT_CATEGORY, <<"directory">>).
 -define(AUTHN_REQ_EVENT_NAME, <<"authn_req">>).
 
--define(AUTHN_REQ_HEADERS, [<<"Msg-ID">>, <<"To">>, <<"From">>, <<"Orig-IP">>
+-define(AUTHN_REQ_HEADERS, [<<"To">>, <<"From">>, <<"Orig-IP">>
                                 , <<"Auth-User">>, <<"Auth-Realm">>]).
 -define(OPTIONAL_AUTHN_REQ_HEADERS, [<<"Method">>, <<"Switch-Hostname">>]).
 -define(AUTHN_REQ_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
                            ,{<<"Event-Name">>, ?AUTHN_REQ_EVENT_NAME}
                           ]).
--define(AUTHN_REQ_TYPES, [{<<"Msg-ID">>, fun is_binary/1}
-                          ,{<<"To">>, fun is_binary/1}
+-define(AUTHN_REQ_TYPES, [{<<"To">>, fun is_binary/1}
                           ,{<<"From">>, fun is_binary/1}
                           ,{<<"Orig-IP">>, fun is_binary/1}
                           ,{<<"Auth-User">>, fun is_binary/1}
@@ -43,27 +42,25 @@
                          ]).
 
 %% Authentication Responses
--define(AUTHN_RESP_HEADERS, [<<"Msg-ID">>, <<"Auth-Method">>, <<"Auth-Password">>]).
+-define(AUTHN_RESP_HEADERS, [<<"Auth-Method">>, <<"Auth-Password">>]).
 -define(OPTIONAL_AUTHN_RESP_HEADERS, [<<"Tenant-ID">>, <<"Access-Group">>, <<"Custom-Channel-Vars">>]).
 -define(AUTHN_RESP_VALUES, [{<<"Event-Category">>, <<"directory">>}
                            ,{<<"Event-Name">>, <<"authn_resp">>}
                            ,{<<"Auth-Method">>, [<<"password">>, <<"ip">>, <<"a1-hash">>, <<"error">>]}
                          ]).
--define(AUTHN_RESP_TYPES, [{<<"Msg-ID">>, fun is_binary/1}
-                          ,{<<"Auth-Password">>, fun is_binary/1}
-                          ,{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}
-                          ,{<<"Access-Group">>, fun is_binary/1}
-                          ,{<<"Tenant-ID">>, fun is_binary/1}
-                         ]).
+-define(AUTHN_RESP_TYPES, [{<<"Auth-Password">>, fun is_binary/1}
+                           ,{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}
+                           ,{<<"Access-Group">>, fun is_binary/1}
+                           ,{<<"Tenant-ID">>, fun is_binary/1}
+                          ]).
 
 %% Authentication Failure Response
--define(AUTHN_ERR_HEADERS, [<<"Msg-ID">>]).
+-define(AUTHN_ERR_HEADERS, []).
 -define(OPTIONAL_AUTHN_ERR_HEADERS, []).
 -define(AUTHN_ERR_VALUES, [{<<"Event-Category">>, <<"directory">>}
                             ,{<<"Event-Name">>, <<"authn_err">>}
                          ]).
--define(AUTHN_ERR_TYPES, [{<<"Msg-ID">>, fun is_binary/1}
-                         ]).
+-define(AUTHN_ERR_TYPES, []).
 
 %%--------------------------------------------------------------------
 %% @doc Authentication Request - see wiki

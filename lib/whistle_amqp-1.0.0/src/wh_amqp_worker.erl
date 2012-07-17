@@ -47,7 +47,7 @@
                 ,req_timeout_ref :: reference()
                 ,req_start_time :: wh_now()
                 ,callid :: ne_binary()
-		,pool_ref :: server_ref()
+                ,pool_ref :: server_ref()
                }).
 
 -define(FUDGE, 2600).
@@ -87,8 +87,8 @@ call(Srv, Req, PubFun, VFun) ->
 call(Srv, Req, PubFun, VFun, Timeout) ->
     case catch poolboy:checkout(Srv, false, 1000) of
         W when is_pid(W) ->
-	    PoolName = pool_name_from_server_ref(Srv),
-	    wh_counter:dec(<<"amqp.pools.", PoolName/binary, ".available">>),
+            PoolName = pool_name_from_server_ref(Srv),
+            wh_counter:dec(<<"amqp.pools.", PoolName/binary, ".available">>),
             Prop = case wh_json:is_json_object(Req) of
                        true -> wh_json:to_proplist(Req);
                        false -> Req
@@ -96,7 +96,7 @@ call(Srv, Req, PubFun, VFun, Timeout) ->
             Q = gen_listener:queue_name(W),
             Reply = gen_listener:call(W, {request, Prop, PubFun, VFun, Q, Timeout}, Timeout + ?FUDGE),
             poolboy:checkin(Srv, W),
-	    wh_counter:inc(<<"amqp.pools.", PoolName/binary, ".available">>),
+            wh_counter:inc(<<"amqp.pools.", PoolName/binary, ".available">>),
             Reply;
         full ->
             lager:debug("failed to checkout worker: full"),

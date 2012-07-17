@@ -21,7 +21,7 @@
 
 %% Media Request - when streaming is needed
 -define(MEDIA_REQ_HEADERS, [<<"Media-Name">>]).
--define(OPTIONAL_MEDIA_REQ_HEADERS, [<<"Stream-Type">>, <<"Call-ID">>, <<"Msg-ID">>
+-define(OPTIONAL_MEDIA_REQ_HEADERS, [<<"Stream-Type">>, <<"Call-ID">>
                                          %% TTS-related flags
                                          ,<<"Voice">>, <<"Language">>, <<"Format">>
                                          ,<<"Account-ID">>
@@ -36,7 +36,7 @@
 
 %% Media Response
 -define(MEDIA_RESP_HEADERS, [<<"Media-Name">>, <<"Stream-URL">>]).
--define(OPTIONAL_MEDIA_RESP_HEADERS, [<<"Msg-ID">>]).
+-define(OPTIONAL_MEDIA_RESP_HEADERS, []).
 -define(MEDIA_RESP_VALUES, [{<<"Event-Category">>, <<"media">>}
                            ,{<<"Event-Name">>, <<"media_resp">>}
                           ]).
