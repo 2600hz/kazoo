@@ -23,11 +23,11 @@
 lookup_number(Number) ->
     Num = wnm_util:normalize_number(Number),
     case wh_cache:fetch_local(?STEPSWITCH_CACHE, cache_key_number(Number)) of
-        {ok, {AccountId, ForceOut}} -> {ok, AccountId, ForceOut};
+        {ok, {AccountId, ForceOut, Ported}} -> {ok, AccountId, ForceOut, Ported};
         {error, not_found} ->
             case wh_number_manager:lookup_account_by_number(Num) of
-                {ok, AccountId, ForceOut, _}=Ok ->
-                    wh_cache:store_local(?STEPSWITCH_CACHE, cache_key_number(Number), {AccountId, ForceOut}),
+                {ok, AccountId, ForceOut, Ported}=Ok ->
+                    wh_cache:store_local(?STEPSWITCH_CACHE, cache_key_number(Number), {AccountId, ForceOut, Ported}),
                     lager:debug("~s is associated with account ~s", [Num, AccountId]),            
                     Ok;
                 {error, Reason}=E ->
