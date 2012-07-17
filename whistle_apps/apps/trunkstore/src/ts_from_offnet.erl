@@ -268,7 +268,7 @@ routing_data(ToDID, AcctID, Settings) ->
     DIDOptions = wh_json:get_value(<<"DID_Opts">>, Settings, wh_json:new()),
     RouteOpts = wh_json:get_value(<<"options">>, DIDOptions, []),
 
-    NumConfig = case wh_number_manager:get_public_fields(Number, AcctID) of
+    NumConfig = case wh_number_manager:get_public_fields(ToDID, AcctID) of
                     {ok, Fields} -> Fields;
                     {error, _} -> wh_json:new()
                 end,
@@ -317,14 +317,11 @@ routing_data(ToDID, AcctID, Settings) ->
                                        ]),
 
     FailoverLocations = [
-                         wh_json:get_value(<<"failover">>, NumOptions)
+                         wh_json:get_value(<<"failover">>, NumConfig)
                          ,wh_json:get_value(<<"failover">>, DIDOptions)
                          ,wh_json:get_value(<<"failover">>, SrvOptions)
                          ,wh_json:get_value(<<"failover">>, AcctStuff)
                         ],
-
-    Num = wnm_util:normalize_number(ToDID),
-    Db = wnm_util:number_to_db_name(Num),
 
     Failover = ts_util:failover(FailoverLocations),
 
