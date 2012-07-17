@@ -32,7 +32,7 @@ update_presence(SlotNumber, PresenceId, AccountDb) ->
     State = case wh_json:get_value([<<"slots">>, SlotNumber, <<"Call-ID">>], ParkedCalls) of
                 undefined -> <<"terminated">>;
                 ParkedCallId -> 
-                    case cf_util:get_call_status(ParkedCallId) of
+                    case whapps_call_command:channel_status(ParkedCallId) of
                         {ok, _} -> <<"early">>;
                         {error, _} -> <<"terminated">>
                     end
@@ -94,18 +94,12 @@ handle(Data, Call) ->
 %% Determine the hostname of the switch
 %% @end
 %%--------------------------------------------------------------------
--spec get_switch_hostname/1 :: (whapps_call:call()) -> 'undefined' | ne_binary().
--spec get_switch_hostname/2 :: ('undefined' | ne_binary(), whapps_call:call()) -> 'undefined' | ne_binary().
-
-get_switch_hostname(Call) ->
-    get_switch_hostname(undefined, Call).
-
-get_switch_hostname(CallId, Call) ->
-    case whapps_call_command:b_channel_status(CallId, Call) of
-        {ok, CallerStatus} ->
-            wh_json:get_ne_value(<<"Switch-Nodename">>, CallerStatus);
-        _Else ->
-            undefined
+-spec get_switch_nodename/1 :: ('undefined' | ne_binary() | whapps_call:call()) -> 'undefined' | ne_binary().
+get_switch_nodename(CallId) ->
+    case whapps_call_command:channel_status(CallId) of
+        {error, _} -> undefined;
+        {ok, JObj} ->
+            wh_json:get_ne_value(<<"Switch-Nodename">>, JObj)
     end.
 
 %%--------------------------------------------------------------------
@@ -126,7 +120,7 @@ retrieve(SlotNumber, ParkedCalls, Call) ->
             CallerNode = whapps_call:switch_nodename(Call),
             ParkedCall = wh_json:get_ne_value(<<"Call-ID">>, Slot),
             lager:debug("the parking slot ~s currently has a parked call ~s, attempting to retrieve caller", [SlotNumber, ParkedCall]),
-            case get_switch_hostname(ParkedCall, Call) of
+            case get_switch_nodename(ParkedCall) of
                 undefined ->
                     lager:debug("the parked call has hungup, but is was still listed in the slot", []),
                     case cleanup_slot(SlotNumber, ParkedCall, whapps_call:account_db(Call)) of
@@ -304,7 +298,7 @@ save_slot(SlotNumber, Slot, ParkedCalls, Call) ->
             lager:debug("slot has parked call '~s' by parker '~s', it is available", [ParkedCallId, ParkerCallId]),
             do_save_slot(SlotNumber, Slot, ParkedCalls, Call);
         false ->
-            case whapps_call_command:b_channel_status(ParkedCallId, Call) of
+            case whapps_call_command:channel_status(ParkedCallId) of
                 {ok, _} ->
                     lager:debug("slot has active call '~s' in it, denying use of slot", [ParkedCallId]),
                     {error, occupied};
@@ -497,7 +491,10 @@ wait_for_pickup(SlotNumber, RingbackId, Call) ->
     case whapps_call_command:b_hold(?DEFAULT_RINGBACK_TM, Call) of
         {error, timeout} ->
             TmpCID = <<"Parking slot ", SlotNumber/binary>>,
-            Hungup = get_switch_hostname(Call) =/= undefined,
+            Hungup = case whapps_call_command:channel_status(Call) of
+                         {ok, _} -> false;
+                         {error, _} -> true
+                     end,
             case Hungup andalso ringback_parker(RingbackId, SlotNumber, TmpCID, Call) of
                 answered -> 
                     lager:debug("parked caller ringback was answered"),
