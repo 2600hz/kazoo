@@ -94,7 +94,10 @@
 
 %% Notify updated MWI
 -define(MWI_REQ_HEADERS, [<<"Notify-User">>, <<"Notify-Realm">>, <<"Messages-New">>, <<"Messages-Saved">>]).
--define(OPTIONAL_MWI_REQ_HEADERS, [<<"Messages-Urgent">>, <<"Messages-Urgent-Saved">>]).
+-define(OPTIONAL_MWI_REQ_HEADERS, [<<"Messages-Urgent">>, <<"Messages-Urgent-Saved">>
+                                       ,<<"Call-ID">>, <<"Subscription-Call-ID">>
+                                       ,<<"Switch-Nodename">>, <<"Message-Account">>
+                                  ]).
 -define(MWI_REQ_VALUES, [{<<"Event-Category">>, <<"notification">>}
                          ,{<<"Event-Name">>, <<"mwi">>}
                         ]).
@@ -106,17 +109,19 @@
 
 %% Notify updated MWI
 -define(MWI_QUERY_HEADERS, [<<"Username">>, <<"Realm">>]).
--define(OPTIONAL_MWI_QUERY_HEADERS, [<<"Call-ID">>, <<"Node">>]).
+-define(OPTIONAL_MWI_QUERY_HEADERS, [<<"Call-ID">>, <<"Subscription-Call-ID">>
+                                         ,<<"Switch-Nodename">>, <<"Message-Account">>
+                                    ]).
 -define(MWI_QUERY_VALUES, [{<<"Event-Category">>, <<"notification">>}
                            ,{<<"Event-Name">>, <<"mwi_query">>}
                           ]).
 -define(MWI_QUERY_TYPES, []).
 
 %% Notify Presence_Probe
--define(PRESENCE_PROBE_HEADERS, [<<"From">>, <<"To">>, <<"Node">>]).
+-define(PRESENCE_PROBE_HEADERS, [<<"From">>, <<"To">>, <<"Switch-Nodename">>]).
 -define(OPTIONAL_PRESENCE_PROBE_HEADERS, [<<"From-User">>, <<"From-Realm">>, <<"To-User">>, <<"To-Realm">>
                                               ,<<"Expires">>, <<"Subscription-Call-ID">>, <<"Subscription-Type">>
-                                              ,<<"Subscription">>
+                                              ,<<"Subscription">>, <<"Dialog-State">>
                                          ]).
 -define(PRESENCE_PROBE_VALUES, [{<<"Event-Category">>, <<"notification">>}
                                 ,{<<"Event-Name">>, <<"presence_probe">>}
@@ -125,7 +130,10 @@
 
 %% Notify Presence Update
 -define(PRESENCE_UPDATE_HEADERS, [<<"Presence-ID">>]).
--define(OPTIONAL_PRESENCE_UPDATE_HEADERS, [<<"To">>, <<"From">>, <<"State">>, <<"Call-ID">>]).
+-define(OPTIONAL_PRESENCE_UPDATE_HEADERS, [<<"To">>, <<"From">>, <<"State">>
+                                               ,<<"Call-ID">>, <<"Subscription-Call-ID">>
+                                               ,<<"Switch-Nodename">>, <<"Dialog-State">>
+                                          ]).
 -define(PRESENCE_UPDATE_VALUES, [{<<"Event-Category">>, <<"notification">>}
                                  ,{<<"Event-Name">>, <<"presence_update">>}
                                 ]).
