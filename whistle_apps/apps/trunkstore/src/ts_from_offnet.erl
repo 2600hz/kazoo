@@ -92,6 +92,7 @@ wait_for_bridge(State) ->
         {bridged, State1} ->
             wait_for_cdr(State1);
         {error, State2} ->
+            lager:debug("error waiting for bridge, try failover"),
             try_failover(State2);
         {hangup, State3} ->
             ALeg = ts_callflow:get_aleg_id(State3),
@@ -147,6 +148,10 @@ try_failover(State) ->
             lager:debug("no callctl for failover"),
             ts_callflow:send_hangup(State),
             wait_for_cdr(State);
+        {_, undefined} ->
+            lager:debug("no failover defined"),
+            ts_callflow:send_hangup(State),
+            wait_for_cdr(State);
         {_, Failover} ->
             case wh_json:is_empty(Failover) of
                 true ->
@@ -170,6 +175,8 @@ try_failover_sip(State, SIPUri) ->
     CtlQ = ts_callflow:get_control_queue(State),
     Q = ts_callflow:get_my_queue(State),
 
+    lager:debug("routing to failover sip uri: ~s", [SIPUri]),
+
     EndPoint = wh_json:from_list([
                                   {<<"Invite-Format">>, <<"route">>}
                                   ,{<<"Route">>, SIPUri}
@@ -180,12 +187,10 @@ try_failover_sip(State, SIPUri) ->
                {<<"Call-ID">>, CallID}
                ,{<<"Application-Name">>, <<"bridge">>}
                ,{<<"Endpoints">>, [EndPoint]}
-               | wh_api:default_headers(Q, <<"call_control">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+               | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
 
     {ok, Payload} = wapi_dialplan:bridge(Command),
-
-    lager:debug("sending SIP failover for ~s: ~s", [SIPUri, Payload]),
 
     amqp_util:targeted_publish(CtlQ, Payload, <<"application/json">>),
     wait_for_bridge(ts_callflow:set_failover(State, wh_json:new())).
@@ -322,8 +327,10 @@ routing_data(ToDID, AcctID, Settings) ->
                          ,wh_json:get_value(<<"failover">>, SrvOptions)
                          ,wh_json:get_value(<<"failover">>, AcctStuff)
                         ],
+    lager:debug("looking for failover in ~p", [FailoverLocations]),
 
     Failover = ts_util:failover(FailoverLocations),
+    lager:debug("failover found: ~p", [Failover]),
 
     Delay = ts_util:delay([
                            wh_json:get_value(<<"delay">>, DIDOptions)
