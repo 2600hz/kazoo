@@ -29,6 +29,8 @@
 -define(TRANSACTIONS_PATH_TOKEN, <<"transactions">>).
 -define(CREDITS_PATH_TOKEN, <<"credits">>).
 
+-define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".braintree">>).
+
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -191,20 +193,34 @@ validate(#cb_context{req_verb = <<"get">>, account_id=AccountId, doc=JObj}=Conte
                 {error, _E} -> lager:debug("Error loading view: ~p", [_E]), 0
             end,
     crossbar_util:response(wh_json:from_list([{<<"amount">>, wapi_money:units_to_dollars(Units)}
-                                              ,{<<"billing_account_id">>, wh_json:get_value(<<"billing_account_id">>, JObj, AccountId)}
+                                              ,{<<"billing_account_id">>, wh_json:get_integer_value(<<"billing_account_id">>, JObj, AccountId)}
                                              ]), Context);
 validate(#cb_context{req_verb = <<"put">>, account_id=AccountId, req_data=JObj}=Context, ?CREDITS_PATH_TOKEN) ->
+    DB = wh_util:format_account_id(AccountId, encoded),
+    Units = case couch_mgr:get_results(DB, <<"transactions/credit_remaining">>, [{<<"reduce">>, true}]) of
+                {ok, []} -> lager:debug("No results"), 0;
+                {ok, [ViewRes|_]} -> lager:debug("Found obj ~p", [ViewRes]), wh_json:get_integer_value(<<"value">>, ViewRes, 0);
+                {error, _E} -> lager:debug("Error loading view: ~p", [_E]), 0
+            end,
     BillingId = wh_json:get_value(<<"billing_account_id">>, JObj, AccountId),
     Amount = wh_json:get_value(<<"amount">>, JObj, <<"0.0">>),
-    try braintree_transaction:quick_sale(BillingId, Amount) of
-       #bt_transaction{}=Transaction ->
-            wh_notify:transaction(AccountId, braintree_transaction:record_to_json(Transaction)),
-            crossbar_util:response(braintree_transaction:record_to_json(Transaction), Context)
-    catch
-        throw:{api_error, Reason} ->
-            crossbar_util:response(error, <<"braintree api error">>, 400, Reason, Context);
-        throw:{Error, Reason} ->
-            crossbar_util:response(error, wh_util:to_binary(Error), 500, Reason, Context)
+    MaxCredit = whapps_config:get_float(?MOD_CONFIG_CAT, <<"max_account_credit">>, 500.00),
+    case wapi_money:units_to_dollars(Units) + wh_util:to_float(Amount) > MaxCredit of
+        true -> 
+            Message = <<"Available credit can not exceed $", (wh_util:to_binary(MaxCredit))/binary>>,
+            Reason = wh_json:from_list([{<<"amount">>, wh_json:from_list([{<<"max_credit">>, Message}])}]),
+            crossbar_util:response(error, <<"max_credit">>, 500, Reason, Context);
+        false ->
+            try braintree_transaction:quick_sale(BillingId, Amount) of
+                #bt_transaction{}=Transaction ->
+                    wh_notify:transaction(AccountId, braintree_transaction:record_to_json(Transaction)),
+                    crossbar_util:response(braintree_transaction:record_to_json(Transaction), Context)
+            catch
+                throw:{api_error, Reason} ->
+                    crossbar_util:response(error, <<"braintree api error">>, 400, Reason, Context);
+                throw:{Error, Reason} ->
+                    crossbar_util:response(error, wh_util:to_binary(Error), 500, Reason, Context)
+            end
     end.
 
 validate(#cb_context{req_verb = <<"get">>, account_id=AccountId}=Context, ?CARDS_PATH_TOKEN, CardId) ->

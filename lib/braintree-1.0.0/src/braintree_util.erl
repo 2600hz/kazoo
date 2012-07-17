@@ -22,6 +22,8 @@
 -export([error_maintenance/0]).
 -export([error_api/1]).
 -export([error_io_fault/0]).
+-export([error_min_amount/1]).
+-export([error_max_amount/1]).
 
 -include_lib("xmerl/include/xmerl.hrl").
 -include_lib("braintree/include/braintree.hrl").
@@ -227,3 +229,26 @@ error_io_fault() ->
     lager:debug("~s", [Error]),
     throw({io_fault, wh_json:from_list([{<<"io_fault">>, Error}])}).
     
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec error_min_amount/1 :: (float()) -> no_return().
+error_min_amount(Amount) ->
+    Error = <<"Unable to process a transaction for less than $", (wh_util:to_binary(Amount))/binary>>,
+    lager:debug("~s", [Error]),
+    throw({min_amount, wh_json:from_list([{<<"min_amount">>, Error}])}).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec error_max_amount/1 :: (float()) -> no_return().
+error_max_amount(Amount) ->
+    Error = <<"Unable to process a transaction for more than $", (wh_util:to_binary(Amount))/binary>>,
+    lager:debug("~s", [Error]),
+    throw({max_amount, wh_json:from_list([{<<"max_amount">>, Error}])}).    
