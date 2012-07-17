@@ -212,18 +212,11 @@ reg_removed_from_cache(_, _, _) ->
 -spec search_for_registration/2 :: (ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} |
                                                                  {'error', 'timeout'}.
 search_for_registration(User, Realm) ->
-    Q = gen_listener:queue_name(registrar_listener),
-    gen_server:cast(registrar_listener, {add_consumer, User, Realm, self()}),
-    Req = [{<<"Username">>, User}
-           ,{<<"Realm">>, Realm}
-           ,{<<"Fields">>, [<<"Username">>, <<"Realm">>]}
-           | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION) 
-          ],
-    wapi_registration:publish_query_req(Req),
-    Result = receive
-                 {reg_query_resp, Reg} -> {ok, Reg}
-             after
-                 2000 -> {error, timeout}
-             end,
-    gen_server:cast(registrar_listener, {remove_consumer, self()}),
-    Result.
+    wh_amqp_worker:call(whapps_amqp_pool
+                        ,[{<<"Username">>, User}
+                          ,{<<"Realm">>, Realm}
+                          ,{<<"Fields">>, [<<"Username">>, <<"Realm">>]}
+                          | wh_api:default_headers(?APP_NAME, ?APP_VERSION) 
+                         ]
+                        ,fun wapi_registration:publish_query_req/1
+                        ,fun wapi_registration:query_resp_v/1).
