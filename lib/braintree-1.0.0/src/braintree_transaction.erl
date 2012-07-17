@@ -86,7 +86,17 @@ find_by_customer(CustomerId) ->
 -spec create/1 :: (#bt_transaction{}) -> #bt_transaction{}.
 -spec create/2 :: (ne_binary(), #bt_transaction{}) -> #bt_transaction{}.
 
-create(#bt_transaction{}=Transaction) ->
+create(#bt_transaction{amount=Amount}=Transaction) ->
+    MinAmount = whapps_config:get_float(<<"braintree">>, <<"min_amount">>, 5.00),
+    MaxAmount = whapps_config:get_float(<<"braintree">>, <<"max_amount">>, 200.00),
+    case wh_util:to_float(Amount) <  MinAmount of
+        true -> braintree_util:error_min_amount(MinAmount);
+        false -> ok
+    end,
+    case wh_util:to_float(Amount) >  MaxAmount of
+        true -> braintree_util:error_max_amount(MaxAmount);
+        false -> ok
+    end,
     Url = url(),
     Request = record_to_xml(Transaction, true),
     Xml = braintree_request:post(Url, Request),
