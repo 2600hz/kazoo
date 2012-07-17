@@ -241,7 +241,7 @@ build_message(Prop, ReqH, OptH) when is_list(Prop) ->
     case defaults(Prop) of
         {error, _Reason}=Error ->
             lager:debug("API message does not have the default headers ~s: ~p"
-                 ,[string:join([wh_util:to_list(H) || H <- ReqH], ","), Error]),
+                        ,[string:join([wh_util:to_list(H) || H <- ReqH], ","), Error]),
             Error;
         HeadAndProp ->
             case build_message_specific_headers(HeadAndProp, ReqH, OptH) of
@@ -258,7 +258,7 @@ build_message_specific_headers({Headers, Prop}, ReqH, OptH) ->
     case update_required_headers(Prop, ReqH, Headers) of
         {error, _Reason} = Error ->
             lager:debug("API message does not have the required headers ~s: ~p"
-                 ,[string:join([wh_util:to_list(H) || H <- ReqH], ","), Error]),
+                        ,[string:join([wh_util:to_list(H) || H <- ReqH], ","), Error]),
             Error;
         {Headers1, Prop1} ->
             {Headers2, _Prop2} = update_optional_headers(Prop1, OptH, Headers1),
@@ -275,7 +275,7 @@ build_message_specific({Headers, Prop}, ReqH, OptH) ->
     case update_required_headers(Prop, ReqH, Headers) of
         {error, _Reason} = Error ->
             lager:debug("API message does not have the required headers ~s: ~p"
-                 ,[string:join([wh_util:to_list(H) || H <- ReqH], ","), Error]),
+                        ,[string:join([wh_util:to_list(H) || H <- ReqH], ","), Error]),
             Error;
         {Headers1, Prop1} ->
             {Headers2, _Prop2} = update_optional_headers(Prop1, OptH, Headers1),
@@ -368,7 +368,7 @@ values_check(Prop, Values) ->
                                    true -> true;
                                    false ->
                                        lager:debug("API key '~s' value '~p' is not one of the values: ~p"
-                                            ,[Key, V, Vs]),
+                                                   ,[Key, V, Vs]),
                                        false
                                end
                       end;
@@ -378,7 +378,7 @@ values_check(Prop, Values) ->
                           V -> true;
                           _Val ->
                               lager:debug("API key '~s' value '~p' is not '~p'"
-                                   ,[Key, _Val, V]),
+                                          ,[Key, _Val, V]),
                               false
                       end
               end, Values).
@@ -395,8 +395,8 @@ type_check(Prop, Types) ->
                                                lager:debug("API key '~s' value '~p' failed validation fun", [Key, Value]),
                                                false
                                        end
-                                   catch 
-                                       _:R -> 
+                                   catch
+                                       _:R ->
                                            lager:debug("API key '~s' value '~p' caused validation fun exception: ~p", [Key, Value, R]),
                                            false
                                    end
@@ -412,7 +412,7 @@ has_all_test() ->
     Prop = [{<<"k1">>, <<"v1">>}
             ,{<<"k2">>, <<"v2">>}
             ,{<<"k3">>, <<"v3">>}
-            ],
+           ],
     Headers = [<<"k1">>, <<"k2">>, <<"k3">>],
     ?assertEqual(true, has_all(Prop, Headers)),
     ?assertEqual(false, has_all(Prop, [<<"k4">> | Headers])),

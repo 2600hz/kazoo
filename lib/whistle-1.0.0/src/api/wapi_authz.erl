@@ -33,7 +33,7 @@
 -define(KEY_AUTHZ_IDENT_REQ, <<"authz.ident_req">>).
 
 %% Authorization Requests
--define(AUTHZ_REQ_HEADERS, [<<"Msg-ID">>, <<"To">>, <<"From">>, <<"Call-ID">>
+-define(AUTHZ_REQ_HEADERS, [<<"To">>, <<"From">>, <<"Call-ID">>
                                 ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
                                 ,<<"Account-ID">>, <<"Request">>, <<"Usage">>
                            ]).
@@ -41,8 +41,7 @@
 -define(AUTHZ_REQ_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
                            ,{<<"Event-Name">>, <<"req">>}
                           ]).
--define(AUTHZ_REQ_TYPES, [{<<"Msg-ID">>, fun is_binary/1}
-                          ,{<<"To">>, fun is_binary/1}
+-define(AUTHZ_REQ_TYPES, [{<<"To">>, fun is_binary/1}
                           ,{<<"From">>, fun is_binary/1}
                           ,{<<"Call-ID">>, fun is_binary/1}
                           ,{<<"Account-ID">>, fun is_binary/1}
@@ -53,7 +52,7 @@
                          ]).
 
 %% Authorization Responses
--define(AUTHZ_RESP_HEADERS, [<<"Msg-ID">>, <<"Call-ID">>, <<"Is-Authorized">>]).
+-define(AUTHZ_RESP_HEADERS, [<<"Call-ID">>, <<"Is-Authorized">>]).
 -define(OPTIONAL_AUTHZ_RESP_HEADERS, [<<"Custom-Channel-Vars">>, <<"Type">>, <<"Global-Resource">>]).
 -define(AUTHZ_RESP_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
                             ,{<<"Event-Name">>, <<"resp">>}
@@ -64,15 +63,14 @@
 -define(AUTHZ_RESP_TYPES, [{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}]).
 
 %% Authorization Identify Requests
--define(AUTHZ_IDENT_REQ_HEADERS, [<<"Msg-ID">>, <<"To">>, <<"From">>, <<"Request">>, <<"Call-ID">>
+-define(AUTHZ_IDENT_REQ_HEADERS, [<<"To">>, <<"From">>, <<"Request">>, <<"Call-ID">>
                                       ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
                                  ]).
 -define(OPTIONAL_AUTHZ_IDENT_REQ_HEADERS, [<<"Custom-Channel-Vars">>]).
 -define(AUTHZ_IDENT_REQ_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
                                  ,{<<"Event-Name">>, <<"identify_req">>}
                                 ]).
--define(AUTHZ_IDENT_REQ_TYPES, [{<<"Msg-ID">>, fun is_binary/1}
-                                ,{<<"To">>, fun is_binary/1}
+-define(AUTHZ_IDENT_REQ_TYPES, [{<<"To">>, fun is_binary/1}
                                 ,{<<"From">>, fun is_binary/1}
                                 ,{<<"Call-ID">>, fun is_binary/1}
                                 ,{<<"Caller-ID-Name">>, fun is_binary/1}
@@ -81,14 +79,13 @@
                                ]).
 
 %% Authorization Identify Responses
--define(AUTHZ_IDENT_RESP_HEADERS, [<<"Msg-ID">>, <<"Call-ID">>, <<"Account-ID">>]).
+-define(AUTHZ_IDENT_RESP_HEADERS, [<<"Call-ID">>, <<"Account-ID">>]).
 -define(OPTIONAL_AUTHZ_IDENT_RESP_HEADERS, [<<"Reseller-ID">>, <<"Global-Resource">>]).
 -define(AUTHZ_IDENT_RESP_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
                                   ,{<<"Event-Name">>, <<"identify_resp">>}
                                   ,{<<"Global-Resource">>, [<<"true">>, <<"false">>]}
                                  ]).
--define(AUTHZ_IDENT_RESP_TYPES, [{<<"Msg-ID">>, fun is_binary/1}
-                                 ,{<<"Call-ID">>, fun is_binary/1}
+-define(AUTHZ_IDENT_RESP_TYPES, [{<<"Call-ID">>, fun is_binary/1}
                                  ,{<<"Account-ID">>, fun is_binary/1}
                                  ,{<<"Reseller-ID">>, fun is_binary/1}
                                 ]).

@@ -421,13 +421,13 @@
 %% IMPORTANT: to use the filter-applications list, Insert-At must be "now"
 
 -define(NOOP_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>]).
--define(OPTIONAL_NOOP_REQ_HEADERS, [<<"Msg-ID">>, <<"Insert-At">>, <<"Filter-Applications">>]).
+-define(OPTIONAL_NOOP_REQ_HEADERS, [<<"Insert-At">>, <<"Filter-Applications">>]).
 -define(NOOP_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                           ,{<<"Event-Name">>, <<"command">>}
                           ,{<<"Application-Name">>, <<"noop">>}
                           ,?INSERT_AT_TUPLE
                          ]).
--define(NOOP_REQ_TYPES, [{<<"Msg-ID">>, fun is_binary/1}]).
+-define(NOOP_REQ_TYPES, []).
 
 %% Conference
 -define(CONFERENCE_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Conference-ID">>]).
@@ -446,14 +446,14 @@
 
 %% Originate Ready
 -define(ORIGINATE_READY_HEADERS, [<<"Call-ID">>, <<"Control-Queue">>]).
--define(OPTIONAL_ORIGINATE_READY_HEADERS, [<<"Msg-ID">>]).
+-define(OPTIONAL_ORIGINATE_READY_HEADERS, []).
 -define(ORIGINATE_READY_VALUES, [{<<"Event-Category">>, <<"dialplan">>}
                                  ,{<<"Event-Name">>, <<"originate_ready">>}
                                 ]).
 -define(ORIGINATE_READY_TYPES, []).
 
 %% Originate Execute
--define(ORIGINATE_EXECUTE_HEADERS, [<<"Msg-ID">>, <<"Call-ID">>]).
+-define(ORIGINATE_EXECUTE_HEADERS, [<<"Call-ID">>]).
 -define(OPTIONAL_ORIGINATE_EXECUTE_HEADERS, []).
 -define(ORIGINATE_EXECUTE_VALUES, [{<<"Event-Category">>, <<"dialplan">>}
                                  ,{<<"Event-Name">>, <<"originate_execute">>}

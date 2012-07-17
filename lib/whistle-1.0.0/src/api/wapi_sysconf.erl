@@ -36,26 +36,26 @@
 %% Configuration Document Update
 %% request to read 
 -define(SYSCONF_GET_REQ_HEADERS, [<<"Category">>, <<"Key">>, <<"Node">>]).
--define(OPTIONAL_SYSCONF_GET_REQ_HEADERS, [<<"Default">>, <<"Msg-ID">>]).
+-define(OPTIONAL_SYSCONF_GET_REQ_HEADERS, [<<"Default">>]).
 -define(SYSCONF_GET_REQ_VALUES, [{<<"Event-Name">>, <<"get_req">>} | ?SYSCONF_VALUES]).
 
 %% answer to a read request
 -define(SYSCONF_GET_RESP_HEADERS, [<<"Category">>, <<"Key">>, <<"Value">>]).
--define(OPTIONAL_SYSCONF_GET_RESP_HEADERS, [<<"Node">>, <<"Msg-ID">>]).
+-define(OPTIONAL_SYSCONF_GET_RESP_HEADERS, [<<"Node">>]).
 -define(SYSCONF_GET_RESP_VALUES, [{<<"Event-Name">>, <<"get_resp">>} | ?SYSCONF_VALUES]).
 
 %% request a write
 -define(SYSCONF_SET_REQ_HEADERS, [<<"Category">>, <<"Key">>, <<"Value">>, <<"Node">>]).
--define(OPTIONAL_SYSCONF_SET_REQ_HEADERS, [<<"Msg-ID">>]).
+-define(OPTIONAL_SYSCONF_SET_REQ_HEADERS, []).
 -define(SYSCONF_SET_REQ_VALUES, [{<<"Event-Name">>, <<"set_req">>} | ?SYSCONF_VALUES]).
 
 -define(SYSCONF_FLUSH_REQ_HEADERS, [<<"Category">>, <<"Key">>, <<"Node">>]).
--define(OPTIONAL_SYSCONF_FLUSH_REQ_HEADERS, [<<"Msg-ID">>]).
+-define(OPTIONAL_SYSCONF_FLUSH_REQ_HEADERS, []).
 -define(SYSCONF_FLUSH_REQ_VALUES, [{<<"Event-Name">>, <<"flush_req">>} | ?SYSCONF_VALUES]).
 
 %% answer to a write request
 -define(SYSCONF_SET_RESP_HEADERS, [<<"Category">>, <<"Key">>, <<"Value">>]).
--define(OPTIONAL_SYSCONF_SET_RESP_HEADERS, [<<"Node">>, <<"Status">>, <<"Msg-ID">>]).
+-define(OPTIONAL_SYSCONF_SET_RESP_HEADERS, [<<"Node">>, <<"Status">>]).
 -define(SYSCONF_SET_RESP_VALUES, [{<<"Event-Name">>, <<"set_resp">>} | ?SYSCONF_VALUES]).
 
 -define(SYSCONF_TYPES, [{<<"Category">>, fun is_binary/1}

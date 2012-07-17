@@ -47,8 +47,7 @@
 %% Call Events
 -define(CALL_EVENT_HEADERS, [<<"Call-ID">>]).
 -define(OPTIONAL_CALL_EVENT_HEADERS, [<<"Application-Name">>, <<"Application-Response">>
-                                          ,<<"Custom-Channel-Vars">>, <<"Timestamp">>
-                                          ,<<"Msg-ID">>, <<"Channel-State">>
+                                          ,<<"Custom-Channel-Vars">>, <<"Timestamp">>, <<"Channel-State">>
                                           ,<<"Call-Direction">>, <<"Transfer-History">>
                                           ,<<"Other-Leg-Direction">>, <<"Other-Leg-Caller-ID-Name">>
                                           ,<<"Other-Leg-Caller-ID-Number">>, <<"Other-Leg-Destination-Number">>
@@ -62,7 +61,7 @@
                                           ,<<"Fax-Result-Text">>, <<"Fax-ECM-Used">>
                                           ,<<"Fax-Transferred-Pages">>, <<"Fax-Total-Pages">>
                                           ,<<"Fax-Bad-Rows">>, <<"Fax-Transfer-Rate">>
-                                          ,<<"Msg-ID">>, <<"Switch-Hostname">>, <<"Group-ID">>
+                                          ,<<"Switch-Hostname">>, <<"Group-ID">>
                                      ]).
 -define(CALL_EVENT_VALUES, [{<<"Event-Category">>, <<"call_event">>}]).
 -define(CALL_EVENT_TYPES, [{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}]).

@@ -30,7 +30,7 @@
 -define(ROUTE_REQ_EVENT_NAME, <<"route_req">>).
 
 %% Route Requests
--define(ROUTE_REQ_HEADERS, [<<"Msg-ID">>, <<"To">>, <<"From">>, <<"Request">>, <<"Call-ID">>
+-define(ROUTE_REQ_HEADERS, [<<"To">>, <<"From">>, <<"Request">>, <<"Call-ID">>
                                 ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
                            ]).
 -define(OPTIONAL_ROUTE_REQ_HEADERS, [<<"Geo-Location">>, <<"Orig-IP">>, <<"Max-Call-Length">>, <<"Media">>
@@ -46,8 +46,7 @@
 -define(ROUTE_REQ_COST_PARAMS, [<<"Min-Increment-Cost">>, <<"Max-Incremental-Cost">>
                                     ,<<"Min-Setup-Cost">>, <<"Max-Setup-Cost">>
                                ]).
--define(ROUTE_REQ_TYPES, [{<<"Msg-ID">>, fun is_binary/1}
-                          ,{<<"To">>, fun is_binary/1}
+-define(ROUTE_REQ_TYPES, [{<<"To">>, fun is_binary/1}
                           ,{<<"From">>, fun is_binary/1}
                           ,{<<"Request">>, fun is_binary/1}
                           ,{<<"Call-ID">>, fun is_binary/1}
@@ -86,7 +85,7 @@
                                 ]).
 
 %% Route Responses
--define(ROUTE_RESP_HEADERS, [<<"Msg-ID">>, <<"Method">>]).
+-define(ROUTE_RESP_HEADERS, [<<"Method">>]).
 -define(OPTIONAL_ROUTE_RESP_HEADERS, [<<"Custom-Channel-Vars">>, <<"Routes">>
                                       ,<<"Route-Error-Code">>, <<"Route-Error-Message">>]).
 -define(ROUTE_RESP_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}

@@ -22,7 +22,7 @@
 %% AMQP fields for Rating Request
 -define(RATE_REQ_HEADERS, [<<"To-DID">>, <<"Call-ID">>]).
 -define(OPTIONAL_RATE_REQ_HEADERS, [<<"Call-ID">>, <<"Account-ID">>, <<"From-DID">>
-                                        ,<<"Options">>, <<"Direction">>, <<"Msg-ID">>
+                                        ,<<"Options">>, <<"Direction">>
                                    ]).
 -define(RATE_REQ_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
                           ,{<<"Event-Name">>, <<"req">>}
@@ -36,7 +36,7 @@
 -define(RATE_RESP_HEADERS, [<<"Rate">>, <<"Call-ID">>]).
 -define(OPTIONAL_RATE_RESP_HEADERS, [<<"Rate-Increment">>, <<"Rate-Minimum">>
                                          ,<<"Surcharge">>, <<"Base-Cost">>
-                                         ,<<"Rate-Name">>, <<"Msg-ID">>
+                                         ,<<"Rate-Name">>
                                     ]).
 -define(RATE_RESP_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
                            ,{<<"Event-Name">>, <<"resp">>}
