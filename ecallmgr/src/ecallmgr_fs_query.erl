@@ -73,7 +73,9 @@ handle_channel_status(JObj, _Props) ->
             Resp = [{<<"Call-ID">>, CallID}
                     ,{<<"Status">>, <<"terminated">>}
                     ,{<<"Error-Msg">>, <<"no node found with channel">>}
-                    | wh_api:default_headers(?APP_NAME, ?APP_VERSION)],
+                    ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+                    | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                   ],
             wapi_call:publish_channel_status_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp);
         {error, not_found} ->
             lager:debug("no node found with channel ~s, but we are not authoritative", [CallID]);
@@ -85,7 +87,9 @@ handle_channel_status(JObj, _Props) ->
                     ,{<<"Status">>, <<"active">>}
                     ,{<<"Switch-Hostname">>, Hostname}
                     ,{<<"Switch-Nodename">>, wh_util:to_binary(Node)}
-                    | wh_api:default_headers(?APP_NAME, ?APP_VERSION)],
+                    ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+                    | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                   ],
             wapi_call:publish_channel_status_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp)
     end.
 
@@ -104,7 +108,9 @@ handle_call_status(JObj, _Props) ->
             Resp = [{<<"Call-ID">>, CallID}
                     ,{<<"Status">>, <<"terminated">>}
                     ,{<<"Error-Msg">>, <<"no node found with call id">>}
-                    | wh_api:default_headers(?APP_NAME, ?APP_VERSION)],
+                    ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+                    | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                   ],
             wapi_call:publish_channel_status_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp);
         {error, not_found} ->
             lager:debug("no node found with channel ~s, but we are not authoritative", [CallID]);
@@ -116,13 +122,17 @@ handle_call_status(JObj, _Props) ->
                     Resp = [{<<"Call-ID">>, CallID}
                             ,{<<"Status">>, <<"active">>}
                             ,{<<"Error-Msg">>, <<"uuid dump failed">>}
-                            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)],
+                            ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+                            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                           ],
                     wapi_call:publish_call_status_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp);
                 {ok, Props} ->
                     lager:debug("got channel info for ~s, forming response", [CallID]),
                     ChannelCallID = props:get_value(<<"Channel-Call-UUID">>, Props),
                     Resp = create_call_status_resp(Props, ChannelCallID =:= CallID),
-                    wapi_call:publish_call_status_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp)
+                    MsgId = wh_json:get_value(<<"Msg-ID">>, JObj),
+                    wapi_call:publish_call_status_resp(wh_json:get_value(<<"Server-ID">>, JObj)
+                                                       ,wh_json:set_value(<<"Msg-ID">>, MsgId, Resp))
             end
     end.
 
