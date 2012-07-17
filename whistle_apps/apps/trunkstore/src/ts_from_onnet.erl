@@ -118,8 +118,9 @@ onnet_data(State) ->
         send_park(State, Command)
     catch
         _A:_B ->
-            lager:debug("Exception ~p:~p", [_A, _B]),
-            lager:debug("Stacktrace: ~p", [erlang:get_stacktrace()]),
+            ST = erlang:get_stacktrace(),
+            lager:debug("exception ~p:~p", [_A, _B]),
+            _ = [lager:debug("st: ~p", [S]) || S <- ST],
             wait_for_cdr(State)
     end.
 
