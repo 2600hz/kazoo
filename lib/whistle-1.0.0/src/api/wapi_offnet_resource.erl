@@ -27,7 +27,7 @@
                                                    ,<<"Emergency-Caller-ID-Name">>, <<"Emergency-Caller-ID-Number">>
                                                    ,<<"Ringback">>, <<"SIP-Headers">>, <<"Custom-Channel-Vars">>
                                                    ,<<"Hold-Media">>, <<"Presence-ID">>, <<"Account-Realm">>
-                                                   ,<<"Control-Queue">>, <<"Call-ID">>, <<"Msg-ID">>, <<"Application-Data">>
+                                                   ,<<"Control-Queue">>, <<"Call-ID">>, <<"Application-Data">>
                                                    ,<<"Account-ID">>
                                               ]).
 -define(OFFNET_RESOURCE_REQ_VALUES, [{<<"Event-Category">>, <<"resource">>}
@@ -47,8 +47,9 @@
 
 %% Offnet Resource Response
 -define(OFFNET_RESOURCE_RESP_HEADERS, [<<"Response-Message">>]).
--define(OPTIONAL_OFFNET_RESOURCE_RESP_HEADERS, [<<"Msg-ID">>, <<"Error-Message">>, <<"Response-Code">>
-                                               ,<<"Call-ID">>, <<"Resource-Response">>]).
+-define(OPTIONAL_OFFNET_RESOURCE_RESP_HEADERS, [<<"Error-Message">>, <<"Response-Code">>
+                                                    ,<<"Call-ID">>, <<"Resource-Response">>
+                                               ]).
 -define(OFFNET_RESOURCE_RESP_VALUES, [{<<"Event-Category">>, <<"resource">>}
                                       ,{<<"Event-Name">>, <<"offnet_resp">>}
                                      ]).

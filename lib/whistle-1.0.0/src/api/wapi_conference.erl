@@ -60,7 +60,7 @@
 
 %% Conference Search Request
 -define(SEARCH_REQ_HEADERS, [<<"Conference-ID">>]).
--define(OPTIONAL_SEARCH_REQ_HEADERS, [<<"Msg-ID">>]).
+-define(OPTIONAL_SEARCH_REQ_HEADERS, []).
 -define(SEARCH_REQ_VALUES, [{<<"Event-Category">>, <<"conference">>}
                             ,{<<"Event-Name">>, <<"search_req">>}
                            ]).
@@ -70,7 +70,8 @@
 -define(SEARCH_RESP_HEADERS, [<<"Conference-ID">>, <<"Participant-Count">>, <<"Switch-Hostname">>]).
 -define(OPTIONAL_SEARCH_RESP_HEADERS, [<<"Switch-URL">>, <<"Switch-External-IP">>, <<"Rate">>
                                            ,<<"UUID">>, <<"Running">>, <<"Answered">>, <<"Dynamic">>
-                                           ,<<"Run-Time">>, <<"Participants">>, <<"Locked">>, <<"Msg-ID">>]).
+                                           ,<<"Run-Time">>, <<"Participants">>, <<"Locked">>
+                                      ]).
 -define(SEARCH_RESP_VALUES, [{<<"Event-Category">>, <<"conference">>}
                              ,{<<"Event-Name">>, <<"search_resp">>}
                             ]).
@@ -278,7 +279,7 @@
 
 %% Conference Error
 -define(CONFERENCE_ERROR_HEADERS, [<<"Error-Message">>, <<"Request">>]).
--define(OPTIONAL_CONFERENCE_ERROR_HEADERS, [<<"Msg-ID">>]).
+-define(OPTIONAL_CONFERENCE_ERROR_HEADERS, []).
 -define(CONFERENCE_ERROR_VALUES, [{<<"Event-Category">>, <<"conference">>}
                                     ,{<<"Event-Name">>, <<"error">>}
                                    ]).
