@@ -164,11 +164,11 @@ sip_headers(L) when is_list(L) ->
         _ -> undefined
     end.
 
--spec failover/1 :: ([wh_json:json_object() | binary(),...]) -> wh_json:json_object().
+-spec failover/1 :: ([wh_json:json_object() | binary() | 'undefined',...]) -> wh_json:json_object() | 'undefined'.
 %% cascade from DID to Srv to Acct
 failover(L) ->
     case simple_extract(L) of
-        B when is_binary(B) -> wh_json:new();
+        B when is_binary(B) -> undefined;
         Other -> Other
     end.
 
