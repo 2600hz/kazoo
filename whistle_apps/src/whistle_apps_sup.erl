@@ -19,13 +19,27 @@
 
 -define(SERVER, ?MODULE).
 
+-define(POOL_SIZE, 5).
+-define(OVERFLOW_POOL_SIZE, 20).
+
 -define(CHILD(Name, Type), fun(N, cache) -> {N, {wh_cache, start_link, [N]}, permanent, 5000, worker, [wh_cache]};
-                              (N, T) -> {N, {N, start_link, []}, permanent, 5000, T, [N]} end(Name, Type)).
+                              (N, pool) -> {N, {poolboy, start_link, [[{worker_module, wh_amqp_worker}
+                                                                       ,{name, {local, N}}
+                                                                       ,{size, ?POOL_SIZE}
+                                                                       ,{max_overflow, ?OVERFLOW_POOL_SIZE}
+                                                                       ,{neg_resp_threshold, 1}
+                                                                      ]
+                                                                     ]}
+                                            ,permanent, 5000, worker, [poolboy]
+                                           };
+                              (N, T) -> {N, {N, start_link, []}, permanent, 5000, T, [N]}  end(Name, Type)).
+
 -define(WHAPPS(Whapps), {whapps_sup, {whapps_sup, start_link, [Whapps]}, permanent, 5000, supervisor, [whapps_sup]}).
 -define(CHILDREN, [{wh_cache, worker}
                    ,{?WHAPPS_CONFIG_CACHE, cache}
                    ,{?WHAPPS_CALL_CACHE, cache}
                    ,{whistle_couch_sup, supervisor}
+                   ,{?WHAPPS_AMQP_POOL, pool}
                    ,{whapps_controller, worker}
                   ]).
 
