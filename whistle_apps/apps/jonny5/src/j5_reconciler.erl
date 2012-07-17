@@ -176,8 +176,37 @@ correct_discrepancy(Ledger, CallId, Amount) ->
                                        ,{<<"pvt_whapp">>, ?APP_NAME}
                                       ]),
             io:format("correcting $~p discrepancy for call ~s on ~s~n", [wapi_money:units_to_dollars(Amount), CallId, LedgerId]),
-            couch_mgr:save_doc(LedgerDb, Entry)
+            case couch_mgr:save_doc(LedgerDb, Entry) of
+                {error, _} -> ok;
+                {ok, _} -> 
+                    _ = send_system_alert(LedgerDb, CallId, Amount, Entry),
+                    ok
+            end
     end.
+
+-spec send_system_alert/4 :: (ne_binary(), ne_binary(), integer(), wh_json:json_object()) -> pid().
+send_system_alert(Ledger, CallId, Amount, Entry) ->
+    spawn(fun() ->
+                  LedgerDb = wh_util:format_account_id(Ledger, encoded),
+                  LedgerId = wh_util:format_account_id(Ledger, raw),
+                  Dollars = wapi_money:units_to_dollars(abs(Amount)),
+                  Account = case couch_mgr:open_cache_doc(LedgerDb, LedgerId) of
+                                {ok, J} -> J;
+                                {error, _} -> wh_json:new()
+                            end,
+                  AccountName = wh_json:get_value(<<"name">>, Account),
+                  AccountRealm = wh_json:get_value(<<"realm">>, Account),
+                  Balance = wapi_money:units_to_dollars(j5_util:current_balance(Ledger)),
+                  Details = [{<<"Account-ID">>, LedgerId}
+                             ,{<<"Account-Name">>, AccountName}
+                             ,{<<"Account-Realm">>, AccountRealm}
+                             ,{<<"Amount">>, <<"$", (wh_util:to_binary(Dollars))/binary>>}
+                             ,{<<"Type">>, wh_json:get_value(<<"pvt_type">>, Entry)}
+                             ,{<<"Call-ID">>, CallId}
+                             ,{<<"New-Balance">>, <<"$", (wh_util:to_binary(Balance))/binary>>}
+                            ],
+                  wh_notify:system_alert("account $~p discrepancy / ~s (~s) / Call ~s", [Dollars, AccountName, LedgerId, CallId], Details)
+          end).
 
 -spec shuffle/1 :: (list()) -> list().
 -spec shuffle/2 :: (list(), integer()) -> list().
