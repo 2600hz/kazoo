@@ -154,17 +154,16 @@ port_in(Number, AssignTo, AuthBy) ->
 
 port_in(Number, AssignTo, AuthBy, PublicFields) ->
     lager:debug("attempting to port_in number ~s for account ~s", [Number, AssignTo]),    
-    Routines = [fun(_) -> wnm_number:get(Number, PublicFields) end
-                ,fun({not_found, #number{}=N}) ->
-                         NewNumber = N#number{number=Number
-                                              ,assign_to=AssignTo
-                                              ,auth_by=AuthBy
-                                              ,number_doc=PublicFields
-                                             },
-                         wnm_number:create_port_in(NewNumber);
-                    ({_, #number{}}=E) -> E;
-                    (#number{}=N) -> wnm_number:error_number_exists(N)
-                 end
+    Routines = [fun({not_found, #number{}=N}) ->
+                        NewNumber = N#number{number=Number
+                                             ,assign_to=AssignTo
+                                             ,auth_by=AuthBy
+                                             ,number_doc=PublicFields
+                                            },
+                        wnm_number:create_port_in(NewNumber);
+                   ({_, #number{}}=E) -> E;
+                   (#number{}=N) -> wnm_number:error_number_exists(N)
+                end
                 ,fun({_, #number{}}=E) -> E;
                     (#number{}=N) -> wnm_number:save(N)
                  end
@@ -176,7 +175,7 @@ port_in(Number, AssignTo, AuthBy, PublicFields) ->
                          {ok, wh_json:public_fields(JObj)}
                  end
                ], 
-    lists:foldl(fun(F, J) -> catch F(J) end, ok, Routines).
+    lists:foldl(fun(F, J) -> catch F(J) end, catch wnm_number:get(Number, PublicFields), Routines).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -187,21 +186,20 @@ port_in(Number, AssignTo, AuthBy, PublicFields) ->
 %%--------------------------------------------------------------------
 -spec reconcile_number/3 :: (ne_binary(), ne_binary(), ne_binary()) -> operation_return().
 reconcile_number(Number, AssignTo, AuthBy) ->
-    Routines = [fun(_) -> wnm_number:get(Number) end
-                ,fun({not_found, #number{}=N}) when is_binary(AssignTo) ->
-                         NewNumber = N#number{number=Number
-                                              ,assign_to=AssignTo
-                                              ,auth_by=wh_util:to_binary(AuthBy)
-                                             },
-                         wnm_number:create_available(NewNumber);
-                    ({_, #number{}}=E) -> E;
-                    (#number{}=N) when is_binary(AssignTo) ->
-                         N#number{assign_to=AssignTo};
-                    (#number{assigned_to=undefined}=N)  ->
-                         wnm_number:error_unauthorized(N);
-                    (#number{assigned_to=AssignedTo}=N) ->
-                         N#number{assign_to=AssignedTo}
-                 end
+    Routines = [fun({not_found, #number{}=N}) when is_binary(AssignTo) ->
+                        NewNumber = N#number{number=Number
+                                             ,assign_to=AssignTo
+                                             ,auth_by=wh_util:to_binary(AuthBy)
+                                            },
+                        wnm_number:create_available(NewNumber);
+                   ({_, #number{}}=E) -> E;
+                   (#number{}=N) when is_binary(AssignTo) ->
+                        N#number{assign_to=AssignTo};
+                   (#number{assigned_to=undefined}=N)  ->
+                        wnm_number:error_unauthorized(N);
+                   (#number{assigned_to=AssignedTo}=N) ->
+                        N#number{assign_to=AssignedTo}
+                end
                 ,fun({_, #number{}}=E) -> E;
                     (#number{}=N) when is_binary(AuthBy) -> 
                          N#number{auth_by=AuthBy};
@@ -228,7 +226,7 @@ reconcile_number(Number, AssignTo, AuthBy) ->
                          {ok, wh_json:public_fields(JObj)}
                  end
                ], 
-    lists:foldl(fun(F, J) -> catch F(J) end, ok, Routines).
+    lists:foldl(fun(F, J) -> catch F(J) end, catch wnm_number:get(Number), Routines).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -236,7 +234,7 @@ reconcile_number(Number, AssignTo, AuthBy) ->
 %% Release all numbers currently assigned to an account
 %% @end
 %%--------------------------------------------------------------------
--spec free_numbers/1 :: (ne_binary()) -> ok.
+-spec free_numbers/1 :: (ne_binary()) -> 'ok'.
 free_numbers(AccountId) ->
     lager:debug("attempting to free all numbers assigned to account ~s", [AccountId]),
     AccountDb = wh_util:format_account_id(AccountId, encoded),
@@ -259,15 +257,15 @@ free_numbers(AccountId) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec reserve_number/3 :: (ne_binary(), ne_binary(), ne_binary()) -> operation_return().
--spec reserve_number/4 :: (ne_binary(), ne_binary(), ne_binary(), wh_json:json_object()) -> operation_return().
+-spec reserve_number/4 :: (ne_binary(), ne_binary(), ne_binary(), wh_json:json_object() | 'undefined')
+                          -> operation_return().
 
 reserve_number(Number, AssignTo, AuthBy) ->
     reserve_number(Number, AssignTo, AuthBy, undefined).
 
 reserve_number(Number, AssignTo, AuthBy, PublicFields) ->
     lager:debug("attempting to reserve ~s for account ~s", [Number, AssignTo]),    
-    Routines = [fun(_) -> wnm_number:get(Number, PublicFields) end
-                ,fun({_, #number{}}=E) -> E;
+    Routines = [fun({_, #number{}}=E) -> E;
                     (#number{}=N) -> wnm_number:reserved(N#number{assign_to=AssignTo, auth_by=AuthBy})
                  end
                 ,fun({_, #number{}}=E) -> E;
@@ -281,7 +279,7 @@ reserve_number(Number, AssignTo, AuthBy, PublicFields) ->
                          {ok, wh_json:public_fields(JObj)}
                  end
                ], 
-    lists:foldl(fun(F, J) -> catch F(J) end, ok, Routines).
+    lists:foldl(fun(F, J) -> catch F(J) end, catch wnm_number:get(Number, PublicFields), Routines).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -291,7 +289,8 @@ reserve_number(Number, AssignTo, AuthBy, PublicFields) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec assign_number_to_account/3 :: (ne_binary(), ne_binary(), ne_binary()) -> operation_return().
--spec assign_number_to_account/4 :: (ne_binary(), ne_binary(), ne_binary(), wh_json:json_object()) -> operation_return().
+-spec assign_number_to_account/4 :: (ne_binary(), ne_binary(), ne_binary(), wh_json:json_object() | 'undefined')
+                                    -> operation_return().
 
 assign_number_to_account(Number, AssignTo, AuthBy) ->
     assign_number_to_account(Number, AssignTo, AuthBy, undefined).
@@ -508,15 +507,13 @@ get_public_fields(Number, AuthBy) ->
 %%--------------------------------------------------------------------
 -spec set_public_fields/3 :: (ne_binary(), wh_json:json_object(), ne_binary()) -> operation_return().
 set_public_fields(Number, PublicFields, AuthBy) ->
-    lager:debug("attempting to set public fields for number ~s", [Number]),
-    Routines = [fun(_) -> wnm_number:get(Number, PublicFields) end
-                ,fun({_, #number{}}=E) -> E;
-                    (#number{assigned_to=AssignedTo}=N) ->
-                         case wh_util:is_in_account_hierarchy(AuthBy, AssignedTo, true) of
-                             false -> wnm_number:error_unauthorized(N);
-                             true -> N
-                         end
-                 end
+    Routines = [fun({_, #number{}}=E) -> E;
+                   (#number{assigned_to=AssignedTo}=N) ->
+                        case wh_util:is_in_account_hierarchy(AuthBy, AssignedTo, true) of
+                            false -> wnm_number:error_unauthorized(N);
+                            true -> N
+                        end
+                end
                 ,fun({_, #number{}}=E) -> E;
                     (#number{}=N) -> wnm_number:save(N)
                  end
@@ -528,7 +525,7 @@ set_public_fields(Number, PublicFields, AuthBy) ->
                          {ok, wh_json:public_fields(JObj)}
                  end
                ], 
-    lists:foldl(fun(F, J) -> catch F(J) end, ok, Routines).
+    lists:foldl(fun(F, J) -> catch F(J) end, wnm_number:get(Number, PublicFields), Routines).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -537,9 +534,9 @@ set_public_fields(Number, PublicFields, AuthBy) ->
 %% ensure the modules data is stored for later acquisition.
 %% @end
 %%--------------------------------------------------------------------
--spec prepare_find_results/2 :: (wh_proplist(), [] | [[ne_binary(),...],...]) -> [] | [ne_binary(),...].
--spec prepare_find_results/4 :: ([] | [ne_binary(),...], atom(), wh_json:json_object(), [] | [ne_binary(),...])
-                                -> [] | [ne_binary(),...].
+-spec prepare_find_results/2 :: (wh_proplist(), [] | [wh_json:json_strings(),...]) -> wh_json:json_strings().
+-spec prepare_find_results/4 :: (wh_json:json_strings(), atom(), wh_json:json_object(), wh_json:json_strings())
+                                -> wh_json:json_strings().
 
 prepare_find_results([], Found) ->
     Results = lists:flatten(Found),
@@ -549,7 +546,7 @@ prepare_find_results([{Module, {ok, ModuleResults}}|T], Found) ->
     case wh_json:get_keys(ModuleResults) of
         [] -> prepare_find_results(T, Found);
         Numbers ->
-            Results = prepare_find_results(Numbers, wh_util:to_binary(Module)
+            Results = prepare_find_results(Numbers, Module
                                            ,ModuleResults, Found),
             prepare_find_results(T, [Results|Found])
     end;
@@ -570,7 +567,7 @@ prepare_find_results([Number|Numbers], ModuleName, ModuleResults, Found) ->
             end;
         {not_found, #number{}=N} ->
             NewNumber = N#number{number=Number
-                                 ,module_name=ModuleName
+                                 ,module_name = ModuleName
                                  ,module_data=wh_json:get_value(Number, ModuleResults)
                                 },
             case catch wnm_number:save(wnm_number:create_discovery(NewNumber)) of

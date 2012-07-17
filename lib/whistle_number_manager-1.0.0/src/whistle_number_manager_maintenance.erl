@@ -12,6 +12,8 @@
 -export([reconcile_numbers/0, reconcile_numbers/1]).
 -export([reconcile_accounts/0, reconcile_accounts/1]).
 
+-export([reconcile_providers/0]).
+
 -include("wh_number_manager.hrl").
 -include_lib("whistle/include/wh_databases.hrl").
 
@@ -105,13 +107,43 @@ reconcile_accounts(AccountId) ->
     no_return.
 
 %%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Load known provider modules into system_config
+%% exist
+%% @end
+%%--------------------------------------------------------------------
+-spec reconcile_providers/0 :: () -> any().
+-spec reconcile_providers/2 :: ([ne_binary(),...] | [], [ne_binary(),...] | []) -> any().
+reconcile_providers() ->
+    Paths = filelib:wildcard([code:lib_dir(whistle_number_manager), "/src/providers/*.erl"]),
+    Mods = [wh_util:to_binary(filename:rootname(filename:basename(P))) || P <- Paths],
+
+    lager:debug("Mods: ~p", [Mods]),
+
+    Providers = whapps_config:get(?WNM_CONFIG_CAT, <<"providers">>, []),
+    lager:debug("prov: ~p", [Providers]),
+
+    reconcile_providers(Mods, Providers).
+
+reconcile_providers([<<"wnm_", P/binary>>|Avail], Config) ->
+    case lists:member(P, Config) of
+        true -> reconcile_providers(Avail, Config);
+        false -> reconcile_providers(Avail, [P | Config])
+    end;
+reconcile_providers([_|Avail], Config) ->
+    reconcile_providers(Avail, Config);
+reconcile_providers([], Config) ->
+    whapps_config:set_default(?WNM_CONFIG_CAT, <<"providers">>, Config).
+
+%%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% Given an account create a json object of all numbers that look to
 %% external (TODO: currently just uses US rules).
 %% @end
 %%--------------------------------------------------------------------
--spec get_callflow_account_numbers/1 :: (ne_binary()) -> wh_json:json_object().
+-spec get_callflow_account_numbers/1 :: (ne_binary()) -> wh_json:json_strings().
 get_callflow_account_numbers(AccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, encoded),
     case couch_mgr:get_all_results(AccountDb, ?CALLFLOW_VIEW) of

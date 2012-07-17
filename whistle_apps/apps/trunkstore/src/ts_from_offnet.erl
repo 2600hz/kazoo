@@ -92,6 +92,7 @@ wait_for_bridge(State) ->
         {bridged, State1} ->
             wait_for_cdr(State1);
         {error, State2} ->
+            lager:debug("error waiting for bridge, try failover"),
             try_failover(State2);
         {hangup, State3} ->
             ALeg = ts_callflow:get_aleg_id(State3),
@@ -147,6 +148,10 @@ try_failover(State) ->
             lager:debug("no callctl for failover"),
             ts_callflow:send_hangup(State),
             wait_for_cdr(State);
+        {_, undefined} ->
+            lager:debug("no failover defined"),
+            ts_callflow:send_hangup(State),
+            wait_for_cdr(State);
         {_, Failover} ->
             case wh_json:is_empty(Failover) of
                 true ->
@@ -170,6 +175,8 @@ try_failover_sip(State, SIPUri) ->
     CtlQ = ts_callflow:get_control_queue(State),
     Q = ts_callflow:get_my_queue(State),
 
+    lager:debug("routing to failover sip uri: ~s", [SIPUri]),
+
     EndPoint = wh_json:from_list([
                                   {<<"Invite-Format">>, <<"route">>}
                                   ,{<<"Route">>, SIPUri}
@@ -180,12 +187,10 @@ try_failover_sip(State, SIPUri) ->
                {<<"Call-ID">>, CallID}
                ,{<<"Application-Name">>, <<"bridge">>}
                ,{<<"Endpoints">>, [EndPoint]}
-               | wh_api:default_headers(Q, <<"call_control">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+               | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
 
     {ok, Payload} = wapi_dialplan:bridge(Command),
-
-    lager:debug("sending SIP failover for ~s: ~s", [SIPUri, Payload]),
 
     amqp_util:targeted_publish(CtlQ, Payload, <<"application/json">>),
     wait_for_bridge(ts_callflow:set_failover(State, wh_json:new())).
@@ -224,12 +229,15 @@ try_failover_e164(State, ToDID) ->
 -spec get_endpoint_data/1 :: (wh_json:json_object()) -> {'endpoint', wh_json:json_object()}.
 get_endpoint_data(JObj) ->
     %% wh_timer:tick("inbound_route/1"),
-    AcctID = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj),
+    AcctId = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj),
 
     {ToUser, _} = whapps_util:get_destination(JObj, ?APP_NAME, <<"inbound_user_field">>),
     ToDID = wnm_util:to_e164(ToUser),
 
-    RoutingData = routing_data(ToDID, AcctID),
+    {ok, AcctId, ForceOut, _} = wh_number_manager:lookup_account_by_number(ToDID),
+    lager:debug("acct ~s force out ~s", [AcctId, ForceOut]),
+
+    RoutingData = routing_data(ToDID, AcctId),
 
     AuthUser = props:get_value(<<"To-User">>, RoutingData),
     AuthRealm = props:get_value(<<"To-Realm">>, RoutingData),
@@ -264,6 +272,11 @@ routing_data(ToDID, AcctID, Settings) ->
     Acct = wh_json:get_value(<<"account">>, Settings, wh_json:new()),
     DIDOptions = wh_json:get_value(<<"DID_Opts">>, Settings, wh_json:new()),
     RouteOpts = wh_json:get_value(<<"options">>, DIDOptions, []),
+
+    NumConfig = case wh_number_manager:get_public_fields(ToDID, AcctID) of
+                    {ok, Fields} -> Fields;
+                    {error, _} -> wh_json:new()
+                end,
 
     AuthU = wh_json:get_value(<<"auth_user">>, AuthOpts),
     AuthR = wh_json:get_value(<<"auth_realm">>, AuthOpts, wh_json:get_value(<<"auth_realm">>, Acct)),
@@ -309,29 +322,15 @@ routing_data(ToDID, AcctID, Settings) ->
                                        ]),
 
     FailoverLocations = [
-                         wh_json:get_value(<<"failover">>, DIDOptions)
+                         wh_json:get_value(<<"failover">>, NumConfig)
+                         ,wh_json:get_value(<<"failover">>, DIDOptions)
                          ,wh_json:get_value(<<"failover">>, SrvOptions)
                          ,wh_json:get_value(<<"failover">>, AcctStuff)
                         ],
+    lager:debug("looking for failover in ~p", [FailoverLocations]),
 
-    Num = wnm_util:normalize_number(ToDID),
-    Db = wnm_util:number_to_db_name(Num),
-    FL = case couch_mgr:open_doc(Db, Num) of
-             {ok, NumJObj} ->
-                 case wh_json:get_value(<<"pvt_assigned_to">>, NumJObj) =:= AcctID of
-                     true ->
-                         lager:debug("found ~s in ~s", [Num, Db]),
-                         [wh_json:get_value(<<"failover">>, NumJObj) | FailoverLocations];
-                     false ->
-                         lager:debug("found ~s in ~s, but is for account ~s", [Num, Db, wh_json:get_value(<<"pvt_assigned_to">>, NumJObj)]),
-                         FailoverLocations
-                 end;
-             {error, _E} ->
-                 lager:debug("failed to find ~s in ~s: ~p", [Num, Db, _E]),
-                 FailoverLocations
-         end,
-
-    Failover = ts_util:failover(FL),
+    Failover = ts_util:failover(FailoverLocations),
+    lager:debug("failover found: ~p", [Failover]),
 
     Delay = ts_util:delay([
                            wh_json:get_value(<<"delay">>, DIDOptions)
