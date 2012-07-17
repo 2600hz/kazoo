@@ -18,7 +18,7 @@
                               (N, T) -> {N, {N, start_link, []}, permanent, 5000, T, [N]} end(Name, Type)).
 -define(CHILDREN, [{?JONNY5_CACHE, cache}
                    ,{jonny5_listener, worker}
-                   ,{j5_reconciler, worker}
+%%                   ,{j5_reconciler, worker}
                   ]).
 
 %% ===================================================================
