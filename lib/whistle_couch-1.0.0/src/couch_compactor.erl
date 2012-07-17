@@ -58,15 +58,21 @@ compact_node(Node) when is_atom(Node) ->
 compact_node(NodeBin) ->
     put(callid, NodeBin),
     lager:debug("compacting node ~s", [NodeBin]),
-    {Conn, AdminConn} = get_node_connections(NodeBin),
-    {ok, DBs} = node_dbs(AdminConn),
-    Total = length(DBs),
-    _ = lists:foldl(fun(DB, Count) ->
-                            lager:debug("compacting database (~p/~p) '~s'", [Count, Total, DB]),
-                            _ = (catch compact_node_db(NodeBin, DB, Conn, AdminConn)),
-                            Count + 1
-                    end, 1, shuffle(DBs, Total)),
-    done.
+    try get_node_connections(NodeBin) of
+        {Conn, AdminConn} ->
+            {ok, DBs} = node_dbs(AdminConn),
+            Total = length(DBs),
+            _ = lists:foldl(fun(DB, Count) ->
+                                    lager:debug("compacting database (~p/~p) '~s'", [Count, Total, DB]),
+                                    _ = (catch compact_node_db(NodeBin, DB, Conn, AdminConn)),
+                                    Count + 1
+                            end, 1, shuffle(DBs, Total)),
+            done
+    catch
+        _:_ ->
+            lager:error("unable to open connection to ~s", [NodeBin]),
+            done
+    end.
 
 %% Use compact_db/1 to compact the DB across all known nodes
 %% Use compact_db/2 to compact the DB on a specific node
@@ -80,9 +86,15 @@ compact_db(Node, DB) when is_atom(Node) ->
     compact_db(wh_util:to_binary(Node), DB);
 compact_db(NodeBin, DB) ->
     put(callid, NodeBin),
-    {Conn, AdminConn} = get_node_connections(NodeBin),
-    ok = compact_node_db(NodeBin, DB, Conn, AdminConn),
-    done.
+    try get_node_connections(NodeBin) of
+        {Conn, AdminConn} ->
+            ok = compact_node_db(NodeBin, DB, Conn, AdminConn),
+            done
+    catch
+        _:_ ->
+            lager:error("unable to open connection to ~s", [NodeBin]),
+            done
+    end.
 
 %% Internal Functions ----------------------------------------------------------
 -spec compact_node_db/4 :: (ne_binary(), ne_binary(), #server{}, #server{}) -> 'ok'.
