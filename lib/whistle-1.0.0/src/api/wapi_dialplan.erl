@@ -63,6 +63,7 @@
         ]).
 
 -export([publish_action/2, publish_action/3
+         ,publish_error/2, publish_error/3
          ,publish_event/2, publish_event/3
          ,publish_command/2, publish_command/3
          ,publish_originate_ready/2, publish_originate_ready/3
@@ -815,7 +816,7 @@ originate_execute_v(JObj) ->
 -spec error/1 :: (api_terms()) -> api_formatter_return().
 error(Prop) when is_list(Prop) ->
     case error_v(Prop) of
-        true -> wh_api:build_message(Prop, ?ERROR_RESP_HEADERS, ?OPTIONAL_ERROR_RESP_HEADERS);
+        true ->  wh_api:build_message(Prop, ?ERROR_RESP_HEADERS, ?OPTIONAL_ERROR_RESP_HEADERS);
         false -> {error, "Proplist failed validation for error_req"}
     end;
 error(JObj) ->
@@ -841,8 +842,8 @@ publish_command(CtrlQ, Prop, DPApp) ->
         BuildMsgFun ->
             case lists:keyfind(BuildMsgFun, 1, ?MODULE:module_info(exports)) of
                 false -> {error, invalid_dialplan_object};
-                {_, 1} -> 
-                    {ok, Payload} = ?MODULE:BuildMsgFun(Prop),                    
+                {_, 1} ->
+                    {ok, Payload} = ?MODULE:BuildMsgFun(wh_api:set_missing_values(Prop, ?DEFAULT_VALUES)),
                     amqp_util:callctl_publish(CtrlQ, Payload, ?DEFAULT_CONTENT_TYPE)                
             end
     catch
@@ -855,6 +856,14 @@ publish_action(Queue, JSON) ->
     publish_action(Queue, JSON, ?DEFAULT_CONTENT_TYPE).
 publish_action(Queue, Payload, ContentType) ->
     amqp_util:callctl_publish(Queue, Payload, ContentType).
+
+-spec publish_error/2 :: (ne_binary(), iolist()) -> 'ok'.
+-spec publish_error/3 :: (ne_binary(), iolist(), ne_binary()) -> 'ok'.
+publish_error(CallID, JObj) ->
+    publish_error(CallID, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_error(CallID, API, ContentType) ->
+    {ok, Payload} = wh_api:prepare_api_payload(API, [{<<"Event-Name">>, <<"dialplan">>} | ?ERROR_RESP_VALUES], fun ?MODULE:error/1),
+    amqp_util:callevt_publish(CallID, Payload, event, ContentType).
 
 -spec publish_event/2 :: (ne_binary(), iolist()) -> 'ok'.
 -spec publish_event/3 :: (ne_binary(), iolist(), ne_binary()) -> 'ok'.
