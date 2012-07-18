@@ -580,8 +580,8 @@ kvs_append_list(Key, ValList, #whapps_call{kvs=Dict}=Call) ->
 kvs_erase(Key, #whapps_call{kvs=Dict}=Call) ->
     Call#whapps_call{kvs=orddict:erase(wh_util:to_binary(Key), Dict)}.
 
--spec kvs_fetch/2 :: (term(), whapps_call:call()) -> term().
--spec kvs_fetch/3 :: (term(), Default, whapps_call:call()) -> term() | Default.
+-spec kvs_fetch/2 :: (wh_json:json_string(), whapps_call:call()) -> term().
+-spec kvs_fetch/3 :: (wh_json:json_string(), Default, whapps_call:call()) -> term() | Default.
 kvs_fetch(Key, Call) ->
     kvs_fetch(Key, undefined, Call).
 kvs_fetch(Key, Default, #whapps_call{kvs=Dict}) ->
@@ -595,15 +595,17 @@ kvs_fetch(Key, Default, #whapps_call{kvs=Dict}) ->
 kvs_fetch_keys( #whapps_call{kvs=Dict}) ->
     orddict:fetch_keys(Dict).
 
--spec kvs_filter/2 :: (fun((term(), term()) -> boolean()), whapps_call:call()) -> whapps_call:call().
+-spec kvs_filter/2 :: (fun((term(), term()) -> boolean()), whapps_call:call()) ->
+                              whapps_call:call().
 kvs_filter(Pred, #whapps_call{kvs=Dict}=Call) ->
     Call#whapps_call{kvs=orddict:filter(Pred, Dict)}.
 
--spec kvs_find/2 :: (term(), whapps_call:call()) -> {ok, term()} | error.
+-spec kvs_find/2 :: (term(), whapps_call:call()) -> {'ok', term()} | 'error'.
 kvs_find(Key, #whapps_call{kvs=Dict}) ->
     orddict:find(wh_util:to_binary(Key), Dict).
 
--spec kvs_fold/3 :: (fun((term(), term(), term()) -> term()), term(), whapps_call:call()) -> whapps_call:call().
+-spec kvs_fold/3 :: (fun((term(), term(), term()) -> term()), term(), whapps_call:call()) ->
+                            whapps_call:call().
 kvs_fold(Fun, Acc0, #whapps_call{kvs=Dict}) ->
     orddict:fold(Fun, Acc0, Dict).
 
