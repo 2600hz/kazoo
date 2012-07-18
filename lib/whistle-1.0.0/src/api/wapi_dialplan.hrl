@@ -130,7 +130,7 @@
 
 %% Tones Request
 -define(TONES_REQ_HEADERS, [<<"Call-ID">>, <<"Application-Name">>, <<"Tones">>]).
--define(OPTIONAL_TONES_REQ_HEADERS, [<<"Insert-At">>]).
+-define(OPTIONAL_TONES_REQ_HEADERS, [<<"Insert-At">>, <<"Terminators">>]).
 -define(TONES_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                            ,{<<"Event-Name">>, <<"command">>}
                            ,{<<"Application-Name">>, <<"tones">>}
