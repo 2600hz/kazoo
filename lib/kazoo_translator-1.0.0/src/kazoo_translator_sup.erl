@@ -1,5 +1,5 @@
 
--module(whistle_translator_sup).
+-module(kazoo_translator_sup).
 
 -behaviour(supervisor).
 

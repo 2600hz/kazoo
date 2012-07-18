@@ -6,14 +6,14 @@
 %%% @contributors
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
--module(wht_util).
+-module(kzt_util).
 
 -export([http_method/1
          ,resolve_uri/2
          ,offnet_req/2
         ]).
 
--include("wht.hrl").
+-include("kzt.hrl").
 
 -define(SUPPORTED_METHODS, [get, post]).
 
