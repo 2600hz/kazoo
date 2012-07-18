@@ -18,8 +18,8 @@
 -export([relay_event/2]).
 
 -export([audio_macro/2]).
--export([pickup/2, pickup/3, pickup/4
-         ,b_pickup/2, b_pickup/3, b_pickup/4
+-export([pickup/2, pickup/3, pickup/4, pickup/5
+         ,b_pickup/2, b_pickup/3, b_pickup/4, b_pickup/5
         ]).
 -export([redirect/3]).
 -export([answer/1, hangup/1, hangup/2, set/3, fetch/1, fetch/2]).
