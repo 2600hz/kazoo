@@ -81,6 +81,7 @@ send_route_response(JObj, Q) ->
     Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
             ,{<<"Routes">>, []}
             ,{<<"Method">>, <<"park">>}
-            | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)],
+            | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
+           ],
     wapi_route:publish_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp),
     lager:debug("sent route response to park the call").

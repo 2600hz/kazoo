@@ -643,12 +643,15 @@ insert_command(#state{node=Node, callid=CallId, command_q=CommandQ, is_node_up=I
             lager:debug("node ~s is not avaliable", [Node]),
             lager:debug("sending execution error for command ~s", [AName]),
             {Mega,Sec,Micro} = erlang:now(),
-            Props = [ {<<"Event-Name">>, <<"CHANNEL_EXECUTE_ERROR">>}
+            Props = [{<<"Event-Name">>, <<"CHANNEL_EXECUTE_ERROR">>}
                      ,{<<"Event-Date-Timestamp">>, ( (Mega * 1000000 + Sec) * 1000000 + Micro )}
                      ,{<<"Call-ID">>, CallId}
                      ,{<<"Channel-Call-State">>, <<"ERROR">>}
                      ,{<<"Custom-Channel-Vars">>, JObj}
-                   ],
+                     ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+                     ,{<<"Request">>, JObj}
+                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                    ],
             wapi_call:publish_event(CallId, Props),
             CommandQ;
         <<"queue">> ->
@@ -659,7 +662,7 @@ insert_command(#state{node=Node, callid=CallId, command_q=CommandQ, is_node_up=I
                                                                   true -> 'ok';
                                                                   false ->
                                                                       put(callid, CallId),
-                                                                      AppCmd = wh_json:merge_jobjs(DefJObj, CmdJObj),
+                                                                      AppCmd = wh_json:merge_jobjs(CmdJObj, DefJObj),
                                                                       true = wapi_dialplan:v(AppCmd),
                                                                       CmdQ = insert_command(StateAcc, now, AppCmd),
                                                                       State#state{command_q=CmdQ}
@@ -695,7 +698,7 @@ insert_command_into_queue(Q, Position, JObj) ->
                                 case wh_json:is_empty(CmdJObj) of
                                     true -> TmpQ;
                                     false ->
-                                        AppCmd = wh_json:merge_jobjs(DefJObj, CmdJObj),
+                                        AppCmd = wh_json:merge_jobjs(CmdJObj, DefJObj),
                                         true = wapi_dialplan:v(AppCmd),
                                         lager:debug("inserting at the ~s of the control queue call command '~s'"
                                              ,[Position, wh_json:get_value(<<"Application-Name">>, AppCmd)]),
@@ -814,14 +817,13 @@ send_error_resp(CallId, Cmd) ->
 
 -spec send_error_resp/3 :: (ne_binary(), wh_json:json_object(), ne_binary()) -> 'ok'.
 send_error_resp(CallId, Cmd, Msg) ->
-    Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, Cmd, <<>>)}
+    Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, Cmd)}
             ,{<<"Error-Message">>, Msg}
             ,{<<"Request">>, Cmd}
             | wh_api:default_headers(<<>>, <<"error">>, <<"dialplan">>, ?APP_NAME, ?APP_VERSION)
            ],
-    {ok, Payload} = wapi_dialplan:error(Resp),
-    lager:debug("sending execution error: ~s", [Payload]),
-    wapi_dialplan:publish_event(CallId, Payload).
+    lager:debug("sending execution error: ~p", [Resp]),
+    wapi_dialplan:publish_error(CallId, Resp).
 
 -spec get_keep_alive_ref/1 :: (#state{}) -> 'undefined' | reference().
 get_keep_alive_ref(#state{is_call_up=true}) -> 

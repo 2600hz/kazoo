@@ -700,6 +700,7 @@ amqp_stream(DestQ, F, State, Headers, Seq) ->
             %% send msg
             Msg = [{<<"Media-Content">>, Data}
                    ,{<<"Media-Sequence-ID">>, Seq}
+                   ,{<<"Msg-ID">>, wh_util:to_binary(wh_util:current_tstamp())}
                    | Headers],
             {ok, JSON} = wapi_dialplan:store_amqp_resp(Msg),
             amqp_util:targeted_publish(DestQ, JSON, <<"application/json">>),
@@ -707,6 +708,7 @@ amqp_stream(DestQ, F, State, Headers, Seq) ->
         eof ->
             Msg = [{<<"Media-Content">>, <<"eof">>}
                    ,{<<"Media-Sequence-ID">>, Seq}
+                   ,{<<"Msg-ID">>, wh_util:to_binary(wh_util:current_tstamp())}
                    | Headers],
             {ok, JSON} = wapi_dialplan:store_amqp_resp(Msg),
             amqp_util:targeted_publish(DestQ, JSON, <<"application/json">>),
@@ -741,6 +743,7 @@ stream_over_http(Node, UUID, File, Method, JObj) ->
             JObj1 = wh_json:set_values([{<<"Media-Transfer-Results">>, MediaTransResults}
                                         ,{<<"Event-Name">>, <<"response">>}
                                         ,{<<"Event-Category">>, <<"call">>}
+                                        ,{<<"Msg-ID">>, wh_util:to_binary(wh_util:current_tstamp())}
                                        ], JObj),
 
             case lists:member(StatusCode, ["200", "201", "202"]) of
@@ -871,8 +874,7 @@ send_fetch_call_event(Node, UUID, JObj) ->
                      ,{<<"Application-Response">>, <<>>}
                      | wh_api:default_headers(<<>>, <<"error">>, wh_util:to_binary(Type), ?APP_NAME, ?APP_VERSION)
                     ],
-            {ok, P2} = wapi_dialplan:error(Error),
-            amqp_util:callevt_publish(UUID, P2, event)
+            wapi_dialplan:publish_error(UUID, Error)
     end.
 
 %%--------------------------------------------------------------------
