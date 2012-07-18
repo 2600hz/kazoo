@@ -9,6 +9,7 @@
 %%%
 %%% @todo
 %%%   Finish support for Number tag
+%%%   Record verb
 %%%-------------------------------------------------------------------
 -module(kzt_twiml).
 
@@ -138,7 +139,7 @@ exec_element(Call, 'Reject', _, #xmlElement{attributes=Attrs}) ->
     Reason = reject_reason(props:get_value(reason, Props)),
 
     play_reject_reason(Call, Reason), 
-    whapps_call_command:response(reject_code(Reason), Reason, Call),
+    _ = whapps_call_command:response(reject_code(Reason), Reason, Call),
     {stop, update_call_status(Call, ?STATUS_BUSY)}.
 
 %%-------------------------------------------------------------------------
@@ -182,7 +183,6 @@ record_call(Call, Attrs) ->
     Props = attrs_to_proplist(Attrs),
     lager:debug("RECORD with attrs: ~p", [Attrs]),
 
-    %% TODO: remove cf dependency
     Action = kzt_util:resolve_uri(whapps_call:kvs_fetch(<<"voice_uri">>, Call1)
                                   ,props:get_value(action, Props)
                                  ),
@@ -199,9 +199,9 @@ record_call(Call, Attrs) ->
 
     MediaName = media_name(whapps_call:call_id(Call1)),
     case whapps_call_command:b_record(MediaName
-                                      ,props:get_value(finishOnKey, Props, ?ANY_DIGIT)
-                                      ,wh_util:to_binary(props:get_value(maxLength, Props, <<"3600">>))
-                                      ,props:get_value(timeout, Props, <<"5">>)
+                                      ,props:get_value(finishOnKey, Props, [<<"#">>])
+                                      ,wh_util:to_binary(props:get_value(maxLength, Props, 3600))
+                                      ,props:get_value(timeout, Props, 5)
                                       ,Call1
                                      ) of
         {ok, Msg} ->
@@ -251,8 +251,7 @@ exec_gather_element(Call, 'Say', [#xmlText{value=SayMe, type=text}], #xmlElement
 exec_gather_element(Call, 'Play', [#xmlText{value=PlayMe, type=text}], #xmlElement{attributes=Attrs}) ->
     Call1 = case play(Call, PlayMe, Attrs, ?ANY_DIGIT) of
                 {ok, Call0} -> Call0;
-                {stop, Call0} -> Call0;
-                {request, Call0, _, _, _} -> Call0
+                {stop, Call0} -> Call0
             end,
     case whapps_call_command:wait_for_application_or_dtmf(<<"play">>, infinity) of
         {dtmf, Digit} ->
@@ -402,6 +401,8 @@ dial_number(Call0, DialMe, Attrs) ->
     Call1 = send_call(Call0, DialMe, Props),
     finish_dial(Call1, Props).
 
+-spec dial_ring_group/3 :: (whapps_call:call(), list(), proplist()) ->
+                                   exec_element_return().
 dial_ring_group(Call, Numbers, Attrs) ->
     lager:debug("DIAL ring group"),
     Props = attrs_to_proplist(Attrs),
@@ -432,7 +433,9 @@ dial_ring_group(Call, Numbers, Attrs) ->
             {stop, update_call_status(Call, ?STATUS_FAILED)}
     end.
 
--spec ring_group_bridge_req/3 :: (whapps_call:call(), wh_json:json_objects(), proplist()) -> {'ok' | 'error' | 'stop', wh_json:json_object()}.
+-spec ring_group_bridge_req/3 :: (whapps_call:call(), wh_json:json_objects(), proplist()) ->
+                                         {'ok' | 'error', wh_json:json_object()} |
+                                         {'stop', whapps_call:call()}.
 ring_group_bridge_req(Call, EPs, Props) ->
     Timeout = wh_util:to_integer(props:get_value(timeout, Props, 30)),
     CallerID = props:get_value(callerId, Props, whapps_call:caller_id_number(Call)),
@@ -502,6 +505,8 @@ finish_dial(Call, Props) ->
 
     RecordingId = maybe_save_recording(Call, props:get_value(media_name, OffnetProp), RecordCall),
 
+    lager:debug("offnet: ~p", [OffnetProp]),
+
     OtherLeg = props:get_value(other_leg, OffnetProp),
     Status = props:get_value(call_status, OffnetProp),
     lager:debug("other leg ~s done in ~bs: ~s", [OtherLeg, Elapsed, Status]),
@@ -518,6 +523,7 @@ finish_dial(Call, Props) ->
                                                ,{"ParentCallSid", whapps_call:call_id(Call)}
                                                ,{<<"DialCallDuration">>, Elapsed}
                                                ,{<<"RecordingUrl">>, recorded_url(Call, RecordingId, RecordCall)}
+                                               ,{<<"RecordingDuration">>, Elapsed}
                                                | req_params(Call)
                                               ])
                           ),
@@ -702,6 +708,8 @@ reject_code(<<"busy">>) ->
 reject_code(<<"rejected">>) ->
     <<"503">>.
 
+-spec play_loop/3 :: (whapps_call:call(), ne_binary(), non_neg_integer()) -> 'ok'.
+-spec play_loop/4 :: (whapps_call:call(), ne_binary(), list(), non_neg_integer()) -> 'ok'.
 play_loop(_, _, 0) -> ok;
 play_loop(Call, PlayMe, N) ->
     _ = whapps_call_command:b_play(wh_util:to_binary(PlayMe), Call),
@@ -709,10 +717,7 @@ play_loop(Call, PlayMe, N) ->
 
 play_loop(_, _, _, 0) -> ok;
 play_loop(Call, PlayMe, Terminators, N) ->
-    NoopId = whapps_call_command:audio_macro([
-                                              {play, wh_util:to_binary(PlayMe), Terminators}
-                                             ]
-                                             ,Terminators
+    NoopId = whapps_call_command:audio_macro([{play, wh_util:to_binary(PlayMe), Terminators}]
                                              ,Call
                                             ),
     lager:debug("play loop ~b with terminators: ~p: noop: ~p", [N, Terminators, NoopId]),
@@ -801,7 +806,9 @@ wait_for_offnet(Acc) ->
             wait_for_offnet(Acc)
     end.
 
--spec wait_for_bridge_start/2 :: (whapps_call:call(), integer()) -> {'ok' | 'error' | 'stop', wh_json:json_object()}.
+-spec wait_for_bridge_start/2 :: (whapps_call:call(), pos_integer()) ->
+                                         {'ok' | 'error', wh_json:json_object()} |
+                                         {'stop', whapps_call:call()}.
 wait_for_bridge_start(Call, Timeout) ->
     Start = erlang:now(),
     receive
@@ -866,7 +873,22 @@ media_name(ALeg, BLeg) ->
 recorded_url(_Call, _DocId, false) ->
     undefined;
 recorded_url(Call, DocId, true) ->
-    list_to_binary([<<"/v1/accounts/">>, whapps_call:account_id(Call), <<"/media/">>, DocId, <<"/raw">>]).
+    Db = whapps_call:account_db(Call),
+
+    case whapps_util:amqp_pool_request([{<<"Media-Name">>, <<Db/binary, "/", DocId/binary>>}
+                                        ,{<<"Stream-Type">>, <<"extant">>}
+                                        ,{<<"Call-ID">>, whapps_call:call_id(Call)}
+                                        ,{<<"Msg-ID">>, wh_util:to_binary(wh_util:current_tstamp())}
+                                        | wh_api:default_headers(<<>>, <<"media">>, <<"media_req">>, ?APP_NAME, ?APP_VERSION)]
+                                       ,fun wapi_media:publish_req/1
+                                       ,fun wapi_media:resp_v/1
+                                      ) of
+        {error, _R} ->
+            lager:debug("failed to get media URL: ~p", [_R]),
+            undefined;
+        {ok, MediaResp} ->
+            wh_json:get_value(<<"Stream-URL">>, MediaResp)
+    end.
 
 maybe_save_recording(_Call, _MediaName, false) ->
     undefined;
@@ -921,6 +943,7 @@ play_tone(Call) ->
                              ]),
     whapps_call_command:tones([Tone], Call).
 
+-spec maybe_stop/3 :: (whapps_call:call(), term(), Result) -> {stop, whapps_call:call()} | Result.
 maybe_stop(Call, {error, channel_hungup}, _) -> {stop, Call};
 maybe_stop(_, {error, _R}, Result) ->
     lager:debug("error in result, but continuing anyway: ~p", [_R]),
