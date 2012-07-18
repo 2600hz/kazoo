@@ -77,10 +77,12 @@ start_link(Args) ->
                                       ,{consume_options, ?CONSUME_OPTIONS}
                                      ], [Args]).
 
--spec call/4 :: (server_ref(), api_terms(), wh_amqp_worker:publish_fun(), wh_amqp_worker:validate_fun()) -> {'ok', wh_json:json_object()} |
-                                                                                                                           {'error', _}.
--spec call/5 :: (server_ref(), api_terms(), wh_amqp_worker:publish_fun(), wh_amqp_worker:validate_fun(), pos_integer()) -> {'ok', wh_json:json_object()} |
-                                                                                                                           {'error', _}.
+-spec call/4 :: (server_ref(), api_terms(), wh_amqp_worker:publish_fun(), wh_amqp_worker:validate_fun()) ->
+                        {'ok', wh_json:json_object()} |
+                        {'error', _}.
+-spec call/5 :: (server_ref(), api_terms(), wh_amqp_worker:publish_fun(), wh_amqp_worker:validate_fun(), pos_integer()) ->
+                        {'ok', wh_json:json_object()} |
+                        {'error', _}.
 call(Srv, Req, PubFun, VFun) ->
     call(Srv, Req, PubFun, VFun, 2000).
 
