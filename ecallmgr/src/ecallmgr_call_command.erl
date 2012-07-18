@@ -266,10 +266,11 @@ get_fs_app(_Node, _UUID, JObj, <<"send_dtmf">>) ->
             {<<"send_dtmf">>, iolist_to_binary([DTMFs, Duration])}
     end;
 
-get_fs_app(_Node, _UUID, JObj, <<"tones">>) ->
+get_fs_app(Node, UUID, JObj, <<"tones">>) ->
     case wapi_dialplan:tones_v(JObj) of
         false -> {'error', <<"tones failed to execute as JObj did not validate">>};
         true ->
+            'ok' = set_terminators(Node, UUID, wh_json:get_value(<<"Terminators">>, JObj)),
             Tones = wh_json:get_value(<<"Tones">>, JObj, []),
             FSTones = [begin
                            Vol = case wh_json:get_value(<<"Volume">>, Tone) of
