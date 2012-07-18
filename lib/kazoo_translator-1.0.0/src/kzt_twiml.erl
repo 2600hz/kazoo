@@ -2,7 +2,7 @@
 %%% @copyright (C) 2012, VoIP INC
 %%% @doc
 %%% Aims to recreate the TwiML interaction, converting the TwiML XML
-%%% to Whistle JSON commands
+%%% to Kazoo JSON commands
 %%% @end
 %%% @contributors
 %%%   James Aimonetti
@@ -10,14 +10,14 @@
 %%% @todo
 %%%   Finish support for Number tag
 %%%-------------------------------------------------------------------
--module(wht_twiml).
+-module(kzt_twiml).
 
 -export([does_recognize/1, exec/2, req_params/1]).
 
--include("wht.hrl").
+-include("kzt.hrl").
 -include_lib("xmerl/include/xmerl.hrl").
 
--define(NAME, <<"wht_twiml">>).
+-define(NAME, <<"kzt_twiml">>).
 -define(VERSION, <<"0.2.0">>).
 
 -define(STATUS_QUEUED, <<"queued">>).
@@ -112,8 +112,8 @@ exec_element(Call, 'Redirect', [_|_]=Texts, #xmlElement{attributes=Attrs}) ->
 
     Call2 = set_variables(Call1, Texts),
 
-    NewUri = wht_util:resolve_uri(whapps_call:kvs_fetch(<<"voice_uri">>, Call1), Url),
-    Method = wht_util:http_method(props:get_value(method, Props, post)),
+    NewUri = kzt_util:resolve_uri(whapps_call:kvs_fetch(<<"voice_uri">>, Call1), Url),
+    Method = kzt_util:http_method(props:get_value(method, Props, post)),
 
     lager:debug("Redirect: using ~s to ~s(~s)", [Method, NewUri, Url]),
 
@@ -149,7 +149,7 @@ exec_element(Call, 'Reject', _, #xmlElement{attributes=Attrs}) ->
 -spec set_variable/3 :: (whapps_call:call(), wh_json:json_string(), wh_json:json_term()) -> whapps_call:call().
 -spec set_variables/2 :: (whapps_call:call(), list()) -> whapps_call:call().
 set_variable(Call, Key, Value) ->
-    wht_translator:set_user_vars([{wh_util:to_binary(Key)
+    kzt_translator:set_user_vars([{wh_util:to_binary(Key)
                                    ,wh_util:to_binary(Value)
                                   }], Call).
 
@@ -163,7 +163,7 @@ set_variables(Call, Els) ->
           || #xmlElement{name='Variable', attributes=Attrs} <- Els
          ] of
         [] -> Call;
-        Vars -> wht_translator:set_user_vars(Vars, Call)
+        Vars -> kzt_translator:set_user_vars(Vars, Call)
     end.
 
 %%-------------------------------------------------------------------------
@@ -183,11 +183,11 @@ record_call(Call, Attrs) ->
     lager:debug("RECORD with attrs: ~p", [Attrs]),
 
     %% TODO: remove cf dependency
-    Action = wht_util:resolve_uri(whapps_call:kvs_fetch(<<"voice_uri">>, Call1)
+    Action = kzt_util:resolve_uri(whapps_call:kvs_fetch(<<"voice_uri">>, Call1)
                                   ,props:get_value(action, Props)
                                  ),
 
-    Method = wht_util:http_method(props:get_value(method, Props, post)),
+    Method = kzt_util:http_method(props:get_value(method, Props, post)),
 
     %% Transcribe = props:get_is_true(transcribe, Props, false),
     %% TranscribeCallback = props:get_value(transcribeCallback, Props),
@@ -344,7 +344,7 @@ conference_config(ConfRoom, ConfProps) ->
 -spec caller_config/2 :: (wh_proplist(), boolean()) -> wh_json:json_object().
 caller_config(ConfProps, JoinDeaf) ->
     WaitUrl = conf_wait_url(props:get_value('waitUrl', ConfProps)),
-    WaitMethod = wht_util:http_method(props:get_value('waitMethod', ConfProps, post)),
+    WaitMethod = kzt_util:http_method(props:get_value('waitMethod', ConfProps, post)),
     EndConferenceOnExit = props:get_is_true('endOnConferenceOnExit', ConfProps, false),
     EntryPin = conf_entry_pin(props:get_value('entryPin', ConfProps)),
 
@@ -483,7 +483,7 @@ send_call(Call0, DialMe, Props) ->
                                                                ,{CallerID, fun whapps_call:set_caller_id_number/2}
                                                               ]),
 
-    ok = wht_util:offnet_req(wh_json:from_list([{<<"Timeout">>, Timeout}
+    ok = kzt_util:offnet_req(wh_json:from_list([{<<"Timeout">>, Timeout}
                                                 | offnet_data(RecordCall, StarHangup)
                                                ])
                              ,Call1
@@ -521,8 +521,8 @@ finish_dial(Call, Props) ->
                                                | req_params(Call)
                                               ])
                           ),
-            Uri = wht_util:resolve_uri(whapps_call:kvs_fetch(<<"voice_uri">>, Call), Action),
-            Method = wht_util:http_method(props:get_value(method, Props, post)),
+            Uri = kzt_util:resolve_uri(whapps_call:kvs_fetch(<<"voice_uri">>, Call), Action),
+            Method = kzt_util:http_method(props:get_value(method, Props, post)),
             {request, Call, Uri, Method, BaseParams}
     end.
 
@@ -615,10 +615,10 @@ collect_digits(Call, InitDigit, MaxDigits, FinishOnKey, Timeout, Props) ->
         {ok, DTMFs} ->
             lager:debug("recv DTMFs: ~s", [DTMFs]),
 
-            NewUri = wht_util:resolve_uri(whapps_call:kvs_fetch(<<"voice_uri">>, Call)
+            NewUri = kzt_util:resolve_uri(whapps_call:kvs_fetch(<<"voice_uri">>, Call)
                                           ,props:get_value(action, Props)
                                          ),
-            Method = wht_util:http_method(props:get_value(method, Props, post)),
+            Method = kzt_util:http_method(props:get_value(method, Props, post)),
             BaseParams = wh_json:from_list([{<<"Digits">>, <<InitDigit/binary, DTMFs/binary>>}
                                             | req_params(Call)
                                            ]),
@@ -639,20 +639,20 @@ collect_until_terminator_1(Call, FinishOnKey, Timeout, Props, DTMFs) ->
         {ok, FinishOnKey} ->
             Digits = lists:reverse(DTMFs),
             lager:debug("recv finish key ~s, responding with ~p", [FinishOnKey, Digits]),
-            NewUri = wht_util:resolve_uri(whapps_call:kvs_fetch(<<"voice_uri">>, Call)
+            NewUri = kzt_util:resolve_uri(whapps_call:kvs_fetch(<<"voice_uri">>, Call)
                                           ,props:get_value(action, Props)
                                          ),
-            Method = wht_util:http_method(props:get_value(method, Props, post)),
+            Method = kzt_util:http_method(props:get_value(method, Props, post)),
             BaseParams = wh_json:from_list([{<<"Digits">>, iolist_to_binary(Digits)} | req_params(Call)]),
 
             {request, Call, NewUri, Method, BaseParams};
         {ok, <<>>} when DTMFs =/= [] ->
             Digits = lists:reverse(DTMFs),
             lager:debug("timeout waiting for digits, working with what we got: '~s'", [Digits]),
-            NewUri = wht_util:resolve_uri(whapps_call:kvs_fetch(<<"voice_uri">>, Call)
+            NewUri = kzt_util:resolve_uri(whapps_call:kvs_fetch(<<"voice_uri">>, Call)
                                           ,props:get_value(action, Props)
                                          ),
-            Method = wht_util:http_method(props:get_value(method, Props, post)),
+            Method = kzt_util:http_method(props:get_value(method, Props, post)),
             BaseParams = wh_json:from_list([{<<"Digits">>, Digits} | req_params(Call)]),
 
             {request, Call, NewUri, Method, BaseParams};

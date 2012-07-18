@@ -1,4 +1,4 @@
--module(whistle_translator_app).
+-module(kazoo_translator_app).
 
 -behaviour(application).
 
@@ -10,7 +10,7 @@
 %% ===================================================================
 
 start(_StartType, _StartArgs) ->
-    whistle_translator_sup:start_link().
+    kazoo_translator_sup:start_link().
 
 stop(_State) ->
     ok.

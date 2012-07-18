@@ -1,4 +1,4 @@
--ifndef(WHT_HRL).
+-ifndef(KZT_HRL).
 
 -include_lib("whistle/include/wh_types.hrl").
 
@@ -12,10 +12,10 @@
         {'stop', whapps_call:call()} |
         {'request', whapps_call:call(), ne_binary(), 'get' | 'post', api_terms()}.
 
--define(WHT_USER_VARS, <<"user_vars">>).
+-define(KZT_USER_VARS, <<"user_vars">>).
 
 -define(APP_NAME, <<"translator">>).
 -define(APP_VERSION, <<"0.4.0">>).
 
--define(WHT_HRL, true).
+-define(KZ_HRL, true).
 -endif.

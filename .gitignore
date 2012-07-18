@@ -13,6 +13,8 @@ whistle_apps/apps/*/ebin/*.app
 whistle_apps/apps/crossbar/priv/ssl/*
 lib/whistle*/ebin/*.beam
 lib/whistle*/ebin/*.app
+lib/kazoo*/ebin/*.beam
+lib/kazoo*/ebin/*.app
 lib/erlydtl*/ebin
 lib/erlydtl*/src/erlydtl_parser.erl
 utils/*/ebin/*.beam
