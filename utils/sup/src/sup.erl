@@ -13,8 +13,12 @@
 
 -export([main/1]).
 
--define(WHAPPS_VM_ARGS, "/opt/whistle/whistle/whistle_apps/conf/vm.args").
--define(ECALL_VM_ARGS, "/opt/whistle/whistle/ecallmgr/conf/vm.args").
+-define(WHAPPS_VM_ARGS, ["/opt/kazoo/whistle_apps/conf/vm.args"
+                         ,"/opt/whistle/whistle/whistle_apps/conf/vm.args"
+                        ]).
+-define(ECALL_VM_ARGS, ["/opt/kazoo/ecallmgr/conf/vm.args"
+                        ,"/opt/whistle/whistle/ecallmgr/conf/vm.args"
+                       ]).
 -define(MAX_CHARS, round(math:pow(2012, 80))).
 
 -spec main/1 :: (string()) -> no_return().
@@ -89,14 +93,16 @@ get_cookie(Options, Node) ->
     erlang:set_cookie(node(), list_to_atom(Cookie)),
     Cookie.
 
--spec get_cookie_from_vmargs/1 :: (string()) -> string().
-get_cookie_from_vmargs(File) ->
+-spec get_cookie_from_vmargs/1 :: ([string(),...]) -> string().
+get_cookie_from_vmargs([]) -> 
+    print_no_setcookie();
+get_cookie_from_vmargs([File|Files]) ->
     case file:read_file(File) of
-        {error, _} -> print_no_setcookie();
+        {error, _} -> get_cookie_from_vmargs(Files);
         {ok, Bin} ->
             case re:run(Bin, <<"-setcookie (.*)\\n">>, [{capture, [1], list}]) of
                 {match, [Cookie]} -> Cookie;
-                _Else -> print_no_setcookie()
+                _Else -> get_cookie_from_vmargs(Files)
             end
     end.
 
