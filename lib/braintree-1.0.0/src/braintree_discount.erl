@@ -6,9 +6,8 @@
 %%% @end
 %%% Created : 22 Sep 2011 by Karl Anderson <karl@2600hz.org>
 %%%-------------------------------------------------------------------
--module(braintree_addon).
+-module(braintree_discount).
 
--export([get_quantity/1]).
 -export([xml_to_record/1, xml_to_record/2]).
 -export([record_to_xml/1, record_to_xml/2]).
 -export([record_to_json/1]).
@@ -18,15 +17,6 @@
 
 -include_lib("braintree/include/braintree.hrl").
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec get_quantity/1 :: (#bt_addon{}) -> integer().
-get_quantity(#bt_addon{quantity=Quantity}) ->
-    Quantity.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -34,14 +24,14 @@ get_quantity(#bt_addon{quantity=Quantity}) ->
 %% Contert the given XML to a customer record
 %% @end
 %%--------------------------------------------------------------------
--spec xml_to_record/1 :: (bt_xml()) -> #bt_addon{}.
--spec xml_to_record/2 :: (bt_xml(), wh_deeplist()) -> #bt_addon{}.
+-spec xml_to_record/1 :: (bt_xml()) -> #bt_discount{}.
+-spec xml_to_record/2 :: (bt_xml(), wh_deeplist()) -> #bt_discount{}.
 
 xml_to_record(Xml) ->
-    xml_to_record(Xml, "/add-on").
+    xml_to_record(Xml, "/discount").
 
 xml_to_record(Xml, Base) ->
-    #bt_addon{id = get_xml_value([Base, "/id/text()"], Xml)
+    #bt_discount{id = get_xml_value([Base, "/id/text()"], Xml)
               ,amount = get_xml_value([Base, "/amount/text()"], Xml)
               ,never_expires = wh_util:is_true(get_xml_value([Base, "/never-expires/text()"], Xml))
               ,billing_cycle = get_xml_value([Base, "/current-billing-cycle/text()"], Xml)
@@ -54,23 +44,23 @@ xml_to_record(Xml, Base) ->
 %% Contert the given XML to a customer record
 %% @end
 %%--------------------------------------------------------------------
--spec record_to_xml/1 :: (#bt_addon{}) -> proplist() | bt_xml().
--spec record_to_xml/2 :: (#bt_addon{}, boolean()) -> proplist() | bt_xml().
+-spec record_to_xml/1 :: (#bt_discount{}) -> proplist() | bt_xml().
+-spec record_to_xml/2 :: (#bt_discount{}, boolean()) -> proplist() | bt_xml().
 
-record_to_xml(Addon) ->
-    record_to_xml(Addon, false).
+record_to_xml(Discount) ->
+    record_to_xml(Discount, false).
 
-record_to_xml(Addon, ToString) ->
-    Props = [{'id', Addon#bt_addon.id}
-             ,{'amount', Addon#bt_addon.amount}
-             ,{'never-expires', Addon#bt_addon.never_expires}
-             ,{'number-of-billing-cycles', Addon#bt_addon.number_of_cycles}
-             ,{'quantity', Addon#bt_addon.quantity}
-             ,{'inherited-from-id', Addon#bt_addon.inherited_from}
-             ,{'existing-id', Addon#bt_addon.id}
+record_to_xml(Discount, ToString) ->
+    Props = [{'id', Discount#bt_discount.id}
+             ,{'amount', Discount#bt_discount.amount}
+             ,{'never-expires', Discount#bt_discount.never_expires}
+             ,{'number-of-billing-cycles', Discount#bt_discount.number_of_cycles}
+             ,{'quantity', Discount#bt_discount.quantity}
+             ,{'inherited-from-id', Discount#bt_discount.inherited_from}
+             ,{'existing-id', Discount#bt_discount.id}
             ],
     case ToString of
-        true -> make_doc_xml(Props, 'add-on');
+        true -> make_doc_xml(Props, 'discount');
         false -> Props
     end.
 
@@ -80,8 +70,8 @@ record_to_xml(Addon, ToString) ->
 %% Convert a given record into a json object
 %% @end
 %%--------------------------------------------------------------------
--spec record_to_json/1 :: (#bt_addon{}) -> wh_json:json_object().
-record_to_json(#bt_addon{id=Id, amount=Amount, quantity=Q}) ->
+-spec record_to_json/1 :: (#bt_discount{}) -> wh_json:json_object().
+record_to_json(#bt_discount{id=Id, amount=Amount, quantity=Q}) ->
     Props = [{<<"id">>, Id}
              ,{<<"amount">>, Amount}
              ,{<<"quantity">>, wh_util:to_integer(Q)}
