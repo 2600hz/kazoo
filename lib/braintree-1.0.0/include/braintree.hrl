@@ -118,6 +118,16 @@
                    ,existing_id = 'undefined' :: 'undefined' | ne_binary()
                   }).
 
+-record(bt_discount, {id = 'undefined' :: 'undefined' | ne_binary()
+                      ,amount = 'undefined' :: 'undefined' | ne_binary()
+                      ,never_expires = true :: boolean()
+                      ,billing_cycle = 'undefined' :: 'undefined' | ne_binary()
+                      ,number_of_cycles = 'undefined' :: 'undefined' | ne_binary()
+                      ,quantity = 0 :: integer()
+                      ,inherited_from = 'undefined' :: 'undefined' | ne_binary()
+                      ,existing_id = 'undefined' :: 'undefined' | ne_binary()
+                     }).
+
 -record(bt_subscription, {id = 'undefined' :: 'undefined' | ne_binary()
                           ,balance = 'undefined' :: 'undefined' | ne_binary()
                           ,billing_dom = 'undefined' :: 'undefined' | ne_binary()
@@ -142,7 +152,8 @@
                           ,trial_duration_unit = 'undefined' :: 'undefined' | ne_binary()
                           ,trial_period = 'undefined' :: 'undefined' | ne_binary()
                           ,add_ons = [] :: [#bt_addon{},...] | []
-                          ,discounts = 'undefined' :: 'undefined' | ne_binary()
+                          ,discounts = [] :: [#bt_discount{},...] | []
+%%                          ,discounts = 'undefined' :: 'undefined' | ne_binary()
                           ,descriptor = 'undefined' :: 'undefined' | ne_binary()
                           ,transactions = 'undefined' :: 'undefined' | ne_binary()
                           ,do_not_inherit = 'false' :: boolean()
