@@ -148,6 +148,8 @@ prepay_is_available(#limits{allow_prepay=true, reserve_amount=ReserveAmount}, Ba
         true -> 
             AccountId = wh_json:get_value(<<"Account-ID">>, JObj),            
             j5_util:write_debit_to_ledger(<<"start">>, ReserveAmount, JObj, AccountId),
+            SessionId = j5_util:get_session_id(JObj),
+            lager:debug("reserving $~w for prepay session ~s from ~s", [wapi_money:units_to_dollars(ReserveAmount), SessionId, AccountId]),
             true
     end.
 
@@ -161,6 +163,8 @@ postpay_is_available(#limits{allow_postpay=true, max_postpay_amount=MaxPostpay
         true -> 
             AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
             j5_util:write_debit_to_ledger(<<"start">>, ReserveAmount, JObj, AccountId),
+            SessionId = j5_util:get_session_id(JObj),
+            lager:debug("reserving $~w for postpay session ~s from ~s", [wapi_money:units_to_dollars(ReserveAmount), SessionId, AccountId]),
             true
     end.
 
