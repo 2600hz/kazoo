@@ -36,7 +36,7 @@
 %%--------------------------------------------------------------------
 -spec is_reconcilable/1 :: (ne_binary()) -> boolean().
 is_reconcilable(Number) ->
-    Regex = whapps_config:get_binary(?WNM_CONFIG_CAT, <<"reconcile_regex">>, <<"^\\+{0,1}1{0,1}(\\d{10})$">>),
+    Regex = whapps_config:get_binary(?WNM_CONFIG_CAT, <<"reconcile_regex">>, <<"^\\+?1?\\d{10}$">>),
     Num = wnm_util:normalize_number(Number),
     case re:run(Num, Regex) of
         nomatch ->
