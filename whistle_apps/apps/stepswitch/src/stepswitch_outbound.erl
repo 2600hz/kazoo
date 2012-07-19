@@ -9,9 +9,12 @@
 %%%-------------------------------------------------------------------
 -module(stepswitch_outbound).
 
--export([init/0, handle_req/2]).
+-export([init/0]).
+-export([handle_req/2]).
+-export([get_emergency_cid_number/1]).
 
 -include("stepswitch.hrl").
+-include_lib("whistle_number_manager/include/wh_number_manager.hrl").
 
 -type bridge_resp() :: {'error', wh_json:json_object()} |
                        {'error', 'timeout'} |
@@ -117,6 +120,7 @@ bridge_to_endpoints(Endpoints, IsEmergency, CtrlQ, JObj) ->
     {CIDNum, CIDName} = case IsEmergency of
                             'true' ->
                                 lager:debug("outbound call is using an emergency route, attempting to set CID accordingly"),
+                                get_emergency_cid_number(JObj),
                                 {wh_json:get_ne_value(<<"Emergency-Caller-ID-Number">>, JObj,
                                                       wh_json:get_ne_value(<<"Outgoing-Caller-ID-Number">>, JObj))
                                  ,wh_json:get_ne_value(<<"Emergency-Caller-ID-Name">>, JObj,
@@ -594,6 +598,7 @@ correct_shortdial(Number, JObj) ->
         _ ->
             fail
     end.
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -606,4 +611,57 @@ get_account_name(Number, AccountId) when is_binary(Number) ->
     case couch_mgr:open_doc(?WH_ACCOUNTS_DB, AccountId) of
         {ok, JObj} -> wh_json:get_ne_value(<<"name">>, JObj, Number);
         _ -> Number
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Do everything we can to ensure a emergency call uses a number with
+%% e911 enabled
+%% @end
+%%--------------------------------------------------------------------
+-spec get_emergency_cid_number/1 :: (wh_json:json_object()) -> ne_binary().
+get_emergency_cid_number(JObj) ->
+    Account = wh_json:get_value(<<"Account-ID">>, JObj),
+    AccountDb = wh_util:format_account_id(Account, encoded),
+    Candidates = [wh_json:get_ne_value(<<"Emergency-Caller-ID-Number">>, JObj)
+                  ,wh_json:get_ne_value(<<"Outgoing-Caller-ID-Number">>, JObj)
+                 ],
+    Requested = wh_json:get_ne_value(<<"Emergency-Caller-ID-Number">>, JObj
+                                     ,wh_json:get_ne_value(<<"Outgoing-Caller-ID-Number">>, JObj)),
+    case couch_mgr:open_cache_doc(AccountDb, ?WNM_PHONE_NUMBER_DOC) of
+        {ok, PhoneNumbers} ->
+            Numbers = wh_json:get_keys(wh_json:public_fields(PhoneNumbers)),
+            E911Enabled = [Number 
+                           || Number <- Numbers
+                                  ,lists:member(<<"dash_e911">>, wh_json:get_value([Number, <<"features">>], PhoneNumbers, []))
+                          ],
+            get_emergency_cid_number(Requested, Candidates, E911Enabled);
+        {error, _R} ->
+            lager:error("unable to fetch the ~s from account ~s: ~p", [?WNM_PHONE_NUMBER_DOC, Account, _R]),
+            get_emergency_cid_number(Requested, Candidates, [])
+    end.
+
+-spec get_emergency_cid_number/3 :: (ne_binary(), ['undefined' | ne_binary(),...], [ne_binary(),...] | []) -> ne_binary().
+%% if there are no e911 enabled numbers then either use the global system default 
+%% or the requested (if there isnt one)
+get_emergency_cid_number(Requested, _, []) ->
+    case whapps_config:get_non_empty(<<"stepswitch">>, <<"default_emergency_cid_number">>) of
+        undefined -> Requested;
+        DefaultE911 -> DefaultE911
+    end;
+%% If neither their emergency cid or outgoung cid is e911 enabled but their account
+%% has other numbers with e911 then use the first...
+get_emergency_cid_number(_, [], [E911Enabled|_]) ->
+    E911Enabled;
+%% due to the way we built the candidates list it can contain the atom 'undefined'
+%% handle that condition (ignore)
+get_emergency_cid_number(Requested, [undefined|Candidates], E911Enabled) ->
+    get_emergency_cid_number(Requested, Candidates, E911Enabled);
+%% check if the first non-atom undefined element in the list is in the list of
+%% e911 enabled numbers, if so use it otherwise keep checking.
+get_emergency_cid_number(Requested, [Candidate|Candidates], E911Enabled) ->
+    case lists:member(Candidate, E911Enabled) of
+        true -> Candidate;
+        false -> get_emergency_cid_number(Requested, Candidates, E911Enabled)
     end.
