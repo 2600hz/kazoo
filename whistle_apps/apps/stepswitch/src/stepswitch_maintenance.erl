@@ -16,6 +16,7 @@
 -export([lookup_number/1]).
 -export([reload_resources/0]).
 -export([process_number/1, process_number/2]).
+-export([emergency_cid/1, emergency_cid/2, emergency_cid/3]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -94,3 +95,31 @@ process_number(Number) ->
 
 process_number(Number, Flags) ->
     gen_server:call(stepswitch_listener, {process_number, Number, Flags}).
+
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec emergency_cid/1 :: (ne_binary()) -> 'no_return'.
+-spec emergency_cid/2 :: (ne_binary(), text()) -> 'no_return'.
+-spec emergency_cid/3 :: (ne_binary(), 'undefined' | text(), text()) -> 'no_return'.
+
+emergency_cid(Account) ->
+    emergency_cid(Account, undefined).
+
+emergency_cid(Account, ECID) ->
+    emergency_cid(Account, ECID, undefined).
+
+emergency_cid(Account, ECID, OCID) ->
+    wh_cache:flush(),
+    Props = [{<<"Account-ID">>, wh_util:to_binary(Account)}
+             ,{<<"Emergency-Caller-ID-Number">>, ECID}
+             ,{<<"Outgoing-Caller-ID-Number">>, OCID}
+            ],
+    JObj = wh_json:from_list(props:filter_empty(Props)),
+    CID = stepswitch_outbound:get_emergency_cid_number(JObj),
+    lager:info("Emergency offnet requests for account ~s (given the following CIDs ~s and ~s) will use ~s", [Account, ECID, OCID, CID]),
+    no_return.
