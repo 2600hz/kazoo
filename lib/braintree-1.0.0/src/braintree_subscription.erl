@@ -12,7 +12,10 @@
 -export([new/3]).
 -export([get_id/1]).
 -export([get_addon/2]).
+-export([get_addon_quantity/2]).
 -export([update_addon_amount/3]).
+-export([get_discount/2]).
+-export([update_discount_amount/3]).
 -export([find/1]).
 -export([create/1, create/2]).
 -export([update/1]).
@@ -21,11 +24,15 @@
 -export([record_to_xml/1]).
 -export([update_addon_quantity/3]).
 -export([increment_addon_quantity/2]).
+-export([update_discount_quantity/3]).
+-export([increment_discount_quantity/2]).
 
 -import(braintree_util, [make_doc_xml/2]).
 -import(wh_util, [get_xml_value/2]).
 
 -include_lib("braintree/include/braintree.hrl").
+
+-type changes() :: [{atom(), proplist(), [proplist(),...] | []}] | [].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -94,6 +101,23 @@ get_addon(#bt_subscription{add_ons=AddOns}, AddOnId) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
+%% Get the quantity of addons
+%% @end
+%%--------------------------------------------------------------------
+-spec get_addon_quantity/2 :: (#bt_subscription{}, ne_binary()) -> integer().
+get_addon_quantity(#bt_subscription{add_ons=AddOns}, AddOnId) ->
+    case lists:keyfind(AddOnId, #bt_addon.id, AddOns) of
+        false ->
+            case lists:keyfind(AddOnId, #bt_addon.inherited_from, AddOns) of
+                false -> 0;
+                #bt_addon{}=AddOn -> braintree_addon:get_quantity(AddOn)
+            end;
+        #bt_addon{}=AddOn -> braintree_addon:get_quantity(AddOn)
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
 %% Get the subscription id
 %% @end
 %%--------------------------------------------------------------------
@@ -110,6 +134,44 @@ update_addon_amount(#bt_subscription{add_ons=AddOns}=Subscription, AddOnId, Amou
         #bt_addon{}=AddOn -> 
             AddOn1 = AddOn#bt_addon{existing_id=AddOnId, amount=Amount},
             Subscription#bt_subscription{add_ons=lists:keyreplace(AddOnId, #bt_addon.id, AddOns, AddOn1)}
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Find a specific discount
+%% @end
+%%--------------------------------------------------------------------
+-spec get_discount/2 :: (#bt_subscription{}, ne_binary()) -> #bt_discount{}.
+get_discount(#bt_subscription{discounts=Discounts}, DiscountId) ->
+    case lists:keyfind(DiscountId, #bt_discount.id, Discounts) of
+        false ->
+            case lists:keyfind(DiscountId, #bt_discount.inherited_from, Discounts) of
+                false -> braintree_util:error_not_found(<<"Discount">>);
+                #bt_discount{}=Discount -> Discount
+            end;
+        #bt_discount{}=Discount -> Discount
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Update the amount of a specific discount
+%% @end
+%%--------------------------------------------------------------------
+-spec update_discount_amount/3 :: (#bt_subscription{}, ne_binary(), ne_binary()) -> #bt_subscription{}.
+update_discount_amount(#bt_subscription{discounts=Discounts}=Subscription, DiscountId, Amount) ->
+    case lists:keyfind(DiscountId, #bt_discount.id, Discounts) of
+        false ->
+            case lists:keyfind(DiscountId, #bt_discount.inherited_from, Discounts) of
+                false -> braintree_util:error_not_found(<<"Discount">>);
+                #bt_discount{}=Discount -> 
+                    Discount1 = Discount#bt_discount{amount=Amount},
+                    Subscription#bt_subscription{discounts=lists:keyreplace(DiscountId, #bt_discount.inherited_from, Discounts, Discount1)}
+            end;
+        #bt_discount{}=Discount -> 
+            Discount1 = Discount#bt_discount{existing_id=DiscountId, amount=Amount},
+            Subscription#bt_subscription{discounts=lists:keyreplace(DiscountId, #bt_discount.id, Discounts, Discount1)}
     end.
 
 %%--------------------------------------------------------------------
@@ -230,6 +292,62 @@ increment_addon_quantity(SubscriptionId, AddOnId) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
+%% Really ugly function to update an discount for a given subscription
+%% or subscription id
+%% @end
+%%--------------------------------------------------------------------
+-spec update_discount_quantity/3 :: (#bt_subscription{} | ne_binary(), ne_binary(), integer()) -> #bt_subscription{}.
+update_discount_quantity(Subscription, DiscountId, Quantity) when not is_integer(Quantity) ->
+    update_discount_quantity(Subscription, DiscountId, wh_util:to_integer(Quantity));
+update_discount_quantity(#bt_subscription{discounts=Discounts}=Subscription, DiscountId, Quantity) ->
+    case lists:keyfind(DiscountId, #bt_discount.id, Discounts) of
+        false ->
+            case lists:keyfind(DiscountId, #bt_discount.inherited_from, Discounts) of
+                false ->
+                    Discount = #bt_discount{inherited_from=DiscountId, quantity=Quantity},
+                    Subscription#bt_subscription{discounts=[Discount|Discounts]};
+                #bt_discount{}=Discount ->
+                    Discount1 = Discount#bt_discount{quantity=Quantity},
+                    Subscription#bt_subscription{discounts=lists:keyreplace(DiscountId, #bt_discount.inherited_from, Discounts, Discount1)}
+            end;
+        #bt_discount{}=Discount ->
+            Discount1 = Discount#bt_discount{existing_id=DiscountId, quantity=Quantity},
+            Subscription#bt_subscription{discounts=lists:keyreplace(DiscountId, #bt_discount.id, Discounts, Discount1)}
+    end;
+update_discount_quantity(SubscriptionId, DiscountId, Quantity) ->
+    Subscription = find(SubscriptionId),
+    update_discount_quantity(Subscription, DiscountId, Quantity).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Really ugly function to increment an discount for a given subscription
+%% or subscription id
+%% @end
+%%--------------------------------------------------------------------
+-spec increment_discount_quantity/2 :: (#bt_subscription{} | ne_binary(), ne_binary()) -> #bt_subscription{}.
+increment_discount_quantity(#bt_subscription{discounts=Discounts}=Subscription, DiscountId) ->
+    case lists:keyfind(DiscountId, #bt_discount.id, Discounts) of
+        false ->
+            case lists:keyfind(DiscountId, #bt_discount.inherited_from, Discounts) of
+                false ->
+                    Discount = #bt_discount{inherited_from=DiscountId, quantity=1},
+                    Subscription#bt_subscription{discounts=[Discount|Discounts]};
+                #bt_discount{quantity=Quantity}=Discount ->
+                    Discount1 = Discount#bt_discount{quantity=wh_util:to_integer(Quantity) + 1},
+                    Subscription#bt_subscription{discounts=lists:keyreplace(DiscountId, #bt_discount.inherited_from, Discounts, Discount1)}
+            end;
+        #bt_discount{quantity=Quantity}=Discount ->
+            Discount1 = Discount#bt_discount{existing_id=DiscountId, quantity=wh_util:to_integer(Quantity) + 1},
+            Subscription#bt_subscription{discounts=lists:keyreplace(DiscountId, #bt_discount.id, Discounts, Discount1)}
+    end;
+increment_discount_quantity(SubscriptionId, DiscountId) ->
+    Subscription = find(SubscriptionId),
+    increment_discount_quantity(Subscription, DiscountId).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
 %% Contert the given XML to a subscription record
 %% @end
 %%--------------------------------------------------------------------
@@ -241,6 +359,7 @@ xml_to_record(Xml) ->
 
 xml_to_record(Xml, Base) ->
     AddOnsPath = lists:flatten([Base, "/add-ons/add-on"]),
+    DiscountsPath = lists:flatten([Base, "/discounts/discount"]),
     #bt_subscription{id = get_xml_value([Base, "/id/text()"], Xml)
                      ,balance = get_xml_value([Base, "/balance/text()"], Xml)
                      ,billing_dom = get_xml_value([Base, "/billing-day-of-month/text()"], Xml)
@@ -267,11 +386,15 @@ xml_to_record(Xml, Base) ->
                      ,add_ons = [braintree_addon:xml_to_record(Addon)
                                  || Addon <- xmerl_xpath:string(AddOnsPath, Xml)
                                 ]
-%%                     ,discounts = get_xml_value([Base, "/token/text()"], Xml)
+                     ,discounts = [braintree_discount:xml_to_record(Discount)
+                                   || Discount <- xmerl_xpath:string(DiscountsPath, Xml)
+                                  ]
 %%                     ,descriptor = get_xml_value([Base, "/token/text()"], Xml)
-                     }.
 %%                     ,transactions = [braintree_transaction:xml_to_record(Trans)
-%%                                      || Trans <- xmerl_xpath:string([Base, "/transactions/transaction"], Xml)]}.
+%%                                      || Trans <- xmerl_xpath:string([Base, "/transactions/transaction"], Xml)
+%%                                     ]
+                     }.
+   
 
 %%--------------------------------------------------------------------
 %% @public
@@ -297,6 +420,7 @@ record_to_xml(#bt_subscription{}=Subscription, ToString) ->
              ,{'trial-duration-unit', Subscription#bt_subscription.trial_duration_unit}
              ,{'trial-period', Subscription#bt_subscription.trial_period}
              ,{'add-ons', create_addon_changes(Subscription#bt_subscription.add_ons)}
+             ,{'discounts', create_discount_changes(Subscription#bt_subscription.discounts)}
             ],
     Conditionals = [fun(#bt_subscription{do_not_inherit=true}, P) ->
                             case proplists:get_value('options', P) of
@@ -359,7 +483,6 @@ record_to_xml(#bt_subscription{}=Subscription, ToString) ->
 %% Determine the necessary steps to change the add ons
 %% @end
 %%--------------------------------------------------------------------
--type changes() :: [{atom(), proplist(), [proplist(),...] | []}] | [].
 -spec create_addon_changes/1 :: ([#bt_addon{},...] | []) -> changes().
 create_addon_changes(AddOns) ->
     lists:foldr(fun(#bt_addon{id=Id, quantity=0}, C) ->
@@ -383,6 +506,36 @@ create_addon_changes(AddOns) ->
                                ],
                         append_items('update', props:filter_undefined(Item), C)
                 end, [], AddOns).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Determine the necessary steps to change the discounts
+%% @end
+%%--------------------------------------------------------------------
+-spec create_discount_changes/1 :: ([#bt_discount{},...] | []) -> changes().
+create_discount_changes(Discounts) ->
+    lists:foldr(fun(#bt_discount{id=Id, quantity=0}, C) ->
+                        append_items('remove', Id, C);
+                   (#bt_discount{existing_id=undefined
+                              ,inherited_from=undefined}, C) ->
+                        C;
+                   (#bt_discount{existing_id=undefined
+                              ,inherited_from=Id
+                              ,quantity=Q
+                              ,amount=A}, C) ->
+                        Item = [{'inherited_from_id', Id}
+                                ,{'quantity', Q}
+                                ,{'amount', A}
+                               ],
+                        append_items('add', props:filter_undefined(Item), C);
+                   (#bt_discount{existing_id=Id, quantity=Q, amount=A}, C) ->
+                        Item = [{'existing_id', Id}
+                                ,{'quantity', Q}
+                                ,{'amount', A}
+                               ],
+                        append_items('update', props:filter_undefined(Item), C)
+                end, [], Discounts).
 
 %%--------------------------------------------------------------------
 %% @private
