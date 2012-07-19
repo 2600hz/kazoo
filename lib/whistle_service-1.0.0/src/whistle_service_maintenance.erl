@@ -120,7 +120,10 @@ sync_account(Account) ->
             R3 = wh_service_numbers:update(PhoneNumbers, R2),
 
             lager:debug("sync limits~n", []),
-            {ok, Limits} = couch_mgr:open_doc(AccountDb, <<"limits">>),
+            {ok, Limits} = case couch_mgr:open_doc(AccountDb, <<"limits">>) of
+                               {ok, _}=Ok -> Ok;
+                               {error, not_found} -> {ok, wh_json:new()}
+                           end,
             R4 = wh_service_numbers:update(Limits, R3),
 
             lager:debug("commit changess~n", []),
