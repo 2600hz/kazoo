@@ -30,20 +30,23 @@ handle_req(JObj, _Props) ->
 -spec reconcile_cost/3 :: ('undefined' | ne_binary(), float(), wh_json:json_object()) -> 'ok'.
 reconcile_cost(undefined, _, _) -> ok;
 reconcile_cost(Ledger, Cost, JObj) ->
-    lager:debug("reconciling bridge cost wiht account ~s", [Ledger]),
     SessionId = j5_util:get_session_id(JObj),
     Billed = j5_util:session_cost(SessionId, Ledger),
     case Billed - (-1 * wapi_money:dollars_to_units(Cost)) of
         Diff1 when Diff1 == 0 -> 
-            lager:debug("no difference between bridge cost $~w and charges $~w", [abs(wapi_money:units_to_dollars(Diff1))
-                                                                                  ,abs(wapi_money:units_to_dollars(Billed))
-                                                                                 ]),
+            lager:debug("session ~s cost $~w and we charged $~w, no update for account ~s", [SessionId
+                                                                                             ,abs(wapi_money:units_to_dollars(Diff1))
+                                                                                             ,abs(wapi_money:units_to_dollars(Billed))
+                                                                                             ,Ledger
+                                                                                            ]),
             ok;
         Diff2 when Diff2 < 0 ->
             case j5_util:write_credit_to_ledger(<<"end">>, Diff2, JObj, Ledger) of
-                {ok, _} -> lager:debug("bridge cost $~w but we charged $~w, credited account $~w"
-                                       ,[Cost
+                {ok, _} -> lager:debug("session ~s cost $~w but we charged $~w, credited account ~s $~w"
+                                       ,[SessionId
+                                         ,Cost
                                          ,abs(wapi_money:units_to_dollars(Billed))
+                                         ,Ledger
                                          ,abs(wapi_money:units_to_dollars(Diff2))
                                         ]);
                 {error, conflict} -> ok;
@@ -54,9 +57,11 @@ reconcile_cost(Ledger, Cost, JObj) ->
         Diff3 when Diff3 > 0 ->
             case j5_util:write_debit_to_ledger(<<"end">>, Diff3, JObj, Ledger) of
                 {ok, _} ->
-                    lager:debug("bridge cost $~w but we charged $~w, debited account $~w"
-                                ,[Cost
+                    lager:debug("session ~s cost $~w but we charged $~w, debited account ~s $~w"
+                                ,[SessionId
+                                  ,Cost
                                   ,abs(wapi_money:units_to_dollars(Billed))
+                                  ,Ledger
                                   ,abs(wapi_money:units_to_dollars(Diff3))
                                  ]);
                 {error, conflict} -> ok;
@@ -76,6 +81,7 @@ extract_cost(JObj) ->
     RateMin = wh_json:get_integer_value(<<"Rate-Minimum">>, CCVs, 0),
     Surcharge = wh_json:get_float_value(<<"Surcharge">>, CCVs, 0.0),
     Cost = whapps_util:calculate_cost(Rate, RateIncr, RateMin, Surcharge, BillingSecs),
-    lager:debug("final call rating at $~p/~ps with minumim ~ps and surcharge $~p for ~p secs: $~p"
-                ,[Rate, RateIncr, RateMin, Surcharge, BillingSecs, Cost]),
+    SessionId = j5_util:get_session_id(JObj),
+    lager:debug("final session ~s rate at $~p/~ps with minumim ~ps and surcharge $~p for ~p secs: $~p"
+                ,[SessionId, Rate, RateIncr, RateMin, Surcharge, BillingSecs, Cost]),
     Cost.
