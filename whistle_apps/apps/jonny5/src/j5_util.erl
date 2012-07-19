@@ -100,7 +100,7 @@ write_to_ledger(_, 0.0, _, _, _) ->
 write_to_ledger(Suffix, Units, JObj, Ledger, Type) ->
     LedgerId = wh_util:format_account_id(Ledger, raw),
     LedgerDb = wh_util:format_account_id(Ledger, encoded),
-    Timestamp = wh_json:get_binary_value(<<"Timestamp">>, JObj, wh_util:current_tstamp()),
+    Timestamp = wh_json:get_integer_value(<<"Timestamp">>, JObj, wh_util:current_tstamp()),
     SessionId = get_session_id(JObj),
     Id = <<SessionId/binary, "-", (wh_util:to_binary(Suffix))/binary>>,
     Entry = wh_json:from_list([{<<"_id">>, Id}
