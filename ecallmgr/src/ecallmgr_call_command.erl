@@ -155,6 +155,7 @@ get_fs_app(Node, UUID, JObj, <<"record_call">>) ->
             case wh_json:get_value(<<"Record-Action">>, JObj) of
                 <<"start">> ->
                     Media = ecallmgr_media_registry:register_local_media(MediaName, UUID),
+                    _ = set_terminators(Node, UUID, wh_json:get_value(<<"Terminators">>, JObj)),
 
                     _ = set(Node, UUID, <<"RECORD_APPEND=true">>), % allow recording to be appended to
                     _ = set(Node, UUID, <<"enable_file_write_buffering=false">>), % disable buffering to see if we get all the media
@@ -594,6 +595,14 @@ get_fs_app(Node, UUID, JObj, <<"tone_detect">>) ->
                                   ]),
 
             {<<"tone_detect">>, Data}
+    end;
+
+get_fs_app(Node, UUID, JObj, <<"set_terminators">>) ->
+    case wapi_dialplan:set_terminators_v(JObj) of
+        false -> {'error', <<"set_terminators failed to execute as JObj did not validate">>};
+        true ->
+            'ok' = set_terminators(Node, UUID, wh_json:get_value(<<"Terminators">>, JObj)),
+            {<<"set">>, noop}
     end;
 
 get_fs_app(Node, UUID, JObj, <<"set">>) ->
