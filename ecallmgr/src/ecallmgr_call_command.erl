@@ -761,7 +761,10 @@ send_store_call_event(Node, UUID, MediaTransResults) ->
     Timestamp = wh_util:to_binary(wh_util:current_tstamp()),
     Prop = try freeswitch:api(Node, uuid_dump, wh_util:to_list(UUID)) of
                {ok, Dump} ->
-                   ecallmgr_util:eventstr_to_proplist(Dump)
+                   ecallmgr_util:eventstr_to_proplist(Dump);
+               {error, _Err} ->
+                   lager:debug("failed to query channel: ~s", [_Err]),
+                   []
            catch
                _E:_R ->
                    lager:debug("failed get params from uuid_dump"),
