@@ -41,6 +41,7 @@
          ,sleep/1, sleep_v/1
          ,tone_detect/1, tone_detect_v/1
          ,set/1, set_v/1
+         ,set_terminators/1, set_terminators_v/1
          ,send_dtmf/1, send_dtmf_v/1
          ,tones/1, tones_req_tone/1, tones_v/1, tones_req_tone_v/1
          ,tones_req_tone_headers/1
@@ -571,6 +572,26 @@ set_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?SET_REQ_HEADERS, ?SET_REQ_VALUES, ?SET_REQ_TYPES);
 set_v(JObj) ->
     set_v(wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
+%% @doc Set Terminators for playback/record
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec set_terminators/1 :: (api_terms()) -> api_formatter_return().
+set_terminators(Prop) when is_list(Prop) ->
+    case set_terminators_v(Prop) of
+        true -> wh_api:build_message(Prop, ?SET_TERM_HEADERS, ?OPTIONAL_SET_TERM_HEADERS);
+        false -> {error, "Proplist failed validation for set_terminators"}
+    end;
+set_terminators(JObj) ->
+    set_terminators(wh_json:to_proplist(JObj)).
+
+-spec set_terminators_v/1 :: (api_terms()) -> boolean() .
+set_terminators_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?SET_TERM_HEADERS, ?SET_TERM_VALUES, ?SET_TERM_TYPES);
+set_terminators_v(JObj) ->
+    set_terminators_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc Fetch Custom Channel variables - see wiki
