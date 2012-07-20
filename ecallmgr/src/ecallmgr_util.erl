@@ -53,8 +53,8 @@ send_cmd(Node, UUID, "record_call", Args) ->
     lager:debug("execute on node ~s: uuid_record(~s)", [Node, Args]),
     _ = ecallmgr_util:fs_log(Node, "whistle executing uuid_record ~s", [Args]),
     case freeswitch:api(Node, uuid_record, Args) of
-        {ok, _}=Ret ->
-            lager:debug("executing uuid_record returned ~p", [Ret]),
+        {ok, _Msg}=Ret ->
+            lager:debug("executing uuid_record returned: ~s", [_Msg]),
             Ret;
         {error, <<"-ERR ", E/binary>>} ->
             lager:debug("error executing uuid_record: ~s", [E]),
