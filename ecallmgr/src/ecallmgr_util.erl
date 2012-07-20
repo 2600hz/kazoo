@@ -23,7 +23,11 @@
 -export([media_path/3, media_path/4]).
 -export([unserialize_fs_array/1]).
 -export([convert_fs_evt_name/1, convert_whistle_app_name/1]).
--export([fax_filename/1]).
+-export([fax_filename/1
+         ,recording_filename/1
+        ]).
+
+-export([lookup_media/3]).
 
 -include_lib("ecallmgr/src/ecallmgr.hrl").
 
@@ -281,7 +285,7 @@ build_bridge_string(Endpoints, Seperator) ->
                   ,wh_json:get_value(<<"Route">>, Endpoint)
                  ]
                  ,Endpoint}
-                || Endpoint <- Endpoints, wh_json:is_json_object(Endpoint)
+                || Endpoint <- Endpoints
                ],
     BridgeStrings = build_bridge_endpoints(props:unique(KeyedEPs), []),
     %% NOTE: dont use binary_join here as it will crash on an empty list...
@@ -290,6 +294,14 @@ build_bridge_string(Endpoints, Seperator) ->
 -type build_return() :: ne_binary() | {'worker', pid()}.
 -type bridge_endpoints() :: [{[ne_binary() | 'undefined',...], wh_json:json_object()},...] | [].
 -spec build_bridge_endpoints/2 :: (bridge_endpoints(), [build_return(),...] | []) -> [ne_binary(),...].
+build_bridge_endpoints([{[<<"route">>|_], Endpoint}|Endpoints], Channels) ->
+    build_bridge_endpoints(Endpoints, [build_bridge_endpoint(Endpoint)|Channels]);
+build_bridge_endpoints([{_, Endpoint}|Endpoints], Channels) ->
+    S = self(),
+    Pid = spawn(fun() ->
+                        S ! {self(), build_bridge_endpoint(Endpoint)}
+                end),
+    build_bridge_endpoints(Endpoints, [{worker, Pid}|Channels]);
 build_bridge_endpoints([], Channels) ->
     lists:foldr(fun({worker, Pid}, BridgeStrings) ->
                         receive
@@ -302,15 +314,7 @@ build_bridge_endpoints([], Channels) ->
                             2000 -> BridgeStrings
                         end;
                  (BridgeString, BridgeStrings) -> [BridgeString|BridgeStrings]
-                end, [], Channels);
-build_bridge_endpoints([{[<<"route">>|_], Endpoint}|Endpoints], Channels) ->
-    build_bridge_endpoints(Endpoints, [build_bridge_endpoint(Endpoint)|Channels]);
-build_bridge_endpoints([{_, Endpoint}|Endpoints], Channels) ->
-    S = self(),
-    Pid = spawn(fun() ->
-                        S ! {self(), build_bridge_endpoint(Endpoint)}
-                end),
-    build_bridge_endpoints(Endpoints, [{worker, Pid}|Channels]).
+                end, [], Channels).
 
 -spec build_bridge_endpoint/1 :: (wh_json:json_object()) -> binary().
 -spec build_bridge_endpoint/3 :: (wh_json:json_object(), ne_binary(), [nonempty_string(),...] | []) -> binary().
@@ -375,7 +379,7 @@ media_path(<<"local_stream://", FSPath/binary>>, _Type, _UUID, _) ->
 media_path(<<"http://", _/binary>> = URI, _Type, _UUID, _) ->
     get_fs_playback(URI);
 media_path(MediaName, Type, UUID, JObj) ->
-    case ecallmgr_media_registry:lookup_media(MediaName, Type, UUID, JObj) of
+    case lookup_media(MediaName, Type, UUID, JObj) of
         {'error', _E} ->
             lager:debug("failed to get media ~s: ~p", [MediaName, _E]),
             wh_util:to_binary(MediaName);
@@ -384,9 +388,23 @@ media_path(MediaName, Type, UUID, JObj) ->
             wh_util:to_binary(get_fs_playback(Url))
     end.
 
+-spec fax_filename/1 :: (ne_binary()) -> file:filename().
 fax_filename(UUID) ->
+    Ext = ecallmgr_config:get(<<"default_fax_extension">>, <<".tiff">>),
     filename:join([ecallmgr_config:get(<<"fax_file_path">>, <<"/tmp/">>)
-                   ,<<(amqp_util:encode(UUID))/binary, ".tiff">>
+                   ,<<(amqp_util:encode(UUID))/binary, Ext/binary>>
+                  ]).
+
+-spec recording_filename/1 :: (ne_binary()) -> file:filename().
+recording_filename(MediaName) ->
+    Ext = case filename:extension(MediaName) of
+              Empty when Empty =:= <<>> orelse Empty =:= [] ->
+                  ecallmgr_config:get(<<"default_recording_extension">>, <<".mp3">>);
+              _ -> <<>>
+          end,
+
+    filename:join([ecallmgr_config:get(<<"recording_file_path">>, <<"/tmp/">>)
+                   ,amqp_util:encode(<<MediaName/binary, Ext/binary>>)
                   ]).
 
 %%--------------------------------------------------------------------
@@ -411,3 +429,30 @@ convert_fs_evt_name(EvtName) ->
 -spec convert_whistle_app_name/1 :: (ne_binary()) -> [ne_binary(),...] | [].
 convert_whistle_app_name(App) ->
     [EvtName || {EvtName, AppName} <- ?FS_APPLICATION_NAMES, App =:= AppName].
+
+-spec lookup_media/3 :: (ne_binary(), ne_binary(), wh_json:json_object()) ->
+                                {'ok', binary()} |
+                                {'error', any()}.
+lookup_media(MediaName, CallId, JObj) ->
+    lookup_media(MediaName, CallId, JObj, new).
+lookup_media(MediaName, CallId, JObj, Type) when Type =:= new orelse Type =:= extant ->
+    Request = wh_json:set_values(
+                [{<<"Media-Name">>, MediaName}
+                 ,{<<"Stream-Type">>, Type}
+                 ,{<<"Call-ID">>, CallId}
+                 ,{<<"Msg-ID">>, wh_util:to_binary(wh_util:current_tstamp())}
+                 | wh_api:default_headers(<<"media">>, <<"media_req">>, ?APP_NAME, ?APP_VERSION)
+                ]
+                ,JObj),
+    ReqResp = wh_amqp_worker:call(?ECALLMGR_AMQP_POOL
+                                  ,Request
+                                  ,fun wapi_media:publish_req/1
+                                  ,fun wapi_media:resp_v/1),
+    case ReqResp of
+        {error, _R}=E ->
+            lager:debug("media lookup for '~s' failed: ~p", [MediaName, _R]),
+            E;
+        {ok, MediaResp} ->
+            MediaName = wh_json:get_value(<<"Media-Name">>, MediaResp),
+            {ok, wh_json:get_value(<<"Stream-URL">>, MediaResp, <<>>)}
+    end.
