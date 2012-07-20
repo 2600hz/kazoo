@@ -379,7 +379,7 @@ media_path(<<"local_stream://", FSPath/binary>>, _Type, _UUID, _) ->
 media_path(<<"http://", _/binary>> = URI, _Type, _UUID, _) ->
     get_fs_playback(URI);
 media_path(MediaName, Type, UUID, JObj) ->
-    case lookup_media(MediaName, Type, UUID, JObj) of
+    case lookup_media(MediaName, UUID, JObj, Type) of
         {'error', _E} ->
             lager:debug("failed to get media ~s: ~p", [MediaName, _E]),
             wh_util:to_binary(MediaName);
@@ -400,11 +400,12 @@ recording_filename(MediaName) ->
     Ext = case filename:extension(MediaName) of
               Empty when Empty =:= <<>> orelse Empty =:= [] ->
                   ecallmgr_config:get(<<"default_recording_extension">>, <<".mp3">>);
-              _ -> <<>>
+              E -> E
           end,
+    RootName = filename:rootname(MediaName),
 
     filename:join([ecallmgr_config:get(<<"recording_file_path">>, <<"/tmp/">>)
-                   ,amqp_util:encode(<<MediaName/binary, Ext/binary>>)
+                   ,<<(amqp_util:encode(RootName))/binary, Ext/binary>>
                   ]).
 
 %%--------------------------------------------------------------------
