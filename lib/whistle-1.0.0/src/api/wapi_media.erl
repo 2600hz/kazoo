@@ -28,7 +28,7 @@
                                     ]).
 -define(MEDIA_REQ_VALUES, [{<<"Event-Category">>, <<"media">>}
                            ,{<<"Event-Name">>, <<"media_req">>}
-                           ,{<<"Stream-Type">>, [<<"new">>, <<"extant">>]}
+                           ,{<<"Stream-Type">>, [<<"new">>, <<"extant">>, new, extant]}
                            ,{<<"Voice">>, [<<"male">>, <<"female">>]}
                            ,{<<"Format">>, [<<"mp3">>, <<"wav">>]}
                           ]).
