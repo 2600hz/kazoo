@@ -107,7 +107,9 @@ unique(List) ->
 unique([], Uniques) ->
     lists:reverse(Uniques);
 unique([{Key, _}=H|T], Uniques) ->
-    unique(lists:filter(fun({K, _}) when K =:= Key -> false; (_) -> true end, T), [H|Uniques]).
+    unique(lists:filter(fun({K, _}) -> not (K =:= Key) end, T)
+           ,[H|Uniques]
+          ).
 
 -include_lib("eunit/include/eunit.hrl").
 -ifdef(TEST).
