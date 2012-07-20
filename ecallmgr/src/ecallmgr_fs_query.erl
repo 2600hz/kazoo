@@ -132,7 +132,7 @@ handle_call_status(JObj, _Props) ->
                     Resp = create_call_status_resp(Props, ChannelCallID =:= CallID),
                     MsgId = wh_json:get_value(<<"Msg-ID">>, JObj),
                     wapi_call:publish_call_status_resp(wh_json:get_value(<<"Server-ID">>, JObj)
-                                                       ,wh_json:set_value(<<"Msg-ID">>, MsgId, Resp))
+                                                       ,wh_json:set_value(<<"Msg-ID">>, MsgId, wh_json:from_list(Resp)))
             end
     end.
 

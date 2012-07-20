@@ -74,18 +74,18 @@ presence_update(JObj, _Props) ->
 -spec do_presence_update/2 :: ('undefined' | ne_binary(), wh_json:json_object()) -> any().
 do_presence_update(undefined, JObj) ->
     PresenceId = wh_json:get_value(<<"Presence-ID">>, JObj),
-    Switch = wh_json:get_string_value(<<"Switch-Nodename">>, JObj),
+    Switch = wh_json:get_value(<<"Switch-Nodename">>, JObj),
     case ecallmgr_fs_nodes:channel_match_presence(PresenceId) of
         [] -> 
             Event = empty_presence_event(PresenceId),
-            relay_presence('PRESENCE_IN', PresenceId, Event, wh_util:to_list(node()), Switch);
+            relay_presence('PRESENCE_IN', PresenceId, Event, node(), Switch);
         Channels ->
             case wh_json:get_value(<<"Dialog-State">>, JObj, <<"new">>) of
                 <<"new">> ->
                     lists:foreach(fun({CallId, Node}) ->
                                           Channel = wh_json:from_list([{<<"Call-ID">>, CallId}]),
                                           Event = confirmed_presence_event(PresenceId, Channel),
-                                          relay_presence('PRESENCE_IN', PresenceId, Event, wh_util:to_list(Node), Switch)
+                                          relay_presence('PRESENCE_IN', PresenceId, Event, Node, Switch)
                                   end, Channels);
                 _Else ->
                     lager:info("skipping channel updates for ~s subscription dialog", [_Else])
@@ -99,7 +99,7 @@ do_presence_update(State, JObj) ->
                 <<"confirmed">> -> confirmed_presence_event(PresenceId, JObj);
                 <<"terminated">> -> terminated_presence_event(PresenceId, JObj)
             end,        
-    relay_presence('PRESENCE_IN', PresenceId, Event, wh_util:to_list(node()), Switch).
+    relay_presence('PRESENCE_IN', PresenceId, Event, node(), Switch).
 
 -spec mwi_update/2 :: (wh_json:json_object(), proplist()) -> no_return().
 mwi_update(JObj, _Props) ->
@@ -432,7 +432,7 @@ publish_presence_event(EventName, Props, Node) ->
           ],
     wapi_notifications:publish_presence_probe(Req).
 
--spec relay_presence/5 :: (atom(), ne_binary(), proplist(), atom(), 'undefined' | ne_binary()) -> [fs_sendevent_ret(),...].
+-spec relay_presence/5 :: (atom(), ne_binary(), wh_proplist(), atom(), 'undefined' | ne_binary()) -> [fs_sendevent_ret(),...].
 relay_presence(EventName, PresenceId, Props, Node, undefined) ->
     Match = #sip_subscription{key='_'
                               ,to=PresenceId
