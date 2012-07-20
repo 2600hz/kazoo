@@ -764,6 +764,9 @@ send_store_call_event(Node, UUID, MediaTransResults) ->
                    ecallmgr_util:eventstr_to_proplist(Dump);
                {error, _Err} ->
                    lager:debug("failed to query channel: ~s", [_Err]),
+                   [];
+               timeout ->
+                   lager:debug("timed out waiting for uuid_dump"),
                    []
            catch
                _E:_R ->
