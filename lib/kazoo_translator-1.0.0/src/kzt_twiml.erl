@@ -198,27 +198,31 @@ record_call(Call, Attrs) ->
     end,
 
     MediaName = media_name(whapps_call:call_id(Call1)),
-    case whapps_call_command:b_record(MediaName
-                                      ,props:get_value(finishOnKey, Props, [<<"#">>])
-                                      ,wh_util:to_binary(props:get_value(maxLength, Props, 3600))
-                                      ,props:get_value(timeout, Props, 5)
-                                      ,Call1
-                                     ) of
-        {ok, Msg} ->
-            case wh_json:get_integer_value(<<"Length">>, Msg, 0) of
-                0 -> lager:debug("recorded message length: 0, continuing"), ok;
-                L ->
-                    RecordingId = maybe_save_recording(Call1, MediaName, true),
-                    DTMFs = wh_json:get_value(<<"Digit-Pressed">>, Msg),
+    {ok, MediaJObj} = store_recording_meta(Call1, MediaName),
 
-                    lager:debug("recorded message length: ~bs, stored as ~s", [L, RecordingId]),
-                    BaseParams = wh_json:from_list([{<<"RecordingUrl">>, recorded_url(Call1, RecordingId, true)}
-                                                    ,{<<"RecordingDuration">>, L}
-                                                    ,{<<"Digits">>, DTMFs}
-                                                    | req_params(Call1)
-                                                   ]),
-                    {request, update_call_status(Call1, ?STATUS_ANSWERED), Action, Method, BaseParams}
-            end;
+    case whapps_call_command:b_record_call(MediaName
+                                           ,<<"start">>
+                                           ,store_url(Call1, MediaJObj)
+                                           ,wh_util:to_binary(props:get_value(maxLength, Props, 3600))
+                                           ,props:get_value(finishOnKey, Props, [<<"#">>])
+                                           ,Call1
+                                          ) of
+        {ok, Msg} ->
+            {RecordingId, _StoreJObj} = maybe_save_recording(Call1, MediaJObj, true),
+            DTMFs = wh_json:get_value(<<"Digit-Pressed">>, Msg),
+
+            lager:debug("recorded message, stored as ~s", [RecordingId]),
+            lager:debug("sending data to ~s(~s)", [Action, Method]),
+
+            BaseParams = wh_json:from_list(
+                           props:filter_undefined(
+                             [{<<"RecordingUrl">>, recorded_url(Call1, RecordingId, true)}
+                              ,{<<"RecordingDuration">>, 0}
+                              ,{<<"Digits">>, DTMFs}
+                              | req_params(Call1)
+                             ]
+                            )),
+            {request, update_call_status(Call1, ?STATUS_ANSWERED), Action, Method, BaseParams};
         {error, _E} ->
             %% TODO: when call hangs up, try to save message
             lager:debug("failed to record message: ~p", [_E]),
@@ -401,8 +405,7 @@ dial_number(Call0, DialMe, Attrs) ->
     Call1 = send_call(Call0, DialMe, Props),
     finish_dial(Call1, Props).
 
--spec dial_ring_group/3 :: (whapps_call:call(), list(), proplist()) ->
-                                   exec_element_return().
+-spec dial_ring_group/3 :: (whapps_call:call(), list(), proplist()) -> ok_return() | stop_return().
 dial_ring_group(Call, Numbers, Attrs) ->
     lager:debug("DIAL ring group"),
     Props = attrs_to_proplist(Attrs),
@@ -435,7 +438,7 @@ dial_ring_group(Call, Numbers, Attrs) ->
 
 -spec ring_group_bridge_req/3 :: (whapps_call:call(), wh_json:json_objects(), proplist()) ->
                                          {'ok' | 'error', wh_json:json_object()} |
-                                         {'stop', whapps_call:call()}.
+                                         stop_return().
 ring_group_bridge_req(Call, EPs, Props) ->
     Timeout = wh_util:to_integer(props:get_value(timeout, Props, 30)),
     CallerID = props:get_value(callerId, Props, whapps_call:caller_id_number(Call)),
@@ -545,8 +548,9 @@ pause(Call, Attrs) ->
     after Length -> {ok, Call1}
     end.
 
--spec play/3 :: (whapps_call:call(), ne_binary(), proplist()) -> exec_element_return().
--spec play/4 :: (whapps_call:call(), ne_binary(), proplist(), list() | binary()) -> exec_element_return().
+-spec play/3 :: (whapps_call:call(), ne_binary(), proplist()) -> ok_return() | stop_return().
+-spec play/4 :: (whapps_call:call(), ne_binary(), proplist(), list() | binary()) ->
+                        ok_return() | stop_return().
 play(Call, PlayMe, Attrs) ->
     Call1 = maybe_answer_call(Call),
     lager:debug("PLAY: ~s", [PlayMe]),
@@ -569,8 +573,9 @@ play(Call, PlayMe, Attrs, Terminators) ->
           end,
     maybe_stop(Call1, Res, {ok, Call1}).
 
--spec say/3 :: (whapps_call:call(), ne_binary(), proplist()) -> exec_element_return().
--spec say/4 :: (whapps_call:call(), ne_binary(), proplist(), list() | binary()) -> exec_element_return().
+-spec say/3 :: (whapps_call:call(), ne_binary(), proplist()) -> ok_return() | stop_return().
+-spec say/4 :: (whapps_call:call(), ne_binary(), proplist(), list() | binary()) ->
+                       ok_return() | stop_return().
 say(Call, SayMe, Attrs) ->
     Call1 = maybe_answer_call(Call),
     Props = attrs_to_proplist(Attrs),
@@ -579,21 +584,22 @@ say(Call, SayMe, Attrs) ->
 
     lager:debug("SAY: ~s using voice ~s, in lang ~s", [SayMe, Voice, Lang]),
 
-    case get_loop_count(wh_util:to_integer(props:get_value(loop, Props, 1))) of
-        0 ->
-            lager:debug("looping for ever (loop: 0)"),
-            say_loop(Call1, fun() ->
-                                    whapps_call_command:b_tts(wh_util:to_binary(SayMe), Voice, Lang, Call1)
-                            end, infinity);
-        1 ->
-            lager:debug("say once"),
+    Res = case get_loop_count(wh_util:to_integer(props:get_value(loop, Props, 1))) of
+              0 ->
+                  lager:debug("looping for ever (loop: 0)"),
+                  say_loop(Call1, fun() ->
+                                          whapps_call_command:b_tts(wh_util:to_binary(SayMe), Voice, Lang, Call1)
+                                  end, infinity);
+              1 ->
+                  lager:debug("say once"),
             whapps_call_command:b_tts(wh_util:to_binary(SayMe), Voice, Lang, Call1);
-        N ->
-            lager:debug("saying, then looping ~b more times", [N-1]),
-            say_loop(Call1, fun() ->
-                                    whapps_call_command:b_tts(wh_util:to_binary(SayMe), Voice, Lang, Call1)
-                            end, N)
-    end.
+              N ->
+                  lager:debug("saying, then looping ~b more times", [N-1]),
+                  say_loop(Call1, fun() ->
+                                          whapps_call_command:b_tts(wh_util:to_binary(SayMe), Voice, Lang, Call1)
+                                  end, N)
+          end,
+    maybe_stop(Call1, Res, {ok, Call1}).
 
 say(Call, SayMe, Attrs, Terminators) ->
     Call1 = maybe_answer_call(Call),
@@ -890,9 +896,38 @@ recorded_url(Call, DocId, true) ->
             wh_json:get_value(<<"Stream-URL">>, MediaResp)
     end.
 
-maybe_save_recording(_Call, _MediaName, false) ->
+-spec maybe_save_recording/3 :: (whapps_call:call(), wh_json:json_object(), boolean()) ->
+                                        {ne_binary(), wh_json:json_object()} |
+                                        'undefined'.
+maybe_save_recording(_Call, _MediaDoc, false) ->
     undefined;
-maybe_save_recording(Call, MediaName, true) ->
+maybe_save_recording(Call, MediaDoc, true) ->
+    store_recording(Call, wh_json:get_value(<<"name">>, MediaDoc), MediaDoc).
+
+-spec store_recording/3 :: (whapps_call:call(), ne_binary(), wh_json:json_object()) ->
+                                   {ne_binary(), wh_json:json_object()}.
+store_recording(Call, MediaName, JObj) ->
+    StoreUrl = store_url(Call, JObj),
+    {ok, StoreJObj} = whapps_call_command:b_store_re(MediaName, StoreUrl, Call),
+    {wh_json:get_value(<<"_id">>, JObj), StoreJObj}.
+
+-spec store_url/2 :: (whapps_call:call(), wh_json:json_object()) -> ne_binary().
+store_url(Call, JObj) ->
+    lager:debug("store_url: ~p", [JObj]),
+    AccountDb = whapps_call:account_db(Call),
+    MediaId = wh_json:get_value(<<"_id">>, JObj),
+    MediaName = wh_json:get_value(<<"name">>, JObj),
+
+    Rev = wh_json:get_value(<<"_rev">>, JObj),
+    list_to_binary([couch_mgr:get_url(), AccountDb
+                    ,"/", MediaId
+                    ,"/", MediaName
+                    ,"?rev=", Rev
+                   ]).
+
+-spec store_recording_meta/2 :: (whapps_call:call(), ne_binary()) -> {'ok', wh_json:json_object()} |
+                                                                     {'error', any()}.
+store_recording_meta(Call, MediaName) ->
     MediaDoc = [{<<"name">>, MediaName}
                 ,{<<"description">>, <<"recording ", MediaName/binary>>}
                 ,{<<"content_type">>, <<"audio/mp3">>}
@@ -900,24 +935,7 @@ maybe_save_recording(Call, MediaName, true) ->
                 ,{<<"source_type">>, wh_util:to_binary(?MODULE)}
                ],
     AcctDb = whapps_call:account_db(Call),
-    case couch_mgr:save_doc(AcctDb, wh_json:from_list(MediaDoc)) of
-        {ok, JObj} -> store_recording(Call, MediaName, JObj);
-        _E -> lager:debug("error saving media doc: ~p", [_E])
-    end.
-
--spec store_recording/3 :: (whapps_call:call(), ne_binary(), wh_json:json_object()) -> ne_binary().
-store_recording(Call, MediaName, JObj) ->
-    AccountDb = whapps_call:account_db(Call),
-    MediaId = wh_json:get_value(<<"_id">>, JObj),
-
-    Rev = wh_json:get_value(<<"_rev">>, JObj),
-    StoreUrl = list_to_binary([couch_mgr:get_url(), AccountDb
-                               ,"/", MediaId
-                               ,"/", MediaName
-                               ,"?rev=", Rev
-                              ]),
-    {ok, _} = whapps_call_command:b_store(MediaName, StoreUrl, Call),
-    MediaId.
+    couch_mgr:save_doc(AcctDb, wh_json:from_list(MediaDoc)).
 
 -spec update_call_status/2 :: (whapps_call:call(), ne_binary()) -> whapps_call:call().
 update_call_status(Call, Status) ->
