@@ -13,6 +13,7 @@
 %% API
 -export([start_link/2
          ,handle_resp/4
+         ,handle_call_event/2
          ,stop_call/2
          ,new_request/5
         ]).
@@ -63,7 +64,9 @@ start_link(Call, JObj) ->
                                                           ,{restrict_to, [events, cdr]}
                                                          ]}
                                                  ]}
-                                      ,{responders, []}
+                                      ,{responders, [{{?MODULE, handle_call_event}
+                                                      ,[{<<"*">>, <<"*">>}]}
+                                                    ]}
                                      ], [Call, JObj]).
 
 stop_call(Srv, Call) ->
@@ -71,6 +74,12 @@ stop_call(Srv, Call) ->
 
 new_request(Srv, Call, Uri, Method, Params) ->
     gen_listener:cast(Srv, {request, Call, Uri, Method, Params}).
+
+handle_call_event(JObj, Props) ->
+    case props:get_value(pid, Props) of
+        P when is_pid(P) -> whapps_call_command:relay_event(P, JObj);
+        _ -> lager:debug("ignoring event ~p", [JObj])
+    end.
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -157,7 +166,7 @@ handle_cast({controller_queue, ControllerQ}, #state{call=Call}=State) ->
 
 handle_cast({stop, Call}, #state{cdr_uri=undefined}=State) ->
     lager:debug("no cdr callback, server going down"),
-    whapps_call_command:hangup(Call),
+    _ = whapps_call_command:hangup(Call),
     {stop, normal, State}.
 
 %%--------------------------------------------------------------------
@@ -228,8 +237,8 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_event/2 :: (wh_json:json_object(), #state{}) -> gen_listener:handle_event_return().
-handle_event(_JObj, _State) ->
-    {reply, []}.
+handle_event(_JObj, #state{response_pid=Pid}) ->
+    {reply, [{pid, Pid}]}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -272,6 +281,8 @@ send_req(Call, Uri, post, BaseParams) ->
 
     send(Call, Uri, post, [{"Content-Type", "application/x-www-form-urlencoded"}], wh_json:to_querystring(Params)).
 
+-spec send/5 :: (whapps_call:call(), iolist(), atom(), wh_proplist(), iolist()) -> 
+                        'ok' | {'stop', whapps_call:call()}.
 send(Call, Uri, Method, ReqHdrs, ReqBody) ->
     lager:debug("sending req to ~s via ~s", [iolist_to_binary(Uri), Method]),
 
@@ -294,10 +305,13 @@ send(Call, Uri, Method, ReqHdrs, ReqBody) ->
         {ok, _RespCode, _Hdrs, _RespBody} ->
             lager:debug("recv other: ~s: ~s", [_RespCode, _RespBody]),
             lager:debug("other hrds: ~p", [_Hdrs]),
-            cf_exe:continue(Call);
+            {stop, Call};
+        {error, {conn_failed, {error, econnrefused}}} ->
+            lager:debug("connection to host refused, going down"),
+            {stop, Call};
         {error, _Reason} ->
             lager:debug("error with req: ~p", [_Reason]),
-            cf_exe:continue(Call)
+            {stop, Call}
     end.
 
 handle_resp(Call, CT, RespBody, Srv) ->
@@ -310,11 +324,11 @@ handle_resp(Call, CT, RespBody, Srv) ->
 
 handle_resp(Call, _, <<>>) ->
     lager:debug("no response body, continuing the flow"),
-    cf_exe:continue(Call);
+    whapps_call_command:hangup(Call);
 handle_resp(Call, Hdrs, RespBody) when is_list(Hdrs) ->
     handle_resp(Call, props:get_value("Content-Type", Hdrs), RespBody);
 handle_resp(Call, CT, RespBody) ->
-    try wht_translator:exec(Call, wh_util:to_list(RespBody), CT) of
+    try kzt_translator:exec(Call, wh_util:to_list(RespBody), CT) of
         {stop, _Call1}=Stop ->
             lager:debug("translator says stop"),
             Stop;
