@@ -136,7 +136,9 @@
                            ,{<<"Application-Name">>, <<"tones">>}
                            ,?INSERT_AT_TUPLE
                           ]).
--define(TONES_REQ_TYPES, [{<<"Tones">>, fun is_list/1}]).
+-define(TONES_REQ_TYPES, [{<<"Tones">>, fun is_list/1}
+                          ,{<<"Terminators">>, ?IS_TERMINATOR}
+                         ]).
 
 -define(TONES_REQ_TONE_HEADERS, [<<"Frequencies">>, <<"Duration-ON">>, <<"Duration-OFF">>]).
 -define(OPTIONAL_TONES_REQ_TONE_HEADERS, [<<"Volume">>, <<"Repeat">>]).
@@ -261,6 +263,16 @@
                         ,{<<"Custom-Call-Vars">>, fun wh_json:is_json_object/1}
                        ]).
 
+%% Set Terminators
+-define(SET_TERM_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Terminators">>]).
+-define(OPTIONAL_SET_TERM_HEADERS, [<<"Insert-At">>]).
+-define(SET_TERM_VALUES, [{<<"Event-Category">>, <<"call">>}
+                         ,{<<"Event-Name">>, <<"command">>}
+                         ,{<<"Application-Name">>, <<"set_terminators">>}
+                         ,?INSERT_AT_TUPLE
+                         ]).
+-define(SET_TERM_TYPES, [{<<"Terminators">>, ?IS_TERMINATOR}]).
+
 %% Fetch
 -define(FETCH_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>]).
 -define(OPTIONAL_FETCH_REQ_HEADERS, [<<"Insert-At">>, <<"From-Other-Leg">>]).
@@ -308,7 +320,7 @@
                                ,{<<"Application-Name">>, <<"playstop">>}
                                ,{<<"Insert-At">>, <<"now">>}
                               ]).
--define(PLAY_STOP_REQ_TYPES, [{<<"Terminators">>, ?IS_TERMINATOR}]).
+-define(PLAY_STOP_REQ_TYPES, []).
 
 %% Record Request
 -define(RECORD_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Media-Name">>]).
@@ -348,7 +360,7 @@
                                          ,{<<"Application-Name">>, <<"play_and_collect_digits">>}
                                          ,?INSERT_AT_TUPLE
                                         ]).
--define(PLAY_COLLECT_DIGITS_REQ_TYPES, []).
+-define(PLAY_COLLECT_DIGITS_REQ_TYPES, [{<<"Terminators">>, ?IS_TERMINATOR}]).
 
 %% Say
 -define(SAY_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Language">>, <<"Type">>, <<"Method">>, <<"Say-Text">>]).
