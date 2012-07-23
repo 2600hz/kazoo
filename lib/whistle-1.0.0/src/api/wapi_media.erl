@@ -24,13 +24,14 @@
 -define(OPTIONAL_MEDIA_REQ_HEADERS, [<<"Stream-Type">>, <<"Call-ID">>
                                          %% TTS-related flags
                                          ,<<"Voice">>, <<"Language">>, <<"Format">>
-                                         ,<<"Account-ID">>
+                                         ,<<"Account-ID">>, <<"Protocol">>
                                     ]).
 -define(MEDIA_REQ_VALUES, [{<<"Event-Category">>, <<"media">>}
                            ,{<<"Event-Name">>, <<"media_req">>}
                            ,{<<"Stream-Type">>, [<<"new">>, <<"extant">>, new, extant]}
                            ,{<<"Voice">>, [<<"male">>, <<"female">>]}
                            ,{<<"Format">>, [<<"mp3">>, <<"wav">>]}
+                           ,{<<"Protocol">>, [<<"http">>, <<"https">>, <<"shout">>, <<"vlc">>]}
                           ]).
 -define(MEDIA_REQ_TYPES, []).
 
@@ -43,7 +44,9 @@
 -define(MEDIA_RESP_TYPES, [{<<"Stream-URL">>, fun(<<"shout://", _/binary>>) -> true;
                                                  (<<"http://", _/binary>>) -> true;
                                                  (<<"vlc://", _/binary>>) -> true;
-                                                 (_) -> false end}]).
+                                                 (_) -> false
+                                              end}
+                          ]).
 
 %% Media Error
 -define(MEDIA_ERROR_HEADERS, [<<"Media-Name">>, <<"Error-Code">>]).
