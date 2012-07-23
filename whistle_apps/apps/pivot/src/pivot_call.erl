@@ -15,7 +15,8 @@
          ,handle_resp/4
          ,handle_call_event/2
          ,stop_call/2
-         ,new_request/5
+         ,new_request/4
+         ,updated_call/2
         ]).
 
 %% gen_server callbacks
@@ -72,8 +73,11 @@ start_link(Call, JObj) ->
 stop_call(Srv, Call) ->
     gen_listener:cast(Srv, {stop, Call}).
 
-new_request(Srv, Call, Uri, Method, Params) ->
-    gen_listener:cast(Srv, {request, Call, Uri, Method, Params}).
+new_request(Srv, Uri, Method, Params) ->
+    gen_listener:cast(Srv, {request, Uri, Method, Params}).
+
+updated_call(Srv, Call) ->
+    gen_listener:cast(Srv, {updated_call, Call}).
 
 handle_call_event(JObj, Props) ->
     case props:get_value(pid, Props) of
@@ -114,7 +118,7 @@ init([Call, JObj]) ->
 
     lager:debug("starting pivot req to ~s to ~s", [Method, VoiceUri]),
 
-    ?MODULE:new_request(Self, Call, VoiceUri, Method, BaseParams),
+    ?MODULE:new_request(Self, VoiceUri, Method, BaseParams),
 
     {ok, #state{
        cdr_uri = wh_json:get_value(<<"CDR-URI">>, JObj)
@@ -149,8 +153,10 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({request, Call, Uri, Method, Params}, State) ->
-    {ok, ReqId} = send_req(Call, Uri, Method, Params),
+handle_cast({request, Uri, Method, Params}, #state{call=Call}=State) ->
+    Call1 = whapps_call:kvs_store(<<"voice_uri">>, Uri, Call),
+
+    {ok, ReqId} = send_req(Call1, Uri, Method, Params),
     lager:debug("sent request ~p to '~s' via '~s'", [ReqId, Uri, Method]),
     {noreply, State#state{request_id=ReqId
                           ,request_params=Params
@@ -158,7 +164,11 @@ handle_cast({request, Call, Uri, Method, Params}, State) ->
                           ,response_body = <<>>
                           ,method=Method
                           ,voice_uri=Uri
+                          ,call=Call1
                          }};
+
+handle_cast({updated_call, Call}, State) ->
+    {noreply, State#state{call=Call}};
 
 handle_cast({controller_queue, ControllerQ}, #state{call=Call}=State) ->
     %% TODO: Block on waiting for controller queue
@@ -188,13 +198,12 @@ handle_info({ibrowse_async_headers, ReqId, "302", RespHeaders}, #state{voice_uri
                                                                        ,method=Method
                                                                        ,request_id=ReqId
                                                                        ,request_params=Params
-                                                                       ,call=Call
                                                                       }=State) ->
     Redirect = props:get_value("Location", RespHeaders),
     lager:debug("recv 302: redirect to ~s", [Redirect]),
     Redirect1 = wht_util:resolve_uri(Uri, Redirect),
 
-    ?MODULE:new_request(self(), Call, Redirect1, Method, Params),
+    ?MODULE:new_request(self(), Redirect1, Method, Params),
     {noreply, State};
 
 handle_info({ibrowse_async_response, ReqId, Chunk}, #state{request_id=ReqId
@@ -284,7 +293,7 @@ send_req(Call, Uri, post, BaseParams) ->
 -spec send/5 :: (whapps_call:call(), iolist(), atom(), wh_proplist(), iolist()) -> 
                         'ok' | {'stop', whapps_call:call()}.
 send(Call, Uri, Method, ReqHdrs, ReqBody) ->
-    lager:debug("sending req to ~s via ~s", [iolist_to_binary(Uri), Method]),
+    lager:debug("sending req to ~s(~s): ~s", [iolist_to_binary(Uri), Method, ReqBody]),
 
     Opts = [{stream_to, self()}
             | ?DEFAULT_OPTS
@@ -319,7 +328,9 @@ handle_resp(Call, CT, RespBody, Srv) ->
     case handle_resp(Call, CT, RespBody) of
         {stop, Call1} -> ?MODULE:stop_call(Srv, Call1);
         {ok, Call1} -> ?MODULE:stop_call(Srv, Call1);
-        {request, Call1, Uri, Method, Params} -> ?MODULE:new_request(Srv, Call1, Uri, Method, Params)
+        {request, Call1, Uri, Method, Params} ->
+            ?MODULE:updated_call(Srv, Call1),
+            ?MODULE:new_request(Srv, Uri, Method, Params)
     end.
 
 handle_resp(Call, _, <<>>) ->
