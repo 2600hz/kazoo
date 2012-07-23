@@ -19,6 +19,7 @@
 -define(CHILD(N), {N, {wh_cache, start_link, [N]}, permanent, 5000, worker, [wh_cache]}).
 -define(CHILDREN, [?ECALLMGR_UTIL_CACHE
                    ,?ECALLMGR_REG_CACHE
+                   ,?ECALLMGR_CALL_CACHE
                   ]).
 
 %% ===================================================================
