@@ -187,6 +187,10 @@ record_call(Call, Attrs) ->
                                   ,props:get_value(action, Props)
                                  ),
 
+    lager:debug("old voice url: ~s", [whapps_call:kvs_fetch(<<"voice_uri">>, Call1)]),
+    lager:debug("action: ~s", [props:get_value(action, Props)]),
+    lager:debug("new voice url: ~s", [Action]),
+
     Method = kzt_util:http_method(props:get_value(method, Props, post)),
 
     %% Transcribe = props:get_is_true(transcribe, Props, false),
@@ -200,33 +204,29 @@ record_call(Call, Attrs) ->
     MediaName = media_name(whapps_call:call_id(Call1)),
     {ok, MediaJObj} = store_recording_meta(Call1, MediaName),
 
-    case whapps_call_command:b_record_call(MediaName
-                                           ,<<"start">>
-                                           ,store_url(Call1, MediaJObj)
-                                           ,wh_util:to_binary(props:get_value(maxLength, Props, 3600))
-                                           ,props:get_value(finishOnKey, Props, [<<"#">>])
-                                           ,Call1
-                                          ) of
+    MaxLength = props:get_value(maxLength, Props, 3600),
+
+    case whapps_call_command:b_record(MediaName, ?ANY_DIGIT, wh_util:to_binary(MaxLength), Call1) of
         {ok, Msg} ->
             {RecordingId, _StoreJObj} = maybe_save_recording(Call1, MediaJObj, true),
-            DTMFs = wh_json:get_value(<<"Digit-Pressed">>, Msg),
+            Length = wh_json:get_integer_value(<<"Length">>, Msg, 0),
+            DTMFs = wh_json:get_value(<<"Digits-Pressed">>, Msg),
 
-            lager:debug("recorded message, stored as ~s", [RecordingId]),
+            lager:debug("recording of ~b ms finished, stored as ~s", [Length, RecordingId]),
             lager:debug("sending data to ~s(~s)", [Action, Method]),
 
             BaseParams = wh_json:from_list(
                            props:filter_undefined(
                              [{<<"RecordingUrl">>, recorded_url(Call1, RecordingId, true)}
-                              ,{<<"RecordingDuration">>, 0}
+                              ,{<<"RecordingDuration">>, Length div 1000} % convert to seconds
                               ,{<<"Digits">>, DTMFs}
                               | req_params(Call1)
                              ]
                             )),
             {request, update_call_status(Call1, ?STATUS_ANSWERED), Action, Method, BaseParams};
-        {error, _E} ->
-            %% TODO: when call hangs up, try to save message
-            lager:debug("failed to record message: ~p", [_E]),
-            {stop, update_call_status(Call1, ?STATUS_FAILED)}
+        {error, R} ->
+            lager:debug("error while attempting to record a new message: ~p", [R]),
+            {stop, update_call_status(Call1, ?STATUS_CANCELED)}
     end.
 
 -spec gather/2 :: (whapps_call:call(), proplist()) -> exec_return().
@@ -506,7 +506,7 @@ finish_dial(Call, Props) ->
     OffnetProp = wait_for_offnet(Call, RecordCall, StarHangup, TimeLimit),
     Elapsed = wh_util:elapsed_s(Start),
 
-    RecordingId = maybe_save_recording(Call, props:get_value(media_name, OffnetProp), RecordCall),
+    {RecordingId, _StoreJObj} = maybe_save_recording(Call, props:get_value(media_jobj, OffnetProp), RecordCall),
 
     lager:debug("offnet: ~p", [OffnetProp]),
 
@@ -758,9 +758,9 @@ wait_for_offnet(Call, HangupOnStar, RecordCall, TimeLimit, Start, Acc) ->
         {amqp_msg, JObj} ->
             case wh_util:get_event_type(JObj) of
                 {<<"resource">>, <<"offnet_resp">>} ->
-                    [{call_status, call_status(wh_json:get_value(<<"Response-Message">>, JObj), wh_json:get_value(<<"Response-Code">>, JObj))}
-                     | Acc
-                    ];
+                    RespMsg = wh_json:get_value(<<"Response-Message">>, JObj),
+                    RespCode = wh_json:get_value(<<"Response-Code">>, JObj),
+                    [{call_status, call_status(RespMsg, RespCode)} | Acc];
                 {<<"call_event">>, <<"DTMF">>} when HangupOnStar ->
                     case wh_json:get_value(<<"DTMF-Digit">>, JObj) of
                         <<"*">> ->
@@ -768,48 +768,70 @@ wait_for_offnet(Call, HangupOnStar, RecordCall, TimeLimit, Start, Acc) ->
                             whapps_call_command:hangup(true, Call);
                         _DTMF ->
                             lager:debug("ignore '~s' DTMF", [_DTMF]),
-                            wait_for_offnet(Call, HangupOnStar, RecordCall, TimeLimit - wh_util:elapsed_ms(Start), erlang:now(), Acc)
+                            wait_for_offnet(Call, HangupOnStar, RecordCall
+                                            ,TimeLimit - wh_util:elapsed_ms(Start)
+                                            ,erlang:now(), Acc
+                                           )
                     end;
                 {<<"call_event">>, <<"LEG_CREATED">>} ->
                     BLeg = wh_json:get_value(<<"Other-Leg-Unique-ID">>, JObj),
                     lager:debug("b-leg created: ~s", [BLeg]),
-                    wait_for_offnet(Call, HangupOnStar, RecordCall, TimeLimit - wh_util:elapsed_ms(Start), erlang:now(), [{other_leg, BLeg}|Acc]);
+                    wait_for_offnet(Call, HangupOnStar, RecordCall
+                                    ,TimeLimit - wh_util:elapsed_ms(Start)
+                                    ,erlang:now(), [{other_leg, BLeg}|Acc]
+                                   );
                 {<<"call_event">>, <<"CHANNEL_BRIDGE">>} when RecordCall ->
                     OtherLegCallID = props:get_value(other_leg, Acc),
                     MediaName = media_name(whapps_call:call_id(Call), OtherLegCallID),
 
                     lager:debug("channel bridged, start recording the call: ~s", [MediaName]),
 
-                    whapps_call_command:record_call(MediaName, <<"start">>, <<"remote">>, TimeLimit, Call),
-                    wait_for_offnet(Call, HangupOnStar, RecordCall, TimeLimit - wh_util:elapsed_ms(Start), erlang:now(), [{media_name, MediaName}|Acc]);
+                    {ok, MediaJObj} = store_recording_meta(Call, MediaName),
+                    whapps_call_command:record_call(MediaName
+                                                    ,<<"start">>
+                                                    ,store_url(Call, MediaJObj)
+                                                    ,TimeLimit
+                                                    ,Call
+                                                   ),
+                    wait_for_offnet(Call, HangupOnStar, RecordCall
+                                    ,TimeLimit - wh_util:elapsed_ms(Start)
+                                    ,erlang:now(), [{media_jobj, MediaJObj}|Acc]
+                                   );
                 _Type ->
                     lager:debug("ignore ~p", [_Type]),
-                    wait_for_offnet(Call, HangupOnStar, RecordCall, TimeLimit - wh_util:elapsed_ms(Start), erlang:now(), Acc)
+                    wait_for_offnet(Call, HangupOnStar, RecordCall
+                                    ,TimeLimit - wh_util:elapsed_ms(Start)
+                                    ,erlang:now(), Acc
+                                   )
             end;
         _ ->
             %% dont let the mailbox grow unbounded if
             %%   this process hangs around...
-            wait_for_offnet(Call, HangupOnStar, RecordCall, TimeLimit - wh_util:elapsed_ms(Start), erlang:now(), Acc)
+            wait_for_offnet(Call, HangupOnStar, RecordCall
+                            ,TimeLimit - wh_util:elapsed_ms(Start)
+                            ,erlang:now(), Acc
+                           )
     after
         TimeLimit ->
             lager:debug("time limit for call exceeded"),
             whapps_call_command:hangup(true, Call),
-            wait_for_offnet(Acc)
+            wait_for_hangup(Acc)
     end.
 
-wait_for_offnet(Acc) ->
+-spec wait_for_hangup/1 :: (wh_proplist()) -> wh_proplist().
+wait_for_hangup(Acc) ->
     receive
         {amqp_msg, JObj} ->
             case wh_util:get_event_type(JObj) of
                 { <<"resource">>, <<"offnet_resp">> } ->
-                    [{call_status, call_status(wh_json:get_value(<<"Response-Message">>, JObj), wh_json:get_value(<<"Response-Code">>, JObj))}
-                     | Acc
-                    ];
+                    RespMsg = wh_json:get_value(<<"Response-Message">>, JObj),
+                    RespCode = wh_json:get_value(<<"Response-Code">>, JObj),
+                    [{call_status, call_status(RespMsg, RespCode)} | Acc];
                 _ ->
-                    wait_for_offnet(Acc)
+                    wait_for_hangup(Acc)
             end;
         _ ->
-            wait_for_offnet(Acc)
+            wait_for_hangup(Acc)
     end.
 
 -spec wait_for_bridge_start/2 :: (whapps_call:call(), pos_integer()) ->
@@ -876,16 +898,19 @@ media_name(ALeg, BLeg) ->
     DateTime = wh_util:pretty_print_datetime(calendar:universal_time()),
     list_to_binary([DateTime, "_", ALeg, "_to_", BLeg, ".mp3"]).
 
+-spec recorded_url/1 :: (ne_binary()) -> ne_binary().
+-spec recorded_url/3 :: (whapps_call:call(), ne_binary(), boolean()) -> 'undefined' | ne_binary().
 recorded_url(_Call, _DocId, false) ->
     undefined;
 recorded_url(Call, DocId, true) ->
     Db = whapps_call:account_db(Call),
 
     case whapps_util:amqp_pool_request([{<<"Media-Name">>, <<Db/binary, "/", DocId/binary>>}
-                                        ,{<<"Stream-Type">>, <<"extant">>}
+                                        ,{<<"Stream-Type">>, <<"new">>}
+                                        ,{<<"Protocol">>, <<"http">>}
                                         ,{<<"Call-ID">>, whapps_call:call_id(Call)}
                                         ,{<<"Msg-ID">>, wh_util:to_binary(wh_util:current_tstamp())}
-                                        | wh_api:default_headers(<<>>, <<"media">>, <<"media_req">>, ?APP_NAME, ?APP_VERSION)]
+                                        | wh_api:default_headers(?APP_NAME, ?APP_VERSION)]
                                        ,fun wapi_media:publish_req/1
                                        ,fun wapi_media:resp_v/1
                                       ) of
@@ -893,8 +918,14 @@ recorded_url(Call, DocId, true) ->
             lager:debug("failed to get media URL: ~p", [_R]),
             undefined;
         {ok, MediaResp} ->
-            wh_json:get_value(<<"Stream-URL">>, MediaResp)
+            lager:debug("stream url: ~s", [wh_json:get_value(<<"Stream-URL">>, MediaResp)]),
+            recorded_url(wh_json:get_value(<<"Stream-URL">>, MediaResp))
     end.
+
+%% if the media_req returns a SHOUT URL, strip it and return an http protocol
+recorded_url(<<"shout://", Url/binary>>) ->
+    <<"http://", Url/binary>>;
+recorded_url(Url) -> Url.
 
 -spec maybe_save_recording/3 :: (whapps_call:call(), wh_json:json_object(), boolean()) ->
                                         {ne_binary(), wh_json:json_object()} |
@@ -908,12 +939,11 @@ maybe_save_recording(Call, MediaDoc, true) ->
                                    {ne_binary(), wh_json:json_object()}.
 store_recording(Call, MediaName, JObj) ->
     StoreUrl = store_url(Call, JObj),
-    {ok, StoreJObj} = whapps_call_command:b_store_re(MediaName, StoreUrl, Call),
+    {ok, StoreJObj} = whapps_call_command:b_store(MediaName, StoreUrl, Call),
     {wh_json:get_value(<<"_id">>, JObj), StoreJObj}.
 
 -spec store_url/2 :: (whapps_call:call(), wh_json:json_object()) -> ne_binary().
 store_url(Call, JObj) ->
-    lager:debug("store_url: ~p", [JObj]),
     AccountDb = whapps_call:account_db(Call),
     MediaId = wh_json:get_value(<<"_id">>, JObj),
     MediaName = wh_json:get_value(<<"name">>, JObj),
@@ -928,14 +958,19 @@ store_url(Call, JObj) ->
 -spec store_recording_meta/2 :: (whapps_call:call(), ne_binary()) -> {'ok', wh_json:json_object()} |
                                                                      {'error', any()}.
 store_recording_meta(Call, MediaName) ->
-    MediaDoc = [{<<"name">>, MediaName}
-                ,{<<"description">>, <<"recording ", MediaName/binary>>}
-                ,{<<"content_type">>, <<"audio/mp3">>}
-                ,{<<"media_source">>, <<"recorded">>}
-                ,{<<"source_type">>, wh_util:to_binary(?MODULE)}
-               ],
     AcctDb = whapps_call:account_db(Call),
-    couch_mgr:save_doc(AcctDb, wh_json:from_list(MediaDoc)).
+    MediaDoc = wh_doc:update_pvt_parameters(
+                 wh_json:from_list([{<<"name">>, MediaName}
+                                    ,{<<"description">>, <<"recording ", MediaName/binary>>}
+                                    ,{<<"content_type">>, <<"audio/mp3">>}
+                                    ,{<<"media_source">>, <<"recorded">>}
+                                    ,{<<"source_type">>, wh_util:to_binary(?MODULE)}
+                                    ,{<<"pvt_type">>, <<"private_media">>}
+                                   ])
+                 ,AcctDb
+                ),
+
+    couch_mgr:save_doc(AcctDb, MediaDoc).
 
 -spec update_call_status/2 :: (whapps_call:call(), ne_binary()) -> whapps_call:call().
 update_call_status(Call, Status) ->
