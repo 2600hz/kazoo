@@ -11,6 +11,8 @@
 -define(ECALLMGR_REG_CACHE, ecallmgr_reg_cache).
 -define(ECALLMGR_CALL_CACHE, ecallmgr_call_cache).
 
+-define(ECALLMGR_RECORDED_MEDIA_KEY(M), {recorded_media, M}).
+
 -type fs_api_ret()       :: {'ok', binary()} |
                             {'error', 'badarg'} |
                             'timeout'.

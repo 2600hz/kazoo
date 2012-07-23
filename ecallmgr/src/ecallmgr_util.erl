@@ -20,14 +20,14 @@
 -export([fs_log/3, put_callid/1]).
 -export([build_bridge_string/1, build_bridge_string/2]).
 -export([create_masquerade_event/2, create_masquerade_event/3]).
--export([media_path/3, media_path/4]).
+-export([media_path/3, media_path/4, media_path/5]).
 -export([unserialize_fs_array/1]).
 -export([convert_fs_evt_name/1, convert_whistle_app_name/1]).
 -export([fax_filename/1
          ,recording_filename/1
         ]).
 
--export([lookup_media/3]).
+-export([lookup_media/3, lookup_media/4, lookup_media/5]).
 
 -include_lib("ecallmgr/src/ecallmgr.hrl").
 
@@ -363,23 +363,26 @@ create_masquerade_event(Application, EventName, Boolean) ->
 %%--------------------------------------------------------------------
 -spec media_path/3 :: (ne_binary(), ne_binary(), wh_json:json_object()) -> ne_binary().
 -spec media_path/4 :: (ne_binary(), 'extant' | 'new', ne_binary(), wh_json:json_object()) -> ne_binary().
+-spec media_path/5 :: (ne_binary(), 'extant' | 'new', ne_binary(), wh_json:json_object(), atom()) -> ne_binary().
 media_path(MediaName, UUID, JObj) ->
     media_path(MediaName, new, UUID, JObj).
-
-media_path(undefined, _Type, _UUID, _) ->
-    <<"silence_stream://5">>;
-media_path(MediaName, Type, UUID, JObj) when not is_binary(MediaName) ->
-    media_path(wh_util:to_binary(MediaName), Type, UUID, JObj);
-media_path(<<"silence_stream://", _/binary>> = Media, _Type, _UUID, _) ->
-    Media;
-media_path(<<"tone_stream://", _/binary>> = Media, _Type, _UUID, _) ->
-    Media;
-media_path(<<"local_stream://", FSPath/binary>>, _Type, _UUID, _) ->
-    FSPath;
-media_path(<<"http://", _/binary>> = URI, _Type, _UUID, _) ->
-    get_fs_playback(URI);
 media_path(MediaName, Type, UUID, JObj) ->
-    case lookup_media(MediaName, UUID, JObj, Type) of
+    media_path(MediaName, Type, UUID, JObj, undefined).
+
+media_path(undefined, _Type, _UUID, _, _) ->
+    <<"silence_stream://5">>;
+media_path(MediaName, Type, UUID, JObj, Cache) when not is_binary(MediaName) ->
+    media_path(wh_util:to_binary(MediaName), Type, UUID, JObj, Cache);
+media_path(<<"silence_stream://", _/binary>> = Media, _Type, _UUID, _, _) ->
+    Media;
+media_path(<<"tone_stream://", _/binary>> = Media, _Type, _UUID, _, _) ->
+    Media;
+media_path(<<"local_stream://", FSPath/binary>>, _Type, _UUID, _, _) ->
+    FSPath;
+media_path(<<"http://", _/binary>> = URI, _Type, _UUID, _, _) ->
+    get_fs_playback(URI);
+media_path(MediaName, Type, UUID, JObj, Cache) ->
+    case lookup_media(MediaName, UUID, JObj, Type, Cache) of
         {'error', _E} ->
             lager:debug("failed to get media ~s: ~p", [MediaName, _E]),
             wh_util:to_binary(MediaName);
@@ -434,9 +437,17 @@ convert_whistle_app_name(App) ->
 -spec lookup_media/3 :: (ne_binary(), ne_binary(), wh_json:json_object()) ->
                                 {'ok', binary()} |
                                 {'error', any()}.
+-spec lookup_media/4 :: (ne_binary(), ne_binary(), wh_json:json_object(), 'new' | 'extant') ->
+                                {'ok', binary()} |
+                                {'error', any()}.
+-spec lookup_media/5 :: (ne_binary(), ne_binary(), wh_json:json_object(), 'new' | 'extant', atom()) ->
+                                {'ok', binary()} |
+                                {'error', any()}.
 lookup_media(MediaName, CallId, JObj) ->
     lookup_media(MediaName, CallId, JObj, new).
-lookup_media(MediaName, CallId, JObj, Type) when Type =:= new orelse Type =:= extant ->
+lookup_media(MediaName, CallId, JObj, Type) ->
+    lookup_media(MediaName, CallId, JObj, Type, undefined).
+lookup_media(MediaName, CallId, JObj, Type, undefined) when Type =:= new orelse Type =:= extant ->
     Request = wh_json:set_values(
                 [{<<"Media-Name">>, MediaName}
                  ,{<<"Stream-Type">>, Type}
@@ -456,4 +467,11 @@ lookup_media(MediaName, CallId, JObj, Type) when Type =:= new orelse Type =:= ex
         {ok, MediaResp} ->
             MediaName = wh_json:get_value(<<"Media-Name">>, MediaResp),
             {ok, wh_json:get_value(<<"Stream-URL">>, MediaResp, <<>>)}
+    end;
+lookup_media(MediaName, CallId, JObj, Type, Cache) ->
+    RecordingName = recording_filename(MediaName),
+    lager:debug("see if ~s is in cache ~s", [RecordingName, Cache]),
+    case wh_cache:peek_local(Cache, ?ECALLMGR_RECORDED_MEDIA_KEY(RecordingName)) of
+        {ok, _} -> {ok, RecordingName};
+        {error, not_found} -> lookup_media(MediaName, CallId, JObj, Type, undefined)
     end.

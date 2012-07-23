@@ -49,10 +49,11 @@ exec_cmd(Node, UUID, JObj, ControlPID) ->
 %% @end
 %%--------------------------------------------------------------------
 -type fs_app() :: {ne_binary(), ne_binary() | 'noop'}.
--spec get_fs_app/4 :: (atom(), ne_binary(), wh_json:json_object(), ne_binary()) -> fs_app() |
-                                                                                   {'return', 'error'} |
-                                                                                   {'error', ne_binary()} |
-                                                                                   [fs_app(),...].
+-spec get_fs_app/4 :: (atom(), ne_binary(), wh_json:json_object(), ne_binary()) ->
+                              fs_app() |
+                              {'return', 'error'} |
+                              {'error', ne_binary()} |
+                              [fs_app(),...].
 get_fs_app(_Node, _UUID, JObj, <<"noop">>) ->
     case wapi_dialplan:noop_v(JObj) of
         false ->
@@ -76,7 +77,7 @@ get_fs_app(Node, UUID, JObj, <<"play">>) ->
     case wapi_dialplan:play_v(JObj) of
         false -> {'error', <<"play failed to execute as JObj did not validate">>};
         true ->
-            F = ecallmgr_util:media_path(wh_json:get_value(<<"Media-Name">>, JObj), UUID, JObj),
+            F = ecallmgr_util:media_path(wh_json:get_value(<<"Media-Name">>, JObj), new, UUID, JObj, ?ECALLMGR_CALL_CACHE),
             'ok' = set_terminators(Node, UUID, wh_json:get_value(<<"Terminators">>, JObj)),
 
             _ = case wh_json:get_value(<<"Group-ID">>, JObj) of
@@ -113,8 +114,8 @@ get_fs_app(_Node, UUID, JObj, <<"play_and_collect_digits">>) ->
             Max = wh_json:get_value(<<"Maximum-Digits">>, JObj),
             Timeout = wh_json:get_value(<<"Timeout">>, JObj),
             Terminators = wh_json:get_value(<<"Terminators">>, JObj),
-            Media = <<$', (ecallmgr_util:media_path(wh_json:get_value(<<"Media-Name">>, JObj), UUID, JObj))/binary, $'>>,
-            InvalidMedia = <<$', (ecallmgr_util:media_path(wh_json:get_value(<<"Failed-Media-Name">>, JObj), UUID, JObj))/binary, $'>>,
+            Media = <<$', (ecallmgr_util:media_path(wh_json:get_value(<<"Media-Name">>, JObj), new, UUID, JObj, ?ECALLMGR_CALL_CACHE))/binary, $'>>,
+            InvalidMedia = <<$', (ecallmgr_util:media_path(wh_json:get_value(<<"Failed-Media-Name">>, JObj), new, UUID, JObj, ?ECALLMGR_CALL_CACHE))/binary, $'>>,
             Tries = wh_json:get_value(<<"Media-Tries">>, JObj),
             Regex = wh_json:get_value(<<"Digits-Regex">>, JObj),
             Storage = <<"collected_digits">>,
@@ -138,6 +139,7 @@ get_fs_app(Node, UUID, JObj, <<"record">>) ->
                                      ,wh_json:get_string_value(<<"Silence-Threshold">>, JObj, "500"), " "
                                      ,wh_json:get_string_value(<<"Silence-Hits">>, JObj, "5")
                                     ]),
+            _ = wh_cache:store_local(?ECALLMGR_CALL_CACHE, ?ECALLMGR_RECORDED_MEDIA_KEY(MediaName), MediaName),
 
             {<<"record">>, RecArg}
     end;
@@ -161,6 +163,7 @@ get_fs_app(Node, UUID, JObj, <<"record_call">>) ->
                                                            ,MediaName, <<" ">>
                                                            ,wh_json:get_string_value(<<"Time-Limit">>, JObj, "3600") % one hour
                                                            ])),
+                    _ = wh_cache:store_local(?ECALLMGR_CALL_CACHE, ?ECALLMGR_RECORDED_MEDIA_KEY(MediaName), MediaName),
                     {<<"record_call">>, RecArg};
                 <<"stop">> ->
                     %% UUID stop path/to/media
@@ -200,7 +203,7 @@ get_fs_app(Node, UUID, JObj, <<"store_fax">> = App) ->
             File = ecallmgr_util:fax_filename(UUID),
             lager:debug("attempting to store fax on ~s: ~s", [Node, File]),
             case wh_json:get_value(<<"Media-Transfer-Method">>, JObj) of
-                <<"put">> = Method ->
+                <<"put">> ->
                     stream_over_http(Node, UUID, File, put, JObj),
                     {App, noop};
                 _Method ->
