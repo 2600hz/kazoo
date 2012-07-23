@@ -38,7 +38,7 @@ lookup_registrations(Realm) ->
                                                                (_K, _V) ->
                                                                     false
                                                             end),
-    case [V || {_, V} <- Registrations] of 
+    case [V || {_, V} <- Registrations] of
         [] -> {error, not_found};
         Else -> {'ok', Else}
     end.
@@ -117,7 +117,7 @@ lookup_auth_user(Name, Realm) ->
 
 check_user_doc(UserJObj, CacheKey) ->
     case wh_util:is_account_enabled(wh_json:get_value([<<"doc">>, <<"pvt_account_id">>], UserJObj)) of
-        true -> 
+        true ->
             CacheTTL = whapps_config:get_integer(?CONFIG_CAT, <<"credentials_cache_ttl">>, 300),
             wh_cache:store_local(?REGISTRAR_CACHE, CacheKey, UserJObj, CacheTTL
                                  ,fun reg_util:reg_removed_from_cache/3
@@ -149,7 +149,7 @@ get_auth_user_in_agg(Name, Realm) ->
     case UseAggregate andalso couch_mgr:get_results(?WH_SIP_DB, <<"credentials/lookup">>, ViewOptions) of
         false ->
             lager:debug("SIP credential aggregate db is disabled"),
-            {'error', 'not_found'};            
+            {'error', 'not_found'};
         {'error', R} ->
             lager:debug("failed to look up SIP credentials ~p in aggregate", [R]),
             {'error', 'not_found'};
@@ -181,27 +181,27 @@ reg_removed_from_cache({?MODULE, registration, Realm, User}, Reg, expire) ->
     lager:debug("received notice that user ~s@~s registration has expired", [User, Realm]),
     SuppressUnregister = wh_json:is_true(<<"Suppress-Unregister-Notify">>, Reg),
     case search_for_registration(User, Realm) of
-        {ok, _} -> 
+        {ok, _} ->
             lager:debug("registration still exists in another segment, defering to their expiration");
         {error, timeout} when SuppressUnregister ->
             lager:debug("registration for ~s@~s has expired in this segment, but notifications are suppressed", [Realm, User]);
         {error, timeout} ->
             lager:debug("registration for ~s@~s has expired in this segment, sending notification", [Realm, User]),
             Updaters = [fun(J) -> wh_json:set_value(<<"Event-Name">>,  <<"deregister">>, J) end
-                        ,fun(J) -> wh_json:set_value(<<"Event-Category">>, <<"notification">>, J) end 
+                        ,fun(J) -> wh_json:set_value(<<"Event-Category">>, <<"notification">>, J) end
                         ,fun(J) -> wh_json:delete_key(<<"App-Version">>, J) end
-                        ,fun(J) -> wh_json:delete_key(<<"App-Name">>, J) end 
+                        ,fun(J) -> wh_json:delete_key(<<"App-Name">>, J) end
                         ,fun(J) -> wh_json:delete_key(<<"Server-ID">>, J) end
                        ],
-            Event = wh_json:to_proplist(lists:foldr(fun(F, J) -> F(J) end, Reg, Updaters)) 
+            Event = wh_json:to_proplist(lists:foldr(fun(F, J) -> F(J) end, Reg, Updaters))
                 ++ wh_api:default_headers(?APP_NAME, ?APP_VERSION),
             wapi_notifications:publish_deregister(Event)
-    end,       
+    end,
     ok;
 reg_removed_from_cache({?MODULE, sip_credentials, Realm, User}, _, expire) ->
     _ = case lookup_registration(Realm, User) of
             {error, not_found} -> ok;
-            {ok, _} -> 
+            {ok, _} ->
                 lager:debug("preemptively refreshing sip credentials for ~s@~s", [User, Realm]),
                 lookup_auth_user(User, Realm)
         end,
@@ -216,7 +216,7 @@ search_for_registration(User, Realm) ->
                         ,[{<<"Username">>, User}
                           ,{<<"Realm">>, Realm}
                           ,{<<"Fields">>, [<<"Username">>, <<"Realm">>]}
-                          | wh_api:default_headers(?APP_NAME, ?APP_VERSION) 
+                          | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                          ]
                         ,fun wapi_registration:publish_query_req/1
                         ,fun wapi_registration:query_resp_v/1).
