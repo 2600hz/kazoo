@@ -42,8 +42,8 @@ start_link() ->
                           ,cowboy_tcp_transport, [{port, Port}]
                           ,cowboy_http_protocol, [{dispatch, Dispatch}
                                                   ,{timeout, ReqTimeout}
-						  ,{onrequest, fun on_request/1}
-						  ,{onresponse, fun on_response/3}
+                                                  ,{onrequest, fun on_request/1}
+                                                  ,{onresponse, fun on_response/3}
                                                  ]
                          ),
 
@@ -73,9 +73,9 @@ start_link() ->
                                                               ,{password, SSLPassword}
                                                              ]
                                       ,cowboy_http_protocol, [{dispatch, Dispatch}
-							      ,{onrequest, fun on_request/1}
-							      ,{onresponse, fun on_response/3}
-							     ]
+                                                              ,{onrequest, fun on_request/1}
+                                                              ,{onresponse, fun on_response/3}
+                                                             ]
                                      )
             catch
                 throw:{invalid_file, _File} ->
@@ -151,7 +151,6 @@ start_deps() ->
     _ = [ wh_util:ensure_started(App) || App <- [sasl, crypto, inets, cowboy, whistle_amqp]],
     ok.
 
-
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -162,21 +161,19 @@ start_deps() ->
 on_request(Req0) ->
     {Method, Req1} = cowboy_http_req:method(Req0),
     case Method of
-	'OPTIONS' ->
-	    Req1;
-	_ ->
-	    wh_counter:inc(<<"crossbar.requests.methods.", (wh_util:to_upper_binary(Method))/binary>>),
-	    Req1
+        'OPTIONS' -> Req1;
+        _ ->
+            wh_counter:inc(<<"crossbar.requests.methods.", (wh_util:to_upper_binary(Method))/binary>>),
+            Req1
     end.
 
 -spec on_response/3 :: (cowboy_http:status(), cowboy_http:headers(), #http_req{}) -> #http_req{}.
 on_response(Status, _Headers, Req0) ->
     {Method, Req1} = cowboy_http_req:method(Req0),
     case Method of
-        'OPTIONS' ->
-	    Req1;
-	_ ->
-	    wh_counter:inc(<<"crossbar.responses.", (wh_util:to_binary(Status))/binary>>),
-	    Req1
+        'OPTIONS' -> Req1;
+        _ ->
+            wh_counter:inc(<<"crossbar.responses.", (wh_util:to_binary(Status))/binary>>),
+            Req1
     end.
     
