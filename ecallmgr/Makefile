@@ -2,7 +2,7 @@ ROOT = ..
 DIALYZER = dialyzer
 REBAR = $(ROOT)/bin/rebar
 
-DIRS = $(ROOT)/lib/whistle-1.0.0 $(ROOT)/lib/whistle_amqp-1.0.0 .
+DIRS = . $(ROOT)/lib/whistle-1.0.0 $(ROOT)/lib/whistle_amqp-1.0.0
 
 all: app
 

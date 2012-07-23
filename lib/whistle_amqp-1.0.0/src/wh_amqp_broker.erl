@@ -1,11 +1,11 @@
-%%%============================================================================
-%%% @copyright (C) 2011-2012 VoIP Inc
+%%%-------------------------------------------------------------------
+%%% @copyright (C) 2011-2012, VoIP INC
 %%% @doc
 %%%
 %%% @end
 %%% @contributors
 %%%   Karl Anderson
-%%%============================================================================
+%%%-------------------------------------------------------------------
 -module(wh_amqp_broker).
 
 -include("amqp_util.hrl").
@@ -34,7 +34,7 @@ new() ->
 name(#amqp_broker{uri=URI}) ->
     wh_util:to_atom(URI, true).
 
--spec uri/1 :: (broker()) -> 'undefined' | atom().
+-spec uri/1 :: (broker()) -> 'undefined' | string().
 uri(#amqp_broker{uri=URI}) ->    
     URI.
 
