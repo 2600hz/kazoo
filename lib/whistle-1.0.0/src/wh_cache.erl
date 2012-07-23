@@ -24,7 +24,7 @@
 -export([peek_local/2]).
 -export([fetch_local/2, fetch_keys_local/1]).
 -export([erase_local/2]).
--export([flush_local/1]). 
+-export([flush_local/1]).
 -export([filter_local/2]).
 -export([wait_for_key_local/2, wait_for_key_local/3]).
 
@@ -148,17 +148,16 @@ store_local(Srv, K, V, T, Fun) when is_function(Fun, 3) ->
 -spec peek_local/2 :: (atom(), term()) -> {'ok', term()} | {'error', 'not_found'}.
 peek_local(Srv, K) ->
     try ets:lookup_element(Srv, K, #cache_obj.value) of
-        Value -> 
-            {ok, Value}
+        Value -> {ok, Value}
     catch
-        error:badarg -> 
+        error:badarg ->
             {error, not_found}
     end.
 
 -spec fetch_local/2 :: (atom(), term()) -> {'ok', term()} | {'error', 'not_found'}.
 fetch_local(Srv, K) ->
     try ets:lookup_element(Srv, K, #cache_obj.value) of
-        Value -> 
+        Value ->
             gen_server:cast(Srv, {update_timestamp, K, wh_util:current_tstamp()}),
             {ok, Value}
     catch
@@ -176,11 +175,12 @@ flush_local(Srv) ->
 
 -spec fetch_keys_local/1 :: (atom()) -> [term(),...] | [].
 fetch_keys_local(Srv) ->
-    MatchSpec = [{#cache_obj{key = '$1', _ = '_'},
-                  [{'orelse', {'not', {is_tuple, '$1'}},
+    MatchSpec = [{#cache_obj{key = '$1', _ = '_'}
+                  ,[{'orelse', {'not', {is_tuple, '$1'}},
                     {'=/=',{element, 1, '$1'}, monitor_key}}
-                  ],
-                  ['$1']}
+                  ]
+                  ,['$1']
+                 }
                 ],
     ets:select(Srv, MatchSpec).
 
@@ -207,7 +207,7 @@ wait_for_key_local(Srv, Key, Timeout) ->
         {exists, Ref, Value} -> {ok, Value};
         {store, Ref, Value} -> {ok, Value};
         {_, Ref, _} -> {error, timeout}
-    end. 
+    end.
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -247,7 +247,7 @@ init([Name, ExpirePeriod]) ->
 handle_call({wait_for_key, Key, Timeout}, {Pid, _}, Cache) ->
     Ref = make_ref(),
     _ = try ets:lookup_element(Cache, Key, #cache_obj.value) of
-            Value ->  Pid ! {exists, Ref, Value}            
+            Value ->  Pid ! {exists, Ref, Value}
         catch
             error:badarg ->
                 Fun = fun(_, V, Reason) ->  Pid ! {Reason, Ref, V} end,
