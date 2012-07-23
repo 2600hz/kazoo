@@ -180,8 +180,7 @@ fetch_keys_local(Srv) ->
                     {'=/=',{element, 1, '$1'}, monitor_key}}
                   ]
                   ,['$1']
-                 }
-                ],
+                 }],
     ets:select(Srv, MatchSpec).
 
 -spec filter_local/2 :: (atom(), fun((term(), term()) -> boolean())) -> proplist().
@@ -225,7 +224,7 @@ wait_for_key_local(Srv, Key, Timeout) ->
 %% @end
 %%--------------------------------------------------------------------
 init([Name, ExpirePeriod]) ->
-    put(callid, ?LOG_SYSTEM_ID),
+    put(callid, Name),
     _ = erlang:send_after(ExpirePeriod, self(), {expire, ExpirePeriod}),
     lager:debug("started new cache proc: ~s", [Name]),
     {ok, ets:new(Name, [set, protected, named_table, {keypos, #cache_obj.key}])}.
@@ -276,10 +275,10 @@ handle_cast({store, #cache_obj{key=Key, value=Value}=CacheObj}, Cache) ->
                              ,value = '$1'
                              ,callback = '$2'
                              ,_ = '_'
-                            },
-                  [{'=:=', '$1', {const, Key}}],
-                  ['$2']}
-                ],
+                            }
+                  ,[{'=:=', '$1', {const, Key}}]
+                  ,['$2']
+                 }],
     _ = case ets:select(Cache, MatchSpec) of
             [] -> ok;
             Monitors ->
@@ -290,9 +289,10 @@ handle_cast({store, #cache_obj{key=Key, value=Value}=CacheObj}, Cache) ->
                                           ,value = '$1'
                                           ,callback = '$1'
                                           ,_ = '_'
-                                         },
-                               [{'=:=', '$1', {const, Key}}],
-                               [true]}
+                                         }
+                               ,[{'=:=', '$1', {const, Key}}]
+                               ,[true]
+                              }
                              ],
                 ets:select_delete(Cache, DeleteSpec)
         end,
@@ -315,10 +315,10 @@ handle_cast({flush}, Cache) ->
     MatchSpec = [{#cache_obj{key = '$1'
                              ,value = '$2'
                              ,callback = '$3'
-                             , _ = '_'},
-                  [{'=/=', '$3', undefined}],
-                  [{{'$3', '$1', '$2'}}]}
-                ],
+                             , _ = '_'}
+                  ,[{'=/=', '$3', undefined}]
+                  ,[{{'$3', '$1', '$2'}}]
+                 }],
     _ = [spawn(fun() -> Callback(K, V, flush) end)
          || {Callback, K, V} <- ets:select(Cache, MatchSpec)
         ],
@@ -340,11 +340,12 @@ handle_cast(_, Cache) ->
 handle_info({expire, ExpirePeriod}, Cache) ->
     Now = wh_util:current_tstamp(),
     FindSpec = [{#cache_obj{key = '$1', value = '$2', expires = '$3',
-                            timestamp = '$4', callback = '$5'},
-                 [{'=/=', '$3', infinity},
-                  {'>', {const, Now}, {'+', '$4', '$3'}}],
-                 [{{'$5', '$1', '$2'}}]}
-                ],
+                            timestamp = '$4', callback = '$5'}
+                 ,[{'=/=', '$3', infinity}
+                   ,{'>', {const, Now}, {'+', '$4', '$3'}}
+                  ]
+                 ,[{{'$5', '$1', '$2'}}]
+                }],
     _ = case ets:select(Cache, FindSpec) of
             [] -> ok;
             Expired ->
@@ -354,11 +355,12 @@ handle_info({expire, ExpirePeriod}, Cache) ->
                     ],
                 DeleteSpec = [{#cache_obj{expires = '$3'
                                           ,timestamp = '$4'
-                                          ,_ = '_'},
-                               [{'=/=', '$3', infinity},
-                                {'>', {const, Now}, {'+', '$4', '$3'}}],
-                               [true]}
-                             ],
+                                          ,_ = '_'}
+                               ,[{'=/=', '$3', infinity},
+                                 {'>', {const, Now}, {'+', '$4', '$3'}}
+                                ]
+                               ,[true]
+                              }],
                 ets:select_delete(Cache, DeleteSpec)
         end,
     _ = erlang:send_after(ExpirePeriod, self(), {expire, ExpirePeriod}),
@@ -378,8 +380,7 @@ handle_info(_Info, Cache) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, Cache) ->
-    ets:delete(Cache),
-    ok.
+    ets:delete(Cache).
 
 %%--------------------------------------------------------------------
 %% @private
