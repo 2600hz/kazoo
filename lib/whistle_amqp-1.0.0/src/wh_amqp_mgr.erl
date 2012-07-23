@@ -1,10 +1,11 @@
 %%%-------------------------------------------------------------------
-%%% File    : amqp_mgr.erl
-%%% Authors  : K Anderson
-%%%          : James Aimonetti
-%%% Description : The AMQP connection manager.
+%%% @copyright (C) 2010-2012, VoIP INC
+%%% @doc
 %%%
-%%% Created :  March 24 2010
+%%% @end
+%%% @contributors
+%%%   James Aimonetti
+%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(wh_amqp_mgr).
 
@@ -132,7 +133,7 @@ handle_call(is_available, _, #state{available_brokers=Brokers}=State) ->
     {reply, dict:size(Brokers) > 0, State};
 handle_call(get_connection, _, State) ->
     case next_available_broker(State) of 
-        {undefined, S} -> 
+        {undefined, S} ->
             {reply, {error, amqp_down}, S, hibernate};
         {Broker, S} ->
             Name = wh_amqp_broker:name(Broker),
