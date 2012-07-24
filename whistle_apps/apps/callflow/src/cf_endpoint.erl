@@ -214,8 +214,9 @@ create_call_fwd_endpoint(Endpoint, Properties, CallFwd, Call) ->
             ,{<<"Route">>, <<"loopback/", (wh_json:get_value(<<"number">>, CallFwd, <<"unknown">>))/binary>>}
             ,{<<"Ignore-Early-Media">>, IgnoreEarlyMedia}
             ,{<<"Bypass-Media">>, <<"false">>}
-            ,{<<"Endpoint-Leg-Timeout">>, wh_json:get_binary_value(<<"timeout">>, Properties)}
-            ,{<<"Endpoint-Leg-Delay">>, wh_json:get_binary_value(<<"delay">>, Properties)}
+            ,{<<"Endpoint-Progress-Timeout">>, wh_json:get_binary_value([<<"media">>, <<"progress_timeout">>], Endpoint)}
+            ,{<<"Endpoint-Timeout">>, wh_json:get_binary_value(<<"timeout">>, Properties)}
+            ,{<<"Endpoint-Delay">>, wh_json:get_binary_value(<<"delay">>, Properties)}
             ,{<<"Presence-ID">>, cf_attributes:presence_id(Endpoint, Call)}
             ,{<<"SIP-Headers">>, generate_sip_headers(Endpoint, Call)}
             ,{<<"Custom-Channel-Vars">>, generate_ccvs(Endpoint, Call, CallFwd)}
