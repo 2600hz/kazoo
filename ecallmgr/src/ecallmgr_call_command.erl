@@ -651,14 +651,26 @@ stream_over_http(Node, UUID, File, Method, JObj) ->
         {ok, <<"+OK", _/binary>>} ->
             lager:debug("successfully stored media"),
             send_store_call_event(Node, UUID, <<"success">>);
-        {ok, _Err} ->
-            lager:debug("store media failed: ~s", [_Err]),
+        {ok, Err} ->
+            lager:debug("store media failed: ~s", [Err]),
+            wh_notify:system_alert("Failed to store media file ~s for call ~s on ~s "
+                                   ,[File, UUID, Node]
+                                   ,[{<<"Details">>, Err}]
+                                  ),
             send_store_call_event(Node, UUID, <<"failure">>);
-        {error, _E} ->
-            lager:debug("error executing http_put: ~p", [_E]),
+        {error, E} ->
+            lager:debug("error executing http_put: ~p", [E]),
+            wh_notify:system_alert("Failed to store media file ~s for call ~s on ~s "
+                                   ,[File, UUID, Node]
+                                   ,[{<<"Details">>, E}]
+                                  ),
             send_store_call_event(Node, UUID, <<"failure">>);
         timeout ->
             lager:debug("timeout waiting for http_put"),
+            wh_notify:system_alert("Failed to store media file ~s for call ~s on ~s "
+                                   ,[File, UUID, Node]
+                                   ,[{<<"Details">>, <<"Timeout sending http_put to node">>}]
+                                  ),
             send_store_call_event(Node, UUID, <<"timeout">>)
     end.
 
