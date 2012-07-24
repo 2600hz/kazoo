@@ -56,7 +56,8 @@
                                           ,<<"Terminator">>, <<"Disposition">>
                                           ,<<"Hangup-Cause">>, <<"Hangup-Code">> %% Hangup
                                           ,<<"Raw-Application-Name">>, <<"Raw-Application-Data">>
-                                          ,<<"Length">>, <<"Channel-Call-State">>
+                                          ,<<"Length">>, <<"Silence-Terminated">> %% Record-related
+                                          ,<<"Channel-Call-State">>
                                           ,<<"Fax-Success">>, <<"Fax-Result-Code">>
                                           ,<<"Fax-Result-Text">>, <<"Fax-ECM-Used">>
                                           ,<<"Fax-Transferred-Pages">>, <<"Fax-Total-Pages">>
