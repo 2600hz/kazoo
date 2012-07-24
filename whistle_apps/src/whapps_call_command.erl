@@ -1425,7 +1425,9 @@ wait_for_application(Application, Event, Type, Timeout) ->
 %% is only interested in events for the application.
 %% @end
 %%--------------------------------------------------------------------
--type wait_for_headless_application_return() :: {'error', 'timeout' | wh_json:json_object()} | {'ok', wh_json:json_object()}.
+-type wait_for_headless_application_return() :: {'error', 'timeout' | wh_json:json_object()} |
+                                                {'hangup', wh_json:json_object()} |
+                                                {'ok', wh_json:json_object()}.
 -spec wait_for_headless_application/1 :: (ne_binary()) -> wait_for_headless_application_return().
 -spec wait_for_headless_application/2 :: (ne_binary(), ne_binary()) -> wait_for_headless_application_return().
 -spec wait_for_headless_application/3 :: (ne_binary(), ne_binary(), ne_binary()) -> wait_for_headless_application_return().
@@ -1447,6 +1449,12 @@ wait_for_headless_application(Application, Event, Type, Timeout) ->
                 { <<"error">>, _, Application } ->
                     lager:debug("channel execution error while waiting for ~s: ~s", [Application, wh_json:encode(JObj)]),
                     {error, JObj};
+                {<<"call_event">>,<<"CHANNEL_HANGUP_COMPLETE">>,_} ->
+                    lager:debug("hangup occurred, waiting 5000 ms for ~s event", [Application]),
+                    wait_for_headless_application(Application, Event, Type, 5000);
+                {<<"call_event">>,<<"CHANNEL_DESTROY">>, _} ->
+                    lager:debug("destroy occurred, waiting 5000 ms for ~s event", [Application]),
+                    wait_for_headless_application(Application, Event, Type, 5000);
                 { Type, Event, Application } ->
                     {ok, JObj};
                 _T when Timeout =:= infinity ->
