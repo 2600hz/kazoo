@@ -491,11 +491,11 @@ wait_for_pickup(SlotNumber, RingbackId, Call) ->
     case whapps_call_command:b_hold(?DEFAULT_RINGBACK_TM, Call) of
         {error, timeout} ->
             TmpCID = <<"Parking slot ", SlotNumber/binary>>,
-            Hungup = case whapps_call_command:channel_status(Call) of
-                         {ok, _} -> false;
-                         {error, _} -> true
+            ChannelUp = case whapps_call_command:channel_status(Call) of
+                            {ok, _} -> true;
+                            {error, _} -> false
                      end,
-            case Hungup andalso ringback_parker(RingbackId, SlotNumber, TmpCID, Call) of
+            case ChannelUp andalso ringback_parker(RingbackId, SlotNumber, TmpCID, Call) of
                 answered -> 
                     lager:debug("parked caller ringback was answered"),
                     cf_exe:continue(Call);
