@@ -198,6 +198,7 @@ record_call(Call, Attrs) ->
             case wh_json:get_integer_value(<<"Length">>, Msg, 0) of
                 Length when Length < 1000 ->
                     lager:debug("recording is less than one second(~b ms), move to next verb", [Length]),
+                    _ = couch_mgr:del_doc(whapps_call:account_db(Call1), wh_json:get_value(<<"_id">>, MediaJObj)),
                     {ok, Call1};
                 Length ->
                     store_and_send_recording(Call1, MediaJObj, Msg, Props, Length)
