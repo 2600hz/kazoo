@@ -183,19 +183,6 @@ record_call(Call, Attrs) ->
     Props = attrs_to_proplist(Attrs),
     lager:debug("RECORD with attrs: ~p", [Attrs]),
 
-    Action = kzt_util:resolve_uri(whapps_call:kvs_fetch(<<"voice_uri">>, Call1)
-                                  ,props:get_value(action, Props)
-                                 ),
-
-    lager:debug("old voice url: ~s", [whapps_call:kvs_fetch(<<"voice_uri">>, Call1)]),
-    lager:debug("action: ~s", [props:get_value(action, Props)]),
-    lager:debug("new voice url: ~s", [Action]),
-
-    Method = kzt_util:http_method(props:get_value(method, Props, post)),
-
-    %% Transcribe = props:get_is_true(transcribe, Props, false),
-    %% TranscribeCallback = props:get_value(transcribeCallback, Props),
-
     case props:get_is_true(playBeep, Props, true) of
         true -> play_tone(Call1);
         false -> ok
@@ -208,26 +195,45 @@ record_call(Call, Attrs) ->
 
     case whapps_call_command:b_record(MediaName, ?ANY_DIGIT, wh_util:to_binary(MaxLength), Call1) of
         {ok, Msg} ->
-            {RecordingId, _StoreJObj} = maybe_save_recording(Call1, MediaJObj, true),
-            Length = wh_json:get_integer_value(<<"Length">>, Msg, 0),
-            DTMFs = wh_json:get_value(<<"Digits-Pressed">>, Msg),
-
-            lager:debug("recording of ~b ms finished, stored as ~s", [Length, RecordingId]),
-            lager:debug("sending data to ~s(~s)", [Action, Method]),
-
-            BaseParams = wh_json:from_list(
-                           props:filter_undefined(
-                             [{<<"RecordingUrl">>, recorded_url(Call1, RecordingId, true)}
-                              ,{<<"RecordingDuration">>, Length div 1000} % convert to seconds
-                              ,{<<"Digits">>, DTMFs}
-                              | req_params(Call1)
-                             ]
-                            )),
-            {request, update_call_status(Call1, ?STATUS_ANSWERED), Action, Method, BaseParams};
+            case wh_json:get_integer_value(<<"Length">>, Msg, 0) of
+                Length when Length < 1000 ->
+                    lager:debug("recording is less than one second(~b ms), move to next verb", [Length]),
+                    {ok, Call1};
+                Length ->
+                    store_and_send_recording(Call1, MediaJObj, Msg, Props, Length)
+            end;
         {error, R} ->
             lager:debug("error while attempting to record a new message: ~p", [R]),
             {stop, update_call_status(Call1, ?STATUS_CANCELED)}
     end.
+
+-spec store_and_send_recording/5 :: (whapps_call:call(), wh_json:json_object(), wh_json:json_object()
+                                     ,wh_proplist(), pos_integer()) -> request_return().
+store_and_send_recording(Call, MediaJObj, Msg, Props, Length) ->
+    {RecordingId, _StoreJObj} = maybe_save_recording(Call, MediaJObj, true),
+
+    DTMFs = wh_json:get_value(<<"Digits-Pressed">>, Msg),
+
+    lager:debug("recording of ~b ms finished, stored as ~s", [Length, RecordingId]),
+
+    Action = kzt_util:resolve_uri(whapps_call:kvs_fetch(<<"voice_uri">>, Call)
+                                  ,props:get_value(action, Props)
+                                 ),
+    Method = kzt_util:http_method(props:get_value(method, Props, post)),
+    lager:debug("sending data to ~s(~s)", [Action, Method]),
+
+    %% Transcribe = props:get_is_true(transcribe, Props, false),
+    %% TranscribeCallback = props:get_value(transcribeCallback, Props),
+
+    BaseParams = wh_json:from_list(
+                   props:filter_undefined(
+                     [{<<"RecordingUrl">>, recorded_url(Call, RecordingId, true)}
+                      ,{<<"RecordingDuration">>, Length div 1000} % convert to seconds
+                      ,{<<"Digits">>, DTMFs}
+                      | req_params(Call)
+                     ]
+                    )),
+    {request, update_call_status(Call, ?STATUS_ANSWERED), Action, Method, BaseParams}.
 
 -spec gather/2 :: (whapps_call:call(), proplist()) -> exec_return().
 gather(Call, Attrs) ->
@@ -244,9 +250,10 @@ gather(Call, Attrs) ->
         MaxDigits -> collect_digits(Call1, InitDigit, wh_util:to_integer(MaxDigits), FinishOnKey, Timeout, Props)
     end.
 
--spec exec_gather_element/4 :: (whapps_call:call(), atom(), list(), #xmlElement{}) -> {'ok', binary(), whapps_call:call()} |
-                                                                                      {'ok', whapps_call:call()} |
-                                                                                      {'error', atom() | wh_json:json_object(), whapps_call:call()}.
+-spec exec_gather_element/4 :: (whapps_call:call(), atom(), list(), #xmlElement{}) ->
+                                       {'ok', binary(), whapps_call:call()} |
+                                       {'ok', whapps_call:call()} |
+                                       {'error', atom() | wh_json:json_object(), whapps_call:call()}.
 exec_gather_element(Call, 'Say', [#xmlText{value=SayMe, type=text}], #xmlElement{attributes=Attrs}) ->    
     Result = say(Call, SayMe, Attrs, ?ANY_DIGIT),
     lager:debug("say returned: ~p", [Result]),
