@@ -194,6 +194,9 @@ xml_to_record(Xml) ->
 
 xml_to_record(Xml, Base) ->
     AddOnsPath = lists:flatten([Base, "/add-ons/add-on"]),
+    DiscountsPath = lists:flatten([Base, "/discounts/discount"]),
+    io:format("~p~n", [DiscountsPath]),
+    io:format("~p~n", [xmerl_xpath:string(DiscountsPath, Xml)]),
     BillingAddress = braintree_address:xml_to_record(Xml, [Base, "/billing"]),
     Card = braintree_card:xml_to_record(Xml, [Base, "/credit-card"]),
     #bt_transaction{id = get_xml_value([Base, "/id/text()"], Xml)
@@ -227,9 +230,12 @@ xml_to_record(Xml, Base) ->
                     ,subscription_id = get_xml_value([Base, "/subscription-id/text()"], Xml)
                     ,add_ons = [braintree_addon:xml_to_record(Addon)
                                 || Addon <- xmerl_xpath:string(AddOnsPath, Xml)
-                               ]}.
-%%                    ,discounts = undefined = get_xml_value([Base, "/id/text()"], Xml)
-%%                    ,descriptor = undefined = get_xml_value([Base, "/id/text()"], Xml)}.
+                               ]
+                    ,discounts = [braintree_discount:xml_to_record(Discounts)
+                                  || Discounts <- xmerl_xpath:string(DiscountsPath, Xml)
+                                 ]
+%%                    ,descriptor = undefined = get_xml_value([Base, "/id/text()"], Xml)
+                   }.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -366,5 +372,8 @@ record_to_json(#bt_transaction{}=Transaction) ->
              ,{<<"add_ons">>, [braintree_addon:record_to_json(Addon)
                                || Addon <- Transaction#bt_transaction.add_ons
                               ]}
+             ,{<<"discounts">>, [braintree_discount:record_to_json(Discounts)
+                                 || Discounts <- Transaction#bt_transaction.discounts
+                                ]}
             ],
     wh_json:from_list([KV || {_, V}=KV <- Props, V =/= undefined]).
