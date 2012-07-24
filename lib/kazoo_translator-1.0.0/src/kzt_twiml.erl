@@ -191,29 +191,65 @@ record_call(Call, Attrs) ->
     MediaName = media_name(whapps_call:call_id(Call1)),
     {ok, MediaJObj} = store_recording_meta(Call1, MediaName),
 
-    MaxLength = props:get_value(maxLength, Props, 3600),
+    MaxLength = props:get_integer_value(maxLength, Props, 3600),
+    Timeout = props:get_integer_value(timeout, Props, 5),
 
-    case whapps_call_command:b_record(MediaName, ?ANY_DIGIT, wh_util:to_binary(MaxLength), Call1) of
+    case whapps_call_command:b_record(MediaName, terminators(props:get_value(finishOnKey, Props))
+                                      ,MaxLength, 200, Timeout, Call1) of
         {ok, Msg} ->
-            case wh_json:get_integer_value(<<"Length">>, Msg, 0) of
-                Length when Length < 1000 ->
-                    lager:debug("recording is less than one second(~b ms), move to next verb", [Length]),
+            lager:debug("record msg: ~p", [Msg]),
+            case record_terminated_by(Msg) of
+                {hangup, Length} when Length < 1000 ->
+                    lager:debug("hangup ended call, but length(~b ms) is < 1000ms", [Length]),
                     _ = couch_mgr:del_doc(whapps_call:account_db(Call1), wh_json:get_value(<<"_id">>, MediaJObj)),
                     {ok, Call1};
-                Length ->
-                    store_and_send_recording(Call1, MediaJObj, Msg, Props, Length)
+                {hangup, Length} ->
+                    lager:debug("hangup ended call, saving recording"),
+                    store_and_send_recording(Call1, MediaJObj, undefined, Props, Length);
+                {silence, Length} when Length < Timeout * 1000 ->
+                    lager:debug("silence hits ended call and length (~b ms) is less than timeout (~b ms)", [Length, Timeout * 1000]),
+                    _ = couch_mgr:del_doc(whapps_call:account_db(Call1), wh_json:get_value(<<"_id">>, MediaJObj)),
+                    {ok, Call1};
+                {silence, Length} ->
+                    lager:debug("silence hits ended, but length (~b ms) is > timeout (~b ms)", [Length, Timeout * 1000]),
+                    store_and_send_recording(Call1, MediaJObj, undefined, Props, Length);
+                {terminator, _T, Length} when Length < 1000 ->
+                    lager:debug("terminator(~s) ended call, but length(~b ms) is < 1000ms", [_T, Length]),
+                    _ = couch_mgr:del_doc(whapps_call:account_db(Call1), wh_json:get_value(<<"_id">>, MediaJObj)),
+                    {ok, Call1};
+                {terminator, T, Length} ->
+                    lager:debug("terminator ~s ended call, saving recording", [T]),
+                    store_and_send_recording(Call1, MediaJObj, T, Props, Length)
             end;
         {error, R} ->
             lager:debug("error while attempting to record a new message: ~p", [R]),
             {stop, update_call_status(Call1, ?STATUS_CANCELED)}
     end.
 
--spec store_and_send_recording/5 :: (whapps_call:call(), wh_json:json_object(), wh_json:json_object()
-                                     ,wh_proplist(), pos_integer()) -> request_return().
-store_and_send_recording(Call, MediaJObj, Msg, Props, Length) ->
-    {RecordingId, _StoreJObj} = maybe_save_recording(Call, MediaJObj, true),
+-spec record_terminated_by/1 :: (wh_json:json_object()) ->
+                                        {'silence', integer()} |
+                                        {'hangup', integer()} |
+                                        {'terminator', ne_binary(), integer()}.
+record_terminated_by(JObj) ->
+    Length = wh_json:get_integer_value(<<"Length">>, JObj),
+    case wh_json:is_true(<<"Silence-Terminated">>, JObj) of
+        true -> {silence, Length};
+        false ->
+            case wh_json:get_value(<<"Terminator">>, JObj) of
+                undefined -> {hangup, Length};
+                Term -> {terminator, Term, Length}
+            end
+    end.
 
-    DTMFs = wh_json:get_value(<<"Digits-Pressed">>, Msg),
+-spec terminators/1 :: ('undefined' | string() | ne_binary()) -> [ne_binary(),...].
+terminators(undefined) -> ?ANY_DIGIT;
+terminators(?NE_BINARY = T) -> [ <<D>> || <<D>> <= T];
+terminators([_|_]=L) -> terminators(wh_util:to_binary(L)).
+
+-spec store_and_send_recording/5 :: (whapps_call:call(), wh_json:json_object(), ne_binary() | 'undefined'
+                                     ,wh_proplist(), pos_integer()) -> request_return().
+store_and_send_recording(Call, MediaJObj, DTMF, Props, Length) ->
+    {RecordingId, _StoreJObj} = maybe_save_recording(Call, MediaJObj, true),
 
     lager:debug("recording of ~b ms finished, stored as ~s", [Length, RecordingId]),
 
@@ -230,7 +266,7 @@ store_and_send_recording(Call, MediaJObj, Msg, Props, Length) ->
                    props:filter_undefined(
                      [{<<"RecordingUrl">>, recorded_url(Call, RecordingId, true)}
                       ,{<<"RecordingDuration">>, Length div 1000} % convert to seconds
-                      ,{<<"Digits">>, DTMFs}
+                      ,{<<"Digits">>, DTMF}
                       | req_params(Call)
                      ]
                     )),
