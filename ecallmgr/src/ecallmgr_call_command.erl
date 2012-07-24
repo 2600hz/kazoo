@@ -424,7 +424,7 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>) ->
             end
     end;
 
-get_fs_app(_Node, _UUID, JObj, <<"call_pickup">>) ->
+get_fs_app(Node, _UUID, JObj, <<"call_pickup">>) ->
     case wapi_dialplan:call_pickup_v(JObj) of
         false -> {'error', <<"intercept failed to execute as JObj did not validate">>};
         true ->
@@ -434,6 +434,13 @@ get_fs_app(_Node, _UUID, JObj, <<"call_pickup">>) ->
             UnansweredOnly = wh_json:is_true(<<"Unanswered-Only">>, JObj),
             Target = wh_json:get_value(<<"Target-Call-ID">>, JObj),
             OtherLeg = wh_json:is_true(<<"Other-Leg">>, JObj),
+
+            _ = case wh_json:is_true(<<"Park-After-Pickup">>, JObj, false) of
+                    false -> ok;
+                    true ->
+                        _ = set(Node, Target, <<"park_after_bridge=true">>),
+                        set(Node, OtherLeg, <<"park_after_bridge=true">>)
+                end,
 
             Generators = [fun(DP) ->
                                   case UnbridgedOnly of

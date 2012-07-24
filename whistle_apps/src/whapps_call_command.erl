@@ -18,8 +18,8 @@
 -export([relay_event/2]).
 
 -export([audio_macro/2]).
--export([pickup/2, pickup/3, pickup/4
-         ,b_pickup/2, b_pickup/3, b_pickup/4
+-export([pickup/2, pickup/3, pickup/4, pickup/5, pickup/6
+         ,b_pickup/2, b_pickup/3, b_pickup/4, b_pickup/5, b_pickup/6
         ]).
 -export([redirect/3]).
 -export([answer/1
@@ -268,36 +268,25 @@ response(Code, Cause, Media, Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec pickup/2 :: (ne_binary(), whapps_call:call()) -> 'ok'.
--spec pickup/3 :: (ne_binary(), ne_binary(), whapps_call:call()) -> 'ok'.
--spec pickup/4 :: (ne_binary(), ne_binary(), ne_binary() | boolean(), whapps_call:call()) -> 'ok'.
--spec pickup/5 :: (ne_binary(), ne_binary(), ne_binary() | boolean(), ne_binary() | boolean(), whapps_call:call()) -> 'ok'.
+-spec pickup/3 :: (ne_binary(), 'undefined' | ne_binary(), whapps_call:call()) -> 'ok'.
+-spec pickup/4 :: (ne_binary(), 'undefined' | ne_binary(), 'undefined' | ne_binary() | boolean(), whapps_call:call()) -> 'ok'.
+-spec pickup/5 :: (ne_binary(), 'undefined' | ne_binary(), 'undefined' | ne_binary() | boolean(), 'undefined' | ne_binary() | boolean(), whapps_call:call()) -> 'ok'.
+-spec pickup/6 :: (ne_binary(), 'undefined' | ne_binary(), 'undefined' | ne_binary() | boolean(), 'undefined' | ne_binary() | boolean(), 'undefined' | ne_binary() | boolean(), whapps_call:call()) -> 'ok'.
 pickup(TargetCallId, Call) ->
-    Command = [{<<"Application-Name">>, <<"call_pickup">>}
-               ,{<<"Target-Call-ID">>, TargetCallId}
-              ],
-    send_command(Command, Call).
-
+    pickup(TargetCallId, undefined, Call).
 pickup(TargetCallId, Insert, Call) ->
-    Command = [{<<"Application-Name">>, <<"call_pickup">>}
-               ,{<<"Target-Call-ID">>, TargetCallId}
-               ,{<<"Insert-At">>, Insert}
-              ],
-    send_command(Command, Call).
-
+    pickup(TargetCallId, Insert, undefined, Call).
 pickup(TargetCallId, Insert, ContinueOnFail, Call) ->
-    Command = [{<<"Application-Name">>, <<"call_pickup">>}
-               ,{<<"Target-Call-ID">>, TargetCallId}
-               ,{<<"Insert-At">>, Insert}
-               ,{<<"Continue-On-Fail">>, ContinueOnFail}
-              ],
-    send_command(Command, Call).
-
+    pickup(TargetCallId, Insert, ContinueOnFail, undefined, Call).
 pickup(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, Call) ->
+    pickup(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, undefined, Call).
+pickup(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, ParkAfterPickup, Call) ->
     Command = [{<<"Application-Name">>, <<"call_pickup">>}
                ,{<<"Target-Call-ID">>, TargetCallId}
                ,{<<"Insert-At">>, Insert}
                ,{<<"Continue-On-Fail">>, ContinueOnFail}
                ,{<<"Continue-On-Cancel">>, ContinueOnCancel}
+               ,{<<"Park-After-Pickup">>, ParkAfterPickup}
               ],
     send_command(Command, Call).
 
@@ -305,6 +294,7 @@ pickup(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, Call) ->
 -spec b_pickup/3 :: (ne_binary(), ne_binary(), whapps_call:call()) -> {'ok', wh_json:json_object()}.
 -spec b_pickup/4 :: (ne_binary(), ne_binary(), ne_binary() | boolean(), whapps_call:call()) -> {'ok', wh_json:json_object()}.
 -spec b_pickup/5 :: (ne_binary(), ne_binary(), ne_binary() | boolean(), ne_binary() | boolean(), whapps_call:call()) -> {'ok', wh_json:json_object()}.
+-spec b_pickup/6 :: (ne_binary(), ne_binary(), ne_binary() | boolean(), ne_binary() | boolean(), ne_binary() | boolean(), whapps_call:call()) -> {'ok', wh_json:json_object()}.
 b_pickup(TargetCallId, Call) ->
     pickup(TargetCallId, Call),
     wait_for_channel_unbridge().
@@ -314,9 +304,11 @@ b_pickup(TargetCallId, Insert, Call) ->
 b_pickup(TargetCallId, Insert, ContinueOnFail, Call) ->
     pickup(TargetCallId, Insert, ContinueOnFail, Call),
     wait_for_channel_unbridge().
-
 b_pickup(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, Call) ->
     pickup(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, Call),
+    wait_for_channel_unbridge().
+b_pickup(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, ParkAfterPickup, Call) ->
+    pickup(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, ParkAfterPickup, Call),
     wait_for_channel_unbridge().
 
 %%--------------------------------------------------------------------
