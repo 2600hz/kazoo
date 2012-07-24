@@ -82,7 +82,7 @@ updated_call(Srv, Call) ->
 handle_call_event(JObj, Props) ->
     case props:get_value(pid, Props) of
         P when is_pid(P) -> whapps_call_command:relay_event(P, JObj);
-        _ -> lager:debug("ignoring event ~p", [JObj])
+        _ -> lager:debug("ignoring event: ~p", [wh_util:get_event_type(JObj)])
     end.
 
 %%%===================================================================
@@ -334,8 +334,8 @@ handle_resp(Call, CT, RespBody, Srv) ->
     end.
 
 handle_resp(Call, _, <<>>) ->
-    lager:debug("no response body, continuing the flow"),
-    whapps_call_command:hangup(Call);
+    lager:debug("no response body, finishing up"),
+    {stop, Call};
 handle_resp(Call, Hdrs, RespBody) when is_list(Hdrs) ->
     handle_resp(Call, props:get_value("Content-Type", Hdrs), RespBody);
 handle_resp(Call, CT, RespBody) ->
