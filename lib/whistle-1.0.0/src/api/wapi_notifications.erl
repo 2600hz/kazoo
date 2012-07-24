@@ -43,7 +43,7 @@
 -export([publish_transaction/1, publish_transaction/2]).
 -export([publish_system_alert/1, publish_system_alert/2]).
 
--include("../wh_api.hrl").
+-include_lib("wh_api.hrl").
 
 -define(NOTIFY_VOICEMAIL_NEW, <<"notifications.voicemail.new">>).
 -define(NOTIFY_FAX_NEW, <<"notifications.fax.new">>).

@@ -97,7 +97,7 @@ send_media_resp(JObj, Path, Meta) ->
 
     {VlcPrefix, Protocol} = case whapps_config:get_is_true(?CONFIG_CAT, <<"use_vlc">>, false) of
                     true -> {<<"vlc://">>, <<"http://">>};
-                    false -> {<<>>, streaming_protocol(wh_json:get_value(<<"content_type">>, Meta))}
+                    false -> {<<>>, streaming_protocol(wh_json:get_value(<<"content_type">>, Meta), wh_json:get_value(<<"Protocol">>, JObj))}
                 end,
 
     StreamType = convert_stream_type(wh_json:get_value(<<"Stream-Type">>, JObj)),
@@ -279,9 +279,14 @@ convert_stream_type(<<"extant">>) ->
 convert_stream_type(Type) ->
     Type.
 
-streaming_protocol(<<"audio/mp3">>) ->
-    <<"shout://">>;
-streaming_protocol(<<"audio/mpeg">>) ->
-    <<"shout://">>;
-streaming_protocol(_) ->
-    <<"http://">>.
+%-spec streaming_protocol/1 :: (ne_binary()) -> ne_binary().
+-spec streaming_protocol/2 :: (ne_binary(), 'undefined' | ne_binary()) -> ne_binary().
+%streaming_protocol(Format) -> streaming_protocol(Format, undefined).
+
+streaming_protocol(<<"audio/mp3">>, undefined) -> <<"shout://">>;
+streaming_protocol(<<"audio/mpeg">>, undefined) -> <<"shout://">>;
+streaming_protocol(_, undefined) -> <<"http://">>;
+
+streaming_protocol(_, <<"http">>) -> <<"http://">>;
+streaming_protocol(_, <<"https">>) -> <<"https://">>;
+streaming_protocol(_, <<"shout">>) -> <<"shout://">>.

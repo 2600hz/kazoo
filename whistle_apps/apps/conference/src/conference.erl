@@ -1,10 +1,10 @@
 %%%-------------------------------------------------------------------
-%%% @author Karl Anderson <karl@2600hz.org>
-%%% @copyright (C) 2011, VoIP, INC
+%%% @copyright (C) 2011-2012 VoIP, INC
 %%% @doc
 %%% Its a party and your invite'd...
 %%% @end
-%%% Created : 27 June 2011 by Karl Anderson <karl@2600hz.org>
+%%% @contributors
+%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(conference).
 
@@ -67,8 +67,8 @@ start_deps() ->
       App :: atom().
 ensure_started(App) ->
     case application:start(App) of
-	ok ->
-	    ok;
-	{error, {already_started, App}} ->
-	    ok
+        ok ->
+            ok;
+        {error, {already_started, App}} ->
+            ok
     end.

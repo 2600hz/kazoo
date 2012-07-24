@@ -7,14 +7,14 @@
 %%% @contributors
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
--module(wht_translator).
+-module(kzt_translator).
 
 -export([exec/2, exec/3
          ,get_user_vars/1
          ,set_user_vars/2
         ]).
 
--include("wht.hrl").
+-include("kzt.hrl").
 
 -spec exec/2 :: (whapps_call:call(), list()) -> exec_return().
 -spec exec/3 :: (whapps_call:call(), list(), ne_binary() | list()) -> exec_return().
@@ -37,20 +37,19 @@ exec(Call, Cmds, CT) ->
     end.
 
 -spec get_user_vars/1 :: (whapps_call:call()) -> wh_json:json_object().
--spec set_user_vars/2 :: (proplist(), whapps_call:call()) -> wh_json:json_object().
+-spec set_user_vars/2 :: (wh_proplist(), whapps_call:call()) -> whapps_call:call().
 get_user_vars(Call) ->
-    whapps_call:kvs_fetch(?WHT_USER_VARS, wh_json:new(), Call).
-
+    whapps_call:kvs_fetch(?KZT_USER_VARS, wh_json:new(), Call).
 set_user_vars(Prop, Call) ->
     UserVars = get_user_vars(Call),
-    whapps_call:kvs_store(?WHT_USER_VARS, wh_json:set_values(Prop, UserVars), Call).
+    whapps_call:kvs_store(?KZT_USER_VARS, wh_json:set_values(Prop, UserVars), Call).
 
 find_candidate_translators(<<"text/xml">>) ->
-    [wht_twiml];
+    [kzt_twiml];
 find_candidate_translators(<<"application/xml">>) ->
-    [wht_twiml];
+    [kzt_twiml];
 find_candidate_translators(<<"application/json">>) ->
-    [wht_2600hz];
+    [kzt_2600hz];
 find_candidate_translators(_) ->
     [].
 

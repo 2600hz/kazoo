@@ -1,0 +1,12 @@
+{application, pivot,
+ [
+  {description, "Pivot - Accept 3rd party dialplan commands to control calls"},
+  {vsn, "0.5.0"},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib
+                 ]},
+  {mod, { pivot_app, []}},
+  {env, []}
+ ]}.

@@ -20,10 +20,14 @@
 -export([fs_log/3, put_callid/1]).
 -export([build_bridge_string/1, build_bridge_string/2]).
 -export([create_masquerade_event/2, create_masquerade_event/3]).
--export([media_path/3, media_path/4]).
+-export([media_path/3, media_path/4, media_path/5]).
 -export([unserialize_fs_array/1]).
 -export([convert_fs_evt_name/1, convert_whistle_app_name/1]).
--export([fax_filename/1]).
+-export([fax_filename/1
+         ,recording_filename/1
+        ]).
+
+-export([lookup_media/3, lookup_media/4, lookup_media/5]).
 
 -include_lib("ecallmgr/src/ecallmgr.hrl").
 
@@ -53,8 +57,8 @@ send_cmd(Node, UUID, "record_call", Args) ->
     lager:debug("execute on node ~s: uuid_record(~s)", [Node, Args]),
     _ = ecallmgr_util:fs_log(Node, "whistle executing uuid_record ~s", [Args]),
     case freeswitch:api(Node, uuid_record, Args) of
-        {ok, _}=Ret ->
-            lager:debug("executing uuid_record returned ~p", [Ret]),
+        {ok, _Msg}=Ret ->
+            lager:debug("executing uuid_record returned: ~s", [_Msg]),
             Ret;
         {error, <<"-ERR ", E/binary>>} ->
             lager:debug("error executing uuid_record: ~s", [E]),
@@ -290,6 +294,14 @@ build_bridge_string(Endpoints, Seperator) ->
 -type build_return() :: ne_binary() | {'worker', pid()}.
 -type bridge_endpoints() :: [{[ne_binary() | 'undefined',...], wh_json:json_object()},...] | [].
 -spec build_bridge_endpoints/2 :: (bridge_endpoints(), [build_return(),...] | []) -> [ne_binary(),...].
+build_bridge_endpoints([{[<<"route">>|_], Endpoint}|Endpoints], Channels) ->
+    build_bridge_endpoints(Endpoints, [build_bridge_endpoint(Endpoint)|Channels]);
+build_bridge_endpoints([{_, Endpoint}|Endpoints], Channels) ->
+    S = self(),
+    Pid = spawn(fun() ->
+                        S ! {self(), build_bridge_endpoint(Endpoint)}
+                end),
+    build_bridge_endpoints(Endpoints, [{worker, Pid}|Channels]);
 build_bridge_endpoints([], Channels) ->
     lists:foldr(fun({worker, Pid}, BridgeStrings) ->
                         receive
@@ -302,15 +314,7 @@ build_bridge_endpoints([], Channels) ->
                             2000 -> BridgeStrings
                         end;
                  (BridgeString, BridgeStrings) -> [BridgeString|BridgeStrings]
-                end, [], Channels);
-build_bridge_endpoints([{[<<"route">>|_], Endpoint}|Endpoints], Channels) ->
-    build_bridge_endpoints(Endpoints, [build_bridge_endpoint(Endpoint)|Channels]);
-build_bridge_endpoints([{_, Endpoint}|Endpoints], Channels) ->
-    S = self(),
-    Pid = spawn(fun() ->
-                        S ! {self(), build_bridge_endpoint(Endpoint)}
-                end),
-    build_bridge_endpoints(Endpoints, [{worker, Pid}|Channels]).
+                end, [], Channels).
 
 -spec build_bridge_endpoint/1 :: (wh_json:json_object()) -> binary().
 -spec build_bridge_endpoint/3 :: (wh_json:json_object(), ne_binary(), [nonempty_string(),...] | []) -> binary().
@@ -359,23 +363,26 @@ create_masquerade_event(Application, EventName, Boolean) ->
 %%--------------------------------------------------------------------
 -spec media_path/3 :: (ne_binary(), ne_binary(), wh_json:json_object()) -> ne_binary().
 -spec media_path/4 :: (ne_binary(), 'extant' | 'new', ne_binary(), wh_json:json_object()) -> ne_binary().
+-spec media_path/5 :: (ne_binary(), 'extant' | 'new', ne_binary(), wh_json:json_object(), atom()) -> ne_binary().
 media_path(MediaName, UUID, JObj) ->
     media_path(MediaName, new, UUID, JObj).
-
-media_path(undefined, _Type, _UUID, _) ->
-    <<"silence_stream://5">>;
-media_path(MediaName, Type, UUID, JObj) when not is_binary(MediaName) ->
-    media_path(wh_util:to_binary(MediaName), Type, UUID, JObj);
-media_path(<<"silence_stream://", _/binary>> = Media, _Type, _UUID, _) ->
-    Media;
-media_path(<<"tone_stream://", _/binary>> = Media, _Type, _UUID, _) ->
-    Media;
-media_path(<<"local_stream://", FSPath/binary>>, _Type, _UUID, _) ->
-    FSPath;
-media_path(<<"http://", _/binary>> = URI, _Type, _UUID, _) ->
-    get_fs_playback(URI);
 media_path(MediaName, Type, UUID, JObj) ->
-    case ecallmgr_media_registry:lookup_media(MediaName, Type, UUID, JObj) of
+    media_path(MediaName, Type, UUID, JObj, undefined).
+
+media_path(undefined, _Type, _UUID, _, _) ->
+    <<"silence_stream://5">>;
+media_path(MediaName, Type, UUID, JObj, Cache) when not is_binary(MediaName) ->
+    media_path(wh_util:to_binary(MediaName), Type, UUID, JObj, Cache);
+media_path(<<"silence_stream://", _/binary>> = Media, _Type, _UUID, _, _) ->
+    Media;
+media_path(<<"tone_stream://", _/binary>> = Media, _Type, _UUID, _, _) ->
+    Media;
+media_path(<<"local_stream://", FSPath/binary>>, _Type, _UUID, _, _) ->
+    FSPath;
+media_path(<<"http://", _/binary>> = URI, _Type, _UUID, _, _) ->
+    get_fs_playback(URI);
+media_path(MediaName, Type, UUID, JObj, Cache) ->
+    case lookup_media(MediaName, UUID, JObj, Type, Cache) of
         {'error', _E} ->
             lager:debug("failed to get media ~s: ~p", [MediaName, _E]),
             wh_util:to_binary(MediaName);
@@ -384,9 +391,24 @@ media_path(MediaName, Type, UUID, JObj) ->
             wh_util:to_binary(get_fs_playback(Url))
     end.
 
+-spec fax_filename/1 :: (ne_binary()) -> file:filename().
 fax_filename(UUID) ->
+    Ext = ecallmgr_config:get(<<"default_fax_extension">>, <<".tiff">>),
     filename:join([ecallmgr_config:get(<<"fax_file_path">>, <<"/tmp/">>)
-                   ,<<(amqp_util:encode(UUID))/binary, ".tiff">>
+                   ,<<(amqp_util:encode(UUID))/binary, Ext/binary>>
+                  ]).
+
+-spec recording_filename/1 :: (ne_binary()) -> file:filename().
+recording_filename(MediaName) ->
+    Ext = case filename:extension(MediaName) of
+              Empty when Empty =:= <<>> orelse Empty =:= [] ->
+                  ecallmgr_config:get(<<"default_recording_extension">>, <<".mp3">>);
+              E -> E
+          end,
+    RootName = filename:rootname(MediaName),
+
+    filename:join([ecallmgr_config:get(<<"recording_file_path">>, <<"/tmp/">>)
+                   ,<<(amqp_util:encode(RootName))/binary, Ext/binary>>
                   ]).
 
 %%--------------------------------------------------------------------
@@ -411,3 +433,45 @@ convert_fs_evt_name(EvtName) ->
 -spec convert_whistle_app_name/1 :: (ne_binary()) -> [ne_binary(),...] | [].
 convert_whistle_app_name(App) ->
     [EvtName || {EvtName, AppName} <- ?FS_APPLICATION_NAMES, App =:= AppName].
+
+-spec lookup_media/3 :: (ne_binary(), ne_binary(), wh_json:json_object()) ->
+                                {'ok', binary()} |
+                                {'error', any()}.
+-spec lookup_media/4 :: (ne_binary(), ne_binary(), wh_json:json_object(), 'new' | 'extant') ->
+                                {'ok', binary()} |
+                                {'error', any()}.
+-spec lookup_media/5 :: (ne_binary(), ne_binary(), wh_json:json_object(), 'new' | 'extant', atom()) ->
+                                {'ok', binary()} |
+                                {'error', any()}.
+lookup_media(MediaName, CallId, JObj) ->
+    lookup_media(MediaName, CallId, JObj, new).
+lookup_media(MediaName, CallId, JObj, Type) ->
+    lookup_media(MediaName, CallId, JObj, Type, undefined).
+lookup_media(MediaName, CallId, JObj, Type, undefined) when Type =:= new orelse Type =:= extant ->
+    Request = wh_json:set_values(
+                [{<<"Media-Name">>, MediaName}
+                 ,{<<"Stream-Type">>, Type}
+                 ,{<<"Call-ID">>, CallId}
+                 ,{<<"Msg-ID">>, wh_util:to_binary(wh_util:current_tstamp())}
+                 | wh_api:default_headers(<<"media">>, <<"media_req">>, ?APP_NAME, ?APP_VERSION)
+                ]
+                ,JObj),
+    ReqResp = wh_amqp_worker:call(?ECALLMGR_AMQP_POOL
+                                  ,Request
+                                  ,fun wapi_media:publish_req/1
+                                  ,fun wapi_media:resp_v/1),
+    case ReqResp of
+        {error, _R}=E ->
+            lager:debug("media lookup for '~s' failed: ~p", [MediaName, _R]),
+            E;
+        {ok, MediaResp} ->
+            MediaName = wh_json:get_value(<<"Media-Name">>, MediaResp),
+            {ok, wh_json:get_value(<<"Stream-URL">>, MediaResp, <<>>)}
+    end;
+lookup_media(MediaName, CallId, JObj, Type, Cache) ->
+    RecordingName = recording_filename(MediaName),
+    lager:debug("see if ~s is in cache ~s", [RecordingName, Cache]),
+    case wh_cache:peek_local(Cache, ?ECALLMGR_RECORDED_MEDIA_KEY(RecordingName)) of
+        {ok, _} -> {ok, RecordingName};
+        {error, not_found} -> lookup_media(MediaName, CallId, JObj, Type, undefined)
+    end.

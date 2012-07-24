@@ -2,22 +2,23 @@
 %%% @copyright (C) 2012, VoIP INC
 %%% @doc
 %%% Aims to recreate the TwiML interaction, converting the TwiML XML
-%%% to Whistle JSON commands
+%%% to Kazoo JSON commands
 %%% @end
 %%% @contributors
 %%%   James Aimonetti
 %%%
 %%% @todo
 %%%   Finish support for Number tag
+%%%   Record verb
 %%%-------------------------------------------------------------------
--module(wht_twiml).
+-module(kzt_twiml).
 
 -export([does_recognize/1, exec/2, req_params/1]).
 
--include("wht.hrl").
+-include("kzt.hrl").
 -include_lib("xmerl/include/xmerl.hrl").
 
--define(NAME, <<"wht_twiml">>).
+-define(NAME, <<"kzt_twiml">>).
 -define(VERSION, <<"0.2.0">>).
 
 -define(STATUS_QUEUED, <<"queued">>).
@@ -67,9 +68,13 @@ exec_element(Call, 'Dial', [#xmlText{value=DialMe, type=text}], #xmlElement{attr
     dial_number(Call, DialMe, Attrs);
 exec_element(Call, 'Dial', [#xmlElement{name='Number'}=El1], #xmlElement{attributes=Attrs}) ->
     dial_number(Call, El1, Attrs);
+exec_element(Call, 'Dial', [#xmlElement{name='Conference'}=El1], #xmlElement{attributes=Attrs}) ->
+    dial_conference(Call, El1, Attrs);
 exec_element(Call, 'Dial', [#xmlElement{}|_]=Numbers, #xmlElement{attributes=Attrs}) ->
     dial_ring_group(Call, Numbers, Attrs);
 
+exec_element(Call, 'Record', [], #xmlElement{attributes=Attrs}) ->
+    record_call(Call, Attrs);
 exec_element(Call, 'Record', [#xmlText{}], #xmlElement{attributes=Attrs}) ->
     record_call(Call, Attrs);
 
@@ -108,8 +113,11 @@ exec_element(Call, 'Redirect', [_|_]=Texts, #xmlElement{attributes=Attrs}) ->
 
     Call2 = set_variables(Call1, Texts),
 
-    NewUri = wht_util:resolve_uri(whapps_call:kvs_fetch(<<"voice_uri">>, Call1), Url),
-    Method = wht_util:http_method(props:get_value(method, Props, post)),
+    NewUri = kzt_util:resolve_uri(whapps_call:kvs_fetch(<<"voice_uri">>, Call1), Url),
+    Method = kzt_util:http_method(props:get_value(method, Props, post)),
+
+    lager:debug("Redirect: using ~s to ~s(~s)", [Method, NewUri, Url]),
+
     BaseParams = wh_json:from_list(req_params(Call1) ),
 
     {request, Call2, NewUri, Method, BaseParams};
@@ -131,7 +139,7 @@ exec_element(Call, 'Reject', _, #xmlElement{attributes=Attrs}) ->
     Reason = reject_reason(props:get_value(reason, Props)),
 
     play_reject_reason(Call, Reason), 
-    whapps_call_command:response(reject_code(Reason), Reason, Call),
+    _ = whapps_call_command:response(reject_code(Reason), Reason, Call),
     {stop, update_call_status(Call, ?STATUS_BUSY)}.
 
 %%-------------------------------------------------------------------------
@@ -142,7 +150,7 @@ exec_element(Call, 'Reject', _, #xmlElement{attributes=Attrs}) ->
 -spec set_variable/3 :: (whapps_call:call(), wh_json:json_string(), wh_json:json_term()) -> whapps_call:call().
 -spec set_variables/2 :: (whapps_call:call(), list()) -> whapps_call:call().
 set_variable(Call, Key, Value) ->
-    wht_translator:set_user_vars([{wh_util:to_binary(Key)
+    kzt_translator:set_user_vars([{wh_util:to_binary(Key)
                                    ,wh_util:to_binary(Value)
                                   }], Call).
 
@@ -156,7 +164,7 @@ set_variables(Call, Els) ->
           || #xmlElement{name='Variable', attributes=Attrs} <- Els
          ] of
         [] -> Call;
-        Vars -> wht_translator:set_user_vars(Vars, Call)
+        Vars -> kzt_translator:set_user_vars(Vars, Call)
     end.
 
 %%-------------------------------------------------------------------------
@@ -175,48 +183,94 @@ record_call(Call, Attrs) ->
     Props = attrs_to_proplist(Attrs),
     lager:debug("RECORD with attrs: ~p", [Attrs]),
 
-    %% TODO: remove cf dependency
-    Action = wht_util:resolve_uri(whapps_call:kvs_fetch(<<"voice_uri">>, Call1)
-                                  ,props:get_value(action, Props)
-                                 ),
-
-    Method = wht_util:http_method(props:get_value(method, Props, post)),
-
-    %% Transcribe = props:get_is_true(transcribe, Props, false),
-    %% TranscribeCallback = props:get_value(transcribeCallback, Props),
-
     case props:get_is_true(playBeep, Props, true) of
         true -> play_tone(Call1);
         false -> ok
     end,
 
     MediaName = media_name(whapps_call:call_id(Call1)),
-    case whapps_call_command:b_record(MediaName
-                                      ,props:get_value(finishOnKey, Props, ?ANY_DIGIT)
-                                      ,wh_util:to_binary(props:get_value(maxLength, Props, <<"3600">>))
-                                      ,props:get_value(timeout, Props, <<"5">>)
-                                      ,Call1
-                                     ) of
-        {ok, Msg} ->
-            case wh_json:get_integer_value(<<"Length">>, Msg, 0) of
-                0 -> lager:debug("recorded message length: 0, continuing"), ok;
-                L ->
-                    RecordingId = maybe_save_recording(Call1, MediaName, true),
-                    DTMFs = wh_json:get_value(<<"Digit-Pressed">>, Msg),
+    {ok, MediaJObj} = store_recording_meta(Call1, MediaName),
 
-                    lager:debug("recorded message length: ~bs, stored as ~s", [L, RecordingId]),
-                    BaseParams = wh_json:from_list([{<<"RecordingUrl">>, recorded_url(Call1, RecordingId, true)}
-                                                    ,{<<"RecordingDuration">>, L}
-                                                    ,{<<"Digits">>, DTMFs}
-                                                    | req_params(Call1)
-                                                   ]),
-                    {request, update_call_status(Call1, ?STATUS_ANSWERED), Action, Method, BaseParams}
+    MaxLength = props:get_integer_value(maxLength, Props, 3600),
+    Timeout = props:get_integer_value(timeout, Props, 5),
+
+    case whapps_call_command:b_record(MediaName, terminators(props:get_value(finishOnKey, Props))
+                                      ,MaxLength, 200, Timeout, Call1) of
+        {ok, Msg} ->
+            lager:debug("record msg: ~p", [Msg]),
+            case record_terminated_by(Msg) of
+                {hangup, Length} when Length < 1000 ->
+                    lager:debug("hangup ended call, but length(~b ms) is < 1000ms", [Length]),
+                    _ = couch_mgr:del_doc(whapps_call:account_db(Call1), wh_json:get_value(<<"_id">>, MediaJObj)),
+                    {ok, Call1};
+                {hangup, Length} ->
+                    lager:debug("hangup ended call, saving recording"),
+                    store_and_send_recording(Call1, MediaJObj, undefined, Props, Length);
+                {silence, Length} when Length < Timeout * 1000 ->
+                    lager:debug("silence hits ended call and length (~b ms) is less than timeout (~b ms)", [Length, Timeout * 1000]),
+                    _ = couch_mgr:del_doc(whapps_call:account_db(Call1), wh_json:get_value(<<"_id">>, MediaJObj)),
+                    {ok, Call1};
+                {silence, Length} ->
+                    lager:debug("silence hits ended, but length (~b ms) is > timeout (~b ms)", [Length, Timeout * 1000]),
+                    store_and_send_recording(Call1, MediaJObj, undefined, Props, Length);
+                {terminator, _T, Length} when Length < 1000 ->
+                    lager:debug("terminator(~s) ended call, but length(~b ms) is < 1000ms", [_T, Length]),
+                    _ = couch_mgr:del_doc(whapps_call:account_db(Call1), wh_json:get_value(<<"_id">>, MediaJObj)),
+                    {ok, Call1};
+                {terminator, T, Length} ->
+                    lager:debug("terminator ~s ended call, saving recording", [T]),
+                    store_and_send_recording(Call1, MediaJObj, T, Props, Length)
             end;
-        {error, _E} ->
-            %% TODO: when call hangs up, try to save message
-            lager:debug("failed to record message: ~p", [_E]),
-            {stop, update_call_status(Call1, ?STATUS_FAILED)}
+        {error, R} ->
+            lager:debug("error while attempting to record a new message: ~p", [R]),
+            {stop, update_call_status(Call1, ?STATUS_CANCELED)}
     end.
+
+-spec record_terminated_by/1 :: (wh_json:json_object()) ->
+                                        {'silence', integer()} |
+                                        {'hangup', integer()} |
+                                        {'terminator', ne_binary(), integer()}.
+record_terminated_by(JObj) ->
+    Length = wh_json:get_integer_value(<<"Length">>, JObj),
+    case wh_json:is_true(<<"Silence-Terminated">>, JObj) of
+        true -> {silence, Length};
+        false ->
+            case wh_json:get_value(<<"Terminator">>, JObj) of
+                undefined -> {hangup, Length};
+                Term -> {terminator, Term, Length}
+            end
+    end.
+
+-spec terminators/1 :: ('undefined' | string() | ne_binary()) -> [ne_binary(),...].
+terminators(undefined) -> ?ANY_DIGIT;
+terminators(?NE_BINARY = T) -> [ <<D>> || <<D>> <= T];
+terminators([_|_]=L) -> terminators(wh_util:to_binary(L)).
+
+-spec store_and_send_recording/5 :: (whapps_call:call(), wh_json:json_object(), ne_binary() | 'undefined'
+                                     ,wh_proplist(), pos_integer()) -> request_return().
+store_and_send_recording(Call, MediaJObj, DTMF, Props, Length) ->
+    {RecordingId, _StoreJObj} = maybe_save_recording(Call, MediaJObj, true),
+
+    lager:debug("recording of ~b ms finished, stored as ~s", [Length, RecordingId]),
+
+    Action = kzt_util:resolve_uri(whapps_call:kvs_fetch(<<"voice_uri">>, Call)
+                                  ,props:get_value(action, Props)
+                                 ),
+    Method = kzt_util:http_method(props:get_value(method, Props, post)),
+    lager:debug("sending data to ~s(~s)", [Action, Method]),
+
+    %% Transcribe = props:get_is_true(transcribe, Props, false),
+    %% TranscribeCallback = props:get_value(transcribeCallback, Props),
+
+    BaseParams = wh_json:from_list(
+                   props:filter_undefined(
+                     [{<<"RecordingUrl">>, recorded_url(Call, RecordingId, true)}
+                      ,{<<"RecordingDuration">>, Length div 1000} % convert to seconds
+                      ,{<<"Digits">>, DTMF}
+                      | req_params(Call)
+                     ]
+                    )),
+    {request, update_call_status(Call, ?STATUS_ANSWERED), Action, Method, BaseParams}.
 
 -spec gather/2 :: (whapps_call:call(), proplist()) -> exec_return().
 gather(Call, Attrs) ->
@@ -233,9 +287,10 @@ gather(Call, Attrs) ->
         MaxDigits -> collect_digits(Call1, InitDigit, wh_util:to_integer(MaxDigits), FinishOnKey, Timeout, Props)
     end.
 
--spec exec_gather_element/4 :: (whapps_call:call(), atom(), list(), #xmlElement{}) -> {'ok', binary(), whapps_call:call()} |
-                                                                                      {'ok', whapps_call:call()} |
-                                                                                      {'error', atom() | wh_json:json_object(), whapps_call:call()}.
+-spec exec_gather_element/4 :: (whapps_call:call(), atom(), list(), #xmlElement{}) ->
+                                       {'ok', binary(), whapps_call:call()} |
+                                       {'ok', whapps_call:call()} |
+                                       {'error', atom() | wh_json:json_object(), whapps_call:call()}.
 exec_gather_element(Call, 'Say', [#xmlText{value=SayMe, type=text}], #xmlElement{attributes=Attrs}) ->    
     Result = say(Call, SayMe, Attrs, ?ANY_DIGIT),
     lager:debug("say returned: ~p", [Result]),
@@ -244,8 +299,7 @@ exec_gather_element(Call, 'Say', [#xmlText{value=SayMe, type=text}], #xmlElement
 exec_gather_element(Call, 'Play', [#xmlText{value=PlayMe, type=text}], #xmlElement{attributes=Attrs}) ->
     Call1 = case play(Call, PlayMe, Attrs, ?ANY_DIGIT) of
                 {ok, Call0} -> Call0;
-                {stop, Call0} -> Call0;
-                {request, Call0, _, _, _} -> Call0
+                {stop, Call0} -> Call0
             end,
     case whapps_call_command:wait_for_application_or_dtmf(<<"play">>, infinity) of
         {dtmf, Digit} ->
@@ -275,7 +329,97 @@ exec_gather_element(Call, _Action, _, _) ->
 %%
 %%   value        | DID to dial              | DID
 %%                | <Number>                 |
+%%                | <Conference>             |
 %%-------------------------------------------------------------------------
+
+%%-------------------------------------------------------------------------
+%% @doc Conference
+%%   muted                  | true, false            | false
+%%   beep                   | true, false            | true
+%%   startConferenceOnEnter | true, false            | true
+%%   endConferenceOnExit    | true, false            | false
+%%   waitUrl                | URL, empty string      | Default hold music
+%%   waitMethod             | GET, POST              | POST
+%%   maxParticipants        | int <= 40              | 40
+%%
+%%   2600Hz extensions
+%%   entryPin               | pin # to enter         | empty (no pin)
+%%
+%%   value                  | Name of the conference | string
+%%-------------------------------------------------------------------------
+dial_conference(Call
+                ,#xmlElement{name='Conference'
+                             ,content=[#xmlText{value=ConfRoom, type=text}]
+                             ,attributes=ConfAttrs
+                            }
+                ,DialAttrs) ->
+    lager:debug("DIAL conference room: ~s", [ConfRoom]),
+
+    connect_caller_to_conference(Call, wh_util:to_binary(ConfRoom), attrs_to_proplist(ConfAttrs)),
+
+    finish_dial(Call, DialAttrs).
+
+-spec connect_caller_to_conference/3 :: (whapps_call:call(), ne_binary(), wh_proplist()) -> 'ok'.
+connect_caller_to_conference(Call, ConfRoom, ConfProps) ->
+    Command = [{<<"Call">>, whapps_call:to_json(Call)}
+               ,{<<"Conference-Doc">>, conference_config(ConfRoom, ConfProps)}
+               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+              ],
+
+    wapi_conference:publish_discovery_req(Command),
+
+    lager:debug("conference discovery sent for conf ~s", [ConfRoom]).
+
+-spec conference_config/2 :: (ne_binary(), wh_proplist()) -> wh_json:json_object().
+conference_config(ConfRoom, ConfProps) ->
+    MaxParticipants = conf_max_participants(props:get_integer_value('maxParticipants', ConfProps, 40)),
+    StartConferenceOnEnter = props:get_is_true('startConferenceOnEnter', ConfProps, true),
+
+    ConfDoc = [{<<"name">>, ConfRoom}
+               ,{<<"play_name_on_join">>, <<"true">>}
+               ,{<<"conference_numbers">>, []}
+               ,{<<"wait_for_moderator">>, <<"true">>}
+               ,{<<"require_moderator">>, <<"true">>}
+               ,{<<"max_members">>, MaxParticipants}
+              ],
+
+    case (StartConferenceOnEnter =:= true) of % if the conf can begin when the caller enters
+        true -> wh_json:from_list([{<<"moderator">>, caller_config(ConfProps, false)} | ConfDoc]);
+        false -> wh_json:from_list([{<<"member">>, caller_config(ConfProps, true)} | ConfDoc])
+    end.
+
+-spec caller_config/2 :: (wh_proplist(), boolean()) -> wh_json:json_object().
+caller_config(ConfProps, JoinDeaf) ->
+    WaitUrl = conf_wait_url(props:get_value('waitUrl', ConfProps)),
+    WaitMethod = kzt_util:http_method(props:get_value('waitMethod', ConfProps, post)),
+    EndConferenceOnExit = props:get_is_true('endOnConferenceOnExit', ConfProps, false),
+    EntryPin = conf_entry_pin(props:get_value('entryPin', ConfProps)),
+
+    wh_json:from_list([{<<"join_muted">>, props:get_is_true('muted', ConfProps, false)}
+                       ,{<<"join_deaf">>, JoinDeaf}
+                       ,{<<"pins">>, EntryPin}
+                       ,{<<"play_name">>, WaitUrl =/= <<"none">>}
+                       ,{<<"play_beep">>, props:get_is_true('beep', ConfProps, true)}
+                       ,{<<"hold_music">>, WaitUrl}
+                       ,{<<"hold_music_method">>, WaitMethod}
+                       ,{<<"end_conference_on_hangup">>, EndConferenceOnExit}
+                      ]).
+
+-spec conf_entry_pin/1 :: ('undefined' | binary()) -> [] | [ne_binary()].
+conf_entry_pin(undefined) -> [];
+conf_entry_pin(<<>>) -> [];
+conf_entry_pin(?NE_BINARY = Pin) -> [Pin].
+
+-spec conf_max_participants/1 :: (1..40) -> 1..40.
+conf_max_participants(X) when X < 1 -> throw({error, max_participants_too_low});
+conf_max_participants(X) when X > 40 -> throw({error, max_participants_too_high});
+conf_max_participants(X) when is_integer(X) -> X.
+
+-define(DEFAULT_HOLD_MUSIC, <<"http://twimlets.com/holdmusic?Bucket=com.twilio.music.classical">>).
+-spec conf_wait_url/1 :: ('undefined' | binary()) -> ne_binary().
+conf_wait_url(undefined) -> ?DEFAULT_HOLD_MUSIC;
+conf_wait_url(<<>>) -> <<"none">>;
+conf_wait_url(Url) -> Url. % can return audio data or TwiML
 
 %%-------------------------------------------------------------------------
 %% @doc Number
@@ -305,6 +449,7 @@ dial_number(Call0, DialMe, Attrs) ->
     Call1 = send_call(Call0, DialMe, Props),
     finish_dial(Call1, Props).
 
+-spec dial_ring_group/3 :: (whapps_call:call(), list(), proplist()) -> ok_return() | stop_return().
 dial_ring_group(Call, Numbers, Attrs) ->
     lager:debug("DIAL ring group"),
     Props = attrs_to_proplist(Attrs),
@@ -335,7 +480,9 @@ dial_ring_group(Call, Numbers, Attrs) ->
             {stop, update_call_status(Call, ?STATUS_FAILED)}
     end.
 
--spec ring_group_bridge_req/3 :: (whapps_call:call(), wh_json:json_objects(), proplist()) -> {'ok' | 'error' | 'stop', wh_json:json_object()}.
+-spec ring_group_bridge_req/3 :: (whapps_call:call(), wh_json:json_objects(), proplist()) ->
+                                         {'ok' | 'error', wh_json:json_object()} |
+                                         stop_return().
 ring_group_bridge_req(Call, EPs, Props) ->
     Timeout = wh_util:to_integer(props:get_value(timeout, Props, 30)),
     CallerID = props:get_value(callerId, Props, whapps_call:caller_id_number(Call)),
@@ -386,12 +533,11 @@ send_call(Call0, DialMe, Props) ->
                                                                ,{CallerID, fun whapps_call:set_caller_id_number/2}
                                                               ]),
 
-    %% remove reliance on cf_offnet...
-    ok = cf_offnet:offnet_req(wh_json:from_list([{<<"Timeout">>, Timeout}
-                                                 | offnet_data(RecordCall, StarHangup)
-                                                ])
-                              ,Call1
-                             ),
+    ok = kzt_util:offnet_req(wh_json:from_list([{<<"Timeout">>, Timeout}
+                                                | offnet_data(RecordCall, StarHangup)
+                                               ])
+                             ,Call1
+                            ),
     Call1.
 
 finish_dial(Call, Props) ->
@@ -404,7 +550,9 @@ finish_dial(Call, Props) ->
     OffnetProp = wait_for_offnet(Call, RecordCall, StarHangup, TimeLimit),
     Elapsed = wh_util:elapsed_s(Start),
 
-    RecordingId = maybe_save_recording(Call, props:get_value(media_name, OffnetProp), RecordCall),
+    {RecordingId, _StoreJObj} = maybe_save_recording(Call, props:get_value(media_jobj, OffnetProp), RecordCall),
+
+    lager:debug("offnet: ~p", [OffnetProp]),
 
     OtherLeg = props:get_value(other_leg, OffnetProp),
     Status = props:get_value(call_status, OffnetProp),
@@ -416,14 +564,18 @@ finish_dial(Call, Props) ->
             %% since its not defined, we fall through to the next TwiML command
             maybe_stop(Call, ok, {ok, Call});
         Action ->
-            BaseParams = wh_json:from_list([{"DialCallStatus", Status}
-                                            ,{"DialCallSid", OtherLeg}
-                                            ,{<<"DialCallDuration">>, Elapsed}
-                                            ,{<<"RecordingUrl">>, recorded_url(Call, RecordingId, RecordCall)}
-                                            | req_params(Call)
-                                           ]),
-            Uri = wht_util:resolve_uri(whapps_call:kvs_fetch(<<"voice_uri">>, Call), Action),
-            Method = wht_util:http_method(props:get_value(method, Props, post)),
+            BaseParams = wh_json:from_list(
+                           props:filter_empty([{"DialCallStatus", Status}
+                                               ,{"DialCallSid", OtherLeg}
+                                               ,{"ParentCallSid", whapps_call:call_id(Call)}
+                                               ,{<<"DialCallDuration">>, Elapsed}
+                                               ,{<<"RecordingUrl">>, recorded_url(Call, RecordingId, RecordCall)}
+                                               ,{<<"RecordingDuration">>, Elapsed}
+                                               | req_params(Call)
+                                              ])
+                          ),
+            Uri = kzt_util:resolve_uri(whapps_call:kvs_fetch(<<"voice_uri">>, Call), Action),
+            Method = kzt_util:http_method(props:get_value(method, Props, post)),
             {request, Call, Uri, Method, BaseParams}
     end.
 
@@ -440,8 +592,9 @@ pause(Call, Attrs) ->
     after Length -> {ok, Call1}
     end.
 
--spec play/3 :: (whapps_call:call(), ne_binary(), proplist()) -> exec_element_return().
--spec play/4 :: (whapps_call:call(), ne_binary(), proplist(), list() | binary()) -> exec_element_return().
+-spec play/3 :: (whapps_call:call(), ne_binary(), proplist()) -> ok_return() | stop_return().
+-spec play/4 :: (whapps_call:call(), ne_binary(), proplist(), list() | binary()) ->
+                        ok_return() | stop_return().
 play(Call, PlayMe, Attrs) ->
     Call1 = maybe_answer_call(Call),
     lager:debug("PLAY: ~s", [PlayMe]),
@@ -464,8 +617,9 @@ play(Call, PlayMe, Attrs, Terminators) ->
           end,
     maybe_stop(Call1, Res, {ok, Call1}).
 
--spec say/3 :: (whapps_call:call(), ne_binary(), proplist()) -> exec_element_return().
--spec say/4 :: (whapps_call:call(), ne_binary(), proplist(), list() | binary()) -> exec_element_return().
+-spec say/3 :: (whapps_call:call(), ne_binary(), proplist()) -> ok_return() | stop_return().
+-spec say/4 :: (whapps_call:call(), ne_binary(), proplist(), list() | binary()) ->
+                       ok_return() | stop_return().
 say(Call, SayMe, Attrs) ->
     Call1 = maybe_answer_call(Call),
     Props = attrs_to_proplist(Attrs),
@@ -474,11 +628,22 @@ say(Call, SayMe, Attrs) ->
 
     lager:debug("SAY: ~s using voice ~s, in lang ~s", [SayMe, Voice, Lang]),
 
-    case get_loop_count(wh_util:to_integer(props:get_value(loop, Props, 1))) of
-        0 -> say_loop(Call1, fun() -> whapps_call_command:b_tts(wh_util:to_binary(SayMe), Voice, Lang, Call1) end, infinity);
-        1 -> whapps_call_command:b_tts(wh_util:to_binary(SayMe), Voice, Lang, Call1);
-        N -> say_loop(Call1, fun() -> whapps_call_command:b_tts(wh_util:to_binary(SayMe), Voice, Lang, Call1) end, N)
-    end.
+    Res = case get_loop_count(wh_util:to_integer(props:get_value(loop, Props, 1))) of
+              0 ->
+                  lager:debug("looping for ever (loop: 0)"),
+                  say_loop(Call1, fun() ->
+                                          whapps_call_command:b_tts(wh_util:to_binary(SayMe), Voice, Lang, Call1)
+                                  end, infinity);
+              1 ->
+                  lager:debug("say once"),
+            whapps_call_command:b_tts(wh_util:to_binary(SayMe), Voice, Lang, Call1);
+              N ->
+                  lager:debug("saying, then looping ~b more times", [N-1]),
+                  say_loop(Call1, fun() ->
+                                          whapps_call_command:b_tts(wh_util:to_binary(SayMe), Voice, Lang, Call1)
+                                  end, N)
+          end,
+    maybe_stop(Call1, Res, {ok, Call1}).
 
 say(Call, SayMe, Attrs, Terminators) ->
     Call1 = maybe_answer_call(Call),
@@ -500,13 +665,16 @@ collect_digits(Call, InitDigit, MaxDigits, FinishOnKey, Timeout, Props) ->
     case whapps_call_command:collect_digits(MaxDigitsBin, Timeout, 2000
                                             ,undefined, [FinishOnKey], Call
                                            ) of
+        {ok, <<>>} ->
+            lager:debug("no dtmfs received, moving to next verb"),
+            {ok, Call};
         {ok, DTMFs} ->
             lager:debug("recv DTMFs: ~s", [DTMFs]),
 
-            NewUri = wht_util:resolve_uri(whapps_call:kvs_fetch(<<"voice_uri">>, Call)
+            NewUri = kzt_util:resolve_uri(whapps_call:kvs_fetch(<<"voice_uri">>, Call)
                                           ,props:get_value(action, Props)
                                          ),
-            Method = wht_util:http_method(props:get_value(method, Props, post)),
+            Method = kzt_util:http_method(props:get_value(method, Props, post)),
             BaseParams = wh_json:from_list([{<<"Digits">>, <<InitDigit/binary, DTMFs/binary>>}
                                             | req_params(Call)
                                            ]),
@@ -517,6 +685,8 @@ collect_digits(Call, InitDigit, MaxDigits, FinishOnKey, Timeout, Props) ->
             {stop, Call}
     end.
 
+collect_until_terminator(Call, <<>>, FinishOnKey, Timeout, Props) ->
+    collect_until_terminator_1(Call, FinishOnKey, Timeout, Props, []);
 collect_until_terminator(Call, InitDigit, FinishOnKey, Timeout, Props) ->
     collect_until_terminator_1(Call, FinishOnKey, Timeout, Props, [InitDigit]).
 
@@ -525,23 +695,26 @@ collect_until_terminator_1(Call, FinishOnKey, Timeout, Props, DTMFs) ->
         {ok, FinishOnKey} ->
             Digits = lists:reverse(DTMFs),
             lager:debug("recv finish key ~s, responding with ~p", [FinishOnKey, Digits]),
-            NewUri = wht_util:resolve_uri(whapps_call:kvs_fetch(<<"voice_uri">>, Call)
+            NewUri = kzt_util:resolve_uri(whapps_call:kvs_fetch(<<"voice_uri">>, Call)
                                           ,props:get_value(action, Props)
                                          ),
-            Method = wht_util:http_method(props:get_value(method, Props, post)),
+            Method = kzt_util:http_method(props:get_value(method, Props, post)),
             BaseParams = wh_json:from_list([{<<"Digits">>, iolist_to_binary(Digits)} | req_params(Call)]),
 
             {request, Call, NewUri, Method, BaseParams};
-        {ok, <<>>} ->
+        {ok, <<>>} when DTMFs =/= [] ->
             Digits = lists:reverse(DTMFs),
             lager:debug("timeout waiting for digits, working with what we got: '~s'", [Digits]),
-            NewUri = wht_util:resolve_uri(whapps_call:kvs_fetch(<<"voice_uri">>, Call)
+            NewUri = kzt_util:resolve_uri(whapps_call:kvs_fetch(<<"voice_uri">>, Call)
                                           ,props:get_value(action, Props)
                                          ),
-            Method = wht_util:http_method(props:get_value(method, Props, post)),
+            Method = kzt_util:http_method(props:get_value(method, Props, post)),
             BaseParams = wh_json:from_list([{<<"Digits">>, Digits} | req_params(Call)]),
 
             {request, Call, NewUri, Method, BaseParams};
+        {ok, <<>>} ->
+            lager:debug("no dtmfs collected, going to next verb"),
+            {ok, Call};
         {ok, Digit} ->
             lager:debug("recv dtmf ~s", [Digit]),
             collect_until_terminator_1(Call, FinishOnKey, Timeout, Props, [Digit | DTMFs]);
@@ -585,6 +758,8 @@ reject_code(<<"busy">>) ->
 reject_code(<<"rejected">>) ->
     <<"503">>.
 
+-spec play_loop/3 :: (whapps_call:call(), ne_binary(), non_neg_integer()) -> 'ok'.
+-spec play_loop/4 :: (whapps_call:call(), ne_binary(), list(), non_neg_integer()) -> 'ok'.
 play_loop(_, _, 0) -> ok;
 play_loop(Call, PlayMe, N) ->
     _ = whapps_call_command:b_play(wh_util:to_binary(PlayMe), Call),
@@ -592,10 +767,7 @@ play_loop(Call, PlayMe, N) ->
 
 play_loop(_, _, _, 0) -> ok;
 play_loop(Call, PlayMe, Terminators, N) ->
-    NoopId = whapps_call_command:audio_macro([
-                                              {play, wh_util:to_binary(PlayMe), Terminators}
-                                             ]
-                                             ,Terminators
+    NoopId = whapps_call_command:audio_macro([{play, wh_util:to_binary(PlayMe), Terminators}]
                                              ,Call
                                             ),
     lager:debug("play loop ~b with terminators: ~p: noop: ~p", [N, Terminators, NoopId]),
@@ -630,9 +802,9 @@ wait_for_offnet(Call, HangupOnStar, RecordCall, TimeLimit, Start, Acc) ->
         {amqp_msg, JObj} ->
             case wh_util:get_event_type(JObj) of
                 {<<"resource">>, <<"offnet_resp">>} ->
-                    [{call_status, call_status(wh_json:get_value(<<"Response-Message">>, JObj), wh_json:get_value(<<"Response-Code">>, JObj))}
-                     | Acc
-                    ];
+                    RespMsg = wh_json:get_value(<<"Response-Message">>, JObj),
+                    RespCode = wh_json:get_value(<<"Response-Code">>, JObj),
+                    [{call_status, call_status(RespMsg, RespCode)} | Acc];
                 {<<"call_event">>, <<"DTMF">>} when HangupOnStar ->
                     case wh_json:get_value(<<"DTMF-Digit">>, JObj) of
                         <<"*">> ->
@@ -640,51 +812,75 @@ wait_for_offnet(Call, HangupOnStar, RecordCall, TimeLimit, Start, Acc) ->
                             whapps_call_command:hangup(true, Call);
                         _DTMF ->
                             lager:debug("ignore '~s' DTMF", [_DTMF]),
-                            wait_for_offnet(Call, HangupOnStar, RecordCall, TimeLimit - wh_util:elapsed_ms(Start), erlang:now(), Acc)
+                            wait_for_offnet(Call, HangupOnStar, RecordCall
+                                            ,TimeLimit - wh_util:elapsed_ms(Start)
+                                            ,erlang:now(), Acc
+                                           )
                     end;
                 {<<"call_event">>, <<"LEG_CREATED">>} ->
                     BLeg = wh_json:get_value(<<"Other-Leg-Unique-ID">>, JObj),
                     lager:debug("b-leg created: ~s", [BLeg]),
-                    wait_for_offnet(Call, HangupOnStar, RecordCall, TimeLimit - wh_util:elapsed_ms(Start), erlang:now(), [{other_leg, BLeg}|Acc]);
+                    wait_for_offnet(Call, HangupOnStar, RecordCall
+                                    ,TimeLimit - wh_util:elapsed_ms(Start)
+                                    ,erlang:now(), [{other_leg, BLeg}|Acc]
+                                   );
                 {<<"call_event">>, <<"CHANNEL_BRIDGE">>} when RecordCall ->
                     OtherLegCallID = props:get_value(other_leg, Acc),
                     MediaName = media_name(whapps_call:call_id(Call), OtherLegCallID),
 
                     lager:debug("channel bridged, start recording the call: ~s", [MediaName]),
 
-                    whapps_call_command:record_call(MediaName, <<"start">>, <<"remote">>, TimeLimit, Call),
-                    wait_for_offnet(Call, HangupOnStar, RecordCall, TimeLimit - wh_util:elapsed_ms(Start), erlang:now(), [{media_name, MediaName}|Acc]);
+                    {ok, MediaJObj} = store_recording_meta(Call, MediaName),
+                    whapps_call_command:record_call(MediaName
+                                                    ,<<"start">>
+                                                    ,store_url(Call, MediaJObj)
+                                                    ,TimeLimit
+                                                    ,Call
+                                                   ),
+                    wait_for_offnet(Call, HangupOnStar, RecordCall
+                                    ,TimeLimit - wh_util:elapsed_ms(Start)
+                                    ,erlang:now(), [{media_jobj, MediaJObj}|Acc]
+                                   );
                 _Type ->
                     lager:debug("ignore ~p", [_Type]),
-                    wait_for_offnet(Call, HangupOnStar, RecordCall, TimeLimit - wh_util:elapsed_ms(Start), erlang:now(), Acc)
+                    wait_for_offnet(Call, HangupOnStar, RecordCall
+                                    ,TimeLimit - wh_util:elapsed_ms(Start)
+                                    ,erlang:now(), Acc
+                                   )
             end;
         _ ->
             %% dont let the mailbox grow unbounded if
             %%   this process hangs around...
-            wait_for_offnet(Call, HangupOnStar, RecordCall, TimeLimit - wh_util:elapsed_ms(Start), erlang:now(), Acc)
+            wait_for_offnet(Call, HangupOnStar, RecordCall
+                            ,TimeLimit - wh_util:elapsed_ms(Start)
+                            ,erlang:now(), Acc
+                           )
     after
         TimeLimit ->
             lager:debug("time limit for call exceeded"),
             whapps_call_command:hangup(true, Call),
-            wait_for_offnet(Acc)
+            wait_for_hangup(Acc)
     end.
 
-wait_for_offnet(Acc) ->
+-spec wait_for_hangup/1 :: (wh_proplist()) -> wh_proplist().
+wait_for_hangup(Acc) ->
     receive
         {amqp_msg, JObj} ->
             case wh_util:get_event_type(JObj) of
                 { <<"resource">>, <<"offnet_resp">> } ->
-                    [{call_status, call_status(wh_json:get_value(<<"Response-Message">>, JObj), wh_json:get_value(<<"Response-Code">>, JObj))}
-                     | Acc
-                    ];
+                    RespMsg = wh_json:get_value(<<"Response-Message">>, JObj),
+                    RespCode = wh_json:get_value(<<"Response-Code">>, JObj),
+                    [{call_status, call_status(RespMsg, RespCode)} | Acc];
                 _ ->
-                    wait_for_offnet(Acc)
+                    wait_for_hangup(Acc)
             end;
         _ ->
-            wait_for_offnet(Acc)
+            wait_for_hangup(Acc)
     end.
 
--spec wait_for_bridge_start/2 :: (whapps_call:call(), integer()) -> {'ok' | 'error' | 'stop', wh_json:json_object()}.
+-spec wait_for_bridge_start/2 :: (whapps_call:call(), pos_integer()) ->
+                                         {'ok' | 'error', wh_json:json_object()} |
+                                         {'stop', whapps_call:call()}.
 wait_for_bridge_start(Call, Timeout) ->
     Start = erlang:now(),
     receive
@@ -746,39 +942,79 @@ media_name(ALeg, BLeg) ->
     DateTime = wh_util:pretty_print_datetime(calendar:universal_time()),
     list_to_binary([DateTime, "_", ALeg, "_to_", BLeg, ".mp3"]).
 
+-spec recorded_url/1 :: (ne_binary()) -> ne_binary().
+-spec recorded_url/3 :: (whapps_call:call(), ne_binary(), boolean()) -> 'undefined' | ne_binary().
 recorded_url(_Call, _DocId, false) ->
     undefined;
 recorded_url(Call, DocId, true) ->
-    list_to_binary([<<"/v1/accounts/">>, whapps_call:account_id(Call), <<"/media/">>, DocId]).
+    Db = whapps_call:account_db(Call),
 
-maybe_save_recording(_Call, _MediaName, false) ->
-    undefined;
-maybe_save_recording(Call, MediaName, true) ->
-    MediaDoc = [{<<"name">>, MediaName}
-                ,{<<"description">>, <<"recording ", MediaName/binary>>}
-                ,{<<"content_type">>, <<"audio/mp3">>}
-                ,{<<"media_source">>, <<"recorded">>}
-                ,{<<"source_type">>, wh_util:to_binary(?MODULE)}
-               ],
-    AcctDb = whapps_call:account_db(Call),
-    case couch_mgr:save_doc(AcctDb, wh_json:from_list(MediaDoc)) of
-        {ok, JObj} -> store_recording(Call, MediaName, JObj);
-        _E -> lager:debug("error saving media doc: ~p", [_E])
+    case whapps_util:amqp_pool_request([{<<"Media-Name">>, <<Db/binary, "/", DocId/binary>>}
+                                        ,{<<"Stream-Type">>, <<"new">>}
+                                        ,{<<"Protocol">>, <<"http">>}
+                                        ,{<<"Call-ID">>, whapps_call:call_id(Call)}
+                                        ,{<<"Msg-ID">>, wh_util:to_binary(wh_util:current_tstamp())}
+                                        | wh_api:default_headers(?APP_NAME, ?APP_VERSION)]
+                                       ,fun wapi_media:publish_req/1
+                                       ,fun wapi_media:resp_v/1
+                                      ) of
+        {error, _R} ->
+            lager:debug("failed to get media URL: ~p", [_R]),
+            undefined;
+        {ok, MediaResp} ->
+            lager:debug("stream url: ~s", [wh_json:get_value(<<"Stream-URL">>, MediaResp)]),
+            recorded_url(wh_json:get_value(<<"Stream-URL">>, MediaResp))
     end.
 
--spec store_recording/3 :: (whapps_call:call(), ne_binary(), wh_json:json_object()) -> ne_binary().
+%% if the media_req returns a SHOUT URL, strip it and return an http protocol
+recorded_url(<<"shout://", Url/binary>>) ->
+    <<"http://", Url/binary>>;
+recorded_url(Url) -> Url.
+
+-spec maybe_save_recording/3 :: (whapps_call:call(), wh_json:json_object(), boolean()) ->
+                                        {ne_binary(), wh_json:json_object()} |
+                                        'undefined'.
+maybe_save_recording(_Call, _MediaDoc, false) ->
+    undefined;
+maybe_save_recording(Call, MediaDoc, true) ->
+    store_recording(Call, wh_json:get_value(<<"name">>, MediaDoc), MediaDoc).
+
+-spec store_recording/3 :: (whapps_call:call(), ne_binary(), wh_json:json_object()) ->
+                                   {ne_binary(), wh_json:json_object()}.
 store_recording(Call, MediaName, JObj) ->
+    StoreUrl = store_url(Call, JObj),
+    {ok, StoreJObj} = whapps_call_command:b_store(MediaName, StoreUrl, Call),
+    {wh_json:get_value(<<"_id">>, JObj), StoreJObj}.
+
+-spec store_url/2 :: (whapps_call:call(), wh_json:json_object()) -> ne_binary().
+store_url(Call, JObj) ->
     AccountDb = whapps_call:account_db(Call),
     MediaId = wh_json:get_value(<<"_id">>, JObj),
+    MediaName = wh_json:get_value(<<"name">>, JObj),
 
     Rev = wh_json:get_value(<<"_rev">>, JObj),
-    StoreUrl = list_to_binary([couch_mgr:get_url(), AccountDb
-                               ,"/", MediaId
-                               ,"/", MediaName
-                               ,"?rev=", Rev
-                              ]),
-    {ok, _} = whapps_call_command:b_store(MediaName, StoreUrl, Call),
-    MediaId.
+    list_to_binary([couch_mgr:get_url(), AccountDb
+                    ,"/", MediaId
+                    ,"/", MediaName
+                    ,"?rev=", Rev
+                   ]).
+
+-spec store_recording_meta/2 :: (whapps_call:call(), ne_binary()) -> {'ok', wh_json:json_object()} |
+                                                                     {'error', any()}.
+store_recording_meta(Call, MediaName) ->
+    AcctDb = whapps_call:account_db(Call),
+    MediaDoc = wh_doc:update_pvt_parameters(
+                 wh_json:from_list([{<<"name">>, MediaName}
+                                    ,{<<"description">>, <<"recording ", MediaName/binary>>}
+                                    ,{<<"content_type">>, <<"audio/mp3">>}
+                                    ,{<<"media_source">>, <<"recorded">>}
+                                    ,{<<"source_type">>, wh_util:to_binary(?MODULE)}
+                                    ,{<<"pvt_type">>, <<"private_media">>}
+                                   ])
+                 ,AcctDb
+                ),
+
+    couch_mgr:save_doc(AcctDb, MediaDoc).
 
 -spec update_call_status/2 :: (whapps_call:call(), ne_binary()) -> whapps_call:call().
 update_call_status(Call, Status) ->
@@ -804,6 +1040,7 @@ play_tone(Call) ->
                              ]),
     whapps_call_command:tones([Tone], Call).
 
+-spec maybe_stop/3 :: (whapps_call:call(), term(), Result) -> {stop, whapps_call:call()} | Result.
 maybe_stop(Call, {error, channel_hungup}, _) -> {stop, Call};
 maybe_stop(_, {error, _R}, Result) ->
     lager:debug("error in result, but continuing anyway: ~p", [_R]),
@@ -817,9 +1054,9 @@ get_voice(<<"woman">>) -> <<"female">>.
 get_lang(undefined) -> <<"en-US">>;
 get_lang(<<"en">>) -> <<"en-US">>;
 get_lang(<<"en-gb">>) -> <<"en-GB">>;
-get_lang(<<"es">> = ES) -> ES;
-get_lang(<<"fr">> = FR) -> FR;
-get_lang(<<"de">> = DE) -> DE.
+get_lang(<<"es">>) -> <<"es">>;
+get_lang(<<"fr">>) -> <<"fr">>;
+get_lang(<<"de">>) -> <<"de">>.
 
 %% contstrain loop to 10
 -spec get_loop_count/1 :: (integer() | binary()) -> 0..10.

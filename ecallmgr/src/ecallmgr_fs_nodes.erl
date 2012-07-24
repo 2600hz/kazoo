@@ -179,7 +179,7 @@ channel_account_summary(AccountId) ->
                 ],
     ets:select(ecallmgr_channels, MatchSpec).
 
--spec channel_match_presence/1 :: (ne_binary()) -> [{ne_binary(), atom()},...] | [].
+-spec channel_match_presence/1 :: (ne_binary()) -> wh_proplist_kv(ne_binary(), atom()).
 channel_match_presence(PresenceId) ->
     MatchSpec = [{#channel{uuid = '$1', presence_id = '$2', node = '$3'}
                   ,[{'=:=', '$2', {const, PresenceId}}]

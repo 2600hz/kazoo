@@ -22,7 +22,11 @@
          ,b_pickup/2, b_pickup/3, b_pickup/4, b_pickup/5
         ]).
 -export([redirect/3]).
--export([answer/1, hangup/1, hangup/2, set/3, fetch/1, fetch/2]).
+-export([answer/1
+         ,hangup/1, hangup/2
+         ,set/3, set_terminators/2
+         ,fetch/1, fetch/2
+        ]).
 -export([ring/1]).
 -export([receive_fax/1
          ,b_receive_fax/1
@@ -37,7 +41,9 @@
         ]).
 
 -export([record/2, record/3, record/4, record/5, record/6]).
--export([record_call/2, record_call/3, record_call/4, record_call/5]).
+-export([record_call/2, record_call/3, record_call/4, record_call/5, record_call/6
+         ,b_record_call/2, b_record_call/3, b_record_call/4, b_record_call/5, b_record_call/6
+        ]).
 -export([store/3, store/4, store/5
          ,store_fax/2
         ]).
@@ -363,6 +369,12 @@ set(ChannelVars, CallVars, Call) ->
                       ],
             send_command(Command, Call)
     end.
+
+set_terminators(Terminators, Call) ->
+    Command = [{<<"Application-Name">>, <<"set_terminators">>}
+               ,{<<"Terminators">>, Terminators}
+              ],
+    send_command(Command, Call).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -767,6 +779,11 @@ b_record(MediaName, Terminators, TimeLimit, SilenceThreshold, SilenceHits, Call)
     record(MediaName, Terminators, TimeLimit, SilenceThreshold, SilenceHits, Call),
     wait_for_headless_application(<<"record">>, <<"RECORD_STOP">>, <<"call_event">>, infinity).
 
+-spec record_call/2 :: (ne_binary(), whapps_call:call()) -> 'ok'.
+-spec record_call/3 :: (ne_binary(), ne_binary(), whapps_call:call()) -> 'ok'.
+-spec record_call/4 :: (ne_binary(), ne_binary(),  whapps_api_binary(), whapps_call:call()) -> 'ok'.
+-spec record_call/5 :: (ne_binary(), ne_binary(),  whapps_api_binary(), whapps_api_binary(), whapps_call:call()) -> 'ok'.
+-spec record_call/6 :: (ne_binary(), ne_binary(),  whapps_api_binary(), whapps_api_binary(), list(), whapps_call:call()) -> 'ok'.
 record_call(MediaName, Call) ->
     record_call(MediaName, <<"start">>, Call).
 record_call(MediaName, Action, Call) ->
@@ -774,13 +791,36 @@ record_call(MediaName, Action, Call) ->
 record_call(MediaName, Action, StreamTo, Call) ->
     record_call(MediaName, Action, StreamTo, 600, Call).
 record_call(MediaName, Action, StreamTo, TimeLimit, Call) ->
+    record_call(MediaName, Action, StreamTo, TimeLimit, ?ANY_DIGIT, Call).
+record_call(MediaName, Action, StreamTo, TimeLimit, Terminators, Call) ->
     Command = [{<<"Application-Name">>, <<"record_call">>}
                ,{<<"Media-Name">>, MediaName}
                ,{<<"Record-Action">>, Action}
                ,{<<"Stream-To">>, StreamTo}
                ,{<<"Time-Limit">>, wh_util:to_binary(TimeLimit)}
+               ,{<<"Terminators">>, Terminators}
               ],
     send_command(Command, Call).
+
+-spec b_record_call/2 :: (ne_binary(), whapps_call:call()) -> whapps_api_std_return().
+-spec b_record_call/3 :: (ne_binary(), ne_binary(), whapps_call:call()) -> whapps_api_std_return().
+-spec b_record_call/4 :: (ne_binary(), ne_binary(), whapps_api_binary(), whapps_call:call()) -> whapps_api_std_return().
+-spec b_record_call/5 :: (ne_binary(), ne_binary(), whapps_api_binary(), whapps_api_binary(), whapps_call:call()) -> whapps_api_std_return().
+-spec b_record_call/6 :: (ne_binary(), ne_binary(), whapps_api_binary(), whapps_api_binary(), whapps_call:call(), list()) -> whapps_api_std_return().
+b_record_call(MediaName, Call) ->
+    record_call(MediaName, Call),
+    wait_for_headless_application(<<"record">>, <<"RECORD_STOP">>, <<"call_event">>, infinity).
+b_record_call(MediaName, Action, Call) ->
+    record_call(MediaName, Action, Call),
+    wait_for_headless_application(<<"record">>, <<"RECORD_STOP">>, <<"call_event">>, infinity).
+b_record_call(MediaName, Action, StreamTo, Call) ->
+    record_call(MediaName, Action, StreamTo, Call),
+    wait_for_headless_application(<<"record">>, <<"RECORD_STOP">>, <<"call_event">>, infinity).
+b_record_call(MediaName, Action, StreamTo, TimeLimit, Call) ->
+    b_record_call(MediaName, Action, StreamTo, TimeLimit, ?ANY_DIGIT, Call).
+b_record_call(MediaName, Action, StreamTo, TimeLimit, Terminators, Call) ->
+    record_call(MediaName, Action, StreamTo, TimeLimit, Terminators, Call),
+    wait_for_headless_application(<<"record">>, <<"RECORD_STOP">>, <<"call_event">>, infinity).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -1385,7 +1425,9 @@ wait_for_application(Application, Event, Type, Timeout) ->
 %% is only interested in events for the application.
 %% @end
 %%--------------------------------------------------------------------
--type wait_for_headless_application_return() :: {'error', 'timeout' | wh_json:json_object()} | {'ok', wh_json:json_object()}.
+-type wait_for_headless_application_return() :: {'error', 'timeout' | wh_json:json_object()} |
+                                                {'hangup', wh_json:json_object()} |
+                                                {'ok', wh_json:json_object()}.
 -spec wait_for_headless_application/1 :: (ne_binary()) -> wait_for_headless_application_return().
 -spec wait_for_headless_application/2 :: (ne_binary(), ne_binary()) -> wait_for_headless_application_return().
 -spec wait_for_headless_application/3 :: (ne_binary(), ne_binary(), ne_binary()) -> wait_for_headless_application_return().
@@ -1407,11 +1449,19 @@ wait_for_headless_application(Application, Event, Type, Timeout) ->
                 { <<"error">>, _, Application } ->
                     lager:debug("channel execution error while waiting for ~s: ~s", [Application, wh_json:encode(JObj)]),
                     {error, JObj};
+                {<<"call_event">>,<<"CHANNEL_HANGUP_COMPLETE">>,_} ->
+                    lager:debug("hangup occurred, waiting 5000 ms for ~s event", [Application]),
+                    wait_for_headless_application(Application, Event, Type, 5000);
+                {<<"call_event">>,<<"CHANNEL_DESTROY">>, _} ->
+                    lager:debug("destroy occurred, waiting 5000 ms for ~s event", [Application]),
+                    wait_for_headless_application(Application, Event, Type, 5000);
                 { Type, Event, Application } ->
                     {ok, JObj};
-                _ when Timeout =:= infinity ->
+                _T when Timeout =:= infinity ->
+                    lager:debug("ignore ~p", [_T]),
                     wait_for_headless_application(Application, Event, Type, Timeout);
-                _ ->
+                _T ->
+                    lager:debug("ignore ~p", [_T]),
                     wait_for_headless_application(Application, Event, Type, Timeout - wh_util:elapsed_ms(Start))
             end;
         _ when Timeout =:= infinity ->
@@ -1638,8 +1688,9 @@ wait_for_unbridge() ->
 %% Waits for and determines the status of the bridge command
 %% @end
 %%--------------------------------------------------------------------
--spec wait_for_application_or_dtmf/2 :: (ne_binary(), 'infinity' | pos_integer()) -> whapps_api_std_return() |
-                                                                                     {'dtmf', binary()}.
+-spec wait_for_application_or_dtmf/2 :: (ne_binary(), 'infinity' | pos_integer()) ->
+                                                whapps_api_std_return() |
+                                                {'dtmf', binary()}.
 wait_for_application_or_dtmf(Application, Timeout) ->
     Start = erlang:now(),
     receive
@@ -1714,7 +1765,6 @@ wait_for_fax(Timeout) ->
         Timeout ->
             {error, timeout}
     end.
-
 
 %%--------------------------------------------------------------------
 %% @public

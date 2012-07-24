@@ -11,6 +11,7 @@
 -type whapps_custom_publish() :: fun((proplist(), whapps_call:call()) -> 'ok').
 -type whapps_api_error() :: {'error', 'channel_hungup' |
                              'channel_unbridge' |
+                             'channel_destroy' |
                              'timeout' |
                              wh_json:json_object()
                             }.

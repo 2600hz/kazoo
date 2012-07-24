@@ -76,7 +76,7 @@ publish(Srv, #'basic.publish'{exchange=_Exchange, routing_key=_RK}=BasicPub, Amq
     case lists:foldl(fun(F, C) -> F(C) end, get(amqp_publish_as), FindChannel) of 
         {error, _}=E -> E;
         {ok, Channel} ->
-            lager:debug("publish to exchange '~s' with routing key '~s' via channel ~p", [_Exchange, _RK, Channel]),
+            lager:debug("publish to broker ~s, exchange '~s' with routing key '~s' via channel ~p", [Srv, _Exchange, _RK, Channel]),
             amqp_channel:call(Channel, BasicPub, AmqpMsg),
             ok
     end.
@@ -100,7 +100,7 @@ consume(Srv, #'queue.bind'{exchange=_Exchange, routing_key=_RK, queue=_Q}=QueueB
     case my_channel(Srv) of
         {error, _}=E -> E;
         {ok, Channel, _} ->
-            lager:debug("bind '~s' to exchange '~s' with routing key '~s'", [_Q, _Exchange, _RK]),
+            lager:debug("bind '~s' to exchange '~s' with routing key '~s' on broker ~s", [_Q, _Exchange, _RK, Srv]),
             case amqp_channel:call(Channel, QueueBind) of
                 #'queue.bind_ok'{} -> ok;
                 {error, _}=E -> E;

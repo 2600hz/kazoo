@@ -17,20 +17,21 @@
 -export([publish_req/1, publish_req/2, publish_resp/2, publish_resp/3
          ,publish_error/2, publish_error/3]).
 
--include("../wh_api.hrl").
+-include_lib("wh_api.hrl").
 
 %% Media Request - when streaming is needed
 -define(MEDIA_REQ_HEADERS, [<<"Media-Name">>]).
 -define(OPTIONAL_MEDIA_REQ_HEADERS, [<<"Stream-Type">>, <<"Call-ID">>
                                          %% TTS-related flags
                                          ,<<"Voice">>, <<"Language">>, <<"Format">>
-                                         ,<<"Account-ID">>
+                                         ,<<"Account-ID">>, <<"Protocol">>
                                     ]).
 -define(MEDIA_REQ_VALUES, [{<<"Event-Category">>, <<"media">>}
                            ,{<<"Event-Name">>, <<"media_req">>}
-                           ,{<<"Stream-Type">>, [<<"new">>, <<"extant">>]}
+                           ,{<<"Stream-Type">>, [<<"new">>, <<"extant">>, new, extant]}
                            ,{<<"Voice">>, [<<"male">>, <<"female">>]}
                            ,{<<"Format">>, [<<"mp3">>, <<"wav">>]}
+                           ,{<<"Protocol">>, [<<"http">>, <<"https">>, <<"shout">>, <<"vlc">>]}
                           ]).
 -define(MEDIA_REQ_TYPES, []).
 
@@ -43,7 +44,9 @@
 -define(MEDIA_RESP_TYPES, [{<<"Stream-URL">>, fun(<<"shout://", _/binary>>) -> true;
                                                  (<<"http://", _/binary>>) -> true;
                                                  (<<"vlc://", _/binary>>) -> true;
-                                                 (_) -> false end}]).
+                                                 (_) -> false
+                                              end}
+                          ]).
 
 %% Media Error
 -define(MEDIA_ERROR_HEADERS, [<<"Media-Name">>, <<"Error-Code">>]).

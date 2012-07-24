@@ -14,7 +14,7 @@
          ,publish_resp/2, publish_resp/3
         ]).
 
--include("../wh_api.hrl").
+-include_lib("wh_api.hrl").
 
 -define(EVENT_CATEGORY, <<"rate">>).
 -define(KEY_RATE_REQ, <<"rate.req">>).

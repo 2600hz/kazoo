@@ -13,15 +13,13 @@
 -include_lib("ecallmgr/src/ecallmgr.hrl").
 
 -export([start_link/0]).
--export([registrar_proc/0, cache_proc/0]).
+-export([cache_proc/0]).
 -export([init/1]).
 
--define(CHILD(Name, Type), fun(N, cache) -> {N, {wh_cache, start_link, [N]}, permanent, 5000, worker, [wh_cache]};
-                              (N, T) -> {N, {N, start_link, []}, permanent, 5000, T, [N]} end(Name, Type)).
--define(CHILDREN, [{?ECALLMGR_UTIL_CACHE, cache}
-                   ,{?ECALLMGR_REG_CACHE, cache}
-                   ,{ecallmgr_shout_sup, supervisor}
-                   ,{ecallmgr_media_registry, worker}
+-define(CHILD(N), {N, {wh_cache, start_link, [N]}, permanent, 5000, worker, [wh_cache]}).
+-define(CHILDREN, [?ECALLMGR_UTIL_CACHE
+                   ,?ECALLMGR_REG_CACHE
+                   ,?ECALLMGR_CALL_CACHE
                   ]).
 
 %% ===================================================================
@@ -37,12 +35,6 @@
 -spec start_link/0 :: () -> startlink_ret().
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
-
--spec registrar_proc/0 :: () -> {'ok', pid()}.
-registrar_proc() ->
-    [P] = [P || {Mod, P, _, _} <- supervisor:which_children(?MODULE),
-                Mod =:= ecallmgr_registrar],
-    {ok, P}.
 
 cache_proc() ->
     ?ECALLMGR_UTIL_CACHE.
@@ -67,6 +59,6 @@ init([]) ->
     MaxSecondsBetweenRestarts = 10,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
-    Children = [?CHILD(Name, Type) || {Name, Type} <- ?CHILDREN],
+    Children = [?CHILD(Name) || Name <- ?CHILDREN],
 
     {ok, {SupFlags, Children}}.

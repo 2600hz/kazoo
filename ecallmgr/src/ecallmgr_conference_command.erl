@@ -1,10 +1,10 @@
 %%%-------------------------------------------------------------------
-%%% @author Karl Anderson <karl@2600hz.org>
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2012 VoIP INC
 %%% @doc
 %%% Execute conference commands
 %%% @end
-%%% Created : 16 Mar 2011 by Karl Anderson <karl@2600hz.org>
+%%% @contributors
+%%%   Karl Anderson <karl@2600hz.org>
 %%%-------------------------------------------------------------------
 -module(ecallmgr_conference_command).
 
@@ -98,9 +98,8 @@ get_conf_command(<<"record">>, _Focus, ConferenceId, JObj) ->
             {'error', <<"conference record failed to execute as JObj did not validate.">>};
         true ->
             UUID = wh_json:get_binary_value(<<"Call-ID">>, JObj, ConferenceId),
-            MediaName = wh_json:get_binary_value(<<"Media-Name">>, JObj),
-            Media = ecallmgr_media_registry:register_local_media(MediaName, UUID),
-            {<<"record">>, Media}
+            MediaName = ecallmgr_util:recording_filename(wh_json:get_binary_value(<<"Media-Name">>, JObj)),
+            {<<"record">>, MediaName}
     end;
 get_conf_command(<<"relate_participants">>, _Focus, _ConferenceId, JObj) ->
     case wapi_conference:relate_participants_v(JObj) of

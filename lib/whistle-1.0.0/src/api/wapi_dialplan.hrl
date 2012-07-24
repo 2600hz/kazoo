@@ -7,7 +7,7 @@
 %%%   James Aimonetti
 %%%   Karl Anderson
 %%%-------------------------------------------------------------------
--include("../wh_api.hrl").
+-include_lib("wh_api.hrl").
 
 %% For dialplan messages, an optional insert-at tuple is common across all requests
 -define(INSERT_AT_TUPLE, {<<"Insert-At">>, [<<"head">>, <<"tail">>, <<"flush">>, <<"now">>]}).
@@ -35,14 +35,14 @@
                             ,{<<"Application-Name">>, <<"bridge">>}
                             ,{<<"Dial-Endpoint-Method">>, [?DIAL_METHOD_SINGLE, ?DIAL_METHOD_SIMUL]}
                             ,{<<"Media">>, [<<"process">>, <<"bypass">>, <<"auto">>]}
-                            ,{<<"Continue-On-Fail">>, [<<"true">>, <<"false">>]}
                             ,{<<"SIP-Transport">>, [<<"udp">>, <<"tcp">>, <<"tls">>]}
-                            ,{<<"Secure-RTP">>, [<<"true">>, <<"false">>]}
                             ,?INSERT_AT_TUPLE
                            ]).
 -define(BRIDGE_REQ_TYPES, [{<<"Endpoints">>, fun is_list/1}
                            ,{<<"SIP-Headers">>, fun wh_json:is_json_object/1}
                            ,{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}
+                           ,{<<"Continue-On-Fail">>, fun wh_json:is_boolean/1}
+                           ,{<<"Secure-RTP">>, fun wh_json:is_boolean/1}
                           ]).
 
 %% Bridge Endpoints
@@ -59,13 +59,13 @@
                                                     ,<<"Endpoint-Type">>, <<"Endpoint-Options">>
                                               ]).
 -define(BRIDGE_REQ_ENDPOINT_VALUES, [?INVITE_FORMAT_TUPLE
-                                     ,{<<"Ignore-Early-Media">>, [<<"true">>, <<"false">>]}
-                                     ,{<<"Bypass-Media">>, [<<"true">>, <<"false">>]}
                                      ,{<<"Endpoint-Type">>, [<<"sip">>, <<"freetdm">>]}
                                     ]).
 -define(BRIDGE_REQ_ENDPOINT_TYPES, [{<<"SIP-Headers">>, fun wh_json:is_json_object/1}
                                     ,{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}
                                     ,{<<"Endpoint-Options">>, fun wh_json:is_json_object/1}
+                                    ,{<<"Ignore-Early-Media">>, fun wh_util:is_boolean/1}
+                                    ,{<<"Bypass-Media">>, fun wh_util:is_boolean/1}
                                    ]).
 
 %% Store Request
@@ -136,7 +136,9 @@
                            ,{<<"Application-Name">>, <<"tones">>}
                            ,?INSERT_AT_TUPLE
                           ]).
--define(TONES_REQ_TYPES, [{<<"Tones">>, fun is_list/1}]).
+-define(TONES_REQ_TYPES, [{<<"Tones">>, fun is_list/1}
+                          ,{<<"Terminators">>, ?IS_TERMINATOR}
+                         ]).
 
 -define(TONES_REQ_TONE_HEADERS, [<<"Frequencies">>, <<"Duration-ON">>, <<"Duration-OFF">>]).
 -define(OPTIONAL_TONES_REQ_TONE_HEADERS, [<<"Volume">>, <<"Repeat">>]).
@@ -224,10 +226,10 @@
 -define(HANGUP_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                             ,{<<"Event-Name">>, <<"command">>}
                             ,{<<"Application-Name">>, <<"hangup">>}
-                            ,{<<"Other-Leg-Only">>, [<<"true">>, <<"false">>, true, false]}
                             ,?INSERT_AT_TUPLE
                            ]).
--define(HANGUP_REQ_TYPES, []).
+-define(HANGUP_REQ_TYPES, [{<<"Other-Leg-Only">>, fun wh_util:is_boolean/1}
+                          ]).
 
 %% Hold
 -define(HOLD_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>]).
@@ -260,6 +262,16 @@
 -define(SET_REQ_TYPES, [{<<"Custom-Channel-Vars">>,fun wh_json:is_json_object/1}
                         ,{<<"Custom-Call-Vars">>, fun wh_json:is_json_object/1}
                        ]).
+
+%% Set Terminators
+-define(SET_TERM_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Terminators">>]).
+-define(OPTIONAL_SET_TERM_HEADERS, [<<"Insert-At">>]).
+-define(SET_TERM_VALUES, [{<<"Event-Category">>, <<"call">>}
+                         ,{<<"Event-Name">>, <<"command">>}
+                         ,{<<"Application-Name">>, <<"set_terminators">>}
+                         ,?INSERT_AT_TUPLE
+                         ]).
+-define(SET_TERM_TYPES, [{<<"Terminators">>, ?IS_TERMINATOR}]).
 
 %% Fetch
 -define(FETCH_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>]).
@@ -308,7 +320,7 @@
                                ,{<<"Application-Name">>, <<"playstop">>}
                                ,{<<"Insert-At">>, <<"now">>}
                               ]).
--define(PLAY_STOP_REQ_TYPES, [{<<"Terminators">>, ?IS_TERMINATOR}]).
+-define(PLAY_STOP_REQ_TYPES, []).
 
 %% Record Request
 -define(RECORD_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Media-Name">>]).
@@ -348,7 +360,7 @@
                                          ,{<<"Application-Name">>, <<"play_and_collect_digits">>}
                                          ,?INSERT_AT_TUPLE
                                         ]).
--define(PLAY_COLLECT_DIGITS_REQ_TYPES, []).
+-define(PLAY_COLLECT_DIGITS_REQ_TYPES, [{<<"Terminators">>, ?IS_TERMINATOR}]).
 
 %% Say
 -define(SAY_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Language">>, <<"Type">>, <<"Method">>, <<"Say-Text">>]).
@@ -436,12 +448,12 @@
                                 ,{<<"Event-Name">>, <<"command">>}
                                 ,{<<"Application-Name">>, <<"conference">>}
                                 ,?INSERT_AT_TUPLE
-                                ,{<<"Mute">>, [<<"true">>, <<"false">>]}
-                                ,{<<"Deaf">>, [<<"true">>, <<"false">>]}
-                                ,{<<"Moderator">>, [<<"true">>, <<"false">>]}
                                ]).
 -define(CONFERENCE_REQ_TYPES, [{<<"Call-ID">>, fun is_binary/1}
                                ,{<<"Conference-ID">>, fun is_binary/1}
+                               ,{<<"Mute">>, fun wh_util:is_boolean/1}
+                               ,{<<"Deaf">>, fun wh_util:is_boolean/1}
+                               ,{<<"Moderator">>, fun wh_util:is_boolean/1}
                               ]).
 
 %% Originate Ready

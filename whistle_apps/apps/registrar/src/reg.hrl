@@ -1,3 +1,4 @@
+-ifndef(REG_HRL).
 -include_lib("amqp_client/include/amqp_client.hrl").
 -include_lib("whistle/include/wh_amqp.hrl").
 -include_lib("whistle/include/wh_types.hrl").
@@ -10,3 +11,6 @@
 -define(CONFIG_CAT, <<"registrar">>).
 
 -define(REGISTRAR_CACHE, registrar_cache).
+
+-define(REG_HRL, true).
+-endif.

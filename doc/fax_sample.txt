@@ -1,0 +1,3 @@
+# FreeSWITCH command to send a fax to your Kazoo-managed FreeSWITCH server
+
+originate [sip_auth_password='password',sip_auth_username='username']sofia/sipinterface_1/+12223334444@realm;fs_path=sip:ip.add.re.ss &txfax(/path/to/file.tiff)

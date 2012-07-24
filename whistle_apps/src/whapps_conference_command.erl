@@ -3,7 +3,8 @@
 %%% @doc
 %%%
 %%% @end
-%%% Created : 21 Feb 2012 by Karl Anderson <karl@2600hz.org>
+%%% @contributors
+%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(whapps_conference_command).
 
@@ -27,8 +28,8 @@
 -export([participant_volume_in/3]).
 -export([participant_volume_out/3]).
 
--spec search/1 :: (whapps_conference:conference()) -> ok.
--spec search/2 :: (undefined | ne_binary(), whapps_conference:conference()) -> ok.
+-spec search/1 :: (whapps_conference:conference()) -> 'undefined'.
+-spec search/2 :: (SearchId, whapps_conference:conference()) -> SearchId.
 
 search(Conference) ->
     search(undefined, Conference).
@@ -39,6 +40,8 @@ search(SearchId, Conference) ->
     Q = whapps_conference:controller_queue(Conference),
     AppName = whapps_conference:application_name(Conference),
     AppVersion = whapps_conference:application_version(Conference),
+
+    lager:debug("searching for conference: ~s", [whapps_conference:id(Conference)]),
     Search = [{<<"Conference-ID">>, whapps_conference:id(Conference)}
               ,{<<"Msg-ID">>, SearchId}
               | wh_api:default_headers(Q, AppName, AppVersion)
@@ -46,14 +49,14 @@ search(SearchId, Conference) ->
     wapi_conference:publish_search_req(Search), 
     SearchId.
 
--spec deaf_participant/2 :: (ne_binary(), whapps_conference:conference()) -> ok.
+-spec deaf_participant/2 :: (ne_binary(), whapps_conference:conference()) -> 'ok'.
 deaf_participant(ParticipantId, Conference) ->
     Command = [{<<"Application-Name">>, <<"deaf_participant">>}
                ,{<<"Participant">>, ParticipantId}
               ],
     send_command(Command, Conference).
 
--spec participant_energy/3 :: (ne_binary(),  ne_binary(), whapps_conference:conference()) -> ok.
+-spec participant_energy/3 :: (ne_binary(),  ne_binary(), whapps_conference:conference()) -> 'ok'.
 participant_energy(ParticipantId, EnergyLevel, Conference) ->
     Command = [{<<"Application-Name">>, <<"participant_energy">>}
                ,{<<"Participant">>, ParticipantId}
@@ -61,8 +64,8 @@ participant_energy(ParticipantId, EnergyLevel, Conference) ->
               ],
     send_command(Command, Conference).
 
--spec kick/1 :: (whapps_conference:conference()) -> ok.
--spec kick/2 :: (undefined | ne_binary(), whapps_conference:conference()) -> ok.
+-spec kick/1 :: (whapps_conference:conference()) -> 'ok'.
+-spec kick/2 :: (undefined | ne_binary(), whapps_conference:conference()) -> 'ok'.
 
 kick(Conference) ->
     kick(undefined, Conference).
@@ -72,25 +75,25 @@ kick(ParticipantId, Conference) ->
               ],
     send_command(Command, Conference).
 
--spec participants/1 :: (whapps_conference:conference()) -> ok.
+-spec participants/1 :: (whapps_conference:conference()) -> 'ok'.
 participants(Conference) ->
     Command = [{<<"Application-Name">>, <<"participants">>}],
     send_command(Command, Conference).
 
--spec lock/1 :: (whapps_conference:conference()) -> ok.
+-spec lock/1 :: (whapps_conference:conference()) -> 'ok'.
 lock(Conference) ->
     Command = [{<<"Application-Name">>, <<"lock">>}],
     send_command(Command, Conference).
 
--spec mute_participant/2 :: (ne_binary(), whapps_conference:conference()) -> ok.
+-spec mute_participant/2 :: (ne_binary(), whapps_conference:conference()) -> 'ok'.
 mute_participant(ParticipantId, Conference) ->
     Command = [{<<"Application-Name">>, <<"mute_participant">>}
                ,{<<"Participant">>, ParticipantId}
               ],
     send_command(Command, Conference).
 
--spec prompt/2 :: (ne_binary(), whapps_conference:conference()) -> ok.
--spec prompt/3 :: (ne_binary(), undefined | ne_binary(), whapps_conference:conference()) -> ok.
+-spec prompt/2 :: (ne_binary(), whapps_conference:conference()) -> 'ok'.
+-spec prompt/3 :: (ne_binary(), undefined | ne_binary(), whapps_conference:conference()) -> 'ok'.
 
 prompt(Media, Conference) ->
     prompt(Media, undefined, Conference).
@@ -98,8 +101,8 @@ prompt(Media, ParticipantId, Conference) ->
     play(whapps_util:get_prompt(Media, undefined), ParticipantId, Conference).
 
 
--spec play/2 :: (ne_binary(), whapps_conference:conference()) -> ok.
--spec play/3 :: (ne_binary(), undefined | ne_binary(), whapps_conference:conference()) -> ok.
+-spec play/2 :: (ne_binary(), whapps_conference:conference()) -> 'ok'.
+-spec play/3 :: (ne_binary(), undefined | ne_binary(), whapps_conference:conference()) -> 'ok'.
 
 play(Media, Conference) ->
     play(Media, undefined, Conference).
@@ -110,13 +113,13 @@ play(Media, ParticipantId, Conference) ->
               ],
     send_command(Command, Conference).    
 
--spec record/1 :: (whapps_conference:conference()) -> ok.
+-spec record/1 :: (whapps_conference:conference()) -> 'ok'.
 record(Conference) ->
     Command = [{<<"Application-Name">>, <<"record">>}],
     send_command(Command, Conference).
 
--spec relate_participants/3 :: (ne_binary(), ne_binary(), whapps_conference:conference()) -> ok.
--spec relate_participants/4 :: (ne_binary(), ne_binary(), undefined | ne_binary(), whapps_conference:conference()) -> ok.
+-spec relate_participants/3 :: (ne_binary(), ne_binary(), whapps_conference:conference()) -> 'ok'.
+-spec relate_participants/4 :: (ne_binary(), ne_binary(), undefined | ne_binary(), whapps_conference:conference()) -> 'ok'.
 
 relate_participants(ParticipantId, OtherParticipantId, Conference) ->
     relate_participants(ParticipantId, OtherParticipantId, undefined, Conference).
@@ -129,9 +132,9 @@ relate_participants(ParticipantId, OtherParticipantId, Relationship, Conference)
               ],
     send_command(Command, Conference).    
 
--spec stop_play/1 :: (whapps_conference:conference()) -> ok.
--spec stop_play/2 :: (undefined | ne_binary(), whapps_conference:conference()) -> ok.
--spec stop_play/3 :: (undefined | ne_binary(), undefined | ne_binary(), whapps_conference:conference()) -> ok.
+-spec stop_play/1 :: (whapps_conference:conference()) -> 'ok'.
+-spec stop_play/2 :: (undefined | ne_binary(), whapps_conference:conference()) -> 'ok'.
+-spec stop_play/3 :: (undefined | ne_binary(), undefined | ne_binary(), whapps_conference:conference()) -> 'ok'.
 
 stop_play(Conference) ->
     stop_play(undefined, Conference).
@@ -146,26 +149,26 @@ stop_play(ParticipantId, Affects, Conference) ->
               ],
     send_command(Command, Conference).
 
--spec undeaf_participant/2 :: (ne_binary(), whapps_conference:conference()) -> ok.
+-spec undeaf_participant/2 :: (ne_binary(), whapps_conference:conference()) -> 'ok'.
 undeaf_participant(ParticipantId, Conference) ->
     Command = [{<<"Application-Name">>, <<"undeaf_participant">>}
                ,{<<"Participant">>, ParticipantId}
               ],
     send_command(Command, Conference).
 
--spec unlock/1 :: (whapps_conference:conference()) -> ok.
+-spec unlock/1 :: (whapps_conference:conference()) -> 'ok'.
 unlock(Conference) ->
     Command = [{<<"Application-Name">>, <<"unlock">>}],
     send_command(Command, Conference).
 
--spec unmute_participant/2 :: (ne_binary(), whapps_conference:conference()) -> ok.
+-spec unmute_participant/2 :: (ne_binary(), whapps_conference:conference()) -> 'ok'.
 unmute_participant(ParticipantId, Conference) ->
     Command = [{<<"Application-Name">>, <<"unmute_participant">>}
                ,{<<"Participant">>, ParticipantId}
               ],
     send_command(Command, Conference).
 
--spec participant_volume_in/3 :: (ne_binary(),  ne_binary(), whapps_conference:conference()) -> ok.
+-spec participant_volume_in/3 :: (ne_binary(),  ne_binary(), whapps_conference:conference()) -> 'ok'.
 participant_volume_in(ParticipantId, VolumeIn, Conference) ->
     Command = [{<<"Application-Name">>, <<"participant_energy">>}
                ,{<<"Participant">>, ParticipantId}
@@ -173,7 +176,7 @@ participant_volume_in(ParticipantId, VolumeIn, Conference) ->
               ],
     send_command(Command, Conference).
 
--spec participant_volume_out/3 :: (ne_binary(),  ne_binary(), whapps_conference:conference()) -> ok.
+-spec participant_volume_out/3 :: (ne_binary(),  ne_binary(), whapps_conference:conference()) -> 'ok'.
 participant_volume_out(ParticipantId, VolumeOut,Conference) ->
     Command = [{<<"Application-Name">>, <<"participant_energy">>}
                ,{<<"Participant">>, ParticipantId}

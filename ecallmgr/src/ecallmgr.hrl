@@ -3,13 +3,15 @@
 -include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_amqp.hrl").
 -include_lib("whistle/include/wh_log.hrl").
--include_lib("whistle/src/wh_api.hrl").
+-include_lib("whistle/include/wh_api.hrl").
 
 -define(ECALLMGR_AMQP_POOL, ecallmgr_amqp_pool).
 
 -define(ECALLMGR_UTIL_CACHE, ecallmgr_util_cache).
 -define(ECALLMGR_REG_CACHE, ecallmgr_reg_cache).
 -define(ECALLMGR_CALL_CACHE, ecallmgr_call_cache).
+
+-define(ECALLMGR_RECORDED_MEDIA_KEY(M), {recorded_media, M}).
 
 -type fs_api_ret()       :: {'ok', binary()} |
                             {'error', 'badarg'} |

@@ -39,7 +39,7 @@
 
 -export([get_status/1]).
 
--include("../wh_api.hrl").
+-include_lib("wh_api.hrl").
 
 %% Routing key prefix for rating
 -define(KEY_RATING_REQ, <<"call.rating">>).
@@ -56,7 +56,8 @@
                                           ,<<"Terminator">>, <<"Disposition">>
                                           ,<<"Hangup-Cause">>, <<"Hangup-Code">> %% Hangup
                                           ,<<"Raw-Application-Name">>, <<"Raw-Application-Data">>
-                                          ,<<"Length">>, <<"Channel-Call-State">>
+                                          ,<<"Length">>, <<"Silence-Terminated">> %% Record-related
+                                          ,<<"Channel-Call-State">>
                                           ,<<"Fax-Success">>, <<"Fax-Result-Code">>
                                           ,<<"Fax-Result-Text">>, <<"Fax-ECM-Used">>
                                           ,<<"Fax-Transferred-Pages">>, <<"Fax-Total-Pages">>

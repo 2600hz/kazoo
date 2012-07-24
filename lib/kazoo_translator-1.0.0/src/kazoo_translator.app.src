@@ -1,4 +1,4 @@
-{application, whistle_translator,
+{application, kazoo_translator,
  [
   {description, "Bridging various call control formats to the 2600hz JSON APIs"},
   {vsn, "1.0.0"},
@@ -7,6 +7,6 @@
                   kernel,
                   stdlib
                  ]},
-  {mod, { whistle_translator_app, []}},
+  {mod, { kazoo_translator_app, []}},
   {env, []}
  ]}.

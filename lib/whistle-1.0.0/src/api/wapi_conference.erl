@@ -3,7 +3,8 @@
 %%% @doc
 %%% 
 %%% @end
-%%% Created : 15 Feb 2012 by Karl Anderson <karl@2600hz.org>
+%%% @contributors
+%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(wapi_conference).
 
@@ -56,7 +57,7 @@
 -export([publish_error/2, publish_error/3]).
 -export([publish_command/2, publish_command/3]).
 
--include("../wh_api.hrl").
+-include_lib("wh_api.hrl").
 
 %% Conference Search Request
 -define(SEARCH_REQ_HEADERS, [<<"Conference-ID">>]).
@@ -79,7 +80,9 @@
 
 %% Conference Discovery Request
 -define(DISCOVERY_REQ_HEADERS, [<<"Call">>]).
--define(OPTIONAL_DISCOVERY_REQ_HEADERS, [<<"Conference-ID">>, <<"Moderator">>]).
+-define(OPTIONAL_DISCOVERY_REQ_HEADERS, [<<"Conference-ID">>, <<"Moderator">>
+                                             ,<<"Conference-Doc">> % ad-hoc conferencing
+                                        ]).
 -define(DISCOVERY_REQ_VALUES, [{<<"Event-Category">>, <<"conference">>}
                                ,{<<"Event-Name">>, <<"discovery_req">>}
                                ,{<<"Moderator">>, [<<"true">>, <<"false">>]}
