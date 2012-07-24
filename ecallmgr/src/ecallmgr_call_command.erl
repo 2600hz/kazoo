@@ -131,7 +131,7 @@ get_fs_app(Node, UUID, JObj, <<"record">>) ->
             MediaName = ecallmgr_util:recording_filename(wh_json:get_value(<<"Media-Name">>, JObj)),
 
             %% disable buffering to see if we get all the media
-            'ok' = set(Node, UUID, <<"enable_file_write_buffering=false">>),
+            %%'ok' = set(Node, UUID, <<"enable_file_write_buffering=false">>),
             'ok' = set_terminators(Node, UUID, wh_json:get_value(<<"Terminators">>, JObj)),
 
             RecArg = list_to_binary([MediaName, " "
