@@ -25,6 +25,12 @@
          "type":"boolean",
          "default":true
       },
+       "outbound_flags":{
+           "name":"Outbound Flags",
+           "description":"List of flags (features) this device requires when making outbound calls",
+           "type":"array",
+           "default":[]
+       },
       "suppress_unregister_notifications":{
          "name":"Suppress unregister Notifications",
          "description":"When true disables deregister notifications",
