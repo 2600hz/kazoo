@@ -255,7 +255,6 @@ process_event_for_cdr(#ts_callflow_state{aleg_callid=ALeg}=State, JObj) ->
                 {_,_} ->
                     ignore
             end;
-
         { <<"call_detail">>, <<"cdr">> } ->
             true = wapi_call:cdr_v(JObj),
             Leg = wh_json:get_value(<<"Call-ID">>, JObj),
