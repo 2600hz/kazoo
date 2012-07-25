@@ -57,6 +57,7 @@ init() ->
 -spec allowed_methods/2 :: (path_token(), path_token()) -> http_methods().
 -spec allowed_methods/3 :: (path_token(), path_token(), path_token()) -> http_methods().
 -spec allowed_methods/4 :: (path_token(), path_token(), path_token(), path_token()) -> http_methods().
+
 allowed_methods() ->
     ['GET', 'PUT'].
 allowed_methods(_VMBoxID) ->
@@ -128,21 +129,34 @@ validate(#cb_context{req_verb = <<"get">>}=Context, DocId, ?MESSAGES_RESOURCE) -
     load_message_summary(DocId, Context).
 
 validate(#cb_context{req_verb = <<"get">>}=Context, DocId, ?MESSAGES_RESOURCE, MediaId) ->
-    load_message(DocId, MediaId, Context);
+    case load_message(DocId, MediaId, undefined, Context) of
+        {true, #cb_context{resp_data=Data}=C1} ->
+            C2 = crossbar_doc:save(C1),
+            update_mwi(C2#cb_context{resp_data=Data});
+        {_, C} -> C
+    end;
 validate(#cb_context{req_verb = <<"post">>}=Context, DocId, ?MESSAGES_RESOURCE, MediaId) ->
-    update_message(DocId, MediaId, Context);
+    load_message(DocId, MediaId, undefined, Context);
 validate(#cb_context{req_verb = <<"delete">>}=Context, DocId, ?MESSAGES_RESOURCE, MediaId) ->
-    delete_message(DocId, MediaId, Context).
+    Update = wh_json:from_list([{<<"folder">>, <<"deleted">>}]),
+    load_message(DocId, MediaId, Update, Context).
 
 validate(#cb_context{req_verb = <<"get">>}=Context, DocId, ?MESSAGES_RESOURCE, MediaId, ?BIN_DATA) ->
-    load_message_binary(DocId, MediaId, Context).
+    case load_message_binary(DocId, MediaId, Context) of
+        {true, #cb_context{resp_data=Data}=C1} ->
+            C2 = crossbar_doc:save(C1),
+            update_mwi(C2#cb_context{resp_data=Data});
+        {_, C} -> C
+    end.
 
 -spec post/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
 -spec post/4 :: (#cb_context{}, path_token(), path_token(), path_token()) -> #cb_context{}.
 post(#cb_context{}=Context, _DocId) ->
-    crossbar_doc:save(Context).
+    C = crossbar_doc:save(Context),
+    update_mwi(C).
 post(#cb_context{}=Context, _DocId, ?MESSAGES_RESOURCE, _MediaID) ->
-    crossbar_doc:save(Context).
+    C = crossbar_doc:save(Context),
+    update_mwi(C).
 
 -spec put/1 :: (#cb_context{}) -> #cb_context{}.
 put(#cb_context{}=Context) ->
@@ -151,9 +165,11 @@ put(#cb_context{}=Context) ->
 -spec delete/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
 -spec delete/4 :: (#cb_context{}, path_token(), path_token(), path_token()) -> #cb_context{}.
 delete(#cb_context{}=Context, _DocID) ->
-    crossbar_doc:delete(Context).
+    C = crossbar_doc:delete(Context),
+    update_mwi(C).
 delete(#cb_context{}=Context, _DocID, ?MESSAGES_RESOURCE, _MediaID) ->
-    crossbar_doc:save(Context).
+    C = crossbar_doc:save(Context),
+    update_mwi(C).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -232,14 +248,161 @@ update_vmbox(DocId, #cb_context{req_data=Data}=Context) ->
                       wh_json:from_list([{<<"mailbox">>, <<"invalid mailbox number or number exists">>}])
                       ,Context);
                 false ->
-                    Context1 = #cb_context{doc=VMBox, db_name=Db, account_id=AccountId} = crossbar_doc:load_merge(DocId, JObj, Context),
-                    
-                    _ = spawn(fun() -> _ = crossbar_util:put_reqid(Context1), update_mwi(VMBox, AccountId, Db) end),
-                    
-                    Context1
+                    crossbar_doc:load_merge(DocId, JObj, Context)
             end
     end.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Normalizes the resuts of a view
+%% @end
+%%--------------------------------------------------------------------
+-spec normalize_view_results/2 :: (wh_json:json_object(), wh_json:json_objects()) -> wh_json:json_objects().
+normalize_view_results(JObj, Acc) ->
+    [wh_json:get_value(<<"value">>, JObj)|Acc].
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Get messages summary for a given mailbox
+%% @end
+%%--------------------------------------------------------------------
+-spec load_message_summary/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
+load_message_summary(DocId, Context) ->
+    case crossbar_doc:load(DocId, Context) of
+        #cb_context{resp_status=success, doc=Doc}=C ->
+            Messages = [Message 
+                        || Message <- wh_json:get_ne_value(<<"messages">>, Doc, [])
+                               ,wh_json:get_value(<<"folder">>, Message) =/= <<"deleted">>
+                       ],
+            crossbar_util:response(Messages, C);
+        Else ->
+            Else
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Get message by its media ID and its context
+%% @end
+%%--------------------------------------------------------------------
+-spec load_message/4 :: (ne_binary(), ne_binary(), undefined | ne_binary(), #cb_context{}) -> #cb_context{}.
+load_message(DocId, MediaId, undefined, Context) ->
+    load_message(DocId, MediaId, wh_json:new(), Context);
+load_message(DocId, MediaId, UpdateJObj, #cb_context{req_data=ReqData, query_json=QueryData}=Context) ->
+    case crossbar_doc:load(DocId, Context) of
+        #cb_context{resp_status=success, doc=Doc}=C ->        
+            Messages = wh_json:get_value(<<"messages">>, Doc, []),
+            case get_message_index(MediaId, Messages) of
+                false -> {false, crossbar_util:response_bad_identifier(MediaId, Context)};
+                Index ->
+                    CurrentMetaData = wh_json:get_value([<<"messages">>, Index], Doc, wh_json:new()),
+                    CurrentFolder = wh_json:get_value(<<"folder">>, CurrentMetaData, <<"new">>),
+                    RequestedFolder = wh_json:get_ne_value(<<"folder">>, QueryData
+                                                           ,wh_json:get_ne_value(<<"folder">>, ReqData, CurrentFolder)),
+                    lager:debug("Ensuring message is in folder ~s", [RequestedFolder]),
+                    MetaData = wh_json:merge_jobjs(wh_json:set_value(<<"folder">>, RequestedFolder, UpdateJObj)
+                                                   ,CurrentMetaData),
+                    {CurrentFolder =/= RequestedFolder
+                     ,C#cb_context{doc=wh_json:set_value([<<"messages">>, Index], MetaData, Doc)
+                                   ,resp_data=MetaData
+                                  }}
+            end;
+        Else ->
+            {false, Else}
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Get message binary content so it can be downloaded
+%% VMBoxId is the doc id for the voicemail box document
+%% VMId is the id for the voicemail document, containing the binary data
+%% @end
+%%--------------------------------------------------------------------
+-spec load_message_binary/3 :: (ne_binary(), ne_binary(), #cb_context{}) -> #cb_context{}.
+load_message_binary(DocId, MediaId, #cb_context{db_name=Db, resp_headers=RespHeaders}=Context) ->
+    case load_message(DocId, MediaId, undefined, Context) of
+        {Update, #cb_context{resp_status=success, resp_data=VMMetaJObj, doc=Doc}=C} ->
+            case couch_mgr:open_doc(Db, MediaId) of
+                {error, _R} -> crossbar_util:response_bad_identifier(MediaId, C);
+                {ok, Media} ->
+                    [AttachmentId] = wh_json:get_keys(<<"_attachments">>, Media),
+                    Filename = generate_media_name(wh_json:get_value(<<"caller_id_number">>, VMMetaJObj)
+                                                   ,wh_json:get_value(<<"timestamp">>, VMMetaJObj)
+                                                   ,filename:extension(AttachmentId)
+                                                   ,wh_json:get_value(<<"timezone">>, Doc)
+                                                  ),
+                    case couch_mgr:fetch_attachment(Db, MediaId, AttachmentId) of
+                        {error, db_not_reachable} ->
+                            {false, crossbar_util:response_datastore_timeout(C)};
+                        {error, not_found} ->
+                            {false, crossbar_util:response_bad_identifier(MediaId, C)};
+                        {ok, AttachBin} ->
+                            lager:debug("Sending file with filename ~s", [Filename]),
+                            {Update
+                             ,C#cb_context{resp_status=success
+                                           ,resp_headers=[{<<"Content-Type">>, wh_json:get_value([<<"_attachments">>, AttachmentId, <<"content_type">>], Doc)}
+                                                          ,{<<"Content-Disposition">>, <<"attachment; filename=", Filename/binary>>}
+                                                          ,{<<"Content-Length">>, wh_util:to_binary(wh_json:get_value([<<"_attachments">>, AttachmentId, <<"length">>], Doc))}
+                                                          | RespHeaders
+                                                         ]
+                                           ,resp_etag=undefined
+                                           ,resp_data=AttachBin
+                                          }}
+                    end
+            end;
+        Else ->
+            Else
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Initiate the recursive search of the message index
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec get_message_index/2 :: (ne_binary(), wh_json:json_objects()) -> 'false' | pos_integer().
+get_message_index(MediaId, Messages) ->
+    case lists:takewhile(fun(Message) ->
+                                 wh_json:get_value(<<"media_id">>, Message) =/= MediaId
+                         end, Messages)
+    of
+        Messages -> false;
+        List -> length(List) + 1
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% generate a media name based on CallerID and creation date
+%% CallerID_YYYY-MM-DD_HH-MM-SS.ext
+%% @end
+%%--------------------------------------------------------------------
+-spec generate_media_name/4 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> ne_binary().
+generate_media_name(CallerId, GregorianSeconds, Ext, Timezone) ->
+    UTCDateTime = calendar:gregorian_seconds_to_datetime(wh_util:to_integer(GregorianSeconds)),
+
+    LocalTime = case localtime:utc_to_local(UTCDateTime, wh_util:to_list(Timezone)) of
+                    {{_,_,_},{_,_,_}}=LT -> lager:debug("Converted to TZ: ~s", [Timezone]), LT;
+                    _ -> lager:debug("Bad TZ: ~p", [Timezone]), UTCDateTime
+                end,
+
+    Date = wh_util:pretty_print_datetime(LocalTime),
+
+    case CallerId of
+        undefined -> list_to_binary(["unknown_", Date, Ext]);
+        _ -> list_to_binary([CallerId, "_", Date, Ext])
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
 -spec mailbox_exists/2 :: (#cb_context{}, wh_json:json_object()) -> boolean().
 mailbox_exists(#cb_context{db_name=Db}, JObj) ->
     Mailbox = wh_json:get_value(<<"mailbox">>, JObj),
@@ -266,257 +429,13 @@ mailbox_exists(#cb_context{db_name=Db}, JObj) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Normalizes the resuts of a view
-%% @end
-%%--------------------------------------------------------------------
--spec normalize_view_results/2 :: (wh_json:json_object(), wh_json:json_objects()) -> wh_json:json_objects().
-normalize_view_results(JObj, Acc) ->
-    [wh_json:get_value(<<"value">>, JObj)|Acc].
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Get messages summary for a given mailbox
-%% @end
-%%--------------------------------------------------------------------
--spec load_message_summary/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
-load_message_summary(DocId, Context) ->
-    case load_messages(DocId, Context) of
-        [] ->            
-            crossbar_util:response([], Context);
-        [JObj]=Messages ->
-            case wh_json:is_empty(JObj) of
-                true ->
-                    crossbar_util:response([], Context);
-                false ->
-                    crossbar_util:response(Messages,Context)
-            end;
-        Messages ->
-            crossbar_util:response(Messages,Context)
-    end.
-
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Get associated  Messages as a List of json obj
-%% @end
-%%--------------------------------------------------------------------
--spec load_messages/2 :: (ne_binary(), #cb_context{}) -> wh_json:json_objects().
-load_messages(DocId, Context) ->
-    #cb_context{resp_status=success, doc=Doc} = crossbar_doc:load(DocId, Context),
-    wh_json:get_value(<<"messages">>, Doc, []).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Get message by its media ID and its context
-%% @end
-%%--------------------------------------------------------------------
--spec load_message/3 :: (ne_binary(), ne_binary(), #cb_context{}) -> #cb_context{}.
-load_message(DocId, MediaId, Context) ->
-    case lists:filter(fun(M) -> wh_json:get_value(<<"media_id">>, M) =:= MediaId end, load_messages(DocId, Context)) of
-        [M] ->
-            crossbar_util:response(M,Context);
-        _ ->
-            crossbar_util:response_bad_identifier(MediaId, Context)
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Get message binary content so it can be downloaded
-%% VMBoxId is the doc id for the voicemail box document
-%% VMId is the id for the voicemail document, containing the binary data
-%% @end
-%%--------------------------------------------------------------------
--spec load_message_binary/3 :: (ne_binary(), ne_binary(), #cb_context{}) -> #cb_context{}.
-load_message_binary(VMBoxId, VMId, #cb_context{req_data=ReqData, db_name=Db, account_id=AccountId, resp_headers=RespHeaders}=Context) ->
-    {ok, VMJObj} = couch_mgr:open_doc(Db, VMId),
-    [AttachmentId] = wh_json:get_keys(<<"_attachments">>, VMJObj),
-
-    #cb_context{resp_data=VMMetaJObj} = load_message(VMBoxId, VMId, Context),
-
-    {ok, VMBoxJObj} = couch_mgr:open_doc(Db, VMBoxId),
-
-    Filename = generate_media_name(wh_json:get_value(<<"caller_id_number">>, VMMetaJObj)
-                                   ,wh_json:get_value(<<"timestamp">>, VMMetaJObj)
-                                   ,filename:extension(AttachmentId)
-                                   ,wh_json:get_value(<<"timezone">>, VMBoxJObj)
-                                  ),
-    lager:debug("Sending file with filename ~s", [Filename]),
-
-    Ctx = crossbar_doc:load_attachment(VMId, AttachmentId, Context),
-
-    _ = case wh_json:get_value(<<"folder">>, ReqData) of
-            undefined -> ok;
-            Folder ->
-                lager:debug("Moving message to ~s", [Folder]),
-                spawn(fun() ->
-                              _ = crossbar_util:put_reqid(Context),
-                              Context1 = update_message1(VMBoxId, VMId, Context),
-                              #cb_context{resp_status=success}=crossbar_doc:save(Context1),
-                              lager:debug("Saved message to new folder ~s", [Folder]),
-                              update_mwi(VMBoxJObj, AccountId, Db)
-                      end)
-        end,
-
-    Ctx#cb_context{resp_headers=[{<<"Content-Type">>, wh_json:get_value([<<"_attachments">>, AttachmentId, <<"content_type">>], VMJObj)}
-                                 ,{<<"Content-Disposition">>, <<"attachment; filename=", Filename/binary>>}
-                                 ,{<<"Content-Length">> ,wh_util:to_binary(wh_json:get_value([<<"_attachments">>, AttachmentId, <<"length">>], VMJObj))}
-                                 | RespHeaders
-                                ]
-                   ,resp_etag=undefined
-                  }.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% DELETE the message (set folder prop to deleted)
-%% @end
-%%--------------------------------------------------------------------
--spec delete_message/3 :: (ne_binary(), ne_binary(), #cb_context{}) -> #cb_context{}.
-delete_message(VMBoxId, MediaId, #cb_context{db_name=Db, account_id=AccountId}=Context) ->
-    Context1 = #cb_context{doc=VMBox} = crossbar_doc:load(VMBoxId, Context),
-    Messages = wh_json:get_value(<<"messages">>, VMBox, []),
-
-    case get_message_index(MediaId, Messages) of
-        Index when Index > 0 ->
-            VMBox1 = wh_json:set_value([<<"messages">>, Index, <<"folder">>], <<"deleted">>, VMBox),
-
-            %% let's not forget the associated private_media doc
-            {ok, D} = couch_mgr:open_doc(Db, MediaId),
-            couch_mgr:save_doc(Db, wh_json:set_value(<<"pvt_deleted">>, true, D)),
-
-            _ = spawn(fun() -> _ = crossbar_util:put_reqid(Context), update_mwi(VMBox1, AccountId, Db) end),
-
-            Context1#cb_context{doc=VMBox1};
-        _ ->
-            crossbar_util:response_bad_identifier(MediaId, Context)
-    end.
-
--spec update_mwi/3 :: (wh_json:json_object(), ne_binary(), ne_binary()) -> 'ok'.
-update_mwi(VMBox, AccountId, DB) ->
-    OwnerID = wh_json:get_value(<<"owner_id">>, VMBox),
-    false = wh_util:is_empty(OwnerID),
-
-    lager:debug("Sending MWI update to devices owned by ~s", [OwnerID]),
-
-    Messages = wh_json:get_value(<<"messages">>, VMBox, []),
-
-    Devices = cb_modules_util:get_devices_owned_by(OwnerID, DB),
-
-    New = count_messages(Messages, <<"new">>),
-    Saved = count_messages(Messages, <<"saved">>),
-
-    lager:debug("New: ~b Saved: ~b", [New, Saved]),
-
-    CommonHeaders = [{<<"Messages-New">>, New}
-                     ,{<<"Messages-Saved">>, Saved}
-                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-                    ],
-
-    lists:foreach(fun(Device) ->
-                          User = wh_json:get_value([<<"sip">>, <<"username">>], Device),
-                          Realm = case wh_json:get_ne_value([<<"sip">>, <<"realm">>], Device) of
-                                      undefined ->
-                                          wh_util:get_account_realm(AccountId);
-                                      DeviceRealm ->
-                                          DeviceRealm
-                                  end,
-
-                          Command = wh_json:from_list([{<<"Notify-User">>, User}
-                                                       ,{<<"Notify-Realm">>, Realm}
-                                                       | CommonHeaders
-                                                      ]),
-                          catch wapi_notifications:publish_mwi_update(Command)
-                  end, Devices).
-
--spec count_messages/2 :: (wh_json:json_objects(), ne_binary()) -> non_neg_integer().
-count_messages(Messages, Folder) ->
-    lists:sum([1 || Message <- Messages, wh_json:get_value(<<"folder">>, Message) =:= Folder]).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Initiate the recursive search of the message index
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_message_index/2 :: (ne_binary(), wh_json:json_objects()) -> pos_integer().
-get_message_index(MediaId, Messages) ->
-    find_index(MediaId, Messages, 1).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Recursively finds the index of message
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec find_index/3 :: (ne_binary(), wh_json:json_objects(), pos_integer()) -> integer().
-find_index(MediaId, [Message | Ms], Index) ->
-    case wh_json:get_value(<<"media_id">>, Message) =:= MediaId of
-        true -> Index;
-        false -> find_index(MediaId, Ms, Index + 1)
-    end;
-find_index(_, [], _) ->
-    -1.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Update the message informations
-%% Only Folder prop is editable atm
-%% @end
-%%--------------------------------------------------------------------
--spec update_message/3 :: (ne_binary(), ne_binary(), #cb_context{}) -> #cb_context{}.
-update_message(DocId, MediaId, #cb_context{req_data=Data}=Context) ->
-    case wh_json_validator:is_valid(Data, <<"vmboxes">>) of
-        {fail, Errors} ->
-            crossbar_util:response_invalid_data(Errors, Context);
-        {pass, JObj} ->
-            update_message1(DocId, MediaId, Context#cb_context{doc=JObj})
-    end. 
-
--spec update_message1/3 :: (ne_binary(), ne_binary(), #cb_context{}) -> #cb_context{}.
-update_message1(VMBoxId, MediaId, #cb_context{req_data=ReqData, db_name=Db, account_id=AccountId}=Context) ->
-    RequestedValue = wh_json:get_value(<<"folder">>, ReqData),
-
-    Context1 = #cb_context{doc=VMBox} = crossbar_doc:load(VMBoxId, Context),
-
-    Messages = wh_json:get_value(<<"messages">>, VMBox, []),
-
-    case get_message_index(MediaId, Messages) of
-        Index when Index > 0 ->
-            VMBox1 = wh_json:set_value([<<"messages">>, Index, <<"folder">>], RequestedValue, VMBox),
-
-            _ = spawn(fun() -> _ = crossbar_util:put_reqid(Context1), update_mwi(VMBox1, AccountId, Db) end),
-
-            Context1#cb_context{doc=VMBox1};
-        _Idx ->
-            crossbar_util:response_bad_identifier(MediaId, Context)
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% generate a media name based on CallerID and creation date
-%% CallerID_YYYY-MM-DD_HH-MM-SS.ext
-%% @end
-%%--------------------------------------------------------------------
--spec generate_media_name/4 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> ne_binary().
-generate_media_name(CallerId, GregorianSeconds, Ext, Timezone) ->
-    UTCDateTime = calendar:gregorian_seconds_to_datetime(wh_util:to_integer(GregorianSeconds)),
-    
-    LocalTime = case localtime:utc_to_local(UTCDateTime, wh_util:to_list(Timezone)) of
-                    {{_,_,_},{_,_,_}}=LT -> lager:debug("Converted to TZ: ~s", [Timezone]), LT;
-                    _ -> lager:debug("Bad TZ: ~p", [Timezone]), UTCDateTime
-                end,
-
-    Date = wh_util:pretty_print_datetime(LocalTime),
-
-    case CallerId of
-        undefined -> list_to_binary(["unknown_", Date, Ext]);
-        _ -> list_to_binary([CallerId, "_", Date, Ext])
-    end.
+-spec update_mwi/1 :: (#cb_context{}) -> #cb_context{}.
+update_mwi(#cb_context{resp_status=success, db_name=AccountDb, doc=JObj}=Context) ->
+    OwnerId = wh_json:get_value(<<"owner_id">>, JObj),
+    _ = cb_modules_util:update_mwi(OwnerId, AccountDb),
+    Context;
+update_mwi(Context) ->
+    Context.

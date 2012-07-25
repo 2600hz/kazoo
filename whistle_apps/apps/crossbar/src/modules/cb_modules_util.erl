@@ -9,6 +9,7 @@
 -module(cb_modules_util).
 
 -export([pass_hashes/2]).
+-export([update_mwi/2]).
 -export([get_devices_owned_by/2]).
 
 -include("../../include/crossbar.hrl").
@@ -19,6 +20,13 @@ pass_hashes(Username, Password) ->
     SHA1 = wh_util:to_hex_binary(crypto:sha(Creds)),
     MD5 = wh_util:to_hex_binary(erlang:md5(Creds)),
     {MD5, SHA1}.
+
+-spec update_mwi/2 :: (undefined | ne_binary(), ne_binary()) -> ok.
+update_mwi(OwnerId, AccountDb) ->
+    spawn(fun() ->
+                  timer:sleep(1000),
+                  cf_util:update_mwi(OwnerId, AccountDb) 
+          end).
 
 -spec get_devices_owned_by/2 :: (ne_binary(), ne_binary()) -> wh_json:json_objects().
 get_devices_owned_by(OwnerID, DB) ->
