@@ -484,4 +484,6 @@ set_outbound_flags(JObj, []) ->
     JObj;
 set_outbound_flags(JObj, L) when is_list(L) ->
     lager:debug("flags: ~p", [[wh_util:strip_binary(B) || B <- L]]),
-    wh_json:set_value(<<"outbound_flags">>, [wh_util:strip_binary(B) || B <- L], JObj).
+    wh_json:set_value(<<"outbound_flags">>, [wh_util:strip_binary(B) || B <- L], JObj);
+set_outbound_flags(JObj, _) -> JObj.
+
