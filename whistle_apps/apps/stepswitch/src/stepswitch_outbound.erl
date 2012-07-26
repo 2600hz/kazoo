@@ -436,7 +436,6 @@ find_endpoints(Number, Flags, Resources) ->
                     'undefined' ->
                         stepswitch_util:evaluate_number(Number, Resources);
                     Flags ->
-                        _ = [lager:debug("resource must have ~s flag", [F]) || F <- Flags],
                         FilteredResources = stepswitch_util:evaluate_flags(Flags, Resources),
                         stepswitch_util:evaluate_number(Number, FilteredResources)
                 end,
