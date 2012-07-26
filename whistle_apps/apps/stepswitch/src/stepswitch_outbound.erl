@@ -607,7 +607,8 @@ correct_shortdial(Number, JObj) ->
 %%--------------------------------------------------------------------
 -spec get_account_name/2 :: (ne_binary(), ne_binary()) -> ne_binary().
 get_account_name(Number, AccountId) when is_binary(Number) ->
-    case couch_mgr:open_doc(?WH_ACCOUNTS_DB, AccountId) of
+    AccountDb = wh_util:format_account_id(AccountId, encoded),
+    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
         {ok, JObj} -> wh_json:get_ne_value(<<"name">>, JObj, Number);
         _ -> Number
     end.

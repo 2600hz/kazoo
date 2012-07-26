@@ -519,29 +519,18 @@ load_account_db([AccountId|_], Context) ->
 load_account_db(AccountId, Context) when is_binary(AccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, encoded),
     lager:debug("account determined that db name: ~s", [AccountDb]),
-    case wh_cache:peek_local(?CROSSBAR_CACHE, {crossbar, exists, AccountId}) of
-        {ok, true} ->
-            lager:debug("check succeeded for db_exists on ~s", [AccountId]),
+    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+        {ok, _} ->
+            lager:debug("account ~s db exists , setting operating databse as ~s", [AccountId, AccountDb]),
             Context#cb_context{
               resp_status = success
               ,db_name = AccountDb
               ,account_id = AccountId
              };
-        _ ->
-            case couch_mgr:db_exists(AccountDb) of
-                false ->
-                    lager:debug("check failed for db_exists on ~s", [AccountId]),
-                    crossbar_util:response_db_missing(Context);
-                true ->
-                    wh_cache:store_local(?CROSSBAR_CACHE, {crossbar, exists, AccountId}, true, ?CACHE_TTL),
-                    lager:debug("check succeeded for db_exists on ~s", [AccountId]),
-                    Context#cb_context{
-                      resp_status = success
-                      ,db_name = AccountDb
-                      ,account_id = AccountId
-                     }
-            end
-    end.
+        {error, _R} ->
+            lager:debug("unable to open account definition ~s/~s: ~p", [AccountDb, AccountId, _R]),
+            crossbar_util:response_db_missing(Context)
+    end.            
 
 %%--------------------------------------------------------------------
 %% @private

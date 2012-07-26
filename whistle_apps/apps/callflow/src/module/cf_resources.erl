@@ -190,7 +190,9 @@ maybe_from_uri(false, CNum, Realm) ->
         undefined -> undefined
     end;
 maybe_from_uri(AccountDb, Gateway, CNum) ->
-    {ok, AcctDoc} = couch_mgr:open_doc(AccountDb, wh_util:format_account_id(AccountDb, raw)),
+    AccountId = wh_util:format_account_id(AccountDb, raw),
+
+    {ok, AcctDoc} = couch_mgr:open_cache_doc(AccountDb, AccountId),
 
     Realm = wh_json:get_value(<<"realm">>, AcctDoc),
     case wh_json:is_true(<<"format_from_uri">>, Gateway, false) of

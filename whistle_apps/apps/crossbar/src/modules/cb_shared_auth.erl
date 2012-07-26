@@ -151,7 +151,7 @@ validate(#cb_context{auth_doc=JObj, req_verb = <<"get">>}=Context) ->
     AccountId = wh_json:get_value(<<"account_id">>, JObj),
     UserId = wh_json:get_value(<<"owner_id">>, JObj),
     Db = wh_util:format_account_id(AccountId, encoded),
-    case couch_mgr:open_doc(Db, AccountId) of
+    case couch_mgr:open_cache_doc(Db, AccountId) of
         {ok, Account} ->
             case couch_mgr:open_doc(Db, UserId) of
                 {ok, User} ->
@@ -277,7 +277,7 @@ import_missing_account(AccountId, Account) ->
             lager:debug("remote account db ~s alread exists locally", [AccountId]),
             %% make sure the account definition is in the account, if not
             %% use the one we got from shared auth
-            case couch_mgr:open_doc(Db, AccountId) of
+            case couch_mgr:open_cache_doc(Db, AccountId) of
                 {error, not_found} ->
                     lager:debug("missing local account definition, creating from shared auth response"),
                     Doc = wh_json:delete_key(<<"_rev">>, Account),

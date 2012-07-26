@@ -207,11 +207,12 @@ normalize_view_results(JObj, Acc) ->
 %%--------------------------------------------------------------------
 -spec hash_password/1 :: (#cb_context{}) -> #cb_context{}.
 hash_password(#cb_context{doc=JObj}=Context) ->
+    Username = wh_json:get_value(<<"username">>, JObj),
     case wh_json:get_value(<<"password">>, JObj) of
         undefined ->
             Context;
         Password ->
-            {MD5, SHA1} = cb_modules_util:pass_hashes(wh_json:get_value(<<"username">>, JObj), Password),
+            {MD5, SHA1} = cb_modules_util:pass_hashes(Username, Password),
 
             JObj1 = wh_json:set_values([{<<"pvt_md5_auth">>, MD5}
                                         ,{<<"pvt_sha1_auth">>, SHA1}
