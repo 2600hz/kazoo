@@ -1028,7 +1028,8 @@ get_new_attachment_url(AttachmentName, MediaId, Call) ->
 %%--------------------------------------------------------------------
 -spec message_media_doc/2 :: (ne_binary(), #mailbox{}) -> ne_binary().
 message_media_doc(Db, #mailbox{mailbox_number=BoxNum, mailbox_id=Id, timezone=Timezone}) ->
-    UtcDateTime = calendar:gregorian_seconds_to_datetime(wh_util:current_tstamp()),
+    UtcSeconds = wh_util:current_tstamp(),
+    UtcDateTime = calendar:gregorian_seconds_to_datetime(UtcSeconds),
     Name = case localtime:utc_to_local(UtcDateTime, wh_util:to_list(Timezone)) of
                {{Y,M,D},{H,I,S}} ->
                    list_to_binary(["mailbox ", BoxNum, " message "
@@ -1058,6 +1059,7 @@ message_media_doc(Db, #mailbox{mailbox_number=BoxNum, mailbox_id=Id, timezone=Ti
              ,{<<"source_id">>, Id}
              ,{<<"media_source">>, <<"recording">>}
              ,{<<"streamable">>, true}
+             ,{<<"utc_seconds">>, UtcSeconds}
             ],
     Doc = wh_doc:update_pvt_parameters(wh_json:from_list(Props), Db, [{type, <<"private_media">>}]),
     {ok, JObj} = couch_mgr:save_doc(Db, Doc),
