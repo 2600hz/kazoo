@@ -19,12 +19,18 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec handle/2 :: (wh_json:json_object(), whapps_call:call()) -> ok.
-handle(_, Call) ->
+handle(Data, Call) ->
     CaptureGroup = whapps_call:kvs_fetch(cf_capture_group, Call),
     AccountId = whapps_call:account_id(Call),
     case is_binary(CaptureGroup) andalso cf_util:lookup_callflow(CaptureGroup, AccountId) of
         {ok, Flow, false} ->
-            whapps_call_command:set(undefined, wh_json:from_list([{<<"Auto-Answer">>, <<"true">>}]), Call),
+            JObj = case wh_json:is_true(<<"barge_calls">>, Data) of
+                       false -> wh_json:from_list([{<<"Auto-Answer">>, <<"true">>}]);
+                       true -> wh_json:from_list([{<<"Auto-Answer">>, <<"true">>}
+                                                  ,{<<"Auto-Answer-Notify">>, <<"true">>}
+                                                 ])
+                   end,
+            whapps_call_command:set(undefined, JObj, Call),
             cf_exe:branch(wh_json:get_value(<<"flow">>, Flow, wh_json:new()), Call);
         _ ->
             cf_exe:continue(Call)
