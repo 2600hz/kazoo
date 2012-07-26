@@ -169,7 +169,7 @@ clean_acct(AcctDb, Fs) ->
          put(callid, Old)
      end || F <- Fs],
     Wait = whapps_config:get_integer(<<"whistle_couch">>, <<"sleep_between_compaction">>, 60000),
-    lager:debug("done cleaning account ~s, waiting ~bs", [AcctDb, Wait]),
+    lager:debug("done cleaning account ~s, waiting ~b ms", [AcctDb, Wait]),
     timer:sleep(Wait).
 
 -spec cleanup_soft_deletes/1 :: (ne_binary()) -> any().
