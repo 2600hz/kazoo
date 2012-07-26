@@ -21,6 +21,7 @@
 -export([send_default_response/2]).
 -export([get_sip_realm/2, get_sip_realm/3]).
 -export([handle_doc_change/2]).
+-export([get_operator_callflow/1]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -315,6 +316,26 @@ correct_media_path(Media, Call) ->
             <<$/, (whapps_call:account_id(Call))/binary, $/, Media/binary>>;
         _Else ->
             Media
+    end.
+
+%%-----------------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%-----------------------------------------------------------------------------
+-spec get_operator_callflow/1 :: (ne_binary()) -> {'ok', wh_json:json_object()} |
+                                                  {'error', _}.
+get_operator_callflow(Account) ->
+    AccountDb = wh_util:format_account_id(Account, encoded),
+    Options = [{key, <<"0">>}, include_docs],
+    case couch_mgr:get_results(AccountDb, ?LIST_BY_NUMBER, Options) of
+        {ok, []} -> {error, not_found};
+        {ok, [JObj|_]} ->
+            {ok, wh_json:get_value([<<"doc">>, <<"flow">>], JObj, wh_json:new())};
+        {error, _R}=E ->
+            lager:debug("unable to find operator callflow in ~s: ~p", [Account, _R]),
+            E
     end.
 
 %%-----------------------------------------------------------------------------

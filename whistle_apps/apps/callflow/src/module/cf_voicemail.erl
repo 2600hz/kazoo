@@ -21,30 +21,30 @@
 
 -record(keys, {
           %% Compose Voicemail
-           operator = <<"0">>
-          ,login = <<"*">>
+          operator = <<"0">>
+              ,login = <<"*">>
 
-           %% Record Review
-          ,save = <<"1">>
-          ,listen = <<"2">>
-          ,record = <<"3">>
+              %% Record Review
+              ,save = <<"1">>
+              ,listen = <<"2">>
+              ,record = <<"3">>
 
-          %% Main Menu
-          ,hear_new = <<"1">>
-          ,hear_saved = <<"2">>
-          ,configure = <<"5">>
-          ,exit = <<"#">>
+              %% Main Menu
+              ,hear_new = <<"1">>
+              ,hear_saved = <<"2">>
+              ,configure = <<"5">>
+              ,exit = <<"#">>
 
-          %% Config Menu
-          ,rec_unavailable  = <<"1">>
-          ,rec_name = <<"2">>
-          ,set_pin = <<"3">>
-          ,return_main = <<"0">>
+              %% Config Menu
+              ,rec_unavailable  = <<"1">>
+              ,rec_name = <<"2">>
+              ,set_pin = <<"3">>
+              ,return_main = <<"0">>
 
-          %% Post playbak
-          ,keep = <<"1">>
-          ,replay = <<"2">>
-          ,delete = <<"7">>
+              %% Post playbak
+              ,keep = <<"1">>
+              ,replay = <<"2">>
+              ,delete = <<"7">>
          }).
 
 -record(mailbox, {
@@ -80,15 +80,19 @@ handle(Data, Call) ->
     case wh_json:get_value(<<"action">>, Data, <<"compose">>) of
         <<"compose">> ->
             whapps_call_command:answer(Call),
-            compose_voicemail(get_mailbox_profile(Data, Call), Call),
-            lager:debug("compose voicemail complete"),
-            cf_exe:stop(Call);
+            case compose_voicemail(get_mailbox_profile(Data, Call), Call) of
+                ok ->
+                    lager:debug("compose voicemail complete"),
+                    cf_exe:continue(Call);
+                {branch, Flow} ->
+                    lager:debug("compose voicemail complete, branch to operator"),
+                    cf_exe:branch(Flow, Call)
+            end;
         <<"check">> ->
             whapps_call_command:answer(Call),
             check_mailbox(get_mailbox_profile(Data, Call), Call),
             lager:debug("check voicemail complete"),
-            cf_util:update_mwi(Call),
-            cf_exe:stop(Call);
+            cf_exe:continue(Call);
         _ ->
             cf_exe:continue(Call)
     end.
@@ -105,7 +109,8 @@ handle(Data, Call) ->
 
 check_mailbox(Box, Call) ->
     %% Wrapper to initalize the attempt counter
-    check_mailbox(Box, Call, 1).
+    check_mailbox(Box, Call, 1),
+    cf_util:update_mwi(Call).
 
 check_mailbox(#mailbox{owner_id=OwnerId}=Box, Call, Loop) ->
     IsOwner = case whapps_call:kvs_fetch(owner_id, Call) of
@@ -170,7 +175,7 @@ find_mailbox(#mailbox{max_login_attempts=MaxLoginAttempts}, Call, Loop) when Loo
     ok;
 find_mailbox(Box, Call, Loop) ->
     lager:debug("requesting mailbox number to check"),
-    case whapps_call_command:b_prompt_and_collect_digits(<<"1">>, <<"6">>, <<"vm-enter_id">>, <<"1">>, Call) of 
+    case whapps_call_command:b_prompt_and_collect_digits(<<"1">>, <<"6">>, <<"vm-enter_id">>, <<"1">>, Call) of
         {ok, <<>>} ->
             find_mailbox(Box, Call, Loop + 1);
         {ok, Mailbox} ->
@@ -230,31 +235,36 @@ compose_voicemail(#mailbox{max_message_count=Count, message_count=Count}, _, Cal
     lager:debug("voicemail box is full, cannot hold more messages"),
     _ = whapps_call_command:b_prompt(<<"vm-mailbox_full">>, Call),
     ok;
-compose_voicemail(#mailbox{keys=#keys{login=Login}}=Box, _, Call) ->
+compose_voicemail(#mailbox{keys=#keys{login=Login, operator=Operator}}=Box, _, Call) ->
     lager:debug("playing mailbox greeting to caller"),
     _ = play_greeting(Box, Call),
     _ = play_instructions(Box, Call),
     _NoopId = whapps_call_command:noop(Call),
     %% timeout after 5 min for saftey, so this process cant hang around forever
     case whapps_call_command:wait_for_application_or_dtmf(<<"noop">>, 300000) of
-        {ok, _} -> 
+        {ok, _} ->
             lager:debug("played greeting and instructions to caller, recording new message"),
             record_voicemail(tmp_file(), Box, Call);
         {dtmf, Digit} ->
             _ = whapps_call_command:b_flush(Call),
             case Digit of
                 Login ->
-                    lager:debug("caller pressed '~s', redirecting to check voicemail", [Login]), 
+                    lager:debug("caller pressed '~s', redirecting to check voicemail", [Login]),
                     check_mailbox(Box, Call);
-                _Else -> 
-                    lager:debug("caller pressed unbound '~s', skip to recording new message", [_Else]), 
+                Operator ->
+                    lager:debug("caller choose to ring the operator"),
+                    case cf_util:get_operator_callflow(whapps_call:account_id(Call)) of
+                        {ok, Flow} -> {branch, Flow};
+                        {error, _R} -> record_voicemail(tmp_file(), Box, Call)
+                    end;                
+                _Else ->
+                    lager:debug("caller pressed unbound '~s', skip to recording new message", [_Else]),
                     record_voicemail(tmp_file(), Box, Call)
             end;
-        {error, R} -> 
+        {error, R} ->
             lager:debug("error while playing voicemail greeting: ~p", [R]),
             ok
-    end,
-    ok.
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -296,7 +306,7 @@ play_instructions(#mailbox{skip_instructions=false}, Call) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec record_voicemail/3 :: (ne_binary(), #mailbox{}, whapps_call:call()) -> 'ok'.
+-spec record_voicemail/3 :: (ne_binary(), #mailbox{}, whapps_call:call()) -> 'ok' | {'branch', wh_json:json_object()}.
 record_voicemail(AttachmentName, #mailbox{max_message_length=MaxMessageLength}=Box, Call) ->
     Tone = wh_json:from_list([{<<"Frequencies">>, [<<"440">>]}
                               ,{<<"Duration-ON">>, <<"500">>}
@@ -304,27 +314,30 @@ record_voicemail(AttachmentName, #mailbox{max_message_length=MaxMessageLength}=B
                              ]),
     whapps_call_command:tones([Tone], Call),
     lager:debug("composing new voicemail"),
-    _ = case whapps_call_command:b_record(AttachmentName, ?ANY_DIGIT, wh_util:to_binary(MaxMessageLength), Call) of
-            {ok, Msg} ->
-                Length = wh_json:get_integer_value(<<"Length">>, Msg, 0),
-                case review_recording(AttachmentName, Box, Call) of
-                    {ok, record} ->
-                        lager:debug("caller choose to re-record the message"),
-                        record_voicemail(tmp_file(), Box, Call);
-                    {ok, save} ->
-                        lager:debug("caller choose to save the message"),
-                        _ = new_message(AttachmentName, Length, Box, Call),
-                        whapps_call_command:b_prompt(<<"vm-saved">>, Call);
-                    {ok, no_selection} ->
-                        lager:debug("caller made no selection or hungup, saving the message"),
-                        _ = new_message(AttachmentName, Length, Box, Call),
-                        whapps_call_command:b_prompt(<<"vm-saved">>, Call)
-                end;
-            {error, R} ->
-                lager:debug("error while attempting to record a new message: ~p", [R]),
-                ok
-        end,
-    ok.
+    case whapps_call_command:b_record(AttachmentName, ?ANY_DIGIT, wh_util:to_binary(MaxMessageLength), Call) of
+        {ok, Msg} ->
+            Length = wh_json:get_integer_value(<<"Length">>, Msg, 0),
+            case review_recording(AttachmentName, true, Box, Call) of
+                {ok, record} ->
+                    record_voicemail(tmp_file(), Box, Call);
+                {ok, Selection} ->
+                    %% if the review is not record then it is one of the following:
+                    %% no_selection | save | operator
+                    %% for all of those we should save the vm, then (if operator)
+                    %% do something else
+                    _ = new_message(AttachmentName, Length, Box, Call),
+                    _ = whapps_call_command:b_prompt(<<"vm-saved">>, Call),
+                    case Selection of
+                        {branch, _}=Branch -> Branch;
+                        _Else ->
+                            whapps_call_command:b_prompt(<<"vm-thank_you">>, Call),
+                            ok
+                    end
+            end;
+        {error, _R} ->
+            lager:debug("error while attempting to record a new message: ~p", [_R]),
+            ok
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -377,14 +390,14 @@ main_menu(#mailbox{owner_id=OwnerId, keys=#keys{hear_new=HearNew, hear_saved=Hea
     New = count_messages(Messages, ?FOLDER_NEW),
     Saved = count_messages(Messages, ?FOLDER_SAVED),
     lager:debug("mailbox has ~p new and ~p saved messages", [New, Saved]),
-    NoopId = whapps_call_command:audio_macro(message_count_prompts(New, Saved) 
-                                         ++ [{prompt, <<"vm-main_menu">>}], Call),
+    NoopId = whapps_call_command:audio_macro(message_count_prompts(New, Saved)
+                                             ++ [{prompt, <<"vm-main_menu">>}], Call),
     case whapps_call_command:collect_digits(1, 5000, 2000, NoopId, Call) of
-        {error, _} -> 
+        {error, _} ->
             lager:debug("error during mailbox main menu"),
             cf_util:update_mwi(OwnerId, AccountDb),
             ok;
-        {ok, Exit} -> 
+        {ok, Exit} ->
             lager:debug("user choose to exit voicemail menu"),
             cf_util:update_mwi(OwnerId, AccountDb),
             ok;
@@ -607,10 +620,10 @@ record_unavailable_greeting(AttachmentName, #mailbox{unavailable_media_id=MediaI
                               ,{<<"Duration-OFF">>, <<"100">>}
                              ]),
     _NoopId = whapps_call_command:audio_macro([{prompt, <<"vm-record_greeting">>}
-                                           ,{tones, [Tone]}
-                                          ], Call),
+                                               ,{tones, [Tone]}
+                                              ], Call),
     _ = whapps_call_command:b_record(AttachmentName, Call),
-    case review_recording(AttachmentName, Box, Call) of
+    case review_recording(AttachmentName, false, Box, Call) of
         {ok, record} ->
             record_unavailable_greeting(tmp_file(), Box, Call);
         {ok, save} ->
@@ -664,7 +677,7 @@ record_name(AttachmentName, #mailbox{name_media_id=MediaId}=Box, Call, DocId) ->
                                                ,{tones, [Tone]}
                                               ], Call),
     _ = whapps_call_command:b_record(AttachmentName, Call),
-    case review_recording(AttachmentName, Box, Call) of
+    case review_recording(AttachmentName, false, Box, Call) of
         {ok, record} ->
             record_name(tmp_file(), Box, Call);
         {ok, save} ->
@@ -906,13 +919,13 @@ populate_keys(Call) ->
                                                                                          {'error', term()}.
 get_mailbox_doc(Db, Id, CaptureGroup) ->
     CGIsEmpty = wh_util:is_empty(CaptureGroup),
-    case wh_util:is_empty(Id) of 
+    case wh_util:is_empty(Id) of
         false ->
             lager:debug("opening ~s", [Id]),
             couch_mgr:open_doc(Db, Id);
         true when not CGIsEmpty ->
             lager:debug("capture group not empty: ~s", [CaptureGroup]),
-            Opts = [{key, CaptureGroup}, include_docs], 
+            Opts = [{key, CaptureGroup}, include_docs],
             case couch_mgr:get_results(Db, <<"cf_attributes/mailbox_number">>, Opts) of
                 {ok, []} -> {error, not_found};
                 {ok, [JObj|_]} -> {ok, wh_json:get_value(<<"doc">>, JObj, wh_json:new())};
@@ -921,34 +934,44 @@ get_mailbox_doc(Db, Id, CaptureGroup) ->
         true ->
             {error, "ID and capture group is empty, what voicemail box do you want?"}
     end.
-            
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec review_recording/3 :: (ne_binary(), #mailbox{}, whapps_call:call()) -> {'ok', 'record' | 'save' | 'no_selection'}.
--spec review_recording/4 :: (ne_binary(), #mailbox{}, whapps_call:call(), pos_integer()) -> {'ok', 'record' | 'save' | 'no_selection'}.
+-spec review_recording/4 :: (ne_binary(), boolean(), #mailbox{}, whapps_call:call()) -> {'ok', 'record' | 'save' | 'no_selection'} |
+                                                                                        {'branch', wh_json:json_object()}.
+-spec review_recording/5 :: (ne_binary(), boolean(), #mailbox{}, whapps_call:call(), pos_integer()) -> {'ok', 'record' | 'save' | 'no_selection'} |
+                                                                                                       {'branch', wh_json:json_object()}.
 
-review_recording(AttachmentName, Box, Call) ->
-    review_recording(AttachmentName, Box, Call, 1).
+review_recording(AttachmentName, AllowOperator, Box, Call) ->
+    review_recording(AttachmentName, AllowOperator, Box, Call, 1).
 
-review_recording(_, _, _, Loop) when Loop > 4 ->
+review_recording(_, _, _, _, Loop) when Loop > 4 ->
     {ok, no_selection};
-review_recording(AttachmentName, #mailbox{keys=#keys{listen=Listen, save=Save, record=Record}}=Box, Call, Loop) ->
+review_recording(AttachmentName, AllowOperator
+                 ,#mailbox{keys=#keys{listen=Listen, save=Save, record=Record, operator=Operator}}=Box
+                 ,Call, Loop) ->
     lager:debug("playing recording review options"),
     case whapps_call_command:b_prompt_and_collect_digit(<<"vm-review_recording">>, Call) of
         {ok, Listen} ->
             lager:debug("caller choose to replay the recording"),
             _ = whapps_call_command:b_play(AttachmentName, Call),
-            review_recording(AttachmentName, Box, Call);
+            review_recording(AttachmentName, AllowOperator, Box, Call);
         {ok, Record} ->
             lager:debug("caller choose to re-record"),
             {ok, record};
         {ok, Save} ->
             lager:debug("caller choose to save the recording"),
             {ok, save};
+        {ok, Operator} when AllowOperator ->
+            lager:debug("caller choose to ring the operator"),
+            case cf_util:get_operator_callflow(whapps_call:account_id(Call)) of
+                {ok, Flow} -> {ok, {branch, Flow}};
+                {error,_R} -> review_recording(AttachmentName, Box, Call, Loop + 1)
+            end;
         {error, _} ->
             lager:debug("error while waiting for review selection"),
             {ok, no_selection};
@@ -1180,7 +1203,7 @@ update_doc(Key, Value, Id, Call) ->
 %%--------------------------------------------------------------------
 -spec tmp_file/0 :: () -> ne_binary().
 tmp_file() ->
-     <<(wh_util:to_hex_binary(crypto:rand_bytes(16)))/binary, ".mp3">>.
+    <<(wh_util:to_hex_binary(crypto:rand_bytes(16)))/binary, ".mp3">>.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1211,7 +1234,7 @@ get_unix_epoch(Epoch, Timezone) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec find_max_message_length/1 :: (wh_json:json_objects()) -> pos_integer().
