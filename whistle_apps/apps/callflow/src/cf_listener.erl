@@ -31,9 +31,11 @@
                      ,{cf_route_win, [{<<"dialplan">>, <<"route_win">>}]}
                      ,{{cf_util, presence_probe}, [{<<"notification">>, <<"presence_probe">>}]}
                      ,{{cf_util, presence_mwi_query}, [{<<"notification">>, <<"mwi_query">>}]}
+                     ,{{cf_util, handle_doc_change}, [{<<"configuration">>, <<"*">>}]}
                     ]).
 -define(BINDINGS, [{route, []}
                    ,{self, []}
+                   ,{conf, [{doc_type, <<"device">>}]} % get alerts about device updates
                   ]).
 -define(QUEUE_NAME, <<"">>).
 -define(QUEUE_OPTIONS, []).
