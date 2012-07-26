@@ -837,7 +837,10 @@ get_mailbox_profile(Data, Call) ->
                                                ,[<<"voicemail">>, <<"max_message_count">>]
                                               ) of
                     undefined ->
-                        whapps_config:get(?CF_CONFIG_CAT, [<<"voicemail">>, <<"max_message_count">>], ?MAILBOX_DEFAULT_SIZE);
+                        whapps_config:get(?CF_CONFIG_CAT
+                                          ,[<<"voicemail">>, <<"max_message_count">>]
+                                          ,?MAILBOX_DEFAULT_SIZE
+                                         );
                     MMC -> MMC
                 end,
             MsgCount = length(wh_json:get_value(<<"messages">>, JObj, [])),
