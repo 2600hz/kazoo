@@ -41,10 +41,12 @@ send(CallId, CtrlQ, undefined, undefined, Media) ->
                                    ,{<<"Call-ID">>, CallId}
                                   ])
                 ,wh_json:from_list([{<<"Application-Name">>, <<"play">>}
+                                    ,{<<"Msg-ID">>, NoopId}
                                     ,{<<"Media-Name">>, Media}
                                     ,{<<"Call-ID">>, CallId}
                                    ])
                 ,wh_json:from_list([{<<"Application-Name">>, <<"progress">>}
+                                    ,{<<"Msg-ID">>, NoopId}
                                     ,{<<"Call-ID">>, CallId}
                                    ])
                ],
@@ -57,6 +59,7 @@ send(CallId, CtrlQ, Code, Cause, undefined) ->
                                    ,{<<"Call-ID">>, CallId}
                                   ])
                 ,wh_json:from_list([{<<"Application-Name">>, <<"respond">>}
+                                    ,{<<"Msg-ID">>, NoopId}
                                     ,{<<"Response-Code">>, Code}
                                     ,{<<"Response-Message">>, Cause}
                                     ,{<<"Call-ID">>, CallId}
@@ -73,13 +76,16 @@ send(CallId, CtrlQ, Code, Cause, Media) ->
                 ,wh_json:from_list([{<<"Application-Name">>, <<"respond">>}
                                     ,{<<"Response-Code">>, Code}
                                     ,{<<"Response-Message">>, Cause}
+                                    ,{<<"Msg-ID">>, NoopId}
                                     ,{<<"Call-ID">>, CallId}
                                    ])
                 ,wh_json:from_list([{<<"Application-Name">>, <<"play">>}
                                     ,{<<"Media-Name">>, Media}
+                                    ,{<<"Msg-ID">>, NoopId}
                                     ,{<<"Call-ID">>, CallId}
                                    ])
                 ,wh_json:from_list([{<<"Application-Name">>, <<"progress">>}
+                                    ,{<<"Msg-ID">>, NoopId}
                                     ,{<<"Call-ID">>, CallId}
                                    ])
                ],
@@ -90,6 +96,7 @@ do_send(CallId, CtrlQ, Commands) ->
     Command = [{<<"Application-Name">>, <<"queue">>}
                ,{<<"Call-ID">>, CallId}
                ,{<<"Commands">>, Commands}
+               ,{<<"Msg-ID">>, wh_util:rand_hex_binary(6)}
                | wh_api:default_headers(<<>>, <<"call">>, <<"command">>, <<"call_response">>, <<"0.1.0">>)],
     {ok, Payload} = wapi_dialplan:queue(Command),
     wapi_dialplan:publish_action(CtrlQ, Payload).
