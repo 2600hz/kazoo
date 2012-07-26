@@ -10,8 +10,9 @@
 
 -include("callflow.hrl").
 
--export([build/2, build/3]).
--export([get/2]).
+-export([build/2, build/3
+         ,get/2, flush/2
+        ]).
 
 -define(NON_DIRECT_MODULES, [cf_ring_group, acdc_util]).
 
@@ -123,11 +124,12 @@ create_endpoints(Endpoint, Properties, Call) ->
 %% Fetches a endpoint defintion from the database or cache
 %% @end
 %%--------------------------------------------------------------------
--spec get/2 :: ('undefined' | ne_binary(), whapps_call:call()) -> {'ok', wh_json:json_object()} | {'error', term()}.
+-spec get/2 :: ('undefined' | ne_binary(), ne_binary() | whapps_call:call()) ->
+                       {'ok', wh_json:json_object()} |
+                       {'error', term()}.
 get(undefined, _Call) ->
     {error, invalid_endpoint_id};
-get(EndpointId, Call) ->
-    AccountDb = whapps_call:account_db(Call),
+get(EndpointId, AccountDb) when is_binary(AccountDb) ->
     case wh_cache:peek({?MODULE, AccountDb, EndpointId}) of
         {ok, _}=Ok ->
             Ok;
@@ -140,7 +142,13 @@ get(EndpointId, Call) ->
                     lager:debug("unable to fetch endpoint ~s: ~p", [EndpointId, R]),
                     E
             end
-    end.
+    end;
+get(EndpointId, Call) ->
+    get(EndpointId, whapps_call:account_db(Call)).
+
+-spec flush/2 :: (ne_binary(), ne_binary()) -> any().
+flush(Db, Id) ->
+    wh_cache:erase({?MODULE, Db, Id}).
 
 %%--------------------------------------------------------------------
 %% @private
