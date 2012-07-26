@@ -103,14 +103,13 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info(cleanup, Ref) ->
     lager:debug("cleaning up soft deletes"),
-    erlang:cancel_timer(Ref),
+    _ = erlang:cancel_timer(Ref),
 
     Fs = find_cleanup_methods(),
     AcctDbs = whapps_util:get_all_accounts(encoded),
 
     lager:debug("cleanup methods: ~p", [Fs]),
-    _C = [catch clean_acct(AcctDb, Fs) || AcctDb <- AcctDbs],
-    lager:debug("C: ~p", [_C]),
+    _ = [catch clean_acct(AcctDb, Fs) || AcctDb <- AcctDbs],
 
     lager:debug("done with cleanup"),
     {noreply, start_cleanup_timer()}.
@@ -163,11 +162,11 @@ is_cleanup_method(_) -> false.
 
 -spec clean_acct/2 :: (ne_binary(), [atom(),...]) -> any().
 clean_acct(AcctDb, Fs) ->
-    [begin
-         Old = put(callid, F),
-         catch ?MODULE:F(AcctDb),
-         put(callid, Old)
-     end || F <- Fs],
+    _ = [begin
+             Old = put(callid, F),
+             catch ?MODULE:F(AcctDb),
+             put(callid, Old)
+         end || F <- Fs],
     Wait = whapps_config:get_integer(<<"whistle_couch">>, <<"sleep_between_compaction">>, 60000),
     lager:debug("done cleaning account ~s, waiting ~b ms", [AcctDb, Wait]),
     timer:sleep(Wait).

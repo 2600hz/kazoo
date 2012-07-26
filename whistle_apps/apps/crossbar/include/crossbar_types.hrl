@@ -26,7 +26,5 @@
 -type couch_doc_path() :: list(binary()).
 -type couch_schema() :: list({couch_doc_path(), validator_rules()}).
 
--type proplist_bool() :: [{boolean(), term()} | boolean(),...] | [].
-
 -define(CROSSBAR_TYPES_INCLUDED, 'true').
 -endif.

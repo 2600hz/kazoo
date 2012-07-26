@@ -114,10 +114,10 @@ any(Res) when is_list(Res) -> lists:any(fun check_bool/1, Res).
 -spec all/1 :: (proplist()) -> boolean().
 all(Res) when is_list(Res) -> lists:all(fun check_bool/1, Res).
 
--spec failed/1 :: (proplist_bool()) -> proplist_bool().
+-spec failed/1 :: (wh_proplist()) -> wh_proplist() | http_methods().
 failed(Res) when is_list(Res) -> [R || R <- Res, filter_out_succeeded(R)].
 
--spec succeeded/1 :: (proplist_bool()) -> proplist_bool().
+-spec succeeded/1 :: (wh_proplist()) -> wh_proplist() | http_methods().
 succeeded(Res) when is_list(Res) -> [R || R <- Res, filter_out_failed(R)].
 
 %%--------------------------------------------------------------------
