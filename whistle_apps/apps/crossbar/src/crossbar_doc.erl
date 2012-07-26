@@ -75,10 +75,7 @@ load(DocId, #cb_context{db_name=DB}=Context) ->
                                                   ,resp_etag=rev_to_etag(Doc)
                                                  },
                     crossbar_util:store(db_doc, Doc, Context1)
-            end;
-        _Else ->
-            lager:debug("unexpected return from datastore: ~p", [_Else]),
-            Context#cb_context{doc=wh_json:new()}
+            end
     end.
 
 %%--------------------------------------------------------------------
@@ -210,7 +207,11 @@ load_view(View, Options, Context, Filter) when is_function(Filter, 2) ->
 load_docs(#cb_context{db_name=Db}=Context, Filter) when is_function(Filter, 2) ->
     case couch_mgr:all_docs(Db) of
         {ok, Docs} ->
-            Context#cb_context{resp_status=success, resp_data=lists:filter(fun(X) -> X =/= undefined end, lists:foldr(Filter, [], Docs))};
+            Context#cb_context{resp_status=success
+                               ,resp_data=lists:filter(fun(X) ->
+                                                               X =/= undefined
+                                                       end, lists:foldr(Filter, [], Docs))
+                              };
         {error, db_not_reachable} ->
             crossbar_util:response_datastore_timeout(Context);
         {error, not_found} ->

@@ -289,7 +289,7 @@ load_message_summary(DocId, Context) ->
 %% Get message by its media ID and its context
 %% @end
 %%--------------------------------------------------------------------
--spec load_message/4 :: (ne_binary(), ne_binary(), undefined | ne_binary(), #cb_context{}) -> #cb_context{}.
+-spec load_message/4 :: (ne_binary(), ne_binary(), 'undefined' | ne_binary(), #cb_context{}) -> {boolean(), #cb_context{}}.
 load_message(DocId, MediaId, undefined, Context) ->
     load_message(DocId, MediaId, wh_json:new(), Context);
 load_message(DocId, MediaId, UpdateJObj, #cb_context{req_data=ReqData, query_json=QueryData}=Context) ->
@@ -323,7 +323,7 @@ load_message(DocId, MediaId, UpdateJObj, #cb_context{req_data=ReqData, query_jso
 %% VMId is the id for the voicemail document, containing the binary data
 %% @end
 %%--------------------------------------------------------------------
--spec load_message_binary/3 :: (ne_binary(), ne_binary(), #cb_context{}) -> #cb_context{}.
+-spec load_message_binary/3 :: (ne_binary(), ne_binary(), #cb_context{}) -> {boolean(), #cb_context{}}.
 load_message_binary(DocId, MediaId, #cb_context{db_name=Db, resp_headers=RespHeaders}=Context) ->
     case load_message(DocId, MediaId, undefined, Context) of
         {Update, #cb_context{resp_status=success, resp_data=VMMetaJObj, doc=Doc}=C} ->

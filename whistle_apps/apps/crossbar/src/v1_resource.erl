@@ -49,13 +49,13 @@
 %%%===================================================================
 %%% Startup and shutdown of request
 %%%===================================================================
--spec init/3 :: ({'tcp' | 'ssl', 'http'}, #http_req{}, proplist()) -> {'upgrade', 'protocol', 'cowboy_http_rest'}.
+-spec init/3 :: ({'tcp' | 'ssl', 'http'}, #http_req{}, wh_proplist()) -> {'upgrade', 'protocol', 'cowboy_http_rest'}.
 init({tcp, http}, _Req, _Opts) ->
     {upgrade, protocol, cowboy_http_rest};
 init({ssl, http}, _Req, _Opts) ->
     {upgrade, protocol, cowboy_http_rest}.
 
--spec rest_init/2 :: (#http_req{}, proplist()) -> {'ok', #http_req{}, #cb_context{}}.
+-spec rest_init/2 :: (#http_req{}, wh_proplist()) -> {'ok', #http_req{}, #cb_context{}}.
 rest_init(Req0, Opts) ->
     ReqId = case cowboy_http_req:header(<<"X-Request-Id">>, Req0) of
                 {undefined, _} -> couch_mgr:get_uuid();
@@ -95,8 +95,8 @@ rest_terminate(Req, #cb_context{start=T1, method='OPTIONS'}=Context) ->
     lager:debug("fulfilled in ~p ms", [timer:now_diff(now(), T1) div 1000]);
 rest_terminate(Req, #cb_context{start=T1, resp_status=Status, auth_account_id=AcctId}=Context) ->
     case Status of
-	success -> wh_counter:inc(<<"crossbar.requests.successes">>);
-	_ -> wh_counter:inc(<<"crossbar.requests.failures">>)
+        success -> wh_counter:inc(<<"crossbar.requests.successes">>);
+        _ -> wh_counter:inc(<<"crossbar.requests.failures">>)
     end,
     wh_counter:inc(<<"crossbar.requests.accounts.", (wh_util:to_binary(AcctId))/binary>>),
     _ = v1_util:finish_request(Req, Context),
@@ -146,20 +146,20 @@ check_preflight(Req0, #cb_context{allowed_methods=Methods, req_nouns=[{Mod, Para
                 {false, Req2} ->
                     lager:debug("not CORS preflight"),
                     {ok, Req3} = v1_util:add_cors_headers(Req2, Context),
-		    VerbAtom = wh_util:to_atom(wh_util:to_upper_binary(Verb)),
-		    case lists:member(VerbAtom, Methods1) of
-			true ->
-			    {Methods1, Req3, Context#cb_context{allow_methods=Methods1
-								,req_verb=Verb
-							       }};
-			false ->
-			    Context1 = crossbar_util:response(error, "method not allowed", 405, Context),
-			    {Content, Req3} = v1_util:create_resp_content(Req3, Context1),
-			    {ok, Req4} = cowboy_http_req:set_resp_body(Content, Req3),
-			    {Methods1, Req4, Context1#cb_context{allow_methods=Methods1
-								 ,req_verb=Verb
-								}}
-		    end
+                    VerbAtom = wh_util:to_atom(wh_util:to_upper_binary(Verb)),
+                    case lists:member(VerbAtom, Methods1) of
+                        true ->
+                            {Methods1, Req3, Context#cb_context{allow_methods=Methods1
+                                                                ,req_verb=Verb
+                                                               }};
+                        false ->
+                            Context1 = crossbar_util:response(error, "method not allowed", 405, Context),
+                            {Content, Req3} = v1_util:create_resp_content(Req3, Context1),
+                            {ok, Req4} = cowboy_http_req:set_resp_body(Content, Req3),
+                            {Methods1, Req4, Context1#cb_context{allow_methods=Methods1
+                                                                 ,req_verb=Verb
+                                                                }}
+                    end
             end
     end.
 
@@ -229,7 +229,7 @@ options(Req0, Context) ->
             {ok, Req1, Context}
     end.
 
--type content_type_callbacks() :: [ {{ne_binary(), ne_binary(), proplist()}, atom()} | {ne_binary(), atom()},...] | [].
+-type content_type_callbacks() :: [ {{ne_binary(), ne_binary(), wh_proplist()}, atom()} | {ne_binary(), atom()},...] | [].
 -spec content_types_provided/2 :: (#http_req{}, #cb_context{}) -> {content_type_callbacks(), #http_req{}, #cb_context{}}.
 content_types_provided(Req, #cb_context{req_nouns=Nouns}=Context0) ->
     #cb_context{content_types_provided=CTPs}=Context1 =

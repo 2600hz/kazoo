@@ -1,10 +1,10 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2012, VoIP INC
 %%% @doc
 %%% Functions shared between crossbar modules
 %%% @end
-%%% Created : 17 Nov 2011 by James Aimonetti <james@2600hz.org>
+%%% @contributors
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(cb_modules_util).
 
@@ -12,7 +12,7 @@
 -export([update_mwi/2]).
 -export([get_devices_owned_by/2]).
 
--include("../../include/crossbar.hrl").
+-include_lib("crossbar/include/crossbar.hrl").
 
 -spec pass_hashes/2 :: (ne_binary(), ne_binary()) -> {ne_binary(), ne_binary()}.
 pass_hashes(Username, Password) ->
@@ -21,7 +21,7 @@ pass_hashes(Username, Password) ->
     MD5 = wh_util:to_hex_binary(erlang:md5(Creds)),
     {MD5, SHA1}.
 
--spec update_mwi/2 :: (undefined | ne_binary(), ne_binary()) -> ok.
+-spec update_mwi/2 :: ('undefined' | ne_binary(), ne_binary()) -> pid().
 update_mwi(OwnerId, AccountDb) ->
     spawn(fun() ->
                   timer:sleep(1000),
@@ -30,7 +30,9 @@ update_mwi(OwnerId, AccountDb) ->
 
 -spec get_devices_owned_by/2 :: (ne_binary(), ne_binary()) -> wh_json:json_objects().
 get_devices_owned_by(OwnerID, DB) ->
-    case couch_mgr:get_results(DB, <<"cf_attributes/owned">>, [{<<"key">>, [OwnerID, <<"device">>]}, {<<"include_docs">>, true}]) of
+    case couch_mgr:get_results(DB, <<"cf_attributes/owned">>, [{key, [OwnerID, <<"device">>]}
+                                                               ,include_docs
+                                                              ]) of
         {ok, JObjs} ->
             lager:debug("Found ~b devices owned by ~s", [length(JObjs), OwnerID]),
             [wh_json:get_value(<<"doc">>, JObj) || JObj <- JObjs];

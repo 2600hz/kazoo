@@ -395,7 +395,7 @@ validate_user(JObj, Context) ->
                                              {'error', wh_json:json_object()}.
 create_account(Context) ->
     case crossbar_bindings:fold(<<"v1_resource.execute.put.accounts">>, [Context]) of
-        #cb_context{resp_status=success, db_name=AccountDb, account_id=AccountId, doc=Doc}=Context1 ->
+        #cb_context{resp_status=success, db_name=AccountDb, account_id=AccountId}=Context1 ->
             io:format("created new account '~s' in db '~s'~n", [AccountId, AccountDb]),
 
             case wh_json:get_value(<<"service_plan">>, Doc) of
