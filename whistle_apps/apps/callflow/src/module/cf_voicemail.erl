@@ -1029,11 +1029,29 @@ get_new_attachment_url(AttachmentName, MediaId, Call) ->
 -spec message_media_doc/2 :: (ne_binary(), #mailbox{}) -> ne_binary().
 message_media_doc(Db, #mailbox{mailbox_number=BoxNum, mailbox_id=Id, timezone=Timezone}) ->
     UtcDateTime = calendar:gregorian_seconds_to_datetime(wh_util:current_tstamp()),
-    {{Y,M,D},{H,I,S}} = localtime:utc_to_local(UtcDateTime, wh_util:to_list(Timezone)),
-    Name = list_to_binary(["mailbox ", BoxNum, " message "
-                           ,wh_util:to_binary(M), "-", wh_util:to_binary(D), "-", wh_util:to_binary(Y)
-                           ," " , wh_util:to_binary(H), ":", wh_util:to_binary(I), ":", wh_util:to_binary(S)
-                          ]),
+    Name = case localtime:utc_to_local(UtcDateTime, wh_util:to_list(Timezone)) of
+               {{Y,M,D},{H,I,S}} ->
+                   list_to_binary(["mailbox ", BoxNum, " message "
+                                   ,wh_util:to_binary(M), "-"
+                                   ,wh_util:to_binary(D), "-"
+                                   ,wh_util:to_binary(Y), " "
+                                   ,wh_util:to_binary(H), ":"
+                                   ,wh_util:to_binary(I), ":"
+                                   ,wh_util:to_binary(S)
+                                  ]);
+               {error, unknown_tz} ->
+                   lager:debug("unknown timezone: ~s", [Timezone]),
+                   {{Y,M,D},{H,I,S}} = UtcDateTime,
+                   list_to_binary(["mailbox ", BoxNum, " message "
+                                   ,wh_util:to_binary(M), "-"
+                                   ,wh_util:to_binary(D), "-"
+                                   ,wh_util:to_binary(Y), " "
+                                   ,wh_util:to_binary(H), ":"
+                                   ,wh_util:to_binary(I), ":"
+                                   ,wh_util:to_binary(S), " UTC"
+                                  ])
+           end,
+
     Props = [{<<"name">>, Name}
              ,{<<"description">>, <<"voicemail message media">>}
              ,{<<"source_type">>, <<"voicemail">>}
