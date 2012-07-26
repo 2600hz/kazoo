@@ -251,8 +251,8 @@ callee_id(EndpointId, OwnerId, Attribute, Call) ->
 %% @doc
 %% @end
 %%-----------------------------------------------------------------------------
--spec caller_id_attributes/3 :: (ne_binary() | wh_json:json_object(), ne_binary(), whapps_call:call()) -> undefined | ne_binary().
--spec caller_id_attributes/4 :: (ne_binary() | 'undefined', ne_binary(), ne_binary(), whapps_call:call()) -> undefined | ne_binary().
+-spec caller_id_attributes/3 :: (ne_binary() | wh_json:json_object(), ne_binary(), whapps_call:call()) -> undefined | ne_binary() | wh_json:json_object().
+-spec caller_id_attributes/4 :: (ne_binary() | 'undefined', ne_binary(), ne_binary(), whapps_call:call()) -> undefined | ne_binary() | wh_json:json_object().
 
 caller_id_attributes(Endpoint, Attribute, Call) when is_tuple(Endpoint) ->
     EndpointId = wh_json:get_value(<<"_id">>, Endpoint),
