@@ -12,6 +12,7 @@
 
 %% API
 -export([start_link/0
+         ,cleanup_heard_voicemail/1
          ,cleanup_soft_deletes/1
         ]).
 
@@ -100,14 +101,16 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info(cleanup, _Ref) ->
+handle_info(cleanup, Ref) ->
     lager:debug("cleaning up soft deletes"),
+    erlang:cancel_timer(Ref),
 
     Fs = find_cleanup_methods(),
     AcctDbs = whapps_util:get_all_accounts(encoded),
 
     lager:debug("cleanup methods: ~p", [Fs]),
-    _ = [catch clean_acct(AcctDb, Fs) || AcctDb <- AcctDbs],
+    _C = [catch clean_acct(AcctDb, Fs) || AcctDb <- AcctDbs],
+    lager:debug("C: ~p", [_C]),
 
     lager:debug("done with cleanup"),
     {noreply, start_cleanup_timer()}.
@@ -160,7 +163,14 @@ is_cleanup_method(_) -> false.
 
 -spec clean_acct/2 :: (ne_binary(), [atom(),...]) -> any().
 clean_acct(AcctDb, Fs) ->
-    [?MODULE:F(AcctDb) || F <- Fs].
+    [begin
+         Old = put(callid, F),
+         catch ?MODULE:F(AcctDb),
+         put(callid, Old)
+     end || F <- Fs],
+    Wait = whapps_config:get_integer(<<"whistle_couch">>, <<"sleep_between_compaction">>, 60000),
+    lager:debug("done cleaning account ~s, waiting ~bs", [AcctDb, Wait]),
+    timer:sleep(Wait).
 
 -spec cleanup_soft_deletes/1 :: (ne_binary()) -> any().
 cleanup_soft_deletes(AcctDb) ->
@@ -172,6 +182,57 @@ cleanup_soft_deletes(AcctDb) ->
         {error, _E} ->
             lager:debug("failed to lookup soft-deleted tokens: ~p", [_E])
     end.
+
+cleanup_heard_voicemail(AcctDb) ->
+    case whapps_account_config:get(AcctDb
+                                   ,<<"callflow">>
+                                   ,[<<"voicemail">>, <<"message_retention_duration">>]
+                                  ) of
+        undefined -> ok;
+        Duration ->
+            lager:debug("retaining messages for ~p days, delete those older", [Duration]),
+            cleanup_heard_voicemail(AcctDb, wh_util:to_integer(Duration))
+    end.
+cleanup_heard_voicemail(AcctDb, Duration) ->
+    Today = wh_util:current_tstamp(),
+    DurationS = Duration * 86400, % duration in seconds
+    case couch_mgr:get_results(AcctDb, <<"vmboxes/crossbar_listing">>, [include_docs]) of
+        {ok, []} -> lager:debug("no voicemail boxes in ~s", [AcctDb]);
+        {ok, View} ->
+            lager:debug("cleaning up ~b voicemail boxes in ~s", [length(View), AcctDb]),
+            cleanup_heard_voicemail(AcctDb
+                                    ,Today - DurationS
+                                    ,[{wh_json:get_value(<<"doc">>, V)
+                                       ,wh_json:get_value([<<"doc">>, <<"messages">>], V)
+                                      } || V <- View]
+                                   );
+        {error, _E} ->
+            lager:debug("failed to get voicemail boxes in ~s: ~p", [AcctDb, _E])
+    end.
+cleanup_heard_voicemail(AcctDb, Timestamp, Boxes) ->
+    [cleanup_voicemail_box(AcctDb, Timestamp, Box) || Box <- Boxes].
+
+cleanup_voicemail_box(AcctDb, Timestamp, {Box, Msgs}) ->
+    case lists:partition(fun(Msg) ->
+                                 %% must be old enough, and not in the NEW folder
+                                 wh_json:get_integer_value(<<"timestamp">>, Msg) < Timestamp andalso
+                                     wh_json:get_value(<<"folder">>, Msg) =/= <<"new">>
+                         end, Msgs) of
+        {[], _} -> lager:debug("there are no old messages to remove from ~s", [wh_json:get_value(<<"_id">>, Box)]);
+        {Older, Newer} ->
+            lager:debug("there are ~b old messages to remove", [length(Older)]),
+
+            _ = [catch delete_media(AcctDb, wh_json:get_value(<<"media_id">>, Msg)) || Msg <- Older],
+            lager:debug("soft-deleted old messages"),
+
+            Box1 = wh_json:set_value(<<"messages">>, Newer, Box),
+            {ok, Box2} = couch_mgr:save_doc(AcctDb, Box1),
+            lager:debug("updated messages in voicemail box ~s", [wh_json:get_value(<<"_id">>, Box2)])
+    end.
+
+delete_media(AcctDb, MediaId) ->
+    {ok, JObj} = couch_mgr:open_doc(AcctDb, MediaId),
+    couch_mgr:ensure_saved(AcctDb, wh_json:set_value(<<"pvt_deleted">>, true, JObj)).
 
 -spec prepare_docs_for_deletion/1 :: (wh_json:objects()) -> wh_json:json_objects().
 -spec prepare_doc_for_deletion/1 :: (wh_json:object()) -> wh_json:json_object().
