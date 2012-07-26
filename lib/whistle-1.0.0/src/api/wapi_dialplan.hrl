@@ -41,8 +41,8 @@
 -define(BRIDGE_REQ_TYPES, [{<<"Endpoints">>, fun is_list/1}
                            ,{<<"SIP-Headers">>, fun wh_json:is_json_object/1}
                            ,{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}
-                           ,{<<"Continue-On-Fail">>, fun wh_json:is_boolean/1}
-                           ,{<<"Secure-RTP">>, fun wh_json:is_boolean/1}
+                           ,{<<"Continue-On-Fail">>, fun wh_util:is_boolean/1}
+                           ,{<<"Secure-RTP">>, fun wh_util:is_boolean/1}
                           ]).
 
 %% Bridge Endpoints
@@ -282,7 +282,7 @@
                            ,?INSERT_AT_TUPLE
                           ]).
 -define(FETCH_REQ_TYPES, [
-                          {<<"From-Other-Leg">>, fun is_boolean/1}
+                          {<<"From-Other-Leg">>, fun wh_util:is_boolean/1}
                          ]).
 
 %% Call Pickup
