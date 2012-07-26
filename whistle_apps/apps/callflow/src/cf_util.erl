@@ -20,6 +20,7 @@
 -export([handle_bridge_failure/2, handle_bridge_failure/3]).
 -export([send_default_response/2]).
 -export([get_sip_realm/2, get_sip_realm/3]).
+-export([handle_doc_change/2]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -501,6 +502,11 @@ get_sip_realm(SIPJObj, AccountId, Default) ->
             end;
         Realm -> Realm
     end.
+
+handle_doc_change(JObj, _) ->
+    Db = wh_json:get_value(<<"Account-DB">>, JObj),
+    Id = wh_json:get_value(<<"ID">>, JObj),
+    cf_endpoint:flush(Db, Id).
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").

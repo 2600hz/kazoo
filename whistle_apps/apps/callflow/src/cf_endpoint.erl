@@ -10,8 +10,9 @@
 
 -include("callflow.hrl").
 
--export([build/2, build/3]).
--export([get/2]).
+-export([build/2, build/3
+         ,get/2, flush/2
+        ]).
 
 -define(NON_DIRECT_MODULES, [cf_ring_group, acdc_util]).
 
@@ -56,13 +57,13 @@ build(Endpoint, Properties, Call) ->
     EndpointOwnerId = wh_json:get_value(<<"owner_id">>, Endpoint),
     CanCallSelf = wh_json:is_true(<<"can_call_self">>, Properties),
     case {EndpointId, EndpointOwnerId, CanCallSelf} of
-        {_, _, true} -> 
+        {_, _, true} ->
             create_endpoints(Endpoint, Properties, Call);
-        {AuthorizingId, _, false} when is_binary(AuthorizingId) -> 
+        {AuthorizingId, _, false} when is_binary(AuthorizingId) ->
             {error, endpoint_called_self};
-        {_, OwnerId, false} when is_binary(OwnerId) -> 
+        {_, OwnerId, false} when is_binary(OwnerId) ->
             {error, owner_called_self};
-        {_, _, false} -> 
+        {_, _, false} ->
             create_endpoints(Endpoint, Properties, Call)
     end.
 
@@ -80,7 +81,7 @@ build(Endpoint, Properties, Call) ->
 create_endpoints(Endpoint, Properties, Call) ->
     Fwd = cf_attributes:call_forward(Endpoint, Call),
     Substitue = wh_json:is_false(<<"substitute">>, Fwd),
-    IgnoreFwd = wh_json:is_true(<<"direct_calls_only">>, Fwd) 
+    IgnoreFwd = wh_json:is_true(<<"direct_calls_only">>, Fwd)
         andalso lists:member(wh_json:get_value(<<"source">>, Properties), ?NON_DIRECT_MODULES),
     Endpoints = case {IgnoreFwd, Substitue, Fwd} of
                     %% if the call forward object is undefined then there is no fwd'n
@@ -97,7 +98,7 @@ create_endpoints(Endpoint, Properties, Call) ->
                     {true, true, _} ->
                         lager:debug("trying to ring just the device"),
                         [catch(create_sip_endpoint(Endpoint, Properties, Call))];
-           
+
                     %% if we are not ignoring ring groups and and substitute is not set to false
                     %% (hence false via is_false) then only ring the fwd'd number
                     {false, false, _} ->
@@ -123,11 +124,12 @@ create_endpoints(Endpoint, Properties, Call) ->
 %% Fetches a endpoint defintion from the database or cache
 %% @end
 %%--------------------------------------------------------------------
--spec get/2 :: ('undefined' | ne_binary(), whapps_call:call()) -> {'ok', wh_json:json_object()} | {'error', term()}.
+-spec get/2 :: ('undefined' | ne_binary(), ne_binary() | whapps_call:call()) ->
+                       {'ok', wh_json:json_object()} |
+                       {'error', term()}.
 get(undefined, _Call) ->
     {error, invalid_endpoint_id};
-get(EndpointId, Call) ->
-    AccountDb = whapps_call:account_db(Call),
+get(EndpointId, AccountDb) when is_binary(AccountDb) ->
     case wh_cache:peek({?MODULE, AccountDb, EndpointId}) of
         {ok, _}=Ok ->
             Ok;
@@ -140,7 +142,13 @@ get(EndpointId, Call) ->
                     lager:debug("unable to fetch endpoint ~s: ~p", [EndpointId, R]),
                     E
             end
-    end.
+    end;
+get(EndpointId, Call) ->
+    get(EndpointId, whapps_call:account_db(Call)).
+
+-spec flush/2 :: (ne_binary(), ne_binary()) -> any().
+flush(Db, Id) ->
+    wh_cache:erase({?MODULE, Db, Id}).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -188,8 +196,9 @@ create_sip_endpoint(Endpoint, Properties, Call) ->
             ,{<<"Presence-ID">>, cf_attributes:presence_id(Endpoint, Call)}
             ,{<<"SIP-Headers">>, generate_sip_headers(Endpoint, Call)}
             ,{<<"Custom-Channel-Vars">>, generate_ccvs(Endpoint, Call)}
+            ,{<<"Flags">>, wh_json:get_value(<<"outbound_flags">>, Endpoint)}
            ],
-    wh_json:from_list([ KV || {_, V}=KV <- Prop, V =/= undefined ]).
+    wh_json:from_list(props:filter_undefined(Prop)).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -221,7 +230,7 @@ create_call_fwd_endpoint(Endpoint, Properties, CallFwd, Call) ->
             ,{<<"SIP-Headers">>, generate_sip_headers(Endpoint, Call)}
             ,{<<"Custom-Channel-Vars">>, generate_ccvs(Endpoint, Call, CallFwd)}
            ],
-    wh_json:from_list([ KV || {_, V}=KV <- Prop, V =/= undefined ]).
+    wh_json:from_list(props:filter_undefined(Prop)).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -345,19 +354,16 @@ generate_ccvs(Endpoint, Call, CallFwd) ->
 -spec maybe_format_caller_id_number/3 :: (wh_json:json_object(), ne_binary(), whapps_call:call()) -> ne_binary().
 maybe_format_caller_id_number(Endpoint, CIDNum, Call) ->
     case cf_attributes:caller_id_attributes(Endpoint, <<"format">>, Call) of
-        undefined ->
-            CIDNum;
+        undefined -> CIDNum;
         FormatObj ->
             case wh_json:is_json_object(FormatObj) of
-                true ->
-                    wh_json:foldl(fun(Key, Value, CIDNum1) -> format_caller_id_number_flag(Key, Value, CIDNum1) end, CIDNum, FormatObj);
-                _ ->
-                    CIDNum
+                false -> CIDNum;
+                true -> wh_json:foldl(fun(Key, Value, CIDNum1) ->
+                                              format_caller_id_number_flag(Key, Value, CIDNum1)
+                                      end, CIDNum, FormatObj)
             end
     end.
 
 -spec format_caller_id_number_flag/3 :: (ne_binary(), term(), ne_binary()) -> ne_binary().
-format_caller_id_number_flag(<<"remove_plus">>, true, <<$+, CIDNum/binary>>) ->
-    CIDNum;
-format_caller_id_number_flag(_Key, _Value, CIDNum) ->
-    CIDNum.
+format_caller_id_number_flag(<<"remove_plus">>, true, <<$+, CIDNum/binary>>) -> CIDNum;
+format_caller_id_number_flag(_Key, _Value, CIDNum) -> CIDNum.

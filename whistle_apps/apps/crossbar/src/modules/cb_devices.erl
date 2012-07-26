@@ -257,7 +257,10 @@ create_device(#cb_context{req_data=Req, db_name=Db}=Context) ->
     Username = wh_json:get_ne_value([<<"sip">>, <<"username">>], Data),
     Realm = wh_json:get_ne_value([<<"sip">>, <<"realm">>], Data),
     IsCredsUnique = is_sip_creds_unique(Db, Realm, Username),
-    case wh_json_validator:is_valid(Data, <<"devices">>) of
+
+    Data1 = set_outbound_flags(Data, wh_json:get_value(<<"outbound_flags">>, Data)),
+
+    case wh_json_validator:is_valid(Data1, <<"devices">>) of
         {fail, Errors} when not IsCredsUnique ->
             E = wh_json:set_value([<<"sip">>, <<"username">>, <<"unique">>]
                                   ,<<"SIP credentials are already in use">>
@@ -272,7 +275,7 @@ create_device(#cb_context{req_data=Req, db_name=Db}=Context) ->
             crossbar_util:response_invalid_data(E, Context);
         {pass, JObj} ->
             Context#cb_context{resp_status=success
-                               ,doc=wh_json:set_value(<<"pvt_type">>, <<"device">>, JObj)
+                               ,doc=wh_json:set_value({<<"pvt_type">>, <<"device">>}, JObj)
                               }
     end.
 
@@ -306,7 +309,10 @@ update_device(DocId, #cb_context{req_data=Req, db_name=Db}=Context) ->
     Username = wh_json:get_ne_value([<<"sip">>, <<"username">>], Data),
     Realm = wh_json:get_ne_value([<<"sip">>, <<"realm">>], Data),
     IsCredsUnique = is_sip_creds_unique(Db, Realm, Username, DocId),
-    case wh_json_validator:is_valid(Data, <<"devices">>) of
+
+    Data1 = set_outbound_flags(Data, wh_json:get_value(<<"outbound_flags">>, Data)),
+
+    case wh_json_validator:is_valid(Data1, <<"devices">>) of
         {fail, Errors} when not IsCredsUnique ->
             E = wh_json:set_value([<<"sip">>, <<"username">>, <<"unique">>]
                                   ,<<"SIP credentials are already in use">>
@@ -471,3 +477,15 @@ get_device_type(JObj) ->
         true -> DeviceType;
         false -> <<"sip_device">>
     end.
+
+set_outbound_flags(JObj, undefined) ->
+    wh_json:set_value(<<"outbound_flags">>, [], JObj);
+set_outbound_flags(JObj, []) ->
+    JObj;
+set_outbound_flags(JObj, <<>>) ->
+    wh_json:set_value(<<"outbound_flags">>, [], JObj);
+set_outbound_flags(JObj, L) when is_list(L) ->
+    lager:debug("flags: ~p", [[wh_util:strip_binary(B) || B <- L]]),
+    wh_json:set_value(<<"outbound_flags">>, [wh_util:strip_binary(B) || B <- L], JObj);
+set_outbound_flags(JObj, _) -> JObj.
+

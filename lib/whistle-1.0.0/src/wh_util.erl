@@ -26,9 +26,12 @@
          ,is_true/1, is_false/1
          ,is_empty/1, is_proplist/1
         ]).
--export([to_lower_binary/1, to_upper_binary/1]).
--export([to_lower_string/1, to_upper_string/1]).
--export([ucfirst_binary/1, lcfirst_binary/1]).
+-export([to_lower_binary/1, to_upper_binary/1
+         ,to_lower_string/1, to_upper_string/1
+         ,ucfirst_binary/1, lcfirst_binary/1
+         ,strip_binary/1, strip_binary/2
+         ,strip_left_binary/2, strip_right_binary/2
+        ]).
 
 -export([pad_binary/3, join_binary/1, join_binary/2]).
 -export([a1hash/3, floor/1, ceiling/1]).
@@ -556,6 +559,33 @@ to_upper_char(C) when is_integer(C), 16#E0 =< C, C =< 16#F6 -> C - 32;
 to_upper_char(C) when is_integer(C), 16#F8 =< C, C =< 16#FE -> C - 32;
 to_upper_char(C) -> C.
 
+-spec strip_binary/1 :: (binary()) -> binary().
+-spec strip_binary/2 :: (binary(), 'both' | 'left' | 'right') -> binary().
+-spec strip_left_binary/2 :: (binary(), char()) -> binary().
+-spec strip_right_binary/2 :: (binary(), char()) -> binary().
+strip_binary(B) ->
+    strip_binary(B, both).
+
+strip_binary(B, left) ->
+    strip_left_binary(B, $\s);
+strip_binary(B, right) ->
+    strip_right_binary(B, $\s);
+strip_binary(B, both) ->
+    strip_right_binary(strip_left_binary(B, $\s), $\s).
+
+strip_left_binary(<<C, B/binary>>, C) ->
+    strip_left_binary(B, C);
+strip_left_binary(B, _) -> B.
+
+strip_right_binary(<<C, B/binary>>, C) ->
+    case strip_right_binary(B, C) of
+        <<>> -> <<>>;
+        T -> <<C, T/binary>>
+    end;
+strip_right_binary(<<A, B/binary>>, C) ->
+    <<A, (strip_right_binary(B, C))/binary>>;
+strip_right_binary(<<>>, _) -> <<>>.
+
 -spec a1hash/3 :: (ne_binary(), ne_binary(), ne_binary()) -> nonempty_string().
 a1hash(User, Realm, Password) ->
     to_hex(erlang:md5(list_to_binary([User,":",Realm,":",Password]))).
@@ -786,6 +816,23 @@ to_upper_string_test() ->
     ?assertEqual("FOO", to_upper_string("FoO")),
     ?assertEqual("F00", to_upper_string("f00")),
     ?assertEqual("F00", to_upper_string("F00")).
+
+strip_binary_test() ->
+    ?assertEqual(<<"foo">>, strip_binary(<<"foo">>)),
+    ?assertEqual(<<"foo">>, strip_binary(<<"foo ">>)),
+    ?assertEqual(<<"foo">>, strip_binary(<<" foo ">>)),
+    ?assertEqual(<<"foo">>, strip_binary(<<"  foo  ">>)),
+    ?assertEqual(<<"foo">>, strip_binary(<<"     foo">>)),
+
+    ?assertEqual(<<"foo">>, strip_left_binary(<<"foo">>, $\s)),
+    ?assertEqual(<<"foo">>, strip_left_binary(<<" foo">>, $\s)),
+    ?assertEqual(<<"foo ">>, strip_left_binary(<<" foo ">>, $\s)),
+    ?assertEqual(<<"foo ">>, strip_left_binary(<<"foo ">>, $\s)),
+
+    ?assertEqual(<<"foo">>, strip_right_binary(<<"foo">>, $\s)),
+    ?assertEqual(<<" foo">>, strip_right_binary(<<" foo">>, $\s)),
+    ?assertEqual(<<" foo">>, strip_right_binary(<<" foo ">>, $\s)),
+    ?assertEqual(<<"foo">>, strip_right_binary(<<"foo ">>, $\s)).
 
 to_boolean_test() ->
     All = [<<"true">>, "true", true, <<"false">>, "false", false],

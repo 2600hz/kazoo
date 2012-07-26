@@ -144,11 +144,11 @@ compact_node_db(NodeBin, DB, Conn, AdminConn) ->
 compact_node_shards(NodeBin, Shards, AdminConn, DesignDocs) ->
     case catch(lists:split(?MAX_COMPACTING_SHARDS, Shards)) of
         {'EXIT', _} ->
-            compact_shards(NodeBin, Shards, AdminConn, DesignDocs),
+            _ = compact_shards(NodeBin, Shards, AdminConn, DesignDocs),
             wait_for_inter_compaction_timeout(NodeBin),
             ok;
         {Compact, Remaining} ->
-            compact_shards(NodeBin, Compact, AdminConn, DesignDocs),
+            _ = compact_shards(NodeBin, Compact, AdminConn, DesignDocs),
             wait_for_inter_compaction_timeout(NodeBin),
             compact_node_shards(NodeBin, Remaining, AdminConn, DesignDocs)
     end.
@@ -168,7 +168,7 @@ wait_for_inter_compaction_timeout(NodeBin, Timeout) ->
             ok
     end.
 
--spec compact_shards/4 :: (ne_binary(), [ne_binary(),...], server(), [ne_binary(),...] | []) -> 'ok'.
+-spec compact_shards/4 :: (ne_binary(), [ne_binary(),...], server(), [ne_binary(),...] | []) -> any().
 compact_shards(NodeBin, Shards, AdminConn, DesignDocs) ->
     Pids = [spawn_monitor(?MODULE, compact_shard, [NodeBin, AdminConn, Shard, DesignDocs])
             || Shard <- Shards
