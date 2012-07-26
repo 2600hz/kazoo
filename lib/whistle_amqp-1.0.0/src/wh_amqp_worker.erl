@@ -48,6 +48,7 @@
                 ,req_start_time :: wh_now()
                 ,callid :: ne_binary()
                 ,pool_ref :: server_ref()
+                ,defer_response = undefined :: 'undefined' | wh_json:json_object()
                }).
 
 -define(FUDGE, 2600).
@@ -164,7 +165,7 @@ init([Args]) ->
     Pool = props:get_value(name, Args, undefined),
     PoolName = pool_name_from_server_ref(Pool),
     wh_counter:inc(<<"amqp.pools.", PoolName/binary, ".available">>),
-    {ok, #state{neg_resp_threshold=NegThreshold,pool_ref=Pool}}.
+    {ok, #state{neg_resp_threshold=NegThreshold, pool_ref=Pool}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -226,23 +227,23 @@ handle_cast({set_negative_threshold, NegThreshold}, State) ->
     {noreply, State#state{neg_resp_threshold = NegThreshold}};
 handle_cast({event, MsgId, JObj}, #state{current_msg_id = MsgId
                                          ,client_from = From
-                                         ,client_ref = ClientRef
                                          ,client_vfun = VFun
-                                         ,req_timeout_ref = ReqRef
                                          ,req_start_time = StartTime
                                          ,neg_resp_count = NegCount
                                          ,neg_resp_threshold = NegThreshold
                                         }=State) when NegCount < NegThreshold ->
     _ = wh_util:put_callid(JObj),
-    lager:debug("response for msg id ~s took ~b micro to return", [MsgId, timer:now_diff(erlang:now(), StartTime)]),
     case VFun(JObj) of
         true ->
-            erlang:demonitor(ClientRef, [flush]),
-
-            gen_server:reply(From, {ok, JObj}),
-            _ = erlang:cancel_timer(ReqRef),
-            put(callid, ?LOG_SYSTEM_ID),
-            {noreply, reset(State)};
+            case wh_json:is_true(<<"Defer-Response">>, JObj) of
+                false ->
+                    lager:debug("response for msg id ~s took ~b micro to return", [MsgId, timer:now_diff(erlang:now(), StartTime)]),
+                    gen_server:reply(From, {ok, JObj}),
+                    {noreply, reset(State)};
+                true ->
+                    lager:debug("defered response for msg id ~s, waiting for primary response", [MsgId]),
+                    {noreply, State#state{defer_response=JObj}}
+            end;
         false ->
             lager:debug("response failed validator, waiting for more responses"),
             {noreply, State#state{neg_resp_count = NegCount + 1, neg_resp=JObj}, 0}
@@ -264,40 +265,36 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info(timeout, #state{neg_resp=JObj, neg_resp_count=Thresh, neg_resp_threshold=Thresh
-                            ,client_ref=ClientRef, client_from=From, req_timeout_ref=ReqRef
+handle_info(timeout, #state{neg_resp=ErrorJObj, neg_resp_count=Thresh, neg_resp_threshold=Thresh
+                            ,client_from=From, defer_response=ReservedJObj
                            }=State) ->
     lager:debug("negative response threshold reached, returning last negative message"),
-    erlang:demonitor(ClientRef, [flush]),
-    gen_server:reply(From, {error, JObj}),
-    _ = erlang:cancel_timer(ReqRef),
-    put(callid, ?LOG_SYSTEM_ID),
+    case wh_util:is_empty(ReservedJObj) of
+        true -> gen_server:reply(From, {error, ErrorJObj});
+        false -> gen_server:reply(From, {ok, ReservedJObj})
+    end,
     {noreply, reset(State)};
 handle_info(timeout, State) ->
     {noreply, State};
 handle_info({'DOWN', ClientRef, process, _Pid, _Reason}, #state{current_msg_id = _MsgID
                                                                 ,client_ref = ClientRef
-                                                                ,req_timeout_ref = ReqRef
                                                                 ,callid = CallID
                                                                }=State) ->
     put(callid, CallID),
     lager:debug("requestor processes ~p  died while waiting for msg id ~s", [_Pid, _MsgID]),
-    erlang:demonitor(ClientRef, [flush]),
-    _ = erlang:cancel_timer(ReqRef),
-    put(callid, ?LOG_SYSTEM_ID),
-    {noreply, reset(State)};
-handle_info({timeout, ReqRef, req_timeout}, #state{current_msg_id = _MsgID
-                                                   ,client_ref = ClientRef
-                                                   ,req_timeout_ref = ReqRef
-                                                   ,client_from = From
-                                                   ,callid = CallID
+    {noreply, reset(State)};    
+handle_info({timeout, ReqRef, req_timeout}, #state{current_msg_id= _MsgID, req_timeout_ref=ReqRef, callid=CallID
+                                                   ,client_from=From, defer_response=ReservedJObj
                                                   }=State) ->
     put(callid, CallID),
-    lager:debug("request timeout exceeded for msg id: ~s", [_MsgID]),
-    erlang:demonitor(ClientRef, [flush]),
-    gen_server:reply(From, {error, timeout}),
-    _ = erlang:cancel_timer(ReqRef),
-    put(callid, ?LOG_SYSTEM_ID),
+    case wh_util:is_empty(ReservedJObj) of
+        true -> 
+            lager:debug("request timeout exceeded for msg id: ~s", [_MsgID]),
+            gen_server:reply(From, {error, timeout});
+        false -> 
+            lager:debug("only received reserved response for msg id: ~s", [_MsgID]),
+            gen_server:reply(From, {ok, ReservedJObj})
+    end,
     {noreply, reset(State)};
 handle_info(_Info, State) ->
     {noreply, State}.
@@ -344,7 +341,16 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 -spec reset/1 :: (#state{}) -> #state{}.
-reset(State) ->
+reset(#state{req_timeout_ref = ReqRef, client_ref = ClientRef}=State) ->
+    put(callid, ?LOG_SYSTEM_ID),
+    _ = case is_reference(ReqRef) of
+            true -> erlang:cancel_timer(ReqRef);
+            false -> ok
+        end,
+    _ = case is_reference(ClientRef) of
+            true -> erlang:demonitor(ClientRef, [flush]);
+            false -> ok
+        end,
     State#state{client_pid = undefined
                 ,client_ref = undefined
                 ,client_from = undefined
@@ -355,6 +361,7 @@ reset(State) ->
                 ,req_timeout_ref = undefined
                 ,req_start_time = undefined
                 ,callid = undefined
+                ,defer_response = undefined
                }.
 
 -spec pool_name_from_server_ref/1 :: (server_ref()) -> ne_binary().
