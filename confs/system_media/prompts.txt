@@ -28,6 +28,7 @@ vm-not_available: is not available.
 vm-no_messages: Mailbox is empty.
 vm-message_number: Message
 vm-recording_to_short: The recording was too short to be saved.
+vm-thank_you: Thank you for calling.  Good bye.
 
 menu-no_prompt: The recording for this menu has not been created. If you know the pin number, dial it now to record the prompt.  Otherwise, please try your call again later. Thank you.
 menu-transferring_call: Transferring your call.
@@ -50,10 +51,10 @@ conf-alone: You are currently the only person in this conference.
 conf-single: There is only one other participant in this conference.
 conf-there_are: There are
 conf-other_participants: other participants in this conference.
-conf-muted: mic muted
-conf-unmuted: mic unmuted
-conf-deaf: speaker muted
-conf-undeaf: speaker unmuted
+conf-muted: Microphone muted, dial star one to un-mute.
+conf-unmuted: Microphone un-muted, dial star one to mute.
+conf-deaf: Speaker muted, dial star four to un-mute.
+conf-undeaf: Speaker un-muted, dial star four to mute.
 
 cf-now_forwarded_to: Calls are now forwarded to
 cf-disabled: Call forwarding is now disabled.

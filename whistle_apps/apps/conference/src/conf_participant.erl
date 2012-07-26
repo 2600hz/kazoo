@@ -31,6 +31,7 @@
 -export([mute/1, unmute/1, toggle_mute/1]).
 -export([deaf/1, undeaf/1, toggle_deaf/1]).
 -export([hangup/1]).
+-export([dtmf/2]).
 
 %% gen_server callbacks
 -export([init/1
@@ -71,6 +72,7 @@
                       ,join_attempts = 0
                       ,conference = whapps_conference:new()
                       ,discovery_event = wh_json:new()
+                      ,last_dtmf = <<>>
                      }).
 
 %%%===================================================================
@@ -152,6 +154,10 @@ toggle_deaf(Srv) ->
 hangup(Srv) ->
     gen_server:cast(Srv, hangup).
 
+-spec dtmf/2 :: (pid(), ne_binary()) -> 'ok'.
+dtmf(Srv, Digit) ->
+    gen_server:cast(Srv,{dtmf, Digit}).
+
 -spec consume_call_events/1 :: (pid()) -> 'ok'.
 consume_call_events(Srv) ->
     gen_server:cast(Srv, {add_consumer, self()}).    
@@ -167,16 +173,7 @@ relay_amqp(JObj, Props) ->
         false -> ok;
         true ->
             Srv = props:get_value(server, Props),
-            case Digit of
-                <<"1">> -> mute(Srv);
-                <<"2">> -> unmute(Srv);
-                <<"0">> -> toggle_mute(Srv);
-                <<"3">> -> deaf(Srv);
-                <<"4">> -> undeaf(Srv);
-                <<"*">> -> toggle_deaf(Srv);
-                <<"#">> -> hangup(Srv);
-                _Else -> ok
-            end
+            dtmf(Srv, Digit)
     end.
 
 -spec handle_participants_resp/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
@@ -302,10 +299,8 @@ handle_cast({remove_consumer, Consumer}, #participant{call_event_consumers=Consu
 handle_cast({set_conference, Conference}, Participant) ->
     lager:debug("received conference record for conference ~s", [whapps_conference:id(Conference)]),
     {noreply, Participant#participant{conference=Conference}};
-
 handle_cast({set_discovery_event, DiscoveryEvent}, Participant) ->
     {noreply, Participant#participant{discovery_event=DiscoveryEvent}};
-
 handle_cast(join_local, #participant{call=Call, conference=DiscoveryConference}=Participant) ->
     ControllerQ = whapps_call:controller_queue(Call),
     Conference = whapps_conference:set_controller_queue(ControllerQ, DiscoveryConference),
@@ -366,6 +361,20 @@ handle_cast(play_member_entry, #participant{conference=Conference}=Participant) 
 handle_cast(play_moderator_entry, #participant{conference=Conference}=Participant) ->
     whapps_conference_command:play(<<"tone_stream://%(200,0,500,600,700)">>, Conference),
     {noreply, Participant};
+handle_cast({dtmf, Digit}, #participant{last_dtmf = <<"*">>}=Participant) ->
+    case Digit of
+        <<"1">> -> toggle_mute(self());
+        <<"2">> -> mute(self());
+        <<"3">> -> unmute(self());
+        <<"4">> -> toggle_deaf(self());
+        <<"5">> -> deaf(self());
+        <<"6">> -> undeaf(self());
+        <<"#">> -> hangup(self());
+        _Else -> ok
+    end,
+    {noreply, Participant#participant{last_dtmf = Digit}};
+handle_cast({dtmf, Digit}, Participant) ->
+    {noreply, Participant#participant{last_dtmf = Digit}};
 handle_cast(mute, #participant{participant_id=ParticipantId, conference=Conference}=Participant) ->
     lager:debug("received in-conference command, muting participant ~s", [ParticipantId]),
     whapps_conference_command:mute_participant(ParticipantId, Conference),
