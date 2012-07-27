@@ -11,6 +11,7 @@
 %%% @end
 %%% @contributors
 %%%   Karl Anderson
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(whapps_speech).
 
@@ -124,9 +125,8 @@ asr_freeform(Bin, ContentType, Locale, Options) ->
         {ok, "200", _Headers, Content} ->
             lager:debug("asr of media succeeded: ~s", [Content]),
             {ok, wh_json:decode(Content)};
-        {ok, Code, Hdrs, Content} ->
+        {ok, Code, _Hdrs, Content} ->
             lager:debug("asr of media failed with code ~s", [Code]),
-            [lager:debug("resp header: ~p", [Hdr]) || Hdr <- Hdrs],
             lager:debug("resp: ~s", [Content]),
             {error, asr_provider_failure, wh_json:decode(Content)}
     end.
@@ -180,9 +180,8 @@ asr_commands(Bin, Commands, ContentType, Locale, Options) ->
         {ok, "200", _Headers, Content} ->
             lager:debug("asr of media succeeded: ~s", [Content]),
             {ok, wh_json:decode(Content)};
-        {ok, Code, Hdrs, Content} ->
+        {ok, Code, _Hdrs, Content} ->
             lager:debug("asr of media failed with code ~s", [Code]),
-            [lager:debug("resp header: ~p", [Hdr]) || Hdr <- Hdrs],
             lager:debug("resp: ~s", [Content]),
             {error, asr_provider_failure, wh_json:decode(Content)}
     end.
