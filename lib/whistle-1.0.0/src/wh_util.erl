@@ -15,6 +15,8 @@
 -export([get_account_realm/1, get_account_realm/2]).
 -export([is_account_enabled/1]).
 
+-export([try_load_module/1]).
+
 -export([to_integer/1, to_integer/2
          ,to_float/1, to_float/2
          ,to_number/1
@@ -239,6 +241,39 @@ get_hostname() ->
     {ok, Host} = inet:gethostname(),
     {ok, #hostent{h_name=Hostname}} = inet:gethostbyname(Host),
     Hostname.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Given a module name try to verify its existance, loading it into the
+%% the vm if possible.
+%% @end
+%%--------------------------------------------------------------------
+-spec try_load_module/1 :: (string() | binary()) -> atom() | false.
+try_load_module(Name) ->
+    try to_atom(Name) of
+        Module ->
+            case erlang:module_loaded(Module) of
+                true -> Module;
+                false -> 
+                    {module, Module} = code:ensure_loaded(Module),
+                    Module
+            end
+    catch
+        error:badarg ->
+            lager:debug("module ~s not found", [Name]),
+            case code:where_is_file(to_list(<<(to_binary(Name))/binary, ".beam">>)) of
+                non_existing ->
+                    lager:debug("beam file not found for ~s", [Name]),
+                    false;
+                _Path ->
+                    lager:debug("beam file found: ~s", [_Path]),
+                    to_atom(Name, true), %% put atom into atom table
+                    try_load_module(Name)
+            end;
+        _:_ ->
+            false
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
