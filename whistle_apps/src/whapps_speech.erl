@@ -10,7 +10,9 @@
 
 -include("whistle_apps.hrl").
 
--export([create/1, create/2, create/3, create/4]).
+-export([create/1, create/2, create/3, create/4
+         ,asr/1, asr/2, asr/3, asr/4, asr/5
+        ]).
 
 -define(MOD_CONFIG_CAT, <<"speech">>).
 
@@ -21,6 +23,10 @@
 -type create_resp() :: {'ok', ibrowse_req_id()} |
                        {'ok', ne_binary(), ne_binary()} | %% {'ok', ContentType, BinaryData}
                        {'error', provider_errors() | 'tts_provider_failure'}.
+
+-type asr_resp() :: {'ok', ibrowse_req_id()} |
+                    {'ok', wh_json:json_object()} | %% {'ok', JObj}
+                    {'error', provider_errors() | 'asr_provider_failure'}.
 
 -spec create/1 :: (ne_binary()) -> create_resp().
 -spec create/2 :: (ne_binary(), ne_binary()) -> create_resp().
@@ -76,13 +82,64 @@ create(<<"ispeech">>, Text, Voice, Format, Options) ->
                      ,{<<"startpadding">>, whapps_config:get_integer(?MOD_CONFIG_CAT, <<"tts_start_padding">>, 1)}
                      ,{<<"endpadding">>, whapps_config:get_integer(?MOD_CONFIG_CAT, <<"tts_end_padding">>, 0)} 
                     ],
-            Headers = [{"Host", <<"api.ispeech.org">>}
-                       ,{"Content-Type", "application/json; charset=UTF-8"}
-                      ],
+            Headers = [{"Content-Type", "application/json; charset=UTF-8"}],
             HTTPOptions = [{response_format, binary} | Options],
 
             Body = wh_json:encode(wh_json:from_list(Props)),
             ibrowse:send_req(BaseUrl, Headers, post, Body, HTTPOptions)
     end;
 create(_, _, _, _, _) ->
+    {error, unknown_provider}.
+
+-spec asr/1 :: (ne_binary()) -> asr_resp().
+-spec asr/2 :: (ne_binary(), ne_binary()) -> asr_resp().
+-spec asr/3 :: (ne_binary(), ne_binary(), ne_binary()) -> asr_resp().
+-spec asr/4 :: (ne_binary(), ne_binary(), ne_binary(), wh_proplist()) -> asr_resp().
+-spec asr/5 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), wh_proplist()) -> provider_return().
+asr(Bin) ->
+    asr(Bin, <<"application/x-wav">>).
+asr(Bin, ContentType) ->
+    asr(Bin, ContentType, <<"en-US">>).
+asr(Bin, ContentType, Locale) ->
+    asr(Bin, ContentType, Locale, []).
+asr(Bin, ContentType, Locale, Options) ->
+    Provider = whapps_config:get_binary(?MOD_CONFIG_CAT, <<"asr_provider">>, <<"ispeech">>),
+    case asr(Provider, Bin, ContentType, Locale, Options) of
+        {error, _R}=E ->
+            lager:debug("asr failed with error ~p", [_R]),
+            E;
+        {ibrowse_req_id, ReqID} ->
+            lager:debug("streaming response ~p to provided option: ~p", [ReqID, props:get_value(stream_to, Options)]),
+            {ok, ReqID};
+        {ok, "200", _Headers, Content} ->
+            lager:debug("asr of media succeeded: ~s", [Content]),
+            {ok, wh_json:decode(Content)};
+        {ok, Code, Hdrs, Content} ->
+            lager:debug("asr of media failed with code ~s", [Code]),
+            [lager:debug("resp header: ~p", [Hdr]) || Hdr <- Hdrs],
+            lager:debug("resp: ~s", [Content]),
+            {error, asr_provider_failure}
+    end.
+
+asr(<<"ispeech">>, Bin, ContentType, Locale, Options) ->
+    BaseUrl = whapps_config:get_string(?MOD_CONFIG_CAT, <<"asr_url">>, <<"http://api.ispeech.org/api/json">>),
+
+    lager:debug("sending request to ~s", [BaseUrl]),
+
+    Props = [{<<"apikey">>, whapps_config:get_binary(?MOD_CONFIG_CAT, <<"asr_api_key">>, <<>>)}
+             ,{<<"action">>, <<"recognize">>}
+             ,{<<"freeform">>, <<"1">>}
+             ,{<<"content-type">>, ContentType}
+             ,{<<"output">>, <<"json">>}
+             ,{<<"locale">>, Locale}
+             ,{<<"audio">>, base64:encode(Bin)}
+            ],
+    Headers = [{"Content-Type", "application/json"}],
+    HTTPOptions = [{response_format, binary} | Options],
+
+    Body = wh_json:encode(wh_json:from_list(Props)),
+    lager:debug("req body: ~s", [Body]),
+
+    ibrowse:send_req(BaseUrl, Headers, post, Body, HTTPOptions);
+asr(_, _, _, _, _) ->
     {error, unknown_provider}.
