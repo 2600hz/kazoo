@@ -5,7 +5,7 @@
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
--module(whistle_service_app).
+-module(whistle_services_app).
 
 -behaviour(application).
 
@@ -21,7 +21,7 @@
 %%--------------------------------------------------------------------
 -spec start/2 :: (term(), term()) -> {'ok', pid()} | {'error', startlink_err()}.
 start(_Type, _Args) ->
-    case whistle_service_sup:start_link() of
+    case whistle_services_sup:start_link() of
         {ok, P} -> {ok, P};
         {error, {already_started, P} } -> {ok, P};
         {error, _}=E -> E

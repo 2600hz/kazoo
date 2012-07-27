@@ -5,7 +5,7 @@
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
--module(whistle_service_sup).
+-module(whistle_services_sup).
 
 -behaviour(supervisor).
 
