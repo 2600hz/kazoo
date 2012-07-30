@@ -83,7 +83,7 @@ authorize(#cb_context{}) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec authenticate/1 :: (#cb_context{}) -> boolean().
-authenticate(#cb_context{req_nouns=[{<<"user_auth">>, []}]}) ->
+authenticate(#cb_context{req_nouns=[{<<"user_auth">>, _}]}) ->
     true;
 authenticate(#cb_context{req_nouns=[{<<"user_auth">>, [<<"recovery">>]}]}) ->
     true;
