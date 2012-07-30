@@ -97,7 +97,7 @@ create_template_props(Event, Docs, Account) ->
                          ,{<<"to_realm">>, wh_json:get_value(<<"To-Realm">>, Event)}
                          ,{<<"voicemail_box">>, wh_json:get_value(<<"Voicemail-Box">>, Event)}
                          ,{<<"voicemail_media">>, wh_json:get_value(<<"Voicemail-Name">>, Event)}
-                         ,{<<"voicemail_transcription">>, wh_json:get_value(<<"Voicemail-Transcription">>)}
+                         ,{<<"voicemail_transcription">>, wh_json:get_value(<<"Voicemail-Transcription">>, JObj)}
                          ,{<<"call_id">>, wh_json:get_value(<<"Call-ID">>, Event)}
                         ]}
      ,{<<"account_db">>, wh_json:get_value(<<"pvt_account_db">>, Account)}
