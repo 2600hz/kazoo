@@ -110,7 +110,7 @@ caller_id(EndpointId, OwnerId, <<"external">> = Attribute, Call) ->
                   undefined -> friendly_name(EndpointId, OwnerId, Call);
                   Name -> Name
               end,
-    case whapps_config:get_is_true(<<"callflow">>, <<"ensure_valid_caller_id">>, false) of
+    case whapps_config:get_is_true(?CF_CONFIG_CAT, <<"ensure_valid_caller_id">>, false) of
         true -> ensure_valid_caller_id(CIDNumber, CIDName, Call);
         false ->
             lager:debug("found CID ~s in phone_numbers doc", [CIDNumber]),
