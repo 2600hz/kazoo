@@ -737,27 +737,30 @@ new_message(AttachmentName, Length, #mailbox{mailbox_id=Id
     CallID = cf_exe:callid(Call),
     AccountDb = whapps_call:account_db(Call),
     MediaId = message_media_doc(AccountDb, Box),
+
     {ok, StoreJObj} = store_recording(AttachmentName, MediaId, Call),
+    lager:debug("store: ~p", [StoreJObj]),
 
     Status = wh_json:get_value([<<"Application-Response">>, <<"Status-Code">>], StoreJObj),
     Loc = wh_json:get_value([<<"Application-Response">>, <<"Headers">>, <<"Location">>], StoreJObj),
     lager:debug("stored voicemail message (~s) ~s", [Status, Loc]),
 
     Tstamp = new_timestamp(),
-    Metadata = wh_json:from_list([{<<"timestamp">>, Tstamp}
-                                  ,{<<"from">>, whapps_call:from(Call)}
-                                  ,{<<"to">>, whapps_call:to(Call)}
-                                  ,{<<"caller_id_number">>, whapps_call:caller_id_number(Call)}
-                                  ,{<<"caller_id_name">>, whapps_call:caller_id_name(Call)}
-                                  ,{<<"call_id">>, CallID}
-                                  ,{<<"folder">>, ?FOLDER_NEW}
-                                  ,{<<"length">>, Length}
-                                  ,{<<"media_id">>, MediaId}
-                                 ]),
-    {ok, MetaJObj} = save_metadata(Metadata, AccountDb, Id),
-    lager:debug("stored voicemail metadata for ~s", [MediaId]),
+    Metadata = wh_json:from_list(
+                 [{<<"timestamp">>, Tstamp}
+                  ,{<<"from">>, whapps_call:from(Call)}
+                  ,{<<"to">>, whapps_call:to(Call)}
+                  ,{<<"caller_id_number">>, whapps_call:caller_id_number(Call)}
+                  ,{<<"caller_id_name">>, whapps_call:caller_id_name(Call)}
+                  ,{<<"call_id">>, CallID}
+                  ,{<<"folder">>, ?FOLDER_NEW}
+                  ,{<<"length">>, Length}
+                  ,{<<"media_id">>, MediaId}
+                 ]),
+    {ok, BoxJObj} = save_metadata(Metadata, AccountDb, Id),
+    lager:debug("stored voicemail metadata for ~s: ~p", [MediaId, BoxJObj]),
 
-    Transcription = maybe_transcribe(Call, MetaJObj, MaybeTranscribe),
+    Transcription = maybe_transcribe(Call, MediaId, MaybeTranscribe),
 
     wapi_notifications:publish_voicemail(
       [{<<"From-User">>, whapps_call:from_user(Call)}
@@ -778,18 +781,21 @@ new_message(AttachmentName, Length, #mailbox{mailbox_id=Id
     timer:sleep(1000),
     cf_util:update_mwi(OwnerId, AccountDb).
 
--spec maybe_transcribe/3 :: (ne_binary(), wh_json:json_object(), boolean()) ->
+-spec maybe_transcribe/3 :: (ne_binary(), ne_binary(), boolean()) ->
                                     'undefined' | wh_json:json_object().
-maybe_transcribe(Db, MediaDoc, true) ->
-    MediaId = wh_json:get_value(<<"_id">>, MediaDoc),
+maybe_transcribe(Call, MediaId, true) ->
+    Db = whapps_call:account_db(Call),
+    {ok, MediaDoc} = couch_mgr:open_doc(Db, MediaId),
+
     case wh_json:get_value(<<"_attachments">>, MediaDoc, []) of
         [] ->
-            lager:warn("no audio attachments on media doc ~s", [MediaId]),
+            lager:warning("no audio attachments on media doc ~s: ~p", [MediaId, MediaDoc]),
             undefined;
         Attachments ->
             {Attachment, MetaData} = hd(wh_json:to_proplist(Attachments)),
             case couch_mgr:fetch_attachment(Db, MediaId, Attachment) of
                 {ok, Bin} ->
+                    lager:debug("transcribing first attachment ~s: ~p", [Attachment, MetaData]),
                     maybe_transcribe(Db, MediaDoc, Bin, wh_json:get_value(<<"content_type">>, MetaData));
                 {error, _E} ->
                     lager:debug("error fetching vm: ~p", [_E]),
@@ -803,17 +809,30 @@ maybe_transcribe(_, _, false) ->
                                     'undefined' | wh_json:json_object().
 maybe_transcribe(_, _, _, undefined) -> undefined;
 maybe_transcribe(_, _, <<>>, _) -> undefined;
-maybe_transcribe(Db, MediaDoc, Bin, ContentType) ->
-    case whapps_speech:asr_freeform(Bin, ContentType) of
+maybe_transcribe(Db, MediaDoc, Bin, <<"audio/wav">>) ->
+    case whapps_speech:asr_freeform(Bin) of
         {ok, Resp} ->
             lager:debug("transcription resp: ~p", [Resp]),
             MediaDoc1 = wh_json:set_value(<<"transcription">>, Resp, MediaDoc),
             couch_mgr:ensure_saved(Db, MediaDoc1),
-            Resp;
+            is_valid_transcription(wh_json:get_value(<<"result">>, Resp)
+                                   ,wh_json:get_value(<<"text">>, Resp)
+                                   ,Resp
+                                  );
         {error, _E} ->
             lager:debug("error getting ASR: ~p", [_E]),
             undefined
-    end.
+    end;
+maybe_transcribe(_, _, _, _ContentType) ->
+    lager:debug("un-ASR-able content type: ~s", [_ContentType]),
+    undefined.
+
+-spec is_valid_transcription/3 :: (ne_binary() | 'undefined', binary(), wh_json:json_object()) ->
+                                          wh_json:json_object() | 'undefined'.
+is_valid_transcription(<<"success">>, ?NE_BINARY, Resp) -> Resp;
+is_valid_transcription(_Res, _Txt, _) ->
+    lager:debug("not valid transcription: ~s: '~s'", [_Res, _Txt]),
+    undefined.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -926,7 +945,7 @@ get_mailbox_profile(Data, Call) ->
                      ,message_count =
                          MsgCount
                      ,transcribe_voicemail =
-                         wh_json:get_is_true(<<"transcribe_voicemail">>, JObj, false)
+                         wh_json:is_true(<<"transcribe">>, JObj, false)
                     };
         {error, R} ->
             lager:debug("failed to load voicemail box ~s, ~p", [Id, R]),
@@ -1043,8 +1062,9 @@ review_recording(AttachmentName, AllowOperator
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec store_recording/3 :: (ne_binary(), ne_binary(), whapps_call:call()) -> {'ok', wh_json:json_object()} |
-                                                                             {'error', wh_json:json_object()}.
+-spec store_recording/3 :: (ne_binary(), ne_binary(), whapps_call:call()) ->
+                                   {'ok', wh_json:json_object()} |
+                                   {'error', wh_json:json_object()}.
 store_recording(AttachmentName, DocId, Call) ->
     lager:debug("storing recording ~s in doc ~s", [AttachmentName, DocId]),
     whapps_call_command:b_store(AttachmentName
@@ -1274,7 +1294,6 @@ update_doc(Key, Value, Id, ?NE_BINARY = Db) ->
 update_doc(Key, Value, Id, Call) ->
     update_doc(Key, Value, Id, whapps_call:account_db(Call)).
 
-
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -1282,7 +1301,8 @@ update_doc(Key, Value, Id, Call) ->
 %%--------------------------------------------------------------------
 -spec tmp_file/0 :: () -> ne_binary().
 tmp_file() ->
-    <<(wh_util:to_hex_binary(crypto:rand_bytes(16)))/binary, ".mp3">>.
+    Ext = whapps_config:get(?CF_CONFIG_CAT, [<<"voicemail">>, <<"extension">>], <<"mp3">>),
+    <<(wh_util:to_hex_binary(crypto:rand_bytes(16)))/binary, ".", Ext/binary>>.
 
 %%--------------------------------------------------------------------
 %% @private
