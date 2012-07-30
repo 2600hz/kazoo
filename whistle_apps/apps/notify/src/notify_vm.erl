@@ -62,7 +62,9 @@ handle_req(JObj, _Props) ->
             CustomSubjectTemplate = wh_json:get_value([<<"notifications">>, <<"voicemail_to_email">>, <<"email_subject_template">>], AcctObj),
             {ok, Subject} = notify_util:render_template(CustomSubjectTemplate, ?DEFAULT_SUBJ_TMPL, Props),
 
-            build_and_send_email(TxtBody, HTMLBody, Subject, Email, [ KV || {_, V}=KV <- Props, V =/= undefined ])
+            build_and_send_email(TxtBody, HTMLBody, Subject, Email
+                                 ,props:filteR_undefined(Props)
+                                )
     end.
 
 %%--------------------------------------------------------------------
@@ -95,6 +97,7 @@ create_template_props(Event, Docs, Account) ->
                          ,{<<"to_realm">>, wh_json:get_value(<<"To-Realm">>, Event)}
                          ,{<<"voicemail_box">>, wh_json:get_value(<<"Voicemail-Box">>, Event)}
                          ,{<<"voicemail_media">>, wh_json:get_value(<<"Voicemail-Name">>, Event)}
+                         ,{<<"voicemail_transcription">>, wh_json:get_value(<<"Voicemail-Transcription">>)}
                          ,{<<"call_id">>, wh_json:get_value(<<"Call-ID">>, Event)}
                         ]}
      ,{<<"account_db">>, wh_json:get_value(<<"pvt_account_db">>, Account)}
