@@ -49,7 +49,7 @@ init() ->
 -spec allowed_methods/1 :: (path_tokens()) -> http_methods().
 allowed_methods() ->
     ['PUT'].
-allowed_methods([<<"recovery">>]) ->
+allowed_methods(<<"recovery">>) ->
     ['PUT'].
 
 %%--------------------------------------------------------------------
@@ -74,7 +74,7 @@ resource_exists(_) -> false.
 -spec authorize/1 :: (#cb_context{}) -> boolean().
 authorize(#cb_context{req_nouns=[{<<"user_auth">>, _}]}) ->
     true;
-authorize(_) ->
+authorize(#cb_context{}) ->
     false.
 
 %%--------------------------------------------------------------------
@@ -85,7 +85,9 @@ authorize(_) ->
 -spec authenticate/1 :: (#cb_context{}) -> boolean().
 authenticate(#cb_context{req_nouns=[{<<"user_auth">>, []}]}) ->
     true;
-authenticate(_) ->
+authenticate(#cb_context{req_nouns=[{<<"user_auth">>, [<<"recovery">>]}]}) ->
+    true;
+authenticate(#cb_context{}) ->
     false.
 
 %%--------------------------------------------------------------------
