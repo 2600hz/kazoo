@@ -293,7 +293,6 @@ get_json_body(Req0) ->
 is_valid_request_envelope(JSON) ->
     wh_json:get_value([<<"data">>], JSON, undefined) =/= undefined.
 
-
 -spec get_http_verb/2 :: (http_method(), #cb_context{}) -> ne_binary().
 get_http_verb(Method, #cb_context{req_json=ReqJObj, query_json=ReqQs}) ->
     case wh_json:get_value(<<"verb">>, ReqJObj) of
