@@ -249,7 +249,7 @@ update_vmbox(DocId, #cb_context{req_data=Data}=Context) ->
                       ,Context);
                 false ->
                     Context1 = #cb_context{doc=VMBox, db_name=Db, account_id=AccountId} = crossbar_doc:load_merge(DocId, JObj, Context),
-                    _ = spawn(fun() -> _ = crossbar_util:put_reqid(Context1), update_mwi(VMBox, AccountId, Db) end),
+                    _ = spawn(fun() -> _ = crossbar_util:put_reqid(Context1), update_mwi(Context1) end),
                     Context1
             end
     end.
