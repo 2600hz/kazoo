@@ -28,10 +28,12 @@
 %%--------------------------------------------------------------------
 -type build_errors() :: 'db_not_reachable' | 'disabled' | 'endpoint_called_self' | 'endpoint_id_undefined' | 'invalid_endpoint_id' | 'not_found' | 'owner_called_self'.
 
--spec build/2 :: ('undefined' | ne_binary() | wh_json:json_object(), whapps_call:call()) -> {'ok', wh_json:json_objects()} |
-                                                                                            {'error', build_errors()}.
--spec build/3 :: ('undefined' | ne_binary() | wh_json:json_object(), 'undefined' | wh_json:json_object(), whapps_call:call()) -> {'ok', wh_json:json_objects()} |
-                                                                                                                                 {'error', build_errors()}.
+-spec build/2 :: (cf_api_binary() | wh_json:json_object(), whapps_call:call()) ->
+                         {'ok', wh_json:json_objects()} |
+                         {'error', build_errors()}.
+-spec build/3 :: (cf_api_binary() | wh_json:json_object(), 'undefined' | wh_json:json_object(), whapps_call:call()) ->
+                         {'ok', wh_json:json_objects()} |
+                         {'error', build_errors()}.
 build(EndpointId, Call) ->
     build(EndpointId, wh_json:new(), Call).
 

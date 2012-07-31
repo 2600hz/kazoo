@@ -35,17 +35,18 @@ init() ->
     put(callid, ?LOG_SYSTEM_ID),
 
     %% ensure the vm template can compile, otherwise crash the processes
-    notify_util:compile_default_text_template(?DEFAULT_TEXT_TMPL, ?MOD_CONFIG_CAT),
-    notify_util:compile_default_html_template(?DEFAULT_HTML_TMPL, ?MOD_CONFIG_CAT),
-    notify_util:compile_default_subject_template(?DEFAULT_SUBJ_TMPL, ?MOD_CONFIG_CAT),
+    {ok, _} = notify_util:compile_default_text_template(?DEFAULT_TEXT_TMPL, ?MOD_CONFIG_CAT),
+    {ok, _} = notify_util:compile_default_html_template(?DEFAULT_HTML_TMPL, ?MOD_CONFIG_CAT),
+    {ok, _} = notify_util:compile_default_subject_template(?DEFAULT_SUBJ_TMPL, ?MOD_CONFIG_CAT),
     case whapps_config:get_is_true(?MOD_CONFIG_CAT, <<"crawl_for_first_occurrence">>, true) of
         false -> ok;
         true ->
-            Crawler = {notify_first_occurrence
-                       ,{notify_first_occurrence, start_crawler, []}
-                       ,permanent, 5000, worker, [notify_first_occurrence]
+            Crawler = {?MODULE
+                       ,{?MODULE, start_crawler, []}
+                       ,permanent, 5000, worker, [?MODULE]
                       },
-            supervisor:start_child(notify_sup, Crawler)
+            Start = supervisor:start_child(notify_sup, Crawler),
+            lager:debug("crawler: ~p", [Start])
     end,
     lager:debug("init done for ~s", [?MODULE]).
 
@@ -171,7 +172,7 @@ create_template_props(Account, Occurrence) ->
 %%--------------------------------------------------------------------
 -spec build_and_send_email/5 :: (iolist(), iolist(), iolist(), 'undefined' | binary() | [ne_binary(),...], proplist()) -> 'ok'.
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) when is_list(To) ->
-    [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props) || T <- To],
+    _ = [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props) || T <- To],
     ok;
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
     Service = props:get_value(<<"service">>, Props),
@@ -200,15 +201,15 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
 %% notifications and test if any should be sent.
 %% @end
 %%--------------------------------------------------------------------
--spec crawler_loop/0 :: () -> 'ok'.
+-spec crawler_loop/0 :: () -> no_return().
 crawler_loop() ->
-    case couch_mgr:get_all_results(?WH_ACCOUNTS_DB, <<"notify/first_occurance">>) of
-        {ok, Results} ->
-            [test_for_initial_occurrences(Result)
-             || Result <- Results
-            ];
-        _ -> ok
-    end,
+    _ = case couch_mgr:get_all_results(?WH_ACCOUNTS_DB, <<"notify/first_occurance">>) of
+            {ok, Results} ->
+                [test_for_initial_occurrences(Result)
+                 || Result <- Results
+                ];
+            _ -> ok
+        end,
 
     Cycle = whapps_config:get_integer(?MOD_CONFIG_CAT, <<"crawler_sleep_time">>, 300000),
     erlang:send_after(Cycle, self(), wakeup),

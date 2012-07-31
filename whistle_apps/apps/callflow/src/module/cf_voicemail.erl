@@ -66,6 +66,7 @@
           ,max_message_count = 0 :: non_neg_integer()
           ,max_message_length = 'undefined' :: 'undefined' | pos_integer()
           ,keys = #keys{}
+          ,transcribe_voicemail = 'false' :: boolean()
          }).
 
 %%--------------------------------------------------------------------
@@ -211,9 +212,12 @@ find_mailbox(Box, Call, Loop) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec compose_voicemail/2 :: (#mailbox{}, whapps_call:call()) -> 'ok'.
--spec compose_voicemail/3 :: (#mailbox{}, boolean(), whapps_call:call()) -> 'ok'.
-
+-spec compose_voicemail/2 :: (#mailbox{}, whapps_call:call()) ->
+                                     'ok' |
+                                     {'branch', _}.
+-spec compose_voicemail/3 :: (#mailbox{}, boolean(), whapps_call:call()) ->
+                                     'ok' |
+                                     {'branch', _}.
 compose_voicemail(#mailbox{owner_id=OwnerId}=Box, Call) ->
     IsOwner = case whapps_call:kvs_fetch(owner_id, Call) of
                   <<>> -> false;
@@ -306,7 +310,7 @@ play_instructions(#mailbox{skip_instructions=false}, Call) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec record_voicemail/3 :: (ne_binary(), #mailbox{}, whapps_call:call()) -> 'ok' | {'branch', wh_json:json_object()}.
+-spec record_voicemail/3 :: (ne_binary(), #mailbox{}, whapps_call:call()) -> 'ok'.
 record_voicemail(AttachmentName, #mailbox{max_message_length=MaxMessageLength}=Box, Call) ->
     Tone = wh_json:from_list([{<<"Frequencies">>, [<<"440">>]}
                               ,{<<"Duration-ON">>, <<"500">>}
@@ -320,19 +324,15 @@ record_voicemail(AttachmentName, #mailbox{max_message_length=MaxMessageLength}=B
             case review_recording(AttachmentName, true, Box, Call) of
                 {ok, record} ->
                     record_voicemail(tmp_file(), Box, Call);
-                {ok, Selection} ->
-                    %% if the review is not record then it is one of the following:
-                    %% no_selection | save | operator
-                    %% for all of those we should save the vm, then (if operator)
-                    %% do something else
+                {ok, _Selection} ->
                     _ = new_message(AttachmentName, Length, Box, Call),
                     _ = whapps_call_command:b_prompt(<<"vm-saved">>, Call),
-                    case Selection of
-                        {branch, _}=Branch -> Branch;
-                        _Else ->
-                            whapps_call_command:b_prompt(<<"vm-thank_you">>, Call),
-                            ok
-                    end
+                    whapps_call_command:b_prompt(<<"vm-thank_you">>, Call),
+                    cf_exe:continue(Call);
+                {branch, Flow} ->
+                    _ = new_message(AttachmentName, Length, Box, Call),
+                    _ = whapps_call_command:b_prompt(<<"vm-saved">>, Call),
+                    cf_exe:branch(Call, Flow)
             end;
         {error, _R} ->
             lager:debug("error while attempting to record a new message: ~p", [_R]),
@@ -633,7 +633,8 @@ record_unavailable_greeting(AttachmentName, #mailbox{unavailable_media_id=MediaI
             Box;
         {ok, no_selection} ->
             _ = whapps_call_command:b_prompt(<<"vm-deleted">>, Call),
-            ok
+            ok;
+        {branch, _}=B -> B
     end.
 
 %%--------------------------------------------------------------------
@@ -687,7 +688,8 @@ record_name(AttachmentName, #mailbox{name_media_id=MediaId}=Box, Call, DocId) ->
             Box;
         {ok, no_selection} ->
             _ = whapps_call_command:b_prompt(<<"vm-deleted">>, Call),
-            ok
+            ok;
+        {branch, _}=B -> B
     end.
 
 %%--------------------------------------------------------------------
@@ -727,55 +729,119 @@ change_pin(#mailbox{mailbox_id=Id}=Box, Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec new_message/4 :: (ne_binary(), pos_integer(), #mailbox{}, whapps_call:call()) -> 'ok'.
-new_message(AttachmentName, Length, #mailbox{mailbox_id=Id, owner_id=OwnerId}=Box, Call) ->
+new_message(AttachmentName, Length, #mailbox{mailbox_id=Id
+                                             ,owner_id=OwnerId
+                                             ,transcribe_voicemail=MaybeTranscribe
+                                            }=Box, Call) ->
     lager:debug("saving new ~bms voicemail message and metadata", [Length]),
     CallID = cf_exe:callid(Call),
     AccountDb = whapps_call:account_db(Call),
     MediaId = message_media_doc(AccountDb, Box),
+
     {ok, StoreJObj} = store_recording(AttachmentName, MediaId, Call),
+    lager:debug("store: ~p", [StoreJObj]),
 
     Status = wh_json:get_value([<<"Application-Response">>, <<"Status-Code">>], StoreJObj),
     Loc = wh_json:get_value([<<"Application-Response">>, <<"Headers">>, <<"Location">>], StoreJObj),
     lager:debug("stored voicemail message (~s) ~s", [Status, Loc]),
 
     Tstamp = new_timestamp(),
-    Metadata = wh_json:from_list([{<<"timestamp">>, Tstamp}
-                                  ,{<<"from">>, whapps_call:from(Call)}
-                                  ,{<<"to">>, whapps_call:to(Call)}
-                                  ,{<<"caller_id_number">>, whapps_call:caller_id_number(Call)}
-                                  ,{<<"caller_id_name">>, whapps_call:caller_id_name(Call)}
-                                  ,{<<"call_id">>, CallID}
-                                  ,{<<"folder">>, ?FOLDER_NEW}
-                                  ,{<<"length">>, Length}
-                                  ,{<<"media_id">>, MediaId}
-                                 ]),
-    {ok, _} = save_metadata(Metadata, AccountDb, Id),
-    lager:debug("stored voicemail metadata for ~s", [MediaId]),
+    Metadata = wh_json:from_list(
+                 [{<<"timestamp">>, Tstamp}
+                  ,{<<"from">>, whapps_call:from(Call)}
+                  ,{<<"to">>, whapps_call:to(Call)}
+                  ,{<<"caller_id_number">>, whapps_call:caller_id_number(Call)}
+                  ,{<<"caller_id_name">>, whapps_call:caller_id_name(Call)}
+                  ,{<<"call_id">>, CallID}
+                  ,{<<"folder">>, ?FOLDER_NEW}
+                  ,{<<"length">>, Length}
+                  ,{<<"media_id">>, MediaId}
+                 ]),
+    {ok, BoxJObj} = save_metadata(Metadata, AccountDb, Id),
+    lager:debug("stored voicemail metadata for ~s: ~p", [MediaId, BoxJObj]),
 
-    wapi_notifications:publish_voicemail([{<<"From-User">>, whapps_call:from_user(Call)}
-                                          ,{<<"From-Realm">>, whapps_call:from_realm(Call)}
-                                          ,{<<"To-User">>, whapps_call:to_user(Call)}
-                                          ,{<<"To-Realm">>, whapps_call:to_realm(Call)}
-                                          ,{<<"Account-DB">>, AccountDb}
-                                          ,{<<"Voicemail-Box">>, Id}
-                                          ,{<<"Voicemail-Name">>, MediaId}
-                                          ,{<<"Caller-ID-Number">>, whapps_call:caller_id_number(Call)}
-                                          ,{<<"Caller-ID-Name">>, whapps_call:caller_id_name(Call)}
-                                          ,{<<"Voicemail-Timestamp">>, Tstamp}
-                                          ,{<<"Voicemail-Length">>, Length}
-                                          ,{<<"Call-ID">>, CallID}
-                                          | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-                                         ]),
+    Transcription = maybe_transcribe(Call, MediaId, MaybeTranscribe),
+
+    wapi_notifications:publish_voicemail(
+      [{<<"From-User">>, whapps_call:from_user(Call)}
+       ,{<<"From-Realm">>, whapps_call:from_realm(Call)}
+       ,{<<"To-User">>, whapps_call:to_user(Call)}
+       ,{<<"To-Realm">>, whapps_call:to_realm(Call)}
+       ,{<<"Account-DB">>, AccountDb}
+       ,{<<"Voicemail-Box">>, Id}
+       ,{<<"Voicemail-Name">>, MediaId}
+       ,{<<"Caller-ID-Number">>, whapps_call:caller_id_number(Call)}
+       ,{<<"Caller-ID-Name">>, whapps_call:caller_id_name(Call)}
+       ,{<<"Voicemail-Timestamp">>, Tstamp}
+       ,{<<"Voicemail-Length">>, Length}
+       ,{<<"Voicemail-Transcription">>, Transcription}
+       ,{<<"Call-ID">>, CallID}
+       | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+      ]),
     timer:sleep(1000),
     cf_util:update_mwi(OwnerId, AccountDb).
+
+-spec maybe_transcribe/3 :: (ne_binary(), ne_binary(), boolean()) ->
+                                    'undefined' | wh_json:json_object().
+maybe_transcribe(Call, MediaId, true) ->
+    Db = whapps_call:account_db(Call),
+    {ok, MediaDoc} = couch_mgr:open_doc(Db, MediaId),
+
+    case wh_json:get_value(<<"_attachments">>, MediaDoc, []) of
+        [] ->
+            lager:warning("no audio attachments on media doc ~s: ~p", [MediaId, MediaDoc]),
+            undefined;
+        Attachments ->
+            {Attachment, MetaData} = hd(wh_json:to_proplist(Attachments)),
+            case couch_mgr:fetch_attachment(Db, MediaId, Attachment) of
+                {ok, Bin} ->
+                    lager:debug("transcribing first attachment ~s: ~p", [Attachment, MetaData]),
+                    maybe_transcribe(Db, MediaDoc, Bin, wh_json:get_value(<<"content_type">>, MetaData));
+                {error, _E} ->
+                    lager:debug("error fetching vm: ~p", [_E]),
+                    undefined
+            end
+    end;
+maybe_transcribe(_, _, false) ->
+    undefined.
+
+-spec maybe_transcribe/4 :: (ne_binary(), wh_json:json_object(), binary(), 'undefined' | ne_binary()) ->
+                                    'undefined' | wh_json:json_object().
+maybe_transcribe(_, _, _, undefined) -> undefined;
+maybe_transcribe(_, _, <<>>, _) -> undefined;
+maybe_transcribe(Db, MediaDoc, Bin, <<"audio/wav">>) ->
+    case whapps_speech:asr_freeform(Bin) of
+        {ok, Resp} ->
+            lager:debug("transcription resp: ~p", [Resp]),
+            MediaDoc1 = wh_json:set_value(<<"transcription">>, Resp, MediaDoc),
+            couch_mgr:ensure_saved(Db, MediaDoc1),
+            is_valid_transcription(wh_json:get_value(<<"result">>, Resp)
+                                   ,wh_json:get_value(<<"text">>, Resp)
+                                   ,Resp
+                                  );
+        {error, _E} ->
+            lager:debug("error getting ASR: ~p", [_E]),
+            undefined
+    end;
+maybe_transcribe(_, _, _, _ContentType) ->
+    lager:debug("un-ASR-able content type: ~s", [_ContentType]),
+    undefined.
+
+-spec is_valid_transcription/3 :: (ne_binary() | 'undefined', binary(), wh_json:json_object()) ->
+                                          wh_json:json_object() | 'undefined'.
+is_valid_transcription(<<"success">>, ?NE_BINARY, Resp) -> Resp;
+is_valid_transcription(_Res, _Txt, _) ->
+    lager:debug("not valid transcription: ~s: '~s'", [_Res, _Txt]),
+    undefined.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec save_metadata/3 :: (wh_json:json_object(), ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} |
-                                                                              {'error', atom()}.
+-spec save_metadata/3 :: (wh_json:json_object(), ne_binary(), ne_binary()) ->
+                                 {'ok', wh_json:json_object()} |
+                                 {'error', atom()}.
 save_metadata(NewMessage, Db, Id) ->
     {ok, JObj} = couch_mgr:open_doc(Db, Id),
     Messages = wh_json:get_value([<<"messages">>], JObj, []),
@@ -878,6 +944,8 @@ get_mailbox_profile(Data, Call) ->
                          find_max_message_length([Data, JObj])
                      ,message_count =
                          MsgCount
+                     ,transcribe_voicemail =
+                         wh_json:is_true(<<"transcribe">>, JObj, false)
                     };
         {error, R} ->
             lager:debug("failed to load voicemail box ~s, ~p", [Id, R]),
@@ -918,8 +986,9 @@ populate_keys(Call) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_mailbox_doc/3 :: (binary(), 'undefined' | binary(), 'undefined' | binary()) -> {'ok', wh_json:json_object()} |
-                                                                                         {'error', term()}.
+-spec get_mailbox_doc/3 :: (binary(), 'undefined' | binary(), 'undefined' | binary()) ->
+                                   {'ok', wh_json:json_object()} |
+                                   {'error', term()}.
 get_mailbox_doc(Db, Id, CaptureGroup) ->
     CGIsEmpty = wh_util:is_empty(CaptureGroup),
     case wh_util:is_empty(Id) of
@@ -944,10 +1013,12 @@ get_mailbox_doc(Db, Id, CaptureGroup) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec review_recording/4 :: (ne_binary(), boolean(), #mailbox{}, whapps_call:call()) -> {'ok', 'record' | 'save' | 'no_selection'} |
-                                                                                        {'branch', wh_json:json_object()}.
--spec review_recording/5 :: (ne_binary(), boolean(), #mailbox{}, whapps_call:call(), pos_integer()) -> {'ok', 'record' | 'save' | 'no_selection'} |
-                                                                                                       {'branch', wh_json:json_object()}.
+-spec review_recording/4 :: (ne_binary(), boolean(), #mailbox{}, whapps_call:call()) ->
+                                    {'ok', 'record' | 'save' | 'no_selection'} |
+                                    {'branch', wh_json:json_object()}.
+-spec review_recording/5 :: (ne_binary(), boolean(), #mailbox{}, whapps_call:call(), integer()) ->
+                                    {'ok', 'record' | 'save' | 'no_selection'} |
+                                    {'branch', wh_json:json_object()}.
 
 review_recording(AttachmentName, AllowOperator, Box, Call) ->
     review_recording(AttachmentName, AllowOperator, Box, Call, 1).
@@ -955,7 +1026,11 @@ review_recording(AttachmentName, AllowOperator, Box, Call) ->
 review_recording(_, _, _, _, Loop) when Loop > 4 ->
     {ok, no_selection};
 review_recording(AttachmentName, AllowOperator
-                 ,#mailbox{keys=#keys{listen=Listen, save=Save, record=Record, operator=Operator}}=Box
+                 ,#mailbox{keys=#keys{listen=Listen
+                                      ,save=Save
+                                      ,record=Record
+                                      ,operator=Operator
+                                     }}=Box
                  ,Call, Loop) ->
     lager:debug("playing recording review options"),
     case whapps_call_command:b_prompt_and_collect_digit(<<"vm-review_recording">>, Call) of
@@ -972,14 +1047,14 @@ review_recording(AttachmentName, AllowOperator
         {ok, Operator} when AllowOperator ->
             lager:debug("caller choose to ring the operator"),
             case cf_util:get_operator_callflow(whapps_call:account_id(Call)) of
-                {ok, Flow} -> {ok, {branch, Flow}};
-                {error,_R} -> review_recording(AttachmentName, Box, Call, Loop + 1)
+                {ok, Flow} -> {branch, Flow};
+                {error,_R} -> review_recording(AttachmentName, AllowOperator, Box, Call, Loop + 1)
             end;
         {error, _} ->
             lager:debug("error while waiting for review selection"),
             {ok, no_selection};
         _ ->
-            review_recording(AttachmentName, Box, Call, Loop + 1)
+            review_recording(AttachmentName, AllowOperator, Box, Call, Loop + 1)
     end.
 
 %%--------------------------------------------------------------------
@@ -987,8 +1062,9 @@ review_recording(AttachmentName, AllowOperator
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec store_recording/3 :: (ne_binary(), ne_binary(), whapps_call:call()) -> {'ok', wh_json:json_object()} |
-                                                                             {'error', wh_json:json_object()}.
+-spec store_recording/3 :: (ne_binary(), ne_binary(), whapps_call:call()) ->
+                                   {'ok', wh_json:json_object()} |
+                                   {'error', wh_json:json_object()}.
 store_recording(AttachmentName, DocId, Call) ->
     lager:debug("storing recording ~s in doc ~s", [AttachmentName, DocId]),
     whapps_call_command:b_store(AttachmentName
@@ -1218,7 +1294,6 @@ update_doc(Key, Value, Id, ?NE_BINARY = Db) ->
 update_doc(Key, Value, Id, Call) ->
     update_doc(Key, Value, Id, whapps_call:account_db(Call)).
 
-
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -1226,7 +1301,8 @@ update_doc(Key, Value, Id, Call) ->
 %%--------------------------------------------------------------------
 -spec tmp_file/0 :: () -> ne_binary().
 tmp_file() ->
-    <<(wh_util:to_hex_binary(crypto:rand_bytes(16)))/binary, ".mp3">>.
+    Ext = whapps_config:get(?CF_CONFIG_CAT, [<<"voicemail">>, <<"extension">>], <<"mp3">>),
+    <<(wh_util:to_hex_binary(crypto:rand_bytes(16)))/binary, ".", Ext/binary>>.
 
 %%--------------------------------------------------------------------
 %% @private
