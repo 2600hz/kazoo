@@ -96,10 +96,9 @@ do_send(CallId, CtrlQ, Commands) ->
     Command = [{<<"Application-Name">>, <<"queue">>}
                ,{<<"Call-ID">>, CallId}
                ,{<<"Commands">>, Commands}
-               ,{<<"Msg-ID">>, wh_util:rand_hex_binary(6)}
-               | wh_api:default_headers(<<>>, <<"call">>, <<"command">>, <<"call_response">>, <<"0.1.0">>)],
-    {ok, Payload} = wapi_dialplan:queue(Command),
-    wapi_dialplan:publish_action(CtrlQ, Payload).
+               | wh_api:default_headers(<<>>, <<"call">>, <<"command">>, <<"call_response">>, <<"0.1.0">>)
+              ],
+    wapi_dialplan:publish_command(CtrlQ, Command).
 
 %%--------------------------------------------------------------------
 %% @public
