@@ -1,0 +1,12 @@
+{application, acdc,
+ [
+  {description, ""},
+  {vsn, "1"},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib
+                 ]},
+  {mod, { acdc_app, []}},
+  {env, []}
+ ]}.
