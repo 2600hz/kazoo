@@ -31,9 +31,9 @@
 -spec init/0 :: () -> 'ok'.
 init() ->
     %% ensure the vm template can compile, otherwise crash the processes
-    notify_util:compile_default_text_template(?DEFAULT_TEXT_TMPL, ?MOD_CONFIG_CAT),
-    notify_util:compile_default_html_template(?DEFAULT_HTML_TMPL, ?MOD_CONFIG_CAT),
-    notify_util:compile_default_subject_template(?DEFAULT_SUBJ_TMPL, ?MOD_CONFIG_CAT),
+    {ok, _} = notify_util:compile_default_text_template(?DEFAULT_TEXT_TMPL, ?MOD_CONFIG_CAT),
+    {ok, _} = notify_util:compile_default_html_template(?DEFAULT_HTML_TMPL, ?MOD_CONFIG_CAT),
+    {ok, _} = notify_util:compile_default_subject_template(?DEFAULT_SUBJ_TMPL, ?MOD_CONFIG_CAT),
     lager:debug("init done for ~s", [?MODULE]).
 
 %%--------------------------------------------------------------------
@@ -95,7 +95,7 @@ create_template_props(Event, Account) ->
 %%--------------------------------------------------------------------
 -spec build_and_send_email/5 :: (iolist(), iolist(), iolist(), ne_binary() | [ne_binary(),...], proplist()) -> 'ok'.
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) when is_list(To)->
-    [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props) || T <- To],
+    _ = [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props) || T <- To],
     ok;
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
     Service = props:get_value(<<"service">>, Props),

@@ -290,6 +290,15 @@ pickup(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, ParkAfterPickup, 
               ],
     send_command(Command, Call).
 
+pickup(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, Call) ->
+    Command = [{<<"Application-Name">>, <<"call_pickup">>}
+               ,{<<"Target-Call-ID">>, TargetCallId}
+               ,{<<"Insert-At">>, Insert}
+               ,{<<"Continue-On-Fail">>, ContinueOnFail}
+               ,{<<"Continue-On-Cancel">>, ContinueOnCancel}
+              ],
+    send_command(Command, Call).
+
 -spec b_pickup/2 :: (ne_binary(), whapps_call:call()) -> {'ok', wh_json:json_object()}.
 -spec b_pickup/3 :: (ne_binary(), ne_binary(), whapps_call:call()) -> {'ok', wh_json:json_object()}.
 -spec b_pickup/4 :: (ne_binary(), ne_binary(), ne_binary() | boolean(), whapps_call:call()) -> {'ok', wh_json:json_object()}.
@@ -309,6 +318,10 @@ b_pickup(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, Call) ->
     wait_for_channel_unbridge().
 b_pickup(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, ParkAfterPickup, Call) ->
     pickup(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, ParkAfterPickup, Call),
+    wait_for_channel_unbridge().
+
+b_pickup(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, Call) ->
+    pickup(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, Call),
     wait_for_channel_unbridge().
 
 %%--------------------------------------------------------------------
@@ -774,8 +787,8 @@ b_record(MediaName, Terminators, TimeLimit, SilenceThreshold, SilenceHits, Call)
 -spec record_call/2 :: (ne_binary(), whapps_call:call()) -> 'ok'.
 -spec record_call/3 :: (ne_binary(), ne_binary(), whapps_call:call()) -> 'ok'.
 -spec record_call/4 :: (ne_binary(), ne_binary(),  whapps_api_binary(), whapps_call:call()) -> 'ok'.
--spec record_call/5 :: (ne_binary(), ne_binary(),  whapps_api_binary(), whapps_api_binary(), whapps_call:call()) -> 'ok'.
--spec record_call/6 :: (ne_binary(), ne_binary(),  whapps_api_binary(), whapps_api_binary(), list(), whapps_call:call()) -> 'ok'.
+-spec record_call/5 :: (ne_binary(), ne_binary(),  whapps_api_binary(), whapps_api_binary() | integer(), whapps_call:call()) -> 'ok'.
+-spec record_call/6 :: (ne_binary(), ne_binary(),  whapps_api_binary(), whapps_api_binary() | integer(), list(), whapps_call:call()) -> 'ok'.
 record_call(MediaName, Call) ->
     record_call(MediaName, <<"start">>, Call).
 record_call(MediaName, Action, Call) ->
@@ -794,11 +807,17 @@ record_call(MediaName, Action, StreamTo, TimeLimit, Terminators, Call) ->
               ],
     send_command(Command, Call).
 
--spec b_record_call/2 :: (ne_binary(), whapps_call:call()) -> whapps_api_std_return().
--spec b_record_call/3 :: (ne_binary(), ne_binary(), whapps_call:call()) -> whapps_api_std_return().
--spec b_record_call/4 :: (ne_binary(), ne_binary(), whapps_api_binary(), whapps_call:call()) -> whapps_api_std_return().
--spec b_record_call/5 :: (ne_binary(), ne_binary(), whapps_api_binary(), whapps_api_binary(), whapps_call:call()) -> whapps_api_std_return().
--spec b_record_call/6 :: (ne_binary(), ne_binary(), whapps_api_binary(), whapps_api_binary(), whapps_call:call(), list()) -> whapps_api_std_return().
+-spec b_record_call/2 :: (ne_binary(), whapps_call:call()) ->
+                                 wait_for_headless_application_return().
+-spec b_record_call/3 :: (ne_binary(), ne_binary(), whapps_call:call()) ->
+                                 wait_for_headless_application_return().
+-spec b_record_call/4 :: (ne_binary(), ne_binary(), whapps_api_binary(), whapps_call:call()) ->
+                                 wait_for_headless_application_return().
+-spec b_record_call/5 :: (ne_binary(), ne_binary(), whapps_api_binary(), whapps_api_binary() | integer(), whapps_call:call()) ->
+                                 wait_for_headless_application_return().
+-spec b_record_call/6 :: (ne_binary(), ne_binary(), whapps_api_binary(), whapps_api_binary() | integer(), [ne_binary(),...] | [], whapps_call:call()) ->
+                                 wait_for_headless_application_return().
+
 b_record_call(MediaName, Call) ->
     record_call(MediaName, Call),
     wait_for_headless_application(<<"record">>, <<"RECORD_STOP">>, <<"call_event">>, infinity).
@@ -1418,13 +1437,15 @@ wait_for_application(Application, Event, Type, Timeout) ->
 %% @end
 %%--------------------------------------------------------------------
 -type wait_for_headless_application_return() :: {'error', 'timeout' | wh_json:json_object()} |
-                                                {'hangup', wh_json:json_object()} |
                                                 {'ok', wh_json:json_object()}.
--spec wait_for_headless_application/1 :: (ne_binary()) -> wait_for_headless_application_return().
--spec wait_for_headless_application/2 :: (ne_binary(), ne_binary()) -> wait_for_headless_application_return().
--spec wait_for_headless_application/3 :: (ne_binary(), ne_binary(), ne_binary()) -> wait_for_headless_application_return().
--spec wait_for_headless_application/4 :: (ne_binary(), ne_binary(), ne_binary(), 'infinity' | pos_integer()) 
-                                         -> wait_for_headless_application_return().
+-spec wait_for_headless_application/1 :: (ne_binary()) ->
+                                                 wait_for_headless_application_return().
+-spec wait_for_headless_application/2 :: (ne_binary(), ne_binary()) ->
+                                                 wait_for_headless_application_return().
+-spec wait_for_headless_application/3 :: (ne_binary(), ne_binary(), ne_binary()) ->
+                                                 wait_for_headless_application_return().
+-spec wait_for_headless_application/4 :: (ne_binary(), ne_binary(), ne_binary(), 'infinity' | pos_integer()) ->
+                                                 wait_for_headless_application_return().
 
 wait_for_headless_application(Application) ->
     wait_for_headless_application(Application, <<"CHANNEL_EXECUTE_COMPLETE">>).
@@ -1757,7 +1778,6 @@ wait_for_fax(Timeout) ->
         Timeout ->
             {error, timeout}
     end.
-
 
 %%--------------------------------------------------------------------
 %% @public

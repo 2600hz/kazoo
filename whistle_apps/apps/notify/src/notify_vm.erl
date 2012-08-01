@@ -24,9 +24,9 @@
 -spec init/0 :: () -> 'ok'.
 init() ->
     %% ensure the vm template can compile, otherwise crash the processes
-    notify_util:compile_default_text_template(?DEFAULT_TEXT_TMPL, ?MOD_CONFIG_CAT),
-    notify_util:compile_default_html_template(?DEFAULT_HTML_TMPL, ?MOD_CONFIG_CAT),
-    notify_util:compile_default_subject_template(?DEFAULT_SUBJ_TMPL, ?MOD_CONFIG_CAT),
+    {ok, _} = notify_util:compile_default_text_template(?DEFAULT_TEXT_TMPL, ?MOD_CONFIG_CAT),
+    {ok, _} = notify_util:compile_default_html_template(?DEFAULT_HTML_TMPL, ?MOD_CONFIG_CAT),
+    {ok, _} = notify_util:compile_default_subject_template(?DEFAULT_SUBJ_TMPL, ?MOD_CONFIG_CAT),
     lager:debug("init done for ~s", [?MODULE]).
 
 -spec handle_req/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
@@ -62,7 +62,9 @@ handle_req(JObj, _Props) ->
             CustomSubjectTemplate = wh_json:get_value([<<"notifications">>, <<"voicemail_to_email">>, <<"email_subject_template">>], AcctObj),
             {ok, Subject} = notify_util:render_template(CustomSubjectTemplate, ?DEFAULT_SUBJ_TMPL, Props),
 
-            build_and_send_email(TxtBody, HTMLBody, Subject, Email, [ KV || {_, V}=KV <- Props, V =/= undefined ])
+            build_and_send_email(TxtBody, HTMLBody, Subject, Email
+                                 ,props:filter_undefined(Props)
+                                )
     end.
 
 %%--------------------------------------------------------------------
@@ -95,6 +97,7 @@ create_template_props(Event, Docs, Account) ->
                          ,{<<"to_realm">>, wh_json:get_value(<<"To-Realm">>, Event)}
                          ,{<<"voicemail_box">>, wh_json:get_value(<<"Voicemail-Box">>, Event)}
                          ,{<<"voicemail_media">>, wh_json:get_value(<<"Voicemail-Name">>, Event)}
+                         ,{<<"voicemail_transcription">>, wh_json:get_value([<<"Voicemail-Transcription">>, <<"text">>], Event)}
                          ,{<<"call_id">>, wh_json:get_value(<<"Call-ID">>, Event)}
                         ]}
      ,{<<"account_db">>, wh_json:get_value(<<"pvt_account_db">>, Account)}
@@ -108,7 +111,7 @@ create_template_props(Event, Docs, Account) ->
 %%--------------------------------------------------------------------
 -spec build_and_send_email/5 :: (iolist(), iolist(), iolist(), ne_binary() | [ne_binary(),...], proplist()) -> 'ok'.
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) when is_list(To) ->
-    [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props) || T <- To],
+    _ = [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props) || T <- To],
     ok;
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
     Voicemail = props:get_value(<<"voicemail">>, Props),

@@ -248,9 +248,7 @@ update_vmbox(DocId, #cb_context{req_data=Data}=Context) ->
                       wh_json:from_list([{<<"mailbox">>, <<"invalid mailbox number or number exists">>}])
                       ,Context);
                 false ->
-                    Context1 = #cb_context{doc=VMBox, db_name=Db, account_id=AccountId} = crossbar_doc:load_merge(DocId, JObj, Context),
-                    _ = spawn(fun() -> _ = crossbar_util:put_reqid(Context1), update_mwi(Context1) end),
-                    Context1
+                    crossbar_doc:load_merge(DocId, JObj, Context)
             end
     end.
 

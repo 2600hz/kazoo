@@ -4,10 +4,15 @@
 -include_lib("whistle_number_manager/include/wh_number_manager.hrl").
 -include_lib("amqp_client/include/amqp_client.hrl").
 
--type cf_exe_response() :: {'stop'} | {'continue'} | {'continue', integer()} | {'heartbeat'}.
+-type cf_exe_response() :: {'stop'} |
+                           {'continue'} |
+                           {'continue', integer()} |
+                           {'heartbeat'}.
 -type cf_api_error() :: {'error', 'channel_hungup' | 'channel_unbridge' | 'timeout' | wh_json:json_object()}.
 -type cf_api_std_return() :: cf_api_error() | {'ok', wh_json:json_object()}.
--type cf_api_bridge_return() :: {'error', 'timeout' | wh_json:json_object()} | {'fail', wh_json:json_object()} | {'ok', wh_json:json_object()}.
+-type cf_api_bridge_return() :: {'error', 'timeout' | wh_json:json_object()} |
+                                {'fail', wh_json:json_object()} |
+                                {'ok', wh_json:json_object()}.
 -type cf_api_binary() :: binary() | 'undefined'.
 
 -define(APP_NAME, <<"callflow">>).

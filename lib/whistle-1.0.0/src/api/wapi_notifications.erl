@@ -65,12 +65,15 @@
 -define(NOTIFY_SYSTEM_ALERT, <<"notifications.system.alert">>).
 
 %% Notify New Voicemail
--define(VOICEMAIL_HEADERS, [<<"From-User">>, <<"From-Realm">>, <<"To-User">>, <<"To-Realm">>
-                                ,<<"Account-DB">>, <<"Voicemail-Box">>, <<"Voicemail-Name">>
-                                ,<<"Voicemail-Timestamp">>
+-define(VOICEMAIL_HEADERS, [<<"From-User">>, <<"From-Realm">>
+                            ,<<"To-User">>, <<"To-Realm">>
+                            ,<<"Account-DB">>
+                            ,<<"Voicemail-Box">>, <<"Voicemail-Name">>
+                            ,<<"Voicemail-Timestamp">>
                            ]).
 -define(OPTIONAL_VOICEMAIL_HEADERS, [<<"Voicemail-Length">>, <<"Call-ID">>
-                                         ,<<"Caller-ID-Number">>, <<"Caller-ID-Name">>
+                                     ,<<"Caller-ID-Number">>, <<"Caller-ID-Name">>
+                                     ,<<"Voicemail-Transcription">>
                                     ]).
 -define(VOICEMAIL_VALUES, [{<<"Event-Category">>, <<"notification">>}
                            ,{<<"Event-Name">>, <<"new_voicemail">>}
