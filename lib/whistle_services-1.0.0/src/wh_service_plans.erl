@@ -54,11 +54,13 @@ fetch(AccountId) ->
 %%--------------------------------------------------------------------
 -spec create_items/2 :: (plans(), wh_services:services()) -> wh_service_items:items().
 create_items(Services, ServicePlans) ->
-    Items = wh_service_items:empty(),
-    [wh_service_plan:create_items(Plan, Services)
-     || ServicePlan <- ServicePlans
-            ,Plan <- ServicePlan#wh_service_plans.plans
-    ].
+    Plans = [Plan
+             || ServicePlan <- ServicePlans
+                    ,Plan <- ServicePlan#wh_service_plans.plans
+            ],
+    lists:foldl(fun(Plan, Items) ->
+                        wh_service_plan:create_items(Plan, Items, Services)
+                end, wh_service_items:empty(), Plans).
 
 %%--------------------------------------------------------------------
 %% @private

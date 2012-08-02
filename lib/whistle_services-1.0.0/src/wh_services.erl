@@ -26,7 +26,7 @@
 -include_lib("whistle_services/src/whistle_services.hrl").
 -include_lib("whistle/include/wh_databases.hrl").
 
--record(wh_services, {account_id
+-record(wh_services, {account_id = undefined
                       ,dirty = false
                       ,jobj = wh_json:new()
                       ,updates = wh_json:new()
@@ -106,10 +106,11 @@ fetch(Account) ->
     AccountDb = wh_util:format_account_id(Account, encoded),
     case couch_mgr:open_doc(?WH_SERVICES_DB, AccountId) of
         {ok, JObj} ->
+            lager:debug("loaded account service doc ~s", [AccountId]),
             #wh_services{account_id=AccountId, jobj=JObj
                          ,cascade_quantities=cascade_quantities(AccountId)};
         {error, _R} ->
-            lager:debug("unable to open account ~s services doc: ~p", [Account, _R]),
+            lager:debug("unable to open account ~s services doc (creating new): ~p", [Account, _R]),
             TStamp = wh_util:current_tstamp(),
             New = [{<<"_id">>, AccountId}
                    ,{<<"pvt_created">>, TStamp}
@@ -118,11 +119,11 @@ fetch(Account) ->
                    ,{<<"pvt_vsn">>, <<"1">>}
                    ,{<<"pvt_account_id">>, AccountId}
                    ,{<<"pvt_account_db">>, AccountDb}
-                   ,{<<"pvt_dirty">>, true}
                    ,{?QUANTITIES, wh_json:new()}
                   ],
             #wh_services{account_id=AccountId, jobj=wh_json:from_list(New)
-                         ,cascade_quantities=cascade_quantities(AccountId)}
+                         ,cascade_quantities=cascade_quantities(AccountId)
+                         ,dirty=true}
     end.
 
 %%--------------------------------------------------------------------
@@ -155,12 +156,15 @@ save(#wh_services{jobj=JObj, updates=UpdatedQuantities, account_id=AccountId, di
     UpdatedJObj = wh_json:set_values(Props, JObj),
     case couch_mgr:save_doc(?WH_SERVICES_DB, UpdatedJObj) of
         {ok, NewJObj} ->
+            lager:debug("saved new account service doc for ~s", [AccountId]),
             Services#wh_services{jobj=NewJObj
                                  ,cascade_quantities=cascade_quantities(AccountId)};
         {error, not_found} ->
+            lager:debug("service database does not exist, attempting to create", []),
             true = couch_mgr:db_create(?WH_SERVICES_DB),
             save(Services);
         {error, conflict} ->
+            lager:debug("account service doc for ~s conflicted, merging changes and retrying", [AccountId]),
             {ok, Existing} = couch_mgr:open_doc(?WH_SERVICES_DB, AccountId),
             save(Services#wh_services{jobj=Existing})
     end.
