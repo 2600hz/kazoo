@@ -31,6 +31,24 @@ An agent represents an account user with a device (and possibly many devices). T
 
 *paused*: the agent is on break or otherwise not taking calls. An optional timer can be set to limit how long the agent may remain in the paused state. Also the state where the agent process goes when "logging out" for the night/weekend/what-have-you.
 
+*** Agent Process Initialization
+
+An agent can be represented by one or more Erlang processes, on any number of nodes, and in any one of the statuses above. As such, startup of the agent process is a tricky matter.
+
+An agent process that has started up cannot just jump into the *ready* status, as the agent could be on the phone, away on break, or otherwise in-disposed. So before the process can leave the *init* status, the agent process published a sync_req message for all agent processes monitoring the agent. Any existing agent processes will receive the sync_req and reply with their current status. The intializing agent process will collect responses (or none) for a specified timeout and either sync with the "most active" agent process or, if no responses are received, enter the *ready* status.
+
+If the sync_resp is in the *ready* status, the initializing agent will enter the *ready* status as well. Member requests will now come to both (or all) agent processes.
+
+If the sync_resp is in the *waiting* status, the initializing agent process will wait the wait_timeout time (how long a process waits to see if it 'won' the member), and send another sync_req.
+
+If a sync_resp is in the *ringing* status, the initializing agent process will wait the wait_timeout time and send the sync_req again.
+
+If a sync_resp is in the *answered* status, the response will include the call-id of the call being vied for (and possibly the b-leg call-id as well). The initializing agent will enter the same state and monitor the call for hangup. Upon receiving the hangup, the initializing agent process will enter the *wrapup* status, and after the wrap-up timeout, will enter the *ready* status (as other agent processes should too).
+
+If a sync_resp is in the *wrapup* status, the resp should include the time left (otherwise use the full amount). The initializing agent will enter the *wrapup* status with the calculated timeout, then transition to *ready*.
+
+If a sync_resp is in the *paused* status, the resp should include the time left (if on a timed break). If no time is included, the initializing agent process will enter the *paused* status indefinitely, until an agent_status event instructs the agent process to come back to *ready*.
+
 *** Happy case for a member call
 
 agent status: *ready*
