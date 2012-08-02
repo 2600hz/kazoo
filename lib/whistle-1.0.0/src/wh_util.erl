@@ -529,6 +529,7 @@ is_empty(<<"NULL">>) -> true;
 is_empty(null) -> true;
 is_empty(false) -> true;
 is_empty(undefined) -> true;
+is_empty(Float) when is_float(Float), Float == 0.0 -> true;
 is_empty(MaybeJObj) ->
     case wh_json:is_json_object(MaybeJObj) of
         false -> false; %% if not a json object, its not empty
