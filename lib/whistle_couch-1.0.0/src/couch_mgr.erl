@@ -121,6 +121,9 @@
          ,code_change/3
         ]).
 
+%% Types
+-export_type([get_results_return/0]).
+
 -include_lib("wh_couch.hrl").
 
 -define(SERVER, ?MODULE).
@@ -608,10 +611,10 @@ delete_attachment(DbName, DocId, AName, Options) ->
 %% {Total, Offset, Meta, Rows}
 %% @end
 %%--------------------------------------------------------------------
--spec get_all_results/2 :: (ne_binary(), ne_binary()) -> {'ok', wh_json:json_objects() | wh_json:json_strings()} |
-                                                         {'error', atom()}.
--spec get_results/3 :: (ne_binary(), ne_binary(), wh_proplist()) -> {'ok', wh_json:json_objects() | wh_json:json_strings()} |
-                                                                    {'error', atom()}.
+-type get_results_return() :: {'ok', wh_json:json_objects() | wh_json:json_strings()} |
+                              {'error', atom()}.
+-spec get_all_results/2 :: (ne_binary(), ne_binary()) -> get_results_return().
+-spec get_results/3 :: (ne_binary(), ne_binary(), wh_proplist()) -> get_results_return().
 get_all_results(DbName, DesignDoc) ->
     get_results(DbName, DesignDoc, []).
 get_results(DbName, DesignDoc, ViewOptions) ->
