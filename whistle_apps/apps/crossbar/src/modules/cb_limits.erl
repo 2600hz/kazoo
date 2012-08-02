@@ -14,6 +14,7 @@
          ,billing/1
          ,validate/1
          ,post/1
+         ,reconcile_services/1
         ]).
 
 -include_lib("crossbar/include/crossbar.hrl").
@@ -31,7 +32,8 @@ init() ->
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.limits">>, ?MODULE, resource_exists),
     _ = crossbar_bindings:bind(<<"v1_resource.billing">>, ?MODULE, billing),
     _ = crossbar_bindings:bind(<<"v1_resource.validate.limits">>, ?MODULE, validate),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.post.limits">>, ?MODULE, post).
+    _ = crossbar_bindings:bind(<<"v1_resource.execute.post.limits">>, ?MODULE, post),
+    crossbar_bindings:bind(<<"v1_resource.finish_request.*.limits">>, ?MODULE, reconcile_services).    
 
 %%--------------------------------------------------------------------
 %% @public
@@ -58,28 +60,36 @@ allowed_methods() ->
 resource_exists() ->
     true.
 
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Bill for limits
+%% Ensure we will be able to bill for devices
 %% @end
 %%--------------------------------------------------------------------
 billing(#cb_context{req_nouns=[{<<"limits">>, _}|_], req_verb = <<"get">>}=Context) ->
     Context;
-billing(#cb_context{req_nouns=[{<<"limits">>, _}|_], doc=JObj, account_id=AccountId}=Context) ->
-    case wh_resellers:fetch(AccountId) of
-        {error, no_service_plan} -> Context;
-        {ok, Resellers} ->
-            try 
-                UpdatedResellers = wh_service_limits:update(JObj, Resellers),
-                ok = wh_resellers:commit_changes(UpdatedResellers)
-            catch
-                throw:{Error, Reason} ->
-                    crossbar_util:response(error, wh_util:to_binary(Error), 500, Reason, Context)
-            end
+billing(#cb_context{req_nouns=[{<<"limits">>, _}|_], account_id=AccountId}=Context) ->
+    try wh_services:allow_updates(AccountId) of
+        true -> Context
+    catch
+        throw:{Error, Reason} ->
+            crossbar_util:response(error, wh_util:to_binary(Error), 500, Reason, Context)
     end;
 billing(Context) -> Context.
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Bill for devices
+%% @end
+%%--------------------------------------------------------------------
+-spec reconcile_services/1 :: (#cb_context{}) -> #cb_context{}.
+reconcile_services(#cb_context{req_verb = <<"get">>}=Context) ->
+    Context;
+reconcile_services(#cb_context{account_id=AccountId}=Context) ->
+    _ = wh_services:reconcile(AccountId, <<"limits">>),
+    Context.
             
 %%--------------------------------------------------------------------
 %% @private

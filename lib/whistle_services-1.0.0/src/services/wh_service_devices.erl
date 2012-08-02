@@ -11,6 +11,12 @@
 
 -include_lib("whistle_services/src/whistle_services.hrl").
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
 -spec reconcile/1 :: (wh_services:services()) -> wh_services:services().
 reconcile(Services) ->
     AccountId = wh_services:account_id(Services),
