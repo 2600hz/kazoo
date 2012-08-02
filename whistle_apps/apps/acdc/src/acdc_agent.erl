@@ -13,7 +13,9 @@
 %% API
 -export([start_link/2]).
 
--include("acdc.hrl").
+%% Listener callbacks
+-export([handle_status_update/2
+        ]).
 
 %% gen_server callbacks
 -export([init/1
@@ -24,6 +26,8 @@
          ,terminate/2
          ,code_change/3
         ]).
+
+-include("acdc.hrl").
 
 -type agent_status() :: 'init' |      % agent is starting up
                         'ready' |     % agent is ready to connect
@@ -56,9 +60,16 @@ start_link(AcctDb, AgentJObj) ->
                             ,[{bindings, [{self, []}
                                           ,{agent, []}
                                          ]}
-                              ,{responders, []}
+                              ,{responders, [{{?MODULE, handle_agent_status}
+                                              ,{<<"agents">>, <<"status_update">>}
+                                             }
+                                            ]}
                              ]
                             ,[AcctDb, AgentJObj]).
+
+-spec handle_status_update/2 :: (wh_json:json_object(), wh_proplist()) -> any().
+handle_status_update(JObj, Props) ->
+    ok.
 
 %%%===================================================================
 %%% gen_server callbacks
