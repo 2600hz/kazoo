@@ -16,6 +16,7 @@
 %% Listener callbacks
 -export([handle_status_update/2
          ,handle_sync_req/2
+         ,handle_sync_resp/2
         ]).
 
 %% gen_server callbacks
@@ -97,6 +98,9 @@ handle_status_update(_JObj, _Props) ->
 -spec handle_sync_req/2 :: (wh_json:json_object(), wh_proplist()) -> any().
 handle_sync_req(_JObj, _Props) ->
     ok.
+
+handle_sync_resp(JObj, Props) ->
+    gen_listener:cast(props:get_value(server, Props), {sync_resp, JObj}).
 
 %%%===================================================================
 %%% gen_server callbacks
