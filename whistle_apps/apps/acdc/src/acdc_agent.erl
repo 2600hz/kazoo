@@ -31,14 +31,16 @@
 
 -include("acdc.hrl").
 
--type agent_status() :: 'init' |      % agent is starting up
-                        'ready' |     % agent is ready to connect
-                        'trying' |    % agent is trying to connect
-                        'connected' | % agent is connected
-                        'paused'.     % agent is away
+-type agent_status() :: 'init' |     % agent is starting up
+                        'ready' |    % agent is ready to connect
+                        'waiting' |  % agent is waiting to see if winner of member call
+                        'ringing' |  % agent is trying to connect
+                        'answered' | % agent is connected
+                        'wrapup' |   % agent is done with call, jot some notes
+                        'paused'.    % agent is away
 -record(state, {
           status = 'init' :: agent_status()
-         ,current_call :: whapps_call:call()
+         ,call :: whapps_call:call()
          ,agent_id :: ne_binary()
          ,agent_db :: ne_binary()
          ,account_id :: ne_binary()
@@ -46,7 +48,7 @@
          ,last_connect :: wh_now() % last connection
          ,last_attempt :: wh_now() % last attempt to connect
          ,my_id = wh_util:rand_hex_binary() :: ne_binary()
-         ,sync_timer :: reference()
+         ,timer_ref :: reference()
          }).
 
 %%%===================================================================
@@ -72,6 +74,7 @@
                        ,{<<"agent">>, <<"sync_resp">>}
                       }
                     ]).
+
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -96,11 +99,22 @@ handle_status_update(_JObj, _Props) ->
     ok.
 
 -spec handle_sync_req/2 :: (wh_json:json_object(), wh_proplist()) -> any().
-handle_sync_req(_JObj, _Props) ->
-    ok.
+handle_sync_req(JObj, Props) ->
+    case props:get_value(status, Props) of
+        init -> lager:debug("in init ourselves, ignoring sync request");
+        ready -> sync_resp(JObj, ready);
+        waiting -> sync_resp(JObj, waiting);
+        ringing -> sync_resp(JObj, ringing);
+        answered -> sync_resp(JObj, answered, [{<<"Call-ID">>, props:get_value(callid, Props)}]);
+        wrapup -> sync_resp(JObj, wrapup, [{<<"Time-Left">>, props:get_value(time_left, Props)}]);
+        paused -> sync_resp(JObj, paused, [{<<"Time-Left">>, props:get_value(time_left, Props)}])
+    end.
 
 handle_sync_resp(JObj, Props) ->
-    gen_listener:cast(props:get_value(server, Props), {sync_resp, JObj}).
+    case props:get_value(status, Props) of
+        init -> gen_listener:cast(props:get_value(server, Props), {recv_sync_resp, JObj});
+        _S -> lager:debug("ignoring sync_resp, in status ~s", [_S])
+    end.
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -170,11 +184,11 @@ handle_cast(send_sync_event, #state{
               ,my_id=ProcessId
              }=State) ->
     wapi_agent:publish_sync_req(create_sync_api(AcctId, AgentId, ProcessId)),
-    {noreply, State#state{sync_timer=start_sync_timer()}};
-handle_cast({sync_resp, RespJObj}, #state{sync_timer=Ref}=State) ->
+    {noreply, State#state{timer_ref=start_sync_timer()}};
+handle_cast({recv_sync_resp, RespJObj}, #state{timer_ref=Ref}=State) ->
     _ = erlang:cancel_timer(Ref),
     lager:debug("recv sync resp: ~p", [RespJObj]),
-    {noreply, State#state{sync_timer=undefined}};
+    {noreply, State#state{timer_ref=undefined}};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {noreply, State}.
@@ -189,15 +203,21 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({timeout, Ref, ?SYNC_TIMER_MESSAGE}, #state{sync_timer=Ref}=State) ->
+handle_info({timeout, Ref, ?SYNC_TIMER_MESSAGE}, #state{timer_ref=Ref}=State) ->
     lager:debug("sync timer timeout, moving to ready"),
-    {noreply, State#state{status=ready, sync_timer=undefined}};
+    {noreply, State#state{status=ready, timer_ref=undefined}};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {noreply, State}.
 
-handle_event(_JObj, #state{status=Status}) ->
-    {reply, [{status, Status}]}.
+handle_event(_JObj, #state{status=Status
+                           ,timer_ref=Ref
+                           ,call=Call
+                          }) ->
+    {reply, [{status, Status}
+             ,{time_left, time_left(Ref)}
+             ,{callid, call_id(Call)}
+            ]}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -211,7 +231,7 @@ handle_event(_JObj, #state{status=Status}) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
-    ok.
+    lager:debug("agent process going down: ~p", [_Reason]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -239,3 +259,23 @@ create_sync_api(AcctId, AgentId, ProcessId) ->
 -spec start_sync_timer/0 :: () -> reference().
 start_sync_timer() ->
     erlang:start_timer(?SYNC_TIMER_TIMEOUT, self(), ?SYNC_TIMER_MESSAGE).
+
+-spec sync_resp/2 :: (wh_json:json_object(), agent_status()) -> 'ok'.
+-spec sync_resp/3 :: (wh_json:json_object(), agent_status(), wh_proplist()) -> 'ok'.
+sync_resp(JObj, Status) ->
+    sync_resp(JObj, Status, []).
+sync_resp(JObj, Status, Fields) ->
+    Resp = [{<<"Account-ID">>, wh_json:get_value(<<"Account-ID">>, JObj)}
+            ,{<<"Agent-ID">>, wh_json:get_value(<<"Agent-ID">>, JObj)}
+            ,{<<"Status">>, wh_util:to_binary(Status)}
+            | Fields
+           ],
+    wapi_agent:publish_sync_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp).
+
+-spec time_left/1 :: ('undefined' | reference()) -> 'undefined' | integer() | 'false'.
+time_left(undefined) -> undefined;
+time_left(Ref) when is_reference(Ref) -> erlang:read_timer(Ref).
+
+-spec call_id/1 :: ('undefined' | whapps_call:call()) -> 'undefined' | ne_binary().
+call_id(undefined) -> undefined;
+call_id(Call) -> whapps_call:call_id(Call).
