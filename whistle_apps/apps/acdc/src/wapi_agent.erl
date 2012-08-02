@@ -14,6 +14,7 @@
 
 -export([status_update/1
          ,sync_req/1
+         ,sync_resp/1
         ]).
 
 -export([bind_q/2
@@ -22,6 +23,7 @@
 
 -export([publish_status_update/1, publish_status_update/2
          ,publish_sync_req/1, publish_sync_req/2
+         ,publish_sync_resp/2, publish_sync_resp/3
         ]).
 
 -include_lib("whistle/include/wh_api.hrl").
@@ -39,7 +41,7 @@
 -define(STATUS_UPDATE_VALUES, [{<<"New-Status">>, [<<"signed_in">>, <<"signed_off">>
                                                    ,<<"away">>, <<"returned">>
                                                   ]}
-                               ,{<<"Event-Category">>, <<"agents">>}
+                               ,{<<"Event-Category">>, <<"agent">>}
                                ,{<<"Event-Name">>, <<"status_update">>}
                               ]).
 -define(STATUS_UPDATE_TYPES, []).
@@ -85,7 +87,7 @@ status_routing_key(Db, Id) ->
 
 -define(SYNC_REQ_HEADERS, [<<"Account-ID">>, <<"Agent-ID">>]).
 -define(OPTIONAL_SYNC_REQ_HEADERS, [<<"Process-ID">>]).
--define(SYNC_REQ_VALUES, [{<<"Event-Category">>, <<"agents">>}
+-define(SYNC_REQ_VALUES, [{<<"Event-Category">>, <<"agent">>}
                           ,{<<"Event-Name">>, <<"sync_req">>}
                          ]).
 -define(SYNC_REQ_TYPES, []).
@@ -110,14 +112,40 @@ sync_req_v(JObj) ->
 sync_req_routing_key(Props) when is_list(Props) ->
     Id = props:get_value(<<"Agent-ID">>, Props, <<"*">>),
     Db = props:get_value(<<"Agent-DB">>, Props, <<"*">>),
-    status_routing_key(Db, Id);
+    sync_req_routing_key(Db, Id);
 sync_req_routing_key(JObj) ->
     Id = wh_json:get_value(<<"Agent-ID">>, JObj, <<"*">>),
     Db = wh_json:get_value(<<"Agent-DB">>, JObj, <<"*">>),
-    status_routing_key(Db, Id).
+    sync_req_routing_key(Db, Id).
 
 sync_req_routing_key(Db, Id) ->
     <<?SYNC_REQ_KEY, Db/binary, ".", Id/binary>>.
+
+%% And the response
+-define(SYNC_RESP_HEADERS, [<<"Account-ID">>, <<"Agent-ID">>, <<"Status">>]).
+-define(OPTIONAL_SYNC_RESP_HEADERS, [<<"Call-ID">>, <<"Time-Left">>]).
+-define(SYNC_RESP_VALUES, [{<<"Event-Category">>, <<"agent">>}
+                           ,{<<"Event-Name">>, <<"sync_resp">>}
+                           ,{<<"Status">>, [<<"init">>, <<"ready">>, <<"waiting">>, <<"ringing">>
+                                           ,<<"answered">>, <<"wrapup">>, <<"paused">>
+                                           ]}
+                         ]).
+-define(SYNC_RESP_TYPES, []).
+
+-spec sync_resp/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
+sync_resp(Props) when is_list(Props) ->
+    case sync_resp_v(Props) of
+        true -> wh_api:build_message(Props, ?SYNC_RESP_HEADERS, ?OPTIONAL_SYNC_RESP_HEADERS);
+        false -> {error, "Proplist failed validation for sync_resp"}
+    end;
+sync_resp(JObj) ->
+    sync_resp(wh_json:to_proplist(JObj)).
+
+-spec sync_resp_v/1 :: (api_terms()) -> boolean().
+sync_resp_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?SYNC_RESP_HEADERS, ?SYNC_RESP_VALUES, ?SYNC_RESP_TYPES);
+sync_resp_v(JObj) ->
+    sync_resp_v(wh_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
 %% Bind/Unbind the queue as appropriate
@@ -158,3 +186,11 @@ publish_sync_req(JObj) ->
 publish_sync_req(API, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(API, ?SYNC_REQ_VALUES, fun sync_req/1),
     amqp_util:whapps_publish(Payload, ContentType, sync_req_routing_key(API)).
+
+-spec publish_sync_resp/2 :: (ne_binary(), api_terms()) -> 'ok'.
+-spec publish_sync_resp/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+publish_sync_resp(Q, JObj) ->
+    publish_sync_resp(Q, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_sync_resp(Q, API, ContentType) ->
+    {ok, Payload} = wh_api:prepare_api_payload(API, ?SYNC_RESP_VALUES, fun sync_resp/1),
+    amqp_util:targeted_publish(Q, Payload, ContentType).

@@ -67,6 +67,9 @@
                      ,{{?MODULE, handle_sync_req}
                        ,{<<"agents">>, <<"sync_req">>}
                       }
+                     ,{{?MODULE, handle_sync_resp}
+                       ,{<<"agent">>, <<"sync_resp">>}
+                      }
                     ]).
 %%%===================================================================
 %%% API
