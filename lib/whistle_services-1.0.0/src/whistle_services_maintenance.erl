@@ -29,16 +29,16 @@
 -spec credit/2 :: (text(), text()) -> 'no_return'.
 -spec credit/3 :: (text(), text(), text()) -> 'no_return'.
 
-credit(Account, Amount) ->    
+credit(Account, Amount) ->
     credit(Account, Amount, <<"System administrator discretionary credit addition">>).
 
 credit(Account, Amount, Description) when not is_binary(Account) ->
     credit(wh_util:to_binary(Account), Amount, Description);
-credit(Account, Amount, Description) when not is_float(Amount) ->    
+credit(Account, Amount, Description) when not is_float(Amount) ->
     credit(Account, wh_util:to_float(Amount), Description);
-credit(Account, Amount, Description) when not is_binary(Description) ->    
+credit(Account, Amount, Description) when not is_binary(Description) ->
     credit(Account, Amount, wh_util:to_binary(Description));
-credit(Account, Amount, Description) ->    
+credit(Account, Amount, Description) ->
     AccountId = wh_util:format_account_id(Account, raw),
     AccountDb = wh_util:format_account_id(Account, encoded),
     Timestamp = wh_util:current_tstamp(),
@@ -72,13 +72,13 @@ credit(Account, Amount, Description) ->
 debit(Account, Amount) ->
     debit(Account, Amount, <<"System administrator discretionary debit addition">>).
 
-debit(Account, Amount, Description) when not is_binary(Account) ->    
+debit(Account, Amount, Description) when not is_binary(Account) ->
     debit(wh_util:to_binary(Account), Amount, Description);
-debit(Account, Amount, Description) when not is_float(Amount) ->    
+debit(Account, Amount, Description) when not is_float(Amount) ->
     debit(Account, wh_util:to_float(Amount), Description);
-debit(Account, Amount, Description) when not is_binary(Description) ->    
+debit(Account, Amount, Description) when not is_binary(Description) ->
     debit(Account, Amount, wh_util:to_binary(Description));
-debit(Account, Amount, Description) ->    
+debit(Account, Amount, Description) ->
     AccountId = wh_util:format_account_id(Account, raw),
     AccountDb = wh_util:format_account_id(Account, encoded),
     Timestamp = wh_util:current_tstamp(),
@@ -238,7 +238,7 @@ set_reseller_id(Reseller, Account) ->
     io:format("setting account ~s reseller id to ~s~n", [AccountId, ResellerId]),
     _ = update_account_definition(AccountId, <<"pvt_reseller_id">>, ResellerId),
     maybe_update_services(AccountId, <<"pvt_reseller_id">>, ResellerId).
-    
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -276,7 +276,7 @@ update_account_definition(AccountId, Key, Value) ->
         {ok, JObj} ->
             case couch_mgr:save_doc(AccountDb, wh_json:set_value(Key, Value, JObj)) of
                 {ok, NewJObj} ->
-                    _ = couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, NewJObj),            
+                    _ = couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, NewJObj),
                     ok;
                 {error, _R} ->
                     io:format("unable to set pvt_reseller on account ~s defintion: ~p~n", [AccountId, _R]),

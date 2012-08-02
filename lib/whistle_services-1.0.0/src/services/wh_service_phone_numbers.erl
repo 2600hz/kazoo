@@ -40,7 +40,7 @@ phone_number_activation_charge(Number, Services) ->
             Charge = wh_services:activation_charges(<<"phone_numbers">>, Classification, Services),
             wapi_money:dollars_to_units(Charge)
     end.
-    
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -75,12 +75,12 @@ update_numbers([Number|Numbers], JObj, Services) ->
         false -> Services;
         true ->
             Routines = [fun(S) -> update_number_quantities(Number, S) end
-                        ,fun(S) -> 
+                        ,fun(S) ->
                                  Features = wh_json:get_value([Number, <<"features">>], JObj, []),
                                  update_feature_quantities(Features, S)
                          end
                        ],
-            UpdatedServices = lists:foldl(fun(F, S) -> F(S) end, Services, Routines),    
+            UpdatedServices = lists:foldl(fun(F, S) -> F(S) end, Services, Routines),
             update_numbers(Numbers, JObj, UpdatedServices)
     end.
 
@@ -105,7 +105,7 @@ update_number_quantities(Number, Services) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec update_feature_quantities/2 :: ([ne_binary(),...] | [], wh_services:services()) -> wh_services:services().    
+-spec update_feature_quantities/2 :: ([ne_binary(),...] | [], wh_services:services()) -> wh_services:services().
 update_feature_quantities([], Services) ->
     Services;
 update_feature_quantities([<<"dash_e911">>|Features], Services) ->
@@ -113,4 +113,4 @@ update_feature_quantities([<<"dash_e911">>|Features], Services) ->
 update_feature_quantities([Feature|Features], Services) ->
     Quantity = wh_services:update_quantity(<<"number_services">>, Feature, Services),
     UpdatedServices = wh_services:update(<<"number_services">>, Feature, Quantity + 1, Services),
-    update_feature_quantities(Features, UpdatedServices).    
+    update_feature_quantities(Features, UpdatedServices).

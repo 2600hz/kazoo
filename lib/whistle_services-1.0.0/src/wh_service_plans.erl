@@ -58,7 +58,7 @@ public_json(ServicePlans) ->
 public_json([], JObj) ->
     JObj;
 public_json([#wh_service_plans{plans=Plans}|ServicePlans], JObj) ->
-    NewJObj = lists:foldl(fun(P, J) -> 
+    NewJObj = lists:foldl(fun(P, J) ->
                                   wh_json:merge_recursive(J, wh_json:get_value(<<"plan">>, P, wh_json:new()))
                           end, JObj, Plans),
     public_json(ServicePlans, NewJObj).
@@ -93,10 +93,10 @@ activation_charges(Category, Item, ServicePlans) ->
                     ,Plan <- ServicePlan#wh_service_plans.plans
             ],
     lists:foldl(fun(Plan, Charges) ->
-                        wh_service_plan:activation_charges(Category, Item, Plan) 
+                        wh_service_plan:activation_charges(Category, Item, Plan)
                             + Charges
                 end, 0.0, Plans).
-    
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -172,7 +172,7 @@ maybe_fetch_vendor_plan(PlanId, _, ResellerId, _) ->
 -spec append_vendor_plan/3 :: (wh_service_plan:plan(), ne_binary(), plans()) -> plans().
 append_vendor_plan(Plan, VendorId, ServicePlans) ->
     case lists:keyfind(VendorId, #wh_service_plans.vendor_id, ServicePlans) of
-        false -> 
+        false ->
             ServicePlan = #wh_service_plans{vendor_id=VendorId
                                             ,plans=[Plan]},
             [ServicePlan|ServicePlans];

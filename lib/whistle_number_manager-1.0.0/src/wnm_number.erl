@@ -956,7 +956,6 @@ activate_phone_number(#number{services=Services, number=Number}=N) ->
     Units = wh_service_phone_numbers:phone_number_activation_charge(Number, Services),
     activate_phone_number(Units, N).
 
-
 activate_phone_number(0, #number{number=Number}=N) ->
     lager:debug("no activation charge for ~s", [Number]),
     N;

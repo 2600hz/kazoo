@@ -20,17 +20,17 @@
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec empty/0 :: () -> items().
-empty() -> 
+empty() ->
     dict:new().
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec to_list/1 :: (items()) -> [wh_service_item:item(),...] | [].
@@ -40,7 +40,7 @@ to_list(ServiceItems) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec find/3 :: (ne_binary(), ne_binary(), items()) -> wh_service_item:item().
@@ -54,7 +54,7 @@ find(Category, Item, ServiceItems) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec update/2 :: (wh_service_item:item(), items()) -> wh_service_item:items().
@@ -89,10 +89,10 @@ log_update_rate(Category, Item, ServiceItem) ->
     end.
 
 -spec log_update_cumulative_discount/3 :: (ne_binary(), ne_binary(), wh_service_item:item()) -> 'ok'.
-log_update_cumulative_discount(Category, Item, ServiceItem) -> 
+log_update_cumulative_discount(Category, Item, ServiceItem) ->
     CumulativeDiscount = wh_service_item:cumulative_discount(ServiceItem),
-    case wh_util:is_empty(CumulativeDiscount) 
-        orelse wh_service_item:cumulative_discount_rate(ServiceItem) 
+    case wh_util:is_empty(CumulativeDiscount)
+        orelse wh_service_item:cumulative_discount_rate(ServiceItem)
     of
         true -> ok;
         undefined ->
@@ -101,19 +101,18 @@ log_update_cumulative_discount(Category, Item, ServiceItem) ->
         CumulativeRate ->
             lager:debug("set '~s/~s' cumulative discount with quantity ~p @ $~p"
                         ,[Category, Item, CumulativeDiscount, CumulativeRate])
-                
     end.
 
 -spec log_update_single_discount/3 :: (ne_binary(), ne_binary(), wh_service_item:item()) -> 'ok'.
 log_update_single_discount(Category, Item, ServiceItem) ->
-    case wh_service_item:single_discount(ServiceItem) 
+    case wh_service_item:single_discount(ServiceItem)
         andalso wh_service_item:single_discount_rate(ServiceItem)
     of
         false -> ok;
-            undefined -> 
+            undefined ->
             lager:debug("set '~s/~s' single discount at default rate"
                         ,[Category, Item]);
         SingleRate ->
             lager:debug("set '~s/~s' single discount for $~p"
                         ,[Category, Item, SingleRate])
-    end.   
+    end.

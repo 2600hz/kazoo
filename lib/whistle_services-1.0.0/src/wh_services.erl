@@ -131,6 +131,7 @@ from_service_json(JObj) ->
 -spec fetch/1 :: (ne_binary()) -> services().
 fetch(Account) ->
     AccountId = wh_util:format_account_id(Account, raw),
+    AccountDb = wh_util:format_account_id(Account, encoded),
     case couch_mgr:open_doc(?WH_SERVICES_DB, AccountId) of
         {ok, JObj} ->
             lager:debug("loaded account service doc ~s", [AccountId]),
@@ -256,7 +257,7 @@ get_billing_id(Account) ->
         {ok, ServicesJObj} ->
             case wh_json:get_ne_value(<<"billing_id">>, ServicesJObj, AccountId) of
                 AccountId -> AccountId;
-                BillingId -> 
+                BillingId ->
                     lager:debug("following billing id ~s", [BillingId]),
                     get_billing_id(BillingId)
             end
@@ -349,7 +350,7 @@ find_reseller_id(Account) ->
                 undefined -> find_reseller_id(undefined);
                 ResellerId -> ResellerId
             end
-    end. 
+    end.
 
 %%%===================================================================
 %%% Services functions
@@ -359,7 +360,7 @@ find_reseller_id(Account) ->
 %% @public
 %% @doc
 %% Throws an error if the billing account is not in "good_standing",
-%% used when update requests are made to kill them if there are 
+%% used when update requests are made to kill them if there are
 %% accounting issues.
 %% @end
 %%--------------------------------------------------------------------
@@ -374,22 +375,22 @@ allow_updates(Account) ->
         {ok, ServicesJObj} ->
             maybe_follow_billling_id(AccountId, ServicesJObj)
     end.
-    
+
 maybe_follow_billling_id(AccountId, ServicesJObj) ->
     case wh_json:get_ne_value(<<"billing_id">>, ServicesJObj, AccountId) of
         AccountId -> maybe_allow_updates(AccountId, ServicesJObj);
-        BillingId -> 
+        BillingId ->
             lager:debug("following billing id ~s", [BillingId]),
             allow_updates(BillingId)
     end.
 
 maybe_allow_updates(AccountId, ServicesJObj) ->
     Plans = wh_service_plans:plan_summary(ServicesJObj),
-    case wh_util:is_empty(Plans) orelse wh_json:get_value(<<"pvt_status">>, ServicesJObj) of 
+    case wh_util:is_empty(Plans) orelse wh_json:get_value(<<"pvt_status">>, ServicesJObj) of
         true ->
             lager:debug("allowing request for account with no service plans", []),
             true;
-        <<"good_standing">> -> 
+        <<"good_standing">> ->
             lager:debug("allowing request for account in good standing", []),
             true;
         Status ->
@@ -515,7 +516,7 @@ category_quantity(Category, Exceptions, #wh_services{updates=UpdatedQuantities, 
 -spec cascade_quantity/3 :: (ne_binary(), ne_binary(), services()) -> integer().
 cascade_quantity(_, _, #wh_services{deleted=true}) -> 0;
 cascade_quantity(Category, Item, #wh_services{cascade_quantities=JObj}=Services) ->
-    wh_json:get_integer_value([Category, Item], JObj, 0) 
+    wh_json:get_integer_value([Category, Item], JObj, 0)
         + quantity(Category, Item, Services).
 
 %%--------------------------------------------------------------------
@@ -585,14 +586,14 @@ get_service_module(Module) when not is_binary(Module) ->
     get_service_module(wh_util:to_binary(Module));
 get_service_module(<<"wh_service_", _/binary>>=Module) ->
     ServiceModules = get_service_modules(),
-    case [M 
+    case [M
           || M <- ServiceModules
                  ,wh_util:to_binary(M) =:= Module
-         ] 
+         ]
     of
         [M] -> M;
         _Else -> false
-    end;        
+    end;
 get_service_module(Module) ->
     get_service_module(<<"wh_service_", Module/binary>>).
 
@@ -669,7 +670,7 @@ default_service_plan_id(ResellerId) ->
             undefined
     end.
 
--spec depreciated_default_service_plan_id/1 :: (ne_binary()) -> 'undefined' | wh_json:json_object().            
+-spec depreciated_default_service_plan_id/1 :: (ne_binary()) -> 'undefined' | wh_json:json_object().
 depreciated_default_service_plan_id(ResellerId) ->
     ResellerDb = wh_util:format_account_id(ResellerId, encoded),
     case couch_mgr:open_doc(ResellerDb, ResellerId) of
@@ -683,7 +684,7 @@ depreciated_default_service_plan_id(ResellerId) ->
 master_default_service_plan() ->
     case whapps_util:get_master_account_id() of
         {error, _} -> wh_json:new();
-        {ok, MasterAccountId} -> 
+        {ok, MasterAccountId} ->
             incorporate_default_service_plan(MasterAccountId, wh_json:new())
     end.
 
@@ -700,8 +701,8 @@ incorporate_default_service_plan(ResellerId, JObj) ->
         PlanId ->
             Plan = wh_json:from_list([{<<"account_id">>, ResellerId}]),
             wh_json:set_value(PlanId, Plan, JObj)
-    end. 
-    
+    end.
+
 -spec incorporate_depreciated_service_plans/2 :: (wh_json:json_object(), wh_json:json_object()) -> wh_json:json_object().
 incorporate_depreciated_service_plans(Plans, JObj) ->
     PlanIds = wh_json:get_value(<<"pvt_service_plans">>, JObj),
@@ -722,7 +723,7 @@ incorporate_depreciated_service_plans(Plans, JObj) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec get_reseller_id/1 :: ([ne_binary(),...] | []) -> 'undefined' | ne_binary().
-get_reseller_id([]) -> 
+get_reseller_id([]) ->
     case whapps_util:get_master_account_id() of
         {ok, MasterAccountId} -> MasterAccountId;
         {error, _} -> undefined
@@ -749,10 +750,10 @@ get_reseller_id([Parent|Ancestors]) ->
 maybe_save(#wh_services{jobj=JObj, updates=UpdatedQuantities}=Services) ->
     CurrentQuantities = wh_json:get_value(?QUANTITIES, JObj, wh_json:new()),
     case have_quantities_changed(UpdatedQuantities, CurrentQuantities) of
-        true -> 
+        true ->
             lager:debug("quantities have changed, saving dirty services"),
             save(Services);
-        false -> 
+        false ->
             lager:debug("no service quantity changes"),
             {error, no_change}
     end.
@@ -766,7 +767,7 @@ maybe_save(#wh_services{jobj=JObj, updates=UpdatedQuantities}=Services) ->
 -spec have_quantities_changed/2 :: (wh_json:json_object(), wh_json:json_object()) -> boolean().
 have_quantities_changed(Updated, Current) ->
     lists:any(fun(Key) -> wh_json:get_value(Key, Updated) =/= wh_json:get_value(Key, Current) end
-              ,[[Category, Item] 
+              ,[[Category, Item]
                 || Category <- wh_json:get_keys(Updated)
                        ,Item <- wh_json:get_keys(Category, Updated)
                ]).

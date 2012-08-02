@@ -139,7 +139,7 @@ post(#cb_context{}=Context, _DocId) ->
                         lager:debug("adding device to the sip auth aggregate"),
                         couch_mgr:ensure_saved(?WH_SIP_DB, wh_json:delete_key(<<"_rev">>, Doc1))
                 end,
-            
+
             case wh_json:get_ne_value([<<"sip">>, <<"ip">>], Doc1) of
                 undefined -> ok;
                 DeviceIP ->
@@ -165,7 +165,7 @@ put(#cb_context{}=Context) ->
                         lager:debug("adding device to the sip auth aggregate"),
                         couch_mgr:ensure_saved(?WH_SIP_DB, wh_json:delete_key(<<"_rev">>, Doc1))
                 end,
-            
+
             case wh_json:get_ne_value([<<"sip">>, <<"ip">>], Doc1) of
                 undefined -> ok;
                 DeviceIP ->
@@ -371,7 +371,7 @@ lookup_regs(AccountRealm) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec is_sip_creds_unique/3 :: (undefined | ne_binary(), undefined | ne_binary(), undefined | ne_binary() ) -> boolean().
--spec is_sip_creds_unique/4 :: (undefined | ne_binary(), undefined | ne_binary(), undefined | ne_binary(), undefined | ne_binary()) 
+-spec is_sip_creds_unique/4 :: (undefined | ne_binary(), undefined | ne_binary(), undefined | ne_binary(), undefined | ne_binary())
                                -> boolean().
 
 is_sip_creds_unique(AccountDb, Realm, Username) ->
@@ -385,7 +385,7 @@ is_sip_creds_unique(_, _, undefined, undefined) ->
 is_sip_creds_unique(AccountDb, undefined, Username, DocId) ->
     case couch_mgr:get_results(AccountDb, <<"devices/sip_credentials">>, [{<<"key">>, Username}]) of
         {ok, []} -> true;
-        {ok, [JObj]} -> 
+        {ok, [JObj]} ->
             wh_json:get_value(<<"id">>, JObj) =:= DocId;
         {error, not_found} -> true;
         _ -> false
@@ -398,7 +398,7 @@ is_sip_creds_unique(_, Realm, Username, DocId) ->
         {error, not_found} -> true;
         _ -> false
     end.
-    
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc

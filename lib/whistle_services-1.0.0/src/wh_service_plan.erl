@@ -35,7 +35,7 @@ fetch(PlanId, VendorId, Overrides) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec activation_charges/3 :: (ne_binary(), ne_binary(), wh_json:json_object()) -> float().
@@ -45,7 +45,7 @@ activation_charges(Category, Item, ServicePlan) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec create_items/3 :: (wh_json:json_object(), wh_service_items:items(), wh_services:services()) -> wh_service_items:items().
@@ -83,7 +83,7 @@ create_items(Category, Item, ServiceItems, ServicePlan, Services) ->
                              undefined -> I;
                              CumulativeDiscount ->
                                  CumulativeQuantity = case wh_json:get_integer_value(<<"maximum">>, CumulativeDiscount, 0) of
-                                                          Max when Max < Quantity -> 
+                                                          Max when Max < Quantity ->
                                                               lager:debug("item '~s/~s' quantity ~p exceeds cumulative discount max, using ~p"
                                                                           ,[Category, As, Quantity, Max]),
                                                               Max;
@@ -105,7 +105,7 @@ create_items(Category, Item, ServiceItems, ServicePlan, Services) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec bookkeeper_jobj/3 :: (ne_binary(), ne_binary(), wh_json:json_object()) -> wh_json:json_object().
@@ -141,7 +141,7 @@ get_rate_at_quantity(Category, Item, ItemPlan, Services) ->
 get_quantity(Category, Item, ItemPlan, Services) ->
     ItemQuantity = get_item_quantity(Category, Item, ItemPlan, Services),
     case wh_json:get_integer_value(<<"minimum">>, ItemPlan, 0) of
-        Min when Min > ItemQuantity -> 
+        Min when Min > ItemQuantity ->
             lager:debug("minimum '~s/~s' not met with ~p, enforcing quantity ~p", [Category, Item, ItemQuantity, Min]),
             Min;
         _ -> ItemQuantity
@@ -160,7 +160,7 @@ get_flat_rate(Quantity, JObj) ->
     L1 = [wh_util:to_integer(K) || K <- wh_json:get_keys(Rates)],
     case lists:dropwhile(fun(K) -> Quantity > K end, lists:sort(L1)) of
         [] -> undefined;
-        Range -> 
+        Range ->
             lager:debug("using flat rates", []),
             wh_json:get_float_value(wh_util:to_binary(hd(Range)), Rates)
     end.
@@ -186,7 +186,7 @@ get_quantity_rate(Quantity, JObj) ->
 %% @doc
 %% Get the item quantity, drawing solely from the provided account or
 %% (when the service plan dictates) the summed (cascaded) decendants.
-%% Also handle the special case were we should sum all items in a 
+%% Also handle the special case were we should sum all items in a
 %% given category, except a list of item names to ignore during
 %% summation.
 %% @end
@@ -196,14 +196,14 @@ get_item_quantity(Category, <<"_all">>, ItemPlan, Services) ->
     Exceptions = wh_json:get_value(<<"exceptions">>, ItemPlan, []),
     case wh_json:is_true(<<"cascade">>, ItemPlan) of
         false -> wh_services:category_quantity(Category, Exceptions, Services);
-        true -> 
+        true ->
             lager:debug("collecting '~s' as a cascaded sum", [Category]),
             wh_services:cascade_category_quantity(Category, Exceptions, Services)
-    end;    
+    end;
 get_item_quantity(Category, Item, ItemPlan, Services) ->
     case wh_json:is_true(<<"cascade">>, ItemPlan) of
         false -> wh_services:quantity(Category, Item, Services);
-        true -> 
+        true ->
             lager:debug("collecting '~s/~s' as a cascaded quantity", [Category, Item]),
             wh_services:cascade_quantity(Category, Item, Services)
     end.
