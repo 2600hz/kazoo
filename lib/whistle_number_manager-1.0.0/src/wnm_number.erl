@@ -152,13 +152,13 @@ save(#number{}=Number) ->
     Routines = [fun(#number{}=N) -> N#number{number_doc=record_to_json(N)} end
                 ,fun(#number{}=N) -> exec_providers(N, save) end
                 ,fun(#number{}=N) -> get_updated_phone_number_docs(N) end
-                ,fun(#number{}=N) -> update_service_plans(N) end
                 ,fun({_, #number{}}=E) -> E;
                     (#number{}=N) -> save_number_doc(N)
                  end
                 ,fun({_, #number{}}=E) -> E;
                     (#number{}=N) -> save_phone_number_docs(N)
                  end
+                ,fun(#number{}=N) -> update_service_plans(N) end
                ],
     lists:foldl(fun(F, J) -> F(J) end, Number, Routines).
 
@@ -206,13 +206,13 @@ delete(Number) ->
     Routines = [fun(#number{}=N) -> N#number{number_doc=record_to_json(N)} end
                 ,fun(#number{}=N) -> exec_providers(N, delete) end
                 ,fun(#number{}=N) -> get_updated_phone_number_docs(N) end
-                ,fun(#number{}=N) -> update_service_plans(N) end
                 ,fun({_, #number{}}=E) -> E;
                     (#number{}=N) -> delete_number_doc(N)
                  end
                 ,fun({_, #number{}}=E) -> E;
                     (#number{}=N) -> save_phone_number_docs(N)
                  end
+                ,fun(#number{}=N) -> update_service_plans(N) end
                ],
     lists:foldl(fun(F, J) -> F(J) end, Number, Routines).
 
@@ -676,7 +676,7 @@ exec_providers(Number, Action) ->
 
 exec_providers([], _, Number) -> Number;
 exec_providers([Provider|Providers], Action, Number) ->
-    case wnm_util:try_load_module(<<"wnm_", Provider/binary>>) of
+    case wh_util:try_load_module(<<"wnm_", Provider/binary>>) of
         false ->
             lager:debug("provider ~s is unknown, skipping", [Provider]),
             exec_providers(Providers, Action, Number);
@@ -886,7 +886,6 @@ load_phone_number_doc(Account) ->
         {error, _}=E -> E
     end.
 
-
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -894,50 +893,10 @@ load_phone_number_doc(Account) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec update_service_plans/1 :: (wnm_number()) -> wnm_number().
-update_service_plans(#number{phone_number_docs=PhoneNumbers, assigned_to=undefined
-                             ,prev_assigned_to=PrevAssignedTo}=N) ->
-    case dict:find(PrevAssignedTo, PhoneNumbers) of
-        error -> N;
-        {ok, PhoneNumber} ->
-            update_service_plan(PhoneNumber, N)
-    end;
-update_service_plans(#number{phone_number_docs=PhoneNumbers, assigned_to=AssignedTo}=N) ->
-    case dict:find(AssignedTo, PhoneNumbers) of
-        error -> N;
-        {ok, PhoneNumber} ->
-            update_service_plan(PhoneNumber, N)
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec update_service_plan/2 :: (wh_json:json_object(), wnm_number()) -> wnm_number().
-update_service_plan(PhoneNumber, #number{resellers=undefined, assigned_to=undefined
-                                        ,prev_assigned_to=Account}=N) ->
-    case wh_resellers:fetch(Account) of
-        {error, no_service_plan} -> N;
-        {ok, Resellers} ->
-            update_service_plan(PhoneNumber, N#number{resellers=Resellers})
-    end;
-update_service_plan(PhoneNumber, #number{resellers=undefined, assigned_to=Account}=N) ->
-    case wh_resellers:fetch(Account) of
-        {error, no_service_plan} -> N;
-        {ok, Resellers} ->
-            update_service_plan(PhoneNumber, N#number{resellers=Resellers})
-    end;
-update_service_plan(PhoneNumber, #number{resellers=Resellers}=N) ->
-    Routines = [fun(R) -> wh_service_numbers:update(PhoneNumber, R) end
-                ,fun(R) -> wh_resellers:commit_changes(R) end
-               ],
-    try lists:foldl(fun(F, R) -> F(R) end, Resellers, Routines) of
-        ok -> N
-    catch
-        throw:{_, Reason} ->
-            error_service_restriction(Reason, N)
-    end.
+update_service_plans(#number{assigned_to=AssignedTo, prev_assigned_to=PrevAssignedTo}=N) ->
+    _ = wh_services:reconcile(AssignedTo, <<"phone_numbers">>),
+    _ = wh_services:reconcile(PrevAssignedTo, <<"phone_numbers">>),
+    N.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -946,24 +905,10 @@ update_service_plan(PhoneNumber, #number{resellers=Resellers}=N) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec activate_feature/2 :: (ne_binary(), wnm_number()) -> wnm_number().
-activate_feature(Feature, #number{resellers=undefined, assigned_to=Account, activations=Activations
+activate_feature(Feature, #number{resellers=undefined, activations=Activations
                                   ,features=Features}=N) ->
-    case wh_resellers:fetch(Account) of
-        {error, no_service_plan} ->  N#number{activations=sets:add_element({features, Feature}, Activations)
-                                              ,features=sets:add_element(Feature, Features)};
-        {ok, Resellers} ->
-            activate_feature(Feature, N#number{resellers=Resellers})
-    end;
-activate_feature(Feature, #number{resellers=Resellers, activations=Activations
-                                  ,features=Features}=N) ->
-    try wh_service_numbers:activate_feature(Feature, Resellers) of
-        R -> N#number{activations=sets:add_element({features, Feature}, Activations)
-                      ,features=sets:add_element(Feature, Features)
-                      ,resellers=R}
-    catch
-        throw:{_, Reason} ->
-            error_service_restriction(Reason, N)
-    end.
+    N#number{activations=sets:add_element({features, Feature}, Activations)
+             ,features=sets:add_element(Feature, Features)}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -972,17 +917,5 @@ activate_feature(Feature, #number{resellers=Resellers, activations=Activations
 %% @end
 %%--------------------------------------------------------------------
 -spec activate_phone_number/1 :: (wnm_number()) -> wnm_number().
-activate_phone_number(#number{number=Num, resellers=undefined, assigned_to=Account, activations=Activations}=N) ->
-    case wh_resellers:fetch(Account) of
-        {error, no_service_plan} -> N#number{activations=sets:add_element({phone_number, Num}, Activations)};
-        {ok, Resellers} ->
-            activate_phone_number(N#number{resellers=Resellers})
-    end;
-activate_phone_number(#number{number=Num, resellers=Resellers, activations=Activations}=N) ->
-    try wh_service_numbers:activate_phone_number(Num, Resellers) of
-        R -> N#number{activations=sets:add_element({phone_number, Num}, Activations)
-                      ,resellers=R}
-    catch
-        throw:{_, Reason} ->
-            error_service_restriction(Reason, N)
-    end.
+activate_phone_number(#number{number=Num, resellers=undefined, activations=Activations}=N) ->
+    N#number{activations=sets:add_element({phone_number, Num}, Activations)}.
