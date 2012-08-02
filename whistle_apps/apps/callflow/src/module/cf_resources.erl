@@ -112,7 +112,7 @@ create_endpoint(DestNum, JObj, Call) ->
                 ,{<<"Codecs">>, wh_json:get_value(<<"codecs">>, JObj)}
                 ,{<<"Custom-Channel-Vars">>, wh_json:from_list(props:filter_undefined(CCVs))}
                ],
-    wh_json:from_list([ KV || {_, V}=KV <- Endpoint, V =/= undefined ]).
+    wh_json:from_list(props:filter_undefined(Endpoint)).
 
 %%--------------------------------------------------------------------
 %% @private
