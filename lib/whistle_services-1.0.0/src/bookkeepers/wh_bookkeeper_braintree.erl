@@ -29,15 +29,15 @@
 %%--------------------------------------------------------------------
 is_good_standing(AccountId) ->
     try braintree_customer:default_payment_token(AccountId) of
-        _ -> 
+        _ ->
             lager:debug("braintree customer ~s is believed to be in good standing", [AccountId]),
             true
     catch
-        throw:_R -> 
+        throw:_R ->
             lager:debug("braintree customer ~s is not in good standing: ~p", [AccountId, _R]),
             false
     end.
-                             
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -53,22 +53,22 @@ sync(Items, AccountId) ->
     end.
 
 sync([], _AccountId, #wh_service_updates{bt_subscriptions=Subscriptions}) ->
-    _ = [braintree_subscription:update(Subscription) 
+    _ = [braintree_subscription:update(Subscription)
          || #wh_service_update{bt_subscription=Subscription} <- Subscriptions
         ],
     ok;
 sync([ServiceItem|ServiceItems], AccountId, Updates) ->
     case braintree_plan_addon_id(ServiceItem) of
-        {undefined, _} -> 
+        {undefined, _} ->
             lager:debug("service item had no plan id: ~p", [ServiceItem]),
             sync(ServiceItems, AccountId, Updates);
-        {_, undefined} -> 
+        {_, undefined} ->
             lager:debug("service item had no add on id: ~p", [ServiceItem]),
             sync(ServiceItems, AccountId, Updates);
         {PlanId, AddOnId}->
             Quantity = wh_service_item:quantity(ServiceItem),
             Routines = [fun(S) -> braintree_subscription:update_addon_quantity(S, AddOnId, Quantity) end
-                        ,fun(S) -> 
+                        ,fun(S) ->
                                  Rate = wh_service_item:rate(ServiceItem),
                                  braintree_subscription:update_addon_amount(S, AddOnId, Rate)
                          end
@@ -159,7 +159,7 @@ fetch_or_create_subscription(PlanId, #wh_service_updates{bt_subscriptions=Subscr
     case lists:keyfind(PlanId, #wh_service_update.plan_id, Subscriptions) of
         false ->
             try braintree_customer:get_subscription(PlanId, Customer) of
-                Subscription -> 
+                Subscription ->
                     lager:debug("found subscription ~s for plan id ~s"
                                 ,[braintree_subscription:get_id(Subscription), PlanId]),
                     braintree_subscription:reset(Subscription)
@@ -169,7 +169,7 @@ fetch_or_create_subscription(PlanId, #wh_service_updates{bt_subscriptions=Subscr
                     braintree_customer:new_subscription(PlanId, Customer)
             end;
         #wh_service_update{bt_subscription=Subscription} -> Subscription
-    end.                
+    end.
 
 %%--------------------------------------------------------------------
 %% @private

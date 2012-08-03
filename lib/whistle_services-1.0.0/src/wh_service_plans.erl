@@ -66,7 +66,8 @@ public_json([#wh_service_plans{plans=Plans}|ServicePlans], JObj) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%%
+%% Given an account id fetch object defining the current service
+%% plans that should be applied to the account
 %% @end
 %%--------------------------------------------------------------------
 -spec plan_summary/1 :: (wh_json:json_object()) -> wh_json:json_object().
@@ -83,7 +84,9 @@ plan_summary(ServicesJObj) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%%
+%% Given a the services on an account (and descedants) as well as the
+%% service plans the account is subscribed to create a list of items
+%% suitable for use with the bookkeepers.
 %% @end
 %%--------------------------------------------------------------------
 -spec activation_charges/3 :: (ne_binary(), ne_binary(), plans()) -> float().

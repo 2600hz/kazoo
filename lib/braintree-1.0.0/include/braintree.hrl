@@ -10,7 +10,7 @@
                               not_found |
                               upgrade_required |
                               server_error |
-                              maintenance | 
+                              maintenance |
                               io_fault |
                               api_error.
 
@@ -65,7 +65,7 @@
 -define(BT_PAST_DUE, <<"Past Due">>).
 -define(BT_PENDING, <<"Pending">>).
 
--define(BT_ACTIVE_STATUSES, [?BT_ACTIVE, ?BT_PENDING, ?BT_PAST_DUE]). 
+-define(BT_ACTIVE_STATUSES, [?BT_ACTIVE, ?BT_PENDING, ?BT_PAST_DUE]).
 
 -record(bt_address, {id :: ne_binary()
                      ,customer_id :: ne_binary() | nonempty_string()
@@ -161,7 +161,7 @@
                           ,prorate_charges = 'true' :: boolean()
                           ,revert_on_prorate_fail = 'true' :: boolean()
                           ,replace_add_ons = 'false' :: boolean()
-                          ,create = 'false' :: boolean() 
+                          ,create = 'false' :: boolean()
                          }).
 
 -record(bt_customer, {id :: ne_binary()
