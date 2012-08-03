@@ -23,7 +23,7 @@
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%%
+%% Create an empty service plans data structure.
 %% @end
 %%--------------------------------------------------------------------
 -spec empty/0 :: () -> plans().
@@ -32,7 +32,8 @@ empty() -> [].
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%%
+%% Given an account id fetch object defining the current service
+%% plans that should be applied to the account
 %% @end
 %%--------------------------------------------------------------------
 -spec fetch/1 :: (ne_binary()) -> plans().
@@ -49,7 +50,9 @@ fetch(AccountId) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%%
+%% Given a the services on an account (and descedants) as well as the
+%% service plans the account is subscribed to create a list of items
+%% suitable for use with the bookkeepers.
 %% @end
 %%--------------------------------------------------------------------
 -spec create_items/2 :: (plans(), wh_services:services()) -> wh_service_items:items().
@@ -65,7 +68,8 @@ create_items(Services, ServicePlans) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%%
+%% For each plans object fetch the service plan and store it
+%% in the vendors #wh_service_plans data structure.
 %% @end
 %%--------------------------------------------------------------------
 get_plans(PlanIds, Sevices) ->
