@@ -37,6 +37,8 @@ An agent can be represented by one or more Erlang processes, on any number of no
 
 An agent process that has started up cannot just jump into the *ready* status, as the agent could be on the phone, away on break, or otherwise in-disposed. So before the process can leave the *init* status, the agent process published a sync_req message for all agent processes monitoring the agent. Any existing agent processes will receive the sync_req and reply with their current status. The intializing agent process will collect responses (or none) for a specified timeout and either sync with the "most active" agent process or, if no responses are received, enter the *ready* status.
 
+If the sync_resp is in the *init* status as well, the agent process will move to *ready* to avoid deadlocking the two (or more) agent processes.
+
 If the sync_resp is in the *ready* status, the initializing agent will enter the *ready* status as well. Member requests will now come to both (or all) agent processes.
 
 If the sync_resp is in the *waiting* status, the initializing agent process will wait the wait_timeout time (how long a process waits to see if it 'won' the member), and send another sync_req.
