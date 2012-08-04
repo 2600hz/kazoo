@@ -72,6 +72,9 @@
 -define(WRAPUP_TIMER_MESSAGE, wrapup_timeout).
 -define(WRAPUP_TIMER_TIMEOUT, 60000).
 
+%% When an agent is paused (on break, logged out, etc)
+-define(PAUSED_TIMER_MESSAGE, paused_timeout).
+
 -define(BINDINGS(AcctDb, AgentId), [{self, []}
                                     ,{agent, [{agent_db, AcctDb}
                                               ,{agent_id, AgentId}
@@ -347,6 +350,11 @@ start_wrapup_timer() ->
 start_wrapup_timer(TimeLeft) ->
     erlang:start_timer(TimeLeft, self(), ?WRAPUP_TIMER_MESSAGE).
 
+-spec start_paused_timer/1 :: (integer() | 'undefined') -> reference() | 'undefined'.
+start_paused_timer(TimeLeft) when is_integer(TimeLeft), TimeLeft > 0 ->
+    erlang:start_timer(TimeLeft, self(), ?PAUSED_TIMER_MESSAGE);
+start_paused_timer(_) -> undefined.
+
 -spec sync_resp/3 :: (wh_json:json_object(), agent_status(), ne_binary()) -> 'ok'.
 -spec sync_resp/4 :: (wh_json:json_object(), agent_status(), ne_binary(), wh_proplist()) -> 'ok'.
 sync_resp(JObj, Status, MyId) ->
@@ -416,13 +424,27 @@ update_status_with_sync_resp(SyncResp, State, <<"answered">>) ->
     %% add binding so we can transition with other agent processes
     bind_to_call_events(CallId),
 
-    State#state{status=init
+    State#state{status=answered
                 ,call=whapps_call:set_call_id(CallId, whapps_call:new())
                };
 update_status_with_sync_resp(SyncResp, State, <<"wrapup">>) ->
     TimeLeft = wh_json:get_integer(<<"Time-Left">>, SyncResp, ?WRAPUP_TIMER_TIMEOUT),
+    lager:debug("sync_resp in wrapup: ~b ms left", [TimeLeft]),
     State#state{status=wrapup
                 ,timer_ref=start_wrapup_timer(TimeLeft)
+               };
+update_status_with_sync_resp(SyncResp, State, <<"paused">>) ->
+    TimeLeft = wh_json:get_integer(<<"Time-Left">>, SyncResp),
+    State#state{status=paused
+                ,timer_ref=start_paused_timer(TimeLeft)
+               };
+update_status_with_sync_resp(_SyncResp, State, <<"init">>) ->
+    lager:debug("sync_resp is also in init, let's startup"),
+    State#state{status=ready};
+update_status_with_sync_resp(_SyncResp, State, _Status) ->
+    lager:debug("starting sync timer for other status: ~s", [_Status]),
+    State#state{status=init
+                ,timer_ref=start_sync_wait_timer()
                }.
 
 %% Handles subscribing/unsubscribing from call events
