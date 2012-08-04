@@ -195,10 +195,9 @@ handle_cast(send_sync_event, #state{
              }=State) ->
     wapi_agent:publish_sync_req(create_sync_api(AcctId, AgentId, ProcessId)),
     {noreply, State#state{timer_ref=start_sync_timer()}};
-handle_cast({recv_sync_resp, RespJObj}, #state{timer_ref=Ref}=State) ->
-    _ = erlang:cancel_timer(Ref),
+handle_cast({recv_sync_resp, RespJObj}, #state{sync_resp=CurrResp}=State) ->
     lager:debug("recv sync resp: ~p", [RespJObj]),
-    {noreply, State#state{timer_ref=undefined}};
+    {noreply, State#state{sync_resp=choose_sync_resp(RespJObj, CurrResp)}};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {noreply, State}.
@@ -302,3 +301,23 @@ time_left(Ref) when is_reference(Ref) -> erlang:read_timer(Ref).
 -spec call_id/1 :: ('undefined' | whapps_call:call()) -> 'undefined' | ne_binary().
 call_id(undefined) -> undefined;
 call_id(Call) -> whapps_call:call_id(Call).
+
+%% Compare the recv'd sync_resp to the held sync_resp, returning the one 'furthest along'
+-spec choose_sync_resp/2 :: (wh_json:json_object(), wh_json:json_object() | 'undefined') ->
+                               wh_json:json_object().
+choose_sync_resp(RespJObj, undefined) -> RespJObj;
+choose_sync_resp(RespJObj, CurrResp) ->
+    case status_to_int(wh_json:get_value(<<"Status">>, RespJObj)) >
+        status_to_int(wh_json:get_value(<<"Status">>, CurrResp)) of
+        true -> RespJObj; % new resp is further along
+        false -> CurrResp
+    end.
+
+-spec status_to_int/1 :: (ne_binary()) -> 0..6.
+status_to_int(<<"ready">>) -> 1;
+status_to_int(<<"waiting">>) -> 2;
+status_to_int(<<"ringing">>) -> 3;
+status_to_int(<<"answered">>) -> 4;
+status_to_int(<<"wrapup">>) -> 5;
+status_to_int(<<"paused">>) -> 6;
+status_to_int(_) -> 0.
