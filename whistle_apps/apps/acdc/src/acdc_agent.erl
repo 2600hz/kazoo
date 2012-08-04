@@ -400,24 +400,25 @@ status_to_int(_) -> 0.
 %% process the final accepted sync_resp and move the agent process's state into the
 %% appropriate status (with bindings and timers if necessary)
 -spec update_state_with_sync_resp/2 :: (wh_json:json_object(), #state{}) -> #state{}.
+-spec update_state_with_sync_resp/3 :: (wh_json:json_object(), #state{}, ne_binary()) -> #state{}.
 update_state_with_sync_resp(SyncResp, State) ->
-    update_status_with_sync_resp(SyncResp, State
+    update_state_with_sync_resp(SyncResp, State
                                  ,wh_json:get_value(<<"Status">>, SyncResp)
                                 ).
-update_status_with_sync_resp(_SyncResp, State, <<"ready">>) ->
+update_state_with_sync_resp(_SyncResp, State, <<"ready">>) ->
     lager:debug("moving to ready status"),
     State#state{status=ready};
-update_status_with_sync_resp(_SyncResp, State, <<"waiting">>) ->
+update_state_with_sync_resp(_SyncResp, State, <<"waiting">>) ->
     lager:debug("starting sync timer for status waiting"),
     State#state{status=init
                 ,timer_ref=start_sync_wait_timer()
                };
-update_status_with_sync_resp(_SyncResp, State, <<"ringing">>) ->
+update_state_with_sync_resp(_SyncResp, State, <<"ringing">>) ->
     lager:debug("starting sync timer for status ringing"),
     State#state{status=init
                 ,timer_ref=start_sync_wait_timer()
                };
-update_status_with_sync_resp(SyncResp, State, <<"answered">>) ->
+update_state_with_sync_resp(SyncResp, State, <<"answered">>) ->
     CallId = wh_json:get_value(<<"Call-ID">>, SyncResp),
     lager:debug("binding to call events for status answered, call ~s", [CallId]),
 
@@ -427,21 +428,21 @@ update_status_with_sync_resp(SyncResp, State, <<"answered">>) ->
     State#state{status=answered
                 ,call=whapps_call:set_call_id(CallId, whapps_call:new())
                };
-update_status_with_sync_resp(SyncResp, State, <<"wrapup">>) ->
+update_state_with_sync_resp(SyncResp, State, <<"wrapup">>) ->
     TimeLeft = wh_json:get_integer(<<"Time-Left">>, SyncResp, ?WRAPUP_TIMER_TIMEOUT),
     lager:debug("sync_resp in wrapup: ~b ms left", [TimeLeft]),
     State#state{status=wrapup
                 ,timer_ref=start_wrapup_timer(TimeLeft)
                };
-update_status_with_sync_resp(SyncResp, State, <<"paused">>) ->
+update_state_with_sync_resp(SyncResp, State, <<"paused">>) ->
     TimeLeft = wh_json:get_integer(<<"Time-Left">>, SyncResp),
     State#state{status=paused
                 ,timer_ref=start_paused_timer(TimeLeft)
                };
-update_status_with_sync_resp(_SyncResp, State, <<"init">>) ->
+update_state_with_sync_resp(_SyncResp, State, <<"init">>) ->
     lager:debug("sync_resp is also in init, let's startup"),
     State#state{status=ready};
-update_status_with_sync_resp(_SyncResp, State, _Status) ->
+update_state_with_sync_resp(_SyncResp, State, _Status) ->
     lager:debug("starting sync timer for other status: ~s", [_Status]),
     State#state{status=init
                 ,timer_ref=start_sync_wait_timer()
