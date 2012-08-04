@@ -47,14 +47,17 @@
          ,endpoints :: wh_json:json_objects()
          ,last_connect :: wh_now() % last connection
          ,last_attempt :: wh_now() % last attempt to connect
-         ,my_id = wh_util:rand_hex_binary() :: ne_binary()
+         ,my_id :: ne_binary()
          ,timer_ref :: reference()
+         ,sync_resp :: wh_json:json_object() % furthest along resp
          }).
 
 %%%===================================================================
 %%% Defines for different functionality
 %%%===================================================================
 
+%% On init, an aget process sends a sync_req and waits SYNC_TIMER_TIMEOUT ms
+%% The agent process checks its list of received 
 -define(SYNC_TIMER_MESSAGE, sync_timeout).
 -define(SYNC_TIMER_TIMEOUT, 5000).
 
@@ -102,12 +105,18 @@ handle_status_update(_JObj, _Props) ->
 handle_sync_req(JObj, Props) ->
     case props:get_value(status, Props) of
         init -> lager:debug("in init ourselves, ignoring sync request");
-        ready -> sync_resp(JObj, ready);
-        waiting -> sync_resp(JObj, waiting);
-        ringing -> sync_resp(JObj, ringing);
-        answered -> sync_resp(JObj, answered, [{<<"Call-ID">>, props:get_value(callid, Props)}]);
-        wrapup -> sync_resp(JObj, wrapup, [{<<"Time-Left">>, props:get_value(time_left, Props)}]);
-        paused -> sync_resp(JObj, paused, [{<<"Time-Left">>, props:get_value(time_left, Props)}])
+        ready -> sync_resp(JObj, ready, props:get_value(my_id, Props));
+        waiting -> sync_resp(JObj, waiting, props:get_value(my_id, Props));
+        ringing -> sync_resp(JObj, ringing, props:get_value(my_id, Props));
+        answered -> sync_resp(JObj, answered, props:get_value(my_id, Props)
+                              ,[{<<"Call-ID">>, props:get_value(callid, Props)}]
+                             );
+        wrapup -> sync_resp(JObj, wrapup, props:get_value(my_id, Props)
+                            ,[{<<"Time-Left">>, props:get_value(time_left, Props)}]
+                           );
+        paused -> sync_resp(JObj, paused, props:get_value(my_id, Props)
+                            ,[{<<"Time-Left">>, props:get_value(time_left, Props)}]
+                           )
     end.
 
 handle_sync_resp(JObj, Props) ->
@@ -143,6 +152,7 @@ init([AcctDb, AgentJObj]) ->
        ,agent_db = AcctDb
        ,agent_id = AgentId
        ,account_id = wh_json:get_value(<<"pvt_account_id">>, AgentJObj)
+       ,my_id = list_to_binary([wh_util:to_binary(node()), "-", pid_to_list(self())])
       }}.
 
 %%--------------------------------------------------------------------
@@ -210,13 +220,24 @@ handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {noreply, State}.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Handling all messages from the message bus
+%%
+%% @spec handle_info(JObj, State) -> {reply, Proplist} |
+%%                                   ignore
+%% @end
+%%--------------------------------------------------------------------
 handle_event(_JObj, #state{status=Status
                            ,timer_ref=Ref
                            ,call=Call
+                           ,my_id=MyId
                           }) ->
     {reply, [{status, Status}
              ,{time_left, time_left(Ref)}
              ,{callid, call_id(Call)}
+             ,{my_id, MyId}
             ]}.
 
 %%--------------------------------------------------------------------
@@ -260,16 +281,18 @@ create_sync_api(AcctId, AgentId, ProcessId) ->
 start_sync_timer() ->
     erlang:start_timer(?SYNC_TIMER_TIMEOUT, self(), ?SYNC_TIMER_MESSAGE).
 
--spec sync_resp/2 :: (wh_json:json_object(), agent_status()) -> 'ok'.
--spec sync_resp/3 :: (wh_json:json_object(), agent_status(), wh_proplist()) -> 'ok'.
-sync_resp(JObj, Status) ->
-    sync_resp(JObj, Status, []).
-sync_resp(JObj, Status, Fields) ->
-    Resp = [{<<"Account-ID">>, wh_json:get_value(<<"Account-ID">>, JObj)}
-            ,{<<"Agent-ID">>, wh_json:get_value(<<"Agent-ID">>, JObj)}
-            ,{<<"Status">>, wh_util:to_binary(Status)}
-            | Fields
-           ],
+-spec sync_resp/3 :: (wh_json:json_object(), agent_status(), ne_binary()) -> 'ok'.
+-spec sync_resp/4 :: (wh_json:json_object(), agent_status(), ne_binary(), wh_proplist()) -> 'ok'.
+sync_resp(JObj, Status, MyId) ->
+    sync_resp(JObj, Status, MyId, []).
+sync_resp(JObj, Status, MyId, Fields) ->
+    Resp = props:filter_undefined(
+             [{<<"Account-ID">>, wh_json:get_value(<<"Account-ID">>, JObj)}
+              ,{<<"Agent-ID">>, wh_json:get_value(<<"Agent-ID">>, JObj)}
+              ,{<<"Status">>, wh_util:to_binary(Status)}
+              ,{<<"Process-ID">>, MyId}
+              | Fields
+             ]),
     wapi_agent:publish_sync_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp).
 
 -spec time_left/1 :: ('undefined' | reference()) -> 'undefined' | integer() | 'false'.
