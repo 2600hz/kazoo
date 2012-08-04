@@ -17,6 +17,7 @@
 -export([handle_status_update/2
          ,handle_sync_req/2
          ,handle_sync_resp/2
+         ,handle_call_event/2
         ]).
 
 %% gen_server callbacks
@@ -61,6 +62,16 @@
 -define(SYNC_TIMER_MESSAGE, sync_timeout).
 -define(SYNC_TIMER_TIMEOUT, 5000).
 
+%% After receiving sync_resp, if the resp status requires waiting, SYNC_WAIT_TIMER_TIMEOUT
+%% pauses the agent process, then restarts the sync process (send sync_req, start
+%% SYNC_TIMER_TIMEOUT, collect sync_resp(s), etc
+-define(SYNC_WAIT_TIMER_MESSAGE, sync_wait_timeout).
+-define(SYNC_WAIT_TIMER_TIMEOUT, 5000).
+
+%% When in the wrapup status, how long does an agent wait before going back to ready
+-define(WRAPUP_TIMER_MESSAGE, wrapup_timeout).
+-define(WRAPUP_TIMER_TIMEOUT, 60000).
+
 -define(BINDINGS(AcctDb, AgentId), [{self, []}
                                     ,{agent, [{agent_db, AcctDb}
                                               ,{agent_id, AgentId}
@@ -75,6 +86,9 @@
                       }
                      ,{{?MODULE, handle_sync_resp}
                        ,{<<"agent">>, <<"sync_resp">>}
+                      }
+                     ,{{?MODULE, handle_call_event}
+                       ,{<<"call_event">>, <<"*">>}
                       }
                     ]).
 
@@ -123,6 +137,16 @@ handle_sync_resp(JObj, Props) ->
     case props:get_value(status, Props) of
         init -> gen_listener:cast(props:get_value(server, Props), {recv_sync_resp, JObj});
         _S -> lager:debug("ignoring sync_resp, in status ~s", [_S])
+    end.
+
+handle_call_event(JObj, Props) ->
+    case props:get_value(callid, Props) =:= wh_json:get_value(<<"Call-ID">>, JObj) of
+        true -> gen_listener:cast(props:get_value(server, Props), {call_event, JObj});
+        false ->
+            lager:debug("call event for ~s when we're monitoring ~s"
+                        ,[wh_json:get_value(<<"Call-ID">>, JObj),
+                          props:get_value(callid, Props)
+                         ])
     end.
 
 %%%===================================================================
@@ -198,6 +222,14 @@ handle_cast(send_sync_event, #state{
 handle_cast({recv_sync_resp, RespJObj}, #state{sync_resp=CurrResp}=State) ->
     lager:debug("recv sync resp: ~p", [RespJObj]),
     {noreply, State#state{sync_resp=choose_sync_resp(RespJObj, CurrResp)}};
+
+handle_cast({call_event, _JObj}, #state{status=_Status}=State) ->
+    %% if status=ringing:
+    %%   if call event is answered, transition to answered
+    %%   if call event is hangup, transition back to ready
+    %% if status=answered, check call event for hangup, transition to wrapup
+    {noreply, State};
+
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {noreply, State}.
@@ -212,11 +244,36 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({timeout, Ref, ?SYNC_TIMER_MESSAGE}, #state{timer_ref=Ref}=State) ->
-    lager:debug("sync timer timeout, moving to ready"),
+handle_info({timeout, Ref, ?SYNC_TIMER_MESSAGE}, #state{status=init
+                                                        ,timer_ref=Ref
+                                                        ,sync_resp=undefined
+                                                       }=State) ->
+    lager:debug("no sync_resps recv'd, moving to ready"),
     {noreply, State#state{status=ready, timer_ref=undefined}};
-handle_info(_Info, State) ->
-    lager:debug("unhandled message: ~p", [_Info]),
+handle_info({timeout, Ref, ?SYNC_TIMER_MESSAGE}, #state{status=init
+                                                        ,timer_ref=Ref
+                                                        ,sync_resp=SyncResp
+                                                       }=State) ->
+    lager:debug("sync_resp recv timeout reached, using ~p", [SyncResp]),
+    State1 = update_state_with_sync_resp(SyncResp, State),
+    {noreply, State1};
+handle_info({timeout, _Ref, ?SYNC_TIMER_MESSAGE}, #state{status=_Status
+                                                       }=State) ->
+    lager:debug("sync_resp timer up, not in init(~s)", [_Status]),
+    {noreply, State};
+
+handle_info({timeout, Ref, ?WRAPUP_TIMER_MESSAGE}, #state{status=wrapup
+                                                          ,timer_ref=Ref
+                                                          }=State) ->
+    lager:debug("wrapup period ended, moving to ready"),
+    {noreply, State#state{status=ready}};
+handle_info({timeout, _Ref, ?WRAPUP_TIMER_MESSAGE}, #state{status=_Status
+                                                          }=State) ->
+    lager:debug("wrapup timer fired, not in status waiting(~s)", [_Status]),
+    {noreply, State};
+
+handle_info(_Info, #state{status=_Status}=State) ->
+    lager:debug("unhandled message in status ~s: ~p", [_Status, _Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -277,8 +334,18 @@ create_sync_api(AcctId, AgentId, ProcessId) ->
                       ]).
 
 -spec start_sync_timer/0 :: () -> reference().
+-spec start_sync_wait_timer/0 :: () -> reference().
 start_sync_timer() ->
     erlang:start_timer(?SYNC_TIMER_TIMEOUT, self(), ?SYNC_TIMER_MESSAGE).
+start_sync_wait_timer() ->
+    erlang:start_timer(?SYNC_WAIT_TIMER_TIMEOUT, self(), ?SYNC_WAIT_TIMER_MESSAGE).
+
+-spec start_wrapup_timer/0 :: () -> reference().
+-spec start_wrapup_timer/1 :: (pos_integer()) -> reference().
+start_wrapup_timer() ->
+    start_wrapup_timer(?WRAPUP_TIMER_TIMEOUT).
+start_wrapup_timer(TimeLeft) ->
+    erlang:start_timer(TimeLeft, self(), ?WRAPUP_TIMER_MESSAGE).
 
 -spec sync_resp/3 :: (wh_json:json_object(), agent_status(), ne_binary()) -> 'ok'.
 -spec sync_resp/4 :: (wh_json:json_object(), agent_status(), ne_binary(), wh_proplist()) -> 'ok'.
@@ -321,3 +388,51 @@ status_to_int(<<"answered">>) -> 4;
 status_to_int(<<"wrapup">>) -> 5;
 status_to_int(<<"paused">>) -> 6;
 status_to_int(_) -> 0.
+
+%% process the final accepted sync_resp and move the agent process's state into the
+%% appropriate status (with bindings and timers if necessary)
+-spec update_state_with_sync_resp/2 :: (wh_json:json_object(), #state{}) -> #state{}.
+update_state_with_sync_resp(SyncResp, State) ->
+    update_status_with_sync_resp(SyncResp, State
+                                 ,wh_json:get_value(<<"Status">>, SyncResp)
+                                ).
+update_status_with_sync_resp(_SyncResp, State, <<"ready">>) ->
+    lager:debug("moving to ready status"),
+    State#state{status=ready};
+update_status_with_sync_resp(_SyncResp, State, <<"waiting">>) ->
+    lager:debug("starting sync timer for status waiting"),
+    State#state{status=init
+                ,timer_ref=start_sync_wait_timer()
+               };
+update_status_with_sync_resp(_SyncResp, State, <<"ringing">>) ->
+    lager:debug("starting sync timer for status ringing"),
+    State#state{status=init
+                ,timer_ref=start_sync_wait_timer()
+               };
+update_status_with_sync_resp(SyncResp, State, <<"answered">>) ->
+    CallId = wh_json:get_value(<<"Call-ID">>, SyncResp),
+    lager:debug("binding to call events for status answered, call ~s", [CallId]),
+
+    %% add binding so we can transition with other agent processes
+    bind_to_call_events(CallId),
+
+    State#state{status=init
+                ,call=whapps_call:set_call_id(CallId, whapps_call:new())
+               };
+update_status_with_sync_resp(SyncResp, State, <<"wrapup">>) ->
+    TimeLeft = wh_json:get_integer(<<"Time-Left">>, SyncResp, ?WRAPUP_TIMER_TIMEOUT),
+    State#state{status=wrapup
+                ,timer_ref=start_wrapup_timer(TimeLeft)
+               }.
+
+%% Handles subscribing/unsubscribing from call events
+-spec bind_to_call_events/1 :: (ne_binary()) -> 'ok'.
+-spec unbind_from_call_events/1 :: (ne_binary()) -> 'ok'.
+bind_to_call_events(CallId) ->
+    gen_listener:add_binding(self(), call, [{callid, CallId}
+                                            ,{restrict_to, [events]}
+                                           ]).
+unbind_from_call_events(CallId) ->
+    gen_listener:rm_binding(self(), call, [{callid, CallId}
+                                           ,{restrict_to, [events]}
+                                          ]).
