@@ -46,6 +46,7 @@
          ,agent_id :: ne_binary()
          ,agent_db :: ne_binary()
          ,account_id :: ne_binary()
+         ,agent_queues :: [ne_binary(),...] | []
          ,endpoints :: wh_json:json_objects()
          ,last_connect :: wh_now() % last connection
          ,last_attempt :: wh_now() % last attempt to connect
@@ -77,9 +78,9 @@
 -define(PAUSED_TIMER_MESSAGE, paused_timeout).
 
 -define(BINDINGS(AcctDb, AgentId), [{self, []}
-                                    ,{agent, [{agent_db, AcctDb}
-                                              ,{agent_id, AgentId}
-                                             ]}
+                                    ,{acdc_agent, [{agent_db, AcctDb}
+                                                   ,{agent_id, AgentId}
+                                                  ]}
                                    ]).
 
 -define(RESPONDERS, [{{?MODULE, handle_agent_status}
@@ -112,11 +113,22 @@
 %%--------------------------------------------------------------------
 start_link(AcctDb, AgentJObj) ->
     AgentId = wh_json:get_value(<<"_id">>, AgentJObj),
-    gen_listener:start_link(?MODULE
-                            ,[{bindings, ?BINDINGS(AcctDb, AgentId)}
-                              ,{responders, ?RESPONDERS}
-                             ]
-                            ,[AcctDb, AgentJObj]).
+
+    case wh_json:get_value(<<"queues">>, AgentJObj) of
+        undefined ->
+            lager:debug("agent ~s in ~s has no queues, ignoring"),
+            ignore;
+        [] ->
+            lager:debug("agent ~s in ~s has no queues, ignoring"),
+            ignore;
+        Queues ->
+            gen_listener:start_link(?MODULE
+                                    ,[{bindings, ?BINDINGS(AcctDb, AgentId)}
+                                      ,{responders, ?RESPONDERS}
+                                     ]
+                                    ,[AcctDb, AgentJObj, Queues]
+                                   )
+    end.
 
 -spec handle_status_update/2 :: (wh_json:json_object(), wh_proplist()) -> 'ok'.
 handle_status_update(_JObj, _Props) ->
@@ -159,7 +171,7 @@ handle_call_event(JObj, Props) ->
     end.
 
 -spec handle_member_messages/2 :: (wh_json:json_object(), wh_proplist()) -> 'ok'.
-handle_member_messages(_JObj, _Props) ->
+handle_member_messages(JObj, Props) ->
     ok.
 
 %%%===================================================================
@@ -177,7 +189,7 @@ handle_member_messages(_JObj, _Props) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init([AcctDb, AgentJObj]) ->
+init([AcctDb, AgentJObj, Queues]) ->
     AgentId = wh_json:get_value(<<"_id">>, AgentJObj),
     put(callid, AgentId),
 
@@ -189,6 +201,7 @@ init([AcctDb, AgentJObj]) ->
        ,agent_db = AcctDb
        ,agent_id = AgentId
        ,account_id = wh_json:get_value(<<"pvt_account_id">>, AgentJObj)
+       ,agent_queues = Queues
        ,my_id = list_to_binary([wh_util:to_binary(node()), "-", pid_to_list(self())])
       }}.
 
@@ -415,8 +428,9 @@ update_state_with_sync_resp(SyncResp, State) ->
     update_state_with_sync_resp(SyncResp, State
                                  ,wh_json:get_value(<<"Status">>, SyncResp)
                                 ).
-update_state_with_sync_resp(_SyncResp, State, <<"ready">>) ->
+update_state_with_sync_resp(_SyncResp, #state{agent_queues=Qs}=State, <<"ready">>) ->
     lager:debug("moving to ready status"),
+    _ = add_queue_bindings(Qs),
     State#state{status=ready};
 update_state_with_sync_resp(_SyncResp, State, <<"waiting">>) ->
     lager:debug("starting sync timer for status waiting"),
@@ -428,29 +442,39 @@ update_state_with_sync_resp(_SyncResp, State, <<"ringing">>) ->
     State#state{status=init
                 ,timer_ref=start_sync_wait_timer()
                };
-update_state_with_sync_resp(SyncResp, State, <<"answered">>) ->
+update_state_with_sync_resp(SyncResp, #state{agent_queues=Qs}=State, <<"answered">>) ->
     CallId = wh_json:get_value(<<"Call-ID">>, SyncResp),
     lager:debug("binding to call events for status answered, call ~s", [CallId]),
 
     %% add binding so we can transition with other agent processes
     bind_to_call_events(CallId),
+    _ = add_queue_bindings(Qs),
 
     State#state{status=answered
                 ,call=whapps_call:set_call_id(CallId, whapps_call:new())
                };
-update_state_with_sync_resp(SyncResp, State, <<"wrapup">>) ->
+update_state_with_sync_resp(SyncResp, #state{agent_queues=Qs}=State, <<"wrapup">>) ->
     TimeLeft = wh_json:get_integer(<<"Time-Left">>, SyncResp, ?WRAPUP_TIMER_TIMEOUT),
     lager:debug("sync_resp in wrapup: ~b ms left", [TimeLeft]),
+
+    _ = add_queue_bindings(Qs),
+
     State#state{status=wrapup
                 ,timer_ref=start_wrapup_timer(TimeLeft)
                };
-update_state_with_sync_resp(SyncResp, State, <<"paused">>) ->
+update_state_with_sync_resp(SyncResp, #state{agent_queues=Qs}=State, <<"paused">>) ->
     TimeLeft = wh_json:get_integer(<<"Time-Left">>, SyncResp),
+
+    _ = add_queue_bindings(Qs),
+
     State#state{status=paused
                 ,timer_ref=start_paused_timer(TimeLeft)
                };
-update_state_with_sync_resp(_SyncResp, State, <<"init">>) ->
+update_state_with_sync_resp(_SyncResp, #state{agent_queues=Qs}=State, <<"init">>) ->
     lager:debug("sync_resp is also in init, let's startup"),
+
+    _ = add_queue_bindings(Qs),
+
     State#state{status=ready};
 update_state_with_sync_resp(_SyncResp, State, _Status) ->
     lager:debug("starting sync timer for other status: ~s", [_Status]),
@@ -469,3 +493,18 @@ unbind_from_call_events(CallId) ->
     gen_listener:rm_binding(self(), call, [{callid, CallId}
                                            ,{restrict_to, [events]}
                                           ]).
+
+%% foreach queue an agent belongs to, add a binding to that queue for member requests
+-spec add_queue_bindings/1 :: ([ne_binary()]) -> ['ok'].
+-spec add_queue_binding/1 :: (ne_binary()) -> 'ok'.
+add_queue_bindings(Qs) ->
+    [add_queue_binding(Q) || Q <- Qs].
+add_queue_binding(Q) ->
+    gen_listener:add_binding(self(), acdc_queue, [{queue_id, Q}]).
+
+-spec rm_queue_bindings/1 :: ([ne_binary()]) -> ['ok'].
+-spec rm_queue_binding/1 :: (ne_binary()) -> 'ok'.
+rm_queue_bindings(Qs) ->
+    [rm_queue_binding(Q) || Q <- Qs].
+rm_queue_binding(Q) ->
+    gen_listener:rm_binding(self(), acdc_queue, [{queue_id, Q}]).
