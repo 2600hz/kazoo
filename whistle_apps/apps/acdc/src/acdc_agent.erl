@@ -187,7 +187,9 @@ handle_call_event(JObj, Props) ->
 handle_member_message(JObj, Props) ->
     handle_member_message(JObj, Props, wh_json:get_value(<<"Event-Name">>, JObj)).
 handle_member_message(JObj, Props, <<"connect_req">>) ->
-    handle_member_connect_req(JObj, Props, props:get_value(status, Props)).
+    handle_member_connect_req(JObj, Props, props:get_value(status, Props));
+handle_member_message(JObj, Props, <<"connect_win">>) ->
+    handle_member_connect_win(JObj, Props, props:get_value(status, Props)).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -288,6 +290,10 @@ handle_cast({call_event, _JObj}, #state{status=_Status}=State) ->
 handle_cast({queue_name, Q}, #state{}=State) ->
     lager:debug("my message queue: ~s", [Q]),
     {noreply, State#state{my_q=Q}};
+
+handle_cast({member_connect_win, JObj, MyQ}, #state{status=waiting}=State) ->
+    lager:debug("need to handle connect win"),
+    {noreply, State};
 
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
@@ -568,6 +574,28 @@ send_member_connect_resp(JObj, MyQ, AgentId, MyId, LastConn) ->
               | wh_api:default_headers(MyQ, ?APP_NAME, ?APP_VERSION)
              ]),
     wapi_acdc_queue:publish_member_connect_resp(Queue, Resp).
+
+-spec handle_member_connect_win/3 :: (wh_json:json_object(), wh_proplist(), agent_status()) -> 'ok'.
+handle_member_connect_win(JObj, Props, waiting) ->
+    lager:debug("recv win for call"),
+    gen_listener:cast(props:get_value(server, Props)
+                      ,{member_connect_win, JObj, props:get_value(queue, Props)}
+                     );
+handle_member_connect_win(JObj, Props, _Status) ->
+    lager:debug("our status changed from waiting to ~s, turning away win", [_Status]),
+    send_member_connect_retry(JObj, Props).
+
+-spec send_member_connect_retry/2 :: (wh_json:json_object(), wh_proplist()) -> 'ok'.
+send_member_connect_retry(JObj, Props) ->
+    Resp = [{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
+            | wh_api:default_headers(props:get_value(queue, Props)
+                                     ,?APP_NAME
+                                     ,?APP_VERSION
+                                    )
+           ],
+    wapi_acdc_queue:publish_member_connect_retry(wh_json:get_value(<<"Server-ID">>, JObj)
+                                                 ,props:filter_undefined(Resp)
+                                                ).
 
 -spec is_valid_queue/2 :: (ne_binary(), [ne_binary()]) -> boolean().
 is_valid_queue(Q, Qs) -> lists:member(Q, Qs).
