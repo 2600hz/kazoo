@@ -18,6 +18,7 @@
          ,handle_sync_req/2
          ,handle_sync_resp/2
          ,handle_call_event/2
+         ,handle_member_messages/2
         ]).
 
 %% gen_server callbacks
@@ -93,6 +94,9 @@
                      ,{{?MODULE, handle_call_event}
                        ,{<<"call_event">>, <<"*">>}
                       }
+                     ,{{?MODULE, handle_member_messages}
+                       ,{<<"acdc_member">>, <<"*">>}
+                      }
                     ]).
 
 %%%===================================================================
@@ -114,11 +118,11 @@ start_link(AcctDb, AgentJObj) ->
                              ]
                             ,[AcctDb, AgentJObj]).
 
--spec handle_status_update/2 :: (wh_json:json_object(), wh_proplist()) -> any().
+-spec handle_status_update/2 :: (wh_json:json_object(), wh_proplist()) -> 'ok'.
 handle_status_update(_JObj, _Props) ->
     ok.
 
--spec handle_sync_req/2 :: (wh_json:json_object(), wh_proplist()) -> any().
+-spec handle_sync_req/2 :: (wh_json:json_object(), wh_proplist()) -> 'ok'.
 handle_sync_req(JObj, Props) ->
     case props:get_value(status, Props) of
         init -> lager:debug("in init ourselves, ignoring sync request");
@@ -136,12 +140,14 @@ handle_sync_req(JObj, Props) ->
                            )
     end.
 
+-spec handle_sync_resp/2 :: (wh_json:json_object(), wh_proplist()) -> 'ok'.
 handle_sync_resp(JObj, Props) ->
     case props:get_value(status, Props) of
         init -> gen_listener:cast(props:get_value(server, Props), {recv_sync_resp, JObj});
         _S -> lager:debug("ignoring sync_resp, in status ~s", [_S])
     end.
 
+-spec handle_call_event/2 :: (wh_json:json_object(), wh_proplist()) -> 'ok'.
 handle_call_event(JObj, Props) ->
     case props:get_value(callid, Props) =:= wh_json:get_value(<<"Call-ID">>, JObj) of
         true -> gen_listener:cast(props:get_value(server, Props), {call_event, JObj});
@@ -151,6 +157,10 @@ handle_call_event(JObj, Props) ->
                           props:get_value(callid, Props)
                          ])
     end.
+
+-spec handle_member_messages/2 :: (wh_json:json_object(), wh_proplist()) -> 'ok'.
+handle_member_messages(_JObj, _Props) ->
+    ok.
 
 %%%===================================================================
 %%% gen_server callbacks
