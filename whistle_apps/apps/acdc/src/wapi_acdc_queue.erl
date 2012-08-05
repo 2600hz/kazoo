@@ -100,7 +100,7 @@ member_connect_resp_v(JObj) ->
 %%------------------------------------------------------------------------------
 %% Member Connect Win
 %%------------------------------------------------------------------------------
--define(MEMBER_CONNECT_WIN_HEADERS, [<<"Call">>]).
+-define(MEMBER_CONNECT_WIN_HEADERS, [<<"Queue-ID">>, <<"Call">>]).
 -define(OPTIONAL_MEMBER_CONNECT_WIN_HEADERS, []).
 -define(MEMBER_CONNECT_WIN_VALUES, [{<<"Event-Category">>, <<"member">>}
                                      ,{<<"Event-Name">>, <<"connect_win">>}
