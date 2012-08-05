@@ -1,16 +1,14 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2012, VoIP INC
 %%% @doc
+%%%
 %%% Bindings and JSON APIs for dealing with agents, as part of ACDc
 %%%
-%%% Status Updates:
-%%%   If an agent signs in, out, goes on break, comes back from break,
-%%%   publish to all processes managing that agent
 %%% @end
 %%% @contributors
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
--module(wapi_agent).
+-module(wapi_acdc_agent).
 
 -export([status_update/1
          ,sync_req/1
