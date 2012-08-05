@@ -68,6 +68,49 @@ Agent process monitors the call's event stream, waiting for a hangup event. Upon
 agent status: *wrapup*
 Queue may optionally specify a wrapup_timeout, delaying how long an agent must wait before returning to *ready*.
 
+**** An attempt at a message flowchart
+
+Q = A queue in an account
+AX(Y)(S) = Agent with id X, process Y, status S
+Status: (R)eady, (A)nswered, (W)aiting, (Ri)nging, (Wr)apup, (P)aused
+
+1. Q sends a member_connect_req to all agents bound for the queue
+                            ----> A1(1)(R)
+Q ---> member_connect_req --|---> A1(2)(R)
+                            ----> A2(1)(R)
+
+2. Q recvs member_connect_resps from the two A1 processes and the A2 process
+                             ---- A1(1)(W)
+Q <--- member_connect_resp <-|--- A1(2)(W)
+                             ---- A2(1)(W)
+
+3a. Q decides A1(1) wins the member_connect and sends the member_connect_win
+    A1(1) tries to ring the agent endpoint
+Q ---> member_connect_win ----> A1(1)(Ri)
+
+3b. Q sends A1(2) a member_connect_monitor to let it know an agent process has won the member_connect
+    A1(2) enters the *ringing* status without dialing the endpoint
+Q ---> member_connect_monitor ----> A1(2)(Ri)
+
+3c. Q sends the A2(1) process a member_connect_ignore so it knows it failed to win the member.
+    A2(1) re-enters the *ready* status
+Q ---> member_connect_ignore ----> A2(2)(R)
+
+4a. A1(\_) receives a failed dial to agent endpoint, alerts Q
+    A1(\_) notes failed dial; if threshold reached, agent goes to *paused*, else *wrapup*
+Q <--- member_retry --- A1(_)(Wr | P)
+
+4b. A1(\_) receives bridged event, alerts Q
+    A1(\_) enters the *answered* status
+Q <--- member_connected --- A1(_)(A)
+
+5. A1(\_) receives hangup, alerts Q
+   A1(\_) enters the *wrapup* status
+Q <--- member_hungup --- A1(_)(Wr)
+
+5. Agent's wrapup timer expires, enters *ready* status
+Q                        A1(_)(R)
+
 ** Queues
 
 Queues manage the dispersal of member calls to agents. Because the queue won't know if an agent is busy in another queue, the queue will broadcast a member_connect_req to all known agents. The queue will collect member_connect_resps and choose one agent, based on routing strategy, to send the member_connect_win message. If the agent is unable to connect the call and send the queue a member_connected, the agent will attempt the next appropriate member_connect_resp. If the list is exhausted, the queue will wait a configurable amount of time before sending another member_connect_req and repeating the process.
