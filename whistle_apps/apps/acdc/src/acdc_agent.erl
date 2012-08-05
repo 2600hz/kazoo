@@ -489,7 +489,7 @@ update_state_with_sync_resp(SyncResp, #state{agent_queues=Qs}=State, <<"answered
                 ,call=whapps_call:set_call_id(CallId, whapps_call:new())
                };
 update_state_with_sync_resp(SyncResp, #state{agent_queues=Qs}=State, <<"wrapup">>) ->
-    TimeLeft = wh_json:get_integer(<<"Time-Left">>, SyncResp, ?WRAPUP_TIMER_TIMEOUT),
+    TimeLeft = wh_json:get_integer_value(<<"Time-Left">>, SyncResp, ?WRAPUP_TIMER_TIMEOUT),
     lager:debug("sync_resp in wrapup: ~b ms left", [TimeLeft]),
 
     _ = add_queue_bindings(Qs),
@@ -498,7 +498,7 @@ update_state_with_sync_resp(SyncResp, #state{agent_queues=Qs}=State, <<"wrapup">
                 ,timer_ref=start_wrapup_timer(TimeLeft)
                };
 update_state_with_sync_resp(SyncResp, #state{agent_queues=Qs}=State, <<"paused">>) ->
-    TimeLeft = wh_json:get_integer(<<"Time-Left">>, SyncResp),
+    TimeLeft = wh_json:get_integer_value(<<"Time-Left">>, SyncResp),
 
     _ = add_queue_bindings(Qs),
 
