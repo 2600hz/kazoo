@@ -13,14 +13,6 @@
 %% API
 -export([start_link/2]).
 
-%% Listener callbacks
--export([handle_status_update/2
-         ,handle_sync_req/2
-         ,handle_sync_resp/2
-         ,handle_call_event/2
-         ,handle_member_message/2
-        ]).
-
 %% gen_server callbacks
 -export([init/1
          ,handle_call/3
@@ -40,6 +32,7 @@
                         'answered' | % agent is connected
                         'wrapup' |   % agent is done with call, jot some notes
                         'paused'.    % agent is away
+-export_type([agent_status/0]).
 -record(state, {
           status = 'init' :: agent_status()
          ,call :: whapps_call:call()
@@ -84,19 +77,19 @@
                                                   ]}
                                    ]).
 
--define(RESPONDERS, [{{?MODULE, handle_agent_status}
+-define(RESPONDERS, [{{acdc_agent_handler, handle_agent_status}
                       ,{<<"agent">>, <<"status_update">>}
                      }
-                     ,{{?MODULE, handle_sync_req}
+                     ,{{acdc_agent_handler, handle_sync_req}
                        ,{<<"agents">>, <<"sync_req">>}
                       }
-                     ,{{?MODULE, handle_sync_resp}
+                     ,{{acdc_agent_handler, handle_sync_resp}
                        ,{<<"agent">>, <<"sync_resp">>}
                       }
-                     ,{{?MODULE, handle_call_event}
+                     ,{{acdc_agent_handler, handle_call_event}
                        ,{<<"call_event">>, <<"*">>}
                       }
-                     ,{{?MODULE, handle_member_message}
+                     ,{{acdc_agent_handler, handle_member_message}
                        ,{<<"member">>, <<"*">>}
                       }
                     ]).
@@ -130,66 +123,6 @@ start_link(AcctDb, AgentJObj) ->
                                     ,[AcctDb, AgentJObj, Queues]
                                    )
     end.
-
--spec handle_status_update/2 :: (wh_json:json_object(), wh_proplist()) -> 'ok'.
-handle_status_update(_JObj, _Props) ->
-    ok.
-
--spec handle_sync_req/2 :: (wh_json:json_object(), wh_proplist()) -> 'ok'.
-handle_sync_req(JObj, Props) ->
-    Defaults = wh_api:default_headers(props:get_value(queue, Props)
-                                      ,?APP_NAME
-                                      ,?APP_VERSION
-                                     ),
-
-    case props:get_value(status, Props) of
-        init -> lager:debug("in init ourselves, ignoring sync request");
-        ready -> sync_resp(JObj, ready, props:get_value(my_id, Props), Defaults);
-        waiting -> sync_resp(JObj, waiting, props:get_value(my_id, Props), Defaults);
-        ringing -> sync_resp(JObj, ringing, props:get_value(my_id, Props), Defaults);
-        answered -> sync_resp(JObj, answered, props:get_value(my_id, Props)
-                              ,[{<<"Call-ID">>, props:get_value(callid, Props)}
-                                | Defaults
-                               ]
-                             );
-        wrapup -> sync_resp(JObj, wrapup, props:get_value(my_id, Props)
-                            ,[{<<"Time-Left">>, props:get_value(time_left, Props)}
-                              | Defaults
-                             ]
-                           );
-        paused -> sync_resp(JObj, paused, props:get_value(my_id, Props)
-                            ,[{<<"Time-Left">>, props:get_value(time_left, Props)}
-                              | Defaults
-                             ]
-                           )
-    end.
-
--spec handle_sync_resp/2 :: (wh_json:json_object(), wh_proplist()) -> 'ok'.
-handle_sync_resp(JObj, Props) ->
-    case props:get_value(status, Props) of
-        init -> gen_listener:cast(props:get_value(server, Props), {recv_sync_resp, JObj});
-        _S -> lager:debug("ignoring sync_resp, in status ~s", [_S])
-    end.
-
--spec handle_call_event/2 :: (wh_json:json_object(), wh_proplist()) -> 'ok'.
-handle_call_event(JObj, Props) ->
-    case props:get_value(callid, Props) =:= wh_json:get_value(<<"Call-ID">>, JObj) of
-        true -> gen_listener:cast(props:get_value(server, Props), {call_event, JObj});
-        false ->
-            lager:debug("call event for ~s when we're monitoring ~s"
-                        ,[wh_json:get_value(<<"Call-ID">>, JObj),
-                          props:get_value(callid, Props)
-                         ])
-    end.
-
--spec handle_member_message/2 :: (wh_json:json_object(), wh_proplist()) -> 'ok'.
--spec handle_member_message/3 :: (wh_json:json_object(), wh_proplist(), ne_binary()) -> 'ok'.
-handle_member_message(JObj, Props) ->
-    handle_member_message(JObj, Props, wh_json:get_value(<<"Event-Name">>, JObj)).
-handle_member_message(JObj, Props, <<"connect_req">>) ->
-    handle_member_connect_req(JObj, Props, props:get_value(status, Props));
-handle_member_message(JObj, Props, <<"connect_win">>) ->
-    handle_member_connect_win(JObj, Props, props:get_value(status, Props)).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -280,20 +213,30 @@ handle_cast({member_connect_req, JObj, MyQ}, #state{status=ready
             {noreply, State#state{status=waiting}}
     end;
 
-handle_cast({call_event, _JObj}, #state{status=_Status}=State) ->
-    %% if status=ringing:
-    %%   if call event is answered, transition to answered
-    %%   if call event is hangup, transition back to ready
-    %% if status=answered, check call event for hangup, transition to wrapup
-    {noreply, State};
+handle_cast({call_bridged, CallId}, #state{status=ringing}=State) ->
+    lager:debug("member bridged to agent on ~s", [CallId]),
+    {noreply, State#state{status=answered}};
 
-handle_cast({queue_name, Q}, #state{}=State) ->
-    lager:debug("my message queue: ~s", [Q]),
-    {noreply, State#state{my_q=Q}};
+handle_cast({call_hungup, CallId}, #state{status=ringing, call=Call}=State) ->
+    case whapps_call:call_id(Call) =:= CallId of
+        false -> {noreply, State};
+        true ->
+            lager:debug("member and agent finished call"),
+            {noreply, State#state{status=wrapup
+                                  ,timer_ref=start_wrapup_timer()
+                                  ,call=undefined
+                                 }}
+    end;
 
-handle_cast({member_connect_win, JObj, MyQ}, #state{status=waiting}=State) ->
-    lager:debug("need to handle connect win"),
-    {noreply, State};
+handle_cast({member_connect_win, JObj}, #state{status=waiting
+                                                   ,endpoints=EPs
+                                                   }=State) ->
+    Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, JObj)),
+    bind_to_call_events(Call),
+    maybe_connect_to_agent(EPs, Call),
+
+    lager:debug("waiting on successful bridge now"),
+    {noreply, State#state{call=Call, status=ringing}};
 
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
@@ -418,17 +361,6 @@ start_paused_timer(TimeLeft) when is_integer(TimeLeft), TimeLeft > 0 ->
     erlang:start_timer(TimeLeft, self(), ?PAUSED_TIMER_MESSAGE);
 start_paused_timer(_) -> undefined.
 
--spec sync_resp/4 :: (wh_json:json_object(), agent_status(), ne_binary(), wh_proplist()) -> 'ok'.
-sync_resp(JObj, Status, MyId, Fields) ->
-    Resp = props:filter_undefined(
-             [{<<"Account-ID">>, wh_json:get_value(<<"Account-ID">>, JObj)}
-              ,{<<"Agent-ID">>, wh_json:get_value(<<"Agent-ID">>, JObj)}
-              ,{<<"Status">>, wh_util:to_binary(Status)}
-              ,{<<"Process-ID">>, MyId}
-              | Fields
-             ]),
-    wapi_agent:publish_sync_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp).
-
 -spec time_left/1 :: ('undefined' | reference()) -> 'undefined' | integer() | 'false'.
 time_left(undefined) -> undefined;
 time_left(Ref) when is_reference(Ref) -> erlang:read_timer(Ref).
@@ -524,16 +456,21 @@ update_state_with_sync_resp(_SyncResp, State, _Status) ->
                }.
 
 %% Handles subscribing/unsubscribing from call events
--spec bind_to_call_events/1 :: (ne_binary()) -> 'ok'.
--spec unbind_from_call_events/1 :: (ne_binary()) -> 'ok'.
-bind_to_call_events(CallId) ->
+-spec bind_to_call_events/1 :: (ne_binary() | whapps_call:call()) -> 'ok'.
+-spec unbind_from_call_events/1 :: (ne_binary() | whapps_call:call()) -> 'ok'.
+bind_to_call_events(?NE_BINARY = CallId) ->
     gen_listener:add_binding(self(), call, [{callid, CallId}
                                             ,{restrict_to, [events]}
-                                           ]).
-unbind_from_call_events(CallId) ->
+                                           ]);
+bind_to_call_events(Call) ->
+    bind_to_call_events(whapps_call:call_id(Call)).
+
+unbind_from_call_events(?NE_BINARY = CallId) ->
     gen_listener:rm_binding(self(), call, [{callid, CallId}
                                            ,{restrict_to, [events]}
-                                          ]).
+                                          ]);
+unbind_from_call_events(Call) ->
+    unbind_from_call_events(whapps_call:call_id(Call)).
 
 %% foreach queue an agent belongs to, add a binding to that queue for member requests
 -spec add_queue_bindings/1 :: ([ne_binary()]) -> ['ok'].
@@ -550,17 +487,6 @@ rm_queue_bindings(Qs) ->
 rm_queue_binding(Q) ->
     gen_listener:rm_binding(self(), acdc_queue, [{queue_id, Q}]).
 
-%% handle how a member_connect_req payload is handled
--spec handle_member_connect_req/3 :: (wh_json:json_object(), wh_proplist(), agent_status()) -> 'ok'.
-handle_member_connect_req(JObj, Props, ready) ->
-    gen_listener:cast(props:get_value(server, Props)
-                      ,{member_connect_req, JObj, props:get_value(queue, Props)}
-                     );
-handle_member_connect_req(_, _Props, _S) ->
-    lager:debug("ignoring member connect, agent ~p in status ~s"
-                ,[props:get_value(server, _Props), _S]
-               ).
-
 -spec send_member_connect_resp/5 :: (wh_json:json_object(), ne_binary()
                                      ,ne_binary(), ne_binary(), wh_now() | 'undefined'
                                     ) -> 'ok'.
@@ -575,27 +501,9 @@ send_member_connect_resp(JObj, MyQ, AgentId, MyId, LastConn) ->
              ]),
     wapi_acdc_queue:publish_member_connect_resp(Queue, Resp).
 
--spec handle_member_connect_win/3 :: (wh_json:json_object(), wh_proplist(), agent_status()) -> 'ok'.
-handle_member_connect_win(JObj, Props, waiting) ->
-    lager:debug("recv win for call"),
-    gen_listener:cast(props:get_value(server, Props)
-                      ,{member_connect_win, JObj, props:get_value(queue, Props)}
-                     );
-handle_member_connect_win(JObj, Props, _Status) ->
-    lager:debug("our status changed from waiting to ~s, turning away win", [_Status]),
-    send_member_connect_retry(JObj, Props).
-
--spec send_member_connect_retry/2 :: (wh_json:json_object(), wh_proplist()) -> 'ok'.
-send_member_connect_retry(JObj, Props) ->
-    Resp = [{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
-            | wh_api:default_headers(props:get_value(queue, Props)
-                                     ,?APP_NAME
-                                     ,?APP_VERSION
-                                    )
-           ],
-    wapi_acdc_queue:publish_member_connect_retry(wh_json:get_value(<<"Server-ID">>, JObj)
-                                                 ,props:filter_undefined(Resp)
-                                                ).
-
 -spec is_valid_queue/2 :: (ne_binary(), [ne_binary()]) -> boolean().
 is_valid_queue(Q, Qs) -> lists:member(Q, Qs).
+
+-spec maybe_connect_to_agent/2 :: (list(), whapps_call:call()) -> 'ok'.
+maybe_connect_to_agent(EPs, Call) ->
+    whapps_call_command:bridge(EPs, Call).
