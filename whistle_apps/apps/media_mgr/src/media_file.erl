@@ -28,7 +28,7 @@
 -include("media.hrl").
 
 -define(TIMEOUT_LIFETIME, 600000).
--define(TIMEOUT_MESSAGE, {'$media_file', message_timeout}).
+-define(TIMEOUT_MESSAGE, {'$media_file', file_timeout}).
 
 -record(state, {
           db :: ne_binary()
@@ -121,11 +121,11 @@ init(Db, [Doc, Attach, Meta]) ->
 handle_call(single, _From, #state{meta=Meta
                                   ,contents=Contents
                                   ,status=ready
-                                  ,timer_ref=Ref
+                                  ,timer_ref=TRef
                                  }=State) ->
     %% doesn't currently check whether we're still streaming in from the DB
     lager:debug("returning media contents"),
-    _ = stop_timer(Ref),
+    _ = stop_timer(TRef),
     {reply, {Meta, Contents}, State#state{timer_ref=start_timer()}};
 handle_call(single, From, #state{reqs=Reqs
                                  ,status=streaming
