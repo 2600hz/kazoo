@@ -275,7 +275,7 @@ create_device(#cb_context{req_data=Req, db_name=Db}=Context) ->
             crossbar_util:response_invalid_data(E, Context);
         {pass, JObj} ->
             Context#cb_context{resp_status=success
-                               ,doc=wh_json:set_value({<<"pvt_type">>, <<"device">>}, JObj)
+                               ,doc=wh_json:set_value([<<"pvt_type">>, <<"device">>], JObj)
                               }
     end.
 
@@ -489,3 +489,5 @@ set_outbound_flags(JObj, L) when is_list(L) ->
     wh_json:set_value(<<"outbound_flags">>, [wh_util:strip_binary(B) || B <- L], JObj);
 set_outbound_flags(JObj, _) -> JObj.
 
+
+Aug  7 22:46:21 app01-vm-lab30 whistle_apps[14254]: |8e901138d2323787cc8376b4121970d4|crossbar_bindings:406 (<0.2138.0>) excepted: {undef,[{wh_json,set_value,[{<<"pvt_type">>,<<"device">>},{[{<<"enabled">>,true},{<<"caller_id">>,{[]}},{<<"media">>,{[{<<"bypass_media">>,<<"auto">>},{<<"audio">>,{[{<<"codecs">>,[<<"PCMU">>,<<"PCMA">>]}]}},{<<"video">>,{[{<<"codecs">>,[]}]}},{<<"fax">>,{[{<<"option">>,<<"false">>}]}},{<<"fax_option">>,<<"auto">>},{<<"ignore_early_media">>,false}]}},{<<"sip">>,{[{<<"method">>,<<"password">>},{<<"invite_format">>,<<"username">>},{<<"username">>,<<"user_rtzlee">>},{<<"password">>,<<"hox0yay2eo63">>},{<<"expire_seconds">>,<<"360">>},{<<"custom_sip_headers">>,{[]}},{<<"registration_expiration">>,300}]}},{<<"call_forward">>,{[{<<"enabled">>,false},{<<"substitute">>,true},{<<"require_keypress">>,true},{<<"keep_caller_id">>,true},{<<"direct_calls_only">>,false},{<<"ignore_early_media">>,true}]}},{<<"music_on_hold">>,{[]}},{<<"device_type">>,<<"sip_device">>},{<<"provision">>,{[]}},{<<"name">>,<<"test_2600hz">>},{<<"suppress_unregister_notifications">>,true},{<<"outbound_flags">>,[]},{<<"caller_id_options">>,{[]}},{<<"ringtones">>,{[]}}]}]},{cb_devices,create_device,1},{crossbar_bindings,fold_bind_results,5},{lists,foldl,3},{crossbar_bindings,fold_processor,3},{v1_util,validate,1},{v1_resource,resource_exists,2},{cowboy_http_rest,expect,6}]}
