@@ -96,9 +96,32 @@ compact_node(NodeBin) ->
                             end, 1, shuffle(DBs, Total)),
             done
     catch
+        _:{error,{conn_failed,{error,etimedout}}} ->
+            lager:debug("connection timed out..."),
+            _ = handle_etimedout(NodeBin),
+            done;
         _:_ ->
             lager:error("unable to open connection to ~s", [NodeBin]),
             done
+    end.
+
+-spec handle_etimedout/1 :: (ne_binary()) -> any().
+handle_etimedout(NodeBin) ->
+    case wh_cache:fetch_local(?WH_COUCH_CACHE, {NodeBin, etimedout}) of
+        {ok, Cnt} when Cnt < 3 ->
+            wh_cache:store_local(?WH_COUCH_CACHE, {NodeBin, etimedout}, Cnt);
+        {ok, Cnt} ->
+            lager:debug("connection timed out to ~s for the ~b time", [NodeBin, Cnt]),
+            lager:debug("turning compactor off for now"),
+            couch_config:store(<<"compact_automatically">>, false),
+
+            lager:debug("alerting admins about the situation"),
+            wh_notify:system_alert("Compactor failed to connect to db node ~s: etimedout"
+                                   ,[NodeBin]
+                                   ,[{<<"Attempts">>, Cnt}]
+                                  );
+        {error, not_found} ->
+            wh_cache:store_local(?WH_COUCH_CACHE, {NodeBin, etimedout}, 1)
     end.
 
 %% Use compact_db/1 to compact the DB across all known nodes
