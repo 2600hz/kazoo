@@ -145,8 +145,9 @@
 %% Load a file into couch as a document (not an attachement)
 %% @end
 %%--------------------------------------------------------------------
--spec load_doc_from_file/3 :: (ne_binary(), atom(), nonempty_string() | ne_binary()) -> {'ok', wh_json:json_object()} |
-                                                                                        {'error', atom()}.
+-spec load_doc_from_file/3 :: (ne_binary(), atom(), nonempty_string() | ne_binary()) ->
+                                      {'ok', wh_json:json_object()} |
+                                      {'error', atom()}.
 load_doc_from_file(DbName, App, File) ->
     Path = list_to_binary([code:priv_dir(App), "/couchdb/", wh_util:to_list(File)]),
     lager:debug("read into db ~s from CouchDB JSON file: ~s", [DbName, Path]),
@@ -169,8 +170,9 @@ load_doc_from_file(DbName, App, File) ->
 %% a file
 %% @end
 %%--------------------------------------------------------------------
--spec update_doc_from_file/3 :: (ne_binary(), atom(), nonempty_string() | ne_binary()) -> {'ok', wh_json:json_object()} |
-                                                                                          {'error', atom()}.
+-spec update_doc_from_file/3 :: (ne_binary(), atom(), nonempty_string() | ne_binary()) ->
+                                        {'ok', wh_json:json_object()} |
+                                        {'error', atom()}.
 update_doc_from_file(DbName, App, File) ->
     Path = list_to_binary([code:priv_dir(App), "/couchdb/", File]),
     lager:debug("update db ~s from CouchDB file: ~s", [DbName, Path]),
@@ -195,8 +197,9 @@ update_doc_from_file(DbName, App, File) ->
 %% contents of a file
 %% @end
 %%--------------------------------------------------------------------
--spec revise_doc_from_file/3 :: (ne_binary(), atom(), ne_binary() | nonempty_string()) -> {'ok', wh_json:json_object()} |
-                                                                                          {'error', atom()}.
+-spec revise_doc_from_file/3 :: (ne_binary(), atom(), ne_binary() | nonempty_string()) ->
+                                        {'ok', wh_json:json_object()} |
+                                        {'error', atom()}.
 revise_doc_from_file(DbName, App, File) ->
     case ?MODULE:update_doc_from_file(DbName, App, File) of
         {error, _E} ->
@@ -304,10 +307,12 @@ admin_db_info(DbName) ->
 %% Retrieve information regarding a database design doc
 %% @end
 %%--------------------------------------------------------------------
--spec design_info/2 :: (ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} |
-                                                     {'error', atom()}.
--spec admin_design_info/2 :: (ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} |
-                                                           {'error', atom()}.
+-spec design_info/2 :: (ne_binary(), ne_binary()) ->
+                               {'ok', wh_json:json_object()} |
+                               {'error', atom()}.
+-spec admin_design_info/2 :: (ne_binary(), ne_binary()) ->
+                                     {'ok', wh_json:json_object()} |
+                                     {'error', atom()}.
 design_info(DbName, DesignName) ->
     couch_util:design_info(get_conn(), DbName, DesignName).
 admin_design_info(DbName, DesignName) ->
@@ -360,8 +365,9 @@ admin_db_view_cleanup(DbName) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec db_replicate/1 :: (proplist() | wh_json:json_object()) -> {'ok', wh_json:json_object()} |
-                                                                {'error', atom()}.
+-spec db_replicate/1 :: (proplist() | wh_json:json_object()) ->
+                                {'ok', wh_json:json_object()} |
+                                {'error', atom()}.
 db_replicate(Prop) when is_list(Prop) ->
     db_replicate(wh_json:from_list(Prop));
 db_replicate(JObj) ->
@@ -414,10 +420,12 @@ db_delete(DbName) ->
 %% fetch a cached doc or open it if not available.
 %% @end
 %%--------------------------------------------------------------------
--spec open_cache_doc/2 :: (ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} |
-                                                        {'error', 'not_found' | 'db_not_reachable'}.
--spec open_cache_doc/3 :: (ne_binary(), ne_binary(), proplist()) -> {'ok', wh_json:json_object()} |
-                                                                    {'error', 'not_found' | 'db_not_reachable'}.
+-spec open_cache_doc/2 :: (ne_binary(), ne_binary()) ->
+                                  {'ok', wh_json:json_object()} |
+                                  {'error', 'not_found' | 'db_not_reachable'}.
+-spec open_cache_doc/3 :: (ne_binary(), ne_binary(), proplist()) ->
+                                  {'ok', wh_json:json_object()} |
+                                  {'error', 'not_found' | 'db_not_reachable'}.
 
 open_cache_doc(DbName, DocId) ->
     open_cache_doc(DbName, DocId, []).
@@ -431,10 +439,12 @@ open_cache_doc(DbName, DocId, Options) ->
 %% open a document given a doc id returns an error tuple or the json
 %% @end
 %%--------------------------------------------------------------------
--spec open_doc/2 :: (ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} |
-                                                  {'error', 'not_found' | 'db_not_reachable'}.
--spec open_doc/3 :: (ne_binary(), ne_binary(), proplist()) -> {'ok', wh_json:json_object()} |
-                                                              {'error', 'not_found' | 'db_not_reachable'}.
+-spec open_doc/2 :: (ne_binary(), ne_binary()) ->
+                            {'ok', wh_json:json_object()} |
+                            {'error', 'not_found' | 'db_not_reachable'}.
+-spec open_doc/3 :: (ne_binary(), ne_binary(), proplist()) ->
+                            {'ok', wh_json:json_object()} |
+                            {'error', 'not_found' | 'db_not_reachable'}.
 open_doc(DbName, DocId) ->
     open_doc(DbName, DocId, []).
 open_doc(DbName, DocId, Options) ->
@@ -485,8 +495,9 @@ lookup_doc_rev(DbName, DocId) ->
 %% save document to the db
 %% @end
 %%--------------------------------------------------------------------
--spec save_doc/2 :: (ne_binary(), wh_json:json_object() | wh_json:json_objects()) -> {'ok', wh_json:json_object() | wh_json:json_objects()} |
-                                                                                     {'error', atom()}.
+-spec save_doc/2 :: (ne_binary(), wh_json:json_object() | wh_json:json_objects()) ->
+                            {'ok', wh_json:json_object() | wh_json:json_objects()} |
+                            {'error', atom()}.
 save_doc(DbName, Docs) when is_list(Docs) ->
     save_docs(DbName, Docs, []);
 save_doc(DbName, Doc) ->
@@ -494,10 +505,12 @@ save_doc(DbName, Doc) ->
 
 %% save a document; if it fails to save because of conflict, pull the latest revision and try saving again.
 %% any other error is returned
--spec ensure_saved/2 :: (ne_binary(), wh_json:json_object()) -> {'ok', wh_json:json_object()} |
-                                                                {'error', atom()}.
--spec ensure_saved/3 :: (ne_binary(), wh_json:json_object(), proplist()) -> {'ok', wh_json:json_object()} |
-                                                                            {'error', atom()}.
+-spec ensure_saved/2 :: (ne_binary(), wh_json:json_object()) ->
+                                {'ok', wh_json:json_object()} |
+                                {'error', atom()}.
+-spec ensure_saved/3 :: (ne_binary(), wh_json:json_object(), proplist()) ->
+                                {'ok', wh_json:json_object()} |
+                                {'error', atom()}.
 
 ensure_saved(DbName, Doc) ->
     ensure_saved(DbName, Doc, []).
@@ -505,13 +518,16 @@ ensure_saved(DbName, Doc) ->
 ensure_saved(DbName, Doc, Options) ->
     couch_util:ensure_saved(get_conn(), DbName, Doc, Options).
 
--spec save_doc/3 :: (ne_binary(), wh_json:json_object(), proplist()) -> {'ok', wh_json:json_object()} |
-                                                                        {'error', atom()}.
+-spec save_doc/3 :: (ne_binary(), wh_json:json_object(), proplist()) ->
+                            {'ok', wh_json:json_object()} |
+                            {'error', atom()}.
 save_doc(DbName, Doc, Opts) ->
     couch_util:save_doc(get_conn(), DbName, Doc, Opts).
 
--spec save_docs/2 :: (ne_binary(), wh_json:json_objects()) -> {'ok', wh_json:json_objects()}.
--spec save_docs/3 :: (ne_binary(), wh_json:json_objects(), proplist()) -> {'ok', wh_json:json_objects()}.
+-spec save_docs/2 :: (ne_binary(), wh_json:json_objects()) ->
+                             {'ok', wh_json:json_objects()}.
+-spec save_docs/3 :: (ne_binary(), wh_json:json_objects(), proplist()) ->
+                             {'ok', wh_json:json_objects()}.
 save_docs(DbName, Docs) when is_list(Docs) ->
     save_docs(DbName, Docs, []).
 save_docs(DbName, Docs, Opts) when is_list(Docs) ->
@@ -523,10 +539,12 @@ save_docs(DbName, Docs, Opts) when is_list(Docs) ->
 %% fetch, update and save a doc (creating if not present)
 %% @end
 %%--------------------------------------------------------------------
--spec update_doc/3 :: (ne_binary(), ne_binary(), proplist()) -> {'ok', wh_json:json_object()} |
-                                                                {'error', atom()}.
--spec update_doc/4 :: (ne_binary(), ne_binary(), proplist(), proplist()) -> {'ok', wh_json:json_object()} |
-                                                                            {'error', atom()}.
+-spec update_doc/3 :: (ne_binary(), ne_binary(), proplist()) ->
+                              {'ok', wh_json:json_object()} |
+                              {'error', atom()}.
+-spec update_doc/4 :: (ne_binary(), ne_binary(), proplist(), proplist()) ->
+                              {'ok', wh_json:json_object()} |
+                              {'error', atom()}.
 
 update_doc(DbName, Id, UpdateProps) ->
     update_doc(DbName, Id, UpdateProps, []).
@@ -551,8 +569,9 @@ update_doc(DbName, Id, UpdateProps, CreateProps) ->
 %% remove document from the db
 %% @end
 %%--------------------------------------------------------------------
--spec del_doc/2 :: (ne_binary(), wh_json:json_object() | ne_binary()) -> {'ok', wh_json:json_objects()} |
-                                                                         couchbeam_error().
+-spec del_doc/2 :: (ne_binary(), wh_json:json_object() | ne_binary()) ->
+                           {'ok', wh_json:json_objects()} |
+                           couchbeam_error().
 del_doc(DbName, Doc) ->
     couch_util:del_doc(get_conn(), DbName, Doc).
 
@@ -562,37 +581,44 @@ del_doc(DbName, Doc) ->
 %% remove documents from the db
 %% @end
 %%--------------------------------------------------------------------
--spec del_docs/2 :: (ne_binary(), wh_json:json_objects()) -> {'ok', wh_json:json_objects()}.
+-spec del_docs/2 :: (ne_binary(), wh_json:json_objects()) ->
+                            {'ok', wh_json:json_objects()}.
 del_docs(DbName, Docs) ->
     couch_util:del_docs(get_conn(), DbName, Docs).
 
 %%%===================================================================
 %%% Attachment Functions
 %%%===================================================================
--spec fetch_attachment/3 :: (ne_binary(), ne_binary(), ne_binary()) -> {'ok', ne_binary()} |
-                                                                       {'error', atom()}.
+-spec fetch_attachment/3 :: (ne_binary(), ne_binary(), ne_binary()) ->
+                                    {'ok', ne_binary()} |
+                                    {'error', atom()}.
 fetch_attachment(DbName, DocId, AName) ->
     couch_util:fetch_attachment(get_conn(), DbName, DocId, AName).
 
--spec stream_attachment/3 :: (ne_binary(), ne_binary(), ne_binary()) -> {'ok', reference()} |
-                                                                        {'error', term()}.
+-spec stream_attachment/3 :: (ne_binary(), ne_binary(), ne_binary()) ->
+                                     {'ok', reference()} |
+                                     {'error', term()}.
 stream_attachment(DbName, DocId, AName) ->
     couch_util:stream_attachment(get_conn(), DbName, DocId, AName, self()).
 
--spec put_attachment/4 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} |
-                                                                                  {'error', atom()}.
+-spec put_attachment/4 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary()) ->
+                                  {'ok', wh_json:json_object()} |
+                                  {'error', atom()}.
 %% Options = [ {'content_type', Type}, {'content_length', Len}, {'rev', Rev}] <- note atoms as keys in proplist
--spec put_attachment/5 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), proplist()) -> {'ok', wh_json:json_object()} |
-                                                                                              {'error', atom()}.
+-spec put_attachment/5 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), proplist()) ->
+                                  {'ok', wh_json:json_object()} |
+                                  {'error', atom()}.
 put_attachment(DbName, DocId, AName, Contents) ->
     couch_util:put_attachment(get_conn(), DbName, DocId, AName, Contents).
 put_attachment(DbName, DocId, AName, Contents, Options) ->
     couch_util:put_attachment(get_conn(), DbName, DocId, AName, Contents, Options).
 
--spec delete_attachment/3 :: (ne_binary(), ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} |
-                                                                        {'error', atom()}.
--spec delete_attachment/4 :: (ne_binary(), ne_binary(), ne_binary(), proplist()) -> {'ok', wh_json:json_object()} |
-                                                                                    {'error', atom()}.
+-spec delete_attachment/3 :: (ne_binary(), ne_binary(), ne_binary()) ->
+                                     {'ok', wh_json:json_object()} |
+                                     {'error', atom()}.
+-spec delete_attachment/4 :: (ne_binary(), ne_binary(), ne_binary(), proplist()) ->
+                                     {'ok', wh_json:json_object()} |
+                                     {'error', atom()}.
 delete_attachment(DbName, DocId, AName) ->
     couch_util:delete_attachment(get_conn(), DbName, DocId, AName).
 delete_attachment(DbName, DocId, AName, Options) ->
@@ -608,10 +634,12 @@ delete_attachment(DbName, DocId, AName, Options) ->
 %% {Total, Offset, Meta, Rows}
 %% @end
 %%--------------------------------------------------------------------
--spec get_all_results/2 :: (ne_binary(), ne_binary()) -> {'ok', wh_json:json_objects() | wh_json:json_strings()} |
-                                                         {'error', atom()}.
--spec get_results/3 :: (ne_binary(), ne_binary(), wh_proplist()) -> {'ok', wh_json:json_objects() | wh_json:json_strings()} |
-                                                                    {'error', atom()}.
+-spec get_all_results/2 :: (ne_binary(), ne_binary()) ->
+                                   {'ok', wh_json:json_objects() | wh_json:json_strings()} |
+                                   {'error', atom()}.
+-spec get_results/3 :: (ne_binary(), ne_binary(), wh_proplist()) ->
+                               {'ok', wh_json:json_objects() | wh_json:json_strings()} |
+                               {'error', atom()}.
 get_all_results(DbName, DesignDoc) ->
     get_results(DbName, DesignDoc, []).
 get_results(DbName, DesignDoc, ViewOptions) ->
@@ -661,8 +689,9 @@ set_host(HostName, UserName, Password) ->
 set_host(HostName, Port, UserName, Password) ->
     set_host(HostName, Port, UserName, Password, ?DEFAULT_ADMIN_PORT).
 
--spec set_host/5 :: (string(), non_neg_integer(), string(), string(), non_neg_integer()) -> 'ok' |
-                                                                                            {'error', 'unable_to_connect'}.
+-spec set_host/5 :: (string(), non_neg_integer(), string(), string(), non_neg_integer()) ->
+                            'ok' |
+                            {'error', 'unable_to_connect'}.
 set_host(HostName, Port, UserName, Password, AdminPort) ->
     gen_server:call(?SERVER, {set_host, HostName, Port, UserName, Password, AdminPort}, infinity).
 
@@ -719,7 +748,8 @@ get_url() ->
 get_admin_url() ->
     get_url(wh_util:to_binary(get_host()), get_creds(), get_admin_port()).
 
--spec get_url/3 :: (binary(), {string(), string()}, pos_integer()) -> ne_binary() | 'undefined'.
+-spec get_url/3 :: (binary(), {string(), string()}, pos_integer()) ->
+                           ne_binary() | 'undefined'.
 get_url(<<>>, _, _) -> 'undefined';
 get_url(H, {[], []}, P) ->
     list_to_binary(["http://", H, ":", wh_util:to_binary(P), "/"]);
