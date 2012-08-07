@@ -97,31 +97,31 @@ compact_node(NodeBin) ->
             done
     catch
         _:{error,{conn_failed,{error,etimedout}}} ->
-            lager:debug("connection timed out..."),
-            _ = handle_etimedout(NodeBin),
+            _ = handle_conn_error(NodeBin, etimedout),
             done;
-        _:_ ->
-            lager:error("unable to open connection to ~s", [NodeBin]),
+        _:E ->
+            _ = handle_conn_error(NodeBin, E),
             done
     end.
 
--spec handle_etimedout/1 :: (ne_binary()) -> any().
-handle_etimedout(NodeBin) ->
-    case wh_cache:fetch_local(?WH_COUCH_CACHE, {NodeBin, etimedout}) of
+-spec handle_conn_error/2 :: (ne_binary(), any()) -> any().
+handle_conn_error(NodeBin, Err) ->
+    case wh_cache:fetch_local(?WH_COUCH_CACHE, Err) of
         {ok, Cnt} when Cnt < 3 ->
-            wh_cache:store_local(?WH_COUCH_CACHE, {NodeBin, etimedout}, Cnt);
+            wh_cache:store_local(?WH_COUCH_CACHE, Err, Cnt);
         {ok, Cnt} ->
-            lager:debug("connection timed out to ~s for the ~b time", [NodeBin, Cnt]),
+            lager:debug("connection error to ~s for the ~b time: ~p", [NodeBin, Cnt, Err]),
             lager:debug("turning compactor off for now"),
             couch_config:store(<<"compact_automatically">>, false),
 
             lager:debug("alerting admins about the situation"),
-            wh_notify:system_alert("Compactor failed to connect to db node ~s: etimedout"
-                                   ,[NodeBin]
+            wh_notify:system_alert("Compactor failed to connect to db node ~s: ~p"
+                                   ,[NodeBin, Err]
                                    ,[{<<"Attempts">>, Cnt}]
-                                  );
+                                  ),
+            wh_cache:store_local(?WH_COUCH_CACHE, Err, 0);
         {error, not_found} ->
-            wh_cache:store_local(?WH_COUCH_CACHE, {NodeBin, etimedout}, 1)
+            wh_cache:store_local(?WH_COUCH_CACHE, Err, 1)
     end.
 
 %% Use compact_db/1 to compact the DB across all known nodes
