@@ -285,7 +285,8 @@ send_req(Url, Headers, Method, Body) ->
 %%          {transfer_encoding, {chunked, ChunkSize}} | 
 %%          {headers_as_is, boolean()}         |
 %%          {give_raw_headers, boolean()}      |
-%%          {preserve_chunked_encoding,boolean()}
+%%          {preserve_chunked_encoding,boolean()}     |
+%%          {workaround, head_response_with_body}
 %%
 %% stream_to() = process() | {process(), once}
 %% process() = pid() | atom()

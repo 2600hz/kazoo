@@ -1,5 +1,11 @@
 CONTRIBUTIONS & CHANGE HISTORY
 ==============================
+03-08-2012 - v4.0.0
+             * Fixed a regression in handling HEAD.
+               https://github.com/cmullaparthi/ibrowse/issues/67
+
+             * Fixed a bug in handling SSL requests through a proxy
+
 06-04-2012 - v3.0.4
              * Fix for the following issue
                https://github.com/cmullaparthi/ibrowse/issues/67

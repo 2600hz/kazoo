@@ -25,7 +25,9 @@
          test_pipeline_head_timeout/1,
          do_test_pipeline_head_timeout/4,
          test_head_transfer_encoding/0,
-         test_head_transfer_encoding/1
+         test_head_transfer_encoding/1,
+         test_head_response_with_body/0,
+         test_head_response_with_body/1
 	]).
 
 test_stream_once(Url, Method, Options) ->
@@ -230,7 +232,8 @@ dump_errors(Key, Iod) ->
                     {"https://github.com", get, [{ssl_options, [{depth, 2}]}]},
                     {local_test_fun, test_20122010, []},
                     {local_test_fun, test_pipeline_head_timeout, []},
-                    {local_test_fun, test_head_transfer_encoding, []}
+                    {local_test_fun, test_head_transfer_encoding, []},
+                    {local_test_fun, test_head_response_with_body, []}
 		   ]).
 
 unit_tests() ->
@@ -446,15 +449,33 @@ log_msg(Fmt, Args) ->
 %% ------------------------------------------------------------------------------
 test_head_transfer_encoding() ->
     clear_msg_q(),
-    test_head_transfer_encoding("http://localhost:8181/ibrowse_head_transfer_enc").
+    test_head_transfer_encoding("http://localhost:8181/ibrowse_head_test").
 
 test_head_transfer_encoding(Url) ->
     case ibrowse:send_req(Url, [], head) of
+        {ok, "200", _, _} ->
+            success;
+        Res ->
+            {test_failed, Res}
+    end.
+
+%%------------------------------------------------------------------------------
+%% Test what happens when the response to a HEAD request is a
+%% Chunked-Encoding response with a non-empty body. Issue #67 on
+%% Github
+%% ------------------------------------------------------------------------------
+test_head_response_with_body() ->
+    clear_msg_q(),
+    test_head_response_with_body("http://localhost:8181/ibrowse_head_transfer_enc").
+
+test_head_response_with_body(Url) ->
+    case ibrowse:send_req(Url, [], head, [], [{workaround, head_response_with_body}]) of
         {ok, "400", _, _} ->
             success;
         Res ->
             {test_failed, Res}
     end.
+
 %%------------------------------------------------------------------------------
 %% Test what happens when the request at the head of a pipeline times out
 %%------------------------------------------------------------------------------
