@@ -112,7 +112,7 @@ handle_conn_error(NodeBin, Err) ->
         {ok, Cnt} ->
             lager:debug("connection error to ~s for the ~b time: ~p", [NodeBin, Cnt, Err]),
             lager:debug("turning compactor off for now"),
-            couch_config:store(<<"compact_automatically">>, false),
+            _ = couch_config:store(<<"compact_automatically">>, false),
 
             lager:debug("alerting admins about the situation"),
             wh_notify:system_alert("Compactor failed to connect to db node ~s: ~p"
