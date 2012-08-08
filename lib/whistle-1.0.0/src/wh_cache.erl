@@ -47,12 +47,14 @@
 -define(NOTIFY_KEY(Key), {monitor_key, Key}).
 
 %% NOTE: the use of atom() in the specs are for ets match specs and not otherwise valid types
--record(cache_obj, {key :: term()
-                    ,value :: term()
-                    ,expires=?EXPIRES :: pos_integer() | 'infinity' | atom()
-                    ,timestamp=wh_util:current_tstamp() :: pos_integer() | atom()
-                    ,callback=undefined :: 'undefined' | fun((_, _, flush | erase | expire) -> _) | atom()
-                   }).
+-type callback_fun() :: fun((_, _, 'flush' | 'erase' | 'expire') -> _).
+-record(cache_obj, {
+          key :: term()
+         ,value :: term()
+         ,expires=?EXPIRES :: pos_integer() | 'infinity' | atom()
+         ,timestamp=wh_util:current_tstamp() :: pos_integer() | atom()
+         ,callback :: callback_fun()  | atom()
+         }).
 
 %%%===================================================================
 %%% API
@@ -90,11 +92,15 @@ store(K, V, T) ->
 store(K, V, T, Fun) when is_function(Fun, 3) ->
     store_local(?SERVER, K, V, T, Fun).
 
--spec peek/1 :: (term()) -> {'ok', term()} | {'error', 'not_found'}.
+-spec peek/1 :: (term()) ->
+                        {'ok', term()} |
+                        {'error', 'not_found'}.
 peek(K) ->
     peek_local(?SERVER, K).
 
--spec fetch/1 :: (term()) -> {'ok', term()} | {'error', 'not_found'}.
+-spec fetch/1 :: (term()) ->
+                         {'ok', term()} |
+                         {'error', 'not_found'}.
 fetch(K) ->
     fetch_local(?SERVER, K).
 
@@ -122,7 +128,6 @@ filter(Pred) when is_function(Pred, 2) ->
                                 {'error', 'timeout'}.
 wait_for_key(Key) ->
     wait_for_key(Key, ?DEFAULT_WAIT_TIMEOUT).
-
 wait_for_key(Key, Timeout) ->
     wait_for_key_local(?SERVER, Key, Timeout).
 
@@ -181,7 +186,7 @@ erase_local(Srv, K) ->
 flush_local(Srv) ->
     gen_server:cast(Srv, {flush}).
 
--spec fetch_keys_local/1 :: (atom()) -> [term(),...] | [].
+-spec fetch_keys_local/1 :: (atom()) -> list().
 fetch_keys_local(Srv) ->
     MatchSpec = [{#cache_obj{key = '$1', _ = '_'}
                   ,[{'orelse', {'not', {is_tuple, '$1'}},
@@ -191,7 +196,7 @@ fetch_keys_local(Srv) ->
                  }],
     ets:select(Srv, MatchSpec).
 
--spec filter_local/2 :: (atom(), fun((term(), term()) -> boolean())) -> proplist().
+-spec filter_local/2 :: (atom(), fun((term(), term()) -> boolean())) -> wh_proplist().
 filter_local(Srv, Pred)  when is_function(Pred, 2) ->
     ets:foldl(fun(#cache_obj{key={monitor_key, _}}, Acc) -> Acc;
                  (#cache_obj{key=K, value=V}, Acc) ->
