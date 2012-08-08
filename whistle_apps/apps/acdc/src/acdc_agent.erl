@@ -238,6 +238,17 @@ handle_cast({member_connect_win, JObj}, #state{status=waiting
     lager:debug("waiting on successful bridge now"),
     {noreply, State#state{call=Call, status=ringing}};
 
+handle_cast({member_connect_monitor, JObj}, #state{status=waiting}=State) ->
+    Call = whapps_call:from_json(wh_json:get_value(<<"Call-ID">>, JObj)),
+    bind_to_call_events(Call),
+
+    lager:debug("monitoring for successful bridge now"),
+    {noreply, State#state{call=Call, status=ringing}};
+
+handle_cast({member_connect_ignore, JObj}, #state{status=waiting}=State) ->
+    lager:debug("ignoring call ~s, going back to ready", [wh_json:get_value(<<"Call-ID">>, JObj)]),
+    {noreply, State#state{status=ready}};
+
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {noreply, State}.

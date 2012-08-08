@@ -109,7 +109,13 @@ handle_member_message(JObj, Props) ->
 handle_member_message(JObj, Props, <<"connect_req">>) ->
     handle_member_connect_req(JObj, Props, props:get_value(status, Props));
 handle_member_message(JObj, Props, <<"connect_win">>) ->
-    handle_member_connect_win(JObj, Props, props:get_value(status, Props)).
+    handle_member_connect_win(JObj, Props, props:get_value(status, Props));
+handle_member_message(JObj, Props, <<"connect_monitor">>) ->
+    handle_member_connect_monitor(JObj, Props, props:get_value(status, Props));
+handle_member_message(JObj, Props, <<"connect_ignore">>) ->
+    handle_member_connect_ignore(JObj, Props, props:get_value(status, Props));
+handle_member_message(_, _, EvtName) ->
+    lager:debug("not handling member event ~s", [EvtName]).
 
 -spec handle_member_connect_win/3 :: (wh_json:json_object(), wh_proplist(), acdc_agent:agent_status()) -> 'ok'.
 handle_member_connect_win(JObj, Props, waiting) ->
@@ -163,3 +169,23 @@ application_name(JObj) ->
                                          ,JObj
                                          ,<<>>)
                      ).
+
+-spec handle_member_connect_monitor/3 :: (wh_json:json_object(), wh_proplist(), acdc_agent:agent_status()) -> 'ok'.
+handle_member_connect_monitor(JObj, Props, waiting) ->
+    gen_listener:cast(props:get_value(server, Props)
+                      ,{member_connect_monitor, JObj}
+                     );
+handle_member_connect_monitor(_, Props, _Status) ->
+    lager:debug("ignoring member monitor, agent ~p in status ~s"
+                ,[props:get_value(server, Props), _Status]
+               ).
+
+-spec handle_member_connect_ignore/3 :: (wh_json:json_object(), wh_proplist(), acdc_agent:agent_status()) -> 'ok'.
+handle_member_connect_ignore(JObj, Props, waiting) ->
+    gen_listener:cast(props:get_value(server, Props)
+                      ,{member_connect_ignore, JObj}
+                     );
+handle_member_connect_ignore(_, Props, _Status) ->
+    lager:debug("ignoring member ignore, agent ~p in status ~s"
+                ,[props:get_value(server, Props), _Status]
+               ).
