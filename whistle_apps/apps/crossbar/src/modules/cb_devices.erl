@@ -275,7 +275,7 @@ create_device(#cb_context{req_data=Req, db_name=Db}=Context) ->
             crossbar_util:response_invalid_data(E, Context);
         {pass, JObj} ->
             Context#cb_context{resp_status=success
-                               ,doc=wh_json:set_value([<<"pvt_type">>, <<"device">>], JObj)
+                               ,doc=wh_json:set_value(<<"pvt_type">>, <<"device">>, JObj)
                               }
     end.
 
