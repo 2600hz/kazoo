@@ -36,6 +36,8 @@
 -record(state, {
           status = 'init' :: agent_status()
          ,call :: whapps_call:call()
+         ,acdc_queue_id :: ne_binary() % the ACDc Queue ID
+         ,msg_queue_id :: ne_binary() % the AMQP Queue ID of the ACDc Queue process
          ,agent_id :: ne_binary()
          ,agent_db :: ne_binary()
          ,account_id :: ne_binary()
@@ -44,7 +46,6 @@
          ,last_connect :: wh_now() % last connection
          ,last_attempt :: wh_now() % last attempt to connect
          ,my_id :: ne_binary()
-         ,my_q :: ne_binary()
          ,timer_ref :: reference()
          ,sync_resp :: wh_json:json_object() % furthest along resp
          }).
@@ -206,27 +207,72 @@ handle_cast({member_connect_req, JObj, MyQ}, #state{status=ready
                                                ,my_id=MyId
                                               }=State) ->
     %% status may have changed, ensure we're ready to respond
-    case is_valid_queue(wh_json:get_value(<<"Queue-ID">>, JObj), Qs) of
+    ACDcQueue = wh_json:get_value(<<"Queue-ID">>, JObj),
+    case is_valid_queue(ACDcQueue, Qs) of
         false -> {noreply, State};
         true ->
             send_member_connect_resp(JObj, MyQ, AgentId, MyId, LastConn),
-            {noreply, State#state{status=waiting}}
+            {noreply, State#state{status=waiting
+                                  ,acdc_queue_id = ACDcQueue
+                                  ,msg_queue_id = wh_json:get_value(<<"Server-ID">>, JObj)
+                                 }}
     end;
 
 handle_cast({call_bridged, CallId}, #state{status=ringing}=State) ->
     lager:debug("member bridged to agent on ~s", [CallId]),
     {noreply, State#state{status=answered}};
 
-handle_cast({call_hungup, CallId}, #state{status=ringing, call=Call}=State) ->
+handle_cast({call_bridge_failed, Reason}, #state{status=ringing
+                                                 ,msg_queue_id=ServerId
+                                                 ,my_id=MyId
+                                                 ,call=Call
+                                                }=State) ->
+    lager:debug("failed to bridge to agent endpoints: ~s", [Reason]),
+
+    unbind_from_call_events(Call),
+    send_connect_retry(Call, ServerId, MyId),
+
+    {noreply, State#state{status=wrapup
+                          ,timer_ref=start_wrapup_timer()
+                          ,call=undefined
+                          ,msg_queue_id=undefined
+                          ,acdc_queue_id=undefined
+                         }};
+
+handle_cast({call_hungup, CallId}, #state{status=ringing
+                                          ,call=Call
+                                          ,msg_queue_id=ServerId
+                                          ,my_id=MyId
+                                         }=State) ->
     case whapps_call:call_id(Call) =:= CallId of
         false -> {noreply, State};
         true ->
             lager:debug("member and agent finished call"),
+            unbind_from_call_events(Call),
+            send_hangup_to_queue(Call, ServerId, MyId),
             {noreply, State#state{status=wrapup
                                   ,timer_ref=start_wrapup_timer()
                                   ,call=undefined
                                  }}
     end;
+
+handle_cast({call_hungup, CallId}, #state{status=answered
+                                          ,call=Call
+                                          ,msg_queue_id=ServerId
+                                          ,my_id=MyId
+                                         }=State) ->
+    case whapps_call:call_id(Call) =:= CallId of
+        false -> {noreply, State};
+        true ->
+            lager:debug("member and agent finished call"),
+            unbind_from_call_events(Call),
+            send_hangup_to_queue(Call, ServerId, MyId),
+            {noreply, State#state{status=wrapup
+                                  ,timer_ref=start_wrapup_timer()
+                                  ,call=undefined
+                                 }}
+    end;
+
 
 handle_cast({member_connect_win, JObj}, #state{status=waiting
                                                    ,endpoints=EPs
@@ -383,6 +429,22 @@ idle_time(T) -> wh_util:elapsed_s(T).
 -spec call_id/1 :: ('undefined' | whapps_call:call()) -> 'undefined' | ne_binary().
 call_id(undefined) -> undefined;
 call_id(Call) -> whapps_call:call_id(Call).
+
+-spec send_connect_retry/3 :: (whapps_call:call(), ne_binary(), ne_binary()) -> 'ok'.
+send_connect_retry(Call, ?NE_BINARY = ServerId, ?NE_BINARY = MyId) ->
+    Resp = [{<<"Call-ID">>, whapps_call:call_id(Call)}
+            ,{<<"Process-ID">>, MyId}
+            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+           ],
+    wapi_acdc_queue:publish_member_connect_retry(ServerId, Resp).
+
+
+send_hangup_to_queue(Call, ?NE_BINARY = ServerId, ?NE_BINARY = MyId) ->
+    Resp = [{<<"Call-ID">>, whapps_call:call_id(Call)}
+            ,{<<"Process-ID">>, MyId}
+            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+           ],
+    wapi_acdc_queue:publish_member_hungup(ServerId, Resp).
 
 %% Compare the recv'd sync_resp to the held sync_resp, returning the one 'furthest along'
 -spec choose_sync_resp/2 :: (wh_json:json_object(), wh_json:json_object() | 'undefined') ->

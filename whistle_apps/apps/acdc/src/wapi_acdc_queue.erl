@@ -8,6 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(wapi_acdc_queue).
 
+%% Convert JObj or Prop to iolist json
 -export([member_connect_req/1, member_connect_req_v/1
          ,member_connect_resp/1, member_connect_resp_v/1
          ,member_connect_win/1, member_connect_win_v/1
@@ -44,7 +45,9 @@
                                    ]).
 -define(MEMBER_CONNECT_REQ_TYPES, []).
 
--spec member_connect_req/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec member_connect_req/1 :: (api_terms()) ->
+                                      {'ok', iolist()} |
+                                      {'error', string()}.
 member_connect_req(Props) when is_list(Props) ->
     case member_connect_req_v(Props) of
         true -> wh_api:build_message(Props, ?MEMBER_CONNECT_REQ_HEADERS, ?OPTIONAL_MEMBER_CONNECT_REQ_HEADERS);
@@ -82,7 +85,9 @@ member_connect_req_routing_key(JObj) ->
                                    ]).
 -define(MEMBER_CONNECT_RESP_TYPES, []).
 
--spec member_connect_resp/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec member_connect_resp/1 :: (api_terms()) ->
+                                       {'ok', iolist()} |
+                                       {'error', string()}.
 member_connect_resp(Props) when is_list(Props) ->
     case member_connect_resp_v(Props) of
         true -> wh_api:build_message(Props, ?MEMBER_CONNECT_RESP_HEADERS, ?OPTIONAL_MEMBER_CONNECT_RESP_HEADERS);
@@ -107,7 +112,9 @@ member_connect_resp_v(JObj) ->
                                     ]).
 -define(MEMBER_CONNECT_WIN_TYPES, []).
 
--spec member_connect_win/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec member_connect_win/1 :: (api_terms()) ->
+                                      {'ok', iolist()} |
+                                      {'error', string()}.
 member_connect_win(Props) when is_list(Props) ->
     case member_connect_win_v(Props) of
         true -> wh_api:build_message(Props, ?MEMBER_CONNECT_WIN_HEADERS, ?OPTIONAL_MEMBER_CONNECT_WIN_HEADERS);
@@ -132,7 +139,9 @@ member_connect_win_v(JObj) ->
                                        ]).
 -define(MEMBER_CONNECT_MONITOR_TYPES, []).
 
--spec member_connect_monitor/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec member_connect_monitor/1 :: (api_terms()) ->
+                                          {'ok', iolist()} |
+                                          {'error', string()}.
 member_connect_monitor(Props) when is_list(Props) ->
     case member_connect_monitor_v(Props) of
         true -> wh_api:build_message(Props, ?MEMBER_CONNECT_MONITOR_HEADERS, ?OPTIONAL_MEMBER_CONNECT_MONITOR_HEADERS);
@@ -157,7 +166,9 @@ member_connect_monitor_v(JObj) ->
                                       ]).
 -define(MEMBER_CONNECT_IGNORE_TYPES, []).
 
--spec member_connect_ignore/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec member_connect_ignore/1 :: (api_terms()) ->
+                                         {'ok', iolist()} |
+                                         {'error', string()}.
 member_connect_ignore(Props) when is_list(Props) ->
     case member_connect_ignore_v(Props) of
         true -> wh_api:build_message(Props, ?MEMBER_CONNECT_IGNORE_HEADERS, ?OPTIONAL_MEMBER_CONNECT_IGNORE_HEADERS);
@@ -174,15 +185,19 @@ member_connect_ignore_v(JObj) ->
 
 %%------------------------------------------------------------------------------
 %% Member Connect Retry
+%%   Sent by the agent process that dialed its agent endpoints when the agent
+%%   fails to respond. Informs the queue to try a member_connect_req again
 %%------------------------------------------------------------------------------
 -define(MEMBER_CONNECT_RETRY_HEADERS, [<<"Call-ID">>]).
--define(OPTIONAL_MEMBER_CONNECT_RETRY_HEADERS, []).
+-define(OPTIONAL_MEMBER_CONNECT_RETRY_HEADERS, [<<"Process-ID">>]).
 -define(MEMBER_CONNECT_RETRY_VALUES, [{<<"Event-Category">>, <<"member">>}
                                       ,{<<"Event-Name">>, <<"connect_retry">>}
                                      ]).
 -define(MEMBER_CONNECT_RETRY_TYPES, []).
 
--spec member_connect_retry/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec member_connect_retry/1 :: (api_terms()) ->
+                                        {'ok', iolist()} |
+                                        {'error', string()}.
 member_connect_retry(Props) when is_list(Props) ->
     case member_connect_retry_v(Props) of
         true -> wh_api:build_message(Props, ?MEMBER_CONNECT_RETRY_HEADERS, ?OPTIONAL_MEMBER_CONNECT_RETRY_HEADERS);
@@ -199,15 +214,20 @@ member_connect_retry_v(JObj) ->
 
 %%------------------------------------------------------------------------------
 %% Member Hungup
+%%   When a bridge ends, the agent processes controlling/monitoring the call
+%%   will send the Queue process this hangup event, so the queue knows the call
+%%   has finished.
 %%------------------------------------------------------------------------------
 -define(MEMBER_HUNGUP_HEADERS, [<<"Call-ID">>]).
--define(OPTIONAL_MEMBER_HUNGUP_HEADERS, []).
+-define(OPTIONAL_MEMBER_HUNGUP_HEADERS, [<<"Process-ID">>]).
 -define(MEMBER_HUNGUP_VALUES, [{<<"Event-Category">>, <<"member">>}
                                ,{<<"Event-Name">>, <<"hungup">>}
                               ]).
 -define(MEMBER_HUNGUP_TYPES, []).
 
--spec member_hungup/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec member_hungup/1 :: (api_terms()) ->
+                                 {'ok', iolist()} |
+                                 {'error', string()}.
 member_hungup(Props) when is_list(Props) ->
     case member_hungup_v(Props) of
         true -> wh_api:build_message(Props, ?MEMBER_HUNGUP_HEADERS, ?OPTIONAL_MEMBER_HUNGUP_HEADERS);
