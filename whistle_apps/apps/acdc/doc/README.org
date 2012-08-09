@@ -115,3 +115,40 @@ Q                        A1(_)(R)
 
 Queues manage the dispersal of member calls to agents. Because the queue won't know if an agent is busy in another queue, the queue will broadcast a member_connect_req to all known agents. The queue will collect member_connect_resps and choose one agent, based on routing strategy, to send the member_connect_win message. If the agent is unable to connect the call and send the queue a member_connected, the agent will attempt the next appropriate member_connect_resp. If the list is exhausted, the queue will wait a configurable amount of time before sending another member_connect_req and repeating the process.
 
+*** Queue Process Initialization
+
+As with agents, multiple queue processes can (and should) be started per acdc queue. The challenge becomes how to coordinate member calls being distributed to agents with multiple queue processes running for the same queue.
+
+1. member_call published from callflow module to shared queue
+CF -- member_call --> Q1(1)
+                      Q1(2)
+
+2a. Q1(1) recvs the member_call request, published the member_connect_req to the agents
+Q1(1) -- member_connect_req --> As
+
+2b. Q1(1) publishes to the other Q1 processes that its trying to connect the member call.
+Q1(2) (and any others) will set timers for this member call in case Q1(1) dies
+Q1(1) -- member_call_trying --|
+                              |
+Q1(2) <-----------------------|
+
+3. Q1(1) recvs the member_connect_resps from the agents, and lets the other queue processes know. This cancels the timer Q1(2) set.
+Q1(1) <-- member_connect_resp -- A
+
+Q1(1) -- member_connect_responded --|
+                                    |
+Q1(2) <-----------------------------|
+
+4a. Q1(1) sends the member_connect_win to the "winning" agent
+Q1(1) -- member_connect_win --> A
+
+4b. Q1(1) sends the member_connect_monitor to other agent processes that match the winning agent id
+Q1(1) -- member_connect_monitor --> A
+
+4c. Q1(1) sends the member_connect_ignore to all other responders
+Q1(1) -- member_connect_ignore --> As
+
+5. Q1(\*) recvs member_hungup from agent (makes sure any stats triggered by the hangup are collected).
+Q1(\*) <-- member_hungup -- A
+
+6. If the agent process sends the member_connect_retry, it is published and consumed like the member_call message (meaning goto 2 and substitute member_call with member_connect_retry.
