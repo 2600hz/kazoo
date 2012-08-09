@@ -9,7 +9,8 @@
 -module(wapi_acdc_queue).
 
 %% Convert JObj or Prop to iolist json
--export([member_connect_req/1, member_connect_req_v/1
+-export([member_call/1, member_call_v/1
+         ,member_connect_req/1, member_connect_req_v/1
          ,member_connect_resp/1, member_connect_resp_v/1
          ,member_connect_win/1, member_connect_win_v/1
          ,member_connect_monitor/1, member_connect_monitor_v/1
@@ -22,7 +23,8 @@
          ,unbind_q/2
         ]).
 
--export([publish_member_connect_req/1, publish_member_connect_req/2
+-export([publish_member_call/1, publish_member_call/2
+         ,publish_member_connect_req/1, publish_member_connect_req/2
          ,publish_member_connect_resp/2, publish_member_connect_resp/3
          ,publish_member_connect_win/2, publish_member_connect_win/3
          ,publish_member_connect_monitor/2, publish_member_connect_monitor/3
@@ -32,6 +34,48 @@
         ]).
 
 -include("acdc.hrl").
+
+%%------------------------------------------------------------------------------
+%% Member Connect Request
+%%------------------------------------------------------------------------------
+-define(MEMBER_CALL_KEY, "member.call."). % append queue ID
+
+-define(MEMBER_CALL_HEADERS, [<<"Queue-ID">>, <<"Call">>]).
+-define(OPTIONAL_MEMBER_CALL_HEADERS, []).
+-define(MEMBER_CALL_VALUES, [{<<"Event-Category">>, <<"member">>}
+                                    ,{<<"Event-Name">>, <<"call">>}
+                                   ]).
+-define(MEMBER_CALL_TYPES, []).
+
+-spec member_call/1 :: (api_terms()) ->
+                               {'ok', iolist()} |
+                               {'error', string()}.
+member_call(Props) when is_list(Props) ->
+    case member_call_v(Props) of
+        true -> wh_api:build_message(Props, ?MEMBER_CALL_HEADERS, ?OPTIONAL_MEMBER_CALL_HEADERS);
+        false -> {error, "Proplist failed validation for member_call"}
+    end;
+member_call(JObj) ->
+    member_call(wh_json:to_proplist(JObj)).
+
+-spec member_call_v/1 :: (api_terms()) -> boolean().
+member_call_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?MEMBER_CALL_HEADERS, ?MEMBER_CALL_VALUES, ?MEMBER_CALL_TYPES);
+member_call_v(JObj) ->
+    member_call_v(wh_json:to_proplist(JObj)).
+
+-spec member_call_routing_key/1 :: (ne_binary() | 
+                                    wh_json:json_object() |
+                                    wh_proplist()
+                                   ) -> ne_binary().
+member_call_routing_key(?NE_BINARY = Id) ->
+    <<?MEMBER_CALL_KEY, Id/binary>>;
+member_call_routing_key(Props) when is_list(Props) ->
+    Id = props:get_value(<<"Queue-ID">>, Props, <<"*">>),
+    <<?MEMBER_CALL_KEY, Id/binary>>;
+member_call_routing_key(JObj) ->
+    Id = wh_json:get_value(<<"Queue-ID">>, JObj, <<"*">>),
+    <<?MEMBER_CALL_KEY, Id/binary>>.
 
 %%------------------------------------------------------------------------------
 %% Member Connect Request
@@ -263,6 +307,13 @@ unbind_q(Q, Props) ->
 %%------------------------------------------------------------------------------
 %% Publishers for convenience
 %%------------------------------------------------------------------------------
+-spec publish_member_call/1 :: (api_terms()) -> 'ok'.
+-spec publish_member_call/2 :: (api_terms(), ne_binary()) -> 'ok'.
+publish_member_call(JObj) ->
+    publish_member_call(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_member_call(API, ContentType) ->
+    {ok, Payload} = wh_api:prepare_api_payload(API, ?MEMBER_CALL_VALUES, fun member_call/1),
+    amqp_util:callmgr_publish(Payload, ContentType, member_call_routing_key(API)).
 
 -spec publish_member_connect_req/1 :: (api_terms()) -> 'ok'.
 -spec publish_member_connect_req/2 :: (api_terms(), ne_binary()) -> 'ok'.
