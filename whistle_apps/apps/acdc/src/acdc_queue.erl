@@ -69,13 +69,13 @@ start_link(AcctDb, QueueJObj) ->
                            ).
 
 %%%===================================================================
-%%% gen_server callbacks
+%%% gen_listener callbacks
 %%%===================================================================
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Initializes the server
+%% Initializes the listener
 %%
 %% @spec init(Args) -> {ok, State} |
 %%                     {ok, State, Timeout} |
@@ -153,9 +153,9 @@ handle_event(_JObj, #state{}=_) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% This function is called by a gen_server when it is about to
+%% This function is called by a gen_listener when it is about to
 %% terminate. It should be the opposite of Module:init/1 and do any
-%% necessary cleaning up. When it returns, the gen_server terminates
+%% necessary cleaning up. When it returns, the gen_listener terminates
 %% with Reason. The return value is ignored.
 %%
 %% @spec terminate(Reason, State) -> void()
