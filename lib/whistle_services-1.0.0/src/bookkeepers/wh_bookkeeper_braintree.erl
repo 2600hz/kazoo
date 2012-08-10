@@ -49,6 +49,13 @@ sync([ServiceItem|ServiceItems], BillingId, Updates) ->
             sync(ServiceItems, BillingId, update_subscriptions(PlanId, Subscription, Updates))
     end.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec handle_single_discount/2 :: (wh_service_item:item(), braintree_subscription:subscription()) -> braintree_subscription:subscription().
 handle_single_discount(ServiceItem, Subscription) ->
     DiscountId = braintree_single_discount_id(ServiceItem),
     SingleDiscount = wh_service_item:single_discount(ServiceItem),
@@ -61,7 +68,14 @@ handle_single_discount(ServiceItem, Subscription) ->
                 Rate -> braintree_subscription:update_discount_amount(S, DiscountId, Rate)
             end
     end.
-    
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec handle_cumulative_discounts/2 :: (wh_service_item:item(), braintree_subscription:subscription()) -> braintree_subscription:subscription().
 handle_cumulative_discounts(ServiceItem, Subscription) ->
     DiscountId = braintree_cumulative_discount_id(ServiceItem),
     CumulativeDiscount = wh_service_item:cumulative_discount(ServiceItem),
