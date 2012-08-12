@@ -1744,22 +1744,13 @@ wait_for_fax(Timeout) ->
     receive
         {amqp_msg, JObj} ->
             case get_event_type(JObj) of
-                { <<"call_event">>, <<"CHANNEL_DESTROY">>, _ } ->
-                    lager:debug("channel was destroyed while waiting for fax"),
-                    {error, channel_destroy};
-                { <<"call_event">>, <<"CHANNEL_HANGUP">>, _ } ->
-                    lager:debug("channel was hungup while waiting for fax"),
-                    {error, channel_hungup};
                 { <<"error">>, _, <<"receive_fax">> } ->
                     lager:debug("channel execution error while waiting for fax: ~s", [wh_json:encode(JObj)]),
                     {error, JObj};
                 { <<"call_event">>, <<"CHANNEL_EXECUTE">>, <<"receive_fax">> } ->
                     wait_for_fax(infinity);
                 { <<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"receive_fax">> } ->
-                    case wh_json:is_true(<<"Fax-Success">>, JObj, false) of
-                        true -> {ok, JObj};
-                        false -> {failed, JObj}
-                    end;
+                    {ok, wh_json:set_value(<<"Fax-Success">>, true, JObj)};
                 _ when Timeout =:= infinity ->
                     wait_for_fax(Timeout);
                 _ ->
