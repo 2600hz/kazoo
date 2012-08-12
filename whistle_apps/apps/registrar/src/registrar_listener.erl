@@ -87,7 +87,7 @@ init([]) ->
                              ,{consume_options, [{exclusive, false}]}
                              ,{basic_qos, 1}
                             ],
-                  Bindings= [{notifications, [{restrict_to, [presence_probe]}]}],
+                  Bindings = [{notifications, [{restrict_to, [presence_probe]}]}],
                   gen_listener:add_queue(Self, QueueName, Options, Bindings)
           end),
     {ok, []}.
