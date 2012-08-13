@@ -103,62 +103,79 @@ get_cors_headers(#cb_context{allow_methods=Allowed}) ->
      ,{<<"Access-Control-Max-Age">>, wh_util:to_binary(?SECONDS_IN_DAY)}
     ].
 
--spec get_req_data/2 :: (#cb_context{}, #http_req{}) -> {#cb_context{}, #http_req{}} |
-                                                        {'halt', #cb_context{}, #http_req{}}.
+-spec get_req_data/2 :: (#cb_context{}, #http_req{}) ->
+                                {#cb_context{}, #http_req{}} |
+                                {'halt', #cb_context{}, #http_req{}}.
+-spec get_req_data/3 :: (#cb_context{}, {content_type(), #http_req{}}, wh_json:json_object()) ->
+                                {#cb_context{}, #http_req{}} |
+                                {'halt', #cb_context{}, #http_req{}}.
 get_req_data(Context, Req0) ->
     {QS0, Req1} = cowboy_http_req:qs_vals(Req0),
     QS = wh_json:from_list(QS0),
-    case cowboy_http_req:parse_header('Content-Type', Req1) of
-        {undefined, Req2} ->
-            lager:debug("undefined content type when getting req data, assuming application/json"),
-            {JSON, Req3_1} = get_json_body(Req2),
+
+    try get_json_body(Req1) of
+        {JSON, Req2} ->
+            lager:debug("request body successfully parsed as JSON"),
             {Context#cb_context{req_json=JSON
                                 ,req_data=wh_json:get_value(<<"data">>, JSON, wh_json:new())
                                 ,query_json=QS
                                }
-             ,Req3_1};
-        {{<<"multipart">>, <<"form-data">>, _}, Req2} ->
-            lager:debug("multipart/form-data content type when getting req data"),
-            case catch extract_multipart(Context#cb_context{query_json=QS}, Req2) of
-                {'EXIT', _E} ->
-                    lager:debug("failed to extract multipart: ~p", [_E]),
-                    {halt, Context, Req2};
-                Resp -> Resp
-            end;
-        {{<<"application">>, <<"x-www-form-urlencoded">>, _}, Req2} ->
-            lager:debug("application/x-www-form-urlencoded content type when getting req data"),
-            case catch extract_multipart(Context#cb_context{query_json=QS}, Req2) of
-                {'EXIT', _} ->
-                    lager:debug("failed to extract multipart"),
-                    {halt, Context, Req2};
-                Resp -> Resp
-            end;
-        {{<<"application">>, <<"json">>, _}, Req2} ->
-            lager:debug("application/json content type when getting req data"),
-            {JSON, Req3_1} = get_json_body(Req2),
-            {Context#cb_context{req_json=JSON
-                                ,req_data=wh_json:get_value(<<"data">>, JSON, wh_json:new())
-                                ,query_json=QS
-                               }
-             ,Req3_1};
-        {{<<"application">>, <<"x-json">>, _}, Req2} ->
-            lager:debug("application/x-json content type when getting req data"),
-            {JSON, Req3_1} = get_json_body(Req2),
-            {Context#cb_context{req_json=JSON
-                                ,req_data=wh_json:get_value(<<"data">>, JSON, wh_json:new())
-                                ,query_json=QS
-                               }
-             ,Req3_1};
-        {{<<"application">>, <<"base64">>, _}, Req2} ->
-            lager:debug("application/base64 content type when getting req data"),
-            decode_base64(Context#cb_context{query_json=QS}, <<"application/base64">>, Req2);
-        {{<<"application">>, <<"x-base64">>, _}, Req2} ->
-            lager:debug("application/x-base64 content type when getting req data"),
-            decode_base64(Context#cb_context{query_json=QS}, <<"application/base64">>, Req2);
-        {{ContentType, ContentSubType, _}, Req2} ->
-            lager:debug("unknown content-type: ~s/~s", [ContentType, ContentSubType]),
-            extract_file(Context#cb_context{query_json=QS}, list_to_binary([ContentType, "/", ContentSubType]), Req2)
+             ,Req2}
+    catch
+        _E:_R ->
+            lager:debug("failed to parse request body as JSON, checking content-type"),
+            get_req_data(Context, cowboy_http_req:parse_header('Content-Type', Req0), QS)
     end.
+
+get_req_data(Context, {undefined, Req1}, QS) ->
+    lager:debug("undefined content type when getting req data, assuming application/json"),
+    {JSON, Req2} = get_json_body(Req1),
+    {Context#cb_context{req_json=JSON
+                        ,req_data=wh_json:get_value(<<"data">>, JSON, wh_json:new())
+                        ,query_json=QS
+                       }
+     ,Req2};
+get_req_data(Context, {{<<"multipart">>, <<"form-data">>, _}, Req1}, QS) ->
+    lager:debug("multipart/form-data content type when getting req data"),
+    case catch extract_multipart(Context#cb_context{query_json=QS}, Req1) of
+        {'EXIT', _E} ->
+            lager:debug("failed to extract multipart: ~p", [_E]),
+            {halt, Context, Req1};
+        Resp -> Resp
+    end;
+get_req_data(Context, {{<<"application">>, <<"x-www-form-urlencoded">>, _}, Req1}, QS) ->
+    lager:debug("application/x-www-form-urlencoded content type when getting req data"),
+    case catch extract_multipart(Context#cb_context{query_json=QS}, Req1) of
+        {'EXIT', _} ->
+            lager:debug("failed to extract multipart"),
+            {halt, Context, Req1};
+        Resp -> Resp
+    end;
+get_req_data(Context, {{<<"application">>, <<"json">>, _}, Req1}, QS) ->
+    lager:debug("application/json content type when getting req data"),
+    {JSON, Req2} = get_json_body(Req1),
+    {Context#cb_context{req_json=JSON
+                        ,req_data=wh_json:get_value(<<"data">>, JSON, wh_json:new())
+                        ,query_json=QS
+                       }
+     ,Req2};
+get_req_data(Context, {{<<"application">>, <<"x-json">>, _}, Req1}, QS) ->
+    lager:debug("application/x-json content type when getting req data"),
+    {JSON, Req2} = get_json_body(Req1),
+    {Context#cb_context{req_json=JSON
+                        ,req_data=wh_json:get_value(<<"data">>, JSON, wh_json:new())
+                        ,query_json=QS
+                       }
+     ,Req2};
+get_req_data(Context, {{<<"application">>, <<"base64">>, _}, Req1}, QS) ->
+    lager:debug("application/base64 content type when getting req data"),
+    decode_base64(Context#cb_context{query_json=QS}, <<"application/base64">>, Req1);
+get_req_data(Context, {{<<"application">>, <<"x-base64">>, _}, Req1}, QS) ->
+    lager:debug("application/x-base64 content type when getting req data"),
+    decode_base64(Context#cb_context{query_json=QS}, <<"application/base64">>, Req1);
+get_req_data(Context, {{ContentType, ContentSubType, _}, Req1}, QS) ->
+    lager:debug("unknown content-type: ~s/~s", [ContentType, ContentSubType]),
+    extract_file(Context#cb_context{query_json=QS}, list_to_binary([ContentType, "/", ContentSubType]), Req1).
 
 -spec extract_multipart/2 :: (#cb_context{}, #http_req{}) -> {#cb_context{}, #http_req{}}.
 extract_multipart(#cb_context{req_files=Files}=Context, #http_req{}=Req0) ->
@@ -276,10 +293,7 @@ get_json_body(Req0) ->
             catch
                 _:{badmatch, {comma,{decoder,_,S,_,_,_}}} ->
                     lager:debug("failed to decode json: comma error around char ~s", [wh_util:to_list(S)]),
-                    {{malformed, list_to_binary(["Failed to decode: comma error around char ", wh_util:to_list(S)])}, Req1};
-                _:E ->
-                    lager:debug("failed to decode json: ~p", [E]),
-                    {{malformed, <<"JSON failed to validate; check your commas and curlys">>}, Req1}
+                    {{malformed, list_to_binary(["Failed to decode: comma error around char ", wh_util:to_list(S)])}, Req1}
             end
     end.
 
@@ -292,7 +306,6 @@ get_json_body(Req0) ->
 -spec is_valid_request_envelope/1 :: (wh_json:json_object()) -> boolean().
 is_valid_request_envelope(JSON) ->
     wh_json:get_value([<<"data">>], JSON, undefined) =/= undefined.
-
 
 -spec get_http_verb/2 :: (http_method(), #cb_context{}) -> ne_binary().
 get_http_verb(Method, #cb_context{req_json=ReqJObj, query_json=ReqQs}) ->

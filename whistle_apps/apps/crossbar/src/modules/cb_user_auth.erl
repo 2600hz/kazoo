@@ -46,7 +46,7 @@ init() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec allowed_methods/0 :: () -> http_methods().
--spec allowed_methods/1 :: (path_tokens()) -> http_methods().
+-spec allowed_methods/1 :: (path_token()) -> http_methods().
 allowed_methods() ->
     ['PUT'].
 allowed_methods(<<"recovery">>) ->

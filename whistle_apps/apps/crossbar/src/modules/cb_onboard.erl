@@ -129,10 +129,10 @@ put(#cb_context{req_data=JObj, doc=Data}=Context) ->
                     IContext1 = save_invite_code(IContext, wh_json:set_value(<<"status">>, <<"used">>, Doc)),
                     case populate_new_account(Data, Context) of
                         #cb_context{account_id=undefined}=Else ->
-                            save_invite_code(IContext1, wh_json:set_value(<<"status">>, <<"unused">>, IContext1#cb_context.doc)),
+                            _ = save_invite_code(IContext1, wh_json:set_value(<<"status">>, <<"unused">>, IContext1#cb_context.doc)),
                             create_response(Else);
                         #cb_context{account_id=AcctId}=Context1 ->
-                            save_invite_code(IContext1, wh_json:set_value(<<"used_by">>, AcctId, IContext1#cb_context.doc)),
+                            _ = save_invite_code(IContext1, wh_json:set_value(<<"used_by">>, AcctId, IContext1#cb_context.doc)),
                             create_response(Context1)
                     end;
                 Else ->
