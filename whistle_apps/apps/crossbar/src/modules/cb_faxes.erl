@@ -18,7 +18,7 @@
          ,get/1, get/2, get/3, get/4
          ,put/1, put/2
          ,post/1, post/2
-         ,delete/1, delete/2
+         ,delete/3
         ]).
 
 -include_lib("crossbar/include/crossbar.hrl").
@@ -217,11 +217,8 @@ post(#cb_context{}=Context, _) ->
 %% If the HTTP verib is DELETE, execute the actual action, usually a db delete
 %% @end
 %%--------------------------------------------------------------------
--spec delete/1 :: (#cb_context{}) -> #cb_context{}.
--spec delete/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
-delete(#cb_context{}=Context) ->
-    crossbar_doc:delete(Context).
-delete(#cb_context{}=Context, _) ->
+-spec delete/3 :: (#cb_context{}, path_token(), path_token()) -> #cb_context{}.
+delete(#cb_context{}=Context, <<"outgoing">>, _Id) ->
     crossbar_doc:delete(Context).
 
 %%--------------------------------------------------------------------
