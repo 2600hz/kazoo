@@ -9,6 +9,7 @@
 
 -export([empty/0]).
 -export([allow_updates/1]).
+-export([from_service_json/1]).
 -export([reconcile/1, reconcile/2]).
 -export([fetch/1]).
 -export([update/4]).
@@ -68,6 +69,18 @@ allow_updates(_Account) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec from_service_json/1 :: (wh_json:json_object()) -> services().
+from_service_json(JObj) ->
+    AccountId = wh_json:get_value(<<"pvt_account_id">>, JObj),
+    #wh_services{account_id=AccountId, jobj=JObj
+                 ,cascade_quantities=cascade_quantities(AccountId)}.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
 -spec reconcile/1 :: (ne_binary()) -> services().
 reconcile(Account) ->
     ServiceModules = get_service_modules(),
@@ -104,6 +117,7 @@ reconcile(Account, Module) ->
 fetch(Account) ->
     AccountId = wh_util:format_account_id(Account, raw),
     AccountDb = wh_util:format_account_id(Account, encoded),
+    %% TODO: if reseller populate cascade via merchant id
     case couch_mgr:open_doc(?WH_SERVICES_DB, AccountId) of
         {ok, JObj} ->
             lager:debug("loaded account service doc ~s", [AccountId]),
@@ -119,6 +133,7 @@ fetch(Account) ->
                    ,{<<"pvt_vsn">>, <<"1">>}
                    ,{<<"pvt_account_id">>, AccountId}
                    ,{<<"pvt_account_db">>, AccountDb}
+                   ,{<<"pvt_status">>, <<"good_standing">>}
                    ,{?QUANTITIES, wh_json:new()}
                   ],
             #wh_services{account_id=AccountId, jobj=wh_json:from_list(New)
@@ -145,10 +160,10 @@ update(Category, Item, Quantity, #wh_services{updates=JObj}=Services) when is_bi
 %% @end
 %%--------------------------------------------------------------------
 -spec save/1 :: (services()) -> services().
-save(#wh_services{jobj=JObj, updates=UpdatedQuantities, account_id=AccountId, dirty=Dirty}=Services) ->
+save(#wh_services{jobj=JObj, updates=UpdatedQuantities, account_id=AccountId}=Services) ->
     CurrentQuantities = wh_json:get_value(?QUANTITIES, JObj, wh_json:new()),
     Props = [{<<"_id">>, AccountId}
-             ,{<<"pvt_dirty">>, Dirty}
+             ,{<<"pvt_dirty">>, true}
              ,{<<"pvt_modified">>, wh_util:current_tstamp()}
              ,{<<"pvt_tree">>, get_pvt_tree(AccountId)}
              ,{?QUANTITIES, wh_json:merge_jobjs(UpdatedQuantities, CurrentQuantities)}
@@ -259,7 +274,6 @@ cascade_category_quantity(Category, Exceptions, #wh_services{cascade_quantities=
 -spec reset_category/2 :: (ne_binary(), services()) -> services().
 reset_category(Category, #wh_services{updates=JObj}=Services) ->
     Services#wh_services{updates=wh_json:set_value(Category, wh_json:new(), JObj)}.
-
 
 %%%===================================================================
 %%% Internal functions

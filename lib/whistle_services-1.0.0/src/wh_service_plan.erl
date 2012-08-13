@@ -83,7 +83,7 @@ create_items(Category, Item, ServiceItems, ServicePlan, Services) ->
                                          CumulativeQuantity = case wh_json:get_integer_value(<<"maximum">>, CumulativeDiscount, 0) of
                                                                   Max when Max < Quantity -> 
                                                                       lager:debug("item '~s/~s' quantity ~p exceeds cumulative discount max, using ~p"
-                                                                                  ,[Category, Item, Quantity, Max]),
+                                                                                  ,[Category, As, Quantity, Max]),
                                                                       Max;
                                                                   _ -> Quantity
                                                               end,
@@ -95,9 +95,9 @@ create_items(Category, Item, ServiceItems, ServicePlan, Services) ->
                                          wh_service_item:set_cumulative_discount_rate(CumulativeRate, I2)
                                  end
                          end
-                        ,fun(I) -> wh_service_item:set_bookkeepers(bookkeeper_jobj(Category, Item, ServicePlan), I) end
+                        ,fun(I) -> wh_service_item:set_bookkeepers(bookkeeper_jobj(Category, As, ServicePlan), I) end
                        ],
-            ServiceItem = lists:foldl(fun(F, I) -> F(I) end, wh_service_items:find(Category, Item, ServiceItems), Routines),
+            ServiceItem = lists:foldl(fun(F, I) -> F(I) end, wh_service_items:find(Category, As, ServiceItems), Routines),
             wh_service_items:update(ServiceItem, ServiceItems)
     end.
 
