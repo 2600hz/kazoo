@@ -132,6 +132,7 @@ from_service_json(JObj) ->
 fetch(Account) ->
     AccountId = wh_util:format_account_id(Account, raw),
     AccountDb = wh_util:format_account_id(Account, encoded),
+    %% TODO: if reseller populate cascade via merchant id
     case couch_mgr:open_doc(?WH_SERVICES_DB, AccountId) of
         {ok, JObj} ->
             lager:debug("loaded account service doc ~s", [AccountId]),
@@ -160,7 +161,7 @@ save(#wh_services{jobj=JObj, updates=UpdatedQuantities, account_id=AccountId, di
     CurrentQuantities = wh_json:get_value(?QUANTITIES, JObj, wh_json:new()),
     Dirty = have_quantities_changed(UpdatedQuantities, CurrentQuantities) orelse ForceDirty,
     Props = [{<<"_id">>, AccountId}
-             ,{<<"pvt_dirty">>, Dirty}
+             ,{<<"pvt_dirty">>, true}
              ,{<<"pvt_modified">>, wh_util:current_tstamp()}
              ,{?QUANTITIES, wh_json:merge_jobjs(UpdatedQuantities, CurrentQuantities)}
             ],

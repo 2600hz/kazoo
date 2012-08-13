@@ -120,6 +120,28 @@ refresh() ->
 -spec reconcile/0 :: () -> 'no_return'.
 -spec reconcile/1 :: (text()) -> 'no_return'.
 
+-include_lib("whistle_services/src/whistle_services.hrl").
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec refresh/0 :: () -> 'ok'.
+refresh() ->
+    couch_mgr:db_create(?WH_SERVICES_DB),
+    couch_mgr:revise_docs_from_folder(?WH_SERVICES_DB, whistle_services, "views").
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec reconcile/0 :: () -> 'no_return'.
+-spec reconcile/1 :: (text()) -> 'no_return'.
+
 reconcile() ->
     reconcile(all).
 

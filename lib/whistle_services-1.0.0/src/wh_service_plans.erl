@@ -66,8 +66,7 @@ public_json([#wh_service_plans{plans=Plans}|ServicePlans], JObj) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Given an account id fetch object defining the current service
-%% plans that should be applied to the account
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec plan_summary/1 :: (wh_json:json_object()) -> wh_json:json_object().
