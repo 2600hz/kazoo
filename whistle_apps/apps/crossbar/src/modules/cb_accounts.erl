@@ -61,10 +61,10 @@ ensure_parent_set() ->
         {ok, AcctJObjs} ->
             case whapps_util:get_master_account_id() of
                 {error, _}=E -> E;
-                {ok, MasterAccountId} -> 
+                {ok, MasterAccountId} ->
                     _ = [ensure_parent_set(MasterAccountId, wh_json:get_value(<<"doc">>, AcctJObj))
                          || AcctJObj <- AcctJObjs,
-                            wh_json:get_value(<<"id">>, AcctJObj) =/= MasterAccountId, % not the default parent                            
+                            wh_json:get_value(<<"id">>, AcctJObj) =/= MasterAccountId, % not the default parent
                             (Tree = wh_json:get_value([<<"doc">>, <<"pvt_tree">>], AcctJObj)) =:= [] orelse % empty tree (should have at least the parent)
                                 Tree =:= <<>> orelse % Tree is an empty string only
                                 Tree =:= [""] orelse % Tree is bound in the prior bit, and might be a list of an empty string
@@ -237,7 +237,7 @@ delete_stop_if_decedants(AccountId, AccountDb, Context) ->
                   ],
     case couch_mgr:get_results(?WH_ACCOUNTS_DB, ?AGG_VIEW_DESCENDANTS, ViewOptions) of
         {error, _} -> crossbar_util:response(error, <<"unable to count descendants">>, 500, Context);
-        {ok, JObjs} -> 
+        {ok, JObjs} ->
             case [JObj || JObj <- JObjs, wh_json:get_value(<<"id">>, JObj) =/= AccountId] of
                 [] -> delete_free_numbers(AccountId, AccountDb, Context);
                 _Else ->
@@ -262,7 +262,7 @@ delete_remove_db(AccountId, AccountDb, Context) ->
                  {error, _R} ->
                      lager:debug("failed to open account defintion ~s: ~p", [AccountId, _R]),
                      false
-             end,    
+             end,
     case Removed of
         true ->
             lager:debug("deleted db ~s", [AccountDb]),
@@ -349,7 +349,6 @@ load_account(AccountId, Context) ->
                             ,PvtIncludes
                            ),
     Context1#cb_context{resp_data=RespData1}.
-     
 
 %%--------------------------------------------------------------------
 %% @private
@@ -545,7 +544,7 @@ load_account_db(AccountId, Context) when is_binary(AccountId) ->
         {error, _R} ->
             lager:debug("unable to open account definition ~s/~s: ~p", [AccountDb, AccountId, _R]),
             crossbar_util:response_db_missing(Context)
-    end.            
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -655,7 +654,7 @@ notfy_new_account(#cb_context{doc = JObj}) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Support the depreciated billing id on the account definition, will 
+%% Support the depreciated billing id on the account definition, will
 %% be phased out shortly
 %% @end
 %%--------------------------------------------------------------------

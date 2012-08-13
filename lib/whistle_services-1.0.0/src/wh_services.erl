@@ -161,7 +161,7 @@ save(#wh_services{jobj=JObj, updates=UpdatedQuantities, account_id=AccountId, di
     CurrentQuantities = wh_json:get_value(?QUANTITIES, JObj, wh_json:new()),
     Dirty = have_quantities_changed(UpdatedQuantities, CurrentQuantities) orelse ForceDirty,
     Props = [{<<"_id">>, AccountId}
-             ,{<<"pvt_dirty">>, true}
+             ,{<<"pvt_dirty">>, Dirty}
              ,{<<"pvt_modified">>, wh_util:current_tstamp()}
              ,{?QUANTITIES, wh_json:merge_jobjs(UpdatedQuantities, CurrentQuantities)}
             ],
