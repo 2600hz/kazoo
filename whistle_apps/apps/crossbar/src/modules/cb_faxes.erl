@@ -153,7 +153,7 @@ validate(#cb_context{req_verb = <<"get">>}=Context, <<"incoming">>) ->
 validate(#cb_context{req_verb = <<"get">>}=Context, <<"incoming">>, Id) ->
     read(Id, Context);
 validate(#cb_context{req_verb = <<"get">>}=Context, <<"outgoing">>, Id) ->
-    read(Id, Context);
+    read(Id, Context#cb_context{db_name=?WH_FAXES});
 validate(#cb_context{req_verb = <<"post">>}=Context, <<"outgoing">>, Id) ->
     update(Id, Context#cb_context{db_name=?WH_FAXES});
 validate(#cb_context{req_verb = <<"delete">>}=Context, <<"outgoing">>, Id) ->
