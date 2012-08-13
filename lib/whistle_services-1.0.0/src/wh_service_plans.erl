@@ -50,13 +50,16 @@ from_service_json(ServicesJObj) ->
 %% suitable for use with the bookkeepers.
 %% @end
 %%--------------------------------------------------------------------
--spec create_items/1 :: (wh_json:json_object()) -> wh_service_items:items().
+-spec create_items/1 :: (wh_json:json_object()) -> {'ok', wh_service_items:items()} | {'error', 'no_plans'}.
 -spec create_items/2 :: (wh_services:services(), plans()) -> wh_service_items:items().
 
 create_items(ServiceJObj) ->
     Services = wh_services:from_service_json(ServiceJObj),
-    ServicePlans = from_service_json(ServiceJObj),
-    create_items(Services, ServicePlans).
+    case from_service_json(ServiceJObj) of
+        [] -> {error, no_plans};
+        ServicePlans ->
+            {ok, create_items(Services, ServicePlans)}
+    end.
 
 create_items(Services, ServicePlans) ->
     Plans = [Plan
@@ -84,9 +87,8 @@ get_plans([], _, ServicePlans) ->
     ServicePlans;
 get_plans([PlanId|PlanIds], Services, ServicePlans) ->
     VendorId = wh_json:get_value([<<"plans">>, PlanId, <<"vendor_id">>], Services),
-    VendorDb = wh_util:format_account_id(VendorId, encoded),
     Overrides = wh_json:get_value([<<"plans">>, PlanId, <<"overrides">>], Services, wh_json:new()),
-    case wh_service_plan:fetch(PlanId, VendorDb, Overrides) of
+    case wh_service_plan:fetch(PlanId, VendorId, Overrides) of
         undefined -> get_plans(PlanIds, Services, ServicePlans);
         Plan -> get_plans(PlanIds, Services, append_vendor_plan(Plan, VendorId, ServicePlans))
     end.

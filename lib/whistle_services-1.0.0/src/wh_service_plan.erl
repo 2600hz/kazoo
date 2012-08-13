@@ -20,13 +20,14 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec fetch/3 :: (ne_binary(), ne_binary(), wh_json:json_object()) -> 'undefined' | wh_json:json_object().
-fetch(PlanId, VendorDb, Overrides) ->
+fetch(PlanId, VendorId, Overrides) ->
+    VendorDb = wh_util:format_account_id(VendorId, encoded),
     case couch_mgr:open_doc(VendorDb, PlanId) of
-        {ok, JObj} -> 
-            lager:debug("using service plan ~s in vendor db ~s", [PlanId, VendorDb]),
+        {ok, JObj} ->
+            lager:debug("found service plan ~s/~s", [VendorDb, PlanId]),
             wh_json:merge_recursive(JObj, wh_json:from_list([{<<"plan">>, Overrides}]));
         {error, _R} ->
-            lager:debug("unable to open service plan ~s in vendor db ~s: ~p", [PlanId, VendorDb, _R]),
+            lager:debug("unable to open service plan ~s/~s: ~p", [VendorDb, PlanId, _R]),
             undefined
     end.
 
