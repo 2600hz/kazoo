@@ -59,9 +59,22 @@ empty() ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec allow_updates/1 :: (ne_binary()) -> boolean().
-allow_updates(_Account) ->
-    true.
+-spec new/1 :: (ne_binary()) -> services().
+new(AccountId) ->
+    TStamp = wh_util:current_tstamp(),
+    Props = [{<<"_id">>, AccountId}
+             ,{<<"pvt_created">>, TStamp}
+             ,{<<"pvt_modified">>, TStamp}
+             ,{<<"pvt_type">>, <<"service">>}
+             ,{<<"pvt_vsn">>, <<"1">>}
+             ,{<<"pvt_account_id">>, AccountId}
+             ,{<<"pvt_account_db">>, wh_util:format_account_id(AccountId, encoded)}
+             ,{<<"pvt_status">>, <<"good_standing">>}
+             ,{?QUANTITIES, wh_json:new()}
+            ],
+    #wh_services{account_id=AccountId, jobj=wh_json:from_list(Props)
+                 ,cascade_quantities=cascade_quantities(AccountId)
+                 ,dirty=true}.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -81,42 +94,9 @@ from_service_json(JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec reconcile/1 :: (ne_binary()) -> services().
-reconcile(Account) ->
-    ServiceModules = get_service_modules(),
-    Services = lists:foldl(fun(M, S) ->
-                                   M:reconcile(S)
-                           end, fetch(Account), ServiceModules),
-    save(Services).
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec reconcile/2 :: ('undefined' | ne_binary(), atom()) -> 'false' | services().
-reconcile(undefined, _) ->
-    false;
-reconcile(Account, Module) ->
-    case get_service_module(Module) of
-        false -> false;
-        ServiceModule ->
-            CurrentServices = fetch(Account),
-            UpdatedServices = ServiceModule:reconcile(CurrentServices),
-            save(UpdatedServices)
-    end.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
 -spec fetch/1 :: (ne_binary()) -> services().
 fetch(Account) ->
     AccountId = wh_util:format_account_id(Account, raw),
-    AccountDb = wh_util:format_account_id(Account, encoded),
     %% TODO: if reseller populate cascade via merchant id
     case couch_mgr:open_doc(?WH_SERVICES_DB, AccountId) of
         {ok, JObj} ->
@@ -125,33 +105,8 @@ fetch(Account) ->
                          ,cascade_quantities=cascade_quantities(AccountId)};
         {error, _R} ->
             lager:debug("unable to open account ~s services doc (creating new): ~p", [Account, _R]),
-            TStamp = wh_util:current_tstamp(),
-            New = [{<<"_id">>, AccountId}
-                   ,{<<"pvt_created">>, TStamp}
-                   ,{<<"pvt_modified">>, TStamp}
-                   ,{<<"pvt_type">>, <<"service">>}
-                   ,{<<"pvt_vsn">>, <<"1">>}
-                   ,{<<"pvt_account_id">>, AccountId}
-                   ,{<<"pvt_account_db">>, AccountDb}
-                   ,{<<"pvt_status">>, <<"good_standing">>}
-                   ,{?QUANTITIES, wh_json:new()}
-                  ],
-            #wh_services{account_id=AccountId, jobj=wh_json:from_list(New)
-                         ,cascade_quantities=cascade_quantities(AccountId)
-                         ,dirty=true}
+            new(AccountId)
     end.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec update/4 :: (ne_binary(), ne_binary(), integer(), services()) -> services().
-update(Category, Item, Quantity, Services) when not is_integer(Quantity) ->
-    update(Category, Item, wh_util:to_integer(Quantity), Services);
-update(Category, Item, Quantity, #wh_services{updates=JObj}=Services) when is_binary(Category), is_binary(Item) ->
-    Services#wh_services{updates=wh_json:set_value([Category, Item], Quantity, JObj)}.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -184,6 +139,63 @@ save(#wh_services{jobj=JObj, updates=UpdatedQuantities, account_id=AccountId}=Se
             save(Services#wh_services{jobj=Existing})
     end.
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec update/4 :: (ne_binary(), ne_binary(), integer(), services()) -> services().
+update(Category, Item, Quantity, Services) when not is_integer(Quantity) ->
+    update(Category, Item, wh_util:to_integer(Quantity), Services);
+update(Category, Item, Quantity, #wh_services{updates=JObj}=Services) when is_binary(Category), is_binary(Item) ->
+    Services#wh_services{updates=wh_json:set_value([Category, Item], Quantity, JObj)}.
+
+%%%===================================================================
+%%% Services functions
+%%%===================================================================
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec allow_updates/1 :: (ne_binary()) -> boolean().
+allow_updates(_Account) ->
+    true.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec reconcile/1 :: (ne_binary()) -> services().
+reconcile(Account) ->
+    ServiceModules = get_service_modules(),
+    Services = lists:foldl(fun(M, S) ->
+                                   M:reconcile(S)
+                           end, fetch(Account), ServiceModules),
+    save(Services).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec reconcile/2 :: ('undefined' | ne_binary(), atom()) -> 'false' | services().
+reconcile(undefined, _) ->
+    false;
+reconcile(Account, Module) ->
+    case get_service_module(Module) of
+        false -> false;
+        ServiceModule ->
+            CurrentServices = fetch(Account),
+            UpdatedServices = ServiceModule:reconcile(CurrentServices),
+            save(UpdatedServices)
+    end.
 
 %%%===================================================================
 %%% Access functions
