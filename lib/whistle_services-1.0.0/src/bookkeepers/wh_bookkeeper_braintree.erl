@@ -16,7 +16,7 @@
                            }).
 
 -record(wh_service_updates, {bt_subscriptions = []
-                             ,billing_id
+                             ,account_id
                              ,bt_customer
                             }).
                              
@@ -26,27 +26,35 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
-sync(Items, BillingId) ->
-    Customer = fetch_or_create_customer(BillingId),
-    sync(wh_service_items:to_list(Items), BillingId, #wh_service_updates{bt_customer=Customer}).
+sync(Items, AccountId) ->
+    Customer = fetch_or_create_customer(AccountId),
+    sync(wh_service_items:to_list(Items), AccountId, #wh_service_updates{bt_customer=Customer}).
 
-sync([], _BillingId, #wh_service_updates{bt_subscriptions=Subscriptions}) ->
+sync([], _AccountId, #wh_service_updates{bt_subscriptions=Subscriptions}) ->
     _ = [braintree_subscription:update(Subscription) 
          || #wh_service_update{bt_subscription=Subscription} <- Subscriptions
         ],
     ok;
-sync([ServiceItem|ServiceItems], BillingId, Updates) ->
+sync([ServiceItem|ServiceItems], AccountId, Updates) ->
     case braintree_plan_addon_id(ServiceItem) of
-        {undefined, _} -> sync(ServiceItems, BillingId, Updates);
-        {_, undefined} -> sync(ServiceItems, BillingId, Updates);
+        {undefined, _} -> 
+            lager:debug("service item had no plan id: ~p", [ServiceItem]),
+            sync(ServiceItems, AccountId, Updates);
+        {_, undefined} -> 
+            lager:debug("service item had no add on id: ~p", [ServiceItem]),
+            sync(ServiceItems, AccountId, Updates);
         {PlanId, AddOnId}->
             Quantity = wh_service_item:quantity(ServiceItem),
             Routines = [fun(S) -> braintree_subscription:update_addon_quantity(S, AddOnId, Quantity) end
+                        ,fun(S) -> 
+                                 Rate = wh_service_item:rate(ServiceItem),
+                                 braintree_subscription:update_addon_amount(S, AddOnId, Rate)
+                         end
                         ,fun(S) -> handle_single_discount(ServiceItem, S) end
                         ,fun(S) -> handle_cumulative_discounts(ServiceItem, S) end
                        ],
             Subscription = lists:foldl(fun(F, S) -> F(S) end, fetch_or_create_subscription(PlanId, Updates), Routines),
-            sync(ServiceItems, BillingId, update_subscriptions(PlanId, Subscription, Updates))
+            sync(ServiceItems, AccountId, update_subscriptions(PlanId, Subscription, Updates))
     end.
 
 %%--------------------------------------------------------------------
@@ -96,14 +104,14 @@ handle_cumulative_discounts(ServiceItem, Subscription) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec fetch_or_create_customer/1 :: (ne_binary()) -> braintree_customer:customer().
-fetch_or_create_customer(BillingId) ->
-    lager:debug("requesting braintree customer ~s", [BillingId]),
-    try braintree_customer:find(BillingId) of
+fetch_or_create_customer(AccountId) ->
+    lager:debug("requesting braintree customer ~s", [AccountId]),
+    try braintree_customer:find(AccountId) of
         Customer -> Customer
     catch
         throw:{not_found, _} ->
-            lager:debug("creating new braintree customer ~s", [BillingId]),
-            braintree_customer:create(BillingId)
+            lager:debug("creating new braintree customer ~s", [AccountId]),
+            braintree_customer:create(AccountId)
     end.
 
 %%--------------------------------------------------------------------
