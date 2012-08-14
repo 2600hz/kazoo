@@ -119,25 +119,23 @@ Queues manage the dispersal of member calls to agents. Because the queue won't k
 
 As with agents, multiple queue processes can (and should) be started per acdc queue. The challenge becomes how to coordinate member calls being distributed to agents with multiple queue processes running for the same queue.
 
-1. member_call published from callflow module to shared queue
+Unlike agents, we don't want to consume as quickly as possible from the AMQP queue. We want a 'blocking' read from the AMQP queue while we process the caller. As soon as the caller is connected to the agent, the queue process should ACK the member_call message. Because of this constraint, we need a shared AMQP queue with auto_ack disabled.
+
+Startup of a queue process should declare the AMQP queue as acdc.queue.ACCT.QID and set the auto_ack flag to false (will require manually ACK or NACK of the AMQP payload). Becoming a consumer of the queue will put the queue process into round-robin with other queue processes. At that point, the queue process is ready to receive the next member_call.
+
+Of course, communication with the agent processes will occur with the queue processes dedicated AMQP queue. So each queue process will consume from both the shared AMQP queue and from their own private AMQP queue.
+
+*** Queue Call Handling
+
+1. member_call published from callflow module to shared AMQP queue acdc.queue.ACCT.QID
 CF -- member_call --> Q1(1)
                       Q1(2)
 
-2a. Q1(1) recvs the member_call request, published the member_connect_req to the agents
+2a. Q1(1) recvs the member_call request, publishes the member_connect_req to the agents
 Q1(1) -- member_connect_req --> As
 
-2b. Q1(1) publishes to the other Q1 processes that its trying to connect the member call.
-Q1(2) (and any others) will set timers for this member call in case Q1(1) dies
-Q1(1) -- member_call_trying --|
-                              |
-Q1(2) <-----------------------|
-
-3. Q1(1) recvs the member_connect_resps from the agents, and lets the other queue processes know. This cancels the timer Q1(2) set.
+3. Q1(1) recvs the member_connect_resps from the agents and decides (based on agent routing strategy such as round-robin or most-idle) which agent resp to declare victorious.
 Q1(1) <-- member_connect_resp -- A
-
-Q1(1) -- member_connect_responded --|
-                                    |
-Q1(2) <-----------------------------|
 
 4a. Q1(1) sends the member_connect_win to the "winning" agent
 Q1(1) -- member_connect_win --> A
@@ -147,6 +145,10 @@ Q1(1) -- member_connect_monitor --> A
 
 4c. Q1(1) sends the member_connect_ignore to all other responders
 Q1(1) -- member_connect_ignore --> As
+
+5. Q1(1) recvs the member_connected from the agent process. Q1(1) ACKs the member_call payload (and the next AMQP payload from #1 is delivered).
+Q1(1) <-- member_connected -- A
+  \------ ACK --------------> AMQP Shared Queue
 
 5. Q1(\*) recvs member_hungup from agent (makes sure any stats triggered by the hangup are collected).
 Q1(\*) <-- member_hungup -- A
