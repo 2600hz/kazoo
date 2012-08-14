@@ -452,26 +452,21 @@ get_fs_app(Node, UUID, JObj, <<"call_pickup">>) ->
         true ->
             Target = wh_json:get_value(<<"Target-Call-ID">>, JObj),
 
-            _ = case wh_json:is_true(<<"Park-After-Pickup">>, JObj, false) of
-                    false -> export(Node, UUID, <<"park_after_bridge=false">>);
-                    true ->
-                        _ = set(Node, Target, <<"park_after_bridge=true">>),
-                        set(Node, UUID, <<"park_after_bridge=true">>)
-                end,
-
-            _ = case wh_json:is_true(<<"Continue-On-Fail">>, JObj, true) of
-                    false -> export(Node, UUID, <<"continue_on_fail=false">>);
-                    true -> export(Node, UUID, <<"continue_on_fail=true">>)
-                end,
-
-            _ = case wh_json:is_true(<<"Continue-On-Cancel">>, JObj, true) of
-                    false -> export(Node, UUID, <<"continue_on_cancel=false">>);
-                    true -> export(Node, UUID, <<"continue_on_cancel=true">>)
-                end,
-
-            _ = export(Node, UUID, <<"failure_causes=NORMAL_CLEARING,ORIGINATOR_CANCEL,CRASH">>),
-
-            {<<"call_pickup">>, <<UUID/binary, " ", Target/binary>>}
+            case ecallmgr_fs_nodes:fetch_channel(Target) of
+                {ok, Channel} ->
+                    case wh_json:get_binary_value(<<"node">>, Channel) of
+                        Node ->
+                            lager:debug("target ~s is on same node(~s) as us", [Target, Node]),
+                            get_call_pickup_app(Node, UUID, JObj, Target);
+                        OtherNode ->
+                            lager:debug("target ~s is on ~s, not ~s...moving", [Target, OtherNode, Node]),
+                            true = ecallmgr_fs_nodes:channel_move(Target, OtherNode, Node),
+                            get_call_pickup_app(Node, UUID, JObj, Target)
+                    end;
+                {error, not_found} ->
+                    lager:debug("failed to find target callid ~s", [Target]),
+                    {error, <<"failed to find target callid ", Target/binary>>}
+            end
     end;
 
 get_fs_app(Node, UUID, JObj, <<"execute_extension">>) ->
@@ -631,6 +626,30 @@ get_fs_kv(Key, Val, _) ->
         {_, Prefix} ->
             list_to_binary([Prefix, "=", wh_util:to_list(Val)])
     end.
+
+-spec get_call_pickup_app/4 :: (atom(), ne_binary(), wh_json:json_object(), ne_binary()) ->
+                                       {ne_binary(), ne_binary()}.
+get_call_pickup_app(Node, UUID, JObj, Target) ->
+    _ = case wh_json:is_true(<<"Park-After-Pickup">>, JObj, false) of
+            false -> export(Node, UUID, <<"park_after_bridge=false">>);
+            true ->
+                _ = set(Node, Target, <<"park_after_bridge=true">>),
+                set(Node, UUID, <<"park_after_bridge=true">>)
+        end,
+
+    _ = case wh_json:is_true(<<"Continue-On-Fail">>, JObj, true) of
+            false -> export(Node, UUID, <<"continue_on_fail=false">>);
+            true -> export(Node, UUID, <<"continue_on_fail=true">>)
+        end,
+
+    _ = case wh_json:is_true(<<"Continue-On-Cancel">>, JObj, true) of
+            false -> export(Node, UUID, <<"continue_on_cancel=false">>);
+            true -> export(Node, UUID, <<"continue_on_cancel=true">>)
+        end,
+
+    _ = export(Node, UUID, <<"failure_causes=NORMAL_CLEARING,ORIGINATOR_CANCEL,CRASH">>),
+
+    {<<"call_pickup">>, <<UUID/binary, " ", Target/binary>>}.
 
 %%--------------------------------------------------------------------
 %% @private
