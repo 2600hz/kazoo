@@ -25,28 +25,22 @@
 
 -include("acdc.hrl").
 
-%% CallId, {Call, AgentId}
--record(member_call, {
-          call :: whapps_call:call()
-         ,agent_id :: ne_binary()
-         ,agent_process_id :: ne_binary()
-         }).
--type member_call() :: #member_call{}.
--type member_calls() :: [member_call()].
-
 -record(state, {
           queue_id :: ne_binary()
          ,queue_db :: ne_binary()
          ,account_id :: ne_binary()
-         ,calls = [] :: member_calls()
          }).
 
--define(BINDINGS(AcctDb, QueueId), [{self, []}
-                                    ,{acdc_queue, [{queue_db, AcctDb}
-                                                   ,{queue_id, QueueId}
-                                                  ]}
-                                   ]).
+-define(BINDINGS, [{self, []}]).
 -define(RESPONDERS, []).
+
+-define(SHARED_BINDING_OPTIONS, [{consume_options, [{no_ack, false}]}
+                                 ,{basic_qos, 1}
+                                ]).
+-define(SHARED_QUEUE_BINDINGS(AcctId, QueueId), [{acdc_queue, [{account_id, AcctId}
+                                                               ,{queue_id, QueueId}
+                                                              ]}
+                                                ]).
 
 %%%===================================================================
 %%% API
@@ -60,9 +54,8 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link(AcctDb, QueueJObj) ->
-    QueueId = wh_json:get_value(<<"_id">>, QueueJObj),
     gen_listener:start_link(?MODULE
-                            ,[{bindings, ?BINDINGS(AcctDb, QueueId)}
+                            ,[{bindings, ?BINDINGS}
                               ,{responders, ?RESPONDERS}
                              ]
                             ,[AcctDb, QueueJObj]
@@ -86,6 +79,8 @@ start_link(AcctDb, QueueJObj) ->
 init([AcctDb, QueueJObj]) ->
     QueueId = wh_json:get_value(<<"_id">>, QueueJObj),
     put(callid, QueueId),
+
+    gen_listener:cast(self(), consume_from_shared_queue),
 
     {ok, #state{
        queue_id = QueueId
@@ -121,6 +116,17 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast(consume_from_shared_queue, #state{
+              queue_id=QueueId
+              ,account_id=AcctId
+             }=State) ->
+    Self = self(),
+    spawn(fun() -> gen_listener:add_queue(Self, shared_queue_name(AcctId, QueueId)
+                                          ,?SHARED_BINDING_OPTIONS
+                                          ,?SHARED_QUEUE_BINDINGS(AcctId, QueueId)
+                                         )
+          end),
+    {noreply, State};
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
@@ -143,7 +149,7 @@ handle_info(_Info, State) ->
 %% @doc
 %% Handling all messages from the message bus
 %%
-%% @spec handle_info(JObj, State) -> {reply, Proplist} |
+%% @spec handle_event(JObj, State) -> {reply, Proplist} |
 %%                                   ignore
 %% @end
 %%--------------------------------------------------------------------
@@ -178,3 +184,6 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+-spec shared_queue_name/2 :: (ne_binary(), ne_binary()) -> ne_binary().
+shared_queue_name(AcctId, QueueId) ->
+    <<"acdc.queue.", AcctId/binary, ".", QueueId/binary>>.
