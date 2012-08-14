@@ -454,11 +454,12 @@ get_fs_app(Node, UUID, JObj, <<"call_pickup">>) ->
 
             case ecallmgr_fs_nodes:fetch_channel(Target) of
                 {ok, Channel} ->
-                    case wh_json:get_binary_value(<<"node">>, Channel) of
-                        Node ->
+                    OtherNode = wh_json:get_binary_value(<<"node">>, Channel),
+                    case false andalso OtherNode =:= wh_util:to_binary(Node) of
+                        true ->
                             lager:debug("target ~s is on same node(~s) as us", [Target, Node]),
                             get_call_pickup_app(Node, UUID, JObj, Target);
-                        OtherNode ->
+                        false ->
                             lager:debug("target ~s is on ~s, not ~s...moving", [Target, OtherNode, Node]),
                             true = ecallmgr_fs_nodes:channel_move(Target, OtherNode, Node),
                             get_call_pickup_app(Node, UUID, JObj, Target)
