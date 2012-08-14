@@ -64,18 +64,21 @@ member_call_v(Prop) when is_list(Prop) ->
 member_call_v(JObj) ->
     member_call_v(wh_json:to_proplist(JObj)).
 
--spec member_call_routing_key/1 :: (binary() | 
-                                    wh_json:json_object() |
+-spec member_call_routing_key/1 :: (wh_json:json_object() |
                                     wh_proplist()
                                    ) -> ne_binary().
-member_call_routing_key(Id) when is_binary(Id) ->
-    <<?MEMBER_CALL_KEY, Id/binary>>;
+-spec member_call_routing_key/2 :: (ne_binary(), ne_binary()) -> ne_binary().
 member_call_routing_key(Props) when is_list(Props) ->
     Id = props:get_value(<<"Queue-ID">>, Props, <<"*">>),
-    <<?MEMBER_CALL_KEY, Id/binary>>;
+    AcctId = props:get_value(<<"Account-ID">>, Props),
+    member_call_routing_key(AcctId, Id);
 member_call_routing_key(JObj) ->
     Id = wh_json:get_value(<<"Queue-ID">>, JObj, <<"*">>),
-    <<?MEMBER_CALL_KEY, Id/binary>>.
+    AcctId = wh_json:get_value(<<"Account-ID">>, JObj),
+    member_call_routing_key(AcctId, Id).
+
+member_call_routing_key(AcctId, QueueId) ->
+    <<?MEMBER_CALL_KEY, AcctId/binary, ".", QueueId/binary>>.
 
 %%------------------------------------------------------------------------------
 %% Member Connect Request
@@ -293,17 +296,17 @@ member_hungup_v(JObj) ->
 -spec bind_q/2 :: (ne_binary(), wh_proplist()) -> 'ok'.
 bind_q(Q, Props) ->
     QID = props:get_value(queue_id, Props, <<"*">>),
+    AcctId = props:get_value(account_id, Props),
 
     amqp_util:callmgr_exchange(),
-    amqp_util:bind_q_to_callmgr(Q, member_connect_req_routing_key(QID)),
-    amqp_util:bind_q_to_callmgr(Q, member_call_routing_key(QID)).
+    amqp_util:bind_q_to_callmgr(Q, member_call_routing_key(AcctId, QID)).
 
 -spec unbind_q/2 :: (ne_binary(), wh_proplist()) -> 'ok'.
 unbind_q(Q, Props) ->
     QID = props:get_value(queue_id, Props, <<"*">>),
+    AcctId = props:get_value(account_id, Props),
 
-    amqp_util:unbind_q_from_callmgr(Q, member_connect_req_routing_key(QID)),
-    amqp_util:unbind_q_from_callmgr(Q, member_call_routing_key(QID)).
+    amqp_util:unbind_q_from_callmgr(Q, member_call_routing_key(AcctId, QID)).
 
 %%------------------------------------------------------------------------------
 %% Publishers for convenience
