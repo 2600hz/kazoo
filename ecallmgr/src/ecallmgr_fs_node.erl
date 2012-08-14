@@ -126,7 +126,9 @@ init([Node, Options]) ->
         ok ->
             lager:debug("event handler registered on node ~s", [Node]),            
             ok = freeswitch:event(Node, ['CHANNEL_CREATE', 'CHANNEL_DESTROY', 'CHANNEL_HANGUP_COMPLETE'
-                                         ,'SESSION_HEARTBEAT', 'CUSTOM', 'sofia::register', 'sofia::transfer'
+                                         ,'SESSION_HEARTBEAT', 'CUSTOM'
+                                         ,'sofia::register', 'sofia::transfer'
+                                         ,'sofia::move_released', 'sofia::move_complete'
                                          ,'whistle::broadcast'
                                         ]),
             lager:debug("bound to switch events on node ~s", [Node]),
@@ -285,7 +287,9 @@ process_custom_data(Data, Node) ->
                 _Else ->
                     process_broadcast_event(props:get_value(<<"whistle_broadcast_type">>, Data), Data)
             end;
-        _ ->
+        _Sub ->
+            lager:debug("custom evt ~s", [_Sub]),
+            _ = [lager:debug("custom evt data: ~s:~s", [K, V]) || {K,V} <- Data],
             ok
     end.
 
