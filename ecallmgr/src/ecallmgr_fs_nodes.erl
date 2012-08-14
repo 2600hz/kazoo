@@ -41,6 +41,7 @@
 -export([channel_set_owner_id/3]).
 -export([channel_set_presence_id/3]).
 -export([channel_set_import_moh/3]).
+-export([channel_move/3]).
 -export([fetch_channel/1]).
 -export([destroy_channel/2]).
 -export([props_to_channel_record/2]).
@@ -186,6 +187,77 @@ channel_match_presence(PresenceId) ->
                   ,[{{'$1', '$3'}}]}
                 ],
     ets:select(ecallmgr_channels, MatchSpec).
+
+channel_move(UUID, OriginalNode, NewNode) ->
+    case channel_teardown_sbd(UUID, OriginalNode) of
+        true ->
+            lager:debug("sbd teardown of ~s on ~s", [UUID, OriginalNode]),
+            channel_resume(UUID, NewNode);
+        false ->
+            lager:debug("failed to teardown ~s on ~s", [UUID, OriginalNode]),
+            false
+    end.
+
+%% listens for the event from FS with the XML
+channel_resume(UUID, NewNode) ->
+    lager:debug("waiting for message with metadata for channel ~s"),
+    receive
+        {channel_move_released, UUID, Evt} ->
+            lager:debug("channel has been released from former node"),
+            case channel_resume(UUID, NewNode, Evt) of
+                true -> wait_for_channel_completion(UUID, NewNode);
+                false -> false
+            end
+    after 5000 ->
+            lager:debug("timed out waiting for channel to be released"),
+            false
+    end.
+channel_resume(UUID, NewNode, Evt) ->
+    Meta = props:get_value(<<"metadata">>, Evt),
+    case freeswitch:sendevent_custom(NewNode, 'sofia::move_channel'
+                                     ,[{"profile", wh_util:to_list(?DEFAULT_FS_PROFILE)}
+                                       ,{"channel_id", UUID}
+                                       ,{"metadata", wh_util:to_list(Meta)}
+                                      ]) of
+        ok ->
+            lager:debug("sent sofia::move_channel with metadata to ~s for ~s", [NewNode, UUID]),
+            true;
+        {error, _E} ->
+            lager:debug("failed to send custom event sofia::move_channel: ~p", [_E]),
+            false;
+        timeout ->
+            lager:debug("timed out sending custom event sofia::move_channel"),
+            false
+    end.
+
+wait_for_channel_completion(UUID, NewNode) ->
+    lager:debug("waiting for confirmation from ~s of channel_move", [NewNode]),
+    receive
+        {channel_move_completed, UUID, _Evt} ->
+            lager:debug("confirmation of channel_move received: ~p", [_Evt]),
+            true
+    after 5000 ->
+            lager:debug("timed out waiting for channel_move to complete"),
+            false
+    end.
+
+channel_teardown_sbd(UUID, OriginalNode) ->
+    gproc:reg({p, l, {channel_move, OriginalNode, UUID}}),
+
+    case freeswitch:sendevent_custom(OriginalNode, 'sofia::move_channel'
+                                     ,[{"profile", wh_util:to_list(?DEFAULT_FS_PROFILE)}
+                                       ,{"channel_id", UUID}
+                                      ]) of
+        ok ->
+            lager:debug("sent sofia::move_channel to ~s for ~s", [OriginalNode, UUID]),
+            true;
+        {error, _E} ->
+            lager:debug("failed to send custom event sofia::move_channel: ~p", [_E]),
+            false;
+        timeout ->
+            lager:debug("timed out sending custom event sofia::move_channel"),
+            false
+    end.
 
 -spec channel_set_account_id/3 :: (atom(), ne_binary(), string() | ne_binary()) -> 'ok'.
 channel_set_account_id(Node, UUID, Value) when is_binary(Value) ->
