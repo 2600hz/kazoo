@@ -364,7 +364,7 @@ get_keys(JObj) ->
 get_keys([], JObj) ->
     get_keys1(JObj);
 get_keys(Keys, JObj) ->
-    get_keys1(get_value(Keys, JObj)).
+    get_keys1(get_value(Keys, JObj, new())).
 
 -spec get_keys1/1 :: (list() | json_object()) -> [pos_integer(),...] | json_strings().
 get_keys1(KVs) when is_list(KVs) ->
