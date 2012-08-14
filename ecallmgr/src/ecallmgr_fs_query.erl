@@ -3,6 +3,9 @@
 %%% @doc
 %%% Listener for whapp requests to query the underlying switches
 %%% @end
+%%% @contributors
+%%%   Karl Anderson
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(ecallmgr_fs_query).
 
