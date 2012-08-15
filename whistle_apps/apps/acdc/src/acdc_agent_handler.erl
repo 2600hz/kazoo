@@ -106,8 +106,9 @@ handle_call_event(_JObj, _, _Status, _, _) ->
 -spec handle_member_message/3 :: (wh_json:json_object(), wh_proplist(), ne_binary()) -> 'ok'.
 handle_member_message(JObj, Props) ->
     handle_member_message(JObj, Props, wh_json:get_value(<<"Event-Name">>, JObj)).
+
 handle_member_message(JObj, Props, <<"connect_req">>) ->
-    handle_member_connect_req(JObj, Props, props:get_value(status, Props));
+    acdc_agent_fsm:member_connect_req(props:get_value(fsm_pid, Props), JObj);
 handle_member_message(JObj, Props, <<"connect_win">>) ->
     handle_member_connect_win(JObj, Props, props:get_value(status, Props));
 handle_member_message(JObj, Props, <<"connect_monitor">>) ->
