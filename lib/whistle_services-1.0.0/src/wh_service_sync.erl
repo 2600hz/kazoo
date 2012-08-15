@@ -5,7 +5,7 @@
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
--module(wh_service_invoices).
+-module(wh_service_sync).
 
 -behaviour(gen_server).
 
@@ -56,7 +56,8 @@ run() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    _TRef = erlang:send_after(1000, self(), {try_sync_service}),
+    SyncPeriod = whapps_config:get_integer(?WHS_CONFIG_CAT, <<"sync_period">>, 600000),
+    _TRef = erlang:send_after(SyncPeriod, self(), {try_sync_service}),
     {ok, #state{}}.
 
 %%--------------------------------------------------------------------
@@ -101,7 +102,8 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info({try_sync_service}, State) ->
     _ = maybe_sync_service(),
-    _TRef = erlang:send_after(1000, self(), {try_sync_service}),
+    SyncPeriod = whapps_config:get_integer(?WHS_CONFIG_CAT, <<"sync_period">>, 600000),
+    _TRef = erlang:send_after(SyncPeriod, self(), {try_sync_service}),
     {noreply, State};
 handle_info(_Info, State) ->
     {noreply, State}.
@@ -118,7 +120,7 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
-    lager:debug("whistle service invoices terminating: ~p", [_Reason]).
+    lager:debug("whistle service sync terminating: ~p", [_Reason]).
 
 %%--------------------------------------------------------------------
 %% @private
