@@ -30,6 +30,7 @@
 
 -record(wh_services, {account_id = undefined
                       ,dirty = false
+                      ,status = <<"good_standing">>
                       ,jobj = wh_json:new()
                       ,updates = wh_json:new()
                       ,cascade_quantities = wh_json:new()
@@ -76,7 +77,7 @@ new(AccountId) ->
              ,{<<"pvt_reseller">>, IsReseller}
              ,{?QUANTITIES, wh_json:new()}
              ,{<<"billing_id">>, depreciated_billing_id(Account)}
-             ,{<<"plans">>, depreciated_service_plans(Account)}
+             ,{<<"plans">>, populate_service_plans(Account)}
             ],
     #wh_services{account_id=AccountId, jobj=wh_json:from_list(Props)
                  ,cascade_quantities=cascade_quantities(AccountId, IsReseller)
@@ -92,8 +93,8 @@ new(AccountId) ->
 from_service_json(JObj) ->
     AccountId = wh_json:get_value(<<"pvt_account_id">>, JObj),
     IsReseller = wh_json:is_true(<<"pvt_reseller">>, JObj),
-    #wh_services{account_id=AccountId, jobj=JObj
-                 ,cascade_quantities=cascade_quantities(AccountId, IsReseller)}.
+    #wh_services{account_id=AccountId, jobj=JObj, cascade_quantities=cascade_quantities(AccountId, IsReseller)
+                 ,status=wh_json:get_ne_value(<<"pvt_status">>, JObj, <<"good_standing">>)}.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -108,8 +109,8 @@ fetch(Account) ->
         {ok, JObj} ->
             lager:debug("loaded account service doc ~s", [AccountId]),
             IsReseller = wh_json:is_true(<<"pvt_reseller">>, JObj),
-            #wh_services{account_id=AccountId, jobj=JObj
-                         ,cascade_quantities=cascade_quantities(AccountId, IsReseller)};
+            #wh_services{account_id=AccountId, jobj=JObj, cascade_quantities=cascade_quantities(AccountId, IsReseller)
+                         ,status=wh_json:get_ne_value(<<"pvt_status">>, JObj, <<"good_standing">>)};
         {error, _R} ->
             lager:debug("unable to open account ~s services doc (creating new): ~p", [Account, _R]),
             new(AccountId)
@@ -139,7 +140,9 @@ save(#wh_services{jobj=JObj, updates=UpdatedQuantities, account_id=AccountId}=Se
             lager:debug("saved services for ~s", [AccountId]),
             IsReseller = wh_json:is_true(<<"pvt_reseller">>, JObj),
             Services#wh_services{jobj=NewJObj
-                                 ,cascade_quantities=cascade_quantities(AccountId, IsReseller)};
+                                 ,cascade_quantities=cascade_quantities(AccountId, IsReseller)
+                                 ,status=wh_json:get_ne_value(<<"pvt_status">>, NewJObj, <<"good_stainding">>)
+                                };
         {error, not_found} ->
             lager:debug("service database does not exist, attempting to create", []),
             true = couch_mgr:db_create(?WH_SERVICES_DB),
@@ -193,13 +196,59 @@ update(Category, Item, Quantity, #wh_services{updates=JObj}=Services) when is_bi
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%%
+%% Throws an error if the billing account is not in "good_standing",
+%% used when update requests are made to kill them if there are 
+%% accounting issues.
 %% @end
 %%--------------------------------------------------------------------
 -spec allow_updates/1 :: (ne_binary()) -> boolean().
-allow_updates(_Account) ->
-    %% TODO ensure card is on file and account is in good standing
-    true.
+allow_updates(Account) ->
+    AccountId = wh_util:format_account_id(Account, raw),
+    lager:debug("determining if account ~s is able to make updates", [AccountId]),
+    case couch_mgr:open_doc(?WH_SERVICES_DB, AccountId) of
+        {error, _R} ->
+            lager:debug("unable to open account ~s services: ~p", [AccountId, _R]),
+            default_maybe_allow_updates(AccountId);
+        {ok, ServicesJObj} ->
+            maybe_follow_billling_id(AccountId, ServicesJObj)
+    end.
+
+maybe_follow_billling_id(AccountId, ServicesJObj) ->
+    case wh_json:get_ne_value(<<"billing_id">>, ServicesJObj, AccountId) of
+        AccountId -> maybe_allow_updates(AccountId, ServicesJObj);
+        BillingId -> 
+            lager:debug("following billing id ~s", [BillingId]),
+            allow_updates(BillingId)
+    end.
+
+maybe_allow_updates(AccountId, ServicesJObj) ->
+    Plans = wh_service_plans:plan_summary(ServicesJObj),
+    case wh_util:is_empty(Plans) orelse wh_json:get_value(<<"pvt_status">>, ServicesJObj) of 
+        true ->
+            lager:debug("allowing request for account with no service plans", []),
+            true;
+        <<"good_standing">> -> 
+            lager:debug("allowing request for account in good standing", []),
+            true;
+        Status ->
+            %% TODO: support other bookkeepers
+            case wh_bookkeeper_braintree:is_good_standing(AccountId) of
+                true -> true;
+                false ->
+                    lager:debug("denying update request for services with status '~s'", [Status]),
+                    Error = io_lib:format("Unable to continue due to billing account ~s status", [AccountId]),
+                    throw({Status, wh_util:to_binary(Error)})
+            end
+    end.
+
+default_maybe_allow_updates(AccountId) ->
+    case whapps_config:get_is_true(?WHS_CONFIG_CAT, <<"default_allow_updates">>, true) of
+        true -> true;
+        false ->
+            lager:debug("denying update request, ~s.default_allow_updates is false", [?WHS_CONFIG_CAT]),
+            Error = io_lib:format("Service updates are disallowed by default for billing account ~s", [AccountId]),
+            throw({<<"updates_disallowed">>, wh_util:to_binary(Error)})
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -207,7 +256,9 @@ allow_updates(_Account) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec reconcile/1 :: (ne_binary()) -> services().
+-spec reconcile/1 :: ('undefined' | ne_binary()) -> services().
+reconcile(undefined) ->
+    [];
 reconcile(Account) ->
     lager:debug("reconcile all services for ~s", [Account]),
     ServiceModules = get_service_modules(),
@@ -454,20 +505,66 @@ depreciated_is_reseller(JObj) ->
 %% definition as this will be depreciated in the future.
 %% @end
 %%--------------------------------------------------------------------
--spec depreciated_service_plans/1 :: (wh_json:json_object()) -> 'undefined' | wh_json:json_object().
-depreciated_service_plans(JObj) ->
-    case wh_json:get_value(<<"pvt_service_plans">>, JObj) of
-        undefined -> wh_json:new();
-        PlanIds ->
-            VendorId = case wh_json:get_value(<<"pvt_reseller_id">>, JObj) of
-                           undefined -> get_reseller_id(wh_json:get_value(<<"pvt_tree">>, JObj));
-                           Else -> Else
-                       end,
-            Plans = [{PlanId, wh_json:from_list([{<<"vendor_id">>, VendorId}])}
-                     || PlanId <- PlanIds
-                    ],
-            wh_json:from_list(Plans)
-    end.    
+-spec populate_service_plans/1 :: (ne_binary()) -> wh_json:json_object().
+populate_service_plans(JObj) ->
+    ResellerId = get_reseller_id(wh_json:get_value(<<"pvt_tree">>, JObj)),
+    Plans = incorporate_default_service_plan(ResellerId, master_default_service_plan()),
+    incorporate_depreciated_service_plans(Plans, JObj).
+
+-spec default_service_plan_id/1 :: (ne_binary()) -> 'undefined' | wh_json:json_object().
+default_service_plan_id(ResellerId) ->
+    case couch_mgr:open_doc(?WH_SERVICES_DB, ResellerId) of
+        {ok, JObj} -> wh_json:get_value(<<"default_service_plan">>, JObj);
+        {error, _R} ->
+            lager:debug("unable to open reseller ~s services: ~p", [ResellerId, _R]),
+            undefined
+    end.
+
+-spec depreciated_default_service_plan_id/1 :: (ne_binary()) -> 'undefined' | wh_json:json_object().            
+depreciated_default_service_plan_id(ResellerId) ->
+    ResellerDb = wh_util:format_account_id(ResellerId, encoded),
+    case couch_mgr:open_doc(ResellerDb, ResellerId) of
+        {ok, JObj} -> wh_json:get_value(<<"default_service_plan">>, JObj);
+        {error, _R} ->
+            lager:debug("unable to open reseller ~s account definition: ~p", [ResellerId, _R]),
+            undefined
+    end.
+
+-spec master_default_service_plan/0 :: () -> wh_json:json_object().
+master_default_service_plan() ->
+    case whapps_util:get_master_account_id() of
+        {error, _} -> wh_json:new();
+        {ok, MasterAccountId} -> 
+            incorporate_default_service_plan(MasterAccountId, wh_json:new())
+    end.
+
+-spec incorporate_default_service_plan/2 :: (ne_binary(), wh_json:json_object()) -> wh_json:json_object().
+incorporate_default_service_plan(ResellerId, JObj) ->
+    case depreciated_default_service_plan_id(ResellerId) of
+        undefined ->
+            case default_service_plan_id(ResellerId) of
+                undefined -> JObj;
+                PlanId ->
+                    Plan = wh_json:from_list([{<<"vendor_id">>, ResellerId}]),
+                    wh_json:set_value(PlanId, Plan, JObj)
+            end;
+        PlanId ->
+            Plan = wh_json:from_list([{<<"vendor_id">>, ResellerId}]),
+            wh_json:set_value(PlanId, Plan, JObj)
+    end. 
+    
+-spec incorporate_depreciated_service_plans/2 :: (wh_json:json_object(), wh_json:json_object()) -> wh_json:json_object().
+incorporate_depreciated_service_plans(Plans, JObj) ->
+    PlanIds = wh_json:get_value(<<"pvt_service_plans">>, JObj),
+    ResellerId = wh_json:get_value(<<"pvt_reseller_id">>, JObj),
+    case wh_util:is_empty(PlanIds) orelse wh_util:is_empty(ResellerId) of
+        true -> Plans;
+        false ->
+            lists:foldl(fun(PlanId, P) ->
+                                Plan = wh_json:from_list([{<<"vendor_id">>, ResellerId}]),
+                                wh_json:set_value(PlanId, Plan, P)
+                        end, Plans, PlanIds)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private

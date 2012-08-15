@@ -190,12 +190,20 @@ sync_services(AccountId, ServiceJObj) ->
     case wh_service_plans:create_items(ServiceJObj) of
         {error, no_plans} -> 
             lager:debug("no services plans found", []),
-            finalize_sync(AccountId, ServiceJObj);
+            _ = mark_clean_and_status(<<"good_standing">>, ServiceJObj),
+            maybe_sync_reseller(AccountId, ServiceJObj);
         {ok, ServiceItems} ->
             %% TODO: support other bookkeepers...
             try wh_bookkeeper_braintree:sync(ServiceItems, AccountId) of
-                _ -> finalize_sync(AccountId, ServiceJObj)
+                _ -> 
+                    _ = mark_clean_and_status(<<"good_standing">>, ServiceJObj),
+                    lager:debug("synchronization with bookkeeper complete", []),
+                    maybe_sync_reseller(AccountId, ServiceJObj)
             catch
+                throw:{Reason, _}=_R ->
+                    lager:debug("bookkeeper error: ~p", [_R]),
+                    _ = mark_clean_and_status(wh_util:to_binary(Reason), ServiceJObj),
+                    maybe_sync_reseller(AccountId, ServiceJObj);
                 _E:R ->
                     %% TODO: certain errors (such as no CC or expired, ect) should
                     %% move the account of good standing...
@@ -204,10 +212,8 @@ sync_services(AccountId, ServiceJObj) ->
             end
     end.
 
--spec finalize_sync/2 :: (ne_binary(), wh_json:json_object()) -> wh_std_return().
-finalize_sync(AccountId, ServiceJObj) ->
-    _ = mark_clean(ServiceJObj),
-    lager:debug("synchronization with bookkeeper complete", []),
+-spec maybe_sync_reseller/2 :: (ne_binary(), wh_json:json_object()) -> wh_std_return().
+maybe_sync_reseller(AccountId, ServiceJObj) ->
     case wh_json:get_ne_value(<<"pvt_reseller_id">>, ServiceJObj, AccountId) of
         AccountId -> {ok, ServiceJObj};
         ResellerId ->
@@ -241,6 +247,19 @@ mark_clean(AccountId) when is_binary(AccountId) ->
     end;
 mark_clean(JObj) ->
     couch_mgr:save_doc(?WH_SERVICES_DB, wh_json:set_value(<<"pvt_dirty">>, false, JObj)).
+
+
+-spec mark_clean_and_status/2 :: (ne_binary(), ne_binary() | wh_json:json_object()) -> wh_std_return().
+mark_clean_and_status(Status, AccountId) when is_binary(AccountId) ->
+    case couch_mgr:open_doc(?WH_SERVICES_DB, AccountId) of
+        {error, _}=E -> E;
+        {ok, JObj} -> mark_clean_and_status(Status, JObj)
+    end;
+mark_clean_and_status(Status, JObj) ->
+    lager:debug("marking services clean with status ~s", [Status]),
+    couch_mgr:save_doc(?WH_SERVICES_DB, wh_json:set_values([{<<"pvt_dirty">>, false}
+                                                            ,{<<"pvt_status">>, Status}
+                                                           ], JObj)).
 
 -spec maybe_update_billing_id/3 :: (ne_binary(), ne_binary(), wh_json:json_object()) -> wh_std_return().
 maybe_update_billing_id(BillingId, AccountId, ServiceJObj) ->
