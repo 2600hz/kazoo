@@ -10,8 +10,7 @@
 -behaviour(gen_server).
 
 -export([start_link/0]).
--export([sync/1]).
--export([clean/1]).
+-export([run/0]).
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -38,16 +37,8 @@
 start_link() ->
     gen_server:start_link(?MODULE, [], []).
 
-sync(Account) ->
-    immediate_sync(Account).
-
-clean(Account) ->
-    AccountId = wh_util:format_account_id(Account, raw),
-    case couch_mgr:open_doc(?WH_SERVICES_DB, AccountId) of
-        {error, _}=E -> E;
-        {ok, ServiceJObj} -> 
-            immediate_sync(AccountId, wh_json:set_value(<<"pvt_deleted">>, true, ServiceJObj))
-    end.
+run() ->
+    maybe_sync_service().
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -65,13 +56,9 @@ clean(Account) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    case whapps_config:get_is_true(?WHS_CONFIG_CAT, <<"sync_services">>, false) of
-        false -> {ok, #state{}};
-        true ->
-            ScanRate = whapps_config:get_integer(?WHS_CONFIG_CAT, <<"scan_rate">>, 20000),
-            _TRef = erlang:send_after(ScanRate, self(), {try_sync_service}),
-            {ok, #state{}}
-    end.
+    SyncPeriod = whapps_config:get_integer(?WHS_CONFIG_CAT, <<"sync_period">>, 600000),
+    _TRef = erlang:send_after(SyncPeriod, self(), {try_sync_service}),
+    {ok, #state{}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -115,8 +102,8 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info({try_sync_service}, State) ->
     _ = maybe_sync_service(),
-    ScanRate = whapps_config:get_integer(?WHS_CONFIG_CAT, <<"scan_rate">>, 20000),
-    _TRef = erlang:send_after(ScanRate, self(), {try_sync_service}),
+    SyncPeriod = whapps_config:get_integer(?WHS_CONFIG_CAT, <<"sync_period">>, 600000),
+    _TRef = erlang:send_after(SyncPeriod, self(), {try_sync_service}),
     {noreply, State};
 handle_info(_Info, State) ->
     {noreply, State}.
@@ -151,10 +138,9 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 -spec maybe_sync_service/0 :: () -> wh_json:json_objects().
 maybe_sync_service() ->
-    SyncBufferPeriod = whapps_config:get_integer(?WHS_CONFIG_CAT, <<"sync_buffer_period">>, 600),
     ViewOptions = [{limit, 1}
                    ,include_docs
-                   ,{endkey, wh_util:current_tstamp() - SyncBufferPeriod}
+                   ,{endkey, wh_util:current_tstamp() - 15}
                   ],
     case couch_mgr:get_results(?WH_SERVICES_DB, <<"services/dirty">>, ViewOptions) of
         {error, _}=E -> E;
@@ -289,29 +275,5 @@ maybe_update_billing_id(BillingId, AccountId, ServiceJObj) ->
                 true ->
                     lager:debug("billing id ~s on ~s was deleted, updating to bill self", [BillingId, AccountId]),
                     couch_mgr:save_doc(?WH_SERVICES_DB, wh_json:set_value(<<"billing_id">>, AccountId, ServiceJObj))
-            end
-    end.
-
--spec immediate_sync/1 :: (ne_binary()) -> wh_std_return().
--spec immediate_sync/2 :: (ne_binary(), wh_json:json_object()) -> wh_std_return().
-
-immediate_sync(Account) ->
-    AccountId = wh_util:format_account_id(Account, raw),
-    case couch_mgr:open_doc(?WH_SERVICES_DB, AccountId) of
-        {error, _}=E -> E;
-        {ok, ServiceJObj} -> 
-            immediate_sync(AccountId, ServiceJObj)
-    end.
-    
-immediate_sync(AccountId, ServiceJObj) ->
-    case wh_service_plans:create_items(ServiceJObj) of
-        {error, no_plans}=E -> E;
-        {ok, ServiceItems} ->
-            %% TODO: support other bookkeepers...
-            try wh_bookkeeper_braintree:sync(ServiceItems, AccountId) of    
-                _ -> {ok, ServiceJObj}
-            catch
-                throw:{_, R} -> {error, R};
-                _E:R -> {error, R}
             end
     end.
