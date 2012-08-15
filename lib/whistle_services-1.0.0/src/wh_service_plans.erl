@@ -44,11 +44,18 @@ from_service_json(ServicesJObj) ->
     ResellerId = wh_json:get_value(<<"pvt_reseller_id">>, ServicesJObj),
     get_plans(PlanIds, ResellerId, ServicesJObj).
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec plan_summary/1 :: (wh_json:json_object()) -> wh_json:json_object().
 plan_summary(ServicesJObj) ->
     ResellerId = wh_json:get_value(<<"pvt_reseller_id">>, ServicesJObj),
     lists:foldl(fun(PlanId, J) ->
                         Plan = wh_json:get_value([<<"plans">>, PlanId], ServicesJObj, wh_json:new()),
-                        case wh_json:get_value(<<"vendor_id">>, ServicesJObj) of
+                        case wh_json:get_value(<<"vendor_id">>, Plan) of
                             ResellerId -> wh_json:set_value(PlanId, Plan, J);
                             _Else -> J
                         end
