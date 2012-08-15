@@ -424,64 +424,32 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>) ->
             end
     end;
 
-get_fs_app(Node, _UUID, JObj, <<"call_pickup">>) ->
+get_fs_app(Node, UUID, JObj, <<"call_pickup">>) ->
     case wapi_dialplan:call_pickup_v(JObj) of
         false -> {'error', <<"intercept failed to execute as JObj did not validate">>};
         true ->
-            ContinueOnFail = wh_json:is_true(<<"Continue-On-Fail">>, JObj, true),
-            ContinueOnCancel = wh_json:is_true(<<"Continue-On-Cancel">>, JObj, true),
-            UnbridgedOnly = wh_json:is_true(<<"Unbridged-Only">>, JObj),
-            UnansweredOnly = wh_json:is_true(<<"Unanswered-Only">>, JObj),
             Target = wh_json:get_value(<<"Target-Call-ID">>, JObj),
-            OtherLeg = wh_json:is_true(<<"Other-Leg">>, JObj),
 
             _ = case wh_json:is_true(<<"Park-After-Pickup">>, JObj, false) of
-                    false -> ok;
+                    false -> export(Node, UUID, <<"park_after_bridge=false">>);
                     true ->
                         _ = set(Node, Target, <<"park_after_bridge=true">>),
-                        set(Node, OtherLeg, <<"park_after_bridge=true">>)
+                        set(Node, UUID, <<"park_after_bridge=true">>)
                 end,
 
-            Generators = [fun(DP) ->
-                                  case UnbridgedOnly of
-                                      false -> DP;
-                                      true -> [{"application", "set intercept_unbridged_only=true"}|DP]
-                                  end
-                          end
-                          ,fun(DP) ->
-                                   case UnansweredOnly of
-                                       false -> DP;
-                                       true -> [{"application", "set intercept_unanswered_only=true"}|DP]
-                                   end
-                           end
-                          ,fun(DP) ->
-                                   [{"application", "export failure_causes=NORMAL_CLEARING,ORIGINATOR_CANCEL,CRASH"}
-                                    ,{"application", list_to_binary(["export uuid_bridge_continue_on_cancel="
-                                                                     ,wh_util:to_binary(ContinueOnCancel)
-                                                                    ])}
-                                    ,{"application", list_to_binary(["export continue_on_fail="
-                                                                     ,wh_util:to_binary(ContinueOnFail)
-                                                                    ])}
-                                    |DP
-                                   ]
-                           end
-                          ,fun(DP) ->
-                                   
-                                   Arg = case OtherLeg of
-                                             true -> <<"-bleg ", Target/binary>>;
-                                             false -> Target
-                                         end,
-                                   [{"application", <<"intercept ", Arg/binary>>}|DP]
-                           end
-                          ,fun(DP) ->
-                                   Masquerade = ecallmgr_util:create_masquerade_event(<<"intercept">>, <<"CHANNEL_EXECUTE_COMPLETE">>),
-                                   [{"application", Masquerade}
-                                    ,{"application", "park "}
-                                    |DP
-                                   ]
-                           end
-                         ],
-            {<<"xferext">>, lists:foldr(fun(F, DP) -> F(DP) end, [], Generators)}
+            _ = case wh_json:is_true(<<"Continue-On-Fail">>, JObj, true) of
+                    false -> export(Node, UUID, <<"continue_on_fail=false">>);
+                    true -> export(Node, UUID, <<"continue_on_fail=true">>)
+                end,
+
+            _ = case wh_json:is_true(<<"Continue-On-Cancel">>, JObj, true) of
+                    false -> export(Node, UUID, <<"continue_on_cancel=false">>);
+                    true -> export(Node, UUID, <<"continue_on_cancel=true">>)
+                end,
+
+            _ = export(Node, UUID, <<"failure_causes=NORMAL_CLEARING,ORIGINATOR_CANCEL,CRASH">>),
+
+            {<<"call_pickup">>, <<UUID/binary, " ", Target/binary>>}
     end;
 
 get_fs_app(Node, UUID, JObj, <<"execute_extension">>) ->

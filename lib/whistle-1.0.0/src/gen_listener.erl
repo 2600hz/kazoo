@@ -443,7 +443,7 @@ handle_info({amqp_channel_event, restarted}, #state{params=Params, bindings=Bind
                  || {Type, BindProps} <- Bindings
                 ],
             _ = [gen_server:cast(self(), {add_queue, Name, Props, Bind})
-                 || {Name, {Props, Bind}} <- OtherQueues
+                 || {Name, {Bind, Props}} <- OtherQueues
                 ],
             _ = erlang:send_after(?TIMEOUT_RETRY_CONN, self(), is_consuming),
             {noreply, State#state{queue=Q, is_consuming=false, bindings=[], other_queues=[]}, hibernate};

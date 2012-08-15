@@ -57,6 +57,7 @@
               ,json_string/0, json_strings/0
               ,json_term/0
               ,json_proplist/0, json_proplist_k/1, json_proplist_kv/2
+              ,json_proplist_key/0
              ]).
 
 -spec new/0 :: () -> json_object().
@@ -363,7 +364,7 @@ get_keys(JObj) ->
 get_keys([], JObj) ->
     get_keys1(JObj);
 get_keys(Keys, JObj) ->
-    get_keys1(get_value(Keys, JObj)).
+    get_keys1(get_value(Keys, JObj, new())).
 
 -spec get_keys1/1 :: (list() | json_object()) -> [pos_integer(),...] | json_strings().
 get_keys1(KVs) when is_list(KVs) ->
