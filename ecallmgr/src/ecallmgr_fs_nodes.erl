@@ -215,6 +215,7 @@ channel_resume(UUID, NewNode) ->
 channel_resume(UUID, NewNode, Evt) ->
     Meta = props:get_value(<<"metadata">>, Evt),
     _ = ecallmgr_util:fs_log(NewNode, "sending sofia::move_request ~s with metadata", [UUID]),
+
     case freeswitch:sendevent_custom(NewNode, 'sofia::move_request'
                                      ,[{"profile_name", wh_util:to_list(?DEFAULT_FS_PROFILE)}
                                        ,{"channel_id", wh_util:to_list(UUID)}
