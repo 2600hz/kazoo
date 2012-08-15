@@ -1,0 +1,21 @@
+* Agents
+
+Agents are comprised of two processes, a gen_listener (named process) and a gen_fsm. A supervisor ensures that the gen_listener and gen_fsm are kept alive together. A supervisor above that manages the list of agents.
+
+    [ acdc_agents_sup ]
+            |
+           \|--------[acdc_agent_sup]
+           \|--------[acdc_agent_sup]
+                            |
+                           \|---[acdc_agent]
+                           \|---[acdc_agent_fsm]
+
+              AMQP                      Erlang
+[Queue]                    [Agent]                     [AgentFSM]
+                                                        {ready}
+    -- member_connect_req  ->
+                                -- member_connect_req  -> ok
+                                <- member_connect_resp --
+    <- member_connect_resp --
+
+An agent will respond to all connect requests while in the ready state.

@@ -17,11 +17,11 @@ An agent represents an account user with a device (and possibly many devices). T
 
 *** Agent Statuses
 
-*init*: the agent process is starting up. Will not accept member connection requests. Waits for agent status event to know what state to transition to out of init.
+*init*: the agent process is starting up. Will not accept member connection requests.
+
+*sync*: Waits for agent status event to know what state to transition to out of *sync*.
 
 *ready*: the agent process is awaiting member connection requests.
-
-*waiting*: the agent process has responded to a member connection request. This state will end either by timeout or member connection win.
 
 *ringing*: the agent process has received a member connection win and is currently dialing the agent's device.
 
@@ -29,7 +29,7 @@ An agent represents an account user with a device (and possibly many devices). T
 
 *wrapup*: configurable wait time after a call has ended before the agent is ready to accept another call.
 
-*paused*: the agent is on break or otherwise not taking calls. An optional timer can be set to limit how long the agent may remain in the paused state. Also the state where the agent process goes when "logging out" for the night/weekend/what-have-you.
+*paused*: the agent is on break or otherwise not taking calls. An optional timer can be set to limit how long the agent may remain in the paused state.
 
 *** Agent Process Initialization
 
