@@ -6,24 +6,24 @@
 %%% @contributors
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
--module(acdc_agents_sup).
+-module(acdc_agent_sup).
 
 -behaviour(supervisor).
 
 -include("acdc.hrl").
 
 %% API
--export([start_link/0
-         ,new/2
-         ,workers/0
+-export([start_link/2
+         ,agent/0
+         ,fsm/0, start_fsm/3
         ]).
 
 %% Supervisor callbacks
 -export([init/1]).
 
 %% Helper macro for declaring children of supervisor
--define(CHILD(Name, Restart, Shutdown, Type),
-        {Name, {Name, start_link, []}, Restart, Shutdown, Type, [Name]}).
+-define(CHILD(Name, Args),
+        {Name, {Name, start_link, Args}, transient, 5000, worker, [Name]}).
 
 %%%===================================================================
 %%% API functions
@@ -36,17 +36,32 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
--spec start_link/0 :: () -> startlink_ret().
-start_link() ->
-    supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+-spec start_link/2 :: (ne_binary(), wh_json:json_object()) -> startlink_ret().
+start_link(AcctDb, AgentJObj) ->
+    supervisor:start_link(?MODULE, [AcctDb, AgentJObj]).
 
--spec new/2 :: (ne_binary(), wh_json:json_object()) -> sup_startchild_ret().
-new(Acct, JObj) ->
-    supervisor:start_child(?MODULE, [Acct, JObj]).
+-spec agent/0 :: () -> pid() | 'undefined'.
+agent() ->
+    case child_of_type(acdc_agent) of
+        [] -> undefined;
+        [P] -> P
+    end.
 
--spec workers/0 :: () -> [pid(),...] | [].
-workers() ->
-    [ Pid || {_, Pid, worker, [_]} <- supervisor:which_children(?MODULE)].
+-spec fsm/0 :: () -> pid() | 'undefined'.
+fsm() ->
+    case child_of_type(acdc_agent_fsm) of
+        [] -> undefined;
+        [P] -> P
+    end.
+
+-spec start_fsm/3 :: (pid(), ne_binary(), ne_binary()) -> sup_startchild_ret().
+start_fsm(Super, AcctId, AgentId) ->
+    Parent = self(),
+    supervisor:start_child(Super, ?CHILD(acdc_agent_fsm, [AcctId, AgentId, Parent])).
+
+-spec child_of_type/1 :: (atom()) -> list(pid()).
+child_of_type(T) ->
+    [ Pid || {Type, Pid, worker, [_]} <- supervisor:which_children(?MODULE), T =:= Type].
 
 %%%===================================================================
 %%% Supervisor callbacks
@@ -66,14 +81,14 @@ workers() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec init/1 :: (list()) -> sup_init_ret().
-init([]) ->
-    RestartStrategy = simple_one_for_one,
-    MaxRestarts = 1,
-    MaxSecondsBetweenRestarts = 1,
+init(Args) ->
+    RestartStrategy = one_for_all,
+    MaxRestarts = 2,
+    MaxSecondsBetweenRestarts = 2,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    {ok, {SupFlags, [?CHILD(acdc_agent_sup, temporary, 2000, worker)]}}.
+    {ok, {SupFlags, [?CHILD(acdc_agent, [self() | Args])]}}.
 
 %%%===================================================================
 %%% Internal functions
