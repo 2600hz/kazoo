@@ -43,6 +43,8 @@
           acct_id :: ne_binary()
          ,agent_id :: ne_binary()
          ,agent_proc :: pid()
+         ,wrapup_timeout :: integer() % optionally set on win/monitor
+         ,wrapup_ref :: reference()
          }).
 
 %%%===================================================================
@@ -146,7 +148,10 @@ sync(_Evt, State) ->
 ready({member_connect_win, JObj}, #state{agent_proc=Srv}=State) ->
     lager:debug("we won us a member!"),
     acdc_agent:bridge_to_member(Srv, JObj),
-    {next_state, ringing, State};
+
+    WrapupTimer = wh_json:get_integer_value(<<"Wrapup-Timeout">>, JObj),
+
+    {next_state, ringing, State#state{wrapup_timeout=WrapupTimer}};
 ready({member_connect_req, JObj}, #state{agent_proc=Srv}=State) ->
     acdc_agent:member_connect_resp(Srv, JObj),
     {next_state, ready, State};
@@ -163,7 +168,14 @@ ringing({member_connect_req, _}, State) ->
 ringing({member_connect_win, JObj}, #state{agent_proc=Srv}=State) ->
     lager:debug("we won, but can't process this right now"),
     acdc_agent:member_connect_retry(Srv, JObj),
-    {next_state, ringing, State};
+    {next_state, ringing, State#state{wrapup_timeout=undefined}};
+ringing({call_event, <<"call_event">>, <<"CHANNEL_BRIDGE">>, _JObj}, #state{agent_proc=Srv}=State) ->
+    lager:debug("agent has connected to member!"),
+    acdc_agent:member_accepted(Srv),
+    {next_stage, answered, State};
+ringing({call_event, <<"call_event">>, <<"CHANNEL_DESTROY">>, _JObj}, State) ->
+    lager:debug("channel was destroyed before we could connect"),
+    {next_state, ready, State#state{wrapup_timeout=undefined}};
 ringing(_Evt, State) ->
     {next_state, ringing, State}.
 
@@ -178,6 +190,14 @@ answered({member_connect_win, JObj}, #state{agent_proc=Srv}=State) ->
     lager:debug("we won, but can't process this right now"),
     acdc_agent:member_connect_retry(Srv, JObj),
     {next_state, answered, State};
+answered({call_event, <<"call_event">>, <<"CHANNEL_DESTROY">>, _JObj}
+         ,#state{wrapup_timeout=WrapupTimeout}=State
+        ) ->
+    lager:debug("call has hungup, going into a wrapup period"),
+
+    Ref = start_wrapup_timer(WrapupTimeout),
+
+    {next_state, wrapup, State#state{wrapup_timeout=undefined, wrapup_ref=Ref}};
 answered(_Evt, State) ->
     {next_state, answered, State}.
 
@@ -187,13 +207,16 @@ answered(_Evt, State) ->
 %% @end
 %%--------------------------------------------------------------------
 wrapup({member_connect_req, _}, State) ->
-    {next_state, wrapup, State};
+    {next_state, wrapup, State#state{wrapup_timeout=undefined}};
 wrapup({member_connect_win, JObj}, #state{agent_proc=Srv}=State) ->
     lager:debug("we won, but can't process this right now"),
     acdc_agent:member_connect_retry(Srv, JObj),
-    {next_state, wrapup, State};
+    {next_state, wrapup, State#state{wrapup_timeout=undefined}};
+wrapup({timeout, Ref, wrapup_expired}, #state{wrapup_ref=Ref}=State) ->
+    lager:debug("wrapup timer expired, ready for action!"),
+    {next_state, ready, State#state{wrapup_timeout=undefined, wrapup_ref=undefined}};
 wrapup(_Evt, State) ->
-    {next_state, wrapup, State}.
+    {next_state, wrapup, State#state{wrapup_timeout=undefined}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -291,3 +314,6 @@ code_change(_OldVsn, StateName, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+-spec start_wrapup_timer/1 :: ('undefined' | pos_integer()) -> 'undefined' | reference().
+start_wrapup_timer('undefined') -> 'undefined';
+start_wrapup_timer(Timeout) -> gen_fsm:start_timer(Timeout, wrapup_expired).
