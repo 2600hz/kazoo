@@ -55,6 +55,7 @@ migrate() ->
                    ,fun(L) -> sets:add_element(<<"cb_limits">>, L) end
                    ,fun(L) -> sets:add_element(<<"cb_whitelabel">>, L) end
                    ,fun(L) -> sets:add_element(<<"cb_braintree">>, L) end
+                   ,fun(L) -> sets:add_element(<<"cb_services">>, L) end
                   ],
     UpdatedModules = sets:to_list(lists:foldr(fun(F, L) -> F(L) end, StartModules, XbarUpdates)),
     _ = whapps_config:set_default(<<"crossbar">>, <<"autoload_modules">>, UpdatedModules),

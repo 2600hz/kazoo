@@ -200,8 +200,8 @@ post(#cb_context{doc=Doc}=Context, AccountId) ->
                                                       ,doc=wh_json:set_value(<<"_rev">>, Rev, Doc)
                                                      }) of
                 #cb_context{resp_status=success, doc=Doc1}=Context1 ->
-                    couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, wh_json:set_value(<<"_rev">>, AccountsRev, Doc1)),
-                    Context1;
+                    _ = couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, wh_json:set_value(<<"_rev">>, AccountsRev, Doc1)),
+                    support_depreciated_billing_id(wh_json:get_value(<<"billing_id">>, Doc1), AccountId, Context1);
                 Else ->
                     Else
             end;
@@ -211,7 +211,7 @@ post(#cb_context{doc=Doc}=Context, AccountId) ->
                                                      }) of
                 #cb_context{resp_status=success, doc=Doc1}=Context1 ->
                     couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, wh_json:set_value(<<"_rev">>, AccountsRev, Doc1)),
-                    Context1;
+                    support_depreciated_billing_id(wh_json:get_value(<<"billing_id">>, Doc1), AccountId, Context1);
                 Else ->
                     Else
             end
@@ -653,6 +653,29 @@ notfy_new_account(#cb_context{doc = JObj}) ->
               | wh_api:default_headers(?APP_VERSION, ?APP_NAME)
              ],
     wapi_notifications:publish_new_account(Notify).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Support the depreciated billing id on the account definition, will 
+%% be phased out shortly
+%% @end
+%%--------------------------------------------------------------------
+-spec support_depreciated_billing_id/3 :: (ne_binary(), ne_binary(), #cb_context{}) -> #cb_context{}.
+support_depreciated_billing_id(undefined, _, Context) ->
+    Context;
+support_depreciated_billing_id(BillingId, AccountId, Context) ->
+    io:format("~p ~p~n", [BillingId, AccountId]),
+    try wh_services:set_billing_id(BillingId, AccountId) of
+        undefined -> Context;
+        Services ->
+            _ = wh_services:save(Services),
+            Context
+    catch
+        throw:{Error, Reason} ->
+            R = wh_json:set_value([<<"billing_id">>, <<"invalid">>], Reason, wh_json:new()),
+            crossbar_util:response(error, wh_util:to_binary(Error), 400, R, Context)
+    end.
 
 %% for testing purpose, don't forget to export !
 %% is_unique_realm({AccountId, Realm}) -> is_unique_realm(AccountId, #cb_context{}, Realm).

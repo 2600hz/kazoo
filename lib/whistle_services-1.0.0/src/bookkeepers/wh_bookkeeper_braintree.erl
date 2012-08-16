@@ -10,6 +10,7 @@
 -include_lib("whistle_services/src/whistle_services.hrl").
 
 -export([sync/2]).
+-export([is_good_standing/1]).
 
 -record(wh_service_update, {bt_subscription
                             ,plan_id
@@ -19,6 +20,23 @@
                              ,account_id
                              ,bt_customer
                             }).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+is_good_standing(AccountId) ->
+    try braintree_customer:default_payment_token(AccountId) of
+        _ -> 
+            lager:debug("braintree customer ~s is believed to be in good standing", [AccountId]),
+            true
+    catch
+        throw:_R -> 
+            lager:debug("braintree customer ~s is not in good standing: ~p", [AccountId, _R]),
+            false
+    end.
                              
 %%--------------------------------------------------------------------
 %% @public
@@ -27,8 +45,12 @@
 %% @end
 %%--------------------------------------------------------------------
 sync(Items, AccountId) ->
-    Customer = fetch_or_create_customer(AccountId),
-    sync(wh_service_items:to_list(Items), AccountId, #wh_service_updates{bt_customer=Customer}).
+    ItemList = wh_service_items:to_list(Items),
+    case fetch_bt_customer(AccountId, ItemList =/= []) of
+        undefined -> ok;
+        Customer ->
+            sync(ItemList, AccountId, #wh_service_updates{bt_customer=Customer})
+    end.
 
 sync([], _AccountId, #wh_service_updates{bt_subscriptions=Subscriptions}) ->
     _ = [braintree_subscription:update(Subscription) 
@@ -103,15 +125,15 @@ handle_cumulative_discounts(ServiceItem, Subscription) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec fetch_or_create_customer/1 :: (ne_binary()) -> braintree_customer:customer().
-fetch_or_create_customer(AccountId) ->
+-spec fetch_bt_customer/2 :: (ne_binary(), boolean()) -> 'undefined' | braintree_customer:customer().
+fetch_bt_customer(AccountId, NewItems) ->
     lager:debug("requesting braintree customer ~s", [AccountId]),
     try braintree_customer:find(AccountId) of
         Customer -> Customer
     catch
-        throw:{not_found, _} ->
-            lager:debug("creating new braintree customer ~s", [AccountId]),
-            braintree_customer:create(AccountId)
+        throw:{not_found, Error} when NewItems ->
+            throw({no_payment_token, wh_json:from_list([{<<"no_payment_token">>, Error}])});
+        throw:{not_found, _} -> undefined
     end.
 
 %%--------------------------------------------------------------------

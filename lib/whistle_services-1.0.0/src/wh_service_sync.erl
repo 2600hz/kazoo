@@ -5,12 +5,13 @@
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
--module(wh_service_invoices).
+-module(wh_service_sync).
 
 -behaviour(gen_server).
 
 -export([start_link/0]).
--export([run/0]).
+-export([sync/1]).
+-export([clean/1]).
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -37,8 +38,16 @@
 start_link() ->
     gen_server:start_link(?MODULE, [], []).
 
-run() ->
-    maybe_sync_service().
+sync(Account) ->
+    immediate_sync(Account).
+
+clean(Account) ->
+    AccountId = wh_util:format_account_id(Account, raw),
+    case couch_mgr:open_doc(?WH_SERVICES_DB, AccountId) of
+        {error, _}=E -> E;
+        {ok, ServiceJObj} -> 
+            immediate_sync(AccountId, wh_json:set_value(<<"pvt_deleted">>, true, ServiceJObj))
+    end.
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -56,7 +65,8 @@ run() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    _TRef = erlang:send_after(1000, self(), {try_sync_service}),
+    SyncPeriod = whapps_config:get_integer(?WHS_CONFIG_CAT, <<"sync_period">>, 600000),
+    _TRef = erlang:send_after(SyncPeriod, self(), {try_sync_service}),
     {ok, #state{}}.
 
 %%--------------------------------------------------------------------
@@ -101,7 +111,8 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info({try_sync_service}, State) ->
     _ = maybe_sync_service(),
-    _TRef = erlang:send_after(1000, self(), {try_sync_service}),
+    SyncPeriod = whapps_config:get_integer(?WHS_CONFIG_CAT, <<"sync_period">>, 600000),
+    _TRef = erlang:send_after(SyncPeriod, self(), {try_sync_service}),
     {noreply, State};
 handle_info(_Info, State) ->
     {noreply, State}.
@@ -118,7 +129,7 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
-    lager:debug("whistle service invoices terminating: ~p", [_Reason]).
+    lager:debug("whistle service sync terminating: ~p", [_Reason]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -190,12 +201,20 @@ sync_services(AccountId, ServiceJObj) ->
     case wh_service_plans:create_items(ServiceJObj) of
         {error, no_plans} -> 
             lager:debug("no services plans found", []),
-            finalize_sync(AccountId, ServiceJObj);
+            _ = mark_clean_and_status(<<"good_standing">>, ServiceJObj),
+            maybe_sync_reseller(AccountId, ServiceJObj);
         {ok, ServiceItems} ->
             %% TODO: support other bookkeepers...
             try wh_bookkeeper_braintree:sync(ServiceItems, AccountId) of
-                _ -> finalize_sync(AccountId, ServiceJObj)
+                _ -> 
+                    _ = mark_clean_and_status(<<"good_standing">>, ServiceJObj),
+                    lager:debug("synchronization with bookkeeper complete", []),
+                    maybe_sync_reseller(AccountId, ServiceJObj)
             catch
+                throw:{Reason, _}=_R ->
+                    lager:debug("bookkeeper error: ~p", [_R]),
+                    _ = mark_clean_and_status(wh_util:to_binary(Reason), ServiceJObj),
+                    maybe_sync_reseller(AccountId, ServiceJObj);
                 _E:R ->
                     %% TODO: certain errors (such as no CC or expired, ect) should
                     %% move the account of good standing...
@@ -204,10 +223,8 @@ sync_services(AccountId, ServiceJObj) ->
             end
     end.
 
--spec finalize_sync/2 :: (ne_binary(), wh_json:json_object()) -> wh_std_return().
-finalize_sync(AccountId, ServiceJObj) ->
-    _ = mark_clean(ServiceJObj),
-    lager:debug("synchronization with bookkeeper complete", []),
+-spec maybe_sync_reseller/2 :: (ne_binary(), wh_json:json_object()) -> wh_std_return().
+maybe_sync_reseller(AccountId, ServiceJObj) ->
     case wh_json:get_ne_value(<<"pvt_reseller_id">>, ServiceJObj, AccountId) of
         AccountId -> {ok, ServiceJObj};
         ResellerId ->
@@ -242,6 +259,19 @@ mark_clean(AccountId) when is_binary(AccountId) ->
 mark_clean(JObj) ->
     couch_mgr:save_doc(?WH_SERVICES_DB, wh_json:set_value(<<"pvt_dirty">>, false, JObj)).
 
+
+-spec mark_clean_and_status/2 :: (ne_binary(), ne_binary() | wh_json:json_object()) -> wh_std_return().
+mark_clean_and_status(Status, AccountId) when is_binary(AccountId) ->
+    case couch_mgr:open_doc(?WH_SERVICES_DB, AccountId) of
+        {error, _}=E -> E;
+        {ok, JObj} -> mark_clean_and_status(Status, JObj)
+    end;
+mark_clean_and_status(Status, JObj) ->
+    lager:debug("marking services clean with status ~s", [Status]),
+    couch_mgr:save_doc(?WH_SERVICES_DB, wh_json:set_values([{<<"pvt_dirty">>, false}
+                                                            ,{<<"pvt_status">>, Status}
+                                                           ], JObj)).
+
 -spec maybe_update_billing_id/3 :: (ne_binary(), ne_binary(), wh_json:json_object()) -> wh_std_return().
 maybe_update_billing_id(BillingId, AccountId, ServiceJObj) ->
     case couch_mgr:open_doc(?WH_ACCOUNTS_DB, BillingId) of
@@ -254,5 +284,29 @@ maybe_update_billing_id(BillingId, AccountId, ServiceJObj) ->
                 true ->
                     lager:debug("billing id ~s on ~s was deleted, updating to bill self", [BillingId, AccountId]),
                     couch_mgr:save_doc(?WH_SERVICES_DB, wh_json:set_value(<<"billing_id">>, AccountId, ServiceJObj))
+            end
+    end.
+
+-spec immediate_sync/1 :: (ne_binary()) -> wh_std_return().
+-spec immediate_sync/2 :: (ne_binary(), wh_json:json_object()) -> wh_std_return().
+
+immediate_sync(Account) ->
+    AccountId = wh_util:format_account_id(Account, raw),
+    case couch_mgr:open_doc(?WH_SERVICES_DB, AccountId) of
+        {error, _}=E -> E;
+        {ok, ServiceJObj} -> 
+            immediate_sync(AccountId, ServiceJObj)
+    end.
+    
+immediate_sync(AccountId, ServiceJObj) ->
+    case wh_service_plans:create_items(ServiceJObj) of
+        {error, no_plans}=E -> E;
+        {ok, ServiceItems} ->
+            %% TODO: support other bookkeepers...
+            try wh_bookkeeper_braintree:sync(ServiceItems, AccountId) of    
+                _ -> {ok, ServiceJObj}
+            catch
+                throw:{_, R} -> {error, R};
+                _E:R -> {error, R}
             end
     end.
