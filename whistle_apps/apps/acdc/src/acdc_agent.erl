@@ -15,6 +15,7 @@
          ,member_connect_resp/2
          ,member_connect_retry/2
          ,bridge_to_member/2
+         ,monitor_call/2
          ,member_connect_accepted/1
         ]).
 
@@ -136,6 +137,9 @@ member_connect_accepted(Srv) ->
 bridge_to_member(Srv, WinJObj) ->
     gen_listener:cast(Srv, {bridge_to_member, WinJObj}).
 
+monitor_call(Srv, MonitorJObj) ->
+    gen_listener:cast(Srv, {monitor_call, MonitorJObj}).
+
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -253,6 +257,12 @@ handle_cast({bridge_to_member, WinJObj}, #state{endpoints=EPs}=State) ->
     maybe_connect_to_agent(EPs, Call),
 
     lager:debug("waiting on successful bridge now"),
+    {noreply, State#state{call=Call}};
+
+handle_cast({monitor_call, MonitorJObj}, State) ->
+    Call = whapps_call:set_call_id(wh_json:get_value(<<"Call-ID">>, MonitorJObj), whapps_call:new()),
+    bind_to_call_events(Call),
+    lager:debug("monitoring call ~s", [whapps_call:call_id(Call)]),
     {noreply, State#state{call=Call}};
 
 handle_cast(_Msg, State) ->
