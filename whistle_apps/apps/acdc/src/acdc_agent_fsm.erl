@@ -275,6 +275,7 @@ paused(_Evt, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_event(_Event, StateName, State) ->
+    lager:debug("unhandled event in state ~s: ~p", [StateName, _Event]),
     {next_state, StateName, State}.
 
 %%--------------------------------------------------------------------
@@ -294,6 +295,7 @@ handle_event(_Event, StateName, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_sync_event(_Event, _From, StateName, State) ->
+    lager:debug("unhandled sync event in state ~s: ~p", [StateName, _Event]),
     Reply = ok,
     {reply, Reply, StateName, State}.
 
