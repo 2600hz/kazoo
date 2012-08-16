@@ -14,8 +14,8 @@
          ,member_connect_resp/1, member_connect_resp_v/1
          ,member_connect_win/1, member_connect_win_v/1
          ,member_connect_monitor/1, member_connect_monitor_v/1
-         ,member_connect_ignore/1, member_connect_ignore_v/1
          ,member_connect_retry/1, member_connect_retry_v/1
+         ,member_connect_accepted/1, member_connect_accepted_v/1
          ,member_hungup/1, member_hungup_v/1
         ]).
 
@@ -28,8 +28,8 @@
          ,publish_member_connect_resp/2, publish_member_connect_resp/3
          ,publish_member_connect_win/2, publish_member_connect_win/3
          ,publish_member_connect_monitor/2, publish_member_connect_monitor/3
-         ,publish_member_connect_ignore/2, publish_member_connect_ignore/3
          ,publish_member_connect_retry/2, publish_member_connect_retry/3
+         ,publish_member_connect_accepted/2, publish_member_connect_accepted/3
          ,publish_member_hungup/2, publish_member_hungup/3
         ]).
 
@@ -204,31 +204,31 @@ member_connect_monitor_v(JObj) ->
     member_connect_monitor_v(wh_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
-%% Member Connect Ignore
+%% Member Connect Accepted
 %%------------------------------------------------------------------------------
--define(MEMBER_CONNECT_IGNORE_HEADERS, [<<"Call-ID">>]).
--define(OPTIONAL_MEMBER_CONNECT_IGNORE_HEADERS, []).
--define(MEMBER_CONNECT_IGNORE_VALUES, [{<<"Event-Category">>, <<"member">>}
-                                       ,{<<"Event-Name">>, <<"connect_ignore">>}
+-define(MEMBER_CONNECT_ACCEPTED_HEADERS, [<<"Call-ID">>]).
+-define(OPTIONAL_MEMBER_CONNECT_ACCEPTED_HEADERS, []).
+-define(MEMBER_CONNECT_ACCEPTED_VALUES, [{<<"Event-Category">>, <<"member">>}
+                                       ,{<<"Event-Name">>, <<"connect_accepted">>}
                                       ]).
--define(MEMBER_CONNECT_IGNORE_TYPES, []).
+-define(MEMBER_CONNECT_ACCEPTED_TYPES, []).
 
--spec member_connect_ignore/1 :: (api_terms()) ->
+-spec member_connect_accepted/1 :: (api_terms()) ->
                                          {'ok', iolist()} |
                                          {'error', string()}.
-member_connect_ignore(Props) when is_list(Props) ->
-    case member_connect_ignore_v(Props) of
-        true -> wh_api:build_message(Props, ?MEMBER_CONNECT_IGNORE_HEADERS, ?OPTIONAL_MEMBER_CONNECT_IGNORE_HEADERS);
-        false -> {error, "Proplist failed validation for member_connect_ignore"}
+member_connect_accepted(Props) when is_list(Props) ->
+    case member_connect_accepted_v(Props) of
+        true -> wh_api:build_message(Props, ?MEMBER_CONNECT_ACCEPTED_HEADERS, ?OPTIONAL_MEMBER_CONNECT_ACCEPTED_HEADERS);
+        false -> {error, "Proplist failed validation for member_connect_accepted"}
     end;
-member_connect_ignore(JObj) ->
-    member_connect_ignore(wh_json:to_proplist(JObj)).
+member_connect_accepted(JObj) ->
+    member_connect_accepted(wh_json:to_proplist(JObj)).
 
--spec member_connect_ignore_v/1 :: (api_terms()) -> boolean().
-member_connect_ignore_v(Prop) when is_list(Prop) ->
-    wh_api:validate(Prop, ?MEMBER_CONNECT_IGNORE_HEADERS, ?MEMBER_CONNECT_IGNORE_VALUES, ?MEMBER_CONNECT_IGNORE_TYPES);
-member_connect_ignore_v(JObj) ->
-    member_connect_ignore_v(wh_json:to_proplist(JObj)).
+-spec member_connect_accepted_v/1 :: (api_terms()) -> boolean().
+member_connect_accepted_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?MEMBER_CONNECT_ACCEPTED_HEADERS, ?MEMBER_CONNECT_ACCEPTED_VALUES, ?MEMBER_CONNECT_ACCEPTED_TYPES);
+member_connect_accepted_v(JObj) ->
+    member_connect_accepted_v(wh_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
 %% Member Connect Retry
@@ -351,12 +351,12 @@ publish_member_connect_monitor(Q, API, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(API, ?MEMBER_CONNECT_MONITOR_VALUES, fun member_connect_monitor/1),
     amqp_util:targeted_publish(Q, Payload, ContentType).
 
--spec publish_member_connect_ignore/2 :: (ne_binary(), api_terms()) -> 'ok'.
--spec publish_member_connect_ignore/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
-publish_member_connect_ignore(Q, JObj) ->
-    publish_member_connect_ignore(Q, JObj, ?DEFAULT_CONTENT_TYPE).
-publish_member_connect_ignore(Q, API, ContentType) ->
-    {ok, Payload} = wh_api:prepare_api_payload(API, ?MEMBER_CONNECT_IGNORE_VALUES, fun member_connect_ignore/1),
+-spec publish_member_connect_accepted/2 :: (ne_binary(), api_terms()) -> 'ok'.
+-spec publish_member_connect_accepted/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+publish_member_connect_accepted(Q, JObj) ->
+    publish_member_connect_accepted(Q, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_member_connect_accepted(Q, API, ContentType) ->
+    {ok, Payload} = wh_api:prepare_api_payload(API, ?MEMBER_CONNECT_ACCEPTED_VALUES, fun member_connect_accepted/1),
     amqp_util:targeted_publish(Q, Payload, ContentType).
 
 -spec publish_member_connect_retry/2 :: (ne_binary(), api_terms()) -> 'ok'.
