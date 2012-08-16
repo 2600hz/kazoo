@@ -91,8 +91,12 @@ member_connect_monitor(FSM, JObj) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec call_event/4 :: (pid(), ne_binary(), ne_binary(), wh_json:json_object()) -> 'ok'.
-call_event(FSM, Cat, Name, JObj) ->
-    gen_fsm:send_event(FSM, {call_event, Cat, Name, JObj}).
+call_event(FSM, <<"call_event">>, <<"CHANNEL_BRIDGE">>, JObj) ->
+    gen_fsm:send_event(FSM, {channel_bridged, JObj});
+call_event(FSM, <<"call_event">>, <<"CHANNEL_DESTROY">>, JObj) ->
+    gen_fsm:send_event(FSM, {channel_hungup, JObj});
+call_event(_, _, _, _) ->
+    ok.
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -182,11 +186,11 @@ ringing({member_connect_win, JObj}, #state{agent_proc=Srv}=State) ->
 ringing({member_connect_monitor, _JObj}, State) ->
     lager:debug("we're ringing, but received a connect_monitor?"),
     {next_state, ringing, State};
-ringing({call_event, <<"call_event">>, <<"CHANNEL_BRIDGE">>, _JObj}, #state{agent_proc=Srv}=State) ->
+ringing({channel_bridged, _JObj}, #state{agent_proc=Srv}=State) ->
     lager:debug("agent has connected to member!"),
     acdc_agent:member_connect_accepted(Srv),
     {next_stage, answered, State};
-ringing({call_event, <<"call_event">>, <<"CHANNEL_DESTROY">>, _JObj}, State) ->
+ringing({channel_hungup, _JObj}, State) ->
     lager:debug("channel was destroyed before we could connect"),
     {next_state, ready, State#state{wrapup_timeout=undefined}};
 ringing(_Evt, State) ->
@@ -208,7 +212,7 @@ answered({member_connect_monitor, _JObj}, State) ->
     lager:debug("we've answered, but received a connect_monitor?"),
     {next_state, answered, State};
 
-answered({call_event, <<"call_event">>, <<"CHANNEL_DESTROY">>, _JObj}
+answered({channel_hungup, _JObj}
          ,#state{wrapup_timeout=WrapupTimeout}=State
         ) ->
     lager:debug("call has hungup, going into a wrapup period"),
