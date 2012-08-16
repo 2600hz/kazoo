@@ -72,9 +72,12 @@ new_subscription(PlanId, Customer) ->
 %% Given a cutomer record find (if any) the default payment token
 %% @end
 %%--------------------------------------------------------------------
--spec default_payment_token/1 :: (#bt_customer{}) -> 'undefined' | ne_binary().
+-spec default_payment_token/1 :: (ne_binary() | #bt_customer{}) -> 'undefined' | ne_binary().
 default_payment_token(#bt_customer{}=Customer) ->
-    braintree_card:default_payment_token(get_cards(Customer)).
+    braintree_card:default_payment_token(get_cards(Customer));
+default_payment_token(CustomerId) ->
+    default_payment_token(find(CustomerId)).
+
 
 %%--------------------------------------------------------------------
 %% @public

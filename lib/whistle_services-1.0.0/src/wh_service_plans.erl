@@ -11,6 +11,7 @@
 
 -export([empty/0]).
 -export([from_service_json/1]).
+-export([plan_summary/1]).
 -export([create_items/1
          ,create_items/2
         ]).
@@ -40,7 +41,25 @@ empty() -> [].
 -spec from_service_json/1 :: (wh_json:json_object()) -> plans().
 from_service_json(ServicesJObj) ->
     PlanIds = wh_json:get_keys(<<"plans">>, ServicesJObj),
-    get_plans(PlanIds, ServicesJObj).
+    ResellerId = wh_json:get_value(<<"pvt_reseller_id">>, ServicesJObj),
+    get_plans(PlanIds, ResellerId, ServicesJObj).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec plan_summary/1 :: (wh_json:json_object()) -> wh_json:json_object().
+plan_summary(ServicesJObj) ->
+    ResellerId = wh_json:get_value(<<"pvt_reseller_id">>, ServicesJObj),
+    lists:foldl(fun(PlanId, J) ->
+                        Plan = wh_json:get_value([<<"plans">>, PlanId], ServicesJObj, wh_json:new()),
+                        case wh_json:get_value(<<"vendor_id">>, Plan) of
+                            ResellerId -> wh_json:set_value(PlanId, Plan, J);
+                            _Else -> J
+                        end
+                end, wh_json:new(), wh_json:get_keys(<<"plans">>, ServicesJObj)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -77,21 +96,35 @@ create_items(Services, ServicePlans) ->
 %% in the vendors #wh_service_plans data structure.
 %% @end
 %%--------------------------------------------------------------------
--spec get_plans/2 :: ([ne_binary(),...] | [], wh_json:json_object()) -> plans().
--spec get_plans/3 :: ([ne_binary(),...] | [], wh_json:json_object(), plans()) -> plans().
+-spec get_plans/3 :: ([ne_binary(),...] | [], ne_binary(), wh_json:json_object()) -> plans().
+-spec get_plans/4 :: ([ne_binary(),...] | [], ne_binary(), wh_json:json_object(), plans()) -> plans().
 
-get_plans(PlanIds, Sevices) ->
-    get_plans(PlanIds, Sevices, empty()).
+get_plans(PlanIds, ResellerId, Sevices) ->
+    get_plans(PlanIds, ResellerId, Sevices, empty()).
 
-get_plans([], _, ServicePlans) ->
+get_plans([], _, _, ServicePlans) ->
     ServicePlans;
-get_plans([PlanId|PlanIds], Services, ServicePlans) ->
-    VendorId = wh_json:get_value([<<"plans">>, PlanId, <<"vendor_id">>], Services),
+get_plans([PlanId|PlanIds], ResellerId, Services, ServicePlans) ->
+    VendorId = wh_json:get_value([<<"plans">>, PlanId, <<"vendor_id">>], Services, ResellerId),
     Overrides = wh_json:get_value([<<"plans">>, PlanId, <<"overrides">>], Services, wh_json:new()),
-    case wh_service_plan:fetch(PlanId, VendorId, Overrides) of
-        undefined -> get_plans(PlanIds, Services, ServicePlans);
-        Plan -> get_plans(PlanIds, Services, append_vendor_plan(Plan, VendorId, ServicePlans))
+    case maybe_fetch_vendor_plan(PlanId, VendorId, ResellerId, Overrides) of
+        undefined -> get_plans(PlanIds, ResellerId, Services, ServicePlans);
+        Plan -> get_plans(PlanIds, ResellerId, Services, append_vendor_plan(Plan, VendorId, ServicePlans))
     end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec maybe_fetch_vendor_plan/4 :: (ne_binary(), ne_binary(), ne_binary(), wh_json:json_object())
+                                   -> 'undefined' | wh_json:json_object().
+maybe_fetch_vendor_plan(PlanId, VendorId, VendorId, Overrides) ->
+    wh_service_plan:fetch(PlanId, VendorId, Overrides);
+maybe_fetch_vendor_plan(PlanId, _, ResellerId, _) ->
+    lager:debug("service plan ~s doesnt belong to reseller ~s", [PlanId, ResellerId]),
+    undefined.
 
 %%--------------------------------------------------------------------
 %% @private

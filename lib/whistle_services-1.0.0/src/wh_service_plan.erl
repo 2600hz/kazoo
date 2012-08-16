@@ -59,48 +59,44 @@ create_items(Category, Item, ServiceItems, ServicePlan, Services) ->
                        Min;
                    _ -> ItemQuantity
                end,
-    case Quantity > 0 of
-        false -> ServiceItems;
-        true ->
-            Rate = get_rate(Quantity, ItemPlan),
-            %% allow service plans to re-map item names (IE: softphone items "as" sip_device)
-            As = wh_json:get_ne_value(<<"as">>, ItemPlan, Item),
-            Routines = [fun(I) -> wh_service_item:set_category(Category, I) end
-                        ,fun(I) -> wh_service_item:set_item(As, I) end
-                        ,fun(I) -> wh_service_item:set_quantity(Quantity, I) end
-                        ,fun(I) -> wh_service_item:set_rate(Rate, I) end
-                        ,fun(I) ->
-                                 case wh_json:get_value([<<"discounts">>, <<"single">>], ItemPlan) of
-                                     undefined -> I;
-                                     SingleDiscount ->
-                                         SingleRate = wh_json:get_float_value(<<"rate">>, SingleDiscount, Rate),
-                                         wh_service_item:set_single_discount_rate(SingleRate, I)
-                                 end
+    Rate = get_rate(Quantity, ItemPlan),
+    %% allow service plans to re-map item names (IE: softphone items "as" sip_device)
+    As = wh_json:get_ne_value(<<"as">>, ItemPlan, Item),
+    Routines = [fun(I) -> wh_service_item:set_category(Category, I) end
+                ,fun(I) -> wh_service_item:set_item(As, I) end
+                ,fun(I) -> wh_service_item:set_quantity(Quantity, I) end
+                ,fun(I) -> wh_service_item:set_rate(Rate, I) end
+                ,fun(I) ->
+                         case wh_json:get_value([<<"discounts">>, <<"single">>], ItemPlan) of
+                             undefined -> I;
+                             SingleDiscount ->
+                                 SingleRate = wh_json:get_float_value(<<"rate">>, SingleDiscount, Rate),
+                                 wh_service_item:set_single_discount_rate(SingleRate, I)
                          end
-                        ,fun(I) ->
-                                 case wh_json:get_value([<<"discounts">>, <<"cumulative">>], ItemPlan) of
-                                     undefined -> I;
-                                     CumulativeDiscount ->
-                                         CumulativeQuantity = case wh_json:get_integer_value(<<"maximum">>, CumulativeDiscount, 0) of
-                                                                  Max when Max < Quantity -> 
-                                                                      lager:debug("item '~s/~s' quantity ~p exceeds cumulative discount max, using ~p"
-                                                                                  ,[Category, As, Quantity, Max]),
-                                                                      Max;
-                                                                  _ -> Quantity
-                                                              end,
-                                         CumulativeRate = case get_rate(Quantity, CumulativeDiscount) of
-                                                              undefined -> Rate;
-                                                              Else -> Else
-                                                          end,
-                                         I2 = wh_service_item:set_cumulative_discount(CumulativeQuantity, I),
-                                         wh_service_item:set_cumulative_discount_rate(CumulativeRate, I2)
-                                 end
+                 end
+                ,fun(I) ->
+                         case wh_json:get_value([<<"discounts">>, <<"cumulative">>], ItemPlan) of
+                             undefined -> I;
+                             CumulativeDiscount ->
+                                 CumulativeQuantity = case wh_json:get_integer_value(<<"maximum">>, CumulativeDiscount, 0) of
+                                                          Max when Max < Quantity -> 
+                                                              lager:debug("item '~s/~s' quantity ~p exceeds cumulative discount max, using ~p"
+                                                                          ,[Category, As, Quantity, Max]),
+                                                              Max;
+                                                          _ -> Quantity
+                                                      end,
+                                 CumulativeRate = case get_rate(Quantity, CumulativeDiscount) of
+                                                      undefined -> Rate;
+                                                      Else -> Else
+                                                  end,
+                                 I2 = wh_service_item:set_cumulative_discount(CumulativeQuantity, I),
+                                 wh_service_item:set_cumulative_discount_rate(CumulativeRate, I2)
                          end
-                        ,fun(I) -> wh_service_item:set_bookkeepers(bookkeeper_jobj(Category, As, ServicePlan), I) end
-                       ],
-            ServiceItem = lists:foldl(fun(F, I) -> F(I) end, wh_service_items:find(Category, As, ServiceItems), Routines),
-            wh_service_items:update(ServiceItem, ServiceItems)
-    end.
+                         end
+                ,fun(I) -> wh_service_item:set_bookkeepers(bookkeeper_jobj(Category, As, ServicePlan), I) end
+               ],
+    ServiceItem = lists:foldl(fun(F, I) -> F(I) end, wh_service_items:find(Category, As, ServiceItems), Routines),
+    wh_service_items:update(ServiceItem, ServiceItems).
 
 %%--------------------------------------------------------------------
 %% @private
