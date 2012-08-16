@@ -26,7 +26,7 @@ The interplay between AMQP messages, the agent process, and the agent FSM proces
                                 <- member_connect_resp --
     <- member_connect_resp --
 
-An agent will respond to all connect requests while in the ready state. The acdc_agent will pass along the member_connect_req to the FSM. If the FSM is in the *ready* state, the FSM will pass the request JSON to the agent process to send the member_connect_resp message. If the FSM is in any other state, the member_connect_req payload will be ignored.
+An agent will respond to all connect requests while in the *ready* state. The acdc_agent will pass along the member_connect_req to the FSM. If the FSM is in the *ready* state, the FSM will pass the request JSON to the agent process to send the member_connect_resp message. If the FSM is in any other state, the member_connect_req payload will be ignored.
 
 *** Member Connect Win
 
