@@ -110,7 +110,8 @@ handle_member_message(JObj, Props) ->
 handle_member_message(JObj, Props, <<"connect_req">>) ->
     acdc_agent_fsm:member_connect_req(props:get_value(fsm_pid, Props), JObj);
 handle_member_message(JObj, Props, <<"connect_win">>) ->
-    handle_member_connect_win(JObj, Props, props:get_value(status, Props));
+    acdc_agent_fsm:member_connect_win(props:get_value(fsm_pid, Props), JObj);
+
 handle_member_message(JObj, Props, <<"connect_monitor">>) ->
     handle_member_connect_monitor(JObj, Props, props:get_value(status, Props));
 handle_member_message(JObj, Props, <<"connect_ignore">>) ->
