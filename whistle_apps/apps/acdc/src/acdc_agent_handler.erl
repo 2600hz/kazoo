@@ -59,48 +59,9 @@ handle_sync_resp(JObj, Props) ->
     end.
 
 -spec handle_call_event/2 :: (wh_json:json_object(), wh_proplist()) -> 'ok'.
--spec handle_call_event/3 :: (wh_json:json_object(), wh_proplist(), acdc_agent:agent_status()) -> 'ok'.
--spec handle_call_event/5 :: (wh_json:json_object(), wh_proplist(), acdc_agent:agent_status(), ne_binary(), ne_binary()) -> 'ok'.
 handle_call_event(JObj, Props) ->
-    case props:get_value(callid, Props) =:= wh_json:get_value(<<"Call-ID">>, JObj) of
-        true ->
-            handle_call_event(JObj, Props, props:get_value(status, Props));
-        false ->
-            lager:debug("call event for ~s when we're monitoring ~s"
-                        ,[wh_json:get_value(<<"Call-ID">>, JObj),
-                          props:get_value(callid, Props)
-                         ])
-    end.
-
-handle_call_event(JObj, Props, ringing) ->
-    case wh_util:get_event_type(JObj) of
-        {<<"call_event">>, <<"CHANNEL_BRIDGE">>} ->
-            CallId = wh_json:get_value(<<"Other-Leg-Unique-ID">>, JObj),
-            gen_listener:cast(props:get_value(server, Props)
-                              ,{call_bridged, CallId}
-                             );
-        {Cat, Name} ->
-            handle_call_event(JObj, Props, ringing, Cat, Name)
-    end;
-handle_call_event(JObj, Props, Status) ->
     {Cat, Name} = wh_util:get_event_type(JObj),
-    handle_call_event(JObj, Props, Status, Cat, Name).
-
-%% Generic call event handler
-handle_call_event(JObj, Props, _, <<"call_event">>, <<"CHANNEL_DESTROY">>) ->
-    gen_listener:cast(props:get_value(server, Props)
-                      ,{call_hungup, wh_json:get_value(<<"Call-ID">>, JObj)}
-                     );
-handle_call_event(JObj, Props, ringing, <<"error">>, _) ->
-    case application_name(JObj) of
-        <<"bridge">> ->
-            gen_listener:cast(props:get_value(server, Props)
-                              ,{bridge_failed, JObj}
-                             );
-        _ -> ok
-    end;
-handle_call_event(_JObj, _, _Status, _, _) ->
-    lager:debug("ignore evt in status ~s: ~p", [_Status, _JObj]).
+    acdc_agent_fsm:call_event(props:get_value(fsm_pid, Props), Cat, Name, JObj).
 
 -spec handle_member_message/2 :: (wh_json:json_object(), wh_proplist()) -> 'ok'.
 -spec handle_member_message/3 :: (wh_json:json_object(), wh_proplist(), ne_binary()) -> 'ok'.
@@ -111,34 +72,10 @@ handle_member_message(JObj, Props, <<"connect_req">>) ->
     acdc_agent_fsm:member_connect_req(props:get_value(fsm_pid, Props), JObj);
 handle_member_message(JObj, Props, <<"connect_win">>) ->
     acdc_agent_fsm:member_connect_win(props:get_value(fsm_pid, Props), JObj);
-
 handle_member_message(JObj, Props, <<"connect_monitor">>) ->
-    handle_member_connect_monitor(JObj, Props, props:get_value(status, Props));
-handle_member_message(JObj, Props, <<"connect_ignore">>) ->
-    handle_member_connect_ignore(JObj, Props, props:get_value(status, Props));
+    acdc_agent_fsm:member_connect_monitor(props:get_value(fsm_pid, Props), JObj);
 handle_member_message(_, _, EvtName) ->
     lager:debug("not handling member event ~s", [EvtName]).
-
--spec handle_member_connect_win/3 :: (wh_json:json_object(), wh_proplist(), acdc_agent:agent_status()) -> 'ok'.
-handle_member_connect_win(JObj, Props, waiting) ->
-    lager:debug("recv win for call"),
-    gen_listener:cast(props:get_value(server, Props)
-                      ,{member_connect_win, JObj}
-                     );
-handle_member_connect_win(JObj, Props, _Status) ->
-    lager:debug("our status changed from waiting to ~s, turning away win", [_Status]),
-    send_member_connect_retry(JObj, Props).
-
-%% handle how a member_connect_req payload is handled
--spec handle_member_connect_req/3 :: (wh_json:json_object(), wh_proplist(), acdc_agent:agent_status()) -> 'ok'.
-handle_member_connect_req(JObj, Props, ready) ->
-    gen_listener:cast(props:get_value(server, Props)
-                      ,{member_connect_req, JObj, props:get_value(queue, Props)}
-                     );
-handle_member_connect_req(_, _Props, _S) ->
-    lager:debug("ignoring member connect, agent ~p in status ~s"
-                ,[props:get_value(server, _Props), _S]
-               ).
 
 -spec sync_resp/4 :: (wh_json:json_object(), acdc_agent:agent_status(), ne_binary(), wh_proplist()) -> 'ok'.
 sync_resp(JObj, Status, MyId, Fields) ->
