@@ -1,16 +1,34 @@
 * Agents
 
+Agents represent the endpoints that a call in a queue will try to connect with.
+
 ** Agent process layout
 
 Agents are comprised of two processes, a gen_listener (named process) and a gen_fsm. A supervisor ensures that the gen_listener and gen_fsm are kept alive together. A supervisor above that manages the list of agents.
 
-    [ acdc_agents_sup ]
-            |
-           \|--------[acdc_agent_sup]
-           \|--------[acdc_agent_sup]
-                            |
-                           \|---[acdc_agent]
-                           \|---[acdc_agent_fsm]
+ [ acdc_agents_sup ]
+         |
+        \|--------[acdc_agent_sup]
+        \|--------[acdc_agent_sup]
+                         |
+                        \|---[acdc_agent]
+                        \|---[acdc_agent_fsm]
+
+*** Agent FSM
+
+init -1-> sync -2-> ready -3-> ringing ---\
+                     ^                     !
+                     !---------4-----------!
+                     7                     !
+                  wrapup <-6- answered <-5-/
+
+1. Agent process has started, trying to sync with other running agent processes
+2. Agent process has synced (or timed out waiting) and has entered the *ready* state
+3. Received a member_connect_win message
+4. Failed to bridge to the agent
+5. Bridged successfully to the agent
+6. Call has unbridged/hungup
+7. Wrapup timer has expired
 
 ** Agent message processing
 
@@ -84,3 +102,118 @@ When an agent is in the *ready* state, receives a member_connect_win, attempts t
                            {unbind}
 
 If a member_connect_win is received when _not_ in the *ready* state, reply with the member_connect_retry immediately.
+
+
+* Queues
+
+A queue provides ordering of calls through it.
+
+** Queue process layout
+
+ [acdc_queues_sup]
+         \|
+         \|----[acdc_queue_sup]
+         \|----[acdc_queue_sup]
+                      \|
+                      \|----acdc_queue
+                      \|----acdc_queue_fsm
+
+*** Queue FSM
+
+ init -1-> ready -2-> member_connect_req --\
+             ^                  4          3
+             \---5---- member_connecting --/
+
+1. After init, queue is ready to process member_calls
+2. member_call receieved from the shared AMQP queue
+3. member_connect_resps have been received, timeout fired
+4. member_connect_retry received from winning agent process
+5. member_connect_accepted received from winning agent process
+
+
+** Queue message processing
+
+The interplay between member_call requests (from callflow initially), the queue, queue fsm, and agent processes.
+
+*** Member Call Requests
+
+            AMQP               Erlang                      AMQP                    AMQP
+[CF]                 [Queue]             [QueueFSM]                  [Agents]                [Agent]
+                                          {ready}
+  -- member_call ----->
+                         -- member_call -->
+                       <- send_member_connect --
+                     {bind}
+                                       {member_conn_req}
+                       ----------------------------- member_connect_req ->
+                       <-- member_connect_resps --------------------------
+                       -- member_connect_resps ->
+                       <- send_conn_win --
+                                       {member_conning}
+                         ------------------------------------------------- member_connect_win ->
+                         <- member_connect_accepted --------------------------------------------
+                         -- accepted ---->
+                         <- ACK member_call --
+                     {unbind}
+                                          {ready}
+  <- ACK member_call ----
+
+The queue receives a member_call payload from some source (probably a callflow action to start). The queue process passes the member_call to the FSM, which instructs the queue process to send the first member_connect_req payload. The queue process also binds to call events related to that member (looking for hangup).
+
+The queue process sends the member_connect_req, and collects member_connect_resp payloads for a specified timeout. It hands the member_connect_resps to the FSM, which selects the winner and instructs the queue process to send the member_connect_win payload to the winning agent process.
+
+Once the agent process has connected the caller to the agent endpoint, the queue process will receive a member_connect_accepted payload. The queue process hands this off to the FSM, which lets the queue process know it can ACK the member_call payload (and allow the AMQP queue to send the next member_call to the next consumer). The queue process unbinds from the call events.
+
+*** Member Call Requests (Agent Retry)
+
+            AMQP               Erlang                      AMQP                    AMQP
+[CF]                 [Queue]             [QueueFSM]                  [Agents]                [Agent]
+                                          {ready}
+  -- member_call ----->
+                     {bind}
+                         -- member_call -->
+                       <- send_member_connect --
+                                       {member_conn_req}
+                       ----------------------------- member_connect_req ->
+                       <-- member_connect_resps --------------------------
+                       -- member_connect_resps ->
+                       <- send_conn_win --
+                                       {member_conning}
+                         ------------------------------------------------- member_connect_win ->
+                         <- member_connect_retry --------------------------------------------
+                       -- member_connect_retry ->
+                       <- send_member_connect --
+                                       {member_conn_req}
+This flow diagram shows how a queue reacts to a member_connect_retry (sent by the winning agent for a variety of reasons). The diagram loops back at the FSM re-entering the *member_conn_req* state.
+
+*** Member Call Requests (Call hungup)
+
+            AMQP               Erlang                      AMQP                    AMQP
+[Call]              [Queue]             [QueueFSM]                  [Agents]                [Agent]
+                     {bind}
+                                          {ready}
+                         -- member_call -->
+                       <- send_member_connect --
+                                       {member_conn_req}
+
+-- call_event HANGUP -->
+                       -- hangup --------->
+                       <- ACK member_call --
+                                         {ready}
+                    {unbind}
+
+                       ----------------------------- member_connect_req ->
+                       <-- member_connect_resps --------------------------
+                       -- member_connect_resps ->
+                       <- send_conn_win --
+                                       {member_conning}
+
+-- call_event HANGUP -->
+                       -- hangup --------->
+                       <- ACK member_call --
+                                         {ready}
+                    {unbind}
+
+This diagram shows how the FSM reacts to receiving a HANGUP either during:
+ *member_conn_req*: ignores member_connect_resps, unbinds from the call events, and ACKs the member_call so the queue can progress
+ *member_conning*: ignores member_connect_accepted/retry messages, unbinds from the call events, and ACKs teh member_call
