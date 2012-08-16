@@ -14,6 +14,8 @@ Agents are comprised of two processes, a gen_listener (named process) and a gen_
 
 ** Agent message processing
 
+The interplay between AMQP messages, the agent process, and the agent FSM process
+
 *** Member Connect Requests
 
               AMQP                      Erlang
