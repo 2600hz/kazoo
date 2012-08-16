@@ -138,6 +138,7 @@ init([AcctId, AgentId, AgentProc]) ->
 %% @end
 %%--------------------------------------------------------------------
 sync(_Evt, State) ->
+    lager:debug("unhandled event: ~p", [_Evt]),
     {next_state, sync, State}.
 
 %%--------------------------------------------------------------------
@@ -152,10 +153,19 @@ ready({member_connect_win, JObj}, #state{agent_proc=Srv}=State) ->
     WrapupTimer = wh_json:get_integer_value(<<"Wrapup-Timeout">>, JObj),
 
     {next_state, ringing, State#state{wrapup_timeout=WrapupTimer}};
+ready({member_connect_monitor, JObj}, #state{agent_proc=Srv}=State) ->
+    lager:debug("one of our counterparts won us a member!"),
+    acdc_agent:monitor_call(Srv, JObj),
+
+    WrapupTimer = wh_json:get_integer_value(<<"Wrapup-Timeout">>, JObj),
+
+    {next_state, ringing, State#state{wrapup_timeout=WrapupTimer}};
+
 ready({member_connect_req, JObj}, #state{agent_proc=Srv}=State) ->
     acdc_agent:member_connect_resp(Srv, JObj),
     {next_state, ready, State};
 ready(_Evt, State) ->
+    lager:debug("unhandled event: ~p", [_Evt]),
     {next_state, ready, State}.
 
 %%--------------------------------------------------------------------
@@ -168,7 +178,10 @@ ringing({member_connect_req, _}, State) ->
 ringing({member_connect_win, JObj}, #state{agent_proc=Srv}=State) ->
     lager:debug("we won, but can't process this right now"),
     acdc_agent:member_connect_retry(Srv, JObj),
-    {next_state, ringing, State#state{wrapup_timeout=undefined}};
+    {next_state, ringing, State};
+ringing({member_connect_monitor, _JObj}, State) ->
+    lager:debug("we're ringing, but received a connect_monitor?"),
+    {next_state, ringing, State};
 ringing({call_event, <<"call_event">>, <<"CHANNEL_BRIDGE">>, _JObj}, #state{agent_proc=Srv}=State) ->
     lager:debug("agent has connected to member!"),
     acdc_agent:member_connect_accepted(Srv),
@@ -177,6 +190,7 @@ ringing({call_event, <<"call_event">>, <<"CHANNEL_DESTROY">>, _JObj}, State) ->
     lager:debug("channel was destroyed before we could connect"),
     {next_state, ready, State#state{wrapup_timeout=undefined}};
 ringing(_Evt, State) ->
+    lager:debug("unhandled event: ~p", [_Evt]),
     {next_state, ringing, State}.
 
 %%--------------------------------------------------------------------
@@ -190,6 +204,10 @@ answered({member_connect_win, JObj}, #state{agent_proc=Srv}=State) ->
     lager:debug("we won, but can't process this right now"),
     acdc_agent:member_connect_retry(Srv, JObj),
     {next_state, answered, State};
+answered({member_connect_monitor, _JObj}, State) ->
+    lager:debug("we've answered, but received a connect_monitor?"),
+    {next_state, answered, State};
+
 answered({call_event, <<"call_event">>, <<"CHANNEL_DESTROY">>, _JObj}
          ,#state{wrapup_timeout=WrapupTimeout}=State
         ) ->
@@ -199,6 +217,7 @@ answered({call_event, <<"call_event">>, <<"CHANNEL_DESTROY">>, _JObj}
 
     {next_state, wrapup, State#state{wrapup_timeout=undefined, wrapup_ref=Ref}};
 answered(_Evt, State) ->
+    lager:debug("unhandled event: ~p", [_Evt]),
     {next_state, answered, State}.
 
 %%--------------------------------------------------------------------
@@ -212,10 +231,15 @@ wrapup({member_connect_win, JObj}, #state{agent_proc=Srv}=State) ->
     lager:debug("we won, but can't process this right now"),
     acdc_agent:member_connect_retry(Srv, JObj),
     {next_state, wrapup, State#state{wrapup_timeout=undefined}};
+wrapup({member_connect_monitor, _JObj}, State) ->
+    lager:debug("we're wrapping up, but received a connect_monitor?"),
+    {next_state, wrapup, State};
+
 wrapup({timeout, Ref, wrapup_expired}, #state{wrapup_ref=Ref}=State) ->
     lager:debug("wrapup timer expired, ready for action!"),
     {next_state, ready, State#state{wrapup_timeout=undefined, wrapup_ref=undefined}};
 wrapup(_Evt, State) ->
+    lager:debug("unhandled event: ~p", [_Evt]),
     {next_state, wrapup, State#state{wrapup_timeout=undefined}}.
 
 %%--------------------------------------------------------------------
@@ -229,7 +253,12 @@ paused({member_connect_win, JObj}, #state{agent_proc=Srv}=State) ->
     lager:debug("we won, but can't process this right now"),
     acdc_agent:member_connect_retry(Srv, JObj),
     {next_state, paused, State};
+paused({member_connect_monitor, _JObj}, State) ->
+    lager:debug("we've paused, but received a connect_monitor?"),
+    {next_state, paused, State};
+
 paused(_Evt, State) ->
+    lager:debug("unhandled event: ~p", [_Evt]),
     {next_state, paused, State}.
 
 %%--------------------------------------------------------------------
