@@ -15,6 +15,7 @@
          ,member_connect_resp/2
          ,member_connect_retry/2
          ,bridge_to_member/2
+         ,member_connect_accepted/1
         ]).
 
 %% gen_server callbacks
@@ -128,6 +129,10 @@ member_connect_resp(Srv, ReqJObj) ->
 
 member_connect_retry(Srv, WinJObj) ->
     gen_listener:cast(Srv, {member_connect_retry, WinJObj}).
+
+member_connect_accepted(Srv) ->
+    gen_listener:cast(Srv, member_connect_accepted).
+
 bridge_to_member(Srv, WinJObj) ->
     gen_listener:cast(Srv, {bridge_to_member, WinJObj}).
 
@@ -199,6 +204,13 @@ handle_call(_Request, _From, State) ->
 %%--------------------------------------------------------------------
 handle_cast({queue_name, Q}, State) ->
     {noreply, State#state{my_q=Q}};
+
+handle_cast(member_connect_accepted, #state{msg_queue_id=AmqpQueue
+                                    ,call=Call
+                                   }=State) ->
+    lager:debug("member bridged to agent!"),
+    send_member_connect_accepted(AmqpQueue, call_id(Call)),
+    {noreply, State};
 
 handle_cast(load_endpoints, #state{
               agent_db=AcctDb
@@ -326,6 +338,11 @@ send_member_connect_retry(JObj, MyId) ->
               ,{<<"Call-ID">>, wh_json:get_value([<<"Call">>, <<"call_id">>], JObj)}
               ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
              ]),
+    wapi_acdc_queue:publish_member_connect_retry(Queue, Resp).
+
+-spec send_member_connect_accepted/2 :: (ne_binary(), ne_binary()) -> 'ok'.
+send_member_connect_accepted(Queue, CallId) ->
+    Resp = props:filter_undefined([{<<"Call-ID">>, CallId}]),
     wapi_acdc_queue:publish_member_connect_retry(Queue, Resp).
 
 -spec idle_time/1 :: ('undefined' | wh_now()) -> 'undefined' | integer().
