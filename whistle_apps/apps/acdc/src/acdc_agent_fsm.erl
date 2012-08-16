@@ -143,6 +143,10 @@ sync(_Evt, State) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+ready({member_connect_win, JObj}, #state{agent_proc=Srv}=State) ->
+    lager:debug("we won us a member!"),
+    acdc_agent:bridge_to_member(Srv, JObj),
+    {next_state, ringing, State};
 ready({member_connect_req, JObj}, #state{agent_proc=Srv}=State) ->
     acdc_agent:member_connect_resp(Srv, JObj),
     {next_state, ready, State};
@@ -156,6 +160,10 @@ ready(_Evt, State) ->
 %%--------------------------------------------------------------------
 ringing({member_connect_req, _}, State) ->
     {next_state, ringing, State};
+ringing({member_connect_win, JObj}, #state{agent_proc=Srv}=State) ->
+    lager:debug("we won, but can't process this right now"),
+    acdc_agent:member_connect_retry(Srv, JObj),
+    {next_state, ringing, State};
 ringing(_Evt, State) ->
     {next_state, ringing, State}.
 
@@ -165,6 +173,10 @@ ringing(_Evt, State) ->
 %% @end
 %%--------------------------------------------------------------------
 answered({member_connect_req, _}, State) ->
+    {next_state, answered, State};
+answered({member_connect_win, JObj}, #state{agent_proc=Srv}=State) ->
+    lager:debug("we won, but can't process this right now"),
+    acdc_agent:member_connect_retry(Srv, JObj),
     {next_state, answered, State};
 answered(_Evt, State) ->
     {next_state, answered, State}.
@@ -176,6 +188,10 @@ answered(_Evt, State) ->
 %%--------------------------------------------------------------------
 wrapup({member_connect_req, _}, State) ->
     {next_state, wrapup, State};
+wrapup({member_connect_win, JObj}, #state{agent_proc=Srv}=State) ->
+    lager:debug("we won, but can't process this right now"),
+    acdc_agent:member_connect_retry(Srv, JObj),
+    {next_state, wrapup, State};
 wrapup(_Evt, State) ->
     {next_state, wrapup, State}.
 
@@ -185,6 +201,10 @@ wrapup(_Evt, State) ->
 %% @end
 %%--------------------------------------------------------------------
 paused({member_connect_req, _}, State) ->
+    {next_state, paused, State};
+paused({member_connect_win, JObj}, #state{agent_proc=Srv}=State) ->
+    lager:debug("we won, but can't process this right now"),
+    acdc_agent:member_connect_retry(Srv, JObj),
     {next_state, paused, State};
 paused(_Evt, State) ->
     {next_state, paused, State}.
