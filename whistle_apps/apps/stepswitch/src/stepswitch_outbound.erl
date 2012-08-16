@@ -146,7 +146,7 @@ bridge_to_endpoints(Endpoints, IsEmergency, CtrlQ, JObj) ->
 
     AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
     Updates = [{<<"Account-ID">>, AccountId}
-               ,{<<"Reseller-ID">>, wh_reseller:find_reseller_id(AccountId)}
+               ,{<<"Reseller-ID">>, wh_services:find_reseller_id(AccountId)}
                ,{<<"From-URI">>, FromURI}
                ,{<<"Ignore-Display-Updates">>, <<"true">>}
                ,{<<"Global-Resource">>, <<"true">>}
@@ -209,7 +209,7 @@ originate_to_endpoints(Endpoints, JObj) ->
 
     AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
     Updates = [{<<"Account-ID">>, AccountId}
-               ,{<<"Reseller-ID">>, wh_reseller:find_reseller_id(AccountId)}
+               ,{<<"Reseller-ID">>, wh_services:find_reseller_id(AccountId)}
                ,{<<"From-URI">>, FromURI}
                ,{<<"Global-Resource">>, <<"true">>}
               ],
@@ -258,7 +258,7 @@ execute_local_extension(Number, AccountId, CtrlQ, JObj) ->
                                    ,wh_json:get_ne_value(<<"Emergency-Caller-ID-Name">>, JObj)),
 
     CCVs = [{<<"Account-ID">>, AccountId}
-            ,{<<"Reseller-ID">>, wh_reseller:find_reseller_id(AccountId)}
+            ,{<<"Reseller-ID">>, wh_services:find_reseller_id(AccountId)}
             ,{<<"Inception">>, <<"off-net">>}
             ,{<<"Retain-CID">>, <<"true">>}
             ,{<<"Caller-ID-Number">>, CIDNum}
