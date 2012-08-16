@@ -1725,7 +1725,7 @@ wait_for_application_or_dtmf(Application, Timeout) ->
             {error, timeout}
     end.
 
--type wait_for_fax_ret() :: {'ok' | 'failed', wh_json:json_object()} |
+-type wait_for_fax_ret() :: {'ok', wh_json:json_object()} |
                             {'error', 'channel_destroy' | 'channel_hungup' | wh_json:json_object()}.
 -spec wait_for_fax/0 :: () -> wait_for_fax_ret().
 -spec wait_for_fax/1 :: (integer() | 'infinity') -> wait_for_fax_ret().
