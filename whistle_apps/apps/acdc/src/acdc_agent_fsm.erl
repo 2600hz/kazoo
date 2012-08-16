@@ -171,7 +171,7 @@ ringing({member_connect_win, JObj}, #state{agent_proc=Srv}=State) ->
     {next_state, ringing, State#state{wrapup_timeout=undefined}};
 ringing({call_event, <<"call_event">>, <<"CHANNEL_BRIDGE">>, _JObj}, #state{agent_proc=Srv}=State) ->
     lager:debug("agent has connected to member!"),
-    acdc_agent:member_accepted(Srv),
+    acdc_agent:member_connect_accepted(Srv),
     {next_stage, answered, State};
 ringing({call_event, <<"call_event">>, <<"CHANNEL_DESTROY">>, _JObj}, State) ->
     lager:debug("channel was destroyed before we could connect"),
@@ -314,6 +314,6 @@ code_change(_OldVsn, StateName, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec start_wrapup_timer/1 :: ('undefined' | pos_integer()) -> 'undefined' | reference().
-start_wrapup_timer('undefined') -> 'undefined';
+-spec start_wrapup_timer/1 :: ('undefined' | non_neg_integer()) -> reference().
+start_wrapup_timer('undefined') -> start_wrapup_timer(0); % send immediately
 start_wrapup_timer(Timeout) -> gen_fsm:start_timer(Timeout, wrapup_expired).
