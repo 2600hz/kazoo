@@ -113,7 +113,7 @@ member_connect_req_v(JObj) ->
                                            wh_json:json_object() |
                                            wh_proplist()
                                           ) -> ne_binary().
-member_connect_req_routing_key(?NE_BINARY = Id) ->
+member_connect_req_routing_key(Id) when is_binary(Id) ->
     <<?MEMBER_CONNECT_REQ_KEY, Id/binary>>;
 member_connect_req_routing_key(Props) when is_list(Props) ->
     Id = props:get_value(<<"Queue-ID">>, Props, <<"*">>),
