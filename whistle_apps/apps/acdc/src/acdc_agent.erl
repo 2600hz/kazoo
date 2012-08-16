@@ -13,6 +13,8 @@
 %% API
 -export([start_link/3
          ,member_connect_resp/2
+         ,member_connect_retry/2
+         ,bridge_to_member/2
         ]).
 
 %% gen_server callbacks
@@ -40,6 +42,7 @@
          ,last_connect :: wh_now() % last connection
          ,last_attempt :: wh_now() % last attempt to connect
          ,my_id :: ne_binary()
+         ,my_q :: ne_binary() % AMQP queue name
          ,timer_ref :: reference()
          ,sync_resp :: wh_json:json_object() % furthest along resp
          }).
@@ -123,6 +126,11 @@ start_link(Supervisor, AcctDb, AgentJObj) ->
 member_connect_resp(Srv, ReqJObj) ->
     gen_listener:cast(Srv, {member_connect_resp, ReqJObj}).
 
+member_connect_retry(Srv, WinJObj) ->
+    gen_listener:cast(Srv, {member_connect_retry, WinJObj}).
+bridge_to_member(Srv, WinJObj) ->
+    gen_listener:cast(Srv, {bridge_to_member, WinJObj}).
+
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -146,6 +154,11 @@ init([Supervisor, AcctDb, AgentJObj, Queues]) ->
 
     gen_listener:cast(self(), load_endpoints),
     gen_listener:cast(self(), send_sync_event),
+
+    Self = self(),
+    _ = spawn(fun() ->
+                      gen_listener:cast(Self, {queue_name, gen_listener:queue_name(Self)})
+              end),
 
     {ok, #state{
        agent_db = AcctDb
@@ -184,13 +197,52 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({member_connect_resp, ReqJObj}, #state{
-              last_connect=LastConnect
-              ,last_attempt=LastAttempt
-              ,my_id=MyId
+handle_cast({queue_name, Q}, State) ->
+    {noreply, State#state{my_q=Q}};
+
+handle_cast(load_endpoints, #state{
+              agent_db=AcctDb
+              ,agent_id=AgentId
              }=State) ->
-    
+    lager:debug("loading agent endpoints"),
+    {noreply, State#state{endpoints=acdc_util:get_endpoints(AcctDb, AgentId)}};
+
+handle_cast({member_connect_resp, ReqJObj}, #state{
+              agent_id=AgentId
+              ,last_connect=LastConn
+              ,agent_queues=Qs
+              ,my_id=MyId
+              ,my_q=MyQ
+             }=State) ->
+    lager:debug("responding to member_connect_req"),
+
+    ACDcQueue = wh_json:get_value(<<"Queue-ID">>, ReqJObj),
+    case is_valid_queue(ACDcQueue, Qs) of
+        false -> {noreply, State};
+        true ->
+            send_member_connect_resp(ReqJObj, MyQ, AgentId, MyId, LastConn),
+            {noreply, State#state{acdc_queue_id = ACDcQueue
+                                  ,msg_queue_id = wh_json:get_value(<<"Server-ID">>, ReqJObj)
+                                 }}
+    end;
+
+handle_cast({member_connect_retry, WinJObj}, #state{
+              my_id=MyId
+             }=State) ->
+    lager:debug("cannot process this call, sending a retry"),
+    send_member_connect_retry(WinJObj, MyId),
     {noreply, State};
+
+handle_cast({bridge_to_member, WinJObj}, #state{endpoints=EPs}=State) ->
+    lager:debug("bridging to agent endpoints"),
+
+    Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, WinJObj)),
+    bind_to_call_events(Call),
+    maybe_connect_to_agent(EPs, Call),
+
+    lager:debug("waiting on successful bridge now"),
+    {noreply, State#state{call=Call}};
+
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {noreply, State}.
@@ -249,3 +301,58 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+-spec is_valid_queue/2 :: (ne_binary(), [ne_binary()]) -> boolean().
+is_valid_queue(Q, Qs) -> lists:member(Q, Qs).
+
+-spec send_member_connect_resp/5 :: (wh_json:json_object(), ne_binary()
+                                     ,ne_binary(), ne_binary(), wh_now() | 'undefined'
+                                    ) -> 'ok'.
+send_member_connect_resp(JObj, MyQ, AgentId, MyId, LastConn) ->
+    Queue = wh_json:get_value(<<"Server-ID">>, JObj),
+    IdleTime = idle_time(LastConn),
+    Resp = props:filter_undefined(
+             [{<<"Agent-ID">>, AgentId}
+              ,{<<"Idle-Time">>, IdleTime}
+              ,{<<"Process-ID">>, MyId}
+              | wh_api:default_headers(MyQ, ?APP_NAME, ?APP_VERSION)
+             ]),
+    wapi_acdc_queue:publish_member_connect_resp(Queue, Resp).
+
+-spec send_member_connect_retry/2 :: (wh_json:json_object(), ne_binary()) -> 'ok'.
+send_member_connect_retry(JObj, MyId) ->
+    Queue = wh_json:get_value(<<"Server-ID">>, JObj),
+    Resp = props:filter_undefined(
+             [{<<"Process-ID">>, MyId}
+              ,{<<"Call-ID">>, wh_json:get_value([<<"Call">>, <<"call_id">>], JObj)}
+              ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+             ]),
+    wapi_acdc_queue:publish_member_connect_retry(Queue, Resp).
+
+-spec idle_time/1 :: ('undefined' | wh_now()) -> 'undefined' | integer().
+idle_time(undefined) -> undefined;
+idle_time(T) -> wh_util:elapsed_s(T).
+
+-spec call_id/1 :: ('undefined' | whapps_call:call()) -> 'undefined' | ne_binary().
+call_id(undefined) -> undefined;
+call_id(Call) -> whapps_call:call_id(Call).
+
+%% Handles subscribing/unsubscribing from call events
+-spec bind_to_call_events/1 :: (ne_binary() | whapps_call:call()) -> 'ok'.
+-spec unbind_from_call_events/1 :: (ne_binary() | whapps_call:call()) -> 'ok'.
+bind_to_call_events(?NE_BINARY = CallId) ->
+    gen_listener:add_binding(self(), call, [{callid, CallId}
+                                            ,{restrict_to, [events]}
+                                           ]);
+bind_to_call_events(Call) ->
+    bind_to_call_events(whapps_call:call_id(Call)).
+
+unbind_from_call_events(?NE_BINARY = CallId) ->
+    gen_listener:rm_binding(self(), call, [{callid, CallId}
+                                           ,{restrict_to, [events]}
+                                          ]);
+unbind_from_call_events(Call) ->
+    unbind_from_call_events(whapps_call:call_id(Call)).
+
+-spec maybe_connect_to_agent/2 :: (list(), whapps_call:call()) -> 'ok'.
+maybe_connect_to_agent(EPs, Call) ->
+    whapps_call_command:bridge(EPs, Call).
