@@ -30,7 +30,7 @@
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec migrate/0 :: () -> 'no_return'.
@@ -60,7 +60,7 @@ migrate() ->
                   ],
     UpdatedModules = sets:to_list(lists:foldr(fun(F, L) -> F(L) end, StartModules, XbarUpdates)),
     _ = whapps_config:set_default(<<"crossbar">>, <<"autoload_modules">>, UpdatedModules),
-    case whapps_controller:stop_app(crossbar) of 
+    case whapps_controller:stop_app(crossbar) of
         ok -> whapps_controller:start_app(crossbar);
         _Else -> ok
     end,
@@ -79,7 +79,7 @@ flush() ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec refresh/0 :: () -> 'ok'.
@@ -124,7 +124,7 @@ running_modules() ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec find_account_by_number/1 :: (input_term()) ->
@@ -134,7 +134,7 @@ find_account_by_number(Number) when not is_binary(Number) ->
     find_account_by_number(wh_util:to_binary(Number));
 find_account_by_number(Number) ->
     case wh_number_manager:lookup_account_by_number(Number) of
-        {ok, AccountId, _, _} -> 
+        {ok, AccountId, _, _} ->
             AccountDb = wh_util:format_account_id(AccountId, encoded),
             print_account_info(AccountDb, AccountId);
         {error, {not_in_service, AssignedTo}} ->
@@ -151,14 +151,14 @@ find_account_by_number(Number) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
--spec find_account_by_name/1 :: (input_term()) -> {'ok', ne_binary()} | 
+-spec find_account_by_name/1 :: (input_term()) -> {'ok', ne_binary()} |
                                                   {'multiples', [ne_binary(),...]} |
                                                   {'error', term()}.
 find_account_by_name(Name) when not is_binary(Name) ->
-    find_account_by_name(wh_util:to_binary(Name)); 
+    find_account_by_name(wh_util:to_binary(Name));
 find_account_by_name(Name) ->
     case whapps_util:get_accounts_by_name(Name) of
         {ok, AccountDb} ->
@@ -178,10 +178,10 @@ find_account_by_name(Name) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
--spec find_account_by_realm/1 :: (input_term()) -> {'ok', ne_binary()} | 
+-spec find_account_by_realm/1 :: (input_term()) -> {'ok', ne_binary()} |
                                                   {'multiples', [ne_binary(),...]} |
                                                   {'error', term()}.
 find_account_by_realm(Realm) when not is_binary(Realm) ->
@@ -205,7 +205,7 @@ find_account_by_realm(Realm) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec allow_account_number_additions/1 :: (input_term()) -> 'ok' | 'failed'.
@@ -222,7 +222,7 @@ allow_account_number_additions(AccountId) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec disallow_account_number_additions/1 :: (input_term()) -> 'ok' | 'failed'.
@@ -239,7 +239,7 @@ disallow_account_number_additions(AccountId) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec enable_account/1 :: (input_term()) -> 'ok' | 'failed'.
@@ -256,7 +256,7 @@ enable_account(AccountId) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec disable_account/1 :: (input_term()) -> 'ok' | 'failed'.
@@ -273,7 +273,7 @@ disable_account(AccountId) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec promote_account/1 :: (input_term()) -> 'ok' | 'failed'.
@@ -290,7 +290,7 @@ promote_account(AccountId) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec demote_account/1 :: (input_term()) -> 'ok' | 'failed'.
@@ -307,7 +307,7 @@ demote_account(AccountId) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec create_account/4 :: (input_term(), input_term(), input_term(), input_term()) -> 'ok' | 'failed'.
@@ -342,14 +342,14 @@ create_account(AccountName, Realm, Username, Password) ->
         end,
         ok
     catch
-        _:_ -> 
+        _:_ ->
             failed
     end.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec validate_account/2 :: (wh_json:json_object(), #cb_context{}) -> {'ok', #cb_context{}} |
@@ -358,33 +358,32 @@ validate_account(JObj, Context) ->
     Payload = [Context#cb_context{req_data=JObj
                                   ,req_nouns=[{?WH_ACCOUNTS_DB, []}]
                                   ,req_verb = <<"put">>
-                                 }               
+                                 }
               ],
     case crossbar_bindings:fold(<<"v1_resource.validate.accounts">>, Payload) of
         #cb_context{resp_status=success}=Context1 -> {ok, Context1};
-        #cb_context{resp_data=Errors} -> 
+        #cb_context{resp_data=Errors} ->
             io:format("failed to validate account properties: '~s'~n", [wh_json:encode(Errors)]),
             {error, Errors}
     end.
-    
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec validate_user/2 :: (wh_json:json_object(), #cb_context{}) -> {'ok', #cb_context{}} |
-                                                                   {'error', wh_json:json_object()}.    
+                                                                   {'error', wh_json:json_object()}.
 validate_user(JObj, Context) ->
     Payload = [Context#cb_context{req_data=JObj
                                   ,req_nouns=[{?WH_ACCOUNTS_DB, []}]
                                   ,req_verb = <<"put">>
-                                 }               
+                                 }
               ],
     case crossbar_bindings:fold(<<"v1_resource.validate.users">>, Payload) of
         #cb_context{resp_status=success}=Context1 -> {ok, Context1};
-        #cb_context{resp_data=Errors} -> 
+        #cb_context{resp_data=Errors} ->
             io:format("failed to validate user properties: '~s'~n", [wh_json:encode(Errors)]),
             {error, Errors}
     end.
@@ -392,7 +391,7 @@ validate_user(JObj, Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec create_account/1 :: (#cb_context{}) -> {'ok', #cb_context{}} |
@@ -412,7 +411,7 @@ create_account(Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec create_user/1 :: (#cb_context{}) -> {'ok', #cb_context{}} |
@@ -430,7 +429,7 @@ create_user(Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec update_account/3 :: (input_term(), ne_binary(), term()) -> {'ok', wh_json:json_object()} |
@@ -450,7 +449,7 @@ update_account(AccountId, Key, Value) ->
 
 print_account_info(AccountDb) ->
     AccountId = wh_util:format_account_id(AccountDb, raw),
-    print_account_info(AccountDb, AccountId).    
+    print_account_info(AccountDb, AccountId).
 print_account_info(AccountDb, AccountId) ->
     case couch_mgr:open_doc(AccountDb, AccountId) of
         {ok, JObj} ->

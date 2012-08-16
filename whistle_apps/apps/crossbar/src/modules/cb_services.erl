@@ -77,7 +77,7 @@ resource_exists() -> true.
 
 resource_exists(<<"plan">>) -> true;
 resource_exists(_) -> false.
-     
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -136,7 +136,7 @@ post(#cb_context{doc=undefined}=Context) ->
     Context;
 post(#cb_context{doc=Services}=Context) ->
     try wh_services:save(Services) of
-        NewServices -> 
+        NewServices ->
             crossbar_util:response(wh_services:public_json(NewServices), Context)
     catch
         throw:{Error, Reason} ->

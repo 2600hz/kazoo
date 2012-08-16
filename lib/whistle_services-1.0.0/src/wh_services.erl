@@ -376,7 +376,7 @@ allow_updates(Account) ->
         {ok, ServicesJObj} ->
             maybe_follow_billling_id(AccountId, ServicesJObj)
     end.
-
+    
 maybe_follow_billling_id(AccountId, ServicesJObj) ->
     case wh_json:get_ne_value(<<"billing_id">>, ServicesJObj, AccountId) of
         AccountId -> maybe_allow_updates(AccountId, ServicesJObj);

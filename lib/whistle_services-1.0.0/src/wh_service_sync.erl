@@ -10,7 +10,8 @@
 -behaviour(gen_server).
 
 -export([start_link/0]).
--export([run/0]).
+-export([sync/1]).
+-export([clean/1]).
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -37,8 +38,16 @@
 start_link() ->
     gen_server:start_link(?MODULE, [], []).
 
-run() ->
-    maybe_sync_service().
+sync(Account) ->
+    immediate_sync(Account).
+
+clean(Account) ->
+    AccountId = wh_util:format_account_id(Account, raw),
+    case couch_mgr:open_doc(?WH_SERVICES_DB, AccountId) of
+        {error, _}=E -> E;
+        {ok, ServiceJObj} -> 
+            immediate_sync(AccountId, wh_json:set_value(<<"pvt_deleted">>, true, ServiceJObj))
+    end.
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -275,5 +284,29 @@ maybe_update_billing_id(BillingId, AccountId, ServiceJObj) ->
                 true ->
                     lager:debug("billing id ~s on ~s was deleted, updating to bill self", [BillingId, AccountId]),
                     couch_mgr:save_doc(?WH_SERVICES_DB, wh_json:set_value(<<"billing_id">>, AccountId, ServiceJObj))
+            end
+    end.
+
+-spec immediate_sync/1 :: (ne_binary()) -> wh_std_return().
+-spec immediate_sync/2 :: (ne_binary(), wh_json:json_object()) -> wh_std_return().
+
+immediate_sync(Account) ->
+    AccountId = wh_util:format_account_id(Account, raw),
+    case couch_mgr:open_doc(?WH_SERVICES_DB, AccountId) of
+        {error, _}=E -> E;
+        {ok, ServiceJObj} -> 
+            immediate_sync(AccountId, ServiceJObj)
+    end.
+    
+immediate_sync(AccountId, ServiceJObj) ->
+    case wh_service_plans:create_items(ServiceJObj) of
+        {error, no_plans}=E -> E;
+        {ok, ServiceItems} ->
+            %% TODO: support other bookkeepers...
+            try wh_bookkeeper_braintree:sync(ServiceItems, AccountId) of    
+                _ -> {ok, ServiceJObj}
+            catch
+                throw:{_, R} -> {error, R};
+                _E:R -> {error, R}
             end
     end.
