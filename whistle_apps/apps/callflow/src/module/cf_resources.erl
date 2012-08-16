@@ -98,7 +98,7 @@ create_endpoint(DestNum, JObj, Call) ->
     lager:debug("attempting resource ~s", [Rule]),
     AccountId = whapps_call:account_id(Call),
     CCVs = [{<<"Account-ID">>, AccountId}
-            ,{<<"Reseller-ID">>, wh_reseller:find_reseller_id(AccountId)}
+            ,{<<"Reseller-ID">>, wh_services:find_reseller_id(AccountId)}
             ,{<<"From-URI">>, maybe_from_uri(AccountDb, JObj, CNum)}
             ,{<<"Ignore-Display-Updates">>, <<"true">>}
             ,{<<"Global-Resource">>, false}

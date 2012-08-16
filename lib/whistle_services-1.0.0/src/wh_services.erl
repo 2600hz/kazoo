@@ -18,6 +18,7 @@
 -export([delete/1]).
 
 -export([set_billing_id/2]).
+-export([find_reseller_id/1]).
 
 -export([account_id/1]).
 -export([quantity/3]).
@@ -271,6 +272,31 @@ public_json(#wh_services{jobj=ServicesJObj, cascade_quantities=CascadeQuantities
     wh_json:from_list(Props);
 public_json(Account) ->
     public_json(fetch(Account)).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec find_reseller_id/1 :: ('undefined' | ne_binary()) -> 'undefined' | ne_binary().
+find_reseller_id(undefined) ->
+    case whapps_util:get_master_account_id() of
+        {error, _} -> undefined;
+        {ok, MasterAccountId} -> MasterAccountId
+    end;
+find_reseller_id(Account) ->
+    AccountId = wh_util:format_account_id(Account, raw),
+    case couch_mgr:open_cache_doc(?WH_SERVICES_DB, AccountId) of
+        {error, _R} ->
+            lager:debug("unable to open services doc for account ~s: ~p", [AccountId, _R]),
+            find_reseller_id(undefined);
+        {ok, JObj} ->
+            case wh_json:get_ne_value(<<"pvt_reseller_id">>, JObj) of
+                undefined -> find_reseller_id(undefined);
+                ResellerId -> ResellerId
+            end
+    end. 
 
 %%%===================================================================
 %%% Services functions

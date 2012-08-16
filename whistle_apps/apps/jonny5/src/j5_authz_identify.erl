@@ -57,7 +57,7 @@ send_resp(JObj, AccountId, GlobalResource) ->
             ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
             ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
             ,{<<"Global-Resource">>, wh_util:to_binary(GlobalResource)}
-            ,{<<"Reseller-ID">>, wh_reseller:find_reseller_id(AccountId)}
+            ,{<<"Reseller-ID">>, wh_services:find_reseller_id(AccountId)}
             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     wapi_authz:publish_identify_resp(wh_json:get_value(<<"Server-ID">>, JObj), props:filter_undefined(Resp)).
