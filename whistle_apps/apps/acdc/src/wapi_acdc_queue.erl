@@ -109,18 +109,21 @@ member_connect_req_v(Prop) when is_list(Prop) ->
 member_connect_req_v(JObj) ->
     member_connect_req_v(wh_json:to_proplist(JObj)).
 
--spec member_connect_req_routing_key/1 :: (ne_binary() | 
-                                           wh_json:json_object() |
+-spec member_connect_req_routing_key/1 :: (wh_json:json_object() |
                                            wh_proplist()
                                           ) -> ne_binary().
-member_connect_req_routing_key(Id) when is_binary(Id) ->
-    <<?MEMBER_CONNECT_REQ_KEY, Id/binary>>;
+-spec member_connect_req_routing_key/2 :: (ne_binary(), ne_binary()) -> ne_binary().
 member_connect_req_routing_key(Props) when is_list(Props) ->
     Id = props:get_value(<<"Queue-ID">>, Props, <<"*">>),
-    <<?MEMBER_CONNECT_REQ_KEY, Id/binary>>;
+    AcctId = props:get_value(<<"Account-ID">>, Props),
+    member_connect_req_routing_key(AcctId, Id);
 member_connect_req_routing_key(JObj) ->
     Id = wh_json:get_value(<<"Queue-ID">>, JObj, <<"*">>),
-    <<?MEMBER_CONNECT_REQ_KEY, Id/binary>>.
+    AcctId = wh_json:get_value(<<"Account-ID">>, JObj),
+    member_connect_req_routing_key(AcctId, Id).
+member_connect_req_routing_key(AcctId, QID) ->
+    <<?MEMBER_CONNECT_REQ_KEY, AcctId/binary, ".", QID/binary>>.
+
 
 %%------------------------------------------------------------------------------
 %% Member Connect Response
@@ -299,14 +302,43 @@ bind_q(Q, Props) ->
     AcctId = props:get_value(account_id, Props),
 
     amqp_util:callmgr_exchange(),
-    amqp_util:bind_q_to_callmgr(Q, member_call_routing_key(AcctId, QID)).
+
+    bind_q(Q, AcctId, QID, props:get_value(restrict_to, Props)).
+
+bind_q(Q, AcctId, QID, undefined) ->
+    amqp_util:bind_q_to_callmgr(Q, member_call_routing_key(AcctId, QID)),
+    amqp_util:bind_q_to_callmgr(Q, member_connect_req_routing_key(AcctId, QID));
+bind_q(Q, AcctId, QID, [member_call|T]) ->
+    amqp_util:bind_q_to_callmgr(Q, member_call_routing_key(AcctId, QID)),
+    bind_q(Q, AcctId, QID, T);
+bind_q(Q, AcctId, QID, [member_connect_req|T]) ->
+    amqp_util:bind_q_to_callmgr(Q, member_connect_req_routing_key(AcctId, QID)),
+    bind_q(Q, AcctId, QID, T);
+bind_q(Q, AcctId, QID, [_|T]) ->
+    bind_q(Q, AcctId, QID, T);
+bind_q(_, _, _, []) ->
+    ok.
 
 -spec unbind_q/2 :: (ne_binary(), wh_proplist()) -> 'ok'.
 unbind_q(Q, Props) ->
     QID = props:get_value(queue_id, Props, <<"*">>),
     AcctId = props:get_value(account_id, Props),
 
-    amqp_util:unbind_q_from_callmgr(Q, member_call_routing_key(AcctId, QID)).
+    unbind_q(Q, AcctId, QID, props:get_value(restrict_to, Props)).
+
+unbind_q(Q, AcctId, QID, undefined) ->
+    amqp_util:unbind_q_from_callmgr(Q, member_call_routing_key(AcctId, QID)),
+    amqp_util:unbind_q_from_callmgr(Q, member_connect_req_routing_key(AcctId, QID));
+unbind_q(Q, AcctId, QID, [member_call|T]) ->
+    amqp_util:unbind_q_from_callmgr(Q, member_call_routing_key(AcctId, QID)),
+    unbind_q(Q, AcctId, QID, T);
+unbind_q(Q, AcctId, QID, [member_connect_req|T]) ->
+    amqp_util:unbind_q_from_callmgr(Q, member_connect_req_routing_key(AcctId, QID)),
+    unbind_q(Q, AcctId, QID, T);
+unbind_q(Q, AcctId, QID, [_|T]) ->
+    unbind_q(Q, AcctId, QID, T);
+unbind_q(_, _, _, []) ->
+    ok.
 
 %%------------------------------------------------------------------------------
 %% Publishers for convenience
