@@ -2,6 +2,14 @@
 %%% @copyright (C) 2012, VoIP INC
 %%% @doc
 %%%
+%%% The queue process manages two queues
+%%%   1. a private one that Agents will send member_connect_* messages
+%%%      and such
+%%%   2. a shared queue that member_call messages will be published to,
+%%%      each consumer will be round-robined. The consumers aren't going
+%%%      to auto-ack the payloads, defering that until the connection is
+%%%      accepted by the agent.
+%%%
 %%% @end
 %%% @contributors
 %%%   James Aimonetti
