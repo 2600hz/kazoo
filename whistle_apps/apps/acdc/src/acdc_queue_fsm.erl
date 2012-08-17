@@ -15,7 +15,7 @@
 
 %% Event injectors
 -export([member_call/2
-         ,member_connect_resps/2
+         ,member_connect_resp/2
          ,member_accepted/2
          ,member_connect_retry/2
          ,call_event/4
@@ -39,7 +39,8 @@
 -include("acdc.hrl").
 
 -record(state, {
-         queue_proc :: pid()
+          queue_proc :: pid()
+         ,connect_resps = [] :: wh_json:json_objects()
          }).
 
 %%%===================================================================
@@ -69,8 +70,8 @@ member_call(FSM, CallJObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
-member_connect_resps(FSM, Resps) ->
-    gen_fsm:send_event(FSM, {agent_resps, Resps}).
+member_connect_resp(FSM, Resp) ->
+    gen_fsm:send_event(FSM, {agent_resp, Resp}).
 
 %%--------------------------------------------------------------------
 %% @doc
