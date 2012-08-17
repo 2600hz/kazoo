@@ -20,9 +20,10 @@
 
 %% API
 -export([start_link/3
-         ,member_connect_req/2
+         ,member_connect_req/3
          ,member_connect_win/2
          ,finish_member_call/2
+         ,cancel_member_call/3
         ]).
 
 %% gen_server callbacks
@@ -47,6 +48,7 @@
          ,call :: whapps_call:call()
          ,agent_process :: ne_binary()
          ,agent_id :: ne_binary()
+         ,delivery :: #'basic.deliver'{}
          }).
 
 -define(BINDINGS, [{self, []}]).
@@ -84,14 +86,17 @@ start_link(Supervisor, AcctDb, QueueJObj) ->
                             ,[Supervisor, AcctDb, QueueJObj]
                            ).
 
-member_connect_req(Srv, MemberCallJObj) ->
-    gen_listener:cast(Srv, {member_connect_req, MemberCallJObj}).
+member_connect_req(Srv, MemberCallJObj, Delivery) ->
+    gen_listener:cast(Srv, {member_connect_req, MemberCallJObj, Delivery}).
 
 member_connect_win(Srv, RespJObj) ->
     gen_listener:cast(Srv, {member_connect_win, RespJObj}).
 
 finish_member_call(Srv, AcceptJObj) ->
     gen_listener:cast(Srv, {finish_member_call, AcceptJObj}).
+
+cancel_member_call(Srv, MemberCallJObj, Delivery) ->
+    gen_listener:cast(Srv, {cancel_member_call, MemberCallJObj, Delivery}).
 
 %%%===================================================================
 %%% gen_listener callbacks
@@ -176,17 +181,19 @@ handle_cast(consume_from_shared_queue, #state{
       end),
     {noreply, State};
 
-handle_cast({member_connect_req, MemberCallJObj}, #state{my_q=MyQ
-                                                         ,my_id=MyId
-                                                         ,acct_id=AcctId
-                                                         ,queue_id=QueueId
-                                                        }=State) ->
+handle_cast({member_connect_req, MemberCallJObj, Delivery}, #state{my_q=MyQ
+                                                                   ,my_id=MyId
+                                                                   ,acct_id=AcctId
+                                                                   ,queue_id=QueueId
+                                                                  }=State) ->
     Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, MemberCallJObj)),
 
     acdc_util:bind_to_call_events(Call),
     send_member_connect_req(MemberCallJObj, AcctId, QueueId, MyQ, MyId),
 
-    {noreply, State#state{call=Call}};
+    {noreply, State#state{call=Call
+                          ,delivery=Delivery
+                         }};
 
 handle_cast({member_connect_win, RespJObj}, #state{my_q=MyQ
                                                    ,my_id=MyId
@@ -199,7 +206,20 @@ handle_cast({member_connect_win, RespJObj}, #state{my_q=MyQ
                           ,agent_id=wh_json:get_value(<<"Agent-ID">>, RespJObj)
                          }};
 
+handle_cast({finish_member_call, _AcceptJObj}, #state{delivery=Delivery}=State) ->
+    lager:debug("agent has taken care of member, we're done"),
+
+    gen_listener:ack(self(), Delivery),
+
+    {noreply, State};
+
+handle_cast({cancel_member_call, _MemberCallJObj, Delivery}, State) ->
+    lager:debug("can't handle the member_call, sending it back up"),
+    gen_listener:nack(self(), Delivery),
+    {noreply, State};
+
 handle_cast(_Msg, State) ->
+    lager:debug("unhandled cast: ~p", [_Msg]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
