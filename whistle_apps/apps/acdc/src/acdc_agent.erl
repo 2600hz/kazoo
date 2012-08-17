@@ -17,6 +17,7 @@
          ,bridge_to_member/2
          ,monitor_call/2
          ,member_connect_accepted/1
+         ,channel_hungup/1
         ]).
 
 %% gen_server callbacks
@@ -140,6 +141,10 @@ bridge_to_member(Srv, WinJObj) ->
 monitor_call(Srv, MonitorJObj) ->
     gen_listener:cast(Srv, {monitor_call, MonitorJObj}).
 
+-spec channel_hungup/1 :: (pid()) -> 'ok'.
+channel_hungup(Srv) ->
+    gen_listener:cast(Srv, channel_hungup).
+
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -210,6 +215,14 @@ handle_call(_Request, _From, State) ->
 handle_cast({queue_name, Q}, State) ->
     {noreply, State#state{my_q=Q}};
 
+handle_cast(channel_hungup, #state{call=Call}=State) ->
+    lager:debug("channel hungup, done with this call"),
+    acdc_util:unbind_from_call_events(Call),
+    {noreply, State#state{call=undefined
+                          ,msg_queue_id=undefined
+                          ,acdc_queue_id=undefined
+                         }};
+
 handle_cast(member_connect_accepted, #state{msg_queue_id=AmqpQueue
                                     ,call=Call
                                    }=State) ->
@@ -254,7 +267,7 @@ handle_cast({bridge_to_member, WinJObj}, #state{endpoints=EPs}=State) ->
     lager:debug("bridging to agent endpoints"),
 
     Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, WinJObj)),
-    bind_to_call_events(Call),
+    acdc_util:bind_to_call_events(Call),
     maybe_connect_to_agent(EPs, Call),
 
     lager:debug("waiting on successful bridge now"),
@@ -262,7 +275,7 @@ handle_cast({bridge_to_member, WinJObj}, #state{endpoints=EPs}=State) ->
 
 handle_cast({monitor_call, MonitorJObj}, State) ->
     Call = whapps_call:set_call_id(wh_json:get_value(<<"Call-ID">>, MonitorJObj), whapps_call:new()),
-    bind_to_call_events(Call),
+    acdc_util:bind_to_call_events(Call),
     lager:debug("monitoring call ~s", [whapps_call:call_id(Call)]),
     {noreply, State#state{call=Call}};
 
@@ -363,23 +376,6 @@ idle_time(T) -> wh_util:elapsed_s(T).
 -spec call_id/1 :: ('undefined' | whapps_call:call()) -> 'undefined' | ne_binary().
 call_id(undefined) -> undefined;
 call_id(Call) -> whapps_call:call_id(Call).
-
-%% Handles subscribing/unsubscribing from call events
--spec bind_to_call_events/1 :: (ne_binary() | whapps_call:call()) -> 'ok'.
--spec unbind_from_call_events/1 :: (ne_binary() | whapps_call:call()) -> 'ok'.
-bind_to_call_events(?NE_BINARY = CallId) ->
-    gen_listener:add_binding(self(), call, [{callid, CallId}
-                                            ,{restrict_to, [events]}
-                                           ]);
-bind_to_call_events(Call) ->
-    bind_to_call_events(whapps_call:call_id(Call)).
-
-unbind_from_call_events(?NE_BINARY = CallId) ->
-    gen_listener:rm_binding(self(), call, [{callid, CallId}
-                                           ,{restrict_to, [events]}
-                                          ]);
-unbind_from_call_events(Call) ->
-    unbind_from_call_events(whapps_call:call_id(Call)).
 
 -spec maybe_connect_to_agent/2 :: (list(), whapps_call:call()) -> 'ok'.
 maybe_connect_to_agent(EPs, Call) ->

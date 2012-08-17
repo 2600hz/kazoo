@@ -190,8 +190,11 @@ ringing({channel_bridged, _JObj}, #state{agent_proc=Srv}=State) ->
     lager:debug("agent has connected to member!"),
     acdc_agent:member_connect_accepted(Srv),
     {next_stage, answered, State};
-ringing({channel_hungup, _JObj}, State) ->
+ringing({channel_hungup, _JObj}, #state{agent_proc=Srv}=State) ->
     lager:debug("channel was destroyed before we could connect"),
+
+    acdc_agent:channel_hungup(Srv),
+
     {next_state, ready, State#state{wrapup_timeout=undefined}};
 ringing(_Evt, State) ->
     lager:debug("unhandled event: ~p", [_Evt]),
@@ -213,10 +216,13 @@ answered({member_connect_monitor, _JObj}, State) ->
     {next_state, answered, State};
 
 answered({channel_hungup, _JObj}
-         ,#state{wrapup_timeout=WrapupTimeout}=State
+         ,#state{wrapup_timeout=WrapupTimeout
+                 ,agent_proc=Srv
+                }=State
         ) ->
     lager:debug("call has hungup, going into a wrapup period"),
 
+    acdc_agent:channel_hungup(Srv),
     Ref = start_wrapup_timer(WrapupTimeout),
 
     {next_state, wrapup, State#state{wrapup_timeout=undefined, wrapup_ref=Ref}};

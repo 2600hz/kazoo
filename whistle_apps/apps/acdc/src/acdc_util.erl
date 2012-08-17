@@ -10,6 +10,8 @@
 
 -export([get_endpoint/2
          ,get_endpoints/2
+         ,bind_to_call_events/1
+         ,unbind_from_call_events/1
         ]).
 
 -include("acdc.hrl").
@@ -36,3 +38,20 @@ get_endpoint(?NE_BINARY = AcctDb, ?NE_BINARY = EndpointId) ->
         {ok, JObj} -> JObj;
         {error, _R} -> undefined
     end.
+
+%% Handles subscribing/unsubscribing from call events
+-spec bind_to_call_events/1 :: (ne_binary() | whapps_call:call()) -> 'ok'.
+-spec unbind_from_call_events/1 :: (ne_binary() | whapps_call:call()) -> 'ok'.
+bind_to_call_events(?NE_BINARY = CallId) ->
+    gen_listener:add_binding(self(), call, [{callid, CallId}
+                                            ,{restrict_to, [events]}
+                                           ]);
+bind_to_call_events(Call) ->
+    bind_to_call_events(whapps_call:call_id(Call)).
+
+unbind_from_call_events(?NE_BINARY = CallId) ->
+    gen_listener:rm_binding(self(), call, [{callid, CallId}
+                                           ,{restrict_to, [events]}
+                                          ]);
+unbind_from_call_events(Call) ->
+    unbind_from_call_events(whapps_call:call_id(Call)).
