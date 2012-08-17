@@ -40,11 +40,11 @@
 %%------------------------------------------------------------------------------
 -define(MEMBER_CALL_KEY, "member.call."). % append queue ID
 
--define(MEMBER_CALL_HEADERS, [<<"Queue-ID">>, <<"Call">>]).
+-define(MEMBER_CALL_HEADERS, [<<"Account-ID">>, <<"Queue-ID">>, <<"Call">>]).
 -define(OPTIONAL_MEMBER_CALL_HEADERS, []).
 -define(MEMBER_CALL_VALUES, [{<<"Event-Category">>, <<"member">>}
-                                    ,{<<"Event-Name">>, <<"call">>}
-                                   ]).
+                             ,{<<"Event-Name">>, <<"call">>}
+                            ]).
 -define(MEMBER_CALL_TYPES, []).
 
 -spec member_call/1 :: (api_terms()) ->
