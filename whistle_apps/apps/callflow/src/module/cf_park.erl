@@ -135,12 +135,11 @@ retrieve(SlotNumber, ParkedCalls, Call) ->
                             publish_usurp_control(ParkedCall, Call),
                             Name = wh_json:get_value(<<"CID-Name">>, Slot, <<"Parking Slot ", SlotNumber/binary>>),
                             Number = wh_json:get_value(<<"CID-Number">>, Slot, SlotNumber),
-                            Update = [{<<"Caller-ID-Name">>, Name}
-                                      ,{<<"Caller-ID-Number">>, Number}
-                                      ,{<<"Callee-ID-Name">>, Name}
+                            Update = [{<<"Callee-ID-Name">>, Name}
                                       ,{<<"Callee-ID-Number">>, Number}
                                      ],
-                            whapps_call_command:set(wh_json:from_list(Update), undefined, Call),
+                            _ = whapps_call_command:set(wh_json:from_list(Update), undefined, Call),
+                            _ = whapps_call_command:answer(Call),
                             _ = whapps_call_command:b_pickup(ParkedCall, Call),
                             cf_exe:continue(Call),
                             Ok;
