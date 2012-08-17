@@ -14,7 +14,7 @@
 -export([start_link/0]).
 
 %% Event injectors
--export([member_call/2
+-export([member_call/3
          ,member_connect_resp/2
          ,member_accepted/2
          ,member_connect_retry/2
@@ -63,8 +63,8 @@ start_link() ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
-member_call(FSM, CallJObj) ->
-    gen_fsm:send_event(FSM, {member_call, CallJObj}).
+member_call(FSM, CallJObj, Delivery) ->
+    gen_fsm:send_event(FSM, {member_call, CallJObj, Delivery}).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -124,6 +124,10 @@ init([]) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+ready({member_call, CallJObj, Delivery}, #state{queue_proc=Srv}=State) ->
+    lager:debug("member call received"),
+    acdc_queue:member_connect_req(Srv, CallJObj, Delivery),
+    {next_state, connect_req, State};
 ready(_Event, State) ->
     lager:debug("unhandled event: ~p", [_Event]),
     {next_state, ready, State}.
@@ -133,6 +137,10 @@ ready(_Event, State) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+connect_req({member_call, CallJObj, Delivery}, #state{queue_proc=Srv}=State) ->
+    lager:debug("recv a member_call while processing a different member: ~p", [CallJObj]),
+    acdc_queue:cancel_member_call(Srv, CallJObj, Delivery),
+    {next_state, connect_req, State};
 connect_req(_Event, State) ->
     lager:debug("unhandled event: ~p", [_Event]),
     {next_state, connect_req, State}.
@@ -142,6 +150,10 @@ connect_req(_Event, State) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+connecting({member_call, CallJObj, Delivery}, #state{queue_proc=Srv}=State) ->
+    lager:debug("recv a member_call while connecting: ~p", [CallJObj]),
+    acdc_queue:cancel_member_call(Srv, CallJObj, Delivery),
+    {next_state, connecting, State};
 connecting(_Event, State) ->
     lager:debug("unhandled event: ~p", [_Event]),
     {next_state, connecting, State}.
