@@ -254,7 +254,7 @@ originate_call(Contact, JObj, AccountId) ->
     Request = [{<<"Application-Name">>, <<"transfer">>}    
                ,{<<"Application-Data">>, wh_json:from_list([{<<"Route">>, Contact}])}
                ,{<<"Msg-ID">>, MsgId}
-               ,{<<"Endpoints">>, [Endpoint]}
+               ,{<<"Endpoints">>, [wh_json:from_list(Endpoint)]}
                ,{<<"Timeout">>, wh_json:get_value(<<"Timeout">>, JObj)}
                ,{<<"Ignore-Early-Media">>, wh_json:get_value(<<"Ignore-Early-Media">>, JObj)}
                ,{<<"Media">>, wh_json:get_value(<<"Media">>, JObj)}
@@ -273,7 +273,7 @@ originate_call(Contact, JObj, AccountId) ->
                | wh_api:default_headers(Amqp, <<"resource">>, <<"originate_req">>, ?APP_NAME, ?APP_VERSION)
               ],
     wh_amqp_mgr:register_return_handler(),
-    wapi_resource:publish_originate_req(Request),
+    wapi_resource:publish_originate_req(props:filter_undefined(Request)),
     lager:debug("published click to call request ~s", [MsgId]),
     wait_for_originate(MsgId).
 
