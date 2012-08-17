@@ -45,10 +45,17 @@
          ,my_id :: ne_binary()
          ,my_q :: ne_binary()
          ,call :: whapps_call:call()
+         ,agent_process :: ne_binary()
+         ,agent_id :: ne_binary()
          }).
 
 -define(BINDINGS, [{self, []}]).
--define(RESPONDERS, []).
+-define(RESPONDERS, [{{acdc_queue_handler, handle_call_event}, {<<"call_event">>, <<"*">>}}
+                     ,{{acdc_queue_handler, handle_member_call}, {<<"member">>, <<"call">>}}
+                     ,{{acdc_queue_handler, handle_member_resp}, {<<"member">>, <<"connect_resp">>}}
+                     ,{{acdc_queue_handler, handle_member_accepted}, {<<"member">>, <<"connect_accepted">>}}
+                     ,{{acdc_queue_handler, handle_member_retry}, {<<"member">>, <<"connect_retry">>}}
+                    ]).
 
 -define(SHARED_BINDING_OPTIONS, [{consume_options, [{no_ack, false}]}
                                  ,{basic_qos, 1}
@@ -181,6 +188,17 @@ handle_cast({member_connect_req, MemberCallJObj}, #state{my_q=MyQ
 
     {noreply, State#state{call=Call}};
 
+handle_cast({member_connect_win, RespJObj}, #state{my_q=MyQ
+                                                   ,my_id=MyId
+                                                   ,call=Call
+                                                   ,queue_id=QueueId
+                                                  }=State) ->
+    lager:debug("agent process won the call, sending the win"),
+    send_member_connect_win(RespJObj, Call, QueueId, MyQ, MyId),
+    {noreply, State#state{agent_process=wh_json:get_value(<<"Agent-Process">>, RespJObj)
+                          ,agent_id=wh_json:get_value(<<"Agent-ID">>, RespJObj)
+                         }};
+
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
@@ -207,8 +225,8 @@ handle_info(_Info, State) ->
 %%                                   ignore
 %% @end
 %%--------------------------------------------------------------------
-handle_event(_JObj, #state{}) ->
-    {reply, []}.
+handle_event(_JObj, #state{fsm_pid=FSM}) ->
+    {reply, [{fsm_pid, FSM}]}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -253,3 +271,15 @@ send_member_connect_req(MemberCallJObj, AcctId, QueueId, MyQ, MyId) ->
              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
             ]),
     wapi_acdc_queue:publish_member_connect_req(Req).
+
+-spec send_member_connect_win/5 :: (wh_json:json_object(), whapps_call:call(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+send_member_connect_win(RespJObj, Call, QueueId, MyQ, MyId) ->
+    CallJSON = whapps_call:to_json(Call),
+    Win = props:filter_undefined(
+            [{<<"Call">>, CallJSON}
+             ,{<<"Process-ID">>, MyId}
+             ,{<<"Server-ID">>, MyQ}
+             ,{<<"Queue-ID">>, QueueId}
+             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+            ]),
+    wapi_acdc_queue:publish_member_connect_win(wh_json:get_value(<<"Server-ID">>, RespJObj), Win).
