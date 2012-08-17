@@ -83,10 +83,12 @@ member_call_routing_key(AcctId, QueueId) ->
 %%------------------------------------------------------------------------------
 %% Member Connect Request
 %%------------------------------------------------------------------------------
--define(MEMBER_CONNECT_REQ_KEY, "member.connect_req."). % append queue ID
 
--define(MEMBER_CONNECT_REQ_HEADERS, [<<"Queue-ID">>]).
--define(OPTIONAL_MEMBER_CONNECT_REQ_HEADERS, []).
+%% member.connect_req.acct_id.queue_id
+-define(MEMBER_CONNECT_REQ_KEY, "member.connect_req.").
+
+-define(MEMBER_CONNECT_REQ_HEADERS, [<<"Account-ID">>, <<"Queue-ID">>, <<"Call-ID">>]).
+-define(OPTIONAL_MEMBER_CONNECT_REQ_HEADERS, [<<"Process-ID">>]).
 -define(MEMBER_CONNECT_REQ_VALUES, [{<<"Event-Category">>, <<"member">>}
                                     ,{<<"Event-Name">>, <<"connect_req">>}
                                    ]).

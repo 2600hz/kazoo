@@ -19,7 +19,11 @@
 -behaviour(gen_listener).
 
 %% API
--export([start_link/3]).
+-export([start_link/3
+         ,member_connect_req/2
+         ,member_connect_win/2
+         ,finish_member_call/2
+        ]).
 
 %% gen_server callbacks
 -export([init/1
@@ -36,10 +40,11 @@
 -record(state, {
           queue_id :: ne_binary()
          ,queue_db :: ne_binary()
-         ,account_id :: ne_binary()
+         ,acct_id :: ne_binary()
          ,fsm_pid :: pid()
          ,my_id :: ne_binary()
          ,my_q :: ne_binary()
+         ,call :: whapps_call:call()
          }).
 
 -define(BINDINGS, [{self, []}]).
@@ -71,6 +76,15 @@ start_link(Supervisor, AcctDb, QueueJObj) ->
                              ]
                             ,[Supervisor, AcctDb, QueueJObj]
                            ).
+
+member_connect_req(Srv, MemberCallJObj) ->
+    gen_listener:cast(Srv, {member_connect_req, MemberCallJObj}).
+
+member_connect_win(Srv, RespJObj) ->
+    gen_listener:cast(Srv, {member_connect_win, RespJObj}).
+
+finish_member_call(Srv, AcceptJObj) ->
+    gen_listener:cast(Srv, {finish_member_call, AcceptJObj}).
 
 %%%===================================================================
 %%% gen_listener callbacks
@@ -104,7 +118,7 @@ init([Supervisor, AcctDb, QueueJObj]) ->
     {ok, #state{
        queue_id = QueueId
        ,queue_db = AcctDb
-       ,account_id = wh_util:format_account_id(AcctDb, raw)
+       ,acct_id = wh_util:format_account_id(AcctDb, raw)
        ,fsm_pid = FSMPid
        ,my_id = list_to_binary([wh_util:to_binary(node()), "-", pid_to_list(self())])
       }}.
@@ -141,7 +155,7 @@ handle_cast({queue_name, Q}, State) ->
     {noreply, State#state{my_q=Q}};
 handle_cast(consume_from_shared_queue, #state{
               queue_id=QueueId
-              ,account_id=AcctId
+              ,acct_id=AcctId
              }=State) ->
     Self = self(),
     spawn(
@@ -154,6 +168,19 @@ handle_cast(consume_from_shared_queue, #state{
               lager:debug("bound ~p to shared queue ~s", [Self, shared_queue_name(AcctId, QueueId)])
       end),
     {noreply, State};
+
+handle_cast({member_connect_req, MemberCallJObj}, #state{my_q=MyQ
+                                                         ,my_id=MyId
+                                                         ,acct_id=AcctId
+                                                         ,queue_id=QueueId
+                                                        }=State) ->
+    Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, MemberCallJObj)),
+
+    acdc_util:bind_to_call_events(Call),
+    send_member_connect_req(MemberCallJObj, AcctId, QueueId, MyQ, MyId),
+
+    {noreply, State#state{call=Call}};
+
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
@@ -214,3 +241,15 @@ code_change(_OldVsn, State, _Extra) ->
 -spec shared_queue_name/2 :: (ne_binary(), ne_binary()) -> ne_binary().
 shared_queue_name(AcctId, QueueId) ->
     <<"acdc.queue.", AcctId/binary, ".", QueueId/binary>>.
+
+-spec send_member_connect_req/5 :: (wh_json:json_object(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+send_member_connect_req(MemberCallJObj, AcctId, QueueId, MyQ, MyId) ->
+    Req = props:filter_undefined(
+            [{<<"Account-ID">>, AcctId}
+             ,{<<"Queue-ID">>, QueueId}
+             ,{<<"Process-ID">>, MyId}
+             ,{<<"Server-ID">>, MyQ}
+             ,{<<"Call-ID">>, whapps_call:call_id(MemberCallJObj)}
+             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+            ]),
+    wapi_acdc_queue:publish_member_connect_req(Req).
