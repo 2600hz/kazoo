@@ -160,6 +160,7 @@ init([Supervisor, AcctDb, AgentJObj, Queues]) ->
     put(callid, AgentId),
 
     {ok, FSMPid} = acdc_agent_sup:start_fsm(Supervisor, AcctDb, AgentId),
+    link(FSMPid),
 
     gen_listener:cast(self(), load_endpoints),
     gen_listener:cast(self(), send_sync_event),

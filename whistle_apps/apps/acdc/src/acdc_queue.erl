@@ -19,7 +19,7 @@
 -behaviour(gen_listener).
 
 %% API
--export([start_link/2]).
+-export([start_link/3]).
 
 %% gen_server callbacks
 -export([init/1
@@ -37,6 +37,9 @@
           queue_id :: ne_binary()
          ,queue_db :: ne_binary()
          ,account_id :: ne_binary()
+         ,fsm_pid :: pid()
+         ,my_id :: ne_binary()
+         ,my_q :: ne_binary()
          }).
 
 -define(BINDINGS, [{self, []}]).
@@ -61,12 +64,12 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
-start_link(AcctDb, QueueJObj) ->
+start_link(Supervisor, AcctDb, QueueJObj) ->
     gen_listener:start_link(?MODULE
                             ,[{bindings, ?BINDINGS}
                               ,{responders, ?RESPONDERS}
                              ]
-                            ,[AcctDb, QueueJObj]
+                            ,[Supervisor, AcctDb, QueueJObj]
                            ).
 
 %%%===================================================================
@@ -84,9 +87,17 @@ start_link(AcctDb, QueueJObj) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init([AcctDb, QueueJObj]) ->
+init([Supervisor, AcctDb, QueueJObj]) ->
     QueueId = wh_json:get_value(<<"_id">>, QueueJObj),
     put(callid, QueueId),
+
+    {ok, FSMPid} = acdc_queue_sup:start_fsm(Supervisor, AcctDb, QueueId),
+    link(FSMPid),
+
+    Self = self(),
+    _ = spawn(fun() ->
+                      gen_listener:cast(Self, {queue_name, gen_listener:queue_name(Self)})
+              end),
 
     gen_listener:cast(self(), consume_from_shared_queue),
 
@@ -94,6 +105,8 @@ init([AcctDb, QueueJObj]) ->
        queue_id = QueueId
        ,queue_db = AcctDb
        ,account_id = wh_util:format_account_id(AcctDb, raw)
+       ,fsm_pid = FSMPid
+       ,my_id = list_to_binary([wh_util:to_binary(node()), "-", pid_to_list(self())])
       }}.
 
 %%--------------------------------------------------------------------
@@ -111,8 +124,8 @@ init([AcctDb, QueueJObj]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call(_Request, _From, State) ->
-    Reply = ok,
-    {reply, Reply, State}.
+    lager:debug("unhandled call from ~p: ~p", [_From, _Request]),
+    {reply, {error, unhandled_call}, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -124,16 +137,22 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast({queue_name, Q}, State) ->
+    {noreply, State#state{my_q=Q}};
 handle_cast(consume_from_shared_queue, #state{
               queue_id=QueueId
               ,account_id=AcctId
              }=State) ->
     Self = self(),
-    spawn(fun() -> gen_listener:add_queue(Self, shared_queue_name(AcctId, QueueId)
-                                          ,?SHARED_BINDING_OPTIONS
-                                          ,?SHARED_QUEUE_BINDINGS(AcctId, QueueId)
-                                         )
-          end),
+    spawn(
+      fun() ->
+              put(callid, QueueId),
+              gen_listener:add_queue(Self, shared_queue_name(AcctId, QueueId)
+                                     ,?SHARED_BINDING_OPTIONS
+                                     ,?SHARED_QUEUE_BINDINGS(AcctId, QueueId)
+                                    ),
+              lager:debug("bound ~p to shared queue ~s", [Self, shared_queue_name(AcctId, QueueId)])
+      end),
     {noreply, State};
 handle_cast(_Msg, State) ->
     {noreply, State}.
@@ -161,7 +180,7 @@ handle_info(_Info, State) ->
 %%                                   ignore
 %% @end
 %%--------------------------------------------------------------------
-handle_event(_JObj, #state{}=_) ->
+handle_event(_JObj, #state{}) ->
     {reply, []}.
 
 %%--------------------------------------------------------------------

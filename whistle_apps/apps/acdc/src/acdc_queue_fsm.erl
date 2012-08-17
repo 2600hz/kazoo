@@ -39,9 +39,7 @@
 -include("acdc.hrl").
 
 -record(state, {
-          acct_id :: ne_binary()
-         ,queue_id :: ne_binary()
-         ,queue_proc :: pid()
+         queue_proc :: pid()
          }).
 
 %%%===================================================================
