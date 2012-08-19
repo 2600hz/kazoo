@@ -25,7 +25,7 @@ init_acdc() ->
 
 -spec init_account/1 :: (ne_binary()) -> 'ok'.
 init_account(Acct) ->
-    lager:debug("acdc_init: ~s", [Acct]),
+    lager:debug("init account: ~s", [Acct]),
 
     init_queues(Acct, couch_mgr:get_results(Acct, <<"queues/crossbar_listing">>, [include_docs])),
     init_agents(Acct, couch_mgr:get_results(Acct, <<"agents/crossbar_listing">>, [include_docs])).
