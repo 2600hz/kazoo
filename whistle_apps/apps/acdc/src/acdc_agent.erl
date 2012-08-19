@@ -164,9 +164,7 @@ init([Supervisor, AcctDb, AgentJObj, Queues]) ->
     AgentId = wh_json:get_value(<<"_id">>, AgentJObj),
     put(callid, AgentId),
 
-    {ok, FSMPid} = acdc_agent_sup:start_fsm(Supervisor, AcctDb, AgentId),
-    link(FSMPid),
-
+    gen_listener:cast(self(), {start_fsm, Supervisor}),
     gen_listener:cast(self(), load_endpoints),
     gen_listener:cast(self(), send_sync_event),
 
@@ -181,7 +179,6 @@ init([Supervisor, AcctDb, AgentJObj, Queues]) ->
        ,account_id = wh_json:get_value(<<"pvt_account_id">>, AgentJObj)
        ,agent_queues = Queues
        ,my_id = list_to_binary([wh_util:to_binary(node()), "-", pid_to_list(self())])
-       ,fsm_pid = FSMPid
       }}.
 
 %%--------------------------------------------------------------------
@@ -212,6 +209,14 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast({start_fsm, Supervisor}, #state{
+              agent_db=AcctDb
+              ,agent_id=AgentId
+             }=State) ->
+    {ok, FSMPid} = acdc_agent_sup:start_fsm(Supervisor, AcctDb, AgentId),
+    link(FSMPid),
+    lager:debug("started FSM at ~p", [FSMPid]),
+    {noreply, State#state{fsm_pid=FSMPid}};
 handle_cast({queue_name, Q}, State) ->
     {noreply, State#state{my_q=Q}};
 
@@ -293,7 +298,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info(_Info, #state{}=State) ->
+handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {noreply, State}.
 
