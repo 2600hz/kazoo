@@ -23,7 +23,7 @@
          ,member_connect_req/3
          ,member_connect_win/2
          ,finish_member_call/2
-         ,cancel_member_call/3
+         ,cancel_member_call/1, cancel_member_call/2 ,cancel_member_call/3
         ]).
 
 %% gen_server callbacks
@@ -95,6 +95,10 @@ member_connect_win(Srv, RespJObj) ->
 finish_member_call(Srv, AcceptJObj) ->
     gen_listener:cast(Srv, {finish_member_call, AcceptJObj}).
 
+cancel_member_call(Srv) ->
+    gen_listener:cast(Srv, {cancel_member_call}).
+cancel_member_call(Srv, RejectJObj) ->
+    gen_listener:cast(Srv, {cancel_member_call, RejectJObj}).
 cancel_member_call(Srv, MemberCallJObj, Delivery) ->
     gen_listener:cast(Srv, {cancel_member_call, MemberCallJObj, Delivery}).
 
@@ -213,6 +217,21 @@ handle_cast({finish_member_call, _AcceptJObj}, #state{delivery=Delivery}=State) 
 
     {noreply, State};
 
+handle_cast({cancel_member_call}, #state{delivery=undefined}=State) ->
+    lager:debug("empty cancel member, no delivery info"),
+    {noreply, State};
+handle_cast({cancel_member_call}, #state{delivery=Delivery}=State) ->
+    lager:debug("cancel member_call"),
+    gen_listener:nack(self(), Delivery),
+    {noreply, State};
+
+handle_cast({cancel_member_call, _RejectJObj}, #state{delivery=undefined}=State) ->
+    lager:debug("cancel a member_call that I don't have delivery info for: ~p", [_RejectJObj]),
+    {noreply, State};
+handle_cast({cancel_member_call, _RejectJObj}, #state{delivery = #'basic.deliver'{}=Delivery}=State) ->
+    lager:debug("agent failed to handle the call, nack: ~p", [_RejectJObj]),
+    gen_listener:nack(self(), Delivery),
+    {noreply, State#state{delivery=undefined}};
 handle_cast({cancel_member_call, _MemberCallJObj, Delivery}, State) ->
     lager:debug("can't handle the member_call, sending it back up"),
     gen_listener:nack(self(), Delivery),

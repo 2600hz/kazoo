@@ -38,9 +38,14 @@
 
 -include("acdc.hrl").
 
+%% How long should we wait for a response to our member_connect_req
+-define(COLLECT_RESP_TIMEOUT, 3000).
+-define(COLLECT_RESP_MESSAGE, collect_timer_expired).
+
 -record(state, {
           queue_proc :: pid()
          ,connect_resps = [] :: wh_json:json_objects()
+         ,collect_ref :: reference()
          }).
 
 %%%===================================================================
@@ -127,7 +132,16 @@ init([]) ->
 ready({member_call, CallJObj, Delivery}, #state{queue_proc=Srv}=State) ->
     lager:debug("member call received"),
     acdc_queue:member_connect_req(Srv, CallJObj, Delivery),
-    {next_state, connect_req, State};
+    {next_state, connect_req, State#state{collect_ref=start_collect_timer()}};
+ready({agent_resp, _Resp}, State) ->
+    lager:debug("someone jumped the gun, or was slow on the draw: ~p", [_Resp]),
+    {next_state, ready, State};
+ready({accepted, _AcceptJObj}, State) ->
+    lager:debug("weird to receive an acceptance: ~p", [_AcceptJObj]),
+    {next_state, ready, State};
+ready({retry, _RetryJObj}, State) ->
+    lager:debug("weird to receive a retry when we're just hanging here: ~p", [_RetryJObj]),
+    {next_state, ready, State};
 ready(_Event, State) ->
     lager:debug("unhandled event: ~p", [_Event]),
     {next_state, ready, State}.
@@ -140,6 +154,31 @@ ready(_Event, State) ->
 connect_req({member_call, CallJObj, Delivery}, #state{queue_proc=Srv}=State) ->
     lager:debug("recv a member_call while processing a different member: ~p", [CallJObj]),
     acdc_queue:cancel_member_call(Srv, CallJObj, Delivery),
+    {next_state, connect_req, State};
+connect_req({agent_resp, Resp}, #state{connect_resps=CRs}=State) ->
+    lager:debug("recv another resp: ~p", [Resp]),
+    {next_state, connect_req, State#state{connect_resps=[Resp | CRs]}};
+connect_req({timeout, Ref, ?COLLECT_RESP_MESSAGE}, #state{collect_ref=Ref
+                                                          ,connect_resps=[]
+                                                          ,queue_proc=Srv
+                                                         }=State) ->
+    lager:debug("done waiting for agents to respond, no one responded"),
+    acdc_queue:cancel_member_call(Srv),
+    {noreply, ready, State#state{connect_resps=[], collect_ref=undefined}};
+connect_req({timeout, Ref, ?COLLECT_RESP_MESSAGE}, #state{collect_ref=Ref
+                                                          ,connect_resps=CRs
+                                                          ,queue_proc=Srv
+                                                         }=State) ->
+    lager:debug("done waiting for agents to respond, picking a winner"),
+    Winner = pick_winner(CRs),
+    acdc_queue:member_connect_win(Srv, Winner),
+    lager:debug("sending win to ~p", [Winner]),
+    {noreply, connecting, State#state{connect_resps=[], collect_ref=undefined}};
+connect_req({accepted, _AcceptJObj}, State) ->
+    lager:debug("recv accept response before win sent (are you magical): ~p", [_AcceptJObj]),
+    {next_state, connect_req, State};
+connect_req({retry, _RetryJObj}, State) ->
+    lager:debug("recv retry response before win sent: ~p", [_RetryJObj]),
     {next_state, connect_req, State};
 connect_req(_Event, State) ->
     lager:debug("unhandled event: ~p", [_Event]),
@@ -154,6 +193,18 @@ connecting({member_call, CallJObj, Delivery}, #state{queue_proc=Srv}=State) ->
     lager:debug("recv a member_call while connecting: ~p", [CallJObj]),
     acdc_queue:cancel_member_call(Srv, CallJObj, Delivery),
     {next_state, connecting, State};
+connecting({agent_resp, _Resp}, State) ->
+    lager:debug("agent resp must have just missed cutoff: ~p", [_Resp]),
+    {next_state, connecting, State};
+connecting({accepted, AcceptJObj}, #state{queue_proc=Srv}=State) ->
+    lager:debug("recv acceptance from agent: ~p", [AcceptJObj]),
+    acdc_queue:finish_member_call(Srv, AcceptJObj),
+    {next_state, ready, State};
+connecting({retry, RetryJObj}, #state{queue_proc=Srv}=State) ->
+    lager:debug("recv retry from agent: ~p", [RetryJObj]),
+    acdc_queue:cancel_member_call(Srv, RetryJObj),
+    {next_state, ready, State};
+
 connecting(_Event, State) ->
     lager:debug("unhandled event: ~p", [_Event]),
     {next_state, connecting, State}.
@@ -209,6 +260,7 @@ handle_sync_event(_Event, _From, StateName, State) ->
 %%                   {stop, Reason, NewState}
 %% @end
 %%--------------------------------------------------------------------
+
 handle_info(_Info, StateName, State) ->
     lager:debug("unhandled message in state ~s: ~p", [StateName, _Info]),
     {next_state, StateName, State}.
@@ -242,3 +294,9 @@ code_change(_OldVsn, StateName, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+start_collect_timer() ->
+    gen_fsm:start_timer(?COLLECT_RESP_TIMEOUT, ?COLLECT_RESP_MESSAGE).
+
+%% Really sophisticated selection algorithm
+pick_winner([Resp|_]) ->
+    Resp.
