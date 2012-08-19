@@ -121,8 +121,9 @@ init([Supervisor, AcctDb, QueueJObj]) ->
     QueueId = wh_json:get_value(<<"_id">>, QueueJObj),
     put(callid, QueueId),
 
-    {ok, FSMPid} = acdc_queue_sup:start_fsm(Supervisor, AcctDb, QueueId),
-    link(FSMPid),
+    lager:debug("starting queue in ~s", [AcctDb]),
+
+    gen_listener:cast(self(), {start_fsm, Supervisor}),
 
     Self = self(),
     _ = spawn(fun() ->
@@ -135,7 +136,6 @@ init([Supervisor, AcctDb, QueueJObj]) ->
        queue_id = QueueId
        ,queue_db = AcctDb
        ,acct_id = wh_util:format_account_id(AcctDb, raw)
-       ,fsm_pid = FSMPid
        ,my_id = list_to_binary([wh_util:to_binary(node()), "-", pid_to_list(self())])
       }}.
 
@@ -167,6 +167,13 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast({start_fsm, Supervisor}, #state{
+              queue_db=AcctDb
+              ,queue_id=QueueId
+             }=State) ->
+    {ok, FSMPid} = acdc_queue_sup:start_fsm(Supervisor, AcctDb, QueueId),
+    link(FSMPid),
+    {noreply, State#state{fsm_pid=FSMPid}};
 handle_cast({queue_name, Q}, State) ->
     {noreply, State#state{my_q=Q}};
 handle_cast(consume_from_shared_queue, #state{
