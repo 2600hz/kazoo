@@ -11,7 +11,7 @@
 -behaviour(gen_fsm).
 
 %% API
--export([start_link/0]).
+-export([start_link/3]).
 
 %% Event injectors
 -export([member_call/3
@@ -46,6 +46,8 @@
           queue_proc :: pid()
          ,connect_resps = [] :: wh_json:json_objects()
          ,collect_ref :: reference()
+         ,acct_id :: ne_binary()
+         ,queue_id :: ne_binary()
          }).
 
 %%%===================================================================
@@ -61,8 +63,8 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
-start_link() ->
-    gen_fsm:start_link(?MODULE, [], []).
+start_link(AcctId, QueueId, QueuePid) ->
+    gen_fsm:start_link(?MODULE, [AcctId, QueueId, QueuePid], []).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -121,8 +123,11 @@ call_event(_, _, _, _) -> ok.
 %%                     {stop, StopReason}
 %% @end
 %%--------------------------------------------------------------------
-init([]) ->
-    {ok, ready, #state{}}.
+init([AcctId, QueueId, QueuePid]) ->
+    {ok, ready, #state{queue_proc=QueuePid
+                       ,acct_id=AcctId
+                       ,queue_id=QueueId
+                      }}.
 
 %%--------------------------------------------------------------------
 %% @private
