@@ -43,6 +43,7 @@
          ,queue_db :: ne_binary()
          ,acct_id :: ne_binary()
          ,fsm_pid :: pid()
+         ,shared_pid :: pid()
          ,my_id :: ne_binary()
          ,my_q :: ne_binary()
          ,call :: whapps_call:call()
@@ -53,22 +54,10 @@
 
 -define(BINDINGS, [{self, []}]).
 -define(RESPONDERS, [{{acdc_queue_handler, handle_call_event}, {<<"call_event">>, <<"*">>}}
-                     ,{{acdc_queue_handler, handle_member_call}, {<<"member">>, <<"call">>}}
                      ,{{acdc_queue_handler, handle_member_resp}, {<<"member">>, <<"connect_resp">>}}
                      ,{{acdc_queue_handler, handle_member_accepted}, {<<"member">>, <<"connect_accepted">>}}
                      ,{{acdc_queue_handler, handle_member_retry}, {<<"member">>, <<"connect_retry">>}}
                     ]).
-
--define(SHARED_BINDING_OPTIONS, [{consume_options, [{no_ack, false}
-                                                    ,{exclusive, false}
-                                                   ]}
-                                 ,{basic_qos, 1}
-                                ]).
--define(SHARED_QUEUE_BINDINGS(AcctId, QueueId), [{acdc_queue, [{account_id, AcctId}
-                                                               ,{queue_id, QueueId}
-                                                               ,{restrict_to, [member_call]}
-                                                              ]}
-                                                ]).
 
 %%%===================================================================
 %%% API
@@ -133,8 +122,6 @@ init([Supervisor, AcctDb, QueueJObj]) ->
                       gen_listener:cast(Self, {queue_name, gen_listener:queue_name(Self)})
               end),
 
-    gen_listener:cast(self(), consume_from_shared_queue),
-
     {ok, #state{
        queue_id = QueueId
        ,queue_db = AcctDb
@@ -173,27 +160,17 @@ handle_call(_Request, _From, State) ->
 handle_cast({start_fsm, Supervisor}, #state{
               queue_db=AcctDb
               ,queue_id=QueueId
+              ,acct_id=AcctId
              }=State) ->
     {ok, FSMPid} = acdc_queue_sup:start_fsm(Supervisor, AcctDb, QueueId),
     link(FSMPid),
-    {noreply, State#state{fsm_pid=FSMPid}};
+
+    {ok, SharedPid} = acdc_queue_sup:start_shared_queue(Supervisor, FSMPid, AcctId, QueueId),
+    lager:debug("started shared queue listener: ~p", [SharedPid]),
+
+    {noreply, State#state{fsm_pid=FSMPid, shared_pid=SharedPid}};
 handle_cast({queue_name, Q}, State) ->
     {noreply, State#state{my_q=Q}};
-handle_cast(consume_from_shared_queue, #state{
-              queue_id=QueueId
-              ,acct_id=AcctId
-             }=State) ->
-    Self = self(),
-    spawn(
-      fun() ->
-              put(callid, QueueId),
-              gen_listener:add_queue(Self, shared_queue_name(AcctId, QueueId)
-                                     ,?SHARED_BINDING_OPTIONS
-                                     ,?SHARED_QUEUE_BINDINGS(AcctId, QueueId)
-                                    ),
-              lager:debug("bound ~p to shared queue ~s", [Self, shared_queue_name(AcctId, QueueId)])
-      end),
-    {noreply, State};
 
 handle_cast({member_connect_req, MemberCallJObj, Delivery}, #state{my_q=MyQ
                                                                    ,my_id=MyId
@@ -222,11 +199,12 @@ handle_cast({member_connect_win, RespJObj}, #state{my_q=MyQ
 
 handle_cast({finish_member_call, _AcceptJObj}, #state{delivery=Delivery
                                                       ,call=Call
+                                                      ,shared_pid=Pid
                                                      }=State) ->
     lager:debug("agent has taken care of member, we're done"),
 
     acdc_util:unbind_from_call_events(Call),
-    gen_listener:ack(self(), Delivery),
+    acdc_queue_shared:ack(Pid, Delivery),
 
     {noreply, State};
 
@@ -235,10 +213,11 @@ handle_cast({cancel_member_call}, #state{delivery=undefined}=State) ->
     {noreply, State};
 handle_cast({cancel_member_call}, #state{delivery=Delivery
                                          ,call=Call
+                                         ,shared_pid=Pid
                                         }=State) ->
     lager:debug("cancel member_call"),
 
-    case maybe_nack(Call, Delivery) of
+    case maybe_nack(Call, Delivery, Pid) of
         true -> {noreply, State#state{delivery=undefined
                                       ,call=undefined
                                      }};
@@ -249,20 +228,21 @@ handle_cast({cancel_member_call, _RejectJObj}, #state{delivery=undefined}=State)
     lager:debug("cancel a member_call that I don't have delivery info for: ~p", [_RejectJObj]),
     {noreply, State};
 handle_cast({cancel_member_call, _RejectJObj}, #state{delivery = #'basic.deliver'{}=Delivery
-                                                     ,call=Call
+                                                      ,call=Call
+                                                      ,shared_pid=Pid
                                                      }=State) ->
     lager:debug("agent failed to handle the call, nack: ~p", [_RejectJObj]),
 
-    case maybe_nack(Call, Delivery) of
+    case maybe_nack(Call, Delivery, Pid) of
         true -> {noreply, State#state{delivery=undefined
                                       ,call=undefined
                                      }};
         false -> {noreply, State}
     end;
 
-handle_cast({cancel_member_call, _MemberCallJObj, Delivery}, State) ->
+handle_cast({cancel_member_call, _MemberCallJObj, Delivery}, #state{shared_pid=Pid}=State) ->
     lager:debug("can't handle the member_call, sending it back up"),
-    gen_listener:nack(Delivery),
+    acdc_queue_shared:nack(Pid, Delivery),
     {noreply, State};
 
 handle_cast(_Msg, State) ->
@@ -323,10 +303,6 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec shared_queue_name/2 :: (ne_binary(), ne_binary()) -> ne_binary().
-shared_queue_name(AcctId, QueueId) ->
-    <<"acdc.queue.", AcctId/binary, ".", QueueId/binary>>.
-
 -spec send_member_connect_req/5 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 send_member_connect_req(CallId, AcctId, QueueId, MyQ, MyId) ->
     Req = props:filter_undefined(
@@ -351,17 +327,17 @@ send_member_connect_win(RespJObj, Call, QueueId, MyQ, MyId) ->
             ]),
     wapi_acdc_queue:publish_member_connect_win(wh_json:get_value(<<"Server-ID">>, RespJObj), Win).
 
--spec maybe_nack/2 :: (whapps_call:call(), #'basic.deliver'{}) -> boolean().
-maybe_nack(Call, Delivery) ->
+-spec maybe_nack/3 :: (whapps_call:call(), #'basic.deliver'{}, pid()) -> boolean().
+maybe_nack(Call, Delivery, SharedPid) ->
     case whapps_call_command:call_status(Call) of
         {ok, _} ->
             lager:debug("call is still active, nack"),
             acdc_util:unbind_from_call_events(Call),
-            gen_listener:nack(self(), Delivery),
+            acdc_queue_shared:nack(SharedPid, Delivery),
             true;
         {error, _} ->
             lager:debug("call is probably not active, ack it (so its gone)"),
             acdc_util:unbind_from_call_events(Call),
-            gen_listener:ack(self(), Delivery),
+            acdc_queue_shared:ack(SharedPid, Delivery),
             false
     end.

@@ -15,6 +15,7 @@
 %% API
 -export([start_link/2
          ,queue/0
+         ,shared_queue/0, start_shared_queue/4
          ,fsm/0, start_fsm/3
         ]).
 
@@ -46,6 +47,17 @@ queue() ->
         [] -> undefined;
         [P] -> P
     end.
+
+-spec shared_queue/0 :: () -> pid() | 'undefined'.
+shared_queue() ->
+    case child_of_type(acdc_queue_shared) of
+        [] -> undefined;
+        [P] -> P
+    end.
+
+-spec start_shared_queue/4 :: (pid(), pid(), ne_binary(), ne_binary()) -> sup_startchild_ret().
+start_shared_queue(Super, FSMPid, AcctId, QueueId) ->
+    supervisor:start_child(Super, ?CHILD(acdc_queue_shared, [FSMPid, AcctId, QueueId])).
 
 -spec fsm/0 :: () -> pid() | 'undefined'.
 fsm() ->
