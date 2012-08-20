@@ -167,6 +167,7 @@ init([Supervisor, AcctDb, AgentJObj, Queues]) ->
     gen_listener:cast(self(), {start_fsm, Supervisor}),
     gen_listener:cast(self(), load_endpoints),
     gen_listener:cast(self(), send_sync_event),
+    gen_listener:cast(self(), bind_to_member_reqs),
 
     Self = self(),
     _ = spawn(fun() ->
@@ -220,6 +221,17 @@ handle_cast({start_fsm, Supervisor}, #state{
 handle_cast({queue_name, Q}, State) ->
     {noreply, State#state{my_q=Q}};
 
+handle_cast(bind_to_member_reqs, #state{agent_queues=Qs
+                                        ,account_id=AcctId
+                                       }=State) ->
+    lager:debug("binding to queues: ~p", [Qs]),
+    _ = [gen_listener:add_binding(self(), acdc_queue, [{restrict_to, [member_connect_req]}
+                                                       ,{queue_id, QID}
+                                                       ,{account_id, AcctId}
+                                                  ])
+         || QID <- Qs],
+    {noreply, State};
+        
 handle_cast(channel_hungup, #state{call=Call}=State) ->
     lager:debug("channel hungup, done with this call"),
     acdc_util:unbind_from_call_events(Call),
@@ -269,7 +281,7 @@ handle_cast({member_connect_retry, WinJObj}, #state{
     {noreply, State};
 
 handle_cast({bridge_to_member, WinJObj}, #state{endpoints=EPs}=State) ->
-    lager:debug("bridging to agent endpoints"),
+    lager:debug("bridging to agent endpoints: ~p", [EPs]),
 
     Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, WinJObj)),
     acdc_util:bind_to_call_events(Call),
@@ -384,4 +396,4 @@ call_id(Call) -> whapps_call:call_id(Call).
 
 -spec maybe_connect_to_agent/2 :: (list(), whapps_call:call()) -> 'ok'.
 maybe_connect_to_agent(EPs, Call) ->
-    whapps_call_command:bridge(EPs, Call).
+    lager:debug("bridge result: ~p", [whapps_call_command:bridge(EPs, Call)]).
