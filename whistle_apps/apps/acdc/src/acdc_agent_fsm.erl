@@ -39,12 +39,17 @@
 
 -include("acdc.hrl").
 
+%% When an agent starts up, how long do we wait for other agents to respond with their status?
+-define(SYNC_RESPONSE_TIMEOUT, 5000).
+-define(SYNC_RESPONSE_MESSAGE, sync_response_timeout).
+
 -record(state, {
           acct_id :: ne_binary()
          ,agent_id :: ne_binary()
          ,agent_proc :: pid()
          ,wrapup_timeout :: integer() % optionally set on win/monitor
          ,wrapup_ref :: reference()
+         ,sync_ref :: reference()
          }).
 
 %%%===================================================================
@@ -131,9 +136,13 @@ start_link(AcctId, AgentId, AgentProc) ->
 init([AcctId, AgentId, AgentProc]) ->
     put(callid, <<"fsm_", AcctId/binary, "_", AgentId/binary>>),
     lager:debug("started acdc agent fsm"),
+
+    SyncRef = start_sync_timer(),
+    
     {ok, sync, #state{acct_id=AcctId
                       ,agent_id=AgentId
                       ,agent_proc=AgentProc
+                      ,sync_ref=SyncRef
                      }}.
 
 %%--------------------------------------------------------------------
@@ -141,6 +150,9 @@ init([AcctId, AgentId, AgentProc]) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+sync({timeout, Ref, ?SYNC_RESPONSE_MESSAGE}, #state{sync_ref=Ref}=State) when is_reference(Ref) ->
+    lager:debug("done waiting for sync responses"),
+    {next_state, ready, State#state{sync_ref=Ref}};
 sync(_Evt, State) ->
     lager:debug("unhandled event: ~p", [_Evt]),
     {next_state, sync, State}.
@@ -358,3 +370,7 @@ code_change(_OldVsn, StateName, State, _Extra) ->
 -spec start_wrapup_timer/1 :: ('undefined' | non_neg_integer()) -> reference().
 start_wrapup_timer('undefined') -> start_wrapup_timer(0); % send immediately
 start_wrapup_timer(Timeout) -> gen_fsm:start_timer(Timeout, wrapup_expired).
+
+-spec start_sync_timer/0 :: () -> reference().
+start_sync_timer() ->
+    gen_fsm:start_timer(?SYNC_RESPONSE_TIMEOUT, ?SYNC_RESPONSE_MESSAGE).
