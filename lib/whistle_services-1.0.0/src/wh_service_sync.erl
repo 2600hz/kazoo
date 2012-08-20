@@ -65,8 +65,8 @@ clean(Account) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    SyncPeriod = whapps_config:get_integer(?WHS_CONFIG_CAT, <<"sync_period">>, 600000),
-    _TRef = erlang:send_after(SyncPeriod, self(), {try_sync_service}),
+    ScanRate = whapps_config:get_integer(?WHS_CONFIG_CAT, <<"scan_rate">>, 20000),
+    _TRef = erlang:send_after(ScanRate, self(), {try_sync_service}),
     {ok, #state{}}.
 
 %%--------------------------------------------------------------------
@@ -111,8 +111,8 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info({try_sync_service}, State) ->
     _ = maybe_sync_service(),
-    SyncPeriod = whapps_config:get_integer(?WHS_CONFIG_CAT, <<"sync_period">>, 600000),
-    _TRef = erlang:send_after(SyncPeriod, self(), {try_sync_service}),
+    ScanRate = whapps_config:get_integer(?WHS_CONFIG_CAT, <<"scan_rate">>, 20000),
+    _TRef = erlang:send_after(ScanRate, self(), {try_sync_service}),
     {noreply, State};
 handle_info(_Info, State) ->
     {noreply, State}.
@@ -147,9 +147,10 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 -spec maybe_sync_service/0 :: () -> wh_json:json_objects().
 maybe_sync_service() ->
+    SyncBufferPeriod = whapps_config:get_integer(?WHS_CONFIG_CAT, <<"sync_buffer_period">>, 600),
     ViewOptions = [{limit, 1}
                    ,include_docs
-                   ,{endkey, wh_util:current_tstamp() - 15}
+                   ,{endkey, wh_util:current_tstamp() - SyncBufferPeriod}
                   ],
     case couch_mgr:get_results(?WH_SERVICES_DB, <<"services/dirty">>, ViewOptions) of
         {error, _}=E -> E;
