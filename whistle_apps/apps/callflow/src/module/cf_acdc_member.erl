@@ -32,4 +32,4 @@ handle(Data, Call) ->
                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                    ]),
     wapi_acdc_queue:publish_member_call(MemberCall),
-    cf_exe:stop(Call).
+    cf_exe:control_usurped(Call).
