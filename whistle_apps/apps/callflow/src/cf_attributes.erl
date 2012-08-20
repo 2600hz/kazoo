@@ -43,7 +43,7 @@ temporal_rules(Call) ->
 %%-----------------------------------------------------------------------------
 -spec call_forward/2 :: (cf_api_binary() | wh_json:json_object(), whapps_call:call()) ->
                                 'undefined' | wh_json:json_object().
--spec call_forward/3 :: (cf_api_binary(), cf_api_binary(), whapps_call:call()) ->
+-spec call_forward/3 :: (cf_api_binary(), cf_api_binary(), cf_api_binary() | whapps_call:call()) ->
                                 'undefined' | wh_json:json_object().
 call_forward(Endpoint, Call) when is_tuple(Endpoint) ->
     EndpointId = wh_json:get_value(<<"_id">>, Endpoint),
@@ -52,8 +52,8 @@ call_forward(EndpointId, Call) ->
     OwnerId = owner_id(EndpointId, Call),
     call_forward(EndpointId, OwnerId, Call).
 
-call_forward(EndpointId, OwnerId, Call) ->
-    AccountDb = whapps_call:account_db(Call),
+call_forward(_EndpointId, _OwnerId, undefined) -> 'undefined';
+call_forward(EndpointId, OwnerId, ?NE_BINARY = AccountDb) ->
     CallFwd = case couch_mgr:get_all_results(AccountDb, <<"cf_attributes/call_forward">>) of
                   {ok, JObjs} ->
                       [{Key, wh_json:get_value(<<"value">>, CF)}
@@ -80,7 +80,9 @@ call_forward(EndpointId, OwnerId, Call) ->
         Fwd ->
             lager:debug("found enabled call forwarding on ~s", [EndpointId]),
             Fwd
-    end.
+    end;
+call_forward(EndpointId, OwnerId, Call) ->
+    call_forward(EndpointId, OwnerId, whapps_call:account_db(Call)).
 
 %%-----------------------------------------------------------------------------
 %% @public
