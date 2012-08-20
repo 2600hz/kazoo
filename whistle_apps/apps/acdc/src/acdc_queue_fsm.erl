@@ -215,6 +215,11 @@ connecting({retry, RetryJObj}, #state{queue_proc=Srv}=State) ->
     acdc_queue:cancel_member_call(Srv, RetryJObj),
     {next_state, ready, State};
 
+connecting({member_hungup, CallEvt}, #state{queue_proc=Srv}=State) ->
+    lager:debug("caller hungup while we waited for the agent to connect"),
+    acdc_queue:cancel_member_call(Srv, CallEvt),
+    {next_state, ready, State};
+
 connecting(_Event, State) ->
     lager:debug("unhandled event: ~p", [_Event]),
     {next_state, connecting, State}.
