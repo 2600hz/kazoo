@@ -151,13 +151,15 @@ consume(Srv, #'basic.ack'{}=BasicAck) ->
     case my_channel(Srv) of
         {error, _}=E -> E;
         {ok, Channel, _} ->
+            lager:debug("acking on channel ~p", [Channel]),
             amqp_channel:cast(Channel, BasicAck)
     end;
-consume(Srv, #'basic.nack'{}=BasicAck) ->
+consume(Srv, #'basic.nack'{}=BasicNack) ->
     case my_channel(Srv) of
         {error, _}=E -> E;
         {ok, Channel, _} ->
-            amqp_channel:cast(Channel, BasicAck)
+            lager:debug("nacking on channel ~p", [Channel]),
+            amqp_channel:cast(Channel, BasicNack)
     end.
 
 -spec misc_req/2 :: (atom(), misc_records()) -> 'ok'.
