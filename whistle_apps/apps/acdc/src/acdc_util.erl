@@ -28,8 +28,12 @@ get_endpoints(_AcctDb, {ok, []}) -> [];
 get_endpoints(_AcctDb, {error, _E}) -> [];
 get_endpoints(AcctDb, {ok, Devices}) ->
     Call = whapps_call:new(),
-    [cf_endpoint:build(EP, Call) || Device <- Devices,
-                                    (EP = get_endpoint(AcctDb, wh_json:get_value(<<"id">>, Device))) =/= undefined
+    [begin
+         {ok, EP} = cf_endpoint:build(EPDoc, Call),
+         EP
+     end
+     || Device <- Devices,
+        (EPDoc = get_endpoint(AcctDb, wh_json:get_value(<<"id">>, Device))) =/= undefined
     ].
 
 -spec get_endpoint/2 :: (ne_binary(), ne_binary()) -> wh_json:json_object() | 'undefined'.
