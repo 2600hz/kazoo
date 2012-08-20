@@ -59,11 +59,14 @@
                      ,{{acdc_queue_handler, handle_member_retry}, {<<"member">>, <<"connect_retry">>}}
                     ]).
 
--define(SHARED_BINDING_OPTIONS, [{consume_options, [{no_ack, false}]}
+-define(SHARED_BINDING_OPTIONS, [{consume_options, [{no_ack, false}
+                                                    ,{exclusive, false}
+                                                   ]}
                                  ,{basic_qos, 1}
                                 ]).
 -define(SHARED_QUEUE_BINDINGS(AcctId, QueueId), [{acdc_queue, [{account_id, AcctId}
                                                                ,{queue_id, QueueId}
+                                                               ,{restrict_to, [member_call]}
                                                               ]}
                                                 ]).
 
@@ -200,7 +203,7 @@ handle_cast({member_connect_req, MemberCallJObj, Delivery}, #state{my_q=MyQ
     Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, MemberCallJObj)),
 
     acdc_util:bind_to_call_events(Call),
-    send_member_connect_req(MemberCallJObj, AcctId, QueueId, MyQ, MyId),
+    send_member_connect_req(whapps_call:call_id(Call), AcctId, QueueId, MyQ, MyId),
 
     {noreply, State#state{call=Call
                           ,delivery=Delivery
@@ -217,9 +220,12 @@ handle_cast({member_connect_win, RespJObj}, #state{my_q=MyQ
                           ,agent_id=wh_json:get_value(<<"Agent-ID">>, RespJObj)
                          }};
 
-handle_cast({finish_member_call, _AcceptJObj}, #state{delivery=Delivery}=State) ->
+handle_cast({finish_member_call, _AcceptJObj}, #state{delivery=Delivery
+                                                      ,call=Call
+                                                     }=State) ->
     lager:debug("agent has taken care of member, we're done"),
 
+    acdc_util:unbind_from_call_events(Call),
     gen_listener:ack(self(), Delivery),
 
     {noreply, State};
@@ -227,21 +233,36 @@ handle_cast({finish_member_call, _AcceptJObj}, #state{delivery=Delivery}=State) 
 handle_cast({cancel_member_call}, #state{delivery=undefined}=State) ->
     lager:debug("empty cancel member, no delivery info"),
     {noreply, State};
-handle_cast({cancel_member_call}, #state{delivery=Delivery}=State) ->
+handle_cast({cancel_member_call}, #state{delivery=Delivery
+                                         ,call=Call
+                                        }=State) ->
     lager:debug("cancel member_call"),
-    gen_listener:nack(self(), Delivery),
-    {noreply, State};
+
+    case maybe_nack(Call, Delivery) of
+        true -> {noreply, State#state{delivery=undefined
+                                      ,call=undefined
+                                     }};
+        false -> {noreply, State}
+    end;
 
 handle_cast({cancel_member_call, _RejectJObj}, #state{delivery=undefined}=State) ->
     lager:debug("cancel a member_call that I don't have delivery info for: ~p", [_RejectJObj]),
     {noreply, State};
-handle_cast({cancel_member_call, _RejectJObj}, #state{delivery = #'basic.deliver'{}=Delivery}=State) ->
+handle_cast({cancel_member_call, _RejectJObj}, #state{delivery = #'basic.deliver'{}=Delivery
+                                                     ,call=Call
+                                                     }=State) ->
     lager:debug("agent failed to handle the call, nack: ~p", [_RejectJObj]),
-    gen_listener:nack(self(), Delivery),
-    {noreply, State#state{delivery=undefined}};
+
+    case maybe_nack(Call, Delivery) of
+        true -> {noreply, State#state{delivery=undefined
+                                      ,call=undefined
+                                     }};
+        false -> {noreply, State}
+    end;
+
 handle_cast({cancel_member_call, _MemberCallJObj, Delivery}, State) ->
     lager:debug("can't handle the member_call, sending it back up"),
-    gen_listener:nack(self(), Delivery),
+    gen_listener:nack(Delivery),
     {noreply, State};
 
 handle_cast(_Msg, State) ->
@@ -306,14 +327,14 @@ code_change(_OldVsn, State, _Extra) ->
 shared_queue_name(AcctId, QueueId) ->
     <<"acdc.queue.", AcctId/binary, ".", QueueId/binary>>.
 
--spec send_member_connect_req/5 :: (wh_json:json_object(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
-send_member_connect_req(MemberCallJObj, AcctId, QueueId, MyQ, MyId) ->
+-spec send_member_connect_req/5 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+send_member_connect_req(CallId, AcctId, QueueId, MyQ, MyId) ->
     Req = props:filter_undefined(
             [{<<"Account-ID">>, AcctId}
              ,{<<"Queue-ID">>, QueueId}
              ,{<<"Process-ID">>, MyId}
              ,{<<"Server-ID">>, MyQ}
-             ,{<<"Call-ID">>, whapps_call:call_id(MemberCallJObj)}
+             ,{<<"Call-ID">>, CallId}
              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
             ]),
     wapi_acdc_queue:publish_member_connect_req(Req).
@@ -329,3 +350,18 @@ send_member_connect_win(RespJObj, Call, QueueId, MyQ, MyId) ->
              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
             ]),
     wapi_acdc_queue:publish_member_connect_win(wh_json:get_value(<<"Server-ID">>, RespJObj), Win).
+
+-spec maybe_nack/2 :: (whapps_call:call(), #'basic.deliver'{}) -> boolean().
+maybe_nack(Call, Delivery) ->
+    case whapps_call_command:call_status(Call) of
+        {ok, _} ->
+            lager:debug("call is still active, nack"),
+            acdc_util:unbind_from_call_events(Call),
+            gen_listener:nack(self(), Delivery),
+            true;
+        {error, _} ->
+            lager:debug("call is probably not active, ack it (so its gone)"),
+            acdc_util:unbind_from_call_events(Call),
+            gen_listener:ack(self(), Delivery),
+            false
+    end.
