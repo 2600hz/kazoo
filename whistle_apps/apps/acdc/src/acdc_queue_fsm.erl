@@ -124,6 +124,8 @@ call_event(_, _, _, _) -> ok.
 %% @end
 %%--------------------------------------------------------------------
 init([AcctId, QueueId, QueuePid]) ->
+    put(callid, <<"fsm_", QueueId/binary>>),
+
     {ok, ready, #state{queue_proc=QueuePid
                        ,acct_id=AcctId
                        ,queue_id=QueueId
@@ -147,6 +149,9 @@ ready({accepted, _AcceptJObj}, State) ->
 ready({retry, _RetryJObj}, State) ->
     lager:debug("weird to receive a retry when we're just hanging here: ~p", [_RetryJObj]),
     {next_state, ready, State};
+ready({member_hungup, _CallEvt}, State) ->
+    lager:debug("member hungup from previous call, failed to unbind"),
+    {next_state, ready, State};
 ready(_Event, State) ->
     lager:debug("unhandled event: ~p", [_Event]),
     {next_state, ready, State}.
@@ -169,7 +174,7 @@ connect_req({timeout, Ref, ?COLLECT_RESP_MESSAGE}, #state{collect_ref=Ref
                                                          }=State) ->
     lager:debug("done waiting for agents to respond, no one responded"),
     acdc_queue:cancel_member_call(Srv),
-    {noreply, ready, State#state{connect_resps=[], collect_ref=undefined}};
+    {next_state, ready, State#state{connect_resps=[], collect_ref=undefined}};
 connect_req({timeout, Ref, ?COLLECT_RESP_MESSAGE}, #state{collect_ref=Ref
                                                           ,connect_resps=CRs
                                                           ,queue_proc=Srv
@@ -178,7 +183,7 @@ connect_req({timeout, Ref, ?COLLECT_RESP_MESSAGE}, #state{collect_ref=Ref
     Winner = pick_winner(CRs),
     acdc_queue:member_connect_win(Srv, Winner),
     lager:debug("sending win to ~p", [Winner]),
-    {noreply, connecting, State#state{connect_resps=[], collect_ref=undefined}};
+    {next_state, connecting, State#state{connect_resps=[], collect_ref=undefined}};
 connect_req({accepted, _AcceptJObj}, State) ->
     lager:debug("recv accept response before win sent (are you magical): ~p", [_AcceptJObj]),
     {next_state, connect_req, State};
