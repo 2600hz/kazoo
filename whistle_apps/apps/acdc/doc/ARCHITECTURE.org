@@ -116,7 +116,12 @@ A queue provides ordering of calls through it.
          \|----[acdc_queue_sup]
                       \|
                       \|----acdc_queue
+                      \|----acdc_queue_shared
                       \|----acdc_queue_fsm
+
+*** Queue - Shared
+
+Because of the need to not auto-ack member call payloads, the consumption of messages from the shared AMQP queue necessitated moving that queue management into its own gen_listener, while messages betweem the queue process and agent processes flow unimpeded on the acdc_queue process's AMQP queue. The acdc_queue_shared routing is still passed to acdc_queue_handlers, to be fed into the acdc_queue_fsm process.
 
 *** Queue FSM
 
