@@ -83,9 +83,7 @@ plan_summary(ServicesJObj) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Given a the services on an account (and descedants) as well as the
-%% service plans the account is subscribed to create a list of items
-%% suitable for use with the bookkeepers.
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec activation_charges/3 :: (ne_binary(), ne_binary(), plans()) -> float().
@@ -95,7 +93,7 @@ activation_charges(Category, Item, ServicePlans) ->
                     ,Plan <- ServicePlan#wh_service_plans.plans
             ],
     lists:foldl(fun(Plan, Charges) ->
-                        wh_service_plan:activation_charges(Category, Item, Plan)
+                        wh_service_plan:activation_charges(Category, Item, Plan) 
                             + Charges
                 end, 0.0, Plans).
 

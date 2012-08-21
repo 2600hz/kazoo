@@ -65,9 +65,13 @@ clean(Account) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    ScanRate = whapps_config:get_integer(?WHS_CONFIG_CAT, <<"scan_rate">>, 20000),
-    _TRef = erlang:send_after(ScanRate, self(), {try_sync_service}),
-    {ok, #state{}}.
+    case whapps_config:get_is_true(?WHS_CONFIG_CAT, <<"sync_services">>, false) of
+        false -> {ok, #state{}};
+        true ->
+            ScanRate = whapps_config:get_integer(?WHS_CONFIG_CAT, <<"scan_rate">>, 20000),
+            _TRef = erlang:send_after(ScanRate, self(), {try_sync_service}),
+            {ok, #state{}}
+    end.
 
 %%--------------------------------------------------------------------
 %% @private

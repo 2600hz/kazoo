@@ -123,17 +123,17 @@ format_account_id(AccountId, raw) ->
 -spec current_account_balance/1 :: (api_binary()) -> integer().
 current_account_balance(undefined) -> 0;
 current_account_balance(Ledger) ->
-    LedgerDb = wh_util:format_account_id(Ledger, encoded),    
+    LedgerDb = wh_util:format_account_id(Ledger, encoded),
     ViewOptions = [{<<"reduce">>, true}],
     case couch_mgr:get_results(LedgerDb, <<"transactions/credit_remaining">>, ViewOptions) of
-        {ok, []} -> 
+        {ok, []} ->
             lager:debug("no current balance for ~s", [Ledger]),
             0;
-        {ok, [ViewRes|_]} -> 
+        {ok, [ViewRes|_]} ->
             Credit = wh_json:get_integer_value(<<"value">>, ViewRes, 0),
             lager:debug("current balance for ~s is ~p", [Ledger, Credit]),
             Credit;
-        {error, _R} -> 
+        {error, _R} ->
             lager:debug("unable to get current balance for ~s: ~p", [Ledger, _R]),
             0
     end.
@@ -167,7 +167,7 @@ is_in_account_hierarchy(CheckFor, InAccount, IncludeSelf) ->
         {ok, JObj} ->
             Tree = wh_json:get_value(<<"pvt_tree">>, JObj, []),
             case lists:member(CheckId, Tree) of
-                true -> 
+                true ->
                     lager:debug("account ~s is in the account hierarchy of ~s", [CheckId, AccountId]),
                     true;
                 false ->
@@ -182,12 +182,12 @@ is_in_account_hierarchy(CheckFor, InAccount, IncludeSelf) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec is_system_admin/1 :: ('undefined' | ne_binary()) -> boolean().
 is_system_admin(undefined) -> false;
-is_system_admin(Account) -> 
+is_system_admin(Account) ->
     AccountId = wh_util:format_account_id(Account, raw),
     AccountDb = wh_util:format_account_id(Account, encoded),
     case couch_mgr:open_cache_doc(AccountDb, AccountId) of
@@ -213,7 +213,7 @@ is_account_enabled(AccountId) ->
     %% See WHISTLE-1201
     true.
 %%    case wh_cache:peek({?MODULE, is_account_enabled, AccountId}) of
-%%        {ok, Enabled} -> 
+%%        {ok, Enabled} ->
 %%            lager:debug("account ~s enabled flag is ~s", [AccountId, Enabled]),
 %%            Enabled;
 %%        {error, not_found} ->
@@ -372,14 +372,14 @@ get_event_type(JObj) when not is_list(JObj) -> % guard against json_objects() be
 %% Generic helper to get the text value of a XML path
 %% @end
 %%--------------------------------------------------------------------
--spec get_xml_value/2 :: (string(), term()) -> undefined | binary().    
+-spec get_xml_value/2 :: (string(), term()) -> undefined | binary().
 get_xml_value(Paths, Xml) ->
     Path = lists:flatten(Paths),
     try xmerl_xpath:string(Path, Xml) of
         [#xmlText{value=Value}] ->
             wh_util:to_binary(Value);
         [#xmlText{}|_]=Values ->
-            [wh_util:to_binary(Value) 
+            [wh_util:to_binary(Value)
              || #xmlText{value=Value} <- Values
             ];
         _ -> undefined
@@ -588,7 +588,7 @@ ucfirst_binary(<<F:8, Bin/binary>>) ->
 -spec lcfirst_binary/1 :: (ne_binary()) -> ne_binary().
 lcfirst_binary(<<F:8, Bin/binary>>) ->
     <<(to_lower_char(F)):8, Bin/binary>>.
-    
+
 -spec to_lower_char/1 :: (char()) -> char().
 to_lower_char(C) when is_integer(C), $A =< C, C =< $Z -> C + 32;
 %% Converts latin capital letters to lowercase, skipping 16#D7 (extended ascii 215) "multiplication sign: x"

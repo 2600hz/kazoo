@@ -924,7 +924,6 @@ activate_feature(Feature, #number{services=undefined, billing_id=Account}=N) ->
 activate_feature(Feature, #number{services=Services}=N) ->
     Units = wh_service_phone_numbers:feature_activation_charge(Feature, Services),
     activate_feature(Feature, Units, N).
-
 activate_feature(Feature, 0, #number{features=Features}=N) ->
     lager:debug("no activation charge for ~s", [Feature]),
     N#number{features=sets:add_element(Feature, Features)};
