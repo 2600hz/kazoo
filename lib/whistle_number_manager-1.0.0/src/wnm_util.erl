@@ -46,7 +46,8 @@ classify_number(Number) ->
     classify_number(Num, wh_json:to_proplist(Classifiers)).
 
 classify_number(Num, []) ->
-    lager:debug("unable to classify number ~s", [Num]);
+    lager:debug("unable to classify number ~s", [Num]),
+    undefined;
 classify_number(Num, [{Classification, Classifier}|Classifiers]) ->
     case re:run(Num, Classifier) of
         nomatch -> classify_number(Num, Classifiers);

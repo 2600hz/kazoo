@@ -24,8 +24,10 @@
                  ,phone_number_docs = 'undefined' :: 'undefined' | dict()
                  ,hard_delete = false :: boolean()
                  ,error_jobj = wh_json:new() :: wh_json:json_object()
-                 ,activations = sets:new() :: set()
-                 ,resellers
+                 ,activations = [] :: wh_json:json_objects()
+                 ,services = undefined :: 'undefined' | wh_services:services()
+                 ,current_balance = undefined :: 'undefined' | float()
+                 ,billing_id = undefined :: 'undefined' | ne_binary()
                 }).
 
 -type wnm_number() :: #number{}.
