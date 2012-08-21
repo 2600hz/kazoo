@@ -54,6 +54,7 @@
 
 -define(BINDINGS, [{self, []}]).
 -define(RESPONDERS, [{{acdc_queue_handler, handle_call_event}, {<<"call_event">>, <<"*">>}}
+                     ,{{acdc_queue_handler, handle_call_event}, {<<"error">>, <<"*">>}}
                      ,{{acdc_queue_handler, handle_member_resp}, {<<"member">>, <<"connect_resp">>}}
                      ,{{acdc_queue_handler, handle_member_accepted}, {<<"member">>, <<"connect_accepted">>}}
                      ,{{acdc_queue_handler, handle_member_retry}, {<<"member">>, <<"connect_retry">>}}
