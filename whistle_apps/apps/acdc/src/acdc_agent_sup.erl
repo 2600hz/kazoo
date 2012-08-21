@@ -16,6 +16,7 @@
 -export([start_link/2
          ,agent/0
          ,fsm/0, start_fsm/3
+         ,stop/1
         ]).
 
 %% Supervisor callbacks
@@ -39,6 +40,10 @@
 -spec start_link/2 :: (ne_binary(), wh_json:json_object()) -> startlink_ret().
 start_link(AcctDb, AgentJObj) ->
     supervisor:start_link(?MODULE, [AcctDb, AgentJObj]).
+
+-spec stop/1 :: (pid()) -> 'ok' | {'error', 'not_found'}.
+stop(Supervisor) ->
+    supervisor:terminate_child(acdc_agents_sup, Supervisor).
 
 -spec agent/0 :: () -> pid() | 'undefined'.
 agent() ->
