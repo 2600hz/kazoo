@@ -48,6 +48,7 @@
          ,collect_ref :: reference()
          ,acct_id :: ne_binary()
          ,queue_id :: ne_binary()
+         ,member_call_id :: ne_binary()
          }).
 
 %%%===================================================================
@@ -137,9 +138,12 @@ init([AcctId, QueueId, QueuePid]) ->
 %% @end
 %%--------------------------------------------------------------------
 ready({member_call, CallJObj, Delivery}, #state{queue_proc=Srv}=State) ->
-    lager:debug("member call received"),
+    CallId = wh_json:get_value([<<"Call">>, <<"Call-ID">>], CallJObj),
+    lager:debug("member call received: ~s", [CallId]),
     acdc_queue:member_connect_req(Srv, CallJObj, Delivery),
-    {next_state, connect_req, State#state{collect_ref=start_collect_timer()}};
+    {next_state, connect_req, State#state{collect_ref=start_collect_timer()
+                                          ,member_call_id=CallId
+                                         }};
 ready({agent_resp, _Resp}, State) ->
     lager:debug("someone jumped the gun, or was slow on the draw: ~p", [_Resp]),
     {next_state, ready, State};
@@ -190,6 +194,10 @@ connect_req({accepted, _AcceptJObj}, State) ->
 connect_req({retry, _RetryJObj}, State) ->
     lager:debug("recv retry response before win sent: ~p", [_RetryJObj]),
     {next_state, connect_req, State};
+connect_req({member_hungup, JObj}, #state{queue_proc=Srv}=State) ->
+    lager:debug("member hungup before we could assign an agent"),
+    acdc_queue:finish_member_call(Srv, JObj),
+    {next_state, ready, State#state{connect_resps=[], collect_ref=undefined}};
 connect_req(_Event, State) ->
     lager:debug("unhandled event: ~p", [_Event]),
     {next_state, connect_req, State}.
