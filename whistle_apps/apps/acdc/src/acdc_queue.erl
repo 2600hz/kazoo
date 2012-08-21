@@ -39,13 +39,27 @@
 -include("acdc.hrl").
 
 -record(state, {
+          %% Config options
           queue_id :: ne_binary()
          ,queue_db :: ne_binary()
          ,acct_id :: ne_binary()
+         ,enter_when_empty = true :: boolean() % if a queue is agent-less, can the caller enter?
+         ,max_queue_size = 0 :: integer() % restrict the number of the queued callers
+         ,max_wait_time = 0 :: integer() % how long can a caller wait in the queue
+         ,agent_wrapup_time = 0 :: integer() % forced wrapup time for an agent after a call
+         ,record_caller = false :: boolean() % record the caller
+         ,type = 'rr' :: 'rr' | 'mi' % round-robin | most-idle
+         ,cdr_url :: ne_binary() % optional URL to request for extra CDR data
+
+          %% PIDs of the gang
          ,fsm_pid :: pid()
          ,shared_pid :: pid()
+
+          %% AMQP-related
          ,my_id :: ne_binary()
          ,my_q :: ne_binary()
+
+          %% While processing a call
          ,call :: whapps_call:call()
          ,agent_process :: ne_binary()
          ,agent_id :: ne_binary()
@@ -128,6 +142,13 @@ init([Supervisor, AcctDb, QueueJObj]) ->
        ,queue_db = AcctDb
        ,acct_id = wh_util:format_account_id(AcctDb, raw)
        ,my_id = list_to_binary([wh_util:to_binary(node()), "-", pid_to_list(self())])
+       ,enter_when_empty = wh_json:is_true(<<"enter_when_empty">>, QueueJObj, true)
+       ,max_queue_size = wh_json:get_integer_value(<<"max_queue_size">>, QueueJObj, 0)
+       ,max_wait_time = wh_json:get_integer_value(<<"max_wait_time">>, QueueJObj, 0)
+       ,agent_wrapup_time = wh_json:get_integer_value(<<"agent_wrapup_time">>, QueueJObj, 0)
+       ,record_caller = wh_json:is_true(<<"record_caller">>, QueueJObj, false)
+       ,type = wh_json:get_atom_value(<<"type">>, QueueJObj, 'rr')
+       ,cdr_url = wh_json:get_value(<<"cdr_url">>, QueueJObj)
       }}.
 
 %%--------------------------------------------------------------------
