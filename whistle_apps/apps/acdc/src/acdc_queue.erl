@@ -22,6 +22,7 @@
 -export([start_link/3
          ,member_connect_req/3
          ,member_connect_win/2
+         ,member_connect_monitor/2
          ,finish_member_call/2
          ,cancel_member_call/1, cancel_member_call/2 ,cancel_member_call/3
         ]).
@@ -48,7 +49,7 @@
          ,max_wait_time = 0 :: integer() % how long can a caller wait in the queue
          ,agent_wrapup_time = 0 :: integer() % forced wrapup time for an agent after a call
          ,record_caller = false :: boolean() % record the caller
-         ,type = 'rr' :: 'rr' | 'mi' % round-robin | most-idle
+         ,type = 'rr' :: queue_type() % round-robin | most-idle
          ,cdr_url :: ne_binary() % optional URL to request for extra CDR data
 
           %% PIDs of the gang
@@ -98,6 +99,8 @@ member_connect_req(Srv, MemberCallJObj, Delivery) ->
 
 member_connect_win(Srv, RespJObj) ->
     gen_listener:cast(Srv, {member_connect_win, RespJObj}).
+member_connect_monitor(Srv, RespJObj) ->
+    gen_listener:cast(Srv, {member_connect_monitor, RespJObj}).
 
 finish_member_call(Srv, AcceptJObj) ->
     gen_listener:cast(Srv, {finish_member_call, AcceptJObj}).
@@ -183,8 +186,9 @@ handle_cast({start_fsm, Supervisor}, #state{
               queue_db=AcctDb
               ,queue_id=QueueId
               ,acct_id=AcctId
+              ,type=Type
              }=State) ->
-    {ok, FSMPid} = acdc_queue_sup:start_fsm(Supervisor, AcctDb, QueueId),
+    {ok, FSMPid} = acdc_queue_sup:start_fsm(Supervisor, AcctDb, QueueId, Type),
     link(FSMPid),
 
     {ok, SharedPid} = acdc_queue_sup:start_shared_queue(Supervisor, FSMPid, AcctId, QueueId),
@@ -218,6 +222,15 @@ handle_cast({member_connect_win, RespJObj}, #state{my_q=MyQ
     {noreply, State#state{agent_process=wh_json:get_value(<<"Agent-Process">>, RespJObj)
                           ,agent_id=wh_json:get_value(<<"Agent-ID">>, RespJObj)
                          }};
+
+handle_cast({member_connect_monitor, RespJObj}, #state{my_id=MyId
+                                                       ,call=Call
+                                                       ,queue_id=QueueId
+                                                      }=State) ->
+    lager:debug("agent process won the call, sending the monitor to another agent process"),
+    send_member_connect_monitor(RespJObj, whapps_call:call_id(Call), QueueId, MyId),
+    {noreply, State};
+
 
 handle_cast({finish_member_call, _AcceptJObj}, #state{delivery=Delivery
                                                       ,call=Call
@@ -348,6 +361,15 @@ send_member_connect_win(RespJObj, Call, QueueId, MyQ, MyId) ->
              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
             ]),
     wapi_acdc_queue:publish_member_connect_win(wh_json:get_value(<<"Server-ID">>, RespJObj), Win).
+
+-spec send_member_connect_monitor/4 :: (wh_json:json_object(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+send_member_connect_monitor(RespJObj, CallId, QueueId, MyId) ->
+    Prop = [{<<"Call-ID">>, CallId}
+            ,{<<"Process-ID">>, MyId}
+            ,{<<"Queue-ID">>, QueueId}
+            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+           ],
+    wapi_acdc_queue:publish_member_connect_monitor(wh_json:get_value(<<"Server-ID">>, RespJObj), Prop).
 
 -spec maybe_nack/3 :: (whapps_call:call(), #'basic.deliver'{}, pid()) -> boolean().
 maybe_nack(Call, Delivery, SharedPid) ->
