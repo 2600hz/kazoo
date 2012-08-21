@@ -53,15 +53,13 @@ handle_sync_req(JObj, Props) ->
 
 -spec handle_sync_resp/2 :: (wh_json:json_object(), wh_proplist()) -> 'ok'.
 handle_sync_resp(JObj, Props) ->
-    case props:get_value(status, Props) of
-        init -> gen_listener:cast(props:get_value(server, Props), {recv_sync_resp, JObj});
-        _S -> lager:debug("ignoring sync_resp, in status ~s", [_S])
-    end.
+    acdc_agent_fsm:sync_resp(props:get_value(fsm_pid, Props), JObj).
 
 -spec handle_call_event/2 :: (wh_json:json_object(), wh_proplist()) -> 'ok'.
 handle_call_event(JObj, Props) ->
     {Cat, Name} = wh_util:get_event_type(JObj),
-    acdc_agent_fsm:call_event(props:get_value(fsm_pid, Props), Cat, Name, JObj).
+    lager:debug("call_event: ~s: ~s", [wh_json:get_value(<<"Call-ID">>, JObj), Name]),
+    acdc_agent_fsm:call_event(props:get_value(fsm_pid, Props), Cat, Name, JObj).    
 
 -spec handle_member_message/2 :: (wh_json:json_object(), wh_proplist()) -> 'ok'.
 -spec handle_member_message/3 :: (wh_json:json_object(), wh_proplist(), ne_binary()) -> 'ok'.
