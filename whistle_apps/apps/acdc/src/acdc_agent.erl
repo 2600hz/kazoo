@@ -13,11 +13,14 @@
 %% API
 -export([start_link/3
          ,member_connect_resp/2
-         ,member_connect_retry/2
+         ,member_connect_retry/1, member_connect_retry/2
          ,bridge_to_member/2
          ,monitor_call/2
          ,member_connect_accepted/1
-         ,channel_hungup/1
+         ,channel_hungup/2
+         ,originate_execute/2
+         ,join_agent/2
+         ,send_sync_req/3
         ]).
 
 %% gen_server callbacks
@@ -90,6 +93,9 @@
                      ,{{acdc_agent_handler, handle_call_event}
                        ,{<<"call_event">>, <<"*">>}
                       }
+                     ,{{acdc_agent_handler, handle_call_event}
+                       ,{<<"error">>, <<"*">>}
+                      }
                      ,{{acdc_agent_handler, handle_member_message}
                        ,{<<"member">>, <<"*">>}
                       }
@@ -117,11 +123,14 @@ start_link(Supervisor, AcctDb, AgentJObj) ->
             lager:debug("agent ~s in ~s has no queues, ignoring"),
             ignore;
         Queues ->
-            gen_listener:start_link(?MODULE
+            AcctId = wh_util:format_account_id(AcctDb, raw),
+            Name = wh_util:join_binary([<<"agent">>, AcctId, AgentId], <<"_">>),
+            gen_listener:start_link(Name
+                                    ,?MODULE
                                     ,[{bindings, ?BINDINGS(AcctDb, AgentId)}
                                       ,{responders, ?RESPONDERS}
                                      ]
-                                    ,[Supervisor, AcctDb, AgentJObj, Queues]
+                                    ,[Supervisor, AcctDb, AgentJObj, Queues, Name]
                                    )
     end.
 
@@ -129,6 +138,8 @@ start_link(Supervisor, AcctDb, AgentJObj) ->
 member_connect_resp(Srv, ReqJObj) ->
     gen_listener:cast(Srv, {member_connect_resp, ReqJObj}).
 
+member_connect_retry(Srv) ->
+    gen_listener:cast(Srv, {member_connect_retry}).
 member_connect_retry(Srv, WinJObj) ->
     gen_listener:cast(Srv, {member_connect_retry, WinJObj}).
 
@@ -141,9 +152,18 @@ bridge_to_member(Srv, WinJObj) ->
 monitor_call(Srv, MonitorJObj) ->
     gen_listener:cast(Srv, {monitor_call, MonitorJObj}).
 
--spec channel_hungup/1 :: (pid()) -> 'ok'.
-channel_hungup(Srv) ->
-    gen_listener:cast(Srv, channel_hungup).
+-spec channel_hungup/2 :: (pid(), ne_binary()) -> 'ok'.
+channel_hungup(Srv, CallId) ->
+    gen_listener:cast(Srv, {channel_hungup, CallId}).
+
+originate_execute(Srv, JObj) ->
+    gen_listener:cast(Srv, {originate_execute, JObj}).
+
+join_agent(Srv, ACallId) ->
+    gen_listener:cast(Srv, {join_agent, ACallId}).
+
+send_sync_req(Srv, AcctId, AgentId) ->
+    gen_listener:cast(Srv, {send_sync_req, AcctId, AgentId}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -160,14 +180,10 @@ channel_hungup(Srv) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init([Supervisor, AcctDb, AgentJObj, Queues]) ->
-    AgentId = wh_json:get_value(<<"_id">>, AgentJObj),
-    put(callid, AgentId),
+init([Supervisor, AcctDb, AgentJObj, Queues, Name]) ->
+    put(callid, Name),
 
-    gen_listener:cast(self(), {start_fsm, Supervisor}),
-    gen_listener:cast(self(), load_endpoints),
-    gen_listener:cast(self(), send_sync_event),
-    gen_listener:cast(self(), bind_to_member_reqs),
+    gen_listener:cast(self(), {load_endpoints, Supervisor}),
 
     Self = self(),
     _ = spawn(fun() ->
@@ -176,7 +192,7 @@ init([Supervisor, AcctDb, AgentJObj, Queues]) ->
 
     {ok, #state{
        agent_db = AcctDb
-       ,agent_id = AgentId
+       ,agent_id = wh_json:get_value(<<"_id">>, AgentJObj)
        ,account_id = wh_json:get_value(<<"pvt_account_id">>, AgentJObj)
        ,agent_queues = Queues
        ,my_id = list_to_binary([wh_util:to_binary(node()), "-", pid_to_list(self())])
@@ -217,6 +233,9 @@ handle_cast({start_fsm, Supervisor}, #state{
     {ok, FSMPid} = acdc_agent_sup:start_fsm(Supervisor, AcctDb, AgentId),
     link(FSMPid),
     lager:debug("started FSM at ~p", [FSMPid]),
+
+    gen_listener:cast(self(), bind_to_member_reqs),
+
     {noreply, State#state{fsm_pid=FSMPid}};
 handle_cast({queue_name, Q}, State) ->
     {noreply, State#state{my_q=Q}};
@@ -232,13 +251,20 @@ handle_cast(bind_to_member_reqs, #state{agent_queues=Qs
          || QID <- Qs],
     {noreply, State};
         
-handle_cast(channel_hungup, #state{call=Call}=State) ->
-    lager:debug("channel hungup, done with this call"),
-    acdc_util:unbind_from_call_events(Call),
-    {noreply, State#state{call=undefined
-                          ,msg_queue_id=undefined
-                          ,acdc_queue_id=undefined
-                         }};
+handle_cast({channel_hungup, CallId}, #state{call=Call}=State) ->
+    case call_id(Call) of
+        CallId ->
+            lager:debug("member channel hungup, done with this call"),
+            acdc_util:unbind_from_call_events(Call),
+            {noreply, State#state{call=undefined
+                                  ,msg_queue_id=undefined
+                                  ,acdc_queue_id=undefined
+                                 }};
+        _ ->
+            lager:debug("other channel ~s hungup", [CallId]),
+            acdc_util:unbind_from_call_events(CallId),
+            {noreply, State}
+    end;
 
 handle_cast(member_connect_accepted, #state{msg_queue_id=AmqpQueue
                                     ,call=Call
@@ -247,12 +273,25 @@ handle_cast(member_connect_accepted, #state{msg_queue_id=AmqpQueue
     send_member_connect_accepted(AmqpQueue, call_id(Call)),
     {noreply, State};
 
-handle_cast(load_endpoints, #state{
+handle_cast({load_endpoints, Supervisor}, #state{
               agent_db=AcctDb
               ,agent_id=AgentId
+              ,account_id=AcctId
              }=State) ->
     lager:debug("loading agent endpoints"),
-    {noreply, State#state{endpoints=acdc_util:get_endpoints(AcctDb, AgentId)}};
+    Call = whapps_call:set_account_id(AcctId
+                                      ,whapps_call:set_account_db(AcctDb
+                                                                  ,whapps_call:new()
+                                                                 )
+                                     ),
+    case acdc_util:get_endpoints(Call, AgentId) of
+        [] ->
+            acdc_agent_sup:stop(Supervisor),
+            {noreply, State};
+        EPs ->
+            gen_listener:cast(self(), {start_fsm, Supervisor}),
+            {noreply, State#state{endpoints=EPs}}
+    end;
 
 handle_cast({member_connect_resp, ReqJObj}, #state{
               agent_id=AgentId
@@ -273,6 +312,15 @@ handle_cast({member_connect_resp, ReqJObj}, #state{
                                  }}
     end;
 
+handle_cast({member_connect_retry}, #state{
+              my_id=MyId
+              ,msg_queue_id=Server
+              ,call=Call
+              }=State) ->
+    send_member_connect_retry(Server, call_id(Call), MyId),
+    {noreply, State#state{msg_queue_id=undefined
+                          ,acdc_queue_id=undefined
+                          }};
 handle_cast({member_connect_retry, WinJObj}, #state{
               my_id=MyId
              }=State) ->
@@ -280,14 +328,14 @@ handle_cast({member_connect_retry, WinJObj}, #state{
     send_member_connect_retry(WinJObj, MyId),
     {noreply, State};
 
-handle_cast({bridge_to_member, WinJObj}, #state{endpoints=EPs}=State) ->
+handle_cast({bridge_to_member, WinJObj}, #state{endpoints=EPs, fsm_pid=FSM}=State) ->
     lager:debug("bridging to agent endpoints: ~p", [EPs]),
 
     Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, WinJObj)),
     acdc_util:bind_to_call_events(Call),
-    maybe_connect_to_agent(EPs, Call),
+    _P = spawn(fun() -> maybe_connect_to_agent(FSM, EPs, Call) end),
 
-    lager:debug("waiting on successful bridge now"),
+    lager:debug("waiting on successful bridge now: connecting in ~p", [_P]),
     {noreply, State#state{call=Call}};
 
 handle_cast({monitor_call, MonitorJObj}, State) ->
@@ -295,6 +343,23 @@ handle_cast({monitor_call, MonitorJObj}, State) ->
     acdc_util:bind_to_call_events(Call),
     lager:debug("monitoring call ~s", [whapps_call:call_id(Call)]),
     {noreply, State#state{call=Call}};
+
+handle_cast({originate_execute, JObj}, State) ->
+    CallId = wh_json:get_value(<<"Call-ID">>, JObj),
+    acdc_util:bind_to_call_events(CallId),
+
+    send_originate_execute(JObj),
+    {noreply, State};
+
+handle_cast({join_agent, ACallId}, #state{call=Call}=State) ->
+    lager:debug("sending call pickup"),
+    whapps_call_command:pickup(ACallId, <<"now">>, Call),
+    {noreply, State};
+
+handle_cast({send_sync_req, AcctId, AgentId}, #state{my_id=MyId}=State) ->
+    lager:debug("sending sync request"),
+    send_sync_request(AcctId, AgentId, MyId),
+    {noreply, State};
 
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
@@ -372,19 +437,43 @@ send_member_connect_resp(JObj, MyQ, AgentId, MyId, LastConn) ->
     wapi_acdc_queue:publish_member_connect_resp(Queue, Resp).
 
 -spec send_member_connect_retry/2 :: (wh_json:json_object(), ne_binary()) -> 'ok'.
+-spec send_member_connect_retry/3 :: (ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 send_member_connect_retry(JObj, MyId) ->
-    Queue = wh_json:get_value(<<"Server-ID">>, JObj),
+    send_member_connect_retry(wh_json:get_value(<<"Server-ID">>, JObj)
+                              ,wh_json:get_value([<<"Call">>, <<"call_id">>], JObj)
+                              ,MyId).
+
+send_member_connect_retry(Queue, CallId, MyId) ->
     Resp = props:filter_undefined(
              [{<<"Process-ID">>, MyId}
-              ,{<<"Call-ID">>, wh_json:get_value([<<"Call">>, <<"call_id">>], JObj)}
-              ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+              ,{<<"Call-ID">>, CallId}
+              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     wapi_acdc_queue:publish_member_connect_retry(Queue, Resp).
 
 -spec send_member_connect_accepted/2 :: (ne_binary(), ne_binary()) -> 'ok'.
 send_member_connect_accepted(Queue, CallId) ->
-    Resp = props:filter_undefined([{<<"Call-ID">>, CallId}]),
-    wapi_acdc_queue:publish_member_connect_retry(Queue, Resp).
+    Resp = props:filter_undefined([{<<"Call-ID">>, CallId}
+                                   | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                                  ]),
+    wapi_acdc_queue:publish_member_connect_accepted(Queue, Resp).
+
+-spec send_originate_execute/1 :: (wh_json:json_object()) -> 'ok'.
+send_originate_execute(JObj) ->
+    Prop = [{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
+            ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+           ],
+    wapi_dialplan:publish_originate_execute(wh_json:get_value(<<"Server-ID">>, JObj), Prop).
+
+-spec send_sync_request/3 :: (ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+send_sync_request(AcctId, AgentId, MyId) ->
+    Prop = [{<<"Account-ID">>, AcctId}
+            ,{<<"Agent-ID">>, AgentId}
+            ,{<<"Process-ID">>, MyId}
+            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+           ],
+    wapi_acdc_agent:publish_sync_req(Prop).
 
 -spec idle_time/1 :: ('undefined' | wh_now()) -> 'undefined' | integer().
 idle_time(undefined) -> undefined;
@@ -394,6 +483,43 @@ idle_time(T) -> wh_util:elapsed_s(T).
 call_id(undefined) -> undefined;
 call_id(Call) -> whapps_call:call_id(Call).
 
--spec maybe_connect_to_agent/2 :: (list(), whapps_call:call()) -> 'ok'.
-maybe_connect_to_agent(EPs, Call) ->
-    lager:debug("bridge result: ~p", [whapps_call_command:bridge(EPs, Call)]).
+-spec maybe_connect_to_agent/3 :: (pid(), list(), whapps_call:call()) -> 'ok'.
+maybe_connect_to_agent(FSM, EPs, Call) ->
+    put(callid, whapps_call:call_id(Call)),
+
+    ReqId = wh_util:rand_hex_binary(6),
+    AcctId = whapps_call:account_id(Call),
+
+    CCVs = props:filter_undefined([{<<"Account-ID">>, AcctId}
+                                   ,{<<"Authorizing-ID">>, whapps_call:authorizing_id(Call)}
+                                   ,{<<"Request-ID">>, ReqId}
+                                  ]),
+
+    Prop = [{<<"Msg-ID">>, wh_util:rand_hex_binary(6)}
+            ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
+            ,{<<"Endpoints">>, EPs}
+            ,{<<"Export-Custom-Channel-Vars">>, [<<"Account-ID">>
+                                                     ,<<"Retain-CID">>
+                                                     ,<<"Authorizing-ID">>
+                                                     ,<<"Authorizing-Type">>
+                                                ]}
+            ,{<<"Account-ID">>, AcctId}
+            ,{<<"Resource-Type">>, <<"originate">>}
+            ,{<<"Application-Name">>, <<"park">>}
+            ,{<<"App-Name">>, ?APP_NAME}
+            ,{<<"App-Version">>, ?APP_VERSION}
+           ],
+
+    lager:debug("sending originate request"),
+
+    case whapps_util:amqp_pool_request(Prop
+                                       ,fun wapi_resource:publish_originate_req/1
+                                       ,fun wapi_dialplan:originate_ready_v/1
+                                      ) of
+        {ok, JObj} ->
+            lager:debug("originate is ready to execute"),
+            acdc_agent_fsm:originate_ready(FSM, JObj);
+        {error, E} ->
+            lager:debug("error originating: ~p", [E]),
+            acdc_agent_fsm:originate_failed(FSM, E)
+    end.
