@@ -184,8 +184,8 @@ member_connect_win_v(JObj) ->
 %%------------------------------------------------------------------------------
 %% Member Connect Monitor
 %%------------------------------------------------------------------------------
--define(MEMBER_CONNECT_MONITOR_HEADERS, [<<"Call-ID">>]).
--define(OPTIONAL_MEMBER_CONNECT_MONITOR_HEADERS, []).
+-define(MEMBER_CONNECT_MONITOR_HEADERS, [<<"Call-ID">>, <<"Queue-ID">>]).
+-define(OPTIONAL_MEMBER_CONNECT_MONITOR_HEADERS, [<<"Process-ID">>]).
 -define(MEMBER_CONNECT_MONITOR_VALUES, [{<<"Event-Category">>, <<"member">>}
                                         ,{<<"Event-Name">>, <<"connect_monitor">>}
                                        ]).
