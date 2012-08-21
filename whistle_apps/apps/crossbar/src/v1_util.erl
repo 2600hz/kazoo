@@ -742,19 +742,23 @@ create_pull_response(Req0, Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec create_resp_envelope/1 :: (#cb_context{}) -> wh_json:json_proplist(<<_:32,_:_*8>>).
-create_resp_envelope(#cb_context{resp_data=RespData, resp_status=success, auth_token=AuthToken, resp_etag=undefined}) ->
+create_resp_envelope(#cb_context{resp_data=RespData, resp_status=success, auth_token=AuthToken
+                                 ,resp_etag=undefined, req_id=RequestId}) ->
     [{<<"auth_token">>, AuthToken}
      ,{<<"status">>, <<"success">>}
      ,{<<"data">>, RespData}
+     ,{<<"request_id">>, RequestId}
     ];
-create_resp_envelope(#cb_context{resp_data=RespData, resp_status=success, auth_token=AuthToken, resp_etag=Etag}) ->
+create_resp_envelope(#cb_context{resp_data=RespData, resp_status=success, auth_token=AuthToken
+                                 ,resp_etag=Etag, req_id=RequestId}) ->
     [{<<"auth_token">>, AuthToken}
      ,{<<"status">>, <<"success">>}
      ,{<<"data">>, RespData}
+     ,{<<"request_id">>, RequestId}
      ,{<<"revision">>, wh_util:to_binary(Etag)}
     ];
 create_resp_envelope(#cb_context{auth_token=AuthToken, resp_data=RespData, resp_status=RespStatus
-                                 ,resp_error_code=undefined, resp_error_msg=RespErrorMsg}) ->
+                                 ,resp_error_code=undefined, resp_error_msg=RespErrorMsg, req_id=RequestId}) ->
     Msg = case RespErrorMsg of
               undefined ->
                   StatusBin = wh_util:to_binary(RespStatus),
@@ -768,9 +772,10 @@ create_resp_envelope(#cb_context{auth_token=AuthToken, resp_data=RespData, resp_
      ,{<<"message">>, wh_util:to_binary(Msg)}
      ,{<<"error">>, <<"500">>}
      ,{<<"data">>, RespData}
+     ,{<<"request_id">>, RequestId}
     ];
 create_resp_envelope(#cb_context{resp_error_msg=RespErrorMsg, resp_status=RespStatus, resp_error_code=RespErrorCode
-                                 ,resp_data=RespData, auth_token=AuthToken}) ->
+                                 ,resp_data=RespData, auth_token=AuthToken, req_id=RequestId}) ->
     Msg = case RespErrorMsg of
               undefined ->
                   StatusBin = wh_util:to_binary(RespStatus),
@@ -785,6 +790,7 @@ create_resp_envelope(#cb_context{resp_error_msg=RespErrorMsg, resp_status=RespSt
      ,{<<"message">>, wh_util:to_binary(Msg)}
      ,{<<"error">>, wh_util:to_binary(RespErrorCode)}
      ,{<<"data">>, RespData}
+     ,{<<"request_id">>, RequestId}
     ].
 
 %%--------------------------------------------------------------------

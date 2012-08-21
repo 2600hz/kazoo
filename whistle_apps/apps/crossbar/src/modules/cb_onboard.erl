@@ -295,15 +295,6 @@ create_user(JObj, Iteration, Context, {Pass, Fail}) ->
                            end 
                    end
                   ,fun(J) ->
-                           case {wh_json:get_ne_value(<<"username">>, User), 
-                                 wh_json:get_ne_value(<<"email">>, User)} of
-                               {undefined, undefined} -> J;
-                               {undefined, Email} -> 
-                                   wh_json:set_value(<<"username">>, Email, J);
-                               {_, _} -> J
-                           end
-                   end
-                  ,fun(J) ->
                            case wh_json:get_ne_value(<<"first_name">>, J) of
                                undefined -> 
                                    wh_json:set_value(<<"first_name">>, <<"User">>, J);
@@ -315,6 +306,17 @@ create_user(JObj, Iteration, Context, {Pass, Fail}) ->
                                undefined -> 
                                    wh_json:set_value(<<"last_name">>, wh_util:to_binary(Iteration), J);
                                _ -> J
+                           end
+                   end
+                  ,fun(J) ->                               
+                           case wh_json:get_ne_value(<<"username">>, User) of
+                               undefined ->
+                                   Email = wh_json:get_ne_value(<<"email">>, J),
+                                   FirstName = wh_json:get_ne_value(<<"first_name">>, J),
+                                   LastName = wh_json:get_ne_value(<<"last_name">>, J),
+                                   Username = generate_username(Email, FirstName, LastName),
+                                   wh_json:set_value(<<"username">>, Username, J);
+                               _Else -> J
                            end
                    end
                  ],
@@ -657,3 +659,13 @@ load_invite_code(Context, Id) ->
 
 save_invite_code(Context, Doc) ->
     crossbar_doc:save(Context#cb_context{db_name=?INVITE_DB, doc=Doc}).
+
+-spec generate_username/3 :: ('undefined' | ne_binary(), 'undefined' | ne_binary(), 'undefined' | ne_binary()) -> ne_binary().
+generate_username(undefined, undefined, _) ->
+    wh_util:rand_hex_binary(3);
+generate_username(undefined, _, undefined) ->
+    wh_util:rand_hex_binary(3);
+generate_username(undefined, <<FirstLetter, _/binary>>, LastName) ->
+    <<FirstLetter/binary, (wh_util:to_binary(LastName))/binary>>;
+generate_username(Email, _, _) ->
+    Email.
