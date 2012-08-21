@@ -184,10 +184,16 @@ connect_req({timeout, Ref, ?COLLECT_RESP_MESSAGE}, #state{collect_ref=Ref
                                                           ,queue_proc=Srv
                                                          }=State) ->
     lager:debug("done waiting for agents to respond, picking a winner"),
-    Winner = pick_winner(CRs),
-    acdc_queue:member_connect_win(Srv, Winner),
-    lager:debug("sending win to ~p", [Winner]),
-    {next_state, connecting, State#state{connect_resps=[], collect_ref=undefined}};
+    case pick_winner(CRs) of
+        {Winner, Resps} ->
+            acdc_queue:member_connect_win(Srv, Winner),
+            lager:debug("sending win to ~p", [Winner]),
+            {next_state, connecting, State#state{connect_resps=Resps, collect_ref=undefined}};
+        undefined ->
+            lager:debug("no more responses to choose from"),
+            acdc_queue:cancel_member_call(Srv),
+            {next_state, ready, State#state{collect_ref=undefined}}
+    end;
 connect_req({accepted, _AcceptJObj}, State) ->
     lager:debug("recv accept response before win sent (are you magical): ~p", [_AcceptJObj]),
     {next_state, connect_req, State};
@@ -218,10 +224,15 @@ connecting({accepted, AcceptJObj}, #state{queue_proc=Srv}=State) ->
     lager:debug("recv acceptance from agent: ~p", [AcceptJObj]),
     acdc_queue:finish_member_call(Srv, AcceptJObj),
     {next_state, ready, State};
-connecting({retry, RetryJObj}, #state{queue_proc=Srv}=State) ->
+connecting({retry, RetryJObj}, #state{queue_proc=Srv, connect_resps=[]}=State) ->
     lager:debug("recv retry from agent: ~p", [RetryJObj]),
     acdc_queue:cancel_member_call(Srv, RetryJObj),
     {next_state, ready, State};
+connecting({retry, RetryJObj}, State) ->
+    lager:debug("recv retry from agent: ~p", [RetryJObj]),
+    lager:debug("but wait, we have others who wanted to try"),
+    gen_fsm:send_event(self(), {timeout, undefined, ?COLLECT_RESP_MESSAGE}),
+    {next_state, connect_req, State};
 
 connecting({member_hungup, CallEvt}, #state{queue_proc=Srv}=State) ->
     lager:debug("caller hungup while we waited for the agent to connect"),
@@ -321,5 +332,6 @@ start_collect_timer() ->
     gen_fsm:start_timer(?COLLECT_RESP_TIMEOUT, ?COLLECT_RESP_MESSAGE).
 
 %% Really sophisticated selection algorithm
-pick_winner([Resp|_]) ->
-    Resp.
+pick_winner([]) -> undefined;
+pick_winner([Resp|Rest]) ->
+    {Resp, Rest}.
