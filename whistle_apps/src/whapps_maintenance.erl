@@ -134,6 +134,7 @@ do_refresh() ->
     refresh(?WH_ACCOUNTS_DB),
     refresh(?WH_PROVISIONER_DB),
     refresh(?WH_FAXES),
+    refresh(?WH_SERVICES_DB),
     Views = [whapps_util:get_view_json(whistle_apps, ?MAINTENANCE_VIEW_FILE)
              ,whapps_util:get_view_json(conference, <<"views/conference.json">>)
              |whapps_util:get_views_json(crossbar, "account")
@@ -149,6 +150,8 @@ do_refresh() ->
 
 refresh(Database) when not is_binary(Database) ->
     refresh(wh_util:to_binary(Database));
+refresh(?WH_SERVICES_DB) ->
+    whistle_services_maintenance:refresh();
 refresh(?WH_SIP_DB) ->
     couch_mgr:db_create(?WH_SIP_DB),
     Views = [whapps_util:get_view_json(whistle_apps, ?MAINTENANCE_VIEW_FILE)

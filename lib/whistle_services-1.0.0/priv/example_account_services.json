@@ -27,7 +27,7 @@
    },
    "plans": {
        "968dc36503bcb05f798d9530016f311f": {
-           "vendor_id": "c0705d7984ea0160110a451b25a4406b",
+           "account_id": "c0705d7984ea0160110a451b25a4406b",
            "overrides": {
                "phone_numbers": {
                    "did_us": {

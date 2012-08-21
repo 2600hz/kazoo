@@ -12,6 +12,7 @@
 -export([empty/0]).
 -export([from_service_json/1]).
 -export([plan_summary/1]).
+-export([activation_charges/3]).
 -export([create_items/1
          ,create_items/2
         ]).
@@ -55,12 +56,29 @@ plan_summary(ServicesJObj) ->
     ResellerId = wh_json:get_value(<<"pvt_reseller_id">>, ServicesJObj),
     lists:foldl(fun(PlanId, J) ->
                         Plan = wh_json:get_value([<<"plans">>, PlanId], ServicesJObj, wh_json:new()),
-                        case wh_json:get_value(<<"vendor_id">>, Plan) of
+                        case wh_json:get_value(<<"account_id">>, Plan) of
                             ResellerId -> wh_json:set_value(PlanId, Plan, J);
                             _Else -> J
                         end
                 end, wh_json:new(), wh_json:get_keys(<<"plans">>, ServicesJObj)).
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec activation_charges/3 :: (ne_binary(), ne_binary(), plans()) -> float().
+activation_charges(Category, Item, ServicePlans) ->
+    Plans = [Plan
+             || ServicePlan <- ServicePlans
+                    ,Plan <- ServicePlan#wh_service_plans.plans
+            ],
+    lists:foldl(fun(Plan, Charges) ->
+                        wh_service_plan:activation_charges(Category, Item, Plan) 
+                            + Charges
+                end, 0.0, Plans).
+    
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -105,7 +123,7 @@ get_plans(PlanIds, ResellerId, Sevices) ->
 get_plans([], _, _, ServicePlans) ->
     ServicePlans;
 get_plans([PlanId|PlanIds], ResellerId, Services, ServicePlans) ->
-    VendorId = wh_json:get_value([<<"plans">>, PlanId, <<"vendor_id">>], Services, ResellerId),
+    VendorId = wh_json:get_value([<<"plans">>, PlanId, <<"account_id">>], Services, ResellerId),
     Overrides = wh_json:get_value([<<"plans">>, PlanId, <<"overrides">>], Services, wh_json:new()),
     case maybe_fetch_vendor_plan(PlanId, VendorId, ResellerId, Overrides) of
         undefined -> get_plans(PlanIds, ResellerId, Services, ServicePlans);
