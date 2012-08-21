@@ -10,6 +10,8 @@
 
 %% Convert JObj or Prop to iolist json
 -export([member_call/1, member_call_v/1
+         ,member_call_fail/1, member_call_fail_v/1
+         ,member_call_success/1, member_call_success_v/1
          ,member_connect_req/1, member_connect_req_v/1
          ,member_connect_resp/1, member_connect_resp_v/1
          ,member_connect_win/1, member_connect_win_v/1
@@ -24,6 +26,9 @@
         ]).
 
 -export([publish_member_call/1, publish_member_call/2
+         ,publish_member_call_fail/2, publish_member_call_fail/3
+         ,publish_member_call_success/2, publish_member_call_success/3
+
          ,publish_member_connect_req/1, publish_member_connect_req/2
          ,publish_member_connect_resp/2, publish_member_connect_resp/3
          ,publish_member_connect_win/2, publish_member_connect_win/3
@@ -36,7 +41,7 @@
 -include("acdc.hrl").
 
 %%------------------------------------------------------------------------------
-%% Member Connect Request
+%% Member Call
 %%------------------------------------------------------------------------------
 -define(MEMBER_CALL_KEY, "member.call."). % append queue ID
 
@@ -79,6 +84,61 @@ member_call_routing_key(JObj) ->
 
 member_call_routing_key(AcctId, QueueId) ->
     <<?MEMBER_CALL_KEY, AcctId/binary, ".", QueueId/binary>>.
+
+%%------------------------------------------------------------------------------
+%% Member Call Fail - if the queue is unable to properly handle the call
+%%  (queue is full, empty, wait timeout expires, etc)
+%%------------------------------------------------------------------------------
+-define(MEMBER_CALL_FAIL_HEADERS, [<<"Account-ID">>, <<"Queue-ID">>, <<"Call">>]).
+-define(OPTIONAL_MEMBER_CALL_FAIL_HEADERS, []).
+-define(MEMBER_CALL_FAIL_VALUES, [{<<"Event-Category">>, <<"member">>}
+                             ,{<<"Event-Name">>, <<"call_fail">>}
+                            ]).
+-define(MEMBER_CALL_FAIL_TYPES, []).
+
+-spec member_call_fail/1 :: (api_terms()) ->
+                                    {'ok', iolist()} |
+                                    {'error', string()}.
+member_call_fail(Props) when is_list(Props) ->
+    case member_call_fail_v(Props) of
+        true -> wh_api:build_message(Props, ?MEMBER_CALL_FAIL_HEADERS, ?OPTIONAL_MEMBER_CALL_FAIL_HEADERS);
+        false -> {error, "Proplist failed validation for member_call_fail"}
+    end;
+member_call_fail(JObj) ->
+    member_call_fail(wh_json:to_proplist(JObj)).
+
+-spec member_call_fail_v/1 :: (api_terms()) -> boolean().
+member_call_fail_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?MEMBER_CALL_FAIL_HEADERS, ?MEMBER_CALL_FAIL_VALUES, ?MEMBER_CALL_FAIL_TYPES);
+member_call_fail_v(JObj) ->
+    member_call_fail_v(wh_json:to_proplist(JObj)).
+
+%%------------------------------------------------------------------------------
+%% Member Call Success - if an agent is handling the call
+%%------------------------------------------------------------------------------
+-define(MEMBER_CALL_SUCCESS_HEADERS, [<<"Account-ID">>, <<"Queue-ID">>, <<"Agent-ID">>]).
+-define(OPTIONAL_MEMBER_CALL_SUCCESS_HEADERS, [<<"Process-ID">>]).
+-define(MEMBER_CALL_SUCCESS_VALUES, [{<<"Event-Category">>, <<"member">>}
+                                     ,{<<"Event-Name">>, <<"call_success">>}
+                                    ]).
+-define(MEMBER_CALL_SUCCESS_TYPES, []).
+
+-spec member_call_success/1 :: (api_terms()) ->
+                                       {'ok', iolist()} |
+                                       {'error', string()}.
+member_call_success(Props) when is_list(Props) ->
+    case member_call_success_v(Props) of
+        true -> wh_api:build_message(Props, ?MEMBER_CALL_SUCCESS_HEADERS, ?OPTIONAL_MEMBER_CALL_SUCCESS_HEADERS);
+        false -> {error, "Proplist failed validation for member_call_success"}
+    end;
+member_call_success(JObj) ->
+    member_call_success(wh_json:to_proplist(JObj)).
+
+-spec member_call_success_v/1 :: (api_terms()) -> boolean().
+member_call_success_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?MEMBER_CALL_SUCCESS_HEADERS, ?MEMBER_CALL_SUCCESS_VALUES, ?MEMBER_CALL_SUCCESS_TYPES);
+member_call_success_v(JObj) ->
+    member_call_success_v(wh_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
 %% Member Connect Request
@@ -352,6 +412,22 @@ publish_member_call(JObj) ->
 publish_member_call(API, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(API, ?MEMBER_CALL_VALUES, fun member_call/1),
     amqp_util:callmgr_publish(Payload, ContentType, member_call_routing_key(API)).
+
+-spec publish_member_call_fail/2 :: (ne_binary(), api_terms()) -> 'ok'.
+-spec publish_member_call_fail/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+publish_member_call_fail(Q, JObj) ->
+    publish_member_call_fail(Q, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_member_call_fail(Q, API, ContentType) ->
+    {ok, Payload} = wh_api:prepare_api_payload(API, ?MEMBER_CALL_FAIL_VALUES, fun member_call_fail/1),
+    amqp_util:targeted_publish(Q, Payload, ContentType).
+
+-spec publish_member_call_success/2 :: (ne_binary(), api_terms()) -> 'ok'.
+-spec publish_member_call_success/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+publish_member_call_success(Q, JObj) ->
+    publish_member_call_success(Q, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_member_call_success(Q, API, ContentType) ->
+    {ok, Payload} = wh_api:prepare_api_payload(API, ?MEMBER_CALL_SUCCESS_VALUES, fun member_call_success/1),
+    amqp_util:targeted_publish(Q, Payload, ContentType).
 
 -spec publish_member_connect_req/1 :: (api_terms()) -> 'ok'.
 -spec publish_member_connect_req/2 :: (api_terms(), ne_binary()) -> 'ok'.
