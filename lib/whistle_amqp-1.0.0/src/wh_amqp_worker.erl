@@ -17,7 +17,7 @@
 -export([start_link/1]).
 -export([call/4, call/5]).
 -export([cast/3]).
--export([any_resp/1]).
+-export([any_resp/1, default_timeout/0]).
 -export([handle_resp/2]).
 -export([send_request/4]).
 -export([init/1
@@ -78,6 +78,9 @@ start_link(Args) ->
                                       ,{consume_options, ?CONSUME_OPTIONS}
                                      ], [Args]).
 
+-spec default_timeout/0 :: () -> 2000.
+default_timeout() -> 2000.
+
 -spec call/4 :: (server_ref(), api_terms(), wh_amqp_worker:publish_fun(), wh_amqp_worker:validate_fun()) ->
                         {'ok', wh_json:json_object()} |
                         {'error', _}.
@@ -85,7 +88,7 @@ start_link(Args) ->
                         {'ok', wh_json:json_object()} |
                         {'error', _}.
 call(Srv, Req, PubFun, VFun) ->
-    call(Srv, Req, PubFun, VFun, 2000).
+    call(Srv, Req, PubFun, VFun, default_timeout()).
 
 call(Srv, Req, PubFun, VFun, Timeout) ->
     case catch poolboy:checkout(Srv, false, 1000) of
