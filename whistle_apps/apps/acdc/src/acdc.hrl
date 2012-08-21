@@ -14,5 +14,9 @@
 
 -define(ACDC_CACHE, acdc_cache).
 
+%% rr :: Round Robin
+%% mi :: Most Idle
+-type queue_type() :: 'rr' | 'mi'.
+
 -define(ACDC_HRL, true).
 -endif.
