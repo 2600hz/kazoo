@@ -11,9 +11,19 @@
 -export([get_endpoints/2
          ,bind_to_call_events/1
          ,unbind_from_call_events/1
+         ,agents_in_queue/2
         ]).
 
 -include("acdc.hrl").
+
+%% Returns the list of agents configured for the queue
+-spec agents_in_queue/2 :: (ne_binary(), ne_binary()) -> wh_json:json_strings().
+agents_in_queue(AcctDb, QueueId) ->
+    case couch_mgr:get_results(AcctDb, <<"queues/agents_listing">>, [{key, QueueId}]) of
+        {ok, []} -> [];
+        {error, _E} -> lager:debug("failed to lookup agents for ~s: ~p", [QueueId, _E]), [];
+        {ok, As} -> [wh_json:get_value(<<"value">>, A) || A <- As]
+    end.
 
 -spec get_endpoints/2 :: (whapps_call:call(), ne_binary() | couch_mgr:get_results_return()) ->
                                  wh_json:json_objects().
