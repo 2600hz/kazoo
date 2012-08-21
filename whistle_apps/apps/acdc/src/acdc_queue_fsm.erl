@@ -11,7 +11,7 @@
 -behaviour(gen_fsm).
 
 %% API
--export([start_link/3]).
+-export([start_link/4]).
 
 %% Event injectors
 -export([member_call/3
@@ -48,6 +48,7 @@
          ,collect_ref :: reference()
          ,acct_id :: ne_binary()
          ,queue_id :: ne_binary()
+         ,queue_type :: queue_type()
          ,member_call_id :: ne_binary()
          }).
 
@@ -64,8 +65,8 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
-start_link(AcctId, QueueId, QueuePid) ->
-    gen_fsm:start_link(?MODULE, [AcctId, QueueId, QueuePid], []).
+start_link(AcctId, QueueId, QueuePid, Type) ->
+    gen_fsm:start_link(?MODULE, [AcctId, QueueId, QueuePid, Type], []).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -124,12 +125,13 @@ call_event(_, _, _, _) -> ok.
 %%                     {stop, StopReason}
 %% @end
 %%--------------------------------------------------------------------
-init([AcctId, QueueId, QueuePid]) ->
+init([AcctId, QueueId, QueuePid, Type]) ->
     put(callid, <<"fsm_", QueueId/binary>>),
 
     {ok, ready, #state{queue_proc=QueuePid
                        ,acct_id=AcctId
                        ,queue_id=QueueId
+                       ,queue_type=Type
                       }}.
 
 %%--------------------------------------------------------------------
@@ -182,13 +184,16 @@ connect_req({timeout, Ref, ?COLLECT_RESP_MESSAGE}, #state{collect_ref=Ref
 connect_req({timeout, Ref, ?COLLECT_RESP_MESSAGE}, #state{collect_ref=Ref
                                                           ,connect_resps=CRs
                                                           ,queue_proc=Srv
+                                                          ,queue_type=Type
                                                          }=State) ->
     lager:debug("done waiting for agents to respond, picking a winner"),
-    case pick_winner(CRs) of
-        {Winner, Resps} ->
+    case pick_winner(CRs, Type) of
+        {Winner, Monitors, Rest} ->
             acdc_queue:member_connect_win(Srv, Winner),
+            _ = [acdc_queue:member_connect_monitor(Srv, M) || M <- Monitors],
+
             lager:debug("sending win to ~p", [Winner]),
-            {next_state, connecting, State#state{connect_resps=Resps, collect_ref=undefined}};
+            {next_state, connecting, State#state{connect_resps=Rest, collect_ref=undefined}};
         undefined ->
             lager:debug("no more responses to choose from"),
             acdc_queue:cancel_member_call(Srv),
@@ -332,6 +337,23 @@ start_collect_timer() ->
     gen_fsm:start_timer(?COLLECT_RESP_TIMEOUT, ?COLLECT_RESP_MESSAGE).
 
 %% Really sophisticated selection algorithm
-pick_winner([]) -> undefined;
-pick_winner([Resp|Rest]) ->
-    {Resp, Rest}.
+-spec pick_winner/2 :: (wh_json:json_objects(), queue_type()) ->
+                               'undefined' |
+                               {wh_json:json_object()
+                                ,wh_json:json_objects()
+                                ,wh_json:json_objects()
+                               }.
+pick_winner([], _) -> undefined;
+pick_winner([Resp|Rest], _Type) ->
+    lager:debug("unknown queue type: ~s, doing our best", [_Type]),
+    AgentId = wh_json:get_value(<<"Agent-ID">>, Resp),
+    {SameAgents, OtherAgents} = split_agents(AgentId, Rest),
+    {Resp, SameAgents, OtherAgents}.
+
+
+-spec split_agents/2 :: (ne_binary(), wh_json:json_objects()) ->
+                                {wh_json:json_objects(), wh_json:json_objects()}.
+split_agents(AgentId, Rest) ->
+    lists:partition(fun(R) ->
+                            AgentId =:= wh_json:get_value(<<"Agent-ID">>, R)
+                    end, Rest).
