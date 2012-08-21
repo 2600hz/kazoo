@@ -745,8 +745,8 @@ error_number_exists(N) ->
 
 -spec error_service_restriction/2 :: (wh_json:json_object(), wnm_number()) -> no_return().
 error_service_restriction(Reason, N) ->
-    lager:debug("number billing restriction: ~p", [wh_json:encode(Reason)]),
-    throw({service_restriction, N#number{error_jobj=wh_json:from_list([{<<"service_restriction">>, Reason}])}}).
+    lager:debug("number billing restriction: ~s", [Reason]),
+    throw({service_restriction, N#number{error_jobj=wh_json:from_list([{<<"credit">>, wh_util:to_binary(Reason)}])}}).
 
 -spec error_provider_fault/2 :: (wh_json:json_object(), wnm_number()) -> no_return().
 error_provider_fault(Reason, N) ->
@@ -896,7 +896,17 @@ load_phone_number_doc(Account) ->
 update_service_plans(#number{assigned_to=AssignedTo, prev_assigned_to=PrevAssignedTo}=N) ->
     _ = wh_services:reconcile(AssignedTo, <<"phone_numbers">>),
     _ = wh_services:reconcile(PrevAssignedTo, <<"phone_numbers">>),
+    _ = commit_activations(N),
     N.
+
+commit_activations(#number{activations=[]}) ->
+    ok;
+commit_activations(#number{billing_id=undefined}) ->
+    ok;
+commit_activations(#number{activations=[Activation|Activations], billing_id=BillingId}=N) ->
+    LedgerDb = wh_util:format_account_id(BillingId, encoded),
+    _ = couch_mgr:ensure_saved(LedgerDb, Activation),
+    commit_activations(N#number{activations=Activations}).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -905,10 +915,29 @@ update_service_plans(#number{assigned_to=AssignedTo, prev_assigned_to=PrevAssign
 %% @end
 %%--------------------------------------------------------------------
 -spec activate_feature/2 :: (ne_binary(), wnm_number()) -> wnm_number().
-activate_feature(Feature, #number{resellers=undefined, activations=Activations
-                                  ,features=Features}=N) ->
-    N#number{activations=sets:add_element({features, Feature}, Activations)
-             ,features=sets:add_element(Feature, Features)}.
+-spec activate_feature/3 :: (ne_binary(), integer(), wnm_number()) -> wnm_number().
+
+activate_feature(Feature, #number{billing_id=undefined, assigned_to=Account}=N) ->
+    activate_feature(Feature, N#number{billing_id=wh_services:get_billing_id(Account)});
+activate_feature(Feature, #number{services=undefined, billing_id=Account}=N) ->
+    activate_feature(Feature, N#number{services=wh_services:fetch(Account)});
+activate_feature(Feature, #number{services=Services}=N) ->
+    Units = wh_service_phone_numbers:feature_activation_charge(Feature, Services),
+    activate_feature(Feature, Units, N).
+    
+activate_feature(Feature, 0, #number{features=Features}=N) ->
+    lager:debug("no activation charge for ~s", [Feature]),
+    N#number{features=sets:add_element(Feature, Features)};
+activate_feature(Feature, Units, #number{current_balance=undefined, billing_id=Account}=N) ->
+    activate_feature(Feature, Units, N#number{current_balance=wh_util:current_account_balance(Account)});
+activate_feature(Feature, Units, #number{current_balance=Balance}=N) when Balance - Units < 0 ->
+    Reason = io_lib:format("not enough credit to activate feature '~s' for $~p", [Feature, wapi_money:units_to_dollars(Units)]),
+    lager:debug("~s", [Reason]),
+    error_service_restriction(Reason, N);
+activate_feature(Feature, Units, #number{current_balance=Balance, features=Features}=N) ->
+    N#number{activations=append_feature_debit(Feature, Units, N)
+             ,features=sets:add_element(Feature, Features)
+             ,current_balance=Balance - Units}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -917,5 +946,79 @@ activate_feature(Feature, #number{resellers=undefined, activations=Activations
 %% @end
 %%--------------------------------------------------------------------
 -spec activate_phone_number/1 :: (wnm_number()) -> wnm_number().
-activate_phone_number(#number{number=Num, resellers=undefined, activations=Activations}=N) ->
-    N#number{activations=sets:add_element({phone_number, Num}, Activations)}.
+
+activate_phone_number(#number{billing_id=undefined, assigned_to=Account}=N) ->
+    activate_phone_number(N#number{billing_id=wh_services:get_billing_id(Account)});
+activate_phone_number(#number{services=undefined, billing_id=Account}=N) ->
+    activate_phone_number(N#number{services=wh_services:fetch(Account)});
+activate_phone_number(#number{services=Services, number=Number}=N) ->
+    Units = wh_service_phone_numbers:phone_number_activation_charge(Number, Services),
+    activate_phone_number(Units, N).
+
+
+activate_phone_number(0, #number{number=Number}=N) ->
+    lager:debug("no activation charge for ~s", [Number]),
+    N;
+activate_phone_number(Units, #number{current_balance=undefined, billing_id=Account}=N) ->
+    activate_phone_number(Units, N#number{current_balance=wh_util:current_account_balance(Account)});
+activate_phone_number(Units, #number{current_balance=Balance}=N) when Balance - Units < 0 ->
+    Reason = io_lib:format("not enough credit to activate number for $~p", [wapi_money:units_to_dollars(Units)]),
+    lager:debug("~s", [Reason]),
+    error_service_restriction(Reason, N);
+activate_phone_number(Units, #number{current_balance=Balance}=N) ->
+    N#number{activations=append_phone_number_debit(Units, N)
+             ,current_balance=Balance - Units}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec append_feature_debit/3 :: (ne_binary(), integer(), wnm_number()) -> wnm_number().
+append_feature_debit(Feature, Units, #number{billing_id=Ledger, assigned_to=AccountId, activations=Activations}) ->
+    LedgerId = wh_util:format_account_id(Ledger, raw),
+    LedgerDb = wh_util:format_account_id(Ledger, encoded),
+    lager:debug("staging feature '~s' activation charge $~p for ~s via billing account ~s"
+                ,[Feature, wapi_money:units_to_dollars(Units), AccountId, LedgerId]),
+    Timestamp = wh_util:current_tstamp(),
+    Entry = wh_json:from_list([{<<"reason">>, <<"phone number feature activation">>}
+                               ,{<<"feature">>, Feature}
+                               ,{<<"amount">>, Units}
+                               ,{<<"account_id">>, AccountId}
+                               ,{<<"pvt_account_id">>, LedgerId}
+                               ,{<<"pvt_account_db">>, LedgerDb}
+                               ,{<<"pvt_type">>, <<"debit">>}
+                               ,{<<"pvt_created">>, Timestamp}
+                               ,{<<"pvt_modified">>, Timestamp}
+                               ,{<<"pvt_vsn">>, 1}
+                              ]),
+    [Entry|Activations].
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec append_phone_number_debit/2 :: (integer(), wnm_number()) -> wnm_number().
+append_phone_number_debit(Units, #number{billing_id=Ledger, assigned_to=AccountId
+                                         ,activations=Activations, number=Number}) ->
+    LedgerId = wh_util:format_account_id(Ledger, raw),
+    LedgerDb = wh_util:format_account_id(Ledger, encoded),
+    lager:debug("staging number activation charge $~p for ~s via billing account ~s"
+                ,[wapi_money:units_to_dollars(Units), AccountId, LedgerId]),
+    Timestamp = wh_util:current_tstamp(),
+    Entry = wh_json:from_list([{<<"reason">>, <<"phone number activation">>}
+                               ,{<<"number">>, Number}
+                               ,{<<"amount">>, Units}
+                               ,{<<"account_id">>, AccountId}
+                               ,{<<"pvt_account_id">>, LedgerId}
+                               ,{<<"pvt_account_db">>, LedgerDb}
+                               ,{<<"pvt_type">>, <<"debit">>}
+                               ,{<<"pvt_created">>, Timestamp}
+                               ,{<<"pvt_modified">>, Timestamp}
+                               ,{<<"pvt_vsn">>, 1}
+                              ]),
+    [Entry|Activations].
+

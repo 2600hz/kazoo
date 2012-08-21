@@ -10,6 +10,7 @@
 -module(wh_util).
 
 -export([format_account_id/1, format_account_id/2]).
+-export([current_account_balance/1]).
 -export([is_in_account_hierarchy/2, is_in_account_hierarchy/3]).
 -export([is_system_admin/1]).
 -export([get_account_realm/1, get_account_realm/2]).
@@ -111,6 +112,30 @@ format_account_id(AccountId, encoded) when is_binary(AccountId) ->
     wh_util:to_binary(["account%2F", Id1, Id2, "%2F", Id3, Id4, "%2F", IdRest]);
 format_account_id(AccountId, raw) ->
     AccountId.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% get the provided leger (account_id/db) balance
+%% @end
+%%--------------------------------------------------------------------
+-spec current_account_balance/1 :: ('undefined' | ne_binary()) -> integer().
+current_account_balance(undefined) -> 0;
+current_account_balance(Ledger) ->
+    LedgerDb = wh_util:format_account_id(Ledger, encoded),    
+    ViewOptions = [{<<"reduce">>, true}],
+    case couch_mgr:get_results(LedgerDb, <<"transactions/credit_remaining">>, ViewOptions) of
+        {ok, []} -> 
+            lager:debug("no current balance for ~s", [Ledger]),
+            0;
+        {ok, [ViewRes|_]} -> 
+            Credit = wh_json:get_integer_value(<<"value">>, ViewRes, 0),
+            lager:debug("current balance for ~s is ~p", [Ledger, Credit]),
+            Credit;
+        {error, _R} -> 
+            lager:debug("unable to get current balance for ~s: ~p", [Ledger, _R]),
+            0
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
