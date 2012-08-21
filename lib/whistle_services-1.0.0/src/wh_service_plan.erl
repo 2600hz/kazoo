@@ -10,6 +10,7 @@
 -include_lib("whistle_services/src/whistle_services.hrl").
 
 -export([fetch/3]).
+-export([activation_charges/3]).
 -export([create_items/3]).
 
 %%--------------------------------------------------------------------
@@ -37,6 +38,16 @@ fetch(PlanId, VendorId, Overrides) ->
 %% 
 %% @end
 %%--------------------------------------------------------------------
+-spec activation_charges/3 :: (ne_binary(), ne_binary(), wh_json:json_object()) -> float().
+activation_charges(Category, Item, ServicePlan) ->
+    wh_json:get_float_value([<<"plan">>, Category, Item, <<"activation_charge">>], ServicePlan, 0.0).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
 -spec create_items/3 :: (wh_json:json_object(), wh_service_items:items(), wh_services:services()) -> wh_service_items:items().
 -spec create_items/5 :: (ne_binary(), ne_binary(), wh_json:json_object(), wh_service_items:items(), wh_services:services()) -> wh_service_items:items().
 
@@ -52,14 +63,7 @@ create_items(ServicePlan, ServiceItems, Services) ->
 
 create_items(Category, Item, ServiceItems, ServicePlan, Services) ->
     ItemPlan = wh_json:get_value([<<"plan">>, Category, Item], ServicePlan),
-    ItemQuantity = get_item_quantity(Category, Item, ItemPlan, Services),
-    Quantity = case wh_json:get_integer_value(<<"minimum">>, ItemPlan, 0) of
-                   Min when Min > ItemQuantity -> 
-                       lager:debug("minimum '~s/~s' not met with ~p, enforcing quantity ~p", [Category, Item, ItemQuantity, Min]),
-                       Min;
-                   _ -> ItemQuantity
-               end,
-    Rate = get_rate(Quantity, ItemPlan),
+    {Rate, Quantity} = get_rate_at_quantity(Category, Item, ItemPlan, Services),
     %% allow service plans to re-map item names (IE: softphone items "as" sip_device)
     As = wh_json:get_ne_value(<<"as">>, ItemPlan, Item),
     Routines = [fun(I) -> wh_service_item:set_category(Category, I) end
@@ -85,7 +89,7 @@ create_items(Category, Item, ServiceItems, ServicePlan, Services) ->
                                                               Max;
                                                           _ -> Quantity
                                                       end,
-                                 CumulativeRate = case get_rate(Quantity, CumulativeDiscount) of
+                                 CumulativeRate = case get_quantity_rate(Quantity, CumulativeDiscount) of
                                                       undefined -> Rate;
                                                       Else -> Else
                                                   end,
@@ -115,12 +119,61 @@ bookkeeper_jobj(Category, Item, ServicePlan) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec get_rate_at_quantity/4 :: (ne_binary(), ne_binary(), wh_json:json_object(), wh_services:services()) -> {float(), integer()}.
+get_rate_at_quantity(Category, Item, ItemPlan, Services) ->
+    Quantity = get_quantity(Category, Item, ItemPlan, Services),
+    case get_flat_rate(Quantity, ItemPlan) of
+        undefined -> {get_quantity_rate(Quantity, ItemPlan), Quantity};
+        FlatRate -> {FlatRate, 1}
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% If tiered flate rates are provided, find the value to use given the
+%% current quantity.
+%% @end
+%%--------------------------------------------------------------------
+-spec get_quantity/4 :: (ne_binary(), ne_binary(), wh_json:json_object(), wh_services:services()) -> integer().
+get_quantity(Category, Item, ItemPlan, Services) ->
+    ItemQuantity = get_item_quantity(Category, Item, ItemPlan, Services),
+    case wh_json:get_integer_value(<<"minimum">>, ItemPlan, 0) of
+        Min when Min > ItemQuantity -> 
+            lager:debug("minimum '~s/~s' not met with ~p, enforcing quantity ~p", [Category, Item, ItemQuantity, Min]),
+            Min;
+        _ -> ItemQuantity
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% If tiered flate rates are provided, find the value to use given the
+%% current quantity.
+%% @end
+%%--------------------------------------------------------------------
+-spec get_flat_rate/2 :: (non_neg_integer(), wh_json:json_object()) -> 'undefined' | float().
+get_flat_rate(Quantity, JObj) ->
+    Rates = wh_json:get_value(<<"flat_rates">>, JObj, wh_json:new()),
+    L1 = [wh_util:to_integer(K) || K <- wh_json:get_keys(Rates)],
+    case lists:dropwhile(fun(K) -> Quantity > K end, lists:sort(L1)) of
+        [] -> undefined;
+        Range -> 
+            lager:debug("using flat rates", []),
+            wh_json:get_float_value(wh_util:to_binary(hd(Range)), Rates)
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
 %% If tiered rates are provided, find the value to use given the current
 %% quantity.  If no rates are viable attempt to use the "rate" property.
 %% @end
 %%--------------------------------------------------------------------
--spec get_rate/2 :: (non_neg_integer(), wh_json:json_object()) -> ne_binary().
-get_rate(Quantity, JObj) ->
+-spec get_quantity_rate/2 :: (non_neg_integer(), wh_json:json_object()) -> float().
+get_quantity_rate(Quantity, JObj) ->
     Rates = wh_json:get_value(<<"rates">>, JObj, wh_json:new()),
     L1 = [wh_util:to_integer(K) || K <- wh_json:get_keys(Rates)],
     case lists:dropwhile(fun(K) -> Quantity > K end, lists:sort(L1)) of

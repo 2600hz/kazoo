@@ -17,7 +17,9 @@
 -export([save/1]).
 -export([delete/1]).
 
+-export([activation_charges/3]).
 -export([set_billing_id/2]).
+-export([get_billing_id/1]).
 -export([find_reseller_id/1]).
 
 -export([account_id/1]).
@@ -75,6 +77,7 @@ new(AccountId) ->
     Account = get_account_definition(AccountDb, AccountId),
     IsReseller = depreciated_is_reseller(Account),
     BillingId = depreciated_billing_id(Account),
+    PvtTree = wh_json:get_value(<<"pvt_tree">>, Account, []),
     Props = [{<<"_id">>, AccountId}
              ,{<<"pvt_created">>, wh_util:current_tstamp()}
              ,{<<"pvt_modified">>, wh_util:current_tstamp()}
@@ -84,6 +87,8 @@ new(AccountId) ->
              ,{<<"pvt_account_db">>, AccountDb}
              ,{<<"pvt_status">>, <<"good_standing">>}
              ,{<<"pvt_reseller">>, IsReseller}
+             ,{<<"pvt_reseller_id">>, get_reseller_id(PvtTree)}
+             ,{<<"pvt_tree">>, PvtTree}
              ,{?QUANTITIES, wh_json:new()}
              ,{<<"billing_id">>, BillingId}
              ,{<<"plans">>, populate_service_plans(Account)}
@@ -151,12 +156,9 @@ fetch(Account) ->
 save(#wh_services{jobj=JObj, updates=UpdatedQuantities, account_id=AccountId, dirty=ForceDirty}=Services) ->
     CurrentQuantities = wh_json:get_value(?QUANTITIES, JObj, wh_json:new()),
     Dirty = have_quantities_changed(UpdatedQuantities, CurrentQuantities) orelse ForceDirty,
-    PvtTree = get_pvt_tree(AccountId),
     Props = [{<<"_id">>, AccountId}
              ,{<<"pvt_dirty">>, Dirty}
              ,{<<"pvt_modified">>, wh_util:current_tstamp()}
-             ,{<<"pvt_tree">>, PvtTree}
-             ,{<<"pvt_reseller_id">>, get_reseller_id(PvtTree)}
              ,{?QUANTITIES, wh_json:merge_jobjs(UpdatedQuantities, CurrentQuantities)}
             ],
     UpdatedJObj = wh_json:set_values(props:filter_undefined(Props), JObj),
@@ -241,11 +243,48 @@ set_billing_id(BillingId, AccountId) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec get_billing_id/1 :: (ne_binary()) -> ne_binary().
+get_billing_id(Account) ->
+    AccountId = wh_util:format_account_id(Account, raw),
+    lager:debug("determining if account ~s is able to make updates", [AccountId]),
+    case couch_mgr:open_doc(?WH_SERVICES_DB, AccountId) of
+        {error, _R} ->
+            lager:debug("unable to open account ~s services: ~p", [AccountId, _R]),
+            AccountId;
+        {ok, ServicesJObj} ->
+            case wh_json:get_ne_value(<<"billing_id">>, ServicesJObj, AccountId) of
+                AccountId -> AccountId;
+                BillingId -> 
+                    lager:debug("following billing id ~s", [BillingId]),
+                    get_billing_id(BillingId)
+            end
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
 -spec update/4 :: (ne_binary(), ne_binary(), integer(), services()) -> services().
 update(Category, Item, Quantity, Services) when not is_integer(Quantity) ->
     update(Category, Item, wh_util:to_integer(Quantity), Services);
 update(Category, Item, Quantity, #wh_services{updates=JObj}=Services) when is_binary(Category), is_binary(Item) ->
     Services#wh_services{updates=wh_json:set_value([Category, Item], Quantity, JObj)}.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec activation_charges/3 :: (ne_binary(), ne_binary(), services() | ne_binary()) -> integer().
+activation_charges(Category, Item, #wh_services{jobj=ServicesJObj}) ->
+    Plans = wh_service_plans:from_service_json(ServicesJObj),
+    io:format("~p ~p ~p ~p~n", [Category, Item, Plans, ServicesJObj]),
+    wh_service_plans:activation_charges(Category, Item, Plans);
+activation_charges(Category, Item, Account) ->
+    activation_charges(Category, Item, fetch(Account)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -542,24 +581,6 @@ get_service_module(<<"wh_service_", _/binary>>=Module) ->
     end;        
 get_service_module(Module) ->
     get_service_module(<<"wh_service_", Module/binary>>).
-    
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec get_pvt_tree/1 :: (ne_binary()) -> [ne_binary(),...] | [].
-get_pvt_tree(Account) ->
-    AccountId = wh_util:format_account_id(Account, raw),
-    AccountDb = wh_util:format_account_id(Account, encoded),
-    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
-        {ok, JObj} ->
-            wh_json:get_value(<<"pvt_tree">>, JObj, []);
-        {error, _R} ->
-            lager:debug("unable to open account definition for ~s: ~p", [AccountId, _R]),
-            []
-    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -659,11 +680,11 @@ incorporate_default_service_plan(ResellerId, JObj) ->
             case default_service_plan_id(ResellerId) of
                 undefined -> JObj;
                 PlanId ->
-                    Plan = wh_json:from_list([{<<"vendor_id">>, ResellerId}]),
+                    Plan = wh_json:from_list([{<<"account_id">>, ResellerId}]),
                     wh_json:set_value(PlanId, Plan, JObj)
             end;
         PlanId ->
-            Plan = wh_json:from_list([{<<"vendor_id">>, ResellerId}]),
+            Plan = wh_json:from_list([{<<"account_id">>, ResellerId}]),
             wh_json:set_value(PlanId, Plan, JObj)
     end. 
     
@@ -675,7 +696,7 @@ incorporate_depreciated_service_plans(Plans, JObj) ->
         true -> Plans;
         false ->
             lists:foldl(fun(PlanId, P) ->
-                                Plan = wh_json:from_list([{<<"vendor_id">>, ResellerId}]),
+                                Plan = wh_json:from_list([{<<"account_id">>, ResellerId}]),
                                 wh_json:set_value(PlanId, Plan, P)
                         end, Plans, PlanIds)
     end.
