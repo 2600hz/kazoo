@@ -214,7 +214,7 @@ sync(send_sync_event, #state{agent_proc=Srv
                             }=State) ->
     lager:debug("sending sync event to other agent processes"),
     acdc_agent:send_sync_req(Srv, AcctId, AgentId),
-    {noreply, State};
+    {next_state, sync, State};
 sync({sync_resp, JObj}, #state{sync_ref=Ref}=State) ->
     case catch wh_util:to_atom(wh_json:get_value(<<"Status">>, JObj)) of
         sync ->
