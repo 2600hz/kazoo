@@ -140,7 +140,7 @@ send_request(CallID, Self, PublishFun, ReqProp) ->
     Prop = [{<<"Server-ID">>, Self}
             ,{<<"Call-ID">>, CallID}
             | ReqProp],
-    PublishFun(Prop).
+    catch PublishFun(Prop).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -193,19 +193,24 @@ handle_call({request, ReqProp, PublishFun, VFun, Q, Timeout}, {ClientPid, _}=Fro
                                 {[{<<"Msg-ID">>, M} | ReqProp], M};
                             M -> {ReqProp, M}
                         end,
-    lager:debug("published request with msg id ~s for ~p", [MsgID, ClientPid]),
-    ?MODULE:send_request(CallID, Q, PublishFun, ReqProp1),
-    {noreply, State#state{
-                client_pid = ClientPid
-                ,client_ref = ClientRef
-                ,client_from = From
-                ,client_vfun = VFun
-                ,neg_resp_count = 0
-                ,current_msg_id = MsgID
-                ,req_timeout_ref = ReqRef
-                ,req_start_time = erlang:now()
-                ,callid = CallID
-               }};
+    case ?MODULE:send_request(CallID, Q, PublishFun, ReqProp1) of
+        ok ->
+            lager:debug("published request with msg id ~s for ~p", [MsgID, ClientPid]),
+            {noreply, State#state{
+                        client_pid = ClientPid
+                        ,client_ref = ClientRef
+                        ,client_from = From
+                        ,client_vfun = VFun
+                        ,neg_resp_count = 0
+                        ,current_msg_id = MsgID
+                        ,req_timeout_ref = ReqRef
+                        ,req_start_time = erlang:now()
+                        ,callid = CallID
+                       }};
+        {'EXIT', Err} ->
+            lager:debug("failed to send request: ~p", [Err]),
+            {reply, {error, Err}, reset(State)}
+    end;
 handle_call(_Request, _From, State) ->
     {reply, {error, not_implemented}, State}.
 
