@@ -330,11 +330,8 @@ build_bridge_endpoint(JObj) ->
 
 build_bridge_endpoint(JObj, <<"sip">>, CVs) ->
     case ecallmgr_fs_xml:build_sip_route(JObj, wh_json:get_value(<<"Invite-Format">>, JObj)) of
-        {'error', 'timeout'} ->
-            lager:debug("unable to build route to endpoint"),
-            <<>>;
-        EndPoint ->
-            list_to_binary([CVs, EndPoint])
+        {'error', 'timeout'} -> <<>>;
+        EndPoint -> list_to_binary([CVs, EndPoint])
     end;
 build_bridge_endpoint(JObj, <<"freetdm">>, CVs) ->
     Endpoint = ecallmgr_fs_xml:build_freetdm_route(JObj),
