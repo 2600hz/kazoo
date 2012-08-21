@@ -183,7 +183,7 @@ publish_sync_req(JObj) ->
     publish_sync_req(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_sync_req(API, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(API, ?SYNC_REQ_VALUES, fun sync_req/1),
-    amqp_util:whapps_publish(Payload, ContentType, sync_req_routing_key(API)).
+    amqp_util:whapps_publish(sync_req_routing_key(API), Payload, ContentType).
 
 -spec publish_sync_resp/2 :: (ne_binary(), api_terms()) -> 'ok'.
 -spec publish_sync_resp/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
