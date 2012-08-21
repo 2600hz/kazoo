@@ -222,11 +222,11 @@ sync({sync_resp, JObj}, #state{sync_ref=Ref}=State) ->
             {next_state, sync, State};
         ready ->
             lager:debug("other agent is in ready state, joining"),
-            erlang:cancel_timer(Ref),
+            _ = erlang:cancel_timer(Ref),
             {next_state, ready, State#state{sync_ref=undefined}};
         Status ->
             lager:debug("other agent is in ~s, delaying", [Status]),
-            erlang:cancel_timer(Ref),
+            _ = erlang:cancel_timer(Ref),
             {next_state, sync, State#state{sync_ref=start_resync_timer()}}
     end;
 sync(_Evt, State) ->

@@ -286,7 +286,7 @@ handle_cast({load_endpoints, Supervisor}, #state{
                                      ),
     case acdc_util:get_endpoints(Call, AgentId) of
         [] ->
-            acdc_agent_sup:stop(Supervisor),
+            _ = acdc_agent_sup:stop(Supervisor),
             {noreply, State};
         EPs ->
             gen_listener:cast(self(), {start_fsm, Supervisor}),
