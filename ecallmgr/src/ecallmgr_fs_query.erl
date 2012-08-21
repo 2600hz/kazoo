@@ -111,7 +111,7 @@ handle_call_status(JObj, _Props) ->
                     ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                    ],
-            wapi_call:publish_channel_status_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp);
+            wapi_call:publish_call_status_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp);
         {error, not_found} ->
             lager:debug("no node found with channel ~s, but we are not authoritative", [CallID]);
         {ok, Channel} ->
