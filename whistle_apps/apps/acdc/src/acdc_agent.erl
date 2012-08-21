@@ -124,13 +124,13 @@ start_link(Supervisor, AcctDb, AgentJObj) ->
             ignore;
         Queues ->
             AcctId = wh_util:format_account_id(AcctDb, raw),
-            Name = wh_util:join_binary([<<"agent">>, AcctId, AgentId], <<"_">>),
-            gen_listener:start_link(Name
+            Name = wh_util:to_atom(wh_util:join_binary([<<"agent">>, AcctId, AgentId], <<"_">>), true),
+            gen_listener:start_link({local, Name}
                                     ,?MODULE
                                     ,[{bindings, ?BINDINGS(AcctDb, AgentId)}
                                       ,{responders, ?RESPONDERS}
                                      ]
-                                    ,[Supervisor, AcctDb, AgentJObj, Queues, Name]
+                                    ,[Supervisor, AcctDb, AgentJObj, Queues]
                                    )
     end.
 
@@ -180,8 +180,9 @@ send_sync_req(Srv, AcctId, AgentId) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init([Supervisor, AcctDb, AgentJObj, Queues, Name]) ->
-    put(callid, Name),
+init([Supervisor, AcctDb, AgentJObj, Queues]) ->
+    AgentId = wh_json:get_value(<<"_id">>, AgentJObj),
+    put(callid, AgentId),
 
     gen_listener:cast(self(), {load_endpoints, Supervisor}),
 
@@ -192,7 +193,7 @@ init([Supervisor, AcctDb, AgentJObj, Queues, Name]) ->
 
     {ok, #state{
        agent_db = AcctDb
-       ,agent_id = wh_json:get_value(<<"_id">>, AgentJObj)
+       ,agent_id = AgentId
        ,account_id = wh_json:get_value(<<"pvt_account_id">>, AgentJObj)
        ,agent_queues = Queues
        ,my_id = list_to_binary([wh_util:to_binary(node()), "-", pid_to_list(self())])
