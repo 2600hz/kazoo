@@ -59,6 +59,7 @@
           %% AMQP-related
          ,my_id :: ne_binary()
          ,my_q :: ne_binary()
+         ,member_call_queue :: ne_binary()
 
           %% While processing a call
          ,call :: whapps_call:call()
@@ -210,6 +211,7 @@ handle_cast({member_connect_req, MemberCallJObj, Delivery}, #state{my_q=MyQ
 
     {noreply, State#state{call=Call
                           ,delivery=Delivery
+                          ,member_call_queue=wh_json:get_value(<<"Server-ID">>, MemberCallJObj)
                          }};
 
 handle_cast({member_connect_win, RespJObj}, #state{my_q=MyQ
@@ -235,11 +237,17 @@ handle_cast({member_connect_monitor, RespJObj}, #state{my_id=MyId
 handle_cast({finish_member_call, _AcceptJObj}, #state{delivery=Delivery
                                                       ,call=Call
                                                       ,shared_pid=Pid
+                                                      ,member_call_queue=Q
+                                                      ,acct_id=AcctId
+                                                      ,queue_id=QueueId
+                                                      ,my_id=MyId
+                                                      ,agent_id=AgentId
                                                      }=State) ->
     lager:debug("agent has taken care of member, we're done"),
 
     acdc_util:unbind_from_call_events(Call),
     acdc_queue_shared:ack(Pid, Delivery),
+    send_member_call_success(Q, AcctId, QueueId, MyId, AgentId),
 
     {noreply, State};
 
@@ -370,6 +378,16 @@ send_member_connect_monitor(RespJObj, CallId, QueueId, MyId) ->
             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     wapi_acdc_queue:publish_member_connect_monitor(wh_json:get_value(<<"Server-ID">>, RespJObj), Prop).
+
+send_member_call_success(Q, AcctId, QueueId, MyId, AgentId) ->
+    Resp = props:filter_undefined(
+             [{<<"Account-ID">>, AcctId}
+              ,{<<"Queue-ID">>, QueueId}
+              ,{<<"Process-ID">>, MyId}
+              ,{<<"Agent-ID">>, AgentId}
+              | wh_util:default_headers(?APP_NAME, ?APP_VERSION)
+             ]),
+    wapi_acdc_queue:publish_member_call_success(Q, Resp).
 
 -spec maybe_nack/3 :: (whapps_call:call(), #'basic.deliver'{}, pid()) -> boolean().
 maybe_nack(Call, Delivery, SharedPid) ->
