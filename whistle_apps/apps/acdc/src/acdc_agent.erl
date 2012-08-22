@@ -76,8 +76,8 @@
 %% When an agent is paused (on break, logged out, etc)
 -define(PAUSED_TIMER_MESSAGE, paused_timeout).
 
--define(BINDINGS(AcctDb, AgentId), [{self, []}
-                                    ,{acdc_agent, [{agent_db, AcctDb}
+-define(BINDINGS(AcctId, AgentId), [{self, []}
+                                    ,{acdc_agent, [{account_id, AcctId}
                                                    ,{agent_id, AgentId}
                                                   ]}
                                    ]).
@@ -124,11 +124,9 @@ start_link(Supervisor, AcctDb, AgentJObj) ->
             lager:debug("agent ~s in ~s has no queues, ignoring"),
             ignore;
         Queues ->
-            AcctId = wh_util:format_account_id(AcctDb, raw),
-            Name = wh_util:to_atom(wh_util:join_binary([<<"agent">>, AcctId, AgentId], <<"_">>), true),
-            gen_listener:start_link({local, Name}
-                                    ,?MODULE
-                                    ,[{bindings, ?BINDINGS(AcctDb, AgentId)}
+            AcctId = wh_json:get_value(<<"pvt_account_id">>, AgentJObj),
+            gen_listener:start_link(?MODULE
+                                    ,[{bindings, ?BINDINGS(AcctId, AgentId)}
                                       ,{responders, ?RESPONDERS}
                                      ]
                                     ,[Supervisor, AcctDb, AgentJObj, Queues]
