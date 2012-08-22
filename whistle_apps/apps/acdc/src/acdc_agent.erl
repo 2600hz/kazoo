@@ -79,6 +79,7 @@
 -define(BINDINGS(AcctId, AgentId), [{self, []}
                                     ,{acdc_agent, [{account_id, AcctId}
                                                    ,{agent_id, AgentId}
+                                                   ,{restrict_to, [sync]}
                                                   ]}
                                    ]).
 
