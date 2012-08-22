@@ -264,7 +264,8 @@ handle_cast({cancel_member_call}, #state{delivery=Delivery
         true -> {noreply, State#state{delivery=undefined
                                       ,call=undefined
                                      }};
-        false -> {noreply, State}
+        false ->
+            {noreply, State}
     end;
 
 handle_cast({cancel_member_call, _RejectJObj}, #state{delivery=undefined}=State) ->
@@ -393,7 +394,7 @@ send_member_call_success(Q, AcctId, QueueId, MyId, AgentId) ->
 maybe_nack(Call, Delivery, SharedPid) ->
     case whapps_call_command:call_status(Call) of
         {ok, _} ->
-            lager:debug("call is still active, nack"),
+            lager:debug("call is still active, nack and replay"),
             acdc_util:unbind_from_call_events(Call),
             acdc_queue_shared:nack(SharedPid, Delivery),
             true;
