@@ -14,8 +14,8 @@
 
 %% API
 -export([start_link/2
-         ,agent/0
-         ,fsm/0, start_fsm/3
+         ,agent/1
+         ,fsm/1, start_fsm/3
          ,stop/1
         ]).
 
@@ -45,16 +45,16 @@ start_link(AcctDb, AgentJObj) ->
 stop(Supervisor) ->
     supervisor:terminate_child(acdc_agents_sup, Supervisor).
 
--spec agent/0 :: () -> pid() | 'undefined'.
-agent() ->
-    case child_of_type(acdc_agent) of
+-spec agent/1 :: (pid()) -> pid() | 'undefined'.
+agent(Super) ->
+    case child_of_type(Super, acdc_agent) of
         [] -> undefined;
         [P] -> P
     end.
 
--spec fsm/0 :: () -> pid() | 'undefined'.
-fsm() ->
-    case child_of_type(acdc_agent_fsm) of
+-spec fsm/1 :: (pid()) -> pid() | 'undefined'.
+fsm(Super) ->
+    case child_of_type(Super, acdc_agent_fsm) of
         [] -> undefined;
         [P] -> P
     end.
@@ -64,9 +64,9 @@ start_fsm(Super, AcctId, AgentId) ->
     Parent = self(),
     supervisor:start_child(Super, ?CHILD(acdc_agent_fsm, [AcctId, AgentId, Parent])).
 
--spec child_of_type/1 :: (atom()) -> list(pid()).
-child_of_type(T) ->
-    [ Pid || {Type, Pid, worker, [_]} <- supervisor:which_children(?MODULE), T =:= Type].
+-spec child_of_type/2 :: (pid(), atom()) -> list(pid()).
+child_of_type(Super, T) ->
+    [ Pid || {Type, Pid, worker, [_]} <- supervisor:which_children(Super), T =:= Type].
 
 %%%===================================================================
 %%% Supervisor callbacks
