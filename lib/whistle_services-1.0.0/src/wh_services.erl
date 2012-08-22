@@ -281,7 +281,6 @@ update(Category, Item, Quantity, #wh_services{updates=JObj}=Services) when is_bi
 -spec activation_charges/3 :: (ne_binary(), ne_binary(), services() | ne_binary()) -> integer().
 activation_charges(Category, Item, #wh_services{jobj=ServicesJObj}) ->
     Plans = wh_service_plans:from_service_json(ServicesJObj),
-    io:format("~p ~p ~p ~p~n", [Category, Item, Plans, ServicesJObj]),
     wh_service_plans:activation_charges(Category, Item, Plans);
 activation_charges(Category, Item, Account) ->
     activation_charges(Category, Item, fetch(Account)).
