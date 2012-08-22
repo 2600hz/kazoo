@@ -108,6 +108,8 @@ update_number_quantities(Number, Services) ->
 -spec update_feature_quantities/2 :: ([ne_binary(),...] | [], wh_services:services()) -> wh_services:services().    
 update_feature_quantities([], Services) ->
     Services;
+update_feature_quantities([<<"dash_e911">>|Features], Services) ->
+    update_feature_quantities([<<"e911">>|Features], Services);
 update_feature_quantities([Feature|Features], Services) ->
     Quantity = wh_services:update_quantity(<<"number_services">>, Feature, Services),
     UpdatedServices = wh_services:update(<<"number_services">>, Feature, Quantity + 1, Services),
