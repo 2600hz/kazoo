@@ -16,6 +16,7 @@
 -export([start_link/0
          ,new/2
          ,workers/0
+         ,find_agent_supervisor/2
         ]).
 
 %% Supervisor callbacks
@@ -47,6 +48,19 @@ new(Acct, JObj) ->
 -spec workers/0 :: () -> [pid(),...] | [].
 workers() ->
     [ Pid || {_, Pid, worker, [_]} <- supervisor:which_children(?MODULE)].
+
+-spec find_agent_supervisor/2 :: (ne_binary(), ne_binary()) -> pid() | 'undefined'.
+-spec find_agent_supervisor/3 :: (ne_binary(), ne_binary(), [pid(),...] | []) -> pid() | 'undefined'.
+find_agent_supervisor(AcctId, AgentId) ->
+    find_agent_supervisor(AcctId, AgentId, workers()).
+
+find_agent_supervisor(_AcctId, _AgentId, []) -> undefined;
+find_agent_supervisor(AcctId, AgentId, [Super|Rest]) ->
+    case catch acdc_agent:config(acdc_agent_sup:agent(Super)) of
+        {'EXIT', _} -> find_agent_supervisor(AcctId, AgentId, Rest);
+        {AcctId, AgentId} -> Super;
+        _ -> find_agent_supervisor(AcctId, AgentId, Rest)
+    end.
 
 %%%===================================================================
 %%% Supervisor callbacks
