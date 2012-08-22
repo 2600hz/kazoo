@@ -439,11 +439,21 @@ maybe_update_acls(DeviceIP, AcctId, DeviceId) ->
                                                  ,{<<"account_id">>, AcctId}
                                                  ,{<<"device_id">>, DeviceId}
                                                 ])
-                             ,whapps_config:get(<<"ecallmgr">>, <<"acls">>, wh_json:new())
+                             ,get_acl_json()
                             ),
     lager:debug("setting ~s into system acls", [CIDR]),
     whapps_config:set_default(<<"ecallmgr">>, <<"acls">>, Acls),
     wapi_switch:publish_reloadacl().
+
+-spec get_acl_json/0 :: () -> wh_json:json_object().
+get_acl_json() ->
+    ACLs = whapps_config:get(<<"ecallmgr">>, <<"acls">>, wh_json:new()),
+    case wh_json:is_json_object(ACLs) of
+        true -> ACLs;
+        false ->
+            lager:debug("acls were not a json document: ~p", [ACLs]),
+            wh_json:new()
+    end.
 
 set_outbound_flags(JObj, undefined) ->
     wh_json:set_value(<<"outbound_flags">>, [], JObj);
