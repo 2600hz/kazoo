@@ -104,6 +104,74 @@ When an agent is in the *ready* state, receives a member_connect_win, attempts t
 If a member_connect_win is received when _not_ in the *ready* state, reply with the member_connect_retry immediately.
 
 
+* Agents Manager
+
+Agent login requires starting an agent process group; the Agents Manager process will take care of handling agent process group startup. Agent logout requires stopping the agent process group; Agents Manager will ensure the agent process group has terminated.
+
+** Agents Manager process layout
+
+[acdc_sup]
+   \|
+   \|----[acdc_agents_sup]
+   \|----[acdc_queues_sup]
+   \|----[acdc_agents_mgr]
+
+** Agents Manager message processing
+
+CF: Callflow action (for now, other mechanisms possible later)
+AsM: acdc_agents_mgr
+AsSup: acdc_agents_sup
+ASup: acdc_agent_sup
+APG: Agent Process Group - acdc_agent, acdc_agent_fsm
+
+*** Agent Login
+
+            AMQP               Erlang           
+[CF]                 [AsM]                [AsSup]           [ASup]           [APG]
+  -- agent_login ----->
+     AcctId/AgentId
+                       -- start_agent ------->
+                          AcctId/AgentId
+                                              -- start_child -->
+                                                               -- start_link -->
+
+*** Agent Logout
+
+            AMQP               Erlang           
+[CF]                 [AsM]                [AsSup]           [ASup]           [APG]
+  -- agent_logout ----->
+     AcctId/AgentId
+                       -- stop_agent ------->
+                          AcctId/AgentId
+                                              -- terminate -->
+                                                               -- terminate -->
+
+*** Agent Pause
+
+            AMQP               Erlang           
+[CF]                 [AsM]                [AsSup]           [ASup]           [APG]
+  -- agent_pause ----->
+     AcctId/AgentId
+                       -- pause_agent ------->
+                          AcctId/AgentId
+                                              -- pause -->
+                                                               -- pause -->
+
+*** Agent Resume
+
+            AMQP               Erlang           
+[CF]                 [AsM]                [AsSup]           [ASup]           [APG]
+  -- agent_resume ----->
+     AcctId/AgentId
+                       -- pause_resume ------->
+                          AcctId/AgentId
+                                              -- resume -->
+                                                               -- resume -->
+
+*** Agent Stats
+
+The various agent processes and FSMs will send stats to the Agents Manager process, which will record them to a Folsom table. Queries from interested parties (like Crossbar) will send AMQP requests which the Agent Manager will respond to as well.
+
 * Queues
 
 A queue provides ordering of calls through it.
