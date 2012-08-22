@@ -21,6 +21,7 @@
          ,originate_execute/2
          ,join_agent/2
          ,send_sync_req/3
+         ,config/1
         ]).
 
 %% gen_server callbacks
@@ -165,6 +166,10 @@ join_agent(Srv, ACallId) ->
 send_sync_req(Srv, AcctId, AgentId) ->
     gen_listener:cast(Srv, {send_sync_req, AcctId, AgentId}).
 
+-spec config/1 :: (pid()) -> {ne_binary(), ne_binary()}.
+config(Srv) ->
+    gen_listener:call(Srv, config).
+
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -213,6 +218,10 @@ init([Supervisor, AcctDb, AgentJObj, Queues]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_call(config, _From, #state{account_id=AcctId
+                                  ,agent_id=AgentId
+                                  }=State) ->
+    {reply, {AcctId, AgentId}, State};
 handle_call(_Request, _From, State) ->
     lager:debug("unhandled call from ~p: ~p", [_From, _Request]),
     {reply, {error, unhandled_call}, State}.
