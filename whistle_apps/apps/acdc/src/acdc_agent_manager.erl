@@ -14,7 +14,9 @@
 -behaviour(gen_listener).
 
 %% API
--export([start_link/0]).
+-export([start_link/0
+         ,handle_agent_status/2
+        ]).
 
 %% gen_server callbacks
 -export([init/1
@@ -27,8 +29,11 @@
         ]).
 
 -define(SERVER, ?MODULE).
--define(BINDINGS, []).
--define(RESPONDERS, []).
+
+-define(BINDINGS, [{acdc_agent, [{restrict_to, [status]}]}]).
+-define(RESPONDERS, [{{?MODULE, handle_agent_status}
+                      ,{<<"agent">>, <<"status_update">>}
+                     }]).
 
 -record(state, {}).
 
@@ -50,6 +55,17 @@ start_link() ->
                              ]
                             ,[]
                            ).
+
+handle_agent_status(JObj, _Props) ->
+    AcctId = wh_json:get_value(<<"Account-ID">>, JObj),
+    AgentId = wh_json:get_value(<<"Agent-ID">>, JObj),
+    case wh_json:get_value(<<"New-Status">>, JObj) of
+        <<"signed_in">> -> ok;
+        <<"signed_out">> -> ok;
+        <<"away">> -> ok;
+        <<"returned">> -> ok;
+        _ -> ok
+    end.
 
 %%%===================================================================
 %%% gen_server callbacks
