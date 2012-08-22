@@ -48,7 +48,7 @@
 
 -define(STATUS_UPDATE_HEADERS, [<<"Account-ID">>, <<"Agent-ID">>, <<"New-Status">>]).
 -define(OPTIONAL_STATUS_UPDATE_HEADERS, []).
--define(STATUS_UPDATE_VALUES, [{<<"New-Status">>, [<<"signed_in">>, <<"signed_off">>
+-define(STATUS_UPDATE_VALUES, [{<<"New-Status">>, [<<"signed_in">>, <<"signed_out">>
                                                    ,<<"away">>, <<"returned">>
                                                   ]}
                                ,{<<"Event-Category">>, <<"agent">>}
