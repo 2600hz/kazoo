@@ -43,7 +43,7 @@
 %%------------------------------------------------------------------------------
 %% Member Call
 %%------------------------------------------------------------------------------
--define(MEMBER_CALL_KEY, "member.call."). % append queue ID
+-define(MEMBER_CALL_KEY, "acdc.member.call."). % append queue ID
 
 -define(MEMBER_CALL_HEADERS, [<<"Account-ID">>, <<"Queue-ID">>, <<"Call">>]).
 -define(OPTIONAL_MEMBER_CALL_HEADERS, []).
@@ -143,9 +143,8 @@ member_call_success_v(JObj) ->
 %%------------------------------------------------------------------------------
 %% Member Connect Request
 %%------------------------------------------------------------------------------
-
-%% member.connect_req.acct_id.queue_id
--define(MEMBER_CONNECT_REQ_KEY, "member.connect_req.").
+%% acdc.member.connect_req.acct_id.queue_id
+-define(MEMBER_CONNECT_REQ_KEY, "acdc.member.connect_req.").
 
 -define(MEMBER_CONNECT_REQ_HEADERS, [<<"Account-ID">>, <<"Queue-ID">>, <<"Call-ID">>]).
 -define(OPTIONAL_MEMBER_CONNECT_REQ_HEADERS, [<<"Process-ID">>]).
