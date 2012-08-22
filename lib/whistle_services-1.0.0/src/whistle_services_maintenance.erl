@@ -53,7 +53,12 @@ reconcile(all) ->
 reconcile(Account) when not is_binary(Account) ->
     reconcile(wh_util:to_binary(Account));
 reconcile(Account) ->
-    wh_services:reconcile(Account).
+    try wh_services:reconcile(Account) of
+        Any -> Any
+    catch
+        _E:_R ->
+            io:format("failed to reconcile account ~s(~p): ~p~n", [Account, _E, _R])
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
