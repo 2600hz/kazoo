@@ -13,6 +13,8 @@
 -export([status_update/1, status_update_v/1
          ,sync_req/1, sync_req_v/1
          ,sync_resp/1, sync_resp_v/1
+         ,stats_req/1, stats_req_v/1
+         ,stats_resp/1, stats_resp_v/1
          ,login/1, login_v/1
          ,logout/1, logout_v/1
          ,pause/1, pause_v/1
@@ -26,6 +28,8 @@
 -export([publish_status_update/1, publish_status_update/2
          ,publish_sync_req/1, publish_sync_req/2
          ,publish_sync_resp/2, publish_sync_resp/3
+         ,publish_stats_req/1, publish_stats_req/2
+         ,publish_stats_resp/2, publish_stats_resp/3
          ,publish_login/1, publish_login/2
          ,publish_logout/1, publish_logout/2
          ,publish_pause/1, publish_pause/2
@@ -71,15 +75,15 @@ status_update_v(JObj) ->
 -spec status_routing_key/2 :: (ne_binary(), ne_binary()) -> ne_binary().
 status_routing_key(Props) when is_list(Props) ->
     Id = props:get_value(<<"Agent-ID">>, Props, <<"*">>),
-    Db = props:get_value(<<"Agent-DB">>, Props, <<"*">>),
-    status_routing_key(Db, Id);
+    AcctId = props:get_value(<<"Account-ID">>, Props, <<"*">>),
+    status_routing_key(AcctId, Id);
 status_routing_key(JObj) ->
     Id = wh_json:get_value(<<"Agent-ID">>, JObj, <<"*">>),
-    Db = wh_json:get_value(<<"Agent-DB">>, JObj, <<"*">>),
-    status_routing_key(Db, Id).
+    AcctId = wh_json:get_value(<<"Account-ID">>, JObj, <<"*">>),
+    status_routing_key(AcctId, Id).
 
-status_routing_key(Db, Id) ->
-    <<?STATUS_UPDATE_KEY, Db/binary, ".", Id/binary>>.
+status_routing_key(AcctId, Id) ->
+    <<?STATUS_UPDATE_KEY, AcctId/binary, ".", Id/binary>>.
 
 %%------------------------------------------------------------------------------
 %% Agent Sync Req
@@ -117,15 +121,15 @@ sync_req_v(JObj) ->
 -spec sync_req_routing_key/2 :: (ne_binary(), ne_binary()) -> ne_binary().
 sync_req_routing_key(Props) when is_list(Props) ->
     Id = props:get_value(<<"Agent-ID">>, Props, <<"*">>),
-    Db = props:get_value(<<"Agent-DB">>, Props, <<"*">>),
-    sync_req_routing_key(Db, Id);
+    AcctId = props:get_value(<<"Account-ID">>, Props, <<"*">>),
+    sync_req_routing_key(AcctId, Id);
 sync_req_routing_key(JObj) ->
     Id = wh_json:get_value(<<"Agent-ID">>, JObj, <<"*">>),
-    Db = wh_json:get_value(<<"Agent-DB">>, JObj, <<"*">>),
-    sync_req_routing_key(Db, Id).
+    AcctId = wh_json:get_value(<<"Account-ID">>, JObj, <<"*">>),
+    sync_req_routing_key(AcctId, Id).
 
-sync_req_routing_key(Db, Id) ->
-    <<?SYNC_REQ_KEY, Db/binary, ".", Id/binary>>.
+sync_req_routing_key(AcctId, Id) ->
+    <<?SYNC_REQ_KEY, AcctId/binary, ".", Id/binary>>.
 
 %% And the response
 -define(SYNC_RESP_HEADERS, [<<"Account-ID">>, <<"Agent-ID">>, <<"Status">>]).
@@ -152,6 +156,70 @@ sync_resp_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?SYNC_RESP_HEADERS, ?SYNC_RESP_VALUES, ?SYNC_RESP_TYPES);
 sync_resp_v(JObj) ->
     sync_resp_v(wh_json:to_proplist(JObj)).
+
+%%------------------------------------------------------------------------------
+%% Agent Stats Req
+%%   Let's others on the message bus request stats about all agents, or a given
+%%   agent, within an account
+%%------------------------------------------------------------------------------
+
+%% agent.stats_req.ACCTID
+-define(STATS_REQ_KEY, "agent.stats_req.").
+
+-define(STATS_REQ_HEADERS, [<<"Account-ID">>]).
+-define(OPTIONAL_STATS_REQ_HEADERS, [<<"Agent-ID">>, <<"Stats-Requested">>]).
+-define(STATS_REQ_VALUES, [{<<"Event-Category">>, <<"agent">>}
+                           ,{<<"Event-Name">>, <<"stats_req">>}
+                         ]).
+-define(STATS_REQ_TYPES, [{<<"Stats-Requested">>, fun erlang:is_list/1}]).
+
+-spec stats_req/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
+stats_req(Props) when is_list(Props) ->
+    case stats_req_v(Props) of
+        true -> wh_api:build_message(Props, ?STATS_REQ_HEADERS, ?OPTIONAL_STATS_REQ_HEADERS);
+        false -> {error, "Proplist failed validation for stats_req"}
+    end;
+stats_req(JObj) ->
+    stats_req(wh_json:to_proplist(JObj)).
+
+-spec stats_req_v/1 :: (api_terms()) -> boolean().
+stats_req_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?STATS_REQ_HEADERS, ?STATS_REQ_VALUES, ?STATS_REQ_TYPES);
+stats_req_v(JObj) ->
+    stats_req_v(wh_json:to_proplist(JObj)).
+
+-spec stats_req_routing_key/1 :: (wh_json:json_object() | wh_proplist() | ne_binary()) -> ne_binary().
+stats_req_routing_key(Props) when is_list(Props) ->
+    Id = props:get_value(<<"Account-ID">>, Props, <<"*">>),
+    stats_req_routing_key(Id);
+stats_req_routing_key(Id) when is_binary(Id) ->
+    <<?STATS_REQ_KEY, Id/binary>>;
+stats_req_routing_key(JObj) ->
+    Id = wh_json:get_value(<<"Account-ID">>, JObj, <<"*">>),
+    stats_req_routing_key(Id).
+
+%% And the response
+-define(STATS_RESP_HEADERS, [<<"Account-ID">>, <<"Stats">>]).
+-define(OPTIONAL_STATS_RESP_HEADERS, []).
+-define(STATS_RESP_VALUES, [{<<"Event-Category">>, <<"agent">>}
+                            ,{<<"Event-Name">>, <<"stats_resp">>}
+                           ]).
+-define(STATS_RESP_TYPES, [{<<"Stats">>, fun wh_json:is_json_object/1}]).
+
+-spec stats_resp/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
+stats_resp(Props) when is_list(Props) ->
+    case stats_resp_v(Props) of
+        true -> wh_api:build_message(Props, ?STATS_RESP_HEADERS, ?OPTIONAL_STATS_RESP_HEADERS);
+        false -> {error, "Proplist failed validation for stats_resp"}
+    end;
+stats_resp(JObj) ->
+    stats_resp(wh_json:to_proplist(JObj)).
+
+-spec stats_resp_v/1 :: (api_terms()) -> boolean().
+stats_resp_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?STATS_RESP_HEADERS, ?STATS_RESP_VALUES, ?STATS_RESP_TYPES);
+stats_resp_v(JObj) ->
+    stats_resp_v(wh_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
 %% Agent Login/Logout/Pause/Resume
@@ -259,20 +327,58 @@ agent_status_routing_key(AcctId, AgentId, Status) ->
 %%------------------------------------------------------------------------------
 
 -spec bind_q/2 :: (binary(), proplist()) -> 'ok'.
+-spec bind_q/3 :: (binary(), {ne_binary(), ne_binary()}, 'undefined' | list()) -> 'ok'.
 bind_q(Q, Props) ->
     AgentId = props:get_value(agent_id, Props, <<"*">>),
-    AgentDb = props:get_value(agent_db, Props, <<"*">>),
+    AcctId = props:get_value(account_id, Props, <<"*">>),
 
     amqp_util:whapps_exchange(),
-    amqp_util:bind_q_to_whapps(Q, status_routing_key(AgentDb, AgentId)),
-    amqp_util:bind_q_to_whapps(Q, sync_req_routing_key(AgentDb, AgentId)).
+
+    bind_q(Q, {AcctId, AgentId}, props:get_value(restrict_to, Props)).
+
+bind_q(Q, {AcctId, AgentId}, undefined) ->
+    amqp_util:bind_q_to_whapps(Q, status_routing_key(AcctId, AgentId)),
+    amqp_util:bind_q_to_whapps(Q, sync_req_routing_key(AcctId, AgentId)),
+    amqp_util:bind_q_to_whapps(Q, stats_req_routing_key(AcctId));
+bind_q(Q, {AcctId, AgentId}=Ids, [status|T]) ->
+    amqp_util:bind_q_to_whapps(Q, status_routing_key(AcctId, AgentId)),
+    bind_q(Q, Ids, T);
+bind_q(Q, {AcctId, AgentId}=Ids, [sync|T]) ->
+    amqp_util:bind_q_to_whapps(Q, sync_req_routing_key(AcctId, AgentId)),
+    bind_q(Q, Ids, T);
+bind_q(Q, {AcctId, _}=Ids, [stats|T]) ->
+    amqp_util:bind_q_to_whapps(Q, stats_req_routing_key(AcctId)),
+    bind_q(Q, Ids, T);
+bind_q(Q, Ids, [_|T]) ->
+    bind_q(Q, Ids, T);
+bind_q(_, _, []) ->
+    ok.
 
 -spec unbind_q/2 :: (binary(), proplist()) -> 'ok'.
+-spec unbind_q/3 :: (binary(), {ne_binary(), ne_binary()}, 'undefined' | list()) -> 'ok'.
 unbind_q(Q, Props) ->
     AgentId = props:get_value(agent_id, Props, <<"*">>),
-    AgentDb = props:get_value(agent_db, Props, <<"*">>),
+    AcctId = props:get_value(account_id, Props, <<"*">>),
 
-    amqp_util:unbind_q_from_whapps(Q, status_routing_key(AgentDb, AgentId)).
+    unbind_q(Q, {AcctId, AgentId}, props:get_value(restrict_to, Props)).
+
+unbind_q(Q, {AcctId, AgentId}, undefined) ->
+    amqp_util:unbind_q_from_whapps(Q, status_routing_key(AcctId, AgentId)),
+    amqp_util:unbind_q_from_whapps(Q, sync_req_routing_key(AcctId, AgentId)),
+    amqp_util:unbind_q_from_whapps(Q, stats_req_routing_key(AcctId));
+unbind_q(Q, {AcctId, AgentId}=Ids, [status|T]) ->
+    amqp_util:unbind_q_from_whapps(Q, status_routing_key(AcctId, AgentId)),
+    unbind_q(Q, Ids, T);
+unbind_q(Q, {AcctId, AgentId}=Ids, [sync|T]) ->
+    amqp_util:unbind_q_from_whapps(Q, sync_req_routing_key(AcctId, AgentId)),
+    unbind_q(Q, Ids, T);
+unbind_q(Q, {AcctId, _}=Ids, [stats|T]) ->
+    amqp_util:unbind_q_from_whapps(Q, stats_req_routing_key(AcctId)),
+    unbind_q(Q, Ids, T);
+unbind_q(Q, Ids, [_|T]) ->
+    unbind_q(Q, Ids, T);
+unbind_q(_, _, []) ->
+    ok.
 
 %%------------------------------------------------------------------------------
 %% Publishers for convenience
@@ -300,6 +406,22 @@ publish_sync_resp(Q, JObj) ->
     publish_sync_resp(Q, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_sync_resp(Q, API, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(API, ?SYNC_RESP_VALUES, fun sync_resp/1),
+    amqp_util:targeted_publish(Q, Payload, ContentType).
+
+-spec publish_stats_req/1 :: (api_terms()) -> 'ok'.
+-spec publish_stats_req/2 :: (api_terms(), ne_binary()) -> 'ok'.
+publish_stats_req(JObj) ->
+    publish_stats_req(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_stats_req(API, ContentType) ->
+    {ok, Payload} = wh_api:prepare_api_payload(API, ?STATS_REQ_VALUES, fun stats_req/1),
+    amqp_util:whapps_publish(stats_req_routing_key(API), Payload, ContentType).
+
+-spec publish_stats_resp/2 :: (ne_binary(), api_terms()) -> 'ok'.
+-spec publish_stats_resp/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+publish_stats_resp(Q, JObj) ->
+    publish_stats_resp(Q, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_stats_resp(Q, API, ContentType) ->
+    {ok, Payload} = wh_api:prepare_api_payload(API, ?STATS_RESP_VALUES, fun stats_resp/1),
     amqp_util:targeted_publish(Q, Payload, ContentType).
 
 -spec publish_login/1 :: (api_terms()) -> 'ok'.
