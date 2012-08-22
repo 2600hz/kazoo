@@ -185,7 +185,7 @@ first_caller_id_number(PNJObj, NumState) ->
     end.
 
 has_caller_id(CIDNumber, PNJObj) ->
-    case wh_json:get_value(wh_util:to_e164(CIDNumber), PNJObj) of
+    case wh_json:get_value(wnm_util:to_e164(CIDNumber), PNJObj) of
         undefined -> false;
         _ -> true
     end.
