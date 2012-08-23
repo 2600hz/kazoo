@@ -182,12 +182,12 @@ get_fs_app(Node, UUID, JObj, <<"store">>) ->
                 <<"put">> ->
                     %% stream file over HTTP PUT
                     lager:debug("stream ~s via HTTP PUT", [MediaName]),
-                    stream_over_http(Node, UUID, MediaName, put, JObj),
+                    stream_over_http(Node, UUID, MediaName, put, store, JObj),
                     {<<"store">>, noop};
                 <<"post">> ->
                     %% stream file over HTTP POST
                     lager:debug("stream ~s via HTTP POST", [MediaName]),
-                    stream_over_http(Node, UUID, MediaName, post, JObj),
+                    stream_over_http(Node, UUID, MediaName, post, store, JObj),
                     {<<"store">>, noop};
                 _Method ->
                     %% unhandled method
@@ -204,7 +204,7 @@ get_fs_app(Node, UUID, JObj, <<"store_fax">> = App) ->
             lager:debug("attempting to store fax on ~s: ~s", [Node, File]),
             case wh_json:get_value(<<"Media-Transfer-Method">>, JObj) of
                 <<"put">> ->
-                    stream_over_http(Node, UUID, File, put, JObj),
+                    stream_over_http(Node, UUID, File, put, fax, JObj),
                     {App, noop};
                 _Method ->
                     lager:debug("invalid media transfer method for storing fax: ~s", [_Method]),
@@ -635,40 +635,44 @@ get_call_pickup_app(Node, UUID, JObj, Target) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec stream_over_http/5 :: (atom(), ne_binary(), ne_binary(), 'put' | 'post', wh_json:json_object()) -> any().
-stream_over_http(Node, UUID, File, Method, JObj) ->
+-spec stream_over_http/6 :: (atom(), ne_binary(), ne_binary(), 'put' | 'post', 'store' | 'fax', wh_json:json_object()) -> any().
+stream_over_http(Node, UUID, File, Method, Type, JObj) ->
     Url = wh_util:to_list(wh_json:get_value(<<"Media-Transfer-Destination">>, JObj)),
     lager:debug("streaming via HTTP(~s) to ~s", [Method, Url]),
 
     Args = list_to_binary([Url, <<" ">>, File]),
     lager:debug("execute on node ~s: http_put(~s)", [Node, Args]),
-    case send_fs_store(Node, Args, Method) of
-        {ok, <<"+OK", _/binary>>} ->
-            lager:debug("successfully stored media"),
-            send_store_call_event(Node, UUID, <<"success">>);
-        {ok, Err} ->
-            lager:debug("store media failed: ~s", [Err]),
-            wh_notify:system_alert("Failed to store media file ~s for call ~s on ~s "
-                                   ,[File, UUID, Node]
-                                   ,[{<<"Details">>, Err}]
-                                  ),
-            send_store_call_event(Node, UUID, <<"failure">>);
-        {error, E} ->
-            lager:debug("error executing http_put: ~p", [E]),
-            wh_notify:system_alert("Failed to store media file ~s for call ~s on ~s "
-                                   ,[File, UUID, Node]
-                                   ,[{<<"Details">>, E}]
-                                  ),
-            send_store_call_event(Node, UUID, <<"failure">>);
-        timeout ->
-            lager:debug("timeout waiting for http_put"),
-            wh_notify:system_alert("Failed to store media file ~s for call ~s on ~s "
-                                   ,[File, UUID, Node]
-                                   ,[{<<"Details">>, <<"Timeout sending http_put to node">>}]
-                                  ),
-            send_store_call_event(Node, UUID, <<"timeout">>)
+    Result = case send_fs_store(Node, Args, Method) of
+                 {ok, <<"+OK", _/binary>>} ->
+                     lager:debug("successfully stored media"),
+                     <<"success">>;
+                 {ok, Err} ->
+                     lager:debug("store media failed: ~s", [Err]),
+                     wh_notify:system_alert("Failed to store media file ~s for call ~s on ~s "
+                                            ,[File, UUID, Node]
+                                            ,[{<<"Details">>, Err}]
+                                           ),
+                     <<"failure">>;
+                 {error, E} ->
+                     lager:debug("error executing http_put: ~p", [E]),
+                     wh_notify:system_alert("Failed to store media file ~s for call ~s on ~s "
+                                            ,[File, UUID, Node]
+                                            ,[{<<"Details">>, E}]
+                                           ),
+                     <<"failure">>;
+                 timeout ->
+                     lager:debug("timeout waiting for http_put"),
+                     wh_notify:system_alert("Failed to store media file ~s for call ~s on ~s "
+                                            ,[File, UUID, Node]
+                                            ,[{<<"Details">>, <<"Timeout sending http_put to node">>}]
+                                           ),
+                     <<"timeout">>
+             end,
+    case Type of
+        store -> send_store_call_event(Node, UUID, Result);
+        fax -> send_store_fax_call_event(UUID, Result)
     end.
-
+            
 -spec send_fs_store/3 :: (atom(), ne_binary(), 'put' | 'post') -> fs_api_ret().
 send_fs_store(Node, Args, put) ->
     freeswitch:api(Node, http_put, wh_util:to_list(Args));
