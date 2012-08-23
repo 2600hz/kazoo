@@ -249,7 +249,7 @@ sync({sync_resp, JObj}, #state{sync_ref=Ref}=State) ->
             {next_state, sync, State#state{sync_ref=start_resync_timer()}}
     end;
 sync({pause, Timeout}, State) ->
-    lager:debug("recv status update while syncing, pausing for ~b ms", [Timeout]),
+    lager:debug("recv status update while syncing, pausing for up to ~b ms", [Timeout]),
     Ref = start_pause_timer(Timeout),
     {next_state, paused, State#state{sync_ref=Ref}};
 sync(_Evt, State) ->
@@ -261,6 +261,11 @@ sync(_Evt, State) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+ready({pause, Timeout}, State) ->
+    lager:debug("recv status update while responding to reqs, pausing for up to ~b ms", [Timeout]),
+    Ref = start_pause_timer(Timeout),
+    {next_state, paused, State#state{sync_ref=Ref}};
+
 ready({member_connect_win, JObj}, #state{agent_proc=Srv}=State) ->
     CallId = callid(JObj),
     lager:debug("we won us a member: ~s", [CallId]),
@@ -455,7 +460,6 @@ paused({member_connect_win, JObj}, #state{agent_proc=Srv}=State) ->
 paused({member_connect_monitor, _JObj}, State) ->
     lager:debug("we've paused, but received a connect_monitor?"),
     {next_state, paused, State};
-
 paused(_Evt, State) ->
     lager:debug("unhandled event: ~p", [_Evt]),
     {next_state, paused, State}.
