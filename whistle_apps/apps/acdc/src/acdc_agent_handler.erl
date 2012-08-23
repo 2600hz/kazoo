@@ -19,8 +19,14 @@
 -include("acdc.hrl").
 
 -spec handle_status_update/2 :: (wh_json:json_object(), wh_proplist()) -> 'ok'.
-handle_status_update(_JObj, _Props) ->
-    ok.
+handle_status_update(JObj, _Props) ->
+    true = wapi_acdc_agent:status_update_v(JObj),
+
+    AcctId = wh_json:get_value(<<"Account-ID">>, JObj),
+    AgentId = wh_json:get_value(<<"Agent-ID">>, JObj),
+    Status = wh_json:get_value(<<"New-Status">>, JObj),
+    
+    lager:debug("agent ~s (~s) has new status ~s", [AgentId, AcctId, Status]).
 
 -spec handle_sync_req/2 :: (wh_json:json_object(), wh_proplist()) -> 'ok'.
 handle_sync_req(JObj, Props) ->
