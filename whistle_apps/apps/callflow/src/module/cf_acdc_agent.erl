@@ -13,7 +13,9 @@
 %%%-------------------------------------------------------------------
 -module(cf_acdc_agent).
 
--export([handle/2]).
+-export([handle/2
+         ,find_agent_status/2
+        ]).
 
 -include("../callflow.hrl").
 
@@ -28,7 +30,7 @@ handle(Data, Call) ->
         {ok, AgentId} ->
             Status = find_agent_status(Call, AgentId),
             NewStatus = wh_json:get_value(<<"action">>, Data),
-            lager:debug("agent ~s maybe changing status from ~s to ~s", [Status, NewStatus]),
+            lager:debug("agent ~s maybe changing status from ~s to ~s", [AgentId, Status, NewStatus]),
 
             maybe_update_status(Call, AgentId, Status, NewStatus, Data);
         {error, _E} ->
@@ -37,17 +39,23 @@ handle(Data, Call) ->
     end,
     cf_exe:continue(Call).
 
--spec find_agent_status/2 :: (whapps_call:call(), ne_binary()) -> ne_binary().
-find_agent_status(Call, AgentId) ->
-    Opts = [{startkey, [AgentId]}
-            ,{endkey, [AgentId, wh_json:new()]}
+-spec find_agent_status/2 :: (whapps_call:call() | ne_binary(), ne_binary()) -> ne_binary().
+find_agent_status(?NE_BINARY = AcctDb, AgentId) ->
+    Opts = [{endkey, [AgentId, 0]}
+            ,{startkey, [AgentId, wh_json:new()]}
             ,{limit, 1}
+            ,descending
            ],
-    case couch_mgr:get_results(whapps_call:account_db(Call), <<"agents/agent_status">>, Opts) of
+    case couch_mgr:get_results(AcctDb, <<"agents/agent_status">>, Opts) of
         {ok, []} -> <<"logout">>;
         {error, _E} -> <<"logout">>;
-        {ok, [StatusJObj|_]} -> wh_json:get_value(<<"value">>, StatusJObj)
-    end.
+        {ok, [StatusJObj|_]} -> maybe_fix_resume(wh_json:get_value(<<"value">>, StatusJObj))
+    end;
+find_agent_status(Call, AgentId) ->
+    find_agent_status(whapps_call:account_db(Call), AgentId).
+
+maybe_fix_resume(<<"resume">>) -> <<"login">>;
+maybe_fix_resume(Status) -> Status.
 
 maybe_update_status(Call, AgentId, _Curr, <<"logout">>, _Data) ->
     lager:debug("agent ~s wants to log out (currently: ~s)", [AgentId, _Curr]),
@@ -98,7 +106,8 @@ update_agent_status(Call, AgentId, Status) ->
                              ,{<<"action">>, Status}
                              ,{<<"pvt_type">>, <<"agent_activity">>}
                             ]),
-    {ok, _} = couch_mgr:save_doc(AcctDb, wh_doc:update_pvt_parameters(Doc, AcctDb)),
+    {ok, _D} = couch_mgr:save_doc(AcctDb, wh_doc:update_pvt_parameters(Doc, AcctDb)),
+    lager:debug("saved ~p", [_D]),
     send_new_status(Call, AgentId, Status),
     ok.
 
@@ -116,12 +125,12 @@ find_agent(Call) ->
                                                  ,whapps_call:authorizing_id(Call)
                                                  ,whapps_call:authorizing_type(Call)
                                                 );
-        OwnerId -> OwnerId
+        OwnerId -> {ok, OwnerId}
     end.
 
 find_agent_by_authorization(Call, DeviceId, <<"device">>) ->
     {ok, Device} = couch_mgr:open_doc(whapps_call:account_db(Call), DeviceId),
-    wh_json:get_value(<<"owner_id">>, Device).
+    {ok, wh_json:get_value(<<"owner_id">>, Device)}.
 
 play_not_an_agent(Call) ->
     whapps_call_command:b_prompt(<<"agent-not_call_center_agent">>, Call).
