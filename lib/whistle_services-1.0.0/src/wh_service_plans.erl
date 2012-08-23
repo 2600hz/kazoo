@@ -10,6 +10,7 @@
 -include_lib("whistle_services/src/whistle_services.hrl").
 
 -export([empty/0]).
+-export([public_json/1]).
 -export([from_service_json/1]).
 -export([plan_summary/1]).
 -export([activation_charges/3]).
@@ -44,6 +45,23 @@ from_service_json(ServicesJObj) ->
     PlanIds = wh_json:get_keys(<<"plans">>, ServicesJObj),
     ResellerId = wh_json:get_value(<<"pvt_reseller_id">>, ServicesJObj),
     get_plans(PlanIds, ResellerId, ServicesJObj).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+public_json(ServicePlans) ->
+    public_json(ServicePlans, wh_json:new()).
+
+public_json([], JObj) ->
+    JObj;
+public_json([#wh_service_plans{plans=Plans}|ServicePlans], JObj) ->
+    NewJObj = lists:foldl(fun(P, J) -> 
+                                  wh_json:merge_recursive(J, wh_json:get_value(<<"plan">>, P, wh_json:new()))
+                          end, JObj, Plans),
+    public_json(ServicePlans, NewJObj).
 
 %%--------------------------------------------------------------------
 %% @public

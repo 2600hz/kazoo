@@ -178,6 +178,12 @@ process_event_for_bridge(#ts_callflow_state{aleg_callid=ALeg, my_q=Q, callctl_q=
             wh_call_response:send(ALeg, CtlQ, Code, Message),
 
             {hangup, State};
+
+        {<<"answer">>,<<"CHANNEL_EXECUTE_COMPLETE">>,<<"call_event">>} ->
+            %% support one legged bridges such as on-net conference
+            lager:debug("successful one legged bridge", []),
+            {bridged, State};
+
         {<<"bridge">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"call_event">>} ->
             Resp = wh_json:get_value(<<"Application-Response">>, JObj),
 
