@@ -27,6 +27,7 @@
 -export([get_destination/3]).
 -export([get_prompt/2, get_prompt/3]).
 -export([amqp_pool_request/3, amqp_pool_request/4]).
+-export([write_tts_file/2]).
 
 -include("whistle_apps.hrl").
 
@@ -487,3 +488,11 @@ try_split(Key, JObj) ->
                     list_to_tuple(Dest)
             end
     end.
+
+-spec write_tts_file/2 :: (ne_binary(), ne_binary()) ->
+                                  'ok' |
+                                  {'error', file:posix() | 'badarg' | 'terminated'}.
+write_tts_file(Path, Say) ->
+    lager:debug("trying to save TTS media to ~s", [Path]),
+    {ok, _, Wav} = whapps_speech:create(Say),
+    file:write_file(Path, Wav).
