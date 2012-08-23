@@ -390,7 +390,7 @@ publish_status_update(JObj) ->
     publish_status_update(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_status_update(API, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(API, ?STATUS_UPDATE_VALUES, fun status_update/1),
-    amqp_util:whapps_publish(Payload, ContentType, status_routing_key(API)).
+    amqp_util:whapps_publish(status_routing_key(API), Payload, ContentType).
 
 -spec publish_sync_req/1 :: (api_terms()) -> 'ok'.
 -spec publish_sync_req/2 :: (api_terms(), ne_binary()) -> 'ok'.
