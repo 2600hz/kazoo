@@ -33,16 +33,20 @@
 %%--------------------------------------------------------------------
 -spec update_pvt_parameters/2 :: (wh_json:json_object(), ne_binary()) -> wh_json:json_object().
 update_pvt_parameters(JObj0, DBName) ->
-    update_pvt_parameters(JObj0, DBName, []).
+    update_pvt_parameters(JObj0, DBName, [{now, wh_util:current_tstamp()}]).
 
 -spec update_pvt_parameters/3 :: (wh_json:json_object(), ne_binary(), wh_proplist()) -> wh_json:json_object().
 update_pvt_parameters(JObj0, DBName, Options) ->
-    lists:foldl(fun(Fun, JObj) -> Fun(JObj, DBName, Options) end, JObj0, ?PVT_FUNS).
+    Opts = case props:get_value(now, Options) of
+               undefined -> [{now, wh_util:current_tstamp()}];
+               _ -> Options
+           end,
+    lists:foldl(fun(Fun, JObj) -> Fun(JObj, DBName, Opts) end, JObj0, ?PVT_FUNS).
 
 add_pvt_vsn(JObj, _, Options) ->
-    case Vsn = proplists:get_value(crossbar_doc_vsn, Options, undefined) of
+    case props:get_value(crossbar_doc_vsn, Options) of
         undefined -> JObj;
-        _ -> wh_json:set_value(<<"pvt_vsn">>, Vsn, JObj)
+        Vsn -> wh_json:set_value(<<"pvt_vsn">>, Vsn, JObj)
     end.
 
 add_pvt_account_db(JObj, DBName, _) ->
@@ -52,25 +56,23 @@ add_pvt_account_id(JObj, DBName, _) ->
     wh_json:set_value(<<"pvt_account_id">>, wh_util:format_account_id(DBName, raw), JObj).
 
 add_pvt_type(JObj, _, Options) ->
-    case Type = proplists:get_value(type, Options, undefined) of
+    case props:get_value(type, Options) of
         undefined -> JObj;
-        _ -> wh_json:set_value(<<"pvt_type">>, Type, JObj)
+        Type -> wh_json:set_value(<<"pvt_type">>, Type, JObj)
     end.
 
-add_pvt_created(JObj, _, _) ->
+add_pvt_created(JObj, _, Opts) ->
     case wh_json:get_value(<<"_rev">>, JObj) of
         undefined ->
-            Timestamp = calendar:datetime_to_gregorian_seconds(calendar:universal_time()),
-            wh_json:set_value(<<"pvt_created">>, Timestamp, JObj);
+            wh_json:set_value(<<"pvt_created">>, props:get_value(now, Opts), JObj);
         _ ->
             JObj
     end.
 
 update_pvt_modified(JObj) ->
-    add_pvt_modified(JObj,null,null).
-add_pvt_modified(JObj, _, _) ->
-    Timestamp = calendar:datetime_to_gregorian_seconds(calendar:universal_time()),
-    wh_json:set_value(<<"pvt_modified">>, Timestamp, JObj).
+    add_pvt_modified(JObj, undefined, [{now, wh_util:current_tstamp()}]).
+add_pvt_modified(JObj, _, Opts) ->
+    wh_json:set_value(<<"pvt_modified">>, props:get_value(now, Opts), JObj).
 
 %%--------------------------------------------------------------------
 %% @public
