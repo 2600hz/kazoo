@@ -27,15 +27,15 @@
 -spec handle/2 :: (wh_json:json_object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     case find_agent(Call) of
+        {ok, undefined} ->
+            lager:debug("agent was not found"),
+            play_not_an_agent(Call);
         {ok, AgentId} ->
             Status = find_agent_status(Call, AgentId),
             NewStatus = wh_json:get_value(<<"action">>, Data),
             lager:debug("agent ~s maybe changing status from ~s to ~s", [AgentId, Status, NewStatus]),
 
-            maybe_update_status(Call, AgentId, Status, NewStatus, Data);
-        {error, _E} ->
-            lager:debug("agent was not found: ~p", [_E]),
-            play_not_an_agent(Call)
+            maybe_update_status(Call, AgentId, Status, NewStatus, Data)
     end,
     cf_exe:continue(Call).
 
@@ -65,9 +65,9 @@ maybe_update_status(Call, AgentId, _Curr, <<"logout">>, _Data) ->
 maybe_update_status(Call, _AgentId, <<"login">>, <<"login">>, _Data) ->
     lager:debug("agent ~s is already logged in", [_AgentId]),
     play_agent_logged_in_already(Call);
-maybe_update_status(Call, AgentId, <<"login">>, <<"pause">>, _Data) ->
+maybe_update_status(Call, AgentId, <<"login">>, <<"pause">>, Data) ->
     lager:debug("agent ~s is pausing work", [AgentId]),
-    pause_agent(Call, AgentId),
+    pause_agent(Call, AgentId, wh_json:get_integer_value(<<"timeout">>, Data, 0) * 1000),
     play_agent_pause(Call);
 
 maybe_update_status(Call, AgentId, <<"logout">>, <<"login">>, _Data) ->
@@ -93,13 +93,15 @@ login_agent(Call, AgentId) ->
 logout_agent(Call, AgentId) ->
     update_agent_status(Call, AgentId, <<"logout">>).
 
-pause_agent(Call, AgentId) ->
-    update_agent_status(Call, AgentId, <<"pause">>).
+pause_agent(Call, AgentId, Timeout) ->
+    update_agent_status(Call, AgentId, <<"pause">>, Timeout).
 
 resume_agent(Call, AgentId) ->
     update_agent_status(Call, AgentId, <<"resume">>).
 
 update_agent_status(Call, AgentId, Status) ->
+    update_agent_status(Call, AgentId, Status, undefined).
+update_agent_status(Call, AgentId, Status, Timeout) ->
     AcctDb = whapps_call:account_db(Call),
     Doc = wh_json:from_list([{<<"call_id">>, whapps_call:call_id(Call)}
                              ,{<<"agent_id">>, AgentId}
@@ -107,16 +109,16 @@ update_agent_status(Call, AgentId, Status) ->
                              ,{<<"pvt_type">>, <<"agent_activity">>}
                             ]),
     {ok, _D} = couch_mgr:save_doc(AcctDb, wh_doc:update_pvt_parameters(Doc, AcctDb)),
-    lager:debug("saved ~p", [_D]),
-    send_new_status(Call, AgentId, Status),
-    ok.
+    send_new_status(Call, AgentId, Status, Timeout).
 
-send_new_status(Call, AgentId, Status) ->
-    Update = [{<<"Account-ID">>, whapps_call:account_id(Call)}
-              ,{<<"Agent-ID">>, AgentId}
-              ,{<<"New-Status">>, Status}
-              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-             ],
+send_new_status(Call, AgentId, Status, Timeout) ->
+    Update = props:filter_undefined(
+               [{<<"Account-ID">>, whapps_call:account_id(Call)}
+                ,{<<"Agent-ID">>, AgentId}
+                ,{<<"New-Status">>, Status}
+                ,{<<"Timeout">>, Timeout}
+                | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+               ]),
     wapi_acdc_agent:publish_status_update(Update).
 
 find_agent(Call) ->

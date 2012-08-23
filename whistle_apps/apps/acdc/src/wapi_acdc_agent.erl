@@ -47,7 +47,7 @@
 -define(STATUS_UPDATE_KEY, "agent.status_update.").
 
 -define(STATUS_UPDATE_HEADERS, [<<"Account-ID">>, <<"Agent-ID">>, <<"New-Status">>]).
--define(OPTIONAL_STATUS_UPDATE_HEADERS, []).
+-define(OPTIONAL_STATUS_UPDATE_HEADERS, [<<"Timeout">>]).
 -define(STATUS_UPDATE_VALUES, [{<<"New-Status">>, [<<"login">>, <<"logout">>
                                                    ,<<"pause">>, <<"resume">>
                                                   ]}
