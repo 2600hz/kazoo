@@ -57,6 +57,10 @@ maybe_update_status(Call, AgentId, _Curr, <<"logout">>, _Data) ->
 maybe_update_status(Call, _AgentId, <<"login">>, <<"login">>, _Data) ->
     lager:debug("agent ~s is already logged in", [_AgentId]),
     play_agent_logged_in_already(Call);
+maybe_update_status(Call, AgentId, <<"login">>, <<"pause">>, _Data) ->
+    lager:debug("agent ~s is pausing work", [AgentId]),
+    pause_agent(Call, AgentId),
+    play_agent_pause(Call);
 
 maybe_update_status(Call, AgentId, <<"logout">>, <<"login">>, _Data) ->
     lager:debug("agent ~s wants to log in", [AgentId]),
@@ -67,10 +71,10 @@ maybe_update_status(Call, AgentId, <<"pause">>, <<"resume">>, _Data) ->
     lager:debug("agent ~s is coming back from pause", [AgentId]),
     resume_agent(Call, AgentId),
     play_agent_resume(Call);
-maybe_update_status(Call, AgentId, <<"login">>, <<"pause">>, _Data) ->
-    lager:debug("agent ~s is pausing work", [AgentId]),
-    pause_agent(Call, AgentId),
-    play_agent_pause(Call);
+maybe_update_status(Call, AgentId, <<"pause">>, <<"login">>, _Data) ->
+    lager:debug("agent ~s is coming back from pause", [AgentId]),
+    resume_agent(Call, AgentId),
+    play_agent_resume(Call);
 maybe_update_status(Call, _AgentId, _Status, _NewStatus, _Data) ->
     lager:debug("agent ~s: invalid status change from ~s to ~s", [_AgentId, _Status, _NewStatus]),
     play_agent_invalid(Call).
@@ -95,7 +99,16 @@ update_agent_status(Call, AgentId, Status) ->
                              ,{<<"pvt_type">>, <<"agent_activity">>}
                             ]),
     {ok, _} = couch_mgr:save_doc(AcctDb, wh_doc:update_pvt_parameters(Doc, AcctDb)),
+    send_new_status(Call, AgentId, Status),
     ok.
+
+send_new_status(Call, AgentId, Status) ->
+    Update = [{<<"Account-ID">>, whapps_call:account_id(Call)}
+              ,{<<"Agent-ID">>, AgentId}
+              ,{<<"New-Status">>, Status}
+              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+             ],
+    wapi_acdc_agent:publish_status_update(Update).
 
 find_agent(Call) ->
     case whapps_call:owner_id(Call) of
