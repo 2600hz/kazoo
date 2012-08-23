@@ -15,7 +15,6 @@
 
 %% API
 -export([start_link/0
-         ,handle_agent_status/2
         ]).
 
 %% gen_server callbacks
@@ -31,7 +30,7 @@
 -define(SERVER, ?MODULE).
 
 -define(BINDINGS, [{acdc_agent, [{restrict_to, [status]}]}]).
--define(RESPONDERS, [{{?MODULE, handle_agent_status}
+-define(RESPONDERS, [{{acdc_agent_handler, handle_status_update}
                       ,{<<"agent">>, <<"status_update">>}
                      }]).
 
@@ -55,17 +54,6 @@ start_link() ->
                              ]
                             ,[]
                            ).
-
-handle_agent_status(JObj, _Props) ->
-    AcctId = wh_json:get_value(<<"Account-ID">>, JObj),
-    AgentId = wh_json:get_value(<<"Agent-ID">>, JObj),
-    case wh_json:get_value(<<"New-Status">>, JObj) of
-        <<"signed_in">> -> ok;
-        <<"signed_out">> -> ok;
-        <<"away">> -> ok;
-        <<"returned">> -> ok;
-        _ -> ok
-    end.
 
 %%%===================================================================
 %%% gen_server callbacks
