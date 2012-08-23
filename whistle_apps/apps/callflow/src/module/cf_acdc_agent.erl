@@ -37,11 +37,17 @@ handle(Data, Call) ->
     end,
     cf_exe:continue(Call).
 
+-spec find_agent_status/2 :: (whapps_call:call(), ne_binary()) -> ne_binary().
 find_agent_status(Call, AgentId) ->
-    ok.
-
-login_agent(Call, AgentId) ->
-    ok.
+    Opts = [{startkey, [AgentId]}
+            ,{endkey, [AgentId, wh_json:new()]}
+            ,{limit, 1}
+           ],
+    case couch_mgr:get_results(whapps_call:account_db(Call), <<"agents/agent_status">>, Opts) of
+        {ok, []} -> <<"logout">>;
+        {error, _E} -> <<"logout">>;
+        {ok, [StatusJObj|_]} -> wh_json:get_value(<<"value">>, StatusJObj)
+    end.
 
 maybe_update_status(Call, _AgentId, <<"login">>, <<"login">>, _Data) ->
     lager:debug("agent ~s is already logged in", [_AgentId]),
@@ -51,6 +57,28 @@ maybe_update_status(Call, AgentId, <<"login">>, <<"logout">>, _Data) ->
     login_agent(Call, AgentId),
     play_agent_logged_in(Call);
 maybe_update_status(Call, AgentId, Status, NewStatus, Data) ->
+    ok.
+
+login_agent(Call, AgentId) ->
+    update_agent_status(Call, AgentId, <<"login">>).
+
+logout_agent(Call, AgentId) ->
+    update_agent_status(Call, AgentId, <<"logout">>).
+
+pause_agent(Call, AgentId) ->
+    update_agent_status(Call, AgentId, <<"pause">>).
+
+resume_agent(Call, AgentId) ->
+    update_agent_status(Call, AgentId, <<"resume">>).
+
+update_agent_status(Call, AgentId, Status) ->
+    AcctDb = whapps_call:account_db(Call),
+    Doc = wh_json:from_list([{<<"call_id">>, whapps_call:call_id(Call)}
+                             ,{<<"agent_id">>, AgentId}
+                             ,{<<"action">>, Status}
+                             ,{<<"pvt_type">>, <<"agent_activity">>}
+                            ]),
+    {ok, _} = couch_mgr:save_doc(AcctDb, wh_doc:update_pvt_parameters(Doc, AcctDb)),
     ok.
 
 find_agent(Call) ->
