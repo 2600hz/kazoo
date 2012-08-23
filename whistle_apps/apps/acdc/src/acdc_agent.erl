@@ -1,7 +1,7 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2012, VoIP INC
 %%% @doc
-%%% 
+%%%
 %%% @end
 %%% @contributors
 %%%   James Aimonetti
@@ -52,6 +52,7 @@
          ,my_q :: ne_binary() % AMQP queue name
          ,timer_ref :: reference()
          ,sync_resp :: wh_json:json_object() % furthest along resp
+         ,supervisor :: pid()
          }).
 
 %%%===================================================================
@@ -59,7 +60,7 @@
 %%%===================================================================
 
 %% On init, an aget process sends a sync_req and waits SYNC_TIMER_TIMEOUT ms
-%% The agent process checks its list of received 
+%% The agent process checks its list of received
 -define(SYNC_TIMER_MESSAGE, sync_timeout).
 -define(SYNC_TIMER_TIMEOUT, 5000).
 
@@ -198,6 +199,7 @@ init([Supervisor, AcctDb, AgentJObj, Queues]) ->
        ,account_id = wh_json:get_value(<<"pvt_account_id">>, AgentJObj)
        ,agent_queues = Queues
        ,my_id = list_to_binary([wh_util:to_binary(node()), "-", pid_to_list(self())])
+       ,supervisor = Supervisor
       }}.
 
 %%--------------------------------------------------------------------
@@ -256,7 +258,7 @@ handle_cast(bind_to_member_reqs, #state{agent_queues=Qs
                                                   ])
          || QID <- Qs],
     {noreply, State};
-        
+
 handle_cast({channel_hungup, CallId}, #state{call=Call}=State) ->
     case call_id(Call) of
         CallId ->
@@ -381,6 +383,12 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info({'EXIT', P, _R}, #state{fsm_pid=P, supervisor=Supervisor}=State) ->
+    lager:debug("our FSM(~p) died: ~p", [P, _R]),
+
+    gen_listener:cast(self(), {start_fsm, Supervisor}),
+
+    {noreply, State#state{fsm_pid=undefined}};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {noreply, State}.
