@@ -61,8 +61,12 @@ fsm(Super) ->
 
 -spec start_fsm/3 :: (pid(), ne_binary(), ne_binary()) -> sup_startchild_ret().
 start_fsm(Super, AcctId, AgentId) ->
-    Parent = self(),
-    supervisor:start_child(Super, ?CHILD(acdc_agent_fsm, [AcctId, AgentId, Parent])).
+    case fsm(Super) of
+        undefined ->
+            Parent = self(),
+            supervisor:start_child(Super, ?CHILD(acdc_agent_fsm, [AcctId, AgentId, Parent]));
+        P when is_pid(P) -> {ok, P}
+    end.
 
 -spec child_of_type/2 :: (pid(), atom()) -> list(pid()).
 child_of_type(Super, T) ->
