@@ -295,6 +295,8 @@ ready({channel_hungup, CallId}, #state{agent_proc=Srv}=State) ->
     lager:debug("channel hungup for ~s", [CallId]),
     acdc_agent:channel_hungup(Srv, CallId),
     {next_state, ready, State};
+ready({resume}, State) ->
+    {next_state, ready, State};
 
 ready(_Evt, State) ->
     lager:debug("unhandled event: ~p", [_Evt]),
@@ -448,8 +450,17 @@ wrapup(_Evt, State) ->
 paused({timeout, Ref, ?PAUSE_MESSAGE}, #state{sync_ref=Ref}=State) when is_reference(Ref) ->
     lager:debug("pause timer expired, putting agent back into action"),
     {next_state, ready, State#state{sync_ref=undefined}};
-paused({resume}, State) ->
+paused({resume}, #state{acct_id=AcctId
+                        ,agent_id=AgentId
+                        ,agent_proc=Srv
+                        ,sync_ref=Ref
+                       }=State) ->
     lager:debug("resume received, putting agent back into action"),
+    erlang:cancel_timer(Ref),
+
+    update_agent_status_to_resume(AcctId, AgentId),
+    acdc_agent:send_status_update(Srv, <<"resume">>),
+
     {next_state, ready, State};
 paused({member_connect_req, _}, State) ->
     {next_state, paused, State};
@@ -570,3 +581,13 @@ callid(JObj) ->
         undefined -> wh_json:get_value([<<"Call">>, <<"Call-ID">>], JObj);
         CallId -> CallId
     end.
+
+update_agent_status_to_resume(AcctId, AgentId) ->
+    AcctDb = wh_util:format_account_id(AcctId, encoded),
+    Doc = wh_json:from_list([{<<"agent_id">>, AgentId}
+                             ,{<<"action">>, <<"resume">>}
+                             ,{<<"node">>, wh_util:to_binary(node())}
+                             ,{<<"pid">>, wh_util:to_binary(pid_to_list(self()))}
+                             ,{<<"pvt_type">>, <<"agent_activity">>}
+                            ]),
+    {ok, _D} = couch_mgr:save_doc(AcctDb, wh_doc:update_pvt_parameters(Doc, AcctDb)).
