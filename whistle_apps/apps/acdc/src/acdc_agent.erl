@@ -22,6 +22,7 @@
          ,join_agent/2
          ,send_sync_req/3
          ,config/1
+         ,send_status_update/2
         ]).
 
 %% gen_server callbacks
@@ -166,6 +167,9 @@ send_sync_req(Srv, AcctId, AgentId) ->
 -spec config/1 :: (pid()) -> {ne_binary(), ne_binary()}.
 config(Srv) ->
     gen_listener:call(Srv, config).
+
+send_status_update(Srv, Status) ->
+    gen_listener:cast(Srv, {send_status_update, Status}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -369,6 +373,12 @@ handle_cast({send_sync_req, AcctId, AgentId}, #state{my_id=MyId}=State) ->
     send_sync_request(AcctId, AgentId, MyId),
     {noreply, State};
 
+handle_cast({send_status_update, Status}, #state{account_id=AcctId
+                                                 ,agent_id=AgentId
+                                                 }=State) ->
+    send_status_update(AcctId, AgentId, Status),
+    {noreply, State};
+
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {noreply, State}.
@@ -488,6 +498,16 @@ send_sync_request(AcctId, AgentId, MyId) ->
             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     wapi_acdc_agent:publish_sync_req(Prop).
+
+send_status_update(AcctId, AgentId, Status) ->
+    Update = props:filter_undefined(
+               [{<<"Account-ID">>, AcctId}
+                ,{<<"Agent-ID">>, AgentId}
+                ,{<<"New-Status">>, Status}
+                | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+               ]),
+    wapi_acdc_agent:publish_status_update(Update).
+
 
 -spec idle_time/1 :: ('undefined' | wh_now()) -> 'undefined' | integer().
 idle_time(undefined) -> undefined;
