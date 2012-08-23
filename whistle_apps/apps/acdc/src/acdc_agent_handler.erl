@@ -24,9 +24,48 @@ handle_status_update(JObj, _Props) ->
 
     AcctId = wh_json:get_value(<<"Account-ID">>, JObj),
     AgentId = wh_json:get_value(<<"Agent-ID">>, JObj),
-    Status = wh_json:get_value(<<"New-Status">>, JObj),
-    
-    lager:debug("agent ~s (~s) has new status ~s", [AgentId, AcctId, Status]).
+    Timeout = wh_json:get_integer_value(<<"Timeout">>, JObj),
+
+    case wh_json:get_value(<<"New-Status">>, JObj) of
+        <<"login">> -> maybe_start_agent(AcctId, AgentId);
+        <<"logout">> -> maybe_stop_agent(AcctId, AgentId);
+        <<"pause">> -> maybe_pause_agent(AcctId, AgentId, Timeout);
+        <<"resume">> -> maybe_resume_agent(AcctId, AgentId)
+    end.
+
+maybe_start_agent(AcctId, AgentId) ->
+    case acdc_agents_sup:find_agent_supervisor(AcctId, AgentId) of
+        undefined ->
+            lager:debug("agent ~s (~s) not found, starting", [AgentId, AcctId]),
+            {ok, Agent} = couch_mgr:open_doc(wh_util:format_account_id(AcctId, encoded), AgentId),
+            _R = acdc_agents_sup:new(AcctId, Agent),
+            lager:debug("started agent at ~p", [_R]);
+        P when is_pid(P) ->
+            lager:debug("agent ~s (~s) already running: supervisor ~p", [AgentId, AcctId, P])
+    end.
+
+maybe_stop_agent(AcctId, AgentId) ->
+    case acdc_agents_sup:find_agent_supervisor(AcctId, AgentId) of
+        undefined -> lager:debug("agent ~s (~s) not found, nothing to do", [AgentId, AcctId]);
+        P when is_pid(P) ->
+            acdc_agent_sup:stop(P)
+    end.
+
+maybe_pause_agent(AcctId, AgentId, Timeout) ->
+    case acdc_agents_sup:find_agent_supervisor(AcctId, AgentId) of
+        undefined -> lager:debug("agent ~s (~s) not found, nothing to do", [AgentId, AcctId]);
+        P when is_pid(P) ->
+            FSM = acdc_agent_sup:fsm(P),
+            acdc_agent_fsm:pause(FSM, Timeout)
+    end.
+
+maybe_resume_agent(AcctId, AgentId) ->
+    case acdc_agents_sup:find_agent_supervisor(AcctId, AgentId) of
+        undefined -> lager:debug("agent ~s (~s) not found, nothing to do", [AgentId, AcctId]);
+        P when is_pid(P) ->
+            FSM = acdc_agent_sup:fsm(P),
+            acdc_agent_fsm:resume(FSM)
+    end.
 
 -spec handle_sync_req/2 :: (wh_json:json_object(), wh_proplist()) -> 'ok'.
 handle_sync_req(JObj, Props) ->
