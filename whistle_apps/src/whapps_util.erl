@@ -85,7 +85,8 @@ replicate_from_accounts(TargetDb, FilterDoc) when is_binary(FilterDoc) ->
 %% source database into the target database
 %% @end
 %%--------------------------------------------------------------------
--spec replicate_from_account/3 :: (ne_binary(), ne_binary(), ne_binary()) -> {'error', 'matching_dbs'} | 'ok'.
+-spec replicate_from_account/3 :: (ne_binary(), ne_binary(), ne_binary()) ->
+                                          'ok' | {'error', 'matching_dbs'}.
 replicate_from_account(AccountDb, AccountDb, _) ->
     lager:debug("requested to replicate from db ~s to self, skipping", [AccountDb]),
     {error, matching_dbs};
@@ -95,13 +96,11 @@ replicate_from_account(AccountDb, TargetDb, FilterDoc) ->
                       ,{<<"filter">>, FilterDoc}
                       ,{<<"create_target">>, true}
                      ],
-    try
-        case couch_mgr:db_replicate(ReplicateProps) of
-            {ok, _} ->
-                lager:debug("replicate ~s to ~s using filter ~s succeeded", [AccountDb, TargetDb, FilterDoc]);
-            {error, _} ->
-                lager:debug("replicate ~s to ~s using filter ~s failed", [AccountDb, TargetDb, FilterDoc])
-        end
+    try couch_mgr:db_replicate(ReplicateProps) of
+        {ok, _} ->
+            lager:debug("replicate ~s to ~s using filter ~s succeeded", [AccountDb, TargetDb, FilterDoc]);
+        {error, _} ->
+            lager:debug("replicate ~s to ~s using filter ~s failed", [AccountDb, TargetDb, FilterDoc])
     catch
         _:_ ->
             lager:debug("replicate ~s to ~s using filter ~s error", [AccountDb, TargetDb, FilterDoc])
@@ -114,44 +113,47 @@ replicate_from_account(AccountDb, TargetDb, FilterDoc) ->
 %% set it to the oldest acccount and return that.
 %% @end
 %%--------------------------------------------------------------------
--spec get_master_account_id/0 :: () -> {'ok', ne_binary()} | {'error', _}.
+-spec get_master_account_id/0 :: () -> {'ok', ne_binary()} |
+                                       {'error', atom()}.
 get_master_account_id() ->
     case whapps_config:get(?WH_SYSTEM_CONFIG_ACCOUNT, <<"master_account_id">>) of
-        undefined ->            
-            case couch_mgr:get_results(?WH_ACCOUNTS_DB, <<"accounts/listing_by_id">>, [include_docs]) of
-                {error, _R}=E -> E;
-                {ok, Accounts} ->
-                    case find_oldest_doc([wh_json:get_value(<<"doc">>, Account) || Account <- Accounts]) of
-                        {error, _}=E -> E;
-                        {ok, OldestAccountId}=Ok ->
-                            lager:debug("setting ~s.master_account_id to ~s", [?WH_SYSTEM_CONFIG_ACCOUNT, OldestAccountId]),
-                            {ok, _} = whapps_config:set(?WH_SYSTEM_CONFIG_ACCOUNT, <<"master_account_id">>, OldestAccountId),
-                            Ok
-                    end
-            end;
+        undefined -> get_master_account_id(couch_mgr:get_results(?WH_ACCOUNTS_DB, <<"accounts/listing_by_id">>, [include_docs]));
         Default -> {ok, Default}
     end.
+
+get_master_account_id({error, _}=E) -> E;
+get_master_account_id({ok, []}) -> {error, no_accounts};
+get_master_account_id({ok, Accounts}) ->
+    {ok, OldestAccountId}=Ok = find_oldest_doc([wh_json:get_value(<<"doc">>, Account)
+                                                || Account <- Accounts
+                                               ]),
+    lager:debug("setting ~s.master_account_id to ~s", [?WH_SYSTEM_CONFIG_ACCOUNT, OldestAccountId]),
+    {ok, _} = whapps_config:set(?WH_SYSTEM_CONFIG_ACCOUNT, <<"master_account_id">>, OldestAccountId),
+    Ok.
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
 %% Given a list of accounts this returns the id of the oldest
 %% @end
-%%--------------------------------------------------------------------  
--spec find_oldest_doc/1 :: (wh_json:json_objects()) -> {'ok', ne_binary()} | {'error', _}.        
-find_oldest_doc([]) ->
-    {error, no_docs};
-find_oldest_doc(Docs) ->
-    First = hd(Docs),
-    {_, OldestDocID} = lists:foldl(fun(Doc, {Created, _}=Eldest) ->
-                                           case wh_json:get_integer_value(<<"pvt_created">>, Doc) of
-                                               Older when Older < Created  -> {Older, wh_json:get_value(<<"_id">>, Doc)};
-                                               _ -> Eldest
-                                           end
-                                   end
-                                   ,{wh_json:get_integer_value(<<"pvt_created">>, First), wh_json:get_value(<<"_id">>, First)}
-                                   ,Docs),
-    
+%%--------------------------------------------------------------------
+-spec find_oldest_doc/1 :: (wh_json:json_objects()) ->
+                                   {'ok', ne_binary()} |
+                                   {'error', 'no_docs'}.
+find_oldest_doc([]) -> {error, no_docs};
+find_oldest_doc([First|Docs]) ->
+    {_, OldestDocID} =
+        lists:foldl(fun(Doc, {Created, _}=Eldest) ->
+                            Older = wh_json:get_integer_value(<<"pvt_created">>, Doc),
+                            case Older < Created  of
+                                true -> {Older, wh_json:get_value(<<"_id">>, Doc)};
+                                false -> Eldest
+                            end
+                    end
+                    ,{wh_json:get_integer_value(<<"pvt_created">>, First)
+                      ,wh_json:get_value(<<"_id">>, First)
+                     }
+                    ,Docs),
     {ok, OldestDocID}.
 
 %%--------------------------------------------------------------------
@@ -180,7 +182,9 @@ is_acct_db(_) -> false.
 %% @doc Realms are one->one with accounts.
 %% @end
 %%--------------------------------------------------------------------
--spec get_account_by_realm/1 :: (ne_binary()) -> {'ok', ne_binary()} | {'error', 'not_found'}.
+-spec get_account_by_realm/1 :: (ne_binary()) ->
+                                        {'ok', ne_binary()} |
+                                        {'error', 'not_found'}.
 get_account_by_realm(Realm) ->
     case wh_cache:peek({?MODULE, account_by_realm, Realm}) of
         {ok, _}=Ok -> Ok;
@@ -208,15 +212,17 @@ get_account_by_realm(Realm) ->
 %% unique.
 %% @end
 %%--------------------------------------------------------------------
--spec get_accounts_by_name/1 :: (ne_binary()) -> {'ok', [ne_binary(),...]} | {'error', 'not_found'}.
+-spec get_accounts_by_name/1 :: (ne_binary()) ->
+                                        {'ok', [ne_binary(),...]} |
+                                        {'error', 'not_found'}.
 get_accounts_by_name(Name) ->
     case wh_cache:peek({?MODULE, account_by_name, Name}) of
         {ok, _}=Ok -> Ok;
         {error, not_found} ->
             case couch_mgr:get_results(?WH_ACCOUNTS_DB, ?AGG_LIST_BY_NAME, [{key, Name}]) of
-                {ok, [JObj]} -> 
+                {ok, [JObj]} ->
                     AccountDb = wh_json:get_value([<<"value">>, <<"account_db">>], JObj),
-                    wh_cache:store({?MODULE, account_by_name, Name}, AccountDb),                    
+                    wh_cache:store({?MODULE, account_by_name, Name}, AccountDb),
                     {ok, AccountDb};
                 {ok, []} ->
                     {error, not_found};
@@ -287,24 +293,24 @@ calculate_cost(R, RI, RM, Sur, Secs) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec get_views_json/2 :: (atom(), string()) -> wh_json:json_objects().
 get_views_json(App, Folder) ->
     Files = filelib:wildcard(lists:flatten([code:priv_dir(App), "/couchdb/", Folder, "/*.json"])),
-    [JObj 
-     || File <- Files, 
-        begin 
+    [JObj
+     || File <- Files,
+        begin
             JObj = (catch(get_view_json(File))),
-            case JObj of {'EXIT', _} -> false; _ -> true end 
+            case JObj of {'EXIT', _} -> false; _ -> true end
         end
     ].
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec get_view_json/2 :: (atom(), ne_binary() | nonempty_string()) -> {ne_binary(), wh_json:json_object()}.
@@ -323,7 +329,7 @@ get_view_json(Path) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec update_views/2 :: (ne_binary(), proplist()) -> 'ok'.
@@ -336,7 +342,7 @@ update_views(Db, Views) ->
 update_views(Db, Views, Remove) ->
     case couch_mgr:all_design_docs(Db, [include_docs]) of
         {ok, Found} -> update_views(Found, Db, Views, Remove);
-        {error, _R} -> 
+        {error, _R} ->
             lager:debug("unable to fetch current design docs: ~p", [_R]),
             ok
     end.
@@ -352,7 +358,7 @@ update_views([Found|Finds], Db, Views, Remove) ->
     Doc = wh_json:get_value(<<"doc">>, Found),
     RawDoc = wh_json:delete_key(<<"_rev">>, Doc),
     case props:get_value(Id, Views) of
-        undefined when Remove -> 
+        undefined when Remove ->
             lager:debug("removing view '~s' from '~s'", [Id, Db]),
             _ = couch_mgr:del_doc(Db, Doc),
             update_views(Finds, Db, props:delete(Id, Views), Remove);
@@ -371,12 +377,11 @@ update_views([Found|Finds], Db, Views, Remove) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
--spec add_aggregate_device/2 :: (ne_binary(), 'undefined' | ne_binary()) -> 'ok'.
-add_aggregate_device(_, undefined) ->
-    ok;
+-spec add_aggregate_device/2 :: (ne_binary(), ne_binary() | 'undefined') -> 'ok'.
+add_aggregate_device(_, undefined) -> ok;
 add_aggregate_device(Db, Device) ->
     DeviceId = wh_json:get_value(<<"_id">>, Device),
     _ = case couch_mgr:lookup_doc_rev(?WH_SIP_DB, DeviceId) of
@@ -392,22 +397,20 @@ add_aggregate_device(Db, Device) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec rm_aggregate_device/2 :: (ne_binary(), 'undefined' | ne_binary()) -> 'ok'.
-rm_aggregate_device(_, undefined) ->
-    ok;
+rm_aggregate_device(_, undefined) -> ok;
 rm_aggregate_device(Db, Device) ->
     DeviceId = wh_json:get_value(<<"_id">>, Device),
-    _ = case couch_mgr:open_doc(?WH_SIP_DB, DeviceId) of
-            {ok, JObj} ->
-                lager:debug("removing aggregated device ~s/~s", [Db, DeviceId]),
-                couch_mgr:del_doc(?WH_SIP_DB, JObj);
-            {error, not_found} ->
-                ok
-        end,
-    ok.
+    case couch_mgr:open_doc(?WH_SIP_DB, DeviceId) of
+        {error, not_found} -> ok;
+        {ok, JObj} ->
+            lager:debug("removing aggregated device ~s/~s", [Db, DeviceId]),
+            couch_mgr:del_doc(?WH_SIP_DB, JObj),
+            ok
+    end.
 
 -spec amqp_pool_request/3 :: (api_terms(), wh_amqp_worker:publish_fun(), wh_amqp_worker:validate_fun()) ->
                                      {'ok', wh_json:json_object()} |
