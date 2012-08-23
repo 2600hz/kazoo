@@ -83,10 +83,7 @@
                                                   ]}
                                    ]).
 
--define(RESPONDERS, [{{acdc_agent_handler, handle_agent_status}
-                      ,{<<"agent">>, <<"status_update">>}
-                     }
-                     ,{{acdc_agent_handler, handle_sync_req}
+-define(RESPONDERS, [{{acdc_agent_handler, handle_sync_req}
                        ,{<<"agents">>, <<"sync_req">>}
                       }
                      ,{{acdc_agent_handler, handle_sync_resp}
