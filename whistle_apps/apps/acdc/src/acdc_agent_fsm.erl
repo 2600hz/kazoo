@@ -20,6 +20,8 @@
          ,originate_ready/2
          ,originate_failed/2
          ,sync_resp/2
+         ,pause/2
+         ,resume/1
         ]).
 
 %% gen_fsm callbacks
@@ -50,6 +52,8 @@
 -define(RESYNC_RESPONSE_TIMEOUT, 15000).
 -define(RESYNC_RESPONSE_MESSAGE, resync_response_timeout).
 
+-define(PAUSE_MESSAGE, pause_expired).
+
 -record(state, {
           acct_id :: ne_binary()
          ,agent_id :: ne_binary()
@@ -59,6 +63,7 @@
          ,sync_ref :: reference()
          ,member_call_id :: ne_binary()
          ,agent_call_id :: ne_binary()
+         ,next_status :: ne_binary()
          }).
 
 %%%===================================================================
@@ -153,6 +158,20 @@ sync_resp(FSM, JObj) ->
 
 %%--------------------------------------------------------------------
 %% @doc
+%% @end
+%%--------------------------------------------------------------------
+pause(FSM, Timeout) ->
+    gen_fsm:send_event(FSM, {pause, Timeout}).
+
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+resume(FSM) ->
+    gen_fsm:send_event(FSM, {resume}).
+
+%%--------------------------------------------------------------------
+%% @doc
 %% Creates a gen_fsm process which calls Module:init/1 to
 %% initialize. To ensure a synchronized start-up procedure, this
 %% function does not return until Module:init/1 has returned.
@@ -229,6 +248,10 @@ sync({sync_resp, JObj}, #state{sync_ref=Ref}=State) ->
             _ = erlang:cancel_timer(Ref),
             {next_state, sync, State#state{sync_ref=start_resync_timer()}}
     end;
+sync({pause, Timeout}, State) ->
+    lager:debug("recv status update while syncing, pausing for ~b ms", [Timeout]),
+    Ref = start_pause_timer(Timeout),
+    {next_state, paused, State#state{sync_ref=Ref}};
 sync(_Evt, State) ->
     lager:debug("unhandled event: ~p", [_Evt]),
     {next_state, sync, State}.
@@ -417,6 +440,12 @@ wrapup(_Evt, State) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+paused({timeout, Ref, ?PAUSE_MESSAGE}, #state{sync_ref=Ref}=State) when is_reference(Ref) ->
+    lager:debug("pause timer expired, putting agent back into action"),
+    {next_state, ready, State#state{sync_ref=undefined}};
+paused({resume}, State) ->
+    lager:debug("resume received, putting agent back into action"),
+    {next_state, ready, State};
 paused({member_connect_req, _}, State) ->
     {next_state, paused, State};
 paused({member_connect_win, JObj}, #state{agent_proc=Srv}=State) ->
@@ -527,10 +556,13 @@ start_sync_timer() ->
 start_resync_timer() ->
     gen_fsm:start_timer(?RESYNC_RESPONSE_TIMEOUT, ?RESYNC_RESPONSE_MESSAGE).
 
+-spec start_pause_timer/1 :: (pos_integer()) -> reference().
+start_pause_timer(Timeout) ->
+    gen_fsm:start_timer(Timeout, ?PAUSE_MESSAGE).
+
 -spec callid/1 :: (wh_json:json_object()) -> ne_binary() | 'undefined'.
 callid(JObj) ->
     case wh_json:get_value(<<"Call-ID">>, JObj) of
         undefined -> wh_json:get_value([<<"Call">>, <<"Call-ID">>], JObj);
         CallId -> CallId
     end.
-            
