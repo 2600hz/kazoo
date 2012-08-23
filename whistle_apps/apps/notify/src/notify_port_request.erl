@@ -95,7 +95,22 @@ create_template_props(Event, Account) ->
      ,{<<"account">>, notify_util:json_to_template_props(Account)}
      ,{<<"admin">>, notify_util:json_to_template_props(Admin)}
      ,{<<"service">>, notify_util:get_service_props(Account, ?MOD_CONFIG_CAT)}
+     ,{<<"send_from">>, get_send_from(Admin)}
     ].
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec get_send_from/1 :: (wh_json:json_object()) -> ne_binary().
+get_send_from(Admin) ->
+    DefaultFrom = wh_util:to_binary(node()),
+    case whapps_config:get_is_true(?MOD_CONFIG_CAT, <<"send_from_admin_email">>, true) of
+        false -> DefaultFrom;
+        true -> wh_json:get_ne_value(<<"email">>, Admin, DefaultFrom)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private

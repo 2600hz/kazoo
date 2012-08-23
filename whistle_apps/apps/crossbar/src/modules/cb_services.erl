@@ -11,10 +11,10 @@
 -module(cb_services).
 
 -export([init/0
-         ,allowed_methods/0
-         ,resource_exists/0
-         ,validate/1
-         ,get/1
+         ,allowed_methods/0, allowed_methods/1
+         ,resource_exists/0, resource_exists/1
+         ,validate/1, validate/2
+         ,get/1, get/2
          ,post/1
         ]).
 
@@ -52,8 +52,15 @@ init() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec allowed_methods/0 :: () -> http_methods() | [].
+-spec allowed_methods/1 :: (path_token()) -> http_methods() | [].
+
 allowed_methods() ->
     ['GET', 'POST'].
+
+allowed_methods(<<"plan">>) ->
+    ['GET'];
+allowed_methods(_) ->
+    [].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -65,8 +72,12 @@ allowed_methods() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec resource_exists/0 :: () -> 'true'.
+-spec resource_exists/1 :: (path_token()) -> boolean().
 resource_exists() -> true.
 
+resource_exists(<<"plan">>) -> true;
+resource_exists(_) -> false.
+     
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -78,6 +89,8 @@ resource_exists() -> true.
 %% @end
 %%--------------------------------------------------------------------
 -spec validate/1 :: (#cb_context{}) -> #cb_context{}.
+-spec validate/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+
 validate(#cb_context{account_id=AccountId, req_verb = <<"get">>}=Context) ->
     crossbar_util:response(wh_services:public_json(AccountId), Context);
 validate(#cb_context{req_data=JObj, account_id=AccountId, req_verb = <<"post">>}=Context) ->
@@ -91,6 +104,9 @@ validate(#cb_context{req_data=JObj, account_id=AccountId, req_verb = <<"post">>}
             crossbar_util:response(error, wh_util:to_binary(Error), 400, R, Context)
     end.
 
+validate(#cb_context{account_id=AccountId}=Context, <<"plan">>) ->
+    crossbar_util:response(wh_services:service_plan_json(AccountId), Context).
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -100,7 +116,12 @@ validate(#cb_context{req_data=JObj, account_id=AccountId, req_verb = <<"post">>}
 %% @end
 %%--------------------------------------------------------------------
 -spec get/1 :: (#cb_context{}) -> #cb_context{}.
+-spec get/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+
 get(#cb_context{}=Context) ->
+    Context.
+
+get(Context, <<"plan">>) ->
     Context.
 
 %%--------------------------------------------------------------------
