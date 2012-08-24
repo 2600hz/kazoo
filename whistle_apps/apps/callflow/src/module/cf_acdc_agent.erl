@@ -14,7 +14,9 @@
 -module(cf_acdc_agent).
 
 -export([handle/2
-         ,find_agent_status/2
+         ,find_agent/1
+         ,play_not_an_agent/1
+         ,play_agent_invalid/1
         ]).
 
 -include("../callflow.hrl").
