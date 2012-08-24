@@ -166,7 +166,12 @@ wait_for_cdr(State) ->
 
             lager:debug("a-leg CDR for ~s costs ~p", [AcctID, Cost]),
 
-            wait_for_other_leg(State1, bleg);
+            case ts_callflow:get_bleg_id(State1) of
+                <<>> -> 
+                    ALeg = ts_callflow:get_aleg_id(State1),
+                    ts_callflow:finish_leg(State1, ALeg);
+                _Else -> wait_for_other_leg(State1, bleg)
+            end;
         {cdr, bleg, _CDR, State2} ->
             BLeg = ts_callflow:get_bleg_id(State2),
             AcctID = ts_callflow:get_account_id(State2),
