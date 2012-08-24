@@ -19,6 +19,8 @@
          ,logout/1, logout_v/1
          ,pause/1, pause_v/1
          ,resume/1, resume_v/1
+         ,login_queue/1, login_queue_v/1
+         ,logout_queue/1, logout_queue_v/1
         ]).
 
 -export([bind_q/2
@@ -34,6 +36,8 @@
          ,publish_logout/1, publish_logout/2
          ,publish_pause/1, publish_pause/2
          ,publish_resume/1, publish_resume/2
+         ,publish_login_queue/1, publish_login_queue/2
+         ,publish_logout_queue/1, publish_logout_queue/2
         ]).
 
 -include_lib("whistle/include/wh_api.hrl").
@@ -227,7 +231,7 @@ stats_resp_v(JObj) ->
 -define(AGENT_KEY, "acdc.agent."). % append queue ID
 
 -define(AGENT_HEADERS, [<<"Account-ID">>, <<"Agent-ID">>]).
--define(OPTIONAL_AGENT_HEADERS, [<<"Time-Limit">>]).
+-define(OPTIONAL_AGENT_HEADERS, [<<"Time-Limit">>, <<"Queue-ID">>]).
 -define(AGENT_VALUES, [{<<"Event-Category">>, <<"agent">>}]).
 -define(AGENT_TYPES, []).
 
@@ -235,6 +239,8 @@ stats_resp_v(JObj) ->
 -define(LOGOUT_VALUES, [{<<"Event-Name">>, <<"logout">>} | ?AGENT_VALUES]).
 -define(PAUSE_VALUES, [{<<"Event-Name">>, <<"pause">>} | ?AGENT_VALUES]).
 -define(RESUME_VALUES, [{<<"Event-Name">>, <<"resume">>} | ?AGENT_VALUES]).
+-define(LOGIN_QUEUE_VALUES, [{<<"Event-Name">>, <<"login_queue">>} | ?AGENT_VALUES]).
+-define(LOGOUT_QUEUE_VALUES, [{<<"Event-Name">>, <<"logout_queue">>} | ?AGENT_VALUES]).
 
 -spec login/1 :: (api_terms()) ->
                          {'ok', iolist()} |
@@ -253,6 +259,24 @@ login_v(Prop) when is_list(Prop) ->
 login_v(JObj) ->
     login_v(wh_json:to_proplist(JObj)).
 
+-spec login_queue/1 :: (api_terms()) ->
+                               {'ok', iolist()} |
+                               {'error', string()}.
+login_queue(Props) when is_list(Props) ->
+    case login_queue_v(Props) of
+        true -> wh_api:build_message(Props, ?AGENT_HEADERS, ?OPTIONAL_AGENT_HEADERS);
+        false -> {error, "Proplist failed validation for agent_login_queue"}
+    end;
+login_queue(JObj) ->
+    login_queue(wh_json:to_proplist(JObj)).
+
+-spec login_queue_v/1 :: (api_terms()) -> boolean().
+login_queue_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?AGENT_HEADERS, ?LOGIN_QUEUE_VALUES, ?AGENT_TYPES);
+login_queue_v(JObj) ->
+    login_queue_v(wh_json:to_proplist(JObj)).
+
+
 -spec logout/1 :: (api_terms()) ->
                          {'ok', iolist()} |
                          {'error', string()}.
@@ -269,6 +293,23 @@ logout_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?AGENT_HEADERS, ?LOGOUT_VALUES, ?AGENT_TYPES);
 logout_v(JObj) ->
     logout_v(wh_json:to_proplist(JObj)).
+
+-spec logout_queue/1 :: (api_terms()) ->
+                                {'ok', iolist()} |
+                                {'error', string()}.
+logout_queue(Props) when is_list(Props) ->
+    case logout_queue_v(Props) of
+        true -> wh_api:build_message(Props, ?AGENT_HEADERS, ?OPTIONAL_AGENT_HEADERS);
+        false -> {error, "Proplist failed validation for agent_logout_queue"}
+    end;
+logout_queue(JObj) ->
+    logout_queue(wh_json:to_proplist(JObj)).
+
+-spec logout_queue_v/1 :: (api_terms()) -> boolean().
+logout_queue_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?AGENT_HEADERS, ?LOGOUT_QUEUE_VALUES, ?AGENT_TYPES);
+logout_queue_v(JObj) ->
+    logout_queue_v(wh_json:to_proplist(JObj)).
 
 -spec pause/1 :: (api_terms()) ->
                          {'ok', iolist()} |
@@ -438,6 +479,22 @@ publish_logout(JObj) ->
     publish_logout(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_logout(API, ContentType) ->
     {ok, Payload} = logout((API1 = wh_api:prepare_api_payload(API, ?LOGOUT_VALUES))),
+    amqp_util:whapps_publish(Payload, ContentType, agent_status_routing_key(API1)).
+
+-spec publish_login_queue/1 :: (api_terms()) -> 'ok'.
+-spec publish_login_queue/2 :: (api_terms(), ne_binary()) -> 'ok'.
+publish_login_queue(JObj) ->
+    publish_login_queue(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_login_queue(API, ContentType) ->
+    {ok, Payload} = login_queue((API1 = wh_api:prepare_api_payload(API, ?LOGIN_QUEUE_VALUES))),
+    amqp_util:whapps_publish(Payload, ContentType, agent_status_routing_key(API1)).
+
+-spec publish_logout_queue/1 :: (api_terms()) -> 'ok'.
+-spec publish_logout_queue/2 :: (api_terms(), ne_binary()) -> 'ok'.
+publish_logout_queue(JObj) ->
+    publish_logout_queue(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_logout_queue(API, ContentType) ->
+    {ok, Payload} = logout_queue((API1 = wh_api:prepare_api_payload(API, ?LOGOUT_QUEUE_VALUES))),
     amqp_util:whapps_publish(Payload, ContentType, agent_status_routing_key(API1)).
 
 -spec publish_pause/1 :: (api_terms()) -> 'ok'.
