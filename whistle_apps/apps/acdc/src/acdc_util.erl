@@ -12,6 +12,7 @@
          ,bind_to_call_events/1
          ,unbind_from_call_events/1
          ,agents_in_queue/2
+         ,agent_status/2
         ]).
 
 -include("acdc.hrl").
@@ -73,3 +74,16 @@ unbind_from_call_events(?NE_BINARY = CallId) ->
                                           ]);
 unbind_from_call_events(Call) ->
     unbind_from_call_events(whapps_call:call_id(Call)).
+
+-spec agent_status/2 :: (ne_binary(), ne_binary()) -> ne_binary().
+agent_status(?NE_BINARY = AcctDb, AgentId) ->
+    Opts = [{endkey, [AgentId, 0]}
+            ,{startkey, [AgentId, wh_json:new()]}
+            ,{limit, 1}
+            ,descending
+           ],
+    case couch_mgr:get_results(AcctDb, <<"agents/agent_status">>, Opts) of
+        {ok, []} -> <<"logout">>;
+        {error, _E} -> <<"logout">>;
+        {ok, [StatusJObj|_]} -> wh_json:get_value(<<"value">>, StatusJObj)
+    end.

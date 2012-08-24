@@ -24,24 +24,30 @@ init_acdc() ->
     [init_account(Acct) || Acct <- Accts].
 
 -spec init_account/1 :: (ne_binary()) -> 'ok'.
-init_account(Acct) ->
-    lager:debug("init account: ~s", [Acct]),
+init_account(AcctDb) ->
+    lager:debug("init account: ~s", [AcctDb]),
 
-    init_queues(Acct, couch_mgr:get_results(Acct, <<"queues/crossbar_listing">>, [include_docs])),
-    init_agents(Acct, couch_mgr:get_results(Acct, <<"agents/crossbar_listing">>, [include_docs])).
+    init_queues(AcctDb, couch_mgr:get_results(AcctDb, <<"queues/crossbar_listing">>, [include_docs])),
+    init_agents(AcctDb, couch_mgr:get_results(AcctDb, <<"agents/crossbar_listing">>, [include_docs])).
 
 -spec init_queues/2 :: (ne_binary(), {'ok', wh_json:json_objects()} | {'error', _}) -> any().
-init_queues(Acct, {ok, []}) ->
-    lager:debug("no queues in ~s", [Acct]);
-init_queues(Acct, {error, _E}) ->
-    lager:debug("error fetching queues in ~s: ~p", [Acct, _E]);
-init_queues(Acct, {ok, Queues}) ->
-    [acdc_queues_sup:new(Acct, wh_json:get_value(<<"doc">>, Q)) || Q <- Queues].
+init_queues(_AcctDb, {ok, []}) ->
+    lager:debug("no queues in ~s", [_AcctDb]);
+init_queues(_AcctDb, {error, _E}) ->
+    lager:debug("error fetching queues in ~s: ~p", [_AcctDb, _E]);
+init_queues(AcctDb, {ok, Queues}) ->
+    [acdc_queues_sup:new(AcctDb, wh_json:get_value(<<"doc">>, Q)) || Q <- Queues].
 
 -spec init_agents/2 :: (ne_binary(), {'ok', wh_json:json_objects()} | {'error', _}) -> any().
-init_agents(Acct, {ok, []}) ->
-    lager:debug("no agents in ~s", [Acct]);
-init_agents(Acct, {error, _E}) ->
-    lager:debug("error fetching agents in ~s: ~p", [Acct, _E]);
-init_agents(Acct, {ok, Agents}) ->
-    [acdc_agents_sup:new(Acct, wh_json:get_value(<<"doc">>, A)) || A <- Agents].
+init_agents(_AcctDb, {ok, []}) ->
+    lager:debug("no agents in ~s", [_AcctDb]);
+init_agents(_AcctDb, {error, _E}) ->
+    lager:debug("error fetching agents in ~s: ~p", [_AcctDb, _E]);
+init_agents(AcctDb, {ok, Agents}) ->
+    [init_agent(AcctDb, wh_json:get_value(<<"doc">>, A)) || A <- Agents].
+
+init_agent(AcctDb, Agent) ->
+    case acdc_util:agent_status(AcctDb, wh_json:get_value(<<"_id">>, Agent)) of
+        <<"logout">> -> ok;
+        _ -> acdc_agents_sup:new(AcctDb, Agent)
+    end.
