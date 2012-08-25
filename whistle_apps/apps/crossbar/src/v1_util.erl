@@ -227,7 +227,7 @@ extract_file(Context, ContentType, Req0) ->
                                                  ]),
                     lager:debug("request is a file upload of type: ~s", [ContentType]),
                     FileName = <<"uploaded_file_"
-                                 ,(wh_util:to_binary(wh_util:current_tstamp()))/binary>>,  
+                                 ,(wh_util:to_binary(wh_util:current_tstamp()))/binary>>,
                     {Context#cb_context{req_files=[{FileName, FileJObj}]}, Req2}
             end
     end.
@@ -253,7 +253,7 @@ decode_base64(Context, CT, Req0) ->
                                          ]),
             lager:debug("request is a base64 file upload of type: ~s", [ContentType]),
             FileName = <<"uploaded_file_"
-                         ,(wh_util:to_binary(wh_util:current_tstamp()))/binary>>,  
+                         ,(wh_util:to_binary(wh_util:current_tstamp()))/binary>>,
             {Context#cb_context{req_files=[{FileName, FileJObj}]}, Req1}
     end.
 
@@ -280,7 +280,7 @@ corrected_base64_decode(Base64) ->
                            {{'malformed', ne_binary()}, #http_req{}}.
 -spec get_json_body/1 :: (#http_req{}) -> get_json_return().
 -spec get_json_body/2 :: (#http_req{}, ne_binary()) -> get_json_return().
-                                 
+
 get_json_body(Req0) ->
     case cowboy_http_req:body(Req0) of
         {error, _E} ->
