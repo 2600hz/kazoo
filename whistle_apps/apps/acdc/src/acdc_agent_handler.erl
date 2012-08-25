@@ -20,18 +20,28 @@
 
 -spec handle_status_update/2 :: (wh_json:json_object(), wh_proplist()) -> 'ok'.
 handle_status_update(JObj, _Props) ->
-    true = wapi_acdc_agent:status_update_v(JObj),
-
     AcctId = wh_json:get_value(<<"Account-ID">>, JObj),
     AgentId = wh_json:get_value(<<"Agent-ID">>, JObj),
     Timeout = wh_json:get_integer_value(<<"Timeout">>, JObj),
 
-    case wh_json:get_value(<<"New-Status">>, JObj) of
+    case wh_json:get_value(<<"Event-Name">>, JObj) of
         <<"login">> -> maybe_start_agent(AcctId, AgentId);
         <<"logout">> -> maybe_stop_agent(AcctId, AgentId);
         <<"pause">> -> maybe_pause_agent(AcctId, AgentId, Timeout);
-        <<"resume">> -> maybe_resume_agent(AcctId, AgentId)
+        <<"resume">> -> maybe_resume_agent(AcctId, AgentId);
+        Event -> maybe_agent_queue_change(AcctId, AgentId, Event
+                                          ,wh_json:get_value(<<"Queue-ID">>, JObj)
+                                         )
     end.
+
+maybe_agent_queue_change(AcctId, AgentId, <<"login_queue">>, QueueId) ->
+    update_agent(acdc_agents_sup:find_agent_supervisor(AcctId, AgentId), QueueId, add_acdc_queue);
+maybe_agent_queue_change(AcctId, AgentId, <<"logout_queue">>, QueueId) ->
+    update_agent(acdc_agents_sup:find_agent_supervisor(AcctId, AgentId), QueueId, rm_acdc_queue).
+
+update_agent(undefined, _, _) -> ok;
+update_agent(Super, Q, F) -> 
+    acdc_agent:F(acdc_agent_sup:agent(Super), Q).
 
 maybe_start_agent(AcctId, AgentId) ->
     case acdc_agents_sup:find_agent_supervisor(AcctId, AgentId) of
