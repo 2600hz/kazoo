@@ -10,8 +10,7 @@
 %%%-------------------------------------------------------------------
 -module(wapi_acdc_agent).
 
--export([status_update/1, status_update_v/1
-         ,sync_req/1, sync_req_v/1
+-export([sync_req/1, sync_req_v/1
          ,sync_resp/1, sync_resp_v/1
          ,stats_req/1, stats_req_v/1
          ,stats_resp/1, stats_resp_v/1
@@ -27,8 +26,7 @@
          ,unbind_q/2
         ]).
 
--export([publish_status_update/1, publish_status_update/2
-         ,publish_sync_req/1, publish_sync_req/2
+-export([publish_sync_req/1, publish_sync_req/2
          ,publish_sync_resp/2, publish_sync_resp/3
          ,publish_stats_req/1, publish_stats_req/2
          ,publish_stats_resp/2, publish_stats_resp/3
@@ -41,53 +39,6 @@
         ]).
 
 -include_lib("whistle/include/wh_api.hrl").
-
-%%------------------------------------------------------------------------------
-%% Status Update
-%%   Agent processes are updated with what the real agent is up to via this API.
-%%   Most probably, the callflow action for agent login/logout/away/back will
-%%   send these API messages
-%%------------------------------------------------------------------------------
--define(STATUS_UPDATE_KEY, "agent.status_update.").
-
--define(STATUS_UPDATE_HEADERS, [<<"Account-ID">>, <<"Agent-ID">>, <<"New-Status">>]).
--define(OPTIONAL_STATUS_UPDATE_HEADERS, [<<"Timeout">>]).
--define(STATUS_UPDATE_VALUES, [{<<"New-Status">>, [<<"login">>, <<"logout">>
-                                                   ,<<"pause">>, <<"resume">>
-                                                  ]}
-                               ,{<<"Event-Category">>, <<"agent">>}
-                               ,{<<"Event-Name">>, <<"status_update">>}
-                              ]).
--define(STATUS_UPDATE_TYPES, []).
-
--spec status_update/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
-status_update(Props) when is_list(Props) ->
-    case status_update_v(Props) of
-        true -> wh_api:build_message(Props, ?STATUS_UPDATE_HEADERS, ?OPTIONAL_STATUS_UPDATE_HEADERS);
-        false -> {error, "Proplist failed validation for status_update"}
-    end;
-status_update(JObj) ->
-    status_update(wh_json:to_proplist(JObj)).
-
--spec status_update_v/1 :: (api_terms()) -> boolean().
-status_update_v(Prop) when is_list(Prop) ->
-    wh_api:validate(Prop, ?STATUS_UPDATE_HEADERS, ?STATUS_UPDATE_VALUES, ?STATUS_UPDATE_TYPES);
-status_update_v(JObj) ->
-    status_update_v(wh_json:to_proplist(JObj)).
-
--spec status_routing_key/1 :: (wh_json:json_object() | wh_proplist()) -> ne_binary().
--spec status_routing_key/2 :: (ne_binary(), ne_binary()) -> ne_binary().
-status_routing_key(Props) when is_list(Props) ->
-    Id = props:get_value(<<"Agent-ID">>, Props, <<"*">>),
-    AcctId = props:get_value(<<"Account-ID">>, Props, <<"*">>),
-    status_routing_key(AcctId, Id);
-status_routing_key(JObj) ->
-    Id = wh_json:get_value(<<"Agent-ID">>, JObj, <<"*">>),
-    AcctId = wh_json:get_value(<<"Account-ID">>, JObj, <<"*">>),
-    status_routing_key(AcctId, Id).
-
-status_routing_key(AcctId, Id) ->
-    <<?STATUS_UPDATE_KEY, AcctId/binary, ".", Id/binary>>.
 
 %%------------------------------------------------------------------------------
 %% Agent Sync Req
@@ -228,7 +179,7 @@ stats_resp_v(JObj) ->
 %%------------------------------------------------------------------------------
 %% Agent Login/Logout/Pause/Resume
 %%------------------------------------------------------------------------------
--define(AGENT_KEY, "acdc.agent."). % append queue ID
+-define(AGENT_KEY, "acdc.agent.action."). % append queue ID
 
 -define(AGENT_HEADERS, [<<"Account-ID">>, <<"Agent-ID">>]).
 -define(OPTIONAL_AGENT_HEADERS, [<<"Time-Limit">>, <<"Queue-ID">>]).
@@ -372,22 +323,23 @@ agent_status_routing_key(AcctId, AgentId, Status) ->
 bind_q(Q, Props) ->
     AgentId = props:get_value(agent_id, Props, <<"*">>),
     AcctId = props:get_value(account_id, Props, <<"*">>),
+    Status = props:get_value(status, Props, <<"*">>),
 
     amqp_util:whapps_exchange(),
 
-    bind_q(Q, {AcctId, AgentId}, props:get_value(restrict_to, Props)).
+    bind_q(Q, {AcctId, AgentId, Status}, props:get_value(restrict_to, Props)).
 
-bind_q(Q, {AcctId, AgentId}, undefined) ->
-    amqp_util:bind_q_to_whapps(Q, status_routing_key(AcctId, AgentId)),
+bind_q(Q, {AcctId, AgentId, Status}, undefined) ->
+    amqp_util:bind_q_to_whapps(Q, agent_status_routing_key(AcctId, AgentId, Status)),
     amqp_util:bind_q_to_whapps(Q, sync_req_routing_key(AcctId, AgentId)),
     amqp_util:bind_q_to_whapps(Q, stats_req_routing_key(AcctId));
-bind_q(Q, {AcctId, AgentId}=Ids, [status|T]) ->
-    amqp_util:bind_q_to_whapps(Q, status_routing_key(AcctId, AgentId)),
+bind_q(Q, {AcctId, AgentId, Status}=Ids, [status|T]) ->
+    amqp_util:bind_q_to_whapps(Q, agent_status_routing_key(AcctId, AgentId, Status)),
     bind_q(Q, Ids, T);
-bind_q(Q, {AcctId, AgentId}=Ids, [sync|T]) ->
+bind_q(Q, {AcctId, AgentId, _}=Ids, [sync|T]) ->
     amqp_util:bind_q_to_whapps(Q, sync_req_routing_key(AcctId, AgentId)),
     bind_q(Q, Ids, T);
-bind_q(Q, {AcctId, _}=Ids, [stats|T]) ->
+bind_q(Q, {AcctId, _, _}=Ids, [stats|T]) ->
     amqp_util:bind_q_to_whapps(Q, stats_req_routing_key(AcctId)),
     bind_q(Q, Ids, T);
 bind_q(Q, Ids, [_|T]) ->
@@ -400,20 +352,21 @@ bind_q(_, _, []) ->
 unbind_q(Q, Props) ->
     AgentId = props:get_value(agent_id, Props, <<"*">>),
     AcctId = props:get_value(account_id, Props, <<"*">>),
+    Status = props:get_value(status, Props, <<"*">>),
 
-    unbind_q(Q, {AcctId, AgentId}, props:get_value(restrict_to, Props)).
+    unbind_q(Q, {AcctId, AgentId, Status}, props:get_value(restrict_to, Props)).
 
-unbind_q(Q, {AcctId, AgentId}, undefined) ->
-    amqp_util:unbind_q_from_whapps(Q, status_routing_key(AcctId, AgentId)),
+unbind_q(Q, {AcctId, AgentId, Status}, undefined) ->
+    amqp_util:unbind_q_from_whapps(Q, agent_status_routing_key(AcctId, AgentId, Status)),
     amqp_util:unbind_q_from_whapps(Q, sync_req_routing_key(AcctId, AgentId)),
     amqp_util:unbind_q_from_whapps(Q, stats_req_routing_key(AcctId));
-unbind_q(Q, {AcctId, AgentId}=Ids, [status|T]) ->
-    amqp_util:unbind_q_from_whapps(Q, status_routing_key(AcctId, AgentId)),
+unbind_q(Q, {AcctId, AgentId, Status}=Ids, [status|T]) ->
+    amqp_util:unbind_q_from_whapps(Q, agent_status_routing_key(AcctId, AgentId, Status)),
     unbind_q(Q, Ids, T);
-unbind_q(Q, {AcctId, AgentId}=Ids, [sync|T]) ->
+unbind_q(Q, {AcctId, AgentId, _}=Ids, [sync|T]) ->
     amqp_util:unbind_q_from_whapps(Q, sync_req_routing_key(AcctId, AgentId)),
     unbind_q(Q, Ids, T);
-unbind_q(Q, {AcctId, _}=Ids, [stats|T]) ->
+unbind_q(Q, {AcctId, _, _}=Ids, [stats|T]) ->
     amqp_util:unbind_q_from_whapps(Q, stats_req_routing_key(AcctId)),
     unbind_q(Q, Ids, T);
 unbind_q(Q, Ids, [_|T]) ->
@@ -424,15 +377,6 @@ unbind_q(_, _, []) ->
 %%------------------------------------------------------------------------------
 %% Publishers for convenience
 %%------------------------------------------------------------------------------
-
--spec publish_status_update/1 :: (api_terms()) -> 'ok'.
--spec publish_status_update/2 :: (api_terms(), ne_binary()) -> 'ok'.
-publish_status_update(JObj) ->
-    publish_status_update(JObj, ?DEFAULT_CONTENT_TYPE).
-publish_status_update(API, ContentType) ->
-    {ok, Payload} = wh_api:prepare_api_payload(API, ?STATUS_UPDATE_VALUES, fun status_update/1),
-    amqp_util:whapps_publish(status_routing_key(API), Payload, ContentType).
-
 -spec publish_sync_req/1 :: (api_terms()) -> 'ok'.
 -spec publish_sync_req/2 :: (api_terms(), ne_binary()) -> 'ok'.
 publish_sync_req(JObj) ->
@@ -471,7 +415,7 @@ publish_login(JObj) ->
     publish_login(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_login(API, ContentType) ->
     {ok, Payload} = login((API1 = wh_api:prepare_api_payload(API, ?LOGIN_VALUES))),
-    amqp_util:whapps_publish(Payload, ContentType, agent_status_routing_key(API1)).
+    amqp_util:whapps_publish(agent_status_routing_key(API1), Payload, ContentType).
 
 -spec publish_logout/1 :: (api_terms()) -> 'ok'.
 -spec publish_logout/2 :: (api_terms(), ne_binary()) -> 'ok'.
@@ -479,7 +423,7 @@ publish_logout(JObj) ->
     publish_logout(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_logout(API, ContentType) ->
     {ok, Payload} = logout((API1 = wh_api:prepare_api_payload(API, ?LOGOUT_VALUES))),
-    amqp_util:whapps_publish(Payload, ContentType, agent_status_routing_key(API1)).
+    amqp_util:whapps_publish(agent_status_routing_key(API1), Payload, ContentType).
 
 -spec publish_login_queue/1 :: (api_terms()) -> 'ok'.
 -spec publish_login_queue/2 :: (api_terms(), ne_binary()) -> 'ok'.
@@ -487,7 +431,7 @@ publish_login_queue(JObj) ->
     publish_login_queue(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_login_queue(API, ContentType) ->
     {ok, Payload} = login_queue((API1 = wh_api:prepare_api_payload(API, ?LOGIN_QUEUE_VALUES))),
-    amqp_util:whapps_publish(Payload, ContentType, agent_status_routing_key(API1)).
+    amqp_util:whapps_publish(agent_status_routing_key(API1), Payload, ContentType).
 
 -spec publish_logout_queue/1 :: (api_terms()) -> 'ok'.
 -spec publish_logout_queue/2 :: (api_terms(), ne_binary()) -> 'ok'.
@@ -495,7 +439,7 @@ publish_logout_queue(JObj) ->
     publish_logout_queue(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_logout_queue(API, ContentType) ->
     {ok, Payload} = logout_queue((API1 = wh_api:prepare_api_payload(API, ?LOGOUT_QUEUE_VALUES))),
-    amqp_util:whapps_publish(Payload, ContentType, agent_status_routing_key(API1)).
+    amqp_util:whapps_publish(agent_status_routing_key(API1), Payload, ContentType).
 
 -spec publish_pause/1 :: (api_terms()) -> 'ok'.
 -spec publish_pause/2 :: (api_terms(), ne_binary()) -> 'ok'.
@@ -503,7 +447,7 @@ publish_pause(JObj) ->
     publish_pause(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_pause(API, ContentType) ->
     {ok, Payload} = pause((API1 = wh_api:prepare_api_payload(API, ?PAUSE_VALUES))),
-    amqp_util:whapps_publish(Payload, ContentType, agent_status_routing_key(API1)).
+    amqp_util:whapps_publish(agent_status_routing_key(API1), Payload, ContentType).
 
 -spec publish_resume/1 :: (api_terms()) -> 'ok'.
 -spec publish_resume/2 :: (api_terms(), ne_binary()) -> 'ok'.
@@ -511,4 +455,4 @@ publish_resume(JObj) ->
     publish_resume(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_resume(API, ContentType) ->
     {ok, Payload} = resume((API1 = wh_api:prepare_api_payload(API, ?RESUME_VALUES))),
-    amqp_util:whapps_publish(Payload, ContentType, agent_status_routing_key(API1)).
+    amqp_util:whapps_publish(agent_status_routing_key(API1), Payload, ContentType).
