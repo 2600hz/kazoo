@@ -37,7 +37,7 @@ init() ->
 
     _ = supervisor:start_child(crossbar_sup, ?CHILDSPEC),
 
-    crossbar_bindings:bind(<<"v1_resource.authenticate">>, ?MODULE, authenticate),
+    _ = crossbar_bindings:bind(<<"v1_resource.authenticate">>, ?MODULE, authenticate),
     crossbar_bindings:bind(<<"v1_resource.finish_request.*.*">>, ?MODULE, finish_request).
 
 stop() ->
