@@ -90,20 +90,20 @@ maybe_update_status(Call, _AgentId, _Status, _NewStatus, _Data) ->
     play_agent_invalid(Call).
 
 login_agent(Call, AgentId) ->
-    update_agent_status(Call, AgentId, <<"login">>).
+    update_agent_status(Call, AgentId, <<"login">>, fun wapi_acdc_agent:publish_login/1).
 
 logout_agent(Call, AgentId) ->
-    update_agent_status(Call, AgentId, <<"logout">>).
+    update_agent_status(Call, AgentId, <<"logout">>, fun wapi_acdc_agent:publish_logout/1).
 
 pause_agent(Call, AgentId, Timeout) ->
-    update_agent_status(Call, AgentId, <<"pause">>, Timeout).
+    update_agent_status(Call, AgentId, <<"pause">>, fun wapi_acdc_agent:publish_pause/1, Timeout).
 
 resume_agent(Call, AgentId) ->
-    update_agent_status(Call, AgentId, <<"resume">>).
+    update_agent_status(Call, AgentId, <<"resume">>, fun wapi_acdc_agent:publish_resume/1).
 
-update_agent_status(Call, AgentId, Status) ->
-    update_agent_status(Call, AgentId, Status, undefined).
-update_agent_status(Call, AgentId, Status, Timeout) ->
+update_agent_status(Call, AgentId, Status, PubFun) ->
+    update_agent_status(Call, AgentId, Status, PubFun, undefined).
+update_agent_status(Call, AgentId, Status, PubFun, Timeout) ->
     AcctDb = whapps_call:account_db(Call),
     Doc = wh_json:from_list([{<<"call_id">>, whapps_call:call_id(Call)}
                              ,{<<"agent_id">>, AgentId}
@@ -111,17 +111,16 @@ update_agent_status(Call, AgentId, Status, Timeout) ->
                              ,{<<"pvt_type">>, <<"agent_activity">>}
                             ]),
     {ok, _D} = couch_mgr:save_doc(AcctDb, wh_doc:update_pvt_parameters(Doc, AcctDb)),
-    send_new_status(Call, AgentId, Status, Timeout).
+    send_new_status(Call, AgentId, PubFun, Timeout).
 
-send_new_status(Call, AgentId, Status, Timeout) ->
+send_new_status(Call, AgentId, PubFun, Timeout) ->
     Update = props:filter_undefined(
                [{<<"Account-ID">>, whapps_call:account_id(Call)}
                 ,{<<"Agent-ID">>, AgentId}
-                ,{<<"New-Status">>, Status}
                 ,{<<"Timeout">>, Timeout}
                 | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                ]),
-    wapi_acdc_agent:publish_status_update(Update).
+    PubFun(Update).
 
 find_agent(Call) ->
     case whapps_call:owner_id(Call) of

@@ -37,22 +37,18 @@ handle(Data, Call) ->
     cf_exe:continue(Call).
 
 notify_agent(Call, AgentId, QueueId, <<"login">>) ->
-    login_agent(Call, AgentId, QueueId);
+    send_agent_message(Call, AgentId, QueueId, fun wapi_acdc_agent:publish_login_queue/1);
 notify_agent(Call, AgentId, QueueId, <<"logout">>) ->
-    logout_agent(Call, AgentId, QueueId);
+    send_agent_message(Call, AgentId, QueueId, fun wapi_acdc_agent:publish_logout_queue/1);
 notify_agent(Call, _AgentId, _QueueId, _Action) ->
     lager:debug("invalid agent action: ~s", [_Action]),
     cf_acdc_agent:play_agent_invalid(Call).
 
-login_agent(Call, AgentId, QueueId) ->
-    send_agent_message(Call, AgentId, QueueId, fun wapi_acdc_agent:publish_login_queue/1).
-logout_agent(Call, AgentId, QueueId) ->
-    send_agent_message(Call, AgentId, QueueId, fun wapi_acdc_agent:publish_logout_queue/1).
-
-send_agent_message(Call, AgentId, QueueId, PublisherFun) ->
+send_agent_message(Call, AgentId, QueueId, PubFun) ->
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, whapps_call:account_id(Call)}
               ,{<<"Agent-ID">>, AgentId}
               ,{<<"Queue-ID">>, QueueId}
+              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
-    PublisherFun(Prop).
+    PubFun(Prop).
