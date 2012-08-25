@@ -113,44 +113,25 @@ get_req_data(Context, Req0) ->
     {QS0, Req1} = cowboy_http_req:qs_vals(Req0),
     QS = wh_json:from_list(QS0),
 
-    try get_json_body(Req1) of
-        {JSON, Req2} ->
-            lager:debug("request body successfully parsed as JSON"),
-            {Context#cb_context{req_json=JSON
-                                ,req_data=wh_json:get_value(<<"data">>, JSON, wh_json:new())
-                                ,query_json=QS
-                               }
-             ,Req2}
-    catch
-        _E:_R ->
-            lager:debug("failed to parse request body as JSON, checking content-type"),
-            get_req_data(Context, cowboy_http_req:parse_header('Content-Type', Req0), QS)
-    end.
+    get_req_data(Context, cowboy_http_req:parse_header('Content-Type', Req1), QS).
 
-get_req_data(Context, {undefined, Req1}, QS) ->
+get_req_data(Context, {undefined, Req0}, QS) ->
     lager:debug("undefined content type when getting req data, assuming application/json"),
-    {JSON, Req2} = get_json_body(Req1),
+    {JSON, Req1} = get_json_body(Req0),
     {Context#cb_context{req_json=JSON
                         ,req_data=wh_json:get_value(<<"data">>, JSON, wh_json:new())
                         ,query_json=QS
                        }
-     ,Req2};
-get_req_data(Context, {{<<"multipart">>, <<"form-data">>, _}, Req1}, QS) ->
+     ,Req1};
+get_req_data(Context, {{<<"multipart">>, <<"form-data">>, _}, Req}, QS) ->
     lager:debug("multipart/form-data content type when getting req data"),
-    case catch extract_multipart(Context#cb_context{query_json=QS}, Req1) of
-        {'EXIT', _E} ->
-            lager:debug("failed to extract multipart: ~p", [_E]),
-            {halt, Context, Req1};
-        Resp -> Resp
-    end;
+    maybe_extract_multipart(Context#cb_context{query_json=QS}, Req, QS);
+
+%% cURL defaults to this content-type, so check it for JSON if parsing fails
 get_req_data(Context, {{<<"application">>, <<"x-www-form-urlencoded">>, _}, Req1}, QS) ->
     lager:debug("application/x-www-form-urlencoded content type when getting req data"),
-    case catch extract_multipart(Context#cb_context{query_json=QS}, Req1) of
-        {'EXIT', _} ->
-            lager:debug("failed to extract multipart"),
-            {halt, Context, Req1};
-        Resp -> Resp
-    end;
+    maybe_extract_multipart(Context#cb_context{query_json=QS}, Req1, QS);
+
 get_req_data(Context, {{<<"application">>, <<"json">>, _}, Req1}, QS) ->
     lager:debug("application/json content type when getting req data"),
     {JSON, Req2} = get_json_body(Req1),
@@ -177,6 +158,29 @@ get_req_data(Context, {{ContentType, ContentSubType, _}, Req1}, QS) ->
     lager:debug("unknown content-type: ~s/~s", [ContentType, ContentSubType]),
     extract_file(Context#cb_context{query_json=QS}, list_to_binary([ContentType, "/", ContentSubType]), Req1).
 
+-spec maybe_extract_multipart/3 :: (#cb_context{}, #http_req{}, wh_json:json_object()) ->
+                                           {#cb_context{}, #http_req{}} |
+                                           {'halt', #cb_context{}, #http_req{}}.
+maybe_extract_multipart(Context, Req0, QS) ->
+    case catch extract_multipart(Context, Req0) of
+        {'EXIT', _} ->
+            lager:debug("failed to extract multipart"),
+            try get_json_body(Req0) of
+                {JSON, Req1} ->
+                    lager:debug("was able to parse as JSON"),
+                    lager:debug("was the payload valid: ~s", [wh_json:is_json_object(JSON)]),
+                    {Context#cb_context{req_json=JSON
+                                        ,req_data=wh_json:get_value(<<"data">>, JSON, wh_json:new())
+                                        ,query_json=QS
+                                       }, Req1}
+            catch
+                _:_ ->
+                    lager:debug("failed to get JSON too"),
+                    {halt, Context, Req0}
+            end;
+        Resp -> Resp
+    end.
+
 -spec extract_multipart/2 :: (#cb_context{}, #http_req{}) -> {#cb_context{}, #http_req{}}.
 extract_multipart(#cb_context{req_files=Files}=Context, #http_req{}=Req0) ->
     MPData = cowboy_http_req:multipart_data(Req0),
@@ -187,8 +191,9 @@ extract_multipart(#cb_context{req_files=Files}=Context, #http_req{}=Req0) ->
             extract_multipart(Context#cb_context{req_files=[JObj|Files]}, Req1)
     end.
 
--spec extract_multipart_content/2 :: (cowboy_multipart_response(), wh_json:json_object()) -> {'end_of_part', wh_json:json_object(), #http_req{}} |
-                                                                                             {'eof', #http_req{}}.
+-spec extract_multipart_content/2 :: (cowboy_multipart_response(), wh_json:json_object()) ->
+                                             {'end_of_part', wh_json:json_object(), #http_req{}} |
+                                             {'eof', #http_req{}}.
 extract_multipart_content({eof, _}=EOF, _) -> EOF;
 extract_multipart_content({end_of_part, Req}, JObj) -> {end_of_part, JObj, Req};
 extract_multipart_content({{headers, Headers}, Req}, JObj) ->
@@ -203,7 +208,8 @@ extract_multipart_content({{data, Datum}, Req}, JObj) ->
                               ,wh_json:set_value(<<"data">>, <<Data/binary, Datum/binary>>, JObj)
                              ).
 
--spec extract_file/3 :: (#cb_context{}, ne_binary(), #http_req{}) -> {#cb_context{}, #http_req{}}.
+-spec extract_file/3 :: (#cb_context{}, ne_binary(), #http_req{}) ->
+                                {#cb_context{}, #http_req{}}.
 extract_file(Context, ContentType, Req0) ->
     case cowboy_http_req:body(Req0) of
         {error, badarg} -> {Context, Req0};
@@ -229,7 +235,9 @@ extract_file(Context, ContentType, Req0) ->
 -spec decode_base64/3 :: (#cb_context{}, ne_binary(), #http_req{}) -> {#cb_context{}, #http_req{}}.
 decode_base64(Context, CT, Req0) ->
     case cowboy_http_req:body(Req0) of
-        {error, badarg} -> {Context, Req0};
+        {error, _E} ->
+            lager:debug("error getting request body: ~p", [_E]),
+            {Context, Req0};
         {ok, Base64Data, Req1} ->
             {EncodedType, FileContents} = decode_base64(Base64Data),
             ContentType = case EncodedType of
@@ -268,8 +276,12 @@ corrected_base64_decode(Base64) when byte_size(Base64) rem 4 == 2 ->
 corrected_base64_decode(Base64) ->
     base64:mime_decode(Base64).
 
--spec get_json_body/1 :: (#http_req{}) -> {wh_json:json_object(), #http_req{}} |
-                                          {{'malformed', ne_binary()}, #http_req{}}.
+-type get_json_return() :: {wh_json:json_object(), #http_req{}} |
+                           {{'malformed', ne_binary()}, #http_req{}} |
+                           {'not_json', ne_binary(), #http_req{}}.
+-spec get_json_body/1 :: (#http_req{}) -> get_json_return().
+-spec get_json_body/2 :: (#http_req{}, ne_binary()) -> get_json_return().
+                                 
 get_json_body(Req0) ->
     case cowboy_http_req:body(Req0) of
         {error, _E} ->
@@ -279,22 +291,25 @@ get_json_body(Req0) ->
             lager:debug("request had no payload"),
             {wh_json:new(), Req1};
         {ok, ReqBody, Req1} ->
-            lager:debug("request has a json payload: ~s", [ReqBody]),
-            try wh_json:decode(ReqBody) of
-                JObj ->
-                    case is_valid_request_envelope(JObj) of
-                        true ->
-                            lager:debug("request envelope is valid"),
-                            {JObj, Req1};
-                        false ->
-                            lager:debug("invalid request envelope"),
-                            {{malformed, <<"Invalid request envelope">>}, Req1}
-                    end
-            catch
-                _:{badmatch, {comma,{decoder,_,S,_,_,_}}} ->
-                    lager:debug("failed to decode json: comma error around char ~s", [wh_util:to_list(S)]),
-                    {{malformed, list_to_binary(["Failed to decode: comma error around char ", wh_util:to_list(S)])}, Req1}
+            get_json_body(Req1, ReqBody)
+    end.
+
+get_json_body(Req, ReqBody) ->
+    lager:debug("request has a json payload: ~s", [ReqBody]),
+    try wh_json:decode(ReqBody) of
+        JObj ->
+            case is_valid_request_envelope(JObj) of
+                true ->
+                    lager:debug("request envelope is valid"),
+                    {JObj, Req};
+                false ->
+                    lager:debug("invalid request envelope"),
+                    {{malformed, <<"Invalid JSON request envelope">>}, Req}
             end
+    catch
+        _:{badmatch, {comma,{decoder,_,S,_,_,_}}} ->
+            lager:debug("failed to decode json: comma error around char ~s", [wh_util:to_list(S)]),
+            {{malformed, list_to_binary(["Failed to decode: comma error around char ", wh_util:to_list(S)])}, Req}
     end.
 
 %%--------------------------------------------------------------------
