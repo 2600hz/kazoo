@@ -75,15 +75,5 @@
           ,method = 'GET' :: http_method()
          }).
 
--ifdef(PROFILE).
--define(TIMER_START(Str), wh_timer:start(Str)).
--define(TIMER_TICK(Str), wh_timer:tick(Str)).
--define(TIMER_STOP(Str), wh_timer:stop(Str)).
--else.
--define(TIMER_START(Str), ok).
--define(TIMER_TICK(Str), ok).
--define(TIMER_STOP(Str), ok).
--endif.
-
 -define(CROSSBAR_HRL, true).
 -endif.
