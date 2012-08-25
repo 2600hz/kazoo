@@ -277,8 +277,7 @@ corrected_base64_decode(Base64) ->
     base64:mime_decode(Base64).
 
 -type get_json_return() :: {wh_json:json_object(), #http_req{}} |
-                           {{'malformed', ne_binary()}, #http_req{}} |
-                           {'not_json', ne_binary(), #http_req{}}.
+                           {{'malformed', ne_binary()}, #http_req{}}.
 -spec get_json_body/1 :: (#http_req{}) -> get_json_return().
 -spec get_json_body/2 :: (#http_req{}, ne_binary()) -> get_json_return().
                                  
