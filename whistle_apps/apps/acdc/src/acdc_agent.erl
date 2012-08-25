@@ -23,6 +23,8 @@
          ,send_sync_req/3
          ,config/1
          ,send_status_update/2
+         ,add_acdc_queue/2
+         ,rm_acdc_queue/2
         ]).
 
 %% gen_server callbacks
@@ -171,6 +173,12 @@ config(Srv) ->
 send_status_update(Srv, Status) ->
     gen_listener:cast(Srv, {send_status_update, Status}).
 
+add_acdc_queue(Srv, Q) ->
+    gen_listener:cast(Srv, {queue_login, Q}).
+
+rm_acdc_queue(Srv, Q) ->
+    gen_listener:cast(Srv, {queue_logout, Q}).
+
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -252,15 +260,37 @@ handle_cast({start_fsm, Supervisor}, #state{
 handle_cast({queue_name, Q}, State) ->
     {noreply, State#state{my_q=Q}};
 
+handle_cast({queue_login, Q}, #state{agent_queues=Qs
+                                     ,account_id=AcctId
+                                    }=State) ->
+    case lists:member(Q, Qs) of
+        true ->
+            lager:debug("already logged into queue ~s", [Q]),
+            {noreply, State};
+        false ->
+            lager:debug("adding binding (logging in) to queue ~s", [Q]),
+            login_to_queue(AcctId, Q),
+            {noreply, State#state{agent_queues=[Q|Qs]}}
+    end;
+
+handle_cast({queue_logout, Q}, #state{agent_queues=Qs
+                                      ,account_id=AcctId
+                                     }=State) ->
+    case lists:member(Q, Qs) of
+        true ->
+            lager:debug("removing binding (logging out) from queue ~s", [Q]),
+            logout_from_queue(AcctId, Q),
+            {noreply, State#state{agent_queues=lists:delete(Q, Qs)}};
+        false ->
+            lager:debug("not logged into queue ~s", [Q]),
+            {noreply, State}
+    end;
+
 handle_cast(bind_to_member_reqs, #state{agent_queues=Qs
                                         ,account_id=AcctId
                                        }=State) ->
     lager:debug("binding to queues: ~p", [Qs]),
-    _ = [gen_listener:add_binding(self(), acdc_queue, [{restrict_to, [member_connect_req]}
-                                                       ,{queue_id, QID}
-                                                       ,{account_id, AcctId}
-                                                  ])
-         || QID <- Qs],
+    _ = [login_to_queue(AcctId, Q) || Q <- Qs],
     {noreply, State};
 
 handle_cast({channel_hungup, CallId}, #state{call=Call}=State) ->
@@ -557,3 +587,17 @@ maybe_connect_to_agent(FSM, EPs, Call) ->
             lager:debug("error originating: ~p", [E]),
             acdc_agent_fsm:originate_failed(FSM, E)
     end.
+
+-spec login_to_queue/2 :: (ne_binary(), ne_binary()) -> 'ok'.
+login_to_queue(AcctId, Q) ->
+    gen_listener:add_binding(self(), acdc_queue, [{restrict_to, [member_connect_req]}
+                                                  ,{queue_id, Q}
+                                                  ,{account_id, AcctId}
+                                                 ]).
+
+-spec logout_from_queue/2 :: (ne_binary(), ne_binary()) -> 'ok'.
+logout_from_queue(AcctId, Q) ->
+    gen_listener:rm_binding(self(), acdc_queue, [{restrict_to, [member_connect_req]}
+                                                 ,{queue_id, Q}
+                                                 ,{account_id, AcctId}
+                                                ]).
