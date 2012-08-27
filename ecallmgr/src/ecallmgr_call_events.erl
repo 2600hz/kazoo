@@ -29,7 +29,11 @@
 -export([get_fs_var/4]).
 -export([publish_channel_destroy/1]).
 -export([handle_publisher_usurp/2]).
--export([queue_name/1, callid/1, node/1]).
+-export([queue_name/1
+         ,callid/1
+         ,node/1
+         ,has_channel_is_moving_flag/1
+        ]).
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -49,7 +53,6 @@
 
 -record(state, {
           node = 'undefined' :: atom()
-          ,self = 'undefined' :: 'undefined' | pid()
           ,callid = <<>> :: binary()
           ,is_node_up = 'true' :: boolean()
           ,failed_node_checks = 0 :: non_neg_integer()
@@ -81,11 +84,11 @@ start_link(Node, CallId) ->
 
 -spec callid/1 :: (pid()) -> ne_binary().
 callid(Srv) ->
-    gen_server:call(Srv, {callid}, 1000).
+    gen_listener:call(Srv, {callid}, 1000).
 
 -spec node/1 :: (pid()) -> ne_binary().
 node(Srv) ->
-    gen_server:call(Srv, {node}, 1000).
+    gen_listener:call(Srv, {node}, 1000).
 
 -spec transfer/3 :: (pid(), atom(), proplist()) -> 'ok'.
 transfer(Srv, TransferType, Props) ->
@@ -95,10 +98,26 @@ transfer(Srv, TransferType, Props) ->
 queue_name(Srv) ->
     gen_listener:queue_name(Srv).
 
--spec publish_channel_destroy/1 :: (proplist()) -> 'ok'.
+-spec publish_channel_destroy/1 :: (wh_proplist()) -> 'ok'.
 publish_channel_destroy(Props) ->
+    publish_channel_destroy(Props, has_channel_is_moving_flag(Props)).
+publish_channel_destroy(Props, true) ->
+    lager:debug("channel_destroy has the channel_is_moving flag, supressing in favor of channel_move"),
     CallId = props:get_value(<<"Caller-Unique-ID">>, Props,
-                            props:get_value(<<"Unique-ID">>, Props)),
+                             props:get_value(<<"Unique-ID">>, Props)),
+    put(callid, CallId),
+    Event = create_event(<<"CHANNEL_MOVED">>, <<"call_pickup">>, Props),
+    publish_event(Event),
+    case gproc:lookup_pids({p, l, {call_events, CallId}}) of
+        [] -> ok;
+        Pids ->
+            _ = [erlang:send_after(5000, Pid, {shutdown}) || Pid <- Pids],
+            ok
+    end;
+
+publish_channel_destroy(Props, false) ->
+    CallId = props:get_value(<<"Caller-Unique-ID">>, Props,
+                             props:get_value(<<"Unique-ID">>, Props)),
     put(callid, CallId),
     EventName = props:get_value(<<"Event-Name">>, Props),
     ApplicationName = props:get_value(<<"Application">>, Props),
@@ -127,7 +146,7 @@ handle_publisher_usurp(JObj, Props) ->
     end.
 
 %%%===================================================================
-%%% gen_server callbacks
+%%% gen_listener callbacks
 %%%===================================================================
 
 %%--------------------------------------------------------------------
@@ -146,7 +165,7 @@ init([Node, CallId]) when is_atom(Node) andalso is_binary(CallId) ->
     put(callid, CallId),
     TRef = erlang:send_after(?SANITY_CHECK_PERIOD, self(), {sanity_check}),
     lager:debug("starting call events listener"),
-    {'ok', #state{node=Node, callid=CallId, sanity_check_tref=TRef, self=self()}, 0}.
+    {'ok', #state{node=Node, callid=CallId, sanity_check_tref=TRef}, 0}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -184,12 +203,15 @@ handle_cast({passive}, State) ->
     {noreply, State#state{passive=true}};
 handle_cast({channel_redirected, Props}, State) ->
     lager:debug("our channel has been redirected, shutting down immediately"),
-    process_channel_event(Props, State),
+    process_channel_event(Props),
     {stop, {shutdown, redirect}, State};
 handle_cast({channel_destroyed, _}, State) ->
     lager:debug("our channel has been destroyed, preparing to shutdown"),
     erlang:send_after(1000, self(), {shutdown}),
     {noreply, State};
+handle_cast({channel_is_moving, Props}, State) ->
+    [lager:debug("moving: ~p", [KV]) || KV <- Props],
+    {stop, normal, State};
 handle_cast({transferer, _}, State) ->
     lager:debug("call control has been transfered."),
     {stop, normal, State};
@@ -213,17 +235,17 @@ handle_info({call_event, _}, #state{passive=true}=State) ->
 
 handle_info({call, {event, [CallId | Props]}}, #state{callid=CallId}=State) ->
     case {props:get_value(<<"Event-Name">>, Props), props:get_value(<<"Application">>, Props)} of
-        {_, <<"redirect">>} -> gen_server:cast(self(), {channel_redirected, Props});
-        {<<"CHANNEL_DESTROY">>, _} -> gen_server:cast(self(), {channel_destroyed, Props});
-        {_, _} -> process_channel_event(Props, State)
+        {_, <<"redirect">>} -> gen_listener:cast(self(), {channel_redirected, Props});
+        {<<"CHANNEL_DESTROY">>, _} -> gen_listener:cast(self(), {channel_destroyed, Props});
+        {_, _} -> process_channel_event(Props)
     end,
     {'noreply', State};
 
 handle_info({call_event, {event, [CallId | Props]}}, #state{callid=CallId}=State) ->
     case {props:get_value(<<"Event-Name">>, Props), props:get_value(<<"Application">>, Props)} of
-        {_, <<"redirect">>} -> gen_server:cast(self(), {channel_redirected, Props});
-        {<<"CHANNEL_DESTROY">>, _} -> gen_server:cast(self(), {channel_destroyed, Props});
-        {_,_} -> process_channel_event(Props, State)
+        {_, <<"redirect">>} -> gen_listener:cast(self(), {channel_redirected, Props});
+        {<<"CHANNEL_DESTROY">>, _} -> gen_listener:cast(self(), {channel_destroyed, Props});
+        {_,_} -> process_channel_event(Props)
     end,
     {'noreply', State};
 
@@ -312,9 +334,9 @@ handle_event(_JObj, #state{ref=Ref, callid=CallId}) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% This function is called by a gen_server when it is about to
+%% This function is called by a gen_listener when it is about to
 %% terminate. It should be the opposite of Module:init/1 and do any
-%% necessary cleaning up. When it returns, the gen_server terminates
+%% necessary cleaning up. When it returns, the gen_listener terminates
 %% with Reason. The return value is ignored.
 %%
 %% @spec terminate(Reason, State) -> void()
@@ -339,10 +361,15 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec process_channel_event/2 :: (proplist(), #state{}) -> 'ok'.
-process_channel_event(Props, _) ->
+-spec process_channel_event/1 :: (proplist()) -> 'ok'.
+-spec process_channel_event/2 :: (proplist(), boolean()) -> 'ok'.
+process_channel_event(Props) ->
+    process_channel_event(Props, has_channel_is_moving_flag(Props)).
+process_channel_event(_Props, true) ->
+    lager:debug("event is part of a moving channel, supressing");
+process_channel_event(Props, false) ->
     CallId = props:get_value(<<"Caller-Unique-ID">>, Props,
-                            props:get_value(<<"Unique-ID">>, Props)),
+                             props:get_value(<<"Unique-ID">>, Props)),
     put(callid, CallId),
     Masqueraded = is_masquerade(Props),
     EventName = get_event_name(Props, Masqueraded),
@@ -403,7 +430,12 @@ create_event_props(EventName, ApplicationName, Props) ->
       ]).
 
 -spec publish_event/1 :: (proplist()) -> 'ok'.
+-spec publish_event/2 :: (proplist(), boolean()) -> 'ok'.
 publish_event(Props) ->
+    publish_event(Props, has_channel_is_moving_flag(Props)).
+publish_event(_Props, true) ->
+    lager:debug("event has channel_is_moving flag, supressing");
+publish_event(Props, false) ->
     %% call_control publishes channel create/destroy on the control
     %% events queue by calling create_event then this directly.
     EventName = wh_util:to_lower_binary(props:get_value(<<"Event-Name">>, Props, <<>>)),
@@ -631,3 +663,7 @@ swap_call_legs([{<<"Other-Leg-", Key/binary>>, Value}|T], Swap) ->
     swap_call_legs(T, [{<<"Caller-", Key/binary>>, Value}|Swap]);
 swap_call_legs([Prop|T], Swap) ->
     swap_call_legs(T, [Prop|Swap]).
+
+-spec has_channel_is_moving_flag/1 :: (wh_proplist()) -> 'ok'.
+has_channel_is_moving_flag(Props) ->
+    props:get_value(<<"variable_channel_is_moving">>, Props) =/= undefined.
