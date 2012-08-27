@@ -188,20 +188,24 @@ channel_match_presence(PresenceId) ->
                 ],
     ets:select(ecallmgr_channels, MatchSpec).
 
-channel_move(UUID, OriginalNode, NewNode) ->
-    case channel_teardown_sbd(UUID, wh_util:to_atom(OriginalNode)) of
+channel_move(UUID, ONode, NNode) ->
+    OriginalNode = wh_util:to_atom(ONode),
+    NewNode = wh_util:to_atom(NNode),
+
+    case channel_teardown_sbd(UUID, OriginalNode) of
         true ->
             lager:debug("sbd teardown of ~s on ~s", [UUID, OriginalNode]),
 
-            channel_resume(UUID, wh_util:to_atom(NewNode));
+            channel_resume(UUID, NewNode);
         false ->
             lager:debug("failed to teardown ~s on ~s", [UUID, OriginalNode]),
             false
     end.
 
 %% listens for the event from FS with the XML
+-spec channel_resume/2 :: (ne_binary(), atom()) -> boolean().
+-spec channel_resume/3 :: (ne_binary(), atom(), wh_proplist()) -> boolean().
 channel_resume(UUID, NewNode) ->
-    timer:sleep(50),
     lager:debug("waiting for message with metadata for channel ~s", [UUID]),
     receive
         {channel_move_released, UUID, Evt} ->
@@ -214,6 +218,7 @@ channel_resume(UUID, NewNode) ->
             lager:debug("timed out waiting for channel to be released"),
             false
     end.
+
 channel_resume(UUID, NewNode, Evt) ->
     Meta = fix_metadata(props:get_value(<<"metadata">>, Evt)),
     _ = ecallmgr_util:fs_log(NewNode, "sending sofia::move_request ~s with metadata", [UUID]),
@@ -244,7 +249,7 @@ fix_metadata(Meta) ->
     Replacements = [
                     {<<"\<sip\:">>, <<"%3Csip:">>}
                     ,{<<"\>\<sip">>, <<"%3E<sip">>}
-                    ,{<<"\>;">>, <<"%3E;">>} % this is especially nice
+                    ,{<<"\>;">>, <<"%3E;">>} % this is especially nice :)
                    ],
     lists:foldl(fun({S, R}, MetaAcc) ->
                         iolist_to_binary(re:replace(MetaAcc, S, R, [global]))
