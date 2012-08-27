@@ -192,6 +192,7 @@ channel_move(UUID, OriginalNode, NewNode) ->
     case channel_teardown_sbd(UUID, wh_util:to_atom(OriginalNode)) of
         true ->
             lager:debug("sbd teardown of ~s on ~s", [UUID, OriginalNode]),
+
             channel_resume(UUID, wh_util:to_atom(NewNode));
         false ->
             lager:debug("failed to teardown ~s on ~s", [UUID, OriginalNode]),
@@ -200,6 +201,7 @@ channel_move(UUID, OriginalNode, NewNode) ->
 
 %% listens for the event from FS with the XML
 channel_resume(UUID, NewNode) ->
+    timer:sleep(50),
     lager:debug("waiting for message with metadata for channel ~s", [UUID]),
     receive
         {channel_move_released, UUID, Evt} ->
@@ -213,7 +215,7 @@ channel_resume(UUID, NewNode) ->
             false
     end.
 channel_resume(UUID, NewNode, Evt) ->
-    Meta = props:get_value(<<"metadata">>, Evt),
+    Meta = fix_metadata(props:get_value(<<"metadata">>, Evt)),
     _ = ecallmgr_util:fs_log(NewNode, "sending sofia::move_request ~s with metadata", [UUID]),
 
     case freeswitch:sendevent_custom(NewNode, 'sofia::move_request'
@@ -231,6 +233,22 @@ channel_resume(UUID, NewNode, Evt) ->
             lager:debug("timed out sending custom event sofia::move_request"),
             false
     end.
+
+%% We receive un-escaped < and > in the SIP URIs in this data
+%% which causes the XML to not be parsable, either in Erlang or
+%% by FreeSWITCH's parser. Things like:
+%% <sip_uri><sip:user@realm:port>;tag=abc</sip_uri>
+%% So this is an awesome search/replace list to convert the '<sip:'
+%% and its corresponding '>' to %3C and %3E as they should be
+fix_metadata(Meta) ->
+    Replacements = [
+                    {<<"\<sip\:">>, <<"%3Csip:">>}
+                    ,{<<"\>\<sip">>, <<"%3E<sip">>}
+                    ,{<<"\>;">>, <<"%3E;">>} % this is especially nice
+                   ],
+    lists:foldl(fun({S, R}, MetaAcc) ->
+                        iolist_to_binary(re:replace(MetaAcc, S, R, [global]))
+                end, Meta, Replacements).
 
 wait_for_channel_completion(UUID, NewNode) ->
     lager:debug("waiting for confirmation from ~s of channel_move", [NewNode]),
