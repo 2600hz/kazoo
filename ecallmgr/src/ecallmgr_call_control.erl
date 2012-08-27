@@ -78,7 +78,6 @@
          ,callid :: ne_binary()
          ,self = 'undefined' :: 'undefined' | pid()
          ,controller_q = 'undefined' :: 'undefined' | ne_binary()
-         ,evtpid = 'undefined' :: 'undefined' | pid()
          ,command_q = queue:new() :: queue()
          ,current_app = 'undefined' :: ne_binary() | 'undefined'
          ,current_cmd = 'undefined' :: wh_json:json_object() | 'undefined'
