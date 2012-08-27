@@ -289,12 +289,13 @@ process_custom_data(Data, Node) ->
                     process_broadcast_event(props:get_value(<<"whistle_broadcast_type">>, Data), Data)
             end;
         <<"sofia::move_released">> ->
-            UUID = props:get_value(<<"old_node_session_uuid">>, Data),
+            UUID = props:get_value(<<"old_node_channel_uuid">>, Data),
             lager:debug("sending channel_released for ~s", [UUID]),
             gproc:send({p, l, {channel_move, Node, UUID}}, {channel_move_released, UUID, Data});
-        <<"sofia:move_complete">> ->
-            UUID = props:get_value(<<"old_node_session_uuid">>, Data),
-            lager:debug("sending channel_complete for ~s", [UUID]),
+        <<"sofia::move_complete">> ->
+            UUID = props:get_value(<<"old_node_channel_uuid">>, Data),
+            lager:debug("sending move_complete for ~s", [UUID]),
+            _ = [lager:debug("move_complete: ~p", [KV]) || KV <- Data],
             gproc:send({p, l, {channel_move, Node, UUID}}, {channel_move_completed, UUID, Data});
         _Sub ->
             lager:debug("custom evt ~s", [_Sub]),
