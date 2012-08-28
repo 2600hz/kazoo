@@ -306,9 +306,9 @@ get_json_body(Req, ReqBody) ->
                     {{malformed, <<"Invalid JSON request envelope">>}, Req}
             end
     catch
-        _:{badmatch, {comma,{decoder,_,S,_,_,_}}} ->
-            lager:debug("failed to decode json: comma error around char ~s", [wh_util:to_list(S)]),
-            {{malformed, list_to_binary(["Failed to decode: comma error around char ", wh_util:to_list(S)])}, Req}
+        throw:{invalid_json,{{error,{ErrLine, ErrMsg}}, _JSON}} ->
+            lager:debug("failed to decode json near ~p: ~s", [ErrLine, ErrMsg]),
+            {{malformed, <<(wh_json:to_binary(ErrMsg))/binary, " (around ", (wh_util:to_binary(ErrLine))/binary>>}, Req}
     end.
 
 %%--------------------------------------------------------------------
