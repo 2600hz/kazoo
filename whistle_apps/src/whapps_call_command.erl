@@ -1786,7 +1786,6 @@ send_command(Command, Call) when is_list(Command) ->
                                | wh_api:default_headers(Q, <<"call">>, <<"command">>, AppName, AppVersion)
                               ],
 
-            lager:debug("publishing to ~s: ~p", [CtrlQ, Prop]),
             wapi_dialplan:publish_command(CtrlQ, Prop);
         false -> ok
     end;
