@@ -55,6 +55,7 @@ call_forward(EndpointId, Call) ->
 call_forward(_EndpointId, _OwnerId, undefined) -> 'undefined';
 call_forward(EndpointId, OwnerId, ?NE_BINARY = AccountDb) ->
     CallFwd = case couch_mgr:get_all_results(AccountDb, <<"cf_attributes/call_forward">>) of
+                  {ok, []} -> [];
                   {ok, JObjs} ->
                       [{Key, wh_json:get_value(<<"value">>, CF)}
                        || CF <- JObjs
@@ -396,7 +397,7 @@ owner_id(ObjectId, Call) ->
     end.
 
 fetch_owner_id(ObjectId, Call) ->
-    wh_cache:erase({?MODULE, whapps_call:account_db(Call), owner}),
+    wh_cache:erase_local(?CALLFLOW_CACHE, {?MODULE, whapps_call:account_db(Call), owner}),
     owner_id(ObjectId, Call).
 
 %%-----------------------------------------------------------------------------
@@ -419,7 +420,7 @@ owned_by(OwnerId, Call) ->
 
 owned_by(undefined, _, _) -> [];
 owned_by(OwnerId, false, Call) ->
-    wh_cache:erase({?MODULE, whapps_call:account_db(Call), owned}),
+    wh_cache:erase_local(?CALLFLOW_CACHE, {?MODULE, whapps_call:account_db(Call), owned}),
     owned_by(OwnerId, Call);
 owned_by(OwnerId, Attribute, Call) when not is_binary(Attribute) ->
     owned_by(OwnerId, wh_util:to_binary(Attribute), Call);
@@ -428,11 +429,11 @@ owned_by(OwnerId, Attribute, Call) ->
     [V || {[I, T], V} <- Attributes, I =:= OwnerId, T =:= Attribute].
 
 fetch_owned_by(OwnerId, Call) ->
-    wh_cache:erase({?MODULE, whapps_call:account_db(Call), owned}),
+    wh_cache:erase_local(?CALLFLOW_CACHE, {?MODULE, whapps_call:account_db(Call), owned}),
     owned_by(OwnerId, Call).
 
 fetch_owned_by(OwnerId, Attribute, Call) ->
-    wh_cache:erase({?MODULE, whapps_call:account_db(Call), owned}),
+    wh_cache:erase_local(?CALLFLOW_CACHE, {?MODULE, whapps_call:account_db(Call), owned}),
     owned_by(OwnerId, Attribute, Call).
 
 %%-----------------------------------------------------------------------------
@@ -528,14 +529,14 @@ fetch_sub_key(Attribute, JObj) ->
 -spec fetch_attributes/2 :: (atom(), whapps_call:call() | cf_api_binary()) -> proplist().
 fetch_attributes(_Attribute, undefined) -> [];
 fetch_attributes(Attribute, ?NE_BINARY = AccountDb) ->
-    case wh_cache:peek({?MODULE, AccountDb, Attribute}) of
+    case wh_cache:peek_local(?CALLFLOW_CACHE, {?MODULE, AccountDb, Attribute}) of
         {ok, Attributes} -> Attributes;
         {error, not_found} ->
             case couch_mgr:get_all_results(AccountDb, <<"cf_attributes/", (wh_util:to_binary(Attribute))/binary>>) of
                 {ok, JObjs} ->
                     Props = [{wh_json:get_value(<<"key">>, JObj), wh_json:get_value(<<"value">>, JObj)}
                              || JObj <- JObjs],
-                    wh_cache:store({?MODULE, AccountDb, Attribute}, Props, 900),
+                    wh_cache:store_local(?CALLFLOW_CACHE, {?MODULE, AccountDb, Attribute}, Props, 900),
                     Props;
                 {error, R} ->
                     lager:debug("unable to fetch attribute ~s: ~p", [Attribute, R]),
