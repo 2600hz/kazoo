@@ -310,7 +310,9 @@ play_instructions(#mailbox{skip_instructions=false}, Call) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec record_voicemail/3 :: (ne_binary(), #mailbox{}, whapps_call:call()) -> 'ok' | {'branch', wh_json:json_object()}.
+-spec record_voicemail/3 :: (ne_binary(), #mailbox{}, whapps_call:call()) ->
+                                    'ok' |
+                                    {'branch', wh_json:json_object()}.
 record_voicemail(AttachmentName, #mailbox{max_message_length=MaxMessageLength}=Box, Call) ->
     Tone = wh_json:from_list([{<<"Frequencies">>, [<<"440">>]}
                               ,{<<"Duration-ON">>, <<"500">>}
@@ -781,7 +783,7 @@ new_message(AttachmentName, Length, #mailbox{mailbox_id=Id
     timer:sleep(1000),
     cf_util:update_mwi(OwnerId, AccountDb).
 
--spec maybe_transcribe/3 :: (ne_binary(), ne_binary(), boolean()) ->
+-spec maybe_transcribe/3 :: (whapps_call:call(), ne_binary(), boolean()) ->
                                     'undefined' | wh_json:json_object().
 maybe_transcribe(Call, MediaId, true) ->
     Db = whapps_call:account_db(Call),
@@ -1132,11 +1134,13 @@ message_media_doc(Db, #mailbox{mailbox_number=BoxNum, mailbox_id=Id, timezone=Ti
                                   ])
            end,
 
+    Ext = whapps_config:get(?CF_CONFIG_CAT, [<<"voicemail">>, <<"extension">>], <<"mp3">>),
     Props = [{<<"name">>, Name}
              ,{<<"description">>, <<"voicemail message media">>}
              ,{<<"source_type">>, <<"voicemail">>}
              ,{<<"source_id">>, Id}
              ,{<<"media_source">>, <<"recording">>}
+             ,{<<"media_type">>, Ext}
              ,{<<"streamable">>, true}
              ,{<<"utc_seconds">>, UtcSeconds}
             ],
