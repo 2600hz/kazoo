@@ -138,13 +138,13 @@ validate(#cb_context{req_verb = <<"get">>}=Context, Id, ?STATS_PATH_TOKEN) ->
     Context;
 validate(#cb_context{req_verb = <<"get">>}=Context, Id, ?ROSTER_PATH_TOKEN) ->
     %% TODO: get the list of agents in this queue
-    Context;
+    load_agent_roster(Id, Context);
 validate(#cb_context{req_verb = <<"post">>}=Context, Id, ?ROSTER_PATH_TOKEN) ->
     %% TODO: add queue_id to agent docs
-    Context;
+    add_queue_to_agents(Id, Context);
 validate(#cb_context{req_verb = <<"delete">>}=Context, Id, ?ROSTER_PATH_TOKEN) ->
     %% TODO: remove queue_id from agent docs
-    Context.
+    rm_queue_from_agents(Id, Context).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -168,9 +168,11 @@ put(#cb_context{}=Context) ->
 -spec post/3 :: (#cb_context{}, path_token(), path_token()) -> #cb_context{}.
 post(#cb_context{}=Context, _) ->
     crossbar_doc:save(Context).
-post(#cb_context{}=Context, _, ?ROSTER_PATH_TOKEN) ->
-    %% TODO: update the agent docs
-    Context.
+post(#cb_context{}=Context, Id, ?ROSTER_PATH_TOKEN) ->
+    %% saves the agent docs
+    crossbar_doc:save(Context),
+    %% reads the queue doc
+    read(Id, Context).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -182,9 +184,11 @@ post(#cb_context{}=Context, _, ?ROSTER_PATH_TOKEN) ->
 -spec delete/3 :: (#cb_context{}, path_token(), path_token()) -> #cb_context{}.
 delete(#cb_context{}=Context, _) ->
     crossbar_doc:delete(Context).
-delete(#cb_context{}=Context, _, ?ROSTER_PATH_TOKEN) ->
-    %% TODO: update the agent docs
-    Context.
+delete(#cb_context{}=Context, Id, ?ROSTER_PATH_TOKEN) ->
+    %% saves the agent docs
+    crossbar_doc:save(Context),
+    %% reads the queue doc
+    read(Id, Context).
 
 %%%===================================================================
 %%% Internal functions
@@ -223,11 +227,52 @@ read(Id, Context) ->
     end.
 
 load_queue_agents(Id, #cb_context{resp_data=Queue}=Context) ->
-    case crossbar_doc:load_view(?CB_AGENTS_LIST, [{<<"key">>, Id}], Context, fun normalize_agents_results/2) of
+    case load_agent_roster(Id, Context) of
         #cb_context{resp_status=success, resp_data=Agents} ->
             Context#cb_context{resp_data=wh_json:set_value(<<"agents">>, Agents, Queue)};
         _ -> Context
     end.
+
+load_agent_roster(Id, Context) ->
+    crossbar_doc:load_view(?CB_AGENTS_LIST, [{key, Id}]
+                           ,Context
+                           ,fun normalize_agents_results/2
+                          ).
+
+add_queue_to_agents(Id, #cb_context{req_data=[_|_]=AgentIds}=Context) ->
+    case crossbar_doc:load(AgentIds, Context) of
+        #cb_context{resp_status=success
+                    ,doc=Agents
+                   }=Context1 ->
+            lager:debug("loaded agents for queue ~s: ~p", [Id, Agents]),
+            Context1#cb_context{doc=[maybe_add_queue_to_agent(Id, A) || A <- Agents]};
+        Context1 -> Context1
+    end.
+
+maybe_add_queue_to_agent(Id, A) ->
+    Qs = case wh_json:get_value(<<"queues">>, A) of
+             L when is_list(L) ->
+                 case lists:member(Id, L) of
+                     true -> L;
+                     false -> [Id | L]
+                 end;
+             _ -> [Id]
+         end,
+    wh_json:set_value(<<"queues">>, Qs, A).
+
+rm_queue_from_agents(Id, #cb_context{req_data=[_|_]=AgentIds}=Context) ->
+    case crossbar_doc:load(AgentIds, Context) of
+        #cb_context{resp_status=success
+                    ,doc=Agents
+                   }=Context1 ->
+            lager:debug("loaded agents for queue ~s: ~p", [Id, Agents]),
+            Context1#cb_context{doc=[maybe_rm_queue_from_agent(Id, A) || A <- Agents]};
+        Context1 -> Context1
+    end.
+
+maybe_rm_queue_from_agent(Id, A) ->
+    Qs = wh_json:get_value(<<"queues">>, A, []),
+    wh_json:set_value(<<"queues">>, lists:delete(Id, Qs), A).
 
 %%--------------------------------------------------------------------
 %% @private
