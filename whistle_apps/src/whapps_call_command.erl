@@ -41,8 +41,8 @@
         ]).
 
 -export([record/2, record/3, record/4, record/5, record/6]).
--export([record_call/2, record_call/3, record_call/4, record_call/5, record_call/6
-         ,b_record_call/2, b_record_call/3, b_record_call/4, b_record_call/5, b_record_call/6
+-export([record_call/2, record_call/3, record_call/4, record_call/5
+         ,b_record_call/2, b_record_call/3, b_record_call/4, b_record_call/5
         ]).
 -export([store/3, store/4, store/5
          ,store_fax/2
@@ -773,24 +773,21 @@ b_record(MediaName, Terminators, TimeLimit, SilenceThreshold, SilenceHits, Call)
 
 -spec record_call/2 :: (ne_binary(), whapps_call:call()) -> 'ok'.
 -spec record_call/3 :: (ne_binary(), ne_binary(), whapps_call:call()) -> 'ok'.
--spec record_call/4 :: (ne_binary(), ne_binary(),  whapps_api_binary(), whapps_call:call()) -> 'ok'.
--spec record_call/5 :: (ne_binary(), ne_binary(),  whapps_api_binary(), whapps_api_binary() | integer(), whapps_call:call()) -> 'ok'.
--spec record_call/6 :: (ne_binary(), ne_binary(),  whapps_api_binary(), whapps_api_binary() | integer(), list(), whapps_call:call()) -> 'ok'.
+-spec record_call/4 :: (ne_binary(), ne_binary(),  whapps_api_binary() | pos_integer(), whapps_call:call()) -> 'ok'.
+-spec record_call/5 :: (ne_binary(), ne_binary(),  whapps_api_binary() | pos_integer(), list(), whapps_call:call()) -> 'ok'.
 record_call(MediaName, Call) ->
     record_call(MediaName, <<"start">>, Call).
 record_call(MediaName, Action, Call) ->
-    record_call(MediaName, Action, <<"remote">>, Call).
-record_call(MediaName, Action, StreamTo, Call) ->
-    record_call(MediaName, Action, StreamTo, 600, Call).
-record_call(MediaName, Action, StreamTo, TimeLimit, Call) ->
-    record_call(MediaName, Action, StreamTo, TimeLimit, ?ANY_DIGIT, Call).
-record_call(MediaName, Action, StreamTo, TimeLimit, Terminators, Call) ->
+    record_call(MediaName, Action, 600, Call).
+record_call(MediaName, Action, TimeLimit, Call) ->
+    record_call(MediaName, Action, TimeLimit, ?ANY_DIGIT, Call).
+record_call(MediaName, Action, TimeLimit, Terminators, Call) ->
     Command = [{<<"Application-Name">>, <<"record_call">>}
                ,{<<"Media-Name">>, MediaName}
                ,{<<"Record-Action">>, Action}
-               ,{<<"Stream-To">>, StreamTo}
                ,{<<"Time-Limit">>, wh_util:to_binary(TimeLimit)}
                ,{<<"Terminators">>, Terminators}
+               ,{<<"Insert-At">>, <<"now">>}
               ],
     send_command(Command, Call).
 
@@ -798,26 +795,20 @@ record_call(MediaName, Action, StreamTo, TimeLimit, Terminators, Call) ->
                                  wait_for_headless_application_return().
 -spec b_record_call/3 :: (ne_binary(), ne_binary(), whapps_call:call()) ->
                                  wait_for_headless_application_return().
--spec b_record_call/4 :: (ne_binary(), ne_binary(), whapps_api_binary(), whapps_call:call()) ->
+-spec b_record_call/4 :: (ne_binary(), ne_binary(), whapps_api_binary() | pos_integer(), whapps_call:call()) ->
                                  wait_for_headless_application_return().
--spec b_record_call/5 :: (ne_binary(), ne_binary(), whapps_api_binary(), whapps_api_binary() | integer(), whapps_call:call()) ->
+-spec b_record_call/5 :: (ne_binary(), ne_binary(), whapps_api_binary() | pos_integer(), list(), whapps_call:call()) ->
                                  wait_for_headless_application_return().
--spec b_record_call/6 :: (ne_binary(), ne_binary(), whapps_api_binary(), whapps_api_binary() | integer(), [ne_binary(),...] | [], whapps_call:call()) ->
-                                 wait_for_headless_application_return().
-
 b_record_call(MediaName, Call) ->
     record_call(MediaName, Call),
     wait_for_headless_application(<<"record">>, <<"RECORD_STOP">>, <<"call_event">>, infinity).
 b_record_call(MediaName, Action, Call) ->
     record_call(MediaName, Action, Call),
     wait_for_headless_application(<<"record">>, <<"RECORD_STOP">>, <<"call_event">>, infinity).
-b_record_call(MediaName, Action, StreamTo, Call) ->
-    record_call(MediaName, Action, StreamTo, Call),
-    wait_for_headless_application(<<"record">>, <<"RECORD_STOP">>, <<"call_event">>, infinity).
-b_record_call(MediaName, Action, StreamTo, TimeLimit, Call) ->
-    b_record_call(MediaName, Action, StreamTo, TimeLimit, ?ANY_DIGIT, Call).
-b_record_call(MediaName, Action, StreamTo, TimeLimit, Terminators, Call) ->
-    record_call(MediaName, Action, StreamTo, TimeLimit, Terminators, Call),
+b_record_call(MediaName, Action, TimeLimit, Call) ->
+    b_record_call(MediaName, Action, TimeLimit, ?ANY_DIGIT, Call).
+b_record_call(MediaName, Action, TimeLimit, Terminators, Call) ->
+    record_call(MediaName, Action, TimeLimit, Terminators, Call),
     wait_for_headless_application(<<"record">>, <<"RECORD_STOP">>, <<"call_event">>, infinity).
 
 %%--------------------------------------------------------------------
@@ -1787,13 +1778,15 @@ send_command(Command, Call) when is_list(Command) ->
             CallId = whapps_call:call_id(Call),
             AppName = whapps_call:application_name(Call),
             AppVersion = whapps_call:application_version(Call),
-            case whapps_call:kvs_fetch(cf_exe_pid, Call) of
-                Pid when is_pid(Pid) -> put(amqp_publish_as, Pid);
-                _Else -> ok
-            end,
+            _ = case whapps_call:kvs_fetch(cf_exe_pid, Call) of
+                    Pid when is_pid(Pid) -> put(amqp_publish_as, Pid);
+                    _Else -> lager:debug("cf_exe_pid down, publish as self(~p)", [self()])
+                end,
             Prop = Command ++ [{<<"Call-ID">>, CallId}
                                | wh_api:default_headers(Q, <<"call">>, <<"command">>, AppName, AppVersion)
                               ],
+
+            lager:debug("publishing to ~s: ~p", [CtrlQ, Prop]),
             wapi_dialplan:publish_command(CtrlQ, Prop);
         false -> ok
     end;
