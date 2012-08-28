@@ -793,7 +793,8 @@ maybe_answer_call(Call) ->
 %% Return the Result and the Other Leg's Call-ID
 %% @end
 %%--------------------------------------------------------------------
--spec wait_for_offnet/4 :: (whapps_call:call(), boolean(), boolean(), pos_integer()) -> proplist().
+-spec wait_for_offnet/4 :: (whapps_call:call(), boolean(), boolean(), pos_integer()) ->
+                                   wh_proplist().
 wait_for_offnet(Call, HangupOnStar, RecordCall, TimeLimit) ->
     wait_for_offnet(Call, HangupOnStar, RecordCall, TimeLimit * 1000, erlang:now(), []).
 
@@ -833,7 +834,6 @@ wait_for_offnet(Call, HangupOnStar, RecordCall, TimeLimit, Start, Acc) ->
                     {ok, MediaJObj} = store_recording_meta(Call, MediaName),
                     whapps_call_command:record_call(MediaName
                                                     ,<<"start">>
-                                                    ,store_url(Call, MediaJObj)
                                                     ,TimeLimit
                                                     ,Call
                                                    ),
@@ -1010,6 +1010,11 @@ store_recording_meta(Call, MediaName) ->
                                     ,{<<"media_source">>, <<"recorded">>}
                                     ,{<<"source_type">>, wh_util:to_binary(?MODULE)}
                                     ,{<<"pvt_type">>, <<"private_media">>}
+                                    ,{<<"from">>, whapps_call:from(Call)}
+                                    ,{<<"to">>, whapps_call:to(Call)}
+                                    ,{<<"caller_id_number">>, whapps_call:caller_id_number(Call)}
+                                    ,{<<"caller_id_name">>, whapps_call:caller_id_name(Call)}
+                                    ,{<<"call_id">>, whapps_call:call_id(Call)}
                                    ])
                  ,AcctDb
                 ),
