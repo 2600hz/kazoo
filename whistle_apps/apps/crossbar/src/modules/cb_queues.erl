@@ -17,14 +17,10 @@
 %%%
 %%% /queues/QID/stats
 %%%   GET: retrieve stats for this queue
-%%% /queues/QID/add
+%%% /queues/QID/roster
+%%%   GET: get list of agent_ids
 %%%   POST: add a list of agent_ids
-%%% /queues/QID/rm
-%%%   POST: remove a list of agent_ids
-%%% /queues/QID/add/AID
-%%%   POST: add an agent
-%%% /queues/QID/rm/AID
-%%%   POST: remove an agent
+%%%   DELETE: rm a list of agent_ids
 %%%
 %%% @end
 %%% @contributors:
@@ -33,12 +29,12 @@
 -module(cb_queues).
 
 -export([init/0
-         ,allowed_methods/0, allowed_methods/1
-         ,resource_exists/0, resource_exists/1
-         ,validate/1, validate/2
+         ,allowed_methods/0, allowed_methods/1, allowed_methods/2
+         ,resource_exists/0, resource_exists/1, resource_exists/2
+         ,validate/1, validate/2, validate/3
          ,put/1
-         ,post/2
-         ,delete/2
+         ,post/2, post/3
+         ,delete/2, delete/3
         ]).
 
 -include_lib("crossbar/include/crossbar.hrl").
@@ -47,6 +43,9 @@
 -define(PVT_FUNS, [fun add_pvt_type/2]).
 -define(CB_LIST, <<"queues/crossbar_listing">>).
 -define(CB_AGENTS_LIST, <<"queues/agents_listing">>). %{agent_id, queue_id}
+
+-define(STATS_PATH_TOKEN, <<"stats">>).
+-define(ROSTER_PATH_TOKEN, <<"roster">>).
 
 %%%===================================================================
 %%% API
@@ -74,11 +73,19 @@ init() ->
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods/0 :: () -> http_methods() | [].
--spec allowed_methods/1 :: (path_token()) -> http_methods() | [].
+-spec allowed_methods/0 :: () -> http_methods().
+-spec allowed_methods/1 :: (path_token()) -> http_methods().
+-spec allowed_methods/2 :: (path_token(), path_token()) -> http_methods().
 allowed_methods() ->
     ['GET', 'PUT'].
-allowed_methods(_) ->
+allowed_methods(?STATS_PATH_TOKEN) ->
+    ['GET'];
+allowed_methods(_QID) ->
+    ['GET', 'POST', 'DELETE'].
+
+allowed_methods(_QID, ?STATS_PATH_TOKEN) ->
+    ['GET'];
+allowed_methods(_QID, ?ROSTER_PATH_TOKEN) ->
     ['GET', 'POST', 'DELETE'].
 
 %%--------------------------------------------------------------------
@@ -92,8 +99,11 @@ allowed_methods(_) ->
 %%--------------------------------------------------------------------
 -spec resource_exists/0 :: () -> 'true'.
 -spec resource_exists/1 :: (path_token()) -> 'true'.
+-spec resource_exists/2 :: (path_token(), path_token()) -> 'true'.
 resource_exists() -> true.
 resource_exists(_) -> true.
+resource_exists(_, ?STATS_PATH_TOKEN) -> true;
+resource_exists(_, ?ROSTER_PATH_TOKEN) -> true.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -107,17 +117,34 @@ resource_exists(_) -> true.
 %%--------------------------------------------------------------------
 -spec validate/1 :: (#cb_context{}) -> #cb_context{}.
 -spec validate/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+-spec validate/3 :: (#cb_context{}, path_token(), path_token()) -> #cb_context{}.
 validate(#cb_context{req_verb = <<"get">>}=Context) ->
     summary(Context);
 validate(#cb_context{req_verb = <<"put">>}=Context) ->
     create(Context).
 
+validate(#cb_context{req_verb = <<"get">>}=Context, ?STATS_PATH_TOKEN) ->
+    %% TODO: fetch stats across all queues in this account
+    Context;
 validate(#cb_context{req_verb = <<"get">>}=Context, Id) ->
     read(Id, Context);
 validate(#cb_context{req_verb = <<"post">>}=Context, Id) ->
     update(Id, Context);
 validate(#cb_context{req_verb = <<"delete">>}=Context, Id) ->
     read(Id, Context).
+
+validate(#cb_context{req_verb = <<"get">>}=Context, Id, ?STATS_PATH_TOKEN) ->
+    %% TODO: fetch stats for this queue
+    Context;
+validate(#cb_context{req_verb = <<"get">>}=Context, Id, ?ROSTER_PATH_TOKEN) ->
+    %% TODO: get the list of agents in this queue
+    Context;
+validate(#cb_context{req_verb = <<"post">>}=Context, Id, ?ROSTER_PATH_TOKEN) ->
+    %% TODO: add queue_id to agent docs
+    Context;
+validate(#cb_context{req_verb = <<"delete">>}=Context, Id, ?ROSTER_PATH_TOKEN) ->
+    %% TODO: remove queue_id from agent docs
+    Context.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -138,8 +165,12 @@ put(#cb_context{}=Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec post/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+-spec post/3 :: (#cb_context{}, path_token(), path_token()) -> #cb_context{}.
 post(#cb_context{}=Context, _) ->
     crossbar_doc:save(Context).
+post(#cb_context{}=Context, _, ?ROSTER_PATH_TOKEN) ->
+    %% TODO: update the agent docs
+    Context.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -148,8 +179,12 @@ post(#cb_context{}=Context, _) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec delete/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+-spec delete/3 :: (#cb_context{}, path_token(), path_token()) -> #cb_context{}.
 delete(#cb_context{}=Context, _) ->
     crossbar_doc:delete(Context).
+delete(#cb_context{}=Context, _, ?ROSTER_PATH_TOKEN) ->
+    %% TODO: update the agent docs
+    Context.
 
 %%%===================================================================
 %%% Internal functions
