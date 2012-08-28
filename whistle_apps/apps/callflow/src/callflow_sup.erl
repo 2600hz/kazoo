@@ -1,10 +1,11 @@
 %%%-------------------------------------------------------------------
-%%% @author Karl Anderson <karl@2600hz.org>
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2012, VoIP INC
 %%% @doc
 %%%
 %%% @end
-%%% Created :  27 June 2011 by Karl Anderson <karl@2600hz.org>
+%%% @contributors
+%%%   Karl Anderson
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(callflow_sup).
 
@@ -19,9 +20,15 @@
 %% Supervisor callbacks
 -export([init/1]).
 
+-include("callflow.hrl").
+
 %% Helper macro for declaring children of supervisor
+-define(CACHE(), {?CALLFLOW_CACHE, {wh_cache, start_link, [?CALLFLOW_CACHE]}, permanent, 5000, worker, [wh_cache]}).
 -define(CHILD(Name, Type), {Name, {Name, start_link, []}, permanent, 5000, Type, [Name]}).
--define(CHILDREN, [{cf_listener, worker}, {cf_exe_sup, supervisor}]).
+-define(CHILDREN, [?CACHE()
+                   ,?CHILD(cf_listener, worker)
+                   ,?CHILD(cf_exe_sup, supervisor)
+                  ]).
 
 %% ===================================================================
 %% API functions
@@ -56,14 +63,11 @@ listener_proc() ->
 %% specifications.
 %% @end
 %%--------------------------------------------------------------------
--spec init(Args) -> sup_init_ret() when
-      Args :: [].
+-spec init([]) -> sup_init_ret().
 init([]) ->
     RestartStrategy = one_for_one,
     MaxRestarts = 5,
     MaxSecondsBetweenRestarts = 10,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
-    Children = [?CHILD(Name, Type) || {Name, Type} <- ?CHILDREN],
-
-    {ok, {SupFlags, Children}}.
+    {ok, {SupFlags, ?CHILDREN}}.
