@@ -405,11 +405,12 @@ handle_cast({join_agent, ACallId}, #state{call=Call}=State) ->
     {noreply, State};
 
 handle_cast({send_sync_req}, #state{my_id=MyId
+                                    ,my_q=MyQ
                                     ,account_id=AcctId
                                     ,agent_id=AgentId
                                    }=State) ->
     lager:debug("sending sync request"),
-    send_sync_request(AcctId, AgentId, MyId),
+    send_sync_request(AcctId, AgentId, MyId, MyQ),
     {noreply, State};
 
 handle_cast({send_sync_resp, Status, ReqJObj, Options}, #state{my_id=MyId
@@ -537,12 +538,12 @@ send_originate_execute(JObj) ->
            ],
     wapi_dialplan:publish_originate_execute(wh_json:get_value(<<"Server-ID">>, JObj), Prop).
 
--spec send_sync_request/3 :: (ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
-send_sync_request(AcctId, AgentId, MyId) ->
+-spec send_sync_request/4 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+send_sync_request(AcctId, AgentId, MyId, MyQ) ->
     Prop = [{<<"Account-ID">>, AcctId}
             ,{<<"Agent-ID">>, AgentId}
             ,{<<"Process-ID">>, MyId}
-            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+            | wh_api:default_headers(MyQ, ?APP_NAME, ?APP_VERSION)
            ],
     wapi_acdc_agent:publish_sync_req(Prop).
 
@@ -554,6 +555,7 @@ send_sync_response(ReqJObj, AcctId, AgentId, MyId, Status, Options) ->
             | Options ++ wh_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     Q = wh_json:get_value(<<"Server-ID">>, ReqJObj),
+    lager:debug("sending sync resp to ~s", [Q]),
     wapi_acdc_agent:publish_sync_resp(Q, Prop).
 
 send_status_update(AcctId, AgentId, Status) ->

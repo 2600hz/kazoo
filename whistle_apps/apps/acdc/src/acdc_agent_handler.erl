@@ -83,7 +83,6 @@ handle_sync_req(JObj, Props) ->
 
 -spec handle_sync_resp/2 :: (wh_json:json_object(), wh_proplist()) -> 'ok'.
 handle_sync_resp(JObj, Props) ->
-    lager:debug("sync resp: ~p", [JObj]),
     acdc_agent_fsm:sync_resp(props:get_value(fsm_pid, Props), JObj).
 
 -spec handle_call_event/2 :: (wh_json:json_object(), wh_proplist()) -> 'ok'.
@@ -105,14 +104,3 @@ handle_member_message(JObj, Props, <<"connect_monitor">>) ->
     acdc_agent_fsm:member_connect_monitor(props:get_value(fsm_pid, Props), JObj);
 handle_member_message(_, _, EvtName) ->
     lager:debug("not handling member event ~s", [EvtName]).
-
--spec sync_resp/4 :: (wh_json:json_object(), acdc_agent:agent_status(), ne_binary(), wh_proplist()) -> 'ok'.
-sync_resp(JObj, Status, MyId, Fields) ->
-    Resp = props:filter_undefined(
-             [{<<"Account-ID">>, wh_json:get_value(<<"Account-ID">>, JObj)}
-              ,{<<"Agent-ID">>, wh_json:get_value(<<"Agent-ID">>, JObj)}
-              ,{<<"Status">>, wh_util:to_binary(Status)}
-              ,{<<"Process-ID">>, MyId}
-              | Fields
-             ]),
-    wapi_agent:publish_sync_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp).
