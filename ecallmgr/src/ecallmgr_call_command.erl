@@ -775,7 +775,7 @@ send_store_call_event(Node, UUID, MediaTransResults) ->
                 ,{<<"Channel-Call-State">>, props:get_value(<<"Channel-Call-State">>, Prop, <<"HANGUP">>)}
                 ,{<<"Application-Name">>, <<"store">>}
                 ,{<<"Application-Response">>, MediaTransResults}
-                | wh_api:default_headers(<<>>, <<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, ?APP_NAME, ?APP_VERSION)
+                | wh_api:default_headers(<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, ?APP_NAME, ?APP_VERSION)
                ],
     EvtProp2 = case ecallmgr_util:custom_channel_vars(Prop) of
                    [] -> EvtProp1;
