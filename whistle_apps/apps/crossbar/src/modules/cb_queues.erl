@@ -1,8 +1,30 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2012, VoIP INC
 %%% @doc
 %%%
 %%% CRUD for call queues
+%%% /queues
+%%%   GET: list all known queues
+%%%   PUT: create a new queue
+%%%
+%%% /queues/stats
+%%%   GET: retrieve stats across all queues
+%%%
+%%% /queues/QID
+%%%   GET: queue details
+%%%   POST: edit queue details
+%%%   DELETE: delete a queue
+%%%
+%%% /queues/QID/stats
+%%%   GET: retrieve stats for this queue
+%%% /queues/QID/add
+%%%   POST: add a list of agent_ids
+%%% /queues/QID/rm
+%%%   POST: remove a list of agent_ids
+%%% /queues/QID/add/AID
+%%%   POST: add an agent
+%%% /queues/QID/rm/AID
+%%%   POST: remove an agent
 %%%
 %%% @end
 %%% @contributors:
@@ -69,7 +91,7 @@ allowed_methods(_) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec resource_exists/0 :: () -> 'true'.
--spec resource_exists/1 :: (path_tokens()) -> 'true'.
+-spec resource_exists/1 :: (path_token()) -> 'true'.
 resource_exists() -> true.
 resource_exists(_) -> true.
 
