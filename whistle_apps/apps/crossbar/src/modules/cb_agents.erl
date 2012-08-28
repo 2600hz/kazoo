@@ -12,13 +12,12 @@
 -module(cb_agents).
 
 -export([init/0
-         ,allowed_methods/0, allowed_methods/1
-         ,resource_exists/0, resource_exists/1
-         ,validate/1, validate/2
-         ,get/1, get/2
-         ,put/1, put/2
-         ,post/1, post/2
-         ,delete/1, delete/2
+         ,allowed_methods/0, allowed_methods/1, allowed_methods/2
+         ,resource_exists/0, resource_exists/1, resource_exists/2
+         ,validate/1, validate/2, validate/3
+         ,get/1, get/2, get/3
+         ,post/2
+         ,delete/2
         ]).
 
 -include_lib("crossbar/include/crossbar.hrl").
@@ -26,6 +25,8 @@
 -define(PVT_TYPE, <<"agent">>).
 -define(PVT_FUNS, [fun add_pvt_type/2]).
 -define(CB_LIST, <<"agents/crossbar_listing">>).
+
+-define(STATS_PATH_TOKEN, <<"stats">>).
 
 %%%===================================================================
 %%% API
@@ -56,10 +57,15 @@ init() ->
 %%--------------------------------------------------------------------
 -spec allowed_methods/0 :: () -> http_methods() | [].
 -spec allowed_methods/1 :: (path_token()) -> http_methods() | [].
+-spec allowed_methods/2 :: (path_token(), path_token()) -> http_methods() | [].
 allowed_methods() ->
-    ['GET', 'PUT'].
+    ['GET'].
+allowed_methods(?STATS_PATH_TOKEN) ->
+    ['GET'];
 allowed_methods(_) ->
     ['GET', 'POST', 'DELETE'].
+allowed_methods(_Id, ?STATS_PATH_TOKEN) ->
+    ['GET'].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -71,9 +77,11 @@ allowed_methods(_) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec resource_exists/0 :: () -> 'true'.
--spec resource_exists/1 :: (path_tokens()) -> 'true'.
+-spec resource_exists/1 :: (path_token()) -> 'true'.
+-spec resource_exists/2 :: (path_token(), path_token()) -> 'true'.
 resource_exists() -> true.
 resource_exists(_) -> true.
+resource_exists(_, ?STATS_PATH_TOKEN) -> true.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -87,17 +95,23 @@ resource_exists(_) -> true.
 %%--------------------------------------------------------------------
 -spec validate/1 :: (#cb_context{}) -> #cb_context{}.
 -spec validate/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+-spec validate/3 :: (#cb_context{}, path_token(), path_token()) -> #cb_context{}.
 validate(#cb_context{req_verb = <<"get">>}=Context) ->
-    summary(Context);
-validate(#cb_context{req_verb = <<"put">>}=Context) ->
-    create(Context).
+    summary(Context).
 
+validate(#cb_context{req_verb = <<"get">>}=Context, ?STATS_PATH_TOKEN) ->
+    %% read all agent stats
+    Context;
 validate(#cb_context{req_verb = <<"get">>}=Context, Id) ->
     read(Id, Context);
 validate(#cb_context{req_verb = <<"post">>}=Context, Id) ->
     update(Id, Context);
 validate(#cb_context{req_verb = <<"delete">>}=Context, Id) ->
     read(Id, Context).
+
+validate(#cb_context{req_verb = <<"get">>}=Context, _Id, ?STATS_PATH_TOKEN) ->
+    %% read agent stats with id=Id
+    Context.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -109,23 +123,13 @@ validate(#cb_context{req_verb = <<"delete">>}=Context, Id) ->
 %%--------------------------------------------------------------------
 -spec get/1 :: (#cb_context{}) -> #cb_context{}.
 -spec get/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+-spec get/3 :: (#cb_context{}, path_token(), path_token()) -> #cb_context{}.
 get(#cb_context{}=Context) ->
     Context.
 get(#cb_context{}=Context, _) ->
     Context.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% If the HTTP verib is PUT, execute the actual action, usually a db save.
-%% @end
-%%--------------------------------------------------------------------
--spec put/1 :: (#cb_context{}) -> #cb_context{}.
--spec put/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
-put(#cb_context{}=Context) ->
-    crossbar_doc:save(Context).
-put(#cb_context{}=Context, _) ->
-    crossbar_doc:save(Context).
+get(#cb_context{}=Context, _, ?STATS_PATH_TOKEN) ->
+    Context.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -134,10 +138,7 @@ put(#cb_context{}=Context, _) ->
 %% (after a merge perhaps).
 %% @end
 %%--------------------------------------------------------------------
--spec post/1 :: (#cb_context{}) -> #cb_context{}.
 -spec post/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
-post(#cb_context{}=Context) ->
-    crossbar_doc:save(Context).
 post(#cb_context{}=Context, _) ->
     crossbar_doc:save(Context).
 
@@ -147,30 +148,9 @@ post(#cb_context{}=Context, _) ->
 %% If the HTTP verib is DELETE, execute the actual action, usually a db delete
 %% @end
 %%--------------------------------------------------------------------
--spec delete/1 :: (#cb_context{}) -> #cb_context{}.
 -spec delete/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
-delete(#cb_context{}=Context) ->
-    crossbar_doc:delete(Context).
 delete(#cb_context{}=Context, _) ->
     crossbar_doc:delete(Context).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Create a new instance with the data provided, if it is valid
-%% @end
-%%--------------------------------------------------------------------
--spec create/1 :: (#cb_context{}) -> #cb_context{}.
-create(#cb_context{req_data=Data}=Context) ->
-    case wh_json_validator:is_valid(Data, <<"agents">>) of
-        {fail, Errors} ->
-            crossbar_util:response_invalid_data(Errors, Context);
-        {pass, JObj} ->
-            {JObj1, _} = lists:foldr(fun(F, {J, C}) ->
-                                             {F(J, C), C}
-                                     end, {JObj, Context}, ?PVT_FUNS),
-            Context#cb_context{doc=JObj1, resp_status=success}
-    end.
 
 %%--------------------------------------------------------------------
 %% @private
