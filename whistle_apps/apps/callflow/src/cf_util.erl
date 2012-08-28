@@ -76,7 +76,7 @@ presence_parking_slot(_, {_, FromRealm}, {ToUser, ToRealm}, _) ->
         {ok, AccountDb} ->
             AccountId = wh_util:format_account_id(AccountDb, raw),
             _ = lookup_callflow(ToUser, AccountId),
-            case wh_cache:fetch({cf_flow, ToUser, AccountDb}) of
+            case wh_cache:fetch_local(?CALLFLOW_CACHE, {cf_flow, ToUser, AccountDb}) of
                 {error, not_found} -> ok;
                 {ok, Flow} ->
                     case wh_json:get_value([<<"flow">>, <<"module">>], Flow) of
@@ -344,9 +344,11 @@ get_operator_callflow(Account) ->
 %% lookup the callflow based on the requested number in the account
 %% @end
 %%-----------------------------------------------------------------------------
--spec lookup_callflow/1 :: (whapps_call:call()) -> {'ok', wh_json:json_object(), boolean()} | {'error', term()}.
--spec lookup_callflow/2 :: (ne_binary(), ne_binary()) -> {'ok', wh_json:json_object(), boolean()} | {'error', term()}.
+-type lookup_callflow_ret() :: {'ok', wh_json:json_object(), boolean()} |
+                               {'error', term()}.
 
+-spec lookup_callflow/1 :: (whapps_call:call()) -> lookup_callflow_ret().
+-spec lookup_callflow/2 :: (ne_binary(), ne_binary()) -> lookup_callflow_ret().
 lookup_callflow(Call) ->
     lookup_callflow(whapps_call:request_user(Call), whapps_call:account_id(Call)).
 
@@ -368,19 +370,19 @@ do_lookup_callflow(Number, Db) ->
                     do_lookup_callflow(?NO_MATCH_CF, Db);
                 {ok, {Flow, Capture}} ->
                     F = wh_json:set_value(<<"capture_group">>, Capture, Flow),
-                    wh_cache:store({cf_flow, Number, Db}, F),
+                    wh_cache:store_local(?CALLFLOW_CACHE, {cf_flow, Number, Db}, F),
                     {ok, F, false}
             end;
         {ok, []} ->
             {error, not_found};
         {ok, [JObj]} ->
             Flow = wh_json:get_value(<<"doc">>, JObj),
-            wh_cache:store({cf_flow, Number, Db}, Flow),
+            wh_cache:store_local(?CALLFLOW_CACHE, {cf_flow, Number, Db}, Flow),
             {ok, Flow, Number =:= ?NO_MATCH_CF};
         {ok, [JObj | _Rest]} ->
             lager:debug("lookup resulted in more than one result, using the first"),
             Flow = wh_json:get_value(<<"doc">>, JObj),
-            wh_cache:store({cf_flow, Number, Db}, Flow),
+            wh_cache:store_local(?CALLFLOW_CACHE, {cf_flow, Number, Db}, Flow),
             {ok, Flow, Number =:= ?NO_MATCH_CF};
         {error, _}=E ->
             E
@@ -524,10 +526,19 @@ get_sip_realm(SIPJObj, AccountId, Default) ->
         Realm -> Realm
     end.
 
-handle_doc_change(JObj, _) ->
+-spec handle_doc_change/2 :: (wh_json:json_object(), wh_proplist()) -> any().
+handle_doc_change(JObj, _Prop) ->
     Db = wh_json:get_value(<<"Account-DB">>, JObj),
     Id = wh_json:get_value(<<"ID">>, JObj),
-    cf_endpoint:flush(Db, Id).
+    cf_endpoint:flush(Db, Id),
+
+    maybe_clear_flows(wh_json:get_value(<<"numbers">>, JObj, []), Db).
+
+maybe_clear_flows([], _) -> ok;
+maybe_clear_flows([N|Ns], Db) ->
+    wh_cache:erase_local(?CALLFLOW_CACHE, {cf_flow, N, Db}),
+    maybe_clear_flows(Ns, Db).
+
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
