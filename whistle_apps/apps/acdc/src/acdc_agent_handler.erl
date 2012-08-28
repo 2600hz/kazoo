@@ -79,35 +79,11 @@ maybe_resume_agent(AcctId, AgentId) ->
 
 -spec handle_sync_req/2 :: (wh_json:json_object(), wh_proplist()) -> 'ok'.
 handle_sync_req(JObj, Props) ->
-    Defaults = wh_api:default_headers(props:get_value(queue, Props)
-                                      ,?APP_NAME
-                                      ,?APP_VERSION
-                                     ),
-
-    case props:get_value(status, Props) of
-        init -> lager:debug("in init ourselves, ignoring sync request");
-        ready -> sync_resp(JObj, ready, props:get_value(my_id, Props), Defaults);
-        waiting -> sync_resp(JObj, waiting, props:get_value(my_id, Props), Defaults);
-        ringing -> sync_resp(JObj, ringing, props:get_value(my_id, Props), Defaults);
-        answered -> sync_resp(JObj, answered, props:get_value(my_id, Props)
-                              ,[{<<"Call-ID">>, props:get_value(callid, Props)}
-                                | Defaults
-                               ]
-                             );
-        wrapup -> sync_resp(JObj, wrapup, props:get_value(my_id, Props)
-                            ,[{<<"Time-Left">>, props:get_value(time_left, Props)}
-                              | Defaults
-                             ]
-                           );
-        paused -> sync_resp(JObj, paused, props:get_value(my_id, Props)
-                            ,[{<<"Time-Left">>, props:get_value(time_left, Props)}
-                              | Defaults
-                             ]
-                           )
-    end.
+    acdc_agent_fsm:sync_req(props:get_value(fsm_pid, Props), JObj).
 
 -spec handle_sync_resp/2 :: (wh_json:json_object(), wh_proplist()) -> 'ok'.
 handle_sync_resp(JObj, Props) ->
+    lager:debug("sync resp: ~p", [JObj]),
     acdc_agent_fsm:sync_resp(props:get_value(fsm_pid, Props), JObj).
 
 -spec handle_call_event/2 :: (wh_json:json_object(), wh_proplist()) -> 'ok'.

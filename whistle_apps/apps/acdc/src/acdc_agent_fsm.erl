@@ -19,7 +19,7 @@
          ,member_connect_monitor/2
          ,originate_ready/2
          ,originate_failed/2
-         ,sync_resp/2
+         ,sync_req/2, sync_resp/2
          ,pause/2
          ,resume/1
         ]).
@@ -58,6 +58,7 @@
           acct_id :: ne_binary()
          ,agent_id :: ne_binary()
          ,agent_proc :: pid()
+         ,agent_proc_id :: ne_binary()
          ,wrapup_timeout :: integer() % optionally set on win/monitor
          ,wrapup_ref :: reference()
          ,sync_ref :: reference()
@@ -153,6 +154,13 @@ originate_failed(FSM, JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+sync_req(FSM, JObj) ->
+    gen_fsm:send_event(FSM, {sync_req, JObj}).
+
+%%--------------------------------------------------------------------
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 sync_resp(FSM, JObj) ->
     gen_fsm:send_event(FSM, {sync_resp, JObj}).
 
@@ -210,6 +218,7 @@ init([AcctId, AgentId, AgentProc]) ->
     {ok, sync, #state{acct_id=AcctId
                       ,agent_id=AgentId
                       ,agent_proc=AgentProc
+                      ,agent_proc_id=acdc_util:agent_proc_id(AgentProc)
                       ,sync_ref=SyncRef
                      }}.
 
@@ -227,13 +236,24 @@ sync({timeout, Ref, ?RESYNC_RESPONSE_MESSAGE}, #state{sync_ref=Ref}=State) when 
     gen_fsm:send_event(self(), send_sync_event),
     {next_state, sync, State#state{sync_ref=SyncRef}};
 
-sync(send_sync_event, #state{agent_proc=Srv
-                             ,agent_id=AgentId
-                             ,acct_id=AcctId
-                            }=State) ->
-    lager:debug("sending sync event to other agent processes"),
-    acdc_agent:send_sync_req(Srv, AcctId, AgentId),
+sync(send_sync_event, #state{agent_proc=Srv, agent_proc_id=_AProcId}=State) ->
+    lager:debug("sending sync_req event to other agent processes: ~s", [_AProcId]),
+    acdc_agent:send_sync_req(Srv),
     {next_state, sync, State};
+
+sync({sync_req, JObj}, #state{agent_proc=Srv
+                              ,agent_proc_id=AProcId
+                             }=State) ->
+    case wh_json:get_value(<<"Process-ID">>, JObj) of
+        AProcId ->
+            lager:debug("recv sync req from ourself"),
+            {next_state, sync, State};
+        _OtherProcId ->
+            lager:debug("recv sync_req from ~s (we are ~s)", [_OtherProcId, AProcId]),
+            acdc_agent:send_sync_resp(Srv, sync, JObj),
+            {next_state, sync, State}
+    end;
+
 sync({sync_resp, JObj}, #state{sync_ref=Ref}=State) ->
     case catch wh_util:to_atom(wh_json:get_value(<<"Status">>, JObj)) of
         sync ->
@@ -243,11 +263,15 @@ sync({sync_resp, JObj}, #state{sync_ref=Ref}=State) ->
             lager:debug("other agent is in ready state, joining"),
             _ = erlang:cancel_timer(Ref),
             {next_state, ready, State#state{sync_ref=undefined}};
+        {'EXIT', _} ->
+            lager:debug("other agent sent unusable state, ignoring"),
+            {next_state, sync, State};
         Status ->
             lager:debug("other agent is in ~s, delaying", [Status]),
             _ = erlang:cancel_timer(Ref),
             {next_state, sync, State#state{sync_ref=start_resync_timer()}}
     end;
+
 sync({pause, Timeout}, State) ->
     lager:debug("recv status update while syncing, pausing for up to ~b ms", [Timeout]),
     Ref = start_pause_timer(Timeout),
@@ -265,6 +289,11 @@ ready({pause, Timeout}, State) ->
     lager:debug("recv status update while responding to reqs, pausing for up to ~b ms", [Timeout]),
     Ref = start_pause_timer(Timeout),
     {next_state, paused, State#state{sync_ref=Ref}};
+
+ready({sync_req, JObj}, #state{agent_proc=Srv}=State) ->
+    lager:debug("recv sync_req from ~s", [wh_json:get_value(<<"Process-ID">>, JObj)]),
+    acdc_agent:send_sync_resp(Srv, ready, JObj),
+    {next_state, ready, State};
 
 ready({member_connect_win, JObj}, #state{agent_proc=Srv}=State) ->
     CallId = callid(JObj),
@@ -358,6 +387,12 @@ ringing({channel_answered, MCallId}, #state{member_call_id=MCallId}=State) ->
     lager:debug("member channel answered"),
     {next_state, ringing, State};
 
+ringing({sync_req, JObj}, #state{agent_proc=Srv}=State) ->
+    lager:debug("recv sync_req from ~s", [wh_json:get_value(<<"Process-ID">>, JObj)]),
+    acdc_agent:send_sync_resp(Srv, ringing, JObj),
+    {next_state, ringing, State};
+
+
 ringing(_Evt, State) ->
     lager:debug("unhandled event: ~p", [_Evt]),
     {next_state, ringing, State}.
@@ -416,6 +451,13 @@ answered({channel_unbridged, CallId}, #state{agent_call_id=CallId}=State) ->
     lager:debug("agent unbridged"),
     {next_state, answered, State};
 
+answered({sync_req, JObj}, #state{agent_proc=Srv
+                                  ,member_call_id=CallId
+                                 }=State) ->
+    lager:debug("recv sync_req from ~s", [wh_json:get_value(<<"Process-ID">>, JObj)]),
+    acdc_agent:send_sync_resp(Srv, answered, JObj, [{<<"Call-ID">>, CallId}]),
+    {next_state, answered, State};
+
 answered(_Evt, State) ->
     lager:debug("unhandled event: ~p", [_Evt]),
     {next_state, answered, State}.
@@ -438,6 +480,15 @@ wrapup({member_connect_monitor, _JObj}, State) ->
 wrapup({timeout, Ref, wrapup_expired}, #state{wrapup_ref=Ref}=State) ->
     lager:debug("wrapup timer expired, ready for action!"),
     {next_state, ready, State#state{wrapup_timeout=undefined, wrapup_ref=undefined}};
+
+wrapup({sync_req, JObj}, #state{agent_proc=Srv
+                                ,wrapup_ref=Ref
+                               }=State) ->
+    lager:debug("recv sync_req from ~s", [wh_json:get_value(<<"Process-ID">>, JObj)]),
+
+    acdc_agent:send_sync_resp(Srv, wrapup, JObj, [{<<"Time-Left">>, time_left(Ref)}]),
+    {next_state, wrapup, State};
+
 wrapup(_Evt, State) ->
     lager:debug("unhandled event: ~p", [_Evt]),
     {next_state, wrapup, State#state{wrapup_timeout=undefined}}.
@@ -462,6 +513,15 @@ paused({resume}, #state{acct_id=AcctId
     acdc_agent:send_status_update(Srv, <<"resume">>),
 
     {next_state, ready, State};
+
+paused({sync_req, JObj}, #state{agent_proc=Srv
+                                ,wrapup_ref=Ref
+                               }=State) ->
+    lager:debug("recv sync_req from ~s", [wh_json:get_value(<<"Process-ID">>, JObj)]),
+
+    acdc_agent:send_sync_resp(Srv, paused, JObj, [{<<"Time-Left">>, time_left(Ref)}]),
+    {next_state, paused, State};
+
 paused({member_connect_req, _}, State) ->
     {next_state, paused, State};
 paused({member_connect_win, JObj}, #state{agent_proc=Srv}=State) ->
@@ -591,3 +651,9 @@ update_agent_status_to_resume(AcctId, AgentId) ->
                              ,{<<"pvt_type">>, <<"agent_activity">>}
                             ]),
     {ok, _D} = couch_mgr:save_doc(AcctDb, wh_doc:update_pvt_parameters(Doc, AcctDb)).
+
+%% returns time left in seconds
+time_left(Ref) when is_reference(Ref) ->
+    time_left(erlang:read_timer(Ref));
+time_left(false) -> undefined;
+time_left(Ms) when is_integer(Ms) -> Ms div 1000.

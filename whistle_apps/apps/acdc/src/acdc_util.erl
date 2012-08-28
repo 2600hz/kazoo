@@ -13,6 +13,7 @@
          ,unbind_from_call_events/1
          ,agents_in_queue/2
          ,agent_status/2
+         ,agent_proc_id/1
         ]).
 
 -include("acdc.hrl").
@@ -87,3 +88,7 @@ agent_status(?NE_BINARY = AcctDb, AgentId) ->
         {error, _E} -> <<"logout">>;
         {ok, [StatusJObj|_]} -> wh_json:get_value(<<"value">>, StatusJObj)
     end.
+
+-spec agent_proc_id/1 :: (pid()) -> ne_binary().
+agent_proc_id(Pid) ->
+    list_to_binary([wh_util:to_binary(node()), "-", pid_to_list(Pid)]).

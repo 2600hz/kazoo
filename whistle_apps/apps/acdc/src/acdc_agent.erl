@@ -20,7 +20,8 @@
          ,channel_hungup/2
          ,originate_execute/2
          ,join_agent/2
-         ,send_sync_req/3
+         ,send_sync_req/1
+         ,send_sync_resp/3, send_sync_resp/4
          ,config/1
          ,send_status_update/2
          ,add_acdc_queue/2
@@ -88,7 +89,7 @@
                                    ]).
 
 -define(RESPONDERS, [{{acdc_agent_handler, handle_sync_req}
-                       ,{<<"agents">>, <<"sync_req">>}
+                       ,{<<"agent">>, <<"sync_req">>}
                       }
                      ,{{acdc_agent_handler, handle_sync_resp}
                        ,{<<"agent">>, <<"sync_resp">>}
@@ -163,8 +164,13 @@ originate_execute(Srv, JObj) ->
 join_agent(Srv, ACallId) ->
     gen_listener:cast(Srv, {join_agent, ACallId}).
 
-send_sync_req(Srv, AcctId, AgentId) ->
-    gen_listener:cast(Srv, {send_sync_req, AcctId, AgentId}).
+send_sync_req(Srv) ->
+    gen_listener:cast(Srv, {send_sync_req}).
+
+send_sync_resp(Srv, Status, ReqJObj) ->
+    send_sync_resp(Srv, Status, ReqJObj, []).
+send_sync_resp(Srv, Status, ReqJObj, Options) ->
+    gen_listener:cast(Srv, {send_sync_resp, Status, ReqJObj, Options}).
 
 -spec config/1 :: (pid()) -> {ne_binary(), ne_binary()}.
 config(Srv) ->
@@ -210,7 +216,7 @@ init([Supervisor, AcctDb, AgentJObj, Queues]) ->
        ,agent_id = AgentId
        ,account_id = wh_json:get_value(<<"pvt_account_id">>, AgentJObj)
        ,agent_queues = Queues
-       ,my_id = list_to_binary([wh_util:to_binary(node()), "-", pid_to_list(self())])
+       ,my_id = acdc_util:agent_proc_id(self())
        ,supervisor = Supervisor
       }}.
 
@@ -247,10 +253,10 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast({start_fsm, Supervisor}, #state{
-              agent_db=AcctDb
+              account_id=AcctId
               ,agent_id=AgentId
              }=State) ->
-    {ok, FSMPid} = acdc_agent_sup:start_fsm(Supervisor, AcctDb, AgentId),
+    {ok, FSMPid} = acdc_agent_sup:start_fsm(Supervisor, AcctId, AgentId),
     link(FSMPid),
     lager:debug("started FSM at ~p", [FSMPid]),
 
@@ -398,9 +404,20 @@ handle_cast({join_agent, ACallId}, #state{call=Call}=State) ->
     whapps_call_command:pickup(ACallId, <<"now">>, Call),
     {noreply, State};
 
-handle_cast({send_sync_req, AcctId, AgentId}, #state{my_id=MyId}=State) ->
+handle_cast({send_sync_req}, #state{my_id=MyId
+                                    ,account_id=AcctId
+                                    ,agent_id=AgentId
+                                   }=State) ->
     lager:debug("sending sync request"),
     send_sync_request(AcctId, AgentId, MyId),
+    {noreply, State};
+
+handle_cast({send_sync_resp, Status, ReqJObj, Options}, #state{my_id=MyId
+                                                               ,account_id=AcctId
+                                                               ,agent_id=AgentId
+                                                              }=State) ->
+    lager:debug("sending sync response"),
+    send_sync_response(ReqJObj, AcctId, AgentId, MyId, Status, Options),
     {noreply, State};
 
 handle_cast({send_status_update, Status}, #state{account_id=AcctId
@@ -528,6 +545,16 @@ send_sync_request(AcctId, AgentId, MyId) ->
             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     wapi_acdc_agent:publish_sync_req(Prop).
+
+send_sync_response(ReqJObj, AcctId, AgentId, MyId, Status, Options) ->
+    Prop = [{<<"Account-ID">>, AcctId}
+            ,{<<"Agent-ID">>, AgentId}
+            ,{<<"Process-ID">>, MyId}
+            ,{<<"Status">>, wh_util:to_binary(Status)}
+            | Options ++ wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+           ],
+    Q = wh_json:get_value(<<"Server-ID">>, ReqJObj),
+    wapi_acdc_agent:publish_sync_resp(Q, Prop).
 
 send_status_update(AcctId, AgentId, Status) ->
     Update = props:filter_undefined(
