@@ -9,7 +9,8 @@
 %%%-------------------------------------------------------------------
 -module(crossbar_doc).
 
--export([load/2, load_from_file/2, load_merge/3
+-export([load/2, load/3
+         ,load_from_file/2, load_merge/3
          ,load_view/3, load_view/4
          ,load_attachment/3, load_docs/2
         ]).
@@ -52,11 +53,17 @@ current_doc_vsn() ->
 %% Failure here returns 410, 500, or 503
 %% @end
 %%--------------------------------------------------------------------
--spec load/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
+-spec load/2 :: (ne_binary() | [ne_binary(),...], #cb_context{}) -> #cb_context{}.
+-spec load/3 :: (ne_binary() | [ne_binary(),...], #cb_context{}, wh_proplist()) -> #cb_context{}.
 load(_DocId, #cb_context{db_name=undefined}=Context) ->
     crossbar_util:response_db_missing(Context);
-load(DocId, #cb_context{db_name=DB}=Context) ->
-    case couch_mgr:open_doc(DB, DocId) of
+load(DocId, #cb_context{}=Context) ->
+    load(DocId, Context, []).
+
+load(_DocId, #cb_context{db_name=undefined}=Context, _Opts) ->
+    crossbar_util:response_db_missing(Context);
+load(?NE_BINARY = DocId, #cb_context{db_name=DB}=Context, Opts) ->
+    case couch_mgr:open_doc(DB, DocId, Opts) of
         {error, db_not_reachable} ->
             lager:debug("loading doc ~s from ~s failed: db not reachable", [DocId, DB]),
             crossbar_util:response_datastore_timeout(Context);
@@ -76,6 +83,26 @@ load(DocId, #cb_context{db_name=DB}=Context) ->
                                                  },
                     crossbar_util:store(db_doc, Doc, Context1)
             end
+    end;
+load([DocId|_]=IDs, #cb_context{db_name=DB}=Context, Opts) ->
+    lager:debug("load ids: ~p", [IDs]),
+    case couch_mgr:all_docs(DB, [{keys, IDs}, include_docs | Opts]) of
+        {error, db_not_reachable} ->
+            lager:debug("loading docs from ~s failed: db not reachable", [DB]),
+            crossbar_util:response_datastore_timeout(Context);
+        {error, not_found} ->
+            lager:debug("loading docs from ~s failed: doc not found", [DB]),
+            crossbar_util:response_bad_identifier(DocId, Context);
+        {ok, Vs} ->
+            lager:debug("Vs: ~p", [Vs]),
+            Docs = [wh_json:get_value(<<"doc">>, V)
+                    || V <- Vs,
+                       wh_json:is_json_object(V)
+                   ],
+            Context#cb_context{
+              doc=Docs
+              ,resp_status=success
+             }
     end.
 
 %%--------------------------------------------------------------------
@@ -291,6 +318,37 @@ save(#cb_context{}=Context) ->
 save(#cb_context{db_name=undefined}=Context, _) ->
     lager:debug("db undefined, cannot save"),
     crossbar_util:response_db_missing(Context);
+save(#cb_context{db_name=DB, doc=[_|_]=JObjs, req_verb=Verb, resp_headers=RespHs}=Context, Options) ->
+    JObjs0 = update_pvt_parameters(JObjs, Context),
+    case couch_mgr:save_docs(DB, JObjs0, Options) of
+        {error, db_not_reachable} ->
+            lager:debug("failed to save json: db not reachable"),
+            crossbar_util:response_datastore_timeout(Context);
+        {error, conflict} ->
+            lager:debug("failed to save json: conflicts with existing doc"),
+            crossbar_util:response_conflicting_docs(Context);
+        {ok, JObjs1} when Verb =:= <<"put">> ->
+            _ = send_document_change(created, DB, JObjs1, Options),
+            Context#cb_context{doc=JObjs1
+                               ,resp_status=success
+                               ,resp_headers=
+                                   [{<<"Location">>, wh_json:get_value(<<"_id">>, JObj1)}
+                                    || JObj1 <- JObjs
+                                   ] ++ RespHs
+                               ,resp_data=[public_fields(JObj1) || JObj1 <- JObjs]
+                               ,resp_etag=rev_to_etag(JObjs1)
+                              };
+        {ok, JObjs2} ->
+            _ = send_document_change(edited, DB, JObjs2, Options),
+            Context#cb_context{doc=JObjs2
+                               ,resp_status=success
+                               ,resp_data=[public_fields(JObj2) || JObj2 <- JObjs]
+                               ,resp_etag=rev_to_etag(JObjs2)
+                              };
+        _Else ->
+            lager:debug("save failed: unexpected return from datastore: ~p", [_Else]),
+            Context
+    end;
 save(#cb_context{db_name=DB, doc=JObj, req_verb=Verb, resp_headers=RespHs}=Context, Options) ->
     JObj0 = update_pvt_parameters(JObj, Context),
     case couch_mgr:save_doc(DB, JObj0, Options) of
