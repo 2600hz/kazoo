@@ -445,7 +445,7 @@ open_cache_doc(DbName, DocId, Options) ->
 -spec open_doc/2 :: (ne_binary(), ne_binary()) ->
                             {'ok', wh_json:json_object()} |
                             {'error', 'not_found' | 'db_not_reachable'}.
--spec open_doc/3 :: (ne_binary(), ne_binary(), proplist()) ->
+-spec open_doc/3 :: (ne_binary(), ne_binary(), wh_proplist()) ->
                             {'ok', wh_json:json_object()} |
                             {'error', 'not_found' | 'db_not_reachable'}.
 open_doc(DbName, DocId) ->
