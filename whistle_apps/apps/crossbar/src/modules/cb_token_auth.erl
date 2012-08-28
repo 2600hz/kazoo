@@ -52,6 +52,7 @@ init(Parent) ->
     cleanup_loop(Expiry).
 
 -spec finish_request/1 :: (#cb_context{}) -> any().
+finish_request(#cb_context{auth_doc=undefined}) -> ok;
 finish_request(#cb_context{auth_doc=AuthDoc}) ->
     lager:debug("updating auth doc: ~s:~s", [wh_json:get_value(<<"_id">>, AuthDoc)
                                             ,wh_json:get_value(<<"_rev">>, AuthDoc)
