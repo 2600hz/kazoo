@@ -55,7 +55,7 @@
 
 -export_type([json_object/0, json_objects/0
               ,json_string/0, json_strings/0
-              ,json_term/0
+              ,json_term/0, json_terms/0
               ,json_proplist/0, json_proplist_k/1, json_proplist_kv/2
               ,json_proplist_key/0
              ]).
@@ -402,8 +402,10 @@ find(Key, JObjs, Default) when is_list(JObjs) ->
     end.
 
 
--spec get_value/2 :: (json_string() | json_strings(), json_object() | json_objects()) -> json_term() | 'undefined'.
--spec get_value/3 :: (json_string() | json_strings(), json_object() | json_objects(), Default) -> json_term() | Default.
+-spec get_value/2 :: (json_string() | json_strings(), json_object() | json_objects()) ->
+                             json_term() | 'undefined'.
+-spec get_value/3 :: (json_string() | json_strings(), json_object() | json_objects(), Default) ->
+                             json_term() | Default.
 get_value(Key, JObj) ->
     get_value(Key, JObj, undefined).
 
@@ -418,7 +420,8 @@ get_value([Key|Ks], L, Default) when is_list(L) ->
 get_value(K, Doc, Default) ->
     get_value1(K, Doc, Default).
 
--spec get_value1/3 :: (json_string() | json_strings(), json_object() | json_objects(), Default) -> json_term() | Default.
+-spec get_value1/3 :: (json_string() | json_strings(), json_object() | json_objects(), Default) ->
+                              json_term() | Default.
 get_value1([], JObj, _Default) ->
     JObj;
 get_value1(Key, JObj, Default) when not is_list(Key)->
