@@ -169,10 +169,7 @@ put(#cb_context{}=Context) ->
 post(#cb_context{}=Context, _) ->
     crossbar_doc:save(Context).
 post(#cb_context{}=Context, Id, ?ROSTER_PATH_TOKEN) ->
-    %% saves the agent docs
-    crossbar_doc:save(Context),
-    %% reads the queue doc
-    read(Id, Context).
+    read(Id, crossbar_doc:save(Context)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -185,10 +182,7 @@ post(#cb_context{}=Context, Id, ?ROSTER_PATH_TOKEN) ->
 delete(#cb_context{}=Context, _) ->
     crossbar_doc:delete(Context).
 delete(#cb_context{}=Context, Id, ?ROSTER_PATH_TOKEN) ->
-    %% saves the agent docs
-    crossbar_doc:save(Context),
-    %% reads the queue doc
-    read(Id, Context).
+    read(Id, crossbar_doc:save(Context)).
 
 %%%===================================================================
 %%% Internal functions
