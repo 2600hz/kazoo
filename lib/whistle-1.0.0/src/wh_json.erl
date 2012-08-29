@@ -116,10 +116,8 @@ is_json_term(MaybeJObj) ->
 %% wh_json:from_list([{a,b}, {c, wh_json:from_list([{d, e}])}]).
 %% the sub-proplist [{d,e}] needs converting before being passed to the next level
 -spec from_list/1 :: (json_proplist()) -> json_object().
-from_list([]) ->
-    new();
-from_list(L) when is_list(L) ->
-    ?JSON_WRAPPER(L).
+from_list([]) -> new();
+from_list(L) when is_list(L) -> ?JSON_WRAPPER(L).
 
 %% only a top-level merge
 %% merges JObj1 into JObj2
