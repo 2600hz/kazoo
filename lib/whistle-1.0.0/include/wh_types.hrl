@@ -24,6 +24,7 @@
 -type text() :: string() | atom() | binary().
 
 -type api_terms() :: wh_json:json_object() | wh_json:json_proplist().
+-type api_binary() :: ne_binary() | 'undefined'.
 
 -type wh_deeplist() :: [term() | wh_deeplist()].
 
