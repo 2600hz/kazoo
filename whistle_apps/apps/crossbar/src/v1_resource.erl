@@ -496,8 +496,8 @@ multiple_choices(Req, Context) ->
 -spec generate_etag/2 :: (#http_req{}, #cb_context{}) -> {ne_binary(), #http_req{}, #cb_context{}}.
 generate_etag(Req0, Context0) ->
     Event = <<"v1_resource.etag">>,
-    {Req1, Context1} = crossbar_bindings:fold(Event, {Req0, Context0}),
-    case Context1#cb_context.resp_etag of
+    {Req1, #cb_context{resp_etag=ETag}=Context1} = crossbar_bindings:fold(Event, {Req0, Context0}),
+    case ETag of
         automatic ->
             {Content, _} = v1_util:create_resp_content(Req1, Context1),
             Tag = wh_util:to_hex_binary(crypto:md5(Content)),

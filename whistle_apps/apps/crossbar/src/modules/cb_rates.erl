@@ -218,14 +218,12 @@ normalize_view_results(JObj, Acc) ->
 %% Add any pvt_* fields to the json object
 %% @end
 %%--------------------------------------------------------------------
-add_pvt_fields(JObjs) when is_list(JObjs) ->
-    [add_pvt_fields(JObj) || JObj <- JObjs];
+-spec add_pvt_fields/1 :: (wh_json:json_object()) -> wh_json:json_object().
 add_pvt_fields(JObj) ->
     {JObj1, _} = add_pvt_fields(JObj, undefined),
     JObj1.
 
-add_pvt_fields(JObjs, Context) when is_list(JObjs) ->
-    [add_pvt_fields(JObj, Context) || JObj <- JObjs];
+-spec add_pvt_fields/2 :: (wh_json:json_object(), #cb_context{}) -> wh_json:json_object().
 add_pvt_fields(JObj, Context) ->
     lists:foldr(fun(F, {J, C}) ->
                         {F(J, C), C}

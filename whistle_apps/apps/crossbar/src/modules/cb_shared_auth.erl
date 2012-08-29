@@ -218,7 +218,7 @@ create_local_token(#cb_context{doc=JObj, auth_token=SharedToken}=Context) ->
 %% the shared token and get the account/user for the token
 %% @end
 %%--------------------------------------------------------------------
--spec authenticate_shared_token/2 :: ('undefined' | ne_binary(), nonempty_string())
+-spec authenticate_shared_token/2 :: (api_binary(), nonempty_string())
                                      -> {'ok', string() | binary()} | {'error', atom()} | {'forbidden', 'shared_token_rejected'}.
 authenticate_shared_token(undefined, _) ->
     {forbidden, missing_shared_token};
@@ -260,7 +260,7 @@ import_missing_data(RemoteData) ->
 %% an account and user, ensure the account exists (creating if not)
 %% @end
 %%--------------------------------------------------------------------
--spec import_missing_account/2 :: ('undefined' | ne_binary(), 'undefined' | wh_json:json_object()) -> boolean().
+-spec import_missing_account/2 :: (api_binary(), 'undefined' | wh_json:json_object()) -> boolean().
 import_missing_account(undefined, _) ->
     lager:debug("shared auth reply did not define an account id"),
     false;
@@ -315,7 +315,7 @@ import_missing_account(AccountId, Account) ->
 %% an account and user, ensure the user exists locally (creating if not)
 %% @end
 %%--------------------------------------------------------------------
--spec import_missing_user/3 :: ('undefined' | ne_binary(), 'undefined' | ne_binary(), 'undefined' | wh_json:json_object()) -> boolean().
+-spec import_missing_user/3 :: (api_binary(), api_binary(), 'undefined' | wh_json:json_object()) -> boolean().
 import_missing_user(_, undefined, _) ->
     lager:debug("shared auth reply did not define an user id"),
     false;
