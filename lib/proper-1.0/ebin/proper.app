@@ -5,8 +5,9 @@
               {applications,[compiler,kernel,stdlib]},
               {env,[]},
               {modules,[proper,proper_arith,proper_array,proper_dict,
-                        proper_fsm,proper_gb_sets,proper_gb_trees,proper_gen,
-                        proper_orddict,proper_ordsets,proper_prop_remover,
-                        proper_queue,proper_sets,proper_shrink,proper_statem,
-                        proper_symb,proper_transformer,proper_types,
-                        proper_typeserver,strip_types,vararg]}]}.
+                        proper_fsm,proper_funserver,proper_gb_sets,
+                        proper_gb_trees,proper_gen,proper_orddict,
+                        proper_ordsets,proper_prop_remover,proper_queue,
+                        proper_sets,proper_shrink,proper_statem,proper_symb,
+                        proper_transformer,proper_types,proper_typeserver,
+                        strip_types,vararg]}]}.
