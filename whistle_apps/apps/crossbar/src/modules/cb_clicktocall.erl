@@ -314,7 +314,7 @@ wait_for_originate(MsgId) ->
             wait_for_originate(MsgId)
     end.
 
--spec get_c2c_contact/1 :: ('undefined' | nonempty_string() | ne_binary()) -> 'undefined' | ne_binary().
+-spec get_c2c_contact/1 :: ('undefined' | nonempty_string() | ne_binary()) -> api_binary().
 get_c2c_contact(undefined) ->
     undefined;
 get_c2c_contact(Contact) when not is_list(Contact) ->
