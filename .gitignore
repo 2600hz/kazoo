@@ -21,6 +21,8 @@ lib/erlydtl*/src/erlydtl_parser.erl
 lib/meck*/ebin/*
 lib/braintree*/ebin/*.beam
 lib/protobuffs*/ebin/*
+lib/couchbeam*/ebin/*
+lib/webmachine*/ebin/*
 lib/protobuffs*/deps/*
 utils/*/ebin/*.beam
 utils/*/ebin/*.app
