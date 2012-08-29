@@ -193,7 +193,7 @@ delete(#cb_context{doc=Doc}=Context, _DocId) ->
                 {error, not_found} ->
                     ok
             end,
-            wapi_switch:reloadacl(),
+            wapi_switch:publish_reloadacl(),
             Context1;
         Else ->
             Else
