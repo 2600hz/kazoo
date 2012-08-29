@@ -156,7 +156,7 @@ check_preflight(Req0, #cb_context{allowed_methods=Methods, req_nouns=[{Mod, Para
                                                                 ,req_verb=Verb
                                                                }};
                         false ->
-                            Context1 = crossbar_util:response(error, "method not allowed", 405, Context),
+                            Context1 = crossbar_util:response(error, <<"method not allowed">>, 405, Context),
                             {Content, Req3} = v1_util:create_resp_content(Req3, Context1),
                             {ok, Req4} = cowboy_http_req:set_resp_body(Content, Req3),
                             {Methods1, Req4, Context1#cb_context{allow_methods=Methods1
@@ -481,7 +481,7 @@ to_json(Req, Context) ->
     _ = crossbar_bindings:map(Event, {Req, Context}),
     v1_util:create_pull_response(Req, Context).
 
--spec to_binary/2 :: (#http_req{}, #cb_context{}) -> {boolean(), #http_req{}, #cb_context{}}.
+-spec to_binary/2 :: (#http_req{}, #cb_context{}) -> {binary(), #http_req{}, #cb_context{}}.
 to_binary(Req, #cb_context{resp_data=RespData}=Context) ->
     Event = <<"v1_resource.to_binary">>,
     _ = crossbar_bindings:map(Event, {Req, Context}),
