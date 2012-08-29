@@ -68,7 +68,7 @@
 -define(BT_ACTIVE_STATUSES, [?BT_ACTIVE, ?BT_PENDING, ?BT_PAST_DUE]). 
 
 -record(bt_address, {id :: ne_binary()
-                     ,customer_id :: ne_binary()
+                     ,customer_id :: ne_binary() | nonempty_string()
                      ,first_name :: ne_binary()
                      ,last_name :: ne_binary()
                      ,company :: ne_binary()
@@ -206,7 +206,7 @@
                          ,billing_address = 'undefined' :: 'undefined' | #bt_address{}
                          ,shipping_address_id :: ne_binary()
                          ,shipping_address = 'undefined' :: 'undefined' | #bt_address{}
-                         ,customer_id :: ne_binary()
+                         ,customer_id :: ne_binary() | nonempty_string()
                          ,customer = 'undefined' :: 'undefined' | #bt_customer{}
                          ,payment_token :: ne_binary()
                          ,card = 'undefined' :: 'undefined' | #bt_card{}
