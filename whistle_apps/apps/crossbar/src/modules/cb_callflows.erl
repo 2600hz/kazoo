@@ -98,7 +98,7 @@ post(Context, _DocId) ->
             case whapps_config:get_is_true(?MOD_CONFIG_CAT, <<"default_reconcile_numbers">>, true) of
                 false -> C;
                 true ->
-                    DbDoc = crossbar_util:fetch(db_doc, Context), 
+                    DbDoc = cb_context:fetch(db_doc, Context), 
                     Set1 = sets:from_list(wh_json:get_value(<<"numbers">>, DbDoc, [])),
                     Set2 = sets:from_list(wh_json:get_value(<<"numbers">>, JObj, [])),
                     NewNumbers = sets:subtract(Set2, Set1),

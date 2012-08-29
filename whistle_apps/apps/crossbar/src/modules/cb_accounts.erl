@@ -187,7 +187,7 @@ validate_req(#cb_context{req_verb = <<"get">>}=Context, AccountId, <<"siblings">
 
 -spec post/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
 post(#cb_context{doc=Doc}=Context, AccountId) ->
-    _ = crossbar_util:put_reqid(Context),
+    _ = cb_context:put_reqid(Context),
     %% this just got messy
     %% since we are not replicating, the accounts rev and the account rev on
     %% this doc can drift.... so set it to account save, then set it to
@@ -226,7 +226,7 @@ put(Context, _) ->
 
 -spec delete/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
 delete(Context, AccountId) ->
-    _ = crossbar_util:put_reqid(Context),
+    _ = cb_context:put_reqid(Context),
     %% dont use the account id in cb_context as it may not represent the db_name...
     AccountDb = wh_util:format_account_id(AccountId, encoded),
     delete_stop_if_decedants(AccountId, AccountDb, Context).

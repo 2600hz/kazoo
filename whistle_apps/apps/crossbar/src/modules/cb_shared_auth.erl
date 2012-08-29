@@ -121,7 +121,7 @@ authenticate(_) ->
 %%--------------------------------------------------------------------
 -spec validate/1 :: (#cb_context{}) -> #cb_context{}.
 validate(#cb_context{req_data=JObj, req_verb = <<"put">>}=Context) ->
-    _ = crossbar_util:put_reqid(Context),
+    _ = cb_context:put_reqid(Context),
     XBarUrl = whapps_config:get_string(<<"crossbar.shared_auth">>, <<"authoritative_crossbar">>),
     SharedToken = wh_json:get_value(<<"shared_token">>, JObj),
     case authenticate_shared_token(SharedToken, XBarUrl) of
@@ -142,11 +142,11 @@ validate(#cb_context{req_data=JObj, req_verb = <<"put">>}=Context) ->
             crossbar_util:response(error, <<"could not validate shared token">>, 500, Context)
     end;
 validate(#cb_context{auth_doc=undefined, req_verb = <<"get">>}=Context) ->
-    _ = crossbar_util:put_reqid(Context),
+    _ = cb_context:put_reqid(Context),
     lager:debug("valid shared auth request received but there is no authorizing doc (noauth running?)"),
     crossbar_util:response(error, <<"authentication information is not available">>, 401, Context);
 validate(#cb_context{auth_doc=JObj, req_verb = <<"get">>}=Context) ->
-    _ = crossbar_util:put_reqid(Context),
+    _ = cb_context:put_reqid(Context),
     lager:debug("valid shared auth request received, creating response"),
     AccountId = wh_json:get_value(<<"account_id">>, JObj),
     UserId = wh_json:get_value(<<"owner_id">>, JObj),
@@ -175,7 +175,7 @@ validate(#cb_context{auth_doc=JObj, req_verb = <<"get">>}=Context) ->
 %% @end
 %%--------------------------------------------------------------------
 put(Context) ->
-    _ = crossbar_util:put_reqid(Context),
+    _ = cb_context:put_reqid(Context),
     create_local_token(Context).
 
 %%%===================================================================

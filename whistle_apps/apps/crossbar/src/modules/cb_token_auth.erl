@@ -101,7 +101,7 @@ prepare_token_for_deletion(Token) ->
 authenticate(#cb_context{auth_token = <<>>}) ->
     false;
 authenticate(#cb_context{auth_token=AuthToken}=Context) ->
-    _ = crossbar_util:put_reqid(Context),
+    _ = cb_context:put_reqid(Context),
 
     lager:debug("checking auth token: ~s", [AuthToken]),
     case couch_mgr:open_cache_doc(?TOKEN_DB, AuthToken) of

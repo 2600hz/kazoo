@@ -130,7 +130,7 @@ validate(#cb_context{req_verb = <<"delete">>}=Context, DocId) ->
 
 -spec post/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
 post(#cb_context{}=Context, _DocId) ->
-    _ = crossbar_util:put_reqid(Context),
+    _ = cb_context:put_reqid(Context),
     case crossbar_doc:save(Context) of
         #cb_context{resp_status=success, doc=Doc1, account_id=AcctId}=Context1 ->
             case wh_json:get_ne_value([<<"sip">>, <<"realm">>], Doc1) of
@@ -156,7 +156,7 @@ post(#cb_context{}=Context, _DocId) ->
 
 -spec put/1 :: (#cb_context{}) -> #cb_context{}.
 put(#cb_context{}=Context) ->
-    _ = crossbar_util:put_reqid(Context),
+    _ = cb_context:put_reqid(Context),
     case crossbar_doc:save(Context) of
         #cb_context{resp_status=success, doc=Doc1, account_id=AcctId}=Context1 ->
             case wh_json:get_ne_value([<<"sip">>, <<"realm">>], Doc1) of
@@ -182,7 +182,7 @@ put(#cb_context{}=Context) ->
 
 -spec delete/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
 delete(#cb_context{doc=Doc}=Context, _DocId) ->
-    _ = crossbar_util:put_reqid(Context),
+    _ = cb_context:put_reqid(Context),
 
     case crossbar_doc:delete(Context) of
         #cb_context{resp_status=success}=Context1 ->

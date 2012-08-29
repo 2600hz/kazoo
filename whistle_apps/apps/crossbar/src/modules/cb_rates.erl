@@ -325,7 +325,7 @@ constrain_weight(X) when X >= 100 -> 100;
 constrain_weight(X) -> X.
 
 upload_csv(Context) ->
-    _ = crossbar_util:put_reqid(Context),
+    _ = cb_context:put_reqid(Context),
     Now = erlang:now(),
     {ok, {Count, Rates}} = process_upload_file(Context),
 
@@ -337,7 +337,7 @@ upload_csv(Context) ->
 save_processed_rates(Context, Cnt) ->
     spawn(fun() ->
                   Now = erlang:now(),
-                  _ = crossbar_util:put_reqid(Context),
+                  _ = cb_context:put_reqid(Context),
                   _ = crossbar_doc:save(Context, [{publish_doc, false}]),
                   lager:debug("saved up to ~b docs (took ~b ms)", [Cnt, wh_util:elapsed_ms(Now)])
           end).

@@ -127,7 +127,7 @@ validate(Context, <<"checkauth">>, _) ->
 -spec get/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
 -spec get/3 :: (#cb_context{}, path_token(), path_token()) -> #cb_context{}.
 get(#cb_context{query_json=QS}=Context, Provider) ->
-    _ = crossbar_util:put_reqid(Context),
+    _ = cb_context:put_reqid(Context),
     Realm = whapps_config:get(?OPENID_CONFIG_CATEGORY, <<"realm">>),
 
     %% find the discovery URL of the IdP
@@ -164,7 +164,7 @@ get(#cb_context{query_json=QS}=Context, Provider) ->
     end.
 
 get(#cb_context{query_json=QS}=Context, <<"checkauth">>, CacheKey) ->
-    _ = crossbar_util:put_reqid(Context),
+    _ = cb_context:put_reqid(Context),
 
     Realm = whapps_config:get(?OPENID_CONFIG_CATEGORY, <<"realm">>),
     RegUrl = whapps_config:get(?OPENID_CONFIG_CATEGORY, <<"reg_url">>),
