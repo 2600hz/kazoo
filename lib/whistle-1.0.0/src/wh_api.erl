@@ -94,7 +94,6 @@ default_headers_v(Prop) ->
 
 disambiguate_and_publish(ReqJObj, RespJObj, Binding) ->
     Wapi = list_to_binary([<<"wapi_">>, wh_util:to_binary(Binding)]),
-    lager:debug("Wapi mod: ~s", [Wapi]),
     ApiMod = wh_util:to_atom(Wapi),
     ApiMod:disambiguate_and_publish(ReqJObj, RespJObj).
 
