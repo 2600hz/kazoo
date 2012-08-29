@@ -1,0 +1,100 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<title>Module exmpp_server_sasl</title><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<link rel="stylesheet" type="text/css" href="stylesheet.css" title="EDoc">
+</head>
+<body bgcolor="white">
+<div class="navbar"><a name="#navbar_top"></a><table width="100%" border="0" cellspacing="0" cellpadding="2" summary="navigation bar"><tr><td><a href="overview-summary.html" target="overviewFrame">Overview</a></td><td><a href="http://www.erlang.org/"><img src="erlang.png" align="right" border="0" alt="erlang logo"></a></td></tr></table></div>
+<hr>
+
+<h1>Module exmpp_server_sasl</h1>
+<ul class="index"><li><a href="#description">Description</a></li><li><a href="#index">Function Index</a></li><li><a href="#functions">Function Details</a></li></ul>
+  The module <strong>exmpp_server_sasl</strong> implements the receiving entity  
+side of SASL authentication.
+
+<p><b>Authors:</b> Jean-SÃ&copy;bastien PÃ&copy;dron (<a href="mailto:js.pedron@meetic-corp.com"><tt>js.pedron@meetic-corp.com</tt></a>).</p>
+
+<h2><a name="description">Description</a></h2><p>
+  The module <strong>exmpp_server_sasl</strong> implements the receiving entity  
+side of SASL authentication.</p>
+ 
+  <p>
+  Note that it doesn't implement SASL, only feature negotiation at the
+  XMPP level.
+  </p>
+<h2><a name="index">Function Index</a></h2>
+<table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#challenge-1">challenge/1</a></td><td>Prepare a <code>&lt;challenge/&gt;</code> element with the given challenge.</td></tr>
+<tr><td valign="top"><a href="#failure-0">failure/0</a></td><td>Prepare a <code>&lt;failure/&gt;</code> element.</td></tr>
+<tr><td valign="top"><a href="#failure-1">failure/1</a></td><td>Prepare a <code>&lt;failure/&gt;</code> element with a defined condition.</td></tr>
+<tr><td valign="top"><a href="#failure-2">failure/2</a></td><td>Prepare a <code>&lt;failure/&gt;</code> element with a defined condition and text.</td></tr>
+<tr><td valign="top"><a href="#feature-1">feature/1</a></td><td>Make a feature announcement child.</td></tr>
+<tr><td valign="top"><a href="#next_step-1">next_step/1</a></td><td>Extract the response that the initiating entity sent.</td></tr>
+<tr><td valign="top"><a href="#success-0">success/0</a></td><td>Prepare a <code>&lt;success/&gt;</code> element.</td></tr>
+<tr><td valign="top"><a href="#success-1">success/1</a></td><td>Prepare a <code>&lt;success/&gt;</code> element with supplied XML character data.</td></tr>
+</table>
+
+<h2><a name="functions">Function Details</a></h2>
+
+<h3 class="function"><a name="challenge-1">challenge/1</a></h3>
+<div class="spec">
+<p><tt>challenge(Challenge) -&gt; Challenge_El</tt>
+<ul class="definitions"><li><tt>Challenge = string() | none</tt></li><li><tt>Challenge_El = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p><p>Prepare a <code>&lt;challenge/&gt;</code> element with the given challenge.</p>
+ 
+  <code>Challenge</code> will be Base64-encoded by this function.</p>
+
+<h3 class="function"><a name="failure-0">failure/0</a></h3>
+<div class="spec">
+<p><tt>failure() -&gt; Failure</tt>
+<ul class="definitions"><li><tt>Failure = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p>Prepare a <code>&lt;failure/&gt;</code> element.</p>
+
+<h3 class="function"><a name="failure-1">failure/1</a></h3>
+<div class="spec">
+<p><tt>failure(Condition) -&gt; Failure</tt>
+<ul class="definitions"><li><tt>Condition = atom()</tt></li><li><tt>Failure = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p>Prepare a <code>&lt;failure/&gt;</code> element with a defined condition.</p>
+
+<h3 class="function"><a name="failure-2">failure/2</a></h3>
+<div class="spec">
+<p><tt>failure(Condition, Text) -&gt; Failure</tt>
+<ul class="definitions"><li><tt>Condition = atom()</tt></li><li><tt>Text = string()</tt></li><li><tt>Failure = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p>Prepare a <code>&lt;failure/&gt;</code> element with a defined condition and text.</p>
+
+<h3 class="function"><a name="feature-1">feature/1</a></h3>
+<div class="spec">
+<p><tt>feature(Mechanisms) -&gt; Feature</tt>
+<ul class="definitions"><li><tt>Mechanisms = [binary() | string()]</tt></li><li><tt>Feature = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p>throws <tt>{sasl, feature_announcement, invalid_mechanisms_list, []} | {sasl, feature_announcement, invalid_mechanism, Mechanism}</tt></p>
+<p><p>Make a feature announcement child.</p>
+ 
+  The result should then be passed to <a href="exmpp_stream.html#features-1"><code>exmpp_stream:features/1</code></a>.</p>
+
+<h3 class="function"><a name="next_step-1">next_step/1</a></h3>
+<div class="spec">
+<p><tt>next_step(Xmlel::El) -&gt; Type</tt>
+<ul class="definitions"><li><tt>El = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li><li><tt>Type = Auth | Response | Abort</tt></li><li><tt>Auth = {auth, Mechanism, none | string()}</tt></li><li><tt>Mechanism = string()</tt></li><li><tt>Response = {response, string()}</tt></li><li><tt>Abort = abort</tt></li></ul></p>
+</div><p>throws <tt>{sasl, next_step, unexpected_element, El}</tt></p>
+<p><p>Extract the response that the initiating entity sent.</p>
+ 
+  Any response data is Base64-decoded.</p>
+
+<h3 class="function"><a name="success-0">success/0</a></h3>
+<div class="spec">
+<p><tt>success() -&gt; Success_El</tt>
+<ul class="definitions"><li><tt>Success_El = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p>Prepare a <code>&lt;success/&gt;</code> element.</p>
+
+<h3 class="function"><a name="success-1">success/1</a></h3>
+<div class="spec">
+<p><tt>success(Data) -&gt; Success_El</tt>
+<ul class="definitions"><li><tt>Data = string() | none</tt></li><li><tt>Success_El = <a href="exmpp_xml.html#type-xmlel">exmpp_xml:xmlel()</a></tt></li></ul></p>
+</div><p>Prepare a <code>&lt;success/&gt;</code> element with supplied XML character data.
+  <code>Data</code> will be Base64-encoded by this function.</p>
+<hr>
+
+<div class="navbar"><a name="#navbar_bottom"></a><table width="100%" border="0" cellspacing="0" cellpadding="2" summary="navigation bar"><tr><td><a href="overview-summary.html" target="overviewFrame">Overview</a></td><td><a href="http://www.erlang.org/"><img src="erlang.png" align="right" border="0" alt="erlang logo"></a></td></tr></table></div>
+<p><i>Generated by EDoc, Oct 11 2011, 14:29:41.</i></p>
+</body>
+</html>

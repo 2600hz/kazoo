@@ -1,0 +1,117 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<title>Module tls</title><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<link rel="stylesheet" type="text/css" href="stylesheet.css" title="EDoc">
+</head>
+<body bgcolor="white">
+<div class="navbar"><a name="#navbar_top"></a><table width="100%" border="0" cellspacing="0" cellpadding="2" summary="navigation bar"><tr><td><a href="overview-summary.html" target="overviewFrame">Overview</a></td><td><a href="http://www.erlang.org/"><img src="erlang.png" align="right" border="0" alt="erlang logo"></a></td></tr></table></div>
+<hr>
+
+<h1>Module tls</h1>
+<ul class="index"><li><a href="#description">Description</a></li><li><a href="#index">Function Index</a></li><li><a href="#functions">Function Details</a></li></ul>
+  This <strong>tls</strong> module is for compatibility with ejabberd.
+
+
+<h2><a name="description">Description</a></h2>
+  This <strong>tls</strong> module is for compatibility with ejabberd.
+<h2><a name="index">Function Index</a></h2>
+<table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#close-1">close/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#controlling_process-2">controlling_process/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#get_peer_certificate-1">get_peer_certificate/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#get_verify_result-1">get_verify_result/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#peername-1">peername/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#recv-2">recv/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#recv-3">recv/3</a></td><td></td></tr>
+<tr><td valign="top"><a href="#recv_data-2">recv_data/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#send-2">send/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#setopts-2">setopts/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#sockname-1">sockname/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#start-0">start/0</a></td><td></td></tr>
+<tr><td valign="top"><a href="#start_link-0">start_link/0</a></td><td></td></tr>
+<tr><td valign="top"><a href="#tcp_to_tls-2">tcp_to_tls/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#tls_to_tcp-1">tls_to_tcp/1</a></td><td></td></tr>
+</table>
+
+<h2><a name="functions">Function Details</a></h2>
+
+<h3 class="function"><a name="close-1">close/1</a></h3>
+<div class="spec">
+<p><tt>close(TLSSock) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="controlling_process-2">controlling_process/2</a></h3>
+<div class="spec">
+<p><tt>controlling_process(TLSSock, Pid) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="get_peer_certificate-1">get_peer_certificate/1</a></h3>
+<div class="spec">
+<p><tt>get_peer_certificate(TLSSock) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="get_verify_result-1">get_verify_result/1</a></h3>
+<div class="spec">
+<p><tt>get_verify_result(TLSSock) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="peername-1">peername/1</a></h3>
+<div class="spec">
+<p><tt>peername(TLSSock) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="recv-2">recv/2</a></h3>
+<div class="spec">
+<p><tt>recv(Socket, Length) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="recv-3">recv/3</a></h3>
+<div class="spec">
+<p><tt>recv(TLSSock, Length, Timeout) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="recv_data-2">recv_data/2</a></h3>
+<div class="spec">
+<p><tt>recv_data(TLSSock, Packet) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="send-2">send/2</a></h3>
+<div class="spec">
+<p><tt>send(TLSSock, Packet) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="setopts-2">setopts/2</a></h3>
+<div class="spec">
+<p><tt>setopts(TLSSock, Opts) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="sockname-1">sockname/1</a></h3>
+<div class="spec">
+<p><tt>sockname(TLSSock) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="start-0">start/0</a></h3>
+<div class="spec">
+<p><tt>start() -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="start_link-0">start_link/0</a></h3>
+<div class="spec">
+<p><tt>start_link() -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="tcp_to_tls-2">tcp_to_tls/2</a></h3>
+<div class="spec">
+<p><tt>tcp_to_tls(TCPSocket, Options) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="tls_to_tcp-1">tls_to_tcp/1</a></h3>
+<div class="spec">
+<p><tt>tls_to_tcp(TLSSock) -&gt; any()</tt></p>
+</div>
+<hr>
+
+<div class="navbar"><a name="#navbar_bottom"></a><table width="100%" border="0" cellspacing="0" cellpadding="2" summary="navigation bar"><tr><td><a href="overview-summary.html" target="overviewFrame">Overview</a></td><td><a href="http://www.erlang.org/"><img src="erlang.png" align="right" border="0" alt="erlang logo"></a></td></tr></table></div>
+<p><i>Generated by EDoc, Oct 11 2011, 14:29:41.</i></p>
+</body>
+</html>
