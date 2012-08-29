@@ -1,0 +1,21 @@
+%% -*- mode: erlang -*-
+
+%% This file needs not to have the extension .erl, since otherwise
+%% rebar will try to compile it, which won't work since it requires
+%% special compilation options.  See meck_tests:cover_test_.
+
+-module(cover_test_module).
+-export([a/0, b/0, c/2]).
+
+%% a/0 is defined in include/cover_test.hrl.  We don't put the full
+%% path here, since it should be provided as a compiler option.
+-include("cover_test.hrl").
+
+%% Also, make that this module was compiled with -DTEST.
+-ifdef(TEST).
+b() ->
+    b.
+-endif.
+
+c(A, B) ->
+    {A, B}.

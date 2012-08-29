@@ -1,0 +1,5 @@
+import "import_target.proto";
+
+message Foo {
+	optional Imported bar = 1;
+}

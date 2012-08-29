@@ -1,0 +1,9 @@
+package Exports;
+
+message Exporter {
+    required int32 internal = 1;
+}
+
+message Export_This_Message {
+    required int32 internal = 1;
+}

@@ -1,0 +1,18 @@
+message Person {
+  required string name = 1;
+  required int32 id = 2;
+  optional string email = 3;
+
+  message PhoneNumber {
+    required string number = 1;
+    message PhoneType {
+        optional int32 mobile = 1;
+        optional int32 home = 2;
+        optional int32 work = 3;
+    }
+    optional PhoneType type = 2;
+  }
+
+  repeated PhoneNumber phone = 4;
+}
+
