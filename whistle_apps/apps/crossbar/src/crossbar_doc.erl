@@ -13,22 +13,26 @@
          ,load_from_file/2, load_merge/3
          ,load_view/3, load_view/4
          ,load_attachment/3, load_docs/2
-        ]).
--export([save/1, save/2
+         ,save/1, save/2
          ,delete/1, delete/2
          ,save_attachment/4, save_attachment/5
          ,delete_attachment/3
+         ,ensure_saved/1, ensure_saved/2
+         ,public_fields/1
+         ,private_fields/1, is_private_key/1
+         ,rev_to_etag/1
+         ,current_doc_vsn/0
+         ,update_pvt_parameters/2
         ]).
--export([ensure_saved/1, ensure_saved/2]).
--export([public_fields/1, private_fields/1, is_private_key/1]).
--export([rev_to_etag/1, current_doc_vsn/0]).
--export([update_pvt_parameters/2]).
 
--include("../include/crossbar.hrl").
+-include_lib("crossbar/include/crossbar.hrl").
 
 -define(CROSSBAR_DOC_VSN, <<"1">>).
--define(PVT_FUNS, [fun add_pvt_vsn/2, fun add_pvt_account_id/2, fun add_pvt_account_db/2
-                   ,fun add_pvt_created/2, fun add_pvt_modified/2
+-define(PVT_FUNS, [fun add_pvt_vsn/2
+                   ,fun add_pvt_account_id/2
+                   ,fun add_pvt_account_db/2
+                   ,fun add_pvt_created/2
+                   ,fun add_pvt_modified/2
                   ]).
 
 %%--------------------------------------------------------------------
@@ -40,9 +44,8 @@
 %% Failure here returns 410, 500, or 503
 %% @end
 %%--------------------------------------------------------------------
--spec current_doc_vsn/0 :: () -> <<_:8>>.
-current_doc_vsn() ->
-    ?CROSSBAR_DOC_VSN.
+-spec current_doc_vsn/0 :: () -> ne_binary().
+current_doc_vsn() -> ?CROSSBAR_DOC_VSN.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -73,34 +76,29 @@ load(?NE_BINARY = DocId, #cb_context{db_name=DB}=Context, Opts) ->
         {ok, Doc} ->
             lager:debug("loaded doc ~s from ~s", [DocId, DB]),
             case wh_util:is_true(wh_json:get_value(<<"pvt_deleted">>, Doc)) of
-                true ->
-                    crossbar_util:response_bad_identifier(DocId, Context);
+                true -> crossbar_util:response_bad_identifier(DocId, Context);
                 false ->
                     Context1 = Context#cb_context{doc=Doc
                                                   ,resp_status=success
                                                   ,resp_data=public_fields(Doc)
                                                   ,resp_etag=rev_to_etag(Doc)
                                                  },
-                    crossbar_util:store(db_doc, Doc, Context1)
+                    cb_context:store(db_doc, Doc, Context1)
             end
     end;
-load([DocId|_]=IDs, #cb_context{db_name=DB}=Context, Opts) ->
-    lager:debug("load ids: ~p", [IDs]),
+load([_|_]=IDs, #cb_context{db_name=DB}=Context, Opts) ->
     case couch_mgr:all_docs(DB, [{keys, IDs}, include_docs | Opts]) of
         {error, db_not_reachable} ->
             lager:debug("loading docs from ~s failed: db not reachable", [DB]),
             crossbar_util:response_datastore_timeout(Context);
-        {error, not_found} ->
-            lager:debug("loading docs from ~s failed: doc not found", [DB]),
-            crossbar_util:response_bad_identifier(DocId, Context);
         {ok, Vs} ->
-            lager:debug("Vs: ~p", [Vs]),
-            Docs = [wh_json:get_value(<<"doc">>, V)
-                    || V <- Vs,
-                       wh_json:is_json_object(V)
-                   ],
+            lager:debug("loaded docs from ~s", [DB]),
             Context#cb_context{
-              doc=Docs
+              doc=[wh_json:get_value(<<"doc">>, V)
+                   || V <- Vs,
+                      wh_json:is_json_object(V),
+                      wh_util:is_false(wh_json:get_value([<<"doc">>, <<"pvt_deleted">>], V))
+                  ]
               ,resp_status=success
              }
     end.
@@ -115,7 +113,9 @@ load([DocId|_]=IDs, #cb_context{db_name=DB}=Context, Opts) ->
 %% Failure here returns 410, 500, or 503
 %% @end
 %%--------------------------------------------------------------------
--spec load_from_file/2 :: (ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
+-spec load_from_file/2 :: (ne_binary(), ne_binary()) ->
+                                  {'ok', wh_json:json_object()} |
+                                  {'error', atom()}.
 load_from_file(Db, File) ->
     couch_mgr:load_doc_from_file(Db, crossbar, File).
 
@@ -166,8 +166,9 @@ load_view(View, Options, #cb_context{db_name=DB, query_json=RJ}=Context) ->
     HasFilter = has_filter(RJ),
     ViewOptions = case HasFilter of
                       false -> Options;
-                      true -> 
-                          [include_docs | props:delete(include_docs, Options)]
+                      true -> [include_docs
+                               | props:delete(include_docs, Options)
+                              ]
                   end,
     case couch_mgr:get_results(DB, View, ViewOptions) of
         {error, invalid_view_name} ->
@@ -178,8 +179,10 @@ load_view(View, Options, #cb_context{db_name=DB, query_json=RJ}=Context) ->
             crossbar_util:response_missing_view(Context);
         {ok, Docs} when HasFilter ->
             lager:debug("loaded view ~s from ~s, running query filter", [View, DB]),
-            Filtered = [Doc || Doc <- Docs, Doc =/= undefined
-                                   ,filter_doc(wh_json:get_value(<<"doc">>, Doc), RJ)],
+            Filtered = [Doc || Doc <- Docs,
+                               Doc =/= undefined,
+                               filter_doc(wh_json:get_value(<<"doc">>, Doc), RJ)
+                       ],
             Context#cb_context{
               doc=Filtered
               ,resp_status=success
@@ -207,17 +210,18 @@ load_view(View, Options, #cb_context{db_name=DB, query_json=RJ}=Context) ->
 %% Failure here returns 500 or 503
 %% @end
 %%--------------------------------------------------------------------
--spec load_view/4 :: (ne_binary(), proplist(), #cb_context{}, fun((wh_json:json_object(), wh_json:json_objects()) -> wh_json:json_objects())) -> #cb_context{}.
+-type filter_fun() :: fun((wh_json:json_object(), wh_json:json_objects()) ->
+                                 wh_json:json_objects()).
+-spec load_view/4 :: (ne_binary(), proplist(), #cb_context{}, filter_fun()) -> #cb_context{}.
 load_view(View, Options, Context, Filter) when is_function(Filter, 2) ->
     case load_view(View, Options, Context) of
         #cb_context{resp_status=success, doc=Doc} = Context1 ->
             Context1#cb_context{resp_data=
-                                    lists:filter(fun(undefined) -> false;
-                                                    (_) -> true
-                                                 end, lists:foldr(Filter, [], Doc))
+                                    [D || D <- lists:foldl(Filter, [], Doc),
+                                          wh_json:is_json_object(D)
+                                    ]
                                };
-        Else ->
-            Else
+        Else -> Else
     end.
 
 %%--------------------------------------------------------------------
@@ -230,19 +234,19 @@ load_view(View, Options, Context, Filter) when is_function(Filter, 2) ->
 %% Failure here returns 500 or 503
 %% @end
 %%--------------------------------------------------------------------
--spec load_docs/2 :: (#cb_context{}, fun((wh_json:json_object(), wh_json:json_objects()) -> [wh_json:json_object() | 'undefined',...])) -> #cb_context{}.
+-spec load_docs/2 :: (#cb_context{}, filter_fun()) -> #cb_context{}.
 load_docs(#cb_context{db_name=Db}=Context, Filter) when is_function(Filter, 2) ->
     case couch_mgr:all_docs(Db) of
-        {ok, Docs} ->
-            Context#cb_context{resp_status=success
-                               ,resp_data=lists:filter(fun(X) ->
-                                                               X =/= undefined
-                                                       end, lists:foldr(Filter, [], Docs))
-                              };
         {error, db_not_reachable} ->
             crossbar_util:response_datastore_timeout(Context);
         {error, not_found} ->
             crossbar_util:response_db_missing(Context);
+        {ok, Docs} ->
+            Context#cb_context{resp_status=success
+                               ,resp_data=[D || D <- lists:foldl(Filter, [], Docs),
+                                                wh_json:is_json_object(D)
+                                          ]
+                              };
         _Else ->
             Context
     end.
@@ -256,7 +260,8 @@ load_docs(#cb_context{db_name=Db}=Context, Filter) when is_function(Filter, 2) -
 %% Failure here returns 500 or 503
 %% @end
 %%--------------------------------------------------------------------
--spec load_attachment/3 :: (ne_binary() | wh_json:json_object(), ne_binary(), #cb_context{}) -> #cb_context{}.
+-spec load_attachment/3 :: (ne_binary() | wh_json:json_object(), ne_binary(), #cb_context{}) ->
+                                   #cb_context{}.
 load_attachment(_DocId, _AName, #cb_context{db_name = undefined}=Context) ->
     lager:debug("loading attachment ~s from doc ~s failed: no db", [_DocId, _AName]),
     crossbar_util:response_db_missing(Context);
@@ -280,26 +285,15 @@ load_attachment(DocId, AName, #cb_context{db_name=DB}=Context) when is_binary(Do
             lager:debug("loading attachment ~s from doc ~s from db ~s failed: unexpected ~p", [AName, DocId, DB, _Else]),
             Context
     end;
-load_attachment(Doc, AName, #cb_context{db_name=DB}=Context) ->
-    DocId = wh_json:get_value(<<"_id">>, Doc, wh_json:get_value(<<"id">>, Doc)),
-    case couch_mgr:fetch_attachment(DB, DocId, AName) of
-        {error, db_not_reachable} ->
-            lager:debug("loading attachment ~s from doc ~s from db ~s failed: db not reachable", [AName, DocId, DB]),
-            crossbar_util:response_datastore_timeout(Context);
-        {error, not_found} ->
-            lager:debug("loading attachment ~s from doc ~s from db ~s failed: attachment not found", [AName, DocId, DB]),
-            crossbar_util:response_bad_identifier(DocId, Context);
-        {ok, AttachBin} ->
-            lager:debug("loaded attachment ~s from doc ~s from db ~s", [AName, DocId, DB]),
-            Context#cb_context{resp_status=success
-                               ,doc=Doc
-                               ,resp_data=AttachBin
-                               ,resp_etag=rev_to_etag(Doc)
-                              };
-        _Else ->
-            lager:debug("loading attachment ~s from doc ~s from db ~s failed: unexpected ~p", [AName, DocId, DB, _Else]),
-            Context
-    end.
+load_attachment(Doc, AName, #cb_context{}=Context) ->
+    load_attachment(find_doc_id(Doc), AName, Context).
+
+-spec find_doc_id/1 :: (wh_json:json_object()) -> api_binary().
+find_doc_id(Doc) ->
+    find_doc_id(Doc, wh_json:get_value(<<"_id">>, Doc)).
+find_doc_id(Doc, undefined) ->
+    wh_json:get_value(<<"id">>, Doc);
+find_doc_id(_Doc, Id) -> Id.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -451,22 +445,24 @@ send_document_change(Action, Db, Doc, Options) ->
                                   publish_doc(Action, Db, Doc, Id)
                           end
                   end);
-        false ->
-            ok
+        _ -> ok
     end.
 
 publish_doc(Action, Db, Doc, Id) ->
+    ActionBin = wh_util:to_binary(Action),
     Type = wh_json:get_binary_value(<<"pvt_type">>, Doc, <<"undefined">>),
-    Change = [{<<"ID">>, Id}
-              ,{<<"Rev">>, wh_json:get_value(<<"_rev">>, Doc)}
-              ,{<<"Doc">>, public_fields(Doc)}
-              ,{<<"Type">>, Type}
-              ,{<<"Account-DB">>, wh_json:get_value(<<"pvt_account_db">>, Doc)}
-              ,{<<"Account-ID">>, wh_json:get_value(<<"pvt_account_id">>, Doc)}
-              ,{<<"Date-Modified">>, wh_json:get_binary_value(<<"pvt_created">>, Doc)}
-              ,{<<"Date-Created">>, wh_json:get_binary_value(<<"pvt_modified">>, Doc)}
-              ,{<<"Version">>, wh_json:get_binary_value(<<"pvt_vsn">>, Doc)}
-              | wh_api:default_headers(<<"configuration">>, <<"doc_", (wh_util:to_binary(Action))/binary>>, ?APP_NAME, ?APP_VERSION)],
+    Change =
+        [{<<"ID">>, Id}
+         ,{<<"Rev">>, wh_json:get_value(<<"_rev">>, Doc)}
+         ,{<<"Doc">>, public_fields(Doc)}
+         ,{<<"Type">>, Type}
+         ,{<<"Account-DB">>, wh_json:get_value(<<"pvt_account_db">>, Doc)}
+         ,{<<"Account-ID">>, wh_json:get_value(<<"pvt_account_id">>, Doc)}
+         ,{<<"Date-Modified">>, wh_json:get_binary_value(<<"pvt_created">>, Doc)}
+         ,{<<"Date-Created">>, wh_json:get_binary_value(<<"pvt_modified">>, Doc)}
+         ,{<<"Version">>, wh_json:get_binary_value(<<"pvt_vsn">>, Doc)}
+         | wh_api:default_headers(<<"configuration">>, <<"doc_", ActionBin/binary>>, ?APP_NAME, ?APP_VERSION)
+        ],
     wapi_conf:publish_doc_update(Action, Db, Type, Id, Change).
 
 %%--------------------------------------------------------------------
@@ -614,7 +610,8 @@ delete_attachment(DocId, AName, #cb_context{db_name=DB}=Context) ->
 %% json proplist
 %% @end
 %%--------------------------------------------------------------------
--spec public_fields/1 :: (wh_json:json_object() | wh_json:json_objects()) -> wh_json:json_object() | wh_json:json_objects().
+-spec public_fields/1 :: (wh_json:json_object() | wh_json:json_objects()) ->
+                                 wh_json:json_object() | wh_json:json_objects().
 public_fields(JObjs)->
     wh_json:public_fields(JObjs).
 
@@ -625,7 +622,8 @@ public_fields(JObjs)->
 %% json proplist
 %% @end
 %%--------------------------------------------------------------------
--spec private_fields/1 :: (wh_json:json_object() | wh_json:json_objects()) -> wh_json:json_object() | wh_json:json_objects().
+-spec private_fields/1 :: (wh_json:json_object() | wh_json:json_objects()) ->
+                                  wh_json:json_object() | wh_json:json_objects().
 private_fields(JObjs)->
     wh_json:private_fields(JObjs).
 
@@ -648,7 +646,10 @@ is_private_key(_) -> false.
 %% document into a usable ETag for the response
 %% @end
 %%--------------------------------------------------------------------
--spec rev_to_etag/1 :: (wh_json:json_object() | wh_json:json_objects()) -> 'undefined' | 'automatic' | string().
+-spec rev_to_etag/1 :: (wh_json:json_object() | wh_json:json_objects()) ->
+                               'undefined' |
+                               'automatic' |
+                               string().
 rev_to_etag([_|_])-> automatic;
 rev_to_etag([]) -> undefined;
 rev_to_etag(JObj) ->
@@ -664,7 +665,8 @@ rev_to_etag(JObj) ->
 %% parameters on all crossbar documents
 %% @end
 %%--------------------------------------------------------------------
--spec update_pvt_parameters/2 :: (wh_json:json_object() | wh_json:json_objects(), #cb_context{}) -> wh_json:json_object() | wh_json:json_objects().
+-spec update_pvt_parameters/2 :: (wh_json:json_object() | wh_json:json_objects(), #cb_context{}) ->
+                                         wh_json:json_object() | wh_json:json_objects().
 update_pvt_parameters(JObjs, Context) when is_list(JObjs) ->
     [update_pvt_parameters(JObj, Context) || JObj <- JObjs];
 update_pvt_parameters(JObj0, #cb_context{db_name=DBName}) ->
