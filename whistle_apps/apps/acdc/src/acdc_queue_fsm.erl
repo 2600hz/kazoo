@@ -48,7 +48,7 @@
          ,collect_ref :: reference()
          ,acct_id :: ne_binary()
          ,queue_id :: ne_binary()
-         ,queue_type :: queue_type()
+         ,queue_strategy :: queue_strategy()
          ,member_call_id :: ne_binary()
          }).
 
@@ -131,7 +131,7 @@ init([AcctId, QueueId, QueuePid, Type]) ->
     {ok, ready, #state{queue_proc=QueuePid
                        ,acct_id=AcctId
                        ,queue_id=QueueId
-                       ,queue_type=Type
+                       ,queue_strategy=Type
                       }}.
 
 %%--------------------------------------------------------------------
@@ -184,7 +184,7 @@ connect_req({timeout, Ref, ?COLLECT_RESP_MESSAGE}, #state{collect_ref=Ref
 connect_req({timeout, Ref, ?COLLECT_RESP_MESSAGE}, #state{collect_ref=Ref
                                                           ,connect_resps=CRs
                                                           ,queue_proc=Srv
-                                                          ,queue_type=Type
+                                                          ,queue_strategy=Type
                                                          }=State) ->
     lager:debug("done waiting for agents to respond, picking a winner"),
     case pick_winner(CRs, Type) of
@@ -337,7 +337,7 @@ start_collect_timer() ->
     gen_fsm:start_timer(?COLLECT_RESP_TIMEOUT, ?COLLECT_RESP_MESSAGE).
 
 %% Really sophisticated selection algorithm
--spec pick_winner/2 :: (wh_json:json_objects(), queue_type()) ->
+-spec pick_winner/2 :: (wh_json:json_objects(), queue_strategy()) ->
                                'undefined' |
                                {wh_json:json_object()
                                 ,wh_json:json_objects()

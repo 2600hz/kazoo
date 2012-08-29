@@ -40,16 +40,23 @@
 -include("acdc.hrl").
 
 -record(state, {
-          %% Config options
           queue_id :: ne_binary()
          ,queue_db :: ne_binary()
          ,acct_id :: ne_binary()
-         ,enter_when_empty = true :: boolean() % if a queue is agent-less, can the caller enter?
+
+         %% Config options
+         ,name :: ne_binary()
+         ,connection_timeout = 0 :: integer() % how long can a caller wait in the queue
+         ,agent_ring_timeout = 5 :: pos_integer() % how long to ring an agent before giving up
          ,max_queue_size = 0 :: integer() % restrict the number of the queued callers
-         ,max_wait_time = 0 :: integer() % how long can a caller wait in the queue
+         ,ring_simultaneously = 1 :: integer() % how many agents to try ringing at a time (first one wins)
+         ,enter_when_empty = true :: boolean() % if a queue is agent-less, can the caller enter?
          ,agent_wrapup_time = 0 :: integer() % forced wrapup time for an agent after a call
+         ,moh :: ne_binary() % media to play to customer while on hold
+         ,announce :: ne_binary() % media to play to customer when about to be connected to agent
+         ,strategy = 'rr' :: queue_strategy() % round-robin | most-idle
+         ,caller_exit_key :: ne_binary() % DTMF a caller can press to leave the queue
          ,record_caller = false :: boolean() % record the caller
-         ,type = 'rr' :: queue_type() % round-robin | most-idle
          ,cdr_url :: ne_binary() % optional URL to request for extra CDR data
 
           %% PIDs of the gang
@@ -146,12 +153,19 @@ init([Supervisor, AcctDb, QueueJObj]) ->
        ,queue_db = AcctDb
        ,acct_id = wh_util:format_account_id(AcctDb, raw)
        ,my_id = list_to_binary([wh_util:to_binary(node()), "-", pid_to_list(self())])
+
+       ,name = wh_json:get_value(<<"name">>, QueueJObj)
+       ,connection_timeout = wh_json:get_integer_value(<<"connection_timeout">>, QueueJObj)
+       ,agent_ring_timeout = wh_json:get_integer_value(<<"agent_ring_timeout">>, QueueJObj)
+       ,max_queue_size = wh_json:get_integer_value(<<"max_queue_size">>, QueueJObj)
+       ,ring_simultaneously = wh_json:get_value(<<"ring_simultaneously">>, QueueJObj)
        ,enter_when_empty = wh_json:is_true(<<"enter_when_empty">>, QueueJObj, true)
-       ,max_queue_size = wh_json:get_integer_value(<<"max_queue_size">>, QueueJObj, 0)
-       ,max_wait_time = wh_json:get_integer_value(<<"max_wait_time">>, QueueJObj, 0)
-       ,agent_wrapup_time = wh_json:get_integer_value(<<"agent_wrapup_time">>, QueueJObj, 0)
+       ,agent_wrapup_time = wh_json:get_integer_value(<<"agent_wrapup_time">>, QueueJObj)
+       ,moh = wh_json:get_value(<<"moh">>, QueueJObj)
+       ,announce = wh_json:get_value(<<"announce">>, QueueJObj)
+       ,strategy = get_strategy(wh_json:get_value(<<"strategy">>, QueueJObj))
+       ,caller_exit_key = wh_json:get_value(<<"caller_exit_key">>, QueueJObj, <<"#">>)
        ,record_caller = wh_json:is_true(<<"record_caller">>, QueueJObj, false)
-       ,type = wh_json:get_atom_value(<<"type">>, QueueJObj, 'rr')
        ,cdr_url = wh_json:get_value(<<"cdr_url">>, QueueJObj)
       }}.
 
@@ -187,7 +201,7 @@ handle_cast({start_fsm, Supervisor}, #state{
               queue_db=AcctDb
               ,queue_id=QueueId
               ,acct_id=AcctId
-              ,type=Type
+              ,strategy=Type
              }=State) ->
     {ok, FSMPid} = acdc_queue_sup:start_fsm(Supervisor, AcctDb, QueueId, Type),
     link(FSMPid),
@@ -404,3 +418,9 @@ maybe_nack(Call, Delivery, SharedPid) ->
             acdc_queue_shared:ack(SharedPid, Delivery),
             false
     end.
+
+-spec get_strategy/1 :: (api_binary()) -> queue_strategy().
+get_strategy(<<"round_robin">>) -> 'rr';
+get_strategy(<<"most_idle">>) -> 'mi';
+get_strategy(_) -> 'rr'.
+    

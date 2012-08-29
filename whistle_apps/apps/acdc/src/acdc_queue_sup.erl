@@ -66,7 +66,7 @@ fsm() ->
         [P] -> P
     end.
 
--spec start_fsm/4 :: (pid(), ne_binary(), ne_binary(), queue_type()) -> sup_startchild_ret().
+-spec start_fsm/4 :: (pid(), ne_binary(), ne_binary(), queue_strategy()) -> sup_startchild_ret().
 start_fsm(Super, AcctId, QueueId, Type) ->
     Parent = self(),
     supervisor:start_child(Super, ?CHILD(acdc_queue_fsm, [AcctId, QueueId, Parent, Type])).
