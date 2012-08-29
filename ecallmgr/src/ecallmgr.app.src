@@ -21,7 +21,7 @@
                                  {lager_console_backend, debug}
                                  ,{lager_file_backend, [
                                                         {"debug.log", debug, 10485760, "$D0", 5}
-                                                ,{"error.log", error, 10485760, "$D0", 5}
+                                                        ,{"error.log", error, 10485760, "$D0", 5}
                                                        ]}
                                  ,{lager_syslog_backend, ["ecallmgr", local0, debug]}
                                 ]}

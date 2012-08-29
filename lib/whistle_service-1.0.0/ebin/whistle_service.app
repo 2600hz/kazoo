@@ -1,0 +1,12 @@
+{application,whistle_service,
+             [{description,"Skel - A whistle_serviceeton application useful for quickly creating services"},
+              {vsn,"1"},
+              {registered,[]},
+              {applications,[kernel,stdlib]},
+              {mod,{whistle_service_app,[]}},
+              {env,[]},
+              {modules,[wh_reseller,wh_resellers,wh_service,
+                        wh_service_devices,wh_service_limits,
+                        wh_service_numbers,wh_service_plan,
+                        whistle_service_app,whistle_service_maintenance,
+                        whistle_service_sup]}]}.
