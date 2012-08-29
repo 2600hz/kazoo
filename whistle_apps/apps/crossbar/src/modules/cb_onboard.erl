@@ -622,7 +622,7 @@ create_response(#cb_context{doc=JObj, account_id=AccountId}=Context) ->
                                    ,Context#cb_context{auth_token=AuthToken, auth_doc=Doc});
         {error, R} ->
             lager:debug("could not create new local auth token, ~p", [R]),
-            crossbar_util:response(error, JObj, 400, Context)
+            crossbar_util:response(error, undefined, 400, JObj, Context)
     end.
 
 %%--------------------------------------------------------------------
