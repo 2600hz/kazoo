@@ -49,8 +49,9 @@ unbind_q(Queue, _Props) ->
 
 -spec publish_reloadacl/0 :: () -> 'ok'.
 publish_reloadacl() ->
-    {ok, Payload} = wh_api:prepare_api_payload(wh_api:default_headers(<<>>, <<"switch_event">>, <<"reloadacl">>), 
-                                              ?SWITCH_EVENT_RELOADACL_VALUES, 
-                                              fun ?MODULE:reloadacl/1),
+    {ok, Payload} = wh_api:prepare_api_payload(wh_api:default_headers(<<"switch_event">>, <<"reloadacl">>)
+                                               ,?SWITCH_EVENT_RELOADACL_VALUES
+                                               ,fun ?MODULE:reloadacl/1
+                                              ),
     amqp_util:configuration_publish(?SWITCH_RELOADACL_KEY, Payload, ?DEFAULT_CONTENT_TYPE).
 
