@@ -1,6 +1,8 @@
 riak_err: Limiting the maximum size of Erlang/OTP error_logger messages
 =======================================================================
 
+[![Build Status](https://secure.travis-ci.org/basho/riak_err.png?branch=master)](http://travis-ci.org/basho/riak_err)
+
 The `riak_err` OTP application replaces about 90% of the default
 Erlang/OTP info/error/warning event handling mechanism.
 The replacement places strict limits on the maximum size of a

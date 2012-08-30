@@ -29,6 +29,7 @@ ebin/delegate.beam: src/delegate.erl ebin/gen_server2.beam
 ebin/rabbit_auth_mechanism_amqplain.beam: src/rabbit_auth_mechanism_amqplain.erl include/rabbit_auth_mechanism_spec.hrl ebin/rabbit_auth_mechanism.beam include/rabbit.hrl
 ebin/rabbit_exchange_type_fanout.beam: src/rabbit_exchange_type_fanout.erl include/rabbit_exchange_type_spec.hrl ebin/rabbit_exchange_type.beam include/rabbit.hrl
 ebin/rabbit_file.beam: src/rabbit_file.erl
+ebin/rabbit_framing_amqp_0_8.beam: src/rabbit_framing_amqp_0_8.erl include/rabbit_framing.hrl
 ebin/rabbit_heartbeat.beam: src/rabbit_heartbeat.erl include/rabbit.hrl
 ebin/rabbit_memory_monitor.beam: src/rabbit_memory_monitor.erl ebin/gen_server2.beam
 ebin/rabbit_mirror_queue_slave_sup.beam: src/rabbit_mirror_queue_slave_sup.erl ebin/supervisor2.beam include/rabbit.hrl
@@ -37,7 +38,6 @@ ebin/rabbit_sup.beam: src/rabbit_sup.erl include/rabbit.hrl
 ebin/rabbit_tests_event_receiver.beam: src/rabbit_tests_event_receiver.erl include/rabbit.hrl
 ebin/rabbit_upgrade_functions.beam: src/rabbit_upgrade_functions.erl
 ebin/worker_pool.beam: src/worker_pool.erl ebin/gen_server2.beam
-ebin/rabbit_framing_amqp_0_8.beam: src/rabbit_framing_amqp_0_8.erl include/rabbit_framing.hrl
 ebin/file_handle_cache.beam: src/file_handle_cache.erl ebin/gen_server2.beam
 ebin/priority_queue.beam: src/priority_queue.erl
 ebin/rabbit_binary_generator.beam: src/rabbit_binary_generator.erl include/rabbit.hrl include/rabbit_framing.hrl
@@ -57,12 +57,12 @@ ebin/gm.beam: src/gm.erl ebin/gen_server2.beam
 ebin/rabbit_auth_backend.beam: src/rabbit_auth_backend.erl
 ebin/rabbit_auth_mechanism_plain.beam: src/rabbit_auth_mechanism_plain.erl include/rabbit_auth_mechanism_spec.hrl ebin/rabbit_auth_mechanism.beam include/rabbit.hrl
 ebin/rabbit.beam: src/rabbit.erl include/rabbit.hrl include/rabbit_framing.hrl
+ebin/rabbit_framing_amqp_0_9_1.beam: src/rabbit_framing_amqp_0_9_1.erl include/rabbit_framing.hrl
 ebin/rabbit_guid.beam: src/rabbit_guid.erl
 ebin/rabbit_mirror_queue_slave.beam: src/rabbit_mirror_queue_slave.erl include/gm_specs.hrl ebin/gm.beam include/rabbit.hrl ebin/gen_server2.beam
 ebin/rabbit_nodes.beam: src/rabbit_nodes.erl
 ebin/rabbit_registry.beam: src/rabbit_registry.erl
 ebin/worker_pool_worker.beam: src/worker_pool_worker.erl ebin/gen_server2.beam
-ebin/rabbit_framing_amqp_0_9_1.beam: src/rabbit_framing_amqp_0_9_1.erl include/rabbit_framing.hrl
 ebin/mirrored_supervisor_tests.beam: src/mirrored_supervisor_tests.erl ebin/mirrored_supervisor.beam
 ebin/rabbit_command_assembler.beam: src/rabbit_command_assembler.erl include/rabbit.hrl include/rabbit_framing.hrl
 ebin/rabbit_exchange_type.beam: src/rabbit_exchange_type.erl
@@ -77,9 +77,9 @@ ebin/credit_flow.beam: src/credit_flow.erl
 ebin/gen_server2.beam: src/gen_server2.erl
 ebin/rabbit_channel_sup_sup.beam: src/rabbit_channel_sup_sup.erl ebin/supervisor2.beam
 ebin/rabbit_connection_sup.beam: src/rabbit_connection_sup.erl ebin/supervisor2.beam include/rabbit.hrl
+ebin/rabbit_ctl_usage.beam: src/rabbit_ctl_usage.erl
 ebin/rabbit_net.beam: src/rabbit_net.erl include/rabbit.hrl
 ebin/vm_memory_monitor.beam: src/vm_memory_monitor.erl
-ebin/rabbit_ctl_usage.beam: src/rabbit_ctl_usage.erl
 ebin/rabbit_access_control.beam: src/rabbit_access_control.erl include/rabbit.hrl
 ebin/rabbit_basic.beam: src/rabbit_basic.erl include/rabbit.hrl include/rabbit_framing.hrl
 ebin/rabbit_event.beam: src/rabbit_event.erl include/rabbit.hrl
