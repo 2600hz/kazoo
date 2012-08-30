@@ -10,7 +10,7 @@
 
 -behaviour(supervisor).
 
--include_lib("ecallmgr/src/ecallmgr.hrl").
+-include("ecallmgr.hrl").
 
 -export([start_link/0]).
 -export([cache_proc/0]).

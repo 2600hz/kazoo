@@ -10,7 +10,7 @@
 
 -behaviour(supervisor).
 
--include_lib("ecallmgr/src/ecallmgr.hrl").
+-include("ecallmgr.hrl").
 
 -export([start_link/0]).
 -export([start_control_process/2

@@ -9,7 +9,7 @@
 %%%-------------------------------------------------------------------
 -module(whapps_account_config).
 
--include_lib("whistle_apps/src/whistle_apps.hrl").
+-include("whistle_apps.hrl").
 
 -export([get/2, get/3, get/4
          ,set/4

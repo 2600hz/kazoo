@@ -29,7 +29,7 @@
 
 -export([lookup_media/3, lookup_media/4, lookup_media/5]).
 
--include_lib("ecallmgr/src/ecallmgr.hrl").
+-include("ecallmgr.hrl").
 
 -type send_cmd_ret() :: fs_sendmsg_ret() | fs_api_ret().
 -export_type([send_cmd_ret/0]).

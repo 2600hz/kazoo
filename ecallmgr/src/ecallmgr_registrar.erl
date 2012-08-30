@@ -18,9 +18,9 @@
 -define(NODE_KEY(Realm, Username), {?MODULE, node, Username, Realm}).
 -define(LOOKUP_KEY(Realm, Username), {?MODULE, lookup, Username, Realm}).
 
--include_lib("ecallmgr/src/ecallmgr.hrl"). 
+-include("ecallmgr.hrl"). 
 
--spec reg_success/2 :: (proplist(), atom()) -> 'ok'.
+-spec reg_success/2 :: (wh_proplist(), atom()) -> 'ok'.
 reg_success(Props, Node) ->
     Username = props:get_value(<<"username">>, Props),
     Realm = props:get_value(<<"realm">>, Props),

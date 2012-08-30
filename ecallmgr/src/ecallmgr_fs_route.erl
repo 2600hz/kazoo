@@ -22,7 +22,7 @@
 
 -define(SERVER, ?MODULE).
 
--include_lib("ecallmgr/src/ecallmgr.hrl").
+-include("ecallmgr.hrl").
 
 -record(state, {node = 'undefined' :: atom()
                 ,options = [] :: proplist()
