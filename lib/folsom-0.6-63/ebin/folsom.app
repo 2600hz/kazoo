@@ -1,6 +1,6 @@
 {application,folsom,
              [{description,[]},
-              {vsn,git},
+              {vsn,"v1.51.0-2646-gb95fb1c"},
               {registered,[]},
               {applications,[kernel,stdlib]},
               {env,[]},
