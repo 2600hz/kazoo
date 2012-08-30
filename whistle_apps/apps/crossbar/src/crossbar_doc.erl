@@ -318,9 +318,6 @@ save(#cb_context{db_name=DB, doc=[_|_]=JObjs, req_verb=Verb, resp_headers=RespHs
         {error, db_not_reachable} ->
             lager:debug("failed to save json: db not reachable"),
             crossbar_util:response_datastore_timeout(Context);
-        {error, conflict} ->
-            lager:debug("failed to save json: conflicts with existing doc"),
-            crossbar_util:response_conflicting_docs(Context);
         {ok, JObjs1} when Verb =:= <<"put">> ->
             _ = send_document_change(created, DB, JObjs1, Options),
             Context#cb_context{doc=JObjs1
@@ -338,10 +335,7 @@ save(#cb_context{db_name=DB, doc=[_|_]=JObjs, req_verb=Verb, resp_headers=RespHs
                                ,resp_status=success
                                ,resp_data=[public_fields(JObj2) || JObj2 <- JObjs]
                                ,resp_etag=rev_to_etag(JObjs2)
-                              };
-        _Else ->
-            lager:debug("save failed: unexpected return from datastore: ~p", [_Else]),
-            Context
+                              }
     end;
 save(#cb_context{db_name=DB, doc=JObj, req_verb=Verb, resp_headers=RespHs}=Context, Options) ->
     JObj0 = update_pvt_parameters(JObj, Context),
@@ -646,12 +640,13 @@ is_private_key(_) -> false.
 %% document into a usable ETag for the response
 %% @end
 %%--------------------------------------------------------------------
--spec rev_to_etag/1 :: (wh_json:json_object() | wh_json:json_objects()) ->
+-spec rev_to_etag/1 :: (wh_json:json_object() | wh_json:json_objects() | ne_binary()) ->
                                'undefined' |
                                'automatic' |
                                string().
 rev_to_etag([_|_])-> automatic;
 rev_to_etag([]) -> undefined;
+rev_to_etag(?NE_BINARY = Rev) -> wh_util:to_list(Rev);
 rev_to_etag(JObj) ->
     case wh_json:get_value(<<"_rev">>, JObj) of
         undefined -> undefined;
