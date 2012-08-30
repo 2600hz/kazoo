@@ -33,7 +33,7 @@ start_link() ->
 
 init() ->
     couch_mgr:db_create(?TOKEN_DB),
-    couch_mgr:revise_doc_from_file(?TOKEN_DB, crossbar, "views/token_auth.json"),
+    _ = couch_mgr:revise_doc_from_file(?TOKEN_DB, crossbar, "views/token_auth.json"),
 
     _ = supervisor:start_child(crossbar_sup, ?CHILDSPEC),
 

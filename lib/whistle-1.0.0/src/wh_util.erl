@@ -119,7 +119,7 @@ format_account_id(AccountId, raw) ->
 %% get the provided leger (account_id/db) balance
 %% @end
 %%--------------------------------------------------------------------
--spec current_account_balance/1 :: ('undefined' | ne_binary()) -> integer().
+-spec current_account_balance/1 :: (api_binary()) -> integer().
 current_account_balance(undefined) -> 0;
 current_account_balance(Ledger) ->
     LedgerDb = wh_util:format_account_id(Ledger, encoded),    

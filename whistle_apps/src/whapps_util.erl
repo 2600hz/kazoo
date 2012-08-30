@@ -411,7 +411,7 @@ rm_aggregate_device(Db, Device) ->
         {error, not_found} -> ok;
         {ok, JObj} ->
             lager:debug("removing aggregated device ~s/~s", [Db, DeviceId]),
-            couch_mgr:del_doc(?WH_SIP_DB, JObj),
+            _ = couch_mgr:del_doc(?WH_SIP_DB, JObj),
             ok
     end.
 

@@ -32,7 +32,7 @@
 %%% API
 %%%===================================================================
 init() ->
-    init_db(),
+    _ = init_db(),
 
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.rates">>, ?MODULE, allowed_methods),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.rates">>, ?MODULE, resource_exists),
@@ -45,7 +45,7 @@ init() ->
 init_db() ->
     _ = couch_mgr:db_create(?WH_RATES_DB),
     _ = couch_mgr:revise_doc_from_file(?WH_RATES_DB, crossbar, "views/rates.json"),
-    _ = couch_mgr:load_doc_from_file(?WH_RATES_DB, crossbar, "fixtures/us-1.json").
+    couch_mgr:load_doc_from_file(?WH_RATES_DB, crossbar, "fixtures/us-1.json").
 
 
 %%--------------------------------------------------------------------
@@ -109,7 +109,7 @@ validate(#cb_context{req_verb = <<"delete">>}=Context, Id) ->
 -spec post/1 :: (#cb_context{}) -> #cb_context{}.
 -spec post/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
 post(#cb_context{}=Context) ->
-    init_db(),
+    _ = init_db(),
     spawn(fun() -> upload_csv(Context) end),
     crossbar_util:response_202(list_to_binary(["attempting to insert rates from the uploaded document"]), Context).
 post(#cb_context{}=Context, _RateId) ->
@@ -218,12 +218,13 @@ normalize_view_results(JObj, Acc) ->
 %% Add any pvt_* fields to the json object
 %% @end
 %%--------------------------------------------------------------------
--spec add_pvt_fields/1 :: (wh_json:json_object()) -> wh_json:json_object().
+-spec add_pvt_fields/1 :: (wh_json:json_object()) ->
+                                  wh_json:json_object().
+-spec add_pvt_fields/2 :: (wh_json:json_object(), #cb_context{}) ->
+                                  {wh_json:json_object(), #cb_context{}}.
 add_pvt_fields(JObj) ->
     {JObj1, _} = add_pvt_fields(JObj, undefined),
     JObj1.
-
--spec add_pvt_fields/2 :: (wh_json:json_object(), #cb_context{}) -> wh_json:json_object().
 add_pvt_fields(JObj, Context) ->
     lists:foldr(fun(F, {J, C}) ->
                         {F(J, C), C}

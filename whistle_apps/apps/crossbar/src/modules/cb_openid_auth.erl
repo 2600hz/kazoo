@@ -326,8 +326,7 @@ normalize(QS, NormalizedName, K) ->
     %% heavy handed approach to namespace, should only operate in "http://openid.net/srv/ax/1.0"
     %% ...getting it done fast
     VKey = re:replace(K, "\\.type\\.", ".value.", [{return, list}]),
-    Value = wh_util:to_binary(props:get_value(VKey, QS, <<>>)),
-    {NormalizedName, Value}.
+    {NormalizedName, wh_json:get_binary_value(VKey, QS, <<>>)}.
 
 %%--------------------------------------------------------------------
 %% @private

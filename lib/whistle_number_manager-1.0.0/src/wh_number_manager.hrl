@@ -26,7 +26,7 @@
                  ,error_jobj = wh_json:new() :: wh_json:json_object()
                  ,activations = [] :: wh_json:json_objects()
                  ,services = undefined :: 'undefined' | wh_services:services()
-                 ,current_balance = undefined :: 'undefined' | float()
+                 ,current_balance :: float() | integer()
                  ,billing_id = undefined :: 'undefined' | ne_binary()
                 }).
 

@@ -81,10 +81,10 @@ start_link(Args) ->
 -spec default_timeout/0 :: () -> 2000.
 default_timeout() -> 2000.
 
--spec call/4 :: (server_ref(), api_terms(), wh_amqp_worker:publish_fun(), wh_amqp_worker:validate_fun()) ->
+-spec call/4 :: (server_ref(), api_terms(), publish_fun(), validate_fun()) ->
                         {'ok', wh_json:json_object()} |
                         {'error', _}.
--spec call/5 :: (server_ref(), api_terms(), wh_amqp_worker:publish_fun(), wh_amqp_worker:validate_fun(), pos_integer()) ->
+-spec call/5 :: (server_ref(), api_terms(), publish_fun(), validate_fun(), pos_integer()) ->
                         {'ok', wh_json:json_object()} |
                         {'error', _}.
 call(Srv, Req, PubFun, VFun) ->
@@ -112,7 +112,7 @@ call(Srv, Req, PubFun, VFun, Timeout) ->
             {error, poolboy_fault}
     end.
 
--spec cast/3 :: (server_ref(), api_terms(), wh_amqp_worker:publish_fun()) -> 'ok' | {'error', _}.
+-spec cast/3 :: (server_ref(), api_terms(), publish_fun()) -> 'ok' | {'error', _}.
 cast(Srv, Req, PubFun) ->
     case catch poolboy:checkout(Srv, false, 1000) of
         W when is_pid(W) ->
@@ -133,12 +133,14 @@ cast(Srv, Req, PubFun) ->
 -spec any_resp/1 :: (any()) -> 'true'.
 any_resp(_) -> true.
 
--spec handle_resp/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
+-spec handle_resp/2 :: (wh_json:json_object(), wh_proplist()) -> 'ok'.
 handle_resp(JObj, Props) ->
     gen_listener:cast(props:get_value(server, Props), {event, wh_json:get_value(<<"Msg-ID">>, JObj), JObj}).
 
--spec send_request/4 :: (ne_binary(), ne_binary(), function(), proplist()) -> 'ok'.
-send_request(CallID, Self, PublishFun, ReqProp) ->
+-spec send_request/4 :: (ne_binary(), ne_binary(), publish_fun(), wh_proplist()) ->
+                                'ok' |
+                                {'EXIT', term()}.
+send_request(CallID, Self, PublishFun, ReqProp) when is_function(PublishFun, 1) ->
     put(callid, CallID),
     Prop = [{<<"Server-ID">>, Self}
             ,{<<"Call-ID">>, CallID}
