@@ -24,7 +24,9 @@
          ,do_compaction = false :: boolean()
          }).
 
--type couchbeam_errors() :: 'not_found' | 'conflict' | 'precondition_failed' |
+-type couchbeam_errors() :: 'not_found' | 'conflict' |
+                            'precondition_failed' | 'db_not_reachable' |
+                            'db_not_found' |
                             {'ok', string(), _, _}.
 -type couchbeam_error() :: {'error', couchbeam_errors()}.
 
