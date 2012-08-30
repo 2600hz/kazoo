@@ -24,6 +24,8 @@ lib/protobuffs*/ebin/*.beam
 lib/couchbeam*/ebin/*.beam
 lib/webmachine*/ebin/*.beam
 lib/amqp_client*/ebin/*.beam
+lib/amqp_client*/deps/rabbit_common*/ebin/*.beam
+lib/amqp_client*/dist/*
 lib/riak*/ebin/*.beam
 lib/basho-lager_syslog*/ebin/*.beam
 lib/protobuffs*/deps/*

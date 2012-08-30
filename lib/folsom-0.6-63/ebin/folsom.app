@@ -1,6 +1,6 @@
 {application,folsom,
              [{description,[]},
-              {vsn,"v1.51.0-2631-gf93421f"},
+              {vsn,"v1.51.0-2636-g0ba80b1"},
               {registered,[]},
               {applications,[kernel,stdlib]},
               {env,[]},
