@@ -1,6 +1,6 @@
 {application,gproc,
              [{description,"GPROC"},
-              {vsn,"v1.51.0-2636-g0ba80b1"},
+              {vsn,git},
               {id,"GPROC"},
               {registered,[]},
               {applications,[kernel,stdlib]},

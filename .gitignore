@@ -41,6 +41,7 @@ lib/entop*/ebin/*.beam
 lib/erl*/ebin/*.beam
 lib/folsom*/ebin/*.beam
 lib/gen_smtp*/ebin/*.beam
+lib/gen_leader*/ebin/*.beam
 lib/gproc*/ebin/*.beam
 lib/ibrowse*/ebin/*.beam
 lib/lager*/ebin/*.beam
