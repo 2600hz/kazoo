@@ -367,7 +367,8 @@ do_save_doc(#db{}=Db, Doc, Options) ->
     ?RETRY_504(couchbeam:save_doc(Db, maybe_set_docid(Doc), Options)).
 
 -spec do_save_docs/3 :: (db(), wh_json:json_objects(), wh_proplist()) ->
-                                {'ok', wh_json:json_objects()}.
+                                {'ok', wh_json:json_objects()} |
+                                couchbeam_error().
 do_save_docs(#db{}=Db, Docs, Options) ->
     do_save_docs(Db, Docs, Options, []).
 
