@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(whapps_config).
 
--include_lib("whistle_apps/src/whistle_apps.hrl").
+-include("whistle_apps.hrl").
 
 -export([get/2, get/3, get/4, get_all_kvs/1]).
 -export([get_string/2, get_string/3, get_string/4]).
