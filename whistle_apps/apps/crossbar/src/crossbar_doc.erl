@@ -25,7 +25,7 @@
          ,update_pvt_parameters/2
         ]).
 
--include_lib("crossbar/include/crossbar.hrl").
+-include("include/crossbar.hrl").
 
 -define(CROSSBAR_DOC_VSN, <<"1">>).
 -define(PVT_FUNS, [fun add_pvt_vsn/2

@@ -22,7 +22,7 @@
 -export([allow_account_number_additions/1, disallow_account_number_additions/1]).
 -export([create_account/4]).
 
--include_lib("crossbar/include/crossbar.hrl").
+-include("include/crossbar.hrl").
 
 -type input_term() :: atom() | string() | ne_binary().
 

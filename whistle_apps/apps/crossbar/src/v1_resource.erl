@@ -44,18 +44,20 @@
          ,expires/2
         ]).
 
--include_lib("crossbar/include/crossbar.hrl").
+-include("include/crossbar.hrl").
 
 %%%===================================================================
 %%% Startup and shutdown of request
 %%%===================================================================
--spec init/3 :: ({'tcp' | 'ssl', 'http'}, #http_req{}, wh_proplist()) -> {'upgrade', 'protocol', 'cowboy_http_rest'}.
+-spec init/3 :: ({'tcp' | 'ssl', 'http'}, #http_req{}, wh_proplist()) ->
+                        {'upgrade', 'protocol', 'cowboy_http_rest'}.
 init({tcp, http}, _Req, _Opts) ->
     {upgrade, protocol, cowboy_http_rest};
 init({ssl, http}, _Req, _Opts) ->
     {upgrade, protocol, cowboy_http_rest}.
 
--spec rest_init/2 :: (#http_req{}, wh_proplist()) -> {'ok', #http_req{}, #cb_context{}}.
+-spec rest_init/2 :: (#http_req{}, wh_proplist()) ->
+                             {'ok', #http_req{}, #cb_context{}}.
 rest_init(Req0, Opts) ->
     ReqId = case cowboy_http_req:header(<<"X-Request-Id">>, Req0) of
                 {undefined, _} -> couch_mgr:get_uuid();

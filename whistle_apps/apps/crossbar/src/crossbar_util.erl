@@ -25,14 +25,11 @@
 -export([response_db_fatal/1]).
 -export([get_account_realm/1, get_account_realm/2]).
 -export([disable_account/1, enable_account/1, change_pvt_enabled/2]).
--export([cache_doc/2, cache_view/3]).
--export([flush_doc_cache/2]).
--export([get_results/3]).
 -export([get_path/2]).
 -export([find_account_id/3, find_account_id/4]).
 -export([find_account_db/3, find_account_db/4]).
 
--include_lib("crossbar/include/crossbar.hrl").
+-include("include/crossbar.hrl").
 
 %%--------------------------------------------------------------------
 %% @public
@@ -423,52 +420,6 @@ change_pvt_enabled(State, AccountId) ->
             lager:debug("unable to set pvt_enabled to ~s on account ~s: ~p", [State, AccountId, R]),
             {error, R}
     end.
-    
--spec cache_view/3 :: (ne_binary(), proplist(), wh_json:json_object()) -> false | ok.
-cache_view(Db, ViewOptions, JObj) ->
-    (?CACHE_TTL =/= 0) andalso
-        begin
-            lager:debug("caching views results in cache"),
-            wh_cache:store_local(?CROSSBAR_CACHE, {crossbar, view, {Db, ?MODULE}}, {ViewOptions, JObj}, ?CACHE_TTL)
-        end.
-
--spec cache_doc/2 :: (ne_binary(), wh_json:json_object()) -> false | ok.
-cache_doc(Db, JObj) ->
-    Id = wh_json:get_value(<<"_id">>, JObj),
-    (?CACHE_TTL =/= 0) andalso
-        begin 
-            lager:debug("caching document and flushing related views in cache"),
-            wh_cache:store_local(?CROSSBAR_CACHE, {crossbar, doc, {Db, Id}}, JObj, ?CACHE_TTL),
-            wh_cache:erase_local(?CROSSBAR_CACHE, {crossbar, view, {Db, ?MODULE}})
-        end.
-
--spec flush_doc_cache/2 :: (ne_binary(), ne_binary() | wh_json:json_object()) -> false | ok.
-flush_doc_cache(Db, <<Id>>) ->
-    (?CACHE_TTL =/= 0) andalso
-        begin
-            lager:debug("flushing document and related views from cache"),
-            wh_cache:erase_local(?CROSSBAR_CACHE, {crossbar, doc, {Db, Id}}),
-            wh_cache:erase_local(?CROSSBAR_CACHE, {crossbar, view, {Db, ?MODULE}})
-        end;
-flush_doc_cache(Db, JObj) ->
-    flush_doc_cache(Db, wh_json:get_value(<<"_id">>, JObj)).
-
--spec get_results/3 :: (ne_binary(), ne_binary(), proplist()) -> {ok, wh_json:json_object()} | {error, term()}.
-get_results(Db, View, ViewOptions) ->
-    case wh_cache:peek_local(?CROSSBAR_CACHE, {crossbar, view, {Db, ?MODULE}}) of
-        {ok, {ViewOptions, ViewResults}} -> 
-            lager:debug("found view results in cache"),
-            {ok, ViewResults};
-        _ ->
-            case couch_mgr:get_results(Db, View, ViewOptions) of
-                {ok, JObj}=Ok ->
-                    cache_view(Db, ViewOptions, JObj),
-                    Ok;
-                {error, R}=E ->
-                    lager:debug("error fetching ~s/~s: ~p", [Db, View, R]),
-                    E
-            end
-    end.    
 
 -spec get_path/2 :: (#http_req{}, ne_binary()) -> ne_binary().
 get_path(Req, Relative) ->

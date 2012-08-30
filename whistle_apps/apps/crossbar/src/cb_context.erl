@@ -13,7 +13,7 @@
          ,put_reqid/1
         ]).
 
--include_lib("crossbar/include/crossbar.hrl").
+-include("include/crossbar.hrl").
 
 %%--------------------------------------------------------------------
 %% @public
