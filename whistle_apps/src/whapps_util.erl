@@ -184,7 +184,8 @@ is_acct_db(_) -> false.
 %% @end
 %%--------------------------------------------------------------------
 -spec get_account_by_realm/1 :: (ne_binary()) ->
-                                        {'ok', ne_binary()} |
+                                        {'ok', wh_json:json_string()} |
+                                        {'multiples', wh_json:json_strings()} |
                                         {'error', 'not_found'}.
 get_account_by_realm(Realm) ->
     case wh_cache:peek({?MODULE, account_by_realm, Realm}) of
@@ -197,7 +198,7 @@ get_account_by_realm(Realm) ->
                     {ok, AccountDb};
                 {ok, []} ->
                     {error, not_found};
-                {ok, JObjs} ->
+                {ok, [_|_]=JObjs} ->
                     AccountDbs = [wh_json:get_value([<<"value">>, <<"account_db">>], JObj) || JObj <- JObjs],
                     wh_cache:store({?MODULE, account_by_realm, Realm}, AccountDbs),
                     {multiples, AccountDbs};
@@ -214,7 +215,8 @@ get_account_by_realm(Realm) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec get_accounts_by_name/1 :: (ne_binary()) ->
-                                        {'ok', [ne_binary(),...]} |
+                                        {'ok', wh_json:json_string()} |
+                                        {'multiples', wh_json:json_strings()} |
                                         {'error', 'not_found'}.
 get_accounts_by_name(Name) ->
     case wh_cache:peek({?MODULE, account_by_name, Name}) of
@@ -227,7 +229,7 @@ get_accounts_by_name(Name) ->
                     {ok, AccountDb};
                 {ok, []} ->
                     {error, not_found};
-                {ok, JObjs} ->
+                {ok, [_|_]=JObjs} ->
                     AccountDbs = [wh_json:get_value([<<"value">>, <<"account_db">>], JObj) || JObj <- JObjs],
                     wh_cache:store({?MODULE, account_by_realm, Name}, AccountDbs),
                     {multiples, AccountDbs};
