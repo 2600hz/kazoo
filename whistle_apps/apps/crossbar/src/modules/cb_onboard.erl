@@ -20,7 +20,7 @@
          ,put/1
         ]).
 
--include_lib("crossbar/include/crossbar.hrl").
+-include("include/crossbar.hrl").
 
 -define(OB_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".onboard">>).
 -define(DEFAULT_FLOW, "{\"data\": { \"id\": \"~s\" }, \"module\": \"user\", \"children\": { \"_\": { \"data\": { \"id\": \"~s\" }, \"module\": \"voicemail\", \"children\": {}}}}").

@@ -22,7 +22,7 @@
          ,delete/1
         ]).
 
--include_lib("crossbar/include/crossbar.hrl").
+-include("include/crossbar.hrl").
 
 -define(WHITELABEL_ID, <<"whitelabel">>).
 -define(LOGO_REQ, <<"logo">>).

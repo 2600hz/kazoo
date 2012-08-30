@@ -18,7 +18,7 @@
          ,post/1
         ]).
 
--include_lib("crossbar/include/crossbar.hrl").
+-include("include/crossbar.hrl").
 
 -define(PVT_TYPE, <<"service">>).
 -define(PVT_FUNS, [fun add_pvt_type/2]).

@@ -21,7 +21,7 @@
          ,delete/2
         ]).
 
--include_lib("crossbar/include/crossbar.hrl").
+-include("include/crossbar.hrl").
 
 -define(VIEW_FILE, <<"views/ts_accounts.json">>).
 -define(CB_LIST, <<"ts_accounts/crossbar_listing">>).

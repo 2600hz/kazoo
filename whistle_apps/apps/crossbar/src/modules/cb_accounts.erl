@@ -25,7 +25,7 @@
          ,ensure_parent_set/0
         ]).
 
--include_lib("crossbar/include/crossbar.hrl").
+-include("include/crossbar.hrl").
 
 -define(SERVER, ?MODULE).
 

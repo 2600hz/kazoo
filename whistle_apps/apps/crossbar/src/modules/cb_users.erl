@@ -22,7 +22,7 @@
          ,create_user/1
         ]).
 
--include_lib("crossbar/include/crossbar.hrl").
+-include("include/crossbar.hrl").
 
 -define(SERVER, ?MODULE).
 

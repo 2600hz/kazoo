@@ -10,7 +10,7 @@
 %%%-------------------------------------------------------------------
 -module(provisioner_util).
 
--include_lib("crossbar/include/crossbar.hrl").
+-include("include/crossbar.hrl").
 
 -export([get_provision_defaults/1]).
 -export([send_provisioning_template/2]).

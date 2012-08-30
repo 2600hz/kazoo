@@ -18,7 +18,7 @@
          ,validate/1, validate/2, validate/3
         ]).
 
--include_lib("crossbar/include/crossbar.hrl").
+-include("include/crossbar.hrl").
 
 -define(PVT_FUNS, [fun add_pvt_type/2]).
 -define(VALIDATION_PATH_TOKEN, <<"validation">>).

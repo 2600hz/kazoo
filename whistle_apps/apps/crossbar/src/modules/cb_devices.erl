@@ -23,7 +23,7 @@
          ,reconcile_services/1
         ]).
 
--include_lib("crossbar/include/crossbar.hrl").
+-include("include/crossbar.hrl").
 
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".devices">>).
 

@@ -18,7 +18,7 @@
          ,put/1, put/2
         ]).
 
--include_lib("crossbar/include/crossbar.hrl").
+-include("include/crossbar.hrl").
 
 -define(ACCT_MD5_LIST, <<"users/creds_by_md5">>).
 -define(ACCT_SHA1_LIST, <<"users/creds_by_sha">>).

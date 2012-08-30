@@ -19,7 +19,7 @@
          ,delete/2
         ]).
 
--include_lib("crossbar/include/crossbar.hrl").
+-include("include/crossbar.hrl").
 
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".callflows">>).
 

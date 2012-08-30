@@ -17,7 +17,7 @@
          ,reconcile_services/1
         ]).
 
--include_lib("crossbar/include/crossbar.hrl").
+-include("include/crossbar.hrl").
 -include_lib("whistle/src/wh_json.hrl").
 
 -define(CB_LIST, <<"limits/crossbar_listing">>).

@@ -26,7 +26,7 @@
          ,get/2, get/3
         ]).
 
--include_lib("crossbar/include/crossbar.hrl").
+-include("include/crossbar.hrl").
 
 -define(SIGNUP_DB, <<"signups">>).
 
