@@ -528,9 +528,11 @@ save_doc(DbName, Doc, Opts) ->
     couch_util:save_doc(get_conn(), DbName, Doc, Opts).
 
 -spec save_docs/2 :: (ne_binary(), wh_json:json_objects()) ->
-                             {'ok', wh_json:json_objects()}.
+                             {'ok', wh_json:json_objects()} |
+                             {'error', 'db_not_reachable'}.
 -spec save_docs/3 :: (ne_binary(), wh_json:json_objects(), proplist()) ->
-                             {'ok', wh_json:json_objects()}.
+                             {'ok', wh_json:json_objects()} |
+                             {'error', 'db_not_reachable'}.
 save_docs(DbName, Docs) when is_list(Docs) ->
     save_docs(DbName, Docs, []).
 save_docs(DbName, Docs, Opts) when is_list(Docs) ->
