@@ -1,7 +1,7 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2012, VoIP INC
 %%% @doc
-%%% 
+%%%
 %%% @end
 %%% @contributors
 %%% Jon Blanton <jon@2600hz.com>
@@ -26,11 +26,11 @@
 -define(HOST, undefined).
 -define(PORT, 8125).
 -define(POLLING_INTERVAL, 10000).
- 
+
 %% Karl and James - The next three lines aren't important, no need to read them
 -define(ECALLMGR_AMQP_POOL, ecallmgr_amqp_pool).
--define(APP_NAME, <<"ecallmgr">>).
--define(APP_VERSION, <<"0.8.0">>).
+-define(APP_NAME, <<"whistle_stats">>).
+-define(APP_VERSION, <<"0.2.0">>).
 
 -record(state, {host = ?HOST :: 'undefined' | nonempty_string()
                 ,port = ?PORT :: pos_integer()
@@ -42,11 +42,9 @@
 
 %%%===================================================================
 %%% API
-%%%===================================================================      
--spec refresh/0 :: () -> ok.
-refresh() ->
-    gen_server:call(?MODULE, refresh),
-    ok.
+%%%===================================================================
+-spec refresh/0 :: () -> 'ok'.
+refresh() -> gen_server:cast(?MODULE, refresh).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -97,8 +95,6 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call(refresh, _From, State) ->
-    {reply, ok, refresh(State)};
 handle_call(_Request, _From, State) ->
     {reply, {error, not_implemented}, State}.
 
@@ -112,6 +108,8 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast(refresh, State) ->
+    {noreply, refresh(State)};
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
@@ -175,19 +173,16 @@ get_node_key() ->
 
 -spec refresh/1 :: (state()) -> state().
 refresh(State) ->
-    StatsdInfo = case erlang:module_loaded(whapps_config) of 
-                     true ->
-                         whapps_config:get(<<"whistle_stats">>, <<"statsd">>, wh_json:new());       
-                     false ->
-                         get_config(<<"whistle_stats">>, <<"statsd">>, wh_json:new())
+    StatsdInfo = case code:where_is_file("whapps_config.beam") of
+                     non_existing -> get_config(<<"whistle_stats">>, <<"statsd">>, wh_json:new());
+                     _Path -> whapps_config:get(<<"whistle_stats">>, <<"statsd">>, wh_json:new())
                  end,
-
-     State#state{host = wh_json:get_string_value(<<"host">>, StatsdInfo, ?HOST)
-                 ,port = wh_json:get_integer_value(<<"port">>, StatsdInfo, ?PORT)
-                 ,polling_interval = wh_json:get_integer_value(<<"polling_interval">>, StatsdInfo, ?POLLING_INTERVAL)
+    State#state{host = wh_json:get_string_value(<<"host">>, StatsdInfo, ?HOST)
+                ,port = wh_json:get_integer_value(<<"port">>, StatsdInfo, ?PORT)
+                ,polling_interval = wh_json:get_integer_value(<<"polling_interval">>, StatsdInfo, ?POLLING_INTERVAL)
                }.
 
--spec get_config/3 :: (ne_binary(), ne_binary(), term()) -> term(). 
+-spec get_config/3 :: (ne_binary(), ne_binary(), term()) -> term().
 get_config(Cat, Key, Default) ->
     Node = wh_util:to_binary(node()),
     Req = [KV ||
@@ -199,7 +194,7 @@ get_config(Cat, Key, Default) ->
                               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                              ],
               V =/= undefined],
-    
+
     ReqResp = wh_amqp_worker:call(?ECALLMGR_AMQP_POOL
                                   ,Req
                                   ,fun wapi_sysconf:publish_get_req/1
