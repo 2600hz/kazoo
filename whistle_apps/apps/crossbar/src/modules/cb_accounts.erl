@@ -210,7 +210,7 @@ post(#cb_context{doc=Doc}=Context, AccountId) ->
                                                       ,doc=wh_json:delete_key(<<"_rev">>, Doc)
                                                      }) of
                 #cb_context{resp_status=success, doc=Doc1}=Context1 ->
-                    couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, wh_json:set_value(<<"_rev">>, AccountsRev, Doc1)),
+                    _ = couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, wh_json:set_value(<<"_rev">>, AccountsRev, Doc1)),
                     support_depreciated_billing_id(wh_json:get_value(<<"billing_id">>, Doc1), AccountId, Context1);
                 Else ->
                     Else
@@ -246,10 +246,8 @@ delete_stop_if_decedants(AccountId, AccountDb, Context) ->
     end.
 
 delete_free_numbers(AccountId, AccountDb, Context) ->
-    case wh_number_manager:free_numbers(AccountId) of
-        ok -> delete_remove_services(AccountId, AccountDb, Context);
-        _ -> crossbar_util:response(error, <<"unable to free numbers">>, 500, Context)
-    end.
+    ok = wh_number_manager:free_numbers(AccountId),
+    delete_remove_services(AccountId, AccountDb, Context).
 
 delete_remove_services(AccountId, AccountDb, Context) ->
     case wh_services:delete(AccountId) of
@@ -560,13 +558,13 @@ load_account_db(AccountId, Context) when is_binary(AccountId) ->
 create_new_account_db(#cb_context{doc=Doc}=Context) ->
     AccountId = wh_json:get_value(<<"_id">>, Doc, couch_mgr:get_uuid()),
     AccountDb = wh_util:format_account_id(AccountId, encoded),
-    case couch_mgr:db_exists(?WH_ACCOUNTS_DB) of
-        true -> ok;
-        false ->
-            couch_mgr:db_create(?WH_ACCOUNTS_DB),
-            couch_mgr:revise_doc_from_file(?WH_ACCOUNTS_DB, crossbar, ?ACCOUNTS_AGG_VIEW_FILE),
-            couch_mgr:revise_doc_from_file(?WH_ACCOUNTS_DB, crossbar, ?MAINTENANCE_VIEW_FILE)
-    end,
+    _ = case couch_mgr:db_exists(?WH_ACCOUNTS_DB) of
+            true -> ok;
+            false ->
+                _ = couch_mgr:db_create(?WH_ACCOUNTS_DB),
+                _ = couch_mgr:revise_doc_from_file(?WH_ACCOUNTS_DB, crossbar, ?ACCOUNTS_AGG_VIEW_FILE),
+                couch_mgr:revise_doc_from_file(?WH_ACCOUNTS_DB, crossbar, ?MAINTENANCE_VIEW_FILE)
+        end,
     case couch_mgr:db_create(AccountDb) of
         false ->
             lager:debug("failed to create database: ~s", [AccountDb]),

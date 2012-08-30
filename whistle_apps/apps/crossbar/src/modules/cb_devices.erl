@@ -133,12 +133,12 @@ post(#cb_context{}=Context, _DocId) ->
     _ = cb_context:put_reqid(Context),
     case crossbar_doc:save(Context) of
         #cb_context{resp_status=success, doc=Doc1, account_id=AcctId}=Context1 ->
-            case wh_json:get_ne_value([<<"sip">>, <<"realm">>], Doc1) of
-                undefined -> ok;
-                _Else ->
-                    lager:debug("adding device to the sip auth aggregate"),
-                    couch_mgr:ensure_saved(?WH_SIP_DB, wh_json:delete_key(<<"_rev">>, Doc1))
-            end,
+            _ = case wh_json:get_ne_value([<<"sip">>, <<"realm">>], Doc1) of
+                    undefined -> ok;
+                    _Else ->
+                        lager:debug("adding device to the sip auth aggregate"),
+                        couch_mgr:ensure_saved(?WH_SIP_DB, wh_json:delete_key(<<"_rev">>, Doc1))
+                end,
             
             case wh_json:get_ne_value([<<"sip">>, <<"ip">>], Doc1) of
                 undefined -> ok;
@@ -159,12 +159,12 @@ put(#cb_context{}=Context) ->
     _ = cb_context:put_reqid(Context),
     case crossbar_doc:save(Context) of
         #cb_context{resp_status=success, doc=Doc1, account_id=AcctId}=Context1 ->
-            case wh_json:get_ne_value([<<"sip">>, <<"realm">>], Doc1) of
-                undefined -> ok;
-                _Else ->
-                    lager:debug("adding device to the sip auth aggregate"),
-                    couch_mgr:ensure_saved(?WH_SIP_DB, wh_json:delete_key(<<"_rev">>, Doc1))
-            end,
+            _ = case wh_json:get_ne_value([<<"sip">>, <<"realm">>], Doc1) of
+                    undefined -> ok;
+                    _Else ->
+                        lager:debug("adding device to the sip auth aggregate"),
+                        couch_mgr:ensure_saved(?WH_SIP_DB, wh_json:delete_key(<<"_rev">>, Doc1))
+                end,
             
             case wh_json:get_ne_value([<<"sip">>, <<"ip">>], Doc1) of
                 undefined -> ok;
@@ -174,7 +174,7 @@ put(#cb_context{}=Context) ->
                     maybe_update_acls(DeviceIP, AcctId, wh_json:get_value(<<"_id">>, D))
             end,
 
-            spawn(fun() -> do_simple_provision(Context1) end),
+            _ = spawn(fun() -> do_simple_provision(Context1) end),
             Context1;
         Else ->
             Else
@@ -187,12 +187,12 @@ delete(#cb_context{doc=Doc}=Context, _DocId) ->
     case crossbar_doc:delete(Context) of
         #cb_context{resp_status=success}=Context1 ->
             DeviceId = wh_json:get_value(<<"_id">>, Doc),
-            case couch_mgr:lookup_doc_rev(?WH_SIP_DB, DeviceId) of
-                {ok, Rev} ->
-                    couch_mgr:del_doc(?WH_SIP_DB, wh_json:set_value(<<"_rev">>, Rev, Doc));
-                {error, not_found} ->
-                    ok
-            end,
+            _ = case couch_mgr:lookup_doc_rev(?WH_SIP_DB, DeviceId) of
+                    {ok, Rev} ->
+                        couch_mgr:del_doc(?WH_SIP_DB, wh_json:set_value(<<"_rev">>, Rev, Doc));
+                    {error, not_found} ->
+                        ok
+                end,
             wapi_switch:publish_reloadacl(),
             Context1;
         Else ->
@@ -442,7 +442,7 @@ maybe_update_acls(DeviceIP, AcctId, DeviceId) ->
                              ,get_acl_json()
                             ),
     lager:debug("setting ~s into system acls", [CIDR]),
-    whapps_config:set_default(<<"ecallmgr">>, <<"acls">>, Acls),
+    _ = whapps_config:set_default(<<"ecallmgr">>, <<"acls">>, Acls),
     wapi_switch:publish_reloadacl().
 
 -spec get_acl_json/0 :: () -> wh_json:json_object().

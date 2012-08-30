@@ -665,7 +665,7 @@ generate_username(undefined, undefined, _) ->
     wh_util:rand_hex_binary(3);
 generate_username(undefined, _, undefined) ->
     wh_util:rand_hex_binary(3);
-generate_username(undefined, <<FirstLetter, _/binary>>, LastName) ->
+generate_username(undefined, <<FirstLetter:1/binary, _/binary>>, LastName) ->
     <<FirstLetter/binary, (wh_util:to_binary(LastName))/binary>>;
 generate_username(Email, _, _) ->
     Email.

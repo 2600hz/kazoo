@@ -31,7 +31,7 @@
 %%% API
 %%%===================================================================
 init() ->
-    couch_mgr:revise_doc_from_file(?GLOBAL_RESOURCE_DB, crossbar, "views/global_resources.json"),
+    _ = couch_mgr:revise_doc_from_file(?GLOBAL_RESOURCE_DB, crossbar, "views/global_resources.json"),
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.global_resources">>, ?MODULE, allowed_methods),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.global_resources">>, ?MODULE, resource_exists),
     _ = crossbar_bindings:bind(<<"v1_resource.validate.global_resources">>, ?MODULE, validate),
