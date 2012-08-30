@@ -126,7 +126,9 @@ running_modules() ->
 %% 
 %% @end
 %%--------------------------------------------------------------------
--spec find_account_by_number/1 :: (input_term()) -> {'ok', ne_binary()} | {'error', term()}.
+-spec find_account_by_number/1 :: (input_term()) ->
+                                          {'ok', ne_binary()} |
+                                          {'error', term()}.
 find_account_by_number(Number) when not is_binary(Number) ->
     find_account_by_number(wh_util:to_binary(Number));
 find_account_by_number(Number) ->

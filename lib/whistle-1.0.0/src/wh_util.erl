@@ -274,16 +274,13 @@ get_hostname() ->
 %% the vm if possible.
 %% @end
 %%--------------------------------------------------------------------
--spec try_load_module/1 :: (string() | binary()) -> atom() | false.
+-spec try_load_module/1 :: (string() | binary()) -> atom() | 'false'.
 try_load_module(Name) ->
     try to_atom(Name) of
+        undefined -> false;
         Module ->
-            case erlang:module_loaded(Module) of
-                true -> Module;
-                false -> 
-                    {module, Module} = code:ensure_loaded(Module),
-                    Module
-            end
+            {module, Module} = code:ensure_loaded(Module),
+            Module
     catch
         error:badarg ->
             lager:debug("module ~s not found", [Name]),
