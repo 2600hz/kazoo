@@ -53,7 +53,7 @@
           ,req_nouns = [{<<"404">>, []}] :: [{ne_binary(), wh_json:json_strings()},...] | [] % {module, [id]} most typical
           ,req_json = wh_json:new() :: wh_json:json_object() | {'malformed', binary()} %% the request JSON envelope
           ,req_files = [] :: [{ne_binary(), wh_json:json_object()},...] | [] %% {file_name, {"contents":<<bin>>, "headers":{"content-type":"", "content-length":1}}}
-          ,req_data = wh_json:new() :: wh_json:json_object()  % the "data" from the request JSON envelope
+          ,req_data :: wh_json:json_term()  % the "data" from the request JSON envelope
           ,query_json = wh_json:new() :: wh_json:json_object()
           ,account_id :: ne_binary()
           ,db_name :: ne_binary()
