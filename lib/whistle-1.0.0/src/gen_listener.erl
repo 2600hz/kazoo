@@ -112,7 +112,7 @@ behaviour_info(_) ->
                          {'queue_options', wh_proplist()} |
                          {'consume_options', wh_proplist()} |
                          {'basic_qos', non_neg_integer()}
-                         ].
+                        ].
 
 -record(state, {
           queue = <<>> :: binary()
@@ -439,7 +439,7 @@ handle_info({amqp_channel_event, restarted}, #state{params=Params, bindings=Bind
     case start_amqp(Params) of
         {ok, Q} ->
             lager:debug("lost our channel, but its back up; rebinding"),
-            _ = [add_binding(self(), Type, BindProps) 
+            _ = [add_binding(self(), Type, BindProps)
                  || {Type, BindProps} <- Bindings
                 ],
             _ = [gen_server:cast(self(), {add_queue, Name, Props, Bind})
@@ -459,9 +459,9 @@ handle_info({amqp_channel_event, _Reason}, State) ->
 
 handle_info({'$maybe_connect_amqp', Timeout}, #state{bindings=Bindings, params=Params, other_queues=OtherQueues}=State) ->
     case start_amqp(Params) of
-        {ok, Q} ->            
+        {ok, Q} ->
             lager:info("reconnected to AMQP channel, rebinding"),
-            _ = [add_binding(self(), Type, BindProps) 
+            _ = [add_binding(self(), Type, BindProps)
                  || {Type, BindProps} <- Bindings
                 ],
             _ = [gen_server:cast(self(), {add_queue, Name, Props, Bind})
@@ -541,10 +541,10 @@ process_req(#state{responders=Responders, active_responders=ARs}=State, JObj, BD
         ignore -> State;
         Props ->
             PublishAs = self(),
-            Pid = proc_lib:spawn_link(fun() -> 
+            Pid = proc_lib:spawn_link(fun() ->
                                               _ = wh_util:put_callid(JObj),
                                               put(amqp_publish_as, PublishAs),
-                                              process_req(Props, Responders, JObj, BD) 
+                                              process_req(Props, Responders, JObj, BD)
                                       end),
             State#state{active_responders=[Pid | ARs]}
     end.

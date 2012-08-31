@@ -296,7 +296,7 @@ build_bridge_string(Endpoints, Seperator) ->
     wh_util:join_binary(lists:reverse(BridgeStrings), Seperator).
 
 -type build_return() :: ne_binary() | {'worker', pid()}.
--type bridge_endpoints() :: [{[ne_binary() | 'undefined',...], wh_json:json_object()},...] | [].
+-type bridge_endpoints() :: [{wh_json:json_strings(), wh_json:json_object()},...] | [].
 -spec build_bridge_endpoints/2 :: (bridge_endpoints(), [build_return(),...] | []) -> [ne_binary(),...].
 build_bridge_endpoints([{[<<"route">>|_], Endpoint}|Endpoints], Channels) ->
     build_bridge_endpoints(Endpoints, [build_bridge_endpoint(Endpoint)|Channels]);
