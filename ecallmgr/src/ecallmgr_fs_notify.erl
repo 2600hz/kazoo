@@ -314,7 +314,7 @@ handle_event(_JObj, #state{node=Node}) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
-    lager:debug("ecallmgr notify ~p termination", [_Reason]).
+    lager:debug("ecallmgr notify terminating: ~p", [_Reason]).
 
 %%--------------------------------------------------------------------
 %% @private

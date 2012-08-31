@@ -114,11 +114,15 @@ fetch_keys() ->
 filter(Pred) when is_function(Pred, 2) ->
     filter_local(?SERVER, Pred).
 
--spec wait_for_key/1 :: (term()) -> {'ok', term()} | {'error', 'timeout'}.
+-spec wait_for_key/1 :: (term()) -> 
+                                {'ok', term()} |
+                                {'error', 'timeout'}.
+-spec wait_for_key/2 :: (term(), 'infinity' | non_neg_integer()) ->
+                                {'ok', term()} |
+                                {'error', 'timeout'}.
 wait_for_key(Key) ->
     wait_for_key(Key, ?DEFAULT_WAIT_TIMEOUT).
 
--spec wait_for_key/2 :: (term(), 'infinity' | non_neg_integer()) -> {'ok', term()} | {'error', 'timeout'}.
 wait_for_key(Key, Timeout) ->
     wait_for_key_local(?SERVER, Key, Timeout).
 
@@ -145,7 +149,9 @@ store_local(Srv, K, V, T, Fun) when is_function(Fun, 3) ->
                                             ,callback=Fun
                                            }}).
 
--spec peek_local/2 :: (atom(), term()) -> {'ok', term()} | {'error', 'not_found'}.
+-spec peek_local/2 :: (atom(), term()) ->
+                              {'ok', term()} |
+                              {'error', 'not_found'}.
 peek_local(Srv, K) ->
     try ets:lookup_element(Srv, K, #cache_obj.value) of
         Value -> {ok, Value}
@@ -154,7 +160,9 @@ peek_local(Srv, K) ->
             {error, not_found}
     end.
 
--spec fetch_local/2 :: (atom(), term()) -> {'ok', term()} | {'error', 'not_found'}.
+-spec fetch_local/2 :: (atom(), term()) ->
+                               {'ok', term()} |
+                               {'error', 'not_found'}.
 fetch_local(Srv, K) ->
     try ets:lookup_element(Srv, K, #cache_obj.value) of
         Value ->
@@ -194,11 +202,15 @@ filter_local(Srv, Pred)  when is_function(Pred, 2) ->
                  (_, Acc) -> Acc
               end, [], Srv).
 
--spec wait_for_key_local/2 :: (atom(), term()) -> {'ok', term()} | {'error', 'timeout'}.
+-spec wait_for_key_local/2 :: (atom(), term()) ->
+                                      {'ok', term()} |
+                                      {'error', 'timeout'}.
+-spec wait_for_key_local/3 :: (atom(), term(), 'infinity' | non_neg_integer()) ->
+                                      {'ok', term()} |
+                                      {'error', 'timeout'}.
 wait_for_key_local(Srv, Key) ->
     wait_for_key_local(Srv, Key, ?DEFAULT_WAIT_TIMEOUT).
 
--spec wait_for_key_local/3 :: (atom(), term(), 'infinity' | non_neg_integer()) -> {'ok', term()} | {'error', 'timeout'}.
 wait_for_key_local(Srv, Key, Timeout) ->
     {ok, Ref} = gen_server:call(Srv, {wait_for_key, Key, Timeout}),
     lager:debug("waiting for message with ref ~p", [Ref]),
