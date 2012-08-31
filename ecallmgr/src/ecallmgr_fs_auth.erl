@@ -74,7 +74,7 @@ init([Node, Options]) ->
             lager:warning("failed to bind to directory requests on ~s: ~p", [Node, Reason]),
             {stop, Reason};
         timeout ->
-            lager:warning("failed to bind to directory requests on ~s: timeout", [Node]),
+            lager:error("failed to bind to directory requests on ~s: timeout", [Node]),
             {stop, timeout}
     end.
 
