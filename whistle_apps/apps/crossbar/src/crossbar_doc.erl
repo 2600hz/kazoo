@@ -87,7 +87,9 @@ load(?NE_BINARY = DocId, #cb_context{db_name=DB}=Context, Opts) ->
             end
     end;
 load([_|_]=IDs, #cb_context{db_name=DB}=Context, Opts) ->
-    case couch_mgr:all_docs(DB, [{keys, IDs}, include_docs | Opts]) of
+    Opts1 = [{keys, IDs}, include_docs | Opts],
+
+    case couch_mgr:all_docs(DB, Opts1) of
         {error, db_not_reachable} ->
             lager:debug("loading docs from ~s failed: db not reachable", [DB]),
             crossbar_util:response_datastore_timeout(Context);
@@ -97,7 +99,8 @@ load([_|_]=IDs, #cb_context{db_name=DB}=Context, Opts) ->
               doc=[wh_json:get_value(<<"doc">>, V)
                    || V <- Vs,
                       wh_json:is_json_object(V),
-                      wh_util:is_false(wh_json:get_value([<<"doc">>, <<"pvt_deleted">>], V))
+                      %% if unset, default to true (undeleted); if set, it better be false
+                      wh_json:is_false([<<"doc">>, <<"pvt_deleted">>], V, true)
                   ]
               ,resp_status=success
              }
@@ -218,7 +221,7 @@ load_view(View, Options, Context, Filter) when is_function(Filter, 2) ->
         #cb_context{resp_status=success, doc=Doc} = Context1 ->
             Context1#cb_context{resp_data=
                                     [D || D <- lists:foldl(Filter, [], Doc),
-                                          wh_json:is_json_object(D)
+                                          D =/= undefined
                                     ]
                                };
         Else -> Else
@@ -244,7 +247,7 @@ load_docs(#cb_context{db_name=Db}=Context, Filter) when is_function(Filter, 2) -
         {ok, Docs} ->
             Context#cb_context{resp_status=success
                                ,resp_data=[D || D <- lists:foldl(Filter, [], Docs),
-                                                wh_json:is_json_object(D)
+                                                D =/= undefined
                                           ]
                               };
         _Else ->
@@ -337,6 +340,9 @@ save(#cb_context{db_name=DB, doc=[_|_]=JObjs, req_verb=Verb, resp_headers=RespHs
                                ,resp_etag=rev_to_etag(JObjs2)
                               }
     end;
+save(#cb_context{doc=[]}=Context, _Options) ->
+    lager:debug("no docs to save"),
+    Context#cb_context{resp_status=success};
 save(#cb_context{db_name=DB, doc=JObj, req_verb=Verb, resp_headers=RespHs}=Context, Options) ->
     JObj0 = update_pvt_parameters(JObj, Context),
     case couch_mgr:save_doc(DB, JObj0, Options) of
