@@ -31,11 +31,13 @@
 -define(BINDINGS, [{resource, []}
                    ,{self, []}
                   ]).
--define(RESPONDERS, [{{?MODULE, handle_originate_req}, [{<<"resource">>, <<"originate_req">>}]}]).
+-define(RESPONDERS, [{{?MODULE, handle_originate_req}
+                      ,[{<<"resource">>, <<"originate_req">>}]
+                     }
+                    ]).
 -define(QUEUE_NAME, <<"ecallmgr_fs_resource">>).
 -define(QUEUE_OPTIONS, [{exclusive, false}]).
 -define(CONSUME_OPTIONS, [{exclusive, false}]).
--define(ROUTE_OPTIONS, []).
 
 -define(ORIGINATE_PARK, <<"&park()">>).
 
@@ -57,14 +59,15 @@ start_link(Node) ->
     start_link(Node, []).
 
 start_link(Node, Options) ->
-    gen_listener:start_link(?MODULE, [{bindings, ?BINDINGS}
-                                      ,{responders, ?RESPONDERS}
-                                      ,{queue_name, ?QUEUE_NAME}
-                                      ,{queue_options, ?QUEUE_OPTIONS}
-                                      ,{consume_options, ?CONSUME_OPTIONS}
-                                      ,{route_options, ?ROUTE_OPTIONS}
-                                      ,{basic_qos, 1}
-                                     ], [Node, Options]).
+    gen_listener:start_link(?MODULE
+                            ,[{bindings, ?BINDINGS}
+                              ,{responders, ?RESPONDERS}
+                              ,{queue_name, ?QUEUE_NAME}
+                              ,{queue_options, ?QUEUE_OPTIONS}
+                              ,{consume_options, ?CONSUME_OPTIONS}
+                              ,{basic_qos, 1}
+                             ]
+                            ,[Node, Options]).
 
 -spec handle_originate_req/2 :: (wh_json:json_object(), wh_proplist()) -> 'ok'.
 handle_originate_req(JObj, Props) ->
