@@ -223,8 +223,6 @@ read(Id, Context) ->
 load_queue_agents(Id, #cb_context{resp_data=Queue}=Context) ->
     case load_agent_roster(Id, Context) of
         #cb_context{resp_status=success, resp_data=Agents, doc=_D} ->
-            lager:debug("setting agents: ~p", [Agents]),
-            lager:debug("doc: ~p", [_D]),
             Context#cb_context{resp_data=wh_json:set_value(<<"agents">>, Agents, Queue)};
         _ -> Context
     end.
@@ -235,21 +233,23 @@ load_agent_roster(Id, Context) ->
                            ,fun normalize_agents_results/2
                           ).
 
+add_queue_to_agents(Id, #cb_context{req_data=[]}=Context) ->
+    lager:debug("no agents listed, removing all agents from ~s", [Id]),
+    #cb_context{resp_data=CurrAgentIds} = load_agent_roster(Id, Context),
+    rm_queue_from_agents(Id, Context#cb_context{req_data=CurrAgentIds});
+    
 add_queue_to_agents(Id, #cb_context{req_data=[_|_]=AgentIds}=Context) ->
     %% We need to figure out what agents are on the queue already, and remove those not
     %% in the AgentIds list
     #cb_context{resp_data=CurrAgentIds} = load_agent_roster(Id, Context),
-    lager:debug("current list: ~p", [CurrAgentIds]),
-    lager:debug("new list: ~p", [AgentIds]),
 
     {InQueueAgents, RmAgentIds} = lists:partition(fun(A) -> lists:member(A, AgentIds) end, CurrAgentIds),
     AddAgentIds = [A || A <- AgentIds, (not lists:member(A, InQueueAgents))],
 
     _P = spawn(fun() ->
-                      cb_context:put_reqid(Context),
-                      maybe_rm_agents(Id, Context, RmAgentIds)
-              end),
-    lager:debug("maybe removing agents in ~p", [_P]),
+                       cb_context:put_reqid(Context),
+                       maybe_rm_agents(Id, Context, RmAgentIds)
+               end),
 
     add_queue_to_agents(Id, Context, AddAgentIds).
 
