@@ -84,8 +84,8 @@ handle_cdr(JObj, _Props) ->
                          end,
             Direction = wh_json:get_value(<<"Call-Direction">>, JObj),
             Realm = get_account_realm(AccountId),
-            wh_notify:system_alert("~s ~s to ~s (~s) on ~s"
-                                   ,[wh_util:to_lower_binary(HangupCause), FromNumber, ToNumber, Direction, Realm]
+            wh_notify:system_alert("~s ~s to ~s (~s) on ~s(~s)"
+                                   ,[wh_util:to_lower_binary(HangupCause), FromNumber, ToNumber, Direction, Realm, AccountId]
                                    ,wh_json:to_proplist(JObj))
     end.
 
