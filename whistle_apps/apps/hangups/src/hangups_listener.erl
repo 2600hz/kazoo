@@ -192,7 +192,8 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec get_account_realm/1 :: (ne_binary()) -> 'undefined' | ne_binary().
+-spec get_account_realm/1 :: (ne_binary()) -> api_binary().
+get_account_realm(undefined) -> undefined;
 get_account_realm(AccountId) ->
     case couch_mgr:open_cache_doc(?WH_ACCOUNTS_DB, AccountId) of
         {ok, JObj} -> wh_json:get_value(<<"realm">>, JObj);
