@@ -27,7 +27,7 @@
 
 -record(state, {
           node :: atom()
-          ,options :: proplist()
+          ,options :: wh_proplist()
          }).
 
 -define(SERVER, ?MODULE).

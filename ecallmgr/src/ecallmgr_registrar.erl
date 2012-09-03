@@ -30,7 +30,9 @@ reg_success(Props, Node) ->
     wh_cache:store_local(?ECALLMGR_REG_CACHE, ?CONTACT_KEY(Realm, Username), Contact, ecallmgr_util:get_expires(Props)),
     wh_cache:store_local(?ECALLMGR_REG_CACHE, ?NODE_KEY(Realm, Username), Node, ecallmgr_util:get_expires(Props)).
 
--spec lookup_contact/2 :: (ne_binary(), ne_binary()) -> {'ok', ne_binary()} | {'error', 'timeout'}.
+-spec lookup_contact/2 :: (ne_binary(), ne_binary()) ->
+                                  {'ok', ne_binary()} |
+                                  {'error', 'timeout'}.
 lookup_contact(Realm, Username) ->
     case wh_cache:peek_local(?ECALLMGR_REG_CACHE, ?CONTACT_KEY(Realm, Username)) of
         {ok, Contact} -> {ok, Contact};
@@ -43,11 +45,15 @@ lookup_contact(Realm, Username) ->
             end
     end.
 
--spec endpoint_node/2 :: (ne_binary(), ne_binary()) -> {'ok', atom()} | {'error', 'not_found'}.
+-spec endpoint_node/2 :: (ne_binary(), ne_binary()) ->
+                                 {'ok', atom()} |
+                                 {'error', 'not_found'}.
 endpoint_node(Realm, Username) ->
     wh_cache:fetch_local(?ECALLMGR_REG_CACHE, ?NODE_KEY(Realm, Username)).    
 
--spec lookup/3 :: (ne_binary(), ne_binary(), [ne_binary(),...]) -> proplist() | {'error', 'timeout'}.
+-spec lookup/3 :: (ne_binary(), ne_binary(), [ne_binary(),...]) ->
+                          wh_proplist() |
+                          {'error', 'timeout'}.
 lookup(Realm, Username, Fields) ->
     lager:debug("looking up registration information for ~s@~s", [Username, Realm]),
     FilterFun = fun({K, _}=V, Acc) ->
