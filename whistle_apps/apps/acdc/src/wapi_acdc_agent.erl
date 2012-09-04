@@ -319,7 +319,7 @@ agent_status_routing_key(AcctId, AgentId, Status) ->
 %%------------------------------------------------------------------------------
 
 -spec bind_q/2 :: (binary(), proplist()) -> 'ok'.
--spec bind_q/3 :: (binary(), {ne_binary(), ne_binary()}, 'undefined' | list()) -> 'ok'.
+-spec bind_q/3 :: (binary(), {ne_binary(), ne_binary(), ne_binary()}, 'undefined' | list()) -> 'ok'.
 bind_q(Q, Props) ->
     AgentId = props:get_value(agent_id, Props, <<"*">>),
     AcctId = props:get_value(account_id, Props, <<"*">>),
@@ -348,7 +348,7 @@ bind_q(_, _, []) ->
     ok.
 
 -spec unbind_q/2 :: (binary(), proplist()) -> 'ok'.
--spec unbind_q/3 :: (binary(), {ne_binary(), ne_binary()}, 'undefined' | list()) -> 'ok'.
+-spec unbind_q/3 :: (binary(), {ne_binary(), ne_binary(), ne_binary()}, 'undefined' | list()) -> 'ok'.
 unbind_q(Q, Props) ->
     AgentId = props:get_value(agent_id, Props, <<"*">>),
     AcctId = props:get_value(account_id, Props, <<"*">>),
