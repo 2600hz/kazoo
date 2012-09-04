@@ -507,10 +507,10 @@ paused({resume}, #state{acct_id=AcctId
                         ,sync_ref=Ref
                        }=State) ->
     lager:debug("resume received, putting agent back into action"),
-    erlang:cancel_timer(Ref),
+    _ = erlang:cancel_timer(Ref),
 
-    update_agent_status_to_resume(AcctId, AgentId),
-    acdc_agent:send_status_update(Srv, <<"resume">>),
+    _ = update_agent_status_to_resume(AcctId, AgentId),
+    acdc_agent:send_status_resume(Srv),
 
     {next_state, ready, State};
 
@@ -642,6 +642,7 @@ callid(JObj) ->
         CallId -> CallId
     end.
 
+-spec update_agent_status_to_resume/2 :: (ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()}.
 update_agent_status_to_resume(AcctId, AgentId) ->
     AcctDb = wh_util:format_account_id(AcctId, encoded),
     Doc = wh_json:from_list([{<<"agent_id">>, AgentId}
