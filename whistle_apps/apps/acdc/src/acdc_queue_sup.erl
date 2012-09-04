@@ -16,7 +16,7 @@
 -export([start_link/2
          ,queue/0
          ,shared_queue/0, start_shared_queue/4
-         ,fsm/0, start_fsm/4
+         ,fsm/0, start_fsm/2
         ]).
 
 %% Supervisor callbacks
@@ -66,10 +66,10 @@ fsm() ->
         [P] -> P
     end.
 
--spec start_fsm/4 :: (pid(), ne_binary(), ne_binary(), queue_strategy()) -> sup_startchild_ret().
-start_fsm(Super, AcctId, QueueId, Type) ->
+-spec start_fsm/2 :: (pid(), wh_json:json_object()) -> sup_startchild_ret().
+start_fsm(Super, QueueJObj) ->
     Parent = self(),
-    supervisor:start_child(Super, ?CHILD(acdc_queue_fsm, [AcctId, QueueId, Parent, Type])).
+    supervisor:start_child(Super, ?CHILD(acdc_queue_fsm, [Parent, QueueJObj])).
 
 -spec child_of_type/1 :: (atom()) -> list(pid()).
 child_of_type(T) ->

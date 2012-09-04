@@ -11,7 +11,7 @@
 -behaviour(gen_fsm).
 
 %% API
--export([start_link/4]).
+-export([start_link/2]).
 
 %% Event injectors
 -export([member_call/3
@@ -22,7 +22,8 @@
         ]).
 
 %% State handlers
--export([ready/2
+-export([sync/2
+         ,ready/2
          ,connect_req/2
          ,connecting/2
         ]).
@@ -47,9 +48,26 @@
          ,connect_resps = [] :: wh_json:json_objects()
          ,collect_ref :: reference()
          ,acct_id :: ne_binary()
+         ,acct_db :: ne_binary()
          ,queue_id :: ne_binary()
-         ,queue_strategy :: queue_strategy()
+
          ,member_call_id :: ne_binary()
+
+         %% Config options
+         ,name :: ne_binary()
+         ,connection_timeout = 0 :: integer() % how long can a caller wait in the queue
+         ,agent_ring_timeout = 5 :: pos_integer() % how long to ring an agent before giving up
+         ,max_queue_size = 0 :: integer() % restrict the number of the queued callers
+         ,ring_simultaneously = 1 :: integer() % how many agents to try ringing at a time (first one wins)
+         ,enter_when_empty = true :: boolean() % if a queue is agent-less, can the caller enter?
+         ,agent_wrapup_time = 0 :: integer() % forced wrapup time for an agent after a call
+         ,moh :: ne_binary() % media to play to customer while on hold
+         ,announce :: ne_binary() % media to play to customer when about to be connected to agent
+         ,strategy = 'rr' :: queue_strategy() % round-robin | most-idle
+         ,caller_exit_key :: ne_binary() % DTMF a caller can press to leave the queue
+         ,record_caller = false :: boolean() % record the caller
+         ,cdr_url :: ne_binary() % optional URL to request for extra CDR data
+
          }).
 
 %%%===================================================================
@@ -65,13 +83,15 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
-start_link(AcctId, QueueId, QueuePid, Type) ->
-    gen_fsm:start_link(?MODULE, [AcctId, QueueId, QueuePid, Type], []).
+-spec start_link/2 :: (pid(), wh_json:json_object()) -> startlink_ret().
+start_link(QueuePid, QueueJObj) ->
+    gen_fsm:start_link(?MODULE, [QueuePid, QueueJObj], []).
 
 %%--------------------------------------------------------------------
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+-spec member_call/3 :: (pid(), wh_json:json_object(), #'basic.deliver'{}) -> 'ok'.
 member_call(FSM, CallJObj, Delivery) ->
     gen_fsm:send_event(FSM, {member_call, CallJObj, Delivery}).
 
@@ -79,6 +99,7 @@ member_call(FSM, CallJObj, Delivery) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+-spec member_connect_resp/2 :: (pid(), wh_json:json_object()) -> 'ok'.
 member_connect_resp(FSM, Resp) ->
     gen_fsm:send_event(FSM, {agent_resp, Resp}).
 
@@ -86,6 +107,7 @@ member_connect_resp(FSM, Resp) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+-spec member_accepted/2 :: (pid(), wh_json:json_object()) -> 'ok'.
 member_accepted(FSM, AcceptJObj) ->
     gen_fsm:send_event(FSM, {accepted, AcceptJObj}).
 
@@ -93,6 +115,7 @@ member_accepted(FSM, AcceptJObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+-spec member_connect_retry/2 :: (pid(), wh_json:json_object()) -> 'ok'.
 member_connect_retry(FSM, RetryJObj) ->
     gen_fsm:send_event(FSM, {retry, RetryJObj}).
 
@@ -125,14 +148,58 @@ call_event(_, _, _, _) -> ok.
 %%                     {stop, StopReason}
 %% @end
 %%--------------------------------------------------------------------
-init([AcctId, QueueId, QueuePid, Type]) ->
+init([QueuePid, QueueJObj]) ->
+    QueueId = wh_json:get_value(<<"_id">>, QueueJObj),
+    AcctId = wh_json:get_value(<<"pvt_account_id">>, QueueJObj),
+    AcctDb = wh_json:get_value(<<"pvt_account_db">>, QueueJObj),
+
     put(callid, <<"fsm_", QueueId/binary>>),
 
-    {ok, ready, #state{queue_proc=QueuePid
-                       ,acct_id=AcctId
-                       ,queue_id=QueueId
-                       ,queue_strategy=Type
-                      }}.
+    gen_fsm:send_event(self(), {strategy_sync}),
+
+    {ok, sync, #state{queue_proc=QueuePid
+                      ,acct_id=AcctId
+                      ,acct_db=AcctDb
+                      ,queue_id=QueueId
+
+                      ,name = wh_json:get_value(<<"name">>, QueueJObj)
+                      ,connection_timeout = wh_json:get_integer_value(<<"connection_timeout">>, QueueJObj)
+                      ,agent_ring_timeout = wh_json:get_integer_value(<<"agent_ring_timeout">>, QueueJObj)
+                      ,max_queue_size = wh_json:get_integer_value(<<"max_queue_size">>, QueueJObj)
+                      ,ring_simultaneously = wh_json:get_value(<<"ring_simultaneously">>, QueueJObj)
+                      ,enter_when_empty = wh_json:is_true(<<"enter_when_empty">>, QueueJObj, true)
+                      ,agent_wrapup_time = wh_json:get_integer_value(<<"agent_wrapup_time">>, QueueJObj)
+                      ,moh = wh_json:get_value(<<"moh">>, QueueJObj)
+                      ,announce = wh_json:get_value(<<"announce">>, QueueJObj)
+                      ,strategy = get_strategy(wh_json:get_value(<<"strategy">>, QueueJObj))
+                      ,caller_exit_key = wh_json:get_value(<<"caller_exit_key">>, QueueJObj, <<"#">>)
+                      ,record_caller = wh_json:is_true(<<"record_caller">>, QueueJObj, false)
+                      ,cdr_url = wh_json:get_value(<<"cdr_url">>, QueueJObj)
+
+                      ,member_call_id=undefined
+                     }}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+sync({strategy_sync}, #state{strategy=Type
+                             ,queue_proc=Srv
+                            }=State) ->
+    lager:debug("sync strategy ~s", [Type]),
+    %% send sync_req
+    case maybe_send_sync_req(Type, Srv) of
+        true -> {next_state, sync, State}; % we're waiting for a sync_resp
+        false -> {next_state, ready, State} % no sync needed, let's go!
+    end;
+sync({member_call, CallJObj, Delivery}, #state{queue_proc=Srv}=State) ->
+    lager:debug("member_call recv, still syncing, cancel for redelivery"),
+    acdc_queue:cancel_member_call(Srv, CallJObj, Delivery),
+    {next_state, sync, State};
+sync(_E, State) ->
+    lager:debug("recv unhandled event: ~p", [_E]),
+    {next_state, sync, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -184,7 +251,7 @@ connect_req({timeout, Ref, ?COLLECT_RESP_MESSAGE}, #state{collect_ref=Ref
 connect_req({timeout, Ref, ?COLLECT_RESP_MESSAGE}, #state{collect_ref=Ref
                                                           ,connect_resps=CRs
                                                           ,queue_proc=Srv
-                                                          ,queue_strategy=Type
+                                                          ,strategy=Type
                                                          }=State) ->
     lager:debug("done waiting for agents to respond, picking a winner"),
     case pick_winner(CRs, Type) of
@@ -350,10 +417,20 @@ pick_winner([Resp|Rest], _Type) ->
     {SameAgents, OtherAgents} = split_agents(AgentId, Rest),
     {Resp, SameAgents, OtherAgents}.
 
-
 -spec split_agents/2 :: (ne_binary(), wh_json:json_objects()) ->
                                 {wh_json:json_objects(), wh_json:json_objects()}.
 split_agents(AgentId, Rest) ->
     lists:partition(fun(R) ->
                             AgentId =:= wh_json:get_value(<<"Agent-ID">>, R)
                     end, Rest).
+
+-spec maybe_send_sync_req/2 :: (queue_strategy(), pid()) -> boolean().
+maybe_send_sync_req(mi, _) -> false;
+maybe_send_sync_req(rr, Srv) ->
+    acdc_queue:send_sync_req(Srv, rr),
+    true.
+
+-spec get_strategy/1 :: (api_binary()) -> queue_strategy().
+get_strategy(<<"round_robin">>) -> 'rr';
+get_strategy(<<"most_idle">>) -> 'mi';
+get_strategy(_) -> 'rr'.

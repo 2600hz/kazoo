@@ -25,6 +25,7 @@
          ,member_connect_monitor/2
          ,finish_member_call/2
          ,cancel_member_call/1, cancel_member_call/2 ,cancel_member_call/3
+         ,send_sync_req/2
         ]).
 
 %% gen_server callbacks
@@ -43,21 +44,6 @@
           queue_id :: ne_binary()
          ,queue_db :: ne_binary()
          ,acct_id :: ne_binary()
-
-         %% Config options
-         ,name :: ne_binary()
-         ,connection_timeout = 0 :: integer() % how long can a caller wait in the queue
-         ,agent_ring_timeout = 5 :: pos_integer() % how long to ring an agent before giving up
-         ,max_queue_size = 0 :: integer() % restrict the number of the queued callers
-         ,ring_simultaneously = 1 :: integer() % how many agents to try ringing at a time (first one wins)
-         ,enter_when_empty = true :: boolean() % if a queue is agent-less, can the caller enter?
-         ,agent_wrapup_time = 0 :: integer() % forced wrapup time for an agent after a call
-         ,moh :: ne_binary() % media to play to customer while on hold
-         ,announce :: ne_binary() % media to play to customer when about to be connected to agent
-         ,strategy = 'rr' :: queue_strategy() % round-robin | most-idle
-         ,caller_exit_key :: ne_binary() % DTMF a caller can press to leave the queue
-         ,record_caller = false :: boolean() % record the caller
-         ,cdr_url :: ne_binary() % optional URL to request for extra CDR data
 
           %% PIDs of the gang
          ,fsm_pid :: pid()
@@ -120,6 +106,10 @@ cancel_member_call(Srv, RejectJObj) ->
 cancel_member_call(Srv, MemberCallJObj, Delivery) ->
     gen_listener:cast(Srv, {cancel_member_call, MemberCallJObj, Delivery}).
 
+-spec send_sync_req/2 :: (pid(), queue_strategy()) -> 'ok'.
+send_sync_req(Srv, Type) ->
+    gen_listener:cast(Srv, {send_sync_req, Type}).
+
 %%%===================================================================
 %%% gen_listener callbacks
 %%%===================================================================
@@ -141,7 +131,7 @@ init([Supervisor, AcctDb, QueueJObj]) ->
 
     lager:debug("starting queue in ~s", [AcctDb]),
 
-    gen_listener:cast(self(), {start_fsm, Supervisor}),
+    gen_listener:cast(self(), {start_fsm, Supervisor, QueueJObj}),
 
     Self = self(),
     _ = spawn(fun() ->
@@ -153,20 +143,6 @@ init([Supervisor, AcctDb, QueueJObj]) ->
        ,queue_db = AcctDb
        ,acct_id = wh_util:format_account_id(AcctDb, raw)
        ,my_id = list_to_binary([wh_util:to_binary(node()), "-", pid_to_list(self())])
-
-       ,name = wh_json:get_value(<<"name">>, QueueJObj)
-       ,connection_timeout = wh_json:get_integer_value(<<"connection_timeout">>, QueueJObj)
-       ,agent_ring_timeout = wh_json:get_integer_value(<<"agent_ring_timeout">>, QueueJObj)
-       ,max_queue_size = wh_json:get_integer_value(<<"max_queue_size">>, QueueJObj)
-       ,ring_simultaneously = wh_json:get_value(<<"ring_simultaneously">>, QueueJObj)
-       ,enter_when_empty = wh_json:is_true(<<"enter_when_empty">>, QueueJObj, true)
-       ,agent_wrapup_time = wh_json:get_integer_value(<<"agent_wrapup_time">>, QueueJObj)
-       ,moh = wh_json:get_value(<<"moh">>, QueueJObj)
-       ,announce = wh_json:get_value(<<"announce">>, QueueJObj)
-       ,strategy = get_strategy(wh_json:get_value(<<"strategy">>, QueueJObj))
-       ,caller_exit_key = wh_json:get_value(<<"caller_exit_key">>, QueueJObj, <<"#">>)
-       ,record_caller = wh_json:is_true(<<"record_caller">>, QueueJObj, false)
-       ,cdr_url = wh_json:get_value(<<"cdr_url">>, QueueJObj)
       }}.
 
 %%--------------------------------------------------------------------
@@ -197,27 +173,31 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({start_fsm, Supervisor}, #state{
-              queue_db=AcctDb
+handle_cast({start_fsm, Supervisor, QueueJObj}
+            ,#state{
+              acct_id=AcctId
               ,queue_id=QueueId
-              ,acct_id=AcctId
-              ,strategy=Type
-             }=State) ->
-    {ok, FSMPid} = acdc_queue_sup:start_fsm(Supervisor, AcctDb, QueueId, Type),
+             }=State
+           ) ->
+    {ok, FSMPid} = acdc_queue_sup:start_fsm(Supervisor, QueueJObj),
     link(FSMPid),
 
     {ok, SharedPid} = acdc_queue_sup:start_shared_queue(Supervisor, FSMPid, AcctId, QueueId),
     lager:debug("started shared queue listener: ~p", [SharedPid]),
 
     {noreply, State#state{fsm_pid=FSMPid, shared_pid=SharedPid}};
+
 handle_cast({queue_name, Q}, State) ->
     {noreply, State#state{my_q=Q}};
 
-handle_cast({member_connect_req, MemberCallJObj, Delivery}, #state{my_q=MyQ
-                                                                   ,my_id=MyId
-                                                                   ,acct_id=AcctId
-                                                                   ,queue_id=QueueId
-                                                                  }=State) ->
+handle_cast({member_connect_req, MemberCallJObj, Delivery}
+            ,#state{
+              my_q=MyQ
+              ,my_id=MyId
+              ,acct_id=AcctId
+              ,queue_id=QueueId
+             }=State
+           ) ->
     Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, MemberCallJObj)),
 
     acdc_util:bind_to_call_events(Call),
@@ -418,9 +398,3 @@ maybe_nack(Call, Delivery, SharedPid) ->
             acdc_queue_shared:ack(SharedPid, Delivery),
             false
     end.
-
--spec get_strategy/1 :: (api_binary()) -> queue_strategy().
-get_strategy(<<"round_robin">>) -> 'rr';
-get_strategy(<<"most_idle">>) -> 'mi';
-get_strategy(_) -> 'rr'.
-    
