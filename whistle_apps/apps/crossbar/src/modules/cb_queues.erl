@@ -228,7 +228,7 @@ load_queue_agents(Id, #cb_context{resp_data=Queue}=Context) ->
     end.
 
 load_agent_roster(Id, Context) ->
-    crossbar_doc:load_view(?CB_AGENTS_LIST, [{key, Id}]
+    crossbar_doc:load_view(?CB_AGENTS_LIST, [{key, Id}, {r,3}]
                            ,Context
                            ,fun normalize_agents_results/2
                           ).
