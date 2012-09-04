@@ -23,7 +23,7 @@
          ,send_sync_req/1
          ,send_sync_resp/3, send_sync_resp/4
          ,config/1
-         ,send_status_update/2
+         ,send_status_resume/1
          ,add_acdc_queue/2
          ,rm_acdc_queue/2
         ]).
@@ -176,8 +176,8 @@ send_sync_resp(Srv, Status, ReqJObj, Options) ->
 config(Srv) ->
     gen_listener:call(Srv, config).
 
-send_status_update(Srv, Status) ->
-    gen_listener:cast(Srv, {send_status_update, Status}).
+send_status_resume(Srv) ->
+    gen_listener:cast(Srv, {send_status_update, resume}).
 
 add_acdc_queue(Srv, Q) ->
     gen_listener:cast(Srv, {queue_login, Q}).
@@ -558,14 +558,13 @@ send_sync_response(ReqJObj, AcctId, AgentId, MyId, Status, Options) ->
     lager:debug("sending sync resp to ~s", [Q]),
     wapi_acdc_agent:publish_sync_resp(Q, Prop).
 
-send_status_update(AcctId, AgentId, Status) ->
+send_status_update(AcctId, AgentId, resume) ->
     Update = props:filter_undefined(
                [{<<"Account-ID">>, AcctId}
                 ,{<<"Agent-ID">>, AgentId}
-                ,{<<"New-Status">>, Status}
                 | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                ]),
-    wapi_acdc_agent:publish_status_update(Update).
+    wapi_acdc_agent:publish_resume(Update).
 
 
 -spec idle_time/1 :: ('undefined' | wh_now()) -> 'undefined' | integer().
