@@ -16,8 +16,8 @@
          "name":"Connection Timeout",
          "description":"In seconds, how long to try to connect the caller before progressing past the queue callflow action",
          "type":"integer",
-         "default":30,
-         "minimum":1
+         "default":3600,
+         "minimum":0
       },
       "agent_ring_timeout":{
          "name":"Agent Ring Timeout",
