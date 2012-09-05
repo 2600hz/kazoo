@@ -444,6 +444,7 @@ start_collect_timer() ->
                                {wh_json:json_object()
                                 ,wh_json:json_objects()
                                 ,wh_json:json_objects()
+                                ,queue_strategy_state()
                                }.
 pick_winner([], _, _) -> undefined;
 pick_winner(CRs, 'rr', AgentQ) ->
@@ -455,7 +456,7 @@ pick_winner(CRs, 'rr', AgentQ) ->
         {[], Others} ->
             case pick_winner(Others, 'rr', AgentQ1) of
                 {Resp, Same, Other, AgentQ2} ->
-                    {Resp, Same, Other, queue:ing(AgentId, AgentQ2)};
+                    {Resp, Same, Other, queue:in(AgentId, AgentQ2)};
                 undefined -> undefined
             end
     end;
