@@ -43,6 +43,10 @@
 -define(COLLECT_RESP_TIMEOUT, 3000).
 -define(COLLECT_RESP_MESSAGE, collect_timer_expired).
 
+%% How long will the caller wait in the call queue before being bounced out
+-define(CONNECTION_TIMEOUT, 3600000).
+-define(CONNECTION_TIMEOUT_MESSAGE, connection_timer_expired).
+
 -define(SYNC_TIMEOUT, 3000).
 -define(SYNC_MESSAGE, sync_timer_expired).
 
@@ -55,12 +59,13 @@
          ,queue_id :: ne_binary()
 
          ,timer_ref :: reference() % for tracking timers
+         ,connection_timer_ref :: reference() % how long can a caller wait in the queue
 
          ,member_call :: whapps_call:call()
 
          %% Config options
          ,name :: ne_binary()
-         ,connection_timeout = 0 :: integer() % how long can a caller wait in the queue
+         ,connection_timeout :: pos_integer()
          ,agent_ring_timeout = 5 :: pos_integer() % how long to ring an agent before giving up
          ,max_queue_size = 0 :: integer() % restrict the number of the queued callers
          ,ring_simultaneously = 1 :: integer() % how many agents to try ringing at a time (first one wins)
@@ -171,7 +176,7 @@ init([QueuePid, QueueJObj]) ->
                       ,queue_id=QueueId
 
                       ,name = wh_json:get_value(<<"name">>, QueueJObj)
-                      ,connection_timeout = wh_json:get_integer_value(<<"connection_timeout">>, QueueJObj)
+                      ,connection_timeout = connection_timeout(wh_json:get_integer_value(<<"connection_timeout">>, QueueJObj))
                       ,agent_ring_timeout = wh_json:get_integer_value(<<"agent_ring_timeout">>, QueueJObj)
                       ,max_queue_size = wh_json:get_integer_value(<<"max_queue_size">>, QueueJObj)
                       ,ring_simultaneously = wh_json:get_value(<<"ring_simultaneously">>, QueueJObj)
@@ -230,12 +235,20 @@ sync(_E, State) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
-ready({member_call, CallJObj, Delivery}, #state{queue_proc=Srv}=State) ->
+ready({member_call, CallJObj, Delivery}, #state{queue_proc=Srv
+                                                ,connection_timeout=ConnTimeout
+                                                ,connection_timer_ref=ConnRef
+                                               }=State) ->
     Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, CallJObj)),
     lager:debug("member call received: ~s", [whapps_call:call_id(Call)]),
+
     acdc_queue:member_connect_req(Srv, CallJObj, Delivery),
+
+    maybe_stop_connection_timer(ConnRef), % stop the old one, maybe
+
     {next_state, connect_req, State#state{collect_ref=start_collect_timer()
                                           ,member_call=Call
+                                          ,connection_timer_ref=start_connection_timer(ConnTimeout)
                                          }};
 ready({agent_resp, _Resp}, State) ->
     lager:debug("someone jumped the gun, or was slow on the draw: ~p", [_Resp]),
@@ -259,22 +272,22 @@ ready(_Event, State) ->
 %% @end
 %%--------------------------------------------------------------------
 connect_req({member_call, CallJObj, Delivery}, #state{queue_proc=Srv}=State) ->
-    lager:debug("recv a member_call while processing a different member: ~p", [CallJObj]),
+    lager:debug("recv a member_call while processing a different member"),
     acdc_queue:cancel_member_call(Srv, CallJObj, Delivery),
     {next_state, connect_req, State};
+
 connect_req({agent_resp, Resp}, #state{connect_resps=CRs}=State) ->
-    lager:debug("recv another resp: ~p", [Resp]),
     {next_state, connect_req, State#state{connect_resps=[Resp | CRs]}};
+
 connect_req({timeout, Ref, ?COLLECT_RESP_MESSAGE}, #state{collect_ref=Ref
                                                           ,connect_resps=[]
                                                           ,queue_proc=Srv
                                                          }=State) ->
     lager:debug("done waiting for agents to respond, no one responded"),
     acdc_queue:cancel_member_call(Srv),
-    {next_state, ready, State#state{connect_resps=[]
-                                    ,collect_ref=undefined
-                                    ,member_call=undefined
-                                   }};
+
+    {next_state, ready, clear_member_call(State)};
+
 connect_req({timeout, Ref, ?COLLECT_RESP_MESSAGE}, #state{collect_ref=Ref
                                                           ,connect_resps=CRs
                                                           ,queue_proc=Srv
@@ -295,23 +308,29 @@ connect_req({timeout, Ref, ?COLLECT_RESP_MESSAGE}, #state{collect_ref=Ref
         undefined ->
             lager:debug("no more responses to choose from"),
             acdc_queue:cancel_member_call(Srv),
-            {next_state, ready, State#state{collect_ref=undefined
-                                            ,member_call=undefined
-                                           }}
+            {next_state, ready, clear_member_call(State)}
     end;
+
 connect_req({accepted, _AcceptJObj}, State) ->
     lager:debug("recv accept response before win sent (are you magical): ~p", [_AcceptJObj]),
     {next_state, connect_req, State};
+
 connect_req({retry, _RetryJObj}, State) ->
     lager:debug("recv retry response before win sent: ~p", [_RetryJObj]),
     {next_state, connect_req, State};
+
 connect_req({member_hungup, JObj}, #state{queue_proc=Srv}=State) ->
     lager:debug("member hungup before we could assign an agent"),
     acdc_queue:finish_member_call(Srv, JObj),
-    {next_state, ready, State#state{connect_resps=[]
-                                    ,collect_ref=undefined
-                                    ,member_call=undefined
-                                   }};
+    {next_state, ready, clear_member_call(State)};
+
+connect_req({timeout, ConnRef, ?CONNECTION_TIMEOUT_MESSAGE}, #state{queue_proc=Srv
+                                                                    ,connection_timer_ref=ConnRef
+                                                                   }=State) ->
+    lager:debug("connection timeout occurred, bounce the caller out of the queue"),
+    acdc_queue:timeout_member_call(Srv),
+    {next_state, ready, clear_member_call(State)};
+    
 connect_req(_Event, State) ->
     lager:debug("unhandled event: ~p", [_Event]),
     {next_state, connect_req, State}.
@@ -322,20 +341,24 @@ connect_req(_Event, State) ->
 %% @end
 %%--------------------------------------------------------------------
 connecting({member_call, CallJObj, Delivery}, #state{queue_proc=Srv}=State) ->
-    lager:debug("recv a member_call while connecting: ~p", [CallJObj]),
+    lager:debug("recv a member_call while connecting"),
     acdc_queue:cancel_member_call(Srv, CallJObj, Delivery),
     {next_state, connecting, State};
+
 connecting({agent_resp, _Resp}, State) ->
     lager:debug("agent resp must have just missed cutoff: ~p", [_Resp]),
     {next_state, connecting, State};
+
 connecting({accepted, AcceptJObj}, #state{queue_proc=Srv}=State) ->
     lager:debug("recv acceptance from agent: ~p", [AcceptJObj]),
     acdc_queue:finish_member_call(Srv, AcceptJObj),
-    {next_state, ready, State#state{member_call=undefined}};
+    {next_state, ready, clear_member_call(State)};
+
 connecting({retry, RetryJObj}, #state{queue_proc=Srv, connect_resps=[]}=State) ->
     lager:debug("recv retry from agent: ~p", [RetryJObj]),
     acdc_queue:cancel_member_call(Srv, RetryJObj),
-    {next_state, ready, State#state{member_call=undefined}};
+    {next_state, ready, clear_member_call(State)};
+
 connecting({retry, RetryJObj}, State) ->
     lager:debug("recv retry from agent: ~p", [RetryJObj]),
     lager:debug("but wait, we have others who wanted to try"),
@@ -345,7 +368,14 @@ connecting({retry, RetryJObj}, State) ->
 connecting({member_hungup, CallEvt}, #state{queue_proc=Srv}=State) ->
     lager:debug("caller hungup while we waited for the agent to connect"),
     acdc_queue:cancel_member_call(Srv, CallEvt),
-    {next_state, ready, State#state{member_call=undefined}};
+    {next_state, ready, clear_member_call(State)};
+
+connecting({timeout, ConnRef, ?CONNECTION_TIMEOUT_MESSAGE}, #state{queue_proc=Srv
+                                                                   ,connection_timer_ref=ConnRef
+                                                                  }=State) ->
+    lager:debug("connection timeout occurred, bounce the caller out of the queue"),
+    acdc_queue:timeout_member_call(Srv),
+    {next_state, ready, clear_member_call(State)};
 
 connecting(_Event, State) ->
     lager:debug("unhandled event: ~p", [_Event]),
@@ -496,3 +526,26 @@ create_strategy_state('rr', AcctDb, QueueId) ->
         {ok, JObjs} -> queue:from_list([wh_json:get_value(<<"id">>, JObj) || JObj <- JObjs]);
         {error, _E} -> lager:debug("error: ~p", [_E]), queue:new()
     end.
+
+-spec connection_timeout/1 :: (integer() | 'undefined') -> pos_integer().
+connection_timeout(N) when is_integer(N), N > 0 -> N * 1000;
+connection_timeout(_) -> ?CONNECTION_TIMEOUT.
+
+-spec start_connection_timer/1 :: (pos_integer()) -> reference().
+start_connection_timer(ConnTimeout) ->
+    gen_fsm:start_timer(ConnTimeout, ?CONNECTION_TIMEOUT_MESSAGE).
+
+-spec maybe_stop_connection_timer/1 :: (reference() | 'undefined') -> 'ok'.
+maybe_stop_connection_timer(undefined) -> ok;
+maybe_stop_connection_timer(ConnRef) ->
+    _ = gen_fsm:cancel_timer(ConnRef),
+    ok.
+
+-spec clear_member_call/1 :: (#state{}) -> #state{}.
+clear_member_call(#state{connection_timer_ref=ConnRef}=State) ->
+    maybe_stop_connection_timer(ConnRef),
+    State#state{connect_resps=[]
+                ,collect_ref=undefined
+                ,member_call=undefined
+                ,connection_timer_ref=undefined
+               }.
