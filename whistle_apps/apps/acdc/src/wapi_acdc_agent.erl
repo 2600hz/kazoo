@@ -296,19 +296,12 @@ resume_v(Prop) when is_list(Prop) ->
 resume_v(JObj) ->
     resume_v(wh_json:to_proplist(JObj)).
 
--spec agent_status_routing_key/1 :: (wh_json:json_object() |
-                                     wh_proplist()
-                                    ) -> ne_binary().
+-spec agent_status_routing_key/1 :: (wh_proplist()) -> ne_binary().
 -spec agent_status_routing_key/3 :: (ne_binary(), ne_binary(), ne_binary()) -> ne_binary().
 agent_status_routing_key(Props) when is_list(Props) ->
     Id = props:get_value(<<"Agent-ID">>, Props, <<"*">>),
     AcctId = props:get_value(<<"Account-ID">>, Props, <<"*">>),
     Status = props:get_value(<<"Event-Name">>, Props, <<"*">>),
-    agent_status_routing_key(AcctId, Id, Status);
-agent_status_routing_key(JObj) ->
-    Id = wh_json:get_value(<<"Agent-ID">>, JObj, <<"*">>),
-    AcctId = wh_json:get_value(<<"Account-ID">>, JObj, <<"*">>),
-    Status = wh_json:get_value(<<"Event-Name">>, JObj, <<"*">>),
     agent_status_routing_key(AcctId, Id, Status).
 
 agent_status_routing_key(AcctId, AgentId, Status) ->
