@@ -35,13 +35,15 @@ handle(Data, Call) ->
                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                    ]),
 
-    {ok, QueueJObj} = couch_mgr:open_cache_doc(whapps_call:call_id(Call), QueueId),
-    MaxWait = wh_json:get_integer_value(<<"max_wait_time">>, QueueJObj),
+    lager:debug("loading queue ~s", [QueueId]),
+    {ok, QueueJObj} = couch_mgr:open_cache_doc(whapps_call:account_db(Call), QueueId),
+    MaxWait = max_wait(wh_json:get_integer_value(<<"connection_timeout">>, QueueJObj, 3600)),
 
+    lager:debug("asking for an agent, waiting up to ~p s", [MaxWait]),
     case whapps_util:amqp_pool_request(MemberCall
                                        ,fun wapi_acdc_queue:publish_member_call/1
                                        ,fun wapi_acdc_queue:member_call_success_v/1
-                                       ,MaxWait * 1000
+                                       ,MaxWait
                                       ) of
         {ok, _SuccessJObj} ->
             lager:debug("agent took the member_call: ~p", [_SuccessJObj]),
@@ -53,3 +55,8 @@ handle(Data, Call) ->
             lager:debug("failed to process the member_call: ~p", [_Fail]),
             cf_exe:continue(Call)
     end.
+
+%% convert from seconds to milliseconds, or infinity
+-spec max_wait/1 :: (integer()) -> pos_integer() | 'infinity'.
+max_wait(N) when N < 1 -> infinity;
+max_wait(N) -> N * 1000.
