@@ -37,8 +37,20 @@ handle(Data, Call) ->
 
     lager:debug("loading queue ~s", [QueueId]),
     {ok, QueueJObj} = couch_mgr:open_cache_doc(whapps_call:account_db(Call), QueueId),
-    MaxWait = max_wait(wh_json:get_integer_value(<<"connection_timeout">>, QueueJObj, 3600)),
 
+    MaxWait = max_wait(wh_json:get_integer_value(<<"connection_timeout">>, QueueJObj, 3600)),
+    MaxQueueSize = max_queue_size(wh_json:get_integer_value(<<"max_queue_size">>, QueueJObj, 0)),
+
+    CurrQueueSize = wapi_acdc_queue:queue_size(whapps_call:account_id(Call), QueueId),
+
+    lager:debug("max size: ~p curr size: ~p", [MaxQueueSize, CurrQueueSize]),
+
+    maybe_enter_queue(Call, MemberCall, MaxWait, is_queue_full(MaxQueueSize, CurrQueueSize)).
+
+maybe_enter_queue(Call, _, _, true) ->
+    lager:debug("queue has reached max size"),
+    cf_exe:continue(Call);
+maybe_enter_queue(Call, MemberCall, MaxWait, false) ->
     lager:debug("asking for an agent, waiting up to ~p s", [MaxWait]),
     case whapps_util:amqp_pool_request(MemberCall
                                        ,fun wapi_acdc_queue:publish_member_call/1
@@ -60,3 +72,10 @@ handle(Data, Call) ->
 -spec max_wait/1 :: (integer()) -> pos_integer() | 'infinity'.
 max_wait(N) when N < 1 -> infinity;
 max_wait(N) -> N * 1000.
+
+max_queue_size(N) when is_integer(N), N > 0 -> N;
+max_queue_size(_) -> 0.
+
+-spec is_queue_full/2 :: (non_neg_integer(), non_neg_integer()) -> boolean().
+is_queue_full(0, _) -> false;
+is_queue_full(MaxQueueSize, CurrQueueSize) -> CurrQueueSize >= MaxQueueSize.
