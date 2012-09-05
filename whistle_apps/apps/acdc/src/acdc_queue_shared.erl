@@ -40,7 +40,10 @@
                                                                ,{restrict_to, [member_call]}
                                                               ]}
                                                 ]).
--define(RESPONDERS, [{{acdc_queue_handler, handle_member_call}, {<<"member">>, <<"call">>}}]).
+-define(RESPONDERS, [{{acdc_queue_handler, handle_member_call}
+                      ,{<<"member">>, <<"call">>}
+                     }
+                    ]).
 
 %%%===================================================================
 %%% API
@@ -64,9 +67,11 @@ start_link(FSMPid, AcctId, QueueId) ->
                             ,[FSMPid]
                            ).
 
+-spec ack/2 :: (pid(), #'basic.deliver'{}) -> 'ok'.
 ack(Srv, Delivery) ->
     gen_listener:ack(Srv, Delivery).
 
+-spec nack/2 :: (pid(), #'basic.deliver'{}) -> 'ok'.
 nack(Srv, Delivery) ->
     gen_listener:nack(Srv, Delivery).
 
