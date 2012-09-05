@@ -17,6 +17,7 @@
 %% rr :: Round Robin
 %% mi :: Most Idle
 -type queue_strategy() :: 'rr' | 'mi'.
+-type queue_strategy_state() :: 'undefined' | queue().
 
 -define(ACDC_HRL, true).
 -endif.
