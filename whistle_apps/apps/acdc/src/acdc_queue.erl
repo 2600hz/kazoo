@@ -20,6 +20,7 @@
 
 %% API
 -export([start_link/3
+         ,accept_member_calls/1
          ,member_connect_req/3
          ,member_connect_win/2
          ,member_connect_monitor/2
@@ -46,6 +47,7 @@
          ,acct_id :: ne_binary()
 
           %% PIDs of the gang
+         ,supervisor :: pid()
          ,fsm_pid :: pid()
          ,shared_pid :: pid()
 
@@ -62,11 +64,21 @@
          }).
 
 -define(BINDINGS, [{self, []}]).
--define(RESPONDERS, [{{acdc_queue_handler, handle_call_event}, {<<"call_event">>, <<"*">>}}
-                     ,{{acdc_queue_handler, handle_call_event}, {<<"error">>, <<"*">>}}
-                     ,{{acdc_queue_handler, handle_member_resp}, {<<"member">>, <<"connect_resp">>}}
-                     ,{{acdc_queue_handler, handle_member_accepted}, {<<"member">>, <<"connect_accepted">>}}
-                     ,{{acdc_queue_handler, handle_member_retry}, {<<"member">>, <<"connect_retry">>}}
+-define(RESPONDERS, [{{acdc_queue_handler, handle_call_event}
+                      ,{<<"call_event">>, <<"*">>}
+                     }
+                     ,{{acdc_queue_handler, handle_call_event}
+                       ,{<<"error">>, <<"*">>}
+                      }
+                     ,{{acdc_queue_handler, handle_member_resp}
+                       ,{<<"member">>, <<"connect_resp">>}
+                      }
+                     ,{{acdc_queue_handler, handle_member_accepted}
+                       ,{<<"member">>, <<"connect_accepted">>}
+                      }
+                     ,{{acdc_queue_handler, handle_member_retry}
+                       ,{<<"member">>, <<"connect_retry">>}
+                      }
                     ]).
 
 %%%===================================================================
@@ -87,6 +99,9 @@ start_link(Supervisor, AcctDb, QueueJObj) ->
                              ]
                             ,[Supervisor, AcctDb, QueueJObj]
                            ).
+
+accept_member_calls(Srv) ->
+    gen_listener:cast(Srv, {accept_member_calls}).
 
 member_connect_req(Srv, MemberCallJObj, Delivery) ->
     gen_listener:cast(Srv, {member_connect_req, MemberCallJObj, Delivery}).
@@ -173,19 +188,22 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({start_fsm, Supervisor, QueueJObj}
-            ,#state{
-              acct_id=AcctId
-              ,queue_id=QueueId
-             }=State
-           ) ->
+handle_cast({start_fsm, Supervisor, QueueJObj}, #state{}=State) ->
     {ok, FSMPid} = acdc_queue_sup:start_fsm(Supervisor, QueueJObj),
-    link(FSMPid),
 
+    {noreply, State#state{fsm_pid=FSMPid
+                          ,supervisor=Supervisor
+                         }};
+
+handle_cast({accept_member_calls}, #state{supervisor=Supervisor
+                                          ,fsm_pid=FSMPid
+                                          ,shared_pid=undefined
+                                          ,acct_id=AcctId
+                                          ,queue_id=QueueId
+                                         }=State) ->
     {ok, SharedPid} = acdc_queue_sup:start_shared_queue(Supervisor, FSMPid, AcctId, QueueId),
     lager:debug("started shared queue listener: ~p", [SharedPid]),
-
-    {noreply, State#state{fsm_pid=FSMPid, shared_pid=SharedPid}};
+    {noreply, State#state{shared_pid=SharedPid}};
 
 handle_cast({queue_name, Q}, State) ->
     {noreply, State#state{my_q=Q}};
@@ -389,7 +407,7 @@ send_member_call_success(Q, AcctId, QueueId, MyId, AgentId) ->
               ,{<<"Queue-ID">>, QueueId}
               ,{<<"Process-ID">>, MyId}
               ,{<<"Agent-ID">>, AgentId}
-              | wh_util:default_headers(?APP_NAME, ?APP_VERSION)
+              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     wapi_acdc_queue:publish_member_call_success(Q, Resp).
 
@@ -399,7 +417,7 @@ send_sync_req(MyQ, MyId, AcctId, QueueId, Type) ->
               ,{<<"Queue-ID">>, QueueId}
               ,{<<"Process-ID">>, MyId}
               ,{<<"Current-Strategy">>, Type}
-              | wh_util:default_headers(MyQ, ?APP_NAME, ?APP_VERSION)
+              | wh_api:default_headers(MyQ, ?APP_NAME, ?APP_VERSION)
              ]),
     wapi_acdc_queue:publish_sync_req(Resp).
 
