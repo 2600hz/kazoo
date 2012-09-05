@@ -302,7 +302,6 @@ handle_call(Request, From, #state{module=Module, module_state=ModState, module_t
 -spec handle_cast/2 :: (term(), #state{}) -> handle_cast_ret().
 
 handle_cast({init_amqp, Params, Responders, Bindings}, State) ->
-    lager:debug("init AMQP"),
     case start_amqp(Params) of
         {error, _R} ->
             lager:debug("failed to init AMQP: ~p", [_R]),
