@@ -76,6 +76,7 @@
          ,ring_simultaneously = 1 :: integer() % how many agents to try ringing at a time (first one wins)
          ,enter_when_empty = true :: boolean() % if a queue is agent-less, can the caller enter?
          ,agent_wrapup_time = 0 :: integer() % forced wrapup time for an agent after a call
+
          ,moh :: ne_binary() % media to play to customer while on hold
          ,announce :: ne_binary() % media to play to customer when about to be connected to agent
 
@@ -243,6 +244,7 @@ sync(_E, State) ->
 ready({member_call, CallJObj, Delivery}, #state{queue_proc=Srv
                                                 ,connection_timeout=ConnTimeout
                                                 ,connection_timer_ref=ConnRef
+                                                ,moh=MOH
                                                }=State) ->
     Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, CallJObj)),
     lager:debug("member call received: ~s", [whapps_call:call_id(Call)]),
@@ -250,6 +252,9 @@ ready({member_call, CallJObj, Delivery}, #state{queue_proc=Srv
     acdc_queue:member_connect_req(Srv, CallJObj, Delivery),
 
     maybe_stop_timer(ConnRef), % stop the old one, maybe
+
+    whapps_call_command:answer(Call),
+    whapps_call_command:hold(Call, MOH),
 
     {next_state, connect_req, State#state{collect_ref=start_collect_timer()
                                           ,member_call=Call

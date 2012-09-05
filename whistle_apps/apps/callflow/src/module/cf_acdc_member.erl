@@ -23,9 +23,6 @@
 %%--------------------------------------------------------------------
 -spec handle/2 :: (wh_json:json_object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
-    whapps_call_command:answer(Call),
-    whapps_call_command:hold(Call),
-
     QueueId = wh_json:get_value(<<"id">>, Data),
 
     MemberCall = props:filter_undefined(
