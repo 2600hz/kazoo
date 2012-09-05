@@ -36,10 +36,16 @@
 -type consume_records() :: #'queue.declare'{} | #'queue.bind'{} | #'queue.unbind'{} | #'queue.delete'{} |
                            #'basic.consume'{} | #'basic.cancel'{} | #'basic.ack'{} | #'basic.nack'{} |
                            #'basic.qos'{}.
+-type consume_ret() :: 'ok' |
+                       {'ok', ne_binary() | #'queue.declare_ok'{}} |
+                       {'error', _}.
 -type misc_records() :: #'exchange.declare'{}.
 
 
--export_type([consume_records/0, misc_records/0]).
+-export_type([consume_records/0
+              ,misc_records/0
+              ,consume_ret/0
+             ]).
 
 -record(state, {connection = 'undefined' :: 'undefined' | {pid(), reference()}
                 ,broker = 'undefined' :: 'undefined' | wh_amqp_broker:broker()
@@ -81,7 +87,7 @@ publish(Srv, #'basic.publish'{exchange=_Exchange, routing_key=_RK}=BasicPub, Amq
             ok
     end.
 
--spec consume/2 :: (atom(), consume_records()) -> 'ok' | {'ok', ne_binary()} | {'error', _}.
+-spec consume/2 :: (atom(), consume_records()) -> consume_ret().
 consume(Srv, #'basic.consume'{consumer_tag=CTag}=BasicConsume) ->
     case my_channel(Srv) of
         {error, _}=E -> E;
@@ -122,8 +128,9 @@ consume(Srv, #'queue.declare'{}=QueueDeclare) ->
         {error, _}=E -> E;
         {ok, Channel, _} ->
             case amqp_channel:call(Channel, QueueDeclare) of
-                #'queue.declare_ok'{queue=Q} -> {ok, Q};
+                {ok, DeclareOK}=OK when is_record(DeclareOK, 'queue.declare_ok') -> OK;
                 {error, _}=E -> E;
+                DeclareOK when is_record(DeclareOK, 'queue.declare_ok') -> {ok, DeclareOK};
                 Err -> {error, Err}
             end
     end;

@@ -67,7 +67,7 @@ wait_for_available_host() ->
             wait_for_available_host()
     end.
 
--spec consume/1 :: (wh_amqp_connection:consume_records()) -> 'ok' | {'ok', ne_binary()} | {'error', _}.
+-spec consume/1 :: (wh_amqp_connection:consume_records()) -> wh_amqp_connection:consume_ret().
 consume(BC) ->
     case get_connection() of
         {ok, Connection} -> wh_amqp_connection:consume(Connection, BC);
