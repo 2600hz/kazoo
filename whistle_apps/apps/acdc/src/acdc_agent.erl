@@ -380,8 +380,10 @@ handle_cast({bridge_to_member, WinJObj}, #state{endpoints=EPs, fsm_pid=FSM}=Stat
     lager:debug("bridging to agent endpoints: ~p", [EPs]),
 
     Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, WinJObj)),
+    RingTimeout = wh_json:get_value(<<"Ring-Timeout">>, WinJObj),
+
     acdc_util:bind_to_call_events(Call),
-    _P = spawn(fun() -> maybe_connect_to_agent(FSM, EPs, Call) end),
+    _P = spawn(fun() -> maybe_connect_to_agent(FSM, EPs, Call, RingTimeout) end),
 
     lager:debug("waiting on successful bridge now: connecting in ~p", [_P]),
     {noreply, State#state{call=Call}};
@@ -575,8 +577,8 @@ idle_time(T) -> wh_util:elapsed_s(T).
 call_id(undefined) -> undefined;
 call_id(Call) -> whapps_call:call_id(Call).
 
--spec maybe_connect_to_agent/3 :: (pid(), list(), whapps_call:call()) -> 'ok'.
-maybe_connect_to_agent(FSM, EPs, Call) ->
+-spec maybe_connect_to_agent/4 :: (pid(), list(), whapps_call:call(), integer() | 'undefined') -> 'ok'.
+maybe_connect_to_agent(FSM, EPs, Call, Timeout) ->
     put(callid, whapps_call:call_id(Call)),
 
     ReqId = wh_util:rand_hex_binary(6),
@@ -587,20 +589,20 @@ maybe_connect_to_agent(FSM, EPs, Call) ->
                                    ,{<<"Request-ID">>, ReqId}
                                   ]),
 
-    Prop = [{<<"Msg-ID">>, wh_util:rand_hex_binary(6)}
-            ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
-            ,{<<"Endpoints">>, EPs}
-            ,{<<"Export-Custom-Channel-Vars">>, [<<"Account-ID">>
-                                                     ,<<"Retain-CID">>
-                                                     ,<<"Authorizing-ID">>
-                                                     ,<<"Authorizing-Type">>
-                                                ]}
-            ,{<<"Account-ID">>, AcctId}
-            ,{<<"Resource-Type">>, <<"originate">>}
-            ,{<<"Application-Name">>, <<"park">>}
-            ,{<<"App-Name">>, ?APP_NAME}
-            ,{<<"App-Version">>, ?APP_VERSION}
-           ],
+    Prop = props:filter_undefined(
+             [{<<"Msg-ID">>, wh_util:rand_hex_binary(6)}
+              ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
+              ,{<<"Timeout">>, Timeout}
+              ,{<<"Endpoints">>, [wh_json:set_value(<<"Endpoint-Timeout">>, Timeout, EP) || EP <- EPs]}
+              ,{<<"Export-Custom-Channel-Vars">>, [<<"Account-ID">>, <<"Retain-CID">>
+                                                   ,<<"Authorizing-ID">>, <<"Authorizing-Type">>
+                                                  ]}
+              ,{<<"Account-ID">>, AcctId}
+              ,{<<"Resource-Type">>, <<"originate">>}
+              ,{<<"Application-Name">>, <<"park">>}
+              ,{<<"App-Name">>, ?APP_NAME}
+              ,{<<"App-Version">>, ?APP_VERSION}
+             ]),
 
     lager:debug("sending originate request"),
 

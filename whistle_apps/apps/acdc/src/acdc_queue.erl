@@ -22,7 +22,7 @@
 -export([start_link/3
          ,accept_member_calls/1
          ,member_connect_req/3
-         ,member_connect_win/2
+         ,member_connect_win/3
          ,member_connect_monitor/2
          ,timeout_member_call/1, finish_member_call/2
          ,cancel_member_call/1, cancel_member_call/2 ,cancel_member_call/3
@@ -107,8 +107,8 @@ accept_member_calls(Srv) ->
 member_connect_req(Srv, MemberCallJObj, Delivery) ->
     gen_listener:cast(Srv, {member_connect_req, MemberCallJObj, Delivery}).
 
-member_connect_win(Srv, RespJObj) ->
-    gen_listener:cast(Srv, {member_connect_win, RespJObj}).
+member_connect_win(Srv, RespJObj, Timeout) ->
+    gen_listener:cast(Srv, {member_connect_win, RespJObj, Timeout}).
 member_connect_monitor(Srv, RespJObj) ->
     gen_listener:cast(Srv, {member_connect_monitor, RespJObj}).
 
@@ -229,13 +229,13 @@ handle_cast({member_connect_req, MemberCallJObj, Delivery}
                           ,member_call_queue=wh_json:get_value(<<"Server-ID">>, MemberCallJObj)
                          }};
 
-handle_cast({member_connect_win, RespJObj}, #state{my_q=MyQ
+handle_cast({member_connect_win, RespJObj, Timeout}, #state{my_q=MyQ
                                                    ,my_id=MyId
                                                    ,call=Call
                                                    ,queue_id=QueueId
                                                   }=State) ->
     lager:debug("agent process won the call, sending the win"),
-    send_member_connect_win(RespJObj, Call, QueueId, MyQ, MyId),
+    send_member_connect_win(RespJObj, Timeout, Call, QueueId, MyQ, MyId),
     {noreply, State#state{agent_process=wh_json:get_value(<<"Agent-Process">>, RespJObj)
                           ,agent_id=wh_json:get_value(<<"Agent-ID">>, RespJObj)
                          }};
@@ -396,14 +396,15 @@ send_member_connect_req(CallId, AcctId, QueueId, MyQ, MyId) ->
             ]),
     wapi_acdc_queue:publish_member_connect_req(Req).
 
--spec send_member_connect_win/5 :: (wh_json:json_object(), whapps_call:call(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
-send_member_connect_win(RespJObj, Call, QueueId, MyQ, MyId) ->
+-spec send_member_connect_win/6 :: (wh_json:json_object(), pos_integer(), whapps_call:call(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+send_member_connect_win(RespJObj, Timeout, Call, QueueId, MyQ, MyId) ->
     CallJSON = whapps_call:to_json(Call),
     Win = props:filter_undefined(
             [{<<"Call">>, CallJSON}
              ,{<<"Process-ID">>, MyId}
              ,{<<"Server-ID">>, MyQ}
              ,{<<"Queue-ID">>, QueueId}
+             ,{<<"Ring-Timeout">>, Timeout}
              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
             ]),
     wapi_acdc_queue:publish_member_connect_win(wh_json:get_value(<<"Server-ID">>, RespJObj), Win).

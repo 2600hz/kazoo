@@ -47,6 +47,10 @@
 -define(CONNECTION_TIMEOUT, 3600000).
 -define(CONNECTION_TIMEOUT_MESSAGE, connection_timer_expired).
 
+%% How long to ring the agent before trying the next agent
+-define(AGENT_RING_TIMEOUT, 5000).
+-define(AGENT_RING_TIMEOUT_MESSAGE, agent_timer_expired).
+
 -define(SYNC_TIMEOUT, 3000).
 -define(SYNC_MESSAGE, sync_timer_expired).
 
@@ -60,6 +64,7 @@
 
          ,timer_ref :: reference() % for tracking timers
          ,connection_timer_ref :: reference() % how long can a caller wait in the queue
+         ,agent_ring_timer_ref :: reference() % how long to ring an agent before moving to the next
 
          ,member_call :: whapps_call:call()
 
@@ -177,7 +182,7 @@ init([QueuePid, QueueJObj]) ->
 
                       ,name = wh_json:get_value(<<"name">>, QueueJObj)
                       ,connection_timeout = connection_timeout(wh_json:get_integer_value(<<"connection_timeout">>, QueueJObj))
-                      ,agent_ring_timeout = wh_json:get_integer_value(<<"agent_ring_timeout">>, QueueJObj)
+                      ,agent_ring_timeout = agent_ring_timeout(wh_json:get_integer_value(<<"agent_ring_timeout">>, QueueJObj))
                       ,max_queue_size = wh_json:get_integer_value(<<"max_queue_size">>, QueueJObj)
                       ,ring_simultaneously = wh_json:get_value(<<"ring_simultaneously">>, QueueJObj)
                       ,enter_when_empty = wh_json:is_true(<<"enter_when_empty">>, QueueJObj, true)
@@ -244,7 +249,7 @@ ready({member_call, CallJObj, Delivery}, #state{queue_proc=Srv
 
     acdc_queue:member_connect_req(Srv, CallJObj, Delivery),
 
-    maybe_stop_connection_timer(ConnRef), % stop the old one, maybe
+    maybe_stop_timer(ConnRef), % stop the old one, maybe
 
     {next_state, connect_req, State#state{collect_ref=start_collect_timer()
                                           ,member_call=Call
@@ -293,17 +298,19 @@ connect_req({timeout, Ref, ?COLLECT_RESP_MESSAGE}, #state{collect_ref=Ref
                                                           ,queue_proc=Srv
                                                           ,strategy=Strategy
                                                           ,strategy_state=StrategyState
+                                                          ,agent_ring_timeout=AgentTimeout
                                                          }=State) ->
     lager:debug("done waiting for agents to respond, picking a winner"),
     case pick_winner(CRs, Strategy, StrategyState) of
         {Winner, Monitors, Rest, StrategyState1} ->
-            acdc_queue:member_connect_win(Srv, Winner),
+            acdc_queue:member_connect_win(Srv, Winner, AgentTimeout),
             _ = [acdc_queue:member_connect_monitor(Srv, M) || M <- Monitors],
 
             lager:debug("sending win to ~p", [Winner]),
             {next_state, connecting, State#state{connect_resps=Rest
                                                  ,collect_ref=undefined
                                                  ,strategy_state=StrategyState1
+                                                 ,agent_ring_timer_ref=start_agent_ring_timer(AgentTimeout)
                                                 }};
         undefined ->
             lager:debug("no more responses to choose from"),
@@ -364,6 +371,12 @@ connecting({retry, RetryJObj}, State) ->
     lager:debug("but wait, we have others who wanted to try"),
     gen_fsm:send_event(self(), {timeout, undefined, ?COLLECT_RESP_MESSAGE}),
     {next_state, connect_req, State};
+
+connecting({timeout, AgentRef, ?AGENT_RING_TIMEOUT_MESSAGE}, #state{agent_ring_timer_ref=AgentRef}=State) ->
+    lager:debug("timed out waiting for agent to pick up"),
+    lager:debug("let's try another agent"),
+    gen_fsm:send_event(self(), {timeout, undefined, ?COLLECT_RESP_MESSAGE}),
+    {next_state, connect_req, State#state{agent_ring_timer_ref=undefined}};
 
 connecting({member_hungup, CallEvt}, #state{queue_proc=Srv}=State) ->
     lager:debug("caller hungup while we waited for the agent to connect"),
@@ -535,17 +548,29 @@ connection_timeout(_) -> ?CONNECTION_TIMEOUT.
 start_connection_timer(ConnTimeout) ->
     gen_fsm:start_timer(ConnTimeout, ?CONNECTION_TIMEOUT_MESSAGE).
 
--spec maybe_stop_connection_timer/1 :: (reference() | 'undefined') -> 'ok'.
-maybe_stop_connection_timer(undefined) -> ok;
-maybe_stop_connection_timer(ConnRef) ->
+-spec agent_ring_timeout/1 :: (integer() | 'undefined') -> pos_integer().
+agent_ring_timeout(N) when is_integer(N), N > 0 -> N * 1000;
+agent_ring_timeout(_) -> ?AGENT_RING_TIMEOUT.
+
+-spec start_agent_ring_timer/1 :: (pos_integer()) -> reference().
+start_agent_ring_timer(AgentTimeout) ->
+    gen_fsm:start_timer(AgentTimeout, ?AGENT_RING_TIMEOUT_MESSAGE).
+
+-spec maybe_stop_timer/1 :: (reference() | 'undefined') -> 'ok'.
+maybe_stop_timer(undefined) -> ok;
+maybe_stop_timer(ConnRef) ->
     _ = gen_fsm:cancel_timer(ConnRef),
     ok.
 
 -spec clear_member_call/1 :: (#state{}) -> #state{}.
-clear_member_call(#state{connection_timer_ref=ConnRef}=State) ->
-    maybe_stop_connection_timer(ConnRef),
+clear_member_call(#state{connection_timer_ref=ConnRef
+                         ,agent_ring_timer_ref=AgentRef
+                        }=State) ->
+    maybe_stop_timer(ConnRef),
+    maybe_stop_timer(AgentRef),
     State#state{connect_resps=[]
                 ,collect_ref=undefined
                 ,member_call=undefined
                 ,connection_timer_ref=undefined
+                ,agent_ring_timer_ref=undefined
                }.
