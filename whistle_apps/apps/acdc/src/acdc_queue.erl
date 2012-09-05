@@ -283,6 +283,15 @@ handle_cast({cancel_member_call, _MemberCallJObj, Delivery}, #state{shared_pid=P
     acdc_queue_shared:nack(Pid, Delivery),
     {noreply, State};
 
+handle_cast({send_sync_req, Type}, #state{my_q=MyQ
+                                          ,my_id=MyId
+                                          ,acct_id=AcctId
+                                          ,queue_id=QueueId
+                                          }=State) ->
+
+    send_sync_req(MyQ, MyId, AcctId, QueueId, Type),
+    {noreply, State};
+
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {noreply, State}.
@@ -383,6 +392,16 @@ send_member_call_success(Q, AcctId, QueueId, MyId, AgentId) ->
               | wh_util:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     wapi_acdc_queue:publish_member_call_success(Q, Resp).
+
+send_sync_req(MyQ, MyId, AcctId, QueueId, Type) ->
+    Resp = props:filter_undefined(
+             [{<<"Account-ID">>, AcctId}
+              ,{<<"Queue-ID">>, QueueId}
+              ,{<<"Process-ID">>, MyId}
+              ,{<<"Current-Strategy">>, Type}
+              | wh_util:default_headers(MyQ, ?APP_NAME, ?APP_VERSION)
+             ]),
+    wapi_acdc_queue:publish_sync_req(Resp).
 
 -spec maybe_nack/3 :: (whapps_call:call(), #'basic.deliver'{}, pid()) -> boolean().
 maybe_nack(Call, Delivery, SharedPid) ->
