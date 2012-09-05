@@ -41,7 +41,7 @@
                                                               ]}
                                                 ]).
 -define(RESPONDERS, [{{acdc_queue_handler, handle_member_call}
-                      ,{<<"member">>, <<"call">>}
+                      ,[{<<"member">>, <<"call">>}]
                      }
                     ]).
 

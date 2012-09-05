@@ -65,19 +65,19 @@
 
 -define(BINDINGS, [{self, []}]).
 -define(RESPONDERS, [{{acdc_queue_handler, handle_call_event}
-                      ,{<<"call_event">>, <<"*">>}
+                      ,[{<<"call_event">>, <<"*">>}]
                      }
                      ,{{acdc_queue_handler, handle_call_event}
-                       ,{<<"error">>, <<"*">>}
+                       ,[{<<"error">>, <<"*">>}]
                       }
                      ,{{acdc_queue_handler, handle_member_resp}
-                       ,{<<"member">>, <<"connect_resp">>}
+                       ,[{<<"member">>, <<"connect_resp">>}]
                       }
                      ,{{acdc_queue_handler, handle_member_accepted}
-                       ,{<<"member">>, <<"connect_accepted">>}
+                       ,[{<<"member">>, <<"connect_accepted">>}]
                       }
                      ,{{acdc_queue_handler, handle_member_retry}
-                       ,{<<"member">>, <<"connect_retry">>}
+                       ,[{<<"member">>, <<"connect_retry">>}]
                       }
                     ]).
 
@@ -92,6 +92,7 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
+-spec start_link/3 :: (pid(), ne_binary(), wh_json:json_object()) -> startlink_ret().
 start_link(Supervisor, AcctDb, QueueJObj) ->
     gen_listener:start_link(?MODULE
                             ,[{bindings, ?BINDINGS}

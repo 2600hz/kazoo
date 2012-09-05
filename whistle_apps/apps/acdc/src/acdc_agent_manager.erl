@@ -31,7 +31,7 @@
 
 -define(BINDINGS, [{acdc_agent, [{restrict_to, [status]}]}]).
 -define(RESPONDERS, [{{acdc_agent_handler, handle_status_update}
-                      ,{<<"agent">>, <<"*">>}
+                      ,[{<<"agent">>, <<"*">>}]
                      }
                     ]).
 
