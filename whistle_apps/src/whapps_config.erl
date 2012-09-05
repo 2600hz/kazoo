@@ -345,7 +345,7 @@ import(Category) ->
 %% 3. from a flat file
 %% @end
 %%-----------------------------------------------------------------------------
--spec fetch_category/2 :: (ne_binary(), pid() | atom()) -> fetch_ret().
+-spec fetch_category/2 :: (ne_binary(), atom()) -> fetch_ret().
                                   
 fetch_category(Category, Cache) ->
     Lookups = [fun fetch_file_config/2
@@ -365,7 +365,7 @@ fetch_category(Category, Cache) ->
 %% cache it
 %% @end
 %%-----------------------------------------------------------------------------
--spec fetch_db_config/2 :: (ne_binary(), pid()) -> fetch_ret().
+-spec fetch_db_config/2 :: (ne_binary(), atom()) -> fetch_ret().
 fetch_db_config(Category, Cache) ->
     lager:debug("fetch db config for ~s", [Category]),
     fetch_db_config(Category, Cache, wh_cache:fetch_local(Cache, couch_ready_key())).
@@ -390,7 +390,7 @@ fetch_db_config(_Category, _Cache, _) ->
 %% save it to the db and cache it
 %% @end
 %%-----------------------------------------------------------------------------
--spec fetch_file_config/2 :: (ne_binary(), pid() | atom()) -> {'ok', wh_json:json_object()}.
+-spec fetch_file_config/2 :: (ne_binary(), atom()) -> {'ok', wh_json:json_object()}.
 fetch_file_config(Category, Cache) ->
     File = category_to_file(Category),
     case file:consult(File) of
@@ -498,7 +498,7 @@ update_category(Category, JObj, Cache) ->
     lager:debug("saved cat ~s to db ~s", [Category, ?WH_CONFIG_DB]),
     cache_jobj(Cache, Category, SavedJObj).
 
--spec cache_jobj/3 :: (atom() | pid(), ne_binary(), wh_json:json_object()) ->
+-spec cache_jobj/3 :: (atom(), ne_binary(), wh_json:json_object()) ->
                               {'ok', wh_json:json_object()}.
 cache_jobj(Cache, Category, JObj) ->
     lager:debug("stored ~s into ~s", [Category, Cache]),

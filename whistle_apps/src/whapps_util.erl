@@ -418,15 +418,15 @@ rm_aggregate_device(Db, Device) ->
 -spec amqp_pool_request/3 :: (api_terms(), wh_amqp_worker:publish_fun(), wh_amqp_worker:validate_fun()) ->
                                      {'ok', wh_json:json_object()} |
                                      {'error', any()}.
--spec amqp_pool_request/4 :: (api_terms(), wh_amqp_worker:publish_fun(), wh_amqp_worker:validate_fun(), pos_integer()) ->
+-spec amqp_pool_request/4 :: (api_terms(), wh_amqp_worker:publish_fun(), wh_amqp_worker:validate_fun(), pos_integer() | 'infinity') ->
                                      {'ok', wh_json:json_object()} |
                                      {'error', any()}.
 amqp_pool_request(Api, PubFun, ValidateFun) when is_function(PubFun, 1), is_function(ValidateFun, 1) ->
     amqp_pool_request(Api, PubFun, ValidateFun, wh_amqp_worker:default_timeout()).
 amqp_pool_request(Api, PubFun, ValidateFun, Timeout) when is_function(PubFun, 1),
                                                           is_function(ValidateFun, 1),
-                                                          is_integer(Timeout),
-                                                          Timeout > 0 ->
+                                                          ((is_integer(Timeout) andalso Timeout > 0)
+                                                           orelse Timeout =:= 'infinity') ->
     wh_amqp_worker:call(?WHAPPS_AMQP_POOL, Api, PubFun, ValidateFun, Timeout).
 
 %%--------------------------------------------------------------------
