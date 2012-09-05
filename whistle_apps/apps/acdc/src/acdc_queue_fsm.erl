@@ -43,6 +43,9 @@
 -define(COLLECT_RESP_TIMEOUT, 3000).
 -define(COLLECT_RESP_MESSAGE, collect_timer_expired).
 
+-define(SYNC_TIMEOUT, 3000).
+-define(SYNC_MESSAGE, sync_timer_expired).
+
 -record(state, {
           queue_proc :: pid()
          ,connect_resps = [] :: wh_json:json_objects()
@@ -50,6 +53,8 @@
          ,acct_id :: ne_binary()
          ,acct_db :: ne_binary()
          ,queue_id :: ne_binary()
+
+         ,timer_ref :: reference() % for tracking timers
 
          ,member_call :: whapps_call:call()
 
@@ -63,10 +68,13 @@
          ,agent_wrapup_time = 0 :: integer() % forced wrapup time for an agent after a call
          ,moh :: ne_binary() % media to play to customer while on hold
          ,announce :: ne_binary() % media to play to customer when about to be connected to agent
-         ,strategy = 'rr' :: queue_strategy() % round-robin | most-idle
+
          ,caller_exit_key :: ne_binary() % DTMF a caller can press to leave the queue
          ,record_caller = false :: boolean() % record the caller
          ,cdr_url :: ne_binary() % optional URL to request for extra CDR data
+
+         ,strategy = 'rr' :: queue_strategy() % round-robin | most-idle
+         ,strategy_state :: queue_strategy_state() % based on the strategy
 
          }).
 
@@ -171,10 +179,12 @@ init([QueuePid, QueueJObj]) ->
                       ,agent_wrapup_time = wh_json:get_integer_value(<<"agent_wrapup_time">>, QueueJObj)
                       ,moh = wh_json:get_value(<<"moh">>, QueueJObj)
                       ,announce = wh_json:get_value(<<"announce">>, QueueJObj)
-                      ,strategy = get_strategy(wh_json:get_value(<<"strategy">>, QueueJObj))
                       ,caller_exit_key = wh_json:get_value(<<"caller_exit_key">>, QueueJObj, <<"#">>)
                       ,record_caller = wh_json:is_true(<<"record_caller">>, QueueJObj, false)
                       ,cdr_url = wh_json:get_value(<<"cdr_url">>, QueueJObj)
+
+                      ,strategy = get_strategy(wh_json:get_value(<<"strategy">>, QueueJObj))
+                      ,strategy_state = undefined
 
                       ,member_call = undefined
                      }}.
@@ -190,13 +200,27 @@ sync({strategy_sync}, #state{strategy=Type
     lager:debug("sync strategy ~s", [Type]),
     %% send sync_req
     case maybe_send_sync_req(Type, Srv) of
-        true -> {next_state, sync, State}; % we're waiting for a sync_resp
-        false -> {next_state, ready, State} % no sync needed, let's go!
+        {true, SyncRef} ->
+            {next_state, sync, State#state{timer_ref=SyncRef}}; % we're waiting for a sync_resp
+        false ->
+            acdc_queue:accept_member_calls(Srv),
+            {next_state, ready, State} % no sync needed, let's go!
     end;
 sync({member_call, CallJObj, Delivery}, #state{queue_proc=Srv}=State) ->
     lager:debug("member_call recv, still syncing, cancel for redelivery"),
     acdc_queue:cancel_member_call(Srv, CallJObj, Delivery),
     {next_state, sync, State};
+
+sync({timeout, SyncRef, ?SYNC_MESSAGE}, #state{timer_ref=SyncRef
+                                               ,strategy=Strategy
+                                               ,acct_db=AcctDb
+                                               ,queue_id=QueueId
+                                              }=State) ->
+    lager:debug("sync timeout, creating strategy state"),
+    {next_state, ready, State#state{timer_ref=undefined
+                                    ,strategy_state=create_strategy_state(Strategy, AcctDb, QueueId)
+                                   }};
+
 sync(_E, State) ->
     lager:debug("recv unhandled event: ~p", [_E]),
     {next_state, sync, State}.
@@ -254,17 +278,19 @@ connect_req({timeout, Ref, ?COLLECT_RESP_MESSAGE}, #state{collect_ref=Ref
 connect_req({timeout, Ref, ?COLLECT_RESP_MESSAGE}, #state{collect_ref=Ref
                                                           ,connect_resps=CRs
                                                           ,queue_proc=Srv
-                                                          ,strategy=Type
+                                                          ,strategy=Strategy
+                                                          ,strategy_state=StrategyState
                                                          }=State) ->
     lager:debug("done waiting for agents to respond, picking a winner"),
-    case pick_winner(CRs, Type) of
-        {Winner, Monitors, Rest} ->
+    case pick_winner(CRs, Strategy, StrategyState) of
+        {Winner, Monitors, Rest, StrategyState1} ->
             acdc_queue:member_connect_win(Srv, Winner),
             _ = [acdc_queue:member_connect_monitor(Srv, M) || M <- Monitors],
 
             lager:debug("sending win to ~p", [Winner]),
             {next_state, connecting, State#state{connect_resps=Rest
                                                  ,collect_ref=undefined
+                                                 ,strategy_state=StrategyState1
                                                 }};
         undefined ->
             lager:debug("no more responses to choose from"),
@@ -413,18 +439,37 @@ start_collect_timer() ->
     gen_fsm:start_timer(?COLLECT_RESP_TIMEOUT, ?COLLECT_RESP_MESSAGE).
 
 %% Really sophisticated selection algorithm
--spec pick_winner/2 :: (wh_json:json_objects(), queue_strategy()) ->
+-spec pick_winner/3 :: (wh_json:json_objects(), queue_strategy(), queue_strategy_state()) ->
                                'undefined' |
                                {wh_json:json_object()
                                 ,wh_json:json_objects()
                                 ,wh_json:json_objects()
                                }.
-pick_winner([], _) -> undefined;
-pick_winner([Resp|Rest], _Type) ->
-    lager:debug("unknown queue type: ~s, doing our best", [_Type]),
-    AgentId = wh_json:get_value(<<"Agent-ID">>, Resp),
-    {SameAgents, OtherAgents} = split_agents(AgentId, Rest),
-    {Resp, SameAgents, OtherAgents}.
+pick_winner([], _, _) -> undefined;
+pick_winner(CRs, 'rr', AgentQ) ->
+    {{value, AgentId}, AgentQ1} = queue:out(AgentQ),
+
+    case split_agents(AgentId, CRs) of
+        {[Resp|SameAgents], OtherAgents} ->
+            {Resp, SameAgents, OtherAgents, queue:in(AgentId, AgentQ1)};
+        {[], Others} ->
+            case pick_winner(Others, 'rr', AgentQ1) of
+                {Resp, Same, Other, AgentQ2} ->
+                    {Resp, Same, Other, queue:ing(AgentId, AgentQ2)};
+                undefined -> undefined
+            end
+    end;
+pick_winner(CRs, 'mi', _) ->
+    [MostIdle | Rest] = lists:usort(fun sort_agent/2, CRs),
+    AgentId = wh_json:get_value(<<"Agent-ID">>, MostIdle),
+    {Same, Other} = split_agents(AgentId, Rest),
+    {MostIdle, Same, Other, undefined}.
+
+%% If A's idle time is greater, it should come before B
+-spec sort_agent/2 :: (wh_json:json_object(), wh_json:json_object()) -> boolean().
+sort_agent(A, B) ->
+    wh_json:get_integer_value(<<"Idle-Time">>, A, 0) >
+        wh_json:get_integer_value(<<"Idle-Time">>, B, 0).
 
 -spec split_agents/2 :: (ne_binary(), wh_json:json_objects()) ->
                                 {wh_json:json_objects(), wh_json:json_objects()}.
@@ -433,13 +478,20 @@ split_agents(AgentId, Rest) ->
                             AgentId =:= wh_json:get_value(<<"Agent-ID">>, R)
                     end, Rest).
 
--spec maybe_send_sync_req/2 :: (queue_strategy(), pid()) -> boolean().
+-spec maybe_send_sync_req/2 :: (queue_strategy(), pid()) -> 'false' | {'true', reference()}.
 maybe_send_sync_req(mi, _) -> false;
 maybe_send_sync_req(rr, Srv) ->
     acdc_queue:send_sync_req(Srv, rr),
-    true.
+    {true, gen_fsm:start_timer(?SYNC_TIMEOUT, ?SYNC_MESSAGE)}.
 
 -spec get_strategy/1 :: (api_binary()) -> queue_strategy().
 get_strategy(<<"round_robin">>) -> 'rr';
 get_strategy(<<"most_idle">>) -> 'mi';
 get_strategy(_) -> 'rr'.
+
+create_strategy_state('rr', AcctDb, QueueId) ->
+    case couch_mgr:get_results(AcctDb, <<"queues/agents_listing">>, [{key, QueueId}]) of
+        {ok, []} -> lager:debug("no agents around"), queue:new();
+        {ok, JObjs} -> queue:from_list([wh_json:get_value(<<"id">>, JObj) || JObj <- JObjs]);
+        {error, _E} -> lager:debug("error: ~p", [_E]), queue:new()
+    end.
