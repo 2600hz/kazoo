@@ -515,9 +515,12 @@ new_conference_queue(Queue) ->
     new_queue(Queue, [{exclusive, false}, {auto_delete, true}, {nowait, false}]).
 
 %% Declare a queue and returns the queue Name
--spec new_queue/0 :: () -> ne_binary() | {'error', _}.
--spec new_queue/1 :: (binary()) -> ne_binary() | {'error', _}.
--spec new_queue/2 :: (binary(), proplist()) -> ne_binary() | {'error', _}.
+-type new_queue_ret() :: ne_binary() | integer() | 'undefined' |
+                         {ne_binary(), integer(), integer()} |
+                         {'error', _}.
+-spec new_queue/0 :: () -> new_queue_ret().
+-spec new_queue/1 :: (binary()) -> new_queue_ret().
+-spec new_queue/2 :: (binary(), wh_proplist()) -> new_queue_ret().
 new_queue() ->
     new_queue(<<>>). % lets the client lib create a random queue name
 new_queue(Queue) ->
@@ -535,8 +538,18 @@ new_queue(Queue, Options) when is_binary(Queue) ->
       ,nowait = props:get_value(nowait, Options, false)
       ,arguments = props:get_value(arguments, Options, [])
      },
+
+    %% can be queue | message_count | consumer_count | all
+    Return = props:get_value(return_field, Options, queue),
+
     case wh_amqp_mgr:consume(QD) of
-        {ok, Q} -> Q;
+        {ok, #'queue.declare_ok'{queue=Q}} when Return =:= queue -> Q;
+        {ok, #'queue.declare_ok'{message_count=Cnt}} when Return =:= message_count -> Cnt;
+        {ok, #'queue.declare_ok'{consumer_count=Cnt}} when Return =:= consumer_count -> Cnt;
+        {ok, #'queue.declare_ok'{queue=Q
+                                 ,message_count=MCnt
+                                 ,consumer_count=CCnt
+                                }} when Return =:= all -> {Q, MCnt, CCnt};
         {error, _}=E -> E
     end.
 
