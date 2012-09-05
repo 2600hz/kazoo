@@ -469,17 +469,17 @@ unbind_q(Q, Props) ->
     unbind_q(Q, AcctId, QID, props:get_value(restrict_to, Props)).
 
 unbind_q(Q, AcctId, QID, undefined) ->
-    amqp_util:unbind_q_from_whapps(Q, sync_req_routing_key(AcctId, QID)),
-    amqp_util:unbind_q_from_callmgr(Q, member_call_routing_key(AcctId, QID)),
-    amqp_util:unbind_q_from_callmgr(Q, member_connect_req_routing_key(AcctId, QID));
+    _ = amqp_util:unbind_q_from_whapps(Q, sync_req_routing_key(AcctId, QID)),
+    _ = amqp_util:unbind_q_from_callmgr(Q, member_call_routing_key(AcctId, QID)),
+    _ = amqp_util:unbind_q_from_callmgr(Q, member_connect_req_routing_key(AcctId, QID));
 unbind_q(Q, AcctId, QID, [member_call|T]) ->
-    amqp_util:unbind_q_from_callmgr(Q, member_call_routing_key(AcctId, QID)),
+    _ = amqp_util:unbind_q_from_callmgr(Q, member_call_routing_key(AcctId, QID)),
     unbind_q(Q, AcctId, QID, T);
 unbind_q(Q, AcctId, QID, [member_connect_req|T]) ->
-    amqp_util:unbind_q_from_callmgr(Q, member_connect_req_routing_key(AcctId, QID)),
+    _ = amqp_util:unbind_q_from_callmgr(Q, member_connect_req_routing_key(AcctId, QID)),
     unbind_q(Q, AcctId, QID, T);
 unbind_q(Q, AcctId, QID, [sync_req|T]) ->
-    amqp_util:unbind_q_from_whapps(Q, sync_req_routing_key(AcctId, QID)),
+    _ = amqp_util:unbind_q_from_whapps(Q, sync_req_routing_key(AcctId, QID)),
     unbind_q(Q, AcctId, QID, T);
 unbind_q(Q, AcctId, QID, [_|T]) ->
     unbind_q(Q, AcctId, QID, T);
