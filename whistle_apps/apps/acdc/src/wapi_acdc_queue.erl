@@ -41,6 +41,8 @@
          ,publish_sync_resp/2, publish_sync_resp/3
         ]).
 
+-export([queue_size/2, shared_queue_name/2]).
+
 -include("acdc.hrl").
 
 %%------------------------------------------------------------------------------
@@ -431,6 +433,14 @@ sync_resp_v(JObj) ->
 %%------------------------------------------------------------------------------
 %% Bind/Unbind the queue as appropriate
 %%------------------------------------------------------------------------------
+-spec shared_queue_name/2 :: (ne_binary(), ne_binary()) -> ne_binary().
+shared_queue_name(AcctId, QueueId) ->
+    <<"acdc.queue.", AcctId/binary, ".", QueueId/binary>>.
+
+-spec queue_size/2 :: (ne_binary(), ne_binary()) -> integer() | 'undefined'.
+queue_size(AcctId, QueueId) ->
+    Q = shared_queue_name(AcctId, QueueId),
+    amqp_util:new_queue(Q, [{return_field, message_count}]).
 
 -spec bind_q/2 :: (ne_binary(), wh_proplist()) -> 'ok'.
 bind_q(Q, Props) ->

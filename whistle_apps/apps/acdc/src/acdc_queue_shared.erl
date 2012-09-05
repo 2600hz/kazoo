@@ -61,7 +61,7 @@ start_link(FSMPid, AcctId, QueueId) ->
     gen_listener:start_link(?MODULE
                             ,[{bindings, ?SHARED_QUEUE_BINDINGS(AcctId, QueueId)}
                               ,{responders, ?RESPONDERS}
-                              ,{queue_name, shared_queue_name(AcctId, QueueId)}
+                              ,{queue_name, wapi_acdc_queue:shared_queue_name(AcctId, QueueId)}
                               | ?SHARED_BINDING_OPTIONS
                              ]
                             ,[FSMPid]
@@ -183,6 +183,3 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec shared_queue_name/2 :: (ne_binary(), ne_binary()) -> ne_binary().
-shared_queue_name(AcctId, QueueId) ->
-    <<"acdc.queue.", AcctId/binary, ".", QueueId/binary>>.
