@@ -32,7 +32,9 @@
          ,b_receive_fax/1
         ]).
 -export([bridge/2, bridge/3, bridge/4, bridge/5, bridge/6, bridge/7]).
--export([hold/1, b_hold/1, b_hold/2]).
+-export([hold/1, hold/2
+         ,b_hold/1, b_hold/2, b_hold/3
+        ]).
 -export([play/2, play/3]).
 -export([prompt/2, prompt/3]).
 
@@ -559,20 +561,29 @@ b_bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, C
 %% @end
 %%--------------------------------------------------------------------
 -spec hold/1 :: (whapps_call:call()) -> 'ok'.
+-spec hold/2 :: (ne_binary() | 'undefined', whapps_call:call()) -> 'ok'.
 
 -spec b_hold/1 :: (whapps_call:call()) -> whapps_api_std_return().
--spec b_hold/2 :: ('infinity' | pos_integer(), whapps_call:call()) -> whapps_api_std_return().
+-spec b_hold/2 :: ('infinity' | pos_integer() | ne_binary() | 'undefined', whapps_call:call()) -> whapps_api_std_return().
+-spec b_hold/3 :: ('infinity' | pos_integer(), ne_binary() | 'undefined', whapps_call:call()) -> whapps_api_std_return().
 
 hold(Call) ->
+    hold(undefined, Call).
+hold(MOH, Call) ->
     Command = [{<<"Application-Name">>, <<"hold">>}
                ,{<<"Insert-At">>, <<"now">>}
+               ,{<<"Hold-Media">>, MOH}
               ],
     send_command(Command, Call).
 
 b_hold(Call) ->
-    b_hold(infinity, Call).
-b_hold(Timeout, Call) ->
-    hold(Call),
+    b_hold(infinity, undefined, Call).
+b_hold(Timeout, Call) when is_integer(Timeout) orelse Timeout =:= infinity ->
+    b_hold(Timeout, undefined, Call);
+b_hold(MOH, Call) ->
+    b_hold(infinity, MOH, Call).
+b_hold(Timeout, MOH, Call) ->
+    hold(MOH, Call),
     wait_for_message(<<"hold">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"call_event">>, Timeout).
 
 %%--------------------------------------------------------------------

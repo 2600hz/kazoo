@@ -233,7 +233,7 @@
 
 %% Hold
 -define(HOLD_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>]).
--define(OPTIONAL_HOLD_REQ_HEADERS, [<<"Insert-At">>]).
+-define(OPTIONAL_HOLD_REQ_HEADERS, [<<"Insert-At">>, <<"Hold-Media">>]).
 -define(HOLD_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                           ,{<<"Event-Name">>, <<"command">>}
                           ,{<<"Application-Name">>, <<"hold">>}
