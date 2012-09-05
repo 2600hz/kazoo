@@ -24,7 +24,7 @@
          ,member_connect_req/3
          ,member_connect_win/2
          ,member_connect_monitor/2
-         ,finish_member_call/2
+         ,timeout_member_call/1, finish_member_call/2
          ,cancel_member_call/1, cancel_member_call/2 ,cancel_member_call/3
          ,send_sync_req/2
         ]).
@@ -112,6 +112,8 @@ member_connect_win(Srv, RespJObj) ->
 member_connect_monitor(Srv, RespJObj) ->
     gen_listener:cast(Srv, {member_connect_monitor, RespJObj}).
 
+timeout_member_call(Srv) ->
+    gen_listener:cast(Srv, {timeout_member_call}).
 finish_member_call(Srv, AcceptJObj) ->
     gen_listener:cast(Srv, {finish_member_call, AcceptJObj}).
 
@@ -246,6 +248,24 @@ handle_cast({member_connect_monitor, RespJObj}, #state{my_id=MyId
     send_member_connect_monitor(RespJObj, whapps_call:call_id(Call), QueueId, MyId),
     {noreply, State};
 
+handle_cast({timeout_member_call}, #state{delivery=Delivery
+                                         ,call=Call
+                                         ,shared_pid=Pid
+                                         ,member_call_queue=Q
+                                         ,acct_id=AcctId
+                                         ,queue_id=QueueId
+                                         ,my_id=MyId
+                                         ,agent_id=AgentId
+                                        }=State) ->
+    lager:debug("member call has timed out, we're done"),
+
+    acdc_util:unbind_from_call_events(Call),
+    acdc_queue_shared:ack(Pid, Delivery),
+    send_member_call_failure(Q, AcctId, QueueId, MyId, AgentId),
+
+    {noreply, clear_call_state(State)};
+
+
 
 handle_cast({finish_member_call, _AcceptJObj}, #state{delivery=Delivery
                                                       ,call=Call
@@ -262,7 +282,7 @@ handle_cast({finish_member_call, _AcceptJObj}, #state{delivery=Delivery
     acdc_queue_shared:ack(Pid, Delivery),
     send_member_call_success(Q, AcctId, QueueId, MyId, AgentId),
 
-    {noreply, State};
+    {noreply, clear_call_state(State)};
 
 handle_cast({cancel_member_call}, #state{delivery=undefined}=State) ->
     lager:debug("empty cancel member, no delivery info"),
@@ -274,9 +294,7 @@ handle_cast({cancel_member_call}, #state{delivery=Delivery
     lager:debug("cancel member_call"),
 
     case maybe_nack(Call, Delivery, Pid) of
-        true -> {noreply, State#state{delivery=undefined
-                                      ,call=undefined
-                                     }};
+        true -> {noreply, clear_call_state(State)};
         false ->
             {noreply, State}
     end;
@@ -291,9 +309,7 @@ handle_cast({cancel_member_call, _RejectJObj}, #state{delivery = #'basic.deliver
     lager:debug("agent failed to handle the call, nack: ~p", [_RejectJObj]),
 
     case maybe_nack(Call, Delivery, Pid) of
-        true -> {noreply, State#state{delivery=undefined
-                                      ,call=undefined
-                                     }};
+        true -> {noreply, clear_call_state(State)};
         false -> {noreply, State}
     end;
 
@@ -306,8 +322,7 @@ handle_cast({send_sync_req, Type}, #state{my_q=MyQ
                                           ,my_id=MyId
                                           ,acct_id=AcctId
                                           ,queue_id=QueueId
-                                          }=State) ->
-
+                                         }=State) ->
     send_sync_req(MyQ, MyId, AcctId, QueueId, Type),
     {noreply, State};
 
@@ -412,6 +427,16 @@ send_member_call_success(Q, AcctId, QueueId, MyId, AgentId) ->
              ]),
     wapi_acdc_queue:publish_member_call_success(Q, Resp).
 
+send_member_call_failure(Q, AcctId, QueueId, MyId, AgentId) ->
+    Resp = props:filter_undefined(
+             [{<<"Account-ID">>, AcctId}
+              ,{<<"Queue-ID">>, QueueId}
+              ,{<<"Process-ID">>, MyId}
+              ,{<<"Agent-ID">>, AgentId}
+              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+             ]),
+    wapi_acdc_queue:publish_member_call_failure(Q, Resp).
+
 send_sync_req(MyQ, MyId, AcctId, QueueId, Type) ->
     Resp = props:filter_undefined(
              [{<<"Account-ID">>, AcctId}
@@ -436,3 +461,10 @@ maybe_nack(Call, Delivery, SharedPid) ->
             acdc_queue_shared:ack(SharedPid, Delivery),
             false
     end.
+
+clear_call_state(#state{}=State) ->
+    State#state{call=undefined
+                ,member_call_queue=undefined
+                ,agent_id=undefined
+                ,delivery=undefined
+                }.
