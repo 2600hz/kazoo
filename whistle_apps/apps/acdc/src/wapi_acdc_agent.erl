@@ -357,17 +357,17 @@ unbind_q(Q, Props) ->
     unbind_q(Q, {AcctId, AgentId, Status}, props:get_value(restrict_to, Props)).
 
 unbind_q(Q, {AcctId, AgentId, Status}, undefined) ->
-    amqp_util:unbind_q_from_whapps(Q, agent_status_routing_key(AcctId, AgentId, Status)),
-    amqp_util:unbind_q_from_whapps(Q, sync_req_routing_key(AcctId, AgentId)),
+    _ = amqp_util:unbind_q_from_whapps(Q, agent_status_routing_key(AcctId, AgentId, Status)),
+    _ = amqp_util:unbind_q_from_whapps(Q, sync_req_routing_key(AcctId, AgentId)),
     amqp_util:unbind_q_from_whapps(Q, stats_req_routing_key(AcctId));
 unbind_q(Q, {AcctId, AgentId, Status}=Ids, [status|T]) ->
-    amqp_util:unbind_q_from_whapps(Q, agent_status_routing_key(AcctId, AgentId, Status)),
+    _ = amqp_util:unbind_q_from_whapps(Q, agent_status_routing_key(AcctId, AgentId, Status)),
     unbind_q(Q, Ids, T);
 unbind_q(Q, {AcctId, AgentId, _}=Ids, [sync|T]) ->
-    amqp_util:unbind_q_from_whapps(Q, sync_req_routing_key(AcctId, AgentId)),
+    _ = amqp_util:unbind_q_from_whapps(Q, sync_req_routing_key(AcctId, AgentId)),
     unbind_q(Q, Ids, T);
 unbind_q(Q, {AcctId, _, _}=Ids, [stats|T]) ->
-    amqp_util:unbind_q_from_whapps(Q, stats_req_routing_key(AcctId)),
+    _ = amqp_util:unbind_q_from_whapps(Q, stats_req_routing_key(AcctId)),
     unbind_q(Q, Ids, T);
 unbind_q(Q, Ids, [_|T]) ->
     unbind_q(Q, Ids, T);
