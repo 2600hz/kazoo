@@ -84,7 +84,7 @@ default_timeout() -> 2000.
 -spec call/4 :: (server_ref(), api_terms(), publish_fun(), validate_fun()) ->
                         {'ok', wh_json:json_object()} |
                         {'error', _}.
--spec call/5 :: (server_ref(), api_terms(), publish_fun(), validate_fun(), pos_integer()) ->
+-spec call/5 :: (server_ref(), api_terms(), publish_fun(), validate_fun(), pos_integer() | 'infinity') ->
                         {'ok', wh_json:json_object()} |
                         {'error', _}.
 call(Srv, Req, PubFun, VFun) ->
@@ -100,7 +100,7 @@ call(Srv, Req, PubFun, VFun, Timeout) ->
                        false -> Req
                    end,
             Q = gen_listener:queue_name(W),
-            Reply = gen_listener:call(W, {request, Prop, PubFun, VFun, Q, Timeout}, Timeout + ?FUDGE),
+            Reply = gen_listener:call(W, {request, Prop, PubFun, VFun, Q, Timeout}, fudge_timeout(Timeout)),
             poolboy:checkin(Srv, W),
             wh_counter:inc(<<"amqp.pools.", PoolName/binary, ".available">>),
             Reply;
@@ -189,9 +189,8 @@ init([Args]) ->
 handle_call({request, ReqProp, PublishFun, VFun, Q, Timeout}, {ClientPid, _}=From, State) ->
     _ = wh_util:put_callid(ReqProp),
     CallID = get(callid),
-    Self = self(),
     ClientRef = erlang:monitor(process, ClientPid),
-    ReqRef = erlang:start_timer(Timeout, Self, req_timeout),
+    ReqRef = start_req_timeout(Timeout),
     {ReqProp1, MsgID} = case props:get_value(<<"Msg-ID">>, ReqProp) of
                             undefined ->
                                 M = wh_util:rand_hex_binary(8),
@@ -384,5 +383,10 @@ pool_name_from_server_ref(Name) when is_atom(Name) ->
 pool_name_from_server_ref(Pid) when is_pid(Pid) ->
     wh_util:to_binary(pid_to_list(Pid)).
 
+fudge_timeout('infinity'=T) -> T;
+fudge_timeout(T) -> T + ?FUDGE.
 
-    
+-spec start_req_timeout/1 :: (pos_integer() | 'infinity') -> reference().
+start_req_timeout(infinity) -> make_ref();
+start_req_timeout(Timeout) ->
+    erlang:start_timer(Timeout, self(), req_timeout).
