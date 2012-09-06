@@ -311,6 +311,7 @@ handle_cast({channel_hungup, CallId}, #state{call=Call}=State) ->
         _ ->
             lager:debug("other channel ~s hungup", [CallId]),
             acdc_util:unbind_from_call_events(CallId),
+            whapps_call_command:hangup(whapps_call:set_call_id(CallId, Call)),
             {noreply, State}
     end;
 
@@ -381,6 +382,7 @@ handle_cast({bridge_to_member, WinJObj}, #state{endpoints=EPs, fsm_pid=FSM}=Stat
 
     Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, WinJObj)),
     RingTimeout = wh_json:get_value(<<"Ring-Timeout">>, WinJObj),
+    lager:debug("ring agent for ~p", [RingTimeout]),
 
     acdc_util:bind_to_call_events(Call),
     _P = spawn(fun() -> maybe_connect_to_agent(FSM, EPs, Call, RingTimeout) end),
@@ -514,7 +516,7 @@ send_member_connect_resp(JObj, MyQ, AgentId, MyId, LastConn) ->
 -spec send_member_connect_retry/3 :: (ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 send_member_connect_retry(JObj, MyId) ->
     send_member_connect_retry(wh_json:get_value(<<"Server-ID">>, JObj)
-                              ,wh_json:get_value([<<"Call">>, <<"call_id">>], JObj)
+                              ,call_id(JObj)
                               ,MyId).
 
 send_member_connect_retry(Queue, CallId, MyId) ->
@@ -573,9 +575,21 @@ send_status_update(AcctId, AgentId, resume) ->
 idle_time(undefined) -> undefined;
 idle_time(T) -> wh_util:elapsed_s(T).
 
--spec call_id/1 :: ('undefined' | whapps_call:call()) -> 'undefined' | ne_binary().
+-spec call_id/1 :: ('undefined' | whapps_call:call() | wh_json:json_object()) ->
+                           'undefined' | ne_binary().
+-spec call_id/2 :: (whapps_call:call() | wh_json:json_object(), 'undefined' | whapps_call:call()) ->
+                           'undefined' | ne_binary().
 call_id(undefined) -> undefined;
-call_id(Call) -> whapps_call:call_id(Call).
+call_id(Call) ->
+    case whapps_call:is_call(Call) of
+        true -> whapps_call:call_id(Call);
+        false ->
+            call_id(Call, wh_json:get_value([<<"Call">>, <<"call_id">>], Call))
+    end.
+
+call_id(Call, undefined) ->
+    wh_json:get_value([<<"Call-ID">>], Call);
+call_id(_, CallId) -> CallId.
 
 -spec maybe_connect_to_agent/4 :: (pid(), list(), whapps_call:call(), integer() | 'undefined') -> 'ok'.
 maybe_connect_to_agent(FSM, EPs, Call, Timeout) ->

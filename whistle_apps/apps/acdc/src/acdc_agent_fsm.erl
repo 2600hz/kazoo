@@ -376,6 +376,16 @@ ringing({channel_hungup, CallId}, #state{agent_proc=Srv
 
     {next_state, ready, State#state{wrapup_timeout=undefined}};
 
+ringing({channel_hungup, CallId}
+        ,#state{agent_proc=Srv
+                ,member_call_id=CallId
+                ,agent_call_id=AgentCallId
+               }=State
+       ) ->
+    lager:debug("member channel has gone down, stop agent call"),
+    acdc_agent:channel_hungup(Srv, AgentCallId),
+    {next_state, ready, State#state{wrapup_timeout=undefined}};
+
 ringing({channel_answered, ACallId}, #state{agent_call_id=ACallId
                                             ,agent_proc=Srv
                                            }=State) ->
@@ -391,7 +401,6 @@ ringing({sync_req, JObj}, #state{agent_proc=Srv}=State) ->
     lager:debug("recv sync_req from ~s", [wh_json:get_value(<<"Process-ID">>, JObj)]),
     acdc_agent:send_sync_resp(Srv, ringing, JObj),
     {next_state, ringing, State};
-
 
 ringing(_Evt, State) ->
     lager:debug("unhandled event: ~p", [_Evt]),
