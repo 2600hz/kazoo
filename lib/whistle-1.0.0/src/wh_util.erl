@@ -761,7 +761,6 @@ elapsed_ms({_,_,_}=Start) ->
 elapsed_us({_,_,_}=Start) ->
     timer:now_diff(erlang:now(), Start).
 
-
 %% PROPER TESTING
 prop_to_integer() ->
     ?FORALL({F, I}, {float(), integer()},
