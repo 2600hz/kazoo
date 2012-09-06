@@ -172,6 +172,7 @@ APG: Agent Process Group - acdc_agent, acdc_agent_fsm
 
 The various agent processes and FSMs will send stats to the Agents Manager process, which will record them to a Folsom table. Queries from interested parties (like Crossbar) will send AMQP requests which the Agent Manager will respond to as well.
 
+
 * Queues
 
 A queue provides ordering of calls through it.
