@@ -303,10 +303,10 @@ handle_call(Request, From, #state{module=Module, module_state=ModState, module_t
 
 handle_cast({init_amqp, Params, Responders, Bindings}, State) ->
     case start_amqp(Params) of
-        {error, _R} ->
-            lager:debug("failed to init AMQP: ~p", [_R]),
-            _Ref = erlang:send_after(?TIMEOUT_RETRY_CONN, self(), {amqp_channel_event, initial_conn_failed}),
+        {error, _E} ->
+            lager:debug("failed to init AMQP: ~p", [_E]),
 
+            _R = erlang:send_after(?TIMEOUT_RETRY_CONN, self(), {amqp_channel_event, initial_conn_failed}),
             _ = [add_responder(self(), Mod, Evts) || {Mod, Evts} <- Responders],
 
             {noreply
@@ -362,6 +362,11 @@ handle_cast({add_responder, Responder, Keys}, #state{responders=Responders}=Stat
 handle_cast({rm_responder, Responder, Keys}, #state{responders=Responders}=State) ->
     {noreply, State#state{responders=listener_utils:rm_responder(Responders, Responder, Keys)}, hibernate};
 
+handle_cast({add_binding, _, _}=AddBinding, #state{is_consuming=false
+                                                   ,queue = <<>>
+                                                  }=State) ->
+    lager:debug("no queue name and we're not consuming...ignoring the add_binding: ~p", [AddBinding]),
+    {noreply, State};
 handle_cast({add_binding, _, _}=AddBinding, #state{is_consuming=false}=State) ->
     Time = ?BIND_WAIT + (crypto:rand_uniform(100, 500)), % wait 100 + [100,500) ms before replaying the binding request
     lager:debug("not consuming yet, put binding to end of message queue after ~b ms", [Time]),
@@ -398,7 +403,10 @@ handle_cast({add_queue, QueueName, QueueProps, Bindings}, State) ->
     {_, S} = add_other_queue(QueueName, QueueProps, Bindings, State),
     {noreply, S};
 
-handle_cast(Message, #state{module=Module, module_state=ModState, module_timeout_ref=OldRef}=State) ->
+handle_cast(Message, #state{module=Module
+                            ,module_state=ModState
+                            ,module_timeout_ref=OldRef
+                           }=State) ->
     _ = stop_timer(OldRef),
     case catch Module:handle_cast(Message, ModState) of
         {noreply, ModState1} ->
@@ -415,7 +423,10 @@ handle_cast(Message, #state{module=Module, module_state=ModState, module_timeout
     end.
 
 -spec handle_info/2 :: (term(), #state{}) -> handle_info_ret().
-handle_info({#'basic.deliver'{}=BD, #amqp_msg{props = #'P_basic'{content_type=CT}, payload = Payload}}, State) ->
+handle_info({#'basic.deliver'{}=BD, #amqp_msg{props = #'P_basic'{content_type=CT}
+                                              ,payload = Payload
+                                             }}
+            ,State) ->
     case catch handle_event(Payload, CT, BD, State) of
         #state{}=S ->
             {noreply, S, hibernate};
@@ -434,7 +445,10 @@ handle_info({amqp_channel_event, initial_conn_failed}, State) ->
     lager:alert("failed to create initial connection to AMQP, waiting for connection"),
     _Ref = erlang:send_after(?START_TIMEOUT, self(), {'$maybe_connect_amqp', ?START_TIMEOUT}),
     {noreply, State#state{queue = <<>>, is_consuming=false}, hibernate};
-handle_info({amqp_channel_event, restarted}, #state{params=Params, bindings=Bindings, other_queues=OtherQueues}=State) ->
+handle_info({amqp_channel_event, restarted}, #state{params=Params
+                                                    ,bindings=Bindings
+                                                    ,other_queues=OtherQueues
+                                                   }=State) ->
     case start_amqp(Params) of
         {ok, Q} ->
             lager:debug("lost our channel, but its back up; rebinding"),
@@ -456,7 +470,10 @@ handle_info({amqp_channel_event, _Reason}, State) ->
     _Ref = erlang:send_after(?START_TIMEOUT, self(), {'$maybe_connect_amqp', ?START_TIMEOUT}),
     {noreply, State#state{queue = <<>>, is_consuming=false}, hibernate};
 
-handle_info({'$maybe_connect_amqp', Timeout}, #state{bindings=Bindings, params=Params, other_queues=OtherQueues}=State) ->
+handle_info({'$maybe_connect_amqp', Timeout}, #state{bindings=Bindings
+                                                     ,params=Params
+                                                     ,other_queues=OtherQueues
+                                                    }=State) ->
     case start_amqp(Params) of
         {ok, Q} ->
             lager:info("reconnected to AMQP channel, rebinding"),
@@ -468,7 +485,8 @@ handle_info({'$maybe_connect_amqp', Timeout}, #state{bindings=Bindings, params=P
                 ],
             _ = erlang:send_after(?TIMEOUT_RETRY_CONN, self(), is_consuming),
             {noreply, State#state{queue=Q, is_consuming=false, bindings=[], other_queues=[]}, hibernate};
-        {error, _} ->
+        {error, _E} ->
+            lager:debug("failed to start AMQP back up, waiting a bit(~p ms) to try again", [Timeout]),
             _Ref = erlang:send_after(Timeout, self(), {'$maybe_connect_amqp', next_timeout(Timeout)}),
             {noreply, State#state{queue = <<>>, is_consuming=false}, hibernate}
     end;
@@ -477,7 +495,9 @@ handle_info(#'basic.consume_ok'{}, S) ->
     lager:debug("consuming from our queue"),
     {noreply, S#state{is_consuming=true}};
 
-handle_info(is_consuming, #state{is_consuming=false, queue=Q}=State) ->
+handle_info(is_consuming, #state{is_consuming=false
+                                 ,queue=Q
+                                }=State) ->
     lager:debug("huh, we're not consuming. Queue: ~p", [Q]),
     _Ref = erlang:send_after(?START_TIMEOUT, self(), {'$maybe_connect_amqp', ?START_TIMEOUT}),
     {noreply, State};
@@ -491,7 +511,10 @@ handle_info(?CALLBACK_TIMEOUT_MSG, State) ->
 handle_info(Message, State) ->
     handle_callback_info(Message, State).
 
-handle_callback_info(Message, #state{module=Module, module_state=ModState, module_timeout_ref=OldRef}=State) ->
+handle_callback_info(Message, #state{module=Module
+                                     ,module_state=ModState
+                                     ,module_timeout_ref=OldRef
+                                    }=State) ->
     _ = stop_timer(OldRef),
     case catch Module:handle_info(Message, ModState) of
         {noreply, ModState1} ->
@@ -509,15 +532,19 @@ handle_callback_info(Message, #state{module=Module, module_state=ModState, modul
 code_change(_OldVersion, State, _Extra) ->
     {ok, State}.
 
-format_status(_Opt, [_PDict, #state{module=Module, module_state=ModState}=State]) ->
+format_status(_Opt, [_PDict, #state{module=Module
+                                    ,module_state=ModState
+                                   }=State]) ->
     [{data, [{"Module State", ModState}
              ,{"Module", Module}
             ]}
      ,{data, [{"Listener State", State}]}
     ].
 
-terminate(Reason, #state{module=Module, module_state=ModState
-                         ,queue=Q, bindings=Bs
+terminate(Reason, #state{module=Module
+                         ,module_state=ModState
+                         ,queue=Q
+                         ,bindings=Bs
                         }) ->
     _ = (catch Module:terminate(Reason, ModState)),
     lists:foreach(fun({B, P}) ->
