@@ -11,7 +11,7 @@
 
 %% API
 -export([start_link/1]).
--export([relay_amqp/2]).
+-export([relay_amqp/2, send_amqp/3]).
 -export([get_call/1, set_call/1]).
 -export([callid/1, callid/2]).
 -export([queue_name/1]).
@@ -219,6 +219,12 @@ relay_amqp(JObj, Props) ->
            ],
     [whapps_call_command:relay_event(Pid, JObj) || Pid <- Pids, is_pid(Pid)].
 
+-spec send_amqp/3 :: (pid() | whapps_call:call(), api_terms(), wh_amqp_worker:publish_fun()) -> 'ok'.
+send_amqp(Srv, API, PubFun) when is_pid(Srv), is_function(PubFun, 1) ->
+    gen_listener:cast(Srv, {send_amqp, API, PubFun});
+send_amqp(Call, API, PubFun) when is_function(PubFun, 1) ->
+    send_amqp(whapps_call:kvs_fetch(cf_exe_pid, Call), API, PubFun).
+
 %%%===================================================================
 %%% gen_listener callbacks
 %%%===================================================================
@@ -383,6 +389,11 @@ handle_cast({add_event_listener, {M, F, A}}, #state{call=Call}=State) ->
 
 handle_cast({controller_queue, ControllerQ}, #state{call=Call}=State) ->
     {noreply, launch_cf_module(State#state{call=whapps_call:set_controller_queue(ControllerQ, Call)})};    
+
+handle_cast({send_amqp, API, PubFun}, #state{call=Call}=State) ->
+    send_amqp_message(Call, API, PubFun),
+    {noreply, State};
+
 handle_cast(_, State) ->
     {noreply, State}.
 
@@ -570,6 +581,16 @@ spawn_cf_module(CFModule, Data, Call) ->
 %% a hangup command without relying on the (now terminated) cf_exe.
 %% @end
 %%--------------------------------------------------------------------
+-spec send_amqp_message/3 :: (whapps_call:call(), api_terms(), wh_amqp_worker:publish_fun()) -> 'ok'.
+send_amqp_message(Call, API, PubFun) ->
+    PubFun(add_server_id(API, whapps_call:controller_queue(Call))).
+
+-spec add_server_id/2 :: (api_terms(), ne_binary()) -> api_terms().
+add_server_id(API, Q) when is_list(API) ->
+    [{<<"Server-ID">>, Q} | props:delete(<<"Server-ID">>, API)];
+add_server_id(API, Q) ->
+    wh_json:set_value(<<"Server-ID">>, Q, API).
+
 -spec send_command/3 :: (wh_proplist(), cf_api_binary(), cf_api_binary()) -> 'ok'.
 send_command(_, undefined, _) -> ok;
 send_command(_, _, undefined) -> ok;
