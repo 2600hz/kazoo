@@ -412,11 +412,12 @@ send_member_connect_req(CallId, AcctId, QueueId, MyQ, MyId) ->
              ,{<<"Call-ID">>, CallId}
              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
             ]),
-    wapi_acdc_queue:publish_member_connect_req(Req).
+    publish(Req, fun wapi_acdc_queue:publish_member_connect_req/1).
 
 -spec send_member_connect_win/6 :: (wh_json:json_object(), pos_integer(), whapps_call:call(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 send_member_connect_win(RespJObj, Timeout, Call, QueueId, MyQ, MyId) ->
     CallJSON = whapps_call:to_json(Call),
+    Q = wh_json:get_value(<<"Server-ID">>, RespJObj),
     Win = props:filter_undefined(
             [{<<"Call">>, CallJSON}
              ,{<<"Process-ID">>, MyId}
@@ -425,16 +426,17 @@ send_member_connect_win(RespJObj, Timeout, Call, QueueId, MyQ, MyId) ->
              ,{<<"Ring-Timeout">>, Timeout}
              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
             ]),
-    wapi_acdc_queue:publish_member_connect_win(wh_json:get_value(<<"Server-ID">>, RespJObj), Win).
+    publish(Q, Win, fun wapi_acdc_queue:publish_member_connect_win/2).
 
 -spec send_member_connect_monitor/4 :: (wh_json:json_object(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 send_member_connect_monitor(RespJObj, CallId, QueueId, MyId) ->
+    Q = wh_json:get_value(<<"Server-ID">>, RespJObj),
     Prop = [{<<"Call-ID">>, CallId}
             ,{<<"Process-ID">>, MyId}
             ,{<<"Queue-ID">>, QueueId}
             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
-    wapi_acdc_queue:publish_member_connect_monitor(wh_json:get_value(<<"Server-ID">>, RespJObj), Prop).
+    publish(Q, Prop, fun wapi_acdc_queue:publish_member_connect_monitor/2).
 
 send_member_call_success(Q, AcctId, QueueId, MyId, AgentId) ->
     Resp = props:filter_undefined(
@@ -444,7 +446,7 @@ send_member_call_success(Q, AcctId, QueueId, MyId, AgentId) ->
               ,{<<"Agent-ID">>, AgentId}
               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
-    wapi_acdc_queue:publish_member_call_success(Q, Resp).
+    publish(Q, Resp, fun wapi_acdc_queue:publish_member_call_success/2).
 
 send_member_call_failure(Q, AcctId, QueueId, MyId, AgentId) ->
     Resp = props:filter_undefined(
@@ -454,7 +456,7 @@ send_member_call_failure(Q, AcctId, QueueId, MyId, AgentId) ->
               ,{<<"Agent-ID">>, AgentId}
               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
-    wapi_acdc_queue:publish_member_call_failure(Q, Resp).
+    publish(Q, Resp, fun wapi_acdc_queue:publish_member_call_failure/2).
 
 send_sync_req(MyQ, MyId, AcctId, QueueId, Type) ->
     Resp = props:filter_undefined(
@@ -464,7 +466,7 @@ send_sync_req(MyQ, MyId, AcctId, QueueId, Type) ->
               ,{<<"Current-Strategy">>, Type}
               | wh_api:default_headers(MyQ, ?APP_NAME, ?APP_VERSION)
              ]),
-    wapi_acdc_queue:publish_sync_req(Resp).
+    publish(Resp, fun wapi_acdc_queue:publish_sync_req/1).
 
 -spec maybe_nack/3 :: (whapps_call:call(), #'basic.deliver'{}, pid()) -> boolean().
 maybe_nack(Call, Delivery, SharedPid) ->
@@ -487,3 +489,20 @@ clear_call_state(#state{}=State) ->
                 ,agent_id=undefined
                 ,delivery=undefined
                 }.
+
+-spec publish/2 :: (api_terms(), wh_amqp_worker:publish_fun()) -> 'ok'.
+-spec publish/3 :: (ne_binary(), api_terms(), fun((ne_binary(), api_terms()) -> 'ok')) -> 'ok'.
+publish(Req, F) ->
+    case catch F(Req) of
+        'ok' -> 'ok';
+        {'EXIT', _R} ->
+            lager:debug("failed to publish message: ~p", [_R]),
+            ok
+    end.
+publish(Q, Req, F) ->
+    case catch F(Q, Req) of
+        'ok' -> 'ok';
+        {'EXIT', _R} ->
+            lager:debug("failed to publish message to ~s: ~p", [Q, _R]),
+            ok
+    end.
