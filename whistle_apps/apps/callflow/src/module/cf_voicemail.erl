@@ -329,12 +329,12 @@ record_voicemail(AttachmentName, #mailbox{max_message_length=MaxMessageLength}=B
                 {ok, _Selection} ->
                     _ = new_message(AttachmentName, Length, Box, Call),
                     _ = whapps_call_command:b_prompt(<<"vm-saved">>, Call),
-                    whapps_call_command:b_prompt(<<"vm-thank_you">>, Call),
+                    _ = whapps_call_command:b_prompt(<<"vm-thank_you">>, Call),
                     cf_exe:continue(Call);
                 {branch, Flow} ->
                     _ = new_message(AttachmentName, Length, Box, Call),
                     _ = whapps_call_command:b_prompt(<<"vm-saved">>, Call),
-                    cf_exe:branch(Call, Flow)
+                    cf_exe:branch(Flow, Call)
             end;
         {error, _R} ->
             lager:debug("error while attempting to record a new message: ~p", [_R]),
@@ -816,7 +816,7 @@ maybe_transcribe(Db, MediaDoc, Bin, <<"audio/wav">>) ->
         {ok, Resp} ->
             lager:debug("transcription resp: ~p", [Resp]),
             MediaDoc1 = wh_json:set_value(<<"transcription">>, Resp, MediaDoc),
-            couch_mgr:ensure_saved(Db, MediaDoc1),
+            _ = couch_mgr:ensure_saved(Db, MediaDoc1),
             is_valid_transcription(wh_json:get_value(<<"result">>, Resp)
                                    ,wh_json:get_value(<<"text">>, Resp)
                                    ,Resp
