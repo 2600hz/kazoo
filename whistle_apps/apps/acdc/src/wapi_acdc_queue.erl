@@ -95,9 +95,9 @@ member_call_routing_key(AcctId, QueueId) ->
 %%  (queue is full, empty, wait timeout expires, etc)
 %%------------------------------------------------------------------------------
 -define(MEMBER_CALL_FAIL_HEADERS, [<<"Account-ID">>, <<"Queue-ID">>, <<"Call">>]).
--define(OPTIONAL_MEMBER_CALL_FAIL_HEADERS, []).
+-define(OPTIONAL_MEMBER_CALL_FAIL_HEADERS, [<<"Failure-Reason">>]).
 -define(MEMBER_CALL_FAIL_VALUES, [{<<"Event-Category">>, <<"member">>}
-                             ,{<<"Event-Name">>, <<"call_fail">>}
+                                  ,{<<"Event-Name">>, <<"call_fail">>}
                             ]).
 -define(MEMBER_CALL_FAIL_TYPES, []).
 
