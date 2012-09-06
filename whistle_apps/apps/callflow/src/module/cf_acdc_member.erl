@@ -48,22 +48,39 @@ maybe_enter_queue(Call, _, _, true) ->
     lager:debug("queue has reached max size"),
     cf_exe:continue(Call);
 maybe_enter_queue(Call, MemberCall, MaxWait, false) ->
-    lager:debug("asking for an agent, waiting up to ~p s", [MaxWait]),
-    case whapps_util:amqp_pool_request(MemberCall
-                                       ,fun wapi_acdc_queue:publish_member_call/1
-                                       ,fun wapi_acdc_queue:member_call_success_v/1
-                                       ,MaxWait
-                                      ) of
-        {ok, _SuccessJObj} ->
-            lager:debug("agent took the member_call: ~p", [_SuccessJObj]),
-            cf_exe:control_usurped(Call);
-        {error, timeout} ->
-            lager:debug("member_call timed out waiting in the queue for ~p s", [MaxWait]),
-            cf_exe:continue(Call);
-        {error, _Fail} ->
-            lager:debug("failed to process the member_call: ~p", [_Fail]),
+    lager:debug("asking for an agent, waiting up to ~p ms", [MaxWait]),
+
+    cf_exe:send_amqp(Call, MemberCall, fun wapi_acdc_queue:publish_member_call/1),
+
+    wait_for_bridge(Call, MaxWait).
+
+wait_for_bridge(Call, Timeout) ->
+    Start = erlang:now(),
+    receive
+        {amqp_msg, JObj} ->
+            process_message(Call, Timeout, Start, JObj, wh_util:get_event_type(JObj))
+    after Timeout ->
+            lager:debug("failed to handle the call in time, proceeding"),
             cf_exe:continue(Call)
     end.
+
+process_message(Call, _, Start, _JObj, {<<"call_event">>,<<"CHANNEL_BRIDGE">>}) ->
+    lager:debug("member was bridged to agent, yay! took ~b s", [wh_util:elapsed_s(Start)]),
+    cf_exe:control_usurped(Call);
+process_message(Call, _, Start, _JObj, {<<"call_event">>,<<"CHANNEL_HANGUP_COMPLETE">>}) ->
+    lager:debug("member hungup while waiting in the queue (was there ~b s)", [wh_util:elapsed_s(Start)]),
+    cf_exe:stop(Call);
+process_message(Call, _, Start, JObj, {<<"member">>, <<"call_fail">>}) ->
+    lager:debug("call failed to be processed: ~s (took ~b s)"
+                ,[wh_json:get_value(<<"Failure-Reason">>, JObj), wh_util:elapsed_s(Start)]
+               ),
+    cf_exe:continue(Call);
+process_message(Call, _, Start, _JObj, {<<"member">>, <<"call_success">>}) ->
+    lager:debug("call was processed by queue (took ~b s)", [wh_util:elapsed_s(Start)]),
+    cf_exe:control_usurped(Call);
+process_message(Call, Timeout, Start, _JObj, _Type) ->
+    lager:debug("unknown message type: ~p", [_Type]),
+    wait_for_bridge(Call, Timeout - wh_util:elapsed_ms(Start)).
 
 %% convert from seconds to milliseconds, or infinity
 -spec max_wait/1 :: (integer()) -> pos_integer() | 'infinity'.
