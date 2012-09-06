@@ -14,9 +14,9 @@
 
 %% API
 -export([start_link/2
-         ,queue/0
-         ,shared_queue/0, start_shared_queue/4
-         ,fsm/0, start_fsm/2
+         ,queue/1
+         ,shared_queue/1, start_shared_queue/4
+         ,fsm/1, start_fsm/2
         ]).
 
 %% Supervisor callbacks
@@ -41,16 +41,16 @@
 start_link(AcctDb, QueueJObj) ->
     supervisor:start_link(?MODULE, [AcctDb, QueueJObj]).
 
--spec queue/0 :: () -> pid() | 'undefined'.
-queue() ->
-    case child_of_type(acdc_queue) of
+-spec queue/1 :: (pid()) -> pid() | 'undefined'.
+queue(Super) ->
+    case child_of_type(Super, acdc_queue) of
         [] -> undefined;
         [P] -> P
     end.
 
--spec shared_queue/0 :: () -> pid() | 'undefined'.
-shared_queue() ->
-    case child_of_type(acdc_queue_shared) of
+-spec shared_queue/1 :: (pid()) -> pid() | 'undefined'.
+shared_queue(Super) ->
+    case child_of_type(Super, acdc_queue_shared) of
         [] -> undefined;
         [P] -> P
     end.
@@ -59,9 +59,9 @@ shared_queue() ->
 start_shared_queue(Super, FSMPid, AcctId, QueueId) ->
     supervisor:start_child(Super, ?CHILD(acdc_queue_shared, [FSMPid, AcctId, QueueId])).
 
--spec fsm/0 :: () -> pid() | 'undefined'.
-fsm() ->
-    case child_of_type(acdc_queue_fsm) of
+-spec fsm/1 :: (pid()) -> pid() | 'undefined'.
+fsm(Super) ->
+    case child_of_type(Super, acdc_queue_fsm) of
         [] -> undefined;
         [P] -> P
     end.
@@ -71,9 +71,9 @@ start_fsm(Super, QueueJObj) ->
     Parent = self(),
     supervisor:start_child(Super, ?CHILD(acdc_queue_fsm, [Parent, QueueJObj])).
 
--spec child_of_type/1 :: (atom()) -> list(pid()).
-child_of_type(T) ->
-    [ Pid || {Type, Pid, worker, [_]} <- supervisor:which_children(?MODULE), T =:= Type].
+-spec child_of_type/2 :: (pid(), atom()) -> list(pid()).
+child_of_type(Super, T) ->
+    [ Pid || {Type, Pid, worker, [_]} <- supervisor:which_children(Super), T =:= Type].
 
 %%%===================================================================
 %%% Supervisor callbacks

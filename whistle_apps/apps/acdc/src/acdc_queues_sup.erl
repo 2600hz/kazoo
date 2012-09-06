@@ -16,6 +16,8 @@
 -export([start_link/0
          ,new/2
          ,workers/0
+         ,find_queue_supervisor/2
+         ,queues_running/0
         ]).
 
 %% Supervisor callbacks
@@ -46,7 +48,23 @@ new(Acct, JObj) ->
 
 -spec workers/0 :: () -> [pid(),...] | [].
 workers() ->
-    [ Pid || {_, Pid, worker, [_]} <- supervisor:which_children(?MODULE)].
+    [ Pid || {_, Pid, worker, [_]} <- supervisor:which_children(?MODULE), is_pid(Pid)].
+
+-spec find_queue_supervisor/2 :: (ne_binary(), ne_binary()) -> pid() | 'undefined'.
+-spec find_queue_supervisor/3 :: (ne_binary(), ne_binary(), [pid(),...] | []) -> pid() | 'undefined'.
+find_queue_supervisor(AcctId, QueueId) ->
+    find_queue_supervisor(AcctId, QueueId, workers()).
+
+find_queue_supervisor(_AcctId, _QueueId, []) -> undefined;
+find_queue_supervisor(AcctId, QueueId, [Super|Rest]) ->
+    case catch acdc_queue:config(acdc_queue_sup:queue(Super)) of
+        {'EXIT', _} -> find_queue_supervisor(AcctId, QueueId, Rest);
+        {AcctId, QueueId} -> Super;
+        _ -> find_queue_supervisor(AcctId, QueueId, Rest)
+    end.
+
+queues_running() ->
+    [{W, catch acdc_queue:config(acdc_queue_sup:queue(W))} || W <- workers()].
 
 %%%===================================================================
 %%% Supervisor callbacks

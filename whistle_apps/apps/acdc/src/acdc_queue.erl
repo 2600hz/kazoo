@@ -27,7 +27,11 @@
          ,timeout_member_call/1, finish_member_call/2
          ,cancel_member_call/1, cancel_member_call/2 ,cancel_member_call/3
          ,send_sync_req/2
+         ,config/1
         ]).
+
+%% Call Manipulation
+-export([put_member_on_hold/3]).
 
 %% gen_server callbacks
 -export([init/1
@@ -128,6 +132,12 @@ cancel_member_call(Srv, MemberCallJObj, Delivery) ->
 send_sync_req(Srv, Type) ->
     gen_listener:cast(Srv, {send_sync_req, Type}).
 
+config(Srv) ->
+    gen_listener:call(Srv, config).
+
+put_member_on_hold(Srv, Call, MOH) ->
+    gen_listener:cast(Srv, {put_member_on_hold, Call, MOH}).
+
 %%%===================================================================
 %%% gen_listener callbacks
 %%%===================================================================
@@ -177,6 +187,10 @@ init([Supervisor, AcctDb, QueueJObj]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_call(config, _From, #state{acct_id=AcctId
+                                  ,queue_id=QueueId
+                                  }=State) ->
+    {reply, {AcctId, QueueId}, State};
 handle_call(_Request, _From, State) ->
     lager:debug("unhandled call from ~p: ~p", [_From, _Request]),
     {reply, {error, unhandled_call}, State}.
@@ -324,6 +338,10 @@ handle_cast({send_sync_req, Type}, #state{my_q=MyQ
                                           ,queue_id=QueueId
                                          }=State) ->
     send_sync_req(MyQ, MyId, AcctId, QueueId, Type),
+    {noreply, State};
+
+handle_cast({put_member_on_hold, Call, MOH}, State) ->
+    whapps_call_command:hold(MOH, Call),
     {noreply, State};
 
 handle_cast(_Msg, State) ->
