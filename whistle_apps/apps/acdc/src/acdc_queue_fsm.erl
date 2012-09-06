@@ -19,6 +19,7 @@
          ,member_accepted/2
          ,member_connect_retry/2
          ,call_event/4
+         ,refresh/2
         ]).
 
 %% State handlers
@@ -106,6 +107,9 @@
 start_link(QueuePid, QueueJObj) ->
     gen_fsm:start_link(?MODULE, [QueuePid, QueueJObj], []).
 
+refresh(FSM, QueueJObj) ->
+    gen_fsm:send_all_state_event(FSM, {refresh, QueueJObj}).
+
 %%--------------------------------------------------------------------
 %% @doc
 %% @end
@@ -148,6 +152,8 @@ member_connect_retry(FSM, RetryJObj) ->
 -spec call_event/4 :: (pid(), ne_binary(), ne_binary(), wh_json:json_object()) -> 'ok'.
 call_event(FSM, <<"call_event">>, <<"CHANNEL_DESTROY">>, EvtJObj) ->
     gen_fsm:send_event(FSM, {member_hungup, EvtJObj});
+call_event(FSM, <<"call_event">>, <<"DTMF">>, EvtJObj) ->
+    gen_fsm:send_event(FSM, {dtmf_pressed, wh_json:get_value(<<"DTMF-Digit">>, EvtJObj)});
 call_event(_, _, _, _) -> ok.
 
 %%%===================================================================
@@ -273,6 +279,9 @@ ready({retry, _RetryJObj}, State) ->
 ready({member_hungup, _CallEvt}, State) ->
     lager:debug("member hungup from previous call, failed to unbind"),
     {next_state, ready, State};
+ready({dtmf_pressed, _DTMF}, State) ->
+    lager:debug("DTMF(~s) for old call", [_DTMF]),
+    {next_state, ready, State};
 ready(_Event, State) ->
     lager:debug("unhandled event: ~p", [_Event]),
     {next_state, ready, State}.
@@ -337,6 +346,13 @@ connect_req({member_hungup, JObj}, #state{queue_proc=Srv}=State) ->
     acdc_queue:finish_member_call(Srv, JObj),
     {next_state, ready, clear_member_call(State)};
 
+connect_req({dtmf_pressed, DTMF}, #state{caller_exit_key=DTMF
+                                         ,queue_proc=Srv
+                                        }=State) when is_binary(DTMF) ->
+    lager:debug("member pressed the exit key (~s)", [DTMF]),
+    acdc_queue:exit_member_call(Srv),
+    {next_state, ready, clear_member_call(State)};
+
 connect_req({timeout, ConnRef, ?CONNECTION_TIMEOUT_MESSAGE}, #state{queue_proc=Srv
                                                                     ,connection_timer_ref=ConnRef
                                                                    }=State) ->
@@ -389,6 +405,13 @@ connecting({member_hungup, CallEvt}, #state{queue_proc=Srv}=State) ->
     acdc_queue:cancel_member_call(Srv, CallEvt),
     {next_state, ready, clear_member_call(State)};
 
+connecting({dtmf_pressed, DTMF}, #state{caller_exit_key=DTMF
+                                        ,queue_proc=Srv
+                                       }=State) when is_binary(DTMF) ->
+    lager:debug("member pressed the exit key (~s)", [DTMF]),
+    acdc_queue:exit_member_call(Srv),
+    {next_state, ready, clear_member_call(State)};
+
 connecting({timeout, ConnRef, ?CONNECTION_TIMEOUT_MESSAGE}, #state{queue_proc=Srv
                                                                    ,connection_timer_ref=ConnRef
                                                                   }=State) ->
@@ -413,6 +436,9 @@ connecting(_Event, State) ->
 %%                   {stop, Reason, NewState}
 %% @end
 %%--------------------------------------------------------------------
+handle_event({refresh, QueueJObj}, StateName, State) ->
+    lager:debug("refreshing queue configs"),
+    {next_state, StateName, update_properties(QueueJObj, State)};
 handle_event(_Event, StateName, State) ->
     lager:debug("unhandled event in state ~s: ~p", [StateName, _Event]),
     {next_state, StateName, State}.
@@ -580,3 +606,22 @@ clear_member_call(#state{connection_timer_ref=ConnRef
                 ,connection_timer_ref=undefined
                 ,agent_ring_timer_ref=undefined
                }.
+
+update_properties(QueueJObj, State) ->
+    State#state{
+      name = wh_json:get_value(<<"name">>, QueueJObj)
+      ,connection_timeout = connection_timeout(wh_json:get_integer_value(<<"connection_timeout">>, QueueJObj))
+      ,agent_ring_timeout = agent_ring_timeout(wh_json:get_integer_value(<<"agent_ring_timeout">>, QueueJObj))
+      ,max_queue_size = wh_json:get_integer_value(<<"max_queue_size">>, QueueJObj)
+      ,ring_simultaneously = wh_json:get_value(<<"ring_simultaneously">>, QueueJObj)
+      ,enter_when_empty = wh_json:is_true(<<"enter_when_empty">>, QueueJObj, true)
+      ,agent_wrapup_time = wh_json:get_integer_value(<<"agent_wrapup_time">>, QueueJObj)
+      ,moh = wh_json:get_value(<<"moh">>, QueueJObj)
+      ,announce = wh_json:get_value(<<"announce">>, QueueJObj)
+      ,caller_exit_key = wh_json:get_value(<<"caller_exit_key">>, QueueJObj, <<"#">>)
+      ,record_caller = wh_json:is_true(<<"record_caller">>, QueueJObj, false)
+      ,cdr_url = wh_json:get_value(<<"cdr_url">>, QueueJObj)
+
+      %% Changing queue strategy currently isn't feasible; definitely a TODO
+      %%,strategy = get_strategy(wh_json:get_value(<<"strategy">>, QueueJObj))
+     }.
