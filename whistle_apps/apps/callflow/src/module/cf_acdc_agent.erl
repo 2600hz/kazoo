@@ -28,17 +28,17 @@
 %%--------------------------------------------------------------------
 -spec handle/2 :: (wh_json:json_object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
-    case find_agent(Call) of
-        {ok, undefined} ->
-            lager:debug("agent was not found"),
-            play_not_an_agent(Call);
-        {ok, AgentId} ->
-            Status = find_agent_status(Call, AgentId),
-            NewStatus = wh_json:get_value(<<"action">>, Data),
-            lager:debug("agent ~s maybe changing status from ~s to ~s", [AgentId, Status, NewStatus]),
+    _ = case find_agent(Call) of
+            {ok, undefined} ->
+                lager:debug("agent was not found"),
+                play_not_an_agent(Call);
+            {ok, AgentId} ->
+                Status = find_agent_status(Call, AgentId),
+                NewStatus = wh_json:get_value(<<"action">>, Data),
+                lager:debug("agent ~s maybe changing status from ~s to ~s", [AgentId, Status, NewStatus]),
 
-            maybe_update_status(Call, AgentId, Status, NewStatus, Data)
-    end,
+                maybe_update_status(Call, AgentId, Status, NewStatus, Data)
+        end,
     cf_exe:continue(Call).
 
 -spec find_agent_status/2 :: (whapps_call:call() | ne_binary(), ne_binary()) -> ne_binary().
