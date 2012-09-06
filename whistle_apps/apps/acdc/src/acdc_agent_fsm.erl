@@ -391,6 +391,7 @@ ringing({channel_answered, ACallId}, #state{agent_call_id=ACallId
                                            }=State) ->
     lager:debug("agent channel ready: ~s", [ACallId]),
     acdc_agent:join_agent(Srv, ACallId),
+    acdc_agent:member_connect_accepted(Srv),
     {next_state, ringing, State};
 
 ringing({channel_answered, MCallId}, #state{member_call_id=MCallId}=State) ->
