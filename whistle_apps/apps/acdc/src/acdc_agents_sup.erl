@@ -14,7 +14,7 @@
 
 %% API
 -export([start_link/0
-         ,new/2
+         ,new/1
          ,workers/0
          ,find_agent_supervisor/2
         ]).
@@ -41,9 +41,9 @@
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
--spec new/2 :: (ne_binary(), wh_json:json_object()) -> sup_startchild_ret().
-new(Acct, JObj) ->
-    supervisor:start_child(?MODULE, [Acct, JObj]).
+-spec new/1 :: (wh_json:json_object()) -> sup_startchild_ret().
+new(JObj) ->
+    supervisor:start_child(?MODULE, [JObj]).
 
 -spec workers/0 :: () -> [pid(),...] | [].
 workers() ->

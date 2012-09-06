@@ -13,6 +13,7 @@
          ,handle_member_resp/2
          ,handle_member_accepted/2
          ,handle_member_retry/2
+         ,handle_config_change/2
         ]).
 
 handle_call_event(JObj, Props) ->
@@ -30,3 +31,27 @@ handle_member_accepted(JObj, Props) ->
 
 handle_member_retry(JObj, Props) ->
     acdc_queue_fsm:member_connect_retry(props:get_value(fsm_pid, Props), JObj).
+
+handle_config_change(JObj, _Props) ->
+    true = wapi_conf:doc_update_v(JObj),
+    handle_queue_change(wh_json:get_value(<<"Doc">>, JObj)
+                        ,wh_json:get_value(<<"pvt_account_id">>, JObj)
+                        ,wh_json:get_value(<<"_id">>, JObj)
+                        ,wh_json:get_value(<<"Event-Name">>, JObj)
+                       ).
+
+handle_queue_change(JObj, AcctId, QueueId, <<"doc_created">>) ->
+    case acdc_queues_sup:find_queue_supervisor(AcctId, QueueId) of
+        undefined -> acdc_queues_sup:new(JObj);
+        P when is_pid(P) -> ok
+    end;
+handle_queue_change(JObj, AcctId, QueueId, <<"doc_edited">>) ->
+    case acdc_queues_sup:find_queue_supervisor(AcctId, QueueId) of
+        undefined -> acdc_queues_sup:new(JObj);
+        P when is_pid(P) -> acdc_queue_fsm:refresh(acdc_queue_sup:fsm(P), JObj)
+    end;
+handle_queue_change(JObj, AcctId, QueueId, <<"doc_deleted">>) ->
+    case acdc_queues_sup:find_queue_supervisor(AcctId, QueueId) of
+        undefined -> ok;
+        P when is_pid(P) -> acdc_queue_sup:stop(P)
+    end.

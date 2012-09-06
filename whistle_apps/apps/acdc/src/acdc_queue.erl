@@ -19,12 +19,14 @@
 -behaviour(gen_listener).
 
 %% API
--export([start_link/3
+-export([start_link/2
          ,accept_member_calls/1
          ,member_connect_req/3
          ,member_connect_win/3
          ,member_connect_monitor/2
-         ,timeout_member_call/1, finish_member_call/2
+         ,timeout_member_call/1
+         ,exit_member_call/1
+         ,finish_member_call/2
          ,cancel_member_call/1, cancel_member_call/2 ,cancel_member_call/3
          ,send_sync_req/2
          ,config/1
@@ -96,13 +98,13 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
--spec start_link/3 :: (pid(), ne_binary(), wh_json:json_object()) -> startlink_ret().
-start_link(Supervisor, AcctDb, QueueJObj) ->
+-spec start_link/2 :: (pid(), wh_json:json_object()) -> startlink_ret().
+start_link(Supervisor, QueueJObj) ->
     gen_listener:start_link(?MODULE
                             ,[{bindings, ?BINDINGS}
                               ,{responders, ?RESPONDERS}
                              ]
-                            ,[Supervisor, AcctDb, QueueJObj]
+                            ,[Supervisor, QueueJObj]
                            ).
 
 accept_member_calls(Srv) ->
@@ -118,6 +120,8 @@ member_connect_monitor(Srv, RespJObj) ->
 
 timeout_member_call(Srv) ->
     gen_listener:cast(Srv, {timeout_member_call}).
+exit_member_call(Srv) ->
+    gen_listener:cast(Srv, {exit_member_call}).
 finish_member_call(Srv, AcceptJObj) ->
     gen_listener:cast(Srv, {finish_member_call, AcceptJObj}).
 
@@ -153,11 +157,11 @@ put_member_on_hold(Srv, Call, MOH) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init([Supervisor, AcctDb, QueueJObj]) ->
+init([Supervisor, QueueJObj]) ->
     QueueId = wh_json:get_value(<<"_id">>, QueueJObj),
     put(callid, QueueId),
 
-    lager:debug("starting queue in ~s", [AcctDb]),
+    lager:debug("starting queue ~s", [QueueId]),
 
     gen_listener:cast(self(), {start_fsm, Supervisor, QueueJObj}),
 
@@ -168,8 +172,8 @@ init([Supervisor, AcctDb, QueueJObj]) ->
 
     {ok, #state{
        queue_id = QueueId
-       ,queue_db = AcctDb
-       ,acct_id = wh_util:format_account_id(AcctDb, raw)
+       ,queue_db = wh_json:get_value(<<"pvt_account_db">>, QueueJObj)
+       ,acct_id = wh_json:get_value(<<"pvt_account_id">>, QueueJObj)
        ,my_id = list_to_binary([wh_util:to_binary(node()), "-", pid_to_list(self())])
       }}.
 
@@ -279,7 +283,22 @@ handle_cast({timeout_member_call}, #state{delivery=Delivery
 
     {noreply, clear_call_state(State)};
 
+handle_cast({exit_member_call}, #state{delivery=Delivery
+                                       ,call=Call
+                                       ,shared_pid=Pid
+                                       ,member_call_queue=Q
+                                       ,acct_id=AcctId
+                                       ,queue_id=QueueId
+                                       ,my_id=MyId
+                                       ,agent_id=AgentId
+                                      }=State) ->
+    lager:debug("member call has exited the queue, we're done"),
 
+    acdc_util:unbind_from_call_events(Call),
+    acdc_queue_shared:ack(Pid, Delivery),
+    send_member_call_failure(Q, AcctId, QueueId, MyId, AgentId, <<"Caller exited the queue via DTMF">>),
+
+    {noreply, clear_call_state(State)};
 
 handle_cast({finish_member_call, _AcceptJObj}, #state{delivery=Delivery
                                                       ,call=Call
@@ -449,11 +468,14 @@ send_member_call_success(Q, AcctId, QueueId, MyId, AgentId) ->
     publish(Q, Resp, fun wapi_acdc_queue:publish_member_call_success/2).
 
 send_member_call_failure(Q, AcctId, QueueId, MyId, AgentId) ->
+    send_member_call_failure(Q, AcctId, QueueId, MyId, AgentId, undefined).
+send_member_call_failure(Q, AcctId, QueueId, MyId, AgentId, Reason) ->
     Resp = props:filter_undefined(
              [{<<"Account-ID">>, AcctId}
               ,{<<"Queue-ID">>, QueueId}
               ,{<<"Process-ID">>, MyId}
               ,{<<"Agent-ID">>, AgentId}
+              ,{<<"Failure-Reason">>, Reason}
               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     publish(Q, Resp, fun wapi_acdc_queue:publish_member_call_failure/2).

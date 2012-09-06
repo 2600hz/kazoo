@@ -11,7 +11,7 @@
 -behaviour(gen_listener).
 
 %% API
--export([start_link/3
+-export([start_link/2
          ,member_connect_resp/2
          ,member_connect_retry/1, member_connect_retry/2
          ,bridge_to_member/2
@@ -45,8 +45,8 @@
          ,acdc_queue_id :: ne_binary() % the ACDc Queue ID
          ,msg_queue_id :: ne_binary() % the AMQP Queue ID of the ACDc Queue process
          ,agent_id :: ne_binary()
-         ,agent_db :: ne_binary()
-         ,account_id :: ne_binary()
+         ,acct_db :: ne_binary()
+         ,acct_id :: ne_binary()
          ,fsm_pid :: pid()
          ,agent_queues :: [ne_binary(),...] | []
          ,endpoints :: wh_json:json_objects()
@@ -116,7 +116,7 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
-start_link(Supervisor, AcctDb, AgentJObj) ->
+start_link(Supervisor, AgentJObj) ->
     AgentId = wh_json:get_value(<<"_id">>, AgentJObj),
 
     case wh_json:get_value(<<"queues">>, AgentJObj) of
@@ -132,7 +132,7 @@ start_link(Supervisor, AcctDb, AgentJObj) ->
                                     ,[{bindings, ?BINDINGS(AcctId, AgentId)}
                                       ,{responders, ?RESPONDERS}
                                      ]
-                                    ,[Supervisor, AcctDb, AgentJObj, Queues]
+                                    ,[Supervisor, AgentJObj, Queues]
                                    )
     end.
 
@@ -200,7 +200,7 @@ rm_acdc_queue(Srv, Q) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init([Supervisor, AcctDb, AgentJObj, Queues]) ->
+init([Supervisor, AgentJObj, Queues]) ->
     AgentId = wh_json:get_value(<<"_id">>, AgentJObj),
     put(callid, AgentId),
 
@@ -212,9 +212,9 @@ init([Supervisor, AcctDb, AgentJObj, Queues]) ->
               end),
 
     {ok, #state{
-       agent_db = AcctDb
-       ,agent_id = AgentId
-       ,account_id = wh_json:get_value(<<"pvt_account_id">>, AgentJObj)
+       agent_id = AgentId
+       ,acct_id = wh_json:get_value(<<"pvt_account_id">>, AgentJObj)
+       ,acct_db = wh_json:get_value(<<"pvt_account_db">>, AgentJObj)
        ,agent_queues = Queues
        ,my_id = acdc_util:agent_proc_id(self())
        ,supervisor = Supervisor
@@ -234,7 +234,7 @@ init([Supervisor, AcctDb, AgentJObj, Queues]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call(config, _From, #state{account_id=AcctId
+handle_call(config, _From, #state{acct_id=AcctId
                                   ,agent_id=AgentId
                                   }=State) ->
     {reply, {AcctId, AgentId}, State};
@@ -253,7 +253,7 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast({start_fsm, Supervisor}, #state{
-              account_id=AcctId
+              acct_id=AcctId
               ,agent_id=AgentId
              }=State) ->
     {ok, FSMPid} = acdc_agent_sup:start_fsm(Supervisor, AcctId, AgentId),
@@ -267,7 +267,7 @@ handle_cast({queue_name, Q}, State) ->
     {noreply, State#state{my_q=Q}};
 
 handle_cast({queue_login, Q}, #state{agent_queues=Qs
-                                     ,account_id=AcctId
+                                     ,acct_id=AcctId
                                     }=State) ->
     case lists:member(Q, Qs) of
         true ->
@@ -280,7 +280,7 @@ handle_cast({queue_login, Q}, #state{agent_queues=Qs
     end;
 
 handle_cast({queue_logout, Q}, #state{agent_queues=Qs
-                                      ,account_id=AcctId
+                                      ,acct_id=AcctId
                                      }=State) ->
     case lists:member(Q, Qs) of
         true ->
@@ -293,7 +293,7 @@ handle_cast({queue_logout, Q}, #state{agent_queues=Qs
     end;
 
 handle_cast(bind_to_member_reqs, #state{agent_queues=Qs
-                                        ,account_id=AcctId
+                                        ,acct_id=AcctId
                                        }=State) ->
     lager:debug("binding to queues: ~p", [Qs]),
     _ = [login_to_queue(AcctId, Q) || Q <- Qs],
@@ -323,9 +323,9 @@ handle_cast(member_connect_accepted, #state{msg_queue_id=AmqpQueue
     {noreply, State};
 
 handle_cast({load_endpoints, Supervisor}, #state{
-              agent_db=AcctDb
+              acct_db=AcctDb
               ,agent_id=AgentId
-              ,account_id=AcctId
+              ,acct_id=AcctId
              }=State) ->
     lager:debug("loading agent endpoints"),
     Call = whapps_call:set_account_id(AcctId
@@ -410,7 +410,7 @@ handle_cast({join_agent, ACallId}, #state{call=Call}=State) ->
 
 handle_cast({send_sync_req}, #state{my_id=MyId
                                     ,my_q=MyQ
-                                    ,account_id=AcctId
+                                    ,acct_id=AcctId
                                     ,agent_id=AgentId
                                    }=State) ->
     lager:debug("sending sync request"),
@@ -418,14 +418,14 @@ handle_cast({send_sync_req}, #state{my_id=MyId
     {noreply, State};
 
 handle_cast({send_sync_resp, Status, ReqJObj, Options}, #state{my_id=MyId
-                                                               ,account_id=AcctId
+                                                               ,acct_id=AcctId
                                                                ,agent_id=AgentId
                                                               }=State) ->
     lager:debug("sending sync response"),
     send_sync_response(ReqJObj, AcctId, AgentId, MyId, Status, Options),
     {noreply, State};
 
-handle_cast({send_status_update, Status}, #state{account_id=AcctId
+handle_cast({send_status_update, Status}, #state{acct_id=AcctId
                                                  ,agent_id=AgentId
                                                  }=State) ->
     send_status_update(AcctId, AgentId, Status),

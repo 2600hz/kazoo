@@ -13,7 +13,7 @@
 -include("acdc.hrl").
 
 %% API
--export([start_link/2
+-export([start_link/1
          ,agent/1
          ,fsm/1, start_fsm/3
          ,stop/1
@@ -37,9 +37,9 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
--spec start_link/2 :: (ne_binary(), wh_json:json_object()) -> startlink_ret().
-start_link(AcctDb, AgentJObj) ->
-    supervisor:start_link(?MODULE, [AcctDb, AgentJObj]).
+-spec start_link/1 :: (wh_json:json_object()) -> startlink_ret().
+start_link(AgentJObj) ->
+    supervisor:start_link(?MODULE, [AgentJObj]).
 
 -spec stop/1 :: (pid()) -> 'ok' | {'error', 'not_found'}.
 stop(Supervisor) ->

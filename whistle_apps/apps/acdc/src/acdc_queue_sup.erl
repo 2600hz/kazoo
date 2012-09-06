@@ -13,7 +13,8 @@
 -include("acdc.hrl").
 
 %% API
--export([start_link/2
+-export([start_link/1
+         ,stop/1
          ,queue/1
          ,shared_queue/1, start_shared_queue/4
          ,fsm/1, start_fsm/2
@@ -37,9 +38,13 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
--spec start_link/2 :: (ne_binary(), wh_json:json_object()) -> startlink_ret().
-start_link(AcctDb, QueueJObj) ->
-    supervisor:start_link(?MODULE, [AcctDb, QueueJObj]).
+-spec start_link/1 :: (wh_json:json_object()) -> startlink_ret().
+start_link(QueueJObj) ->
+    supervisor:start_link(?MODULE, [QueueJObj]).
+
+-spec stop/1 :: (pid()) -> 'ok' | {'error', 'not_found'}.
+stop(Super) ->
+    supervisor:terminate_child(acdc_queues_sup, Super).
 
 -spec queue/1 :: (pid()) -> pid() | 'undefined'.
 queue(Super) ->
