@@ -48,7 +48,7 @@
 -define(CONNECTION_TIMEOUT_MESSAGE, connection_timer_expired).
 
 %% How long to ring the agent before trying the next agent
--define(AGENT_RING_TIMEOUT, 5000).
+-define(AGENT_RING_TIMEOUT, 5).
 -define(AGENT_RING_TIMEOUT_MESSAGE, agent_timer_expired).
 
 -define(SYNC_TIMEOUT, 3000).
@@ -226,8 +226,10 @@ sync({timeout, SyncRef, ?SYNC_MESSAGE}, #state{timer_ref=SyncRef
                                                ,strategy=Strategy
                                                ,acct_db=AcctDb
                                                ,queue_id=QueueId
+                                               ,queue_proc=Srv
                                               }=State) ->
     lager:debug("sync timeout, creating strategy state"),
+    acdc_queue:accept_member_calls(Srv),
     {next_state, ready, State#state{timer_ref=undefined
                                     ,strategy_state=create_strategy_state(Strategy, AcctDb, QueueId)
                                    }};
@@ -253,8 +255,7 @@ ready({member_call, CallJObj, Delivery}, #state{queue_proc=Srv
 
     maybe_stop_timer(ConnRef), % stop the old one, maybe
 
-    whapps_call_command:answer(Call),
-    whapps_call_command:hold(Call, MOH),
+    acdc_queue:put_member_on_hold(Srv, Call, MOH),
 
     {next_state, connect_req, State#state{collect_ref=start_collect_timer()
                                           ,member_call=Call
@@ -554,12 +555,12 @@ start_connection_timer(ConnTimeout) ->
     gen_fsm:start_timer(ConnTimeout, ?CONNECTION_TIMEOUT_MESSAGE).
 
 -spec agent_ring_timeout/1 :: (integer() | 'undefined') -> pos_integer().
-agent_ring_timeout(N) when is_integer(N), N > 0 -> N * 1000;
+agent_ring_timeout(N) when is_integer(N), N > 0 -> N;
 agent_ring_timeout(_) -> ?AGENT_RING_TIMEOUT.
 
 -spec start_agent_ring_timer/1 :: (pos_integer()) -> reference().
 start_agent_ring_timer(AgentTimeout) ->
-    gen_fsm:start_timer(AgentTimeout, ?AGENT_RING_TIMEOUT_MESSAGE).
+    gen_fsm:start_timer(AgentTimeout * 1000, ?AGENT_RING_TIMEOUT_MESSAGE).
 
 -spec maybe_stop_timer/1 :: (reference() | 'undefined') -> 'ok'.
 maybe_stop_timer(undefined) -> ok;
