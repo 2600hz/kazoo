@@ -28,7 +28,7 @@
                                                    ,<<"Ringback">>, <<"SIP-Headers">>, <<"Custom-Channel-Vars">>
                                                    ,<<"Hold-Media">>, <<"Presence-ID">>, <<"Account-Realm">>
                                                    ,<<"Control-Queue">>, <<"Call-ID">>, <<"Application-Data">>
-                                                   ,<<"Account-ID">>
+                                                   ,<<"Account-ID">>, <<"Outbound-Call-ID">>
                                               ]).
 -define(OFFNET_RESOURCE_REQ_VALUES, [{<<"Event-Category">>, <<"resource">>}
                                      ,{<<"Event-Name">>, <<"offnet_req">>}
