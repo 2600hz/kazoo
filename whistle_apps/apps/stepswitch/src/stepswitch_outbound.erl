@@ -183,7 +183,9 @@ bridge_to_endpoints(Endpoints, IsEmergency, CtrlQ, JObj) ->
 %% the emergency CID.
 %% @end
 %%--------------------------------------------------------------------
--spec originate_to_endpoints/2 :: (proplist(), wh_json:json_object()) -> {'error', 'no_resources'} | originate_resp().
+-spec originate_to_endpoints/2 :: (proplist(), wh_json:json_object()) ->
+                                          {'error', 'no_resources'} |
+                                          originate_resp().
 originate_to_endpoints([], _) ->
     {error, no_resources};
 originate_to_endpoints(Endpoints, JObj) ->
@@ -218,24 +220,26 @@ originate_to_endpoints(Endpoints, JObj) ->
 
     MsgId = wh_json:get_value(<<"Msg-ID">>, JObj, wh_util:rand_hex_binary(16)),
     Application = wh_json:get_value(<<"Application-Name">>, JObj, <<"park">>),
-    Request = [{<<"Application-Name">>, Application}
-               ,{<<"Application-Data">>, wh_json:get_value(<<"Application-Data">>, JObj)}
-               ,{<<"Msg-ID">>, MsgId}
-               ,{<<"Endpoints">>, Endpoints}
-               ,{<<"Timeout">>, wh_json:get_value(<<"Timeout">>, JObj)}
-               ,{<<"Ignore-Early-Media">>, wh_json:get_value(<<"Ignore-Early-Media">>, JObj)}
-               ,{<<"Media">>, wh_json:get_value(<<"Media">>, JObj)}
-               ,{<<"Hold-Media">>, wh_json:get_value(<<"Hold-Media">>, JObj)}
-               ,{<<"Presence-ID">>, wh_json:get_value(<<"Presence-ID">>, JObj)}
-               ,{<<"Outgoing-Caller-ID-Number">>, CIDNum}
-               ,{<<"Outgoing-Caller-ID-Name">>, CIDName}
-               ,{<<"Ringback">>, wh_json:get_value(<<"Ringback">>, JObj)}
-               ,{<<"Dial-Endpoint-Method">>, <<"single">>}
-               ,{<<"Continue-On-Fail">>, <<"true">>}
-               ,{<<"SIP-Headers">>, wh_json:get_value(<<"SIP-Headers">>, JObj)}
-               ,{<<"Custom-Channel-Vars">>, CCVs}
-               | wh_api:default_headers(Q, <<"resource">>, <<"originate_req">>, ?APP_NAME, ?APP_VERSION)
-              ],
+    Request = props:filter_undefined(
+                [{<<"Application-Name">>, Application}
+                 ,{<<"Application-Data">>, wh_json:get_value(<<"Application-Data">>, JObj)}
+                 ,{<<"Msg-ID">>, MsgId}
+                 ,{<<"Endpoints">>, Endpoints}
+                 ,{<<"Timeout">>, wh_json:get_value(<<"Timeout">>, JObj)}
+                 ,{<<"Ignore-Early-Media">>, wh_json:get_value(<<"Ignore-Early-Media">>, JObj)}
+                 ,{<<"Media">>, wh_json:get_value(<<"Media">>, JObj)}
+                 ,{<<"Hold-Media">>, wh_json:get_value(<<"Hold-Media">>, JObj)}
+                 ,{<<"Presence-ID">>, wh_json:get_value(<<"Presence-ID">>, JObj)}
+                 ,{<<"Outgoing-Caller-ID-Number">>, CIDNum}
+                 ,{<<"Outgoing-Caller-ID-Name">>, CIDName}
+                 ,{<<"Ringback">>, wh_json:get_value(<<"Ringback">>, JObj)}
+                 ,{<<"Dial-Endpoint-Method">>, <<"single">>}
+                 ,{<<"Continue-On-Fail">>, <<"true">>}
+                 ,{<<"SIP-Headers">>, wh_json:get_value(<<"SIP-Headers">>, JObj)}
+                 ,{<<"Custom-Channel-Vars">>, CCVs}
+                 ,{<<"Outbound-Caller-ID">>, wh_json:get_value(<<"Outbound-Caller-ID">>, JObj)}
+                 | wh_api:default_headers(Q, <<"resource">>, <<"originate_req">>, ?APP_NAME, ?APP_VERSION)
+                ]),
     wh_amqp_mgr:register_return_handler(),
     wapi_resource:publish_originate_req(Request),
     wait_for_originate(MsgId).
