@@ -233,8 +233,9 @@ get_unset_vars(JObj) ->
         Unset -> [string:join(Unset, "^"), "^"]
     end.
 
--spec handle_originate_return/2 :: (atom(), {'ok', ne_binary()} | {'error', ne_binary()} | timeout) -> {'ok', wh_proplist()} |
-                                                                                                       {'error', wh_proplist()}.
+-spec handle_originate_return/2 :: (atom(), {'ok', ne_binary()} | {'error', ne_binary()} | 'timeout') ->
+                                           {'ok', wh_proplist()} |
+                                           {'error', wh_proplist()}.
 
 handle_originate_return(Node, {ok, <<"+OK ", CallId/binary>>}) ->
     start_call_handling(Node, binary:replace(CallId, <<"\n">>, <<>>));
@@ -248,8 +249,9 @@ handle_originate_return(Node, Else) ->
     lager:debug("originate on ~s returned an unexpected result: ~s", [Node, Else]),
     create_error_resp(<<"unexpected originate return value">>).
 
--spec start_call_handling/2 :: (atom(), ne_binary()) -> {'ok', wh_proplist()} |
-                                                        {'error', wh_proplist()}.
+-spec start_call_handling/2 :: (atom(), ne_binary()) ->
+                                       {'ok', wh_proplist()} |
+                                       {'error', wh_proplist()}.
 start_call_handling(Node, CallId) ->
     erlang:monitor_node(Node, true),
     case freeswitch:handlecall(Node, CallId) of
@@ -267,8 +269,9 @@ start_call_handling(Node, CallId) ->
             create_error_resp(<<"unexepected return registering event listener">>)
     end.
 
--spec wait_for_originate/2 :: (atom(), ne_binary()) -> {'ok', wh_proplist()} |
-                                                       {'error', wh_proplist()}.
+-spec wait_for_originate/2 :: (atom(), ne_binary()) ->
+                                      {'ok', wh_proplist()} |
+                                      {'error', wh_proplist()}.
 wait_for_originate(Node, CallId) ->
     receive
         {_, {event, [CallId | Props]}} ->
@@ -331,11 +334,22 @@ originate_to_dialstrings(JObj, Node, ServerId, Endpoints, ?ORIGINATE_PARK) ->
     J = wh_json:set_value([<<"Custom-Channel-Vars">>, <<"Billing-ID">>], BillingId, JObj),
     originate_and_park(J, Node, ServerId, DialStrings, UUID);
 originate_to_dialstrings(JObj, Node, ServerId, Endpoints, Action) ->
+    UUID = case wh_json:get_value(<<"Outbound-Call-ID">>, JObj) of
+               undefined -> create_uuid(Node);
+               CallId -> CallId
+           end,
+
+    put(callid, UUID),
+    lager:debug("created uuid ~s", [UUID]),
+
     DialSeparator = case wh_json:get_value(<<"Dial-Endpoint-Method">>, JObj, <<"single">>) of
                         <<"simultaneous">> when length(Endpoints) > 1 -> <<",">>;
                         _Else -> <<"|">>
                     end,
-    DialStrings = ecallmgr_util:build_bridge_string(Endpoints, DialSeparator),
+    DialStrings = ecallmgr_util:build_bridge_string([wh_json:set_value(<<"origination_uuid">>, UUID, E) || E <- Endpoints]
+                                                    ,DialSeparator
+                                                   ),
+
     BillingId = wh_util:rand_hex_binary(16),
     J = wh_json:set_value([<<"Custom-Channel-Vars">>, <<"Billing-ID">>], BillingId, JObj),
     Args = list_to_binary([ecallmgr_fs_xml:get_channel_vars(J), DialStrings, " ", Action]),
