@@ -237,7 +237,7 @@ originate_to_endpoints(Endpoints, JObj) ->
                  ,{<<"Continue-On-Fail">>, <<"true">>}
                  ,{<<"SIP-Headers">>, wh_json:get_value(<<"SIP-Headers">>, JObj)}
                  ,{<<"Custom-Channel-Vars">>, CCVs}
-                 ,{<<"Outbound-Caller-ID">>, wh_json:get_value(<<"Outbound-Caller-ID">>, JObj)}
+                 ,{<<"Outbound-Call-ID">>, wh_json:get_value(<<"Outbound-Call-ID">>, JObj)}
                  | wh_api:default_headers(Q, <<"resource">>, <<"originate_req">>, ?APP_NAME, ?APP_VERSION)
                 ]),
     wh_amqp_mgr:register_return_handler(),
