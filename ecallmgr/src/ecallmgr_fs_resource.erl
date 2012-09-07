@@ -25,7 +25,7 @@
 -include("ecallmgr.hrl").
 
 -record(state, {node :: atom()
-                        ,options :: proplist()
+               ,options :: proplist()
                }).
 
 -define(BINDINGS, [{resource, []}

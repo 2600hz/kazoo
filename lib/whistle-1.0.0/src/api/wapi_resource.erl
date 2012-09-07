@@ -22,7 +22,7 @@
 
 -define(ORIGINATE_REQ_HEADERS, [<<"Endpoints">>, <<"Application-Name">>]).
 -define(OPTIONAL_ORIGINATE_REQ_HEADERS, [<<"Application-Data">>, <<"Custom-Channel-Vars">>
-                                             ,<<"Export-Custom-Channel-Vars">>
+                                             ,<<"Export-Custom-Channel-Vars">>, <<"Outbound-Call-ID">>
                                              | fun() -> wapi_dialplan:optional_bridge_req_headers() end()
                                         ]).
 -define(ORIGINATE_REQ_VALUES, [{<<"Event-Category">>, <<"resource">>}
