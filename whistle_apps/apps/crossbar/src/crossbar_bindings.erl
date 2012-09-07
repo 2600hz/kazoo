@@ -238,7 +238,6 @@ handle_call({bind, Binding, Mod, Fun}, _, #state{bindings=[]}=State) ->
     {reply, ok, State#state{bindings=[{Binding, BParts, queue:in({Mod, Fun}, queue:new())}]}, hibernate};
 handle_call({bind, Binding, Mod, Fun}, _, #state{bindings=Bs}=State) ->
     MF = {Mod, Fun},
-    lager:debug("~w is binding ~s", [MF, Binding]),
     case lists:keyfind(Binding, 1, Bs) of
         false ->
             BParts = lists:reverse(binary:split(Binding, <<".">>, [global])),
