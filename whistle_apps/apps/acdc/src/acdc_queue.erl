@@ -22,8 +22,8 @@
 -export([start_link/2
          ,accept_member_calls/1
          ,member_connect_req/3
-         ,member_connect_win/3
-         ,member_connect_monitor/2
+         ,member_connect_win/3, member_connect_win/4
+         ,member_connect_monitor/2, member_connect_monitor/3
          ,timeout_member_call/1
          ,exit_member_call/1
          ,finish_member_call/2
@@ -114,9 +114,14 @@ member_connect_req(Srv, MemberCallJObj, Delivery) ->
     gen_listener:cast(Srv, {member_connect_req, MemberCallJObj, Delivery}).
 
 member_connect_win(Srv, RespJObj, Timeout) ->
-    gen_listener:cast(Srv, {member_connect_win, RespJObj, Timeout}).
+    member_connect_win(Srv, RespJObj, Timeout, <<"#">>).
+member_connect_win(Srv, RespJObj, Timeout, CallerExitKey) ->
+    gen_listener:cast(Srv, {member_connect_win, RespJObj, Timeout, CallerExitKey}).
+
 member_connect_monitor(Srv, RespJObj) ->
-    gen_listener:cast(Srv, {member_connect_monitor, RespJObj}).
+    member_connect_monitor(Srv, RespJObj, <<"#">>).
+member_connect_monitor(Srv, RespJObj, CallerExitKey) ->
+    gen_listener:cast(Srv, {member_connect_monitor, RespJObj, CallerExitKey}).
 
 timeout_member_call(Srv) ->
     gen_listener:cast(Srv, {timeout_member_call}).
@@ -247,23 +252,23 @@ handle_cast({member_connect_req, MemberCallJObj, Delivery}
                           ,member_call_queue=wh_json:get_value(<<"Server-ID">>, MemberCallJObj)
                          }};
 
-handle_cast({member_connect_win, RespJObj, Timeout}, #state{my_q=MyQ
-                                                   ,my_id=MyId
-                                                   ,call=Call
-                                                   ,queue_id=QueueId
-                                                  }=State) ->
+handle_cast({member_connect_win, RespJObj, Timeout, CallerExitKey}, #state{my_q=MyQ
+                                                                           ,my_id=MyId
+                                                                           ,call=Call
+                                                                           ,queue_id=QueueId
+                                                                          }=State) ->
     lager:debug("agent process won the call, sending the win"),
-    send_member_connect_win(RespJObj, Timeout, Call, QueueId, MyQ, MyId),
+    send_member_connect_win(RespJObj, Timeout, Call, QueueId, MyQ, MyId, CallerExitKey),
     {noreply, State#state{agent_process=wh_json:get_value(<<"Agent-Process">>, RespJObj)
                           ,agent_id=wh_json:get_value(<<"Agent-ID">>, RespJObj)
                          }};
 
-handle_cast({member_connect_monitor, RespJObj}, #state{my_id=MyId
-                                                       ,call=Call
-                                                       ,queue_id=QueueId
-                                                      }=State) ->
+handle_cast({member_connect_monitor, RespJObj, CallerExitKey}, #state{my_id=MyId
+                                                                      ,call=Call
+                                                                      ,queue_id=QueueId
+                                                                     }=State) ->
     lager:debug("agent process won the call, sending the monitor to another agent process"),
-    send_member_connect_monitor(RespJObj, whapps_call:call_id(Call), QueueId, MyId),
+    send_member_connect_monitor(RespJObj, whapps_call:call_id(Call), QueueId, MyId, CallerExitKey),
     {noreply, State};
 
 handle_cast({timeout_member_call}, #state{delivery=Delivery
@@ -433,8 +438,8 @@ send_member_connect_req(CallId, AcctId, QueueId, MyQ, MyId) ->
             ]),
     publish(Req, fun wapi_acdc_queue:publish_member_connect_req/1).
 
--spec send_member_connect_win/6 :: (wh_json:json_object(), pos_integer(), whapps_call:call(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
-send_member_connect_win(RespJObj, Timeout, Call, QueueId, MyQ, MyId) ->
+-spec send_member_connect_win/7 :: (wh_json:json_object(), pos_integer(), whapps_call:call(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+send_member_connect_win(RespJObj, Timeout, Call, QueueId, MyQ, MyId, CallerExitKey) ->
     CallJSON = whapps_call:to_json(Call),
     Q = wh_json:get_value(<<"Server-ID">>, RespJObj),
     Win = props:filter_undefined(
@@ -443,16 +448,18 @@ send_member_connect_win(RespJObj, Timeout, Call, QueueId, MyQ, MyId) ->
              ,{<<"Server-ID">>, MyQ}
              ,{<<"Queue-ID">>, QueueId}
              ,{<<"Ring-Timeout">>, Timeout}
+             ,{<<"Caller-Exit-Key">>, CallerExitKey}
              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
             ]),
     publish(Q, Win, fun wapi_acdc_queue:publish_member_connect_win/2).
 
--spec send_member_connect_monitor/4 :: (wh_json:json_object(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
-send_member_connect_monitor(RespJObj, CallId, QueueId, MyId) ->
+-spec send_member_connect_monitor/5 :: (wh_json:json_object(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+send_member_connect_monitor(RespJObj, CallId, QueueId, MyId, CallerExitKey) ->
     Q = wh_json:get_value(<<"Server-ID">>, RespJObj),
     Prop = [{<<"Call-ID">>, CallId}
             ,{<<"Process-ID">>, MyId}
             ,{<<"Queue-ID">>, QueueId}
+            ,{<<"Caller-Exit-Key">>, CallerExitKey}
             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     publish(Q, Prop, fun wapi_acdc_queue:publish_member_connect_monitor/2).

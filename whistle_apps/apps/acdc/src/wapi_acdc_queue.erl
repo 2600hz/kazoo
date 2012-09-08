@@ -222,7 +222,7 @@ member_connect_resp_v(JObj) ->
 %% Member Connect Win
 %%------------------------------------------------------------------------------
 -define(MEMBER_CONNECT_WIN_HEADERS, [<<"Queue-ID">>, <<"Call">>]).
--define(OPTIONAL_MEMBER_CONNECT_WIN_HEADERS, [<<"Ring-Timeout">>]).
+-define(OPTIONAL_MEMBER_CONNECT_WIN_HEADERS, [<<"Ring-Timeout">>, <<"Caller-Exit-Key">>]).
 -define(MEMBER_CONNECT_WIN_VALUES, [{<<"Event-Category">>, <<"member">>}
                                      ,{<<"Event-Name">>, <<"connect_win">>}
                                     ]).
@@ -249,7 +249,9 @@ member_connect_win_v(JObj) ->
 %% Member Connect Monitor
 %%------------------------------------------------------------------------------
 -define(MEMBER_CONNECT_MONITOR_HEADERS, [<<"Call-ID">>, <<"Queue-ID">>]).
--define(OPTIONAL_MEMBER_CONNECT_MONITOR_HEADERS, [<<"Process-ID">>, <<"Ring-Timeout">>]).
+-define(OPTIONAL_MEMBER_CONNECT_MONITOR_HEADERS, [<<"Process-ID">>, <<"Ring-Timeout">>
+                                                      ,<<"Caller-Exit-Key">>
+                                                 ]).
 -define(MEMBER_CONNECT_MONITOR_VALUES, [{<<"Event-Category">>, <<"member">>}
                                         ,{<<"Event-Name">>, <<"connect_monitor">>}
                                        ]).
