@@ -19,5 +19,7 @@
 -type queue_strategy() :: 'rr' | 'mi'.
 -type queue_strategy_state() :: 'undefined' | queue().
 
+-type abandon_reason() :: 'timeout' | 'caller_exit'.
+
 -define(ACDC_HRL, true).
 -endif.
