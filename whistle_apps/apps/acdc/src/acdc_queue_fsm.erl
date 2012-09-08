@@ -314,12 +314,15 @@ connect_req({timeout, Ref, ?COLLECT_RESP_MESSAGE}, #state{collect_ref=Ref
                                                           ,strategy=Strategy
                                                           ,strategy_state=StrategyState
                                                           ,agent_ring_timeout=AgentTimeout
+                                                          ,caller_exit_key=CallerExitKey
                                                          }=State) ->
     lager:debug("done waiting for agents to respond, picking a winner"),
     case pick_winner(CRs, Strategy, StrategyState) of
         {Winner, Monitors, Rest, StrategyState1} ->
-            acdc_queue:member_connect_win(Srv, Winner, AgentTimeout),
-            _ = [acdc_queue:member_connect_monitor(Srv, M) || M <- Monitors],
+            acdc_queue:member_connect_win(Srv, Winner, AgentTimeout, CallerExitKey),
+            _ = [acdc_queue:member_connect_monitor(Srv, M, CallerExitKey)
+                 || M <- Monitors
+                ],
 
             lager:debug("sending win to ~p", [Winner]),
             {next_state, connecting, State#state{connect_resps=Rest
@@ -526,14 +529,10 @@ pick_winner(CRs, 'rr', AgentQ) ->
     {{value, AgentId}, AgentQ1} = queue:out(AgentQ),
 
     case split_agents(AgentId, CRs) of
-        {[Resp|SameAgents], OtherAgents} ->
-            {Resp, SameAgents, OtherAgents, queue:in(AgentId, AgentQ1)};
-        {[], Others} ->
-            case pick_winner(Others, 'rr', AgentQ1) of
-                {Resp, Same, Other, AgentQ2} ->
-                    {Resp, Same, Other, queue:in(AgentId, AgentQ2)};
-                undefined -> undefined
-            end
+        {[Winner|SameAgents], OtherAgents} ->
+            {Winner, SameAgents, OtherAgents, queue:in(AgentId, AgentQ1)};
+        {[], _} ->
+            pick_winner(CRs, 'rr', queue:in(AgentId, AgentQ1))
     end;
 pick_winner(CRs, 'mi', _) ->
     [MostIdle | Rest] = lists:usort(fun sort_agent/2, CRs),
