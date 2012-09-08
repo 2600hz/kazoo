@@ -45,6 +45,7 @@
         ]).
 -export([microseconds_to_seconds/1
          ,elapsed_s/1, elapsed_ms/1, elapsed_us/1
+         ,now_s/1, now_ms/1, now_us/1
         ]).
 
 -export([put_callid/1]).
@@ -760,6 +761,16 @@ elapsed_ms({_,_,_}=Start) ->
     timer:now_diff(erlang:now(), Start) div 1000.
 elapsed_us({_,_,_}=Start) ->
     timer:now_diff(erlang:now(), Start).
+
+-spec now_s/1 :: (wh_now()) -> integer().
+-spec now_ms/1 :: (wh_now()) -> integer().
+-spec now_us/1 :: (wh_now()) -> integer().
+now_us({MegaSecs,Secs,MicroSecs}) ->
+    (MegaSecs*1000000 + Secs)*1000000 + MicroSecs.
+now_ms({_,_,_}=Now) ->
+    now_us(Now) div 1000.
+now_s({_,_,_}=Now) ->
+    now_us(Now) div 1000000.
 
 %% PROPER TESTING
 prop_to_integer() ->
