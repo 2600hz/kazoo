@@ -137,33 +137,36 @@ behaviour_info(_) ->
 -define(BIND_WAIT, 100).
 
 %% API functions for requesting data from the gen_listener
--spec queue_name/1 :: (pid()) -> ne_binary().
+-spec queue_name/1 :: (pid() | atom()) -> ne_binary().
 queue_name(Srv) ->
     gen_server:call(Srv, queue_name).
 
+-spec responders/1 :: (pid() | atom()) -> listener_utils:responders().
 responders(Srv) ->
     gen_server:call(Srv, responders).
 
+-spec ack/2 :: (pid() | atom(), #'basic.deliver'{}) -> 'ok'.
 ack(Srv, Delivery) ->
     gen_server:cast(Srv, {ack, Delivery}).
 
+-spec nack/2 :: (pid() | atom(), #'basic.deliver'{}) -> 'ok'.
 nack(Srv, Delivery) ->
     gen_server:cast(Srv, {nack, Delivery}).
 
 %% API functions that mirror gen_server:call,cast,reply
--spec call/2 :: (pid(), term()) -> term().
+-spec call/2 :: (pid() | atom(), term()) -> term().
 call(Name, Request) ->
     gen_server:call(Name, Request).
 
--spec call/3 :: (pid(), term(), 'infinity' | non_neg_integer()) -> term().
+-spec call/3 :: (pid() | atom(), term(), 'infinity' | non_neg_integer()) -> term().
 call(Name, Request, Timeout) ->
     gen_server:call(Name, Request, Timeout).
 
--spec cast/2 :: (pid(), term()) -> 'ok'.
+-spec cast/2 :: (pid() | atom(), term()) -> 'ok'.
 cast(Name, Request) ->
     gen_server:cast(Name, Request).
 
--spec delayed_cast/3 :: (pid(), term(), pos_integer()) -> 'ok'.
+-spec delayed_cast/3 :: (pid() | atom(), term(), pos_integer()) -> 'ok'.
 delayed_cast(Name, Request, Wait) when is_integer(Wait), Wait > 0 ->
     spawn(fun() ->
                   timer:sleep(Wait),
@@ -187,14 +190,14 @@ start_link(Name, Module, Params, InitArgs) ->
 stop(Srv) when is_pid(Srv) ->
     gen_server:cast(Srv, stop).
 
--spec add_responder/3 :: (pid(), responder_callback_mod(), responder_callback_mapping() | responder_callback_mappings()) -> 'ok'.
+-spec add_responder/3 :: (pid() | atom(), responder_callback_mod(), responder_callback_mapping() | responder_callback_mappings()) -> 'ok'.
 add_responder(Srv, Responder, Key) when not is_list(Key) ->
     add_responder(Srv, Responder, [Key]);
 add_responder(Srv, Responder, [{_,_}|_] = Keys) ->
     gen_server:cast(Srv, {add_responder, Responder, Keys}).
 
--spec rm_responder/2 :: (pid(), responder_callback_mod()) -> 'ok'.
--spec rm_responder/3 :: (pid(), responder_callback_mod(), responder_callback_mappings()) -> 'ok'.
+-spec rm_responder/2 :: (pid() | atom(), responder_callback_mod()) -> 'ok'.
+-spec rm_responder/3 :: (pid() | atom(), responder_callback_mod(), responder_callback_mappings()) -> 'ok'.
 rm_responder(Srv, Responder) ->
     rm_responder(Srv, Responder, []).  %% empty list removes all
 rm_responder(Srv, Responder, {_,_}=Key) ->
@@ -202,8 +205,8 @@ rm_responder(Srv, Responder, {_,_}=Key) ->
 rm_responder(Srv, Responder, Keys) ->
     gen_server:cast(Srv, {rm_responder, Responder, Keys}).
 
--spec add_binding/2 :: (pid(), binding() | ne_binary() | atom()) -> 'ok'.
--spec add_binding/3 :: (pid(), ne_binary() | atom(), wh_proplist()) -> 'ok'.
+-spec add_binding/2 :: (pid() | atom(), binding() | ne_binary() | atom()) -> 'ok'.
+-spec add_binding/3 :: (pid() | atom(), ne_binary() | atom(), wh_proplist()) -> 'ok'.
 add_binding(Srv, {Binding, Props}) ->
     gen_server:cast(Srv, {add_binding, Binding, Props});
 add_binding(Srv, Binding) when is_binary(Binding) orelse is_atom(Binding) ->
@@ -213,23 +216,24 @@ add_binding(Srv, Binding, Props) when is_binary(Binding) orelse is_atom(Binding)
     gen_server:cast(Srv, {add_binding, wh_util:to_binary(Binding), Props}).
 
 %% It is expected that responders have been set up already, prior to binding the new queue
--spec add_queue/4 :: (pid(), binary(), proplist(), binding() | bindings()) -> {'ok', ne_binary()} |
-                                                                              {'error', term()}.
+-spec add_queue/4 :: (pid() | atom(), binary(), proplist(), binding() | bindings()) ->
+                             {'ok', ne_binary()} |
+                             {'error', term()}.
 add_queue(Srv, QueueName, QueueProps, {_Type, _Props}=Binding) ->
     add_queue(Srv, QueueName, QueueProps, [Binding]);
 add_queue(Srv, QueueName, QueueProps, [{_,_}|_]=Bindings) ->
     gen_server:call(Srv, {add_queue, QueueName, QueueProps, Bindings}).
 
--spec rm_queue/2 :: (pid(), ne_binary()) -> 'ok'.
+-spec rm_queue/2 :: (pid() | atom(), ne_binary()) -> 'ok'.
 rm_queue(Srv, ?NE_BINARY = QueueName) ->
     gen_server:cast(Srv, {rm_queue, QueueName}).
 
--spec other_queues/1 :: (pid()) -> [ne_binary(),...] | [].
+-spec other_queues/1 :: (pid() | atom()) -> [ne_binary(),...] | [].
 other_queues(Srv) ->
     gen_server:call(Srv, other_queues).
 
--spec rm_binding/2 :: (pid(), binding()) -> 'ok'.
--spec rm_binding/3 :: (pid(), ne_binary() | atom(), wh_proplist()) -> 'ok'.
+-spec rm_binding/2 :: (pid() | atom(), binding()) -> 'ok'.
+-spec rm_binding/3 :: (pid() | atom(), ne_binary() | atom(), wh_proplist()) -> 'ok'.
 rm_binding(Srv, {Binding, Props}) ->
     rm_binding(Srv, Binding, Props).
 rm_binding(Srv, Binding, Props) ->
@@ -243,16 +247,13 @@ init([Module, Params, InitArgs]) ->
     process_flag(trap_exit, true),
     put(callid, ?LOG_SYSTEM_ID),
     lager:debug("starting new gen_listener proc: ~s", [wh_util:to_binary(Module)]),
-    {ModState, TimeoutRef} = case erlang:function_exported(Module, init, 1) andalso Module:init(InitArgs) of
-                                 {ok, MS} ->
-                                     {MS, undefined};
-                                 {ok, MS, hibernate} ->
-                                     {MS, undefined};
-                                 {ok, MS, Timeout} ->
-                                     {MS, start_timer(Timeout)};
-                                 Err ->
-                                     throw(Err)
-                             end,
+    {ModState, TimeoutRef} =
+        case erlang:function_exported(Module, init, 1) andalso Module:init(InitArgs) of
+            {ok, MS} -> {MS, undefined};
+            {ok, MS, hibernate} -> {MS, undefined};
+            {ok, MS, Timeout} -> {MS, start_timer(Timeout)};
+            Err -> throw(Err)
+        end,
 
     Responders = props:get_value(responders, Params, []),
     Bindings = props:get_value(bindings, Params, []),
