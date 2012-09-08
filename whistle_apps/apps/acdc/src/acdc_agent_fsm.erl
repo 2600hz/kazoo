@@ -63,6 +63,7 @@
          ,wrapup_ref :: reference()
          ,sync_ref :: reference()
          ,member_call_id :: ne_binary()
+         ,caller_exit_key = <<"#">> :: ne_binary()
          ,agent_call_id :: ne_binary()
          ,next_status :: ne_binary()
          }).
@@ -123,6 +124,8 @@ call_event(FSM, <<"call_event">>, <<"LEG_DESTROYED">>, JObj) ->
     gen_fsm:send_event(FSM, {leg_destroyed, callid(JObj)});
 call_event(FSM, <<"call_event">>, <<"CHANNEL_ANSWER">>, JObj) ->
     gen_fsm:send_event(FSM, {channel_answered, callid(JObj)});
+call_event(FSM, <<"call_event">>, <<"DTMF">>, EvtJObj) ->
+    gen_fsm:send_event(FSM, {dtmf_pressed, wh_json:get_value(<<"DTMF-Digit">>, EvtJObj)});
 call_event(FSM, <<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, JObj) ->
     maybe_send_execute_complete(FSM, wh_json:get_value(<<"Application-Name">>, JObj), JObj);
 call_event(_, _, _, _) -> ok.
@@ -214,6 +217,8 @@ init([AcctId, AgentId, AgentProc]) ->
 
     SyncRef = start_sync_timer(),
     gen_fsm:send_event(self(), send_sync_event),
+
+    acdc_stats:agent_active(AcctId, AgentId),
     
     {ok, sync, #state{acct_id=AcctId
                       ,agent_id=AgentId
@@ -301,9 +306,11 @@ ready({member_connect_win, JObj}, #state{agent_proc=Srv}=State) ->
     acdc_agent:bridge_to_member(Srv, JObj),
 
     WrapupTimer = wh_json:get_integer_value(<<"Wrapup-Timeout">>, JObj),
+    CallerExitKey = wh_json:get_value(<<"Caller-Exit-Key">>, JObj, <<"#">>),
 
     {next_state, ringing, State#state{wrapup_timeout=WrapupTimer
                                       ,member_call_id=CallId
+                                      ,caller_exit_key=CallerExitKey
                                      }};
 ready({member_connect_monitor, JObj}, #state{agent_proc=Srv}=State) ->
     CallId = wh_json:get_value([<<"Call-ID">>], JObj),
@@ -354,7 +361,7 @@ ringing({originate_ready, JObj}, #state{agent_proc=Srv}=State) ->
 ringing({originate_failed, JObj}, #state{agent_proc=Srv}=State) ->
     lager:debug("failed to prepare originate to the agent: ~p", [JObj]),
     acdc_agent:member_connect_retry(Srv, JObj),
-    {next_state, ready, State};
+    {next_state, ready, clear_call(State)};
 
 ringing({channel_bridged, CallId}, #state{agent_proc=Srv
                                          ,member_call_id=CallId
@@ -365,7 +372,7 @@ ringing({channel_bridged, CallId}, #state{agent_proc=Srv
 ringing({channel_unbridged, CallId}, #state{agent_proc=Srv}=State) ->
     lager:debug("agent has unbridged from member: ~p", [CallId]),
     acdc_agent:member_connect_retry(Srv, CallId),
-    {next_state, answered, State};
+    {next_state, ready, State};
 ringing({channel_hungup, CallId}, #state{agent_proc=Srv
                                          ,agent_call_id=CallId
                                         }=State) ->
@@ -374,8 +381,8 @@ ringing({channel_hungup, CallId}, #state{agent_proc=Srv
     acdc_agent:channel_hungup(Srv, CallId),
     acdc_agent:member_connect_retry(Srv),
 
-    {next_state, ready, State#state{wrapup_timeout=undefined}};
-
+    {next_state, ready, clear_call(State)};
+    
 ringing({channel_hungup, CallId}
         ,#state{agent_proc=Srv
                 ,member_call_id=CallId
@@ -384,7 +391,15 @@ ringing({channel_hungup, CallId}
        ) ->
     lager:debug("member channel has gone down, stop agent call"),
     acdc_agent:channel_hungup(Srv, AgentCallId),
-    {next_state, ready, State#state{wrapup_timeout=undefined}};
+    {next_state, ready, clear_call(State)};
+
+ringing({dtmf_pressed, DTMF}, #state{caller_exit_key=DTMF
+                                     ,agent_proc=Srv
+                                     ,agent_call_id=AgentCallId
+                                    }=State) when is_binary(DTMF) ->
+    lager:debug("caller exit key pressed: ~s", [DTMF]),
+    acdc_agent:channel_hungup(Srv, AgentCallId),
+    {next_state, ready, clear_call(State)};
 
 ringing({channel_answered, ACallId}, #state{agent_call_id=ACallId
                                             ,agent_proc=Srv
@@ -489,7 +504,7 @@ wrapup({member_connect_monitor, _JObj}, State) ->
 
 wrapup({timeout, Ref, wrapup_expired}, #state{wrapup_ref=Ref}=State) ->
     lager:debug("wrapup timer expired, ready for action!"),
-    {next_state, ready, State#state{wrapup_timeout=undefined, wrapup_ref=undefined}};
+    {next_state, ready, clear_call(State)};
 
 wrapup({sync_req, JObj}, #state{agent_proc=Srv
                                 ,wrapup_ref=Ref
@@ -510,7 +525,7 @@ wrapup(_Evt, State) ->
 %%--------------------------------------------------------------------
 paused({timeout, Ref, ?PAUSE_MESSAGE}, #state{sync_ref=Ref}=State) when is_reference(Ref) ->
     lager:debug("pause timer expired, putting agent back into action"),
-    {next_state, ready, State#state{sync_ref=undefined}};
+    {next_state, ready, clear_call(State#state{sync_ref=undefined})};
 paused({resume}, #state{acct_id=AcctId
                         ,agent_id=AgentId
                         ,agent_proc=Srv
@@ -522,7 +537,7 @@ paused({resume}, #state{acct_id=AcctId
     _ = update_agent_status_to_resume(AcctId, AgentId),
     acdc_agent:send_status_resume(Srv),
 
-    {next_state, ready, State};
+    {next_state, ready, clear_call(State)};
 
 paused({sync_req, JObj}, #state{agent_proc=Srv
                                 ,wrapup_ref=Ref
@@ -611,8 +626,11 @@ handle_info(_Info, StateName, State) ->
 %% @spec terminate(Reason, StateName, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, _StateName, _State) ->
-    lager:debug("acdc agent fsm terminating: ~p", [_Reason]).
+terminate(_Reason, _StateName, #state{acct_id=AcctId
+                                      ,agent_id=AgentId
+                                      }) ->
+    acdc_stats:agent_inactive(AcctId, AgentId),
+    lager:debug("acdc agent fsm terminating while in ~s: ~p", [_StateName, _Reason]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -668,3 +686,11 @@ time_left(Ref) when is_reference(Ref) ->
     time_left(erlang:read_timer(Ref));
 time_left(false) -> undefined;
 time_left(Ms) when is_integer(Ms) -> Ms div 1000.
+
+clear_call(State) ->
+    State#state{wrapup_timeout = undefined
+                ,wrapup_ref = undefined
+                ,member_call_id = undefined
+                ,agent_call_id = undefined
+                ,caller_exit_key = <<"#">>
+               }.
