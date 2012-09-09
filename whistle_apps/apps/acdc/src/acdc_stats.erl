@@ -205,7 +205,7 @@ write_to_dbs(Stats) ->
     write_to_dbs(Stats, wh_util:current_tstamp(), dict:new()).
 write_to_dbs([], TStamp, AcctDocs) ->
     % write to db
-    [write_account_doc(AcctDoc, TStamp) || AcctDoc <- dict:to_list(AcctDocs)],
+    _ = [write_account_doc(AcctDoc, TStamp) || AcctDoc <- dict:to_list(AcctDocs)],
     ok;
 write_to_dbs([Stat|Stats], TStamp, AcctDocs) ->
     lager:debug("stat: ~p", [Stat]),
