@@ -13,7 +13,10 @@
 
 -include_lib("whistle/include/wh_types.hrl"). % get the whistle types
 
--export([update_pvt_parameters/2, update_pvt_parameters/3, public_fields/1, private_fields/1]).
+-export([update_pvt_parameters/2, update_pvt_parameters/3
+         ,public_fields/1
+         ,private_fields/1
+        ]).
 -export([update_pvt_modified/1]).
 
 -define(PVT_FUNS, [fun add_pvt_vsn/3
@@ -31,11 +34,12 @@
 %% parameters on all crossbar documents
 %% @end
 %%--------------------------------------------------------------------
--spec update_pvt_parameters/2 :: (wh_json:json_object(), ne_binary()) -> wh_json:json_object().
+-spec update_pvt_parameters/2 :: (wh_json:json_object(), ne_binary()) ->
+                                         wh_json:json_object().
+-spec update_pvt_parameters/3 :: (wh_json:json_object(), ne_binary(), wh_proplist()) ->
+                                         wh_json:json_object().
 update_pvt_parameters(JObj0, DBName) ->
     update_pvt_parameters(JObj0, DBName, [{now, wh_util:current_tstamp()}]).
-
--spec update_pvt_parameters/3 :: (wh_json:json_object(), ne_binary(), wh_proplist()) -> wh_json:json_object().
 update_pvt_parameters(JObj0, DBName, Options) ->
     Opts = case props:get_value(now, Options) of
                undefined -> [{now, wh_util:current_tstamp()}];
@@ -81,7 +85,8 @@ add_pvt_modified(JObj, _, Opts) ->
 %% json proplist
 %% @end
 %%--------------------------------------------------------------------
--spec public_fields/1 :: (wh_json:json_object() | wh_json:json_objects()) -> wh_json:json_object() | wh_json:json_objects().
+-spec public_fields/1 :: (wh_json:json_object() | wh_json:json_objects()) ->
+                                 wh_json:json_object() | wh_json:json_objects().
 public_fields(JObjs) when is_list(JObjs) ->
     lists:map(fun public_fields/1, JObjs);
 public_fields(JObj) ->
@@ -106,7 +111,8 @@ is_private_key(_) -> false.
 %% json proplist
 %% @end
 %%--------------------------------------------------------------------
--spec private_fields/1 :: (wh_json:json_object() | wh_json:json_objects()) -> wh_json:json_object() | wh_json:json_objects().
+-spec private_fields/1 :: (wh_json:json_object() | wh_json:json_objects()) ->
+                                  wh_json:json_object() | wh_json:json_objects().
 private_fields(JObjs) when is_list(JObjs) ->
     lists:map(fun public_fields/1, JObjs);
 private_fields(JObj) ->
