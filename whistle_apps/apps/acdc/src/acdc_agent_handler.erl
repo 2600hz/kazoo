@@ -49,6 +49,7 @@ maybe_start_agent(AcctId, AgentId) ->
             lager:debug("agent ~s (~s) not found, starting", [AgentId, AcctId]),
             {ok, AgentJObj} = couch_mgr:open_doc(wh_util:format_account_id(AcctId, encoded), AgentId),
             _R = acdc_agents_sup:new(AgentJObj),
+            acdc_stats:agent_active(AcctId, AgentId),
             lager:debug("started agent at ~p", [_R]);
         P when is_pid(P) ->
             lager:debug("agent ~s (~s) already running: supervisor ~p", [AgentId, AcctId, P])
@@ -58,6 +59,7 @@ maybe_stop_agent(AcctId, AgentId) ->
     case acdc_agents_sup:find_agent_supervisor(AcctId, AgentId) of
         undefined -> lager:debug("agent ~s (~s) not found, nothing to do", [AgentId, AcctId]);
         P when is_pid(P) ->
+            acdc_stats:agent_inactive(AcctId, AgentId),
             acdc_agent_sup:stop(P)
     end.
 

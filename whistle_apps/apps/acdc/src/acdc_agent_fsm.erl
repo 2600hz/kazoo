@@ -395,16 +395,16 @@ ringing({channel_hungup, CallId}
                 ,acct_id=AcctId
                 ,agent_id=AgentId
                 ,member_call_queue_id=QueueId
-                ,member_call_id=CallId
+                ,member_call_id=MCallId
                }=State) ->
     lager:debug("agent channel was destroyed before we could connect: ~s", [CallId]),
 
     acdc_agent:channel_hungup(Srv, CallId),
     acdc_agent:member_connect_retry(Srv),
-    acdc_stats:call_missed(AcctId, QueueId, AgentId, CallId),
+    acdc_stats:call_missed(AcctId, QueueId, AgentId, MCallId),
 
     {next_state, ready, clear_call(State)};
-    
+
 ringing({channel_hungup, CallId}
         ,#state{agent_proc=Srv
                 ,member_call_id=CallId
@@ -472,9 +472,18 @@ answered({channel_hungup, CallId}
          ,#state{wrapup_timeout=WrapupTimeout
                  ,agent_proc=Srv
                  ,agent_call_id=CallId
+                 ,member_call_id=MCallId
+                 ,member_call_queue_id=QueueId
+                 ,member_call_start=Started
+                 ,acct_id=AcctId
+                 ,agent_id=AgentId
                 }=State
         ) ->
     lager:debug("agent call has hungup, going into a wrapup period ~p: ~s", [WrapupTimeout, CallId]),
+
+    acdc_stats:call_processed(AcctId, QueueId, AgentId
+                              ,MCallId, wh_util:elapsed_s(Started)
+                             ),
 
     acdc_agent:channel_hungup(Srv, CallId),
     Ref = start_wrapup_timer(WrapupTimeout),
@@ -485,20 +494,20 @@ answered({channel_hungup, CallId}
          ,#state{wrapup_timeout=WrapupTimeout
                  ,agent_proc=Srv
                  ,member_call_id=CallId
-                 ,member_call_start=Started
                  ,member_call_queue_id=QueueId
+                 ,member_call_start=Started
                  ,acct_id=AcctId
                  ,agent_id=AgentId
                 }=State
         ) ->
     lager:debug("member call has hungup, going into a wrapup period ~p: ~s", [WrapupTimeout, CallId]),
 
-    acdc_agent:channel_hungup(Srv, CallId),
-    Ref = start_wrapup_timer(WrapupTimeout),
-
     acdc_stats:call_processed(AcctId, QueueId, AgentId
                               ,CallId, wh_util:elapsed_s(Started)
                              ),
+
+    acdc_agent:channel_hungup(Srv, CallId),
+    Ref = start_wrapup_timer(WrapupTimeout),
 
     {next_state, wrapup, State#state{wrapup_timeout=undefined, wrapup_ref=Ref}};
 
@@ -507,13 +516,23 @@ answered({channel_hungup, CallId}, #state{agent_proc=Srv}=State) ->
     acdc_agent:channel_hungup(Srv, CallId),
     {next_state, answered, State};
 
-answered({channel_unbridged, CallId}, #state{member_call_id=CallId}=State) ->
-    lager:debug("member unbridged"),
-    {next_state, answered, State};
+%% answered({channel_unbridged, CallId}, #state{member_call_id=CallId
+%%                                              ,acct_id=AcctId
+%%                                              ,member_call_queue_id=QueueId
+%%                                              ,agent_id=AgentId
+%%                                              ,member_call_start=Started
+%%                                             }=State) ->
+%%     lager:debug("member unbridged"),
 
-answered({channel_unbridged, CallId}, #state{agent_call_id=CallId}=State) ->
-    lager:debug("agent unbridged"),
-    {next_state, answered, State};
+%%     acdc_stats:call_processed(AcctId, QueueId, AgentId
+%%                               ,CallId, wh_util:elapsed_s(Started)
+%%                              ),
+
+%%     {next_state, answered, State};
+
+%% answered({channel_unbridged, CallId}, #state{agent_call_id=CallId}=State) ->
+%%     lager:debug("agent unbridged"),
+%%     {next_state, answered, State};
 
 answered({sync_req, JObj}
          ,#state{agent_proc=Srv

@@ -68,6 +68,7 @@
          ,agent_ring_timer_ref :: reference() % how long to ring an agent before moving to the next
 
          ,member_call :: whapps_call:call()
+         ,member_call_start :: wh_now()
 
          %% Config options
          ,name :: ne_binary()
@@ -265,6 +266,7 @@ ready({member_call, CallJObj, Delivery}, #state{queue_proc=Srv
 
     {next_state, connect_req, State#state{collect_ref=start_collect_timer()
                                           ,member_call=Call
+                                          ,member_call_start=erlang:now()
                                           ,connection_timer_ref=start_connection_timer(ConnTimeout)
                                          }};
 ready({agent_resp, _Resp}, State) ->
@@ -389,9 +391,17 @@ connecting({agent_resp, _Resp}, State) ->
     lager:debug("agent resp must have just missed cutoff: ~p", [_Resp]),
     {next_state, connecting, State};
 
-connecting({accepted, AcceptJObj}, #state{queue_proc=Srv}=State) ->
+connecting({accepted, AcceptJObj}, #state{queue_proc=Srv
+                                          ,member_call_start=Start
+                                          ,member_call=Call
+                                          ,acct_id=AcctId
+                                          ,queue_id=QueueId
+                                         }=State) ->
     lager:debug("recv acceptance from agent: ~p", [AcceptJObj]),
     acdc_queue:finish_member_call(Srv, AcceptJObj),
+    acdc_stats:call_handled(AcctId, QueueId
+                            ,whapps_call:call_id(Call), wh_util:elapsed_s(Start)
+                           ),
     {next_state, ready, clear_member_call(State)};
 
 connecting({retry, RetryJObj}, #state{queue_proc=Srv, connect_resps=[]}=State) ->
@@ -620,6 +630,7 @@ clear_member_call(#state{connection_timer_ref=ConnRef
                 ,member_call=undefined
                 ,connection_timer_ref=undefined
                 ,agent_ring_timer_ref=undefined
+                ,member_call_start=undefined
                }.
 
 update_properties(QueueJObj, State) ->
