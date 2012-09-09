@@ -14,6 +14,7 @@
 -export([call_processed/5
          ,call_abandoned/4
          ,call_missed/4
+         ,call_handled/4
 
          %% Agent-specific stats
          ,agent_active/2
@@ -37,7 +38,7 @@
 -include("acdc.hrl").
 
 -type stat_name() :: 'call_processed' | 'call_abandoned' |
-                     'call_missed' |
+                     'call_missed' | 'call_handled' |
                      'agent_active' | 'agent_inactive'.
 
 -record(stat, {
@@ -88,6 +89,17 @@ call_missed(AcctId, QueueId, AgentId, CallId) ->
                                              ,agent_id=AgentId
                                              ,call_id=CallId
                                              ,name=call_missed
+                                            }
+                               }).
+
+%% Call was picked up by an agent, track how long caller was in queue
+-spec call_handled/4 :: (ne_binary(), ne_binary(), ne_binary(), integer()) -> 'ok'.
+call_handled(AcctId, QueueId, CallId, Elapsed) ->
+    gen_listener:cast(?MODULE, {store, #stat{acct_id=AcctId
+                                             ,queue_id=QueueId
+                                             ,call_id=CallId
+                                             ,elapsed=Elapsed
+                                             ,name=call_handled
                                             }
                                }).
 
@@ -191,13 +203,19 @@ flush_to_db(Table) ->
 
 write_to_dbs(Stats) ->
     write_to_dbs(Stats, wh_util:current_tstamp(), dict:new()).
-write_to_dbs([], TStamp, _AcctDocs) ->
+write_to_dbs([], TStamp, AcctDocs) ->
     % write to db
-    lager:debug("ready to write stats for the last hour ending at ~b", [TStamp]),
+    [write_account_doc(AcctDoc, TStamp) || AcctDoc <- dict:to_list(AcctDocs)],
     ok;
 write_to_dbs([Stat|Stats], TStamp, AcctDocs) ->
     lager:debug("stat: ~p", [Stat]),
     write_to_dbs(Stats, TStamp, update_stat(AcctDocs, Stat)).
+
+write_account_doc({AcctId, AcctJObj}, TStamp) ->
+    lager:debug("writing ~s: ~p", [AcctId, AcctJObj]),
+    AcctDb = wh_util:format_account_id(AcctId, encoded),
+    _Resp = couch_mgr:save_doc(AcctDb, wh_json:set_value(<<"recorded_at">>, TStamp, AcctJObj)),
+    lager:debug("write result: ~p", [_Resp]).
 
 update_stat(AcctDocs, #stat{name=agent_active
                             ,acct_id=AcctId
@@ -262,6 +280,17 @@ update_stat(AcctDocs, #stat{name=call_missed
 
     Funs = [ {fun add_call_missed/4, [AgentId, QueueId, CallId]}],
     lists:foldl(fun({F, Args}, AcctAcc) -> apply(F, [AcctAcc | Args]) end, AcctDoc, Funs);
+update_stat(AcctDocs, #stat{name=call_handled
+                            ,acct_id=AcctId
+                            ,queue_id=QueueId
+                            ,call_id=CallId
+                            ,elapsed=Elapsed
+                           }) ->
+    AcctDoc = fetch_acct_doc(AcctId, AcctDocs),
+
+    Funs = [ {fun add_call_handled/4, [QueueId, CallId, Elapsed]}],
+    lists:foldl(fun({F, Args}, AcctAcc) -> apply(F, [AcctAcc | Args]) end, AcctDoc, Funs);
+
 update_stat(AcctDocs, _Stat) ->
     lager:debug("unknown stat: ~p", [_Stat]),
     AcctDocs.
@@ -269,9 +298,16 @@ update_stat(AcctDocs, _Stat) ->
 -spec fetch_acct_doc/2 :: (ne_binary(), dict()) -> wh_json:json_object().
 fetch_acct_doc(AcctId, AcctDocs) ->
     case catch dict:fetch(AcctId, AcctDocs) of
-        {'EXIT', _} -> wh_json:new();
+        {'EXIT', _} -> new_account_doc(AcctId);
         AcctJObj -> AcctJObj
     end.
+
+-spec new_account_doc/1 :: (ne_binary()) -> wh_json:json_object().
+new_account_doc(AcctId) ->
+    wh_doc:update_pvt_parameters(wh_json:new()
+                                 ,wh_util:format_account_id(AcctId, encoded)
+                                 ,[{type, <<"acdc_stat">>}]
+                                ).
 
 -spec add_call_duration/4 :: (wh_json:json_object(), ne_binary()
                               ,ne_binary(), integer()
@@ -300,3 +336,7 @@ add_agent_call(AcctDoc, AgentId, QueueId, CallId, Elapsed) ->
 add_call_missed(AcctDoc, AgentId, QueueId, CallId) ->
     Key = [<<"agents">>, AgentId, <<"calls_missed">>, CallId],
     wh_json:set_value(Key, QueueId, AcctDoc).
+
+add_call_handled(AcctDoc, QueueId, CallId, Elapsed) ->
+    Key = [<<"queues">>, QueueId, <<"call_wait_times">>, CallId],
+    wh_json:set_value(Key, Elapsed, AcctDoc).
