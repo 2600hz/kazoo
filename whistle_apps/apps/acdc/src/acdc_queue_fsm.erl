@@ -351,16 +351,24 @@ connect_req({member_hungup, JObj}, #state{queue_proc=Srv}=State) ->
 
 connect_req({dtmf_pressed, DTMF}, #state{caller_exit_key=DTMF
                                          ,queue_proc=Srv
+                                         ,acct_id=AcctId
+                                         ,queue_id=QueueId
+                                         ,member_call=Call
                                         }=State) when is_binary(DTMF) ->
     lager:debug("member pressed the exit key (~s)", [DTMF]),
     acdc_queue:exit_member_call(Srv),
+    acdc_stats:call_abandoned(AcctId, QueueId, whapps_call:call_id(Call), ?ABANDON_EXIT),
     {next_state, ready, clear_member_call(State)};
 
 connect_req({timeout, ConnRef, ?CONNECTION_TIMEOUT_MESSAGE}, #state{queue_proc=Srv
                                                                     ,connection_timer_ref=ConnRef
+                                                                    ,acct_id=AcctId
+                                                                    ,queue_id=QueueId
+                                                                    ,member_call=Call
                                                                    }=State) ->
     lager:debug("connection timeout occurred, bounce the caller out of the queue"),
     acdc_queue:timeout_member_call(Srv),
+    acdc_stats:call_abandoned(AcctId, QueueId, whapps_call:call_id(Call), ?ABANDON_TIMEOUT),
     {next_state, ready, clear_member_call(State)};
     
 connect_req(_Event, State) ->
@@ -410,16 +418,24 @@ connecting({member_hungup, CallEvt}, #state{queue_proc=Srv}=State) ->
 
 connecting({dtmf_pressed, DTMF}, #state{caller_exit_key=DTMF
                                         ,queue_proc=Srv
+                                        ,acct_id=AcctId
+                                        ,queue_id=QueueId
+                                        ,member_call=Call
                                        }=State) when is_binary(DTMF) ->
     lager:debug("member pressed the exit key (~s)", [DTMF]),
     acdc_queue:exit_member_call(Srv),
+    acdc_stats:call_abandoned(AcctId, QueueId, whapps_call:call_id(Call), ?ABANDON_EXIT),
     {next_state, ready, clear_member_call(State)};
 
 connecting({timeout, ConnRef, ?CONNECTION_TIMEOUT_MESSAGE}, #state{queue_proc=Srv
                                                                    ,connection_timer_ref=ConnRef
+                                                                   ,acct_id=AcctId
+                                                                   ,queue_id=QueueId
+                                                                   ,member_call=Call
                                                                   }=State) ->
     lager:debug("connection timeout occurred, bounce the caller out of the queue"),
     acdc_queue:timeout_member_call(Srv),
+    acdc_stats:call_abandoned(AcctId, QueueId, whapps_call:call_id(Call), ?ABANDON_TIMEOUT),
     {next_state, ready, clear_member_call(State)};
 
 connecting(_Event, State) ->
