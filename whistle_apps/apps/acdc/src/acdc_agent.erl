@@ -311,7 +311,6 @@ handle_cast({channel_hungup, CallId}, #state{call=Call}=State) ->
         _ ->
             lager:debug("other channel ~s hungup", [CallId]),
             acdc_util:unbind_from_call_events(CallId),
-            whapps_call_command:hangup(whapps_call:set_call_id(CallId, Call)),
             {noreply, State}
     end;
 
