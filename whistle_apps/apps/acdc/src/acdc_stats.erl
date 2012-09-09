@@ -13,6 +13,7 @@
 %% Stats API
 -export([call_processed/5
          ,call_abandoned/4
+         ,call_missed/4
 
          %% Agent-specific stats
          ,agent_active/2
@@ -36,6 +37,7 @@
 -include("acdc.hrl").
 
 -type stat_name() :: 'call_processed' | 'call_abandoned' |
+                     'call_missed' |
                      'agent_active' | 'agent_inactive'.
 
 -record(stat, {
@@ -46,7 +48,6 @@
           ,call_id        :: ne_binary()
           ,call_count     :: integer()
           ,elapsed        :: integer()
-          ,is_active      :: boolean()
           ,active_since   :: wh_now()
           ,abandon_reason :: abandon_reason()
          }).
@@ -79,12 +80,22 @@ call_abandoned(AcctId, QueueId, CallId, Reason) ->
                                             }
                                }).
 
+%% Agent was rung for a call, and failed to pickup in time
+-spec call_missed/4 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+call_missed(AcctId, QueueId, AgentId, CallId) ->
+    gen_listener:cast(?MODULE, {store, #stat{acct_id=AcctId
+                                             ,queue_id=QueueId
+                                             ,agent_id=AgentId
+                                             ,call_id=CallId
+                                             ,name=call_missed
+                                            }
+                               }).
+
 %% marks an agent as active for an account
 -spec agent_active/2 :: (ne_binary(), ne_binary()) -> 'ok'.
 agent_active(AcctId, AgentId) ->
     gen_listener:cast(?MODULE, {store, #stat{acct_id=AcctId
                                              ,agent_id=AgentId
-                                             ,is_active=true
                                              ,active_since=erlang:now()
                                              ,name=agent_active
                                             }
@@ -95,8 +106,7 @@ agent_active(AcctId, AgentId) ->
 agent_inactive(AcctId, AgentId) ->
     gen_listener:cast(?MODULE, {store, #stat{acct_id=AcctId
                                              ,agent_id=AgentId
-                                             ,is_active=false
-                                             ,active_since=undefined
+                                             ,active_since=erlang:now()
                                              ,name=agent_inactive
                                             }
                                }).
@@ -180,11 +190,113 @@ flush_to_db(Table) ->
     spawn(?MODULE, write_to_dbs, [Stats]).
 
 write_to_dbs(Stats) ->
-    write_to_dbs(Stats, wh_util:current_tstamp(), []).
+    write_to_dbs(Stats, wh_util:current_tstamp(), dict:new()).
 write_to_dbs([], TStamp, _AcctDocs) ->
     % write to db
     lager:debug("ready to write stats for the last hour ending at ~b", [TStamp]),
     ok;
 write_to_dbs([Stat|Stats], TStamp, AcctDocs) ->
     lager:debug("stat: ~p", [Stat]),
-    write_to_dbs(Stats, TStamp, AcctDocs).
+    write_to_dbs(Stats, TStamp, update_stat(AcctDocs, Stat)).
+
+update_stat(AcctDocs, #stat{name=agent_active
+                            ,acct_id=AcctId
+                            ,agent_id=AgentId
+                            ,active_since=ActiveSince
+                           }) ->
+    AcctDoc = fetch_acct_doc(AcctId, AcctDocs),
+
+    ActiveKey = [<<"agents">>, AgentId, <<"active_at">>],
+    ActiveAts = wh_json:get_value(ActiveKey, AcctDoc, []),
+    ActiveAt = wh_util:now_s(ActiveSince),
+
+    dict:store(AcctId
+               ,wh_json:set_value(ActiveKey, [ActiveAt|ActiveAts], AcctDoc)
+               ,AcctDocs
+              );
+update_stat(AcctDocs, #stat{name=agent_inactive
+                            ,acct_id=AcctId
+                            ,agent_id=AgentId
+                            ,active_since=InactiveSince
+                           }) ->
+    AcctDoc = fetch_acct_doc(AcctId, AcctDocs),
+
+    InactiveKey = [<<"agents">>, AgentId, <<"inactive_at">>],
+    InactiveAts = wh_json:get_value(InactiveKey, AcctDoc, []),
+    InactiveAt = wh_util:now_s(InactiveSince),
+
+    dict:store(AcctId
+               ,wh_json:set_value(InactiveKey, [InactiveAt|InactiveAts], AcctDoc)
+               ,AcctDocs
+              );
+update_stat(AcctDocs, #stat{name=call_processed
+                            ,acct_id=AcctId
+                            ,queue_id=QueueId
+                            ,agent_id=AgentId
+                            ,call_id=CallId
+                            ,elapsed=Elapsed
+                           }) ->
+    AcctDoc = fetch_acct_doc(AcctId, AcctDocs),
+
+    Funs = [ {fun add_call_duration/4, [QueueId, CallId, Elapsed]}
+             ,{fun add_agent_call/5, [AgentId, QueueId, CallId, Elapsed]}
+           ],
+    lists:foldl(fun({F, Args}, AcctAcc) -> apply(F, [AcctAcc | Args]) end, AcctDoc, Funs);
+update_stat(AcctDocs, #stat{acct_id=AcctId
+                            ,queue_id=QueueId
+                            ,call_id=CallId
+                            ,abandon_reason=Reason
+                            ,name=call_abandoned
+                           }) ->
+    AcctDoc = fetch_acct_doc(AcctId, AcctDocs),
+
+    Funs = [ {fun add_call_abandoned/4, [QueueId, CallId, Reason]}],
+    lists:foldl(fun({F, Args}, AcctAcc) -> apply(F, [AcctAcc | Args]) end, AcctDoc, Funs);
+update_stat(AcctDocs, #stat{name=call_missed
+                            ,acct_id=AcctId
+                            ,queue_id=QueueId
+                            ,agent_id=AgentId
+                            ,call_id=CallId
+                           }) ->
+    AcctDoc = fetch_acct_doc(AcctId, AcctDocs),
+
+    Funs = [ {fun add_call_missed/4, [AgentId, QueueId, CallId]}],
+    lists:foldl(fun({F, Args}, AcctAcc) -> apply(F, [AcctAcc | Args]) end, AcctDoc, Funs);
+update_stat(AcctDocs, _Stat) ->
+    lager:debug("unknown stat: ~p", [_Stat]),
+    AcctDocs.
+
+-spec fetch_acct_doc/2 :: (ne_binary(), dict()) -> wh_json:json_object().
+fetch_acct_doc(AcctId, AcctDocs) ->
+    case catch dict:fetch(AcctId, AcctDocs) of
+        {'EXIT', _} -> wh_json:new();
+        AcctJObj -> AcctJObj
+    end.
+
+-spec add_call_duration/4 :: (wh_json:json_object(), ne_binary()
+                              ,ne_binary(), integer()
+                             ) -> wh_json:json_object().
+add_call_duration(AcctDoc, QueueId, CallId, Elapsed) ->
+    Key = [<<"queues">>, QueueId, <<"call_durations">>, CallId],
+    wh_json:set_value(Key, Elapsed, AcctDoc).
+
+-spec add_call_abandoned/4 :: (wh_json:json_object(), ne_binary()
+                               ,ne_binary(), integer()
+                              ) -> wh_json:json_object().
+add_call_abandoned(AcctDoc, QueueId, CallId, Elapsed) ->
+    Key = [<<"queues">>, QueueId, <<"calls_abandoned">>, CallId],
+    wh_json:set_value(Key, Elapsed, AcctDoc).
+
+-spec add_agent_call/5 :: (wh_json:json_object(), ne_binary()
+                           ,ne_binary(), ne_binary(), integer()
+                          ) -> wh_json:json_object().
+add_agent_call(AcctDoc, AgentId, QueueId, CallId, Elapsed) ->
+    Key = [<<"agents">>, AgentId, <<"calls">>, QueueId, CallId],
+    wh_json:set_value(Key, Elapsed, AcctDoc).
+
+-spec add_call_missed/4 :: (wh_json:json_object(), ne_binary()
+                            ,ne_binary(), ne_binary()
+                           ) -> wh_json:json_object().
+add_call_missed(AcctDoc, AgentId, QueueId, CallId) ->
+    Key = [<<"agents">>, AgentId, <<"calls_missed">>, CallId],
+    wh_json:set_value(Key, QueueId, AcctDoc).
