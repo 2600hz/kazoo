@@ -63,6 +63,8 @@
          ,wrapup_ref :: reference()
          ,sync_ref :: reference()
          ,member_call_id :: ne_binary()
+         ,member_call_queue_id :: ne_binary()
+         ,member_call_start :: wh_now()
          ,caller_exit_key = <<"#">> :: ne_binary()
          ,agent_call_id :: ne_binary()
          ,next_status :: ne_binary()
@@ -307,10 +309,13 @@ ready({member_connect_win, JObj}, #state{agent_proc=Srv}=State) ->
 
     WrapupTimer = wh_json:get_integer_value(<<"Wrapup-Timeout">>, JObj),
     CallerExitKey = wh_json:get_value(<<"Caller-Exit-Key">>, JObj, <<"#">>),
+    QueueId = wh_json:get_value(<<"Queue-ID">>, JObj),
 
     {next_state, ringing, State#state{wrapup_timeout=WrapupTimer
                                       ,member_call_id=CallId
+                                      ,member_call_start=erlang:now()
                                       ,caller_exit_key=CallerExitKey
+                                      ,member_call_queue_id=QueueId
                                      }};
 ready({member_connect_monitor, JObj}, #state{agent_proc=Srv}=State) ->
     CallId = wh_json:get_value([<<"Call-ID">>], JObj),
@@ -345,60 +350,86 @@ ready(_Evt, State) ->
 %%--------------------------------------------------------------------
 ringing({member_connect_req, _}, State) ->
     {next_state, ringing, State};
+
 ringing({member_connect_win, JObj}, #state{agent_proc=Srv}=State) ->
     lager:debug("we won, but can't process this right now"),
     acdc_agent:member_connect_retry(Srv, JObj),
     {next_state, ringing, State};
+
 ringing({member_connect_monitor, _JObj}, State) ->
     lager:debug("we're ringing, but received a connect_monitor?"),
     {next_state, ringing, State};
+
 ringing({originate_ready, JObj}, #state{agent_proc=Srv}=State) ->
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
 
     lager:debug("ready to originate to the agent: ~s", [CallId]),
     acdc_agent:originate_execute(Srv, JObj),
     {next_state, ringing, State#state{agent_call_id=CallId}};
-ringing({originate_failed, JObj}, #state{agent_proc=Srv}=State) ->
+
+ringing({originate_failed, JObj}
+        ,#state{agent_proc=Srv
+                ,acct_id=AcctId
+                ,agent_id=AgentId
+                ,member_call_queue_id=QueueId
+                ,member_call_id=CallId
+               }=State) ->
     lager:debug("failed to prepare originate to the agent: ~p", [JObj]),
     acdc_agent:member_connect_retry(Srv, JObj),
+
+    acdc_stats:call_missed(AcctId, QueueId, AgentId, CallId),
+
     {next_state, ready, clear_call(State)};
 
-ringing({channel_bridged, CallId}, #state{agent_proc=Srv
-                                         ,member_call_id=CallId
-                                         }=State) ->
+ringing({channel_bridged, CallId}
+        ,#state{agent_proc=Srv
+                ,member_call_id=CallId
+               }=State) ->
     lager:debug("agent has connected to member"),
     acdc_agent:member_connect_accepted(Srv),
     {next_state, answered, State};
-ringing({channel_unbridged, CallId}, #state{agent_proc=Srv}=State) ->
-    lager:debug("agent has unbridged from member: ~p", [CallId]),
-    acdc_agent:member_connect_retry(Srv, CallId),
-    {next_state, ready, State};
-ringing({channel_hungup, CallId}, #state{agent_proc=Srv
-                                         ,agent_call_id=CallId
-                                        }=State) ->
+
+ringing({channel_hungup, CallId}
+        ,#state{agent_proc=Srv
+                ,agent_call_id=CallId
+                ,acct_id=AcctId
+                ,agent_id=AgentId
+                ,member_call_queue_id=QueueId
+                ,member_call_id=CallId
+               }=State) ->
     lager:debug("agent channel was destroyed before we could connect: ~s", [CallId]),
 
     acdc_agent:channel_hungup(Srv, CallId),
     acdc_agent:member_connect_retry(Srv),
+    acdc_stats:call_missed(AcctId, QueueId, AgentId, CallId),
 
     {next_state, ready, clear_call(State)};
     
 ringing({channel_hungup, CallId}
         ,#state{agent_proc=Srv
                 ,member_call_id=CallId
+                ,acct_id=AcctId
+                ,member_call_queue_id=QueueId
                 ,agent_call_id=AgentCallId
                }=State
        ) ->
     lager:debug("member channel has gone down, stop agent call"),
     acdc_agent:channel_hungup(Srv, AgentCallId),
+
+    acdc_stats:call_abandoned(AcctId, QueueId, CallId, ?ABANDON_HANGUP),
+
     {next_state, ready, clear_call(State)};
 
 ringing({dtmf_pressed, DTMF}, #state{caller_exit_key=DTMF
                                      ,agent_proc=Srv
                                      ,agent_call_id=AgentCallId
+                                     ,acct_id=AcctId
+                                     ,member_call_queue_id=QueueId
+                                     ,member_call_id=CallId
                                     }=State) when is_binary(DTMF) ->
     lager:debug("caller exit key pressed: ~s", [DTMF]),
     acdc_agent:channel_hungup(Srv, AgentCallId),
+    acdc_stats:call_abandoned(AcctId, QueueId, CallId, ?ABANDON_EXIT),
     {next_state, ready, clear_call(State)};
 
 ringing({channel_answered, ACallId}, #state{agent_call_id=ACallId
@@ -454,12 +485,20 @@ answered({channel_hungup, CallId}
          ,#state{wrapup_timeout=WrapupTimeout
                  ,agent_proc=Srv
                  ,member_call_id=CallId
+                 ,member_call_start=Started
+                 ,member_call_queue_id=QueueId
+                 ,acct_id=AcctId
+                 ,agent_id=AgentId
                 }=State
         ) ->
     lager:debug("member call has hungup, going into a wrapup period ~p: ~s", [WrapupTimeout, CallId]),
 
     acdc_agent:channel_hungup(Srv, CallId),
     Ref = start_wrapup_timer(WrapupTimeout),
+
+    acdc_stats:call_processed(AcctId, QueueId, AgentId
+                              ,CallId, wh_util:elapsed_s(Started)
+                             ),
 
     {next_state, wrapup, State#state{wrapup_timeout=undefined, wrapup_ref=Ref}};
 
@@ -476,9 +515,10 @@ answered({channel_unbridged, CallId}, #state{agent_call_id=CallId}=State) ->
     lager:debug("agent unbridged"),
     {next_state, answered, State};
 
-answered({sync_req, JObj}, #state{agent_proc=Srv
-                                  ,member_call_id=CallId
-                                 }=State) ->
+answered({sync_req, JObj}
+         ,#state{agent_proc=Srv
+                 ,member_call_id=CallId
+                }=State) ->
     lager:debug("recv sync_req from ~s", [wh_json:get_value(<<"Process-ID">>, JObj)]),
     acdc_agent:send_sync_resp(Srv, answered, JObj, [{<<"Call-ID">>, CallId}]),
     {next_state, answered, State};
@@ -691,6 +731,8 @@ clear_call(State) ->
     State#state{wrapup_timeout = undefined
                 ,wrapup_ref = undefined
                 ,member_call_id = undefined
+                ,member_call_start = undefined
+                ,member_call_queue_id = undefined
                 ,agent_call_id = undefined
                 ,caller_exit_key = <<"#">>
                }.
