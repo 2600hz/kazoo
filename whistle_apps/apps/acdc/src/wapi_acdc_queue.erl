@@ -21,6 +21,8 @@
          ,member_hungup/1, member_hungup_v/1
          ,sync_req/1, sync_req_v/1
          ,sync_resp/1, sync_resp_v/1
+         ,stats_req/1, stats_req_v/1
+         ,stats_resp/1, stats_resp_v/1
         ]).
 
 -export([bind_q/2
@@ -39,6 +41,8 @@
          ,publish_member_hungup/2, publish_member_hungup/3
          ,publish_sync_req/1, publish_sync_req/2
          ,publish_sync_resp/2, publish_sync_resp/3
+         ,publish_stats_req/1, publish_stats_req/2
+         ,publish_stats_resp/2, publish_stats_resp/3
         ]).
 
 -export([queue_size/2, shared_queue_name/2]).
@@ -366,8 +370,8 @@ member_hungup_v(JObj) ->
 %%------------------------------------------------------------------------------
 -define(SYNC_REQ_KEY, "acdc.queue.sync_req.").
 -spec sync_req_routing_key/1 :: (wh_json:json_object() |
-                                           wh_proplist()
-                                          ) -> ne_binary().
+                                 wh_proplist()
+                                ) -> ne_binary().
 -spec sync_req_routing_key/2 :: (ne_binary(), ne_binary()) -> ne_binary().
 sync_req_routing_key(Props) when is_list(Props) ->
     Id = props:get_value(<<"Queue-ID">>, Props, <<"*">>),
@@ -389,8 +393,8 @@ sync_req_routing_key(AcctId, QID) ->
 -define(SYNC_REQ_TYPES, []).
 
 -spec sync_req/1 :: (api_terms()) ->
-                                 {'ok', iolist()} |
-                                 {'error', string()}.
+                            {'ok', iolist()} |
+                            {'error', string()}.
 sync_req(Props) when is_list(Props) ->
     case sync_req_v(Props) of
         true -> wh_api:build_message(Props, ?SYNC_REQ_HEADERS, ?OPTIONAL_SYNC_REQ_HEADERS);
@@ -415,8 +419,8 @@ sync_req_v(JObj) ->
 -define(SYNC_RESP_TYPES, []).
 
 -spec sync_resp/1 :: (api_terms()) ->
-                                 {'ok', iolist()} |
-                                 {'error', string()}.
+                             {'ok', iolist()} |
+                             {'error', string()}.
 sync_resp(Props) when is_list(Props) ->
     case sync_resp_v(Props) of
         true -> wh_api:build_message(Props, ?SYNC_RESP_HEADERS, ?OPTIONAL_SYNC_RESP_HEADERS);
@@ -431,6 +435,93 @@ sync_resp_v(Prop) when is_list(Prop) ->
 sync_resp_v(JObj) ->
     sync_resp_v(wh_json:to_proplist(JObj)).
 
+%%------------------------------------------------------------------------------
+%% Stats Req/Resp
+%%   Query for the current stats
+%%------------------------------------------------------------------------------
+-define(STATS_REQ_KEY, "acdc.queue.stats_req.").
+-spec stats_req_routing_key/1 :: (wh_json:json_object() |
+                                  wh_proplist() |
+                                  ne_binary()
+                                 ) -> ne_binary().
+-spec stats_req_routing_key/2 :: (ne_binary(), ne_binary()) -> ne_binary().
+stats_req_routing_key(Props) when is_list(Props) ->
+    Id = props:get_value(<<"Queue-ID">>, Props, <<"*">>),
+    AcctId = props:get_value(<<"Account-ID">>, Props),
+    stats_req_routing_key(AcctId, Id);
+stats_req_routing_key(AcctId) when is_binary(AcctId) ->
+    <<?STATS_REQ_KEY, AcctId/binary>>;
+stats_req_routing_key(JObj) ->
+    Id = wh_json:get_value(<<"Queue-ID">>, JObj, <<"*">>),
+    AcctId = wh_json:get_value(<<"Account-ID">>, JObj),
+    stats_req_routing_key(AcctId, Id).
+
+stats_req_routing_key(AcctId, QID) ->
+    <<?STATS_REQ_KEY, AcctId/binary, ".", QID/binary>>.
+
+stats_publish_routing_key(Props) when is_list(Props) ->
+    AcctId = props:get_value(<<"Account-ID">>, Props),
+    case props:get_value(<<"Queue-ID">>, Props) of
+        undefined -> stats_req_routing_key(AcctId);
+        QueueId -> stats_req_routing_key(AcctId, QueueId)
+    end;
+stats_publish_routing_key(JObj) ->
+    AcctId = wh_json:get_value(<<"Account-ID">>, JObj),
+    case wh_json:get_value(<<"Queue-ID">>, JObj) of
+        undefined -> stats_req_routing_key(AcctId);
+        QueueId -> stats_req_routing_key(AcctId, QueueId)
+    end.
+
+-define(STATS_REQ_HEADERS, [<<"Account-ID">>]).
+-define(OPTIONAL_STATS_REQ_HEADERS, [<<"Queue-ID">>]).
+-define(STATS_REQ_VALUES, [{<<"Event-Category">>, <<"queue">>}
+                          ,{<<"Event-Name">>, <<"stats_req">>}
+                         ]).
+-define(STATS_REQ_TYPES, []).
+
+-spec stats_req/1 :: (api_terms()) ->
+                             {'ok', iolist()} |
+                             {'error', string()}.
+stats_req(Props) when is_list(Props) ->
+    case stats_req_v(Props) of
+        true -> wh_api:build_message(Props, ?STATS_REQ_HEADERS, ?OPTIONAL_STATS_REQ_HEADERS);
+        false -> {error, "Proplist failed validation for stats_req"}
+    end;
+stats_req(JObj) ->
+    stats_req(wh_json:to_proplist(JObj)).
+
+-spec stats_req_v/1 :: (api_terms()) -> boolean().
+stats_req_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?STATS_REQ_HEADERS, ?STATS_REQ_VALUES, ?STATS_REQ_TYPES);
+stats_req_v(JObj) ->
+    stats_req_v(wh_json:to_proplist(JObj)).
+
+-define(STATS_RESP_HEADERS, [<<"Account-ID">>]).
+-define(OPTIONAL_STATS_RESP_HEADERS, [<<"Queue-ID">>
+                                          ,<<"Current-Account-Stats">>
+                                          ,<<"Current-Queue-Stats">>
+                                     ]).
+-define(STATS_RESP_VALUES, [{<<"Event-Category">>, <<"queue">>}
+                           ,{<<"Event-Name">>, <<"stats_resp">>}
+                          ]).
+-define(STATS_RESP_TYPES, []).
+
+-spec stats_resp/1 :: (api_terms()) ->
+                              {'ok', iolist()} |
+                              {'error', string()}.
+stats_resp(Props) when is_list(Props) ->
+    case stats_resp_v(Props) of
+        true -> wh_api:build_message(Props, ?STATS_RESP_HEADERS, ?OPTIONAL_STATS_RESP_HEADERS);
+        false -> {error, "Proplist failed validation for stats_resp"}
+    end;
+stats_resp(JObj) ->
+    stats_resp(wh_json:to_proplist(JObj)).
+
+-spec stats_resp_v/1 :: (api_terms()) -> boolean().
+stats_resp_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?STATS_RESP_HEADERS, ?STATS_RESP_VALUES, ?STATS_RESP_TYPES);
+stats_resp_v(JObj) ->
+    stats_resp_v(wh_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
 %% Bind/Unbind the queue as appropriate
@@ -456,6 +547,10 @@ bind_q(Q, Props) ->
 
 bind_q(Q, AcctId, QID, undefined) ->
     amqp_util:bind_q_to_whapps(Q, sync_req_routing_key(AcctId, QID)),
+
+    amqp_util:bind_q_to_whapps(Q, stats_req_routing_key(AcctId)),
+    amqp_util:bind_q_to_whapps(Q, stats_req_routing_key(AcctId, QID)),
+
     amqp_util:bind_q_to_callmgr(Q, member_call_routing_key(AcctId, QID)),
     amqp_util:bind_q_to_callmgr(Q, member_connect_req_routing_key(AcctId, QID));
 bind_q(Q, AcctId, QID, [member_call|T]) ->
@@ -466,6 +561,13 @@ bind_q(Q, AcctId, QID, [member_connect_req|T]) ->
     bind_q(Q, AcctId, QID, T);
 bind_q(Q, AcctId, QID, [sync_req|T]) ->
     amqp_util:bind_q_to_whapps(Q, sync_req_routing_key(AcctId, QID)),
+    bind_q(Q, AcctId, QID, T);
+bind_q(Q, AcctId, <<"*">> = QID, [stats_req|T]) ->
+    amqp_util:bind_q_to_whapps(Q, stats_req_routing_key(AcctId)),
+    amqp_util:bind_q_to_whapps(Q, stats_req_routing_key(AcctId, QID)),
+    bind_q(Q, AcctId, QID, T);
+bind_q(Q, AcctId, QID, [stats_req|T]) ->
+    amqp_util:bind_q_to_whapps(Q, stats_req_routing_key(AcctId, QID)),
     bind_q(Q, AcctId, QID, T);
 bind_q(Q, AcctId, QID, [_|T]) ->
     bind_q(Q, AcctId, QID, T);
@@ -481,6 +583,7 @@ unbind_q(Q, Props) ->
 
 unbind_q(Q, AcctId, QID, undefined) ->
     _ = amqp_util:unbind_q_from_whapps(Q, sync_req_routing_key(AcctId, QID)),
+    _ = amqp_util:unbind_q_from_whapps(Q, stats_req_routing_key(AcctId, QID)),
     _ = amqp_util:unbind_q_from_callmgr(Q, member_call_routing_key(AcctId, QID)),
     _ = amqp_util:unbind_q_from_callmgr(Q, member_connect_req_routing_key(AcctId, QID));
 unbind_q(Q, AcctId, QID, [member_call|T]) ->
@@ -491,6 +594,13 @@ unbind_q(Q, AcctId, QID, [member_connect_req|T]) ->
     unbind_q(Q, AcctId, QID, T);
 unbind_q(Q, AcctId, QID, [sync_req|T]) ->
     _ = amqp_util:unbind_q_from_whapps(Q, sync_req_routing_key(AcctId, QID)),
+    unbind_q(Q, AcctId, QID, T);
+unbind_q(Q, AcctId, <<"*">> = QID, [stats_req|T]) ->
+    _ = amqp_util:unbind_q_from_whapps(Q, stats_req_routing_key(AcctId)),
+    _ = amqp_util:unbind_q_from_whapps(Q, stats_req_routing_key(AcctId, QID)),
+    unbind_q(Q, AcctId, QID, T);
+unbind_q(Q, AcctId, QID, [stats_req|T]) ->
+    _ = amqp_util:unbind_q_from_whapps(Q, stats_req_routing_key(AcctId, QID)),
     unbind_q(Q, AcctId, QID, T);
 unbind_q(Q, AcctId, QID, [_|T]) ->
     unbind_q(Q, AcctId, QID, T);
@@ -594,4 +704,20 @@ publish_sync_resp(Q, JObj) ->
     publish_sync_resp(Q, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_sync_resp(Q, API, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(API, ?SYNC_RESP_VALUES, fun sync_resp/1),
+    amqp_util:targeted_publish(Q, Payload, ContentType).
+
+-spec publish_stats_req/1 :: (api_terms()) -> 'ok'.
+-spec publish_stats_req/2 :: (api_terms(), ne_binary()) -> 'ok'.
+publish_stats_req(JObj) ->
+    publish_stats_req(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_stats_req(API, ContentType) ->
+    {ok, Payload} = wh_api:prepare_api_payload(API, ?STATS_REQ_VALUES, fun stats_req/1),
+    amqp_util:whapps_publish(stats_publish_routing_key(API), Payload, ContentType).
+
+-spec publish_stats_resp/2 :: (ne_binary(), api_terms()) -> 'ok'.
+-spec publish_stats_resp/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+publish_stats_resp(Q, JObj) ->
+    publish_stats_resp(Q, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_stats_resp(Q, API, ContentType) ->
+    {ok, Payload} = wh_api:prepare_api_payload(API, ?STATS_RESP_VALUES, fun stats_resp/1),
     amqp_util:targeted_publish(Q, Payload, ContentType).
