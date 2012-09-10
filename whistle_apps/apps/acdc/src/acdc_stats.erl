@@ -201,6 +201,8 @@ flush_to_db(Table) ->
     true = ets:delete_all_objects(Table), % delete the stats from the table
     spawn(?MODULE, write_to_dbs, [Stats]).
 
+-spec write_to_dbs/1 :: ([#stat{},...] | []) -> 'ok'.
+-spec write_to_dbs/3 :: ([#stat{},...] | [], integer(), dict()) -> 'ok'.
 write_to_dbs(Stats) ->
     write_to_dbs(Stats, wh_util:current_tstamp(), dict:new()).
 write_to_dbs([], TStamp, AcctDocs) ->
@@ -211,12 +213,14 @@ write_to_dbs([Stat|Stats], TStamp, AcctDocs) ->
     lager:debug("stat: ~p", [Stat]),
     write_to_dbs(Stats, TStamp, update_stat(AcctDocs, Stat)).
 
+-spec write_account_doc/2 :: ({ne_binary(), wh_json:json_object()}, integer()) -> 'ok'.
 write_account_doc({AcctId, AcctJObj}, TStamp) ->
     lager:debug("writing ~s: ~p", [AcctId, AcctJObj]),
     AcctDb = wh_util:format_account_id(AcctId, encoded),
     _Resp = couch_mgr:save_doc(AcctDb, wh_json:set_value(<<"recorded_at">>, TStamp, AcctJObj)),
     lager:debug("write result: ~p", [_Resp]).
 
+-spec update_stat/2 :: (dict(), #stat{}) -> dict().
 update_stat(AcctDocs, #stat{name=agent_active
                             ,acct_id=AcctId
                             ,agent_id=AgentId
@@ -260,16 +264,21 @@ update_stat(AcctDocs, #stat{name=call_processed
              ,{fun add_agent_call/5, [AgentId, QueueId, CallId, Elapsed]}
            ],
     lists:foldl(fun({F, Args}, AcctAcc) -> apply(F, [AcctAcc | Args]) end, AcctDoc, Funs);
-update_stat(AcctDocs, #stat{acct_id=AcctId
+update_stat(AcctDocs, #stat{name=call_abandoned
+                            ,acct_id=AcctId
                             ,queue_id=QueueId
                             ,call_id=CallId
                             ,abandon_reason=Reason
-                            ,name=call_abandoned
                            }) ->
     AcctDoc = fetch_acct_doc(AcctId, AcctDocs),
 
     Funs = [ {fun add_call_abandoned/4, [QueueId, CallId, Reason]}],
-    lists:foldl(fun({F, Args}, AcctAcc) -> apply(F, [AcctAcc | Args]) end, AcctDoc, Funs);
+    dict:store(AcctId
+               ,lists:foldl(fun({F, Args}, AcctAcc) ->
+                                    apply(F, [AcctAcc | Args])
+                            end, AcctDoc, Funs)
+               ,AcctDocs
+              );
 update_stat(AcctDocs, #stat{name=call_missed
                             ,acct_id=AcctId
                             ,queue_id=QueueId
@@ -279,7 +288,12 @@ update_stat(AcctDocs, #stat{name=call_missed
     AcctDoc = fetch_acct_doc(AcctId, AcctDocs),
 
     Funs = [ {fun add_call_missed/4, [AgentId, QueueId, CallId]}],
-    lists:foldl(fun({F, Args}, AcctAcc) -> apply(F, [AcctAcc | Args]) end, AcctDoc, Funs);
+    dict:store(AcctId
+               ,lists:foldl(fun({F, Args}, AcctAcc) ->
+                                    apply(F, [AcctAcc | Args])
+                            end, AcctDoc, Funs)
+               ,AcctDocs
+              );
 update_stat(AcctDocs, #stat{name=call_handled
                             ,acct_id=AcctId
                             ,queue_id=QueueId
@@ -289,8 +303,12 @@ update_stat(AcctDocs, #stat{name=call_handled
     AcctDoc = fetch_acct_doc(AcctId, AcctDocs),
 
     Funs = [ {fun add_call_handled/4, [QueueId, CallId, Elapsed]}],
-    lists:foldl(fun({F, Args}, AcctAcc) -> apply(F, [AcctAcc | Args]) end, AcctDoc, Funs);
-
+    dict:store(AcctId
+               ,lists:foldl(fun({F, Args}, AcctAcc) ->
+                                    apply(F, [AcctAcc | Args])
+                            end, AcctDoc, Funs)
+               ,AcctDocs
+              );
 update_stat(AcctDocs, _Stat) ->
     lager:debug("unknown stat: ~p", [_Stat]),
     AcctDocs.
