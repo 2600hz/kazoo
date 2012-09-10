@@ -542,7 +542,7 @@ maybe_clear_flows([N|Ns], Db) ->
 
 -spec default_caller_id_number/0 :: () -> ne_binary().
 default_caller_id_number() ->
-    whapps_config(?CF_CONFIG_CAT, <<"default_caller_id_number">>, ?DEFAULT_CALLER_ID_NUMBER).
+    whapps_config:get(?CF_CONFIG_CAT, <<"default_caller_id_number">>, ?DEFAULT_CALLER_ID_NUMBER).
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
