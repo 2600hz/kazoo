@@ -16,6 +16,7 @@
 -export([start_link/0
          ,new/1
          ,workers/0
+         ,find_acct_queue_supervisors/1
          ,find_queue_supervisor/2
          ,queues_running/0
         ]).
@@ -50,6 +51,18 @@ new(JObj) ->
 -spec workers/0 :: () -> [pid(),...] | [].
 workers() ->
     [ Pid || {_, Pid, worker, [_]} <- supervisor:which_children(?MODULE), is_pid(Pid)].
+
+-spec find_acct_queue_supervisors/1 :: (ne_binary()) -> [pid(),...] | [].
+find_acct_queue_supervisors(AcctId) ->
+    [Super || Super <- workers(), is_queue_in_acct(Super, AcctId)].
+
+-spec is_queue_in_acct/2 :: (pid(), ne_binary()) -> boolean().
+is_queue_in_acct(Super, AcctId) ->
+    case catch acdc_queue:config(acdc_queue_sup:queue(Super)) of
+        {'EXIT', _} -> false;
+        {AcctId, _} -> true;
+        _ -> false
+    end.
 
 -spec find_queue_supervisor/2 :: (ne_binary(), ne_binary()) -> pid() | 'undefined'.
 -spec find_queue_supervisor/3 :: (ne_binary(), ne_binary(), [pid(),...] | []) -> pid() | 'undefined'.
