@@ -99,14 +99,13 @@ validate(#cb_context{req_verb = <<"get">>}=Context) ->
     summary(Context).
 
 validate(#cb_context{req_verb = <<"get">>}=Context, ?STATS_PATH_TOKEN) ->
-    %% read all agent stats
-    Context;
+    fetch_all_agent_stats(Context);
 validate(#cb_context{req_verb = <<"get">>}=Context, Id) ->
     read(Id, Context).
 
-validate(#cb_context{req_verb = <<"get">>}=Context, _Id, ?STATS_PATH_TOKEN) ->
+validate(#cb_context{req_verb = <<"get">>}=Context, Id, ?STATS_PATH_TOKEN) ->
     %% read agent stats with id=Id
-    Context.
+    fetch_agent_stats(Id, Context).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -117,6 +116,19 @@ validate(#cb_context{req_verb = <<"get">>}=Context, _Id, ?STATS_PATH_TOKEN) ->
 -spec read/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
 read(Id, Context) ->
     crossbar_doc:load(Id, Context).
+
+fetch_all_agent_stats(Context) ->
+    crossbar_doc:load_view(<<"acdc_stats/stats_per_agent">>, [], Context, fun normalize_agent_results/2).
+
+fetch_agent_stats(Id, Context) ->
+    crossbar_doc:load_view(<<"acdc_stats/stats_per_agent">>
+                               ,[{startkey, [Id, wh_json:new()]}
+                                 ,{endkey, [Id, 0]}
+                                 ,descending
+                                ]
+                           ,Context
+                           ,fun normalize_agent_results/2
+                          ).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -141,5 +153,23 @@ normalize_view_results(JObj, Acc) ->
                        ,wh_json:get_value(<<"id">>, JObj)
                        , wh_json:get_value(<<"value">>, JObj)
                       )
+     | Acc
+    ].
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Normalizes the resuts of a view
+%% @end
+%%--------------------------------------------------------------------
+-spec normalize_agent_results/2 :: (wh_json:json_object(), wh_json:json_objects()) -> wh_json:json_objects().
+normalize_agent_results(JObj, Acc) ->
+    [begin
+         [AID, _] = wh_json:get_value(<<"key">>, JObj),
+         wh_json:set_value(<<"agent_id">>
+                           ,AID
+                           ,wh_json:get_value(<<"value">>, JObj)
+                          )
+     end
      | Acc
     ].

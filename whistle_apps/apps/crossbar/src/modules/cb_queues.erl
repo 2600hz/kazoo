@@ -124,8 +124,7 @@ validate(#cb_context{req_verb = <<"put">>}=Context) ->
     create(Context).
 
 validate(#cb_context{req_verb = <<"get">>}=Context, ?STATS_PATH_TOKEN) ->
-    %% TODO: fetch stats across all queues in this account
-    Context;
+    fetch_all_queue_stats(Context);
 validate(#cb_context{req_verb = <<"get">>}=Context, Id) ->
     read(Id, Context);
 validate(#cb_context{req_verb = <<"post">>}=Context, Id) ->
@@ -134,16 +133,12 @@ validate(#cb_context{req_verb = <<"delete">>}=Context, Id) ->
     read(Id, Context).
 
 validate(#cb_context{req_verb = <<"get">>}=Context, Id, ?STATS_PATH_TOKEN) ->
-    %% TODO: fetch stats for this queue
-    Context;
+    fetch_queue_stats(Id, Context);
 validate(#cb_context{req_verb = <<"get">>}=Context, Id, ?ROSTER_PATH_TOKEN) ->
-    %% TODO: get the list of agents in this queue
     load_agent_roster(Id, Context);
 validate(#cb_context{req_verb = <<"post">>}=Context, Id, ?ROSTER_PATH_TOKEN) ->
-    %% TODO: add queue_id to agent docs
     add_queue_to_agents(Id, Context);
 validate(#cb_context{req_verb = <<"delete">>}=Context, Id, ?ROSTER_PATH_TOKEN) ->
-    %% TODO: remove queue_id from agent docs
     rm_queue_from_agents(Id, Context).
 
 %%--------------------------------------------------------------------
@@ -228,7 +223,7 @@ load_queue_agents(Id, #cb_context{resp_data=Queue}=Context) ->
     end.
 
 load_agent_roster(Id, Context) ->
-    crossbar_doc:load_view(?CB_AGENTS_LIST, [{key, Id}, {r,3}]
+    crossbar_doc:load_view(?CB_AGENTS_LIST, [{key, Id}]
                            ,Context
                            ,fun normalize_agents_results/2
                           ).
@@ -325,6 +320,20 @@ update(Id, #cb_context{req_data=Data}=Context) ->
             crossbar_doc:load_merge(Id, JObj1, Context)
     end.
 
+fetch_all_queue_stats(Context) ->
+    crossbar_doc:load_view(<<"acdc_stats/stats_per_queue">>, [], Context, fun normalize_queue_results/2).
+
+fetch_queue_stats(Id, Context) ->
+    lager:debug("fetching queue stats for ~s", [Id]),
+    crossbar_doc:load_view(<<"acdc_stats/stats_per_queue">>
+                               ,[{startkey, [Id, wh_json:new()]}
+                                 ,{endkey, [Id, 0]}
+                                 ,descending
+                                ]
+                           ,Context
+                           ,fun normalize_queue_results/2
+                          ).
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -346,7 +355,14 @@ summary(Context) ->
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
 
--spec normalize_agents_results/2 :: (wh_json:json_object(), wh_json:json_objects()) -> wh_json:json_objects().
+-spec normalize_queue_results/2 :: (wh_json:json_object(), wh_json:json_objects()) -> wh_json:json_objects().
+normalize_queue_results(JObj, Acc) ->
+    [begin
+         [AID, _] = wh_json:get_value(<<"key">>, JObj),
+         wh_json:set_value(<<"queue_id">>, AID, wh_json:get_value(<<"value">>, JObj))
+     end
+     | Acc].
+
 normalize_agents_results(JObj, Acc) ->
     [wh_json:get_value(<<"id">>, JObj) | Acc].
 
