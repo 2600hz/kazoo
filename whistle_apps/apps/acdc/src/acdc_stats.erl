@@ -35,6 +35,8 @@
 %% Internal functions
 -export([write_to_dbs/1]).
 
+-compile([export_all]).
+
 -include("acdc.hrl").
 
 -type stat_name() :: 'call_processed' | 'call_abandoned' |
@@ -263,7 +265,12 @@ update_stat(AcctDocs, #stat{name=call_processed
     Funs = [ {fun add_call_duration/4, [QueueId, CallId, Elapsed]}
              ,{fun add_agent_call/5, [AgentId, QueueId, CallId, Elapsed]}
            ],
-    lists:foldl(fun({F, Args}, AcctAcc) -> apply(F, [AcctAcc | Args]) end, AcctDoc, Funs);
+    dict:store(AcctId
+               ,lists:foldl(fun({F, Args}, AcctAcc) ->
+                                    apply(F, [AcctAcc | Args])
+                            end, AcctDoc, Funs)
+               ,AcctDocs
+              );
 update_stat(AcctDocs, #stat{name=call_abandoned
                             ,acct_id=AcctId
                             ,queue_id=QueueId
@@ -345,7 +352,7 @@ add_call_abandoned(AcctDoc, QueueId, CallId, Elapsed) ->
                            ,ne_binary(), ne_binary(), integer()
                           ) -> wh_json:json_object().
 add_agent_call(AcctDoc, AgentId, QueueId, CallId, Elapsed) ->
-    Key = [<<"agents">>, AgentId, <<"calls">>, QueueId, CallId],
+    Key = [<<"agents">>, AgentId, <<"calls_handled">>, QueueId, CallId],
     wh_json:set_value(Key, Elapsed, AcctDoc).
 
 -spec add_call_missed/4 :: (wh_json:json_object(), ne_binary()
