@@ -22,6 +22,7 @@
 -export([get_sip_realm/2, get_sip_realm/3]).
 -export([handle_doc_change/2]).
 -export([get_operator_callflow/1]).
+-export([default_caller_id_number/0]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -539,6 +540,9 @@ maybe_clear_flows([N|Ns], Db) ->
     wh_cache:erase_local(?CALLFLOW_CACHE, {cf_flow, N, Db}),
     maybe_clear_flows(Ns, Db).
 
+-spec default_caller_id_number/0 :: () -> ne_binary().
+default_caller_id_number() ->
+    whapps_config(?CF_CONFIG_CAT, <<"default_caller_id_number">>, ?DEFAULT_CALLER_ID_NUMBER).
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").

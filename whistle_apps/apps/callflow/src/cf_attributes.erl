@@ -164,7 +164,7 @@ ensure_valid_default_caller_id(undefined, PNJObj) ->
     first_caller_id_number(PNJObj, <<"in_service">>);
 ensure_valid_default_caller_id(DefaultAcctCID, PNJObj) ->
     case has_caller_id(DefaultAcctCID, PNJObj) of
-        false -> ?DEFAULT_CALLER_ID_NUMBER;
+        false -> cf_util:default_caller_id_number();
         true ->
             lager:debug("using default account CID ~s", [DefaultAcctCID]),
             DefaultAcctCID
@@ -179,7 +179,7 @@ first_caller_id_number(PNJObj, NumState) ->
          ] of
         [] ->
             lager:debug("failed to find any in-service numbers, using default"),
-            ?DEFAULT_CALLER_ID_NUMBER;
+            cf_util:default_caller_id_number();
         [ActiveNum|_] ->
             lager:debug("setting to first number in service: ~s", [ActiveNum]),
             ActiveNum
