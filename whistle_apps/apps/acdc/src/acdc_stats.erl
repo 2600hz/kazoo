@@ -338,15 +338,15 @@ new_account_doc(AcctId) ->
                               ,ne_binary(), integer()
                              ) -> wh_json:json_object().
 add_call_duration(AcctDoc, QueueId, CallId, Elapsed) ->
-    Key = [<<"queues">>, QueueId, <<"call_durations">>, CallId],
+    Key = [<<"queues">>, QueueId, CallId, <<"duration">>],
     wh_json:set_value(Key, Elapsed, AcctDoc).
 
 -spec add_call_abandoned/4 :: (wh_json:json_object(), ne_binary()
-                               ,ne_binary(), integer()
+                               ,ne_binary(), abandon_reason()
                               ) -> wh_json:json_object().
-add_call_abandoned(AcctDoc, QueueId, CallId, Elapsed) ->
-    Key = [<<"queues">>, QueueId, <<"calls_abandoned">>, CallId],
-    wh_json:set_value(Key, Elapsed, AcctDoc).
+add_call_abandoned(AcctDoc, QueueId, CallId, Reason) ->
+    Key = [<<"queues">>, QueueId, CallId, <<"abandoned">>],
+    wh_json:set_value(Key, Reason, AcctDoc).
 
 -spec add_agent_call/5 :: (wh_json:json_object(), ne_binary()
                            ,ne_binary(), ne_binary(), integer()
@@ -363,5 +363,5 @@ add_call_missed(AcctDoc, AgentId, QueueId, CallId) ->
     wh_json:set_value(Key, QueueId, AcctDoc).
 
 add_call_handled(AcctDoc, QueueId, CallId, Elapsed) ->
-    Key = [<<"queues">>, QueueId, <<"call_wait_times">>, CallId],
+    Key = [<<"queues">>, QueueId, CallId, <<"wait_time">>],
     wh_json:set_value(Key, Elapsed, AcctDoc).
