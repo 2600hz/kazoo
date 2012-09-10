@@ -42,7 +42,7 @@ update_pvt_parameters(JObj0, DBName) ->
     update_pvt_parameters(JObj0, DBName, [{now, wh_util:current_tstamp()}]).
 update_pvt_parameters(JObj0, DBName, Options) ->
     Opts = case props:get_value(now, Options) of
-               undefined -> [{now, wh_util:current_tstamp()}];
+               undefined -> [{now, wh_util:current_tstamp()} | Options];
                _ -> Options
            end,
     lists:foldl(fun(Fun, JObj) -> Fun(JObj, DBName, Opts) end, JObj0, ?PVT_FUNS).
