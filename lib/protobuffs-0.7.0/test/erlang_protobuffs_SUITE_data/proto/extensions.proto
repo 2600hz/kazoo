@@ -1,0 +1,7 @@
+message Extendable {
+	extensions 100 to 200;
+}
+
+message MaxTendable {
+	extensions 100 to max;
+}

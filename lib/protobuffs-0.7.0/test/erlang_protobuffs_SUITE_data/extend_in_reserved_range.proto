@@ -1,0 +1,5 @@
+import "extensions.proto";
+
+extend MaxTendable {
+  optional int32 bar = 19950;
+} 

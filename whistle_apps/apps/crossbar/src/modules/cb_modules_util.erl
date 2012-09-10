@@ -12,7 +12,7 @@
 -export([update_mwi/2]).
 -export([get_devices_owned_by/2]).
 
--include_lib("crossbar/include/crossbar.hrl").
+-include("include/crossbar.hrl").
 
 -spec pass_hashes/2 :: (ne_binary(), ne_binary()) -> {ne_binary(), ne_binary()}.
 pass_hashes(Username, Password) ->

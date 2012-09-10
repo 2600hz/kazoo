@@ -1,38 +1,38 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP, INC
+%%% @copyright (C) 2012, VoIP INC
 %%% @doc
 %%%
 %%% @end
 %%% @contributors
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(acdc_sup).
 
 -behaviour(supervisor).
 
--include_lib("acdc/src/acdc.hrl").
+-include("acdc.hrl").
 
+%% API
 -export([start_link/0]).
+
+%% Supervisor callbacks
 -export([init/1]).
 
--define(CHILD(Name, Type), fun(N, cache) -> {N, {wh_cache, start_link, [N]}, permanent, 5000, worker, [wh_cache]};
-                              (N, T) -> {N, {N, start_link, []}, permanent, 5000, T, [N]} end(Name, Type)).
--define(CHILDREN, [{?ACDC_CACHE, cache}
-                   ,{acdc_agent_sup, supervisor}
-                   ,{acdc_agents, worker}
-                   ,{acdc_listener, worker}
+%% Helper macro for declaring children of supervisor
+-define(CHILD(I, Type), {I, {I, start_link, []}, permanent, 5000, Type, [I]}).
+
+-define(CHILDREN, [{acdc_agents_sup, supervisor}
+                   ,{acdc_queues_sup, supervisor}
+                   ,{acdc_stats, worker}
+                   ,{acdc_queue_manager, worker}
+                   ,{acdc_agent_manager, worker}
+                   ,{acdc_init, worker}
                   ]).
 
 %% ===================================================================
 %% API functions
 %% ===================================================================
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Starts the supervisor
-%% @end
-%%--------------------------------------------------------------------
--spec start_link/0 :: () -> startlink_ret().
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
@@ -40,15 +40,6 @@ start_link() ->
 %% Supervisor callbacks
 %% ===================================================================
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Whenever a supervisor is started using supervisor:start_link/[2,3],
-%% this function is called by the new process to find out about
-%% restart strategy, maximum restart frequency and child
-%% specifications.
-%% @end
-%%--------------------------------------------------------------------
 -spec init([]) -> sup_init_ret().
 init([]) ->
     RestartStrategy = one_for_one,
@@ -57,5 +48,4 @@ init([]) ->
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
     Children = [?CHILD(Name, Type) || {Name, Type} <- ?CHILDREN],
-
     {ok, {SupFlags, Children}}.

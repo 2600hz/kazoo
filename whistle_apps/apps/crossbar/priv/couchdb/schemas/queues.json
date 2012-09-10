@@ -16,15 +16,21 @@
          "name":"Connection Timeout",
          "description":"In seconds, how long to try to connect the caller before progressing past the queue callflow action",
          "type":"integer",
-         "default":30,
-         "minimum":1
+         "default":3600,
+         "minimum":0
       },
-      "member_timeout":{
-         "name":"Member Timeout",
-         "description":"In seconds, how long to ring an agent of the queue before progressing to the next agent available",
+      "agent_ring_timeout":{
+         "name":"Agent Ring Timeout",
+         "description":"In seconds, how long to ring an agent before progressing to the next agent available",
          "type":"integer",
          "default":5,
          "minimum":1
+      },
+      "max_queue_size":{
+        "name":"Maximum Queue Size",
+        "description":"How many callers are allowed to wait on hold in the queue (0 for no limit)",
+        "type":"integer",
+        "default":0
       },
       "ring_simultaneously":{
          "name":"Ring Simultaneously",
@@ -33,9 +39,15 @@
          "default":1,
          "minimum":1
       },
-      "wrapup_time":{
-         "name":"Wrapup Time",
-         "description":"How long to wait after the caller hangs up before adding the agent back into the available agent queue",
+      "enter_when_empty":{
+        "name":"Enter When Empty",
+        "description":"Allows a caller to enter a queue and wait when no agents are available",
+        "type":"boolean",
+        "default":"true"
+      },
+      "agent_wrapup_time":{
+         "name":"Agent Wrapup Time",
+         "description":"Pre-defined wait period applied after an agent handles a customer call",
          "type":"integer",
          "default":0,
          "minimum":0
@@ -65,20 +77,24 @@
          "description":"Key caller can press while on hold to exit the queue and continue in the callflow",
          "type":"string",
          "enum":[
-            "#",
-            "*",
-            "1",
-            "2",
-            "3",
-            "4",
-            "5",
-            "6",
-            "7",
-            "8",
-            "9",
-            "0"
+            "1","2","3"
+           ,"4","5","6"
+           ,"7","8","9"
+           ,"*","0","#"
          ],
          "default":"#"
+      },
+      "record_caller":{
+        "name":"Record Caller",
+        "description":"When enabled, a caller's audio will be recorded",
+        "type":"boolean",
+        "default":"false"
+      },
+      "cdr_url":{
+        "name":"CDR Url",
+        "description":"An optional HTTP URL to POST the CDR",
+        "type":"string",
+        "format":"uri"
       }
    }
 }

@@ -1,25 +1,48 @@
+%%%-------------------------------------------------------------------
+%%% @copyright (C) 2012, 2600Hz
+%%% @doc
+%%%
+%%% @end
+%%% @contributors
+%%%   James Aimonetti
+%%%-------------------------------------------------------------------
 -module(whistle_maintenance).
 
--export([gc_all/0]).
--export([top_mem_consumers/0, top_mem_consumers/1]).
--export([etop/0]).
+-export([gc_all/0, gc_pids/1
+         ,gc_top_mem_consumers/0, gc_top_mem_consumers/1
+         ,top_mem_consumers/0, top_mem_consumers/1
+         ,etop/0
+        ]).
 
 -include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_databases.hrl").
 
 -spec gc_all/0 :: () -> 'ok'.
-gc_all() ->
-    _ = [begin erlang:garbage_collect(P), timer:sleep(500) end || P <- processes()],
-    ok.
-
+-spec gc_pids/1 :: ([pid(),...]) -> 'ok'.
+-spec gc_top_mem_consumers/0 :: () -> 'ok'.
+-spec gc_top_mem_consumers/1 :: (pos_integer()) -> 'ok'.
 -spec top_mem_consumers/0 :: () -> {wh_proplist_kv(pid(), integer()), wh_proplist_kv(pid(), integer())}.
 -spec top_mem_consumers/1 :: (pos_integer()) -> {wh_proplist_kv(pid(), integer()), wh_proplist_kv(pid(), integer())}.
+-spec etop/0 :: () -> 'ok'.
+
+
+gc_all() ->
+    gc_pids(processes()).
+gc_pids(Ps) ->
+    _ = [begin erlang:garbage_collect(P), timer:sleep(500) end || P <- Ps],
+    ok.
+
+gc_top_mem_consumers() ->
+    gc_top_mem_consumers(10).
+gc_top_mem_consumers(N) ->
+    {Top, _} = top_mem_consumers(N),
+    gc_pids([P || {P,_} <- Top]).
+
 top_mem_consumers() ->
     top_mem_consumers(10).
 top_mem_consumers(Len) when is_integer(Len), Len > 0 ->
     lists:split(Len, lists:reverse(lists:keysort(2, [{P, erlang:process_info(P, total_heap_size)} || P <- processes()]))).
 
--spec etop/0 :: () -> 'ok'.
 etop() ->
     etop:start([{output, text}]),
     ok.

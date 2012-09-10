@@ -74,8 +74,8 @@ allow_dial(Call, Retries) ->
                        ,fun(C) -> whapps_call:set_to(list_to_binary([Number, "@", whapps_call:to_realm(C)]), C) end
                        ,fun(C) when NoMatch -> 
                                 {CIDNum, CIDName} = cf_attributes:caller_id(<<"external">>, C),
-                                whapps_call:set_caller_id_number(CIDNum, C),
-                                whapps_call:set_caller_id_name(CIDName, C);
+                                C1 = whapps_call:set_caller_id_number(CIDNum, C),
+                                whapps_call:set_caller_id_name(CIDName, C1);
                            (C) -> C
                         end
                       ],

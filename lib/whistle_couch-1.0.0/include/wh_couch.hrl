@@ -24,7 +24,15 @@
          ,do_compaction = false :: boolean()
          }).
 
--type couchbeam_errors() :: 'not_found' | 'conflict' | 'precondition_failed' |
+-type couchbeam_errors() :: 'not_found' | 'conflict' | 'failed' |
+                            'precondition_failed' | 'db_not_reachable' |
+                            'db_not_found' | 'worker_is_dead' |
+                            'unknown_req_id' |
+                            'req_timedout' | 'sel_conn_closed' |
+                            'invalid_view_name' |
+                            {integer(), term()} | % {error_code, body}
+                            {'EXIT', term()} |
+                            {'url_parsing_failed', term()} |
                             {'ok', string(), _, _}.
 -type couchbeam_error() :: {'error', couchbeam_errors()}.
 

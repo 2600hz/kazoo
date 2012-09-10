@@ -44,18 +44,20 @@
          ,expires/2
         ]).
 
--include_lib("crossbar/include/crossbar.hrl").
+-include("include/crossbar.hrl").
 
 %%%===================================================================
 %%% Startup and shutdown of request
 %%%===================================================================
--spec init/3 :: ({'tcp' | 'ssl', 'http'}, #http_req{}, wh_proplist()) -> {'upgrade', 'protocol', 'cowboy_http_rest'}.
+-spec init/3 :: ({'tcp' | 'ssl', 'http'}, #http_req{}, wh_proplist()) ->
+                        {'upgrade', 'protocol', 'cowboy_http_rest'}.
 init({tcp, http}, _Req, _Opts) ->
     {upgrade, protocol, cowboy_http_rest};
 init({ssl, http}, _Req, _Opts) ->
     {upgrade, protocol, cowboy_http_rest}.
 
--spec rest_init/2 :: (#http_req{}, wh_proplist()) -> {'ok', #http_req{}, #cb_context{}}.
+-spec rest_init/2 :: (#http_req{}, wh_proplist()) ->
+                             {'ok', #http_req{}, #cb_context{}}.
 rest_init(Req0, Opts) ->
     ReqId = case cowboy_http_req:header(<<"X-Request-Id">>, Req0) of
                 {undefined, _} -> couch_mgr:get_uuid();
@@ -156,7 +158,7 @@ check_preflight(Req0, #cb_context{allowed_methods=Methods, req_nouns=[{Mod, Para
                                                                 ,req_verb=Verb
                                                                }};
                         false ->
-                            Context1 = crossbar_util:response(error, "method not allowed", 405, Context),
+                            Context1 = crossbar_util:response(error, <<"method not allowed">>, 405, Context),
                             {Content, Req3} = v1_util:create_resp_content(Req3, Context1),
                             {ok, Req4} = cowboy_http_req:set_resp_body(Content, Req3),
                             {Methods1, Req4, Context1#cb_context{allow_methods=Methods1
@@ -481,7 +483,7 @@ to_json(Req, Context) ->
     _ = crossbar_bindings:map(Event, {Req, Context}),
     v1_util:create_pull_response(Req, Context).
 
--spec to_binary/2 :: (#http_req{}, #cb_context{}) -> {boolean(), #http_req{}, #cb_context{}}.
+-spec to_binary/2 :: (#http_req{}, #cb_context{}) -> {binary(), #http_req{}, #cb_context{}}.
 to_binary(Req, #cb_context{resp_data=RespData}=Context) ->
     Event = <<"v1_resource.to_binary">>,
     _ = crossbar_bindings:map(Event, {Req, Context}),
@@ -496,8 +498,8 @@ multiple_choices(Req, Context) ->
 -spec generate_etag/2 :: (#http_req{}, #cb_context{}) -> {ne_binary(), #http_req{}, #cb_context{}}.
 generate_etag(Req0, Context0) ->
     Event = <<"v1_resource.etag">>,
-    {Req1, Context1} = crossbar_bindings:fold(Event, {Req0, Context0}),
-    case Context1#cb_context.resp_etag of
+    {Req1, #cb_context{resp_etag=ETag}=Context1} = crossbar_bindings:fold(Event, {Req0, Context0}),
+    case ETag of
         automatic ->
             {Content, _} = v1_util:create_resp_content(Req1, Context1),
             Tag = wh_util:to_hex_binary(crypto:md5(Content)),

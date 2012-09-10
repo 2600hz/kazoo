@@ -30,7 +30,7 @@
          ,put/1
         ]).
 
--include_lib("crossbar/include/crossbar.hrl").
+-include("include/crossbar.hrl").
 
 %%%===================================================================
 %%% API
@@ -121,7 +121,7 @@ authenticate(_) ->
 %%--------------------------------------------------------------------
 -spec validate/1 :: (#cb_context{}) -> #cb_context{}.
 validate(#cb_context{req_data=JObj, req_verb = <<"put">>}=Context) ->
-    _ = crossbar_util:put_reqid(Context),
+    _ = cb_context:put_reqid(Context),
     XBarUrl = whapps_config:get_string(<<"crossbar.shared_auth">>, <<"authoritative_crossbar">>),
     SharedToken = wh_json:get_value(<<"shared_token">>, JObj),
     case authenticate_shared_token(SharedToken, XBarUrl) of
@@ -142,11 +142,11 @@ validate(#cb_context{req_data=JObj, req_verb = <<"put">>}=Context) ->
             crossbar_util:response(error, <<"could not validate shared token">>, 500, Context)
     end;
 validate(#cb_context{auth_doc=undefined, req_verb = <<"get">>}=Context) ->
-    _ = crossbar_util:put_reqid(Context),
+    _ = cb_context:put_reqid(Context),
     lager:debug("valid shared auth request received but there is no authorizing doc (noauth running?)"),
     crossbar_util:response(error, <<"authentication information is not available">>, 401, Context);
 validate(#cb_context{auth_doc=JObj, req_verb = <<"get">>}=Context) ->
-    _ = crossbar_util:put_reqid(Context),
+    _ = cb_context:put_reqid(Context),
     lager:debug("valid shared auth request received, creating response"),
     AccountId = wh_json:get_value(<<"account_id">>, JObj),
     UserId = wh_json:get_value(<<"owner_id">>, JObj),
@@ -175,7 +175,7 @@ validate(#cb_context{auth_doc=JObj, req_verb = <<"get">>}=Context) ->
 %% @end
 %%--------------------------------------------------------------------
 put(Context) ->
-    _ = crossbar_util:put_reqid(Context),
+    _ = cb_context:put_reqid(Context),
     create_local_token(Context).
 
 %%%===================================================================
@@ -218,7 +218,7 @@ create_local_token(#cb_context{doc=JObj, auth_token=SharedToken}=Context) ->
 %% the shared token and get the account/user for the token
 %% @end
 %%--------------------------------------------------------------------
--spec authenticate_shared_token/2 :: ('undefined' | ne_binary(), nonempty_string())
+-spec authenticate_shared_token/2 :: (api_binary(), nonempty_string())
                                      -> {'ok', string() | binary()} | {'error', atom()} | {'forbidden', 'shared_token_rejected'}.
 authenticate_shared_token(undefined, _) ->
     {forbidden, missing_shared_token};
@@ -260,7 +260,7 @@ import_missing_data(RemoteData) ->
 %% an account and user, ensure the account exists (creating if not)
 %% @end
 %%--------------------------------------------------------------------
--spec import_missing_account/2 :: ('undefined' | ne_binary(), 'undefined' | wh_json:json_object()) -> boolean().
+-spec import_missing_account/2 :: (api_binary(), 'undefined' | wh_json:json_object()) -> boolean().
 import_missing_account(undefined, _) ->
     lager:debug("shared auth reply did not define an account id"),
     false;
@@ -315,7 +315,7 @@ import_missing_account(AccountId, Account) ->
 %% an account and user, ensure the user exists locally (creating if not)
 %% @end
 %%--------------------------------------------------------------------
--spec import_missing_user/3 :: ('undefined' | ne_binary(), 'undefined' | ne_binary(), 'undefined' | wh_json:json_object()) -> boolean().
+-spec import_missing_user/3 :: (api_binary(), api_binary(), 'undefined' | wh_json:json_object()) -> boolean().
 import_missing_user(_, undefined, _) ->
     lager:debug("shared auth reply did not define an user id"),
     false;

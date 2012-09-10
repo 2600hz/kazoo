@@ -424,7 +424,7 @@ migrate_media(Account) ->
                 end,
     case couch_mgr:get_results(AccountDb, <<"media/listing_by_name">>, []) of
         {ok, []} -> io:format("no public media files in db ~s~n", [AccountDb]);
-        {ok, JObjs1}->
+        {ok, [_|_]=JObjs1}->
             _ = [migrate_attachment(AccountDb, JObj) || JObj <- JObjs1],
             ok;
         {error, _}=E1 ->
@@ -445,7 +445,7 @@ migrate_media(Account) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec migrate_attachment/2 :: (ne_binary(), wh_json:json_objects()) -> 'ok'.
+-spec migrate_attachment/2 :: (ne_binary(), wh_json:json_object()) -> 'ok'.
 migrate_attachment(AccountDb, ViewJObj) ->
     Id = wh_json:get_value(<<"id">>, ViewJObj),
     _ = case couch_mgr:open_doc(AccountDb, Id) of

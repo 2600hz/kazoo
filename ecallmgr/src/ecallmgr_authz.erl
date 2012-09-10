@@ -13,14 +13,14 @@
 -export([rate_channel/1]).
 -export([kill_channel/2]).
 
+-include("ecallmgr.hrl").
+
 -define(RATE_VARS, [<<"Rate">>, <<"Rate-Increment">>
                         ,<<"Rate-Minimum">>, <<"Surcharge">>
                         ,<<"Rate-Name">>, <<"Base-Cost">>
                    ]).
 
 -define(HEARTBEAT_ON_ANSWER(CallId), <<"api_on_answer=uuid_session_heartbeat ", CallId/binary, " 60">>).
-
--include_lib("ecallmgr/src/ecallmgr.hrl").
 
 -spec maybe_authorize_channel/2 :: (wh_proplist(), atom()) -> boolean().
 maybe_authorize_channel(Props, Node) ->

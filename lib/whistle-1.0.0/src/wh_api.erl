@@ -26,7 +26,7 @@
          ,default_headers/4
          ,default_headers/5
         ]).
--export([prepare_api_payload/3]).
+-export([prepare_api_payload/2, prepare_api_payload/3]).
 -export([set_missing_values/2]).
 -export([remove_empty_values/1]).
 -export([extract_defaults/1]).
@@ -94,7 +94,6 @@ default_headers_v(Prop) ->
 
 disambiguate_and_publish(ReqJObj, RespJObj, Binding) ->
     Wapi = list_to_binary([<<"wapi_">>, wh_util:to_binary(Binding)]),
-    lager:debug("Wapi mod: ~s", [Wapi]),
     ApiMod = wh_util:to_atom(Wapi),
     ApiMod:disambiguate_and_publish(ReqJObj, RespJObj).
 
@@ -104,15 +103,23 @@ disambiguate_and_publish(ReqJObj, RespJObj, Binding) ->
 %% validation definitions and remove any empty values
 %% @end
 %%--------------------------------------------------------------------
--spec prepare_api_payload/3 :: (api_terms(), proplist(), fun((api_terms()) -> api_formatter_return())) -> api_formatter_return().
-prepare_api_payload(Prop, HeaderValues, FormatterFun) when is_list(Prop) ->
+-spec prepare_api_payload/2 :: (api_terms(), wh_proplist()) -> wh_proplist().
+-spec prepare_api_payload/3 :: (api_terms(), wh_proplist(), fun((api_terms()) -> api_formatter_return())) ->
+                                       api_formatter_return().
+prepare_api_payload(Prop, HeaderValues) when is_list(Prop) ->
     CleanupFuns = [fun (P) -> remove_empty_values(P) end
                    ,fun (P) -> set_missing_values(P, ?DEFAULT_VALUES) end
                    ,fun (P) -> set_missing_values(P, HeaderValues) end
                   ],
-    FormatterFun(lists:foldr(fun(F, P) -> F(P) end, Prop, CleanupFuns));
-prepare_api_payload(JObj, HeaderValues, ValidateFun) ->
-    prepare_api_payload(wh_json:to_proplist(JObj), HeaderValues, ValidateFun).
+    lists:foldr(fun(F, P) -> F(P) end, Prop, CleanupFuns);
+prepare_api_payload(JObj, HeaderValues) ->
+    prepare_api_payload(wh_json:to_proplist(JObj), HeaderValues).
+
+prepare_api_payload(Prop, HeaderValues, FormatterFun) when is_list(Prop),
+                                                           is_function(FormatterFun, 1) ->
+    FormatterFun(prepare_api_payload(Prop, HeaderValues));
+prepare_api_payload(JObj, HeaderValues, FormatterFun) when is_function(FormatterFun, 1) ->
+    prepare_api_payload(wh_json:to_proplist(JObj), HeaderValues, FormatterFun).
 
 %%--------------------------------------------------------------------
 %% @doc

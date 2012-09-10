@@ -23,7 +23,7 @@
          ,reconcile_services/1
         ]).
 
--include_lib("crossbar/include/crossbar.hrl").
+-include("include/crossbar.hrl").
 
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".devices">>).
 
@@ -130,15 +130,15 @@ validate(#cb_context{req_verb = <<"delete">>}=Context, DocId) ->
 
 -spec post/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
 post(#cb_context{}=Context, _DocId) ->
-    _ = crossbar_util:put_reqid(Context),
+    _ = cb_context:put_reqid(Context),
     case crossbar_doc:save(Context) of
         #cb_context{resp_status=success, doc=Doc1, account_id=AcctId}=Context1 ->
-            case wh_json:get_ne_value([<<"sip">>, <<"realm">>], Doc1) of
-                undefined -> ok;
-                _Else ->
-                    lager:debug("adding device to the sip auth aggregate"),
-                    couch_mgr:ensure_saved(?WH_SIP_DB, wh_json:delete_key(<<"_rev">>, Doc1))
-            end,
+            _ = case wh_json:get_ne_value([<<"sip">>, <<"realm">>], Doc1) of
+                    undefined -> ok;
+                    _Else ->
+                        lager:debug("adding device to the sip auth aggregate"),
+                        couch_mgr:ensure_saved(?WH_SIP_DB, wh_json:delete_key(<<"_rev">>, Doc1))
+                end,
             
             case wh_json:get_ne_value([<<"sip">>, <<"ip">>], Doc1) of
                 undefined -> ok;
@@ -156,15 +156,15 @@ post(#cb_context{}=Context, _DocId) ->
 
 -spec put/1 :: (#cb_context{}) -> #cb_context{}.
 put(#cb_context{}=Context) ->
-    _ = crossbar_util:put_reqid(Context),
+    _ = cb_context:put_reqid(Context),
     case crossbar_doc:save(Context) of
         #cb_context{resp_status=success, doc=Doc1, account_id=AcctId}=Context1 ->
-            case wh_json:get_ne_value([<<"sip">>, <<"realm">>], Doc1) of
-                undefined -> ok;
-                _Else ->
-                    lager:debug("adding device to the sip auth aggregate"),
-                    couch_mgr:ensure_saved(?WH_SIP_DB, wh_json:delete_key(<<"_rev">>, Doc1))
-            end,
+            _ = case wh_json:get_ne_value([<<"sip">>, <<"realm">>], Doc1) of
+                    undefined -> ok;
+                    _Else ->
+                        lager:debug("adding device to the sip auth aggregate"),
+                        couch_mgr:ensure_saved(?WH_SIP_DB, wh_json:delete_key(<<"_rev">>, Doc1))
+                end,
             
             case wh_json:get_ne_value([<<"sip">>, <<"ip">>], Doc1) of
                 undefined -> ok;
@@ -174,7 +174,7 @@ put(#cb_context{}=Context) ->
                     maybe_update_acls(DeviceIP, AcctId, wh_json:get_value(<<"_id">>, D))
             end,
 
-            spawn(fun() -> do_simple_provision(Context1) end),
+            _ = spawn(fun() -> do_simple_provision(Context1) end),
             Context1;
         Else ->
             Else
@@ -182,18 +182,18 @@ put(#cb_context{}=Context) ->
 
 -spec delete/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
 delete(#cb_context{doc=Doc}=Context, _DocId) ->
-    _ = crossbar_util:put_reqid(Context),
+    _ = cb_context:put_reqid(Context),
 
     case crossbar_doc:delete(Context) of
         #cb_context{resp_status=success}=Context1 ->
             DeviceId = wh_json:get_value(<<"_id">>, Doc),
-            case couch_mgr:lookup_doc_rev(?WH_SIP_DB, DeviceId) of
-                {ok, Rev} ->
-                    couch_mgr:del_doc(?WH_SIP_DB, wh_json:set_value(<<"_rev">>, Rev, Doc));
-                {error, not_found} ->
-                    ok
-            end,
-            wapi_switch:reloadacl(),
+            _ = case couch_mgr:lookup_doc_rev(?WH_SIP_DB, DeviceId) of
+                    {ok, Rev} ->
+                        couch_mgr:del_doc(?WH_SIP_DB, wh_json:set_value(<<"_rev">>, Rev, Doc));
+                    {error, not_found} ->
+                        ok
+                end,
+            wapi_switch:publish_reloadacl(),
             Context1;
         Else ->
             Else
@@ -439,11 +439,21 @@ maybe_update_acls(DeviceIP, AcctId, DeviceId) ->
                                                  ,{<<"account_id">>, AcctId}
                                                  ,{<<"device_id">>, DeviceId}
                                                 ])
-                             ,whapps_config:get(<<"ecallmgr">>, <<"acls">>, wh_json:new())
+                             ,get_acl_json()
                             ),
     lager:debug("setting ~s into system acls", [CIDR]),
-    whapps_config:set_default(<<"ecallmgr">>, <<"acls">>, Acls),
+    _ = whapps_config:set_default(<<"ecallmgr">>, <<"acls">>, Acls),
     wapi_switch:publish_reloadacl().
+
+-spec get_acl_json/0 :: () -> wh_json:json_object().
+get_acl_json() ->
+    ACLs = whapps_config:get(<<"ecallmgr">>, <<"acls">>, wh_json:new()),
+    case wh_json:is_json_object(ACLs) of
+        true -> ACLs;
+        false ->
+            lager:debug("acls were not a json document: ~p", [ACLs]),
+            wh_json:new()
+    end.
 
 set_outbound_flags(JObj, undefined) ->
     wh_json:set_value(<<"outbound_flags">>, [], JObj);

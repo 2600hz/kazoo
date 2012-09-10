@@ -1,0 +1,9 @@
+import "exports.proto";
+
+message Importer {
+    required Exports.Exporter internal = 1;
+}
+
+message Import_With_Underscores {
+    required Exports.Export_This_Message internal = 1;
+}

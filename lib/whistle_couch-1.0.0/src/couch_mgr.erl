@@ -121,6 +121,9 @@
          ,code_change/3
         ]).
 
+%% Types
+-export_type([get_results_return/0]).
+
 -include_lib("wh_couch.hrl").
 
 -define(SERVER, ?MODULE).
@@ -147,7 +150,7 @@
 %%--------------------------------------------------------------------
 -spec load_doc_from_file/3 :: (ne_binary(), atom(), nonempty_string() | ne_binary()) ->
                                       {'ok', wh_json:json_object()} |
-                                      {'error', atom()}.
+                                      couchbeam_error().
 load_doc_from_file(DbName, App, File) ->
     Path = list_to_binary([code:priv_dir(App), "/couchdb/", wh_util:to_list(File)]),
     lager:debug("read into db ~s from CouchDB JSON file: ~s", [DbName, Path]),
@@ -172,7 +175,7 @@ load_doc_from_file(DbName, App, File) ->
 %%--------------------------------------------------------------------
 -spec update_doc_from_file/3 :: (ne_binary(), atom(), nonempty_string() | ne_binary()) ->
                                         {'ok', wh_json:json_object()} |
-                                        {'error', atom()}.
+                                        couchbeam_error().
 update_doc_from_file(DbName, App, File) ->
     Path = list_to_binary([code:priv_dir(App), "/couchdb/", File]),
     lager:debug("update db ~s from CouchDB file: ~s", [DbName, Path]),
@@ -199,7 +202,7 @@ update_doc_from_file(DbName, App, File) ->
 %%--------------------------------------------------------------------
 -spec revise_doc_from_file/3 :: (ne_binary(), atom(), ne_binary() | nonempty_string()) ->
                                         {'ok', wh_json:json_object()} |
-                                        {'error', atom()}.
+                                        couchbeam_error().
 revise_doc_from_file(DbName, App, File) ->
     case ?MODULE:update_doc_from_file(DbName, App, File) of
         {error, _E} ->
@@ -278,9 +281,9 @@ db_exists(DbName) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec db_info/0 :: () -> {'ok', [ne_binary(),...] | []} |
-                         {'error', atom()}.
+                         couchbeam_error().
 -spec admin_db_info/0 :: () -> {'ok', [ne_binary(),...] | []} |
-                               {'error', atom()}.
+                               couchbeam_error().
 db_info() ->
     couch_util:db_info(get_conn()).
 admin_db_info() ->
@@ -293,9 +296,9 @@ admin_db_info() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec db_info/1 :: (ne_binary()) -> {'ok', wh_json:json_object()} |
-                                    {'error', atom()}.
+                                    couchbeam_error().
 -spec admin_db_info/1 :: (ne_binary()) -> {'ok', wh_json:json_object()} |
-                                          {'error', atom()}.
+                                          couchbeam_error().
 db_info(DbName) ->
     couch_util:db_info(get_conn(), DbName).
 admin_db_info(DbName) ->
@@ -309,10 +312,10 @@ admin_db_info(DbName) ->
 %%--------------------------------------------------------------------
 -spec design_info/2 :: (ne_binary(), ne_binary()) ->
                                {'ok', wh_json:json_object()} |
-                               {'error', atom()}.
+                               couchbeam_error().
 -spec admin_design_info/2 :: (ne_binary(), ne_binary()) ->
                                      {'ok', wh_json:json_object()} |
-                                     {'error', atom()}.
+                                     couchbeam_error().
 design_info(DbName, DesignName) ->
     couch_util:design_info(get_conn(), DbName, DesignName).
 admin_design_info(DbName, DesignName) ->
@@ -367,7 +370,7 @@ admin_db_view_cleanup(DbName) ->
 %%--------------------------------------------------------------------
 -spec db_replicate/1 :: (proplist() | wh_json:json_object()) ->
                                 {'ok', wh_json:json_object()} |
-                                {'error', atom()}.
+                                couchbeam_error().
 db_replicate(Prop) when is_list(Prop) ->
     db_replicate(wh_json:from_list(Prop));
 db_replicate(JObj) ->
@@ -422,10 +425,12 @@ db_delete(DbName) ->
 %%--------------------------------------------------------------------
 -spec open_cache_doc/2 :: (ne_binary(), ne_binary()) ->
                                   {'ok', wh_json:json_object()} |
-                                  {'error', 'not_found' | 'db_not_reachable'}.
+                                  couchbeam_error() |
+                                  {'error', 'not_found'}.
 -spec open_cache_doc/3 :: (ne_binary(), ne_binary(), proplist()) ->
                                   {'ok', wh_json:json_object()} |
-                                  {'error', 'not_found' | 'db_not_reachable'}.
+                                  couchbeam_error() |
+                                  {'error', 'not_found'}.
 
 open_cache_doc(DbName, DocId) ->
     open_cache_doc(DbName, DocId, []).
@@ -441,40 +446,42 @@ open_cache_doc(DbName, DocId, Options) ->
 %%--------------------------------------------------------------------
 -spec open_doc/2 :: (ne_binary(), ne_binary()) ->
                             {'ok', wh_json:json_object()} |
-                            {'error', 'not_found' | 'db_not_reachable'}.
--spec open_doc/3 :: (ne_binary(), ne_binary(), proplist()) ->
+                            couchbeam_error() |
+                            {'error', 'not_found'}.
+-spec open_doc/3 :: (ne_binary(), ne_binary(), wh_proplist()) ->
                             {'ok', wh_json:json_object()} |
-                            {'error', 'not_found' | 'db_not_reachable'}.
+                            couchbeam_error() |
+                            {'error', 'not_found'}.
 open_doc(DbName, DocId) ->
     open_doc(DbName, DocId, []).
 open_doc(DbName, DocId, Options) ->
     couch_util:open_doc(get_conn(), DbName, DocId, Options).
 
 -spec all_docs/1 :: (ne_binary()) -> {'ok', wh_json:json_objects()} |
-                                     {'error', atom()}.
+                                     couchbeam_error().
 -spec admin_all_docs/1 :: (ne_binary()) -> {'ok', wh_json:json_objects()} |
-                                           {'error', atom()}.
+                                           couchbeam_error().
 all_docs(DbName) ->
     couch_util:all_docs(get_conn(), DbName, []).
 admin_all_docs(DbName) ->
     couch_util:all_docs(get_admin_conn(), DbName, []).
 
 -spec all_docs/2 :: (ne_binary(), proplist()) -> {'ok', wh_json:json_objects()} |
-                                                 {'error', atom()}.
+                                                 couchbeam_error().
 -spec admin_all_docs/2 :: (ne_binary(), proplist()) -> {'ok', wh_json:json_objects()} |
-                                                       {'error', atom()}.
+                                                       couchbeam_error().
 all_docs(DbName, Options) ->
     couch_util:all_docs(get_conn(), DbName, Options).
 admin_all_docs(DbName, Options) ->
     couch_util:all_docs(get_admin_conn(), DbName, Options).
 
 -spec all_design_docs/1 :: (ne_binary()) -> {'ok', wh_json:json_objects()} |
-                                            {'error', atom()}.
+                                            couchbeam_error().
 all_design_docs(DbName) ->
     couch_util:all_design_docs(get_conn(), DbName, []).
 
 -spec all_design_docs/2 :: (ne_binary(), proplist()) -> {'ok', wh_json:json_objects()} |
-                                                        {'error', atom()}.
+                                                        couchbeam_error().
 all_design_docs(DbName, Options) ->
     couch_util:all_design_docs(get_conn(), DbName, Options).
 
@@ -485,7 +492,7 @@ all_design_docs(DbName, Options) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec lookup_doc_rev/2 :: (ne_binary(), ne_binary()) -> {'ok', ne_binary()} |
-                                                        {'error', atom()}.
+                                                        couchbeam_error().
 lookup_doc_rev(DbName, DocId) ->
     couch_util:lookup_doc_rev(get_conn(), DbName, DocId).
 
@@ -497,7 +504,7 @@ lookup_doc_rev(DbName, DocId) ->
 %%--------------------------------------------------------------------
 -spec save_doc/2 :: (ne_binary(), wh_json:json_object() | wh_json:json_objects()) ->
                             {'ok', wh_json:json_object() | wh_json:json_objects()} |
-                            {'error', atom()}.
+                            couchbeam_error().
 save_doc(DbName, Docs) when is_list(Docs) ->
     save_docs(DbName, Docs, []);
 save_doc(DbName, Doc) ->
@@ -507,10 +514,10 @@ save_doc(DbName, Doc) ->
 %% any other error is returned
 -spec ensure_saved/2 :: (ne_binary(), wh_json:json_object()) ->
                                 {'ok', wh_json:json_object()} |
-                                {'error', atom()}.
+                                couchbeam_error().
 -spec ensure_saved/3 :: (ne_binary(), wh_json:json_object(), proplist()) ->
                                 {'ok', wh_json:json_object()} |
-                                {'error', atom()}.
+                                couchbeam_error().
 
 ensure_saved(DbName, Doc) ->
     ensure_saved(DbName, Doc, []).
@@ -520,14 +527,16 @@ ensure_saved(DbName, Doc, Options) ->
 
 -spec save_doc/3 :: (ne_binary(), wh_json:json_object(), proplist()) ->
                             {'ok', wh_json:json_object()} |
-                            {'error', atom()}.
+                            couchbeam_error().
 save_doc(DbName, Doc, Opts) ->
     couch_util:save_doc(get_conn(), DbName, Doc, Opts).
 
 -spec save_docs/2 :: (ne_binary(), wh_json:json_objects()) ->
-                             {'ok', wh_json:json_objects()}.
+                             {'ok', wh_json:json_objects()} |
+                             couchbeam_error().
 -spec save_docs/3 :: (ne_binary(), wh_json:json_objects(), proplist()) ->
-                             {'ok', wh_json:json_objects()}.
+                             {'ok', wh_json:json_objects()} |
+                             couchbeam_error().
 save_docs(DbName, Docs) when is_list(Docs) ->
     save_docs(DbName, Docs, []).
 save_docs(DbName, Docs, Opts) when is_list(Docs) ->
@@ -541,10 +550,10 @@ save_docs(DbName, Docs, Opts) when is_list(Docs) ->
 %%--------------------------------------------------------------------
 -spec update_doc/3 :: (ne_binary(), ne_binary(), proplist()) ->
                               {'ok', wh_json:json_object()} |
-                              {'error', atom()}.
+                              couchbeam_error().
 -spec update_doc/4 :: (ne_binary(), ne_binary(), proplist(), proplist()) ->
                               {'ok', wh_json:json_object()} |
-                              {'error', atom()}.
+                              couchbeam_error().
 
 update_doc(DbName, Id, UpdateProps) ->
     update_doc(DbName, Id, UpdateProps, []).
@@ -591,7 +600,7 @@ del_docs(DbName, Docs) ->
 %%%===================================================================
 -spec fetch_attachment/3 :: (ne_binary(), ne_binary(), ne_binary()) ->
                                     {'ok', ne_binary()} |
-                                    {'error', atom()}.
+                                    couchbeam_error().
 fetch_attachment(DbName, DocId, AName) ->
     couch_util:fetch_attachment(get_conn(), DbName, DocId, AName).
 
@@ -603,11 +612,11 @@ stream_attachment(DbName, DocId, AName) ->
 
 -spec put_attachment/4 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary()) ->
                                   {'ok', wh_json:json_object()} |
-                                  {'error', atom()}.
+                                  couchbeam_error().
 %% Options = [ {'content_type', Type}, {'content_length', Len}, {'rev', Rev}] <- note atoms as keys in proplist
 -spec put_attachment/5 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), proplist()) ->
                                   {'ok', wh_json:json_object()} |
-                                  {'error', atom()}.
+                                  couchbeam_error().
 put_attachment(DbName, DocId, AName, Contents) ->
     couch_util:put_attachment(get_conn(), DbName, DocId, AName, Contents).
 put_attachment(DbName, DocId, AName, Contents, Options) ->
@@ -615,10 +624,10 @@ put_attachment(DbName, DocId, AName, Contents, Options) ->
 
 -spec delete_attachment/3 :: (ne_binary(), ne_binary(), ne_binary()) ->
                                      {'ok', wh_json:json_object()} |
-                                     {'error', atom()}.
+                                     couchbeam_error().
 -spec delete_attachment/4 :: (ne_binary(), ne_binary(), ne_binary(), proplist()) ->
                                      {'ok', wh_json:json_object()} |
-                                     {'error', atom()}.
+                                     couchbeam_error().
 delete_attachment(DbName, DocId, AName) ->
     couch_util:delete_attachment(get_conn(), DbName, DocId, AName).
 delete_attachment(DbName, DocId, AName, Options) ->
@@ -634,12 +643,10 @@ delete_attachment(DbName, DocId, AName, Options) ->
 %% {Total, Offset, Meta, Rows}
 %% @end
 %%--------------------------------------------------------------------
--spec get_all_results/2 :: (ne_binary(), ne_binary()) ->
-                                   {'ok', wh_json:json_objects() | wh_json:json_strings()} |
-                                   {'error', atom()}.
--spec get_results/3 :: (ne_binary(), ne_binary(), wh_proplist()) ->
-                               {'ok', wh_json:json_objects() | wh_json:json_strings()} |
-                               {'error', atom()}.
+-type get_results_return() :: {'ok', wh_json:json_objects() | wh_json:json_strings()} |
+                              couchbeam_error().
+-spec get_all_results/2 :: (ne_binary(), ne_binary()) -> get_results_return().
+-spec get_results/3 :: (ne_binary(), ne_binary(), wh_proplist()) -> get_results_return().
 get_all_results(DbName, DesignDoc) ->
     get_results(DbName, DesignDoc, []).
 get_results(DbName, DesignDoc, ViewOptions) ->

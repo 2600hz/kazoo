@@ -8,7 +8,7 @@
 %%%============================================================================
 -module(whapps_conference).
 
--include_lib("whistle_apps/src/whapps_call_command.hrl").
+-include("whapps_call_command.hrl").
 
 -export([new/0]).
 -export([from_conference_doc/1, from_conference_doc/2]).

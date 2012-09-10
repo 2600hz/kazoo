@@ -862,7 +862,8 @@ publish_command(CtrlQ, Prop, DPApp) ->
     try wh_util:to_atom(<<DPApp/binary>>) of
         BuildMsgFun ->
             case lists:keyfind(BuildMsgFun, 1, ?MODULE:module_info(exports)) of
-                false -> {error, invalid_dialplan_object};
+                false ->
+                    {error, invalid_dialplan_object};
                 {_, 1} ->
                     {ok, Payload} = ?MODULE:BuildMsgFun(wh_api:set_missing_values(Prop, ?DEFAULT_VALUES)),
                     amqp_util:callctl_publish(CtrlQ, Payload, ?DEFAULT_CONTENT_TYPE)                
@@ -883,7 +884,9 @@ publish_action(Queue, Payload, ContentType) ->
 publish_error(CallID, JObj) ->
     publish_error(CallID, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_error(CallID, API, ContentType) ->
-    {ok, Payload} = wh_api:prepare_api_payload(API, [{<<"Event-Name">>, <<"dialplan">>} | ?ERROR_RESP_VALUES], fun ?MODULE:error/1),
+    {ok, Payload} = wh_api:prepare_api_payload(API, [{<<"Event-Name">>, <<"dialplan">>}
+                                                     | ?ERROR_RESP_VALUES
+                                                    ], fun ?MODULE:error/1),
     amqp_util:callevt_publish(CallID, Payload, event, ContentType).
 
 -spec publish_event/2 :: (ne_binary(), api_terms()) -> 'ok'.

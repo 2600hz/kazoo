@@ -34,7 +34,7 @@
          ,delete/3
         ]).
 
--include_lib("crossbar/include/crossbar.hrl").
+-include("include/crossbar.hrl").
 
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".provisioner_templates">>).
 -define(CB_LIST, <<"provisioner_templates/crossbar_listing">>).

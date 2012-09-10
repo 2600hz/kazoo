@@ -21,7 +21,7 @@
          ,delete/2
         ]).
 
--include_lib("crossbar/include/crossbar.hrl").
+-include("include/crossbar.hrl").
 
 -define(CB_LIST, <<"conferences/crossbar_listing">>).
 

@@ -25,7 +25,7 @@
          ,halt/2, content_type_matches/2, ensure_content_type/1
         ]).
 
--include_lib("crossbar/include/crossbar.hrl").
+-include("include/crossbar.hrl").
 
 -type cowboy_multipart_response() :: {{'headers', cowboy_http:headers()} |
                                       {'data', binary()} |
@@ -306,9 +306,9 @@ get_json_body(Req, ReqBody) ->
                     {{malformed, <<"Invalid JSON request envelope">>}, Req}
             end
     catch
-        _:{badmatch, {comma,{decoder,_,S,_,_,_}}} ->
-            lager:debug("failed to decode json: comma error around char ~s", [wh_util:to_list(S)]),
-            {{malformed, list_to_binary(["Failed to decode: comma error around char ", wh_util:to_list(S)])}, Req}
+        throw:{invalid_json,{{error,{ErrLine, ErrMsg}}, _JSON}} ->
+            lager:debug("failed to decode json near ~p: ~s", [ErrLine, ErrMsg]),
+            {{malformed, <<(wh_util:to_binary(ErrMsg))/binary, " (around ", (wh_util:to_binary(ErrLine))/binary>>}, Req}
     end.
 
 %%--------------------------------------------------------------------
@@ -436,7 +436,7 @@ is_authentic(Req0, Context0) ->
     case crossbar_bindings:succeeded(crossbar_bindings:map(Event, Context1)) of
         [] ->
             lager:debug("failed to authenticate"),
-            Context2 = crossbar_util:response(error, "unauthorized", 401, Context1),
+            Context2 = crossbar_util:response(error, <<"unauthorized">>, 401, Context1),
             {Content, Req1} = create_resp_content(Req1, Context2),
             {ok, Req2} = cowboy_http_req:set_resp_body(Content, Req1),
             {{false, <<>>}, Req2, Context2};
@@ -484,7 +484,7 @@ is_permitted(Req, #cb_context{req_verb = <<"options">>}=Context) ->
     %% all all OPTIONS, they are harmless (I hope) and required for CORS preflight
     {true, Req, Context};
 is_permitted(Req0, #cb_context{req_nouns=[{<<"404">>, []}]}=Context0) ->
-    Context1 = crossbar_util:response(error, "not found", 404, Context0),
+    Context1 = crossbar_util:response(error, <<"not found">>, 404, Context0),
     {Content, Req0} = create_resp_content(Req0, Context1),
     {ok, Req1} = cowboy_http_req:set_resp_body(Content, Req0),
     {false, Req1, Context1};
@@ -493,7 +493,7 @@ is_permitted(Req0, Context0) ->
     case crossbar_bindings:succeeded(crossbar_bindings:map(Event, Context0)) of
         [] ->
             lager:debug("no on authz the request"),
-            Context1 = crossbar_util:response(error, "forbidden", 403, Context0),
+            Context1 = crossbar_util:response(error, <<"forbidden">>, 403, Context0),
             {Content, Req0} = create_resp_content(Req0, Context1),
             {ok, Req1} = cowboy_http_req:set_resp_body(Content, Req0),
             {false, Req1, Context1};

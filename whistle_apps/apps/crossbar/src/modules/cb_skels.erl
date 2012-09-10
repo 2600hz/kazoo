@@ -32,7 +32,7 @@
          ,finish_request/1
         ]).
 
--include_lib("crossbar/include/crossbar.hrl").
+-include("include/crossbar.hrl").
 
 -define(PVT_TYPE, <<"skel">>).
 -define(PVT_FUNS, [fun add_pvt_type/2]).
@@ -113,7 +113,7 @@ allowed_methods(_) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec resource_exists/0 :: () -> 'true'.
--spec resource_exists/1 :: (path_tokens()) -> 'true'.
+-spec resource_exists/1 :: (path_token()) -> 'true'.
 resource_exists() -> true.
 resource_exists(_) -> true.
 

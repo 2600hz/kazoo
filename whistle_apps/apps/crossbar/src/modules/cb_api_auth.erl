@@ -25,7 +25,7 @@
          ,put/1
         ]).
 
--include_lib("crossbar/include/crossbar.hrl").
+-include("include/crossbar.hrl").
 
 -define(AGG_VIEW_FILE, <<"views/accounts.json">>).
 -define(AGG_VIEW_API, <<"accounts/listing_by_api">>).
@@ -99,7 +99,7 @@ validate(#cb_context{req_data=Data, req_verb = <<"put">>}=Context) ->
         {fail, Errors} ->
             crossbar_util:response_invalid_data(Errors, Context);
         {pass, JObj} ->
-            _ = crossbar_util:put_reqid(Context),
+            _ = cb_context:put_reqid(Context),
             authorize_api_key(Context, wh_json:get_value(<<"api_key">>, JObj))
     end.
 
@@ -109,7 +109,7 @@ validate(#cb_context{req_data=Data, req_verb = <<"put">>}=Context) ->
 %% @end
 %%--------------------------------------------------------------------
 put(Context) ->
-    _ = crossbar_util:put_reqid(Context),
+    _ = cb_context:put_reqid(Context),
     create_token(Context).
 
 %%%===================================================================

@@ -1,0 +1,10 @@
+language: erlang
+script: make all test
+notifications:
+  webhooks: http://basho-engbot.herokuapp.com/travis?key=622369a511690ee1a7fe54c44eebb57dc8e24b5f
+  email: eng@basho.com
+otp_release:
+  - R15B01
+  - R15B
+  - R14B04
+  - R14B03

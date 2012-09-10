@@ -22,7 +22,7 @@
 -export([allow_account_number_additions/1, disallow_account_number_additions/1]).
 -export([create_account/4]).
 
--include_lib("crossbar/include/crossbar.hrl").
+-include("include/crossbar.hrl").
 
 -type input_term() :: atom() | string() | ne_binary().
 
@@ -49,13 +49,14 @@ migrate() ->
                    ,fun(L) -> sets:add_element(<<"cb_connectivity">>, L) end
                    ,fun(L) -> sets:add_element(<<"cb_local_provisioner_templates">>, L) end
                    ,fun(L) -> sets:add_element(<<"cb_global_provisioner_templates">>, L) end
-                   ,fun(L) -> sets:add_element(<<"cb_queues">>, L) end
                    ,fun(L) -> sets:add_element(<<"cb_schemas">>, L) end
                    ,fun(L) -> sets:add_element(<<"cb_configs">>, L) end
                    ,fun(L) -> sets:add_element(<<"cb_limits">>, L) end
                    ,fun(L) -> sets:add_element(<<"cb_whitelabel">>, L) end
                    ,fun(L) -> sets:add_element(<<"cb_braintree">>, L) end
                    ,fun(L) -> sets:add_element(<<"cb_services">>, L) end
+                   ,fun(L) -> sets:add_element(<<"cb_agents">>, L) end
+                   ,fun(L) -> sets:add_element(<<"cb_queues">>, L) end
                   ],
     UpdatedModules = sets:to_list(lists:foldr(fun(F, L) -> F(L) end, StartModules, XbarUpdates)),
     _ = whapps_config:set_default(<<"crossbar">>, <<"autoload_modules">>, UpdatedModules),
@@ -126,7 +127,9 @@ running_modules() ->
 %% 
 %% @end
 %%--------------------------------------------------------------------
--spec find_account_by_number/1 :: (input_term()) -> {'ok', ne_binary()} | {'error', term()}.
+-spec find_account_by_number/1 :: (input_term()) ->
+                                          {'ok', ne_binary()} |
+                                          {'error', term()}.
 find_account_by_number(Number) when not is_binary(Number) ->
     find_account_by_number(wh_util:to_binary(Number));
 find_account_by_number(Number) ->
@@ -396,9 +399,24 @@ validate_user(JObj, Context) ->
                                              {'error', wh_json:json_object()}.
 create_account(Context) ->
     case crossbar_bindings:fold(<<"v1_resource.execute.put.accounts">>, [Context]) of
-        #cb_context{resp_status=success, db_name=AccountDb, account_id=AccountId}=Context1 ->
+        #cb_context{resp_status=success, db_name=AccountDb, account_id=AccountId, doc=Doc}=Context1 ->
             io:format("created new account '~s' in db '~s'~n", [AccountId, AccountDb]),
-            {ok, Context1};
+
+            case wh_json:get_value(<<"service_plan">>, Doc) of
+                undefined ->
+                    lager:debug("no service plan configured (perhaps this was the first system account?"),
+                    Doc1 = cb_accounts:add_pvt_service_plan(Doc),
+                    case couch_mgr:save_doc(AccountDb, Doc1) of
+                        {ok, Doc2} ->
+                            lager:debug("set service plan"),
+                            {ok, Context1#cb_context{doc=Doc2}};
+                        {error, _E} ->
+                            lager:debug("failed to set service plan: ~p", [_E]),
+                            {ok, Context1}
+                    end;
+                _ ->
+                    {ok, Context1}
+            end;
         #cb_context{resp_data=Errors} ->
             io:format("failed to create account: '~s'~n", [list_to_binary(wh_json:encode(Errors))]),
             AccountId = wh_json:get_value(<<"_id">>, Context#cb_context.req_data),

@@ -1,8 +1,26 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2012, VoIP INC
 %%% @doc
 %%%
 %%% CRUD for call queues
+%%% /queues
+%%%   GET: list all known queues
+%%%   PUT: create a new queue
+%%%
+%%% /queues/stats
+%%%   GET: retrieve stats across all queues
+%%%
+%%% /queues/QID
+%%%   GET: queue details
+%%%   POST: edit queue details
+%%%   DELETE: delete a queue
+%%%
+%%% /queues/QID/stats
+%%%   GET: retrieve stats for this queue
+%%% /queues/QID/roster
+%%%   GET: get list of agent_ids
+%%%   POST: add a list of agent_ids
+%%%   DELETE: rm a list of agent_ids
 %%%
 %%% @end
 %%% @contributors:
@@ -11,20 +29,23 @@
 -module(cb_queues).
 
 -export([init/0
-         ,allowed_methods/0, allowed_methods/1
-         ,resource_exists/0, resource_exists/1
-         ,validate/1, validate/2
+         ,allowed_methods/0, allowed_methods/1, allowed_methods/2
+         ,resource_exists/0, resource_exists/1, resource_exists/2
+         ,validate/1, validate/2, validate/3
          ,put/1
-         ,post/2
-         ,delete/2
+         ,post/2, post/3
+         ,delete/2, delete/3
         ]).
 
--include_lib("crossbar/include/crossbar.hrl").
+-include("include/crossbar.hrl").
 
 -define(PVT_TYPE, <<"queue">>).
 -define(PVT_FUNS, [fun add_pvt_type/2]).
 -define(CB_LIST, <<"queues/crossbar_listing">>).
 -define(CB_AGENTS_LIST, <<"queues/agents_listing">>). %{agent_id, queue_id}
+
+-define(STATS_PATH_TOKEN, <<"stats">>).
+-define(ROSTER_PATH_TOKEN, <<"roster">>).
 
 %%%===================================================================
 %%% API
@@ -52,11 +73,19 @@ init() ->
 %% going to be responded to.
 %% @end
 %%--------------------------------------------------------------------
--spec allowed_methods/0 :: () -> http_methods() | [].
--spec allowed_methods/1 :: (path_token()) -> http_methods() | [].
+-spec allowed_methods/0 :: () -> http_methods().
+-spec allowed_methods/1 :: (path_token()) -> http_methods().
+-spec allowed_methods/2 :: (path_token(), path_token()) -> http_methods().
 allowed_methods() ->
     ['GET', 'PUT'].
-allowed_methods(_) ->
+allowed_methods(?STATS_PATH_TOKEN) ->
+    ['GET'];
+allowed_methods(_QID) ->
+    ['GET', 'POST', 'DELETE'].
+
+allowed_methods(_QID, ?STATS_PATH_TOKEN) ->
+    ['GET'];
+allowed_methods(_QID, ?ROSTER_PATH_TOKEN) ->
     ['GET', 'POST', 'DELETE'].
 
 %%--------------------------------------------------------------------
@@ -69,9 +98,12 @@ allowed_methods(_) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec resource_exists/0 :: () -> 'true'.
--spec resource_exists/1 :: (path_tokens()) -> 'true'.
+-spec resource_exists/1 :: (path_token()) -> 'true'.
+-spec resource_exists/2 :: (path_token(), path_token()) -> 'true'.
 resource_exists() -> true.
 resource_exists(_) -> true.
+resource_exists(_, ?STATS_PATH_TOKEN) -> true;
+resource_exists(_, ?ROSTER_PATH_TOKEN) -> true.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -85,17 +117,29 @@ resource_exists(_) -> true.
 %%--------------------------------------------------------------------
 -spec validate/1 :: (#cb_context{}) -> #cb_context{}.
 -spec validate/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+-spec validate/3 :: (#cb_context{}, path_token(), path_token()) -> #cb_context{}.
 validate(#cb_context{req_verb = <<"get">>}=Context) ->
     summary(Context);
 validate(#cb_context{req_verb = <<"put">>}=Context) ->
     create(Context).
 
+validate(#cb_context{req_verb = <<"get">>}=Context, ?STATS_PATH_TOKEN) ->
+    fetch_all_queue_stats(Context);
 validate(#cb_context{req_verb = <<"get">>}=Context, Id) ->
     read(Id, Context);
 validate(#cb_context{req_verb = <<"post">>}=Context, Id) ->
     update(Id, Context);
 validate(#cb_context{req_verb = <<"delete">>}=Context, Id) ->
     read(Id, Context).
+
+validate(#cb_context{req_verb = <<"get">>}=Context, Id, ?STATS_PATH_TOKEN) ->
+    fetch_queue_stats(Id, Context);
+validate(#cb_context{req_verb = <<"get">>}=Context, Id, ?ROSTER_PATH_TOKEN) ->
+    load_agent_roster(Id, Context);
+validate(#cb_context{req_verb = <<"post">>}=Context, Id, ?ROSTER_PATH_TOKEN) ->
+    add_queue_to_agents(Id, Context);
+validate(#cb_context{req_verb = <<"delete">>}=Context, Id, ?ROSTER_PATH_TOKEN) ->
+    rm_queue_from_agents(Id, Context).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -116,8 +160,11 @@ put(#cb_context{}=Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec post/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+-spec post/3 :: (#cb_context{}, path_token(), path_token()) -> #cb_context{}.
 post(#cb_context{}=Context, _) ->
     crossbar_doc:save(Context).
+post(#cb_context{}=Context, Id, ?ROSTER_PATH_TOKEN) ->
+    read(Id, crossbar_doc:save(Context)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -126,8 +173,11 @@ post(#cb_context{}=Context, _) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec delete/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+-spec delete/3 :: (#cb_context{}, path_token(), path_token()) -> #cb_context{}.
 delete(#cb_context{}=Context, _) ->
     crossbar_doc:delete(Context).
+delete(#cb_context{}=Context, Id, ?ROSTER_PATH_TOKEN) ->
+    read(Id, crossbar_doc:save(Context)).
 
 %%%===================================================================
 %%% Internal functions
@@ -166,11 +216,90 @@ read(Id, Context) ->
     end.
 
 load_queue_agents(Id, #cb_context{resp_data=Queue}=Context) ->
-    case crossbar_doc:load_view(?CB_AGENTS_LIST, [{<<"key">>, Id}], Context, fun normalize_agents_results/2) of
-        #cb_context{resp_status=success, resp_data=Agents} ->
+    case load_agent_roster(Id, Context) of
+        #cb_context{resp_status=success, resp_data=Agents, doc=_D} ->
             Context#cb_context{resp_data=wh_json:set_value(<<"agents">>, Agents, Queue)};
         _ -> Context
     end.
+
+load_agent_roster(Id, Context) ->
+    crossbar_doc:load_view(?CB_AGENTS_LIST, [{key, Id}]
+                           ,Context
+                           ,fun normalize_agents_results/2
+                          ).
+
+add_queue_to_agents(Id, #cb_context{req_data=[]}=Context) ->
+    lager:debug("no agents listed, removing all agents from ~s", [Id]),
+    #cb_context{resp_data=CurrAgentIds} = load_agent_roster(Id, Context),
+    rm_queue_from_agents(Id, Context#cb_context{req_data=CurrAgentIds});
+    
+add_queue_to_agents(Id, #cb_context{req_data=[_|_]=AgentIds}=Context) ->
+    %% We need to figure out what agents are on the queue already, and remove those not
+    %% in the AgentIds list
+    #cb_context{resp_data=CurrAgentIds} = load_agent_roster(Id, Context),
+
+    {InQueueAgents, RmAgentIds} = lists:partition(fun(A) -> lists:member(A, AgentIds) end, CurrAgentIds),
+    AddAgentIds = [A || A <- AgentIds, (not lists:member(A, InQueueAgents))],
+
+    _P = spawn(fun() ->
+                       cb_context:put_reqid(Context),
+                       maybe_rm_agents(Id, Context, RmAgentIds)
+               end),
+
+    add_queue_to_agents(Id, Context, AddAgentIds).
+
+add_queue_to_agents(_Id, Context, []) ->
+    Context#cb_context{resp_status=success, doc=[]};
+add_queue_to_agents(Id, Context, AgentIds) ->
+    case crossbar_doc:load(AgentIds, Context) of
+        #cb_context{resp_status=success
+                    ,doc=Agents
+                   }=Context1 ->
+            lager:debug("fetched agents: ~p", [Agents]),
+            Context1#cb_context{doc=[maybe_add_queue_to_agent(Id, A) || A <- Agents]};
+        Context1 -> Context1
+    end.
+
+maybe_add_queue_to_agent(Id, A) ->
+    Qs = case wh_json:get_value(<<"queues">>, A) of
+             L when is_list(L) ->
+                 case lists:member(Id, L) of
+                     true -> L;
+                     false -> [Id | L]
+                 end;
+             _ -> [Id]
+         end,
+    lager:debug("agent ~s queues: ~p", [wh_json:get_value(<<"_id">>, A), Qs]),
+    wh_json:set_value(<<"queues">>, Qs, A).
+
+-spec maybe_rm_agents/3 :: (ne_binary(), #cb_context{}, wh_json:json_strings()) -> #cb_context{}.
+maybe_rm_agents(_Id, Context, []) ->
+    lager:debug("no agents to remove from the queue ~s", [_Id]),
+    Context#cb_context{resp_status=success};
+maybe_rm_agents(Id, Context, AgentIds) ->
+    #cb_context{}=RMContext = rm_queue_from_agents(Id, Context#cb_context{req_data=AgentIds}),
+    #cb_context{resp_status=_S1}=RMContext1 = crossbar_doc:save(RMContext),
+    lager:debug("rm resulted in ~s", [_S1]),
+    RMContext1.
+
+rm_queue_from_agents(_Id, #cb_context{req_data=[]}=Context) ->
+    Context;
+rm_queue_from_agents(Id, #cb_context{req_data=[_|_]=AgentIds}=Context) ->
+    lager:debug("remove agents: ~p", [AgentIds]),
+    case crossbar_doc:load(AgentIds, Context) of
+        #cb_context{resp_status=success
+                    ,doc=Agents
+                   }=Context1 ->
+            lager:debug("removed agents successfully"),
+            Context1#cb_context{doc=[maybe_rm_queue_from_agent(Id, A) || A <- Agents]};
+        Context1 -> Context1
+    end;
+rm_queue_from_agents(_, #cb_context{req_data=_Req}=Context) ->
+    Context#cb_context{resp_status=success, doc=undefined}.
+
+maybe_rm_queue_from_agent(Id, A) ->
+    Qs = wh_json:get_value(<<"queues">>, A, []),
+    wh_json:set_value(<<"queues">>, lists:delete(Id, Qs), A).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -190,6 +319,20 @@ update(Id, #cb_context{req_data=Data}=Context) ->
                                      end, {JObj, Context}, ?PVT_FUNS),
             crossbar_doc:load_merge(Id, JObj1, Context)
     end.
+
+fetch_all_queue_stats(Context) ->
+    crossbar_doc:load_view(<<"acdc_stats/stats_per_queue">>, [], Context, fun normalize_queue_results/2).
+
+fetch_queue_stats(Id, Context) ->
+    lager:debug("fetching queue stats for ~s", [Id]),
+    crossbar_doc:load_view(<<"acdc_stats/stats_per_queue">>
+                               ,[{startkey, [Id, wh_json:new()]}
+                                 ,{endkey, [Id, 0]}
+                                 ,descending
+                                ]
+                           ,Context
+                           ,fun normalize_queue_results/2
+                          ).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -212,7 +355,14 @@ summary(Context) ->
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
 
--spec normalize_agents_results/2 :: (wh_json:json_object(), wh_json:json_objects()) -> wh_json:json_objects().
+-spec normalize_queue_results/2 :: (wh_json:json_object(), wh_json:json_objects()) -> wh_json:json_objects().
+normalize_queue_results(JObj, Acc) ->
+    [begin
+         [AID, _] = wh_json:get_value(<<"key">>, JObj),
+         wh_json:set_value(<<"queue_id">>, AID, wh_json:get_value(<<"value">>, JObj))
+     end
+     | Acc].
+
 normalize_agents_results(JObj, Acc) ->
     [wh_json:get_value(<<"id">>, JObj) | Acc].
 

@@ -45,6 +45,7 @@
         ]).
 -export([microseconds_to_seconds/1
          ,elapsed_s/1, elapsed_ms/1, elapsed_us/1
+         ,now_s/1, now_ms/1, now_us/1
         ]).
 
 -export([put_callid/1]).
@@ -119,7 +120,7 @@ format_account_id(AccountId, raw) ->
 %% get the provided leger (account_id/db) balance
 %% @end
 %%--------------------------------------------------------------------
--spec current_account_balance/1 :: ('undefined' | ne_binary()) -> integer().
+-spec current_account_balance/1 :: (api_binary()) -> integer().
 current_account_balance(undefined) -> 0;
 current_account_balance(Ledger) ->
     LedgerDb = wh_util:format_account_id(Ledger, encoded),    
@@ -274,16 +275,13 @@ get_hostname() ->
 %% the vm if possible.
 %% @end
 %%--------------------------------------------------------------------
--spec try_load_module/1 :: (string() | binary()) -> atom() | false.
+-spec try_load_module/1 :: (string() | binary()) -> atom() | 'false'.
 try_load_module(Name) ->
     try to_atom(Name) of
+        undefined -> false;
         Module ->
-            case erlang:module_loaded(Module) of
-                true -> Module;
-                false -> 
-                    {module, Module} = code:ensure_loaded(Module),
-                    Module
-            end
+            {module, Module} = code:ensure_loaded(Module),
+            Module
     catch
         error:badarg ->
             lager:debug("module ~s not found", [Name]),
@@ -764,6 +762,15 @@ elapsed_ms({_,_,_}=Start) ->
 elapsed_us({_,_,_}=Start) ->
     timer:now_diff(erlang:now(), Start).
 
+-spec now_s/1 :: (wh_now()) -> integer().
+-spec now_ms/1 :: (wh_now()) -> integer().
+-spec now_us/1 :: (wh_now()) -> integer().
+now_us({MegaSecs,Secs,MicroSecs}) ->
+    (MegaSecs*1000000 + Secs)*1000000 + MicroSecs.
+now_ms({_,_,_}=Now) ->
+    now_us(Now) div 1000.
+now_s({_,_,_}=Now) ->
+    now_us(Now) div 1000000.
 
 %% PROPER TESTING
 prop_to_integer() ->

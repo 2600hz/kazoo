@@ -3,16 +3,13 @@
     ,"language": "javascript"
     ,"views": {
         "crossbar_listing": {
-            "map": "function(doc) { if (typeof doc.queues !== 'object' || doc.pvt_deleted) return; emit(doc._id, {'name':doc.name, 'queues':doc.queues, 'queue_pin':doc.queue_pin}); }"
+            "map": "function(doc) { if (typeof doc.queues !== 'object' || doc.pvt_deleted) return; emit(doc._id, {'first_name': doc.first_name, 'last_name': doc.last_name, 'queues':doc.queues}); }"
         },
         "agent_listing":{
             "map":"function(doc) { if (typeof doc.queues !== 'object' || doc.pvt_deleted) return; for (i in doc.queues) { emit(doc.queues[i], doc._id);} }"
         },
         "agent_status":{
             "map":"function(doc) { if (doc.pvt_type != 'agent_activity' || doc.pvt_deleted) return; emit([doc.agent_id, doc.pvt_created], doc.action); }"
-        },
-        "agent_pins":{
-            "map":"function(doc) { if (typeof doc.queue_pin === 'undefined' || doc.pvt_deleted) return; emit(doc.queue_pin, null); }"
         }
     }
 }

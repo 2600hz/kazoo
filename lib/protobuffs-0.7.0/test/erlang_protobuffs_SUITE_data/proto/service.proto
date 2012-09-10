@@ -1,0 +1,11 @@
+service SearchService {
+	rpc Search (SearchRequest) returns (SearchResponse);
+}
+
+message SearchResponse {
+	optional string found = 1;
+}
+
+message SearchRequest {
+	optional string seek = 1;
+}

@@ -1,0 +1,15 @@
+message Outer {
+  optional Middle middle = 1;
+
+  message Other {
+      optional bool bar = 1;
+  }
+  message Middle {
+    optional Inner inner = 2;
+    optional Other other = 3;
+    message Inner {
+        optional bool foo = 1;
+    }
+  }
+}
+

@@ -26,7 +26,7 @@
          ,get/2, get/3
         ]).
 
--include_lib("crossbar/include/crossbar.hrl").
+-include("include/crossbar.hrl").
 
 -define(SIGNUP_DB, <<"signups">>).
 
@@ -127,14 +127,14 @@ validate(Context, <<"checkauth">>, _) ->
 -spec get/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
 -spec get/3 :: (#cb_context{}, path_token(), path_token()) -> #cb_context{}.
 get(#cb_context{query_json=QS}=Context, Provider) ->
-    _ = crossbar_util:put_reqid(Context),
+    _ = cb_context:put_reqid(Context),
     Realm = whapps_config:get(?OPENID_CONFIG_CATEGORY, <<"realm">>),
 
     %% find the discovery URL of the IdP
     true = is_list(ProviderUrl = get_provider_url(Provider)),
 
     %% if this is a popup then we will not do redirects
-    Popup = wh_util:is_popup(wh_json:get_value(<<"popup">>, QS)),
+    Popup = wh_json:is_true(<<"popup">>, QS),
 
     %% we cant just put the UUID on the url, that would defeat the purpose
     CacheKey = wh_util:to_hex_binary(crypto:rand_bytes(16)),
@@ -150,10 +150,10 @@ get(#cb_context{query_json=QS}=Context, Provider) ->
         {ok, AuthReq} when Popup ->
             Location = wh_util:to_binary(openid:authentication_url(AuthReq, Return, Realm)),
             lager:debug("providing redirect location ~s as openid auth ~s", [Location, Seed]),
-            Context#cb_context{resp_data=wh_json:from_list([{"location", Location}])
+            Context#cb_context{resp_data=wh_json:from_list([{<<"location">>, Location}])
                                ,resp_status=success};
         {ok, AuthReq} ->
-            Location = wh_util:to_list(openid:authentication_url(AuthReq, Return, Realm)),
+            Location = openid:authentication_url(AuthReq, Return, Realm),
             lager:debug("redirecting client to ~s as openid auth ~s", [Location, Seed]),
             redirect_client(Location, Context);
         %% Must be grumpy today
@@ -164,7 +164,7 @@ get(#cb_context{query_json=QS}=Context, Provider) ->
     end.
 
 get(#cb_context{query_json=QS}=Context, <<"checkauth">>, CacheKey) ->
-    _ = crossbar_util:put_reqid(Context),
+    _ = cb_context:put_reqid(Context),
 
     Realm = whapps_config:get(?OPENID_CONFIG_CATEGORY, <<"realm">>),
     RegUrl = whapps_config:get(?OPENID_CONFIG_CATEGORY, <<"reg_url">>),
@@ -189,7 +189,7 @@ get(#cb_context{query_json=QS}=Context, <<"checkauth">>, CacheKey) ->
                     create_token(IdentityUrl, AccountId, Context);
                 {ok, AccountId} ->
                     #cb_context{auth_token=AuthToken} = create_token(IdentityUrl, AccountId, Context),
-                    Location = wh_util:to_list(list_to_binary([AppUrl, "?account_id=", AccountId, "&token=", AuthToken])),
+                    Location = list_to_binary([AppUrl, "?account_id=", AccountId, "&token=", AuthToken]),
                     lager:debug("redirecting client to web app url: ~s", [Location]),
                     redirect_client(Location, Context);
                 %% ...nope-ish
@@ -252,10 +252,11 @@ get_identity(IdentityUrl, <<"google">>, _QS) ->
 %% find the account id mapping from the IdP unique identifier
 %% @end
 %%--------------------------------------------------------------------
--spec find_account/2 :: (ne_binary(), ne_binary()) -> {'ok', ne_binary()} |
-                                                      {'error', atom()}.
+-spec find_account/2 :: (ne_binary(), ne_binary()) ->
+                                {'ok', ne_binary()} |
+                                {'error', atom()}.
 find_account(Identifier, Provider) ->
-    case couch_mgr:get_results(?WH_ACCOUNTS_DB, {?WH_ACCOUNTS_DB, <<"listing_by_openid">>}, [{<<"key">>, [Identifier, Provider]}]) of
+    case couch_mgr:get_results(?WH_ACCOUNTS_DB, <<?WH_ACCOUNTS_DB/binary, "listing_by_openid">>, [{key, [Identifier, Provider]}]) of
         {ok, []} ->
             {error, not_registered};
         {ok, [JObj]} ->
@@ -325,8 +326,7 @@ normalize(QS, NormalizedName, K) ->
     %% heavy handed approach to namespace, should only operate in "http://openid.net/srv/ax/1.0"
     %% ...getting it done fast
     VKey = re:replace(K, "\\.type\\.", ".value.", [{return, list}]),
-    Value = wh_util:to_binary(props:get_value(VKey, QS, <<>>)),
-    {NormalizedName, Value}.
+    {NormalizedName, wh_json:get_binary_value(VKey, QS, <<>>)}.
 
 %%--------------------------------------------------------------------
 %% @private

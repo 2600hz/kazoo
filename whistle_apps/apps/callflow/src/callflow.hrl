@@ -1,3 +1,4 @@
+-ifndef(CALLFLOW_HRL).
 -include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_amqp.hrl").
 -include_lib("whistle/include/wh_log.hrl").
@@ -8,7 +9,12 @@
                            {'continue'} |
                            {'continue', integer()} |
                            {'heartbeat'}.
--type cf_api_error() :: {'error', 'channel_hungup' | 'channel_unbridge' | 'timeout' | wh_json:json_object()}.
+-type cf_api_error() :: {'error'
+                         ,'channel_hungup' |
+                         'channel_unbridge' |
+                         'timeout' |
+                         wh_json:json_object()
+                        }.
 -type cf_api_std_return() :: cf_api_error() | {'ok', wh_json:json_object()}.
 -type cf_api_bridge_return() :: {'error', 'timeout' | wh_json:json_object()} |
                                 {'fail', wh_json:json_object()} |
@@ -35,3 +41,8 @@
 -define(CF_CONFIG_CAT, <<"callflow">>).
 
 -define(MANUAL_PRESENCE_DOC, <<"manual_presence">>).
+
+-define(CALLFLOW_CACHE, callflow_cache).
+
+-define(CALLFLOW_HRL, true).
+-endif.

@@ -84,8 +84,8 @@ handle_cdr(JObj, _Props) ->
                          end,
             Direction = wh_json:get_value(<<"Call-Direction">>, JObj),
             Realm = get_account_realm(AccountId),
-            wh_notify:system_alert("~s ~s to ~s (~s) on ~s"
-                                   ,[wh_util:to_lower_binary(HangupCause), FromNumber, ToNumber, Direction, Realm]
+            wh_notify:system_alert("~s ~s to ~s (~s) on ~s(~s)"
+                                   ,[wh_util:to_lower_binary(HangupCause), FromNumber, ToNumber, Direction, Realm, AccountId]
                                    ,wh_json:to_proplist(JObj))
     end.
 
@@ -192,11 +192,10 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec get_account_realm/1 :: (ne_binary()) -> 'undefined' | ne_binary().
+-spec get_account_realm/1 :: (ne_binary()) -> api_binary().
+get_account_realm(undefined) -> undefined;
 get_account_realm(AccountId) ->
     case couch_mgr:open_cache_doc(?WH_ACCOUNTS_DB, AccountId) of
-        {ok, JObj} ->
-            wh_json:get_value(<<"realm">>, JObj);
-        {error, _} ->
-            undefined
+        {ok, JObj} -> wh_json:get_value(<<"realm">>, JObj);
+        {error, _} -> undefined
     end.

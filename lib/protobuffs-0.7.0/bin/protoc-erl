@@ -1,0 +1,10 @@
+#!/usr/bin/env escript
+%% -*- erlang -*-
+%%! -sasl errlog_type error -boot start_sasl -noshell
+
+main ([File]) ->
+  protobuffs_compile:generate_source (File);
+main (_) ->
+  io:format ("usage: ~s <protofile>~n",
+             [filename:basename (escript:script_name())]),
+  halt (1).

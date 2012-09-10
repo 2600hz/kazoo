@@ -20,7 +20,7 @@
          ,delete/3
         ]).
 
--include_lib("crossbar/include/crossbar.hrl").
+-include("include/crossbar.hrl").
 -include_lib("braintree/include/braintree.hrl").
 
 -define(CUSTOMER_PATH_TOKEN, <<"customer">>).
@@ -140,7 +140,7 @@ validate(#cb_context{req_verb = <<"post">>, req_data=JObj, account_id=AccountId}
                    end
                  ],
     Customer = braintree_customer:json_to_record(lists:foldr(fun(F, J) -> F(J) end, JObj, Generators)),
-    crossbar_util:response([], crossbar_util:store(braintree, Customer, Context));
+    crossbar_util:response([], cb_context:store(braintree, Customer, Context));
 
 %% CARD API
 validate(#cb_context{req_verb = <<"get">>, account_id=AccountId}=Context, ?CARDS_PATH_TOKEN) ->
@@ -156,7 +156,7 @@ validate(#cb_context{req_verb = <<"get">>, account_id=AccountId}=Context, ?CARDS
     end;
 validate(#cb_context{req_verb = <<"put">>, req_data=JObj, account_id=AccountId}=Context, ?CARDS_PATH_TOKEN) ->
     Card = (braintree_card:json_to_record(JObj))#bt_card{customer_id=wh_util:to_list(AccountId)},
-    crossbar_util:response([], crossbar_util:store(braintree, Card, Context));
+    crossbar_util:response([], cb_context:store(braintree, Card, Context));
 
 validate(#cb_context{req_verb = <<"get">>, account_id=AccountId}=Context, ?ADDRESSES_PATH_TOKEN) ->
     try braintree_customer:find(AccountId) of
@@ -171,7 +171,7 @@ validate(#cb_context{req_verb = <<"get">>, account_id=AccountId}=Context, ?ADDRE
     end;
 validate(#cb_context{req_verb = <<"put">>, req_data=JObj, account_id=AccountId}=Context, ?ADDRESSES_PATH_TOKEN) ->
     Address = (braintree_address:json_to_record(JObj))#bt_address{customer_id=wh_util:to_list(AccountId)},
-    crossbar_util:response([], crossbar_util:store(braintree, Address, Context));
+    crossbar_util:response([], cb_context:store(braintree, Address, Context));
 
 validate(#cb_context{req_verb = <<"get">>, account_id=AccountId}=Context, ?TRANSACTIONS_PATH_TOKEN) ->
     try braintree_transaction:find_by_customer(AccountId) of
@@ -236,7 +236,7 @@ validate(#cb_context{req_verb = <<"get">>, account_id=AccountId}=Context, ?CARDS
     end;
 validate(#cb_context{req_verb = <<"post">>, req_data=JObj, account_id=AccountId}=Context, ?CARDS_PATH_TOKEN, CardId) ->
     Card = (braintree_card:json_to_record(JObj))#bt_card{customer_id=wh_util:to_list(AccountId), token=CardId},
-    crossbar_util:response([], crossbar_util:store(braintree, Card, Context));
+    crossbar_util:response([], cb_context:store(braintree, Card, Context));
 validate(#cb_context{req_verb = <<"delete">>}=Context, ?CARDS_PATH_TOKEN, _) ->
     crossbar_util:response([], Context);
 validate(#cb_context{req_verb = <<"get">>, account_id=AccountId}=Context, ?ADDRESSES_PATH_TOKEN, AddressId) ->
@@ -252,7 +252,7 @@ validate(#cb_context{req_verb = <<"get">>, account_id=AccountId}=Context, ?ADDRE
     end;
 validate(#cb_context{req_verb = <<"post">>, req_data=JObj, account_id=AccountId}=Context, ?ADDRESSES_PATH_TOKEN, AddressId) ->
     Address = (braintree_address:json_to_record(JObj))#bt_address{customer_id=wh_util:to_list(AccountId), id=AddressId},
-    crossbar_util:response([], crossbar_util:store(braintree, Address, Context));
+    crossbar_util:response([], cb_context:store(braintree, Address, Context));
 validate(#cb_context{req_verb = <<"delete">>}=Context, ?ADDRESSES_PATH_TOKEN, _) ->
     crossbar_util:response([], Context);
 
@@ -271,7 +271,7 @@ validate(#cb_context{req_verb = <<"get">>}=Context, ?TRANSACTIONS_PATH_TOKEN, Tr
 -spec post/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
 -spec post/3 :: (#cb_context{}, path_token(), path_token()) -> #cb_context{}.
 post(Context, ?CUSTOMER_PATH_TOKEN) ->
-    try braintree_customer:update(crossbar_util:fetch(braintree, Context)) of
+    try braintree_customer:update(cb_context:fetch(braintree, Context)) of
         #bt_customer{}=Customer ->
             Resp = braintree_customer:record_to_json(Customer),
             crossbar_util:response(Resp, Context)
@@ -285,7 +285,7 @@ post(Context, ?CUSTOMER_PATH_TOKEN) ->
     end.
 
 post(Context, ?CARDS_PATH_TOKEN, CardId) ->
-    try braintree_card:update(crossbar_util:fetch(braintree, Context)) of
+    try braintree_card:update(cb_context:fetch(braintree, Context)) of
         #bt_card{}=Card ->
             Resp = braintree_card:record_to_json(Card),
             crossbar_util:response(Resp, Context)
@@ -298,7 +298,7 @@ post(Context, ?CARDS_PATH_TOKEN, CardId) ->
             crossbar_util:response(error, wh_util:to_binary(Error), 500, Reason, Context)
     end;
 post(Context, ?ADDRESSES_PATH_TOKEN, AddressId) ->
-    try braintree_address:update(crossbar_util:fetch(braintree, Context)) of
+    try braintree_address:update(cb_context:fetch(braintree, Context)) of
         #bt_address{}=Address ->
             Resp = braintree_address:record_to_json(Address),
             crossbar_util:response(Resp, Context)
@@ -334,7 +334,7 @@ put(#cb_context{req_data=ReqData, resp_data=RespData}=Context, ?CREDITS_PATH_TOK
                               ]),
     Context;
 put(Context, ?ADDRESSES_PATH_TOKEN) ->
-    try braintree_address:create(crossbar_util:fetch(braintree, Context)) of
+    try braintree_address:create(cb_context:fetch(braintree, Context)) of
         #bt_address{}=Address ->
             Resp = braintree_address:record_to_json(Address),
             crossbar_util:response(Resp, Context)
@@ -345,7 +345,7 @@ put(Context, ?ADDRESSES_PATH_TOKEN) ->
             crossbar_util:response(error, wh_util:to_binary(Error), 500, Reason, Context)
     end;
 put(Context, ?CARDS_PATH_TOKEN) ->
-    try braintree_card:create(crossbar_util:fetch(braintree, Context)) of
+    try braintree_card:create(cb_context:fetch(braintree, Context)) of
         #bt_card{}=Card ->
             Resp = braintree_card:record_to_json(Card),
             crossbar_util:response(Resp, Context)
@@ -393,7 +393,7 @@ delete(Context, ?ADDRESSES_PATH_TOKEN, AddressId) ->
 -spec create_braintree_customer/1 :: (#cb_context{}) -> #cb_context{}.
 create_braintree_customer(#cb_context{account_id=AccountId}=Context) ->
     try
-        case crossbar_util:fetch(braintree, Context) of
+        case cb_context:fetch(braintree, Context) of
             #bt_customer{}=Customer ->
                 C = braintree_customer:create(Customer),
                 Resp = braintree_customer:record_to_json(C),

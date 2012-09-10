@@ -8,7 +8,7 @@
 %%%============================================================================
 -module(whapps_call).
 
--include_lib("whistle_apps/src/whapps_call_command.hrl").
+-include("whapps_call_command.hrl").
 
 -export([new/0]).
 -export([from_route_req/1, from_route_req/2]).
@@ -45,6 +45,7 @@
 
 -export([set_authorizing_id/2, authorizing_id/1]).
 -export([set_authorizing_type/2, authorizing_type/1]).
+-export([set_owner_id/2, owner_id/1]).
 
 -export([set_custom_channel_var/3, update_custom_channel_vars/2
          ,custom_channel_var/3, custom_channel_var/2
@@ -103,6 +104,7 @@
                        ,account_id :: whapps_api_binary()                  %% The account id that authorized this call
                        ,authorizing_id :: whapps_api_binary()              %% The ID of the record that authorized this call
                        ,authorizing_type :: whapps_api_binary()            %% The pvt_type of the record that authorized this call
+                       ,owner_id :: whapps_api_binary()                    %% The ID of the owner of this calling device, if any
                        ,app_name = <<"whapps_call">> :: ne_binary()        %% The application name used during whapps_call_command
                        ,app_version = <<"1.0.0">> :: ne_binary()           %% The application version used during whapps_call_command
                        ,custom_publish_fun :: whapps_custom_publish()      %% A custom command used to publish whapps_call_command
@@ -167,6 +169,7 @@ from_route_req(RouteReq, #whapps_call{}=Call) ->
                      ,switch_nodename = wh_json:get_ne_value(<<"Switch-Nodename">>, RouteReq, Call#whapps_call.switch_nodename)
                      ,authorizing_id = wh_json:get_ne_value(<<"Authorizing-ID">>, CCVs, Call#whapps_call.authorizing_id)
                      ,authorizing_type = wh_json:get_ne_value(<<"Authorizing-Type">>, CCVs, Call#whapps_call.authorizing_type)
+                     ,owner_id = wh_json:get_ne_value(<<"Owner-ID">>, CCVs, Call#whapps_call.owner_id)
                      ,caller_id_name = wh_json:get_value(<<"Caller-ID-Name">>, RouteReq, Call#whapps_call.caller_id_name)
                      ,caller_id_number = wh_json:get_value(<<"Caller-ID-Number">>, RouteReq, Call#whapps_call.caller_id_number)
                      ,ccvs = CCVs
@@ -201,6 +204,7 @@ from_route_win(RouteWin, #whapps_call{}=Call) ->
                      ,account_db=AccountDb
                      ,authorizing_id=wh_json:get_ne_value(<<"Authorizing-ID">>, CCVs, Call#whapps_call.authorizing_id)
                      ,authorizing_type=wh_json:get_ne_value(<<"Authorizing-Type">>, CCVs, Call#whapps_call.authorizing_type)
+                     ,owner_id=wh_json:get_ne_value(<<"Owner-ID">>, CCVs, Call#whapps_call.owner_id)
                      ,ccvs = CCVs
                     }.
 
@@ -243,6 +247,7 @@ from_json(JObj, Call) ->
                      ,account_id = wh_json:get_ne_value(<<"Account-ID">>, JObj, account_id(Call))
                      ,authorizing_id = wh_json:get_ne_value(<<"Authorizing-ID">>, JObj, authorizing_id(Call))
                      ,authorizing_type = wh_json:get_ne_value(<<"Authorizing-Type">>, JObj, authorizing_type(Call))
+                     ,owner_id = wh_json:get_ne_value(<<"Owner-ID">>, JObj, owner_id(Call))
                      ,app_name = wh_json:get_ne_value(<<"App-Name">>, JObj, application_name(Call))
                      ,app_version = wh_json:get_ne_value(<<"App-Version">>, JObj, application_version(Call))
                      ,ccvs = CCVs
@@ -298,6 +303,7 @@ to_proplist(#whapps_call{}=Call) ->
      ,{<<"Account-ID">>, account_id(Call)}
      ,{<<"Authorizing-ID">>, authorizing_id(Call)}
      ,{<<"Authorizing-Type">>, authorizing_type(Call)}
+     ,{<<"Owner-ID">>, owner_id(Call)}
      ,{<<"Custom-Channel-Vars">>, custom_channel_vars(Call)}
      ,{<<"Key-Value-Store">>, kvs_to_proplist(Call)}
     ].
@@ -381,7 +387,7 @@ set_controller_queue(ControllerQ, #whapps_call{call_id=CallId, control_q=CtrlQ}=
           end),
     Call#whapps_call{controller_q=ControllerQ}.
 
--spec controller_queue/1 :: (whapps_call:call()) -> 'undefined' | binary().
+-spec controller_queue/1 :: (whapps_call:call()) -> whapps_api_binary().
 controller_queue(#whapps_call{controller_q=ControllerQ}) ->
     ControllerQ.
 
@@ -495,7 +501,7 @@ set_inception(<<"on-net">>, #whapps_call{}=Call) ->
 set_inception(<<"off-net">>, #whapps_call{}=Call) ->
     set_custom_channel_var(<<"Inception">>, <<"off-net">>, Call#whapps_call{inception = <<"off-net">>}).
 
--spec inception/1 :: (whapps_call:call()) -> 'undefined' | binary().
+-spec inception/1 :: (whapps_call:call()) -> whapps_api_binary().
 inception(#whapps_call{inception=Inception}) ->
     Inception.
 
@@ -504,7 +510,7 @@ set_account_db(AccountDb, #whapps_call{}=Call) when is_binary(AccountDb) ->
     AccountId = wh_util:format_account_id(AccountDb, raw),
     set_custom_channel_var(<<"Account-ID">>, AccountId, Call#whapps_call{account_db=AccountDb, account_id=AccountId}).
 
--spec account_db/1 :: (whapps_call:call()) -> 'undefined' | binary().
+-spec account_db/1 :: (whapps_call:call()) -> whapps_api_binary().
 account_db(#whapps_call{account_db=AccountDb}) ->
     AccountDb.
 
@@ -513,7 +519,7 @@ set_account_id(AccountId, #whapps_call{}=Call) when is_binary(AccountId) ->
     AccountDb = wh_util:format_account_id(AccountId, encoded),
     set_custom_channel_var(<<"Account-ID">>, AccountId, Call#whapps_call{account_db=AccountDb, account_id=AccountId}).
 
--spec account_id/1 :: (whapps_call:call()) -> 'undefined' | binary().
+-spec account_id/1 :: (whapps_call:call()) -> whapps_api_binary().
 account_id(#whapps_call{account_id=AccountId}) ->
     AccountId.
 
@@ -521,7 +527,7 @@ account_id(#whapps_call{account_id=AccountId}) ->
 set_authorizing_id(AuthorizingId, #whapps_call{}=Call) when is_binary(AuthorizingId) ->
     set_custom_channel_var(<<"Authorizing-Id">>, AuthorizingId, Call#whapps_call{authorizing_id=AuthorizingId}).
 
--spec authorizing_id/1 :: (whapps_call:call()) -> 'undefined' | binary().
+-spec authorizing_id/1 :: (whapps_call:call()) -> whapps_api_binary().
 authorizing_id(#whapps_call{authorizing_id=AuthorizingId}) ->
     AuthorizingId.
 
@@ -529,9 +535,17 @@ authorizing_id(#whapps_call{authorizing_id=AuthorizingId}) ->
 set_authorizing_type(AuthorizingType, #whapps_call{}=Call) when is_binary(AuthorizingType) ->
     set_custom_channel_var(<<"Authorizing-Type">>, AuthorizingType, Call#whapps_call{authorizing_type=AuthorizingType}).
 
--spec authorizing_type/1 :: (whapps_call:call()) -> 'undefined' | binary().
+-spec authorizing_type/1 :: (whapps_call:call()) -> whapps_api_binary().
 authorizing_type(#whapps_call{authorizing_type=AuthorizingType}) ->
     AuthorizingType.
+
+-spec set_owner_id/2 :: (ne_binary(), whapps_call:call()) -> whapps_call:call().
+set_owner_id(OwnerId, #whapps_call{}=Call) when is_binary(OwnerId) ->
+    set_custom_channel_var(<<"Owner-Id">>, OwnerId, Call#whapps_call{owner_id=OwnerId}).
+
+-spec owner_id/1 :: (whapps_call:call()) -> whapps_api_binary().
+owner_id(#whapps_call{owner_id=OwnerId}) ->
+    OwnerId.
 
 -spec set_custom_channel_var/3 :: (term(), term(), whapps_call:call()) -> whapps_call:call().
 set_custom_channel_var(Key, Value, #whapps_call{ccvs=CCVs}=Call) ->
@@ -685,6 +699,7 @@ retrieve(CallId) ->
                    ,fun(C) -> whapps_call:set_inception(<<"on-net">>, C) end
                    ,fun(C) -> whapps_call:set_authorizing_id(<<"987654321">>, C) end
                    ,fun(C) -> whapps_call:set_authorizing_type(<<"test">>, C) end
+                   ,fun(C) -> whapps_call:set_owner_id(<<"abcdefghi">>, C) end
                    ,fun(C) -> whapps_call:set_custom_channel_var(<<"key1">>, <<"value1">>, C) end
                    ,fun(C) -> whapps_call:set_custom_channel_var(<<"key2">>, 2600, C) end
                    ,fun(C) -> whapps_call:set_custom_channel_var([<<"key3">>, <<"key4">>], true, C) end

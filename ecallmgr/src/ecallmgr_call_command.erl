@@ -274,8 +274,16 @@ get_fs_app(Node, UUID, _JObj, <<"receive_fax">>) ->
      ,{<<"rxfax">>, ecallmgr_util:fax_filename(UUID)}
     ];
 
-get_fs_app(_Node, _UUID, _JObj, <<"hold">>) ->
-    {<<"endless_playback">>, <<"${hold_music}">>};
+get_fs_app(_Node, UUID, JObj, <<"hold">>) ->
+    case wh_json:get_value(<<"Hold-Media">>, JObj) of
+        undefined -> {<<"endless_playback">>, <<"${hold_music}">>};
+        Media ->
+            Stream = ecallmgr_util:media_path(Media, extant, UUID, JObj),
+            lager:debug("bridge has custom music-on-hold in channel vars: ~s", [Stream]),
+            [{"application", <<"set hold_music=", Stream/binary>>}
+             ,{<<"endless_playback">>, <<"${hold_music}">>}
+            ]
+    end;
 
 get_fs_app(_Node, _UUID, _JObj, <<"park">>) ->
     {<<"park">>, <<>>};
@@ -775,7 +783,7 @@ send_store_call_event(Node, UUID, MediaTransResults) ->
                 ,{<<"Channel-Call-State">>, props:get_value(<<"Channel-Call-State">>, Prop, <<"HANGUP">>)}
                 ,{<<"Application-Name">>, <<"store">>}
                 ,{<<"Application-Response">>, MediaTransResults}
-                | wh_api:default_headers(<<>>, <<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, ?APP_NAME, ?APP_VERSION)
+                | wh_api:default_headers(<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, ?APP_NAME, ?APP_VERSION)
                ],
     EvtProp2 = case ecallmgr_util:custom_channel_vars(Prop) of
                    [] -> EvtProp1;

@@ -25,16 +25,22 @@
          ,code_change/3
         ]).
 
--record(state, {node :: atom()
-                        ,options :: proplist()}).
+-record(state, {
+          node :: atom()
+          ,options :: wh_proplist()
+         }).
 
 -define(SERVER, ?MODULE).
 -define(MWI_BODY, "~b/~b (~b/~b)").
 
--define(RESPONDERS, [{{?MODULE, mwi_update}, [{<<"notification">>, <<"mwi">>}]}
-                     ,{{?MODULE, presence_update}, [{<<"notification">>, <<"presence_update">>}]}
-                    ]).
 -define(BINDINGS, [{notifications, [{restrict_to, [mwi_update]}]}]).
+-define(RESPONDERS, [{{?MODULE, mwi_update}
+                      ,[{<<"notification">>, <<"mwi">>}]
+                     }
+                     ,{{?MODULE, presence_update}
+                       ,[{<<"notification">>, <<"presence_update">>}]
+                      }
+                    ]).
 -define(QUEUE_NAME, <<"ecallmgr_fs_notify">>).
 -define(QUEUE_OPTIONS, [{exclusive, false}]).
 -define(CONSUME_OPTIONS, [{exclusive, false}]).
@@ -71,12 +77,12 @@ start_link(Node, Options) ->
 presence_update(JObj, _Props) ->
     do_presence_update(wh_json:get_value(<<"State">>, JObj), JObj).
 
--spec do_presence_update/2 :: ('undefined' | ne_binary(), wh_json:json_object()) -> any().
+-spec do_presence_update/2 :: (api_binary(), wh_json:json_object()) -> any().
 do_presence_update(undefined, JObj) ->
     PresenceId = wh_json:get_value(<<"Presence-ID">>, JObj),
     Switch = wh_json:get_value(<<"Switch-Nodename">>, JObj),
     case ecallmgr_fs_nodes:channel_match_presence(PresenceId) of
-        [] -> 
+        [] ->
             Event = empty_presence_event(PresenceId),
             relay_presence('PRESENCE_IN', PresenceId, Event, node(), Switch);
         Channels ->
@@ -94,21 +100,25 @@ do_presence_update(undefined, JObj) ->
 do_presence_update(State, JObj) ->
     PresenceId = wh_json:get_value(<<"Presence-ID">>, JObj),
     Switch = wh_json:get_string_value(<<"Switch-Nodename">>, JObj),
-    Event = case State of 
+    Event = case State of
                 <<"early">> -> early_presence_event(PresenceId, JObj);
                 <<"confirmed">> -> confirmed_presence_event(PresenceId, JObj);
                 <<"terminated">> -> terminated_presence_event(PresenceId, JObj)
-            end,        
+            end,
     relay_presence('PRESENCE_IN', PresenceId, Event, node(), Switch).
 
 -spec mwi_update/2 :: (wh_json:json_object(), proplist()) -> no_return().
-mwi_update(JObj, _Props) ->
+mwi_update(JObj, Props) ->
     _ = wh_util:put_callid(JObj),
+
     true = wapi_notifications:mwi_update_v(JObj),
+
+    lager:debug("processing mwi update for notify server ~p", [props:get_value(server, Props)]),
+
     Node = case wh_json:get_value(<<"Switch-Nodename">>, JObj) of
                undefined ->
                    Username = wh_json:get_value(<<"Notify-User">>, JObj),
-                   Realm = wh_json:get_value(<<"Notify-Realm">>, JObj),                   
+                   Realm = wh_json:get_value(<<"Notify-Realm">>, JObj),
                    {ok, N} = ecallmgr_registrar:endpoint_node(Realm, Username),
                    N;
                N -> wh_util:to_atom(N)
@@ -231,8 +241,8 @@ handle_info({event, [_ | Props]}, #state{node=Node}=State) ->
                     Key = wh_util:to_hex_binary(crypto:md5(<<To/binary, "|", From/binary>>)),
                     Expires = ecallmgr_util:get_expires(Props),
                     case wh_util:is_empty(Expires)  of
-                        true -> 
-                            %% If the expires was empty or 0 then delete the subscription, might need to 
+                        true ->
+                            %% If the expires was empty or 0 then delete the subscription, might need to
                             %% remove the specific sub-call-id... lets see how it goes
                             lager:debug("removing sip subscription from '~s' to '~s'", [From, To]),
                             DeleteSpec = [{#sip_subscription{to = '$1', from = '$2', _ = '_'}
@@ -304,7 +314,7 @@ handle_event(_JObj, #state{node=Node}) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
-    lager:debug("ecallmgr notify ~p termination", [_Reason]).
+    lager:debug("ecallmgr notify terminating: ~p", [_Reason]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -408,7 +418,7 @@ empty_presence_event(PresenceId) ->
      ,{"event_type", "presence"}
      ,{"alt_event_type", "dialog"}
      ,{"force-full-dialog", "true"}
-    ].    
+    ].
 
 -spec publish_presence_event/3 :: (ne_binary(), proplist(), ne_binary() | atom()) -> 'ok'.
 publish_presence_event(EventName, Props, Node) ->
@@ -479,7 +489,7 @@ process_message_query_event(Data, Node) ->
                      ,{<<"Call-ID">>, props:get_value(<<"VM-Call-ID">>, Data)}
                      ,{<<"Switch-Nodename">>, wh_util:to_binary(Node)}
                      ,{<<"Subscription-Call-ID">>, props:get_value(<<"VM-sub-call-id">>, Data)}
-                     ,{<<"Message-Account">>, props:get_value(<<"Message-Account">>, Data)}    
+                     ,{<<"Message-Account">>, props:get_value(<<"Message-Account">>, Data)}
                      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                     ],
             wapi_notifications:publish_mwi_query(Query),
