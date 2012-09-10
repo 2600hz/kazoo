@@ -9,6 +9,8 @@
 %%%
 %%% /queues/stats
 %%%   GET: retrieve stats across all queues
+%%% /queues/stats/realtime
+%%%   GET: retrieve stats across all queues
 %%%
 %%% /queues/QID
 %%%   GET: queue details
@@ -17,6 +19,9 @@
 %%%
 %%% /queues/QID/stats
 %%%   GET: retrieve stats for this queue
+%%% /queues/QID/stats/realtime
+%%%   GET: retrieve realtime stats for the queues
+%%%
 %%% /queues/QID/roster
 %%%   GET: get list of agent_ids
 %%%   POST: add a list of agent_ids
@@ -29,9 +34,9 @@
 -module(cb_queues).
 
 -export([init/0
-         ,allowed_methods/0, allowed_methods/1, allowed_methods/2
-         ,resource_exists/0, resource_exists/1, resource_exists/2
-         ,validate/1, validate/2, validate/3
+         ,allowed_methods/0, allowed_methods/1, allowed_methods/2, allowed_methods/3
+         ,resource_exists/0, resource_exists/1, resource_exists/2, resource_exists/3
+         ,validate/1, validate/2, validate/3, validate/4
          ,put/1
          ,post/2, post/3
          ,delete/2, delete/3
@@ -45,6 +50,7 @@
 -define(CB_AGENTS_LIST, <<"queues/agents_listing">>). %{agent_id, queue_id}
 
 -define(STATS_PATH_TOKEN, <<"stats">>).
+-define(REALTIME_PATH_TOKEN, <<"realtime">>).
 -define(ROSTER_PATH_TOKEN, <<"roster">>).
 
 %%%===================================================================
@@ -76,6 +82,7 @@ init() ->
 -spec allowed_methods/0 :: () -> http_methods().
 -spec allowed_methods/1 :: (path_token()) -> http_methods().
 -spec allowed_methods/2 :: (path_token(), path_token()) -> http_methods().
+-spec allowed_methods/3 :: (path_token(), path_token(), path_token()) -> http_methods().
 allowed_methods() ->
     ['GET', 'PUT'].
 allowed_methods(?STATS_PATH_TOKEN) ->
@@ -83,10 +90,15 @@ allowed_methods(?STATS_PATH_TOKEN) ->
 allowed_methods(_QID) ->
     ['GET', 'POST', 'DELETE'].
 
+allowed_methods(?STATS_PATH_TOKEN, ?REALTIME_PATH_TOKEN) ->
+    ['GET'];
 allowed_methods(_QID, ?STATS_PATH_TOKEN) ->
     ['GET'];
 allowed_methods(_QID, ?ROSTER_PATH_TOKEN) ->
     ['GET', 'POST', 'DELETE'].
+
+allowed_methods(_QID, ?STATS_PATH_TOKEN, ?REALTIME_PATH_TOKEN) ->
+    ['GET'].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -100,10 +112,16 @@ allowed_methods(_QID, ?ROSTER_PATH_TOKEN) ->
 -spec resource_exists/0 :: () -> 'true'.
 -spec resource_exists/1 :: (path_token()) -> 'true'.
 -spec resource_exists/2 :: (path_token(), path_token()) -> 'true'.
+-spec resource_exists/3 :: (path_token(), path_token(), path_token()) -> 'true'.
 resource_exists() -> true.
+
 resource_exists(_) -> true.
+
+resource_exists(?STATS_PATH_TOKEN, ?REALTIME_PATH_TOKEN) -> true;
 resource_exists(_, ?STATS_PATH_TOKEN) -> true;
 resource_exists(_, ?ROSTER_PATH_TOKEN) -> true.
+
+resource_exists(_, ?STATS_PATH_TOKEN, ?REALTIME_PATH_TOKEN) -> true.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -132,6 +150,8 @@ validate(#cb_context{req_verb = <<"post">>}=Context, Id) ->
 validate(#cb_context{req_verb = <<"delete">>}=Context, Id) ->
     read(Id, Context).
 
+validate(#cb_context{req_verb = <<"get">>}=Context, ?STATS_PATH_TOKEN, ?REALTIME_PATH_TOKEN) ->
+    fetch_all_queue_stats(Context, realtime);
 validate(#cb_context{req_verb = <<"get">>}=Context, Id, ?STATS_PATH_TOKEN) ->
     fetch_queue_stats(Id, Context);
 validate(#cb_context{req_verb = <<"get">>}=Context, Id, ?ROSTER_PATH_TOKEN) ->
@@ -140,6 +160,9 @@ validate(#cb_context{req_verb = <<"post">>}=Context, Id, ?ROSTER_PATH_TOKEN) ->
     add_queue_to_agents(Id, Context);
 validate(#cb_context{req_verb = <<"delete">>}=Context, Id, ?ROSTER_PATH_TOKEN) ->
     rm_queue_from_agents(Id, Context).
+
+validate(#cb_context{req_verb = <<"get">>}=Context, Id, ?STATS_PATH_TOKEN, ?REALTIME_PATH_TOKEN) ->
+    fetch_queue_stats(Id, Context, realtime).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -321,9 +344,16 @@ update(Id, #cb_context{req_data=Data}=Context) ->
     end.
 
 fetch_all_queue_stats(Context) ->
-    crossbar_doc:load_view(<<"acdc_stats/stats_per_queue">>, [], Context, fun normalize_queue_results/2).
+    fetch_all_queue_stats(Context, history).
+fetch_all_queue_stats(Context, history) ->
+    crossbar_doc:load_view(<<"acdc_stats/stats_per_queue">>, [], Context, fun normalize_queue_results/2);
+fetch_all_queue_stats(Context, realtime) ->
+    %% TODO: send AMQP query to queues for stats
+    Context.
 
 fetch_queue_stats(Id, Context) ->
+    fetch_queue_stats(Id, Context, history).
+fetch_queue_stats(Id, Context, history) ->
     lager:debug("fetching queue stats for ~s", [Id]),
     crossbar_doc:load_view(<<"acdc_stats/stats_per_queue">>
                                ,[{startkey, [Id, wh_json:new()]}
@@ -332,7 +362,10 @@ fetch_queue_stats(Id, Context) ->
                                 ]
                            ,Context
                            ,fun normalize_queue_results/2
-                          ).
+                          );
+fetch_queue_stats(Id, Context, realtime) ->
+    %% TODO: send AMQP request for stats about queue
+    Context.
 
 %%--------------------------------------------------------------------
 %% @private
