@@ -895,8 +895,13 @@ get_mailbox_profile(Data, Call) ->
                 = case wh_json:get_ne_value(<<"owner_id">>, JObj) of
                       undefined -> {wh_json:get_ne_value(?RECORDED_NAME_KEY, JObj), undefined};
                       OId ->
-                          {ok, Owner} = couch_mgr:open_cache_doc(AccountDb, OId),
-                          {wh_json:find(?RECORDED_NAME_KEY, [Owner, JObj]), OId}
+                          case couch_mgr:open_cache_doc(AccountDb, OId) of
+                              {ok, Owner} ->
+                                  {wh_json:find(?RECORDED_NAME_KEY, [Owner, JObj]), OId};
+                              {error, not_found} ->
+                                  lager:debug("owner ~s no longer exists", [OId]),
+                                  {wh_json:get_ne_value(?RECORDED_NAME_KEY, JObj), undefined}
+                          end
                   end,
 
             MaxMessageCount =
