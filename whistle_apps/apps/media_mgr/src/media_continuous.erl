@@ -91,12 +91,12 @@ stream(Req, ChunkSize, Bin, Header, ToPad) ->
 send_chunks(_, _, _, <<>>, _, _) ->
     lager:debug("nothing to send");
 send_chunks(Transport, Socket, ChunkSize, Bin, Header, ToPad) ->
-    try erlang:split_binary(Bin, ChunkSize) of
-        {Send, Rest} ->
-            write_chunk(Transport, Socket, Send, Header),
-            send_chunks(Transport, Socket, ChunkSize, Rest, bump(Header), ToPad)
+    try
+        <<Send:ChunkSize/binary, Rest/binary>> = Bin,
+        write_chunk(Transport, Socket, Send, Header),
+        send_chunks(Transport, Socket, ChunkSize, Rest, bump(Header), ToPad)
     catch
-        _:_ ->
+        error:{badmatch,_} ->
             write_data(Transport, Socket, ChunkSize, Bin, Header, ToPad)
     end.
 
