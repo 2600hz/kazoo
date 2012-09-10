@@ -29,10 +29,17 @@
 
 -define(SERVER, ?MODULE).
 
--define(BINDINGS, [{conf, [{doc_type, <<"queue">>}]}]).
+-define(BINDINGS, [{conf, [{doc_type, <<"queue">>}]}
+                   ,{acdc_queue, [{restrict_to, [stats_req]}
+                                  ,{account_id, <<"*">>}
+                                 ]}
+                  ]).
 -define(RESPONDERS, [{{acdc_queue_handler, handle_config_change}
                       ,[{<<"configuration">>, <<"*">>}]
                      }
+                     ,{{acdc_queue_handler, handle_stat_req}
+                       ,[{<<"queue">>, <<"stats_req">>}]
+                      }
                     ]).
 
 %%%===================================================================
