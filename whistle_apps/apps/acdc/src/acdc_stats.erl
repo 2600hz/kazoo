@@ -10,6 +10,11 @@
 
 -behaviour(gen_listener).
 
+%% Query API
+-export([acct_stats/1
+         ,queue_stats/2
+        ]).
+
 %% Stats API
 -export([call_processed/5
          ,call_abandoned/4
@@ -39,6 +44,8 @@
 
 -include("acdc.hrl").
 
+-define(ETS_TABLE, ?MODULE).
+
 -type stat_name() :: 'call_processed' | 'call_abandoned' |
                      'call_missed' | 'call_handled' |
                      'agent_active' | 'agent_inactive'.
@@ -51,9 +58,37 @@
           ,call_id        :: ne_binary()
           ,call_count     :: integer()
           ,elapsed        :: integer()
+          ,timestamp      :: integer() % gregorian seconds
           ,active_since   :: wh_now()
           ,abandon_reason :: abandon_reason()
          }).
+
+-spec acct_stats/1 :: (ne_binary()) -> wh_json:json_objects().
+acct_stats(AcctId) ->
+    MatchSpec = [{#stat{acct_id='$1', _='_'}
+                  ,[{'=:=', '$1', AcctId}]
+                  ,['$_']
+                 }],
+
+    AcctDocs = lists:foldl(fun(Stat, AcctAcc) ->
+                                   update_stat(AcctAcc, Stat)
+                           end, dict:new(), ets:select(?ETS_TABLE, MatchSpec)
+                          ),
+    wh_doc:public_fields(fetch_acct_doc(AcctId, AcctDocs)).
+
+queue_stats(AcctId, QueueId) ->
+    MatchSpec = [{#stat{acct_id='$1', queue_id='$2', _='_'}
+                  ,[{'=:=', '$1', AcctId}
+                    ,{'=:=', '$2', QueueId}
+                   ]
+                  ,['$_']
+                 }],
+
+    AcctDocs = lists:foldl(fun(Stat, AcctAcc) ->
+                                   update_stat(AcctAcc, Stat)
+                           end, dict:new(), ets:select(?ETS_TABLE, MatchSpec)
+                          ),
+    wh_doc:public_fields(fetch_acct_doc(AcctId, AcctDocs)).
 
 %% An agent connected with a caller
 -spec call_processed/5 :: (ne_binary(), ne_binary()
@@ -144,7 +179,7 @@ init([]) ->
     LogTime = ms_to_next_hour(),
     _ = erlang:send_after(LogTime, self(), {the_hour_is_up, LogTime}),
     lager:debug("started new acdc stats collector"),
-    {ok, ets:new(acdc_stats, [duplicate_bag % many instances of the key
+    {ok, ets:new(?ETS_TABLE, [duplicate_bag % many instances of the key
                               ,protected
                               ,named_table
                               ,{keypos, #stat.name}
@@ -257,12 +292,15 @@ update_stat(AcctDocs, #stat{name=call_processed
                             ,acct_id=AcctId
                             ,queue_id=QueueId
                             ,agent_id=AgentId
+                            ,timestamp=Timestamp
                             ,call_id=CallId
                             ,elapsed=Elapsed
                            }) ->
     AcctDoc = fetch_acct_doc(AcctId, AcctDocs),
 
     Funs = [ {fun add_call_duration/4, [QueueId, CallId, Elapsed]}
+             ,{fun add_call_agent/4, [QueueId, CallId, AgentId]}
+             ,{fun add_call_agent/4, [QueueId, CallId, Timestamp]}
              ,{fun add_agent_call/5, [AgentId, QueueId, CallId, Elapsed]}
            ],
     dict:store(AcctId
@@ -340,6 +378,14 @@ new_account_doc(AcctId) ->
 add_call_duration(AcctDoc, QueueId, CallId, Elapsed) ->
     Key = [<<"queues">>, QueueId, CallId, <<"duration">>],
     wh_json:set_value(Key, Elapsed, AcctDoc).
+
+add_call_agent(AcctDoc, QueueId, CallId, AgentId) ->
+    Key = [<<"queues">>, QueueId, CallId, <<"agent_id">>],
+    wh_json:set_value(Key, AgentId, AcctDoc).
+
+add_call_timestamp(AcctDoc, QueueId, CallId, Timestamp) ->
+    Key = [<<"queues">>, QueueId, CallId, <<"timestamp">>],
+    wh_json:set_value(Key, Timestamp, AcctDoc).
 
 -spec add_call_abandoned/4 :: (wh_json:json_object(), ne_binary()
                                ,ne_binary(), abandon_reason()
