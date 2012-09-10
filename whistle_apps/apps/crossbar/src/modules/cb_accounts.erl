@@ -536,7 +536,7 @@ load_account_db(AccountId, Context) when is_binary(AccountId) ->
     lager:debug("account determined that db name: ~s", [AccountDb]),
     case couch_mgr:open_cache_doc(AccountDb, AccountId) of
         {ok, _} ->
-            lager:debug("account ~s db exists , setting operating databse as ~s", [AccountId, AccountDb]),
+            lager:debug("account ~s db exists, setting operating database as ~s", [AccountId, AccountDb]),
             Context#cb_context{
               resp_status = success
               ,db_name = AccountDb
