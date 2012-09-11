@@ -13,7 +13,7 @@
 %% API
 -export([start_link/2
          ,member_connect_resp/2
-         ,member_connect_retry/1, member_connect_retry/2
+         ,member_connect_retry/2
          ,bridge_to_member/2
          ,monitor_call/2
          ,member_connect_accepted/1
@@ -140,8 +140,6 @@ start_link(Supervisor, AgentJObj) ->
 member_connect_resp(Srv, ReqJObj) ->
     gen_listener:cast(Srv, {member_connect_resp, ReqJObj}).
 
-member_connect_retry(Srv) ->
-    gen_listener:cast(Srv, {member_connect_retry}).
 member_connect_retry(Srv, WinJObj) ->
     gen_listener:cast(Srv, {member_connect_retry, WinJObj}).
 
@@ -360,12 +358,11 @@ handle_cast({member_connect_resp, ReqJObj}, #state{
                                  }}
     end;
 
-handle_cast({member_connect_retry}, #state{
+handle_cast({member_connect_retry, CallId}, #state{
               my_id=MyId
               ,msg_queue_id=Server
-              ,call=Call
-              }=State) ->
-    send_member_connect_retry(Server, call_id(Call), MyId),
+              }=State) when is_binary(CallId) ->
+    send_member_connect_retry(Server, CallId, MyId),
     {noreply, State#state{msg_queue_id=undefined
                           ,acdc_queue_id=undefined
                           }};
