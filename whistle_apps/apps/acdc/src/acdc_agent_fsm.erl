@@ -279,6 +279,10 @@ sync({sync_resp, JObj}, #state{sync_ref=Ref}=State) ->
             {next_state, sync, State#state{sync_ref=start_resync_timer()}}
     end;
 
+sync({member_connect_req, _}, State) ->
+    lager:debug("member_connect_req recv, not ready"),
+    {next_state, sync, State};
+
 sync({pause, Timeout}, State) ->
     lager:debug("recv status update while syncing, pausing for up to ~b ms", [Timeout]),
     Ref = start_pause_timer(Timeout),
@@ -400,7 +404,7 @@ ringing({channel_hungup, CallId}
     lager:debug("agent channel was destroyed before we could connect: ~s", [CallId]),
 
     acdc_agent:channel_hungup(Srv, CallId),
-    acdc_agent:member_connect_retry(Srv),
+    acdc_agent:member_connect_retry(Srv, MCallId),
     acdc_stats:call_missed(AcctId, QueueId, AgentId, MCallId),
 
     {next_state, ready, clear_call(State)};
