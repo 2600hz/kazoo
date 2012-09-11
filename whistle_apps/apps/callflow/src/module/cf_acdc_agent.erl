@@ -64,9 +64,10 @@ maybe_update_status(Call, AgentId, _Curr, <<"logout">>, _Data) ->
     logout_agent(Call, AgentId),
     play_agent_logged_out(Call);
 
-maybe_update_status(Call, _AgentId, <<"login">>, <<"login">>, _Data) ->
-    lager:debug("agent ~s is already logged in", [_AgentId]),
-    play_agent_logged_in_already(Call);
+maybe_update_status(Call, AgentId, <<"login">>, <<"login">>, _Data) ->
+    lager:debug("agent ~s is already logged in", [AgentId]),
+    play_agent_logged_in_already(Call),
+    send_new_status(Call, AgentId, fun wapi_acdc_agent:publish_login/1, undefined);
 maybe_update_status(Call, AgentId, <<"login">>, <<"pause">>, Data) ->
     lager:debug("agent ~s is pausing work", [AgentId]),
     pause_agent(Call, AgentId, wh_json:get_integer_value(<<"timeout">>, Data, 0) * 1000),
@@ -113,6 +114,7 @@ update_agent_status(Call, AgentId, Status, PubFun, Timeout) ->
     {ok, _D} = couch_mgr:save_doc(AcctDb, wh_doc:update_pvt_parameters(Doc, AcctDb)),
     send_new_status(Call, AgentId, PubFun, Timeout).
 
+-spec send_new_status/4 :: (whapps_call:call(), ne_binary(), wh_amqp_worker:publish_fun(), integer() | 'undefined') -> 'ok'.
 send_new_status(Call, AgentId, PubFun, Timeout) ->
     Update = props:filter_undefined(
                [{<<"Account-ID">>, whapps_call:account_id(Call)}
