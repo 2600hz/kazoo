@@ -20,6 +20,7 @@
 -export([owned_by/2, owned_by/3, fetch_owned_by/2, fetch_owned_by/3]).
 -export([friendly_name/2, friendly_name/3]).
 -export([presence_id/1, presence_id/2]).
+-export([flush_attributes/1]).
 
 %%-----------------------------------------------------------------------------
 %% @public
@@ -545,6 +546,16 @@ fetch_attributes(Attribute, ?NE_BINARY = AccountDb) ->
     end;
 fetch_attributes(Attribute, Call) ->
     fetch_attributes(Attribute, whapps_call:account_db(Call)).
+
+-spec flush_attributes/1 :: (ne_binary()) -> any().
+flush_attributes(AccountDb) ->
+    Keys = wh_cache:filter_local(?CALLFLOW_CACHE
+                                 ,fun({?MODULE, AcctDb, _}, _) when AcctDb =:= AccountDb -> true;
+                                     (_,_) -> false
+                                  end
+                                ),
+    [wh_cache:erase_local(?CALLFLOW_CACHE, Key) || Key <- Keys].
+                                                   
 
 %%-----------------------------------------------------------------------------
 %% @private
