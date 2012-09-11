@@ -399,24 +399,9 @@ validate_user(JObj, Context) ->
                                              {'error', wh_json:json_object()}.
 create_account(Context) ->
     case crossbar_bindings:fold(<<"v1_resource.execute.put.accounts">>, [Context]) of
-        #cb_context{resp_status=success, db_name=AccountDb, account_id=AccountId, doc=Doc}=Context1 ->
+        #cb_context{resp_status=success, db_name=AccountDb, account_id=AccountId}=Context1 ->
             io:format("created new account '~s' in db '~s'~n", [AccountId, AccountDb]),
-
-            case wh_json:get_value(<<"service_plan">>, Doc) of
-                undefined ->
-                    lager:debug("no service plan configured (perhaps this was the first system account?"),
-                    Doc1 = cb_accounts:add_pvt_service_plan(Doc),
-                    case couch_mgr:save_doc(AccountDb, Doc1) of
-                        {ok, Doc2} ->
-                            lager:debug("set service plan"),
-                            {ok, Context1#cb_context{doc=Doc2}};
-                        {error, _E} ->
-                            lager:debug("failed to set service plan: ~p", [_E]),
-                            {ok, Context1}
-                    end;
-                _ ->
-                    {ok, Context1}
-            end;
+            {ok, Context1};
         #cb_context{resp_data=Errors} ->
             io:format("failed to create account: '~s'~n", [list_to_binary(wh_json:encode(Errors))]),
             AccountId = wh_json:get_value(<<"_id">>, Context#cb_context.req_data),
