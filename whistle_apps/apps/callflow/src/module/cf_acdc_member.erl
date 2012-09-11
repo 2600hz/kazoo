@@ -84,7 +84,6 @@ process_message(Call, _, Start, _Wait, _JObj, {<<"member">>, <<"call_success">>}
     lager:debug("call was processed by queue (took ~b s)", [wh_util:elapsed_s(Start)]),
     cf_exe:control_usurped(Call);
 process_message(Call, Timeout, Start, Wait, _JObj, _Type) ->
-    lager:debug("unknown message type: ~p", [_Type]),
     wait_for_bridge(Call, Timeout - wh_util:elapsed_ms(Wait), Start).
 
 %% convert from seconds to milliseconds, or infinity
