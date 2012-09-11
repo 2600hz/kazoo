@@ -2,6 +2,9 @@
 *.log*
 *.sasl
 */ebin/*.beam
+*/ebin/*.app
+lib/*/ebin/*.beam
+lib/*/ebin/*.app
 */deps/*/ebin/*.beam
 */ebin/*.app
 */priv/*.pid
@@ -10,6 +13,8 @@ ecallmgr/priv/startup.config
 whistle_apps/priv/startup.config
 whistle_apps/apps/*/ebin/*.beam
 whistle_apps/apps/*/ebin/*.app
+whistle_apps/ebin/*.beam
+whistle_apps/ebin/*.app
 whistle_apps/apps/crossbar/priv/ssl/*
 lib/whistle*/ebin/*.beam
 lib/whistle*/ebin/*.beam
@@ -35,10 +40,10 @@ lib/cowboy*/ebin/*.beam
 lib/ecsv*/ebin/*.beam
 lib/detergent*/ebin/*.beam
 lib/ejson*/ebin/*.beam
+lib/ejson*/ebin/*.app
 lib/ejson*/c_src/*.o
 lib/ejson*/c_src/yajl/*.o
 lib/ejson*/priv/*.so
-lib/entop*/ebin/*.beam
 lib/erl*/ebin/*.beam
 lib/folsom*/ebin/*.beam
 lib/gen_smtp*/ebin/*.beam
