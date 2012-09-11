@@ -399,8 +399,8 @@ connecting({accepted, AcceptJObj}, #state{queue_proc=Srv
                                          }=State) ->
     lager:debug("recv acceptance from agent: ~p", [AcceptJObj]),
     acdc_queue:finish_member_call(Srv, AcceptJObj),
-    acdc_stats:call_handled(AcctId, QueueId
-                            ,whapps_call:call_id(Call), wh_util:elapsed_s(Start)
+    acdc_stats:call_handled(AcctId, QueueId, whapps_call:call_id(Call)
+                            ,wh_json:get_value(<<"Agent-ID">>, AcceptJObj), wh_util:elapsed_s(Start)
                            ),
     {next_state, ready, clear_member_call(State)};
 

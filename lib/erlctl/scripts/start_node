@@ -1,6 +1,0 @@
-#!/bin/sh
-if [ "$1" == "" ] ; then
-  echo "ERROR: Must Specify Worker Name"
-  exit 1
-fi
-exec erl -sname $1 -detached

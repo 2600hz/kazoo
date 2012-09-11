@@ -19,7 +19,7 @@
 -export([call_processed/5
          ,call_abandoned/4
          ,call_missed/4
-         ,call_handled/4
+         ,call_handled/5
 
          %% Agent-specific stats
          ,agent_active/2
@@ -38,7 +38,9 @@
         ]).
 
 %% Internal functions
--export([write_to_dbs/1]).
+-export([write_to_dbs/1
+         ,flush_table/0
+        ]).
 
 -compile([export_all]).
 
@@ -130,10 +132,11 @@ call_missed(AcctId, QueueId, AgentId, CallId) ->
                                }).
 
 %% Call was picked up by an agent, track how long caller was in queue
--spec call_handled/4 :: (ne_binary(), ne_binary(), ne_binary(), integer()) -> 'ok'.
-call_handled(AcctId, QueueId, CallId, Elapsed) ->
+-spec call_handled/5 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), integer()) -> 'ok'.
+call_handled(AcctId, QueueId, CallId, AgentId, Elapsed) ->
     gen_listener:cast(?MODULE, {store, #stat{acct_id=AcctId
                                              ,queue_id=QueueId
+                                             ,agent_id=AgentId
                                              ,call_id=CallId
                                              ,elapsed=Elapsed
                                              ,name=call_handled
@@ -188,6 +191,9 @@ init([]) ->
 handle_call(_Req, _From, Table) ->
     {reply, ok, Table}.
 
+handle_cast(flush_table, Table) ->
+    ets:delete_all_objects(Table),
+    {noreply, Table};
 handle_cast({store, Stat}, Table) ->
     ets:insert(Table, Stat),
     {noreply, Table};
@@ -222,6 +228,9 @@ terminate(_Reason, Table) ->
     lager:debug("acdc stats terminating: ~p", [_Reason]),
     flush_to_db(Table),
     ets:delete(Table).
+
+flush_table() ->
+    gen_listener:cast(?MODULE, flush_table).
 
 code_change(_OldVsn, Table, _Extra) ->
     {ok, Table}.
@@ -376,22 +385,29 @@ new_account_doc(AcctId) ->
                               ,ne_binary(), integer()
                              ) -> wh_json:json_object().
 add_call_duration(AcctDoc, QueueId, CallId, Elapsed) ->
-    Key = [<<"queues">>, QueueId, CallId, <<"duration">>],
+    Key = [<<"queues">>, QueueId, <<"calls">>, CallId, <<"duration">>],
     wh_json:set_value(Key, Elapsed, AcctDoc).
 
+-spec add_call_agent/4 :: (wh_json:json_object(), ne_binary()
+                               ,ne_binary(), api_binary()
+                              ) -> wh_json:json_object().
+add_call_agent(AcctDoc, _, _, undefined) -> AcctDoc;
 add_call_agent(AcctDoc, QueueId, CallId, AgentId) ->
-    Key = [<<"queues">>, QueueId, CallId, <<"agent_id">>],
+    Key = [<<"queues">>, QueueId, <<"calls">>, CallId, <<"agent_id">>],
     wh_json:set_value(Key, AgentId, AcctDoc).
 
+-spec add_call_timestamp/4 :: (wh_json:json_object(), ne_binary()
+                               ,ne_binary(), integer()
+                              ) -> wh_json:json_object().
 add_call_timestamp(AcctDoc, QueueId, CallId, Timestamp) ->
-    Key = [<<"queues">>, QueueId, CallId, <<"timestamp">>],
+    Key = [<<"queues">>, QueueId, <<"calls">>, CallId, <<"timestamp">>],
     wh_json:set_value(Key, Timestamp, AcctDoc).
 
 -spec add_call_abandoned/4 :: (wh_json:json_object(), ne_binary()
                                ,ne_binary(), abandon_reason()
                               ) -> wh_json:json_object().
 add_call_abandoned(AcctDoc, QueueId, CallId, Reason) ->
-    Key = [<<"queues">>, QueueId, CallId, <<"abandoned">>],
+    Key = [<<"queues">>, QueueId, <<"calls">>, CallId, <<"abandoned">>],
     wh_json:set_value(Key, Reason, AcctDoc).
 
 -spec add_agent_call/5 :: (wh_json:json_object(), ne_binary()
@@ -409,5 +425,5 @@ add_call_missed(AcctDoc, AgentId, QueueId, CallId) ->
     wh_json:set_value(Key, QueueId, AcctDoc).
 
 add_call_handled(AcctDoc, QueueId, CallId, Elapsed) ->
-    Key = [<<"queues">>, QueueId, CallId, <<"wait_time">>],
+    Key = [<<"queues">>, QueueId, <<"calls">>, CallId, <<"wait_time">>],
     wh_json:set_value(Key, Elapsed, AcctDoc).

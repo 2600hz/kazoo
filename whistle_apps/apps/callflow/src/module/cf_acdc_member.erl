@@ -38,11 +38,13 @@ handle(Data, Call) ->
     MaxWait = max_wait(wh_json:get_integer_value(<<"connection_timeout">>, QueueJObj, 3600)),
     MaxQueueSize = max_queue_size(wh_json:get_integer_value(<<"max_queue_size">>, QueueJObj, 0)),
 
-    CurrQueueSize = wapi_acdc_queue:queue_size(whapps_call:account_id(Call), QueueId),
+    Call1 = whapps_call:kvs_store(caller_exit_key, wh_json:get_value(<<"caller_exit_key">>, QueueJObj, <<"#">>), Call),
+
+    CurrQueueSize = wapi_acdc_queue:queue_size(whapps_call:account_id(Call1), QueueId),
 
     lager:debug("max size: ~p curr size: ~p", [MaxQueueSize, CurrQueueSize]),
 
-    maybe_enter_queue(Call, MemberCall, MaxWait, is_queue_full(MaxQueueSize, CurrQueueSize)).
+    maybe_enter_queue(Call1, MemberCall, MaxWait, is_queue_full(MaxQueueSize, CurrQueueSize)).
 
 maybe_enter_queue(Call, _, _, true) ->
     lager:debug("queue has reached max size"),
@@ -62,7 +64,10 @@ wait_for_bridge(Call, Timeout, Start) ->
     Wait = erlang:now(),
     receive
         {amqp_msg, JObj} ->
-            process_message(Call, Timeout, Start, Wait, JObj, wh_util:get_event_type(JObj))
+            process_message(Call, Timeout, Start, Wait, JObj, wh_util:get_event_type(JObj));
+        _Msg ->
+            lager:debug("popping msg off: ~p", [_Msg]),
+            wait_for_bridge(Call, Timeout, Start)
     after Timeout ->
             lager:debug("failed to handle the call in time, proceeding"),
             cf_exe:continue(Call)
@@ -80,11 +85,21 @@ process_message(Call, _, Start, _Wait, JObj, {<<"member">>, <<"call_fail">>}) ->
                 ,[wh_json:get_value(<<"Failure-Reason">>, JObj), wh_util:elapsed_s(Start)]
                ),
     cf_exe:continue(Call);
+process_message(Call, Timeout, Start, Wait, JObj, {<<"call_event">>, <<"DTMF">>}) ->
+    DigitPressed = wh_json:get_value(<<"DTMF-Digit">>, JObj),
+    case DigitPressed =:= whapps_call:kvs_fetch(caller_exit_key, Call) of
+        true ->
+            lager:debug("caller pressed the exit key(~s), moving to next callflow action", [DigitPressed]),
+            cf_exe:continue(Call);
+        false ->
+            lager:debug("caller pressed ~s, ignoring", [DigitPressed]),
+            wait_for_bridge(Call, Timeout - wh_util:elapsed_ms(Wait), Start)
+    end;
 process_message(Call, _, Start, _Wait, _JObj, {<<"member">>, <<"call_success">>}) ->
     lager:debug("call was processed by queue (took ~b s)", [wh_util:elapsed_s(Start)]),
     cf_exe:control_usurped(Call);
-process_message(Call, Timeout, Start, Wait, _JObj, _Type) ->
-    lager:debug("unknown message type: ~p", [_Type]),
+process_message(Call, Timeout, Start, Wait, JObj, _Type) ->
+    lager:debug("recv unhandled type: ~p: ~s", [_Type, wh_json:get_value(<<"Application-Name">>, JObj)]),
     wait_for_bridge(Call, Timeout - wh_util:elapsed_ms(Wait), Start).
 
 %% convert from seconds to milliseconds, or infinity
