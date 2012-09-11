@@ -74,7 +74,7 @@ handle_stat_req(AcctId, undefined, ServerId) ->
             Resp = [{<<"Account-ID">>, AcctId}
                     ,{<<"Current-Queue-Stats">>, get_queues_stats(Ps)}
                     ,{<<"Current-Account-Stats">>, acdc_stats:acct_stats(AcctId)}
-                    | wh_util:default_headers(?APP_NAME, ?APP_VERSION)
+                    | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                    ],
             wapi_acdc_queue:publish_stats_resp(ServerId, Resp)
     end;
@@ -85,8 +85,8 @@ handle_stat_req(AcctId, QueueId, ServerId) ->
         P ->
             Resp = [{<<"Account-ID">>, AcctId}
                     ,{<<"Current-Queue-Stats">>, get_queue_stats(P)}
-                    ,{<<"Current-Account-Stats">>, acdc_stats:acct_stats(AcctId, QueueId)}
-                    | wh_util:default_headers(?APP_NAME, ?APP_VERSION)
+                    ,{<<"Current-Account-Stats">>, acdc_stats:acct_stats(AcctId)}
+                    | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                    ],
             wapi_acdc_queue:publish_stats_resp(ServerId, Resp)
     end.
