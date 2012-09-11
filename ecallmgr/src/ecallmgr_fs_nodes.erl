@@ -61,9 +61,9 @@
 -define(SERVER, ?MODULE).
 -define(EXPIRE_CHECK, 60000).
 
--record(node, {node = 'undefined' :: atom()
-               ,cookie = 'undefined' :: atom()
-               ,options = [] :: proplist()
+-record(node, {node :: atom()
+               ,cookie :: atom()
+               ,options = [] :: wh_proplist()
               }).
 
 -record(astats, {billing_ids=sets:new() :: set()
@@ -96,10 +96,10 @@ add(Node) ->
 add(Node, Opts) when is_list(Opts) ->
     add(Node, erlang:get_cookie(), Opts);
 add(Node, Cookie) when is_atom(Cookie) ->
-    add(Node, Cookie, []).
+    add(Node, Cookie, [{cookie, Cookie}]).
 
 add(Node, Cookie, Opts) ->
-    gen_server:call(?MODULE, {add_fs_node, Node, Cookie, Opts}, 30000).
+    gen_server:call(?MODULE, {add_fs_node, Node, Cookie, [{cookie, Cookie} | props:delete(cookie, Opts)]}, 30000).
 
 %% returns ok or {error, some_error_atom_explaining_more}
 -spec remove/1 :: (atom()) -> 'ok'.
@@ -529,17 +529,23 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+-spec find_cookie/2 :: (atom(), wh_proplist()) -> atom().
+find_cookie(undefined, Options) -> wh_util:to_atom(props:get_value(cookie, Options, erlang:get_cookie()));
+find_cookie(Cookie, _Opts) when is_atom(Cookie) -> Cookie.
+
 -spec add_fs_node/4 :: (atom(), atom(), proplist(), #state{}) -> {'ok', #state{}} |
                                                                  {{'error', 'no_connection'}, #state{}} |
                                                                  {{'error', 'failed_starting_handlers'}, #state{}}.
-add_fs_node(Node, Cookie, Options, #state{nodes=Nodes}=State) ->
+add_fs_node(Node, Cookie0, Options, #state{nodes=Nodes}=State) ->
+    Cookie = find_cookie(Cookie0, Options),
+
     case [N || #node{node=Node1}=N <- Nodes, Node =:= Node1] of
         [] ->
             erlang:set_cookie(Node, Cookie),
             case net_adm:ping(Node) of
                 pong ->
                     lager:debug("no node matching ~p found, adding", [Node]),
-                    case ecallmgr_fs_sup:add_node(Node, Options) of
+                    case ecallmgr_fs_sup:add_node(Node, [{cookie, Cookie} | props:delete(cookie, Options)]) of
                         {ok, _} ->
                             erlang:monitor_node(Node, true),
                             lager:info("successfully connected to node '~s'", [Node]),
