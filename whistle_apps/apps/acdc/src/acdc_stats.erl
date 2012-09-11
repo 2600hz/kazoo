@@ -53,21 +53,21 @@
                      'agent_active' | 'agent_inactive'.
 
 -record(stat, {
-          name            :: stat_name()
-          ,acct_id        :: ne_binary()
-          ,queue_id       :: ne_binary()
-          ,agent_id       :: ne_binary()
-          ,call_id        :: ne_binary()
-          ,call_count     :: integer()
-          ,elapsed        :: integer()
-          ,timestamp      :: integer() % gregorian seconds
-          ,active_since   :: wh_now()
-          ,abandon_reason :: abandon_reason()
+          name            :: stat_name() | '_'
+          ,acct_id        :: ne_binary() | '$1' % for the match spec
+          ,queue_id       :: ne_binary() | '$2' | '_'
+          ,agent_id       :: ne_binary() | '_'
+          ,call_id        :: ne_binary() | '_'
+          ,call_count     :: integer() | '_'
+          ,elapsed        :: integer() | '_'
+          ,timestamp      :: integer() | '_' % gregorian seconds
+          ,active_since   :: wh_now() | '_'
+          ,abandon_reason :: abandon_reason() | '_'
          }).
 
 -spec acct_stats/1 :: (ne_binary()) -> wh_json:json_objects().
 acct_stats(AcctId) ->
-    MatchSpec = [{#stat{acct_id='$1', _='_'}
+    MatchSpec = [{#stat{acct_id='$1', _ = '_'}
                   ,[{'=:=', '$1', AcctId}]
                   ,['$_']
                  }],
