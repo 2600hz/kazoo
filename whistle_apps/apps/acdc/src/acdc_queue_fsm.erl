@@ -404,10 +404,16 @@ connecting({accepted, AcceptJObj}, #state{queue_proc=Srv
                            ),
     {next_state, ready, clear_member_call(State)};
 
-connecting({retry, RetryJObj}, #state{queue_proc=Srv, connect_resps=[]}=State) ->
+connecting({retry, RetryJObj}, #state{queue_proc=Srv
+                                      ,connect_resps=[]
+                                      ,collect_ref=CollectRef
+                                     }=State) ->
     lager:debug("recv retry from agent: ~p", [RetryJObj]),
-    acdc_queue:cancel_member_call(Srv, RetryJObj),
-    {next_state, ready, clear_member_call(State)};
+
+    acdc_queue:member_connect_re_req(Srv),
+    maybe_stop_timer(CollectRef),
+
+    {next_state, connect_req, State#state{collect_ref=start_collect_timer()}};
 
 connecting({retry, RetryJObj}, State) ->
     lager:debug("recv retry from agent: ~p", [RetryJObj]),
