@@ -59,7 +59,10 @@ evaluate_number(Number, Resrcs) ->
 evaluate_flags(F1, Resrcs) ->
     [Resrc
      || #resrc{flags=F2}=Resrc <- Resrcs,
-        lists:all(fun(Flag) -> lists:member(Flag, F2) end, F1)
+        lists:all(fun(Flag) -> 
+                          wh_util:is_empty(Flag)
+                              orelse lists:member(Flag, F2)
+                  end, F1)
     ].
 
 %%--------------------------------------------------------------------
