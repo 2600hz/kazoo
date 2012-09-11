@@ -531,14 +531,16 @@ get_sip_realm(SIPJObj, AccountId, Default) ->
 handle_doc_change(JObj, _Prop) ->
     Db = wh_json:get_value(<<"Account-DB">>, JObj),
     Id = wh_json:get_value(<<"ID">>, JObj),
-    cf_endpoint:flush(Db, Id),
+
+    _ = cf_endpoint:flush(Db, Id),
+
+    _ = cf_attributes:flush_attributes(Db),
 
     maybe_clear_flows(wh_json:get_value(<<"numbers">>, JObj, []), Db).
 
 maybe_clear_flows([], _) -> ok;
-maybe_clear_flows([N|Ns], Db) ->
-    wh_cache:erase_local(?CALLFLOW_CACHE, {cf_flow, N, Db}),
-    maybe_clear_flows(Ns, Db).
+maybe_clear_flows(Ns, Db) ->
+    [wh_cache:erase_local(?CALLFLOW_CACHE, {cf_flow, N, Db}) || N <- Ns].
 
 -spec default_caller_id_number/0 :: () -> ne_binary().
 default_caller_id_number() ->
