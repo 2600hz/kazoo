@@ -314,36 +314,51 @@ create_success_resp(Props) ->
                ],
     {ok, lists:foldr(fun(F, P) -> F(P) end, [],  Builders)}.
 
+create_uuid(JObj, Node) ->
+    case wh_json:get_value(<<"Outgoing-Call-ID">>, JObj) of
+        undefined -> create_uuid(Node);
+        CallId -> {ok, CallId}
+    end.
+create_uuid(Node) ->
+    case freeswitch:api(Node, 'create_uuid', "") of
+        {ok, UUID} -> UUID;
+        {error, badarg} ->
+            {ok, UUID} = freeswitch:api(Node, 'create_uuid', <<>>),
+            UUID;
+        {error, _E}=E -> E;
+        timeout -> {error, timeout}
+    end.
+
 -spec originate_to_dialstrings(wh_json:json_object(), atom(), ne_binary(), list(), ne_binary()) -> 'ok'.
 originate_to_dialstrings(JObj, Node, ServerId, Endpoints, ?ORIGINATE_PARK) ->
-    case freeswitch:api(Node, 'create_uuid', "") of
+    case create_uuid(JObj, Node) of
         {ok, UUID} ->
             put(callid, UUID),
             lager:debug("created uuid ~s", [UUID]),
 
-            DialSeparator = case wh_json:get_value(<<"Dial-Endpoint-Method">>, JObj, <<"single">>) of
-                                <<"simultaneous">> when length(Endpoints) > 1 -> <<",">>;
-                                _Else -> <<"|">>
-                            end,
-            DialStrings = ecallmgr_util:build_bridge_string([wh_json:set_value(<<"origination_uuid">>, UUID, E) || E <- Endpoints]
-                                                            ,DialSeparator),
+            DialSeparator =
+                case wh_json:get_value(<<"Dial-Endpoint-Method">>, JObj, <<"single">>) of
+                    <<"simultaneous">> when length(Endpoints) > 1 -> <<",">>;
+                    _Else -> <<"|">>
+                end,
+            DialStrings = ecallmgr_util:build_bridge_string(
+                            [wh_json:set_value(<<"origination_uuid">>, UUID, E)
+                             || E <- Endpoints
+                            ]
+                            ,DialSeparator),
             BillingId = wh_util:rand_hex_binary(16),
-            J = wh_json:set_value([<<"Custom-Channel-Vars">>, <<"Billing-ID">>], BillingId, JObj),
+            J = wh_json:set_value([<<"Custom-Channel-Vars">>, <<"Billing-ID">>]
+                                  ,BillingId
+                                  ,JObj
+                                 ),
             originate_and_park(J, Node, ServerId, DialStrings, UUID);
         {error, E} ->
             lager:debug("failed to create uuid on node ~s: ~p", [Node, E]),
-            E = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, wh_util:to_binary(wh_util:current_tstamp()))}
-                 ,{<<"Request">>, JObj}
-                 ,{<<"Errors">>, wh_json:from_list(E)}
-                ],
-            wh_api:publish_error(ServerId, E);
-        timeout ->
-            lager:debug("timed out requesting node ~s to create a UUID", [Node]),
-            E = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, wh_util:to_binary(wh_util:current_tstamp()))}
-                 ,{<<"Request">>, JObj}
-                 ,{<<"Error-Message">>, <<"Creating UUID timed out">>}
-                ],
-            wh_api:publish_error(ServerId, E)
+            Err = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+                   ,{<<"Request">>, JObj}
+                   ,{<<"Errors">>, wh_json:from_list(E)}
+                  ],
+            wh_api:publish_error(ServerId, Err)
     end;
 originate_to_dialstrings(JObj, Node, ServerId, Endpoints, Action) ->
     DialSeparator = case wh_json:get_value(<<"Dial-Endpoint-Method">>, JObj, <<"single">>) of
