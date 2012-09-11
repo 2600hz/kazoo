@@ -321,10 +321,8 @@ create_uuid(JObj, Node) ->
     end.
 create_uuid(Node) ->
     case freeswitch:api(Node, 'create_uuid', "") of
-        {ok, UUID} -> UUID;
-        {error, badarg} ->
-            {ok, UUID} = freeswitch:api(Node, 'create_uuid', <<>>),
-            UUID;
+        {ok, UUID} -> {ok, UUID};
+        {error, badarg} -> freeswitch:api(Node, 'create_uuid', <<>>);
         {error, _E}=E -> E;
         timeout -> {error, timeout}
     end.
