@@ -314,6 +314,12 @@ create_success_resp(Props) ->
                ],
     {ok, lists:foldr(fun(F, P) -> F(P) end, [],  Builders)}.
 
+-spec create_uuid/1 :: (atom()) ->
+                               {'ok', ne_binary()} |
+                               {'error', _}.
+-spec create_uuid/2 :: (wh_json:json_object(), atom()) ->
+                               {'ok', ne_binary()} |
+                               {'error', _}.
 create_uuid(JObj, Node) ->
     case wh_json:get_value(<<"Outgoing-Call-ID">>, JObj) of
         undefined -> create_uuid(Node);
