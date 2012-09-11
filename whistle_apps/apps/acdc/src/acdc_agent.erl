@@ -313,10 +313,13 @@ handle_cast({channel_hungup, CallId}, #state{call=Call}=State) ->
     end;
 
 handle_cast(member_connect_accepted, #state{msg_queue_id=AmqpQueue
-                                    ,call=Call
+                                            ,call=Call
+                                            ,acct_id=AcctId
+                                            ,agent_id=AgentId
+                                            ,my_id=MyId
                                    }=State) ->
     lager:debug("member bridged to agent!"),
-    send_member_connect_accepted(AmqpQueue, call_id(Call)),
+    send_member_connect_accepted(AmqpQueue, call_id(Call), AcctId, AgentId, MyId),
     {noreply, State};
 
 handle_cast({load_endpoints, Supervisor}, #state{
@@ -523,9 +526,12 @@ send_member_connect_retry(Queue, CallId, MyId) ->
              ]),
     wapi_acdc_queue:publish_member_connect_retry(Queue, Resp).
 
--spec send_member_connect_accepted/2 :: (ne_binary(), ne_binary()) -> 'ok'.
-send_member_connect_accepted(Queue, CallId) ->
+-spec send_member_connect_accepted/5 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+send_member_connect_accepted(Queue, CallId, AcctId, AgentId, MyId) ->
     Resp = props:filter_undefined([{<<"Call-ID">>, CallId}
+                                   ,{<<"Account-ID">>, AcctId}
+                                   ,{<<"Agent-ID">>, AgentId}
+                                   ,{<<"Process-ID">>, MyId}
                                    | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                                   ]),
     wapi_acdc_queue:publish_member_connect_accepted(Queue, Resp).

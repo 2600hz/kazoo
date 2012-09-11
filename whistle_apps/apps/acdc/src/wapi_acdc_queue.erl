@@ -282,7 +282,7 @@ member_connect_monitor_v(JObj) ->
 %% Member Connect Accepted
 %%------------------------------------------------------------------------------
 -define(MEMBER_CONNECT_ACCEPTED_HEADERS, [<<"Call-ID">>]).
--define(OPTIONAL_MEMBER_CONNECT_ACCEPTED_HEADERS, []).
+-define(OPTIONAL_MEMBER_CONNECT_ACCEPTED_HEADERS, [<<"Account-ID">>, <<"Agent-ID">>, <<"Process-ID">>]).
 -define(MEMBER_CONNECT_ACCEPTED_VALUES, [{<<"Event-Category">>, <<"member">>}
                                        ,{<<"Event-Name">>, <<"connect_accepted">>}
                                       ]).
