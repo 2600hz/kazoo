@@ -84,7 +84,7 @@
 -define(BINDINGS(AcctId, AgentId), [{self, []}
                                     ,{acdc_agent, [{account_id, AcctId}
                                                    ,{agent_id, AgentId}
-                                                   ,{restrict_to, [sync]}
+                                                   ,{restrict_to, [sync, stats]}
                                                   ]}
                                    ]).
 
@@ -93,6 +93,9 @@
                       }
                      ,{{acdc_agent_handler, handle_sync_resp}
                        ,{<<"agent">>, <<"sync_resp">>}
+                      }
+                     ,{{acdc_agent_handler, handle_stats_req}
+                       ,{<<"agent">>, <<"stats_req">>}
                       }
                      ,{{acdc_agent_handler, handle_call_event}
                        ,{<<"call_event">>, <<"*">>}
