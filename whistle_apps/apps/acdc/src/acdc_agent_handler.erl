@@ -12,6 +12,7 @@
 -export([handle_status_update/2
          ,handle_sync_req/2
          ,handle_sync_resp/2
+         ,handle_stats_req/2
          ,handle_call_event/2
          ,handle_member_message/2
         ]).
@@ -106,3 +107,15 @@ handle_member_message(JObj, Props, <<"connect_monitor">>) ->
     acdc_agent_fsm:member_connect_monitor(props:get_value(fsm_pid, Props), JObj);
 handle_member_message(_, _, EvtName) ->
     lager:debug("not handling member event ~s", [EvtName]).
+
+handle_stats_req(JObj, _Props) ->
+    true = wapi_acdc_agent:stats_req_v(JObj),
+    handle_stats_req(wh_json:get_value(<<"Account-ID">>, JObj)
+                     ,wh_json:get_value(<<"Agent-ID">>, JObj)
+                     ,wh_json:get_value(<<"Server-ID">>, JObj)
+                    ).
+
+handle_stats_req(AcctId, undefined, RespQ) ->
+    lager:debug("find stats for all agents in ~s", [AcctId]);
+handle_stats_req(AcctId, AgentId, RespQ) ->
+    lager:debug("find stats for agent ~s in ~s", [AcctId, AgentId]).
