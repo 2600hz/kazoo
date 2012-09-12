@@ -42,8 +42,6 @@
          ,flush_table/0
         ]).
 
--compile([export_all]).
-
 -include("acdc.hrl").
 
 -define(ETS_TABLE, ?MODULE).
@@ -307,10 +305,10 @@ update_stat(AcctDocs, #stat{name=call_processed
                            }) ->
     AcctDoc = fetch_acct_doc(AcctId, AcctDocs),
 
-    Funs = [ {fun add_call_duration/4, [QueueId, CallId, Elapsed]}
-             ,{fun add_call_agent/4, [QueueId, CallId, AgentId]}
-             ,{fun add_call_agent/4, [QueueId, CallId, Timestamp]}
-             ,{fun add_agent_call/5, [AgentId, QueueId, CallId, Elapsed]}
+    Funs = [{fun add_call_duration/4, [QueueId, CallId, Elapsed]}
+            ,{fun add_call_agent/4, [QueueId, CallId, AgentId]}
+            ,{fun add_agent_call/5, [AgentId, QueueId, CallId, Elapsed]}
+            ,{fun add_call_timestamp/4, [QueueId, CallId, Timestamp]}
            ],
     dict:store(AcctId
                ,lists:foldl(fun({F, Args}, AcctAcc) ->
@@ -323,10 +321,13 @@ update_stat(AcctDocs, #stat{name=call_abandoned
                             ,queue_id=QueueId
                             ,call_id=CallId
                             ,abandon_reason=Reason
+                            ,timestamp=Timestamp
                            }) ->
     AcctDoc = fetch_acct_doc(AcctId, AcctDocs),
 
-    Funs = [ {fun add_call_abandoned/4, [QueueId, CallId, Reason]}],
+    Funs = [{fun add_call_abandoned/4, [QueueId, CallId, Reason]}
+            ,{fun add_call_timestamp/4, [QueueId, CallId, Timestamp]}
+           ],
     dict:store(AcctId
                ,lists:foldl(fun({F, Args}, AcctAcc) ->
                                     apply(F, [AcctAcc | Args])
@@ -338,10 +339,13 @@ update_stat(AcctDocs, #stat{name=call_missed
                             ,queue_id=QueueId
                             ,agent_id=AgentId
                             ,call_id=CallId
+                            ,timestamp=Timestamp
                            }) ->
     AcctDoc = fetch_acct_doc(AcctId, AcctDocs),
 
-    Funs = [ {fun add_call_missed/4, [AgentId, QueueId, CallId]}],
+    Funs = [{fun add_call_missed/4, [AgentId, QueueId, CallId]}
+            ,{fun add_call_timestamp/4, [QueueId, CallId, Timestamp]}
+           ],
     dict:store(AcctId
                ,lists:foldl(fun({F, Args}, AcctAcc) ->
                                     apply(F, [AcctAcc | Args])
@@ -353,10 +357,13 @@ update_stat(AcctDocs, #stat{name=call_handled
                             ,queue_id=QueueId
                             ,call_id=CallId
                             ,elapsed=Elapsed
+                            ,timestamp=Timestamp
                            }) ->
     AcctDoc = fetch_acct_doc(AcctId, AcctDocs),
 
-    Funs = [ {fun add_call_handled/4, [QueueId, CallId, Elapsed]}],
+    Funs = [{fun add_call_handled/4, [QueueId, CallId, Elapsed]}
+            ,{fun add_call_timestamp/4, [QueueId, CallId, Timestamp]}
+           ],
     dict:store(AcctId
                ,lists:foldl(fun({F, Args}, AcctAcc) ->
                                     apply(F, [AcctAcc | Args])
