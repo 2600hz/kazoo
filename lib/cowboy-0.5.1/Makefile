@@ -12,7 +12,9 @@ all: app
 deps:
 	@$(REBAR) get-deps
 
-app: deps
+app: compile
+
+compile: 
 	@$(REBAR) compile
 
 clean:

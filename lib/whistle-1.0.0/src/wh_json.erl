@@ -51,7 +51,6 @@
 -compile({no_auto_import, [get_keys/1]}).
 
 -include("wh_json.hrl").
--include_lib("eunit/include/eunit.hrl").
 
 -export_type([json_object/0, json_objects/0
               ,json_string/0, json_strings/0
@@ -693,6 +692,12 @@ is_private_key(<<"_", _/binary>>) -> true;
 is_private_key(<<"pvt_", _/binary>>) -> true;
 is_private_key(_) -> false.
 
+%% EUNIT TESTING
+-ifdef(TEST).
+
+-include_lib("proper/include/proper.hrl").
+-include_lib("eunit/include/eunit.hrl").
+
 %% PropEr Testing
 prop_is_json_object() ->
     ?FORALL(JObj, json_object(),
@@ -734,9 +739,6 @@ prop_to_proplist() ->
                     lists:all(fun(K) -> props:get_value(K, Prop) =/= undefined end, get_keys(JObj))
                 end)
            ).
-
-%% EUNIT TESTING
--ifdef(TEST).
 
 -define(D1, ?JSON_WRAPPER([{<<"d1k1">>, <<"d1v1">>}, {<<"d1k2">>, d1v2}, {<<"d1k3">>, [<<"d1v3.1">>, <<"d1v3.2">>, <<"d1v3.3">>]}])).
 -define(D2, ?JSON_WRAPPER([{<<"d2k1">>, 1}, {<<"d2k2">>, 3.14}, {<<"sub_d1">>, ?D1}])).

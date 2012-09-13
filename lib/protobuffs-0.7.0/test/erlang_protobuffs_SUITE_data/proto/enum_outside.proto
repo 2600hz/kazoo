@@ -1,8 +1,0 @@
-enum EnumList {
-	FIRST = 1;
-	SECOND = 2;
-}
-
-message EnumUser {
-	optional EnumList enum_field = 1;
-}

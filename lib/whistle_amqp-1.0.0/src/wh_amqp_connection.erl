@@ -404,6 +404,10 @@ handle_info({#'basic.return'{}, #amqp_msg{}}=ReturnMsg, State) ->
 handle_info({connect, Timeout}, #state{broker=Broker, broker_name=Name}=State) ->
     Params = wh_amqp_broker:params(Broker),
     case amqp_connection:start(Params) of
+        {error, auth_failure} ->
+            lager:debug("authentication failure coonection to broker '~s',  will retry in ~p", [Name, Timeout]),
+            _Ref = erlang:send_after(Timeout, self(), {connect, next_timeout(Timeout)}),
+            {noreply, State#state{connection=undefined}};
         {error, _Reason} ->
             lager:debug("failed to connect to AMQP broker '~s' will retry in ~p: ~p", [Name, Timeout, _Reason]),
             _Ref = erlang:send_after(Timeout, self(), {connect, next_timeout(Timeout)}),

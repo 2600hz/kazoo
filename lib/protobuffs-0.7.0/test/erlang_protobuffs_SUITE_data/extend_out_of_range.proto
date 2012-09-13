@@ -1,5 +1,0 @@
-import "extensions.proto";
-
-extend Extendable {
-  optional int32 bar = 205;
-}

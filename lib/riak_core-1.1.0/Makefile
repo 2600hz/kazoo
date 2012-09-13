@@ -1,26 +1,27 @@
-
+ROOT = ../..
+REBAR = $(ROOT)/bin/rebar
 
 .PHONY: deps test
 
-all: deps compile
+all: compile
 
 compile:
-	./rebar compile
+	$(REBAR) compile
 
 deps:
-	./rebar get-deps
+	$(REBAR) get-deps
 
 clean:
-	./rebar clean
+	$(REBAR) clean
 
 distclean: clean 
-	./rebar delete-deps
+	$(REBAR) delete-deps
 
 test: all
-	./rebar skip_deps=true eunit
+	$(REBAR) skip_deps=true eunit
 
 docs: deps
-	./rebar skip_deps=true doc
+	$(REBAR) skip_deps=true doc
 
 dialyzer: compile
 	@dialyzer -Wno_return -c apps/riak_core/ebin

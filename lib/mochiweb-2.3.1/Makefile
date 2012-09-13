@@ -1,11 +1,15 @@
-
+ROOT = ../..
+REBAR = $(ROOT)/bin/rebar
 PREFIX:=../
 DEST:=$(PREFIX)$(PROJECT)
 
-REBAR=./rebar
+all: compile
 
-all:
-	@$(REBAR) get-deps compile
+compile:
+	@$(REBAR) compile
+
+deps:
+	$(REBAR) get-deps
 
 edoc:
 	@$(REBAR) doc
@@ -26,4 +30,3 @@ dialyzer:
 
 app:
 	@$(REBAR) create template=mochiwebapp dest=$(DEST) appid=$(PROJECT)
-
