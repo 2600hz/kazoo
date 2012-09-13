@@ -16,7 +16,7 @@
 -export([start_link/0
          ,new/1
          ,workers/0
-         ,find_acct_queue_supervisors/1
+         ,find_acct_supervisors/1
          ,find_queue_supervisor/2
          ,queues_running/0
         ]).
@@ -52,8 +52,8 @@ new(JObj) ->
 workers() ->
     [ Pid || {_, Pid, worker, [_]} <- supervisor:which_children(?MODULE), is_pid(Pid)].
 
--spec find_acct_queue_supervisors/1 :: (ne_binary()) -> [pid(),...] | [].
-find_acct_queue_supervisors(AcctId) ->
+-spec find_acct_supervisors/1 :: (ne_binary()) -> [pid(),...] | [].
+find_acct_supervisors(AcctId) ->
     [Super || Super <- workers(), is_queue_in_acct(Super, AcctId)].
 
 -spec is_queue_in_acct/2 :: (pid(), ne_binary()) -> boolean().
