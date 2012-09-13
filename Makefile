@@ -2,7 +2,10 @@ ROOT = .
 DIALYZER = dialyzer
 REBAR = $(ROOT)/bin/rebar
 
-MAKEDIRS = */Makefile
+MAKEDIRS = lib/rabbitmq_server-2.8.6/Makefile \
+	   lib/rabbitmq_client-2.8.6/Makefile \
+	   lib/lager-1.0.0/Makefile \
+	   */Makefile
 
 DIRS = $(ROOT)/lib/whistle-1.0.0 \
        $(ROOT)/lib/whistle_couch-1.0.0 \
