@@ -32,14 +32,14 @@ handle_status_update(JObj, _Props) ->
         <<"pause">> -> maybe_pause_agent(AcctId, AgentId, Timeout);
         <<"resume">> -> maybe_resume_agent(AcctId, AgentId);
         Event -> maybe_agent_queue_change(AcctId, AgentId, Event
-                                          ,wh_json:get_value(<<"Queue-ID">>, JObj)
+                                          ,wh_json:get_value(<<"AgentId-ID">>, JObj)
                                          )
     end.
 
-maybe_agent_queue_change(AcctId, AgentId, <<"login_queue">>, QueueId) ->
-    update_agent(acdc_agents_sup:find_agent_supervisor(AcctId, AgentId), QueueId, add_acdc_queue);
-maybe_agent_queue_change(AcctId, AgentId, <<"logout_queue">>, QueueId) ->
-    update_agent(acdc_agents_sup:find_agent_supervisor(AcctId, AgentId), QueueId, rm_acdc_queue).
+maybe_agent_queue_change(AcctId, AgentId, <<"login_agent">>, AgentId) ->
+    update_agent(acdc_agents_sup:find_agent_supervisor(AcctId, AgentId), AgentId, add_acdc_agent);
+maybe_agent_queue_change(AcctId, AgentId, <<"logout_agent">>, AgentId) ->
+    update_agent(acdc_agents_sup:find_agent_supervisor(AcctId, AgentId), AgentId, rm_acdc_agent).
 
 update_agent(undefined, _, _) -> ok;
 update_agent(Super, Q, F) -> 
@@ -134,14 +134,13 @@ build_stats_resp(AcctId, RespQ, MsgId, Ps) ->
     build_stats_resp(AcctId, RespQ, MsgId, Ps, [], []).
 
 build_stats_resp(AcctId, RespQ, MsgId, [], CurrCalls, CurrStats) ->
-    Resp = wh_json:from_list(
-             props:filter_undefined(
-               [{<<"Account-ID">>, AcctId}
-                ,{<<"Current-Calls">>, CurrCalls}
-                ,{<<"Current-Stats">>, wh_json:from_list(CurrStats)}
-                ,{<<"Msg-ID">>, MsgId}
-                | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-               ])),
+    Resp = props:filter_undefined(
+             [{<<"Account-ID">>, AcctId}
+              ,{<<"Current-Calls">>, wh_json:from_list(CurrCalls)}
+              ,{<<"Current-Stats">>, wh_json:from_list(CurrStats)}
+              ,{<<"Msg-ID">>, MsgId}
+              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+             ]),
     lager:debug("resp: ~p", [Resp]),
     wapi_acdc_agent:publish_stats_resp(RespQ, Resp);
 build_stats_resp(AcctId, RespQ, MsgId, [P|Ps], CurrCalls, CurrStats) ->
