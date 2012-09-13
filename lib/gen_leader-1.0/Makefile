@@ -1,3 +1,5 @@
+ROOT = ../..
+REBAR = $(ROOT)/bin/rebar
 
 DIALYZER=dialyzer
 DIALYZER_OPTS=-Wno_return -Wrace_conditions -Wunderspecs -Wbehaviours
@@ -8,10 +10,10 @@ APPS=kernel stdlib erts compiler crypto
 all: compile
 
 compile:
-	./rebar compile
+	$(REBAR) compile
 
 doc:
-	./rebar doc
+	$(REBAR) doc
 
 plt: compile
 	$(DIALYZER) --build_plt --output_plt $(PLT_FILE) --apps $(APPS) ./ebin/
@@ -23,7 +25,7 @@ analyze: compile
 	$(DIALYZER) --plt $(PLT_FILE) $(DIALYZER_OPTS) -r ebin/
 
 tests:
-	./rebar eunit
+	$(REBAR) eunit
 
 clean:
-	./rebar clean
+	$(REBAR) clean
