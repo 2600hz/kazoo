@@ -1732,7 +1732,7 @@ wait_for_application_or_dtmf(Application, Timeout) ->
 -spec wait_for_fax/0 :: () -> wait_for_fax_ret().
 -spec wait_for_fax/1 :: (integer() | 'infinity') -> wait_for_fax_ret().
 wait_for_fax() ->
-    wait_for_fax(5000).
+    wait_for_fax(10000).
 wait_for_fax(Timeout) ->
     Start = erlang:now(),
     receive
