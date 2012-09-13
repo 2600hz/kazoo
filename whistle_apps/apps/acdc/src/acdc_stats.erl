@@ -322,7 +322,8 @@ update_stat(AcctDocs, #stat{name=call_processed
 
     Funs = [{fun add_call_duration/4, [QueueId, CallId, Elapsed]}
             ,{fun add_call_agent/4, [QueueId, CallId, AgentId]}
-            ,{fun add_agent_call/5, [AgentId, QueueId, CallId, Elapsed]}
+            ,{fun add_agent_call/4, [AgentId, CallId, Elapsed]}
+            ,{fun add_agent_call_queue/4, [AgentId, CallId, QueueId]}
             ,{fun add_call_timestamp/4, [QueueId, CallId, Timestamp]}
            ],
     dict:store(AcctId
@@ -432,20 +433,27 @@ add_call_abandoned(AcctDoc, QueueId, CallId, Reason) ->
     Key = [<<"queues">>, QueueId, <<"calls">>, CallId, <<"abandoned">>],
     wh_json:set_value(Key, Reason, AcctDoc).
 
--spec add_agent_call/5 :: (wh_json:json_object(), ne_binary()
-                           ,ne_binary(), ne_binary(), integer()
-                          ) -> wh_json:json_object().
-add_agent_call(AcctDoc, AgentId, QueueId, CallId, Elapsed) ->
-    Key = [<<"agents">>, AgentId, <<"calls_handled">>, QueueId, CallId],
+add_call_handled(AcctDoc, QueueId, CallId, Elapsed) ->
+    Key = [<<"queues">>, QueueId, <<"calls">>, CallId, <<"wait_time">>],
     wh_json:set_value(Key, Elapsed, AcctDoc).
+
+-spec add_agent_call/4 :: (wh_json:json_object(), ne_binary()
+                           ,ne_binary(), integer()
+                          ) -> wh_json:json_object().
+add_agent_call(AcctDoc, AgentId, CallId, Elapsed) ->
+    Key = [<<"agents">>, AgentId, <<"calls_handled">>, CallId, <<"elapsed">>],
+    wh_json:set_value(Key, Elapsed, AcctDoc).
+
+-spec add_agent_call_queue/4 :: (wh_json:json_object(), ne_binary()
+                                 ,ne_binary(), ne_binary()
+                                ) -> wh_json:json_object().
+add_agent_call_queue(AcctDoc, AgentId, CallId, QueueId) ->
+    Key = [<<"agents">>, AgentId, <<"calls_handled">>, CallId, <<"queue_id">>],
+    wh_json:set_value(Key, QueueId, AcctDoc).
 
 -spec add_call_missed/4 :: (wh_json:json_object(), ne_binary()
                             ,ne_binary(), ne_binary()
                            ) -> wh_json:json_object().
 add_call_missed(AcctDoc, AgentId, QueueId, CallId) ->
-    Key = [<<"agents">>, AgentId, <<"calls_missed">>, CallId],
+    Key = [<<"agents">>, AgentId, <<"calls_missed">>, CallId, <<"queue_id">>],
     wh_json:set_value(Key, QueueId, AcctDoc).
-
-add_call_handled(AcctDoc, QueueId, CallId, Elapsed) ->
-    Key = [<<"queues">>, QueueId, <<"calls">>, CallId, <<"wait_time">>],
-    wh_json:set_value(Key, Elapsed, AcctDoc).
