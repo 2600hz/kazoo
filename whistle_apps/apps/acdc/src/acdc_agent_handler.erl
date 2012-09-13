@@ -15,6 +15,7 @@
          ,handle_stats_req/2
          ,handle_call_event/2
          ,handle_member_message/2
+         ,handle_config_change/2
         ]).
 
 -include("acdc.hrl").
@@ -31,14 +32,14 @@ handle_status_update(JObj, _Props) ->
         <<"pause">> -> maybe_pause_agent(AcctId, AgentId, Timeout);
         <<"resume">> -> maybe_resume_agent(AcctId, AgentId);
         Event -> maybe_agent_queue_change(AcctId, AgentId, Event
-                                          ,wh_json:get_value(<<"Queue-ID">>, JObj)
+                                          ,wh_json:get_value(<<"AgentId-ID">>, JObj)
                                          )
     end.
 
-maybe_agent_queue_change(AcctId, AgentId, <<"login_queue">>, QueueId) ->
-    update_agent(acdc_agents_sup:find_agent_supervisor(AcctId, AgentId), QueueId, add_acdc_queue);
-maybe_agent_queue_change(AcctId, AgentId, <<"logout_queue">>, QueueId) ->
-    update_agent(acdc_agents_sup:find_agent_supervisor(AcctId, AgentId), QueueId, rm_acdc_queue).
+maybe_agent_queue_change(AcctId, AgentId, <<"login_agent">>, AgentId) ->
+    update_agent(acdc_agents_sup:find_agent_supervisor(AcctId, AgentId), AgentId, add_acdc_agent);
+maybe_agent_queue_change(AcctId, AgentId, <<"logout_agent">>, AgentId) ->
+    update_agent(acdc_agents_sup:find_agent_supervisor(AcctId, AgentId), AgentId, rm_acdc_agent).
 
 update_agent(undefined, _, _) -> ok;
 update_agent(Super, Q, F) -> 
@@ -133,14 +134,13 @@ build_stats_resp(AcctId, RespQ, MsgId, Ps) ->
     build_stats_resp(AcctId, RespQ, MsgId, Ps, [], []).
 
 build_stats_resp(AcctId, RespQ, MsgId, [], CurrCalls, CurrStats) ->
-    Resp = wh_json:from_list(
-             props:filter_undefined(
-               [{<<"Account-ID">>, AcctId}
-                ,{<<"Current-Calls">>, CurrCalls}
-                ,{<<"Current-Stats">>, wh_json:from_list(CurrStats)}
-                ,{<<"Msg-ID">>, MsgId}
-                | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-               ])),
+    Resp = props:filter_undefined(
+             [{<<"Account-ID">>, AcctId}
+              ,{<<"Current-Calls">>, wh_json:from_list(CurrCalls)}
+              ,{<<"Current-Stats">>, wh_json:from_list(CurrStats)}
+              ,{<<"Msg-ID">>, MsgId}
+              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+             ]),
     lager:debug("resp: ~p", [Resp]),
     wapi_acdc_agent:publish_stats_resp(RespQ, Resp);
 build_stats_resp(AcctId, RespQ, MsgId, [P|Ps], CurrCalls, CurrStats) ->
@@ -151,3 +151,26 @@ build_stats_resp(AcctId, RespQ, MsgId, [P|Ps], CurrCalls, CurrStats) ->
                      ,[{AgentId, acdc_agent:current_call(acdc_agent_sup:agent(P))} | CurrCalls]
                      ,[{AgentId, acdc_stats:agent_stats(AcctId, AgentId)} | CurrStats]
                     ).
+
+handle_config_change(JObj, _Props) ->
+    true = wapi_conf:doc_update_v(JObj),
+    handle_agent_change(wh_json:get_value(<<"Doc">>, JObj)
+                        ,wh_json:get_value(<<"pvt_account_id">>, JObj)
+                        ,wh_json:get_value(<<"_id">>, JObj)
+                        ,wh_json:get_value(<<"Event-Name">>, JObj)
+                       ).
+handle_agent_change(JObj, AcctId, AgentId, <<"doc_created">>) ->
+    case acdc_agents_sup:find_agent_supervisor(AcctId, AgentId) of
+        undefined -> acdc_agents_sup:new(JObj);
+        P when is_pid(P) -> ok
+    end;
+handle_agent_change(JObj, AcctId, AgentId, <<"doc_edited">>) ->
+    case acdc_agents_sup:find_agent_supervisor(AcctId, AgentId) of
+        undefined -> acdc_agents_sup:new(JObj);
+        P when is_pid(P) -> acdc_agent_fsm:refresh(acdc_agent_sup:fsm(P), JObj)
+    end;
+handle_agent_change(_JObj, AcctId, AgentId, <<"doc_deleted">>) ->
+    case acdc_agents_sup:find_agent_supervisor(AcctId, AgentId) of
+        undefined -> ok;
+        P when is_pid(P) -> acdc_agent_sup:stop(P)
+    end.

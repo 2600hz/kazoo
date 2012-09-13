@@ -1,4 +1,5 @@
-REBAR=`which rebar || echo ./rebar`
+ROOT = ../..
+REBAR = $(ROOT)/bin/rebar
 
 all: compile
 

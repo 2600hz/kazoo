@@ -125,7 +125,7 @@ start_link(Supervisor, AgentJObj) ->
 
     case wh_json:get_value(<<"queues">>, AgentJObj) of
         undefined ->
-            lager:debug("agent ~s in ~s has no queues, ignoring"),
+            lager:debug("agent ~s has no queues, ignoring", [AgentId]),
             ignore;
         [] ->
             lager:debug("agent ~s in ~s has no queues, ignoring"),
@@ -223,7 +223,7 @@ init([Supervisor, AgentJObj, Queues]) ->
        ,agent_queues = Queues
        ,my_id = acdc_util:agent_proc_id(self())
        ,supervisor = Supervisor
-      }}.
+      }}.            
 
 %%--------------------------------------------------------------------
 %% @private
@@ -246,7 +246,13 @@ handle_call(config, _From, #state{acct_id=AcctId
 handle_call(current_call, _From, #state{call=undefined}=State) ->
     {reply, undefined, State};
 handle_call(current_call, _From, #state{call=Call}=State) ->
-    {reply, whapps_call:to_json(Call), State};
+    CallJObj = wh_json:from_list([{<<"call_id">>, whapps_call:call_id(Call)}
+                                  ,{<<"caller_id_name">>, whapps_call:caller_id_name(Call)}
+                                  ,{<<"caller_id_number">>, whapps_call:caller_id_name(Call)}
+                                  ,{<<"to">>, whapps_call:to_user(Call)}
+                                  ,{<<"from">>, whapps_call:from_user(Call)}
+                                 ]),
+    {reply, CallJObj, State};
 handle_call(_Request, _From, State) ->
     lager:debug("unhandled call from ~p: ~p", [_From, _Request]),
     {reply, {error, unhandled_call}, State}.

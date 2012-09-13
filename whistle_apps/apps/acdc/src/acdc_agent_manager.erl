@@ -29,14 +29,25 @@
 
 -define(SERVER, ?MODULE).
 
--define(BINDINGS, [{acdc_agent, [{restrict_to, [status, stats]}]}
+-define(BINDINGS, [{conf, [{doc_type, <<"user">>}]}
+                   ,{acdc_agent, [{restrict_to, [status, stats]}]}
                   ]).
 -define(RESPONDERS, [{{acdc_agent_handler, handle_status_update}
-                      ,[{<<"agent">>, <<"*">>}]
+                      ,[{<<"agent">>, <<"init">>}
+                        ,{<<"agent">>, <<"ready">>}
+                        ,{<<"agent">>, <<"waiting">>}
+                        ,{<<"agent">>, <<"ringing">>}
+                        ,{<<"agent">>, <<"answered">>}
+                        ,{<<"agent">>, <<"wrapup">>}
+                        ,{<<"agent">>, <<"paused">>}
+                       ]
                      }
                      ,{{acdc_agent_handler, handle_stats_req}
                        ,[{<<"agent">>, <<"stats_req">>}]
                       }
+                     ,{{acdc_agent_handler, handle_config_change}
+                      ,[{<<"configuration">>, <<"*">>}]
+                     }
                     ]).
 
 %%%===================================================================

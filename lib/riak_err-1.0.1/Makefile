@@ -1,24 +1,27 @@
+ROOT = ../..
+REBAR = $(ROOT)/bin/rebar
+
 all: app
 
 app: compile
 
 compile:
-	./rebar compile
+	$(REBAR) compile
 
 clean:
-	./rebar clean
+	$(REBAR) clean
 
 test: all
-	./rebar eunit
+	$(REBAR) eunit
 
 build_plt: all
-	./rebar build-plt
+	$(REBAR) build-plt
 
 analyze: all
-	./rebar dialyze
+	$(REBAR) dialyze
 
 doc: all
-	./rebar doc
+	$(REBAR) doc
 
 xref: all
-	./rebar xref
+	$(REBAR) xref

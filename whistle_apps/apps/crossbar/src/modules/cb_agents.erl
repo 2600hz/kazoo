@@ -139,7 +139,17 @@ read(Id, Context) ->
 fetch_all_agent_stats(Context) ->
     fetch_all_agent_stats(Context, history).
 fetch_all_agent_stats(Context, history) ->
-    crossbar_doc:load_view(<<"acdc_stats/stats_per_agent">>, [], Context, fun normalize_agent_results/2);
+    {Today, _} = calendar:universal_time(),
+    From = calendar:datetime_to_gregorian_seconds({Today, {0,0,0}}),
+
+    crossbar_doc:load_view(<<"acdc_stats/stats_per_agent_by_time">>
+                           ,[{startkey, [wh_util:current_tstamp(), <<"\ufff0">>]}
+                             ,{endkey, [From, <<>>]}
+                             ,descending
+                            ]
+                           ,Context
+                           ,fun normalize_agent_results/2
+                          );
 fetch_all_agent_stats(#cb_context{account_id=AcctId}=Context, ?REALTIME_PATH_TOKEN) ->
     Req = [{<<"Account-ID">>, AcctId}
            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
@@ -150,7 +160,7 @@ fetch_all_agent_stats(#cb_context{account_id=AcctId}=Context, ?REALTIME_PATH_TOK
                                        ,2000
                                       ) of
         {ok, Resp} ->
-            Resp1 = wh_json:normalize(Resp),
+            Resp1 = strip_api_fields(wh_json:normalize(Resp)),
             Context#cb_context{resp_status=success
                                ,resp_data=Resp1
                                ,doc=Resp1
@@ -159,9 +169,12 @@ fetch_all_agent_stats(#cb_context{account_id=AcctId}=Context, ?REALTIME_PATH_TOK
     end.
 
 fetch_agent_stats(Id, Context) ->
+    {Today, _} = calendar:universal_time(),
+    From = calendar:datetime_to_gregorian_seconds({Today, {0,0,0}}),
+
     crossbar_doc:load_view(<<"acdc_stats/stats_per_agent">>
-                               ,[{startkey, [Id, wh_json:new()]}
-                                 ,{endkey, [Id, 0]}
+                               ,[{startkey, [Id, wh_util:current_tstamp()]}
+                                 ,{endkey, [Id, From]}
                                  ,descending
                                 ]
                            ,Context
@@ -178,7 +191,7 @@ fetch_agent_stats(Id, #cb_context{account_id=AcctId}=Context, ?REALTIME_PATH_TOK
                                        ,2000
                                       ) of
         {ok, Resp} ->
-            Resp1 = wh_json:normalize(Resp),
+            Resp1 = strip_api_fields(wh_json:normalize(Resp)),
             Context#cb_context{resp_status=success
                                ,resp_data=Resp1
                                ,doc=Resp1
@@ -221,7 +234,7 @@ normalize_view_results(JObj, Acc) ->
 -spec normalize_agent_results/2 :: (wh_json:json_object(), wh_json:json_objects()) -> wh_json:json_objects().
 normalize_agent_results(JObj, Acc) ->
     [begin
-         [AID, _] = wh_json:get_value(<<"key">>, JObj),
+         AID = agent_key(wh_json:get_value(<<"key">>, JObj)),
          wh_json:set_value(<<"agent_id">>
                            ,AID
                            ,wh_json:get_value(<<"value">>, JObj)
@@ -229,3 +242,14 @@ normalize_agent_results(JObj, Acc) ->
      end
      | Acc
     ].
+
+agent_key([AID, TStamp]) when is_integer(TStamp) -> AID;
+agent_key([TStamp, AID]) when is_integer(TStamp) -> AID.
+    
+strip_api_fields(JObj) ->
+    Strip = [<<"event_name">>, <<"event_category">>
+                 ,<<"app_name">>, <<"app_version">>
+                 ,<<"node">>, <<"msg_id">>, <<"server_id">>
+            ],
+    wh_json:filter(fun({K,_}) -> not lists:member(K, Strip) end, JObj).
+                           

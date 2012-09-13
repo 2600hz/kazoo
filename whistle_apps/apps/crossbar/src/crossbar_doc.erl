@@ -418,35 +418,35 @@ ensure_saved(#cb_context{db_name=DB, doc=JObj, req_verb=Verb, resp_headers=RespH
     end.
 
 -spec send_document_change/3 :: (wapi_conf:conf_action(), ne_binary(), wh_json:json_object() | wh_json:json_objects()) -> 'ok' | pid().
--spec send_document_change/4 :: (wapi_conf:conf_action(), ne_binary(), wh_json:json_object() | wh_json:json_objects(), proplist()) -> 'ok' | pid() | ['ok' | pid(),...].
+-spec send_document_change/4 :: (wapi_conf:conf_action(), ne_binary(), wh_json:json_object() | wh_json:json_objects(), wh_proplist()) -> 'ok' | pid() | ['ok' | pid(),...].
+-spec send_document_change/5 :: (wapi_conf:conf_action(), ne_binary(), wh_json:json_object() | wh_json:json_objects(), wh_proplist(), boolean()) -> 'ok' | pid() | ['ok' | pid(),...].
 send_document_change(Action, Db, Docs) ->
     send_document_change(Action, Db, Docs, []).
 
 send_document_change(Action, Db, Docs, Options) when is_list(Docs) ->
     [send_document_change(Action, Db, Doc, Options) || Doc <- Docs];
 send_document_change(Action, Db, Doc, Options) ->
-    CallID = get(callid),
+    send_document_change(Action, Db, Doc, Options, props:get_value(publish_doc, Options, true)).
 
-    case props:get_value(publish_doc, Options, true) of
-        true ->
-            spawn(fun() ->
-                          put(callid, CallID),
-                          case wh_json:get_value(<<"_id">>, Doc) of
+send_document_change(_,_,_,_,false) -> ok;
+send_document_change(Action, Db, Doc, _Options, true) ->
+    CallID = get(callid),
+    spawn(fun() ->
+                  put(callid, CallID),
+                  case wh_json:get_value(<<"_id">>, Doc) of
+                      undefined ->
+                          Id = wh_json:get_value(<<"id">>, Doc),
+                          case wh_json:get_value(<<"error">>, Doc) of
                               undefined ->
-                                  Id = wh_json:get_value(<<"id">>, Doc),
-                                  case wh_json:get_value(<<"error">>, Doc) of
-                                      undefined ->
-                                          {ok, Doc1} = couch_mgr:open_doc(Db, Id),
-                                          publish_doc(Action, Db, Doc1, Id);
-                                      _E ->
-                                          ok
-                                  end;
-                              Id ->
-                                  publish_doc(Action, Db, Doc, Id)
-                          end
-                  end);
-        _ -> ok
-    end.
+                                  {ok, Doc1} = couch_mgr:open_doc(Db, Id),
+                                  publish_doc(Action, Db, Doc1, Id);
+                              _E ->
+                                  ok
+                          end;
+                      Id ->
+                          publish_doc(Action, Db, Doc, Id)
+                  end
+          end).
 
 publish_doc(Action, Db, Doc, Id) ->
     ActionBin = wh_util:to_binary(Action),
@@ -454,7 +454,7 @@ publish_doc(Action, Db, Doc, Id) ->
     Change =
         [{<<"ID">>, Id}
          ,{<<"Rev">>, wh_json:get_value(<<"_rev">>, Doc)}
-         ,{<<"Doc">>, public_fields(Doc)}
+         ,{<<"Doc">>, Doc}
          ,{<<"Type">>, Type}
          ,{<<"Account-DB">>, wh_json:get_value(<<"pvt_account_db">>, Doc)}
          ,{<<"Account-ID">>, wh_json:get_value(<<"pvt_account_id">>, Doc)}
