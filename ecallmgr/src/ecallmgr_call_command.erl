@@ -550,7 +550,7 @@ get_fs_app(Node, UUID, JObj, <<"set">>) ->
         false -> {'error', <<"set failed to execute as JObj did not validate">>};
         true ->
             ChannelVars = wh_json:to_proplist(wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new())),
-            _ = [ set(Node, UUID, get_fs_kv(K, V, UUID)) || {K, V} <- ChannelVars],
+            _ = multiset(Node, UUID, ChannelVars),
 
             CallVars = wh_json:to_proplist(wh_json:get_value(<<"Custom-Call-Vars">>, JObj, wh_json:new())),
             _ = [ export(Node, UUID, get_fs_kv(K, V, UUID)) || {K, V} <- CallVars],
@@ -681,6 +681,18 @@ set_terminators(Node, UUID, []) -> set(Node, UUID, <<"playback_terminators=none"
 set_terminators(Node, UUID, Ts) ->
     Terms = list_to_binary(["playback_terminators=", Ts]),
     set(Node, UUID, Terms).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec multiset/3 :: (atom(), ne_binary(), proplist()) -> ecallmgr_util:send_cmd_ret().
+multiset(Node, UUID, Props) ->
+    Multiset = lists:foldl(fun({K, V}, Acc) ->
+                                   <<"|", (get_fs_kv(K, V, UUID))/binary, Acc/binary>>
+                           end, <<>>, Props),
+    ecallmgr_util:send_cmd(Node, UUID, "multiset", <<"^^", Multiset/binary>>).
 
 %%--------------------------------------------------------------------
 %% @private

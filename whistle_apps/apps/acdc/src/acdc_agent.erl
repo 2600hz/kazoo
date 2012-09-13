@@ -23,6 +23,7 @@
          ,send_sync_req/1
          ,send_sync_resp/3, send_sync_resp/4
          ,config/1
+         ,current_call/1
          ,send_status_resume/1
          ,add_acdc_queue/2
          ,rm_acdc_queue/2
@@ -84,24 +85,27 @@
 -define(BINDINGS(AcctId, AgentId), [{self, []}
                                     ,{acdc_agent, [{account_id, AcctId}
                                                    ,{agent_id, AgentId}
-                                                   ,{restrict_to, [sync]}
+                                                   ,{restrict_to, [sync, stats]}
                                                   ]}
                                    ]).
 
 -define(RESPONDERS, [{{acdc_agent_handler, handle_sync_req}
-                       ,{<<"agent">>, <<"sync_req">>}
+                      ,[{<<"agent">>, <<"sync_req">>}]
                       }
                      ,{{acdc_agent_handler, handle_sync_resp}
-                       ,{<<"agent">>, <<"sync_resp">>}
+                       ,[{<<"agent">>, <<"sync_resp">>}]
+                      }
+                     ,{{acdc_agent_handler, handle_stats_req}
+                       ,[{<<"agent">>, <<"stats_req">>}]
                       }
                      ,{{acdc_agent_handler, handle_call_event}
-                       ,{<<"call_event">>, <<"*">>}
+                       ,[{<<"call_event">>, <<"*">>}]
                       }
                      ,{{acdc_agent_handler, handle_call_event}
-                       ,{<<"error">>, <<"*">>}
+                       ,[{<<"error">>, <<"*">>}]
                       }
                      ,{{acdc_agent_handler, handle_member_message}
-                       ,{<<"member">>, <<"*">>}
+                       ,[{<<"member">>, <<"*">>}]
                       }
                     ]).
 
@@ -174,6 +178,9 @@ send_sync_resp(Srv, Status, ReqJObj, Options) ->
 config(Srv) ->
     gen_listener:call(Srv, config).
 
+current_call(Srv) ->
+    gen_listener:call(Srv, current_call).
+
 send_status_resume(Srv) ->
     gen_listener:cast(Srv, {send_status_update, resume}).
 
@@ -236,6 +243,10 @@ handle_call(config, _From, #state{acct_id=AcctId
                                   ,agent_id=AgentId
                                   }=State) ->
     {reply, {AcctId, AgentId}, State};
+handle_call(current_call, _From, #state{call=undefined}=State) ->
+    {reply, undefined, State};
+handle_call(current_call, _From, #state{call=Call}=State) ->
+    {reply, whapps_call:to_json(Call), State};
 handle_call(_Request, _From, State) ->
     lager:debug("unhandled call from ~p: ~p", [_From, _Request]),
     {reply, {error, unhandled_call}, State}.
@@ -333,13 +344,19 @@ handle_cast({load_endpoints, Supervisor}, #state{
                                                                   ,whapps_call:new()
                                                                  )
                                      ),
-    case acdc_util:get_endpoints(Call, AgentId) of
+    case catch acdc_util:get_endpoints(Call, AgentId) of
         [] ->
+            lager:debug("no endpoints"),
             _ = acdc_agent_sup:stop(Supervisor),
             {noreply, State};
-        EPs ->
+        [_|_]=EPs ->
+            lager:debug("endpoints: ~p", [EPs]),
             gen_listener:cast(self(), {start_fsm, Supervisor}),
-            {noreply, State#state{endpoints=EPs}}
+            {noreply, State#state{endpoints=EPs}};
+        {'EXIT', _E} ->
+            lager:debug("failed to load endpoints: ~p", [_E]),
+            _ = acdc_agent_sup:stop(Supervisor),
+            {noreply, State}
     end;
 
 handle_cast({member_connect_resp, ReqJObj}, #state{

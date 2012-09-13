@@ -343,6 +343,9 @@ ready({channel_hungup, CallId}, #state{agent_proc=Srv}=State) ->
 ready({resume}, State) ->
     {next_state, ready, State};
 
+ready({dtmf_pressed, _}, State) ->
+    {next_state, ready, State};
+
 ready(_Evt, State) ->
     lager:debug("unhandled event: ~p", [_Evt]),
     {next_state, ready, State}.

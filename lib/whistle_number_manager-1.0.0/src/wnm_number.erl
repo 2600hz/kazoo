@@ -703,7 +703,7 @@ error_invalid_state_transition(Transition, #number{state = State}=N) ->
 
 -spec error_unauthorized/1 :: (wnm_number()) -> no_return().
 error_unauthorized(N) ->
-    Error = <<"Not authorized to preform requested number operation">>,
+    Error = <<"Not authorized to perform requested number operation">>,
     lager:debug("~s", [Error]),
     throw({unauthorized, N#number{error_jobj=wh_json:from_list([{<<"unauthorized">>, Error}])}}).
 

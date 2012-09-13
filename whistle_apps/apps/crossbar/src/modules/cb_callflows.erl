@@ -115,9 +115,13 @@ post(Context, _DocId) ->
 put(Context) ->
     case crossbar_doc:save(Context) of
         #cb_context{account_id=AssignTo, auth_account_id=AuthBy, doc=JObj, resp_status=success}=C ->
-            _ = [wh_number_manager:reconcile_number(Number, AssignTo, AuthBy)
-                 || Number <- wh_json:get_value(<<"numbers">>, JObj, [])],
-            C;
+            case whapps_config:get_is_true(?MOD_CONFIG_CAT, <<"default_reconcile_numbers">>, true) of
+                false -> C;
+                true ->
+                    _ = [wh_number_manager:reconcile_number(Number, AssignTo, AuthBy)
+                         || Number <- wh_json:get_value(<<"numbers">>, JObj, [])],
+                    C
+                end;
         Else ->
             Else
     end.

@@ -12,6 +12,7 @@
 -export([handle_status_update/2
          ,handle_sync_req/2
          ,handle_sync_resp/2
+         ,handle_stats_req/2
          ,handle_call_event/2
          ,handle_member_message/2
         ]).
@@ -47,10 +48,14 @@ maybe_start_agent(AcctId, AgentId) ->
     case acdc_agents_sup:find_agent_supervisor(AcctId, AgentId) of
         undefined ->
             lager:debug("agent ~s (~s) not found, starting", [AgentId, AcctId]),
-            {ok, AgentJObj} = couch_mgr:open_doc(wh_util:format_account_id(AcctId, encoded), AgentId),
-            _R = acdc_agents_sup:new(AgentJObj),
-            acdc_stats:agent_active(AcctId, AgentId),
-            lager:debug("started agent at ~p", [_R]);
+            case couch_mgr:open_doc(wh_util:format_account_id(AcctId, encoded), AgentId) of
+                {ok, AgentJObj} ->
+                    _R = acdc_agents_sup:new(AgentJObj),
+                    acdc_stats:agent_active(AcctId, AgentId),
+                    lager:debug("started agent at ~p", [_R]);
+                {error, _E} ->
+                    lager:debug("error opening agent doc: ~p", [_E])
+            end;
         P when is_pid(P) ->
             lager:debug("agent ~s (~s) already running: supervisor ~p", [AgentId, AcctId, P])
     end.
@@ -106,3 +111,37 @@ handle_member_message(JObj, Props, <<"connect_monitor">>) ->
     acdc_agent_fsm:member_connect_monitor(props:get_value(fsm_pid, Props), JObj);
 handle_member_message(_, _, EvtName) ->
     lager:debug("not handling member event ~s", [EvtName]).
+
+handle_stats_req(JObj, _Props) ->
+    true = wapi_acdc_agent:stats_req_v(JObj),
+    handle_stats_req(wh_json:get_value(<<"Account-ID">>, JObj)
+                     ,wh_json:get_value(<<"Agent-ID">>, JObj)
+                     ,wh_json:get_value(<<"Server-ID">>, JObj)
+                     ,wh_json:get_value(<<"Msg-ID">>, JObj)
+                    ).
+
+handle_stats_req(AcctId, undefined, _RespQ, _MsgId) ->
+    lager:debug("no agent id for stat req for ~s", [AcctId]);
+handle_stats_req(AcctId, AgentId, RespQ, MsgId) ->
+    case acdc_agents_sup:find_agent_supervisor(AcctId, AgentId) of
+        undefined -> lager:debug("agent ~s in acct ~s isn't running", [AgentId, AcctId]);
+        P ->
+            lager:debug("find stats for agent ~s in ~s", [AcctId, AgentId]),
+            CurrCall = acdc_agent:current_call(acdc_agent_sup:agent(P)),
+            CurrStats = acdc_stats:agent_stats(AcctId, AgentId),
+            Resp = wh_json:from_list(
+                     props:filter_undefined(
+                       [{<<"Account-ID">>, AcctId}
+                        ,{<<"Calls-Current">>, current_calls(CurrCall, AgentId)}
+                        ,{<<"Current-Stats">>, CurrStats}
+                        ,{<<"Msg-ID">>, MsgId}
+                        | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                       ])),
+            lager:debug("resp: ~p", [Resp]),
+            wapi_acdc_agent:publish_stats_resp(RespQ, Resp)
+    end.
+
+current_calls(undefined, _) ->
+    undefined;
+current_calls(Call, AgentId) ->
+    wh_json:from_list([{AgentId, Call}]).

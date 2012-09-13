@@ -98,8 +98,8 @@ member_call_routing_key(AcctId, QueueId) ->
 %% Member Call Fail - if the queue is unable to properly handle the call
 %%  (queue is full, empty, wait timeout expires, etc)
 %%------------------------------------------------------------------------------
--define(MEMBER_CALL_FAIL_HEADERS, [<<"Account-ID">>, <<"Queue-ID">>, <<"Call">>]).
--define(OPTIONAL_MEMBER_CALL_FAIL_HEADERS, [<<"Failure-Reason">>]).
+-define(MEMBER_CALL_FAIL_HEADERS, [<<"Account-ID">>, <<"Queue-ID">>]).
+-define(OPTIONAL_MEMBER_CALL_FAIL_HEADERS, [<<"Failure-Reason">>, <<"Process-ID">>, <<"Agent-ID">>]).
 -define(MEMBER_CALL_FAIL_VALUES, [{<<"Event-Category">>, <<"member">>}
                                   ,{<<"Event-Name">>, <<"call_fail">>}
                             ]).

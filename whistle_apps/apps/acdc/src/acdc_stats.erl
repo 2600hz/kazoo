@@ -13,6 +13,7 @@
 %% Query API
 -export([acct_stats/1
          ,queue_stats/2
+         ,agent_stats/2
         ]).
 
 %% Stats API
@@ -42,8 +43,6 @@
          ,flush_table/0
         ]).
 
--compile([export_all]).
-
 -include("acdc.hrl").
 
 -define(ETS_TABLE, ?MODULE).
@@ -53,21 +52,21 @@
                      'agent_active' | 'agent_inactive'.
 
 -record(stat, {
-          name            :: stat_name()
-          ,acct_id        :: ne_binary()
-          ,queue_id       :: ne_binary()
-          ,agent_id       :: ne_binary()
-          ,call_id        :: ne_binary()
-          ,call_count     :: integer()
-          ,elapsed        :: integer()
-          ,timestamp      :: integer() % gregorian seconds
-          ,active_since   :: wh_now()
-          ,abandon_reason :: abandon_reason()
+          name            :: stat_name() | '_'
+          ,acct_id        :: ne_binary() | '$1' % for the match spec
+          ,queue_id       :: ne_binary() | '$2' | '_'
+          ,agent_id       :: ne_binary() | '_'
+          ,call_id        :: ne_binary() | '_'
+          ,call_count     :: integer() | '_'
+          ,elapsed        :: integer() | '_'
+          ,timestamp      :: integer() | '_' % gregorian seconds
+          ,active_since   :: wh_now() | '_'
+          ,abandon_reason :: abandon_reason() | '_'
          }).
 
 -spec acct_stats/1 :: (ne_binary()) -> wh_json:json_objects().
 acct_stats(AcctId) ->
-    MatchSpec = [{#stat{acct_id='$1', _='_'}
+    MatchSpec = [{#stat{acct_id='$1', _ = '_'}
                   ,[{'=:=', '$1', AcctId}]
                   ,['$_']
                  }],
@@ -82,6 +81,20 @@ queue_stats(AcctId, QueueId) ->
     MatchSpec = [{#stat{acct_id='$1', queue_id='$2', _='_'}
                   ,[{'=:=', '$1', AcctId}
                     ,{'=:=', '$2', QueueId}
+                   ]
+                  ,['$_']
+                 }],
+
+    AcctDocs = lists:foldl(fun(Stat, AcctAcc) ->
+                                   update_stat(AcctAcc, Stat)
+                           end, dict:new(), ets:select(?ETS_TABLE, MatchSpec)
+                          ),
+    wh_doc:public_fields(fetch_acct_doc(AcctId, AcctDocs)).
+
+agent_stats(AcctId, AgentId) ->
+    MatchSpec = [{#stat{acct_id='$1', agent_id='$2', _='_'}
+                  ,[{'=:=', '$1', AcctId}
+                    ,{'=:=', '$2', AgentId}
                    ]
                   ,['$_']
                  }],
@@ -307,10 +320,10 @@ update_stat(AcctDocs, #stat{name=call_processed
                            }) ->
     AcctDoc = fetch_acct_doc(AcctId, AcctDocs),
 
-    Funs = [ {fun add_call_duration/4, [QueueId, CallId, Elapsed]}
-             ,{fun add_call_agent/4, [QueueId, CallId, AgentId]}
-             ,{fun add_call_agent/4, [QueueId, CallId, Timestamp]}
-             ,{fun add_agent_call/5, [AgentId, QueueId, CallId, Elapsed]}
+    Funs = [{fun add_call_duration/4, [QueueId, CallId, Elapsed]}
+            ,{fun add_call_agent/4, [QueueId, CallId, AgentId]}
+            ,{fun add_agent_call/5, [AgentId, QueueId, CallId, Elapsed]}
+            ,{fun add_call_timestamp/4, [QueueId, CallId, Timestamp]}
            ],
     dict:store(AcctId
                ,lists:foldl(fun({F, Args}, AcctAcc) ->
@@ -323,10 +336,13 @@ update_stat(AcctDocs, #stat{name=call_abandoned
                             ,queue_id=QueueId
                             ,call_id=CallId
                             ,abandon_reason=Reason
+                            ,timestamp=Timestamp
                            }) ->
     AcctDoc = fetch_acct_doc(AcctId, AcctDocs),
 
-    Funs = [ {fun add_call_abandoned/4, [QueueId, CallId, Reason]}],
+    Funs = [{fun add_call_abandoned/4, [QueueId, CallId, Reason]}
+            ,{fun add_call_timestamp/4, [QueueId, CallId, Timestamp]}
+           ],
     dict:store(AcctId
                ,lists:foldl(fun({F, Args}, AcctAcc) ->
                                     apply(F, [AcctAcc | Args])
@@ -338,10 +354,13 @@ update_stat(AcctDocs, #stat{name=call_missed
                             ,queue_id=QueueId
                             ,agent_id=AgentId
                             ,call_id=CallId
+                            ,timestamp=Timestamp
                            }) ->
     AcctDoc = fetch_acct_doc(AcctId, AcctDocs),
 
-    Funs = [ {fun add_call_missed/4, [AgentId, QueueId, CallId]}],
+    Funs = [{fun add_call_missed/4, [AgentId, QueueId, CallId]}
+            ,{fun add_call_timestamp/4, [QueueId, CallId, Timestamp]}
+           ],
     dict:store(AcctId
                ,lists:foldl(fun({F, Args}, AcctAcc) ->
                                     apply(F, [AcctAcc | Args])
@@ -353,10 +372,13 @@ update_stat(AcctDocs, #stat{name=call_handled
                             ,queue_id=QueueId
                             ,call_id=CallId
                             ,elapsed=Elapsed
+                            ,timestamp=Timestamp
                            }) ->
     AcctDoc = fetch_acct_doc(AcctId, AcctDocs),
 
-    Funs = [ {fun add_call_handled/4, [QueueId, CallId, Elapsed]}],
+    Funs = [{fun add_call_handled/4, [QueueId, CallId, Elapsed]}
+            ,{fun add_call_timestamp/4, [QueueId, CallId, Timestamp]}
+           ],
     dict:store(AcctId
                ,lists:foldl(fun({F, Args}, AcctAcc) ->
                                     apply(F, [AcctAcc | Args])

@@ -22,6 +22,7 @@
 -export([start_link/2
          ,accept_member_calls/1
          ,member_connect_req/3
+         ,member_connect_re_req/1
          ,member_connect_win/3, member_connect_win/4
          ,member_connect_monitor/2, member_connect_monitor/3
          ,timeout_member_call/1
@@ -112,6 +113,8 @@ accept_member_calls(Srv) ->
 
 member_connect_req(Srv, MemberCallJObj, Delivery) ->
     gen_listener:cast(Srv, {member_connect_req, MemberCallJObj, Delivery}).
+member_connect_re_req(Srv) ->
+    gen_listener:cast(Srv, {member_connect_re_req}).
 
 member_connect_win(Srv, RespJObj, Timeout) ->
     member_connect_win(Srv, RespJObj, Timeout, <<"#">>).
@@ -251,6 +254,19 @@ handle_cast({member_connect_req, MemberCallJObj, Delivery}
                           ,delivery=Delivery
                           ,member_call_queue=wh_json:get_value(<<"Server-ID">>, MemberCallJObj)
                          }};
+
+handle_cast({member_connect_re_req}
+            ,#state{
+              my_q=MyQ
+              ,my_id=MyId
+              ,acct_id=AcctId
+              ,queue_id=QueueId
+              ,call=Call
+             }=State
+           ) ->
+    send_member_connect_req(whapps_call:call_id(Call), AcctId, QueueId, MyQ, MyId),
+    {noreply, State};
+
 
 handle_cast({member_connect_win, RespJObj, Timeout, CallerExitKey}, #state{my_q=MyQ
                                                                            ,my_id=MyId
