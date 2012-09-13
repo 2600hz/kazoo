@@ -13,6 +13,7 @@
 %% Query API
 -export([acct_stats/1
          ,queue_stats/2
+         ,agent_stats/2
         ]).
 
 %% Stats API
@@ -80,6 +81,20 @@ queue_stats(AcctId, QueueId) ->
     MatchSpec = [{#stat{acct_id='$1', queue_id='$2', _='_'}
                   ,[{'=:=', '$1', AcctId}
                     ,{'=:=', '$2', QueueId}
+                   ]
+                  ,['$_']
+                 }],
+
+    AcctDocs = lists:foldl(fun(Stat, AcctAcc) ->
+                                   update_stat(AcctAcc, Stat)
+                           end, dict:new(), ets:select(?ETS_TABLE, MatchSpec)
+                          ),
+    wh_doc:public_fields(fetch_acct_doc(AcctId, AcctDocs)).
+
+agent_stats(AcctId, AgentId) ->
+    MatchSpec = [{#stat{acct_id='$1', agent_id='$2', _='_'}
+                  ,[{'=:=', '$1', AcctId}
+                    ,{'=:=', '$2', AgentId}
                    ]
                   ,['$_']
                  }],
