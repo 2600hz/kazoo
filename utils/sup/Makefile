@@ -2,10 +2,13 @@ ROOT = ../..
 DIALYZER = dialyzer
 REBAR = $(ROOT)/bin/rebar
 
-all: compile
+all: compile escriptize
 
 compile: deps
 	@$(REBAR) compile
+
+escriptize:
+	$(REBAR) escriptize
 
 deps:
 	@$(REBAR) get-deps
