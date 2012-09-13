@@ -120,28 +120,34 @@ handle_stats_req(JObj, _Props) ->
                      ,wh_json:get_value(<<"Msg-ID">>, JObj)
                     ).
 
-handle_stats_req(AcctId, undefined, _RespQ, _MsgId) ->
-    lager:debug("no agent id for stat req for ~s", [AcctId]);
+handle_stats_req(AcctId, undefined, RespQ, MsgId) ->
+    build_stats_resp(AcctId, RespQ, MsgId, acdc_agents_sup:find_acct_supervisors(AcctId));
 handle_stats_req(AcctId, AgentId, RespQ, MsgId) ->
     case acdc_agents_sup:find_agent_supervisor(AcctId, AgentId) of
         undefined -> lager:debug("agent ~s in acct ~s isn't running", [AgentId, AcctId]);
         P ->
-            lager:debug("find stats for agent ~s in ~s", [AcctId, AgentId]),
-            CurrCall = acdc_agent:current_call(acdc_agent_sup:agent(P)),
-            CurrStats = acdc_stats:agent_stats(AcctId, AgentId),
-            Resp = wh_json:from_list(
-                     props:filter_undefined(
-                       [{<<"Account-ID">>, AcctId}
-                        ,{<<"Calls-Current">>, current_calls(CurrCall, AgentId)}
-                        ,{<<"Current-Stats">>, CurrStats}
-                        ,{<<"Msg-ID">>, MsgId}
-                        | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-                       ])),
-            lager:debug("resp: ~p", [Resp]),
-            wapi_acdc_agent:publish_stats_resp(RespQ, Resp)
+            build_stats_resp(AcctId, RespQ, MsgId, [P])
     end.
 
-current_calls(undefined, _) ->
-    undefined;
-current_calls(Call, AgentId) ->
-    wh_json:from_list([{AgentId, Call}]).
+build_stats_resp(AcctId, RespQ, MsgId, Ps) ->
+    build_stats_resp(AcctId, RespQ, MsgId, Ps, [], []).
+
+build_stats_resp(AcctId, RespQ, MsgId, [], CurrCalls, CurrStats) ->
+    Resp = wh_json:from_list(
+             props:filter_undefined(
+               [{<<"Account-ID">>, AcctId}
+                ,{<<"Current-Calls">>, CurrCalls}
+                ,{<<"Current-Stats">>, wh_json:from_list(CurrStats)}
+                ,{<<"Msg-ID">>, MsgId}
+                | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+               ])),
+    lager:debug("resp: ~p", [Resp]),
+    wapi_acdc_agent:publish_stats_resp(RespQ, Resp);
+build_stats_resp(AcctId, RespQ, MsgId, [P|Ps], CurrCalls, CurrStats) ->
+    A = acdc_agent_sup:agent(P),
+    {AcctId, AgentId} = acdc_agent:config(A),
+
+    build_stats_resp(AcctId, RespQ, MsgId, Ps
+                     ,[{AgentId, acdc_agent:current_call(acdc_agent_sup:agent(P))} | CurrCalls]
+                     ,[{AgentId, acdc_stats:agent_stats(AcctId, AgentId)} | CurrStats]
+                    ).

@@ -16,6 +16,7 @@
 -export([start_link/0
          ,new/1
          ,workers/0
+         ,find_acct_supervisors/1
          ,find_agent_supervisor/2
         ]).
 
@@ -48,6 +49,18 @@ new(JObj) ->
 -spec workers/0 :: () -> [pid(),...] | [].
 workers() ->
     [ Pid || {_, Pid, worker, [_]} <- supervisor:which_children(?MODULE)].
+
+-spec find_acct_supervisors/1 :: (ne_binary()) -> [pid(),...] | [].
+find_acct_supervisors(AcctId) ->
+    [Super || Super <- workers(), is_agent_in_acct(Super, AcctId)].
+
+-spec is_agent_in_acct/2 :: (pid(), ne_binary()) -> boolean().
+is_agent_in_acct(Super, AcctId) ->
+    case catch acdc_agent:config(acdc_agent_sup:agent(Super)) of
+        {'EXIT', _} -> false;
+        {AcctId, _} -> true;
+        _ -> false
+    end.
 
 -spec find_agent_supervisor/2 :: (ne_binary(), ne_binary()) -> pid() | 'undefined'.
 -spec find_agent_supervisor/3 :: (ne_binary(), ne_binary(), [pid(),...] | []) -> pid() | 'undefined'.
