@@ -143,7 +143,7 @@ fetch_all_agent_stats(Context, history) ->
     From = calendar:datetime_to_gregorian_seconds({Today, {0,0,0}}),
 
     crossbar_doc:load_view(<<"acdc_stats/stats_per_agent_by_time">>
-                           ,[{startkey, [wh_util:current_stamp(), <<"\ufff0">>]}
+                           ,[{startkey, [wh_util:current_tstamp(), <<"\ufff0">>]}
                              ,{endkey, [From, <<>>]}
                              ,descending
                             ]
