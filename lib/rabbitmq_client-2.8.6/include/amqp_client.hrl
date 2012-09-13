@@ -17,8 +17,8 @@
 -ifndef(AMQP_CLIENT_HRL).
 -define(AMQP_CLIENT_HRL, true).
 
--include_lib("rabbit_common/include/rabbit.hrl").
--include_lib("rabbit_common/include/rabbit_framing.hrl").
+-include_lib("rabbitmq_server/include/rabbit.hrl").
+-include_lib("rabbitmq_server/include/rabbit_framing.hrl").
 
 -record(amqp_msg, {props = #'P_basic'{}, payload = <<>>}).
 
