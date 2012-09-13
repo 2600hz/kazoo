@@ -125,7 +125,7 @@ start_link(Supervisor, AgentJObj) ->
 
     case wh_json:get_value(<<"queues">>, AgentJObj) of
         undefined ->
-            lager:debug("agent ~s in ~s has no queues, ignoring"),
+            lager:debug("agent ~s has no queues, ignoring", [AgentId]),
             ignore;
         [] ->
             lager:debug("agent ~s in ~s has no queues, ignoring"),
@@ -223,7 +223,7 @@ init([Supervisor, AgentJObj, Queues]) ->
        ,agent_queues = Queues
        ,my_id = acdc_util:agent_proc_id(self())
        ,supervisor = Supervisor
-      }}.
+      }}.            
 
 %%--------------------------------------------------------------------
 %% @private

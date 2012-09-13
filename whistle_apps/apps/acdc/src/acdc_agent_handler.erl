@@ -15,6 +15,7 @@
          ,handle_stats_req/2
          ,handle_call_event/2
          ,handle_member_message/2
+         ,handle_config_change/2
         ]).
 
 -include("acdc.hrl").
@@ -151,3 +152,26 @@ build_stats_resp(AcctId, RespQ, MsgId, [P|Ps], CurrCalls, CurrStats) ->
                      ,[{AgentId, acdc_agent:current_call(acdc_agent_sup:agent(P))} | CurrCalls]
                      ,[{AgentId, acdc_stats:agent_stats(AcctId, AgentId)} | CurrStats]
                     ).
+
+handle_config_change(JObj, _Props) ->
+    true = wapi_conf:doc_update_v(JObj),
+    handle_agent_change(wh_json:get_value(<<"Doc">>, JObj)
+                        ,wh_json:get_value(<<"pvt_account_id">>, JObj)
+                        ,wh_json:get_value(<<"_id">>, JObj)
+                        ,wh_json:get_value(<<"Event-Name">>, JObj)
+                       ).
+handle_agent_change(JObj, AcctId, AgentId, <<"doc_created">>) ->
+    case acdc_agents_sup:find_agent_supervisor(AcctId, AgentId) of
+        undefined -> acdc_agents_sup:new(JObj);
+        P when is_pid(P) -> ok
+    end;
+handle_agent_change(JObj, AcctId, AgentId, <<"doc_edited">>) ->
+    case acdc_agents_sup:find_agent_supervisor(AcctId, AgentId) of
+        undefined -> acdc_agents_sup:new(JObj);
+        P when is_pid(P) -> acdc_agent_fsm:refresh(acdc_agent_sup:fsm(P), JObj)
+    end;
+handle_agent_change(_JObj, AcctId, AgentId, <<"doc_deleted">>) ->
+    case acdc_agents_sup:find_agent_supervisor(AcctId, AgentId) of
+        undefined -> ok;
+        P when is_pid(P) -> acdc_agent_sup:stop(P)
+    end.
