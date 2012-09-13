@@ -89,7 +89,7 @@ queue_stats(AcctId, QueueId) ->
                                    update_stat(AcctAcc, Stat)
                            end, dict:new(), ets:select(?ETS_TABLE, MatchSpec)
                           ),
-    wh_doc:public_fields(fetch_acct_doc(AcctId, AcctDocs)).
+    wh_json:get_value([<<"queues">>, QueueId], wh_doc:public_fields(fetch_acct_doc(AcctId, AcctDocs))).
 
 agent_stats(AcctId, AgentId) ->
     MatchSpec = [{#stat{acct_id='$1', agent_id='$2', _='_'}
@@ -103,7 +103,7 @@ agent_stats(AcctId, AgentId) ->
                                    update_stat(AcctAcc, Stat)
                            end, dict:new(), ets:select(?ETS_TABLE, MatchSpec)
                           ),
-    wh_doc:public_fields(fetch_acct_doc(AcctId, AcctDocs)).
+    wh_json:get_value([<<"agents">>, AgentId], wh_doc:public_fields(fetch_acct_doc(AcctId, AcctDocs))).
 
 %% An agent connected with a caller
 -spec call_processed/5 :: (ne_binary(), ne_binary()
