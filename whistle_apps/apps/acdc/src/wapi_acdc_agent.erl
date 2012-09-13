@@ -173,7 +173,7 @@ stats_req_routing_key(Id, AgentId) ->
 
 %% And the response
 -define(STATS_RESP_HEADERS, [<<"Account-ID">>]).
--define(OPTIONAL_STATS_RESP_HEADERS, [<<"Calls-Current">>, <<"Current-Stats">>]).
+-define(OPTIONAL_STATS_RESP_HEADERS, [<<"Current-Calls">>, <<"Current-Stats">>]).
 -define(STATS_RESP_VALUES, [{<<"Event-Category">>, <<"agent">>}
                             ,{<<"Event-Name">>, <<"stats_resp">>}
                            ]).
