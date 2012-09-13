@@ -3,7 +3,8 @@
 PROJECT = cowboy
 
 DIALYZER = dialyzer
-REBAR = rebar
+ROOT = ../..
+REBAR = $(ROOT)/bin/rebar
 
 all: app
 
