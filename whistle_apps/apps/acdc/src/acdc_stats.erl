@@ -441,7 +441,7 @@ add_call_handled(AcctDoc, QueueId, CallId, Elapsed) ->
                            ,ne_binary(), integer()
                           ) -> wh_json:json_object().
 add_agent_call(AcctDoc, AgentId, CallId, Elapsed) ->
-    Key = [<<"agents">>, AgentId, <<"calls_handled">>, CallId, <<"elapsed">>],
+    Key = [<<"agents">>, AgentId, <<"calls_handled">>, CallId, <<"duration">>],
     wh_json:set_value(Key, Elapsed, AcctDoc).
 
 -spec add_agent_call_queue/4 :: (wh_json:json_object(), ne_binary()
