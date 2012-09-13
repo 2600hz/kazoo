@@ -362,8 +362,7 @@ get_account_realm(Db, AccountId) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec disable_account/1 :: (api_binary()) -> 'ok' | {'error', _}.
-disable_account(undefined) ->
-    ok;
+disable_account(undefined) -> ok;
 disable_account(AccountId) ->
     ViewOptions = [{<<"startkey">>, [AccountId]}, {<<"endkey">>, [AccountId, wh_json:new()]}],
     case couch_mgr:get_results(?WH_ACCOUNTS_DB, <<"accounts/listing_by_descendants">>, ViewOptions) of
