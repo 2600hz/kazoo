@@ -239,10 +239,14 @@ set_rating_ccvs(JObj) ->
         {error, _} -> ok;
         {ok, Node} ->
             lager:debug("setting rating information", []),
-            _ = [ecallmgr_util:send_cmd(Node, CallId, "set", ?SET_CCV(Key, Value))
-                 || Key <- ?RATE_VARS
-                        ,(Value = wh_json:get_binary_value(Key, JObj)) =/= undefined
-                ],
+            Multiset = lists:foldl(fun(Key, Acc) ->
+                                           case wh_json:get_binary_value(Key, JObj) of
+                                               undefined -> Acc;
+                                               Value ->
+                                                   <<"|", (?SET_CCV(Key, Value))/binary, Acc/binary>>
+                                           end
+                           end, <<>>, ?RATE_VARS),
+            _ = ecallmgr_util:send_cmd(Node, CallId, "multiset", <<"^^", Multiset/binary>>),
             ok
     end.
 
