@@ -4,7 +4,7 @@ REBAR = $(ROOT)/bin/rebar
 
 all: compile
 
-compile:
+compile: deps
 	@$(REBAR) compile
 
 deps:
