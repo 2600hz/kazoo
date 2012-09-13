@@ -1,4 +1,8 @@
-all:
+all: app
+
+app: compile
+
+compile:
 	./rebar compile
 
 clean:

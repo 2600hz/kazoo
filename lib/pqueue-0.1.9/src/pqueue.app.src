@@ -1,7 +1,0 @@
-{application, pqueue,
-  [{description, "Priority Queue Data Structure"},
-   {vsn, "0.1.9"},
-   {modules, [pqueue, pqueue2]},
-   {applications, [stdlib]},
-   {start_phases, []}]}.
-

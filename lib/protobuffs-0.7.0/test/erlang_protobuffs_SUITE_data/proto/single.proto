@@ -1,3 +1,0 @@
-message message {
-  required uint32 s = 1;
-}

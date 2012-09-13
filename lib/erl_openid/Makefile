@@ -1,3 +1,6 @@
+ROOT = ../..
+REBAR = $(ROOT)/bin/rebar
+
 ERL ?= erl
 APP := openid
 
@@ -5,23 +8,27 @@ APP := openid
 .PHONY: test
 .PHONY: mod
 
-all: deps
-	@./rebar compile
+all: app
+
+app: compile
+
+compile:
+	$(REBAR) compile
 
 deps:
-	@./rebar get-deps
+	$(REBAR) get-deps
 
 clean:
-	@./rebar clean
+	$(REBAR) clean
 
 mod:
-	@./rebar create-mod app=$(APP) modid=$(MOD)
+	$(REBAR) create-mod app=$(APP) modid=$(MOD)
 
 test:
-	@./rebar eunit app=$(APP)
+	$(REBAR) eunit app=$(APP)
 
 distclean: clean
-	@./rebar delete-deps
+	$(REBAR) delete-deps
 
 docs:
 	@erl -noshell -run edoc_run application '$(APP)' '"."' '[]'

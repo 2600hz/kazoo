@@ -1,6 +1,7 @@
-ERL=erl
-REBAR=./rebar
+ROOT = ../..
+REBAR = $(ROOT)/bin/rebar
 
+ERL=erl
 
 all: compile
 
@@ -18,7 +19,7 @@ test: compile compile_test
 		-s erlydtl_unittests run_tests \
 		-s sources_parser_unittests run_tests \
 		-s init stop
-	
+
 clean:
 	@$(REBAR) clean
 	rm -fv ebintest/*

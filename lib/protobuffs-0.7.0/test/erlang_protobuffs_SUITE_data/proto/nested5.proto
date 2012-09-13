@@ -1,9 +1,0 @@
-message First {
-  message Inner {
-      optional bool foo = 1;
-  }
-  optional Inner inner = 1;
-}
-message Second {
-  required First.Inner inner = 1;
-}

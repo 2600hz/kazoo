@@ -58,7 +58,7 @@
 
 -include_lib("kernel/include/inet.hrl").
 -include_lib("xmerl/include/xmerl.hrl").
--include_lib("proper/include/proper.hrl").
+
 -include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_log.hrl").
 -include_lib("whistle/include/wh_databases.hrl").
@@ -772,6 +772,8 @@ now_ms({_,_,_}=Now) ->
 now_s({_,_,_}=Now) ->
     now_us(Now) div 1000000.
 
+-ifdef(TEST).
+-include_lib("proper/include/proper.hrl").
 %% PROPER TESTING
 prop_to_integer() ->
     ?FORALL({F, I}, {float(), integer()},
@@ -808,7 +810,6 @@ prop_iolist_t() ->
 
 
 -include_lib("eunit/include/eunit.hrl").
--ifdef(TEST).
 
 proper_test_() ->
     {"Runs the module's PropEr tests during eunit testing",

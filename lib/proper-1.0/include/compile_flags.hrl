@@ -1,1 +1,0 @@
--define(OLD_STACKTRACE_FORMAT, 1).

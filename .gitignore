@@ -8,6 +8,9 @@ lib/*/ebin/*.app
 lib/*/priv/*.so
 lib/*/c_src/*.o
 lib/*/c_src/*/*.o
+lib/*/deps/*/ebin/*.beam
+lib/*/deps/*/ebin/*.app
+lib/*/dist/*
 */deps/*/ebin/*.beam
 */ebin/*.app
 */priv/*.pid

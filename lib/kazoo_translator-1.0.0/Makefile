@@ -6,7 +6,9 @@ DIRS =  . ../whistle-1.0.0 ../../whistle_apps
 
 all: app
 
-app:
+app: compile
+
+compile:
 	@$(REBAR) compile
 
 deps:

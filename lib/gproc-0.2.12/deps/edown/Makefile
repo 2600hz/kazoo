@@ -1,12 +1,15 @@
+ROOT = ../../../..
+REBAR = $(ROOT)/bin/rebar
+
 .PHONY: all compile clean doc
 
 all: compile
 
 compile:
-	./rebar compile
+	$(REBAR) compile
 
 clean:
-	./rebar clean
+	$(REBAR) clean
 
 doc: compile
 	./make_doc
