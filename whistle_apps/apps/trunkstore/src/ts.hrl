@@ -1,4 +1,5 @@
--include_lib("amqp_client/include/amqp_client.hrl").
+-ifndef(TS_HRL).
+
 -include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_amqp.hrl").
 -include_lib("whistle/include/wh_log.hrl").
@@ -72,3 +73,6 @@
 
 -define(TS_COUCH_DESIGN_DOCS, ["filter.json", "lookupuserauth.json", "lookupmonitor.json", "lookupipauth.json", "lookupdid.json", "lookupuser.json", "ts_cdr.json"]).
 -define(TS_COUCH_BASE_DOCS, ["carriers.json"]).
+
+-define(TS_HRL, true).
+-endif.

@@ -1,8 +1,8 @@
+-ifndef(STEPSWITCH_HRL).
 -include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_amqp.hrl").
 -include_lib("whistle/include/wh_log.hrl").
 -include_lib("whistle/include/wh_databases.hrl").
--include_lib("amqp_client/include/amqp_client.hrl").
 
 -define(ROUTES_DB, <<"offnet">>).
 -define(RESOURCES_DB, <<"offnet">>).
@@ -51,3 +51,6 @@
 
 -type endpoint() :: {1..100, non_neg_integer(), ne_binary(), [#gateway{},...] | [], boolean()}.
 -type endpoints() :: [] | [endpoint()].
+
+-define(STEPSWITCH_HRL, true).
+-endif.

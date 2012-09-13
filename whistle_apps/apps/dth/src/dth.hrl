@@ -1,4 +1,5 @@
--include_lib("amqp_client/include/amqp_client.hrl").
+-ifndef(DTH_HRL).
+
 -include_lib("detergent/include/detergent.hrl").
 -include_lib("whistle/include/wh_amqp.hrl").
 -include_lib("whistle/include/wh_types.hrl").
@@ -17,3 +18,6 @@
 -define(DTH_CALL_TYPE_TIERED, "TieredOrigination").
 
 -define(DTH_CACHE, dth_cache).
+
+-define(DTH_HRL, true).
+-endif.

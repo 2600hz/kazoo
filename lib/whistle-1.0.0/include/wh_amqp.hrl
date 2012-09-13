@@ -1,11 +1,13 @@
-%%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2010, VoIP INC
+%%% @copyright (C) 2010-2012, VoIP INC
 %%% @doc
 %%% AMQP-specific things for Whistle
 %%% @end
-%%% Created :  3 Nov 2010 by James Aimonetti <james@2600hz.org>
+%%% @contributors
+%%%   James Aimonetti
 
 -ifndef(WH_AMQP_HRL).
+
+-include_lib("rabbitmq_client/include/amqp_client.hrl").
 
 -define(DEFAULT_CONTENT_TYPE, <<"application/json">>).
 
