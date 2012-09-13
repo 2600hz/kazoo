@@ -3,7 +3,6 @@
 -include_lib("whistle/include/wh_amqp.hrl").
 -include_lib("whistle/include/wh_log.hrl").
 -include_lib("whistle_number_manager/include/wh_number_manager.hrl").
--include_lib("amqp_client/include/amqp_client.hrl").
 
 -type cf_exe_response() :: {'stop'} |
                            {'continue'} |

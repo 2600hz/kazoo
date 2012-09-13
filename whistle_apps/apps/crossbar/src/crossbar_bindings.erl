@@ -53,11 +53,6 @@
          ,code_change/3
         ]).
 
-%% PropEr needs to be included before eunit. Both modules create a ?LET macro,
-%% but the PropEr one is the useful one. Also needs to be included before any
-%% function definition because it includes functions.
--include_lib("proper/include/proper.hrl").
-
 -include("../include/crossbar.hrl").
 
 -define(SERVER, ?MODULE).
@@ -504,9 +499,14 @@ fold_processor(Routing, Payload, Bs) ->
     Reply.
 
 %% EUNIT and PropEr TESTING %%
+-ifdef(TEST).
+
+%% PropEr needs to be included before eunit. Both modules create a ?LET macro,
+%% but the PropEr one is the useful one. Also needs to be included before any
+%% function definition because it includes functions.
+-include_lib("proper/include/proper.hrl").
 
 -include_lib("eunit/include/eunit.hrl").
--ifdef(TEST).
 
 -define(ROUTINGS, [ <<"foo.bar.zot">>, <<"foo.quux.zot">>, <<"foo.bar.quux.zot">>, <<"foo.zot">>, <<"foo">>, <<"xap">>]).
 
