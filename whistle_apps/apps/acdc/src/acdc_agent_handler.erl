@@ -96,7 +96,6 @@ handle_sync_resp(JObj, Props) ->
 -spec handle_call_event/2 :: (wh_json:json_object(), wh_proplist()) -> 'ok'.
 handle_call_event(JObj, Props) ->
     {Cat, Name} = wh_util:get_event_type(JObj),
-    lager:debug("call_event: ~s: ~s", [wh_json:get_value(<<"Call-ID">>, JObj), Name]),
     acdc_agent_fsm:call_event(props:get_value(fsm_pid, Props), Cat, Name, JObj).    
 
 -spec handle_member_message/2 :: (wh_json:json_object(), wh_proplist()) -> 'ok'.
@@ -126,8 +125,7 @@ handle_stats_req(AcctId, undefined, RespQ, MsgId) ->
 handle_stats_req(AcctId, AgentId, RespQ, MsgId) ->
     case acdc_agents_sup:find_agent_supervisor(AcctId, AgentId) of
         undefined -> lager:debug("agent ~s in acct ~s isn't running", [AgentId, AcctId]);
-        P ->
-            build_stats_resp(AcctId, RespQ, MsgId, [P])
+        P -> build_stats_resp(AcctId, RespQ, MsgId, [P])
     end.
 
 build_stats_resp(AcctId, RespQ, MsgId, Ps) ->
@@ -141,7 +139,6 @@ build_stats_resp(AcctId, RespQ, MsgId, [], CurrCalls, CurrStats) ->
               ,{<<"Msg-ID">>, MsgId}
               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
-    lager:debug("resp: ~p", [Resp]),
     wapi_acdc_agent:publish_stats_resp(RespQ, Resp);
 build_stats_resp(AcctId, RespQ, MsgId, [P|Ps], CurrCalls, CurrStats) ->
     A = acdc_agent_sup:agent(P),
