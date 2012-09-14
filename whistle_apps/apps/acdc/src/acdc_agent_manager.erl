@@ -32,14 +32,13 @@
 -define(BINDINGS, [{conf, [{doc_type, <<"user">>}]}
                    ,{acdc_agent, [{restrict_to, [status, stats]}]}
                   ]).
--define(RESPONDERS, [{{acdc_agent_handler, handle_status_update}
-                      ,[{<<"agent">>, <<"init">>}
-                        ,{<<"agent">>, <<"ready">>}
-                        ,{<<"agent">>, <<"waiting">>}
-                        ,{<<"agent">>, <<"ringing">>}
-                        ,{<<"agent">>, <<"answered">>}
-                        ,{<<"agent">>, <<"wrapup">>}
-                        ,{<<"agent">>, <<"paused">>}
+-define(RESPONDERS, [{{acdc_agent_handler, handle_status_update} 
+                      ,[{<<"agent">>, <<"login">>}
+                        ,{<<"agent">>, <<"logout">>}
+                        ,{<<"agent">>, <<"pause">>}
+                        ,{<<"agent">>, <<"resume">>}
+                        ,{<<"agent">>, <<"login_queue">>}
+                        ,{<<"agent">>, <<"logout_queue">>}
                        ]
                      }
                      ,{{acdc_agent_handler, handle_stats_req}
