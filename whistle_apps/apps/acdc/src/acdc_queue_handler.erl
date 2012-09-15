@@ -68,7 +68,7 @@ handle_stat_req(JObj, _Props) ->
 
 handle_stat_req(AcctId, undefined, ServerId) ->
     lager:debug("fetch queue stats for all queues in ~s", [AcctId]),
-    case acdc_queues_sup:find_acct_queue_supervisors(AcctId) of
+    case acdc_queues_sup:find_acct_supervisors(AcctId) of
         [] -> lager:debug("no queue processes");
         Ps ->
             Resp = [{<<"Account-ID">>, AcctId}
