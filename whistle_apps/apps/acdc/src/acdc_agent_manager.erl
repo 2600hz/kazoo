@@ -30,7 +30,7 @@
 -define(SERVER, ?MODULE).
 
 -define(BINDINGS, [{conf, [{doc_type, <<"user">>}]}
-                   ,{acdc_agent, [{restrict_to, [status, stats]}]}
+                   ,{acdc_agent, [{restrict_to, [status, stats_req]}]}
                   ]).
 -define(RESPONDERS, [{{acdc_agent_handler, handle_status_update} 
                       ,[{<<"agent">>, <<"login">>}
