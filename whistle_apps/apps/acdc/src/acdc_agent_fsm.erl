@@ -22,6 +22,9 @@
          ,sync_req/2, sync_resp/2
          ,pause/2
          ,resume/1
+         ,refresh/2
+         ,current_call/1
+         ,status/1
         ]).
 
 %% gen_fsm callbacks
@@ -40,6 +43,11 @@
          ,answered/2
          ,wrapup/2
          ,paused/2
+         ,sync/3
+         ,ready/3
+         ,ringing/3
+         ,answered/3
+         ,wrapup/3
         ]).
 
 -include("acdc.hrl").
@@ -62,6 +70,7 @@
          ,wrapup_timeout :: integer() % optionally set on win/monitor
          ,wrapup_ref :: reference()
          ,sync_ref :: reference()
+         ,member_call :: whapps_call:call()
          ,member_call_id :: ne_binary()
          ,member_call_queue_id :: ne_binary()
          ,member_call_start :: wh_now()
@@ -185,6 +194,20 @@ resume(FSM) ->
 
 %%--------------------------------------------------------------------
 %% @doc
+%% @end
+%%--------------------------------------------------------------------
+refresh(FSM, AgentJObj) ->
+    gen_fsm:send_all_state_event(FSM, {refresh, AgentJObj}).
+
+-spec current_call/1 :: (pid()) -> 'undefined' | wh_json:json_object().
+current_call(FSM) ->
+    gen_fsm:sync_send_event(FSM, current_call).
+
+status(FSM) ->
+    gen_fsm:sync_send_event(FSM, status).
+
+%%--------------------------------------------------------------------
+%% @doc
 %% Creates a gen_fsm process which calls Module:init/1 to
 %% initialize. To ensure a synchronized start-up procedure, this
 %% function does not return until Module:init/1 has returned.
@@ -287,9 +310,15 @@ sync({pause, Timeout}, State) ->
     lager:debug("recv status update while syncing, pausing for up to ~b ms", [Timeout]),
     Ref = start_pause_timer(Timeout),
     {next_state, paused, State#state{sync_ref=Ref}};
+
 sync(_Evt, State) ->
     lager:debug("unhandled event: ~p", [_Evt]),
     {next_state, sync, State}.
+
+sync(status, _, State) ->
+    {reply, undefined, sync, State};
+sync(current_call, _, State) ->
+    {reply, undefined, sync, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -307,8 +336,11 @@ ready({sync_req, JObj}, #state{agent_proc=Srv}=State) ->
     {next_state, ready, State};
 
 ready({member_connect_win, JObj}, #state{agent_proc=Srv}=State) ->
-    CallId = callid(JObj),
+    Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, JObj)),
+    CallId = whapps_call:call_id(Call),
+
     lager:debug("we won us a member: ~s", [CallId]),
+
     acdc_agent:bridge_to_member(Srv, JObj),
 
     WrapupTimer = wh_json:get_integer_value(<<"Wrapup-Timeout">>, JObj),
@@ -316,6 +348,7 @@ ready({member_connect_win, JObj}, #state{agent_proc=Srv}=State) ->
     QueueId = wh_json:get_value(<<"Queue-ID">>, JObj),
 
     {next_state, ringing, State#state{wrapup_timeout=WrapupTimer
+                                      ,member_call=Call
                                       ,member_call_id=CallId
                                       ,member_call_start=erlang:now()
                                       ,caller_exit_key=CallerExitKey
@@ -349,6 +382,11 @@ ready({dtmf_pressed, _}, State) ->
 ready(_Evt, State) ->
     lager:debug("unhandled event: ~p", [_Evt]),
     {next_state, ready, State}.
+
+ready(status, _, State) ->
+    {reply, <<"ready">>, ready, State};
+ready(current_call, _, State) ->
+    {reply, undefined, ready, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -460,6 +498,11 @@ ringing(_Evt, State) ->
     lager:debug("unhandled event: ~p", [_Evt]),
     {next_state, ringing, State}.
 
+ringing(status, _, State) ->
+    {reply, <<"ringing">>, ringing, State};
+ringing(current_call, _, #state{member_call=Call}=State) ->
+    {reply, current_call(Call, ringing), ringing, State}.
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -523,24 +566,6 @@ answered({channel_hungup, CallId}, #state{agent_proc=Srv}=State) ->
     acdc_agent:channel_hungup(Srv, CallId),
     {next_state, answered, State};
 
-%% answered({channel_unbridged, CallId}, #state{member_call_id=CallId
-%%                                              ,acct_id=AcctId
-%%                                              ,member_call_queue_id=QueueId
-%%                                              ,agent_id=AgentId
-%%                                              ,member_call_start=Started
-%%                                             }=State) ->
-%%     lager:debug("member unbridged"),
-
-%%     acdc_stats:call_processed(AcctId, QueueId, AgentId
-%%                               ,CallId, wh_util:elapsed_s(Started)
-%%                              ),
-
-%%     {next_state, answered, State};
-
-%% answered({channel_unbridged, CallId}, #state{agent_call_id=CallId}=State) ->
-%%     lager:debug("agent unbridged"),
-%%     {next_state, answered, State};
-
 answered({sync_req, JObj}
          ,#state{agent_proc=Srv
                  ,member_call_id=CallId
@@ -552,6 +577,11 @@ answered({sync_req, JObj}
 answered(_Evt, State) ->
     lager:debug("unhandled event: ~p", [_Evt]),
     {next_state, answered, State}.
+
+answered(status, _, State) ->
+    {reply, <<"answered">>, answered, State};
+answered(current_call, _, #state{member_call=Call}=State) ->
+    {reply, current_call(Call, answered), answered, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -583,6 +613,11 @@ wrapup({sync_req, JObj}, #state{agent_proc=Srv
 wrapup(_Evt, State) ->
     lager:debug("unhandled event: ~p", [_Evt]),
     {next_state, wrapup, State#state{wrapup_timeout=undefined}}.
+
+wrapup(status, _, State) ->
+    {reply, <<"wrapup">>, wrapup, State};
+wrapup(current_call, _, #state{member_call=Call}=State) ->
+    {reply, current_call(Call, wrapup), wrapup, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -626,6 +661,11 @@ paused(_Evt, State) ->
     lager:debug("unhandled event: ~p", [_Evt]),
     {next_state, paused, State}.
 
+paused(status, _, State) ->
+    {reply, <<"paused">>, paused, State};
+paused(current_call, _, State) ->
+    {reply, undefined, paused, State}.
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -639,6 +679,9 @@ paused(_Evt, State) ->
 %%                   {stop, Reason, NewState}
 %% @end
 %%--------------------------------------------------------------------
+handle_event({refresh, AgentJObj}, StateName, State) ->
+    lager:debug("refresh agent config: ~p", [AgentJObj]),
+    {next_state, StateName, State};
 handle_event(_Event, StateName, State) ->
     lager:debug("unhandled event in state ~s: ~p", [StateName, _Event]),
     {next_state, StateName, State}.
@@ -756,9 +799,21 @@ time_left(Ms) when is_integer(Ms) -> Ms div 1000.
 clear_call(State) ->
     State#state{wrapup_timeout = undefined
                 ,wrapup_ref = undefined
+                ,member_call = undefined
                 ,member_call_id = undefined
                 ,member_call_start = undefined
                 ,member_call_queue_id = undefined
                 ,agent_call_id = undefined
                 ,caller_exit_key = <<"#">>
                }.
+
+-spec current_call/2 :: (whapps_call:call() | 'undefined', atom()) -> wh_json:json_object() | 'undefined'.
+current_call(undefined, _) -> undefined;
+current_call(Call, AgentState) -> 
+    wh_json:from_list([{<<"call_id">>, whapps_call:call_id(Call)}
+                       ,{<<"caller_id_name">>, whapps_call:caller_id_name(Call)}
+                       ,{<<"caller_id_number">>, whapps_call:caller_id_name(Call)}
+                       ,{<<"to">>, whapps_call:to_user(Call)}
+                       ,{<<"from">>, whapps_call:from_user(Call)}
+                       ,{<<"agent_state">>, wh_util:to_binary(AgentState)}
+                      ]).

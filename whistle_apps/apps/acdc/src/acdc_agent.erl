@@ -23,7 +23,6 @@
          ,send_sync_req/1
          ,send_sync_resp/3, send_sync_resp/4
          ,config/1
-         ,current_call/1
          ,send_status_resume/1
          ,add_acdc_queue/2
          ,rm_acdc_queue/2
@@ -85,7 +84,7 @@
 -define(BINDINGS(AcctId, AgentId), [{self, []}
                                     ,{acdc_agent, [{account_id, AcctId}
                                                    ,{agent_id, AgentId}
-                                                   ,{restrict_to, [sync, stats]}
+                                                   ,{restrict_to, [sync, stats_req]}
                                                   ]}
                                    ]).
 
@@ -178,9 +177,6 @@ send_sync_resp(Srv, Status, ReqJObj, Options) ->
 config(Srv) ->
     gen_listener:call(Srv, config).
 
-current_call(Srv) ->
-    gen_listener:call(Srv, current_call).
-
 send_status_resume(Srv) ->
     gen_listener:cast(Srv, {send_status_update, resume}).
 
@@ -243,16 +239,6 @@ handle_call(config, _From, #state{acct_id=AcctId
                                   ,agent_id=AgentId
                                   }=State) ->
     {reply, {AcctId, AgentId}, State};
-handle_call(current_call, _From, #state{call=undefined}=State) ->
-    {reply, undefined, State};
-handle_call(current_call, _From, #state{call=Call}=State) ->
-    CallJObj = wh_json:from_list([{<<"call_id">>, whapps_call:call_id(Call)}
-                                  ,{<<"caller_id_name">>, whapps_call:caller_id_name(Call)}
-                                  ,{<<"caller_id_number">>, whapps_call:caller_id_name(Call)}
-                                  ,{<<"to">>, whapps_call:to_user(Call)}
-                                  ,{<<"from">>, whapps_call:from_user(Call)}
-                                 ]),
-    {reply, CallJObj, State};
 handle_call(_Request, _From, State) ->
     lager:debug("unhandled call from ~p: ~p", [_From, _Request]),
     {reply, {error, unhandled_call}, State}.
