@@ -48,6 +48,7 @@
          ,ringing/3
          ,answered/3
          ,wrapup/3
+         ,paused/3
         ]).
 
 -include("acdc.hrl").
@@ -501,7 +502,7 @@ ringing(_Evt, State) ->
 ringing(status, _, State) ->
     {reply, <<"ringing">>, ringing, State};
 ringing(current_call, _, #state{member_call=Call}=State) ->
-    {reply, current_call(Call, ringing), ringing, State}.
+    {reply, current_call(Call, ringing, undefined), ringing, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -580,8 +581,10 @@ answered(_Evt, State) ->
 
 answered(status, _, State) ->
     {reply, <<"answered">>, answered, State};
-answered(current_call, _, #state{member_call=Call}=State) ->
-    {reply, current_call(Call, answered), answered, State}.
+answered(current_call, _, #state{member_call=Call
+                                 ,member_call_start=Start
+                                }=State) ->
+    {reply, current_call(Call, answered, Start), answered, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -616,8 +619,10 @@ wrapup(_Evt, State) ->
 
 wrapup(status, _, State) ->
     {reply, <<"wrapup">>, wrapup, State};
-wrapup(current_call, _, #state{member_call=Call}=State) ->
-    {reply, current_call(Call, wrapup), wrapup, State}.
+wrapup(current_call, _, #state{member_call=Call
+                               ,member_call_start=Start
+                              }=State) ->
+    {reply, current_call(Call, wrapup, Start), wrapup, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -807,13 +812,17 @@ clear_call(State) ->
                 ,caller_exit_key = <<"#">>
                }.
 
--spec current_call/2 :: (whapps_call:call() | 'undefined', atom()) -> wh_json:json_object() | 'undefined'.
-current_call(undefined, _) -> undefined;
-current_call(Call, AgentState) -> 
+-spec current_call/3 :: (whapps_call:call() | 'undefined', atom(), 'undefined' | wh_now()) -> wh_json:json_object() | 'undefined'.
+current_call(undefined, _, _) -> undefined;
+current_call(Call, AgentState, Start) -> 
     wh_json:from_list([{<<"call_id">>, whapps_call:call_id(Call)}
                        ,{<<"caller_id_name">>, whapps_call:caller_id_name(Call)}
                        ,{<<"caller_id_number">>, whapps_call:caller_id_name(Call)}
                        ,{<<"to">>, whapps_call:to_user(Call)}
                        ,{<<"from">>, whapps_call:from_user(Call)}
                        ,{<<"agent_state">>, wh_util:to_binary(AgentState)}
+                       ,{<<"duration">>, elapsed(Start)}
                       ]).
+
+elapsed(undefined) -> undefined;
+elapsed(Start) -> wh_util:elapsed_s(Start).
