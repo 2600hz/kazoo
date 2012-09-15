@@ -119,7 +119,7 @@ sync_resp_v(JObj) ->
 %%------------------------------------------------------------------------------
 
 %% agent.stats_req.ACCTID.AGENT_ID
--define(STATS_REQ_KEY, "agent.stats_req.").
+-define(STATS_REQ_KEY, "acdc.agent.stats_req.").
 
 -define(STATS_REQ_HEADERS, [<<"Account-ID">>]).
 -define(OPTIONAL_STATS_REQ_HEADERS, [<<"Agent-ID">>]).
@@ -173,7 +173,7 @@ stats_req_routing_key(Id, AgentId) ->
 
 %% And the response
 -define(STATS_RESP_HEADERS, [<<"Account-ID">>]).
--define(OPTIONAL_STATS_RESP_HEADERS, [<<"Current-Calls">>, <<"Current-Stats">>]).
+-define(OPTIONAL_STATS_RESP_HEADERS, [<<"Current-Calls">>, <<"Current-Stats">>, <<"Current-Statuses">>]).
 -define(STATS_RESP_VALUES, [{<<"Event-Category">>, <<"agent">>}
                             ,{<<"Event-Name">>, <<"stats_resp">>}
                            ]).
@@ -351,10 +351,10 @@ bind_q(Q, {AcctId, AgentId, Status}=Ids, [status|T]) ->
 bind_q(Q, {AcctId, AgentId, _}=Ids, [sync|T]) ->
     amqp_util:bind_q_to_whapps(Q, sync_req_routing_key(AcctId, AgentId)),
     bind_q(Q, Ids, T);
-bind_q(Q, {AcctId, <<"*">>, _}=Ids, [stats|T]) ->
+bind_q(Q, {AcctId, <<"*">>, _}=Ids, [stats_req|T]) ->
     amqp_util:bind_q_to_whapps(Q, stats_req_routing_key(AcctId)),
     bind_q(Q, Ids, T);
-bind_q(Q, {AcctId, AgentId, _}=Ids, [stats|T]) ->
+bind_q(Q, {AcctId, AgentId, _}=Ids, [stats_req|T]) ->
     amqp_util:bind_q_to_whapps(Q, stats_req_routing_key(AcctId, AgentId)),
     bind_q(Q, Ids, T);
 bind_q(Q, Ids, [_|T]) ->
@@ -381,12 +381,11 @@ unbind_q(Q, {AcctId, AgentId, Status}=Ids, [status|T]) ->
 unbind_q(Q, {AcctId, AgentId, _}=Ids, [sync|T]) ->
     _ = amqp_util:unbind_q_from_whapps(Q, sync_req_routing_key(AcctId, AgentId)),
     unbind_q(Q, Ids, T);
-unbind_q(Q, {AcctId, <<"*">> = AgentId, _}=Ids, [stats|T]) ->
-    amqp_util:unbind_q_from_whapps(Q, stats_req_routing_key(AcctId)),
-    amqp_util:unbind_q_from_whapps(Q, stats_req_routing_key(AcctId, AgentId)),
+unbind_q(Q, {AcctId, <<"*">>, _}=Ids, [stats|T]) ->
+    _ = amqp_util:unbind_q_from_whapps(Q, stats_req_routing_key(AcctId)),
     unbind_q(Q, Ids, T);
 unbind_q(Q, {AcctId, AgentId, _}=Ids, [stats|T]) ->
-    amqp_util:unbind_q_from_whapps(Q, stats_req_routing_key(AcctId, AgentId)),
+    _ = amqp_util:unbind_q_from_whapps(Q, stats_req_routing_key(AcctId, AgentId)),
     unbind_q(Q, Ids, T);
 unbind_q(Q, Ids, [_|T]) ->
     unbind_q(Q, Ids, T);
