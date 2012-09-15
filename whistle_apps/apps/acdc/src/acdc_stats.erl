@@ -55,7 +55,7 @@
           name            :: stat_name() | '_'
           ,acct_id        :: ne_binary() | '$1' % for the match spec
           ,queue_id       :: ne_binary() | '$2' | '_'
-          ,agent_id       :: ne_binary() | '_'
+          ,agent_id       :: ne_binary() | '$2' | '_'
           ,call_id        :: ne_binary() | '_'
           ,call_count     :: integer() | '_'
           ,elapsed        :: integer() | '_'
@@ -70,7 +70,6 @@ acct_stats(AcctId) ->
                   ,[{'=:=', '$1', AcctId}]
                   ,['$_']
                  }],
-
     AcctDocs = lists:foldl(fun(Stat, AcctAcc) ->
                                    update_stat(AcctAcc, Stat)
                            end, dict:new(), ets:select(?ETS_TABLE, MatchSpec)
@@ -84,7 +83,6 @@ queue_stats(AcctId, QueueId) ->
                    ]
                   ,['$_']
                  }],
-
     AcctDocs = lists:foldl(fun(Stat, AcctAcc) ->
                                    update_stat(AcctAcc, Stat)
                            end, dict:new(), ets:select(?ETS_TABLE, MatchSpec)
