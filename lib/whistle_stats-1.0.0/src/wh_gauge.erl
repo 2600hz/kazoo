@@ -105,21 +105,25 @@ maybe_delete_gauge(Name) ->
 
 -spec init_gauge/2 :: (ne_binary(), gauge()) -> ok.
 init_gauge(Name, Value) ->
-    folsom_metrics:new_gauge(Name),
+    %folsom_metrics:new_gauge(Name),
     set_gauge(Name, Value).
 
 -spec set_gauge/2 :: (ne_binary(), gauge()) -> ok.
 set_gauge(Name, Value) ->
-    folsom_metrics:notify({Name, Value}).
+    %folsom_metrics:notify({Name, Value}).
+    ok.
 
 -spec get_gauge/1 :: (ne_binary()) -> gauge().
 get_gauge(Name) ->
-    folsom_metrics:get_metric_value(Name).
+    %folsom_metrics:get_metric_value(Name).
+    0.
 
 -spec delete_gauge/1 :: (ne_binary()) -> ok.
 delete_gauge(Name) ->
-    folsom_metrics:delete_metric(Name).
+    %folsom_metrics:delete_metric(Name).
+    ok.
 
 -spec gauge_exists/1 :: (ne_binary()) -> true | false.
 gauge_exists(Name) ->
-    folsom_metrics:metric_exists(Name).
+    %folsom_metrics:metric_exists(Name).
+    true.

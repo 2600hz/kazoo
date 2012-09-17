@@ -128,21 +128,25 @@ get(Name, Resolution) ->
 
 -spec init_timer/2 :: (ne_binary(), erlang:timestamp()) -> ok.
 init_timer(Name, Value) ->
-    folsom_metrics:new_gauge(Name),
+    %folsom_metrics:new_gauge(Name),
     update_timer(Name, Value).
 
 -spec update_timer/2 :: (ne_binary(), erlang:timestamp()) -> ok.
 update_timer(Name, Value) ->
-    folsom_metrics:notify({Name, Value}).
+    %folsom_metrics:notify({Name, Value}).
+    ok.
 
 -spec get_timer/1 :: (ne_binary()) -> erlang:timestamp().
 get_timer(Name) ->
-    folsom_metrics:get_metric_value(Name).
+    %folsom_metrics:get_metric_value(Name).
+    erlang:now().
 
 -spec delete_timer/1 :: (ne_binary()) -> ok.
 delete_timer(Name) ->
-    folsom_metrics:delete_metric(Name).
+    %folsom_metrics:delete_metric(Name).
+    ok.
 
 -spec timer_exists/1 :: (ne_binary()) -> true | false.
 timer_exists(Name) ->
-    folsom_metrics:metric_exists(Name).
+    %folsom_metrics:metric_exists(Name).
+    true.
