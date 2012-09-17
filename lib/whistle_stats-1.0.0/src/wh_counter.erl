@@ -119,30 +119,36 @@ maybe_delete_counter(Name) ->
 
 -spec init_counter/2 :: (ne_binary(), integer()) -> ok.
 init_counter(Name, Value) when Value > 0 ->
-    folsom_metrics:new_counter(Name),
+    %folsom_metrics:new_counter(Name),
     inc_counter(Name, Value);
 init_counter(Name, Value) when Value < 0 ->
-    folsom_metrics:new_counter(Name),
+    %folsom_metrics:new_counter(Name),
     dec_counter(Name, Value * -1);
 init_counter(Name, 0) ->
-    folsom_metrics:new_counter(Name).
+    %folsom_metrics:new_counter(Name).
+    ok.
 
 -spec inc_counter/2 :: (ne_binary(), integer()) -> ok.
 inc_counter(Name, Value) ->
-    folsom_metrics:notify({Name, {inc, Value}}).
+    %folsom_metrics:notify({Name, {inc, Value}}).
+    0.
 
 -spec dec_counter/2 :: (ne_binary(), integer()) -> ok.
 dec_counter(Name, Value) ->
-    folsom_metrics:notify({Name, {dec, Value}}).
+    %folsom_metrics:notify({Name, {dec, Value}}).
+    0.
 
 -spec get_counter/1 :: (ne_binary()) -> integer().
 get_counter(Name) ->
-    folsom_metrics:get_metric_value(Name).
+    %folsom_metrics:get_metric_value(Name).
+    0.
 
 -spec delete_counter/1 :: (ne_binary()) -> ok.
 delete_counter(Name) ->
-    folsom_metrics:delete_metric(Name).
+    %folsom_metrics:delete_metric(Name).
+    ok.
 
 -spec counter_exists/1 :: (ne_binary()) -> true | false.
 counter_exists(Name) ->
-    folsom_metrics:metric_exists(Name).
+    %folsom_metrics:metric_exists(Name).
+    true.
