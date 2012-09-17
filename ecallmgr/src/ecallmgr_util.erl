@@ -29,7 +29,7 @@
 
 -export([lookup_media/3, lookup_media/4, lookup_media/5]).
 
--include_lib("ecallmgr/src/ecallmgr.hrl").
+-include("ecallmgr.hrl").
 
 -type send_cmd_ret() :: fs_sendmsg_ret() | fs_api_ret().
 -export_type([send_cmd_ret/0]).
@@ -296,7 +296,7 @@ build_bridge_string(Endpoints, Seperator) ->
     wh_util:join_binary(lists:reverse(BridgeStrings), Seperator).
 
 -type build_return() :: ne_binary() | {'worker', pid()}.
--type bridge_endpoints() :: [{[ne_binary() | 'undefined',...], wh_json:json_object()},...] | [].
+-type bridge_endpoints() :: [{wh_json:json_strings(), wh_json:json_object()},...] | [].
 -spec build_bridge_endpoints/2 :: (bridge_endpoints(), [build_return(),...] | []) -> [ne_binary(),...].
 build_bridge_endpoints([{[<<"route">>|_], Endpoint}|Endpoints], Channels) ->
     build_bridge_endpoints(Endpoints, [build_bridge_endpoint(Endpoint)|Channels]);
@@ -330,11 +330,8 @@ build_bridge_endpoint(JObj) ->
 
 build_bridge_endpoint(JObj, <<"sip">>, CVs) ->
     case ecallmgr_fs_xml:build_sip_route(JObj, wh_json:get_value(<<"Invite-Format">>, JObj)) of
-        {'error', 'timeout'} ->
-            lager:debug("unable to build route to endpoint"),
-            <<>>;
-        EndPoint ->
-            list_to_binary([CVs, EndPoint])
+        {'error', 'timeout'} -> <<>>;
+        EndPoint -> list_to_binary([CVs, EndPoint])
     end;
 build_bridge_endpoint(JObj, <<"freetdm">>, CVs) ->
     Endpoint = ecallmgr_fs_xml:build_freetdm_route(JObj),

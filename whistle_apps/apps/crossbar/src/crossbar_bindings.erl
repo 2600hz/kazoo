@@ -53,11 +53,6 @@
          ,code_change/3
         ]).
 
-%% PropEr needs to be included before eunit. Both modules create a ?LET macro,
-%% but the PropEr one is the useful one. Also needs to be included before any
-%% function definition because it includes functions.
--include_lib("proper/include/proper.hrl").
-
 -include("../include/crossbar.hrl").
 
 -define(SERVER, ?MODULE).
@@ -238,7 +233,6 @@ handle_call({bind, Binding, Mod, Fun}, _, #state{bindings=[]}=State) ->
     {reply, ok, State#state{bindings=[{Binding, BParts, queue:in({Mod, Fun}, queue:new())}]}, hibernate};
 handle_call({bind, Binding, Mod, Fun}, _, #state{bindings=Bs}=State) ->
     MF = {Mod, Fun},
-    lager:debug("~w is binding ~s", [MF, Binding]),
     case lists:keyfind(Binding, 1, Bs) of
         false ->
             BParts = lists:reverse(binary:split(Binding, <<".">>, [global])),
@@ -505,9 +499,14 @@ fold_processor(Routing, Payload, Bs) ->
     Reply.
 
 %% EUNIT and PropEr TESTING %%
+-ifdef(TEST).
+
+%% PropEr needs to be included before eunit. Both modules create a ?LET macro,
+%% but the PropEr one is the useful one. Also needs to be included before any
+%% function definition because it includes functions.
+-include_lib("proper/include/proper.hrl").
 
 -include_lib("eunit/include/eunit.hrl").
--ifdef(TEST).
 
 -define(ROUTINGS, [ <<"foo.bar.zot">>, <<"foo.quux.zot">>, <<"foo.bar.quux.zot">>, <<"foo.zot">>, <<"foo">>, <<"xap">>]).
 

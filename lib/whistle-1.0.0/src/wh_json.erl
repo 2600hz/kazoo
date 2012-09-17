@@ -51,11 +51,10 @@
 -compile({no_auto_import, [get_keys/1]}).
 
 -include("wh_json.hrl").
--include_lib("eunit/include/eunit.hrl").
 
 -export_type([json_object/0, json_objects/0
               ,json_string/0, json_strings/0
-              ,json_term/0
+              ,json_term/0, json_terms/0
               ,json_proplist/0, json_proplist_k/1, json_proplist_kv/2
               ,json_proplist_key/0
              ]).
@@ -116,10 +115,8 @@ is_json_term(MaybeJObj) ->
 %% wh_json:from_list([{a,b}, {c, wh_json:from_list([{d, e}])}]).
 %% the sub-proplist [{d,e}] needs converting before being passed to the next level
 -spec from_list/1 :: (json_proplist()) -> json_object().
-from_list([]) ->
-    new();
-from_list(L) when is_list(L) ->
-    ?JSON_WRAPPER(L).
+from_list([]) -> new();
+from_list(L) when is_list(L) -> ?JSON_WRAPPER(L).
 
 %% only a top-level merge
 %% merges JObj1 into JObj2
@@ -404,8 +401,10 @@ find(Key, JObjs, Default) when is_list(JObjs) ->
     end.
 
 
--spec get_value/2 :: (json_string() | json_strings(), json_object() | json_objects()) -> json_term() | 'undefined'.
--spec get_value/3 :: (json_string() | json_strings(), json_object() | json_objects(), Default) -> json_term() | Default.
+-spec get_value/2 :: (json_string() | json_strings(), json_object() | json_objects()) ->
+                             json_term() | 'undefined'.
+-spec get_value/3 :: (json_string() | json_strings(), json_object() | json_objects(), Default) ->
+                             json_term() | Default.
 get_value(Key, JObj) ->
     get_value(Key, JObj, undefined).
 
@@ -420,7 +419,8 @@ get_value([Key|Ks], L, Default) when is_list(L) ->
 get_value(K, Doc, Default) ->
     get_value1(K, Doc, Default).
 
--spec get_value1/3 :: (json_string() | json_strings(), json_object() | json_objects(), Default) -> json_term() | Default.
+-spec get_value1/3 :: (json_string() | json_strings(), json_object() | json_objects(), Default) ->
+                              json_term() | Default.
 get_value1([], JObj, _Default) ->
     JObj;
 get_value1(Key, JObj, Default) when not is_list(Key)->
@@ -692,6 +692,12 @@ is_private_key(<<"_", _/binary>>) -> true;
 is_private_key(<<"pvt_", _/binary>>) -> true;
 is_private_key(_) -> false.
 
+%% EUNIT TESTING
+-ifdef(TEST).
+
+-include_lib("proper/include/proper.hrl").
+-include_lib("eunit/include/eunit.hrl").
+
 %% PropEr Testing
 prop_is_json_object() ->
     ?FORALL(JObj, json_object(),
@@ -733,9 +739,6 @@ prop_to_proplist() ->
                     lists:all(fun(K) -> props:get_value(K, Prop) =/= undefined end, get_keys(JObj))
                 end)
            ).
-
-%% EUNIT TESTING
--ifdef(TEST).
 
 -define(D1, ?JSON_WRAPPER([{<<"d1k1">>, <<"d1v1">>}, {<<"d1k2">>, d1v2}, {<<"d1k3">>, [<<"d1v3.1">>, <<"d1v3.2">>, <<"d1v3.3">>]}])).
 -define(D2, ?JSON_WRAPPER([{<<"d2k1">>, 1}, {<<"d2k2">>, 3.14}, {<<"sub_d1">>, ?D1}])).

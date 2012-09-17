@@ -13,14 +13,14 @@
 -export([rate_channel/1]).
 -export([kill_channel/2]).
 
+-include("ecallmgr.hrl").
+
 -define(RATE_VARS, [<<"Rate">>, <<"Rate-Increment">>
                         ,<<"Rate-Minimum">>, <<"Surcharge">>
                         ,<<"Rate-Name">>, <<"Base-Cost">>
                    ]).
 
 -define(HEARTBEAT_ON_ANSWER(CallId), <<"api_on_answer=uuid_session_heartbeat ", CallId/binary, " 60">>).
-
--include_lib("ecallmgr/src/ecallmgr.hrl").
 
 -spec maybe_authorize_channel/2 :: (wh_proplist(), atom()) -> boolean().
 maybe_authorize_channel(Props, Node) ->
@@ -239,10 +239,14 @@ set_rating_ccvs(JObj) ->
         {error, _} -> ok;
         {ok, Node} ->
             lager:debug("setting rating information", []),
-            _ = [ecallmgr_util:send_cmd(Node, CallId, "set", ?SET_CCV(Key, Value))
-                 || Key <- ?RATE_VARS
-                        ,(Value = wh_json:get_binary_value(Key, JObj)) =/= undefined
-                ],
+            Multiset = lists:foldl(fun(Key, Acc) ->
+                                           case wh_json:get_binary_value(Key, JObj) of
+                                               undefined -> Acc;
+                                               Value ->
+                                                   <<"|", (?SET_CCV(Key, Value))/binary, Acc/binary>>
+                                           end
+                           end, <<>>, ?RATE_VARS),
+            _ = ecallmgr_util:send_cmd(Node, CallId, "multiset", <<"^^", Multiset/binary>>),
             ok
     end.
 

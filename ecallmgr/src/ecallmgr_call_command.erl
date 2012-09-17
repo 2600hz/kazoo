@@ -274,8 +274,16 @@ get_fs_app(Node, UUID, _JObj, <<"receive_fax">>) ->
      ,{<<"rxfax">>, ecallmgr_util:fax_filename(UUID)}
     ];
 
-get_fs_app(_Node, _UUID, _JObj, <<"hold">>) ->
-    {<<"endless_playback">>, <<"${hold_music}">>};
+get_fs_app(_Node, UUID, JObj, <<"hold">>) ->
+    case wh_json:get_value(<<"Hold-Media">>, JObj) of
+        undefined -> {<<"endless_playback">>, <<"${hold_music}">>};
+        Media ->
+            Stream = ecallmgr_util:media_path(Media, extant, UUID, JObj),
+            lager:debug("bridge has custom music-on-hold in channel vars: ~s", [Stream]),
+            [{"application", <<"set hold_music=", Stream/binary>>}
+             ,{<<"endless_playback">>, <<"${hold_music}">>}
+            ]
+    end;
 
 get_fs_app(_Node, _UUID, _JObj, <<"park">>) ->
     {<<"park">>, <<>>};
@@ -538,7 +546,7 @@ get_fs_app(Node, UUID, JObj, <<"set">>) ->
         false -> {'error', <<"set failed to execute as JObj did not validate">>};
         true ->
             ChannelVars = wh_json:to_proplist(wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new())),
-            _ = [ set(Node, UUID, get_fs_kv(K, V, UUID)) || {K, V} <- ChannelVars],
+            _ = multiset(Node, UUID, ChannelVars),
 
             CallVars = wh_json:to_proplist(wh_json:get_value(<<"Custom-Call-Vars">>, JObj, wh_json:new())),
             _ = [ export(Node, UUID, get_fs_kv(K, V, UUID)) || {K, V} <- CallVars],
@@ -699,6 +707,18 @@ set_terminators(Node, UUID, Ts) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+-spec multiset/3 :: (atom(), ne_binary(), proplist()) -> ecallmgr_util:send_cmd_ret().
+multiset(Node, UUID, Props) ->
+    Multiset = lists:foldl(fun({K, V}, Acc) ->
+                                   <<"|", (get_fs_kv(K, V, UUID))/binary, Acc/binary>>
+                           end, <<>>, Props),
+    ecallmgr_util:send_cmd(Node, UUID, "multiset", <<"^^", Multiset/binary>>).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec set/3 :: (atom(), ne_binary(), ne_binary()) -> ecallmgr_util:send_cmd_ret().
 set(Node, UUID, Arg) ->
     case wh_util:to_binary(Arg) of
@@ -795,7 +815,7 @@ send_store_call_event(Node, UUID, MediaTransResults) ->
                 ,{<<"Channel-Call-State">>, props:get_value(<<"Channel-Call-State">>, Prop, <<"HANGUP">>)}
                 ,{<<"Application-Name">>, <<"store">>}
                 ,{<<"Application-Response">>, MediaTransResults}
-                | wh_api:default_headers(<<>>, <<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, ?APP_NAME, ?APP_VERSION)
+                | wh_api:default_headers(<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, ?APP_NAME, ?APP_VERSION)
                ],
     EvtProp2 = case ecallmgr_util:custom_channel_vars(Prop) of
                    [] -> EvtProp1;

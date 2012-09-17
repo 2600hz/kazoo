@@ -21,7 +21,7 @@
 %% cleanup proc
 -export([start_link/0, init/1]).
 
--include_lib("crossbar/include/crossbar.hrl").
+-include("include/crossbar.hrl").
 
 -define(CHILDSPEC, {?MODULE, {?MODULE, start_link, []}, permanent, 5000, worker, [?MODULE]}).
 
@@ -33,7 +33,7 @@ start_link() ->
 
 init() ->
     couch_mgr:db_create(?TOKEN_DB),
-    couch_mgr:revise_doc_from_file(?TOKEN_DB, crossbar, "views/token_auth.json"),
+    _ = couch_mgr:revise_doc_from_file(?TOKEN_DB, crossbar, "views/token_auth.json"),
 
     _ = supervisor:start_child(crossbar_sup, ?CHILDSPEC),
 
@@ -52,6 +52,7 @@ init(Parent) ->
     cleanup_loop(Expiry).
 
 -spec finish_request/1 :: (#cb_context{}) -> any().
+finish_request(#cb_context{auth_doc=undefined}) -> ok;
 finish_request(#cb_context{auth_doc=AuthDoc}) ->
     lager:debug("updating auth doc: ~s:~s", [wh_json:get_value(<<"_id">>, AuthDoc)
                                             ,wh_json:get_value(<<"_rev">>, AuthDoc)
@@ -100,7 +101,7 @@ prepare_token_for_deletion(Token) ->
 authenticate(#cb_context{auth_token = <<>>}) ->
     false;
 authenticate(#cb_context{auth_token=AuthToken}=Context) ->
-    _ = crossbar_util:put_reqid(Context),
+    _ = cb_context:put_reqid(Context),
 
     lager:debug("checking auth token: ~s", [AuthToken]),
     case couch_mgr:open_cache_doc(?TOKEN_DB, AuthToken) of

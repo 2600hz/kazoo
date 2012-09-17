@@ -22,7 +22,7 @@
 -export([are_jobjs_identical/2]).
 
 -include("wh_number_manager.hrl").
--include_lib("proper/include/proper.hrl").
+
 -include_lib("whistle/include/wh_databases.hrl").
 
 -define(SERVER, ?MODULE).
@@ -248,6 +248,9 @@ are_jobjs_identical(JObj1, JObj2) ->
         =:=
     [KV || {_, V}=KV <- wh_json:to_proplist(JObj2), (not wh_util:is_empty(V))].
 
+-ifdef(TEST).
+-include_lib("proper/include/proper.hrl").
+
 %% PROPER TESTING
 %%
 %% (AAABBBCCCC, 1AAABBBCCCC) -> AAABBBCCCCCC.
@@ -290,7 +293,6 @@ prop_to_e164() ->
 %% EUNIT TESTING
 %%
 -include_lib("eunit/include/eunit.hrl").
--ifdef(TEST).
 
 proper_test_() ->
     {"Runs the module's PropEr tests during eunit testing",

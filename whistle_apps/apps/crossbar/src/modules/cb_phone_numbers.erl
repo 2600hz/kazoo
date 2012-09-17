@@ -24,7 +24,7 @@
          ,populate_phone_numbers/1
         ]).
 
--include_lib("crossbar/include/crossbar.hrl").
+-include("include/crossbar.hrl").
 -include_lib("whistle_number_manager/include/wh_number_manager.hrl").
 -include_lib("whistle/src/wh_json.hrl").
 
@@ -77,7 +77,7 @@ populate_phone_numbers(#cb_context{db_name=AccountDb, account_id=AccountId}) ->
             ,{<<"pvt_modified">>, wh_util:current_tstamp()}
             ,{<<"pvt_created">>, wh_util:current_tstamp()}
            ],
-    couch_mgr:save_doc(AccountDb, wh_json:from_list(PVTs)),
+    _ = couch_mgr:save_doc(AccountDb, wh_json:from_list(PVTs)),
     ok.
 
 %%--------------------------------------------------------------------
@@ -412,7 +412,10 @@ put_attachments(Number, #cb_context{auth_account_id=AuthBy}=Context, [{Filename,
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec set_response/3 :: ({ok, wh_json:json_object()} | {error, term()}, ne_binary(), #cb_context{}) -> #cb_context{}.
+-spec set_response/3 :: ({ok, wh_json:json_object()} |
+                         {error, term()} |
+                         {atom(), wh_json:json_object()}
+                         , ne_binary(), #cb_context{}) -> #cb_context{}.
 set_response({ok, Doc}, _, Context) ->
     crossbar_util:response(Doc, Context);
 set_response({Error, Reason}, _, Context) ->
@@ -428,16 +431,18 @@ set_response(_Else, _, Context) ->
 %% number to replace the existing number on callflows, so do so!
 %% @end
 %%--------------------------------------------------------------------
--spec process_replaces/3 :: (ne_binary(), undefined | ne_binary(), #cb_context{}) -> #cb_context{}.
-process_replaces(_, undefined, Context) ->
-    Context;
+-spec process_replaces/3 :: (ne_binary(), api_binary(), #cb_context{}) -> #cb_context{}.
+process_replaces(_, undefined, Context) -> Context;
 process_replaces(Number, Replaces, Context) ->
     Payload = [undefined
                ,Context#cb_context{req_verb = <<"get">>}
               ],
     case crossbar_bindings:fold(<<"v1_resource.validate.callflows">>, Payload) of
         [_, #cb_context{resp_status=success, resp_data=JObjs} | _] ->
-            Updates = [JObj || JObj <- JObjs, lists:member(Replaces, wh_json:get_value(<<"numbers">>, JObj, []))],
+            Updates = [JObj 
+                       || JObj <- JObjs,
+                          lists:member(Replaces, wh_json:get_value(<<"numbers">>, JObj, []))
+                      ],
             update_callflows(Updates, Number, Replaces, Context);
         _ ->
             Context
@@ -450,9 +455,9 @@ process_replaces(Number, Replaces, Context) ->
 %% of the old number with the new.
 %% @end
 %%--------------------------------------------------------------------
--spec update_callflows/4 :: ([] | [wh_json:json_object(),...], ne_binary(), ne_binary(), #cb_context{}) -> #cb_context{}.
-update_callflows([], _, _, Context) ->
-    Context;
+-spec update_callflows/4 :: (wh_json:json_objects(), ne_binary(), ne_binary(), #cb_context{}) ->
+                                    #cb_context{}.
+update_callflows([], _, _, Context) -> Context;
 update_callflows([Update|Updates], Number, Replaces, Context) ->
     CallflowId = wh_json:get_value(<<"id">>, Update),
     Payload1 = [undefined

@@ -1,142 +1,156 @@
-* Overview
+* ACDc - Your friendly automatic call distribution commander
 
-The Skel application serves as the barest of examples of creating a listener on
-the AMQP message bus, handling the JSON requests that come in, and responding
-with JSON as appropriate.
+First, the "commander" part is a stretch, I know.
 
-The example listener is for route requests, but the reader should know that
-several other requests exist, not limited to authentication, authorization, and
-other whapp-specific requests.
+High level concepts involved here are queues and agents. There's a many-many relationship between queues and agents: a queue can have many agents, and an agent can be part of many queues. As such, there needs to be a distinct differentiation between what an agent is responsible for and what a queue tracks.
 
-** The Listener
+** Agents
 
-Generally speaking, most action starts at the listener. The listener typically 
-builds on top of the gen_listener pattern (found in lib/whistle-1.0.0/src) to
-abstract the AMQP connection and reception of payloads off the message bus.
-Instead, the gen_listener behaviour allows the implementing module to specify
-the types of events to pull off the AMQP bus, and the handler modules/functions
-for each type of JSON payload received. The handlers run as processes separate
-from the listener process, allowing it to consuming AMQP payloads as quickly as
-possible.
+An agent represents an account user with a device (and possibly many devices). The agent tracks:
 
-The main areas of the listener that need editing are the bindings, responders,
-optional queue name, queue options, consume options, and QoS for initialization,
-and the handle_event/2 callback.
+1. what state it is in (and whether it can bridge member calls to the device)
+2. when it last had a call (some queue types are interested)
+3. the endpoint(s) to bridge a member's call to
+4. the current call (if agent is engaged by a member)
+5. the agent id
+6. the agent's account db
 
-*** Initialization
+*** Agent Statuses
 
-The full example first:
+*init*: the agent process is starting up. Will not accept member connection requests.
 
-#+begin_src erlang
-  gen_listener:start_link(?MODULE
-                          ,[{bindings, [{api_module, [options]}
-                                        ,{other_api_module, [options]}
-                                       ]}
-                           ,{responders, [{ {callback_module, callback_function}
-                                            ,[{<<"category">>, <<"name">>}]
-                                          }
-                                         ]}
-                           ,{queue_name, <<>>}
-                           ,{queue_options, []}
-                           ,{consume_options, []}
-                           ,{basic_qos, 1}
-                          ], []).
-#+end_src
+*sync*: Waits for agent status event to know what state to transition to out of *sync*.
 
-**** Bindings
+*ready*: the agent process is awaiting member connection requests.
 
-The AMQP APIs available can be found in the modules in lib/whistle-1.0.0/api/
-(prefixed with wapi_) and define the bindings needed to receive AMQP payloads of
-a certain type.
+*ringing*: the agent process has received a member connection win and is currently dialing the agent's device.
 
-For instance, to receive route requests, one would add the 'route' binding and
-payloads sent directly to our queue, one would configure the bindings list like:
+*answered*: the agent device has successfully bridged to the member. Waiting for the call to hangup.
 
-#+begin_src erlang
-  {bindings, [{route, []}
-              ,{self, []}
-             ]
-  }
-#+end_src
+*wrapup*: configurable wait time after a call has ended before the agent is ready to accept another call.
 
-These two 2-tuples will cause the gen_listener to call wapi_route:bind_q/2 and
-wapi_self:bind_q/2 with the listener's queue. When shutting down the listener,
-the unbind_q/2 variants will be called to cleanup the AMQP bindings.
+*paused*: the agent is on break or otherwise not taking calls. An optional timer can be set to limit how long the agent may remain in the paused state.
 
-Some of the wapi modules allow parameters to be passed in the second element of
-the tuple, changing either what bindings are added, or the binding key used. For
-instance, in lib/whistle-1.0.0/src/api/wapi_route.erl, one can see in the
-bind_q/2 function that one could specify a realm, which would restrict the route
-requests received by this listener to just the realm.
+*** Agent Process Initialization
 
-**** Responders
+An agent can be represented by one or more Erlang processes, on any number of nodes, and in any one of the statuses above. As such, startup of the agent process is a tricky matter.
 
-Now that we've bound to all appropriate AMQP messages we want to consume, we
-need to tell the gen_listener behaviour what to do with them when received. To
-do this, we pass in a list of responder module/function pairs and a list of
-event category and name pairs.
+An agent process that has started up cannot just jump into the *ready* status, as the agent could be on the phone, away on break, or otherwise in-disposed. So before the process can leave the *init* status, the agent process published a sync_req message for all agent processes monitoring the agent. Any existing agent processes will receive the sync_req and reply with their current status. The intializing agent process will collect responses (or none) for a specified timeout and either sync with the "most active" agent process or, if no responses are received, enter the *ready* status.
 
-In the case of binding to route requests, we know to expect to receive events
-with ("dialplan", "route_req") as the category/name. So we create a responder
-module skel_route_req.erl and define a handle_req/2 function. In the start_link
-parameters, we would inform gen_listener of this like so:
+If the sync_resp is in the *init* status as well, the agent process will move to *ready* to avoid deadlocking the two (or more) agent processes.
 
-#+begin_src erlang
-  {responders, [{{skel_route_req, handle_req}, [{<<"dialplan">>, <<"route_req">>}]}]}.
-#+end_src
+If the sync_resp is in the *ready* status, the initializing agent will enter the *ready* status as well. Member requests will now come to both (or all) agent processes.
 
-As you can see, the same callback can take more than one category/name pair. One
-could also create one callback module (skel_handlers, for instance) with a
-handle_* function specific to each type of category/name pair.
+If the sync_resp is in the *waiting* status, the initializing agent process will wait the wait_timeout time (how long a process waits to see if it 'won' the member), and send another sync_req.
 
-If you want to handle more than one type of name for a given category, you can
-use the <<"*">> to match any catgeory or name. So, if we expect multiple event
-names for the dialplan category, and we want to use the same handler for each,
-we could denote that like:
+If a sync_resp is in the *ringing* status, the initializing agent process will wait the wait_timeout time and send the sync_req again.
 
-#+begin_src erlang
-  {responders, [{{skel_handlers, handle_dialplan_req}, [{<<"dialplan">>, <<"*">>}]}]}
-#+end_src
+If a sync_resp is in the *answered* status, the response will include the call-id of the call being vied for (and possibly the b-leg call-id as well). The initializing agent will enter the same state and monitor the call for hangup. Upon receiving the hangup, the initializing agent process will enter the *wrapup* status, and after the wrap-up timeout, will enter the *ready* status (as other agent processes should too).
 
-**** The rest
+If a sync_resp is in the *wrapup* status, the resp should include the time left (otherwise use the full amount). The initializing agent will enter the *wrapup* status with the calculated timeout, then transition to *ready*.
 
-queue_name: If you want an auto-generated, anonymous queue, you can omit the
-queue_name tuple, or set it to {queue_name, <<>>} (this is the default). If you
-want to use a named queue, include the name as the second element:
-{queue_name, <<"named_queue">>}.
+If a sync_resp is in the *paused* status, the resp should include the time left (if on a timed break). If no time is included, the initializing agent process will enter the *paused* status indefinitely, until an agent_status event instructs the agent process to come back to *ready*.
 
-queue_options: Another parameter that can be omitted from the list of configs
-sent to gen_listener, use this if you need different values than in
-lib/whistle_amqp-1.0.0/src/amqp_util.erl, the new_queue/2 function. This list
-controls how the broker creates the queue.
+*** Happy case for a member call
 
-consume_options: Ommitable as well, these options control how consupmtion from
-the queue will be managed (see basic_consume/2 in amqp_util.erl).
+agent status: *ready*
+Agent process receives a member_connect_req message off the message bus. Agent publishes a member_connect_resp to the requesting queue's AMQP queue and enters the *waiting* state.
 
-basic_qos: Only needed if you need to control prefetch count from the queue to
-multiple consumers; otherwise omit from the list.
+agent status: *waiting*
+Agent process receives member_connect_win, including the whapps_call json payload. Agent process publishes a bridge_req to the call control process. Agent publishes agent_state_change to other agent processes monitoring this agent_id. Agent process enters the *ringing* state.
 
-*** handle_event/2
+agent status: *ringing*
+Agent process receives (eventually) the successful bridge event. Agent enters the *answered* state. Send the queue a member_connected message.
 
-The one interaction with the AMQP payload the listener module has is with the
-handle_event/2 callback. Before calling into the handler module(s)' functions,
-the gen_listener will pass the payload and the listener's state, allowing the
-listener to pass back a proplist of values the callbacks may need/want. The
-response from handle_event/2 should be {reply, ConfigList}, where ConfigList is
-an empty list or a list of key/value tuples.
+agent status: *answered*
+Agent process monitors the call's event stream, waiting for a hangup event. Upon reception, enter the *wrapup* state.
 
-This ConfigList is prepended with the following default config pairs:
-{queue_name, Name} and {server, pid()}. Name is the name of the AMQP queue
-(needed when the callbacks might need responses to their own AMQP requests (and
-why you typically bind with {self, []}). The pid() is the PID of the listener
-process, in case you need to make queries from the process's state.
+agent status: *wrapup*
+Queue may optionally specify a wrapup_timeout, delaying how long an agent must wait before returning to *ready*.
 
-The ConfigList ++ [{queue_name, Name}, {server, pid()}] is passed as the second
-argument to the handler module(s)' functions (the first being the AMQP payload.
+**** An attempt at a message flowchart
 
+Q = A queue in an account
+AX(Y)(S) = Agent with id X, process Y, status S
+Status: (R)eady, (A)nswered, (W)aiting, (Ri)nging, (Wr)apup, (P)aused
 
-** Other setup
+1. Q sends a member_connect_req to all agents bound for the queue
+                            ----> A1(1)(R)
+Q ---> member_connect_req --|---> A1(2)(R)
+                            ----> A2(1)(R)
 
-Add the whapp directory name to whistle_apps/rebar.config to make sure it gets
-compiled by default when running 'rebar compile' from either the root or
-whistle_apps directory.
+2. Q recvs member_connect_resps from the two A1 processes and the A2 process
+                             ---- A1(1)(W)
+Q <--- member_connect_resp <-|--- A1(2)(W)
+                             ---- A2(1)(W)
+
+3a. Q decides A1(1) wins the member_connect and sends the member_connect_win
+    A1(1) tries to ring the agent endpoint
+Q ---> member_connect_win ----> A1(1)(Ri)
+
+3b. Q sends A1(2) a member_connect_monitor to let it know an agent process has won the member_connect
+    A1(2) enters the *ringing* status without dialing the endpoint
+Q ---> member_connect_monitor ----> A1(2)(Ri)
+
+3c. Q sends the A2(1) process a member_connect_ignore so it knows it failed to win the member.
+    A2(1) re-enters the *ready* status
+Q ---> member_connect_ignore ----> A2(2)(R)
+
+4a. A1(\_) receives a failed dial to agent endpoint, alerts Q
+    A1(\_) notes failed dial; if threshold reached, agent goes to *paused*, else *wrapup*
+Q <--- member_retry --- A1(_)(Wr | P)
+
+4b. A1(\_) receives bridged event, alerts Q
+    A1(\_) enters the *answered* status
+Q <--- member_connected --- A1(_)(A)
+
+5. A1(\_) receives hangup, alerts Q
+   A1(\_) enters the *wrapup* status
+Q <--- member_hungup --- A1(_)(Wr)
+
+5. Agent's wrapup timer expires, enters *ready* status
+Q                        A1(_)(R)
+
+** Queues
+
+Queues manage the dispersal of member calls to agents. Because the queue won't know if an agent is busy in another queue, the queue will broadcast a member_connect_req to all known agents. The queue will collect member_connect_resps and choose one agent, based on routing strategy, to send the member_connect_win message. If the agent is unable to connect the call and send the queue a member_connected, the agent will attempt the next appropriate member_connect_resp. If the list is exhausted, the queue will wait a configurable amount of time before sending another member_connect_req and repeating the process.
+
+*** Queue Process Initialization
+
+As with agents, multiple queue processes can (and should) be started per acdc queue. The challenge becomes how to coordinate member calls being distributed to agents with multiple queue processes running for the same queue.
+
+Unlike agents, we don't want to consume as quickly as possible from the AMQP queue. We want a 'blocking' read from the AMQP queue while we process the caller. As soon as the caller is connected to the agent, the queue process should ACK the member_call message. Because of this constraint, we need a shared AMQP queue with auto_ack disabled.
+
+Startup of a queue process should declare the AMQP queue as acdc.queue.ACCT.QID and set the auto_ack flag to false (will require manually ACK or NACK of the AMQP payload). Becoming a consumer of the queue will put the queue process into round-robin with other queue processes. At that point, the queue process is ready to receive the next member_call.
+
+Of course, communication with the agent processes will occur with the queue processes dedicated AMQP queue. So each queue process will consume from both the shared AMQP queue and from their own private AMQP queue.
+
+*** Queue Call Handling
+
+1. member_call published from callflow module to shared AMQP queue acdc.queue.ACCT.QID
+CF -- member_call --> Q1(1)
+                      Q1(2)
+
+2a. Q1(1) recvs the member_call request, publishes the member_connect_req to the agents
+Q1(1) -- member_connect_req --> As
+
+3. Q1(1) recvs the member_connect_resps from the agents and decides (based on agent routing strategy such as round-robin or most-idle) which agent resp to declare victorious.
+Q1(1) <-- member_connect_resp -- A
+
+4a. Q1(1) sends the member_connect_win to the "winning" agent
+Q1(1) -- member_connect_win --> A
+
+4b. Q1(1) sends the member_connect_monitor to other agent processes that match the winning agent id
+Q1(1) -- member_connect_monitor --> A
+
+4c. Q1(1) sends the member_connect_ignore to all other responders
+Q1(1) -- member_connect_ignore --> As
+
+5. Q1(1) recvs the member_connected from the agent process. Q1(1) ACKs the member_call payload (and the next AMQP payload from #1 is delivered).
+Q1(1) <-- member_connected -- A
+  \------ ACK --------------> AMQP Shared Queue
+
+5. Q1(\*) recvs member_hungup from agent (makes sure any stats triggered by the hangup are collected).
+Q1(\*) <-- member_hungup -- A
+
+6. If the agent process sends the member_connect_retry, it is published and consumed like the member_call message (meaning goto 2 and substitute member_call with member_connect_retry.

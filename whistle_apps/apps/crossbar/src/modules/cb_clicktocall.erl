@@ -232,7 +232,7 @@ originate_call(Contact, JObj, AccountId) ->
 
     Amqp = amqp_util:new_queue(),
     amqp_util:bind_q_to_targeted(Amqp),
-    amqp_util:basic_consume(Amqp),
+    _ = amqp_util:basic_consume(Amqp),
 
     lager:debug("created click to call AMQP queue ~s", [Amqp]),
 
@@ -314,11 +314,9 @@ wait_for_originate(MsgId) ->
             wait_for_originate(MsgId)
     end.
 
--spec get_c2c_contact/1 :: ('undefined' | nonempty_string() | ne_binary()) -> 'undefined' | ne_binary().
+-spec get_c2c_contact/1 :: ('undefined' | nonempty_string()) -> api_binary().
 get_c2c_contact(undefined) ->
     undefined;
-get_c2c_contact(Contact) when not is_list(Contact) ->
-    get_c2c_contact(wh_util:to_list(Contact));
 get_c2c_contact(Contact) ->
     Encoded = mochiweb_util:quote_plus(Contact),
     wnm_util:to_e164(wh_util:to_binary(Encoded)).

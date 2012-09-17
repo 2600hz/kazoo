@@ -20,7 +20,7 @@
          ,delete/2
         ]).
 
--include_lib("crossbar/include/crossbar.hrl").
+-include("include/crossbar.hrl").
 
 -define(PVT_FUNS, [fun add_pvt_type/2]).
 -define(CB_LIST, <<"trunkstore/crossbar_listing">>).

@@ -25,15 +25,11 @@
 -export([response_db_fatal/1]).
 -export([get_account_realm/1, get_account_realm/2]).
 -export([disable_account/1, enable_account/1, change_pvt_enabled/2]).
--export([put_reqid/1]).
--export([cache_doc/2, cache_view/3]).
--export([flush_doc_cache/2]).
--export([get_results/3]).
--export([store/3, fetch/2, get_path/2]).
+-export([get_path/2]).
 -export([find_account_id/3, find_account_id/4]).
 -export([find_account_db/3, find_account_db/4]).
 
--include_lib("crossbar/include/crossbar.hrl").
+-include("include/crossbar.hrl").
 
 %%--------------------------------------------------------------------
 %% @public
@@ -97,7 +93,9 @@ response(fatal, Msg, Code, JTerm, Context) ->
 %% other parameters.
 %% @end
 %%--------------------------------------------------------------------
--spec create_response/5 :: (crossbar_status(), wh_json:json_string(), integer()|'undefined', wh_json:json_term(), #cb_context{}) -> #cb_context{}.
+-spec create_response/5 :: (crossbar_status(), wh_json:json_string(), integer() | 'undefined'
+                            ,wh_json:json_term(), #cb_context{}
+                           ) -> #cb_context{}.
 create_response(Status, Msg, Code, JTerm, Context) ->
     Context#cb_context {
          resp_status = Status
@@ -163,7 +161,7 @@ response_redirect(#cb_context{resp_headers=RespHeaders}=Context, RedirectUrl, JO
 %% @end
 %%--------------------------------------------------------------------
 -spec response_bad_identifier/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
-response_bad_identifier(Id, Context) ->
+response_bad_identifier(?NE_BINARY = Id, Context) ->
     response(error, <<"bad identifier">>, 404, [Id], Context).
 
 %%--------------------------------------------------------------------
@@ -242,57 +240,24 @@ response_db_fatal(Context) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% This function extracts the request ID and sets it as 'callid' in
-%% the process dictionary, where the logger expects it.
-%% @end
-%%--------------------------------------------------------------------
--spec put_reqid/1 :: (#cb_context{}) -> 'undefined' | ne_binary().
-put_reqid(#cb_context{req_id=ReqId}) ->
-    put(callid, ReqId).
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Sets a value in the crossbar context for later retrieval during
-%% this request.
-%% @end
-%%--------------------------------------------------------------------
--spec store/3 :: (term(), term(), #cb_context{}) -> #cb_context{}.
-store(Key, Data, #cb_context{storage=Storage}=Context) ->
-    Context#cb_context{storage=[{Key, Data}|props:delete(Key, Storage)]}.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
 %% Fetches a previously stored value from the current request.
 %% @end
 %%--------------------------------------------------------------------
--spec fetch/2 :: (term(), #cb_context{}) -> term().
-fetch(Key, #cb_context{storage=Storage}) ->
-    props:get_value(Key, Storage).
+-type find_account_id_ret() :: {'ok', ne_binary()} |
+                               {'multiples', [ne_binary(),...]} |
+                               {'error', wh_json:json_object()}.
 
+-spec find_account_id/3 :: (api_binary(), api_binary(), api_binary()) -> find_account_id_ret().
+-spec find_account_id/4 :: (api_binary(), api_binary(), api_binary(), 'true') -> find_account_id_ret();
+                           (api_binary(), api_binary(), api_binary(), 'false') -> 
+                                   {'ok', ne_binary()} |
+                                   {'error', wh_json:json_object()}.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Fetches a previously stored value from the current request.
-%% @end
-%%--------------------------------------------------------------------
--spec find_account_id/3 :: ('undefined' | ne_binary(), 'undefined' | ne_binary(), 'undefined' | ne_binary()) 
-                           -> {'ok', ne_binary()} | {'multiples', [ne_binary(),...]} | {'error', wh_json:json_object()}.
-
--spec find_account_id/4 :: ('undefined' | ne_binary(), 'undefined' | ne_binary(), 'undefined' | ne_binary(), 'true') 
-                           -> {'ok', ne_binary()} | {'multiples', [ne_binary(),...]} | {'error', wh_json:json_object()};
-                           ('undefined' | ne_binary(), 'undefined' | ne_binary(), 'undefined' | ne_binary(), 'false') 
-                           -> {'ok', ne_binary()} | {'error', wh_json:json_object()}.
-
--spec find_account_db/3 :: ('undefined' | ne_binary(), 'undefined' | ne_binary(), 'undefined' | ne_binary()) 
-                           -> {'ok', ne_binary()} | {'multiples', [ne_binary(),...]} | {'error', wh_json:json_object()}.
-
--spec find_account_db/4 :: ('undefined' | ne_binary(), 'undefined' | ne_binary(), 'undefined' | ne_binary(), 'true') 
-                           -> {'ok', ne_binary()} | {'multiples', [ne_binary(),...]} | {'error', wh_json:json_object()};
-                           ('undefined' | ne_binary(), 'undefined' | ne_binary(), 'undefined' | ne_binary(), 'false') 
-                           -> {'ok', ne_binary()} | {'error', wh_json:json_object()}.
+-spec find_account_db/3 :: (api_binary(), api_binary(), api_binary()) -> find_account_id_ret().
+-spec find_account_db/4 :: (api_binary(), api_binary(), api_binary(), 'true') -> find_account_id_ret();
+                           (api_binary(), api_binary(), api_binary(), 'false') ->
+                                   {'ok', ne_binary()} |
+                                   {'error', wh_json:json_object()}.
 
 find_account_id(PhoneNumber, AccountRealm, AccountName) ->
     find_account_id(PhoneNumber, AccountRealm, AccountName, true).
@@ -371,8 +336,8 @@ find_account_db(PhoneNumber, AccountRealm, AccountName, AllowMultiples, Errors) 
 %% Retrieves the account realm
 %% @end
 %%--------------------------------------------------------------------
--spec get_account_realm/1 :: (ne_binary() | #cb_context{}) -> 'undefined' | ne_binary().
--spec get_account_realm/2 :: ('undefined' | ne_binary(), ne_binary()) -> 'undefined' | ne_binary().
+-spec get_account_realm/1 :: (ne_binary() | #cb_context{}) -> api_binary().
+-spec get_account_realm/2 :: (api_binary(), ne_binary()) -> api_binary().
 
 get_account_realm(#cb_context{db_name=Db, account_id=AccountId}) ->
     get_account_realm(Db, AccountId);
@@ -396,9 +361,8 @@ get_account_realm(Db, AccountId) ->
 %% Flag all descendants of the account id as disabled
 %% @end
 %%--------------------------------------------------------------------
--spec disable_account/1 :: ('undefined' | ne_binary()) -> 'ok' | {'error', _}.
-disable_account(undefined) ->
-    ok;
+-spec disable_account/1 :: (api_binary()) -> 'ok' | {'error', _}.
+disable_account(undefined) -> ok;
 disable_account(AccountId) ->
     ViewOptions = [{<<"startkey">>, [AccountId]}, {<<"endkey">>, [AccountId, wh_json:new()]}],
     case couch_mgr:get_results(?WH_ACCOUNTS_DB, <<"accounts/listing_by_descendants">>, ViewOptions) of
@@ -416,7 +380,7 @@ disable_account(AccountId) ->
 %% Flag all descendants of the account id as enabled
 %% @end
 %%--------------------------------------------------------------------
--spec enable_account/1 :: ('undefined' | ne_binary()) -> 'ok' | {'error', _}.
+-spec enable_account/1 :: (api_binary()) -> 'ok' | {'error', _}.
 enable_account(undefined) ->
     ok;
 enable_account(AccountId) ->
@@ -455,52 +419,6 @@ change_pvt_enabled(State, AccountId) ->
             lager:debug("unable to set pvt_enabled to ~s on account ~s: ~p", [State, AccountId, R]),
             {error, R}
     end.
-    
--spec cache_view/3 :: (ne_binary(), proplist(), wh_json:json_object()) -> false | ok.
-cache_view(Db, ViewOptions, JObj) ->
-    (?CACHE_TTL =/= 0) andalso
-        begin
-            lager:debug("caching views results in cache"),
-            wh_cache:store_local(?CROSSBAR_CACHE, {crossbar, view, {Db, ?MODULE}}, {ViewOptions, JObj}, ?CACHE_TTL)
-        end.
-
--spec cache_doc/2 :: (ne_binary(), wh_json:json_object()) -> false | ok.
-cache_doc(Db, JObj) ->
-    Id = wh_json:get_value(<<"_id">>, JObj),
-    (?CACHE_TTL =/= 0) andalso
-        begin 
-            lager:debug("caching document and flushing related views in cache"),
-            wh_cache:store_local(?CROSSBAR_CACHE, {crossbar, doc, {Db, Id}}, JObj, ?CACHE_TTL),
-            wh_cache:erase_local(?CROSSBAR_CACHE, {crossbar, view, {Db, ?MODULE}})
-        end.
-
--spec flush_doc_cache/2 :: (ne_binary(), ne_binary() | wh_json:json_object()) -> false | ok.
-flush_doc_cache(Db, <<Id>>) ->
-    (?CACHE_TTL =/= 0) andalso
-        begin
-            lager:debug("flushing document and related views from cache"),
-            wh_cache:erase_local(?CROSSBAR_CACHE, {crossbar, doc, {Db, Id}}),
-            wh_cache:erase_local(?CROSSBAR_CACHE, {crossbar, view, {Db, ?MODULE}})
-        end;
-flush_doc_cache(Db, JObj) ->
-    flush_doc_cache(Db, wh_json:get_value(<<"_id">>, JObj)).
-
--spec get_results/3 :: (ne_binary(), ne_binary(), proplist()) -> {ok, wh_json:json_object()} | {error, term()}.
-get_results(Db, View, ViewOptions) ->
-    case wh_cache:peek_local(?CROSSBAR_CACHE, {crossbar, view, {Db, ?MODULE}}) of
-        {ok, {ViewOptions, ViewResults}} -> 
-            lager:debug("found view results in cache"),
-            {ok, ViewResults};
-        _ ->
-            case couch_mgr:get_results(Db, View, ViewOptions) of
-                {ok, JObj}=Ok ->
-                    cache_view(Db, ViewOptions, JObj),
-                    Ok;
-                {error, R}=E ->
-                    lager:debug("error fetching ~s/~s: ~p", [Db, View, R]),
-                    E
-            end
-    end.    
 
 -spec get_path/2 :: (#http_req{}, ne_binary()) -> ne_binary().
 get_path(Req, Relative) ->

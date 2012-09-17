@@ -21,7 +21,7 @@
          ,delete/2
         ]).
 
--include_lib("crossbar/include/crossbar.hrl").
+-include("include/crossbar.hrl").
 
 -define(VIEW_FILE, <<"views/ts_accounts.json">>).
 -define(CB_LIST, <<"ts_accounts/crossbar_listing">>).
@@ -124,7 +124,7 @@ validate(#cb_context{req_verb = <<"head">>}=Context, TSAccountId) ->
 %%--------------------------------------------------------------------
 -spec post/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
 post(Context, _) ->
-    _ = crossbar_util:put_reqid(Context),
+    _ = cb_context:put_reqid(Context),
 
     #cb_context{doc=Doc} = Context1 = crossbar_doc:save(Context),
     timer:sleep(1000),
@@ -138,7 +138,7 @@ post(Context, _) ->
 %%--------------------------------------------------------------------
 -spec put/1 :: (#cb_context{}) -> #cb_context{}.
 put(Context) ->
-    _ = crossbar_util:put_reqid(Context),
+    _ = cb_context:put_reqid(Context),
     #cb_context{doc=Doc} = Context1 = crossbar_doc:save(Context),
     timer:sleep(1000),
     try stepswitch_maintenance:reconcile(wh_json:get_value(<<"_id">>, Doc), true) catch _:_ -> ok end,
@@ -151,7 +151,7 @@ put(Context) ->
 %%--------------------------------------------------------------------
 -spec delete/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
 delete(Context, _) ->
-    _ = crossbar_util:put_reqid(Context),
+    _ = cb_context:put_reqid(Context),
     #cb_context{doc=Doc} = Context1 = crossbar_doc:delete(Context),
 
     %% TODO: THIS IS VERY WRONG! Ties a local crossbar to a LOCAL stepswitch instance... quick and

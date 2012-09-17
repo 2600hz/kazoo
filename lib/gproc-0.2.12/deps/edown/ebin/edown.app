@@ -1,5 +1,5 @@
 {application,edown,
-             [{vsn,"0.3.0-2-gb390bbd"},
+             [{vsn,"v1.51.0-2785-g6896063"},
               {description,"Markdown extension for EDoc"},
               {applications,[kernel,stdlib,edoc]},
               {env,[]},

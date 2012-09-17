@@ -233,7 +233,7 @@
 
 %% Hold
 -define(HOLD_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>]).
--define(OPTIONAL_HOLD_REQ_HEADERS, [<<"Insert-At">>]).
+-define(OPTIONAL_HOLD_REQ_HEADERS, [<<"Insert-At">>, <<"Hold-Media">>]).
 -define(HOLD_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                           ,{<<"Event-Name">>, <<"command">>}
                           ,{<<"Application-Name">>, <<"hold">>}
@@ -290,13 +290,14 @@
 -define(OPTIONAL_CALL_PICKUP_REQ_HEADERS, [<<"Insert-At">>, <<"Unbridged-Only">>, <<"Unanswered-Only">>
                                                ,<<"Other-Leg">>
                                                ,<<"Continue-On-Fail">>, <<"Continue-On-Cancel">>
+                                               ,<<"Park-After-Pickup">> %% Will park either leg after cancel
                                           ]).
 -define(CALL_PICKUP_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                                  ,{<<"Event-Name">>, <<"command">>}
                                  ,{<<"Application-Name">>, <<"call_pickup">>}
                                  ,?INSERT_AT_TUPLE
                                 ]).
--define(CALL_PICKUP_REQ_TYPES, []).
+-define(CALL_PICKUP_REQ_TYPES, [{<<"Park-After-Pickup">>, fun wh_util:is_boolean/1}]).
 
 %% Play Request
 -define(PLAY_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Media-Name">>]).

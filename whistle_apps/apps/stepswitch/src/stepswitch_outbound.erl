@@ -75,7 +75,7 @@ attempt_to_fulfill_bridge_req(Number, CtrlQ, JObj, Props) ->
                      lager:debug("found local extension, keeping onnet"),
                      execute_local_extension(Number, AccountId, CtrlQ, JObj);
                  _ ->
-                     Flags = wh_json:get_value(<<"Flags">>, JObj),
+                     Flags = wh_json:get_value(<<"Flags">>, JObj, []),
                      Resources = props:get_value(resources, Props),
                      {Endpoints, IsEmergency} = find_endpoints(Number, Flags, Resources),
                      bridge_to_endpoints(Endpoints, IsEmergency, CtrlQ, JObj)
@@ -90,7 +90,7 @@ attempt_to_fulfill_bridge_req(Number, CtrlQ, JObj, Props) ->
 
 -spec attempt_to_fulfill_originate_req/3 :: (ne_binary(), wh_json:json_object(), proplist()) -> originate_resp().
 attempt_to_fulfill_originate_req(Number, JObj, Props) ->
-    Flags = wh_json:get_value(<<"Flags">>, JObj),
+    Flags = wh_json:get_value(<<"Flags">>, JObj, []),
     Resources = props:get_value(resources, Props),
     {Endpoints, _} = find_endpoints(Number, Flags, Resources),
     case {originate_to_endpoints(Endpoints, JObj), correct_shortdial(Number, JObj)} of

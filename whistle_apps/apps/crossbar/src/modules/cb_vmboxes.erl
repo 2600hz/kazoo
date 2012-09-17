@@ -273,8 +273,8 @@ load_message_summary(DocId, Context) ->
     case crossbar_doc:load(DocId, Context) of
         #cb_context{resp_status=success, doc=Doc}=C ->
             Messages = [Message 
-                        || Message <- wh_json:get_ne_value(<<"messages">>, Doc, [])
-                               ,wh_json:get_value(<<"folder">>, Message) =/= <<"deleted">>
+                        || Message <- wh_json:get_ne_value(<<"messages">>, Doc, []),
+                           wh_json:get_value(<<"folder">>, Message) =/= <<"deleted">>
                        ],
             crossbar_util:response(Messages, C);
         Else ->
@@ -287,7 +287,8 @@ load_message_summary(DocId, Context) ->
 %% Get message by its media ID and its context
 %% @end
 %%--------------------------------------------------------------------
--spec load_message/4 :: (ne_binary(), ne_binary(), 'undefined' | ne_binary(), #cb_context{}) -> {boolean(), #cb_context{}}.
+-spec load_message/4 :: (ne_binary(), ne_binary(), 'undefined' | wh_json:json_object(), #cb_context{}) ->
+                                {boolean(), #cb_context{}}.
 load_message(DocId, MediaId, undefined, Context) ->
     load_message(DocId, MediaId, wh_json:new(), Context);
 load_message(DocId, MediaId, UpdateJObj, #cb_context{req_data=ReqData, query_json=QueryData}=Context) ->

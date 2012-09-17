@@ -14,7 +14,7 @@
 -export([handle/2]).
 -export([terminate/2]).
 
--include_lib("crossbar/include/crossbar.hrl").
+-include("include/crossbar.hrl").
 
 -spec init/3 :: ({atom(), 'http'}, #http_req{}, proplist()) -> {'ok', #http_req{}, 'undefined'}.
 init({_Any, http}, Req, []) ->    

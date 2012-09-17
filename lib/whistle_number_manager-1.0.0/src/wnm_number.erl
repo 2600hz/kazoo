@@ -703,7 +703,7 @@ error_invalid_state_transition(Transition, #number{state = State}=N) ->
 
 -spec error_unauthorized/1 :: (wnm_number()) -> no_return().
 error_unauthorized(N) ->
-    Error = <<"Not authorized to preform requested number operation">>,
+    Error = <<"Not authorized to perform requested number operation">>,
     lager:debug("~s", [Error]),
     throw({unauthorized, N#number{error_jobj=wh_json:from_list([{<<"unauthorized">>, Error}])}}).
 
@@ -743,7 +743,7 @@ error_number_exists(N) ->
     lager:debug("~s", [Error]),
     throw({number_exists, N#number{error_jobj=wh_json:from_list([{<<"number_exists">>, Error}])}}).
 
--spec error_service_restriction/2 :: (wh_json:json_object(), wnm_number()) -> no_return().
+-spec error_service_restriction/2 :: (iolist() | ne_binary(), wnm_number()) -> no_return().
 error_service_restriction(Reason, N) ->
     lager:debug("number billing restriction: ~s", [Reason]),
     throw({service_restriction, N#number{error_jobj=wh_json:from_list([{<<"credit">>, wh_util:to_binary(Reason)}])}}).
@@ -924,7 +924,7 @@ activate_feature(Feature, #number{services=undefined, billing_id=Account}=N) ->
 activate_feature(Feature, #number{services=Services}=N) ->
     Units = wh_service_phone_numbers:feature_activation_charge(Feature, Services),
     activate_feature(Feature, Units, N).
-    
+
 activate_feature(Feature, 0, #number{features=Features}=N) ->
     lager:debug("no activation charge for ~s", [Feature]),
     N#number{features=sets:add_element(Feature, Features)};
@@ -937,7 +937,8 @@ activate_feature(Feature, Units, #number{current_balance=Balance}=N) when Balanc
 activate_feature(Feature, Units, #number{current_balance=Balance, features=Features}=N) ->
     N#number{activations=append_feature_debit(Feature, Units, N)
              ,features=sets:add_element(Feature, Features)
-             ,current_balance=Balance - Units}.
+             ,current_balance=Balance - Units
+            }.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -975,8 +976,12 @@ activate_phone_number(Units, #number{current_balance=Balance}=N) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec append_feature_debit/3 :: (ne_binary(), integer(), wnm_number()) -> wnm_number().
-append_feature_debit(Feature, Units, #number{billing_id=Ledger, assigned_to=AccountId, activations=Activations}) ->
+-spec append_feature_debit/3 :: (wh_json:json_string(), integer(), wnm_number()) -> wh_json:json_objects().
+append_feature_debit(Feature, Units, #number{
+                                billing_id=Ledger
+                                ,assigned_to=AccountId
+                                ,activations=Activations
+                               }) ->
     LedgerId = wh_util:format_account_id(Ledger, raw),
     LedgerDb = wh_util:format_account_id(Ledger, encoded),
     lager:debug("staging feature '~s' activation charge $~p for ~s via billing account ~s"
@@ -1001,7 +1006,7 @@ append_feature_debit(Feature, Units, #number{billing_id=Ledger, assigned_to=Acco
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec append_phone_number_debit/2 :: (integer(), wnm_number()) -> wnm_number().
+-spec append_phone_number_debit/2 :: (integer(), wnm_number()) -> wh_json:json_objects().
 append_phone_number_debit(Units, #number{billing_id=Ledger, assigned_to=AccountId
                                          ,activations=Activations, number=Number}) ->
     LedgerId = wh_util:format_account_id(Ledger, raw),
@@ -1021,4 +1026,3 @@ append_phone_number_debit(Units, #number{billing_id=Ledger, assigned_to=AccountI
                                ,{<<"pvt_vsn">>, 1}
                               ]),
     [Entry|Activations].
-

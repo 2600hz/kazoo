@@ -20,7 +20,7 @@
          ,delete/2
         ]).
 
--include_lib("crossbar/include/crossbar.hrl").
+-include("include/crossbar.hrl").
 
 -define(VIEW_FILE, <<"views/ts_users.json">>).
 -define(CB_LIST, <<"ts_users/crossbar_listing">>).

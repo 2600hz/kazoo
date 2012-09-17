@@ -114,10 +114,8 @@ create_endpoints(Endpoint, Properties, Call) ->
                          ,catch(create_sip_endpoint(Endpoint, Properties, Call))]
                 end,
     case lists:filter(fun wh_json:is_json_object/1, Endpoints) of
-        [] ->
-            {error, no_endpoints};
-        Else ->
-            {ok, Else}
+        [] -> {error, no_endpoints};
+        Else -> {ok, Else}
     end.
 
 %%--------------------------------------------------------------------
@@ -132,13 +130,12 @@ create_endpoints(Endpoint, Properties, Call) ->
 get(undefined, _Call) ->
     {error, invalid_endpoint_id};
 get(EndpointId, AccountDb) when is_binary(AccountDb) ->
-    case wh_cache:peek({?MODULE, AccountDb, EndpointId}) of
-        {ok, _}=Ok ->
-            Ok;
+    case wh_cache:peek_local(?CALLFLOW_CACHE, {?MODULE, AccountDb, EndpointId}) of
+        {ok, _}=Ok -> Ok;
         {error, not_found} ->
             case couch_mgr:open_doc(AccountDb, EndpointId) of
                 {ok, JObj}=OK ->
-                    wh_cache:store({?MODULE, AccountDb, EndpointId}, JObj, 300),
+                    wh_cache:store_local(?CALLFLOW_CACHE, {?MODULE, AccountDb, EndpointId}, JObj, 300),
                     OK;
                 {error, R}=E ->
                     lager:debug("unable to fetch endpoint ~s: ~p", [EndpointId, R]),
@@ -150,7 +147,7 @@ get(EndpointId, Call) ->
 
 -spec flush/2 :: (ne_binary(), ne_binary()) -> any().
 flush(Db, Id) ->
-    wh_cache:erase({?MODULE, Db, Id}).
+    wh_cache:erase_local(?CALLFLOW_CACHE, {?MODULE, Db, Id}).
 
 %%--------------------------------------------------------------------
 %% @private

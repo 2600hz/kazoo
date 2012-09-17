@@ -1,4 +1,6 @@
-REBAR = ./rebar
+ROOT = ../..
+REBAR = $(ROOT)/bin/rebar
+
 DIALYZER = dialyzer
 
 DIALYZER_WARNINGS = -Wunmatched_returns -Werror_handling \

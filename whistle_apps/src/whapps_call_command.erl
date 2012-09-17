@@ -18,8 +18,8 @@
 -export([relay_event/2]).
 
 -export([audio_macro/2]).
--export([pickup/2, pickup/3, pickup/4, pickup/5
-         ,b_pickup/2, b_pickup/3, b_pickup/4, b_pickup/5
+-export([pickup/2, pickup/3, pickup/4, pickup/5, pickup/6
+         ,b_pickup/2, b_pickup/3, b_pickup/4, b_pickup/5, b_pickup/6
         ]).
 -export([redirect/3]).
 -export([answer/1
@@ -32,7 +32,9 @@
          ,b_receive_fax/1
         ]).
 -export([bridge/2, bridge/3, bridge/4, bridge/5, bridge/6, bridge/7]).
--export([hold/1, b_hold/1, b_hold/2]).
+-export([hold/1, hold/2
+         ,b_hold/1, b_hold/2, b_hold/3
+        ]).
 -export([play/2, play/3]).
 -export([prompt/2, prompt/3]).
 
@@ -41,8 +43,8 @@
         ]).
 
 -export([record/2, record/3, record/4, record/5, record/6]).
--export([record_call/2, record_call/3, record_call/4, record_call/5, record_call/6
-         ,b_record_call/2, b_record_call/3, b_record_call/4, b_record_call/5, b_record_call/6
+-export([record_call/2, record_call/3, record_call/4, record_call/5
+         ,b_record_call/2, b_record_call/3, b_record_call/4, b_record_call/5
         ]).
 -export([store/3, store/4, store/5
          ,store_fax/2
@@ -268,36 +270,25 @@ response(Code, Cause, Media, Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec pickup/2 :: (ne_binary(), whapps_call:call()) -> 'ok'.
--spec pickup/3 :: (ne_binary(), ne_binary(), whapps_call:call()) -> 'ok'.
--spec pickup/4 :: (ne_binary(), ne_binary(), ne_binary() | boolean(), whapps_call:call()) -> 'ok'.
--spec pickup/5 :: (ne_binary(), ne_binary(), ne_binary() | boolean(), ne_binary() | boolean(), whapps_call:call()) -> 'ok'.
+-spec pickup/3 :: (ne_binary(), 'undefined' | ne_binary(), whapps_call:call()) -> 'ok'.
+-spec pickup/4 :: (ne_binary(), 'undefined' | ne_binary(), 'undefined' | ne_binary() | boolean(), whapps_call:call()) -> 'ok'.
+-spec pickup/5 :: (ne_binary(), 'undefined' | ne_binary(), 'undefined' | ne_binary() | boolean(), 'undefined' | ne_binary() | boolean(), whapps_call:call()) -> 'ok'.
+-spec pickup/6 :: (ne_binary(), 'undefined' | ne_binary(), 'undefined' | ne_binary() | boolean(), 'undefined' | ne_binary() | boolean(), 'undefined' | ne_binary() | boolean(), whapps_call:call()) -> 'ok'.
 pickup(TargetCallId, Call) ->
-    Command = [{<<"Application-Name">>, <<"call_pickup">>}
-               ,{<<"Target-Call-ID">>, TargetCallId}
-              ],
-    send_command(Command, Call).
-
+    pickup(TargetCallId, undefined, Call).
 pickup(TargetCallId, Insert, Call) ->
-    Command = [{<<"Application-Name">>, <<"call_pickup">>}
-               ,{<<"Target-Call-ID">>, TargetCallId}
-               ,{<<"Insert-At">>, Insert}
-              ],
-    send_command(Command, Call).
-
+    pickup(TargetCallId, Insert, undefined, Call).
 pickup(TargetCallId, Insert, ContinueOnFail, Call) ->
-    Command = [{<<"Application-Name">>, <<"call_pickup">>}
-               ,{<<"Target-Call-ID">>, TargetCallId}
-               ,{<<"Insert-At">>, Insert}
-               ,{<<"Continue-On-Fail">>, ContinueOnFail}
-              ],
-    send_command(Command, Call).
-
+    pickup(TargetCallId, Insert, ContinueOnFail, undefined, Call).
 pickup(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, Call) ->
+    pickup(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, undefined, Call).
+pickup(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, ParkAfterPickup, Call) ->
     Command = [{<<"Application-Name">>, <<"call_pickup">>}
                ,{<<"Target-Call-ID">>, TargetCallId}
                ,{<<"Insert-At">>, Insert}
                ,{<<"Continue-On-Fail">>, ContinueOnFail}
                ,{<<"Continue-On-Cancel">>, ContinueOnCancel}
+               ,{<<"Park-After-Pickup">>, ParkAfterPickup}
               ],
     send_command(Command, Call).
 
@@ -305,6 +296,7 @@ pickup(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, Call) ->
 -spec b_pickup/3 :: (ne_binary(), ne_binary(), whapps_call:call()) -> {'ok', wh_json:json_object()}.
 -spec b_pickup/4 :: (ne_binary(), ne_binary(), ne_binary() | boolean(), whapps_call:call()) -> {'ok', wh_json:json_object()}.
 -spec b_pickup/5 :: (ne_binary(), ne_binary(), ne_binary() | boolean(), ne_binary() | boolean(), whapps_call:call()) -> {'ok', wh_json:json_object()}.
+-spec b_pickup/6 :: (ne_binary(), ne_binary(), ne_binary() | boolean(), ne_binary() | boolean(), ne_binary() | boolean(), whapps_call:call()) -> {'ok', wh_json:json_object()}.
 b_pickup(TargetCallId, Call) ->
     pickup(TargetCallId, Call),
     wait_for_channel_unbridge().
@@ -314,9 +306,11 @@ b_pickup(TargetCallId, Insert, Call) ->
 b_pickup(TargetCallId, Insert, ContinueOnFail, Call) ->
     pickup(TargetCallId, Insert, ContinueOnFail, Call),
     wait_for_channel_unbridge().
-
 b_pickup(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, Call) ->
     pickup(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, Call),
+    wait_for_channel_unbridge().
+b_pickup(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, ParkAfterPickup, Call) ->
+    pickup(TargetCallId, Insert, ContinueOnFail, ContinueOnCancel, ParkAfterPickup, Call),
     wait_for_channel_unbridge().
 
 %%--------------------------------------------------------------------
@@ -567,20 +561,29 @@ b_bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, C
 %% @end
 %%--------------------------------------------------------------------
 -spec hold/1 :: (whapps_call:call()) -> 'ok'.
+-spec hold/2 :: (ne_binary() | 'undefined', whapps_call:call()) -> 'ok'.
 
 -spec b_hold/1 :: (whapps_call:call()) -> whapps_api_std_return().
--spec b_hold/2 :: ('infinity' | pos_integer(), whapps_call:call()) -> whapps_api_std_return().
+-spec b_hold/2 :: ('infinity' | pos_integer() | ne_binary() | 'undefined', whapps_call:call()) -> whapps_api_std_return().
+-spec b_hold/3 :: ('infinity' | pos_integer(), ne_binary() | 'undefined', whapps_call:call()) -> whapps_api_std_return().
 
 hold(Call) ->
+    hold(undefined, Call).
+hold(MOH, Call) ->
     Command = [{<<"Application-Name">>, <<"hold">>}
                ,{<<"Insert-At">>, <<"now">>}
+               ,{<<"Hold-Media">>, MOH}
               ],
     send_command(Command, Call).
 
 b_hold(Call) ->
-    b_hold(infinity, Call).
-b_hold(Timeout, Call) ->
-    hold(Call),
+    b_hold(infinity, undefined, Call).
+b_hold(Timeout, Call) when is_integer(Timeout) orelse Timeout =:= infinity ->
+    b_hold(Timeout, undefined, Call);
+b_hold(MOH, Call) ->
+    b_hold(infinity, MOH, Call).
+b_hold(Timeout, MOH, Call) ->
+    hold(MOH, Call),
     wait_for_message(<<"hold">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"call_event">>, Timeout).
 
 %%--------------------------------------------------------------------
@@ -781,24 +784,21 @@ b_record(MediaName, Terminators, TimeLimit, SilenceThreshold, SilenceHits, Call)
 
 -spec record_call/2 :: (ne_binary(), whapps_call:call()) -> 'ok'.
 -spec record_call/3 :: (ne_binary(), ne_binary(), whapps_call:call()) -> 'ok'.
--spec record_call/4 :: (ne_binary(), ne_binary(),  whapps_api_binary(), whapps_call:call()) -> 'ok'.
--spec record_call/5 :: (ne_binary(), ne_binary(),  whapps_api_binary(), whapps_api_binary() | integer(), whapps_call:call()) -> 'ok'.
--spec record_call/6 :: (ne_binary(), ne_binary(),  whapps_api_binary(), whapps_api_binary() | integer(), list(), whapps_call:call()) -> 'ok'.
+-spec record_call/4 :: (ne_binary(), ne_binary(),  whapps_api_binary() | pos_integer(), whapps_call:call()) -> 'ok'.
+-spec record_call/5 :: (ne_binary(), ne_binary(),  whapps_api_binary() | pos_integer(), list(), whapps_call:call()) -> 'ok'.
 record_call(MediaName, Call) ->
     record_call(MediaName, <<"start">>, Call).
 record_call(MediaName, Action, Call) ->
-    record_call(MediaName, Action, <<"remote">>, Call).
-record_call(MediaName, Action, StreamTo, Call) ->
-    record_call(MediaName, Action, StreamTo, 600, Call).
-record_call(MediaName, Action, StreamTo, TimeLimit, Call) ->
-    record_call(MediaName, Action, StreamTo, TimeLimit, ?ANY_DIGIT, Call).
-record_call(MediaName, Action, StreamTo, TimeLimit, Terminators, Call) ->
+    record_call(MediaName, Action, 600, Call).
+record_call(MediaName, Action, TimeLimit, Call) ->
+    record_call(MediaName, Action, TimeLimit, ?ANY_DIGIT, Call).
+record_call(MediaName, Action, TimeLimit, Terminators, Call) ->
     Command = [{<<"Application-Name">>, <<"record_call">>}
                ,{<<"Media-Name">>, MediaName}
                ,{<<"Record-Action">>, Action}
-               ,{<<"Stream-To">>, StreamTo}
                ,{<<"Time-Limit">>, wh_util:to_binary(TimeLimit)}
                ,{<<"Terminators">>, Terminators}
+               ,{<<"Insert-At">>, <<"now">>}
               ],
     send_command(Command, Call).
 
@@ -806,26 +806,20 @@ record_call(MediaName, Action, StreamTo, TimeLimit, Terminators, Call) ->
                                  wait_for_headless_application_return().
 -spec b_record_call/3 :: (ne_binary(), ne_binary(), whapps_call:call()) ->
                                  wait_for_headless_application_return().
--spec b_record_call/4 :: (ne_binary(), ne_binary(), whapps_api_binary(), whapps_call:call()) ->
+-spec b_record_call/4 :: (ne_binary(), ne_binary(), whapps_api_binary() | pos_integer(), whapps_call:call()) ->
                                  wait_for_headless_application_return().
--spec b_record_call/5 :: (ne_binary(), ne_binary(), whapps_api_binary(), whapps_api_binary() | integer(), whapps_call:call()) ->
+-spec b_record_call/5 :: (ne_binary(), ne_binary(), whapps_api_binary() | pos_integer(), list(), whapps_call:call()) ->
                                  wait_for_headless_application_return().
--spec b_record_call/6 :: (ne_binary(), ne_binary(), whapps_api_binary(), whapps_api_binary() | integer(), [ne_binary(),...] | [], whapps_call:call()) ->
-                                 wait_for_headless_application_return().
-
 b_record_call(MediaName, Call) ->
     record_call(MediaName, Call),
     wait_for_headless_application(<<"record">>, <<"RECORD_STOP">>, <<"call_event">>, infinity).
 b_record_call(MediaName, Action, Call) ->
     record_call(MediaName, Action, Call),
     wait_for_headless_application(<<"record">>, <<"RECORD_STOP">>, <<"call_event">>, infinity).
-b_record_call(MediaName, Action, StreamTo, Call) ->
-    record_call(MediaName, Action, StreamTo, Call),
-    wait_for_headless_application(<<"record">>, <<"RECORD_STOP">>, <<"call_event">>, infinity).
-b_record_call(MediaName, Action, StreamTo, TimeLimit, Call) ->
-    b_record_call(MediaName, Action, StreamTo, TimeLimit, ?ANY_DIGIT, Call).
-b_record_call(MediaName, Action, StreamTo, TimeLimit, Terminators, Call) ->
-    record_call(MediaName, Action, StreamTo, TimeLimit, Terminators, Call),
+b_record_call(MediaName, Action, TimeLimit, Call) ->
+    b_record_call(MediaName, Action, TimeLimit, ?ANY_DIGIT, Call).
+b_record_call(MediaName, Action, TimeLimit, Terminators, Call) ->
+    record_call(MediaName, Action, TimeLimit, Terminators, Call),
     wait_for_headless_application(<<"record">>, <<"RECORD_STOP">>, <<"call_event">>, infinity).
 
 %%--------------------------------------------------------------------
@@ -1733,12 +1727,12 @@ wait_for_application_or_dtmf(Application, Timeout) ->
             {error, timeout}
     end.
 
--type wait_for_fax_ret() :: {'ok' | 'failed', wh_json:json_object()} |
+-type wait_for_fax_ret() :: {'ok', wh_json:json_object()} |
                             {'error', 'channel_destroy' | 'channel_hungup' | wh_json:json_object()}.
 -spec wait_for_fax/0 :: () -> wait_for_fax_ret().
 -spec wait_for_fax/1 :: (integer() | 'infinity') -> wait_for_fax_ret().
 wait_for_fax() ->
-    wait_for_fax(5000).
+    wait_for_fax(10000).
 wait_for_fax(Timeout) ->
     Start = erlang:now(),
     receive
@@ -1795,13 +1789,14 @@ send_command(Command, Call) when is_list(Command) ->
             CallId = whapps_call:call_id(Call),
             AppName = whapps_call:application_name(Call),
             AppVersion = whapps_call:application_version(Call),
-            case whapps_call:kvs_fetch(cf_exe_pid, Call) of
-                Pid when is_pid(Pid) -> put(amqp_publish_as, Pid);
-                _Else -> ok
-            end,
+            _ = case whapps_call:kvs_fetch(cf_exe_pid, Call) of
+                    Pid when is_pid(Pid) -> put(amqp_publish_as, Pid);
+                    _Else -> lager:debug("cf_exe_pid down, publish as self(~p)", [self()])
+                end,
             Prop = Command ++ [{<<"Call-ID">>, CallId}
                                | wh_api:default_headers(Q, <<"call">>, <<"command">>, AppName, AppVersion)
                               ],
+
             wapi_dialplan:publish_command(CtrlQ, Prop);
         false -> ok
     end;

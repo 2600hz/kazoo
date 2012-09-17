@@ -22,7 +22,7 @@
 
 -define(SERVER, ?MODULE).
 
--include_lib("ecallmgr/src/ecallmgr.hrl").
+-include("ecallmgr.hrl").
 
 -record(state, {node = 'undefined' :: atom()
                 ,options = [] :: proplist()
@@ -72,7 +72,7 @@ init([Node, Options]) ->
             lager:warning("failed to bind to dialplan requests on ~s, ~p", [Node, Reason]),
             {stop, Reason};
         timeout ->
-            lager:warning("timeout when trying to bind to dialplan requests on node ~s", [Node]),
+            lager:error("timeout when trying to bind to dialplan requests on node ~s", [Node]),
             {stop, timeout}
     end.
 
@@ -199,7 +199,7 @@ reply_forbidden(Node, FSID) ->
             _ = ecallmgr_util:fs_log(Node, "whistle node ~s won control with forbidden reply", [node()]),
             lager:debug("node ~s accepted our route unauthz", [Node]);
         {error, Reason} -> lager:debug("node ~s rejected our route unauthz, ~p", [Node, Reason]);
-        timeout -> lager:debug("received no reply from node ~s, timeout", [Node])
+        timeout -> lager:error("received no reply from node ~s, timeout", [Node])
     end.
 
 -spec reply_affirmative/5 :: (atom(), ne_binary(), ne_binary(), wh_json:json_object(), proplist()) -> 'ok'.
@@ -225,7 +225,7 @@ reply_affirmative(Node, FSID, CallId, RespJObj, Props) ->
             start_control_and_events(Node, CallId, ServerQ, CCVs);
         {error, Reason} -> 
             lager:debug("node ~s rejected our route response, ~p", [Node, Reason]);
-        timeout -> lager:debug("received no reply from node ~s, timeout", [Node])
+        timeout -> lager:error("received no reply from node ~s, timeout", [Node])
     end.
 
 -spec start_control_and_events/4 :: (atom(), ne_binary(), ne_binary(), wh_json:json_object()) -> 'ok'.

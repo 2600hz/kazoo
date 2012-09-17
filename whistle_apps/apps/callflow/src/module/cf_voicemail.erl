@@ -310,7 +310,9 @@ play_instructions(#mailbox{skip_instructions=false}, Call) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec record_voicemail/3 :: (ne_binary(), #mailbox{}, whapps_call:call()) -> 'ok'.
+-spec record_voicemail/3 :: (ne_binary(), #mailbox{}, whapps_call:call()) ->
+                                    'ok' |
+                                    {'branch', wh_json:json_object()}.
 record_voicemail(AttachmentName, #mailbox{max_message_length=MaxMessageLength}=Box, Call) ->
     Tone = wh_json:from_list([{<<"Frequencies">>, [<<"440">>]}
                               ,{<<"Duration-ON">>, <<"500">>}
@@ -327,12 +329,12 @@ record_voicemail(AttachmentName, #mailbox{max_message_length=MaxMessageLength}=B
                 {ok, _Selection} ->
                     _ = new_message(AttachmentName, Length, Box, Call),
                     _ = whapps_call_command:b_prompt(<<"vm-saved">>, Call),
-                    whapps_call_command:b_prompt(<<"vm-thank_you">>, Call),
+                    _ = whapps_call_command:b_prompt(<<"vm-thank_you">>, Call),
                     cf_exe:continue(Call);
                 {branch, Flow} ->
                     _ = new_message(AttachmentName, Length, Box, Call),
                     _ = whapps_call_command:b_prompt(<<"vm-saved">>, Call),
-                    cf_exe:branch(Call, Flow)
+                    cf_exe:branch(Flow, Call)
             end;
         {error, _R} ->
             lager:debug("error while attempting to record a new message: ~p", [_R]),
@@ -781,7 +783,7 @@ new_message(AttachmentName, Length, #mailbox{mailbox_id=Id
     timer:sleep(1000),
     cf_util:update_mwi(OwnerId, AccountDb).
 
--spec maybe_transcribe/3 :: (ne_binary(), ne_binary(), boolean()) ->
+-spec maybe_transcribe/3 :: (whapps_call:call(), ne_binary(), boolean()) ->
                                     'undefined' | wh_json:json_object().
 maybe_transcribe(Call, MediaId, true) ->
     Db = whapps_call:account_db(Call),
@@ -814,7 +816,7 @@ maybe_transcribe(Db, MediaDoc, Bin, <<"audio/wav">>) ->
         {ok, Resp} ->
             lager:debug("transcription resp: ~p", [Resp]),
             MediaDoc1 = wh_json:set_value(<<"transcription">>, Resp, MediaDoc),
-            couch_mgr:ensure_saved(Db, MediaDoc1),
+            _ = couch_mgr:ensure_saved(Db, MediaDoc1),
             is_valid_transcription(wh_json:get_value(<<"result">>, Resp)
                                    ,wh_json:get_value(<<"text">>, Resp)
                                    ,Resp
@@ -893,8 +895,13 @@ get_mailbox_profile(Data, Call) ->
                 = case wh_json:get_ne_value(<<"owner_id">>, JObj) of
                       undefined -> {wh_json:get_ne_value(?RECORDED_NAME_KEY, JObj), undefined};
                       OId ->
-                          {ok, Owner} = couch_mgr:open_cache_doc(AccountDb, OId),
-                          {wh_json:find(?RECORDED_NAME_KEY, [Owner, JObj]), OId}
+                          case couch_mgr:open_cache_doc(AccountDb, OId) of
+                              {ok, Owner} ->
+                                  {wh_json:find(?RECORDED_NAME_KEY, [Owner, JObj]), OId};
+                              {error, not_found} ->
+                                  lager:debug("owner ~s no longer exists", [OId]),
+                                  {wh_json:get_ne_value(?RECORDED_NAME_KEY, JObj), undefined}
+                          end
                   end,
 
             MaxMessageCount =
@@ -1132,11 +1139,13 @@ message_media_doc(Db, #mailbox{mailbox_number=BoxNum, mailbox_id=Id, timezone=Ti
                                   ])
            end,
 
+    Ext = whapps_config:get(?CF_CONFIG_CAT, [<<"voicemail">>, <<"extension">>], <<"mp3">>),
     Props = [{<<"name">>, Name}
              ,{<<"description">>, <<"voicemail message media">>}
              ,{<<"source_type">>, <<"voicemail">>}
              ,{<<"source_id">>, Id}
              ,{<<"media_source">>, <<"recording">>}
+             ,{<<"media_type">>, Ext}
              ,{<<"streamable">>, true}
              ,{<<"utc_seconds">>, UtcSeconds}
             ],

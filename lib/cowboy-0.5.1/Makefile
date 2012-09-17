@@ -3,7 +3,8 @@
 PROJECT = cowboy
 
 DIALYZER = dialyzer
-REBAR = rebar
+ROOT = ../..
+REBAR = $(ROOT)/bin/rebar
 
 all: app
 
@@ -12,7 +13,9 @@ all: app
 deps:
 	@$(REBAR) get-deps
 
-app: deps
+app: compile
+
+compile: 
 	@$(REBAR) compile
 
 clean:

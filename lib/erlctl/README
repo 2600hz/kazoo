@@ -1,7 +1,0 @@
-erlctl
-======
-
-A framework for putting a sane and uniform command-line-interface on an
-Erlang application.
-
-See doc/DESIGN.txt for more details.

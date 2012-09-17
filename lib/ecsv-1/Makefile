@@ -1,14 +1,16 @@
+ROOT = ../..
+REBAR = $(ROOT)/bin/rebar
 
 .PHONY: deps doc
 
-all: deps compile
+all: compile
 
 compile:
-	@./rebar compile
+	$(REBAR) compile
 
 deps:
-	@./rebar get-deps
+	$(REBAR) get-deps
 
 clean: 
-	@./rebar clean
+	$(REBAR) clean
 

@@ -20,7 +20,7 @@
          ,put/1
         ]).
 
--include_lib("crossbar/include/crossbar.hrl").
+-include("include/crossbar.hrl").
 
 -define(OB_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".onboard">>).
 -define(DEFAULT_FLOW, "{\"data\": { \"id\": \"~s\" }, \"module\": \"user\", \"children\": { \"_\": { \"data\": { \"id\": \"~s\" }, \"module\": \"voicemail\", \"children\": {}}}}").
@@ -622,7 +622,7 @@ create_response(#cb_context{doc=JObj, account_id=AccountId}=Context) ->
                                    ,Context#cb_context{auth_token=AuthToken, auth_doc=Doc});
         {error, R} ->
             lager:debug("could not create new local auth token, ~p", [R]),
-            crossbar_util:response(error, JObj, 400, Context)
+            crossbar_util:response(error, undefined, 400, JObj, Context)
     end.
 
 %%--------------------------------------------------------------------
@@ -665,7 +665,7 @@ generate_username(undefined, undefined, _) ->
     wh_util:rand_hex_binary(3);
 generate_username(undefined, _, undefined) ->
     wh_util:rand_hex_binary(3);
-generate_username(undefined, <<FirstLetter, _/binary>>, LastName) ->
+generate_username(undefined, <<FirstLetter:1/binary, _/binary>>, LastName) ->
     <<FirstLetter/binary, (wh_util:to_binary(LastName))/binary>>;
 generate_username(Email, _, _) ->
     Email.

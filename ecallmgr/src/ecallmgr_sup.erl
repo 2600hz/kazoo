@@ -9,7 +9,7 @@
 
 -behaviour(supervisor).
 
--include_lib("ecallmgr/src/ecallmgr.hrl").
+-include("ecallmgr.hrl").
 
 -export([start_link/0]).
 -export([init/1]).
@@ -18,7 +18,7 @@
 -define(OVERFLOW_POOL_SIZE, 200).
 
 -define(CHILD(Name, Type), fun(N, pool) -> {N, {poolboy, start_link, [[{worker_module, wh_amqp_worker}
-								       ,{name, {local, N}}
+                                                                       ,{name, {local, N}}
                                                                        ,{size, ?POOL_SIZE}
                                                                        ,{max_overflow, ?OVERFLOW_POOL_SIZE}
                                                                       ]

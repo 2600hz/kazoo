@@ -18,7 +18,7 @@
          ,put/1, put/2
         ]).
 
--include_lib("crossbar/include/crossbar.hrl").
+-include("include/crossbar.hrl").
 
 -define(ACCT_MD5_LIST, <<"users/creds_by_md5">>).
 -define(ACCT_SHA1_LIST, <<"users/creds_by_sha">>).
@@ -101,7 +101,7 @@ authenticate(#cb_context{}) ->
 %%--------------------------------------------------------------------
 -spec validate/1 :: (#cb_context{}) -> #cb_context{}.
 validate(#cb_context{req_data=Data, req_verb = <<"put">>}=Context) ->
-    _ = crossbar_util:put_reqid(Context),
+    _ = cb_context:put_reqid(Context),
     lager:debug("validating user_auth"),
     case catch(wh_json_validator:is_valid(Data, <<"user_auth">>)) of
         {fail, Errors} ->
@@ -129,7 +129,7 @@ validate(#cb_context{req_data=Data, req_verb = <<"put">>}=Context) ->
     end.
 
 validate(#cb_context{req_data=Data, req_verb = <<"put">>}=Context, <<"recovery">>) ->
-    _ = crossbar_util:put_reqid(Context),
+    _ = cb_context:put_reqid(Context),
     case wh_json_validator:is_valid(Data, <<"user_auth_recovery">>) of
         {fail, Errors} ->
             crossbar_util:response_invalid_data(Errors, Context);
@@ -167,7 +167,7 @@ validate(#cb_context{req_data=Data, req_verb = <<"put">>}=Context, <<"recovery">
             end
     end;
 validate(Context, _Path) ->
-    _ = crossbar_util:put_reqid(Context),
+    _ = cb_context:put_reqid(Context),
     lager:debug("bad path: ~p", [_Path]),
     lager:debug("req verb: ~s", [Context#cb_context.req_verb]),
     crossbar_util:response_faulty_request(Context).
@@ -175,10 +175,10 @@ validate(Context, _Path) ->
 -spec put/1 :: (#cb_context{}) -> #cb_context{}.
 -spec put/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
 put(Context) ->
-    _ = crossbar_util:put_reqid(Context),
+    _ = cb_context:put_reqid(Context),
     create_token(Context).
 put(Context, <<"recovery">>) ->
-    _ = crossbar_util:put_reqid(Context),
+    _ = cb_context:put_reqid(Context),
     reset_users_password(Context).
 
 %%%===================================================================

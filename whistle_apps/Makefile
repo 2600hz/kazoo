@@ -4,9 +4,9 @@ REBAR = $(ROOT)/bin/rebar
 
 DIRS = $(ROOT)/lib/whistle-1.0.0 $(ROOT)/lib/whistle_amqp-1.0.0 $(ROOT)/lib/whistle_couch-1.0.0 .
 
-all: app
+all: compile
 
-app:
+compile:
 	@$(REBAR) compile
 
 deps:

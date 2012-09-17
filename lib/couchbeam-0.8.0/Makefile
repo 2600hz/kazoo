@@ -1,20 +1,22 @@
+ROOT = ../..
+REBAR = $(ROOT)/bin/rebar
+
 ERL          ?= erl
 ERLC		     ?= erlc
 APP          := couchbeam
 
 .PHONY: deps doc
 
-all: deps compile
+all: compile
 
 compile:
-	@./rebar compile
+	@$(REBAR) compile
 
 deps:
-	@./rebar get-deps
+	@$(REBAR) get-deps
 
 doc:
 	@rebar doc	
-	
 
 test: all	
 	@$(ERLC) -o t/ t/etap.erl
@@ -29,12 +31,12 @@ cover: all
 	@$(ERL) -detached -noshell -eval 'etap_report:create()' -s init stop
 
 clean: 
-	@./rebar clean
+	@$(REBAR) clean
 	@rm -f t/*.beam
 	@rm -f doc/*.html doc/*.css doc/edoc-info doc/*.png
 
 distclean: clean
-	@./rebar delete-deps
+	@$(REBAR) delete-deps
 	@rm -rf deps
 
 dialyzer: compile

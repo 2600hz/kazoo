@@ -20,7 +20,7 @@
          ,account_created/1
         ]).
 
--include_lib("crossbar/include/crossbar.hrl").
+-include("include/crossbar.hrl").
 
 -define(DB_PREFIX, "template/").
 
@@ -187,7 +187,7 @@ create_template_db(TemplateName, Context) ->
         true ->
             lager:debug("created DB for template ~s", [TemplateName]),
             couch_mgr:revise_docs_from_folder(TemplateDb, crossbar, "account", false),
-            couch_mgr:revise_doc_from_file(TemplateDb, crossbar, ?MAINTENANCE_VIEW_FILE),
+            _ = couch_mgr:revise_doc_from_file(TemplateDb, crossbar, ?MAINTENANCE_VIEW_FILE),
             Context#cb_context{resp_status=success}
     end.
 
@@ -232,7 +232,7 @@ import_template_docs([Id|Ids], TemplateDb, AccountId, AccountDb) ->
             Correctors = [fun(J) -> wh_json:set_value(<<"pvt_account_id">>, AccountId, J) end
                           ,fun(J) -> wh_json:set_value(<<"pvt_account_db">>, AccountDb, J) end
                          ],
-            couch_mgr:ensure_saved(AccountDb, lists:foldr(fun(F, J) -> F(J) end, JObj, Correctors)),
+            _ = couch_mgr:ensure_saved(AccountDb, lists:foldr(fun(F, J) -> F(J) end, JObj, Correctors)),
             import_template_docs(Ids, TemplateDb, AccountId, AccountDb);
         {error, _} ->
             import_template_docs(Ids, TemplateDb, AccountId, AccountDb)

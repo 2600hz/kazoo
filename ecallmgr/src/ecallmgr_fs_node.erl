@@ -28,8 +28,8 @@
 
 -include("ecallmgr.hrl").
 
--record(state, {node = 'undefined' :: atom()
-                ,options = [] :: proplist()
+-record(state, {node :: atom()
+                ,options = [] :: wh_proplist()
                }).
 
 -define(SERVER, ?MODULE).

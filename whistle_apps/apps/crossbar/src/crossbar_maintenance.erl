@@ -22,7 +22,7 @@
 -export([allow_account_number_additions/1, disallow_account_number_additions/1]).
 -export([create_account/4]).
 
--include_lib("crossbar/include/crossbar.hrl").
+-include("include/crossbar.hrl").
 
 -type input_term() :: atom() | string() | ne_binary().
 
@@ -49,13 +49,14 @@ migrate() ->
                    ,fun(L) -> sets:add_element(<<"cb_connectivity">>, L) end
                    ,fun(L) -> sets:add_element(<<"cb_local_provisioner_templates">>, L) end
                    ,fun(L) -> sets:add_element(<<"cb_global_provisioner_templates">>, L) end
-                   ,fun(L) -> sets:add_element(<<"cb_queues">>, L) end
                    ,fun(L) -> sets:add_element(<<"cb_schemas">>, L) end
                    ,fun(L) -> sets:add_element(<<"cb_configs">>, L) end
                    ,fun(L) -> sets:add_element(<<"cb_limits">>, L) end
                    ,fun(L) -> sets:add_element(<<"cb_whitelabel">>, L) end
                    ,fun(L) -> sets:add_element(<<"cb_braintree">>, L) end
                    ,fun(L) -> sets:add_element(<<"cb_services">>, L) end
+                   ,fun(L) -> sets:add_element(<<"cb_agents">>, L) end
+                   ,fun(L) -> sets:add_element(<<"cb_queues">>, L) end
                   ],
     UpdatedModules = sets:to_list(lists:foldr(fun(F, L) -> F(L) end, StartModules, XbarUpdates)),
     _ = whapps_config:set_default(<<"crossbar">>, <<"autoload_modules">>, UpdatedModules),
@@ -126,7 +127,9 @@ running_modules() ->
 %% 
 %% @end
 %%--------------------------------------------------------------------
--spec find_account_by_number/1 :: (input_term()) -> {'ok', ne_binary()} | {'error', term()}.
+-spec find_account_by_number/1 :: (input_term()) ->
+                                          {'ok', ne_binary()} |
+                                          {'error', term()}.
 find_account_by_number(Number) when not is_binary(Number) ->
     find_account_by_number(wh_util:to_binary(Number));
 find_account_by_number(Number) ->

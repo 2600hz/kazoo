@@ -17,7 +17,7 @@
 -export([start_link/1]).
 -export([call/4, call/5]).
 -export([cast/3]).
--export([any_resp/1]).
+-export([any_resp/1, default_timeout/0]).
 -export([handle_resp/2]).
 -export([send_request/4]).
 -export([init/1
@@ -78,14 +78,17 @@ start_link(Args) ->
                                       ,{consume_options, ?CONSUME_OPTIONS}
                                      ], [Args]).
 
--spec call/4 :: (server_ref(), api_terms(), wh_amqp_worker:publish_fun(), wh_amqp_worker:validate_fun()) ->
+-spec default_timeout/0 :: () -> 2000.
+default_timeout() -> 2000.
+
+-spec call/4 :: (server_ref(), api_terms(), publish_fun(), validate_fun()) ->
                         {'ok', wh_json:json_object()} |
                         {'error', _}.
--spec call/5 :: (server_ref(), api_terms(), wh_amqp_worker:publish_fun(), wh_amqp_worker:validate_fun(), pos_integer()) ->
+-spec call/5 :: (server_ref(), api_terms(), publish_fun(), validate_fun(), pos_integer() | 'infinity') ->
                         {'ok', wh_json:json_object()} |
                         {'error', _}.
 call(Srv, Req, PubFun, VFun) ->
-    call(Srv, Req, PubFun, VFun, 2000).
+    call(Srv, Req, PubFun, VFun, default_timeout()).
 
 call(Srv, Req, PubFun, VFun, Timeout) ->
     case catch poolboy:checkout(Srv, false, 1000) of
@@ -97,7 +100,7 @@ call(Srv, Req, PubFun, VFun, Timeout) ->
                        false -> Req
                    end,
             Q = gen_listener:queue_name(W),
-            Reply = gen_listener:call(W, {request, Prop, PubFun, VFun, Q, Timeout}, Timeout + ?FUDGE),
+            Reply = gen_listener:call(W, {request, Prop, PubFun, VFun, Q, Timeout}, fudge_timeout(Timeout)),
             poolboy:checkin(Srv, W),
             wh_counter:inc(<<"amqp.pools.", PoolName/binary, ".available">>),
             Reply;
@@ -109,7 +112,7 @@ call(Srv, Req, PubFun, VFun, Timeout) ->
             {error, poolboy_fault}
     end.
 
--spec cast/3 :: (server_ref(), api_terms(), wh_amqp_worker:publish_fun()) -> 'ok' | {'error', _}.
+-spec cast/3 :: (server_ref(), api_terms(), publish_fun()) -> 'ok' | {'error', _}.
 cast(Srv, Req, PubFun) ->
     case catch poolboy:checkout(Srv, false, 1000) of
         W when is_pid(W) ->
@@ -130,17 +133,19 @@ cast(Srv, Req, PubFun) ->
 -spec any_resp/1 :: (any()) -> 'true'.
 any_resp(_) -> true.
 
--spec handle_resp/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
+-spec handle_resp/2 :: (wh_json:json_object(), wh_proplist()) -> 'ok'.
 handle_resp(JObj, Props) ->
     gen_listener:cast(props:get_value(server, Props), {event, wh_json:get_value(<<"Msg-ID">>, JObj), JObj}).
 
--spec send_request/4 :: (ne_binary(), ne_binary(), function(), proplist()) -> 'ok'.
-send_request(CallID, Self, PublishFun, ReqProp) ->
+-spec send_request/4 :: (ne_binary(), ne_binary(), publish_fun(), wh_proplist()) ->
+                                'ok' |
+                                {'EXIT', term()}.
+send_request(CallID, Self, PublishFun, ReqProp) when is_function(PublishFun, 1) ->
     put(callid, CallID),
     Prop = [{<<"Server-ID">>, Self}
             ,{<<"Call-ID">>, CallID}
             | ReqProp],
-    PublishFun(Prop).
+    catch PublishFun(Prop).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -184,28 +189,32 @@ init([Args]) ->
 handle_call({request, ReqProp, PublishFun, VFun, Q, Timeout}, {ClientPid, _}=From, State) ->
     _ = wh_util:put_callid(ReqProp),
     CallID = get(callid),
-    Self = self(),
     ClientRef = erlang:monitor(process, ClientPid),
-    ReqRef = erlang:start_timer(Timeout, Self, req_timeout),
+    ReqRef = start_req_timeout(Timeout),
     {ReqProp1, MsgID} = case props:get_value(<<"Msg-ID">>, ReqProp) of
                             undefined ->
                                 M = wh_util:rand_hex_binary(8),
                                 {[{<<"Msg-ID">>, M} | ReqProp], M};
                             M -> {ReqProp, M}
                         end,
-    lager:debug("published request with msg id ~s for ~p", [MsgID, ClientPid]),
-    ?MODULE:send_request(CallID, Q, PublishFun, ReqProp1),
-    {noreply, State#state{
-                client_pid = ClientPid
-                ,client_ref = ClientRef
-                ,client_from = From
-                ,client_vfun = VFun
-                ,neg_resp_count = 0
-                ,current_msg_id = MsgID
-                ,req_timeout_ref = ReqRef
-                ,req_start_time = erlang:now()
-                ,callid = CallID
-               }};
+    case ?MODULE:send_request(CallID, Q, PublishFun, ReqProp1) of
+        ok ->
+            lager:debug("published request with msg id ~s for ~p", [MsgID, ClientPid]),
+            {noreply, State#state{
+                        client_pid = ClientPid
+                        ,client_ref = ClientRef
+                        ,client_from = From
+                        ,client_vfun = VFun
+                        ,neg_resp_count = 0
+                        ,current_msg_id = MsgID
+                        ,req_timeout_ref = ReqRef
+                        ,req_start_time = erlang:now()
+                        ,callid = CallID
+                       }};
+        {'EXIT', Err} ->
+            lager:debug("failed to send request: ~p", [Err]),
+            {reply, {error, Err}, reset(State)}
+    end;
 handle_call(_Request, _From, State) ->
     {reply, {error, not_implemented}, State}.
 
@@ -374,5 +383,10 @@ pool_name_from_server_ref(Name) when is_atom(Name) ->
 pool_name_from_server_ref(Pid) when is_pid(Pid) ->
     wh_util:to_binary(pid_to_list(Pid)).
 
+fudge_timeout('infinity'=T) -> T;
+fudge_timeout(T) -> T + ?FUDGE.
 
-    
+-spec start_req_timeout/1 :: (pos_integer() | 'infinity') -> reference().
+start_req_timeout(infinity) -> make_ref();
+start_req_timeout(Timeout) ->
+    erlang:start_timer(Timeout, self(), req_timeout).

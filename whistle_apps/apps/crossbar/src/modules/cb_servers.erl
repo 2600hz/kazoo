@@ -24,7 +24,7 @@
          ,delete/2
         ]).
 
--include_lib("crossbar/include/crossbar.hrl").
+-include("include/crossbar.hrl").
 
 -define(SERVER_CONF, [code:lib_dir(crossbar, priv), "/servers/servers.conf"]).
 -define(SERVER_CONFIG_CATEGORY, <<"crossbar.servers">>).
@@ -171,10 +171,10 @@ validate(#cb_context{req_verb = <<"get">>}=Context, ServerId, <<"log">>) ->
 -spec post/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
 -spec post/3 :: (#cb_context{}, path_token(), path_token()) -> #cb_context{}.
 post(Context, _) ->
-    _ = crossbar_util:put_reqid(Context),
+    _ = cb_context:put_reqid(Context),
     crossbar_doc:save(Context).
 post(Context, _, <<"deployment">>) ->
-    _ = crossbar_util:put_reqid(Context),
+    _ = cb_context:put_reqid(Context),
     case crossbar_doc:save(Context) of
         #cb_context{resp_status=success, doc=JObj}=Context1 ->
             RespData = wh_json:from_list([{<<"status">>, wh_json:get_value(<<"pvt_deploy_status">>, JObj)}
@@ -188,16 +188,16 @@ post(Context, _, <<"deployment">>) ->
 -spec put/1 :: (#cb_context{}) -> #cb_context{}.
 -spec put/3 :: (#cb_context{}, path_token(), path_token()) -> #cb_context{}.
 put(#cb_context{doc=Doc}=Context) ->
-    _ = crossbar_util:put_reqid(Context),
+    _ = cb_context:put_reqid(Context),
     Id = wh_util:to_hex_binary(crypto:md5([wh_json:get_value(<<"ip">>, Doc), wh_json:get_value(<<"ssh_port">>, Doc)])),
     crossbar_doc:save(Context#cb_context{doc=wh_json:set_value(<<"_id">>, Id, Doc)}).
 put(Context, _, <<"deployment">>) ->
-    _ = crossbar_util:put_reqid(Context),
+    _ = cb_context:put_reqid(Context),
     execute_deploy_command(Context).
 
 -spec delete/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
 delete(Context, _) ->
-    _ = crossbar_util:put_reqid(Context),
+    _ = cb_context:put_reqid(Context),
     case crossbar_doc:delete(Context, permanent) of
         #cb_context{resp_status=success}=Context1 ->
             execute_delete_command(Context),

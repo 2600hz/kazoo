@@ -10,8 +10,8 @@
 -behaviour(supervisor).
 
 -include_lib("whistle/include/wh_types.hrl").
--include_lib("whistle_apps/src/whapps_call_command.hrl").
--include_lib("whistle_apps/src/whistle_apps.hrl").
+-include("whapps_call_command.hrl").
+-include("whistle_apps.hrl").
 
 -export([start_link/0]).
 -export([initialize_whapps/1]).
@@ -85,5 +85,4 @@ init([]) ->
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
     Children = [?CHILD(Name, Type) || {Name, Type} <- ?CHILDREN],
-
     {ok, {SupFlags, Children}}.

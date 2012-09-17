@@ -31,11 +31,13 @@
 -define(BINDINGS, [{resource, []}
                    ,{self, []}
                   ]).
--define(RESPONDERS, [{{?MODULE, handle_originate_req}, [{<<"resource">>, <<"originate_req">>}]}]).
+-define(RESPONDERS, [{{?MODULE, handle_originate_req}
+                      ,[{<<"resource">>, <<"originate_req">>}]
+                     }
+                    ]).
 -define(QUEUE_NAME, <<"ecallmgr_fs_resource">>).
 -define(QUEUE_OPTIONS, [{exclusive, false}]).
 -define(CONSUME_OPTIONS, [{exclusive, false}]).
--define(ROUTE_OPTIONS, []).
 
 -define(ORIGINATE_PARK, <<"&park()">>).
 
@@ -57,14 +59,15 @@ start_link(Node) ->
     start_link(Node, []).
 
 start_link(Node, Options) ->
-    gen_listener:start_link(?MODULE, [{bindings, ?BINDINGS}
-                                      ,{responders, ?RESPONDERS}
-                                      ,{queue_name, ?QUEUE_NAME}
-                                      ,{queue_options, ?QUEUE_OPTIONS}
-                                      ,{consume_options, ?CONSUME_OPTIONS}
-                                      ,{route_options, ?ROUTE_OPTIONS}
-                                      ,{basic_qos, 1}
-                                     ], [Node, Options]).
+    gen_listener:start_link(?MODULE
+                            ,[{bindings, ?BINDINGS}
+                              ,{responders, ?RESPONDERS}
+                              ,{queue_name, ?QUEUE_NAME}
+                              ,{queue_options, ?QUEUE_OPTIONS}
+                              ,{consume_options, ?CONSUME_OPTIONS}
+                              ,{basic_qos, 1}
+                             ]
+                            ,[Node, Options]).
 
 -spec handle_originate_req/2 :: (wh_json:json_object(), wh_proplist()) -> 'ok'.
 handle_originate_req(JObj, Props) ->
@@ -314,25 +317,56 @@ create_success_resp(Props) ->
                ],
     {ok, lists:foldr(fun(F, P) -> F(P) end, [],  Builders)}.
 
+-spec create_uuid/1 :: (atom()) ->
+                               {'ok', ne_binary()} |
+                               {'error', _}.
+-spec create_uuid/2 :: (wh_json:json_object(), atom()) ->
+                               {'ok', ne_binary()} |
+                               {'error', _}.
+create_uuid(JObj, Node) ->
+    case wh_json:get_value(<<"Outgoing-Call-ID">>, JObj) of
+        undefined -> create_uuid(Node);
+        CallId -> {ok, CallId}
+    end.
+create_uuid(Node) ->
+    case freeswitch:api(Node, 'create_uuid', "") of
+        {ok, UUID} -> {ok, UUID};
+        {error, badarg} -> freeswitch:api(Node, 'create_uuid', <<>>);
+        {error, _E}=E -> E;
+        timeout -> {error, timeout}
+    end.
+
 -spec originate_to_dialstrings(wh_json:json_object(), atom(), ne_binary(), list(), ne_binary()) -> 'ok'.
 originate_to_dialstrings(JObj, Node, ServerId, Endpoints, ?ORIGINATE_PARK) ->
-    UUID = case wh_json:get_value(<<"Outbound-Call-ID">>, JObj) of
-               undefined -> create_uuid(Node);
-               CallId -> CallId
-           end,
+    case create_uuid(JObj, Node) of
+        {ok, UUID} ->
+            put(callid, UUID),
+            lager:debug("created uuid ~s", [UUID]),
 
-    put(callid, UUID),
-    lager:debug("created uuid ~s", [UUID]),
-
-    DialSeparator = case wh_json:get_value(<<"Dial-Endpoint-Method">>, JObj, <<"single">>) of
-                        <<"simultaneous">> when length(Endpoints) > 1 -> <<",">>;
-                        _Else -> <<"|">>
-                    end,
-    DialStrings = ecallmgr_util:build_bridge_string([wh_json:set_value(<<"origination_uuid">>, UUID, E) || E <- Endpoints]
-                                                    ,DialSeparator),
-    BillingId = wh_util:rand_hex_binary(16),
-    J = wh_json:set_value([<<"Custom-Channel-Vars">>, <<"Billing-ID">>], BillingId, JObj),
-    originate_and_park(J, Node, ServerId, DialStrings, UUID);
+            DialSeparator =
+                case wh_json:get_value(<<"Dial-Endpoint-Method">>, JObj, <<"single">>) of
+                    <<"simultaneous">> when length(Endpoints) > 1 -> <<",">>;
+                    _Else -> <<"|">>
+                end,
+            DialStrings = ecallmgr_util:build_bridge_string(
+                            [wh_json:set_value(<<"origination_uuid">>, UUID, E)
+                             || E <- Endpoints
+                            ]
+                            ,DialSeparator),
+            BillingId = wh_util:rand_hex_binary(16),
+            J = wh_json:set_value([<<"Custom-Channel-Vars">>, <<"Billing-ID">>]
+                                  ,BillingId
+                                  ,JObj
+                                 ),
+            originate_and_park(J, Node, ServerId, DialStrings, UUID);
+        {error, E} ->
+            lager:debug("failed to create uuid on node ~s: ~p", [Node, E]),
+            Err = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+                   ,{<<"Request">>, JObj}
+                   ,{<<"Errors">>, wh_json:from_list(E)}
+                  ],
+            wh_api:publish_error(ServerId, Err)
+    end;
 originate_to_dialstrings(JObj, Node, ServerId, Endpoints, Action) ->
     UUID = case wh_json:get_value(<<"Outbound-Call-ID">>, JObj) of
                undefined -> create_uuid(Node);
@@ -456,16 +490,4 @@ execute_originate_park(JObj, Node, ServerId, DialStrings, UUID, CtlPid) ->
             wh_api:publish_error(ServerId, E),
             ecallmgr_call_control:stop(CtlPid),
             lager:debug("timed out waiting for FS")
-    end.
-
--spec create_uuid/1 :: (atom()) -> ne_binary().
-create_uuid(Node) ->
-    case freeswitch:api(Node, 'create_uuid', "") of
-        {ok, UUID} -> UUID;
-        {error, _E} ->
-            lager:debug("failed to create_uuid on ~s: ~p", [Node, _E]),
-            wh_util:rand_hex_binary(10);
-        timeout ->
-            lager:debug("failed to create_uuid on ~s: timeout", [Node]),
-            wh_util:rand_hex_binary(10)
     end.

@@ -1,9 +1,0 @@
-{ "0.9.8-05-g6987a0a",
-  [
-    % To upgrade from the specified version to current one.
-  ], [
-    % To downgrade from the current version to the specified one.
-  ]
-}.
-
-% vim:ft=erlang:

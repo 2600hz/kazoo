@@ -1,10 +1,16 @@
+ROOT = ../..
+REBAR = $(ROOT)/bin/rebar
 
 %.beam: %.erl
 	erlc -o t/ $<
 
-all: deps
+all: app
+
+app: compile
+
+compile: 
 	@mkdir -p ebin
-	@./rebar compile
+	@$(REBAR) compile
 
 deps:
 	@rebar get-deps
@@ -16,5 +22,5 @@ check_verbose: t/etap.beam t/util.beam
 	@prove -v t/*.t
 
 clean:
-	@./rebar clean
+	@$(REBAR) clean
 	@rm -f t/*.beam

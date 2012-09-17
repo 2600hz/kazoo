@@ -138,13 +138,13 @@ wait_for_other_leg(_State, aleg, {cdr, aleg, _CDR, State1}) ->
     ts_callflow:finish_leg(State1, ts_callflow:get_aleg_id(State1));
 wait_for_other_leg(_State, bleg, {cdr, bleg, _CDR, State1}) ->
     ts_callflow:finish_leg(State1, ts_callflow:get_bleg_id(State1));
+wait_for_other_leg(_State, Leg, {cdr, _OtherLeg, _CDR, State1}) ->
+    lager:debug("waiting for leg ~s, got cdr for ~s again, ignoring", [Leg, _OtherLeg]),
+    wait_for_other_leg(State1, Leg);
 wait_for_other_leg(_State, Leg, {timeout, State1}) ->
     lager:debug("timed out waiting for ~s CDR, cleaning up", [Leg]),
 
-    ts_callflow:finish_leg(State1, ts_callflow:get_bleg_id(State1));
-wait_for_other_leg(_State, Leg, {cdr, OtherLeg, _CDR, State1}) ->
-    lager:debug("while waiting for cdr for ~s, recv cdr for ~s", [Leg, OtherLeg]),
-    wait_for_other_leg(State1, Leg, ts_callflow:wait_for_cdr(State1)).
+    ts_callflow:finish_leg(State1, ts_callflow:get_bleg_id(State1)).
 
 try_failover(State) ->
     case {ts_callflow:get_control_queue(State), ts_callflow:get_failover(State)} of

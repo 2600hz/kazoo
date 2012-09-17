@@ -18,7 +18,7 @@
          ,delete/2
         ]).
 
--include_lib("crossbar/include/crossbar.hrl").
+-include("include/crossbar.hrl").
 -define(ECALLMGR, <<"ecallmgr">>).
 -define(ECALLMGR_ACLS, <<"acls">>).
 
@@ -115,7 +115,7 @@ validate(Context, _) ->
 -spec delete/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
 delete(Context, Id) ->
     Acls = whapps_config:get(?ECALLMGR, ?ECALLMGR_ACLS),
-    whapps_config:set_default(?ECALLMGR, ?ECALLMGR_ACLS, wh_json:delete_key(Id, Acls)),
+    _ = whapps_config:set_default(?ECALLMGR, ?ECALLMGR_ACLS, wh_json:delete_key(Id, Acls)),
     Context#cb_context{doc=wh_json:new(), resp_data=[], resp_status=success}.
 
 %%--------------------------------------------------------------------
@@ -133,7 +133,7 @@ create(#cb_context{req_data=Data}=Context) ->
             Acls = whapps_config:get(?ECALLMGR, ?ECALLMGR_ACLS),
             Key = mochiweb_util:quote_plus(wh_json:get_value(<<"cidr">>, JObj)),
             Merged = wh_json:set_value(binary:list_to_bin(Key), JObj, Acls),
-            whapps_config:set_default(?ECALLMGR, ?ECALLMGR_ACLS, Merged),
+            _ = whapps_config:set_default(?ECALLMGR, ?ECALLMGR_ACLS, Merged),
             wapi_switch:publish_reloadacl(),
     
             Context#cb_context{doc=JObj, resp_status=success}

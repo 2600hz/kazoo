@@ -9,7 +9,7 @@
 
 -behaviour(supervisor).
 
--include_lib("ecallmgr/src/ecallmgr.hrl").
+-include("ecallmgr.hrl").
 
 -define(SERVER, ?MODULE).
 

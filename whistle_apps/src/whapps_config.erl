@@ -1,13 +1,14 @@
 %%%-------------------------------------------------------------------
-%%% @author Karl Anderson <karl@2600hz.org>
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2012, VoIP INC
 %%% @doc
 %%% @end
-%%% Created : 8 Nov 2011 by Karl Anderson <karl@2600hz.org>
+%%% @contributors
+%%%   Karl Anderson
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(whapps_config).
 
--include_lib("whistle_apps/src/whistle_apps.hrl").
+-include("whistle_apps.hrl").
 
 -export([get/2, get/3, get/4, get_all_kvs/1]).
 -export([get_string/2, get_string/3, get_string/4]).
@@ -26,6 +27,9 @@
 
 -type config_category() :: ne_binary() | nonempty_string() | atom().
 -type config_key() :: ne_binary() | nonempty_string() | atom() | [config_key(),...].
+
+-type fetch_ret() :: {'ok', wh_json:json_object()} |
+                     {'error', 'not_found'}.
 
 %%-----------------------------------------------------------------------------
 %% @public
@@ -278,8 +282,7 @@ set(Category, Key, Value, Node) ->
 %% @end
 %%-----------------------------------------------------------------------------
 -spec set_default/3 :: (config_category(), config_key(), term()) -> {'ok', wh_json:json_object()} | 'ok'.
-set_default(_Category, _Key, undefined) ->
-    ok;
+set_default(_Category, _Key, undefined) -> ok;
 set_default(Category, Key, Value) ->
     do_set(Category, Key, Value, <<"default">>).
 
@@ -342,12 +345,14 @@ import(Category) ->
 %% 3. from a flat file
 %% @end
 %%-----------------------------------------------------------------------------
--spec fetch_category/2 :: (ne_binary(), pid() | atom()) -> {'ok', wh_json:json_object()} |
-                                                           {'error', 'not_found'}.
+-spec fetch_category/2 :: (ne_binary(), atom()) -> fetch_ret().
+                                  
 fetch_category(Category, Cache) ->
     Lookups = [fun fetch_file_config/2
                ,fun fetch_db_config/2
-               ,fun(Cat, C) -> wh_cache:peek_local(C, {?MODULE, Cat}) end
+               ,fun(Cat, C) ->
+                        wh_cache:peek_local(C, category_key(Cat))
+                end
               ],
     lists:foldr(fun(_, {ok, _}=Acc) -> Acc;
                    (F, _) -> F(Category, Cache)
@@ -360,9 +365,12 @@ fetch_category(Category, Cache) ->
 %% cache it
 %% @end
 %%-----------------------------------------------------------------------------
--spec fetch_db_config/2 :: (ne_binary(), pid()) -> {'ok', wh_json:json_object()} | {'error', 'not_found'}.
+-spec fetch_db_config/2 :: (ne_binary(), atom()) -> fetch_ret().
 fetch_db_config(Category, Cache) ->
     lager:debug("fetch db config for ~s", [Category]),
+    fetch_db_config(Category, Cache, wh_cache:fetch_local(Cache, couch_ready_key())).
+
+fetch_db_config(Category, Cache, {ok, true}) ->
     case couch_mgr:open_doc(?WH_CONFIG_DB, Category) of
         {ok, JObj}=Ok ->
             wh_cache:store_local(Cache, category_key(Category), JObj),
@@ -370,7 +378,10 @@ fetch_db_config(Category, Cache) ->
         {error, _E} ->
             lager:debug("could not fetch config ~s from db: ~p", [Category, _E]),
             {error, not_found}
-    end.
+    end;
+fetch_db_config(_Category, _Cache, _) ->
+    lager:debug("couch_mgr not ready to query db"),
+    {'error', 'not_found'}.
 
 %%-----------------------------------------------------------------------------
 %% @private
@@ -379,7 +390,7 @@ fetch_db_config(Category, Cache) ->
 %% save it to the db and cache it
 %% @end
 %%-----------------------------------------------------------------------------
--spec fetch_file_config/2 :: (ne_binary(), pid() | atom()) -> {'ok', wh_json:json_object()}.
+-spec fetch_file_config/2 :: (ne_binary(), atom()) -> {'ok', wh_json:json_object()}.
 fetch_file_config(Category, Cache) ->
     File = category_to_file(Category),
     case file:consult(File) of
@@ -391,8 +402,8 @@ fetch_file_config(Category, Cache) ->
                                 wh_json:merge_jobjs(DefaultConfig, JObj)
                         end,
             update_category_node(Category, <<"default">>, UpdateFun, Cache);
-        {error, _}=E ->
-            lager:debug("initializing category ~s without configuration: ~p", [Category, E]),
+        {error, _E} ->
+            lager:debug("initializing category ~s without configuration: ~p", [Category, _E]),
             UpdateFun = fun(J) ->
                                 wh_json:set_value(<<"default">>, wh_json:new(), J)
                         end,
@@ -405,7 +416,7 @@ fetch_file_config(Category, Cache) ->
 %% convert the result of the file consult into a json object
 %% @end
 %%-----------------------------------------------------------------------------
--spec config_terms_to_json/1 :: (proplist()) -> wh_json:json_object().
+-spec config_terms_to_json/1 :: (wh_proplist()) -> wh_json:json_object().
 config_terms_to_json(Terms) ->
     wh_json:from_list([{wh_util:to_binary(K), V} || {K, V} <- Terms]).
 
@@ -416,7 +427,8 @@ config_terms_to_json(Terms) ->
 %% for the given node
 %% @end
 %%-----------------------------------------------------------------------------
--spec do_set/4 :: (config_category(), config_key(), term(), ne_binary() | atom()) -> {'ok', wh_json:json_object()}.
+-spec do_set/4 :: (config_category(), config_key(), term(), ne_binary() | atom()) ->
+                          {'ok', wh_json:json_object()}.
 do_set(Category, Key, Value, Node) when not is_list(Key) ->
     do_set(Category, [wh_util:to_binary(Key)], Value, Node);
 do_set(Category0, Keys, Value, Node0) ->
@@ -438,7 +450,9 @@ do_set(Category0, Keys, Value, Node0) ->
 %% update the configuration category for a given node in both the db and cache
 %% @end
 %%-----------------------------------------------------------------------------
--spec update_category_node/4 :: (ne_binary(), ne_binary(), fun((wh_json:json_object()) -> wh_json:json_object()) , pid() | atom()) -> {'ok', wh_json:json_object()}.
+-type update_fun() :: fun((wh_json:json_object()) -> wh_json:json_object()).
+-spec update_category_node/4 :: (ne_binary(), ne_binary(), update_fun(), atom()) ->
+                                        {'ok', wh_json:json_object()}.
 update_category_node(Category, Node, UpdateFun, Cache) ->
     DBReady = case wh_cache:fetch_local(Cache, couch_ready_key()) of
                   {ok, true} -> true;
@@ -474,7 +488,8 @@ update_category_node(Category, Node, UpdateFun, Cache) ->
 %% update the entire category in both the db and cache
 %% @end
 %%-----------------------------------------------------------------------------
--spec update_category/3 :: (ne_binary(), wh_json:json_object(), atom()) -> {'ok', wh_json:json_object()}.
+-spec update_category/3 :: (ne_binary(), wh_json:json_object(), atom()) ->
+                                   {'ok', wh_json:json_object()}.
 update_category(Category, JObj, Cache) ->
     lager:debug("updating configuration category ~s", [Category]),
     JObj1 = wh_json:set_value(<<"_id">>, Category, JObj),
@@ -483,8 +498,10 @@ update_category(Category, JObj, Cache) ->
     lager:debug("saved cat ~s to db ~s", [Category, ?WH_CONFIG_DB]),
     cache_jobj(Cache, Category, SavedJObj).
 
--spec cache_jobj/3 :: (atom() | pid(), ne_binary(), wh_json:json_object()) -> {'ok', wh_json:json_object()}.
+-spec cache_jobj/3 :: (atom(), ne_binary(), wh_json:json_object()) ->
+                              {'ok', wh_json:json_object()}.
 cache_jobj(Cache, Category, JObj) ->
+    lager:debug("stored ~s into ~s", [Category, Cache]),
     wh_cache:store_local(Cache, category_key(Category), JObj),
     {ok, JObj}.
 
