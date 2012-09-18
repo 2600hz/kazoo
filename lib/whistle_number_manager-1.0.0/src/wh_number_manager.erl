@@ -217,20 +217,6 @@ reconcile_number(Number, AssignTo, AuthBy) ->
                          wnm_number:save_phone_number_docs(N);
                     ({unauthorized, #number{auth_by=system}=N}) ->
                          wnm_number:save_phone_number_docs(N);
-                    ({unauthorized, #number{auth_by=system}=N}) ->
-                         wnm_number:save_phone_number_docs(N);
-                    ({unauthorized, #number{auth_by=system}=N}) ->
-                         wnm_number:save_phone_number_docs(N);
-                    ({unauthorized, #number{auth_by=system}=N}) ->
-                         wnm_number:save_phone_number_docs(N);
-                    ({unauthorized, #number{auth_by=system}=N}) ->
-                         wnm_number:save_phone_number_docs(N);
-                    ({unauthorized, #number{auth_by=system}=N}) ->
-                         wnm_number:save_phone_number_docs(N);
-                    ({unauthorized, #number{auth_by=system}=N}) ->
-                         wnm_number:save_phone_number_docs(N);
-                    ({unauthorized, #number{auth_by=system}=N}) ->
-                         wnm_number:save_phone_number_docs(N);
                     ({_, #number{}}=E) -> E;
                     (#number{}=N) -> wnm_number:save(N)
                  end

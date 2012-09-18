@@ -9,9 +9,12 @@
 -module(braintree_subscription).
 
 -export([url/0, url/1, url/2]).
--export([new/3]).
+-export([new/2, new/3]).
 -export([get_id/1]).
 -export([get_addon/2]).
+-export([reset/1]).
+-export([reset_discounts/1]).
+-export([reset_addons/1]).
 -export([get_addon_quantity/2]).
 -export([update_addon_amount/3]).
 -export([get_discount/2]).
@@ -63,7 +66,12 @@ url(SubscriptionId, Options) ->
 %% Creates a new subscription record
 %% @end
 %%--------------------------------------------------------------------
+-spec new/2 :: (ne_binary(), ne_binary()) -> #bt_subscription{}.
 -spec new/3 :: (ne_binary(), ne_binary(), ne_binary()) -> #bt_subscription{}.
+
+new(PlanId, PaymentToken) ->
+    new(wh_util:rand_hex_binary(16), PlanId, PaymentToken).
+
 new(SubscriptionId, PlanId, PaymentToken) ->
     #bt_subscription{id=SubscriptionId
                      ,payment_token=PaymentToken
@@ -195,6 +203,8 @@ find(SubscriptionId) ->
 -spec create/1 :: (#bt_subscription{}) -> #bt_subscription{}.
 -spec create/2 :: (ne_binary(), ne_binary()) -> #bt_subscription{}.
 
+create(#bt_subscription{id=undefined}=Subscription) ->
+    create(Subscription#bt_subscription{id=wh_util:rand_hex_binary(16)});
 create(#bt_subscription{}=Subscription) ->
     Url = url(),
     Request = record_to_xml(Subscription, true),
@@ -232,6 +242,38 @@ cancel(SubscriptionId) ->
     Url = url(SubscriptionId, <<"cancel">>),
     _ = braintree_request:put(Url, <<>>),
     #bt_subscription{}.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec reset/1 :: (#bt_subscription{}) -> #bt_subscription{}.
+reset(Subscription) ->
+    lists:foldl(fun(F, S) -> F(S) end, Subscription, [fun reset_addons/1
+                                                      ,fun reset_discounts/1
+                                                     ]).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec reset_addons/1 :: (#bt_subscription{}) -> #bt_subscription{}.
+reset_addons(#bt_subscription{add_ons=AddOns}=Subscription) ->
+    Subscription#bt_subscription{add_ons=[AddOn#bt_addon{quantity=0} || AddOn <- AddOns]}.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec reset_discounts/1 :: (#bt_subscription{}) -> #bt_subscription{}.
+reset_discounts(#bt_subscription{discounts=Discounts}=Subscription) ->
+    Subscription#bt_subscription{discounts=[Discount#bt_discount{quantity=0} || Discount <- Discounts]}.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -422,59 +464,43 @@ record_to_xml(#bt_subscription{}=Subscription, ToString) ->
              ,{'add-ons', create_addon_changes(Subscription#bt_subscription.add_ons)}
              ,{'discounts', create_discount_changes(Subscription#bt_subscription.discounts)}
             ],
-    Conditionals = [fun(#bt_subscription{do_not_inherit=true}, P) ->
-                            case proplists:get_value('options', P) of
-                                undefined ->
-                                    [{'options', [{'do-not-inherit-add-ons-or-discounts', true}]}|P];
-                                Options ->
-                                    [{'options', [{'do-not-inherit-add-ons-or-discounts', true}|Options]}
-                                     |proplists:delete('options', P)
-                                    ]
-                            end;
-                       (_, P) -> P
+    Conditionals = [fun(#bt_subscription{do_not_inherit=Value}, P) ->
+                            update_options('do-not-inherit-add-ons-or-discounts', Value, P)
                     end
-                    ,fun(#bt_subscription{prorate_charges=true}, P) ->
-                             case proplists:get_value('options', P) of
-                                 undefined ->
-                                     [{'options', [{'prorate-charges', true}]}|P];
-                                 Options ->
-                                     [{'options', [{'prorate-charges', true}|Options]}
-                                      |proplists:delete('options', P)
-                                     ]
-                             end;
-                        (_, P) -> P
+                    ,fun(#bt_subscription{prorate_charges=Value}, P) ->
+                            update_options('prorate-charges', Value, P)
                      end
-                    ,fun(#bt_subscription{revert_on_prorate_fail=true}, P) ->
-                             case proplists:get_value('options', P) of
-                                 undefined ->
-                                     [{'options', [{'revert-subscription-on-proration-failure', true}]}|P];
-                                 Options ->
-                                     [{'options', [{'revert-subscription-on-proration-failure', true}|Options]}
-                                      |proplists:delete('options', P)
-                                     ]
-                             end;
-                        (_, P) -> P
+                    ,fun(#bt_subscription{revert_on_prorate_fail=Value}, P) ->
+                            update_options('revert-subscription-on-proration-failure', Value, P)
                      end
-                    ,fun(#bt_subscription{replace_add_ons=true}, P) ->
-                             case proplists:get_value('options', P) of
-                                 undefined ->
-                                     [{'options', [{'replace-all-add-ons-and-discounts', true}]}|P];
-                                 Options ->
-                                     [{'options', [{'replace-all-add-ons-and-discounts', true}|Options]}
-                                      |proplists:delete('options', P)
-                                     ]
-                             end;
-                        (_, P) -> P
+                    ,fun(#bt_subscription{replace_add_ons=Value}, P) ->
+                             update_options('replace-all-add-ons-and-discounts', Value, P)
                      end
-                    ,fun(#bt_subscription{start_immediately=true}, P) ->
-                             [{'options', [{'start-immediately', true}]}|P];
-                        (_, P) -> P
+                    ,fun(#bt_subscription{start_immediately=Value}, P) ->
+                             update_options('start-immediately', Value, P)
                      end
                    ],
     Props1 = lists:foldr(fun(F, P) -> F(Subscription, P) end, Props, Conditionals),
     case ToString of
         true -> make_doc_xml(Props1, 'subscription');
         false -> Props1
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Determine the necessary steps to change the add ons
+%% @end
+%%--------------------------------------------------------------------
+-spec update_options/3 :: (_, _, proplist()) -> proplist().
+update_options(Key, Value, Props) ->
+    case proplists:get_value('options', Props) of
+        undefined ->
+            [{'options', [{Key, Value}]}|Props];
+        Options ->
+            [{'options', [{Key, Value}|Options]}
+             |proplists:delete('options', Props)
+            ]
     end.
 
 %%--------------------------------------------------------------------

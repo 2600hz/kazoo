@@ -131,9 +131,12 @@ allowed_methods(Req0, #cb_context{allowed_methods=Methods}=Context) ->
 check_preflight(Req0, #cb_context{allowed_methods=Methods, req_nouns=[{Mod, Params}|_]}=Context) ->
     Responses = crossbar_bindings:map(<<"v1_resource.allowed_methods.", Mod/binary>>, Params),
     {Method, Req1} = cowboy_http_req:method(Req0),
-    Verb = v1_util:get_http_verb(Method, Context),
+    Allowed = case v1_util:get_http_verb(Method, Context) of
+                <<"options">> = Verb -> ['OPTIONS'];
+                Verb -> v1_util:allow_methods(Responses, Methods, Verb, Method)
+            end,
 
-    case v1_util:allow_methods(Responses, Methods, Verb, Method) of
+    case Allowed of
         [] -> {Methods, Req1, Context#cb_context{req_nouns=[{<<"404">>, []}]}};
         Methods1 ->
             case v1_util:is_cors_preflight(Req1) of

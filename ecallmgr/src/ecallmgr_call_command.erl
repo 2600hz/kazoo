@@ -182,12 +182,12 @@ get_fs_app(Node, UUID, JObj, <<"store">>) ->
                 <<"put">> ->
                     %% stream file over HTTP PUT
                     lager:debug("stream ~s via HTTP PUT", [MediaName]),
-                    stream_over_http(Node, UUID, MediaName, put, JObj),
+                    stream_over_http(Node, UUID, MediaName, put, store, JObj),
                     {<<"store">>, noop};
                 <<"post">> ->
                     %% stream file over HTTP POST
                     lager:debug("stream ~s via HTTP POST", [MediaName]),
-                    stream_over_http(Node, UUID, MediaName, post, JObj),
+                    stream_over_http(Node, UUID, MediaName, post, store, JObj),
                     {<<"store">>, noop};
                 _Method ->
                     %% unhandled method
@@ -204,7 +204,7 @@ get_fs_app(Node, UUID, JObj, <<"store_fax">> = App) ->
             lager:debug("attempting to store fax on ~s: ~s", [Node, File]),
             case wh_json:get_value(<<"Media-Transfer-Method">>, JObj) of
                 <<"put">> ->
-                    stream_over_http(Node, UUID, File, put, JObj),
+                    stream_over_http(Node, UUID, File, put, fax, JObj),
                     {App, noop};
                 _Method ->
                     lager:debug("invalid media transfer method for storing fax: ~s", [_Method]),
@@ -424,57 +424,32 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>) ->
             end
     end;
 
-get_fs_app(_Node, _UUID, JObj, <<"call_pickup">>) ->
+get_fs_app(Node, UUID, JObj, <<"call_pickup">>) ->
     case wapi_dialplan:call_pickup_v(JObj) of
         false -> {'error', <<"intercept failed to execute as JObj did not validate">>};
         true ->
-            ContinueOnFail = wh_json:is_true(<<"Continue-On-Fail">>, JObj, true),
-            ContinueOnCancel = wh_json:is_true(<<"Continue-On-Cancel">>, JObj, true),
-            UnbridgedOnly = wh_json:is_true(<<"Unbridged-Only">>, JObj),
-            UnansweredOnly = wh_json:is_true(<<"Unanswered-Only">>, JObj),
             Target = wh_json:get_value(<<"Target-Call-ID">>, JObj),
-            OtherLeg = wh_json:is_true(<<"Other-Leg">>, JObj),
 
-            Generators = [fun(DP) ->
-                                  case UnbridgedOnly of
-                                      false -> DP;
-                                      true -> [{"application", "set intercept_unbridged_only=true"}|DP]
-                                  end
-                          end
-                          ,fun(DP) ->
-                                   case UnansweredOnly of
-                                       false -> DP;
-                                       true -> [{"application", "set intercept_unanswered_only=true"}|DP]
-                                   end
-                           end
-                          ,fun(DP) ->
-                                   [{"application", "export failure_causes=NORMAL_CLEARING,ORIGINATOR_CANCEL,CRASH"}
-                                    ,{"application", list_to_binary(["export uuid_bridge_continue_on_cancel="
-                                                                     ,wh_util:to_binary(ContinueOnCancel)
-                                                                    ])}
-                                    ,{"application", list_to_binary(["export continue_on_fail="
-                                                                     ,wh_util:to_binary(ContinueOnFail)
-                                                                    ])}
-                                    |DP
-                                   ]
-                           end
-                          ,fun(DP) ->
-                                   
-                                   Arg = case OtherLeg of
-                                             true -> <<"-bleg ", Target/binary>>;
-                                             false -> Target
-                                         end,
-                                   [{"application", <<"intercept ", Arg/binary>>}|DP]
-                           end
-                          ,fun(DP) ->
-                                   Masquerade = ecallmgr_util:create_masquerade_event(<<"intercept">>, <<"CHANNEL_EXECUTE_COMPLETE">>),
-                                   [{"application", Masquerade}
-                                    ,{"application", "park "}
-                                    |DP
-                                   ]
-                           end
-                         ],
-            {<<"xferext">>, lists:foldr(fun(F, DP) -> F(DP) end, [], Generators)}
+            _ = case wh_json:is_true(<<"Park-After-Pickup">>, JObj, false) of
+                    false -> export(Node, UUID, <<"park_after_bridge=false">>);
+                    true ->
+                        _ = set(Node, Target, <<"park_after_bridge=true">>),
+                        set(Node, UUID, <<"park_after_bridge=true">>)
+                end,
+
+            _ = case wh_json:is_true(<<"Continue-On-Fail">>, JObj, true) of
+                    false -> export(Node, UUID, <<"continue_on_fail=false">>);
+                    true -> export(Node, UUID, <<"continue_on_fail=true">>)
+                end,
+
+            _ = case wh_json:is_true(<<"Continue-On-Cancel">>, JObj, true) of
+                    false -> export(Node, UUID, <<"continue_on_cancel=false">>);
+                    true -> export(Node, UUID, <<"continue_on_cancel=true">>)
+                end,
+
+            _ = export(Node, UUID, <<"failure_causes=NORMAL_CLEARING,ORIGINATOR_CANCEL,CRASH">>),
+
+            {<<"call_pickup">>, <<UUID/binary, " ", Target/binary>>}
     end;
 
 get_fs_app(Node, UUID, JObj, <<"execute_extension">>) ->
@@ -640,40 +615,44 @@ get_fs_kv(Key, Val, _) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec stream_over_http/5 :: (atom(), ne_binary(), ne_binary(), 'put' | 'post', wh_json:json_object()) -> any().
-stream_over_http(Node, UUID, File, Method, JObj) ->
+-spec stream_over_http/6 :: (atom(), ne_binary(), ne_binary(), 'put' | 'post', 'store' | 'fax', wh_json:json_object()) -> any().
+stream_over_http(Node, UUID, File, Method, Type, JObj) ->
     Url = wh_util:to_list(wh_json:get_value(<<"Media-Transfer-Destination">>, JObj)),
     lager:debug("streaming via HTTP(~s) to ~s", [Method, Url]),
 
     Args = list_to_binary([Url, <<" ">>, File]),
     lager:debug("execute on node ~s: http_put(~s)", [Node, Args]),
-    case send_fs_store(Node, Args, Method) of
-        {ok, <<"+OK", _/binary>>} ->
-            lager:debug("successfully stored media"),
-            send_store_call_event(Node, UUID, <<"success">>);
-        {ok, Err} ->
-            lager:debug("store media failed: ~s", [Err]),
-            wh_notify:system_alert("Failed to store media file ~s for call ~s on ~s "
-                                   ,[File, UUID, Node]
-                                   ,[{<<"Details">>, Err}]
-                                  ),
-            send_store_call_event(Node, UUID, <<"failure">>);
-        {error, E} ->
-            lager:debug("error executing http_put: ~p", [E]),
-            wh_notify:system_alert("Failed to store media file ~s for call ~s on ~s "
-                                   ,[File, UUID, Node]
-                                   ,[{<<"Details">>, E}]
-                                  ),
-            send_store_call_event(Node, UUID, <<"failure">>);
-        timeout ->
-            lager:debug("timeout waiting for http_put"),
-            wh_notify:system_alert("Failed to store media file ~s for call ~s on ~s "
-                                   ,[File, UUID, Node]
-                                   ,[{<<"Details">>, <<"Timeout sending http_put to node">>}]
-                                  ),
-            send_store_call_event(Node, UUID, <<"timeout">>)
+    Result = case send_fs_store(Node, Args, Method) of
+                 {ok, <<"+OK", _/binary>>} ->
+                     lager:debug("successfully stored media"),
+                     <<"success">>;
+                 {ok, Err} ->
+                     lager:debug("store media failed: ~s", [Err]),
+                     wh_notify:system_alert("Failed to store media file ~s for call ~s on ~s "
+                                            ,[File, UUID, Node]
+                                            ,[{<<"Details">>, Err}]
+                                           ),
+                     <<"failure">>;
+                 {error, E} ->
+                     lager:debug("error executing http_put: ~p", [E]),
+                     wh_notify:system_alert("Failed to store media file ~s for call ~s on ~s "
+                                            ,[File, UUID, Node]
+                                            ,[{<<"Details">>, E}]
+                                           ),
+                     <<"failure">>;
+                 timeout ->
+                     lager:debug("timeout waiting for http_put"),
+                     wh_notify:system_alert("Failed to store media file ~s for call ~s on ~s "
+                                            ,[File, UUID, Node]
+                                            ,[{<<"Details">>, <<"Timeout sending http_put to node">>}]
+                                           ),
+                     <<"timeout">>
+             end,
+    case Type of
+        store -> send_store_call_event(Node, UUID, Result);
+        fax -> send_store_fax_call_event(UUID, Result)
     end.
-
+            
 -spec send_fs_store/3 :: (atom(), ne_binary(), 'put' | 'post') -> fs_api_ret().
 send_fs_store(Node, Args, put) ->
     freeswitch:api(Node, http_put, wh_util:to_list(Args));

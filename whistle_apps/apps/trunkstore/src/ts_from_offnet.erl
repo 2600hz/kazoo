@@ -79,12 +79,11 @@ wait_for_win(State, Command) ->
     end.
 
 send_onnet(State, Command) ->
-    {ok, Payload} = wapi_dialplan:bridge(Command),
-    lager:debug("sending onnet command: ~s", [Payload]),
+    lager:debug("sending onnet command: ~p", [Command]),
 
     CtlQ = ts_callflow:get_control_queue(State),
 
-    amqp_util:callctl_publish(CtlQ, Payload),
+    wapi_dialplan:publish_command(CtlQ, Command),
     wait_for_bridge(State).
 
 wait_for_bridge(State) ->
@@ -109,7 +108,12 @@ wait_for_cdr(State) ->
 
             lager:debug("a-leg CDR for ~s costs ~p", [AcctID, Cost]),
 
-            wait_for_other_leg(State1, bleg);
+            case ts_callflow:get_bleg_id(State1) of
+                <<>> -> 
+                    ALeg = ts_callflow:get_aleg_id(State1),
+                    ts_callflow:finish_leg(State1, ALeg);
+                _Else -> wait_for_other_leg(State1, bleg)
+            end;
         {cdr, bleg, _CDR, State2} ->
             BLeg = ts_callflow:get_bleg_id(State2),
             AcctID = ts_callflow:get_account_id(State2),
@@ -177,22 +181,18 @@ try_failover_sip(State, SIPUri) ->
 
     lager:debug("routing to failover sip uri: ~s", [SIPUri]),
 
-    EndPoint = wh_json:from_list([
-                                  {<<"Invite-Format">>, <<"route">>}
+    EndPoint = wh_json:from_list([{<<"Invite-Format">>, <<"route">>}
                                   ,{<<"Route">>, SIPUri}
                                  ]),
 
     %% since we only route to one endpoint, we specify most options on the endpoint's leg
-    Command = [
-               {<<"Call-ID">>, CallID}
+    Command = [{<<"Call-ID">>, CallID}
                ,{<<"Application-Name">>, <<"bridge">>}
                ,{<<"Endpoints">>, [EndPoint]}
                | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
 
-    {ok, Payload} = wapi_dialplan:bridge(Command),
-
-    amqp_util:targeted_publish(CtlQ, Payload, <<"application/json">>),
+    wapi_dialplan:publish_command(CtlQ, Command),
     wait_for_bridge(ts_callflow:set_failover(State, wh_json:new())).
 
 try_failover_e164(State, ToDID) ->

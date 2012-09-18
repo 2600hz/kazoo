@@ -48,7 +48,7 @@ start_link() ->
 
 handle_media_req(JObj, _Props) ->
     true = wapi_media:req_v(JObj),
-    wh_util:put_callid(JObj),
+    _ = wh_util:put_callid(JObj),
 
     lager:debug("recv media req for msg id: ~s", [wh_json:get_value(<<"Msg-ID">>, JObj)]),
 

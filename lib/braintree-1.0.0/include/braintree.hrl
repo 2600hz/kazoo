@@ -59,12 +59,13 @@
 -define(BT_TRANS_CVV, <<"cvv">>).
 -define(BT_TRANS_DUP, <<"duplicate">>).
 
-
 -define(BT_ACTIVE, <<"Active">>).
 -define(BT_CANCELED, <<"Canceled">>).
 -define(BT_EXPIRED, <<"Expired">>).
 -define(BT_PAST_DUE, <<"Past Due">>).
 -define(BT_PENDING, <<"Pending">>).
+
+-define(BT_ACTIVE_STATUSES, [?BT_ACTIVE, ?BT_PENDING, ?BT_PAST_DUE]). 
 
 -record(bt_address, {id = 'undefined' :: 'undefined' | ne_binary()
                      ,customer_id = 'undefined' :: 'undefined' | ne_binary()
@@ -153,10 +154,9 @@
                           ,trial_period = 'undefined' :: 'undefined' | ne_binary()
                           ,add_ons = [] :: [#bt_addon{},...] | []
                           ,discounts = [] :: [#bt_discount{},...] | []
-%%                          ,discounts = 'undefined' :: 'undefined' | ne_binary()
                           ,descriptor = 'undefined' :: 'undefined' | ne_binary()
                           ,transactions = 'undefined' :: 'undefined' | ne_binary()
-                          ,do_not_inherit = 'false' :: boolean()
+                          ,do_not_inherit = 'true' :: boolean()
                           ,start_immediately = 'true' :: boolean()
                           ,prorate_charges = 'true' :: boolean()
                           ,revert_on_prorate_fail = 'true' :: boolean()

@@ -27,6 +27,8 @@
 
 -type wh_deeplist() :: [term() | wh_deeplist()].
 
+-type wh_std_return() :: {'ok', _} | {'error', _}.
+
 %% non-empty binary
 -define(NE_BINARY, <<_:8,_/binary>>).
 -type ne_binary() :: <<_:8,_:_*8>>.

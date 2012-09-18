@@ -8,6 +8,7 @@
 -define(WH_RATES_DB, <<"ratedeck">>).
 -define(WH_PROVISIONER_DB, <<"global_provisioner">>).
 -define(WH_FAXES, <<"faxes">>).
+-define(WH_SERVICES_DB, <<"services">>).
 
 -define(WH_ACCOUNT_CONFIGS, <<"configs_">>).
 

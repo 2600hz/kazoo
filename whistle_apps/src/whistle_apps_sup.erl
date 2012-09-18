@@ -41,6 +41,7 @@
                    ,{whistle_couch_sup, supervisor}
                    ,{?WHAPPS_AMQP_POOL, pool}
                    ,{whapps_controller, worker}
+                   ,{whistle_services_sup, supervisor}
                   ]).
 
 %% ===================================================================

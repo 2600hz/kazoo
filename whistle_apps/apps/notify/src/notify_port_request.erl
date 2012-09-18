@@ -31,9 +31,9 @@
 -spec init/0 :: () -> 'ok'.
 init() ->
     %% ensure the vm template can compile, otherwise crash the processes
-    notify_util:compile_default_text_template(?DEFAULT_TEXT_TMPL, ?MOD_CONFIG_CAT),
-    notify_util:compile_default_html_template(?DEFAULT_HTML_TMPL, ?MOD_CONFIG_CAT),
-    notify_util:compile_default_subject_template(?DEFAULT_SUBJ_TMPL, ?MOD_CONFIG_CAT),
+    {ok, _} = notify_util:compile_default_text_template(?DEFAULT_TEXT_TMPL, ?MOD_CONFIG_CAT),
+    {ok, _} = notify_util:compile_default_html_template(?DEFAULT_HTML_TMPL, ?MOD_CONFIG_CAT),
+    {ok, _} = notify_util:compile_default_subject_template(?DEFAULT_SUBJ_TMPL, ?MOD_CONFIG_CAT),
     lager:debug("init done for ~s", [?MODULE]).
 
 %%--------------------------------------------------------------------
@@ -95,7 +95,22 @@ create_template_props(Event, Account) ->
      ,{<<"account">>, notify_util:json_to_template_props(Account)}
      ,{<<"admin">>, notify_util:json_to_template_props(Admin)}
      ,{<<"service">>, notify_util:get_service_props(Account, ?MOD_CONFIG_CAT)}
+     ,{<<"send_from">>, get_send_from(Admin)}
     ].
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec get_send_from/1 :: (wh_json:json_object()) -> ne_binary().
+get_send_from(Admin) ->
+    DefaultFrom = wh_util:to_binary(node()),
+    case whapps_config:get_is_true(?MOD_CONFIG_CAT, <<"send_from_admin_email">>, true) of
+        false -> DefaultFrom;
+        true -> wh_json:get_ne_value(<<"email">>, Admin, DefaultFrom)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -105,7 +120,7 @@ create_template_props(Event, Account) ->
 %%--------------------------------------------------------------------
 -spec build_and_send_email/6 :: (iolist(), iolist(), iolist(), ne_binary() | [ne_binary(),...], proplist(), list()) -> 'ok'.
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props, Attachements) when is_list(To)->
-    [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props, Attachements) || T <- To],
+    _ = [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props, Attachements) || T <- To],
     ok;
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props, Attachements) ->
     Service = props:get_value(<<"service">>, Props),

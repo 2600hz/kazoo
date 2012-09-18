@@ -10,6 +10,12 @@
         },
         "listing_by_type": {
             "map":"function(doc) { if(!doc.pvt_deleted) { if (doc.pvt_type == 'user') emit(doc.pvt_type, {'name': doc.first_name + ' ' + doc.last_name}); else if (doc.pvt_type == 'callflow') emit(doc.pvt_type, {'numbers': doc.numbers, 'patterns': doc.patterns}); else emit(doc.pvt_type, {'name': doc.name}); } }"
-        }
+        },
+       "listing_by_ctime": {
+           "map": "function(doc) { if(doc.pvt_deleted) return; emit(doc.pvt_created, null); }"
+       },
+       "listing_by_mtime": {
+           "map": "function(doc) { if(doc.pvt_deleted) return; emit(doc.pvt_modified, null); }"
+       }
     }
 }

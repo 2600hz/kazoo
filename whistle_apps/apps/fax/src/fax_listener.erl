@@ -23,7 +23,14 @@
          ,code_change/3
         ]).
 
+
 -include("fax.hrl").
+
+-define(BINDINGS, [{fax, []}]).
+-define(RESPONDERS, [{{?MODULE, new_request}, {<<"*">>, <<"*">>}}]).
+-define(QUEUE_NAME, <<"fax_listener">>).
+-define(QUEUE_OPTIONS, [{exclusive, false}]).
+-define(CONSUME_OPTIONS, [{exclusive, false}]).
 
 %%%===================================================================
 %%% API
@@ -38,10 +45,12 @@
 %%--------------------------------------------------------------------
 -spec start_link/0 :: () -> startlink_ret().
 start_link() ->
-    gen_listener:start_link(?MODULE, [{bindings, [{fax, []}]}
-                                      ,{responders, [{{?MODULE, new_request}
-                                                      ,{<<"*">>, <<"*">>}}
-                                                    ]}
+    gen_listener:start_link(?MODULE, [{bindings, ?BINDINGS}
+                                      ,{responders, ?RESPONDERS}
+                                      ,{queue_name, ?QUEUE_NAME}       % optional to include
+                                      ,{queue_options, ?QUEUE_OPTIONS} % optional to include
+                                      ,{consume_options, ?CONSUME_OPTIONS} % optional to include
+                                      ,{basic_qos, 1}                % only needed if prefetch controls
                                      ], []).
 
 -spec new_request/3 :: (wh_json:json_object(), proplist(), _) -> sup_startchild_ret().

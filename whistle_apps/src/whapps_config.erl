@@ -206,22 +206,28 @@ get(Category0, Keys, Default, Node0) ->
     Node = wh_util:to_binary(Node0),
     case fetch_category(Category, ?WHAPPS_CONFIG_CACHE) of
         {ok, JObj} ->
-            case wh_json:get_value([Node | Keys], JObj) of
-                undefined ->
-                    case wh_json:get_value([<<"default">> | Keys], JObj) of
-                        undefined ->
-                            lager:debug("missing key ~s(~s) ~p: ~p", [Category, Node, Keys, Default]),
-                            _ = set_default(Category, Keys, Default),
-                            Default;
-                        Else -> Else
-                    end;
-                Else ->
-                    lager:debug("fetched config ~s(~s) ~p: ~p", [Category, Node, Keys, Else]),
-                    Else
-            end;
+            fetch_value(Category, Node, Keys, Default, JObj);
         {error, _} ->
             lager:debug("missing category ~s(default) ~p: ~p", [Category, Keys, Default]),
             Default
+    end.
+
+-spec fetch_value/5 :: (config_category(), config_key(), config_key(), Default, wh_json:json_object()) ->
+                               Default | term().
+fetch_value(Category, Node, Keys, Default, JObj) ->
+    case wh_json:get_value([Node | Keys], JObj) of
+        undefined -> fetch_default_value(Category, Keys, Default, JObj);
+        Else -> Else
+    end.
+
+-spec fetch_default_value/4 :: (config_category(), config_key(), Default, wh_json:json_object()) ->
+                                       Default | term().
+fetch_default_value(Category, Keys, Default, JObj) ->
+    case wh_json:get_value([<<"default">> | Keys], JObj) of
+        undefined ->
+            _ = set_default(Category, Keys, Default),
+            Default;
+        Else -> Else
     end.
 
 %%-----------------------------------------------------------------------------
@@ -230,28 +236,25 @@ get(Category0, Keys, Default, Node0) ->
 %% get all Key-Value pairs for a given category
 %% @end
 %%-----------------------------------------------------------------------------
--spec get_all_kvs/1 :: (ne_binary()) -> proplist().
+-spec get_all_kvs/1 :: (ne_binary()) -> wh_proplist().
 get_all_kvs(Category) ->
     case fetch_category(Category, ?WHAPPS_CONFIG_CACHE) of
-        {error, _} ->
-            lager:debug("missing category ~s(~s)", [Category, "default"]),
-            [];
-        {ok, JObj} ->
-            Node = wh_util:to_binary(node()),
-            case wh_json:get_value(Node, JObj) of
-                undefined ->
-                    case wh_json:get_value(<<"default">>, JObj) of
-                        undefined ->
-                            lager:debug("missing category ~s(~s)", [Category, Node]),
-                            [];
-                        DefJObj ->
-                            lager:debug("fetched configs ~s(~s)", [Category, "default"]),
-                            wh_json:to_proplist(DefJObj)
-                    end;
-                NodeJObj ->
-                    lager:debug("fetched configs ~s(~s)", [Category, Node]),
-                    wh_json:to_proplist(NodeJObj)
-            end
+        {error, _} -> [];
+        {ok, JObj} -> get_all_kvs(wh_util:to_binary(node()), JObj)
+    end.
+
+-spec get_all_kvs/2 :: (ne_binary(), wh_json:json_object()) -> wh_proplist().
+get_all_kvs(Node, JObj) ->
+    case wh_json:get_value(Node, JObj) of
+        undefined -> get_all_default_kvs(JObj);
+        NodeJObj -> wh_json:to_proplist(NodeJObj)
+    end.
+
+-spec get_all_default_kvs/1 :: (wh_json:json_object()) -> wh_proplist().
+get_all_default_kvs(JObj) ->
+    case wh_json:get_value(<<"default">>, JObj) of
+        undefined -> [];
+        DefJObj -> wh_json:to_proplist(DefJObj)
     end.
 
 %%-----------------------------------------------------------------------------

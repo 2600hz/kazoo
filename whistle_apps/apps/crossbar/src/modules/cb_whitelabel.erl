@@ -134,7 +134,7 @@ authenticate(_) ->
 content_types_provided(#cb_context{req_verb = <<"get">>}=Context, ?LOGO_REQ) ->
     case load_whitelabel_meta(?WHITELABEL_ID, Context) of
         #cb_context{resp_status=success, doc=JObj} ->
-            case wh_json:get_keys(wh_json:get_value([<<"_attachments">>], JObj)) of
+            case wh_json:get_keys(wh_json:get_value([<<"_attachments">>], JObj, wh_json:new())) of
                 [] -> Context;
                 [Attachment|_] ->
                     CT = wh_json:get_value([<<"_attachments">>, Attachment, <<"content_type">>], JObj),
@@ -387,7 +387,7 @@ update_whitelabel_meta(WhitelabelId, #cb_context{req_data=Data, account_id=Accou
 load_whitelabel_binary(WhitelabelId, #cb_context{resp_headers=RespHeaders}=Context) ->
     case load_whitelabel_meta(WhitelabelId, Context) of
         #cb_context{resp_status=success, doc=JObj} ->
-            WhitelabelMeta = wh_json:get_value([<<"_attachments">>], JObj),
+            WhitelabelMeta = wh_json:get_value([<<"_attachments">>], JObj, wh_json:new()),
             case wh_json:get_keys(WhitelabelMeta) of
                 [] -> crossbar_util:response_bad_identifier(WhitelabelId, Context);
                 [Attachment|_] ->

@@ -72,3 +72,8 @@ fault-facility_trouble: Due to telephone company facility trouble your call can 
 fault-can_not_be_completed_at_this_time: Your call can not be completed at this time. Please try again later.
 
 ivr-group_confirm: This is a forwarded call. Press 1 to accept, or hangup to ignore.
+
+disa-enter_pin: Please enter your system access pin, then press pound.
+disa-invalid_pin: Invalid pin number.
+disa-retries_exceeded: I'm sorry; there have been to many attempts with incorrect pins, goodbye.
+disa-invalid_extension: Unable to find extension, please try again.

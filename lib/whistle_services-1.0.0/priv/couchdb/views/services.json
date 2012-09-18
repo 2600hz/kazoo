@@ -1,0 +1,17 @@
+{
+   "_id": "_design/services",
+   "language": "javascript",
+   "views": {
+       "cascade_quantities": {
+           "map": "function (doc) {if (doc.pvt_type != 'service' || doc.pvt_deleted || !doc.quantities || doc.billing_id == doc._id) return;for (var key in doc.quantities) {var obj = doc.quantities[key];for (var prop in obj) {if (obj[prop] < 1) continue;for (var idx in doc.pvt_tree) {emit([doc.pvt_tree[idx] || doc._id, key, prop], obj[prop]);}}}}",
+           "reduce": "_sum"
+       },
+       "dirty": {
+           "map": "function (doc) {if (doc.pvt_type != 'service' || !doc.pvt_dirty) return; emit(doc.pvt_modified, null); }"
+       },
+       "reseller_quantities": {
+           "map": "function (doc) {if (doc.pvt_type != 'service' || doc.pvt_deleted || !doc.quantities) return;for (var key in doc.quantities) {var obj = doc.quantities[key];for (var prop in obj) {if (obj[prop] < 1) continue; emit([doc.pvt_reseller_id, key, prop], obj[prop]);}}}",
+           "reduce": "_sum"
+       }
+   }
+}

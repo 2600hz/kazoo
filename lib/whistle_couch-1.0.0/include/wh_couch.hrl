@@ -1,3 +1,4 @@
+-ifndef(WH_COUCH_HRL).
 -include_lib("whistle/include/wh_types.hrl"). % get the whistle types
 -include_lib("couchbeam/include/couchbeam.hrl").
 -include_lib("whistle/include/wh_log.hrl").
@@ -38,3 +39,6 @@
 -define(CONFIG_FILE_PATH, [code:priv_dir(whistle_couch), "/startup.config"]).
 
 -define(WH_COUCH_CACHE, whistle_couch_cache).
+
+-define(WH_COUCH_HRL, true).
+-endif.

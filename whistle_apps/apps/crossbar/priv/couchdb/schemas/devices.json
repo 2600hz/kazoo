@@ -281,7 +281,7 @@
          "type":"object",
          "properties":{
             "realm":{
-               "name":"Reaml (sip)",
+               "name":"Realm (sip)",
                "type":"string",
                "description":"The realm this device should use, overriding the account realm"
             },
@@ -321,7 +321,7 @@
                "maxLength":32
             },
             "invite_format":{
-               "name":"Invit Format (sip)",
+               "name":"Invite Format (sip)",
                "type":"string",
                "required":true,
                "enum":[
@@ -342,7 +342,7 @@
             "registration_expiration":{
                "name":"Registration Expiration (sip)",
                "type":"integer",
-               "description":"The time in seconds to force registrations to expire",
+               "description":"The time, in seconds, to force registrations to expire",
                "default":300
             },
             "ip":{

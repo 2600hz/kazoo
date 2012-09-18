@@ -13,7 +13,7 @@
 
 -define(WNM_USER_AGENT, "Whistle Number Manager 1.0.0").
 
--define(WNM_DEAFULT_TOLLFREE_RE, "^(\\+?1)?(8[1-4,9]\\d{8}|80[1-9]\\d{7}|85[1-4,6-9]\\d{7}|86[1-5,7-9]\\d{7}|87[1-6,8-9]\\d{7}|88[1-7,9]\\d{7}|([1-7,9]\\d{9}))$").
+-define(WNM_DEAFULT_TOLLFREE_RE, <<"^\\+1(800|888|877|866|855)\\d{7}$">>).
 
 -define(WNM_PHONE_NUMBER_DOC, <<"phone_numbers">>).
 

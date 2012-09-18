@@ -23,7 +23,6 @@
 -export([create_account/1
          ,get_realm_from_db/1
          ,ensure_parent_set/0
-         ,add_pvt_service_plan/2
         ]).
 
 -include_lib("crossbar/include/crossbar.hrl").
@@ -201,8 +200,8 @@ post(#cb_context{doc=Doc}=Context, AccountId) ->
                                                       ,doc=wh_json:set_value(<<"_rev">>, Rev, Doc)
                                                      }) of
                 #cb_context{resp_status=success, doc=Doc1}=Context1 ->
-                    couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, wh_json:set_value(<<"_rev">>, AccountsRev, Doc1)),
-                    Context1;
+                    _ = couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, wh_json:set_value(<<"_rev">>, AccountsRev, Doc1)),
+                    support_depreciated_billing_id(wh_json:get_value(<<"billing_id">>, Doc1), AccountId, Context1);
                 Else ->
                     Else
             end;
@@ -212,7 +211,7 @@ post(#cb_context{doc=Doc}=Context, AccountId) ->
                                                      }) of
                 #cb_context{resp_status=success, doc=Doc1}=Context1 ->
                     couch_mgr:ensure_saved(?WH_ACCOUNTS_DB, wh_json:set_value(<<"_rev">>, AccountsRev, Doc1)),
-                    Context1;
+                    support_depreciated_billing_id(wh_json:get_value(<<"billing_id">>, Doc1), AccountId, Context1);
                 Else ->
                     Else
             end
@@ -229,31 +228,61 @@ put(Context, _) ->
 delete(Context, AccountId) ->
     _ = crossbar_util:put_reqid(Context),
     %% dont use the account id in cb_context as it may not represent the db_name...
-    DbName = wh_util:format_account_id(AccountId, encoded),
-    try
-        ok = wh_number_manager:free_numbers(AccountId),
-        %% Ensure the DB that we are about to delete is an account
-        case couch_mgr:open_doc(DbName, AccountId) of
-            {ok, JObj1} ->
-                ?PVT_TYPE = wh_json:get_value(<<"pvt_type">>, JObj1),
-                lager:debug("opened ~s in ~s", [DbName, AccountId]),
-                true = couch_mgr:db_delete(DbName),
-                lager:debug("deleted db ~s", [DbName]);
-            _ -> ok
-        end,
-        _ = case couch_mgr:open_doc(?WH_ACCOUNTS_DB, AccountId) of
-                {ok, JObj2} ->
-                    crossbar_doc:delete(Context#cb_context{db_name=?WH_ACCOUNTS_DB
-                                                           ,doc=JObj2
-                                                          });
-                _ -> ok
-            end,
-        _ = (catch braintree_customer:delete(AccountId)),
-        Context
-    catch
-        _:_E ->
-            lager:debug("exception while deleting account: ~p", [_E]),
-            crossbar_util:response_bad_identifier(AccountId, Context)
+    AccountDb = wh_util:format_account_id(AccountId, encoded),
+    delete_stop_if_decedants(AccountId, AccountDb, Context).
+
+delete_stop_if_decedants(AccountId, AccountDb, Context) ->
+    ViewOptions = [{<<"startkey">>, [AccountId]}
+                   ,{<<"endkey">>, [AccountId, wh_json:new()]}
+                  ],
+    case couch_mgr:get_results(?WH_ACCOUNTS_DB, ?AGG_VIEW_DESCENDANTS, ViewOptions) of
+        {error, _} -> crossbar_util:response(error, <<"unable to count descendants">>, 500, Context);
+        {ok, JObjs} -> 
+            case [JObj || JObj <- JObjs, wh_json:get_value(<<"id">>, JObj) =/= AccountId] of
+                [] -> delete_free_numbers(AccountId, AccountDb, Context);
+                _Else ->
+                    crossbar_util:response(error, <<"account has descendants">>, 400, Context)
+            end
+    end.
+
+delete_free_numbers(AccountId, AccountDb, Context) ->
+    case wh_number_manager:free_numbers(AccountId) of
+        ok -> delete_remove_services(AccountId, AccountDb, Context);
+        _ -> crossbar_util:response(error, <<"unable to free numbers">>, 500, Context)
+    end.
+
+delete_remove_services(AccountId, AccountDb, Context) ->
+    case wh_services:delete(AccountId) of
+        {ok, _} -> delete_remove_db(AccountId, AccountDb, Context);
+        _ -> crossbar_util:response(error, <<"unable to cancel services">>, 500, Context)
+    end.
+
+delete_remove_db(AccountId, AccountDb, Context) ->
+   Removed = case couch_mgr:open_doc(AccountDb, AccountId) of
+                 {ok, _} -> couch_mgr:db_delete(AccountDb);
+                 {error, not_found} -> true;
+                 {error, _R} ->
+                     lager:debug("failed to open account defintion ~s: ~p", [AccountId, _R]),
+                     false
+             end,    
+    case Removed of
+        true ->
+            lager:debug("deleted db ~s", [AccountDb]),
+            delete_remove_from_accounts(AccountId, AccountDb, Context);
+        false ->
+            lager:debug("failed to remove database ~s", [AccountDb]),
+            crossbar_util:response(error, <<"unable to remove database">>, 500, Context)
+    end.
+
+delete_remove_from_accounts(AccountId, _, Context) ->
+    case couch_mgr:open_doc(?WH_ACCOUNTS_DB, AccountId) of
+        {ok, JObj} ->
+            crossbar_doc:delete(Context#cb_context{db_name=?WH_ACCOUNTS_DB
+                                                   ,doc=JObj
+                                                  });
+        {error, not_found} -> crossbar_util:response(wh_json:new(), Context);
+        {error, _R} ->
+            crossbar_util:response(error, <<"unable to remove account definition">>, 500, Context)
     end.
 
 %%--------------------------------------------------------------------
@@ -307,7 +336,7 @@ create_account(#cb_context{req_data=ReqData}=Context, ParentId) ->
 -spec load_account/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
 load_account(AccountId, Context) ->
     #cb_context{resp_data=RespData, doc=Doc}=Context1=crossbar_doc:load(AccountId, Context),
-    PvtIncludes=[<<"pvt_wnm_allow_additions">>],
+    PvtIncludes=[<<"pvt_wnm_allow_additions">>, <<"pvt_superduper_admin">>],
     RespData1 = lists:foldl(fun(<<"pvt_", Key/binary>> = Pvt, Data) ->
                                     case wh_json:get_ne_value(Pvt, Doc) of
                                         undefined ->
@@ -440,7 +469,6 @@ set_private_fields(JObj0, Context, undefined) ->
                 end, JObj0, [fun add_pvt_type/2
                              ,fun add_pvt_api_key/2
                              ,fun add_pvt_tree/2
-                             ,fun add_pvt_service_plan/2
                             ]);
 set_private_fields(JObj0, Context, ParentId) ->
     case is_binary(ParentId) andalso couch_mgr:open_doc(wh_util:format_account_id(ParentId, encoded), ParentId) of
@@ -455,7 +483,6 @@ set_private_fields(JObj0, Context, ParentId) ->
                                      ,fun add_pvt_api_key/2
                                      ,AddPvtTree
                                      ,AddPvtEnabled
-                                     ,fun add_pvt_service_plan/2
                                     ]);
         false ->
             set_private_fields(JObj0, Context, undefined);
@@ -494,16 +521,6 @@ add_pvt_tree(JObj, #cb_context{auth_doc=Token}) ->
             lager:debug("setting parent tree to [~s]", [AuthAccId]),
             wh_json:set_value(<<"pvt_tree">>, [AuthAccId]
                               ,wh_json:set_value(<<"pvt_enabled">>, false, JObj))
-    end.
-
-
-add_pvt_service_plan(JObj, _) ->
-    case catch wh_reseller:set_service_plans(wh_json:delete_key(<<"service_plan">>, JObj)
-                                             ,wh_json:get_ne_value(<<"service_plan">>, JObj)) of
-        {'EXIT', _E} ->
-            lager:info("failed to set service plans: ~p", [_E]),
-            wh_json:delete_key(<<"service_plan">>, JObj);
-        JObj1 -> JObj1
     end.
 
 %%--------------------------------------------------------------------
@@ -636,6 +653,29 @@ notfy_new_account(#cb_context{doc = JObj}) ->
               | wh_api:default_headers(?APP_VERSION, ?APP_NAME)
              ],
     wapi_notifications:publish_new_account(Notify).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Support the depreciated billing id on the account definition, will 
+%% be phased out shortly
+%% @end
+%%--------------------------------------------------------------------
+-spec support_depreciated_billing_id/3 :: (ne_binary(), ne_binary(), #cb_context{}) -> #cb_context{}.
+support_depreciated_billing_id(undefined, _, Context) ->
+    Context;
+support_depreciated_billing_id(BillingId, AccountId, Context) ->
+    io:format("~p ~p~n", [BillingId, AccountId]),
+    try wh_services:set_billing_id(BillingId, AccountId) of
+        undefined -> Context;
+        Services ->
+            _ = wh_services:save(Services),
+            Context
+    catch
+        throw:{Error, Reason} ->
+            R = wh_json:set_value([<<"billing_id">>, <<"invalid">>], Reason, wh_json:new()),
+            crossbar_util:response(error, wh_util:to_binary(Error), 400, R, Context)
+    end.
 
 %% for testing purpose, don't forget to export !
 %% is_unique_realm({AccountId, Realm}) -> is_unique_realm(AccountId, #cb_context{}, Realm).

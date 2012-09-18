@@ -75,7 +75,7 @@ attempt_to_fulfill_bridge_req(Number, CtrlQ, JObj, Props) ->
                      lager:debug("found local extension, keeping onnet"),
                      execute_local_extension(Number, AccountId, CtrlQ, JObj);
                  _ ->
-                     Flags = wh_json:get_value(<<"Flags">>, JObj),
+                     Flags = wh_json:get_value(<<"Flags">>, JObj, []),
                      Resources = props:get_value(resources, Props),
                      {Endpoints, IsEmergency} = find_endpoints(Number, Flags, Resources),
                      bridge_to_endpoints(Endpoints, IsEmergency, CtrlQ, JObj)
@@ -90,7 +90,7 @@ attempt_to_fulfill_bridge_req(Number, CtrlQ, JObj, Props) ->
 
 -spec attempt_to_fulfill_originate_req/3 :: (ne_binary(), wh_json:json_object(), proplist()) -> originate_resp().
 attempt_to_fulfill_originate_req(Number, JObj, Props) ->
-    Flags = wh_json:get_value(<<"Flags">>, JObj),
+    Flags = wh_json:get_value(<<"Flags">>, JObj, []),
     Resources = props:get_value(resources, Props),
     {Endpoints, _} = find_endpoints(Number, Flags, Resources),
     case {originate_to_endpoints(Endpoints, JObj), correct_shortdial(Number, JObj)} of
@@ -146,7 +146,7 @@ bridge_to_endpoints(Endpoints, IsEmergency, CtrlQ, JObj) ->
 
     AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
     Updates = [{<<"Account-ID">>, AccountId}
-               ,{<<"Reseller-ID">>, wh_reseller:find_reseller_id(AccountId)}
+               ,{<<"Reseller-ID">>, wh_services:find_reseller_id(AccountId)}
                ,{<<"From-URI">>, FromURI}
                ,{<<"Ignore-Display-Updates">>, <<"true">>}
                ,{<<"Global-Resource">>, <<"true">>}
@@ -209,7 +209,7 @@ originate_to_endpoints(Endpoints, JObj) ->
 
     AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
     Updates = [{<<"Account-ID">>, AccountId}
-               ,{<<"Reseller-ID">>, wh_reseller:find_reseller_id(AccountId)}
+               ,{<<"Reseller-ID">>, wh_services:find_reseller_id(AccountId)}
                ,{<<"From-URI">>, FromURI}
                ,{<<"Global-Resource">>, <<"true">>}
               ],
@@ -258,7 +258,7 @@ execute_local_extension(Number, AccountId, CtrlQ, JObj) ->
                                    ,wh_json:get_ne_value(<<"Emergency-Caller-ID-Name">>, JObj)),
 
     CCVs = [{<<"Account-ID">>, AccountId}
-            ,{<<"Reseller-ID">>, wh_reseller:find_reseller_id(AccountId)}
+            ,{<<"Reseller-ID">>, wh_services:find_reseller_id(AccountId)}
             ,{<<"Inception">>, <<"off-net">>}
             ,{<<"Retain-CID">>, <<"true">>}
             ,{<<"Caller-ID-Number">>, CIDNum}

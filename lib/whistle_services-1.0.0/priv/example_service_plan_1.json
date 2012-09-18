@@ -1,0 +1,127 @@
+{
+   "_id": "968dc36503bcb05f798d9530016f311f",
+   "_rev": "45-e0a49ed498cd6884dc8262b98cc6188d",
+   "name": "Direct Web Signups, No Support",
+   "pvt_type": "service_plan",
+   "description": "",
+   "plan": {
+       "phone_numbers": {
+           "did_us": {
+               "name": "US DID",
+               "rate": 1,
+               "discounts": {
+                   "cumulative": {
+                       "maximum": 2,
+                       "rate": 0.5
+                   }
+               },
+               "cascade": false
+           },
+           "tollfree_us": {
+               "name": "US Tollfree",
+               "rate": 5,
+               "cascade": true,
+               "minimum": 10
+           }
+       },
+       "number_services": {
+           "cnam": {
+               "name": "CNAM Update",
+               "activation_charge": 2
+           },
+           "port": {
+               "name": "Port Request",
+               "activation_charge": 5
+           },
+           "e911": {
+               "name": "E911 Service",
+               "rate": 5,
+               "discounts": {
+                   "single": {
+                       "rate": 5
+                   }
+               }
+           }
+       },
+       "limits": {
+           "twoway_trunks": {
+               "name": "Two-Way Trunk",
+               "rate": 29.99
+           },
+           "inbound_trunks": {
+               "name": "Inbound Trunk",
+               "rate": 19.99
+           }
+       },
+       "devices": {
+           "_all": {
+               "name": "SIP Device",
+               "as": "sip_devices",
+               "cascade": true,
+               "rates": {
+                   "5": 0,
+                   "20": 24.95,
+                   "50": 49.95,
+                   "100": 149.95
+               }
+           }
+       },
+       "users": {
+           "_all": {
+               "name": "System User",
+               "as": "users",
+               "exceptions": [
+                   "admins"
+               ],
+               "rates": {
+                   "5": 0,
+                   "20": 24.95,
+                   "50": 49.95,
+                   "100": 149.95
+               }
+           }
+       }
+   },
+   "bookkeepers": {
+       "braintree": {
+           "phone_numbers": {
+               "did_us": {
+                   "plan": "SIP_Services",
+                   "addon": "did_us",
+                   "discounts": {
+                       "cumulative": "discount_did_us"
+                   }
+               },
+               "tollfree_us": {
+                   "plan": "SIP_Services",
+                   "addon": "tollfree_us"
+               }
+           },
+           "number_services": {
+               "e911": {
+                   "plan": "SIP_Services",
+                   "addon": "tollfree_us",
+                   "discounts": {
+                       "single": "discount_e911"
+                   }
+               }
+           },
+           "limits": {
+               "twoway_trunks": {
+                   "plan": "SIP_Services",
+                   "addon": "twoway_trunk"
+               },
+               "inbound_trunks": {
+                   "plan": "SIP_Services",
+                   "addon": "inbound_trunk"
+               }
+           },
+           "devices": {
+               "sip_devices": {
+                   "plan": "SIP_Services",
+                   "addon": "sip_device"
+               }
+           }
+       }
+   }
+}

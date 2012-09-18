@@ -782,8 +782,8 @@ b_record(MediaName, Terminators, TimeLimit, SilenceThreshold, SilenceHits, Call)
 -spec record_call/2 :: (ne_binary(), whapps_call:call()) -> 'ok'.
 -spec record_call/3 :: (ne_binary(), ne_binary(), whapps_call:call()) -> 'ok'.
 -spec record_call/4 :: (ne_binary(), ne_binary(),  whapps_api_binary(), whapps_call:call()) -> 'ok'.
--spec record_call/5 :: (ne_binary(), ne_binary(),  whapps_api_binary(), whapps_api_binary(), whapps_call:call()) -> 'ok'.
--spec record_call/6 :: (ne_binary(), ne_binary(),  whapps_api_binary(), whapps_api_binary(), list(), whapps_call:call()) -> 'ok'.
+-spec record_call/5 :: (ne_binary(), ne_binary(),  whapps_api_binary(), whapps_api_binary() | integer(), whapps_call:call()) -> 'ok'.
+-spec record_call/6 :: (ne_binary(), ne_binary(),  whapps_api_binary(), whapps_api_binary() | integer(), list(), whapps_call:call()) -> 'ok'.
 record_call(MediaName, Call) ->
     record_call(MediaName, <<"start">>, Call).
 record_call(MediaName, Action, Call) ->
@@ -802,11 +802,17 @@ record_call(MediaName, Action, StreamTo, TimeLimit, Terminators, Call) ->
               ],
     send_command(Command, Call).
 
--spec b_record_call/2 :: (ne_binary(), whapps_call:call()) -> whapps_api_std_return().
--spec b_record_call/3 :: (ne_binary(), ne_binary(), whapps_call:call()) -> whapps_api_std_return().
--spec b_record_call/4 :: (ne_binary(), ne_binary(), whapps_api_binary(), whapps_call:call()) -> whapps_api_std_return().
--spec b_record_call/5 :: (ne_binary(), ne_binary(), whapps_api_binary(), whapps_api_binary(), whapps_call:call()) -> whapps_api_std_return().
--spec b_record_call/6 :: (ne_binary(), ne_binary(), whapps_api_binary(), whapps_api_binary(), whapps_call:call(), list()) -> whapps_api_std_return().
+-spec b_record_call/2 :: (ne_binary(), whapps_call:call()) ->
+                                 wait_for_headless_application_return().
+-spec b_record_call/3 :: (ne_binary(), ne_binary(), whapps_call:call()) ->
+                                 wait_for_headless_application_return().
+-spec b_record_call/4 :: (ne_binary(), ne_binary(), whapps_api_binary(), whapps_call:call()) ->
+                                 wait_for_headless_application_return().
+-spec b_record_call/5 :: (ne_binary(), ne_binary(), whapps_api_binary(), whapps_api_binary() | integer(), whapps_call:call()) ->
+                                 wait_for_headless_application_return().
+-spec b_record_call/6 :: (ne_binary(), ne_binary(), whapps_api_binary(), whapps_api_binary() | integer(), [ne_binary(),...] | [], whapps_call:call()) ->
+                                 wait_for_headless_application_return().
+
 b_record_call(MediaName, Call) ->
     record_call(MediaName, Call),
     wait_for_headless_application(<<"record">>, <<"RECORD_STOP">>, <<"call_event">>, infinity).
@@ -1426,13 +1432,15 @@ wait_for_application(Application, Event, Type, Timeout) ->
 %% @end
 %%--------------------------------------------------------------------
 -type wait_for_headless_application_return() :: {'error', 'timeout' | wh_json:json_object()} |
-                                                {'hangup', wh_json:json_object()} |
                                                 {'ok', wh_json:json_object()}.
--spec wait_for_headless_application/1 :: (ne_binary()) -> wait_for_headless_application_return().
--spec wait_for_headless_application/2 :: (ne_binary(), ne_binary()) -> wait_for_headless_application_return().
--spec wait_for_headless_application/3 :: (ne_binary(), ne_binary(), ne_binary()) -> wait_for_headless_application_return().
--spec wait_for_headless_application/4 :: (ne_binary(), ne_binary(), ne_binary(), 'infinity' | pos_integer()) 
-                                         -> wait_for_headless_application_return().
+-spec wait_for_headless_application/1 :: (ne_binary()) ->
+                                                 wait_for_headless_application_return().
+-spec wait_for_headless_application/2 :: (ne_binary(), ne_binary()) ->
+                                                 wait_for_headless_application_return().
+-spec wait_for_headless_application/3 :: (ne_binary(), ne_binary(), ne_binary()) ->
+                                                 wait_for_headless_application_return().
+-spec wait_for_headless_application/4 :: (ne_binary(), ne_binary(), ne_binary(), 'infinity' | pos_integer()) ->
+                                                 wait_for_headless_application_return().
 
 wait_for_headless_application(Application) ->
     wait_for_headless_application(Application, <<"CHANNEL_EXECUTE_COMPLETE">>).
@@ -1730,28 +1738,19 @@ wait_for_application_or_dtmf(Application, Timeout) ->
 -spec wait_for_fax/0 :: () -> wait_for_fax_ret().
 -spec wait_for_fax/1 :: (integer() | 'infinity') -> wait_for_fax_ret().
 wait_for_fax() ->
-    wait_for_fax(5000).
+    wait_for_fax(10000).
 wait_for_fax(Timeout) ->
     Start = erlang:now(),
     receive
         {amqp_msg, JObj} ->
             case get_event_type(JObj) of
-                { <<"call_event">>, <<"CHANNEL_DESTROY">>, _ } ->
-                    lager:debug("channel was destroyed while waiting for fax"),
-                    {error, channel_destroy};
-                { <<"call_event">>, <<"CHANNEL_HANGUP">>, _ } ->
-                    lager:debug("channel was hungup while waiting for fax"),
-                    {error, channel_hungup};
                 { <<"error">>, _, <<"receive_fax">> } ->
                     lager:debug("channel execution error while waiting for fax: ~s", [wh_json:encode(JObj)]),
                     {error, JObj};
                 { <<"call_event">>, <<"CHANNEL_EXECUTE">>, <<"receive_fax">> } ->
                     wait_for_fax(infinity);
                 { <<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"receive_fax">> } ->
-                    case wh_json:is_true(<<"Fax-Success">>, JObj, false) of
-                        true -> {ok, JObj};
-                        false -> {failed, JObj}
-                    end;
+                    {ok, wh_json:set_value(<<"Fax-Success">>, true, JObj)};
                 _ when Timeout =:= infinity ->
                     wait_for_fax(Timeout);
                 _ ->

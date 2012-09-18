@@ -201,7 +201,7 @@ wait_for_key_local(Srv, Key) ->
 -spec wait_for_key_local/3 :: (atom(), term(), 'infinity' | non_neg_integer()) -> {'ok', term()} | {'error', 'timeout'}.
 wait_for_key_local(Srv, Key, Timeout) ->
     {ok, Ref} = gen_server:call(Srv, {wait_for_key, Key, Timeout}),
-    lager:debug("waiting for message with ref ~s", [Ref]),
+    lager:debug("waiting for message with ref ~p", [Ref]),
     receive
         {exists, Ref, Value} -> {ok, Value};
         {store, Ref, Value} -> {ok, Value};

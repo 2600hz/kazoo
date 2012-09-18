@@ -9,11 +9,10 @@
 %%%-------------------------------------------------------------------
 -module(wnm_util).
 
--export([is_tollfree/1]).
+-export([classify_number/1]).
 -export([is_reconcilable/1]).
 -export([list_carrier_modules/0]).
 -export([get_carrier_module/1]).
--export([try_load_module/1]).
 -export([number_to_db_name/1]).
 -export([normalize_number/1]).
 -export([to_e164/1, to_npan/1, to_1npan/1]).
@@ -27,6 +26,35 @@
 -include_lib("whistle/include/wh_databases.hrl").
 
 -define(SERVER, ?MODULE).
+-define(DEFAULT_CLASSIFIERS, [{<<"tollfree_us">>, <<"^\\+1(800|888|877|866|855)\\d{7}$">>}
+                              ,{<<"did_us">>, <<"^\\+1\\d{10}$">>}
+                             ]).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Classify a provided number
+%% @end
+%%--------------------------------------------------------------------
+-spec classify_number/1 :: (ne_binary()) -> 'undefined' | ne_binary().
+-spec classify_number/2 :: (ne_binary(), proplist()) -> 'undefined' | ne_binary().
+
+classify_number(Number) ->
+    Default = wh_json:from_list(?DEFAULT_CLASSIFIERS),
+    Classifiers = whapps_config:get(?WNM_CONFIG_CAT, <<"classifiers">>, Default),
+    Num = wnm_util:normalize_number(Number),
+    classify_number(Num, wh_json:to_proplist(Classifiers)).
+
+classify_number(Num, []) ->
+    lager:debug("unable to classify number ~s", [Num]),
+    undefined;
+classify_number(Num, [{Classification, Classifier}|Classifiers]) ->
+    case re:run(Num, Classifier) of
+        nomatch -> classify_number(Num, Classifiers);
+        _ ->
+            lager:debug("number '~s' is classified as ~s", [Num, Classification]),
+            wh_util:to_binary(Classification)
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -50,21 +78,6 @@ is_reconcilable(Number) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Determines if a given number is tollfree
-%% @end
-%%--------------------------------------------------------------------
--spec is_tollfree/1 :: (ne_binary()) -> boolean().
-is_tollfree(Number) ->
-    Num = normalize_number(Number),
-    Regex = whapps_config:get(?WNM_CONFIG_CAT, <<"is_tollfree_regex">>, ?WNM_DEAFULT_TOLLFREE_RE),
-    case re:run(Num, Regex) of
-        nomatch -> false;
-        _ -> true
-    end.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
 %% Given a number doc determine if the carrier module is available
 %% and if return the name as well as the data
 %% @end
@@ -77,7 +90,7 @@ get_carrier_module(JObj) ->
             undefined;
         Module ->
             Carriers = list_carrier_modules(),
-            Carrier = try_load_module(Module),
+            Carrier = wh_util:try_load_module(Module),
             case lists:member(Carrier, Carriers) of
                 true -> Carrier;
                 false -> 
@@ -96,7 +109,7 @@ get_carrier_module(JObj) ->
 list_carrier_modules() ->
     CarrierModules = 
         whapps_config:get(?WNM_CONFIG_CAT, <<"carrier_modules">>, ?WNM_DEAFULT_CARRIER_MODULES),
-    [Module || M <- CarrierModules, (Module = try_load_module(M)) =/= false].
+    [Module || M <- CarrierModules, (Module = wh_util:try_load_module(M)) =/= false].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -127,40 +140,6 @@ normalize_number(Number) when is_binary(Number) ->
     to_e164(Number);
 normalize_number(Number) ->
     normalize_number(wh_util:to_binary(Number)).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Given a module name try to verify its existance, loading it into the
-%% the vm if possible.
-%% @end
-%%--------------------------------------------------------------------
--spec try_load_module/1 :: (string() | binary()) -> atom() | false.
-try_load_module(Name) ->
-    try
-        Module  = wh_util:to_atom(Name),
-        case erlang:module_loaded(Module) of
-            true -> 
-                Module;
-            false -> 
-                {module, Module} = code:ensure_loaded(Module),
-                Module
-        end
-    catch
-        error:badarg ->
-            lager:debug("carrier module ~s not found", [Name]),
-            case code:where_is_file(wh_util:to_list(<<Name/binary, ".beam">>)) of
-                non_existing ->
-                    lager:debug("beam file not found for ~s", [Name]),
-                    false;
-                _Path ->
-                    lager:debug("beam file found: ~s", [_Path]),
-                    wh_util:to_atom(Name, true), %% put atom into atom table
-                    try_load_module(Name)
-            end;
-        _:_ ->
-            false
-    end.
 
 -spec is_e164/1 :: (ne_binary()) -> boolean().
 -spec is_npan/1 :: (ne_binary()) -> boolean().

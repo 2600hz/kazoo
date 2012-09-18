@@ -10,7 +10,7 @@
 
 -export([url/0, url/1]).
 -export([new/1]).
--export([new_subscription/3]).
+-export([new_subscription/2]).
 -export([default_payment_token/1]).
 -export([get_id/1]).
 -export([get_cards/1]).
@@ -61,10 +61,10 @@ new(CustomerId) ->
 %% Creates a new subscription record
 %% @end
 %%--------------------------------------------------------------------
--spec new_subscription/3 :: (ne_binary(), ne_binary(), #bt_customer{}) -> #bt_subscription{}.
-new_subscription(SubscriptionId, PlanId, Customer) ->
+-spec new_subscription/2 :: (ne_binary(), #bt_customer{}) -> #bt_subscription{}.
+new_subscription(PlanId, Customer) ->
     PaymentToken = default_payment_token(Customer),
-    braintree_subscription:new(SubscriptionId, PlanId, PaymentToken).
+    braintree_subscription:new(PlanId, PaymentToken).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -72,9 +72,12 @@ new_subscription(SubscriptionId, PlanId, Customer) ->
 %% Given a cutomer record find (if any) the default payment token
 %% @end
 %%--------------------------------------------------------------------
--spec default_payment_token/1 :: (#bt_customer{}) -> 'undefined' | ne_binary().
+-spec default_payment_token/1 :: (ne_binary() | #bt_customer{}) -> 'undefined' | ne_binary().
 default_payment_token(#bt_customer{}=Customer) ->
-    braintree_card:default_payment_token(get_cards(Customer)).
+    braintree_card:default_payment_token(get_cards(Customer));
+default_payment_token(CustomerId) ->
+    default_payment_token(find(CustomerId)).
+
 
 %%--------------------------------------------------------------------
 %% @public
@@ -113,11 +116,19 @@ get_subscriptions(#bt_customer{subscriptions=Subscriptions}) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec get_subscription/2 :: (ne_binary(), #bt_customer{}) -> #bt_subscription{}.
-get_subscription(SubscriptionId, Customer) ->
-    case lists:keyfind(SubscriptionId, #bt_subscription.id, get_subscriptions(Customer)) of
-        false -> braintree_util:error_not_found(<<"Subscription">>);
-        Subscription -> Subscription
-    end.
+get_subscription(PlanId, #bt_customer{subscriptions=Subscriptions}) ->
+    get_subscription(PlanId, Subscriptions);
+get_subscription(_, []) ->
+    braintree_util:error_not_found(<<"Subscription">>);
+get_subscription(PlanId, [#bt_subscription{plan_id=PlanId, status=Status}=Subscription
+                          |Subscriptions
+                         ]) ->
+    case lists:member(Status, ?BT_ACTIVE_STATUSES) of
+        true -> Subscription;
+        false -> get_subscription(PlanId, Subscriptions)
+    end;
+get_subscription(PlanId, [_|Subscriptions]) ->
+    get_subscription(PlanId, Subscriptions).
 
 %%--------------------------------------------------------------------
 %% @public

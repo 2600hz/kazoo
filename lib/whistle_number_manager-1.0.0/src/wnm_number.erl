@@ -152,13 +152,13 @@ save(#number{}=Number) ->
     Routines = [fun(#number{}=N) -> N#number{number_doc=record_to_json(N)} end
                 ,fun(#number{}=N) -> exec_providers(N, save) end
                 ,fun(#number{}=N) -> get_updated_phone_number_docs(N) end
-                ,fun(#number{}=N) -> update_service_plans(N) end
                 ,fun({_, #number{}}=E) -> E;
                     (#number{}=N) -> save_number_doc(N)
                  end
                 ,fun({_, #number{}}=E) -> E;
                     (#number{}=N) -> save_phone_number_docs(N)
                  end
+                ,fun(#number{}=N) -> update_service_plans(N) end
                ],
     lists:foldl(fun(F, J) -> F(J) end, Number, Routines).
 
@@ -206,13 +206,13 @@ delete(Number) ->
     Routines = [fun(#number{}=N) -> N#number{number_doc=record_to_json(N)} end
                 ,fun(#number{}=N) -> exec_providers(N, delete) end
                 ,fun(#number{}=N) -> get_updated_phone_number_docs(N) end
-                ,fun(#number{}=N) -> update_service_plans(N) end
                 ,fun({_, #number{}}=E) -> E;
                     (#number{}=N) -> delete_number_doc(N)
                  end
                 ,fun({_, #number{}}=E) -> E;
                     (#number{}=N) -> save_phone_number_docs(N)
                  end
+                ,fun(#number{}=N) -> update_service_plans(N) end
                ],
     lists:foldl(fun(F, J) -> F(J) end, Number, Routines).
 
@@ -676,7 +676,7 @@ exec_providers(Number, Action) ->
 
 exec_providers([], _, Number) -> Number;
 exec_providers([Provider|Providers], Action, Number) ->
-    case wnm_util:try_load_module(<<"wnm_", Provider/binary>>) of
+    case wh_util:try_load_module(<<"wnm_", Provider/binary>>) of
         false ->
             lager:debug("provider ~s is unknown, skipping", [Provider]),
             exec_providers(Providers, Action, Number);
@@ -745,8 +745,8 @@ error_number_exists(N) ->
 
 -spec error_service_restriction/2 :: (wh_json:json_object(), wnm_number()) -> no_return().
 error_service_restriction(Reason, N) ->
-    lager:debug("number billing restriction: ~p", [wh_json:encode(Reason)]),
-    throw({service_restriction, N#number{error_jobj=wh_json:from_list([{<<"service_restriction">>, Reason}])}}).
+    lager:debug("number billing restriction: ~s", [Reason]),
+    throw({service_restriction, N#number{error_jobj=wh_json:from_list([{<<"credit">>, wh_util:to_binary(Reason)}])}}).
 
 -spec error_provider_fault/2 :: (wh_json:json_object(), wnm_number()) -> no_return().
 error_provider_fault(Reason, N) ->
@@ -886,7 +886,6 @@ load_phone_number_doc(Account) ->
         {error, _}=E -> E
     end.
 
-
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -894,50 +893,20 @@ load_phone_number_doc(Account) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec update_service_plans/1 :: (wnm_number()) -> wnm_number().
-update_service_plans(#number{phone_number_docs=PhoneNumbers, assigned_to=undefined
-                             ,prev_assigned_to=PrevAssignedTo}=N) ->
-    case dict:find(PrevAssignedTo, PhoneNumbers) of
-        error -> N;
-        {ok, PhoneNumber} ->
-            update_service_plan(PhoneNumber, N)
-    end;
-update_service_plans(#number{phone_number_docs=PhoneNumbers, assigned_to=AssignedTo}=N) ->
-    case dict:find(AssignedTo, PhoneNumbers) of
-        error -> N;
-        {ok, PhoneNumber} ->
-            update_service_plan(PhoneNumber, N)
-    end.
+update_service_plans(#number{assigned_to=AssignedTo, prev_assigned_to=PrevAssignedTo}=N) ->
+    _ = wh_services:reconcile(AssignedTo, <<"phone_numbers">>),
+    _ = wh_services:reconcile(PrevAssignedTo, <<"phone_numbers">>),
+    _ = commit_activations(N),
+    N.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec update_service_plan/2 :: (wh_json:json_object(), wnm_number()) -> wnm_number().
-update_service_plan(PhoneNumber, #number{resellers=undefined, assigned_to=undefined
-                                        ,prev_assigned_to=Account}=N) ->
-    case wh_resellers:fetch(Account) of
-        {error, no_service_plan} -> N;
-        {ok, Resellers} ->
-            update_service_plan(PhoneNumber, N#number{resellers=Resellers})
-    end;
-update_service_plan(PhoneNumber, #number{resellers=undefined, assigned_to=Account}=N) ->
-    case wh_resellers:fetch(Account) of
-        {error, no_service_plan} -> N;
-        {ok, Resellers} ->
-            update_service_plan(PhoneNumber, N#number{resellers=Resellers})
-    end;
-update_service_plan(PhoneNumber, #number{resellers=Resellers}=N) ->
-    Routines = [fun(R) -> wh_service_numbers:update(PhoneNumber, R) end
-                ,fun(R) -> wh_resellers:commit_changes(R) end
-               ],
-    try lists:foldl(fun(F, R) -> F(R) end, Resellers, Routines) of
-        ok -> N
-    catch
-        throw:{_, Reason} ->
-            error_service_restriction(Reason, N)
-    end.
+commit_activations(#number{activations=[]}) ->
+    ok;
+commit_activations(#number{billing_id=undefined}) ->
+    ok;
+commit_activations(#number{activations=[Activation|Activations], billing_id=BillingId}=N) ->
+    LedgerDb = wh_util:format_account_id(BillingId, encoded),
+    _ = couch_mgr:ensure_saved(LedgerDb, Activation),
+    commit_activations(N#number{activations=Activations}).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -946,24 +915,29 @@ update_service_plan(PhoneNumber, #number{resellers=Resellers}=N) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec activate_feature/2 :: (ne_binary(), wnm_number()) -> wnm_number().
-activate_feature(Feature, #number{resellers=undefined, assigned_to=Account, activations=Activations
-                                  ,features=Features}=N) ->
-    case wh_resellers:fetch(Account) of
-        {error, no_service_plan} ->  N#number{activations=sets:add_element({features, Feature}, Activations)
-                                              ,features=sets:add_element(Feature, Features)};
-        {ok, Resellers} ->
-            activate_feature(Feature, N#number{resellers=Resellers})
-    end;
-activate_feature(Feature, #number{resellers=Resellers, activations=Activations
-                                  ,features=Features}=N) ->
-    try wh_service_numbers:activate_feature(Feature, Resellers) of
-        R -> N#number{activations=sets:add_element({features, Feature}, Activations)
-                      ,features=sets:add_element(Feature, Features)
-                      ,resellers=R}
-    catch
-        throw:{_, Reason} ->
-            error_service_restriction(Reason, N)
-    end.
+-spec activate_feature/3 :: (ne_binary(), integer(), wnm_number()) -> wnm_number().
+
+activate_feature(Feature, #number{billing_id=undefined, assigned_to=Account}=N) ->
+    activate_feature(Feature, N#number{billing_id=wh_services:get_billing_id(Account)});
+activate_feature(Feature, #number{services=undefined, billing_id=Account}=N) ->
+    activate_feature(Feature, N#number{services=wh_services:fetch(Account)});
+activate_feature(Feature, #number{services=Services}=N) ->
+    Units = wh_service_phone_numbers:feature_activation_charge(Feature, Services),
+    activate_feature(Feature, Units, N).
+    
+activate_feature(Feature, 0, #number{features=Features}=N) ->
+    lager:debug("no activation charge for ~s", [Feature]),
+    N#number{features=sets:add_element(Feature, Features)};
+activate_feature(Feature, Units, #number{current_balance=undefined, billing_id=Account}=N) ->
+    activate_feature(Feature, Units, N#number{current_balance=wh_util:current_account_balance(Account)});
+activate_feature(Feature, Units, #number{current_balance=Balance}=N) when Balance - Units < 0 ->
+    Reason = io_lib:format("not enough credit to activate feature '~s' for $~p", [Feature, wapi_money:units_to_dollars(Units)]),
+    lager:debug("~s", [Reason]),
+    error_service_restriction(Reason, N);
+activate_feature(Feature, Units, #number{current_balance=Balance, features=Features}=N) ->
+    N#number{activations=append_feature_debit(Feature, Units, N)
+             ,features=sets:add_element(Feature, Features)
+             ,current_balance=Balance - Units}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -972,17 +946,79 @@ activate_feature(Feature, #number{resellers=Resellers, activations=Activations
 %% @end
 %%--------------------------------------------------------------------
 -spec activate_phone_number/1 :: (wnm_number()) -> wnm_number().
-activate_phone_number(#number{number=Num, resellers=undefined, assigned_to=Account, activations=Activations}=N) ->
-    case wh_resellers:fetch(Account) of
-        {error, no_service_plan} -> N#number{activations=sets:add_element({phone_number, Num}, Activations)};
-        {ok, Resellers} ->
-            activate_phone_number(N#number{resellers=Resellers})
-    end;
-activate_phone_number(#number{number=Num, resellers=Resellers, activations=Activations}=N) ->
-    try wh_service_numbers:activate_phone_number(Num, Resellers) of
-        R -> N#number{activations=sets:add_element({phone_number, Num}, Activations)
-                      ,resellers=R}
-    catch
-        throw:{_, Reason} ->
-            error_service_restriction(Reason, N)
-    end.
+
+activate_phone_number(#number{billing_id=undefined, assigned_to=Account}=N) ->
+    activate_phone_number(N#number{billing_id=wh_services:get_billing_id(Account)});
+activate_phone_number(#number{services=undefined, billing_id=Account}=N) ->
+    activate_phone_number(N#number{services=wh_services:fetch(Account)});
+activate_phone_number(#number{services=Services, number=Number}=N) ->
+    Units = wh_service_phone_numbers:phone_number_activation_charge(Number, Services),
+    activate_phone_number(Units, N).
+
+
+activate_phone_number(0, #number{number=Number}=N) ->
+    lager:debug("no activation charge for ~s", [Number]),
+    N;
+activate_phone_number(Units, #number{current_balance=undefined, billing_id=Account}=N) ->
+    activate_phone_number(Units, N#number{current_balance=wh_util:current_account_balance(Account)});
+activate_phone_number(Units, #number{current_balance=Balance}=N) when Balance - Units < 0 ->
+    Reason = io_lib:format("not enough credit to activate number for $~p", [wapi_money:units_to_dollars(Units)]),
+    lager:debug("~s", [Reason]),
+    error_service_restriction(Reason, N);
+activate_phone_number(Units, #number{current_balance=Balance}=N) ->
+    N#number{activations=append_phone_number_debit(Units, N)
+             ,current_balance=Balance - Units}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec append_feature_debit/3 :: (ne_binary(), integer(), wnm_number()) -> wnm_number().
+append_feature_debit(Feature, Units, #number{billing_id=Ledger, assigned_to=AccountId, activations=Activations}) ->
+    LedgerId = wh_util:format_account_id(Ledger, raw),
+    LedgerDb = wh_util:format_account_id(Ledger, encoded),
+    lager:debug("staging feature '~s' activation charge $~p for ~s via billing account ~s"
+                ,[Feature, wapi_money:units_to_dollars(Units), AccountId, LedgerId]),
+    Timestamp = wh_util:current_tstamp(),
+    Entry = wh_json:from_list([{<<"reason">>, <<"phone number feature activation">>}
+                               ,{<<"feature">>, Feature}
+                               ,{<<"amount">>, Units}
+                               ,{<<"account_id">>, AccountId}
+                               ,{<<"pvt_account_id">>, LedgerId}
+                               ,{<<"pvt_account_db">>, LedgerDb}
+                               ,{<<"pvt_type">>, <<"debit">>}
+                               ,{<<"pvt_created">>, Timestamp}
+                               ,{<<"pvt_modified">>, Timestamp}
+                               ,{<<"pvt_vsn">>, 1}
+                              ]),
+    [Entry|Activations].
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec append_phone_number_debit/2 :: (integer(), wnm_number()) -> wnm_number().
+append_phone_number_debit(Units, #number{billing_id=Ledger, assigned_to=AccountId
+                                         ,activations=Activations, number=Number}) ->
+    LedgerId = wh_util:format_account_id(Ledger, raw),
+    LedgerDb = wh_util:format_account_id(Ledger, encoded),
+    lager:debug("staging number activation charge $~p for ~s via billing account ~s"
+                ,[wapi_money:units_to_dollars(Units), AccountId, LedgerId]),
+    Timestamp = wh_util:current_tstamp(),
+    Entry = wh_json:from_list([{<<"reason">>, <<"phone number activation">>}
+                               ,{<<"number">>, Number}
+                               ,{<<"amount">>, Units}
+                               ,{<<"account_id">>, AccountId}
+                               ,{<<"pvt_account_id">>, LedgerId}
+                               ,{<<"pvt_account_db">>, LedgerDb}
+                               ,{<<"pvt_type">>, <<"debit">>}
+                               ,{<<"pvt_created">>, Timestamp}
+                               ,{<<"pvt_modified">>, Timestamp}
+                               ,{<<"pvt_vsn">>, 1}
+                              ]),
+    [Entry|Activations].
+

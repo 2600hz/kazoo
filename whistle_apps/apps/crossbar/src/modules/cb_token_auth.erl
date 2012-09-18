@@ -15,6 +15,7 @@
 
 -export([init/0, stop/0
          ,authenticate/1
+         ,finish_request/1
         ]).
 
 %% cleanup proc
@@ -36,7 +37,8 @@ init() ->
 
     _ = supervisor:start_child(crossbar_sup, ?CHILDSPEC),
 
-    crossbar_bindings:bind(<<"v1_resource.authenticate">>, ?MODULE, authenticate).
+    _ = crossbar_bindings:bind(<<"v1_resource.authenticate">>, ?MODULE, authenticate),
+    crossbar_bindings:bind(<<"v1_resource.finish_request.*.*">>, ?MODULE, finish_request).
 
 stop() ->
     ok = supervisor:terminate_child(crossbar_sup, ?MODULE),
@@ -48,6 +50,13 @@ init(Parent) ->
     Expiry = whapps_config:get_integer(?APP_NAME, <<"token_auth_expiry">>, ?SECONDS_IN_DAY),
 
     cleanup_loop(Expiry).
+
+-spec finish_request/1 :: (#cb_context{}) -> any().
+finish_request(#cb_context{auth_doc=AuthDoc}) ->
+    lager:debug("updating auth doc: ~s:~s", [wh_json:get_value(<<"_id">>, AuthDoc)
+                                            ,wh_json:get_value(<<"_rev">>, AuthDoc)
+                                            ]),
+    couch_mgr:save_doc(?TOKEN_DB, AuthDoc).
 
 cleanup_loop(Expiry) ->
     Timeout = Expiry * 1000,
@@ -98,7 +107,7 @@ authenticate(#cb_context{auth_token=AuthToken}=Context) ->
         {ok, JObj} ->
             lager:debug("token auth is valid, authenticating"),
             {true, Context#cb_context{auth_account_id=wh_json:get_ne_value(<<"account_id">>, JObj)
-                                      ,auth_doc=JObj
+                                      ,auth_doc=wh_json:set_value(<<"modified">>, wh_util:current_tstamp(), JObj)
                                      }};
         {error, R} ->
             lager:debug("failed to authenticate token auth, ~p", [R]),

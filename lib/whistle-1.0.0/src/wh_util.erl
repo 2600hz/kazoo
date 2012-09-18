@@ -10,10 +10,13 @@
 -module(wh_util).
 
 -export([format_account_id/1, format_account_id/2]).
+-export([current_account_balance/1]).
 -export([is_in_account_hierarchy/2, is_in_account_hierarchy/3]).
 -export([is_system_admin/1]).
 -export([get_account_realm/1, get_account_realm/2]).
 -export([is_account_enabled/1]).
+
+-export([try_load_module/1]).
 
 -export([to_integer/1, to_integer/2
          ,to_float/1, to_float/2
@@ -109,6 +112,30 @@ format_account_id(AccountId, encoded) when is_binary(AccountId) ->
     wh_util:to_binary(["account%2F", Id1, Id2, "%2F", Id3, Id4, "%2F", IdRest]);
 format_account_id(AccountId, raw) ->
     AccountId.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% get the provided leger (account_id/db) balance
+%% @end
+%%--------------------------------------------------------------------
+-spec current_account_balance/1 :: ('undefined' | ne_binary()) -> integer().
+current_account_balance(undefined) -> 0;
+current_account_balance(Ledger) ->
+    LedgerDb = wh_util:format_account_id(Ledger, encoded),    
+    ViewOptions = [{<<"reduce">>, true}],
+    case couch_mgr:get_results(LedgerDb, <<"transactions/credit_remaining">>, ViewOptions) of
+        {ok, []} -> 
+            lager:debug("no current balance for ~s", [Ledger]),
+            0;
+        {ok, [ViewRes|_]} -> 
+            Credit = wh_json:get_integer_value(<<"value">>, ViewRes, 0),
+            lager:debug("current balance for ~s is ~p", [Ledger, Credit]),
+            Credit;
+        {error, _R} -> 
+            lager:debug("unable to get current balance for ~s: ~p", [Ledger, _R]),
+            0
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -239,6 +266,39 @@ get_hostname() ->
     {ok, Host} = inet:gethostname(),
     {ok, #hostent{h_name=Hostname}} = inet:gethostbyname(Host),
     Hostname.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Given a module name try to verify its existance, loading it into the
+%% the vm if possible.
+%% @end
+%%--------------------------------------------------------------------
+-spec try_load_module/1 :: (string() | binary()) -> atom() | false.
+try_load_module(Name) ->
+    try to_atom(Name) of
+        Module ->
+            case erlang:module_loaded(Module) of
+                true -> Module;
+                false -> 
+                    {module, Module} = code:ensure_loaded(Module),
+                    Module
+            end
+    catch
+        error:badarg ->
+            lager:debug("module ~s not found", [Name]),
+            case code:where_is_file(to_list(<<(to_binary(Name))/binary, ".beam">>)) of
+                non_existing ->
+                    lager:debug("beam file not found for ~s", [Name]),
+                    false;
+                _Path ->
+                    lager:debug("beam file found: ~s", [_Path]),
+                    to_atom(Name, true), %% put atom into atom table
+                    try_load_module(Name)
+            end;
+        _:_ ->
+            false
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -494,6 +554,7 @@ is_empty(<<"NULL">>) -> true;
 is_empty(null) -> true;
 is_empty(false) -> true;
 is_empty(undefined) -> true;
+is_empty(Float) when is_float(Float), Float == 0.0 -> true;
 is_empty(MaybeJObj) ->
     case wh_json:is_json_object(MaybeJObj) of
         false -> false; %% if not a json object, its not empty

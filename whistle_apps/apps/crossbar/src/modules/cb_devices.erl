@@ -20,6 +20,7 @@
          ,put/1
          ,post/2
          ,delete/2
+         ,reconcile_services/1
         ]).
 
 -include_lib("crossbar/include/crossbar.hrl").
@@ -38,7 +39,8 @@ init() ->
     _ = crossbar_bindings:bind(<<"v1_resource.validate.devices">>, ?MODULE, validate),
     _ = crossbar_bindings:bind(<<"v1_resource.execute.put.devices">>, ?MODULE, put),
     _ = crossbar_bindings:bind(<<"v1_resource.execute.post.devices">>, ?MODULE, post),
-    crossbar_bindings:bind(<<"v1_resource.execute.delete.devices">>, ?MODULE, delete).
+    _ = crossbar_bindings:bind(<<"v1_resource.execute.delete.devices">>, ?MODULE, delete),
+    crossbar_bindings:bind(<<"v1_resource.finish_request.*.devices">>, ?MODULE, reconcile_services).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -74,58 +76,32 @@ resource_exists(_) -> true.
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Bill for limits
+%% Ensure we will be able to bill for devices
 %% @end
 %%--------------------------------------------------------------------
-billing(#cb_context{req_nouns=[{<<"devices">>, _}|_], req_verb = <<"put">>, doc=JObj
-                    ,account_id=AccountId, db_name=Db}=Context) ->
-    case wh_resellers:fetch(AccountId) of
-        {error, no_service_plan} -> Context;
-        {ok, Resellers} ->
-            try 
-                DeviceType = get_device_type(JObj),
-                R1 = wh_service_devices:activate_device_type(DeviceType, Resellers),
-                {ok, Devices} = couch_mgr:get_all_results(Db, ?CB_LIST),
-                DeviceTypes = [get_device_type(Device) || Device <- Devices],
-                R2 = wh_service_devices:update([DeviceType | DeviceTypes], R1, created),
-                ok = wh_resellers:commit_changes(R2)
-            catch
-                throw:{Error, Reason} ->
-                    crossbar_util:response(error, wh_util:to_binary(Error), 500, Reason, Context)
-            end
-    end;
-billing(#cb_context{req_nouns=[{<<"devices">>, _}|_], req_verb = <<"post">>
-                        ,account_id=AccountId, db_name=Db}=Context) ->
-    case wh_resellers:fetch(AccountId) of
-        {error, no_service_plan} -> Context;
-        {ok, Resellers} ->
-            try 
-                {ok, Devices} = couch_mgr:get_all_results(Db, ?CB_LIST),
-                DeviceTypes = [get_device_type(Device) || Device <- Devices],
-                R = wh_service_devices:update(DeviceTypes, Resellers),
-                ok = wh_resellers:commit_changes(R)
-            catch
-                throw:{Error, Reason} ->
-                    crossbar_util:response(error, wh_util:to_binary(Error), 500, Reason, Context)
-            end
-    end;
-billing(#cb_context{req_nouns=[{<<"devices">>, _}|_], req_verb = <<"delete">>, doc=JObj
-                    ,account_id=AccountId, db_name=Db}=Context) ->
-    case wh_resellers:fetch(AccountId) of
-        {error, no_service_plan} -> Context;
-        {ok, Resellers} ->
-            try 
-                DeviceType = get_device_type(JObj),
-                {ok, Devices} = couch_mgr:get_all_results(Db, ?CB_LIST),
-                DeviceTypes = [get_device_type(Device) || Device <- Devices],
-                R = wh_service_devices:update(lists:delete(DeviceType, DeviceTypes), Resellers, deleted),
-                ok = wh_resellers:commit_changes(R)
-            catch
-                throw:{Error, Reason} ->
-                    crossbar_util:response(error, wh_util:to_binary(Error), 500, Reason, Context)
-            end
+billing(#cb_context{req_nouns=[{<<"devices">>, _}|_], req_verb = <<"get">>}=Context) ->
+    Context;
+billing(#cb_context{req_nouns=[{<<"devices">>, _}|_], account_id=AccountId}=Context) ->
+    try wh_services:allow_updates(AccountId) of
+        true -> Context
+    catch
+        throw:{Error, Reason} ->
+            crossbar_util:response(error, wh_util:to_binary(Error), 500, Reason, Context)
     end;
 billing(Context) -> Context.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Bill for devices
+%% @end
+%%--------------------------------------------------------------------
+-spec reconcile_services/1 :: (#cb_context{}) -> #cb_context{}.
+reconcile_services(#cb_context{req_verb = <<"get">>}=Context) ->
+    Context;
+reconcile_services(#cb_context{account_id=AccountId}=Context) ->
+    _ = wh_services:reconcile(AccountId, <<"devices">>),
+    Context.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -275,7 +251,7 @@ create_device(#cb_context{req_data=Req, db_name=Db}=Context) ->
             crossbar_util:response_invalid_data(E, Context);
         {pass, JObj} ->
             Context#cb_context{resp_status=success
-                               ,doc=wh_json:set_value({<<"pvt_type">>, <<"device">>}, JObj)
+                               ,doc=wh_json:set_value(<<"pvt_type">>, <<"device">>, JObj)
                               }
     end.
 
@@ -469,15 +445,6 @@ maybe_update_acls(DeviceIP, AcctId, DeviceId) ->
     whapps_config:set_default(<<"ecallmgr">>, <<"acls">>, Acls),
     wapi_switch:publish_reloadacl().
 
--spec get_device_type/1 :: (wh_json:json_object()) -> ne_binary().
-get_device_type(JObj) ->
-    DeviceType = wh_json:get_value(<<"device_type">>, JObj
-                                   ,wh_json:get_value([<<"value">>, <<"device_type">>], JObj, <<"sip_device">>)),
-    case lists:member(DeviceType, [<<"sip_device">>, <<"cellphone">>, <<"softphone">>]) of
-        true -> DeviceType;
-        false -> <<"sip_device">>
-    end.
-
 set_outbound_flags(JObj, undefined) ->
     wh_json:set_value(<<"outbound_flags">>, [], JObj);
 set_outbound_flags(JObj, []) ->
@@ -488,4 +455,3 @@ set_outbound_flags(JObj, L) when is_list(L) ->
     lager:debug("flags: ~p", [[wh_util:strip_binary(B) || B <- L]]),
     wh_json:set_value(<<"outbound_flags">>, [wh_util:strip_binary(B) || B <- L], JObj);
 set_outbound_flags(JObj, _) -> JObj.
-

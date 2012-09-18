@@ -37,18 +37,19 @@ handle(Data, Call) ->
 try_collect_pin(_Call, <<>>, _) ->
     lager:debug("no pin set on DISA object, permitting"),
     allow;
-try_collect_pin(_Call, _, 0) ->
+try_collect_pin(Call, _, 0) ->
     lager:debug("retries for DISA pin exceeded"),
+    _ = whapps_call_command:b_prompt(<<"disa-retries_exceeded">>, Call),
     fail;
 try_collect_pin(Call, Pin, Retries) ->
-    Prompt = <<"local_stream://en/us/callie/ivr/ivr-please_enter_pin_followed_by_pound.wav">>,
-    case whapps_call_command:b_play_and_collect_digits(<<"1">>, <<"6">>, Prompt, Call) of
+    Prompt = <<"disa-enter_pin">>,
+    case whapps_call_command:b_prompt_and_collect_digits(<<"1">>, <<"6">>, Prompt, Call) of
         {ok, Pin} ->
             lager:debug("pin matches, permitting"),
             allow;
         {ok, _Digits} ->
             lager:debug("caller entered ~s for pin", [_Digits]),
-            _ = whapps_call_command:b_play(<<"local_stream://en/us/callie/ivr/ivr-pin_or_extension_is-invalid.wav">>, Call),
+            _ = whapps_call_command:b_prompt(<<"disa-invalid_pin">>, Call),
             try_collect_pin(Call, Pin, Retries - 1)
     end.
 
@@ -83,7 +84,7 @@ allow_dial(Call, Retries) ->
             cf_exe:branch(wh_json:get_value(<<"flow">>, Flow), Call);
         _ ->
             lager:debug("failed to find a callflow to satisfy ~s", [Number]),
-            _ = whapps_call_command:b_play(<<"local_stream://en/us/callie/ivr/ivr-you_have_dialed_an_invalid_extension.wav">>, Call),
+            _ = whapps_call_command:b_prompt(<<"disa-invalid_extension">>, Call),
             allow_dial(Call, Retries - 1)
     end.
 

@@ -1,0 +1,47 @@
+{
+   "_id": "c0705d7984ea0160110a451b25a4406b",
+   "pvt_created": 63511078846,
+   "pvt_modified": 63511078847,
+   "pvt_type": "service",
+   "pvt_vsn": "1",
+   "pvt_account_id": "c0705d7984ea0160110a451b25a4406b",
+   "pvt_account_db": "account%2Fc0%2F70%2F5d7474ea0160c10a351b2544006b",
+   "pvt_dirty": false,
+   "quantities": {
+       "number_features": {
+           "cnam": 1,
+           "dash_e911": 3
+       },
+       "phone_numbers": {
+           "did_us": 9,
+           "tollfree_us": 1
+       },
+       "limits": {
+           "twoway_trunks": 2,
+           "inbound_trunks": 1
+       },
+       "devices": {
+           "cellphone": 1,
+           "sip_device": 6
+       }
+   },
+   "plans": {
+       "968dc36503bcb05f798d9530016f311f": {
+           "account_id": "c0705d7984ea0160110a451b25a4406b",
+           "overrides": {
+               "phone_numbers": {
+                   "did_us": {
+                       "discounts": {
+                           "cumulative": {
+                               "rate": 5
+                           }
+                       }
+                   }
+               }
+           }
+       }
+   },
+   "pvt_tree": [
+       "c0705d7984ea0160110a451b25a4406b"
+   ]
+}
