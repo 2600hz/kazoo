@@ -115,7 +115,7 @@ handle_call_status(JObj, _Props) ->
         {error, not_found} ->
             lager:debug("no node found with channel ~s, but we are not authoritative", [CallID]);
         {ok, Channel} ->
-            Node = wh_json:get_binary_value(<<"node">>, Channel),
+            Node = wh_json:get_atom_value(<<"node">>, Channel),
             case uuid_dump(Node, CallID) of
                 error ->
                     lager:debug("failed to get channel info for ~s", [CallID]),
@@ -256,7 +256,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec create_call_status_resp/2 :: (proplist(), boolean()) -> proplist().
+-spec create_call_status_resp/2 :: (wh_proplist(), boolean()) -> wh_proplist().
 create_call_status_resp(Props, true) ->
     {OLCIName, OLCINum} = case props:get_value(<<"Other-Leg-Direction">>, Props) of
                                <<"outbound">> ->
@@ -264,8 +264,10 @@ create_call_status_resp(Props, true) ->
                                     ,props:get_value(<<"Other-Leg-Callee-ID-Number">>, Props)};
                                <<"inbound">> ->
                                    {props:get_value(<<"Other-Leg-Caller-ID-Name">>, Props)
-                                    ,props:get_value(<<"Other-Leg-Caller-ID-Number">>, Props)}
-                           end,     
+                                    ,props:get_value(<<"Other-Leg-Caller-ID-Number">>, Props)};
+                              undefined ->
+                                  {undefined, undefined}
+                          end,
     [{<<"Msg-ID">>, props:get_value(<<"Event-Date-Timestamp">>, Props)}
      ,{<<"Status">>, <<"active">>}
      ,{<<"Timestamp">>, props:get_value(<<"Event-Date-Timestamp">>, Props)}
@@ -289,8 +291,10 @@ create_call_status_resp(Props, false) ->
                                     ,props:get_value(<<"Caller-Callee-ID-Number">>, Props)};
                                <<"inbound">> ->
                                    {props:get_value(<<"Caller-Caller-ID-Name">>, Props)
-                                    ,props:get_value(<<"Caller-Caller-ID-Number">>, Props)}
-                           end,     
+                                    ,props:get_value(<<"Caller-Caller-ID-Number">>, Props)};
+                              undefined ->
+                                  {undefined, undefined}
+                           end,
     [{<<"Msg-ID">>, props:get_value(<<"Event-Date-Timestamp">>, Props)}
      ,{<<"Status">>, <<"active">>}
      ,{<<"Timestamp">>, props:get_value(<<"Event-Date-Timestamp">>, Props)}
@@ -308,14 +312,19 @@ create_call_status_resp(Props, false) ->
      ,{<<"Presence-ID">>, props:get_value(<<"variable_presence_id">>, Props)}
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)].
 
--spec uuid_dump/2 :: (atom(), string() | binary()) -> {'ok', proplist()} |
-                                                      'error'.
+-spec uuid_dump/2 :: (atom(), string() | binary()) ->
+                             {'ok', wh_proplist()} |
+                             'error'.
 uuid_dump(Node, UUID) ->
-    case catch(freeswitch:api(Node, uuid_dump, wh_util:to_list(UUID))) of
+    uuid_dump(Node, UUID, wh_util:to_list(UUID)).
+uuid_dump(Node, UUID, ID) ->
+    case catch freeswitch:api(Node, 'uuid_dump', ID) of
         {'ok', Result} ->
             Props = ecallmgr_util:eventstr_to_proplist(Result),
             {ok, Props};
+        {'EXIT', {'badarg', _}} when is_list(ID) ->
+            uuid_dump(Node, UUID, wh_util:to_binary(UUID));
         _Else ->
-            lager:debug("failed to get result from uuid_dump(~s): ~p", [UUID, _Else]),
-            error
+            lager:debug("failed to get result from uuid_dump(~p) on ~p: ~p", [UUID, Node, _Else]),
+            'error'
     end.
