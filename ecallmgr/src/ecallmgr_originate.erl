@@ -44,7 +44,7 @@
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).
 
--define(ORIGINATE_PARK, <<"">>).
+-define(ORIGINATE_PARK, <<"&park()">>).
 -define(REPLY_TIMEOUT, 5000).
 
 %%%===================================================================
