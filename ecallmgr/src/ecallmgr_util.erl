@@ -6,8 +6,11 @@
 %%% @end
 %%%
 %%% @contributors
-%%%   James Aimonetti <james@2600hz.org>
-%%%   Karl Anderson <karl@2600hz.org>
+%%% James Aimonetti <james@2600hz.org>
+%%% Karl Anderson <karl@2600hz.org>
+%%% Edouard Swiac <edouard@2600hz.org>
+%%%
+%%% Created : 15 Nov 2010 by James Aimonetti <james@2600hz.org>
 %%%-------------------------------------------------------------------
 -module(ecallmgr_util).
 
@@ -28,6 +31,7 @@
         ]).
 
 -export([lookup_media/3, lookup_media/4, lookup_media/5]).
+-export([parse_epid/1, publish_epid/2]).
 
 -include("ecallmgr.hrl").
 
@@ -476,3 +480,19 @@ lookup_media(MediaName, CallId, JObj, Type, Cache) ->
         {ok, _} -> {ok, RecordingName};
         {error, not_found} -> lookup_media(MediaName, CallId, JObj, Type, undefined)
     end.
+
+%% parse an epid tag from a sip uri parameter
+-spec parse_epid/1 :: (binary()) -> binary().
+parse_epid(SipHeader) ->
+    Params = binary:split(SipHeader, <<";">>, [global]),
+    case [E || <<"epid=", E/binary>> <- Params] of
+        [E] -> E;
+        _ -> <<"undefined">>
+    end.
+
+-spec publish_epid/2 :: (binary(), binary()) -> 'ok'.
+publish_epid(AccountId, Epid) ->
+    Api = [{<<"Account-ID">>, AccountId}
+          ,{<<"Epid">>, Epid}
+          | wh_api:default_headers(<<>>, <<"lync">>, <<"broadcast_epid">>, ?APP_NAME, ?APP_VERSION)],
+    wapi_lync:publish_epid(Api).

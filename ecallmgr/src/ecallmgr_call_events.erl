@@ -363,7 +363,13 @@ create_event(EventName, ApplicationName, Props) ->
 
 -spec create_event_props/3 :: (binary(), 'undefined' | ne_binary(), proplist()) -> proplist().
 create_event_props(EventName, ApplicationName, Props) ->
+    EpidTo =  ecallmgr_util:parse_epid(props:get_value(<<"variable_sip_full_to">>, Props, <<"undefined">>)),
     CCVs = ecallmgr_util:custom_channel_vars(Props),
+    case EpidTo of
+        <<"undefined">> -> ok;
+        _ -> ecallmgr_util:publish_epid(props:get_value(<<"Account-ID">>, CCVs), EpidTo)
+    end,
+
     {Mega,Sec,Micro} = erlang:now(),
     Timestamp = wh_util:to_binary(((Mega * 1000000 + Sec) * 1000000 + Micro)),
     props:filter_undefined(

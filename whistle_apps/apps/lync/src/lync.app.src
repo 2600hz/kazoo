@@ -1,0 +1,12 @@
+{application, lync,
+ [
+  {description, "Lync - Interaction with Lync servers"},
+  {vsn, "0.0.3"},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib
+                 ]},
+  {mod, { lync_app, []} },
+  {env, []}
+ ]}.

@@ -42,6 +42,17 @@ inbound_handler(JObj, Number) ->
             relay_route_req(
               wh_json:set_value(<<"Custom-Channel-Vars">>, custom_channel_vars(AccountId, undefined, JObj), JObj)
              );
+	{error, not_found} ->
+	    %% try to authenticate from offnet with caller-id
+	    CallerId = wh_json:get_value(<<"Caller-ID-Number">>, JObj),
+	    case wh_number_manager:lookup_account_by_number(CallerId) of
+		{ok, AccountId, _} ->
+		    relay_route_req(
+		      wh_json:set_value(<<"Custom-Channel-Vars">>, custom_channel_vars(AccountId, undefined, JObj), JObj)
+		     );
+		_ ->
+		    lager:debug("unable to get account id from caller id ~w", [CallerId])
+	    end;
         {error, _R} ->
             lager:debug("failed to find account for number ~s: ~p", [Number, _R])
     end.
