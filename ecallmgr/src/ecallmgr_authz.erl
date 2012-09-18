@@ -1,10 +1,11 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2011, VoIP, INC
+%%% @copyright (C) 2011-2012, VoIP, INC
 %%% @doc
 %%% Make a request for authorization, and answer queries about the CallID
 %%% @end
-%%% Created :  7 Jul 2011 by James Aimonetti <james@2600hz.org>
+%%% @contributors
+%%%   James Aimonetti
+%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(ecallmgr_authz).
 
@@ -141,12 +142,11 @@ rate_channel(Props) ->
     ReqResp = wh_amqp_worker:call(?ECALLMGR_AMQP_POOL
                                   ,rating_req(CallId, Props)
                                   ,fun wapi_rate:publish_req/1
-                                  ,fun wapi_rate:resp_v/1),
+                                  ,fun wapi_rate:resp_v/1
+                                 ),
     case ReqResp of
-        {error, _R} ->
-            lager:debug("rate request lookup failed: ~p", [_R]);
-        {ok, RespJObj} ->
-            set_rating_ccvs(RespJObj)
+        {error, _R} -> lager:debug("rate request lookup failed: ~p", [_R]);
+        {ok, RespJObj} -> set_rating_ccvs(RespJObj)
     end.
 
 -spec kill_channel/2 :: (wh_proplist(), atom()) -> 'ok'.

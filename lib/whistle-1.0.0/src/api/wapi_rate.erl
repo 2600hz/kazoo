@@ -94,7 +94,7 @@ bind_q(Queue, Props) ->
     bind_to_q(Queue, props:get_value(restrict_to, Props)).
 
 bind_to_q(Q, undefined) ->
-    ok = amqp_util:bind_q_to_callmgr(Q, <<"rate.*">>);
+    ok = amqp_util:bind_q_to_callmgr(Q, ?KEY_RATE_REQ);
 bind_to_q(Q, [req|T]) ->
     ok = amqp_util:bind_q_to_callmgr(Q, ?KEY_RATE_REQ),
     bind_to_q(Q, T);
@@ -106,7 +106,7 @@ unbind_q(Q, Props) ->
     unbind_q_from(Q, props:get_value(restrict_to, Props)).
 
 unbind_q_from(Q, undefined) ->
-    ok = amqp_util:unbind_q_from_callmgr(Q, <<"rate.*">>);
+    ok = amqp_util:unbind_q_from_callmgr(Q, ?KEY_RATE_REQ);
 unbind_q_from(Q, [reqs|T]) ->
     ok = amqp_util:unbind_q_from_callmgr(Q, ?KEY_RATE_REQ),
     unbind_q_from(Q, T);
