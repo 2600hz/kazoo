@@ -30,6 +30,7 @@
                    ,{ecallmgr_util_sup, supervisor}
                    ,{ecallmgr_call_sup, supervisor}
                    ,{ecallmgr_fs_sup, supervisor}
+                   ,{ecallmgr_originate_sup, supervisor}
                   ]).
 
 %% ===================================================================

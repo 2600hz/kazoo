@@ -350,7 +350,7 @@ process_channel_event(Props, _) ->
 
     case should_publish(EventName, ApplicationName, Masqueraded) of
         false -> ok;
-        true ->
+        true ->            
             %% TODO: the adding of the node to the props is for event_specific conference
             %% clause until we can break the conference stuff into its own module
             publish_event(create_event(EventName, ApplicationName, Props))
@@ -458,7 +458,8 @@ get_event_application(Props, Masqueraded) ->
         true ->
             props:get_value(<<"whistle_application_name">>, Props);
         false ->
-            props:get_value(<<"Application">>, Props)
+            props:get_value(<<"Application">>, Props
+                            ,props:get_value(<<"Event-Subclass">>, Props))
     end.
 
 %% return a proplist of k/v pairs specific to the event

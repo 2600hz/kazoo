@@ -127,7 +127,7 @@ init([Node, Options]) ->
             lager:debug("event handler registered on node ~s", [Node]),            
             ok = freeswitch:event(Node, ['CHANNEL_CREATE', 'CHANNEL_DESTROY', 'CHANNEL_HANGUP_COMPLETE'
                                          ,'SESSION_HEARTBEAT', 'CUSTOM', 'sofia::register', 'sofia::transfer'
-                                         ,'whistle::broadcast'
+                                         ,'whistle::broadcast', 'loopback::bowout'
                                         ]),
             lager:debug("bound to switch events on node ~s", [Node]),
             gproc:reg({p, l, fs_node}),
@@ -278,6 +278,9 @@ process_custom_data(Data, Node) ->
         <<"sofia::transfer">> ->
             lager:debug("received transfer event"),
             process_transfer_event(props:get_value(<<"Type">>, Data), Data);
+        <<"loopback::bowout">> ->
+            lager:debug("received loopback bowout event"),
+            process_loopback_bowout_event(Data);
         <<"whistle::broadcast">> ->
             Self = wh_util:to_binary(node()),
             case props:get_value(<<"whistle_broadcast_node">>, Data, Self) of
@@ -358,6 +361,12 @@ process_transfer_event(_Type, Data) ->
              || Pid <- ReplacesPids
             ]
     end.
+
+-spec process_loopback_bowout_event/1 :: (proplist()) -> 'ok'.
+process_loopback_bowout_event(Data) ->
+    Key = {loopback_bowout, props:get_value(<<"Resigning-UUID">>, Data)},
+    _ = gproc:send({p, l, Key}, {loopback_bowout, props:get_value(<<"Acquired-UUID">>, Data)}),
+    ok.
 
 -spec process_broadcast_event/2 :: (ne_binary(), proplist()) -> ok.
 process_broadcast_event(<<"channel_update">>, Data) ->
