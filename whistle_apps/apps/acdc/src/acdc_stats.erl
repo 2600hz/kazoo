@@ -21,6 +21,7 @@
          ,call_abandoned/4
          ,call_missed/4
          ,call_handled/5
+         ,call_waiting/3
 
          %% Agent-specific stats
          ,agent_active/2
@@ -48,7 +49,7 @@
 -define(ETS_TABLE, ?MODULE).
 
 -type stat_name() :: 'call_processed' | 'call_abandoned' |
-                     'call_missed' | 'call_handled' |
+                     'call_missed' | 'call_handled' | 'call_waiting' |
                      'agent_active' | 'agent_inactive'.
 
 -record(stat, {
@@ -152,7 +153,23 @@ call_handled(AcctId, QueueId, CallId, AgentId, Elapsed) ->
                                              ,elapsed=Elapsed
                                              ,name=call_handled
                                             }
-                               }).
+                               }),
+    gen_listener:cast(?MODULE, {remove, call_waiting_stat(AcctId, QueueId, CallId, '_')}).
+
+%% Call was placed in the AMQP Queue
+-spec call_waiting/3 :: (ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+call_waiting(AcctId, QueueId, CallId) ->
+    gen_listener:cast(?MODULE, {store, call_waiting_stat(AcctId, QueueId, CallId)}).
+
+call_waiting_stat(AcctId, QueueId, CallId) ->
+    call_waiting_stat(AcctId, QueueId, CallId, erlang:now()).
+call_waiting_stat(AcctId, QueueId, CallId, Start) ->
+    #stat{acct_id=AcctId
+          ,queue_id=QueueId
+          ,call_id=CallId
+          ,active_since=Start
+          ,name=call_waiting
+         }.
 
 %% marks an agent as active for an account
 -spec agent_active/2 :: (ne_binary(), ne_binary()) -> 'ok'.
@@ -207,6 +224,9 @@ handle_cast(flush_table, Table) ->
     {noreply, Table};
 handle_cast({store, Stat}, Table) ->
     ets:insert(Table, Stat),
+    {noreply, Table};
+handle_cast({remove, Stat}, Table) ->
+    ets:delete_match(Table, Stat),
     {noreply, Table};
 handle_cast(_Req, Table) ->
     {noreply, Table}.
@@ -384,6 +404,21 @@ update_stat(AcctDocs, #stat{name=call_handled
                             end, AcctDoc, Funs)
                ,AcctDocs
               );
+update_stat(AcctDocs, #stat{name=call_waiting
+                            ,acct_id=AcctId
+                            ,queue_id=QueueId
+                            ,call_id=CallId
+                            ,active_since=Start
+                           }) ->
+    AcctDoc = fetch_acct_doc(AcctId, AcctDocs),
+
+    Funs = [{fun add_call_waiting/4, [QueueId, CallId, wh_util:elapsed_s(Start)]}],
+    dict:store(AcctId
+               ,lists:foldl(fun({F, Args}, AcctAcc) ->
+                                    apply(F, [AcctAcc | Args])
+                            end, AcctDoc, Funs)
+               ,AcctDocs
+              );
 update_stat(AcctDocs, _Stat) ->
     lager:debug("unknown stat: ~p", [_Stat]),
     AcctDocs.
@@ -408,6 +443,13 @@ new_account_doc(AcctId) ->
 add_call_duration(AcctDoc, QueueId, CallId, Elapsed) ->
     Key = [<<"queues">>, QueueId, <<"calls">>, CallId, <<"duration">>],
     wh_json:set_value(Key, Elapsed, AcctDoc).
+
+-spec add_call_waiting/4 :: (wh_json:json_object(), ne_binary()
+                             ,ne_binary(), integer()
+                            ) -> wh_json:json_object().
+add_call_waiting(AcctDoc, QueueId, CallId, WaitTime) ->
+    Key = [<<"queues">>, QueueId, <<"calls">>, CallId, <<"wait_time">>],
+    wh_json:set_value(Key, WaitTime, AcctDoc).
 
 -spec add_call_agent/4 :: (wh_json:json_object(), ne_binary()
                                ,ne_binary(), api_binary()
