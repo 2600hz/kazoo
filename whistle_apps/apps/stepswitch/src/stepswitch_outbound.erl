@@ -291,7 +291,7 @@ wait_for_originate(MsgId) ->
             JObj = wh_json:decode(Payload, CT),
             case get_event_type(JObj) of
                 {<<"resource">>, <<"originate_resp">>, _} ->
-                    {hangup_result(JObj), JObj};
+                    hangup_result(JObj);
                 {<<"error">>, <<"originate_resp">>, _} ->
                     {error, JObj};
                 {<<"dialplan">>, <<"originate_ready">>, _} ->
@@ -326,7 +326,7 @@ wait_for_execute_extension() ->
             JObj = wh_json:decode(Payload, CT),
             case get_event_type(JObj) of
                 {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} ->
-                    {hangup_result(JObj), JObj};
+                    hangup_result(JObj);
                 {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"execute_extension">>} ->
                     {ok, execute_extension};
                 _  ->
@@ -358,9 +358,9 @@ wait_for_bridge(Timeout) ->
                     lager:debug("outbound request bridged to call ~s", [CallId]),
                     wait_for_bridge(infinity);
                 {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} ->
-                    {hangup_result(JObj), JObj};
+                    hangup_result(JObj);
                 {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>} ->
-                    {hangup_result(JObj), JObj};
+                    hangup_result(JObj);
                 _ when Timeout =:= infinity ->
                     wait_for_bridge(Timeout);
                 _ ->
@@ -380,13 +380,24 @@ wait_for_bridge(Timeout) ->
 %% Determine if the hangup case indicates a call failure
 %% @end
 %%--------------------------------------------------------------------
--spec hangup_result/1 :: (wh_json:json_object()) -> 'ok' | 'fail'.
+-spec hangup_result/1 :: (wh_json:json_object()) -> {'ok' | 'fail', wh_json:json_object()}.
 hangup_result(JObj) ->
     AppResponse = wh_json:get_value(<<"Application-Response">>, JObj,
                                     wh_json:get_value(<<"Hangup-Cause">>, JObj)),
-    case lists:member(AppResponse, ?SUCCESSFUL_HANGUP_CAUSES) of
-        true -> ok;
-        false -> fail
+    SuccessfulCause = lists:member(AppResponse, ?SUCCESSFUL_HANGUP_CAUSES),
+    case wh_json:get_value(<<"Hangup-Code">>, JObj) of
+        <<"sip:", Code/binary>> when SuccessfulCause ->
+            try wh_util:to_integer(Code) < 400 of
+                true -> {ok, JObj};
+                false when SuccessfulCause -> 
+                    {fail, wh_json:set_value(<<"Application-Response">>, <<"NORMAL_TEMPORARY_FAILURE">>, JObj)};
+                false -> {fail, JObj}
+            catch
+                _:_ when SuccessfulCause -> {ok, JObj}; 
+                _:_  -> {fail, JObj}
+            end;
+        _Else when SuccessfulCause -> {ok, JObj};
+        _Else -> {fail, JObj}
     end.
 
 %%--------------------------------------------------------------------
@@ -537,14 +548,14 @@ response({ready, Resp}, JObj) ->
      ,{<<"Resource-Response">>, Resp}
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ];
-response({fail, Resp}, JObj) ->
+response({fail, Response}, JObj) ->
     lager:debug("resources for outbound request failed"),
     [{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
      ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
-     ,{<<"Response-Message">>, wh_json:get_value(<<"Application-Response">>, Resp
-                                                 ,wh_json:get_value(<<"Hangup-Cause">>, Resp, <<"ERROR">>))}
-     ,{<<"Response-Code">>, wh_json:get_value(<<"Hangup-Code">>, Resp)}
-     ,{<<"Resource-Response">>, Resp}
+     ,{<<"Response-Message">>, wh_json:get_value(<<"Application-Response">>, Response,
+                                                 wh_json:get_value(<<"Hangup-Cause">>, Response))}
+     ,{<<"Response-Code">>, wh_json:get_value(<<"Hangup-Code">>, Response)}
+     ,{<<"Resource-Response">>, Response}
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ];
 response({error, no_resources}, JObj) ->
