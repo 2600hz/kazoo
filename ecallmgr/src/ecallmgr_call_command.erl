@@ -134,6 +134,13 @@ get_fs_app(Node, UUID, JObj, <<"record">>) ->
             %%'ok' = set(Node, UUID, <<"enable_file_write_buffering=false">>),
             'ok' = set_terminators(Node, UUID, wh_json:get_value(<<"Terminators">>, JObj)),
 
+            %% some carriers kill the channel during long recordings since there is no
+            %% reverse RTP stream
+            _ = case wh_util:is_true(ecallmgr_config:get(<<"record_waste_resources">>, false)) of
+                    false -> ok;
+                    true -> set(Node, UUID, <<"record_waste_resources=true">>)
+                end,
+
             RecArg = list_to_binary([MediaName, " "
                                      ,wh_json:get_string_value(<<"Time-Limit">>, JObj, "20"), " "
                                      ,wh_json:get_string_value(<<"Silence-Threshold">>, JObj, "500"), " "
@@ -156,6 +163,13 @@ get_fs_app(Node, UUID, JObj, <<"record_call">>) ->
 
                     _ = set(Node, UUID, <<"RECORD_APPEND=true">>), % allow recording to be appended to
                     _ = set(Node, UUID, <<"enable_file_write_buffering=false">>), % disable buffering to see if we get all the media
+
+                    %% some carriers kill the channel during long recordings since there is no
+                    %% reverse RTP stream
+                    _ = case wh_util:is_true(ecallmgr_config:get(<<"record_waste_resources">>, false)) of
+                            false -> ok;
+                            true -> set(Node, UUID, <<"record_waste_resources=true">>)
+                        end,
 
                     %% UUID start path/to/media limit
                     RecArg = binary_to_list(list_to_binary([

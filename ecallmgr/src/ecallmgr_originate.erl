@@ -368,7 +368,9 @@ build_originate_args(Action, Endpoints, JObj) ->
                     end,
     DialStrings = ecallmgr_util:build_bridge_string(Endpoints, DialSeparator),
     BillingId = wh_util:rand_hex_binary(16),
-    J = wh_json:set_value([<<"Custom-Channel-Vars">>, <<"Billing-ID">>], BillingId, JObj),
+    J = wh_json:set_values([{[<<"Custom-Channel-Vars">>, <<"Billing-ID">>], BillingId}
+                            ,{<<"Loopback-Bowout">>, <<"true">>}
+                           ], JObj),
     list_to_binary([ecallmgr_fs_xml:get_channel_vars(J), DialStrings, " ", Action]).
 
 -spec originate_execute/2 :: (atom(), ne_binary()) -> {'ok', ne_binary()} | {'error', ne_binary()}.

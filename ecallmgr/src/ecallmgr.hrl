@@ -128,6 +128,7 @@
                                ,{<<"Origination-UUID">>, <<"origination_uuid">>}
                                ,{<<"Ignore-Display-Updates">>, <<"ignore_display_updates">>}
                                %% ,{<<"Hold-Media">>, <<"hold_music">>}
+                               ,{<<"Loopback-Bowout">>, <<"loopback_bowout_on_execute">>}
                               ]).
 
 %% [{FreeSWITCH-App-Name, Whistle-App-Name}]
