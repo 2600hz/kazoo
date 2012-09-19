@@ -61,7 +61,7 @@
           ,call_count     :: integer() | '_'
           ,elapsed        :: integer() | '_'
           ,timestamp      :: integer() | '_' % gregorian seconds
-          ,active_since   :: wh_now() | '_'
+          ,active_since   :: integer() | '_'
           ,abandon_reason :: abandon_reason() | '_'
          }).
 
@@ -167,7 +167,7 @@ call_waiting_stat(AcctId, QueueId, CallId, Start) ->
     #stat{acct_id=AcctId
           ,queue_id=QueueId
           ,call_id=CallId
-          ,active_since=Start
+          ,timestamp=Start
           ,name=call_waiting
          }.
 
@@ -176,7 +176,7 @@ call_waiting_stat(AcctId, QueueId, CallId, Start) ->
 agent_active(AcctId, AgentId) ->
     gen_listener:cast(?MODULE, {store, #stat{acct_id=AcctId
                                              ,agent_id=AgentId
-                                             ,active_since=erlang:now()
+                                             ,active_since=wh_util:current_tstamp()
                                              ,name=agent_active
                                             }
                                }).
@@ -186,7 +186,7 @@ agent_active(AcctId, AgentId) ->
 agent_inactive(AcctId, AgentId) ->
     gen_listener:cast(?MODULE, {store, #stat{acct_id=AcctId
                                              ,agent_id=AgentId
-                                             ,active_since=erlang:now()
+                                             ,active_since=wh_util:current_tstamp()
                                              ,name=agent_inactive
                                             }
                                }).
@@ -226,7 +226,14 @@ handle_cast({store, Stat}, Table) ->
     ets:insert(Table, Stat),
     {noreply, Table};
 handle_cast({remove, Stat}, Table) ->
-    ets:delete_match(Table, Stat),
+    MatchSpec = [Stat
+                 ,[]
+                 ,['$_']
+                ],
+
+    Objs = ets:match_object(Table, MatchSpec),
+    lager:debug("objs to delete: ~p", [Objs]),
+    [ets:delete_object(Table, Obj) || Obj <- Objs],
     {noreply, Table};
 handle_cast(_Req, Table) ->
     {noreply, Table}.
@@ -305,12 +312,11 @@ update_stat(AcctDocs, #stat{name=agent_active
                            }) ->
     AcctDoc = fetch_acct_doc(AcctId, AcctDocs),
 
-    ActiveKey = [<<"agents">>, AgentId, <<"active_at">>],
+    ActiveKey = [<<"agents">>, AgentId, <<"login">>],
     ActiveAts = wh_json:get_value(ActiveKey, AcctDoc, []),
-    ActiveAt = wh_util:now_s(ActiveSince),
 
     dict:store(AcctId
-               ,wh_json:set_value(ActiveKey, [ActiveAt|ActiveAts], AcctDoc)
+               ,wh_json:set_value(ActiveKey, [ActiveSince|ActiveAts], AcctDoc)
                ,AcctDocs
               );
 update_stat(AcctDocs, #stat{name=agent_inactive
@@ -320,12 +326,11 @@ update_stat(AcctDocs, #stat{name=agent_inactive
                            }) ->
     AcctDoc = fetch_acct_doc(AcctId, AcctDocs),
 
-    InactiveKey = [<<"agents">>, AgentId, <<"inactive_at">>],
+    InactiveKey = [<<"agents">>, AgentId, <<"logout">>],
     InactiveAts = wh_json:get_value(InactiveKey, AcctDoc, []),
-    InactiveAt = wh_util:now_s(InactiveSince),
 
     dict:store(AcctId
-               ,wh_json:set_value(InactiveKey, [InactiveAt|InactiveAts], AcctDoc)
+               ,wh_json:set_value(InactiveKey, [InactiveSince|InactiveAts], AcctDoc)
                ,AcctDocs
               );
 update_stat(AcctDocs, #stat{name=call_processed
@@ -408,7 +413,7 @@ update_stat(AcctDocs, #stat{name=call_waiting
                             ,acct_id=AcctId
                             ,queue_id=QueueId
                             ,call_id=CallId
-                            ,active_since=Start
+                            ,timestamp=Start
                            }) ->
     AcctDoc = fetch_acct_doc(AcctId, AcctDocs),
 
