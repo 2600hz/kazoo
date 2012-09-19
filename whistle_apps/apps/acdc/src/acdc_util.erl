@@ -13,7 +13,7 @@
          ,unbind_from_call_events/1
          ,agents_in_queue/2
          ,agent_status/2
-         ,agent_proc_id/1
+         ,proc_id/0, proc_id/1, proc_id/2
         ]).
 
 -include("acdc.hrl").
@@ -89,6 +89,12 @@ agent_status(?NE_BINARY = AcctDb, AgentId) ->
         {ok, [StatusJObj|_]} -> wh_json:get_value(<<"value">>, StatusJObj)
     end.
 
--spec agent_proc_id/1 :: (pid()) -> ne_binary().
-agent_proc_id(Pid) ->
-    list_to_binary([wh_util:to_binary(node()), "-", pid_to_list(Pid)]).
+-spec proc_id/0 :: () -> ne_binary().
+-spec proc_id/1 :: (pid()) -> ne_binary().
+-spec proc_id/2 :: (pid(), atom() | ne_binary()) -> ne_binary().
+proc_id() ->
+    proc_id(self()).
+proc_id(Pid) ->
+    proc_id(Pid, node()).
+proc_id(Pid, Node) ->
+    list_to_binary([wh_util:to_binary(Node), "-", pid_to_list(Pid)]).
