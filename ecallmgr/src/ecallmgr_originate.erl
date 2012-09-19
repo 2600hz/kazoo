@@ -433,7 +433,7 @@ create_uuid(Node) ->
     end.
 
 create_uuid(JObj, Node) ->
-    case wh_json:get_ne_value(<<"Outgoing-Call-ID">>, JObj) of
+    case wh_json:get_ne_value(<<"Outbound-Call-ID">>, JObj) of
         undefined -> create_uuid(Node);
         CallId -> 
             put(callid, CallId),
