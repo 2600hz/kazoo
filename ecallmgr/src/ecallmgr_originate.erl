@@ -379,8 +379,8 @@ originate_execute(Node, Dialstrings) ->
     {ok, BGApiID} = freeswitch:bgapi(Node, 'originate', wh_util:to_list(Dialstrings)),
     UUIDSize = byte_size(BGApiID),
     receive
-        {bgok, BGApiID, <<"+OK ", UUID:UUIDSize/binary, _/binary>>} ->
-            {ok, UUID};
+        {bgok, BGApiID, <<"+OK ", UUID/binary>>} ->
+            {ok, wh_util:strip_binary(UUID)};
         {bgok, BGApiID, Error} ->
             lager:debug("something other than +OK from FS: ~s", [Error]),
             {error, Error};
