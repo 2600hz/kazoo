@@ -249,7 +249,7 @@ init([AcctId, AgentId, AgentProc]) ->
     {ok, sync, #state{acct_id=AcctId
                       ,agent_id=AgentId
                       ,agent_proc=AgentProc
-                      ,agent_proc_id=acdc_util:agent_proc_id(AgentProc)
+                      ,agent_proc_id=acdc_util:proc_id(AgentProc)
                       ,sync_ref=SyncRef
                      }}.
 
@@ -413,6 +413,18 @@ ringing({originate_ready, JObj}, #state{agent_proc=Srv}=State) ->
     acdc_agent:originate_execute(Srv, JObj),
     {next_state, ringing, State#state{agent_call_id=CallId}};
 
+ringing({originate_failed, timeout}, #state{agent_proc=Srv
+                                            ,acct_id=AcctId
+                                            ,agent_id=AgentId
+                                            ,member_call_queue_id=QueueId
+                                            ,member_call_id=CallId
+                                           }=State) ->
+    lager:debug("originate timed out"),
+    acdc_agent:member_connect_retry(Srv, CallId),
+
+    acdc_stats:call_missed(AcctId, QueueId, AgentId, CallId),
+    {next_state, ready, clear_call(State)};
+    
 ringing({originate_failed, JObj}
         ,#state{agent_proc=Srv
                 ,acct_id=AcctId
