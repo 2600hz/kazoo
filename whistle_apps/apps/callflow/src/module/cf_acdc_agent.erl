@@ -66,7 +66,7 @@ maybe_update_status(Call, AgentId, _Curr, <<"logout">>, _Data) ->
 
 maybe_update_status(Call, AgentId, <<"login">>, <<"login">>, _Data) ->
     lager:debug("agent ~s is already logged in", [AgentId]),
-    play_agent_logged_in_already(Call),
+    _ = play_agent_logged_in_already(Call),
     send_new_status(Call, AgentId, fun wapi_acdc_agent:publish_login/1, undefined);
 maybe_update_status(Call, AgentId, <<"login">>, <<"pause">>, Data) ->
     lager:debug("agent ~s is pausing work", [AgentId]),
