@@ -186,7 +186,7 @@ get_quantity_rate(Quantity, JObj) ->
 %% @doc
 %% Get the item quantity, drawing solely from the provided account or
 %% (when the service plan dictates) the summed (cascaded) decendants.
-%% Also handle the special case were we should sum all items in a
+%% Also handle the special case were we should sum all items in a 
 %% given category, except a list of item names to ignore during
 %% summation.
 %% @end
