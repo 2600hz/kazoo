@@ -162,7 +162,7 @@ call_waiting(AcctId, QueueId, CallId) ->
     gen_listener:cast(?MODULE, {store, call_waiting_stat(AcctId, QueueId, CallId)}).
 
 call_waiting_stat(AcctId, QueueId, CallId) ->
-    call_waiting_stat(AcctId, QueueId, CallId, erlang:now()).
+    call_waiting_stat(AcctId, QueueId, CallId, wh_util:current_tstamp()).
 call_waiting_stat(AcctId, QueueId, CallId, Start) ->
     #stat{acct_id=AcctId
           ,queue_id=QueueId
@@ -226,14 +226,11 @@ handle_cast({store, Stat}, Table) ->
     ets:insert(Table, Stat),
     {noreply, Table};
 handle_cast({remove, Stat}, Table) ->
-    MatchSpec = [Stat
-                 ,[]
-                 ,['$_']
-                ],
+    MatchSpec = [{Stat, [], ['$_']}],
 
-    Objs = ets:match_object(Table, MatchSpec),
+    Objs = ets:select(Table, MatchSpec),
     lager:debug("objs to delete: ~p", [Objs]),
-    [ets:delete_object(Table, Obj) || Obj <- Objs],
+    _ = [ets:delete_object(Table, Obj) || Obj <- Objs],
     {noreply, Table};
 handle_cast(_Req, Table) ->
     {noreply, Table}.
@@ -417,7 +414,7 @@ update_stat(AcctDocs, #stat{name=call_waiting
                            }) ->
     AcctDoc = fetch_acct_doc(AcctId, AcctDocs),
 
-    Funs = [{fun add_call_waiting/4, [QueueId, CallId, wh_util:elapsed_s(Start)]}],
+    Funs = [{fun add_call_waiting/4, [QueueId, CallId, Start]}],
     dict:store(AcctId
                ,lists:foldl(fun({F, Args}, AcctAcc) ->
                                     apply(F, [AcctAcc | Args])
@@ -453,7 +450,7 @@ add_call_duration(AcctDoc, QueueId, CallId, Elapsed) ->
                              ,ne_binary(), integer()
                             ) -> wh_json:json_object().
 add_call_waiting(AcctDoc, QueueId, CallId, WaitTime) ->
-    Key = [<<"queues">>, QueueId, <<"calls">>, CallId, <<"wait_time">>],
+    Key = [<<"queues">>, QueueId, <<"calls">>, CallId, <<"entered">>],
     wh_json:set_value(Key, WaitTime, AcctDoc).
 
 -spec add_call_agent/4 :: (wh_json:json_object(), ne_binary()
