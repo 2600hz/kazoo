@@ -103,7 +103,7 @@ init([]) ->
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    {ok, {SupFlags, [?CHILD(acdc_agent_sup, temporary, 2000, worker)]}}.
+    {ok, {SupFlags, [?CHILD(acdc_agent_sup, transient, 2000, worker)]}}.
 
 %%%===================================================================
 %%% Internal functions
