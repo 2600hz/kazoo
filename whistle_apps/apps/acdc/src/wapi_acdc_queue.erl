@@ -23,6 +23,7 @@
          ,sync_resp/1, sync_resp_v/1
          ,stats_req/1, stats_req_v/1
          ,stats_resp/1, stats_resp_v/1
+         ,agent_available/1, agent_available_v/1
         ]).
 
 -export([bind_q/2
@@ -43,6 +44,7 @@
          ,publish_sync_resp/2, publish_sync_resp/3
          ,publish_stats_req/1, publish_stats_req/2
          ,publish_stats_resp/2, publish_stats_resp/3
+         ,publish_agent_available/1, publish_agent_available/2
         ]).
 
 -export([queue_size/2, shared_queue_name/2]).
@@ -386,7 +388,7 @@ sync_req_routing_key(AcctId, QID) ->
     <<?SYNC_REQ_KEY, AcctId/binary, ".", QID/binary>>.
 
 -define(SYNC_REQ_HEADERS, [<<"Account-ID">>, <<"Queue-ID">>]).
--define(OPTIONAL_SYNC_REQ_HEADERS, [<<"Process-ID">>, <<"Current-Strategy">>]).
+-define(OPTIONAL_SYNC_REQ_HEADERS, [<<"Process-ID">>]).
 -define(SYNC_REQ_VALUES, [{<<"Event-Category">>, <<"queue">>}
                           ,{<<"Event-Name">>, <<"sync_req">>}
                          ]).
@@ -410,9 +412,9 @@ sync_req_v(JObj) ->
     sync_req_v(wh_json:to_proplist(JObj)).
 
 -define(SYNC_RESP_HEADERS, [<<"Account-ID">>, <<"Queue-ID">>
-                                ,<<"Current-Strategy">>, <<"Strategy-State">>
+                                ,<<"Current-Strategy">>
                            ]).
--define(OPTIONAL_SYNC_RESP_HEADERS, [<<"Process-ID">>, <<"Current-Strategy">>]).
+-define(OPTIONAL_SYNC_RESP_HEADERS, [<<"Process-ID">>, <<"Strategy-State">>]).
 -define(SYNC_RESP_VALUES, [{<<"Event-Category">>, <<"queue">>}
                            ,{<<"Event-Name">>, <<"sync_resp">>}
                           ]).
@@ -524,6 +526,47 @@ stats_resp_v(JObj) ->
     stats_resp_v(wh_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
+%% Agent Available - when an agent logs in, tell its configured queues
+%%------------------------------------------------------------------------------
+-define(AGENT_AVAILABLE_REQ_KEY, <<"acdc.queue.agent_available.">>).
+
+agent_available_publish_key(Prop) when is_list(Prop) ->
+    agent_available_routing_key(props:get_value(<<"Account-ID">>, Prop)
+                                ,props:get_value(<<"Queue-ID">>, Prop)
+                               );
+agent_available_publish_key(JObj) ->
+    agent_available_routing_key(wh_json:get_value(<<"Account-ID">>, JObj)
+                                ,wh_json:get_value(<<"Queue-ID">>, JObj)
+                               ).
+
+agent_available_routing_key(AcctId, QueueId) ->
+    <<?AGENT_AVAILABLE_REQ_KEY/binary, AcctId/binary, ".", QueueId/binary>>.
+
+-define(AGENT_AVAILABLE_HEADERS, [<<"Account-ID">>, <<"Agent-ID">>, <<"Queue-ID">>]).
+-define(OPTIONAL_AGENT_AVAILABLE_HEADERS, [<<"Account-ID">>, <<"Agent-ID">>, <<"Queue-ID">>]).
+-define(AGENT_AVAILABLE_VALUES, [{<<"Event-Category">>, <<"queue">>}
+                                 ,{<<"Event-Name">>, <<"agent_available">>}
+                                ]).
+-define(AGENT_AVAILABLE_TYPES, []).
+
+-spec agent_available/1 :: (api_terms()) ->
+                                   {'ok', iolist()} |
+                                   {'error', string()}.
+agent_available(Prop) when is_list(Prop) ->
+    case agent_available_v(Prop) of
+        true -> wh_api:build_message(Prop, ?AGENT_AVAILABLE_HEADERS, ?OPTIONAL_AGENT_AVAILABLE_HEADERS);
+        false -> {error, "proplist failed validation for agent_available"}
+    end;
+agent_available(JObj) ->
+    agent_available(wh_json:to_proplist(JObj)).
+
+-spec agent_available_v/1 :: (api_terms()) -> boolean().
+agent_available_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?AGENT_AVAILABLE_HEADERS, ?AGENT_AVAILABLE_VALUES, ?AGENT_AVAILABLE_TYPES);
+agent_available_v(JObj) ->
+    agent_available_v(wh_json:to_proplist(JObj)).
+
+%%------------------------------------------------------------------------------
 %% Bind/Unbind the queue as appropriate
 %%------------------------------------------------------------------------------
 -spec shared_queue_name/2 :: (ne_binary(), ne_binary()) -> ne_binary().
@@ -550,6 +593,7 @@ bind_q(Q, AcctId, QID, undefined) ->
 
     amqp_util:bind_q_to_whapps(Q, stats_req_routing_key(AcctId)),
     amqp_util:bind_q_to_whapps(Q, stats_req_routing_key(AcctId, QID)),
+    amqp_util:bind_q_to_whapps(Q, agent_available_routing_key(AcctId, QID)),
 
     amqp_util:bind_q_to_callmgr(Q, member_call_routing_key(AcctId, QID)),
     amqp_util:bind_q_to_callmgr(Q, member_connect_req_routing_key(AcctId, QID));
@@ -568,6 +612,9 @@ bind_q(Q, AcctId, <<"*">> = QID, [stats_req|T]) ->
 bind_q(Q, AcctId, QID, [stats_req|T]) ->
     amqp_util:bind_q_to_whapps(Q, stats_req_routing_key(AcctId, QID)),
     bind_q(Q, AcctId, QID, T);
+bind_q(Q, AcctId, QID, [agent_available|T]) ->
+    amqp_util:bind_q_to_whapps(Q, agent_available_routing_key(AcctId, QID)),
+    bind_q(Q, AcctId, QID, T);
 bind_q(Q, AcctId, QID, [_|T]) ->
     bind_q(Q, AcctId, QID, T);
 bind_q(_, _, _, []) ->
@@ -583,6 +630,7 @@ unbind_q(Q, Props) ->
 unbind_q(Q, AcctId, QID, undefined) ->
     _ = amqp_util:unbind_q_from_whapps(Q, sync_req_routing_key(AcctId, QID)),
     _ = amqp_util:unbind_q_from_whapps(Q, stats_req_routing_key(AcctId, QID)),
+    _ = amqp_util:unbind_q_from_whapps(Q, agent_available_routing_key(AcctId, QID)),
     _ = amqp_util:unbind_q_from_callmgr(Q, member_call_routing_key(AcctId, QID)),
     _ = amqp_util:unbind_q_from_callmgr(Q, member_connect_req_routing_key(AcctId, QID));
 unbind_q(Q, AcctId, QID, [member_call|T]) ->
@@ -599,6 +647,9 @@ unbind_q(Q, AcctId, <<"*">> = QID, [stats_req|T]) ->
     unbind_q(Q, AcctId, QID, T);
 unbind_q(Q, AcctId, QID, [stats_req|T]) ->
     _ = amqp_util:unbind_q_from_whapps(Q, stats_req_routing_key(AcctId, QID)),
+    unbind_q(Q, AcctId, QID, T);
+unbind_q(Q, AcctId, QID, [agent_available|T]) ->
+    _ = amqp_util:unbind_q_from_whapps(Q, agent_available_routing_key(AcctId, QID)),
     unbind_q(Q, AcctId, QID, T);
 unbind_q(Q, AcctId, QID, [_|T]) ->
     unbind_q(Q, AcctId, QID, T);
@@ -719,3 +770,11 @@ publish_stats_resp(Q, JObj) ->
 publish_stats_resp(Q, API, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(API, ?STATS_RESP_VALUES, fun stats_resp/1),
     amqp_util:targeted_publish(Q, Payload, ContentType).
+
+-spec publish_agent_available/1 :: (api_terms()) -> 'ok'.
+-spec publish_agent_available/2 :: (api_terms(), ne_binary()) -> 'ok'.
+publish_agent_available(JObj) ->
+    publish_agent_available(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_agent_available(API, ContentType) ->
+    {ok, Payload} = wh_api:prepare_api_payload(API, ?AGENT_AVAILABLE_VALUES, fun agent_available/1),
+    amqp_util:whapps_publish(agent_available_publish_key(API), Payload, ContentType).
