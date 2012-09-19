@@ -548,6 +548,7 @@ response({ready, Resp}, JObj) ->
     lager:debug("originate is ready to execute"),
     [{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, Resp)}
      ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+     ,{<<"Control-Queue">>, wh_json:get_value(<<"Control-Queue">>, JObj)}
      ,{<<"Response-Message">>, <<"READY">>}
      ,{<<"Resource-Response">>, Resp}
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
