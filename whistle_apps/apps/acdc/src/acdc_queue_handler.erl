@@ -15,6 +15,8 @@
          ,handle_member_retry/2
          ,handle_config_change/2
          ,handle_stat_req/2
+         ,handle_agent_available/2
+         ,handle_sync_req/2
         ]).
 
 -include("acdc.hrl").
@@ -104,3 +106,14 @@ get_queue_stats(P) ->
     wh_json:set_values([{<<"Queue-ID">>, QueueId}
                         ,{<<"Queue-Size">>, QueueSize}
                        ], wh_json:new()).
+
+handle_agent_available(JObj, Prop) ->
+    true = wapi_acdc_queue:agent_available_v(JObj),
+    FSM = props:get_value(fsm_pid, Prop),
+    acdc_queue_fsm:agent_available(FSM, JObj).
+
+handle_sync_req(JObj, Prop) ->
+    true = wapi_acdc_queue:sync_req_v(JObj),
+    FSM = props:get_value(fsm_pid, Prop),
+    acdc_queue_fsm:sync_req(FSM, JObj).
+    
