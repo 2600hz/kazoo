@@ -59,7 +59,7 @@
 -define(MEMBER_CALL_VALUES, [{<<"Event-Category">>, <<"member">>}
                              ,{<<"Event-Name">>, <<"call">>}
                             ]).
--define(MEMBER_CALL_TYPES, []).
+-define(MEMBER_CALL_TYPES, [{<<"Queue-ID">>, fun erlang:is_binary/1}]).
 
 -spec member_call/1 :: (api_terms()) ->
                                {'ok', iolist()} |
