@@ -310,9 +310,7 @@ play_instructions(#mailbox{skip_instructions=false}, Call) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec record_voicemail/3 :: (ne_binary(), #mailbox{}, whapps_call:call()) ->
-                                    'ok' |
-                                    {'branch', wh_json:json_object()}.
+-spec record_voicemail/3 :: (ne_binary(), #mailbox{}, whapps_call:call()) -> 'ok'.
 record_voicemail(AttachmentName, #mailbox{max_message_length=MaxMessageLength}=Box, Call) ->
     Tone = wh_json:from_list([{<<"Frequencies">>, [<<"440">>]}
                               ,{<<"Duration-ON">>, <<"500">>}
