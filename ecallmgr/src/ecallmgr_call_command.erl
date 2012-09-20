@@ -77,13 +77,17 @@ get_fs_app(Node, UUID, JObj, <<"play">>) ->
     case wapi_dialplan:play_v(JObj) of
         false -> {'error', <<"play failed to execute as JObj did not validate">>};
         true ->
-            F = ecallmgr_util:media_path(wh_json:get_value(<<"Media-Name">>, JObj), new, UUID, JObj, ?ECALLMGR_CALL_CACHE),
-            'ok' = set_terminators(Node, UUID, wh_json:get_value(<<"Terminators">>, JObj)),
+            Vars = case wh_json:get_value(<<"Group-ID">>, JObj) of
+                       undefined -> 
+                           [get_terminators(wh_json:get_value(<<"Terminators">>, JObj))];
+                       GID -> 
+                           [{<<"media_group_id">>, GID}
+                            ,get_terminators(wh_json:get_value(<<"Terminators">>, JObj))
+                           ]
+                   end,
+            set(Node, UUID, Vars),
 
-            _ = case wh_json:get_value(<<"Group-ID">>, JObj) of
-                    undefined -> ok;
-                    GID -> set(Node, UUID, <<"media_group_id=", (GID)/binary>>)
-                end,
+            F = ecallmgr_util:media_path(wh_json:get_value(<<"Media-Name">>, JObj), new, UUID, JObj, ?ECALLMGR_CALL_CACHE),
 
             %% if Leg is set, use uuid_broadcast; otherwise use playback
             case wh_json:get_value(<<"Leg">>, JObj) of
@@ -128,18 +132,18 @@ get_fs_app(Node, UUID, JObj, <<"record">>) ->
     case wapi_dialplan:record_v(JObj) of
         false -> {'error', <<"record failed to execute as JObj did not validate">>};
         true ->
-            MediaName = ecallmgr_util:recording_filename(wh_json:get_value(<<"Media-Name">>, JObj)),
-
-            %% disable buffering to see if we get all the media
-            %%'ok' = set(Node, UUID, <<"enable_file_write_buffering=false">>),
-            'ok' = set_terminators(Node, UUID, wh_json:get_value(<<"Terminators">>, JObj)),
-
             %% some carriers kill the channel during long recordings since there is no
             %% reverse RTP stream
-            _ = case wh_util:is_true(ecallmgr_config:get(<<"record_waste_resources">>, false)) of
-                    false -> ok;
-                    true -> set(Node, UUID, <<"record_waste_resources=true">>)
+            Vars = case wh_util:is_true(ecallmgr_config:get(<<"record_waste_resources">>, false)) of
+                       false -> [get_terminators(wh_json:get_value(<<"Terminators">>, JObj))];
+                       true ->
+                           [{<<"record_waste_resources">>, <<"true">>}
+                            ,get_terminators(wh_json:get_value(<<"Terminators">>, JObj))
+                           ]
                 end,
+            set(Node, UUID, Vars),
+
+            MediaName = ecallmgr_util:recording_filename(wh_json:get_value(<<"Media-Name">>, JObj)),
 
             RecArg = list_to_binary([MediaName, " "
                                      ,wh_json:get_string_value(<<"Time-Limit">>, JObj, "20"), " "
@@ -159,17 +163,20 @@ get_fs_app(Node, UUID, JObj, <<"record_call">>) ->
 
             case wh_json:get_value(<<"Record-Action">>, JObj) of
                 <<"start">> ->
-                    _ = set_terminators(Node, UUID, wh_json:get_value(<<"Terminators">>, JObj)),
 
-                    _ = set(Node, UUID, <<"RECORD_APPEND=true">>), % allow recording to be appended to
-                    _ = set(Node, UUID, <<"enable_file_write_buffering=false">>), % disable buffering to see if we get all the media
-
-                    %% some carriers kill the channel during long recordings since there is no
-                    %% reverse RTP stream
-                    _ = case wh_util:is_true(ecallmgr_config:get(<<"record_waste_resources">>, false)) of
-                            false -> ok;
-                            true -> set(Node, UUID, <<"record_waste_resources=true">>)
-                        end,
+                    Vars = case wh_util:is_true(ecallmgr_config:get(<<"record_waste_resources">>, false)) of
+                               false -> [{<<"RECORD_APPEND">>, <<"true">>}
+                                         ,{<<"enable_file_write_buffering">>, <<"false">>}
+                                         ,get_terminators(wh_json:get_value(<<"Terminators">>, JObj))
+                                        ];
+                               true ->
+                                   [{<<"record_waste_resources">>, <<"true">>}
+                                    ,{<<"RECORD_APPEND">>, <<"true">>}
+                                    ,{<<"enable_file_write_buffering">>, <<"false">>}
+                                    ,get_terminators(wh_json:get_value(<<"Terminators">>, JObj))
+                                   ]
+                           end,
+                    set(Node, UUID, Vars),
 
                     %% UUID start path/to/media limit
                     RecArg = binary_to_list(list_to_binary([
@@ -243,6 +250,7 @@ get_fs_app(Node, UUID, JObj, <<"tones">>) ->
         false -> {'error', <<"tones failed to execute as JObj did not validate">>};
         true ->
             'ok' = set_terminators(Node, UUID, wh_json:get_value(<<"Terminators">>, JObj)),
+            
             Tones = wh_json:get_value(<<"Tones">>, JObj, []),
             FSTones = [begin
                            Vol = case wh_json:get_value(<<"Volume">>, Tone) of
@@ -281,8 +289,10 @@ get_fs_app(Node, UUID, JObj, <<"ring">>) ->
 
 %% receive a fax from the caller
 get_fs_app(Node, UUID, _JObj, <<"receive_fax">>) ->
-    _ = set(Node, UUID, <<"fax_enable_t38_request=true">>),
-    _ = set(Node, UUID, <<"fax_enable_t38=true">>),
+    Vars = [{<<"fax_enable_t38_request">>, <<"true">>}
+            ,{<<"fax_enable_t38">>, <<"true">>}
+           ],
+    set(Node, UUID, Vars),
 
     [{<<"playback">>, <<"silence_stream://2000">>}
      ,{<<"rxfax">>, ecallmgr_util:fax_filename(UUID)}
@@ -560,7 +570,7 @@ get_fs_app(Node, UUID, JObj, <<"set">>) ->
         false -> {'error', <<"set failed to execute as JObj did not validate">>};
         true ->
             ChannelVars = wh_json:to_proplist(wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new())),
-            _ = multiset(Node, UUID, ChannelVars),
+            _ = set(Node, UUID, ChannelVars),
 
             CallVars = wh_json:to_proplist(wh_json:get_value(<<"Custom-Call-Vars">>, JObj, wh_json:new())),
             _ = [ export(Node, UUID, get_fs_kv(K, V, UUID)) || {K, V} <- CallVars],
@@ -706,34 +716,36 @@ send_fs_store(Node, Args, post) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec set_terminators/3 :: (atom(), ne_binary(), 'undefined' | binary() | list()) -> 'ok' |
-                                                                                     fs_api_ret().
-set_terminators(_Node, _UUID, undefined) -> 'ok';
-set_terminators(Node, UUID, <<>>) -> set(Node, UUID, <<"playback_terminators=none">>);
-set_terminators(Node, UUID, <<"none">>) -> set(Node, UUID, <<"playback_terminators=none">>);
-set_terminators(Node, UUID, []) -> set(Node, UUID, <<"playback_terminators=none">>);
-set_terminators(Node, UUID, Ts) ->
-    Terms = list_to_binary(["playback_terminators=", Ts]),
-    set(Node, UUID, Terms).
+-spec get_terminators/1 :: ('undefined' | binary() | list()) -> {ne_binary(), ne_binary()}.
+get_terminators(Ts) -> 
+    case wh_util:is_empty(Ts) of
+        true -> {<<"playback_terminators">>, <<"none">>};
+        false -> {<<"playback_terminators">>, wh_util:to_binary(Ts)}
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec multiset/3 :: (atom(), ne_binary(), proplist()) -> ecallmgr_util:send_cmd_ret().
-multiset(Node, UUID, Props) ->
+-spec set_terminators/3 :: (atom(), ne_binary(), 'undefined' | binary() | list()) -> ecallmgr_util:send_cmd_ret().
+set_terminators(Node, UUID, Ts) -> 
+    {K, V} = get_terminators(Ts),
+    set(Node, UUID, <<K/binary, "=", V/binary>>).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec set/3 :: (atom(), ne_binary(), proplist()) -> ecallmgr_util:send_cmd_ret().
+set(Node, UUID, [{K, V}]) ->
+    set(Node, UUID, <<K/binary, "=", V/binary>>);
+set(Node, UUID, [{_, _}|_]=Props) ->
     Multiset = lists:foldl(fun({K, V}, Acc) ->
                                    <<"|", (get_fs_kv(K, V, UUID))/binary, Acc/binary>>
                            end, <<>>, Props),
-    ecallmgr_util:send_cmd(Node, UUID, "multiset", <<"^^", Multiset/binary>>).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec set/3 :: (atom(), ne_binary(), ne_binary()) -> ecallmgr_util:send_cmd_ret().
+    ecallmgr_util:send_cmd(Node, UUID, "multiset", <<"^^", Multiset/binary>>);
 set(Node, UUID, Arg) ->
     case wh_util:to_binary(Arg) of
         <<"hold_music=", _/binary>> -> 

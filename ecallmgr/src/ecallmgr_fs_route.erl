@@ -195,9 +195,7 @@ reply_forbidden(Node, FSID) ->
                                                ]),
     lager:debug("sending XML to ~s: ~s", [Node, XML]),
     case freeswitch:fetch_reply(Node, FSID, iolist_to_binary(XML)) of
-        ok ->
-            _ = ecallmgr_util:fs_log(Node, "whistle node ~s won control with forbidden reply", [node()]),
-            lager:debug("node ~s accepted our route unauthz", [Node]);
+        ok -> lager:debug("node ~s accepted our route unauthz", [Node]);
         {error, Reason} -> lager:debug("node ~s rejected our route unauthz, ~p", [Node, Reason]);
         timeout -> lager:error("received no reply from node ~s, timeout", [Node])
     end.
@@ -210,7 +208,6 @@ reply_affirmative(Node, FSID, CallId, RespJObj, Props) ->
     case freeswitch:fetch_reply(Node, FSID, iolist_to_binary(XML)) of
         ok ->
             lager:debug("node ~s accepted our route (authzed), starting control and events", [Node]),
-            _ = ecallmgr_util:fs_log(Node, "whistle ~s won control with affimative reply", [node()]),
             RouteCCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, RespJObj, wh_json:new()),
             CCVs = case props:get_value(?GET_CCV(<<"Billing-ID">>), Props) of
                        undefined -> 

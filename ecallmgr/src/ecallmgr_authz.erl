@@ -25,106 +25,116 @@
 -spec maybe_authorize_channel/2 :: (wh_proplist(), atom()) -> boolean().
 maybe_authorize_channel(Props, Node) ->
     CallId = props:get_value(<<"Unique-ID">>, Props),
-    DryRun = wh_util:is_true(ecallmgr_config:get(<<"authz_dry_run">>, false)),
-    Routines = [fun(P) ->
-                        case wh_util:is_true(ecallmgr_config:get(<<"authz_enabled">>, false)) of
-                            true -> {ok, P};
-                            false ->
-                                lager:debug("config ecallmgr.authz_enabled is 'false', allowing", []),
-                                {error, authz_disabled}
-                        end
-                end
-                ,fun({error, _}=E) -> E;
-                    ({ok, _}=Ok) ->
-                         GlobalResource = props:get_value(?GET_CCV(<<"Global-Resource">>), Props, true),
-                         case wh_util:is_true(GlobalResource) of
-                             true -> Ok;
-                             false -> 
-                                 lager:debug("channel is a local resource, allowing", []),
-                                 {error, not_required}
-                         end
-                 end
-                ,fun({error, _}=E) -> E;
-                    ({ok, P}) ->
-                         case props:get_value(<<"Call-Direction">>, P) of
-                             <<"outbound">> ->
-                                 case props:get_value(?GET_CCV(<<"Resource-ID">>), Props) =/= undefined of
-                                     true -> {ok, P};
-                                     false ->
-                                         lager:debug("outbound channel is not consuming a resource, allowing", []),
-                                         {error, not_required}
-                                 end;
-                             <<"inbound">> ->
-                                 case props:get_value(?GET_CCV(<<"Authorizing-ID">>), Props) =:= undefined of
-                                     true -> {ok, P};
-                                     false ->
-                                         lager:debug("inbound channel is not consuming a resource, allowing", []),
-                                         {error, not_required}
-                                 end
-                             end
-                 end
-                ,fun({error, _}=E) -> E;
-                    ({ok, P}) ->
-                         case props:get_value(?GET_CCV(<<"Account-ID">>), P) of
-                             undefined ->
-                                 case identify_account(undefined, P) of
-                                     {error, _}=E -> E;
-                                     {ok, _}=Ok ->
-                                         update_account_id(Ok, CallId, Node),
-                                         update_reseller_id(Ok, CallId, Node),
-                                         Ok
-                                 end;
-                             AccountId ->
-                                 put(account_id, AccountId),
-                                 {ok, P}
-                         end
-                 end
-                ,fun({error, _}=E) -> E;
-                    ({ok, P}) ->
-                         %% Ensure that even if the call is answered while we are authorizing it
-                         %% the session will hearbeat.
-                         _ = ecallmgr_util:send_cmd(Node, CallId, "set", ?HEARTBEAT_ON_ANSWER(CallId)),
-                         AccountId = props:get_value(?GET_CCV(<<"Account-ID">>), P),
-                         case authorize(AccountId, P) of
-                             {error, _}=E -> E;
-                             {ok, Type} ->
-                                 lager:debug("call authorized by account ~s as ~s", [AccountId, Type]),
-                                 _ = ecallmgr_util:send_cmd(Node, CallId, "set", ?SET_CCV(<<"Account-Billing">>, Type)),
-                                 {ok, P}
-                         end
-                 end
-                ,fun({error, _}=E) -> E;
-                    ({ok, P}) ->
-                         ResellerId = props:get_value(?GET_CCV(<<"Reseller-ID">>), P),
-                         case authorize(ResellerId, P) of
-                             {error, account_limited}=E -> E;
-                             {ok, Type} ->
-                                 lager:debug("call authorized by reseller ~s as ~s", [ResellerId, Type]),
-                                 _ = ecallmgr_util:send_cmd(Node, CallId, "set", ?SET_CCV(<<"Reseller-Billing">>, Type)),
-                                 {ok, P};
-                             _Else ->
-                                 {ok, P}
-                         end
-                 end
-                ,fun({error, _}=E) -> E;
-                    ({ok, P}) ->
-                         spawn(?MODULE, rate_channel, [P]),
-                         {ok, P}
-                 end
-               ],
-    case lists:foldl(fun(F, P) -> F(P) end, Props, Routines) of
-        {error, authz_disabled} -> true;
-        {error, not_required} -> true;
-        {ok, _} ->
-            lager:debug("channel authorization succeeded, allowing call", []),
-            true;
-        {error, _R} ->
-            _ = ecallmgr_util:fs_log(Node, "channel authorization failed (allowed ~s): ~s", [DryRun, _R]),
-            lager:info("channel authorization failed (allowed ~s): ~s", [DryRun, _R]),
-            _ = DryRun orelse spawn(?MODULE, kill_channel, [Props, Node]),
-            DryRun orelse false
+    is_authz_enabled(Props, CallId, Node).
+
+-spec is_authz_enabled/3 :: (wh_proplist(), ne_binary(), atom()) -> boolean().
+is_authz_enabled(Props, CallId, Node) ->
+    case wh_util:is_true(ecallmgr_config:get(<<"authz_enabled">>, false)) of
+        true -> is_global_resource(Props, CallId, Node);
+        false ->
+            lager:debug("config ecallmgr.authz is disabled", []),
+            allow_call(Props, CallId, Node)
     end.
 
+-spec is_global_resource/3 :: (wh_proplist(), ne_binary(), atom()) -> boolean().
+is_global_resource(Props, CallId, Node) ->
+    GlobalResource = props:get_value(?GET_CCV(<<"Global-Resource">>), Props, true),
+    case wh_util:is_true(GlobalResource) of
+        true -> is_consuming_resource(Props, CallId, Node);
+        false -> 
+            lager:debug("channel is a local resource", []),
+            allow_call(Props, CallId, Node)
+    end.
+        
+-spec is_consuming_resource/3 :: (wh_proplist(), ne_binary(), atom()) -> boolean().
+is_consuming_resource(Props, CallId, Node) ->
+    case props:get_value(<<"Call-Direction">>, Props) of
+        <<"outbound">> ->
+            case props:get_value(?GET_CCV(<<"Resource-ID">>), Props) =/= undefined of
+                true -> set_heartbeat_on_answer(Props, CallId, Node);
+                false ->
+                    lager:debug("outbound channel is not consuming a resource", []),
+                    allow_call(Props, CallId, Node) 
+            end;
+        <<"inbound">> ->
+            case props:get_value(?GET_CCV(<<"Authorizing-ID">>), Props) =:= undefined of
+                true -> set_heartbeat_on_answer(Props, CallId, Node);
+                false ->
+                    lager:debug("inbound channel is not consuming a resource", []),
+                    allow_call(Props, CallId, Node)
+            end
+    end.
+
+-spec set_heartbeat_on_answer/3 :: (wh_proplist(), ne_binary(), atom()) -> boolean().
+set_heartbeat_on_answer(Props, CallId, Node) ->
+    %% Ensure that even if the call is answered while we are authorizing it
+    %% the session will hearbeat.
+    'ok' = ecallmgr_util:send_cmd(Node, CallId, "set", ?HEARTBEAT_ON_ANSWER(CallId)),
+    ensure_account_id_exists(Props, CallId, Node).
+
+-spec ensure_account_id_exists/3 :: (wh_proplist(), ne_binary(), atom()) -> boolean().
+ensure_account_id_exists(Props, CallId, Node) ->
+    case props:get_value(?GET_CCV(<<"Account-ID">>), Props) of
+        undefined ->
+            case identify_account(undefined, Props) of
+                {error, _R} -> 
+                    lager:debug("unable to determine the account id: ~p", [_R]),
+                    maybe_deny_call(Props, CallId, Node);
+                {ok, _}=Ok ->
+                    update_account_id(Ok, CallId, Node),
+                    update_reseller_id(Ok, CallId, Node),
+                    authorize_account(Props, CallId, Node)
+            end;
+        AccountId ->
+            put(account_id, AccountId),
+            authorize_account(Props, CallId, Node)
+    end.
+
+-spec authorize_account/3 :: (wh_proplist(), ne_binary(), atom()) -> boolean().
+authorize_account(Props, CallId, Node) ->
+    AccountId = props:get_value(?GET_CCV(<<"Account-ID">>), Props),
+    case authorize(AccountId, Props) of
+        {error, _R} ->
+            lager:debug("failed to authorize account ~s: ~p", [AccountId, _R]),
+            maybe_deny_call(Props, CallId, Node);
+        {ok, Type} ->
+            lager:debug("call authorized by account ~s as ~s", [AccountId, Type]),
+            'ok' = ecallmgr_util:send_cmd(Node, CallId, "set", ?SET_CCV(<<"Account-Billing">>, Type)),
+            authorize_reseller(Props, CallId, Node)
+    end.
+
+-spec authorize_reseller/3 :: (wh_proplist(), ne_binary(), atom()) -> boolean().
+authorize_reseller(Props, CallId, Node) ->
+    ResellerId = props:get_value(?GET_CCV(<<"Reseller-ID">>), Props),
+    case authorize(ResellerId, Props) of
+        {error, account_limited} -> 
+            lager:debug("reseller has no remaining resources", []),
+            maybe_deny_call(Props, CallId, Node);
+        {ok, Type} ->
+            lager:debug("call authorized by reseller ~s as ~s", [ResellerId, Type]),
+            'ok' = ecallmgr_util:send_cmd(Node, CallId, "set", ?SET_CCV(<<"Reseller-Billing">>, Type)),
+            rate_call(Props, CallId, Node);
+        _Else ->
+            rate_call(Props, CallId, Node)
+    end.
+        
+-spec rate_call/3 :: (wh_proplist(), ne_binary(), atom()) -> boolean().
+rate_call(Props, CallId, Node) ->
+    spawn(?MODULE, rate_channel, [Props]),
+    allow_call(Props, CallId, Node).
+
+-spec allow_call/3 :: (wh_proplist(), ne_binary(), atom()) -> true.
+allow_call(_, _, _) ->
+    lager:debug("channel authorization succeeded, allowing call", []),
+    true.
+
+-spec maybe_deny_call/3 :: (wh_proplist(), ne_binary(), atom()) -> boolean().
+maybe_deny_call(Props, _, Node) ->
+    DryRun = wh_util:is_true(ecallmgr_config:get(<<"authz_dry_run">>, false)),
+    _ = ecallmgr_util:fs_log(Node, "channel authorization failed (allowed ~s)", [DryRun]),
+    _ = DryRun orelse spawn(?MODULE, kill_channel, [Props, Node]),
+    DryRun orelse false.
+ 
 -spec update/2 :: (wh_proplist(), atom()) -> 'ok'.
 update(Props, Node) ->
     CallId = props:get_value(<<"Unique-ID">>, Props),
@@ -246,7 +256,7 @@ set_rating_ccvs(JObj) ->
                                                    <<"|", (?SET_CCV(Key, Value))/binary, Acc/binary>>
                                            end
                            end, <<>>, ?RATE_VARS),
-            _ = ecallmgr_util:send_cmd(Node, CallId, "multiset", <<"^^", Multiset/binary>>),
+            'ok' = ecallmgr_util:send_cmd(Node, CallId, "multiset", <<"^^", Multiset/binary>>),
             ok
     end.
 
@@ -329,7 +339,7 @@ update_account_id({ok, Props}, CallId, Node) ->
     case props:get_value(?GET_CCV(<<"Account-ID">>), Props) of
         undefined -> ok;
         AccountId ->
-            _ = ecallmgr_util:send_cmd(Node, CallId, "export", ?SET_CCV(<<"Account-ID">>, AccountId)),
+            'ok' = ecallmgr_util:send_cmd(Node, CallId, "export", ?SET_CCV(<<"Account-ID">>, AccountId)),
             put(account_id, AccountId),
             ok
     end.
@@ -339,6 +349,6 @@ update_reseller_id({ok, Props}, CallId, Node) ->
     case props:get_value(?GET_CCV(<<"Reseller-ID">>), Props) of
         undefined -> ok;
         ResellerId ->
-            _ = ecallmgr_util:send_cmd(Node, CallId, "set", ?SET_CCV(<<"Reseller-ID">>, ResellerId)),
+            'ok' = ecallmgr_util:send_cmd(Node, CallId, "set", ?SET_CCV(<<"Reseller-ID">>, ResellerId)),
             ok
     end.

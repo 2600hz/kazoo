@@ -90,6 +90,7 @@ route_resp_xml(RespJObj) ->
 -spec route_resp_xml/3 :: (ne_binary(), wh_json:json_objects(), wh_json:json_object()) -> {'ok', iolist()}.
 route_resp_xml(<<"bridge">>, Routes, _JObj) ->
     lager:debug("creating a bridge XML response"),
+    LogEl = route_resp_log_winning_node(),
     %% format the Route based on protocol
     {_Idx, Extensions} = lists:foldr(
                                    fun(RouteJObj, {Idx, Acc}) ->
@@ -122,7 +123,7 @@ route_resp_xml(<<"bridge">>, Routes, _JObj) ->
 
                                                    {Idx+1, [ExtEl | Acc]}
                                            end
-                                   end, {1, []}, Routes),
+                                   end, {1, [LogEl]}, Routes),
 
     FailRespondEl = action_el(<<"respond">>, <<"${bridge_hangup_cause}">>),
     FailConditionEl = condition_el(FailRespondEl),
@@ -132,9 +133,17 @@ route_resp_xml(<<"bridge">>, Routes, _JObj) ->
     SectionEl = section_el(<<"dialplan">>, <<"Route Bridge Response">>, ContextEl),
     {ok, xmerl:export([SectionEl], fs_xml)};
 
-route_resp_xml(<<"park">>, _Routes, _JObj) ->
-    ParkRespondEl = action_el(<<"park">>),
-    ParkConditionEl = condition_el(ParkRespondEl),
+route_resp_xml(<<"park">>, _Routes, JObj) ->
+    LogEl = route_resp_log_winning_node(),
+    ParkEl = action_el(<<"park">>),
+
+    ParkConditionEl = case route_resp_pre_park_action(JObj) of
+                          undefined ->
+                              condition_el([LogEl, ParkEl]);
+                          PreParkEl ->
+                              condition_el([LogEl, PreParkEl, ParkEl])
+                      end,
+
     ParkExtEl = extension_el(<<"park">>, undefined, [ParkConditionEl]),
 
     ContextEl = context_el(?WHISTLE_CONTEXT, [ParkExtEl]),
@@ -142,11 +151,13 @@ route_resp_xml(<<"park">>, _Routes, _JObj) ->
     {ok, xmerl:export([SectionEl], fs_xml)};
 
 route_resp_xml(<<"error">>, _Routes, JObj) ->
+    LogEl = route_resp_log_winning_node(),
+
     ErrCode = wh_json:get_value(<<"Route-Error-Code">>, JObj),
     ErrMsg = [" ", wh_json:get_value(<<"Route-Error-Message">>, JObj, <<"">>)],
 
     ErrEl = action_el(<<"respond">>, [ErrCode, ErrMsg]),
-    ErrCondEl = condition_el(ErrEl),
+    ErrCondEl = condition_el([LogEl, ErrEl]),
     ErrExtEl = extension_el([ErrCondEl]),
 
     ContextEl = context_el(?WHISTLE_CONTEXT, [ErrExtEl]),
@@ -159,6 +170,19 @@ route_not_found() ->
     SectionEl = section_el(<<"result">>, <<"Route Not Found">>, ResultEl),
     {ok, xmerl:export([SectionEl], fs_xml)}.
 
+-spec route_resp_log_winning_node/0 :: () -> xml_el().
+route_resp_log_winning_node() ->
+    action_el(<<"log">>, [<<"NOTICE log|${uuid}|", (wh_util:to_binary(node()))/binary, " won call control">>]).
+
+-spec route_resp_pre_park_action/1 :: (wh_json:json_object()) -> 'undefined' | xml_el().
+route_resp_pre_park_action(JObj) ->
+    case wh_json:get_value(<<"Pre-Park">>, JObj) of
+        <<"ring_ready">> -> action_el(<<"ring_ready">>);
+        <<"answer">> -> action_el(<<"answer">>);
+        _Else -> undefined
+    end.
+
+            
 -spec build_sip_route/2 :: (api_terms(), ne_binary() | 'undefined') -> ne_binary() |
                                                                        {'error', 'timeout'}.
 build_sip_route(Route, undefined) ->

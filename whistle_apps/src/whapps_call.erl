@@ -47,8 +47,11 @@
 -export([set_authorizing_type/2, authorizing_type/1]).
 -export([set_owner_id/2, owner_id/1]).
 
--export([set_custom_channel_var/3, update_custom_channel_vars/2
-         ,custom_channel_var/3, custom_channel_var/2
+-export([set_custom_channel_var/3
+         ,set_custom_channel_vars/2
+         ,update_custom_channel_vars/2
+         ,custom_channel_var/3
+         ,custom_channel_var/2
          ,custom_channel_vars/1
         ]).
 
@@ -551,6 +554,12 @@ owner_id(#whapps_call{owner_id=OwnerId}) ->
 set_custom_channel_var(Key, Value, #whapps_call{ccvs=CCVs}=Call) ->
     whapps_call_command:set(wh_json:set_value(Key, Value, wh_json:new()), undefined, Call),
     Call#whapps_call{ccvs=wh_json:set_value(Key, Value, CCVs)}.
+
+-spec set_custom_channel_vars/2 :: (proplist(), whapps_call:call()) -> whapps_call:call().
+set_custom_channel_vars(Props, #whapps_call{ccvs=CCVs}=Call) ->
+    NewCCVs = wh_json:set_values(Props, CCVs),
+    whapps_call_command:set(NewCCVs, undefined, Call),
+    Call#whapps_call{ccvs=NewCCVs}.
 
 -spec update_custom_channel_vars/2 :: ([fun((wh_json:json_object()) -> wh_json:json_object()),...], whapps_call:call()) -> whapps_call:call().
 update_custom_channel_vars(Updaters, #whapps_call{ccvs=CCVs}=Call) ->

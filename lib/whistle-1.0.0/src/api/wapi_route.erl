@@ -87,10 +87,13 @@
 %% Route Responses
 -define(ROUTE_RESP_HEADERS, [<<"Method">>]).
 -define(OPTIONAL_ROUTE_RESP_HEADERS, [<<"Custom-Channel-Vars">>, <<"Routes">>
-                                      ,<<"Route-Error-Code">>, <<"Route-Error-Message">>]).
+                                          ,<<"Route-Error-Code">>, <<"Route-Error-Message">>
+                                          ,<<"Pre-Park">>
+                                     ]).
 -define(ROUTE_RESP_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
                             ,{<<"Event-Name">>, <<"route_resp">>}
                             ,{<<"Method">>, [<<"bridge">>, <<"park">>, <<"error">>]}
+                            ,{<<"Pre-Park">>, [<<"none">>, <<"ring_ready">>, <<"answer">>]}
                            ]).
 -define(ROUTE_RESP_TYPES, [{<<"Route-Error-Code">>, fun is_binary/1}
                            ,{<<"Route-Error-Message">>, fun is_binary/1}

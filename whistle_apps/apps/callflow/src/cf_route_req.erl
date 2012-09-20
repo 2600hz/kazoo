@@ -29,7 +29,7 @@ handle_req(JObj, Options) ->
                                                                         ,whapps_call:account_id(Call)
                                                                        ]),
                     cache_call(Flow, NoMatch, ControllerQ, Call),
-                    send_route_response(JObj, ControllerQ, <<"false">>);
+                    send_route_response(JObj, ControllerQ, <<"false">>, Call);
                 {ok, _, true} ->
                     lager:debug("only available callflow is a nomatch for a unauthorized call", []),
                     maybe_send_defered_route_response(JObj, ControllerQ, Call);
@@ -64,16 +64,34 @@ callflow_should_respond(Call) ->
 %% process
 %% @end
 %%-----------------------------------------------------------------------------
--spec send_route_response/3 :: (wh_json:json_object(), ne_binary(), ne_binary()) -> 'ok'.
-send_route_response(JObj, Q, Defer) ->
+-spec send_route_response/4 :: (wh_json:json_object(), ne_binary(), ne_binary(), whapps_call:call()) -> 'ok'.
+send_route_response(JObj, Q, Defer, Call) ->
     Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
             ,{<<"Routes">>, []}
             ,{<<"Method">>, <<"park">>}
             ,{<<"Defer-Response">>, Defer}
+            ,{<<"Pre-Park">>, pre_park_action(Call)}
             | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
            ],
+    io:format("~p~n", [pre_park_action(Call)]),
     wapi_route:publish_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp),
     lager:debug("sent route response to park the call").
+
+%%-----------------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%-----------------------------------------------------------------------------
+-spec pre_park_action/1 :: (whapps_call:call()) -> ne_binary().
+pre_park_action(Call) ->
+    case whapps_config:get_is_true(<<"callflow">>, <<"ring_ready_offnet">>, true) 
+        andalso whapps_call:inception(Call) =:= <<"off-net">>
+        andalso whapps_call:authorizing_type(Call) =:= undefined
+    of
+        false -> <<"none">>;
+        true -> <<"ring_ready">>
+    end.
 
 %%-----------------------------------------------------------------------------
 %% @private
@@ -91,7 +109,7 @@ maybe_send_defered_route_response(JObj, ControllerQ, Call) ->
                                                                             ,whapps_call:account_id(Call)
                                                                            ]),            
             cache_call(Flow, false, ControllerQ, Call),
-            send_route_response(JObj, ControllerQ, <<"true">>);
+            send_route_response(JObj, ControllerQ, <<"true">>, Call);
         _Else ->
             ok
     end.
