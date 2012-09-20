@@ -475,9 +475,10 @@ connect_req(_Event, State) ->
 connect_req(status, _, State) ->
     {reply, <<"connect_req">>, connect_req, State};
 connect_req(current_call, _, #state{member_call=Call
-                                   ,connection_timer_ref=ConnRef
-                                  }=State) ->
-    {reply, current_call(Call, ConnRef), connect_req, State}.
+                                    ,member_call_start=Start
+                                    ,connection_timer_ref=ConnRef
+                                   }=State) ->
+    {reply, current_call(Call, ConnRef, Start), connect_req, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -593,9 +594,10 @@ connecting(_Event, State) ->
 connecting(status, _, State) ->
     {reply, <<"connecting">>, connecting, State};
 connecting(current_call, _, #state{member_call=Call
+                                   ,member_call_start=Start
                                    ,connection_timer_ref=ConnRef
                                   }=State) ->
-    {reply, current_call(Call, ConnRef), connecting, State}.
+    {reply, current_call(Call, ConnRef, Start), connecting, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -825,13 +827,14 @@ update_properties(QueueJObj, State) ->
 serialize_strategy_state('rr', AgentQ) -> queue:to_list(AgentQ);
 serialize_strategy_state('mi', _) -> undefined.
 
-current_call(undefined, _) -> undefined;
-current_call(Call, Start) ->
+current_call(undefined, _, _) -> undefined;
+current_call(Call, QueueTimeLeft, Start) ->
     wh_json:from_list([{<<"call_id">>, whapps_call:call_id(Call)}
                        ,{<<"caller_id_name">>, whapps_call:caller_id_name(Call)}
                        ,{<<"caller_id_number">>, whapps_call:caller_id_name(Call)}
                        ,{<<"to">>, whapps_call:to_user(Call)}
                        ,{<<"from">>, whapps_call:from_user(Call)}
+                       ,{<<"wait_left">>, elapsed(QueueTimeLeft)}
                        ,{<<"wait_time">>, elapsed(Start)}
                       ]).
 elapsed(undefined) -> undefined;
