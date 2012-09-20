@@ -14,7 +14,7 @@
          ,handle_member_accepted/2
          ,handle_member_retry/2
          ,handle_config_change/2
-         ,handle_stat_req/2
+         ,handle_stats_req/2
          ,handle_agent_available/2
          ,handle_sync_req/2
         ]).
@@ -61,51 +61,50 @@ handle_queue_change(_JObj, AcctId, QueueId, <<"doc_deleted">>) ->
         P when is_pid(P) -> acdc_queue_sup:stop(P)
     end.
 
-handle_stat_req(JObj, _Props) ->
+handle_stats_req(JObj, _Props) ->
     true = wapi_acdc_queue:stats_req_v(JObj),
-    handle_stat_req(wh_json:get_value(<<"Account-ID">>, JObj)
-                    ,wh_json:get_value(<<"Queue-ID">>, JObj)
-                    ,wh_json:get_value(<<"Server-ID">>, JObj)
-                   ).
+    handle_stats_req(wh_json:get_value(<<"Account-ID">>, JObj)
+                     ,wh_json:get_value(<<"Queue-ID">>, JObj)
+                     ,wh_json:get_value(<<"Server-ID">>, JObj)
+                     ,wh_json:get_value(<<"Msg-ID">>, JObj)
+                    ).
 
-handle_stat_req(AcctId, undefined, ServerId) ->
-    lager:debug("fetch queue stats for all queues in ~s", [AcctId]),
-    case acdc_queues_sup:find_acct_supervisors(AcctId) of
-        [] -> lager:debug("no queue processes");
-        Ps ->
-            Resp = [{<<"Account-ID">>, AcctId}
-                    ,{<<"Current-Queue-Stats">>, get_queues_stats(Ps)}
-                    ,{<<"Current-Account-Stats">>, acdc_stats:acct_stats(AcctId)}
-                    | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-                   ],
-            wapi_acdc_queue:publish_stats_resp(ServerId, Resp)
-    end;
-handle_stat_req(AcctId, QueueId, ServerId) ->
-    lager:debug("fetch queue stats for ~s in ~s", [QueueId, AcctId]),
+handle_stats_req(AcctId, undefined, ServerId, MsgId) ->
+    build_stats_resp(AcctId, ServerId, MsgId, acdc_queues_sup:find_acct_supervisors(AcctId));
+handle_stats_req(AcctId, QueueId, ServerId, MsgId) ->
     case acdc_queues_sup:find_queue_supervisor(AcctId, QueueId) of
-        undefined -> lager:debug("no queue processes");
-        P ->
-            Resp = [{<<"Account-ID">>, AcctId}
-                    ,{<<"Current-Queue-Stats">>, get_queue_stats(P)}
-                    ,{<<"Current-Account-Stats">>, acdc_stats:acct_stats(AcctId)}
-                    | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-                   ],
-            wapi_acdc_queue:publish_stats_resp(ServerId, Resp)
+        undefined -> lager:debug("queue ~s in acct ~s isn't running", [QueueId, AcctId]);
+        P when is_pid(P) -> build_stats_resp(AcctId, ServerId, MsgId, [P])
     end.
 
--spec get_queues_stats/1 :: ([pid(),...]) -> wh_json:json_objects().
-get_queues_stats(Ps) ->
-    [get_queue_stats(P) || P <- Ps].
+-spec build_stats_resp/4 :: (api_binary(), api_binary(), api_binary(), [pid()] | []) -> any().
+-spec build_stats_resp/7 :: (api_binary(), api_binary(), api_binary(), [pid()] | []
+                             ,wh_proplist(), wh_proplist(), wh_proplist()
+                            ) -> any().
+build_stats_resp(AcctId, RespQ, MsgId, Ps) ->
+    build_stats_resp(AcctId, RespQ, MsgId, Ps, [], [], []).
 
--spec get_queue_stats/1 :: (pid()) -> wh_json:json_object().
-get_queue_stats(P) ->
-    QueuePid = acdc_queue_sup:queue(P),
-    {AcctId, QueueId} = acdc_queue:config(QueuePid),
-    QueueSize = wapi_acdc_queue:queue_size(AcctId, QueueId),
+build_stats_resp(AcctId, RespQ, MsgId, [], CurrCalls, CurrStats, CurrQueues) ->
+    Resp = props:filter_undefined(
+             [{<<"Account-ID">>, AcctId}
+              ,{<<"Current-Calls">>, wh_json:from_list(props:filter_undefined(CurrCalls))}
+              ,{<<"Current-Stats">>, wh_json:from_list(props:filter_undefined(CurrStats))}
+              ,{<<"Current-Statuses">>, wh_json:from_list(props:filter_undefined(CurrQueues))}
+              ,{<<"Msg-ID">>, MsgId}
+              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+             ]),
+    wapi_acdc_queue:publish_stats_resp(RespQ, Resp);
+build_stats_resp(AcctId, RespQ, MsgId, [P|Ps], CurrCalls, CurrStats, CurrQueues) ->
+    Q = acdc_queue_sup:queue(P),
+    {AcctId, QueueId} = acdc_queue:config(Q),
 
-    wh_json:set_values([{<<"Queue-ID">>, QueueId}
-                        ,{<<"Queue-Size">>, QueueSize}
-                       ], wh_json:new()).
+    FSM = acdc_queue_sup:fsm(P),
+
+    build_stats_resp(AcctId, RespQ, MsgId, Ps
+                     ,[{QueueId, acdc_queue_fsm:current_call(FSM)} | CurrCalls]
+                     ,[{QueueId, acdc_stats:queue_stats(AcctId, QueueId)} | CurrStats]
+                     ,[{QueueId, acdc_queue_fsm:status(FSM)} | CurrQueues]
+                    ).
 
 handle_agent_available(JObj, Prop) ->
     true = wapi_acdc_queue:agent_available_v(JObj),

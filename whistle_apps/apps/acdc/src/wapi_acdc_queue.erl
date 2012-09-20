@@ -500,8 +500,9 @@ stats_req_v(JObj) ->
 
 -define(STATS_RESP_HEADERS, [<<"Account-ID">>]).
 -define(OPTIONAL_STATS_RESP_HEADERS, [<<"Queue-ID">>
-                                          ,<<"Current-Account-Stats">>
-                                          ,<<"Current-Queue-Stats">>
+                                          ,<<"Current-Statuses">>
+                                          ,<<"Current-Calls">>
+                                          ,<<"Current-Stats">>
                                      ]).
 -define(STATS_RESP_VALUES, [{<<"Event-Category">>, <<"queue">>}
                             ,{<<"Event-Name">>, <<"stats_resp">>}

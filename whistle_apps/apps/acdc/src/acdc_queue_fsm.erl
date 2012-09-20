@@ -20,15 +20,17 @@
          ,member_connect_retry/2
          ,call_event/4
          ,refresh/2
+         ,current_call/1
+         ,status/1
          ,agent_available/2
          ,sync_req/2
         ]).
 
 %% State handlers
--export([sync/2
-         ,ready/2
-         ,connect_req/2
-         ,connecting/2
+-export([sync/2, sync/3
+         ,ready/2, ready/3
+         ,connect_req/2, connect_req/3
+         ,connecting/2, connecting/3
         ]).
 
 %% gen_fsm callbacks
@@ -173,6 +175,12 @@ sync_req(FSM, JObj) ->
                              ,JObj
                             }).
 
+current_call(FSM) ->
+    gen_fsm:sync_send_event(FSM, current_call).
+
+status(FSM) ->
+    gen_fsm:sync_send_event(FSM, status).
+
 %%%===================================================================
 %%% gen_fsm callbacks
 %%%===================================================================
@@ -276,6 +284,11 @@ sync(_E, State) ->
     lager:debug("recv unhandled event: ~p", [_E]),
     {next_state, sync, State}.
 
+sync(status, _, State) ->
+    {reply, undefined, sync, State};
+sync(current_call, _, State) ->
+    {reply, undefined, sync, State}.
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -341,6 +354,11 @@ ready({sync_req, AcctId, QueueId, JObj}, #state{acct_id=AcctId
 ready(_Event, State) ->
     lager:debug("unhandled event: ~p", [_Event]),
     {next_state, ready, State}.
+
+ready(status, _, State) ->
+    {reply, <<"ready">>, ready, State};
+ready(current_call, _, State) ->
+    {reply, undefined, ready, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -454,6 +472,13 @@ connect_req(_Event, State) ->
     lager:debug("unhandled event: ~p", [_Event]),
     {next_state, connect_req, State}.
 
+connect_req(status, _, State) ->
+    {reply, <<"connect_req">>, connect_req, State};
+connect_req(current_call, _, #state{member_call=Call
+                                   ,connection_timer_ref=ConnRef
+                                  }=State) ->
+    {reply, current_call(Call, ConnRef), connect_req, State}.
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -564,6 +589,13 @@ connecting({sync_req, AcctId, QueueId, JObj}, #state{acct_id=AcctId
 connecting(_Event, State) ->
     lager:debug("unhandled event: ~p", [_Event]),
     {next_state, connecting, State}.
+
+connecting(status, _, State) ->
+    {reply, <<"connecting">>, connecting, State};
+connecting(current_call, _, #state{member_call=Call
+                                   ,connection_timer_ref=ConnRef
+                                  }=State) ->
+    {reply, current_call(Call, ConnRef), connecting, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -792,4 +824,21 @@ update_properties(QueueJObj, State) ->
 
 serialize_strategy_state('rr', AgentQ) -> queue:to_list(AgentQ);
 serialize_strategy_state('mi', _) -> undefined.
-    
+
+current_call(undefined, _) -> undefined;
+current_call(Call, Start) ->
+    wh_json:from_list([{<<"call_id">>, whapps_call:call_id(Call)}
+                       ,{<<"caller_id_name">>, whapps_call:caller_id_name(Call)}
+                       ,{<<"caller_id_number">>, whapps_call:caller_id_name(Call)}
+                       ,{<<"to">>, whapps_call:to_user(Call)}
+                       ,{<<"from">>, whapps_call:from_user(Call)}
+                       ,{<<"wait_time">>, elapsed(Start)}
+                      ]).
+elapsed(undefined) -> undefined;
+elapsed(Ref) when is_reference(Ref) ->
+    case erlang:read_timer(Ref) of
+        false -> undefined;
+        Ms -> Ms div 1000
+    end;
+elapsed({_,_,_}=Time) ->
+    wh_util:elapsed_s(Time).
