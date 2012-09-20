@@ -255,7 +255,7 @@ add_queue_to_agents(Id, #cb_context{req_data=[]}=Context) ->
     lager:debug("no agents listed, removing all agents from ~s", [Id]),
     #cb_context{resp_data=CurrAgentIds} = load_agent_roster(Id, Context),
     rm_queue_from_agents(Id, Context#cb_context{req_data=CurrAgentIds});
-    
+
 add_queue_to_agents(Id, #cb_context{req_data=[_|_]=AgentIds}=Context) ->
     %% We need to figure out what agents are on the queue already, and remove those not
     %% in the AgentIds list
@@ -347,9 +347,26 @@ fetch_all_queue_stats(Context) ->
     fetch_all_queue_stats(Context, history).
 fetch_all_queue_stats(Context, history) ->
     crossbar_doc:load_view(<<"acdc_stats/stats_per_queue">>, [], Context, fun normalize_queue_results/2);
-fetch_all_queue_stats(Context, realtime) ->
-    %% TODO: send AMQP query to queues for stats
-    Context.
+fetch_all_queue_stats(#cb_context{account_id=AcctId}=Context, realtime) ->
+    Req = [{<<"Account-ID">>, AcctId}
+           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    case whapps_util:amqp_pool_request(Req
+                                       ,fun wapi_acdc_queue:publish_stats_req/1
+                                       ,fun wapi_acdc_queue:stats_resp_v/1
+                                       ,2000
+                                      ) of
+        {ok, Resp} ->
+            lager:debug("fetched stats successfully"),
+            Resp1 = strip_api_fields(wh_json:normalize(Resp)),
+            Context#cb_context{resp_status=success
+                               ,resp_data=Resp1
+                               ,doc=Resp1
+                              };
+        {error, _E} ->
+            lager:debug("failed to fetch stats: ~p", [_E]),
+            Context
+    end.
 
 fetch_queue_stats(Id, Context) ->
     fetch_queue_stats(Id, Context, history).
@@ -363,9 +380,24 @@ fetch_queue_stats(Id, Context, history) ->
                            ,Context
                            ,fun normalize_queue_results/2
                           );
-fetch_queue_stats(Id, Context, realtime) ->
-    %% TODO: send AMQP request for stats about queue
-    Context.
+fetch_queue_stats(Id, #cb_context{account_id=AcctId}=Context, realtime) ->
+    Req = [{<<"Account-ID">>, AcctId}
+           ,{<<"Queue-ID">>, Id}
+           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    case whapps_util:amqp_pool_request(Req
+                                       ,fun wapi_acdc_queue:publish_stats_req/1
+                                       ,fun wapi_acdc_queue:stats_resp_v/1
+                                       ,2000
+                                      ) of
+        {ok, Resp} ->
+            Resp1 = strip_api_fields(wh_json:normalize(Resp)),
+            Context#cb_context{resp_status=success
+                               ,resp_data=Resp1
+                               ,doc=Resp1
+                              };
+        {error, _} -> Context
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -409,3 +441,10 @@ normalize_agents_results(JObj, Acc) ->
 -spec add_pvt_type/2 :: (wh_json:json_object(), #cb_context{}) -> wh_json:json_object().
 add_pvt_type(JObj, _) ->
     wh_json:set_value(<<"pvt_type">>, ?PVT_TYPE, JObj).
+
+strip_api_fields(JObj) ->
+    Strip = [<<"event_name">>, <<"event_category">>
+                 ,<<"app_name">>, <<"app_version">>
+                 ,<<"node">>, <<"msg_id">>, <<"server_id">>
+            ],
+    wh_json:filter(fun({K,_}) -> not lists:member(K, Strip) end, JObj).
