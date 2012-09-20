@@ -786,6 +786,7 @@ start_resync_timer() ->
     gen_fsm:start_timer(?RESYNC_RESPONSE_TIMEOUT, ?RESYNC_RESPONSE_MESSAGE).
 
 -spec start_pause_timer/1 :: (pos_integer()) -> reference().
+start_pause_timer(undefined) -> start_pause_timer(1);
 start_pause_timer(Timeout) ->
     gen_fsm:start_timer(Timeout, ?PAUSE_MESSAGE).
 
