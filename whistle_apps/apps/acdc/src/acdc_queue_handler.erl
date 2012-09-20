@@ -82,14 +82,18 @@ handle_stats_req(AcctId, QueueId, ServerId, MsgId) ->
                              ,wh_proplist(), wh_proplist(), wh_proplist()
                             ) -> any().
 build_stats_resp(AcctId, RespQ, MsgId, Ps) ->
-    build_stats_resp(AcctId, RespQ, MsgId, Ps, [], [], []).
+    build_stats_resp(AcctId, RespQ, MsgId, Ps
+                     ,wh_json:new()
+                     ,wh_json:new()
+                     ,wh_json:new()
+                    ).
 
 build_stats_resp(AcctId, RespQ, MsgId, [], CurrCalls, CurrStats, CurrQueues) ->
     Resp = props:filter_undefined(
              [{<<"Account-ID">>, AcctId}
-              ,{<<"Current-Calls">>, wh_json:from_list(props:filter_undefined(CurrCalls))}
-              ,{<<"Current-Stats">>, wh_json:from_list(props:filter_undefined(CurrStats))}
-              ,{<<"Current-Statuses">>, wh_json:from_list(props:filter_undefined(CurrQueues))}
+              ,{<<"Current-Calls">>, CurrCalls}
+              ,{<<"Current-Stats">>, CurrStats}
+              ,{<<"Current-Statuses">>, CurrQueues}
               ,{<<"Msg-ID">>, MsgId}
               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
@@ -100,10 +104,14 @@ build_stats_resp(AcctId, RespQ, MsgId, [P|Ps], CurrCalls, CurrStats, CurrQueues)
 
     FSM = acdc_queue_sup:fsm(P),
 
+    CurrentCall = acdc_queue_fsm:current_call(FSM),
+    CallId = wh_json:get_value(<<"call_id">>, CurrentCall),
+    QueueCalls = wh_json:get_value(QueueId, CurrCalls, wh_json:new()),
+
     build_stats_resp(AcctId, RespQ, MsgId, Ps
-                     ,[{QueueId, acdc_queue_fsm:current_call(FSM)} | CurrCalls]
-                     ,[{QueueId, acdc_stats:queue_stats(AcctId, QueueId)} | CurrStats]
-                     ,[{QueueId, acdc_queue_fsm:status(FSM)} | CurrQueues]
+                     ,wh_json:set_value(QueueId, wh_json:set_value(CallId, CurrentCall, QueueCalls), CurrCalls)
+                     ,wh_json:set_value(QueueId, acdc_stats:queue_stats(AcctId, QueueId), CurrStats)
+                     ,wh_json:set_value(QueueId, acdc_queue_fsm:status(FSM), CurrQueues)
                     ).
 
 handle_agent_available(JObj, Prop) ->
