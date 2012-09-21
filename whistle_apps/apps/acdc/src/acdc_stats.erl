@@ -26,6 +26,7 @@
          %% Agent-specific stats
          ,agent_active/2
          ,agent_inactive/2
+         ,agent_paused/3
         ]).
 
 %% gen_listener functions
@@ -50,7 +51,7 @@
 
 -type stat_name() :: 'call_processed' | 'call_abandoned' |
                      'call_missed' | 'call_handled' | 'call_waiting' |
-                     'agent_active' | 'agent_inactive'.
+                     'agent_active' | 'agent_inactive' | 'agent_paused'.
 
 -record(stat, {
           name            :: stat_name() | '_'
@@ -191,6 +192,17 @@ agent_inactive(AcctId, AgentId) ->
                                             }
                                }).
 
+%% marks an agent as paused for an account
+-spec agent_paused/3 :: (ne_binary(), ne_binary(), integer()) -> 'ok'.
+agent_paused(AcctId, AgentId, Timeout) ->
+    gen_listener:cast(?MODULE, {store, #stat{acct_id=AcctId
+                                             ,agent_id=AgentId
+                                             ,active_since=wh_util:current_tstamp()
+                                             ,elapsed=Timeout
+                                             ,name=agent_paused
+                                            }
+                               }).
+
 -define(BINDINGS, []).
 -define(RESPONDERS, []).
 -define(QUEUE_NAME, <<"acdc.stats">>).
@@ -305,31 +317,48 @@ write_account_doc({AcctId, AcctJObj}, TStamp) ->
 update_stat(AcctDocs, #stat{name=agent_active
                             ,acct_id=AcctId
                             ,agent_id=AgentId
-                            ,active_since=ActiveSince
                            }) ->
     AcctDoc = fetch_acct_doc(AcctId, AcctDocs),
 
-    ActiveKey = [<<"agents">>, AgentId, <<"login">>],
-    ActiveAts = wh_json:get_value(ActiveKey, AcctDoc, []),
+    ActiveKey = [<<"agents">>, AgentId, <<"status">>],
 
     dict:store(AcctId
-               ,wh_json:set_value(ActiveKey, [ActiveSince|ActiveAts], AcctDoc)
+               ,wh_json:set_value(ActiveKey, <<"login">>, AcctDoc)
                ,AcctDocs
               );
 update_stat(AcctDocs, #stat{name=agent_inactive
                             ,acct_id=AcctId
                             ,agent_id=AgentId
-                            ,active_since=InactiveSince
                            }) ->
     AcctDoc = fetch_acct_doc(AcctId, AcctDocs),
 
-    InactiveKey = [<<"agents">>, AgentId, <<"logout">>],
-    InactiveAts = wh_json:get_value(InactiveKey, AcctDoc, []),
+    InactiveKey = [<<"agents">>, AgentId, <<"status">>],
 
     dict:store(AcctId
-               ,wh_json:set_value(InactiveKey, [InactiveSince|InactiveAts], AcctDoc)
+               ,wh_json:set_value(InactiveKey, <<"pause">>, AcctDoc)
                ,AcctDocs
               );
+
+update_stat(AcctDocs, #stat{name=agent_paused
+                            ,acct_id=AcctId
+                            ,agent_id=AgentId
+                            ,active_since=ActiveSince
+                            ,elapsed=Timeout
+                           }) ->
+    AcctDoc = fetch_acct_doc(AcctId, AcctDocs),
+
+    PauseKey = [<<"agents">>, AgentId, <<"status">>],
+    TimeoutKey = [<<"agents">>, AgentId, <<"timeout">>],
+    TimeLeftKey = [<<"agents">>, AgentId, <<"time_left">>],
+
+    dict:store(AcctId
+               ,wh_json:set_values([{PauseKey, <<"paused">>}
+                                    ,{TimeoutKey, Timeout}
+                                    ,{TimeLeftKey, wh_util:elapsed_s(ActiveSince)}
+                                   ], AcctDoc)
+               ,AcctDocs
+              );
+
 update_stat(AcctDocs, #stat{name=call_processed
                             ,acct_id=AcctId
                             ,queue_id=QueueId
