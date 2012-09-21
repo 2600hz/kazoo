@@ -123,8 +123,7 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props, Attachements) when i
     _ = [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props, Attachements) || T <- To],
     ok;
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props, Attachements) ->
-    Service = props:get_value(<<"service">>, Props),
-    From = props:get_value(<<"send_from">>, Service),
+    From = props:get_value(<<"send_from">>, Props),
     %% Content Type, Subtype, Headers, Parameters, Body
     Email = {<<"multipart">>, <<"mixed">>
                  ,[{<<"From">>, From}
@@ -152,7 +151,7 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props, Attachements) ->
 get_attachments([], _, _, EmailAttachments) ->
     EmailAttachments;
 get_attachments([{AttachmentName, AttachmentJObj}|Attachments], Number, Db, EmailAttachments) ->
-    case couch_mgr:fetch_attachment(Db, Number, AttachmentName) of
+    case couch_mgr:fetch_attachment(Db, Number, fix_attachment_name(AttachmentName)) of
         {ok, AttachmentBin} ->
             [Type, Subtype] = 
                 binary:split(wh_json:get_ne_value(<<"content_type">>, AttachmentJObj, <<"application/octet-stream">>), <<"/">>),
@@ -169,3 +168,16 @@ get_attachments([{AttachmentName, AttachmentJObj}|Attachments], Number, Db, Emai
             lager:debug("failed to attach ~s: ~p", [AttachmentName, _E]),
             get_attachments(Attachments, Number, Db, EmailAttachments)
     end.
+
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec fix_attachment_name/1 :: (ne_binary() | list()) -> ne_binary().
+fix_attachment_name(Name) when is_binary(Name) ->
+    fix_attachment_name(wh_util:to_list(Name));
+fix_attachment_name(Name) ->
+    wh_util:to_binary(http_uri:encode(Name)).
