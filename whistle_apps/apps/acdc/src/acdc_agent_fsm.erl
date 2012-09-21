@@ -309,9 +309,12 @@ sync({member_connect_req, _}, State) ->
     lager:debug("member_connect_req recv, not ready"),
     {next_state, sync, State};
 
-sync({pause, Timeout}, State) ->
+sync({pause, Timeout}, #state{acct_id=AcctId
+                              ,agent_id=AgentId
+                              }=State) ->
     lager:debug("recv status update while syncing, pausing for up to ~b ms", [Timeout]),
     Ref = start_pause_timer(Timeout),
+    acdc_stats:agent_paused(AcctId, AgentId, Timeout),
     {next_state, paused, State#state{sync_ref=Ref}};
 
 sync(_Evt, State) ->
@@ -328,9 +331,12 @@ sync(current_call, _, State) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
-ready({pause, Timeout}, State) ->
-    lager:debug("recv status update while responding to reqs, pausing for up to ~b s", [Timeout]),
+ready({pause, Timeout}, #state{acct_id=AcctId
+                               ,agent_id=AgentId
+                              }=State) ->
+    lager:debug("recv status update while syncing, pausing for up to ~b ms", [Timeout]),
     Ref = start_pause_timer(Timeout),
+    acdc_stats:agent_paused(AcctId, AgentId, Timeout),
     {next_state, paused, State#state{sync_ref=Ref}};
 
 ready({sync_req, JObj}, #state{agent_proc=Srv}=State) ->
@@ -644,12 +650,17 @@ wrapup(current_call, _, #state{member_call=Call
 %% @end
 %%--------------------------------------------------------------------
 paused({timeout, Ref, ?PAUSE_MESSAGE}, #state{sync_ref=Ref
-                                              ,acct_db=AcctDb
+                                              ,acct_id=AcctId
                                               ,agent_id=AgentId
+                                              ,agent_proc=Srv
                                              }=State) when is_reference(Ref) ->
     lager:debug("pause timer expired, putting agent back into action"),
 
-    _ = update_agent_db_status(AcctDb, AgentId),
+    _ = update_agent_status_to_resume(AcctId, AgentId),
+
+    acdc_agent:send_status_resume(Srv),
+
+    acdc_stats:agent_resume(AcctId, AgentId),
 
     {next_state, ready, clear_call(State#state{sync_ref=undefined})};
 paused({resume}, #state{acct_id=AcctId
@@ -661,7 +672,10 @@ paused({resume}, #state{acct_id=AcctId
     _ = erlang:cancel_timer(Ref),
 
     _ = update_agent_status_to_resume(AcctId, AgentId),
+
     acdc_agent:send_status_resume(Srv),
+
+    acdc_stats:agent_resume(AcctId, AgentId),
 
     {next_state, ready, clear_call(State)};
 
@@ -847,11 +861,3 @@ current_call(Call, AgentState, Start) ->
 
 elapsed(undefined) -> undefined;
 elapsed(Start) -> wh_util:elapsed_s(Start).
-
-update_agent_db_status(AcctDb, AgentId) ->
-    Doc = wh_json:from_list([{<<"method">>, <<"timeout_expired">>}
-                             ,{<<"agent_id">>, AgentId}
-                             ,{<<"action">>, <<"login">>}
-                             ,{<<"pvt_type">>, <<"agent_activity">>}
-                            ]),
-    couch_mgr:save_doc(AcctDb, wh_doc:update_pvt_parameters(Doc, AcctDb)).

@@ -27,6 +27,7 @@
          ,agent_active/2
          ,agent_inactive/2
          ,agent_paused/3
+         ,agent_resume/2
         ]).
 
 %% gen_listener functions
@@ -51,7 +52,8 @@
 
 -type stat_name() :: 'call_processed' | 'call_abandoned' |
                      'call_missed' | 'call_handled' | 'call_waiting' |
-                     'agent_active' | 'agent_inactive' | 'agent_paused'.
+                     'agent_active' | 'agent_inactive' |
+                     'agent_paused' | 'agent_resume'.
 
 -record(stat, {
           name            :: stat_name() | '_'
@@ -61,7 +63,7 @@
           ,call_id        :: ne_binary() | '_'
           ,call_count     :: integer() | '_'
           ,elapsed        :: integer() | '_'
-          ,timestamp      :: integer() | '_' % gregorian seconds
+          ,timestamp = wh_util:current_tstamp() :: integer() | '_' % gregorian seconds
           ,active_since   :: integer() | '_'
           ,abandon_reason :: abandon_reason() | '_'
          }).
@@ -192,6 +194,18 @@ agent_inactive(AcctId, AgentId) ->
                                             }
                                }).
 
+%% marks an agent as back from break, effectively removing the waiting stat
+-spec agent_resume/2 :: (ne_binary(), ne_binary()) -> 'ok'.
+agent_resume(AcctId, AgentId) ->
+    gen_listener:cast(?MODULE, {remove, #stat{name=agent_paused
+                                              ,acct_id=AcctId
+                                              ,agent_id=AgentId
+                                              ,active_since='_'
+                                              ,elapsed='_'
+                                              ,timestamp='_'
+                                             }
+                               }).
+
 %% marks an agent as paused for an account
 -spec agent_paused/3 :: (ne_binary(), ne_binary(), integer()) -> 'ok'.
 agent_paused(AcctId, AgentId, Timeout) ->
@@ -238,11 +252,11 @@ handle_cast({store, Stat}, Table) ->
     ets:insert(Table, Stat),
     {noreply, Table};
 handle_cast({remove, Stat}, Table) ->
-    MatchSpec = [{Stat, [], ['$_']}],
+    MatchSpec = [{Stat, [], [true]}],
 
-    Objs = ets:select(Table, MatchSpec),
-    lager:debug("objs to delete: ~p", [Objs]),
-    _ = [ets:delete_object(Table, Obj) || Obj <- Objs],
+    lager:debug("ms: ~p", [MatchSpec]),
+    _Objs = ets:select_delete(Table, MatchSpec),
+    lager:debug("maybe deleted ~p objects", [_Objs]),
     {noreply, Table};
 handle_cast(_Req, Table) ->
     {noreply, Table}.
@@ -290,7 +304,7 @@ ms_to_next_hour() ->
 %% take the contents of the table, aggregrate into the appropriate stats
 %% and store into the accounts' database
 flush_to_db(Table) ->
-    Stats = ets:tab2list(Table), % dump all stats
+    Stats = lists:reverse(ets:tab2list(Table)), % dump all stats
     true = ets:delete_all_objects(Table), % delete the stats from the table
     spawn(?MODULE, write_to_dbs, [Stats]).
 
@@ -335,7 +349,7 @@ update_stat(AcctDocs, #stat{name=agent_inactive
     InactiveKey = [<<"agents">>, AgentId, <<"status">>],
 
     dict:store(AcctId
-               ,wh_json:set_value(InactiveKey, <<"pause">>, AcctDoc)
+               ,wh_json:set_value(InactiveKey, <<"logout">>, AcctDoc)
                ,AcctDocs
               );
 
