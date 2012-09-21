@@ -65,6 +65,7 @@
 
 -record(state, {
           acct_id :: ne_binary()
+         ,acct_db :: ne_binary()
          ,agent_id :: ne_binary()
          ,agent_proc :: pid()
          ,agent_proc_id :: ne_binary()
@@ -247,6 +248,7 @@ init([AcctId, AgentId, AgentProc]) ->
     acdc_stats:agent_active(AcctId, AgentId),
     
     {ok, sync, #state{acct_id=AcctId
+                      ,acct_db=wh_util:format_account_id(AcctId, encoded)
                       ,agent_id=AgentId
                       ,agent_proc=AgentProc
                       ,agent_proc_id=acdc_util:proc_id(AgentProc)
@@ -327,7 +329,7 @@ sync(current_call, _, State) ->
 %% @end
 %%--------------------------------------------------------------------
 ready({pause, Timeout}, State) ->
-    lager:debug("recv status update while responding to reqs, pausing for up to ~b ms", [Timeout]),
+    lager:debug("recv status update while responding to reqs, pausing for up to ~b s", [Timeout]),
     Ref = start_pause_timer(Timeout),
     {next_state, paused, State#state{sync_ref=Ref}};
 
@@ -641,8 +643,14 @@ wrapup(current_call, _, #state{member_call=Call
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
-paused({timeout, Ref, ?PAUSE_MESSAGE}, #state{sync_ref=Ref}=State) when is_reference(Ref) ->
+paused({timeout, Ref, ?PAUSE_MESSAGE}, #state{sync_ref=Ref
+                                              ,acct_db=AcctDb
+                                              ,agent_id=AgentId
+                                             }=State) when is_reference(Ref) ->
     lager:debug("pause timer expired, putting agent back into action"),
+
+    _ = update_agent_db_status(AcctDb, AgentId),
+
     {next_state, ready, clear_call(State#state{sync_ref=undefined})};
 paused({resume}, #state{acct_id=AcctId
                         ,agent_id=AgentId
@@ -788,7 +796,7 @@ start_resync_timer() ->
 -spec start_pause_timer/1 :: (pos_integer()) -> reference().
 start_pause_timer(undefined) -> start_pause_timer(1);
 start_pause_timer(Timeout) ->
-    gen_fsm:start_timer(Timeout, ?PAUSE_MESSAGE).
+    gen_fsm:start_timer(Timeout * 1000, ?PAUSE_MESSAGE).
 
 -spec callid/1 :: (wh_json:json_object()) -> ne_binary() | 'undefined'.
 callid(JObj) ->
@@ -839,3 +847,11 @@ current_call(Call, AgentState, Start) ->
 
 elapsed(undefined) -> undefined;
 elapsed(Start) -> wh_util:elapsed_s(Start).
+
+update_agent_db_status(AcctDb, AgentId) ->
+    Doc = wh_json:from_list([{<<"method">>, <<"timeout_expired">>}
+                             ,{<<"agent_id">>, AgentId}
+                             ,{<<"action">>, <<"login">>}
+                             ,{<<"pvt_type">>, <<"agent_activity">>}
+                            ]),
+    couch_mgr:save_doc(AcctDb, wh_doc:update_pvt_parameters(Doc, AcctDb)).

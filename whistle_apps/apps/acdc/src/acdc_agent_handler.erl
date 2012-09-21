@@ -24,7 +24,7 @@
 handle_status_update(JObj, _Props) ->
     AcctId = wh_json:get_value(<<"Account-ID">>, JObj),
     AgentId = wh_json:get_value(<<"Agent-ID">>, JObj),
-    Timeout = wh_json:get_integer_value(<<"Timeout">>, JObj),
+    Timeout = wh_json:get_integer_value(<<"Time-Limit">>, JObj, whapps_config:get(<<"acdc">>, <<"default_agent_pause_timeout">>, 600)),
 
     case wh_json:get_value(<<"Event-Name">>, JObj) of
         <<"login">> -> maybe_start_agent(AcctId, AgentId);
