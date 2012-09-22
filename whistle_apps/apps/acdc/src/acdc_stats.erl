@@ -204,7 +204,8 @@ agent_resume(AcctId, AgentId) ->
                                               ,elapsed='_'
                                               ,timestamp='_'
                                              }
-                               }).
+                               }),
+    agent_active(AcctId, AgentId).
 
 %% marks an agent as paused for an account
 -spec agent_paused/3 :: (ne_binary(), ne_binary(), integer()) -> 'ok'.
@@ -236,10 +237,10 @@ init([]) ->
     LogTime = ms_to_next_hour(),
     _ = erlang:send_after(LogTime, self(), {the_hour_is_up, LogTime}),
     lager:debug("started new acdc stats collector"),
-    {ok, ets:new(?ETS_TABLE, [duplicate_bag % many instances of the key
+    {ok, ets:new(?ETS_TABLE, [ordered_set % many instances of the key
                               ,protected
                               ,named_table
-                              ,{keypos, #stat.name}
+                              ,{keypos, #stat.timestamp}
                              ])}.
 
 handle_call(_Req, _From, Table) ->
@@ -249,13 +250,13 @@ handle_cast(flush_table, Table) ->
     ets:delete_all_objects(Table),
     {noreply, Table};
 handle_cast({store, Stat}, Table) ->
-    ets:insert(Table, Stat),
-    {noreply, Table};
+    case ets:insert_new(Table, Stat) of
+        false -> handle_cast({store, Stat#stat{timestamp=wh_util:current_tstamp()}}, Table);
+        true ->
+            {noreply, Table}
+    end;
 handle_cast({remove, Stat}, Table) ->
-    MatchSpec = [{Stat, [], [true]}],
-
-    lager:debug("ms: ~p", [MatchSpec]),
-    _Objs = ets:select_delete(Table, MatchSpec),
+    _Objs = ets:select_delete(Table, [{Stat, [], [true]}]),
     lager:debug("maybe deleted ~p objects", [_Objs]),
     {noreply, Table};
 handle_cast(_Req, Table) ->
@@ -304,7 +305,7 @@ ms_to_next_hour() ->
 %% take the contents of the table, aggregrate into the appropriate stats
 %% and store into the accounts' database
 flush_to_db(Table) ->
-    Stats = lists:reverse(ets:tab2list(Table)), % dump all stats
+    Stats = ets:tab2list(Table), % dump all stats
     true = ets:delete_all_objects(Table), % delete the stats from the table
     spawn(?MODULE, write_to_dbs, [Stats]).
 
@@ -317,21 +318,20 @@ write_to_dbs([], TStamp, AcctDocs) ->
     _ = [write_account_doc(AcctDoc, TStamp) || AcctDoc <- dict:to_list(AcctDocs)],
     ok;
 write_to_dbs([Stat|Stats], TStamp, AcctDocs) ->
-    lager:debug("stat: ~p", [Stat]),
     write_to_dbs(Stats, TStamp, update_stat(AcctDocs, Stat)).
 
 -spec write_account_doc/2 :: ({ne_binary(), wh_json:json_object()}, integer()) -> 'ok'.
 write_account_doc({AcctId, AcctJObj}, TStamp) ->
-    lager:debug("writing ~s: ~p", [AcctId, AcctJObj]),
-    AcctDb = wh_util:format_account_id(AcctId, encoded),
-    _Resp = couch_mgr:save_doc(AcctDb, wh_json:set_value(<<"recorded_at">>, TStamp, AcctJObj)),
-    lager:debug("write result: ~p", [_Resp]).
+    couch_mgr:save_doc(wh_util:format_account_id(AcctId, encoded)
+                       ,wh_json:set_value(<<"recorded_at">>, TStamp, AcctJObj)
+                      ).
 
 -spec update_stat/2 :: (dict(), #stat{}) -> dict().
 update_stat(AcctDocs, #stat{name=agent_active
                             ,acct_id=AcctId
                             ,agent_id=AgentId
                            }) ->
+    lager:debug("agent_active"),
     AcctDoc = fetch_acct_doc(AcctId, AcctDocs),
 
     ActiveKey = [<<"agents">>, AgentId, <<"status">>],
@@ -344,6 +344,7 @@ update_stat(AcctDocs, #stat{name=agent_inactive
                             ,acct_id=AcctId
                             ,agent_id=AgentId
                            }) ->
+    lager:debug("agent_inactive"),
     AcctDoc = fetch_acct_doc(AcctId, AcctDocs),
 
     InactiveKey = [<<"agents">>, AgentId, <<"status">>],
@@ -359,6 +360,7 @@ update_stat(AcctDocs, #stat{name=agent_paused
                             ,active_since=ActiveSince
                             ,elapsed=Timeout
                            }) ->
+    lager:debug("agent_paused"),
     AcctDoc = fetch_acct_doc(AcctId, AcctDocs),
 
     PauseKey = [<<"agents">>, AgentId, <<"status">>],
