@@ -233,8 +233,8 @@ delete_media(AcctDb, MediaId) ->
     {ok, JObj} = couch_mgr:open_doc(AcctDb, MediaId),
     couch_mgr:ensure_saved(AcctDb, wh_json:set_value(<<"pvt_deleted">>, true, JObj)).
 
--spec prepare_docs_for_deletion/1 :: (wh_json:objects()) -> wh_json:json_objects().
--spec prepare_doc_for_deletion/1 :: (wh_json:object()) -> wh_json:json_object().
+-spec prepare_docs_for_deletion/1 :: (wh_json:json_objects()) -> wh_json:json_objects().
+-spec prepare_doc_for_deletion/1 :: (wh_json:json_object()) -> wh_json:json_object().
 prepare_docs_for_deletion(L) ->
     [prepare_doc_for_deletion(D) || D <- L].
 prepare_doc_for_deletion(D) ->
