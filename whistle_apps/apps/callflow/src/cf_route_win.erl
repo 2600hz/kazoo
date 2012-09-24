@@ -32,9 +32,15 @@ handle_req(JObj, _Options) ->
 %%
 %% @end
 %%-----------------------------------------------------------------------------
--spec bootstrap_callflow_executer/2 :: (wh_json:json_object(), whapps_call:call()) -> whapps_call:call().
+-spec bootstrap_callflow_executer/2 :: (wh_json:json_object(), whapps_call:call()) -> {'ok', pid()}.
 bootstrap_callflow_executer(JObj, Call) ->
-    store_owner_id(whapps_call:from_route_win(JObj, Call)).
+    lists:foldl(fun(F, C) -> F(C) end
+                ,whapps_call:from_route_win(JObj, Call)
+                ,[fun store_owner_id/1
+                  ,fun update_ccvs/1
+                  %% all funs above here return whapps_call:call()
+                  ,fun execute_callflow/1
+                 ]).
 
 %%-----------------------------------------------------------------------------
 %% @private
@@ -45,7 +51,7 @@ bootstrap_callflow_executer(JObj, Call) ->
 -spec store_owner_id/1 :: (whapps_call:call()) -> whapps_call:call().
 store_owner_id(Call) ->
     OwnerId = cf_attributes:owner_id(Call),
-    update_ccvs(whapps_call:kvs_store(owner_id, OwnerId, Call)).
+    whapps_call:kvs_store(owner_id, OwnerId, Call).
 
 %%-----------------------------------------------------------------------------
 %% @private
@@ -60,7 +66,7 @@ update_ccvs(Call) ->
                                     ,{<<"Caller-ID-Name">>, CIDName}
                                     ,{<<"Caller-ID-Number">>, CIDNumber}
                                    ]),
-    execute_callflow(whapps_call:set_custom_channel_vars(Props, Call)).
+    whapps_call:set_custom_channel_vars(Props, Call).
 
 %%-----------------------------------------------------------------------------
 %% @private
