@@ -325,12 +325,7 @@ code_change(_OldVsn, State, _Extra) ->
 %% <<"#.6.*.1.4.*">>,<<"6.a.a.6.a.1.4.a">>
 %%
 %%--------------------------------------------------------------------
--spec binding_matches/2 :: (ne_binary(), ne_binary()) -> boolean().
 -spec matches/2 :: ([ne_binary(),...] | [], [ne_binary(),...] | []) -> boolean().
-
-binding_matches(B, R) when erlang:byte_size(B) > 0 andalso erlang:byte_size(R) > 0 ->
-    matches(lists:reverse(binary:split(B, <<".">>, [global]))
-            ,lists:reverse(binary:split(R, <<".">>, [global]))).
 
 %% if both are empty, we made it!
 matches([], []) -> true;
@@ -500,6 +495,11 @@ fold_processor(Routing, Payload, Bs) ->
 
 %% EUNIT and PropEr TESTING %%
 -ifdef(TEST).
+-spec binding_matches/2 :: (ne_binary(), ne_binary()) -> boolean().
+binding_matches(B, R) when erlang:byte_size(B) > 0 andalso erlang:byte_size(R) > 0 ->
+    matches(lists:reverse(binary:split(B, <<".">>, [global]))
+            ,lists:reverse(binary:split(R, <<".">>, [global]))).
+
 
 %% PropEr needs to be included before eunit. Both modules create a ?LET macro,
 %% but the PropEr one is the useful one. Also needs to be included before any
