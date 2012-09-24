@@ -265,7 +265,7 @@ add_queue_to_agents(Id, #cb_context{req_data=[_|_]=AgentIds}=Context) ->
     AddAgentIds = [A || A <- AgentIds, (not lists:member(A, InQueueAgents))],
 
     _P = spawn(fun() ->
-                       cb_context:put_reqid(Context),
+                       _ = cb_context:put_reqid(Context),
                        maybe_rm_agents(Id, Context, RmAgentIds)
                end),
 
