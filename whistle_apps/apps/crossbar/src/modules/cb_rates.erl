@@ -220,8 +220,8 @@ normalize_view_results(JObj, Acc) ->
 %%--------------------------------------------------------------------
 -spec add_pvt_fields/1 :: (wh_json:json_object()) ->
                                   wh_json:json_object().
--spec add_pvt_fields/2 :: (wh_json:json_object(), #cb_context{}) ->
-                                  {wh_json:json_object(), #cb_context{}}.
+-spec add_pvt_fields/2 :: (wh_json:json_object(), #cb_context{} | 'undefined') ->
+                                  {wh_json:json_object(), #cb_context{} | 'undefined'}.
 add_pvt_fields(JObj) ->
     {JObj1, _} = add_pvt_fields(JObj, undefined),
     JObj1.
