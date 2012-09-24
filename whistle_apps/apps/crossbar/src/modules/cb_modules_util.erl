@@ -8,9 +8,10 @@
 %%%-------------------------------------------------------------------
 -module(cb_modules_util).
 
--export([pass_hashes/2]).
--export([update_mwi/2]).
--export([get_devices_owned_by/2]).
+-export([pass_hashes/2
+         ,update_mwi/2
+         ,get_devices_owned_by/2
+        ]).
 
 -include("include/crossbar.hrl").
 
