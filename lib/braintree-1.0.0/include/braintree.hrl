@@ -212,7 +212,7 @@
                          ,card = 'undefined' :: 'undefined' | #bt_card{}
                          ,subscription_id :: ne_binary()
                          ,add_ons = [] :: [#bt_addon{},...] | []
-                         ,discounts :: ne_binary()
+                         ,discounts = [] :: [#bt_discount{},...] | []
                          ,descriptor :: ne_binary()
                          ,store_in_vault = 'false' :: boolean()
                          ,store_on_success = 'false' :: boolean()
