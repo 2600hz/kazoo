@@ -417,9 +417,21 @@ ensure_saved(#cb_context{db_name=DB, doc=JObj, req_verb=Verb, resp_headers=RespH
             Context
     end.
 
--spec send_document_change/3 :: (wapi_conf:conf_action(), ne_binary(), wh_json:json_object() | wh_json:json_objects()) -> 'ok' | pid().
--spec send_document_change/4 :: (wapi_conf:conf_action(), ne_binary(), wh_json:json_object() | wh_json:json_objects(), wh_proplist()) -> 'ok' | pid() | ['ok' | pid(),...].
--spec send_document_change/5 :: (wapi_conf:conf_action(), ne_binary(), wh_json:json_object() | wh_json:json_objects(), wh_proplist(), boolean()) -> 'ok' | pid() | ['ok' | pid(),...].
+-spec send_document_change/3 :: (wapi_conf:conf_action()
+                                 ,ne_binary()
+                                 ,wh_json:json_object() | wh_json:json_objects()
+                                ) -> 'ok' | pid().
+-spec send_document_change/4 :: (wapi_conf:conf_action()
+                                 ,ne_binary()
+                                 ,wh_json:json_object() | wh_json:json_objects()
+                                 ,wh_proplist()
+                                ) -> 'ok' | pid().
+-spec send_document_change/5 :: (wapi_conf:conf_action()
+                                 ,ne_binary()
+                                 ,wh_json:json_object() | wh_json:json_objects()
+                                 ,wh_proplist()
+                                 ,boolean()
+                                ) -> 'ok' | pid().
 send_document_change(Action, Db, Docs) ->
     send_document_change(Action, Db, Docs, []).
 
@@ -440,11 +452,9 @@ send_document_change(Action, Db, Doc, _Options, true) ->
                               undefined ->
                                   {ok, Doc1} = couch_mgr:open_doc(Db, Id),
                                   publish_doc(Action, Db, Doc1, Id);
-                              _E ->
-                                  ok
+                              _E -> ok
                           end;
-                      Id ->
-                          publish_doc(Action, Db, Doc, Id)
+                      Id -> publish_doc(Action, Db, Doc, Id)
                   end
           end).
 
