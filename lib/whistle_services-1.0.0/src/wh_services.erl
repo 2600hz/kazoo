@@ -437,9 +437,8 @@ reconcile(Account) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec reconcile/2 :: ('undefined' | ne_binary(), atom()) -> 'false' | services().
-reconcile(undefined, _) ->
-    false;
+-spec reconcile/2 :: ('undefined' | ne_binary(), text()) -> 'false' | services().
+reconcile(undefined, _) -> false;
 reconcile(Account, Module) ->
     timer:sleep(1000),
     lager:debug("reconcile ~s services for ~s", [Module, Account]),
