@@ -10,7 +10,8 @@
 -module(crossbar_doc).
 
 -export([load/2, load/3
-         ,load_from_file/2, load_merge/3
+         ,load_from_file/2
+         ,load_merge/3, merge/3
          ,load_view/3, load_view/4
          ,load_attachment/3, load_docs/2
          ,save/1, save/2
@@ -140,17 +141,21 @@ load_merge(DocId, DataJObj, #cb_context{db_name=DBName}=Context) ->
     case load(DocId, Context) of
         #cb_context{resp_status=success, doc=Doc}=Context1 ->
             lager:debug("loaded doc ~s from ~s, merging", [DocId, DBName]),
-            PrivJObj = private_fields(Doc),
-            Doc1 = wh_json:merge_jobjs(PrivJObj, DataJObj),
-            Context1#cb_context{doc=Doc1
-                                ,resp_status=success
-                                ,resp_data=public_fields(Doc1)
-                                ,resp_etag=rev_to_etag(Doc1)
-                               };
+            merge(DataJObj, Doc, Context1);
         Else ->
             lager:debug("loading doc ~s from ~s failed unexpectedly", [DocId, DBName]),
             Else
     end.
+
+-spec merge/3 :: (wh_json:json_object(), wh_json:json_object(), #cb_context{}) -> #cb_context{}.
+merge(DataJObj, Doc, Context) ->
+    PrivJObj = private_fields(Doc),
+    Doc1 = wh_json:merge_jobjs(PrivJObj, DataJObj),
+    Context#cb_context{doc=Doc1
+                       ,resp_status=success
+                       ,resp_data=public_fields(Doc1)
+                       ,resp_etag=rev_to_etag(Doc1)
+                      }.
 
 %%--------------------------------------------------------------------
 %% @public
