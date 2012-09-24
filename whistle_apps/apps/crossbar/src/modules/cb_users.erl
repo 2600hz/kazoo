@@ -185,7 +185,43 @@ update_user(UserId, #cb_context{req_data=Data}=Context) ->
             E = wh_json:set_value([<<"username">>, <<"unique">>], <<"Username is not unique for this account">>, wh_json:new()),
             crossbar_util:response_invalid_data(E, Context);
         {pass, JObj} ->
-            crossbar_doc:load_merge(UserId, JObj, Context)
+            check_username_password(UserId, JObj, Context)
+    end.
+
+check_username_password(UserId, ReqJObj, Context) ->
+    case crossbar_doc:load(UserId, Context) of
+        #cb_context{resp_status=success, doc=Doc}=Context1 ->
+            case wh_json:get_value(<<"username">>, Doc) =:= wh_json:get_value(<<"username">>, ReqJObj) of
+                true -> crossbar_doc:merge(ReqJObj, Doc, Context1); % username hasn't changed, continue
+                false ->
+                    %% request is trying to change the username
+                    check_password(ReqJObj, Doc, Context1)
+            end;
+        Context1 -> Context1
+    end.
+
+check_password(ReqJObj, Doc, Context) ->
+    case wh_json:get_value(<<"password">>, ReqJObj) of
+        undefined ->
+            E = wh_json:set_values([{[<<"password">>, <<"required">>], <<"Current password is required when changing the username">>}
+                                   ], wh_json:new()),
+            crossbar_util:response_invalid_data(E, Context);
+        Pass ->
+            lager:debug("username is changed, checking password"),
+
+            Username = wh_json:get_value(<<"username">>, Doc),
+            SHA1 = wh_json:get_value(<<"pvt_sha1_auth">>, Doc),
+
+            case cb_modules_util:pass_hashes(Username, Pass) of
+                {_, SHA1} ->
+                    lager:debug("password in request matches current hash"),
+                    crossbar_doc:merge(ReqJObj, Doc, Context);
+                _ ->
+                    lager:debug("password and old username results in different hash"),
+                    E = wh_json:set_values([{[<<"password">>, <<"update">>], <<"Request password does not match current password">>}
+                                           ], wh_json:new()),
+                    crossbar_util:response_invalid_data(E, Context)
+            end
     end.
 
 %%--------------------------------------------------------------------
@@ -209,9 +245,9 @@ normalize_view_results(JObj, Acc) ->
 hash_password(#cb_context{doc=JObj}=Context) ->
     Username = wh_json:get_value(<<"username">>, JObj),
     case wh_json:get_value(<<"password">>, JObj) of
-        undefined ->
-            Context;
+        undefined -> Context;
         Password ->
+            lager:debug("password set on doc, updating hashes for ~s", [Username]),
             {MD5, SHA1} = cb_modules_util:pass_hashes(Username, Password),
 
             JObj1 = wh_json:set_values([{<<"pvt_md5_auth">>, MD5}
