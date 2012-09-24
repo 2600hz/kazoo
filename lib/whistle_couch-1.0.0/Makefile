@@ -2,7 +2,9 @@ ROOT = ../..
 DIALYZER = dialyzer
 REBAR = $(ROOT)/bin/rebar
 
-DIRS = $(ROOT)/lib/whistle-1.0.0 .
+DIRS =   . \
+	 $(ROOT)/lib/whistle-1.0.0 \
+	 $(ROOT)/lib/couchbeam-0.8.0
 
 all: app
 

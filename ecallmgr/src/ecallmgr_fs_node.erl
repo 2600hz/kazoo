@@ -401,8 +401,7 @@ run_start_cmds(Node) ->
                        Res = process_cmds(Node, Cmds),
                        case lists:filter(fun was_not_successful_cmd/1, Res) of
                            [] -> ok;
-                           Errs ->
-                               print_api_responses(Errs)
+                           Errs -> print_api_responses(Errs)
                        end
                end).
 
@@ -429,15 +428,21 @@ process_cmd(Node, JObj, Acc0) ->
                         process_cmd(Node, ApiCmd, ApiArg, Acc)
                 end, Acc0, wh_json:to_proplist(JObj)).
 
-process_cmd(Node, ApiCmd0, ApiArg0, Acc) ->
+process_cmd(Node, ApiCmd0, ApiArg, Acc) ->
+    process_cmd(Node, ApiCmd0, ApiArg, Acc, list).
+process_cmd(Node, ApiCmd0, ApiArg, Acc, ArgFormat) ->
     ApiCmd = wh_util:to_atom(wh_util:to_binary(ApiCmd0), ?FS_CMD_SAFELIST),
-    ApiArg = wh_util:to_list(ApiArg0),
-    case freeswitch:api(Node, ApiCmd, wh_util:to_list(ApiArg)) of
+    case freeswitch:api(Node, ApiCmd, format_args(ArgFormat, ApiArg)) of
         {ok, FSResp} ->
             process_resp(ApiCmd, ApiArg, binary:split(FSResp, <<"\n">>, [global]), Acc);
+        {error, badarg} when ArgFormat =:= list ->
+            process_cmd(Node, ApiCmd0, ApiArg, Acc, binary);
         {error, _}=E -> [E|Acc];
         timeout -> [{timeout, {ApiCmd, ApiArg}} | Acc]
     end.
+
+format_args(list, Args) -> wh_util:to_list(Args);
+format_args(binary, Args) -> wh_util:to_binary(Args).
 
 process_resp(ApiCmd, ApiArg, [<<>>|Resps], Acc) ->
     process_resp(ApiCmd, ApiArg, Resps, Acc);

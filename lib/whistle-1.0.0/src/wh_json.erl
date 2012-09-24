@@ -12,6 +12,7 @@
 -export([to_proplist/1, to_proplist/2]).
 -export([to_querystring/1]).
 -export([recursive_to_proplist/1]).
+
 -export([get_binary_boolean/2, get_binary_boolean/3]).
 -export([get_integer_value/2, get_integer_value/3]).
 -export([get_number_value/2, get_number_value/3]).
@@ -39,7 +40,10 @@
          ,is_valid_json_object/1
          ,is_json_term/1
         ]).
--export([public_fields/1, private_fields/1, is_private_key/1]).
+-export([public_fields/1
+         ,private_fields/1
+         ,is_private_key/1
+        ]).
 
 -export([encode/1]).
 -export([decode/1, decode/2]).

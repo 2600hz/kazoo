@@ -37,7 +37,7 @@
 -define(RESPONDERS, [{{acdc_queue_handler, handle_config_change}
                       ,[{<<"configuration">>, <<"*">>}]
                      }
-                     ,{{acdc_queue_handler, handle_stat_req}
+                     ,{{acdc_queue_handler, handle_stats_req}
                        ,[{<<"queue">>, <<"stats_req">>}]
                       }
                     ]).

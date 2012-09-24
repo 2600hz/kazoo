@@ -160,12 +160,15 @@ fetch_all_agent_stats(#cb_context{account_id=AcctId}=Context, ?REALTIME_PATH_TOK
                                        ,2000
                                       ) of
         {ok, Resp} ->
+            lager:debug("stats req responded"),
             Resp1 = strip_api_fields(wh_json:normalize(Resp)),
             Context#cb_context{resp_status=success
                                ,resp_data=Resp1
                                ,doc=Resp1
                               };
-        {error, _} -> Context
+        {error, _E} ->
+            lager:debug("stats req failed: ~p", [_E]),
+            Context
     end.
 
 fetch_agent_stats(Id, Context) ->
@@ -245,11 +248,10 @@ normalize_agent_results(JObj, Acc) ->
 
 agent_key([AID, TStamp]) when is_integer(TStamp) -> AID;
 agent_key([TStamp, AID]) when is_integer(TStamp) -> AID.
-    
+
 strip_api_fields(JObj) ->
     Strip = [<<"event_name">>, <<"event_category">>
                  ,<<"app_name">>, <<"app_version">>
                  ,<<"node">>, <<"msg_id">>, <<"server_id">>
             ],
     wh_json:filter(fun({K,_}) -> not lists:member(K, Strip) end, JObj).
-                           

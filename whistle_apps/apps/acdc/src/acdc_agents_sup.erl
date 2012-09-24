@@ -62,12 +62,15 @@ is_agent_in_acct(Super, AcctId) ->
         _ -> false
     end.
 
--spec find_agent_supervisor/2 :: (ne_binary(), ne_binary()) -> pid() | 'undefined'.
--spec find_agent_supervisor/3 :: (ne_binary(), ne_binary(), [pid(),...] | []) -> pid() | 'undefined'.
+-spec find_agent_supervisor/2 :: (api_binary(), api_binary()) -> pid() | 'undefined'.
+-spec find_agent_supervisor/3 :: (api_binary(), api_binary(), [pid(),...] | []) -> pid() | 'undefined'.
 find_agent_supervisor(AcctId, AgentId) ->
     find_agent_supervisor(AcctId, AgentId, workers()).
 
 find_agent_supervisor(_AcctId, _AgentId, []) -> undefined;
+find_agent_supervisor(AcctId, AgentId, _) when AcctId =:= undefined orelse
+                                               AgentId =:= undefined ->
+    undefined;
 find_agent_supervisor(AcctId, AgentId, [Super|Rest]) ->
     case catch acdc_agent:config(acdc_agent_sup:agent(Super)) of
         {'EXIT', _} -> find_agent_supervisor(AcctId, AgentId, Rest);
@@ -100,7 +103,7 @@ init([]) ->
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    {ok, {SupFlags, [?CHILD(acdc_agent_sup, temporary, 2000, worker)]}}.
+    {ok, {SupFlags, [?CHILD(acdc_agent_sup, transient, 2000, worker)]}}.
 
 %%%===================================================================
 %%% Internal functions

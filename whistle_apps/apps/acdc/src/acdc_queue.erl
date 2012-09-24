@@ -31,6 +31,7 @@
          ,cancel_member_call/1, cancel_member_call/2 ,cancel_member_call/3
          ,send_sync_req/2
          ,config/1
+         ,send_sync_resp/4
         ]).
 
 %% Call Manipulation
@@ -86,6 +87,12 @@
                      ,{{acdc_queue_handler, handle_member_retry}
                        ,[{<<"member">>, <<"connect_retry">>}]
                       }
+                     ,{{acdc_queue_handler, handle_agent_available}
+                       ,[{<<"queue">>, <<"agent_available">>}]
+                      }
+                     ,{{acdc_queue_handler, handle_sync_req}
+                       ,[{<<"queue">>, <<"sync_req">>}]
+                      }
                     ]).
 
 %%%===================================================================
@@ -101,8 +108,16 @@
 %%--------------------------------------------------------------------
 -spec start_link/2 :: (pid(), wh_json:json_object()) -> startlink_ret().
 start_link(Supervisor, QueueJObj) ->
+    QueueId = wh_json:get_value(<<"_id">>, QueueJObj),
+    AcctId = wh_json:get_value(<<"pvt_account_id">>, QueueJObj),
+
     gen_listener:start_link(?MODULE
-                            ,[{bindings, ?BINDINGS}
+                            ,[{bindings, [{acdc_queue, [{restrict_to, [agent_available, sync_req]}
+                                                        ,{account_id, AcctId}
+                                                        ,{queue_id, QueueId}
+                                                       ]}
+                                          | ?BINDINGS
+                                         ]}
                               ,{responders, ?RESPONDERS}
                              ]
                             ,[Supervisor, QueueJObj]
@@ -150,6 +165,9 @@ config(Srv) ->
 put_member_on_hold(Srv, Call, MOH) ->
     gen_listener:cast(Srv, {put_member_on_hold, Call, MOH}).
 
+send_sync_resp(Srv, Strategy, StrategyState, ReqJObj) ->
+    gen_listener:cast(Srv, {send_sync_resp, Strategy, StrategyState, ReqJObj}).
+
 %%%===================================================================
 %%% gen_listener callbacks
 %%%===================================================================
@@ -173,17 +191,20 @@ init([Supervisor, QueueJObj]) ->
 
     gen_listener:cast(self(), {start_fsm, Supervisor, QueueJObj}),
 
-    Self = self(),
-    _ = spawn(fun() ->
-                      gen_listener:cast(Self, {queue_name, gen_listener:queue_name(Self)})
-              end),
-
+    ask_for_queue_name(),
+    lager:debug("finished init for queue"),
     {ok, #state{
        queue_id = QueueId
        ,queue_db = wh_json:get_value(<<"pvt_account_db">>, QueueJObj)
        ,acct_id = wh_json:get_value(<<"pvt_account_id">>, QueueJObj)
-       ,my_id = list_to_binary([wh_util:to_binary(node()), "-", pid_to_list(self())])
+       ,my_id = acdc_util:proc_id()
       }}.
+
+ask_for_queue_name() ->
+    Self = self(),
+    spawn(fun() ->
+                  gen_listener:cast(Self, {queue_name, gen_listener:queue_name(Self)})
+          end).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -218,6 +239,7 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast({start_fsm, Supervisor, QueueJObj}, #state{}=State) ->
+    lager:debug("starting FSM in supervisor ~p", [Supervisor]),
     {ok, FSMPid} = acdc_queue_sup:start_fsm(Supervisor, QueueJObj),
 
     {noreply, State#state{fsm_pid=FSMPid
@@ -234,7 +256,11 @@ handle_cast({accept_member_calls}, #state{supervisor=Supervisor
     lager:debug("started shared queue listener: ~p", [SharedPid]),
     {noreply, State#state{shared_pid=SharedPid}};
 
+handle_cast({queue_name, <<>>}, #state{my_q=undefined}=State) ->
+    ask_for_queue_name(),
+    {noreply, State};
 handle_cast({queue_name, Q}, State) ->
+    lager:debug("my queue: ~s", [Q]),
     {noreply, State#state{my_q=Q}};
 
 handle_cast({member_connect_req, MemberCallJObj, Delivery}
@@ -385,6 +411,10 @@ handle_cast({put_member_on_hold, Call, MOH}, State) ->
     whapps_call_command:hold(MOH, Call),
     {noreply, State};
 
+handle_cast({send_sync_resp, Strategy, StrategyState, ReqJObj}, #state{my_id=Id}=State) ->
+    publish_sync_resp(Strategy, StrategyState, ReqJObj, Id),
+    {noreply, State};
+
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {noreply, State}.
@@ -453,6 +483,7 @@ send_member_connect_req(CallId, AcctId, QueueId, MyQ, MyId) ->
              ,{<<"Call-ID">>, CallId}
              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
             ]),
+    lager:debug("sending member_connect_req: ~p", [Req]),
     publish(Req, fun wapi_acdc_queue:publish_member_connect_req/1).
 
 -spec send_member_connect_win/7 :: (wh_json:json_object(), pos_integer(), whapps_call:call(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
@@ -513,6 +544,18 @@ send_sync_req(MyQ, MyId, AcctId, QueueId, Type) ->
               | wh_api:default_headers(MyQ, ?APP_NAME, ?APP_VERSION)
              ]),
     publish(Resp, fun wapi_acdc_queue:publish_sync_req/1).
+
+publish_sync_resp(Strategy, StrategyState, ReqJObj, Id) ->
+    Resp = props:filter_undefined(
+             [{<<"Account-ID">>, wh_json:get_value(<<"Account-ID">>, ReqJObj)}
+              ,{<<"Queue-ID">>, wh_json:get_value(<<"Queue-ID">>, ReqJObj)}
+              ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, ReqJObj)}
+              ,{<<"Current-Strategy">>, wh_util:to_binary(Strategy)}
+              ,{<<"Strategy-State">>, StrategyState}
+              ,{<<"Process-ID">>, Id}
+              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+             ]),
+    publish(wh_json:get_value(<<"Server-ID">>, ReqJObj), Resp, fun wapi_acdc_queue:publish_sync_resp/2).
 
 -spec maybe_nack/3 :: (whapps_call:call(), #'basic.deliver'{}, pid()) -> boolean().
 maybe_nack(Call, Delivery, SharedPid) ->

@@ -66,11 +66,12 @@ maybe_update_status(Call, AgentId, _Curr, <<"logout">>, _Data) ->
 
 maybe_update_status(Call, AgentId, <<"login">>, <<"login">>, _Data) ->
     lager:debug("agent ~s is already logged in", [AgentId]),
-    play_agent_logged_in_already(Call),
+    _ = play_agent_logged_in_already(Call),
     send_new_status(Call, AgentId, fun wapi_acdc_agent:publish_login/1, undefined);
 maybe_update_status(Call, AgentId, <<"login">>, <<"pause">>, Data) ->
-    lager:debug("agent ~s is pausing work", [AgentId]),
-    pause_agent(Call, AgentId, wh_json:get_integer_value(<<"timeout">>, Data, 0) * 1000),
+    Timeout = wh_json:get_integer_value(<<"timeout">>, Data, whapps_config:get(<<"acdc">>, <<"default_agent_pause_timeout">>, 600)),
+    lager:debug("agent ~s is pausing work for ~b s", [AgentId, Timeout]),
+    pause_agent(Call, AgentId, Timeout),
     play_agent_pause(Call);
 
 maybe_update_status(Call, AgentId, <<"logout">>, <<"login">>, _Data) ->
@@ -108,6 +109,7 @@ update_agent_status(Call, AgentId, Status, PubFun, Timeout) ->
     AcctDb = whapps_call:account_db(Call),
     Doc = wh_json:from_list([{<<"call_id">>, whapps_call:call_id(Call)}
                              ,{<<"agent_id">>, AgentId}
+                             ,{<<"method">>, <<"callflow">>}
                              ,{<<"action">>, Status}
                              ,{<<"pvt_type">>, <<"agent_activity">>}
                             ]),
@@ -119,7 +121,7 @@ send_new_status(Call, AgentId, PubFun, Timeout) ->
     Update = props:filter_undefined(
                [{<<"Account-ID">>, whapps_call:account_id(Call)}
                 ,{<<"Agent-ID">>, AgentId}
-                ,{<<"Timeout">>, Timeout}
+                ,{<<"Time-Limit">>, Timeout}
                 | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                ]),
     PubFun(Update).

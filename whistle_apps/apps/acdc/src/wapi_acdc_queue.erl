@@ -23,6 +23,7 @@
          ,sync_resp/1, sync_resp_v/1
          ,stats_req/1, stats_req_v/1
          ,stats_resp/1, stats_resp_v/1
+         ,agent_available/1, agent_available_v/1
         ]).
 
 -export([bind_q/2
@@ -43,6 +44,7 @@
          ,publish_sync_resp/2, publish_sync_resp/3
          ,publish_stats_req/1, publish_stats_req/2
          ,publish_stats_resp/2, publish_stats_resp/3
+         ,publish_agent_available/1, publish_agent_available/2
         ]).
 
 -export([queue_size/2, shared_queue_name/2]).
@@ -59,7 +61,7 @@
 -define(MEMBER_CALL_VALUES, [{<<"Event-Category">>, <<"member">>}
                              ,{<<"Event-Name">>, <<"call">>}
                             ]).
--define(MEMBER_CALL_TYPES, []).
+-define(MEMBER_CALL_TYPES, [{<<"Queue-ID">>, fun erlang:is_binary/1}]).
 
 -spec member_call/1 :: (api_terms()) ->
                                {'ok', iolist()} |
@@ -386,7 +388,7 @@ sync_req_routing_key(AcctId, QID) ->
     <<?SYNC_REQ_KEY, AcctId/binary, ".", QID/binary>>.
 
 -define(SYNC_REQ_HEADERS, [<<"Account-ID">>, <<"Queue-ID">>]).
--define(OPTIONAL_SYNC_REQ_HEADERS, [<<"Process-ID">>, <<"Current-Strategy">>]).
+-define(OPTIONAL_SYNC_REQ_HEADERS, [<<"Process-ID">>]).
 -define(SYNC_REQ_VALUES, [{<<"Event-Category">>, <<"queue">>}
                           ,{<<"Event-Name">>, <<"sync_req">>}
                          ]).
@@ -410,9 +412,9 @@ sync_req_v(JObj) ->
     sync_req_v(wh_json:to_proplist(JObj)).
 
 -define(SYNC_RESP_HEADERS, [<<"Account-ID">>, <<"Queue-ID">>
-                                ,<<"Current-Strategy">>, <<"Strategy-State">>
+                                ,<<"Current-Strategy">>
                            ]).
--define(OPTIONAL_SYNC_RESP_HEADERS, [<<"Process-ID">>, <<"Current-Strategy">>]).
+-define(OPTIONAL_SYNC_RESP_HEADERS, [<<"Process-ID">>, <<"Strategy-State">>]).
 -define(SYNC_RESP_VALUES, [{<<"Event-Category">>, <<"queue">>}
                            ,{<<"Event-Name">>, <<"sync_resp">>}
                           ]).
@@ -444,7 +446,7 @@ sync_resp_v(JObj) ->
                                   wh_proplist() |
                                   ne_binary()
                                  ) -> ne_binary().
--spec stats_req_routing_key/2 :: (ne_binary(), ne_binary()) -> ne_binary().
+-spec stats_req_routing_key/2 :: (ne_binary(), api_binary()) -> ne_binary().
 stats_req_routing_key(Props) when is_list(Props) ->
     Id = props:get_value(<<"Queue-ID">>, Props, <<"*">>),
     AcctId = props:get_value(<<"Account-ID">>, Props),
@@ -456,27 +458,27 @@ stats_req_routing_key(JObj) ->
     AcctId = wh_json:get_value(<<"Account-ID">>, JObj),
     stats_req_routing_key(AcctId, Id).
 
+stats_req_routing_key(AcctId, undefined) ->
+    <<?STATS_REQ_KEY, AcctId/binary>>;
 stats_req_routing_key(AcctId, QID) ->
     <<?STATS_REQ_KEY, AcctId/binary, ".", QID/binary>>.
 
-stats_publish_routing_key(Props) when is_list(Props) ->
-    AcctId = props:get_value(<<"Account-ID">>, Props),
-    case props:get_value(<<"Queue-ID">>, Props) of
-        undefined -> stats_req_routing_key(AcctId);
-        QueueId -> stats_req_routing_key(AcctId, QueueId)
-    end;
-stats_publish_routing_key(JObj) ->
-    AcctId = wh_json:get_value(<<"Account-ID">>, JObj),
-    case wh_json:get_value(<<"Queue-ID">>, JObj) of
-        undefined -> stats_req_routing_key(AcctId);
-        QueueId -> stats_req_routing_key(AcctId, QueueId)
-    end.
+-spec stats_req_publish_key/1 :: (wh_json:json_object() | wh_proplist() | ne_binary()) -> ne_binary().
+stats_req_publish_key(Props) when is_list(Props) ->
+    stats_req_routing_key(props:get_value(<<"Account-ID">>, Props)
+                          ,props:get_value(<<"Queue-ID">>, Props)
+                         );
+stats_req_publish_key(JObj) ->
+    stats_req_routing_key(wh_json:get_value(<<"Account-ID">>, JObj)
+                          ,wh_json:get_value(<<"Queue-ID">>, JObj)
+                         ).
+
 
 -define(STATS_REQ_HEADERS, [<<"Account-ID">>]).
 -define(OPTIONAL_STATS_REQ_HEADERS, [<<"Queue-ID">>]).
 -define(STATS_REQ_VALUES, [{<<"Event-Category">>, <<"queue">>}
-                          ,{<<"Event-Name">>, <<"stats_req">>}
-                         ]).
+                           ,{<<"Event-Name">>, <<"stats_req">>}
+                          ]).
 -define(STATS_REQ_TYPES, []).
 
 -spec stats_req/1 :: (api_terms()) ->
@@ -498,12 +500,13 @@ stats_req_v(JObj) ->
 
 -define(STATS_RESP_HEADERS, [<<"Account-ID">>]).
 -define(OPTIONAL_STATS_RESP_HEADERS, [<<"Queue-ID">>
-                                          ,<<"Current-Account-Stats">>
-                                          ,<<"Current-Queue-Stats">>
+                                          ,<<"Current-Statuses">>
+                                          ,<<"Current-Calls">>
+                                          ,<<"Current-Stats">>
                                      ]).
 -define(STATS_RESP_VALUES, [{<<"Event-Category">>, <<"queue">>}
-                           ,{<<"Event-Name">>, <<"stats_resp">>}
-                          ]).
+                            ,{<<"Event-Name">>, <<"stats_resp">>}
+                           ]).
 -define(STATS_RESP_TYPES, []).
 
 -spec stats_resp/1 :: (api_terms()) ->
@@ -522,6 +525,47 @@ stats_resp_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?STATS_RESP_HEADERS, ?STATS_RESP_VALUES, ?STATS_RESP_TYPES);
 stats_resp_v(JObj) ->
     stats_resp_v(wh_json:to_proplist(JObj)).
+
+%%------------------------------------------------------------------------------
+%% Agent Available - when an agent logs in, tell its configured queues
+%%------------------------------------------------------------------------------
+-define(AGENT_AVAILABLE_REQ_KEY, <<"acdc.queue.agent_available.">>).
+
+agent_available_publish_key(Prop) when is_list(Prop) ->
+    agent_available_routing_key(props:get_value(<<"Account-ID">>, Prop)
+                                ,props:get_value(<<"Queue-ID">>, Prop)
+                               );
+agent_available_publish_key(JObj) ->
+    agent_available_routing_key(wh_json:get_value(<<"Account-ID">>, JObj)
+                                ,wh_json:get_value(<<"Queue-ID">>, JObj)
+                               ).
+
+agent_available_routing_key(AcctId, QueueId) ->
+    <<?AGENT_AVAILABLE_REQ_KEY/binary, AcctId/binary, ".", QueueId/binary>>.
+
+-define(AGENT_AVAILABLE_HEADERS, [<<"Account-ID">>, <<"Agent-ID">>, <<"Queue-ID">>]).
+-define(OPTIONAL_AGENT_AVAILABLE_HEADERS, [<<"Account-ID">>, <<"Agent-ID">>, <<"Queue-ID">>]).
+-define(AGENT_AVAILABLE_VALUES, [{<<"Event-Category">>, <<"queue">>}
+                                 ,{<<"Event-Name">>, <<"agent_available">>}
+                                ]).
+-define(AGENT_AVAILABLE_TYPES, []).
+
+-spec agent_available/1 :: (api_terms()) ->
+                                   {'ok', iolist()} |
+                                   {'error', string()}.
+agent_available(Prop) when is_list(Prop) ->
+    case agent_available_v(Prop) of
+        true -> wh_api:build_message(Prop, ?AGENT_AVAILABLE_HEADERS, ?OPTIONAL_AGENT_AVAILABLE_HEADERS);
+        false -> {error, "proplist failed validation for agent_available"}
+    end;
+agent_available(JObj) ->
+    agent_available(wh_json:to_proplist(JObj)).
+
+-spec agent_available_v/1 :: (api_terms()) -> boolean().
+agent_available_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?AGENT_AVAILABLE_HEADERS, ?AGENT_AVAILABLE_VALUES, ?AGENT_AVAILABLE_TYPES);
+agent_available_v(JObj) ->
+    agent_available_v(wh_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
 %% Bind/Unbind the queue as appropriate
@@ -550,6 +594,7 @@ bind_q(Q, AcctId, QID, undefined) ->
 
     amqp_util:bind_q_to_whapps(Q, stats_req_routing_key(AcctId)),
     amqp_util:bind_q_to_whapps(Q, stats_req_routing_key(AcctId, QID)),
+    amqp_util:bind_q_to_whapps(Q, agent_available_routing_key(AcctId, QID)),
 
     amqp_util:bind_q_to_callmgr(Q, member_call_routing_key(AcctId, QID)),
     amqp_util:bind_q_to_callmgr(Q, member_connect_req_routing_key(AcctId, QID));
@@ -564,10 +609,12 @@ bind_q(Q, AcctId, QID, [sync_req|T]) ->
     bind_q(Q, AcctId, QID, T);
 bind_q(Q, AcctId, <<"*">> = QID, [stats_req|T]) ->
     amqp_util:bind_q_to_whapps(Q, stats_req_routing_key(AcctId)),
-    amqp_util:bind_q_to_whapps(Q, stats_req_routing_key(AcctId, QID)),
     bind_q(Q, AcctId, QID, T);
 bind_q(Q, AcctId, QID, [stats_req|T]) ->
     amqp_util:bind_q_to_whapps(Q, stats_req_routing_key(AcctId, QID)),
+    bind_q(Q, AcctId, QID, T);
+bind_q(Q, AcctId, QID, [agent_available|T]) ->
+    amqp_util:bind_q_to_whapps(Q, agent_available_routing_key(AcctId, QID)),
     bind_q(Q, AcctId, QID, T);
 bind_q(Q, AcctId, QID, [_|T]) ->
     bind_q(Q, AcctId, QID, T);
@@ -584,6 +631,7 @@ unbind_q(Q, Props) ->
 unbind_q(Q, AcctId, QID, undefined) ->
     _ = amqp_util:unbind_q_from_whapps(Q, sync_req_routing_key(AcctId, QID)),
     _ = amqp_util:unbind_q_from_whapps(Q, stats_req_routing_key(AcctId, QID)),
+    _ = amqp_util:unbind_q_from_whapps(Q, agent_available_routing_key(AcctId, QID)),
     _ = amqp_util:unbind_q_from_callmgr(Q, member_call_routing_key(AcctId, QID)),
     _ = amqp_util:unbind_q_from_callmgr(Q, member_connect_req_routing_key(AcctId, QID));
 unbind_q(Q, AcctId, QID, [member_call|T]) ->
@@ -597,10 +645,12 @@ unbind_q(Q, AcctId, QID, [sync_req|T]) ->
     unbind_q(Q, AcctId, QID, T);
 unbind_q(Q, AcctId, <<"*">> = QID, [stats_req|T]) ->
     _ = amqp_util:unbind_q_from_whapps(Q, stats_req_routing_key(AcctId)),
-    _ = amqp_util:unbind_q_from_whapps(Q, stats_req_routing_key(AcctId, QID)),
     unbind_q(Q, AcctId, QID, T);
 unbind_q(Q, AcctId, QID, [stats_req|T]) ->
     _ = amqp_util:unbind_q_from_whapps(Q, stats_req_routing_key(AcctId, QID)),
+    unbind_q(Q, AcctId, QID, T);
+unbind_q(Q, AcctId, QID, [agent_available|T]) ->
+    _ = amqp_util:unbind_q_from_whapps(Q, agent_available_routing_key(AcctId, QID)),
     unbind_q(Q, AcctId, QID, T);
 unbind_q(Q, AcctId, QID, [_|T]) ->
     unbind_q(Q, AcctId, QID, T);
@@ -712,7 +762,7 @@ publish_stats_req(JObj) ->
     publish_stats_req(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_stats_req(API, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(API, ?STATS_REQ_VALUES, fun stats_req/1),
-    amqp_util:whapps_publish(stats_publish_routing_key(API), Payload, ContentType).
+    amqp_util:whapps_publish(stats_req_publish_key(API), Payload, ContentType).
 
 -spec publish_stats_resp/2 :: (ne_binary(), api_terms()) -> 'ok'.
 -spec publish_stats_resp/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
@@ -721,3 +771,11 @@ publish_stats_resp(Q, JObj) ->
 publish_stats_resp(Q, API, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(API, ?STATS_RESP_VALUES, fun stats_resp/1),
     amqp_util:targeted_publish(Q, Payload, ContentType).
+
+-spec publish_agent_available/1 :: (api_terms()) -> 'ok'.
+-spec publish_agent_available/2 :: (api_terms(), ne_binary()) -> 'ok'.
+publish_agent_available(JObj) ->
+    publish_agent_available(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_agent_available(API, ContentType) ->
+    {ok, Payload} = wh_api:prepare_api_payload(API, ?AGENT_AVAILABLE_VALUES, fun agent_available/1),
+    amqp_util:whapps_publish(agent_available_publish_key(API), Payload, ContentType).

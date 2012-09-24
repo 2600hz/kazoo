@@ -16,6 +16,8 @@
 
 -include("../callflow.hrl").
 
+-type max_wait() :: integer() | 'infinity'.
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -24,6 +26,7 @@
 -spec handle/2 :: (wh_json:json_object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     QueueId = wh_json:get_value(<<"id">>, Data),
+    lager:debug("sending call to queue ~s", [QueueId]),
 
     MemberCall = props:filter_undefined(
                    [{<<"Account-ID">>, whapps_call:account_id(Call)}
@@ -44,20 +47,24 @@ handle(Data, Call) ->
 
     lager:debug("max size: ~p curr size: ~p", [MaxQueueSize, CurrQueueSize]),
 
-    maybe_enter_queue(Call1, MemberCall, MaxWait, is_queue_full(MaxQueueSize, CurrQueueSize)).
+    maybe_enter_queue(Call1, MemberCall, QueueId, MaxWait, is_queue_full(MaxQueueSize, CurrQueueSize)).
 
-maybe_enter_queue(Call, _, _, true) ->
+-spec maybe_enter_queue/5 :: (whapps_call:call(), wh_proplist(), ne_binary(), max_wait(), boolean()) -> 'ok'.
+maybe_enter_queue(Call, _, _, _, true) ->
     lager:debug("queue has reached max size"),
     cf_exe:continue(Call);
-maybe_enter_queue(Call, MemberCall, MaxWait, false) ->
+maybe_enter_queue(Call, MemberCall, QueueId, MaxWait, false) ->
     lager:debug("asking for an agent, waiting up to ~p ms", [MaxWait]),
 
     cf_exe:send_amqp(Call, MemberCall, fun wapi_acdc_queue:publish_member_call/1),
-
+    acdc_stats:call_waiting(whapps_call:account_id(Call)
+                            ,QueueId
+                            ,whapps_call:call_id(Call)
+                           ),
     wait_for_bridge(Call, MaxWait).
 
--spec wait_for_bridge/2 :: (whapps_call:call(), integer()) -> 'ok'.
--spec wait_for_bridge/3 :: (whapps_call:call(), integer(), wh_now()) -> 'ok'.
+-spec wait_for_bridge/2 :: (whapps_call:call(), max_wait()) -> 'ok'.
+-spec wait_for_bridge/3 :: (whapps_call:call(), max_wait(), wh_now()) -> 'ok'.
 wait_for_bridge(Call, Timeout) ->
     wait_for_bridge(Call, Timeout, erlang:now()).
 wait_for_bridge(Call, Timeout, Start) ->
@@ -73,7 +80,10 @@ wait_for_bridge(Call, Timeout, Start) ->
             cf_exe:continue(Call)
     end.
 
--spec process_message/6 :: (whapps_call:call(), integer(), wh_now(), wh_now(), wh_json:json_object(), {ne_binary(), ne_binary()}) -> 'ok'.
+-spec process_message/6 :: (whapps_call:call(), max_wait(), wh_now()
+                            ,wh_now(), wh_json:json_object()
+                            ,{ne_binary(), ne_binary()}
+                           ) -> 'ok'.
 process_message(Call, _, Start, _Wait, _JObj, {<<"call_event">>,<<"CHANNEL_BRIDGE">>}) ->
     lager:debug("member was bridged to agent, yay! took ~b s", [wh_util:elapsed_s(Start)]),
     cf_exe:control_usurped(Call);
@@ -93,17 +103,21 @@ process_message(Call, Timeout, Start, Wait, JObj, {<<"call_event">>, <<"DTMF">>}
             cf_exe:continue(Call);
         false ->
             lager:debug("caller pressed ~s, ignoring", [DigitPressed]),
-            wait_for_bridge(Call, Timeout - wh_util:elapsed_ms(Wait), Start)
+            wait_for_bridge(Call, reduce_timeout(Timeout, wh_util:elapsed_ms(Wait)), Start)
     end;
 process_message(Call, _, Start, _Wait, _JObj, {<<"member">>, <<"call_success">>}) ->
     lager:debug("call was processed by queue (took ~b s)", [wh_util:elapsed_s(Start)]),
     cf_exe:control_usurped(Call);
 process_message(Call, Timeout, Start, Wait, JObj, _Type) ->
     lager:debug("recv unhandled type: ~p: ~s", [_Type, wh_json:get_value(<<"Application-Name">>, JObj)]),
-    wait_for_bridge(Call, Timeout - wh_util:elapsed_ms(Wait), Start).
+    wait_for_bridge(Call, reduce_timeout(Timeout, wh_util:elapsed_ms(Wait)), Start).
+
+-spec reduce_timeout/2 :: (max_wait(), integer()) -> max_wait().
+reduce_timeout('infinity', _) -> 'infinity';
+reduce_timeout(T, R) -> T-R.
 
 %% convert from seconds to milliseconds, or infinity
--spec max_wait/1 :: (integer()) -> pos_integer() | 'infinity'.
+-spec max_wait/1 :: (integer()) -> max_wait().
 max_wait(N) when N < 1 -> infinity;
 max_wait(N) -> N * 1000.
 

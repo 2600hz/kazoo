@@ -23,7 +23,6 @@
          ,send_sync_req/1
          ,send_sync_resp/3, send_sync_resp/4
          ,config/1
-         ,current_call/1
          ,send_status_resume/1
          ,add_acdc_queue/2
          ,rm_acdc_queue/2
@@ -85,7 +84,7 @@
 -define(BINDINGS(AcctId, AgentId), [{self, []}
                                     ,{acdc_agent, [{account_id, AcctId}
                                                    ,{agent_id, AgentId}
-                                                   ,{restrict_to, [sync, stats]}
+                                                   ,{restrict_to, [sync, stats_req]}
                                                   ]}
                                    ]).
 
@@ -178,9 +177,6 @@ send_sync_resp(Srv, Status, ReqJObj, Options) ->
 config(Srv) ->
     gen_listener:call(Srv, config).
 
-current_call(Srv) ->
-    gen_listener:call(Srv, current_call).
-
 send_status_resume(Srv) ->
     gen_listener:cast(Srv, {send_status_update, resume}).
 
@@ -212,16 +208,24 @@ init([Supervisor, AgentJObj, Queues]) ->
     gen_listener:cast(self(), {load_endpoints, Supervisor}),
 
     Self = self(),
+    AcctId = wh_json:get_value(<<"pvt_account_id">>, AgentJObj),
+
     _ = spawn(fun() ->
-                      gen_listener:cast(Self, {queue_name, gen_listener:queue_name(Self)})
+                      put(amqp_publish_as, Self),
+                      gen_listener:cast(Self, {queue_name, gen_listener:queue_name(Self)}),
+                      Prop = [{<<"Account-ID">>, AcctId}
+                              ,{<<"Agent-ID">>, AgentId}
+                              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                             ],
+                      [wapi_acdc_queue:publish_agent_available([{<<"Queue-ID">>, QueueId} | Prop]) || QueueId <- Queues]
               end),
 
     {ok, #state{
        agent_id = AgentId
-       ,acct_id = wh_json:get_value(<<"pvt_account_id">>, AgentJObj)
+       ,acct_id = AcctId
        ,acct_db = wh_json:get_value(<<"pvt_account_db">>, AgentJObj)
        ,agent_queues = Queues
-       ,my_id = acdc_util:agent_proc_id(self())
+       ,my_id = acdc_util:proc_id()
        ,supervisor = Supervisor
       }}.            
 
@@ -243,16 +247,6 @@ handle_call(config, _From, #state{acct_id=AcctId
                                   ,agent_id=AgentId
                                   }=State) ->
     {reply, {AcctId, AgentId}, State};
-handle_call(current_call, _From, #state{call=undefined}=State) ->
-    {reply, undefined, State};
-handle_call(current_call, _From, #state{call=Call}=State) ->
-    CallJObj = wh_json:from_list([{<<"call_id">>, whapps_call:call_id(Call)}
-                                  ,{<<"caller_id_name">>, whapps_call:caller_id_name(Call)}
-                                  ,{<<"caller_id_number">>, whapps_call:caller_id_name(Call)}
-                                  ,{<<"to">>, whapps_call:to_user(Call)}
-                                  ,{<<"from">>, whapps_call:from_user(Call)}
-                                 ]),
-    {reply, CallJObj, State};
 handle_call(_Request, _From, State) ->
     lager:debug("unhandled call from ~p: ~p", [_From, _Request]),
     {reply, {error, unhandled_call}, State}.
@@ -372,34 +366,35 @@ handle_cast({member_connect_resp, ReqJObj}, #state{
               ,my_id=MyId
               ,my_q=MyQ
              }=State) ->
-    lager:debug("responding to member_connect_req"),
-
     ACDcQueue = wh_json:get_value(<<"Queue-ID">>, ReqJObj),
     case is_valid_queue(ACDcQueue, Qs) of
-        false -> {noreply, State};
+        false ->
+            lager:debug("Queue ~s isn't one of ours", [ACDcQueue]),
+            {noreply, State};
         true ->
+            lager:debug("responding to member_connect_req"),
+
             send_member_connect_resp(ReqJObj, MyQ, AgentId, MyId, LastConn),
             {noreply, State#state{acdc_queue_id = ACDcQueue
                                   ,msg_queue_id = wh_json:get_value(<<"Server-ID">>, ReqJObj)
                                  }}
     end;
 
-handle_cast({member_connect_retry, CallId}, #state{
-              my_id=MyId
-              ,msg_queue_id=Server
-              }=State) when is_binary(CallId) ->
+handle_cast({member_connect_retry, CallId}, #state{my_id=MyId
+                                                   ,msg_queue_id=Server
+                                                  }=State) when is_binary(CallId) ->
     send_member_connect_retry(Server, CallId, MyId),
     {noreply, State#state{msg_queue_id=undefined
                           ,acdc_queue_id=undefined
                           }};
-handle_cast({member_connect_retry, WinJObj}, #state{
-              my_id=MyId
-             }=State) ->
-    lager:debug("cannot process this call, sending a retry"),
+handle_cast({member_connect_retry, WinJObj}, #state{my_id=MyId}=State) ->
+    lager:debug("cannot process this call, sending a retry: ~p", [WinJObj]),
     send_member_connect_retry(WinJObj, MyId),
     {noreply, State};
 
-handle_cast({bridge_to_member, WinJObj}, #state{endpoints=EPs, fsm_pid=FSM}=State) ->
+handle_cast({bridge_to_member, WinJObj}, #state{endpoints=EPs
+                                                ,fsm_pid=FSM
+                                               }=State) ->
     lager:debug("bridging to agent endpoints: ~p", [EPs]),
 
     Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, WinJObj)),
@@ -532,6 +527,7 @@ send_member_connect_resp(JObj, MyQ, AgentId, MyId, LastConn) ->
               ,{<<"Process-ID">>, MyId}
               | wh_api:default_headers(MyQ, ?APP_NAME, ?APP_VERSION)
              ]),
+    lager:debug("sending connect_resp to ~s: ~p", [Queue, Resp]),
     wapi_acdc_queue:publish_member_connect_resp(Queue, Resp).
 
 -spec send_member_connect_retry/2 :: (wh_json:json_object(), ne_binary()) -> 'ok'.

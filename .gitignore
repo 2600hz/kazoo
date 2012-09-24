@@ -30,3 +30,4 @@ utils/*/ebin/*.app
 whistle_apps/erl_crash.dump
 ecallmgr/erl_crash.dump
 /utils/sup/deps/getopt/
+/lib/rabbitmq_server-2.8.6/deps.mk

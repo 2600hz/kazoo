@@ -752,15 +752,23 @@ is_ipv6(Address) when is_list(Address) ->
         {error, _} -> false
     end.
 
--spec elapsed_s/1 :: (wh_now()) -> integer().
--spec elapsed_ms/1 :: (wh_now()) -> integer().
--spec elapsed_us/1 :: (wh_now()) -> integer().
+-spec elapsed_s/1 :: (wh_now() | pos_integer()) -> pos_integer().
+-spec elapsed_ms/1 :: (wh_now() | pos_integer()) -> pos_integer().
+-spec elapsed_us/1 :: (wh_now() | pos_integer()) -> pos_integer().
 elapsed_s({_,_,_}=Start) ->
-    timer:now_diff(erlang:now(), Start) div 1000000.
+    timer:now_diff(erlang:now(), Start) div 1000000;
+elapsed_s(Start) when is_integer(Start) ->
+    current_tstamp() - Start.
+
 elapsed_ms({_,_,_}=Start) ->
-    timer:now_diff(erlang:now(), Start) div 1000.
+    timer:now_diff(erlang:now(), Start) div 1000;
+elapsed_ms(Start) when is_integer(Start) ->
+    current_tstamp() - Start * 1000.
+
 elapsed_us({_,_,_}=Start) ->
-    timer:now_diff(erlang:now(), Start).
+    timer:now_diff(erlang:now(), Start);
+elapsed_us(Start) when is_integer(Start) ->
+    current_tstamp() - Start * 1000000.
 
 -spec now_s/1 :: (wh_now()) -> integer().
 -spec now_ms/1 :: (wh_now()) -> integer().
