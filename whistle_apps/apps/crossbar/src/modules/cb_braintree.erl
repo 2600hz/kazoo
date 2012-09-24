@@ -235,12 +235,16 @@ validate(#cb_context{req_verb = <<"get">>, account_id=AccountId}=Context, ?CARDS
             crossbar_util:response(error, wh_util:to_binary(Error), 500, Reason, Context)
     end;
 validate(#cb_context{req_verb = <<"post">>, req_data=JObj, account_id=AccountId}=Context, ?CARDS_PATH_TOKEN, CardId) ->
-    Card = (braintree_card:json_to_record(JObj))#bt_card{customer_id=wh_util:to_list(AccountId), token=CardId},
+    Card0 = braintree_card:json_to_record(JObj),
+    Card = Card0#bt_card{customer_id=wh_util:to_list(AccountId)
+                         ,token=CardId
+                        },
+
     crossbar_util:response([], cb_context:store(braintree, Card, Context));
 validate(#cb_context{req_verb = <<"delete">>}=Context, ?CARDS_PATH_TOKEN, _) ->
     crossbar_util:response([], Context);
 validate(#cb_context{req_verb = <<"get">>, account_id=AccountId}=Context, ?ADDRESSES_PATH_TOKEN, AddressId) ->
-    try braintree_address:find(AddressId) of
+    try braintree_address:find(AccountId, AddressId) of
         #bt_address{customer_id=AccountId}=Address ->
             Resp = braintree_address:record_to_json(Address),
             crossbar_util:response(Resp, Context)
@@ -371,7 +375,7 @@ delete(Context, ?CARDS_PATH_TOKEN, CardId) ->
 delete(Context, ?ADDRESSES_PATH_TOKEN, AddressId) ->
     try braintree_address:delete(Context#cb_context.account_id, AddressId) of
         #bt_address{}=Address ->
-            Resp = braintree_card:record_to_json(Address),
+            Resp = braintree_address:record_to_json(Address),
             crossbar_util:response(Resp, Context)
     catch
         throw:{api_error, Reason} ->
