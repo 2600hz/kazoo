@@ -145,7 +145,7 @@ handle(Data, Call) ->
 directory_start(Call, State, CurrUsers) ->
     _ = whapps_call_command:flush_dtmf(Call),
     {ok, DTMF} = play_directory_instructions(Call, sort_by(State)),
-    collect_min_digits(Call, add_dtmf(State, DTMF), CurrUsers, min_dtmf(State) - byte_size(DTMF)).
+    collect_min_digits(Call, add_dtmf(clear_dtmf(State), DTMF), CurrUsers, min_dtmf(State) - byte_size(DTMF)).
 
 collect_min_digits(Call, State, CurrUsers, Min) when Min =< 0 ->
     case whapps_call_command:wait_for_dtmf(?TIMEOUT_DTMF) of
@@ -161,7 +161,7 @@ collect_min_digits(Call, State, CurrUsers, Min) ->
         {ok, <<>>} ->
             lager:debug("timeout waiting for a dtmf"),
             {ok, DTMF} = play_min_digits_needed(Call, min_dtmf(State)),
-            collect_min_digits(Call, add_dtmf(State, DTMF), CurrUsers, Min - byte_size(DTMF));
+            collect_min_digits(Call, add_dtmf(clear_dtmf(State), DTMF), CurrUsers, Min - byte_size(DTMF));
         {ok, DTMF} ->
             collect_min_digits(Call, add_dtmf(State, DTMF), CurrUsers, Min-1)
     end.
