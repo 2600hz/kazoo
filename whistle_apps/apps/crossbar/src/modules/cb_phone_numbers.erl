@@ -131,14 +131,14 @@ resource_exists(_, ?ACTIVATE) -> true;
 resource_exists(_, ?RESERVE) -> true;
 resource_exists(_, ?PORT_DOCS) -> true;
 resource_exists(_, _) -> false.
- 
+
 resource_exists(_, ?PORT_DOCS, _) -> true;
 resource_exists(_, _, _) -> false.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec content_types_accepted/4 :: (#cb_context{}, path_token(), path_token(), path_token()) -> #cb_context{}.
@@ -280,11 +280,11 @@ delete(#cb_context{auth_account_id=AuthBy}=Context, Number, ?PORT_DOCS, Name) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
- 
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec find_numbers/1 :: (#cb_context{}) -> #cb_context{}.
@@ -387,7 +387,7 @@ list_attachments(Number, #cb_context{auth_account_id=AuthBy}=Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec put_attachments/3 :: (ne_binary(), #cb_context{}, proplist()) -> #cb_context{}.
@@ -398,7 +398,7 @@ put_attachments(Number, #cb_context{auth_account_id=AuthBy}=Context, [{Filename,
     Content = wh_json:get_value(<<"contents">>, FileObj),
     CT = wh_json:get_value(<<"content_type">>, HeadersJObj, <<"application/octet-stream">>),
     Options = [{headers, [{content_type, wh_util:to_list(CT)}]}],
-    lager:debug("setting Content-Type to ~s", [CT]),   
+    lager:debug("setting Content-Type to ~s", [CT]),
     case wh_number_manager:put_attachment(Number, Filename, Content, Options, AuthBy) of
         {ok, NewDoc} ->
             put_attachments(Number, Context#cb_context{resp_data=NewDoc}, Files);
@@ -412,10 +412,10 @@ put_attachments(Number, #cb_context{auth_account_id=AuthBy}=Context, [{Filename,
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec set_response/3 :: ({ok, wh_json:json_object()} |
-                         {error, term()} |
-                         {atom(), wh_json:json_object()}
-                         , ne_binary(), #cb_context{}) -> #cb_context{}.
+-spec set_response/3 :: (operation_return()
+                         ,ne_binary()
+                         ,#cb_context{}
+                        ) -> #cb_context{}.
 set_response({ok, Doc}, _, Context) ->
     crossbar_util:response(Doc, Context);
 set_response({Error, Reason}, _, Context) ->
@@ -431,15 +431,14 @@ set_response(_Else, _, Context) ->
 %% number to replace the existing number on callflows, so do so!
 %% @end
 %%--------------------------------------------------------------------
--spec process_replaces/3 :: (ne_binary(), api_binary(), #cb_context{}) -> #cb_context{}.
-process_replaces(_, undefined, Context) -> Context;
+-spec process_replaces/3 :: (ne_binary(), ne_binary(), #cb_context{}) -> #cb_context{}.
 process_replaces(Number, Replaces, Context) ->
     Payload = [undefined
                ,Context#cb_context{req_verb = <<"get">>}
               ],
     case crossbar_bindings:fold(<<"v1_resource.validate.callflows">>, Payload) of
         [_, #cb_context{resp_status=success, resp_data=JObjs} | _] ->
-            Updates = [JObj 
+            Updates = [JObj
                        || JObj <- JObjs,
                           lists:member(Replaces, wh_json:get_value(<<"numbers">>, JObj, []))
                       ],
@@ -467,12 +466,10 @@ update_callflows([Update|Updates], Number, Replaces, Context) ->
     case crossbar_bindings:fold(<<"v1_resource.validate.callflows">>, Payload1) of
         [_, #cb_context{resp_status=success, doc=JObj} | _] ->
             Numbers = wh_json:get_value(<<"numbers">>, JObj, []),
-            Updated = lists:map(fun(Num) when Num =:= Replaces -> 
-                                        Number; 
-                                   (Else) -> 
-                                        Else 
+            Updated = lists:map(fun(Num) when Num =:= Replaces -> Number;
+                                   (Else) -> Else
                                 end, Numbers),
-            
+
             Payload2 = [undefined
                       ,Context#cb_context{doc=wh_json:set_value(<<"numbers">>, Updated, JObj)
                                           ,req_verb = <<"post">>}
