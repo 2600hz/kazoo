@@ -63,7 +63,7 @@
 -type bindings() :: [binding(),...] | [].
 
 -type payload() :: path_tokens() | % mapping over path tokens in URI
-                   [#cb_context{} | path_token(),...] |
+                   [#cb_context{} | path_token() | 'undefined',...] |
                    #cb_context{} |
                    {#cb_context{}, proplist()} | % v1_resource:rest_init/2
                    {wh_json:json_strings(), #cb_context{}, path_tokens()} |
