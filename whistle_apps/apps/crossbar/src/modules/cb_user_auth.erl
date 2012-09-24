@@ -296,11 +296,13 @@ reset_users_password(#cb_context{doc=JObj, req_data=Data}=Context) ->
     Password = wh_util:rand_hex_binary(16),
     {MD5, SHA1} = cb_modules_util:pass_hashes(wh_json:get_value(<<"username">>, JObj), Password),
     Email = wh_json:get_value(<<"email">>, JObj),
-    Updaters = [fun(J) -> wh_json:set_value(<<"pvt_md5_auth">>, MD5, J) end
-                ,fun(J) -> wh_json:set_value(<<"pvt_sha1_auth">>, SHA1, J) end
-                ,fun(J) -> wh_json:set_value(<<"require_password_update">>, true, J) end
-               ],
-    case crossbar_doc:save(Context#cb_context{doc=lists:foldr(fun(F, J) -> F(J) end, JObj, Updaters), req_verb = <<"post">>}) of
+
+    JObj1 = wh_json:set_values([{<<"pvt_md5_auth">>, MD5}
+                                ,{<<"pvt_sha1_auth">>, SHA1}
+                                ,{<<"require_password_update">>, true}
+                               ], JObj),
+
+    case crossbar_doc:save(Context#cb_context{doc=JObj1, req_verb = <<"post">>}) of
         #cb_context{resp_status=success} -> 
             Notify = [{<<"Email">>, Email}
                       ,{<<"First-Name">>, wh_json:get_value(<<"first_name">>, JObj)}
@@ -313,6 +315,6 @@ reset_users_password(#cb_context{doc=JObj, req_data=Data}=Context) ->
                      ],
             ok = wapi_notifications:publish_pwd_recovery(Notify),
             crossbar_util:response(<<"Password reset, email send to:", Email/binary>>, Context);
-        Else -> 
+        Else ->
             Else
     end.
