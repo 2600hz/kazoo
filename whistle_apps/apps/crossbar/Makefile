@@ -2,7 +2,15 @@ ROOT = ../../..
 DIALYZER = dialyzer
 REBAR = $(ROOT)/bin/rebar
 
-DIRS = $(ROOT)/lib/whistle-1.0.0 $(ROOT)/lib/whistle_couch-1.0.0 $(ROOT)/lib/whistle_amqp-1.0.0 $(ROOT)/lib/whistle_number_manager-1.0.0 $(ROOT)/whistle_apps .
+DIRS =  . \
+	$(ROOT)/lib/whistle-1.0.0 \
+	$(ROOT)/lib/whistle_couch-1.0.0 \
+	$(ROOT)/lib/whistle_amqp-1.0.0 \
+	$(ROOT)/lib/whistle_number_manager-1.0.0 \
+	$(ROOT)/lib/whistle_services-1.0.0 \
+	$(ROOT)/lib/braintree-1.0.0 \
+	$(ROOT)/whistle_apps/apps/callflow \
+	$(ROOT)/whistle_apps
 
 all: app
 
