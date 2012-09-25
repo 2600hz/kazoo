@@ -67,6 +67,7 @@
           ,max_message_length = 'undefined' :: 'undefined' | pos_integer()
           ,keys = #keys{}
           ,transcribe_voicemail = 'false' :: boolean()
+          ,delete_after_notify = 'false' :: boolean()
          }).
 
 %%--------------------------------------------------------------------
@@ -732,6 +733,7 @@ change_pin(#mailbox{mailbox_id=Id}=Box, Call) ->
 new_message(AttachmentName, Length, #mailbox{mailbox_id=Id
                                              ,owner_id=OwnerId
                                              ,transcribe_voicemail=MaybeTranscribe
+                                             ,delete_after_notify=DeleteAfterNotify
                                             }=Box, Call) ->
     lager:debug("saving new ~bms voicemail message and metadata", [Length]),
     CallID = cf_exe:callid(Call),
@@ -776,6 +778,7 @@ new_message(AttachmentName, Length, #mailbox{mailbox_id=Id
        ,{<<"Voicemail-Length">>, Length}
        ,{<<"Voicemail-Transcription">>, Transcription}
        ,{<<"Call-ID">>, CallID}
+       ,{<<"Delete-After-Notify">>, DeleteAfterNotify}
        | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
       ]),
     timer:sleep(1000),
@@ -951,6 +954,8 @@ get_mailbox_profile(Data, Call) ->
                          MsgCount
                      ,transcribe_voicemail =
                          wh_json:is_true(<<"transcribe">>, JObj, false)
+                     ,delete_after_notify =
+                         wh_json:is_true(<<"delete_after_notify">>, JObj, false)
                     };
         {error, R} ->
             lager:debug("failed to load voicemail box ~s, ~p", [Id, R]),
