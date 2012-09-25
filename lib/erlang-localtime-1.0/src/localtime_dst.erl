@@ -29,6 +29,7 @@
 % check(DateTime, TimeZone) -> is_in_dst | is_not_in_dst | ambiguous_time | time_not_exists
 %  DateTime = DateTime()
 %  TimeZone = tuple()
+check(_, {_,_,undef,_,_,_,_,_,_}) -> is_not_in_dst;
 check({Date = {Year, _, _},Time}, {_, _, _, _Shift, DstShift, DstStartRule, DstStartTime, DstEndRule, DstEndTime}) ->
    DstStartDay = get_dst_day_of_year(DstStartRule, Year),
    DstEndDay = get_dst_day_of_year(DstEndRule, Year),
@@ -93,7 +94,7 @@ get_dst_day_of_year({WeekDay,DayOfWeek,Month}, Year) when (WeekDay > 0) and (Wee
          end,
          AdjustedDstDays + (WeekDay - 1) * 7
       end;
-get_dst_day_of_year(_, _) ->
+get_dst_day_of_year(_A, _B) ->
    throw({error, wrong_week_day}).
 
 get_last_dst(IntDayOfWeek, IntMonth, Year) ->
