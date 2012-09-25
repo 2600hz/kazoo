@@ -73,7 +73,7 @@
                            ]).
 -define(OPTIONAL_VOICEMAIL_HEADERS, [<<"Voicemail-Length">>, <<"Call-ID">>
                                      ,<<"Caller-ID-Number">>, <<"Caller-ID-Name">>
-                                     ,<<"Voicemail-Transcription">>
+                                     ,<<"Voicemail-Transcription">>, <<"Delete-After-Notify">>
                                     ]).
 -define(VOICEMAIL_VALUES, [{<<"Event-Category">>, <<"notification">>}
                            ,{<<"Event-Name">>, <<"new_voicemail">>}
