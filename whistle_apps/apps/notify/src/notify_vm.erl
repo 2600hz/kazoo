@@ -29,8 +29,8 @@ init() ->
     {ok, _} = notify_util:compile_default_subject_template(?DEFAULT_SUBJ_TMPL, ?MOD_CONFIG_CAT),
     lager:debug("init done for ~s", [?MODULE]).
 
--spec handle_req/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
-handle_req(JObj, _Props) ->
+-spec handle_req/2 :: (wh_json:json_object(), wh_proplist()) -> 'ok'.
+handle_req(JObj, _) ->
     true = wapi_notifications:voicemail_v(JObj),
     whapps_util:put_callid(JObj),
 
@@ -55,16 +55,46 @@ handle_req(JObj, _Props) ->
 
             CustomTxtTemplate = wh_json:get_value([<<"notifications">>, <<"voicemail_to_email">>, <<"email_text_template">>], AcctObj),
             {ok, TxtBody} = notify_util:render_template(CustomTxtTemplate, ?DEFAULT_TEXT_TMPL, Props),
-            
+
             CustomHtmlTemplate = wh_json:get_value([<<"notifications">>, <<"voicemail_to_email">>, <<"email_html_template">>], AcctObj),
             {ok, HTMLBody} = notify_util:render_template(CustomHtmlTemplate, ?DEFAULT_HTML_TMPL, Props),
-            
+
             CustomSubjectTemplate = wh_json:get_value([<<"notifications">>, <<"voicemail_to_email">>, <<"email_subject_template">>], AcctObj),
             {ok, Subject} = notify_util:render_template(CustomSubjectTemplate, ?DEFAULT_SUBJ_TMPL, Props),
 
             build_and_send_email(TxtBody, HTMLBody, Subject, Email
                                  ,props:filter_undefined(Props)
-                                )
+                                ),
+            maybe_remove_voicemail(AcctDB, JObj, VMBox)
+    end.
+
+maybe_remove_voicemail(AcctDb, NotifyJObj, VMBoxJObj) ->
+    BoxDeleteFlag = wh_json:is_true(<<"delete_after_notify">>, VMBoxJObj, false),
+    maybe_remove_voicemail(AcctDb, VMBoxJObj
+                           ,wh_json:get_value(<<"Voicemail-Name">>, NotifyJObj)
+                           ,wh_json:is_true(<<"Delete-After-Notify">>, NotifyJObj, BoxDeleteFlag)
+                          ).
+
+maybe_remove_voicemail(_, _, _, false) -> ok;
+maybe_remove_voicemail(AcctDb, VMBoxJObj, MediaId, true) -> 
+    lager:debug("moving voicemail ~s to deleted folder", [MediaId]),
+
+    Messages = [update_msg_folder(MediaId, Message) || Message <- wh_json:get_value(<<"messages">>, VMBoxJObj, [])],
+    case couch_mgr:ensure_saved(AcctDb, wh_json:set_value(<<"messages">>, Messages, VMBoxJObj)) of
+        {ok, _} -> lager:debug("voicemail box saved");
+        {error, _E} -> lager:debug("failed to save voicemail box: ~p", [_E])
+    end,
+
+    {ok, MediaDoc} = couch_mgr:open_doc(AcctDb, MediaId),
+    case couch_mgr:ensure_saved(AcctDb, wh_json:set_value(<<"pvt_deleted">>, true, MediaDoc)) of
+        {ok, _} -> lager:debug("media doc updated");
+        {error, _Err} -> lager:debug("failed to update media doc: ~p", [_Err])
+    end.
+
+update_msg_folder(MediaId, Message) ->    
+    case wh_json:get_value(<<"media_id">>, Message) =:= MediaId of
+        false -> Message;
+        true -> wh_json:set_value(<<"folder">>, <<"deleted">>, Message)
     end.
 
 %%--------------------------------------------------------------------
@@ -84,7 +114,7 @@ create_template_props(Event, Docs, Account) ->
 
     Timezone = wh_util:to_list(wh_json:find(<<"timezone">>, Docs, <<"UTC">>)),
     ClockTimezone = whapps_config:get_string(<<"servers">>, <<"clock_timezone">>, <<"UTC">>),
-    
+
     [{<<"account">>, notify_util:json_to_template_props(Account)}
      ,{<<"service">>, notify_util:get_service_props(Event, Account, ?MOD_CONFIG_CAT)}
      ,{<<"voicemail">>, [{<<"caller_id_number">>, pretty_print_did(CIDNum)}
