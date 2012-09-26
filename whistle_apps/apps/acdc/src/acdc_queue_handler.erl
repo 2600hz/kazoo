@@ -79,7 +79,7 @@ handle_stats_req(AcctId, QueueId, ServerId, MsgId) ->
 
 -spec build_stats_resp/4 :: (api_binary(), api_binary(), api_binary(), [pid()] | []) -> any().
 -spec build_stats_resp/7 :: (api_binary(), api_binary(), api_binary(), [pid()] | []
-                             ,wh_proplist(), wh_proplist(), wh_proplist()
+                             ,wh_json:json_object(), wh_json:json_object(), wh_json:json_object()
                             ) -> any().
 build_stats_resp(AcctId, RespQ, MsgId, Ps) ->
     build_stats_resp(AcctId, RespQ, MsgId, Ps
