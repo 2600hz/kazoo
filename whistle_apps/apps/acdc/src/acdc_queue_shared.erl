@@ -35,11 +35,9 @@
                                                    ]}
                                  ,{basic_qos, 1}
                                 ]).
--define(SHARED_QUEUE_BINDINGS(AcctId, QueueId), [{acdc_queue, [{account_id, AcctId}
-                                                               ,{queue_id, QueueId}
-                                                               ,{restrict_to, [member_call]}
-                                                              ]}
-                                                ]).
+
+-define(SHARED_QUEUE_BINDINGS(AcctId, QueueId), [{self, []}]).
+
 -define(RESPONDERS, [{{acdc_queue_handler, handle_member_call}
                       ,[{<<"member">>, <<"call">>}]
                      }
