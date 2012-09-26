@@ -22,7 +22,7 @@
                    ,{couch_config, worker}
                    ,{couch_mgr, worker}
                    ,{change_mgr_sup, supervisor}
-                   ,{couch_compactor, worker}
+                   ,{couch_compactor_fsm, worker}
                   ]).
 
 %% ===================================================================
