@@ -61,10 +61,10 @@
          ,save_doc/3
          ,save_docs/2
          ,save_docs/3
-         ,open_cache_doc/2
-         ,open_cache_doc/3
-         ,open_doc/2
-         ,open_doc/3
+         ,open_cache_doc/2, open_cache_doc/3
+         ,flush_cache_doc/2, flush_cache_doc/3
+         ,open_doc/2, admin_open_doc/2
+         ,open_doc/3, admin_open_doc/3
          ,del_doc/2
          ,del_docs/2
          ,lookup_doc_rev/2
@@ -438,6 +438,13 @@ open_cache_doc(DbName, DocId) ->
 open_cache_doc(DbName, DocId, Options) ->
     couch_util:open_cache_doc(get_conn(), DbName, DocId, Options).
 
+-spec flush_cache_doc/2 :: (ne_binary(), ne_binary()) -> 'ok'.
+-spec flush_cache_doc/3 :: (ne_binary(), ne_binary(), proplist()) -> 'ok'.
+flush_cache_doc(DbName, DocId) ->
+    flush_cache_doc(DbName, DocId, []).
+flush_cache_doc(DbName, DocId, Options) ->
+    couch_util:flush_cache_doc(get_conn(), DbName, DocId, Options).
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -456,6 +463,19 @@ open_doc(DbName, DocId) ->
     open_doc(DbName, DocId, []).
 open_doc(DbName, DocId, Options) ->
     couch_util:open_doc(get_conn(), DbName, DocId, Options).
+
+-spec admin_open_doc/2 :: (ne_binary(), ne_binary()) ->
+                                  {'ok', wh_json:json_object()} |
+                                  couchbeam_error() |
+                                  {'error', 'not_found'}.
+-spec admin_open_doc/3 :: (ne_binary(), ne_binary(), wh_proplist()) ->
+                                  {'ok', wh_json:json_object()} |
+                                  couchbeam_error() |
+                                  {'error', 'not_found'}.
+admin_open_doc(DbName, DocId) ->
+    admin_open_doc(DbName, DocId, []).
+admin_open_doc(DbName, DocId, Options) ->
+    couch_util:open_doc(get_admin_conn(), DbName, DocId, Options).
 
 -spec all_docs/1 :: (ne_binary()) -> {'ok', wh_json:json_objects()} |
                                      couchbeam_error().
