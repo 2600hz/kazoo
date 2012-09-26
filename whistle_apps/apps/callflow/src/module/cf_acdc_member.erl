@@ -57,10 +57,6 @@ maybe_enter_queue(Call, MemberCall, QueueId, MaxWait, false) ->
     lager:debug("asking for an agent, waiting up to ~p ms", [MaxWait]),
 
     cf_exe:send_amqp(Call, MemberCall, fun wapi_acdc_queue:publish_member_call/1),
-    acdc_stats:call_waiting(whapps_call:account_id(Call)
-                            ,QueueId
-                            ,whapps_call:call_id(Call)
-                           ),
     wait_for_bridge(Call, MaxWait).
 
 -spec wait_for_bridge/2 :: (whapps_call:call(), max_wait()) -> 'ok'.
