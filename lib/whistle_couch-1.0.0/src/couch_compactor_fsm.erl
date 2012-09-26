@@ -19,6 +19,8 @@
          ,status/0
          ,cancel_current_job/0
          ,cancel_all_jobs/0
+         ,start_auto_compaction/0
+         ,stop_auto_compaction/0
         ]).
 
 %% Internal
@@ -112,8 +114,28 @@ status() ->
 cancel_current_job() ->
     gen_fsm:sync_send_event(?SERVER, cancel_current_job).
 
+-spec cancel_all_jobs/0 :: () -> {'ok', 'jobs_cancelled'}.
 cancel_all_jobs() ->
     gen_fsm:sync_send_event(?SERVER, cancel_all_jobs).
+
+-spec start_auto_compaction/0 :: () -> {'ok', 'already_started'} |
+                                       {'queued', reference()}.
+start_auto_compaction() ->
+    case couch_config:fetch(<<"compact_automatically">>, false) of
+        true -> {ok, already_started};
+        false ->
+            couch_config:store(<<"compact_automatically">>, true),
+            compact()
+    end.
+
+-spec stop_auto_compaction/0 :: () -> {'ok', 'updated' | 'already_stopped'}.
+stop_auto_compaction() ->
+    case couch_config:fetch(<<"compact_automatically">>, false) of
+        false -> {ok, already_stopped};
+        true ->
+            couch_config:store(<<"compact_automatically">>, false),
+            {ok, updated}
+    end.
 
 %%%===================================================================
 %%% gen_fsm callbacks
