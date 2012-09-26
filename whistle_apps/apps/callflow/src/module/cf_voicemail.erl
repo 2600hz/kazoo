@@ -326,12 +326,14 @@ record_voicemail(AttachmentName, #mailbox{max_message_length=MaxMessageLength}=B
                     record_voicemail(tmp_file(), Box, Call);
                 {ok, _Selection} ->
                     _ = new_message(AttachmentName, Length, Box, Call),
-                    _ = whapps_call_command:b_prompt(<<"vm-saved">>, Call),
-                    _ = whapps_call_command:b_prompt(<<"vm-thank_you">>, Call),
+                    _ = whapps_call_command:prompt(<<"vm-saved">>, Call),
+                    _ = whapps_call_command:prompt(<<"vm-thank_you">>, Call),
+                    _ = timer:sleep(8000),
                     cf_exe:continue(Call);
                 {branch, Flow} ->
                     _ = new_message(AttachmentName, Length, Box, Call),
-                    _ = whapps_call_command:b_prompt(<<"vm-saved">>, Call),
+                    _ = whapps_call_command:prompt(<<"vm-saved">>, Call),
+                    _ = timer:sleep(8000),
                     cf_exe:branch(Flow, Call)
             end;
         {error, _R} ->
