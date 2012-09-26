@@ -69,14 +69,36 @@ resource_exists() ->
 %%--------------------------------------------------------------------
 billing(#cb_context{req_nouns=[{<<"limits">>, _}|_], req_verb = <<"get">>}=Context) ->
     Context;
-billing(#cb_context{req_nouns=[{<<"limits">>, _}|_], account_id=AccountId}=Context) ->
-    try wh_services:allow_updates(AccountId) of
-        true -> Context
+billing(#cb_context{req_nouns=[{<<"limits">>, _}|_]
+                    ,account_id=AccountId, auth_account_id=AuthAccountId}=Context) ->
+    try wh_services:allow_updates(AccountId) 
+             andalso authd_account_allowed_updates(AccountId, AuthAccountId) 
+    of
+        true -> Context;
+        false ->
+            Message = <<"Please contact your phone provider to add limits.">>,
+            Reason = wh_json:from_list([{<<"limit_only">>, Message}]),
+            crossbar_util:response(error, <<"forbidden">>, 403, Reason, Context)
     catch
         throw:{Error, Reason} ->
             crossbar_util:response(error, wh_util:to_binary(Error), 500, Reason, Context)
     end;
 billing(Context) -> Context.
+
+authd_account_allowed_updates(AccountId, AuthAccountId) ->
+    {ok, MasterAccount} = whapps_util:get_master_account_id(),
+    case wh_services:find_reseller_id(AccountId) of
+        AuthAccountId -> 
+            lager:debug("allowing reseller to update limits", []),
+            true;
+        MasterAccount -> 
+            lager:debug("allowing direct account to update limits", []),
+            true;
+        _Else ->
+            lager:debug("sub-accounts of non-master resellers must contact the reseller to change their limits", []),
+            false
+    end.
+
 
 %%--------------------------------------------------------------------
 %% @public

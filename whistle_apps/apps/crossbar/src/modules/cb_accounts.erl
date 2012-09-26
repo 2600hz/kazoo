@@ -156,12 +156,12 @@ validate(#cb_context{req_nouns=[{?WH_ACCOUNTS_DB, _}]}=Context) ->
 validate(#cb_context{req_nouns=[{?WH_ACCOUNTS_DB, _}]}=Context, Id) ->
     validate_req(Context#cb_context{db_name=?WH_ACCOUNTS_DB}, Id);
 validate(Context, Id) ->
-    load_account_db(Id, Context).
+    load_account_db(Id, Context#cb_context{account_id=Id}).
 
 validate(#cb_context{req_nouns=[{?WH_ACCOUNTS_DB, _}]}=Context, Id, Relationship) ->
     validate_req(Context#cb_context{db_name=?WH_ACCOUNTS_DB}, Id, Relationship);
 validate(Context, Id, Relationship) ->
-    validate_req(Context, Id, Relationship).
+    validate_req(Context#cb_context{account_id=Id}, Id, Relationship).
 
 -spec validate_req/1 :: (#cb_context{}) -> #cb_context{}.
 -spec validate_req/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
@@ -172,18 +172,18 @@ validate_req(#cb_context{req_verb = <<"put">>}=Context) ->
 validate_req(#cb_context{req_verb = <<"put">>}=Context, ParentId) ->
     create_account(Context, ParentId);
 validate_req(#cb_context{req_verb = <<"get">>}=Context, AccountId) ->
-    load_account(AccountId, Context);
+    load_account(AccountId, Context#cb_context{account_id=AccountId});
 validate_req(#cb_context{req_verb = <<"post">>}=Context, AccountId) ->
-    update_account(AccountId, Context);
+    update_account(AccountId, Context#cb_context{account_id=AccountId});
 validate_req(#cb_context{req_verb = <<"delete">>}=Context, AccountId) ->
-    load_account(AccountId, Context).
+    load_account(AccountId, Context#cb_context{account_id=AccountId}).
 
 validate_req(#cb_context{req_verb = <<"get">>}=Context, AccountId, <<"children">>) ->
-    load_children(AccountId, Context);
+    load_children(AccountId, Context#cb_context{account_id=AccountId});
 validate_req(#cb_context{req_verb = <<"get">>}=Context, AccountId, <<"descendants">>) ->
-    load_descendants(AccountId, Context);
+    load_descendants(AccountId, Context#cb_context{account_id=AccountId});
 validate_req(#cb_context{req_verb = <<"get">>}=Context, AccountId, <<"siblings">>) ->
-    load_siblings(AccountId, Context).
+    load_siblings(AccountId, Context#cb_context{account_id=AccountId}).
 
 -spec post/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
 post(#cb_context{doc=Doc}=Context, AccountId) ->
@@ -333,22 +333,7 @@ create_account(#cb_context{req_data=ReqData}=Context, ParentId) ->
 %%--------------------------------------------------------------------
 -spec load_account/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
 load_account(AccountId, Context) ->
-    #cb_context{resp_data=RespData, doc=Doc}=Context1=crossbar_doc:load(AccountId, Context),
-    PvtIncludes=[<<"pvt_wnm_allow_additions">>, <<"pvt_superduper_admin">>],
-    RespData1 = lists:foldl(fun(<<"pvt_", Key/binary>> = Pvt, Data) ->
-                                    case wh_json:get_ne_value(Pvt, Doc) of
-                                        undefined ->
-                                            wh_json:delete_key(Key, Data);
-                                        Value ->
-                                            wh_json:set_value(Key, Value, Data)
-                                    end;
-                               (_NotPvt, Data) ->
-                                    Data
-                            end
-                            ,RespData
-                            ,PvtIncludes
-                           ),
-    Context1#cb_context{resp_data=RespData1}.
+    leak_pvt_fields(crossbar_doc:load(AccountId, Context)).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -370,7 +355,32 @@ update_account(AccountId, #cb_context{req_data=Data}=Context) ->
             E = wh_json:set_value([<<"realm">>, <<"unique">>], <<"Realm is not unique for this system">>, wh_json:new()),
             crossbar_util:response_invalid_data(E, Context);
         {pass, JObj} ->
-            crossbar_doc:load_merge(AccountId, JObj, Context)
+            leak_pvt_fields(crossbar_doc:load_merge(AccountId, JObj, Context))
+    end.
+
+
+leak_pvt_fields(#cb_context{resp_status=success}=Context) ->
+    leak_pvt_allow_additions(Context);
+leak_pvt_fields(Context) -> Context.
+
+leak_pvt_allow_additions(#cb_context{doc=JObj, resp_data=RespJObj}=Context) ->
+    AllowAdditions = wh_json:is_true(<<"pvt_wnm_allow_additions">>, JObj, false),
+    leak_pvt_superduper_admin(Context#cb_context{resp_data=wh_json:set_value(<<"wnm_allow_additions">>, AllowAdditions, RespJObj)}).
+
+leak_pvt_superduper_admin(#cb_context{doc=JObj, resp_data=RespJObj}=Context) ->
+    SuperAdmin = wh_json:is_true(<<"pvt_superduper_admin">>, JObj, false),
+    leak_billing_mode(Context#cb_context{resp_data=wh_json:set_value(<<"superduper_admin">>, SuperAdmin, RespJObj)}).
+
+leak_billing_mode(#cb_context{auth_account_id=AuthAccountId, account_id=AccountId, resp_data=RespJObj}=Context) ->
+    io:format("~p~n~p~n", [AuthAccountId, AccountId]),
+    {ok, MasterAccount} = whapps_util:get_master_account_id(),
+    case wh_services:find_reseller_id(AccountId) of
+        AuthAccountId ->
+            Context#cb_context{resp_data=wh_json:set_value(<<"billing_mode">>, <<"limits_only">>, RespJObj)};
+        MasterAccount -> 
+            Context#cb_context{resp_data=wh_json:set_value(<<"billing_mode">>, <<"normal">>, RespJObj)};
+        _Else -> 
+            Context#cb_context{resp_data=wh_json:set_value(<<"billing_mode">>, <<"manual">>, RespJObj)}
     end.
 
 %%--------------------------------------------------------------------
