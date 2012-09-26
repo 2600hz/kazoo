@@ -28,6 +28,7 @@
 
 %% Doc related
 -export([open_cache_doc/4
+         ,flush_cache_doc/4
          ,open_doc/4
          ,lookup_doc_rev/3
          ,save_doc/4
@@ -80,15 +81,15 @@ max_bulk_insert() ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec get_new_connection/4 :: (nonempty_string(), pos_integer(), string(), string()) -> server().
+-spec get_new_connection/4 :: (nonempty_string() | ne_binary(), pos_integer(), string(), string()) -> server().
 get_new_connection(Host, Port, "", "") ->
     get_new_conn(Host, Port, ?IBROWSE_OPTS);
 get_new_connection(Host, Port, User, Pass) ->
     get_new_conn(Host, Port, [{basic_auth, {User, Pass}} | ?IBROWSE_OPTS]).
 
--spec get_new_conn/3 :: (nonempty_string(), pos_integer(), wh_proplist()) -> server().
+-spec get_new_conn/3 :: (nonempty_string() | ne_binary(), pos_integer(), wh_proplist()) -> server().
 get_new_conn(Host, Port, Opts) ->
-    Conn = couchbeam:server_connection(Host, Port, "", Opts),
+    Conn = couchbeam:server_connection(wh_util:to_list(Host), Port, "", Opts),
     lager:info("new connection to host ~s:~b, testing: ~p", [Host, Port, Conn]),
     {'ok', ConnData} = couchbeam:server_info(Conn),
 
@@ -257,6 +258,10 @@ open_cache_doc(#server{}=Conn, DbName, DocId, Options) ->
                     Ok
             end
     end.
+
+-spec flush_cache_doc/4 :: (server(), ne_binary(), ne_binary(), wh_proplist()) -> 'ok'.
+flush_cache_doc(#server{}=Conn, DbName, DocId, _Options) ->
+    wh_cache:erase({?MODULE, Conn, DbName, DocId}).
 
 -spec open_doc/4 :: (server(), ne_binary(), ne_binary(), wh_proplist()) ->
                             {'ok', wh_json:json_object()} |
