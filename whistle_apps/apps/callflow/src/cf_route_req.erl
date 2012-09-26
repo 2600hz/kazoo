@@ -73,7 +73,6 @@ send_route_response(JObj, Q, Defer, Call) ->
             ,{<<"Pre-Park">>, pre_park_action(Call)}
             | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
            ],
-    io:format("~p~n", [pre_park_action(Call)]),
     wapi_route:publish_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp),
     lager:debug("sent route response to park the call").
 
