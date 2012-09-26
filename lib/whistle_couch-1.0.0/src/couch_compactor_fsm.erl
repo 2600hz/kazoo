@@ -124,7 +124,7 @@ start_auto_compaction() ->
     case couch_config:fetch(<<"compact_automatically">>, false) of
         true -> {ok, already_started};
         false ->
-            couch_config:store(<<"compact_automatically">>, true),
+            _ = couch_config:store(<<"compact_automatically">>, true),
             compact()
     end.
 
@@ -133,7 +133,7 @@ stop_auto_compaction() ->
     case couch_config:fetch(<<"compact_automatically">>, false) of
         false -> {ok, already_stopped};
         true ->
-            couch_config:store(<<"compact_automatically">>, false),
+            _ = couch_config:store(<<"compact_automatically">>, false),
             {ok, updated}
     end.
 
