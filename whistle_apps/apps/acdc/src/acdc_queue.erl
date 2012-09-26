@@ -35,7 +35,7 @@
         ]).
 
 %% Call Manipulation
--export([put_member_on_hold/3]).
+-export([put_member_on_hold/2, put_member_on_hold/3]).
 
 %% gen_server callbacks
 -export([init/1
@@ -53,6 +53,7 @@
           queue_id :: ne_binary()
          ,queue_db :: ne_binary()
          ,acct_id :: ne_binary()
+         ,moh :: ne_binary()
 
           %% PIDs of the gang
          ,supervisor :: pid()
@@ -162,6 +163,8 @@ send_sync_req(Srv, Type) ->
 config(Srv) ->
     gen_listener:call(Srv, config).
 
+put_member_on_hold(Srv, Call) ->
+    gen_listener:cast(Srv, {put_member_on_hold, Call}).
 put_member_on_hold(Srv, Call, MOH) ->
     gen_listener:cast(Srv, {put_member_on_hold, Call, MOH}).
 
@@ -198,6 +201,7 @@ init([Supervisor, QueueJObj]) ->
        ,queue_db = wh_json:get_value(<<"pvt_account_db">>, QueueJObj)
        ,acct_id = wh_json:get_value(<<"pvt_account_id">>, QueueJObj)
        ,my_id = acdc_util:proc_id()
+       ,moh = wh_json:get_value(<<"moh">>, QueueJObj)
       }}.
 
 ask_for_queue_name() ->
@@ -406,6 +410,8 @@ handle_cast({send_sync_req, Type}, #state{my_q=MyQ
     send_sync_req(MyQ, MyId, AcctId, QueueId, Type),
     {noreply, State};
 
+handle_cast({put_member_on_hold, Call}, #state{moh=MOH}=State) ->
+    handle_cast({put_member_on_hold, Call, MOH}, State);
 handle_cast({put_member_on_hold, Call, MOH}, State) ->
     whapps_call_command:answer(Call),
     whapps_call_command:hold(MOH, Call),
