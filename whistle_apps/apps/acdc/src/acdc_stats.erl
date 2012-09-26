@@ -332,7 +332,6 @@ update_stat(AcctDocs, #stat{name=agent_active
                             ,acct_id=AcctId
                             ,agent_id=AgentId
                            }) ->
-    lager:debug("agent_active"),
     AcctDoc = fetch_acct_doc(AcctId, AcctDocs),
 
     ActiveKey = [<<"agents">>, AgentId, <<"status">>],
@@ -345,7 +344,6 @@ update_stat(AcctDocs, #stat{name=agent_inactive
                             ,acct_id=AcctId
                             ,agent_id=AgentId
                            }) ->
-    lager:debug("agent_inactive"),
     AcctDoc = fetch_acct_doc(AcctId, AcctDocs),
 
     InactiveKey = [<<"agents">>, AgentId, <<"status">>],
@@ -361,7 +359,6 @@ update_stat(AcctDocs, #stat{name=agent_paused
                             ,active_since=ActiveSince
                             ,elapsed=Timeout
                            }) ->
-    lager:debug("agent_paused"),
     AcctDoc = fetch_acct_doc(AcctId, AcctDocs),
 
     PauseKey = [<<"agents">>, AgentId, <<"status">>],
