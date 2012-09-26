@@ -322,9 +322,10 @@ write_to_dbs([Stat|Stats], TStamp, AcctDocs) ->
 
 -spec write_account_doc/2 :: ({ne_binary(), wh_json:json_object()}, integer()) -> 'ok'.
 write_account_doc({AcctId, AcctJObj}, TStamp) ->
-    couch_mgr:save_doc(wh_util:format_account_id(AcctId, encoded)
-                       ,wh_json:set_value(<<"recorded_at">>, TStamp, AcctJObj)
-                      ).
+    _ = couch_mgr:save_doc(wh_util:format_account_id(AcctId, encoded)
+                           ,wh_json:set_value(<<"recorded_at">>, TStamp, AcctJObj)
+                          ),
+    lager:debug("wrote stat doc for ~s", [AcctId]).
 
 -spec update_stat/2 :: (dict(), #stat{}) -> dict().
 update_stat(AcctDocs, #stat{name=agent_active
