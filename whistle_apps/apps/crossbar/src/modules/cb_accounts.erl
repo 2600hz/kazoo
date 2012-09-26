@@ -355,24 +355,36 @@ update_account(AccountId, #cb_context{req_data=Data}=Context) ->
             E = wh_json:set_value([<<"realm">>, <<"unique">>], <<"Realm is not unique for this system">>, wh_json:new()),
             crossbar_util:response_invalid_data(E, Context);
         {pass, JObj} ->
-            leak_pvt_fields(crossbar_doc:load_merge(AccountId, JObj, Context))
+            RemoveKeys = [<<"wnm_allow_additions">>
+                              ,<<"superduper_admin">>
+                              ,<<"billing_mode">>
+                         ],
+           leak_pvt_fields(crossbar_doc:load_merge(AccountId, wh_json:delete_keys(RemoveKeys, JObj), Context))
     end.
 
-
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec leak_pvt_fields/1 :: (#cb_context{}) -> #cb_context{}.
 leak_pvt_fields(#cb_context{resp_status=success}=Context) ->
     leak_pvt_allow_additions(Context);
 leak_pvt_fields(Context) -> Context.
 
+-spec leak_pvt_allow_additions/1 :: (#cb_context{}) -> #cb_context{}.
 leak_pvt_allow_additions(#cb_context{doc=JObj, resp_data=RespJObj}=Context) ->
     AllowAdditions = wh_json:is_true(<<"pvt_wnm_allow_additions">>, JObj, false),
     leak_pvt_superduper_admin(Context#cb_context{resp_data=wh_json:set_value(<<"wnm_allow_additions">>, AllowAdditions, RespJObj)}).
 
+-spec leak_pvt_superduper_admin/1 :: (#cb_context{}) -> #cb_context{}.
 leak_pvt_superduper_admin(#cb_context{doc=JObj, resp_data=RespJObj}=Context) ->
     SuperAdmin = wh_json:is_true(<<"pvt_superduper_admin">>, JObj, false),
     leak_billing_mode(Context#cb_context{resp_data=wh_json:set_value(<<"superduper_admin">>, SuperAdmin, RespJObj)}).
 
+-spec leak_billing_mode/1 :: (#cb_context{}) -> #cb_context{}.
 leak_billing_mode(#cb_context{auth_account_id=AuthAccountId, account_id=AccountId, resp_data=RespJObj}=Context) ->
-    io:format("~p~n~p~n", [AuthAccountId, AccountId]),
     {ok, MasterAccount} = whapps_util:get_master_account_id(),
     case wh_services:find_reseller_id(AccountId) of
         AuthAccountId ->
@@ -672,7 +684,6 @@ notfy_new_account(#cb_context{doc = JObj}) ->
 support_depreciated_billing_id(undefined, _, Context) ->
     Context;
 support_depreciated_billing_id(BillingId, AccountId, Context) ->
-    io:format("~p ~p~n", [BillingId, AccountId]),
     try wh_services:set_billing_id(BillingId, AccountId) of
         undefined -> Context;
         Services ->
