@@ -124,11 +124,7 @@ start_auto_compaction() ->
     case couch_config:fetch(<<"compact_automatically">>, false) of
         true -> {ok, already_started};
         false ->
-<<<<<<< HEAD
             _ = couch_config:store(<<"compact_automatically">>, true),
-=======
-            couch_config:store(<<"compact_automatically">>, true),
->>>>>>> 5d5a93d... WHISTLE-1653: start/stop auto-compaction abilities
             compact()
     end.
 
@@ -137,11 +133,7 @@ stop_auto_compaction() ->
     case couch_config:fetch(<<"compact_automatically">>, false) of
         false -> {ok, already_stopped};
         true ->
-<<<<<<< HEAD
             _ = couch_config:store(<<"compact_automatically">>, false),
-=======
-            couch_config:store(<<"compact_automatically">>, false),
->>>>>>> 5d5a93d... WHISTLE-1653: start/stop auto-compaction abilities
             {ok, updated}
     end.
 
