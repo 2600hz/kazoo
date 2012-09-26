@@ -427,7 +427,7 @@ ringing({originate_failed, timeout}, #state{agent_proc=Srv
                                             ,member_call_queue_id=QueueId
                                             ,member_call_id=CallId
                                            }=State) ->
-    lager:debug("originate timed out"),
+    lager:debug("originate timed out, clearing call"),
     acdc_agent:member_connect_retry(Srv, CallId),
 
     acdc_stats:call_missed(AcctId, QueueId, AgentId, CallId),
@@ -479,7 +479,7 @@ ringing({channel_hungup, CallId}
                 ,agent_call_id=AgentCallId
                }=State
        ) ->
-    lager:debug("member channel has gone down, stop agent call"),
+    lager:debug("member channel (~s) has gone down, stop agent call", [CallId]),
     acdc_agent:channel_hungup(Srv, AgentCallId),
 
     acdc_stats:call_abandoned(AcctId, QueueId, CallId, ?ABANDON_HANGUP),

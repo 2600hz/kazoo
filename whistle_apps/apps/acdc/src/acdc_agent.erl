@@ -212,7 +212,9 @@ init([Supervisor, AgentJObj, Queues]) ->
 
     _ = spawn(fun() ->
                       put(amqp_publish_as, Self),
+
                       gen_listener:cast(Self, {queue_name, gen_listener:queue_name(Self)}),
+
                       Prop = [{<<"Account-ID">>, AcctId}
                               ,{<<"Agent-ID">>, AgentId}
                               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
@@ -261,10 +263,9 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({start_fsm, Supervisor}, #state{
-              acct_id=AcctId
-              ,agent_id=AgentId
-             }=State) ->
+handle_cast({start_fsm, Supervisor}, #state{acct_id=AcctId
+                                            ,agent_id=AgentId
+                                           }=State) ->
     {ok, FSMPid} = acdc_agent_sup:start_fsm(Supervisor, AcctId, AgentId),
     link(FSMPid),
     lager:debug("started FSM at ~p", [FSMPid]),
@@ -273,6 +274,7 @@ handle_cast({start_fsm, Supervisor}, #state{
 
     {noreply, State#state{fsm_pid=FSMPid}};
 handle_cast({queue_name, Q}, State) ->
+    lager:debug("my queue: ~s", [Q]),
     {noreply, State#state{my_q=Q}};
 
 handle_cast({queue_login, Q}, #state{agent_queues=Qs
@@ -317,6 +319,9 @@ handle_cast({channel_hungup, CallId}, #state{call=Call}=State) ->
                                   ,msg_queue_id=undefined
                                   ,acdc_queue_id=undefined
                                  }};
+        undefined ->
+            lager:debug("undefined call id for channel_hungup, ignoring"),
+            {noreply, State};
         _ ->
             lager:debug("other channel ~s hungup", [CallId]),
             acdc_util:unbind_from_call_events(CallId),
@@ -333,11 +338,10 @@ handle_cast(member_connect_accepted, #state{msg_queue_id=AmqpQueue
     send_member_connect_accepted(AmqpQueue, call_id(Call), AcctId, AgentId, MyId),
     {noreply, State};
 
-handle_cast({load_endpoints, Supervisor}, #state{
-              acct_db=AcctDb
-              ,agent_id=AgentId
-              ,acct_id=AcctId
-             }=State) ->
+handle_cast({load_endpoints, Supervisor}, #state{acct_db=AcctDb
+                                                 ,agent_id=AgentId
+                                                 ,acct_id=AcctId
+                                                }=State) ->
     lager:debug("loading agent endpoints"),
     Call = whapps_call:set_account_id(AcctId
                                       ,whapps_call:set_account_db(AcctDb
@@ -359,13 +363,16 @@ handle_cast({load_endpoints, Supervisor}, #state{
             {noreply, State}
     end;
 
-handle_cast({member_connect_resp, ReqJObj}, #state{
-              agent_id=AgentId
-              ,last_connect=LastConn
-              ,agent_queues=Qs
-              ,my_id=MyId
-              ,my_q=MyQ
-             }=State) ->
+handle_cast({member_connect_resp, _}=Msg, #state{my_q = <<>>}=State) ->
+    fetch_my_queue(),
+    gen_listener:cast(self(), Msg),
+    {noreply, State};
+handle_cast({member_connect_resp, ReqJObj}, #state{agent_id=AgentId
+                                                   ,last_connect=LastConn
+                                                   ,agent_queues=Qs
+                                                   ,my_id=MyId
+                                                   ,my_q=MyQ
+                                                  }=State) ->
     ACDcQueue = wh_json:get_value(<<"Queue-ID">>, ReqJObj),
     case is_valid_queue(ACDcQueue, Qs) of
         false ->
@@ -425,6 +432,10 @@ handle_cast({join_agent, ACallId}, #state{call=Call}=State) ->
     whapps_call_command:pickup(ACallId, <<"now">>, Call),
     {noreply, State};
 
+handle_cast({send_sync_req}=Msg, #state{my_q = <<>>}=State) ->
+    fetch_my_queue(),
+    gen_listener:cast(self(), Msg),
+    {noreply, State};
 handle_cast({send_sync_req}, #state{my_id=MyId
                                     ,my_q=MyQ
                                     ,acct_id=AcctId
@@ -666,3 +677,8 @@ logout_from_queue(AcctId, Q) ->
                                                  ,{queue_id, Q}
                                                  ,{account_id, AcctId}
                                                 ]).
+
+fetch_my_queue() ->
+    Self = self(),
+    _ = spawn(gen_listener,cast, [Self, {queue_name, gen_listener:queue_name(Self)}]),
+    ok.

@@ -15,6 +15,7 @@
 
 %% API
 -export([start_link/0
+         ,handle_member_call/2
         ]).
 
 %% gen_server callbacks
@@ -30,8 +31,9 @@
 -define(SERVER, ?MODULE).
 
 -define(BINDINGS, [{conf, [{doc_type, <<"queue">>}]}
-                   ,{acdc_queue, [{restrict_to, [stats_req]}
+                   ,{acdc_queue, [{restrict_to, [stats_req, member_call]}
                                   ,{account_id, <<"*">>}
+                                  ,{queue_id, <<"*">>}
                                  ]}
                   ]).
 -define(RESPONDERS, [{{acdc_queue_handler, handle_config_change}
@@ -39,6 +41,9 @@
                      }
                      ,{{acdc_queue_handler, handle_stats_req}
                        ,[{<<"queue">>, <<"stats_req">>}]
+                      }
+                     ,{{acdc_queue_manager, handle_member_call}
+                       ,[{<<"member">>, <<"call">>}]
                       }
                     ]).
 
@@ -60,6 +65,25 @@ start_link() ->
                              ]
                             ,[]
                            ).
+
+handle_member_call(JObj, _Props) ->
+    Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, JObj)),
+
+    AcctId = wh_json:get_value(<<"Account-ID">>, JObj),
+    QueueId = wh_json:get_value(<<"Queue-ID">>, JObj),
+
+    lager:debug("member call for ~s: ~s", [AcctId, QueueId]),
+
+    acdc_stats:call_waiting(AcctId, QueueId, whapps_call:call_id(Call)),
+
+    case acdc_queues_sup:find_queue_supervisor(AcctId, QueueId) of
+         P when is_pid(P) ->
+            acdc_queue:put_member_on_hold(acdc_queue_sup:queue(P), Call);
+        undefined ->
+            whapps_call_command:answer(Call),
+            whapps_call_command:hold(Call)
+    end,
+    wapi_acdc_queue:publish_shared_member_call(AcctId, QueueId, JObj).
 
 %%%===================================================================
 %%% gen_server callbacks
