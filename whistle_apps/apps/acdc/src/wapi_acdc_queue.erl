@@ -31,6 +31,7 @@
         ]).
 
 -export([publish_member_call/1, publish_member_call/2
+         ,publish_shared_member_call/1, publish_shared_member_call/3, publish_shared_member_call/4
          ,publish_member_call_failure/2, publish_member_call_failure/3
          ,publish_member_call_success/2, publish_member_call_success/3
          ,publish_member_connect_req/1, publish_member_connect_req/2
@@ -667,6 +668,17 @@ publish_member_call(JObj) ->
 publish_member_call(API, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(API, ?MEMBER_CALL_VALUES, fun member_call/1),
     amqp_util:callmgr_publish(Payload, ContentType, member_call_routing_key(API)).
+
+publish_shared_member_call(JObj) ->
+    publish_shared_member_call(wh_json:get_value(<<"Account-ID">>, JObj)
+                               ,wh_json:get_value(<<"Queue-ID">>, JObj)
+                               ,JObj
+                              ).
+publish_shared_member_call(AcctId, QueueId, JObj) ->
+    publish_shared_member_call(AcctId, QueueId, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_shared_member_call(AcctId, QueueId, API, ContentType) ->
+    {ok, Payload} = wh_api:prepare_api_payload(API, ?MEMBER_CALL_VALUES, fun member_call/1),
+    amqp_util:targeted_publish(shared_queue_name(AcctId, QueueId), Payload, ContentType).
 
 -spec publish_member_call_failure/2 :: (ne_binary(), api_terms()) -> 'ok'.
 -spec publish_member_call_failure/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
