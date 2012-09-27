@@ -61,12 +61,12 @@ offnet_req(Data, Call) ->
                  undefined -> CIDNumber;
                  DynamicCID -> DynamicCID
              end,
-    Req = [{<<"Call-ID">>, cf_exe:callid(Call)}
+    Req = [{<<"Call-ID">>, whapps_call:call_id(Call)}
            ,{<<"Resource-Type">>, <<"audio">>}
            ,{<<"To-DID">>, whapps_call:request_user(Call)}
            ,{<<"Account-ID">>, whapps_call:account_id(Call)}
            ,{<<"Account-Realm">>, whapps_call:from_realm(Call)}
-           ,{<<"Control-Queue">>, cf_exe:control_queue(Call)}
+           ,{<<"Control-Queue">>, whapps_call:control_queue(Call)}
            ,{<<"Application-Name">>, <<"bridge">>}
            ,{<<"Flags">>, wh_json:get_value(<<"flags">>, Data)}
            ,{<<"Timeout">>, wh_json:get_value(<<"timeout">>, Data)}
@@ -78,7 +78,7 @@ offnet_req(Data, Call) ->
            ,{<<"Presence-ID">>, cf_attributes:presence_id(Call)}
            ,{<<"Ringback">>, wh_json:get_value(<<"ringback">>, Data)}
            ,{<<"Media">>, wh_json:get_value(<<"Media">>, Data)}
-           | wh_api:default_headers(cf_exe:queue_name(Call), ?APP_NAME, ?APP_VERSION)],
+           | wh_api:default_headers(whapps_call:controller_queue(Call), ?APP_NAME, ?APP_VERSION)],
     wapi_offnet_resource:publish_req(Req).
 
 -ifdef(TEST).

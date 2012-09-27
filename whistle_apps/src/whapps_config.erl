@@ -375,9 +375,12 @@ fetch_db_config(Category, Cache, {ok, true}) ->
         {ok, JObj}=Ok ->
             wh_cache:store_local(Cache, category_key(Category), JObj),
             Ok;
+        {error, not_found}=E ->
+            lager:debug("config ~s not in db", [Category]),
+            E;
         {error, _E} ->
             lager:debug("could not fetch config ~s from db: ~p", [Category, _E]),
-            {error, not_found}
+            {ok, wh_json:new()}
     end;
 fetch_db_config(_Category, _Cache, _) ->
     lager:debug("couch_mgr not ready to query db"),
@@ -402,6 +405,9 @@ fetch_file_config(Category, Cache) ->
                                 wh_json:merge_jobjs(DefaultConfig, JObj)
                         end,
             update_category_node(Category, <<"default">>, UpdateFun, Cache);
+        {error, enoent} ->
+            lager:debug("failed to find a file for category ~s, ignoring", [Category]),
+            {ok, wh_json:new()};
         {error, _E} ->
             lager:debug("initializing category ~s without configuration: ~p", [Category, _E]),
             UpdateFun = fun(J) ->

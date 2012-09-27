@@ -520,6 +520,9 @@ retry504s(Fun, Cnt) ->
         {'error', {'ok', "504", _, _}} ->
             timer:sleep(100 * (Cnt+1)),
             retry504s(Fun, Cnt+1);
+        {'error', {'ok', ErrCode, _Hdrs, _Body}} ->
+            wh_counter:inc(<<"couch.requests.failures">>),
+            {'error', wh_util:to_integer(ErrCode)};
         {'error', _Other}=E ->
             wh_counter:inc(<<"couch.requests.failures">>),
             E;

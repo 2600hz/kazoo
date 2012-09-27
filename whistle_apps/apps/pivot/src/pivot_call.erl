@@ -110,7 +110,7 @@ init([Call, JObj]) ->
                   gen_listener:cast(Self, {controller_queue, ControllerQ})
           end),
 
-    Method = wht_util:http_method(wh_json:get_value(<<"HTTP-Method">>, JObj, get)),
+    Method = kzt_util:http_method(wh_json:get_value(<<"HTTP-Method">>, JObj, get)),
     VoiceUri = wh_json:get_value(<<"Voice-URI">>, JObj),
 
     ReqFormat = wh_json:get_value(<<"Request-Format">>, JObj, <<"twiml">>),
@@ -201,7 +201,7 @@ handle_info({ibrowse_async_headers, ReqId, "302", RespHeaders}, #state{voice_uri
                                                                       }=State) ->
     Redirect = props:get_value("Location", RespHeaders),
     lager:debug("recv 302: redirect to ~s", [Redirect]),
-    Redirect1 = wht_util:resolve_uri(Uri, Redirect),
+    Redirect1 = kzt_util:resolve_uri(Uri, Redirect),
 
     ?MODULE:new_request(self(), Redirect1, Method, Params),
     {noreply, State};
@@ -279,13 +279,13 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 -spec send_req/4 :: (whapps_call:call(), nonempty_string() | ne_binary(), 'get' | 'post', wh_json:json_object()) -> any().
 send_req(Call, Uri, get, BaseParams) ->
-    UserParams = wht_translator:get_user_vars(Call),
+    UserParams = kzt_translator:get_user_vars(Call),
     Params = wh_json:set_values(wh_json:to_proplist(BaseParams), UserParams),
 
     send(Call, uri(Uri, wh_json:to_querystring(Params)), get, [], []);
 
 send_req(Call, Uri, post, BaseParams) ->
-    UserParams = wht_translator:get_user_vars(Call),
+    UserParams = kzt_translator:get_user_vars(Call),
     Params = wh_json:set_values(wh_json:to_proplist(BaseParams), UserParams),
 
     send(Call, Uri, post, [{"Content-Type", "application/x-www-form-urlencoded"}], wh_json:to_querystring(Params)).
@@ -309,7 +309,7 @@ send(Call, Uri, Method, ReqHdrs, ReqBody) ->
         {ok, "302", Hdrs, _RespBody} ->
             Redirect = props:get_value("Location", Hdrs),
             lager:debug("recv 302: redirect to ~s", [Redirect]),
-            Redirect1 = wht_util:resolve_uri(Uri, Redirect),
+            Redirect1 = kzt_util:resolve_uri(Uri, Redirect),
             send(Call, Redirect1, Method, ReqHdrs, ReqBody);
         {ok, _RespCode, _Hdrs, _RespBody} ->
             lager:debug("recv other: ~s: ~s", [_RespCode, _RespBody]),
@@ -369,7 +369,7 @@ uri(URI, QueryString) ->
 
 -spec init_req_params/2 :: (ne_binary(), whapps_call:call()) -> proplist().
 init_req_params(Format, Call) ->
-    FmtBin = <<"wht_", Format/binary>>,
+    FmtBin = <<"kzt_", Format/binary>>,
     try 
         FmtAtom = wh_util:to_atom(FmtBin),
         FmtAtom:req_params(Call)

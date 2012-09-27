@@ -742,15 +742,15 @@ b_tts(SayMe, Voice, Lang, Terminators, Call) ->
 %%--------------------------------------------------------------------
 -spec record/2 :: (ne_binary(), whapps_call:call()) -> 'ok'.
 -spec record/3 :: (ne_binary(), [binary(),...], whapps_call:call()) -> 'ok'.
--spec record/4 :: (ne_binary(), [binary(),...],  whapps_api_binary(), whapps_call:call()) -> 'ok'.
--spec record/5 :: (ne_binary(), [binary(),...],  whapps_api_binary(), whapps_api_binary(), whapps_call:call()) -> 'ok'.
--spec record/6 :: (ne_binary(), [binary(),...],  whapps_api_binary(), whapps_api_binary(),  whapps_api_binary(), whapps_call:call()) -> 'ok'.
+-spec record/4 :: (ne_binary(), [binary(),...],  whapps_api_binary() | integer(), whapps_call:call()) -> 'ok'.
+-spec record/5 :: (ne_binary(), [binary(),...],  whapps_api_binary() | integer(), whapps_api_binary() | integer(), whapps_call:call()) -> 'ok'.
+-spec record/6 :: (ne_binary(), [binary(),...],  whapps_api_binary() | integer(), whapps_api_binary() | integer(),  whapps_api_binary() | integer(), whapps_call:call()) -> 'ok'.
 
 -spec b_record/2 :: (ne_binary(), whapps_call:call()) -> whapps_api_std_return().
 -spec b_record/3 :: (ne_binary(), [binary(),...], whapps_call:call()) -> whapps_api_std_return().
--spec b_record/4 :: (ne_binary(), [binary(),...], whapps_api_binary(), whapps_call:call()) -> whapps_api_std_return().
--spec b_record/5 :: (ne_binary(), [binary(),...], whapps_api_binary(), whapps_api_binary(), whapps_call:call()) -> whapps_api_std_return().
--spec b_record/6 :: (ne_binary(), [binary(),...], whapps_api_binary(), whapps_api_binary(), whapps_api_binary(), whapps_call:call()) -> whapps_api_std_return().
+-spec b_record/4 :: (ne_binary(), [binary(),...], whapps_api_binary() | integer(), whapps_call:call()) -> whapps_api_std_return().
+-spec b_record/5 :: (ne_binary(), [binary(),...], whapps_api_binary() | integer(), whapps_api_binary() | integer(), whapps_call:call()) -> whapps_api_std_return().
+-spec b_record/6 :: (ne_binary(), [binary(),...], whapps_api_binary() | integer(), whapps_api_binary() | integer(), whapps_api_binary() | integer(), whapps_call:call()) -> whapps_api_std_return().
 
 record(MediaName, Call) ->
     record(MediaName, ?ANY_DIGIT, Call).
