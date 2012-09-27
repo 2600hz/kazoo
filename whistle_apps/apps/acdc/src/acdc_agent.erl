@@ -26,6 +26,7 @@
          ,send_status_resume/1
          ,add_acdc_queue/2
          ,rm_acdc_queue/2
+         ,get_recording_doc_id/1
         ]).
 
 %% gen_server callbacks
@@ -57,6 +58,7 @@
          ,timer_ref :: reference()
          ,sync_resp :: wh_json:json_object() % furthest along resp
          ,supervisor :: pid()
+         ,record_calls = false :: boolean()
          }).
 
 %%%===================================================================
@@ -229,7 +231,8 @@ init([Supervisor, AgentJObj, Queues]) ->
        ,agent_queues = Queues
        ,my_id = acdc_util:proc_id()
        ,supervisor = Supervisor
-      }}.            
+       ,record_calls = wh_json:is_true(<<"record_calls">>, AgentJObj, false)
+      }}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -310,11 +313,16 @@ handle_cast(bind_to_member_reqs, #state{agent_queues=Qs
     _ = [login_to_queue(AcctId, Q) || Q <- Qs],
     {noreply, State};
 
-handle_cast({channel_hungup, CallId}, #state{call=Call}=State) ->
+handle_cast({channel_hungup, CallId}, #state{call=Call
+                                             ,record_calls=ShouldRecord
+                                            }=State) ->
     case call_id(Call) of
         CallId ->
             lager:debug("member channel hungup, done with this call"),
             acdc_util:unbind_from_call_events(Call),
+
+            maybe_stop_recording(Call, ShouldRecord),
+
             {noreply, State#state{call=undefined
                                   ,msg_queue_id=undefined
                                   ,acdc_queue_id=undefined
@@ -325,6 +333,7 @@ handle_cast({channel_hungup, CallId}, #state{call=Call}=State) ->
         _ ->
             lager:debug("other channel ~s hungup", [CallId]),
             acdc_util:unbind_from_call_events(CallId),
+            maybe_stop_recording(Call, ShouldRecord),
             {noreply, State}
     end;
 
@@ -341,6 +350,7 @@ handle_cast(member_connect_accepted, #state{msg_queue_id=AmqpQueue
 handle_cast({load_endpoints, Supervisor}, #state{acct_db=AcctDb
                                                  ,agent_id=AgentId
                                                  ,acct_id=AcctId
+                                                 ,record_calls=ShouldRecord
                                                 }=State) ->
     lager:debug("loading agent endpoints"),
     Call = whapps_call:set_account_id(AcctId
@@ -356,7 +366,10 @@ handle_cast({load_endpoints, Supervisor}, #state{acct_db=AcctDb
         [_|_]=EPs ->
             lager:debug("endpoints: ~p", [EPs]),
             gen_listener:cast(self(), {start_fsm, Supervisor}),
-            {noreply, State#state{endpoints=EPs}};
+
+            {noreply, State#state{endpoints=EPs
+                                  ,record_calls=record_endpoints(EPs, ShouldRecord)
+                                 }};
         {'EXIT', _E} ->
             lager:debug("failed to load endpoints: ~p", [_E]),
             _ = acdc_agent_sup:stop(Supervisor),
@@ -427,9 +440,14 @@ handle_cast({originate_execute, JObj}, State) ->
     send_originate_execute(JObj),
     {noreply, State};
 
-handle_cast({join_agent, ACallId}, #state{call=Call}=State) ->
+handle_cast({join_agent, ACallId}, #state{call=Call
+                                          ,record_calls=ShouldRecord
+                                         }=State) ->
     lager:debug("sending call pickup"),
     whapps_call_command:pickup(ACallId, <<"now">>, Call),
+
+    maybe_start_recording(Call, ShouldRecord),
+
     {noreply, State};
 
 handle_cast({send_sync_req}=Msg, #state{my_q = <<>>}=State) ->
@@ -682,3 +700,93 @@ fetch_my_queue() ->
     Self = self(),
     _ = spawn(gen_listener,cast, [Self, {queue_name, gen_listener:queue_name(Self)}]),
     ok.
+
+-spec record_endpoints/2 :: (wh_json:json_objects(), boolean()) -> boolean().
+record_endpoints(_EPs, true) -> true;
+record_endpoints(EPs, false) ->
+    lists:any(fun(EP) ->
+                      wh_json:is_true(<<"record_calls">>, EP, false)
+              end, EPs).
+
+maybe_stop_recording(_Call, false) -> ok;
+maybe_stop_recording(Call, true) ->
+    Format = recording_format(),
+    MediaName = get_media_name(whapps_call:call_id(Call), Format),
+
+    _ = whapps_call_command:record_call(MediaName, <<"stop">>, Call),
+    lager:debug("recording of ~s stopped", [MediaName]),
+
+    save_recording(Call, MediaName, Format).
+
+maybe_start_recording(_Call, false) -> ok;
+maybe_start_recording(Call, true) ->
+    Format = recording_format(),
+    MediaName = get_media_name(whapps_call:call_id(Call), Format),
+    lager:debug("recording of ~s started", [MediaName]),
+
+    whapps_call_command:record_call(MediaName, <<"start">>, Call).
+
+recording_format() ->
+    whapps_config:get(<<"callflow">>, [<<"call_recording">>, <<"extension">>], <<"mp3">>).
+
+save_recording(Call, MediaName, Format) ->
+    {ok, MediaJObj} = store_recording_meta(Call, MediaName, Format),
+    lager:debug("stored meta: ~p", [MediaJObj]),
+
+    StoreUrl = store_url(Call, MediaJObj),
+    lager:debug("store url: ~s", [StoreUrl]),
+
+    store_recording(MediaName, StoreUrl, Call).
+
+-spec store_recording/3 :: (ne_binary(), ne_binary(), whapps_call:call()) -> 'ok'.
+store_recording(MediaName, StoreUrl, Call) ->
+    ok = whapps_call_command:store(MediaName, StoreUrl, Call).
+
+-spec store_recording_meta/3 :: (whapps_call:call(), ne_binary(), ne_binary()) ->
+                                        {'ok', wh_json:json_object()} |
+                                        {'error', any()}.
+store_recording_meta(Call, MediaName, Ext) ->
+    AcctDb = whapps_call:account_db(Call),
+    CallId = whapps_call:call_id(Call),
+
+    MediaDoc = wh_doc:update_pvt_parameters(
+                 wh_json:from_list(
+                   [{<<"name">>, MediaName}
+                    ,{<<"description">>, <<"acdc recording ", MediaName/binary>>}
+                    ,{<<"content_type">>, ext_to_mime(Ext)}
+                    ,{<<"media_type">>, Ext}
+                    ,{<<"media_source">>, <<"recorded">>}
+                    ,{<<"source_type">>, wh_util:to_binary(?MODULE)}
+                    ,{<<"pvt_type">>, <<"private_media">>}
+                    ,{<<"from">>, whapps_call:from(Call)}
+                    ,{<<"to">>, whapps_call:to(Call)}
+                    ,{<<"caller_id_number">>, whapps_call:caller_id_number(Call)}
+                    ,{<<"caller_id_name">>, whapps_call:caller_id_name(Call)}
+                    ,{<<"call_id">>, CallId}
+                    ,{<<"_id">>, get_recording_doc_id(CallId)}
+                   ])
+                 ,AcctDb
+                ),
+    couch_mgr:save_doc(AcctDb, MediaDoc).
+
+ext_to_mime(<<"wav">>) -> <<"audio/x-wav">>;
+ext_to_mime(_) -> <<"audio/mp3">>.
+
+get_recording_doc_id(CallId) -> <<"call_recording_", CallId/binary>>.
+
+-spec get_media_name/2 :: (ne_binary(), ne_binary()) -> ne_binary().
+get_media_name(CallId, Ext) ->
+    <<(get_recording_doc_id(CallId))/binary, ".", Ext/binary>>.
+
+-spec store_url/2 :: (whapps_call:call(), wh_json:json_object()) -> ne_binary().
+store_url(Call, JObj) ->
+    AccountDb = whapps_call:account_db(Call),
+    MediaId = wh_json:get_value(<<"_id">>, JObj),
+    MediaName = wh_json:get_value(<<"name">>, JObj),
+
+    Rev = wh_json:get_value(<<"_rev">>, JObj),
+    list_to_binary([couch_mgr:get_url(), AccountDb
+                    ,"/", MediaId
+                    ,"/", MediaName
+                    ,"?rev=", Rev
+                   ]).
