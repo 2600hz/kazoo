@@ -31,6 +31,7 @@
                             'req_timedout' | 'sel_conn_closed' |
                             'invalid_view_name' |
                             {integer(), term()} | % {error_code, body}
+                            integer() |
                             {'EXIT', term()} |
                             {'url_parsing_failed', term()} |
                             {'ok', string(), _, _}.
