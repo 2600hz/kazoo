@@ -16,6 +16,7 @@
          ,get_is_true/2, get_is_true/3
          ,get_is_false/2, get_is_false/3
          ,get_keys/1
+         ,set_value/3
          ,unique/1
          ,filter/2
          ,filter_empty/1
@@ -23,6 +24,10 @@
         ]).
 
 -include_lib("whistle/include/wh_types.hrl").
+
+-spec set_value/3 :: (wh_proplist_key(), wh_proplist_value(), wh_proplist()) -> wh_proplist().
+set_value(K, V, Prop) ->
+    [{K, V} | [KV || {Key, _}=KV <- Prop, K =/= Key]].
 
 -spec filter/2 :: (fun(({wh_proplist_key(), wh_proplist_value()}) -> boolean()), wh_proplist()) -> wh_proplist().
 filter(Fun, Prop) when is_function(Fun, 1), is_list(Prop) ->
