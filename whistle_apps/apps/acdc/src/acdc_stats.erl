@@ -22,6 +22,7 @@
          ,call_missed/4
          ,call_handled/5
          ,call_waiting/3
+         ,call_recorded/4
 
          %% Agent-specific stats
          ,agent_active/2
@@ -51,7 +52,8 @@
 -define(ETS_TABLE, ?MODULE).
 
 -type stat_name() :: 'call_processed' | 'call_abandoned' |
-                     'call_missed' | 'call_handled' | 'call_waiting' |
+                     'call_missed' | 'call_handled' |
+                     'call_waiting' | 'call_recorded' |
                      'agent_active' | 'agent_inactive' |
                      'agent_paused' | 'agent_resume'.
 
@@ -173,6 +175,15 @@ call_waiting_stat(AcctId, QueueId, CallId, Start) ->
           ,timestamp=Start
           ,name=call_waiting
          }.
+
+call_recorded(AcctId, QueueId, AgentId, CallId) ->
+    gen_listener:cast(?MODULE, {store, #stat{acct_id=AcctId
+                                             ,queue_id=QueueId
+                                             ,agent_id=AgentId
+                                             ,call_id=CallId
+                                             ,name=call_recorded
+                                            }
+                               }).
 
 %% marks an agent as active for an account
 -spec agent_active/2 :: (ne_binary(), ne_binary()) -> 'ok'.
@@ -467,6 +478,24 @@ update_stat(AcctDocs, #stat{name=call_waiting
                             end, AcctDoc, Funs)
                ,AcctDocs
               );
+
+update_stat(AcctDocs, #stat{name=call_recorded
+                            ,acct_id=AcctId
+                            ,queue_id=QueueId
+                            ,agent_id=AgentId
+                            ,call_id=CallId
+                           }) ->
+    AcctDoc = fetch_acct_doc(AcctId, AcctDocs),
+
+    Funs = [{fun add_call_recorded/4, [QueueId, AgentId, CallId]}],
+    dict:store(AcctId
+               ,lists:foldl(fun({F, Args}, AcctAcc) ->
+                                    apply(F, [AcctAcc | Args])
+                            end, AcctDoc, Funs)
+               ,AcctDocs
+              );
+
+
 update_stat(AcctDocs, _Stat) ->
     lager:debug("unknown stat: ~p", [_Stat]),
     AcctDocs.
@@ -545,3 +574,13 @@ add_agent_call_queue(AcctDoc, AgentId, CallId, QueueId) ->
 add_call_missed(AcctDoc, AgentId, QueueId, CallId) ->
     Key = [<<"agents">>, AgentId, <<"calls_missed">>, CallId, <<"queue_id">>],
     wh_json:set_value(Key, QueueId, AcctDoc).
+
+-spec add_call_recorded/4 :: (wh_json:json_object(), ne_binary()
+                              ,ne_binary(), ne_binary()
+                             ) -> wh_json:json_object().
+add_call_recorded(AcctDoc, QueueId, AgentId, CallId) ->
+    RecordingName = acdc_agent:get_recording_doc_id(CallId),
+    Key = [<<"call_recorded">>, CallId, <<"recording_id">>],
+    wh_json:set_values([{[<<"agents">>, AgentId | Key], RecordingName}
+                        ,{[<<"queues">>, QueueId | Key], RecordingName}
+                       ], AcctDoc).
