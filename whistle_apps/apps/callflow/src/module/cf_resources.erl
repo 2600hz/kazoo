@@ -25,7 +25,7 @@
 %%--------------------------------------------------------------------
 -spec handle/2 :: (wh_json:json_object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
-    {ok, Endpoints} = find_endpoints(Call),
+    {ok, Endpoints} = find_endpoints(Data, Call),
     Timeout = wh_json:get_value(<<"timeout">>, Data, <<"60">>),
     IgnoreEarlyMedia = wh_json:get_value(<<"ignore_early_media">>, Data),
     Ringback = wh_json:get_value(<<"ringback">>, Data),
@@ -122,11 +122,12 @@ create_endpoint(DestNum, JObj, Call) ->
 %% number as formated by that rule (ie: capture group or full number).
 %% @end
 %%--------------------------------------------------------------------
--spec find_endpoints/1 :: (whapps_call:call()) -> {'ok', endpoints()} | {'error', atom()}.
-find_endpoints(Call) ->
+-spec find_endpoints/2 :: (wh_json:json_object(), whapps_call:call()) -> {'ok', endpoints()} | {'error', atom()}.
+find_endpoints(Data, Call) ->
     lager:debug("searching for resource endpoints"),
     AccountDb = whapps_call:account_db(Call),
 
+    ToDID = get_to_did(Data, Call),
     case couch_mgr:get_results(AccountDb, ?VIEW_BY_RULES, []) of
         {ok, Resources} ->
             lager:debug("found resources, filtering by rules"),
@@ -134,12 +135,29 @@ find_endpoints(Call) ->
                    ,wh_json:get_value([<<"value">>], Resource, [])
                    ,get_caller_id_type(Resource, Call)}
                   || Resource <- Resources
-                         ,Number <- evaluate_rules(wh_json:get_value(<<"key">>, Resource), whapps_call:request_user(Call))
+                         ,Number <- evaluate_rules(wh_json:get_value(<<"key">>, Resource), ToDID)
                          ,Number =/= []
                  ]};
         {error, R}=E ->
             lager:debug("search failed ~w", [R]),
             E
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Use the e164 normalized number unless the callflow options specify 
+%% otherwise
+%% @end
+%%--------------------------------------------------------------------
+-spec get_to_did/2 :: (wh_json:json_object(), whapps_call:call()) -> ne_binary().
+get_to_did(Data, Call) ->
+    case wh_json:is_true(<<"do_not_normalize">>, Data) of
+        false -> whapps_call:request_user(Call);
+        true ->
+            Request = whapps_call:request(Call),
+            [RequestUser, _] = binary:split(Request, <<"@">>),            
+            RequestUser
     end.
 
 %%--------------------------------------------------------------------
