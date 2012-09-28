@@ -56,7 +56,7 @@ offnet_req(Data, Call) ->
     Req = [{<<"Call-ID">>, cf_exe:callid(Call)}
            ,{<<"Msg-ID">>, wh_util:rand_hex_binary(6)}
            ,{<<"Resource-Type">>, <<"audio">>}
-           ,{<<"To-DID">>, whapps_call:request_user(Call)}
+           ,{<<"To-DID">>, get_to_did(Data, Call)}
            ,{<<"Account-ID">>, whapps_call:account_id(Call)}
            ,{<<"Account-Realm">>, whapps_call:from_realm(Call)}
            ,{<<"Control-Queue">>, cf_exe:control_queue(Call)}
@@ -72,8 +72,26 @@ offnet_req(Data, Call) ->
            ,{<<"Ringback">>, wh_json:get_value(<<"ringback">>, Data)}
            ,{<<"SIP-Headers">>, build_sip_headers(Data, Call)}
            ,{<<"Media">>, wh_json:get_value(<<"Media">>, Data)}
-           | wh_api:default_headers(cf_exe:queue_name(Call), ?APP_NAME, ?APP_VERSION)],
+           | wh_api:default_headers(cf_exe:queue_name(Call), ?APP_NAME, ?APP_VERSION)
+          ],
     wapi_offnet_resource:publish_req(props:filter_undefined(Req)).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Use the e164 normalized number unless the callflow options specify 
+%% otherwise
+%% @end
+%%--------------------------------------------------------------------
+-spec get_to_did/2 :: (wh_json:json_object(), whapps_call:call()) -> ne_binary().
+get_to_did(Data, Call) ->
+    case wh_json:is_true(<<"do_not_normalize">>, Data) of
+        false -> whapps_call:request_user(Call);
+        true ->
+            Request = whapps_call:request(Call),
+            [RequestUser, _] = binary:split(Request, <<"@">>),            
+            RequestUser
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
