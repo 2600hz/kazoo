@@ -12,6 +12,7 @@
          ,get_db/2
          ,server_url/1
          ,db_url/2
+         ,server_info/1
         ]).
 
 %% DB operations
@@ -73,8 +74,7 @@
 %% @end
 %%------------------------------------------------------------------------------
 -spec max_bulk_insert/0 :: () -> ?MAX_BULK_INSERT.
-max_bulk_insert() ->
-    ?MAX_BULK_INSERT.
+max_bulk_insert() -> ?MAX_BULK_INSERT.
 
 %%------------------------------------------------------------------------------
 %% @public
@@ -91,7 +91,7 @@ get_new_connection(Host, Port, User, Pass) ->
 get_new_conn(Host, Port, Opts) ->
     Conn = couchbeam:server_connection(wh_util:to_list(Host), Port, "", Opts),
     lager:info("new connection to host ~s:~b, testing: ~p", [Host, Port, Conn]),
-    {'ok', ConnData} = couchbeam:server_info(Conn),
+    {'ok', ConnData} = server_info(Conn),
 
     CouchVersion = wh_json:get_value(<<"version">>, ConnData),
     BigCouchVersion = wh_json:get_value(<<"bigcouch">>, ConnData),
@@ -100,6 +100,9 @@ get_new_conn(Host, Port, Opts) ->
     is_binary(BigCouchVersion) andalso lager:info("responding BigCouch version: ~s", [BigCouchVersion]),
 
     Conn.
+
+server_info(#server{}=Conn) ->
+    couchbeam:server_info(Conn).
 
 -spec server_url/1 :: (server()) -> ne_binary().
 server_url(#server{host=Host, port=Port, options=Options}) ->

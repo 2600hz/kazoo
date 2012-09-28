@@ -24,6 +24,8 @@
          ,get_url/0
          ,get_uuid/0
          ,get_uuids/1
+         ,test_conn/0
+         ,test_admin_conn/0
         ]).
 -export([get_admin_port/0
          ,get_admin_conn/0
@@ -303,6 +305,11 @@ db_info(DbName) ->
     couch_util:db_info(get_conn(), DbName).
 admin_db_info(DbName) ->
     couch_util:db_info(get_admin_conn(), DbName).
+
+test_conn() ->
+    couch_util:server_info(get_conn()).
+test_admin_conn() ->
+    couch_util:server_info(get_admin_conn()).
 
 %%--------------------------------------------------------------------
 %% @public

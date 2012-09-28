@@ -17,6 +17,7 @@
          ,compact_db/1
          ,compact_db/2
          ,status/0
+         ,is_compactor_running/0
          ,cancel_current_job/0
          ,cancel_all_jobs/0
          ,start_auto_compaction/0
@@ -56,6 +57,8 @@
                    {'req_compact_db', ne_binary()} |
                    {'req_compact_db', ne_binary(), ne_binary()}.
 
+-type not_compacting() :: {'error', 'compactor_down'}.
+
 -record(state, {
           nodes :: [ne_binary(),...] | []
           ,dbs :: [ne_binary(),...] | []
@@ -89,53 +92,88 @@
 start_link() ->
     gen_fsm:start_link({local, ?SERVER}, ?MODULE, [], []).
 
--spec compact/0 :: () -> {'queued', reference()}.
+-spec compact/0 :: () -> {'queued', reference()} | not_compacting().
 compact() ->
-    gen_fsm:sync_send_event(?SERVER, req_compact).
+    case is_compactor_running() of
+        true -> gen_fsm:sync_send_event(?SERVER, req_compact);
+        false -> {error, compactor_down}
+    end.
 
--spec compact_node/1 :: (ne_binary()) -> {'queued', reference()}.
+-spec compact_node/1 :: (ne_binary()) -> {'queued', reference()} | not_compacting().
 compact_node(Node) ->
-    gen_fsm:sync_send_event(?SERVER, {req_compact_node, Node}).
+    case is_compactor_running() of
+        true -> gen_fsm:sync_send_event(?SERVER, {req_compact_node, Node});
+        false -> {'error', 'compactor_down'}
+    end.
 
--spec compact_db/1 :: (ne_binary()) -> {'queued', reference()}.
+-spec compact_db/1 :: (ne_binary()) -> {'queued', reference()} | not_compacting().
 compact_db(Db) ->
-    gen_fsm:sync_send_event(?SERVER, {req_compact_db, Db}).
+    case is_compactor_running() of
+        true -> gen_fsm:sync_send_event(?SERVER, {req_compact_db, Db});
+        false -> {'error', 'compactor_down'}
+    end.
 
--spec compact_db/2 :: (ne_binary(), ne_binary()) -> {'queued', reference()}.
+-spec compact_db/2 :: (ne_binary(), ne_binary()) -> {'queued', reference()} | not_compacting().
 compact_db(Node, Db) ->
-    gen_fsm:sync_send_event(?SERVER, {req_compact_db, Node, Db}).
+    case is_compactor_running() of
+        true -> gen_fsm:sync_send_event(?SERVER, {req_compact_db, Node, Db});
+        false -> {'error', 'compactor_down'}
+    end.
 
--spec status/0 :: () -> {'ok', 'ready' | wh_proplist()}.
+-spec status/0 :: () -> {'ok', 'ready' | 'not_running' | wh_proplist()}.
 status() ->
-    gen_fsm:sync_send_event(?SERVER, status).
+    case is_compactor_running() of
+        true -> gen_fsm:sync_send_event(?SERVER, status);
+        false -> {ok, not_running}
+    end.
 
 -spec cancel_current_job/0 :: () -> {'ok', 'job_cancelled'} |
-                                    {'error', 'no_job_running'}.
+                                    {'error', 'no_job_running'} |
+                                    not_compacting().
 cancel_current_job() ->
-    gen_fsm:sync_send_event(?SERVER, cancel_current_job).
+    case is_compactor_running() of
+        true -> gen_fsm:sync_send_event(?SERVER, cancel_current_job);
+        false -> {'error', 'compactor_down'}
+    end.
 
--spec cancel_all_jobs/0 :: () -> {'ok', 'jobs_cancelled'}.
+-spec cancel_all_jobs/0 :: () -> {'ok', 'jobs_cancelled'} | not_compacting().
 cancel_all_jobs() ->
-    gen_fsm:sync_send_event(?SERVER, cancel_all_jobs).
+    case is_compactor_running() of
+        true -> gen_fsm:sync_send_event(?SERVER, cancel_all_jobs);
+        false -> {'error', 'compactor_down'}
+    end.
 
 -spec start_auto_compaction/0 :: () -> {'ok', 'already_started'} |
-                                       {'queued', reference()}.
+                                       {'queued', reference()} |
+                                       not_compacting().
 start_auto_compaction() ->
-    case couch_config:fetch(<<"compact_automatically">>, false) of
-        true -> {ok, already_started};
-        false ->
-            _ = couch_config:store(<<"compact_automatically">>, true),
-            compact()
+    case is_compactor_running() of
+        true ->
+            case couch_config:fetch(<<"compact_automatically">>, false) of
+                true -> {ok, already_started};
+                false ->
+                    _ = couch_config:store(<<"compact_automatically">>, true),
+                    compact()
+            end;
+        false -> {'error', 'compactor_down'}
     end.
 
--spec stop_auto_compaction/0 :: () -> {'ok', 'updated' | 'already_stopped'}.
+-spec stop_auto_compaction/0 :: () -> {'ok', 'updated' | 'already_stopped'} | not_compacting().
 stop_auto_compaction() ->
-    case couch_config:fetch(<<"compact_automatically">>, false) of
-        false -> {ok, already_stopped};
+    case is_compactor_running() of
         true ->
-            _ = couch_config:store(<<"compact_automatically">>, false),
-            {ok, updated}
+            case couch_config:fetch(<<"compact_automatically">>, false) of
+                false -> {ok, already_stopped};
+                true ->
+                    _ = couch_config:store(<<"compact_automatically">>, false),
+                    {ok, updated}
+            end;
+        false -> {'error', 'compactor_down'}
     end.
+
+-spec is_compactor_running/0 :: () -> boolean().
+is_compactor_running() ->
+    is_pid(whistle_couch_sup:compactor_pid()).
 
 %%%===================================================================
 %%% gen_fsm callbacks
@@ -842,7 +880,7 @@ wait_for_compaction(AdminConn, S, {ok, ShardData}) ->
 get_node_connections(N, Cookie) ->
     [_, Host] = binary:split(N, <<"@">>),
 
-    {User,Pass} = couch_mgr:get_creds(),    
+    {User,Pass} = couch_mgr:get_creds(),
     {Port, AdminPort} = get_ports(wh_util:to_atom(N, true), Cookie),
 
     get_node_connections(Host, Port, User, Pass, AdminPort).

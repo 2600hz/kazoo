@@ -41,7 +41,7 @@ start_link() ->
 
 -spec compactor_pid/0 :: () -> pid() | 'undefined'.
 compactor_pid() ->
-    [Pid] =  [P || {couch_compactor, P, worker, _} <- supervisor:which_children(whistle_couch_sup)],
+    [Pid] =  [P || {couch_compactor_fsm, P, worker, _} <- supervisor:which_children(whistle_couch_sup)],
     Pid.
 
 %% ===================================================================
