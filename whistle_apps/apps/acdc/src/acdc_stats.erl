@@ -12,8 +12,8 @@
 
 %% Query API
 -export([acct_stats/1
-         ,queue_stats/2
-         ,agent_stats/2
+         ,queue_stats/1, queue_stats/2
+         ,agent_stats/1, agent_stats/2
         ]).
 
 %% Stats API
@@ -29,6 +29,8 @@
          ,agent_inactive/2
          ,agent_paused/3
          ,agent_resume/2
+         ,agent_wrapup/3
+         ,agent_ready/2
         ]).
 
 %% gen_listener functions
@@ -54,7 +56,7 @@
 -type stat_name() :: 'call_processed' | 'call_abandoned' |
                      'call_missed' | 'call_handled' |
                      'call_waiting' | 'call_recorded' |
-                     'agent_active' | 'agent_inactive' |
+                     'agent_active' | 'agent_inactive' | 'agent_wrapup' |
                      'agent_paused' | 'agent_resume'.
 
 -record(stat, {
@@ -82,6 +84,19 @@ acct_stats(AcctId) ->
                           ),
     wh_doc:public_fields(fetch_acct_doc(AcctId, AcctDocs)).
 
+queue_stats(AcctId) ->
+    MatchSpec = [{#stat{acct_id='$1', queue_id='$2', _='_'}
+                  ,[{'=:=', '$1', AcctId}
+                    ,{'=/=', '$2', 'undefined'}
+                   ]
+                  ,['$_']
+                 }],
+    AcctDocs = lists:foldl(fun(Stat, AcctAcc) ->
+                                   update_stat(AcctAcc, Stat)
+                           end, dict:new(), ets:select(?ETS_TABLE, MatchSpec)
+                          ),
+    wh_json:get_value([<<"queues">>], wh_doc:public_fields(fetch_acct_doc(AcctId, AcctDocs))).
+
 queue_stats(AcctId, QueueId) ->
     MatchSpec = [{#stat{acct_id='$1', queue_id='$2', _='_'}
                   ,[{'=:=', '$1', AcctId}
@@ -94,6 +109,20 @@ queue_stats(AcctId, QueueId) ->
                            end, dict:new(), ets:select(?ETS_TABLE, MatchSpec)
                           ),
     wh_json:get_value([<<"queues">>, QueueId], wh_doc:public_fields(fetch_acct_doc(AcctId, AcctDocs))).
+
+agent_stats(AcctId) ->
+    MatchSpec = [{#stat{acct_id='$1', agent_id='$2', _='_'}
+                  ,[{'=:=', '$1', AcctId}
+                    ,{'=/=', '$2', 'undefined'}
+                   ]
+                  ,['$_']
+                 }],
+
+    AcctDocs = lists:foldl(fun(Stat, AcctAcc) ->
+                                   update_stat(AcctAcc, Stat)
+                           end, dict:new(), ets:select(?ETS_TABLE, MatchSpec)
+                          ),
+    wh_json:get_value(<<"agents">>, wh_doc:public_fields(fetch_acct_doc(AcctId, AcctDocs))).
 
 agent_stats(AcctId, AgentId) ->
     MatchSpec = [{#stat{acct_id='$1', agent_id='$2', _='_'}
@@ -227,6 +256,26 @@ agent_paused(AcctId, AgentId, Timeout) ->
                                              ,elapsed=Timeout
                                              ,name=agent_paused
                                             }
+                               }).
+
+-spec agent_wrapup/3 :: (ne_binary(), ne_binary(), integer()) -> 'ok'.
+agent_wrapup(AcctId, AgentId, Timeout) ->
+    gen_listener:cast(?MODULE, {store, #stat{acct_id=AcctId
+                                             ,agent_id=AgentId
+                                             ,elapsed=Timeout
+                                             ,name=agent_wrapup
+                                            }
+                               }).
+
+-spec agent_ready/2 :: (ne_binary(), ne_binary()) -> 'ok'.
+agent_ready(AcctId, AgentId) ->
+    gen_listener:cast(?MODULE, {remove, #stat{name=agent_wrapup
+                                              ,acct_id=AcctId
+                                              ,agent_id=AgentId
+                                              ,call_id='_'
+                                              ,elapsed='_'
+                                              ,timestamp='_'
+                                             }
                                }).
 
 -define(BINDINGS, []).
@@ -495,6 +544,24 @@ update_stat(AcctDocs, #stat{name=call_recorded
                ,AcctDocs
               );
 
+update_stat(AcctDocs, #stat{acct_id=AcctId
+                            ,agent_id=AgentId
+                            ,timestamp=WrapupTimestamp
+                            ,elapsed=WaitTimeout
+                            ,name=agent_wrapup
+                           }) ->
+    AcctDoc = fetch_acct_doc(AcctId, AcctDocs),
+    Elapsed = wh_util:elapsed_s(WrapupTimestamp),
+    Funs = [
+            {fun add_agent_wrapup_time_on_break/3, [AgentId, Elapsed]}
+            ,{fun add_agent_wrapup_time_left/3, [AgentId, WaitTimeout - Elapsed]}
+           ],
+    dict:store(AcctId
+               ,lists:foldl(fun({F, Args}, AcctAcc) ->
+                                    apply(F, [AcctAcc | Args])
+                            end, AcctDoc, Funs)
+               ,AcctDocs
+              );
 
 update_stat(AcctDocs, _Stat) ->
     lager:debug("unknown stat: ~p", [_Stat]),
@@ -584,3 +651,11 @@ add_call_recorded(AcctDoc, QueueId, AgentId, CallId) ->
     wh_json:set_values([{[<<"agents">>, AgentId | Key], RecordingName}
                         ,{[<<"queues">>, QueueId | Key], RecordingName}
                        ], AcctDoc).
+
+add_agent_wrapup_time_on_break(AcctDoc, AgentId, Elapsed) ->
+    WaitKey = [<<"agents">>, AgentId, <<"wrapup_elapsed">>],
+    wh_json:set_value(WaitKey, Elapsed, AcctDoc).
+
+add_agent_wrapup_time_left(AcctDoc, AgentId, WaitTimeLeft) ->
+    WaitKey = [<<"agents">>, AgentId, <<"wrapup_time_left">>],
+    wh_json:set_value(WaitKey, WaitTimeLeft, AcctDoc).

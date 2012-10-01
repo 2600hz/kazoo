@@ -78,27 +78,26 @@ handle_stats_req(AcctId, QueueId, ServerId, MsgId) ->
     end.
 
 -spec build_stats_resp/4 :: (api_binary(), api_binary(), api_binary(), [pid()] | []) -> any().
--spec build_stats_resp/7 :: (api_binary(), api_binary(), api_binary(), [pid()] | []
-                             ,wh_json:json_object(), wh_json:json_object(), wh_json:json_object()
+-spec build_stats_resp/6 :: (api_binary(), api_binary(), api_binary(), [pid()] | []
+                             ,wh_json:json_object(), wh_json:json_object()
                             ) -> any().
 build_stats_resp(AcctId, RespQ, MsgId, Ps) ->
     build_stats_resp(AcctId, RespQ, MsgId, Ps
                      ,wh_json:new()
                      ,wh_json:new()
-                     ,wh_json:new()
                     ).
 
-build_stats_resp(AcctId, RespQ, MsgId, [], CurrCalls, CurrStats, CurrQueues) ->
+build_stats_resp(AcctId, RespQ, MsgId, [], CurrCalls, CurrQueues) ->
     Resp = props:filter_undefined(
              [{<<"Account-ID">>, AcctId}
               ,{<<"Current-Calls">>, CurrCalls}
-              ,{<<"Current-Stats">>, CurrStats}
+              ,{<<"Current-Stats">>, acdc_stats:queue_stats(AcctId)}
               ,{<<"Current-Statuses">>, CurrQueues}
               ,{<<"Msg-ID">>, MsgId}
               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     wapi_acdc_queue:publish_stats_resp(RespQ, Resp);
-build_stats_resp(AcctId, RespQ, MsgId, [P|Ps], CurrCalls, CurrStats, CurrQueues) ->
+build_stats_resp(AcctId, RespQ, MsgId, [P|Ps], CurrCalls, CurrQueues) ->
     Q = acdc_queue_sup:queue(P),
     {AcctId, QueueId} = acdc_queue:config(Q),
 
@@ -110,7 +109,6 @@ build_stats_resp(AcctId, RespQ, MsgId, [P|Ps], CurrCalls, CurrStats, CurrQueues)
 
     build_stats_resp(AcctId, RespQ, MsgId, Ps
                      ,wh_json:set_value(QueueId, wh_json:set_value(CallId, CurrentCall, QueueCalls), CurrCalls)
-                     ,wh_json:set_value(QueueId, acdc_stats:queue_stats(AcctId, QueueId), CurrStats)
                      ,wh_json:set_value(QueueId, acdc_queue_fsm:status(FSM), CurrQueues)
                     ).
 

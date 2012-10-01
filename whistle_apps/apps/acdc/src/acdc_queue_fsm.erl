@@ -388,14 +388,15 @@ connect_req({timeout, Ref, ?COLLECT_RESP_MESSAGE}, #state{collect_ref=Ref
                                                           ,strategy=Strategy
                                                           ,strategy_state=StrategyState
                                                           ,agent_ring_timeout=AgentTimeout
+                                                          ,agent_wrapup_time=AgentWrapup
                                                           ,caller_exit_key=CallerExitKey
                                                          }=State) ->
     lager:debug("done waiting for agents to respond, picking a winner"),
     case pick_winner(CRs, Strategy, StrategyState) of
         {Winner, Monitors, Rest, StrategyState1} ->
             lager:debug("winner chosen: ~s", [wh_json:get_value(<<"Agent-ID">>, Winner)]),
-            acdc_queue:member_connect_win(Srv, Winner, AgentTimeout, CallerExitKey),
-            _ = [acdc_queue:member_connect_monitor(Srv, M, CallerExitKey)
+            acdc_queue:member_connect_win(Srv, Winner, AgentTimeout, AgentWrapup, CallerExitKey),
+            _ = [acdc_queue:member_connect_monitor(Srv, M, AgentWrapup, CallerExitKey)
                  || M <- Monitors
                 ],
 

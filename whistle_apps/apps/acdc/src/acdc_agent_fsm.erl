@@ -69,7 +69,7 @@
          ,agent_id :: ne_binary()
          ,agent_proc :: pid()
          ,agent_proc_id :: ne_binary()
-         ,wrapup_timeout :: integer() % optionally set on win/monitor
+         ,wrapup_timeout = 0 :: integer() % optionally set on win/monitor
          ,wrapup_ref :: reference()
          ,sync_ref :: reference()
          ,member_call :: whapps_call:call()
@@ -352,7 +352,7 @@ ready({member_connect_win, JObj}, #state{agent_proc=Srv}=State) ->
 
     acdc_agent:bridge_to_member(Srv, JObj),
 
-    WrapupTimer = wh_json:get_integer_value(<<"Wrapup-Timeout">>, JObj),
+    WrapupTimer = wh_json:get_integer_value(<<"Wrapup-Timeout">>, JObj, 0),
     CallerExitKey = wh_json:get_value(<<"Caller-Exit-Key">>, JObj, <<"#">>),
     QueueId = wh_json:get_value(<<"Queue-ID">>, JObj),
 
@@ -368,7 +368,7 @@ ready({member_connect_monitor, JObj}, #state{agent_proc=Srv}=State) ->
     lager:debug("one of our counterparts won us a member: ~s", [CallId]),
     acdc_agent:monitor_call(Srv, JObj),
 
-    WrapupTimer = wh_json:get_integer_value(<<"Wrapup-Timeout">>, JObj),
+    WrapupTimer = wh_json:get_integer_value(<<"Wrapup-Timeout">>, JObj, 0),
 
     {next_state, ringing, State#state{wrapup_timeout=WrapupTimer
                                       ,member_call_id=CallId
@@ -559,7 +559,9 @@ answered({channel_hungup, CallId}
     acdc_agent:channel_hungup(Srv, CallId),
     Ref = start_wrapup_timer(WrapupTimeout),
 
-    {next_state, wrapup, State#state{wrapup_timeout=undefined, wrapup_ref=Ref}};
+    acdc_stats:agent_wrapup(AcctId, AgentId, WrapupTimeout),
+
+    {next_state, wrapup, State#state{wrapup_timeout=0, wrapup_ref=Ref}};
 
 answered({channel_hungup, CallId}
          ,#state{wrapup_timeout=WrapupTimeout
@@ -580,7 +582,9 @@ answered({channel_hungup, CallId}
     acdc_agent:channel_hungup(Srv, CallId),
     Ref = start_wrapup_timer(WrapupTimeout),
 
-    {next_state, wrapup, State#state{wrapup_timeout=undefined, wrapup_ref=Ref}};
+    acdc_stats:agent_wrapup(AcctId, AgentId, WrapupTimeout),
+
+    {next_state, wrapup, State#state{wrapup_timeout=0, wrapup_ref=Ref}};
 
 answered({channel_hungup, CallId}, #state{agent_proc=Srv}=State) ->
     lager:debug("someone(~s) hungup, who cares"),
@@ -612,17 +616,22 @@ answered(current_call, _, #state{member_call=Call
 %% @end
 %%--------------------------------------------------------------------
 wrapup({member_connect_req, _}, State) ->
-    {next_state, wrapup, State#state{wrapup_timeout=undefined}};
+    {next_state, wrapup, State#state{wrapup_timeout=0}};
 wrapup({member_connect_win, JObj}, #state{agent_proc=Srv}=State) ->
     lager:debug("we won, but can't process this right now"),
     acdc_agent:member_connect_retry(Srv, JObj),
-    {next_state, wrapup, State#state{wrapup_timeout=undefined}};
+    {next_state, wrapup, State#state{wrapup_timeout=0}};
 wrapup({member_connect_monitor, _JObj}, State) ->
     lager:debug("we're wrapping up, but received a connect_monitor?"),
     {next_state, wrapup, State};
 
-wrapup({timeout, Ref, wrapup_expired}, #state{wrapup_ref=Ref}=State) ->
+wrapup({timeout, Ref, wrapup_expired}, #state{wrapup_ref=Ref
+                                              ,acct_id=AcctId
+                                              ,agent_id=AgentId
+                                             }=State) ->
     lager:debug("wrapup timer expired, ready for action!"),
+    acdc_stats:agent_ready(AcctId, AgentId),
+
     {next_state, ready, clear_call(State)};
 
 wrapup({sync_req, JObj}, #state{agent_proc=Srv
@@ -635,7 +644,7 @@ wrapup({sync_req, JObj}, #state{agent_proc=Srv
 
 wrapup(_Evt, State) ->
     lager:debug("unhandled event: ~p", [_Evt]),
-    {next_state, wrapup, State#state{wrapup_timeout=undefined}}.
+    {next_state, wrapup, State#state{wrapup_timeout=0}}.
 
 wrapup(status, _, State) ->
     {reply, <<"wrapup">>, wrapup, State};
@@ -795,9 +804,9 @@ code_change(_OldVsn, StateName, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec start_wrapup_timer/1 :: ('undefined' | non_neg_integer()) -> reference().
-start_wrapup_timer('undefined') -> start_wrapup_timer(0); % send immediately
-start_wrapup_timer(Timeout) -> gen_fsm:start_timer(Timeout, wrapup_expired).
+-spec start_wrapup_timer/1 :: (integer()) -> reference().
+start_wrapup_timer(Timeout) when Timeout < 0 -> start_wrapup_timer(0); % send immediately
+start_wrapup_timer(Timeout) -> gen_fsm:start_timer(Timeout*1000, wrapup_expired).
 
 -spec start_sync_timer/0 :: () -> reference().
 start_sync_timer() ->
@@ -837,7 +846,7 @@ time_left(false) -> undefined;
 time_left(Ms) when is_integer(Ms) -> Ms div 1000.
 
 clear_call(State) ->
-    State#state{wrapup_timeout = undefined
+    State#state{wrapup_timeout = 0
                 ,wrapup_ref = undefined
                 ,member_call = undefined
                 ,member_call_id = undefined

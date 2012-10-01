@@ -160,10 +160,10 @@ fetch_all_agent_stats(#cb_context{account_id=AcctId}=Context, ?REALTIME_PATH_TOK
                                        ,2000
                                       ) of
         {ok, Resp} ->
-            lager:debug("stats req responded"),
+            lager:debug("stats req responded: ~p", [Resp]),
             Resp1 = strip_api_fields(wh_json:normalize(Resp)),
             Context#cb_context{resp_status=success
-                               ,resp_data=Resp1
+                               ,resp_data=total_up_stats(Resp1)
                                ,doc=Resp1
                               };
         {error, _E} ->
@@ -171,6 +171,16 @@ fetch_all_agent_stats(#cb_context{account_id=AcctId}=Context, ?REALTIME_PATH_TOK
             Context
     end.
 
+total_up_stats(Stats) ->
+    AgentsJObj = wh_json:get_value([<<"current_stats">>], Stats, wh_json:new()),
+    {Total, AgentsJObj1} = wh_json:foldl(fun(AgentId, AgentStats, {Tot, ByAgent}) ->
+                                                 L = length(wh_json:to_proplist(wh_json:get_value(<<"calls_handled">>, AgentStats, wh_json:new()))),
+                                              {Tot + L, wh_json:set_value([AgentId, <<"calls_this_hour">>], L, ByAgent)}
+                                         end, {0, AgentsJObj}, AgentsJObj),
+    wh_json:set_values([{<<"current_stats">>, AgentsJObj1}
+                        ,{<<"calls_this_hour">>, Total}
+                       ], Stats).
+        
 fetch_agent_stats(Id, Context) ->
     {Today, _} = calendar:universal_time(),
     From = calendar:datetime_to_gregorian_seconds({Today, {0,0,0}}),

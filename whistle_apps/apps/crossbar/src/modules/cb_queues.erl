@@ -346,7 +346,17 @@ update(Id, #cb_context{req_data=Data}=Context) ->
 fetch_all_queue_stats(Context) ->
     fetch_all_queue_stats(Context, history).
 fetch_all_queue_stats(Context, history) ->
-    crossbar_doc:load_view(<<"acdc_stats/stats_per_queue">>, [], Context, fun normalize_queue_results/2);
+    {Today, _} = calendar:universal_time(),
+    From = calendar:datetime_to_gregorian_seconds({Today, {0,0,0}}),
+
+    crossbar_doc:load_view(<<"acdc_stats/stats_per_queue_by_time">>
+                           ,[{startkey, [wh_util:current_tstamp(), <<"\ufff0">>]}
+                             ,{endkey, [From, <<>>]}
+                             ,descending
+                            ]
+                           ,Context
+                           ,fun normalize_queue_results/2
+                          );
 fetch_all_queue_stats(#cb_context{account_id=AcctId}=Context, realtime) ->
     Req = [{<<"Account-ID">>, AcctId}
            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
@@ -360,7 +370,7 @@ fetch_all_queue_stats(#cb_context{account_id=AcctId}=Context, realtime) ->
             lager:debug("fetched stats successfully"),
             Resp1 = strip_api_fields(wh_json:normalize(Resp)),
             Context#cb_context{resp_status=success
-                               ,resp_data=Resp1
+                               ,resp_data=total_up_stats(Resp1)
                                ,doc=Resp1
                               };
         {error, _E} ->
@@ -368,13 +378,59 @@ fetch_all_queue_stats(#cb_context{account_id=AcctId}=Context, realtime) ->
             Context
     end.
 
+total_up_stats(Stats) ->
+    QueuesJObj = wh_json:get_value(<<"current_stats">>, Stats, wh_json:new()),
+    {TotalCalls, TotalWait, QueuesJObj1} = wh_json:foldl(fun total_up_stats_for_queue/3
+                                                         ,{0, 0, QueuesJObj}
+                                                         ,QueuesJObj
+                                                        ),
+    wh_json:set_values([{<<"current_stats">>, QueuesJObj1}
+                        ,{<<"calls_this_hour">>, TotalCalls}
+                        ,{<<"avg_wait_time_this_hour">>, avg_wait(TotalWait, TotalCalls)}
+                       ], Stats).
+
+total_up_stats_for_queue(QueueId, QueueStats, {TotCalls, TotWait, ByQueue}) ->
+    Calls = wh_json:get_value(<<"calls">>, QueueStats, wh_json:new()),
+    {Wait, L} = sum_and_count_wait_time(Calls),
+    ByQueue1 = wh_json:set_values([{[QueueId, <<"calls_this_hour">>], L}
+                                   ,{[QueueId, <<"avg_wait_time_this_hour">>], avg_wait(Wait, L)}
+                                  ], ByQueue),
+
+    {TotCalls + L, TotWait + Wait, ByQueue1}.
+
+sum_and_count_wait_time(Calls) ->
+    wh_json:foldl(fun(_CallId, CallData, {WaitAcc, Tot}) ->
+                          case wh_json:get_integer_value(<<"wait_time">>, CallData) of
+                              undefined -> find_wait_time(CallData, WaitAcc, Tot);
+                              N -> {N + WaitAcc, Tot+1}
+                          end
+                  end, {0, 0}, Calls).
+
+find_wait_time(CallData, WaitAcc, Tot) ->
+    case wh_json:get_integer_value(<<"entered">>, CallData) of
+        undefined -> {WaitAcc, Tot};
+        EnteredTStamp ->
+            try wh_json:get_integer_value(<<"timestamp">>, CallData) - EnteredTStamp of
+                WaitTime -> {WaitAcc+WaitTime, Tot+1}
+            catch
+                error:badarith -> {WaitAcc, Tot}
+            end
+    end.
+
+avg_wait(_, 0) -> 0;
+avg_wait(W, C) -> W / C.
+
 fetch_queue_stats(Id, Context) ->
     fetch_queue_stats(Id, Context, history).
 fetch_queue_stats(Id, Context, history) ->
     lager:debug("fetching queue stats for ~s", [Id]),
+
+    {Today, _} = calendar:universal_time(),
+    From = calendar:datetime_to_gregorian_seconds({Today, {0,0,0}}),
+
     crossbar_doc:load_view(<<"acdc_stats/stats_per_queue">>
-                               ,[{startkey, [Id, wh_json:new()]}
-                                 ,{endkey, [Id, 0]}
+                               ,[{startkey, [Id, wh_util:current_tstamp()]}
+                                 ,{endkey, [Id, From]}
                                  ,descending
                                 ]
                            ,Context
