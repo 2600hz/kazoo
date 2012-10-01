@@ -370,13 +370,42 @@ fetch_all_queue_stats(#cb_context{account_id=AcctId}=Context, realtime) ->
             lager:debug("fetched stats successfully"),
             Resp1 = strip_api_fields(wh_json:normalize(Resp)),
             Context#cb_context{resp_status=success
-                               ,resp_data=Resp1
+                               ,resp_data=total_up_stats(Resp1)
                                ,doc=Resp1
                               };
         {error, _E} ->
             lager:debug("failed to fetch stats: ~p", [_E]),
             Context
     end.
+
+total_up_stats(Stats) ->
+    QueuesJObj = wh_json:get_value(<<"current_stats">>, Stats, wh_json:new()),
+    {TotalCalls, TotalWait, QueuesJObj1} = wh_json:foldl(fun total_up_stats_for_queue/3
+                                                         ,{0, 0, QueuesJObj}
+                                                         ,QueuesJObj
+                                                        ),
+    wh_json:set_values([{<<"current_stats">>, QueuesJObj1}
+                        ,{<<"calls_this_hour">>, TotalCalls}
+                        ,{<<"avg_wait_time_this_hour">>, avg_wait(TotalWait, TotalCalls)}
+                       ], Stats).
+
+total_up_stats_for_queue(QueueId, QueueStats, {TotCalls, TotWait, ByQueue}) ->
+    Calls = wh_json:get_value(<<"calls">>, QueueStats, wh_json:new()),
+    Wait = sum_wait_time(Calls),
+    L = length(wh_json:to_proplist(Calls)),
+    ByQueue1 = wh_json:set_values([{[QueueId, <<"calls_this_hour">>], L}
+                                   ,{[QueueId, <<"avg_wait_time_this_hour">>], avg_wait(Wait, L)}
+                                  ], ByQueue),
+
+    {TotCalls + L, TotWait + Wait, ByQueue1}.
+
+sum_wait_time(Calls) ->
+    wh_json:foldl(fun(_CallId, CallData, WaitAcc) ->
+                          wh_json:get_integer_value(<<"wait_time">>, CallData, 0) + WaitAcc
+                  end, 0, Calls).
+
+avg_wait(_, 0) -> 0;
+avg_wait(W, C) -> W / C.
 
 fetch_queue_stats(Id, Context) ->
     fetch_queue_stats(Id, Context, history).
