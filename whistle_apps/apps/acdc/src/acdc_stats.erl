@@ -29,7 +29,7 @@
          ,agent_inactive/2
          ,agent_paused/3
          ,agent_resume/2
-         ,agent_wrapup/4
+         ,agent_wrapup/3
          ,agent_ready/2
         ]).
 
@@ -258,12 +258,10 @@ agent_paused(AcctId, AgentId, Timeout) ->
                                             }
                                }).
 
--spec agent_wrapup/4 :: (ne_binary(), ne_binary(), ne_binary(), integer()) -> 'ok'.
-agent_wrapup(AcctId, AgentId, CallId, Timeout) ->
+-spec agent_wrapup/3 :: (ne_binary(), ne_binary(), integer()) -> 'ok'.
+agent_wrapup(AcctId, AgentId, Timeout) ->
     gen_listener:cast(?MODULE, {store, #stat{acct_id=AcctId
                                              ,agent_id=AgentId
-                                             ,call_id=CallId
-                                             ,active_since=wh_util:current_tstamp()
                                              ,elapsed=Timeout
                                              ,name=agent_wrapup
                                             }
@@ -275,8 +273,8 @@ agent_ready(AcctId, AgentId) ->
                                               ,acct_id=AcctId
                                               ,agent_id=AgentId
                                               ,call_id='_'
-                                              ,active_since='_'
                                               ,elapsed='_'
+                                              ,timestamp='_'
                                              }
                                }).
 
@@ -545,16 +543,15 @@ update_stat(AcctDocs, #stat{name=call_recorded
 
 update_stat(AcctDocs, #stat{acct_id=AcctId
                             ,agent_id=AgentId
-                            ,call_id=CallId
-                            ,active_since=WrapupTimestamp
+                            ,timestamp=WrapupTimestamp
                             ,elapsed=WaitTimeout
                             ,name=agent_wrapup
                            }) ->
     AcctDoc = fetch_acct_doc(AcctId, AcctDocs),
     Elapsed = wh_util:elapsed_s(WrapupTimestamp),
     Funs = [
-            {fun add_agent_wrapup_time_on_break/4, [AgentId, CallId, Elapsed]}
-            ,{fun add_agent_wrapup_time_left/4, [AgentId, CallId, WaitTimeout - Elapsed]}
+            {fun add_agent_wrapup_time_on_break/3, [AgentId, Elapsed]}
+            ,{fun add_agent_wrapup_time_left/3, [AgentId, WaitTimeout - Elapsed]}
            ],
     dict:store(AcctId
                ,lists:foldl(fun({F, Args}, AcctAcc) ->
@@ -652,20 +649,10 @@ add_call_recorded(AcctDoc, QueueId, AgentId, CallId) ->
                         ,{[<<"queues">>, QueueId | Key], RecordingName}
                        ], AcctDoc).
 
-add_agent_wrapup_time_on_break(AcctDoc, AgentId, CallId, Elapsed) ->
-    CallIdKey = [<<"agents">>, AgentId, <<"wrapup">>, <<"callid">>],
-    OnBreakKey = [<<"agents">>, AgentId, <<"wrapup">>, <<"elapsed">>],
+add_agent_wrapup_time_on_break(AcctDoc, AgentId, Elapsed) ->
+    WaitKey = [<<"agents">>, AgentId, <<"wrapup_elapsed">>],
+    wh_json:set_value(WaitKey, Elapsed, AcctDoc).
 
-    wh_json:set_values([{CallIdKey, CallId}
-                        ,{OnBreakKey, Elapsed}
-                       ], AcctDoc).
-
-add_agent_wrapup_time_left(AcctDoc, AgentId, CallId, WaitTimeLeft) ->
-    CallIdKey = [<<"agents">>, AgentId, <<"wrapup">>, <<"callid">>],
-    WaitKey = [<<"agents">>, AgentId, <<"wrapup">>, <<"time_left">>],
-    PauseKey = [<<"agents">>, AgentId, <<"status">>],
-
-    wh_json:set_values([{CallIdKey, CallId}
-                        ,{WaitKey, WaitTimeLeft}
-                        ,{PauseKey, <<"wrapup">>}
-                       ], AcctDoc).
+add_agent_wrapup_time_left(AcctDoc, AgentId, WaitTimeLeft) ->
+    WaitKey = [<<"agents">>, AgentId, <<"wrapup_time_left">>],
+    wh_json:set_value(WaitKey, WaitTimeLeft, AcctDoc).
