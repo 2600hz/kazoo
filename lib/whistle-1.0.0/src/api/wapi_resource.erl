@@ -51,9 +51,7 @@
 
 
 %% Origintate Resp
--define(ORIGINATE_RESP_HEADERS, [<<"Call-ID">>, <<"Channel-Call-State">>
-                                     ,<<"Control-Queue">>
-                                ]).
+-define(ORIGINATE_RESP_HEADERS, [<<"Call-ID">>, <<"Channel-Call-State">>]).
 -define(OPTIONAL_ORIGINATE_RESP_HEADERS, fun() -> wapi_call:optional_call_event_headers() end()).
 -define(ORIGINATE_RESP_VALUES, [{<<"Event-Category">>, <<"resource">>}
                                ,{<<"Event-Name">>, <<"originate_resp">>}
