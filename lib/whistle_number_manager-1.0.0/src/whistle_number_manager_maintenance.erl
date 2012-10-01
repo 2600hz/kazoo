@@ -8,6 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(whistle_number_manager_maintenance).
 
+-export([refresh/0]).
 -export([reconcile/0, reconcile/1]).
 -export([reconcile_numbers/0, reconcile_numbers/1]).
 -export([reconcile_accounts/0, reconcile_accounts/1]).
@@ -26,6 +27,23 @@
 %% run anyway (no callflow whapp connected to the db to execute). But it is
 %% still nasty...
 -define(CALLFLOW_VIEW, <<"callflow/listing_by_number">>).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec refresh/0 :: () -> 'ok'.
+refresh() ->
+    Views = whapps_util:get_views_json(whistle_number_manager, "views"),
+    _ = [begin
+             Db = wh_util:to_binary(http_uri:encode(wh_util:to_list(NumberDb))),
+             whapps_util:update_views(Db, Views, true) 
+         end
+         || NumberDb <- wnm_util:get_all_number_dbs()
+        ],
+    ok.
 
 %%--------------------------------------------------------------------
 %% @public
