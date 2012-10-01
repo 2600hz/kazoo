@@ -391,18 +391,31 @@ total_up_stats(Stats) ->
 
 total_up_stats_for_queue(QueueId, QueueStats, {TotCalls, TotWait, ByQueue}) ->
     Calls = wh_json:get_value(<<"calls">>, QueueStats, wh_json:new()),
-    Wait = sum_wait_time(Calls),
-    L = length(wh_json:to_proplist(Calls)),
+    {Wait, L} = sum_and_count_wait_time(Calls),
     ByQueue1 = wh_json:set_values([{[QueueId, <<"calls_this_hour">>], L}
                                    ,{[QueueId, <<"avg_wait_time_this_hour">>], avg_wait(Wait, L)}
                                   ], ByQueue),
 
     {TotCalls + L, TotWait + Wait, ByQueue1}.
 
-sum_wait_time(Calls) ->
-    wh_json:foldl(fun(_CallId, CallData, WaitAcc) ->
-                          wh_json:get_integer_value(<<"wait_time">>, CallData, 0) + WaitAcc
-                  end, 0, Calls).
+sum_and_count_wait_time(Calls) ->
+    wh_json:foldl(fun(_CallId, CallData, {WaitAcc, Tot}) ->
+                          case wh_json:get_integer_value(<<"wait_time">>, CallData) of
+                              undefined -> find_wait_time(CallData, WaitAcc, Tot);
+                              N -> {N + WaitAcc, Tot+1}
+                          end
+                  end, {0, 0}, Calls).
+
+find_wait_time(CallData, WaitAcc, Tot) ->
+    case wh_json:get_integer_value(<<"entered">>, CallData) of
+        undefined -> {WaitAcc, Tot};
+        EnteredTStamp ->
+            try wh_json:get_integer_value(<<"timestamp">>, CallData) - EnteredTStamp of
+                WaitTime -> {WaitAcc+WaitTime, Tot+1}
+            catch
+                error:badarith -> {WaitAcc, Tot}
+            end
+    end.
 
 avg_wait(_, 0) -> 0;
 avg_wait(W, C) -> W / C.
