@@ -636,7 +636,9 @@ add_agent_wrapup_time_on_break(AcctDoc, AgentId, CallId, Elapsed) ->
 add_agent_wrapup_time_left(AcctDoc, AgentId, CallId, WaitTimeLeft) ->
     CallIdKey = [<<"agents">>, AgentId, <<"wrapup">>, <<"callid">>],
     WaitKey = [<<"agents">>, AgentId, <<"wrapup">>, <<"time_left">>],
+    PauseKey = [<<"agents">>, AgentId, <<"status">>],
 
     wh_json:set_values([{CallIdKey, CallId}
                         ,{WaitKey, WaitTimeLeft}
+                        ,{PauseKey, <<"wrapup">>}
                        ], AcctDoc).
