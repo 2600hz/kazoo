@@ -559,7 +559,7 @@ answered({channel_hungup, CallId}
     acdc_agent:channel_hungup(Srv, CallId),
     Ref = start_wrapup_timer(WrapupTimeout),
 
-    acdc_stats:agent_wrapup(AcctId, AgentId, CallId, WrapupTimeout),
+    acdc_stats:agent_wrapup(AcctId, AgentId, WrapupTimeout),
 
     {next_state, wrapup, State#state{wrapup_timeout=0, wrapup_ref=Ref}};
 
@@ -582,7 +582,7 @@ answered({channel_hungup, CallId}
     acdc_agent:channel_hungup(Srv, CallId),
     Ref = start_wrapup_timer(WrapupTimeout),
 
-    acdc_stats:agent_wrapup(AcctId, AgentId, CallId, WrapupTimeout),
+    acdc_stats:agent_wrapup(AcctId, AgentId, WrapupTimeout),
 
     {next_state, wrapup, State#state{wrapup_timeout=0, wrapup_ref=Ref}};
 
@@ -630,7 +630,6 @@ wrapup({timeout, Ref, wrapup_expired}, #state{wrapup_ref=Ref
                                               ,agent_id=AgentId
                                              }=State) ->
     lager:debug("wrapup timer expired, ready for action!"),
-
     acdc_stats:agent_ready(AcctId, AgentId),
 
     {next_state, ready, clear_call(State)};
@@ -807,7 +806,7 @@ code_change(_OldVsn, StateName, State, _Extra) ->
 %%%===================================================================
 -spec start_wrapup_timer/1 :: (integer()) -> reference().
 start_wrapup_timer(Timeout) when Timeout < 0 -> start_wrapup_timer(0); % send immediately
-start_wrapup_timer(Timeout) -> gen_fsm:start_timer(Timeout, wrapup_expired).
+start_wrapup_timer(Timeout) -> gen_fsm:start_timer(Timeout*1000, wrapup_expired).
 
 -spec start_sync_timer/0 :: () -> reference().
 start_sync_timer() ->
