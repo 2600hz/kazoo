@@ -382,9 +382,13 @@ fetch_queue_stats(Id, Context) ->
     fetch_queue_stats(Id, Context, history).
 fetch_queue_stats(Id, Context, history) ->
     lager:debug("fetching queue stats for ~s", [Id]),
+
+    {Today, _} = calendar:universal_time(),
+    From = calendar:datetime_to_gregorian_seconds({Today, {0,0,0}}),
+
     crossbar_doc:load_view(<<"acdc_stats/stats_per_queue">>
-                               ,[{startkey, [Id, wh_json:new()]}
-                                 ,{endkey, [Id, 0]}
+                               ,[{startkey, [Id, wh_util:current_tstamp()]}
+                                 ,{endkey, [Id, From]}
                                  ,descending
                                 ]
                            ,Context
