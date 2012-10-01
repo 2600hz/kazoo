@@ -141,7 +141,7 @@ build_stats_resp(AcctId, RespQ, MsgId, [], CurrCalls, CurrAgents) ->
     Resp = props:filter_undefined(
              [{<<"Account-ID">>, AcctId}
               ,{<<"Current-Calls">>, wh_json:from_list(props:filter_undefined(CurrCalls))}
-              ,{<<"Current-Stats">>, wh_json:get_value(<<"agents">>, acdc_stats:agent_stats(AcctId))}
+              ,{<<"Current-Stats">>, acdc_stats:agent_stats(AcctId)}
               ,{<<"Current-Statuses">>, wh_json:from_list(props:filter_undefined(CurrAgents))}
               ,{<<"Msg-ID">>, MsgId}
               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
