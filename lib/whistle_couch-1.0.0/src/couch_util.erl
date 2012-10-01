@@ -231,6 +231,7 @@ get_results(#server{}=Conn, DbName, DesignDoc, ViewOptions) ->
 do_fetch_results(Db, DesignDoc, Options) ->
     ?RETRY_504(case couchbeam_view:fetch(Db, DesignDoc, Options) of
                    {'ok', JObj} -> {'ok', wh_json:get_value(<<"rows">>, JObj, JObj)};
+                   {'error', _, E} -> {'error', E};
                    Other -> Other
                end
               ).
