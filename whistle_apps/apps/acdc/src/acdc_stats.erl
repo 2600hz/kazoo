@@ -29,6 +29,8 @@
          ,agent_inactive/2
          ,agent_paused/3
          ,agent_resume/2
+         ,agent_wrapup/4
+         ,agent_ready/2
         ]).
 
 %% gen_listener functions
@@ -54,7 +56,7 @@
 -type stat_name() :: 'call_processed' | 'call_abandoned' |
                      'call_missed' | 'call_handled' |
                      'call_waiting' | 'call_recorded' |
-                     'agent_active' | 'agent_inactive' |
+                     'agent_active' | 'agent_inactive' | 'agent_wrapup' |
                      'agent_paused' | 'agent_resume'.
 
 -record(stat, {
@@ -227,6 +229,28 @@ agent_paused(AcctId, AgentId, Timeout) ->
                                              ,elapsed=Timeout
                                              ,name=agent_paused
                                             }
+                               }).
+
+-spec agent_wrapup/4 :: (ne_binary(), ne_binary(), ne_binary(), integer()) -> 'ok'.
+agent_wrapup(AcctId, AgentId, CallId, Timeout) ->
+    gen_listener:cast(?MODULE, {store, #stat{acct_id=AcctId
+                                             ,agent_id=AgentId
+                                             ,call_id=CallId
+                                             ,active_since=wh_util:current_tstamp()
+                                             ,elapsed=Timeout
+                                             ,name=agent_wrapup
+                                            }
+                               }).
+
+-spec agent_ready/2 :: (ne_binary(), ne_binary()) -> 'ok'.
+agent_ready(AcctId, AgentId) ->
+    gen_listener:cast(?MODULE, {remove, #stat{name=agent_wrapup
+                                              ,acct_id=AcctId
+                                              ,agent_id=AgentId
+                                              ,call_id='_'
+                                              ,active_since='_'
+                                              ,elapsed='_'
+                                             }
                                }).
 
 -define(BINDINGS, []).
@@ -492,6 +516,25 @@ update_stat(AcctDocs, #stat{name=call_recorded
                ,AcctDocs
               );
 
+update_stat(AcctDocs, #stat{acct_id=AcctId
+                            ,agent_id=AgentId
+                            ,call_id=CallId
+                            ,active_since=WrapupTimestamp
+                            ,elapsed=WaitTimeout
+                            ,name=agent_wrapup
+                           }) ->
+    AcctDoc = fetch_acct_doc(AcctId, AcctDocs),
+    Elapsed = wh_util:elapsed_s(WrapupTimestamp),
+    Funs = [
+            {fun add_agent_wrapup_time_on_break/4, [AgentId, CallId, Elapsed]}
+            ,{fun add_agent_wrapup_time_left/4, [AgentId, CallId, WaitTimeout - Elapsed]}
+           ],
+    dict:store(AcctId
+               ,lists:foldl(fun({F, Args}, AcctAcc) ->
+                                    apply(F, [AcctAcc | Args])
+                            end, AcctDoc, Funs)
+               ,AcctDocs
+              );
 
 update_stat(AcctDocs, _Stat) ->
     lager:debug("unknown stat: ~p", [_Stat]),
@@ -580,4 +623,20 @@ add_call_recorded(AcctDoc, QueueId, AgentId, CallId) ->
     Key = [<<"call_recorded">>, CallId, <<"recording_id">>],
     wh_json:set_values([{[<<"agents">>, AgentId | Key], RecordingName}
                         ,{[<<"queues">>, QueueId | Key], RecordingName}
+                       ], AcctDoc).
+
+add_agent_wrapup_time_on_break(AcctDoc, AgentId, CallId, Elapsed) ->
+    CallIdKey = [<<"agents">>, AgentId, <<"wrapup">>, <<"callid">>],
+    OnBreakKey = [<<"agents">>, AgentId, <<"wrapup">>, <<"elapsed">>],
+
+    wh_json:set_values([{CallIdKey, CallId}
+                        ,{OnBreakKey, Elapsed}
+                       ], AcctDoc).
+
+add_agent_wrapup_time_left(AcctDoc, AgentId, CallId, WaitTimeLeft) ->
+    CallIdKey = [<<"agents">>, AgentId, <<"wrapup">>, <<"callid">>],
+    WaitKey = [<<"agents">>, AgentId, <<"wrapup">>, <<"time_left">>],
+
+    wh_json:set_values([{CallIdKey, CallId}
+                        ,{WaitKey, WaitTimeLeft}
                        ], AcctDoc).
