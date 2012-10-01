@@ -12,8 +12,8 @@
 
 %% Query API
 -export([acct_stats/1
-         ,queue_stats/2
-         ,agent_stats/2
+         ,queue_stats/1, queue_stats/2
+         ,agent_stats/1, agent_stats/2
         ]).
 
 %% Stats API
@@ -84,6 +84,19 @@ acct_stats(AcctId) ->
                           ),
     wh_doc:public_fields(fetch_acct_doc(AcctId, AcctDocs)).
 
+queue_stats(AcctId) ->
+    MatchSpec = [{#stat{acct_id='$1', queue_id='$2', _='_'}
+                  ,[{'=:=', '$1', AcctId}
+                    ,{'=/=', '$2', 'undefined'}
+                   ]
+                  ,['$_']
+                 }],
+    AcctDocs = lists:foldl(fun(Stat, AcctAcc) ->
+                                   update_stat(AcctAcc, Stat)
+                           end, dict:new(), ets:select(?ETS_TABLE, MatchSpec)
+                          ),
+    wh_json:get_value([<<"queues">>], wh_doc:public_fields(fetch_acct_doc(AcctId, AcctDocs))).
+
 queue_stats(AcctId, QueueId) ->
     MatchSpec = [{#stat{acct_id='$1', queue_id='$2', _='_'}
                   ,[{'=:=', '$1', AcctId}
@@ -96,6 +109,20 @@ queue_stats(AcctId, QueueId) ->
                            end, dict:new(), ets:select(?ETS_TABLE, MatchSpec)
                           ),
     wh_json:get_value([<<"queues">>, QueueId], wh_doc:public_fields(fetch_acct_doc(AcctId, AcctDocs))).
+
+agent_stats(AcctId) ->
+    MatchSpec = [{#stat{acct_id='$1', agent_id='$2', _='_'}
+                  ,[{'=:=', '$1', AcctId}
+                    ,{'=/=', '$2', 'undefined'}
+                   ]
+                  ,['$_']
+                 }],
+
+    AcctDocs = lists:foldl(fun(Stat, AcctAcc) ->
+                                   update_stat(AcctAcc, Stat)
+                           end, dict:new(), ets:select(?ETS_TABLE, MatchSpec)
+                          ),
+    wh_json:get_value(<<"agents">>, wh_doc:public_fields(fetch_acct_doc(AcctId, AcctDocs))).
 
 agent_stats(AcctId, AgentId) ->
     MatchSpec = [{#stat{acct_id='$1', agent_id='$2', _='_'}

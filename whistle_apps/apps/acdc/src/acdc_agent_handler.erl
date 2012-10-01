@@ -131,23 +131,23 @@ handle_stats_req(AcctId, AgentId, RespQ, MsgId) ->
     end.
 
 -spec build_stats_resp/4 :: (api_binary(), api_binary(), api_binary(), [pid()] | []) -> any().
--spec build_stats_resp/7 :: (api_binary(), api_binary(), api_binary(), [pid()] | []
-                             ,wh_proplist(), wh_proplist(), wh_proplist()
+-spec build_stats_resp/6 :: (api_binary(), api_binary(), api_binary(), [pid()] | []
+                             ,wh_proplist(), wh_proplist()
                             ) -> any().
 build_stats_resp(AcctId, RespQ, MsgId, Ps) ->
-    build_stats_resp(AcctId, RespQ, MsgId, Ps, [], [], []).
+    build_stats_resp(AcctId, RespQ, MsgId, Ps, [], []).
 
-build_stats_resp(AcctId, RespQ, MsgId, [], CurrCalls, CurrStats, CurrAgents) ->
+build_stats_resp(AcctId, RespQ, MsgId, [], CurrCalls, CurrAgents) ->
     Resp = props:filter_undefined(
              [{<<"Account-ID">>, AcctId}
               ,{<<"Current-Calls">>, wh_json:from_list(props:filter_undefined(CurrCalls))}
-              ,{<<"Current-Stats">>, wh_json:from_list(props:filter_undefined(CurrStats))}
+              ,{<<"Current-Stats">>, wh_json:get_value(<<"agents">>, acdc_stats:agent_stats(AcctId))}
               ,{<<"Current-Statuses">>, wh_json:from_list(props:filter_undefined(CurrAgents))}
               ,{<<"Msg-ID">>, MsgId}
               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     wapi_acdc_agent:publish_stats_resp(RespQ, Resp);
-build_stats_resp(AcctId, RespQ, MsgId, [P|Ps], CurrCalls, CurrStats, CurrAgents) ->
+build_stats_resp(AcctId, RespQ, MsgId, [P|Ps], CurrCalls, CurrAgents) ->
     A = acdc_agent_sup:agent(P),
     {AcctId, AgentId} = acdc_agent:config(A),
 
@@ -155,7 +155,6 @@ build_stats_resp(AcctId, RespQ, MsgId, [P|Ps], CurrCalls, CurrStats, CurrAgents)
 
     build_stats_resp(AcctId, RespQ, MsgId, Ps
                      ,[{AgentId, acdc_agent_fsm:current_call(FSM)} | CurrCalls]
-                     ,[{AgentId, acdc_stats:agent_stats(AcctId, AgentId)} | CurrStats]
                      ,[{AgentId, acdc_agent_fsm:status(FSM)} | CurrAgents]
                     ).
 
