@@ -346,7 +346,17 @@ update(Id, #cb_context{req_data=Data}=Context) ->
 fetch_all_queue_stats(Context) ->
     fetch_all_queue_stats(Context, history).
 fetch_all_queue_stats(Context, history) ->
-    crossbar_doc:load_view(<<"acdc_stats/stats_per_queue">>, [], Context, fun normalize_queue_results/2);
+    {Today, _} = calendar:universal_time(),
+    From = calendar:datetime_to_gregorian_seconds({Today, {0,0,0}}),
+
+    crossbar_doc:load_view(<<"acdc_stats/stats_per_queue_by_time">>
+                           ,[{startkey, [wh_util:current_tstamp(), <<"\ufff0">>]}
+                             ,{endkey, [From, <<>>]}
+                             ,descending
+                            ]
+                           ,Context
+                           ,fun normalize_queue_results/2
+                          );
 fetch_all_queue_stats(#cb_context{account_id=AcctId}=Context, realtime) ->
     Req = [{<<"Account-ID">>, AcctId}
            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
