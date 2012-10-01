@@ -376,8 +376,10 @@ handle_cast({load_endpoints, Supervisor}, #state{acct_db=AcctDb
             {noreply, State}
     end;
 
-handle_cast({member_connect_resp, _}=Msg, #state{my_q = <<>>}=State) ->
+handle_cast({member_connect_resp, _}=Msg, #state{my_q = Q}=State) when
+      Q =:= undefined orelse Q =:= <<>> ->
     fetch_my_queue(),
+    lager:debug("replaying ~p, hopefully we have our queue by then", [Msg]),
     gen_listener:cast(self(), Msg),
     {noreply, State};
 handle_cast({member_connect_resp, ReqJObj}, #state{agent_id=AgentId
@@ -450,8 +452,10 @@ handle_cast({join_agent, ACallId}, #state{call=Call
 
     {noreply, State};
 
-handle_cast({send_sync_req}=Msg, #state{my_q = <<>>}=State) ->
+handle_cast({send_sync_req}=Msg, #state{my_q = Q}=State) when
+      Q =:= undefined orelse Q =:= <<>> ->
     fetch_my_queue(),
+    lager:debug("replaying ~p, hopefully we have our queue by then", [Msg]),
     gen_listener:cast(self(), Msg),
     {noreply, State};
 handle_cast({send_sync_req}, #state{my_id=MyId
@@ -554,6 +558,7 @@ send_member_connect_resp(JObj, MyQ, AgentId, MyId, LastConn) ->
              [{<<"Agent-ID">>, AgentId}
               ,{<<"Idle-Time">>, IdleTime}
               ,{<<"Process-ID">>, MyId}
+              ,{<<"Server-ID">>, MyQ}
               | wh_api:default_headers(MyQ, ?APP_NAME, ?APP_VERSION)
              ]),
     lager:debug("sending connect_resp to ~s: ~p", [Queue, Resp]),
@@ -698,7 +703,7 @@ logout_from_queue(AcctId, Q) ->
 
 fetch_my_queue() ->
     Self = self(),
-    _ = spawn(gen_listener,cast, [Self, {queue_name, gen_listener:queue_name(Self)}]),
+    _ = spawn(fun() -> gen_listener:cast(Self, {queue_name, gen_listener:queue_name(Self)}) end),
     ok.
 
 -spec record_endpoints/2 :: (wh_json:json_objects(), boolean()) -> boolean().
