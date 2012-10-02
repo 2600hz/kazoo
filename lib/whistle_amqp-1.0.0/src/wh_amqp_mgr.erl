@@ -11,15 +11,19 @@
 
 -behaviour(gen_server).
 
--export([start_link/0]).
--export([get_connection/0]).
--export([publish/2]).
--export([consume/1]).
--export([misc_req/1]).
--export([register_return_handler/0]).
--export([is_available/0]).
--export([wait_for_available_host/0]).
--export([notify_return_handlers/1]).
+-export([start_link/0
+         ,get_connection/0
+         ,publish/2
+         ,consume/1
+         ,misc_req/1
+         ,register_return_handler/0
+         ,is_available/0
+         ,available_brokers/0
+         ,brokers/0
+         ,wait_for_available_host/0
+         ,notify_return_handlers/1
+        ]).
+
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -34,9 +38,12 @@
 -define(START_TIMEOUT, 500).
 -define(MAX_TIMEOUT, 5000).
 
--record(state, {brokers=dict:new() :: dict()
-                ,available_brokers=dict:new() :: dict()
-                ,strategy=priority :: 'priority'
+-type strategy() :: 'priority'.
+
+-record(state, {brokers = dict:new() :: dict()
+                ,available_brokers = dict:new() :: dict()
+                ,current_broker :: wh_amqp_broker:broker()
+                ,strategy = 'priority' :: strategy()
                 ,return_handlers = dict:new() :: dict() %% ref, pid() - list of PIDs that are interested in returned messages
                }).
 
@@ -50,13 +57,19 @@
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
--spec get_connection/0 :: () -> {'ok', atom()} | {'error', 'amqp_down'}.
+-spec get_connection/0 :: () -> {'ok', atom()} |
+                                {'error', 'amqp_down'}.
 get_connection() ->
     gen_server:call(?SERVER, get_connection).
 
 -spec is_available/0 :: () -> boolean().
 is_available() ->
     gen_server:call(?SERVER, is_available).
+
+available_brokers() ->
+    gen_server:call(?SERVER, available_brokers).
+brokers() ->
+    gen_server:call(?SERVER, brokers).
 
 -spec wait_for_available_host/0 :: () -> 'ok'.
 wait_for_available_host() ->
@@ -114,7 +127,7 @@ notify_return_handlers(ReturnMsg) ->
 %%--------------------------------------------------------------------
 -spec init/1 :: ([]) -> {'ok', #state{}}.
 init([]) ->
-    put(callid, ?LOG_SYSTEM_ID),
+    put(callid, ?MODULE),
     {ok, #state{}}.
 
 %%--------------------------------------------------------------------
@@ -129,16 +142,28 @@ init([]) ->
 %%--------------------------------------------------------------------
 handle_call(get_return_handler_dict, _, #state{return_handlers=RHDict}=State) ->
     {reply, RHDict, State};
+
 handle_call(is_available, _, #state{available_brokers=Brokers}=State) ->
     {reply, dict:size(Brokers) > 0, State};
-handle_call(get_connection, _, State) ->
-    case next_available_broker(State) of 
-        {undefined, S} ->
-            {reply, {error, amqp_down}, S, hibernate};
-        {Broker, S} ->
-            Name = wh_amqp_broker:name(Broker),
-            {reply, {ok, Name}, S, hibernate}
+
+handle_call(available_brokers, _, #state{available_brokers=Brokers}=State) ->
+    {reply, [N || {N, _} <- dict:to_list(Brokers)], State};
+
+handle_call(brokers, _, #state{brokers=Bs}=State) ->
+    {reply, [{N, P} || {N, {_, P}} <- dict:to_list(Bs)], State};
+
+handle_call(get_connection, _, #state{current_broker=undefined
+                                      ,strategy=Strategy
+                                      ,available_brokers=Available
+                                      ,brokers=Brokers
+                                      }=State) ->
+    case next_available_broker(Strategy, Available, Brokers) of
+        undefined -> {reply, {error, amqp_down}, State, hibernate};
+        Broker ->
+            {reply, {ok, wh_amqp_broker:name(Broker)}, State#state{current_broker=Broker}, hibernate}
     end;
+handle_call(get_connection, _, #state{current_broker=Broker}=State) ->
+    {reply, {ok, wh_amqp_broker:name(Broker)}, State};
 handle_call(_, _, State) ->
     {reply, {error, not_implemented}, State}.
 
@@ -155,35 +180,56 @@ handle_cast({add_broker, URI, UseFederation}, #state{brokers=Brokers}=State) ->
     Builders = [fun(B) -> wh_amqp_broker:set_uri(URI, B) end
                 ,fun(B) -> wh_amqp_broker:set_use_federation(UseFederation, B) end
                ],
+
     case catch lists:foldl(fun(F, B) -> F(B) end, wh_amqp_broker:new(), Builders) of
-        {'EXIT', _} -> 
+        {'EXIT', _} ->
             lager:error("failed to parse AMQP broker URI '~p', dropping", [URI]),
             {noreply, State};
         Broker ->
             Name = wh_amqp_broker:name(Broker),
+            Priority = dict:size(Brokers) + 1,
+
             case wh_amqp_connection_sup:add(Broker) of
                 {ok, _} ->
+                    lager:info("added connection to broker ~s(~p)", [Name, Priority]),
                     _Ref = erlang:monitor(process, Name),
-                    {noreply, State#state{brokers=dict:store(Name, Broker, Brokers)}, hibernate};
+                    {noreply, State#state{brokers=dict:store(Name, {Broker, Priority}, Brokers)}, hibernate};
                 {error, {already_started, _}} ->
+                    lager:info("connection to broker ~s already started(~p)", [Name, Priority]),
                     _Ref = erlang:monitor(process, Name),
-                    {noreply, State#state{brokers=dict:store(Name, Broker, Brokers)}, hibernate};
+                    {noreply, State#state{brokers=dict:store(Name, {Broker, Priority}, Brokers)}, hibernate};
                 {error, {Reason, _}} ->
                     lager:info("unable to start AMQP connection to '~s': ~p", [Name, Reason]),
                     _ = wh_amqp_connection_sup:remove(Broker),
                     {noreply, State}
             end
     end;
-handle_cast({broker_unavailable, Name}, #state{available_brokers=Brokers}=State) ->
-    {noreply, State#state{available_brokers=dict:erase(Name, Brokers)}};
-handle_cast({broker_available, Name}, #state{brokers=Brokers, available_brokers=AvailableBrokers}=State) ->
-    case dict:find(Name, Brokers) of 
-        error -> 
+handle_cast({broker_unavailable, Name}, #state{available_brokers=Available
+                                               ,brokers=Brokers
+                                               ,strategy=Strategy
+                                              }=State) ->
+    Available1 = dict:erase(Name, Available),
+
+    NewBroker = next_available_broker(Strategy, Available1, Brokers),
+    {noreply, State#state{available_brokers=Available1
+                          ,current_broker=NewBroker
+                         }};
+handle_cast({broker_available, Name}, #state{brokers=Brokers
+                                             ,available_brokers=AvailableBrokers
+                                             ,current_broker=CurrBroker
+                                            }=State) ->
+    case dict:find(Name, Brokers) of
+        error ->
             lager:debug("received notice that unknown AMQP broker '~s' is available, ignoring", [Name]),
             {noreply, State};
-        {ok, Broker} ->
-            lager:debug("received notice that AMQP broker '~s' is available", [Name]),
-            {noreply, State#state{available_brokers=dict:store(Name, Broker, AvailableBrokers)}, hibernate}
+        {ok, {Broker, P}} ->
+            lager:debug("received notice that AMQP broker '~s'(~p) is available", [Name, P]),
+
+            NewCurrBroker = maybe_update_broker(CurrBroker, Broker, P, Brokers),
+
+            {noreply, State#state{available_brokers=dict:store(Name, Broker, AvailableBrokers)
+                                  ,current_broker=NewCurrBroker
+                                 }, hibernate}
     end;
 handle_cast(_Msg, State) ->
     {noreply, State}.
@@ -203,6 +249,7 @@ handle_info({'DOWN', Ref, process, {Name, _}, _R}, #state{available_brokers=Brok
     lager:info("lost connection to AMQP broker '~s'", [Name]),
     {noreply, State#state{available_brokers=dict:erase(Name, Brokers)}, hibernate};
 handle_info(_Info, State) ->
+    lager:debug("unhandled message: ~p", [_Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -212,7 +259,7 @@ handle_info(_Info, State) ->
 %% cleaning up. When it returns, the gen_server terminates with Reason.
 %% The return value is ignored.
 %%--------------------------------------------------------------------
--spec terminate/2 :: (term(), #state{}) -> no_return().
+-spec terminate/2 :: (term(), #state{}) -> 'ok'.
 terminate(_Reason, _) ->
     lager:debug("amqp manager terminated: ~p", [_Reason]).
 
@@ -226,20 +273,35 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 %%% Internal functions
 %%--------------------------------------------------------------------
--spec next_available_broker/1 :: (#state{}) -> {'undefined' | wh_amqp_broker:broker(), #state{}}.
--spec next_available_broker/3 :: ('priority', [{atom(), wh_amqp_broker:broker()},...] | [], #state{}) -> {'undefined' | wh_amqp_broker:broker(), #state{}}.
-
-next_available_broker(#state{strategy=Strategy,  available_brokers=Brokers}=State) ->
-    case dict:to_list(Brokers) of
-        [] -> {undefined, State};
-        [{_, Broker}] -> {Broker, State};
-        Else -> next_available_broker(Strategy, Else, State)
+-spec next_available_broker/3 :: (strategy(), dict(), dict()) -> 'undefined' | wh_amqp_broker:broker().
+next_available_broker(Strategy, Available, Brokers) ->
+    case dict:size(Available) of
+        0 -> undefined;
+        1 -> [{_, Broker}] = dict:to_list(Available), Broker;
+        _More -> find_available_broker(Available, prioritize_brokers(Strategy, Brokers))
     end.
 
-next_available_broker(_, [], State) ->
-    {undefined, State};
-next_available_broker(priority, [{_, Broker}|Brokers], State) ->
-    case wh_amqp_broker:is_available(Broker) of
-        true -> {Broker, State};
-        false -> next_available_broker(priority, Brokers, State)
+prioritize_brokers('priority', Bs) ->
+    lists:keysort(1, [ {P, N} || {N, {_B, P}} <- dict:to_list(Bs)]).
+
+find_available_broker(_Available, []) -> undefined;
+find_available_broker(Available, [{_,N}|Bs]) ->
+    case dict:find(N, Available) of
+        error -> find_available_broker(Available, Bs);
+        {ok, Broker} -> Broker
+    end.
+
+maybe_update_broker(undefined, NewBroker, _, _) -> NewBroker;
+maybe_update_broker(CurrBroker, NewBroker, P, Brokers) ->
+    case dict:find(wh_amqp_broker:name(CurrBroker), Brokers) of
+        {ok, {_, CurrP}} when P < CurrP ->
+            lager:debug("new broker is higher priority(~p) than current broker(~p), chaos-monkey time!", [P, CurrP]),
+            wh_amqp_connection:teardown_channels(CurrBroker),
+            NewBroker;
+        {ok, {_, CurrP}} ->
+            lager:debug("current broker is higher priority(~p) than new broker(~p)", [CurrP, P]),
+            CurrBroker;
+        error ->
+            lager:debug("somehow curr broker is not found: ~p", [CurrBroker]),
+            NewBroker
     end.
