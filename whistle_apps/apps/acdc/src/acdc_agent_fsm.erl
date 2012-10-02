@@ -521,8 +521,10 @@ ringing(_Evt, State) ->
 
 ringing(status, _, State) ->
     {reply, <<"ringing">>, ringing, State};
-ringing(current_call, _, #state{member_call=Call}=State) ->
-    {reply, current_call(Call, ringing, undefined), ringing, State}.
+ringing(current_call, _, #state{member_call=Call
+                                ,member_call_queue_id=QueueId
+                               }=State) ->
+    {reply, current_call(Call, ringing, QueueId, undefined), ringing, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -607,8 +609,9 @@ answered(status, _, State) ->
     {reply, <<"answered">>, answered, State};
 answered(current_call, _, #state{member_call=Call
                                  ,member_call_start=Start
+                                 ,member_call_queue_id=QueueId
                                 }=State) ->
-    {reply, current_call(Call, answered, Start), answered, State}.
+    {reply, current_call(Call, answered, QueueId, Start), answered, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -650,8 +653,9 @@ wrapup(status, _, State) ->
     {reply, <<"wrapup">>, wrapup, State};
 wrapup(current_call, _, #state{member_call=Call
                                ,member_call_start=Start
+                               ,member_call_queue_id=QueueId
                               }=State) ->
-    {reply, current_call(Call, wrapup, Start), wrapup, State}.
+    {reply, current_call(Call, wrapup, QueueId, Start), wrapup, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -856,9 +860,10 @@ clear_call(State) ->
                 ,caller_exit_key = <<"#">>
                }.
 
--spec current_call/3 :: (whapps_call:call() | 'undefined', atom(), 'undefined' | wh_now()) -> wh_json:json_object() | 'undefined'.
-current_call(undefined, _, _) -> undefined;
-current_call(Call, AgentState, Start) -> 
+-spec current_call/4 :: (whapps_call:call() | 'undefined', atom(), ne_binary(), 'undefined' | wh_now()) ->
+                                wh_json:json_object() | 'undefined'.
+current_call(undefined, _, _, _) -> undefined;
+current_call(Call, AgentState, QueueId, Start) -> 
     wh_json:from_list([{<<"call_id">>, whapps_call:call_id(Call)}
                        ,{<<"caller_id_name">>, whapps_call:caller_id_name(Call)}
                        ,{<<"caller_id_number">>, whapps_call:caller_id_name(Call)}
@@ -866,6 +871,7 @@ current_call(Call, AgentState, Start) ->
                        ,{<<"from">>, whapps_call:from_user(Call)}
                        ,{<<"agent_state">>, wh_util:to_binary(AgentState)}
                        ,{<<"duration">>, elapsed(Start)}
+                       ,{<<"queue_id">>, QueueId}
                       ]).
 
 elapsed(undefined) -> undefined;
