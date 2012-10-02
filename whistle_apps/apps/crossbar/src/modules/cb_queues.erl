@@ -479,8 +479,8 @@ normalize_view_results(JObj, Acc) ->
 -spec normalize_queue_results/2 :: (wh_json:json_object(), wh_json:json_objects()) -> wh_json:json_objects().
 normalize_queue_results(JObj, Acc) ->
     [begin
-         [AID, _] = wh_json:get_value(<<"key">>, JObj),
-         wh_json:set_value(<<"queue_id">>, AID, wh_json:get_value(<<"value">>, JObj))
+         [_, QID] = wh_json:get_value(<<"key">>, JObj),
+         wh_json:set_value(<<"queue_id">>, QID, wh_json:get_value(<<"value">>, JObj))
      end
      | Acc].
 
