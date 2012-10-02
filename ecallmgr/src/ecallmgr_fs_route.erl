@@ -258,7 +258,8 @@ route_req(CallId, FSID, Props, Node) ->
      ,{<<"To">>, ecallmgr_util:get_sip_to(Props)}
      ,{<<"From">>, ecallmgr_util:get_sip_from(Props)}
      ,{<<"Request">>, ecallmgr_util:get_sip_request(Props)}
-     ,{<<"From-Network-Addr">>,props:get_value(<<"Caller-Network-Addr">>, Props)}
+     ,{<<"From-Network-Addr">>, props:get_value(<<"variable_sip_h_X-AUTH-IP">>, Props
+                                                ,props:get_value(<<"variable_sip_received_ip">>, Props))}
      ,{<<"Switch-Nodename">>, wh_util:to_binary(Node)}
      ,{<<"Switch-Hostname">>, props:get_value(<<"FreeSWITCH-Hostname">>, Props)}
      ,{<<"Call-ID">>, CallId}
