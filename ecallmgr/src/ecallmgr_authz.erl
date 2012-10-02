@@ -25,15 +25,17 @@
 
 -spec maybe_authorize_channel/2 :: (wh_proplist(), atom()) -> boolean().
 maybe_authorize_channel(Props, Node) ->
+    
     CallId = props:get_value(<<"Unique-ID">>, Props),
-    is_authz_enabled(Props, CallId, Node).
+        is_authz_enabled(Props, CallId, Node).
 
 -spec is_authz_enabled/3 :: (wh_proplist(), ne_binary(), atom()) -> boolean().
 is_authz_enabled(Props, CallId, Node) ->
+    
     case wh_util:is_true(ecallmgr_config:get(<<"authz_enabled">>, false)) of
-        true -> is_global_resource(Props, CallId, Node);
-        false ->
-            lager:debug("config ecallmgr.authz is disabled", []),
+        true ->
+            is_global_resource(Props, CallId, Node);
+                false ->            lager:debug("config ecallmgr.authz is disabled", []),
             allow_call(Props, CallId, Node)
     end.
 
@@ -81,14 +83,29 @@ ensure_account_id_exists(Props, CallId, Node) ->
                 {error, _R} -> 
                     lager:debug("unable to determine the account id: ~p", [_R]),
                     maybe_deny_call(Props, CallId, Node);
-                {ok, _}=Ok ->
-                    update_account_id(Ok, CallId, Node),
-                    update_reseller_id(Ok, CallId, Node),
-                    authorize_account(Props, CallId, Node)
+                {ok, Resp} -> 
+                    update_account_id(Resp, Props, CallId, Node)
             end;
-        AccountId ->
-            put(account_id, AccountId),
+        _Else ->
             authorize_account(Props, CallId, Node)
+    end.
+
+-spec update_account_id/4 :: (wh_proplist(), wh_proplist(), ne_binary(), atom()) -> 'ok'.
+update_account_id(Resp, Props, CallId, Node) ->
+    case props:get_value(?GET_CCV(<<"Account-ID">>), Resp) of
+        undefined -> update_reseller_id(Resp, Props, CallId, Node);
+        AccountId ->
+            'ok' = ecallmgr_util:send_cmd(Node, CallId, "export", ?SET_CCV(<<"Account-ID">>, AccountId)),
+            update_reseller_id(Resp, [{?GET_CCV(<<"Account-ID">>), AccountId}|Props], CallId, Node)
+    end.
+
+-spec update_reseller_id/4 :: (wh_proplist(), wh_proplist(), ne_binary(), atom()) -> 'ok'.
+update_reseller_id(Resp, Props, CallId, Node) ->
+    case props:get_value(?GET_CCV(<<"Reseller-ID">>), Resp) of
+        undefined -> authorize_account(Props, CallId, Node);
+        ResellerId ->
+            'ok' = ecallmgr_util:send_cmd(Node, CallId, "set", ?SET_CCV(<<"Reseller-ID">>, ResellerId)),
+            authorize_account([{?GET_CCV(<<"Reseller-ID">>), ResellerId}|Props], CallId, Node)
     end.
 
 -spec authorize_account/3 :: (wh_proplist(), ne_binary(), atom()) -> boolean().
@@ -333,22 +350,3 @@ rating_req(CallId, Props) ->
 get_time_value(Key, Props) ->
     V = props:get_value(Key, Props, 0),
     wh_util:unix_seconds_to_gregorian_seconds(wh_util:microseconds_to_seconds(V)).
-
--spec update_account_id/3 :: ({'ok', wh_proplist()}, ne_binary(), atom()) -> 'ok'.
-update_account_id({ok, Props}, CallId, Node) ->
-    case props:get_value(?GET_CCV(<<"Account-ID">>), Props) of
-        undefined -> ok;
-        AccountId ->
-            'ok' = ecallmgr_util:send_cmd(Node, CallId, "export", ?SET_CCV(<<"Account-ID">>, AccountId)),
-            put(account_id, AccountId),
-            ok
-    end.
-
--spec update_reseller_id/3 :: ({'ok', wh_proplist()}, ne_binary(), atom()) -> 'ok'.
-update_reseller_id({ok, Props}, CallId, Node) ->
-    case props:get_value(?GET_CCV(<<"Reseller-ID">>), Props) of
-        undefined -> ok;
-        ResellerId ->
-            'ok' = ecallmgr_util:send_cmd(Node, CallId, "set", ?SET_CCV(<<"Reseller-ID">>, ResellerId)),
-            ok
-    end.
