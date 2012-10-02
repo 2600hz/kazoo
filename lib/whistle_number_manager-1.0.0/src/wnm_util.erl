@@ -29,6 +29,14 @@
 -define(DEFAULT_CLASSIFIERS, [{<<"tollfree_us">>, <<"^\\+1(800|888|877|866|855)\\d{7}$">>}
                               ,{<<"did_us">>, <<"^\\+1\\d{10}$">>}
                              ]).
+-define(DEFAULT_E164_CONVERTERS, [{<<"^\\+?1?([2-9][0-9]{2}[2-9][0-9]{6})$">>
+                                     ,wh_json:from_list([{<<"prefix">>, <<"+1">>}])
+                                  }
+                                  ,{<<"^011(\\d*)$|^00(\\d*)$">>
+                                        ,wh_json:from_list([{<<"prefix">>, <<"+">>}])
+                                   }
+                                 ]).
+-define(DEFAULT_RECONCILE_REGEX, <<"^\\+?1?\\d{10}$">>).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -64,7 +72,7 @@ classify_number(Num, [{Classification, Classifier}|Classifiers]) ->
 %%--------------------------------------------------------------------
 -spec is_reconcilable/1 :: (ne_binary()) -> boolean().
 is_reconcilable(Number) ->
-    Regex = whapps_config:get_binary(?WNM_CONFIG_CAT, <<"reconcile_regex">>, <<"^\\+?1?\\d{10}$">>),
+    Regex = whapps_config:get_binary(?WNM_CONFIG_CAT, <<"reconcile_regex">>, ?DEFAULT_RECONCILE_REGEX),
     Num = wnm_util:normalize_number(Number),
     case re:run(Num, Regex) of
         nomatch ->
@@ -146,57 +154,51 @@ normalize_number(Number) ->
 -spec is_1npan/1 :: (ne_binary()) -> boolean().
 
 is_e164(DID) ->
-    re:run(DID, <<"^\\+1\\d{10}$">>) =/= nomatch.
+    DID =:= to_e164(DID).
 
 is_npan(DID) ->
-    re:run(DID, <<"^\\d{10}$">>) =/= nomatch.
+    re:run(DID, <<"^[2-9][0-9]{2}[2-9][0-9]{6}$">>) =/= nomatch.
 
 is_1npan(DID) ->
-    re:run(DID, <<"^1\\d{10}$">>) =/= nomatch.
+    re:run(DID, <<"^\\+1[2-9][0-9]{2}[2-9][0-9]{6}$">>) =/= nomatch.
 
 %% +18001234567 -> +18001234567
 -spec to_e164/1 :: (ne_binary()) -> ne_binary().
 to_e164(<<$+, _/binary>> = N) ->
     N;
-to_e164(<<"011", N/binary>>) ->
-    <<$+, N/binary>>;
-to_e164(<<"00", N/binary>>) ->
-    <<$+, N/binary>>;
-to_e164(<<"+1", _/binary>> = N) when erlang:byte_size(N) =:= 12 ->
-    N;
-%% 18001234567 -> +18001234567
-to_e164(<<$1, _/binary>> = N) when erlang:byte_size(N) =:= 11 ->
-    << $+, N/binary>>;
-%% 8001234567 -> +18001234567
-to_e164(N) when erlang:byte_size(N) =:= 10 ->
-    <<$+, $1, N/binary>>;
-to_e164(Other) ->
-    Other.
+to_e164(Number) ->
+    Default = wh_json:from_list(?DEFAULT_E164_CONVERTERS),
+    Converters = whapps_config:get(?WNM_CONFIG_CAT, <<"e164_converters">>, Default),    
+    Regexs = wh_json:get_keys(Converters),
+    maybe_convert_to_e164(Regexs, Converters, Number).
+
+maybe_convert_to_e164([], _, Number) ->
+    Number;
+maybe_convert_to_e164([Regex|Regexs], Converters, Number) ->
+    case re:run(Number, Regex, [{capture, all, binary}]) of
+        nomatch -> 
+            maybe_convert_to_e164(Regexs, Converters, Number);
+        {match, Captures} ->
+            Root = lists:last(Captures),
+            Prefix = wh_json:get_binary_value([Regex, <<"prefix">>], Converters, <<>>),
+            Suffix = wh_json:get_binary_value([Regex, <<"suffix">>], Converters, <<>>),
+            <<Prefix/binary, Root/binary, Suffix/binary>>
+    end.
 
 %% end up with 8001234567 from 1NPAN and E.164
 -spec to_npan/1 :: (ne_binary()) -> ne_binary().
-to_npan(<<"011", N/binary>>) ->
-    to_npan(N);
-to_npan(<<$+, $1, N/binary>>) when erlang:byte_size(N) =:= 10 ->
-    N;
-to_npan(<<$1, N/binary>>) when erlang:byte_size(N) =:= 10 ->
-    N;
-to_npan(NPAN) when erlang:byte_size(NPAN) =:= 10 ->
-    NPAN;
-to_npan(Other) ->
-    Other.
+to_npan(Number) ->
+    case re:run(Number, <<"^\\+?1?([2-9][0-9]{2}[2-9][0-9]{6})$">>, [{capture, [1], binary}]) of
+        nomatch -> Number;
+        {match, [NPAN]} -> NPAN
+    end.
 
 -spec to_1npan/1 :: (ne_binary()) -> ne_binary().
-to_1npan(<<"011", N/binary>>) ->
-    to_1npan(N);
-to_1npan(<<$+, $1, N/binary>>) when erlang:byte_size(N) =:= 10 ->
-    <<$1, N/binary>>;
-to_1npan(<<$1, N/binary>>=NPAN1) when erlang:byte_size(N) =:= 10 ->
-    NPAN1;
-to_1npan(NPAN) when erlang:byte_size(NPAN) =:= 10 ->
-    <<$1, NPAN/binary>>;
-to_1npan(Other) ->
-    Other.
+to_1npan(Number) ->
+    case re:run(Number, <<"^\\+?1?([2-9][0-9]{2}[2-9][0-9]{6})$">>, [{capture, [1], binary}]) of
+        nomatch -> Number;
+        {match, [NPAN]} -> <<$1, NPAN/binary>>
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
