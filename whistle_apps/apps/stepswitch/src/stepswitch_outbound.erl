@@ -77,7 +77,7 @@ attempt_to_fulfill_bridge_req(Number, CtrlQ, JObj, Props) ->
                  _ ->
                      Flags = wh_json:get_value(<<"Flags">>, JObj, []),
                      Resources = props:get_value(resources, Props),
-                     {Endpoints, IsEmergency} = find_endpoints(Number, Flags, Resources),
+                     {Endpoints, IsEmergency} = find_endpoints(Number, Flags, Resources, JObj),
                      bridge_to_endpoints(Endpoints, IsEmergency, CtrlQ, JObj)
              end,
     case {Result, correct_shortdial(Number, JObj)} of
@@ -92,7 +92,7 @@ attempt_to_fulfill_bridge_req(Number, CtrlQ, JObj, Props) ->
 attempt_to_fulfill_originate_req(Number, JObj, Props) ->
     Flags = wh_json:get_value(<<"Flags">>, JObj, []),
     Resources = props:get_value(resources, Props),
-    {Endpoints, _} = find_endpoints(Number, Flags, Resources),
+    {Endpoints, _} = find_endpoints(Number, Flags, Resources, JObj),
     case {originate_to_endpoints(Endpoints, JObj), correct_shortdial(Number, JObj)} of
         {{error, no_resources}, fail} -> {error, no_resources};
         {{error, no_resources}, CorrectedNumber} ->
@@ -445,8 +445,8 @@ get_event_type(JObj) ->
 %% component of a Whistle dialplan bridge API.
 %% @end
 %%--------------------------------------------------------------------
--spec find_endpoints/3 :: (ne_binary(), [] | [ne_binary(),...], endpoints()) -> {proplist(), boolean()}.
-find_endpoints(Number, Flags, Resources) ->
+-spec find_endpoints/4 :: (ne_binary(), [] | [ne_binary(),...], endpoints(), wh_json:json_object()) -> {wh_proplist(), boolean()}.
+find_endpoints(Number, Flags, Resources, JObj) ->
     Endpoints = case Flags of
                     'undefined' ->
                         stepswitch_util:evaluate_number(Number, Resources);
@@ -454,7 +454,7 @@ find_endpoints(Number, Flags, Resources) ->
                         FilteredResources = stepswitch_util:evaluate_flags(Flags, Resources),
                         stepswitch_util:evaluate_number(Number, FilteredResources)
                 end,
-    {build_endpoints(Endpoints), contains_emergency_endpoint(Endpoints)}.
+    {build_endpoints(Endpoints, JObj), contains_emergency_endpoint(Endpoints)}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -480,22 +480,22 @@ contains_emergency_endpoint([{_, _, _, _, IsEmergency}|T], UseEmergency) ->
 %% in a delay between resources
 %% @end
 %%--------------------------------------------------------------------
--spec build_endpoints/1 :: (endpoints()) -> proplist().
--spec build_endpoints/3 :: (endpoints(), non_neg_integer(), proplist()) -> proplist().
-build_endpoints(Endpoints) ->
-    build_endpoints(Endpoints, 0, []).
+-spec build_endpoints/2 :: (endpoints(), wh_json:json_object()) -> wh_proplist().
+-spec build_endpoints/4 :: (endpoints(), wh_json:json_object(), non_neg_integer(), wh_proplist()) -> wh_proplist().
+build_endpoints(Endpoints, JObj) ->
+    build_endpoints(Endpoints, JObj, 0, []).
 
-build_endpoints([], _, Acc) ->
+build_endpoints([], _, _, Acc) ->
     lists:reverse(Acc);
-build_endpoints([{_, GracePeriod, Number, [Gateway], _}|T], Delay, Acc0) ->
-    build_endpoints(T, Delay + GracePeriod, [build_endpoint(Number, Gateway, Delay)|Acc0]);
-build_endpoints([{_, GracePeriod, Number, Gateways, _}|T], Delay, Acc0) ->
+build_endpoints([{_, GracePeriod, Number, [Gateway], _}|T], JObj, Delay, Acc0) ->
+    build_endpoints(T, JObj, Delay + GracePeriod, [build_endpoint(Number, Gateway, Delay, JObj)|Acc0]);
+build_endpoints([{_, GracePeriod, Number, Gateways, _}|T], JObj, Delay, Acc0) ->
     {D2, Acc1} = lists:foldl(fun(Gateway, {0, AccIn}) ->
-                                     {2, [build_endpoint(Number, Gateway, 0)|AccIn]};
+                                     {2, [build_endpoint(Number, Gateway, 0, JObj)|AccIn]};
                                  (Gateway, {D0, AccIn}) ->
-                                     {D0 + 2, [build_endpoint(Number, Gateway, D0)|AccIn]}
+                                     {D0 + 2, [build_endpoint(Number, Gateway, D0, JObj)|AccIn]}
                             end, {Delay, Acc0}, Gateways),
-    build_endpoints(T, D2 - 2 + GracePeriod, Acc1).
+    build_endpoints(T, JObj, D2 - 2 + GracePeriod, Acc1).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -503,12 +503,21 @@ build_endpoints([{_, GracePeriod, Number, Gateways, _}|T], Delay, Acc0) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec build_endpoint/3 :: (ne_binary(), #gateway{}, non_neg_integer()) -> wh_json:json_object().
-build_endpoint(Number, Gateway, _Delay) ->
+-spec build_endpoint/4 :: (ne_binary(), #gateway{}, non_neg_integer(), wh_json:json_object()) -> wh_json:json_object().
+build_endpoint(Number, Gateway, _Delay, JObj) ->
     Route = stepswitch_util:get_dialstring(Gateway, Number),
     lager:debug("found resource ~s (~s)", [Gateway#gateway.resource_id, Route]),
 
-    CCVs = [{<<"Resource-ID">>, Gateway#gateway.resource_id}],
+    FromUri = case Gateway#gateway.format_from_uri of
+                  false -> undefined;
+                  true ->
+                      from_uri(wh_json:get_value(<<"Outgoing-Caller-ID-Number">>, JObj), Gateway#gateway.realm)
+              end,
+    lager:debug("setting from-uri to ~p on gateway ~p", [FromUri, Gateway#gateway.resource_id]),
+
+    CCVs = [{<<"Resource-ID">>, Gateway#gateway.resource_id}
+            ,{<<"From-URI">>, FromUri}
+           ],
     Prop = [{<<"Invite-Format">>, Gateway#gateway.invite_format}
             ,{<<"Route">>, stepswitch_util:get_dialstring(Gateway, Number)}
             ,{<<"Callee-ID-Name">>, wh_util:to_binary(Number)}
@@ -525,7 +534,7 @@ build_endpoint(Number, Gateway, _Delay) ->
             ,{<<"Endpoint-Type">>, Gateway#gateway.endpoint_type}
             ,{<<"Endpoint-Options">>, Gateway#gateway.endpoint_options}
            ],
-    wh_json:from_list([ KV || {_, V}=KV <- Prop, V =/= 'undefined' andalso V =/= <<"0">>]).
+    wh_json:from_list([KV || {_, V}=KV <- Prop, V =/= 'undefined' andalso V =/= <<"0">>]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -681,3 +690,6 @@ get_emergency_cid_number(Requested, [Candidate|Candidates], E911Enabled) ->
         true -> Candidate;
         false -> get_emergency_cid_number(Requested, Candidates, E911Enabled)
     end.
+
+from_uri(?NE_BINARY = CNum, Realm) -> <<"sip:", CNum/binary, "@", Realm/binary>>;
+from_uri(_, _) -> undefined.
