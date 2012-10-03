@@ -341,9 +341,9 @@ generate_ccvs(Endpoint, Call, CallFwd) ->
                         end
                 end
                ,fun(J) ->
-                        case wh_json:is_false([<<"media">>, <<"fax">>, <<"option">>], Endpoint) of
-                            true -> J;
-                            false -> wh_json:set_value(<<"Fax-Enabled">>, <<"true">>, J)
+                        case wh_json:get_value([<<"media">>, <<"fax_option">>], Endpoint) of
+                            <<"auto">> -> wh_json:set_value(<<"Fax-Enabled">>, <<"true">>, J);
+                            _Else -> J
                         end
                 end
                ,fun(J) ->
