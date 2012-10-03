@@ -328,6 +328,7 @@ create_gateway(JObj, Id) ->
                  EndpointType
              ,endpoint_options =
                  EndpointOptions
+             ,format_from_uri = wh_json:is_true(<<"format_from_uri">>, JObj, Default#gateway.format_from_uri)
             }.
 
 endpoint_type(JObj, Default) ->
