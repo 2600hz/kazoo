@@ -10,9 +10,9 @@
 
 -include("callflow.hrl").
 
--export([build/2, build/3
-         ,get/2, flush/2
-        ]).
+-export([build/2, build/3]).
+-export([get/1, get/2]).
+-export([flush/2]).
 
 -define(NON_DIRECT_MODULES, [cf_ring_group, acdc_util]).
 
@@ -124,9 +124,16 @@ create_endpoints(Endpoint, Properties, Call) ->
 %% Fetches a endpoint defintion from the database or cache
 %% @end
 %%--------------------------------------------------------------------
+-spec get/1 :: (whapps_call:call()) ->
+                       {'ok', wh_json:json_object()} |
+                       {'error', term()}.
 -spec get/2 :: ('undefined' | ne_binary(), ne_binary() | whapps_call:call()) ->
                        {'ok', wh_json:json_object()} |
                        {'error', term()}.
+
+get(Call) ->
+    get(whapps_call:authorizing_id(Call), Call).
+
 get(undefined, _Call) ->
     {error, invalid_endpoint_id};
 get(EndpointId, AccountDb) when is_binary(AccountDb) ->
@@ -176,6 +183,11 @@ create_sip_endpoint(Endpoint, Properties, Call) ->
                                      {AltCIDNum, AltCIDName} -> {AltCIDNum, AltCIDName}
                                  end,
 
+    ForceFax = case wh_json:is_true([<<"media">>, <<"fax_option">>],Endpoint) of
+                   false -> undefined;
+                   true -> <<"peer">>
+               end,
+
     Prop = [{<<"Invite-Format">>, wh_json:get_value([<<"sip">>, <<"invite_format">>], Endpoint, <<"username">>)}
             ,{<<"To-User">>, wh_json:get_value([<<"sip">>, <<"username">>], Endpoint)}
             ,{<<"To-Realm">>, cf_util:get_sip_realm(Endpoint, whapps_call:account_id(Call))}
@@ -196,6 +208,7 @@ create_sip_endpoint(Endpoint, Properties, Call) ->
             ,{<<"SIP-Headers">>, generate_sip_headers(Endpoint, Call)}
             ,{<<"Custom-Channel-Vars">>, generate_ccvs(Endpoint, Call)}
             ,{<<"Flags">>, wh_json:get_value(<<"outbound_flags">>, Endpoint)}
+            ,{<<"Force-Fax">>, ForceFax}
            ],
     wh_json:from_list(props:filter_undefined(Prop)).
 
@@ -281,7 +294,7 @@ generate_ccvs(Endpoint, Call, CallFwd) ->
                        case wh_json:is_true(<<"keep_caller_id">>, CallFwd) of
                            false -> J;
                            true ->
-                                lager:debug("call forwarding configured to keep the caller id"),
+                               lager:debug("call forwarding configured to keep the caller id"),
                                wh_json:set_value(<<"Retain-CID">>, <<"true">>, J)
                        end
                end
@@ -328,11 +341,11 @@ generate_ccvs(Endpoint, Call, CallFwd) ->
                         end
                 end
                ,fun(J) ->
-                       case wh_json:is_false([<<"media">>, <<"fax">>, <<"option">>], Endpoint) of
-                           true -> J;
-                           false -> wh_json:set_value(<<"Fax-Enabled">>, <<"true">>, J)
-                       end
-               end
+                        case wh_json:is_false([<<"media">>, <<"fax">>, <<"option">>], Endpoint) of
+                            true -> J;
+                            false -> wh_json:set_value(<<"Fax-Enabled">>, <<"true">>, J)
+                        end
+                end
                ,fun(J) ->
                         case wh_json:get_value(<<"pvt_type">>, Endpoint) of
                             <<"device">> ->

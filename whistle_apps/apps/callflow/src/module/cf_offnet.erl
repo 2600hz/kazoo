@@ -48,10 +48,10 @@ offnet_req(Data, Call) ->
                  DynamicCID -> DynamicCID
              end,
 
-    Flags = find_flags(whapps_call:account_db(Call)
-                       ,whapps_call:from_user(Call)
-                       ,wh_json:get_value(<<"flags">>, Data)
-                      ),
+    Endpoint = case cf_endpoint:get(Call) of
+                   {ok, JObj} -> JObj;
+                   {error, _} -> wh_json:new()
+               end,
 
     Req = [{<<"Call-ID">>, cf_exe:callid(Call)}
            ,{<<"Msg-ID">>, wh_util:rand_hex_binary(6)}
@@ -61,7 +61,8 @@ offnet_req(Data, Call) ->
            ,{<<"Account-Realm">>, whapps_call:from_realm(Call)}
            ,{<<"Control-Queue">>, cf_exe:control_queue(Call)}
            ,{<<"Application-Name">>, <<"bridge">>}
-           ,{<<"Flags">>, Flags}
+           ,{<<"Flags">>, wh_json:get_value(<<"outbound_flags">>, Endpoint
+                                            ,wh_json:get_value(<<"outbound_flags">>, Data))}
            ,{<<"Timeout">>, wh_json:get_value(<<"timeout">>, Data)}
            ,{<<"Ignore-Early-Media">>, wh_json:get_value(<<"ignore_early_media">>, Data)}
            ,{<<"Emergency-Caller-ID-Name">>, ECIDName}
@@ -72,6 +73,7 @@ offnet_req(Data, Call) ->
            ,{<<"Ringback">>, wh_json:get_value(<<"ringback">>, Data)}
            ,{<<"SIP-Headers">>, build_sip_headers(Data, Call)}
            ,{<<"Media">>, wh_json:get_value(<<"Media">>, Data)}
+           ,{<<"Force-Fax">>, wh_json:is_true([<<"media">>, <<"fax_option">>], Endpoint)}
            | wh_api:default_headers(cf_exe:queue_name(Call), ?APP_NAME, ?APP_VERSION)
           ],
     wapi_offnet_resource:publish_req(props:filter_undefined(Req)).
@@ -141,18 +143,3 @@ build_sip_headers(Data, Call) ->
         true -> undefined;
         false -> JObj
     end.
-
--spec find_flags/3 :: (ne_binary(), ne_binary(), Default) -> Default | [ne_binary(),...] | [].
-find_flags(Db, FromUser, Default) ->
-    case couch_mgr:get_results(Db, <<"devices/sip_credentials">>, [{key, FromUser}]) of
-        {ok, []} -> Default;
-        {ok, [U]} ->
-            case cf_endpoint:get(wh_json:get_value(<<"id">>, U), Db) of
-                {ok, EP} ->
-                    lager:debug("call from device '~s', checking flags", [wh_json:get_value(<<"id">>, U)]),
-                    wh_json:get_value(<<"outbound_flags">>, EP, Default);
-                _ -> Default
-            end;
-        _ -> Default
-    end.
-            

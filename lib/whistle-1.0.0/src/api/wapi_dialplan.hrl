@@ -28,7 +28,7 @@
                                           ,<<"Callee-ID-Name">>, <<"Callee-ID-Number">>
                                           ,<<"Ringback">>, <<"Dial-Endpoint-Method">>, <<"Insert-At">>
                                           ,<<"Media">>, <<"Hold-Media">>, <<"SIP-Headers">>, <<"Custom-Channel-Vars">>
-                                          ,<<"SIP-Transport">>, <<"Secure-RTP">>
+                                          ,<<"SIP-Transport">>, <<"Secure-RTP">>, <<"Force-Fax">>
                                      ]).
 -define(BRIDGE_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                             ,{<<"Event-Name">>, <<"command">>}
@@ -36,6 +36,7 @@
                             ,{<<"Dial-Endpoint-Method">>, [?DIAL_METHOD_SINGLE, ?DIAL_METHOD_SIMUL]}
                             ,{<<"Media">>, [<<"process">>, <<"bypass">>, <<"auto">>]}
                             ,{<<"SIP-Transport">>, [<<"udp">>, <<"tcp">>, <<"tls">>]}
+                            ,{<<"Force-Fax">>, [<<"self">>, <<"peer">>]}
                             ,?INSERT_AT_TUPLE
                            ]).
 -define(BRIDGE_REQ_TYPES, [{<<"Endpoints">>, fun is_list/1}
@@ -56,10 +57,11 @@
                                                     ,<<"Endpoint-Timeout">>, <<"Endpoint-Progress-Timeout">>
                                                     ,<<"Endpoint-Delay">>, <<"Codecs">>, <<"SIP-Headers">>, <<"Presence-ID">>
                                                     ,<<"Custom-Channel-Vars">>, <<"Auth-User">>, <<"Auth-Password">>
-                                                    ,<<"Endpoint-Type">>, <<"Endpoint-Options">>
+                                                    ,<<"Endpoint-Type">>, <<"Endpoint-Options">>, <<"Force-Fax">>
                                               ]).
 -define(BRIDGE_REQ_ENDPOINT_VALUES, [?INVITE_FORMAT_TUPLE
                                      ,{<<"Endpoint-Type">>, [<<"sip">>, <<"freetdm">>]}
+                                     ,{<<"Force-Fax">>, [<<"self">>, <<"peer">>]}
                                     ]).
 -define(BRIDGE_REQ_ENDPOINT_TYPES, [{<<"SIP-Headers">>, fun wh_json:is_json_object/1}
                                     ,{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}

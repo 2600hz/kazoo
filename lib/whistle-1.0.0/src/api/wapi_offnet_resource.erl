@@ -28,7 +28,7 @@
                                                    ,<<"Ringback">>, <<"SIP-Headers">>, <<"Custom-Channel-Vars">>
                                                    ,<<"Hold-Media">>, <<"Presence-ID">>, <<"Account-Realm">>
                                                    ,<<"Control-Queue">>, <<"Call-ID">>, <<"Application-Data">>
-                                                   ,<<"Account-ID">>, <<"Outbound-Call-ID">>
+                                                   ,<<"Account-ID">>, <<"Outbound-Call-ID">>, <<"Force-Fax">>
                                               ]).
 -define(OFFNET_RESOURCE_REQ_VALUES, [{<<"Event-Category">>, <<"resource">>}
                                      ,{<<"Event-Name">>, <<"offnet_req">>}
@@ -43,6 +43,7 @@
                                     ,{<<"SIP-Headers">>, fun wh_json:is_json_object/1}
                                     ,{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}
                                     ,{<<"Flags">>, fun is_list/1}
+                                    ,{<<"Force-Fax">>, fun wh_util:is_boolean/1}
                                    ]).
 
 %% Offnet Resource Response

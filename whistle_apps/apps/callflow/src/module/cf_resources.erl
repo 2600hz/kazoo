@@ -96,6 +96,14 @@ create_endpoint(DestNum, JObj, Call) ->
               ,(wh_json:get_value(<<"suffix">>, JObj, <<>>))/binary
               ,$@ ,(wh_json:get_value(<<"server">>, JObj))/binary>>,
     lager:debug("attempting resource ~s", [Rule]),
+    Endpoint = case cf_endpoint:get(Call) of
+                   {ok, JObj} -> JObj;
+                   {error, _} -> wh_json:new()
+               end,
+    ForceFax = case wh_json:is_true([<<"media">>, <<"fax_option">>], Endpoint) of
+                   false -> undefined;
+                   true -> <<"self">>
+               end,
     AccountId = whapps_call:account_id(Call),
     CCVs = [{<<"Account-ID">>, AccountId}
             ,{<<"Reseller-ID">>, wh_services:find_reseller_id(AccountId)}
@@ -111,6 +119,7 @@ create_endpoint(DestNum, JObj, Call) ->
                 ,{<<"Endpoint-Progress-Timeout">>, wh_json:get_value(<<"progress_timeout">>, JObj, <<"6">>)}
                 ,{<<"Codecs">>, wh_json:get_value(<<"codecs">>, JObj)}
                 ,{<<"Custom-Channel-Vars">>, wh_json:from_list(props:filter_undefined(CCVs))}
+                ,{<<"Force-Fax">>, ForceFax}                
                ],
     wh_json:from_list(props:filter_undefined(Endpoint)).
 
