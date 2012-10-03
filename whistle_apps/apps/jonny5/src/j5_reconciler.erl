@@ -37,12 +37,11 @@ start_link() ->
 
 -spec process_account/1 :: (ne_binary()) -> 'ok' | {'error', _}. 
 process_account(Account) ->
+    lager:debug("attempting to reconcile jonny5 credit/debit for account ~s", [Account]),
     AccountDb = wh_util:format_account_id(Account, encoded),
     ViewOptions = [reduce, group],
     case couch_mgr:get_results(AccountDb, <<"transactions/reconcile_by_callid">>, ViewOptions) of
-        {error, _R}=E ->
-            lager:debug("unable to fetch unreconciled call ids from ~s: ~p", [Account, _R]),
-            E;
+        {error, _R}=E -> E;
         {ok, JObjs} ->
             _ = [correct_discrepancy(AccountDb, wh_json:get_value(<<"key">>, JObj), Amount)
                  || JObj <- JObjs
@@ -102,7 +101,7 @@ handle_cast(process_account, []) ->
     gen_server:cast(self(), process_account),
     {noreply, shuffle(whapps_util:get_all_accounts())};
 handle_cast(process_account, [Account|Accounts]) ->
-    lager:debug("attempting to reconcile jonny5 credit/debit for account ~s", [Account]),
+    put(callid, ?LOG_SYSTEM_ID),
     timer:sleep(crypto:rand_uniform(1000, 3000)),
     process_account(Account),
     gen_server:cast(self(), process_account),
@@ -154,19 +153,21 @@ code_change(_OldVsn, State, _Extra) ->
 -spec correct_discrepancy/3 :: (ne_binary(), ne_binary(), integer()) -> {'ok', wh_json:json_object()} |
                                                                         {'error', _}.
 correct_discrepancy(Ledger, CallId, Amount) ->
-    case whapps_call_command:channel_status(CallId) of
-        {ok, _} -> ok;
-        {error, _} ->
-            LedgerId = wh_util:format_account_id(Ledger, raw),
-            LedgerDb = wh_util:format_account_id(Ledger, encoded),
+    put(callid, CallId),
+    LedgerId = wh_util:format_account_id(Ledger, raw),
+    LedgerDb = wh_util:format_account_id(Ledger, encoded),
+    lager:debug("attempting to reconcile call id ~s discrepancy on ledger ~s for ~p", [LedgerId, CallId, Amount]),
+    case should_correct_discrepancy(LedgerDb, CallId) of
+        false -> ok;
+        true ->
             Timestamp = wh_util:current_tstamp(),
-            Id = <<CallId/binary, "-discrepancy">>,
             Type = case Amount > 0 of true -> <<"debit">>; false -> <<"credit">> end,
-            Entry = wh_json:from_list([{<<"_id">>, Id}
+            Entry = wh_json:from_list([{<<"_id">>, correction_doc_id(CallId)}
                                        ,{<<"reason">>, <<"jonny5 discrepancy correction">>}
                                        ,{<<"account_id">>, LedgerId}
                                        ,{<<"call_id">>, CallId}
                                        ,{<<"amount">>, abs(Amount)}
+                                       ,{<<"balance">>, j5_util:current_balance(Ledger)}
                                        ,{<<"pvt_account_id">>, LedgerId}
                                        ,{<<"pvt_account_db">>, LedgerDb}
                                        ,{<<"pvt_type">>, wh_util:to_binary(Type)}
@@ -175,7 +176,7 @@ correct_discrepancy(Ledger, CallId, Amount) ->
                                        ,{<<"pvt_vsn">>, 1}
                                        ,{<<"pvt_whapp">>, ?APP_NAME}
                                       ]),
-            io:format("correcting $~p discrepancy for call ~s on ~s~n", [wapi_money:units_to_dollars(Amount), CallId, LedgerId]),
+            lager:debug("correcting $~p discrepancy for call ~s on ~s~n", [wapi_money:units_to_dollars(Amount), CallId, LedgerId]),
             case couch_mgr:save_doc(LedgerDb, Entry) of
                 {error, _} -> ok;
                 {ok, _} -> 
@@ -183,6 +184,67 @@ correct_discrepancy(Ledger, CallId, Amount) ->
                     ok
             end
     end.
+
+-spec should_correct_discrepancy/2 :: (ne_binary(), ne_binary()) -> boolean().
+should_correct_discrepancy(LedgerDb, CallId) ->
+    call_has_ended(CallId)
+        andalso reconcile_grace_period_exceeded(LedgerDb, CallId) 
+        andalso correction_not_already_attempted(LedgerDb, CallId).
+
+-spec call_has_ended/1 :: (ne_binary()) -> boolean().
+call_has_ended(CallId) ->
+    case whapps_call_command:channel_status(CallId) of
+        {ok, _} -> 
+            lager:debug("ignoring discrepancy for active call", []),
+            false;
+        {error, _} -> true
+    end.    
+
+-spec reconcile_grace_period_exceeded/2 :: (ne_binary(), ne_binary()) -> boolean().
+reconcile_grace_period_exceeded(LedgerDb, CallId) ->
+    case couch_mgr:open_doc(LedgerDb, CallId) of
+        {error, not_found} -> 
+            lager:debug("correcting discrepancy for ended call with missing cdr", []),
+            true;
+        {error, _R} -> 
+            lager:debug("ignoring discrepancy, unable to open cdr: ~p", [_R]),
+            false;
+        {ok, JObj} ->
+            Current = wh_util:current_tstamp(),
+            Modified = wh_json:get_integer_value(<<"pvt_modified">>, JObj, Current), 
+            Current - Modified > 300
+    end.
+
+-spec correction_not_already_attempted/2 :: (ne_binary(), ne_binary()) -> boolean().
+correction_not_already_attempted(LedgerDb, CallId) ->
+    DocId = correction_doc_id(CallId),
+    case couch_mgr:open_doc(LedgerDb, DocId) of
+        {error, not_found} -> true;
+        {ok, JObj} -> maybe_remove_correction(JObj, LedgerDb, DocId);
+        _Else -> false
+    end.
+
+-spec maybe_remove_correction/3 :: (wh_json:json_object(), ne_binary(), ne_binary()) -> boolean().
+maybe_remove_correction(JObj, LedgerDb, DocId) ->
+    Current = wh_util:current_tstamp(),
+    Modified = wh_json:get_integer_value(<<"pvt_modified">>, JObj, Current), 
+    case Current - Modified > 300 of
+        false -> 
+            %% If the correction was recently written, wait till the next cycle to make sure
+            %% another j5_reconciler has not just placed this here
+            false;
+        true ->
+            %% If the correction was made some time ago then remove it as it has not
+            %% corrected the discrepancy, then wait for the next cycle to make sure
+            %% it wasn't the sole cause of the issue.... (due to previous bug this could happen)
+            lager:debug("removing erronous correction from previous reconciler version", []),
+            _ = couch_mgr:del_doc(LedgerDb, DocId),
+            false
+    end.
+
+-spec correction_doc_id/1 :: (ne_binary()) -> ne_binary().
+correction_doc_id(CallId) ->
+    <<CallId/binary, "-discrepancy">>.
 
 -spec send_system_alert/4 :: (ne_binary(), ne_binary(), integer(), wh_json:json_object()) -> pid().
 send_system_alert(Ledger, CallId, Amount, Entry) ->
