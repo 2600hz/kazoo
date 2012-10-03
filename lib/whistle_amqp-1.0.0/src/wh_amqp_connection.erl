@@ -11,14 +11,17 @@
 
 -behaviour(gen_server).
 
--export([start_link/1]).
--export([publish/3]).
--export([consume/2]).
--export([misc_req/2]).
--export([my_channel/1]).
--export([update_my_tag/2]).
--export([use_federation/1]).
--export([stop/1]).
+-export([start_link/1
+         ,publish/3
+         ,consume/2
+         ,misc_req/2
+         ,my_channel/1
+         ,update_my_tag/2
+         ,use_federation/1
+         ,stop/1
+         ,teardown_channels/1
+        ]).
+
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -67,6 +70,9 @@ start_link(Broker) ->
     Name = wh_amqp_broker:name(Broker),
     gen_server:start_link({local, Name}, ?MODULE, [Broker], []).
 
+teardown_channels(Broker) ->
+    gen_server:call(wh_amqp_broker:name(Broker), teardown_channels).
+
 -spec publish/3 :: (atom(), #'basic.publish'{}, ne_binary() | iolist()) -> 'ok' | {'error', _}.
 publish(Srv, #'basic.publish'{exchange=_Exchange, routing_key=_RK}=BasicPub, AmqpMsg) ->
     FindChannel = [fun(Pid) when is_pid(Pid) -> my_channel(Srv, Pid, false);
@@ -82,7 +88,7 @@ publish(Srv, #'basic.publish'{exchange=_Exchange, routing_key=_RK}=BasicPub, Amq
     case lists:foldl(fun(F, C) -> F(C) end, get(amqp_publish_as), FindChannel) of
         {error, _}=E -> E;
         {ok, Channel} ->
-            lager:debug("publish to broker ~s, exchange '~s' with routing key '~s' via channel ~p", [Srv, _Exchange, _RK, Channel]),
+            lager:debug("publish: broker '~s' exchange '~s' routing key '~s' channel '~p'", [Srv, _Exchange, _RK, Channel]),
             amqp_channel:call(Channel, BasicPub, AmqpMsg),
             ok
     end.
@@ -106,7 +112,7 @@ consume(Srv, #'queue.bind'{exchange=_Exchange, routing_key=_RK, queue=_Q}=QueueB
     case my_channel(Srv) of
         {error, _}=E -> E;
         {ok, Channel, _} ->
-            lager:debug("bind '~s' to exchange '~s' with routing key '~s' on broker ~s", [_Q, _Exchange, _RK, Srv]),
+            lager:debug("bind: broker '~s' exchange '~s' routing key '~s' queue '~s'", [Srv, _Exchange, _RK, _Q]),
             case amqp_channel:call(Channel, QueueBind) of
                 #'queue.bind_ok'{} -> ok;
                 {error, _}=E -> E;
@@ -215,7 +221,8 @@ misc_channel(Srv) ->
         [] -> {error, not_found}
     end.
 
--spec create_channel/2 :: (atom(), pid()) -> {'ok', pid()} | {'error', _}.
+-spec create_channel/2 :: (atom(), pid()) -> {'ok', pid()} |
+                                             {'error', _}.
 create_channel(Srv, Consumer) ->
     case gen_server:call(Srv, {get_connection}) of
         {error, _}=E -> E;
@@ -264,9 +271,12 @@ stop(Srv) ->
 %%--------------------------------------------------------------------
 init([Broker]) ->
     process_flag(trap_exit, true),
-    put(callid, ?LOG_SYSTEM_ID),
+
     self() ! {connect, ?START_TIMEOUT},
     Name = wh_amqp_broker:name(Broker),
+
+    _ = put(callid, wh_amqp_broker:host(Broker)),
+
     _ = ets:new(Name, [set, protected, named_table, {keypos, #wh_amqp_channel.consumer}]),
     {ok, #state{broker=Broker, broker_name=Name}}.
 
@@ -284,6 +294,10 @@ init([Broker]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_call(teardown_channels, _, #state{broker_name=Name}=State) ->
+    clear_channels(Name),
+    {reply, ok, State};
+
 handle_call(use_federation, _, #state{broker=Broker}=State) ->
     %% If we are diconnected dont pay attention to requests
     {reply, wh_amqp_broker:use_federation(Broker), State};
@@ -493,16 +507,15 @@ start_channel(Connection, Srv) when is_pid(Connection) ->
             lager:debug("unabled to start new channel: no_connection", []),
             {error, no_connection};
         E ->
-            lager:debug("unabled to start new channel: ~p", [E]),
+            lager:debug("unable to start new channel: ~p", [E]),
             E
     end.
 
 -spec notify_consumers/2 :: ({'amqp_channel_event', atom()}, atom()) -> 'ok'.
 notify_consumers(Msg, Name) ->
-    ets:foldl(fun(#wh_amqp_channel{consumer = Consumer}, ok) when is_pid(Consumer) ->
-                      Consumer ! Msg,
-                      ok;
-                 (_, ok) -> ok
+    ets:foldl(fun(#wh_amqp_channel{consumer = Consumer}, _) when is_pid(Consumer) ->
+                      Consumer ! Msg, ok;
+                 (_, _) -> ok
               end, ok, Name).
 
 -spec try_to_subscribe/3 :: (atom(), pid(), #'basic.consume'{}) -> 'ok' | {'error', term()}.
@@ -537,3 +550,16 @@ exchange_declare(#'exchange.declare'{type=Type}=ED, true) ->
                    ]
      },
     ED1.
+
+clear_channels(Name) ->
+    [clear_channel(C) || #wh_amqp_channel{}=C <- ets:tab2list(Name)].
+clear_channel(#wh_amqp_channel{channel=ChPid
+                               ,channel_ref=ChRef
+                               ,consumer_ref=ConRef
+                               ,consumer=Consumer
+                              }) ->
+    is_reference(ChRef) andalso erlang:demonitor(ChRef, [flush]),
+    is_reference(ConRef) andalso erlang:demonitor(ConRef, [flush]),
+    erlang:is_process_alive(ChPid) andalso amqp_channel:close(ChPid),
+    is_pid(Consumer) andalso (Consumer ! {amqp_channel_event, closing}).
+    

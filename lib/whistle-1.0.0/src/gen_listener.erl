@@ -244,8 +244,8 @@ rm_binding(Srv, Binding, Props) ->
 -spec init/1 :: ([atom() | wh_proplist(),...]) -> {'ok', #state{}}.
 init([Module, Params, InitArgs]) ->
     process_flag(trap_exit, true),
-    put(callid, ?LOG_SYSTEM_ID),
-    lager:debug("starting new gen_listener proc: ~s", [wh_util:to_binary(Module)]),
+    put(callid, Module),
+    lager:debug("starting new gen_listener proc"),
     {ModState, TimeoutRef} =
         case erlang:function_exported(Module, init, 1) andalso Module:init(InitArgs) of
             {ok, MS} -> {MS, undefined};
@@ -259,7 +259,10 @@ init([Module, Params, InitArgs]) ->
 
     gen_server:cast(self(), {init_amqp, Params, Responders, Bindings}),
 
-    {ok, #state{module=Module, module_state=ModState, module_timeout_ref=TimeoutRef}}.
+    {ok, #state{module=Module
+                ,module_state=ModState
+                ,module_timeout_ref=TimeoutRef
+               }}.
 
 -type gen_l_handle_call_ret() :: {'reply', term(), #state{}, gen_server_timeout()} |
                                  {'noreply', #state{}, gen_server_timeout()} |
@@ -304,8 +307,6 @@ handle_call(Request, From, #state{module=Module, module_state=ModState, module_t
 handle_cast({init_amqp, Params, Responders, Bindings}, State) ->
     case start_amqp(Params) of
         {error, _E} ->
-            lager:debug("failed to init AMQP: ~p", [_E]),
-
             _R = erlang:send_after(?TIMEOUT_RETRY_CONN, self(), {amqp_channel_event, initial_conn_failed}),
             _ = [add_responder(self(), Mod, Evts) || {Mod, Evts} <- Responders],
 
@@ -318,7 +319,6 @@ handle_cast({init_amqp, Params, Responders, Bindings}, State) ->
                 ,is_consuming=false
                }};
         {ok, Q} ->
-            lager:debug("AMQP queue created: ~s", [Q]),
             _ = erlang:send_after(?TIMEOUT_RETRY_CONN, self(), is_consuming),
             _ = [add_responder(self(), Mod, Evts) || {Mod, Evts} <- Responders],
             _ = [create_binding(wh_util:to_binary(Type), BindProps, Q) || {Type, BindProps} <- Bindings],
@@ -375,16 +375,13 @@ handle_cast({add_binding, _, _}=AddBinding, #state{is_consuming=false}=State) ->
 handle_cast({add_binding, Binding, Props}, #state{queue=Q, bindings=Bs}=State) ->
     case lists:keyfind(Binding, 1, Bs) of
         false ->
-            lager:debug("creating new binding: ~s", [Binding]),
             create_binding(Binding, Props, Q),
             {noreply, State#state{bindings=[{Binding, Props}|Bs]}};
         {_, P} ->
             case Props =:= P of
                 true ->
-                    lager:debug("binding ~s exists", [Binding]),
                     {noreply, State};
                 false ->
-                    lager:debug("adding binding ~s with new props: ~p", [Binding, Props]),
                     create_binding(Binding, Props, Q),
                     {noreply, State#state{bindings=[{Binding, Props}|Bs]}}
             end
@@ -392,7 +389,6 @@ handle_cast({add_binding, Binding, Props}, #state{queue=Q, bindings=Bs}=State) -
 
 handle_cast({rm_binding, Binding, Props}, #state{queue=Q, bindings=Bs}=State) ->
     KeepBs = lists:filter(fun({B, P}) when B =:= Binding, P =:= Props ->
-                                  lager:debug("removing binding ~s (~p)", [B, P]),
                                   remove_binding(B, P, Q),
                                   false;
                              (_) -> true
@@ -451,7 +447,6 @@ handle_info({amqp_channel_event, restarted}, #state{params=Params
                                                    }=State) ->
     case start_amqp(Params) of
         {ok, Q} ->
-            lager:debug("lost our channel, but its back up; rebinding"),
             _ = [add_binding(self(), Type, BindProps)
                  || {Type, BindProps} <- Bindings
                 ],
@@ -461,12 +456,10 @@ handle_info({amqp_channel_event, restarted}, #state{params=Params
             _ = erlang:send_after(?TIMEOUT_RETRY_CONN, self(), is_consuming),
             {noreply, State#state{queue=Q, is_consuming=false, bindings=[], other_queues=[]}, hibernate};
         {error, _R} ->
-            lager:alert("failed to rebind after channel restart: ~p", [_R]),
             _Ref = erlang:send_after(?START_TIMEOUT, self(), {'$maybe_connect_amqp', ?START_TIMEOUT}),
             {noreply, State#state{queue = <<>>, is_consuming=false}, hibernate}
     end;
 handle_info({amqp_channel_event, _Reason}, State) ->
-    lager:alert("notified AMQP channel died: ~p", [_Reason]),
     _Ref = erlang:send_after(?START_TIMEOUT, self(), {'$maybe_connect_amqp', ?START_TIMEOUT}),
     {noreply, State#state{queue = <<>>, is_consuming=false}, hibernate};
 
@@ -476,7 +469,6 @@ handle_info({'$maybe_connect_amqp', Timeout}, #state{bindings=Bindings
                                                     }=State) ->
     case start_amqp(Params) of
         {ok, Q} ->
-            lager:info("reconnected to AMQP channel, rebinding"),
             _ = [add_binding(self(), Type, BindProps)
                  || {Type, BindProps} <- Bindings
                 ],
@@ -492,13 +484,9 @@ handle_info({'$maybe_connect_amqp', Timeout}, #state{bindings=Bindings
     end;
 
 handle_info(#'basic.consume_ok'{}, S) ->
-    lager:debug("consuming from our queue"),
     {noreply, S#state{is_consuming=true}};
 
-handle_info(is_consuming, #state{is_consuming=false
-                                 ,queue=Q
-                                }=State) ->
-    lager:debug("huh, we're not consuming. Queue: ~p", [Q]),
+handle_info(is_consuming, #state{is_consuming=false}=State) ->
     _Ref = erlang:send_after(?START_TIMEOUT, self(), {'$maybe_connect_amqp', ?START_TIMEOUT}),
     {noreply, State};
 
@@ -548,7 +536,6 @@ terminate(Reason, #state{module=Module
                         }) ->
     _ = (catch Module:terminate(Reason, ModState)),
     lists:foreach(fun({B, P}) ->
-                          lager:debug("terminating binding ~s (~p)", [B, P]),
                           (catch remove_binding(B, P, Q))
                   end, Bs),
     lager:debug("~s terminated cleanly, going down", [Module]).

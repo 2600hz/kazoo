@@ -3,7 +3,7 @@
 %%% @doc
 %%% Karls Hackity Hack....
 %%% We want to block during startup until we have a AMQP connection
-%%% but due to the way wh_amqp_mgr is structured we cant block in 
+%%% but due to the way wh_amqp_mgr is structured we cant block in
 %%% init there.  So this module will bootstrap wh_amqp_mgr
 %%% and block until a connection becomes available, after that it
 %%% removes itself....
@@ -64,12 +64,15 @@ init([]) ->
     Init = get_config(),
     UseFederation = props:get_value(use_federation, Init, false),
     URIs = case props:get_value(amqp_uri, Init, ?DEFAULT_AMQP_URI) of
-               U when is_list(U) -> [U];
-               URI -> [URI]
+               URI = "amqp://"++_ -> [URI];
+               URI = "amqps://"++_ -> [URI];
+               URI when is_list(URI) -> URI
            end,
-    _ = [gen_server:cast(wh_amqp_mgr, {add_broker, URI, UseFederation}) || URI <- URIs],    
-    lager:info("waiting for AMQP connection...", []),
+    _ = [gen_server:cast(wh_amqp_mgr, {add_broker, Uri, UseFederation}) || Uri <- URIs],
+    lager:info("waiting for first AMQP connection...", []),
     wh_amqp_mgr:wait_for_available_host(),
+    lager:debug("host is available"),
+    lager:debug("connection to use: ~p", [wh_amqp_mgr:get_connection()]),
     {ok, #state{}, 100}.
 
 %%--------------------------------------------------------------------
@@ -116,6 +119,7 @@ handle_info(timeout, State) ->
     _ = wh_amqp_sup:stop_bootstrap(),
     {noreply, State};
 handle_info(_Info, State) ->
+    lager:debug("unhandled message: ~p", [_Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -146,12 +150,10 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec get_config/0 :: () -> proplist().
+-spec get_config/0 :: () -> wh_proplist().
 get_config() ->
     case file:consult(?STARTUP_FILE) of
-        {ok, Prop} ->
-            lager:info("loaded amqp manager configuration from '~s'", [?STARTUP_FILE]),
-            Prop;
+        {ok, Prop} -> Prop;
         E ->
             lager:debug("unable to load amqp manager configuration from '~s': ~p", [?STARTUP_FILE, E]),
             []
