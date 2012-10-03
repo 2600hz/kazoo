@@ -430,6 +430,14 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>) ->
                                    end
                            end
                           ,fun(DP) ->
+                                   case wh_json:find(<<"Force-Fax">>, Endpoints, wh_json:get_value(<<"Force-Fax">>, JObj)) of
+                                       undefined -> DP;
+                                       Direction ->
+                                           Args = <<Direction/binary, " nocng">>,
+                                           [{"application", wh_util:to_list(<<"t38_gateway ", Args/binary>>)}|DP]
+                                   end
+                           end
+                          ,fun(DP) ->
                                    [{"application", "set failure_causes=NORMAL_CLEARING,ORIGINATOR_CANCEL,CRASH"}
                                     ,{"application", "set continue_on_fail=true"}
                                     |DP

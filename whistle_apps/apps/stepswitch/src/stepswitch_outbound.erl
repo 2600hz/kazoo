@@ -120,9 +120,7 @@ bridge_to_endpoints(Endpoints, IsEmergency, CtrlQ, JObj) ->
     {CIDNum, CIDName} = case IsEmergency of
                             'true' ->
                                 lager:debug("outbound call is using an emergency route, attempting to set CID accordingly"),
-                                get_emergency_cid_number(JObj),
-                                {wh_json:get_ne_value(<<"Emergency-Caller-ID-Number">>, JObj,
-                                                      wh_json:get_ne_value(<<"Outgoing-Caller-ID-Number">>, JObj))
+                                {get_emergency_cid_number(JObj)
                                  ,wh_json:get_ne_value(<<"Emergency-Caller-ID-Name">>, JObj,
                                                        wh_json:get_ne_value(<<"Outgoing-Caller-ID-Name">>, JObj))};
                             'false'  ->
@@ -154,6 +152,11 @@ bridge_to_endpoints(Endpoints, IsEmergency, CtrlQ, JObj) ->
     CCVs = wh_json:set_values(props:filter_undefined(Updates)
                               ,wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new())),
 
+    ForceFax = case wh_json:is_true(<<"Force-Fax">>, JObj) of
+                   false -> undefined;
+                   true -> <<"self">>
+               end,
+
     Command = [{<<"Application-Name">>, <<"bridge">>}
                ,{<<"Endpoints">>, Endpoints}
                ,{<<"Timeout">>, wh_json:get_value(<<"Timeout">>, JObj)}
@@ -168,10 +171,11 @@ bridge_to_endpoints(Endpoints, IsEmergency, CtrlQ, JObj) ->
                ,{<<"Continue-On-Fail">>, <<"true">>}
                ,{<<"SIP-Headers">>, wh_json:get_value(<<"SIP-Headers">>, JObj)}
                ,{<<"Custom-Channel-Vars">>, CCVs}
+               ,{<<"Force-Fax">>, ForceFax}
                ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
                | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
               ],
-    wapi_dialplan:publish_command(CtrlQ, Command),
+    wapi_dialplan:publish_command(CtrlQ, props:filter_undefined(Command)),
     wait_for_bridge(whapps_config:get_integer(<<"stepswitch">>, <<"bridge_timeout">>, 30000)).
 
 %%--------------------------------------------------------------------
