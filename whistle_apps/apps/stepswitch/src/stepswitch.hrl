@@ -36,6 +36,7 @@
           ,invite_format = <<"route">>
           ,endpoint_type = <<"sip">> % could be freetdm as well
           ,endpoint_options = wh_json:new()
+          ,format_from_uri = false :: boolean()
          }).
 
 -record(resrc, {
