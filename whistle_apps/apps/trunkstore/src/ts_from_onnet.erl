@@ -43,12 +43,19 @@ onnet_data(State) ->
 
     Options = case ts_util:lookup_did(FromUser, AcctID) of
                   {ok, Opts} -> Opts;
-                  _ -> wh_json:new()
+                  _ -> 
+                      Username = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Username">>], JObj, <<>>),
+                      Realm = wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Realm">>], JObj, <<>>),
+                      case ts_util:lookup_user_flags(Username, Realm, AcctID) of
+                          {ok, Opts} -> Opts;
+                          _ -> wh_json:new()
+                    end
               end,
 
     DIDOptions = wh_json:get_value(<<"DID_Opts">>, Options, wh_json:new()),
     AcctOptions = wh_json:get_value(<<"account">>, Options, wh_json:new()),
     SrvOptions = wh_json:get_value([<<"server">>, <<"options">>], Options, wh_json:new()),
+
 
     MediaHandling = ts_util:get_media_handling([
                                                 wh_json:get_value(<<"media_handling">>, DIDOptions)
@@ -90,7 +97,7 @@ onnet_data(State) ->
                                      ,wh_json:get_value(<<"flags">>, SrvOptions)
                                      ,wh_json:get_value(<<"flags">>, AcctOptions)
                                     ]),
-
+io:format("~p ~p~n", [DIDFlags, SrvOptions]),
     Q = ts_callflow:get_my_queue(State),
 
     Command = [ KV
