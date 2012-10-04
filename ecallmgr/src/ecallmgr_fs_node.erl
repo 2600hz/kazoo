@@ -294,7 +294,7 @@ process_custom_data(Data, Node) ->
             gproc:send({p, l, {channel_move, Node, UUID}}, {channel_move_released, UUID, Data});
         <<"sofia::move_complete">> ->
             UUID = props:get_value(<<"old_node_channel_uuid">>, Data),
-            lager:debug("sending move_complete for ~s", [UUID]),
+            lager:debug("sending move_complete for ~s (from ~s)", [UUID, props:get_value(<<"old_node_hostname">>, Data)]),
             _ = [lager:debug("move_complete: ~p", [KV]) || KV <- Data],
             gproc:send({p, l, {channel_move, Node, UUID}}, {channel_move_completed, UUID, Data});
         _Sub ->
