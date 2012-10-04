@@ -53,7 +53,10 @@
 -export([queue_name/1, callid/1, node/1, hostname/1]).
 -export([event_execute_complete/3]).
 -export([add_leg/1, rm_leg/1]).
--export([other_legs/1]).
+-export([other_legs/1
+         ,update_node/2
+         ,control_procs/1
+        ]).
 -export([transferer/2, transferee/2]).
 
 %% gen_listener callbacks
@@ -172,6 +175,17 @@ add_leg(Props) ->
                 ],
             ok
     end.
+
+-spec update_node/2 :: (atom(), ne_binary() | [pid(),...] | []) -> 'ok'.
+update_node(Node, CallId) when is_binary(CallId) ->
+    update_node(Node, gproc:lookup_pids({p, l, {call_control, CallId}}));
+update_node(Node, Pids) when is_list(Pids) ->
+    _ = [gen_listener:cast(Srv, {update_node, Node}) || Srv <- Pids],
+    ok.
+
+-spec control_procs/1 :: (ne_binary()) -> [pid(),...] | [].
+control_procs(CallId) ->
+    gproc:lookup_pids({p, l, {call_control, CallId}}).
 
 -spec rm_leg/1 :: (wh_proplist()) -> 'ok'.
 rm_leg(Props) ->
@@ -344,6 +358,11 @@ handle_cast({transferee, JObj}, #state{other_legs=Legs, node=Node, callid=PrevCa
             lager:debug("...call id updated, continuing post-transfer"),
             {noreply, State#state{callid=NewCallId, other_legs=lists:delete(NewCallId, Legs)}}
     end;
+
+handle_cast({update_node, Node}, #state{node=OldNode}=State) ->
+    lager:debug("channel has moved from ~s to ~s", [OldNode, Node]),
+    {noreply, State#state{node=Node}};
+
 handle_cast({add_leg, JObj}, #state{other_legs=Legs, callid=CallId}=State) ->
     LegId = case wh_json:get_value(<<"Event-Name">>, JObj) of
                 <<"CHANNEL_BRIDGE">> ->

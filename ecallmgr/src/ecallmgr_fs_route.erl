@@ -232,7 +232,11 @@ reply_affirmative(Node, FSID, CallId, RespJObj, Props) ->
                            lager:debug("channel ~s already has billing id ~s", [CallId, _Else]),
                            RouteCCVs
                    end,
-            start_control_and_events(Node, CallId, ServerQ, CCVs);
+
+            case ecallmgr_call_control:control_procs(CallId) of
+                [] -> start_control_and_events(Node, CallId, ServerQ, CCVs);
+                Ps -> ecallmgr_call_control:update_node(Node, Ps)
+            end;
         {error, Reason} -> 
             lager:debug("node ~s rejected our route response, ~p", [Node, Reason]);
         timeout -> lager:error("received no reply from node ~s, timeout", [Node])
