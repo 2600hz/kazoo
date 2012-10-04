@@ -25,6 +25,7 @@
 -export([convert_fs_evt_name/1, convert_whistle_app_name/1]).
 -export([fax_filename/1
          ,recording_filename/1
+         ,has_channel_is_moving_flag/1
         ]).
 
 -export([lookup_media/3, lookup_media/4, lookup_media/5]).
@@ -469,3 +470,8 @@ lookup_media(MediaName, CallId, JObj, Type, Cache) ->
         {ok, _} -> {ok, RecordingName};
         {error, not_found} -> lookup_media(MediaName, CallId, JObj, Type, undefined)
     end.
+
+
+-spec has_channel_is_moving_flag/1 :: (wh_proplist()) -> boolean().
+has_channel_is_moving_flag(Props) ->
+    props:get_value(<<"variable_channel_is_moving">>, Props) =/= undefined.

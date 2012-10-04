@@ -32,7 +32,6 @@
 -export([queue_name/1
          ,callid/1
          ,node/1
-         ,has_channel_is_moving_flag/1
         ]).
 -export([init/1
          ,handle_call/3
@@ -100,7 +99,7 @@ queue_name(Srv) ->
 
 -spec publish_channel_destroy/1 :: (wh_proplist()) -> 'ok'.
 publish_channel_destroy(Props) ->
-    publish_channel_destroy(Props, has_channel_is_moving_flag(Props)).
+    publish_channel_destroy(Props, ecallmgr_util:has_channel_is_moving_flag(Props)).
 publish_channel_destroy(Props, true) ->
     lager:debug("channel_destroy has the channel_is_moving flag, supressing in favor of channel_move"),
     CallId = props:get_value(<<"Caller-Unique-ID">>, Props,
@@ -210,7 +209,7 @@ handle_cast({channel_destroyed, _}, State) ->
     erlang:send_after(1000, self(), {shutdown}),
     {noreply, State};
 handle_cast({channel_is_moving, Props}, State) ->
-    [lager:debug("moving: ~p", [KV]) || KV <- Props],
+    _ = [lager:debug("channel is moving: ~p", [KV]) || KV <- Props],
     {stop, normal, State};
 handle_cast({transferer, _}, State) ->
     lager:debug("call control has been transfered."),
@@ -364,7 +363,7 @@ code_change(_OldVsn, State, _Extra) ->
 -spec process_channel_event/1 :: (proplist()) -> 'ok'.
 -spec process_channel_event/2 :: (proplist(), boolean()) -> 'ok'.
 process_channel_event(Props) ->
-    process_channel_event(Props, has_channel_is_moving_flag(Props)).
+    process_channel_event(Props, ecallmgr_util:has_channel_is_moving_flag(Props)).
 process_channel_event(_Props, true) ->
     lager:debug("event is part of a moving channel, supressing");
 process_channel_event(Props, false) ->
@@ -432,7 +431,7 @@ create_event_props(EventName, ApplicationName, Props) ->
 -spec publish_event/1 :: (proplist()) -> 'ok'.
 -spec publish_event/2 :: (proplist(), boolean()) -> 'ok'.
 publish_event(Props) ->
-    publish_event(Props, has_channel_is_moving_flag(Props)).
+    publish_event(Props, ecallmgr_util:has_channel_is_moving_flag(Props)).
 publish_event(_Props, true) ->
     lager:debug("event has channel_is_moving flag, supressing");
 publish_event(Props, false) ->
@@ -663,7 +662,3 @@ swap_call_legs([{<<"Other-Leg-", Key/binary>>, Value}|T], Swap) ->
     swap_call_legs(T, [{<<"Caller-", Key/binary>>, Value}|Swap]);
 swap_call_legs([Prop|T], Swap) ->
     swap_call_legs(T, [Prop|Swap]).
-
--spec has_channel_is_moving_flag/1 :: (wh_proplist()) -> 'ok'.
-has_channel_is_moving_flag(Props) ->
-    props:get_value(<<"variable_channel_is_moving">>, Props) =/= undefined.

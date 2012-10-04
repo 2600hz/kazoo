@@ -168,6 +168,19 @@ code_change(_OldVsn, State, _Extra) ->
 process_route_req(Node, FSID, CallId, Props) ->
     put(callid, CallId),
     lager:debug("processing fetch request ~s (call ~s) from ~s", [FSID, CallId, Node]),
+
+    case ecallmgr_util:has_channel_is_moving_flag(Props) of
+        true ->
+            lager:debug("channel is moving, park it"),
+            RespJObj = wh_json:from_list([{<<"Routes">>, []}
+                                          ,{<<"Method">>, <<"park">>}
+                                         ]),
+            reply_affirmative(Node, FSID, CallId, RespJObj, Props);
+        false ->
+            search_for_route(Node, FSID, CallId, Props)
+    end.
+
+search_for_route(Node, FSID, CallId, Props) ->
     ReqResp = wh_amqp_worker:call(?ECALLMGR_AMQP_POOL
                                   ,route_req(CallId, FSID, Props, Node)
                                   ,fun wapi_route:publish_req/1
