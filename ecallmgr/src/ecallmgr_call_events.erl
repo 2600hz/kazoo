@@ -32,6 +32,7 @@
 -export([queue_name/1
          ,callid/1
          ,node/1
+         ,update_node/2
         ]).
 -export([init/1
          ,handle_call/3
@@ -194,6 +195,8 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast({update_node, Node}, #state{node=Node}=State) ->
+    {noreply, State};
 handle_cast({update_node, Node}, #state{node=OldNode}=State) ->
     lager:debug("node has changed from ~s to ~s", [OldNode, Node]),
 
