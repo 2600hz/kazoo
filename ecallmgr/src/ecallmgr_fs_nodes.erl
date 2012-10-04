@@ -221,7 +221,6 @@ channel_resume(UUID, NewNode) ->
 
 channel_resume(UUID, NewNode, Evt) ->
     Meta = fix_metadata(props:get_value(<<"metadata">>, Evt)),
-    _ = ecallmgr_util:fs_log(NewNode, "sending sofia::move_request ~s with metadata", [UUID]),
 
     case freeswitch:sendevent_custom(NewNode, 'sofia::move_request'
                                      ,[{"profile_name", wh_util:to_list(?DEFAULT_FS_PROFILE)}
@@ -269,7 +268,6 @@ wait_for_channel_completion(UUID, NewNode) ->
 channel_teardown_sbd(UUID, OriginalNode) ->
     gproc:reg({p, l, {channel_move, OriginalNode, UUID}}),
 
-    _ = ecallmgr_util:fs_log(OriginalNode, "sending sofia::move_request ~s", [UUID]),
     case freeswitch:sendevent_custom(OriginalNode, 'sofia::move_request'
                                      ,[{"profile_name", wh_util:to_list(?DEFAULT_FS_PROFILE)}
                                        ,{"channel_id", wh_util:to_list(UUID)}

@@ -376,7 +376,6 @@ build_originate_args(Action, Endpoints, JObj) ->
 -spec originate_execute/2 :: (atom(), ne_binary()) -> {'ok', ne_binary()} |
                                                       {'error', ne_binary()}.
 originate_execute(Node, Dialstrings) ->
-    _ = ecallmgr_util:fs_log(Node, "whistle originating call: ~s", [Dialstrings]),
     {ok, BGApiID} = freeswitch:bgapi(Node, 'originate', wh_util:to_list(Dialstrings)),
 
     receive
