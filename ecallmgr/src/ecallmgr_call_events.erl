@@ -89,6 +89,9 @@ callid(Srv) ->
 node(Srv) ->
     gen_listener:call(Srv, {node}, 1000).
 
+update_node(Srv, Node) ->
+    gen_listener:cast(Srv, {update_node, Node}).
+
 -spec transfer/3 :: (pid(), atom(), proplist()) -> 'ok'.
 transfer(Srv, TransferType, Props) ->
     gen_listener:cast(Srv, {TransferType, Props}).
@@ -106,13 +109,7 @@ publish_channel_destroy(Props, true) ->
                              props:get_value(<<"Unique-ID">>, Props)),
     put(callid, CallId),
     Event = create_event(<<"CHANNEL_MOVED">>, <<"call_pickup">>, Props),
-    publish_event(Event),
-    case gproc:lookup_pids({p, l, {call_events, CallId}}) of
-        [] -> ok;
-        Pids ->
-            _ = [erlang:send_after(5000, Pid, {shutdown}) || Pid <- Pids],
-            ok
-    end;
+    publish_event(Event);
 
 publish_channel_destroy(Props, false) ->
     CallId = props:get_value(<<"Caller-Unique-ID">>, Props,
@@ -197,6 +194,13 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast({update_node, Node}, #state{node=OldNode}=State) ->
+    lager:debug("node has changed from ~s to ~s", [OldNode, Node]),
+
+    erlang:unmonitor_node(OldNode, false),
+
+    {noreply, State#state{node=Node}, 0};
+
 handle_cast({passive}, State) ->
     lager:debug("publisher has been usurp'd by newer process on another ecallmgr, moving to passive mode", []),
     {noreply, State#state{passive=true}};
@@ -208,9 +212,6 @@ handle_cast({channel_destroyed, _}, State) ->
     lager:debug("our channel has been destroyed, preparing to shutdown"),
     erlang:send_after(1000, self(), {shutdown}),
     {noreply, State};
-handle_cast({channel_is_moving, Props}, State) ->
-    _ = [lager:debug("channel is moving: ~p", [KV]) || KV <- Props],
-    {stop, normal, State};
 handle_cast({transferer, _}, State) ->
     lager:debug("call control has been transfered."),
     {stop, normal, State};
@@ -282,7 +283,7 @@ handle_info(timeout, #state{node=Node, callid=CallId, failed_node_checks=FNC, re
             wapi_call:publish_usurp_publisher(CallId, Usurp),
             gproc:reg({p, l, call_events}),
             gproc:reg({p, l, {call_events, CallId}}),
-            {'noreply', State, hibernate};
+            {'noreply', State#state{failed_node_checks=0}, hibernate};
         timeout ->
             lager:debug("timed out trying to listen to channel events from ~s, trying again", [Node]),
             {'noreply', State#state{failed_node_checks=FNC+1}, 1000};
