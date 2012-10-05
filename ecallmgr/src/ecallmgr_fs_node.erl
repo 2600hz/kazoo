@@ -193,7 +193,6 @@ handle_cast(_Req, State) ->
 handle_info({event, [undefined | Data]}, #state{node=Node}=State) ->
     catch process_event(undefined, Data, Node),
     {noreply, State, hibernate};
-
 handle_info({event, [UUID | Data]}, #state{node=Node}=State) ->
     _ = case ecallmgr_fs_nodes:channel_node(UUID) of
             {ok, Node} -> catch process_event(UUID, Data, Node);
