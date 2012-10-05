@@ -200,7 +200,7 @@ handle_cast({update_node, Node}, #state{node=Node}=State) ->
 handle_cast({update_node, Node}, #state{node=OldNode}=State) ->
     lager:debug("node has changed from ~s to ~s", [OldNode, Node]),
 
-    erlang:unmonitor_node(OldNode, false),
+    erlang:monitor_node(OldNode, false),
 
     {noreply, State#state{node=Node}, 0};
 
@@ -211,9 +211,13 @@ handle_cast({channel_redirected, Props}, State) ->
     lager:debug("our channel has been redirected, shutting down immediately"),
     process_channel_event(Props),
     {stop, {shutdown, redirect}, State};
-handle_cast({channel_destroyed, _}, State) ->
-    lager:debug("our channel has been destroyed, preparing to shutdown"),
-    erlang:send_after(1000, self(), {shutdown}),
+handle_cast({channel_destroyed, Evt}, State) ->
+    _ = case ecallmgr_util:has_channel_is_moving_flag(Evt) of
+            true -> lager:debug("ignoring destroy as the channel is moving");
+            false ->
+                lager:debug("our channel has been destroyed, preparing to shutdown"),
+                erlang:send_after(1000, self(), {shutdown})
+        end,
     {noreply, State};
 handle_cast({transferer, _}, State) ->
     lager:debug("call control has been transfered."),
