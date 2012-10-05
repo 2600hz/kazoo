@@ -185,7 +185,7 @@ create_sip_endpoint(Endpoint, Properties, Call) ->
 
     ForceFax = case wh_json:is_true([<<"media">>, <<"fax_option">>],Endpoint) of
                    false -> undefined;
-                   true -> <<"peer">>
+                   true -> <<"self">>
                end,
 
     Prop = [{<<"Invite-Format">>, wh_json:get_value([<<"sip">>, <<"invite_format">>], Endpoint, <<"username">>)}

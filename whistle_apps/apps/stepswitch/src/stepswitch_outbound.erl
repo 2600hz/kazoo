@@ -154,7 +154,7 @@ bridge_to_endpoints(Endpoints, IsEmergency, CtrlQ, JObj) ->
 
     ForceFax = case wh_json:is_true(<<"Force-Fax">>, JObj) of
                    false -> undefined;
-                   true -> <<"self">>
+                   true -> <<"peer">>
                end,
 
     Command = [{<<"Application-Name">>, <<"bridge">>}

@@ -102,7 +102,7 @@ create_endpoint(DestNum, JObj, Call) ->
                end,
     ForceFax = case wh_json:is_true([<<"media">>, <<"fax_option">>], Endpoint) of
                    false -> undefined;
-                   true -> <<"self">>
+                   true -> <<"peer">>
                end,
     AccountId = whapps_call:account_id(Call),
     CCVs = [{<<"Account-ID">>, AccountId}

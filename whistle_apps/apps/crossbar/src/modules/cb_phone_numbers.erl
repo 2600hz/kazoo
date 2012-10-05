@@ -129,6 +129,7 @@ resource_exists(_) -> true.
 
 resource_exists(_, ?ACTIVATE) -> true;
 resource_exists(_, ?RESERVE) -> true;
+resource_exists(_, ?PORT) -> true;
 resource_exists(_, ?PORT_DOCS) -> true;
 resource_exists(_, _) -> false.
 
