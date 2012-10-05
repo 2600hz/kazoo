@@ -417,6 +417,7 @@ props_to_channel_record(Props, Node) ->
              ,import_moh=props:get_value(<<"variable_hold_music">>, Props) =:= undefined
              ,node=Node
              ,timestamp=wh_util:current_tstamp()
+             ,is_moving=wh_util:is_true(props:get_value(<<"variable_channel_is_moving">>, Props, false))
             }.
 
 -spec channel_record_to_json/1 :: (channel()) -> wh_json:json_object().
@@ -439,6 +440,7 @@ channel_record_to_json(Channel) ->
                        ,{<<"username">>, Channel#channel.username}
                        ,{<<"node">>, Channel#channel.node}
                        ,{<<"timestamp">>, Channel#channel.timestamp}
+                       ,{<<"is_moving">>, wh_util:is_true(Channel#channel.is_moving)}
                       ]).
 
 -spec sync_channels/0 :: () -> 'ok'.
