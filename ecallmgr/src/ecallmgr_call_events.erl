@@ -258,20 +258,25 @@ handle_info({call_event, _}, #state{passive=true}=State) ->
 handle_info({call, {event, [CallId | Props]}}, #state{node=Node
                                                       ,callid=CallId
                                                      }=State) ->
-    _ = case ecallmgr_fs_nodes:channel_is_moving(Node, CallId) of
-            false -> process_event_prop(Props);
-            _IsM -> lager:debug("channel is moving, surpressing evt: ~p", [_IsM])
-        end,
-
+    case ecallmgr_fs_nodes:channel_node(CallId) of
+        {ok, Node} -> process_event_prop(Props);
+        {ok, _NewNode} ->
+            lager:debug("surpressing: channel is on different node ~s, not ~s", [_NewNode, Node]);
+        {error, not_found} ->
+            lager:debug("channel ~s not found?", [CallId])
+    end,
     {'noreply', State};
 
 handle_info({call_event, {event, [CallId | Props]}}, #state{node=Node
                                                             ,callid=CallId
                                                            }=State) ->
-    _ = case ecallmgr_fs_nodes:channel_is_moving(Node, CallId) of
-            false -> process_event_prop(Props);
-            _IsM -> lager:debug("channel is moving, surpressing evt: ~p", [_IsM])
-        end,
+    case ecallmgr_fs_nodes:channel_node(CallId) of
+        {ok, Node} -> process_event_prop(Props);
+        {ok, _NewNode} ->
+            lager:debug("surpressing: channel is on different node ~s, not ~s", [_NewNode, Node]);
+        {error, not_found} ->
+            lager:debug("channel ~s not found?", [CallId])
+    end,
     {'noreply', State};
 
 handle_info({nodedown, _}, #state{node=Node, is_node_up=true}=State) ->
