@@ -259,7 +259,7 @@ wait_for_channel_completion(UUID, NewNode) ->
     lager:debug("waiting for confirmation from ~s of channel_move", [NewNode]),
     receive
         {channel_move_completed, UUID, _Evt} ->
-            lager:debug("confirmation of channel_move received: ~p", [_Evt]),
+            lager:debug("confirmation of channel_move received, success!"),
             true
     after 5000 ->
             lager:debug("timed out waiting for channel_move to complete"),
@@ -359,7 +359,7 @@ channel_set_import_moh(_Node, UUID, Import) ->
     gen_server:cast(?MODULE, {channel_update, UUID, {#channel.import_moh, Import}}).
 
 -spec destroy_channel/2 :: (proplist(), atom()) -> 'ok'.
-destroy_channel(Props, _) ->
+destroy_channel(Props, _Node) ->
     UUID = props:get_value(<<"Unique-ID">>, Props),
     gen_server:cast(?MODULE, {destroy_channel, UUID}),
     ecallmgr_call_control:rm_leg(Props),
