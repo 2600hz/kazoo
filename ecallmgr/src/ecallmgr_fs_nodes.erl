@@ -206,7 +206,8 @@ channel_move(UUID, ONode, NNode) ->
 -spec channel_resume/2 :: (ne_binary(), atom()) -> boolean().
 -spec channel_resume/3 :: (ne_binary(), atom(), wh_proplist()) -> boolean().
 channel_resume(UUID, NewNode) ->
-    lager:debug("waiting for message with metadata for channel ~s", [UUID]),
+    gproc:reg({p, l, {channel_move, NewNode, UUID}}),
+    lager:debug("waiting for message with metadata for channel ~s from ~s", [UUID, NewNode]),
     receive
         {channel_move_released, UUID, Evt} ->
             lager:debug("channel has been released from former node"),

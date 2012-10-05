@@ -268,7 +268,7 @@ process_event(_, _, _, _) ->
 
 -spec process_custom_data/2 :: (proplist(), atom()) -> 'ok'.
 process_custom_data(Data, Node) ->
-    put(callid, props:get_value(<<"call-id">>, Data)),
+    put(callid, props:get_value(<<"call-id">>, Data, Node)),
     Subclass = props:get_value(<<"Event-Subclass">>, Data),
     case Subclass of
         <<"sofia::register">> ->
@@ -294,7 +294,7 @@ process_custom_data(Data, Node) ->
             gproc:send({p, l, {channel_move, Node, UUID}}, {channel_move_released, UUID, Data});
         <<"sofia::move_complete">> ->
             UUID = props:get_value(<<"old_node_channel_uuid">>, Data),
-            lager:debug("sending move_complete for ~s (from ~s)", [UUID, props:get_value(<<"old_node_hostname">>, Data)]),
+            lager:debug("sending move_complete for ~s", [UUID]),
             _ = [lager:debug("move_complete: ~p", [KV]) || KV <- Data],
             gproc:send({p, l, {channel_move, Node, UUID}}, {channel_move_completed, UUID, Data});
         _Sub ->
