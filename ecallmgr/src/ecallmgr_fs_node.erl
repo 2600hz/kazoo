@@ -193,16 +193,18 @@ handle_cast(_Req, State) ->
 handle_info({event, [undefined | Data]}, #state{node=Node}=State) ->
     catch process_event(undefined, Data, Node),
     {noreply, State, hibernate};
+
 handle_info({event, [UUID | Data]}, #state{node=Node}=State) ->
     _ = case ecallmgr_fs_nodes:channel_is_moving(Node, UUID) of
-            false -> catch process_event(UUID, Data, Node);
-            _IsM -> lager:debug("channel is moving, surpressing evt: ~p", [_IsM])
+            true -> lager:debug("channel is moving, surpressing evt");
+            _ -> catch process_event(UUID, Data, Node)
         end,
     {noreply, State, hibernate};
 
 handle_info({bgok, _Job, _Result}, State) ->
     lager:debug("job ~s finished successfully: ~p", [_Job, _Result]),
     {noreply, State};
+
 handle_info({bgerror, _Job, _Result}, State) ->
     lager:debug("job ~s finished with an error: ~p", [_Job, _Result]),
     {noreply, State};
