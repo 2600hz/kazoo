@@ -195,13 +195,12 @@ handle_info({event, [undefined | Data]}, #state{node=Node}=State) ->
     {noreply, State, hibernate};
 
 handle_info({event, [UUID | Data]}, #state{node=Node}=State) ->
-    case ecallmgr_fs_nodes:channel_node(UUID) of
-        {ok, Node} -> catch process_event(UUID, Data, Node);
-        {ok, _NewNode} ->
-            lager:debug("surpressing: channel is on different node ~s, not ~s", [_NewNode, Node]);
-        {error, not_found} ->
-            lager:debug("channel ~s not found?", [UUID])
-    end,
+    _ = case ecallmgr_fs_nodes:channel_node(UUID) of
+            {ok, Node} -> catch process_event(UUID, Data, Node);
+            {error, not_found} -> catch process_event(UUID, Data, Node);
+            {ok, _NewNode} ->
+                lager:debug("surpressing: channel is on different node ~s, not ~s", [_NewNode, Node])
+        end,
     {noreply, State, hibernate};
 
 handle_info({bgok, _Job, _Result}, State) ->
