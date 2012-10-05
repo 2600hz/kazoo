@@ -523,11 +523,11 @@ show_channels_as_json(Node) ->
         {error, _} -> []
     end.
 
--spec maybe_start_event_listener/2 :: (atom(), ne_binary()) -> 'ok' | {'error', _} | {'ok', _} | {'ok', 'undefined' | pid(), _}.
+-spec maybe_start_event_listener/2 :: (atom(), ne_binary()) -> 'ok' | sup_startchild_ret().
 maybe_start_event_listener(Node, UUID) ->
     case wh_cache:fetch_local(?ECALLMGR_UTIL_CACHE, {UUID, start_listener}) of
         {ok, true} ->
-            lager:debug("starting events for ~s", [UUID]),
+            lager:debug("starting events for ~s on ~s", [UUID, Node]),
             ecallmgr_call_sup:start_event_process(Node, UUID);
         _E ->
             lager:debug("ignoring start events for ~s: ~p", [UUID, _E]), ok

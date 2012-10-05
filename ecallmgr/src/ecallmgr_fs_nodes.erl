@@ -211,7 +211,7 @@ channel_move(UUID, ONode, NNode) ->
     NewNode = wh_util:to_atom(NNode),
 
     channel_set_node(NewNode, UUID),
-    ecallmgr_call_events:stop(UUID),
+    ecallmgr_call_events:stop(OriginalNode, UUID),
     ecallmgr_call_control:update_node(NewNode, UUID),
 
     lager:debug("updated ~s to point to ~s", [UUID, NewNode]),
