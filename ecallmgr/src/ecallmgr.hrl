@@ -55,6 +55,7 @@
                   ,username = '_'
                   ,import_moh = '_'
                   ,node = '_'
+                  ,former_node = '_'
                   ,timestamp = '_'
                   ,is_moving = 'false'
                  }).
