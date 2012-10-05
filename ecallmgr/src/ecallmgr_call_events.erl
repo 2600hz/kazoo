@@ -122,19 +122,20 @@ publish_channel_destroy(Node, UUID, Props) ->
             publish_event(create_event(<<"CHANNEL_MOVED">>, <<"call_pickup">>, Props))
     end.
 
--spec handle_publisher_usurp/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
+-spec handle_publisher_usurp/2 :: (wh_json:json_object(), wh_proplist()) -> 'ok'.
 handle_publisher_usurp(JObj, Props) ->
     CallId = props:get_value(call_id, Props),
     Ref = props:get_value(reference, Props),
+    Node = wh_util:to_binary(props:get_value(node, Props)),
+
     case CallId =:= wh_json:get_value(<<"Call-ID">>, JObj)
+        andalso Node =:= wh_json:get_value(<<"Media-Node">>, JObj)
         andalso Ref =/= wh_json:get_value(<<"Reference">>, JObj)
     of
         false -> ok;
         true ->
             put(callid, CallId),
-            Srv = props:get_value(server, Props),
-            gen_listener:cast(Srv, {passive}),
-            ok
+            gen_listener:cast(props:get_value(server, Props), {passive})
     end.
 
 %%%===================================================================
@@ -295,13 +296,18 @@ handle_info({check_node_status}, #state{node=Node, callid=CallId, is_node_up=fal
 handle_info(timeout, #state{failed_node_checks=FNC}=State) when (FNC+1) > ?MAX_FAILED_NODE_CHECKS ->
     lager:debug("unable to establish initial connectivity to the media node, laterz"),
     {stop, normal, State};
-handle_info(timeout, #state{node=Node, callid=CallId, failed_node_checks=FNC, ref=Ref}=State) ->
+handle_info(timeout, #state{node=Node
+                            ,callid=CallId
+                            ,failed_node_checks=FNC
+                            ,ref=Ref
+                           }=State) ->
     erlang:monitor_node(Node, true),
     %% TODO: die if there is already a event producer on the AMPQ queue... ping/pong?
     case freeswitch:handlecall(Node, CallId) of
         ok ->
             lager:debug("listening to channel events from ~s", [Node]),
             Usurp = [{<<"Call-ID">>, CallId}
+                     ,{<<"Media-Node">>, Node}
                      ,{<<"Reference">>, Ref}
                      | wh_api:default_headers(?APP_NAME, ?APP_VERSION) 
                     ],
@@ -351,9 +357,13 @@ handle_info(_Info, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Options}
 %% @end
 %%--------------------------------------------------------------------
-handle_event(_JObj, #state{ref=Ref, callid=CallId}) ->
+handle_event(_JObj, #state{ref=Ref
+                           ,callid=CallId
+                           ,node=Node
+                          }) ->
     {reply, [{reference, Ref}
              ,{call_id, CallId}
+             ,{node, Node}
             ]}.
 
 %%--------------------------------------------------------------------
