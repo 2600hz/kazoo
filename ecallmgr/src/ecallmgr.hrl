@@ -56,6 +56,7 @@
                   ,import_moh = '_'
                   ,node = '_'
                   ,timestamp = '_'
+                  ,is_moving = '_'
                  }).
 -type channel() :: #channel{}.
 -type channels() :: [channel(),...] | [].

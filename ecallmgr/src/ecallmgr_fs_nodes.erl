@@ -30,6 +30,8 @@
 -export([channel_match_presence/1]).
 -export([channel_exists/1]).
 -export([channel_import_moh/1]).
+-export([channel_is_moving/2]).
+-export([channel_set_node/3]).
 -export([channel_set_account_id/3]).
 -export([channel_set_billing_id/3]).
 -export([channel_set_account_billing/3]).
@@ -41,6 +43,7 @@
 -export([channel_set_owner_id/3]).
 -export([channel_set_presence_id/3]).
 -export([channel_set_import_moh/3]).
+-export([channel_set_is_moving/3]).
 -export([channel_move/3]).
 -export([fetch_channel/1]).
 -export([destroy_channel/2]).
@@ -169,6 +172,13 @@ channel_import_moh(UUID) ->
         error:badarg -> false
     end.
 
+-spec channel_is_moving/2 :: (atom(), ne_binary()) -> boolean() | {'error', 'uuid_not_found_on_node'}.
+channel_is_moving(Node, UUID) ->
+    case ets:lookup(ecallmgr_channels, UUID) of
+        [#channel{node=Node, is_moving=IsMoving}] -> wh_util:is_true(IsMoving);
+        _ -> {error, uuid_not_found_on_node}
+    end.
+
 -spec channel_account_summary/1 :: (ne_binary()) -> channels().
 channel_account_summary(AccountId) ->
     MatchSpec = [{#channel{direction = '$1', account_id = '$2', account_billing = '$7'
@@ -191,6 +201,8 @@ channel_match_presence(PresenceId) ->
 channel_move(UUID, ONode, NNode) ->
     OriginalNode = wh_util:to_atom(ONode),
     NewNode = wh_util:to_atom(NNode),
+
+    channel_set_is_moving(ONode, UUID, true),
 
     case channel_teardown_sbd(UUID, OriginalNode) of
         true ->
@@ -260,6 +272,8 @@ wait_for_channel_completion(UUID, NewNode) ->
     receive
         {channel_move_completed, UUID, _Evt} ->
             lager:debug("confirmation of channel_move received, success!"),
+            channel_set_is_moving(NewNode, UUID, false),
+            _ = ecallmgr_call_sup:start_event_process(NewNode, UUID),
             true
     after 5000 ->
             lager:debug("timed out waiting for channel_move to complete"),
@@ -358,12 +372,23 @@ channel_set_presence_id(Node, UUID, Value) ->
 channel_set_import_moh(_Node, UUID, Import) ->
     gen_server:cast(?MODULE, {channel_update, UUID, {#channel.import_moh, Import}}).
 
+-spec channel_set_is_moving/3 :: (atom(), ne_binary(), boolean()) -> 'ok'.
+channel_set_is_moving(Node, UUID, IsMoving) ->
+    gen_server:cast(?MODULE, {channel_update, UUID, [{#channel.is_moving, wh_util:is_true(IsMoving)}
+                                                     ,{#channel.node, Node}
+                                                    ]
+                             }).
+
+-spec channel_set_node/3 :: (atom(), ne_binary(), atom()) -> 'ok'.
+channel_set_node(Node, UUID, Node) ->
+    gen_server:cast(?MODULE, {channel_update, UUID, {#channel.node, Node}}).
+
 -spec destroy_channel/2 :: (proplist(), atom()) -> 'ok'.
-destroy_channel(Props, _Node) ->
+destroy_channel(Props, Node) ->
     UUID = props:get_value(<<"Unique-ID">>, Props),
-    gen_server:cast(?MODULE, {destroy_channel, UUID}),
+    gen_server:cast(?MODULE, {destroy_channel, UUID, Node}),
     ecallmgr_call_control:rm_leg(Props),
-    ecallmgr_call_events:publish_channel_destroy(Props).
+    ecallmgr_call_events:publish_channel_destroy(Node, UUID, Props).
 
 -spec props_to_channel_record/2 :: (proplist(), atom()) -> channel().
 props_to_channel_record(Props, Node) ->
@@ -505,8 +530,16 @@ handle_cast({new_channel, Channel}, State) ->
 handle_cast({channel_update, UUID, Update}, State) ->
     ets:update_element(ecallmgr_channels, UUID, Update),
     {noreply, State, hibernate};
-handle_cast({destroy_channel, UUID}, State) ->
-    ets:delete(ecallmgr_channels, UUID),
+handle_cast({destroy_channel, UUID, Node}, State) ->
+    MatchSpec = [{#channel{uuid='$1', node='$2'}
+                  ,[{'andalso', {'=:=', '$2', {const, Node}}
+                     ,{'=:=', '$1', UUID}
+                    }
+                   ],
+                  [true]
+                 }],
+    N = ets:select_delete(ecallmgr_channels, MatchSpec),
+    lager:debug("maybe removed channel ~s on ~s: ~p", [UUID, Node, N]),
     {noreply, State, hibernate};
 handle_cast({rm_fs_node, Node}, State) ->
     {noreply, rm_fs_node(Node, State), hibernate};

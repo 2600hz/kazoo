@@ -44,10 +44,6 @@
 -spec new_cdr/2 :: (ne_binary(), proplist()) -> 'ok'.
 new_cdr(UUID, EvtProp) ->
     put(callid, UUID),
-    new_cdr(UUID, EvtProp, ecallmgr_util:has_channel_is_moving_flag(EvtProp)).
-new_cdr(_UUID, _EvtProp, true) ->
-    lager:debug("CDR has the channel_is_moving flag, supressing");
-new_cdr(UUID, EvtProp, false) ->
     CDR = create_cdr(EvtProp),
 
     lager:debug("publising cdr: ~p", [CDR]),

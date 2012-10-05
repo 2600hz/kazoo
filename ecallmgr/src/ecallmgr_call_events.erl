@@ -27,7 +27,7 @@
 -export([publish_event/1]).
 -export([transfer/3]).
 -export([get_fs_var/4]).
--export([publish_channel_destroy/1]).
+-export([publish_channel_destroy/3]).
 -export([handle_publisher_usurp/2]).
 -export([queue_name/1
          ,callid/1
@@ -101,31 +101,26 @@ transfer(Srv, TransferType, Props) ->
 queue_name(Srv) ->
     gen_listener:queue_name(Srv).
 
--spec publish_channel_destroy/1 :: (wh_proplist()) -> 'ok'.
-publish_channel_destroy(Props) ->
-    publish_channel_destroy(Props, ecallmgr_util:has_channel_is_moving_flag(Props)).
-publish_channel_destroy(Props, true) ->
-    lager:debug("channel_destroy has the channel_is_moving flag, supressing in favor of channel_move"),
-    CallId = props:get_value(<<"Caller-Unique-ID">>, Props,
-                             props:get_value(<<"Unique-ID">>, Props)),
-    put(callid, CallId),
-    Event = create_event(<<"CHANNEL_MOVED">>, <<"call_pickup">>, Props),
-    publish_event(Event);
-
-publish_channel_destroy(Props, false) ->
-    CallId = props:get_value(<<"Caller-Unique-ID">>, Props,
-                             props:get_value(<<"Unique-ID">>, Props)),
-    put(callid, CallId),
+-spec publish_channel_destroy/3 :: (atom(), ne_binary(), wh_proplist()) -> 'ok'.
+publish_channel_destroy(Node, UUID, Props) ->
+    publish_channel_destroy(Node, UUID, Props, ecallmgr_fs_nodes:channel_is_moving(Node, UUID)).
+publish_channel_destroy(_Node, UUID, Props, false) ->
+    put(callid, UUID),
     EventName = props:get_value(<<"Event-Name">>, Props),
     ApplicationName = props:get_value(<<"Application">>, Props),
     Event = create_event(EventName, ApplicationName, Props),
     publish_event(Event),
-    case gproc:lookup_pids({p, l, {call_events, CallId}}) of
+    case gproc:lookup_pids({p, l, {call_events, UUID}}) of
         [] -> ok;
         Pids ->
             _ = [erlang:send_after(5000, Pid, {shutdown}) || Pid <- Pids],
             ok
-    end.
+    end;
+publish_channel_destroy(_Node, UUID, Props, true) ->
+    lager:debug("channel is moving, supressing destroy in favor of channel_move"),
+    put(callid, UUID),
+    Event = create_event(<<"CHANNEL_MOVED">>, <<"call_pickup">>, Props),
+    publish_event(Event).
 
 -spec handle_publisher_usurp/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
 handle_publisher_usurp(JObj, Props) ->
@@ -216,11 +211,13 @@ handle_cast({channel_redirected, Props}, State) ->
     lager:debug("our channel has been redirected, shutting down immediately"),
     process_channel_event(Props),
     {stop, {shutdown, redirect}, State};
-handle_cast({channel_destroyed, Evt}, State) ->
-    _ = case ecallmgr_util:has_channel_is_moving_flag(Evt) of
+handle_cast({channel_destroyed, _Evt}, #state{node=Node
+                                             ,callid=CallId
+                                            }=State) ->
+    _ = case ecallmgr_fs_nodes:channel_is_moving(Node, CallId) of
             true -> lager:debug("ignoring destroy as the channel is moving");
-            false ->
-                lager:debug("our channel has been destroyed, preparing to shutdown"),
+            _IsM ->
+                lager:debug("our channel has been destroyed, preparing to shutdown: ~p", [_IsM]),
                 erlang:send_after(1000, self(), {shutdown})
         end,
     {noreply, State};
@@ -228,6 +225,7 @@ handle_cast({transferer, _}, State) ->
     lager:debug("call control has been transfered."),
     {stop, normal, State};
 handle_cast(_Msg, State) ->
+    lager:debug("unhandled cast: ~p", [_Msg]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -240,25 +238,29 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+
 handle_info({call, _}, #state{passive=true}=State) ->
     {'noreply', State};
 handle_info({call_event, _}, #state{passive=true}=State) ->
     {'noreply', State};
 
-handle_info({call, {event, [CallId | Props]}}, #state{callid=CallId}=State) ->
-    case {props:get_value(<<"Event-Name">>, Props), props:get_value(<<"Application">>, Props)} of
-        {_, <<"redirect">>} -> gen_listener:cast(self(), {channel_redirected, Props});
-        {<<"CHANNEL_DESTROY">>, _} -> gen_listener:cast(self(), {channel_destroyed, Props});
-        {_, _} -> process_channel_event(Props)
-    end,
+handle_info({call, {event, [CallId | Props]}}, #state{node=Node
+                                                      ,callid=CallId
+                                                     }=State) ->
+    _ = case ecallmgr_fs_nodes:channel_is_moving(Node, CallId) of
+            false -> process_event_prop(Props);
+            _IsM -> lager:debug("channel is moving, surpressing evt: ~p", [_IsM])
+        end,
+
     {'noreply', State};
 
-handle_info({call_event, {event, [CallId | Props]}}, #state{callid=CallId}=State) ->
-    case {props:get_value(<<"Event-Name">>, Props), props:get_value(<<"Application">>, Props)} of
-        {_, <<"redirect">>} -> gen_listener:cast(self(), {channel_redirected, Props});
-        {<<"CHANNEL_DESTROY">>, _} -> gen_listener:cast(self(), {channel_destroyed, Props});
-        {_,_} -> process_channel_event(Props)
-    end,
+handle_info({call_event, {event, [CallId | Props]}}, #state{node=Node
+                                                            ,callid=CallId
+                                                           }=State) ->
+    _ = case ecallmgr_fs_nodes:channel_is_moving(Node, CallId) of
+            false -> process_event_prop(Props);
+            _IsM -> lager:debug("channel is moving, surpressing evt: ~p", [_IsM])
+        end,
     {'noreply', State};
 
 handle_info({nodedown, _}, #state{node=Node, is_node_up=true}=State) ->
@@ -373,13 +375,15 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+process_event_prop(Props) ->
+    case {props:get_value(<<"Event-Name">>, Props), props:get_value(<<"Application">>, Props)} of
+        {_, <<"redirect">>} -> gen_listener:cast(self(), {channel_redirected, Props});
+        {<<"CHANNEL_DESTROY">>, _} -> gen_listener:cast(self(), {channel_destroyed, Props});
+        {_, _} -> process_channel_event(Props)
+    end.
+
 -spec process_channel_event/1 :: (proplist()) -> 'ok'.
--spec process_channel_event/2 :: (proplist(), boolean()) -> 'ok'.
 process_channel_event(Props) ->
-    process_channel_event(Props, ecallmgr_util:has_channel_is_moving_flag(Props)).
-process_channel_event(_Props, true) ->
-    lager:debug("event is part of a moving channel, supressing");
-process_channel_event(Props, false) ->
     CallId = props:get_value(<<"Caller-Unique-ID">>, Props,
                              props:get_value(<<"Unique-ID">>, Props)),
     put(callid, CallId),

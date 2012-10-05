@@ -87,7 +87,7 @@ send_cmd(Node, _UUID, "broadcast", Args) ->
     Resp = freeswitch:api(Node, uuid_broadcast, wh_util:to_list(iolist_to_binary(Args))),
     lager:debug("broadcast resulted in: ~p", [Resp]),
     Resp;
-send_cmd(Node, UUID, "call_pickup", Args) ->
+send_cmd(Node, _UUID, "call_pickup", Args) ->
     lager:debug("execute on node ~s: uuid_bridge(~s)", [Node, Args]),
     freeswitch:api(Node, uuid_bridge, wh_util:to_list(Args));
 send_cmd(Node, UUID, "hangup", _) ->
@@ -459,7 +459,10 @@ lookup_media(MediaName, CallId, JObj, Type, Cache) ->
         {error, not_found} -> lookup_media(MediaName, CallId, JObj, Type, undefined)
     end.
 
-
--spec has_channel_is_moving_flag/1 :: (wh_proplist()) -> boolean().
+-spec has_channel_is_moving_flag/1 :: (wh_proplist()) -> boolean() | 'moved'.
 has_channel_is_moving_flag(Props) ->
-    wh_util:is_true(props:get_value(<<"variable_channel_is_moving">>, Props, false)).
+    case props:get_value(<<"variable_channel_is_moving">>, Props) of
+        <<"true">> -> true;
+        <<"false">> -> moved;
+        _ -> false
+    end.

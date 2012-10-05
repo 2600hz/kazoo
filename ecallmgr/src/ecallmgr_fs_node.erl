@@ -191,7 +191,10 @@ handle_cast(_Req, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({event, [UUID | Data]}, #state{node=Node}=State) ->
-    catch process_event(UUID, Data, Node),
+    _ = case ecallmgr_fs_nodes:channel_is_moving(Node, UUID) of
+            false -> catch process_event(UUID, Data, Node);
+            _IsM -> lager:debug("channel is moving, surpressing evt: ~p", [_IsM])
+        end,
     {noreply, State, hibernate};
 
 handle_info({bgok, _Job, _Result}, State) ->
