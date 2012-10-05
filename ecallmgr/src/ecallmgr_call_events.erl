@@ -19,7 +19,7 @@
 -define(MAX_FAILED_NODE_CHECKS, 10).
 -define(NODE_CHECK_PERIOD, 1000).
 
--export([start_link/2, stop/1]).
+-export([start_link/2, stop/2]).
 
 -export([swap_call_legs/1]).
 -export([create_event/3]).
@@ -82,9 +82,9 @@ start_link(Node, CallId) ->
                                       ,{consume_options, ?CONSUME_OPTIONS}
                                      ], [Node, CallId]).
 
-stop(UUID) ->
+stop(Node, UUID) ->
     _ = [erlang:send_after(5000, Pid, {shutdown})
-         || Pid <- gproc:lookup_pids({p, l, {call_events, UUID}})
+         || Pid <- gproc:lookup_pids({p, l, {call_events, Node, UUID}})
         ],
     ok.
 
@@ -112,20 +112,15 @@ publish_channel_destroy(Node, UUID, Props) ->
     put(callid, UUID),
     case ecallmgr_fs_nodes:channel_node(UUID) of
         {error, not_found} -> lager:debug("channel not found, surpressing destroy");
-        {ok, Node} -> publish_channel_destroy(UUID, Props);
+        {ok, Node} ->
+            EventName = props:get_value(<<"Event-Name">>, Props),
+            ApplicationName = props:get_value(<<"Application">>, Props),
+            publish_event(create_event(EventName, ApplicationName, Props)),
+            stop(Node, UUID);
         {ok, _NewNode} ->
             lager:debug("surpressing destroy; ~s is on ~s, not ~s: publishing channel move instead", [UUID, _NewNode, Node]),
-            publish_channel_move(Props)
+            publish_event(create_event(<<"CHANNEL_MOVED">>, <<"call_pickup">>, Props))
     end.
-
-publish_channel_move(Props) ->
-    publish_event(create_event(<<"CHANNEL_MOVED">>, <<"call_pickup">>, Props)).
-
-publish_channel_destroy(UUID, Props) ->
-    EventName = props:get_value(<<"Event-Name">>, Props),
-    ApplicationName = props:get_value(<<"Application">>, Props),
-    publish_event(create_event(EventName, ApplicationName, Props)),
-    stop(UUID).
 
 -spec handle_publisher_usurp/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
 handle_publisher_usurp(JObj, Props) ->
@@ -205,7 +200,7 @@ handle_cast({update_node, Node}, #state{node=OldNode
     erlang:monitor_node(OldNode, false),
 
     gproc:unreg({p, l, call_events}),
-    gproc:unreg({p, l, {call_events, CallId}}),
+    gproc:unreg({p, l, {call_events, Node, CallId}}),
 
     {noreply, State#state{node=Node}, 0};
 
@@ -312,7 +307,7 @@ handle_info(timeout, #state{node=Node, callid=CallId, failed_node_checks=FNC, re
                     ],
             wapi_call:publish_usurp_publisher(CallId, Usurp),
             gproc:reg({p, l, call_events}),
-            gproc:reg({p, l, {call_events, CallId}}),
+            gproc:reg({p, l, {call_events, Node, CallId}}),
             {'noreply', State#state{failed_node_checks=0}, hibernate};
         timeout ->
             lager:debug("timed out trying to listen to channel events from ~s, trying again", [Node]),
