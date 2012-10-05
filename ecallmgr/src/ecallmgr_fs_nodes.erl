@@ -31,7 +31,7 @@
 -export([channel_exists/1]).
 -export([channel_import_moh/1]).
 -export([channel_is_moving/2]).
--export([channel_set_node/3]).
+-export([channel_set_node/2]).
 -export([channel_set_account_id/3]).
 -export([channel_set_billing_id/3]).
 -export([channel_set_account_billing/3]).
@@ -203,8 +203,11 @@ channel_move(UUID, ONode, NNode) ->
     NewNode = wh_util:to_atom(NNode),
 
     channel_set_is_moving(OriginalNode, UUID, true),
+    channel_set_node(NewNode, UUID),
     ecallmgr_call_events:stop(UUID),
     ecallmgr_call_control:update_node(NewNode, UUID),
+
+    lager:debug("updated ~s to point to ~s", [UUID, NewNode]),
 
     case channel_teardown_sbd(UUID, OriginalNode) of
         true ->
@@ -382,8 +385,8 @@ channel_set_is_moving(Node, UUID, IsMoving) ->
                                                     ]
                              }).
 
--spec channel_set_node/3 :: (atom(), ne_binary(), atom()) -> 'ok'.
-channel_set_node(Node, UUID, Node) ->
+-spec channel_set_node/2 :: (atom(), ne_binary()) -> 'ok'.
+channel_set_node(Node, UUID) ->
     gen_server:cast(?MODULE, {channel_update, UUID, {#channel.node, Node}}).
 
 -spec destroy_channel/2 :: (proplist(), atom()) -> 'ok'.
