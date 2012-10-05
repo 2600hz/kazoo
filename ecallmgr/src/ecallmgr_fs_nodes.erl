@@ -33,7 +33,6 @@
 -export([channel_match_presence/1]).
 -export([channel_exists/1]).
 -export([channel_import_moh/1]).
-
 -export([channel_set_account_id/3]).
 -export([channel_set_billing_id/3]).
 -export([channel_set_account_billing/3]).
