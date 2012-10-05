@@ -367,9 +367,7 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>) ->
                           end
                           ,fun(DP) ->
                                    case wh_json:get_value(<<"Ringback">>, JObj) of
-                                       undefined ->
-                                           {ok, RBSetting} = ecallmgr_util:get_setting(<<"default_ringback">>, <<"%(2000,4000,440,480)">>),
-                                           [{"application", "set ringback=" ++ wh_util:to_list(RBSetting)}|DP];
+                                       undefined -> DP;
                                        Ringback ->
                                            Stream = ecallmgr_util:media_path(Ringback, extant, UUID, JObj),
                                            lager:debug("bridge has custom ringback: ~s", [Stream]),
@@ -430,22 +428,22 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>) ->
                                    end
                            end
                           ,fun(DP) ->
-                                   case wh_json:find(<<"Force-Fax">>, Endpoints, wh_json:get_value(<<"Force-Fax">>, JObj)) of
-                                       undefined -> DP;
-                                       Direction ->
-                                           Args = <<Direction/binary, " nocng">>,
-                                           [{"application", wh_util:to_list(<<"t38_gateway ", Args/binary>>)}|DP]
-                                   end
-                           end
-                          ,fun(DP) ->
                                    [{"application", "set failure_causes=NORMAL_CLEARING,ORIGINATOR_CANCEL,CRASH"}
                                     ,{"application", "set continue_on_fail=true"}
                                     |DP
                                    ]
                            end
                           ,fun(DP) ->
-                                   J = wh_json:set_value([<<"Custom-Channel-Vars">>, <<"Bridge-ID">>], wh_util:rand_hex_binary(16), JObj),
-                                   BridgeCmd = list_to_binary(["bridge ", ecallmgr_fs_xml:get_channel_vars(J), DialStrings]),
+                                   Props = case wh_json:find(<<"Force-Fax">>, Endpoints, wh_json:get_value(<<"Force-Fax">>, JObj)) of
+                                               undefined -> [{[<<"Custom-Channel-Vars">>, <<"Bridge-ID">>], wh_util:rand_hex_binary(16)}];
+                                               Direction -> [{[<<"Custom-Channel-Vars">>, <<"Bridge-ID">>], wh_util:rand_hex_binary(16)}
+                                                             ,{[<<"Custom-Channel-Vars">>, <<"Force-Fax">>], Direction}
+                                                            ]
+                                           end,
+                                   BridgeCmd = list_to_binary(["bridge "
+                                                               ,ecallmgr_fs_xml:get_channel_vars(wh_json:set_values(Props, JObj))
+                                                               ,DialStrings
+                                                              ]),
                                    [{"application", BridgeCmd}|DP]
                            end
                           ,fun(DP) ->

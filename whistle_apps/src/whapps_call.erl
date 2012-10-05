@@ -120,6 +120,14 @@
 -type call() :: #whapps_call{}.
 -export_type([call/0]).
 
+-define(SPECIAL_VARS, [{<<"Caller-ID-Name">>, #whapps_call.caller_id_name}
+                       ,{<<"Caller-ID-Number">>, #whapps_call.caller_id_number}
+                       ,{<<"Account-ID">>, #whapps_call.account_id}
+                       ,{<<"Owner-ID">>, #whapps_call.owner_id}
+                       ,{<<"Authorizing-ID">>, #whapps_call.authorizing_id}
+                       ,{<<"Authorizing-Type">>, #whapps_call.authorizing_type}
+                      ]).
+
 -spec default_helper_function/2 :: (whapps_api_binary(), whapps_call:call()) -> whapps_api_binary().
 default_helper_function(Field, #whapps_call{}) ->
     Field.
@@ -528,7 +536,7 @@ account_id(#whapps_call{account_id=AccountId}) ->
 
 -spec set_authorizing_id/2 :: (ne_binary(), whapps_call:call()) -> whapps_call:call().
 set_authorizing_id(AuthorizingId, #whapps_call{}=Call) when is_binary(AuthorizingId) ->
-    set_custom_channel_var(<<"Authorizing-Id">>, AuthorizingId, Call#whapps_call{authorizing_id=AuthorizingId}).
+    set_custom_channel_var(<<"Authorizing-ID">>, AuthorizingId, Call#whapps_call{authorizing_id=AuthorizingId}).
 
 -spec authorizing_id/1 :: (whapps_call:call()) -> whapps_api_binary().
 authorizing_id(#whapps_call{authorizing_id=AuthorizingId}) ->
@@ -553,19 +561,19 @@ owner_id(#whapps_call{owner_id=OwnerId}) ->
 -spec set_custom_channel_var/3 :: (term(), term(), whapps_call:call()) -> whapps_call:call().
 set_custom_channel_var(Key, Value, #whapps_call{ccvs=CCVs}=Call) ->
     whapps_call_command:set(wh_json:set_value(Key, Value, wh_json:new()), undefined, Call),
-    Call#whapps_call{ccvs=wh_json:set_value(Key, Value, CCVs)}.
+    handle_ccvs_update(wh_json:set_value(Key, Value, CCVs), Call).
 
 -spec set_custom_channel_vars/2 :: (proplist(), whapps_call:call()) -> whapps_call:call().
 set_custom_channel_vars(Props, #whapps_call{ccvs=CCVs}=Call) ->
     NewCCVs = wh_json:set_values(Props, CCVs),
     whapps_call_command:set(NewCCVs, undefined, Call),
-    Call#whapps_call{ccvs=NewCCVs}.
+    handle_ccvs_update(NewCCVs, Call).
 
 -spec update_custom_channel_vars/2 :: ([fun((wh_json:json_object()) -> wh_json:json_object()),...], whapps_call:call()) -> whapps_call:call().
 update_custom_channel_vars(Updaters, #whapps_call{ccvs=CCVs}=Call) ->
     NewCCVs = lists:foldr(fun(F, J) -> F(J) end, CCVs, Updaters),
     whapps_call_command:set(NewCCVs, undefined, Call),
-    Call#whapps_call{ccvs=NewCCVs}.
+    handle_ccvs_update(NewCCVs, Call).
 
 -spec custom_channel_var/3 :: (term(), Default, whapps_call:call()) -> Default | term().
 custom_channel_var(Key, Default, #whapps_call{ccvs=CCVs}) ->
@@ -578,6 +586,16 @@ custom_channel_var(Key, #whapps_call{ccvs=CCVs}) ->
 -spec custom_channel_vars/1 :: (whapps_call:call()) -> wh_json:json_object().
 custom_channel_vars(#whapps_call{ccvs=CCVs}) ->
     CCVs.
+
+-spec handle_ccvs_update/2 :: (wh_json:json_object(), whapps_call:call()) -> whapps_call:call().
+handle_ccvs_update(CCVs, #whapps_call{}=Call) ->
+    lists:foldl(fun({Var, Index}, C) ->
+                        case wh_json:get_ne_value(Var, CCVs) of
+                            undefined -> C;
+                            Value -> 
+                                setelement(Index, C, Value)
+                        end
+                end, Call#whapps_call{ccvs=CCVs}, ?SPECIAL_VARS).
 
 -spec set_custom_publish_function/2 :: (whapps_custom_publish(), whapps_call:call()) -> whapps_call:call().
 set_custom_publish_function(Fun, #whapps_call{}=Call) when is_function(Fun, 2) ->

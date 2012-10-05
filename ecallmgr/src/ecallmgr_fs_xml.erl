@@ -91,6 +91,7 @@ route_resp_xml(RespJObj) ->
 route_resp_xml(<<"bridge">>, Routes, _JObj) ->
     lager:debug("creating a bridge XML response"),
     LogEl = route_resp_log_winning_node(),
+    RingbackEl = route_resp_ringback(),
     %% format the Route based on protocol
     {_Idx, Extensions} = lists:foldr(
                                    fun(RouteJObj, {Idx, Acc}) ->
@@ -123,25 +124,26 @@ route_resp_xml(<<"bridge">>, Routes, _JObj) ->
 
                                                    {Idx+1, [ExtEl | Acc]}
                                            end
-                                   end, {1, [LogEl]}, Routes),
+                                   end, {1, []}, Routes),
 
     FailRespondEl = action_el(<<"respond">>, <<"${bridge_hangup_cause}">>),
     FailConditionEl = condition_el(FailRespondEl),
     FailExtEl = extension_el(<<"failed_bridge">>, <<"false">>, [FailConditionEl]),
 
-    ContextEl = context_el(?WHISTLE_CONTEXT, Extensions ++ [FailExtEl]),
+    ContextEl = context_el(?WHISTLE_CONTEXT, [LogEl, RingbackEl] ++ Extensions ++ [FailExtEl]),
     SectionEl = section_el(<<"dialplan">>, <<"Route Bridge Response">>, ContextEl),
     {ok, xmerl:export([SectionEl], fs_xml)};
 
 route_resp_xml(<<"park">>, _Routes, JObj) ->
     LogEl = route_resp_log_winning_node(),
+    RingbackEl = route_resp_ringback(),
     ParkEl = action_el(<<"park">>),
 
     ParkConditionEl = case route_resp_pre_park_action(JObj) of
                           undefined ->
-                              condition_el([LogEl, ParkEl]);
+                              condition_el([LogEl, RingbackEl, ParkEl]);
                           PreParkEl ->
-                              condition_el([LogEl, PreParkEl, ParkEl])
+                              condition_el([LogEl, RingbackEl, PreParkEl, ParkEl])
                       end,
 
     ParkExtEl = extension_el(<<"park">>, undefined, [ParkConditionEl]),
@@ -153,11 +155,13 @@ route_resp_xml(<<"park">>, _Routes, JObj) ->
 route_resp_xml(<<"error">>, _Routes, JObj) ->
     LogEl = route_resp_log_winning_node(),
 
+    RingbackEl = route_resp_ringback(),
+
     ErrCode = wh_json:get_value(<<"Route-Error-Code">>, JObj),
     ErrMsg = [" ", wh_json:get_value(<<"Route-Error-Message">>, JObj, <<"">>)],
 
     ErrEl = action_el(<<"respond">>, [ErrCode, ErrMsg]),
-    ErrCondEl = condition_el([LogEl, ErrEl]),
+    ErrCondEl = condition_el([LogEl, RingbackEl, ErrEl]),
     ErrExtEl = extension_el([ErrCondEl]),
 
     ContextEl = context_el(?WHISTLE_CONTEXT, [ErrExtEl]),
@@ -174,6 +178,15 @@ route_not_found() ->
 route_resp_log_winning_node() ->
     action_el(<<"log">>, [<<"NOTICE log|${uuid}|", (wh_util:to_binary(node()))/binary, " won call control">>]).
 
+-spec route_resp_ringback/0 :: () -> xml_el().
+route_resp_ringback() ->
+    case ecallmgr_util:get_setting(<<"default_ringback">>, <<"%(2000,4000,440,480)">>) of
+        {ok, RBSetting} ->
+            action_el(<<"set">>, <<"ringback=", (wh_util:to_binary(RBSetting))/binary>>);
+        _Else ->
+            action_el(<<"log">>, [<<"NOTICE log|${uuid}|unable to set default ringback">>])
+    end.
+
 -spec route_resp_pre_park_action/1 :: (wh_json:json_object()) -> 'undefined' | xml_el().
 route_resp_pre_park_action(JObj) ->
     case wh_json:get_value(<<"Pre-Park">>, JObj) of
@@ -181,7 +194,6 @@ route_resp_pre_park_action(JObj) ->
         <<"answer">> -> action_el(<<"answer">>);
         _Else -> undefined
     end.
-
             
 -spec build_sip_route/2 :: (api_terms(), ne_binary() | 'undefined') -> ne_binary() |
                                                                        {'error', 'timeout'}.
@@ -260,7 +272,9 @@ get_channel_vars(JObj) -> get_channel_vars(wh_json:to_proplist(JObj)).
 
 -spec get_channel_vars/2 :: ({binary(), binary() | wh_json:json_object()}, [binary(),...] | []) -> iolist().
 get_channel_vars({<<"Custom-Channel-Vars">>, JObj}, Vars) ->
-    lists:foldl(fun({K, V}, Acc) ->
+    lists:foldl(fun({<<"Force-Fax">>, Direction}, Acc) ->
+                        [<<"execute_on_answer='t38_gateway ", Direction/binary, "'">>|Acc];
+                   ({K, V}, Acc) ->
                         case lists:keyfind(K, 1, ?SPECIAL_CHANNEL_VARS) of
                             false -> [list_to_binary([?CHANNEL_VAR_PREFIX, wh_util:to_list(K)
                                                       ,"='", wh_util:to_list(V), "'"]) | Acc];
