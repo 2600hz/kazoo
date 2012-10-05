@@ -45,7 +45,6 @@
 -export([channel_set_owner_id/3]).
 -export([channel_set_presence_id/3]).
 -export([channel_set_import_moh/3]).
-
 -export([fetch_channel/1]).
 -export([destroy_channel/2]).
 -export([props_to_channel_record/2]).
@@ -185,6 +184,13 @@ channel_import_moh(UUID) ->
         Import -> Import
     catch
         error:badarg -> false
+    end.
+
+-spec channel_is_moving/2 :: (atom(), ne_binary()) -> boolean() | {'error', 'uuid_not_found_on_node'}.
+channel_is_moving(Node, UUID) ->
+    case ets:lookup(ecallmgr_channels, UUID) of
+        [#channel{node=Node, is_moving=IsMoving}] -> wh_util:is_true(IsMoving);
+        _ -> {error, uuid_not_found_on_node}
     end.
 
 -spec channel_account_summary/1 :: (ne_binary()) -> channels().
