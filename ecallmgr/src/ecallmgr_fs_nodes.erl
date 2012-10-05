@@ -27,7 +27,6 @@
 -export([new_channel/2]).
 -export([channel_node/1, channel_set_node/2
          ,channel_former_node/1
-         ,channel_is_moving/2, channel_set_is_moving/3
          ,channel_move/3
         ]).
 -export([channel_account_summary/1]).
@@ -188,14 +187,6 @@ channel_import_moh(UUID) ->
         error:badarg -> false
     end.
 
--spec channel_is_moving/2 :: (atom(), ne_binary()) -> boolean() |
-                                                      {'error', 'not_found'}.
-channel_is_moving(Node, UUID) ->
-    case ets:lookup(ecallmgr_channels, UUID) of
-        [#channel{node=Node, is_moving=IsMoving}] -> wh_util:is_true(IsMoving);
-        _ -> {error, not_found}
-    end.
-
 -spec channel_account_summary/1 :: (ne_binary()) -> channels().
 channel_account_summary(AccountId) ->
     MatchSpec = [{#channel{direction = '$1', account_id = '$2', account_billing = '$7'
@@ -219,7 +210,6 @@ channel_move(UUID, ONode, NNode) ->
     OriginalNode = wh_util:to_atom(ONode),
     NewNode = wh_util:to_atom(NNode),
 
-    channel_set_is_moving(OriginalNode, UUID, true),
     channel_set_node(NewNode, UUID),
     ecallmgr_call_events:stop(UUID),
     ecallmgr_call_control:update_node(NewNode, UUID),
@@ -296,7 +286,6 @@ wait_for_channel_completion(UUID, NewNode) ->
     receive
         {channel_move_completed, UUID, _Evt} ->
             lager:debug("confirmation of channel_move received, success!"),
-            channel_set_is_moving(NewNode, UUID, false),
             _ = ecallmgr_call_sup:start_event_process(NewNode, UUID),
             true
     after 5000 ->
@@ -396,13 +385,6 @@ channel_set_presence_id(Node, UUID, Value) ->
 channel_set_import_moh(_Node, UUID, Import) ->
     gen_server:cast(?MODULE, {channel_update, UUID, {#channel.import_moh, Import}}).
 
--spec channel_set_is_moving/3 :: (atom(), ne_binary(), boolean()) -> 'ok'.
-channel_set_is_moving(Node, UUID, IsMoving) ->
-    gen_server:cast(?MODULE, {channel_update, UUID, [{#channel.is_moving, wh_util:is_true(IsMoving)}
-                                                     ,{#channel.node, Node}
-                                                    ]
-                             }).
-
 -spec channel_set_node/2 :: (atom(), ne_binary()) -> 'ok'.
 channel_set_node(Node, UUID) ->
     Updates = case channel_node(UUID) of
@@ -413,6 +395,7 @@ channel_set_node(Node, UUID) ->
                        ,{#channel.former_node, OldNode}
                       ]
               end,
+    lager:debug("updaters: ~p", [Updates]),
     gen_server:cast(?MODULE, {channel_update, UUID, Updates}).
 
 -spec destroy_channel/2 :: (proplist(), atom()) -> 'ok'.
@@ -446,7 +429,6 @@ props_to_channel_record(Props, Node) ->
              ,import_moh=props:get_value(<<"variable_hold_music">>, Props) =:= undefined
              ,node=Node
              ,timestamp=wh_util:current_tstamp()
-             ,is_moving=wh_util:is_true(props:get_value(<<"variable_channel_is_moving">>, Props, false))
             }.
 
 -spec channel_record_to_json/1 :: (channel()) -> wh_json:json_object().
@@ -469,7 +451,6 @@ channel_record_to_json(Channel) ->
                        ,{<<"username">>, Channel#channel.username}
                        ,{<<"node">>, Channel#channel.node}
                        ,{<<"timestamp">>, Channel#channel.timestamp}
-                       ,{<<"is_moving">>, wh_util:is_true(Channel#channel.is_moving)}
                       ]).
 
 -spec sync_channels/0 :: () -> 'ok'.

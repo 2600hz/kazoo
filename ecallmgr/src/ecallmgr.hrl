@@ -57,7 +57,6 @@
                   ,node = '_'
                   ,former_node = '_'
                   ,timestamp = '_'
-                  ,is_moving = 'false'
                  }).
 -type channel() :: #channel{}.
 -type channels() :: [channel(),...] | [].

@@ -186,7 +186,8 @@ search_for_route(Node, FSID, CallId, Props) ->
     ReqResp = wh_amqp_worker:call(?ECALLMGR_AMQP_POOL
                                   ,route_req(CallId, FSID, Props, Node)
                                   ,fun wapi_route:publish_req/1
-                                  ,fun wapi_route:is_actionable_resp/1),
+                                  ,fun wapi_route:is_actionable_resp/1
+                                 ),
     case ReqResp of
         {error, _R} -> 
             lager:debug("did not receive route response: ~p", [_R]);
