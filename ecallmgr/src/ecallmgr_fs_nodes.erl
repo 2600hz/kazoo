@@ -185,14 +185,6 @@ channel_import_moh(UUID) ->
         error:badarg -> false
     end.
 
--spec channel_is_moving/2 :: (atom(), ne_binary()) -> boolean() |
-                                                      {'error', 'not_found'}.
-channel_is_moving(Node, UUID) ->
-    case ets:lookup(ecallmgr_channels, UUID) of
-        [#channel{node=Node, is_moving=IsMoving}] -> wh_util:is_true(IsMoving);
-        _ -> {error, not_found}
-    end.
-
 -spec channel_account_summary/1 :: (ne_binary()) -> channels().
 channel_account_summary(AccountId) ->
     MatchSpec = [{#channel{direction = '$1', account_id = '$2', account_billing = '$7'
@@ -435,7 +427,6 @@ props_to_channel_record(Props, Node) ->
              ,import_moh=props:get_value(<<"variable_hold_music">>, Props) =:= undefined
              ,node=Node
              ,timestamp=wh_util:current_tstamp()
-             ,is_moving=wh_util:is_true(props:get_value(<<"variable_channel_is_moving">>, Props, false))
             }.
 
 -spec channel_record_to_json/1 :: (channel()) -> wh_json:json_object().
@@ -458,7 +449,6 @@ channel_record_to_json(Channel) ->
                        ,{<<"username">>, Channel#channel.username}
                        ,{<<"node">>, Channel#channel.node}
                        ,{<<"timestamp">>, Channel#channel.timestamp}
-                       ,{<<"is_moving">>, wh_util:is_true(Channel#channel.is_moving)}
                       ]).
 
 -spec sync_channels/0 :: () -> 'ok'.
