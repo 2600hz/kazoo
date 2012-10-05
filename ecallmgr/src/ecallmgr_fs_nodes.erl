@@ -185,11 +185,12 @@ channel_import_moh(UUID) ->
         error:badarg -> false
     end.
 
--spec channel_is_moving/2 :: (atom(), ne_binary()) -> boolean() | {'error', 'uuid_not_found_on_node'}.
+-spec channel_is_moving/2 :: (atom(), ne_binary()) -> boolean() |
+                                                      {'error', 'not_found'}.
 channel_is_moving(Node, UUID) ->
     case ets:lookup(ecallmgr_channels, UUID) of
         [#channel{node=Node, is_moving=IsMoving}] -> wh_util:is_true(IsMoving);
-        _ -> {error, uuid_not_found_on_node}
+        _ -> {error, not_found}
     end.
 
 -spec channel_account_summary/1 :: (ne_binary()) -> channels().
