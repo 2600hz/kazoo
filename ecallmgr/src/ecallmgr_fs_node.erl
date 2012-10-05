@@ -190,6 +190,9 @@ handle_cast(_Req, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info({event, [undefined | Data]}, #state{node=Node}=State) ->
+    catch process_event(undefined, Data, Node),
+    {noreply, State, hibernate};
 handle_info({event, [UUID | Data]}, #state{node=Node}=State) ->
     _ = case ecallmgr_fs_nodes:channel_is_moving(Node, UUID) of
             false -> catch process_event(UUID, Data, Node);
