@@ -633,4 +633,4 @@ lookup_media(MediaName, CallId, JObj, Type, Cache) ->
 
 -spec has_channel_is_moving_flag/1 :: (wh_proplist()) -> boolean().
 has_channel_is_moving_flag(Props) ->
-    props:get_value(<<"variable_channel_is_moving">>, Props) =/= undefined.
+    wh_util:is_true(props:get_value(<<"variable_channel_is_moving">>, Props, false)).
