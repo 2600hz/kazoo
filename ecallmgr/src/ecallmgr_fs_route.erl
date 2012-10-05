@@ -170,14 +170,14 @@ process_route_req(Node, FSID, CallId, Props) ->
     lager:debug("processing fetch request ~s (call ~s) from ~s", [FSID, CallId, Node]),
 
     case ecallmgr_fs_nodes:channel_is_moving(Node, CallId) of
-        false ->
-            search_for_route(Node, FSID, CallId, Props);
-        _IsM ->
-            lager:debug("channel is moving or has moved, park it: ~p", [_IsM]),
+        true ->
+            lager:debug("channel is moving or has moved, park it"),
             RespJObj = wh_json:from_list([{<<"Routes">>, []}
                                           ,{<<"Method">>, <<"park">>}
                                          ]),
-            reply_affirmative(Node, FSID, CallId, RespJObj, Props)
+            reply_affirmative(Node, FSID, CallId, RespJObj, Props);
+        _ ->
+            search_for_route(Node, FSID, CallId, Props)
     end.
 
 search_for_route(Node, FSID, CallId, Props) ->
