@@ -202,11 +202,14 @@ channel_move(UUID, ONode, NNode) ->
     OriginalNode = wh_util:to_atom(ONode),
     NewNode = wh_util:to_atom(NNode),
 
-    channel_set_is_moving(ONode, UUID, true),
+    channel_set_is_moving(OriginalNode, UUID, true),
+    ecallmgr_call_events:stop(UUID),
+    ecallmgr_call_control:update_node(NewNode, UUID),
 
     case channel_teardown_sbd(UUID, OriginalNode) of
         true ->
             lager:debug("sbd teardown of ~s on ~s", [UUID, OriginalNode]),
+
 
             channel_resume(UUID, NewNode);
         false ->

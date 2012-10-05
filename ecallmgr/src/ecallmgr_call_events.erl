@@ -19,7 +19,7 @@
 -define(MAX_FAILED_NODE_CHECKS, 10).
 -define(NODE_CHECK_PERIOD, 1000).
 
--export([start_link/2]).
+-export([start_link/2, stop/1]).
 
 -export([swap_call_legs/1]).
 -export([create_event/3]).
@@ -82,6 +82,12 @@ start_link(Node, CallId) ->
                                       ,{consume_options, ?CONSUME_OPTIONS}
                                      ], [Node, CallId]).
 
+stop(UUID) ->
+    _ = [erlang:send_after(5000, Pid, {shutdown})
+         || Pid <- gproc:lookup_pids({p, l, {call_events, UUID}})
+        ],
+    ok.
+
 -spec callid/1 :: (pid()) -> ne_binary().
 callid(Srv) ->
     gen_listener:call(Srv, {callid}, 1000).
@@ -110,12 +116,7 @@ publish_channel_destroy(_Node, UUID, Props, false) ->
     ApplicationName = props:get_value(<<"Application">>, Props),
     Event = create_event(EventName, ApplicationName, Props),
     publish_event(Event),
-    case gproc:lookup_pids({p, l, {call_events, UUID}}) of
-        [] -> ok;
-        Pids ->
-            _ = [erlang:send_after(5000, Pid, {shutdown}) || Pid <- Pids],
-            ok
-    end;
+    stop(UUID);
 publish_channel_destroy(_Node, UUID, Props, true) ->
     lager:debug("channel is moving, supressing destroy in favor of channel_move"),
     put(callid, UUID),
