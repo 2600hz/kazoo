@@ -263,10 +263,19 @@ process_event(<<"CHANNEL_DESTROY">>, UUID, Data, Node) ->
             lager:debug("ignoring channel destroy because of CS_NEW: ~s", [UUID]);
         <<"CS_DESTROY">> ->
             lager:debug("received channel destroyed: ~s", [UUID]),
-            spawn(ecallmgr_fs_nodes, destroy_channel, [Data, Node])
+            _ = case ecallmgr_fs_nodes:channel_node(UUID) of
+                    {ok, Node} -> spawn(ecallmgr_fs_nodes, destroy_channel, [Data, Node]);
+                    {ok, _NewNode} -> lager:debug("surpressing destroy; ~s is on ~s, not ~s", [UUID, _NewNode, Node]);
+                    {error, not_found} -> lager:debug("channel not found, surpressing destroy")
+                end,
+            ok
     end;
-process_event(<<"CHANNEL_HANGUP_COMPLETE">>, UUID, Data, _) ->
-    spawn(ecallmgr_call_cdr, new_cdr, [UUID, Data]),
+process_event(<<"CHANNEL_HANGUP_COMPLETE">>, UUID, Data, Node) ->
+    _ = case ecallmgr_fs_nodes:channel_node(UUID) of
+            {ok, Node} -> spawn(ecallmgr_call_cdr, new_cdr, [UUID, Data]);
+            {ok, _NewNode} -> lager:debug("surpressing CDR; ~s is on ~s, not ~s", [UUID, _NewNode, Node]);
+            {error, not_found} -> lager:debug("channel not found, surpressing CDR")
+        end,
     ok;
 process_event(<<"SESSION_HEARTBEAT">>, _, Data, Node) ->
     spawn(ecallmgr_authz, update, [Data, Node]),

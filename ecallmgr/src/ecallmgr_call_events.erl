@@ -109,18 +109,22 @@ queue_name(Srv) ->
 
 -spec publish_channel_destroy/3 :: (atom(), ne_binary(), wh_proplist()) -> 'ok'.
 publish_channel_destroy(Node, UUID, Props) ->
-    publish_channel_destroy(Node, UUID, Props, ecallmgr_fs_nodes:channel_is_moving(Node, UUID)).
-publish_channel_destroy(_Node, UUID, Props, true) ->
-    lager:debug("channel is moving, supressing destroy in favor of channel_move"),
     put(callid, UUID),
-    Event = create_event(<<"CHANNEL_MOVED">>, <<"call_pickup">>, Props),
-    publish_event(Event);
-publish_channel_destroy(_Node, UUID, Props, _) ->
-    put(callid, UUID),
+    case ecallmgr_fs_nodes:channel_node(UUID) of
+        {error, not_found} -> lager:debug("channel not found, surpressing destroy");
+        {ok, Node} -> publish_channel_destroy(UUID, Props);
+        {ok, _NewNode} ->
+            lager:debug("surpressing destroy; ~s is on ~s, not ~s: publishing channel move instead", [UUID, _NewNode, Node]),
+            publish_channel_move(Props)
+    end.
+
+publish_channel_move(Props) ->
+    publish_event(create_event(<<"CHANNEL_MOVED">>, <<"call_pickup">>, Props)).
+
+publish_channel_destroy(UUID, Props) ->
     EventName = props:get_value(<<"Event-Name">>, Props),
     ApplicationName = props:get_value(<<"Application">>, Props),
-    Event = create_event(EventName, ApplicationName, Props),
-    publish_event(Event),
+    publish_event(create_event(EventName, ApplicationName, Props)),
     stop(UUID).
 
 -spec handle_publisher_usurp/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
@@ -215,13 +219,19 @@ handle_cast({channel_redirected, Props}, State) ->
 handle_cast({channel_destroyed, _Evt}, #state{node=Node
                                              ,callid=CallId
                                             }=State) ->
-    _ = case ecallmgr_fs_nodes:channel_is_moving(Node, CallId) of
-            true -> lager:debug("ignoring destroy as the channel is moving");
-            _IsM ->
-                lager:debug("our channel has been destroyed, preparing to shutdown: ~p", [_IsM]),
-                erlang:send_after(1000, self(), {shutdown})
-        end,
-    {noreply, State};
+    _ = case ecallmgr_fs_nodes:channel_node(CallId) of
+            {ok, Node} ->
+                lager:debug("channel destroy recv, starting shutdown"),
+                erlang:send_after(1000, self(), {shutdown}),
+                {noreply, State};
+            {ok, _NewNode} ->
+                lager:debug("going down; ~s is on ~s, not ~s", [CallId, _NewNode, Node]),
+                {stop, normal, State};
+            {error, not_found} ->
+                lager:debug("channel not found, going down"),
+                erlang:send_after(1000, self(), {shutdown}),
+                {noreply, State}
+        end;
 handle_cast({transferer, _}, State) ->
     lager:debug("call control has been transfered."),
     {stop, normal, State};
@@ -447,12 +457,7 @@ create_event_props(EventName, ApplicationName, Props) ->
       ]).
 
 -spec publish_event/1 :: (proplist()) -> 'ok'.
--spec publish_event/2 :: (proplist(), boolean()) -> 'ok'.
 publish_event(Props) ->
-    publish_event(Props, ecallmgr_util:has_channel_is_moving_flag(Props)).
-publish_event(_Props, true) ->
-    lager:debug("event has channel_is_moving flag, supressing");
-publish_event(Props, false) ->
     %% call_control publishes channel create/destroy on the control
     %% events queue by calling create_event then this directly.
     EventName = wh_util:to_lower_binary(props:get_value(<<"Event-Name">>, Props, <<>>)),

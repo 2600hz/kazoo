@@ -25,13 +25,16 @@
 
 -export([show_channels/0]).
 -export([new_channel/2]).
--export([channel_node/1]).
+-export([channel_node/1, channel_set_node/2
+         ,channel_former_node/1
+         ,channel_is_moving/2, channel_set_is_moving/3
+         ,channel_move/3
+        ]).
 -export([channel_account_summary/1]).
 -export([channel_match_presence/1]).
 -export([channel_exists/1]).
 -export([channel_import_moh/1]).
--export([channel_is_moving/2]).
--export([channel_set_node/2]).
+
 -export([channel_set_account_id/3]).
 -export([channel_set_billing_id/3]).
 -export([channel_set_account_billing/3]).
@@ -43,8 +46,7 @@
 -export([channel_set_owner_id/3]).
 -export([channel_set_presence_id/3]).
 -export([channel_set_import_moh/3]).
--export([channel_set_is_moving/3]).
--export([channel_move/3]).
+
 -export([fetch_channel/1]).
 -export([destroy_channel/2]).
 -export([props_to_channel_record/2]).
@@ -149,13 +151,27 @@ fetch_channel(UUID) ->
         _Else -> {error, not_found}
     end.
 
--spec channel_node/1 :: (ne_binary()) -> {'ok', atom()} | {'error', _}.
+-spec channel_node/1 :: (ne_binary()) -> {'ok', atom()} |
+                                         {'error', _}.
 channel_node(UUID) ->
     MatchSpec = [{#channel{uuid = '$1', node = '$2'}
                   ,[{'=:=', '$1', {const, UUID}}]
                   ,['$2']}
                 ],
     case ets:select(ecallmgr_channels, MatchSpec) of
+        [Node] -> {ok, Node};
+        _ -> {error, not_found}
+    end.
+
+-spec channel_former_node/1 :: (ne_binary()) -> {'ok', atom()} |
+                                                {'error', _}.
+channel_former_node(UUID) ->
+    MatchSpec = [{#channel{uuid = '$1', former_node = '$2'}
+                  ,[{'=:=', '$1', {const, UUID}}]
+                  ,['$2']}
+                ],
+    case ets:select(ecallmgr_channels, MatchSpec) of
+        ['_'] -> {ok, undefined};
         [Node] -> {ok, Node};
         _ -> {error, not_found}
     end.
@@ -212,8 +228,6 @@ channel_move(UUID, ONode, NNode) ->
     case channel_teardown_sbd(UUID, OriginalNode) of
         true ->
             lager:debug("sbd teardown of ~s on ~s", [UUID, OriginalNode]),
-
-
             channel_resume(UUID, NewNode);
         false ->
             lager:debug("failed to teardown ~s on ~s", [UUID, OriginalNode]),
@@ -268,6 +282,9 @@ fix_metadata(Meta) ->
                     {<<"\<sip\:">>, <<"%3Csip:">>}
                     ,{<<"\>\<sip">>, <<"%3E<sip">>}
                     ,{<<"\>;">>, <<"%3E;">>} % this is especially nice :)
+                    %% until such time as FS sets these properly
+                    ,{<<"<dialplan></dialplan>">>, <<"<dialplan>XML</dialplan>">>} 
+                    ,{<<"<context>default</context>">>, <<"<context>context_2</context>">>}
                    ],
     lists:foldl(fun({S, R}, MetaAcc) ->
                         iolist_to_binary(re:replace(MetaAcc, S, R, [global]))
@@ -387,7 +404,15 @@ channel_set_is_moving(Node, UUID, IsMoving) ->
 
 -spec channel_set_node/2 :: (atom(), ne_binary()) -> 'ok'.
 channel_set_node(Node, UUID) ->
-    gen_server:cast(?MODULE, {channel_update, UUID, {#channel.node, Node}}).
+    Updates = case channel_node(UUID) of
+                  {error, not_found} -> [{#channel.node, Node}];
+                  {ok, Node} -> [];
+                  {ok, OldNode} ->
+                      [{#channel.node, Node}
+                       ,{#channel.former_node, OldNode}
+                      ]
+              end,
+    gen_server:cast(?MODULE, {channel_update, UUID, Updates}).
 
 -spec destroy_channel/2 :: (proplist(), atom()) -> 'ok'.
 destroy_channel(Props, Node) ->

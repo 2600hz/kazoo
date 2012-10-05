@@ -169,14 +169,16 @@ process_route_req(Node, FSID, CallId, Props) ->
     put(callid, CallId),
     lager:debug("processing fetch request ~s (call ~s) from ~s", [FSID, CallId, Node]),
 
-    case ecallmgr_fs_nodes:channel_is_moving(Node, CallId) of
-        true ->
-            lager:debug("channel is moving or has moved, park it"),
+    case ecallmgr_fs_nodes:channel_node(CallId) of
+        {error, not_found} -> search_for_route(Node, FSID, CallId, Props);
+        {ok, Node} ->
+            lager:debug("channel already exists on ~s, park it", [Node]),
             RespJObj = wh_json:from_list([{<<"Routes">>, []}
                                           ,{<<"Method">>, <<"park">>}
                                          ]),
             reply_affirmative(Node, FSID, CallId, RespJObj, Props);
-        _ ->
+        {ok, _OldNode} ->
+            lager:debug("channel already exists, but on other node ~s (not ~s)", [_OldNode, Node]),
             search_for_route(Node, FSID, CallId, Props)
     end.
 
