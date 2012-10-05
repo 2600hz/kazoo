@@ -110,18 +110,18 @@ queue_name(Srv) ->
 -spec publish_channel_destroy/3 :: (atom(), ne_binary(), wh_proplist()) -> 'ok'.
 publish_channel_destroy(Node, UUID, Props) ->
     publish_channel_destroy(Node, UUID, Props, ecallmgr_fs_nodes:channel_is_moving(Node, UUID)).
-publish_channel_destroy(_Node, UUID, Props, false) ->
+publish_channel_destroy(_Node, UUID, Props, true) ->
+    lager:debug("channel is moving, supressing destroy in favor of channel_move"),
+    put(callid, UUID),
+    Event = create_event(<<"CHANNEL_MOVED">>, <<"call_pickup">>, Props),
+    publish_event(Event);
+publish_channel_destroy(_Node, UUID, Props, _) ->
     put(callid, UUID),
     EventName = props:get_value(<<"Event-Name">>, Props),
     ApplicationName = props:get_value(<<"Application">>, Props),
     Event = create_event(EventName, ApplicationName, Props),
     publish_event(Event),
-    stop(UUID);
-publish_channel_destroy(_Node, UUID, Props, true) ->
-    lager:debug("channel is moving, supressing destroy in favor of channel_move"),
-    put(callid, UUID),
-    Event = create_event(<<"CHANNEL_MOVED">>, <<"call_pickup">>, Props),
-    publish_event(Event).
+    stop(UUID).
 
 -spec handle_publisher_usurp/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
 handle_publisher_usurp(JObj, Props) ->
