@@ -197,10 +197,15 @@ handle_call(_Request, _From, State) ->
 %%--------------------------------------------------------------------
 handle_cast({update_node, Node}, #state{node=Node}=State) ->
     {noreply, State};
-handle_cast({update_node, Node}, #state{node=OldNode}=State) ->
+handle_cast({update_node, Node}, #state{node=OldNode
+                                        ,callid=CallId
+                                       }=State) ->
     lager:debug("node has changed from ~s to ~s", [OldNode, Node]),
 
     erlang:monitor_node(OldNode, false),
+
+    gproc:unreg({p, l, call_events}),
+    gproc:unreg({p, l, {call_events, CallId}}),
 
     {noreply, State#state{node=Node}, 0};
 
@@ -352,7 +357,7 @@ handle_event(_JObj, #state{ref=Ref, callid=CallId}) ->
 terminate(_Reason, #state{node_down_tref=NDTRef, sanity_check_tref=SCTRef}) ->   
     catch (erlang:cancel_timer(SCTRef)), 
     catch (erlang:cancel_timer(NDTRef)),
-    lager:debug("goodbye and thanks for all the fish").
+    lager:debug("goodbye and thanks for all the fish: ~p", [_Reason]).
 
 %%--------------------------------------------------------------------
 %% @private
