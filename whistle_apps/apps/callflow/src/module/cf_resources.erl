@@ -97,7 +97,7 @@ create_endpoint(DestNum, JObj, Call) ->
               ,$@ ,(wh_json:get_value(<<"server">>, JObj))/binary>>,
     lager:debug("attempting resource ~s", [Rule]),
     Endpoint = case cf_endpoint:get(Call) of
-                   {ok, JObj} -> JObj;
+                   {ok, J} -> J;
                    {error, _} -> wh_json:new()
                end,
     ForceFax = case wh_json:is_true([<<"media">>, <<"fax_option">>], Endpoint) of
