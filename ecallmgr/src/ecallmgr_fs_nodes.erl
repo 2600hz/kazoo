@@ -454,6 +454,7 @@ channel_record_to_json(Channel) ->
                        ,{<<"timestamp">>, Channel#channel.timestamp}
                        ,{<<"profile">>, Channel#channel.profile}
                        ,{<<"context">>, Channel#channel.context}
+                       ,{<<"dialplan">>, Channel#channel.dialplan}
                       ]).
 
 -spec sync_channels/0 :: () -> 'ok'.
