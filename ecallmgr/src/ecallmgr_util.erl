@@ -562,7 +562,7 @@ recording_filename(MediaName) ->
                   ]).
 
 recording_directory(<<"/", _/binary>> = FullPath) ->
-    FullPath;
+    filename:dirname(FullPath);
 recording_directory(_RelativePath) ->
     ecallmgr_config:get(<<"recording_file_path">>, <<"/tmp/">>).
 
