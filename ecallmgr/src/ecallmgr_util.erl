@@ -550,17 +550,30 @@ fax_filename(UUID) ->
                   ]).
 
 -spec recording_filename/1 :: (ne_binary()) -> file:filename().
+recording_filename(<<"local_stream://", MediaName/binary>>) ->
+    recording_filename(MediaName);
 recording_filename(MediaName) ->
-    Ext = case filename:extension(MediaName) of
-              Empty when Empty =:= <<>> orelse Empty =:= [] ->
-                  ecallmgr_config:get(<<"default_recording_extension">>, <<".mp3">>);
-              E -> E
-          end,
+    Ext = recording_extension(MediaName),
     RootName = filename:rootname(MediaName),
+    Directory = recording_directory(MediaName),
 
-    filename:join([ecallmgr_config:get(<<"recording_file_path">>, <<"/tmp/">>)
+    filename:join([Directory
                    ,<<(amqp_util:encode(RootName))/binary, Ext/binary>>
                   ]).
+
+recording_directory(<<"/", _/binary>> = FullPath) ->
+    FullPath;
+recording_directory(_RelativePath) ->
+    ecallmgr_config:get(<<"recording_file_path">>, <<"/tmp/">>).
+
+recording_extension(MediaName) ->
+    case filename:extension(MediaName) of
+        Empty when Empty =:= <<>> orelse Empty =:= [] ->
+            ecallmgr_config:get(<<"default_recording_extension">>, <<".mp3">>);
+        <<".mp3">> = MP3 -> MP3;
+        <<".wav">> = WAV -> WAV;
+        _ -> <<".mp3">>
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
