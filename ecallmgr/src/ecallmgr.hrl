@@ -13,6 +13,12 @@
 
 -define(ECALLMGR_RECORDED_MEDIA_KEY(M), {recorded_media, M}).
 
+-define(WHISTLE_CONTEXT, <<"context_2">>).
+
+-define(SIP_INTERFACE, "sofia/sipinterface_1/").
+-define(DEFAULT_FS_PROFILE, "sipinterface_1").
+-define(DEFAULT_FS_DIALPLAN, "XML").
+
 -type fs_api_ret()       :: {'ok', binary()} |
                             {'error', 'badarg'} |
                             'timeout'.
@@ -57,7 +63,11 @@
                   ,node = '_'
                   ,former_node = '_'
                   ,timestamp = '_'
+                  ,profile = '_'
+                  ,context = '_'
+                  ,dialplan = '_'
                  }).
+
 -type channel() :: #channel{}.
 -type channels() :: [channel(),...] | [].
 
@@ -71,11 +81,6 @@
 
 -define(APP_NAME, <<"ecallmgr">>).
 -define(APP_VERSION, <<"0.8.0">>).
-
--define(WHISTLE_CONTEXT, <<"context_2">>).
-
--define(SIP_INTERFACE, "sofia/sipinterface_1/").
--define(DEFAULT_FS_PROFILE, "sipinterface_1").
 
 -define(STARTUP_FILE, [code:lib_dir(ecallmgr, priv), "/startup.config"]).
 -define(SETTINGS_FILE, [code:lib_dir(ecallmgr, priv), "/settings.config"]).

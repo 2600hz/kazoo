@@ -427,6 +427,9 @@ props_to_channel_record(Props, Node) ->
              ,import_moh=props:get_value(<<"variable_hold_music">>, Props) =:= undefined
              ,node=Node
              ,timestamp=wh_util:current_tstamp()
+             ,profile=props:get_value(<<"variable_sofia_profile_name">>, Props, ?DEFAULT_FS_PROFILE)
+             ,context=props:get_value(<<"Caller-Context">>, Props, ?WHISTLE_CONTEXT)
+             ,dialplan=props:get_value(<<"Caller-Dialplan">>, Props, ?DEFAULT_FS_DIALPLAN)
             }.
 
 -spec channel_record_to_json/1 :: (channel()) -> wh_json:json_object().
@@ -449,6 +452,8 @@ channel_record_to_json(Channel) ->
                        ,{<<"username">>, Channel#channel.username}
                        ,{<<"node">>, Channel#channel.node}
                        ,{<<"timestamp">>, Channel#channel.timestamp}
+                       ,{<<"profile">>, Channel#channel.profile}
+                       ,{<<"context">>, Channel#channel.context}
                       ]).
 
 -spec sync_channels/0 :: () -> 'ok'.
