@@ -554,7 +554,7 @@ recording_filename(<<"local_stream://", MediaName/binary>>) ->
     recording_filename(MediaName);
 recording_filename(MediaName) ->
     Ext = recording_extension(MediaName),
-    RootName = filename:rootname(MediaName),
+    RootName = filename:basename(MediaName, Ext),
     Directory = recording_directory(MediaName),
 
     filename:join([Directory
