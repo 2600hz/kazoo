@@ -16,6 +16,8 @@ handle_req(JObj, Props) ->
     true = wapi_authz:req_v(JObj),
     wh_util:put_callid(JObj),
 
+    io:format("~p~n", [JObj]),
+
     AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
     Limits = j5_util:get_limits(AccountId),
 
@@ -125,10 +127,24 @@ resource_consumption_at_limit(#limits{resource_consuming_calls=Resources}, JObj)
 
 -spec trunks_at_limit/2 :: (#limits{}, wh_json:json_object()) -> boolean().
 trunks_at_limit(Limits, JObj) ->
-    InboundResources = wh_json:get_integer_value([<<"Usage">>, <<"Inbound-Flat-Rate">>], JObj, 0),
-    RemainingInbound = consume_inbound_limits(Limits, InboundResources),
-    OutboundResources = wh_json:get_integer_value([<<"Usage">>, <<"Outbound-Flat-Rate">>], JObj, 0),
-    consume_twoway_limits(Limits, RemainingInbound + OutboundResources).    
+    RemainingInbound = consume_inbound_limits(Limits, get_inbound_resources(JObj)),
+    consume_twoway_limits(Limits, RemainingInbound + get_outbound_resources(JObj)).    
+
+-spec get_inbound_resources/1 :: (wh_json:json_object()) -> integer().
+get_inbound_resources(JObj) ->
+    CurrentUsage = wh_json:get_integer_value([<<"Usage">>, <<"Inbound-Flat-Rate">>], JObj, 0),
+    case wh_json:get_value(<<"Call-Direction">>, JObj) of
+        <<"inbound">> -> CurrentUsage + 1;
+        _Else -> CurrentUsage
+    end.
+
+-spec get_outbound_resources/1 :: (wh_json:json_object()) -> integer().
+get_outbound_resources(JObj) ->
+    CurrentUsage = wh_json:get_integer_value([<<"Usage">>, <<"Outbound-Flat-Rate">>], JObj, 0),
+    case wh_json:get_value(<<"Call-Direction">>, JObj) of
+        <<"outbound">> -> CurrentUsage + 1;
+        _Else -> CurrentUsage
+    end.            
 
 -spec credit_is_available/2 :: (#limits{}, wh_json:json_object()) -> boolean().
 credit_is_available(Limits, JObj) ->
@@ -172,37 +188,40 @@ postpay_is_available(#limits{allow_postpay=true, max_postpay_amount=MaxPostpay
 consume_inbound_limits(#limits{inbound_trunks=-1}, _) ->
     lager:debug("account has unlimited inbound trunks", []),
     0;
-consume_inbound_limits(#limits{inbound_trunks=0}, Resources) ->
-    Resources;
 consume_inbound_limits(_, 0) -> 
-    lager:debug("not using any inbound only trunks yet", []),
+    lager:debug("account is not consuming any inbound resources", []),
     0;
+consume_inbound_limits(#limits{inbound_trunks=0}, Resources) ->
+    lager:debug("account has no inbound only trunks", []),
+    Resources;
 consume_inbound_limits(#limits{inbound_trunks=Trunks}, Resources) ->
-    case Trunks - Resources of
-        Count when Count >= 0 -> 
-            lager:debug("already using ~p of ~p inbound only trunks", [Resources, Trunks]),
-            0;
-        Count ->
-            RemainingInbound = abs(Count),
-            lager:debug("already using all ~p inbound only trunks, with ~p unaccounted for inbound channels", [Trunks, RemainingInbound]),
-            RemainingInbound
+    lager:debug("account has ~p inbound only trunks and is using ~p inbound resources", [Trunks, Resources]),    
+    case Resources - Trunks of
+        Count when Count > 0 -> 
+            lager:debug("remaining ~p channels unaccounted for by inbound only trunks", [Count]),
+            Count;
+        _Else -> 
+            lager:debug("all inbound channels are accounted for by inbound only trunks", []),
+            0
     end.
 
 -spec consume_twoway_limits/2 :: (#limits{}, wh_json:json_object()) -> boolean().
 consume_twoway_limits(#limits{twoway_trunks=-1}, _) ->
     lager:debug("account has unlimited twoway trunks", []),
     false;
-consume_twoway_limits(#limits{twoway_trunks=0}, _) -> true;
 consume_twoway_limits(_, 0) -> 
-    lager:debug("not using any twoway trunks yet", []),
+    lager:debug("account is not consuming any two-way resources", []),
     false;
+consume_twoway_limits(#limits{twoway_trunks=0}, _) -> 
+    lager:debug("account has no two-way trunks", []),
+    true;
 consume_twoway_limits(#limits{twoway_trunks=Trunks}, Resources) ->
-    case Resources >= Trunks of
-        true -> 
-            lager:debug("already using all ~p twoway trunks", [Trunks]),            
+    case Resources - Trunks of
+        Count when Count > 0 -> 
+            lager:debug("remaining ~p two-way channels are unaccounted for by trunks", [Count]),  
             true;
-        false ->
-            lager:debug("already using ~p of ~p twoway trunks", [Resources, Trunks]),
+        _Else ->
+            lager:debug("all remaining channels are accounted for by two-way trunks", []),
             false
     end.
 

@@ -25,17 +25,16 @@
 
 -spec maybe_authorize_channel/2 :: (wh_proplist(), atom()) -> boolean().
 maybe_authorize_channel(Props, Node) ->
-    
     CallId = props:get_value(<<"Unique-ID">>, Props),
-        is_authz_enabled(Props, CallId, Node).
+    is_authz_enabled(Props, CallId, Node).
 
 -spec is_authz_enabled/3 :: (wh_proplist(), ne_binary(), atom()) -> boolean().
 is_authz_enabled(Props, CallId, Node) ->
-    
     case wh_util:is_true(ecallmgr_config:get(<<"authz_enabled">>, false)) of
         true ->
             is_global_resource(Props, CallId, Node);
-                false ->            lager:debug("config ecallmgr.authz is disabled", []),
+        false ->
+            lager:debug("config ecallmgr.authz is disabled", []),
             allow_call(Props, CallId, Node)
     end.
 
@@ -124,7 +123,8 @@ authorize_account(Props, CallId, Node) ->
 -spec authorize_reseller/3 :: (wh_proplist(), ne_binary(), atom()) -> boolean().
 authorize_reseller(Props, CallId, Node) ->
     ResellerId = props:get_value(?GET_CCV(<<"Reseller-ID">>), Props),
-    case authorize(ResellerId, Props) of
+    AccountId = props:get_value(?GET_CCV(<<"Account-ID">>), Props),
+    case AccountId =:= ResellerId orelse authorize(ResellerId, Props) of
         {error, account_limited} -> 
             lager:debug("reseller has no remaining resources", []),
             maybe_deny_call(Props, CallId, Node);
@@ -286,6 +286,7 @@ authz_req(AccountId, Props) ->
      ,{<<"Request">>, ecallmgr_util:get_sip_request(Props)}
      ,{<<"Call-ID">>, props:get_value(<<"Unique-ID">>, Props)}
      ,{<<"Account-ID">>, AccountId}
+     ,{<<"Call-Direction">>, props:get_value(<<"Call-Direction">>, Props)}
      ,{<<"Custom-Channel-Vars">>, wh_json:from_list(ecallmgr_util:custom_channel_vars(Props))}
      ,{<<"Usage">>, ecallmgr_fs_nodes:account_summary(AccountId)}
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
