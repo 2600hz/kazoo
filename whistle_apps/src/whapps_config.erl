@@ -496,13 +496,25 @@ update_category_node(Category, Node, UpdateFun, Cache) ->
 %%-----------------------------------------------------------------------------
 -spec update_category/3 :: (ne_binary(), wh_json:json_object(), atom()) ->
                                    {'ok', wh_json:json_object()}.
+-spec update_category/4 :: (ne_binary(), wh_json:json_object(), atom(), boolean()) ->
+                                   {'ok', wh_json:json_object()}.
+
 update_category(Category, JObj, Cache) ->
+    update_category(Category, JObj, Cache, false).
+
+update_category(Category, JObj, Cache, Looped) ->
     lager:debug("updating configuration category ~s", [Category]),
     JObj1 = wh_json:set_value(<<"_id">>, Category, JObj),
-    couch_mgr:db_create(?WH_CONFIG_DB),
-    {ok, SavedJObj} = couch_mgr:ensure_saved(?WH_CONFIG_DB, JObj1),
-    lager:debug("saved cat ~s to db ~s", [Category, ?WH_CONFIG_DB]),
-    cache_jobj(Cache, Category, SavedJObj).
+    case couch_mgr:save_doc(?WH_CONFIG_DB, JObj1) of
+        {ok, SavedJObj} ->
+            lager:debug("saved cat ~s to db ~s", [Category, ?WH_CONFIG_DB]),
+            cache_jobj(Cache, Category, SavedJObj);
+        {error, not_found} when not Looped ->
+            couch_mgr:db_create(?WH_CONFIG_DB),
+            update_category(Category, JObj, Cache, true);
+        {error, _} ->
+            cache_jobj(Cache, Category, JObj1)
+    end.
 
 -spec cache_jobj/3 :: (atom(), ne_binary(), wh_json:json_object()) ->
                               {'ok', wh_json:json_object()}.
