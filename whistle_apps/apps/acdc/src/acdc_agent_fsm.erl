@@ -79,6 +79,7 @@
          ,caller_exit_key = <<"#">> :: ne_binary()
          ,agent_call_id :: ne_binary()
          ,next_status :: ne_binary()
+         ,endpoints = [] :: wh_json:json_objects()
          }).
 
 %%%===================================================================
@@ -246,7 +247,9 @@ init([AcctId, AgentId, AgentProc]) ->
     gen_fsm:send_event(self(), send_sync_event),
 
     acdc_stats:agent_active(AcctId, AgentId),
-    
+
+    gen_fsm:send_all_state_event(self(), load_endpoints),
+
     {ok, sync, #state{acct_id=AcctId
                       ,acct_db=wh_util:format_account_id(AcctId, encoded)
                       ,agent_id=AgentId
@@ -344,13 +347,15 @@ ready({sync_req, JObj}, #state{agent_proc=Srv}=State) ->
     acdc_agent:send_sync_resp(Srv, ready, JObj),
     {next_state, ready, State};
 
-ready({member_connect_win, JObj}, #state{agent_proc=Srv}=State) ->
+ready({member_connect_win, JObj}, #state{agent_proc=Srv
+                                         ,endpoints=[_|_]=EPs
+                                        }=State) ->
     Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, JObj)),
     CallId = whapps_call:call_id(Call),
 
     lager:debug("we won us a member: ~s", [CallId]),
 
-    acdc_agent:bridge_to_member(Srv, JObj),
+    acdc_agent:bridge_to_member(Srv, JObj, EPs),
 
     WrapupTimer = wh_json:get_integer_value(<<"Wrapup-Timeout">>, JObj, 0),
     CallerExitKey = wh_json:get_value(<<"Caller-Exit-Key">>, JObj, <<"#">>),
@@ -734,6 +739,29 @@ paused(current_call, _, State) ->
 handle_event({refresh, AgentJObj}, StateName, State) ->
     lager:debug("refresh agent config: ~p", [AgentJObj]),
     {next_state, StateName, State};
+handle_event(load_endpoints, StateName, #state{acct_db=AcctDb
+                                               ,agent_id=AgentId
+                                               ,acct_id=AcctId
+                                              }=State) ->
+    Setters = [fun(C) -> whapps_call:set_account_id(AcctId, C) end
+               ,fun(C) -> whapps_call:set_account_db(AcctDb, C) end
+              ],
+
+    Call = lists:foldl(fun(F, C) -> F(C) end
+                       ,whapps_call:new(), Setters
+                      ),
+    case catch acdc_util:get_endpoints(Call, AgentId) of
+        [] ->
+            lager:debug("no endpoints, going down"),
+            {stop, no_available_endpoints, State};
+        [_|_]=EPs ->
+            lager:debug("endpoints: ~p", [EPs]),
+
+            {next_state, StateName, State#state{endpoints=EPs}};
+        {'EXIT', _E} ->
+            lager:debug("failed to load endpoints: ~p", [_E]),
+            {stop, no_available_endpoints, State}
+    end;
 handle_event(_Event, StateName, State) ->
     lager:debug("unhandled event in state ~s: ~p", [StateName, _Event]),
     {next_state, StateName, State}.
