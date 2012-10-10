@@ -34,6 +34,7 @@
                                                     ,{exclusive, false}
                                                    ]}
                                  ,{basic_qos, 1}
+                                 ,{bind_options, [{exclusive, false}]}
                                 ]).
 
 -define(SHARED_QUEUE_BINDINGS(AcctId, QueueId), [{self, []}]).
