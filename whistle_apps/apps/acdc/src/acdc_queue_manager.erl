@@ -77,7 +77,7 @@ handle_member_call(JObj, _Props) ->
     acdc_stats:call_waiting(AcctId, QueueId, whapps_call:call_id(Call)),
 
     case acdc_queues_sup:find_queue_supervisor(AcctId, QueueId) of
-         P when is_pid(P) ->
+        P when is_pid(P) ->
             acdc_queue:put_member_on_hold(acdc_queue_sup:queue(P), Call);
         undefined ->
             whapps_call_command:answer(Call),
