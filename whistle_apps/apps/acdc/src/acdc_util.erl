@@ -40,17 +40,35 @@ get_endpoints(Call, ?NE_BINARY = AgentId) ->
 get_endpoints(_Call, {ok, []}) -> [];
 get_endpoints(_Call, {error, _E}) -> [];
 get_endpoints(Call, {ok, Devices}) ->
+    {ok, AcctDoc} = couch_mgr:open_cache_doc(whapps_call:account_db(Call), whapps_call:account_id(Call)),
+    AcctRealm = wh_json:get_value(<<"realm">>, AcctDoc),
+
     EPDocs = [EPDoc
               || Device <- Devices,
                  (EPDoc = get_endpoint(Call, wh_json:get_value(<<"id">>, Device))) =/= undefined,
-                 wh_json:is_true(<<"enabled">>, EPDoc, false)
+                 wh_json:is_true(<<"enabled">>, EPDoc, false),
+                 is_endpoint_registered(EPDoc, AcctRealm)
              ],
+
     lists:foldl(fun(EPDoc, Acc) ->
                         case cf_endpoint:build(EPDoc, Call) of
                             {ok, EP} -> EP ++ Acc;
                             {error, _} -> Acc
                         end
                 end, [], EPDocs).
+
+is_endpoint_registered(EPDoc, AcctRealm) ->
+    Query = [{<<"Realm">>, AcctRealm}
+             ,{<<"Username">>, wh_json:get_value([<<"sip">>, <<"username">>], EPDoc)}
+             ,{<<"Fields">>, [<<"Contact">>]}
+            ],
+    case whapps_util:amqp_pool_request(Query
+                                       ,fun wapi_registration:publish_query_req/1
+                                       ,fun wapi_registration:query_resp_v/1
+                                      ) of
+        {ok, _Resp} -> true;
+        {error, _E} -> false
+    end.
 
 -spec get_endpoint/2 :: (whapps_call:call(), ne_binary()) -> wh_json:json_object() | 'undefined'.
 get_endpoint(Call, ?NE_BINARY = EndpointId) ->
