@@ -742,6 +742,7 @@ handle_event({refresh, AgentJObj}, StateName, State) ->
 handle_event(load_endpoints, StateName, #state{acct_db=AcctDb
                                                ,agent_id=AgentId
                                                ,acct_id=AcctId
+                                               ,agent_proc=Srv
                                               }=State) ->
     Setters = [fun(C) -> whapps_call:set_account_id(AcctId, C) end
                ,fun(C) -> whapps_call:set_account_db(AcctDb, C) end
@@ -753,14 +754,16 @@ handle_event(load_endpoints, StateName, #state{acct_db=AcctDb
     case catch acdc_util:get_endpoints(Call, AgentId) of
         [] ->
             lager:debug("no endpoints, going down"),
-            {stop, no_available_endpoints, State};
+            acdc_agent:stop(Srv),
+            {stop, normal, State};
         [_|_]=EPs ->
             lager:debug("endpoints: ~p", [EPs]),
 
             {next_state, StateName, State#state{endpoints=EPs}};
         {'EXIT', _E} ->
             lager:debug("failed to load endpoints: ~p", [_E]),
-            {stop, no_available_endpoints, State}
+            acdc_agent:stop(Srv),
+            {stop, normal, State}
     end;
 handle_event(_Event, StateName, State) ->
     lager:debug("unhandled event in state ~s: ~p", [StateName, _Event]),
@@ -817,8 +820,10 @@ handle_info(_Info, StateName, State) ->
 %%--------------------------------------------------------------------
 terminate(_Reason, _StateName, #state{acct_id=AcctId
                                       ,agent_id=AgentId
+                                      ,agent_proc=Srv
                                       }) ->
     acdc_stats:agent_inactive(AcctId, AgentId),
+    acdc_agent:stop(Srv),
     lager:debug("acdc agent fsm terminating while in ~s: ~p", [_StateName, _Reason]).
 
 %%--------------------------------------------------------------------

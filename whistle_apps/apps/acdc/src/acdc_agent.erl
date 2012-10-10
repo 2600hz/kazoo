@@ -27,6 +27,7 @@
          ,add_acdc_queue/2
          ,rm_acdc_queue/2
          ,get_recording_doc_id/1
+         ,stop/1
         ]).
 
 %% gen_server callbacks
@@ -140,6 +141,9 @@ start_link(Supervisor, AgentJObj) ->
                                    )
     end.
 
+stop(Srv) ->
+    gen_listener:cast(Srv, {stop_agent}).
+
 -spec member_connect_resp/2 :: (pid(), wh_json:json_object()) -> 'ok'.
 member_connect_resp(Srv, ReqJObj) ->
     gen_listener:cast(Srv, {member_connect_resp, ReqJObj}).
@@ -209,6 +213,8 @@ init([Supervisor, AgentJObj, Queues]) ->
     Self = self(),
     AcctId = wh_json:get_value(<<"pvt_account_id">>, AgentJObj),
 
+    gen_listener:cast(self(), {start_fsm, Supervisor}),
+
     _ = spawn(fun() ->
                       put(amqp_publish_as, Self),
 
@@ -263,6 +269,9 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast({stop_agent}, #state{supervisor=Supervisor}=State) ->
+    acdc_agent_sup:stop(Supervisor),
+    {noreply, State};
 handle_cast({start_fsm, Supervisor}, #state{acct_id=AcctId
                                             ,agent_id=AgentId
                                            }=State) ->
@@ -494,7 +503,8 @@ handle_event(_JObj, #state{fsm_pid=FSM}) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, _State) ->
+terminate(_Reason, #state{supervisor=Supervisor}) ->
+    acdc_agent_sup:stop(Supervisor),
     lager:debug("agent process going down: ~p", [_Reason]).
 
 %%--------------------------------------------------------------------
