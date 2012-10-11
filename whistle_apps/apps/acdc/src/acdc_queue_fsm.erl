@@ -410,15 +410,12 @@ connect_req({timeout, Ref, ?COLLECT_RESP_MESSAGE}, #state{collect_ref=Ref
     end;
 
 connect_req({accepted, AcceptJObj}=Accept, #state{member_call=Call}=State) ->
-    MemberCallId = whapps_call:call(Call),
-    AcceptCallId = wh_json:get_value(<<"Call-ID">>, AcceptJObj),
-
-    case AcceptCallId =:= MemberCallId of
+    case accept_is_for_call(AcceptJObj, Call) of
         true ->
-            lager:debug("received acceptance for call ~s: yet to send connect_req though", [MemberCallId]),
+            lager:debug("received acceptance for call ~s: yet to send connect_req though", [whapps_call:call_id(Call)]),
             connecting(Accept, State);
         false ->
-            lager:debug("received (and ignoring) acceptance for ~s: we're processing ~s", [AcceptCallId, MemberCallId]),
+            lager:debug("received (and ignoring) acceptance payload"),
             {next_state, connect_req, State}
     end;
 connect_req({retry, _RetryJObj}, State) ->
@@ -506,12 +503,18 @@ connecting({accepted, AcceptJObj}, #state{queue_proc=Srv
                                           ,acct_id=AcctId
                                           ,queue_id=QueueId
                                          }=State) ->
-    lager:debug("recv acceptance from agent: ~p", [AcceptJObj]),
-    acdc_queue:finish_member_call(Srv, AcceptJObj),
-    acdc_stats:call_handled(AcctId, QueueId, whapps_call:call_id(Call)
-                            ,wh_json:get_value(<<"Agent-ID">>, AcceptJObj), wh_util:elapsed_s(Start)
-                           ),
-    {next_state, ready, clear_member_call(State)};
+    case accept_is_for_call(AcceptJObj, Call) of
+        true ->
+            lager:debug("recv acceptance from agent: ~p", [AcceptJObj]),
+            acdc_queue:finish_member_call(Srv, AcceptJObj),
+            acdc_stats:call_handled(AcctId, QueueId, whapps_call:call_id(Call)
+                                    ,wh_json:get_value(<<"Agent-ID">>, AcceptJObj), wh_util:elapsed_s(Start)
+                                   ),
+            {next_state, ready, clear_member_call(State)};
+        false ->
+            lager:debug("ignoring accepted message"),
+            {next_state, connecting, State}
+    end;
 
 connecting({retry, RetryJObj}, #state{queue_proc=Srv
                                       ,connect_resps=[]
@@ -851,3 +854,6 @@ elapsed(Ref) when is_reference(Ref) ->
     end;
 elapsed({_,_,_}=Time) ->
     wh_util:elapsed_s(Time).
+
+accept_is_for_call(AcceptJObj, Call) ->
+    wh_json:get_value(<<"Call-ID">>, AcceptJObj) =:= whapps_call:call_id(Call).
