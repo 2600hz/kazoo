@@ -1,0 +1,15 @@
+Sending of erroneous hold when second agent on phone with second caller
+
+Race condition when agent has answered leg, send acceptance before uuid_bridge.
+
+Check accept (are you magical) for call-id of current call; if same, accept and move on?
+
+Agent manager should periodically query logged in agents and logout those that aren't on the system anymore.
+
+** Scenario 1
+ * No agents logged in
+ * Customer calls in...eventually hangs up
+ * Agent logs in
+ * Agent receives ghost call
+
+Call waiting log isn't updating
