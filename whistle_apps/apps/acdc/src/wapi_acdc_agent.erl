@@ -91,13 +91,20 @@ sync_req_routing_key(AcctId, Id) ->
 -define(OPTIONAL_SYNC_RESP_HEADERS, [<<"Call-ID">>, <<"Time-Left">>, <<"Process-ID">>]).
 -define(SYNC_RESP_VALUES, [{<<"Event-Category">>, <<"agent">>}
                            ,{<<"Event-Name">>, <<"sync_resp">>}
-                           ,{<<"Status">>, [<<"init">>, <<"ready">>, <<"waiting">>, <<"ringing">>
-                                           ,<<"answered">>, <<"wrapup">>, <<"paused">>
+                           ,{<<"Status">>, [<<"init">>
+                                            ,<<"sync">>
+                                            ,<<"ready">>
+                                            ,<<"waiting">>
+                                            ,<<"ringing">>
+                                            ,<<"answered">>
+                                            ,<<"wrapup">>
+                                            ,<<"paused">>
                                            ]}
-                         ]).
+                          ]).
 -define(SYNC_RESP_TYPES, []).
 
--spec sync_resp/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec sync_resp/1 :: (api_terms()) -> {'ok', iolist()} |
+                                      {'error', string()}.
 sync_resp(Props) when is_list(Props) ->
     case sync_resp_v(Props) of
         true -> wh_api:build_message(Props, ?SYNC_RESP_HEADERS, ?OPTIONAL_SYNC_RESP_HEADERS);
@@ -128,7 +135,8 @@ sync_resp_v(JObj) ->
                           ]).
 -define(STATS_REQ_TYPES, []).
 
--spec stats_req/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec stats_req/1 :: (api_terms()) -> {'ok', iolist()} |
+                                      {'error', string()}.
 stats_req(Props) when is_list(Props) ->
     case stats_req_v(Props) of
         true -> wh_api:build_message(Props, ?STATS_REQ_HEADERS, ?OPTIONAL_STATS_REQ_HEADERS);

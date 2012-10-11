@@ -61,13 +61,14 @@ is_endpoint_registered(EPDoc, AcctRealm) ->
     Query = [{<<"Realm">>, AcctRealm}
              ,{<<"Username">>, wh_json:get_value([<<"sip">>, <<"username">>], EPDoc)}
              ,{<<"Fields">>, [<<"Contact">>]}
+             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
     case whapps_util:amqp_pool_request(Query
                                        ,fun wapi_registration:publish_query_req/1
                                        ,fun wapi_registration:query_resp_v/1
                                       ) of
         {ok, _Resp} -> true;
-        {error, _E} -> false
+        {error, _E} -> lager:debug("reg query failed: ~p", [_E]), false
     end.
 
 -spec get_endpoint/2 :: (whapps_call:call(), ne_binary()) -> wh_json:json_object() | 'undefined'.
