@@ -306,8 +306,6 @@ ready({member_call, CallJObj, Delivery}, #state{queue_proc=Srv
 
     maybe_stop_timer(ConnRef), % stop the old one, maybe
 
-    acdc_queue:put_member_on_hold(Srv, Call, MOH),
-
     {next_state, connect_req, State#state{collect_ref=start_collect_timer()
                                           ,member_call=Call
                                           ,member_call_start=erlang:now()
@@ -412,8 +410,12 @@ connect_req({timeout, Ref, ?COLLECT_RESP_MESSAGE}, #state{collect_ref=Ref
             {next_state, ready, clear_member_call(State)}
     end;
 
-connect_req({accepted, _AcceptJObj}, State) ->
-    lager:debug("recv accept response before win sent (are you magical): ~p", [_AcceptJObj]),
+connect_req({accepted, AcceptJObj}, #state{member_call=Call}=State) ->
+    lager:debug("recv accept response before win sent (are you magical): ~p", [AcceptJObj]),
+    lager:debug("we're working on call ~s", [whapps_call:call(Call)]),
+    AcceptCallId = wh_json:get_value(<<"Call-ID">>, AcceptJObj),
+    lager:debug("acceptance was for ~s", [AcceptCallId]),
+
     {next_state, connect_req, State};
 
 connect_req({retry, _RetryJObj}, State) ->
