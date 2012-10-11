@@ -25,7 +25,7 @@
          ,halt/2, content_type_matches/2, ensure_content_type/1
         ]).
 
--include("include/crossbar.hrl").
+-include_lib("crossbar/include/crossbar.hrl").
 
 -type cowboy_multipart_response() :: {{'headers', cowboy_http:headers()} |
                                       {'data', binary()} |
@@ -603,9 +603,10 @@ validate(#cb_context{req_nouns=Nouns}=Context0) ->
                                    Payload = [ContextAcc#cb_context{resp_status=fatal} | Params],
                                    crossbar_bindings:fold(Event, Payload)
                            end, Context0#cb_context{resp_status=fatal}, Nouns),
-    case succeeded(Context1) of
-        true -> process_billing(Context1);
-        false -> Context1
+    C = cb_context:import_errors(Context1),
+    case succeeded(C) of
+        true -> process_billing(C);
+        false -> C
     end.
 
 %%--------------------------------------------------------------------
@@ -756,23 +757,26 @@ create_pull_response(Req0, Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec create_resp_envelope/1 :: (#cb_context{}) -> wh_json:json_proplist(<<_:32,_:_*8>>).
-create_resp_envelope(#cb_context{resp_data=RespData, resp_status=success, auth_token=AuthToken
-                                 ,resp_etag=undefined, req_id=RequestId}) ->
+create_resp_envelope(Context) ->
+    do_create_resp_envelope(cb_context:import_errors(Context)).
+
+do_create_resp_envelope(#cb_context{resp_data=RespData, resp_status=success, auth_token=AuthToken
+                                    ,resp_etag=undefined, req_id=RequestId}) ->
     [{<<"auth_token">>, AuthToken}
      ,{<<"status">>, <<"success">>}
      ,{<<"data">>, RespData}
      ,{<<"request_id">>, RequestId}
     ];
-create_resp_envelope(#cb_context{resp_data=RespData, resp_status=success, auth_token=AuthToken
-                                 ,resp_etag=Etag, req_id=RequestId}) ->
+do_create_resp_envelope(#cb_context{resp_data=RespData, resp_status=success, auth_token=AuthToken
+                                    ,resp_etag=Etag, req_id=RequestId}) ->
     [{<<"auth_token">>, AuthToken}
      ,{<<"status">>, <<"success">>}
      ,{<<"data">>, RespData}
      ,{<<"request_id">>, RequestId}
      ,{<<"revision">>, wh_util:to_binary(Etag)}
     ];
-create_resp_envelope(#cb_context{auth_token=AuthToken, resp_data=RespData, resp_status=RespStatus
-                                 ,resp_error_code=undefined, resp_error_msg=RespErrorMsg, req_id=RequestId}) ->
+do_create_resp_envelope(#cb_context{auth_token=AuthToken, resp_data=RespData, resp_status=RespStatus
+                                    ,resp_error_code=undefined, resp_error_msg=RespErrorMsg, req_id=RequestId}) ->
     Msg = case RespErrorMsg of
               undefined ->
                   StatusBin = wh_util:to_binary(RespStatus),
@@ -788,8 +792,8 @@ create_resp_envelope(#cb_context{auth_token=AuthToken, resp_data=RespData, resp_
      ,{<<"data">>, RespData}
      ,{<<"request_id">>, RequestId}
     ];
-create_resp_envelope(#cb_context{resp_error_msg=RespErrorMsg, resp_status=RespStatus, resp_error_code=RespErrorCode
-                                 ,resp_data=RespData, auth_token=AuthToken, req_id=RequestId}) ->
+do_create_resp_envelope(#cb_context{resp_error_msg=RespErrorMsg, resp_status=RespStatus, resp_error_code=RespErrorCode
+                                    ,resp_data=RespData, auth_token=AuthToken, req_id=RequestId}) ->
     Msg = case RespErrorMsg of
               undefined ->
                   StatusBin = wh_util:to_binary(RespStatus),

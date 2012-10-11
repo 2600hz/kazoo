@@ -20,6 +20,8 @@
 -export([migrate_limits/0, migrate_limits/1]).
 -export([migrate_media/0, migrate_media/1]).
 
+-export([get_all_account_views/0]).
+
 -define(DEVICES_CB_LIST, <<"devices/crossbar_listing">>).
 -define(MAINTENANCE_VIEW_FILE, <<"views/maintenance.json">>).
 -define(RESELLER_VIEW_FILE, <<"views/reseller.json">>).
@@ -193,12 +195,7 @@ refresh(?WH_FAXES) ->
     _ = couch_mgr:revise_doc_from_file(?WH_FAXES, whistle_apps, ?FAXES_VIEW_FILE),
     ok;
 refresh(?NE_BINARY = Account) ->
-    Views = [whapps_util:get_view_json(whistle_apps, ?MAINTENANCE_VIEW_FILE)
-             ,whapps_util:get_view_json(whistle_apps, ?RESELLER_VIEW_FILE)
-             ,whapps_util:get_view_json(conference, <<"views/conference.json">>)
-             |whapps_util:get_views_json(crossbar, "account")
-             ++ whapps_util:get_views_json(callflow, "views")
-            ],
+    Views = get_all_account_views(),
     refresh(Account, Views).
 
 refresh(Account, Views) ->
@@ -619,3 +616,17 @@ add_extension(A, _) -> A.
 -spec is_audio_content/1 :: (ne_binary()) -> boolean().
 is_audio_content(<<"audio/", _/binary>>) -> true;
 is_audio_content(_) -> false.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+get_all_account_views() ->
+    [whapps_util:get_view_json(whistle_apps, ?MAINTENANCE_VIEW_FILE)
+     ,whapps_util:get_view_json(whistle_apps, ?RESELLER_VIEW_FILE)
+     ,whapps_util:get_view_json(conference, <<"views/conference.json">>)
+     |whapps_util:get_views_json(crossbar, "account")
+     ++ whapps_util:get_views_json(callflow, "views")
+    ]. 

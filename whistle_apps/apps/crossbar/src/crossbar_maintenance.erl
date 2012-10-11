@@ -21,8 +21,9 @@
 -export([promote_account/1, demote_account/1]).
 -export([allow_account_number_additions/1, disallow_account_number_additions/1]).
 -export([create_account/4]).
+-export([create_account/1]).
 
--include("include/crossbar.hrl").
+-include_lib("crossbar/include/crossbar.hrl").
 
 -type input_term() :: atom() | string() | ne_binary().
 
@@ -391,7 +392,7 @@ validate_user(JObj, Context) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %%
 %% @end

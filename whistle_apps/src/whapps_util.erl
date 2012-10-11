@@ -13,6 +13,7 @@
 -export([replicate_from_accounts/2, replicate_from_account/3]).
 -export([revise_whapp_views_in_accounts/1]).
 -export([get_all_accounts/0, get_all_accounts/1]).
+-export([is_account_db/1]).
 -export([get_account_by_realm/1,get_accounts_by_name/1]).
 -export([calculate_cost/5]).
 -export([get_master_account_id/0]).
@@ -171,12 +172,12 @@ get_all_accounts() ->
 
 get_all_accounts(Encoding) ->
     {ok, Databases} = couch_mgr:db_info(),
-    [wh_util:format_account_id(Db, Encoding) || Db <- Databases, is_acct_db(Db)].
+    [wh_util:format_account_id(Db, Encoding) || Db <- Databases, is_account_db(Db)].
 
-is_acct_db(<<"account/", _/binary>>) -> true;
-is_acct_db(<<"account%2f", _/binary>>) -> true;
-is_acct_db(<<"account%2F", _/binary>>) -> true;
-is_acct_db(_) -> false.
+is_account_db(<<"account/", _/binary>>) -> true;
+is_account_db(<<"account%2f", _/binary>>) -> true;
+is_account_db(<<"account%2F", _/binary>>) -> true;
+is_account_db(_) -> false.
 
 %%--------------------------------------------------------------------
 %% @public

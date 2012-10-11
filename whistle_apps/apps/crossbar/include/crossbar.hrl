@@ -72,6 +72,7 @@
           ,raw_path = <<>> :: binary()
           ,raw_qs = <<>> :: binary()
           ,method = 'GET' :: http_method()
+          ,validation_errors = wh_json:new() :: wh_json:json_object()
          }).
 
 -define(CROSSBAR_HRL, true).
