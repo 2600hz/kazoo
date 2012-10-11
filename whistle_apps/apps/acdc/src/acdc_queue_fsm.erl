@@ -297,7 +297,6 @@ sync(current_call, _, State) ->
 ready({member_call, CallJObj, Delivery}, #state{queue_proc=Srv
                                                 ,connection_timeout=ConnTimeout
                                                 ,connection_timer_ref=ConnRef
-                                                ,moh=MOH
                                                }=State) ->
     Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, CallJObj)),
     lager:debug("member call received: ~s", [whapps_call:call_id(Call)]),
@@ -410,14 +409,18 @@ connect_req({timeout, Ref, ?COLLECT_RESP_MESSAGE}, #state{collect_ref=Ref
             {next_state, ready, clear_member_call(State)}
     end;
 
-connect_req({accepted, AcceptJObj}, #state{member_call=Call}=State) ->
-    lager:debug("recv accept response before win sent (are you magical): ~p", [AcceptJObj]),
-    lager:debug("we're working on call ~s", [whapps_call:call(Call)]),
+connect_req({accepted, AcceptJObj}=Accept, #state{member_call=Call}=State) ->
+    MemberCallId = whapps_call:call(Call),
     AcceptCallId = wh_json:get_value(<<"Call-ID">>, AcceptJObj),
-    lager:debug("acceptance was for ~s", [AcceptCallId]),
 
-    {next_state, connect_req, State};
-
+    case AcceptCallId =:= MemberCallId of
+        true ->
+            lager:debug("received acceptance for call ~s: yet to send connect_req though", [MemberCallId]),
+            connecting(Accept, State);
+        false ->
+            lager:debug("received (and ignoring) acceptance for ~s: we're processing ~s", [AcceptCallId, MemberCallId]),
+            {next_state, connect_req, State}
+    end;
 connect_req({retry, _RetryJObj}, State) ->
     lager:debug("recv retry response before win sent: ~p", [_RetryJObj]),
     {next_state, connect_req, State};
