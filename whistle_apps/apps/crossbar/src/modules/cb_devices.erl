@@ -174,6 +174,7 @@ load_device_summary(Context) ->
 validate_request(DeviceId, Context) ->
     prepare_outbound_flags(DeviceId, Context).
 
+-spec prepare_outbound_flags/2 :: ('undefined'|ne_binary(), #cb_context{}) -> #cb_context{}.
 prepare_outbound_flags(DeviceId, #cb_context{req_data=JObj}=Context) -> 
     J = case wh_json:get_value(<<"outbound_flags">>, JObj) of
             [] -> JObj;
@@ -187,6 +188,7 @@ prepare_outbound_flags(DeviceId, #cb_context{req_data=JObj}=Context) ->
         end,
     prepare_device_realm(DeviceId, Context#cb_context{req_data=J}).
 
+-spec prepare_device_realm/2 :: ('undefined'|ne_binary(), #cb_context{}) -> #cb_context{}.
 prepare_device_realm(DeviceId, #cb_context{req_data=JObj}=Context) ->
     AccountRealm = crossbar_util:get_account_realm(Context),
     Realm = wh_json:get_ne_value([<<"sip">>, <<"realm">>], JObj, AccountRealm),   
@@ -198,6 +200,7 @@ prepare_device_realm(DeviceId, #cb_context{req_data=JObj}=Context) ->
             validate_device_creds(Realm, DeviceId, cb_context:store(aggregate_device, true, Context))
     end.
 
+-spec validate_device_creds/3 :: (ne_binary(), 'undefined'|ne_binary(), #cb_context{}) -> #cb_context{}.
 validate_device_creds(Realm, DeviceId, #cb_context{req_data=JObj}=Context) ->
     case wh_json:get_value([<<"sip">>, <<"method">>], JObj, <<"password">>) of
         <<"password">> -> validate_device_password(Realm, DeviceId, Context);
@@ -210,6 +213,7 @@ validate_device_creds(Realm, DeviceId, #cb_context{req_data=JObj}=Context) ->
             check_device_schema(DeviceId, C)
     end.
 
+-spec validate_device_password/3 :: (ne_binary(), 'undefined'|ne_binary(), #cb_context{}) -> #cb_context{}.
 validate_device_password(Realm, DeviceId, #cb_context{db_name=Db, req_data=JObj}=Context) ->
     Username = wh_json:get_ne_value([<<"sip">>, <<"username">>], JObj),
     case is_sip_creds_unique(Db, Realm, Username, DeviceId) of
@@ -222,6 +226,7 @@ validate_device_password(Realm, DeviceId, #cb_context{db_name=Db, req_data=JObj}
             check_device_schema(DeviceId, C)
     end.
 
+-spec validate_device_ip/2 :: ('undefined'|ne_binary(), #cb_context{}) -> #cb_context{}.
 validate_device_ip(DeviceId, #cb_context{req_data=JObj}=Context) ->
     IP = wh_json:get_value([<<"sip">>, <<"ip">>], JObj),
     case wh_util:is_ipv4(IP) of
@@ -234,6 +239,7 @@ validate_device_ip(DeviceId, #cb_context{req_data=JObj}=Context) ->
             check_device_schema(DeviceId, C)
     end.
 
+-spec validate_device_ip/3 :: (ne_binary(), 'undefined'|ne_binary(), #cb_context{}) -> #cb_context{}.
 validate_device_ip(IP, DeviceId, Context) ->
     case is_ip_unique(IP, DeviceId) of
         true -> 
