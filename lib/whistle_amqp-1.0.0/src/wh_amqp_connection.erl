@@ -295,7 +295,7 @@ init([Broker]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call(teardown_channels, _, #state{broker_name=Name}=State) ->
-    clear_channels(Name),
+    _ = clear_channels(Name),
     {reply, ok, State};
 
 handle_call(use_federation, _, #state{broker=Broker}=State) ->
@@ -552,7 +552,8 @@ exchange_declare(#'exchange.declare'{type=Type}=ED, true) ->
     ED1.
 
 clear_channels(Name) ->
-    [clear_channel(C) || #wh_amqp_channel{}=C <- ets:tab2list(Name)].
+    [clear_channel(C) || #wh_amqp_channel{}=C <- ets:tab2list(Name)],
+    ok.
 clear_channel(#wh_amqp_channel{channel=ChPid
                                ,channel_ref=ChRef
                                ,consumer_ref=ConRef

@@ -280,15 +280,11 @@ agent_ready(AcctId, AgentId) ->
 
 -define(BINDINGS, []).
 -define(RESPONDERS, []).
--define(QUEUE_NAME, <<"acdc.stats">>).
--define(CONSUME_OPTIONS, []).
 start_link() ->
     gen_listener:start_link({local, ?MODULE}
                             ,?MODULE
                             ,[{bindings, ?BINDINGS}
                               ,{responders, ?RESPONDERS}
-                              ,{queue_name, ?QUEUE_NAME}
-                              ,{consume_options, ?CONSUME_OPTIONS}
                              ],
                             []).
 
