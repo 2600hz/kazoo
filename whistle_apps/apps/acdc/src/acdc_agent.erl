@@ -270,7 +270,7 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast({stop_agent}, #state{supervisor=Supervisor}=State) ->
-    acdc_agent_sup:stop(Supervisor),
+    _ = acdc_agent_sup:stop(Supervisor),
     {noreply, State};
 handle_cast({start_fsm, Supervisor}, #state{acct_id=AcctId
                                             ,agent_id=AgentId
@@ -504,7 +504,7 @@ handle_event(_JObj, #state{fsm_pid=FSM}) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, #state{supervisor=Supervisor}) ->
-    acdc_agent_sup:stop(Supervisor),
+    _ = acdc_agent_sup:stop(Supervisor),
     lager:debug("agent process going down: ~p", [_Reason]).
 
 %%--------------------------------------------------------------------
@@ -607,20 +607,23 @@ idle_time(undefined) -> undefined;
 idle_time(T) -> wh_util:elapsed_s(T).
 
 -spec call_id/1 :: ('undefined' | whapps_call:call() | wh_json:json_object()) ->
-                           'undefined' | ne_binary().
--spec call_id/2 :: (whapps_call:call() | wh_json:json_object(), 'undefined' | whapps_call:call()) ->
-                           'undefined' | ne_binary().
+                           api_binary().
 call_id(undefined) -> undefined;
 call_id(Call) ->
     case whapps_call:is_call(Call) of
         true -> whapps_call:call_id(Call);
         false ->
-            call_id(Call, wh_json:get_value([<<"Call">>, <<"call_id">>], Call))
+            Keys = [[<<"Call">>, <<"Call-ID">>]
+                    ,[<<"Call">>, <<"call_id">>]
+                    ,<<"Call-ID">>
+                   ],
+            lists:foldl(fun(K, undefined) -> wh_json:get_value(K, Call);
+                           (_, CallId) -> CallId
+                        end
+                        ,undefined
+                        ,Keys
+                       )
     end.
-
-call_id(Call, undefined) ->
-    wh_json:get_value([<<"Call-ID">>], Call);
-call_id(_, CallId) -> CallId.
 
 -spec maybe_connect_to_agent/4 :: (pid(), list(), whapps_call:call(), integer() | 'undefined') -> 'ok'.
 maybe_connect_to_agent(FSM, EPs, Call, Timeout) ->
