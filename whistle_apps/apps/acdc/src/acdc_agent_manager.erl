@@ -15,6 +15,8 @@
 
 %% API
 -export([start_link/0
+         ,new_agent/1
+         ,check_agent_status/3
         ]).
 
 %% gen_server callbacks
@@ -26,6 +28,8 @@
          ,terminate/2
          ,code_change/3
         ]).
+
+-include("acdc.hrl").
 
 -define(SERVER, ?MODULE).
 
@@ -67,6 +71,9 @@ start_link() ->
                              ]
                             ,[]
                            ).
+
+new_agent(Super) ->
+    gen_listener:cast(?SERVER, {new_agent, Super}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -114,6 +121,9 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast({new_agent, Super}, State) ->
+    _ = start_agent_timer(Super),
+    {noreply, State};
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
@@ -127,7 +137,12 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info({check, AcctId, AgentId}, State) ->
+    Self = self(),
+    _ = spawn(?MODULE, check_agent_status, [Self, AcctId, AgentId]),
+    {noreply, State};
 handle_info(_Info, State) ->
+    lager:debug("unhandled message: ~p", [_Info]),
     {noreply, State}.
 
 handle_event(_JObj, _State) ->
@@ -161,3 +176,46 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+start_agent_timer(Super) ->
+    case acdc_agent_sup:agent(Super) of
+        undefined -> ok;
+        Agent ->
+            {AcctId, AgentId} = acdc_agent:config(Agent),
+            Self = self(),
+            start_agent_timer(Self, AcctId, AgentId)
+    end.
+
+start_agent_timer(Self, AcctId, AgentId) ->
+    erlang:send_after(whapps_config:get(?APP_NAME, <<"agent_timeout">>, 600000)
+                      ,Self
+                      ,{check, AcctId, AgentId}
+                     ).
+
+check_agent_status(Self, AcctId, AgentId) ->
+    Req = [{<<"Account-ID">>, AcctId}
+           ,{<<"Agent-ID">>, AgentId}
+           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    case whapps_util:amqp_pool_request(Req
+                                       ,fun wapi_acdc_agent:publish_sync_req/1
+                                       ,fun wapi_acdc_agent:sync_resp_v/1
+                                       ,5000
+                                      ) of
+        {ok, _} -> start_agent_timer(Self, AcctId, AgentId);
+        {error, _} -> maybe_logout_agent(AcctId, AgentId)
+    end.
+
+maybe_logout_agent(AcctId, AgentId) ->
+    AcctDb = wh_util:format_account_id(AcctId, encoded),
+    case acdc_util:agent_status(AcctDb, AgentId) of
+        <<"logout">> -> ok;
+        _ -> logout_agent(AcctDb, AgentId)
+    end.
+
+logout_agent(AcctDb, AgentId) ->
+    Doc = wh_json:from_list([{<<"agent_id">>, AgentId}
+                             ,{<<"method">>, <<"acdc_agent_manager">>}
+                             ,{<<"action">>, <<"logout">>}
+                             ,{<<"pvt_type">>, <<"agent_activity">>}
+                            ]),
+    couch_mgr:save_doc(AcctDb, wh_doc:update_pvt_parameters(Doc, AcctDb)).

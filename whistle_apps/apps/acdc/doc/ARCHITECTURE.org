@@ -194,9 +194,9 @@ Because of the need to not auto-ack member call payloads, the consumption of mes
 
 *** Queue FSM
 
- init -1-> ready -2-> member_connect_req --\
-             ^                  4          3
-             \---5---- member_connecting --/
+ init ---> sync -1-> ready -2-> member_connect_req --\
+                       ^                  4          3
+                       \---5---- member_connecting --/
 
 1. After init, queue is ready to process member_calls
 2. member_call receieved from the shared AMQP queue

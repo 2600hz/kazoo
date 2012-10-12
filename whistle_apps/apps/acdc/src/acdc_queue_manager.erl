@@ -72,7 +72,7 @@ handle_member_call(JObj, _Props) ->
     AcctId = wh_json:get_value(<<"Account-ID">>, JObj),
     QueueId = wh_json:get_value(<<"Queue-ID">>, JObj),
 
-    lager:debug("member call for ~s: ~s", [AcctId, QueueId]),
+    lager:debug("member call for ~s:~s: ~s", [AcctId, QueueId, whapps_call:call_id(Call)]),
 
     acdc_stats:call_waiting(AcctId, QueueId, whapps_call:call_id(Call)),
 
