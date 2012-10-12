@@ -122,7 +122,7 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast({new_agent, Super}, State) ->
-    start_agent_timer(Super),
+    _ = start_agent_timer(Super),
     {noreply, State};
 handle_cast(_Msg, State) ->
     {noreply, State}.
@@ -202,8 +202,20 @@ check_agent_status(Self, AcctId, AgentId) ->
                                        ,5000
                                       ) of
         {ok, _} -> start_agent_timer(Self, AcctId, AgentId);
-        {error, _} -> logout_agent(AcctId, AgentId)
+        {error, _} -> maybe_logout_agent(AcctId, AgentId)
     end.
 
-logout_agent(AcctId, AgentId) ->
-    ok.
+maybe_logout_agent(AcctId, AgentId) ->
+    AcctDb = wh_util:format_account_id(AcctId, encoded),
+    case acdc_util:agent_status(AcctDb, AgentId) of
+        <<"logout">> -> ok;
+        _ -> logout_agent(AcctDb, AgentId)
+    end.
+
+logout_agent(AcctDb, AgentId) ->
+    Doc = wh_json:from_list([{<<"agent_id">>, AgentId}
+                             ,{<<"method">>, <<"acdc_agent_manager">>}
+                             ,{<<"action">>, <<"logout">>}
+                             ,{<<"pvt_type">>, <<"agent_activity">>}
+                            ]),
+    couch_mgr:save_doc(AcctDb, wh_doc:update_pvt_parameters(Doc, AcctDb)).
