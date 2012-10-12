@@ -24,6 +24,7 @@
 %%--------------------------------------------------------------------
 -spec handle/2 :: (wh_json:json_object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
+    whapps_call_command:answer(Call),
     case cf_acdc_agent:find_agent(Call) of
         {ok, undefined} ->
             lager:debug("not an agent calling in"),

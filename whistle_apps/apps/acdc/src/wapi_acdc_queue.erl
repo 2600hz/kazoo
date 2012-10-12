@@ -12,6 +12,7 @@
 -export([member_call/1, member_call_v/1
          ,member_call_failure/1, member_call_failure_v/1
          ,member_call_success/1, member_call_success_v/1
+         ,member_call_cancel/1, member_call_cancel_v/1
          ,member_connect_req/1, member_connect_req_v/1
          ,member_connect_resp/1, member_connect_resp_v/1
          ,member_connect_win/1, member_connect_win_v/1
@@ -34,6 +35,7 @@
          ,publish_shared_member_call/1, publish_shared_member_call/3, publish_shared_member_call/4
          ,publish_member_call_failure/2, publish_member_call_failure/3
          ,publish_member_call_success/2, publish_member_call_success/3
+         ,publish_member_call_cancel/1, publish_member_call_cancel/2
          ,publish_member_connect_req/1, publish_member_connect_req/2
          ,publish_member_connect_resp/2, publish_member_connect_resp/3
          ,publish_member_connect_win/2, publish_member_connect_win/3
@@ -151,6 +153,34 @@ member_call_success_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?MEMBER_CALL_SUCCESS_HEADERS, ?MEMBER_CALL_SUCCESS_VALUES, ?MEMBER_CALL_SUCCESS_TYPES);
 member_call_success_v(JObj) ->
     member_call_success_v(wh_json:to_proplist(JObj)).
+
+%%------------------------------------------------------------------------------
+%% Member Call Fail - if the queue is unable to properly handle the call
+%%  (queue is full, empty, wait timeout expires, etc)
+%%------------------------------------------------------------------------------
+-define(MEMBER_CALL_CANCEL_HEADERS, [<<"Call-ID">>, <<"Account-ID">>, <<"Queue-ID">>]).
+-define(OPTIONAL_MEMBER_CALL_CANCEL_HEADERS, [<<"Reason">>]).
+-define(MEMBER_CALL_CANCEL_VALUES, [{<<"Event-Category">>, <<"member">>}
+                                  ,{<<"Event-Name">>, <<"call_cancel">>}
+                                 ]).
+-define(MEMBER_CALL_CANCEL_TYPES, []).
+
+-spec member_call_cancel/1 :: (api_terms()) ->
+                                      {'ok', iolist()} |
+                                      {'error', string()}.
+member_call_cancel(Props) when is_list(Props) ->
+    case member_call_cancel_v(Props) of
+        true -> wh_api:build_message(Props, ?MEMBER_CALL_CANCEL_HEADERS, ?OPTIONAL_MEMBER_CALL_CANCEL_HEADERS);
+        false -> {error, "Proplist failed validation for member_call_cancel"}
+    end;
+member_call_cancel(JObj) ->
+    member_call_cancel(wh_json:to_proplist(JObj)).
+
+-spec member_call_cancel_v/1 :: (api_terms()) -> boolean().
+member_call_cancel_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?MEMBER_CALL_CANCEL_HEADERS, ?MEMBER_CALL_CANCEL_VALUES, ?MEMBER_CALL_CANCEL_TYPES);
+member_call_cancel_v(JObj) ->
+    member_call_cancel_v(wh_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
 %% Member Connect Request
@@ -667,6 +697,14 @@ publish_member_call(JObj) ->
     publish_member_call(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_member_call(API, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(API, ?MEMBER_CALL_VALUES, fun member_call/1),
+    amqp_util:callmgr_publish(Payload, ContentType, member_call_routing_key(API)).
+
+-spec publish_member_call_cancel/1 :: (api_terms()) -> 'ok'.
+-spec publish_member_call_cancel/2 :: (api_terms(), ne_binary()) -> 'ok'.
+publish_member_call_cancel(JObj) ->
+    publish_member_call_cancel(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_member_call_cancel(API, ContentType) ->
+    {ok, Payload} = wh_api:prepare_api_payload(API, ?MEMBER_CALL_CANCEL_VALUES, fun member_call_cancel/1),
     amqp_util:callmgr_publish(Payload, ContentType, member_call_routing_key(API)).
 
 publish_shared_member_call(JObj) ->

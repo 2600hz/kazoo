@@ -22,7 +22,7 @@
 -include("acdc.hrl").
 
 handle_call_event(JObj, Props) ->
-    true = wwapi_call:event_v(JObj),
+    true = wapi_call:event_v(JObj),
     {Cat, Name} = wh_util:get_event_type(JObj),
     acdc_queue_fsm:call_event(props:get_value(fsm_pid, Props), Cat, Name, JObj).
 
