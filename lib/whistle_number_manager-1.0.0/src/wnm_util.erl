@@ -167,8 +167,7 @@ is_1npan(DID) ->
 to_e164(<<$+, _/binary>> = N) ->
     N;
 to_e164(Number) ->
-    Default = wh_json:from_list(?DEFAULT_E164_CONVERTERS),
-    Converters = whapps_config:get(?WNM_CONFIG_CAT, <<"e164_converters">>, Default),    
+    Converters = get_e164_converters(),
     Regexs = wh_json:get_keys(Converters),
     maybe_convert_to_e164(Regexs, Converters, Number).
 
@@ -198,6 +197,16 @@ to_1npan(Number) ->
     case re:run(Number, <<"^\\+?1?([2-9][0-9]{2}[2-9][0-9]{6})$">>, [{capture, [1], binary}]) of
         nomatch -> Number;
         {match, [NPAN]} -> <<$1, NPAN/binary>>
+    end.
+
+-spec get_e164_converters/0 :: () -> wh_json:json_object().
+get_e164_converters() ->
+    Default = wh_json:from_list(?DEFAULT_E164_CONVERTERS),
+    try whapps_config:get(?WNM_CONFIG_CAT, <<"e164_converters">>, Default) of
+        Converters -> Converters
+    catch
+        _:_ -> 
+            Default
     end.
 
 %%--------------------------------------------------------------------
