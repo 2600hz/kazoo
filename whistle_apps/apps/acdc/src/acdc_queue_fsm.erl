@@ -300,8 +300,8 @@ ready({member_call, CallJObj, Delivery}, #state{queue_proc=Srv
                                                }=State) ->
     Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, CallJObj)),
 
-    case acdc_queue_manager:should_ignore_member_call(whapps_call:call_id(Call)) of
-        true ->
+    case acdc_queue_manager:should_ignore_member_call(Call, CallJObj) of
+        false ->
             lager:debug("member call received: ~s", [whapps_call:call_id(Call)]),
             acdc_queue:member_connect_req(Srv, CallJObj, Delivery),
 
@@ -312,7 +312,7 @@ ready({member_call, CallJObj, Delivery}, #state{queue_proc=Srv
                                                   ,member_call_start=erlang:now()
                                                   ,connection_timer_ref=start_connection_timer(ConnTimeout)
                                                  }};
-        false ->
+        true ->
             lager:debug("queue mgr said to ignore this call: ~s", [whapps_call:call_id(Call)]),
             acdc_queue:ignore_member_call(Srv, CallJObj, Delivery),
             {next_state, ready, State}

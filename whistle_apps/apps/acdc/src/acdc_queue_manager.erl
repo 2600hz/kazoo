@@ -16,8 +16,8 @@
 %% API
 -export([start_link/0
          ,handle_member_call/2
-         ,ignore_member_call/1
-         ,should_ignore_member_call/1
+         ,handle_member_call_cancel/2
+         ,should_ignore_member_call/2
         ]).
 
 %% gen_server callbacks
@@ -48,6 +48,9 @@
                       }
                      ,{{acdc_queue_manager, handle_member_call}
                        ,[{<<"member">>, <<"call">>}]
+                      }
+                     ,{{acdc_queue_manager, handle_member_call_cancel}
+                       ,[{<<"member">>, <<"call_cancel">>}]
                       }
                     ]).
 
@@ -80,6 +83,8 @@ start_link() ->
                            ).
 
 handle_member_call(JObj, _Props) ->
+    true = wapi_acdc_queue:member_call_v(JObj),
+
     Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, JObj)),
 
     AcctId = wh_json:get_value(<<"Account-ID">>, JObj),
@@ -98,10 +103,23 @@ handle_member_call(JObj, _Props) ->
     end,
     wapi_acdc_queue:publish_shared_member_call(AcctId, QueueId, JObj).
 
-ignore_member_call(CallId) ->
-    gen_listener:cast(?SERVER, {ignore_member_call, CallId}).
-should_ignore_member_call(CallId) ->
-    gen_listener:call(?SERVER, {should_ignore_member_call, CallId}).
+handle_member_call_cancel(JObj, _Props) ->
+    true = wapi_acdc_queue:member_call_cancel_v(JObj),
+    AcctId = wh_json:get_value(<<"Account-ID">>, JObj),
+    QueueId = wh_json:get_value(<<"Queue-ID">>, JObj),
+    CallId = wh_json:get_value(<<"Call-ID">>, JObj),
+
+    gen_listener:cast(?SERVER, {member_call_cancel, AcctId, QueueId, CallId}).
+
+should_ignore_member_call(Call, CallJObj) ->
+    case gen_listener:call(?SERVER, {should_ignore_member_call, whapps_call:call_id(Call)}) of
+        false -> false;
+        {AcctId, QueueId} ->
+            wh_json:get_value(<<"Account-ID">>, CallJObj) =:= AcctId andalso
+                wh_json:get_value(<<"Queue-ID">>, CallJObj) =:= QueueId;
+        _Other ->
+            true
+    end.
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -139,7 +157,7 @@ init([]) ->
 handle_call({should_ignore_member_call, CallId}, _, #state{ignored_member_calls=Dict}=State) ->
     case catch dict:fetch(CallId, Dict) of
         {'EXIT', _} -> {reply, false, State};
-        _TStamp -> {reply, true, State#state{ignored_member_calls=dict:erase(CallId, Dict)}}
+        Res -> {reply, Res, State#state{ignored_member_calls=dict:erase(CallId, Dict)}}
     end;
 handle_call(_Request, _From, State) ->
     Reply = ok,
@@ -155,9 +173,9 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({ignore_member_call, CallId}, #state{ignored_member_calls=Dict}=State) ->
+handle_cast({member_call_cancel, AcctId, QueueId, CallId}, #state{ignored_member_calls=Dict}=State) ->
     {noreply, State#state{
-                ignored_member_calls=dict:store(CallId, wh_util:current_tstamp(), Dict)
+                ignored_member_calls=dict:store(CallId, {AcctId, QueueId}, Dict)
                }};
 handle_cast(_Msg, State) ->
     {noreply, State}.
