@@ -31,7 +31,7 @@
 -define(SERVER, ?MODULE).
 
 -define(BINDINGS, [{conf, [{doc_type, <<"queue">>}]}
-                   ,{acdc_queue, [{restrict_to, [stats_req, member_call]}
+                   ,{acdc_queue, [{restrict_to, [stats_req]}
                                   ,{account_id, <<"*">>}
                                   ,{queue_id, <<"*">>}
                                  ]}
@@ -46,6 +46,15 @@
                        ,[{<<"member">>, <<"call">>}]
                       }
                     ]).
+
+-define(SECONDARY_BINDINGS, [{acdc_queue, [{restrict_to, [member_call]}
+                                           ,{account_id, <<"*">>}
+                                           ,{queue_id, <<"*">>}
+                                          ]}
+                            ]).
+-define(SECONDARY_QUEUE_NAME, <<"acdc.queue.manager">>).
+-define(SECONDARY_QUEUE_OPTIONS, [{exclusive, false}]).
+-define(SECONDARY_CONSUME_OPTIONS, [{exclusive, false}]).
 
 %%%===================================================================
 %%% API
@@ -101,6 +110,7 @@ handle_member_call(JObj, _Props) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
+    _ = start_secondary_queue(),
     {ok, ok}.
 
 %%--------------------------------------------------------------------
@@ -145,6 +155,7 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info(_Info, State) ->
+    lager:debug("unhandled message: ~p", [_Info]),
     {noreply, State}.
 
 handle_event(_JObj, _State) ->
@@ -178,3 +189,14 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+start_secondary_queue() ->
+    Self = self(),
+    spawn(fun() -> gen_listener:add_queue(Self
+                                          ,?SECONDARY_QUEUE_NAME
+                                          ,[{queue_options, ?SECONDARY_QUEUE_OPTIONS}
+                                            ,{consume_options, ?SECONDARY_CONSUME_OPTIONS}
+                                            ,{basic_qos, 1}
+                                           ]
+                                          ,?SECONDARY_BINDINGS
+                                         )
+          end).
