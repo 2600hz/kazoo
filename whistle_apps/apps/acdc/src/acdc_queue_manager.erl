@@ -105,21 +105,18 @@ handle_member_call(JObj, _Props) ->
 
 handle_member_call_cancel(JObj, _Props) ->
     true = wapi_acdc_queue:member_call_cancel_v(JObj),
-    AcctId = wh_json:get_value(<<"Account-ID">>, JObj),
-    QueueId = wh_json:get_value(<<"Queue-ID">>, JObj),
-    CallId = wh_json:get_value(<<"Call-ID">>, JObj),
-
-    gen_listener:cast(?SERVER, {member_call_cancel, AcctId, QueueId, CallId}).
+    K = make_ignore_key(wh_json:get_value(<<"Account-ID">>, JObj)
+                        ,wh_json:get_value(<<"Queue-ID">>, JObj)
+                        ,wh_json:get_value(<<"Call-ID">>, JObj)
+                       ),
+    gen_listener:cast(?SERVER, {member_call_cancel, K}).
 
 should_ignore_member_call(Call, CallJObj) ->
-    case gen_listener:call(?SERVER, {should_ignore_member_call, whapps_call:call_id(Call)}) of
-        false -> false;
-        {AcctId, QueueId} ->
-            wh_json:get_value(<<"Account-ID">>, CallJObj) =:= AcctId andalso
-                wh_json:get_value(<<"Queue-ID">>, CallJObj) =:= QueueId;
-        _Other ->
-            true
-    end.
+    K = make_ignore_key(wh_json:get_value(<<"Account-ID">>, CallJObj)
+                        ,wh_json:get_value(<<"Queue-ID">>, CallJObj)
+                        ,whapps_call:call_id(Call)
+                       ),
+    gen_listener:call(?SERVER, {should_ignore_member_call, K}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -154,10 +151,10 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({should_ignore_member_call, CallId}, _, #state{ignored_member_calls=Dict}=State) ->
-    case catch dict:fetch(CallId, Dict) of
+handle_call({should_ignore_member_call, K}, _, #state{ignored_member_calls=Dict}=State) ->
+    case catch dict:fetch(K, Dict) of
         {'EXIT', _} -> {reply, false, State};
-        Res -> {reply, Res, State#state{ignored_member_calls=dict:erase(CallId, Dict)}}
+        _Res -> {reply, true, State#state{ignored_member_calls=dict:erase(K, Dict)}}
     end;
 handle_call(_Request, _From, State) ->
     Reply = ok,
@@ -173,9 +170,9 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({member_call_cancel, AcctId, QueueId, CallId}, #state{ignored_member_calls=Dict}=State) ->
+handle_cast({member_call_cancel, K}, #state{ignored_member_calls=Dict}=State) ->
     {noreply, State#state{
-                ignored_member_calls=dict:store(CallId, {AcctId, QueueId}, Dict)
+                ignored_member_calls=dict:store(K, true, Dict)
                }};
 handle_cast(_Msg, State) ->
     {noreply, State}.
@@ -236,3 +233,6 @@ start_secondary_queue() ->
                                           ,?SECONDARY_BINDINGS
                                          )
           end).
+
+make_ignore_key(AcctId, QueueId, CallId) ->
+    {AcctId, QueueId, CallId}.
