@@ -16,6 +16,8 @@
 %% API
 -export([start_link/0
          ,handle_member_call/2
+         ,ignore_member_call/1
+         ,should_ignore_member_call/1
         ]).
 
 %% gen_server callbacks
@@ -29,6 +31,8 @@
         ]).
 
 -define(SERVER, ?MODULE).
+
+-record(state, {ignored_member_calls = dict:new() :: dict()}).
 
 -define(BINDINGS, [{conf, [{doc_type, <<"queue">>}]}
                    ,{acdc_queue, [{restrict_to, [stats_req]}
@@ -94,6 +98,11 @@ handle_member_call(JObj, _Props) ->
     end,
     wapi_acdc_queue:publish_shared_member_call(AcctId, QueueId, JObj).
 
+ignore_member_call(CallId) ->
+    gen_listener:cast(?SERVER, {ignore_member_call, CallId}).
+should_ignore_member_call(CallId) ->
+    gen_listener:call(?SERVER, {should_ignore_member_call, CallId}).
+
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -111,7 +120,7 @@ handle_member_call(JObj, _Props) ->
 %%--------------------------------------------------------------------
 init([]) ->
     _ = start_secondary_queue(),
-    {ok, ok}.
+    {ok, #state{}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -127,6 +136,11 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_call({should_ignore_member_call, CallId}, _, #state{ignored_member_calls=Dict}=State) ->
+    case catch dict:fetch(CallId, Dict) of
+        {'EXIT', _} -> {reply, false, State};
+        _TStamp -> {reply, true, State#state{ignored_member_calls=dict:erase(CallId, Dict)}}
+    end;
 handle_call(_Request, _From, State) ->
     Reply = ok,
     {reply, Reply, State}.
@@ -141,6 +155,10 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast({ignore_member_call, CallId}, #state{ignored_member_calls=Dict}=State) ->
+    {noreply, State#state{
+                ignored_member_calls=dict:store(CallId, wh_util:current_tstamp(), Dict)
+               }};
 handle_cast(_Msg, State) ->
     {noreply, State}.
 

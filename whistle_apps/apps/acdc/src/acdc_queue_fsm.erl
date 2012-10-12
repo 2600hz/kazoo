@@ -299,17 +299,24 @@ ready({member_call, CallJObj, Delivery}, #state{queue_proc=Srv
                                                 ,connection_timer_ref=ConnRef
                                                }=State) ->
     Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, CallJObj)),
-    lager:debug("member call received: ~s", [whapps_call:call_id(Call)]),
 
-    acdc_queue:member_connect_req(Srv, CallJObj, Delivery),
+    case acdc_queue_manager:should_ignore_member_call(whapps_call:call_id(Call)) of
+        true ->
+            lager:debug("member call received: ~s", [whapps_call:call_id(Call)]),
+            acdc_queue:member_connect_req(Srv, CallJObj, Delivery),
 
-    maybe_stop_timer(ConnRef), % stop the old one, maybe
+            maybe_stop_timer(ConnRef), % stop the old one, maybe
 
-    {next_state, connect_req, State#state{collect_ref=start_collect_timer()
-                                          ,member_call=Call
-                                          ,member_call_start=erlang:now()
-                                          ,connection_timer_ref=start_connection_timer(ConnTimeout)
-                                         }};
+            {next_state, connect_req, State#state{collect_ref=start_collect_timer()
+                                                  ,member_call=Call
+                                                  ,member_call_start=erlang:now()
+                                                  ,connection_timer_ref=start_connection_timer(ConnTimeout)
+                                                 }};
+        false ->
+            lager:debug("queue mgr said to ignore this call: ~s", [whapps_call:call_id(Call)]),
+            acdc_queue:ignore_member_call(Srv, CallJObj, Delivery),
+            {next_state, ready, State}
+    end;
 ready({agent_resp, _Resp}, State) ->
     lager:debug("someone jumped the gun, or was slow on the draw: ~p", [_Resp]),
     {next_state, ready, State};

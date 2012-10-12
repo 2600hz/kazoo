@@ -28,6 +28,7 @@
          ,timeout_member_call/1
          ,exit_member_call/1
          ,finish_member_call/2
+         ,ignore_member_call/3
          ,cancel_member_call/1, cancel_member_call/2 ,cancel_member_call/3
          ,send_sync_req/2
          ,config/1
@@ -155,6 +156,9 @@ cancel_member_call(Srv, RejectJObj) ->
     gen_listener:cast(Srv, {cancel_member_call, RejectJObj}).
 cancel_member_call(Srv, MemberCallJObj, Delivery) ->
     gen_listener:cast(Srv, {cancel_member_call, MemberCallJObj, Delivery}).
+
+ignore_member_call(Srv, Call, Delivery) ->
+    gen_listener:cast(Srv, {ignore_member_call, Call, Delivery}).
 
 -spec send_sync_req/2 :: (pid(), queue_strategy()) -> 'ok'.
 send_sync_req(Srv, Type) ->
@@ -333,6 +337,12 @@ handle_cast({timeout_member_call}, #state{delivery=Delivery
     acdc_queue_shared:ack(Pid, Delivery),
     send_member_call_failure(Q, AcctId, QueueId, MyId, AgentId),
 
+    {noreply, clear_call_state(State)};
+
+handle_cast({ignore_member_call, Call, Delivery}, #state{shared_pid=Pid}=State) ->
+    lager:debug("ignoring member call ~s, moving on", [whapps_call:call_id(Call)]),
+    acdc_util:unbind_from_call_events(Call),
+    acdc_queue_shared:ack(Pid, Delivery),
     {noreply, clear_call_state(State)};
 
 handle_cast({exit_member_call}, #state{delivery=Delivery
