@@ -453,11 +453,8 @@ ringing({originate_failed, JObj}, #state{agent_proc=Srv
 
     {next_state, ready, clear_call(State)};
 
-ringing({channel_bridged, CallId}, #state{agent_proc=Srv
-                                          ,member_call_id=CallId
-                                         }=State) ->
+ringing({channel_bridged, CallId}, #state{member_call_id=CallId}=State) ->
     lager:debug("agent has connected to member"),
-    acdc_agent:member_connect_accepted(Srv),
     {next_state, answered, State};
 
 ringing({channel_hungup, CallId}, #state{agent_proc=Srv
@@ -507,7 +504,7 @@ ringing({channel_answered, ACallId}, #state{agent_call_id=ACallId
     lager:debug("agent channel ready: ~s", [ACallId]),
     acdc_agent:join_agent(Srv, ACallId),
     acdc_agent:member_connect_accepted(Srv),
-    {next_state, ringing, State};
+    {next_state, answered, State};
 
 ringing({channel_answered, MCallId}, #state{member_call_id=MCallId}=State) ->
     lager:debug("member channel answered"),
@@ -816,11 +813,7 @@ handle_info(_Info, StateName, State) ->
 %% @spec terminate(Reason, StateName, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, _StateName, #state{acct_id=AcctId
-                                      ,agent_id=AgentId
-                                      ,agent_proc=Srv
-                                      }) ->
-    acdc_stats:agent_inactive(AcctId, AgentId),
+terminate(_Reason, _StateName, #state{agent_proc=Srv}) ->
     acdc_agent:stop(Srv),
     lager:debug("acdc agent fsm terminating while in ~s: ~p", [_StateName, _Reason]).
 
