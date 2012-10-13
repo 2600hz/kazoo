@@ -17,6 +17,7 @@
 -export([is_account_enabled/1]).
 
 -export([try_load_module/1]).
+-export([shuffle_list/1]).
 
 -export([to_integer/1, to_integer/2
          ,to_float/1, to_float/2
@@ -339,6 +340,34 @@ join_binary([Bin|Bins], Sep, Acc) when is_binary(Bin) ->
     join_binary(Bins, Sep, [Sep, Bin |Acc]);
 join_binary([_|Bins], Sep, Acc) ->
     join_binary(Bins, Sep, Acc).
+
+
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec shuffle_list/1 :: (list()) -> list().
+shuffle_list(List) when is_list(List) ->
+    Len = length(List),
+    randomize_list(round(math:log(Len) + 0.5), List).
+
+-spec randomize_list/1 :: (list()) -> list().
+-spec randomize_list/2 :: (pos_integer(), list()) -> list().
+
+randomize_list(List) ->
+    D = lists:keysort(1, [{random:uniform(), A} || A <- List]),
+    {_, D1} = lists:unzip(D),
+    D1.
+
+randomize_list(1, List) ->
+    randomize_list(List);
+randomize_list(T, List) ->
+    lists:foldl(fun(_E, Acc) ->
+                        randomize_list(Acc)
+                end, randomize_list(List), lists:seq(1, (T - 1))).
 
 %%--------------------------------------------------------------------
 %% @public

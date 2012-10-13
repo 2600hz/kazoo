@@ -18,6 +18,7 @@
 -define(APP_VERSION, <<"0.5.0">>).
 
 -define(STEPSWITCH_CACHE, stepswitch_cache).
+-define(STEPSWITCH_CNAM_POOL, stepswitch_cnam_pool).
 
 -record(gateway, {
            resource_id = 'undefined'

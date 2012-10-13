@@ -76,7 +76,7 @@ status() ->
 compact_all() ->
     lager:debug("compacting all nodes"),
     {ok, Nodes} = couch_mgr:admin_all_docs(<<"nodes">>),
-    _ = [ compact_node(wh_json:get_value(<<"id">>, Node)) || Node <- shuffle(Nodes)],
+    _ = [ compact_node(wh_json:get_value(<<"id">>, Node)) || Node <- wh_util:shuffle_list(Nodes)],
     done.
 
 -spec compact_node/1 :: (ne_binary() | atom()) -> 'done'.
@@ -93,7 +93,7 @@ compact_node(NodeBin) ->
                                     lager:debug("compacting database (~p/~p) '~s'", [Count, Total, DB]),
                                     _ = (catch compact_node_db(NodeBin, DB, Conn, AdminConn)),
                                     Count + 1
-                            end, 1, shuffle(DBs, Total)),
+                            end, 1, wh_util:shuffle_list(DBs)),
             done
     catch
         _:{error,{conn_failed,{error,etimedout}}} ->
@@ -352,24 +352,3 @@ get_conns(Host, Port, User, Pass, AdminPort) ->
 node_dbs(AdminConn) ->
     {ok, Dbs} = couch_util:all_docs(AdminConn, <<"dbs">>, []),
     {ok, [wh_json:get_value(<<"id">>, Db) || Db <- Dbs]}.
-
--spec shuffle/1 :: (list()) -> list().
--spec shuffle/2 :: (list(), integer()) -> list().
-shuffle(List) ->
-    shuffle(List, length(List)).
-shuffle(List, Len) ->
-    randomize(round(math:log(Len) + 0.5), List).
-
--spec randomize/2 :: (pos_integer(), list()) -> list().
-randomize(1, List) ->
-    randomize(List);
-randomize(T, List) ->
-    lists:foldl(fun(_E, Acc) ->
-                        randomize(Acc)
-                end, randomize(List), lists:seq(1, (T - 1))).
-
--spec randomize/1 :: (list()) -> list().
-randomize(List) ->
-    D = lists:keysort(1, [{random:uniform(), A} || A <- List]),
-    {_, D1} = lists:unzip(D),
-    D1.

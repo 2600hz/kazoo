@@ -550,6 +550,7 @@ json_to_record(JObj, #number{number=Num, number_db=Db}=Number) ->
     Number#number{number=wh_json:get_value(<<"_id">>, JObj, Num)
                   ,number_db=wh_json:get_value(<<"pvt_db_name">>, JObj, Db)
                   ,state=wh_json:get_ne_value(<<"pvt_number_state">>, JObj)
+                  ,current_state=wh_json:get_ne_value(<<"pvt_number_state">>, JObj)
                   ,reserve_history=ordsets:from_list(wh_json:get_ne_value(<<"pvt_reserve_history">>, JObj, []))
                   ,assigned_to=wh_json:get_ne_value(<<"pvt_assigned_to">>, JObj)
                   ,prev_assigned_to=wh_json:get_ne_value(<<"pvt_previously_assigned_to">>, JObj)

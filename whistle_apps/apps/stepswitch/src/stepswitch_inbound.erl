@@ -36,12 +36,10 @@ handle_req(JObj, _Prop) ->
 inbound_handler(JObj) ->
     inbound_handler(JObj, get_dest_number(JObj)).
 inbound_handler(JObj, Number) ->
-    case wh_number_manager:lookup_account_by_number(Number) of
-        {ok, AccountId, _, _} ->
+    case stepswitch_util:lookup_number(Number) of
+        {ok, AccountId, Props} ->
             lager:debug("number associated with account ~s", [AccountId]),
-            relay_route_req(
-              wh_json:set_value(<<"Custom-Channel-Vars">>, custom_channel_vars(AccountId, undefined, JObj), JObj)
-             );
+            relay_route_req(Number, AccountId, Props, JObj);
         {error, _R} ->
             lager:debug("failed to find account for number ~s: ~p", [Number, _R])
     end.
@@ -85,19 +83,18 @@ assume_e164(Number) ->
 %% account and authorizing  ID
 %% @end
 %%--------------------------------------------------------------------
--spec custom_channel_vars/3 :: ('undefined' | ne_binary(), 'undefined' | ne_binary(), wh_json:json_object()) -> wh_json:json_object().
-custom_channel_vars(AccountId, AuthId, JObj) ->
+-spec custom_channel_vars/2 :: (ne_binary(), wh_json:json_object()) -> wh_json:json_object().
+custom_channel_vars(AccountId, JObj) ->
     CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new()),
-    Vars = [{<<"Account-ID">>, AccountId}
-            ,{<<"Inception">>, <<"off-net">>}
-            ,{<<"Authorizing-ID">>, AuthId}
-            | [Var || {K, _}=Var <- wh_json:to_proplist(CCVs)
-                          ,K =/= <<"Account-ID">>
-                          ,K =/= <<"Inception">>
-                          ,K =/= <<"Authorizing-ID">>
-              ]
-           ],
-    wh_json:from_list([ KV || {_, V}=KV <- Vars, V =/= undefined ]).
+    RemoveKeys = [<<"Account-ID">>
+                      ,<<"Inception">>
+                      ,<<"Authorizing-ID">>
+                 ],
+    Props = [{<<"Account-ID">>, AccountId}
+             ,{<<"Inception">>, <<"off-net">>}
+            ],
+    UpdatedCCVs = wh_json:set_keys(Props, wh_json:delete_keys(RemoveKeys, CCVs)),
+    wh_json:set_value(<<"Custom-Channel-Vars">>, UpdatedCCVs, JObj).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -105,7 +102,15 @@ custom_channel_vars(AccountId, AuthId, JObj) ->
 %% relay a route request once populated with the new properties
 %% @end
 %%--------------------------------------------------------------------
--spec relay_route_req/1 :: (wh_json:json_object()) -> 'ok'.
-relay_route_req(Req) ->
-    wapi_route:publish_req(Req),
+-spec relay_route_req/4 :: (ne_binary(), ne_binary(), proplist(), wh_json:json_object()) -> 'ok'.
+relay_route_req(Number, AccountId, Props, JObj) ->
+    Routines = [fun(J) -> custom_channel_vars(AccountId, J) end
+                ,fun(J) -> 
+                         case props:get_value(cnam, Props) of
+                             false -> J;
+                             true -> stepswitch_cnam:lookup(Number, J)
+                         end
+                 end
+               ],
+    wapi_route:publish_req(lists:foldl(fun(F, J) -> F(J) end, JObj, Routines)),
     lager:debug("relayed route request").

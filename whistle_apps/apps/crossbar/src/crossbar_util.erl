@@ -319,7 +319,7 @@ find_account_db(undefined, AccountRealm, AccountName, AllowMultiples, Errors) ->
     end;
 find_account_db(PhoneNumber, AccountRealm, AccountName, AllowMultiples, Errors) ->
     case wh_number_manager:lookup_account_by_number(PhoneNumber) of
-        {ok, AccountId, _, _} -> 
+        {ok, AccountId, _} -> 
             AccountDb = wh_util:format_account_id(AccountId, encoded),
             lager:debug("found account by phone number '~s': ~s", [PhoneNumber, AccountDb]),
             {ok, AccountDb};

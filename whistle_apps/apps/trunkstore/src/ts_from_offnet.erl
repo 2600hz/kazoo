@@ -234,7 +234,8 @@ get_endpoint_data(JObj) ->
     {ToUser, _} = whapps_util:get_destination(JObj, ?APP_NAME, <<"inbound_user_field">>),
     ToDID = wnm_util:to_e164(ToUser),
 
-    {ok, AcctId, ForceOut, _} = wh_number_manager:lookup_account_by_number(ToDID),
+    {ok, AcctId, NumberProps} = wh_number_manager:lookup_account_by_number(ToDID),
+    ForceOut = props:get_value(force_outbound, NumberProps),
     lager:debug("acct ~s force out ~s", [AcctId, ForceOut]),
 
     RoutingData = routing_data(ToDID, AcctId),

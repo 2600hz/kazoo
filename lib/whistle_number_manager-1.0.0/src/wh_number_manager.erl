@@ -12,6 +12,7 @@
 
 -export([find/1, find/2]).
 -export([lookup_account_by_number/1]).
+-export([ported/1]).
 -export([create_number/3, create_number/4]).
 -export([port_in/3, port_in/4]).
 -export([reconcile_number/3]).
@@ -65,21 +66,15 @@ lookup_account_by_number(Number) ->
         #number{assigned_to=undefined} -> 
             lager:debug("number ~s not assigned to an account", [Number]),
             {error, unassigned};            
-        #number{assigned_to=AssignedTo, state = <<"port_in">>, module_name=Name} -> 
+        #number{assigned_to=AssignedTo, state = <<"port_in">>}=N -> 
             lager:debug("number ~s is assigned to ~s in state port_in", [Number, AssignedTo]),
-            {ok, AssignedTo, true, Name =/= wnm_local};
-        #number{assigned_to=AssignedTo, state = <<"in_service">>, number_doc=JObj, module_name=Name} -> 
-            case wh_json:is_true(<<"force_outbound">>, JObj, false) of
-                true -> 
-                    lager:debug("number ~s is assigned to ~s in state in_serivce and is forced outbound", [Number, AssignedTo]),
-                    {ok, AssignedTo, true, Name =/= wnm_local};
-                false -> 
-                    lager:debug("number ~s is assigned to ~s in state in_serivce", [Number, AssignedTo]),
-                    {ok, AssignedTo, false, Name =/= wnm_local}
-            end;
-        #number{assigned_to=AssignedTo, state = <<"port_out">>, module_name=Name} -> 
+            {ok, AssignedTo, number_options(N)};
+        #number{assigned_to=AssignedTo, state = <<"in_service">>}=N -> 
+            lager:debug("number ~s is assigned to ~s in state in_service", [Number, AssignedTo]),
+            {ok, AssignedTo, number_options(N)};
+        #number{assigned_to=AssignedTo, state = <<"port_out">>}=N -> 
             lager:debug("number ~s is assigned to ~s in state port_in", [Number, AssignedTo]),
-            {ok, AssignedTo, true, Name =/= wnm_local};
+            {ok, AssignedTo, number_options(N)};
         #number{assigned_to=AssignedTo, state=State} -> 
             lager:debug("number ~s assigned to acccount id ~s but in state ~s", [Number, AssignedTo, State]),
             {error, {not_in_service, AssignedTo}}
@@ -87,6 +82,50 @@ lookup_account_by_number(Number) ->
         throw:{Error, #number{}} ->
             {error, Error}
     end.
+
+number_options(#number{state=State, features=Features, module_name=Module}=Number) ->
+    [{force_outbound, should_force_outbound(Number)}
+     ,{pending_port, State =:= <<"port_in">>}
+     ,{local, Module =:= wnm_local}
+     ,{cnam, sets:is_element(<<"cnam">>, Features)}
+    ].
+
+should_force_outbound(#number{module_name=wnm_local}) -> true;
+should_force_outbound(#number{state = <<"port_in">>}) -> true;
+should_force_outbound(#number{state = <<"port_out">>}) -> true;
+should_force_outbound(#number{number_doc=JObj}) -> 
+    wh_json:is_true(<<"force_outbound">>, JObj, false).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Move a port_in number to in_service
+%% @end
+%%--------------------------------------------------------------------
+-spec ported/1 :: (ne_binary()) -> operation_return().
+ported(Number) ->
+    Routines = [fun({_, #number{}}=E) -> E;
+                   (#number{state = <<"port_in">>, assigned_to=AssignedTo}=N) -> 
+                        lager:debug("attempting to move port_in number ~s to in_service for account ~s", [Number, AssignedTo]),
+                        N#number{auth_by=AssignedTo};
+                   (#number{}=N) ->
+                        wnm_number:error_unauthorized(N)
+                end
+                ,fun({_, #number{}}=E) -> E;
+                    (#number{}=N) -> wnm_number:in_service(N)
+                 end
+                ,fun({_, #number{}}=E) -> E;
+                    (#number{}=N) -> wnm_number:save(N)
+                 end
+                ,fun({E, #number{error_jobj=Reason}}) -> 
+                         lager:debug("create number prematurely ended: ~p", [E]),
+                         {E, Reason};
+                    (#number{number_doc=JObj}) -> 
+                         lager:debug("reserve successfully completed", []),
+                         {ok, wh_json:public_fields(JObj)}
+                 end
+               ], 
+    lists:foldl(fun(F, J) -> catch F(J) end, catch wnm_number:get(Number), Routines).
 
 %%--------------------------------------------------------------------
 %% @public

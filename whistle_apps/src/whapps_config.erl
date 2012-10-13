@@ -549,6 +549,8 @@ category_to_file(<<"notify.cnam_request">>) ->
     [code:lib_dir(notify, priv), "/notify_cnam_request.config"];
 category_to_file(<<"notify.port_request">>) ->
     [code:lib_dir(notify, priv), "/notify_port_request.config"];
+category_to_file(<<"notify.ported">>) ->
+    [code:lib_dir(notify, priv), "/notify_ported.config"];
 category_to_file(<<"notify.low_balance">>) ->
     [code:lib_dir(notify, priv), "/notify_low_balance.config"];
 category_to_file(<<"notify.system_alert">>) ->
