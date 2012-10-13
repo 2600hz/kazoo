@@ -62,8 +62,10 @@ handle_queue_change(JObj, AcctId, QueueId, <<"doc_edited">>) ->
     end;
 handle_queue_change(_JObj, AcctId, QueueId, <<"doc_deleted">>) ->
     case acdc_queues_sup:find_queue_supervisor(AcctId, QueueId) of
-        undefined -> ok;
-        P when is_pid(P) -> acdc_queue_sup:stop(P)
+        undefined -> lager:debug("no queue(~s) started for account ~s", [QueueId, AcctId]);
+        P when is_pid(P) ->
+            lager:debug("stopping queue(~s) in account ~s (deleted): ~p", [QueueId, AcctId, P]),
+            acdc_queue_sup:stop(P)
     end.
 
 handle_stats_req(JObj, _Props) ->
