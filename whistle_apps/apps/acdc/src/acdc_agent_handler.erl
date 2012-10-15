@@ -65,24 +65,25 @@ maybe_stop_agent(AcctId, AgentId) ->
     case acdc_agents_sup:find_agent_supervisor(AcctId, AgentId) of
         undefined -> lager:debug("agent ~s (~s) not found, nothing to do", [AgentId, AcctId]);
         P when is_pid(P) ->
-            acdc_stats:agent_inactive(AcctId, AgentId),
-            acdc_agent_sup:stop(P)
+            lager:debug("agent ~s(~s) is logging out, stopping ~p", [AcctId, AgentId, P]),
+            _ = acdc_agent_sup:stop(P),
+            acdc_stats:agent_inactive(AcctId, AgentId)
     end.
 
 maybe_pause_agent(AcctId, AgentId, Timeout) ->
     case acdc_agents_sup:find_agent_supervisor(AcctId, AgentId) of
         undefined -> lager:debug("agent ~s (~s) not found, nothing to do", [AgentId, AcctId]);
         P when is_pid(P) ->
-            FSM = acdc_agent_sup:fsm(P),
-            acdc_agent_fsm:pause(FSM, Timeout)
+            lager:debug("agent ~s(~s) is pausing for ~p", [AcctId, AgentId, Timeout]),
+            acdc_agent_fsm:pause(acdc_agent_sup:fsm(P), Timeout)
     end.
 
 maybe_resume_agent(AcctId, AgentId) ->
     case acdc_agents_sup:find_agent_supervisor(AcctId, AgentId) of
         undefined -> lager:debug("agent ~s (~s) not found, nothing to do", [AgentId, AcctId]);
         P when is_pid(P) ->
-            FSM = acdc_agent_sup:fsm(P),
-            acdc_agent_fsm:resume(FSM)
+            lager:debug("agent ~s(~s) is resuming: ~p", [AcctId, AgentId, P]),
+            acdc_agent_fsm:resume(acdc_agent_sup:fsm(P))
     end.
 
 -spec handle_sync_req/2 :: (wh_json:json_object(), wh_proplist()) -> 'ok'.
@@ -178,5 +179,8 @@ handle_agent_change(JObj, AcctId, AgentId, <<"doc_edited">>) ->
 handle_agent_change(_JObj, AcctId, AgentId, <<"doc_deleted">>) ->
     case acdc_agents_sup:find_agent_supervisor(AcctId, AgentId) of
         undefined -> ok;
-        P when is_pid(P) -> acdc_agent_sup:stop(P)
+        P when is_pid(P) ->
+            lager:debug("agent ~s(~s) has been deleted, stopping ~p", [AcctId, AgentId, P]),
+            _ = acdc_agent_sup:stop(P),
+            acdc_stats:agent_inactive(AcctId, AgentId)
     end.

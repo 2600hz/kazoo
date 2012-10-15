@@ -1,5 +1,3 @@
-Race condition when agent has answered leg, send acceptance before uuid_bridge.
-
 ** Scenario 1
  * No agents logged in
  * Customer calls in...eventually hangs up
