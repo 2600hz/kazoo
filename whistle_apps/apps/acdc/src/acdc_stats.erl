@@ -647,5 +647,5 @@ add_agent_wrapup_time_left(AcctDoc, AgentId, WaitTimeLeft) ->
 
 update_status(AcctDoc, AgentId, TStamp, Status) ->
     StatusKey = [<<"agents">>, AgentId, <<"statuses">>],
-    Statuses = wh_json:get_value(StatusKey, AcctDoc, []),
-    wh_json:set_value(StatusKey, [{TStamp, Status} | Statuses], AcctDoc).
+    Statuses = wh_json:get_value(StatusKey, AcctDoc, wh_json:new()),
+    wh_json:set_value(StatusKey, wh_json:set_value(TStamp, Status, Statuses), AcctDoc).

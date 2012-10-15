@@ -190,13 +190,23 @@ handle_cast(_Req, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info({event, [undefined | Data]}, #state{node=Node}=State) ->
+    catch process_event(undefined, Data, Node),
+    {noreply, State, hibernate};
+
 handle_info({event, [UUID | Data]}, #state{node=Node}=State) ->
-    catch process_event(UUID, Data, Node),
+    _ = case ecallmgr_fs_nodes:channel_node(UUID) of
+            {ok, Node} -> catch process_event(UUID, Data, Node);
+            {error, not_found} -> catch process_event(UUID, Data, Node);
+            {ok, _NewNode} ->
+                lager:debug("surpressing: channel is on different node ~s, not ~s", [_NewNode, Node])
+        end,
     {noreply, State, hibernate};
 
 handle_info({bgok, _Job, _Result}, State) ->
     lager:debug("job ~s finished successfully: ~p", [_Job, _Result]),
     {noreply, State};
+
 handle_info({bgerror, _Job, _Result}, State) ->
     lager:debug("job ~s finished with an error: ~p", [_Job, _Result]),
     {noreply, State};
@@ -255,10 +265,19 @@ process_event(<<"CHANNEL_DESTROY">>, UUID, Data, Node) ->
             lager:debug("ignoring channel destroy because of CS_NEW: ~s", [UUID]);
         <<"CS_DESTROY">> ->
             lager:debug("received channel destroyed: ~s", [UUID]),
-            spawn(ecallmgr_fs_nodes, destroy_channel, [Data, Node])
+            _ = case ecallmgr_fs_nodes:channel_node(UUID) of
+                    {ok, Node} -> spawn(ecallmgr_fs_nodes, destroy_channel, [Data, Node]);
+                    {ok, _NewNode} -> lager:debug("surpressing destroy; ~s is on ~s, not ~s", [UUID, _NewNode, Node]);
+                    {error, not_found} -> lager:debug("channel not found, surpressing destroy")
+                end,
+            ok
     end;
-process_event(<<"CHANNEL_HANGUP_COMPLETE">>, UUID, Data, _) ->
-    spawn(ecallmgr_call_cdr, new_cdr, [UUID, Data]),
+process_event(<<"CHANNEL_HANGUP_COMPLETE">>, UUID, Data, Node) ->
+    _ = case ecallmgr_fs_nodes:channel_node(UUID) of
+            {ok, Node} -> spawn(ecallmgr_call_cdr, new_cdr, [UUID, Data]);
+            {ok, _NewNode} -> lager:debug("surpressing CDR; ~s is on ~s, not ~s", [UUID, _NewNode, Node]);
+            {error, not_found} -> lager:debug("channel not found, surpressing CDR")
+        end,
     ok;
 process_event(<<"SESSION_HEARTBEAT">>, _, Data, Node) ->
     spawn(ecallmgr_authz, update, [Data, Node]),
@@ -268,7 +287,7 @@ process_event(_, _, _, _) ->
 
 -spec process_custom_data/2 :: (proplist(), atom()) -> 'ok'.
 process_custom_data(Data, Node) ->
-    put(callid, props:get_value(<<"call-id">>, Data)),
+    put(callid, props:get_value(<<"call-id">>, Data, Node)),
     Subclass = props:get_value(<<"Event-Subclass">>, Data),
     case Subclass of
         <<"sofia::register">> ->
@@ -294,8 +313,7 @@ process_custom_data(Data, Node) ->
             gproc:send({p, l, {channel_move, Node, UUID}}, {channel_move_released, UUID, Data});
         <<"sofia::move_complete">> ->
             UUID = props:get_value(<<"old_node_channel_uuid">>, Data),
-            lager:debug("sending move_complete for ~s", [UUID]),
-            _ = [lager:debug("move_complete: ~p", [KV]) || KV <- Data],
+            lager:debug("sending move_complete for ~s on ~s", [UUID, Node]),
             gproc:send({p, l, {channel_move, Node, UUID}}, {channel_move_completed, UUID, Data});
         _Sub ->
             lager:debug("custom evt ~s", [_Sub]),
@@ -505,11 +523,11 @@ show_channels_as_json(Node) ->
         {error, _} -> []
     end.
 
--spec maybe_start_event_listener/2 :: (atom(), ne_binary()) -> 'ok' | {'error', _} | {'ok', _} | {'ok', 'undefined' | pid(), _}.
+-spec maybe_start_event_listener/2 :: (atom(), ne_binary()) -> 'ok' | sup_startchild_ret().
 maybe_start_event_listener(Node, UUID) ->
     case wh_cache:fetch_local(?ECALLMGR_UTIL_CACHE, {UUID, start_listener}) of
         {ok, true} ->
-            lager:debug("starting events for ~s", [UUID]),
+            lager:debug("starting events for ~s on ~s", [UUID, Node]),
             ecallmgr_call_sup:start_event_process(Node, UUID);
         _E ->
             lager:debug("ignoring start events for ~s: ~p", [UUID, _E]), ok

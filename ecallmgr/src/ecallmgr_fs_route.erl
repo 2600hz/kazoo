@@ -168,10 +168,26 @@ code_change(_OldVsn, State, _Extra) ->
 process_route_req(Node, FSID, CallId, Props) ->
     put(callid, CallId),
     lager:debug("processing fetch request ~s (call ~s) from ~s", [FSID, CallId, Node]),
+
+    case ecallmgr_fs_nodes:channel_node(CallId) of
+        {error, not_found} -> search_for_route(Node, FSID, CallId, Props);
+        {ok, Node} ->
+            lager:debug("channel already exists on ~s, park it", [Node]),
+            RespJObj = wh_json:from_list([{<<"Routes">>, []}
+                                          ,{<<"Method">>, <<"park">>}
+                                         ]),
+            reply_affirmative(Node, FSID, CallId, RespJObj, Props);
+        {ok, _OldNode} ->
+            lager:debug("channel already exists, but on other node ~s (not ~s)", [_OldNode, Node]),
+            search_for_route(Node, FSID, CallId, Props)
+    end.
+
+search_for_route(Node, FSID, CallId, Props) ->
     ReqResp = wh_amqp_worker:call(?ECALLMGR_AMQP_POOL
                                   ,route_req(CallId, FSID, Props, Node)
                                   ,fun wapi_route:publish_req/1
-                                  ,fun wapi_route:is_actionable_resp/1),
+                                  ,fun wapi_route:is_actionable_resp/1
+                                 ),
     case ReqResp of
         {error, _R} -> 
             lager:debug("did not receive route response: ~p", [_R]);
@@ -219,7 +235,11 @@ reply_affirmative(Node, FSID, CallId, RespJObj, Props) ->
                            lager:debug("channel ~s already has billing id ~s", [CallId, _Else]),
                            RouteCCVs
                    end,
-            start_control_and_events(Node, CallId, ServerQ, CCVs);
+
+            case ecallmgr_call_control:control_procs(CallId) of
+                [] -> start_control_and_events(Node, CallId, ServerQ, CCVs);
+                Ps -> ecallmgr_call_control:update_node(Node, Ps)
+            end;
         {error, Reason} -> 
             lager:debug("node ~s rejected our route response, ~p", [Node, Reason]);
         timeout -> lager:error("received no reply from node ~s, timeout", [Node])
