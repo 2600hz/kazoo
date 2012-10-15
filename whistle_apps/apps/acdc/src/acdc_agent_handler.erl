@@ -66,7 +66,7 @@ maybe_stop_agent(AcctId, AgentId) ->
         undefined -> lager:debug("agent ~s (~s) not found, nothing to do", [AgentId, AcctId]);
         P when is_pid(P) ->
             lager:debug("agent ~s(~s) is logging out, stopping ~p", [AcctId, AgentId, P]),
-            acdc_agent_sup:stop(P),
+            _ = acdc_agent_sup:stop(P),
             acdc_stats:agent_inactive(AcctId, AgentId)
     end.
 
@@ -181,6 +181,6 @@ handle_agent_change(_JObj, AcctId, AgentId, <<"doc_deleted">>) ->
         undefined -> ok;
         P when is_pid(P) ->
             lager:debug("agent ~s(~s) has been deleted, stopping ~p", [AcctId, AgentId, P]),
-            acdc_agent_sup:stop(P),
+            _ = acdc_agent_sup:stop(P),
             acdc_stats:agent_inactive(AcctId, AgentId)
     end.
