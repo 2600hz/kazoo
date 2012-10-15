@@ -142,6 +142,13 @@ call_event(FSM, <<"call_event">>, <<"DTMF">>, EvtJObj) ->
     gen_fsm:send_event(FSM, {dtmf_pressed, wh_json:get_value(<<"DTMF-Digit">>, EvtJObj)});
 call_event(FSM, <<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, JObj) ->
     maybe_send_execute_complete(FSM, wh_json:get_value(<<"Application-Name">>, JObj), JObj);
+call_event(FSM, <<"error">>, <<"dialplan">>, JObj) ->
+    wh_util:put_callid(JObj),
+    lager:debug("error event: ~s", [wh_json:get_value(<<"Error-Message">>, JObj)]),
+
+    Req = wh_json:get_value(<<"Request">>, JObj),
+
+    gen_fsm:send_event(FSM, {dialplan_error, wh_json:get_value(<<"Application-Name">>, Req)});
 call_event(_, _, _, _) -> ok.
 
 %%--------------------------------------------------------------------
@@ -503,7 +510,6 @@ ringing({channel_answered, ACallId}, #state{agent_call_id=ACallId
                                            }=State) ->
     lager:debug("agent channel ready: ~s", [ACallId]),
     acdc_agent:join_agent(Srv, ACallId),
-    acdc_agent:member_connect_accepted(Srv),
     {next_state, answered, State};
 
 ringing({channel_answered, MCallId}, #state{member_call_id=MCallId}=State) ->
@@ -539,6 +545,22 @@ answered({member_connect_win, JObj}, #state{agent_proc=Srv}=State) ->
     {next_state, answered, State};
 answered({member_connect_monitor, _JObj}, State) ->
     lager:debug("we've answered, but received a connect_monitor?"),
+    {next_state, answered, State};
+
+answered({dialplan_error, _App}, #state{agent_proc=Srv
+                                        ,acct_id=AcctId
+                                        ,agent_id=AgentId
+                                        ,member_call_queue_id=QueueId
+                                        ,member_call_id=CallId
+                                       }=State) ->
+    lager:debug("join failed, clearing call"),
+    acdc_agent:member_connect_retry(Srv, CallId),
+
+    acdc_stats:call_missed(AcctId, QueueId, AgentId, CallId),
+    {next_state, ready, clear_call(State)};
+
+answered(join_successful, #state{agent_proc=Srv}=State) ->
+    acdc_agent:member_connect_accepted(Srv),
     {next_state, answered, State};
 
 answered({channel_hungup, CallId}
