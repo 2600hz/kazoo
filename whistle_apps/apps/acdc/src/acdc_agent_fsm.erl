@@ -158,6 +158,8 @@ call_event(_, _, _, _) -> ok.
 -spec maybe_send_execute_complete/3 :: (pid(), ne_binary(), wh_json:json_object()) -> 'ok'.
 maybe_send_execute_complete(FSM, <<"bridge">>, JObj) ->
     gen_fsm:send_event(FSM, {channel_unbridged, callid(JObj)});
+maybe_send_execute_complete(FSM, <<"call_pickup">>, JObj) ->
+    gen_fsm:send_event(FSM, {channel_bridged, callid(JObj)});
 maybe_send_execute_complete(_, _, _) -> ok.
 
 %%--------------------------------------------------------------------
@@ -559,7 +561,17 @@ answered({dialplan_error, _App}, #state{agent_proc=Srv
     acdc_stats:call_missed(AcctId, QueueId, AgentId, CallId),
     {next_state, ready, clear_call(State)};
 
-answered(join_successful, #state{agent_proc=Srv}=State) ->
+answered({channel_bridged, CallId}, #state{member_call_id=CallId
+                                           ,agent_proc=Srv
+                                          }=State) ->
+    lager:debug("member has connected to agent"),
+    acdc_agent:member_connect_accepted(Srv),
+    {next_state, answered, State};
+
+answered({channel_bridged, CallId}, #state{agent_call_id=CallId
+                                           ,agent_proc=Srv
+                                          }=State) ->
+    lager:debug("agent has connected to member"),
     acdc_agent:member_connect_accepted(Srv),
     {next_state, answered, State};
 
