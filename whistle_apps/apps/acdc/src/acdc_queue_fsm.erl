@@ -77,7 +77,7 @@
          %% Config options
          ,name :: ne_binary()
          ,connection_timeout :: pos_integer()
-         ,agent_ring_timeout = 5 :: pos_integer() % how long to ring an agent before giving up
+         ,agent_ring_timeout = 10 :: pos_integer() % how long to ring an agent before giving up
          ,max_queue_size = 0 :: integer() % restrict the number of the queued callers
          ,ring_simultaneously = 1 :: integer() % how many agents to try ringing at a time (first one wins)
          ,enter_when_empty = true :: boolean() % if a queue is agent-less, can the caller enter?
@@ -797,7 +797,7 @@ agent_ring_timeout(_) -> ?AGENT_RING_TIMEOUT.
 
 -spec start_agent_ring_timer/1 :: (pos_integer()) -> reference().
 start_agent_ring_timer(AgentTimeout) ->
-    gen_fsm:start_timer(AgentTimeout * 1500, ?AGENT_RING_TIMEOUT_MESSAGE).
+    gen_fsm:start_timer(AgentTimeout * 2600, ?AGENT_RING_TIMEOUT_MESSAGE).
 
 -spec maybe_stop_timer/1 :: (reference() | 'undefined') -> 'ok'.
 maybe_stop_timer(undefined) -> ok;
