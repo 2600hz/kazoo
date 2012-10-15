@@ -25,11 +25,15 @@
 
 -export([show_channels/0]).
 -export([new_channel/2]).
--export([channel_node/1]).
+-export([channel_node/1, channel_set_node/2
+         ,channel_former_node/1
+         ,channel_move/3
+        ]).
 -export([channel_account_summary/1]).
 -export([channel_match_presence/1]).
 -export([channel_exists/1]).
 -export([channel_import_moh/1]).
+
 -export([channel_set_account_id/3]).
 -export([channel_set_billing_id/3]).
 -export([channel_set_account_billing/3]).
@@ -41,7 +45,7 @@
 -export([channel_set_owner_id/3]).
 -export([channel_set_presence_id/3]).
 -export([channel_set_import_moh/3]).
--export([channel_move/3]).
+
 -export([fetch_channel/1]).
 -export([destroy_channel/2]).
 -export([props_to_channel_record/2]).
@@ -146,13 +150,27 @@ fetch_channel(UUID) ->
         _Else -> {error, not_found}
     end.
 
--spec channel_node/1 :: (ne_binary()) -> {'ok', atom()} | {'error', _}.
+-spec channel_node/1 :: (ne_binary()) -> {'ok', atom()} |
+                                         {'error', _}.
 channel_node(UUID) ->
     MatchSpec = [{#channel{uuid = '$1', node = '$2'}
                   ,[{'=:=', '$1', {const, UUID}}]
                   ,['$2']}
                 ],
     case ets:select(ecallmgr_channels, MatchSpec) of
+        [Node] -> {ok, Node};
+        _ -> {error, not_found}
+    end.
+
+-spec channel_former_node/1 :: (ne_binary()) -> {'ok', atom()} |
+                                                {'error', _}.
+channel_former_node(UUID) ->
+    MatchSpec = [{#channel{uuid = '$1', former_node = '$2'}
+                  ,[{'=:=', '$1', {const, UUID}}]
+                  ,['$2']}
+                ],
+    case ets:select(ecallmgr_channels, MatchSpec) of
+        ['_'] -> {ok, undefined};
         [Node] -> {ok, Node};
         _ -> {error, not_found}
     end.
@@ -192,10 +210,15 @@ channel_move(UUID, ONode, NNode) ->
     OriginalNode = wh_util:to_atom(ONode),
     NewNode = wh_util:to_atom(NNode),
 
+    channel_set_node(NewNode, UUID),
+    ecallmgr_call_events:stop(OriginalNode, UUID),
+    ecallmgr_call_control:update_node(NewNode, UUID),
+
+    lager:debug("updated ~s to point to ~s", [UUID, NewNode]),
+
     case channel_teardown_sbd(UUID, OriginalNode) of
         true ->
             lager:debug("sbd teardown of ~s on ~s", [UUID, OriginalNode]),
-
             channel_resume(UUID, NewNode);
         false ->
             lager:debug("failed to teardown ~s on ~s", [UUID, OriginalNode]),
@@ -206,7 +229,8 @@ channel_move(UUID, ONode, NNode) ->
 -spec channel_resume/2 :: (ne_binary(), atom()) -> boolean().
 -spec channel_resume/3 :: (ne_binary(), atom(), wh_proplist()) -> boolean().
 channel_resume(UUID, NewNode) ->
-    lager:debug("waiting for message with metadata for channel ~s", [UUID]),
+    gproc:reg({p, l, {channel_move, NewNode, UUID}}),
+    lager:debug("waiting for message with metadata for channel ~s from ~s", [UUID, NewNode]),
     receive
         {channel_move_released, UUID, Evt} ->
             lager:debug("channel has been released from former node"),
@@ -221,7 +245,6 @@ channel_resume(UUID, NewNode) ->
 
 channel_resume(UUID, NewNode, Evt) ->
     Meta = fix_metadata(props:get_value(<<"metadata">>, Evt)),
-    _ = ecallmgr_util:fs_log(NewNode, "sending sofia::move_request ~s with metadata", [UUID]),
 
     case freeswitch:sendevent_custom(NewNode, 'sofia::move_request'
                                      ,[{"profile_name", wh_util:to_list(?DEFAULT_FS_PROFILE)}
@@ -250,6 +273,9 @@ fix_metadata(Meta) ->
                     {<<"\<sip\:">>, <<"%3Csip:">>}
                     ,{<<"\>\<sip">>, <<"%3E<sip">>}
                     ,{<<"\>;">>, <<"%3E;">>} % this is especially nice :)
+                    %% until such time as FS sets these properly
+                    ,{<<"<dialplan></dialplan>">>, <<"<dialplan>XML</dialplan>">>} 
+                    ,{<<"<context>default</context>">>, <<"<context>context_2</context>">>}
                    ],
     lists:foldl(fun({S, R}, MetaAcc) ->
                         iolist_to_binary(re:replace(MetaAcc, S, R, [global]))
@@ -259,7 +285,8 @@ wait_for_channel_completion(UUID, NewNode) ->
     lager:debug("waiting for confirmation from ~s of channel_move", [NewNode]),
     receive
         {channel_move_completed, UUID, _Evt} ->
-            lager:debug("confirmation of channel_move received: ~p", [_Evt]),
+            lager:debug("confirmation of channel_move received, success!"),
+            _ = ecallmgr_call_sup:start_event_process(NewNode, UUID),
             true
     after 5000 ->
             lager:debug("timed out waiting for channel_move to complete"),
@@ -269,7 +296,6 @@ wait_for_channel_completion(UUID, NewNode) ->
 channel_teardown_sbd(UUID, OriginalNode) ->
     gproc:reg({p, l, {channel_move, OriginalNode, UUID}}),
 
-    _ = ecallmgr_util:fs_log(OriginalNode, "sending sofia::move_request ~s", [UUID]),
     case freeswitch:sendevent_custom(OriginalNode, 'sofia::move_request'
                                      ,[{"profile_name", wh_util:to_list(?DEFAULT_FS_PROFILE)}
                                        ,{"channel_id", wh_util:to_list(UUID)}
@@ -359,12 +385,25 @@ channel_set_presence_id(Node, UUID, Value) ->
 channel_set_import_moh(_Node, UUID, Import) ->
     gen_server:cast(?MODULE, {channel_update, UUID, {#channel.import_moh, Import}}).
 
+-spec channel_set_node/2 :: (atom(), ne_binary()) -> 'ok'.
+channel_set_node(Node, UUID) ->
+    Updates = case channel_node(UUID) of
+                  {error, not_found} -> [{#channel.node, Node}];
+                  {ok, Node} -> [];
+                  {ok, OldNode} ->
+                      [{#channel.node, Node}
+                       ,{#channel.former_node, OldNode}
+                      ]
+              end,
+    lager:debug("updaters: ~p", [Updates]),
+    gen_server:cast(?MODULE, {channel_update, UUID, Updates}).
+
 -spec destroy_channel/2 :: (proplist(), atom()) -> 'ok'.
-destroy_channel(Props, _) ->
+destroy_channel(Props, Node) ->
     UUID = props:get_value(<<"Unique-ID">>, Props),
-    gen_server:cast(?MODULE, {destroy_channel, UUID}),
+    gen_server:cast(?MODULE, {destroy_channel, UUID, Node}),
     ecallmgr_call_control:rm_leg(Props),
-    ecallmgr_call_events:publish_channel_destroy(Props).
+    ecallmgr_call_events:publish_channel_destroy(Node, UUID, Props).
 
 -spec props_to_channel_record/2 :: (proplist(), atom()) -> channel().
 props_to_channel_record(Props, Node) ->
@@ -506,8 +545,16 @@ handle_cast({new_channel, Channel}, State) ->
 handle_cast({channel_update, UUID, Update}, State) ->
     ets:update_element(ecallmgr_channels, UUID, Update),
     {noreply, State, hibernate};
-handle_cast({destroy_channel, UUID}, State) ->
-    ets:delete(ecallmgr_channels, UUID),
+handle_cast({destroy_channel, UUID, Node}, State) ->
+    MatchSpec = [{#channel{uuid='$1', node='$2'}
+                  ,[{'andalso', {'=:=', '$2', {const, Node}}
+                     ,{'=:=', '$1', UUID}
+                    }
+                   ],
+                  [true]
+                 }],
+    N = ets:select_delete(ecallmgr_channels, MatchSpec),
+    lager:debug("maybe removed channel ~s on ~s: ~p", [UUID, Node, N]),
     {noreply, State, hibernate};
 handle_cast({rm_fs_node, Node}, State) ->
     {noreply, rm_fs_node(Node, State), hibernate};

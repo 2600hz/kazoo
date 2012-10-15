@@ -89,7 +89,7 @@ ensure_account_id_exists(Props, CallId, Node) ->
             authorize_account(Props, CallId, Node)
     end.
 
--spec update_account_id/4 :: (wh_proplist(), wh_proplist(), ne_binary(), atom()) -> 'ok'.
+-spec update_account_id/4 :: (wh_proplist(), wh_proplist(), ne_binary(), atom()) -> boolean().
 update_account_id(Resp, Props, CallId, Node) ->
     case props:get_value(?GET_CCV(<<"Account-ID">>), Resp) of
         undefined -> update_reseller_id(Resp, Props, CallId, Node);
@@ -98,7 +98,7 @@ update_account_id(Resp, Props, CallId, Node) ->
             update_reseller_id(Resp, [{?GET_CCV(<<"Account-ID">>), AccountId}|Props], CallId, Node)
     end.
 
--spec update_reseller_id/4 :: (wh_proplist(), wh_proplist(), ne_binary(), atom()) -> 'ok'.
+-spec update_reseller_id/4 :: (wh_proplist(), wh_proplist(), ne_binary(), atom()) -> boolean().
 update_reseller_id(Resp, Props, CallId, Node) ->
     case props:get_value(?GET_CCV(<<"Reseller-ID">>), Resp) of
         undefined -> authorize_account(Props, CallId, Node);
@@ -136,12 +136,12 @@ authorize_reseller(Props, CallId, Node) ->
             rate_call(Props, CallId, Node)
     end.
         
--spec rate_call/3 :: (wh_proplist(), ne_binary(), atom()) -> boolean().
+-spec rate_call/3 :: (wh_proplist(), ne_binary(), atom()) -> 'true'.
 rate_call(Props, CallId, Node) ->
     spawn(?MODULE, rate_channel, [Props]),
     allow_call(Props, CallId, Node).
 
--spec allow_call/3 :: (wh_proplist(), ne_binary(), atom()) -> true.
+-spec allow_call/3 :: (wh_proplist(), ne_binary(), atom()) -> 'true'.
 allow_call(_, _, _) ->
     lager:debug("channel authorization succeeded, allowing call", []),
     true.
@@ -149,7 +149,6 @@ allow_call(_, _, _) ->
 -spec maybe_deny_call/3 :: (wh_proplist(), ne_binary(), atom()) -> boolean().
 maybe_deny_call(Props, _, Node) ->
     DryRun = wh_util:is_true(ecallmgr_config:get(<<"authz_dry_run">>, false)),
-    _ = ecallmgr_util:fs_log(Node, "channel authorization failed (allowed ~s)", [DryRun]),
     _ = DryRun orelse spawn(?MODULE, kill_channel, [Props, Node]),
     DryRun orelse false.
  
@@ -191,7 +190,6 @@ kill_channel(<<"inbound">>, CallId, Node) ->
     _ = freeswitch:api(Node, uuid_kill, wh_util:to_list(<<CallId/binary, " INCOMING_CALL_BARRED">>)),
     ok;
 kill_channel(<<"outbound">>, CallId, Node) ->
-    _ = ecallmgr_util:fs_log(Node, "whistle terminating unathorized outbound call", []),
     _ = freeswitch:api(Node, uuid_kill, wh_util:to_list(<<CallId/binary, " OUTGOING_CALL_BARRED">>)),
     ok.
 

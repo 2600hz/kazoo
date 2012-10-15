@@ -32,11 +32,12 @@
 start_link() ->
     supervisor:start_link({local, ?SERVER}, ?MODULE, []).
 
-start_proc([_, CallId|_]=Args) ->
-    case gproc:lookup_pids({p, l, {call_events, CallId}}) of
+start_proc([Node, CallId|_]=Args) ->
+    case gproc:lookup_pids({p, l, {call_events, Node, CallId}}) of
         [] -> supervisor:start_child(?SERVER, Args);
         [Pid] -> 
             lager:debug("recycling existing call events worker ~p", [Pid]),
+            ecallmgr_call_events:update_node(Pid, Node),
             {ok, Pid}
     end.
 

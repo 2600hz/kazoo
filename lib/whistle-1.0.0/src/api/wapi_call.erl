@@ -145,7 +145,7 @@
 
 %% Call Usurp Control
 -define(CALL_USURP_CONTROL_HEADERS, [<<"Call-ID">>, <<"Control-Queue">>, <<"Controller-Queue">>]).
--define(OPTIONAL_CALL_USURP_CONTROL_HEADERS, [<<"Reason">>]).
+-define(OPTIONAL_CALL_USURP_CONTROL_HEADERS, [<<"Reason">>, <<"Media-Node">>]).
 -define(CALL_USURP_CONTROL_VALUES, [{<<"Event-Category">>, <<"call_event">>}
                                     ,{<<"Event-Name">>, <<"usurp_control">>}
                                    ]).

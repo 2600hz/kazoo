@@ -17,7 +17,7 @@
 -export([get_sip_to/1, get_sip_from/1, get_sip_request/1, get_orig_ip/1, custom_channel_vars/1]).
 -export([eventstr_to_proplist/1, varstr_to_proplist/1, get_setting/1, get_setting/2]).
 -export([is_node_up/1, is_node_up/2]).
--export([fs_log/3, put_callid/1]).
+-export([put_callid/1]).
 -export([build_bridge_string/1, build_bridge_string/2]).
 -export([create_masquerade_event/2, create_masquerade_event/3]).
 -export([media_path/3, media_path/4, media_path/5]).
@@ -86,7 +86,7 @@ send_cmd(Node, _UUID, "broadcast", Args) ->
     Resp = freeswitch:api(Node, uuid_broadcast, wh_util:to_list(iolist_to_binary(Args))),
     lager:debug("broadcast resulted in: ~p", [Resp]),
     Resp;
-send_cmd(Node, UUID, "call_pickup", Args) ->
+send_cmd(Node, _UUID, "call_pickup", Args) ->
     lager:debug("execute on node ~s: uuid_bridge(~s)", [Node, Args]),
     freeswitch:api(Node, uuid_bridge, wh_util:to_list(Args));
 send_cmd(Node, UUID, "hangup", _) ->
@@ -241,18 +241,6 @@ is_node_up(Node) ->
 -spec is_node_up/2 :: (atom(), ne_binary()) -> boolean().
 is_node_up(Node, UUID) ->
     ecallmgr_fs_nodes:is_node_up(Node) andalso ecallmgr_fs_nodes:channel_exists(UUID).
-
--spec fs_log/3 :: (atom(), nonempty_string(), list()) -> fs_api_ret().
-fs_log(Node, Format, Args) ->
-    ok;
-fs_log(Node, Format, []=Args) ->
-    Log = case lists:flatten(io_lib:format("Notice log|~s|" ++ Format, [get(callid)] ++ Args)) of
-              L when length(L) > 1016 ->
-                  [lists:sublist(L, 1, 1016), "..."];
-              Else  ->
-                  Else
-          end,
-    freeswitch:api(Node, log, lists:flatten(Log)).
 
 -spec put_callid/1 :: (wh_json:json_object()) -> 'undefined' | term().
 put_callid(JObj) ->

@@ -221,7 +221,7 @@ handle_cast({originate_ready}, #state{originate_req=JObj, node=Node, uuid=UUID
 
 handle_cast({originate_execute}, #state{tref=TRef}=State) when is_reference(TRef) ->
     gen_listener:cast(self(), {originate_execute}),
-    erlang:cancel_timer(TRef),
+    _ = erlang:cancel_timer(TRef),
     {noreply, State#state{tref=undefined}};
 handle_cast({originate_execute}, #state{dialstrings=Dialstrings, node=Node, originate_req=JObj
                                         ,uuid=UUID, server_id=ServerId, control_pid=CtrlPid}=State) ->
@@ -373,10 +373,11 @@ build_originate_args(Action, Endpoints, JObj) ->
                            ], JObj),
     list_to_binary([ecallmgr_fs_xml:get_channel_vars(J), DialStrings, " ", Action]).
 
--spec originate_execute/2 :: (atom(), ne_binary()) -> {'ok', ne_binary()} | {'error', ne_binary()}.
+-spec originate_execute/2 :: (atom(), ne_binary()) -> {'ok', ne_binary()} |
+                                                      {'error', ne_binary()}.
 originate_execute(Node, Dialstrings) ->
-    _ = ecallmgr_util:fs_log(Node, "whistle originating call: ~s", [Dialstrings]),
     {ok, BGApiID} = freeswitch:bgapi(Node, 'originate', wh_util:to_list(Dialstrings)),
+
     receive
         {bgok, BGApiID, <<"+OK ", UUID/binary>>} ->
             {ok, wh_util:strip_binary(binary:replace(UUID, <<"\n">>, <<>>))};

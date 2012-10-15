@@ -25,7 +25,6 @@ exec_cmd(Node, UUID, JObj, ControlPID) ->
         true ->
             case get_fs_app(Node, UUID, JObj, App) of
                 {'error', Msg} ->
-                    _ = ecallmgr_util:fs_log(Node, "whistle error while building command ~s: ~s", [App, Msg]),
                     throw({msg, Msg});
                 {return, Result} ->
                     Result;
@@ -85,7 +84,7 @@ get_fs_app(Node, UUID, JObj, <<"play">>) ->
                             ,get_terminators(wh_json:get_value(<<"Terminators">>, JObj))
                            ]
                    end,
-            set(Node, UUID, Vars),
+            _ = set(Node, UUID, Vars),
 
             F = ecallmgr_util:media_path(wh_json:get_value(<<"Media-Name">>, JObj), new, UUID, JObj, ?ECALLMGR_CALL_CACHE),
 
@@ -141,7 +140,7 @@ get_fs_app(Node, UUID, JObj, <<"record">>) ->
                             ,get_terminators(wh_json:get_value(<<"Terminators">>, JObj))
                            ]
                 end,
-            set(Node, UUID, Vars),
+            _ = set(Node, UUID, Vars),
 
             MediaName = ecallmgr_util:recording_filename(wh_json:get_value(<<"Media-Name">>, JObj)),
 
@@ -176,7 +175,7 @@ get_fs_app(Node, UUID, JObj, <<"record_call">>) ->
                                     ,get_terminators(wh_json:get_value(<<"Terminators">>, JObj))
                                    ]
                            end,
-                    set(Node, UUID, Vars),
+                    _ = set(Node, UUID, Vars),
 
                     %% UUID start path/to/media limit
                     RecArg = binary_to_list(list_to_binary([
@@ -250,7 +249,7 @@ get_fs_app(Node, UUID, JObj, <<"tones">>) ->
         false -> {'error', <<"tones failed to execute as JObj did not validate">>};
         true ->
             'ok' = set_terminators(Node, UUID, wh_json:get_value(<<"Terminators">>, JObj)),
-            
+
             Tones = wh_json:get_value(<<"Tones">>, JObj, []),
             FSTones = [begin
                            Vol = case wh_json:get_value(<<"Volume">>, Tone) of
@@ -292,7 +291,7 @@ get_fs_app(Node, UUID, _JObj, <<"receive_fax">>) ->
     Vars = [{<<"fax_enable_t38_request">>, <<"true">>}
             ,{<<"fax_enable_t38">>, <<"true">>}
            ],
-    set(Node, UUID, Vars),
+    _ = set(Node, UUID, Vars),
 
     [{<<"playback">>, <<"silence_stream://2000">>}
      ,{<<"rxfax">>, ecallmgr_util:fax_filename(UUID)}
@@ -599,10 +598,8 @@ get_fs_app(Node, UUID, JObj, <<"redirect">>) ->
         false -> {'error', <<"redirect failed to execute as JObj did not validate">>};
         true ->
             _ = case wh_json:get_value(<<"Redirect-Server">>, JObj) of
-                    undefined ->
-                        ok;
-                    Server ->
-                        set(Node, UUID, <<"sip_rh_X-Redirect-Server=", Server/binary>>)
+                    undefined -> ok;
+                    Server -> set(Node, UUID, <<"sip_rh_X-Redirect-Server=", Server/binary>>)
                 end,
             {<<"redirect">>, wh_json:get_value(<<"Redirect-Contact">>, JObj, <<>>)}
     end;
@@ -744,7 +741,7 @@ set_terminators(Node, UUID, Ts) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec set/3 :: (atom(), ne_binary(), proplist()) -> ecallmgr_util:send_cmd_ret().
+-spec set/3 :: (atom(), ne_binary(), wh_proplist() | ne_binary()) -> ecallmgr_util:send_cmd_ret().
 set(Node, UUID, [{K, V}]) ->
     set(Node, UUID, <<K/binary, "=", V/binary>>);
 set(Node, UUID, [{_, _}|_]=Props) ->
