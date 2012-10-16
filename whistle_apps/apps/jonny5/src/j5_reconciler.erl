@@ -193,7 +193,7 @@ should_correct_discrepancy(LedgerDb, CallId) ->
 
 -spec call_has_ended/1 :: (ne_binary()) -> boolean().
 call_has_ended(CallId) ->
-    case whapps_call_command:channel_status(CallId) of
+    case whapps_call_command:b_channel_status(CallId) of
         {ok, _} -> 
             lager:debug("ignoring discrepancy for active call", []),
             false;

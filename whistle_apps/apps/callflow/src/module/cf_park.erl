@@ -32,7 +32,7 @@ update_presence(SlotNumber, PresenceId, AccountDb) ->
     State = case wh_json:get_value([<<"slots">>, SlotNumber, <<"Call-ID">>], ParkedCalls) of
                 undefined -> <<"terminated">>;
                 ParkedCallId -> 
-                    case whapps_call_command:channel_status(ParkedCallId) of
+                    case whapps_call_command:b_channel_status(ParkedCallId) of
                         {ok, _} -> <<"early">>;
                         {error, _} -> <<"terminated">>
                     end
@@ -96,7 +96,7 @@ handle(Data, Call) ->
 %%--------------------------------------------------------------------
 -spec get_switch_nodename/1 :: ('undefined' | ne_binary() | whapps_call:call()) -> 'undefined' | ne_binary().
 get_switch_nodename(CallId) ->
-    case whapps_call_command:channel_status(CallId) of
+    case whapps_call_command:b_channel_status(CallId) of
         {error, _} -> undefined;
         {ok, JObj} ->
             wh_json:get_ne_value(<<"Switch-Nodename">>, JObj)
@@ -297,7 +297,7 @@ save_slot(SlotNumber, Slot, ParkedCalls, Call) ->
             lager:debug("slot has parked call '~s' by parker '~s', it is available", [ParkedCallId, ParkerCallId]),
             do_save_slot(SlotNumber, Slot, ParkedCalls, Call);
         false ->
-            case whapps_call_command:channel_status(ParkedCallId) of
+            case whapps_call_command:b_channel_status(ParkedCallId) of
                 {ok, _} ->
                     lager:debug("slot has active call '~s' in it, denying use of slot", [ParkedCallId]),
                     {error, occupied};
@@ -490,7 +490,7 @@ wait_for_pickup(SlotNumber, RingbackId, Call) ->
     case whapps_call_command:b_hold(?DEFAULT_RINGBACK_TM, Call) of
         {error, timeout} ->
             TmpCID = <<"Parking slot ", SlotNumber/binary>>,
-            ChannelUp = case whapps_call_command:channel_status(Call) of
+            ChannelUp = case whapps_call_command:b_channel_status(Call) of
                             {ok, _} -> true;
                             {error, _} -> false
                      end,
