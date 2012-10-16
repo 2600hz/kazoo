@@ -314,6 +314,7 @@ process_custom_data(Data, Node) ->
         <<"sofia::move_complete">> ->
             UUID = props:get_value(<<"old_node_channel_uuid">>, Data),
             lager:debug("sending move_complete for ~s on ~s", [UUID, Node]),
+            ecallmgr_fs_nodes:channel_set_node(Node, UUID),
             gproc:send({p, l, {channel_move, Node, UUID}}, {channel_move_completed, UUID, Data});
         _Sub ->
             lager:debug("custom evt ~s", [_Sub]),
