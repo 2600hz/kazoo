@@ -459,8 +459,8 @@ handle_cast({channel_destroyed, CallId, _JObj},  #state{is_call_up=true
             lager:debug("channel is on other node: ~s, not ~s", [_NewNode, Node]),
             {stop, normal, State};
         {error, not_found} ->
-            lager:debug("channel not found, ignore destroy"),
-            {noreply, State}
+            lager:debug("channel destroyed, but not found in known nodes...must be down"),
+            {stop, normal, State}
     end;
 handle_cast({channel_destroyed, CallId, _},  #state{is_call_up=false
                                                    ,callid=CallId
