@@ -229,7 +229,6 @@ agent_active(AcctId, AgentId) ->
 agent_inactive(AcctId, AgentId) ->
     gen_listener:cast(?MODULE, {store, #stat{acct_id=AcctId
                                              ,agent_id=AgentId
-                                             ,active_since=wh_util:current_tstamp()
                                              ,name=agent_inactive
                                             }
                                }).
@@ -280,15 +279,11 @@ agent_ready(AcctId, AgentId) ->
 
 -define(BINDINGS, []).
 -define(RESPONDERS, []).
--define(QUEUE_NAME, <<"acdc.stats">>).
--define(CONSUME_OPTIONS, []).
 start_link() ->
     gen_listener:start_link({local, ?MODULE}
                             ,?MODULE
                             ,[{bindings, ?BINDINGS}
                               ,{responders, ?RESPONDERS}
-                              ,{queue_name, ?QUEUE_NAME}
-                              ,{consume_options, ?CONSUME_OPTIONS}
                              ],
                             []).
 
@@ -391,45 +386,38 @@ write_account_doc({AcctId, AcctJObj}, TStamp) ->
 update_stat(AcctDocs, #stat{name=agent_active
                             ,acct_id=AcctId
                             ,agent_id=AgentId
+                            ,timestamp=TStamp
                            }) ->
-    AcctDoc = fetch_acct_doc(AcctId, AcctDocs),
-
-    ActiveKey = [<<"agents">>, AgentId, <<"status">>],
-
     dict:store(AcctId
-               ,wh_json:set_value(ActiveKey, <<"login">>, AcctDoc)
+               ,update_status(fetch_acct_doc(AcctId, AcctDocs), AgentId, TStamp, <<"login">>)
                ,AcctDocs
               );
+
 update_stat(AcctDocs, #stat{name=agent_inactive
                             ,acct_id=AcctId
                             ,agent_id=AgentId
+                            ,timestamp=TStamp
                            }) ->
-    AcctDoc = fetch_acct_doc(AcctId, AcctDocs),
-
-    InactiveKey = [<<"agents">>, AgentId, <<"status">>],
-
     dict:store(AcctId
-               ,wh_json:set_value(InactiveKey, <<"logout">>, AcctDoc)
+               ,update_status(fetch_acct_doc(AcctId, AcctDocs), AgentId, TStamp, <<"logout">>)
                ,AcctDocs
               );
 
 update_stat(AcctDocs, #stat{name=agent_paused
                             ,acct_id=AcctId
                             ,agent_id=AgentId
-                            ,active_since=ActiveSince
+                            ,timestamp=TStamp
                             ,elapsed=Timeout
                            }) ->
-    AcctDoc = fetch_acct_doc(AcctId, AcctDocs),
-
-    PauseKey = [<<"agents">>, AgentId, <<"status">>],
     TimeoutKey = [<<"agents">>, AgentId, <<"timeout">>],
     TimeLeftKey = [<<"agents">>, AgentId, <<"time_left">>],
 
     dict:store(AcctId
-               ,wh_json:set_values([{PauseKey, <<"paused">>}
-                                    ,{TimeoutKey, Timeout}
-                                    ,{TimeLeftKey, wh_util:elapsed_s(ActiveSince)}
-                                   ], AcctDoc)
+               ,wh_json:set_values([{TimeoutKey, Timeout}
+                                    ,{TimeLeftKey, wh_util:elapsed_s(TStamp)}
+                                   ]
+                                   ,update_status(fetch_acct_doc(AcctId, AcctDocs), AgentId, TStamp, <<"paused">>)
+                                  )
                ,AcctDocs
               );
 
@@ -656,3 +644,8 @@ add_agent_wrapup_time_on_break(AcctDoc, AgentId, Elapsed) ->
 add_agent_wrapup_time_left(AcctDoc, AgentId, WaitTimeLeft) ->
     WaitKey = [<<"agents">>, AgentId, <<"wrapup_time_left">>],
     wh_json:set_value(WaitKey, WaitTimeLeft, AcctDoc).
+
+update_status(AcctDoc, AgentId, TStamp, Status) ->
+    StatusKey = [<<"agents">>, AgentId, <<"statuses">>],
+    Statuses = wh_json:get_value(StatusKey, AcctDoc, wh_json:new()),
+    wh_json:set_value(StatusKey, wh_json:set_value(wh_util:to_binary(TStamp), Status, Statuses), AcctDoc).

@@ -20,8 +20,7 @@ start_link() ->
 
 -spec init_acdc/0 :: () -> any().
 init_acdc() ->
-    Accts = whapps_util:get_all_accounts(encoded),
-    [init_account(Acct) || Acct <- Accts].
+    [init_account(Acct) || Acct <- whapps_util:get_all_accounts(encoded)].
 
 -spec init_account/1 :: (ne_binary()) -> 'ok'.
 init_account(AcctDb) ->

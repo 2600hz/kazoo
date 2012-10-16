@@ -16,6 +16,8 @@
 %% API
 -export([start_link/0
          ,handle_member_call/2
+         ,handle_member_call_cancel/2
+         ,should_ignore_member_call/2
         ]).
 
 %% gen_server callbacks
@@ -30,8 +32,10 @@
 
 -define(SERVER, ?MODULE).
 
+-record(state, {ignored_member_calls = dict:new() :: dict()}).
+
 -define(BINDINGS, [{conf, [{doc_type, <<"queue">>}]}
-                   ,{acdc_queue, [{restrict_to, [stats_req, member_call]}
+                   ,{acdc_queue, [{restrict_to, [stats_req]}
                                   ,{account_id, <<"*">>}
                                   ,{queue_id, <<"*">>}
                                  ]}
@@ -45,7 +49,19 @@
                      ,{{acdc_queue_manager, handle_member_call}
                        ,[{<<"member">>, <<"call">>}]
                       }
+                     ,{{acdc_queue_manager, handle_member_call_cancel}
+                       ,[{<<"member">>, <<"call_cancel">>}]
+                      }
                     ]).
+
+-define(SECONDARY_BINDINGS, [{acdc_queue, [{restrict_to, [member_call]}
+                                           ,{account_id, <<"*">>}
+                                           ,{queue_id, <<"*">>}
+                                          ]}
+                            ]).
+-define(SECONDARY_QUEUE_NAME, <<"acdc.queue.manager">>).
+-define(SECONDARY_QUEUE_OPTIONS, [{exclusive, false}]).
+-define(SECONDARY_CONSUME_OPTIONS, [{exclusive, false}]).
 
 %%%===================================================================
 %%% API
@@ -67,23 +83,40 @@ start_link() ->
                            ).
 
 handle_member_call(JObj, _Props) ->
+    true = wapi_acdc_queue:member_call_v(JObj),
+
     Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, JObj)),
 
     AcctId = wh_json:get_value(<<"Account-ID">>, JObj),
     QueueId = wh_json:get_value(<<"Queue-ID">>, JObj),
 
-    lager:debug("member call for ~s: ~s", [AcctId, QueueId]),
+    lager:debug("member call for ~s:~s: ~s", [AcctId, QueueId, whapps_call:call_id(Call)]),
 
     acdc_stats:call_waiting(AcctId, QueueId, whapps_call:call_id(Call)),
 
     case acdc_queues_sup:find_queue_supervisor(AcctId, QueueId) of
-         P when is_pid(P) ->
+        P when is_pid(P) ->
             acdc_queue:put_member_on_hold(acdc_queue_sup:queue(P), Call);
         undefined ->
             whapps_call_command:answer(Call),
             whapps_call_command:hold(Call)
     end,
     wapi_acdc_queue:publish_shared_member_call(AcctId, QueueId, JObj).
+
+handle_member_call_cancel(JObj, _Props) ->
+    true = wapi_acdc_queue:member_call_cancel_v(JObj),
+    K = make_ignore_key(wh_json:get_value(<<"Account-ID">>, JObj)
+                        ,wh_json:get_value(<<"Queue-ID">>, JObj)
+                        ,wh_json:get_value(<<"Call-ID">>, JObj)
+                       ),
+    gen_listener:cast(?SERVER, {member_call_cancel, K}).
+
+should_ignore_member_call(Call, CallJObj) ->
+    K = make_ignore_key(wh_json:get_value(<<"Account-ID">>, CallJObj)
+                        ,wh_json:get_value(<<"Queue-ID">>, CallJObj)
+                        ,whapps_call:call_id(Call)
+                       ),
+    gen_listener:call(?SERVER, {should_ignore_member_call, K}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -101,7 +134,8 @@ handle_member_call(JObj, _Props) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    {ok, ok}.
+    _ = start_secondary_queue(),
+    {ok, #state{}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -117,6 +151,11 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_call({should_ignore_member_call, K}, _, #state{ignored_member_calls=Dict}=State) ->
+    case catch dict:fetch(K, Dict) of
+        {'EXIT', _} -> {reply, false, State};
+        _Res -> {reply, true, State#state{ignored_member_calls=dict:erase(K, Dict)}}
+    end;
 handle_call(_Request, _From, State) ->
     Reply = ok,
     {reply, Reply, State}.
@@ -131,6 +170,10 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast({member_call_cancel, K}, #state{ignored_member_calls=Dict}=State) ->
+    {noreply, State#state{
+                ignored_member_calls=dict:store(K, true, Dict)
+               }};
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
@@ -145,6 +188,7 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info(_Info, State) ->
+    lager:debug("unhandled message: ~p", [_Info]),
     {noreply, State}.
 
 handle_event(_JObj, _State) ->
@@ -178,3 +222,17 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+start_secondary_queue() ->
+    Self = self(),
+    spawn(fun() -> gen_listener:add_queue(Self
+                                          ,?SECONDARY_QUEUE_NAME
+                                          ,[{queue_options, ?SECONDARY_QUEUE_OPTIONS}
+                                            ,{consume_options, ?SECONDARY_CONSUME_OPTIONS}
+                                            ,{basic_qos, 1}
+                                           ]
+                                          ,?SECONDARY_BINDINGS
+                                         )
+          end).
+
+make_ignore_key(AcctId, QueueId, CallId) ->
+    {AcctId, QueueId, CallId}.

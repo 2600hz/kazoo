@@ -14,7 +14,7 @@
 -export([start_link/2
          ,member_connect_resp/2
          ,member_connect_retry/2
-         ,bridge_to_member/2
+         ,bridge_to_member/3
          ,monitor_call/2
          ,member_connect_accepted/1
          ,channel_hungup/2
@@ -27,6 +27,8 @@
          ,add_acdc_queue/2
          ,rm_acdc_queue/2
          ,get_recording_doc_id/1
+         ,call_status_req/1
+         ,stop/1
         ]).
 
 %% gen_server callbacks
@@ -50,7 +52,6 @@
          ,acct_id :: ne_binary()
          ,fsm_pid :: pid()
          ,agent_queues :: [ne_binary(),...] | []
-         ,endpoints :: wh_json:json_objects()
          ,last_connect :: wh_now() % last connection
          ,last_attempt :: wh_now() % last attempt to connect
          ,my_id :: ne_binary()
@@ -141,6 +142,9 @@ start_link(Supervisor, AgentJObj) ->
                                    )
     end.
 
+stop(Srv) ->
+    gen_listener:cast(Srv, {stop_agent}).
+
 -spec member_connect_resp/2 :: (pid(), wh_json:json_object()) -> 'ok'.
 member_connect_resp(Srv, ReqJObj) ->
     gen_listener:cast(Srv, {member_connect_resp, ReqJObj}).
@@ -151,8 +155,8 @@ member_connect_retry(Srv, WinJObj) ->
 member_connect_accepted(Srv) ->
     gen_listener:cast(Srv, member_connect_accepted).
 
-bridge_to_member(Srv, WinJObj) ->
-    gen_listener:cast(Srv, {bridge_to_member, WinJObj}).
+bridge_to_member(Srv, WinJObj, EPs) ->
+    gen_listener:cast(Srv, {bridge_to_member, WinJObj, EPs}).
 
 monitor_call(Srv, MonitorJObj) ->
     gen_listener:cast(Srv, {monitor_call, MonitorJObj}).
@@ -188,6 +192,9 @@ add_acdc_queue(Srv, Q) ->
 rm_acdc_queue(Srv, Q) ->
     gen_listener:cast(Srv, {queue_logout, Q}).
 
+call_status_req(Srv) ->
+    gen_listener:cast(Srv, call_status_req).
+
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -207,10 +214,10 @@ init([Supervisor, AgentJObj, Queues]) ->
     AgentId = wh_json:get_value(<<"_id">>, AgentJObj),
     put(callid, AgentId),
 
-    gen_listener:cast(self(), {load_endpoints, Supervisor}),
-
     Self = self(),
     AcctId = wh_json:get_value(<<"pvt_account_id">>, AgentJObj),
+
+    gen_listener:cast(self(), {start_fsm, Supervisor}),
 
     _ = spawn(fun() ->
                       put(amqp_publish_as, Self),
@@ -266,11 +273,14 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast({stop_agent}, #state{supervisor=Supervisor}=State) ->
+    _ = acdc_agent_sup:stop(Supervisor),
+    {noreply, State};
 handle_cast({start_fsm, Supervisor}, #state{acct_id=AcctId
                                             ,agent_id=AgentId
                                            }=State) ->
     {ok, FSMPid} = acdc_agent_sup:start_fsm(Supervisor, AcctId, AgentId),
-    link(FSMPid),
+
     lager:debug("started FSM at ~p", [FSMPid]),
 
     gen_listener:cast(self(), bind_to_member_reqs),
@@ -347,35 +357,6 @@ handle_cast(member_connect_accepted, #state{msg_queue_id=AmqpQueue
     send_member_connect_accepted(AmqpQueue, call_id(Call), AcctId, AgentId, MyId),
     {noreply, State};
 
-handle_cast({load_endpoints, Supervisor}, #state{acct_db=AcctDb
-                                                 ,agent_id=AgentId
-                                                 ,acct_id=AcctId
-                                                 ,record_calls=ShouldRecord
-                                                }=State) ->
-    lager:debug("loading agent endpoints"),
-    Call = whapps_call:set_account_id(AcctId
-                                      ,whapps_call:set_account_db(AcctDb
-                                                                  ,whapps_call:new()
-                                                                 )
-                                     ),
-    case catch acdc_util:get_endpoints(Call, AgentId) of
-        [] ->
-            lager:debug("no endpoints"),
-            _ = acdc_agent_sup:stop(Supervisor),
-            {noreply, State};
-        [_|_]=EPs ->
-            lager:debug("endpoints: ~p", [EPs]),
-            gen_listener:cast(self(), {start_fsm, Supervisor}),
-
-            {noreply, State#state{endpoints=EPs
-                                  ,record_calls=record_endpoints(EPs, ShouldRecord)
-                                 }};
-        {'EXIT', _E} ->
-            lager:debug("failed to load endpoints: ~p", [_E]),
-            _ = acdc_agent_sup:stop(Supervisor),
-            {noreply, State}
-    end;
-
 handle_cast({member_connect_resp, _}=Msg, #state{my_q = Q}=State) when
       Q =:= undefined orelse Q =:= <<>> ->
     fetch_my_queue(),
@@ -414,20 +395,24 @@ handle_cast({member_connect_retry, WinJObj}, #state{my_id=MyId}=State) ->
     send_member_connect_retry(WinJObj, MyId),
     {noreply, State};
 
-handle_cast({bridge_to_member, WinJObj}, #state{endpoints=EPs
-                                                ,fsm_pid=FSM
-                                               }=State) ->
+handle_cast({bridge_to_member, WinJObj, EPs}, #state{fsm_pid=FSM
+                                                     ,record_calls=RecordCall
+                                                    }=State) ->
     lager:debug("bridging to agent endpoints: ~p", [EPs]),
 
     Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, WinJObj)),
     RingTimeout = wh_json:get_value(<<"Ring-Timeout">>, WinJObj),
     lager:debug("ring agent for ~p", [RingTimeout]),
 
+    ShouldRecord = should_record_endpoints(EPs, RecordCall),
+
     acdc_util:bind_to_call_events(Call),
     _P = spawn(fun() -> maybe_connect_to_agent(FSM, EPs, Call, RingTimeout) end),
 
     lager:debug("waiting on successful bridge now: connecting in ~p", [_P]),
-    {noreply, State#state{call=Call}};
+    {noreply, State#state{call=Call
+                          ,record_calls=ShouldRecord
+                         }};
 
 handle_cast({monitor_call, MonitorJObj}, State) ->
     Call = whapps_call:set_call_id(wh_json:get_value(<<"Call-ID">>, MonitorJObj), whapps_call:new()),
@@ -481,6 +466,17 @@ handle_cast({send_status_update, Status}, #state{acct_id=AcctId
     send_status_update(AcctId, AgentId, Status),
     {noreply, State};
 
+handle_cast(call_status_req, #state{call=Call, my_q=Q}=State) ->
+    CallId = whapps_call:call_id(Call),
+
+    Command = [{<<"Call-ID">>, CallId}
+               ,{<<"Server-ID">>, Q}
+               | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
+              ],
+
+    wapi_call:publish_call_status_req(CallId, Command),
+    {noreply, State, hibernate};
+
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {noreply, State}.
@@ -495,12 +491,6 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({'EXIT', P, _R}, #state{fsm_pid=P, supervisor=Supervisor}=State) ->
-    lager:debug("our FSM(~p) died: ~p", [P, _R]),
-
-    gen_listener:cast(self(), {start_fsm, Supervisor}),
-
-    {noreply, State#state{fsm_pid=undefined}};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {noreply, State}.
@@ -528,7 +518,8 @@ handle_event(_JObj, #state{fsm_pid=FSM}) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, _State) ->
+terminate(_Reason, #state{supervisor=Supervisor}) ->
+    _ = acdc_agent_sup:stop(Supervisor),
     lager:debug("agent process going down: ~p", [_Reason]).
 
 %%--------------------------------------------------------------------
@@ -631,20 +622,23 @@ idle_time(undefined) -> undefined;
 idle_time(T) -> wh_util:elapsed_s(T).
 
 -spec call_id/1 :: ('undefined' | whapps_call:call() | wh_json:json_object()) ->
-                           'undefined' | ne_binary().
--spec call_id/2 :: (whapps_call:call() | wh_json:json_object(), 'undefined' | whapps_call:call()) ->
-                           'undefined' | ne_binary().
+                           api_binary().
 call_id(undefined) -> undefined;
 call_id(Call) ->
     case whapps_call:is_call(Call) of
         true -> whapps_call:call_id(Call);
         false ->
-            call_id(Call, wh_json:get_value([<<"Call">>, <<"call_id">>], Call))
+            Keys = [[<<"Call">>, <<"Call-ID">>]
+                    ,[<<"Call">>, <<"call_id">>]
+                    ,<<"Call-ID">>
+                   ],
+            lists:foldl(fun(K, undefined) -> wh_json:get_value(K, Call);
+                           (_, CallId) -> CallId
+                        end
+                        ,undefined
+                        ,Keys
+                       )
     end.
-
-call_id(Call, undefined) ->
-    wh_json:get_value([<<"Call-ID">>], Call);
-call_id(_, CallId) -> CallId.
 
 -spec maybe_connect_to_agent/4 :: (pid(), list(), whapps_call:call(), integer() | 'undefined') -> 'ok'.
 maybe_connect_to_agent(FSM, EPs, Call, Timeout) ->
@@ -706,9 +700,9 @@ fetch_my_queue() ->
     _ = spawn(fun() -> gen_listener:cast(Self, {queue_name, gen_listener:queue_name(Self)}) end),
     ok.
 
--spec record_endpoints/2 :: (wh_json:json_objects(), boolean()) -> boolean().
-record_endpoints(_EPs, true) -> true;
-record_endpoints(EPs, false) ->
+-spec should_record_endpoints/2 :: (wh_json:json_objects(), boolean()) -> boolean().
+should_record_endpoints(_EPs, true) -> true;
+should_record_endpoints(EPs, false) ->
     lists:any(fun(EP) ->
                       wh_json:is_true(<<"record_calls">>, EP, false)
               end, EPs).

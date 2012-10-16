@@ -22,19 +22,24 @@
 -include("acdc.hrl").
 
 handle_call_event(JObj, Props) ->
+    true = wapi_call:event_v(JObj),
     {Cat, Name} = wh_util:get_event_type(JObj),
     acdc_queue_fsm:call_event(props:get_value(fsm_pid, Props), Cat, Name, JObj).
 
 handle_member_call(JObj, Props, Delivery) ->
+    true = wapi_acdc_queue:member_call_v(JObj),
     acdc_queue_fsm:member_call(props:get_value(fsm_pid, Props), JObj, Delivery).
 
 handle_member_resp(JObj, Props) ->
+    true = wapi_acdc_queue:member_connect_resp_v(JObj),
     acdc_queue_fsm:member_connect_resp(props:get_value(fsm_pid, Props), JObj).
 
 handle_member_accepted(JObj, Props) ->
+    true = wapi_acdc_queue:member_connect_accepted_v(JObj),
     acdc_queue_fsm:member_accepted(props:get_value(fsm_pid, Props), JObj).
 
 handle_member_retry(JObj, Props) ->
+    true = wapi_acdc_queue:member_connect_retry_v(JObj),
     acdc_queue_fsm:member_connect_retry(props:get_value(fsm_pid, Props), JObj).
 
 handle_config_change(JObj, _Props) ->
@@ -57,8 +62,10 @@ handle_queue_change(JObj, AcctId, QueueId, <<"doc_edited">>) ->
     end;
 handle_queue_change(_JObj, AcctId, QueueId, <<"doc_deleted">>) ->
     case acdc_queues_sup:find_queue_supervisor(AcctId, QueueId) of
-        undefined -> ok;
-        P when is_pid(P) -> acdc_queue_sup:stop(P)
+        undefined -> lager:debug("no queue(~s) started for account ~s", [QueueId, AcctId]);
+        P when is_pid(P) ->
+            lager:debug("stopping queue(~s) in account ~s (deleted): ~p", [QueueId, AcctId, P]),
+            acdc_queue_sup:stop(P)
     end.
 
 handle_stats_req(JObj, _Props) ->
