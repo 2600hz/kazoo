@@ -577,7 +577,7 @@ publish_sync_resp(Strategy, StrategyState, ReqJObj, Id) ->
 
 -spec maybe_nack/3 :: (whapps_call:call(), #'basic.deliver'{}, pid()) -> boolean().
 maybe_nack(Call, Delivery, SharedPid) ->
-    case whapps_call_command:call_status(Call) of
+    case whapps_call_command:b_call_status(Call) of
         {ok, _} ->
             lager:debug("call is still active, nack and replay"),
             acdc_util:unbind_from_call_events(Call),

@@ -13,6 +13,7 @@
 
 -export([presence/2, presence/3]).
 -export([call_status/1, channel_status/1]).
+-export([b_call_status/1, b_channel_status/1]).
 -export([response/2, response/3, response/4]).
 
 -export([relay_event/2]).
@@ -137,10 +138,22 @@ presence(State, PresenceId, Call) ->
 %% This request will execute immediately
 %% @end
 %%--------------------------------------------------------------------
--spec call_status/1 :: ('undefined' | ne_binary() | whapps_call:call()) -> whapps_api_std_return().
+-spec call_status/1 :: ('undefined' | ne_binary() | whapps_call:call()) -> 'ok' |
+                                                                           {'error', 'no_call_id'}.
 call_status(undefined) ->
     {error, no_call_id};
 call_status(CallId) when is_binary(CallId) ->
+    Command = [{<<"Call-ID">>, CallId}
+               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+              ],
+    wapi_call:publish_call_status_req(CallId, Command);
+call_status(Call) ->
+    call_status(whapps_call:call_id(Call)).
+
+-spec b_call_status/1 :: ('undefined' | ne_binary() | whapps_call:call()) -> whapps_api_std_return().
+b_call_status(undefined) ->
+    {error, no_call_id};
+b_call_status(CallId) when is_binary(CallId) ->
     Command = [{<<"Call-ID">>, CallId}
                | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
@@ -156,8 +169,8 @@ call_status(CallId) when is_binary(CallId) ->
                 _Else -> {error, JObj}
             end
     end;
-call_status(Call) ->
-    call_status(whapps_call:call_id(Call)).
+b_call_status(Call) ->
+    b_call_status(whapps_call:call_id(Call)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -166,10 +179,22 @@ call_status(Call) ->
 %% This request will execute immediately
 %% @end
 %%--------------------------------------------------------------------
--spec channel_status/1 :: ('undefined' | ne_binary() | whapps_call:call()) -> whapps_api_std_return().
+-spec channel_status/1 :: ('undefined' | ne_binary() | whapps_call:call()) -> 'ok' |
+                                                                              {'error', 'no_call_id'}.
 channel_status(undefined) ->
     {error, no_channel_id};
-channel_status(ChannelId) when is_binary(ChannelId) ->
+channel_status(CallId) when is_binary(CallId) ->
+    Command = [{<<"Call-ID">>, CallId}
+               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+              ],
+    wapi_call:publish_channel_status_req(CallId, Command);
+channel_status(Call) ->
+    channel_status(whapps_call:call_id(Call)).
+
+-spec b_channel_status/1 :: ('undefined' | ne_binary() | whapps_call:call()) -> whapps_api_std_return().
+b_channel_status(undefined) ->
+    {error, no_channel_id};
+b_channel_status(ChannelId) when is_binary(ChannelId) ->
     Command = [{<<"Call-ID">>, ChannelId}
                | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
@@ -185,8 +210,8 @@ channel_status(ChannelId) when is_binary(ChannelId) ->
                 _Else -> {error, JObj}
             end
     end;
-channel_status(Call) ->
-    channel_status(whapps_call:call_id(Call)).
+b_channel_status(Call) ->
+    b_channel_status(whapps_call:call_id(Call)).
 
 %%--------------------------------------------------------------------
 %% @pubic
