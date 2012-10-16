@@ -270,7 +270,7 @@ stop(Srv) ->
 %% @end
 %%--------------------------------------------------------------------
 init([Broker]) ->
-    process_flag(trap_exit, true),
+    _ = process_flag(trap_exit, true),
 
     self() ! {connect, ?START_TIMEOUT},
     Name = wh_amqp_broker:name(Broker),
@@ -552,7 +552,7 @@ exchange_declare(#'exchange.declare'{type=Type}=ED, true) ->
     ED1.
 
 clear_channels(Name) ->
-    [clear_channel(C) || #wh_amqp_channel{}=C <- ets:tab2list(Name)],
+    _ = [clear_channel(C) || #wh_amqp_channel{}=C <- ets:tab2list(Name)],
     ok.
 clear_channel(#wh_amqp_channel{channel=ChPid
                                ,channel_ref=ChRef
