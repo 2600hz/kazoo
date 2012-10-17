@@ -370,37 +370,38 @@ ready({sync_req, JObj}, #state{agent_proc=Srv}=State) ->
 
 ready({member_connect_win, JObj}, #state{agent_proc=Srv
                                          ,endpoints=[_|_]=EPs
+                                         ,agent_proc_id=MyId
                                         }=State) ->
     Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, JObj)),
     CallId = whapps_call:call_id(Call),
-
-    lager:debug("we won us a member: ~s", [CallId]),
-
-    acdc_agent:bridge_to_member(Srv, JObj, EPs),
-
     WrapupTimer = wh_json:get_integer_value(<<"Wrapup-Timeout">>, JObj, 0),
     CallerExitKey = wh_json:get_value(<<"Caller-Exit-Key">>, JObj, <<"#">>),
     QueueId = wh_json:get_value(<<"Queue-ID">>, JObj),
 
-    {next_state, ringing, State#state{wrapup_timeout=WrapupTimer
-                                      ,member_call=Call
-                                      ,member_call_id=CallId
-                                      ,member_call_start=erlang:now()
-                                      ,caller_exit_key=CallerExitKey
-                                      ,member_call_queue_id=QueueId
-                                     }};
-ready({member_connect_monitor, JObj}, #state{agent_proc=Srv}=State) ->
-    CallId = wh_json:get_value([<<"Call-ID">>], JObj),
-    lager:debug("one of our counterparts won us a member: ~s", [CallId]),
-    acdc_agent:monitor_call(Srv, JObj),
+    case wh_json:get_value(<<"Agent-Process-ID">>, JObj) of
+        MyId ->
+            lager:debug("we won us a member: ~s", [CallId]),
 
-    WrapupTimer = wh_json:get_integer_value(<<"Wrapup-Timeout">>, JObj, 0),
+            acdc_agent:bridge_to_member(Srv, JObj, EPs),
 
-    {next_state, ringing, State#state{wrapup_timeout=WrapupTimer
-                                      ,member_call_id=CallId
-                                      ,member_call_start=erlang:now()
-                                      ,member_call_queue_id=wh_json:get_value(<<"Queue-ID">>, JObj)
-                                     }};
+            {next_state, ringing, State#state{wrapup_timeout=WrapupTimer
+                                              ,member_call=Call
+                                              ,member_call_id=CallId
+                                              ,member_call_start=erlang:now()
+                                              ,member_call_queue_id=QueueId
+                                              ,caller_exit_key=CallerExitKey
+                                             }};
+        _OtherId ->
+            lager:debug("one of our counterparts won us a member: ~s", [CallId]),
+            acdc_agent:monitor_call(Srv, JObj),
+
+            {next_state, ringing, State#state{wrapup_timeout=WrapupTimer
+                                              ,member_call_id=CallId
+                                              ,member_call_start=erlang:now()
+                                              ,member_call_queue_id=QueueId
+                                              ,caller_exit_key=CallerExitKey
+                                             }}
+    end;
 
 ready({member_connect_req, JObj}, #state{agent_proc=Srv}=State) ->
     acdc_agent:member_connect_resp(Srv, JObj),
