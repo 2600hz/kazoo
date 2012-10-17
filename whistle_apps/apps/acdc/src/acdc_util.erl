@@ -23,7 +23,7 @@ queue_presence_update(AcctId, QueueId) ->
     case wapi_acdc_queue:queue_size(AcctId, QueueId) of
         0 -> queue_presence_update(AcctId, QueueId, ?PRESENCE_GREEN);
         N when is_integer(N), N > 0 -> queue_presence_update(AcctId, QueueId, ?PRESENCE_RED_FLASH);
-        _ -> ok
+        _N -> lager:debug("queue size for ~s(~s): ~p", [QueueId, AcctId, _N])
     end.
 queue_presence_update(AcctId, QueueId, State) ->
     AcctDb = wh_util:format_account_id(AcctId, encoded),
