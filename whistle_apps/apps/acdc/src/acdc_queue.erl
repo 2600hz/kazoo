@@ -196,7 +196,7 @@ init([Supervisor, QueueJObj]) ->
     gen_listener:cast(self(), {start_fsm, Supervisor, QueueJObj}),
 
     ask_for_queue_name(),
-    lager:debug("finished init for queue"),
+
     {ok, #state{
        queue_id = QueueId
        ,queue_db = wh_json:get_value(<<"pvt_account_db">>, QueueJObj)
@@ -400,13 +400,13 @@ handle_cast({cancel_member_call}, #state{delivery=Delivery
     end;
 
 handle_cast({cancel_member_call, _RejectJObj}, #state{delivery=undefined}=State) ->
-    lager:debug("cancel a member_call that I don't have delivery info for: ~p", [_RejectJObj]),
+    lager:debug("cancel a member_call that I don't have delivery info for"),
     {noreply, State};
 handle_cast({cancel_member_call, _RejectJObj}, #state{delivery = #'basic.deliver'{}=Delivery
                                                       ,call=Call
                                                       ,shared_pid=Pid
                                                      }=State) ->
-    lager:debug("agent failed to handle the call, nack: ~p", [_RejectJObj]),
+    lager:debug("agent failed to handle the call, nack"),
 
     case maybe_nack(Call, Delivery, Pid) of
         true -> {noreply, clear_call_state(State)};
@@ -505,7 +505,6 @@ send_member_connect_req(CallId, AcctId, QueueId, MyQ, MyId) ->
              ,{<<"Call-ID">>, CallId}
              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
             ]),
-    lager:debug("sending member_connect_req: ~p", [Req]),
     publish(Req, fun wapi_acdc_queue:publish_member_connect_req/1).
 
 -spec send_member_connect_win/8 :: (wh_json:json_object(), pos_integer(), pos_integer(), whapps_call:call(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.

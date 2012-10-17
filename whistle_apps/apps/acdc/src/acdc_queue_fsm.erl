@@ -239,7 +239,7 @@ init([QueuePid, QueueJObj]) ->
 sync({strategy_sync}, #state{strategy=Type
                              ,queue_proc=Srv
                             }=State) ->
-    lager:debug("sync strategy ~s", [Type]),
+    lager:debug("sync strategy '~s'", [Type]),
     %% send sync_req
     case maybe_send_sync_req(Type, Srv) of
         {true, SyncRef} ->
@@ -318,13 +318,13 @@ ready({member_call, CallJObj, Delivery}, #state{queue_proc=Srv
             {next_state, ready, State}
     end;
 ready({agent_resp, _Resp}, State) ->
-    lager:debug("someone jumped the gun, or was slow on the draw: ~p", [_Resp]),
+    lager:debug("someone jumped the gun, or was slow on the draw"),
     {next_state, ready, State};
 ready({accepted, _AcceptJObj}, State) ->
-    lager:debug("weird to receive an acceptance: ~p", [_AcceptJObj]),
+    lager:debug("weird to receive an acceptance"),
     {next_state, ready, State};
 ready({retry, _RetryJObj}, State) ->
-    lager:debug("weird to receive a retry when we're just hanging here: ~p", [_RetryJObj]),
+    lager:debug("weird to receive a retry when we're just hanging here"),
     {next_state, ready, State};
 ready({member_hungup, _CallEvt}, State) ->
     lager:debug("member hungup from previous call, failed to unbind"),
@@ -426,15 +426,12 @@ connect_req({accepted, AcceptJObj}=Accept, #state{member_call=Call}=State) ->
             {next_state, connect_req, State}
     end;
 connect_req({retry, _RetryJObj}, State) ->
-    lager:debug("recv retry response before win sent: ~p", [_RetryJObj]),
+    lager:debug("recv retry response before win sent"),
     {next_state, connect_req, State};
 
 connect_req({member_hungup, JObj}, #state{queue_proc=Srv
                                           ,member_call=Call
                                          }=State) ->
-    lager:debug("member event: ~p", [JObj]),
-    lager:debug("member call: ~s", []),
-
     case wh_json:get_value(<<"Call-ID">>, JObj) =:= whapps_call:call_id(Call) of
         true ->
             lager:debug("member hungup before we could assign an agent"),
@@ -514,7 +511,7 @@ connecting({member_call, CallJObj, Delivery}, #state{queue_proc=Srv}=State) ->
     {next_state, connecting, State};
 
 connecting({agent_resp, _Resp}, State) ->
-    lager:debug("agent resp must have just missed cutoff: ~p", [_Resp]),
+    lager:debug("agent resp must have just missed cutoff"),
     {next_state, connecting, State};
 
 connecting({accepted, AcceptJObj}, #state{queue_proc=Srv
@@ -525,7 +522,7 @@ connecting({accepted, AcceptJObj}, #state{queue_proc=Srv
                                          }=State) ->
     case accept_is_for_call(AcceptJObj, Call) of
         true ->
-            lager:debug("recv acceptance from agent: ~p", [AcceptJObj]),
+            lager:debug("recv acceptance from agent"),
             acdc_queue:finish_member_call(Srv, AcceptJObj),
             acdc_stats:call_handled(AcctId, QueueId, whapps_call:call_id(Call)
                                     ,wh_json:get_value(<<"Agent-ID">>, AcceptJObj), wh_util:elapsed_s(Start)
@@ -536,12 +533,12 @@ connecting({accepted, AcceptJObj}, #state{queue_proc=Srv
             {next_state, connecting, State}
     end;
 
-connecting({retry, RetryJObj}, #state{queue_proc=Srv
+connecting({retry, _RetryJObj}, #state{queue_proc=Srv
                                       ,connect_resps=[]
                                       ,collect_ref=CollectRef
                                       ,agent_ring_timer_ref=AgentRef
                                      }=State) ->
-    lager:debug("recv retry from agent: ~p", [RetryJObj]),
+    lager:debug("recv retry from agent"),
 
     acdc_queue:member_connect_re_req(Srv),
     maybe_stop_timer(CollectRef),
@@ -551,8 +548,8 @@ connecting({retry, RetryJObj}, #state{queue_proc=Srv
                                           ,agent_ring_timer_ref=undefined
                                          }};
 
-connecting({retry, RetryJObj}, #state{agent_ring_timer_ref=AgentRef}=State) ->
-    lager:debug("recv retry from agent: ~p", [RetryJObj]),
+connecting({retry, _RetryJObj}, #state{agent_ring_timer_ref=AgentRef}=State) ->
+    lager:debug("recv retry from agent"),
     lager:debug("but wait, we have others who wanted to try"),
     gen_fsm:send_event(self(), {timeout, undefined, ?COLLECT_RESP_MESSAGE}),
     maybe_stop_timer(AgentRef),
