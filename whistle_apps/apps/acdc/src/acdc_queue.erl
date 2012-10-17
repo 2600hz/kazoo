@@ -27,7 +27,7 @@
          ,member_connect_monitor/3, member_connect_monitor/4
          ,timeout_member_call/1
          ,exit_member_call/1
-         ,finish_member_call/2
+         ,finish_member_call/1, finish_member_call/2
          ,ignore_member_call/3
          ,cancel_member_call/1, cancel_member_call/2 ,cancel_member_call/3
          ,send_sync_req/2
@@ -147,6 +147,9 @@ timeout_member_call(Srv) ->
     gen_listener:cast(Srv, {timeout_member_call}).
 exit_member_call(Srv) ->
     gen_listener:cast(Srv, {exit_member_call}).
+
+finish_member_call(Srv) ->
+    gen_listener:cast(Srv, {finish_member_call}).
 finish_member_call(Srv, AcceptJObj) ->
     gen_listener:cast(Srv, {finish_member_call, AcceptJObj}).
 
@@ -271,13 +274,11 @@ handle_cast({queue_name, Q}, State) ->
     lager:debug("my queue: ~s", [Q]),
     {noreply, State#state{my_q=Q}};
 
-handle_cast({member_connect_req, MemberCallJObj, Delivery}
-            ,#state{
-              my_q=MyQ
-              ,my_id=MyId
-              ,acct_id=AcctId
-              ,queue_id=QueueId
-             }=State
+handle_cast({member_connect_req, MemberCallJObj, Delivery}, #state{my_q=MyQ
+                                                                   ,my_id=MyId
+                                                                   ,acct_id=AcctId
+                                                                   ,queue_id=QueueId
+                                                                  }=State
            ) ->
     Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, MemberCallJObj)),
 
@@ -289,18 +290,20 @@ handle_cast({member_connect_req, MemberCallJObj, Delivery}
                           ,member_call_queue=wh_json:get_value(<<"Server-ID">>, MemberCallJObj)
                          }};
 
-handle_cast({member_connect_re_req}
-            ,#state{
-              my_q=MyQ
-              ,my_id=MyId
-              ,acct_id=AcctId
-              ,queue_id=QueueId
-              ,call=Call
-             }=State
+handle_cast({member_connect_re_req}, #state{my_q=MyQ
+                                            ,my_id=MyId
+                                            ,acct_id=AcctId
+                                            ,queue_id=QueueId
+                                            ,call=Call
+                                           }=State
            ) ->
-    send_member_connect_req(whapps_call:call_id(Call), AcctId, QueueId, MyQ, MyId),
+    case is_call_alive(Call) of
+        true ->
+            send_member_connect_req(whapps_call:call_id(Call), AcctId, QueueId, MyQ, MyId);
+        false ->
+            acdc_agent:finish_member_call(self())
+    end,
     {noreply, State};
-
 
 handle_cast({member_connect_win, RespJObj, RingTimeout, AgentWrapup, CallerExitKey}, #state{my_q=MyQ
                                                                                             ,my_id=MyId
@@ -362,6 +365,22 @@ handle_cast({exit_member_call}, #state{delivery=Delivery
 
     {noreply, clear_call_state(State)};
 
+handle_cast({finish_member_call}, #state{delivery=Delivery
+                                         ,call=Call
+                                         ,shared_pid=Pid
+                                         ,member_call_queue=Q
+                                         ,acct_id=AcctId
+                                         ,queue_id=QueueId
+                                         ,my_id=MyId
+                                         ,agent_id=AgentId
+                                        }=State) ->
+    lager:debug("agent has taken care of member, we're done"),
+
+    acdc_util:unbind_from_call_events(Call),
+    acdc_queue_shared:ack(Pid, Delivery),
+    send_member_call_success(Q, AcctId, QueueId, MyId, AgentId),
+
+    {noreply, clear_call_state(State)};
 handle_cast({finish_member_call, _AcceptJObj}, #state{delivery=Delivery
                                                       ,call=Call
                                                       ,shared_pid=Pid
@@ -577,20 +596,30 @@ publish_sync_resp(Strategy, StrategyState, ReqJObj, Id) ->
 
 -spec maybe_nack/3 :: (whapps_call:call(), #'basic.deliver'{}, pid()) -> boolean().
 maybe_nack(Call, Delivery, SharedPid) ->
-    case whapps_call_command:b_call_status(Call) of
-        {ok, _} ->
+    case is_call_alive(Call) of
+        true ->
             lager:debug("call is still active, nack and replay"),
             acdc_util:unbind_from_call_events(Call),
             acdc_queue_shared:nack(SharedPid, Delivery),
             true;
-        {error, _} ->
+        false ->
             lager:debug("call is probably not active, ack it (so its gone)"),
             acdc_util:unbind_from_call_events(Call),
             acdc_queue_shared:ack(SharedPid, Delivery),
             false
     end.
 
-clear_call_state(#state{}=State) ->
+-spec is_call_alive/1 :: (whapps_call:call() | ne_binary()) -> boolean().
+is_call_alive(Call) ->
+    case whapps_call_command:b_call_status(Call) of
+        {ok, _} -> true;
+        {error, _} -> false
+    end.
+
+clear_call_state(#state{acct_id=AcctId
+                        ,queue_id=QueueId
+                       }=State) ->
+    acdc_util:queue_presence_update(AcctId, QueueId),
     State#state{call=undefined
                 ,member_call_queue=undefined
                 ,agent_id=undefined

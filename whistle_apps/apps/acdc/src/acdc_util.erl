@@ -14,9 +14,24 @@
          ,agents_in_queue/2
          ,agent_status/2
          ,proc_id/0, proc_id/1, proc_id/2
+         ,queue_presence_update/2, queue_presence_update/3
         ]).
 
 -include("acdc.hrl").
+
+queue_presence_update(AcctId, QueueId) ->
+    case wapi_acdc_queue:queue_size(AcctId, QueueId) of
+        0 -> queue_presence_update(AcctId, QueueId, ?PRESENCE_GREEN);
+        N when is_integer(N), N > 0 -> queue_presence_update(AcctId, QueueId, ?PRESENCE_RED_FLASH);
+        _ -> ok
+    end.
+queue_presence_update(AcctId, QueueId, State) ->
+    AcctDb = wh_util:format_account_id(AcctId, encoded),
+    {ok, AcctDoc} = couch_mgr:open_cache_doc(AcctDb, AcctId),
+    To = <<QueueId/binary, "@", (wh_json:get_value(<<"realm">>, AcctDoc))/binary>>,
+
+    lager:debug("sending presence update '~s' to '~s'", [State, To]),
+    whapps_call_command:presence(State, To).
 
 %% Returns the list of agents configured for the queue
 -spec agents_in_queue/2 :: (ne_binary(), ne_binary()) -> wh_json:json_strings().

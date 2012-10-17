@@ -367,7 +367,6 @@ fetch_all_queue_stats(#cb_context{account_id=AcctId}=Context, realtime) ->
                                        ,2000
                                       ) of
         {ok, Resp} ->
-            lager:debug("fetched stats successfully"),
             Resp1 = strip_api_fields(wh_json:normalize(Resp)),
             Context#cb_context{resp_status=success
                                ,resp_data=total_up_stats(Resp1)

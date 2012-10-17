@@ -314,7 +314,7 @@ ready({member_call, CallJObj, Delivery}, #state{queue_proc=Srv
                                                  }};
         true ->
             lager:debug("queue mgr said to ignore this call: ~s", [whapps_call:call_id(Call)]),
-            acdc_queue:ignore_member_call(Srv, CallJObj, Delivery),
+            acdc_queue:ignore_member_call(Srv, Call, Delivery),
             {next_state, ready, State}
     end;
 ready({agent_resp, _Resp}, State) ->
