@@ -30,6 +30,8 @@
          ,code_change/3
         ]).
 
+-include("acdc.hrl").
+
 -define(SERVER, ?MODULE).
 
 -record(state, {ignored_member_calls = dict:new() :: dict()}).
@@ -39,12 +41,16 @@
                                   ,{account_id, <<"*">>}
                                   ,{queue_id, <<"*">>}
                                  ]}
+                   ,{notifications, [{restrict_to, [presence_probe]}]}
                   ]).
 -define(RESPONDERS, [{{acdc_queue_handler, handle_config_change}
                       ,[{<<"configuration">>, <<"*">>}]
                      }
                      ,{{acdc_queue_handler, handle_stats_req}
                        ,[{<<"queue">>, <<"stats_req">>}]
+                      }
+                     ,{{acdc_queue_handler, handle_presence_probe}
+                       ,[{<<"notification">>, <<"presence_probe">>}]
                       }
                      ,{{acdc_queue_manager, handle_member_call}
                        ,[{<<"member">>, <<"call">>}]
@@ -101,7 +107,8 @@ handle_member_call(JObj, _Props) ->
             whapps_call_command:answer(Call),
             whapps_call_command:hold(Call)
     end,
-    wapi_acdc_queue:publish_shared_member_call(AcctId, QueueId, JObj).
+    wapi_acdc_queue:publish_shared_member_call(AcctId, QueueId, JObj),
+    acdc_util:queue_presence_update(AcctId, QueueId, ?PRESENCE_RED_FLASH).
 
 handle_member_call_cancel(JObj, _Props) ->
     true = wapi_acdc_queue:member_call_cancel_v(JObj),
