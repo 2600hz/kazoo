@@ -429,10 +429,23 @@ connect_req({retry, _RetryJObj}, State) ->
     lager:debug("recv retry response before win sent: ~p", [_RetryJObj]),
     {next_state, connect_req, State};
 
-connect_req({member_hungup, JObj}, #state{queue_proc=Srv}=State) ->
-    lager:debug("member hungup before we could assign an agent"),
-    acdc_queue:finish_member_call(Srv, JObj),
-    {next_state, ready, clear_member_call(State)};
+connect_req({member_hungup, JObj}, #state{queue_proc=Srv
+                                          ,member_call=Call
+                                         }=State) ->
+    lager:debug("member event: ~p", [JObj]),
+    lager:debug("member call: ~s", []),
+
+    case wh_json:get_value(<<"Call-ID">>, JObj) =:= whapps_call:call_id(Call) of
+        true ->
+            lager:debug("member hungup before we could assign an agent"),
+            acdc_queue:finish_member_call(Srv, JObj),
+            {next_state, ready, clear_member_call(State)};
+        false ->
+            lager:debug("hangup recv for ~s while processing ~s, ignoring", [wh_json:get_value(<<"Call-ID">>, JObj)
+                                                                             ,whapps_call:call_id(Call)
+                                                                            ]),
+            {next_state, connect_req, State}
+    end;
 
 connect_req({dtmf_pressed, DTMF}, #state{caller_exit_key=DTMF
                                          ,queue_proc=Srv
