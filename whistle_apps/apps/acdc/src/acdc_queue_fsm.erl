@@ -397,14 +397,14 @@ connect_req({timeout, Ref, ?COLLECT_RESP_MESSAGE}, #state{collect_ref=Ref
                                                          }=State) ->
     lager:debug("done waiting for agents to respond, picking a winner"),
     case pick_winner(CRs, Strategy, StrategyState) of
-        {Winner, Monitors, Rest, StrategyState1} ->
-            lager:debug("winner chosen: ~s", [wh_json:get_value(<<"Agent-ID">>, Winner)]),
-            acdc_queue:member_connect_win(Srv, Winner, AgentTimeout, AgentWrapup, CallerExitKey),
-            _ = [acdc_queue:member_connect_monitor(Srv, M, AgentWrapup, CallerExitKey)
-                 || M <- Monitors
+        {[_Winner|_]=Winners, Rest, StrategyState1} ->
+            _ = [acdc_queue:member_connect_win(Srv, Winner, AgentTimeout, AgentWrapup, CallerExitKey)
+                 || Winner <- Winners
                 ],
 
-            lager:debug("sending win to ~p", [wh_json:get_value(<<"Process-ID">>, Winner)]),
+            lager:debug("sending win to ~s(~s)", [wh_json:get_value(<<"Agent-ID">>, _Winner)
+                                                  ,wh_json:get_value(<<"Process-ID">>, _Winner)
+                                                 ]),
             {next_state, connecting, State#state{connect_resps=Rest
                                                  ,collect_ref=undefined
                                                  ,strategy_state=StrategyState1
@@ -708,8 +708,7 @@ start_collect_timer() ->
 %% Really sophisticated selection algorithm
 -spec pick_winner/3 :: (wh_json:json_objects(), queue_strategy(), queue_strategy_state()) ->
                                'undefined' |
-                               {wh_json:json_object()
-                                ,wh_json:json_objects()
+                               {wh_json:json_objects()
                                 ,wh_json:json_objects()
                                 ,queue_strategy_state()
                                }.
@@ -718,17 +717,15 @@ pick_winner(CRs, 'rr', AgentQ) ->
     {{value, AgentId}, AgentQ1} = queue:out(AgentQ),
 
     case split_agents(AgentId, CRs) of
-        {[Winner|SameAgents], OtherAgents} ->
-            {Winner, SameAgents, OtherAgents, queue:in(AgentId, AgentQ1)};
-        {[], _O} ->
-            pick_winner(CRs, 'rr', queue:in(AgentId, AgentQ1))
+        {[], _O} -> pick_winner(CRs, 'rr', queue:in(AgentId, AgentQ1));
+        {Winners, OtherAgents} -> {Winners, OtherAgents, queue:in(AgentId, AgentQ1)}
     end;
 pick_winner(CRs, 'mi', _) ->
     [MostIdle | Rest] = lists:usort(fun sort_agent/2, CRs),
     AgentId = wh_json:get_value(<<"Agent-ID">>, MostIdle),
     {Same, Other} = split_agents(AgentId, Rest),
 
-    {MostIdle, Same, Other, undefined}.
+    {[MostIdle|Same], Other, undefined}.
 
 -spec update_strategy_with_agent/3 :: (queue_strategy(), queue_strategy_state(), ne_binary()) ->
                                               queue_strategy_state().
