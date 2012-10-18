@@ -22,7 +22,7 @@
 %% API
 -export([start_link/1
          ,call/4, call/5
-         ,call_collect/4, call_collect/5
+         ,call_collect/3, call_collect/4
          ,cast/3
          ,any_resp/1, default_timeout/0
          ,handle_resp/2
@@ -95,7 +95,7 @@ default_timeout() -> 2000.
 -spec call/4 :: (server_ref(), api_terms(), publish_fun(), validate_fun()) ->
                         {'ok', wh_json:json_object()} |
                         {'error', _}.
--spec call/5 :: (server_ref(), api_terms(), publish_fun(), validate_fun(), pos_integer() | 'infinity') ->
+-spec call/5 :: (server_ref(), api_terms(), publish_fun(), validate_fun(), wh_timeout()) ->
                         {'ok', wh_json:json_object()} |
                         {'error', _}.
 call(Srv, Req, PubFun, VFun) ->
@@ -123,16 +123,16 @@ call(Srv, Req, PubFun, VFun, Timeout) ->
             {error, poolboy_fault}
     end.
 
--spec call_collect/4 :: (server_ref(), api_terms(), publish_fun(), validate_fun()) ->
+-spec call_collect/3 :: (server_ref(), api_terms(), publish_fun()) ->
                                 {'ok', wh_json:json_objects()} |
                                 {'error', _}.
--spec call_collect/5 :: (server_ref(), api_terms(), publish_fun(), validate_fun(), pos_integer() | 'infinity') ->
+-spec call_collect/4 :: (server_ref(), api_terms(), publish_fun(), pos_integer()) ->
                                 {'ok', wh_json:json_objects()} |
                                 {'error', _}.
-call_collect(Srv, Req, PubFun, VFun) ->
-    call_collect(Srv, Req, PubFun, VFun, default_timeout()).
+call_collect(Srv, Req, PubFun) ->
+    call_collect(Srv, Req, PubFun, default_timeout()).
 
-call_collect(Srv, Req, PubFun, VFun, Timeout) ->
+call_collect(Srv, Req, PubFun, Timeout) when is_integer(Timeout), Timeout >= 0 ->
     case catch poolboy:checkout(Srv, false, 1000) of
         W when is_pid(W) ->
             PoolName = pool_name_from_server_ref(Srv),
@@ -142,7 +142,7 @@ call_collect(Srv, Req, PubFun, VFun, Timeout) ->
                        false -> Req
                    end,
             Q = gen_listener:queue_name(W),
-            Reply = gen_listener:call(W, {request_collect, Prop, PubFun, VFun, Q, Timeout}, fudge_timeout(Timeout)),
+            Reply = gen_listener:call(W, {request_collect, Prop, PubFun, Q, Timeout}, fudge_timeout(Timeout)),
             poolboy:checkin(Srv, W),
             wh_counter:inc(<<"amqp.pools.", PoolName/binary, ".available">>),
             Reply;
@@ -260,7 +260,7 @@ handle_call({request, ReqProp, PublishFun, VFun, Q, Timeout}, {ClientPid, _}=Fro
             {reply, {error, Err}, reset(State), hibernate}
     end;
 
-handle_call({request_collect, ReqProp, PublishFun, VFun, Q, Timeout}, {ClientPid, _}=From, State) ->
+handle_call({request_collect, ReqProp, PublishFun, Q, Timeout}, {ClientPid, _}=From, State) ->
     _ = wh_util:put_callid(ReqProp),
     CallID = get(callid),
     ClientRef = erlang:monitor(process, ClientPid),
@@ -278,7 +278,6 @@ handle_call({request_collect, ReqProp, PublishFun, VFun, Q, Timeout}, {ClientPid
                         client_pid = ClientPid
                         ,client_ref = ClientRef
                         ,client_from = From
-                        ,client_vfun = VFun
                         ,responses = [] % how we know to collect all responses
                         ,neg_resp_count = 0
                         ,current_msg_id = MsgID
@@ -503,10 +502,11 @@ pool_name_from_server_ref(Name) when is_atom(Name) ->
 pool_name_from_server_ref(Pid) when is_pid(Pid) ->
     wh_util:to_binary(pid_to_list(Pid)).
 
+-spec fudge_timeout/1 :: (wh_timeout()) -> wh_timeout().
 fudge_timeout('infinity'=T) -> T;
 fudge_timeout(T) -> T + ?FUDGE.
 
--spec start_req_timeout/1 :: (pos_integer() | 'infinity') -> reference().
-start_req_timeout(infinity) -> make_ref();
+-spec start_req_timeout/1 :: (wh_timeout()) -> reference().
+start_req_timeout('infinity') -> make_ref();
 start_req_timeout(Timeout) ->
     erlang:start_timer(Timeout, self(), req_timeout).
