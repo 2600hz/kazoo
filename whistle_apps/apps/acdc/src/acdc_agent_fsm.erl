@@ -149,7 +149,6 @@ call_event(FSM, <<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, JObj) ->
     maybe_send_execute_complete(FSM, wh_json:get_value(<<"Application-Name">>, JObj), JObj);
 
 call_event(FSM, <<"call_event">>, <<"call_status_resp">>, JObj) ->
-    lager:debug("status resp: ~p", [JObj]),
     gen_fsm:send_event(FSM, {call_status, JObj});
 
 call_event(FSM, <<"error">>, <<"dialplan">>, JObj) ->
@@ -468,7 +467,7 @@ ringing({originate_failed, JObj}, #state{agent_proc=Srv
                                          ,member_call_queue_id=QueueId
                                          ,member_call_id=CallId
                                         }=State) ->
-    lager:debug("failed to prepare originate to the agent: ~p", [JObj]),
+    lager:debug("failed to prepare originate to the agent"),
     acdc_agent:member_connect_retry(Srv, JObj),
 
     acdc_stats:call_missed(AcctId, QueueId, AgentId, CallId),
@@ -609,7 +608,6 @@ answered({sync_req, JObj}, #state{agent_proc=Srv
                                   ,member_call_id=CallId
                                  }=State) ->
     lager:debug("recv sync_req from ~s", [wh_json:get_value(<<"Process-ID">>, JObj)]),
-    lager:debug("sync_req: ~p", [JObj]),
     acdc_agent:send_sync_resp(Srv, answered, JObj, [{<<"Call-ID">>, CallId}]),
     {next_state, answered, State};
 
@@ -795,7 +793,7 @@ handle_event(load_endpoints, StateName, #state{acct_db=AcctDb
             acdc_agent:stop(Srv),
             {stop, normal, State};
         [_|_]=EPs ->
-            lager:debug("endpoints: ~p", [EPs]),
+            lager:debug("endpoints loaded and registered"),
 
             {next_state, StateName, State#state{endpoints=EPs}};
         {'EXIT', _E} ->
