@@ -432,10 +432,10 @@ amqp_pool_request(Api, PubFun, ValidateFun, Timeout) when is_function(PubFun, 1)
     wh_amqp_worker:call(?WHAPPS_AMQP_POOL, Api, PubFun, ValidateFun, Timeout).
 
 -spec amqp_pool_collect/2 :: (api_terms(), wh_amqp_worker:publish_fun()) ->
-                                     {'ok', wh_json:json_object()} |
+                                     {'ok', wh_json:json_objects()} |
                                      {'error', any()}.
 -spec amqp_pool_collect/3 :: (api_terms(), wh_amqp_worker:publish_fun(), wh_timeout()) ->
-                                     {'ok', wh_json:json_object()} |
+                                     {'ok', wh_json:json_objects()} |
                                      {'error', any()}.
 amqp_pool_collect(Api, PubFun) when is_function(PubFun, 1) ->
     amqp_pool_collect(Api, PubFun, wh_amqp_worker:default_timeout()).
