@@ -213,6 +213,8 @@ maybe_logout_agent(AcctId, AgentId) ->
     end.
 
 logout_agent(AcctDb, AgentId) ->
+    lager:debug("logging ~s out for not responding to sync req", [AgentId]),
+
     Doc = wh_json:from_list([{<<"agent_id">>, AgentId}
                              ,{<<"method">>, <<"acdc_agent_manager">>}
                              ,{<<"action">>, <<"logout">>}

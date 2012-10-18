@@ -335,7 +335,7 @@ sync({member_connect_req, _}, State) ->
 sync({pause, Timeout}, #state{acct_id=AcctId
                               ,agent_id=AgentId
                               }=State) ->
-    lager:debug("recv status update while syncing, pausing for up to ~b ms", [Timeout]),
+    lager:debug("recv status update:, pausing for up to ~b s", [Timeout]),
     Ref = start_pause_timer(Timeout),
     acdc_stats:agent_paused(AcctId, AgentId, Timeout),
     {next_state, paused, State#state{sync_ref=Ref}};
@@ -357,7 +357,7 @@ sync(current_call, _, State) ->
 ready({pause, Timeout}, #state{acct_id=AcctId
                                ,agent_id=AgentId
                               }=State) ->
-    lager:debug("recv status update while syncing, pausing for up to ~b ms", [Timeout]),
+    lager:debug("recv status update: pausing for up to ~b s", [Timeout]),
     Ref = start_pause_timer(Timeout),
     acdc_stats:agent_paused(AcctId, AgentId, Timeout),
     {next_state, paused, State#state{sync_ref=Ref}};
