@@ -40,18 +40,26 @@ handle_status_update(JObj, _Props) ->
             true = wapi_acdc_agent:resume_v(JObj),
             maybe_resume_agent(AcctId, AgentId);
         Event -> maybe_agent_queue_change(AcctId, AgentId, Event
-                                          ,wh_json:get_value(<<"AgentId-ID">>, JObj)
+                                          ,wh_json:get_value(<<"Queue-ID">>, JObj)
                                          )
     end.
 
-maybe_agent_queue_change(AcctId, AgentId, <<"login_agent">>, AgentId) ->
-    update_agent(acdc_agents_sup:find_agent_supervisor(AcctId, AgentId), AgentId, add_acdc_agent);
-maybe_agent_queue_change(AcctId, AgentId, <<"logout_agent">>, AgentId) ->
-    update_agent(acdc_agents_sup:find_agent_supervisor(AcctId, AgentId), AgentId, rm_acdc_agent).
+maybe_agent_queue_change(AcctId, AgentId, <<"login_queue">>, QueueId) ->
+    update_agent(acdc_agents_sup:find_agent_supervisor(AcctId, AgentId)
+                 ,QueueId
+                 ,fun acdc_agent:add_acdc_queue/2
+                );
+maybe_agent_queue_change(AcctId, AgentId, <<"logout_queue">>, QueueId) ->
+    update_agent(acdc_agents_sup:find_agent_supervisor(AcctId, AgentId)
+                 ,QueueId
+                 ,fun acdc_agent:rm_acdc_queue/2
+                );
+maybe_agent_queue_change(_AcctId, _AgentId, _Evt, _QueueId) ->
+    lager:debug("unhandled evt: ~s for ~s", [_Evt, _QueueId]).
 
 update_agent(undefined, _, _) -> ok;
-update_agent(Super, Q, F) -> 
-    acdc_agent:F(acdc_agent_sup:agent(Super), Q).
+update_agent(Super, Q, F) when is_pid(Super) -> 
+    F(acdc_agent_sup:agent(Super), Q).
 
 maybe_start_agent(AcctId, AgentId) ->
     case acdc_agents_sup:find_agent_supervisor(AcctId, AgentId) of
