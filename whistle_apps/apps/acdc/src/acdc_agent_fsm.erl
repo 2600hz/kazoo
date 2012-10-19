@@ -16,7 +16,6 @@
          ,call_event/4
          ,member_connect_req/2
          ,member_connect_win/2
-         ,member_connect_monitor/2
          ,originate_ready/2
          ,originate_failed/2
          ,sync_req/2, sync_resp/2
@@ -72,7 +71,7 @@
          ,agent_id :: ne_binary()
          ,agent_proc :: pid()
          ,agent_proc_id :: ne_binary()
-         ,wrapup_timeout = 0 :: integer() % optionally set on win/monitor
+         ,wrapup_timeout = 0 :: integer() % optionally set on win
          ,wrapup_ref :: reference()
          ,sync_ref :: reference()
          ,call_status_ref :: reference()
@@ -111,17 +110,6 @@ member_connect_req(FSM, JObj) ->
 -spec member_connect_win/2 :: (pid(), wh_json:json_object()) -> 'ok'.
 member_connect_win(FSM, JObj) ->
     gen_fsm:send_event(FSM, {member_connect_win, JObj}).
-
-%%--------------------------------------------------------------------
-%% @doc
-%%   When a queue receives a call and needs an agent, it will send a 
-%%   member_connect_req. The agent will respond (if possible) with a
-%%   member_connect_resp payload or ignore the request
-%% @end
-%%--------------------------------------------------------------------
--spec member_connect_monitor/2 :: (pid(), wh_json:json_object()) -> 'ok'.
-member_connect_monitor(FSM, JObj) ->
-    gen_fsm:send_event(FSM, {member_connect_monitor, JObj}).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -381,7 +369,7 @@ ready({member_connect_win, JObj}, #state{agent_proc=Srv
         MyId ->
             lager:debug("we won us a member: ~s", [CallId]),
 
-            acdc_agent:bridge_to_member(Srv, JObj, EPs),
+            acdc_agent:bridge_to_member(Srv, Call, JObj, EPs),
 
             {next_state, ringing, State#state{wrapup_timeout=WrapupTimer
                                               ,member_call=Call
@@ -392,7 +380,7 @@ ready({member_connect_win, JObj}, #state{agent_proc=Srv
                                              }};
         _OtherId ->
             lager:debug("one of our counterparts won us a member: ~s", [CallId]),
-            acdc_agent:monitor_call(Srv, JObj),
+            acdc_agent:monitor_call(Srv, Call),
 
             {next_state, ringing, State#state{wrapup_timeout=WrapupTimer
                                               ,member_call_id=CallId
@@ -436,10 +424,6 @@ ringing({member_connect_req, _}, State) ->
 ringing({member_connect_win, JObj}, #state{agent_proc=Srv}=State) ->
     lager:debug("we won, but can't process this right now"),
     acdc_agent:member_connect_retry(Srv, JObj),
-    {next_state, ringing, State};
-
-ringing({member_connect_monitor, _JObj}, State) ->
-    lager:debug("we're ringing, but received a connect_monitor?"),
     {next_state, ringing, State};
 
 ringing({originate_ready, JObj}, #state{agent_proc=Srv}=State) ->
@@ -561,9 +545,6 @@ answered({member_connect_win, JObj}, #state{agent_proc=Srv}=State) ->
     lager:debug("we won, but can't process this right now"),
     acdc_agent:member_connect_retry(Srv, JObj),
     {next_state, answered, State};
-answered({member_connect_monitor, _JObj}, State) ->
-    lager:debug("we've answered, but received a connect_monitor?"),
-    {next_state, answered, State};
 
 answered({dialplan_error, _App}, #state{agent_proc=Srv
                                         ,acct_id=AcctId
@@ -661,9 +642,6 @@ wrapup({member_connect_win, JObj}, #state{agent_proc=Srv}=State) ->
     lager:debug("we won, but can't process this right now"),
     acdc_agent:member_connect_retry(Srv, JObj),
     {next_state, wrapup, State#state{wrapup_timeout=0}};
-wrapup({member_connect_monitor, _JObj}, State) ->
-    lager:debug("we're wrapping up, but received a connect_monitor?"),
-    {next_state, wrapup, State};
 
 wrapup({timeout, Ref, wrapup_expired}, #state{wrapup_ref=Ref
                                               ,acct_id=AcctId
@@ -746,9 +724,6 @@ paused({member_connect_req, _}, State) ->
 paused({member_connect_win, JObj}, #state{agent_proc=Srv}=State) ->
     lager:debug("we won, but can't process this right now"),
     acdc_agent:member_connect_retry(Srv, JObj),
-    {next_state, paused, State};
-paused({member_connect_monitor, _JObj}, State) ->
-    lager:debug("we've paused, but received a connect_monitor?"),
     {next_state, paused, State};
 paused(_Evt, State) ->
     lager:debug("unhandled event: ~p", [_Evt]),
