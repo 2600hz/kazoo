@@ -307,19 +307,19 @@ handle_cast({member_connect_win, RespJObj, RingTimeout, AgentWrapup, CallerExitK
     lager:debug("agent process won the call, sending the win"),
 
     send_member_connect_win(RespJObj, RingTimeout, AgentWrapup, Call, QueueId, MyQ, MyId, CallerExitKey),
-    {noreply, State#state{agent_process=wh_json:get_value(<<"Agent-Process">>, RespJObj)
+    {noreply, State#state{agent_process=wh_json:get_value(<<"Agent-Process-ID">>, RespJObj)
                           ,agent_id=wh_json:get_value(<<"Agent-ID">>, RespJObj)
                          }};
 
 handle_cast({timeout_member_call}, #state{delivery=Delivery
-                                         ,call=Call
-                                         ,shared_pid=Pid
-                                         ,member_call_queue=Q
-                                         ,acct_id=AcctId
-                                         ,queue_id=QueueId
-                                         ,my_id=MyId
-                                         ,agent_id=AgentId
-                                        }=State) ->
+                                          ,call=Call
+                                          ,shared_pid=Pid
+                                          ,member_call_queue=Q
+                                          ,acct_id=AcctId
+                                          ,queue_id=QueueId
+                                          ,my_id=MyId
+                                          ,agent_id=AgentId
+                                         }=State) ->
     lager:debug("member call has timed out, we're done"),
 
     acdc_util:unbind_from_call_events(Call),
@@ -514,7 +514,7 @@ send_member_connect_win(RespJObj, RingTimeout, AgentWrapup, Call, QueueId, MyQ, 
     Win = props:filter_undefined(
             [{<<"Call">>, CallJSON}
              ,{<<"Process-ID">>, MyId}
-             ,{<<"Agent-Process-ID">>, wh_json:get_value(<<"Process-ID">>, RespJObj)}
+             ,{<<"Agent-Process-ID">>, wh_json:get_value(<<"Agent-Process-ID">>, RespJObj)}
              ,{<<"Queue-ID">>, QueueId}
              ,{<<"Ring-Timeout">>, RingTimeout}
              ,{<<"Wrapup-Timeout">>, AgentWrapup}
