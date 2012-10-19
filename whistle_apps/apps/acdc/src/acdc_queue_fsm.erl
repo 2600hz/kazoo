@@ -397,13 +397,13 @@ connect_req({timeout, Ref, ?COLLECT_RESP_MESSAGE}, #state{collect_ref=Ref
                                                          }=State) ->
     lager:debug("done waiting for agents to respond, picking a winner"),
     case pick_winner(CRs, Strategy, StrategyState) of
-        {[_Winner|_]=Winners, Rest, StrategyState1} ->
-            _ = [acdc_queue:member_connect_win(Srv, Winner, AgentTimeout, AgentWrapup, CallerExitKey)
-                 || Winner <- Winners
+        {[Winner|_]=Agents, Rest, StrategyState1} ->
+            _ = [acdc_queue:member_connect_win(Srv, update_agent(Agent, Winner), AgentTimeout, AgentWrapup, CallerExitKey)
+                 || Agent <- Agents
                 ],
 
-            lager:debug("sending win to ~s(~s)", [wh_json:get_value(<<"Agent-ID">>, _Winner)
-                                                  ,wh_json:get_value(<<"Process-ID">>, _Winner)
+            lager:debug("sending win to ~s(~s)", [wh_json:get_value(<<"Agent-ID">>, Winner)
+                                                  ,wh_json:get_value(<<"Process-ID">>, Winner)
                                                  ]),
             {next_state, connecting, State#state{connect_resps=Rest
                                                  ,collect_ref=undefined
@@ -871,3 +871,6 @@ elapsed({_,_,_}=Time) ->
 
 accept_is_for_call(AcceptJObj, Call) ->
     wh_json:get_value(<<"Call-ID">>, AcceptJObj) =:= whapps_call:call_id(Call).
+
+update_agent(Agent, Winner) ->
+    wh_json:set_value(<<"Agent-Process-ID">>, wh_json:get_value(<<"Process-ID">>, Winner), Agent).
