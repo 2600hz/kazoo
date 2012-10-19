@@ -14,6 +14,7 @@
 -export([acct_stats/1
          ,queue_stats/1, queue_stats/2
          ,agent_stats/1, agent_stats/2
+         ,current_calls/1, current_calls/2
         ]).
 
 %% Stats API
@@ -137,6 +138,34 @@ agent_stats(AcctId, AgentId) ->
                            end, dict:new(), ets:select(?ETS_TABLE, MatchSpec)
                           ),
     wh_json:get_value([<<"agents">>, AgentId], wh_doc:public_fields(fetch_acct_doc(AcctId, AcctDocs))).
+
+current_calls(AcctId) ->
+    current_calls(AcctId, '_').
+current_calls(AcctId, QueueId) ->
+    MatchSpec = [{#stat{acct_id='$1'
+                        ,queue_id='$2'
+                        ,name='$3'
+                        ,_='_'
+                       }
+                  ,[{'=:=', '$1', AcctId}
+                    ,{'=:=', '$2', QueueId}
+                    ,{'=:=', '$3', 'call_waiting'}
+                   ]
+                  ,['$_']
+                 }],
+
+    AcctDocs = lists:foldl(fun(Stat, AcctAcc) ->
+                                   lager:debug("stat: ~p", [Stat]),
+                                   update_stat(AcctAcc, Stat)
+                           end, dict:new(), ets:select(?ETS_TABLE, MatchSpec)
+                          ),
+    current_calls_resp(fetch_acct_doc(AcctId, AcctDocs), QueueId).
+
+current_calls_resp(AcctDoc, '_') ->
+    wh_json:get_value(<<"queues">>, wh_doc:public_fields(AcctDoc), wh_json:new());
+current_calls_resp(AcctDoc, QueueId) ->
+    lager:debug("acct doc: ~p", [wh_json:get_value([<<"queues">>, QueueId, <<"calls">>], wh_doc:public_fields(AcctDoc))]),
+    wh_json:get_value([<<"queues">>, QueueId, <<"calls">>], wh_doc:public_fields(AcctDoc), wh_json:new()).
 
 %% An agent connected with a caller
 -spec call_processed/5 :: (ne_binary(), ne_binary()
@@ -577,8 +606,10 @@ add_call_duration(AcctDoc, QueueId, CallId, Elapsed) ->
                              ,ne_binary(), integer()
                             ) -> wh_json:json_object().
 add_call_waiting(AcctDoc, QueueId, CallId, WaitTime) ->
-    Key = [<<"queues">>, QueueId, <<"calls">>, CallId, <<"entered">>],
-    wh_json:set_value(Key, WaitTime, AcctDoc).
+    Props = [{[<<"queues">>, QueueId, <<"calls">>, CallId, <<"entered">>], WaitTime}
+             ,{[<<"queues">>, QueueId, <<"calls">>, CallId, <<"queue_id">>], QueueId}
+            ],
+    wh_json:set_values(Props, AcctDoc).
 
 -spec add_call_agent/4 :: (wh_json:json_object(), ne_binary()
                                ,ne_binary(), api_binary()

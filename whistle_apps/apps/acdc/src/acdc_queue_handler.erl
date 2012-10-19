@@ -113,10 +113,20 @@ build_stats_resp(AcctId, RespQ, MsgId, [P|Ps], CurrCalls, CurrQueues) ->
 
     CurrentCall = acdc_queue_fsm:current_call(FSM),
     CallId = wh_json:get_value(<<"call_id">>, CurrentCall),
+
+    StatCalls = [{ACallId, ACallData}
+                 || {ACallId, ACallData} <- wh_json:to_proplist(acdc_stats:current_calls(AcctId, QueueId))
+                ],
+
+    CurrentCalls = [KV || {K,V}=KV <- [{CallId, CurrentCall} | StatCalls],
+                          K =/= undefined,
+                          V =/= undefined
+                   ],
+
     QueueCalls = wh_json:get_value(QueueId, CurrCalls, wh_json:new()),
 
     build_stats_resp(AcctId, RespQ, MsgId, Ps
-                     ,wh_json:set_value(QueueId, wh_json:set_value(CallId, CurrentCall, QueueCalls), CurrCalls)
+                     ,wh_json:set_value(QueueId, wh_json:set_values(CurrentCalls, QueueCalls), CurrCalls)
                      ,wh_json:set_value(QueueId, acdc_queue_fsm:status(FSM), CurrQueues)
                     ).
 
