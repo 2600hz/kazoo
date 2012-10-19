@@ -326,13 +326,13 @@ handle_cast({timeout_member_call}, #state{delivery=Delivery
     acdc_queue_shared:ack(Pid, Delivery),
     send_member_call_failure(Q, AcctId, QueueId, MyId, AgentId),
 
-    {noreply, clear_call_state(State)};
+    {noreply, clear_call_state(State), hibernate};
 
 handle_cast({ignore_member_call, Call, Delivery}, #state{shared_pid=Pid}=State) ->
     lager:debug("ignoring member call ~s, moving on", [whapps_call:call_id(Call)]),
     acdc_util:unbind_from_call_events(Call),
     acdc_queue_shared:ack(Pid, Delivery),
-    {noreply, clear_call_state(State)};
+    {noreply, clear_call_state(State), hibernate};
 
 handle_cast({exit_member_call}, #state{delivery=Delivery
                                        ,call=Call
@@ -349,7 +349,7 @@ handle_cast({exit_member_call}, #state{delivery=Delivery
     acdc_queue_shared:ack(Pid, Delivery),
     send_member_call_failure(Q, AcctId, QueueId, MyId, AgentId, <<"Caller exited the queue via DTMF">>),
 
-    {noreply, clear_call_state(State)};
+    {noreply, clear_call_state(State), hibernate};
 
 handle_cast({finish_member_call}, #state{delivery=Delivery
                                          ,call=Call
@@ -366,7 +366,7 @@ handle_cast({finish_member_call}, #state{delivery=Delivery
     acdc_queue_shared:ack(Pid, Delivery),
     send_member_call_success(Q, AcctId, QueueId, MyId, AgentId),
 
-    {noreply, clear_call_state(State)};
+    {noreply, clear_call_state(State), hibernate};
 handle_cast({finish_member_call, _AcceptJObj}, #state{delivery=Delivery
                                                       ,call=Call
                                                       ,shared_pid=Pid
@@ -382,7 +382,7 @@ handle_cast({finish_member_call, _AcceptJObj}, #state{delivery=Delivery
     acdc_queue_shared:ack(Pid, Delivery),
     send_member_call_success(Q, AcctId, QueueId, MyId, AgentId),
 
-    {noreply, clear_call_state(State)};
+    {noreply, clear_call_state(State), hibernate};
 
 handle_cast({cancel_member_call}, #state{delivery=undefined}=State) ->
     lager:debug("empty cancel member, no delivery info"),
@@ -394,7 +394,7 @@ handle_cast({cancel_member_call}, #state{delivery=Delivery
     lager:debug("cancel member_call"),
 
     case maybe_nack(Call, Delivery, Pid) of
-        true -> {noreply, clear_call_state(State)};
+        true -> {noreply, clear_call_state(State), hibernate};
         false ->
             {noreply, State}
     end;
@@ -409,7 +409,7 @@ handle_cast({cancel_member_call, _RejectJObj}, #state{delivery = #'basic.deliver
     lager:debug("agent failed to handle the call, nack"),
 
     case maybe_nack(Call, Delivery, Pid) of
-        true -> {noreply, clear_call_state(State)};
+        true -> {noreply, clear_call_state(State), hibernate};
         false -> {noreply, State}
     end;
 
@@ -593,7 +593,8 @@ is_call_alive(Call) ->
 clear_call_state(#state{acct_id=AcctId
                         ,queue_id=QueueId
                        }=State) ->
-    acdc_util:queue_presence_update(AcctId, QueueId),
+    _ = acdc_util:queue_presence_update(AcctId, QueueId),
+
     State#state{call=undefined
                 ,member_call_queue=undefined
                 ,agent_id=undefined
