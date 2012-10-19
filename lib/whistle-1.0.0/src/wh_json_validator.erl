@@ -40,7 +40,7 @@
 -type fail() :: {'fail', {error_key(), ne_binary()} | wh_json:json_object() | error_proplist()}.
 
 -type error_acc() :: [] | [{[ne_binary(),...], ne_binary()},...].
--type jkey_acc() :: wh_json:json_proplist_key().
+-type jkey_acc() :: wh_json:json_key().
 
 -define(SIMPLE_TYPES, [<<"string">>,<<"number">>,<<"integer">>,<<"boolean">>,<<"object">>
                            ,<<"array">>,<<"null">>,<<"any">>]).

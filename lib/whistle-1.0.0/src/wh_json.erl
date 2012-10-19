@@ -60,7 +60,7 @@
               ,json_string/0, json_strings/0
               ,json_term/0, json_terms/0
               ,json_proplist/0, json_proplist_k/1, json_proplist_kv/2
-              ,json_proplist_key/0
+              ,json_key/0
              ]).
 
 -spec new/0 :: () -> json_object().
@@ -130,13 +130,13 @@ merge_jobjs(?JSON_WRAPPER(Props1)=_JObj1, ?JSON_WRAPPER(_)=JObj2) ->
                         set_value(K, V, JObj2Acc)
                 end, JObj2, Props1).
 
+%% inserts values from JObj2 into JObj1
 -spec merge_recursive/2 :: (json_object(), json_object()) -> json_object().
 -spec merge_recursive/3 :: (json_object(), json_object() | json_term(), json_strings()) -> json_object().
 merge_recursive(JObj1, JObj2) ->
     merge_recursive(JObj1, JObj2, []).
 
-merge_recursive(JObj1, JObj2, Keys) when ?IS_JSON_GUARD(JObj2) ->
-    Prop2 = to_proplist(JObj2),
+merge_recursive(JObj1, ?JSON_WRAPPER(Prop2), Keys) ->
     lists:foldr(fun(Key, J) ->
                         merge_recursive(J, props:get_value(Key, Prop2), [Key|Keys])
                 end, JObj1, props:get_keys(Prop2));

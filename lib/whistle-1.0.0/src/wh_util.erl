@@ -146,8 +146,8 @@ current_account_balance(Ledger) ->
 %% its own hierarchy.
 %% @end
 %%--------------------------------------------------------------------
--spec is_in_account_hierarchy/2 :: ('undefined' | ne_binary(), 'undefined' | ne_binary()) -> boolean().
--spec is_in_account_hierarchy/3 :: ('undefined' | ne_binary(), 'undefined' | ne_binary(), boolean()) -> boolean().
+-spec is_in_account_hierarchy/2 :: (api_binary(), api_binary()) -> boolean().
+-spec is_in_account_hierarchy/3 :: (api_binary(), api_binary(), boolean()) -> boolean().
 
 is_in_account_hierarchy(CheckFor, InAccount) ->
     is_in_account_hierarchy(CheckFor, InAccount, false).
@@ -185,7 +185,7 @@ is_in_account_hierarchy(CheckFor, InAccount, IncludeSelf) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec is_system_admin/1 :: ('undefined' | ne_binary()) -> boolean().
+-spec is_system_admin/1 :: (api_binary()) -> boolean().
 is_system_admin(undefined) -> false;
 is_system_admin(Account) ->
     AccountId = wh_util:format_account_id(Account, raw),
@@ -206,7 +206,7 @@ is_system_admin(Account) ->
 %% false.
 %% @end
 %%--------------------------------------------------------------------
--spec is_account_enabled/1 :: ('undefined' | ne_binary()) -> boolean().
+-spec is_account_enabled/1 :: (api_binary()) -> boolean().
 is_account_enabled(undefined) ->
     true;
 is_account_enabled(AccountId) ->
@@ -236,8 +236,8 @@ is_account_enabled(AccountId) ->
 %% Retrieves the account realm
 %% @end
 %%--------------------------------------------------------------------
--spec get_account_realm/1 :: ('undefined' | ne_binary()) -> 'undefined' | ne_binary().
--spec get_account_realm/2 :: ('undefined' | ne_binary(), ne_binary()) -> 'undefined' | ne_binary().
+-spec get_account_realm/1 :: (api_binary()) -> api_binary().
+-spec get_account_realm/2 :: (api_binary(), ne_binary()) -> api_binary().
 get_account_realm(AccountId) ->
     get_account_realm(
       wh_util:format_account_id(AccountId, encoded)
@@ -347,7 +347,7 @@ join_binary([_|Bins], Sep, Acc) ->
 %% dictionary, failing that the Msg-ID and finally a generic
 %% @end
 %%--------------------------------------------------------------------
--spec put_callid/1 :: (wh_json:json_object() | wh_proplist() | ne_binary()) -> ne_binary() | 'undefined'.
+-spec put_callid/1 :: (wh_json:json_object() | wh_proplist() | ne_binary()) -> api_binary().
 put_callid(?NE_BINARY = CallId) ->
     erlang:put(callid, CallId);
 put_callid(Prop) when is_list(Prop) ->
@@ -362,7 +362,7 @@ put_callid(JObj) ->
 %% tuple for easy processing
 %% @end
 %%--------------------------------------------------------------------
--spec get_event_type/1 :: (wh_json:json_object()) -> {binary() | 'undefined', binary() | 'undefined'}.
+-spec get_event_type/1 :: (wh_json:json_object()) -> {api_binary(), api_binary()}.
 get_event_type(JObj) when not is_list(JObj) -> % guard against json_objects() being passed in
     { wh_json:get_binary_value(<<"Event-Category">>, JObj), wh_json:get_binary_value(<<"Event-Name">>, JObj) }.
 
@@ -372,7 +372,7 @@ get_event_type(JObj) when not is_list(JObj) -> % guard against json_objects() be
 %% Generic helper to get the text value of a XML path
 %% @end
 %%--------------------------------------------------------------------
--spec get_xml_value/2 :: (string(), term()) -> undefined | binary().
+-spec get_xml_value/2 :: (string(), term()) -> api_binary().
 get_xml_value(Paths, Xml) ->
     Path = lists:flatten(Paths),
     try xmerl_xpath:string(Path, Xml) of
@@ -565,7 +565,7 @@ is_proplist(Term) when is_list(Term) ->
 is_proplist(_) ->
     false.
 
--spec to_lower_binary/1 :: (term()) -> 'undefined' | binary().
+-spec to_lower_binary/1 :: (term()) -> api_binary().
 to_lower_binary(undefined) ->
     undefined;
 to_lower_binary(Bin) when is_binary(Bin) ->
@@ -596,7 +596,7 @@ to_lower_char(C) when is_integer(C), 16#C0 =< C, C =< 16#D6 -> C + 32; % from st
 to_lower_char(C) when is_integer(C), 16#D8 =< C, C =< 16#DE -> C + 32; % so we only loop once
 to_lower_char(C) -> C.
 
--spec to_upper_binary/1 :: (term()) -> 'undefined' | binary().
+-spec to_upper_binary/1 :: (term()) -> api_binary().
 to_upper_binary(undefined) ->
     undefined;
 to_upper_binary(Bin) when is_binary(Bin) ->
