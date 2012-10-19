@@ -609,6 +609,7 @@ add_call_waiting(AcctDoc, QueueId, CallId, WaitTime) ->
     Props = [{[<<"queues">>, QueueId, <<"calls">>, CallId, <<"entered">>], WaitTime}
              ,{[<<"queues">>, QueueId, <<"calls">>, CallId, <<"queue_id">>], QueueId}
              ,{[<<"queues">>, QueueId, <<"calls">>, CallId, <<"wait_time">>], wh_util:elapsed_s(WaitTime)}
+             ,{[<<"queues">>, QueueId, <<"calls">>, CallId, <<"call_id">>], CallId}
             ],
     wh_json:set_values(Props, AcctDoc).
 
