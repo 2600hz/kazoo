@@ -368,7 +368,7 @@ fetch_all_queue_stats(#cb_context{account_id=AcctId}=Context, realtime) ->
                                        ,2000
                                       ) of
         {ok, Resps0} ->
-            case [R || R <- Resps0, wapi_acdc_queue:stats_resp_v(R)] of
+            case [strip_api_fields(wh_json:normalize(R)) || R <- Resps0, wapi_acdc_queue:stats_resp_v(R)] of
                 [] ->
                     Context#cb_context{resp_status=success
                                        ,resp_data=wh_json:new()
@@ -376,10 +376,9 @@ fetch_all_queue_stats(#cb_context{account_id=AcctId}=Context, realtime) ->
                                       };
                 Resps1 ->
                     Resp = fold_stats(Resps1),
-                    Resp1 = strip_api_fields(wh_json:normalize(Resp)),
                     Context#cb_context{resp_status=success
-                                       ,resp_data=total_up_stats(Resp1)
-                                       ,doc=Resp1
+                                       ,resp_data=total_up_stats(Resp)
+                                       ,doc=Resp
                                       }
             end;
         {error, _E} ->
