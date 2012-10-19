@@ -40,6 +40,8 @@
          ,put/1
          ,post/2, post/3
          ,delete/2, delete/3
+
+         ,fold_stats/1
         ]).
 
 -include("include/crossbar.hrl").
@@ -361,21 +363,63 @@ fetch_all_queue_stats(#cb_context{account_id=AcctId}=Context, realtime) ->
     Req = [{<<"Account-ID">>, AcctId}
            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    case whapps_util:amqp_pool_request(Req
+    case whapps_util:amqp_pool_collect(Req
                                        ,fun wapi_acdc_queue:publish_stats_req/1
-                                       ,fun wapi_acdc_queue:stats_resp_v/1
                                        ,2000
                                       ) of
-        {ok, Resp} ->
-            Resp1 = strip_api_fields(wh_json:normalize(Resp)),
-            Context#cb_context{resp_status=success
-                               ,resp_data=total_up_stats(Resp1)
-                               ,doc=Resp1
-                              };
+        {ok, Resps0} ->
+            case [R || R <- Resps0, wapi_acdc_queue:stats_resp_v(R)] of
+                [] ->
+                    Context#cb_context{resp_status=success
+                                       ,resp_data=wh_json:new()
+                                       ,doc=wh_json:new()
+                                      };
+                Resps1 ->
+                    Resp = fold_stats(Resps1),
+                    Resp1 = strip_api_fields(wh_json:normalize(Resp)),
+                    Context#cb_context{resp_status=success
+                                       ,resp_data=total_up_stats(Resp1)
+                                       ,doc=Resp1
+                                      }
+            end;
         {error, _E} ->
             lager:debug("failed to fetch stats: ~p", [_E]),
             Context
     end.
+
+fold_stats(Resps) ->
+    fold_stats(Resps, wh_json:new()).
+
+fold_stats([R|Rs], Resp) ->
+    fold_stats(Rs, lists:foldl(fun(K, Acc) -> fold_stat(R, Acc, K) end, Resp, wh_json:get_keys(R)));
+fold_stats([], Resp) -> Resp.
+
+fold_stat(R, Resp, <<"calls_this_hour">> = K) ->
+    CTH = wh_json:get_integer_value(K, R, 0) + wh_json:get_integer_value(K, Resp, 0),
+    wh_json:set_value(K, CTH, Resp);
+fold_stat(R, Resp, <<"current_stats">> = K) ->
+    wh_json:foldl(fun(QK, QV, Acc) ->
+                          fold_queue(K, QK, QV, Acc)
+                  end, Resp, wh_json:get_value(K, R));
+fold_stat(R, Resp, <<"current_calls">> = K) ->
+    Calls = wh_json:get_value(K, R),
+    wh_json:foldl(fun(CallK, CallV, Acc) ->
+                          wh_json:set_value([K, CallK], CallV, Acc)
+                  end, Resp, Calls);
+fold_stat(R, Resp, <<"current_statuses">> = K) ->
+    Statuses = wh_json:get_value(K, R),
+    wh_json:foldl(fun(StatusK, StatusV, Acc) ->
+                          wh_json:set_value([K, StatusK], StatusV, Acc)
+                  end, Resp, Statuses);
+fold_stat(R, Resp, K) ->
+    wh_json:set_value(K, wh_json:get_value(K, R), Resp).
+
+fold_queue(K, <<"calls">> = QK, QV, Resp) ->
+    wh_json:foldl(fun(CallK, CallV, Acc) ->
+                          wh_json:set_value([K, QK, CallK], CallV, Acc)
+                  end, Resp, QV);
+fold_queue(K, QK, QV, Resp) ->
+    wh_json:set_value([K, QK], QV, Resp).
 
 total_up_stats(Stats) ->
     QueuesJObj = wh_json:get_value(<<"current_stats">>, Stats, wh_json:new()),
