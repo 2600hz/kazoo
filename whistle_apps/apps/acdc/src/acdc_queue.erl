@@ -195,7 +195,7 @@ init([Supervisor, QueueJObj]) ->
 
     gen_listener:cast(self(), {start_fsm, Supervisor, QueueJObj}),
 
-    ask_for_queue_name(),
+    fetch_my_queue(),
 
     {ok, #state{
        queue_id = QueueId
@@ -204,12 +204,6 @@ init([Supervisor, QueueJObj]) ->
        ,my_id = acdc_util:proc_id()
        ,moh = wh_json:get_value(<<"moh">>, QueueJObj)
       }}.
-
-ask_for_queue_name() ->
-    Self = self(),
-    spawn(fun() ->
-                  gen_listener:cast(Self, {queue_name, gen_listener:queue_name(Self)})
-          end).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -262,7 +256,7 @@ handle_cast({accept_member_calls}, #state{supervisor=Supervisor
     {noreply, State#state{shared_pid=SharedPid}};
 
 handle_cast({queue_name, <<>>}, #state{my_q=undefined}=State) ->
-    ask_for_queue_name(),
+    fetch_my_queue(),
     {noreply, State};
 handle_cast({queue_name, Q}, State) ->
     lager:debug("my queue: ~s", [Q]),
@@ -418,6 +412,12 @@ handle_cast({cancel_member_call, _MemberCallJObj, Delivery}, #state{shared_pid=P
     acdc_queue_shared:nack(Pid, Delivery),
     {noreply, State};
 
+handle_cast({send_sync_req, _Type}=Msg, #state{my_q=MyQ}=State) when MyQ =:= 'undefined' orelse MyQ =:= <<>> ->
+    fetch_my_queue(),
+    lager:debug("replaying ~p, hopefully we have our queue by then", [Msg]),
+    gen_listener:cast(self(), Msg),
+    {noreply, State};
+
 handle_cast({send_sync_req, Type}, #state{my_q=MyQ
                                           ,my_id=MyId
                                           ,acct_id=AcctId
@@ -552,6 +552,7 @@ send_sync_req(MyQ, MyId, AcctId, QueueId, Type) ->
               ,{<<"Queue-ID">>, QueueId}
               ,{<<"Process-ID">>, MyId}
               ,{<<"Current-Strategy">>, Type}
+              ,{<<"Server-ID">>, MyQ}
               | wh_api:default_headers(MyQ, ?APP_NAME, ?APP_VERSION)
              ]),
     publish(Resp, fun wapi_acdc_queue:publish_sync_req/1).
@@ -621,3 +622,8 @@ publish(Q, Req, F) ->
             _ = [lager:debug("st: ~p", [S]) || S <- ST],
             ok
     end.
+
+fetch_my_queue() ->
+    Self = self(),
+    _ = spawn(fun() -> gen_listener:cast(Self, {queue_name, gen_listener:queue_name(Self)}) end),
+    ok.
