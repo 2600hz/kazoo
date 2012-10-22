@@ -345,6 +345,8 @@ update(Id, #cb_context{req_data=Data}=Context) ->
             crossbar_doc:load_merge(Id, JObj1, Context)
     end.
 
+-spec fetch_all_queue_stats/1 :: (#cb_context{}) -> #cb_context{}.
+-spec fetch_all_queue_stats/2 :: (#cb_context{}, 'history' | 'realtime') -> #cb_context{}.
 fetch_all_queue_stats(Context) ->
     fetch_all_queue_stats(Context, history).
 fetch_all_queue_stats(Context, history) ->
@@ -473,7 +475,7 @@ find_wait_time(CallData, WaitAcc, Tot) ->
     end.
 
 avg_wait(_, 0) -> 0;
-avg_wait(W, C) -> W / C.
+avg_wait(W, C) -> ((W * 100) div C) / 100.
 
 fetch_queue_stats(Id, Context) ->
     fetch_queue_stats(Id, Context, history).
