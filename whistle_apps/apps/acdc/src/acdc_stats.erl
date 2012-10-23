@@ -559,6 +559,24 @@ update_stat(AcctDocs, #call_stat{status='abandoned'
                ,AcctDocs
               );
 
+update_stat(AcctDocs, #call_stat{status='finished'
+                                 ,call_id=CallId
+                                 ,acct_id=AcctId
+                                 ,queue_id=QueueId
+                                 ,started=Started
+                                }) ->
+    AcctDoc = fetch_acct_doc(AcctId, AcctDocs),
+
+    Funs = [{fun add_call_timestamp/4, [QueueId, CallId, Started]}
+            ,{fun add_call_status/4, [QueueId, CallId, <<"finished">>]}
+           ],
+    dict:store(AcctId
+               ,lists:foldl(fun({F, Args}, AcctAcc) ->
+                                    apply(F, [AcctAcc | Args])
+                            end, AcctDoc, Funs)
+               ,AcctDocs
+              );
+
 update_stat(AcctDocs, #call_stat{status='handling'
                                  ,call_id=CallId
                                  ,acct_id=AcctId
