@@ -179,8 +179,9 @@ b_call_status(Call) ->
 %% This request will execute immediately
 %% @end
 %%--------------------------------------------------------------------
--spec channel_status/1 :: ('undefined' | ne_binary() | whapps_call:call()) -> 'ok' |
-                                                                              {'error', 'no_call_id'}.
+-spec channel_status/1 :: ('undefined' | ne_binary() | whapps_call:call()) ->
+                                  'ok' |
+                                  {'error', 'no_channel_id'}.
 channel_status(undefined) ->
     {error, no_channel_id};
 channel_status(CallId) when is_binary(CallId) ->

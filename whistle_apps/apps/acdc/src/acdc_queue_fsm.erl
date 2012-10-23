@@ -239,7 +239,7 @@ init([QueuePid, QueueJObj]) ->
 sync({strategy_sync}, #state{strategy=Type
                              ,queue_proc=Srv
                             }=State) ->
-    lager:debug("sync strategy ~s", [Type]),
+    lager:debug("sync strategy '~s'", [Type]),
     %% send sync_req
     case maybe_send_sync_req(Type, Srv) of
         {true, SyncRef} ->
@@ -318,13 +318,13 @@ ready({member_call, CallJObj, Delivery}, #state{queue_proc=Srv
             {next_state, ready, State}
     end;
 ready({agent_resp, _Resp}, State) ->
-    lager:debug("someone jumped the gun, or was slow on the draw: ~p", [_Resp]),
+    lager:debug("someone jumped the gun, or was slow on the draw"),
     {next_state, ready, State};
 ready({accepted, _AcceptJObj}, State) ->
-    lager:debug("weird to receive an acceptance: ~p", [_AcceptJObj]),
+    lager:debug("weird to receive an acceptance"),
     {next_state, ready, State};
 ready({retry, _RetryJObj}, State) ->
-    lager:debug("weird to receive a retry when we're just hanging here: ~p", [_RetryJObj]),
+    lager:debug("weird to receive a retry when we're just hanging here"),
     {next_state, ready, State};
 ready({member_hungup, _CallEvt}, State) ->
     lager:debug("member hungup from previous call, failed to unbind"),
@@ -397,14 +397,14 @@ connect_req({timeout, Ref, ?COLLECT_RESP_MESSAGE}, #state{collect_ref=Ref
                                                          }=State) ->
     lager:debug("done waiting for agents to respond, picking a winner"),
     case pick_winner(CRs, Strategy, StrategyState) of
-        {Winner, Monitors, Rest, StrategyState1} ->
-            lager:debug("winner chosen: ~s", [wh_json:get_value(<<"Agent-ID">>, Winner)]),
-            acdc_queue:member_connect_win(Srv, Winner, AgentTimeout, AgentWrapup, CallerExitKey),
-            _ = [acdc_queue:member_connect_monitor(Srv, M, AgentWrapup, CallerExitKey)
-                 || M <- Monitors
+        {[Winner|_]=Agents, Rest, StrategyState1} ->
+            _ = [acdc_queue:member_connect_win(Srv, update_agent(Agent, Winner), AgentTimeout, AgentWrapup, CallerExitKey)
+                 || Agent <- Agents
                 ],
 
-            lager:debug("sending win to ~p", [wh_json:get_value(<<"Process-ID">>, Winner)]),
+            lager:debug("sending win to ~s(~s)", [wh_json:get_value(<<"Agent-ID">>, Winner)
+                                                  ,wh_json:get_value(<<"Process-ID">>, Winner)
+                                                 ]),
             {next_state, connecting, State#state{connect_resps=Rest
                                                  ,collect_ref=undefined
                                                  ,strategy_state=StrategyState1
@@ -426,13 +426,23 @@ connect_req({accepted, AcceptJObj}=Accept, #state{member_call=Call}=State) ->
             {next_state, connect_req, State}
     end;
 connect_req({retry, _RetryJObj}, State) ->
-    lager:debug("recv retry response before win sent: ~p", [_RetryJObj]),
+    lager:debug("recv retry response before win sent"),
     {next_state, connect_req, State};
 
-connect_req({member_hungup, JObj}, #state{queue_proc=Srv}=State) ->
-    lager:debug("member hungup before we could assign an agent"),
-    acdc_queue:finish_member_call(Srv, JObj),
-    {next_state, ready, clear_member_call(State)};
+connect_req({member_hungup, JObj}, #state{queue_proc=Srv
+                                          ,member_call=Call
+                                         }=State) ->
+    case wh_json:get_value(<<"Call-ID">>, JObj) =:= whapps_call:call_id(Call) of
+        true ->
+            lager:debug("member hungup before we could assign an agent"),
+            acdc_queue:finish_member_call(Srv, JObj),
+            {next_state, ready, clear_member_call(State)};
+        false ->
+            lager:debug("hangup recv for ~s while processing ~s, ignoring", [wh_json:get_value(<<"Call-ID">>, JObj)
+                                                                             ,whapps_call:call_id(Call)
+                                                                            ]),
+            {next_state, connect_req, State}
+    end;
 
 connect_req({dtmf_pressed, DTMF}, #state{caller_exit_key=DTMF
                                          ,queue_proc=Srv
@@ -501,21 +511,20 @@ connecting({member_call, CallJObj, Delivery}, #state{queue_proc=Srv}=State) ->
     {next_state, connecting, State};
 
 connecting({agent_resp, _Resp}, State) ->
-    lager:debug("agent resp must have just missed cutoff: ~p", [_Resp]),
+    lager:debug("agent resp must have just missed cutoff"),
     {next_state, connecting, State};
 
 connecting({accepted, AcceptJObj}, #state{queue_proc=Srv
-                                          ,member_call_start=Start
                                           ,member_call=Call
                                           ,acct_id=AcctId
                                           ,queue_id=QueueId
                                          }=State) ->
     case accept_is_for_call(AcceptJObj, Call) of
         true ->
-            lager:debug("recv acceptance from agent: ~p", [AcceptJObj]),
+            lager:debug("recv acceptance from agent"),
             acdc_queue:finish_member_call(Srv, AcceptJObj),
             acdc_stats:call_handled(AcctId, QueueId, whapps_call:call_id(Call)
-                                    ,wh_json:get_value(<<"Agent-ID">>, AcceptJObj), wh_util:elapsed_s(Start)
+                                    ,wh_json:get_value(<<"Agent-ID">>, AcceptJObj)
                                    ),
             {next_state, ready, clear_member_call(State)};
         false ->
@@ -523,12 +532,12 @@ connecting({accepted, AcceptJObj}, #state{queue_proc=Srv
             {next_state, connecting, State}
     end;
 
-connecting({retry, RetryJObj}, #state{queue_proc=Srv
+connecting({retry, _RetryJObj}, #state{queue_proc=Srv
                                       ,connect_resps=[]
                                       ,collect_ref=CollectRef
                                       ,agent_ring_timer_ref=AgentRef
                                      }=State) ->
-    lager:debug("recv retry from agent: ~p", [RetryJObj]),
+    lager:debug("recv retry from agent"),
 
     acdc_queue:member_connect_re_req(Srv),
     maybe_stop_timer(CollectRef),
@@ -538,8 +547,8 @@ connecting({retry, RetryJObj}, #state{queue_proc=Srv
                                           ,agent_ring_timer_ref=undefined
                                          }};
 
-connecting({retry, RetryJObj}, #state{agent_ring_timer_ref=AgentRef}=State) ->
-    lager:debug("recv retry from agent: ~p", [RetryJObj]),
+connecting({retry, _RetryJObj}, #state{agent_ring_timer_ref=AgentRef}=State) ->
+    lager:debug("recv retry from agent"),
     lager:debug("but wait, we have others who wanted to try"),
     gen_fsm:send_event(self(), {timeout, undefined, ?COLLECT_RESP_MESSAGE}),
     maybe_stop_timer(AgentRef),
@@ -708,8 +717,7 @@ start_collect_timer() ->
 %% Really sophisticated selection algorithm
 -spec pick_winner/3 :: (wh_json:json_objects(), queue_strategy(), queue_strategy_state()) ->
                                'undefined' |
-                               {wh_json:json_object()
-                                ,wh_json:json_objects()
+                               {wh_json:json_objects()
                                 ,wh_json:json_objects()
                                 ,queue_strategy_state()
                                }.
@@ -718,17 +726,15 @@ pick_winner(CRs, 'rr', AgentQ) ->
     {{value, AgentId}, AgentQ1} = queue:out(AgentQ),
 
     case split_agents(AgentId, CRs) of
-        {[Winner|SameAgents], OtherAgents} ->
-            {Winner, SameAgents, OtherAgents, queue:in(AgentId, AgentQ1)};
-        {[], _O} ->
-            pick_winner(CRs, 'rr', queue:in(AgentId, AgentQ1))
+        {[], _O} -> pick_winner(CRs, 'rr', queue:in(AgentId, AgentQ1));
+        {Winners, OtherAgents} -> {Winners, OtherAgents, queue:in(AgentId, AgentQ1)}
     end;
 pick_winner(CRs, 'mi', _) ->
     [MostIdle | Rest] = lists:usort(fun sort_agent/2, CRs),
     AgentId = wh_json:get_value(<<"Agent-ID">>, MostIdle),
     {Same, Other} = split_agents(AgentId, Rest),
 
-    {MostIdle, Same, Other, undefined}.
+    {[MostIdle|Same], Other, undefined}.
 
 -spec update_strategy_with_agent/3 :: (queue_strategy(), queue_strategy_state(), ne_binary()) ->
                                               queue_strategy_state().
@@ -864,3 +870,6 @@ elapsed({_,_,_}=Time) ->
 
 accept_is_for_call(AcceptJObj, Call) ->
     wh_json:get_value(<<"Call-ID">>, AcceptJObj) =:= whapps_call:call_id(Call).
+
+update_agent(Agent, Winner) ->
+    wh_json:set_value(<<"Agent-Process-ID">>, wh_json:get_value(<<"Process-ID">>, Winner), Agent).

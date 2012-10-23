@@ -40,6 +40,8 @@
          ,put/1
          ,post/2, post/3
          ,delete/2, delete/3
+
+         ,fold_stats/1
         ]).
 
 -include("include/crossbar.hrl").
@@ -343,6 +345,8 @@ update(Id, #cb_context{req_data=Data}=Context) ->
             crossbar_doc:load_merge(Id, JObj1, Context)
     end.
 
+-spec fetch_all_queue_stats/1 :: (#cb_context{}) -> #cb_context{}.
+-spec fetch_all_queue_stats/2 :: (#cb_context{}, 'history' | 'realtime') -> #cb_context{}.
 fetch_all_queue_stats(Context) ->
     fetch_all_queue_stats(Context, history).
 fetch_all_queue_stats(Context, history) ->
@@ -361,21 +365,74 @@ fetch_all_queue_stats(#cb_context{account_id=AcctId}=Context, realtime) ->
     Req = [{<<"Account-ID">>, AcctId}
            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    case whapps_util:amqp_pool_request(Req
+    case whapps_util:amqp_pool_collect(Req
                                        ,fun wapi_acdc_queue:publish_stats_req/1
-                                       ,fun wapi_acdc_queue:stats_resp_v/1
-                                       ,2000
+                                       ,1000
                                       ) of
-        {ok, Resp} ->
-            Resp1 = strip_api_fields(wh_json:normalize(Resp)),
-            Context#cb_context{resp_status=success
-                               ,resp_data=total_up_stats(Resp1)
-                               ,doc=Resp1
-                              };
+        {ok, Resps0} ->
+            case [strip_api_fields(wh_json:normalize(R)) || R <- Resps0, wapi_acdc_queue:stats_resp_v(R)] of
+                [] ->
+                    Context#cb_context{resp_status=success
+                                       ,resp_data=wh_json:new()
+                                       ,doc=wh_json:new()
+                                      };
+                Resps1 ->
+                    Resp = fold_stats(Resps1),
+                    Totaled = total_up_stats(Resp),
+
+                    lager:debug("acdc queue stats: ~p", [Totaled]),
+
+                    Context#cb_context{resp_status=success
+                                       ,resp_data=Totaled
+                                       ,doc=Resp
+                                      }
+            end;
         {error, _E} ->
             lager:debug("failed to fetch stats: ~p", [_E]),
             Context
     end.
+
+fold_stats([]) -> wh_json:new();
+fold_stats([R|Rs]) ->
+    fold_stats(Rs, R).
+
+fold_stats([R|Rs], Resp) ->
+    fold_stats(Rs, lists:foldl(fun(K, Acc) -> fold_stat(R, Acc, K) end, Resp, wh_json:get_keys(R)));
+fold_stats([], Resp) -> Resp.
+
+fold_stat(R, Resp, <<"calls_this_hour">> = K) ->
+    CTH = wh_json:get_integer_value(K, R, 0) + wh_json:get_integer_value(K, Resp, 0),
+    wh_json:set_value(K, CTH, Resp);
+
+fold_stat(R, Resp, <<"current_stats">> = K) ->
+    wh_json:foldl(fun(QID, QV, Acc) ->
+                          fold_queue(K, QID, QV, Acc)
+                  end, Resp, wh_json:get_value(K, R, wh_json:new()));
+
+fold_stat(R, Resp, <<"current_calls">> = K) ->
+    wh_json:foldl(fun(CallK, CallV, Acc) ->
+                          wh_json:set_value([K, CallK], CallV, Acc)
+                  end, Resp, wh_json:get_value(K, R, wh_json:new()));
+
+fold_stat(R, Resp, <<"current_statuses">> = K) ->
+    Statuses = wh_json:get_value(K, R),
+    wh_json:foldl(fun(StatusK, StatusV, Acc) ->
+                          wh_json:set_value([K, StatusK], StatusV, Acc)
+                  end, Resp, Statuses);
+fold_stat(R, Resp, K) ->
+    wh_json:set_value(K, wh_json:get_value(K, R), Resp).
+
+-spec fold_queue/4 :: (wh_json:json_key(), ne_binary(), wh_json:json_object(), wh_json:json_object()) ->
+                              wh_json:json_object().
+fold_queue(K, QID, QV, Resp) ->
+    wh_json:foldl(fun(<<"calls">> = CallK, CallV, Acc) ->
+                          Key = [K, QID, CallK],
+                          AccCallV = wh_json:get_value(Key, Acc, wh_json:new()),
+
+                          wh_json:set_value(Key, wh_json:merge_recursive(CallV, AccCallV), Acc);
+                     (QKey, QVal, Acc) ->
+                          wh_json:set_value([K, QID, QKey], QVal, Acc)
+                  end, Resp, QV).
 
 total_up_stats(Stats) ->
     QueuesJObj = wh_json:get_value(<<"current_stats">>, Stats, wh_json:new()),
@@ -417,7 +474,7 @@ find_wait_time(CallData, WaitAcc, Tot) ->
     end.
 
 avg_wait(_, 0) -> 0;
-avg_wait(W, C) -> W / C.
+avg_wait(W, C) -> ((W * 100) div C) / 100.
 
 fetch_queue_stats(Id, Context) ->
     fetch_queue_stats(Id, Context, history).
@@ -503,3 +560,133 @@ strip_api_fields(JObj) ->
                  ,<<"node">>, <<"msg_id">>, <<"server_id">>
             ],
     wh_json:filter(fun({K,_}) -> not lists:member(K, Strip) end, JObj).
+
+%% {[{<<"current_stats">>
+%%        ,{[{<<"55048d29e7fb29061f8c5ef0ae2dbbb9">>
+%%                ,{[{<<"calls">>
+%%                        ,{[{<<"76714966">>
+%%                                ,{[{<<"wait_time">>
+%%                                        ,7}
+%%                                   ,{<<"timestamp">>
+%%                                         ,63517892418}]}}
+%%                           ,{<<"1619546012">>
+%%                                 ,{[{<<"abandoned">>
+%%                                         ,<<"member_hangup">>}
+%%                                    ,{<<"timestamp">>
+%%                                          ,63517892617}]}}
+%%                           ,{<<"948285573">>
+%%                                 ,{[{<<"abandoned">>
+%%                                         ,<<"member_hangup">>}
+%%                                    ,{<<"timestamp">>
+%%                                          ,63517892633}]}}
+%%                           ,{<<"1847732656">>
+%%                                 ,{[{<<"wait_time">>
+%%                                         ,8}
+%%                                    ,{<<"timestamp">>
+%%                                          ,63517892814}
+%%                                    ,{<<"duration">>
+%%                                          ,169}
+%%                                    ,{<<"agent_id">>
+%%                                          ,<<"934a5d7bfc8a097d535297caab004b0e">>}]}}
+%%                           ,{<<"2108908609">>
+%%                                 ,{[{<<"entered">>
+%%                                         ,63517892912}
+%%                                    ,{<<"duration">>
+%%                                          ,163}
+%%                                    ,{<<"agent_id">>
+%%                                          ,<<"934a5d7bfc8a097d535297caab004b0e">>}
+%%                                    ,{<<"timestamp">>
+%%                                          ,63517893079}]}}]}}]}}]}}
+%%   ,{<<"account_id">>
+%%         ,<<"934a5d7bfc8a097d535297caab003839">>}]}
+
+%% {[{<<"current_stats">>
+%%        ,{[{<<"55048d29e7fb29061f8c5ef0ae2dbbb9">>
+%%                ,{[{<<"calls">>
+%%                        ,{[{<<"76714966">>
+%%                                ,{[{<<"duration">>
+%%                                        ,6}
+%%                                   ,{<<"agent_id">>
+%%                                         ,<<"934a5d7bfc8a097d535297caab004b0e">>}
+%%                                   ,{<<"timestamp">>
+%%                                         ,63517892420}]}}
+%%                           ,{<<"1619546012">>
+%%                                 ,{[{<<"entered">>
+%%                                         ,63517892612}
+%%                                    ,{<<"abandoned">>
+%%                                          ,<<"member_hangup">>}
+%%                                    ,{<<"timestamp">>
+%%                                          ,63517892617}]}}
+%%                           ,{<<"948285573">>
+%%                                 ,{[{<<"entered">>
+%%                                         ,63517892628}
+%%                                    ,{<<"abandoned">>
+%%                                          ,<<"member_hangup">>}
+%%                                    ,{<<"timestamp">>
+%%                                          ,63517892633}]}}
+%%                           ,{<<"1847732656">>
+%%                                 ,{[{<<"entered">>
+%%                                         ,63517892641}]}}
+%%                           ,{<<"2108908609">>
+%%                                 ,{[{<<"wait_time">>
+%%                                         ,7}
+%%                                    ,{<<"timestamp">>
+%%                                          ,63517893079}
+%%                                    ,{<<"duration">>
+%%                                          ,163}
+%%                                    ,{<<"agent_id">>
+%%                                          ,<<"934a5d7bfc8a097d535297caab004b0e">>}]}}]}}]}}]}}
+%%   ,{<<"account_id">>
+%%         ,<<"934a5d7bfc8a097d535297caab003839">>}]}
+
+
+
+
+
+
+%% {[{<<"current_stats">>
+%%        ,{[{<<"55048d29e7fb29061f8c5ef0ae2dbbb9">>
+%%                ,{[{<<"calls">>
+%%                        ,{[{<<"76714966">>
+%%                                ,{[{<<"duration">>
+%%                                        ,6}
+%%                                   ,{<<"agent_id">>
+%%                                         ,<<"934a5d7bfc8a097d535297caab004b0e">>}
+%%                                   ,{<<"timestamp">>
+%%                                         ,63517892420}]}}
+%%                           ,{<<"1619546012">>
+%%                                 ,{[{<<"entered">>
+%%                                         ,63517892612}
+%%                                    ,{<<"abandoned">>
+%%                                          ,<<"member_hangup">>}
+%%                                    ,{<<"timestamp">>
+%%                                          ,63517892617}]}}
+%%                           ,{<<"948285573">>
+%%                                 ,{[{<<"entered">>
+%%                                         ,63517892628}
+%%                                    ,{<<"abandoned">>
+%%                                          ,<<"member_hangup">>}
+%%                                    ,{<<"timestamp">>
+%%                                          ,63517892633}]}}
+%%                           ,{<<"1847732656">>
+%%                                 ,{[{<<"entered">>
+%%                                         ,63517892641}]}}
+%%                           ,{<<"2108908609">>
+%%                                 ,{[{<<"wait_time">>
+%%                                         ,7}
+%%                                    ,{<<"timestamp">>
+%%                                          ,63517893079}
+%%                                    ,{<<"duration">>
+%%                                          ,163}
+%%                                    ,{<<"agent_id">>
+%%                                          ,<<"934a5d7bfc8a097d535297caab004b0e">>}]}}]}}
+%%                   ,{<<"avg_wait_time_this_hour">>
+%%                         ,5.666666666666667}
+%%                   ,{<<"calls_this_hour">>
+%%                         ,3}]}}]}}
+%%   ,{<<"account_id">>
+%%         ,<<"934a5d7bfc8a097d535297caab003839">>}
+%%   ,{<<"avg_wait_time_this_hour">>
+%%         ,5.666666666666667}
+%%   ,{<<"calls_this_hour">>
+%%         ,3}]}

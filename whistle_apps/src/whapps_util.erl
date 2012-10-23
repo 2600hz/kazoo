@@ -26,7 +26,9 @@
 -export([rm_aggregate_device/2]).
 -export([get_destination/3]).
 -export([get_prompt/2, get_prompt/3]).
--export([amqp_pool_request/3, amqp_pool_request/4]).
+-export([amqp_pool_request/3, amqp_pool_request/4
+         ,amqp_pool_collect/2, amqp_pool_collect/3
+        ]).
 -export([write_tts_file/2]).
 
 -include("whistle_apps.hrl").
@@ -418,16 +420,30 @@ rm_aggregate_device(Db, Device) ->
 -spec amqp_pool_request/3 :: (api_terms(), wh_amqp_worker:publish_fun(), wh_amqp_worker:validate_fun()) ->
                                      {'ok', wh_json:json_object()} |
                                      {'error', any()}.
--spec amqp_pool_request/4 :: (api_terms(), wh_amqp_worker:publish_fun(), wh_amqp_worker:validate_fun(), pos_integer() | 'infinity') ->
+-spec amqp_pool_request/4 :: (api_terms(), wh_amqp_worker:publish_fun(), wh_amqp_worker:validate_fun(), wh_timeout()) ->
                                      {'ok', wh_json:json_object()} |
                                      {'error', any()}.
 amqp_pool_request(Api, PubFun, ValidateFun) when is_function(PubFun, 1), is_function(ValidateFun, 1) ->
     amqp_pool_request(Api, PubFun, ValidateFun, wh_amqp_worker:default_timeout()).
 amqp_pool_request(Api, PubFun, ValidateFun, Timeout) when is_function(PubFun, 1),
                                                           is_function(ValidateFun, 1),
-                                                          ((is_integer(Timeout) andalso Timeout > 0)
+                                                          ((is_integer(Timeout) andalso Timeout >= 0)
                                                            orelse Timeout =:= 'infinity') ->
     wh_amqp_worker:call(?WHAPPS_AMQP_POOL, Api, PubFun, ValidateFun, Timeout).
+
+-spec amqp_pool_collect/2 :: (api_terms(), wh_amqp_worker:publish_fun()) ->
+                                     {'ok', wh_json:json_objects()} |
+                                     {'error', any()}.
+-spec amqp_pool_collect/3 :: (api_terms(), wh_amqp_worker:publish_fun(), wh_timeout()) ->
+                                     {'ok', wh_json:json_objects()} |
+                                     {'error', any()}.
+amqp_pool_collect(Api, PubFun) when is_function(PubFun, 1) ->
+    amqp_pool_collect(Api, PubFun, wh_amqp_worker:default_timeout()).
+amqp_pool_collect(Api, PubFun, Timeout) when is_function(PubFun, 1),
+                                             ((is_integer(Timeout) andalso Timeout >= 0)
+                                              orelse Timeout =:= 'infinity'
+                                             ) ->
+    wh_amqp_worker:call_collect(?WHAPPS_AMQP_POOL, Api, PubFun, Timeout).
 
 %%--------------------------------------------------------------------
 %% @public

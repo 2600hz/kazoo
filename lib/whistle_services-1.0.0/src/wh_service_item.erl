@@ -35,15 +35,15 @@
 -export([set_bookkeepers/2]).
 -export([bookkeeper/2]).
 
--record(wh_service_item, {category = undefined
-                          ,item = undefined
-                          ,quantity = 0
-                          ,rate = undefined
-                          ,single_discount = false
-                          ,single_discount_rate = 0.00
-                          ,cumulative_discount = 0
-                          ,cumulative_discount_rate = 0.00
-                          ,bookkeepers = wh_json:new()
+-record(wh_service_item, {category :: api_binary()
+                          ,item :: api_binary()
+                          ,quantity = 0 :: integer()
+                          ,rate :: api_binary()
+                          ,single_discount = 'false' :: boolean()
+                          ,single_discount_rate = 0.00 :: float()
+                          ,cumulative_discount = 0 :: integer()
+                          ,cumulative_discount_rate = 0.00 :: float()
+                          ,bookkeepers = wh_json:new() :: wh_json:json_object()
                          }).
 
 -type(item() :: #wh_service_item{}).
@@ -67,7 +67,7 @@ empty() ->
 %% 
 %% @end
 %%--------------------------------------------------------------------
--spec category/1 :: (#wh_service_item{}) -> 'undefined' | ne_binary().
+-spec category/1 :: (#wh_service_item{}) -> api_binary().
 category(#wh_service_item{category=Category}) ->
     Category.
 
@@ -88,7 +88,7 @@ set_category(Category, #wh_service_item{}=ServiceItem) ->
 %% 
 %% @end
 %%--------------------------------------------------------------------
--spec item/1 :: (#wh_service_item{}) -> 'undefined' | ne_binary().
+-spec item/1 :: (#wh_service_item{}) -> api_binary().
 item(#wh_service_item{item=Item}) ->
     Item.
 
@@ -108,7 +108,7 @@ set_item(Item, #wh_service_item{}=ServiceItem) ->
 %% 
 %% @end
 %%--------------------------------------------------------------------
--spec quantity/1 :: (#wh_service_item{}) -> 'undefined' | ne_binary().
+-spec quantity/1 :: (#wh_service_item{}) -> api_binary().
 quantity(#wh_service_item{quantity=Quantity}) ->
     Quantity.
 
@@ -128,7 +128,7 @@ set_quantity(Quantity, #wh_service_item{}=ServiceItem) ->
 %% 
 %% @end
 %%--------------------------------------------------------------------
--spec rate/1 :: (#wh_service_item{}) -> 'undefined' | ne_binary().
+-spec rate/1 :: (#wh_service_item{}) -> api_binary().
 rate(#wh_service_item{rate=Rate}) ->
     Rate.
 
@@ -148,7 +148,7 @@ set_rate(Rate, #wh_service_item{}=ServiceItem) ->
 %% 
 %% @end
 %%--------------------------------------------------------------------
--spec single_discount/1 :: (#wh_service_item{}) -> 'undefined' | ne_binary().
+-spec single_discount/1 :: (#wh_service_item{}) -> api_binary().
 single_discount(#wh_service_item{single_discount=SingleDiscount}) ->
     SingleDiscount.
 
@@ -168,7 +168,7 @@ set_single_discount(SingleDiscount, #wh_service_item{}=ServiceItem) ->
 %% 
 %% @end
 %%--------------------------------------------------------------------
--spec single_discount_rate/1 :: (#wh_service_item{}) -> 'undefined' | ne_binary().
+-spec single_discount_rate/1 :: (#wh_service_item{}) -> api_binary().
 single_discount_rate(#wh_service_item{single_discount_rate=Rate}) ->
     Rate.
 
@@ -188,7 +188,7 @@ set_single_discount_rate(Rate, #wh_service_item{}=ServiceItem) ->
 %% 
 %% @end
 %%--------------------------------------------------------------------
--spec cumulative_discount/1 :: (#wh_service_item{}) -> 'undefined' | ne_binary().
+-spec cumulative_discount/1 :: (#wh_service_item{}) -> api_binary().
 cumulative_discount(#wh_service_item{cumulative_discount=Quantity}) ->
     Quantity.
 
@@ -208,7 +208,7 @@ set_cumulative_discount(Quantity, #wh_service_item{}=ServiceItem) ->
 %% 
 %% @end
 %%--------------------------------------------------------------------
--spec cumulative_discount_rate/1 :: (#wh_service_item{}) -> 'undefined' | ne_binary().
+-spec cumulative_discount_rate/1 :: (#wh_service_item{}) -> api_binary().
 cumulative_discount_rate(#wh_service_item{cumulative_discount_rate=Rate}) ->
     Rate.
 
@@ -228,7 +228,7 @@ set_cumulative_discount_rate(Rate, #wh_service_item{}=ServiceItem) ->
 %% 
 %% @end
 %%--------------------------------------------------------------------
--spec bookkeeper/2 :: (ne_binary(), #wh_service_item{}) -> 'undefined' | term().
+-spec bookkeeper/2 :: (wh_json:json_key(), #wh_service_item{}) -> 'undefined' | term().
 bookkeeper(Bookkeeper, #wh_service_item{bookkeepers=Bookkeepers}) ->
     wh_json:get_ne_value(Bookkeeper, Bookkeepers).
 

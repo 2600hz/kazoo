@@ -109,8 +109,8 @@ process_message(Call, Timeout, Start, Wait, JObj, {<<"call_event">>, <<"DTMF">>}
 process_message(Call, _, Start, _Wait, _JObj, {<<"member">>, <<"call_success">>}) ->
     lager:debug("call was processed by queue (took ~b s)", [wh_util:elapsed_s(Start)]),
     cf_exe:control_usurped(Call);
-process_message(Call, Timeout, Start, Wait, JObj, _Type) ->
-    lager:debug("recv unhandled type: ~p: ~s", [_Type, wh_json:get_value(<<"Application-Name">>, JObj)]),
+process_message(Call, Timeout, Start, Wait, _JObj, _Type) ->
+    %% lager:debug("recv unhandled type: ~p: ~s", [_Type, wh_json:get_value(<<"Application-Name">>, _JObj)]),
     wait_for_bridge(Call, reduce_timeout(Timeout, wh_util:elapsed_ms(Wait)), Start).
 
 -spec reduce_timeout/2 :: (max_wait(), integer()) -> max_wait().
