@@ -570,7 +570,7 @@ update_stat(AcctDocs, #call_stat{status='handling'
                                 }) ->
     AcctDoc = fetch_acct_doc(AcctId, AcctDocs),
 
-    Funs = [{fun add_call_handling/4, [QueueId, CallId, Started]}
+    Funs = [{fun add_call_waiting/4, [QueueId, CallId, Waited]}
             ,{fun add_call_timestamp/4, [QueueId, CallId, Started]}
             ,{fun add_call_status/4, [QueueId, CallId, <<"handling">>]}
             ,{fun add_call_wait/4, [QueueId, CallId, Waited]}
@@ -668,9 +668,9 @@ add_call_abandoned(AcctDoc, QueueId, CallId, Reason) ->
     Key = [<<"queues">>, QueueId, <<"calls">>, CallId, <<"abandoned">>],
     wh_json:set_value(Key, Reason, AcctDoc).
 
-add_call_handling(AcctDoc, QueueId, CallId, Elapsed) ->
-    Key = [<<"queues">>, QueueId, <<"calls">>, CallId, <<"wait_time">>],
-    wh_json:set_value(Key, Elapsed, AcctDoc).
+add_call_handling(AcctDoc, QueueId, CallId, AgentId) ->
+    Key = [<<"queues">>, QueueId, <<"calls">>, CallId, <<"agent_id">>],
+    wh_json:set_value(Key, AgentId, AcctDoc).
 
 add_call_status(AcctDoc, QueueId, CallId, Status) ->
     Key = [<<"queues">>, QueueId, <<"calls">>, CallId, <<"status">>],
