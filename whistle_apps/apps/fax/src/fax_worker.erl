@@ -485,12 +485,14 @@ normalize_content_type(CT) ->
 
 -spec send_fax/3 :: (ne_binary(), wh_json:json_object(), ne_binary()) -> 'ok'.
 send_fax(JobId, JObj, Q) ->
+    IgnoreEarlyMedia = wh_util:to_binary(whapps_config:get_is_true(?CONFIG_CAT, <<"ignore_early_media">>, false)),
     Request = [{<<"Outgoing-Caller-ID-Name">>, wh_json:get_value(<<"from_name">>, JObj)}
                ,{<<"Outgoing-Caller-ID-Number">>, wh_json:get_value(<<"from_number">>, JObj)}
                ,{<<"Account-ID">>, wh_json:get_value(<<"pvt_account_id">>, JObj)}
                ,{<<"To-DID">>, wnm_util:to_e164(wh_json:get_value(<<"to_number">>, JObj))}
                ,{<<"Resource-Type">>, <<"originate">>}
                ,{<<"Msg-ID">>, JobId}
+               ,{<<"Ignore-Early-Media">>, IgnoreEarlyMedia}
                ,{<<"Custom-Channel-Vars">>, wh_json:from_list([{<<"Authorizing-ID">>, JobId}
                                                                ,{<<"Authorizing-Type">>, <<"outbound_fax">>}
                                                               ])}
