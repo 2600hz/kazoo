@@ -23,6 +23,7 @@
          ,call_missed/4
          ,call_handled/4
          ,call_waiting/3
+         ,call_finished/1
 
          %% Agent-specific stats
          ,agent_active/2
@@ -53,6 +54,12 @@
 
 -define(ETS_TABLE, ?MODULE).
 
+-type call_status() :: 'waiting'    % caller is waiting for an agent
+                     | 'handling'   % caller is being handled by an agent (still active)
+                     | 'finished'   % caller has finished (probably by another node)
+                     | 'processed'  % caller has finished, handled by us
+                     | 'abandoned'. % caller left the queue (hangup or dtmf exit)
+
 -record(call_stat, {
           call_id :: ne_binary() | '$1' | '_'
           ,acct_id :: ne_binary() | '$1' | '_'
@@ -63,7 +70,7 @@
           ,wait_time :: integer() | '_' % how long was caller on hold
           ,talk_time :: integer() | '_' % how long was agent connected to caller
           ,abandon_reason :: abandon_reason() | '_'
-          ,status :: 'waiting' | 'handling' | 'processed' | 'missed' | 'abandoned' | '_'
+          ,status :: call_status() | '_' | '$3'
          }).
 -type call_stat() :: #call_stat{}.
 
@@ -152,11 +159,12 @@ current_calls(AcctId) ->
 current_calls(AcctId, QueueId) ->
     MatchSpec = [{#call_stat{acct_id='$1'
                              ,queue_id='$2'
-                             ,status='waiting'
+                             ,status='$3'
                              ,_='_'
                             }
                   ,[{'=:=', '$1', AcctId}
                     ,{'=:=', '$2', QueueId}
+                    ,{'=:=', '$3', 'waiting'}
                    ]
                   ,['$_']
                  }],
@@ -248,6 +256,17 @@ call_handled(AcctId, QueueId, CallId, AgentId) ->
                                                           ,status='handling'
                                                          }
                                }).
+
+-spec call_finished/1 :: (ne_binary()) -> 'ok'.
+call_finished(CallId) ->
+    case find_call_stat(CallId) of
+        #call_stat{status=waiting}=CallStat ->
+            %% call hungup, note it and move it out of waiting
+            gen_listener:cast(?MODULE, {store, CallStat#call_stat{status='finished'}});
+        _CallStat ->
+            %% call hungup, but someone else updated it
+            ok
+    end.
 
 %% Call was placed in the AMQP Queue
 -spec call_waiting/3 :: (ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
