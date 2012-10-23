@@ -110,6 +110,11 @@ wait_for_offnet() ->
                     {wh_json:get_value(<<"Response-Message">>, JObj)
                      ,wh_json:get_value(<<"Response-Code">>, JObj)
                     };
+                { <<"call_event">>, <<"CHANNEL_DESTROY">> } ->
+                    lager:debug("recv channel destroy"),
+                    {wh_json:get_value(<<"Hangup-Cause">>, JObj)
+                     ,wh_json:get_value(<<"Hangup-Code">>, JObj)
+                    };
                 _ ->
                     wait_for_offnet()
             end;
