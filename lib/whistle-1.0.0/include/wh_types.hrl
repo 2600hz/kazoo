@@ -69,6 +69,8 @@
 -type wh_datetime() :: calendar:t_datetime(). %%{wh_date(), wh_time()}.
 -type wh_iso_week() :: calendar:t_yearweeknum(). %%{wh_year(), wh_weeknum()}.
 
+-type wh_timeout() :: non_neg_integer() | 'infinity'.
+
 %% Recreate the non-exported types defined in the erlang supervisor source
 -type sup_child_spec() :: supervisor:child_spec().
 -type sup_child_specs() :: [sup_child_spec()] | [].

@@ -177,7 +177,7 @@ fetch_or_create_subscription(PlanId, #wh_service_updates{bt_subscriptions=Subscr
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec braintree_plan_addon_id/1 :: (wh_service_items:item()) -> {'undefined' | ne_binary(), 'undefined' | ne_binary()}.
+-spec braintree_plan_addon_id/1 :: (wh_service_items:item()) -> {api_binary(), api_binary()}.
 braintree_plan_addon_id(ServiceItem) ->
     JObj = wh_service_item:bookkeeper(<<"braintree">>, ServiceItem),
     {wh_json:get_value(<<"plan">>, JObj), wh_json:get_value(<<"addon">>, JObj)}.
@@ -188,7 +188,7 @@ braintree_plan_addon_id(ServiceItem) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec braintree_cumulative_discount_id/1 :: (wh_service_items:item()) -> {'undefined' | ne_binary(), 'undefined' | ne_binary()}.
+-spec braintree_cumulative_discount_id/1 :: (wh_service_item:item()) -> api_binary().
 braintree_cumulative_discount_id(ServiceItem) ->
     wh_service_item:bookkeeper([<<"braintree">>, <<"discounts">>, <<"cumulative">>], ServiceItem).
 
@@ -198,6 +198,6 @@ braintree_cumulative_discount_id(ServiceItem) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec braintree_single_discount_id/1 :: (wh_service_items:item()) -> {'undefined' | ne_binary(), 'undefined' | ne_binary()}.
+-spec braintree_single_discount_id/1 :: (wh_service_items:item()) -> {api_binary(), api_binary()}.
 braintree_single_discount_id(ServiceItem) ->
     wh_service_item:bookkeeper([<<"braintree">>, <<"discounts">>, <<"single">>], ServiceItem).

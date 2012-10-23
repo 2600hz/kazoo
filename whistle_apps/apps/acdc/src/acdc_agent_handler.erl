@@ -27,23 +27,39 @@ handle_status_update(JObj, _Props) ->
     Timeout = wh_json:get_integer_value(<<"Time-Limit">>, JObj, whapps_config:get(<<"acdc">>, <<"default_agent_pause_timeout">>, 600)),
 
     case wh_json:get_value(<<"Event-Name">>, JObj) of
-        <<"login">> -> maybe_start_agent(AcctId, AgentId);
-        <<"logout">> -> maybe_stop_agent(AcctId, AgentId);
-        <<"pause">> -> maybe_pause_agent(AcctId, AgentId, Timeout);
-        <<"resume">> -> maybe_resume_agent(AcctId, AgentId);
+        <<"login">> ->
+            true = wapi_acdc_agent:login_v(JObj),
+            maybe_start_agent(AcctId, AgentId);
+        <<"logout">> ->
+            true = wapi_acdc_agent:logout_v(JObj),
+            maybe_stop_agent(AcctId, AgentId);
+        <<"pause">> ->
+            true = wapi_acdc_agent:pause_v(JObj),
+            maybe_pause_agent(AcctId, AgentId, Timeout);
+        <<"resume">> ->
+            true = wapi_acdc_agent:resume_v(JObj),
+            maybe_resume_agent(AcctId, AgentId);
         Event -> maybe_agent_queue_change(AcctId, AgentId, Event
-                                          ,wh_json:get_value(<<"AgentId-ID">>, JObj)
+                                          ,wh_json:get_value(<<"Queue-ID">>, JObj)
                                          )
     end.
 
-maybe_agent_queue_change(AcctId, AgentId, <<"login_agent">>, AgentId) ->
-    update_agent(acdc_agents_sup:find_agent_supervisor(AcctId, AgentId), AgentId, add_acdc_agent);
-maybe_agent_queue_change(AcctId, AgentId, <<"logout_agent">>, AgentId) ->
-    update_agent(acdc_agents_sup:find_agent_supervisor(AcctId, AgentId), AgentId, rm_acdc_agent).
+maybe_agent_queue_change(AcctId, AgentId, <<"login_queue">>, QueueId) ->
+    update_agent(acdc_agents_sup:find_agent_supervisor(AcctId, AgentId)
+                 ,QueueId
+                 ,fun acdc_agent:add_acdc_queue/2
+                );
+maybe_agent_queue_change(AcctId, AgentId, <<"logout_queue">>, QueueId) ->
+    update_agent(acdc_agents_sup:find_agent_supervisor(AcctId, AgentId)
+                 ,QueueId
+                 ,fun acdc_agent:rm_acdc_queue/2
+                );
+maybe_agent_queue_change(_AcctId, _AgentId, _Evt, _QueueId) ->
+    lager:debug("unhandled evt: ~s for ~s", [_Evt, _QueueId]).
 
 update_agent(undefined, _, _) -> ok;
-update_agent(Super, Q, F) -> 
-    acdc_agent:F(acdc_agent_sup:agent(Super), Q).
+update_agent(Super, Q, F) when is_pid(Super) -> 
+    F(acdc_agent_sup:agent(Super), Q).
 
 maybe_start_agent(AcctId, AgentId) ->
     case acdc_agents_sup:find_agent_supervisor(AcctId, AgentId) of
@@ -88,14 +104,17 @@ maybe_resume_agent(AcctId, AgentId) ->
 
 -spec handle_sync_req/2 :: (wh_json:json_object(), wh_proplist()) -> 'ok'.
 handle_sync_req(JObj, Props) ->
+    true = wapi_acdc_agent:sync_req_v(JObj),
     acdc_agent_fsm:sync_req(props:get_value(fsm_pid, Props), JObj).
 
 -spec handle_sync_resp/2 :: (wh_json:json_object(), wh_proplist()) -> 'ok'.
 handle_sync_resp(JObj, Props) ->
+    true = wapi_acdc_agent:sync_resp_v(JObj),
     acdc_agent_fsm:sync_resp(props:get_value(fsm_pid, Props), JObj).
 
 -spec handle_call_event/2 :: (wh_json:json_object(), wh_proplist()) -> 'ok'.
 handle_call_event(JObj, Props) ->
+    true = wapi_call:event_v(JObj),
     {Cat, Name} = wh_util:get_event_type(JObj),
     acdc_agent_fsm:call_event(props:get_value(fsm_pid, Props), Cat, Name, JObj).    
 
@@ -105,11 +124,11 @@ handle_member_message(JObj, Props) ->
     handle_member_message(JObj, Props, wh_json:get_value(<<"Event-Name">>, JObj)).
 
 handle_member_message(JObj, Props, <<"connect_req">>) ->
+    true = wapi_acdc_queue:member_connect_req_v(JObj),
     acdc_agent_fsm:member_connect_req(props:get_value(fsm_pid, Props), JObj);
 handle_member_message(JObj, Props, <<"connect_win">>) ->
+    true = wapi_acdc_queue:member_connect_win_v(JObj),
     acdc_agent_fsm:member_connect_win(props:get_value(fsm_pid, Props), JObj);
-handle_member_message(JObj, Props, <<"connect_monitor">>) ->
-    acdc_agent_fsm:member_connect_monitor(props:get_value(fsm_pid, Props), JObj);
 handle_member_message(_, _, EvtName) ->
     lager:debug("not handling member event ~s", [EvtName]).
 

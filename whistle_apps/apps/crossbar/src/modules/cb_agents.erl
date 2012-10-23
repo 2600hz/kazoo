@@ -160,10 +160,12 @@ fetch_all_agent_stats(#cb_context{account_id=AcctId}=Context, ?REALTIME_PATH_TOK
                                        ,2000
                                       ) of
         {ok, Resp} ->
-            lager:debug("stats req responded: ~p", [Resp]),
             Resp1 = strip_api_fields(wh_json:normalize(Resp)),
+            Totaled = total_up_stats(Resp1),
+            lager:debug("acdc agent stats: ~p", [Totaled]),
+
             Context#cb_context{resp_status=success
-                               ,resp_data=total_up_stats(Resp1)
+                               ,resp_data=Totaled
                                ,doc=Resp1
                               };
         {error, _E} ->

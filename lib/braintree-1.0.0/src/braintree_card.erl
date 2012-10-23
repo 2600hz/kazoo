@@ -25,6 +25,12 @@
 
 -include_lib("braintree/include/braintree.hrl").
 
+-type card() :: #bt_card{}.
+-type cards() :: [card(),...] | [].
+-export_type([card/0
+              ,cards/0
+             ]).
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -46,7 +52,7 @@ url(Token) ->
 %% Given a list of #bt_cards{} find the current default payment token.
 %% @end
 %%--------------------------------------------------------------------
--spec default_payment_token/1 :: ([#bt_card{},...] | []) -> 'undefined' | ne_binary().
+-spec default_payment_token/1 :: (cards()) -> api_binary().
 default_payment_token(Cards) ->
     case lists:keyfind(true, #bt_card.default, Cards) of
         false -> braintree_util:error_no_payment_token();
@@ -59,7 +65,7 @@ default_payment_token(Cards) ->
 %% Find a credit card by id
 %% @end
 %%--------------------------------------------------------------------
--spec find/1 :: (binary() | string()) -> #bt_card{}.
+-spec find/1 :: (binary() | string()) -> card().
 find(Token) ->
     _Url = url(Token),
 %%    Xml = braintree_request:get(Url),
@@ -71,8 +77,8 @@ find(Token) ->
 %% Creates a new credit card using the given record
 %% @end
 %%--------------------------------------------------------------------
--spec create/1 :: (#bt_card{}) -> #bt_card{}.
--spec create/2 :: (string() | ne_binary(), #bt_card{}) -> #bt_card{}.
+-spec create/1 :: (card()) -> card().
+-spec create/2 :: (string() | ne_binary(), card()) -> card().
 
 create(#bt_card{}=Card) ->
     Url = url(),
@@ -89,7 +95,7 @@ create(CustomerId, Card) ->
 %% Updates a credit card with the given record
 %% @end
 %%--------------------------------------------------------------------
--spec update/1 :: (#bt_card{}) -> #bt_card{}.
+-spec update/1 :: (card()) -> card().
 update(#bt_card{token=Token}=Card) ->
     Url = url(Token),
     Request = record_to_xml(Card, true),
@@ -102,7 +108,7 @@ update(#bt_card{token=Token}=Card) ->
 %% Deletes a credit card id from braintree's system
 %% @end
 %%--------------------------------------------------------------------
--spec delete/1 :: (#bt_card{} | binary() | string()) -> #bt_card{}.
+-spec delete/1 :: (card() | binary() | string()) -> card().
 delete(#bt_card{token=Token}) ->
     delete(Token);
 delete(Token) ->
@@ -148,8 +154,8 @@ expiring(Start, End) ->
 %% Convert the given XML to a record
 %% @end
 %%--------------------------------------------------------------------
--spec xml_to_record/1 :: (bt_xml()) -> #bt_card{}.
--spec xml_to_record/2 :: (bt_xml(), wh_deeplist()) -> #bt_card{}.
+-spec xml_to_record/1 :: (bt_xml()) -> card().
+-spec xml_to_record/2 :: (bt_xml(), wh_deeplist()) -> card().
 
 xml_to_record(Xml) ->
     xml_to_record(Xml, "/credit-card").
@@ -178,8 +184,8 @@ xml_to_record(Xml, Base) ->
 %% Convert the given record to XML
 %% @end
 %%--------------------------------------------------------------------
--spec record_to_xml/1 :: (#bt_card{}) -> proplist() | bt_xml().
--spec record_to_xml/2 :: (#bt_card{}, boolean()) -> proplist() | bt_xml().
+-spec record_to_xml/1 :: (card()) -> proplist() | bt_xml().
+-spec record_to_xml/2 :: (card(), boolean()) -> proplist() | bt_xml().
 
 record_to_xml(Card) ->
     record_to_xml(Card, false).
@@ -250,7 +256,7 @@ record_to_xml(#bt_card{}=Card, ToString) ->
 %% Convert a given json object into a record
 %% @end
 %%--------------------------------------------------------------------
--spec json_to_record/1 :: ('undefined' | wh_json:json_object()) -> #bt_card{}.
+-spec json_to_record/1 :: ('undefined' | wh_json:json_object()) -> card().
 json_to_record(undefined) ->
     undefined;
 json_to_record(JObj) ->
@@ -274,7 +280,7 @@ json_to_record(JObj) ->
 %% Convert a given record into a json object
 %% @end
 %%--------------------------------------------------------------------
--spec record_to_json/1 :: (#bt_card{}) -> wh_json:json_object().
+-spec record_to_json/1 :: (card()) -> wh_json:json_object().
 record_to_json(#bt_card{}=Card) ->
     Props =[{<<"id">>, Card#bt_card.token}
              ,{<<"bin">>, Card#bt_card.bin}
@@ -304,7 +310,7 @@ record_to_json(#bt_card{}=Card) ->
 %% a uuid to use during creation.
 %% @end
 %%--------------------------------------------------------------------
--spec create_or_get_json_id/1 :: (wh_json:json_object()) ->  'undefined' | ne_binary().
+-spec create_or_get_json_id/1 :: (wh_json:json_object()) ->  api_binary().
 create_or_get_json_id(JObj) ->
     case wh_json:get_value(<<"number">>, JObj) of
         undefined ->

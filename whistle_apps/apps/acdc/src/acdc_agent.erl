@@ -14,7 +14,7 @@
 -export([start_link/2
          ,member_connect_resp/2
          ,member_connect_retry/2
-         ,bridge_to_member/3
+         ,bridge_to_member/4
          ,monitor_call/2
          ,member_connect_accepted/1
          ,channel_hungup/2
@@ -155,11 +155,11 @@ member_connect_retry(Srv, WinJObj) ->
 member_connect_accepted(Srv) ->
     gen_listener:cast(Srv, member_connect_accepted).
 
-bridge_to_member(Srv, WinJObj, EPs) ->
-    gen_listener:cast(Srv, {bridge_to_member, WinJObj, EPs}).
+bridge_to_member(Srv, Call, WinJObj, EPs) ->
+    gen_listener:cast(Srv, {bridge_to_member, Call, WinJObj, EPs}).
 
-monitor_call(Srv, MonitorJObj) ->
-    gen_listener:cast(Srv, {monitor_call, MonitorJObj}).
+monitor_call(Srv, Call) ->
+    gen_listener:cast(Srv, {monitor_call, Call}).
 
 -spec channel_hungup/2 :: (pid(), ne_binary()) -> 'ok'.
 channel_hungup(Srv, CallId) ->
@@ -395,12 +395,11 @@ handle_cast({member_connect_retry, WinJObj}, #state{my_id=MyId}=State) ->
     send_member_connect_retry(WinJObj, MyId),
     {noreply, State};
 
-handle_cast({bridge_to_member, WinJObj, EPs}, #state{fsm_pid=FSM
-                                                     ,record_calls=RecordCall
-                                                    }=State) ->
+handle_cast({bridge_to_member, Call, WinJObj, EPs}, #state{fsm_pid=FSM
+                                                           ,record_calls=RecordCall
+                                                          }=State) ->
     lager:debug("bridging to agent endpoints: ~p", [EPs]),
 
-    Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, WinJObj)),
     RingTimeout = wh_json:get_value(<<"Ring-Timeout">>, WinJObj),
     lager:debug("ring agent for ~p", [RingTimeout]),
 
@@ -414,8 +413,7 @@ handle_cast({bridge_to_member, WinJObj, EPs}, #state{fsm_pid=FSM
                           ,record_calls=ShouldRecord
                          }};
 
-handle_cast({monitor_call, MonitorJObj}, State) ->
-    Call = whapps_call:set_call_id(wh_json:get_value(<<"Call-ID">>, MonitorJObj), whapps_call:new()),
+handle_cast({monitor_call, Call}, State) ->
     acdc_util:bind_to_call_events(Call),
     lager:debug("monitoring call ~s", [whapps_call:call_id(Call)]),
     {noreply, State#state{call=Call}};

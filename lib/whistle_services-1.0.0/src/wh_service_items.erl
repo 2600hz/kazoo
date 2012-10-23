@@ -12,7 +12,7 @@
 -export([find/3]).
 -export([update/2]).
 
--type(items() :: dict:new()).
+-type items() :: dict().
 -export_type([items/0]).
 
 -include_lib("whistle_services/src/whistle_services.hrl").
