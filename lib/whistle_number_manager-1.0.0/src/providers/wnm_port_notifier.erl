@@ -27,9 +27,9 @@
 save(#number{current_state = <<"port_in">>
                  ,state = <<"in_service">>
                  ,number_doc=JObj} = Number) ->
-    io:format("PUBLISH PORTED!~n", []),
     Port = wh_json:get_ne_value(<<"port">>, JObj, wh_json:new()),
-    publish_ported(Port, Number);
+    _ = publish_ported(Port, Number),
+    Number;
 save(#number{state = <<"port_in">>} = Number) ->
     maybe_publish_port(Number);
 save(Number) -> Number.
