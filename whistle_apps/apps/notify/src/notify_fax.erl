@@ -170,7 +170,7 @@ build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
 %% create a friendly file name
 %% @end
 %%--------------------------------------------------------------------
-%% -spec get_file_name/1 :: (proplist()) -> ne_binary().
+-spec get_file_name/2 :: (proplist(), string()) -> ne_binary().
 get_file_name(Props, Ext) ->
     %% CallerID_Date_Time.mp3
     Fax = props:get_value(<<"fax">>, Props),
@@ -181,7 +181,7 @@ get_file_name(Props, Ext) ->
                end,
     LocalDateTime = props:get_value(<<"date_called">>, Fax, <<"0000-00-00_00-00-00">>),
     FName = list_to_binary([CallerID, "_", wh_util:pretty_print_datetime(LocalDateTime), ".", Ext]),
-    binary:replace(wh_util:to_lower_binary(FName), <<" ">>, <<"_">>).
+    re:replace(wh_util:to_lower_binary(FName), <<"\\s+">>, <<"_">>, [{return, binary}, global]).
 
 %%--------------------------------------------------------------------
 %% @private
