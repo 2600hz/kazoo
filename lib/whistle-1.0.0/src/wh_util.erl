@@ -37,6 +37,9 @@
          ,strip_left_binary/2, strip_right_binary/2
         ]).
 
+-export([uri_encode/1]).
+-export([uri_decode/1]).
+
 -export([pad_binary/3, join_binary/1, join_binary/2]).
 -export([a1hash/3, floor/1, ceiling/1]).
 
@@ -436,6 +439,23 @@ binary_to_hex_char(N) when N < 10 ->
     $0 + N;
 binary_to_hex_char(N) when N < 16 ->
     $a - 10 + N.
+
+
+-spec uri_decode/1 :: (text()) -> text().
+uri_decode(Binary) when is_binary(Binary) ->
+    to_binary(http_uri:decode(to_list(Binary)));
+uri_decode(String) when is_list(String) ->
+    http_uri:decode(String);
+uri_decode(Atom) when is_atom(Atom) ->
+    to_atom(http_uri:decode(to_list(Atom)), true).
+
+-spec uri_encode/1 :: (text()) -> text().
+uri_encode(Binary) when is_binary(Binary) ->
+    to_binary(http_uri:encode(to_list(Binary)));
+uri_encode(String) when is_list(String) ->
+    http_uri:encode(String);
+uri_encode(Atom) when is_atom(Atom) ->
+    to_atom(http_uri:encode(to_list(Atom)), true).
 
 -spec to_integer/1 :: (string() | binary() | integer() | float()) -> integer().
 -spec to_integer/2 :: (string() | binary() | integer() | float(), 'strict' | 'notstrict') -> integer().

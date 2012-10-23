@@ -149,8 +149,8 @@ get(Number, PublicFields) ->
 %%--------------------------------------------------------------------
 -spec save/1 :: (wnm_number()) -> wnm_number().
 save(#number{}=Number) ->
-    Routines = [fun(#number{}=N) -> N#number{number_doc=record_to_json(N)} end
-                ,fun(#number{}=N) -> exec_providers(N, save) end
+    Routines = [fun(#number{}=N) -> exec_providers(N, save) end
+                ,fun(#number{}=N) -> N#number{number_doc=record_to_json(N)} end
                 ,fun(#number{}=N) -> get_updated_phone_number_docs(N) end
                 ,fun({_, #number{}}=E) -> E;
                     (#number{}=N) -> save_number_doc(N)
@@ -203,8 +203,8 @@ save_phone_number_docs([{Account, JObj}|Props], #number{number=Num}=Number) ->
 %%--------------------------------------------------------------------
 -spec delete/1 :: (wnm_number()) -> wnm_number().
 delete(Number) ->
-    Routines = [fun(#number{}=N) -> N#number{number_doc=record_to_json(N)} end
-                ,fun(#number{}=N) -> exec_providers(N, delete) end
+    Routines = [fun(#number{}=N) -> exec_providers(N, delete) end
+                ,fun(#number{}=N) -> N#number{number_doc=record_to_json(N)} end
                 ,fun(#number{}=N) -> get_updated_phone_number_docs(N) end
                 ,fun({_, #number{}}=E) -> E;
                     (#number{}=N) -> delete_number_doc(N)
@@ -386,8 +386,8 @@ in_service(#number{state = <<"discovery">>}=Number) ->
                ],
     lists:foldl(fun(F, J) -> F(J) end, Number, Routines);
 in_service(#number{state = <<"port_in">>}=Number) ->
-    Routines = [fun(#number{assign_to=AssignTo, auth_by=AuthBy}=N) ->
-                        case wh_util:is_in_account_hierarchy(AuthBy, AssignTo, true) of
+    Routines = [fun(#number{assigned_to=AssignedTo, auth_by=AuthBy}=N) ->
+                        case wh_util:is_in_account_hierarchy(AuthBy, AssignedTo, true) of
                             false -> error_unauthorized(N);
                             true -> N#number{state = <<"in_service">>}
                         end
@@ -672,7 +672,7 @@ resolve_account_phone_numbers_conflict(JObj, Num, AccountDb) ->
 -spec exec_providers/3 :: ([ne_binary(),...] | [], atom(), wnm_number()) -> wnm_number().
 
 exec_providers(Number, Action) ->
-    Providers = whapps_config:get(?WNM_CONFIG_CAT, <<"providers">>, []),
+    Providers = whapps_config:get(?WNM_CONFIG_CAT, <<"providers">>, ?WNM_DEAFULT_PROVIDER_MODULES),
     exec_providers(Providers, Action, Number).
 
 exec_providers([], _, Number) -> Number;

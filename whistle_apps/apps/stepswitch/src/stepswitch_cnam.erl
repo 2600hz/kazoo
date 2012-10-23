@@ -19,7 +19,7 @@
          ,code_change/3
         ]).
 
--export([lookup/2]).
+-export([lookup/1]).
 
 -include("stepswitch.hrl").
 
@@ -48,12 +48,24 @@ start_link(_) ->
     gen_server:start_link(?MODULE, [], []).
 
 
-lookup(Number, JObj) ->
+lookup(JObj) ->
+    CNAM = case get_cnam(JObj) of
+               <<>> -> wh_json:get_value(<<"Caller-ID-Name">>, JObj, <<"UNKNOWN">>);
+               Else -> Else
+           end,
+    Props = [{<<"Caller-ID-Name">>, CNAM}
+             ,{[<<"Custom-Channel-Vars">>, <<"Caller-ID-Name">>], CNAM}
+            ],
+    wh_json:set_values(Props, JObj).
+    
+
+get_cnam(JObj) ->
+    Number = wh_json:get_value(<<"Caller-ID-Number">>, JObj, <<"0000000000">>),
     Num = wnm_util:normalize_number(Number),
     case wh_cache:fetch_local(?STEPSWITCH_CACHE, cache_key(Num)) of
         {ok, CNAM} -> CNAM;
-        {error, not_found} -> 
-            fetch_cnam(Num, wh_json:set_value(<<"phone_number">>, Num, JObj))
+        {error, not_found} ->
+            fetch_cnam(Num, wh_json:set_value(<<"phone_number">>, wh_util:uri_encode(Num), JObj))
     end.
     
 %%%===================================================================

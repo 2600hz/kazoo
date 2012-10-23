@@ -7,6 +7,9 @@
                                 ]).
 
 -define(WNM_DEAFULT_CARRIER_MODULES, [<<"wnm_local">>]).
+-define(WNM_DEAFULT_PROVIDER_MODULES, [<<"cnam_notifier">>, <<"port_notifier">>
+                                           ,<<"failover">>
+                                      ]).
 
 -define(WNM_DB_PREFIX, <<"numbers/">>).
 -define(WNM_DOC_VSN, <<"1">>).

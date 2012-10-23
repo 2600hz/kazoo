@@ -87,7 +87,7 @@ number_options(#number{state=State, features=Features, module_name=Module}=Numbe
     [{force_outbound, should_force_outbound(Number)}
      ,{pending_port, State =:= <<"port_in">>}
      ,{local, Module =:= wnm_local}
-     ,{cnam, sets:is_element(<<"cnam">>, Features)}
+     ,{inbound_cnam, sets:is_element(<<"inbound_cnam">>, Features)}
     ].
 
 should_force_outbound(#number{module_name=wnm_local}) -> true;

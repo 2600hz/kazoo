@@ -44,7 +44,7 @@ fetch_number(Num) ->
 maybe_transition_port_in(Num, Props) ->
     case props:get_value(pending_port, Props) of
         false -> false;
-        true -> spawn(fun() -> wnm_number:ported(Num) end)
+        true -> spawn(fun() -> wh_number_manager:ported(Num) end)
     end.
 
 %%--------------------------------------------------------------------

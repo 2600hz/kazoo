@@ -39,7 +39,7 @@ inbound_handler(JObj, Number) ->
     case stepswitch_util:lookup_number(Number) of
         {ok, AccountId, Props} ->
             lager:debug("number associated with account ~s", [AccountId]),
-            relay_route_req(Number, AccountId, Props, JObj);
+            relay_route_req(AccountId, Props, JObj);
         {error, _R} ->
             lager:debug("failed to find account for number ~s: ~p", [Number, _R])
     end.
@@ -93,7 +93,7 @@ custom_channel_vars(AccountId, JObj) ->
     Props = [{<<"Account-ID">>, AccountId}
              ,{<<"Inception">>, <<"off-net">>}
             ],
-    UpdatedCCVs = wh_json:set_keys(Props, wh_json:delete_keys(RemoveKeys, CCVs)),
+    UpdatedCCVs = wh_json:set_values(Props, wh_json:delete_keys(RemoveKeys, CCVs)),
     wh_json:set_value(<<"Custom-Channel-Vars">>, UpdatedCCVs, JObj).
 
 %%--------------------------------------------------------------------
@@ -102,13 +102,13 @@ custom_channel_vars(AccountId, JObj) ->
 %% relay a route request once populated with the new properties
 %% @end
 %%--------------------------------------------------------------------
--spec relay_route_req/4 :: (ne_binary(), ne_binary(), proplist(), wh_json:json_object()) -> 'ok'.
-relay_route_req(Number, AccountId, Props, JObj) ->
+-spec relay_route_req/3 :: (ne_binary(), proplist(), wh_json:json_object()) -> 'ok'.
+relay_route_req(AccountId, Props, JObj) ->
     Routines = [fun(J) -> custom_channel_vars(AccountId, J) end
                 ,fun(J) -> 
-                         case props:get_value(cnam, Props) of
+                         case props:get_value(inbound_cnam, Props) of
                              false -> J;
-                             true -> stepswitch_cnam:lookup(Number, J)
+                             true -> stepswitch_cnam:lookup(J)
                          end
                  end
                ],
