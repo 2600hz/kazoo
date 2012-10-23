@@ -88,7 +88,7 @@
                      "description":"The caller id name for the object type",
                      "type":"string",
                      "maxLength":30,
-                     "pattern":"^[0-9A-Za-z ,&]*$"
+                     "pattern":"^[0-9A-Za-z ,&-_']*$"
                   }
                }
             },
@@ -101,7 +101,7 @@
                      "description":"The caller id name for the object type",
                      "type":"string",
                      "maxLength":15,
-                     "pattern":"^[0-9A-Za-z ,&]*$"
+                     "pattern":"^[0-9A-Za-z ,&-_']*$"
                   }
                }
             },
@@ -114,7 +114,7 @@
                      "description":"The caller id name for the object type",
                      "type":"string",
                      "maxLength":15,
-                     "pattern":"^[0-9A-Za-z ,&]*$"
+                     "pattern":"^[0-9A-Za-z ,&-_']*$"
                   }
                }
             }
@@ -197,8 +197,8 @@
                "name":"Music On Hold (ID)",
                "description":"The ID of a media object that should be used as the user music on hold",
                "type":"string",
-               "minLength":32,
-               "maxLength":32
+               "minLength":128,
+               "maxLength":128
             }
          },
          "default":{
