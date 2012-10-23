@@ -431,7 +431,6 @@ fold_queue(K, QID, QV, Resp) ->
 
                           wh_json:set_value(Key, wh_json:merge_recursive(CallV, AccCallV), Acc);
                      (QKey, QVal, Acc) ->
-                          lager:debug("acdc qkey: ~s qval: ~p", [QKey, QVal]),
                           wh_json:set_value([K, QID, QKey], QVal, Acc)
                   end, Resp, QV).
 
