@@ -16,8 +16,6 @@ handle_req(JObj, Props) ->
     true = wapi_authz:req_v(JObj),
     wh_util:put_callid(JObj),
 
-    io:format("~p~n", [JObj]),
-
     AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
     Limits = j5_util:get_limits(AccountId),
 
@@ -172,6 +170,8 @@ prepay_is_available(#limits{allow_prepay=true, reserve_amount=ReserveAmount}, Ba
 -spec postpay_is_available/3 :: (#limits{}, integer(), wh_json:json_object()) -> boolean().
 postpay_is_available(#limits{allow_postpay=false}, _, _) ->
     false;
+postpay_is_available(#limits{max_postpay_amount=MaxPostpay}=Limits, Balance, JObj) when MaxPostpay > 0 ->
+    postpay_is_available(Limits#limits{max_postpay_amount=MaxPostpay*-1}, Balance, JObj);
 postpay_is_available(#limits{allow_postpay=true, max_postpay_amount=MaxPostpay
                              ,reserve_amount=ReserveAmount}, Balance, JObj) ->
     case (Balance - ReserveAmount) > MaxPostpay of
