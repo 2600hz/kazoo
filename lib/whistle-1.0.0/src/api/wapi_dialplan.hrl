@@ -356,7 +356,7 @@
 -define(PLAY_COLLECT_DIGITS_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Minimum-Digits">>, <<"Maximum-Digits">>
                                               ,<<"Media-Name">>, <<"Media-Tries">>, <<"Digits-Regex">>
                                               ,<<"Timeout">>, <<"Terminators">>
-                            ]).
+                                         ]).
 -define(OPTIONAL_PLAY_COLLECT_DIGITS_REQ_HEADERS, [<<"Insert-At">>, <<"Failed-Media-Name">>]).
 -define(PLAY_COLLECT_DIGITS_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                                          ,{<<"Event-Name">>, <<"command">>}
@@ -380,6 +380,20 @@
                          ,?INSERT_AT_TUPLE
                         ]).
 -define(SAY_REQ_TYPES, []).
+
+%% TTS
+-define(TTS_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Text">>]).
+-define(OPTIONAL_TTS_REQ_HEADERS, [<<"Terminators">>, <<"Insert-At">>
+                                   ,<<"Voice">>, <<"Language">>, <<"Engine">>
+                                   ,<<"Group-ID">> % group media together (one DTMF cancels all in group)
+                                  ]).
+-define(TTS_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
+                         ,{<<"Event-Name">>, <<"command">>}
+                         ,{<<"Application-Name">>, <<"tts">>}
+                         ,{<<"Voice">>, [<<"male">>, <<"female">>]}
+                         ,?INSERT_AT_TUPLE
+                        ]).
+-define(TTS_REQ_TYPES, [{<<"Terminators">>, ?IS_TERMINATOR}]).
 
 %% Respond
 -define(RESPOND_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Response-Code">>]).

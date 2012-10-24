@@ -6,6 +6,8 @@
 -define(APP_NAME, <<"whapps_call_command">>).
 -define(APP_VERSION, <<"1.0.0">>).
 
+-define(MOD_CONFIG_CAT, <<"speech">>).
+
 -define(WHAPPS_CALL_CACHE, whapps_call_cache).
 
 -type whapps_custom_publish() :: fun((proplist(), whapps_call:call()) -> 'ok').

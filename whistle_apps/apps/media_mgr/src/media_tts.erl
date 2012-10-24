@@ -27,6 +27,8 @@
 
 -include("media.hrl").
 
+-define(MOD_CONFIG_CAT, <<"speech">>).
+
 -define(TIMEOUT_LIFETIME, 600000).
 -define(TIMEOUT_MESSAGE, {'$media_tts', tts_timeout}).
 
@@ -88,8 +90,9 @@ init([Text, JObj]) ->
                            ]),
 
     Format = wh_json:get_value(<<"Format">>, JObj, <<"wav">>),
+    Engine = wh_json:get_value(<<"Engine">>, JObj, whapps_config:get_binary(?MOD_CONFIG_CAT, <<"tts_provider">>, <<"ispeech">>)),
 
-    {ok, ReqID} = whapps_speech:create(Text, Voice, Format, [{stream_to, self()}]),
+    {ok, ReqID} = whapps_speech:create(Engine, Text, Voice, Format, [{stream_to, self()}]),
 
     Meta = wh_json:from_list([{<<"content_type">>, media_util:content_type_of(Format)}
                               ,{<<"media_name">>, wh_util:to_hex_binary(Text)}

@@ -21,6 +21,8 @@
 -define(NAME, <<"kzt_twiml">>).
 -define(VERSION, <<"0.2.0">>).
 
+-define(MOD_CONFIG_CAT, <<"speech">>).
+
 -define(STATUS_QUEUED, <<"queued">>).
 -define(STATUS_RINGING, <<"ringing">>).
 -define(STATUS_ANSWERED, <<"in-progress">>).
@@ -631,6 +633,7 @@ say(Call, SayMe, Attrs) ->
     Props = attrs_to_proplist(Attrs),
     Voice = get_voice(props:get_value(voice, Props)),
     Lang = get_lang(props:get_value(language, Props)),
+    Engine = get_engine(props:get_value(engine, Props)),
 
     lager:debug("SAY: ~s using voice ~s, in lang ~s", [SayMe, Voice, Lang]),
 
@@ -638,15 +641,15 @@ say(Call, SayMe, Attrs) ->
               0 ->
                   lager:debug("looping for ever (loop: 0)"),
                   say_loop(Call1, fun() ->
-                                          whapps_call_command:b_tts(wh_util:to_binary(SayMe), Voice, Lang, Call1)
+                                          whapps_call_command:b_tts(wh_util:to_binary(SayMe), Voice, Lang, undefined, Engine, Call1)
                                   end, infinity);
               1 ->
                   lager:debug("say once"),
-            whapps_call_command:b_tts(wh_util:to_binary(SayMe), Voice, Lang, Call1);
+                  whapps_call_command:b_tts(wh_util:to_binary(SayMe), Voice, Lang, undefined, Engine, Call1);
               N ->
                   lager:debug("saying, then looping ~b more times", [N-1]),
                   say_loop(Call1, fun() ->
-                                          whapps_call_command:b_tts(wh_util:to_binary(SayMe), Voice, Lang, Call1)
+                                          whapps_call_command:b_tts(wh_util:to_binary(SayMe), Voice, Lang, undefined, Engine, Call1)
                                   end, N)
           end,
     maybe_stop(Call1, Res, {ok, Call1}).
@@ -656,13 +659,14 @@ say(Call, SayMe, Attrs, Terminators) ->
     Props = attrs_to_proplist(Attrs),
     Voice = get_voice(props:get_value(voice, Props)),
     Lang = get_lang(props:get_value(language, Props)),
+    Engine = get_engine(props:get_value(engine, Props)),
 
     lager:debug("SAY: ~s using voice ~s, in lang ~s", [SayMe, Voice, Lang]),
 
     case get_loop_count(wh_util:to_integer(props:get_value(loop, Props, 1))) of
-        0 -> say_loop(Call1, fun() -> whapps_call_command:tts(wh_util:to_binary(SayMe), Voice, Lang, Terminators, Call1) end, infinity);
-        1 -> whapps_call_command:tts(wh_util:to_binary(SayMe), Voice, Lang, Terminators, Call1);
-        N -> say_loop(Call1, fun() -> whapps_call_command:tts(wh_util:to_binary(SayMe), Voice, Lang, Terminators, Call1) end, N)
+        0 -> say_loop(Call1, fun() -> whapps_call_command:tts(wh_util:to_binary(SayMe), Voice, Lang, Terminators, Engine, Call1) end, infinity);
+        1 -> whapps_call_command:tts(wh_util:to_binary(SayMe), Voice, Lang, Terminators, Engine, Call1);
+        N -> say_loop(Call1, fun() -> whapps_call_command:tts(wh_util:to_binary(SayMe), Voice, Lang, Terminators, Engine, Call1) end, N)
     end.
 
 collect_digits(Call, InitDigit, MaxDigits, FinishOnKey, Timeout, Props) ->
@@ -1136,16 +1140,24 @@ maybe_stop(_, {error, _R}, Result) ->
     Result;
 maybe_stop(_, _, Result) -> Result.
 
+-spec get_voice/1 :: (api_binary()) -> ne_binary().
 get_voice(undefined) -> <<"female">>;
 get_voice(<<"man">>) -> <<"male">>;
 get_voice(<<"woman">>) -> <<"female">>.
 
+-spec get_lang/1 :: (api_binary()) -> ne_binary().
 get_lang(undefined) -> <<"en-US">>;
 get_lang(<<"en">>) -> <<"en-US">>;
 get_lang(<<"en-gb">>) -> <<"en-GB">>;
 get_lang(<<"es">>) -> <<"es">>;
 get_lang(<<"fr">>) -> <<"fr">>;
 get_lang(<<"de">>) -> <<"de">>.
+
+-spec get_engine/1 :: (api_binary()) -> ne_binary().
+get_engine(undefined) ->
+    whapps_config:get_binary(?MOD_CONFIG_CAT, <<"tts_provider">>, <<"ispeech">>);
+get_engine(P) -> P.
+
 
 %% contstrain loop to 10
 -spec get_loop_count/1 :: (integer() | binary()) -> 0..10.

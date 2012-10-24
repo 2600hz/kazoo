@@ -431,17 +431,19 @@ lookup_media(MediaName, CallId, JObj, Type) ->
     lookup_media(MediaName, CallId, JObj, Type, undefined).
 lookup_media(MediaName, CallId, JObj, Type, undefined) when Type =:= new orelse Type =:= extant ->
     Request = wh_json:set_values(
-                [{<<"Media-Name">>, MediaName}
-                 ,{<<"Stream-Type">>, Type}
-                 ,{<<"Call-ID">>, CallId}
-                 ,{<<"Msg-ID">>, wh_util:to_binary(wh_util:current_tstamp())}
-                 | wh_api:default_headers(<<"media">>, <<"media_req">>, ?APP_NAME, ?APP_VERSION)
-                ]
+                props:filter_undefined(
+                  [{<<"Media-Name">>, MediaName}
+                   ,{<<"Stream-Type">>, Type}
+                   ,{<<"Call-ID">>, CallId}
+                   ,{<<"Msg-ID">>, wh_util:to_binary(wh_util:current_tstamp())}
+                   | wh_api:default_headers(<<"media">>, <<"media_req">>, ?APP_NAME, ?APP_VERSION)
+                  ])
                 ,JObj),
     ReqResp = wh_amqp_worker:call(?ECALLMGR_AMQP_POOL
                                   ,Request
                                   ,fun wapi_media:publish_req/1
-                                  ,fun wapi_media:resp_v/1),
+                                  ,fun wapi_media:resp_v/1
+                                 ),
     case ReqResp of
         {error, _R}=E ->
             lager:debug("media lookup for '~s' failed: ~p", [MediaName, _R]),

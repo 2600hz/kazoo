@@ -39,8 +39,8 @@
 -export([play/2, play/3]).
 -export([prompt/2, prompt/3]).
 
--export([tts/2, tts/3, tts/4, tts/5
-         ,b_tts/2, b_tts/3, b_tts/4, b_tts/5
+-export([tts/2, tts/3, tts/4, tts/5, tts/6
+         ,b_tts/2, b_tts/3, b_tts/4, b_tts/5, b_tts/6
         ]).
 
 -export([record/2, record/3, record/4, record/5, record/6]).
@@ -695,10 +695,11 @@ play_command(Media, Terminators, Call) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec tts/2 :: (ne_binary(), whapps_call:call()) -> ne_binary().
--spec tts/3 :: (ne_binary(), ne_binary(), whapps_call:call()) -> ne_binary().
--spec tts/4 :: (ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> ne_binary().
--spec tts/5 :: (ne_binary(), ne_binary(), ne_binary(), [ne_binary(),...], whapps_call:call()) -> ne_binary().
+-spec tts/2 :: (api_binary(), whapps_call:call()) -> ne_binary().
+-spec tts/3 :: (api_binary(), api_binary(), whapps_call:call()) -> ne_binary().
+-spec tts/4 :: (api_binary(), api_binary(), api_binary(), whapps_call:call()) -> ne_binary().
+-spec tts/5 :: (api_binary(), api_binary(), api_binary(), [ne_binary(),...], whapps_call:call()) -> ne_binary().
+-spec tts/6 :: (api_binary(), api_binary(), api_binary(), [ne_binary(),...], api_binary(), whapps_call:call()) -> ne_binary().
 
 tts(SayMe, Call) ->
     tts(SayMe, <<"female">>, Call).
@@ -708,13 +709,18 @@ tts(SayMe, Voice, Lang, Call) ->
     tts(SayMe, Voice, Lang, ?ANY_DIGIT, Call).
 
 tts(SayMe, Voice, Lang, Terminators, Call) ->
+    tts(SayMe, Voice, Lang, Terminators
+        ,whapps_config:get_binary(?MOD_CONFIG_CAT, <<"tts_provider">>, <<"ispeech">>)
+        ,Call
+       ).
+tts(SayMe, Voice, Lang, Terminators, Engine, Call) ->
     NoopId = couch_mgr:get_uuid(),
 
     Commands = [wh_json:from_list([{<<"Application-Name">>, <<"noop">>}
                                    ,{<<"Call-ID">>, whapps_call:call_id(Call)}
                                    ,{<<"Msg-ID">>, NoopId}
                                   ])
-                ,tts_command(SayMe, Voice, Lang, Terminators, Call)
+                ,tts_command(SayMe, Voice, Lang, Terminators, Engine, Call)
                ],
     Command = [{<<"Application-Name">>, <<"queue">>}
                ,{<<"Commands">>, Commands}
@@ -722,10 +728,11 @@ tts(SayMe, Voice, Lang, Terminators, Call) ->
     send_command(Command, Call),
     NoopId.
 
--spec tts_command/2 :: (ne_binary(), whapps_call:call()) -> wh_json:json_object().
--spec tts_command/3 :: (ne_binary(), ne_binary(), whapps_call:call()) -> wh_json:json_object().
--spec tts_command/4 :: (ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> wh_json:json_object().
--spec tts_command/5 :: (ne_binary(), ne_binary(), ne_binary(), list(), whapps_call:call()) -> wh_json:json_object().
+-spec tts_command/2 :: (api_binary(), whapps_call:call()) -> wh_json:json_object().
+-spec tts_command/3 :: (api_binary(), api_binary(), whapps_call:call()) -> wh_json:json_object().
+-spec tts_command/4 :: (api_binary(), api_binary(), api_binary(), whapps_call:call()) -> wh_json:json_object().
+-spec tts_command/5 :: (api_binary(), api_binary(), api_binary(), list(), whapps_call:call()) -> wh_json:json_object().
+-spec tts_command/6 :: (api_binary(), api_binary(), api_binary(), list(), api_binary(), whapps_call:call()) -> wh_json:json_object().
 tts_command(SayMe, Call) ->
     tts_command(SayMe, <<"female">>, Call).
 tts_command(SayMe, Voice, Call) ->
@@ -733,18 +740,27 @@ tts_command(SayMe, Voice, Call) ->
 tts_command(SayMe, Voice, Lang, Call) ->
     tts_command(SayMe, Voice, Lang, ?ANY_DIGIT, Call).
 tts_command(SayMe, Voice, Lang, Terminators, Call) ->
-    wh_json:from_list([{<<"Application-Name">>, <<"play">>}
-                       ,{<<"Media-Name">>, list_to_binary([<<"tts://">>, SayMe])}
-                       ,{<<"Terminators">>, Terminators}
-                       ,{<<"Voice">>, Voice}
-                       ,{<<"Language">>, Lang}
-                       ,{<<"Call-ID">>, whapps_call:call_id(Call)}
-                      ]).
+    tts_command(SayMe, Voice, Lang, Terminators
+                ,whapps_config:get_binary(?MOD_CONFIG_CAT, <<"tts_provider">>, <<"ispeech">>)
+                ,Call
+               ).
+tts_command(SayMe, Voice, Lang, Terminators, Engine, Call) ->
+    wh_json:from_list(
+      props:filter_undefined(
+        [{<<"Application-Name">>, <<"tts">>}
+         ,{<<"Text">>, SayMe}
+         ,{<<"Terminators">>, Terminators}
+         ,{<<"Voice">>, Voice}
+         ,{<<"Language">>, Lang}
+         ,{<<"Engine">>, Engine}
+         ,{<<"Call-ID">>, whapps_call:call_id(Call)}
+        ])).
 
--spec b_tts/2 :: (ne_binary(), whapps_call:call()) -> whapps_api_std_return().
--spec b_tts/3 :: (ne_binary(), ne_binary(), whapps_call:call()) -> whapps_api_std_return().
--spec b_tts/4 :: (ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> whapps_api_std_return().
--spec b_tts/5 :: (ne_binary(), ne_binary(), ne_binary(), [ne_binary(),...], whapps_call:call()) -> whapps_api_std_return().
+-spec b_tts/2 :: (api_binary(), whapps_call:call()) -> whapps_api_std_return().
+-spec b_tts/3 :: (api_binary(), api_binary(), whapps_call:call()) -> whapps_api_std_return().
+-spec b_tts/4 :: (api_binary(), api_binary(), api_binary(), whapps_call:call()) -> whapps_api_std_return().
+-spec b_tts/5 :: (api_binary(), api_binary(), api_binary(), [ne_binary(),...], whapps_call:call()) -> whapps_api_std_return().
+-spec b_tts/6 :: (api_binary(), api_binary(), api_binary(), [ne_binary(),...], api_binary(), whapps_call:call()) -> whapps_api_std_return().
 
 b_tts(SayMe, Call) ->
     NoopId = tts(SayMe, Call),
@@ -757,6 +773,9 @@ b_tts(SayMe, Voice, Lang, Call) ->
     wait_for_noop(NoopId).
 b_tts(SayMe, Voice, Lang, Terminators, Call) ->
     NoopId = tts(SayMe, Voice, Lang, Terminators, Call),
+    wait_for_noop(NoopId).
+b_tts(SayMe, Voice, Lang, Terminators, Engine, Call) ->
+    NoopId = tts(SayMe, Voice, Lang, Terminators, Engine, Call),
     wait_for_noop(NoopId).
 
 %%--------------------------------------------------------------------

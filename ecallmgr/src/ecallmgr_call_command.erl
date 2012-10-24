@@ -72,29 +72,26 @@ get_fs_app(_Node, _UUID, JObj, <<"noop">>) ->
             {<<"event">>, Args}
     end;
 
+get_fs_app(Node, UUID, JObj, <<"tts">>) ->
+    case wapi_dialplan:tts_v(JObj) of
+        false -> {'error', <<"tts failed to execute as JObj didn't validate">>};
+        true ->
+            case wh_json:get_value(<<"engine">>, JObj) of
+                <<"flite">> -> tts_flite(Node, UUID, JObj);
+                _ ->
+                    SayMe = wh_json:get_value(<<"Text">>, JObj),
+                    App = play(Node, UUID, wh_json:set_value(<<"Media-Name">>, <<"tts://", SayMe/binary>>, JObj)),
+                    [App
+                     ,{"application", ecallmgr_util:create_masquerade_event(<<"tts">>, <<"CHANNEL_EXECUTE_COMPLETE">>)}
+                    ]
+            end
+    end;
+            
 get_fs_app(Node, UUID, JObj, <<"play">>) ->
     case wapi_dialplan:play_v(JObj) of
         false -> {'error', <<"play failed to execute as JObj did not validate">>};
         true ->
-            Vars = case wh_json:get_value(<<"Group-ID">>, JObj) of
-                       undefined -> 
-                           [get_terminators(wh_json:get_value(<<"Terminators">>, JObj))];
-                       GID -> 
-                           [{<<"media_group_id">>, GID}
-                            ,get_terminators(wh_json:get_value(<<"Terminators">>, JObj))
-                           ]
-                   end,
-            _ = set(Node, UUID, Vars),
-
-            F = ecallmgr_util:media_path(wh_json:get_value(<<"Media-Name">>, JObj), new, UUID, JObj, ?ECALLMGR_CALL_CACHE),
-
-            %% if Leg is set, use uuid_broadcast; otherwise use playback
-            case wh_json:get_value(<<"Leg">>, JObj) of
-                <<"A">> -> {<<"broadcast">>, list_to_binary([UUID, <<" ">>, F, <<" aleg">>])};
-                <<"B">> -> {<<"broadcast">>, list_to_binary([UUID, <<" ">>, F, <<" bleg">>])};
-                <<"Both">> -> {<<"broadcast">>, list_to_binary([UUID, <<" ">>, F, <<" both">>])};
-                _ -> {<<"playback">>, F}
-            end
+            play(Node, UUID, JObj)
     end;
 
 get_fs_app(_Node, _UUID, JObj, <<"playstop">>) ->
@@ -515,7 +512,8 @@ get_fs_app(Node, UUID, JObj, <<"execute_extension">>) ->
                           ,fun(DP) ->
                                    [{"application", <<"unset ", ?CHANNEL_VAR_PREFIX, "Executing-Extension">>}
                                     ,{"application", ecallmgr_util:create_masquerade_event(<<"execute_extension">>
-                                                                                               ,<<"CHANNEL_EXECUTE_COMPLETE">>)}
+                                                                                           ,<<"CHANNEL_EXECUTE_COMPLETE">>
+                                                                                          )}
                                     ,{"application", "park "}
                                     |DP
                                    ]
@@ -886,3 +884,37 @@ create_dialplan_move_ccvs(Root, Node, UUID, DP) ->
             lager:debug("failed to get result from uuid_dump for ~s", [UUID]),
             DP
     end.
+
+-spec play/3 :: (atom(), ne_binary(), wh_json:json_object()) -> {ne_binary(), ne_binary()}.
+play(Node, UUID, JObj) ->
+    Vars = case wh_json:get_value(<<"Group-ID">>, JObj) of
+               undefined -> 
+                   [get_terminators(wh_json:get_value(<<"Terminators">>, JObj))];
+               GID ->
+                   [{<<"media_group_id">>, GID}
+                    ,get_terminators(wh_json:get_value(<<"Terminators">>, JObj))
+                   ]
+           end,
+    _ = set(Node, UUID, Vars),
+
+    F = ecallmgr_util:media_path(wh_json:get_value(<<"Media-Name">>, JObj), new, UUID, JObj, ?ECALLMGR_CALL_CACHE),
+
+    %% if Leg is set, use uuid_broadcast; otherwise use playback
+    case wh_json:get_value(<<"Leg">>, JObj) of
+        <<"A">> -> {<<"broadcast">>, list_to_binary([UUID, <<" ">>, F, <<" aleg">>])};
+        <<"B">> -> {<<"broadcast">>, list_to_binary([UUID, <<" ">>, F, <<" bleg">>])};
+        <<"Both">> -> {<<"broadcast">>, list_to_binary([UUID, <<" ">>, F, <<" both">>])};
+        _ -> {<<"playback">>, F}
+    end.
+
+tts_flite(Node, UUID, JObj) ->
+    TTSVoice = tts_flite_voice(wh_json:get_value(<<"Voice">>, JObj)),
+
+    _ = set(Node, UUID, [{<<"tts_engine">>, <<"flite">>}
+                         ,{<<"tts_voice">>, TTSVoice}
+                        ]),
+    {<<"speak">>, wh_json:get_value(<<"Text">>, JObj)}.
+
+-spec tts_flite_voice/1 :: (api_binary()) -> ne_binary().
+tts_flite_voice(<<"male">>) -> <<"rms">>;
+tts_flite_voice(_) -> <<"slt">>.

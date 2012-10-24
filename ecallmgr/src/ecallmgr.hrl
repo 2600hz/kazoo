@@ -132,10 +132,11 @@
                                ,{<<"Loopback-Bowout">>, <<"loopback_bowout_on_execute">>}
                               ]).
 
-%% [{FreeSWITCH-App-Name, Whistle-App-Name}]
+%% [{FreeSWITCH-App-Name, Kazoo-App-Name}]
 %% Dialplan-related applications
-%% convert from FS-named applications to Whistle-named Dialplan applications
+%% convert from FS-named applications to Kazoo-named Dialplan applications
 -define(FS_APPLICATION_NAMES, [{<<"playback">>, <<"play">>}
+                               ,{<<"speak">>, <<"tts">>}
                                ,{<<"hangup">>, <<"hangup">>}
                                ,{<<"record">>, <<"record">>}
                                ,{<<"playback">>, <<"tones">>}
@@ -190,7 +191,8 @@
                             ,{<<"CS_RESET">>, <<"reset">>}
                             ,{<<"CS_HANGUP">>, <<"hangup">>}
                             ,{<<"CS_REPORTING">>, <<"reporting">>}
-                            ,{<<"CS_DESTROY">>, <<"destroy">>}]).
+                            ,{<<"CS_DESTROY">>, <<"destroy">>}
+                           ]).
 
 -define(DEFAULT_RESPONSE_CODE, <<"488">>).
 

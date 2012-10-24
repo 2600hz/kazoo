@@ -29,6 +29,7 @@
          ,store_fax/1, store_fax_v/1
          ,execute_extension/1, execute_extension_v/1
          ,play/1, play_v/1, playstop/1, playstop_v/1
+         ,tts/1, tts_v/1
          ,record/1, record_v/1
          ,record_call/1, record_call_v/1
          ,answer/1, answer_v/1
@@ -352,6 +353,26 @@ playstop_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?PLAY_STOP_REQ_HEADERS, ?PLAY_STOP_REQ_VALUES, ?PLAY_STOP_REQ_TYPES);
 playstop_v(JObj) ->
     playstop_v(wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
+%% @doc TTS - Text-to-speech - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec tts/1 :: (api_terms()) -> api_formatter_return().
+tts(Prop) when is_list(Prop) ->
+    case tts_v(Prop) of
+        true -> wh_api:build_message(Prop, ?TTS_REQ_HEADERS, ?OPTIONAL_TTS_REQ_HEADERS);
+        false -> {error, "Proplist failed validation for tts"}
+    end;
+tts(JObj) ->
+    tts(wh_json:to_proplist(JObj)).
+
+-spec tts_v/1 :: (api_terms()) -> boolean().
+tts_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?TTS_REQ_HEADERS, ?TTS_REQ_VALUES, ?TTS_REQ_TYPES);
+tts_v(JObj) ->
+    tts_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc Record media - see wiki
