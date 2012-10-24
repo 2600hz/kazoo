@@ -165,7 +165,7 @@ handle_config_req(Node, ID, FsConf) ->
     put(callid, ID),
     try fsconf_key(FsConf) of
         ConfKey ->
-            SysconfResp = ecallmgr_config:get(ConfKey, wh_json:new()),
+            SysconfResp = ecallmgr_config:fetch(ConfKey, wh_json:new()),
             ConfigXml = generate_resp_xml(ConfKey, SysconfResp),
 
             lager:debug("sending XML to ~s: ~s", [Node, ConfigXml]),

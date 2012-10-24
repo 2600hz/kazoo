@@ -21,10 +21,10 @@ init() ->
 handle_req(ApiJObj, _Props) ->
     true = wapi_sysconf:get_req_v(ApiJObj),
 
-    Category = wh_json:get_value(<<"Category">>, ApiJObj),
-    Key = wh_json:get_value(<<"Key">>, ApiJObj),
+    Category = wh_json:get_binary_value(<<"Category">>, ApiJObj),
+    Key = wh_json:get_binary_value(<<"Key">>, ApiJObj),
     Default = wh_json:get_value(<<"Default">>, ApiJObj, null),
-    Node = wh_json:get_value(<<"Node">>, ApiJObj),
+    Node = wh_json:get_binary_value(<<"Node">>, ApiJObj),
     MsgID = wh_json:get_value(<<"Msg-ID">>, ApiJObj),
 
     lager:debug("received sysconf get for ~s:~s from ~s", [Category, Key, Node]),
@@ -32,8 +32,14 @@ handle_req(ApiJObj, _Props) ->
     RespQ =  wh_json:get_value(<<"Server-ID">>, ApiJObj), 
     Resp = [{<<"Category">>, Category}
             ,{<<"Key">>, Key}
-            ,{<<"Value">>, whapps_config:get(Category, Key, Default, Node)}
+            ,{<<"Value">>, get_value(Category, Key, Default, Node)}
             ,{<<"Msg-ID">>, MsgID}
             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     wapi_sysconf:publish_get_resp(RespQ, Resp).
+
+-spec get_value/4 :: (ne_binary(), ne_binary(), term(), ne_binary()) -> term().
+get_value(_, <<"acls">>, Default, Node) ->
+    sysconf_acls:build(Node);
+get_value(Category, Key, Default, Node) ->
+    whapps_config:get(Category, Key, Default, Node).

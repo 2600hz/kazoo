@@ -357,6 +357,7 @@ join_binary([_|Bins], Sep, Acc) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec shuffle_list/1 :: (list()) -> list().
+shuffle_list([]) -> [];
 shuffle_list(List) when is_list(List) ->
     Len = length(List),
     randomize_list(round(math:log(Len) + 0.5), List).
