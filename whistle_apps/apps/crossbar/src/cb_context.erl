@@ -17,7 +17,10 @@
          ,add_system_error/3
         ]).
 -export([add_validation_error/4]).
--export([validate_request_data/2]).
+-export([validate_request_data/2
+         ,validate_request_data/3
+         ,validate_request_data/4
+        ]).
 
 -include("include/crossbar.hrl").
 
@@ -81,7 +84,7 @@ import_errors(#cb_context{validation_errors=JObj}=Context) ->
 %% @end
 %%--------------------------------------------------------------------
 validate_request_data(Schema, #cb_context{req_data=Data}=Context) ->
-    case wh_json_validator:is_valid(Data, Schema) of
+    case wh_json_validator:is_valid(wh_json:public_fields(Data), Schema) of
         {fail, Errors} ->
             lists:foldl(fun({Property, Error}, C) ->
                                 [Code, Message] = binary:split(Error, <<":">>),
@@ -89,6 +92,18 @@ validate_request_data(Schema, #cb_context{req_data=Data}=Context) ->
                         end, Context#cb_context{resp_status=error}, Errors);
         {pass, JObj} ->
             Context#cb_context{resp_status=success, doc=JObj}
+    end.
+
+validate_request_data(Schema, Context, OnSuccess) ->
+    validate_request_data(Schema, Context, OnSuccess, undefined).
+
+validate_request_data(Schema, Context, OnSuccess, OnFailure) ->
+    case validate_request_data(Schema, Context) of
+        #cb_context{resp_status=success}=C1 when is_function(OnSuccess) ->
+            OnSuccess(C1);
+        #cb_context{}=C2 when is_function(OnFailure) ->
+            OnFailure(C2);
+        Else -> Else
     end.
 
 %%--------------------------------------------------------------------
@@ -101,8 +116,6 @@ add_system_error(unspecified_fault, Context) ->
     Context#cb_context{resp_status=error};
 add_system_error(account_cant_create_tree, Context) ->
     Context#cb_context{resp_status=error};
-add_system_error(account_not_found, Context) ->
-    Context#cb_context{resp_status=error};
 add_system_error(account_has_descendants, Context) ->
     Context#cb_context{resp_status=error};
 add_system_error(faulty_request, Context) ->
@@ -110,6 +123,11 @@ add_system_error(faulty_request, Context) ->
 
 add_system_error(bad_identifier, Context) ->    
     crossbar_util:response_bad_identifier(<<>>, Context);
+
+add_system_error(forbidden, Context) ->
+    crossbar_util:response(error, <<"forbidden">>, 403, Context);
+add_system_error(invalid_crentials, Context) ->
+    crossbar_util:response(error, <<"invalid crentials">>, 401, Context);
 
 add_system_error(datastore_missing, Context) ->
     crossbar_util:response_db_missing(Context);
@@ -123,10 +141,11 @@ add_system_error(datastore_fault, Context) ->
     crossbar_util:response_db_fatal(Context).
 
 add_system_error(bad_identifier, Props, Context) ->
-    case props:get_value(details, Props) of
-        undefined -> add_system_error(bad_identifier, Context);
-        Identifier -> crossbar_util:response_bad_identifier(Identifier, Context)
-    end;
+    Identifier = props:get_value(details, Props),
+    crossbar_util:response_bad_identifier(Identifier, Context);
+add_system_error(forbidden, Props, Context) ->
+    Reason = props:get_value(details, Props),
+    crossbar_util:response(error, <<"forbidden">>, 403, Reason, Context);
 add_system_error(Error, _, Context) ->
     add_system_error(Error, Context).
 
@@ -164,8 +183,17 @@ add_validation_error(Property, <<"format">>=C, Message, Context) ->
     add_depreciated_validation_error(Property, C, Message, Context);
 add_validation_error(Property, <<"divisibleBy">>=C, Message, Context) ->
     add_depreciated_validation_error(Property, C, Message, Context);
+
+%% Not unique within the datastore
 add_validation_error(Property, <<"unique">>=C, Message, Context) ->
     add_depreciated_validation_error(Property, C, Message, Context);
+%% User is not authorized to update the property  
+add_validation_error(Property, <<"forbidden">>=C, Message, Context) ->
+    add_depreciated_validation_error(Property, C, Message, Context);
+%% Date range is invalid, too small, or too large
+add_validation_error(Property, <<"date_range">>=C, Message, Context) ->
+    add_depreciated_validation_error(Property, C, Message, Context);
+
 add_validation_error(Property, Code, Message, Context) ->
     lager:debug("UNKNOWN ERROR CODE: ~p", [Code]),
     file:write_file("/tmp/kazoo_unknown_error_codes.log", io_lib:format("~p~n", [Code]), [append]),

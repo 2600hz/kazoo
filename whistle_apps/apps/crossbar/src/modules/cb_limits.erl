@@ -22,7 +22,6 @@
 
 -define(CB_LIST, <<"limits/crossbar_listing">>).
 -define(PVT_TYPE, <<"limits">>).
--define(PVT_FUNS, [fun add_pvt_type/2, fun add_static_id/2]).
 
 %%%===================================================================
 %%% API
@@ -60,7 +59,6 @@ allowed_methods() ->
 resource_exists() ->
     true.
 
-
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -77,8 +75,7 @@ billing(#cb_context{req_nouns=[{<<"limits">>, _}|_]
         true -> Context;
         false ->
             Message = <<"Please contact your phone provider to add limits.">>,
-            Reason = wh_json:from_list([{<<"limit_only">>, Message}]),
-            crossbar_util:response(error, <<"forbidden">>, 403, Reason, Context)
+            cb_context:add_system_error(forbidden, [{details, Message}], Context)
     catch
         throw:{Error, Reason} ->
             crossbar_util:response(error, wh_util:to_binary(Error), 500, Reason, Context)
@@ -124,17 +121,7 @@ reconcile_services(#cb_context{account_id=AccountId}=Context) ->
 %%--------------------------------------------------------------------
 -spec validate/1 :: (#cb_context{}) -> #cb_context{}.
 validate(#cb_context{req_verb = <<"get">>}=Context) ->
-    try
-        load_limit(Context)
-    catch
-        _T:_R ->
-            ST = erlang:get_stacktrace(),
-            lager:debug("loading summary crashed: ~p: ~p", [_T, _R]),
-            _ = [lager:debug("~p", [S]) || S <- ST],
-            crossbar_util:response_db_fatal(Context)
-    end;
-validate(#cb_context{req_verb = <<"put">>}=Context) ->
-    update_limits(Context);
+    load_limit(Context);
 validate(#cb_context{req_verb = <<"post">>}=Context) ->
     update_limits(Context).
 
@@ -153,12 +140,7 @@ post(Context) ->
 %%--------------------------------------------------------------------
 -spec load_limit/1 :: (#cb_context{}) -> #cb_context{}.
 load_limit(Context) ->
-    case crossbar_doc:load(?PVT_TYPE, Context) of
-        #cb_context{resp_error_code=404} ->
-            {pass, JObj} = wh_json_validator:is_valid(wh_json:new(), <<"limits">>),
-            crossbar_util:response(JObj, Context);
-        Else -> Else
-    end.
+    maybe_handle_load_failure(crossbar_doc:load(?PVT_TYPE, Context)).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -168,34 +150,34 @@ load_limit(Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec update_limits/1 :: (#cb_context{}) -> #cb_context{}.
-update_limits(#cb_context{req_data=Data}=Context) ->
-    case wh_json_validator:is_valid(Data, <<"limits">>) of
-        {fail, Errors} ->
-            crossbar_util:response_invalid_data(Errors, Context);
-        {pass, JObj} ->
-            {JObj1, _} = lists:foldr(fun(F, {J, C}) ->
-                                             {F(J, C), C}
-                                     end, {JObj, Context}, ?PVT_FUNS),
-            case crossbar_doc:load_merge(?PVT_TYPE, JObj1, Context) of
-                #cb_context{resp_error_code=404} ->
-                    Context#cb_context{resp_status=success
-                                       ,doc=crossbar_doc:update_pvt_parameters(JObj1, Context)
-                                      };
-                Else -> Else
-            end
-    end.
+update_limits(#cb_context{}=Context) ->
+    cb_context:validate_request_data(<<"limits">>, Context, fun on_successful_validation/1).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% These are the pvt funs that add the necessary pvt fields to every
-%% instance
+%% 
 %% @end
 %%--------------------------------------------------------------------
--spec add_pvt_type/2 :: (wh_json:json_object(), #cb_context{}) -> wh_json:json_object().
-add_pvt_type(JObj, _) ->
-    wh_json:set_value(<<"pvt_type">>, ?PVT_TYPE, JObj).
+-spec on_successful_validation/1 :: (#cb_context{}) -> #cb_context{}.
+on_successful_validation(#cb_context{}=Context) ->
+    maybe_handle_load_failure(crossbar_doc:load_merge(?PVT_TYPE, Context)).
 
--spec add_static_id/2 :: (wh_json:json_object(), #cb_context{}) -> wh_json:json_object().
-add_static_id(JObj, _) ->
-    wh_json:set_value(<<"_id">>, ?PVT_TYPE, JObj).
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec maybe_handle_load_failure/1 :: (#cb_context{}) -> #cb_context{}.
+maybe_handle_load_failure(#cb_context{resp_error_code=404, req_data=Data}=Context) ->
+    NewLimits = wh_json:from_list([{<<"pvt_type">>, ?PVT_TYPE}
+                                   ,{<<"_id">>, ?PVT_TYPE}
+                                  ]),
+    J = wh_json:merge_jobjs(NewLimits, wh_json:public_fields(Data)),
+    {pass, JObj} = wh_json_validator:is_valid(J, <<"limits">>),
+    Context#cb_context{resp_status=success
+                       ,resp_data=wh_json:public_fields(JObj)
+                       ,doc=crossbar_doc:update_pvt_parameters(JObj, Context)
+                      };
+maybe_handle_load_failure(Context) -> Context.

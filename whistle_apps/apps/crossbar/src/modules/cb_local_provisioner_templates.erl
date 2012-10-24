@@ -261,11 +261,13 @@ load_template_image(DocId, Context) ->
 %%--------------------------------------------------------------------
 -spec upload_template_image/2 :: (path_token(), #cb_context{}) -> #cb_context{}.
 upload_template_image(_, #cb_context{req_files=[]}=Context) ->
-    crossbar_util:response_invalid_data(<<"please provide an image file">>, Context);
+    Message = <<"please provide an image file">>,
+    cb_context:add_validation_error(<<"file">>, <<"required">>, Message, Context);
 upload_template_image(_, #cb_context{req_files=[{_, _}]}=Context) ->
-    crossbar_util:response([], Context);
+    crossbar_util:response(wh_json:new(), Context);
 upload_template_image(_, #cb_context{req_files=[_|_]}=Context) ->
-    crossbar_util:response_invalid_data(<<"please provide a single image file">>, Context).
+    Message = <<"please provide a single image file">>,
+    cb_context:add_validation_error(<<"file">>, <<"maxItems">>, Message, Context).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -285,18 +287,9 @@ load_provisioner_template_summary(Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec create_provisioner_template/1 :: (#cb_context{}) -> #cb_context{}.
-create_provisioner_template(#cb_context{req_data=Data}=Context) ->
-    case wh_json_validator:is_valid(Data, <<"provisioner_templates">>) of
-        {fail, Errors} ->
-            crossbar_util:response_invalid_data(Errors, Context);
-        {pass, JObj} ->
-            Updates = [fun(J) -> wh_json:set_value(<<"pvt_type">>, <<"provisioner_template">>, J) end
-                       ,fun(J) -> wh_json:set_value(<<"pvt_vsn">>, <<"1">>, J) end
-                       ,fun(J) -> wh_json:set_value(<<"pvt_provider">>, <<"provisioner.net">>, J) end
-                       ,fun(J) -> wh_json:set_value(<<"pvt_provisioner_type">>, <<"local">>, J) end
-                      ],
-            provisioner_util:get_provision_defaults(Context#cb_context{doc=lists:foldr(fun(F, J) -> F(J) end, JObj, Updates)})
-    end.
+create_provisioner_template(#cb_context{}=Context) ->
+    OnSuccess = fun(C) -> on_successful_validation(undefined, C) end,
+    cb_context:validate_request_data(<<"provisioner_templates">>, Context, OnSuccess).    
 
 %%--------------------------------------------------------------------
 %% @private
@@ -317,7 +310,6 @@ load_provisioner_template(DocId, Context) ->
             end;
         Else -> Else
     end.
-
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -326,13 +318,25 @@ load_provisioner_template(DocId, Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec update_provisioner_template/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
-update_provisioner_template(DocId, #cb_context{req_data=Data}=Context) ->
-    case wh_json_validator:is_valid(Data, <<"provisioner_templates">>) of
-        {fail, Errors} ->
-            crossbar_util:response_invalid_data(Errors, Context);
-        {pass, JObj} ->
-            crossbar_doc:load_merge(DocId, JObj, Context)
-    end.
+update_provisioner_template(DocId, #cb_context{}=Context) ->
+    OnSuccess = fun(C) -> on_successful_validation(DocId, C) end,
+    cb_context:validate_request_data(<<"provisioner_templates">>, Context, OnSuccess).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec on_successful_validation/2 :: ('undefined' | ne_binary(), #cb_context{}) -> #cb_context{}.
+on_successful_validation(undefined, #cb_context{doc=JObj}=Context) ->
+    C = Context#cb_context{doc=wh_json:set_values([{<<"pvt_type">>, <<"provisioner_template">>}
+                                                   ,{<<"pvt_provider">>, <<"provisioner.net">>}
+                                                   ,{<<"pvt_provisioner_type">>, <<"local">>}
+                                                  ], JObj)},
+    provisioner_util:get_provision_defaults(C);
+on_successful_validation(DocId, #cb_context{}=Context) ->
+    crossbar_doc:load_merge(DocId, Context).
 
 %%--------------------------------------------------------------------
 %% @private

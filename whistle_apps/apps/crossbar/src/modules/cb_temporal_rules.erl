@@ -74,16 +74,16 @@ resource_exists(_) -> true.
 -spec validate/1 :: (#cb_context{}) -> #cb_context{}.
 -spec validate/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
 validate(#cb_context{req_verb = <<"get">>}=Context) ->
-    load_temporal_rule_summary(Context);
+    summary(Context);
 validate(#cb_context{req_verb = <<"put">>}=Context) ->
-    create_temporal_rule(Context).
+    create(Context).
 
 validate(#cb_context{req_verb = <<"get">>}=Context, DocId) ->
-    load_temporal_rule(DocId, Context);
+    read(DocId, Context);
 validate(#cb_context{req_verb = <<"post">>}=Context, DocId) ->
-    update_temporal_rule(DocId, Context);
+    update(DocId, Context);
 validate(#cb_context{req_verb = <<"delete">>}=Context, DocId) ->
-    load_temporal_rule(DocId, Context).
+    read(DocId, Context).
 
 -spec post/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
 post(Context, _) ->
@@ -104,57 +104,58 @@ delete(Context, _) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Attempt to load list of accounts, each summarized.  Or a specific
-%% account summary.
+%% Create a new instance with the data provided, if it is valid
 %% @end
 %%--------------------------------------------------------------------
--spec load_temporal_rule_summary/1 :: (#cb_context{}) -> #cb_context{}.
-load_temporal_rule_summary(Context) ->
+-spec create/1 :: (#cb_context{}) -> #cb_context{}.
+create(#cb_context{}=Context) ->
+    OnSuccess = fun(C) -> on_successful_validation(undefined, C) end,
+    cb_context:validate_request_data(<<"temporal_rules">>, Context, OnSuccess).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Load an instance from the database
+%% @end
+%%--------------------------------------------------------------------
+-spec read/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
+read(Id, Context) ->
+    crossbar_doc:load(Id, Context).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Update an existing menu document with the data provided, if it is
+%% valid
+%% @end
+%%--------------------------------------------------------------------
+-spec update/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
+update(Id, #cb_context{}=Context) ->
+    OnSuccess = fun(C) -> on_successful_validation(Id, C) end,
+    cb_context:validate_request_data(<<"temporal_rules">>, Context, OnSuccess).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Attempt to load a summarized listing of all instances of this
+%% resource.
+%% @end
+%%--------------------------------------------------------------------
+-spec summary/1 :: (#cb_context{}) -> #cb_context{}.
+summary(Context) ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Create a new temporal_rule document with the data provided, if it is valid
+%% 
 %% @end
 %%--------------------------------------------------------------------
--spec create_temporal_rule/1 :: (#cb_context{}) -> #cb_context{}.
-create_temporal_rule(#cb_context{req_data=Data}=Context) ->
-    case wh_json_validator:is_valid(Data, <<"temporal_rules">>) of
-        {fail, Errors} ->
-            crossbar_util:response_invalid_data(Errors, Context);
-        {pass, JObj} ->
-            Context#cb_context{
-                 doc=wh_json:set_value(<<"pvt_type">>, <<"temporal_rule">>, JObj)
-                ,resp_status=success
-            }
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Load a temporal_rule document from the database
-%% @end
-%%--------------------------------------------------------------------
--spec load_temporal_rule/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
-load_temporal_rule(DocId, Context) ->
-    crossbar_doc:load(DocId, Context).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Update an existing temporal_rule document with the data provided, if it is
-%% valid
-%% @end
-%%--------------------------------------------------------------------
--spec update_temporal_rule/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
-update_temporal_rule(DocId, #cb_context{req_data=Data}=Context) ->
-    case wh_json_validator:is_valid(Data, <<"temporal_rules">>) of
-        {fail, Errors} ->
-            crossbar_util:response_invalid_data(Errors, Context);
-        {pass, JObj} ->
-            crossbar_doc:load_merge(DocId, JObj, Context)
-    end.
+-spec on_successful_validation/2 :: ('undefined' | ne_binary(), #cb_context{}) -> #cb_context{}.
+on_successful_validation(undefined, #cb_context{doc=JObj}=Context) ->
+    Context#cb_context{doc=wh_json:set_value(<<"pvt_type">>, <<"temporal_rule">>, JObj)};
+on_successful_validation(Id, #cb_context{}=Context) ->
+    crossbar_doc:load_merge(Id, Context).
 
 %%--------------------------------------------------------------------
 %% @private

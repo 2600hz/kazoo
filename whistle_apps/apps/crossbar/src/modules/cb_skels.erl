@@ -34,8 +34,6 @@
 
 -include("include/crossbar.hrl").
 
--define(PVT_TYPE, <<"skel">>).
--define(PVT_FUNS, [fun add_pvt_type/2]).
 -define(CB_LIST, <<"skels/crossbar_listing">>).
 
 %%%===================================================================
@@ -304,16 +302,9 @@ finish_request(#cb_context{}=Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec create/1 :: (#cb_context{}) -> #cb_context{}.
-create(#cb_context{req_data=Data}=Context) ->
-    case wh_json_validator:is_valid(Data, <<"skels">>) of
-        {fail, Errors} ->
-            crossbar_util:response_invalid_data(Errors, Context);
-        {pass, JObj} ->
-            {JObj1, _} = lists:foldr(fun(F, {J, C}) ->
-                                             {F(J, C), C}
-                                     end, {JObj, Context}, ?PVT_FUNS),
-            Context#cb_context{doc=JObj1, resp_status=success}
-    end.
+create(#cb_context{}=Context) ->
+    OnSuccess = fun(C) -> on_successful_validation(undefined, C) end,
+    cb_context:validate_request_data(<<"skels">>, Context, OnSuccess).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -328,21 +319,15 @@ read(Id, Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Update an existing instance with the data provided, if it is
+%% Update an existing menu document with the data provided, if it is
 %% valid
 %% @end
 %%--------------------------------------------------------------------
 -spec update/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
-update(Id, #cb_context{req_data=Data}=Context) ->
-    case wh_json_validator:is_valid(Data, <<"skels">>) of
-        {fail, Errors} ->
-            crossbar_util:response_invalid_data(Errors, Context);
-        {pass, JObj} ->
-            {JObj1, _} = lists:foldr(fun(F, {J, C}) ->
-                                             {F(J, C), C}
-                                     end, {JObj, Context}, ?PVT_FUNS),
-            crossbar_doc:load_merge(Id, JObj1, Context)
-    end.
+update(Id, #cb_context{}=Context) ->
+    OnSuccess = fun(C) -> on_successful_validation(Id, C) end,
+    cb_context:validate_request_data(<<"skels">>, Context, OnSuccess).
+
 
 %%--------------------------------------------------------------------
 %% @private
@@ -358,20 +343,21 @@ summary(Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec on_successful_validation/2 :: ('undefined' | ne_binary(), #cb_context{}) -> #cb_context{}.
+on_successful_validation(undefined, #cb_context{doc=JObj}=Context) ->
+    Context#cb_context{doc=wh_json:set_value(<<"pvt_type">>, <<"skel">>, JObj)};
+on_successful_validation(Id, #cb_context{}=Context) ->
+    crossbar_doc:load_merge(Id, Context).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
 -spec normalize_view_results/2 :: (wh_json:json_object(), wh_json:json_objects()) -> wh_json:json_objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% These are the pvt funs that add the necessary pvt fields to every
-%% instance
-%% @end
-%%--------------------------------------------------------------------
--spec add_pvt_type/2 :: (wh_json:json_object(), #cb_context{}) -> wh_json:json_object().
-add_pvt_type(JObj, _) ->
-    wh_json:set_value(<<"pvt_type">>, ?PVT_TYPE, JObj).

@@ -423,7 +423,7 @@ set_response({Error, Reason}, _, Context) ->
     crossbar_util:response(error, wh_util:to_binary(Error), 500, Reason, Context);
 set_response(_Else, _, Context) ->
     lager:debug("unexpected response: ~p", [_Else]),
-    crossbar_util:response_db_fatal(Context).
+    cb_context:add_system_error(unspecified_fault, Context).
 
 %%--------------------------------------------------------------------
 %% @private

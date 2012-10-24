@@ -132,7 +132,6 @@ validate(#cb_context{req_verb = <<"get">>}=Context, AccountId, <<"siblings">>) -
 %%--------------------------------------------------------------------
 -spec post/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
 post(Context, AccountId) ->
-    _ = cb_context:put_reqid(Context),
     case crossbar_doc:save(Context) of
         #cb_context{resp_status=success, doc=JObj}=Context1 ->
             _ = replicate_account_definition(JObj),
@@ -156,7 +155,8 @@ put(#cb_context{doc=JObj}=Context) ->
     try create_new_account_db(prepare_context(AccountId, Context)) of
         C -> leak_pvt_fields(C)
     catch
-        throw:#cb_context{}=C -> delete(C, AccountId);
+        throw:#cb_context{}=C -> 
+            delete(C, AccountId);
         _:_ -> 
             C = cb_context:add_system_error(unspecified_fault, Context),
             delete(C, AccountId)
@@ -174,11 +174,10 @@ put(Context, _) ->
 -spec delete/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
 delete(Context, Account) ->
     AccountDb = wh_util:format_account_id(Account, encoded),
+    AccountId = wh_util:format_account_id(Account, raw),
     case whapps_util:is_account_db(AccountDb) of
-        false -> cb_context:add_system_error(account_not_found, Context);
-        true ->
-            AccountId = wh_util:format_account_id(Account, raw),
-            delete_remove_services(Context#cb_context{db_name=AccountDb, account_id=AccountId})
+        false -> cb_context:add_system_error(bad_identifier, [{details, AccountId}],  Context);
+        true -> delete_remove_services(Context#cb_context{db_name=AccountDb, account_id=AccountId})
     end.
 
 %%--------------------------------------------------------------------
@@ -239,14 +238,14 @@ validate_realm_is_unique(AccountId, #cb_context{doc=JObj}=Context) ->
 
 -spec validate_account_schema/2 :: ('undefined'|ne_binary(), #cb_context{}) -> #cb_context{}.
 validate_account_schema(AccountId, Context) ->
-    C = cb_context:validate_request_data(<<"accounts">>, Context),
-    finalize_request_validation(AccountId, C).
+    OnSuccess = fun(C) -> on_successful_validation(AccountId, C) end,
+    cb_context:validate_request_data(<<"accounts">>, Context, OnSuccess).
 
--spec finalize_request_validation/2 :: ('undefined'|ne_binary(), #cb_context{}) -> #cb_context{}.
-finalize_request_validation(undefined, Context) ->
+-spec on_successful_validation/2 :: ('undefined'|ne_binary(), #cb_context{}) -> #cb_context{}.
+on_successful_validation(undefined, #cb_context{}=Context) ->
     set_private_properties(Context);
-finalize_request_validation(AccountId, #cb_context{doc=JObj}=Context) ->
-    crossbar_doc:load_merge(AccountId, JObj, Context).
+on_successful_validation(AccountId, #cb_context{}=Context) ->
+    crossbar_doc:load_merge(AccountId, Context).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -350,7 +349,7 @@ load_siblings(AccountId, Context) ->
         #cb_context{resp_status=success, doc=[JObj|_]} ->
             Parent = wh_json:get_value([<<"value">>, <<"id">>], JObj),
             load_children(Parent, Context);
-        _Else -> cb_context:add_system_error(account_not_found, Context)
+        _Else -> cb_context:add_system_error(bad_identifier, [{details, AccountId}],  Context)
     end.
 
 %%--------------------------------------------------------------------
@@ -460,7 +459,7 @@ load_account_db(AccountId, Context) when is_binary(AccountId) ->
                               };
         {error, _R} ->
             lager:debug("unable to open account definition ~s/~s: ~p", [AccountDb, AccountId, _R]),
-            cb_context:add_system_error(account_not_found, Context)
+            cb_context:add_system_error(bad_identifier, [{details, AccountId}],  Context)
     end.
 
 %%--------------------------------------------------------------------

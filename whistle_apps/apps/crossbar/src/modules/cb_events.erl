@@ -120,7 +120,7 @@ validate(#cb_context{req_verb = <<"get">>, account_id=AcctId, auth_doc=AuthDoc}=
         {ok, Pid} when is_pid(Pid) ->
             load_events(Context, Pid, UserId);
         _Other ->
-            crossbar_util:response_faulty_request(Context)
+            cb_context:add_system_error(faulty_request, Context)
     end;
 validate(#cb_context{req_verb = <<"post">>, account_id=AcctId, auth_doc=AuthDoc}=Context) ->
     UserId = wh_json:get_value(<<"owner_id">>, AuthDoc, ?DEFAULT_USER),
@@ -128,7 +128,7 @@ validate(#cb_context{req_verb = <<"post">>, account_id=AcctId, auth_doc=AuthDoc}
         {ok, Pid} when is_pid(Pid) ->
             update_srv(Context, Pid, UserId);
         _ ->
-            crossbar_util:response_faulty_request(Context)
+            cb_context:add_system_error(faulty_request, Context)
     end;
 validate(#cb_context{req_verb = <<"delete">>, account_id=AcctId, auth_doc=AuthDoc}=Context) ->
     UserId = wh_json:get_value(<<"owner_id">>, AuthDoc, ?DEFAULT_USER),
@@ -136,7 +136,7 @@ validate(#cb_context{req_verb = <<"delete">>, account_id=AcctId, auth_doc=AuthDo
         {ok, Pid} when is_pid(Pid) ->
             stop_srv(Context, Pid, UserId);
         _ ->
-            crossbar_util:response_faulty_request(Context)
+            cb_context:add_system_error(faulty_request, Context)
     end.
 
 validate(#cb_context{req_verb = <<"get">>}=Context, <<"available">>) ->
@@ -148,7 +148,7 @@ validate(#cb_context{req_verb = <<"get">>, account_id=AcctId, auth_doc=AuthDoc}=
         {ok, Pid} when is_pid(Pid) ->
             load_current_subscriptions(Context, Pid);
         _Other ->
-            crossbar_util:response_faulty_request(Context)
+            cb_context:add_system_error(faulty_request, Context)
     end;
 
 validate(#cb_context{req_verb = <<"put">>, auth_doc=AuthDoc, account_id=AcctId, req_data=ReqData}=Context, <<"subscription">>) ->
@@ -159,7 +159,7 @@ validate(#cb_context{req_verb = <<"put">>, auth_doc=AuthDoc, account_id=AcctId, 
         {ok, Pid} when is_pid(Pid) ->
             add_subscriptions(Context, Pid, Subscriptions, UserId);
         _ ->
-            crossbar_util:response_faulty_request(Context)
+            cb_context:add_system_error(faulty_request, Context)
     end;
 
 validate(#cb_context{req_verb = <<"delete">>, auth_doc=AuthDoc, account_id=AcctId, req_data=ReqData}=Context, <<"subscription">>) ->
@@ -170,7 +170,7 @@ validate(#cb_context{req_verb = <<"delete">>, auth_doc=AuthDoc, account_id=AcctI
         {ok, Pid} when is_pid(Pid) ->
             rm_subscriptions(Context, Pid, Subscriptions, UserId);
         _Other ->
-            crossbar_util:response_faulty_request(Context)
+            cb_context:add_system_error(faulty_request, Context)
     end.
 
 -spec post/1 :: (#cb_context{}) -> #cb_context{}.

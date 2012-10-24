@@ -169,7 +169,7 @@ post(#cb_context{doc=JObj}=Context, _) ->
                                                             ])
                               };
         _Else ->
-            crossbar_util:response_db_fatal(Context)
+            cb_context:add_system_error(datastore_fault, Context)
     end.
 
 -spec put/1 :: (#cb_context{}) -> #cb_context{}.
@@ -181,7 +181,7 @@ put(Context) ->
             P ! {register, Context},
             Context1#cb_context{resp_data=[]};
         _ ->
-                crossbar_util:response_db_fatal(Context)
+                cb_context:add_system_error(datastore_fault, Context)
     end.
 
 %%%===================================================================

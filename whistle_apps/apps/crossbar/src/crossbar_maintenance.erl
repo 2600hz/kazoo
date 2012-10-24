@@ -52,14 +52,14 @@ migrate() ->
                    ,fun(L) -> sets:add_element(<<"cb_global_provisioner_templates">>, L) end
                    ,fun(L) -> sets:add_element(<<"cb_schemas">>, L) end
                    ,fun(L) -> sets:add_element(<<"cb_configs">>, L) end
-                   ,fun(L) -> sets:add_element(<<"cb_limits">>, L) end
                    ,fun(L) -> sets:add_element(<<"cb_whitelabel">>, L) end
-                   ,fun(L) -> sets:add_element(<<"cb_braintree">>, L) end
                    ,fun(L) -> sets:add_element(<<"cb_services">>, L) end
                    ,fun(L) -> sets:add_element(<<"cb_agents">>, L) end
                    ,fun(L) -> sets:add_element(<<"cb_queues">>, L) end
                    ,fun(L) -> sets:add_element(<<"cb_whitelabel">>, L) end
                    ,fun(L) -> sets:add_element(<<"cb_limits">>, L) end
+                   ,fun(L) -> sets:add_element(<<"cb_about">>, L) end
+                   ,fun(L) -> sets:add_element(<<"cb_faxes">>, L) end
                   ],
     UpdatedModules = sets:to_list(lists:foldr(fun(F, L) -> F(L) end, StartModules, XbarUpdates)),
     _ = whapps_config:set_default(<<"crossbar">>, <<"autoload_modules">>, UpdatedModules),

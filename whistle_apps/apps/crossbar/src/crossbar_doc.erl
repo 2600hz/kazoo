@@ -11,7 +11,8 @@
 
 -export([load/2, load/3
          ,load_from_file/2
-         ,load_merge/3, merge/3
+         ,load_merge/2, load_merge/3
+         ,merge/3
          ,load_view/3, load_view/4
          ,load_attachment/3, load_docs/2
          ,save/1, save/2
@@ -102,7 +103,12 @@ load_from_file(Db, File) ->
 %% Failure here returns 410, 500, or 503
 %% @end
 %%--------------------------------------------------------------------
+-spec load_merge/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
 -spec load_merge/3 :: (ne_binary(), wh_json:json_object(), #cb_context{}) -> #cb_context{}.
+
+load_merge(DocId, #cb_context{doc=DataJObj}=Context) ->
+    load_merge(DocId, DataJObj, Context).
+
 load_merge(DocId, DataJObj, #cb_context{db_name=DbName}=Context) ->
     case load(DocId, Context) of
         #cb_context{resp_status=success, doc=JObj}=Context1 ->

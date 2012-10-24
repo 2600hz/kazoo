@@ -105,7 +105,7 @@ validate_req(#cb_context{req_verb = <<"post">>}=Context, UserId) ->
 validate_req(#cb_context{req_verb = <<"delete">>}=Context, UserId) ->
     load_user(UserId, Context);
 validate_req(Context, _UserId) ->
-    crossbar_util:response_faulty_request(Context).
+    cb_context:add_system_error(faulty_request, Context).
 
 -spec post/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
 post(Context, _) ->

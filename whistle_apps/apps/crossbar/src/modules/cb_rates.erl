@@ -111,7 +111,7 @@ validate(#cb_context{req_verb = <<"delete">>}=Context, Id) ->
 post(#cb_context{}=Context) ->
     _ = init_db(),
     spawn(fun() -> upload_csv(Context) end),
-    crossbar_util:response_202(list_to_binary(["attempting to insert rates from the uploaded document"]), Context).
+    crossbar_util:response_202(<<"attempting to insert rates from the uploaded document">>, Context).
 post(#cb_context{}=Context, _RateId) ->
     crossbar_doc:save(Context).
 
@@ -133,15 +133,10 @@ delete(#cb_context{}=Context, _RateId) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec create/1 :: (#cb_context{}) -> #cb_context{}.
-create(#cb_context{req_data=Data}=Context) ->
-    case wh_json_validator:is_valid(Data, <<"rates">>) of
-        {fail, Errors} ->
-            crossbar_util:response_invalid_data(Errors, Context);
-        {pass, JObj} ->
-            {JObj1, _} = add_pvt_fields(JObj, Context),
-            Context#cb_context{doc=JObj1, resp_status=success}
-    end.
-    
+create(#cb_context{}=Context) ->
+    OnSuccess = fun(C) -> on_successful_validation(undefined, C) end,
+    cb_context:validate_request_data(<<"rates">>, Context, OnSuccess).
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -155,21 +150,27 @@ read(Id, Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Update an existing instance with the data provided, if it is
+%% Update an existing menu document with the data provided, if it is
 %% valid
 %% @end
 %%--------------------------------------------------------------------
 -spec update/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
-update(Id, #cb_context{req_data=Data}=Context) ->
-    case wh_json_validator:is_valid(Data, <<"rates">>) of
-        {fail, Errors} ->
-            crossbar_util:response_invalid_data(Errors, Context);
-        {pass, JObj} ->
-            {JObj1, _} = lists:foldr(fun(F, {J, C}) ->
-                                             {F(J, C), C}
-                                     end, {JObj, Context}, ?PVT_FUNS),
-            crossbar_doc:load_merge(Id, JObj1, Context)
-    end.
+update(Id, #cb_context{}=Context) ->
+    OnSuccess = fun(C) -> on_successful_validation(Id, C) end,
+    cb_context:validate_request_data(<<"rates">>, Context, OnSuccess).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec on_successful_validation/2 :: ('undefined' | ne_binary(), #cb_context{}) -> #cb_context{}.
+on_successful_validation(undefined, #cb_context{doc=JObj}=Context) ->
+    Context#cb_context{doc=wh_json:set_value(<<"pvt_type">>, <<"rate">>, JObj)};
+on_successful_validation(Id, #cb_context{}=Context) ->
+    crossbar_doc:load_merge(Id, Context).
+
 
 %%--------------------------------------------------------------------
 %% @private
@@ -194,13 +195,14 @@ check_uploaded_file(#cb_context{req_files=[{_Name, File}|_]}=Context) ->
     lager:debug("checking file ~s", [_Name]),
     case wh_json:get_value(<<"contents">>, File) of
         undefined ->
-            Context#cb_context{resp_status=error};
+            Message = <<"file contents not found">>,
+            cb_context:add_validation_error(<<"file">>, <<"required">>, Message, Context);
         Bin when is_binary(Bin) ->
             Context#cb_context{resp_status=success}
     end;
 check_uploaded_file(Context) ->
-    lager:debug("no file to process"),
-    crossbar_util:response_faulty_request(Context).
+    Message = <<"no file to process">>,
+    cb_context:add_validation_error(<<"file">>, <<"required">>, Message, Context).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -211,35 +213,6 @@ check_uploaded_file(Context) ->
 -spec normalize_view_results/2 :: (wh_json:json_object(), wh_json:json_objects()) -> wh_json:json_objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Add any pvt_* fields to the json object
-%% @end
-%%--------------------------------------------------------------------
--spec add_pvt_fields/1 :: (wh_json:json_object()) ->
-                                  wh_json:json_object().
--spec add_pvt_fields/2 :: (wh_json:json_object(), #cb_context{} | 'undefined') ->
-                                  {wh_json:json_object(), #cb_context{} | 'undefined'}.
-add_pvt_fields(JObj) ->
-    {JObj1, _} = add_pvt_fields(JObj, undefined),
-    JObj1.
-add_pvt_fields(JObj, Context) ->
-    lists:foldr(fun(F, {J, C}) ->
-                        {F(J, C), C}
-                end, {JObj, Context}, ?PVT_FUNS).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% These are the pvt funs that add the necessary pvt fields to every
-%% instance
-%% @end
-%%--------------------------------------------------------------------
--spec add_pvt_type/2 :: (wh_json:json_object(), #cb_context{} | 'undefined') -> wh_json:json_object().
-add_pvt_type(JObj, _) ->
-    wh_json:set_value(<<"pvt_type">>, ?PVT_TYPE, JObj).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -292,23 +265,24 @@ process_row([Prefix, ISO, Desc, InternalCost, Rate], {Cnt, RateDocs}=Acc) ->
             %% meaning it should be more likely used
             CostF = trunc(wh_util:to_float(InternalCost) * 100),
 
-            {Cnt+1, [add_pvt_fields(
-                       wh_json:from_list([{<<"_id">>, list_to_binary([ISO1, "-", Prefix])}
-                                          ,{<<"prefix">>, Prefix1}
-                                          ,{<<"iso_country_code">>, ISO1}
-                                          ,{<<"description">>, Desc1}
-                                          ,{<<"rate_name">>, Desc1}
+            {Cnt+1, [wh_json:from_list([{<<"_id">>, list_to_binary([ISO1, "-", Prefix])}
+                                        ,{<<"prefix">>, Prefix1}
+                                        ,{<<"iso_country_code">>, ISO1}
+                                        ,{<<"description">>, Desc1}
+                                        ,{<<"rate_name">>, Desc1}
                                           ,{<<"rate_cost">>, wh_util:to_float(Rate1)}
-                                          ,{<<"rate_increment">>, 60}
-                                          ,{<<"rate_minimum">>, 60}
-                                          ,{<<"rate_surcharge">>, 0}
-                                          ,{<<"pvt_rate_cost">>, wh_util:to_float(InternalCost1)}
-                                          ,{<<"weight">>, constrain_weight(byte_size(Prefix1) * 10 - CostF)}
-                                          ,{<<"options">>, []}
-                                          ,{<<"routes">>, [<<"^\\+", (wh_util:to_binary(Prefix1))/binary, "(\\d*)$">>]}
-                                          ,{<<"pvt_carrier">>, <<"default">>}
-                                         ]))
-                     | RateDocs]}
+                                        ,{<<"rate_increment">>, 60}
+                                        ,{<<"rate_minimum">>, 60}
+                                        ,{<<"rate_surcharge">>, 0}
+                                        ,{<<"pvt_rate_cost">>, wh_util:to_float(InternalCost1)}
+                                        ,{<<"weight">>, constrain_weight(byte_size(Prefix1) * 10 - CostF)}
+                                        ,{<<"options">>, []}
+                                        ,{<<"routes">>, [<<"^\\+", (wh_util:to_binary(Prefix1))/binary, "(\\d*)$">>]}
+                                        ,{<<"pvt_carrier">>, <<"default">>}
+                                        ,{<<"pvt_type">>, <<"rate">>}
+                                       ])
+                     | RateDocs
+                    ]}
     end;
 process_row(_Row, Acc) ->
     lager:debug("ignoring row ~p", [_Row]),

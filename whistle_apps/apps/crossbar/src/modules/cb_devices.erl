@@ -253,14 +253,14 @@ validate_device_ip(IP, DeviceId, Context) ->
     end.
 
 check_device_schema(DeviceId, Context) ->
-    C = cb_context:validate_request_data(<<"devices">>, Context),
-    finalize_request_validation(DeviceId, C).
+    OnSuccess = fun(C) -> on_successful_validation(DeviceId, C) end,
+    cb_context:validate_request_data(<<"devices">>, Context, OnSuccess).
 
-finalize_request_validation(undefined, #cb_context{doc=Doc}=Context) ->
+on_successful_validation(undefined, #cb_context{doc=Doc}=Context) ->
     Props = [{<<"pvt_type">>, <<"device">>}],
     Context#cb_context{doc=wh_json:set_values(Props, Doc)};
-finalize_request_validation(DeviceId, #cb_context{doc=JObj}=Context) -> 
-    crossbar_doc:load_merge(DeviceId, JObj, Context).
+on_successful_validation(DeviceId, #cb_context{}=Context) -> 
+    crossbar_doc:load_merge(DeviceId, Context).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -309,10 +309,10 @@ lookup_regs(AccountRealm) ->
            ,{<<"Fields">>, [<<"Authorizing-ID">>]}
            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    Resp = wh_amqp_worker:call(whapps_amqp_pool
-                               ,Req
-                               ,fun wapi_registration:publish_query_req/1
-                               ,fun wapi_registration:query_resp_v/1),
+    Resp =  whapps_util:amqp_pool_request(Req
+                                          ,fun wapi_registration:publish_query_req/1
+                                          ,fun wapi_registration:query_resp_v/1
+                                          ,1000),
     case Resp of
         {error, _} -> [];
         {ok, JObj} -> extract_device_registrations(JObj)
@@ -432,6 +432,7 @@ maybe_aggregate_device(#cb_context{resp_status=success, doc=JObj}=Context) ->
         true -> 
             lager:debug("adding device to the sip auth aggregate"),
             couch_mgr:ensure_saved(?WH_SIP_DB, wh_json:delete_key(<<"_rev">>, JObj)),
+            wapi_switch:publish_reloadacl(),
             true
     end;
 maybe_aggregate_device(_) -> false.

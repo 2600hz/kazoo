@@ -170,7 +170,7 @@ validate(Context, _Path) ->
     _ = cb_context:put_reqid(Context),
     lager:debug("bad path: ~p", [_Path]),
     lager:debug("req verb: ~s", [Context#cb_context.req_verb]),
-    crossbar_util:response_faulty_request(Context).
+    cb_context:add_system_error(faulty_request, Context).
 
 -spec put/1 :: (#cb_context{}) -> #cb_context{}.
 -spec put/2 :: (#cb_context{}, path_token()) -> #cb_context{}.

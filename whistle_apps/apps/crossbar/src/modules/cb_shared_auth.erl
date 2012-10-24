@@ -162,11 +162,11 @@ validate(#cb_context{auth_doc=JObj, req_verb = <<"get">>}=Context) ->
                                       };
                 {error, R} ->
                     lager:debug("failed to get user for response ~p", [R]),
-                    crossbar_util:response_db_fatal(Context)
+                    cb_context:add_system_error(datastore_fault, Context)
             end;
         {error, R} ->
             lager:debug("failed to get account for response ~p", [R]),
-            crossbar_util:response_db_fatal(Context)
+            cb_context:add_system_error(datastore_fault, Context)
     end.
 
 %%--------------------------------------------------------------------
