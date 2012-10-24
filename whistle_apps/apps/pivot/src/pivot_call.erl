@@ -33,16 +33,18 @@
 
 -define(DEFAULT_OPTS, [{response_format, binary}]).
 
+-type http_method() :: 'get' | 'post'.
+
 -record(state, {
-          voice_uri :: ne_binary()
-         ,cdr_uri :: ne_binary()
-         ,request_format = <<"twiml">> :: ne_binary()
-         ,method = 'get' :: 'get' | 'post'
+          voice_uri :: api_binary()
+         ,cdr_uri :: api_binary()
+         ,request_format = <<"twiml">> :: api_binary()
+         ,method = 'get' :: http_method()
          ,call :: whapps_call:call()
          ,request_id :: ibrowse_req_id()
-         ,request_params = [] :: proplist()
+         ,request_params :: wh_json:json_object()
          ,response_body :: binary()
-         ,response_content_type :: ne_binary()
+         ,response_content_type :: binary()
          ,response_pid :: pid() %% pid of the processing of the response
          ,response_ref :: reference() %% monitor ref for the pid
          }).
@@ -70,15 +72,19 @@ start_link(Call, JObj) ->
                                                     ]}
                                      ], [Call, JObj]).
 
+-spec stop_call/2 :: (pid(), whapps_call:call()) -> 'ok'.
 stop_call(Srv, Call) ->
     gen_listener:cast(Srv, {stop, Call}).
 
+-spec new_request/4 :: (pid(), ne_binary(), http_method(), wh_json:json_object()) -> 'ok'.
 new_request(Srv, Uri, Method, Params) ->
     gen_listener:cast(Srv, {request, Uri, Method, Params}).
 
+-spec updated_call/2 :: (pid(), whapps_call:call()) -> 'ok'.
 updated_call(Srv, Call) ->
     gen_listener:cast(Srv, {updated_call, Call}).
 
+-spec handle_call_event/2 :: (wh_json:json_object(), wh_proplist()) -> 'ok'.
 handle_call_event(JObj, Props) ->
     case props:get_value(pid, Props) of
         P when is_pid(P) -> whapps_call_command:relay_event(P, JObj);
@@ -219,7 +225,7 @@ handle_info({ibrowse_async_response_end, ReqId}, #state{request_id=ReqId
     {Pid, Ref} = spawn_monitor(?MODULE, handle_resp, [Call, CT, RespBody, Self]),
     lager:debug("processing resp with ~p(~p)", [Pid, Ref]),
     {noreply, State#state{request_id = undefined
-                          ,request_params = []
+                          ,request_params = wh_json:new()
                           ,response_body = <<>>
                           ,response_content_type = <<>>
                           ,response_pid = Pid
@@ -275,7 +281,10 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec send_req/4 :: (whapps_call:call(), nonempty_string() | ne_binary(), 'get' | 'post', wh_json:json_object()) -> any().
+-spec send_req/4 :: (whapps_call:call(), nonempty_string() | ne_binary(), http_method(), wh_json:json_object()) ->
+                            'ok' |
+                            {'ok', ibrowse_req_id()} |
+                            {'stop', whapps_call:call()}.
 send_req(Call, Uri, get, BaseParams) ->
     UserParams = kzt_translator:get_user_vars(Call),
     Params = wh_json:set_values(wh_json:to_proplist(BaseParams), UserParams),
@@ -289,7 +298,9 @@ send_req(Call, Uri, post, BaseParams) ->
     send(Call, Uri, post, [{"Content-Type", "application/x-www-form-urlencoded"}], wh_json:to_querystring(Params)).
 
 -spec send/5 :: (whapps_call:call(), iolist(), atom(), wh_proplist(), iolist()) -> 
-                        'ok' | {'stop', whapps_call:call()}.
+                        'ok' |
+                        {'ok', ibrowse_req_id()} |
+                        {'stop', whapps_call:call()}.
 send(Call, Uri, Method, ReqHdrs, ReqBody) ->
     lager:debug("sending req to ~s(~s): ~s", [iolist_to_binary(Uri), Method, ReqBody]),
 
