@@ -130,6 +130,8 @@
                                ,{<<"Ignore-Display-Updates">>, <<"ignore_display_updates">>}
                                %% ,{<<"Hold-Media">>, <<"hold_music">>}
                                ,{<<"Loopback-Bowout">>, <<"loopback_bowout_on_execute">>}
+                               ,{<<"tts_engine">>, <<"tts_engine">>}
+                               ,{<<"tts_voice">>, <<"tts_voice">>}
                               ]).
 
 %% [{FreeSWITCH-App-Name, Kazoo-App-Name}]

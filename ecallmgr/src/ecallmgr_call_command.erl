@@ -76,11 +76,14 @@ get_fs_app(Node, UUID, JObj, <<"tts">>) ->
     case wapi_dialplan:tts_v(JObj) of
         false -> {'error', <<"tts failed to execute as JObj didn't validate">>};
         true ->
-            case wh_json:get_value(<<"engine">>, JObj) of
+            case wh_json:get_value(<<"Engine">>, JObj) of
                 <<"flite">> -> tts_flite(Node, UUID, JObj);
-                _ ->
+                _E ->
+                    lager:debug("engine to use: '~p'", [_E]),
                     SayMe = wh_json:get_value(<<"Text">>, JObj),
+                    lager:debug("tts to say: ~s", [SayMe]),
                     App = play(Node, UUID, wh_json:set_value(<<"Media-Name">>, <<"tts://", SayMe/binary>>, JObj)),
+                    lager:debug("app to use: ~p", [App]),
                     [App
                      ,{"application", ecallmgr_util:create_masquerade_event(<<"tts">>, <<"CHANNEL_EXECUTE_COMPLETE">>)}
                     ]
@@ -741,7 +744,7 @@ set_terminators(Node, UUID, Ts) ->
 %%--------------------------------------------------------------------
 -spec set/3 :: (atom(), ne_binary(), wh_proplist() | ne_binary()) -> ecallmgr_util:send_cmd_ret().
 set(Node, UUID, [{K, V}]) ->
-    set(Node, UUID, <<K/binary, "=", V/binary>>);
+    set(Node, UUID, get_fs_kv(K, V, UUID));
 set(Node, UUID, [{_, _}|_]=Props) ->
     Multiset = lists:foldl(fun({K, V}, Acc) ->
                                    <<"|", (get_fs_kv(K, V, UUID))/binary, Acc/binary>>
@@ -909,6 +912,8 @@ play(Node, UUID, JObj) ->
 
 tts_flite(Node, UUID, JObj) ->
     TTSVoice = tts_flite_voice(wh_json:get_value(<<"Voice">>, JObj)),
+
+    lager:debug("tts_flite voice: ~s", [TTSVoice]),
 
     _ = set(Node, UUID, [{<<"tts_engine">>, <<"flite">>}
                          ,{<<"tts_voice">>, TTSVoice}
