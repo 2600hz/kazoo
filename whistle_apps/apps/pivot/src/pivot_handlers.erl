@@ -17,6 +17,7 @@
 
 -spec handle_route_req/2 :: (wh_json:json_object(), wh_proplist()) -> any().
 handle_route_req(JObj, Props) ->
+    true = wapi_route:req_v(JObj),
     _Q = props:get_value(queue, Props),
 
     %% sends route_resp with "park" by default
@@ -25,8 +26,10 @@ handle_route_req(JObj, Props) ->
 %% receiving the route_win means we are in control of the call
 -spec handle_route_win/2 :: (wh_json:json_object(), wh_proplist()) -> any().
 handle_route_win(JObj, _Props) ->
+    true = wapi_route:win_v(JObj),
+
     %% Create the call data structure
-    {ok, Call} = whapps_call:answer(JObj),
+    Call = whapps_call:from_json(JObj),
 
     %% 1) because some commands can alter a call's state, we always return the new state
     %% 2) by convention b_function is the blocking version of the function.
@@ -39,11 +42,11 @@ handle_route_win(JObj, _Props) ->
     %% {error, hungup, Call2} and do cleanup of some kind.
     %% since we don't care, we'll just match successful completion of the audio and crash
     %% otherwise (why send a hangup to a call that's hungup).
-    {ok, Call1} = whapps_call:b_play(Call, <<"local_stream://some/media.mp3">>),
+    _ = whapps_call_command:b_play(<<"local_stream://some/media.mp3">>, Call),
 
     %% the return of this function is ignored anyway, and the call is finished, so no need
     %% to match the return here.
-    whapps_call:hangup(Call1).
+    whapps_call_command:hangup(Call).
 
 handle_pivot_req(JObj, _Props) ->
     true = wapi_pivot:req_v(JObj),
