@@ -649,7 +649,7 @@ say(Call, SayMe, Attrs) ->
     Lang = get_lang(props:get_value(language, Props)),
     Engine = get_engine(props:get_value(engine, Props)),
 
-    lager:debug("SAY: ~s using voice ~s, in lang ~s", [SayMe, Voice, Lang]),
+    lager:debug("SAY: ~s using voice ~s, in lang ~s, and engine ~s", [SayMe, Voice, Lang, Engine]),
 
     Res = case get_loop_count(wh_util:to_integer(props:get_value(loop, Props, 1))) of
               0 ->
@@ -681,7 +681,7 @@ say(Call, SayMe, Attrs, Terminators) ->
     Lang = get_lang(props:get_value(language, Props)),
     Engine = get_engine(props:get_value(engine, Props)),
 
-    lager:debug("SAY: ~s using voice ~s, in lang ~s", [SayMe, Voice, Lang]),
+    lager:debug("SAY: ~s using voice ~s, in lang ~s, and engine ~s", [SayMe, Voice, Lang, Engine]),
 
     case get_loop_count(wh_util:to_integer(props:get_value(loop, Props, 1))) of
         0 -> say_loop(Call1
@@ -1163,10 +1163,11 @@ maybe_stop(_, {error, _R}, Result) ->
     Result;
 maybe_stop(_, _, Result) -> Result.
 
--spec get_voice/1 :: (api_binary()) -> ne_binary().
-get_voice('undefined') -> <<"female">>;
+-spec get_voice/1 :: (text() | 'undefined') -> ne_binary().
+get_voice(V) when not is_binary(V) -> wh_util:to_binary(V);
 get_voice(<<"man">>) -> <<"male">>;
-get_voice(<<"woman">>) -> <<"female">>.
+get_voice(<<"male">> = M) -> M;
+get_voice(_) -> <<"female">>.
 
 -spec get_lang/1 :: (api_binary()) -> ne_binary().
 get_lang('undefined') -> <<"en-US">>;
@@ -1179,7 +1180,7 @@ get_lang(<<"de">>) -> <<"de">>.
 -spec get_engine/1 :: (api_binary()) -> ne_binary().
 get_engine('undefined') ->
     whapps_config:get_binary(?MOD_CONFIG_CAT, <<"tts_provider">>, <<"ispeech">>);
-get_engine(P) -> P.
+get_engine(P) -> wh_util:to_binary(P).
 
 -spec say_text/1 :: (text()) -> ne_binary().
 say_text([]) -> 'undefined';
