@@ -698,16 +698,12 @@ play_command(Media, Terminators, Call) ->
 -spec tts/2 :: (api_binary(), whapps_call:call()) -> ne_binary().
 -spec tts/3 :: (api_binary(), api_binary(), whapps_call:call()) -> ne_binary().
 -spec tts/4 :: (api_binary(), api_binary(), api_binary(), whapps_call:call()) -> ne_binary().
--spec tts/5 :: (api_binary(), api_binary(), api_binary(), [ne_binary(),...], whapps_call:call()) -> ne_binary().
--spec tts/6 :: (api_binary(), api_binary(), api_binary(), [ne_binary(),...], api_binary(), whapps_call:call()) -> ne_binary().
+-spec tts/5 :: (api_binary(), api_binary(), api_binary(), api_binaries(), whapps_call:call()) -> ne_binary().
+-spec tts/6 :: (api_binary(), api_binary(), api_binary(), api_binaries(), api_binary(), whapps_call:call()) -> ne_binary().
 
-tts(SayMe, Call) ->
-    tts(SayMe, <<"female">>, Call).
-tts(SayMe, Voice, Call) ->
-    tts(SayMe, Voice, <<"en-US">>, Call).
-tts(SayMe, Voice, Lang, Call) ->
-    tts(SayMe, Voice, Lang, ?ANY_DIGIT, Call).
-
+tts(SayMe, Call) -> tts(SayMe, <<"female">>, Call).
+tts(SayMe, Voice, Call) -> tts(SayMe, Voice, <<"en-US">>, Call).
+tts(SayMe, Voice, Lang, Call) -> tts(SayMe, Voice, Lang, ?ANY_DIGIT, Call).
 tts(SayMe, Voice, Lang, Terminators, Call) ->
     tts(SayMe, Voice, Lang, Terminators
         ,whapps_config:get_binary(?MOD_CONFIG_CAT, <<"tts_provider">>, <<"ispeech">>)
@@ -731,14 +727,11 @@ tts(SayMe, Voice, Lang, Terminators, Engine, Call) ->
 -spec tts_command/2 :: (api_binary(), whapps_call:call()) -> wh_json:json_object().
 -spec tts_command/3 :: (api_binary(), api_binary(), whapps_call:call()) -> wh_json:json_object().
 -spec tts_command/4 :: (api_binary(), api_binary(), api_binary(), whapps_call:call()) -> wh_json:json_object().
--spec tts_command/5 :: (api_binary(), api_binary(), api_binary(), list(), whapps_call:call()) -> wh_json:json_object().
--spec tts_command/6 :: (api_binary(), api_binary(), api_binary(), list(), api_binary(), whapps_call:call()) -> wh_json:json_object().
-tts_command(SayMe, Call) ->
-    tts_command(SayMe, <<"female">>, Call).
-tts_command(SayMe, Voice, Call) ->
-    tts_command(SayMe, Voice, <<"en-US">>, Call).
-tts_command(SayMe, Voice, Lang, Call) ->
-    tts_command(SayMe, Voice, Lang, ?ANY_DIGIT, Call).
+-spec tts_command/5 :: (api_binary(), api_binary(), api_binary(), api_binaries(), whapps_call:call()) -> wh_json:json_object().
+-spec tts_command/6 :: (api_binary(), api_binary(), api_binary(), api_binaries(), api_binary(), whapps_call:call()) -> wh_json:json_object().
+tts_command(SayMe, Call) -> tts_command(SayMe, <<"female">>, Call).
+tts_command(SayMe, Voice, Call) -> tts_command(SayMe, Voice, <<"en-US">>, Call).
+tts_command(SayMe, Voice, Lang, Call) -> tts_command(SayMe, Voice, Lang, ?ANY_DIGIT, Call).
 tts_command(SayMe, Voice, Lang, Terminators, Call) ->
     tts_command(SayMe, Voice, Lang, Terminators
                 ,whapps_config:get_binary(?MOD_CONFIG_CAT, <<"tts_provider">>, <<"ispeech">>)
@@ -759,24 +752,14 @@ tts_command(SayMe, Voice, Lang, Terminators, Engine, Call) ->
 -spec b_tts/2 :: (api_binary(), whapps_call:call()) -> whapps_api_std_return().
 -spec b_tts/3 :: (api_binary(), api_binary(), whapps_call:call()) -> whapps_api_std_return().
 -spec b_tts/4 :: (api_binary(), api_binary(), api_binary(), whapps_call:call()) -> whapps_api_std_return().
--spec b_tts/5 :: (api_binary(), api_binary(), api_binary(), [ne_binary(),...], whapps_call:call()) -> whapps_api_std_return().
--spec b_tts/6 :: (api_binary(), api_binary(), api_binary(), [ne_binary(),...], api_binary(), whapps_call:call()) -> whapps_api_std_return().
+-spec b_tts/5 :: (api_binary(), api_binary(), api_binary(), api_binaries(), whapps_call:call()) -> whapps_api_std_return().
+-spec b_tts/6 :: (api_binary(), api_binary(), api_binary(), api_binaries(), api_binary(), whapps_call:call()) -> whapps_api_std_return().
 
-b_tts(SayMe, Call) ->
-    NoopId = tts(SayMe, Call),
-    wait_for_noop(NoopId).
-b_tts(SayMe, Voice, Call) ->
-    NoopId = tts(SayMe, Voice, Call),
-    wait_for_noop(NoopId).
-b_tts(SayMe, Voice, Lang, Call) ->
-    NoopId = tts(SayMe, Voice, Lang, Call),
-    wait_for_noop(NoopId).
-b_tts(SayMe, Voice, Lang, Terminators, Call) ->
-    NoopId = tts(SayMe, Voice, Lang, Terminators, Call),
-    wait_for_noop(NoopId).
-b_tts(SayMe, Voice, Lang, Terminators, Engine, Call) ->
-    NoopId = tts(SayMe, Voice, Lang, Terminators, Engine, Call),
-    wait_for_noop(NoopId).
+b_tts(SayMe, Call) -> wait_for_noop(tts(SayMe, Call)).
+b_tts(SayMe, Voice, Call) -> wait_for_noop(tts(SayMe, Voice, Call)).
+b_tts(SayMe, Voice, Lang, Call) -> wait_for_noop(tts(SayMe, Voice, Lang, Call)).
+b_tts(SayMe, Voice, Lang, Terminators, Call) -> wait_for_noop(tts(SayMe, Voice, Lang, Terminators, Call)).
+b_tts(SayMe, Voice, Lang, Terminators, Engine, Call) -> wait_for_noop(tts(SayMe, Voice, Lang, Terminators, Engine, Call)).
 
 %%--------------------------------------------------------------------
 %% @public

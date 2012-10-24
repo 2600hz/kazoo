@@ -104,8 +104,14 @@ exec_element(Call, 'Gather', [], #xmlElement{attributes=Attrs}) ->
 exec_element(Call, 'Play', [#xmlText{value=PlayMe, type=text}], #xmlElement{attributes=Attrs}) ->
     play(Call, PlayMe, Attrs);
 
+exec_element(Call, 'Say', [#xmlText{value=[], type='text'}], _) ->
+    lager:debug("SAY has nothing to say, ignoring"),
+    {ok, Call};
+exec_element(Call, 'Say', [#xmlText{value = <<>>, type='text'}], _) ->
+    lager:debug("SAY has nothing to say, ignoring"),
+    {ok, Call};
 exec_element(Call, 'Say', [#xmlText{value=SayMe, type=text}], #xmlElement{attributes=Attrs}) ->
-    maybe_stop(Call, say(Call, SayMe, Attrs), {ok, Call});
+    maybe_stop(Call, say(Call, say_text(SayMe), Attrs), {ok, Call});
 
 exec_element(Call, 'Redirect', [_|_]=Texts, #xmlElement{attributes=Attrs}) ->
     Call1 = maybe_answer_call(Call),
@@ -207,14 +213,14 @@ record_call(Call, Attrs) ->
                     {ok, Call1};
                 {hangup, Length} ->
                     lager:debug("hangup ended call, saving recording"),
-                    store_and_send_recording(Call1, MediaJObj, undefined, Props, Length);
+                    store_and_send_recording(Call1, MediaJObj, 'undefined', Props, Length);
                 {silence, Length} when Length < Timeout * 1000 ->
                     lager:debug("silence hits ended call and length (~b ms) is less than timeout (~b ms)", [Length, Timeout * 1000]),
                     _ = couch_mgr:del_doc(whapps_call:account_db(Call1), wh_json:get_value(<<"_id">>, MediaJObj)),
                     {ok, Call1};
                 {silence, Length} ->
                     lager:debug("silence hits ended, but length (~b ms) is > timeout (~b ms)", [Length, Timeout * 1000]),
-                    store_and_send_recording(Call1, MediaJObj, undefined, Props, Length);
+                    store_and_send_recording(Call1, MediaJObj, 'undefined', Props, Length);
                 {terminator, _T, Length} when Length < 1000 ->
                     lager:debug("terminator(~s) ended call, but length(~b ms) is < 1000ms", [_T, Length]),
                     _ = couch_mgr:del_doc(whapps_call:account_db(Call1), wh_json:get_value(<<"_id">>, MediaJObj)),
@@ -238,18 +244,19 @@ record_terminated_by(JObj) ->
         true -> {silence, Length};
         false ->
             case wh_json:get_value(<<"Terminator">>, JObj) of
-                undefined -> {hangup, Length};
+                'undefined' -> {hangup, Length};
                 Term -> {terminator, Term, Length}
             end
     end.
 
--spec terminators/1 :: ('undefined' | string() | ne_binary()) -> [ne_binary(),...].
-terminators(undefined) -> ?ANY_DIGIT;
+-spec terminators/1 :: (string() | api_binary()) -> [ne_binary(),...].
+terminators('undefined') -> ?ANY_DIGIT;
 terminators(?NE_BINARY = T) -> [ <<D>> || <<D>> <= T];
 terminators([_|_]=L) -> terminators(wh_util:to_binary(L)).
 
--spec store_and_send_recording/5 :: (whapps_call:call(), wh_json:json_object(), ne_binary() | 'undefined'
-                                     ,wh_proplist(), pos_integer()) -> request_return().
+-spec store_and_send_recording/5 :: (whapps_call:call(), wh_json:json_object(), api_binary()
+                                     ,wh_proplist(), pos_integer()
+                                    ) -> request_return().
 store_and_send_recording(Call, MediaJObj, DTMF, Props, Length) ->
     {RecordingId, _StoreJObj} = maybe_save_recording(Call, MediaJObj, true),
 
@@ -274,7 +281,7 @@ store_and_send_recording(Call, MediaJObj, DTMF, Props, Length) ->
                     )),
     {request, update_call_status(Call, ?STATUS_ANSWERED), Action, Method, BaseParams}.
 
--spec gather/2 :: (whapps_call:call(), proplist()) -> exec_return().
+-spec gather/2 :: (whapps_call:call(), wh_proplist()) -> exec_return().
 gather(Call, Attrs) ->
     Call1 = maybe_answer_call(Call),
     Props = attrs_to_proplist(Attrs),
@@ -285,7 +292,7 @@ gather(Call, Attrs) ->
     InitDigit = whapps_call:kvs_fetch(digits_collected, <<>>, Call1),
 
     case props:get_value(numDigits, Props) of
-        undefined -> collect_until_terminator(Call1, InitDigit, FinishOnKey, Timeout, Props);
+        'undefined' -> collect_until_terminator(Call1, InitDigit, FinishOnKey, Timeout, Props);
         MaxDigits -> collect_digits(Call1, InitDigit, wh_util:to_integer(MaxDigits), FinishOnKey, Timeout, Props)
     end.
 
@@ -293,12 +300,18 @@ gather(Call, Attrs) ->
                                        {'ok', binary(), whapps_call:call()} |
                                        {'ok', whapps_call:call()} |
                                        {'error', atom() | wh_json:json_object(), whapps_call:call()}.
-exec_gather_element(Call, 'Say', [#xmlText{value=SayMe, type=text}], #xmlElement{attributes=Attrs}) ->    
-    Result = say(Call, SayMe, Attrs, ?ANY_DIGIT),
+exec_gather_element(Call, 'Say', [#xmlText{value=[], type='text'}], _) ->
+    lager:debug("SAY has no text, ignoring command"),
+    {ok, Call};
+exec_gather_element(Call, 'Say', [#xmlText{value = <<>>, type='text'}], _) ->
+    lager:debug("SAY has no text, ignoring command"),
+    {ok, Call};
+exec_gather_element(Call, 'Say', [#xmlText{value=SayMe, type='text'}], #xmlElement{attributes=Attrs}) ->
+    Result = say(Call, say_text(SayMe), Attrs, ?ANY_DIGIT),
     lager:debug("say returned: ~p", [Result]),
     maybe_stop(Call, Result, {ok, Call});
 
-exec_gather_element(Call, 'Play', [#xmlText{value=PlayMe, type=text}], #xmlElement{attributes=Attrs}) ->
+exec_gather_element(Call, 'Play', [#xmlText{value=PlayMe, type='text'}], #xmlElement{attributes=Attrs}) ->
     Call1 = case play(Call, PlayMe, Attrs, ?ANY_DIGIT) of
                 {ok, Call0} -> Call0;
                 {stop, Call0} -> Call0
@@ -408,7 +421,7 @@ caller_config(ConfProps, JoinDeaf) ->
                       ]).
 
 -spec conf_entry_pin/1 :: ('undefined' | binary()) -> [] | [ne_binary()].
-conf_entry_pin(undefined) -> [];
+conf_entry_pin('undefined') -> [];
 conf_entry_pin(<<>>) -> [];
 conf_entry_pin(?NE_BINARY = Pin) -> [Pin].
 
@@ -419,7 +432,7 @@ conf_max_participants(X) when is_integer(X) -> X.
 
 -define(DEFAULT_HOLD_MUSIC, <<"http://twimlets.com/holdmusic?Bucket=com.twilio.music.classical">>).
 -spec conf_wait_url/1 :: ('undefined' | binary()) -> ne_binary().
-conf_wait_url(undefined) -> ?DEFAULT_HOLD_MUSIC;
+conf_wait_url('undefined') -> ?DEFAULT_HOLD_MUSIC;
 conf_wait_url(<<>>) -> <<"none">>;
 conf_wait_url(Url) -> Url. % can return audio data or TwiML
 
@@ -429,14 +442,14 @@ conf_wait_url(Url) -> Url. % can return audio data or TwiML
 %%
 %%   value        | DID to dial                       | DID
 %%-------------------------------------------------------------------------
--spec dial_number/3 :: (whapps_call:call(), ne_binary() | #xmlElement{}, proplist()) -> exec_element_return().
+-spec dial_number/3 :: (whapps_call:call(), ne_binary() | #xmlElement{}, wh_proplist()) -> exec_element_return().
 dial_number(Call, #xmlElement{name='Number', content=[#xmlText{value=DialMe, type=text}]}, Attrs) ->
     lager:debug("DIAL number tag: ~s", [DialMe]),
     Props = attrs_to_proplist(Attrs),
 
     Call1 = send_call(Call, DialMe, Props),
     case props:get_value(sendDigits, Props) of
-        undefined ->
+        'undefined' ->
             lager:debug("no sendDigits attributes, waiting for call to end..."),
             finish_dial(Call1, Props);
         ?NE_BINARY = SendDigits ->
@@ -451,7 +464,7 @@ dial_number(Call0, DialMe, Attrs) ->
     Call1 = send_call(Call0, DialMe, Props),
     finish_dial(Call1, Props).
 
--spec dial_ring_group/3 :: (whapps_call:call(), list(), proplist()) -> ok_return() | stop_return().
+-spec dial_ring_group/3 :: (whapps_call:call(), list(), wh_proplist()) -> ok_return() | stop_return().
 dial_ring_group(Call, Numbers, Attrs) ->
     lager:debug("DIAL ring group"),
     Props = attrs_to_proplist(Attrs),
@@ -482,7 +495,7 @@ dial_ring_group(Call, Numbers, Attrs) ->
             {stop, update_call_status(Call, ?STATUS_FAILED)}
     end.
 
--spec ring_group_bridge_req/3 :: (whapps_call:call(), wh_json:json_objects(), proplist()) ->
+-spec ring_group_bridge_req/3 :: (whapps_call:call(), wh_json:json_objects(), wh_proplist()) ->
                                          {'ok' | 'error', wh_json:json_object()} |
                                          stop_return().
 ring_group_bridge_req(Call, EPs, Props) ->
@@ -557,7 +570,7 @@ finish_dial(Call, Props) ->
 
     RecordingId = case maybe_save_recording(Call, props:get_value(media_jobj, OffnetProp), RecordCall) of
                       {RID, _StoreJObj} -> RID;
-                      undefined -> undefined
+                      'undefined' -> 'undefined'
                   end,
 
     lager:debug("offnet: ~p", [OffnetProp]),
@@ -567,7 +580,7 @@ finish_dial(Call, Props) ->
     lager:debug("other leg ~s done in ~bs: ~s", [OtherLeg, Elapsed, Status]),
 
     case props:get_value(action, Props) of
-        undefined ->
+        'undefined' ->
             %% if action is defined, no commands after Dial are reachable;
             %% since its not defined, we fall through to the next TwiML command
             maybe_stop(Call, ok, {ok, Call});
@@ -587,7 +600,7 @@ finish_dial(Call, Props) ->
             {request, Call, Uri, Method, BaseParams}
     end.
 
--spec pause/2 :: (whapps_call:call(), proplist()) -> {'ok', whapps_call:call()}.
+-spec pause/2 :: (whapps_call:call(), wh_proplist()) -> {'ok', whapps_call:call()}.
 pause(Call, Attrs) ->
     Props = attrs_to_proplist(Attrs),
     Length = props:get_integer_value(length, Props, 1) * 1000,
@@ -600,8 +613,8 @@ pause(Call, Attrs) ->
     after Length -> {ok, Call1}
     end.
 
--spec play/3 :: (whapps_call:call(), ne_binary(), proplist()) -> ok_return() | stop_return().
--spec play/4 :: (whapps_call:call(), ne_binary(), proplist(), list() | binary()) ->
+-spec play/3 :: (whapps_call:call(), ne_binary(), wh_proplist()) -> ok_return() | stop_return().
+-spec play/4 :: (whapps_call:call(), ne_binary(), wh_proplist(), list() | binary()) ->
                         ok_return() | stop_return().
 play(Call, PlayMe, Attrs) ->
     Call1 = maybe_answer_call(Call),
@@ -625,8 +638,9 @@ play(Call, PlayMe, Attrs, Terminators) ->
           end,
     maybe_stop(Call1, Res, {ok, Call1}).
 
--spec say/3 :: (whapps_call:call(), ne_binary(), proplist()) -> ok_return() | stop_return().
--spec say/4 :: (whapps_call:call(), ne_binary(), proplist(), list() | binary()) ->
+-spec say/3 :: (whapps_call:call(), api_binary(), wh_proplist()) ->
+                       ok_return() | stop_return().
+-spec say/4 :: (whapps_call:call(), api_binary(), wh_proplist(), list() | binary()) ->
                        ok_return() | stop_return().
 say(Call, SayMe, Attrs) ->
     Call1 = maybe_answer_call(Call),
@@ -640,17 +654,23 @@ say(Call, SayMe, Attrs) ->
     Res = case get_loop_count(wh_util:to_integer(props:get_value(loop, Props, 1))) of
               0 ->
                   lager:debug("looping for ever (loop: 0)"),
-                  say_loop(Call1, fun() ->
-                                          whapps_call_command:b_tts(wh_util:to_binary(SayMe), Voice, Lang, undefined, Engine, Call1)
-                                  end, infinity);
+                  say_loop(Call1
+                           ,fun() ->
+                                    whapps_call_command:b_tts(SayMe, Voice, Lang, 'undefined', Engine, Call1)
+                            end
+                           ,infinity
+                          );
               1 ->
                   lager:debug("say once"),
-                  whapps_call_command:b_tts(wh_util:to_binary(SayMe), Voice, Lang, undefined, Engine, Call1);
+                  whapps_call_command:b_tts(SayMe, Voice, Lang, 'undefined', Engine, Call1);
               N ->
                   lager:debug("saying, then looping ~b more times", [N-1]),
-                  say_loop(Call1, fun() ->
-                                          whapps_call_command:b_tts(wh_util:to_binary(SayMe), Voice, Lang, undefined, Engine, Call1)
-                                  end, N)
+                  say_loop(Call1
+                           ,fun() ->
+                                    whapps_call_command:b_tts(SayMe, Voice, Lang, 'undefined', Engine, Call1)
+                            end
+                           ,N
+                          )
           end,
     maybe_stop(Call1, Res, {ok, Call1}).
 
@@ -664,16 +684,22 @@ say(Call, SayMe, Attrs, Terminators) ->
     lager:debug("SAY: ~s using voice ~s, in lang ~s", [SayMe, Voice, Lang]),
 
     case get_loop_count(wh_util:to_integer(props:get_value(loop, Props, 1))) of
-        0 -> say_loop(Call1, fun() -> whapps_call_command:tts(wh_util:to_binary(SayMe), Voice, Lang, Terminators, Engine, Call1) end, infinity);
-        1 -> whapps_call_command:tts(wh_util:to_binary(SayMe), Voice, Lang, Terminators, Engine, Call1);
-        N -> say_loop(Call1, fun() -> whapps_call_command:tts(wh_util:to_binary(SayMe), Voice, Lang, Terminators, Engine, Call1) end, N)
+        0 -> say_loop(Call1
+                      ,fun() -> whapps_call_command:tts(SayMe, Voice, Lang, Terminators, Engine, Call1) end
+                      ,infinity
+                     );
+        1 -> whapps_call_command:tts(SayMe, Voice, Lang, Terminators, Engine, Call1);
+        N -> say_loop(Call1
+                      ,fun() -> whapps_call_command:tts(SayMe, Voice, Lang, Terminators, Engine, Call1) end
+                      ,N
+                     )
     end.
 
 collect_digits(Call, InitDigit, MaxDigits, FinishOnKey, Timeout, Props) ->
     lager:debug("GATHER: ~p max, finish: ~p with timeout ~p and init ~s", [MaxDigits, FinishOnKey, Timeout, InitDigit]),
     MaxDigitsBin = wh_util:to_binary(MaxDigits),
     case whapps_call_command:collect_digits(MaxDigitsBin, Timeout, 2000
-                                            ,undefined, [FinishOnKey], Call
+                                            ,'undefined', [FinishOnKey], Call
                                            ) of
         {ok, <<>>} ->
             lager:debug("no dtmfs received, moving to next verb"),
@@ -1029,10 +1055,8 @@ media_name(ALeg, BLeg) ->
 
 -spec recorded_url/1 :: (ne_binary()) -> ne_binary().
 -spec recorded_url/3 :: (whapps_call:call(), api_binary(), boolean()) -> api_binary().
-recorded_url(_Call, _DocId, false) ->
-    undefined;
-recorded_url(_Call, undefined, _) ->
-    undefined;
+recorded_url(_Call, _DocId, false) -> 'undefined';
+recorded_url(_Call, 'undefined', _) -> 'undefined';
 recorded_url(Call, DocId, true) ->
     Db = whapps_call:account_db(Call),
 
@@ -1047,7 +1071,7 @@ recorded_url(Call, DocId, true) ->
                                       ) of
         {error, _R} ->
             lager:debug("failed to get media URL: ~p", [_R]),
-            undefined;
+            'undefined';
         {ok, MediaResp} ->
             lager:debug("stream url: ~s", [wh_json:get_value(<<"Stream-URL">>, MediaResp)]),
             recorded_url(wh_json:get_value(<<"Stream-URL">>, MediaResp))
@@ -1061,8 +1085,7 @@ recorded_url(Url) -> Url.
 -spec maybe_save_recording/3 :: (whapps_call:call(), wh_json:json_object(), boolean()) ->
                                         {ne_binary(), wh_json:json_object()} |
                                         'undefined'.
-maybe_save_recording(_Call, _MediaDoc, false) ->
-    undefined;
+maybe_save_recording(_Call, _MediaDoc, false) -> 'undefined';
 maybe_save_recording(Call, MediaDoc, true) ->
     lager:debug("storing recording"),
     store_recording(Call, wh_json:get_value(<<"name">>, MediaDoc), MediaDoc).
@@ -1113,7 +1136,7 @@ store_recording_meta(Call, MediaName) ->
 update_call_status(Call, Status) ->
     whapps_call:kvs_store(<<"call_status">>, Status, Call).
 
--spec req_params/1 :: (whapps_call:call()) -> proplist().
+-spec req_params/1 :: (whapps_call:call()) -> wh_proplist().
 req_params(Call) ->
     [{<<"CallSid">>, whapps_call:call_id(Call)}
      ,{<<"AccountSid">>, whapps_call:account_id(Call)}
@@ -1141,12 +1164,12 @@ maybe_stop(_, {error, _R}, Result) ->
 maybe_stop(_, _, Result) -> Result.
 
 -spec get_voice/1 :: (api_binary()) -> ne_binary().
-get_voice(undefined) -> <<"female">>;
+get_voice('undefined') -> <<"female">>;
 get_voice(<<"man">>) -> <<"male">>;
 get_voice(<<"woman">>) -> <<"female">>.
 
 -spec get_lang/1 :: (api_binary()) -> ne_binary().
-get_lang(undefined) -> <<"en-US">>;
+get_lang('undefined') -> <<"en-US">>;
 get_lang(<<"en">>) -> <<"en-US">>;
 get_lang(<<"en-gb">>) -> <<"en-GB">>;
 get_lang(<<"es">>) -> <<"es">>;
@@ -1154,10 +1177,14 @@ get_lang(<<"fr">>) -> <<"fr">>;
 get_lang(<<"de">>) -> <<"de">>.
 
 -spec get_engine/1 :: (api_binary()) -> ne_binary().
-get_engine(undefined) ->
+get_engine('undefined') ->
     whapps_config:get_binary(?MOD_CONFIG_CAT, <<"tts_provider">>, <<"ispeech">>);
 get_engine(P) -> P.
 
+-spec say_text/1 :: (text()) -> ne_binary().
+say_text([]) -> 'undefined';
+say_text(<<>>) -> 'undefined';
+say_text(T) -> wh_util:to_binary(T).
 
 %% contstrain loop to 10
 -spec get_loop_count/1 :: (integer() | binary()) -> 0..10.
@@ -1170,4 +1197,3 @@ get_loop_count(_) -> 10.
 -include_lib("eunit/include/eunit.hrl").
 
 -endif.
-
