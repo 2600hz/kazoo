@@ -18,6 +18,7 @@
          ,handle_member_call/2
          ,handle_member_call_cancel/2
          ,should_ignore_member_call/2
+         ,handle_channel_destroy/2
         ]).
 
 %% gen_server callbacks
@@ -30,6 +31,8 @@
          ,code_change/3
         ]).
 
+-include("acdc.hrl").
+
 -define(SERVER, ?MODULE).
 
 -record(state, {ignored_member_calls = dict:new() :: dict()}).
@@ -39,6 +42,7 @@
                                   ,{account_id, <<"*">>}
                                   ,{queue_id, <<"*">>}
                                  ]}
+                   ,{notifications, [{restrict_to, [presence_probe]}]}
                   ]).
 -define(RESPONDERS, [{{acdc_queue_handler, handle_config_change}
                       ,[{<<"configuration">>, <<"*">>}]
@@ -46,11 +50,17 @@
                      ,{{acdc_queue_handler, handle_stats_req}
                        ,[{<<"queue">>, <<"stats_req">>}]
                       }
+                     ,{{acdc_queue_handler, handle_presence_probe}
+                       ,[{<<"notification">>, <<"presence_probe">>}]
+                      }
                      ,{{acdc_queue_manager, handle_member_call}
                        ,[{<<"member">>, <<"call">>}]
                       }
                      ,{{acdc_queue_manager, handle_member_call_cancel}
                        ,[{<<"member">>, <<"call_cancel">>}]
+                      }
+                     ,{{acdc_queue_manager, handle_channel_destroy}
+                       ,[{<<"call_event">>, <<"CHANNEL_DESTROY">>}]
                       }
                     ]).
 
@@ -82,7 +92,11 @@ start_link() ->
                             ,[]
                            ).
 
-handle_member_call(JObj, _Props) ->
+handle_channel_destroy(JObj, _Props) ->
+    true = wapi_call:event_v(JObj),
+    acdc_stats:call_finished(wh_json:get_value(<<"Call-ID">>, JObj)).
+
+handle_member_call(JObj, Props) ->
     true = wapi_acdc_queue:member_call_v(JObj),
 
     Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, JObj)),
@@ -101,7 +115,11 @@ handle_member_call(JObj, _Props) ->
             whapps_call_command:answer(Call),
             whapps_call_command:hold(Call)
     end,
-    wapi_acdc_queue:publish_shared_member_call(AcctId, QueueId, JObj).
+    wapi_acdc_queue:publish_shared_member_call(AcctId, QueueId, JObj),
+
+    gen_listener:cast(props:get_value(server, Props), {monitor_call, Call}),
+
+    acdc_util:queue_presence_update(AcctId, QueueId, ?PRESENCE_RED_FLASH).
 
 handle_member_call_cancel(JObj, _Props) ->
     true = wapi_acdc_queue:member_call_cancel_v(JObj),
@@ -174,6 +192,11 @@ handle_cast({member_call_cancel, K}, #state{ignored_member_calls=Dict}=State) ->
     {noreply, State#state{
                 ignored_member_calls=dict:store(K, true, Dict)
                }};
+handle_cast({monitor_call, Call}, State) ->
+    gen_listener:add_binding(self(), call, [{callid, whapps_call:call_id(Call)}
+                                            ,{restrict_to, [events]}
+                                           ]),
+    {noreply, State};
 handle_cast(_Msg, State) ->
     {noreply, State}.
 

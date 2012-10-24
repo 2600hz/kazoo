@@ -24,7 +24,8 @@ handle_req(JObj, _Props) ->
         {error, not_found} ->
             case wh_number_manager:lookup_account_by_number(Number) of
                 {error, _} -> ok;
-                {ok, AccountId, _, GlobalResource} ->
+                {ok, AccountId, Props} ->
+                    GlobalResource = props:get_value(local, Props),
                     wh_cache:store_local(?JONNY5_CACHE, ?IDENT_KEY(Number), {AccountId, GlobalResource}),
                     send_resp(JObj, AccountId, GlobalResource)
             end

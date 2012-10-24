@@ -16,7 +16,6 @@
          ,member_connect_req/1, member_connect_req_v/1
          ,member_connect_resp/1, member_connect_resp_v/1
          ,member_connect_win/1, member_connect_win_v/1
-         ,member_connect_monitor/1, member_connect_monitor_v/1
          ,member_connect_retry/1, member_connect_retry_v/1
          ,member_connect_accepted/1, member_connect_accepted_v/1
          ,member_hungup/1, member_hungup_v/1
@@ -39,7 +38,6 @@
          ,publish_member_connect_req/1, publish_member_connect_req/2
          ,publish_member_connect_resp/2, publish_member_connect_resp/3
          ,publish_member_connect_win/2, publish_member_connect_win/3
-         ,publish_member_connect_monitor/2, publish_member_connect_monitor/3
          ,publish_member_connect_retry/2, publish_member_connect_retry/3
          ,publish_member_connect_accepted/2, publish_member_connect_accepted/3
          ,publish_member_hungup/2, publish_member_hungup/3
@@ -259,7 +257,9 @@ member_connect_resp_v(JObj) ->
 %% Member Connect Win
 %%------------------------------------------------------------------------------
 -define(MEMBER_CONNECT_WIN_HEADERS, [<<"Queue-ID">>, <<"Call">>]).
--define(OPTIONAL_MEMBER_CONNECT_WIN_HEADERS, [<<"Ring-Timeout">>, <<"Caller-Exit-Key">>, <<"Wrapup-Timeout">>]).
+-define(OPTIONAL_MEMBER_CONNECT_WIN_HEADERS, [<<"Ring-Timeout">>, <<"Caller-Exit-Key">>, <<"Wrapup-Timeout">>
+                                                  ,<<"Process-ID">>, <<"Agent-Process-ID">>
+                                             ]).
 -define(MEMBER_CONNECT_WIN_VALUES, [{<<"Event-Category">>, <<"member">>}
                                      ,{<<"Event-Name">>, <<"connect_win">>}
                                     ]).
@@ -281,35 +281,6 @@ member_connect_win_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?MEMBER_CONNECT_WIN_HEADERS, ?MEMBER_CONNECT_WIN_VALUES, ?MEMBER_CONNECT_WIN_TYPES);
 member_connect_win_v(JObj) ->
     member_connect_win_v(wh_json:to_proplist(JObj)).
-
-%%------------------------------------------------------------------------------
-%% Member Connect Monitor
-%%------------------------------------------------------------------------------
--define(MEMBER_CONNECT_MONITOR_HEADERS, [<<"Call-ID">>, <<"Queue-ID">>]).
--define(OPTIONAL_MEMBER_CONNECT_MONITOR_HEADERS, [<<"Process-ID">>, <<"Ring-Timeout">>
-                                                      ,<<"Caller-Exit-Key">>, <<"Wrapup-Timeout">>
-                                                 ]).
--define(MEMBER_CONNECT_MONITOR_VALUES, [{<<"Event-Category">>, <<"member">>}
-                                        ,{<<"Event-Name">>, <<"connect_monitor">>}
-                                       ]).
--define(MEMBER_CONNECT_MONITOR_TYPES, []).
-
--spec member_connect_monitor/1 :: (api_terms()) ->
-                                          {'ok', iolist()} |
-                                          {'error', string()}.
-member_connect_monitor(Props) when is_list(Props) ->
-    case member_connect_monitor_v(Props) of
-        true -> wh_api:build_message(Props, ?MEMBER_CONNECT_MONITOR_HEADERS, ?OPTIONAL_MEMBER_CONNECT_MONITOR_HEADERS);
-        false -> {error, "Proplist failed validation for member_connect_monitor"}
-    end;
-member_connect_monitor(JObj) ->
-    member_connect_monitor(wh_json:to_proplist(JObj)).
-
--spec member_connect_monitor_v/1 :: (api_terms()) -> boolean().
-member_connect_monitor_v(Prop) when is_list(Prop) ->
-    wh_api:validate(Prop, ?MEMBER_CONNECT_MONITOR_HEADERS, ?MEMBER_CONNECT_MONITOR_VALUES, ?MEMBER_CONNECT_MONITOR_TYPES);
-member_connect_monitor_v(JObj) ->
-    member_connect_monitor_v(wh_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
 %% Member Connect Accepted
@@ -756,14 +727,6 @@ publish_member_connect_win(Q, JObj) ->
     publish_member_connect_win(Q, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_member_connect_win(Q, API, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(API, ?MEMBER_CONNECT_WIN_VALUES, fun member_connect_win/1),
-    amqp_util:targeted_publish(Q, Payload, ContentType).
-
--spec publish_member_connect_monitor/2 :: (ne_binary(), api_terms()) -> 'ok'.
--spec publish_member_connect_monitor/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
-publish_member_connect_monitor(Q, JObj) ->
-    publish_member_connect_monitor(Q, JObj, ?DEFAULT_CONTENT_TYPE).
-publish_member_connect_monitor(Q, API, ContentType) ->
-    {ok, Payload} = wh_api:prepare_api_payload(API, ?MEMBER_CONNECT_MONITOR_VALUES, fun member_connect_monitor/1),
     amqp_util:targeted_publish(Q, Payload, ContentType).
 
 -spec publish_member_connect_accepted/2 :: (ne_binary(), api_terms()) -> 'ok'.

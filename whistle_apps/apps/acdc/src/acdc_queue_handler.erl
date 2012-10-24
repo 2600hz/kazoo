@@ -17,6 +17,7 @@
          ,handle_stats_req/2
          ,handle_agent_available/2
          ,handle_sync_req/2
+         ,handle_presence_probe/2
         ]).
 
 -include("acdc.hrl").
@@ -112,10 +113,20 @@ build_stats_resp(AcctId, RespQ, MsgId, [P|Ps], CurrCalls, CurrQueues) ->
 
     CurrentCall = acdc_queue_fsm:current_call(FSM),
     CallId = wh_json:get_value(<<"call_id">>, CurrentCall),
+
+    StatCalls = [{ACallId, ACallData}
+                 || {ACallId, ACallData} <- wh_json:to_proplist(acdc_stats:current_calls(AcctId, QueueId))
+                ],
+
+    CurrentCalls = [KV || {K,V}=KV <- [{CallId, CurrentCall} | StatCalls],
+                          K =/= undefined,
+                          V =/= undefined
+                   ],
+
     QueueCalls = wh_json:get_value(QueueId, CurrCalls, wh_json:new()),
 
     build_stats_resp(AcctId, RespQ, MsgId, Ps
-                     ,wh_json:set_value(QueueId, wh_json:set_value(CallId, CurrentCall, QueueCalls), CurrCalls)
+                     ,wh_json:set_value(QueueId, wh_json:set_values(CurrentCalls, QueueCalls), CurrCalls)
                      ,wh_json:set_value(QueueId, acdc_queue_fsm:status(FSM), CurrQueues)
                     ).
 
@@ -129,3 +140,46 @@ handle_sync_req(JObj, Prop) ->
     FSM = props:get_value(fsm_pid, Prop),
     acdc_queue_fsm:sync_req(FSM, JObj).
     
+handle_presence_probe(JObj, _Props) ->
+    true = wapi_notifications:presence_probe_v(JObj),
+
+    FromRealm = wh_json:get_value(<<"From-Realm">>, JObj),
+    {ok, AcctDb} = whapps_util:get_account_by_realm(FromRealm),
+    AcctId = wh_util:format_account_id(AcctDb, raw),
+
+    lager:debug("find presence update for ~s(~s)", [AcctId, FromRealm]),
+
+    maybe_respond_to_presence_probe(JObj, AcctId).
+
+maybe_respond_to_presence_probe(JObj, AcctId) ->
+    case wh_json:get_value(<<"To-User">>, JObj) of
+        undefined ->
+            lager:debug("no to-user found on json: ~p", [JObj]);
+        QueueId ->
+            lager:debug("looking for probe for queue ~s(~s)", [QueueId, AcctId]),
+            update_probe(JObj, AcctId, QueueId)
+    end.
+
+update_probe(JObj, AcctId, QueueId) ->
+    update_probe(JObj, wapi_acdc_queue:queue_size(AcctId, QueueId)).
+update_probe(JObj, 0) ->
+    lager:debug("no calls in queue, greenify!"),
+    send_probe(JObj, ?PRESENCE_GREEN);
+update_probe(JObj, N) when is_integer(N), N > 0 ->
+    lager:debug("~b calls in queue, redify!", [N]),
+    send_probe(JObj, ?PRESENCE_RED_FLASH);
+update_probe(_JObj, _Size) ->
+    lager:debug("~p for queue size, ignore!", [_Size]).
+
+send_probe(JObj, State) ->
+    To = wh_json:get_value(<<"To">>, JObj),
+
+    PresenceUpdate =
+        [{<<"State">>, State}
+         ,{<<"Presence-ID">>, To}
+         ,{<<"Call-ID">>, wh_util:to_hex_binary(crypto:md5(To))}
+         ,{<<"Switch-Nodename">>, wh_json:get_ne_value(<<"Switch-Nodename">>, JObj)}
+         ,{<<"Subscription-Call-ID">>, wh_json:get_ne_value(<<"Subscription-Call-ID">>, JObj)}
+         | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+        ],
+    wapi_notifications:publish_presence_update(PresenceUpdate).

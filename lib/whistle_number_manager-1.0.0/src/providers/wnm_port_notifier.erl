@@ -24,6 +24,12 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec save/1 :: (wnm_number()) -> wnm_number().
+save(#number{current_state = <<"port_in">>
+                 ,state = <<"in_service">>
+                 ,number_doc=JObj} = Number) ->
+    Port = wh_json:get_ne_value(<<"port">>, JObj, wh_json:new()),
+    _ = publish_ported(Port, Number),
+    Number;
 save(#number{state = <<"port_in">>} = Number) ->
     maybe_publish_port(Number);
 save(Number) -> Number.
@@ -72,9 +78,28 @@ publish_port_update(Port, #number{number=Number, state=State, assigned_to=Assign
     Notify = [{<<"Account-ID">>, AssignedTo}
               ,{<<"Number-State">>, State}
               ,{<<"Local-Number">>, ModuleName =:= wnm_local}
-              ,{<<"Number">>, Number}
-              ,{<<"Acquired-For">>, AuthBy}
+              ,{<<"Number">>, Number} 
+              ,{<<"Authorized-By">>, AuthBy}
               ,{<<"Port">>, Port}
               | wh_api:default_headers(?APP_VERSION, ?APP_NAME)
              ],
-    wapi_notifications:publish_port_request(Notify). 
+    wapi_notifications:publish_port_request(Notify).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec publish_ported/2 :: (wh_json:json_object(), wnm_number()) -> 'ok'.
+publish_ported(Port, #number{number=Number, state=State, assigned_to=AssignedTo
+                             ,module_name=ModuleName, auth_by=AuthBy}) ->
+    Notify = [{<<"Account-ID">>, AssignedTo}
+              ,{<<"Number-State">>, State}
+              ,{<<"Local-Number">>, ModuleName =:= wnm_local}
+              ,{<<"Number">>, Number}
+              ,{<<"Authorized-By">>, AuthBy}
+              ,{<<"Port">>, Port}
+              | wh_api:default_headers(?APP_VERSION, ?APP_NAME)
+             ],
+    wapi_notifications:publish_ported(Notify).

@@ -17,6 +17,7 @@
 -export([is_account_enabled/1]).
 
 -export([try_load_module/1]).
+-export([shuffle_list/1]).
 
 -export([to_integer/1, to_integer/2
          ,to_float/1, to_float/2
@@ -35,6 +36,9 @@
          ,strip_binary/1, strip_binary/2
          ,strip_left_binary/2, strip_right_binary/2
         ]).
+
+-export([uri_encode/1]).
+-export([uri_decode/1]).
 
 -export([pad_binary/3, join_binary/1, join_binary/2]).
 -export([a1hash/3, floor/1, ceiling/1]).
@@ -146,8 +150,8 @@ current_account_balance(Ledger) ->
 %% its own hierarchy.
 %% @end
 %%--------------------------------------------------------------------
--spec is_in_account_hierarchy/2 :: ('undefined' | ne_binary(), 'undefined' | ne_binary()) -> boolean().
--spec is_in_account_hierarchy/3 :: ('undefined' | ne_binary(), 'undefined' | ne_binary(), boolean()) -> boolean().
+-spec is_in_account_hierarchy/2 :: (api_binary(), api_binary()) -> boolean().
+-spec is_in_account_hierarchy/3 :: (api_binary(), api_binary(), boolean()) -> boolean().
 
 is_in_account_hierarchy(CheckFor, InAccount) ->
     is_in_account_hierarchy(CheckFor, InAccount, false).
@@ -185,7 +189,7 @@ is_in_account_hierarchy(CheckFor, InAccount, IncludeSelf) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec is_system_admin/1 :: ('undefined' | ne_binary()) -> boolean().
+-spec is_system_admin/1 :: (api_binary()) -> boolean().
 is_system_admin(undefined) -> false;
 is_system_admin(Account) ->
     AccountId = wh_util:format_account_id(Account, raw),
@@ -206,7 +210,7 @@ is_system_admin(Account) ->
 %% false.
 %% @end
 %%--------------------------------------------------------------------
--spec is_account_enabled/1 :: ('undefined' | ne_binary()) -> boolean().
+-spec is_account_enabled/1 :: (api_binary()) -> boolean().
 is_account_enabled(undefined) ->
     true;
 is_account_enabled(AccountId) ->
@@ -236,8 +240,8 @@ is_account_enabled(AccountId) ->
 %% Retrieves the account realm
 %% @end
 %%--------------------------------------------------------------------
--spec get_account_realm/1 :: ('undefined' | ne_binary()) -> 'undefined' | ne_binary().
--spec get_account_realm/2 :: ('undefined' | ne_binary(), ne_binary()) -> 'undefined' | ne_binary().
+-spec get_account_realm/1 :: (api_binary()) -> api_binary().
+-spec get_account_realm/2 :: (api_binary(), ne_binary()) -> api_binary().
 get_account_realm(AccountId) ->
     get_account_realm(
       wh_util:format_account_id(AccountId, encoded)
@@ -340,6 +344,34 @@ join_binary([Bin|Bins], Sep, Acc) when is_binary(Bin) ->
 join_binary([_|Bins], Sep, Acc) ->
     join_binary(Bins, Sep, Acc).
 
+
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec shuffle_list/1 :: (list()) -> list().
+shuffle_list(List) when is_list(List) ->
+    Len = length(List),
+    randomize_list(round(math:log(Len) + 0.5), List).
+
+-spec randomize_list/1 :: (list()) -> list().
+-spec randomize_list/2 :: (pos_integer(), list()) -> list().
+
+randomize_list(List) ->
+    D = lists:keysort(1, [{random:uniform(), A} || A <- List]),
+    {_, D1} = lists:unzip(D),
+    D1.
+
+randomize_list(1, List) ->
+    randomize_list(List);
+randomize_list(T, List) ->
+    lists:foldl(fun(_E, Acc) ->
+                        randomize_list(Acc)
+                end, randomize_list(List), lists:seq(1, (T - 1))).
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -347,7 +379,7 @@ join_binary([_|Bins], Sep, Acc) ->
 %% dictionary, failing that the Msg-ID and finally a generic
 %% @end
 %%--------------------------------------------------------------------
--spec put_callid/1 :: (wh_json:json_object() | wh_proplist() | ne_binary()) -> ne_binary() | 'undefined'.
+-spec put_callid/1 :: (wh_json:json_object() | wh_proplist() | ne_binary()) -> api_binary().
 put_callid(?NE_BINARY = CallId) ->
     erlang:put(callid, CallId);
 put_callid(Prop) when is_list(Prop) ->
@@ -362,7 +394,7 @@ put_callid(JObj) ->
 %% tuple for easy processing
 %% @end
 %%--------------------------------------------------------------------
--spec get_event_type/1 :: (wh_json:json_object()) -> {binary() | 'undefined', binary() | 'undefined'}.
+-spec get_event_type/1 :: (wh_json:json_object()) -> {api_binary(), api_binary()}.
 get_event_type(JObj) when not is_list(JObj) -> % guard against json_objects() being passed in
     { wh_json:get_binary_value(<<"Event-Category">>, JObj), wh_json:get_binary_value(<<"Event-Name">>, JObj) }.
 
@@ -372,7 +404,7 @@ get_event_type(JObj) when not is_list(JObj) -> % guard against json_objects() be
 %% Generic helper to get the text value of a XML path
 %% @end
 %%--------------------------------------------------------------------
--spec get_xml_value/2 :: (string(), term()) -> undefined | binary().
+-spec get_xml_value/2 :: (string(), term()) -> api_binary().
 get_xml_value(Paths, Xml) ->
     Path = lists:flatten(Paths),
     try xmerl_xpath:string(Path, Xml) of
@@ -407,6 +439,23 @@ binary_to_hex_char(N) when N < 10 ->
     $0 + N;
 binary_to_hex_char(N) when N < 16 ->
     $a - 10 + N.
+
+
+-spec uri_decode/1 :: (text()) -> text().
+uri_decode(Binary) when is_binary(Binary) ->
+    to_binary(http_uri:decode(to_list(Binary)));
+uri_decode(String) when is_list(String) ->
+    http_uri:decode(String);
+uri_decode(Atom) when is_atom(Atom) ->
+    to_atom(http_uri:decode(to_list(Atom)), true).
+
+-spec uri_encode/1 :: (text()) -> text().
+uri_encode(Binary) when is_binary(Binary) ->
+    to_binary(http_uri:encode(to_list(Binary)));
+uri_encode(String) when is_list(String) ->
+    http_uri:encode(String);
+uri_encode(Atom) when is_atom(Atom) ->
+    to_atom(http_uri:encode(to_list(Atom)), true).
 
 -spec to_integer/1 :: (string() | binary() | integer() | float()) -> integer().
 -spec to_integer/2 :: (string() | binary() | integer() | float(), 'strict' | 'notstrict') -> integer().
@@ -565,7 +614,7 @@ is_proplist(Term) when is_list(Term) ->
 is_proplist(_) ->
     false.
 
--spec to_lower_binary/1 :: (term()) -> 'undefined' | binary().
+-spec to_lower_binary/1 :: (term()) -> api_binary().
 to_lower_binary(undefined) ->
     undefined;
 to_lower_binary(Bin) when is_binary(Bin) ->
@@ -596,7 +645,7 @@ to_lower_char(C) when is_integer(C), 16#C0 =< C, C =< 16#D6 -> C + 32; % from st
 to_lower_char(C) when is_integer(C), 16#D8 =< C, C =< 16#DE -> C + 32; % so we only loop once
 to_lower_char(C) -> C.
 
--spec to_upper_binary/1 :: (term()) -> 'undefined' | binary().
+-spec to_upper_binary/1 :: (term()) -> api_binary().
 to_upper_binary(undefined) ->
     undefined;
 to_upper_binary(Bin) when is_binary(Bin) ->

@@ -70,8 +70,8 @@ handle_req(<<"originate">>, JObj, Props) ->
                                                                                                           execute_ext_resp() |
                                                                                                           {'error', 'no_resources'}.
 attempt_to_fulfill_bridge_req(Number, CtrlQ, JObj, Props) ->
-    Result = case stepswitch_util:lookup_number(Number) of
-                 {ok, AccountId, false, _} ->
+    Result = case lookup_number(Number) of
+                 {ok, AccountId} ->
                      lager:debug("found local extension, keeping onnet"),
                      execute_local_extension(Number, AccountId, CtrlQ, JObj);
                  _ ->
@@ -86,6 +86,17 @@ attempt_to_fulfill_bridge_req(Number, CtrlQ, JObj, Props) ->
             lager:debug("found no resources for number as dialed, retrying number corrected for shortdial as ~s", [CorrectedNumber]),
             attempt_to_fulfill_bridge_req(CorrectedNumber, CtrlQ, JObj, Props);
         _Else -> Result
+    end.
+
+-spec lookup_number/1 :: (ne_binary()) -> {'ok', ne_binary()}|{'error', 'not_found'}.
+lookup_number(Number) ->
+    case stepswitch_util:lookup_number(Number) of
+        {ok, AccountId, Props} ->
+            case props:get_value(force_outbound, Props) of
+                true -> {error, not_found};
+                false -> {ok, AccountId}
+            end;
+        _ -> {error, not_found}
     end.
 
 -spec attempt_to_fulfill_originate_req/3 :: (ne_binary(), wh_json:json_object(), proplist()) -> originate_resp().

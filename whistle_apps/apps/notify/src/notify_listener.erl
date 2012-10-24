@@ -29,6 +29,7 @@
                      ,{notify_new_account, [{<<"notification">>, <<"new_account">>}]}
                      ,{notify_cnam_request, [{<<"notification">>, <<"cnam_request">>}]}
                      ,{notify_port_request, [{<<"notification">>, <<"port_request">>}]}
+                     ,{notify_ported, [{<<"notification">>, <<"ported">>}]}
                      ,{notify_first_occurrence, [{<<"directory">>, <<"reg_query_resp">>}]}
                      ,{notify_low_balance, [{<<"notification">>, <<"low_balance">>}]}
                      ,{notify_transaction, [{<<"notification">>, <<"transaction">>}]}

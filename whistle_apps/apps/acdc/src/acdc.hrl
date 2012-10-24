@@ -22,6 +22,10 @@
 -define(ABANDON_EXIT, 'member_exit').
 -define(ABANDON_HANGUP, 'member_hangup').
 
+-define(PRESENCE_GREEN, <<"terminated">>).
+-define(PRESENCE_RED_FLASH, <<"early">>).
+-define(PRESENCE_RED_SOLID, <<"confirmed">>).
+
 -type abandon_reason() :: ?ABANDON_TIMEOUT | ?ABANDON_EXIT |
                           ?ABANDON_HANGUP.
 

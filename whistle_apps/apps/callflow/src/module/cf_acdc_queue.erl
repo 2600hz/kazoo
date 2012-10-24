@@ -38,9 +38,11 @@ handle(Data, Call) ->
     cf_exe:continue(Call).
 
 notify_agent(Call, AgentId, QueueId, <<"login">>) ->
-    send_agent_message(Call, AgentId, QueueId, fun wapi_acdc_agent:publish_login_queue/1);
+    send_agent_message(Call, AgentId, QueueId, fun wapi_acdc_agent:publish_login_queue/1),
+    whapps_call_command:b_prompt(<<"agent-logged_in">>, Call);
 notify_agent(Call, AgentId, QueueId, <<"logout">>) ->
-    send_agent_message(Call, AgentId, QueueId, fun wapi_acdc_agent:publish_logout_queue/1);
+    send_agent_message(Call, AgentId, QueueId, fun wapi_acdc_agent:publish_logout_queue/1),
+    whapps_call_command:b_prompt(<<"agent-logged_out">>, Call);
 notify_agent(Call, _AgentId, _QueueId, _Action) ->
     lager:debug("invalid agent action: ~s", [_Action]),
     cf_acdc_agent:play_agent_invalid(Call).

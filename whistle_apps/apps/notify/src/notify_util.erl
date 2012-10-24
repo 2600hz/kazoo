@@ -232,7 +232,8 @@ get_rep_email([Parent|Parents], AccountId) ->
 -spec find_admin/1 :: ('undefined' | ne_binary() | wh_json:json_object()) -> wh_json:json_object().
 find_admin(undefined) ->
     wh_json:new();
-find_admin(AccountDb) when is_binary(AccountDb) ->
+find_admin(Account) when is_binary(Account) ->
+    AccountDb = wh_util:format_account_id(Account, encoded),
     ViewOptions = [{key, <<"user">>}
                    ,include_docs
                   ],

@@ -19,21 +19,32 @@
 %% 
 %% @end
 %%--------------------------------------------------------------------
--spec lookup_number/1 :: (ne_binary()) -> {'ok', ne_binary(), boolean()} | {'error', term()}.
+-spec lookup_number/1 :: (ne_binary()) -> {'ok', ne_binary(), proplist()} | {'error', term()}.
 lookup_number(Number) ->
     Num = wnm_util:normalize_number(Number),
-    case wh_cache:fetch_local(?STEPSWITCH_CACHE, cache_key_number(Number)) of
-        {ok, {AccountId, ForceOut, Ported}} -> {ok, AccountId, ForceOut, Ported};
-        {error, not_found} ->
-            case wh_number_manager:lookup_account_by_number(Num) of
-                {ok, AccountId, ForceOut, Ported}=Ok ->
-                    wh_cache:store_local(?STEPSWITCH_CACHE, cache_key_number(Number), {AccountId, ForceOut, Ported}),
-                    lager:debug("~s is associated with account ~s", [Num, AccountId]),            
-                    Ok;
-                {error, Reason}=E ->
-                    lager:debug("~s is not associated with any account, ~p", [Num, Reason]),
-                    E
-            end
+    case wh_cache:fetch_local(?STEPSWITCH_CACHE, cache_key_number(Num)) of
+        {ok, {AccountId, Props}} -> {ok, AccountId, Props};
+        {error, not_found} -> fetch_number(Num)
+    end.
+
+-spec fetch_number/1 :: (ne_binary()) -> {'ok', ne_binary(), proplist()} | {'error', term()}.
+fetch_number(Num) ->
+    case wh_number_manager:lookup_account_by_number(Num) of
+        {ok, AccountId, Props} ->
+            _ = maybe_transition_port_in(Num, Props),
+            wh_cache:store_local(?STEPSWITCH_CACHE, cache_key_number(Num), {AccountId, Props}),
+            lager:debug("~s is associated with account ~s", [Num, AccountId]),
+            {ok, AccountId, Props};
+        {error, Reason}=E ->
+            lager:debug("~s is not associated with any account, ~p", [Num, Reason]),
+            E
+    end.
+
+-spec maybe_transition_port_in/2 :: (ne_binary(), proplist()) -> false|pid().
+maybe_transition_port_in(Num, Props) ->
+    case props:get_value(pending_port, Props) of
+        false -> false;
+        true -> spawn(fun() -> wh_number_manager:ported(Num) end)
     end.
 
 %%--------------------------------------------------------------------

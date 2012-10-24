@@ -43,7 +43,8 @@
 -spec make_doc_xml/2 :: (proplist(), atom()) -> char_to_bin_res().
 make_doc_xml(Props, Root) ->
     Xml = xmerl:export_simple([doc_xml_simple(Props, Root)], xmerl_xml
-                              ,[{prolog, ?BT_XML_PROLOG}]),
+                              ,[{prolog, ?BT_XML_PROLOG}]
+                             ),
     unicode:characters_to_binary(Xml).
 
 doc_xml_simple(Props, Root) ->

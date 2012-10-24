@@ -10,6 +10,7 @@
 -record(number, {number = 'undefined' :: 'undefined' | wh_json:json_string()
                  ,number_db = 'undefined' :: 'undefined' | ne_binary()
                  ,state = <<"discovery">> :: ne_binary()
+                 ,current_state = <<"discovery">> :: ne_binary()
                  ,reserve_history = ordsets:new() :: ordsets:ordset(ne_binary())
                  ,assign_to = 'undefined' :: 'undefined' | ne_binary()
                  ,assigned_to = 'undefined' :: 'undefined' | ne_binary()
