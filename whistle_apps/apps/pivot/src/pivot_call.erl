@@ -103,12 +103,7 @@ handle_call_event(JObj, Props) ->
 init([Call, JObj]) ->
     put(callid, whapps_call:call_id(Call)),
 
-    Self = self(),
-    spawn(fun() ->
-                  ControllerQ = gen_listener:queue_name(Self),
-                  lager:debug("controller queue: ~s", [ControllerQ]),
-                  gen_listener:cast(Self, {controller_queue, ControllerQ})
-          end),
+    get_my_queue(),
 
     Method = kzt_util:http_method(wh_json:get_value(<<"HTTP-Method">>, JObj, get)),
     VoiceUri = wh_json:get_value(<<"Voice-URI">>, JObj),
@@ -118,7 +113,7 @@ init([Call, JObj]) ->
 
     lager:debug("starting pivot req to ~s to ~s", [Method, VoiceUri]),
 
-    ?MODULE:new_request(Self, VoiceUri, Method, BaseParams),
+    ?MODULE:new_request(self(), VoiceUri, Method, BaseParams),
 
     {ok, #state{
        cdr_uri = wh_json:get_value(<<"CDR-URI">>, JObj)
@@ -170,6 +165,9 @@ handle_cast({request, Uri, Method, Params}, #state{call=Call}=State) ->
 handle_cast({updated_call, Call}, State) ->
     {noreply, State#state{call=Call}};
 
+handle_cast({controller_queue, <<>>}, State) ->
+    get_my_queue(),
+    {noreply, State};
 handle_cast({controller_queue, ControllerQ}, #state{call=Call}=State) ->
     %% TODO: Block on waiting for controller queue
     {noreply, State#state{call=whapps_call:set_controller_queue(ControllerQ, Call)}};
@@ -384,3 +382,12 @@ init_req_params(Format, Call) ->
         error:undef ->
             []
     end.
+
+get_my_queue() ->
+    Self = self(),
+    spawn(fun() ->
+                  ControllerQ = gen_listener:queue_name(Self),
+                  lager:debug("controller queue: ~s", [ControllerQ]),
+                  gen_listener:cast(Self, {controller_queue, ControllerQ})
+          end),
+    ok.
