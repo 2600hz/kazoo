@@ -3,7 +3,7 @@ notifications:
   email: engineering@2600hz.com
   irc: 
     channels: 
-      - "irc.freenode.org#switchfreedom-qa"
+      - "irc.freenode.org#2600hz-dev"
 otp_release:
   - R15B01
   - R15B
