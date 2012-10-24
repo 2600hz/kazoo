@@ -19,8 +19,6 @@
          ,save_attachment/4, save_attachment/5
          ,delete_attachment/3
          ,ensure_saved/1, ensure_saved/2
-         ,public_fields/1
-         ,private_fields/1, is_private_key/1
          ,rev_to_etag/1
          ,current_doc_vsn/0
          ,update_pvt_parameters/2
@@ -59,52 +57,25 @@ current_doc_vsn() -> ?CROSSBAR_DOC_VSN.
 %%--------------------------------------------------------------------
 -spec load/2 :: (ne_binary() | [ne_binary(),...], #cb_context{}) -> #cb_context{}.
 -spec load/3 :: (ne_binary() | [ne_binary(),...], #cb_context{}, wh_proplist()) -> #cb_context{}.
-load(_DocId, #cb_context{db_name=undefined}=Context) ->
-    crossbar_util:response_db_missing(Context);
+
 load(DocId, #cb_context{}=Context) ->
     load(DocId, Context, []).
 
-load(_DocId, #cb_context{db_name=undefined}=Context, _Opts) ->
-    crossbar_util:response_db_missing(Context);
-load(?NE_BINARY = DocId, #cb_context{db_name=DB}=Context, Opts) ->
-    case couch_mgr:open_doc(DB, DocId, Opts) of
-        {error, db_not_reachable} ->
-            lager:debug("loading doc ~s from ~s failed: db not reachable", [DocId, DB]),
-            crossbar_util:response_datastore_timeout(Context);
-        {error, not_found} ->
-            lager:debug("loading doc ~s from ~s failed: doc not found", [DocId, DB]),
-            crossbar_util:response_bad_identifier(DocId, Context);
-        {ok, Doc} ->
-            lager:debug("loaded doc ~s from ~s", [DocId, DB]),
-            case wh_util:is_true(wh_json:get_value(<<"pvt_deleted">>, Doc)) of
-                true -> crossbar_util:response_bad_identifier(DocId, Context);
-                false ->
-                    Context1 = Context#cb_context{doc=Doc
-                                                  ,resp_status=success
-                                                  ,resp_data=public_fields(Doc)
-                                                  ,resp_etag=rev_to_etag(Doc)
-                                                 },
-                    cb_context:store(db_doc, Doc, Context1)
+load(?NE_BINARY = DocId, #cb_context{db_name=Db}=Context, Opts) ->
+    case couch_mgr:open_doc(Db, DocId, Opts) of
+        {error, Error} -> handle_couch_mgr_errors(Error, DocId, Context);
+        {ok, JObj} ->
+            lager:debug("loaded doc ~s from ~s", [DocId, Db]),
+            case wh_util:is_true(wh_json:get_value(<<"pvt_deleted">>, JObj)) of
+                true -> cb_context:add_system_error(bad_identifier, [{details, DocId}],  Context);
+                false -> cb_context:store(db_doc, JObj, handle_couch_mgr_success(JObj, Context))
             end
     end;
-load([_|_]=IDs, #cb_context{db_name=DB}=Context, Opts) ->
+load([_|_]=IDs, #cb_context{db_name=Db}=Context, Opts) ->
     Opts1 = [{keys, IDs}, include_docs | Opts],
-
-    case couch_mgr:all_docs(DB, Opts1) of
-        {error, db_not_reachable} ->
-            lager:debug("loading docs from ~s failed: db not reachable", [DB]),
-            crossbar_util:response_datastore_timeout(Context);
-        {ok, Vs} ->
-            lager:debug("loaded docs from ~s", [DB]),
-            Context#cb_context{
-              doc=[wh_json:get_value(<<"doc">>, V)
-                   || V <- Vs,
-                      wh_json:is_json_object(V),
-                      %% if unset, default to true (undeleted); if set, it better be false
-                      wh_json:is_false([<<"doc">>, <<"pvt_deleted">>], V, true)
-                  ]
-              ,resp_status=success
-             }
+    case couch_mgr:all_docs(Db, Opts1) of
+        {error, Error} -> handle_couch_mgr_errors(Error, IDs, Context);
+        {ok, JObjs} -> handle_couch_mgr_success(extract_included_docs(JObjs), Context)
     end.
 
 %%--------------------------------------------------------------------
@@ -117,9 +88,7 @@ load([_|_]=IDs, #cb_context{db_name=DB}=Context, Opts) ->
 %% Failure here returns 410, 500, or 503
 %% @end
 %%--------------------------------------------------------------------
--spec load_from_file/2 :: (ne_binary(), ne_binary()) ->
-                                  {'ok', wh_json:json_object()} |
-                                  {'error', atom()}.
+-spec load_from_file/2 :: (ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} | {'error', atom()}.
 load_from_file(Db, File) ->
     couch_mgr:load_doc_from_file(Db, crossbar, File).
 
@@ -134,28 +103,18 @@ load_from_file(Db, File) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec load_merge/3 :: (ne_binary(), wh_json:json_object(), #cb_context{}) -> #cb_context{}.
-load_merge(_DocId, _Data, #cb_context{db_name=undefined}=Context) ->
-    lager:debug("db missing from #cb_context for doc ~s", [_DocId]),
-    crossbar_util:response_db_missing(Context);
-load_merge(DocId, DataJObj, #cb_context{db_name=DBName}=Context) ->
+load_merge(DocId, DataJObj, #cb_context{db_name=DbName}=Context) ->
     case load(DocId, Context) of
-        #cb_context{resp_status=success, doc=Doc}=Context1 ->
-            lager:debug("loaded doc ~s from ~s, merging", [DocId, DBName]),
-            merge(DataJObj, Doc, Context1);
-        Else ->
-            lager:debug("loading doc ~s from ~s failed unexpectedly", [DocId, DBName]),
-            Else
+        #cb_context{resp_status=success, doc=JObj}=Context1 ->
+            lager:debug("loaded doc ~s from ~s, merging", [DocId, DbName]),
+            merge(DataJObj, JObj, Context1);
+        Else -> Else
     end.
 
 -spec merge/3 :: (wh_json:json_object(), wh_json:json_object(), #cb_context{}) -> #cb_context{}.
-merge(DataJObj, Doc, Context) ->
-    PrivJObj = private_fields(Doc),
-    Doc1 = wh_json:merge_jobjs(PrivJObj, DataJObj),
-    Context#cb_context{doc=Doc1
-                       ,resp_status=success
-                       ,resp_data=public_fields(Doc1)
-                       ,resp_etag=rev_to_etag(Doc1)
-                      }.
+merge(DataJObj, JObj, Context) ->
+    PrivJObj = wh_json:private_fields(JObj),
+    handle_couch_mgr_success(wh_json:merge_jobjs(PrivJObj, DataJObj), Context).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -167,10 +126,7 @@ merge(DataJObj, Doc, Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec load_view/3 :: (ne_binary(), proplist(), #cb_context{}) -> #cb_context{}.
-load_view(_View, _Options, #cb_context{db_name=undefined}=Context) ->
-    lager:debug("db missing from #cb_context for view ~s", [_View]),
-    crossbar_util:response_db_missing(Context);
-load_view(View, Options, #cb_context{db_name=DB, query_json=RJ}=Context) ->
+load_view(View, Options, #cb_context{db_name=Db, query_json=RJ}=Context) ->
     HasFilter = has_filter(RJ),
     ViewOptions = case HasFilter of
                       false -> Options;
@@ -178,38 +134,22 @@ load_view(View, Options, #cb_context{db_name=DB, query_json=RJ}=Context) ->
                                | props:delete(include_docs, Options)
                               ]
                   end,
-    case couch_mgr:get_results(DB, View, ViewOptions) of
-        {error, invalid_view_name} ->
-            lager:debug("loading view ~s from ~s failed: invalid view", [View, DB]),
-            crossbar_util:response_missing_view(Context);
-        {error, not_found} ->
-            lager:debug("loading view ~s from ~s failed: not found", [View, DB]),
-            crossbar_util:response_missing_view(Context);
-        {ok, Docs} when HasFilter ->
-            lager:debug("loaded view ~s from ~s, running query filter", [View, DB]),
-            Filtered = [Doc || Doc <- Docs,
-                               Doc =/= undefined,
-                               filter_doc(wh_json:get_value(<<"doc">>, Doc), RJ)
+    case couch_mgr:get_results(Db, View, ViewOptions) of
+        {error, Error} -> handle_couch_mgr_errors(Error, View, Context);
+        {ok, JObjs} when HasFilter ->
+            lager:debug("loaded view ~s from ~s, running query filter", [View, Db]),
+            Filtered = [JObj
+                        || JObj <- JObjs
+                               ,filter_doc(wh_json:get_value(<<"doc">>, JObj), RJ)
                        ],
-            Context#cb_context{
-              doc=Filtered
-              ,resp_status=success
-              ,resp_etag=rev_to_etag(Filtered)
-             };
-        {ok, Docs} ->
-            lager:debug("loaded view ~s from ~s", [View, DB]),
-            Context#cb_context{
-              doc=Docs
-              ,resp_status=success
-              ,resp_etag=rev_to_etag(Docs)
-             };
-        _Else ->
-            lager:debug("loading view ~s from ~s failed: unexpected ~p", [View, DB, _Else]),
-            Context#cb_context{doc=[]}
+            handle_couch_mgr_success(Filtered, Context);
+        {ok, JObjs} ->
+            lager:debug("loaded view ~s from ~s", [View, Db]),
+            handle_couch_mgr_success(JObjs, Context)
     end.
 
 %%--------------------------------------------------------------------
-%% @public
+% @public
 %% @doc
 %% This function attempts to load the context with the results of a view
 %% run against the accounts database.  The results are then filtered by
@@ -218,17 +158,16 @@ load_view(View, Options, #cb_context{db_name=DB, query_json=RJ}=Context) ->
 %% Failure here returns 500 or 503
 %% @end
 %%--------------------------------------------------------------------
--type filter_fun() :: fun((wh_json:json_object(), wh_json:json_objects()) ->
-                                 wh_json:json_objects()).
+-type filter_fun() :: fun((wh_json:json_object(), wh_json:json_objects()) -> wh_json:json_objects()).
 -spec load_view/4 :: (ne_binary(), proplist(), #cb_context{}, filter_fun()) -> #cb_context{}.
 load_view(View, Options, Context, Filter) when is_function(Filter, 2) ->
     case load_view(View, Options, Context) of
-        #cb_context{resp_status=success, doc=Doc} = Context1 ->
-            Context1#cb_context{resp_data=
-                                    [D || D <- lists:foldl(Filter, [], Doc),
-                                          D =/= undefined
-                                    ]
-                               };
+        #cb_context{resp_status=success, doc=JObjs} = Context1 ->
+            Filtered = [JObj
+                        || JObj <- lists:foldl(Filter, [], JObjs)
+                               ,(not wh_util:is_empty(JObj))
+                       ],
+            handle_couch_mgr_success(Filtered, Context1);
         Else -> Else
     end.
 
@@ -245,18 +184,13 @@ load_view(View, Options, Context, Filter) when is_function(Filter, 2) ->
 -spec load_docs/2 :: (#cb_context{}, filter_fun()) -> #cb_context{}.
 load_docs(#cb_context{db_name=Db}=Context, Filter) when is_function(Filter, 2) ->
     case couch_mgr:all_docs(Db) of
-        {error, db_not_reachable} ->
-            crossbar_util:response_datastore_timeout(Context);
-        {error, not_found} ->
-            crossbar_util:response_db_missing(Context);
-        {ok, Docs} ->
-            Context#cb_context{resp_status=success
-                               ,resp_data=[D || D <- lists:foldl(Filter, [], Docs),
-                                                D =/= undefined
-                                          ]
-                              };
-        _Else ->
-            Context
+        {error, Error} -> handle_couch_mgr_errors(Error, <<"all_docs">>, Context);
+        {ok, JObjs} ->
+            Filtered = [JObj 
+                        || JObj <- lists:foldl(Filter, [], JObjs)
+                               ,(not wh_util:is_empty(JObj))
+                       ],
+            handle_couch_mgr_success(Filtered, Context)
     end.
 
 %%--------------------------------------------------------------------
@@ -268,40 +202,28 @@ load_docs(#cb_context{db_name=Db}=Context, Filter) when is_function(Filter, 2) -
 %% Failure here returns 500 or 503
 %% @end
 %%--------------------------------------------------------------------
--spec load_attachment/3 :: (ne_binary() | wh_json:json_object(), ne_binary(), #cb_context{}) ->
-                                   #cb_context{}.
-load_attachment(_DocId, _AName, #cb_context{db_name = undefined}=Context) ->
-    lager:debug("loading attachment ~s from doc ~s failed: no db", [_DocId, _AName]),
-    crossbar_util:response_db_missing(Context);
-load_attachment(DocId, AName, #cb_context{db_name=DB}=Context) when is_binary(DocId) ->
-    case couch_mgr:fetch_attachment(DB, DocId, AName) of
-        {error, db_not_reachable} ->
-            lager:debug("loading attachment ~s from doc ~s from db ~s failed: db not reachable", [AName, DocId, DB]),
-            crossbar_util:response_datastore_timeout(Context);
-        {error, not_found} ->
-            lager:debug("loading attachment ~s from doc ~s from db ~s failed: attachment not found", [AName, DocId, DB]),
-            crossbar_util:response_bad_identifier(DocId, Context);
+-spec load_attachment/3 :: (ne_binary() | wh_json:json_object(), ne_binary(), #cb_context{}) -> #cb_context{}.
+load_attachment(DocId, AName, #cb_context{db_name=Db}=Context) when is_binary(DocId) ->
+    case couch_mgr:fetch_attachment(Db, DocId, AName) of
+        {error, Error} -> handle_couch_mgr_errors(Error, DocId, Context);
         {ok, AttachBin} ->
-            lager:debug("loaded attachment ~s from doc ~s from db ~s", [AName, DocId, DB]),
+            lager:debug("loaded attachment ~s from doc ~s from db ~s", [AName, DocId, Db]),
             #cb_context{resp_status=success, doc=Doc} = Context1 = load(DocId, Context),
             Context1#cb_context{resp_status=success
                                 ,doc=Doc
                                 ,resp_data=AttachBin
                                 ,resp_etag=rev_to_etag(Doc)
-                               };
-        _Else ->
-            lager:debug("loading attachment ~s from doc ~s from db ~s failed: unexpected ~p", [AName, DocId, DB, _Else]),
-            Context
+                               }
     end;
 load_attachment(Doc, AName, #cb_context{}=Context) ->
     load_attachment(find_doc_id(Doc), AName, Context).
 
 -spec find_doc_id/1 :: (wh_json:json_object()) -> api_binary().
-find_doc_id(Doc) ->
-    find_doc_id(Doc, wh_json:get_value(<<"_id">>, Doc)).
-find_doc_id(Doc, undefined) ->
-    wh_json:get_value(<<"id">>, Doc);
-find_doc_id(_Doc, Id) -> Id.
+find_doc_id(JObj) ->
+    case wh_json:get_ne_value(<<"_id">>, JObj) of
+        undefined -> wh_json:get_ne_value(<<"id">>, JObj);
+        DocId -> DocId
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -314,67 +236,38 @@ find_doc_id(_Doc, Id) -> Id.
 %%--------------------------------------------------------------------
 -spec save/1 :: (#cb_context{}) -> #cb_context{}.
 -spec save/2 :: (#cb_context{}, proplist()) -> #cb_context{}.
+
 save(#cb_context{}=Context) ->
     save(Context, []).
 
-save(#cb_context{db_name=undefined}=Context, _) ->
-    lager:debug("db undefined, cannot save"),
-    crossbar_util:response_db_missing(Context);
-save(#cb_context{db_name=DB, doc=[_|_]=JObjs, req_verb=Verb, resp_headers=RespHs}=Context, Options) ->
-    JObjs0 = update_pvt_parameters(JObjs, Context),
-    case couch_mgr:save_docs(DB, JObjs0, Options) of
-        {error, db_not_reachable} ->
-            lager:debug("failed to save json: db not reachable"),
-            crossbar_util:response_datastore_timeout(Context);
-        {ok, JObjs1} when Verb =:= <<"put">> ->
-            _ = send_document_change(created, DB, JObjs1, Options),
-            Context#cb_context{doc=JObjs1
-                               ,resp_status=success
-                               ,resp_headers=
-                                   [{<<"Location">>, wh_json:get_value(<<"_id">>, JObj1)}
-                                    || JObj1 <- JObjs
-                                   ] ++ RespHs
-                               ,resp_data=[public_fields(JObj1) || JObj1 <- JObjs]
-                               ,resp_etag=rev_to_etag(JObjs1)
-                              };
-        {ok, JObjs2} ->
-            _ = send_document_change(edited, DB, JObjs2, Options),
-            Context#cb_context{doc=JObjs2
-                               ,resp_status=success
-                               ,resp_data=[public_fields(JObj2) || JObj2 <- JObjs]
-                               ,resp_etag=rev_to_etag(JObjs2)
-                              }
-    end;
 save(#cb_context{doc=[]}=Context, _Options) ->
     lager:debug("no docs to save"),
     Context#cb_context{resp_status=success};
-save(#cb_context{db_name=DB, doc=JObj, req_verb=Verb, resp_headers=RespHs}=Context, Options) ->
+save(#cb_context{db_name=Db, doc=[_|_]=JObjs, req_verb=Verb}=Context, Options) ->
+    JObjs0 = update_pvt_parameters(JObjs, Context),
+    case couch_mgr:save_docs(Db, JObjs0, Options) of
+        {error, Error} -> 
+            IDs = [wh_json:get_value(<<"_id">>, J) || J <- JObjs],
+            handle_couch_mgr_errors(Error, IDs, Context);
+        {ok, JObj1} ->
+            _ = case Verb =:= <<"put">> of
+                    true -> send_document_change(created, Db, JObj1, Options);
+                    false -> send_document_change(edited, Db, JObj1, Options)
+                end,
+            handle_couch_mgr_success(JObj1, Context)
+    end;
+save(#cb_context{db_name=Db, doc=JObj, req_verb=Verb}=Context, Options) ->
     JObj0 = update_pvt_parameters(JObj, Context),
-    case couch_mgr:save_doc(DB, JObj0, Options) of
-        {error, db_not_reachable} ->
-            lager:debug("failed to save json: db not reachable"),
-            crossbar_util:response_datastore_timeout(Context);
-        {error, conflict} ->
-            lager:debug("failed to save json: conflicts with existing doc"),
-            crossbar_util:response_conflicting_docs(Context);
-        {ok, JObj1} when Verb =:= <<"put">> ->
-            _ = send_document_change(created, DB, JObj1, Options),
-            Context#cb_context{doc=JObj1
-                               ,resp_status=success
-                               ,resp_headers=[{<<"Location">>, wh_json:get_value(<<"_id">>, JObj1)} | RespHs]
-                               ,resp_data=public_fields(JObj1)
-                               ,resp_etag=rev_to_etag(JObj1)
-                              };
-        {ok, JObj2} ->
-            _ = send_document_change(edited, DB, JObj2, Options),
-            Context#cb_context{doc=JObj2
-                               ,resp_status=success
-                               ,resp_data=public_fields(JObj2)
-                               ,resp_etag=rev_to_etag(JObj2)
-                              };
-        _Else ->
-            lager:debug("save failed: unexpected return from datastore: ~p", [_Else]),
-            Context
+    case couch_mgr:save_doc(Db, JObj0, Options) of
+        {error, Error} -> 
+            DocId = wh_json:get_value(<<"_id">>, JObj0),
+            handle_couch_mgr_errors(Error, DocId, Context);
+        {ok, JObj1} ->
+            _ = case Verb =:= <<"put">> of
+                    true -> send_document_change(created, Db, JObj1, Options);
+                    false -> send_document_change(edited, Db, JObj1, Options)
+                end,
+            handle_couch_mgr_success(JObj1, Context)
     end.
 
 %%--------------------------------------------------------------------
@@ -388,97 +281,23 @@ save(#cb_context{db_name=DB, doc=JObj, req_verb=Verb, resp_headers=RespHs}=Conte
 %%--------------------------------------------------------------------
 -spec ensure_saved/1 :: (#cb_context{}) -> #cb_context{}.
 -spec ensure_saved/2 :: (#cb_context{}, proplist()) -> #cb_context{}.
+
 ensure_saved(#cb_context{}=Context) ->
     ensure_saved(Context, []).
 
-ensure_saved(#cb_context{db_name=undefined}=Context, _) ->
-    lager:debug("db undefined, cannot ensure save"),
-    crossbar_util:response_db_missing(Context);
-ensure_saved(#cb_context{db_name=DB, doc=JObj, req_verb=Verb, resp_headers=RespHs}=Context, Options) ->
+ensure_saved(#cb_context{db_name=Db, doc=JObj, req_verb=Verb}=Context, Options) ->
     JObj0 = update_pvt_parameters(JObj, Context),
-    case couch_mgr:ensure_saved(DB, JObj0, Options) of
-        {error, db_not_reachable} ->
-            lager:debug("failed to save json: db not reachable"),
-            crossbar_util:response_datastore_timeout(Context);
-        {ok, JObj1} when Verb =:= <<"put">> ->
-            lager:debug("saved a put request, setting location headers"),
-            _ = send_document_change(created, DB, JObj1, Options),
-            Context#cb_context{doc=JObj1
-                               ,resp_status=success
-                               ,resp_headers=[{<<"Location">>, wh_json:get_value(<<"_id">>, JObj1)} | RespHs]
-                               ,resp_data=public_fields(JObj1)
-                               ,resp_etag=rev_to_etag(JObj1)
-                              };
-        {ok, JObj2} ->
-            lager:debug("saved json doc"),
-            _ = send_document_change(edited, DB, JObj2, Options),
-            Context#cb_context{doc=JObj2
-                               ,resp_status=success
-                               ,resp_data=public_fields(JObj2)
-                               ,resp_etag=rev_to_etag(JObj2)
-                              };
-        _Else ->
-            lager:debug("save failed: unexpected return from datastore: ~p", [_Else]),
-            Context
+    case couch_mgr:ensure_saved(Db, JObj0, Options) of
+        {error, Error} -> 
+            DocId = wh_json:get_value(<<"_id">>, JObj0),
+            handle_couch_mgr_errors(Error, DocId, Context);
+        {ok, JObj1} ->
+            _ = case Verb =:= <<"put">> of
+                    true -> send_document_change(created, Db, JObj1, Options);
+                    false -> send_document_change(edited, Db, JObj1, Options)
+                end,
+            handle_couch_mgr_success(JObj1, Context)
     end.
-
--spec send_document_change/3 :: (wapi_conf:conf_action()
-                                 ,ne_binary()
-                                 ,wh_json:json_object() | wh_json:json_objects()
-                                ) -> 'ok' | pid().
--spec send_document_change/4 :: (wapi_conf:conf_action()
-                                 ,ne_binary()
-                                 ,wh_json:json_object() | wh_json:json_objects()
-                                 ,wh_proplist()
-                                ) -> 'ok' | pid().
--spec send_document_change/5 :: (wapi_conf:conf_action()
-                                 ,ne_binary()
-                                 ,wh_json:json_object() | wh_json:json_objects()
-                                 ,wh_proplist()
-                                 ,boolean()
-                                ) -> 'ok' | pid().
-send_document_change(Action, Db, Docs) ->
-    send_document_change(Action, Db, Docs, []).
-
-send_document_change(Action, Db, Docs, Options) when is_list(Docs) ->
-    [send_document_change(Action, Db, Doc, Options) || Doc <- Docs];
-send_document_change(Action, Db, Doc, Options) ->
-    send_document_change(Action, Db, Doc, Options, props:get_value(publish_doc, Options, true)).
-
-send_document_change(_,_,_,_,false) -> ok;
-send_document_change(Action, Db, Doc, _Options, true) ->
-    CallID = get(callid),
-    spawn(fun() ->
-                  put(callid, CallID),
-                  case wh_json:get_value(<<"_id">>, Doc) of
-                      undefined ->
-                          Id = wh_json:get_value(<<"id">>, Doc),
-                          case wh_json:get_value(<<"error">>, Doc) of
-                              undefined ->
-                                  {ok, Doc1} = couch_mgr:open_doc(Db, Id),
-                                  publish_doc(Action, Db, Doc1, Id);
-                              _E -> ok
-                          end;
-                      Id -> publish_doc(Action, Db, Doc, Id)
-                  end
-          end).
-
-publish_doc(Action, Db, Doc, Id) ->
-    ActionBin = wh_util:to_binary(Action),
-    Type = wh_json:get_binary_value(<<"pvt_type">>, Doc, <<"undefined">>),
-    Change =
-        [{<<"ID">>, Id}
-         ,{<<"Rev">>, wh_json:get_value(<<"_rev">>, Doc)}
-         ,{<<"Doc">>, Doc}
-         ,{<<"Type">>, Type}
-         ,{<<"Account-DB">>, wh_json:get_value(<<"pvt_account_db">>, Doc)}
-         ,{<<"Account-ID">>, wh_json:get_value(<<"pvt_account_id">>, Doc)}
-         ,{<<"Date-Modified">>, wh_json:get_binary_value(<<"pvt_created">>, Doc)}
-         ,{<<"Date-Created">>, wh_json:get_binary_value(<<"pvt_modified">>, Doc)}
-         ,{<<"Version">>, wh_json:get_binary_value(<<"pvt_vsn">>, Doc)}
-         | wh_api:default_headers(<<"configuration">>, <<"doc_", ActionBin/binary>>, ?APP_NAME, ?APP_VERSION)
-        ],
-    wapi_conf:publish_doc_update(Action, Db, Type, Id, Change).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -501,33 +320,23 @@ save_attachment(DocId, AName, Contents, Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec save_attachment/5 :: (ne_binary(), ne_binary(), ne_binary(), #cb_context{}, proplist()) -> #cb_context{}.
-save_attachment(_DocId, _AName, _, #cb_context{db_name=undefined}=Context, _) ->
-    lager:debug("saving attachment ~s to doc ~s failed: no db specified", [_AName, _DocId]),
-    crossbar_util:response_db_missing(Context);
-save_attachment(DocId, AName, Contents, #cb_context{db_name=DB}=Context, Options) ->
+save_attachment(DocId, AName, Contents, #cb_context{db_name=Db}=Context, Options) ->
     Opts1 = case props:get_value(rev, Options) of
                 undefined ->
-                    {ok, Rev} = couch_mgr:lookup_doc_rev(DB, DocId),
+                    {ok, Rev} = couch_mgr:lookup_doc_rev(Db, DocId),
                     [{rev, Rev} | Options];
                 O -> O
             end,
-    case couch_mgr:put_attachment(DB, DocId, AName, Contents, Opts1) of
-        {error, db_not_reachable} ->
-            lager:debug("saving attachment ~s to doc ~s to db ~s failed: db not reachable", [AName, DocId, DB]),
-            crossbar_util:response_datastore_timeout(Context);
-        {error, conflict} ->
-            lager:debug("saving attachment ~s to doc ~s to db ~s failed: conflict", [AName, DocId, DB]),
-            crossbar_util:response_conflicting_docs(Context);
+    case couch_mgr:put_attachment(Db, DocId, AName, Contents, Opts1) of
+        {error, Error} -> handle_couch_mgr_errors(Error, AName, Context);
         {ok, _Res} ->
-            lager:debug("saved attachment ~s to doc ~s to db ~s", [AName, DocId, DB]),
-            {ok, Rev1} = couch_mgr:lookup_doc_rev(DB, DocId),
-            Context#cb_context{resp_status=success
-                               ,resp_data=[]
+            lager:debug("saved attachment ~s to doc ~s to db ~s", [AName, DocId, Db]),
+            {ok, Rev1} = couch_mgr:lookup_doc_rev(Db, DocId),
+            Context#cb_context{doc=wh_json:new()
+                               ,resp_status=success
+                               ,resp_data=wh_json:new()
                                ,resp_etag=rev_to_etag(Rev1)
-                              };
-        _Else ->
-            lager:debug("saving attachment ~s to doc ~s to db ~s failed: unexpected: ~p", [AName, DocId, DB, _Else]),
-            crossbar_util:response_datastore_conn_refused(Context)
+                              }
     end.
 
 %%--------------------------------------------------------------------
@@ -543,46 +352,31 @@ save_attachment(DocId, AName, Contents, #cb_context{db_name=DB}=Context, Options
 %%--------------------------------------------------------------------
 -spec delete/1 :: (#cb_context{}) -> #cb_context{}.
 -spec delete/2 :: (#cb_context{}, 'permanent') -> #cb_context{}.
-delete(#cb_context{db_name=undefined, doc=JObj}=Context) ->
-    lager:debug("deleting ~s failed, no db", [wh_json:get_value(<<"_id">>, JObj)]),
-    crossbar_util:response_db_missing(Context);
-delete(#cb_context{db_name=DB, doc=JObj}=Context) ->
+
+delete(#cb_context{db_name=Db, doc=JObj}=Context) ->
     JObj0 = update_pvt_parameters(JObj, Context),
     JObj1 = wh_json:set_value(<<"pvt_deleted">>, true, JObj0),
-    case couch_mgr:save_doc(DB, JObj1) of
-        {error, db_not_reachable} ->
-            lager:debug("deleting ~s from ~s failed, db not reachable", [wh_json:get_value(<<"_id">>, JObj), DB]),
-            crossbar_util:response_datastore_timeout(Context);
-        {ok, _Doc} ->
-            lager:debug("deleted ~s from ~s", [wh_json:get_value(<<"_id">>, JObj), DB]),
-            _ = send_document_change(deleted, DB, JObj1),
-            Context#cb_context{doc = wh_json:new()
-                               ,resp_status=success
-                               ,resp_data=[]
-                              };
-        _Else ->
-            lager:debug("deleting ~s from ~s failed: unexpected ~p", [wh_json:get_value(<<"_id">>, JObj), DB, _Else]),
-            Context
+    case couch_mgr:save_doc(Db, JObj1) of
+        {error, not_found} -> handle_couch_mgr_success(wh_json:new(), Context);
+        {error, Error} -> 
+            DocId = wh_json:get_value(<<"_id">>, JObj1),
+            handle_couch_mgr_errors(Error, DocId, Context);
+        {ok, _} ->
+            lager:debug("deleted ~s from ~s", [wh_json:get_value(<<"_id">>, JObj), Db]),
+            _ = send_document_change(deleted, Db, JObj1),
+            handle_couch_mgr_success(wh_json:new(), Context)
     end.
 
-delete(#cb_context{db_name=undefined, doc=JObj}=Context, permanent) ->
-    lager:debug("permanent deleting ~s failed, no db", [wh_json:get_value(<<"_id">>, JObj)]),
-    crossbar_util:response_db_missing(Context);
-delete(#cb_context{db_name=DB, doc=JObj}=Context, permanent) ->
-    case couch_mgr:del_doc(DB, JObj) of
-        {error, db_not_reachable} ->
-            lager:debug("permanent deleting ~s from ~s failed, db not reachable", [wh_json:get_value(<<"_id">>, JObj), DB]),
-            crossbar_util:response_datastore_timeout(Context);
-        {ok, _Doc} ->
-            lager:debug("permanently deleted ~s from ~s", [wh_json:get_value(<<"_id">>, JObj), DB]),
-            _ = send_document_change(deleted, DB, wh_json:set_value(<<"pvt_deleted">>, true, JObj)),
-            Context#cb_context{doc = wh_json:new()
-                               ,resp_status=success
-                               ,resp_data=[]
-                              };
-        _Else ->
-            lager:debug("permanently deleting ~s from ~s failed: unexpected ~p", [wh_json:get_value(<<"_id">>, JObj), DB, _Else]),
-            Context
+delete(#cb_context{db_name=Db, doc=JObj}=Context, permanent) ->
+    case couch_mgr:del_doc(Db, JObj) of
+        {error, not_found} -> handle_couch_mgr_success(wh_json:new(), Context);
+        {error, Error} -> 
+            DocId = wh_json:get_value(<<"_id">>, JObj),
+            handle_couch_mgr_errors(Error, DocId, Context);
+        {ok, _} ->
+            lager:debug("permanently deleted ~s from ~s", [wh_json:get_value(<<"_id">>, JObj), Db]),
+            _ = send_document_change(deleted, Db, wh_json:set_value(<<"pvt_deleted">>, true, JObj)),
+            handle_couch_mgr_success(wh_json:new(), Context)
     end.
 
 %%--------------------------------------------------------------------
@@ -595,64 +389,14 @@ delete(#cb_context{db_name=DB, doc=JObj}=Context, permanent) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec delete_attachment/3 :: (ne_binary(), ne_binary(), #cb_context{}) -> #cb_context{}.
-delete_attachment(_DocId, _AName, #cb_context{db_name=undefined}=Context) ->
-    lager:debug("deleting attachment ~s from doc ~s failed: no db", [_AName, _DocId]),
-    crossbar_util:response_db_missing(Context);
-delete_attachment(DocId, AName, #cb_context{db_name=DB}=Context) ->
-    case couch_mgr:delete_attachment(DB, DocId, AName) of
-        {error, db_not_reachable} ->
-            lager:debug("deleting attachment ~s from doc ~s from ~s failed: db not reachable", [AName, DocId, DB]),
-            crossbar_util:response_datastore_timeout(Context);
-        {error, not_found} ->
-            lager:debug("deleting attachment ~s from doc ~s from ~s failed: not found", [AName, DocId, DB]),
-            crossbar_util:response_bad_identifier(DocId, Context);
-        {ok, _Res} ->
-            lager:debug("deleted attachment ~s from doc ~s from ~s", [AName, DocId, DB]),
-            {ok, Rev} = couch_mgr:lookup_doc_rev(DB, DocId),
-            Context#cb_context{resp_status=success
-                               ,resp_data=[]
-                               ,resp_etag=rev_to_etag(Rev)
-                              };
-        _Else ->
-            lager:debug("deleting attachment ~s from doc ~s from ~s failed: unexpected ~p", [AName, DocId, DB, _Else]),
-            Context
+delete_attachment(DocId, AName, #cb_context{db_name=Db}=Context) ->
+    case couch_mgr:delete_attachment(Db, DocId, AName) of
+        {error, not_found} -> handle_couch_mgr_success(wh_json:new(), Context);
+        {error, Error} -> handle_couch_mgr_errors(Error, AName, Context);
+        {ok, _} ->
+            lager:debug("deleted attachment ~s from doc ~s from ~s", [AName, DocId, Db]),
+            handle_couch_mgr_success(wh_json:new(), Context)
     end.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% This function will filter any private fields out of the provided
-%% json proplist
-%% @end
-%%--------------------------------------------------------------------
--spec public_fields/1 :: (wh_json:json_object() | wh_json:json_objects()) ->
-                                 wh_json:json_object() | wh_json:json_objects().
-public_fields(JObjs)->
-    wh_json:public_fields(JObjs).
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% This function will filter any public fields out of the provided
-%% json proplist
-%% @end
-%%--------------------------------------------------------------------
--spec private_fields/1 :: (wh_json:json_object() | wh_json:json_objects()) ->
-                                  wh_json:json_object() | wh_json:json_objects().
-private_fields(JObjs)->
-    wh_json:private_fields(JObjs).
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% This function will return a boolean, true if the provided key is
-%% considered private; otherwise false
-%% @end
-%%--------------------------------------------------------------------
--spec is_private_key/1 :: (binary()) -> boolean().
-is_private_key(<<"_", _/binary>>) -> true;
-is_private_key(<<"pvt_", _/binary>>) -> true;
-is_private_key(_) -> false.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -661,10 +405,7 @@ is_private_key(_) -> false.
 %% document into a usable ETag for the response
 %% @end
 %%--------------------------------------------------------------------
--spec rev_to_etag/1 :: (wh_json:json_object() | wh_json:json_objects() | ne_binary()) ->
-                               'undefined' |
-                               'automatic' |
-                               string().
+-spec rev_to_etag/1 :: (wh_json:json_object() | wh_json:json_objects() | ne_binary()) -> 'undefined' | 'automatic' | string().
 rev_to_etag([_|_])-> automatic;
 rev_to_etag([]) -> undefined;
 rev_to_etag(?NE_BINARY = Rev) -> wh_util:to_list(Rev);
@@ -672,6 +413,81 @@ rev_to_etag(JObj) ->
     case wh_json:get_value(<<"_rev">>, JObj) of
         undefined -> undefined;
         Rev -> wh_util:to_list(Rev)
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec handle_couch_mgr_success/2 :: (wh_json:json_object() | wh_json:json_objects(), #cb_context{}) -> #cb_context{}.
+handle_couch_mgr_success([_|_]=JObjs, #cb_context{req_verb = <<"put">>, resp_headers=Headers}=Context) ->
+    Context#cb_context{doc=JObjs
+                       ,resp_status=success
+                       ,resp_data=[wh_json:public_fields(JObj) 
+                                   || JObj <- JObjs
+                                          ,wh_json:is_false(<<"pvt_deleted">>, JObj, true)
+                                  ]
+                       ,resp_etag=rev_to_etag(JObjs)
+                       ,resp_headers=
+                           [{<<"Location">>, wh_json:get_value(<<"_id">>, JObj)}
+                            || JObj <- JObjs
+                           ] ++ Headers
+                      };
+handle_couch_mgr_success([_|_]=JObjs, Context) ->
+    Context#cb_context{doc=JObjs
+                       ,resp_status=success
+                       ,resp_data=[wh_json:public_fields(JObj) 
+                                   || JObj <- JObjs
+                                          ,wh_json:is_false(<<"pvt_deleted">>, JObj, true)
+                                  ]
+                       ,resp_etag=rev_to_etag(JObjs)
+                      };
+handle_couch_mgr_success(JObj, #cb_context{req_verb = <<"put">>, resp_headers=Headers}=Context) ->
+    Context#cb_context{doc=JObj
+                       ,resp_status=success
+                       ,resp_data=wh_json:public_fields(JObj)
+                       ,resp_etag=rev_to_etag(JObj)
+                       ,resp_headers=[{<<"Location">>, wh_json:get_value(<<"_id">>, JObj)} | Headers]
+                      };
+handle_couch_mgr_success(JObj, Context) ->
+    Context#cb_context{doc=JObj
+                       ,resp_status=success
+                       ,resp_data=wh_json:public_fields(JObj)
+                       ,resp_etag=rev_to_etag(JObj)
+                      }.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec handle_couch_mgr_errors/3 :: (atom(), ne_binary() | [ne_binary(),...] | 'undefined', #cb_context{}) -> #cb_context{}.
+handle_couch_mgr_errors(invalid_db, _, #cb_context{db_name=Db}=Context) ->
+    lager:debug("datastore ~s not_found", [Db]),
+    cb_context:add_system_error(datastore_missing, [{details, wh_util:to_binary(Db)}], Context);
+handle_couch_mgr_errors(db_not_reachable, _DocId, #cb_context{db_name=Db}=Context) ->
+    lager:debug("operation on doc ~s from ~s failed: db_not_reachable", [_DocId, Db]),
+    cb_context:add_system_error(datastore_unreachable, Context);
+handle_couch_mgr_errors(not_found, DocId, #cb_context{db_name=Db}=Context) ->
+    lager:debug("operation on doc ~s from ~s failed: not_found", [DocId, Db]),
+    cb_context:add_system_error(bad_identifier, [{details, DocId}],  Context);    
+handle_couch_mgr_errors(conflict, DocId, #cb_context{db_name=Db}=Context) ->
+    lager:debug("failed to update doc ~s in ~s: conflicts", [DocId, Db]),
+    cb_context:add_system_error(datastore_conflict, Context);
+handle_couch_mgr_errors(invalid_view_name, View, #cb_context{db_name=Db}=Context) ->
+    lager:debug("loading view ~s from ~s failed: invalid view", [View, Db]),
+    cb_context:add_system_error(datastore_missing_view, [{details, wh_util:to_binary(View)}], Context);
+handle_couch_mgr_errors(Else, _, Context) ->
+    lager:debug("operation failed: ~p", [Else]),
+    try wh_util:to_binary(Else) of
+        Reason ->
+            cb_context:add_system_error(datastore_fault, [{details, Reason}], Context)
+    catch
+        _:_ -> 
+            cb_context:add_system_error(datastore_fault, Context)
     end.
 
 %%--------------------------------------------------------------------
@@ -685,8 +501,8 @@ rev_to_etag(JObj) ->
                                          wh_json:json_object() | wh_json:json_objects().
 update_pvt_parameters(JObjs, Context) when is_list(JObjs) ->
     [update_pvt_parameters(JObj, Context) || JObj <- JObjs];
-update_pvt_parameters(JObj0, #cb_context{db_name=DBName}) ->
-    lists:foldl(fun(Fun, JObj) -> Fun(JObj, DBName) end, JObj0, ?PVT_FUNS).
+update_pvt_parameters(JObj0, #cb_context{db_name=DbName}) ->
+    lists:foldl(fun(Fun, JObj) -> Fun(JObj, DbName) end, JObj0, ?PVT_FUNS).
 
 add_pvt_vsn(JObj, _) ->
     case wh_json:get_value(<<"pvt_vsn">>, JObj) of
@@ -696,17 +512,17 @@ add_pvt_vsn(JObj, _) ->
             JObj
     end.
 
-add_pvt_account_db(JObj, DBName) ->
+add_pvt_account_db(JObj, DbName) ->
     case wh_json:get_value(<<"pvt_account_db">>, JObj) of
         undefined ->
-            wh_json:set_value(<<"pvt_account_db">>, DBName, JObj);
+            wh_json:set_value(<<"pvt_account_db">>, DbName, JObj);
         _Else -> JObj
     end.
 
-add_pvt_account_id(JObj, DBName) ->
+add_pvt_account_id(JObj, DbName) ->
     case wh_json:get_value(<<"pvt_account_id">>, JObj) of
         undefined ->
-            wh_json:set_value(<<"pvt_account_id">>, wh_util:format_account_id(DBName, raw), JObj);
+            wh_json:set_value(<<"pvt_account_id">>, wh_util:format_account_id(DbName, raw), JObj);
         _Else -> JObj
     end.
 
@@ -722,6 +538,16 @@ add_pvt_created(JObj, _) ->
 add_pvt_modified(JObj, _) ->
     Timestamp = calendar:datetime_to_gregorian_seconds(calendar:universal_time()),
     wh_json:set_value(<<"pvt_modified">>, Timestamp, JObj).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec extract_included_docs/1 :: (wh_json:json_objects()) -> wh_json:json_objects().
+extract_included_docs(JObjs) ->
+    [wh_json:get_value(<<"doc">>, JObj) || JObj <- JObjs].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -784,5 +610,58 @@ filter_prop(Doc, <<"modified_to">>, Val) ->
     wh_util:to_integer(wh_json:get_value(<<"pvt_modified">>, Doc)) =< wh_util:to_integer(Val);
 filter_prop(_, _, _) ->
     true.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec send_document_change/3 :: (wapi_conf:conf_action(), ne_binary(), wh_json:json_object() | wh_json:json_objects()) -> 'ok' | pid().
+-spec send_document_change/4 :: (wapi_conf:conf_action(), ne_binary(), wh_json:json_object() | wh_json:json_objects(), wh_proplist()) -> 'ok' | pid().
+-spec send_document_change/5 :: (wapi_conf:conf_action(), ne_binary(), wh_json:json_object() | wh_json:json_objects(), wh_proplist(), boolean()) -> 'ok' | pid().
+
+send_document_change(Action, Db, Docs) ->
+    send_document_change(Action, Db, Docs, []).
+
+send_document_change(Action, Db, Docs, Options) when is_list(Docs) ->
+    [send_document_change(Action, Db, Doc, Options) || Doc <- Docs];
+send_document_change(Action, Db, Doc, Options) ->
+    send_document_change(Action, Db, Doc, Options, props:get_value(publish_doc, Options, true)).
+
+send_document_change(_,_,_,_,false) -> ok;
+send_document_change(Action, Db, Doc, _Options, true) ->
+    CallID = get(callid),
+    spawn(fun() ->
+                  put(callid, CallID),
+                  case wh_json:get_value(<<"_id">>, Doc) of
+                      undefined ->
+                          Id = wh_json:get_value(<<"id">>, Doc),
+                          case wh_json:get_value(<<"error">>, Doc) of
+                              undefined ->
+                                  {ok, Doc1} = couch_mgr:open_doc(Db, Id),
+                                  publish_doc(Action, Db, Doc1, Id);
+                              _E -> ok
+                          end;
+                      Id -> publish_doc(Action, Db, Doc, Id)
+                  end
+          end).
+
+publish_doc(Action, Db, Doc, Id) ->
+    ActionBin = wh_util:to_binary(Action),
+    Type = wh_json:get_binary_value(<<"pvt_type">>, Doc, <<"undefined">>),
+    Change =
+        [{<<"ID">>, Id}
+         ,{<<"Rev">>, wh_json:get_value(<<"_rev">>, Doc)}
+         ,{<<"Doc">>, Doc}
+         ,{<<"Type">>, Type}
+         ,{<<"Account-DB">>, wh_json:get_value(<<"pvt_account_db">>, Doc)}
+         ,{<<"Account-ID">>, wh_json:get_value(<<"pvt_account_id">>, Doc)}
+         ,{<<"Date-Modified">>, wh_json:get_binary_value(<<"pvt_created">>, Doc)}
+         ,{<<"Date-Created">>, wh_json:get_binary_value(<<"pvt_modified">>, Doc)}
+         ,{<<"Version">>, wh_json:get_binary_value(<<"pvt_vsn">>, Doc)}
+         | wh_api:default_headers(<<"configuration">>, <<"doc_", ActionBin/binary>>, ?APP_NAME, ?APP_VERSION)
+        ],
+    wapi_conf:publish_doc_update(Action, Db, Type, Id, Change).
 
 %% ADD Unit Tests for private/public field filtering and merging

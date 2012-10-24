@@ -12,7 +12,6 @@
 %%%-------------------------------------------------------------------
 -module(cb_accounts).
 
--export([rollback_db_creation/1]).
 -export([init/0
          ,allowed_methods/0, allowed_methods/1, allowed_methods/2
          ,resource_exists/0, resource_exists/1, resource_exists/2
@@ -38,23 +37,6 @@
 -define(AGG_VIEW_REALM, <<"accounts/listing_by_realm">>).
 
 -define(PVT_TYPE, <<"account">>).
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec rollback_db_creation/1 :: (#cb_context{}) -> #cb_context{}.
-rollback_db_creation(#cb_context{db_name=?WH_ACCOUNTS_DB}) ->
-    ok;
-rollback_db_creation(#cb_context{db_name=undefined}) ->
-    ok;
-rollback_db_creation(#cb_context{db_name=AccountDb, account_id=AccountId}=Context) ->
-    _ = delete_free_numbers(AccountId, AccountDb, Context),
-    _ = delete_remove_services(AccountId, AccountDb, Context),
-    _ = delete_remove_from_accounts(AccountId, AccountDb, Context),
-    delete_remove_db(AccountId, AccountDb, Context).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -127,13 +109,13 @@ validate(#cb_context{req_nouns=[{?WH_ACCOUNTS_DB, _}], req_verb = <<"put">>}=Con
 
 validate(#cb_context{req_nouns=[{?WH_ACCOUNTS_DB, _}], req_verb = <<"get">>}=Context, AccountId) ->
     load_account(AccountId, prepare_context(AccountId, Context));
-validate(#cb_context{req_nouns=[{?WH_ACCOUNTS_DB, _}], req_verb = <<"put">>}=Context, AccountId) ->
-    validate_request(AccountId, prepare_context(AccountId, Context));
+validate(#cb_context{req_nouns=[{?WH_ACCOUNTS_DB, _}], req_verb = <<"put">>}=Context, _) ->
+    validate_request(undefined, prepare_context(undefined, Context));
 validate(#cb_context{req_nouns=[{?WH_ACCOUNTS_DB, _}], req_verb = <<"post">>}=Context, AccountId) ->
     validate_request(AccountId, prepare_context(AccountId, Context));
 validate(#cb_context{req_nouns=[{?WH_ACCOUNTS_DB, _}], req_verb = <<"delete">>}=Context, AccountId) ->
     validate_delete_request(AccountId, prepare_context(AccountId, Context));
-validate(Context, AccountId) -> load_account_db(AccountId, Context).
+validate(#cb_context{}=Context, AccountId) -> load_account_db(AccountId, Context).
 
 validate(#cb_context{req_verb = <<"get">>}=Context, AccountId, <<"children">>) ->
     load_children(AccountId, prepare_context(undefined, Context));
@@ -169,23 +151,19 @@ post(Context, AccountId) ->
 -spec put/1 :: (#cb_context{}) -> #cb_context{}.
 -spec put/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
 
-put(Context) ->
-    try create_new_account_db(Context) of
+put(#cb_context{doc=JObj}=Context) ->
+    AccountId = wh_json:get_value(<<"_id">>, JObj, couch_mgr:get_uuid()),
+    try create_new_account_db(prepare_context(AccountId, Context)) of
         C -> leak_pvt_fields(C)
     catch
-        throw:#cb_context{}=C -> 
-            _ = rollback_db_creation(C),
-            C
+        throw:#cb_context{}=C -> delete(C, AccountId);
+        _:_ -> 
+            C = cb_context:add_system_error(unspecified_fault, Context),
+            delete(C, AccountId)
     end.
-            
+
 put(Context, _) ->
-    try create_new_account_db(Context) of
-        C -> leak_pvt_fields(C)
-    catch
-        throw:#cb_context{}=C -> 
-            _ = rollback_db_creation(C),
-            C
-    end.
+    put(Context).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -195,13 +173,12 @@ put(Context, _) ->
 %%--------------------------------------------------------------------
 -spec delete/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
 delete(Context, Account) ->
-    _ = cb_context:put_reqid(Context),
     AccountDb = wh_util:format_account_id(Account, encoded),
     case whapps_util:is_account_db(AccountDb) of
         false -> cb_context:add_system_error(account_not_found, Context);
         true ->
             AccountId = wh_util:format_account_id(Account, raw),
-            rollback_db_creation(Context#cb_context{db_name=AccountDb, account_id=AccountId})
+            delete_remove_services(Context#cb_context{db_name=AccountDb, account_id=AccountId})
     end.
 
 %%--------------------------------------------------------------------
@@ -254,8 +231,8 @@ validate_realm_is_unique(AccountId, #cb_context{doc=JObj}=Context) ->
         true -> validate_account_schema(AccountId, Context);
         false ->
             C = cb_context:add_validation_error([<<"realm">>]
-                                                   ,<<"unique">>
-                                                   ,<<"Account realm already in use">>
+                                                ,<<"unique">>
+                                                    ,<<"Account realm already in use">>
                                                     ,Context),
             validate_account_schema(AccountId, C)
     end.
@@ -267,7 +244,7 @@ validate_account_schema(AccountId, Context) ->
 
 -spec finalize_request_validation/2 :: ('undefined'|ne_binary(), #cb_context{}) -> #cb_context{}.
 finalize_request_validation(undefined, Context) ->
-    set_private_properties(Context); 
+    set_private_properties(Context);
 finalize_request_validation(AccountId, #cb_context{doc=JObj}=Context) ->
     crossbar_doc:load_merge(AccountId, JObj, Context).
 
@@ -283,8 +260,8 @@ validate_delete_request(AccountId, Context) ->
                    ,{<<"endkey">>, [AccountId, wh_json:new()]}
                   ],
     case couch_mgr:get_results(?WH_ACCOUNTS_DB, ?AGG_VIEW_DESCENDANTS, ViewOptions) of
-        {error, not_found} -> cb_context:add_system_error(database_missing_view, Context);
-        {error, _} -> cb_context:add_system_error(database_fault, Context);
+        {error, not_found} -> cb_context:add_system_error(datastore_missing_view, Context);
+        {error, _} -> cb_context:add_system_error(datastore_fault, Context);
         {ok, JObjs} ->
             case [JObj || JObj <- JObjs, wh_json:get_value(<<"id">>, JObj) =/= AccountId] of
                 [] -> Context#cb_context{resp_status=success};
@@ -329,9 +306,9 @@ leak_billing_mode(#cb_context{auth_account_id=AuthAccountId, account_id=AccountI
     case wh_services:find_reseller_id(AccountId) of
         AuthAccountId ->
             Context#cb_context{resp_data=wh_json:set_value(<<"billing_mode">>, <<"limits_only">>, RespJObj)};
-        MasterAccount -> 
+        MasterAccount ->
             Context#cb_context{resp_data=wh_json:set_value(<<"billing_mode">>, <<"normal">>, RespJObj)};
-        _Else -> 
+        _Else ->
             Context#cb_context{resp_data=wh_json:set_value(<<"billing_mode">>, <<"manual">>, RespJObj)}
     end.
 
@@ -441,7 +418,7 @@ create_new_tree(#cb_context{req_nouns=[{?WH_ACCOUNTS_DB, [Parent]}], req_verb = 
 create_new_tree(#cb_context{auth_doc=JObj}) ->
     case wh_json:is_json_object(JObj) of
         false -> create_new_tree(undefined);
-        true -> 
+        true ->
             create_new_tree(wh_json:get_value(<<"account_id">>, JObj))
     end;
 create_new_tree(undefined) ->
@@ -494,18 +471,17 @@ load_account_db(AccountId, Context) when is_binary(AccountId) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec create_new_account_db/1 :: (#cb_context{}) -> #cb_context{}.
-create_new_account_db(#cb_context{doc=Doc}=Context) ->
-    AccountId = wh_json:get_value(<<"_id">>, Doc, couch_mgr:get_uuid()),
-    AccountDb = wh_util:format_account_id(AccountId, encoded),
+create_new_account_db(#cb_context{db_name=AccountDb}=Context) ->
     _ = ensure_accounts_db_exists(),
-    case couch_mgr:db_create(AccountDb) of
+    case whapps_util:is_account_db(AccountDb)
+        andalso couch_mgr:db_create(AccountDb) 
+    of
         false ->
             lager:debug("failed to create database: ~s", [AccountDb]),
-            throw(cb_context:add_system_error(database_fault, Context));
+            throw(cb_context:add_system_error(datastore_fault, Context));
         true ->
             lager:debug("created DB ~s", [AccountDb]),
-            C = prepare_context(AccountDb, Context),
-            _ = create_account_definition(C),
+            C = create_account_definition(prepare_context(AccountDb, Context)),
             _ = load_initial_views(C),
             _ = crossbar_bindings:map(<<"account.created">>, C),
             _ = notfy_new_account(C),
@@ -516,10 +492,8 @@ create_new_account_db(#cb_context{doc=Doc}=Context) ->
 ensure_accounts_db_exists() ->
     case couch_mgr:db_exists(?WH_ACCOUNTS_DB) of
         true -> ok;
-        false -> 
-            _ = couch_mgr:db_create(?WH_ACCOUNTS_DB),
-            _ = couch_mgr:revise_doc_from_file(?WH_ACCOUNTS_DB, crossbar, ?ACCOUNTS_AGG_VIEW_FILE),
-            couch_mgr:revise_doc_from_file(?WH_ACCOUNTS_DB, crossbar, ?MAINTENANCE_VIEW_FILE),
+        false ->
+            _ = whapps_maintenance:refresh(?WH_ACCOUNTS_DB),
             ok
     end.
 
@@ -533,14 +507,13 @@ create_account_definition(#cb_context{doc=JObj, account_id=AccountId, db_name=Ac
              ,{<<"pvt_created">>, TStamp}
              ,{<<"pvt_vsn">>, <<"1">>}
             ],
-    J = wh_json:set_values(Props, JObj),
-    case couch_mgr:save_doc(AccountDb, J) of
-        {ok, AccountDef}-> 
+    case couch_mgr:save_doc(AccountDb, wh_json:set_values(Props, JObj)) of
+        {ok, AccountDef}->
             _ = replicate_account_definition(AccountDef),
-            ok;
-        {error, _R} -> 
+            Context#cb_context{doc=AccountDef, resp_data=wh_json:public_fields(AccountDef)};
+        {error, _R} ->
             lager:debug("unable to create account definition: ~p", [_R]),
-            throw(cb_context:add_system_error(database_fault, Context))
+            throw(cb_context:add_system_error(datastore_fault, Context))
     end.
 
 -spec load_initial_views/1 :: (#cb_context{}) -> #cb_context{}.
@@ -592,12 +565,12 @@ is_unique_realm(AccountId, Realm) ->
 %%       and they will notify once complete...
 notfy_new_account(#cb_context{auth_doc = undefined}) ->
     ok;
-notfy_new_account(#cb_context{doc = JObj}) ->
+notfy_new_account(#cb_context{account_id=AccountId, db_name=AccountDb, doc=JObj}) ->
     Notify = [{<<"Account-Name">>, wh_json:get_value(<<"name">>, JObj)}
               ,{<<"Account-Realm">>, wh_json:get_value(<<"realm">>, JObj)}
               ,{<<"Account-API-Key">>, wh_json:get_value(<<"pvt_api_key">>, JObj)}
-              ,{<<"Account-ID">>, wh_json:get_value(<<"pvt_account_id">>, JObj)}
-              ,{<<"Account-DB">>, wh_json:get_value(<<"pvt_account_db">>, JObj)}
+              ,{<<"Account-ID">>, AccountId}
+              ,{<<"Account-DB">>, AccountDb}
               | wh_api:default_headers(?APP_VERSION, ?APP_NAME)
              ],
     wapi_notifications:publish_new_account(Notify).
@@ -629,35 +602,47 @@ support_depreciated_billing_id(BillingId, AccountId, Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
-
-delete_free_numbers(AccountId, AccountDb, Context) ->
-    ok = wh_number_manager:free_numbers(AccountId),
-    delete_remove_services(AccountId, AccountDb, Context).
-
-delete_remove_services(AccountId, AccountDb, Context) ->
+delete_remove_services(#cb_context{account_id=AccountId}=Context) ->
     case wh_services:delete(AccountId) of
-        {ok, _} -> delete_remove_db(AccountId, AccountDb, Context);
+        {ok, _} -> delete_free_numbers(Context);
         _ -> crossbar_util:response(error, <<"unable to cancel services">>, 500, Context)
     end.
 
-delete_remove_db(AccountId, AccountDb, Context) ->
-   Removed = case couch_mgr:open_doc(AccountDb, AccountId) of
-                 {ok, _} -> couch_mgr:db_delete(AccountDb);
-                 {error, not_found} -> true;
-                 {error, _R} ->
-                     lager:debug("failed to open account defintion ~s: ~p", [AccountId, _R]),
-                     false
-             end,
+delete_free_numbers(#cb_context{account_id=AccountId}=Context) ->
+    _ = wh_number_manager:free_numbers(AccountId),
+    delete_remove_sip_aggregates(Context).
+
+delete_remove_sip_aggregates(#cb_context{account_id=AccountId}=Context) ->
+    ViewOptions = [{include_docs, true}
+                   ,{key, AccountId}
+                  ],
+    _ = case couch_mgr:get_results(?WH_SIP_DB, <<"credentials/lookup_by_account">>, ViewOptions) of
+            {error, _R} ->
+                lager:debug("unable to clean sip_auth: ~p", [_R]);
+            {ok, JObjs} ->
+                Docs = [wh_json:get_value(<<"doc">>, JObj) || JObj <- JObjs],
+                couch_mgr:del_docs(?WH_SIP_DB, Docs)
+        end,
+    delete_remove_db(Context).
+
+delete_remove_db(#cb_context{db_name=AccountDb, account_id=AccountId}=Context) ->
+    Removed = case couch_mgr:open_doc(AccountDb, AccountId) of
+                  {ok, _} -> couch_mgr:db_delete(AccountDb);
+                  {error, not_found} -> true;
+                  {error, _R} ->
+                      lager:debug("failed to open account defintion ~s: ~p", [AccountId, _R]),
+                      false
+              end,
     case Removed of
         true ->
             lager:debug("deleted db ~s", [AccountDb]),
-            delete_remove_from_accounts(AccountId, AccountDb, Context);
+            delete_remove_from_accounts(Context);
         false ->
             lager:debug("failed to remove database ~s", [AccountDb]),
             crossbar_util:response(error, <<"unable to remove database">>, 500, Context)
     end.
 
-delete_remove_from_accounts(AccountId, _, Context) ->
+delete_remove_from_accounts(#cb_context{account_id=AccountId}=Context) ->
     case couch_mgr:open_doc(?WH_ACCOUNTS_DB, AccountId) of
         {ok, JObj} ->
             crossbar_doc:delete(Context#cb_context{db_name=?WH_ACCOUNTS_DB

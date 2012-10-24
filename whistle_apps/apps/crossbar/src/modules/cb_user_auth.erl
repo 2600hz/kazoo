@@ -120,7 +120,7 @@ validate(#cb_context{req_data=Data, req_verb = <<"put">>}=Context) ->
                     lager:debug("failed to find account DB"),
                     crossbar_util:response_invalid_data(Errors, Context);
                 {ok, AccountDb} ->
-                    lager:debug("found account DB"),
+                    lager:debug("found account DB ~s", [AccountDb]),
                     authorize_user(Context, Credentials, Method, AccountDb);
                 {multiples, AccountDbs} ->
                     lager:debug("found multiple account DBs"),

@@ -305,31 +305,27 @@ normalize_view_results(JObj, Acc) ->
 %%--------------------------------------------------------------------
 -spec lookup_regs/1 :: (ne_binary()) -> wh_json:json_objects().
 lookup_regs(AccountRealm) ->
-    Q = amqp_util:new_queue(),
-    ok = amqp_util:bind_q_to_targeted(Q),
-    ok = amqp_util:basic_consume(Q),
     Req = [{<<"Realm">>, AccountRealm}
            ,{<<"Fields">>, [<<"Authorizing-ID">>]}
-           | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
+           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    wapi_registration:publish_query_req(Req),
-    receive
-        {_, #amqp_msg{payload = Payload}} ->
-            JObj = wh_json:decode(Payload),
-            true = wapi_registration:query_resp_v(JObj),
-            case wh_json:get_value(<<"Fields">>, JObj) of
-                undefined -> [];
-                Regs ->
-                    [wh_json:from_list([{<<"device_id">>, AuthorizingId}
-                                        ,{<<"registered">>, true}
-                                       ])
-                     || Reg <- Regs
-                            ,(AuthorizingId = wh_json:get_value(<<"Authorizing-ID">>, Reg)) =/= undefined
-                    ]
-            end
-    after
-        1000 -> []
+    Resp = wh_amqp_worker:call(whapps_amqp_pool
+                               ,Req
+                               ,fun wapi_registration:publish_query_req/1
+                               ,fun wapi_registration:query_resp_v/1),
+    case Resp of
+        {error, _} -> [];
+        {ok, JObj} -> extract_device_registrations(JObj)
     end.
+
+-spec extract_device_registrations/1 :: (wh_json:json_object()) -> wh_json:json_objects().
+extract_device_registrations(JObj) ->
+    [wh_json:from_list([{<<"device_id">>, AuthorizingId}
+                        ,{<<"registered">>, true}
+                       ])
+     || Reg <- wh_json:get_value(<<"Fields">>, JObj, [])
+            ,(AuthorizingId = wh_json:get_value(<<"Authorizing-ID">>, Reg)) =/= undefined
+    ].
 
 %%--------------------------------------------------------------------
 %% @private

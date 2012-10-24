@@ -13,6 +13,9 @@
 -export([put_reqid/1]).
 -export([import_errors/1]).
 -export([has_errors/1]).
+-export([add_system_error/2
+         ,add_system_error/3
+        ]).
 -export([add_validation_error/4]).
 -export([validate_request_data/2]).
 
@@ -94,17 +97,38 @@ validate_request_data(Schema, #cb_context{req_data=Data}=Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+add_system_error(unspecified_fault, Context) ->
+    Context#cb_context{resp_status=error};
 add_system_error(account_cant_create_tree, Context) ->
-    Context;
+    Context#cb_context{resp_status=error};
 add_system_error(account_not_found, Context) ->
-    Context;
+    Context#cb_context{resp_status=error};
 add_system_error(account_has_descendants, Context) ->
-    Context;
-add_system_error(database_missing_view, Context) ->
-    Context;
-add_system_error(database_fault, Context) ->
-    Context.
+    Context#cb_context{resp_status=error};
+add_system_error(faulty_request, Context) ->
+    crossbar_util:response_faulty_request(Context);
 
+add_system_error(bad_identifier, Context) ->    
+    crossbar_util:response_bad_identifier(<<>>, Context);
+
+add_system_error(datastore_missing, Context) ->
+    crossbar_util:response_db_missing(Context);
+add_system_error(datastore_missing_view, Context) ->
+    crossbar_util:response_missing_view(Context);
+add_system_error(datastore_conflict, Context) ->
+    crossbar_util:response_conflicting_docs(Context);
+add_system_error(datastore_unreachable, Context) ->
+    crossbar_util:response_datastore_timeout(Context);
+add_system_error(datastore_fault, Context) ->
+    crossbar_util:response_db_fatal(Context).
+
+add_system_error(bad_identifier, Props, Context) ->
+    case props:get_value(details, Props) of
+        undefined -> add_system_error(bad_identifier, Context);
+        Identifier -> crossbar_util:response_bad_identifier(Identifier, Context)
+    end;
+add_system_error(Error, _, Context) ->
+    add_system_error(Error, Context).
 
 %%--------------------------------------------------------------------
 %% @public
