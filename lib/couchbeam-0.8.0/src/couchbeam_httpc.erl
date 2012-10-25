@@ -15,6 +15,23 @@
 -define(TIMEOUT, infinity).
 
 %% @doc send an ibrowse request
+-type error_possibilities() ::
+        {ok, _, _, _} |
+        {url_parsing_failed, invalid_uri} |
+        {conn_failed, _} |
+        {send_failed, _} |
+        retry_later |
+        req_timedout |
+        sel_conn_closed |
+        worker_id_dead |
+        unknown_req_id |
+        {'EXIT', _} |
+        any().
+
+-spec request/6 :: (atom(), string() | binary(), list(), list(), list(), iolist()) ->
+                           {ok, _, _, _} |
+                           {ibrowse_req_id, _} |
+                           {error, error_possibilities()}.
 request(Method, Url, Expect, Options) ->
     request(Method, Url, Expect, Options, [], []).
 request(Method, Url, Expect, Options, Headers) ->
@@ -32,6 +49,10 @@ request(Method, Url, Expect, Options, Headers, Body) ->
         Error -> Error
     end.
 
+-spec request_stream/6 :: ({pid(), 'once'} | pid(), atom(), string() | binary(), list(), list(), iolist()) ->
+                                  {ok, {integer(), integer(), integer()}} |
+                                  {error, error_possibilities()}.
+
 %% @doc stream an ibrowse request
 request_stream(Pid, Method, Url, Options) ->
     request_stream(Pid, Method, Url, Options, []).
@@ -42,10 +63,10 @@ request_stream(Pid, Method, Url, Options, Headers, Body) ->
         Options),
     {ok, ReqPid} = ibrowse_http_client:start_link(Url),
     case ibrowse:send_req_direct(ReqPid, Url, Headers1, Method, Body,
-                          [{stream_to, Pid},
-                           {response_format, binary},
-                           {inactivity_timeout, infinity}|Options1],
-                           ?TIMEOUT) of
+                                 [{stream_to, Pid},
+                                  {response_format, binary},
+                                  {inactivity_timeout, infinity}|Options1],
+                                 ?TIMEOUT) of
         {ibrowse_req_id, ReqId} ->
             {ok, ReqId};
         Error ->

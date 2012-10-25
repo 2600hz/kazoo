@@ -65,17 +65,30 @@
 
 -type stale() :: ok | update_after.
 
--type view_option() :: {key, binary()} | {start_docid, binary()}
-    | {end_docid, binary()} | {start_key, binary()}
-    | {end_key, binary()} | {limit, integer()}
-    | {stale, stale()}
-    | descending
-    | {skip, integer()}
-    | group | {group_level, exact | integer()}
-    | reduce | {reduce, boolean()}
-    | inclusive_end | include_docs | conflicts
-    | {list, binary()}
-    | {keys, list(binary())}.
+-type view_option() :: {key, binary()}
+                     | {keys, list(binary())}
+                     | {startkey_docid, binary()}
+                     | {endkey_docid, binary()}
+                     | {startkey, binary()}
+                     | {endkey, binary()}
+                     | {limit, integer()}
+                     | {stale, stale()}
+                     | descending
+                     | {skip, integer()}
+                     | group
+                     | {group, boolean()}
+                     | {group_level, exact | integer()}
+                     | reduce
+                     | {reduce, boolean()}
+                     | inclusive_end
+                     | {inclusive_end, boolean()}
+                     | include_docs
+                     | {include_docs, boolean()}
+                     | conflicts
+                     | update_seq
+                     | {list, binary()}
+                     | {list(), binary()}
+                     | {binary(), binary()}.
 
 -type view_options() :: list(view_option()).
 

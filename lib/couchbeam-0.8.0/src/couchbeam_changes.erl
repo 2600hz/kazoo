@@ -283,7 +283,7 @@ process_changes(ReqId, Params, UserFun, Callback) ->
                     end,
                     ibrowse:stream_next(IbrowseRef),
                     try
-                        Callback(Ok, Headers, StreamDataFun),
+                        _ = Callback(Ok, Headers, StreamDataFun),
                         couchbeam_httpc:clean_mailbox_req(ReqId)
                     catch
                         throw:http_response_end -> ok;
@@ -305,18 +305,18 @@ process_changes(ReqId, Params, UserFun, Callback) ->
 
 process_changes1(ReqId, UserFun, Callback) ->
     receive
-    {ibrowse_async_response, ReqId, {error, Error}} ->
-        UserFun({error, Error});
+        {ibrowse_async_response, ReqId, {error, Error}} ->
+            UserFun({error, Error});
     {ibrowse_async_response, ReqId, <<>>} ->
-        ibrowse:stream_next(ReqId),
-        process_changes1(ReqId, UserFun, Callback);
-    {ibrowse_async_response, ReqId, Data} ->
-        ibrowse:stream_next(ReqId),
-        {Data, fun() -> process_changes1(ReqId, UserFun, Callback) end};
+            ibrowse:stream_next(ReqId),
+            process_changes1(ReqId, UserFun, Callback);
+        {ibrowse_async_response, ReqId, Data} ->
+            ibrowse:stream_next(ReqId),
+            {Data, fun() -> process_changes1(ReqId, UserFun, Callback) end};
     {ibrowse_async_response_end, ReqId} ->
-        UserFun(done),
-        {<<"">>, fun() -> throw(http_response_end) end}
-end.
+            UserFun(done),
+            {<<"">>, fun() -> throw(http_response_end) end}
+    end.
 
 
 do_redirect(Headers, UserFun, Callback, {Url, IbrowseOpts}) ->

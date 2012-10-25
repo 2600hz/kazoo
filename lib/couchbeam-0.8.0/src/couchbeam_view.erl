@@ -36,8 +36,10 @@ fetch(Db) ->
     fetch(Db, 'all_docs', []).
 
 -spec fetch(Db::db(), ViewName::'all_docs' | {DesignName::string(),
-        ViewName::string()})
-    -> {ok, Rows::list(ejson_object())} | {error, term()}.
+        ViewName::string()}) ->
+                   {ok, list(ejson_object())} |
+                   {error, term()} |
+                   {error, list(ejson_object()), term()}.
 %% @equiv fetch(Db, ViewName, [])
 fetch(Db, ViewName) ->
     fetch(Db, ViewName,[]).
@@ -147,37 +149,36 @@ stream(Db, ViewName, Client) ->
 %% when needed.</p>
 stream(#db{options=IbrowseOpts}=Db, ViewName, ClientPid, Options) ->
     make_view(Db, ViewName, Options, fun(Args, Url) ->
-        StartRef = make_ref(),
-        UserFun = fun
-            (done) ->
-                ClientPid ! {row, StartRef, done};
-            ({error, Error}) ->
-                ClientPid ! {error, StartRef, Error};
-            (Row) ->
-                ClientPid ! {row, StartRef, Row}
-        end,
-        Params = {Args, Url, IbrowseOpts},
-        ViewPid = spawn_link(couchbeam_view, view_loop, [UserFun, Params]),
-
-        %% if we send multiple keys, we do a Post
-        Result = case Args#view_query_args.method of
-            get ->
-                couchbeam_httpc:request_stream({ViewPid, once}, get, Url, IbrowseOpts);
-            post ->
-                Body = ejson:encode({[{<<"keys">>, Args#view_query_args.keys}]}),
-                Headers = [{"Content-Type", "application/json"}],
-                couchbeam_httpc:request_stream({ViewPid, once}, post, Url,
-                    IbrowseOpts, Headers, Body)
-        end,
-
-        case Result of
-            {ok, ReqId} ->
-                ViewPid ! {ibrowse_req_id, ReqId},
-                {ok, StartRef, ViewPid};
-            Error ->
-                Error
-        end
-    end).
+                                             StartRef = make_ref(),
+                                             UserFun = fun
+                                                           (done) ->
+                                                               ClientPid ! {row, StartRef, done};
+                                                           ({error, Error}) ->
+                                                               ClientPid ! {error, StartRef, Error};
+                                                           (Row) ->
+                                                               ClientPid ! {row, StartRef, Row}
+                                                       end,
+                                             Params = {Args, Url, IbrowseOpts},
+                                             ViewPid = spawn_link(couchbeam_view, view_loop, [UserFun, Params]),
+                                             
+                                             %% if we send multiple keys, we do a Post
+                                             Result = case Args#view_query_args.method of
+                                                          get ->
+                                                              couchbeam_httpc:request_stream({ViewPid, once}, get, Url, IbrowseOpts);
+                                                          post ->
+                                                              Body = ejson:encode({[{<<"keys">>, Args#view_query_args.keys}]}),
+                                                              Headers = [{"Content-Type", "application/json"}],
+                                                              couchbeam_httpc:request_stream({ViewPid, once}, post, Url,
+                                                                                             IbrowseOpts, Headers, Body)
+                                                      end,
+                                             case Result of
+                                                 {ok, ReqId} ->
+                                                     ViewPid ! {ibrowse_req_id, ReqId},
+                                                     {ok, StartRef, ViewPid};
+                                                 Error ->
+                                                     Error
+                                             end
+                                     end).
 
 -spec count(Db::db()) -> integer() | {error, term()}.
 %% @equiv count(Db, 'all_docs', [])
@@ -262,16 +263,16 @@ first(Db, ViewName, Options) ->
     end.
 
 -spec fold(Function::function(), Acc::list(), Db::db(),
-        ViewName::'all_docs' | {DesignName::string(), ViewName::string()})
-    -> list(term()) | {error, term()}.
+           ViewName::'all_docs' | {DesignName::string(), ViewName::string()})
+          -> list(term()) | {error, term()}.
 %% @equiv fold(Function, Acc, Db, ViewName, [])
 fold(Function, Acc, Db, ViewName) ->
     fold(Function, Acc, Db, ViewName, []).
 
 -spec fold(Function::function(), Acc::list(), Db::db(),
-        ViewName::'all_docs' | {DesignName::string(),
-        ViewName::string()}, Options::view_options())
-    -> list(term()) | {error, term()}.
+           ViewName::'all_docs' | {DesignName::string(),
+                                   ViewName::string()}, Options::view_options())
+          -> list(term()) | {error, term()}.
 %% @doc call Function(Row, AccIn) on succesive row, starting with
 %% AccIn == Acc. Function/2 must return a new list accumultator or the
 %% atom <em>done</em> to stop fetching results. Acc0 is returned if the
@@ -288,26 +289,26 @@ fold(Function, Acc, Db, ViewName, Options) ->
     end.
 
 -spec foreach(Function::function(), Db::db(),
-        ViewName::'all_docs' | {DesignName::string(), ViewName::string()})
-    -> list(term()) | {error, term()}.
+              ViewName::'all_docs' | {DesignName::string(), ViewName::string()})
+             -> list(term()) | {error, term()}.
 %% @equiv foreach(Function, Db, ViewName, [])
 foreach(Function, Db, ViewName) ->
     foreach(Function, Db, ViewName, []).
 
 -spec foreach(Function::function(),  Db::db(),
-        ViewName::'all_docs' | {DesignName::string(),
-        ViewName::string()}, Options::view_options())
-    -> list(term()) | {error, term()}.
+              ViewName::'all_docs' | {DesignName::string(),
+                                      ViewName::string()}, Options::view_options())
+             -> list(term()) | {error, term()}.
 %% @doc call Function(Row) on succesive row. Example:
 %% ```
 %% couchbeam_view:foreach(fun(Row) -> io:format("got row ~p~n", [Row]) end, Db, 'all_docs').
 %% '''
 foreach(Function, Db, ViewName, Options) ->
-    FunWrapper = fun(Row, _Acc) ->
-            Function(Row),
-            ok
-    end,
-    fold(FunWrapper, ok, Db, ViewName, Options).
+    FunWrapper = fun(Row, Acc) ->
+                         Function(Row),
+                         Acc
+                 end,
+    fold(FunWrapper, [], Db, ViewName, Options).
 
 
 %% ----------------------------------
@@ -324,17 +325,11 @@ parse_view_options([], Args) ->
 parse_view_options([{key, Value}|Rest], #view_query_args{options=Opts}=Args) ->
     Opts1 = [{"key", ejson:encode(Value)}|Opts],
     parse_view_options(Rest, Args#view_query_args{options=Opts1});
-parse_view_options([{start_docid, Value}|Rest], #view_query_args{options=Opts}=Args) ->
-    Opts1 = [{"start_docid", Value}|Opts],
+parse_view_options([{startkey_docid, Value}|Rest], #view_query_args{options=Opts}=Args) ->
+    Opts1 = [{"startkey_docid", Value}|Opts],
     parse_view_options(Rest, Args#view_query_args{options=Opts1});
-parse_view_options([{end_docid, Value}|Rest], #view_query_args{options=Opts}=Args) ->
-    Opts1 = [{"end_docid", Value}|Opts],
-    parse_view_options(Rest, Args#view_query_args{options=Opts1});
-parse_view_options([{start_key, Value}|Rest], #view_query_args{options=Opts}=Args) ->
-    Opts1 = [{"start_key", ejson:encode(Value)}|Opts],
-    parse_view_options(Rest, Args#view_query_args{options=Opts1});
-parse_view_options([{end_key, Value}|Rest], #view_query_args{options=Opts}=Args) ->
-    Opts1 = [{"end_key", ejson:encode(Value)}|Opts],
+parse_view_options([{endkey_docid, Value}|Rest], #view_query_args{options=Opts}=Args) ->
+    Opts1 = [{"endkey_docid", Value}|Opts],
     parse_view_options(Rest, Args#view_query_args{options=Opts1});
 parse_view_options([{startkey, Value}|Rest], #view_query_args{options=Opts}=Args) ->
     Opts1 = [{"startkey", ejson:encode(Value)}|Opts],
@@ -410,17 +405,17 @@ parse_view_options([_|Rest], Args) ->
 
 view_loop(UserFun, Params) ->
     Callback = fun(200, _Headers, DataStreamFun) ->
-            EventFun = fun(Ev) ->
-                    view_ev1(Ev, UserFun)
-            end,
-            couchbeam_json_stream:events(DataStreamFun, EventFun)
-    end,
-
+                       EventFun = fun(Ev) ->
+                                          view_ev1(Ev, UserFun)
+                                  end,
+                       couchbeam_json_stream:events(DataStreamFun, EventFun)
+               end,
+    
     receive
         {ibrowse_req_id, ReqId} ->
             process_view_results(ReqId, Params, UserFun, Callback)
     after ?DEFAULT_TIMEOUT ->
-        UserFun({error, timeout})
+            UserFun({error, timeout})
     end.
 
 
@@ -471,6 +466,9 @@ collect_view_first(Ref, Pid) ->
     end.
 
 
+-spec fold_view_results/4 :: (_, pid(), fun(), Acc) ->
+                                     Acc |
+                                     {error, Acc, _}.
 fold_view_results(Ref, Pid, Fun, Acc) ->
     receive
         {row, Ref, done} ->
@@ -510,7 +508,7 @@ process_view_results(ReqId, Params, UserFun, Callback) ->
                     StreamDataFun = fun() ->
                         process_view_results1(ReqId, UserFun, Callback)
                     end,
-                    ibrowse:stream_next(IbrowseRef),
+                    _ = ibrowse:stream_next(IbrowseRef),
                     try
                         _ = Callback(Ok, Headers, StreamDataFun),
                         couchbeam_httpc:clean_mailbox_req(ReqId)
@@ -519,7 +517,7 @@ process_view_results(ReqId, Params, UserFun, Callback) ->
                         _:Error ->
                             UserFun({error, Error})
                     after
-                        ibrowse:stream_close(ReqId)
+                        _ = ibrowse:stream_close(ReqId)
                     end,
                     ok;
                 R when R =:= 301 ; R =:= 302 ; R =:= 303 ->
@@ -539,10 +537,10 @@ process_view_results1(ReqId, UserFun, Callback) ->
         {ibrowse_async_response, ReqId, {error, Error}} ->
             UserFun({error, Error});
         {ibrowse_async_response, ReqId, <<>>} ->
-            ibrowse:stream_next(ReqId),
+            _ = ibrowse:stream_next(ReqId),
             process_view_results1(ReqId, UserFun, Callback);
         {ibrowse_async_response, ReqId, Data} ->
-            ibrowse:stream_next(ReqId),
+            _ = ibrowse:stream_next(ReqId),
             {Data, fun() -> process_view_results1(ReqId, UserFun, Callback) end};
         {ibrowse_async_response_end, ReqId} ->
             UserFun(done),
