@@ -22,19 +22,23 @@
 -spec start_link/0 :: () -> 'ignore'.
 start_link() ->
     put(callid, ?LOG_SYSTEM_ID),
-    _ = load_config(?CONFIG_FILE_PATH),
+    {ok, _} = load_config(?CONFIG_FILE_PATH),
     lager:debug("loaded couch configs"),
     ignore.
 
 -spec load_config/1 :: (file:name()) -> {'ok', wh_json:json_object()} |
                                         {'error', 'enoent'}.
 load_config(Path) ->
-    lager:debug("loading ~s", [Path]),
     case file:consult(Path) of
         {ok, Startup} ->
+            lager:info("loading ~s successful", [Path]),
             _ = store(<<"couch_host">>, props:get_value(couch_host, Startup)),
             store(<<"default_couch_host">>, props:get_value(default_couch_host, Startup));
         {error, enoent}=E ->
+            lager:error("loading ~s failed: file is missing", [Path]),
+            E;
+        {error, _E}=E ->
+            lager:error("loading ~s failed: ~p", [Path, _E]),
             E
     end.
 
