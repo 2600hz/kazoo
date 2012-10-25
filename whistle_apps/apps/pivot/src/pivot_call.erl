@@ -332,6 +332,7 @@ send(Call, Uri, Method, ReqHdrs, ReqBody) ->
             {stop, Call}
     end.
 
+-spec handle_resp/4 :: (whapps_call:call(), ne_binary(), binary(), pid()) -> 'ok'.
 handle_resp(Call, CT, RespBody, Srv) ->
     put(callid, whapps_call:call_id(Call)),
     case handle_resp(Call, CT, RespBody) of
