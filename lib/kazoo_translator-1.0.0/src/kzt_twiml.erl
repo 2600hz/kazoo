@@ -1164,7 +1164,7 @@ maybe_stop(_, {error, _R}, Result) ->
 maybe_stop(_, _, Result) -> Result.
 
 -spec get_voice/1 :: (text() | 'undefined') -> ne_binary().
-get_voice(V) when not is_binary(V) -> wh_util:to_binary(V);
+get_voice(V) when not is_binary(V) -> get_voice(wh_util:to_binary(V));
 get_voice(<<"man">>) -> <<"male">>;
 get_voice(<<"male">> = M) -> M;
 get_voice(_) -> <<"female">>.
