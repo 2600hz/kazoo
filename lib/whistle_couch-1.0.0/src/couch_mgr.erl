@@ -1013,7 +1013,8 @@ init_state_from_config({H, User, Pass}) ->
     init_state_from_config({H, ?DEFAULT_PORT, User, Pass, ?DEFAULT_ADMIN_PORT});
 init_state_from_config({H, Port, User, Pass}) ->
     init_state_from_config({H, Port, User, Pass, ?DEFAULT_ADMIN_PORT});
-init_state_from_config({H, Port, User, Pass, AdminPort}) ->
+
+init_state_from_config({H, Port, User, Pass, AdminPort}=Config) ->
     try {couch_util:get_new_connection(H, wh_util:to_integer(Port), User, Pass)
          ,couch_util:get_new_connection(H, wh_util:to_integer(AdminPort), User, Pass)} of
         {Conn, AdminConn} ->
@@ -1026,13 +1027,13 @@ init_state_from_config({H, Port, User, Pass, AdminPort}) ->
                   }
     catch
         error:{badmatch,{error,{conn_failed,{error,econnrefused}}}} ->
-            lager:debug("connection to ~s:~p refused", [H, Port]),
             lager:info("We tried to connect to BigCouch at ~s:~p and ~p but were refused. Is BigCouch/HAProxy running at these host:port combos?", [H, Port, AdminPort]),
-            exit(couch_connection_failed);
+            timer:sleep(5000),
+            init_state_from_config(Config);
         A:B ->
             ST = erlang:get_stacktrace(),
-            lager:debug("init failed to connect: ~p:~p", [A, B]),
-            _ = [lager:debug("st: ~p", [S]) || S <- ST],
+            lager:info("init failed to connect: ~p:~p", [A, B]),
+            _ = [lager:info("st: ~p", [S]) || S <- ST],
             A(B)
     end.
 
