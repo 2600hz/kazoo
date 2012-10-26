@@ -14,18 +14,27 @@
          ,agents_in_queue/2
          ,agent_status/2
          ,proc_id/0, proc_id/1, proc_id/2
-         ,queue_presence_update/2, queue_presence_update/3
+         ,queue_presence_update/2
+         ,agent_presence_update/2
+         ,presence_update/3
         ]).
 
 -include("acdc.hrl").
 
 queue_presence_update(AcctId, QueueId) ->
     case wapi_acdc_queue:queue_size(AcctId, QueueId) of
-        0 -> queue_presence_update(AcctId, QueueId, ?PRESENCE_GREEN);
-        N when is_integer(N), N > 0 -> queue_presence_update(AcctId, QueueId, ?PRESENCE_RED_FLASH);
+        0 -> presence_update(AcctId, QueueId, ?PRESENCE_GREEN);
+        N when is_integer(N), N > 0 -> presence_update(AcctId, QueueId, ?PRESENCE_RED_FLASH);
         _N -> lager:debug("queue size for ~s(~s): ~p", [QueueId, AcctId, _N])
     end.
-queue_presence_update(AcctId, QueueId, State) ->
+
+agent_presence_update(AcctId, AgentId) ->
+    case acdc_agents_sup:find_agent_supervisor(AcctId, AgentId) of
+        undefined -> presence_update(AcctId, AgentId, ?PRESENCE_RED_SOLID);
+        P when is_pid(P) -> presence_update(AcctId, AgentId, ?PRESENCE_GREEN)
+    end.
+
+presence_update(AcctId, QueueId, State) ->
     AcctDb = wh_util:format_account_id(AcctId, encoded),
     {ok, AcctDoc} = couch_mgr:open_cache_doc(AcctDb, AcctId),
     To = <<QueueId/binary, "@", (wh_json:get_value(<<"realm">>, AcctDoc))/binary>>,

@@ -35,6 +35,7 @@
 
 -define(BINDINGS, [{conf, [{doc_type, <<"user">>}]}
                    ,{acdc_agent, [{restrict_to, [status, stats_req]}]}
+                   ,{notifications, [{restrict_to, [presence_probe]}]}
                   ]).
 -define(RESPONDERS, [{{acdc_agent_handler, handle_status_update} 
                       ,[{<<"agent">>, <<"login">>}
@@ -50,6 +51,9 @@
                       }
                      ,{{acdc_agent_handler, handle_config_change}
                       ,[{<<"configuration">>, <<"*">>}]
+                     ,{{acdc_agent_handler, handle_presence_probe}
+                       ,[{<<"notification">>, <<"presence_probe">>}]
+                      }
                      }
                     ]).
 
@@ -202,14 +206,18 @@ check_agent_status(Self, AcctId, AgentId) ->
                                        ,5000
                                       ) of
         {ok, _} -> start_agent_timer(Self, AcctId, AgentId);
-        {error, _} -> maybe_logout_agent(AcctId, AgentId)
+        {error, _E} ->
+            lager:debug("failed to get sync resp: ~p", [_E]),
+            maybe_logout_agent(AcctId, AgentId)
     end.
 
 maybe_logout_agent(AcctId, AgentId) ->
     AcctDb = wh_util:format_account_id(AcctId, encoded),
     case acdc_util:agent_status(AcctDb, AgentId) of
         <<"logout">> -> ok;
-        _ -> logout_agent(AcctDb, AgentId)
+        _S ->
+            lager:debug("logging agent out from status ~s", [_S]),
+            logout_agent(AcctDb, AgentId)
     end.
 
 logout_agent(AcctDb, AgentId) ->

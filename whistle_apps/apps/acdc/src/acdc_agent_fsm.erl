@@ -271,8 +271,12 @@ init([AcctId, AgentId, AgentProc]) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
-sync({timeout, Ref, ?SYNC_RESPONSE_MESSAGE}, #state{sync_ref=Ref}=State) when is_reference(Ref) ->
+sync({timeout, Ref, ?SYNC_RESPONSE_MESSAGE}, #state{sync_ref=Ref
+                                                    ,acct_id=AcctId
+                                                    ,agent_id=AgentId
+                                                   }=State) when is_reference(Ref) ->
     lager:debug("done waiting for sync responses"),
+    acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_GREEN),
     {next_state, ready, State#state{sync_ref=Ref}};
 sync({timeout, Ref, ?RESYNC_RESPONSE_MESSAGE}, #state{sync_ref=Ref}=State) when is_reference(Ref) ->
     lager:debug("resync timer expired, lets check with the others again"),
@@ -298,7 +302,10 @@ sync({sync_req, JObj}, #state{agent_proc=Srv
             {next_state, sync, State}
     end;
 
-sync({sync_resp, JObj}, #state{sync_ref=Ref}=State) ->
+sync({sync_resp, JObj}, #state{sync_ref=Ref
+                               ,acct_id=AcctId
+                               ,agent_id=AgentId
+                              }=State) ->
     case catch wh_util:to_atom(wh_json:get_value(<<"Status">>, JObj)) of
         sync ->
             lager:debug("other agent is in sync too"),
@@ -306,6 +313,7 @@ sync({sync_resp, JObj}, #state{sync_ref=Ref}=State) ->
         ready ->
             lager:debug("other agent is in ready state, joining"),
             _ = erlang:cancel_timer(Ref),
+            acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_GREEN),
             {next_state, ready, State#state{sync_ref=undefined}};
         {'EXIT', _} ->
             lager:debug("other agent sent unusable state, ignoring"),
@@ -326,6 +334,7 @@ sync({pause, Timeout}, #state{acct_id=AcctId
     lager:debug("recv status update:, pausing for up to ~b s", [Timeout]),
     Ref = start_pause_timer(Timeout),
     acdc_stats:agent_paused(AcctId, AgentId, Timeout),
+    acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_RED_FLASH),
     {next_state, paused, State#state{sync_ref=Ref}};
 
 sync(_Evt, State) ->
@@ -348,10 +357,11 @@ ready({pause, Timeout}, #state{acct_id=AcctId
     lager:debug("recv status update: pausing for up to ~b s", [Timeout]),
     Ref = start_pause_timer(Timeout),
     acdc_stats:agent_paused(AcctId, AgentId, Timeout),
+    acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_RED_FLASH),
     {next_state, paused, State#state{sync_ref=Ref}};
 
 ready({sync_req, JObj}, #state{agent_proc=Srv}=State) ->
-    lager:debug("recv sync_req from ~s", [wh_json:get_value(<<"Process-ID">>, JObj)]),
+    lager:debug("recv sync_req from ~s", [wh_json:get_value(<<"Server-ID">>, JObj)]),
     acdc_agent:send_sync_resp(Srv, ready, JObj),
     {next_state, ready, State};
 
@@ -443,6 +453,7 @@ ringing({originate_failed, timeout}, #state{agent_proc=Srv
     acdc_agent:member_connect_retry(Srv, CallId),
 
     acdc_stats:call_missed(AcctId, QueueId, AgentId, CallId),
+    acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_GREEN),
     {next_state, ready, clear_call(State)};
     
 ringing({originate_failed, JObj}, #state{agent_proc=Srv
@@ -456,6 +467,7 @@ ringing({originate_failed, JObj}, #state{agent_proc=Srv
 
     acdc_stats:call_missed(AcctId, QueueId, AgentId, CallId),
 
+    acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_GREEN),
     {next_state, ready, clear_call(State)};
 
 ringing({channel_bridged, CallId}, #state{member_call_id=CallId}=State) ->
@@ -477,10 +489,12 @@ ringing({channel_hungup, CallId}, #state{agent_proc=Srv
     acdc_agent:member_connect_retry(Srv, MCallId),
     acdc_stats:call_missed(AcctId, QueueId, AgentId, MCallId),
 
+    acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_GREEN),
     {next_state, ready, clear_call(State)};
 
 ringing({channel_hungup, CallId}, #state{agent_proc=Srv
                                          ,acct_id=AcctId
+                                         ,agent_id=AgentId
                                          ,member_call_id=CallId
                                          ,member_call_queue_id=QueueId
                                          ,agent_call_id=AgentCallId
@@ -491,18 +505,21 @@ ringing({channel_hungup, CallId}, #state{agent_proc=Srv
 
     acdc_stats:call_abandoned(AcctId, QueueId, CallId, ?ABANDON_HANGUP),
 
+    acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_GREEN),
     {next_state, ready, clear_call(State)};
 
 ringing({dtmf_pressed, DTMF}, #state{caller_exit_key=DTMF
                                      ,agent_proc=Srv
                                      ,agent_call_id=AgentCallId
                                      ,acct_id=AcctId
+                                     ,agent_id=AgentId
                                      ,member_call_queue_id=QueueId
                                      ,member_call_id=CallId
                                     }=State) when is_binary(DTMF) ->
     lager:debug("caller exit key pressed: ~s", [DTMF]),
     acdc_agent:channel_hungup(Srv, AgentCallId),
     acdc_stats:call_abandoned(AcctId, QueueId, CallId, ?ABANDON_EXIT),
+    acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_GREEN),
     {next_state, ready, clear_call(State)};
 
 ringing({channel_answered, ACallId}, #state{agent_call_id=ACallId
@@ -556,6 +573,7 @@ answered({dialplan_error, _App}, #state{agent_proc=Srv
     acdc_agent:member_connect_retry(Srv, CallId),
 
     acdc_stats:call_missed(AcctId, QueueId, AgentId, CallId),
+    acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_GREEN),
     {next_state, ready, clear_call(State)};
 
 answered({channel_bridged, CallId}, #state{member_call_id=CallId
@@ -649,6 +667,7 @@ wrapup({timeout, Ref, wrapup_expired}, #state{wrapup_ref=Ref
                                              }=State) ->
     lager:debug("wrapup timer expired, ready for action!"),
     acdc_stats:agent_ready(AcctId, AgentId),
+    acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_GREEN),
 
     {next_state, ready, clear_call(State)};
 
@@ -693,6 +712,7 @@ paused({timeout, Ref, ?PAUSE_MESSAGE}, #state{sync_ref=Ref
     acdc_agent:send_status_resume(Srv),
 
     acdc_stats:agent_resume(AcctId, AgentId),
+    acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_GREEN),
 
     {next_state, ready, clear_call(State#state{sync_ref=undefined})};
 paused({resume}, #state{acct_id=AcctId
@@ -709,6 +729,7 @@ paused({resume}, #state{acct_id=AcctId
 
     acdc_stats:agent_resume(AcctId, AgentId),
 
+    acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_GREEN),
     {next_state, ready, clear_call(State)};
 
 paused({sync_req, JObj}, #state{agent_proc=Srv
@@ -717,6 +738,7 @@ paused({sync_req, JObj}, #state{agent_proc=Srv
     lager:debug("recv sync_req from ~s", [wh_json:get_value(<<"Process-ID">>, JObj)]),
 
     acdc_agent:send_sync_resp(Srv, paused, JObj, [{<<"Time-Left">>, time_left(Ref)}]),
+
     {next_state, paused, State};
 
 paused({member_connect_req, _}, State) ->
@@ -829,8 +851,12 @@ handle_info(_Info, StateName, State) ->
 %% @spec terminate(Reason, StateName, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, _StateName, #state{agent_proc=Srv}) ->
+terminate(_Reason, _StateName, #state{agent_proc=Srv
+                                      ,acct_id=AcctId
+                                      ,agent_id=AgentId
+                                     }) ->
     acdc_agent:stop(Srv),
+    acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_RED_SOLID),
     lager:debug("acdc agent fsm terminating while in ~s: ~p", [_StateName, _Reason]).
 
 %%--------------------------------------------------------------------
