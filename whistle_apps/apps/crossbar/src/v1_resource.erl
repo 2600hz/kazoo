@@ -37,7 +37,7 @@
          ,delete_resource/2
          ,delete_completed/2
          ,is_conflict/2
-         ,to_json/2, to_binary/2
+         ,to_json/2, to_binary/2, to_csv/2
          ,from_json/2, from_binary/2, from_form/2
          ,multiple_choices/2
          ,generate_etag/2
@@ -237,6 +237,7 @@ options(Req0, Context) ->
 -type content_type_callbacks() :: [ {{ne_binary(), ne_binary(), wh_proplist()}, atom()} | {ne_binary(), atom()},...] | [].
 -spec content_types_provided/2 :: (#http_req{}, #cb_context{}) -> {content_type_callbacks(), #http_req{}, #cb_context{}}.
 content_types_provided(Req, #cb_context{req_nouns=Nouns}=Context0) ->
+    lager:debug("run: content_types_provided"),
     #cb_context{content_types_provided=CTPs}=Context1 =
         lists:foldr(fun({Mod, Params}, ContextAcc) ->
                             Event = <<"v1_resource.content_types_provided.", Mod/binary>>,
@@ -258,7 +259,7 @@ content_types_provided(Req, Context, CTPs) ->
                                                 [ {EncType, Fun} | Acc1 ]
                                         end, Acc, L)
                     end, [], CTPs),
-
+    lager:debug("ctp: ~p", [CTP]),
     {CTP, Req, Context}.
 
 -spec content_types_accepted/2 :: (#http_req{}, #cb_context{}) -> {content_type_callbacks(), #http_req{}, #cb_context{}}.
@@ -489,6 +490,38 @@ to_binary(Req, #cb_context{resp_data=RespData}=Context) ->
     _ = crossbar_bindings:map(Event, {Req, Context}),
     lager:debug("responding to_binary"),
     {RespData, v1_util:set_resp_headers(Req, Context), Context}.
+
+-spec to_csv/2 :: (#http_req{}, #cb_context{}) -> {iolist(), #http_req{}, #cb_context{}}.
+to_csv(Req, #cb_context{resp_data=RespData
+                        ,resp_headers=RespHeaders
+                       }=Context) ->
+    RespBody = json_objs_to_csv(RespData),
+
+    RespHeaders1 = [{<<"Content-Type">>, <<"application/octet-stream">>}
+                    ,{<<"Content-Length">>, iolist_size(RespBody)}
+                    ,{<<"Content-Disposition">>, <<"attachment; filename=\"cdrs.csv\"">>}
+                    | RespHeaders
+                   ],
+
+    {RespBody, v1_util:set_resp_headers(Req, Context#cb_context{resp_headers=RespHeaders1}), Context}.
+
+-spec json_objs_to_csv/1 :: (wh_json:json_objects()) -> iolist().
+json_objs_to_csv([]) -> [];
+json_objs_to_csv([J|JObjs]) ->
+    [csv_header(J), [json_to_csv(JObj) || JObj <- JObjs]].
+
+-spec csv_header/1 :: (wh_json:json_object()) -> iolist().
+csv_header(JObj) ->
+    csv_ize(wh_json:get_keys(JObj)).
+
+-spec csv_ize/1 :: (wh_json:keys()) -> iolist().
+csv_ize([F|Rest]) ->
+    [<<"\"">>, F, <<"\"">>, [[<<",\"">>, V, <<"\"">>] || V <- Rest], <<"\n">>].
+
+-spec json_to_csv/1 :: (wh_json:json_object()) -> iolist().
+json_to_csv(JObj) ->
+    {Vs, _} = wh_json:get_values(JObj),
+    csv_ize(Vs).
 
 -spec multiple_choices/2 :: (#http_req{}, #cb_context{}) -> {'false', #http_req{}, #cb_context{}}.
 multiple_choices(Req, Context) ->

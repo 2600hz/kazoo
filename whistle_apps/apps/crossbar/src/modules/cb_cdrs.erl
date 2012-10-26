@@ -16,6 +16,7 @@
 -export([init/0
          ,allowed_methods/0, allowed_methods/1
          ,resource_exists/0, resource_exists/1
+         ,content_types_provided/1
          ,validate/1, validate/2
         ]).
 
@@ -32,6 +33,7 @@
 init() ->
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.cdrs">>, ?MODULE, allowed_methods),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.cdrs">>, ?MODULE, resource_exists),
+    _ = crossbar_bindings:bind(<<"v1_resource.content_types_provided.cdrs">>, ?MODULE, content_types_provided),
     _ = crossbar_bindings:bind(<<"v1_resource.validate.cdrs">>, ?MODULE, validate).
 
 %%%===================================================================
@@ -70,6 +72,21 @@ resource_exists(_) -> true.
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
+%% Add content types accepted and provided by this module
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec content_types_provided/1 :: (#cb_context{}) -> #cb_context{}.
+content_types_provided(#cb_context{}=Context) ->
+    Context#cb_context{content_types_provided=[
+                                               {to_json, [{<<"application">>, <<"json">>}]}
+                                               ,{to_csv, [{<<"application">>, <<"octet-stream">>}]}
+                                              ]
+                      }.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
 %% This function determines if the parameters and content are correct
 %% for this request
 %%
@@ -93,7 +110,7 @@ validate(#cb_context{req_verb = <<"get">>}=Context, CDRId) ->
 -spec load_cdr_summary/1 :: (#cb_context{}) -> #cb_context{}.
 load_cdr_summary(#cb_context{req_nouns=Nouns, query_json=QJObj}=Context) ->
     case Nouns of
-        [_, {?WH_ACCOUNTS_DB, _AID} | _] ->
+        [_, {?WH_ACCOUNTS_DB, [_AID]} | _] ->
             lager:debug("loading cdrs for account ~s", [_AID]),
             case create_view_options(undefined, Context) of
                 {error, C} -> C;
@@ -140,7 +157,10 @@ load_cdr(CdrId, Context) ->
 %%--------------------------------------------------------------------
 -spec normalize_view_results/2 :: (Doc :: wh_json:json_object(), Acc :: wh_json:json_objects()) -> wh_json:json_objects().
 normalize_view_results(JObj, Acc) ->
-    [wh_json:get_value(<<"value">>, JObj)|Acc].
+    [filter_cdr_fields(wh_json:get_value(<<"value">>, JObj))|Acc].
+
+filter_cdr_fields(JObj) ->
+    JObj.
 
 %%--------------------------------------------------------------------
 %% @private
