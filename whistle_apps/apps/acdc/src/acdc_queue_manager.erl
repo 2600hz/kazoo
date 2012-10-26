@@ -119,7 +119,7 @@ handle_member_call(JObj, Props) ->
 
     gen_listener:cast(props:get_value(server, Props), {monitor_call, Call}),
 
-    acdc_util:queue_presence_update(AcctId, QueueId, ?PRESENCE_RED_FLASH).
+    acdc_util:presence_update(AcctId, QueueId, ?PRESENCE_RED_FLASH).
 
 handle_member_call_cancel(JObj, _Props) ->
     true = wapi_acdc_queue:member_call_cancel_v(JObj),

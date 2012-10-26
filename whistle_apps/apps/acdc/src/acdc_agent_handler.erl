@@ -16,6 +16,7 @@
          ,handle_call_event/2
          ,handle_member_message/2
          ,handle_config_change/2
+         ,handle_presence_probe/2
         ]).
 
 -include("acdc.hrl").
@@ -83,6 +84,7 @@ maybe_stop_agent(AcctId, AgentId) ->
         P when is_pid(P) ->
             lager:debug("agent ~s(~s) is logging out, stopping ~p", [AcctId, AgentId, P]),
             _ = acdc_agent_sup:stop(P),
+            acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_RED_SOLID),
             acdc_stats:agent_inactive(AcctId, AgentId)
     end.
 
@@ -203,3 +205,46 @@ handle_agent_change(_JObj, AcctId, AgentId, <<"doc_deleted">>) ->
             _ = acdc_agent_sup:stop(P),
             acdc_stats:agent_inactive(AcctId, AgentId)
     end.
+
+handle_presence_probe(JObj, _Props) ->
+    true = wapi_notifications:presence_probe_v(JObj),
+
+    FromRealm = wh_json:get_value(<<"From-Realm">>, JObj),
+    {ok, AcctDb} = whapps_util:get_account_by_realm(FromRealm),
+    AcctId = wh_util:format_account_id(AcctDb, raw),
+
+    lager:debug("find presence update for ~s(~s)", [AcctId, FromRealm]),
+
+    maybe_respond_to_presence_probe(JObj, AcctId).
+
+maybe_respond_to_presence_probe(JObj, AcctId) ->
+    case wh_json:get_value(<<"To-User">>, JObj) of
+        undefined ->
+            lager:debug("no to-user found on json: ~p", [JObj]);
+        AgentId ->
+            lager:debug("looking for probe for agent ~s(~s)", [AgentId, AcctId]),
+            update_probe(JObj, AcctId, AgentId)
+    end.
+
+update_probe(JObj, AcctId, AgentId) ->
+    update_probe(JObj, acdc_agents_sup:find_agent_supervisor(AcctId, AgentId)).
+
+update_probe(JObj, undefined) ->
+    lager:debug("no agent present, redify!"),
+    send_probe(JObj, ?PRESENCE_RED_SOLID);
+update_probe(JObj, P) when is_pid(P) ->
+    lager:debug("agent is active with super: ~p", [P]),
+    send_probe(JObj, ?PRESENCE_GREEN).
+
+send_probe(JObj, State) ->
+    To = wh_json:get_value(<<"To">>, JObj),
+
+    PresenceUpdate =
+        [{<<"State">>, State}
+         ,{<<"Presence-ID">>, To}
+         ,{<<"Call-ID">>, wh_util:to_hex_binary(crypto:md5(To))}
+         ,{<<"Switch-Nodename">>, wh_json:get_ne_value(<<"Switch-Nodename">>, JObj)}
+         ,{<<"Subscription-Call-ID">>, wh_json:get_ne_value(<<"Subscription-Call-ID">>, JObj)}
+         | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+        ],
+    wapi_notifications:publish_presence_update(PresenceUpdate).

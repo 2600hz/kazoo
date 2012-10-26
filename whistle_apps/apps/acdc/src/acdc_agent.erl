@@ -454,7 +454,6 @@ handle_cast({send_sync_resp, Status, ReqJObj, Options}, #state{my_id=MyId
                                                                ,acct_id=AcctId
                                                                ,agent_id=AgentId
                                                               }=State) ->
-    lager:debug("sending sync response"),
     send_sync_response(ReqJObj, AcctId, AgentId, MyId, Status, Options),
     {noreply, State};
 
@@ -600,6 +599,7 @@ send_sync_response(ReqJObj, AcctId, AgentId, MyId, Status, Options) ->
             ,{<<"Agent-ID">>, AgentId}
             ,{<<"Process-ID">>, MyId}
             ,{<<"Status">>, wh_util:to_binary(Status)}
+            ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, ReqJObj)}
             | Options ++ wh_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     Q = wh_json:get_value(<<"Server-ID">>, ReqJObj),
