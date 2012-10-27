@@ -27,6 +27,7 @@
                    ,{acdc_queue_manager, worker}
                    ,{acdc_agent_manager, worker}
                    ,{acdc_init, worker}
+                   ,{acdc_listener, worker}
                   ]).
 
 %% ===================================================================
