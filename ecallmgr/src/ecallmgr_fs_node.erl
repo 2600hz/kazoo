@@ -521,7 +521,8 @@ show_channels_as_json(Node) ->
                             ,((Values = binary:split(Line, <<"|||">>, [global])) =/= [Line]) 
                     ]
             end;
-        {error, _} -> []
+        {error, _} -> [];
+        timeout -> []
     end.
 
 -spec maybe_start_event_listener/2 :: (atom(), ne_binary()) -> 'ok' | sup_startchild_ret().
