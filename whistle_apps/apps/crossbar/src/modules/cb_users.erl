@@ -228,7 +228,9 @@ rehash_creds(_, Username, Password, #cb_context{doc=JObj}=Context) ->
 %% unique or belongs to the request being made
 %% @end
 %%--------------------------------------------------------------------
--spec username_doc_id/2 :: ('undefined' | ne_binary(), #cb_context{}) -> 'undefined' | ne_binary().
+-spec username_doc_id/2 :: (ne_binary(), #cb_context{}) -> 'undefined' | ne_binary().
+username_doc_id(_, #cb_context{db_name=undefined}) ->
+    undefined;
 username_doc_id(Username, Context) ->
     Username = wh_util:to_lower_binary(Username),
     JObj = case crossbar_doc:load_view(?LIST_BY_USERNAME, [{<<"key">>, Username}], Context) of

@@ -8,8 +8,8 @@
 %%%-------------------------------------------------------------------
 -module(cb_context).
 
--export([fetch/2]).
 -export([store/3]).
+-export([fetch/2, fetch/3]).
 -export([put_reqid/1]).
 -export([import_errors/1]).
 -export([has_errors/1]).
@@ -42,8 +42,16 @@ store(Key, Data, #cb_context{storage=Storage}=Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec fetch/2 :: (term(), #cb_context{}) -> term().
-fetch(Key, #cb_context{storage=Storage}) ->
-    props:get_value(Key, Storage).
+-spec fetch/3 :: (term(), #cb_context{}, term()) -> term().
+
+fetch(Key, #cb_context{}=Context) ->
+    fetch(Key, Context, undefined).
+
+fetch(Key, #cb_context{storage=Storage}, Default) ->
+    case props:get_value(Key, Storage) of
+        undefined -> Default;
+        Else -> Else
+    end.
 
 %%--------------------------------------------------------------------
 %% @public

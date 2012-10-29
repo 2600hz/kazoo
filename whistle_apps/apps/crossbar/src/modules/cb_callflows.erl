@@ -82,49 +82,22 @@ resource_exists(_) -> true.
 validate(#cb_context{req_verb = <<"get">>}=Context) ->
     load_callflow_summary(Context);
 validate(#cb_context{req_verb = <<"put">>}=Context) ->
-    numbers_are_unique(create_callflow(Context)).
+    validate_request(undefined, Context).
 
 validate(#cb_context{req_verb = <<"get">>}=Context, DocId) ->
     load_callflow(DocId, Context);
 validate(#cb_context{req_verb = <<"post">>}=Context, DocId) ->
-    numbers_are_unique(update_callflow(DocId, Context));
+    validate_request(DocId, Context);
 validate(#cb_context{req_verb = <<"delete">>}=Context, DocId) ->
     load_callflow(DocId, Context).
 
 -spec post/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
 post(Context, _DocId) ->
-    case crossbar_doc:save(Context) of
-        #cb_context{account_id=AssignTo, auth_account_id=AuthBy, doc=JObj, resp_status=success}=C ->
-            case whapps_config:get_is_true(?MOD_CONFIG_CAT, <<"default_reconcile_numbers">>, true) of
-                false -> C;
-                true ->
-                    DbDoc = cb_context:fetch(db_doc, Context), 
-                    Set1 = sets:from_list(wh_json:get_value(<<"numbers">>, DbDoc, [])),
-                    Set2 = sets:from_list(wh_json:get_value(<<"numbers">>, JObj, [])),
-                    NewNumbers = sets:subtract(Set2, Set1),
-                    _ = [wh_number_manager:reconcile_number(Number, AssignTo, AuthBy)
-                         || Number <- sets:to_list(NewNumbers)
-                        ],
-                    C
-            end;
-        Else ->
-            Else
-    end.
+    maybe_reconcile_numbers(crossbar_doc:save(Context)).
 
 -spec put/1 :: (#cb_context{}) -> #cb_context{}.
 put(Context) ->
-    case crossbar_doc:save(Context) of
-        #cb_context{account_id=AssignTo, auth_account_id=AuthBy, doc=JObj, resp_status=success}=C ->
-            case whapps_config:get_is_true(?MOD_CONFIG_CAT, <<"default_reconcile_numbers">>, true) of
-                false -> C;
-                true ->
-                    _ = [wh_number_manager:reconcile_number(Number, AssignTo, AuthBy)
-                         || Number <- wh_json:get_value(<<"numbers">>, JObj, [])],
-                    C
-                end;
-        Else ->
-            Else
-    end.
+    maybe_reconcile_numbers(crossbar_doc:save(Context)).
 
 -spec delete/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
 delete(Context, _DocId) ->
@@ -140,32 +113,6 @@ delete(Context, _DocId) ->
 -spec load_callflow_summary/1 :: (#cb_context{}) -> #cb_context{}.
 load_callflow_summary(Context) ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Create a new callflow document with the data provided, if it is valid
-%% @end
-%%--------------------------------------------------------------------
--spec create_callflow/1 :: (#cb_context{}) -> #cb_context{}.
-create_callflow(#cb_context{req_data=Data}=Context) ->
-    try [wnm_util:to_e164(Number) || Number <- wh_json:get_value(<<"numbers">>, Data, [])] of
-        Numbers ->
-            Data1 = wh_json:set_value(<<"numbers">>, Numbers, Data),
-            case wh_json_validator:is_valid(Data1, <<"callflows">>) of
-                {fail, Errors} ->
-                    crossbar_util:response_invalid_data(Errors, Context);
-                {pass, JObj} ->
-                    Context#cb_context{
-                      doc=wh_json:set_value(<<"pvt_type">>, <<"callflow">>, JObj)
-                      ,resp_status=success
-                     }
-            end
-    catch
-        _:_ ->
-            Errs = [wh_json:set_value([<<"numbers">>, <<"type">>], <<"Value is not of type array">>, wh_json:new())],
-            crossbar_util:response_invalid_data(Errs, Context)
-    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -186,20 +133,56 @@ load_callflow(DocId, Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Update an existing callflow document with the data provided, if it is
-%% valid
+%%
 %% @end
 %%--------------------------------------------------------------------
--spec update_callflow/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
-update_callflow(DocId, #cb_context{req_data=Data}=Context) ->
-    Numbers = [wnm_util:to_e164(Number) || Number <- wh_json:get_value(<<"numbers">>, Data, [])],
-    Data1 = wh_json:set_value(<<"numbers">>, Numbers, Data),
-    case wh_json_validator:is_valid(Data1, <<"callflows">>) of
-        {fail, Errors} ->
-            crossbar_util:response_invalid_data(Errors, Context);
-        {pass, JObj} ->
-            crossbar_doc:load_merge(DocId, JObj, Context)
+validate_request(CallflowId, Context) ->
+    prepare_numbers(CallflowId, Context).
+
+prepare_numbers(CallflowId, #cb_context{req_data=JObj}=Context) ->
+    try [wnm_util:to_e164(Number) || Number <- wh_json:get_ne_value(<<"numbers">>, JObj, [])] of
+        [_|_]=Numbers -> 
+            C = Context#cb_context{req_data=wh_json:set_value(<<"numbers">>, Numbers, JObj)},
+            validate_unique_numbers(CallflowId, Numbers, C);
+        _Else ->
+            C = cb_context:add_validation_error(<<"numbers">>
+                                                    ,<<"required">>
+                                                    ,<<"Callflows must be assigned at least one number">>
+                                                    ,Context),
+            validate_unique_numbers(CallflowId, [], C)
+    catch
+        _:_ ->
+            C = cb_context:add_validation_error(<<"numbers">>
+                                                    ,<<"type">>
+                                                    ,<<"Value is not of type array">>
+                                                    ,Context),
+            validate_unique_numbers(CallflowId, [], C#cb_context{req_data=wh_json:set_value(<<"numbers">>, [], JObj)})
     end.
+
+validate_unique_numbers(CallflowId, _, #cb_context{db_name=undefined}=Context) ->
+    check_callflow_schema(CallflowId, Context);
+validate_unique_numbers(CallflowId, [], Context) ->
+    check_callflow_schema(CallflowId, Context);
+validate_unique_numbers(CallflowId, Numbers, #cb_context{db_name=Db}=Context) ->
+    case couch_mgr:get_results(Db, ?CB_LIST, [{<<"include_docs">>, true}]) of
+        {error, _R} ->
+            lager:debug("failed to load callflows from account: ~p", [_R]),
+            check_callflow_schema(CallflowId, Context);
+        {ok, JObjs} ->
+            FilteredJObjs = filter_callflow_list(CallflowId, JObjs),
+            C = check_uniqueness(Numbers, FilteredJObjs, Context),
+            check_callflow_schema(CallflowId, C)
+    end.
+
+check_callflow_schema(CallflowId, Context) ->
+    OnSuccess = fun(C) -> on_successful_validation(CallflowId, C) end,
+    cb_context:validate_request_data(<<"callflows">>, Context, OnSuccess).
+
+on_successful_validation(undefined, #cb_context{doc=Doc}=Context) ->
+    Props = [{<<"pvt_type">>, <<"callflow">>}],
+    Context#cb_context{doc=wh_json:set_values(Props, Doc)};
+on_successful_validation(CallflowId, #cb_context{}=Context) -> 
+    crossbar_doc:load_merge(CallflowId, Context).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -211,6 +194,94 @@ update_callflow(DocId, #cb_context{req_data=Data}=Context) ->
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+maybe_reconcile_numbers(#cb_context{resp_status=success, doc=JObj
+                                    ,account_id=AssignTo, auth_account_id=AuthBy}=Context) ->
+    case whapps_config:get_is_true(?MOD_CONFIG_CAT, <<"default_reconcile_numbers">>, true) of
+        false -> Context;
+        true ->
+            CurrentJObj = cb_context:fetch(db_doc, Context, wh_json:new()), 
+            Set1 = sets:from_list(wh_json:get_value(<<"numbers">>, CurrentJObj, [])),
+            Set2 = sets:from_list(wh_json:get_value(<<"numbers">>, JObj, [])),
+            NewNumbers = sets:subtract(Set2, Set1),
+            _ = [wh_number_manager:reconcile_number(Number, AssignTo, AuthBy)
+                 || Number <- sets:to_list(NewNumbers)
+                ],
+            Context
+    end;
+maybe_reconcile_numbers(Context) -> Context.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+check_uniqueness(Numbers, JObjs, Context) ->
+    Routines = [fun(C) -> check_numbers_uniqueness(Numbers, JObjs, C) end
+                ,fun(C) -> check_patterns_uniqueness(Numbers, JObjs, C) end
+               ],
+    lists:foldl(fun(F, C) -> F(C) end, Context, Routines).
+
+check_numbers_uniqueness([], _, Context) ->
+    Context;
+check_numbers_uniqueness([Number|Numbers], JObjs, Context) ->
+    case lists:dropwhile(fun(J) ->
+                                 N = wh_json:get_ne_value([<<"doc">>, <<"numbers">>], J, []),
+                                 (not lists:member(Number, N))
+                         end, JObjs)
+    of
+        [] -> check_numbers_uniqueness(Numbers, JObjs, Context);
+        [JObj|_] ->
+            C = add_number_conflict(Number, JObj, Context),
+            check_numbers_uniqueness(Numbers, JObjs, C)
+    end.
+
+check_patterns_uniqueness([], _, Context) ->
+    Context;
+check_patterns_uniqueness([Number|Numbers], JObjs, Context) ->
+    case lists:dropwhile(fun(J) ->
+                                 Patterns = wh_json:get_ne_value([<<"doc">>, <<"patterns">>], J, []),
+                                 patterns_dont_match(Number, Patterns)
+                         end, JObjs)
+    of
+        [] -> check_patterns_uniqueness(Numbers, JObjs, Context);
+        [JObj|_] ->
+            C = add_number_conflict(Number, JObj, Context),
+            check_patterns_uniqueness(Numbers, JObjs, C)
+    end.
+filter_callflow_list(undefined, JObjs) ->
+    JObjs;
+filter_callflow_list(CallflowId, JObjs) ->
+    [JObj 
+     || JObj <- JObjs
+            ,wh_json:get_value(<<"id">>, JObj) =/= CallflowId
+    ].
+
+patterns_dont_match(Number, Patterns) ->
+    lists:dropwhile(fun(Pattern) -> re:run(Number, Pattern) =:=  nomatch end, Patterns) =:= [].
+
+add_number_conflict(Number, JObj, Context) ->
+    Id = wh_json:get_value(<<"id">>, JObj),
+    case wh_json:get_ne_value([<<"doc">>, <<"featurecode">>, <<"name">>], JObj) of
+        undefined ->
+            cb_context:add_validation_error(<<"numbers">>
+                                                ,<<"unique">>
+                                                ,<<"Number ", Number/binary, " exists in callflow ", Id/binary>>
+                                                ,Context);
+        _Else ->
+
+            cb_context:add_validation_error(<<"numbers">>
+                                                ,<<"unique">>
+                                                ,<<"Number ", Number/binary, " conflicts with featurecode callflow ", Id/binary>>
+                                                ,Context)
+    end.
+ 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -294,94 +365,3 @@ create_metadata(Doc) ->
     lists:foldl(fun(Fun, JObj) ->
                          Fun(Doc, JObj)
                 end, wh_json:new(), Funs).
-
--spec numbers_are_unique/1 :: (#cb_context{}) -> #cb_context{}.
-numbers_are_unique(#cb_context{req_data=JObj}=Context) ->
-    numbers_are_unique(wh_json:get_value(<<"numbers">>, JObj, []), Context).
-
--spec numbers_are_unique/2 :: (wh_json:json_object(), #cb_context{}) -> #cb_context{}.    
-numbers_are_unique(_, #cb_context{db_name=undefined}=Context) ->
-    Context;
-numbers_are_unique(Numbers, #cb_context{db_name=Db, resp_status=Status, resp_data=Data, doc=JObj}=Context) ->
-    case couch_mgr:get_results(Db, ?CB_LIST, [{<<"include_docs">>, true}]) of
-        {error, _R} ->
-            lager:debug("failed to load callflows from account: ~p", [_R]),
-            Context;
-        {ok, AllResults} ->
-            Results = case wh_json:get_value(<<"_id">>, JObj) of
-                          undefined -> AllResults;
-                          ExistingId -> [Result 
-                                         || Result <- AllResults
-                                                ,wh_json:get_value(<<"id">>, Result) =/= ExistingId
-                                        ]
-                      end,
-            Validators = [fun(E1) -> 
-                                  lists:foldr(fun(N, E2) -> 
-                                                      check_for_existing(N, Results, E2)
-                                              end, E1, Numbers)
-                          end
-                          ,fun(E1) -> 
-                                  lists:foldr(fun(N, E2) -> 
-                                                      check_patterns(N, Results, E2)
-                                              end, E1, Numbers)
-                           end
-                         ],
-            New = wh_json:new(),
-            case lists:foldr(fun(F, E) -> F(E) end, New, Validators) of
-                Errors when Errors =:= New -> Context;
-                Errors when Status =:= success -> 
-                    crossbar_util:response_invalid_data(Errors, Context);
-                Errors ->
-                    Err = wh_json:merge_recursive(Data, Errors),
-                    crossbar_util:response_invalid_data(Err, Context)
-               end
-    end.
-
--spec check_for_existing/3 :: (ne_binary(), wh_json:json_objects(), wh_json:json_object()) -> wh_json:json_object().
-check_for_existing(_, [], Errors) ->
-    Errors;
-check_for_existing(Number, [Result|Results], Errors) ->
-    Numbers = wh_json:get_value([<<"doc">>, <<"numbers">>], Result, []),
-
-    case lists:member(Number, Numbers) of
-        false -> check_for_existing(Number, Results, Errors);
-        true ->
-            case wh_json:get_ne_value([<<"doc">>, <<"featurecode">>, <<"name">>], Result) of
-                undefined ->
-                    Id = wh_json:get_value(<<"id">>, Result),
-                    Error = wh_json:set_value([<<"numbers">>, Number, <<"exists">>]
-                                              ,<<"Number exists in callflow ", Id/binary>>
-                                              ,Errors),
-                    check_for_existing(Number, Results, Error);
-                Name ->
-                    Error = wh_json:set_value([<<"numbers">>, Number, <<"matches">>]
-                                              ,<<"Number conflicts with feature code ", Name/binary>>
-                                              ,Errors),
-                    check_for_existing(Number, Results, Error)
-            end                 
-    end.
-
--spec check_patterns/3 :: (ne_binary(), wh_json:json_objects(), wh_json:json_object()) -> wh_json:json_object().
-check_patterns(_, [], Errors) ->
-    Errors;
-check_patterns(Number, [Result|Results], Errors) ->
-    case [false || Pattern <- wh_json:get_value([<<"doc">>, <<"patterns">>], Result, [])
-                       ,re:run(Number, Pattern) =/= nomatch
-         ] of
-        [] -> check_patterns(Number, Results, Errors);
-        _Else ->
-            case wh_json:get_ne_value([<<"doc">>, <<"featurecode">>, <<"name">>], Result) of
-                undefined ->
-                    Id = wh_json:get_value(<<"id">>, Result),
-                    Error = wh_json:set_value([<<"numbers">>, Number, <<"matches">>]
-                                              ,<<"Number matches pattern in callflow ", Id/binary>>
-                                              ,Errors),
-                    check_patterns(Number, Results, Error);
-                Name ->
-                    Error = wh_json:set_value([<<"numbers">>, Number, <<"matches">>]
-                                              ,<<"Number conflicts with feature code ", Name/binary>>
-                                              ,Errors),
-                    check_patterns(Number, Results, Error)
-            end
-    end.
-
