@@ -175,6 +175,7 @@ maybe_handle_load_failure(#cb_context{resp_error_code=404, req_data=Data}=Contex
                                    ,{<<"_id">>, ?PVT_TYPE}
                                   ]),
     J = wh_json:merge_jobjs(NewLimits, wh_json:public_fields(Data)),
+    %% In this case we are using the validator to populate defaults
     {pass, JObj} = wh_json_validator:is_valid(J, <<"limits">>),
     Context#cb_context{resp_status=success
                        ,resp_data=wh_json:public_fields(JObj)

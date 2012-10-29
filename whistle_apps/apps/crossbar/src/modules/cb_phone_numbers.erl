@@ -193,19 +193,19 @@ validate(#cb_context{req_verb = <<"get">>}=Context) ->
 
 validate(#cb_context{req_verb = <<"get">>}=Context, Number) ->
     read(Number, Context);
-validate(#cb_context{req_verb = <<"put">>}=Context, Number) ->
-    create(Number, Context);
-validate(#cb_context{req_verb = <<"post">>}=Context, Number) ->
-    update(Number, Context);
+validate(#cb_context{req_verb = <<"put">>}=Context, _Number) ->
+    validate_request(Context);
+validate(#cb_context{req_verb = <<"post">>}=Context, _Number) ->
+    validate_request(Context);
 validate(#cb_context{req_verb = <<"delete">>}=Context, _Number) ->
     validate_delete(Context).
 
-validate(#cb_context{req_verb = <<"put">>}=Context, Number, ?ACTIVATE) ->
-    create(Number, Context);
-validate(#cb_context{req_verb = <<"put">>}=Context, Number, ?RESERVE) ->
-    create(Number, Context);
-validate(#cb_context{req_verb = <<"put">>}=Context, Number, ?PORT) ->
-    create(Number, Context);
+validate(#cb_context{req_verb = <<"put">>}=Context, _Number, ?ACTIVATE) ->
+    validate_request(Context);
+validate(#cb_context{req_verb = <<"put">>}=Context, _Number, ?RESERVE) ->
+    validate_request(Context);
+validate(#cb_context{req_verb = <<"put">>}=Context, _Number, ?PORT) ->
+    validate_request(Context);
 validate(#cb_context{req_verb = <<"get">>}=Context, Number, ?PORT_DOCS) ->
     list_attachments(Number, Context).
 
@@ -213,15 +213,15 @@ validate(#cb_context{req_verb = <<"delete">>}=Context, Number, ?PORT_DOCS, _) ->
     read(Number, Context);
 validate(#cb_context{req_files=[]}=Context, _, ?PORT_DOCS, _) ->
     lager:debug("No files in request to save attachment"),
-    E = wh_json:set_value([<<"content_size">>, <<"minLength">>], <<"No file uploaded">>, wh_json:new()),
-    crossbar_util:response_invalid_data(E, Context);
+    Message = <<"please provide an port document">>,
+    cb_context:add_validation_error(<<"file">>, <<"required">>, Message, Context);
 validate(#cb_context{req_files=[{_, FileObj}]}=Context, Number, ?PORT_DOCS, Name) ->
     FileName = wh_util:to_binary(http_uri:encode(wh_util:to_list(Name))),
     read(Number, Context#cb_context{req_files=[{FileName, FileObj}]});
 validate(Context, _, ?PORT_DOCS, _) ->
     lager:debug("Multiple files in request to save attachment"),
-    E = wh_json:set_value([<<"content_size">>, <<"maxLength">>], <<"Uploading multiple files is not supported">>, wh_json:new()),
-    crossbar_util:response_invalid_data(E, Context).
+    Message = <<"please provide a single port document per request">>,
+    cb_context:add_validation_error(<<"file">>, <<"maxItems">>, Message, Context).
 
 -spec post/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
 -spec post/4 :: (#cb_context{}, path_token(), path_token(), path_token()) -> #cb_context{}.
@@ -289,18 +289,16 @@ delete(#cb_context{auth_account_id=AuthBy}=Context, Number, ?PORT_DOCS, Name) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec find_numbers/1 :: (#cb_context{}) -> #cb_context{}.
-find_numbers(#cb_context{query_json=Data}=Context) ->
+find_numbers(#cb_context{query_json=JObj}=Context) ->
+    OnSuccess = fun(C) ->
+                        Prefix = wh_json:get_ne_value(<<"prefix">>, JObj),
+                        Quantity = wh_json:get_ne_value(<<"quantity">>, JObj, 1),
+                        C#cb_context{resp_status=success
+                                     ,resp_data=wh_number_manager:find(Prefix, Quantity)
+                                    }
+                end,
     Schema = wh_json:decode(?FIND_NUMBER_SCHEMA),
-    case wh_json_validator:is_valid(Data, Schema) of
-        {fail, Errors} ->
-            crossbar_util:response_invalid_data(Errors, Context);
-        {pass, JObj} ->
-            Prefix = wh_json:get_ne_value(<<"prefix">>, JObj),
-            Quantity = wh_json:get_ne_value(<<"quantity">>, JObj, 1),
-            Context#cb_context{resp_status=success
-                               ,resp_data=wh_number_manager:find(Prefix, Quantity)
-                              }
-    end.
+    cb_context:validate_request_data(Schema, Context#cb_context{req_data=JObj}, OnSuccess).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -320,23 +318,6 @@ summary(Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Create a new instance with the data provided, if it is valid
-%% @end
-%%--------------------------------------------------------------------
--spec create/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
-create(_, #cb_context{req_data=Data}=Context) ->
-    case wh_json_validator:is_valid(Data, <<"phone_numbers">>) of
-        {fail, Errors} ->
-            crossbar_util:response_invalid_data(Errors, Context);
-        {pass, JObj} ->
-            Context#cb_context{resp_status=success
-                               ,doc=JObj
-                              }
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
 %% Load an instance from the database
 %% @end
 %%--------------------------------------------------------------------
@@ -348,20 +329,15 @@ read(Number, #cb_context{auth_account_id=AuthBy}=Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Update an existing instance with the data provided, if it is
-%% valid
+%% 
 %% @end
 %%--------------------------------------------------------------------
--spec update/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
-update(_, #cb_context{req_data=Data}=Context) ->
-    case wh_json_validator:is_valid(Data, <<"phone_numbers">>) of
-        {fail, Errors} ->
-            crossbar_util:response_invalid_data(Errors, Context);
-        {pass, JObj} ->
-            Context#cb_context{resp_status=success
-                               ,doc=JObj
-                              }
-    end.
+-spec validate_request/1 :: (#cb_context{}) -> #cb_context{}.
+validate_request(Context) ->
+    check_phone_number_schema(Context).
+
+check_phone_number_schema(Context) ->
+    cb_context:validate_request_data(<<"phone_numbers">>, Context).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -374,6 +350,7 @@ validate_delete(#cb_context{}=Context) ->
     Context#cb_context{resp_status=success
                        ,doc=undefined
                       }.
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -413,10 +390,7 @@ put_attachments(Number, #cb_context{auth_account_id=AuthBy}=Context, [{Filename,
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec set_response/3 :: (operation_return()
-                         ,ne_binary()
-                         ,#cb_context{}
-                        ) -> #cb_context{}.
+-spec set_response/3 :: (operation_return(), ne_binary(), #cb_context{}) -> #cb_context{}.
 set_response({ok, Doc}, _, Context) ->
     crossbar_util:response(Doc, Context);
 set_response({Error, Reason}, _, Context) ->
@@ -472,10 +446,10 @@ update_callflows([Update|Updates], Number, Replaces, Context) ->
                                 end, Numbers),
 
             Payload2 = [undefined
-                      ,Context#cb_context{doc=wh_json:set_value(<<"numbers">>, Updated, JObj)
-                                          ,req_verb = <<"post">>}
-                      ,CallflowId
-                     ],
+                        ,Context#cb_context{doc=wh_json:set_value(<<"numbers">>, Updated, JObj)
+                                            ,req_verb = <<"post">>}
+                        ,CallflowId
+                       ],
             lager:debug("replacing '~s' with '~s' on callflow ~s", [Replaces, Number, CallflowId]),
             crossbar_bindings:fold(<<"v1_resource.execute.post.callflows">>, Payload2),
             update_callflows(Updates, Number, Replaces, Context);
