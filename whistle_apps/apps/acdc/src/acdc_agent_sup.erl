@@ -39,12 +39,7 @@
 %%--------------------------------------------------------------------
 -spec start_link/1 :: (wh_json:json_object()) -> startlink_ret().
 start_link(AgentJObj) ->
-    case supervisor:start_link(?MODULE, [AgentJObj]) of
-        {ok, Super}=OK ->
-            acdc_agent_manager:new_agent(Super),
-            OK;
-        Other -> Other
-    end.
+    supervisor:start_link(?MODULE, [AgentJObj]).
 
 -spec stop/1 :: (pid()) -> 'ok' | {'error', 'not_found'}.
 stop(Supervisor) ->
