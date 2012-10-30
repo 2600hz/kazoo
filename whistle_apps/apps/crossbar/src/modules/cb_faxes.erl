@@ -318,7 +318,7 @@ load_fax_binary(FaxId, #cb_context{resp_headers=RespHeaders}=Context) ->
         #cb_context{resp_status=success, doc=JObj} ->
             FaxMeta = wh_json:get_value([<<"_attachments">>], JObj),
             case wh_json:get_keys(FaxMeta) of
-                [] -> crossbar_util:response_bad_identifier(FaxId, Context);
+                [] -> cb_context:add_system_error(bad_identifier, [{details, FaxId}], Context);
                 [Attachment|_] ->
                     Context1 = crossbar_doc:load_attachment(JObj, Attachment, Context),
                     Context1#cb_context{resp_headers = [{<<"Content-Disposition">>, <<"attachment; filename=", Attachment/binary>>}

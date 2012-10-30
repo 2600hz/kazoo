@@ -132,19 +132,19 @@ validate(#cb_context{req_data=JObj, req_verb = <<"put">>}=Context) ->
                 true ->
                     Context#cb_context{resp_status=success, doc=RemoteData, auth_token=SharedToken};
                 false ->
-                    crossbar_util:response(error, <<"could not import remote account">>, 500, Context)
+                    cb_context:add_system_error(datastore_fault, Context)
             end;
         {forbidden, _} ->
             lager:debug("authoritive shared auth request forbidden"),
-            crossbar_util:response(error, <<"invalid shared token">>, 401, Context);
+            cb_context:add_system_error(invalid_crentials, Context);
         {error, _}=E ->
             lager:debug("authoritive shared auth request error: ~p", [E]),
-            crossbar_util:response(error, <<"could not validate shared token">>, 500, Context)
+            cb_context:add_system_error(datastore_unreachable, Context)
     end;
 validate(#cb_context{auth_doc=undefined, req_verb = <<"get">>}=Context) ->
     _ = cb_context:put_reqid(Context),
     lager:debug("valid shared auth request received but there is no authorizing doc (noauth running?)"),
-    crossbar_util:response(error, <<"authentication information is not available">>, 401, Context);
+    cb_context:add_system_error(invalid_crentials, Context);
 validate(#cb_context{auth_doc=JObj, req_verb = <<"get">>}=Context) ->
     _ = cb_context:put_reqid(Context),
     lager:debug("valid shared auth request received, creating response"),
@@ -208,7 +208,7 @@ create_local_token(#cb_context{doc=JObj, auth_token=SharedToken}=Context) ->
                                    ,Context#cb_context{auth_token=AuthToken, auth_doc=Doc});
         {error, R} ->
             lager:debug("could not create new local auth token, ~p", [R]),
-            crossbar_util:response(error, <<"invalid credentials">>, 401, Context)
+            cb_context:add_system_error(invalid_crentials, Context)
     end.
 
 %%--------------------------------------------------------------------
