@@ -113,15 +113,16 @@ content_types_provided(#cb_context{req_verb = <<"get">>}=Context
 -spec validate/3 :: (#cb_context{}, path_token(), path_token()) -> #cb_context{}.
 -spec validate/4 :: (#cb_context{}, path_token(), path_token(), path_token()) -> #cb_context{}.
 -spec validate/5 :: (#cb_context{}, path_token(), path_token(), path_token(), path_token()) -> #cb_context{}.
+
 validate(#cb_context{req_verb = <<"get">>}=Context) ->
     load_vmbox_summary(Context);
 validate(#cb_context{req_verb = <<"put">>}=Context) ->
-    create_vmbox(Context).
+    validate_request(undefined, Context).
 
 validate(#cb_context{req_verb = <<"get">>}=Context, DocId) ->
     load_vmbox(DocId, Context);
 validate(#cb_context{req_verb = <<"post">>}=Context, DocId) ->
-    update_vmbox(DocId, Context);
+    validate_request(DocId, Context);
 validate(#cb_context{req_verb = <<"delete">>}=Context, DocId) ->
     load_vmbox(DocId, Context).
 
@@ -185,39 +186,35 @@ load_vmbox_summary(Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Create a new vmbox document with the data provided, if it is valid
+%%
 %% @end
 %%--------------------------------------------------------------------
--spec create_vmbox/1 :: (#cb_context{}) -> #cb_context{}.
-create_vmbox(#cb_context{db_name=undefined, req_data=Data}=Context) ->
-    %% for onboarding and the like, if no DB, just validate Data
-    case wh_json_validator:is_valid(Data, <<"vmboxes">>) of
-        {fail, Errors} ->
-            crossbar_util:response_invalid_data(Errors, Context);
-        {pass, JObj} ->
-            Context#cb_context{
-              doc=wh_json:set_value(<<"pvt_type">>, <<"vmbox">>, JObj)
-              ,resp_status=success
-             }
-    end;
-create_vmbox(#cb_context{req_data=Data}=Context) ->
-    %% if a REST request, lookup the vm box #
-    case wh_json_validator:is_valid(Data, <<"vmboxes">>) of
-        {fail, Errors} ->
-            crossbar_util:response_invalid_data(Errors, Context);
-        {pass, JObj} ->
-            case mailbox_exists(Context, JObj) of
-                true ->
-                    crossbar_util:response_invalid_data(
-                      wh_json:from_list([{<<"mailbox">>, <<"invalid mailbox number or number exists">>}])
-                      ,Context);
-                false ->
-                    Context#cb_context{
-                      doc=wh_json:set_value(<<"pvt_type">>, <<"vmbox">>, JObj)
-                      ,resp_status=success
-                     }
-            end
+-spec validate_request/2 :: ('undefined' | ne_binary(), #cb_context{}) -> #cb_context{}.
+validate_request(VMBoxId, Context) ->
+    validate_unique_vmbox(VMBoxId, Context).
+
+validate_unique_vmbox(VMBoxId, #cb_context{db_name=undefined}=Context) ->
+    check_vmbox_schema(VMBoxId, Context);
+validate_unique_vmbox(VMBoxId, Context) ->
+    case check_uniqueness(VMBoxId, Context) of
+        true -> check_vmbox_schema(VMBoxId, Context);
+        false ->
+            C = cb_context:add_validation_error(<<"mailbox">>
+                                                    ,<<"unique">>
+                                                    ,<<"Invalid mailbox number or already exists">>
+                                                    ,Context),
+            check_vmbox_schema(VMBoxId, C)
     end.
+
+check_vmbox_schema(VMBoxId, Context) ->
+    OnSuccess = fun(C) -> on_successful_validation(VMBoxId, C) end,
+    cb_context:validate_request_data(<<"vmboxes">>, Context, OnSuccess).
+
+on_successful_validation(undefined, #cb_context{doc=Doc}=Context) ->
+    Props = [{<<"pvt_type">>, <<"vmbox">>}],
+    Context#cb_context{doc=wh_json:set_values(Props, Doc)};
+on_successful_validation(VMBoxId, #cb_context{}=Context) -> 
+    crossbar_doc:load_merge(VMBoxId, Context).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -228,29 +225,6 @@ create_vmbox(#cb_context{req_data=Data}=Context) ->
 -spec load_vmbox/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
 load_vmbox(DocId, Context) ->
     crossbar_doc:load(DocId, Context).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Update an existing vmbox document with the data provided, if it is
-%% valid
-%% @end
-%%--------------------------------------------------------------------
--spec update_vmbox/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
-update_vmbox(DocId, #cb_context{req_data=Data}=Context) ->
-    case wh_json_validator:is_valid(Data, <<"vmboxes">>) of
-        {fail, Errors} ->
-            crossbar_util:response_invalid_data(Errors, Context);
-        {pass, JObj} ->
-            case mailbox_exists(Context, JObj) of
-                true ->
-                    crossbar_util:response_invalid_data(
-                      wh_json:from_list([{<<"mailbox">>, <<"invalid mailbox number or number exists">>}])
-                      ,Context);
-                false ->
-                    crossbar_doc:load_merge(DocId, JObj, Context)
-            end
-    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -296,7 +270,7 @@ load_message(DocId, MediaId, UpdateJObj, #cb_context{req_data=ReqData, query_jso
         #cb_context{resp_status=success, doc=Doc}=C ->        
             Messages = wh_json:get_value(<<"messages">>, Doc, []),
             case get_message_index(MediaId, Messages) of
-                false -> {false, crossbar_util:response_bad_identifier(MediaId, Context)};
+                false -> {false, cb_context:add_system_error(bad_identifier, [{details, DocId}], Context)};
                 Index ->
                     CurrentMetaData = wh_json:get_value([<<"messages">>, Index], Doc, wh_json:new()),
                     CurrentFolder = wh_json:get_value(<<"folder">>, CurrentMetaData, <<"new">>),
@@ -327,7 +301,7 @@ load_message_binary(DocId, MediaId, #cb_context{db_name=Db, resp_headers=RespHea
     case load_message(DocId, MediaId, undefined, Context) of
         {Update, #cb_context{resp_status=success, resp_data=VMMetaJObj, doc=Doc}=C} ->
             case couch_mgr:open_doc(Db, MediaId) of
-                {error, _R} -> crossbar_util:response_bad_identifier(MediaId, C);
+                {error, _R} -> cb_context:add_system_error(bad_identifier, [{details, MediaId}], C);
                 {ok, Media} ->
                     [AttachmentId] = wh_json:get_keys(<<"_attachments">>, Media),
                     Filename = generate_media_name(wh_json:get_value(<<"caller_id_number">>, VMMetaJObj)
@@ -337,9 +311,9 @@ load_message_binary(DocId, MediaId, #cb_context{db_name=Db, resp_headers=RespHea
                                                   ),
                     case couch_mgr:fetch_attachment(Db, MediaId, AttachmentId) of
                         {error, db_not_reachable} ->
-                            {false, crossbar_util:response_datastore_timeout(C)};
+                            {false, cb_context:add_system_error(datastore_unreachable, C)};
                         {error, not_found} ->
-                            {false, crossbar_util:response_bad_identifier(MediaId, C)};
+                            {false, cb_context:add_system_error(bad_identifier, [{details, MediaId}], C)};
                         {ok, AttachBin} ->
                             lager:debug("Sending file with filename ~s", [Filename]),
                             {Update
@@ -404,26 +378,25 @@ generate_media_name(CallerId, GregorianSeconds, Ext, Timezone) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec mailbox_exists/2 :: (#cb_context{}, wh_json:json_object()) -> boolean().
-mailbox_exists(#cb_context{db_name=Db}, JObj) ->
-    Mailbox = wh_json:get_value(<<"mailbox">>, JObj),
-
-    try wh_util:to_integer(Mailbox) of
-        BoxNum ->
-            lager:debug("does a mailbox with number ~b exist?", [BoxNum]),
-            case couch_mgr:get_results(Db, <<"vmboxes/listing_by_mailbox">>, [{key, BoxNum}]) of
-                {ok, []} -> false;
+-spec check_uniqueness/2 :: ('undefined' | ne_binary(), #cb_context{}) -> boolean().
+check_uniqueness(VMBoxId, #cb_context{db_name=AccountDb, req_data=JObj}) ->
+    try wh_json:get_integer_value(<<"mailbox">>, JObj) of
+        Mailbox ->
+            ViewOptions = [{key, Mailbox}],
+            case couch_mgr:get_results(AccountDb, <<"vmboxes/listing_by_mailbox">>, ViewOptions) of
+                {ok, []} -> true;
                 {ok, [VMBox]} ->
-                    lager:debug("found existing vm box: ~p", [wh_json:get_value(<<"id">>, VMBox)]),
-                    lager:debug("compared to submitted: ~p", [wh_json:get_value(<<"id">>, JObj)]),
-                    wh_json:get_value(<<"id">>, JObj) =/= wh_json:get_value(<<"id">>, VMBox);
+                    VMBoxId =:= wh_json:get_value(<<"id">>, VMBox);
+                {ok, _} -> 
+                    lager:debug("found multiple mailboxs for '~p'", [Mailbox]),
+                    false;
                 {error, _E} ->
                     lager:debug("failed to load listing_by_mailbox view: ~p", [_E]),
-                    true
+                    false
             end
     catch
         _:_ ->
-            lager:debug("can't convert mailbox to integer: ~p", [Mailbox]),
+            lager:debug("can't convert mailbox number to integer", []),
             false
     end.
 
