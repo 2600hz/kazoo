@@ -230,8 +230,8 @@ channel_resume(UUID, NewNode) ->
     gproc:reg({p, l, {channel_move, NewNode, UUID}}),
     lager:debug("waiting for message with metadata for channel ~s from ~s", [UUID, NewNode]),
     receive
-        {channel_move_released, UUID, Evt} ->
-            lager:debug("channel has been released from former node"),
+        {channel_move_released, _Node, UUID, Evt} ->
+            lager:debug("channel has been released from former node: ~s", [_Node]),
             case channel_resume(UUID, NewNode, Evt) of
                 true -> wait_for_channel_completion(UUID, NewNode);
                 false -> false
@@ -282,8 +282,8 @@ fix_metadata(Meta) ->
 wait_for_channel_completion(UUID, NewNode) ->
     lager:debug("waiting for confirmation from ~s of channel_move", [NewNode]),
     receive
-        {channel_move_completed, UUID, _Evt} ->
-            lager:debug("confirmation of channel_move received, success!"),
+        {channel_move_completed, _Node, UUID, _Evt} ->
+            lager:debug("confirmation of channel_move received for ~s, success!", [_Node]),
             _ = ecallmgr_call_sup:start_event_process(NewNode, UUID),
             true
     after 5000 ->
