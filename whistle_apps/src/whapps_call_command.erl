@@ -676,8 +676,7 @@ play(Media, Terminators, Call) ->
 b_play(Media, Call) ->
     b_play(Media, ?ANY_DIGIT, Call).
 b_play(Media, Terminators, Call) ->
-    NoopId = play(Media, Terminators, Call),
-    wait_for_noop(NoopId).
+    wait_for_noop(play(Media, Terminators, Call)).
 
 -spec play_command/3 :: (ne_binary(), [ne_binary(),...], whapps_call:call()) -> wh_json:json_object().
 play_command(Media, Terminators, Call) ->
@@ -1610,12 +1609,9 @@ wait_for_noop(NoopId) ->
     case wait_for_message(<<"noop">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"call_event">>, infinity) of
         {ok, JObj}=OK ->
             case wh_json:get_value(<<"Application-Response">>, JObj) of
-                NoopId when is_binary(NoopId), NoopId =/= <<>> ->
-                    OK;
-                _ when is_binary(NoopId), NoopId =/= <<>> ->
-                    wait_for_noop(NoopId);
-                _ ->
-                    OK
+                NoopId when is_binary(NoopId), NoopId =/= <<>> -> OK;
+                _No when is_binary(NoopId), NoopId =/= <<>> -> wait_for_noop(NoopId);
+                _ -> OK
             end;
         Else -> Else
     end.
