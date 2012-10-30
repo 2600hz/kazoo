@@ -179,12 +179,8 @@ route_resp_log_winning_node() ->
 
 -spec route_resp_ringback/0 :: () -> xml_el().
 route_resp_ringback() ->
-    case ecallmgr_util:get_setting(<<"default_ringback">>, <<"%(2000,4000,440,480)">>) of
-        {ok, RBSetting} ->
-            action_el(<<"set">>, <<"ringback=", (wh_util:to_binary(RBSetting))/binary>>);
-        _Else ->
-            action_el(<<"log">>, [<<"NOTICE log|${uuid}|unable to set default ringback">>])
-    end.
+    {ok, RBSetting} = ecallmgr_util:get_setting(<<"default_ringback">>, <<"%(2000,4000,440,480)">>),
+    action_el(<<"set">>, <<"ringback=", (wh_util:to_binary(RBSetting))/binary>>).
 
 -spec route_resp_pre_park_action/1 :: (wh_json:json_object()) -> 'undefined' | xml_el().
 route_resp_pre_park_action(JObj) ->
