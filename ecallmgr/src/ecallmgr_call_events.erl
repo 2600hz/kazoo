@@ -339,9 +339,19 @@ handle_info(timeout, #state{node=Node
             {stop, normal, State}
     end;
 
-handle_info({channel_move_released, Node, UUID, _Evt}, #state{node=Node}=State) ->
-    lager:debug("recv channel_move_released for ~s on ~s (our node)", [Node, UUID]),
+handle_info({channel_move_released, Node, _UUID, _Evt}, #state{node=Node}=State) ->
+    lager:debug("recv channel_move_released for ~s on ~s (our node)", [Node, _UUID]),
     {stop, normal, State};
+handle_info({channel_move_released, _Node, _UUID, _Evt}, #state{node=_OurNode}=State) ->
+    lager:debug("recv channel_move_released for ~s on ~s (our node is ~s)", [_Node, _UUID, _OurNode]),
+    {noreply, State};
+
+handle_info({channel_move_completed, Node, _UUID, _Evt}, #state{node=Node}=State) ->
+    lager:debug("recv channel_move_completed for ~s on ~s (our node)", [Node, _UUID]),
+    {noreply, State};
+handle_info({channel_move_completed, _Node, _UUID, _Evt}, #state{node=_OurNode}=State) ->
+    lager:debug("recv channel_move_completed for ~s on ~s (our node is ~s)", [_Node, _UUID, _OurNode]),
+    {noreply, State};
 
 handle_info({sanity_check}, #state{callid=CallId}=State) ->
     case ecallmgr_fs_nodes:channel_exists(CallId) of
@@ -356,6 +366,7 @@ handle_info({sanity_check}, #state{callid=CallId}=State) ->
 handle_info({shutdown}, State) ->
     {stop, normal, State};
 handle_info(_Info, State) ->
+    lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State}.
 
 %%--------------------------------------------------------------------
