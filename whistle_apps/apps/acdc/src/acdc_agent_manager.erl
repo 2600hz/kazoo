@@ -191,6 +191,7 @@ start_agent_timer(Super) ->
 
 start_agent_timer(Self, AcctId, AgentId) ->
     erlang:send_after(whapps_config:get(?APP_NAME, <<"agent_timeout">>, 600000)
+                      + random:uniform(500)
                       ,Self
                       ,{check, AcctId, AgentId}
                      ).
