@@ -191,19 +191,27 @@ from_route_win(RouteWin) ->
     from_route_win(RouteWin, #whapps_call{}).
 
 -spec from_route_win/2 :: (wh_json:json_object(), whapps_call:call()) -> whapps_call:call().
-from_route_win(RouteWin, #whapps_call{}=Call) ->
-    CallId = wh_json:get_value(<<"Call-ID">>, RouteWin, Call#whapps_call.call_id),
+from_route_win(RouteWin, #whapps_call{call_id=OldCallId
+                                      ,ccvs=OldCCVs
+                                      ,inception=OldInception
+                                      ,account_id=OldAccountId
+                                      ,account_db=OldAccountDb
+                                      ,authorizing_id=OldAuthzId
+                                      ,authorizing_type=OldAuthzType
+                                      ,owner_id=OldOwnerId
+                                     }=Call) ->
+    CallId = wh_json:get_value(<<"Call-ID">>, RouteWin, OldCallId),
     put(callid, CallId),
 
-    CCVs = wh_json:merge_recursive(Call#whapps_call.ccvs, wh_json:get_value(<<"Custom-Channel-Vars">>, RouteWin, wh_json:new())),
+    CCVs = wh_json:merge_recursive(OldCCVs, wh_json:get_value(<<"Custom-Channel-Vars">>, RouteWin, wh_json:new())),
     Inception = case wh_json:get_value(<<"Inception">>, CCVs) of
                     <<"on-net">> -> <<"on-net">>;
                     <<"off-net">> -> <<"off-net">>;
-                    _Else -> Call#whapps_call.inception
+                    _Else -> OldInception
                 end,
-    AccountId = wh_json:get_value(<<"Account-ID">>, CCVs, Call#whapps_call.account_id),
+    AccountId = wh_json:get_value(<<"Account-ID">>, CCVs, OldAccountId),
     AccountDb = case is_binary(AccountId) of
-                    false -> Call#whapps_call.account_db;
+                    false -> OldAccountDb;
                     true ->  wh_util:format_account_id(AccountId, encoded)
                 end,
 
@@ -213,9 +221,9 @@ from_route_win(RouteWin, #whapps_call{}=Call) ->
                      ,inception=Inception
                      ,account_id=AccountId
                      ,account_db=AccountDb
-                     ,authorizing_id=wh_json:get_ne_value(<<"Authorizing-ID">>, CCVs, Call#whapps_call.authorizing_id)
-                     ,authorizing_type=wh_json:get_ne_value(<<"Authorizing-Type">>, CCVs, Call#whapps_call.authorizing_type)
-                     ,owner_id=wh_json:get_ne_value(<<"Owner-ID">>, CCVs, Call#whapps_call.owner_id)
+                     ,authorizing_id=wh_json:get_ne_value(<<"Authorizing-ID">>, CCVs, OldAuthzId)
+                     ,authorizing_type=wh_json:get_ne_value(<<"Authorizing-Type">>, CCVs, OldAuthzType)
+                     ,owner_id=wh_json:get_ne_value(<<"Owner-ID">>, CCVs, OldOwnerId)
                      ,ccvs = CCVs
                     }.
 
