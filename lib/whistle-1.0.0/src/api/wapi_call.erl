@@ -47,7 +47,8 @@
 %% Call Events
 -define(CALL_EVENT_HEADERS, [<<"Call-ID">>]).
 -define(OPTIONAL_CALL_EVENT_HEADERS, [<<"Application-Name">>, <<"Application-Response">>
-                                          ,<<"Custom-Channel-Vars">>, <<"Timestamp">>, <<"Channel-State">>
+                                          ,<<"Custom-Channel-Vars">>, <<"Custom-SIP-Headers">>
+                                          ,<<"Timestamp">>, <<"Channel-State">>
                                           ,<<"Call-Direction">>, <<"Transfer-History">>
                                           ,<<"Other-Leg-Direction">>, <<"Other-Leg-Caller-ID-Name">>
                                           ,<<"Other-Leg-Caller-ID-Number">>, <<"Other-Leg-Destination-Number">>

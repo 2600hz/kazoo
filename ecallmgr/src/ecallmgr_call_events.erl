@@ -364,6 +364,7 @@ create_event(EventName, ApplicationName, Props) ->
 -spec create_event_props/3 :: (binary(), 'undefined' | ne_binary(), proplist()) -> proplist().
 create_event_props(EventName, ApplicationName, Props) ->
     CCVs = ecallmgr_util:custom_channel_vars(Props),
+    CustomSipHeaders = ecallmgr_util:custom_sip_headers(Props),
     {Mega,Sec,Micro} = erlang:now(),
     Timestamp = wh_util:to_binary(((Mega * 1000000 + Sec) * 1000000 + Micro)),
     props:filter_undefined(
@@ -392,6 +393,7 @@ create_event_props(EventName, ApplicationName, Props) ->
        ,{<<"Fax-Bad-Rows">>, props:get_value(<<"variable_fax_bad_rows">>, Props)}
        ,{<<"Fax-Transfer-Rate">>, props:get_value(<<"variable_fax_transfer_rate">>, Props)}
        ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
+       ,{<<"Custom-SIP-Headers">>, wh_json:from_list(CustomSipHeaders)}
        %% this sucks, its leaky but I dont see a better way around it since we need the raw application
        %% name in call_control... (see note in call_control on start_link for why we need to use AMQP 
        %% to communicate to it)

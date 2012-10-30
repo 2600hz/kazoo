@@ -14,7 +14,8 @@
 -export([send_cmd/4]).
 -export([get_expires/1]).
 -export([get_interface_properties/1, get_interface_properties/2]).
--export([get_sip_to/1, get_sip_from/1, get_sip_request/1, get_orig_ip/1, custom_channel_vars/1]).
+-export([get_sip_to/1, get_sip_from/1, get_sip_request/1, get_orig_ip/1]).
+-export([custom_channel_vars/1, custom_sip_headers/1]).
 -export([eventstr_to_proplist/1, varstr_to_proplist/1, get_setting/1, get_setting/2]).
 -export([is_node_up/1, is_node_up/2]).
 -export([fs_log/3, put_callid/1]).
@@ -205,6 +206,15 @@ custom_channel_vars(Prop) ->
                    ({<<?CHANNEL_VAR_PREFIX, Key/binary>>, V}, Acc) -> [{Key, V} | Acc];
                    ({<<"variable_sip_h_Referred-By">>, V}, Acc) -> [{<<"Referred-By">>, wh_util:to_binary(mochiweb_util:unquote(V))} | Acc];
                    ({<<"variable_sip_refer_to">>, V}, Acc) -> [{<<"Referred-To">>, wh_util:to_binary(mochiweb_util:unquote(V))} | Acc];
+                   (_, Acc) -> Acc
+                end, [], Prop).
+
+-spec custom_sip_headers/1 :: (proplist()) -> proplist().
+custom_sip_headers(Prop) ->
+    lists:foldl(fun({<<"variable_sip_h_", Header/binary>>, V}, Acc) -> [{Header, wh_util:to_binary(mochiweb_util:unquote(V))} | Acc];
+                   ({<<"variable_sip_rh_", Header/binary>>, V}, Acc) -> [{Header, wh_util:to_binary(mochiweb_util:unquote(V))} | Acc];
+                   ({<<"variable_sip_ph_", Header/binary>>, V}, Acc) -> [{Header, wh_util:to_binary(mochiweb_util:unquote(V))} | Acc];
+                   ({<<"variable_sip_bye_h_", Header/binary>>, V}, Acc) -> [{Header, wh_util:to_binary(mochiweb_util:unquote(V))} | Acc];
                    (_, Acc) -> Acc
                 end, [], Prop).
 
