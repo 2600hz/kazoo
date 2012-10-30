@@ -15,8 +15,6 @@
 -export([start_link/0
          ,lookup_media/3
          ,lookup_media/4
-         ,register_local_media/2
-         ,register_local_media/3
          ,is_local/2
         ]).
 
@@ -48,17 +46,6 @@
 %%--------------------------------------------------------------------
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
-
--spec register_local_media/2 :: (ne_binary(), ne_binary()) -> ne_binary().
--spec register_local_media/3 :: (ne_binary(), ne_binary(), 'path' | 'url') -> ne_binary().
-register_local_media(MediaName, CallId) ->
-    register_local_media(MediaName, CallId, path).
-
-register_local_media(<<"local_stream://", FSPath/binary>>, _, _) ->
-    lager:debug("local media on media server at ~s", [FSPath]),
-    FSPath;
-register_local_media(MediaName, CallId, Version) when Version =:= path orelse Version =:= url ->
-    gen_server:call(?MODULE, {register_local_media, MediaName, CallId, Version}).
 
 -spec lookup_media/3 :: (ne_binary(), ne_binary(), wh_json:json_object()) -> {'ok', binary()} |
                                                                              {'error', 'timeout'}.
@@ -107,31 +94,6 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({register_local_media, MediaName, CallId, Version}, {Pid, _Ref}, Dict) ->
-    Old = put(callid, CallId),
-    Dict1 = dict:filter(fun({Pid1, CallId1, MediaName1, _}, _) when Pid =:= Pid1 andalso
-                                                                    CallId =:= CallId1 andalso
-                                                                    MediaName =:= MediaName1 ->
-                                true;
-                           (_, _) -> false
-                        end, Dict),
-    case dict:size(Dict1) =:= 1 andalso dict:to_list(Dict1) of
-        false ->
-            link(Pid),
-            Path = binary:replace(generate_local_path(MediaName), <<".wav">>, <<".mp3">>),
-            {ok, RecvSrv} = ecallmgr_shout_sup:start_recv(Path),
-            lager:debug("recv shout server on ~p for media ~s", [RecvSrv, Path]),
-            Url = ecallmgr_shout:get_recv_url(RecvSrv),
-            lager:debug("recv at ~s", [Url]),
-            _ = put(callid, Old),
-            {reply, Url, dict:store({Pid, CallId, MediaName, RecvSrv}, {Path, Url}, Dict), hibernate};
-        [{_, {Path, Url}}] ->
-            case Version of
-                path -> _ = put(callid, Old), {reply, Path, Dict};
-                url -> _ = put(callid, Old), {reply, Url, Dict}
-            end
-    end;
-
 handle_call({lookup_local, MediaName, CallId}, {FromPid, _Ref}=From, Dict) ->
     Old = put(callid, CallId),
     lager:debug("lookup local media ~s for ~s", [MediaName, CallId]),
@@ -247,10 +209,6 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-generate_local_path(MediaName) ->
-    M = wh_util:to_binary(MediaName),
-    <<?LOCAL_MEDIA_PATH, M/binary>>.
-
 -spec request_media/4 :: (ne_binary(), 'extant' | 'new', ne_binary(), wh_json:json_object()) -> {'ok', binary()} |
                                                                                                 {'error', 'timeout'}.
 request_media(MediaName, Type, CallID, JObj) ->
