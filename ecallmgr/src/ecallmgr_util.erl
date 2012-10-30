@@ -146,14 +146,14 @@ maybe_update_channel_cache("ecallmgr_Presence-ID=" ++ Value, Node, UUID) ->
 maybe_update_channel_cache(_, _, _) ->
     ok.
 
--spec get_expires/1 :: (proplist()) -> integer().
+-spec get_expires/1 :: (wh_proplist()) -> integer().
 get_expires(Props) ->
     Expiry = wh_util:to_integer(props:get_value(<<"Expires">>, Props
                                                 ,props:get_value(<<"expires">>, Props, 300))),
     round(Expiry * 1.25).
 
--spec get_interface_properties/1 :: (atom()) -> proplist().
--spec get_interface_properties/2 :: (atom(), string() | ne_binary()) -> proplist().
+-spec get_interface_properties/1 :: (atom()) -> wh_proplist().
+-spec get_interface_properties/2 :: (atom(), string() | ne_binary()) -> wh_proplist().
 
 get_interface_properties(Node) ->
     get_interface_properties(Node, ?DEFAULT_FS_PROFILE).
@@ -172,7 +172,7 @@ get_interface_properties(Node, Interface) ->
     end.
 
 %% retrieves the sip address for the 'to' field
--spec get_sip_to/1 :: (proplist()) -> ne_binary().
+-spec get_sip_to/1 :: (wh_proplist()) -> ne_binary().
 get_sip_to(Prop) ->
     list_to_binary([props:get_value(<<"sip_to_user">>, Prop
                                     ,props:get_value(<<"variable_sip_to_user">>, Prop, "nouser"))
@@ -182,7 +182,7 @@ get_sip_to(Prop) ->
                    ]).
 
 %% retrieves the sip address for the 'from' field
--spec get_sip_from/1 :: (proplist()) -> ne_binary().
+-spec get_sip_from/1 :: (wh_proplist()) -> ne_binary().
 get_sip_from(Prop) ->
     list_to_binary([props:get_value(<<"sip_from_user">>, Prop
                                     ,props:get_value(<<"variable_sip_from_user">>, Prop, "nouser"))
@@ -192,7 +192,7 @@ get_sip_from(Prop) ->
                    ]).
 
 %% retrieves the sip address for the 'request' field
--spec get_sip_request/1 :: (proplist()) -> ne_binary().
+-spec get_sip_request/1 :: (wh_proplist()) -> ne_binary().
 get_sip_request(Prop) ->
     list_to_binary([props:get_value(<<"Hunt-Destination-Number">>, Prop
                                     ,props:get_value(<<"Caller-Destination-Number">>, Prop, "nouser"))
@@ -201,12 +201,12 @@ get_sip_request(Prop) ->
                                                  ,props:get_value(<<"variable_sip_auth_realm">>, Prop, ?DEFAULT_DOMAIN))
                    ]).
 
--spec get_orig_ip/1 :: (proplist()) -> ne_binary().
+-spec get_orig_ip/1 :: (wh_proplist()) -> ne_binary().
 get_orig_ip(Prop) ->
     props:get_value(<<"X-AUTH-IP">>, Prop, props:get_value(<<"ip">>, Prop)).
 
 %% Extract custom channel variables to include in the event
--spec custom_channel_vars/1 :: (proplist()) -> proplist().
+-spec custom_channel_vars/1 :: (wh_proplist()) -> wh_proplist().
 custom_channel_vars(Prop) ->
     lists:foldl(fun({<<"variable_", ?CHANNEL_VAR_PREFIX, Key/binary>>, V}, Acc) -> [{Key, V} | Acc];
                    ({<<?CHANNEL_VAR_PREFIX, Key/binary>>, V}, Acc) -> [{Key, V} | Acc];
@@ -217,7 +217,7 @@ custom_channel_vars(Prop) ->
 
 %% convert a raw FS string of headers to a proplist
 %% "Event-Name: NAME\nEvent-Timestamp: 1234\n" -> [{<<"Event-Name">>, <<"NAME">>}, {<<"Event-Timestamp">>, <<"1234">>}]
--spec eventstr_to_proplist/1 :: (ne_binary() | nonempty_string()) -> proplist().
+-spec eventstr_to_proplist/1 :: (ne_binary() | nonempty_string()) -> wh_proplist().
 eventstr_to_proplist(EvtStr) ->
     [to_kv(X, ": ") || X <- string:tokens(wh_util:to_list(EvtStr), "\n")].
 
@@ -231,15 +231,15 @@ fix_value("Event-Date-Timestamp", TStamp) ->
     wh_util:microseconds_to_seconds(wh_util:to_integer(TStamp));
 fix_value(_K, V) -> V.
 
--spec unserialize_fs_array/1 :: ('undefined' | ne_binary()) -> [ne_binary(),...].
-unserialize_fs_array(undefined) ->
-    [];
+-spec unserialize_fs_array/1 :: (api_binary()) -> [ne_binary(),...] | [].
+unserialize_fs_array(undefined) -> [];
 unserialize_fs_array(<<"ARRAY::", Serialized/binary>>) ->
-    binary:split(Serialized, <<"|:">>, [global]).
+    binary:split(Serialized, <<"|:">>, [global]);
+unserialize_fs_array(_) -> [].
 
 %% convert a raw FS list of vars  to a proplist
 %% "Event-Name=NAME,Event-Timestamp=1234" -> [{<<"Event-Name">>, <<"NAME">>}, {<<"Event-Timestamp">>, <<"1234">>}]
--spec varstr_to_proplist/1 :: (nonempty_string()) -> proplist().
+-spec varstr_to_proplist/1 :: (nonempty_string()) -> wh_proplist().
 varstr_to_proplist(VarStr) ->
     [to_kv(X, "=") || X <- string:tokens(wh_util:to_list(VarStr), ",")].
 
