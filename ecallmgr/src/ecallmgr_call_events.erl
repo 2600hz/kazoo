@@ -99,7 +99,7 @@ node(Srv) ->
 update_node(Srv, Node) ->
     gen_listener:cast(Srv, {update_node, Node}).
 
--spec transfer/3 :: (pid(), atom(), proplist()) -> 'ok'.
+-spec transfer/3 :: (pid(), atom(), wh_proplist()) -> 'ok'.
 transfer(Srv, TransferType, Props) ->
     gen_listener:cast(Srv, {TransferType, Props}).
 
@@ -202,6 +202,7 @@ handle_cast({update_node, Node}, #state{node=OldNode
 
     gproc:unreg({p, l, call_events}),
     gproc:unreg({p, l, {call_events, Node, CallId}}),
+    gproc:unreg({p, l, {channel_move, Node, CallId}}),
 
     {noreply, State#state{node=Node}, 0};
 
@@ -309,11 +310,14 @@ handle_info(timeout, #state{node=Node
             Usurp = [{<<"Call-ID">>, CallId}
                      ,{<<"Media-Node">>, Node}
                      ,{<<"Reference">>, Ref}
-                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION) 
+                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                     ],
             wapi_call:publish_usurp_publisher(CallId, Usurp),
+
             gproc:reg({p, l, call_events}),
             gproc:reg({p, l, {call_events, Node, CallId}}),
+            gproc:reg({p, l, {channel_move, Node, CallId}}),
+
             {'noreply', State#state{failed_node_checks=0}, hibernate};
         timeout ->
             lager:debug("timed out trying to listen to channel events from ~s, trying again", [Node]),
@@ -334,9 +338,14 @@ handle_info(timeout, #state{node=Node
             lager:debug("failed to setup listener for channel events from ~s: ~p", [Node, _E]),
             {stop, normal, State}
     end;
+
+handle_info({channel_move_released, Node, UUID, _Evt}, #state{node=Node}=State) ->
+    lager:debug("recv channel_move_released for ~s on ~s (our node)", [Node, UUID]),
+    {stop, normal, State};
+
 handle_info({sanity_check}, #state{callid=CallId}=State) ->
     case ecallmgr_fs_nodes:channel_exists(CallId) of
-        true -> 
+        true ->
             lager:debug("listener passed sanity check, call is still up"),
             TRef = erlang:send_after(?SANITY_CHECK_PERIOD, self(), {sanity_check}),
             {'noreply', State#state{sanity_check_tref=TRef}};
@@ -377,8 +386,8 @@ handle_event(_JObj, #state{ref=Ref
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, #state{node_down_tref=NDTRef, sanity_check_tref=SCTRef}) ->   
-    catch (erlang:cancel_timer(SCTRef)), 
+terminate(_Reason, #state{node_down_tref=NDTRef, sanity_check_tref=SCTRef}) ->
+    catch (erlang:cancel_timer(SCTRef)),
     catch (erlang:cancel_timer(NDTRef)),
     lager:debug("goodbye and thanks for all the fish: ~p", [_Reason]).
 
@@ -403,7 +412,7 @@ process_event_prop(Props) ->
         {_, _} -> process_channel_event(Props)
     end.
 
--spec process_channel_event/1 :: (proplist()) -> 'ok'.
+-spec process_channel_event/1 :: (wh_proplist()) -> 'ok'.
 process_channel_event(Props) ->
     CallId = props:get_value(<<"Caller-Unique-ID">>, Props,
                              props:get_value(<<"Unique-ID">>, Props)),
@@ -414,18 +423,18 @@ process_channel_event(Props) ->
 
     case should_publish(EventName, ApplicationName, Masqueraded) of
         false -> ok;
-        true ->            
+        true ->
             %% TODO: the adding of the node to the props is for event_specific conference
             %% clause until we can break the conference stuff into its own module
             publish_event(create_event(EventName, ApplicationName, Props))
     end.
 
--spec create_event/3 :: (ne_binary(), 'undefined' | ne_binary(), proplist()) -> proplist().
+-spec create_event/3 :: (ne_binary(), api_binary(), wh_proplist()) -> wh_proplist().
 create_event(EventName, ApplicationName, Props) ->
     wh_api:default_headers(?EVENT_CAT, EventName, ?APP_NAME, ?APP_VERSION)
         ++ create_event_props(EventName, ApplicationName, Props).
 
--spec create_event_props/3 :: (binary(), 'undefined' | ne_binary(), proplist()) -> proplist().
+-spec create_event_props/3 :: (binary(), api_binary(), wh_proplist()) -> wh_proplist().
 create_event_props(EventName, ApplicationName, Props) ->
     CCVs = ecallmgr_util:custom_channel_vars(Props),
     {Mega,Sec,Micro} = erlang:now(),
@@ -457,16 +466,16 @@ create_event_props(EventName, ApplicationName, Props) ->
        ,{<<"Fax-Transfer-Rate">>, props:get_value(<<"variable_fax_transfer_rate">>, Props)}
        ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
        %% this sucks, its leaky but I dont see a better way around it since we need the raw application
-       %% name in call_control... (see note in call_control on start_link for why we need to use AMQP 
+       %% name in call_control... (see note in call_control on start_link for why we need to use AMQP
        %% to communicate to it)
        ,{<<"Presence-ID">>, props:get_value(<<"variable_presence_id">>, Props)}
        ,{<<"Raw-Application-Name">>, props:get_value(<<"Application">>, Props, ApplicationName)}
        ,{<<"Raw-Application-Data">>, props:get_value(<<"Application-Data">>, Props)}
        ,{<<"Media-Server">>, props:get_value(<<"FreeSWITCH-Hostname">>, Props)}
-       | event_specific(EventName, ApplicationName, Props) 
+       | event_specific(EventName, ApplicationName, Props)
       ]).
 
--spec publish_event/1 :: (proplist()) -> 'ok'.
+-spec publish_event/1 :: (wh_proplist()) -> 'ok'.
 publish_event(Props) ->
     %% call_control publishes channel create/destroy on the control
     %% events queue by calling create_event then this directly.
@@ -477,44 +486,35 @@ publish_event(Props) ->
 
     case {ApplicationName, EventName} of
         {_, <<"dtmf">>} ->
-            Pressed = props:get_value(<<"DTMF-Digit">>, Props),       
+            Pressed = props:get_value(<<"DTMF-Digit">>, Props),
             lager:debug("publishing recevied DTMF digit ~s", [Pressed]);
         {<<>>, _} ->
             lager:debug("publishing call event ~s", [wh_util:to_lower_binary(EventName)]);
-        {ApplicationName, <<"channel_execute_complete">>} -> 
+        {ApplicationName, <<"channel_execute_complete">>} ->
             ApplicationResponse = wh_util:to_lower_binary(props:get_value(<<"Application-Response">>, Props, <<>>)),
             ApplicationData = props:get_value(<<"Raw-Application-Data">>, Props, <<>>),
             lager:debug("publishing call event ~s '~s(~s)' result: ~s", [EventName, ApplicationName, ApplicationData, ApplicationResponse]);
-        {ApplicationName, _} -> 
+        {ApplicationName, _} ->
             ApplicationData = props:get_value(<<"Raw-Application-Data">>, Props, <<>>),
             lager:debug("publishing call event ~s '~s(~s)'", [EventName, ApplicationName, ApplicationData])
     end,
     wapi_call:publish_event(CallId, Props).
 
--spec is_masquerade/1 :: (proplist()) -> boolean().
+-spec is_masquerade/1 :: (wh_proplist()) -> boolean().
 is_masquerade(Props) ->
     case props:get_value(<<"Event-Subclass">>, Props) of
         %% If this is a event created by whistle, then use
         %% the flag it as masqueraded
-        <<"whistle::", _/binary>> ->
-            true;
-        %% otherwise process as the genuine article 
-        _Else ->
-            false
+        <<"whistle::", _/binary>> -> true;
+        %% otherwise process as the genuine article
+        _Else -> false
     end.
 
--spec get_event_name/2 :: (proplist(), boolean()) -> undefined | ne_binary().
-get_event_name(Props, Masqueraded) ->
-    case Masqueraded of
-        true ->
-            %% when the evet is masqueraded override the actual event name
-            %% with what whistle wants the event to be
-            props:get_value(<<"whistle_event_name">>, Props);
-        false ->
-            props:get_value(<<"Event-Name">>, Props)
-    end.
+-spec get_event_name/2 :: (wh_proplist(), boolean()) -> api_binary().
+get_event_name(Props, true) -> props:get_value(<<"whistle_event_name">>, Props);
+get_event_name(Props, false) -> props:get_value(<<"Event-Name">>, Props).
 
--spec get_event_application/2 :: (proplist(), boolean()) -> undefined | ne_binary().
+-spec get_event_application/2 :: (wh_proplist(), boolean()) -> api_binary().
 get_event_application(Props, Masqueraded) ->
     case Masqueraded of
         %% when the evet is masqueraded override the actual application
@@ -527,7 +527,7 @@ get_event_application(Props, Masqueraded) ->
     end.
 
 %% return a proplist of k/v pairs specific to the event
--spec event_specific/3 :: (binary(), 'undefined' | ne_binary(), proplist()) -> proplist().
+-spec event_specific/3 :: (binary(), api_binary(), wh_proplist()) -> wh_proplist().
 event_specific(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"playback">> = Application, Prop) ->
     %% if the playback was terminated as a result of DTMF, include it
     [{<<"DTMF-Digit">>, props:get_value(<<"variable_playback_terminator_used">>, Prop)}
@@ -605,7 +605,7 @@ should_publish(<<"CHANNEL_EXECUTE", _/binary>>, Application, _) ->
 should_publish(EventName, _, _) ->
     lists:member(EventName, ?FS_EVENTS).
 
--spec get_transfer_history/1 :: (proplist()) -> wh_json:json_object().
+-spec get_transfer_history/1 :: (wh_proplist()) -> wh_json:json_object().
 get_transfer_history(Props) ->
     SerializedHistory = props:get_value(<<"variable_transfer_history">>, Props),
     Hist = [HistJObj
@@ -622,28 +622,28 @@ create_trnsf_history_object([Epoch, CallId, <<"att_xfer">>, Props]) ->
              ,{<<"Transferer">>, Transferer}
             ],
     {Epoch, wh_json:from_list(Trans)};
-create_trnsf_history_object([Epoch, CallId, <<"bl_xfer">> | Props]) ->            
+create_trnsf_history_object([Epoch, CallId, <<"bl_xfer">> | Props]) ->
     %% This looks confusing but FS uses the same delimiter to in the array
     %% as it does for inline dialplan actions (like those created during partial attended)
     %% so we have to put it together to take it apart... I KNOW! ARRRG
     Dialplan = lists:last(binary:split(wh_util:join_binary(Props, <<":">>), <<",">>)),
-    [Exten | _] = binary:split(Dialplan, <<"/">>, [global]),    
+    [Exten | _] = binary:split(Dialplan, <<"/">>, [global]),
     Trans = [{<<"Call-ID">>, CallId}
              ,{<<"Type">>, <<"blind">>}
              ,{<<"Extension">>, Exten}
             ],
-    {Epoch, wh_json:from_list(Trans)};        
+    {Epoch, wh_json:from_list(Trans)};
 create_trnsf_history_object(_) ->
     undefined.
 
--spec get_channel_state/1 :: (proplist()) -> ne_binary().
+-spec get_channel_state/1 :: (wh_proplist()) -> ne_binary().
 get_channel_state(Prop) ->
     case props:get_value(props:get_value(<<"Channel-State">>, Prop), ?FS_CHANNEL_STATES) of
         undefined -> <<"unknown">>;
         ChannelState -> ChannelState
     end.
 
--spec get_hangup_cause/1 :: (proplist()) -> 'undefined' | ne_binary().
+-spec get_hangup_cause/1 :: (wh_proplist()) -> api_binary().
 get_hangup_cause(Props) ->
     Causes = case props:get_value(<<"variable_current_application">>, Props) of
                  <<"bridge">> ->
@@ -653,25 +653,24 @@ get_hangup_cause(Props) ->
              end,
     find_event_value(Causes, Props).
 
--spec get_disposition/1 :: (proplist()) -> 'undefined' | ne_binary().
+-spec get_disposition/1 :: (wh_proplist()) -> api_binary().
 get_disposition(Props) ->
     find_event_value([<<"variable_endpoint_disposition">>
                           ,<<"variable_originate_disposition">>
                      ], Props).
 
--spec get_hangup_code/1 :: (proplist()) -> 'undefined' | ne_binary().
+-spec get_hangup_code/1 :: (wh_proplist()) -> api_binary().
 get_hangup_code(Props) ->
     find_event_value([<<"variable_proto_specific_hangup_cause">>
                           ,<<"variable_last_bridge_proto_specific_hangup_cause">>
                      ], Props).
-    
--spec find_event_value/2 :: ([ne_binary(),...], proplist()) -> 'undefined' | ne_binary().
+
+-spec find_event_value/2 :: ([ne_binary(),...], wh_proplist()) -> api_binary().
 find_event_value(Keys, Props) ->
     find_event_value(Keys, Props, undefined).
 
--spec find_event_value/3 :: ([ne_binary(),...], proplist(), term()) -> term().
-find_event_value([], _, Default) ->
-    Default;
+-spec find_event_value/3 :: ([ne_binary(),...], wh_proplist(), term()) -> term().
+find_event_value([], _, Default) -> Default;
 find_event_value([H|T], Props, Default) ->
     Value = props:get_value(H, Props),
     case wh_util:is_empty(Value) of
@@ -679,8 +678,8 @@ find_event_value([H|T], Props, Default) ->
         false -> Value
     end.
 
--spec swap_call_legs/1 :: (proplist() | wh_json:json_object()) -> proplist().
--spec swap_call_legs/2 :: (proplist(), proplist()) -> proplist().
+-spec swap_call_legs/1 :: (wh_proplist() | wh_json:json_object()) -> wh_proplist().
+-spec swap_call_legs/2 :: (wh_proplist(), wh_proplist()) -> wh_proplist().
 
 swap_call_legs(Props) when is_list(Props) ->
     swap_call_legs(Props, []);
