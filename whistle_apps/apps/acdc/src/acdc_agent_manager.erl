@@ -15,8 +15,7 @@
 
 %% API
 -export([start_link/0
-         ,new_agent/1
-         ,check_agent_status/3
+         ,check_agent_status/1
         ]).
 
 %% gen_server callbacks
@@ -50,11 +49,11 @@
                        ,[{<<"agent">>, <<"stats_req">>}]
                       }
                      ,{{acdc_agent_handler, handle_config_change}
-                      ,[{<<"configuration">>, <<"*">>}]
+                       ,[{<<"configuration">>, <<"*">>}]
+                       }
                      ,{{acdc_agent_handler, handle_presence_probe}
                        ,[{<<"notification">>, <<"presence_probe">>}]
                       }
-                     }
                     ]).
 
 %%%===================================================================
@@ -76,9 +75,6 @@ start_link() ->
                             ,[]
                            ).
 
-new_agent(Super) ->
-    gen_listener:cast(?SERVER, {new_agent, Super}).
-
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -95,7 +91,8 @@ new_agent(Super) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    {ok, ok}.
+    Ref = start_agent_timer(),
+    {ok, Ref}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -125,9 +122,6 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({new_agent, Super}, State) ->
-    _ = start_agent_timer(Super),
-    {noreply, State};
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
@@ -141,9 +135,9 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({check, AcctId, AgentId}, State) ->
+handle_info(agent_check, State) ->
     Self = self(),
-    _ = spawn(?MODULE, check_agent_status, [Self, AcctId, AgentId]),
+    _ = spawn(?MODULE, check_agent_status, [Self]),
     {noreply, State};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
@@ -180,23 +174,28 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-start_agent_timer(Super) ->
-    case acdc_agent_sup:agent(Super) of
-        undefined -> ok;
-        Agent ->
-            {AcctId, AgentId} = acdc_agent:config(Agent),
-            Self = self(),
-            start_agent_timer(Self, AcctId, AgentId)
-    end.
-
-start_agent_timer(Self, AcctId, AgentId) ->
+start_agent_timer() ->
+    start_agent_timer(self()).
+start_agent_timer(Pid) ->
     erlang:send_after(whapps_config:get(?APP_NAME, <<"agent_timeout">>, 600000)
-                      + random:uniform(500)
-                      ,Self
-                      ,{check, AcctId, AgentId}
+                      ,Pid
+                      ,agent_check
                      ).
 
-check_agent_status(Self, AcctId, AgentId) ->
+check_agent_status(Self) ->
+    _ = [check_account(DB) || DB <- whapps_util:get_all_accounts(encoded)],
+    start_agent_timer(Self).
+
+check_account(AcctDb) ->
+    case couch_mgr:get_results(AcctDb, <<"agents/agent_listing">>, []) of
+        {ok, []} -> ok;
+        {error, _} -> ok;
+        {ok, Agents} -> [check_agent(AcctDb, wh_json:get_value(<<"id">>, Agent)) || Agent <- Agents]
+    end.
+
+check_agent(AcctDb, AgentId) ->
+    AcctId = wh_util:format_account_id(AcctDb, raw),
+
     Req = [{<<"Account-ID">>, AcctId}
            ,{<<"Agent-ID">>, AgentId}
            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
@@ -206,14 +205,13 @@ check_agent_status(Self, AcctId, AgentId) ->
                                        ,fun wapi_acdc_agent:sync_resp_v/1
                                        ,5000
                                       ) of
-        {ok, _} -> start_agent_timer(Self, AcctId, AgentId);
+        {ok, _} -> ok;
         {error, _E} ->
             lager:debug("failed to get sync resp: ~p", [_E]),
-            maybe_logout_agent(AcctId, AgentId)
+            maybe_logout_agent(AcctDb, AgentId)
     end.
 
-maybe_logout_agent(AcctId, AgentId) ->
-    AcctDb = wh_util:format_account_id(AcctId, encoded),
+maybe_logout_agent(AcctDb, AgentId) ->
     case acdc_util:agent_status(AcctDb, AgentId) of
         <<"logout">> -> ok;
         _S ->
