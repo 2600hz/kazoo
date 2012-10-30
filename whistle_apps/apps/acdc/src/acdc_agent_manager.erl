@@ -203,12 +203,10 @@ check_agent(AcctDb, AgentId) ->
     case whapps_util:amqp_pool_request(Req
                                        ,fun wapi_acdc_agent:publish_sync_req/1
                                        ,fun wapi_acdc_agent:sync_resp_v/1
-                                       ,5000
+                                       ,2000
                                       ) of
         {ok, _} -> ok;
-        {error, _E} ->
-            lager:debug("failed to get sync resp: ~p", [_E]),
-            maybe_logout_agent(AcctDb, AgentId)
+        {error, _E} -> maybe_logout_agent(AcctDb, AgentId)
     end.
 
 maybe_logout_agent(AcctDb, AgentId) ->
