@@ -28,20 +28,14 @@
 -define(LOGO_REQ, <<"logo">>).
 
 -define(WHITELABEL_MIME_TYPES, [{<<"image">>, <<"jpg">>}
-                           ,{<<"image">>, <<"jpeg">>}
-                           ,{<<"image">>, <<"png">>}
-                           ,{<<"image">>, <<"gif">>}
-                           ,{<<"application">>, <<"base64">>}
-                           ,{<<"application">>, <<"x-base64">>}
-                          ]).
-
--define(PVT_TYPE, <<"whitelabel">>).
--define(PVT_FUNS, [fun add_pvt_type/2, fun set_id/2]).
+                                ,{<<"image">>, <<"jpeg">>}
+                                ,{<<"image">>, <<"png">>}
+                                ,{<<"image">>, <<"gif">>}
+                                ,{<<"application">>, <<"base64">>}
+                                ,{<<"application">>, <<"x-base64">>}
+                               ]).
 
 -define(AGG_VIEW_WHITELABEL_DOMAIN, <<"accounts/list_by_whitelabel_domain">>).
-
-%-define(CB_LIST, <<"media/crossbar_listing">>).
-%-define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".media">>).
 
 %%%===================================================================
 %%% API
@@ -132,7 +126,7 @@ authenticate(_) ->
 %%--------------------------------------------------------------------
 -spec content_types_provided/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
 content_types_provided(#cb_context{req_verb = <<"get">>}=Context, ?LOGO_REQ) ->
-    case load_whitelabel_meta(?WHITELABEL_ID, Context) of
+    case find_whitelabel(?WHITELABEL_ID, Context, meta) of
         #cb_context{resp_status=success, doc=JObj} ->
             case wh_json:get_keys(wh_json:get_value([<<"_attachments">>], JObj, wh_json:new())) of
                 [] -> Context;
@@ -147,7 +141,7 @@ content_types_provided(Context, _) ->
 
 -spec content_types_provided/3 :: (#cb_context{}, path_token(), path_token()) -> #cb_context{}.
 content_types_provided(#cb_context{req_verb = <<"get">>}=Context, Domain, ?LOGO_REQ) ->
-    case find_whitelabel_meta(Domain, Context) of
+    case find_whitelabel(Domain, Context, meta) of
         #cb_context{resp_status=success, doc=JObj} ->
             case wh_json:get_keys(wh_json:get_value([<<"_attachments">>], JObj)) of
                 [] -> Context;
@@ -180,48 +174,38 @@ content_types_accepted(Context, _) ->
 validate(#cb_context{req_verb = <<"get">>}=Context) ->
     load_whitelabel_meta(?WHITELABEL_ID, Context);
 validate(#cb_context{req_verb = <<"put">>}=Context) ->
-    create_whitelabel_meta(Context);
+    validate_request(undefined, Context);
 validate(#cb_context{req_verb = <<"post">>}=Context) ->
-    update_whitelabel_meta(?WHITELABEL_ID, Context);
+    validate_request(?WHITELABEL_ID, Context);
 validate(#cb_context{req_verb = <<"delete">>, req_data=_Data}=Context) ->
     load_whitelabel_meta(?WHITELABEL_ID, Context).
 
 validate(#cb_context{req_verb = <<"get">>}=Context, ?LOGO_REQ) ->
     load_whitelabel_binary(?WHITELABEL_ID, Context);
 validate(#cb_context{req_verb = <<"post">>, req_files=[]}=Context, ?LOGO_REQ) ->
-    E = wh_json:set_value([<<"content_size">>, <<"minLength">>], <<"No file uploaded">>, wh_json:new()),
-    crossbar_util:response_invalid_data(E, Context);
+    Message = <<"please provide an image file">>,
+    cb_context:add_validation_error(<<"file">>, <<"required">>, Message, Context);
 validate(#cb_context{req_verb = <<"post">>, req_files=[{_Filename, FileObj}]}=Context, ?LOGO_REQ) ->
     case load_whitelabel_meta(?WHITELABEL_ID, Context) of
-        #cb_context{resp_status=success, doc=Data}=Context1 ->
-            Updaters = [fun(J) ->
-                                CT = wh_json:get_value([<<"headers">>, <<"content_type">>], FileObj, <<"application/octet-stream">>),
-                                wh_json:set_value(<<"content_type">>, CT, J)
-                        end
-                        ,fun(J) ->
-                                 Size = wh_json:get_integer_value([<<"headers">>, <<"content_length">>]
-                                                                 ,FileObj
-                                                                  ,byte_size(wh_json:get_value(<<"contents">>, FileObj, <<>>))),
-                                 wh_json:set_value(<<"content_length">>, Size, J)
-                         end
-                       ],
-            case wh_json_validator:is_valid(lists:foldr(fun(F, J) -> F(J) end, Data, Updaters), <<"whitelabel">>) of
-                {fail, Errors} ->
-                    crossbar_util:response_invalid_data(Errors, Context);
-                {pass, JObj} ->
-                    Context1#cb_context{doc=JObj}
-            end;
+        #cb_context{resp_status=success, doc=JObj}=C ->
+            CT = wh_json:get_value([<<"headers">>, <<"content_type">>], FileObj, <<"application/octet-stream">>),
+            Size = wh_json:get_integer_value([<<"headers">>, <<"content_length">>]
+                                             ,FileObj
+                                             ,byte_size(wh_json:get_value(<<"contents">>, FileObj, <<>>))),
+            Props = [{<<"content_type">>, CT}
+                     ,{<<"content_length">>, Size}
+                    ],
+            validate_request(?WHITELABEL_ID, C#cb_context{req_data=wh_json:set_values(Props, JObj)});
         Else -> Else
     end;
 validate(#cb_context{req_verb = <<"post">>}=Context, ?LOGO_REQ) ->
-    lager:debug("Multiple files in request to save attachment"),
-    E = wh_json:set_value([<<"content_size">>, <<"maxLength">>], <<"Uploading multiple files is not supported">>, wh_json:new()),
-    crossbar_util:response_invalid_data(E, Context);
+    Message = <<"please provide a single image file">>,
+    cb_context:add_validation_error(<<"file">>, <<"maxItems">>, Message, Context);
 validate(#cb_context{req_verb = <<"get">>, account_id=undefined}=Context, Domain) ->
-    find_whitelabel_meta(Domain, Context).
+    find_whitelabel(Domain, Context, meta).
 
 validate(#cb_context{req_verb = <<"get">>, account_id=undefined}=Context, Domain, ?LOGO_REQ) ->
-    find_whitelabel_binary(Domain, Context).
+    find_whitelabel(Domain, Context, binary).
 
 
 -spec get/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
@@ -242,60 +226,44 @@ get(Context, _, ?LOGO_REQ) ->
                                        | Context#cb_context.resp_headers]}.
 
 -spec put/1 :: (#cb_context{}) -> #cb_context{}.
-put(#cb_context{doc=JObj, account_id=AccountId}=Context) ->
-    case crossbar_doc:save(Context) of
-        #cb_context{resp_status=success}=Context1 ->
-            case crossbar_doc:load(AccountId, Context) of
-                #cb_context{resp_status=success, doc=AccountDoc}=AccountContext ->
-                    Domain = wh_json:get_ne_value(<<"domain">>, JObj),
-                    AccountDoc1 = wh_json:set_value(<<"pvt_whitelabel_domain">>, Domain, AccountDoc),
-                    _ = cb_accounts:post(AccountContext#cb_context{doc=AccountDoc1}, AccountId),
-                    Context1;
-                Else ->
-                    Else
-            end;
-        Else ->
-            Else
-    end.
+put(#cb_context{}=Context) ->
+    maybe_update_account_definition(crossbar_doc:save(Context)).
 
 -spec post/1 :: (#cb_context{}) -> #cb_context{}.
 -spec post/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
 
-post(#cb_context{doc=JObj, account_id=AccountId}=Context) ->
-    case crossbar_doc:save(Context) of
-        #cb_context{resp_status=success}=Context1 ->
-            case crossbar_doc:load(AccountId, Context) of
-                #cb_context{resp_status=success, doc=AccountDoc}=AccountContext ->
-                    Domain = wh_json:get_ne_value(<<"domain">>, JObj),
-                    AccountDoc1 = wh_json:set_value(<<"pvt_whitelabel_domain">>, Domain, AccountDoc),
-                    _ = cb_accounts:post(AccountContext#cb_context{doc=AccountDoc1}, AccountId),
-                    Context1;
-                Else ->
-                    Else
-            end;
-        Else ->
-            Else
-    end.
+post(#cb_context{}=Context) ->
+    maybe_update_account_definition(crossbar_doc:save(Context)).
 
 post(Context, ?LOGO_REQ) ->
     update_whitelabel_binary(?WHITELABEL_ID, Context).
 
 -spec delete/1 :: (#cb_context{}) -> #cb_context{}.
-delete(#cb_context{account_id=AccountId}=Context) ->
-    case crossbar_doc:delete(Context, permanent) of 
-        #cb_context{resp_status=success}=Context1 ->
-            case crossbar_doc:load(AccountId, Context) of
-                #cb_context{resp_status=success, doc=AccountDoc}=AccountContext ->
-                    AccountDoc1 = wh_json:delete_key(<<"pvt_whitelabel_domain">>, AccountDoc),
-                    _ = cb_accounts:post(AccountContext#cb_context{doc=AccountDoc1}, AccountId),
-                    Context1;
-                Else ->
-                    Else
-            end;
-        Else ->
-            Else
-    end.
+delete(#cb_context{}=Context) ->
+    maybe_cleanup_account_definition(crossbar_doc:delete(Context, permanent)).
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Load the binary attachment of a whitelabel doc (based on a domain)
+%% @end
+%%--------------------------------------------------------------------
+-spec find_whitelabel/3 :: (ne_binary(), #cb_context{}, 'meta' | 'binary') -> #cb_context{}.
+find_whitelabel(Domain, Context, LookingFor) ->
+    ViewOptions = [{<<"key">>, wh_util:to_lower_binary(Domain)}],
+    case crossbar_doc:load_view(?AGG_VIEW_WHITELABEL_DOMAIN, ViewOptions, Context#cb_context{db_name=?WH_ACCOUNTS_DB}) of
+        #cb_context{resp_status=success, doc=[JObj]}=C ->
+            Db = wh_json:get_ne_value([<<"value">>, <<"account_db">>], JObj),
+            Id = wh_json:get_ne_value([<<"value">>, <<"account_id">>], JObj),
+            case LookingFor of
+                meta -> load_whitelabel_meta(?WHITELABEL_ID, C#cb_context{db_name=Db, account_id=Id});
+                binary -> load_whitelabel_binary(?WHITELABEL_ID, C#cb_context{db_name=Db, account_id=Id})
+            end;
+        #cb_context{resp_status=success} ->
+            cb_context:add_system_error(bad_identifier, [{details, Domain}], Context);
+        Else -> Else
+    end.
+ 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -306,76 +274,39 @@ delete(#cb_context{account_id=AccountId}=Context) ->
 load_whitelabel_meta(WhitelabelId, Context) ->
     crossbar_doc:load(WhitelabelId, Context).
 
-
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Load a whitelabel document based on a domain
+%% 
 %% @end
 %%--------------------------------------------------------------------
--spec find_whitelabel_meta/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
-find_whitelabel_meta(Domain, Context) ->
-    Domain1 = wh_util:to_lower_binary(Domain),
-    case couch_mgr:get_results(?WH_ACCOUNTS_DB, ?AGG_VIEW_WHITELABEL_DOMAIN, [{<<"key">>, Domain1}]) of
-        {ok, []} ->
-            crossbar_util:response(error, <<"domain not found">>, 404, Context);
-        {ok, [_ | [_]]} ->
-            crossbar_util:response(error, <<"multiple domains found">>, 409, Context);
-        {ok, [JObj]} ->
-            Db = wh_json:get_ne_value([<<"value">>, <<"account_db">>], JObj),
-            Id = wh_json:get_ne_value([<<"value">>, <<"account_id">>], JObj),
-            load_whitelabel_meta(?WHITELABEL_ID, Context#cb_context{db_name=Db, account_id=Id})
+-spec validate_request/2 :: ('undefined' | ne_binary(), #cb_context{}) -> #cb_context{}.
+validate_request(WhitelabelId, Context) ->
+    validate_unique_domain(WhitelabelId, Context).
+
+validate_unique_domain(WhitelabelId, #cb_context{req_data=JObj, account_id=AccountId}=Context) ->
+    Domain = wh_json:get_ne_value(<<"domain">>, JObj),
+    case is_domain_unique(AccountId, Domain) of
+        true -> check_whitelabel_schema(WhitelabelId, Context);
+        false ->
+            C = cb_context:add_validation_error(<<"domain">>
+                                                    ,<<"unique">>
+                                                    ,<<"Whitelable domain is already in use">>
+                                                    ,Context),
+            check_whitelabel_schema(WhitelabelId, C)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Create a new whitelabel_meta document with the data provided, if it is valid
-%% @end
-%%--------------------------------------------------------------------
--spec create_whitelabel_meta/1 :: (#cb_context{}) -> #cb_context{}.
-create_whitelabel_meta(#cb_context{req_data=Data, account_id=AccountId}=Context) ->
-    case wh_json_validator:is_valid(Data, <<"whitelabel">>) of
-        {fail, Errors} ->
-            crossbar_util:response_invalid_data(Errors, Context);
-        {pass, JObj} ->
-            Domain = wh_json:get_ne_value(<<"domain">>, JObj),
-            case is_domain_unique(AccountId, Domain) of
-                true ->
-                    {JObj1, _} = lists:foldr(fun(F, {J, C}) ->
-                                                     {F(J, C), C}
-                                             end
-                                             ,{JObj, Context}
-                                             ,?PVT_FUNS),
-                    Context#cb_context{doc=JObj1, resp_status=success};
-                false ->
-                    E = wh_json:set_value([<<"domain">>, <<"unique">>], <<"Whitelabel domain is not unique for this system">>, wh_json:new()),
-                    crossbar_util:response_invalid_data(E, Context)
-            end
-    end.
+check_whitelabel_schema(WhitelabelId, Context) ->
+    OnSuccess = fun(C) -> on_successful_validation(WhitelabelId, C) end,
+    cb_context:validate_request_data(<<"whitelabel">>, Context, OnSuccess).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Update an existing whitelabel document with the data provided, if it is
-%% valid
-%% @end
-%%--------------------------------------------------------------------
--spec update_whitelabel_meta/2 :: (binary(), #cb_context{}) -> #cb_context{}.
-update_whitelabel_meta(WhitelabelId, #cb_context{req_data=Data, account_id=AccountId}=Context) ->
-    case wh_json_validator:is_valid(Data, <<"whitelabel">>) of
-        {fail, Errors} ->
-            crossbar_util:response_invalid_data(Errors, Context);
-        {pass, JObj} ->
-            Domain = wh_json:get_ne_value(<<"domain">>, JObj),
-            case is_domain_unique(AccountId, Domain) of
-                true ->
-                    crossbar_doc:load_merge(WhitelabelId, add_pvt_type(JObj, Context), Context);
-                false ->
-                    E = wh_json:set_value([<<"domain">>, <<"unique">>], <<"Whitelabel domain is not unique for this system">>, wh_json:new()),
-                    crossbar_util:response_invalid_data(E, Context)
-            end
-    end.
+on_successful_validation(undefined, #cb_context{doc=Doc}=Context) ->
+    Props = [{<<"pvt_type">>, <<"whitelabel">>}
+             ,{<<"_id">>, ?WHITELABEL_ID}
+            ],
+    Context#cb_context{doc=wh_json:set_values(Props, Doc)};
+on_successful_validation(WhitelabelId, #cb_context{}=Context) -> 
+    crossbar_doc:load_merge(WhitelabelId, Context).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -400,26 +331,6 @@ load_whitelabel_binary(WhitelabelId, #cb_context{resp_headers=RespHeaders}=Conte
                                        ,resp_etag=undefined}
             end;
         Context1 -> Context1
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Load the binary attachment of a whitelabel doc (based on a domain)
-%% @end
-%%--------------------------------------------------------------------
--spec find_whitelabel_binary/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
-find_whitelabel_binary(Domain, Context) ->
-    Domain1 = wh_util:to_lower_binary(Domain),
-    case couch_mgr:get_results(?WH_ACCOUNTS_DB, ?AGG_VIEW_WHITELABEL_DOMAIN, [{<<"key">>, Domain1}]) of
-        {ok, []} ->
-            crossbar_util:response(error, <<"domain not found">>, 404, Context);
-        {ok, [_ | [_]]} ->
-            crossbar_util:response(error, <<"multiple domains found">>, 409, Context);
-        {ok, [JObj]} ->
-            Db = wh_json:get_ne_value([<<"value">>, <<"account_db">>], JObj),
-            Id = wh_json:get_ne_value([<<"value">>, <<"account_id">>], JObj),
-            load_whitelabel_binary(?WHITELABEL_ID, Context#cb_context{db_name=Db, account_id=Id})
     end.
 
 %%--------------------------------------------------------------------
@@ -481,37 +392,54 @@ content_type_to_extension(<<"image/gif">>) -> <<"gif">>.
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% These are the pvt funs that add the necessary pvt fields to every
-%% instance
+%%
 %% @end
 %%--------------------------------------------------------------------
--spec add_pvt_type/2 :: (wh_json:json_object(), #cb_context{}) -> wh_json:json_object().
-add_pvt_type(JObj, _) ->
-    wh_json:set_value(<<"pvt_type">>, ?PVT_TYPE, JObj).
+-spec is_domain_unique/2 :: (ne_binary(), ne_binary()) -> boolean().
+is_domain_unique(AccountId, Domain) ->
+    ViewOptions = [{<<"key">>, wh_util:to_lower_binary(Domain)}],
+    case couch_mgr:get_results(?WH_ACCOUNTS_DB, ?AGG_VIEW_WHITELABEL_DOMAIN, ViewOptions) of
+        {ok, []} -> true;
+        {ok, [JObj]} -> wh_json:get_ne_value([<<"value">>, <<"account_id">>], JObj) =:= AccountId;
+        {ok, _} -> false;
+        {error, _R} ->
+            lager:debug("unable to get whitelable domain view: ~p", [_R]),
+            false
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Misc. functions required by this module
+%%
 %% @end
 %%--------------------------------------------------------------------
--spec set_id/2 :: (wh_json:json_object(), #cb_context{}) -> wh_json:json_object().
-set_id(JObj, _) ->
-    wh_json:set_value(<<"_id">>, ?WHITELABEL_ID, JObj).
+-spec maybe_update_account_definition/1 :: (#cb_context{}) -> #cb_context{}.
+maybe_update_account_definition(#cb_context{resp_status=success, account_id=AccountId, doc=JObj}=Context) ->
+    case crossbar_doc:load(AccountId, Context) of
+        #cb_context{resp_status=success, doc=AccountDoc}=AccountContext ->
+            Domain = wh_json:get_ne_value(<<"domain">>, JObj),
+            AccountDoc1 = wh_json:set_value(<<"pvt_whitelabel_domain">>, Domain, AccountDoc),
+            _ = cb_accounts:post(AccountContext#cb_context{doc=AccountDoc1}, AccountId),
+            Context;
+        Else ->
+            Else
+    end;    
+maybe_update_account_definition(Context) -> Context.
 
--spec is_domain_unique/2 :: (ne_binary(), ne_binary()) -> boolean().
-is_domain_unique(AccountId, Domain) ->
-    case couch_mgr:get_results(?WH_ACCOUNTS_DB, ?AGG_VIEW_WHITELABEL_DOMAIN, [{<<"key">>, Domain}]) of
-        {ok, [JObj|[]]} ->
-            case wh_json:get_ne_value([<<"value">>, <<"account_id">>], JObj) of
-                AccountId ->
-                    true;
-                _ ->
-                    false
-            end;
-        {ok, [_|_]} ->
-            false;
-        {ok, []} ->
-            true
-    end.
-
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec maybe_cleanup_account_definition/1 :: (#cb_context{}) -> #cb_context{}.
+maybe_cleanup_account_definition(#cb_context{resp_status=success, account_id=AccountId}=Context) ->
+    case crossbar_doc:load(AccountId, Context) of
+        #cb_context{resp_status=success, doc=AccountDoc}=AccountContext ->
+            AccountDoc1 = wh_json:delete_key(<<"pvt_whitelabel_domain">>, AccountDoc),
+            _ = cb_accounts:post(AccountContext#cb_context{doc=AccountDoc1}, AccountId),
+            Context;
+        Else ->
+            Else
+    end;    
+maybe_cleanup_account_definition(Context) -> Context.
