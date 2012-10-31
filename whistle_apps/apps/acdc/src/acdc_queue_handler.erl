@@ -145,23 +145,25 @@ handle_presence_probe(JObj, _Props) ->
 
     FromRealm = wh_json:get_value(<<"From-Realm">>, JObj),
     {ok, AcctDb} = whapps_util:get_account_by_realm(FromRealm),
-    AcctId = wh_util:format_account_id(AcctDb, raw),
 
-    lager:debug("find presence update for ~s(~s)", [AcctId, FromRealm]),
+    maybe_respond_to_presence_probe(JObj, AcctDb).
 
-    maybe_respond_to_presence_probe(JObj, AcctId).
-
-maybe_respond_to_presence_probe(JObj, AcctId) ->
+maybe_respond_to_presence_probe(JObj, AcctDb) ->
     case wh_json:get_value(<<"To-User">>, JObj) of
         undefined ->
             lager:debug("no to-user found on json: ~p", [JObj]);
         QueueId ->
+            {ok, Doc} = couch_mgr:open_doc(AcctDb, QueueId),
+
+            AcctId = wh_util:format_account_id(AcctDb, raw),
             lager:debug("looking for probe for queue ~s(~s)", [QueueId, AcctId]),
-            update_probe(JObj, AcctId, QueueId)
+
+            maybe_update_probe(JObj, AcctId, QueueId, wh_json:get_value(<<"pvt_type">>, Doc))
     end.
 
-update_probe(JObj, AcctId, QueueId) ->
+maybe_update_probe(JObj, AcctId, QueueId, <<"queue">>) ->
     update_probe(JObj, wapi_acdc_queue:queue_size(AcctId, QueueId)).
+
 update_probe(JObj, 0) ->
     lager:debug("no calls in queue, greenify!"),
     send_probe(JObj, ?PRESENCE_GREEN);

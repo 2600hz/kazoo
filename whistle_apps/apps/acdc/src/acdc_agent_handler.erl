@@ -79,12 +79,13 @@ maybe_start_agent(AcctId, AgentId) ->
     end.
 
 maybe_stop_agent(AcctId, AgentId) ->
+    acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_RED_SOLID),
     case acdc_agents_sup:find_agent_supervisor(AcctId, AgentId) of
-        undefined -> lager:debug("agent ~s (~s) not found, nothing to do", [AgentId, AcctId]);
+        undefined ->
+            lager:debug("agent ~s (~s) not found, nothing to do", [AgentId, AcctId]);
         P when is_pid(P) ->
             lager:debug("agent ~s(~s) is logging out, stopping ~p", [AcctId, AgentId, P]),
             _ = acdc_agent_sup:stop(P),
-            acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_RED_SOLID),
             acdc_stats:agent_inactive(AcctId, AgentId)
     end.
 
@@ -211,22 +212,22 @@ handle_presence_probe(JObj, _Props) ->
 
     FromRealm = wh_json:get_value(<<"From-Realm">>, JObj),
     {ok, AcctDb} = whapps_util:get_account_by_realm(FromRealm),
-    AcctId = wh_util:format_account_id(AcctDb, raw),
 
-    lager:debug("find presence update for ~s(~s)", [AcctId, FromRealm]),
+    maybe_respond_to_presence_probe(JObj, AcctDb).
 
-    maybe_respond_to_presence_probe(JObj, AcctId).
-
-maybe_respond_to_presence_probe(JObj, AcctId) ->
+maybe_respond_to_presence_probe(JObj, AcctDb) ->
     case wh_json:get_value(<<"To-User">>, JObj) of
         undefined ->
             lager:debug("no to-user found on json: ~p", [JObj]);
         AgentId ->
-            lager:debug("looking for probe for agent ~s(~s)", [AgentId, AcctId]),
-            update_probe(JObj, AcctId, AgentId)
+            {ok, Doc} = couch_mgr:open_doc(AcctDb, AgentId),
+            AcctId = wh_util:format_account_id(AcctDb, raw),
+            lager:debug("maybe looking for probe for agent ~s(~s)", [AgentId, AcctId]),
+
+            maybe_update_probe(JObj, AcctId, AgentId, wh_json:get_value(<<"pvt_type">>, Doc))
     end.
 
-update_probe(JObj, AcctId, AgentId) ->
+maybe_update_probe(JObj, AcctId, AgentId, <<"user">>) ->
     update_probe(JObj, acdc_agents_sup:find_agent_supervisor(AcctId, AgentId)).
 
 update_probe(JObj, undefined) ->
@@ -238,12 +239,11 @@ update_probe(JObj, P) when is_pid(P) ->
 
 send_probe(JObj, State) ->
     To = wh_json:get_value(<<"To">>, JObj),
-
+lager:debug("state: ~s jobj: ~p", [State, JObj]),
     PresenceUpdate =
         [{<<"State">>, State}
          ,{<<"Presence-ID">>, To}
          ,{<<"Call-ID">>, wh_util:to_hex_binary(crypto:md5(To))}
-         ,{<<"Switch-Nodename">>, wh_json:get_ne_value(<<"Switch-Nodename">>, JObj)}
          ,{<<"Subscription-Call-ID">>, wh_json:get_ne_value(<<"Subscription-Call-ID">>, JObj)}
          | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
         ],
