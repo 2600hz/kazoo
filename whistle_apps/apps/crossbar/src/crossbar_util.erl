@@ -53,9 +53,9 @@ response_202(Msg, Context) ->
 %%--------------------------------------------------------------------
 -spec response/3 :: ('error'|'fatal', wh_json:json_string(), #cb_context{}) -> #cb_context{}.
 response(error, Msg, Context) ->
-    create_response(error, Msg, 500, [], Context);
+    create_response(error, Msg, 500, wh_json:new(), Context);
 response(fatal, Msg, Context) ->
-    create_response(fatal, Msg, 500, [], Context).
+    create_response(fatal, Msg, 500, wh_json:new(), Context).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -66,9 +66,9 @@ response(fatal, Msg, Context) ->
 %%--------------------------------------------------------------------
 -spec response/4 :: ('error'|'fatal', wh_json:json_string(), integer()|'undefined', #cb_context{}) -> #cb_context{}.
 response(error, Msg, Code, Context) ->
-    create_response(error, Msg, Code, [], Context);
+    create_response(error, Msg, Code, wh_json:new(), Context);
 response(fatal, Msg, Code, Context) ->
-    create_response(fatal, Msg, Code, [], Context).
+    create_response(fatal, Msg, Code, wh_json:new(), Context).
 
 %%--------------------------------------------------------------------
 %% @public

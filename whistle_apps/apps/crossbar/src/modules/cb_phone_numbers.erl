@@ -243,20 +243,8 @@ put(#cb_context{account_id=AssignTo, auth_account_id=AuthBy, doc=JObj}=Context, 
     Result = wh_number_manager:port_in(Number, AssignTo, AuthBy, JObj),
     set_response(Result, Number, Context);
 put(#cb_context{account_id=AssignTo, auth_account_id=AuthBy, doc=JObj}=Context, Number, ?ACTIVATE) ->
-    case wh_number_manager:assign_number_to_account(Number, AssignTo, AuthBy, JObj) of
-        {ok, _}=Result ->
-            case set_response(Result, Number, Context) of
-                #cb_context{resp_status=success}=C1 ->
-                    Replaces = wh_json:get_ne_value(<<"replaces">>, JObj),
-                    process_replaces(wnm_util:normalize_number(Number)
-                                     ,wnm_util:normalize_number(Replaces)
-                                     ,C1);
-                Else ->
-                    Else
-            end;
-        Else ->
-            set_response(Else, Number, Context)
-    end;
+    Result = wh_number_manager:assign_number_to_account(Number, AssignTo, AuthBy, JObj),
+    set_response(Result, Number, Context);
 put(#cb_context{account_id=AssignTo, auth_account_id=AuthBy, doc=JObj}=Context, Number, ?RESERVE) ->
     Result = wh_number_manager:reserve_number(Number, AssignTo, AuthBy, JObj),
     set_response(Result, Number, Context);
@@ -398,62 +386,3 @@ set_response({Error, Reason}, _, Context) ->
 set_response(_Else, _, Context) ->
     lager:debug("unexpected response: ~p", [_Else]),
     cb_context:add_system_error(unspecified_fault, Context).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% If the request had a replaces property then the user wants the
-%% number to replace the existing number on callflows, so do so!
-%% @end
-%%--------------------------------------------------------------------
--spec process_replaces/3 :: (ne_binary(), ne_binary(), #cb_context{}) -> #cb_context{}.
-process_replaces(Number, Replaces, Context) ->
-    Payload = [undefined
-               ,Context#cb_context{req_verb = <<"get">>}
-              ],
-    case crossbar_bindings:fold(<<"v1_resource.validate.callflows">>, Payload) of
-        [_, #cb_context{resp_status=success, resp_data=JObjs} | _] ->
-            Updates = [JObj
-                       || JObj <- JObjs,
-                          lists:member(Replaces, wh_json:get_value(<<"numbers">>, JObj, []))
-                      ],
-            update_callflows(Updates, Number, Replaces, Context);
-        _ ->
-            Context
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Loop through the provided callflow objects and replace any existance
-%% of the old number with the new.
-%% @end
-%%--------------------------------------------------------------------
--spec update_callflows/4 :: (wh_json:json_objects(), ne_binary(), ne_binary(), #cb_context{}) ->
-                                    #cb_context{}.
-update_callflows([], _, _, Context) -> Context;
-update_callflows([Update|Updates], Number, Replaces, Context) ->
-    CallflowId = wh_json:get_value(<<"id">>, Update),
-    Payload1 = [undefined
-               ,Context#cb_context{req_verb = <<"get">>}
-               ,CallflowId
-              ],
-    case crossbar_bindings:fold(<<"v1_resource.validate.callflows">>, Payload1) of
-        [_, #cb_context{resp_status=success, doc=JObj} | _] ->
-            Numbers = wh_json:get_value(<<"numbers">>, JObj, []),
-            Updated = lists:map(fun(Num) when Num =:= Replaces -> Number;
-                                   (Else) -> Else
-                                end, Numbers),
-
-            Payload2 = [undefined
-                        ,Context#cb_context{doc=wh_json:set_value(<<"numbers">>, Updated, JObj)
-                                            ,req_verb = <<"post">>}
-                        ,CallflowId
-                       ],
-            lager:debug("replacing '~s' with '~s' on callflow ~s", [Replaces, Number, CallflowId]),
-            crossbar_bindings:fold(<<"v1_resource.execute.post.callflows">>, Payload2),
-            update_callflows(Updates, Number, Replaces, Context);
-        _ ->
-            lager:debug("failed to replace '~s' with '~s' on callflow ~s", [Replaces, Number, CallflowId]),
-            update_callflows(Updates, Number, Replaces, Context)
-    end.

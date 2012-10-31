@@ -25,7 +25,7 @@
 -define(OB_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".onboard">>).
 -define(DEFAULT_FLOW, "{\"data\": { \"id\": \"~s\" }, \"module\": \"user\", \"children\": { \"_\": { \"data\": { \"id\": \"~s\" }, \"module\": \"voicemail\", \"children\": {}}}}").
 
-% Invite defines
+                                                % Invite defines
 -define(INVITE_API, <<"invite">>).
 -define(INVITE_DB, <<"invite_codes">>).
 
@@ -161,15 +161,13 @@ create_extensions([Exten|Extens], Iteration, Context, {PassAcc, FailAcc}) ->
                   ,fun(R) -> create_device(Exten, Iteration, Context, R) end
                   ,fun(R) -> create_user(Exten, Iteration, Context, R) end
                  ],
-    case lists:foldr(fun(F, Acc) -> F(Acc) end, {[], wh_json:new()}, Generators) of
-        {P, F} ->
-            case wh_json:is_empty(F) of
-                true ->
-                    create_extensions(Extens, Iteration + 1, Context, {[P|PassAcc], FailAcc});
-                false ->
-                    Failures = wh_json:set_value([<<"extensions">>, Iteration], F, FailAcc),
-                    create_extensions(Extens, Iteration + 1, Context, {[P|PassAcc], Failures})
-            end
+    {P, F} = lists:foldr(fun(F, Acc) -> F(Acc) end, {[], wh_json:new()}, Generators),
+    case wh_json:is_empty(F) of
+        true ->
+            create_extensions(Extens, Iteration + 1, Context, {[P|PassAcc], FailAcc});
+        false ->
+            Failures = wh_json:set_value([<<"extensions">>, wh_util:to_binary(Iteration)], F, FailAcc),
+            create_extensions(Extens, Iteration + 1, Context, {[P|PassAcc], Failures})
     end.
 
 %%--------------------------------------------------------------------
@@ -191,11 +189,10 @@ create_account(JObj, Context, {Pass, Fail}) ->
     Payload = [Context#cb_context{req_data=lists:foldr(fun(F, J) -> F(J) end, Account, Generators)
                                   ,req_nouns=[{?WH_ACCOUNTS_DB, []}]}
               ],
-    case crossbar_bindings:fold(<<"v1_resource.validate.accounts">>, Payload) of
-        #cb_context{resp_status=success}=Context1 ->
-            {[{?WH_ACCOUNTS_DB, Context1}|Pass], Fail};
-        #cb_context{resp_data=Errors} ->
-            {Pass, wh_json:set_value(<<"account">>, Errors, Fail)}
+    Context1 = crossbar_bindings:fold(<<"v1_resource.validate.accounts">>, Payload),
+    case cb_context:response(Context1) of
+        {ok, _} -> {[{?WH_ACCOUNTS_DB, Context1}|Pass], Fail};
+        {error, {_, _, Errors}} -> {Pass, wh_json:set_value(<<"account">>, Errors, Fail)}
     end.
 
 %%--------------------------------------------------------------------
@@ -221,11 +218,10 @@ create_phone_number(Number, Properties, Context, {Pass, Fail}) ->
                                   ,db_name = <<"--">>}
                ,Number, <<"activate">>
               ],
-    case crossbar_bindings:fold(<<"v1_resource.validate.phone_numbers">>, Payload) of
-        #cb_context{resp_status=success}=Context1 ->
-            {[{<<"phone_numbers">>, Context1#cb_context{storage=[{number, Number}]}}|Pass], Fail};
-        #cb_context{resp_data=Errors} ->
-            {Pass, wh_json:set_value([<<"phone_numbers">>, Number], Errors, Fail)}
+    Context1 = crossbar_bindings:fold(<<"v1_resource.validate.phone_numbers">>, Payload),
+    case cb_context:response(Context1) of
+        {ok, _} -> {[{<<"phone_numbers">>, Context1#cb_context{storage=[{number, Number}]}}|Pass], Fail};
+        {error, {_, _, Errors}} -> {Pass, wh_json:set_value(<<"phone_numbers">>, Errors, Fail)}
     end.
 
 %%--------------------------------------------------------------------
@@ -257,11 +253,10 @@ create_braintree_cards(JObj, Context, {Pass, Fail}) ->
                                           ,req_verb = <<"post">>}
                        ,<<"customer">>
                       ],
-            case crossbar_bindings:fold(<<"v1_resource.validate.braintree">>, Payload) of
-                #cb_context{resp_status=success}=Context1 ->
-                    {[{<<"braintree">>, Context1}|Pass], Fail};
-                #cb_context{resp_data=Errors} ->
-                    {Pass, wh_json:set_value(<<"braintree">>, Errors, Fail)}
+            Context1 = crossbar_bindings:fold(<<"v1_resource.validate.braintree">>, Payload),
+            case cb_context:response(Context1) of
+                {ok, _} -> {[{<<"braintree">>, Context1}|Pass], Fail};
+                {error, {_, _, Errors}} -> {Pass, wh_json:set_value(<<"braintree">>, Errors, Fail)}
             end
     end.
 
@@ -285,14 +280,6 @@ create_user(JObj, Iteration, Context, {Pass, Fail}) ->
                            %% ensure the first user is a admin
                            wh_json:set_value(<<"priv_level">>, <<"admin">>, J);
                       (J) -> J
-                   end
-                  ,fun(J) ->
-                           case wh_json:get_ne_value(<<"credentials">>, J) of
-                               undefined -> J;
-                               Creds ->
-                                   wh_json:set_value(<<"pvt_md5_auth">>, Creds,
-                                                     wh_json:delete_key(<<"credentials">>, J))
-                           end
                    end
                   ,fun(J) ->
                            case wh_json:get_ne_value(<<"first_name">>, J) of
@@ -321,11 +308,10 @@ create_user(JObj, Iteration, Context, {Pass, Fail}) ->
                    end
                  ],
     Payload = [Context#cb_context{req_data=lists:foldr(fun(F, J) -> F(J) end, User, Generators)}],
-    case crossbar_bindings:fold(<<"v1_resource.validate.users">>, Payload) of
-        #cb_context{resp_status=success}=Context1 ->
-            {[{<<"users">>, Context1#cb_context{storage=[{iteration, Iteration}]}}|Pass], Fail};
-        #cb_context{resp_data=Errors} ->
-            {Pass, wh_json:set_value(<<"user">>, Errors, Fail)}
+    Context1 = crossbar_bindings:fold(<<"v1_resource.validate.users">>, Payload),
+    case cb_context:response(Context1) of
+        {ok, _} -> {[{<<"users">>, Context1#cb_context{storage=[{iteration, Iteration}]}}|Pass], Fail};
+        {error, {_, _, Errors}} -> {Pass, wh_json:set_value(<<"users">>, Errors, Fail)}
     end.
 
 %%--------------------------------------------------------------------
@@ -386,11 +372,10 @@ create_device(JObj, Iteration, Context, {Pass, Fail}) ->
                    end
                  ],
     Payload = [Context#cb_context{req_data=lists:foldr(fun(F, J) -> F(J) end, Device, Generators)}],
-    case crossbar_bindings:fold(<<"v1_resource.validate.devices">>, Payload) of
-        #cb_context{resp_status=success}=Context1 ->
-            {[{<<"devices">>, Context1#cb_context{storage=[{iteration, Iteration}]}}|Pass], Fail};
-        #cb_context{resp_data=Errors} ->
-            {Pass, wh_json:set_value(<<"device">>, Errors, Fail)}
+    Context1 = crossbar_bindings:fold(<<"v1_resource.validate.devices">>, Payload),
+    case cb_context:response(Context1) of
+        {ok, _} -> {[{<<"devices">>, Context1#cb_context{storage=[{iteration, Iteration}]}}|Pass], Fail};
+        {error, {_, _, Errors}} -> {Pass, wh_json:set_value(<<"devices">>, Errors, Fail)}
     end.
 
 %%--------------------------------------------------------------------
@@ -440,11 +425,10 @@ create_vmbox(JObj, Iteration, Context, {Pass, Fail}) ->
                    end
                  ],
     Payload = [Context#cb_context{req_data=lists:foldr(fun(F, J) -> F(J) end, VMBox, Generators)}],
-    case crossbar_bindings:fold(<<"v1_resource.validate.vmboxes">>, Payload) of
-        #cb_context{resp_status=success}=Context1 ->
-            {[{<<"vmboxes">>, Context1#cb_context{storage=[{iteration, Iteration}]}}|Pass], Fail};
-        #cb_context{resp_data=Errors} ->
-            {Pass, wh_json:set_value(<<"vmbox">>, Errors, Fail)}
+    Context1 = crossbar_bindings:fold(<<"v1_resource.validate.vmboxes">>, Payload),
+    case cb_context:response(Context1) of
+        {ok, _} -> {[{<<"vmboxes">>, Context1#cb_context{storage=[{iteration, Iteration}]}}|Pass], Fail};
+        {error, {_, _, Errors}} -> {Pass, wh_json:set_value(<<"vmboxes">>, Errors, Fail)}
     end.
 
 %%--------------------------------------------------------------------
@@ -478,18 +462,17 @@ create_exten_callflow(JObj, Iteration, Context, {Pass, Fail}) ->
                                [] ->
                                    StartExten = whapps_config:get_integer(?OB_CONFIG_CAT
                                                                           ,<<"default_callflow_start_exten">>
-                                                                          ,2000),
+                                                                              ,2000),
                                    wh_json:set_value(<<"numbers">>, [wh_util:to_binary(StartExten + Iteration)], J);
-                               _ -> J
+                               Numbers -> wh_json:set_value(<<"numbers">>, Numbers, J)
                            end
                    end
                  ],
     Payload = [Context#cb_context{req_data=lists:foldr(fun(F, J) -> F(J) end, Callflow, Generators)}],
-    case crossbar_bindings:fold(<<"v1_resource.validate.callflows">>, Payload) of
-        #cb_context{resp_status=success}=Context1 ->
-            {[{<<"callflows">>, Context1#cb_context{storage=[{iteration, Iteration}]}}|Pass], Fail};
-        #cb_context{resp_data=Errors} ->
-            {Pass, wh_json:set_value(<<"callflow">>, Errors, Fail)}
+    Context1 = crossbar_bindings:fold(<<"v1_resource.validate.callflows">>, Payload),
+    case cb_context:response(Context1) of
+        {ok, _} -> {[{<<"callflows">>, Context1#cb_context{storage=[{iteration, Iteration}]}}|Pass], Fail};
+        {error, {_, _, Errors}} -> {Pass, wh_json:set_value(<<"callflows">>, Errors, Fail)}
     end.
 
 %%--------------------------------------------------------------------
@@ -505,25 +488,25 @@ create_exten_callflow(JObj, Iteration, Context, {Pass, Fail}) ->
 
 populate_new_account(Props, _) ->
     Context = props:get_value(?WH_ACCOUNTS_DB, Props),
-    Payload = [Context],
-    case crossbar_bindings:fold(<<"v1_resource.execute.put.accounts">>, Payload) of
-        #cb_context{resp_status=success, db_name=AccountDb, account_id=AccountId, doc=JObj}=Context1 ->
+    #cb_context{db_name=AccountDb, account_id=AccountId, doc=JObj} = Context1 
+        = crossbar_bindings:fold(<<"v1_resource.execute.put.accounts">>, [Context#cb_context{resp_status=error}]),
+    case cb_context:response(Context1) of
+        {error, _} -> Context1#cb_context{account_id=undefined, db_name=undefined};
+        {ok, _} ->
             Results = populate_new_account(prepare_props(Props), AccountDb, wh_json:new()),
-            Errors = wh_json:get_value(<<"errors">>, Results),
-            case wh_util:is_empty(Errors) of
-                true ->
+            case wh_json:get_ne_value(<<"errors">>, Results) of
+                undefined ->
                     lager:debug("new account created ~s (~s)", [AccountId, AccountDb]),
                     notfy_new_account(JObj),
                     Context1#cb_context{doc=wh_json:set_value(<<"account_id">>, AccountId, Results)};
-                false ->
-                    lager:debug("account creation errors: ~s", [wh_json:encode(Errors)]),
+                Failures ->
+                    lager:debug("account creation errors: ~p", [Failures]),
                     catch (crossbar_bindings:fold(<<"v1_resource.execute.delete.accounts">>, [Context1, AccountId])),
-                    Context1#cb_context{doc=wh_json:delete_key(<<"owner_id">>, Results), account_id=undefined}
-            end;
-        #cb_context{resp_error_msg=ErrorMsg, resp_data=ErrorData}=ErrorContext ->
-            AccountId = wh_json:get_value(<<"_id">>, Context#cb_context.req_data),
-            couch_mgr:db_delete(wh_util:format_account_id(AccountId, encoded)),
-            ErrorContext#cb_context{doc=wh_json:set_value(wh_util:to_binary(ErrorMsg), ErrorData, wh_json:new()), account_id=undefined}
+                    crossbar_util:response_invalid_data(Failures, Context1#cb_context{doc=wh_json:delete_key(<<"owner_id">>, Results)
+                                                                                      ,account_id=undefined
+                                                                                      ,db_name=undefined
+                                                                                      ,resp_data=wh_json:new()})
+            end
     end.
 
 populate_new_account([], _, Results) ->
@@ -531,41 +514,41 @@ populate_new_account([], _, Results) ->
 
 populate_new_account([{<<"phone_numbers">>, #cb_context{storage=[{number, Number}]}=Context}|Props], AccountDb, Results) ->
     AccountId = wh_util:format_account_id(AccountDb, raw),
-    Payload = [Context#cb_context{db_name=AccountDb
+    Payload = [Context#cb_context{resp_status=error
+                                  ,db_name=AccountDb
                                   ,auth_account_id=AccountId
                                   ,account_id=AccountId}
                ,Number, <<"activate">>
               ],
-    case crossbar_bindings:fold(<<"v1_resource.execute.put.phone_numbers">>, Payload) of
-        #cb_context{resp_status=success} ->
-            populate_new_account(Props, AccountDb, Results);
-        #cb_context{resp_error_msg=ErrMsg, resp_error_code=ErrCode, resp_data=ErrData} ->
-            Error = wh_json:from_list([{<<"error">>, ErrCode}, {<<"message">>, ErrMsg}, {<<"data">>, ErrData}]),
+    Context1 = crossbar_bindings:fold(<<"v1_resource.execute.put.phone_numbers">>, Payload),
+    case cb_context:response(Context1) of
+        {ok, _} -> populate_new_account(Props, AccountDb, Results);
+        {error, {_, _, Errors}} ->
             populate_new_account(Props, AccountDb
-                                 ,wh_json:set_value([<<"errors">>, <<"phone_numbers">>, Number], Error, Results))
+                                 ,wh_json:set_value([<<"errors">>, <<"phone_numbers">>, Number], Errors, Results))
     end;
 
 populate_new_account([{<<"braintree">>, Context}|Props], AccountDb, Results) ->
     AccountId = wh_util:format_account_id(AccountDb, raw),
-    Payload = [Context#cb_context{db_name=AccountDb
+    Payload = [Context#cb_context{resp_status=error
+                                  ,db_name=AccountDb
                                   ,account_id=AccountId
                                   ,req_verb = <<"post">>}
                ,<<"customer">>
               ],
-    case crossbar_bindings:fold(<<"v1_resource.execute.post.braintree">>, Payload) of
-        #cb_context{resp_status=success} ->
-            populate_new_account(Props, AccountDb, Results);
-        #cb_context{resp_error_msg=ErrMsg, resp_error_code=ErrCode, resp_data=ErrData} ->
-            _ = crossbar_util:disable_account(AccountId),
-            Error = wh_json:from_list([{<<"error">>, ErrCode}, {<<"message">>, ErrMsg}, {<<"data">>, ErrData}]),
+    Context1 = crossbar_bindings:fold(<<"v1_resource.execute.post.braintree">>, Payload),
+    case cb_context:response(Context1) of
+        {ok, _} -> populate_new_account(Props, AccountDb, Results);
+        {error, {_, _, Errors}} ->
             populate_new_account(Props, AccountDb
-                                 ,wh_json:set_value([<<"errors">>, <<"braintree">>], Error, Results))
+                                 ,wh_json:set_value([<<"errors">>, <<"braintree">>], Errors, Results))
     end;
 
 populate_new_account([{Event, #cb_context{storage=[{iteration, Iteration}]}=Context}|Props], AccountDb, Results) ->
-    Payload = [Context#cb_context{db_name=AccountDb}],
-    case crossbar_bindings:fold(<<"v1_resource.execute.put.", Event/binary>>, Payload) of
-        #cb_context{resp_status=success, doc=JObj} ->
+    Payload = [Context#cb_context{db_name=AccountDb, resp_status=error}],
+    #cb_context{doc=JObj} = Context1 = crossbar_bindings:fold(<<"v1_resource.execute.put.", Event/binary>>, Payload),
+    case cb_context:response(Context1) of
+        {ok, _} -> 
             case wh_json:get_value(<<"priv_level">>, JObj) of
                 <<"admin">> ->
                     populate_new_account(Props, AccountDb
@@ -573,15 +556,14 @@ populate_new_account([{Event, #cb_context{storage=[{iteration, Iteration}]}=Cont
                 _ ->
                     populate_new_account(Props, AccountDb, Results)
             end;
-        #cb_context{resp_error_msg=ErrMsg, resp_error_code=ErrCode, resp_data=ErrData} ->
-            Error = wh_json:from_list([{<<"error">>, ErrCode}, {<<"message">>, ErrMsg}, {<<"data">>, ErrData}]),
+        {error, {_, _, Errors}} ->
             populate_new_account(Props, AccountDb
-                                 ,wh_json:set_value([<<"errors">>, Event, Iteration], Error, Results))
+                                 ,wh_json:set_value([<<"errors">>, Event, wh_util:to_binary(Iteration)], Errors, Results))
     end.
 
 prepare_props(Props) ->
     lists:sort(fun({<<"braintree">>, _}, {_, _}) -> true;
-                   (_, _) -> false
+                  (_, _) -> false
                end, proplists:delete(?WH_ACCOUNTS_DB, Props)).
 
 %%--------------------------------------------------------------------

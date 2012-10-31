@@ -12,6 +12,7 @@
 -export([fetch/2, fetch/3]).
 -export([put_reqid/1]).
 -export([import_errors/1]).
+-export([response/1]).
 -export([has_errors/1]).
 -export([add_system_error/2
          ,add_system_error/3
@@ -70,8 +71,9 @@ put_reqid(#cb_context{req_id=ReqId}) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
-has_errors(#cb_context{validation_errors=JObj}) ->
-    (not wh_util:is_empty(JObj)).
+has_errors(#cb_context{validation_errors=JObj, resp_status=success}) ->
+    (not wh_util:is_empty(JObj));
+has_errors(_) -> true.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -79,12 +81,37 @@ has_errors(#cb_context{validation_errors=JObj}) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
-import_errors(#cb_context{validation_errors=JObj}=Context) ->
-    case has_errors(Context) of
-        false -> Context;
-        true -> crossbar_util:response_invalid_data(JObj, Context)
+import_errors(#cb_context{}=Context) ->
+    case response(Context) of
+        {ok, _} -> Context;
+        {error, {ErrorCode, ErrorMsg, Errors}} ->
+            Context#cb_context{resp_error_code=ErrorCode
+                               ,resp_error_msg=ErrorMsg
+                               ,resp_data=Errors
+                               ,resp_status=error}
     end.
-           
+
+response(#cb_context{resp_status=success, resp_data=JObj}) ->
+    {ok, JObj};
+response(#cb_context{resp_error_code=Code, resp_error_msg=Msg, resp_data=DataJObj
+                     ,validation_errors=ValidationJObj}=Context) ->
+    ErrorCode = try wh_util:to_integer(Context#cb_context.resp_error_code) of
+                    Code -> Code
+                catch
+                    _:_ -> 500
+                end,
+    ErrorMsg = case wh_util:is_empty(Msg) of
+                   false -> wh_util:to_binary(Msg);
+                   true -> <<"generic_error">>
+               end,
+    ErrorData = case {wh_util:is_empty(ValidationJObj), wh_util:is_empty(DataJObj)} of
+                    {false, _} -> ValidationJObj;
+                    {_, false} -> DataJObj;
+                    {true, true} ->
+                        <<(wh_util:to_binary(ErrorCode))/binary, ": ", ErrorMsg/binary>>
+                end,
+    {error, {ErrorCode, ErrorMsg, ErrorData}}.
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -94,12 +121,19 @@ import_errors(#cb_context{validation_errors=JObj}=Context) ->
 validate_request_data(Schema, #cb_context{req_data=Data}=Context) ->
     case wh_json_validator:is_valid(wh_json:public_fields(Data), Schema) of
         {fail, Errors} ->
+            lager:debug("request data did not validate against ~s: ~p", [Schema, Errors]),
+            io:format("request data did not validate against ~s: ~p", [Schema, Errors]),
             lists:foldl(fun({Property, Error}, C) ->
                                 [Code, Message] = binary:split(Error, <<":">>),
                                 add_validation_error(Property, Code, Message, C)
                         end, Context#cb_context{resp_status=error}, Errors);
         {pass, JObj} ->
-            Context#cb_context{resp_status=success, doc=JObj}
+            %% Allow onboarding to set the document ID
+            case wh_json:get_ne_value(<<"_id">>, Data) of
+                undefined -> Context#cb_context{resp_status=success, doc=JObj};
+                Id -> Context#cb_context{resp_status=success
+                                         ,doc=wh_json:set_value(<<"_id">>, Id, JObj)}
+            end
     end.
 
 validate_request_data(Schema, Context, OnSuccess) ->
@@ -121,11 +155,11 @@ validate_request_data(Schema, Context, OnSuccess, OnFailure) ->
 %% @end
 %%--------------------------------------------------------------------
 add_system_error(unspecified_fault, Context) ->
-    Context#cb_context{resp_status=error};
+    crossbar_util:response(fatal, <<"unspecified fault">>, Context);
 add_system_error(account_cant_create_tree, Context) ->
-    Context#cb_context{resp_status=error};
+    crossbar_util:response(fatal, <<"account creation fault">>, Context);
 add_system_error(account_has_descendants, Context) ->
-    Context#cb_context{resp_status=error};
+    crossbar_util:response(fatal, <<"account has descendants">>, Context);
 add_system_error(faulty_request, Context) ->
     crossbar_util:response_faulty_request(Context);
 
@@ -218,4 +252,8 @@ add_depreciated_validation_error(Property, Code, Message, #cb_context{validation
     %% convert to something that makes sense....
     Key = wh_util:join_binary(Property, <<".">>),
     Context#cb_context{validation_errors=wh_json:set_value([Key, Code], Message, JObj)
-                       ,resp_status=error}.
+                       ,resp_status=error
+                       ,resp_error_code=400
+                       ,resp_data=wh_json:new()
+                       ,resp_error_msg = <<"invalid data">>
+                      }.

@@ -157,16 +157,26 @@ check_user_schema(UserId, Context) ->
 
 on_successful_validation(undefined, #cb_context{doc=Doc}=Context) ->
     Props = [{<<"pvt_type">>, <<"user">>}],
-    maybe_validate_username(undefined, Context#cb_context{doc=wh_json:set_values(Props, Doc)});
+    maybe_import_credintials(undefined, Context#cb_context{doc=wh_json:set_values(Props, Doc)});
 on_successful_validation(UserId, #cb_context{}=Context) -> 
-    maybe_validate_username(UserId, crossbar_doc:load_merge(UserId, Context)).
+    maybe_import_credintials(UserId, crossbar_doc:load_merge(UserId, Context)).
+
+maybe_import_credintials(UserId, #cb_context{doc=JObj}=Context) ->
+    case wh_json:get_ne_value(<<"credentials">>, JObj) of
+        undefined -> maybe_validate_username(UserId, Context);
+        Creds ->
+            RemoveKeys = [<<"credentials">>, <<"pvt_sha1_auth">>],
+            C = Context#cb_context{doc=wh_json:set_value(<<"pvt_md5_auth">>, Creds
+                                                         ,wh_json:delete_keys(RemoveKeys, JObj))},
+            maybe_validate_username(UserId, C)
+    end.
 
 maybe_validate_username(UserId, #cb_context{doc=JObj}=Context) ->
     NewUsername = wh_json:get_ne_value(<<"username">>, JObj),
     CurrentUsername = case cb_context:fetch(db_doc, Context) of
-                          undefined -> undefined;
+                          undefined -> NewUsername;
                           CurrentJObj -> 
-                              wh_json:get_ne_value(<<"username">>, CurrentJObj)
+                              wh_json:get_ne_value(<<"username">>, CurrentJObj, NewUsername)
                       end,
     case wh_util:is_empty(NewUsername)
         orelse CurrentUsername =:= NewUsername
@@ -219,7 +229,7 @@ rehash_creds(_, Username, Password, #cb_context{doc=JObj}=Context) ->
     JObj1 = wh_json:set_values([{<<"pvt_md5_auth">>, MD5}
                                 ,{<<"pvt_sha1_auth">>, SHA1}
                                ], JObj),
-    Context#cb_context{doc=wh_json:delete_key(<<"password">>, JObj1)}.
+    Context#cb_context{doc=wh_json:delete_key(<<"password">>, JObj1)}. 
 
 %%--------------------------------------------------------------------
 %% @private

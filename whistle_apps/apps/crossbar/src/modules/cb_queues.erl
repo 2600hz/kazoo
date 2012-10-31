@@ -44,8 +44,6 @@
 
 -include("include/crossbar.hrl").
 
--define(PVT_TYPE, <<"queue">>).
--define(PVT_FUNS, [fun add_pvt_type/2]).
 -define(CB_LIST, <<"queues/crossbar_listing">>).
 -define(CB_AGENTS_LIST, <<"queues/agents_listing">>). %{agent_id, queue_id}
 
@@ -139,14 +137,14 @@ resource_exists(_, ?STATS_PATH_TOKEN, ?REALTIME_PATH_TOKEN) -> true.
 validate(#cb_context{req_verb = <<"get">>}=Context) ->
     summary(Context);
 validate(#cb_context{req_verb = <<"put">>}=Context) ->
-    create(Context).
+    validate_request(undefined, Context).
 
 validate(#cb_context{req_verb = <<"get">>}=Context, ?STATS_PATH_TOKEN) ->
     fetch_all_queue_stats(Context);
 validate(#cb_context{req_verb = <<"get">>}=Context, Id) ->
     read(Id, Context);
 validate(#cb_context{req_verb = <<"post">>}=Context, Id) ->
-    update(Id, Context);
+    validate_request(Id, Context);
 validate(#cb_context{req_verb = <<"delete">>}=Context, Id) ->
     read(Id, Context).
 
@@ -209,24 +207,6 @@ delete(#cb_context{}=Context, Id, ?ROSTER_PATH_TOKEN) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Create a new instance with the data provided, if it is valid
-%% @end
-%%--------------------------------------------------------------------
--spec create/1 :: (#cb_context{}) -> #cb_context{}.
-create(#cb_context{req_data=Data}=Context) ->
-    case wh_json_validator:is_valid(Data, <<"queues">>) of
-        {fail, Errors} ->
-            crossbar_util:response_invalid_data(Errors, Context);
-        {pass, JObj} ->
-            {JObj1, _} = lists:foldr(fun(F, {J, C}) ->
-                                             {F(J, C), C}
-                                     end, {JObj, Context}, ?PVT_FUNS),
-            Context#cb_context{doc=JObj1, resp_status=success}
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
 %% Load an instance from the database
 %% @end
 %%--------------------------------------------------------------------
@@ -238,6 +218,32 @@ read(Id, Context) ->
         Context1 -> Context1
     end.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec validate_request/2 :: ('undefined'|ne_binary(), #cb_context{}) -> #cb_context{}.
+validate_request(QueueId, Context) ->
+    check_queue_schema(QueueId, Context).
+
+check_queue_schema(QueueId, Context) ->
+    OnSuccess = fun(C) -> on_successful_validation(QueueId, C) end,
+    cb_context:validate_request_data(<<"queues">>, Context, OnSuccess).
+
+on_successful_validation(undefined, #cb_context{doc=Doc}=Context) ->
+    Props = [{<<"pvt_type">>, <<"queue">>}],
+    Context#cb_context{doc=wh_json:set_values(Props, Doc)};
+on_successful_validation(QueueId, #cb_context{}=Context) -> 
+    crossbar_doc:load_merge(QueueId, Context).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
 load_queue_agents(Id, #cb_context{resp_data=Queue}=Context) ->
     case load_agent_roster(Id, Context) of
         #cb_context{resp_status=success, resp_data=Agents, doc=_D} ->
@@ -327,22 +333,9 @@ maybe_rm_queue_from_agent(Id, A) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Update an existing instance with the data provided, if it is
-%% valid
+%%
 %% @end
 %%--------------------------------------------------------------------
--spec update/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
-update(Id, #cb_context{req_data=Data}=Context) ->
-    case wh_json_validator:is_valid(Data, <<"queues">>) of
-        {fail, Errors} ->
-            crossbar_util:response_invalid_data(Errors, Context);
-        {pass, JObj} ->
-            {JObj1, _} = lists:foldr(fun(F, {J, C}) ->
-                                             {F(J, C), C}
-                                     end, {JObj, Context}, ?PVT_FUNS),
-            crossbar_doc:load_merge(Id, JObj1, Context)
-    end.
-
 fetch_all_queue_stats(Context) ->
     fetch_all_queue_stats(Context, history).
 fetch_all_queue_stats(Context, history) ->
@@ -490,14 +483,9 @@ normalize_agents_results(JObj, Acc) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% These are the pvt funs that add the necessary pvt fields to every
-%% instance
+%%
 %% @end
 %%--------------------------------------------------------------------
--spec add_pvt_type/2 :: (wh_json:json_object(), #cb_context{}) -> wh_json:json_object().
-add_pvt_type(JObj, _) ->
-    wh_json:set_value(<<"pvt_type">>, ?PVT_TYPE, JObj).
-
 strip_api_fields(JObj) ->
     Strip = [<<"event_name">>, <<"event_category">>
                  ,<<"app_name">>, <<"app_version">>

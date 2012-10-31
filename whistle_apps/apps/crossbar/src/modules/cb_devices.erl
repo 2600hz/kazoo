@@ -22,6 +22,7 @@
          ,delete/2
          ,reconcile_services/1
          ,is_ip_acl_unique/1
+         ,get_all_acl_ips/0
         ]).
 
 -include_lib("crossbar/include/crossbar.hrl").
@@ -448,27 +449,33 @@ maybe_remove_aggreate(#cb_context{resp_status=success, doc=JObj}) ->
     end;    
 maybe_remove_aggreate(_) -> false.
 
-
-
-
-
-
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec get_all_acl_ips/0 :: () -> [] | [ne_binary(),...].
 get_all_acl_ips() ->
-    case couch_mgr:open_doc(?WH_CONFIG_DB, <<"ecallmgr">>) of
-        {ok, JObj} -> extract_acl_ips(JObj);
-        {error, _} -> []
+    Req = [{<<"Category">>, <<"ecallmgr">>}
+           ,{<<"Key">>, <<"acls">>}
+           ,{<<"Node">>, <<"all">>}
+           ,{<<"Default">>, wh_json:new()}
+           ,{<<"Msg-ID">>, wh_util:rand_hex_binary(16)}
+           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    Resp = whapps_util:amqp_pool_request(
+             props:filter_undefined(Req)
+             ,fun wapi_sysconf:publish_get_req/1
+             ,fun wapi_sysconf:get_resp_v/1
+            ),
+    case Resp of
+        {error, _} -> [];
+        {ok, JObj} -> 
+            extract_all_ips(wh_json:get_value(<<"Value">>, JObj, wh_json:new()))
     end.
 
-extract_acl_ips(JObj) ->
-    ACLs = extract_all_acls(JObj),
-    extract_all_ips(ACLs).
-
-extract_all_acls(JObj) ->
-    lists:foldr(fun(K, ACLs) ->
-                        ACL = wh_json:get_value([K, <<"acls">>], JObj, wh_json:new()),
-                        wh_json:merge_jobjs(ACL, ACLs)
-                end, wh_json:new(), wh_json:get_keys(JObj)).
-
+-spec extract_all_ips/1 :: (wh_json:json_object()) -> [] | [ne_binary(),...].
 extract_all_ips(JObj) ->
     lists:foldr(fun(K, IPs) ->
                         case wh_json:get_value([K, <<"cidr">>], JObj) of

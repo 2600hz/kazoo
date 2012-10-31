@@ -509,7 +509,8 @@ create_account_definition(#cb_context{doc=JObj, account_id=AccountId, db_name=Ac
     case couch_mgr:save_doc(AccountDb, wh_json:set_values(Props, JObj)) of
         {ok, AccountDef}->
             _ = replicate_account_definition(AccountDef),
-            Context#cb_context{doc=AccountDef, resp_data=wh_json:public_fields(AccountDef)};
+            Context#cb_context{doc=AccountDef, resp_data=wh_json:public_fields(AccountDef)
+                               ,resp_status=success};
         {error, _R} ->
             lager:debug("unable to create account definition: ~p", [_R]),
             throw(cb_context:add_system_error(datastore_fault, Context))
