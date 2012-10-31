@@ -471,7 +471,7 @@ handle_couch_mgr_success(JObj, Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_couch_mgr_errors/3 :: (atom(), ne_binary() | [ne_binary(),...] | 'undefined', #cb_context{}) -> #cb_context{}.
-handle_couch_mgr_errors(invalid_db, _, #cb_context{db_name=Db}=Context) ->
+handle_couch_mgr_errors(invalid_db_name, _, #cb_context{db_name=Db}=Context) ->
     lager:debug("datastore ~s not_found", [Db]),
     cb_context:add_system_error(datastore_missing, [{details, wh_util:to_binary(Db)}], Context);
 handle_couch_mgr_errors(db_not_reachable, _DocId, #cb_context{db_name=Db}=Context) ->
