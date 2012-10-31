@@ -1,0 +1,22 @@
+==================================== SETUP ====================================
+
+1) Ensure that cb_speech_ivr is in the "autoload_modules" list in the crossbar
+   system_config document.
+   
+   crossbar system_config document:
+   http://host.example.com:5984/_utils/document.html?system_config/crossbar
+
+
+2) Ensure that the speech_ivr system_config document exists. If it does not,
+   create a new document in the system_config database and seed it with the 
+   following JSON:
+   {
+       "_id": "speech_ivr",
+       "default": {
+           "sip_uri_host": "someserver.example.com;transport=tcp",
+           "bridge_timeout": 3
+       }
+   }
+
+   speech_ivr system_config document:
+   http://host.example.org:5984/_utils/document.html?system_config/speech_ivr
