@@ -80,7 +80,7 @@ get_endpoints(Call, {ok, Devices}) ->
     EPDocs = [EPDoc
               || Device <- Devices,
                  (EPDoc = get_endpoint(Call, wh_json:get_value(<<"id">>, Device))) =/= undefined,
-                 begin wh_json:get_value(<<"id">>, Device), wh_json:is_true(<<"enabled">>, EPDoc, false) end,
+                 wh_json:is_true(<<"enabled">>, EPDoc, false),
                  is_endpoint_registered(EPDoc, AcctRealm)
              ],
 
