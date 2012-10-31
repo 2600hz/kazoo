@@ -13,6 +13,7 @@
          ,unbind_from_call_events/1
          ,agents_in_queue/2
          ,agent_status/2
+         ,agent_devices/2
          ,proc_id/0, proc_id/1, proc_id/2
          ,queue_presence_update/2
          ,agent_presence_update/2
@@ -51,6 +52,16 @@ agents_in_queue(AcctDb, QueueId) ->
         {ok, As} -> [wh_json:get_value(<<"value">>, A) || A <- As]
     end.
 
+-spec agent_devices/2 :: (ne_binary(), ne_binary()) -> wh_json:json_objects().
+agent_devices(AcctDb, AgentId) ->
+    case couch_mgr:get_results(AcctDb, <<"cf_attributes/owned">>, [{key, [AgentId, <<"device">>]}
+                                                                   ,include_docs
+                                                                  ])
+    of
+        {ok, Devices} -> [wh_json:get_value(<<"doc">>, Dev) || Dev <- Devices];
+        {error, _} -> []
+    end.
+
 -spec get_endpoints/2 :: (whapps_call:call(), ne_binary() | couch_mgr:get_results_return()) ->
                                  wh_json:json_objects().
 get_endpoints(Call, ?NE_BINARY = AgentId) ->
@@ -66,11 +77,10 @@ get_endpoints(_Call, {error, _E}) -> [];
 get_endpoints(Call, {ok, Devices}) ->
     {ok, AcctDoc} = couch_mgr:open_cache_doc(whapps_call:account_db(Call), whapps_call:account_id(Call)),
     AcctRealm = wh_json:get_value(<<"realm">>, AcctDoc),
-
     EPDocs = [EPDoc
               || Device <- Devices,
                  (EPDoc = get_endpoint(Call, wh_json:get_value(<<"id">>, Device))) =/= undefined,
-                 wh_json:is_true(<<"enabled">>, EPDoc, false),
+                 begin wh_json:get_value(<<"id">>, Device), wh_json:is_true(<<"enabled">>, EPDoc, false) end,
                  is_endpoint_registered(EPDoc, AcctRealm)
              ],
 
