@@ -81,7 +81,7 @@ update_acdc_actor(Call, _QueueId, <<"queue">>) -> whapps_call_command:hangup(Cal
 update_acdc_actor(Call, AgentId, <<"user">>) ->
     AcctId = whapps_call:account_id(Call),
 
-    case acdc_util:agent_status(AcctId, AgentId) of
+    case acdc_util:agent_status(whapps_call:account_db(Call), AgentId) of
         <<"logout">> -> update_acdc_agent(Call, AcctId, AgentId, <<"login">>, fun wapi_acdc_agent:publish_login/1);
         <<"pause">> -> update_acdc_agent(Call, AcctId, AgentId, <<"resume">>, fun wapi_acdc_agent:publish_resume/1);
         _ -> update_acdc_agent(Call, AcctId, AgentId, <<"logout">>, fun wapi_acdc_agent:publish_logout/1)
@@ -90,6 +90,21 @@ update_acdc_actor(Call, AgentId, <<"user">>) ->
 update_acdc_agent(Call, AcctId, AgentId, Status, PubFun) ->
     lager:debug("going to new status ~s", [Status]),
 
+    try update_agent_device(Call, AgentId, Status) of
+        {ok, _D} ->
+            lager:debug("updated device: ~p", [_D]),
+            {ok, _} = save_status(Call, AgentId, Status),
+            send_new_status(AcctId, AgentId, PubFun),
+            play_status_prompt(Call, Status);
+        {error, not_owner} ->
+            play_failed_update(Call)
+    catch
+        _E:_R ->
+            lager:debug("failed to update agent device: ~s: ~p", [_E, _R]),
+            play_failed_update(Call)
+    end.
+
+save_status(Call, AgentId, Status) ->
     AcctDb = whapps_call:account_db(Call),
     Doc = wh_json:from_list([{<<"call_id">>, whapps_call:call_id(Call)}
                              ,{<<"agent_id">>, AgentId}
@@ -97,11 +112,40 @@ update_acdc_agent(Call, AcctId, AgentId, Status, PubFun) ->
                              ,{<<"action">>, Status}
                              ,{<<"pvt_type">>, <<"agent_activity">>}
                             ]),
-    {ok, _D} = couch_mgr:save_doc(AcctDb, wh_doc:update_pvt_parameters(Doc, AcctDb)),
-    lager:debug("saved status doc ~p", [_D]),
+    couch_mgr:save_doc(AcctDb, wh_doc:update_pvt_parameters(Doc, AcctDb)).
 
-    send_new_status(AcctId, AgentId, PubFun),
-    play_status_prompt(Call, Status).
+update_agent_device(Call, AgentId, <<"login">>) ->
+    lager:debug("need to set owner_id to ~s on device ~s", [AgentId, whapps_call:authorizing_id(Call)]),
+    {ok, Device} = couch_mgr:open_doc(whapps_call:account_db(Call), whapps_call:authorizing_id(Call)),
+    lager:debug("setting owner_id from ~s to ~s", [wh_json:get_value(<<"owner_id">>, Device), AgentId]),
+
+    move_agent_device(Call, AgentId, Device);
+update_agent_device(Call, AgentId, <<"logout">>) ->
+    {ok, Device} = couch_mgr:open_doc(whapps_call:account_db(Call), whapps_call:authorizing_id(Call)),
+
+    case wh_json:get_value(<<"owner_id">>, Device) of
+        AgentId ->
+            lager:debug("unsetting owner_id from ~s", [wh_json:get_value(<<"owner_id">>, Device)]),
+            {ok, _} = couch_mgr:save_doc(whapps_call:account_db(Call), wh_json:delete_key(<<"owner_id">>, Device));
+        _Other ->
+            lager:debug("owner is ~s, not ~s, leaving as-is", [_Other, AgentId]),
+            {error, not_owner}
+    end;
+update_agent_device(_, _, _) ->
+    ok.
+
+move_agent_device(Call, AgentId, Device) ->
+    DeviceId = wh_json:get_value(<<"_id">>, Device),
+
+    _ = case [wh_json:delete_key(<<"owner_id">>, D)
+              || D <- acdc_util:agent_devices(whapps_call:account_db(Call), AgentId),
+                 wh_json:get_value(<<"_id">>, D) =/= DeviceId
+             ]
+        of
+            [] -> ok;
+            OldDevices -> couch_mgr:save_docs(whapps_call:account_db(Call), OldDevices)
+        end,
+    {ok, _} = couch_mgr:save_doc(whapps_call:account_db(Call), wh_json:set_value(<<"owner_id">>, AgentId, Device)).
 
 -spec send_new_status/3 :: (ne_binary(), ne_binary(), wh_amqp_worker:publish_fun()) -> 'ok'.
 send_new_status(AcctId, AgentId, PubFun) ->
@@ -118,3 +162,5 @@ play_status_prompt(Call, <<"logout">>) ->
     whapps_call_command:prompt(<<"agent-logged_out">>, Call);
 play_status_prompt(Call, <<"resume">>) ->
     whapps_call_command:prompt(<<"agent-resume">>, Call).
+play_failed_update(Call) ->
+    whapps_call_command:prompt(<<"agent-invalid_choice">>, Call).
