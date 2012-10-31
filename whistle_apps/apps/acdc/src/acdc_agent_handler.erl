@@ -228,7 +228,9 @@ maybe_respond_to_presence_probe(JObj, AcctDb) ->
     end.
 
 maybe_update_probe(JObj, AcctId, AgentId, <<"user">>) ->
-    update_probe(JObj, acdc_agents_sup:find_agent_supervisor(AcctId, AgentId)).
+    update_probe(JObj, acdc_agents_sup:find_agent_supervisor(AcctId, AgentId));
+maybe_update_probe(_, _, _, _) ->
+    ok.
 
 update_probe(JObj, undefined) ->
     lager:debug("no agent present, redify!"),
@@ -239,7 +241,6 @@ update_probe(JObj, P) when is_pid(P) ->
 
 send_probe(JObj, State) ->
     To = wh_json:get_value(<<"To">>, JObj),
-lager:debug("state: ~s jobj: ~p", [State, JObj]),
     PresenceUpdate =
         [{<<"State">>, State}
          ,{<<"Presence-ID">>, To}
