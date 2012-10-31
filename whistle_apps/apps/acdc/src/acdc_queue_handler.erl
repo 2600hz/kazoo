@@ -162,7 +162,9 @@ maybe_respond_to_presence_probe(JObj, AcctDb) ->
     end.
 
 maybe_update_probe(JObj, AcctId, QueueId, <<"queue">>) ->
-    update_probe(JObj, wapi_acdc_queue:queue_size(AcctId, QueueId)).
+    update_probe(JObj, wapi_acdc_queue:queue_size(AcctId, QueueId));
+maybe_update_probe(_, _, _, _) ->
+    ok.
 
 update_probe(JObj, 0) ->
     lager:debug("no calls in queue, greenify!"),
