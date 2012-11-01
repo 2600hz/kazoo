@@ -197,7 +197,6 @@
                "name":"Music On Hold (ID)",
                "description":"The ID of a media object that should be used as the user music on hold",
                "type":"string",
-               "minLength":128,
                "maxLength":128
             }
          },

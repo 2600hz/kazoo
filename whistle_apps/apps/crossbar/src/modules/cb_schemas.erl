@@ -20,7 +20,6 @@
 
 -include("include/crossbar.hrl").
 
--define(PVT_FUNS, [fun add_pvt_type/2]).
 -define(VALIDATION_PATH_TOKEN, <<"validation">>).
 
 %%%===================================================================
@@ -97,13 +96,9 @@ validate(#cb_context{req_verb = <<"get">>}=Context) ->
 validate(#cb_context{req_verb = <<"get">>}=Context, Id) ->
     read(Id, Context#cb_context{db_name = ?WH_SCHEMA_DB}).
 
-validate(#cb_context{req_data=Data}=Context, Id, ?VALIDATION_PATH_TOKEN) ->
-    case wh_json_validator:is_valid(Data, Id) of
-        {fail, Errors} ->
-            crossbar_util:response_invalid_data(Errors, Context);
-        {pass, _JObj} ->
-            crossbar_util:response(<<"data passed validation">>, Context)
-    end.
+validate(#cb_context{}=Context, Id, ?VALIDATION_PATH_TOKEN) ->
+    OnSuccess = fun(#cb_context{doc=J}=C) -> C#cb_context{resp_data=J} end,
+    cb_context:validate_request_data(Id, Context, OnSuccess).
 
 %%%===================================================================
 %%% Internal functions

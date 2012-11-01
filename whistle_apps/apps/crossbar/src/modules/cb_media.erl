@@ -37,9 +37,6 @@
                            ,{<<"application">>, <<"x-base64">>}
                           ]).
 
--define(PVT_TYPE, <<"media">>).
--define(PVT_FUNS, [fun add_pvt_type/2, fun add_media_source/2]).
-
 -define(CB_LIST, <<"media/crossbar_listing">>).
 
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".media">>).
@@ -136,11 +133,11 @@ content_types_accepted(Context, _, _) ->
 validate(#cb_context{req_verb = <<"get">>}=Context) ->
     load_media_summary(Context);
 validate(#cb_context{req_verb = <<"put">>}=Context) ->
-    create_media_meta(Context).
+    validate_request(undefined, Context).
 validate(#cb_context{req_verb = <<"get">>}=Context, MediaId) ->
     load_media_meta(MediaId, Context);
 validate(#cb_context{req_verb = <<"post">>}=Context, MediaId) ->
-    update_media_meta(MediaId, Context);
+    validate_request(MediaId, Context);
 validate(#cb_context{req_verb = <<"delete">>, req_data=_Data}=Context, MediaID) ->
     load_media_meta(MediaID, Context).
 
@@ -148,36 +145,26 @@ validate(#cb_context{req_verb = <<"get">>}=Context, MediaId, ?BIN_DATA) ->
     lager:debug("fetch media contents"),
     load_media_binary(MediaId, Context);
 validate(#cb_context{req_verb = <<"post">>, req_files=[]}=Context, _MediaID, ?BIN_DATA) ->
-    lager:debug("No files in request to save attachment"),
-    E = wh_json:set_value([<<"content_size">>, <<"minLength">>], <<"No file uploaded">>, wh_json:new()),
-    crossbar_util:response_invalid_data(E, Context);
+    Message = <<"please provide an media file">>,
+    cb_context:add_validation_error(<<"file">>, <<"required">>, Message, Context);
 validate(#cb_context{req_verb = <<"post">>, req_files=[{_Filename, FileObj}]}=Context, MediaId, ?BIN_DATA) ->
     case load_media_meta(MediaId, Context) of
-        #cb_context{resp_status=success, doc=Data}=Context1 ->
-            Updaters = [fun(J) ->
-                                CT = wh_json:get_value([<<"headers">>, <<"content_type">>], FileObj, <<"application/octet-stream">>),
-                                wh_json:set_value(<<"content_type">>, CT, J)
-                        end
-                        ,fun(J) ->
-                                 Size = wh_json:get_integer_value([<<"headers">>, <<"content_length">>]
-                                                                 ,FileObj
-                                                                  ,byte_size(wh_json:get_value(<<"contents">>, FileObj, <<>>))),
-                                 wh_json:set_value(<<"content_length">>, Size, J)
-                         end
-                        ,fun(J) -> wh_json:set_value(<<"media_source">>, <<"recording">>, J) end
-                       ],
-            case wh_json_validator:is_valid(lists:foldr(fun(F, J) -> F(J) end, Data, Updaters), <<"media">>) of
-                {fail, Errors} ->
-                    crossbar_util:response_invalid_data(Errors, Context);
-                {pass, JObj} ->
-                    Context1#cb_context{doc=JObj}
-            end;
+        #cb_context{resp_status=success, doc=JObj}=C ->
+            CT = wh_json:get_value([<<"headers">>, <<"content_type">>], FileObj, <<"application/octet-stream">>),
+            Size = wh_json:get_integer_value([<<"headers">>, <<"content_length">>]
+                                             ,FileObj
+                                             ,byte_size(wh_json:get_value(<<"contents">>, FileObj, <<>>))),
+
+            Props = [{<<"content_type">>, CT}
+                     ,{<<"content_length">>, Size}
+                     ,{<<"media_source">>, <<"recording">>}
+                    ],
+            validate_request(MediaId, C#cb_context{req_data=wh_json:set_values(Props, JObj)});
         Else -> Else
     end;
 validate(#cb_context{req_verb = <<"post">>}=Context, _, ?BIN_DATA) ->
-    lager:debug("Multiple files in request to save attachment"),
-    E = wh_json:set_value([<<"content_size">>, <<"maxLength">>], <<"Uploading multiple files is not supported">>, wh_json:new()),
-    crossbar_util:response_invalid_data(E, Context).
+    Message = <<"please provide a single media file">>,
+    cb_context:add_validation_error(<<"file">>, <<"maxItems">>, Message, Context).
 
 -spec get/3 :: (#cb_context{}, path_token(), path_token()) -> #cb_context{}.
 get(Context, _MediaID, ?BIN_DATA) ->
@@ -295,36 +282,24 @@ load_media_meta(MediaId, Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Create a new media_meta document with the data provided, if it is valid
+%% 
 %% @end
 %%--------------------------------------------------------------------
--spec create_media_meta/1 :: (#cb_context{}) -> #cb_context{}.
-create_media_meta(#cb_context{req_data=Data}=Context) ->
-    case wh_json_validator:is_valid(Data, <<"media">>) of
-        {fail, Errors} ->
-            crossbar_util:response_invalid_data(Errors, Context);
-        {pass, JObj} ->
-            {JObj1, _} = lists:foldr(fun(F, {J, C}) ->
-                                             {F(J, C), C}
-                                     end, {JObj, Context}, ?PVT_FUNS),
-            Context#cb_context{doc=JObj1, resp_status=success}
-    end.
+-spec validate_request/2 :: ('undefined'|ne_binary(), #cb_context{}) -> #cb_context{}.
+validate_request(MediaId, Context) ->
+    check_media_schema(MediaId, Context).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Update an existing media document with the data provided, if it is
-%% valid
-%% @end
-%%--------------------------------------------------------------------
--spec update_media_meta/2 :: (binary(), #cb_context{}) -> #cb_context{}.
-update_media_meta(MediaId, #cb_context{req_data=Data}=Context) ->
-    case wh_json_validator:is_valid(Data, <<"media">>) of
-        {fail, Errors} ->
-            crossbar_util:response_invalid_data(Errors, Context);
-        {pass, JObj} ->
-            crossbar_doc:load_merge(MediaId, add_pvt_type(JObj, Context), Context)
-    end.
+check_media_schema(MediaId, Context) ->
+    OnSuccess = fun(C) -> on_successful_validation(MediaId, C) end,
+    cb_context:validate_request_data(<<"media">>, Context, OnSuccess).
+
+on_successful_validation(undefined, #cb_context{doc=Doc}=Context) ->
+    Props = [{<<"pvt_type">>, <<"media">>}
+             ,{<<"media_source">>, <<"upload">>}
+            ],
+    Context#cb_context{doc=wh_json:set_values(Props, Doc)};
+on_successful_validation(MediaId, #cb_context{}=Context) -> 
+    crossbar_doc:load_merge(MediaId, Context).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -438,18 +413,3 @@ content_type_to_extension(<<"audio/mpeg">>) -> <<"mp3">>;
 content_type_to_extension(<<"audio/mpeg3">>) -> <<"mp3">>;
 content_type_to_extension(<<"audio/mp3">>) -> <<"mp3">>;
 content_type_to_extension(<<"audio/ogg">>) -> <<"ogg">>.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% These are the pvt funs that add the necessary pvt fields to every
-%% instance
-%% @end
-%%--------------------------------------------------------------------
--spec add_pvt_type/2 :: (wh_json:json_object(), #cb_context{}) -> wh_json:json_object().
-add_pvt_type(JObj, _) ->
-    wh_json:set_value(<<"pvt_type">>, ?PVT_TYPE, JObj).
-
--spec add_media_source/2 :: (wh_json:json_object(), #cb_context{}) -> wh_json:json_object().
-add_media_source(JObj, _) ->
-    wh_json:set_value(<<"media_source">>, <<"upload">>, JObj).

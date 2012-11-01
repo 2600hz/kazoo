@@ -416,6 +416,7 @@ process_broadcast_event(<<"channel_update">>, Data) ->
 -spec run_start_cmds/1 :: (atom()) -> pid().
 run_start_cmds(Node) ->
     spawn_link(fun() ->
+                       timer:sleep(5000),
                        Cmds = ecallmgr_config:get(<<"fs_cmds">>, [], Node),
                        Res = process_cmds(Node, Cmds),
                        case lists:filter(fun was_not_successful_cmd/1, Res) of
@@ -451,13 +452,15 @@ process_cmd(Node, ApiCmd0, ApiArg, Acc) ->
     process_cmd(Node, ApiCmd0, ApiArg, Acc, list).
 process_cmd(Node, ApiCmd0, ApiArg, Acc, ArgFormat) ->
     ApiCmd = wh_util:to_atom(wh_util:to_binary(ApiCmd0), ?FS_CMD_SAFELIST),
-    case freeswitch:api(Node, ApiCmd, format_args(ArgFormat, ApiArg)) of
-        {ok, FSResp} ->
+    {ok, BGApiID} = freeswitch:bgapi(Node, ApiCmd, format_args(ArgFormat, ApiArg)),
+    receive
+        {bgok, BGApiID, FSResp} ->
             process_resp(ApiCmd, ApiArg, binary:split(FSResp, <<"\n">>, [global]), Acc);
-        {error, badarg} when ArgFormat =:= list ->
+        {bgerror, BGApiID, _} when ArgFormat =:= list ->
             process_cmd(Node, ApiCmd0, ApiArg, Acc, binary);
-        {error, _}=E -> [E|Acc];
-        timeout -> [{timeout, {ApiCmd, ApiArg}} | Acc]
+        {bgerror, BGApiID, Error} -> [Error | Acc]
+    after 120000 ->
+            [{timeout, {ApiCmd, ApiArg}} | Acc]
     end.
 
 format_args(list, Args) -> wh_util:to_list(Args);
@@ -521,7 +524,8 @@ show_channels_as_json(Node) ->
                             ,((Values = binary:split(Line, <<"|||">>, [global])) =/= [Line]) 
                     ]
             end;
-        {error, _} -> []
+        {error, _} -> [];
+        timeout -> []
     end.
 
 -spec maybe_start_event_listener/2 :: (atom(), ne_binary()) -> 'ok' | sup_startchild_ret().

@@ -9,6 +9,7 @@
 -define(WH_PROVISIONER_DB, <<"global_provisioner">>).
 -define(WH_FAXES, <<"faxes">>).
 -define(WH_SERVICES_DB, <<"services">>).
+-define(WH_OFFNET_DB, <<"offnet">>).
 
 -define(WH_ACCOUNT_CONFIGS, <<"configs_">>).
 

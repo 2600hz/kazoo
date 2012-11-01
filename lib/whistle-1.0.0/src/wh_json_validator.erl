@@ -71,27 +71,9 @@ is_valid(JObj, Schema) ->
             lager:debug("json validated against ~s schema", [wh_json:get_value(<<"_id">>, Schema)]),
             Ok;
         {fail, Errors} ->
-            E = format_errors(Errors),
-            lager:debug("json failed validation against ~s schema: ~s", [wh_json:get_value(<<"_id">>, Schema), wh_json:encode(E)]),
-            {fail, E}
+            lager:debug("json failed validation against ~s schema", [wh_json:get_value(<<"_id">>, Schema)]),
+            {fail, Errors}
     end.
-
-
--spec format_errors/1 :: (error_acc()) -> wh_json:json_object().
--spec format_errors/2 :: (error_acc(), wh_json:json_object()) -> wh_json:json_object().
-
-format_errors(Errors) ->
-    format_errors(Errors, wh_json:new()).
-
-format_errors([], JObj) ->
-    JObj;
-format_errors([{K, V}|T], JObj) when is_list(K) ->
-    Property = wh_util:join_binary(K, <<".">>),
-    [Attr, Msg] = binary:split(V, <<":">>),
-    format_errors(T, wh_json:set_value([Property, Attr], Msg, JObj));
-format_errors([{Property, V}|T], JObj) ->
-    [Attr, Msg] = binary:split(V, <<":">>),
-    format_errors(T, wh_json:set_value([Property, Attr], Msg, JObj)).
 
 %% JObj = { ...,"name":"Mal Reynolds",...}
 %% 

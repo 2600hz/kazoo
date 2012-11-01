@@ -64,7 +64,6 @@ resource_exists() ->
 validate(#cb_context{req_verb = <<"get">>}=Context) ->
     display_version(Context).
 
-
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================

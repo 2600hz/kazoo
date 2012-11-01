@@ -218,7 +218,6 @@
                "name":"Music On Hold (ID)",
                "description":"The ID of a media object that should be used as the device music on hold",
                "type":"string",
-               "minLength":128,
                "maxLength":128
             }
          },
@@ -350,7 +349,7 @@
                "type":"string",
                "description":"IP address for this device",
                "required":false,
-               "pattern":"^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$"
+               "pattern":"^(?:[0-9]{1,3}\\.){3}[0-9]{1,3}$"
             }
          },
          "default":{

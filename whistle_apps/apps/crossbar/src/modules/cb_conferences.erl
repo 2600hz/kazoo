@@ -116,16 +116,16 @@ delete(Context, _) ->
 %%--------------------------------------------------------------------
 -spec load_conference_summary/1 :: (#cb_context{}) -> #cb_context{}.
 load_conference_summary(#cb_context{req_nouns=Nouns}=Context) ->
-    LastNoun  = lists:nth(2, Nouns),
-    case LastNoun of
+    case lists:nth(2, Nouns) of
         {<<"users">>, [UserId]} ->
-            crossbar_doc:load_view(?CB_LIST, [], Context, fun(J, A) ->
-                                                                  normalize_users_results(J, A, UserId)
-                                                          end);
+            Filter = fun(J, A) ->
+                             normalize_users_results(J, A, UserId)
+                     end,
+            crossbar_doc:load_view(?CB_LIST, [], Context, Filter);
         {?WH_ACCOUNTS_DB, _} ->
             crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2);
         _ ->
-            crossbar_util:response_faulty_request(Context)
+            cb_context:add_system_error(faulty_request, Context)
     end.
 
 %%--------------------------------------------------------------------
@@ -135,15 +135,9 @@ load_conference_summary(#cb_context{req_nouns=Nouns}=Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec create_conference/1 :: (#cb_context{}) -> #cb_context{}.
-create_conference(#cb_context{req_data=Data}=Context) ->
-    case wh_json_validator:is_valid(Data, <<"conferences">>) of
-        {fail, Errors} ->
-            crossbar_util:response_invalid_data(Errors, Context);
-        {pass, JObj} ->
-            Context#cb_context{resp_status=success
-                               ,doc=wh_json:set_value(<<"pvt_type">>, <<"conference">>, JObj)
-                              }
-    end.
+create_conference(#cb_context{}=Context) ->
+    OnSuccess = fun(C) -> on_successful_validation(undefined, C) end,
+    cb_context:validate_request_data(<<"conferences">>, Context, OnSuccess).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -163,13 +157,21 @@ load_conference(DocId, Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec update_conference/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
-update_conference(DocId, #cb_context{req_data=Data}=Context) ->
-    case wh_json_validator:is_valid(Data, <<"conferences">>) of
-        {fail, Errors} ->
-            crossbar_util:response_invalid_data(Errors, Context);
-        {pass, JObj} ->
-            crossbar_doc:load_merge(DocId, JObj, Context)
-    end.
+update_conference(DocId, #cb_context{}=Context) ->
+    OnSuccess = fun(C) -> on_successful_validation(DocId, C) end,
+    cb_context:validate_request_data(<<"conferences">>, Context, OnSuccess).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec on_successful_validation/2 :: ('undefined' | ne_binary(), #cb_context{}) -> #cb_context{}.
+on_successful_validation(undefined, #cb_context{doc=JObj}=Context) ->
+    Context#cb_context{doc=wh_json:set_value(<<"pvt_type">>, <<"conference">>, JObj)};
+on_successful_validation(DocId, #cb_context{}=Context) ->
+    crossbar_doc:load_merge(DocId, Context).
 
 %%--------------------------------------------------------------------
 %% @private

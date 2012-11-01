@@ -174,7 +174,7 @@ emergency_provisioning_request(Verb, Props) ->
                                                 ,[append]),
             lager:debug("dash e911 request error: 503"),
             {error, server_error};
-        {ok, Code, _, Response} ->
+       {ok, Code, _, Response} ->
             ?DASH_DEBUG andalso file:write_file("/tmp/dash_e911.xml"
                                                 ,io_lib:format("Response:~n~p~n~s~n", [Code, Response])
                                                 ,[append]),
@@ -189,7 +189,7 @@ emergency_provisioning_request(Verb, Props) ->
             end;
         {error, _}=E ->
             lager:debug("dash e911 request error: ~p", [E]),
-            E
+            {error, unreachable}
     end.
 
 %%--------------------------------------------------------------------
@@ -202,18 +202,21 @@ emergency_provisioning_request(Verb, Props) ->
                                                  {provisioned, wh_json:json_object()} |
                                                  {error, binary()}.
 is_valid_location(Location) ->
-    Response = emergency_provisioning_request('validateLocation', Location),
-    case wh_util:get_xml_value("//Location/status/code/text()", Response) of
-        <<"GEOCODED">> ->
-            {geocoded, location_xml_to_json_address(xmerl_xpath:string("//Location", Response))};
-        <<"PROVISIONED">> ->
-            {provisioned, location_xml_to_json_address(xmerl_xpath:string("//Location", Response))};
-        <<"INVALID">> ->
-            {error, wh_util:get_xml_value("//Location/status/description/text()", Response)};
-        <<"ERROR">> ->
-            {error, wh_util:get_xml_value("//Location/status/description/text()", Response)};
-        Else ->
-            {error, wh_util:to_binary(Else)}
+    case emergency_provisioning_request('validateLocation', Location) of
+        {error, Reason} -> {error, wh_util:to_binary(Reason)};
+        {ok, Response} ->
+            case wh_util:get_xml_value("//Location/status/code/text()", Response) of
+                <<"GEOCODED">> ->
+                    {geocoded, location_xml_to_json_address(xmerl_xpath:string("//Location", Response))};
+                <<"PROVISIONED">> ->
+                    {provisioned, location_xml_to_json_address(xmerl_xpath:string("//Location", Response))};
+                <<"INVALID">> ->
+                    {error, wh_util:get_xml_value("//Location/status/description/text()", Response)};
+                <<"ERROR">> ->
+                    {error, wh_util:get_xml_value("//Location/status/description/text()", Response)};
+                Else ->
+                    {error, wh_util:to_binary(Else)}
+            end
     end.
 
 %%--------------------------------------------------------------------
@@ -230,18 +233,21 @@ add_location(Number, Location, CallerName) ->
                       ,{'callername', [wh_util:to_list(CallerName)]}]}
              |Location
             ],
-    Response = emergency_provisioning_request('addLocation', Props),
-    case wh_util:get_xml_value("//Location/status/code/text()", Response) of
-        <<"GEOCODED">> ->
-            {geocoded, location_xml_to_json_address(xmerl_xpath:string("//Location", Response))};
-        <<"PROVISIONED">> ->
-            {provisioned, location_xml_to_json_address(xmerl_xpath:string("//Location", Response))};
-        <<"INVALID">> ->
-            {error, wh_util:get_xml_value("//Location/status/description/text()", Response)};
-        <<"ERROR">> ->
-            {error, wh_util:get_xml_value("//Location/status/description/text()", Response)};
-        Else ->
-            {error, wh_util:to_binary(Else)}
+    case emergency_provisioning_request('addLocation', Props) of
+        {error, Reason} -> {error, wh_util:to_binary(Reason)};
+        {ok, Response} ->
+            case wh_util:get_xml_value("//Location/status/code/text()", Response) of
+                <<"GEOCODED">> ->
+                    {geocoded, location_xml_to_json_address(xmerl_xpath:string("//Location", Response))};
+                <<"PROVISIONED">> ->
+                    {provisioned, location_xml_to_json_address(xmerl_xpath:string("//Location", Response))};
+                <<"INVALID">> ->
+                    {error, wh_util:get_xml_value("//Location/status/description/text()", Response)};
+                <<"ERROR">> ->
+                    {error, wh_util:get_xml_value("//Location/status/description/text()", Response)};
+                Else ->
+                    {error, wh_util:to_binary(Else)}
+            end
     end.
 
 %%--------------------------------------------------------------------

@@ -81,7 +81,7 @@ validate(#cb_context{req_nouns=[{<<"templates">>, _}], req_verb = <<"get">>}=Con
 validate(#cb_context{req_nouns=[{<<"templates">>, _}], req_verb = <<"put">>}=Context, TemplateName) ->
     case load_template_db(TemplateName, Context) of
         #cb_context{resp_status=success} ->
-            crossbar_util:response_conflicting_docs(Context);
+            cb_context:add_system_error(datastore_conflict, Context);
         _Else ->
             crossbar_util:response(wh_json:new(), Context)
     end;
@@ -97,7 +97,7 @@ delete(Context, TemplateName) ->
     DbName = format_template_name(TemplateName, encoded),
     case couch_mgr:db_delete(DbName) of
         true -> crossbar_util:response(wh_json:new(), Context);
-        false -> crossbar_util:response_db_fatal(Context)
+        false -> cb_context:add_system_error(datastore_fault, Context)
     end.
 
 account_created(#cb_context{doc=JObj, account_id=AccountId, db_name=AccountDb}) ->
@@ -123,7 +123,7 @@ summary(Context) ->
                                                 (_) -> false end)(Db)]
                               };
         _ ->
-            crossbar_util:response_missing_view(Context)
+            cb_context:add_system_error(datastore_missing_view, Context)
     end.
 
 %%--------------------------------------------------------------------
@@ -141,7 +141,7 @@ load_template_db(TemplateName, Context) ->
     case couch_mgr:db_exists(DbName) of
         false ->
             lager:debug("check failed for template db ~s", [DbName]),
-            crossbar_util:response_db_missing(Context);
+            cb_context:add_system_error(datastore_missing, Context);
         true ->
             lager:debug("check succeeded for template db ~s", [DbName]),
             Context#cb_context{resp_status=success
@@ -183,7 +183,7 @@ create_template_db(TemplateName, Context) ->
     case couch_mgr:db_create(TemplateDb) of
         false ->
             lager:debug("failed to create database: ~s", [TemplateDb]),
-            crossbar_util:response_db_fatal(Context);
+            cb_context:add_system_error(datastore_fault, Context);
         true ->
             lager:debug("created DB for template ~s", [TemplateName]),
             couch_mgr:revise_docs_from_folder(TemplateDb, crossbar, "account", false),

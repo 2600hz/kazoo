@@ -23,10 +23,6 @@
 
 -include("include/crossbar.hrl").
 
--define(PVT_TYPE, <<"config">>).
--define(PVT_FUNS, [fun add_pvt_type/2]).
--define(CB_LIST, <<"configs/crossbar_listing">>).
-
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -142,20 +138,13 @@ delete(#cb_context{}=Context, _) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec create/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
-create(Config, #cb_context{req_data=Data, db_name=Db}=Context) ->
+create(Config, #cb_context{req_data=JObj, db_name=Db}=Context) ->
     Id = <<(?WH_ACCOUNT_CONFIGS)/binary, Config/binary>>,
     case couch_mgr:lookup_doc_rev(Db, Id) of
-        {ok, _} -> crossbar_util:response_conflicting_docs(Context);
+        {ok, _} -> cb_context:add_system_error(datastore_conflict, Context);
         {error, _} ->
-            case wh_json_validator:is_valid(wh_json:set_value(<<"_id">>, Id, Data), <<"configs">>) of
-                {fail, Errors} ->
-                    crossbar_util:response_invalid_data(Errors, Context);
-                {pass, JObj} ->
-                    {JObj1, _} = lists:foldr(fun(F, {J, C}) ->
-                                                     {F(J, C), C}
-                                             end, {JObj, Context}, ?PVT_FUNS),
-                    Context#cb_context{doc=JObj1, resp_status=success}
-            end
+            J = wh_json:set_value(<<"_id">>, Id, JObj),
+            cb_context:validate_request_data(<<"configs">>, Context#cb_context{req_data=J})
     end.
 
 %%--------------------------------------------------------------------
@@ -177,25 +166,7 @@ read(Config, Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec update/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
-update(Config, #cb_context{req_data=Data}=Context) ->
+update(Config, #cb_context{}=Context) ->
     Id = <<(?WH_ACCOUNT_CONFIGS)/binary, Config/binary>>,
-    case wh_json_validator:is_valid(Data, <<"configs">>) of
-        {fail, Errors} ->
-            crossbar_util:response_invalid_data(Errors, Context);
-        {pass, JObj} ->
-            {JObj1, _} = lists:foldr(fun(F, {J, C}) ->
-                                             {F(J, C), C}
-                                     end, {JObj, Context}, ?PVT_FUNS),
-            crossbar_doc:load_merge(Id, JObj1, Context)
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% These are the pvt funs that add the necessary pvt fields to every
-%% instance
-%% @end
-%%--------------------------------------------------------------------
--spec add_pvt_type/2 :: (wh_json:json_object(), #cb_context{}) -> wh_json:json_object().
-add_pvt_type(JObj, _) ->
-    wh_json:set_value(<<"pvt_type">>, ?PVT_TYPE, JObj).
+    OnSuccess = fun(C) -> crossbar_doc:load_merge(Id, C) end,
+    cb_context:validate_request_data(<<"configs">>, Context, OnSuccess).

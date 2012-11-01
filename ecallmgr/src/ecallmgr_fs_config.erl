@@ -66,7 +66,7 @@ init([Node, Options]) ->
     put(callid, Node),
     process_flag(trap_exit, true),
     lager:debug("starting new fs config listener for ~s", [Node]),
-    case freeswitch:bind(Node, config) of
+    case freeswitch:bind(Node, configuration) of
         ok ->
             lager:debug("bound to config request on ~s", [Node]),
             {ok, #state{node=Node, options=Options}};
@@ -165,7 +165,7 @@ handle_config_req(Node, ID, FsConf) ->
     put(callid, ID),
     try fsconf_key(FsConf) of
         ConfKey ->
-            SysconfResp = ecallmgr_config:get(ConfKey, wh_json:new()),
+            SysconfResp = ecallmgr_config:fetch(ConfKey, wh_json:new()),
             ConfigXml = generate_resp_xml(ConfKey, SysconfResp),
 
             lager:debug("sending XML to ~s: ~s", [Node, ConfigXml]),

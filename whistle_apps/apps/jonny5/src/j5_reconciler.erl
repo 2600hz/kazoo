@@ -99,7 +99,7 @@ handle_call(_Request, _From, State) ->
 handle_cast(process_account, []) ->
     timer:sleep(crypto:rand_uniform(10000, 30000)),
     gen_server:cast(self(), process_account),
-    {noreply, shuffle(whapps_util:get_all_accounts())};
+    {noreply, wh_util:shuffle_list(whapps_util:get_all_accounts())};
 handle_cast(process_account, [Account|Accounts]) ->
     put(callid, ?LOG_SYSTEM_ID),
     timer:sleep(crypto:rand_uniform(1000, 3000)),
@@ -269,24 +269,3 @@ send_system_alert(Ledger, CallId, Amount, Entry) ->
                             ],
                   wh_notify:system_alert("account $~p discrepancy / ~s (~s) / Call ~s", [Dollars, AccountName, LedgerId, CallId], Details)
           end).
-
--spec shuffle/1 :: (list()) -> list().
--spec shuffle/2 :: (list(), integer()) -> list().
-shuffle(List) ->
-    shuffle(List, length(List)).
-shuffle(List, Len) ->
-    randomize(round(math:log(Len) + 0.5), List).
-
--spec randomize/2 :: (pos_integer(), list()) -> list().
-randomize(1, List) ->
-    randomize(List);
-randomize(T, List) ->
-    lists:foldl(fun(_E, Acc) ->
-                        randomize(Acc)
-                end, randomize(List), lists:seq(1, (T - 1))).
-
--spec randomize/1 :: (list()) -> list().
-randomize(List) ->
-    D = lists:keysort(1, [{random:uniform(), A} || A <- List]),
-    {_, D1} = lists:unzip(D),
-    D1.

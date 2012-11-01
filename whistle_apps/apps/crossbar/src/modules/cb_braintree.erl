@@ -140,7 +140,7 @@ validate(#cb_context{req_verb = <<"post">>, req_data=JObj, account_id=AccountId}
                    end
                  ],
     Customer = braintree_customer:json_to_record(lists:foldr(fun(F, J) -> F(J) end, JObj, Generators)),
-    crossbar_util:response([], cb_context:store(braintree, Customer, Context));
+    crossbar_util:response(wh_json:new(), cb_context:store(braintree, Customer, Context));
 
 %% CARD API
 validate(#cb_context{req_verb = <<"get">>, account_id=AccountId}=Context, ?CARDS_PATH_TOKEN) ->
@@ -156,7 +156,7 @@ validate(#cb_context{req_verb = <<"get">>, account_id=AccountId}=Context, ?CARDS
     end;
 validate(#cb_context{req_verb = <<"put">>, req_data=JObj, account_id=AccountId}=Context, ?CARDS_PATH_TOKEN) ->
     Card = (braintree_card:json_to_record(JObj))#bt_card{customer_id=wh_util:to_list(AccountId)},
-    crossbar_util:response([], cb_context:store(braintree, Card, Context));
+    crossbar_util:response(wh_json:new(), cb_context:store(braintree, Card, Context));
 
 validate(#cb_context{req_verb = <<"get">>, account_id=AccountId}=Context, ?ADDRESSES_PATH_TOKEN) ->
     try braintree_customer:find(AccountId) of
@@ -171,7 +171,7 @@ validate(#cb_context{req_verb = <<"get">>, account_id=AccountId}=Context, ?ADDRE
     end;
 validate(#cb_context{req_verb = <<"put">>, req_data=JObj, account_id=AccountId}=Context, ?ADDRESSES_PATH_TOKEN) ->
     Address = (braintree_address:json_to_record(JObj))#bt_address{customer_id=wh_util:to_list(AccountId)},
-    crossbar_util:response([], cb_context:store(braintree, Address, Context));
+    crossbar_util:response(wh_json:new(), cb_context:store(braintree, Address, Context));
 
 validate(#cb_context{req_verb = <<"get">>, account_id=AccountId}=Context, ?TRANSACTIONS_PATH_TOKEN) ->
     try braintree_transaction:find_by_customer(AccountId) of
@@ -194,8 +194,7 @@ validate(#cb_context{req_verb = <<"put">>, account_id=AccountId, req_data=JObj}=
     case current_account_dollars(AccountId) + Amount > MaxCredit of
         true -> 
             Message = <<"Available credit can not exceed $", (wh_util:to_binary(MaxCredit))/binary>>,
-            Reason = wh_json:from_list([{<<"amount">>, wh_json:from_list([{<<"max_credit">>, Message}])}]),
-            crossbar_util:response(error, <<"max_credit">>, 500, Reason, Context);
+            cb_context:add_validation_error(<<"amount">>, <<"maximum">>, Message, Context);
         false ->
             maybe_charge_billing_id(Amount, Context)
     end.
@@ -216,10 +215,9 @@ validate(#cb_context{req_verb = <<"post">>, req_data=JObj, account_id=AccountId}
     Card = Card0#bt_card{customer_id=wh_util:to_list(AccountId)
                          ,token=CardId
                         },
-
-    crossbar_util:response([], cb_context:store(braintree, Card, Context));
+    crossbar_util:response(wh_json:new(), cb_context:store(braintree, Card, Context));
 validate(#cb_context{req_verb = <<"delete">>}=Context, ?CARDS_PATH_TOKEN, _) ->
-    crossbar_util:response([], Context);
+    crossbar_util:response(wh_json:new(), Context);
 validate(#cb_context{req_verb = <<"get">>, account_id=AccountId}=Context, ?ADDRESSES_PATH_TOKEN, AddressId) ->
     try braintree_address:find(AccountId, AddressId) of
         #bt_address{customer_id=AccountId}=Address ->
@@ -233,9 +231,9 @@ validate(#cb_context{req_verb = <<"get">>, account_id=AccountId}=Context, ?ADDRE
     end;
 validate(#cb_context{req_verb = <<"post">>, req_data=JObj, account_id=AccountId}=Context, ?ADDRESSES_PATH_TOKEN, AddressId) ->
     Address = (braintree_address:json_to_record(JObj))#bt_address{customer_id=wh_util:to_list(AccountId), id=AddressId},
-    crossbar_util:response([], cb_context:store(braintree, Address, Context));
+    crossbar_util:response(wh_json:new(), cb_context:store(braintree, Address, Context));
 validate(#cb_context{req_verb = <<"delete">>}=Context, ?ADDRESSES_PATH_TOKEN, _) ->
-    crossbar_util:response([], Context);
+    crossbar_util:response(wh_json:new(), Context);
 
 validate(#cb_context{req_verb = <<"get">>}=Context, ?TRANSACTIONS_PATH_TOKEN, TransactionId) ->
     try braintree_transaction:find(TransactionId) of
@@ -274,7 +272,7 @@ post(Context, ?CARDS_PATH_TOKEN, CardId) ->
         throw:{api_error, Reason} ->
             crossbar_util:response(error, <<"braintree api error">>, 400, Reason, Context);
         throw:{not_found, _} ->
-            crossbar_util:response_bad_identifier(CardId, Context);
+            cb_context:add_system_error(bad_identifier, [{details, CardId}], Context);
         throw:{Error, Reason} ->
             crossbar_util:response(error, wh_util:to_binary(Error), 500, Reason, Context)
     end;
@@ -416,8 +414,7 @@ maybe_charge_billing_id(Amount, #cb_context{auth_account_id=AuthAccountId, accou
         _Else -> 
             lager:debug("sub-accounts of non-master resellers must contact the reseller to change their credit", []),
             Message = <<"Please contact your phone provider to add credit.">>,
-            Reason = wh_json:from_list([{<<"amount">>, wh_json:from_list([{<<"limit_only">>, Message}])}]),
-            crossbar_util:response(error, <<"forbidden">>, 403, Reason, Context)
+            cb_context:add_validation_error(<<"amount">>, <<"forbidden">>, Message, Context)
     end.
 
 -spec charge_billing_id/2 :: (float(), #cb_context{}) -> #cb_context{}.

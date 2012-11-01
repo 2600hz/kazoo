@@ -12,6 +12,7 @@
 %%%-------------------------------------------------------------------
 -module(cb_users).
 
+-export([create_user/1]).
 -export([init/0
          ,allowed_methods/0, allowed_methods/1
          ,resource_exists/0, resource_exists/1
@@ -19,7 +20,6 @@
          ,put/1
          ,post/2
          ,delete/2
-         ,create_user/1
         ]).
 
 -include("include/crossbar.hrl").
@@ -32,6 +32,14 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
+
+%% SUPPORT FOR THE DEPRECIATED CB_SIGNUPS...
+create_user(Context) ->
+    case validate_request(undefined, Context#cb_context{req_verb = <<"put">>}) of
+        #cb_context{resp_status=success}=C1 -> ?MODULE:put(C1);
+        Else -> Else
+    end.
+
 init() ->
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.users">>, ?MODULE, allowed_methods),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.users">>, ?MODULE, resource_exists),
@@ -80,40 +88,25 @@ resource_exists(_) -> true.
 %%--------------------------------------------------------------------
 -spec validate/1 :: (#cb_context{}) -> #cb_context{}.
 -spec validate/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
-validate(#cb_context{req_data=ReqData}=Context) ->
-    ReqData1 = wh_json:set_value(<<"username">>
-                                     ,wh_util:to_lower_binary(wh_json:get_value(<<"username">>, ReqData))
-                                 ,ReqData),
-    validate_req(Context#cb_context{req_data=ReqData1}).
-validate(#cb_context{req_data=ReqData}=Context, Id) ->
-    ReqData1 = wh_json:set_value(<<"username">>
-                                     ,wh_util:to_lower_binary(wh_json:get_value(<<"username">>, ReqData))
-                                 , ReqData),
-    validate_req(Context#cb_context{req_data=ReqData1}, Id).
-
--spec validate_req/1 :: (#cb_context{}) -> #cb_context{}.
--spec validate_req/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
-validate_req(#cb_context{req_verb = <<"get">>}=Context) ->
+validate(#cb_context{req_verb = <<"get">>}=Context) ->
     load_user_summary(Context);
-validate_req(#cb_context{req_verb = <<"put">>}=Context) ->
-    create_user(Context).
+validate(#cb_context{req_verb = <<"put">>}=Context) ->
+    validate_request(undefined, Context).
 
-validate_req(#cb_context{req_verb = <<"get">>}=Context, UserId) ->
+validate(#cb_context{req_verb = <<"get">>}=Context, UserId) ->
     load_user(UserId, Context);
-validate_req(#cb_context{req_verb = <<"post">>}=Context, UserId) ->
-    update_user(UserId, Context);
-validate_req(#cb_context{req_verb = <<"delete">>}=Context, UserId) ->
-    load_user(UserId, Context);
-validate_req(Context, _UserId) ->
-    crossbar_util:response_faulty_request(Context).
+validate(#cb_context{req_verb = <<"post">>}=Context, UserId) ->
+    validate_request(UserId, Context);
+validate(#cb_context{req_verb = <<"delete">>}=Context, UserId) ->
+    load_user(UserId, Context).
 
 -spec post/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
 post(Context, _) ->
-    crossbar_doc:save(hash_password(Context)).
+    crossbar_doc:save(Context).
 
 -spec put/1 :: (#cb_context{}) -> #cb_context{}.
 put(Context) ->
-    crossbar_doc:save(hash_password(Context)).
+    crossbar_doc:save(Context).
 
 -spec delete/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
 delete(Context, _) ->
@@ -133,31 +126,6 @@ load_user_summary(Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Create a new user document with the data provided, if it is valid
-%% @end
-%%--------------------------------------------------------------------
--spec create_user/1 :: (#cb_context{}) -> #cb_context{}.
-create_user(#cb_context{req_data=Data}=Context) ->
-    UniqueUsername = is_unique_username(undefined, Context),
-    case wh_json_validator:is_valid(Data, <<"users">>) of
-        {fail, Errors} when UniqueUsername ->
-            crossbar_util:response_invalid_data(Errors, Context);
-        {fail, Errors} ->
-            E = wh_json:set_value([<<"username">>, <<"unique">>], <<"Username is not unique for this account">>, Errors),
-            crossbar_util:response_invalid_data(E, Context);
-        {pass, _} when not UniqueUsername ->
-            E = wh_json:set_value([<<"username">>, <<"unique">>], <<"Username is not unique for this account">>, wh_json:new()),
-            crossbar_util:response_invalid_data(E, Context);
-        {pass, JObj} ->
-            Context#cb_context{
-              doc=wh_json:set_value(<<"pvt_type">>, <<"user">>, JObj)
-              ,resp_status=success
-             }
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
 %% Load a user document from the database
 %% @end
 %%--------------------------------------------------------------------
@@ -168,61 +136,118 @@ load_user(UserId, Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Update an existing user document with the data provided, if it is
-%% valid
+%% 
 %% @end
 %%--------------------------------------------------------------------
--spec update_user/2 :: (binary(), #cb_context{}) -> #cb_context{}.
-update_user(UserId, #cb_context{req_data=Data}=Context) ->
-    UniqueUsername = is_unique_username(UserId, Context),
-    case wh_json_validator:is_valid(Data, <<"users">>) of
-        {fail, Errors} when UniqueUsername ->
-            crossbar_util:response_invalid_data(Errors, Context);
-        {fail, Errors} ->
-            E = wh_json:set_value([<<"username">>, <<"unique">>], <<"Username is not unique for this account">>, Errors),
-            crossbar_util:response_invalid_data(E, Context);
-        {pass, _} when not UniqueUsername ->
-            E = wh_json:set_value([<<"username">>, <<"unique">>], <<"Username is not unique for this account">>, wh_json:new()),
-            crossbar_util:response_invalid_data(E, Context);
-        {pass, JObj} ->
-            check_username_password(UserId, JObj, Context)
+-spec validate_request/2 :: ('undefined'|ne_binary(), #cb_context{}) -> #cb_context{}.
+validate_request(UserId, Context) ->
+    prepare_username(UserId, Context).
+
+prepare_username(UserId, #cb_context{req_data=JObj}=Context) ->
+    case wh_json:get_ne_value(<<"username">>, JObj) of
+        undefined -> check_user_schema(UserId, Context);
+        Username ->
+            JObj1 = wh_json:set_value(<<"username">>, wh_util:to_lower_binary(Username), JObj),
+            check_user_schema(UserId, Context#cb_context{req_data=JObj1})
     end.
 
-check_username_password(UserId, ReqJObj, Context) ->
-    case crossbar_doc:load(UserId, Context) of
-        #cb_context{resp_status=success, doc=Doc}=Context1 ->
-            case wh_json:get_value(<<"username">>, Doc) =:= wh_json:get_value(<<"username">>, ReqJObj) of
-                true -> crossbar_doc:merge(ReqJObj, Doc, Context1); % username hasn't changed, continue
-                false ->
-                    %% request is trying to change the username
-                    check_password(ReqJObj, Doc, Context1)
-            end;
-        Context1 -> Context1
+check_user_schema(UserId, Context) ->
+    OnSuccess = fun(C) -> on_successful_validation(UserId, C) end,
+    cb_context:validate_request_data(<<"users">>, Context, OnSuccess).
+
+on_successful_validation(undefined, #cb_context{doc=Doc}=Context) ->
+    Props = [{<<"pvt_type">>, <<"user">>}],
+    maybe_import_credintials(undefined, Context#cb_context{doc=wh_json:set_values(Props, Doc)});
+on_successful_validation(UserId, #cb_context{}=Context) -> 
+    maybe_import_credintials(UserId, crossbar_doc:load_merge(UserId, Context)).
+
+maybe_import_credintials(UserId, #cb_context{doc=JObj}=Context) ->
+    case wh_json:get_ne_value(<<"credentials">>, JObj) of
+        undefined -> maybe_validate_username(UserId, Context);
+        Creds ->
+            RemoveKeys = [<<"credentials">>, <<"pvt_sha1_auth">>],
+            C = Context#cb_context{doc=wh_json:set_value(<<"pvt_md5_auth">>, Creds
+                                                         ,wh_json:delete_keys(RemoveKeys, JObj))},
+            maybe_validate_username(UserId, C)
     end.
 
-check_password(ReqJObj, Doc, Context) ->
-    case wh_json:get_value(<<"password">>, ReqJObj) of
-        undefined ->
-            E = wh_json:set_values([{[<<"password">>, <<"required">>], <<"Current password is required when changing the username">>}
-                                   ], wh_json:new()),
-            crossbar_util:response_invalid_data(E, Context);
-        Pass ->
-            lager:debug("username is changed, checking password"),
-
-            Username = wh_json:get_value(<<"username">>, Doc),
-            SHA1 = wh_json:get_value(<<"pvt_sha1_auth">>, Doc),
-
-            case cb_modules_util:pass_hashes(Username, Pass) of
-                {_, SHA1} ->
-                    lager:debug("password in request matches current hash"),
-                    crossbar_doc:merge(ReqJObj, Doc, Context);
-                _ ->
-                    lager:debug("password and old username results in different hash"),
-                    E = wh_json:set_values([{[<<"password">>, <<"update">>], <<"Request password does not match current password">>}
-                                           ], wh_json:new()),
-                    crossbar_util:response_invalid_data(E, Context)
-            end
+maybe_validate_username(UserId, #cb_context{doc=JObj}=Context) ->
+    NewUsername = wh_json:get_ne_value(<<"username">>, JObj),
+    CurrentUsername = case cb_context:fetch(db_doc, Context) of
+                          undefined -> NewUsername;
+                          CurrentJObj -> 
+                              wh_json:get_ne_value(<<"username">>, CurrentJObj, NewUsername)
+                      end,
+    case wh_util:is_empty(NewUsername)
+        orelse CurrentUsername =:= NewUsername
+        orelse username_doc_id(NewUsername, Context)
+    of
+        %% username is unchanged
+        true -> maybe_rehash_creds(UserId, NewUsername, Context);
+        %% updated username that doesnt exist
+        undefined -> 
+            manditory_rehash_creds(UserId, NewUsername, Context);
+        %% updated username to existing, collect any further errors...
+        _Else ->
+            C = cb_context:add_validation_error(<<"username">>
+                                                   ,<<"unique">>
+                                                   ,<<"Username is not unique for this account">>
+                                                   ,Context),
+            manditory_rehash_creds(UserId, NewUsername, C)
     end.
+
+maybe_rehash_creds(UserId, Username, #cb_context{doc=JObj}=Context) ->
+    case wh_json:get_ne_value(<<"password">>, JObj) of
+        %% No username or hash, no creds for you!
+        undefined when Username =:= undefined -> 
+            HashKeys = [<<"pvt_md5_auth">>, <<"pvt_sha1_auth">>],
+            Context#cb_context{doc=wh_json:delete_keys(HashKeys, JObj)};
+        %% Username without password, creds status quo
+        undefined -> Context;
+        %% Got a password, hope you also have a username...
+        Password -> rehash_creds(UserId, Username, Password, Context)
+    end.
+
+manditory_rehash_creds(UserId, Username, #cb_context{doc=JObj}=Context) ->
+    case wh_json:get_ne_value(<<"password">>, JObj) of
+        undefined -> 
+            cb_context:add_validation_error(<<"password">>
+                                                ,<<"required">>
+                                                ,<<"The password must be provided when updating the username">>
+                                                ,Context);
+        Password -> rehash_creds(UserId, Username, Password, Context)
+    end.
+
+rehash_creds(_, undefined, _, Context) ->
+    cb_context:add_validation_error(<<"username">>
+                                        ,<<"required">>
+                                        ,<<"The username must be provided when updating the password">>
+                                        ,Context);
+rehash_creds(_, Username, Password, #cb_context{doc=JObj}=Context) ->
+    lager:debug("password set on doc, updating hashes for ~s", [Username]),
+    {MD5, SHA1} = cb_modules_util:pass_hashes(Username, Password),
+    JObj1 = wh_json:set_values([{<<"pvt_md5_auth">>, MD5}
+                                ,{<<"pvt_sha1_auth">>, SHA1}
+                               ], JObj),
+    Context#cb_context{doc=wh_json:delete_key(<<"password">>, JObj1)}. 
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% This function will determine if the username in the request is
+%% unique or belongs to the request being made
+%% @end
+%%--------------------------------------------------------------------
+-spec username_doc_id/2 :: (ne_binary(), #cb_context{}) -> 'undefined' | ne_binary().
+username_doc_id(_, #cb_context{db_name=undefined}) ->
+    undefined;
+username_doc_id(Username, Context) ->
+    Username = wh_util:to_lower_binary(Username),
+    JObj = case crossbar_doc:load_view(?LIST_BY_USERNAME, [{<<"key">>, Username}], Context) of
+               #cb_context{resp_status=success, doc=[J]} -> J;
+               _ -> wh_json:new()
+           end,
+    wh_json:get_value(<<"id">>, JObj).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -233,45 +258,3 @@ check_password(ReqJObj, Doc, Context) ->
 -spec(normalize_view_results/2 :: (Doc :: wh_json:json_object(), Acc :: wh_json:json_objects()) -> wh_json:json_objects()).
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function will determine if the password parameter is present
-%% and if so create the hashes then remove it.
-%% @end
-%%--------------------------------------------------------------------
--spec hash_password/1 :: (#cb_context{}) -> #cb_context{}.
-hash_password(#cb_context{doc=JObj}=Context) ->
-    Username = wh_json:get_value(<<"username">>, JObj),
-    case wh_json:get_value(<<"password">>, JObj) of
-        undefined -> Context;
-        Password ->
-            lager:debug("password set on doc, updating hashes for ~s", [Username]),
-            {MD5, SHA1} = cb_modules_util:pass_hashes(Username, Password),
-
-            JObj1 = wh_json:set_values([{<<"pvt_md5_auth">>, MD5}
-                                        ,{<<"pvt_sha1_auth">>, SHA1}
-                                       ], JObj),
-            Context#cb_context{doc=wh_json:delete_key(<<"password">>, JObj1)}
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function will determine if the username in the request is
-%% unique or belongs to the request being made
-%% @end
-%%--------------------------------------------------------------------
--spec is_unique_username/2 :: (ne_binary() | 'undefined', #cb_context{}) -> boolean().
-is_unique_username(UserId, #cb_context{req_data=ReqData}=Context) ->
-    Username = wh_util:to_lower_binary(wh_json:get_value(<<"username">>, ReqData)),
-    JObj = case crossbar_doc:load_view(?LIST_BY_USERNAME, [{<<"key">>, Username}], Context) of
-               #cb_context{resp_status=success, doc=[J]} -> J;
-               _ -> wh_json:new()
-           end,
-    case wh_json:get_value(<<"id">>, JObj) of
-        undefined ->true;
-        UserId -> true;
-        _Else -> false
-    end.

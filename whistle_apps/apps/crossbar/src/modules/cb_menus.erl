@@ -121,19 +121,9 @@ load_menu_summary(Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec create_menu/1 :: (#cb_context{}) -> #cb_context{}.
-create_menu(#cb_context{req_data=Data}=Context) ->
-    case wh_json_validator:is_valid(Data, <<"menus">>) of
-        {fail, Errors} ->
-            crossbar_util:response_invalid_data(Errors, Context);
-        {pass, JObj} ->
-            Pvts = [fun(J) -> wh_json:set_value(<<"pvt_type">>, <<"menu">>, J) end
-                    ,fun(J) ->wh_json:set_value(<<"pvt_vsn">>, <<"2">>, J) end
-                   ],
-            Context#cb_context{
-              doc=lists:foldr(fun(F, J) -> F(J) end, JObj, Pvts)
-              ,resp_status=success
-             }
-    end.
+create_menu(#cb_context{}=Context) ->
+    OnSuccess = fun(C) -> on_successful_validation(undefined, C) end,
+    cb_context:validate_request_data(<<"menus">>, Context, OnSuccess).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -153,13 +143,23 @@ load_menu(DocId, Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec update_menu/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
-update_menu(DocId, #cb_context{req_data=Data}=Context) ->
-    case wh_json_validator:is_valid(Data, <<"menus">>) of
-        {fail, Errors} ->
-            crossbar_util:response_invalid_data(Errors, Context);
-        {pass, JObj} ->
-            crossbar_doc:load_merge(DocId, JObj, Context)
-    end.
+update_menu(DocId, #cb_context{}=Context) ->
+    OnSuccess = fun(C) -> on_successful_validation(DocId, C) end,
+    cb_context:validate_request_data(<<"menus">>, Context, OnSuccess).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec on_successful_validation/2 :: ('undefined' | ne_binary(), #cb_context{}) -> #cb_context{}.
+on_successful_validation(undefined, #cb_context{doc=JObj}=Context) ->
+    Context#cb_context{doc=wh_json:set_values([{<<"pvt_type">>, <<"menu">>}
+                                               ,{<<"pvt_vsn">>, <<"2">>}
+                                              ], JObj)};
+on_successful_validation(DocId, #cb_context{}=Context) ->
+    crossbar_doc:load_merge(DocId, Context).
 
 %%--------------------------------------------------------------------
 %% @private

@@ -171,24 +171,12 @@ load_c2c_history(C2CId, Context) ->
             Else
     end.
 
-create_c2c(#cb_context{req_data=Data}=Context) ->
-    case wh_json_validator:is_valid(Data, <<"clicktocall">>) of
-        {fail, Errors} ->
-            crossbar_util:response_invalid_data(Errors, Context);
-        {pass, JObj} ->
-            Context#cb_context{
-              doc=wh_json:set_value(<<"pvt_type">>, ?PVT_TYPE, wh_json:set_value(<<"pvt_history">>, [], JObj))
-              ,resp_status=success
-             }
-    end.
+create_c2c(#cb_context{}=Context) ->
+    cb_context:validate_request_data(<<"clicktocall">>, Context, fun clear_history_set_type/1).
 
-update_c2c(C2CId, #cb_context{req_data=Data}=Context) ->
-    case wh_json_validator:is_valid(Data, <<"clicktocall">>) of
-        {fail, Errors} ->
-            crossbar_util:response_invalid_data(Errors, Context);
-        {pass, JObj} ->
-            crossbar_doc:load_merge(C2CId, JObj, Context)
-    end.
+update_c2c(C2CId, #cb_context{}=Context) ->
+    OnSuccess = fun(C) -> crossbar_doc:load_merge(C2CId, C) end,
+    cb_context:validate_request_data(<<"clicktocall">>, Context, OnSuccess).
 
 establish_c2c(C2CId, Context) ->
     case crossbar_doc:load(C2CId, Context) of
@@ -197,6 +185,11 @@ establish_c2c(C2CId, Context) ->
         Else ->
             Else
     end.
+
+clear_history_set_type(#cb_context{doc=JObj}=Context) ->
+    Context#cb_context{doc=wh_json:set_values([{<<"pvt_type">>, ?PVT_TYPE}
+                                               ,{<<"pvt_history">>, []}
+                                              ], JObj)}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -210,9 +203,8 @@ establish_c2c(C2CId, Context) ->
 originate_call(#cb_context{doc=JObj, req_data=Req, account_id=AccountId, db_name=Db}=Context) ->
     case get_c2c_contact(wh_json:get_string_value(<<"contact">>, Req)) of
         undefined ->
-            lager:debug("click to call document does not define a contact", []),
-            E = wh_json:set_value([<<"contact">>, <<"required">>], <<"The contact extension for this click to call has not been set">>, wh_json:new()),
-            crossbar_util:response_invalid_data(E, Context);
+            Message = <<"The contact extension for this click to call has not been set">>,
+            cb_context:add_validation_error(<<"contact">>, <<"required">>, Message, Context);
         Contact ->
             ReqId = get(callid),
             spawn(fun() ->

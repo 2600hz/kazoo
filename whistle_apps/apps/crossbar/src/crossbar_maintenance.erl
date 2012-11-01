@@ -21,8 +21,9 @@
 -export([promote_account/1, demote_account/1]).
 -export([allow_account_number_additions/1, disallow_account_number_additions/1]).
 -export([create_account/4]).
+-export([create_account/1]).
 
--include("include/crossbar.hrl").
+-include_lib("crossbar/include/crossbar.hrl").
 
 -type input_term() :: atom() | string() | ne_binary().
 
@@ -51,14 +52,14 @@ migrate() ->
                    ,fun(L) -> sets:add_element(<<"cb_global_provisioner_templates">>, L) end
                    ,fun(L) -> sets:add_element(<<"cb_schemas">>, L) end
                    ,fun(L) -> sets:add_element(<<"cb_configs">>, L) end
-                   ,fun(L) -> sets:add_element(<<"cb_limits">>, L) end
                    ,fun(L) -> sets:add_element(<<"cb_whitelabel">>, L) end
-                   ,fun(L) -> sets:add_element(<<"cb_braintree">>, L) end
                    ,fun(L) -> sets:add_element(<<"cb_services">>, L) end
                    ,fun(L) -> sets:add_element(<<"cb_agents">>, L) end
                    ,fun(L) -> sets:add_element(<<"cb_queues">>, L) end
                    ,fun(L) -> sets:add_element(<<"cb_whitelabel">>, L) end
                    ,fun(L) -> sets:add_element(<<"cb_limits">>, L) end
+                   ,fun(L) -> sets:add_element(<<"cb_about">>, L) end
+                   ,fun(L) -> sets:add_element(<<"cb_faxes">>, L) end
                   ],
     UpdatedModules = sets:to_list(lists:foldr(fun(F, L) -> F(L) end, StartModules, XbarUpdates)),
     _ = whapps_config:set_default(<<"crossbar">>, <<"autoload_modules">>, UpdatedModules),
@@ -339,7 +340,10 @@ create_account(AccountName, Realm, Username, Password) ->
         {ok, #cb_context{db_name=Db, account_id=AccountId}} = create_account(C1),
         {ok, _} = create_user(C2#cb_context{db_name=Db, account_id=AccountId}),
         case whapps_util:get_all_accounts() of
-            [Db] -> promote_account(AccountId);
+            [Db] -> 
+                _ = promote_account(AccountId),
+                _ = allow_account_number_additions(AccountId),
+                ok;
             _Else -> ok
         end,
         ok
@@ -391,7 +395,7 @@ validate_user(JObj, Context) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %%
 %% @end
@@ -441,13 +445,20 @@ update_account(AccountId, Key, Value) when not is_binary(AccountId) ->
 update_account(AccountId, Key, Value) ->
     AccountDb = wh_util:format_account_id(AccountId, encoded),
     Updaters = [fun({error, _}=E) -> E;
-                    ({ok, J}) -> couch_mgr:ensure_saved(AccountDb, wh_json:delete_key(<<"_rev">>, J))
+                   ({ok, J}) -> 
+                        couch_mgr:save_doc(AccountDb, wh_json:set_value(Key, Value, J))
+                end
+                ,fun({error, _}=E) -> E;
+                    ({ok, J}) -> 
+                         case couch_mgr:lookup_doc_rev(?WH_ACCOUNTS_DB, AccountId) of
+                             {ok, Rev} ->
+                                 couch_mgr:save_doc(?WH_ACCOUNTS_DB, wh_json:set_value(<<"_rev">>, Rev, J));
+                             {error, not_found} ->
+                                 couch_mgr:save_doc(?WH_ACCOUNTS_DB, wh_json:delete_key(<<"_rev">>, J))
+                         end
                  end
-                 ,fun({error, _}=E) -> E;
-                     ({ok, J}) -> couch_mgr:save_doc(AccountDb, wh_json:set_value(Key, Value, J))
-                  end
-                ],
-    lists:foldr(fun(F, J) -> F(J) end, couch_mgr:open_doc(AccountDb, AccountId), Updaters).
+               ],
+    lists:foldl(fun(F, J) -> F(J) end, couch_mgr:open_doc(AccountDb, AccountId), Updaters).
 
 print_account_info(AccountDb) ->
     AccountId = wh_util:format_account_id(AccountDb, raw),
