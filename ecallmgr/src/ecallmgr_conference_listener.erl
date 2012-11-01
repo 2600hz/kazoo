@@ -208,14 +208,20 @@ search_nodes_for_conference([], _) ->
     lager:debug("failed to find conference on any of the freeswitch nodes"),
     undefined;
 search_nodes_for_conference([Node|Nodes], ConferenceId) ->
-    JObj = conferences_on_node(Node),
-    case wh_json:get_value(ConferenceId, JObj) of
-        undefined ->
-            lager:debug("conference ~s not running on node ~s", [ConferenceId, Node]),
-            search_nodes_for_conference(Nodes, ConferenceId);
-        Conference ->
-            lager:debug("found conference ~s on node ~s", [ConferenceId, Node]),
-            Conference
+    try conferences_on_node(Node) of
+        JObj ->
+            case wh_json:get_value(ConferenceId, JObj) of
+                undefined ->
+                    lager:debug("conference ~s not running on node ~s", [ConferenceId, Node]),
+                    search_nodes_for_conference(Nodes, ConferenceId);
+                Conference ->
+                    lager:debug("found conference ~s on node ~s", [ConferenceId, Node]),
+                    Conference
+            end
+    catch
+        _E:_R ->
+            lager:debug("unable to get conferences on ~p: ~p", [Node, _R]),
+            search_nodes_for_conference(Nodes, ConferenceId)
     end.
 
 %% TODO: Flush cache on conference end
@@ -234,10 +240,17 @@ get_conference_focus(ConferenceId) ->
 search_for_conference_focus([], _) ->
     undefined;
 search_for_conference_focus([Node|Nodes], ConferenceId) ->
-    JObj = conferences_on_node(Node),
-    case wh_json:get_value(ConferenceId, JObj) of
-        undefined -> search_for_conference_focus(Nodes, ConferenceId);
-        _Else -> Node
+    try conferences_on_node(Node) of    
+        JObj ->
+            case wh_json:get_value(ConferenceId, JObj) of
+                undefined -> 
+                    search_for_conference_focus(Nodes, ConferenceId);
+                _Else -> Node
+            end
+    catch
+        _E:_R ->
+            lager:debug("unable to get conferences on ~p: ~p", [Node, _R]),
+            search_for_conference_focus(Nodes, ConferenceId)
     end.
 
 -spec conferences_xml_to_json/3 :: (list(), proplist(), wh_json:json_object()) -> wh_json:json_object().

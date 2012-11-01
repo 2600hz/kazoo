@@ -79,6 +79,8 @@ ensure_account_id_exists(Props, CallId, Node) ->
     case props:get_value(?GET_CCV(<<"Account-ID">>), Props) of
         undefined ->
             case identify_account(undefined, Props) of
+                {error, not_required} ->
+                    allow_call(Props, CallId, Node);
                 {error, _R} -> 
                     lager:debug("unable to determine the account id: ~p", [_R]),
                     maybe_deny_call(Props, CallId, Node);

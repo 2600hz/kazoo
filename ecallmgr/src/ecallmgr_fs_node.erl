@@ -449,18 +449,24 @@ process_cmd(Node, JObj, Acc0) ->
                 end, Acc0, wh_json:to_proplist(JObj)).
 
 process_cmd(Node, ApiCmd0, ApiArg, Acc) ->
-    process_cmd(Node, ApiCmd0, ApiArg, Acc, list).
+    process_cmd(Node, ApiCmd0, ApiArg, Acc, binary).
 process_cmd(Node, ApiCmd0, ApiArg, Acc, ArgFormat) ->
     ApiCmd = wh_util:to_atom(wh_util:to_binary(ApiCmd0), ?FS_CMD_SAFELIST),
-    {ok, BGApiID} = freeswitch:bgapi(Node, ApiCmd, format_args(ArgFormat, ApiArg)),
-    receive
-        {bgok, BGApiID, FSResp} ->
-            process_resp(ApiCmd, ApiArg, binary:split(FSResp, <<"\n">>, [global]), Acc);
-        {bgerror, BGApiID, _} when ArgFormat =:= list ->
-            process_cmd(Node, ApiCmd0, ApiArg, Acc, binary);
-        {bgerror, BGApiID, Error} -> [Error | Acc]
-    after 120000 ->
-            [{timeout, {ApiCmd, ApiArg}} | Acc]
+    case freeswitch:bgapi(Node, ApiCmd, format_args(ArgFormat, ApiArg)) of
+        {error, badarg} when ArgFormat =:= binary ->
+            process_cmd(Node, ApiCmd0, ApiArg, Acc, list);
+        {ok, BGApiID} ->
+            receive
+                {bgok, BGApiID, FSResp} ->
+                    process_resp(ApiCmd, ApiArg, binary:split(FSResp, <<"\n">>, [global]), Acc);
+                {bgerror, BGApiID, _} when ArgFormat =:= binary ->
+                    process_cmd(Node, ApiCmd0, ApiArg, Acc, list);
+                {bgerror, BGApiID, Error} -> [{error, Error} | Acc]
+            after 120000 ->
+                    [{timeout, {ApiCmd, ApiArg}} | Acc]
+            end;
+        {error, _}=Error ->
+            [Error | Acc]
     end.
 
 format_args(list, Args) -> wh_util:to_list(Args);
