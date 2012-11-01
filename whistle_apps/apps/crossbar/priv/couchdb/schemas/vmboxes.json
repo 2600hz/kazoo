@@ -52,6 +52,12 @@
          "type":"boolean",
          "default":false
       },
+      "delete_after_notify":{
+        "name":"Delete After Notification",
+        "description":"Delete the voicemail after the notification has been sent",
+        "type":"boolean",
+        "default":"false"
+      },
       "skip_greeting":{
          "name":"Skip Greeting",
          "description":"Determines if the greeting should be skipped",

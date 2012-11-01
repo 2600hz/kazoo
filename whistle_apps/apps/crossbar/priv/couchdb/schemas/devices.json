@@ -50,7 +50,7 @@
                      "description":"The caller id name for the object type",
                      "type":"string",
                      "maxLength":30,
-                     "pattern":"^[0-9A-Za-z ,&]*$"
+                     "pattern":"^[0-9A-Za-z ,&-_']*$"
                   }
                }
             },
@@ -63,7 +63,7 @@
                      "description":"The caller id name for the object type",
                      "type":"string",
                      "maxLength":15,
-                     "pattern":"^[0-9A-Za-z ,&]*$"
+                     "pattern":"^[0-9A-Za-z ,&-_']*$"
                   }
                }
             },
@@ -76,7 +76,7 @@
                      "description":"The caller id name for the object type",
                      "type":"string",
                      "maxLength":15,
-                     "pattern":"^[0-9A-Za-z ,&]*$"
+                     "pattern":"^[0-9A-Za-z ,&-_']*$"
                   }
                }
             }
@@ -108,13 +108,13 @@
                "name":"External Ringtones",
                "description":"The alert info SIP header added when the call is from external sources",
                "type":"string",
-               "maxLength":32
+               "maxLength":256
             },
             "internal":{
                "name":"Internal Ringtones",
                "description":"The alert info SIP header added when the call is from internal sources",
                "type":"string",
-               "maxLength":32
+               "maxLength":256
             }
          },
          "default":{
@@ -218,8 +218,7 @@
                "name":"Music On Hold (ID)",
                "description":"The ID of a media object that should be used as the device music on hold",
                "type":"string",
-               "minLength":32,
-               "maxLength":32
+               "maxLength":128
             }
          },
          "default":{
@@ -350,7 +349,7 @@
                "type":"string",
                "description":"IP address for this device",
                "required":false,
-               "pattern":"^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$"
+               "pattern":"^(?:[0-9]{1,3}\\.){3}[0-9]{1,3}$"
             }
          },
          "default":{
