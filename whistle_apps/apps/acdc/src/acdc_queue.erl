@@ -387,11 +387,8 @@ handle_cast({cancel_member_call}, #state{delivery=Delivery
                                         }=State) ->
     lager:debug("cancel member_call"),
 
-    case maybe_nack(Call, Delivery, Pid) of
-        true -> {noreply, clear_call_state(State), hibernate};
-        false ->
-            {noreply, State}
-    end;
+    _ = maybe_nack(Call, Delivery, Pid),
+    {noreply, clear_call_state(State), hibernate};
 
 handle_cast({cancel_member_call, _RejectJObj}, #state{delivery=undefined}=State) ->
     lager:debug("cancel a member_call that I don't have delivery info for"),
@@ -402,10 +399,8 @@ handle_cast({cancel_member_call, _RejectJObj}, #state{delivery = #'basic.deliver
                                                      }=State) ->
     lager:debug("agent failed to handle the call, nack"),
 
-    case maybe_nack(Call, Delivery, Pid) of
-        true -> {noreply, clear_call_state(State), hibernate};
-        false -> {noreply, State}
-    end;
+    _ = maybe_nack(Call, Delivery, Pid),
+    {noreply, clear_call_state(State), hibernate};
 
 handle_cast({cancel_member_call, _MemberCallJObj, Delivery}, #state{shared_pid=Pid}=State) ->
     lager:debug("can't handle the member_call, sending it back up"),
