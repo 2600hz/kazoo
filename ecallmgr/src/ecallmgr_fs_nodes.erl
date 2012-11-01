@@ -227,7 +227,7 @@ channel_move(UUID, ONode, NNode) ->
 -spec channel_resume/2 :: (ne_binary(), atom()) -> boolean().
 -spec channel_resume/3 :: (ne_binary(), atom(), wh_proplist()) -> boolean().
 channel_resume(UUID, NewNode) ->
-    gproc:reg({p, l, {channel_move, NewNode, UUID}}),
+    catch gproc:reg({p, l, {channel_move, NewNode, UUID}}),
     lager:debug("waiting for message with metadata for channel ~s from ~s", [UUID, NewNode]),
     receive
         {channel_move_released, _Node, UUID, Evt} ->
@@ -272,7 +272,7 @@ fix_metadata(Meta) ->
                     ,{<<"\>\<sip">>, <<"%3E<sip">>}
                     ,{<<"\>;">>, <<"%3E;">>} % this is especially nice :)
                     %% until such time as FS sets these properly
-                    ,{<<"<dialplan></dialplan>">>, <<"<dialplan>XML</dialplan>">>} 
+                    ,{<<"<dialplan></dialplan>">>, <<"<dialplan>XML</dialplan>">>}
                     ,{<<"<context>default</context>">>, <<"<context>context_2</context>">>}
                    ],
     lists:foldl(fun({S, R}, MetaAcc) ->
@@ -292,7 +292,7 @@ wait_for_channel_completion(UUID, NewNode) ->
     end.
 
 channel_teardown_sbd(UUID, OriginalNode) ->
-    gproc:reg({p, l, {channel_move, OriginalNode, UUID}}),
+    catch gproc:reg({p, l, {channel_move, OriginalNode, UUID}}),
 
     case freeswitch:sendevent_custom(OriginalNode, 'sofia::move_request'
                                      ,[{"profile_name", wh_util:to_list(?DEFAULT_FS_PROFILE)}
