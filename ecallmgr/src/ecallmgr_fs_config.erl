@@ -66,7 +66,7 @@ init([Node, Options]) ->
     put(callid, Node),
     process_flag(trap_exit, true),
     lager:debug("starting new fs config listener for ~s", [Node]),
-    case freeswitch:bind(Node, config) of
+    case freeswitch:bind(Node, configuration) of
         ok ->
             lager:debug("bound to config request on ~s", [Node]),
             {ok, #state{node=Node, options=Options}};
