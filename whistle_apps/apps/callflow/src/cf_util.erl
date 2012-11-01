@@ -362,7 +362,7 @@ do_lookup_callflow(Number, Db) ->
         {ok, []} when Number =/= ?NO_MATCH_CF ->
             case lookup_callflow_patterns(Number, Db) of
                 {error, _} ->
-                    do_lookup_callflow(?NO_MATCH_CF, Db);
+                    maybe_use_nomatch(Number, Db);
                 {ok, {Flow, Capture}} ->
                     F = wh_json:set_value(<<"capture_group">>, Capture, Flow),
                     wh_cache:store_local(?CALLFLOW_CACHE, {cf_flow, Number, Db}, F),
@@ -382,6 +382,20 @@ do_lookup_callflow(Number, Db) ->
         {error, _}=E ->
             E
     end.
+
+%% only route to nomatch when Number is all digits and/or +
+maybe_use_nomatch(<<"+", Number/binary>>, Db) ->
+    maybe_use_nomatch(Number, Db);
+maybe_use_nomatch(Number, Db) ->
+    case lists:all(fun is_digit/1, wh_util:to_list(Number)) of
+        true -> do_lookup_callflow(?NO_MATCH_CF, Db);
+        false ->
+            lager:debug("can't use no_match: number not all digits: ~s", [Number]),
+            {error, not_found}
+    end.
+
+is_digit(X) when X =< $0, X >= $9 -> true;
+is_digit(_) -> false.
 
 %%-----------------------------------------------------------------------------
 %% @private
