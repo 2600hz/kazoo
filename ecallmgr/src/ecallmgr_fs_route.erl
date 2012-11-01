@@ -168,23 +168,16 @@ code_change(_OldVsn, State, _Extra) ->
 process_route_req(Node, FSID, CallId, Props) ->
     put(callid, CallId),
     lager:debug("processing fetch request ~s (call ~s) from ~s", [FSID, CallId, Node]),
-
-    case ecallmgr_fs_nodes:channel_node(CallId) of
-        {error, not_found} -> search_for_route(Node, FSID, CallId, Props);
+    case (not wh_util:is_empty(props:get_value(<<"variable_recovered">>, Props)))
+        andalso ecallmgr_fs_nodes:channel_node(CallId)
+    of
         {ok, Node} ->
-            case props:get_value(<<"variable_recovered">>, Props) of
-                undefined ->
-                    lager:debug("channel already exists on ~s, but not a recovered one, so search", [Node]),
-                    search_for_route(Node, FSID, CallId, Props);
-                _Recovered ->
-                    lager:debug("channel already exists on ~s, recovered: ~p", [Node, _Recovered]),
-                    RespJObj = wh_json:from_list([{<<"Routes">>, []}
-                                                  ,{<<"Method">>, <<"park">>}
-                                                 ]),
-                    reply_affirmative(Node, FSID, CallId, RespJObj, Props)
-            end;
-        {ok, _OldNode} ->
-            lager:debug("channel already exists, but on other node ~s (not ~s)", [_OldNode, Node]),
+            lager:debug("recovered channel already exists on ~s, park it", [Node]),
+            RespJObj = wh_json:from_list([{<<"Routes">>, []}
+                                          ,{<<"Method">>, <<"park">>}
+                                         ]),
+            reply_affirmative(Node, FSID, CallId, RespJObj, Props);
+        _Else ->
             search_for_route(Node, FSID, CallId, Props)
     end.
 
@@ -261,7 +254,8 @@ start_control_and_events(Node, CallId, SendTo, CCVs) ->
                    ,{<<"Call-ID">>, CallId}
                    ,{<<"Control-Queue">>, CtlQ}
                    ,{<<"Custom-Channel-Vars">>, CCVs}
-                   | wh_api:default_headers(CtlQ, <<"dialplan">>, <<"route_win">>, ?APP_NAME, ?APP_VERSION)],
+                   | wh_api:default_headers(CtlQ, <<"dialplan">>, <<"route_win">>, ?APP_NAME, ?APP_VERSION)
+                  ],
         send_control_queue(SendTo, CtlProp)
     catch
         _:Reason ->
