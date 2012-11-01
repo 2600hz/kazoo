@@ -132,7 +132,7 @@ update_agent_device(Call, AgentId, <<"logout">>) ->
             {error, not_owner}
     end;
 update_agent_device(_, _, _) ->
-    ok.
+    {ok, ok}.
 
 move_agent_device(Call, AgentId, Device) ->
     DeviceId = wh_json:get_value(<<"_id">>, Device),
