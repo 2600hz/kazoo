@@ -14,7 +14,7 @@
 
 %% API
 -export([start_link/0
-         ,new/1
+         ,new/1, new/2
          ,workers/0
          ,find_acct_supervisors/1
          ,find_queue_supervisor/2
@@ -47,6 +47,9 @@ start_link() ->
 new(JObj) ->
     true = wh_json:is_json_object(JObj),
     supervisor:start_child(?MODULE, [JObj]).
+
+new(AcctId, QueueId) ->
+    supervisor:start_child(?MODULE, [AcctId, QueueId]).
 
 -spec workers/0 :: () -> [pid(),...] | [].
 workers() ->

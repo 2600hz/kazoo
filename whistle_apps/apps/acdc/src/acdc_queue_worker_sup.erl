@@ -14,6 +14,7 @@
 
 %% API
 -export([start_link/1
+         ,start_link/2
          ,stop/1
          ,queue/1
          ,shared_queue/1, start_shared_queue/4
@@ -39,8 +40,12 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec start_link/1 :: (wh_json:json_object()) -> startlink_ret().
+-spec start_link/2 :: (ne_binary(), ne_binary()) -> startlink_ret().
 start_link(QueueJObj) ->
     supervisor:start_link(?MODULE, [QueueJObj]).
+
+start_link(AcctId, QueueId) ->
+    supervisor:start_link(?MODULE, [AcctId, QueueId]).
 
 -spec stop/1 :: (pid()) -> 'ok' | {'error', 'not_found'}.
 stop(Super) ->
@@ -105,7 +110,7 @@ init(Args) ->
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    {ok, {SupFlags, [?CHILD(acdc_queue, [self() | Args])]}}.
+    {ok, {SupFlags, [?CHILD(acdc_queue_listener, [self() | Args])]}}.
 
 %%%===================================================================
 %%% Internal functions

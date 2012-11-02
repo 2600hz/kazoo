@@ -15,6 +15,7 @@
 %% API
 -export([start_link/0
          ,new/1
+         ,new_workers/3
          ,workers/0
         ]).
 
@@ -45,6 +46,11 @@ new(JObj) ->
     true = wh_json:is_json_object(JObj),
     supervisor:start_child(?MODULE, [JObj]).
 
+new_workers(_,_,N) when N =< 0 -> ok;
+new_workers(AcctId, QueueId, N) when is_integer(N) ->
+    _ = supervisor:start_child(?MODULE, [AcctId, QueueId]),
+    new_workers(AcctId, QueueId, N-1).
+
 -spec workers/0 :: () -> [pid(),...] | [].
 workers() ->
     [ Pid || {_, Pid, worker, [_]} <- supervisor:which_children(?MODULE), is_pid(Pid)].
@@ -73,7 +79,7 @@ init([]) ->
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    {ok, {SupFlags, [?CHILD(acdc_queue_sup, transient, 2000, worker)]}}.
+    {ok, {SupFlags, [?CHILD(acdc_queue_worker_sup, transient, 2000, worker)]}}.
 
 %%%===================================================================
 %%% Internal functions

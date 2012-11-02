@@ -14,6 +14,7 @@
 
 %% API
 -export([start_link/1
+         ,start_link/2
          ,stop/1
         ]).
 
@@ -36,8 +37,12 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec start_link/1 :: (wh_json:json_object()) -> startlink_ret().
+-spec start_link/2 :: (ne_binary(), ne_binary()) -> startlink_ret().
 start_link(QueueJObj) ->
     supervisor:start_link(?MODULE, [QueueJObj]).
+
+start_link(AcctId, QueueId) ->
+    supervisor:start_link(?MODULE, [AcctId, QueueId]).
 
 -spec stop/1 :: (pid()) -> 'ok' | {'error', 'not_found'}.
 stop(Super) ->
@@ -68,8 +73,9 @@ init(Args) ->
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    {ok, {SupFlags, [?CHILD(acdc_queue_manager, [self() | Args], worker)
-                     ,?CHILD(acdc_queue_workers_sup, Args, supervisor)
+    {ok, {SupFlags, [
+                     ?CHILD(acdc_queue_workers_sup, [], supervisor)
+                     ,?CHILD(acdc_queue_manager, [self() | Args], worker)
                     ]
          }
     }.
