@@ -14,7 +14,7 @@
 %%% @contributors
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
--module(acdc_queue).
+-module(acdc_queue_listener).
 
 -behaviour(gen_listener).
 
