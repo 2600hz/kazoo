@@ -15,6 +15,7 @@
 
 %% API
 -export([start_link/2
+         ,start_link/3
          ,handle_member_call/2
          ,handle_member_call_cancel/2
          ,should_ignore_member_call/2
@@ -90,10 +91,14 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec start_link/2 :: (pid(), wh_json:object()) -> startlink_ret().
+-spec start_link/3 :: (pid(), ne_binary(), ne_binary()) -> startlink_ret().
 start_link(Super, QueueJObj) ->
-    AcctId = wh_json:get_value(<<"pvt_account_id">>, QueueJObj),
-    QueueId = wh_json:get_value(<<"_id">>, QueueJObj),
+    start_link(Super
+               ,wh_json:get_value(<<"pvt_account_id">>, QueueJObj)
+               ,wh_json:get_value(<<"_id">>, QueueJObj)
+              ).
 
+start_link(Super, AcctId, QueueId) ->
     gen_listener:start_link({local, ?SERVER}, ?MODULE
                             ,[{bindings, ?BINDINGS(AcctId, QueueId)}
                               ,{responders, ?RESPONDERS}
@@ -162,6 +167,8 @@ should_ignore_member_call(Call, CallJObj) ->
 %%--------------------------------------------------------------------
 init([Super, AcctId, QueueId]) ->
     _ = start_secondary_queue(),
+    gen_listener:cast(self(), start_workers),
+
     {ok, #state{
        acct_id=AcctId
        ,queue_id=QueueId
@@ -209,6 +216,16 @@ handle_cast({monitor_call, Call}, State) ->
     gen_listener:add_binding(self(), call, [{callid, whapps_call:call_id(Call)}
                                             ,{restrict_to, [events]}
                                            ]),
+    {noreply, State};
+handle_cast({start_workers}, #state{acct_id=AcctId
+                                    ,queue_id=QueueId
+                                   }=State) ->
+    case couch_mgr:get_results_count(AcctId, <<"agents/agents_listing">>, [{key, QueueId}]) of
+        {ok, Cnt} ->
+            acdc_queue_workers_sup:new_workers(AcctId, QueueId, Cnt);
+        {error, _E} ->
+            lager:debug("failed to find agent count: ~p", [_E])
+    end,
     {noreply, State};
 handle_cast(_Msg, State) ->
     {noreply, State}.
