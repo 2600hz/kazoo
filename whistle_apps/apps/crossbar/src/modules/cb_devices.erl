@@ -13,10 +13,12 @@
 -module(cb_devices).
 
 -export([init/0
-         ,allowed_methods/0, allowed_methods/1
-         ,resource_exists/0, resource_exists/1
+         ,allowed_methods/0, allowed_methods/1, allowed_methods/3
+         ,resource_exists/0, resource_exists/1, resource_exists/3
          ,billing/1
-         ,validate/1, validate/2
+         ,authenticate/1
+         ,authorize/1
+         ,validate/1, validate/2, validate/4
          ,put/1
          ,post/2
          ,delete/2
@@ -26,6 +28,10 @@
         ]).
 
 -include_lib("crossbar/include/crossbar.hrl").
+
+-define(QUICKCALL_URL, [{<<"devices">>, [_, <<"quickcall">>, _]}
+                        ,{?WH_ACCOUNTS_DB, [_]}
+                       ]).
 
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".devices">>).
 
@@ -37,6 +43,8 @@
 init() ->
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.devices">>, ?MODULE, allowed_methods),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.devices">>, ?MODULE, resource_exists),
+    _ = crossbar_bindings:bind(<<"v1_resource.authenticate">>, ?MODULE, authenticate),
+    _ = crossbar_bindings:bind(<<"v1_resource.authorize">>, ?MODULE, authorize),
     _ = crossbar_bindings:bind(<<"v1_resource.billing">>, ?MODULE, billing),
     _ = crossbar_bindings:bind(<<"v1_resource.validate.devices">>, ?MODULE, validate),
     _ = crossbar_bindings:bind(<<"v1_resource.execute.put.devices">>, ?MODULE, put),
@@ -55,12 +63,18 @@ init() ->
 %%--------------------------------------------------------------------
 -spec allowed_methods/0 :: () -> http_methods().
 -spec allowed_methods/1 :: (path_token()) -> http_methods().
+-spec allowed_methods/3 :: (path_token(), path_token(), path_token()) -> http_methods().
+
 allowed_methods() ->
     ['GET', 'PUT'].
+
 allowed_methods(<<"status">>) ->
     ['GET'];
 allowed_methods(_) ->
     ['GET', 'POST', 'DELETE'].
+
+allowed_methods(_, <<"quickcall">>, _) ->
+    ['GET'].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -72,8 +86,11 @@ allowed_methods(_) ->
 %%--------------------------------------------------------------------
 -spec resource_exists/0 :: () -> 'true'.
 -spec resource_exists/1 :: (path_token()) -> 'true'.
+-spec resource_exists/3 :: (path_token(), path_token(), path_token()) -> 'true'.
+
 resource_exists() -> true.
 resource_exists(_) -> true.
+resource_exists(_, <<"quickcall">>, _) -> true.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -91,6 +108,22 @@ billing(#cb_context{req_nouns=[{<<"devices">>, _}|_], account_id=AccountId}=Cont
             crossbar_util:response(error, wh_util:to_binary(Error), 500, Reason, Context)
     end;
 billing(Context) -> Context.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec authenticate/1 :: (#cb_context{}) -> 'true'.
+authenticate(#cb_context{req_nouns=?DEVICES_QCALL_NOUNS, req_verb = <<"get">>}) ->
+    lager:debug("authenticating request"),
+    true.
+
+-spec authorize/1 :: (#cb_context{}) -> 'true'.
+authorize(#cb_context{req_nouns=?DEVICES_QCALL_NOUNS, req_verb = <<"get">>}) ->
+    lager:debug("authorizing request"),
+    true.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -129,6 +162,14 @@ validate(#cb_context{req_verb = <<"post">>}=Context, DeviceId) ->
     validate_request(DeviceId, Context);
 validate(#cb_context{req_verb = <<"delete">>}=Context, DeviceId) ->
     load_device(DeviceId, Context).
+
+validate(#cb_context{req_verb = <<"get">>}=Context, DeviceId, <<"quickcall">>, _) ->
+    Context1 = maybe_validate_quickcall(load_device(DeviceId, Context)),
+    case cb_context:has_errors(Context1) of
+        true -> Context1;
+        false -> 
+            cb_modules_util:maybe_originate_quickcall(Context1)
+    end.
 
 -spec post/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
 post(#cb_context{}=Context, _DeviceId) ->
@@ -262,6 +303,20 @@ on_successful_validation(undefined, #cb_context{doc=Doc}=Context) ->
     Context#cb_context{doc=wh_json:set_values(Props, Doc)};
 on_successful_validation(DeviceId, #cb_context{}=Context) -> 
     crossbar_doc:load_merge(DeviceId, Context).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+maybe_validate_quickcall(#cb_context{resp_status=success, doc=JObj, auth_token=AuthToken}=Context) ->
+    case (not wh_util:is_empty(AuthToken))
+          orelse wh_json:is_true(<<"allow_anoymous_quickcalls">>, JObj) 
+    of
+        false -> cb_context:add_system_error(invalid_crentials, Context);
+        true -> Context
+    end.
 
 %%--------------------------------------------------------------------
 %% @private

@@ -37,6 +37,13 @@
 
 -define(CROSSBAR_CACHE, crossbar_cache).
 
+-define(USERS_QCALL_NOUNS, [{<<"users">>, [_UserId, <<"quickcall">>, _Number]}
+                            ,{?WH_ACCOUNTS_DB, [_]}
+                           ]).
+-define(DEVICES_QCALL_NOUNS, [{<<"devices">>, [_DeviceId, <<"quickcall">>, _Number]}
+                              ,{?WH_ACCOUNTS_DB, [_]}
+                             ]).
+
 -record(cb_context, {
            content_types_provided = [] :: [crossbar_content_handler(),...] | []
           ,content_types_accepted = [] :: [crossbar_content_handler(),...] | []

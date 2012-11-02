@@ -14,9 +14,11 @@
 
 -export([create_user/1]).
 -export([init/0
-         ,allowed_methods/0, allowed_methods/1
-         ,resource_exists/0, resource_exists/1
-         ,validate/1, validate/2
+         ,allowed_methods/0, allowed_methods/1, allowed_methods/3
+         ,resource_exists/0, resource_exists/1, resource_exists/3
+         ,authenticate/1
+         ,authorize/1
+         ,validate/1, validate/2, validate/4
          ,put/1
          ,post/2
          ,delete/2
@@ -43,6 +45,8 @@ create_user(Context) ->
 init() ->
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.users">>, ?MODULE, allowed_methods),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.users">>, ?MODULE, resource_exists),
+    _ = crossbar_bindings:bind(<<"v1_resource.authenticate">>, ?MODULE, authenticate),
+    _ = crossbar_bindings:bind(<<"v1_resource.authorize">>, ?MODULE, authorize),
     _ = crossbar_bindings:bind(<<"v1_resource.validate.users">>, ?MODULE, validate),
     _ = crossbar_bindings:bind(<<"v1_resource.execute.put.users">>, ?MODULE, put),
     _ = crossbar_bindings:bind(<<"v1_resource.execute.post.users">>, ?MODULE, post),
@@ -59,10 +63,16 @@ init() ->
 %%--------------------------------------------------------------------
 -spec allowed_methods/0 :: () -> http_methods().
 -spec allowed_methods/1 :: (path_tokens()) -> http_methods().
+-spec allowed_methods/3 :: (path_token(), path_token(), path_token()) -> http_methods().
+
 allowed_methods() ->
     ['GET', 'PUT'].
+
 allowed_methods(_) ->
     ['GET', 'POST', 'DELETE'].
+
+allowed_methods(_, <<"quickcall">>, _) ->
+    ['GET'].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -74,8 +84,27 @@ allowed_methods(_) ->
 %%--------------------------------------------------------------------
 -spec resource_exists/0 :: () -> 'true'.
 -spec resource_exists/1 :: (path_tokens()) -> 'true'.
+-spec resource_exists/3 :: (path_tokens(), path_tokens(), path_tokens()) -> 'true'.
+
 resource_exists() -> true.
 resource_exists(_) -> true.
+resource_exists(_, <<"quickcall">>, _) -> true.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec authenticate/1 :: (#cb_context{}) -> 'true'.
+authenticate(#cb_context{req_nouns=?USERS_QCALL_NOUNS, req_verb = <<"get">>}) ->
+    lager:debug("authenticating request"),
+    true.
+
+-spec authorize/1 :: (#cb_context{}) -> 'true'.
+authorize(#cb_context{req_nouns=?USERS_QCALL_NOUNS, req_verb = <<"get">>}) ->
+    lager:debug("authorizing request"),
+    true.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -88,6 +117,7 @@ resource_exists(_) -> true.
 %%--------------------------------------------------------------------
 -spec validate/1 :: (#cb_context{}) -> #cb_context{}.
 -spec validate/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+
 validate(#cb_context{req_verb = <<"get">>}=Context) ->
     load_user_summary(Context);
 validate(#cb_context{req_verb = <<"put">>}=Context) ->
@@ -99,6 +129,14 @@ validate(#cb_context{req_verb = <<"post">>}=Context, UserId) ->
     validate_request(UserId, Context);
 validate(#cb_context{req_verb = <<"delete">>}=Context, UserId) ->
     load_user(UserId, Context).
+
+validate(#cb_context{req_verb = <<"get">>}=Context, UserId, <<"quickcall">>, _) ->
+    Context1 = maybe_validate_quickcall(load_user(UserId, Context)),
+    case cb_context:has_errors(Context1) of
+        true -> Context1;
+        false -> 
+            cb_modules_util:maybe_originate_quickcall(Context1)
+    end.
 
 -spec post/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
 post(Context, _) ->
@@ -230,6 +268,20 @@ rehash_creds(_, Username, Password, #cb_context{doc=JObj}=Context) ->
                                 ,{<<"pvt_sha1_auth">>, SHA1}
                                ], JObj),
     Context#cb_context{doc=wh_json:delete_key(<<"password">>, JObj1)}. 
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+maybe_validate_quickcall(#cb_context{resp_status=success, doc=JObj, auth_token=AuthToken}=Context) ->
+    case (not wh_util:is_empty(AuthToken))
+          orelse wh_json:is_true(<<"allow_anoymous_quickcalls">>, JObj) 
+    of
+        false -> cb_context:add_system_error(invalid_crentials, Context);
+        true -> Context
+    end.
 
 %%--------------------------------------------------------------------
 %% @private

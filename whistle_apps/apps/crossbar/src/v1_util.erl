@@ -637,6 +637,7 @@ succeeded(_) -> false.
 -spec execute_request/2 :: (#http_req{}, #cb_context{}) -> {boolean() | 'halt', #http_req{}, #cb_context{}}.
 execute_request(Req, #cb_context{req_nouns=[{Mod, Params}|_], req_verb=Verb}=Context) ->
     Event = <<"v1_resource.execute.", Verb/binary, ".", Mod/binary>>,
+    io:format("~p~n", [Event]),
     Payload = [Context | Params],
     case crossbar_bindings:fold(Event, Payload) of
         #cb_context{resp_status=success}=Context1 ->

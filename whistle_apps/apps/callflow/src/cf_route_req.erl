@@ -50,6 +50,7 @@ handle_req(JObj, Options) ->
 -spec callflow_should_respond/1 :: (whapps_call:call()) -> boolean().
 callflow_should_respond(Call) ->
     case whapps_call:authorizing_type(Call) of
+        <<"user">> -> true;
         <<"device">> -> true;
         <<"callforward">> -> true;
         <<"clicktocall">> -> true;

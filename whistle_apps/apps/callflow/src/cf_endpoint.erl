@@ -69,7 +69,6 @@ build(Endpoint, Properties, Call) ->
             create_endpoints(Endpoint, Properties, Call)
     end.
 
-
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
