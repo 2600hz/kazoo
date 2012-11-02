@@ -111,6 +111,7 @@
 %% Views
 -export([get_all_results/2
          ,get_results/3
+         ,get_results_count/3
         ]).
 -export([get_result_keys/1]).
 
@@ -858,6 +859,9 @@ delete_attachment(DbName, DocId, AName, Options) ->
                               couchbeam_error().
 -spec get_all_results/2 :: (text(), ne_binary()) -> get_results_return().
 -spec get_results/3 :: (text(), ne_binary(), wh_proplist()) -> get_results_return().
+-spec get_results_count/3 :: (text(), ne_binary(), wh_proplist()) ->
+                                     {'ok', integer()} |
+                                     couchbeam_error().
 
 get_all_results(DbName, DesignDoc) ->
     get_results(DbName, DesignDoc, []).
@@ -869,6 +873,9 @@ get_results(DbName, DesignDoc, Options) ->
         {ok, Db} -> get_results(Db, DesignDoc, Options);
         {error, _}=E -> E
     end.
+
+get_results_count(DbName, DesignDoc, Options) ->
+    couch_util:get_results_count(get_conn(), DbName, DesignDoc, Options).
 
 -spec get_result_keys/1 :: (wh_json:json_objects()) -> [wh_json:json_string(),...] | [].
 get_result_keys(JObjs) ->

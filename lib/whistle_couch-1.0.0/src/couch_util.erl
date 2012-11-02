@@ -44,6 +44,7 @@
          ,design_info/3
          ,all_design_docs/3
          ,get_results/4
+         ,get_results_count/4
          ,all_docs/3
         ]).
 
@@ -227,18 +228,40 @@ get_results(#server{}=Conn, DbName, DesignDoc, ViewOptions) ->
     Db = get_db(Conn, DbName),
     do_fetch_results(Db, DesignDoc, ViewOptions).
 
+-spec get_results_count/4 :: (server(), ne_binary(), ne_binary(), wh_proplist()) ->
+                                     {'ok', integer()} |
+                                     couchbeam_error().
+get_results_count(#server{}=Conn, DbName, DesignDoc, ViewOptions) ->
+    Db = get_db(Conn, DbName),
+    do_fetch_results_count(Db, DesignDoc, ViewOptions).
+
 %% Design Doc/View internal functions
 
 -spec do_fetch_results/3 :: (db(), ne_binary() | 'all_docs' | 'design_docs', wh_proplist()) ->
                                     {'ok', wh_json:json_objects() | [ne_binary(),...]} |
                                     couchbeam_error().
 do_fetch_results(Db, DesignDoc, Options) ->
-    ?RETRY_504(case couchbeam_view:fetch(Db, DesignDoc, Options) of
-                   {'ok', JObj} -> {'ok', wh_json:get_value(<<"rows">>, JObj, JObj)};
-                   {'error', _, E} -> {'error', E};
-                   Other -> Other
-               end
-              ).
+    ?RETRY_504(
+       case couchbeam_view:fetch(Db, DesignDoc, Options) of
+           {'ok', JObj} -> {'ok', wh_json:get_value(<<"rows">>, JObj, JObj)};
+           {'error', _, E} -> {'error', E};
+           Other -> Other
+       end
+      ).
+
+-spec do_fetch_results_count/3 :: (db(), ne_binary() | 'all_docs' | 'design_docs', wh_proplist()) ->
+                                          {'ok', integer()} |
+                                          couchbeam_error().
+do_fetch_results_count(Db, DesignDoc, Options) ->
+    ?RETRY_504(
+       case couchbeam_view:fetch(Db, DesignDoc, Options) of
+           {'ok', JObj} ->
+               {'ok', wh_json:get_integer_value(<<"total_rows">>, JObj, 0)};
+           {'error', _, E} -> {'error', E};
+           Other -> Other
+       end
+      ).
+
 
 -spec do_get_design_info/2 :: (db(), ne_binary()) ->
                                       {'ok', wh_json:json_object()} |
@@ -507,7 +530,8 @@ get_db(#server{}=Conn, DbName) ->
 %%------------------------------------------------------------------------------
 -type retry504_ret() :: 'ok' | ne_binary() |
                         {'ok', wh_json:json_object() | wh_json:json_objects() |
-                         binary() | [binary(),...] | boolean()} |
+                         binary() | [binary(),...] | boolean() | integer()
+                        } |
                         couchbeam_error() |
                         {'error', 'timeout'}.
 
