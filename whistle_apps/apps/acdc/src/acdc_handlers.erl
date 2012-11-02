@@ -77,7 +77,10 @@ update_acdc_actor(Call) ->
                      ).
 update_acdc_actor(_Call, undefined, _) -> ok;
 update_acdc_actor(_Call, _, undefined) -> ok;
-update_acdc_actor(Call, _QueueId, <<"queue">>) -> whapps_call_command:hangup(Call);
+update_acdc_actor(Call, QueueId, <<"queue">>) ->
+    lager:debug("caller ~s wants a call in ~s", [whapps_call:caller_id_name(Call), QueueId]),
+
+    acdc_queue_thief:connect(Call, QueueId);
 update_acdc_actor(Call, AgentId, <<"user">>) ->
     AcctId = whapps_call:account_id(Call),
 
