@@ -184,9 +184,38 @@ A queue provides ordering of calls through it.
          \|----[acdc_queue_sup]
          \|----[acdc_queue_sup]
                       \|
-                      \|----acdc_queue
-                      \|----acdc_queue_shared
-                      \|----acdc_queue_fsm
+                      \|----acdc_queue_manager
+                      \|----acdc_queue_workers_sup
+                                \|
+                                \|----acdc_queue_worker_sup
+                                \|----acdc_queue_worker_sup
+                                            \|
+                                            \|----acdc_queue
+                                            \|----acdc_queue_shared
+                                            \|----acdc_queue_fsm
+
+*** Queue Startup
+
+When acdc_init starts up (last child of acdc_sup), it iterates through each account. In each account, iterate over the queues available.
+
+acdc_init:
+  foreach acct in accts
+    foreach queue in acct
+      acdc_queues_sup:new(AcctId, QueueId)
+
+acdc_queues_sup will start an acdc_queue_sup process to represent the AcctId/QueueId combo. The child list of the acdc_queue_sup has two entries: acdc_queue_manager and acdc_queue_workers_sup.
+
+acdc_queue_manager handles receiving updates from config docs about the queue, member calls to the queue, etc.
+acdc_queue_workers_sup handles managing actual member_call processing units. Its really a pool of member_call workers. This allows us to utilize AMQP's ack/nack features to handle worker crashes and not lose the member call, but still process multiple calls at once (meaning, if we have a queue with 10 agents, and 5 members call in, 5 phones had better start ringing).
+
+To that end, when acdc_queue_manager has started up, it will find the ACDc queue's configuration and count how many configured agents that queue should have. This is the number of acdc_queue_worker_sup processes that will be started.
+
+Note: since ACDc will run in multiple VMs, the total count of worker processes across the cluster will greatly outnumber the actual number of agents. This is okay for a couple reasons. One, queue BLF allows the caller to be connected to the next available call (a one-time agent of that queue). This should ensure that waiting member calls are actively processed and able to be routed to the temporary agent. One drawback is that AMQP likely round-robins in order of connection time, so if server 1 connects 10, then server 2 connects 10, the first ten calls are likely to be processed on server 1 while server 2 sits idle. Not sure its an issue, but could be problematic.
+
+acdc_queue_worker_sup starts the three worker processes: acdc_queue_listener, acdc_queue_fsm, and acdc_queue_shared.
+acdc_queue_listener is the AMQP arm of the worker, listening for and delivering AMQP payloads to the FSM, and sending AMQP payloads on behalf of the FSM.
+acdc_queue_fsm is the brains of the worker. It tracks what state the member call is in, which agent to respond with a Win to, etc.
+acdc_queue_shared is an AMQP listener for member_call payloads. It has the special restrictions of QoS of 1, and no auto-acking of payloads. When the FSM is finished with a member call, it is via acdc_queue_shared that the payload is ACK'd and the worker moves to the next call.
 
 *** Queue - Shared
 
