@@ -24,7 +24,7 @@
 -define(CHILDREN, [{acdc_agents_sup, supervisor}
                    ,{acdc_queues_sup, supervisor}
                    ,{acdc_stats, worker}
-                   ,{acdc_queue_manager, worker}
+%%                   ,{acdc_queue_manager, worker}
                    ,{acdc_agent_manager, worker}
                    ,{acdc_init, worker}
                    ,{acdc_listener, worker}

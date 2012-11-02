@@ -6,26 +6,27 @@
 %%% @contributors
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
--module(acdc_queue_sup).
+-module(acdc_queue_workers_sup).
 
 -behaviour(supervisor).
 
 -include("acdc.hrl").
 
 %% API
--export([start_link/1
-         ,stop/1
+-export([start_link/0
+         ,new/1
+         ,workers/0
         ]).
 
 %% Supervisor callbacks
 -export([init/1]).
 
 %% Helper macro for declaring children of supervisor
--define(CHILD(Name, Args, Type),
-        {Name, {Name, start_link, Args}, one_for_one, 5000, Type, [Name]}).
+-define(CHILD(Name, Restart, Shutdown, Type),
+        {Name, {Name, start_link, []}, Restart, Shutdown, Type, [Name]}).
 
 %%%===================================================================
-%%% api functions
+%%% API functions
 %%%===================================================================
 
 %%--------------------------------------------------------------------
@@ -35,13 +36,18 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
--spec start_link/1 :: (wh_json:json_object()) -> startlink_ret().
-start_link(QueueJObj) ->
-    supervisor:start_link(?MODULE, [QueueJObj]).
+-spec start_link/0 :: () -> startlink_ret().
+start_link() ->
+    supervisor:start_link(?MODULE, []).
 
--spec stop/1 :: (pid()) -> 'ok' | {'error', 'not_found'}.
-stop(Super) ->
-    supervisor:terminate_child(acdc_queues_sup, Super).
+-spec new/1 :: (wh_json:json_object()) -> sup_startchild_ret().
+new(JObj) ->
+    true = wh_json:is_json_object(JObj),
+    supervisor:start_child(?MODULE, [JObj]).
+
+-spec workers/0 :: () -> [pid(),...] | [].
+workers() ->
+    [ Pid || {_, Pid, worker, [_]} <- supervisor:which_children(?MODULE), is_pid(Pid)].
 
 %%%===================================================================
 %%% Supervisor callbacks
@@ -60,19 +66,14 @@ stop(Super) ->
 %%                     {error, Reason}
 %% @end
 %%--------------------------------------------------------------------
--spec init/1 :: (list()) -> sup_init_ret().
-init(Args) ->
-    RestartStrategy = one_for_one,
-    MaxRestarts = 2,
-    MaxSecondsBetweenRestarts = 2,
+init([]) ->
+    RestartStrategy = simple_one_for_one,
+    MaxRestarts = 1,
+    MaxSecondsBetweenRestarts = 1,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    {ok, {SupFlags, [?CHILD(acdc_queue_manager, [self() | Args], worker)
-                     ,?CHILD(acdc_queue_workers_sup, Args, supervisor)
-                    ]
-         }
-    }.
+    {ok, {SupFlags, [?CHILD(acdc_queue_sup, transient, 2000, worker)]}}.
 
 %%%===================================================================
 %%% Internal functions

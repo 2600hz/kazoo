@@ -239,7 +239,7 @@ handle_call(_Request, _From, State) ->
 %%--------------------------------------------------------------------
 handle_cast({start_fsm, Supervisor, QueueJObj}, #state{}=State) ->
     lager:debug("starting FSM in supervisor ~p", [Supervisor]),
-    {ok, FSMPid} = acdc_queue_sup:start_fsm(Supervisor, QueueJObj),
+    {ok, FSMPid} = acdc_queue_worker_sup:start_fsm(Supervisor, QueueJObj),
 
     {noreply, State#state{fsm_pid=FSMPid
                           ,supervisor=Supervisor
@@ -251,7 +251,7 @@ handle_cast({accept_member_calls}, #state{supervisor=Supervisor
                                           ,acct_id=AcctId
                                           ,queue_id=QueueId
                                          }=State) ->
-    {ok, SharedPid} = acdc_queue_sup:start_shared_queue(Supervisor, FSMPid, AcctId, QueueId),
+    {ok, SharedPid} = acdc_queue_worker_sup:start_shared_queue(Supervisor, FSMPid, AcctId, QueueId),
     lager:debug("started shared queue listener: ~p", [SharedPid]),
     {noreply, State#state{shared_pid=SharedPid}};
 

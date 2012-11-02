@@ -14,7 +14,7 @@
 -behaviour(gen_listener).
 
 %% API
--export([start_link/0
+-export([start_link/2
          ,handle_member_call/2
          ,handle_member_call_cancel/2
          ,should_ignore_member_call/2
@@ -35,15 +35,20 @@
 
 -define(SERVER, ?MODULE).
 
--record(state, {ignored_member_calls = dict:new() :: dict()}).
+-record(state, {ignored_member_calls = dict:new() :: dict()
+               ,acct_id :: api_binary()
+               ,queue_id :: api_binary()
+               ,supervisor :: pid()
+               }).
 
--define(BINDINGS, [{conf, [{doc_type, <<"queue">>}]}
-                   ,{acdc_queue, [{restrict_to, [stats_req]}
-                                  ,{account_id, <<"*">>}
-                                  ,{queue_id, <<"*">>}
-                                 ]}
-                   ,{notifications, [{restrict_to, [presence_probe]}]}
-                  ]).
+-define(BINDINGS(A, Q), [{conf, [{doc_type, <<"queue">>}]}
+                         ,{acdc_queue, [{restrict_to, [stats_req]}
+                                        ,{account_id, A}
+                                        ,{queue_id, Q}
+                                       ]}
+                         ,{notifications, [{restrict_to, [presence_probe]}]}
+                        ]).
+
 -define(RESPONDERS, [{{acdc_queue_handler, handle_config_change}
                       ,[{<<"configuration">>, <<"*">>}]
                      }
@@ -84,12 +89,16 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
-start_link() ->
+-spec start_link/2 :: (pid(), wh_json:object()) -> startlink_ret().
+start_link(Super, QueueJObj) ->
+    AcctId = wh_json:get_value(<<"pvt_account_id">>, QueueJObj),
+    QueueId = wh_json:get_value(<<"_id">>, QueueJObj),
+
     gen_listener:start_link({local, ?SERVER}, ?MODULE
-                            ,[{bindings, ?BINDINGS}
+                            ,[{bindings, ?BINDINGS(AcctId, QueueId)}
                               ,{responders, ?RESPONDERS}
                              ]
-                            ,[]
+                            ,[Super, AcctId, QueueId]
                            ).
 
 handle_channel_destroy(JObj, _Props) ->
@@ -151,9 +160,13 @@ should_ignore_member_call(Call, CallJObj) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init([]) ->
+init([Super, AcctId, QueueId]) ->
     _ = start_secondary_queue(),
-    {ok, #state{}}.
+    {ok, #state{
+       acct_id=AcctId
+       ,queue_id=QueueId
+       ,supervisor=Super
+      }}.
 
 %%--------------------------------------------------------------------
 %% @private

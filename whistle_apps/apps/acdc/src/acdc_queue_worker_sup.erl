@@ -6,7 +6,7 @@
 %%% @contributors
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
--module(acdc_queue_sup).
+-module(acdc_queue_worker_sup).
 
 -behaviour(supervisor).
 
@@ -15,17 +15,20 @@
 %% API
 -export([start_link/1
          ,stop/1
+         ,queue/1
+         ,shared_queue/1, start_shared_queue/4
+         ,fsm/1, start_fsm/2
         ]).
 
 %% Supervisor callbacks
 -export([init/1]).
 
 %% Helper macro for declaring children of supervisor
--define(CHILD(Name, Args, Type),
-        {Name, {Name, start_link, Args}, one_for_one, 5000, Type, [Name]}).
+-define(CHILD(Name, Args),
+        {Name, {Name, start_link, Args}, transient, 5000, worker, [Name]}).
 
 %%%===================================================================
-%%% api functions
+%%% API functions
 %%%===================================================================
 
 %%--------------------------------------------------------------------
@@ -42,6 +45,40 @@ start_link(QueueJObj) ->
 -spec stop/1 :: (pid()) -> 'ok' | {'error', 'not_found'}.
 stop(Super) ->
     supervisor:terminate_child(acdc_queues_sup, Super).
+
+-spec queue/1 :: (pid()) -> pid() | 'undefined'.
+queue(Super) ->
+    case child_of_type(Super, acdc_queue) of
+        [] -> undefined;
+        [P] -> P
+    end.
+
+-spec shared_queue/1 :: (pid()) -> pid() | 'undefined'.
+shared_queue(Super) ->
+    case child_of_type(Super, acdc_queue_shared) of
+        [] -> undefined;
+        [P] -> P
+    end.
+
+-spec start_shared_queue/4 :: (pid(), pid(), ne_binary(), ne_binary()) -> sup_startchild_ret().
+start_shared_queue(Super, FSMPid, AcctId, QueueId) ->
+    supervisor:start_child(Super, ?CHILD(acdc_queue_shared, [FSMPid, AcctId, QueueId])).
+
+-spec fsm/1 :: (pid()) -> pid() | 'undefined'.
+fsm(Super) ->
+    case child_of_type(Super, acdc_queue_fsm) of
+        [] -> undefined;
+        [P] -> P
+    end.
+
+-spec start_fsm/2 :: (pid(), wh_json:json_object()) -> sup_startchild_ret().
+start_fsm(Super, QueueJObj) ->
+    Parent = self(),
+    supervisor:start_child(Super, ?CHILD(acdc_queue_fsm, [Parent, QueueJObj])).
+
+-spec child_of_type/2 :: (pid(), atom()) -> list(pid()).
+child_of_type(Super, T) ->
+    [ Pid || {Type, Pid, worker, [_]} <- supervisor:which_children(Super), T =:= Type].
 
 %%%===================================================================
 %%% Supervisor callbacks
@@ -62,17 +99,13 @@ stop(Super) ->
 %%--------------------------------------------------------------------
 -spec init/1 :: (list()) -> sup_init_ret().
 init(Args) ->
-    RestartStrategy = one_for_one,
+    RestartStrategy = one_for_all,
     MaxRestarts = 2,
     MaxSecondsBetweenRestarts = 2,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    {ok, {SupFlags, [?CHILD(acdc_queue_manager, [self() | Args], worker)
-                     ,?CHILD(acdc_queue_workers_sup, Args, supervisor)
-                    ]
-         }
-    }.
+    {ok, {SupFlags, [?CHILD(acdc_queue, [self() | Args])]}}.
 
 %%%===================================================================
 %%% Internal functions
