@@ -19,7 +19,7 @@
 -behaviour(gen_listener).
 
 %% API
--export([start_link/2
+-export([start_link/3
          ,accept_member_calls/1
          ,member_connect_req/3
          ,member_connect_re_req/1
@@ -51,7 +51,6 @@
 
 -record(state, {
           queue_id :: ne_binary()
-         ,queue_db :: ne_binary()
          ,acct_id :: ne_binary()
          ,moh :: ne_binary()
 
@@ -107,11 +106,8 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
--spec start_link/2 :: (pid(), wh_json:json_object()) -> startlink_ret().
-start_link(Supervisor, QueueJObj) ->
-    QueueId = wh_json:get_value(<<"_id">>, QueueJObj),
-    AcctId = wh_json:get_value(<<"pvt_account_id">>, QueueJObj),
-
+-spec start_link/3 :: (pid(), ne_binary(), ne_binary()) -> startlink_ret().
+start_link(Supervisor, AcctId, QueueId) ->
     gen_listener:start_link(?MODULE
                             ,[{bindings, [{acdc_queue, [{restrict_to, [agent_available, sync_req]}
                                                         ,{account_id, AcctId}
@@ -121,7 +117,7 @@ start_link(Supervisor, QueueJObj) ->
                                          ]}
                               ,{responders, ?RESPONDERS}
                              ]
-                            ,[Supervisor, QueueJObj]
+                            ,[Supervisor, AcctId, QueueId]
                            ).
 
 accept_member_calls(Srv) ->
@@ -187,11 +183,14 @@ send_sync_resp(Srv, Strategy, StrategyState, ReqJObj) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init([Supervisor, QueueJObj]) ->
-    QueueId = wh_json:get_value(<<"_id">>, QueueJObj),
+init([Supervisor, AcctId, QueueId]) ->
     put(callid, QueueId),
 
     lager:debug("starting queue ~s", [QueueId]),
+
+    {ok, QueueJObj} = couch_mgr:open_cache_doc(wh_util:format_account_id(AcctId, encoded)
+                                               ,QueueId
+                                              ),
 
     gen_listener:cast(self(), {start_fsm, Supervisor, QueueJObj}),
 
@@ -199,8 +198,7 @@ init([Supervisor, QueueJObj]) ->
 
     {ok, #state{
        queue_id = QueueId
-       ,queue_db = wh_json:get_value(<<"pvt_account_db">>, QueueJObj)
-       ,acct_id = wh_json:get_value(<<"pvt_account_id">>, QueueJObj)
+       ,acct_id = AcctId
        ,my_id = acdc_util:proc_id()
        ,moh = wh_json:get_value(<<"moh">>, QueueJObj)
       }}.

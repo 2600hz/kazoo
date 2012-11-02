@@ -13,9 +13,10 @@
 -include("acdc.hrl").
 
 %% API
--export([start_link/1
-         ,start_link/2
+-export([start_link/2
          ,stop/1
+         ,manager/1
+         ,workers_sup/1
         ]).
 
 %% Supervisor callbacks
@@ -36,17 +37,21 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
--spec start_link/1 :: (wh_json:json_object()) -> startlink_ret().
 -spec start_link/2 :: (ne_binary(), ne_binary()) -> startlink_ret().
-start_link(QueueJObj) ->
-    supervisor:start_link(?MODULE, [QueueJObj]).
-
 start_link(AcctId, QueueId) ->
     supervisor:start_link(?MODULE, [AcctId, QueueId]).
 
 -spec stop/1 :: (pid()) -> 'ok' | {'error', 'not_found'}.
 stop(Super) ->
     supervisor:terminate_child(acdc_queues_sup, Super).
+
+-spec manager/1 :: (pid()) -> pid() | 'undefined'.
+manager(Super) ->
+    hd([P || {_, P, worker, _} <- supervisor:which_children(Super)]).
+
+-spec workers_sup/1 :: (pid()) -> pid() | 'undefined'.
+workers_sup(Super) ->
+    hd([P || {_, P, supervisor, _} <- supervisor:which_children(Super)]).
 
 %%%===================================================================
 %%% Supervisor callbacks

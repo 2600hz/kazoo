@@ -14,12 +14,12 @@
 -behaviour(gen_listener).
 
 %% API
--export([start_link/2
-         ,start_link/3
+-export([start_link/3
          ,handle_member_call/2
          ,handle_member_call_cancel/2
-         ,should_ignore_member_call/2
+         ,should_ignore_member_call/3
          ,handle_channel_destroy/2
+         ,config/1
         ]).
 
 %% gen_server callbacks
@@ -90,16 +90,9 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
--spec start_link/2 :: (pid(), wh_json:object()) -> startlink_ret().
 -spec start_link/3 :: (pid(), ne_binary(), ne_binary()) -> startlink_ret().
-start_link(Super, QueueJObj) ->
-    start_link(Super
-               ,wh_json:get_value(<<"pvt_account_id">>, QueueJObj)
-               ,wh_json:get_value(<<"_id">>, QueueJObj)
-              ).
-
 start_link(Super, AcctId, QueueId) ->
-    gen_listener:start_link({local, ?SERVER}, ?MODULE
+    gen_listener:start_link(?MODULE
                             ,[{bindings, ?BINDINGS(AcctId, QueueId)}
                               ,{responders, ?RESPONDERS}
                              ]
@@ -135,20 +128,23 @@ handle_member_call(JObj, Props) ->
 
     acdc_util:presence_update(AcctId, QueueId, ?PRESENCE_RED_FLASH).
 
-handle_member_call_cancel(JObj, _Props) ->
+handle_member_call_cancel(JObj, Props) ->
     true = wapi_acdc_queue:member_call_cancel_v(JObj),
     K = make_ignore_key(wh_json:get_value(<<"Account-ID">>, JObj)
                         ,wh_json:get_value(<<"Queue-ID">>, JObj)
                         ,wh_json:get_value(<<"Call-ID">>, JObj)
                        ),
-    gen_listener:cast(?SERVER, {member_call_cancel, K}).
+    gen_listener:cast(props:get_value(server, Props), {member_call_cancel, K}).
 
-should_ignore_member_call(Call, CallJObj) ->
+should_ignore_member_call(Srv, Call, CallJObj) ->
     K = make_ignore_key(wh_json:get_value(<<"Account-ID">>, CallJObj)
                         ,wh_json:get_value(<<"Queue-ID">>, CallJObj)
                         ,whapps_call:call_id(Call)
                        ),
-    gen_listener:call(?SERVER, {should_ignore_member_call, K}).
+    gen_listener:call(Srv, {should_ignore_member_call, K}).
+
+config(Srv) ->
+    gen_listener:call(Srv, config).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -194,6 +190,12 @@ handle_call({should_ignore_member_call, K}, _, #state{ignored_member_calls=Dict}
         {'EXIT', _} -> {reply, false, State};
         _Res -> {reply, true, State#state{ignored_member_calls=dict:erase(K, Dict)}}
     end;
+
+handle_call(config, _, #state{acct_id=AcctId
+                              ,queue_id=QueueId
+                             }=State) ->
+    {reply, {AcctId, QueueId}, State};
+
 handle_call(_Request, _From, State) ->
     Reply = ok,
     {reply, Reply, State}.
@@ -222,6 +224,7 @@ handle_cast({start_workers}, #state{acct_id=AcctId
                                    }=State) ->
     case couch_mgr:get_results_count(AcctId, <<"agents/agents_listing">>, [{key, QueueId}]) of
         {ok, Cnt} ->
+            lager:debug("starting ~b workers for queue ~s", [Cnt, QueueId]),
             acdc_queue_workers_sup:new_workers(AcctId, QueueId, Cnt);
         {error, _E} ->
             lager:debug("failed to find agent count: ~p", [_E])

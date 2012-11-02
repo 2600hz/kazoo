@@ -58,7 +58,7 @@ handle_queue_change(JObj, AcctId, QueueId, <<"doc_created">>) ->
     end;
 handle_queue_change(JObj, AcctId, QueueId, <<"doc_edited">>) ->
     case acdc_queues_sup:find_queue_supervisor(AcctId, QueueId) of
-        undefined -> acdc_queues_sup:new(JObj);
+        undefined -> acdc_queues_sup:new(AcctId, QueueId);
         P when is_pid(P) ->
             acdc_queue_fsm:refresh(acdc_queue_sup:fsm(P), JObj)
     end;

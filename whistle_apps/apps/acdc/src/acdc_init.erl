@@ -26,13 +26,16 @@ init_acdc() ->
 init_account(AcctDb) ->
     lager:debug("init account: ~s", [AcctDb]),
 
-    _ = init_queues(couch_mgr:get_results(AcctDb, <<"queues/crossbar_listing">>, [include_docs])),
+    _ = init_queues(wh_util:format_account_id(AcctDb, raw)
+                    ,couch_mgr:get_results(AcctDb, <<"queues/crossbar_listing">>, [])
+                   ),
     init_agents(AcctDb, couch_mgr:get_results(AcctDb, <<"agents/crossbar_listing">>, [include_docs])).
 
--spec init_queues/1 :: ({'ok', wh_json:json_objects()} | {'error', _}) -> any().
-init_queues({ok, []}) -> ok;
-init_queues({error, _E}) -> lager:debug("error fetching queues: ~p", [_E]);
-init_queues({ok, Qs}) -> [acdc_queues_sup:new(wh_json:get_value(<<"doc">>, Q)) || Q <- Qs].
+-spec init_queues/2 :: (ne_binary(), {'ok', wh_json:json_objects()} | {'error', _}) -> any().
+init_queues(_, {ok, []}) -> ok;
+init_queues(_, {error, _E}) -> lager:debug("error fetching queues: ~p", [_E]);
+init_queues(AcctId, {ok, Qs}) ->
+    [acdc_queues_sup:new(AcctId, wh_json:get_value(<<"id">>, Q)) || Q <- Qs].
 
 -spec init_agents/2 :: (ne_binary(), {'ok', wh_json:json_objects()} | {'error', _}) -> any().
 init_agents(_AcctDb, {ok, []}) ->

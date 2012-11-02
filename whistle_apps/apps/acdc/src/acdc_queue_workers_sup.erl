@@ -14,7 +14,6 @@
 
 %% API
 -export([start_link/0
-         ,new/1
          ,new_workers/3
          ,workers/0
         ]).
@@ -40,11 +39,6 @@
 -spec start_link/0 :: () -> startlink_ret().
 start_link() ->
     supervisor:start_link(?MODULE, []).
-
--spec new/1 :: (wh_json:json_object()) -> sup_startchild_ret().
-new(JObj) ->
-    true = wh_json:is_json_object(JObj),
-    supervisor:start_child(?MODULE, [JObj]).
 
 new_workers(_,_,N) when N =< 0 -> ok;
 new_workers(AcctId, QueueId, N) when is_integer(N) ->
