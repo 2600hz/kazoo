@@ -255,13 +255,11 @@ do_fetch_results(Db, DesignDoc, Options) ->
 do_fetch_results_count(Db, DesignDoc, Options) ->
     ?RETRY_504(
        case couchbeam_view:fetch(Db, DesignDoc, Options) of
-           {'ok', JObj} ->
-               {'ok', wh_json:get_integer_value(<<"total_rows">>, JObj, 0)};
+           {'ok', JObj} -> {'ok', wh_json:get_integer_value(<<"total_rows">>, JObj, 0)};
            {'error', _, E} -> {'error', E};
            Other -> Other
        end
       ).
-
 
 -spec do_get_design_info/2 :: (db(), ne_binary()) ->
                                       {'ok', wh_json:json_object()} |
