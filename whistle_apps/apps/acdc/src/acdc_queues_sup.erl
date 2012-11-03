@@ -56,7 +56,7 @@ find_acct_supervisors(AcctId) ->
 
 -spec is_queue_in_acct/2 :: (pid(), ne_binary()) -> boolean().
 is_queue_in_acct(Super, AcctId) ->
-    case catch acdc_queue:config(acdc_queue_sup:queue(Super)) of
+    case catch acdc_queue_manager:config(acdc_queue_sup:manager(Super)) of
         {'EXIT', _} -> false;
         {AcctId, _} -> true;
         _ -> false

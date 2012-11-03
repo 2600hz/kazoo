@@ -14,8 +14,8 @@
 
 %% API
 -export([start_link/0
-         ,new_workers/3
-         ,workers/0
+         ,new_workers/4
+         ,workers/1
         ]).
 
 %% Supervisor callbacks
@@ -40,14 +40,15 @@
 start_link() ->
     supervisor:start_link(?MODULE, []).
 
-new_workers(_,_,N) when N =< 0 -> ok;
-new_workers(AcctId, QueueId, N) when is_integer(N) ->
-    _ = supervisor:start_child(?MODULE, [AcctId, QueueId]),
-    new_workers(AcctId, QueueId, N-1).
+-spec new_workers/4 :: (pid(), ne_binary(), ne_binary(), integer()) -> 'ok'.
+new_workers(_, _,_,N) when N =< 0 -> ok;
+new_workers(WorkersSup, AcctId, QueueId, N) when is_integer(N) ->
+    _ = supervisor:start_child(WorkersSup, [self(), AcctId, QueueId]),
+    new_workers(WorkersSup, AcctId, QueueId, N-1).
 
--spec workers/0 :: () -> [pid(),...] | [].
-workers() ->
-    [ Pid || {_, Pid, worker, [_]} <- supervisor:which_children(?MODULE), is_pid(Pid)].
+-spec workers/1 :: (pid()) -> [pid(),...] | [].
+workers(Super) ->
+    [Pid || {_, Pid, supervisor, [_]} <- supervisor:which_children(Super), is_pid(Pid)].
 
 %%%===================================================================
 %%% Supervisor callbacks

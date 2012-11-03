@@ -13,11 +13,11 @@
 -include("acdc.hrl").
 
 %% API
--export([start_link/2
+-export([start_link/3
          ,stop/1
          ,queue/1
          ,shared_queue/1, start_shared_queue/4
-         ,fsm/1, start_fsm/2
+         ,fsm/1, start_fsm/3
         ]).
 
 %% Supervisor callbacks
@@ -38,47 +38,47 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
--spec start_link/2 :: (ne_binary(), ne_binary()) -> startlink_ret().
-start_link(AcctId, QueueId) ->
-    supervisor:start_link(?MODULE, [AcctId, QueueId]).
+-spec start_link/3 :: (pid(), ne_binary(), ne_binary()) -> startlink_ret().
+start_link(MgrPid, AcctId, QueueId) ->
+    supervisor:start_link(?MODULE, [MgrPid, AcctId, QueueId]).
 
 -spec stop/1 :: (pid()) -> 'ok' | {'error', 'not_found'}.
-stop(Super) ->
-    supervisor:terminate_child(acdc_queues_sup, Super).
+stop(WorkerSup) ->
+    supervisor:terminate_child(acdc_queues_sup, WorkerSup).
 
 -spec queue/1 :: (pid()) -> pid() | 'undefined'.
-queue(Super) ->
-    case child_of_type(Super, acdc_queue) of
+queue(WorkerSup) ->
+    case child_of_type(WorkerSup, acdc_queue) of
         [] -> undefined;
         [P] -> P
     end.
 
 -spec shared_queue/1 :: (pid()) -> pid() | 'undefined'.
-shared_queue(Super) ->
-    case child_of_type(Super, acdc_queue_shared) of
+shared_queue(WorkerSup) ->
+    case child_of_type(WorkerSup, acdc_queue_shared) of
         [] -> undefined;
         [P] -> P
     end.
 
 -spec start_shared_queue/4 :: (pid(), pid(), ne_binary(), ne_binary()) -> sup_startchild_ret().
-start_shared_queue(Super, FSMPid, AcctId, QueueId) ->
-    supervisor:start_child(Super, ?CHILD(acdc_queue_shared, [FSMPid, AcctId, QueueId])).
+start_shared_queue(WorkerSup, FSMPid, AcctId, QueueId) ->
+    supervisor:start_child(WorkerSup, ?CHILD(acdc_queue_shared, [FSMPid, AcctId, QueueId])).
 
 -spec fsm/1 :: (pid()) -> pid() | 'undefined'.
-fsm(Super) ->
-    case child_of_type(Super, acdc_queue_fsm) of
+fsm(WorkerSup) ->
+    case child_of_type(WorkerSup, acdc_queue_fsm) of
         [] -> undefined;
         [P] -> P
     end.
 
--spec start_fsm/2 :: (pid(), wh_json:json_object()) -> sup_startchild_ret().
-start_fsm(Super, QueueJObj) ->
-    Parent = self(),
-    supervisor:start_child(Super, ?CHILD(acdc_queue_fsm, [Parent, QueueJObj])).
+-spec start_fsm/3 :: (pid(), pid(), wh_json:json_object()) -> sup_startchild_ret().
+start_fsm(WorkerSup, MgrPid, QueueJObj) ->
+    ListenerPid = self(),
+    supervisor:start_child(WorkerSup, ?CHILD(acdc_queue_fsm, [MgrPid, ListenerPid, QueueJObj])).
 
 -spec child_of_type/2 :: (pid(), atom()) -> list(pid()).
-child_of_type(Super, T) ->
-    [ Pid || {Type, Pid, worker, [_]} <- supervisor:which_children(Super), T =:= Type].
+child_of_type(WorkerSup, T) ->
+    [ Pid || {Type, Pid, worker, [_]} <- supervisor:which_children(WorkerSup), T =:= Type].
 
 %%%===================================================================
 %%% Supervisor callbacks

@@ -11,7 +11,7 @@
 -behaviour(gen_fsm).
 
 %% API
--export([start_link/2]).
+-export([start_link/3]).
 
 %% Event injectors
 -export([member_call/3
@@ -61,6 +61,7 @@
 
 -record(state, {
           queue_proc :: pid()
+         ,manager_proc :: pid()
          ,connect_resps = [] :: wh_json:json_objects()
          ,collect_ref :: reference()
          ,acct_id :: ne_binary()
@@ -108,9 +109,9 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
--spec start_link/2 :: (pid(), wh_json:json_object()) -> startlink_ret().
-start_link(QueuePid, QueueJObj) ->
-    gen_fsm:start_link(?MODULE, [QueuePid, QueueJObj], []).
+-spec start_link/3 :: (pid(), pid(), wh_json:json_object()) -> startlink_ret().
+start_link(MgrPid, ListenerPid, QueueJObj) ->
+    gen_fsm:start_link(?MODULE, [MgrPid, ListenerPid, QueueJObj], []).
 
 refresh(FSM, QueueJObj) ->
     gen_fsm:send_all_state_event(FSM, {refresh, QueueJObj}).
@@ -198,7 +199,7 @@ status(FSM) ->
 %%                     {stop, StopReason}
 %% @end
 %%--------------------------------------------------------------------
-init([QueuePid, QueueJObj]) ->
+init([MgrPid, ListenerPid, QueueJObj]) ->
     QueueId = wh_json:get_value(<<"_id">>, QueueJObj),
     AcctId = wh_json:get_value(<<"pvt_account_id">>, QueueJObj),
     AcctDb = wh_json:get_value(<<"pvt_account_db">>, QueueJObj),
@@ -207,7 +208,8 @@ init([QueuePid, QueueJObj]) ->
 
     gen_fsm:send_event(self(), {strategy_sync}),
 
-    {ok, sync, #state{queue_proc=QueuePid
+    {ok, sync, #state{queue_proc=ListenerPid
+                      ,manager_proc=MgrPid
                       ,acct_id=AcctId
                       ,acct_db=AcctDb
                       ,queue_id=QueueId
@@ -294,16 +296,17 @@ sync(current_call, _, State) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
-ready({member_call, CallJObj, Delivery}, #state{queue_proc=Srv
+ready({member_call, CallJObj, Delivery}, #state{queue_proc=QueueSrv
+                                                ,manager_proc=MgrSrv
                                                 ,connection_timeout=ConnTimeout
                                                 ,connection_timer_ref=ConnRef
                                                }=State) ->
     Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, CallJObj)),
 
-    case acdc_queue_manager:should_ignore_member_call(Call, CallJObj) of
+    case acdc_queue_manager:should_ignore_member_call(MgrSrv, Call, CallJObj) of
         false ->
             lager:debug("member call received: ~s", [whapps_call:call_id(Call)]),
-            acdc_queue_listener:member_connect_req(Srv, CallJObj, Delivery),
+            acdc_queue_listener:member_connect_req(QueueSrv, CallJObj, Delivery),
 
             maybe_stop_timer(ConnRef), % stop the old one, maybe
 
@@ -314,7 +317,7 @@ ready({member_call, CallJObj, Delivery}, #state{queue_proc=Srv
                                                  }};
         true ->
             lager:debug("queue mgr said to ignore this call: ~s", [whapps_call:call_id(Call)]),
-            acdc_queue_listener:ignore_member_call(Srv, Call, Delivery),
+            acdc_queue_listener:ignore_member_call(QueueSrv, Call, Delivery),
             {next_state, ready, State}
     end;
 ready({agent_resp, _Resp}, State) ->

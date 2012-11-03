@@ -115,13 +115,9 @@ handle_member_call(JObj, Props) ->
 
     acdc_stats:call_waiting(AcctId, QueueId, whapps_call:call_id(Call)),
 
-    case acdc_queues_sup:find_queue_supervisor(AcctId, QueueId) of
-        P when is_pid(P) ->
-            acdc_queue:put_member_on_hold(acdc_queue_sup:queue(P), Call);
-        undefined ->
-            whapps_call_command:answer(Call),
-            whapps_call_command:hold(Call)
-    end,
+    whapps_call_command:answer(Call),
+    whapps_call_command:hold(Call),
+
     wapi_acdc_queue:publish_shared_member_call(AcctId, QueueId, JObj),
 
     gen_listener:cast(props:get_value(server, Props), {monitor_call, Call}),
@@ -163,7 +159,7 @@ config(Srv) ->
 %%--------------------------------------------------------------------
 init([Super, AcctId, QueueId]) ->
     _ = start_secondary_queue(),
-    gen_listener:cast(self(), start_workers),
+    gen_listener:cast(self(), {start_workers}),
 
     {ok, #state{
        acct_id=AcctId
@@ -221,13 +217,23 @@ handle_cast({monitor_call, Call}, State) ->
     {noreply, State};
 handle_cast({start_workers}, #state{acct_id=AcctId
                                     ,queue_id=QueueId
+                                    ,supervisor=QueueSup
                                    }=State) ->
-    case couch_mgr:get_results_count(AcctId, <<"agents/agents_listing">>, [{key, QueueId}]) of
+    WorkersSup = acdc_queue_sup:workers_sup(QueueSup),
+
+    lager:debug("q sup: ~p ws sup: ~p", [QueueSup, WorkersSup]),
+
+    case couch_mgr:get_results_count(wh_util:format_account_id(AcctId, encoded)
+                                     ,<<"agents/agents_listing">>
+                                     ,[{key, QueueId}]
+                                    )
+    of
         {ok, Cnt} ->
             lager:debug("starting ~b workers for queue ~s", [Cnt, QueueId]),
-            acdc_queue_workers_sup:new_workers(AcctId, QueueId, Cnt);
+            acdc_queue_workers_sup:new_workers(WorkersSup, AcctId, QueueId, Cnt);
         {error, _E} ->
-            lager:debug("failed to find agent count: ~p", [_E])
+            lager:debug("failed to find agent count: ~p", [_E]),
+            acdc_queue_workers_sup:new_workers(WorkersSup, AcctId, QueueId, 5)
     end,
     {noreply, State};
 handle_cast(_Msg, State) ->
