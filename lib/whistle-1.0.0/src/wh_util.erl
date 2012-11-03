@@ -16,6 +16,11 @@
 -include_lib("whistle/include/wh_log.hrl").
 -include_lib("whistle/include/wh_databases.hrl").
 
+-ifdef(TEST).
+-include_lib("proper/include/proper.hrl").
+-include_lib("eunit/include/eunit.hrl").
+-endif.
+
 -export([format_account_id/1, format_account_id/2]).
 -export([current_account_balance/1]).
 -export([is_in_account_hierarchy/2, is_in_account_hierarchy/3]).
@@ -894,7 +899,6 @@ now_s({_,_,_}=Now) ->
     now_us(Now) div 1000000.
 
 -ifdef(TEST).
--include_lib("proper/include/proper.hrl").
 
 %% PROPER TESTING
 prop_to_integer() ->
@@ -929,9 +933,6 @@ prop_to_binary() ->
 
 prop_iolist_t() ->
     ?FORALL(IO, iolist(), is_binary(to_binary(IO))).
-
-
--include_lib("eunit/include/eunit.hrl").
 
 proper_test_() ->
     {"Runs the module's PropEr tests during eunit testing",
