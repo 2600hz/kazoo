@@ -36,8 +36,12 @@
 -type error_tuple() :: {error_key(), ne_binary()}.
 -type error_proplist() :: [error_tuple(),...] | [].
 
+
+-type failure() :: {'fail', {wh_json:key(), ne_binary()}}.
 -type pass() :: {'pass', wh_json:json_object()}.
--type fail() :: {'fail', {error_key(), ne_binary()} | wh_json:json_object() | error_proplist()}.
+-type fail() :: {'fail', {error_key(), ne_binary()}
+                 | error_proplist()
+                }.
 
 -type error_acc() :: [] | [{[ne_binary(),...], ne_binary()},...].
 -type jkey_acc() :: wh_json:json_key().
@@ -55,7 +59,8 @@
 -define(HOSTNAME_REGEX, <<"^[[\:alnum\:]-.]{1,}([.]([[\:alnum\:]_-]{1,}))$">>).
 
 %% Return true or [{JObjKey, ErrorMsg},...]
--spec is_valid/2 :: (wh_json:json_object(), ne_binary() | wh_json:json_object()) -> pass() | fail().
+-spec is_valid/2 :: (wh_json:object(), ne_binary() | wh_json:object()) ->
+                            pass() | fail().
 is_valid(JObj, Schema) when is_binary(Schema) ->
     %% TODO: cache the schema?
     case couch_mgr:open_cache_doc(?WH_SCHEMA_DB, Schema) of
@@ -67,16 +72,16 @@ is_valid(JObj, Schema) when is_binary(Schema) ->
     end;
 is_valid(JObj, Schema) ->
     case are_valid_properties(JObj, Schema) of
-        {pass, _}=Ok -> 
+        {pass, _}=Ok ->
             lager:debug("json validated against ~s schema", [wh_json:get_value(<<"_id">>, Schema)]),
             Ok;
-        {fail, Errors} ->
+        {fail, _E}=Errors ->
             lager:debug("json failed validation against ~s schema", [wh_json:get_value(<<"_id">>, Schema)]),
-            {fail, Errors}
+            Errors
     end.
 
 %% JObj = { ...,"name":"Mal Reynolds",...}
-%% 
+%%
 %% Schema = {
 %%   ...
 %%   "properties": {
@@ -84,9 +89,12 @@ is_valid(JObj, Schema) ->
 %%   },
 %%   ...
 %% }
--spec are_valid_properties/2 :: (wh_json:json_object(), wh_json:json_object()) -> pass() | fail().
--spec are_valid_properties/3 :: (wh_json:json_object(), [] | [ne_binary(),...], wh_json:json_object()) -> pass() | fail().
--spec are_valid_properties/4 :: (wh_json:json_object(), jkey_acc(), error_acc(), wh_json:json_proplist()) -> pass() | fail().
+-spec are_valid_properties/2 :: (wh_json:object(), wh_json:object()) ->
+                                        pass() | fail().
+-spec are_valid_properties/3 :: (wh_json:object(), wh_json:key() | [], wh_json:object()) ->
+                                        pass() | fail().
+-spec are_valid_properties/4 :: (wh_json:object(), jkey_acc(), error_acc(), wh_json:json_proplist()) ->
+                                        pass() | fail().
 
 are_valid_properties(JObj, Schema) ->
     PropertiesJObj = wh_json:get_value(<<"properties">>, Schema, wh_json:new()),
@@ -123,26 +131,23 @@ are_valid_properties(JObj, Path, Errors, [{Property, AttributesJObj}|T]) ->
                                      _ -> fun wh_json:get_value/2
                                  end,
                     case DefaultFun(<<"default">>, AttributesJObj) of
-                        undefined ->
-                            JObj;
-                        Default ->
-                            wh_json:set_value(Key, Default, JObj)
+                        undefined -> JObj;
+                        Default -> wh_json:set_value(Key, Default, JObj)
                     end;
-                _Else ->
-                    JObj
+                _Else -> JObj
             end,
     case are_valid_attributes(JObj1, Key, AttributesJObj) of
-        {pass, JObj2} -> 
-            are_valid_properties(JObj2, Path, Errors, T);
-        {fail, Error} -> 
-            are_valid_properties(JObj1, Path, [Error|Errors], T)
+        {pass, JObj2} -> are_valid_properties(JObj2, Path, Errors, T);
+        {fail, Error} -> are_valid_properties(JObj1, Path, [Error|Errors], T)
     end.
 
 %% JObj = {..., "name":"Mal Reynolds",...}
 %% Key = "name"
 %% AttributesJObj = {"type":"string"}
--spec are_valid_attributes/3 :: (wh_json:json_object(), jkey_acc(), wh_json:json_object()) -> pass() | fail().
--spec are_valid_attributes/5 :: (wh_json:json_object(), jkey_acc(), wh_json:json_object(), error_acc(), proplist()) -> pass() | fail().
+-spec are_valid_attributes/3 :: (wh_json:object(), jkey_acc(), wh_json:object()) ->
+                                        pass() | fail().
+-spec are_valid_attributes/5 :: (wh_json:object(), jkey_acc(), wh_json:object(), error_acc(), wh_proplist()) ->
+                                        pass() | fail().
 
 are_valid_attributes(JObj, Key, AttributesJObj) ->
     %% 5.7 - testing here for required saves lots of work....
@@ -154,10 +159,8 @@ are_valid_attributes(JObj, Key, AttributesJObj) ->
             are_valid_attributes(JObj, Key, AttributesJObj, [], Attributes)
     end.
 
-are_valid_attributes(JObj, _, _, [], []) ->
-    {pass, JObj};
-are_valid_attributes(_, _, _, Errors, []) ->
-    {fail, Errors};
+are_valid_attributes(JObj, _, _, [], []) -> {pass, JObj};
+are_valid_attributes(_, _, _, Errors, []) -> {fail, Errors};
 %% 5.2 is preformed here as a one-off to thread the resulting json object back into the validation
 are_valid_attributes(JObj, Key, AttributesJObj, Errors, [{<<"properties">>, AttributeVal}|T]) ->
     case are_valid_properties(JObj, Key, AttributeVal) of
@@ -169,15 +172,16 @@ are_valid_attributes(JObj, Key, AttributesJObj, Errors, [{AttributeKey, Attribut
         {pass, JObj1} -> are_valid_attributes(JObj1, Key, AttributesJObj, Errors, T);
         {fail, Error} -> are_valid_attributes(JObj, Key, AttributesJObj, [Error|Errors], T)
     end.
-                
+
 %% Section 5 of the spec
 %% AttributeKey, AttributeVal, Key, Val, AttributesJObj
 %% Some Attributes:
 %% "type" : string | number | integer | float | boolean | array | object | null | any | user-defined
 %%          The last two (any and user-defined) are automatically considered valid
 %%
-%% {'pass', wh_json:json_object()} | {'fail', {jkey_acc(), ne_binary()}}
--spec is_valid_attribute/3 :: ({wh_json:json_string(), wh_json:json_term(), wh_json:json_object()}, wh_json:json_object(), jkey_acc()) -> pass() | fail().
+%% {'pass', wh_json:object()} | {'fail', {jkey_acc(), ne_binary()}}
+-spec is_valid_attribute/3 :: ({wh_json:json_string(), wh_json:json_term(), wh_json:object()}, wh_json:object(), jkey_acc()) ->
+                                      pass() | failure().
 
 %% 5.1
 is_valid_attribute({<<"type">>, [], _}, _, Key) ->
@@ -190,57 +194,47 @@ is_valid_attribute({<<"type">>, [Type|Types], AttrJObj}, JObj, Key) ->
 is_valid_attribute({<<"type">>, Type, _}, JObj, Key) when is_binary(Type) ->
     Instance = wh_json:get_value(Key, JObj),
     case check_valid_type(Instance, Type, true) of
-        true -> 
-            {pass, JObj};
-        false -> 
-            {fail, {Key, list_to_binary([<<"type:Value is not of type ">>, Type])}}
+        true -> {pass, JObj};
+        false -> {fail, {Key, list_to_binary([<<"type:Value is not of type ">>, Type])}}
     end;
 is_valid_attribute({<<"type">>, TypeSchema, _}, JObj, Key) ->
     are_valid_attributes(JObj, Key, TypeSchema);
 
-%% 5.3
-is_valid_attribute({<<"patternProperties">>, _, _}, JObj, _Key) ->
-    {pass, JObj}; %% ignored for the moment
+%% 5.3: ignored for the moment
+is_valid_attribute({<<"patternProperties">>, _, _}, JObj, _Key) -> {pass, JObj};
 
-%% 5.4
-is_valid_attribute({<<"additionalProperties">>, _, _}, JObj, _Key) ->
-    {pass, JObj}; %% ignored for the moment
+%% 5.4: ignored for the moment
+is_valid_attribute({<<"additionalProperties">>, _, _}, JObj, _Key) -> {pass, JObj};
 
 %% 5.5
-is_valid_attribute({<<"items">>, Items, _}, JObj, Key) ->
-    Instance = wh_json:get_value(Key, JObj),
-    case {check_valid_type(Instance, <<"array">>), are_valid_items(Instance, Items)} of
-        {false, _} -> 
-            {pass, JObj};
-        {true, true} -> 
-            {pass, JObj};
-        {true, Error} ->
-            {fail, {Key, list_to_binary([<<"items:">>, Error])}}
-    end;    
+is_valid_attribute({<<"items">>, _Items, _}, JObj, _Key) ->
+    {pass, JObj};
+%% Bring back when are_valid_items is used
+%% Instance = wh_json:get_value(Key, JObj),
+%% case {check_valid_type(Instance, <<"array">>), are_valid_items(Instance, Items)} of
+%%     {false, _} -> {pass, JObj};
+%%     {true, true} -> {pass, JObj};
+%%     {true, Error} -> {fail, {Key, list_to_binary([<<"items:">>, Error])}}
+%% end;
 
-%% 5.6
-is_valid_attribute({<<"additionalItems">>, _, _}, JObj, _Key) ->
-    {pass, JObj}; %% ignored for the moment
+%% 5.6: ignored for the moment
+is_valid_attribute({<<"additionalItems">>, _, _}, JObj, _Key) -> {pass, JObj};
 
 %% 5.7
 is_valid_attribute({<<"required">>, IsRequired, _}, JObj, Key) ->
     case wh_util:is_true(IsRequired) andalso wh_json:get_value(Key, JObj) =:= undefined of
-        false -> 
-            {pass, JObj};
-        true -> 
-            {fail, {Key, <<"required:Field is required but missing">>}}
+        false -> {pass, JObj};
+        true -> {fail, {Key, <<"required:Field is required but missing">>}}
     end;
 
-%% 5.8
-is_valid_attribute({<<"dependencies">>, _, _}, JObj, _Key) ->
-    {pass, JObj}; %% ignored for the moment
+%% 5.8: ignored for the moment
+is_valid_attribute({<<"dependencies">>, _, _}, JObj, _Key) -> {pass, JObj};
 
 %% 5.9 / 5.11
 is_valid_attribute({<<"minimum">>, Min, AttrsJObj}, JObj, Key) ->
     Instance = wh_json:get_value(Key, JObj),
     try {check_valid_type(Instance, <<"number">>), wh_util:to_number(Min)} of
-        {false, _} ->
-            {pass, JObj};
+        {false, _} -> {pass, JObj};
         {true, Int} ->
             Num = wh_util:to_number(Instance),
             case wh_json:is_true(<<"exclusiveMinimum">>, AttrsJObj) of
@@ -260,9 +254,8 @@ is_valid_attribute({<<"minimum">>, Min, AttrsJObj}, JObj, Key) ->
 is_valid_attribute({<<"maximum">>, Max, AttrsJObj}, JObj, Key) ->
     Instance = wh_json:get_value(Key, JObj),
     try {check_valid_type(Instance, <<"number">>), wh_util:to_number(Max)} of
-        {false, _} ->
-            {pass, JObj};
-        {true, Int} -> 
+        {false, _} -> {pass, JObj};
+        {true, Int} ->
             Num = wh_util:to_number(Instance),
             case wh_json:is_true(<<"exclusiveMaximum">>, AttrsJObj) of
                 true when (Num < Int) -> {pass, JObj};
@@ -281,11 +274,9 @@ is_valid_attribute({<<"maximum">>, Max, AttrsJObj}, JObj, Key) ->
 is_valid_attribute({<<"minItems">>, Min, _}, JObj, Key) ->
     Instance = wh_json:get_value(Key, JObj),
     try {check_valid_type(Instance, <<"array">>), wh_util:to_integer(Min)} of
-        {false, _} -> 
-            {pass, JObj};
-        {true, Int} when length(Instance) >= Int -> 
-            {pass, JObj};
-        {true, _} -> 
+        {false, _} -> {pass, JObj};
+        {true, Int} when length(Instance) >= Int -> {pass, JObj};
+        {true, _} ->
             {fail, {Key, list_to_binary([<<"minItems:The list is not at least ">>, wh_util:to_binary(Min), <<" items">>])}}
     catch
         error:badarg ->
@@ -296,11 +287,9 @@ is_valid_attribute({<<"minItems">>, Min, _}, JObj, Key) ->
 is_valid_attribute({<<"maxItems">>, Max, _}, JObj, Key) ->
     Instance = wh_json:get_value(Key, JObj),
     try {check_valid_type(Instance, <<"array">>), wh_util:to_integer(Max)} of
-        {false, _} -> 
-            {pass, JObj};
-        {true, Int} when length(Instance) =< Int -> 
-            {pass, JObj};
-        {true, _Int} -> 
+        {false, _} -> {pass, JObj};
+        {true, Int} when length(Instance) =< Int -> {pass, JObj};
+        {true, _Int} ->
             {fail, {Key, list_to_binary([<<"maxItems:The list is more than ">>, wh_util:to_binary(Max), <<" items">>])}}
     catch
         error:badarg ->
@@ -312,38 +301,30 @@ is_valid_attribute({<<"uniqueItems">>, TryUnique, _}, JObj, Key) ->
     Instance = wh_json:get_value(Key, JObj),
     true = wh_util:is_true(TryUnique),
     case {check_valid_type(Instance, <<"array">>), are_unique_items(Instance, TryUnique)} of
-        {false, _} -> 
-            {pass, JObj};
-        {true, true} ->
-            {pass, JObj};
-        {true, Error} ->
-            {fail, {Key, list_to_binary([<<"uniqueItems:">>, Error])}}
+        {false, _} -> {pass, JObj};
+        {true, true} -> {pass, JObj};
+        {true, Error} -> {fail, {Key, list_to_binary([<<"uniqueItems:">>, Error])}}
     end;
 
 %% 5.16
 is_valid_attribute({<<"pattern">>, Pattern, _}, JObj, Key) ->
     Instance = wh_json:get_value(Key, JObj),
     case {check_valid_type(Instance, <<"string">>), is_valid_pattern(Instance, Pattern)} of
-        {false, _} -> 
-            {pass, JObj};
-        {true, true} ->
-            {pass, JObj};
-        {true, Error} -> 
-            {fail, {Key, list_to_binary([<<"pattern:">>, Error])}}
+        {false, _} -> {pass, JObj};
+        {true, true} -> {pass, JObj};
+        {true, Error} -> {fail, {Key, list_to_binary([<<"pattern:">>, Error])}}
     end;
 
 %% 5.17
 is_valid_attribute({<<"minLength">>, Min, _}, JObj, Key) ->
     Instance = wh_json:get_value(Key, JObj),
     try {check_valid_type(Instance, <<"string">>), wh_util:to_integer(Min)} of
-        {false, _} -> 
-            {pass, JObj};
-        {true, Int} when erlang:byte_size(Instance) >= Int ->
-            {pass, JObj};
-        {true, _} -> 
+        {false, _} -> {pass, JObj};
+        {true, Int} when erlang:byte_size(Instance) >= Int -> {pass, JObj};
+        {true, _} ->
             {fail, {Key, list_to_binary([<<"minLength:String must be at least ">>, wh_util:to_binary(Min), <<" characters">>])}}
     catch
-        error:badarg -> 
+        error:badarg ->
             {fail, {Key, <<"minLength:Schema's minLength not an integer or value wasn't a string">>}}
     end;
 
@@ -351,14 +332,12 @@ is_valid_attribute({<<"minLength">>, Min, _}, JObj, Key) ->
 is_valid_attribute({<<"maxLength">>, Max, _}, JObj, Key) ->
     Instance = wh_json:get_value(Key, JObj),
     try {check_valid_type(Instance, <<"string">>), wh_util:to_integer(Max)} of
-        {false, _} -> 
-            {pass, JObj};
-        {true, Int} when erlang:byte_size(Instance) =< Int ->
-            {pass, JObj};
-        {true, _} -> 
+        {false, _} -> {pass, JObj};
+        {true, Int} when erlang:byte_size(Instance) =< Int -> {pass, JObj};
+        {true, _} ->
             {fail, {Key, list_to_binary([<<"maxLength:String must not be more than ">>, wh_util:to_binary(Max), <<" characters">>])}}
     catch
-        error:badarg -> 
+        error:badarg ->
             {fail, {Key, <<"maxLength:Schema's maxLength not an integer or value wasn't a string">>}}
     end;
 
@@ -368,29 +347,26 @@ is_valid_attribute({<<"enum">>, Enums, _}, JObj, Key) ->
     I = case check_valid_type(Instance, <<"array">>) of
             true -> Instance;
             false -> [Instance]
-        end,            
-    case lists:all(fun(Elem) -> 
+        end,
+    case lists:all(fun(Elem) ->
                            try [are_same_items(Enum, Elem) || Enum <- Enums] of
                                [] -> true;
                                _ -> false
                            catch
                                throw:{duplicate_found, _} -> true
                            end
-                   end, I) of
-        true ->
-            {pass, JObj};
-        false ->
-            {fail, {Key, <<"enum:Value not found in enumerated list of values">>}}
+                   end, I)
+    of
+        true -> {pass, JObj};
+        false -> {fail, {Key, <<"enum:Value not found in enumerated list of values">>}}
     end;
 
 %% 5.23
 is_valid_attribute({<<"format">>, Format, _}, JObj, Key) ->
     Instance = wh_json:get_value(Key, JObj),
     case is_valid_format(Format, Instance) of
-        true ->
-            {pass, JObj};
-        Error ->
-            {fail, {Key, Error}}
+        true -> {pass, JObj};
+        Error -> {fail, {Key, Error}}
     end;
 
 %% 5.24
@@ -401,9 +377,8 @@ is_valid_attribute({<<"divisibleBy">>, DivBy, _}, JObj, Key) ->
         {0.0, _} -> {Key, <<"divisibleBy:Trying to divide by 0">>};
         {Denominator, Numerator} when is_integer(Denominator) andalso is_integer(Numerator) ->
             case Numerator rem Denominator of
-                0 -> 
-                    {pass, JObj};
-                _ -> 
+                0 -> {pass, JObj};
+                _ ->
                     {fail, {Key, list_to_binary([<<"divisibleBy:Value not divisible by ">>, wh_util:to_binary(DivBy)])}}
             end;
         {Denominator, Numerator} ->
@@ -411,33 +386,31 @@ is_valid_attribute({<<"divisibleBy">>, DivBy, _}, JObj, Key) ->
             %% 1 / 0.1 = 10.0 which is evenly divisible
             %% trunc(10.0) == 10 (notice == NOT =:=)
             case trunc(Res) == Res of
-                true -> 
-                    {pass, JObj};
-                false -> 
+                true -> {pass, JObj};
+                false ->
                     {fail, {Key, list_to_binary([<<"divisibleBy: Value not divisible by ">>, wh_util:to_binary(DivBy)])}}
             end
     catch
-        error:badarg -> 
+        error:badarg ->
             {fail, {Key, <<"divisibleBy:Either the numerator or the denominator in the schema is not a number">>}};
-        error:function_clause -> 
+        error:function_clause ->
             {fail, {Key, <<"divisibleBy:Either the numerator or the denominator in the schema is not a number">>}}
     end;
 
 %% 5.25
-is_valid_attribute({<<"disallow">>, [], _}, JObj, _) ->
-    {pass, JObj};
+is_valid_attribute({<<"disallow">>, [], _}, JObj, _) -> {pass, JObj};
+
 is_valid_attribute({<<"disallow">>, [Disallow|Disallows], AttrJObj}, JObj, Key) ->
     case is_valid_attribute({<<"disallow">>, Disallow, wh_json:new()}, JObj, Key) of
         {pass, _} -> is_valid_attribute({<<"disallow">>, Disallows, AttrJObj}, JObj, Key);
-        {fail, _}=E -> E 
+        {fail, _}=E -> E
     end;
 is_valid_attribute({<<"disallow">>, Disallow, _}, JObj, Key) when is_binary(Disallow) ->
     Instance = wh_json:get_value(Key, JObj),
     case check_valid_type(Instance, Disallow, true) of
         true ->
             {fail, {Key, list_to_binary([<<"disallow:Value is of disallowed type ">>, Disallow])}};
-        false -> 
-            {pass, JObj}
+        false -> {pass, JObj}
     end;
 is_valid_attribute({<<"disallow">>, DisallowSchema, _}, JObj, Key) ->
     case are_valid_attributes(JObj, Key, DisallowSchema) of
@@ -634,9 +607,9 @@ is_valid_pattern(Instance, Pattern) when is_binary(Instance) ->
                            ]);
         {ok, MP} ->
             case re:run(Instance, MP) of
-                nomatch -> 
+                nomatch ->
                     list_to_binary([<<"Failed to match pattern '">>, Pattern, <<"'">>]);
-                _ -> 
+                _ ->
                     true
             end
     end;
@@ -722,11 +695,11 @@ is_valid_format(_,_) ->
 %% Items: [ json_term(),...]
 %% SchemaItemsJObj: {"type":"some_type", properties:{"prop1":{"attr1key":"attr1val",...},...},...}
 %%  or could be a list of schemas
--spec are_valid_items/2 :: (list(), wh_json:json_object() | wh_json:json_objects()) -> 'true'. %attribute_results().
-are_valid_items(_Items, _SchemaItemsJObj) ->
-    _ItemType = wh_json:get_value(<<"type">>, _SchemaItemsJObj, <<"any">>),
-    _ItemSchemaJObj = wh_json:get_value(<<"items">>, _SchemaItemsJObj, wh_json:new()),
-    true.
+%% -spec are_valid_items/2 :: (list(), wh_json:object() | wh_json:objects()) -> 'true'. %attribute_results().
+%% are_valid_items(_Items, _SchemaItemsJObj) ->
+%%     _ItemType = wh_json:get_value(<<"type">>, _SchemaItemsJObj, <<"any">>),
+%%     _ItemSchemaJObj = wh_json:get_value(<<"items">>, _SchemaItemsJObj, wh_json:new()),
+%%     true.
 
 -include_lib("eunit/include/eunit.hrl").
 
@@ -1090,7 +1063,7 @@ validate_test(Succeed, Fail, Schema) ->
           end || Elem <- Succeed],
     _ = [ begin
               Validation = [Result || {AttName, AttValue} <- S
-                                          ,(begin 
+                                          ,(begin
                                                 Result = is_valid_attribute({AttName, AttValue, SJObj}
                                                                             ,wh_json:set_value(<<"eunit">>, Elem, wh_json:new())
                                                                             ,<<"eunit">>),

@@ -9,6 +9,13 @@
 %%%-------------------------------------------------------------------
 -module(wh_util).
 
+-include_lib("kernel/include/inet.hrl").
+-include_lib("xmerl/include/xmerl.hrl").
+
+-include_lib("whistle/include/wh_types.hrl").
+-include_lib("whistle/include/wh_log.hrl").
+-include_lib("whistle/include/wh_databases.hrl").
+
 -export([format_account_id/1, format_account_id/2]).
 -export([current_account_balance/1]).
 -export([is_in_account_hierarchy/2, is_in_account_hierarchy/3]).
@@ -37,8 +44,9 @@
          ,strip_left_binary/2, strip_right_binary/2
         ]).
 
--export([uri_encode/1]).
--export([uri_decode/1]).
+-export([uri_encode/1
+         ,uri_decode/1
+        ]).
 
 -export([pad_binary/3, join_binary/1, join_binary/2]).
 -export([a1hash/3, floor/1, ceiling/1]).
@@ -64,13 +72,6 @@
 -export([verify_cidr/2]).
 -export([get_hostname/0]).
 
--include_lib("kernel/include/inet.hrl").
--include_lib("xmerl/include/xmerl.hrl").
-
--include_lib("whistle/include/wh_types.hrl").
--include_lib("whistle/include/wh_log.hrl").
--include_lib("whistle/include/wh_databases.hrl").
-
 -define(WHISTLE_VERSION_CACHE_KEY, {?MODULE, whistle_version}).
 
 %%--------------------------------------------------------------------
@@ -80,8 +81,8 @@
 %% unencoded or raw format.
 %% @end
 %%--------------------------------------------------------------------
--spec format_account_id/1 :: ([binary(),...] | binary() | wh_json:json_object()) -> binary().
--spec format_account_id/2 :: ([binary(),...] | binary() | wh_json:json_object(), unencoded | encoded | raw) -> binary().
+-spec format_account_id/1 :: ([binary(),...] | binary() | wh_json:object()) -> binary().
+-spec format_account_id/2 :: ([binary(),...] | binary() | wh_json:object(), unencoded | encoded | raw) -> binary().
 
 format_account_id(Doc) -> format_account_id(Doc, unencoded).
 
@@ -384,7 +385,7 @@ randomize_list(T, List) ->
 %% dictionary, failing that the Msg-ID and finally a generic
 %% @end
 %%--------------------------------------------------------------------
--spec put_callid/1 :: (wh_json:json_object() | wh_proplist() | ne_binary()) -> api_binary().
+-spec put_callid/1 :: (wh_json:object() | wh_proplist() | ne_binary()) -> api_binary().
 put_callid(?NE_BINARY = CallId) ->
     erlang:put(callid, CallId);
 put_callid(Prop) when is_list(Prop) ->
@@ -399,7 +400,7 @@ put_callid(JObj) ->
 %% tuple for easy processing
 %% @end
 %%--------------------------------------------------------------------
--spec get_event_type/1 :: (wh_json:json_object()) -> {api_binary(), api_binary()}.
+-spec get_event_type/1 :: (wh_json:object()) -> {api_binary(), api_binary()}.
 get_event_type(JObj) when not is_list(JObj) -> % guard against json_objects() being passed in
     { wh_json:get_binary_value(<<"Event-Category">>, JObj), wh_json:get_binary_value(<<"Event-Name">>, JObj) }.
 
@@ -894,6 +895,7 @@ now_s({_,_,_}=Now) ->
 
 -ifdef(TEST).
 -include_lib("proper/include/proper.hrl").
+
 %% PROPER TESTING
 prop_to_integer() ->
     ?FORALL({F, I}, {float(), integer()},
