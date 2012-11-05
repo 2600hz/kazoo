@@ -779,7 +779,7 @@ do_create_resp_envelope(#cb_context{auth_token=AuthToken, resp_etag=ETag, req_id
                     ,{<<"data">>, RespData}
                    ]
            end,
-    props:filter_empty(Resp).
+    props:filter_undefined(Resp).
 
 %%--------------------------------------------------------------------
 %% @private
