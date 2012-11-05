@@ -1179,7 +1179,7 @@ get_lang(<<"de">>) -> <<"de">>.
 
 -spec get_engine/1 :: (api_binary()) -> ne_binary().
 get_engine('undefined') ->
-    whapps_config:get_binary(?MOD_CONFIG_CAT, <<"tts_provider">>, <<"ispeech">>);
+    whapps_config:get_binary(?MOD_CONFIG_CAT, <<"tts_provider">>, <<"flite">>);
 get_engine(P) -> wh_util:to_binary(P).
 
 -spec say_text/1 :: (text()) -> ne_binary().

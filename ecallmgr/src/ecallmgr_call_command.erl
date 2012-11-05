@@ -76,7 +76,7 @@ get_fs_app(Node, UUID, JObj, <<"tts">>) ->
     case wapi_dialplan:tts_v(JObj) of
         false -> {'error', <<"tts failed to execute as JObj didn't validate">>};
         true ->
-            case wh_json:get_value(<<"Engine">>, JObj) of
+            case wh_json:get_value(<<"Engine">>, JObj, <<"flite">>) of
                 <<"flite">> -> tts_flite(Node, UUID, JObj);
                 _E ->
                     lager:debug("engine to use: '~p'", [_E]),
