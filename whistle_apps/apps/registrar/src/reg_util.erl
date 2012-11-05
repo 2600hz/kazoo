@@ -9,12 +9,16 @@
 %%%-------------------------------------------------------------------
 -module(reg_util).
 
--export([lookup_auth_user/2]).
--export([cache_reg_key/1, cache_user_to_reg_key/2, cache_user_key/2]).
--export([hash_contact/1, get_expires/1]).
--export([lookup_registrations/1, lookup_registration/2, fetch_all_registrations/0]).
--export([reg_removed_from_cache/3]).
--export([search_for_registration/2]).
+-export([lookup_auth_user/2
+         ,cache_reg_key/1, cache_user_to_reg_key/2, cache_user_key/2
+         ,hash_contact/1
+         ,get_expires/1
+         ,lookup_registrations/1, lookup_registration/2
+         ,fetch_all_registrations/0
+         ,reg_removed_from_cache/3
+         ,search_for_registration/2
+         ,remove_registration/2
+        ]).
 
 -include_lib("registrar/src/reg.hrl").
 
@@ -43,8 +47,9 @@ lookup_registrations(Realm) ->
         Else -> {'ok', Else}
     end.
 
--spec lookup_registration/2 :: (ne_binary(), 'undefined' | ne_binary()) -> {'ok', wh_json:json_object()} |
-                                                                           {'error', 'not_found'}.
+-spec lookup_registration/2 :: (ne_binary(), api_binary()) ->
+                                       {'ok', wh_json:json_object()} |
+                                       {'error', 'not_found'}.
 lookup_registration(Realm, undefined) ->
     lookup_registrations(Realm);
 lookup_registration(Realm, Username) when not is_binary(Realm) ->
@@ -54,6 +59,10 @@ lookup_registration(Realm, Username) when not is_binary(Username) ->
 lookup_registration(Realm, Username) ->
     wh_cache:peek_local(?REGISTRAR_CACHE, cache_user_to_reg_key(Realm, Username)).
 
+-spec remove_registration/2 :: (ne_binary(), ne_binary()) -> 'ok'.
+remove_registration(Realm, Username) ->
+    wh_cache:erase_local(?REGISTRAR_CACHE, cache_user_to_reg_key(Realm, Username)).
+
 %%-----------------------------------------------------------------------------
 %% @public
 %% @doc
@@ -62,11 +71,10 @@ lookup_registration(Realm, Username) ->
 %%-----------------------------------------------------------------------------
 -spec fetch_all_registrations/0 :: () -> {'ok', wh_json:json_objects()}.
 fetch_all_registrations() ->
-    Registrations = wh_cache:filter_local(?REGISTRAR_CACHE, fun({?MODULE, registration, _, _}, _) ->
-                                                 true;
-                                            (_K, _V) ->
-                                                 false
-                                         end),
+    Registrations = wh_cache:filter_local(?REGISTRAR_CACHE
+                                          ,fun({?MODULE, registration, _, _}, _) -> true;
+                                              (_K, _V) -> false
+                                           end),
     {'ok', [Registration || {_, Registration} <- Registrations]}.
 
 %%-----------------------------------------------------------------------------
