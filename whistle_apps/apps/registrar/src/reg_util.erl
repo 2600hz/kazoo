@@ -49,7 +49,7 @@ lookup_registrations(Realm) ->
 
 -spec lookup_registration/2 :: (ne_binary(), api_binary()) ->
                                        {'ok', wh_json:json_object()} |
-                                       {'ok', wh_json:kson_objects()} | % if no username, find all for realm
+                                       {'ok', wh_json:json_objects()} | % if no username, find all for realm
                                        {'error', 'not_found'}.
 lookup_registration(Realm, undefined) ->
     lookup_registrations(Realm);
