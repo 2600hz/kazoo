@@ -15,19 +15,17 @@
 init() ->
     ok.
 
--spec handle_req/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
+-spec handle_req/2 :: (wh_json:json_object(), wh_proplist()) -> 'ok'.
 handle_req(ApiJObj, _Props) ->
-    wh_util:put_callid(ApiJObj),
-
-    lager:debug("received registration success"),
     true = wapi_registration:success_v(ApiJObj),
+    _ = wh_util:put_callid(ApiJObj),
 
     [User, AfterAt] = binary:split(wh_json:get_value(<<"Contact">>, ApiJObj), <<"@">>), % only one @ allowed
 
     AfterUnquoted = wh_util:to_binary(mochiweb_util:unquote(AfterAt)),
     Contact1 = binary:replace(<<User/binary, "@", AfterUnquoted/binary>>, [<<"<">>, <<">">>], <<>>, [global]),
 
-    lager:debug("registration contact: ~s", [Contact1]),
+    lager:debug("new registration contact: ~s", [Contact1]),
 
     JObj1 = wh_json:set_value(<<"Contact">>, Contact1, ApiJObj),
 
@@ -60,15 +58,21 @@ handle_req(ApiJObj, _Props) ->
                     JObj1
     end,
 
-    case wh_cache:peek_local(?REGISTRAR_CACHE, reg_util:cache_user_to_reg_key(Realm, Username)) of
-        {ok, _} -> ok;
-        {error, not_found} -> spawn(fun() -> send_new_register(JObj2) end)
-    end,
-    wh_cache:store_local(?REGISTRAR_CACHE, reg_util:cache_user_to_reg_key(Realm, Username), JObj2, Expires, fun reg_util:reg_removed_from_cache/3),
+    _ = case wh_cache:peek_local(?REGISTRAR_CACHE, reg_util:cache_user_to_reg_key(Realm, Username)) of
+            {ok, _} -> ok;
+            {error, not_found} -> catch send_new_register(JObj2)
+        end,
 
-    lager:debug("cached registration ~s@~s for ~psec", [Username, Realm, Expires]).
+    wh_cache:store_local(?REGISTRAR_CACHE
+                         ,reg_util:cache_user_to_reg_key(Realm, Username)
+                         ,JObj2
+                         ,Expires
+                         ,fun reg_util:reg_removed_from_cache/3
+                        ),
 
--spec send_new_register/1 :: (wh_json:json_object()) -> ok.
+    lager:debug("cached registration ~s@~s for ~p s", [Username, Realm, Expires]).
+
+-spec send_new_register/1 :: (wh_json:json_object()) -> 'ok'.
 send_new_register(JObj) ->
     Updaters = [fun(J) -> wh_json:set_value(<<"Event-Name">>,  <<"register">>, J) end
                 ,fun(J) -> wh_json:set_value(<<"Event-Category">>, <<"notification">>, J) end 
