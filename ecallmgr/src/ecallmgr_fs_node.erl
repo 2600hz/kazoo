@@ -199,7 +199,9 @@ handle_info({event, [UUID | Data]}, #state{node=Node}=State) ->
             {ok, Node} -> catch process_event(UUID, Data, Node);
             {error, not_found} -> catch process_event(UUID, Data, Node);
             {ok, _NewNode} ->
-                lager:debug("surpressing: channel is on different node ~s, not ~s", [_NewNode, Node])
+                lager:debug("surpressing ~s: channel is on different node ~s, not ~s"
+                            ,[props:get_value(<<"Event-Name">>, Data), _NewNode, Node]
+                           )
         end,
     {noreply, State, hibernate};
 
@@ -243,8 +245,8 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec process_event/3 :: ('undefined' | ne_binary(), proplist(), atom()) -> 'ok'.
--spec process_event/4 :: (ne_binary(), 'undefined' | ne_binary(), proplist(), atom()) -> 'ok'.
+-spec process_event/3 :: (api_binary(), wh_proplist(), atom()) -> 'ok'.
+-spec process_event/4 :: (ne_binary(), api_binary(), wh_proplist(), atom()) -> 'ok'.
 
 process_event(UUID, Data, Node) ->
     EventName = props:get_value(<<"Event-Name">>, Data),
