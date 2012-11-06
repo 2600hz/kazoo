@@ -80,7 +80,13 @@ update_acdc_actor(_Call, _, undefined) -> ok;
 update_acdc_actor(Call, QueueId, <<"queue">>) ->
     lager:debug("caller ~s wants a call in ~s", [whapps_call:caller_id_name(Call), QueueId]),
 
-    acdc_queue_thief:connect(Call, QueueId);
+    case wapi_acdc_queue:queue_size(whapps_call:account_id(Call), QueueId) of
+        N when is_integer(N), N > 0 ->
+            lager:debug("currently ~b calls waiting, let's go!", [N]),
+            acdc_agents_sup:new_thief(Call, QueueId);
+        _N ->
+            lager:debug("currently ~p calls, nothing to do", [_N])
+    end;
 update_acdc_actor(Call, AgentId, <<"user">>) ->
     AcctId = whapps_call:account_id(Call),
 
