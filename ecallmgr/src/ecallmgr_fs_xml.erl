@@ -9,8 +9,7 @@
 %%%-------------------------------------------------------------------
 -module(ecallmgr_fs_xml).
 
--export([build_sip_route/2, build_freetdm_route/1
-         ,get_leg_vars/1, get_channel_vars/1, get_channel_vars/2
+-export([get_leg_vars/1, get_channel_vars/1, get_channel_vars/2
          ,route_resp_xml/1 ,authn_resp_xml/1, acl_xml/1
          ,route_not_found/0, empty_response/0
         ]).
@@ -95,10 +94,10 @@ route_resp_xml(<<"bridge">>, Routes, _JObj) ->
     %% format the Route based on protocol
     {_Idx, Extensions} = lists:foldr(
                                    fun(RouteJObj, {Idx, Acc}) ->
-                                           case build_sip_route(RouteJObj, wh_json:get_value(<<"Invite-Format">>, RouteJObj)) of
-                                               {error, timeout} ->
+                                           case ecallmgr_util:build_channel(RouteJObj) of
+                                               {error, _} ->
                                                    {Idx+1, Acc};
-                                               Route ->
+                                               {ok, Route} ->
                                                    BypassMedia = case wh_json:get_value(<<"Media">>, RouteJObj) of
                                                                      <<"bypass">> -> "true";
                                                                      _ -> "false" %% default to not bypassing media
@@ -194,70 +193,6 @@ route_resp_pre_park_action(JObj) ->
         <<"answer">> -> action_el(<<"answer">>);
         _Else -> undefined
     end.
-            
--spec build_sip_route/2 :: (api_terms(), ne_binary() | 'undefined') -> ne_binary() |
-                                                                       {'error', 'timeout'}.
-build_sip_route(Route, undefined) ->
-    build_sip_route(Route, <<"username">>);
-build_sip_route([_|_]=RouteProp, DIDFormat) ->
-    build_sip_route(wh_json:from_list(RouteProp), DIDFormat);
-build_sip_route(RouteJObj, <<"route">>) ->
-    case wh_json:get_value(<<"Route">>, RouteJObj) of
-        <<"sip:", _/binary>> = R1 -> <<?SIP_INTERFACE, (R1)/binary>>;
-        R2 -> R2
-    end;
-build_sip_route(RouteJObj, <<"username">>) ->
-    User = wh_json:get_value(<<"To-User">>, RouteJObj),
-    Realm = wh_json:get_value(<<"To-Realm">>, RouteJObj),
-    case ecallmgr_registrar:lookup_contact(Realm, User) of
-        {ok, Contact} ->
-            RURI = binary:replace(
-                     re:replace(Contact, "^[^\@]+", User, [{return, binary}])
-                     ,<<">">>, <<>>
-                    ),
-            list_to_binary([?SIP_INTERFACE, RURI, sip_transport(RouteJObj)]);
-        {error, timeout}=E ->
-            lager:debug("failed to lookup user ~s@~s in the registrar", [User, Realm]),
-            E
-    end;
-build_sip_route(RouteJObj, DIDFormat) ->
-    User = wh_json:get_value(<<"To-User">>, RouteJObj),
-    Realm = wh_json:get_value(<<"To-Realm">>, RouteJObj),
-    DID = format_did(wh_json:get_value(<<"To-DID">>, RouteJObj), DIDFormat),
-    case ecallmgr_registrar:lookup_contact(Realm, User) of
-        {ok, Contact} ->
-            RURI = binary:replace(
-                     re:replace(Contact, "^[^\@]+", DID, [{return, binary}])
-                     ,<<">">>, <<>>
-                    ),
-            list_to_binary([?SIP_INTERFACE, RURI, sip_transport(RouteJObj)]);
-        {error, timeout}=E ->
-            lager:debug("failed to lookup user ~s@~s in the registrar", [User, Realm]),
-            E
-    end.
-
-build_freetdm_route(EndpointJObj) ->
-    Opts = wh_json:get_value(<<"Endpoint-Options">>, EndpointJObj, wh_json:new()),
-    Span = wh_json:get_binary_value(<<"Span">>, Opts, <<"1">>),
-    StartFrom = case wh_json:get_binary_value(<<"Channel-Selection">>, Opts) of
-                    <<"descending">> -> <<"A">>;
-                    _ -> <<"a">>
-                end,
-    DID = format_did(wh_json:get_binary_value(<<"To-DID">>, EndpointJObj), wh_json:get_value(<<"Invite-Format">>, EndpointJObj, <<"e164">>)),
-
-    lager:debug("freetdm/span: ~s/start: ~s/DID: ~s", [Span, StartFrom, DID]),
-
-    [<<"freetdm/">>, Span, <<"/">>, StartFrom, <<"/">>, DID].
-
--spec format_did/2 :: (ne_binary(), ne_binary()) -> ne_binary().
-format_did(DID, <<"e164">>) ->
-    wnm_util:to_e164(DID);
-format_did(DID, <<"npan">>) ->
-    wnm_util:to_npan(DID);
-format_did(DID, <<"1npan">>) ->
-    wnm_util:to_1npan(DID);
-format_did(DID, _) ->
-    DID.
 
 -spec get_leg_vars/1 :: (wh_json:json_object() | proplist()) -> [nonempty_string(),...].
 get_leg_vars([_|_]=Prop) ->
@@ -324,6 +259,12 @@ get_channel_vars({<<"Timeout">>, V}, Vars) ->
             Vars
     end;
 
+get_channel_vars({<<"Forward-IP">>, <<"sip:", _/binary>>=V}, Vars) ->
+    [ list_to_binary(["sip_route_uri='", V, "'"]) | Vars];
+
+get_channel_vars({<<"Forward-IP">>, V}, Vars) ->
+    get_channel_vars({<<"Forward-IP">>, <<"sip:", V/binary>>}, Vars);
+
 get_channel_vars({AMQPHeader, V}, Vars) when not is_list(V) ->
     case lists:keyfind(AMQPHeader, 1, ?SPECIAL_CHANNEL_VARS) of
         false -> Vars;
@@ -332,23 +273,6 @@ get_channel_vars({AMQPHeader, V}, Vars) when not is_list(V) ->
 
 get_channel_vars(_, Vars) ->
     Vars.
-
-
--spec sip_transport/1 :: (wh_json:json_object() | ne_binary() | 'undefined') -> binary().
-sip_transport(<<"tcp">>) ->
-    <<";transport=tcp">>;
-sip_transport(<<"udp">>) ->
-    <<";transport=udp">>;
-sip_transport(<<"tls">>) ->
-    <<";transport=tls">>;
-sip_transport(<<"sctp">>) ->
-    <<";transport=sctp">>;
-sip_transport(undefined) ->
-    <<>>;
-sip_transport(JObj) when not is_binary(JObj) ->
-    sip_transport(wh_util:to_lower_binary(wh_json:get_value(<<"Transport">>, JObj)));
-sip_transport(_) ->
-    <<>>.
 
 -spec get_channel_params/1 :: (wh_json:json_object()) -> wh_json:json_proplist().
 get_channel_params(JObj) ->

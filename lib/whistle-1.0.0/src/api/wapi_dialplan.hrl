@@ -48,7 +48,7 @@
 
 %% Bridge Endpoints
 -define(BRIDGE_REQ_ENDPOINT_HEADERS, [<<"Invite-Format">>]).
--define(OPTIONAL_BRIDGE_REQ_ENDPOINT_HEADERS, [ <<"Route">>, <<"To-User">>, <<"To-Realm">>, <<"To-DID">>
+-define(OPTIONAL_BRIDGE_REQ_ENDPOINT_HEADERS, [ <<"Route">>, <<"To-User">>, <<"To-Realm">>, <<"To-DID">>, <<"To-IP">>
                                                     ,<<"Outgoing-Caller-ID-Name">>, <<"Outgoing-Caller-ID-Number">>
                                                     ,<<"Outgoing-Callee-ID-Name">>, <<"Outgoing-Callee-ID-Number">>
                                                     ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
@@ -58,10 +58,12 @@
                                                     ,<<"Endpoint-Delay">>, <<"Codecs">>, <<"SIP-Headers">>, <<"Presence-ID">>
                                                     ,<<"Custom-Channel-Vars">>, <<"Auth-User">>, <<"Auth-Password">>
                                                     ,<<"Endpoint-Type">>, <<"Endpoint-Options">>, <<"Force-Fax">>
+                                                    ,<<"Proxy-IP">>, <<"Forward-IP">>, <<"SIP-Transport">>
                                               ]).
 -define(BRIDGE_REQ_ENDPOINT_VALUES, [?INVITE_FORMAT_TUPLE
                                      ,{<<"Endpoint-Type">>, [<<"sip">>, <<"freetdm">>]}
                                      ,{<<"Force-Fax">>, [<<"self">>, <<"peer">>]}
+                                     ,{<<"SIP-Transport">>, [<<"udp">>, <<"tcp">>, <<"tls">>, <<"sctp">>]}
                                     ]).
 -define(BRIDGE_REQ_ENDPOINT_TYPES, [{<<"SIP-Headers">>, fun wh_json:is_json_object/1}
                                     ,{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}

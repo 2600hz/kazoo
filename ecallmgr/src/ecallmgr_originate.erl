@@ -350,10 +350,11 @@ get_originate_action(<<"transfer">>, JObj) ->
 get_originate_action(<<"bridge">>, JObj) ->
     lager:debug("got originate with action bridge", []),
     Data = wh_json:get_value(<<"Application-Data">>, JObj),
-    case ecallmgr_fs_xml:build_sip_route(Data, wh_json:get_value(<<"Invite-Format">>, Data)) of
-        {error, timeout} -> <<"error">>;
-        EndPoint ->
-            list_to_binary(["'m:^:", get_unset_vars(JObj), "bridge:", EndPoint, "' inline"])
+
+    case ecallmgr_util:build_channel(Data) of
+        {error, _} -> <<"error">>;
+        {ok, Channel} ->
+            list_to_binary(["'m:^:", get_unset_vars(JObj), "bridge:", Channel, "' inline"])
     end;
 get_originate_action(_, _) ->
     lager:debug("got originate with action park", []),
