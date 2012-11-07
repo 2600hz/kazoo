@@ -1221,6 +1221,10 @@ init_state_from_config({H, Port, User, Pass, AdminPort}=Config) ->
             lager:info("We tried to connect to BigCouch at ~s:~p and ~p but were refused. Is BigCouch/HAProxy running at these host:port combos?", [H, Port, AdminPort]),
             timer:sleep(5000),
             init_state_from_config(Config);
+        error:{badmatch,{error,{ok,Status,_,_}}} ->
+            lager:info("We received a ~s from the server.", [Status]),
+            timer:sleep(5000),
+            init_state_from_config(Config);
         A:B ->
             ST = erlang:get_stacktrace(),
             lager:info("init failed to connect: ~p:~p", [A, B]),
