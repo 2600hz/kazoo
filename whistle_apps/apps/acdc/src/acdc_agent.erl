@@ -446,19 +446,19 @@ handle_cast({bridge_to_member, Call, WinJObj, EPs}, #state{fsm_pid=FSM
                          }};
 
 handle_cast({bridge_to_member, Call, _WinJObj, _}, #state{is_thief=true
-                                                         ,agent=Agent
+                                                          ,agent=Agent
                                                          }=State) ->
     lager:debug("connecting to thief at ~s", [whapps_call:call_id(Agent)]),
     acdc_util:bind_to_call_events(Call),
 
     whapps_call_command:pickup(whapps_call:call_id(Agent), <<"now">>, Call),
 
-    {noreply, State#state{call=Call}};
+    {noreply, State#state{call=Call}, hibernate};
 
 handle_cast({monitor_call, Call}, State) ->
     acdc_util:bind_to_call_events(Call),
     lager:debug("monitoring call ~s", [whapps_call:call_id(Call)]),
-    {noreply, State#state{call=Call}};
+    {noreply, State#state{call=Call}, hibernate};
 
 handle_cast({originate_execute, JObj}, State) ->
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),

@@ -15,7 +15,7 @@
 %% API
 -export([start_link/1, start_link/2
          ,agent/1
-         ,fsm/1, start_fsm/3
+         ,fsm/1, start_fsm/3, start_fsm/4
          ,stop/1
         ]).
 
