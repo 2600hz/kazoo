@@ -568,27 +568,32 @@ handle_info({nodedown, Node}, #state{node=Node
                                     }=State) ->
     lager:debug("lost connection to media node ~s, waiting for reconnection", [Node]),
     erlang:monitor_node(Node, false),
-    _Ref = erlang:send_after(0, self(), {is_node_up, 100}),
+    _Ref = erlang:send_after(0, self(), {is_node_up, 100, 1}),
     {noreply, State#state{is_node_up=false}, hibernate};
-handle_info({is_node_up, Timeout}, #state{node=Node
+
+handle_info({is_node_up, _Timeout, N}, State) when N > ?MAX_NODE_RESTART_FAILURES ->
+    lager:debug("we've failed ~b times to reconnect to the node, assuming down for good for this call", [N]),
+    {stop, normal, State};
+handle_info({is_node_up, Timeout. N}, #state{node=Node
                                           ,is_node_up=false
                                          }=State) ->
-    case ecallmgr_util:is_node_up(Node) of
+    case ecallmgr_fs_nodes:is_node_up(Node) of
         true ->
             erlang:monitor_node(Node, true),
             lager:debug("reconnected to node ~s", [Node]),
             {noreply, State#state{is_node_up=true}, hibernate};
         false ->
             _Ref = case Timeout >= ?MAX_TIMEOUT_FOR_NODE_RESTART of
-                          true ->
-                              lager:debug("node ~p down, waiting ~p to check again", [Node, ?MAX_TIMEOUT_FOR_NODE_RESTART]),
-                              erlang:send_after(?MAX_TIMEOUT_FOR_NODE_RESTART, self(), {is_node_up, ?MAX_TIMEOUT_FOR_NODE_RESTART});
-                          false ->
-                              lager:debug("node ~p down, waiting ~p to check again", [Node, Timeout]),
-                              erlang:send_after(Timeout, self(), {is_node_up, Timeout*2})
-                      end,
+                       true ->
+                           lager:debug("node ~p down, waiting ~p to check again", [Node, ?MAX_TIMEOUT_FOR_NODE_RESTART]),
+                           erlang:send_after(?MAX_TIMEOUT_FOR_NODE_RESTART, self(), {is_node_up, ?MAX_TIMEOUT_FOR_NODE_RESTART, N+1});
+                       false ->
+                           lager:debug("node ~p down, waiting ~p to check again", [Node, Timeout]),
+                           erlang:send_after(Timeout, self(), {is_node_up, Timeout*2, N+1})
+                   end,
             {noreply, State}
     end;
+
 handle_info({force_queue_advance, CallId}, #state{callid=CallId
                                                   ,current_app=CurrApp
                                                   ,command_q=CmdQ

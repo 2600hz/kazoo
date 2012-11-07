@@ -73,6 +73,7 @@
 
 -define(DEFAULT_DOMAIN, <<"whistle.2600hz.org">>).
 -define(MAX_TIMEOUT_FOR_NODE_RESTART, 10000). % 10 seconds
+-define(MAX_NODE_RESTART_FAILURES, 3).
 
 %% list of dialplan Application-Names that can execute after a call has hung up
 -define(POST_HANGUP_COMMANDS, [<<"store">>, <<"set">>, <<"presence">>, <<"record">>, <<"store_fax">>]). 
