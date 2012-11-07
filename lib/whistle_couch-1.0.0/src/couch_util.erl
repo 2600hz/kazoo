@@ -66,7 +66,7 @@
 -define(RETRY_504(F), retry504s(fun() -> F end)).
 
 -type db_create_options() :: [{'q',integer()} | {'n',integer()},...] | [].
--export_type([db_create_options/0]).
+-export_type([db_create_options/0, couchbeam_errors/0]).
 
 %%------------------------------------------------------------------------------
 %% @public
