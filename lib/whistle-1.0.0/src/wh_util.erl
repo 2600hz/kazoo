@@ -409,7 +409,7 @@ get_event_type(JObj) when not is_list(JObj) -> % guard against json_objects() be
 %% Generic helper to get the text value of a XML path
 %% @end
 %%--------------------------------------------------------------------
--spec get_xml_value/2 :: (string(), term()) -> api_binary().
+-spec get_xml_value/2 :: (wh_deeplist(), string()) -> api_binary().
 get_xml_value(Paths, Xml) ->
     Path = lists:flatten(Paths),
     try xmerl_xpath:string(Path, Xml) of

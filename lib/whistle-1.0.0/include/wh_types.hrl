@@ -27,7 +27,7 @@
 -type api_binary() :: ne_binary() | 'undefined'.
 -type api_binaries() :: [api_binary(),...] | [] | 'undefined'.
 
--type wh_deeplist() :: [term() | wh_deeplist()].
+-type wh_deeplist() :: iolist(). %[term() | wh_deeplist()].
 
 -type wh_std_return() :: {'ok', _} | {'error', _}.
 

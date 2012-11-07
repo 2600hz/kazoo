@@ -55,7 +55,7 @@ url(TransactionId, Options) ->
 %% Find a transaction by id
 %% @end
 %%--------------------------------------------------------------------
--spec find/1 :: (ne_binary()) -> #bt_transaction{}.
+-spec find/1 :: (ne_binary()) -> bt_transaction().
 find(TransactionId) ->
     Url = url(TransactionId),
     Xml = braintree_request:get(Url),
@@ -67,7 +67,7 @@ find(TransactionId) ->
 %% Find transactions by customer id
 %% @end
 %%--------------------------------------------------------------------
--spec find_by_customer/1 :: (ne_binary()) -> [#bt_transaction{},...].
+-spec find_by_customer/1 :: (ne_binary()) -> [bt_transaction(),...].
 find_by_customer(CustomerId) ->
     Url = url(<<"advanced_search">>),
     Props = [{'customer_id', [{'is', CustomerId}]}],
@@ -83,8 +83,8 @@ find_by_customer(CustomerId) ->
 %% Creates a new transaction using the given record
 %% @end
 %%--------------------------------------------------------------------
--spec create/1 :: (#bt_transaction{}) -> #bt_transaction{}.
--spec create/2 :: (ne_binary(), #bt_transaction{}) -> #bt_transaction{}.
+-spec create/1 :: (bt_transaction()) -> bt_transaction().
+-spec create/2 :: (ne_binary(), bt_transaction()) -> bt_transaction().
 
 create(#bt_transaction{amount=Amount}=Transaction) ->
     MinAmount = whapps_config:get_float(<<"braintree">>, <<"min_amount">>, 5.00),
@@ -111,9 +111,9 @@ create(CustomerId, Transaction) ->
 %% Create a sale transaction
 %% @end
 %%--------------------------------------------------------------------
--spec sale/1 :: (#bt_transaction{}) -> #bt_transaction{}.
--spec sale/2 :: (ne_binary(), #bt_transaction{}) -> #bt_transaction{}.
--spec quick_sale/2 :: (ne_binary(), ne_binary()) -> #bt_transaction{}.
+-spec sale/1 :: (bt_transaction()) -> bt_transaction().
+-spec sale/2 :: (ne_binary(), bt_transaction()) -> bt_transaction().
+-spec quick_sale/2 :: (ne_binary(), ne_binary()) -> bt_transaction().
 
 sale(Transaction) ->
     create(Transaction#bt_transaction{type=?BT_TRANS_SALE}).
@@ -133,18 +133,23 @@ quick_sale(CustomerId, Token, Amount) ->
 %% Create a credit transaction
 %% @end
 %%--------------------------------------------------------------------
--spec credit/1 :: (#bt_transaction{}) -> #bt_transaction{}.
--spec credit/2 :: (ne_binary(), #bt_transaction{}) -> #bt_transaction{}.
--spec quick_credit/2 :: (ne_binary(), ne_binary()) -> #bt_transaction{}.
+-spec credit/1 :: (bt_transaction()) -> bt_transaction().
+-spec credit/2 :: (ne_binary(), bt_transaction()) -> bt_transaction().
+-spec quick_credit/2 :: (ne_binary(), ne_binary()) -> bt_transaction().
 
 credit(Transaction) ->
     create(Transaction#bt_transaction{type=?BT_TRANS_CREDIT}).
 
 credit(CustomerId, Transaction) ->
-    create(Transaction#bt_transaction{type=?BT_TRANS_CREDIT, customer_id=CustomerId}).
+    create(Transaction#bt_transaction{type=?BT_TRANS_CREDIT
+                                      ,customer_id=CustomerId
+                                     }).
 
 quick_credit(CustomerId, Amount) ->
-    credit(CustomerId, #bt_transaction{amount=wh_util:to_list(Amount), settle=false, tax_exempt=false}).
+    credit(CustomerId, #bt_transaction{amount=wh_util:to_binary(Amount)
+                                       ,settle=false
+                                       ,tax_exempt=false
+                                      }).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -152,7 +157,7 @@ quick_credit(CustomerId, Amount) ->
 %% Void transactions that have a status:authorized or submitted_for_settlement
 %% @end
 %%--------------------------------------------------------------------
--spec void/1 :: (#bt_transaction{} | ne_binary()) -> #bt_transaction{}.
+-spec void/1 :: (bt_transaction() | ne_binary()) -> bt_transaction().
 void(#bt_transaction{id=TransactionId}) ->
     void(TransactionId);
 void(TransactionId) ->
@@ -166,8 +171,8 @@ void(TransactionId) ->
 %% Refund a transaction with status: settled or settling
 %% @end
 %%--------------------------------------------------------------------
--spec refund/1 :: (#bt_transaction{} | ne_binary()) -> #bt_transaction{}.
--spec refund/2 :: (#bt_transaction{} | ne_binary(), 'undefined' | ne_binary()) -> #bt_transaction{}.
+-spec refund/1 :: (bt_transaction() | ne_binary()) -> bt_transaction().
+-spec refund/2 :: (bt_transaction() | ne_binary(), api_binary()) -> bt_transaction().
 
 refund(TransactionId) ->
     refund(TransactionId, undefined).
@@ -186,8 +191,8 @@ refund(TransactionId, Amount) ->
 %% Contert the given XML to a transaction record
 %% @end
 %%--------------------------------------------------------------------
--spec xml_to_record/1 :: (bt_xml()) -> #bt_transaction{}.
--spec xml_to_record/2 :: (bt_xml(), wh_deeplist()) -> #bt_transaction{}.
+-spec xml_to_record/1 :: (bt_xml()) -> bt_transaction().
+-spec xml_to_record/2 :: (bt_xml(), wh_deeplist()) -> bt_transaction().
 
 xml_to_record(Xml) ->
     xml_to_record(Xml, "/transaction").
@@ -243,8 +248,8 @@ xml_to_record(Xml, Base) ->
 %% Contert the given XML to a transaction record
 %% @end
 %%--------------------------------------------------------------------
--spec record_to_xml/1 :: (#bt_transaction{}) -> proplist() | bt_xml().
--spec record_to_xml/2 :: (#bt_transaction{}, boolean()) -> proplist() | bt_xml().
+-spec record_to_xml/1 :: (bt_transaction()) -> proplist() | bt_xml().
+-spec record_to_xml/2 :: (bt_transaction(), boolean()) -> proplist() | bt_xml().
 
 record_to_xml(Transaction) ->
     record_to_xml(Transaction, false).
@@ -336,7 +341,7 @@ record_to_xml(#bt_transaction{}=Transaction, ToString) ->
 %% Convert a given record into a json object
 %% @end
 %%--------------------------------------------------------------------
--spec record_to_json/1 :: (#bt_transaction{}) -> wh_json:json_object().
+-spec record_to_json/1 :: (bt_transaction()) -> wh_json:json_object().
 record_to_json(#bt_transaction{}=Transaction) ->
     Props = [{<<"id">>, Transaction#bt_transaction.id}
              ,{<<"status">>, Transaction#bt_transaction.status}

@@ -67,95 +67,103 @@
 
 -define(BT_ACTIVE_STATUSES, [?BT_ACTIVE, ?BT_PENDING, ?BT_PAST_DUE]).
 
--record(bt_address, {id :: ne_binary()
-                     ,customer_id :: ne_binary() | nonempty_string()
-                     ,first_name :: ne_binary()
-                     ,last_name :: ne_binary()
-                     ,company :: ne_binary()
-                     ,street_address :: ne_binary()
-                     ,extended_address :: ne_binary()
-                     ,locality :: ne_binary()
-                     ,region :: ne_binary()
-                     ,postal_code :: ne_binary()
-                     ,country_code_two :: ne_binary()
-                     ,country_code_three :: ne_binary()
-                     ,country_code :: ne_binary()
-                     ,country_name :: ne_binary()
+-record(bt_address, {id :: api_binary()
+                     ,customer_id :: api_binary()
+                     ,first_name :: api_binary()
+                     ,last_name :: api_binary()
+                     ,company :: api_binary()
+                     ,street_address :: api_binary()
+                     ,extended_address :: api_binary()
+                     ,locality :: api_binary()
+                     ,region :: api_binary()
+                     ,postal_code :: api_binary()
+                     ,country_code_two :: api_binary()
+                     ,country_code_three :: api_binary()
+                     ,country_code :: api_binary()
+                     ,country_name :: api_binary()
                      ,update_existing = 'false' :: boolean()
-                     ,created_at :: ne_binary()
-                     ,updated_at :: ne_binary()
+                     ,created_at :: api_binary()
+                     ,updated_at :: api_binary()
                     }).
+-type bt_address() :: #bt_address{}.
+-type bt_addresses() :: [bt_address(),...] | [].
 
--record(bt_card, {token :: ne_binary()
-                  ,bin :: ne_binary()
-                  ,cardholder_name :: ne_binary()
-                  ,card_type :: ne_binary()
-                  ,created_at :: ne_binary()
-                  ,updated_at :: ne_binary()
+-record(bt_card, {token :: api_binary()
+                  ,bin :: api_binary()
+                  ,cardholder_name :: api_binary()
+                  ,card_type :: api_binary()
+                  ,created_at :: api_binary()
+                  ,updated_at :: api_binary()
                   ,default = 'false' :: boolean()
-                  ,expiration_date :: ne_binary()
-                  ,expiration_month :: ne_binary()
-                  ,expiration_year :: ne_binary()
+                  ,expiration_date :: api_binary()
+                  ,expiration_month :: api_binary()
+                  ,expiration_year :: api_binary()
                   ,expired = 'false' :: boolean()
-                  ,customer_location :: ne_binary()
-                  ,last_four :: ne_binary()
-                  ,number :: ne_binary()
-                  ,cvv :: ne_binary()
-                  ,customer_id :: ne_binary() | nonempty_string()
+                  ,customer_location :: api_binary()
+                  ,last_four :: api_binary()
+                  ,number :: api_binary()
+                  ,cvv :: api_binary()
+                  ,customer_id :: api_binary()
                   ,make_default = 'false' :: boolean()
                   ,verify = 'true' :: boolean()
                   ,update_existing = 'false' :: boolean() | ne_binary()
-                  ,billing_address_id :: ne_binary()
-                  ,billing_address = 'undefined' :: 'undefined' | #bt_address{}
+                  ,billing_address_id :: api_binary()
+                  ,billing_address :: bt_address()
                  }).
+-type bt_card() :: #bt_card{}.
+-type bt_cards() :: [bt_card(),...] | [].
 
--record(bt_addon, {id :: ne_binary()
-                   ,amount :: ne_binary()
+-record(bt_addon, {id :: api_binary()
+                   ,amount :: api_binary()
                    ,never_expires = true :: boolean()
-                   ,billing_cycle :: ne_binary()
-                   ,number_of_cycles :: ne_binary()
+                   ,billing_cycle :: api_binary()
+                   ,number_of_cycles :: api_binary()
                    ,quantity = 0 :: integer()
-                   ,inherited_from :: ne_binary()
-                   ,existing_id :: ne_binary()
+                   ,inherited_from :: api_binary()
+                   ,existing_id :: api_binary()
                   }).
+-type bt_addon() :: #bt_addon{}.
+-type bt_addons() :: [bt_addon(),...] | [].
 
--record(bt_discount, {id :: ne_binary()
-                      ,amount :: ne_binary()
+-record(bt_discount, {id :: api_binary()
+                      ,amount :: api_binary()
                       ,never_expires = true :: boolean()
-                      ,billing_cycle :: ne_binary()
-                      ,number_of_cycles :: ne_binary()
+                      ,billing_cycle :: api_binary()
+                      ,number_of_cycles :: api_binary()
                       ,quantity = 0 :: integer()
-                      ,inherited_from :: ne_binary()
-                      ,existing_id :: ne_binary()
+                      ,inherited_from :: api_binary()
+                      ,existing_id :: api_binary()
                      }).
+-type bt_discount() :: #bt_discount{}.
+-type bt_discounts() :: [bt_discount(),...] | [].
 
--record(bt_subscription, {id :: ne_binary()
-                          ,balance :: ne_binary()
-                          ,billing_dom :: ne_binary()
-                          ,billing_first_date :: ne_binary()
-                          ,billing_end_date :: ne_binary()
-                          ,billing_start_date :: ne_binary()
-                          ,billing_cycle :: ne_binary()
-                          ,number_of_cycles :: ne_binary()
-                          ,days_past_due :: ne_binary()
-                          ,failure_count :: ne_binary()
-                          ,merchant_account_id :: ne_binary()
+-record(bt_subscription, {id :: api_binary()
+                          ,balance :: api_binary()
+                          ,billing_dom :: api_binary()
+                          ,billing_first_date :: api_binary()
+                          ,billing_end_date :: api_binary()
+                          ,billing_start_date :: api_binary()
+                          ,billing_cycle :: api_binary()
+                          ,number_of_cycles :: api_binary()
+                          ,days_past_due :: api_binary()
+                          ,failure_count :: api_binary()
+                          ,merchant_account_id :: api_binary()
                           ,never_expires = 'true' :: boolean()
-                          ,next_bill_amount :: ne_binary()
-                          ,next_cycle_amount :: ne_binary()
-                          ,next_bill_date :: ne_binary()
-                          ,paid_through_date :: ne_binary()
-                          ,payment_token :: ne_binary()
-                          ,plan_id :: ne_binary()
-                          ,price :: ne_binary()
-                          ,status :: ne_binary()
-                          ,trial_duration :: ne_binary()
-                          ,trial_duration_unit :: ne_binary()
-                          ,trial_period :: ne_binary()
-                          ,add_ons = [] :: [#bt_addon{},...] | []
-                          ,discounts = [] :: [#bt_discount{},...] | []
-                          ,descriptor :: ne_binary()
-                          ,transactions :: ne_binary()
+                          ,next_bill_amount :: api_binary()
+                          ,next_cycle_amount :: api_binary()
+                          ,next_bill_date :: api_binary()
+                          ,paid_through_date :: api_binary()
+                          ,payment_token :: api_binary()
+                          ,plan_id :: api_binary()
+                          ,price :: api_binary()
+                          ,status :: api_binary()
+                          ,trial_duration :: api_binary()
+                          ,trial_duration_unit :: api_binary()
+                          ,trial_period :: api_binary()
+                          ,add_ons = [] :: bt_addons()
+                          ,discounts = [] :: bt_discounts()
+                          ,descriptor :: api_binary()
+                          ,transactions :: api_binary()
                           ,do_not_inherit = 'true' :: boolean()
                           ,start_immediately = 'true' :: boolean()
                           ,prorate_charges = 'true' :: boolean()
@@ -163,21 +171,25 @@
                           ,replace_add_ons = 'false' :: boolean()
                           ,create = 'false' :: boolean()
                          }).
+-type bt_subscription() :: #bt_subscription{}.
+-type bt_subscriptions() :: [bt_subscription(),...] | [].
 
--record(bt_customer, {id :: ne_binary()
-                      ,first_name :: ne_binary()
-                      ,last_name :: ne_binary()
-                      ,company :: ne_binary()
-                      ,email :: ne_binary()
-                      ,phone :: ne_binary()
-                      ,fax :: ne_binary()
-                      ,website :: ne_binary()
-                      ,created_at :: ne_binary()
-                      ,updated_at :: ne_binary()
-                      ,credit_cards = [] :: [] | [#bt_card{},...]
-                      ,addresses = [] :: [] | [#bt_address{},...]
-                      ,subscriptions = [] :: [] | [#bt_subscription{},...]
+-record(bt_customer, {id :: api_binary()
+                      ,first_name :: api_binary()
+                      ,last_name :: api_binary()
+                      ,company :: api_binary()
+                      ,email :: api_binary()
+                      ,phone :: api_binary()
+                      ,fax :: api_binary()
+                      ,website :: api_binary()
+                      ,created_at :: api_binary()
+                      ,updated_at :: api_binary()
+                      ,credit_cards = [] :: bt_cards()
+                      ,addresses = [] :: bt_addresses()
+                      ,subscriptions = [] :: bt_subscriptions()
                      }).
+-type bt_customer() :: #bt_customer{}.
+-type bt_customers() :: [bt_customer(),...] | [].
 
 -record(bt_transaction, {id :: ne_binary()
                          ,status :: ne_binary()
@@ -201,18 +213,18 @@
                          ,processor_authorization_code :: ne_binary()
                          ,processor_response_code :: ne_binary()
                          ,processor_response_text :: ne_binary()
-                         ,tax_amount :: ne_binary()
+                         ,tax_amount :: api_binary()
                          ,tax_exempt = 'false' :: boolean()
-                         ,billing_address = 'undefined' :: 'undefined' | #bt_address{}
-                         ,shipping_address_id :: ne_binary()
-                         ,shipping_address = 'undefined' :: 'undefined' | #bt_address{}
-                         ,customer_id :: ne_binary() | nonempty_string()
-                         ,customer = 'undefined' :: 'undefined' | #bt_customer{}
-                         ,payment_token :: ne_binary()
-                         ,card = 'undefined' :: 'undefined' | #bt_card{}
-                         ,subscription_id :: ne_binary()
-                         ,add_ons = [] :: [#bt_addon{},...] | []
-                         ,discounts = [] :: [#bt_discount{},...] | []
+                         ,billing_address :: bt_address()
+                         ,shipping_address_id :: api_binary()
+                         ,shipping_address :: bt_address()
+                         ,customer_id :: api_binary()
+                         ,customer :: bt_customer()
+                         ,payment_token :: api_binary()
+                         ,card :: bt_card()
+                         ,subscription_id :: api_binary()
+                         ,add_ons = [] :: bt_addons()
+                         ,discounts = [] :: bt_discounts()
                          ,descriptor :: ne_binary()
                          ,store_in_vault = 'false' :: boolean()
                          ,store_on_success = 'false' :: boolean()
@@ -220,23 +232,29 @@
                          ,change_billing_address = 'false' :: boolean()
                          ,store_shipping_address = 'false' :: boolean()
                         }).
+-type bt_transaction() :: #bt_transaction{}.
+-type bt_transactions() :: [bt_transaction(),...] | [].
 
--record(bt_error, {code :: ne_binary()
-                   ,message :: ne_binary()
-                   ,attribute :: ne_binary()
+-record(bt_error, {code :: api_binary()
+                   ,message :: api_binary()
+                   ,attribute :: api_binary()
                   }).
+-type bt_error() :: #bt_error{}.
+-type bt_errors() :: [#bt_error{},...] | [].
 
--record(bt_verification, {verification_status :: ne_binary()
-                          ,processor_response_code :: ne_binary()
-                          ,processor_response_text :: ne_binary()
-                          ,cvv_response_code :: ne_binary()
-                          ,avs_response_code :: ne_binary()
-                          ,postal_response_code :: ne_binary()
-                          ,street_response_code :: ne_binary()
-                          ,gateway_rejection_reason :: ne_binary()
+-record(bt_verification, {verification_status :: api_binary()
+                          ,processor_response_code :: api_binary()
+                          ,processor_response_text :: api_binary()
+                          ,cvv_response_code :: api_binary()
+                          ,avs_response_code :: api_binary()
+                          ,postal_response_code :: api_binary()
+                          ,street_response_code :: api_binary()
+                          ,gateway_rejection_reason :: api_binary()
                          }).
+-type bt_verification() :: #bt_verification{}.
 
--record(bt_api_error, {errors = [] :: [#bt_error{},...] | []
-                       ,verification :: #bt_verification{}
-                       ,message:: ne_binary()
+-record(bt_api_error, {errors = [] :: bt_errors()
+                       ,verification :: bt_verification()
+                       ,message:: api_binary()
                       }).
+-type bt_api_error() :: #bt_api_error{}.

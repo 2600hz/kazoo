@@ -184,8 +184,8 @@ xml_to_record(Xml, Base) ->
 %% Convert the given record to XML
 %% @end
 %%--------------------------------------------------------------------
--spec record_to_xml/1 :: (card()) -> proplist() | bt_xml().
--spec record_to_xml/2 :: (card(), boolean()) -> proplist() | bt_xml().
+-spec record_to_xml/1 :: (card()) -> wh_proplist() | bt_xml().
+-spec record_to_xml/2 :: (card(), boolean()) -> wh_proplist() | bt_xml().
 
 record_to_xml(Card) ->
     record_to_xml(Card, false).
@@ -261,18 +261,19 @@ json_to_record(undefined) ->
     undefined;
 json_to_record(JObj) ->
     #bt_card{token = create_or_get_json_id(JObj)
-             ,cardholder_name = wh_json:get_string_value(<<"cardholder_name">>, JObj)
-             ,expiration_date = wh_json:get_string_value(<<"expiration_date">>, JObj)
-             ,expiration_month = wh_json:get_string_value(<<"expiration_month">>, JObj)
-             ,expiration_year = wh_json:get_string_value(<<"expiration_year">>, JObj)
-             ,customer_id = wh_json:get_string_value(<<"customer_id">>, JObj)
-             ,number = wh_json:get_string_value(<<"number">>, JObj)
-             ,cvv = wh_json:get_string_value(<<"cvv">>, JObj)
-             ,billing_address_id = wh_json:get_string_value(<<"billing_address_id">>, JObj)
+             ,cardholder_name = wh_json:get_binary_value(<<"cardholder_name">>, JObj)
+             ,expiration_date = wh_json:get_binary_value(<<"expiration_date">>, JObj)
+             ,expiration_month = wh_json:get_binary_value(<<"expiration_month">>, JObj)
+             ,expiration_year = wh_json:get_binary_value(<<"expiration_year">>, JObj)
+             ,customer_id = wh_json:get_binary_value(<<"customer_id">>, JObj)
+             ,number = wh_json:get_binary_value(<<"number">>, JObj)
+             ,cvv = wh_json:get_binary_value(<<"cvv">>, JObj)
+             ,billing_address_id = wh_json:get_binary_value(<<"billing_address_id">>, JObj)
              ,billing_address = braintree_address:json_to_record(wh_json:get_value(<<"billing_address">>, JObj))
-             ,update_existing = wh_json:get_string_value(<<"update_existing">>, JObj)
+             ,update_existing = wh_json:get_binary_value(<<"update_existing">>, JObj)
              ,verify = wh_json:is_true(<<"verify">>, JObj, true)
-             ,make_default = wh_json:is_true(<<"make_default">>, JObj)}.
+             ,make_default = wh_json:is_true(<<"make_default">>, JObj)
+            }.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -310,7 +311,7 @@ record_to_json(#bt_card{}=Card) ->
 %% a uuid to use during creation.
 %% @end
 %%--------------------------------------------------------------------
--spec create_or_get_json_id/1 :: (wh_json:json_object()) ->  api_binary().
+-spec create_or_get_json_id/1 :: (wh_json:json_object()) -> api_binary().
 create_or_get_json_id(JObj) ->
     case wh_json:get_value(<<"number">>, JObj) of
         undefined ->
