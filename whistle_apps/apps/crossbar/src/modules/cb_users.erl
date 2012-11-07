@@ -62,7 +62,7 @@ init() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec allowed_methods/0 :: () -> http_methods().
--spec allowed_methods/1 :: (path_tokens()) -> http_methods().
+-spec allowed_methods/1 :: (path_token()) -> http_methods().
 -spec allowed_methods/3 :: (path_token(), path_token(), path_token()) -> http_methods().
 
 allowed_methods() ->
@@ -83,8 +83,8 @@ allowed_methods(_, <<"quickcall">>, _) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec resource_exists/0 :: () -> 'true'.
--spec resource_exists/1 :: (path_tokens()) -> 'true'.
--spec resource_exists/3 :: (path_tokens(), path_tokens(), path_tokens()) -> 'true'.
+-spec resource_exists/1 :: (path_token()) -> 'true'.
+-spec resource_exists/3 :: (path_token(), path_token(), path_token()) -> 'true'.
 
 resource_exists() -> true.
 resource_exists(_) -> true.
@@ -96,12 +96,12 @@ resource_exists(_, <<"quickcall">>, _) -> true.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec authenticate/1 :: (#cb_context{}) -> 'true'.
+-spec authenticate/1 :: (cb_context:context()) -> 'true'.
 authenticate(#cb_context{req_nouns=?USERS_QCALL_NOUNS, req_verb = <<"get">>}) ->
     lager:debug("authenticating request"),
     true.
 
--spec authorize/1 :: (#cb_context{}) -> 'true'.
+-spec authorize/1 :: (cb_context:context()) -> 'true'.
 authorize(#cb_context{req_nouns=?USERS_QCALL_NOUNS, req_verb = <<"get">>}) ->
     lager:debug("authorizing request"),
     true.
@@ -115,8 +115,8 @@ authorize(#cb_context{req_nouns=?USERS_QCALL_NOUNS, req_verb = <<"get">>}) ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec validate/1 :: (#cb_context{}) -> #cb_context{}.
--spec validate/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+-spec validate/1 :: (cb_context:context()) -> cb_context:context().
+-spec validate/2 :: (cb_context:context(), path_token()) -> cb_context:context().
 
 validate(#cb_context{req_verb = <<"get">>}=Context) ->
     load_user_summary(Context);
@@ -138,15 +138,15 @@ validate(#cb_context{req_verb = <<"get">>}=Context, UserId, <<"quickcall">>, _) 
             cb_modules_util:maybe_originate_quickcall(Context1)
     end.
 
--spec post/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+-spec post/2 :: (cb_context:context(), path_token()) -> cb_context:context().
 post(Context, _) ->
     crossbar_doc:save(Context).
 
--spec put/1 :: (#cb_context{}) -> #cb_context{}.
+-spec put/1 :: (cb_context:context()) -> cb_context:context().
 put(Context) ->
     crossbar_doc:save(Context).
 
--spec delete/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+-spec delete/2 :: (cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, _) ->
     crossbar_doc:delete(Context).
 
@@ -157,7 +157,7 @@ delete(Context, _) ->
 %% account summary.
 %% @end
 %%--------------------------------------------------------------------
--spec load_user_summary/1 :: (#cb_context{}) -> #cb_context{}.
+-spec load_user_summary/1 :: (cb_context:context()) -> cb_context:context().
 load_user_summary(Context) ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
 
@@ -167,7 +167,7 @@ load_user_summary(Context) ->
 %% Load a user document from the database
 %% @end
 %%--------------------------------------------------------------------
--spec load_user/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
+-spec load_user/2 :: (api_binary(), cb_context:context()) -> cb_context:context().
 load_user(UserId, Context) ->
     crossbar_doc:load(UserId, Context).
 
@@ -177,7 +177,7 @@ load_user(UserId, Context) ->
 %% 
 %% @end
 %%--------------------------------------------------------------------
--spec validate_request/2 :: ('undefined'|ne_binary(), #cb_context{}) -> #cb_context{}.
+-spec validate_request/2 :: (api_binary(), cb_context:context()) -> cb_context:context().
 validate_request(UserId, Context) ->
     prepare_username(UserId, Context).
 
@@ -290,7 +290,7 @@ maybe_validate_quickcall(#cb_context{resp_status=success, doc=JObj, auth_token=A
 %% unique or belongs to the request being made
 %% @end
 %%--------------------------------------------------------------------
--spec username_doc_id/2 :: (ne_binary(), #cb_context{}) -> 'undefined' | ne_binary().
+-spec username_doc_id/2 :: (api_binary(), cb_context:context()) -> api_binary().
 username_doc_id(_, #cb_context{db_name=undefined}) ->
     undefined;
 username_doc_id(Username, Context) ->
@@ -307,6 +307,6 @@ username_doc_id(Username, Context) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec(normalize_view_results/2 :: (Doc :: wh_json:json_object(), Acc :: wh_json:json_objects()) -> wh_json:json_objects()).
+-spec(normalize_view_results/2 :: (wh_json:json_object(), wh_json:json_objects()) -> wh_json:json_objects()).
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].

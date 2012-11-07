@@ -56,8 +56,8 @@ current_doc_vsn() -> ?CROSSBAR_DOC_VSN.
 %% Failure here returns 410, 500, or 503
 %% @end
 %%--------------------------------------------------------------------
--spec load/2 :: (ne_binary() | [ne_binary(),...], #cb_context{}) -> #cb_context{}.
--spec load/3 :: (ne_binary() | [ne_binary(),...], #cb_context{}, wh_proplist()) -> #cb_context{}.
+-spec load/2 :: (api_binary() | api_binaries(), #cb_context{}) -> #cb_context{}.
+-spec load/3 :: (api_binary() | api_binaries(), #cb_context{}, wh_proplist()) -> #cb_context{}.
 
 load(DocId, #cb_context{}=Context) ->
     load(DocId, Context, []).
@@ -470,7 +470,7 @@ handle_couch_mgr_success(JObj, Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec handle_couch_mgr_errors/3 :: (atom(), ne_binary() | [ne_binary(),...] | 'undefined', #cb_context{}) -> #cb_context{}.
+-spec handle_couch_mgr_errors/3 :: (couch_util:couchbeam_errors(), api_binary() | api_binaries(), #cb_context{}) -> #cb_context{}.
 handle_couch_mgr_errors(invalid_db_name, _, #cb_context{db_name=Db}=Context) ->
     lager:debug("datastore ~s not_found", [Db]),
     cb_context:add_system_error(datastore_missing, [{details, wh_util:to_binary(Db)}], Context);
