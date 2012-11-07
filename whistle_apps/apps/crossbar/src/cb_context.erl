@@ -25,6 +25,9 @@
 
 -include("include/crossbar.hrl").
 
+-type context() :: #cb_context{}.
+-export_type([context/0]).
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -32,7 +35,7 @@
 %% this request.
 %% @end
 %%--------------------------------------------------------------------
--spec store/3 :: (term(), term(), #cb_context{}) -> #cb_context{}.
+-spec store/3 :: (term(), term(), context()) -> context().
 store(Key, Data, #cb_context{storage=Storage}=Context) ->
     Context#cb_context{storage=[{Key, Data}|props:delete(Key, Storage)]}.
 
@@ -42,8 +45,8 @@ store(Key, Data, #cb_context{storage=Storage}=Context) ->
 %% Fetches a previously stored value from the current request.
 %% @end
 %%--------------------------------------------------------------------
--spec fetch/2 :: (term(), #cb_context{}) -> term().
--spec fetch/3 :: (term(), #cb_context{}, term()) -> term().
+-spec fetch/2 :: (term(), context()) -> term().
+-spec fetch/3 :: (term(), context(), term()) -> term().
 
 fetch(Key, #cb_context{}=Context) ->
     fetch(Key, Context, undefined).
@@ -61,7 +64,7 @@ fetch(Key, #cb_context{storage=Storage}, Default) ->
 %% the process dictionary, where the logger expects it.
 %% @end
 %%--------------------------------------------------------------------
--spec put_reqid/1 :: (#cb_context{}) -> api_binary().
+-spec put_reqid/1 :: (context()) -> api_binary().
 put_reqid(#cb_context{req_id=ReqId}) ->
     put(callid, ReqId).
 
@@ -164,7 +167,7 @@ add_system_error(faulty_request, Context) ->
     crossbar_util:response_faulty_request(Context);
 
 add_system_error(bad_identifier, Context) ->    
-    crossbar_util:response_bad_identifier(<<>>, Context);
+    crossbar_util:response_bad_identifier(<<"unknown">>, Context);
 
 add_system_error(forbidden, Context) ->
     crossbar_util:response(error, <<"forbidden">>, 403, Context);
@@ -242,7 +245,7 @@ add_validation_error(Property, <<"not_found">>=C, Message, Context) ->
 
 add_validation_error(Property, Code, Message, Context) ->
     lager:debug("UNKNOWN ERROR CODE: ~p", [Code]),
-    file:write_file("/tmp/kazoo_unknown_error_codes.log", io_lib:format("~p~n", [Code]), [append]),
+    _ = file:write_file("/tmp/kazoo_unknown_error_codes.log", io_lib:format("~p~n", [Code]), [append]),
     add_depreciated_validation_error(Property, Code, Message, Context).    
 
 add_depreciated_validation_error(Property, Code, Message, Context) when is_binary(Property) ->
