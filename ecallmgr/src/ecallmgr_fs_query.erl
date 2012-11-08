@@ -14,7 +14,6 @@
 -export([start_link/0]).
 -export([handle_channel_status/2]).
 -export([handle_call_status/2]).
--export([handle_switch_reloadacl/2]).
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -30,11 +29,8 @@
 
 -define(RESPONDERS, [{{?MODULE, handle_channel_status}, [{<<"call_event">>, <<"channel_status_req">>}]}
                      ,{{?MODULE, handle_call_status}, [{<<"call_event">>, <<"call_status_req">>}]}
-                     ,{{?MODULE, handle_switch_reloadacl}, [{<<"switch_event">>, <<"reloadacl">>}]}
                     ]).
--define(BINDINGS, [{call, [{restrict_to, [status_req]}]}
-                   ,{switch, []}
-                  ]).
+-define(BINDINGS, [{call, [{restrict_to, [status_req]}]}]).
 -define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).
@@ -138,25 +134,6 @@ handle_call_status(JObj, _Props) ->
                                                        ,wh_json:set_value(<<"Msg-ID">>, MsgId, wh_json:from_list(Resp)))
             end
     end.
-
--spec handle_switch_reloadacl/2 ::(wh_json:json_object(), proplist()) -> any().
-handle_switch_reloadacl(JObj, _Props) ->
-    true = wapi_switch:reloadacl_v(JObj),
-    Reqs = [ecallmgr_fs_node:reloadacl(Srv) || Srv <- gproc:lookup_pids({p, l, fs_node})],
-    wait_for_resps(Reqs).
-
-wait_for_resps([]) -> ok;
-wait_for_resps([_|T]) ->
-    receive
-        {bgok, _Job, _Result} ->
-            lager:debug("job ~s finished successfully: ~p", [_Job, _Result]);
-        {bgerror, _Job, _Result} ->
-            lager:debug("job ~s finished with an error: ~p", [_Job, _Result])
-    after
-        5000 ->
-            lager:debug("waited enough for a response, moving on")
-    end,
-    wait_for_resps(T).
 
 %%%===================================================================
 %%% gen_server callbacks

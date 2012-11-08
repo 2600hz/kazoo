@@ -78,41 +78,36 @@ resource_exists(_) -> true.
 validate(#cb_context{req_verb = <<"get">>}=Context) ->
     summary(Context);
 validate(#cb_context{req_verb = <<"put">>}=Context) ->
-    create(Context).
+    validate_request(undefined, Context).
 
 validate(#cb_context{req_verb = <<"get">>}=Context, Id) ->
     read(Id, Context);
 validate(#cb_context{req_verb = <<"post">>}=Context, Id) ->
-    update(Id, Context);
+    validate_request(Id, Context);
 validate(#cb_context{req_verb = <<"delete">>}=Context, Id) ->
     read(Id, Context).
 
 -spec post/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
 post(Context, _) ->
-    crossbar_doc:save(Context).
+    Context1 = crossbar_doc:save(Context),
+    _ = maybe_aggregate_resource(Context1),
+    Context1.
 
 -spec put/1 :: (#cb_context{}) -> #cb_context{}.
 put(Context) ->
-    crossbar_doc:save(Context).
+    Context1 = crossbar_doc:save(Context),
+    _ = maybe_aggregate_resource(Context1),
+    Context1.
 
 -spec delete/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
 delete(Context, _) ->
-    crossbar_doc:delete(Context).
+    Context1 = crossbar_doc:delete(Context),
+    _ = maybe_remove_aggregate(Context1),
+    Context1.
 
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Create a new instance with the data provided, if it is valid
-%% @end
-%%--------------------------------------------------------------------
--spec create/1 :: (#cb_context{}) -> #cb_context{}.
-create(#cb_context{}=Context) ->
-    OnSuccess = fun(C) -> on_successful_validation(undefined, C) end,
-    cb_context:validate_request_data(<<"local_resources">>, Context, OnSuccess).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -123,18 +118,6 @@ create(#cb_context{}=Context) ->
 -spec read/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
 read(Id, Context) ->
     crossbar_doc:load(Id, Context).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Update an existing instance with the data provided, if it is
-%% valid
-%% @end
-%%--------------------------------------------------------------------
--spec update/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
-update(Id, #cb_context{}=Context) ->
-    OnSuccess = fun(C) -> on_successful_validation(Id, C) end,
-    cb_context:validate_request_data(<<"local_resources">>, Context, OnSuccess).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -153,6 +136,26 @@ summary(Context) ->
 %% 
 %% @end
 %%--------------------------------------------------------------------
+validate_request(ResourceId, Context) ->
+    check_for_registering_gateways(ResourceId, Context).
+
+check_for_registering_gateways(ResourceId, #cb_context{req_data=JObj}=Context) ->    
+    case lists:any(fun(Gateway) ->
+                           wh_json:is_true(<<"register">>, Gateway)
+                               andalso
+                                 (not wh_json:is_false(<<"enabled">>, Gateway))
+                   end, wh_json:get_value(<<"gateways">>, JObj, []))
+    of
+        true ->
+            check_resource_schema(ResourceId, cb_context:store(aggregate_resource, true, Context));
+        false ->
+            check_resource_schema(ResourceId, Context)
+    end.
+
+check_resource_schema(ResourceId, Context) ->
+    OnSuccess = fun(C) -> on_successful_validation(ResourceId, C) end,
+    cb_context:validate_request_data(<<"local_resources">>, Context, OnSuccess).
+
 -spec on_successful_validation/2 :: ('undefined' | ne_binary(), #cb_context{}) -> #cb_context{}.
 on_successful_validation(undefined, #cb_context{doc=JObj}=Context) ->
     Context#cb_context{doc=wh_json:set_value(<<"pvt_type">>, <<"resource">>, JObj)};
@@ -168,3 +171,33 @@ on_successful_validation(Id, #cb_context{}=Context) ->
 -spec normalize_view_results/2 :: (wh_json:json_object(), wh_json:json_objects()) -> wh_json:json_objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec maybe_aggregate_resource/1 :: (#cb_context{}) -> boolean().
+maybe_aggregate_resource(#cb_context{resp_status=success, doc=JObj}=Context) ->
+    case wh_util:is_true(cb_context:fetch(aggregate_resource, Context)) of
+        false -> maybe_remove_aggregate(Context);
+        true -> 
+            lager:debug("adding resource to the sip auth aggregate"),
+            couch_mgr:ensure_saved(?WH_SIP_DB, wh_json:delete_key(<<"_rev">>, JObj)),
+            wapi_switch:publish_reload_gateways(),
+            true
+    end;
+maybe_aggregate_resource(_) -> false.
+
+-spec maybe_remove_aggregate/1 :: (#cb_context{}) -> boolean().
+maybe_remove_aggregate(#cb_context{resp_status=success, doc=JObj}) ->
+    ResourceId = wh_json:get_value(<<"_id">>, JObj),
+    case couch_mgr:lookup_doc_rev(?WH_SIP_DB, ResourceId) of
+        {ok, Rev} ->
+            couch_mgr:del_doc(?WH_SIP_DB, wh_json:set_value(<<"_rev">>, Rev, JObj)),
+            wapi_switch:publish_reload_gateways(),
+            true;
+        {error, not_found} -> false
+    end;    
+maybe_remove_aggregate(_) -> false.

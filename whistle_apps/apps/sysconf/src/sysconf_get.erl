@@ -39,7 +39,9 @@ handle_req(ApiJObj, _Props) ->
     wapi_sysconf:publish_get_resp(RespQ, Resp).
 
 -spec get_value/4 :: (ne_binary(), ne_binary(), term(), ne_binary()) -> term().
-get_value(_, <<"acls">>, Default, Node) ->
+get_value(_, <<"acls">>, _, Node) ->
     sysconf_acls:build(Node);
+get_value(_, <<"gateways">>, _, Node) ->
+    sysconf_gateways:build(Node);
 get_value(Category, Key, Default, Node) ->
     whapps_config:get(Category, Key, Default, Node).
