@@ -186,9 +186,9 @@ put(#cb_context{}=Context) ->
     Context1.
 
 -spec delete/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
-delete(#cb_context{}=Context, _DeviceId) ->
+delete(#cb_context{}=Context, DeviceId) ->
     Context1 = crossbar_doc:delete(Context),
-    _ = maybe_remove_aggreate(Context),
+    _ = maybe_remove_aggreate(DeviceId, Context),
     Context1.
 
 %%%===================================================================
@@ -246,7 +246,9 @@ prepare_device_realm(DeviceId, #cb_context{req_data=JObj}=Context) ->
 validate_device_creds(Realm, DeviceId, #cb_context{req_data=JObj}=Context) ->
     case wh_json:get_value([<<"sip">>, <<"method">>], JObj, <<"password">>) of
         <<"password">> -> validate_device_password(Realm, DeviceId, Context);
-        <<"ip">> -> validate_device_ip(DeviceId, Context);
+        <<"ip">> -> 
+            IP = wh_json:get_value([<<"sip">>, <<"ip">>], JObj),
+            validate_device_ip(IP, DeviceId, Context);
         _Else ->
             C = cb_context:add_validation_error([<<"sip">>, <<"method">>]
                                                    ,<<"enum">>
@@ -264,19 +266,6 @@ validate_device_password(Realm, DeviceId, #cb_context{db_name=Db, req_data=JObj}
             C = cb_context:add_validation_error([<<"sip">>, <<"username">>]
                                                    ,<<"unique">>
                                                    ,<<"SIP credentials already in use">>
-                                                   ,Context),
-            check_device_schema(DeviceId, C)
-    end.
-
--spec validate_device_ip/2 :: ('undefined'|ne_binary(), #cb_context{}) -> #cb_context{}.
-validate_device_ip(DeviceId, #cb_context{req_data=JObj}=Context) ->
-    IP = wh_json:get_value([<<"sip">>, <<"ip">>], JObj),
-    case wh_util:is_ipv4(IP) of
-        true -> validate_device_ip(IP, DeviceId, Context);
-        false ->
-            C = cb_context:add_validation_error([<<"sip">>, <<"ip">>]
-                                                   ,<<"format">>
-                                                   ,<<"SIP IP must be a public IP4 address">>
                                                    ,Context),
             check_device_schema(DeviceId, C)
     end.
@@ -484,7 +473,9 @@ maybe_provision(_) -> false.
 -spec maybe_aggregate_device/1 :: (#cb_context{}) -> boolean().
 maybe_aggregate_device(#cb_context{resp_status=success, doc=JObj}=Context) ->
     case wh_util:is_true(cb_context:fetch(aggregate_device, Context)) of
-        false -> maybe_remove_aggreate(Context);
+        false -> 
+            DeviceId = wh_json:get_value(<<"_id">>, JObj),
+            maybe_remove_aggreate(DeviceId, Context);
         true -> 
             lager:debug("adding device to the sip auth aggregate"),
             couch_mgr:ensure_saved(?WH_SIP_DB, wh_json:delete_key(<<"_rev">>, JObj)),
@@ -493,17 +484,16 @@ maybe_aggregate_device(#cb_context{resp_status=success, doc=JObj}=Context) ->
     end;
 maybe_aggregate_device(_) -> false.
 
--spec maybe_remove_aggreate/1 :: (#cb_context{}) -> boolean().
-maybe_remove_aggreate(#cb_context{resp_status=success, doc=JObj}) ->
-    DeviceId = wh_json:get_value(<<"_id">>, JObj),
-    case couch_mgr:lookup_doc_rev(?WH_SIP_DB, DeviceId) of
-        {ok, Rev} ->
-            couch_mgr:del_doc(?WH_SIP_DB, wh_json:set_value(<<"_rev">>, Rev, JObj)),
+-spec maybe_remove_aggreate/2 :: (ne_binary(), #cb_context{}) -> boolean().
+maybe_remove_aggreate(DeviceId, #cb_context{resp_status=success, doc=JObj}) ->
+    case couch_mgr:open_doc(?WH_SIP_DB, DeviceId) of
+        {ok, JObj} ->
+            couch_mgr:del_doc(?WH_SIP_DB, JObj),
             wapi_switch:publish_reload_acls(),
             true;
         {error, not_found} -> false
     end;    
-maybe_remove_aggreate(_) -> false.
+maybe_remove_aggreate(_, _) -> false.
 
 %%--------------------------------------------------------------------
 %% @private

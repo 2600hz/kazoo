@@ -100,9 +100,9 @@ put(Context) ->
     Context1.
 
 -spec delete/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
-delete(Context, _) ->
+delete(Context, ResourceId) ->
     Context1 = crossbar_doc:delete(Context),
-    _ = maybe_remove_aggregate(Context1),
+    _ = maybe_remove_aggregate(ResourceId, Context1),
     Context1.
 
 %%%===================================================================
@@ -181,7 +181,9 @@ normalize_view_results(JObj, Acc) ->
 -spec maybe_aggregate_resource/1 :: (#cb_context{}) -> boolean().
 maybe_aggregate_resource(#cb_context{resp_status=success, doc=JObj}=Context) ->
     case wh_util:is_true(cb_context:fetch(aggregate_resource, Context)) of
-        false -> maybe_remove_aggregate(Context);
+        false -> 
+            ResourceId = wh_json:get_value(<<"_id">>, JObj),
+            maybe_remove_aggregate(ResourceId, Context);
         true -> 
             lager:debug("adding resource to the sip auth aggregate"),
             couch_mgr:ensure_saved(?WH_SIP_DB, wh_json:delete_key(<<"_rev">>, JObj)),
@@ -190,14 +192,13 @@ maybe_aggregate_resource(#cb_context{resp_status=success, doc=JObj}=Context) ->
     end;
 maybe_aggregate_resource(_) -> false.
 
--spec maybe_remove_aggregate/1 :: (#cb_context{}) -> boolean().
-maybe_remove_aggregate(#cb_context{resp_status=success, doc=JObj}) ->
-    ResourceId = wh_json:get_value(<<"_id">>, JObj),
-    case couch_mgr:lookup_doc_rev(?WH_SIP_DB, ResourceId) of
-        {ok, Rev} ->
-            couch_mgr:del_doc(?WH_SIP_DB, wh_json:set_value(<<"_rev">>, Rev, JObj)),
+-spec maybe_remove_aggregate/2 :: (ne_binary(), #cb_context{}) -> boolean().
+maybe_remove_aggregate(ResourceId, #cb_context{resp_status=success, doc=JObj}) ->
+    case couch_mgr:open_doc(?WH_SIP_DB, ResourceId) of
+        {ok, JObj} ->
+            couch_mgr:del_doc(?WH_SIP_DB, JObj),
             wapi_switch:publish_reload_gateways(),
             true;
         {error, not_found} -> false
     end;    
-maybe_remove_aggregate(_) -> false.
+maybe_remove_aggregate(_, _) -> false.

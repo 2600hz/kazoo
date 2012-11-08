@@ -15,9 +15,7 @@
 -export([deprecated/3, shutdown_sync/1]).
 -export([start_app_deps/1, get_app_env/2]).
 
-
-%%-define(ENCODE_DOCID(DocId), encode_docid1(DocId)).
--define(ENCODE_DOCID(DocId), DocId).
+-define(ENCODE_DOCID(DocId), encode_docid1(DocId)).
 
 encode_att_name(Name) when is_binary(Name) ->
     encode_att_name(xmerl_ucs:from_utf8(Name));
@@ -32,15 +30,14 @@ encode_docid(DocId) when is_binary(DocId) ->
 encode_docid(DocId)->
     ?ENCODE_DOCID(DocId).
 
-%% Uncomment if using the alternate encode_docid macro
-%% encode_docid1(DocId) ->
-%%     case DocId of
-%%         "_design/" ++ Rest ->
-%%             Rest1 = encode_docid(Rest),
-%%             "_design/" ++ Rest1;
-%%         _ ->
-%%             ibrowse_lib:url_encode(DocId)
-%%     end.
+encode_docid1(DocId) ->
+    case DocId of
+        "_design/" ++ Rest ->
+            Rest1 = encode_docid(Rest),
+            "_design/" ++ Rest1;
+        _ ->
+            ibrowse_lib:url_encode(DocId)
+    end.
 
 %% @doc Encode needed value of Query proplists in json
 encode_query([]) ->

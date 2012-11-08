@@ -36,7 +36,7 @@ get_local_gateways(Gateways) ->
 
 get_offnet_gateways(Gateways) ->
     ViewOptions = [],
-    case couch_mgr:get_results(?WH_SIP_DB, <<"resources/listing_uac_gateways">>, ViewOptions) of
+    case couch_mgr:get_results(?WH_OFFNET_DB, <<"resources/listing_uac_gateways">>, ViewOptions) of
         {error, _R} ->
             lager:debug("unable to fetch resource registrations: ~p", [_R]),
             Gateways;
@@ -58,13 +58,14 @@ format_gateway(JObj) ->
                  ,{<<"Inception">>, <<"off-net">>}
                  ,{<<"Gateway-Version">>, wh_json:get_value(<<"version">>, JObj)}
                 ],
-    Gateway = [{<<"Username">>, wh_json:get_value(<<"username">>, JObj)}
-               ,{<<"Password">>, wh_json:get_value(<<"password">>, JObj)}
+    Gateway = [{<<"Username">>, wh_json:get_value(<<"username">>, JObj, <<"none">>)}
+               ,{<<"Password">>, wh_json:get_value(<<"password">>, JObj, <<"none">>)}
                ,{<<"Realm">>, wh_json:get_value(<<"server">>, JObj)}
                ,{<<"Proxy">>, wh_json:get_value(<<"proxy">>, JObj, DefaultProxy)}
-               ,{<<"From-Domain">>, wh_json:get_value(<<"realm">>, JObj, <<"auto-aleg-full">>)}
-               ,{<<"Expire-Seconds">>, wh_json:get_value(<<"expiration">>, JObj)}
+               ,{<<"From-Domain">>, wh_json:get_value(<<"realm">>, JObj)}
+               ,{<<"Expire-Seconds">>, wh_json:get_binary_value(<<"expiration">>, JObj)}
                ,{<<"Register">>, <<"true">>}
+               ,{<<"Extension-In-Contact">>, <<"true">>}
                ,{<<"Variables">>, wh_json:from_list(props:filter_undefined(Variables))}
               ],
     wh_json:from_list(props:filter_undefined(Gateway)).

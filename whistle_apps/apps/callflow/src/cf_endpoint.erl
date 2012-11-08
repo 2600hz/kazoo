@@ -192,8 +192,8 @@ create_sip_endpoint(Endpoint, Properties, Call) ->
             ,{<<"To-DID">>, wh_json:get_value([<<"sip">>, <<"number">>], Endpoint, whapps_call:request_user(Call))}
             ,{<<"To-IP">>, wh_json:get_value([<<"sip">>, <<"ip">>], Endpoint)}
             ,{<<"Route">>, wh_json:get_value([<<"sip">>, <<"route">>], Endpoint)}
-            ,{<<"Proxy-IP">>, wh_json:get_value([<<"sip">>, <<"proxy_ip">>], Endpoint)}
-            ,{<<"Forward-IP">>, wh_json:get_value([<<"sip">>, <<"forward_ip">>], Endpoint)}
+            ,{<<"Proxy-IP">>, wh_json:get_value([<<"sip">>, <<"proxy">>], Endpoint)}
+            ,{<<"Forward-IP">>, wh_json:get_value([<<"sip">>, <<"forward">>], Endpoint)}
             ,{<<"Outgoing-Caller-ID-Number">>, maybe_format_caller_id_number(Endpoint, IntCIDNumber, Call)}
             ,{<<"Outgoing-Caller-ID-Name">>, IntCIDName}
             ,{<<"Callee-ID-Number">>, CalleeNum}

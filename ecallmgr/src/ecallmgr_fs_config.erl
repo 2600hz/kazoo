@@ -272,7 +272,7 @@ default_sip_settings() ->
     ].
 
 default_sip_gateways() ->
-    [].
+    wh_json:new().
 
 maybe_kill_node_gateways(JObj, Node) ->
     try get_node_gateways(Node) of
