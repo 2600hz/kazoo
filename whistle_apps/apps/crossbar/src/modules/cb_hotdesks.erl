@@ -68,7 +68,7 @@ resource_exists() ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec validate/1 :: (#cb_context{}) -> #cb_context{}.
+-spec validate/1 :: (cb_context:context()) -> cb_context:context().
 validate(#cb_context{req_verb = <<"get">>}=Context) ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
 

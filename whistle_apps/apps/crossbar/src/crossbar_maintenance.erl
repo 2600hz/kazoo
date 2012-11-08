@@ -400,8 +400,9 @@ validate_user(JObj, Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec create_account/1 :: (#cb_context{}) -> {'ok', #cb_context{}} |
-                                             {'error', wh_json:json_object()}.
+-spec create_account/1 :: (#cb_context{}) ->
+                                  {'ok', #cb_context{}} |
+                                  {'error', wh_json:json_object()}.
 create_account(Context) ->
     case crossbar_bindings:fold(<<"v1_resource.execute.put.accounts">>, [Context]) of
         #cb_context{resp_status=success, db_name=AccountDb, account_id=AccountId}=Context1 ->

@@ -183,7 +183,10 @@ add_system_error(datastore_conflict, Context) ->
 add_system_error(datastore_unreachable, Context) ->
     crossbar_util:response_datastore_timeout(Context);
 add_system_error(datastore_fault, Context) ->
-    crossbar_util:response_db_fatal(Context).
+    crossbar_util:response_db_fatal(Context);
+add_system_error(empty_tree_accounts_exist, Context) ->
+    crossbar_util:response(error, <<"unable to create account tree">>, 400, Context).
+
 
 add_system_error(bad_identifier, Props, Context) ->
     Identifier = props:get_value(details, Props),

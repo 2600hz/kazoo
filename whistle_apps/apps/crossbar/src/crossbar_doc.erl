@@ -56,8 +56,8 @@ current_doc_vsn() -> ?CROSSBAR_DOC_VSN.
 %% Failure here returns 410, 500, or 503
 %% @end
 %%--------------------------------------------------------------------
--spec load/2 :: (api_binary() | api_binaries(), #cb_context{}) -> #cb_context{}.
--spec load/3 :: (api_binary() | api_binaries(), #cb_context{}, wh_proplist()) -> #cb_context{}.
+-spec load/2 :: (api_binary() | api_binaries(), cb_context:context()) -> cb_context:context().
+-spec load/3 :: (api_binary() | api_binaries(), cb_context:context(), wh_proplist()) -> cb_context:context().
 
 load(DocId, #cb_context{}=Context) ->
     load(DocId, Context, []).
@@ -103,8 +103,8 @@ load_from_file(Db, File) ->
 %% Failure here returns 410, 500, or 503
 %% @end
 %%--------------------------------------------------------------------
--spec load_merge/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
--spec load_merge/3 :: (ne_binary(), wh_json:json_object(), #cb_context{}) -> #cb_context{}.
+-spec load_merge/2 :: (ne_binary(), cb_context:context()) -> cb_context:context().
+-spec load_merge/3 :: (ne_binary(), wh_json:json_object(), cb_context:context()) -> cb_context:context().
 
 load_merge(DocId, #cb_context{doc=DataJObj}=Context) ->
     load_merge(DocId, DataJObj, Context).
@@ -117,7 +117,7 @@ load_merge(DocId, DataJObj, #cb_context{db_name=DbName}=Context) ->
         Else -> Else
     end.
 
--spec merge/3 :: (wh_json:json_object(), wh_json:json_object(), #cb_context{}) -> #cb_context{}.
+-spec merge/3 :: (wh_json:json_object(), wh_json:json_object(), cb_context:context()) -> cb_context:context().
 merge(DataJObj, JObj, Context) ->
     PrivJObj = wh_json:private_fields(JObj),
     handle_couch_mgr_success(wh_json:merge_jobjs(PrivJObj, DataJObj), Context).
@@ -131,7 +131,7 @@ merge(DataJObj, JObj, Context) ->
 %% Failure here returns 500 or 503
 %% @end
 %%--------------------------------------------------------------------
--spec load_view/3 :: (ne_binary(), proplist(), #cb_context{}) -> #cb_context{}.
+-spec load_view/3 :: (ne_binary(), wh_proplist(), cb_context:context()) -> cb_context:context().
 load_view(View, Options, #cb_context{db_name=Db, query_json=RJ}=Context) ->
     HasFilter = has_filter(RJ),
     ViewOptions = case HasFilter of
@@ -165,7 +165,7 @@ load_view(View, Options, #cb_context{db_name=Db, query_json=RJ}=Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -type filter_fun() :: fun((wh_json:json_object(), wh_json:json_objects()) -> wh_json:json_objects()).
--spec load_view/4 :: (ne_binary(), proplist(), #cb_context{}, filter_fun()) -> #cb_context{}.
+-spec load_view/4 :: (ne_binary(), wh_proplist(), cb_context:context(), filter_fun()) -> cb_context:context().
 load_view(View, Options, Context, Filter) when is_function(Filter, 2) ->
     case load_view(View, Options, Context) of
         #cb_context{resp_status=success, doc=JObjs} = Context1 ->
@@ -187,7 +187,7 @@ load_view(View, Options, Context, Filter) when is_function(Filter, 2) ->
 %% Failure here returns 500 or 503
 %% @end
 %%--------------------------------------------------------------------
--spec load_docs/2 :: (#cb_context{}, filter_fun()) -> #cb_context{}.
+-spec load_docs/2 :: (cb_context:context(), filter_fun()) -> cb_context:context().
 load_docs(#cb_context{db_name=Db}=Context, Filter) when is_function(Filter, 2) ->
     case couch_mgr:all_docs(Db) of
         {error, Error} -> handle_couch_mgr_errors(Error, <<"all_docs">>, Context);
@@ -208,7 +208,7 @@ load_docs(#cb_context{db_name=Db}=Context, Filter) when is_function(Filter, 2) -
 %% Failure here returns 500 or 503
 %% @end
 %%--------------------------------------------------------------------
--spec load_attachment/3 :: (ne_binary() | wh_json:json_object(), ne_binary(), #cb_context{}) -> #cb_context{}.
+-spec load_attachment/3 :: (ne_binary() | wh_json:json_object(), ne_binary(), cb_context:context()) -> cb_context:context().
 load_attachment(DocId, AName, #cb_context{db_name=Db}=Context) when is_binary(DocId) ->
     case couch_mgr:fetch_attachment(Db, DocId, AName) of
         {error, Error} -> handle_couch_mgr_errors(Error, DocId, Context);
@@ -240,8 +240,8 @@ find_doc_id(JObj) ->
 %% Failure here returns 500 or 503
 %% @end
 %%--------------------------------------------------------------------
--spec save/1 :: (#cb_context{}) -> #cb_context{}.
--spec save/2 :: (#cb_context{}, proplist()) -> #cb_context{}.
+-spec save/1 :: (cb_context:context()) -> cb_context:context().
+-spec save/2 :: (cb_context:context(), wh_proplist()) -> cb_context:context().
 
 save(#cb_context{}=Context) ->
     save(Context, []).
@@ -285,8 +285,8 @@ save(#cb_context{db_name=Db, doc=JObj, req_verb=Verb}=Context, Options) ->
 %% Failure here returns 500 or 503
 %% @end
 %%--------------------------------------------------------------------
--spec ensure_saved/1 :: (#cb_context{}) -> #cb_context{}.
--spec ensure_saved/2 :: (#cb_context{}, proplist()) -> #cb_context{}.
+-spec ensure_saved/1 :: (cb_context:context()) -> cb_context:context().
+-spec ensure_saved/2 :: (cb_context:context(), wh_proplist()) -> cb_context:context().
 
 ensure_saved(#cb_context{}=Context) ->
     ensure_saved(Context, []).
@@ -313,7 +313,7 @@ ensure_saved(#cb_context{db_name=Db, doc=JObj, req_verb=Verb}=Context, Options) 
 %% Failure here returns 500 or 503
 %% @end
 %%--------------------------------------------------------------------
--spec save_attachment/4 :: (ne_binary(), ne_binary(), ne_binary(), #cb_context{}) -> #cb_context{}.
+-spec save_attachment/4 :: (ne_binary(), ne_binary(), ne_binary(), cb_context:context()) -> cb_context:context().
 save_attachment(DocId, AName, Contents, Context) ->
     save_attachment(DocId, AName, Contents, Context, []).
 
@@ -325,7 +325,7 @@ save_attachment(DocId, AName, Contents, Context) ->
 %% Failure here returns 500 or 503
 %% @end
 %%--------------------------------------------------------------------
--spec save_attachment/5 :: (ne_binary(), ne_binary(), ne_binary(), #cb_context{}, proplist()) -> #cb_context{}.
+-spec save_attachment/5 :: (ne_binary(), ne_binary(), ne_binary(), cb_context:context(), wh_proplist()) -> cb_context:context().
 save_attachment(DocId, AName, Contents, #cb_context{db_name=Db}=Context, Options) ->
     Opts1 = case props:get_value(rev, Options) of
                 undefined ->
@@ -356,8 +356,8 @@ save_attachment(DocId, AName, Contents, #cb_context{db_name=Db}=Context, Options
 %% Failure here returns 500 or 503
 %% @end
 %%--------------------------------------------------------------------
--spec delete/1 :: (#cb_context{}) -> #cb_context{}.
--spec delete/2 :: (#cb_context{}, 'permanent') -> #cb_context{}.
+-spec delete/1 :: (cb_context:context()) -> cb_context:context().
+-spec delete/2 :: (cb_context:context(), 'permanent') -> cb_context:context().
 
 delete(#cb_context{db_name=Db, doc=JObj}=Context) ->
     JObj0 = update_pvt_parameters(JObj, Context),
@@ -394,7 +394,7 @@ delete(#cb_context{db_name=Db, doc=JObj}=Context, permanent) ->
 %% Failure here returns 500 or 503
 %% @end
 %%--------------------------------------------------------------------
--spec delete_attachment/3 :: (ne_binary(), ne_binary(), #cb_context{}) -> #cb_context{}.
+-spec delete_attachment/3 :: (ne_binary(), ne_binary(), cb_context:context()) -> cb_context:context().
 delete_attachment(DocId, AName, #cb_context{db_name=Db}=Context) ->
     case couch_mgr:delete_attachment(Db, DocId, AName) of
         {error, not_found} -> handle_couch_mgr_success(wh_json:new(), Context);
@@ -427,7 +427,7 @@ rev_to_etag(JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec handle_couch_mgr_success/2 :: (wh_json:json_object() | wh_json:json_objects(), #cb_context{}) -> #cb_context{}.
+-spec handle_couch_mgr_success/2 :: (wh_json:json_object() | wh_json:json_objects(), cb_context:context()) -> cb_context:context().
 handle_couch_mgr_success([_|_]=JObjs, #cb_context{req_verb = <<"put">>, resp_headers=Headers}=Context) ->
     Context#cb_context{doc=JObjs
                        ,resp_status=success
@@ -470,7 +470,7 @@ handle_couch_mgr_success(JObj, Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec handle_couch_mgr_errors/3 :: (couch_util:couchbeam_errors(), api_binary() | api_binaries(), #cb_context{}) -> #cb_context{}.
+-spec handle_couch_mgr_errors/3 :: (couch_util:couchbeam_errors(), api_binary() | api_binaries(), cb_context:context()) -> cb_context:context().
 handle_couch_mgr_errors(invalid_db_name, _, #cb_context{db_name=Db}=Context) ->
     lager:debug("datastore ~s not_found", [Db]),
     cb_context:add_system_error(datastore_missing, [{details, wh_util:to_binary(Db)}], Context);
@@ -503,7 +503,7 @@ handle_couch_mgr_errors(Else, _, Context) ->
 %% parameters on all crossbar documents
 %% @end
 %%--------------------------------------------------------------------
--spec update_pvt_parameters/2 :: (wh_json:json_object() | wh_json:json_objects(), #cb_context{}) ->
+-spec update_pvt_parameters/2 :: (wh_json:json_object() | wh_json:json_objects(), cb_context:context()) ->
                                          wh_json:json_object() | wh_json:json_objects().
 update_pvt_parameters(JObjs, Context) when is_list(JObjs) ->
     [update_pvt_parameters(JObj, Context) || JObj <- JObjs];

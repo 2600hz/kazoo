@@ -155,7 +155,7 @@ validate(#cb_context{req_verb = <<"get">>, account_id=AccountId}=Context, ?CARDS
             crossbar_util:response(error, wh_util:to_binary(Error), 500, Reason, Context)
     end;
 validate(#cb_context{req_verb = <<"put">>, req_data=JObj, account_id=AccountId}=Context, ?CARDS_PATH_TOKEN) ->
-    Card = (braintree_card:json_to_record(JObj))#bt_card{customer_id=wh_util:to_list(AccountId)},
+    Card = (braintree_card:json_to_record(JObj))#bt_card{customer_id=wh_util:to_binary(AccountId)},
     crossbar_util:response(wh_json:new(), cb_context:store(braintree, Card, Context));
 
 validate(#cb_context{req_verb = <<"get">>, account_id=AccountId}=Context, ?ADDRESSES_PATH_TOKEN) ->
@@ -170,7 +170,7 @@ validate(#cb_context{req_verb = <<"get">>, account_id=AccountId}=Context, ?ADDRE
             crossbar_util:response(error, wh_util:to_binary(Error), 500, Reason, Context)
     end;
 validate(#cb_context{req_verb = <<"put">>, req_data=JObj, account_id=AccountId}=Context, ?ADDRESSES_PATH_TOKEN) ->
-    Address = (braintree_address:json_to_record(JObj))#bt_address{customer_id=wh_util:to_list(AccountId)},
+    Address = (braintree_address:json_to_record(JObj))#bt_address{customer_id=AccountId},
     crossbar_util:response(wh_json:new(), cb_context:store(braintree, Address, Context));
 
 validate(#cb_context{req_verb = <<"get">>, account_id=AccountId}=Context, ?TRANSACTIONS_PATH_TOKEN) ->
@@ -212,7 +212,7 @@ validate(#cb_context{req_verb = <<"get">>, account_id=AccountId}=Context, ?CARDS
     end;
 validate(#cb_context{req_verb = <<"post">>, req_data=JObj, account_id=AccountId}=Context, ?CARDS_PATH_TOKEN, CardId) ->
     Card0 = braintree_card:json_to_record(JObj),
-    Card = Card0#bt_card{customer_id=wh_util:to_list(AccountId)
+    Card = Card0#bt_card{customer_id=AccountId
                          ,token=CardId
                         },
     crossbar_util:response(wh_json:new(), cb_context:store(braintree, Card, Context));
@@ -230,7 +230,7 @@ validate(#cb_context{req_verb = <<"get">>, account_id=AccountId}=Context, ?ADDRE
             crossbar_util:response(error, wh_util:to_binary(Error), 500, Reason, Context)
     end;
 validate(#cb_context{req_verb = <<"post">>, req_data=JObj, account_id=AccountId}=Context, ?ADDRESSES_PATH_TOKEN, AddressId) ->
-    Address = (braintree_address:json_to_record(JObj))#bt_address{customer_id=wh_util:to_list(AccountId), id=AddressId},
+    Address = (braintree_address:json_to_record(JObj))#bt_address{customer_id=AccountId, id=AddressId},
     crossbar_util:response(wh_json:new(), cb_context:store(braintree, Address, Context));
 validate(#cb_context{req_verb = <<"delete">>}=Context, ?ADDRESSES_PATH_TOKEN, _) ->
     crossbar_util:response(wh_json:new(), Context);

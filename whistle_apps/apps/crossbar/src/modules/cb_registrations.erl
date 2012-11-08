@@ -46,7 +46,7 @@ resource_exists() ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec validate/1 :: (#cb_context{}) -> #cb_context{}.
+-spec validate/1 :: (cb_context:context()) -> cb_context:context().
 validate(#cb_context{req_verb = <<"get">>, db_name=DbName, account_id=AccountId}=Context) ->
     AccountRealm = wh_util:get_account_realm(DbName, AccountId),
     crossbar_util:response(lookup_regs(AccountRealm), Context).
@@ -63,7 +63,7 @@ lookup_regs(AccountRealm) ->
     wapi_registration:publish_query_req(Req),
     [normalize_registration(JObj) || {_, JObj} <- collect_registrar_responses([])].
 
--spec collect_registrar_responses/1 :: (proplist()) -> proplist().
+-spec collect_registrar_responses/1 :: (wh_proplist()) -> wh_proplist().
 collect_registrar_responses(Registrations) ->
     receive
         {_, #amqp_msg{payload = Payload}} ->
@@ -79,7 +79,7 @@ collect_registrar_responses(Registrations) ->
         500 -> Registrations
     end.
 
--spec accumulate_unique_registrations/2 :: (wh_json:json_objects(), proplist()) -> proplist().
+-spec accumulate_unique_registrations/2 :: (wh_json:json_objects(), wh_proplist()) -> wh_proplist().
 accumulate_unique_registrations([], Accumulator) ->
     Accumulator;
 accumulate_unique_registrations([Registration|Registrations], Accumulator) ->
