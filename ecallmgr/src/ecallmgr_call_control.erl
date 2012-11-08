@@ -574,7 +574,7 @@ handle_info({nodedown, Node}, #state{node=Node
 handle_info({is_node_up, _Timeout, N}, State) when N > ?MAX_NODE_RESTART_FAILURES ->
     lager:debug("we've failed ~b times to reconnect to the node, assuming down for good for this call", [N]),
     {stop, normal, State};
-handle_info({is_node_up, Timeout. N}, #state{node=Node
+handle_info({is_node_up, Timeout, N}, #state{node=Node
                                           ,is_node_up=false
                                          }=State) ->
     case ecallmgr_fs_nodes:is_node_up(Node) of
