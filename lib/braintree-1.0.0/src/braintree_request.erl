@@ -16,6 +16,8 @@
 -include_lib("braintree/include/braintree.hrl").
 -include_lib("xmerl/include/xmerl.hrl").
 
+-type http_verb() :: 'put' | 'post' | 'get' | 'delete'.
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -62,7 +64,7 @@ delete(Path) ->
 %% Preform a request to the braintree service
 %% @end
 %%--------------------------------------------------------------------
--spec do_request/3 :: ('put' | 'post' | 'get' | 'delete', nonempty_string(), binary()) -> bt_xml().
+-spec do_request/3 :: (http_verb(), nonempty_string(), binary()) -> bt_xml().
 do_request(Method, Path, Body) ->
     StartTime = erlang:now(),
     lager:debug("making ~s request to braintree ~s", [Method, Path]),
@@ -125,7 +127,6 @@ do_request(Method, Path, Body) ->
             braintree_util:error_io_fault()
     end.
 
-
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -183,8 +184,10 @@ verify_response(Xml) ->
                                      ,street_response_code =
                                          wh_util:get_xml_value("/api-error-response/verification/avs-street-address-response-code/text()", Xml)
                                      ,gateway_rejection_reason =
-                                         wh_util:get_xml_value("/api-error-response/verification/gateway-rejection-reason/text()", Xml)},
+                                         wh_util:get_xml_value("/api-error-response/verification/gateway-rejection-reason/text()", Xml)
+                                    },
             braintree_util:error_api(#bt_api_error{errors = Errors
                                                    ,verification=Verif
-                                                   ,message = wh_util:get_xml_value("/api-error-response/message/text()", Xml)})
+                                                   ,message = wh_util:get_xml_value("/api-error-response/message/text()", Xml)
+                                                  })
     end.

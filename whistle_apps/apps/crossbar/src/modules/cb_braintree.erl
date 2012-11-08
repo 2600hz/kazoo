@@ -109,7 +109,7 @@ resource_exists(?TRANSACTIONS_PATH_TOKEN, _) ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec validate/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+-spec validate/2 :: (cb_context:context(), path_token()) -> cb_context:context().
 %% CUSTOMER API
 validate(#cb_context{req_verb = <<"get">>, account_id=AccountId}=Context, ?CUSTOMER_PATH_TOKEN) ->
     try braintree_customer:find(AccountId) of
@@ -238,7 +238,7 @@ validate(#cb_context{req_verb = <<"delete">>}=Context, ?ADDRESSES_PATH_TOKEN, _)
 validate(#cb_context{req_verb = <<"get">>}=Context, ?TRANSACTIONS_PATH_TOKEN, TransactionId) ->
     try braintree_transaction:find(TransactionId) of
         #bt_transaction{}=Transaction ->
-            Resp = braintree_address:record_to_json(Transaction),
+            Resp = braintree_transaction:record_to_json(Transaction),
             crossbar_util:response(Resp, Context)
     catch
         throw:{api_error, Reason} ->
@@ -247,8 +247,8 @@ validate(#cb_context{req_verb = <<"get">>}=Context, ?TRANSACTIONS_PATH_TOKEN, Tr
             crossbar_util:response(error, wh_util:to_binary(Error), 500, Reason, Context)
     end.
 
--spec post/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
--spec post/3 :: (#cb_context{}, path_token(), path_token()) -> #cb_context{}.
+-spec post/2 :: (cb_context:context(), path_token()) -> cb_context:context().
+-spec post/3 :: (cb_context:context(), path_token(), path_token()) -> cb_context:context().
 post(Context, ?CUSTOMER_PATH_TOKEN) ->
     try braintree_customer:update(cb_context:fetch(braintree, Context)) of
         #bt_customer{}=Customer ->
@@ -290,7 +290,7 @@ post(Context, ?ADDRESSES_PATH_TOKEN, AddressId) ->
             crossbar_util:response(error, wh_util:to_binary(Error), 500, Reason, Context)
     end.
 
--spec put/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+-spec put/2 :: (cb_context:context(), path_token()) -> cb_context:context().
 put(#cb_context{req_data=ReqData, resp_data=RespData}=Context, ?CREDITS_PATH_TOKEN) ->
     Units = wapi_money:dollars_to_units(wh_json:get_float_value(<<"amount">>, ReqData)),
     lager:debug("putting ~p units", [Units]),
@@ -335,12 +335,11 @@ put(Context, ?CARDS_PATH_TOKEN) ->
             crossbar_util:response(error, wh_util:to_binary(Error), 500, Reason, Context)
     end.
 
--spec delete/3 :: (#cb_context{}, path_token(), path_token()) -> #cb_context{}.
+-spec delete/3 :: (cb_context:context(), path_token(), path_token()) -> cb_context:context().
 delete(Context, ?CARDS_PATH_TOKEN, CardId) ->
     try braintree_card:delete(CardId) of
         #bt_card{}=Card ->
-            Resp = braintree_card:record_to_json(Card),
-            crossbar_util:response(Resp, Context)
+            crossbar_util:response(braintree_card:record_to_json(Card), Context)
     catch
         throw:{api_error, Reason} ->
             crossbar_util:response(error, <<"braintree api error">>, 400, Reason, Context);
@@ -369,7 +368,7 @@ delete(Context, ?ADDRESSES_PATH_TOKEN, AddressId) ->
 %% Creates an empty customer in braintree
 %% @end
 %%--------------------------------------------------------------------
--spec create_braintree_customer/1 :: (#cb_context{}) -> #cb_context{}.
+-spec create_braintree_customer/1 :: (cb_context:context()) -> cb_context:context().
 create_braintree_customer(#cb_context{account_id=AccountId}=Context) ->
     try
         case cb_context:fetch(braintree, Context) of
@@ -400,7 +399,7 @@ current_account_dollars(Account) ->
             end,    
     wapi_money:units_to_dollars(Units).
 
--spec maybe_charge_billing_id/2 :: (float(), #cb_context{}) -> #cb_context{}.
+-spec maybe_charge_billing_id/2 :: (float(), cb_context:context()) -> cb_context:context().
 maybe_charge_billing_id(Amount, #cb_context{auth_account_id=AuthAccountId, account_id=AccountId}=Context) ->
     {ok, MasterAccount} = whapps_util:get_master_account_id(),
     case wh_services:find_reseller_id(AccountId) of
@@ -417,7 +416,7 @@ maybe_charge_billing_id(Amount, #cb_context{auth_account_id=AuthAccountId, accou
             cb_context:add_validation_error(<<"amount">>, <<"forbidden">>, Message, Context)
     end.
 
--spec charge_billing_id/2 :: (float(), #cb_context{}) -> #cb_context{}.
+-spec charge_billing_id/2 :: (float(), cb_context:context()) -> cb_context:context().
 charge_billing_id(Amount, #cb_context{account_id=AccountId, req_data=JObj}=Context) ->
     BillingId = wh_json:get_value(<<"billing_account_id">>, JObj, AccountId),
     try braintree_transaction:quick_sale(BillingId, wh_util:to_binary(Amount)) of

@@ -44,7 +44,7 @@ url(CustomerId, AddressId) ->
 %% Find a customer by id
 %% @end
 %%--------------------------------------------------------------------
--spec find/2 :: (ne_binary() | nonempty_string(), ne_binary() | nonempty_string()) -> #bt_address{}.
+-spec find/2 :: (ne_binary() | nonempty_string(), ne_binary() | nonempty_string()) -> bt_address().
 find(CustomerId, AddressId) ->
     Url = url(CustomerId, AddressId),
     Xml = braintree_request:get(Url),
@@ -56,8 +56,8 @@ find(CustomerId, AddressId) ->
 %% Creates a new customer using the given record
 %% @end
 %%--------------------------------------------------------------------
--spec create/1 :: (#bt_address{}) -> #bt_address{}.
--spec create/2 :: (nonempty_string() | ne_binary(), #bt_address{}) -> #bt_address{}.
+-spec create/1 :: (bt_address()) -> bt_address().
+-spec create/2 :: (nonempty_string() | ne_binary(), bt_address()) -> bt_address().
 
 create(#bt_address{customer_id=CustomerId}=Address) ->
     Url = url(CustomerId),
@@ -74,7 +74,7 @@ create(CustomerId, Address) ->
 %% Updates a customer with the given record
 %% @end
 %%--------------------------------------------------------------------
--spec update/1 :: (#bt_address{}) -> #bt_address{}.
+-spec update/1 :: (bt_address()) -> bt_address().
 update(#bt_address{id=AddressId, customer_id=CustomerId}=Address) ->
     Url = url(CustomerId, AddressId),
     Request = record_to_xml(Address#bt_address{id=undefined}, true),
@@ -87,8 +87,8 @@ update(#bt_address{id=AddressId, customer_id=CustomerId}=Address) ->
 %% Deletes a customer id from braintree's system
 %% @end
 %%--------------------------------------------------------------------
--spec delete/1 :: (#bt_address{}) -> #bt_address{}.
--spec delete/2 :: (ne_binary() | nonempty_string(), ne_binary() | nonempty_string()) ->  #bt_address{}.
+-spec delete/1 :: (bt_address()) -> bt_address().
+-spec delete/2 :: (ne_binary() | nonempty_string(), ne_binary() | nonempty_string()) ->  bt_address().
 
 delete(#bt_address{customer_id=CustomerId, id=AddressId}) ->
     delete(CustomerId, AddressId).
@@ -104,8 +104,8 @@ delete(CustomerId, AddressId) ->
 %% Contert the given XML to a customer record
 %% @end
 %%--------------------------------------------------------------------
--spec xml_to_record/1 :: (bt_xml()) -> #bt_address{}.
--spec xml_to_record/2 :: (bt_xml(), wh_deeplist()) -> #bt_address{}.
+-spec xml_to_record/1 :: (bt_xml()) -> bt_address().
+-spec xml_to_record/2 :: (bt_xml(), wh_deeplist()) -> bt_address().
 
 xml_to_record(Xml) ->
     xml_to_record(Xml, "/address").
@@ -134,8 +134,8 @@ xml_to_record(Xml, Base) ->
 %% Contert the given XML to a customer record
 %% @end
 %%--------------------------------------------------------------------
--spec record_to_xml/1 :: (#bt_address{}) -> proplist() | bt_xml().
--spec record_to_xml/2 :: (#bt_address{}, boolean()) -> proplist() | bt_xml().
+-spec record_to_xml/1 :: (bt_address()) -> wh_proplist() | bt_xml().
+-spec record_to_xml/2 :: (bt_address(), boolean()) -> wh_proplist() | bt_xml().
 
 record_to_xml(Address) ->
     record_to_xml(Address, false).
@@ -170,9 +170,8 @@ record_to_xml(Address, ToString) ->
 %% Convert a given json object into a record
 %% @end
 %%--------------------------------------------------------------------
--spec json_to_record/1 :: ('undefined' | wh_json:json_object()) -> #bt_address{}.
-json_to_record(undefined) ->
-    undefined;
+-spec json_to_record/1 :: ('undefined' | wh_json:json_object()) -> bt_address().
+json_to_record(undefined) -> undefined;
 json_to_record(JObj) ->
     #bt_address{id = create_or_get_json_id(JObj)
                 ,first_name = wh_json:get_value(<<"first_name">>, JObj)
@@ -187,7 +186,8 @@ json_to_record(JObj) ->
                 ,country_code_three = wh_json:get_value(<<"country_code_three">>, JObj)
                 ,country_code = wh_json:get_value(<<"country_code">>, JObj)
                 ,country_name = wh_json:get_value(<<"country_name">>, JObj)
-                ,update_existing = wh_json:is_true(<<"update_existing">>, JObj)}.
+                ,update_existing = wh_json:is_true(<<"update_existing">>, JObj)
+               }.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -195,7 +195,7 @@ json_to_record(JObj) ->
 %% Convert a given record into a json object
 %% @end
 %%--------------------------------------------------------------------
--spec record_to_json/1 :: (#bt_address{}) -> wh_json:json_object().
+-spec record_to_json/1 :: (bt_address()) -> wh_json:json_object().
 record_to_json(#bt_address{}=Address) ->
     Props = [{<<"id">>, Address#bt_address.id}
              ,{<<"customer_id">>, Address#bt_address.customer_id}
@@ -214,7 +214,7 @@ record_to_json(#bt_address{}=Address) ->
              ,{<<"created_at">>, Address#bt_address.created_at}
              ,{<<"updated_at">>, Address#bt_address.updated_at}
             ],
-    wh_json:from_list([KV || {_, V}=KV <- Props, V =/= undefined]).
+    wh_json:from_list(props:filter_undefined(Props)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -223,11 +223,9 @@ record_to_json(#bt_address{}=Address) ->
 %% a uuid to use during creation.
 %% @end
 %%--------------------------------------------------------------------
--spec create_or_get_json_id/1 :: (wh_json:json_object()) ->  'undefined' | ne_binary().
+-spec create_or_get_json_id/1 :: (wh_json:json_object()) ->  api_binary().
 create_or_get_json_id(JObj) ->
     case wh_json:get_value(<<"street_address">>, JObj) of
-        undefined ->
-            wh_json:get_value(<<"id">>, JObj);
-        _ ->
-            wh_json:get_value(<<"id">>, JObj, wh_util:rand_hex_binary(16))
+        undefined -> wh_json:get_value(<<"id">>, JObj);
+        _ -> wh_json:get_value(<<"id">>, JObj, wh_util:rand_hex_binary(16))
     end.

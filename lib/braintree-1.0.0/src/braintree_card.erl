@@ -109,11 +109,9 @@ update(#bt_card{token=Token}=Card) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec delete/1 :: (card() | binary() | string()) -> card().
-delete(#bt_card{token=Token}) ->
-    delete(Token);
+delete(#bt_card{token=Token}) -> delete(Token);
 delete(Token) ->
-    Url = url(Token),
-    _ = braintree_request:delete(Url),
+    _ = braintree_request:delete(url(Token)),
     #bt_card{}.
 
 %%--------------------------------------------------------------------

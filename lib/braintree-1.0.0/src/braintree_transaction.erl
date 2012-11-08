@@ -67,7 +67,7 @@ find(TransactionId) ->
 %% Find transactions by customer id
 %% @end
 %%--------------------------------------------------------------------
--spec find_by_customer/1 :: (ne_binary()) -> [bt_transaction(),...].
+-spec find_by_customer/1 :: (ne_binary()) -> bt_transactions().
 find_by_customer(CustomerId) ->
     Url = url(<<"advanced_search">>),
     Props = [{'customer_id', [{'is', CustomerId}]}],

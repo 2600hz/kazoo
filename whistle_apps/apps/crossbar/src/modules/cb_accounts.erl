@@ -516,7 +516,7 @@ create_account_definition(#cb_context{doc=JObj, account_id=AccountId, db_name=Ac
             throw(cb_context:add_system_error(datastore_fault, Context))
     end.
 
--spec load_initial_views/1 :: (cb_context:context()) -> cb_context:context().
+-spec load_initial_views/1 :: (cb_context:context()) -> 'ok'.
 load_initial_views(#cb_context{db_name=AccountDb})->
     Views = whapps_maintenance:get_all_account_views(),
     whapps_util:update_views(AccountDb, Views, true).
