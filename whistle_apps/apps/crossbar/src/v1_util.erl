@@ -710,7 +710,6 @@ create_resp_content(Req0, #cb_context{req_json=ReqJson}=Context) ->
             end
     catch
         _E:_R ->
-            io:format("~p:~p ~p~n", [_E, _R, wh_json:from_list(create_resp_envelope(Context))]),
             lager:debug("failed to encode response: ~s: ~p", [_E, _R]),
             {[], Req0}
     end.

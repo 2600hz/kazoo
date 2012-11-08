@@ -419,7 +419,14 @@ get_xml_value(Paths, Xml) ->
             [wh_util:to_binary(Value)
              || #xmlText{value=Value} <- Values
             ];
-        _ -> undefined
+        [#xmlAttribute{value=Value}] ->
+            wh_util:to_binary(Value);
+        [#xmlAttribute{}|_]=Values ->
+            [wh_util:to_binary(Value)
+             || #xmlText{value=Value} <- Values
+            ];
+        _Else -> 
+            undefined
     catch
         E:R ->
             lager:debug("~s getting value of '~s': ~p", [E, Path, R]),

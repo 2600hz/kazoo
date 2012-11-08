@@ -158,6 +158,7 @@ refresh(?WH_SIP_DB) ->
     couch_mgr:db_create(?WH_SIP_DB),
     Views = [whapps_util:get_view_json(whistle_apps, ?MAINTENANCE_VIEW_FILE)
              ,whapps_util:get_view_json(registrar, <<"auth.json">>)
+             ,whapps_util:get_view_json(registrar, <<"resources.json">>)
             ],
     whapps_util:update_views(?WH_SIP_DB, Views, true),
 
@@ -167,7 +168,7 @@ refresh(?WH_SIP_DB) ->
             _ ->
                 ok
         end,
-    wapi_switch:publish_reloadacl();
+    wapi_switch:publish_reload_acls();
 refresh(?WH_SCHEMA_DB) ->
     couch_mgr:db_create(?WH_SCHEMA_DB),
     couch_mgr:revise_docs_from_folder(?WH_SCHEMA_DB, crossbar, "schemas"),

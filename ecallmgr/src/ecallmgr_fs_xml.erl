@@ -12,6 +12,7 @@
 -export([get_leg_vars/1, get_channel_vars/1, get_channel_vars/2
          ,route_resp_xml/1 ,authn_resp_xml/1, acl_xml/1
          ,route_not_found/0, empty_response/0
+         ,sip_profiles_xml/1, sofia_gateways_xml_to_json/1
         ]).
 
 -include("ecallmgr.hrl").
@@ -23,11 +24,20 @@ acl_xml(AclsJObj) ->
 
     NetworkListEl = network_list_el([V || {_, V} <- orddict:to_list(AclsFold)]),
 
-    ConfigEl = config_el(<<"acl.conf">>, <<"ecallmgr generated ACL lists">>, NetworkListEl),
+    ConfigEl = config_el(<<"acl.conf">>, <<"kazoo generated ACL lists">>, NetworkListEl),
 
     SectionEl = section_el(<<"configuration">>, ConfigEl),
 
     {ok, xmerl:export([SectionEl], fs_xml)}.
+
+sip_profiles_xml(JObj) ->
+    ProfilesEl = sofia_profiles_el(JObj),
+
+    ConfigEl = config_el(<<"sofia.conf">>, ProfilesEl),
+
+    SectionEl = section_el(<<"configuration">>, ConfigEl),
+
+    {ok, xmerl:export([SectionEl], fs_xml)}.    
 
 -spec authn_resp_xml/1 :: (api_terms()) -> {'ok', iolist()}.
 -spec authn_resp_xml/2 :: (ne_binary(), wh_json:json_object()) -> {'ok', iolist()}.
@@ -339,27 +349,37 @@ acl_list_el(Name, Default, Children) ->
 network_list_el(ListsEls) ->
     #xmlElement{name='network-lists', content=ListsEls}.
 
-config_el(Name, Desc, NetworkListEl) ->
+config_el(Name, Content) ->
+    config_el(Name, <<"configuration ", (wh_util:to_binary(Name))/binary, " built by kazoo">>, Content).
+
+config_el(Name, Desc, #xmlElement{}=Content) ->
+    config_el(Name, Desc, [Content]);
+config_el(Name, Desc, Content) ->
     #xmlElement{name='configuration'
                 ,attributes=[xml_attrib(name, Name)
                              ,xml_attrib(description, Desc)
                             ]
-                ,content=[NetworkListEl]
+                ,content=Content
                }.
 
 -spec section_el/2 :: (xml_attrib_value(), xml_el()) -> xml_el().
 -spec section_el/3 :: (xml_attrib_value(), xml_attrib_value(), xml_el()) -> xml_el().
+section_el(Name, #xmlElement{}=Content) ->
+    section_el(Name, [Content]);
 section_el(Name, Content) ->
     #xmlElement{name='section'
                 ,attributes=[xml_attrib(name, Name)]
-                ,content=[Content]
+                ,content=Content
                }.
+
+section_el(Name, Desc, #xmlElement{}=Content) ->
+    section_el(Name, Desc, [Content]);
 section_el(Name, Desc, Content) ->
     #xmlElement{name='section'
                 ,attributes=[xml_attrib(name, Name)
                              ,xml_attrib(description, Desc)
                             ]
-                ,content=[Content]
+                ,content=Content
                }.
 
 -spec domain_el/2 :: (xml_attrib_value(), xml_el() | xml_els()) -> xml_el().
@@ -467,3 +487,120 @@ prepend_child(#xmlElement{content=Contents}=El, Child) ->
 -spec xml_attrib/2 :: (xml_attrib_name(), xml_attrib_value()) -> xml_attrib().
 xml_attrib(Name, Value) when is_atom(Name) ->
     #xmlAttribute{name=Name, value=wh_util:to_list(Value)}.
+
+sofia_profiles_el(JObj) ->
+    Content = lists:foldl(fun(Key, Xml) ->
+                                  Profile = wh_json:get_value(Key, JObj),
+                                  [#xmlElement{name='profile'
+                                               ,attributes=[xml_attrib(name, Key)]
+                                               ,content=sofia_profile_el(Profile)
+                                              }
+                                   | Xml
+                                  ]
+                          end, [], wh_json:get_keys(JObj)),
+    #xmlElement{name='profiles', content=Content}.
+    
+sofia_profile_el(JObj) ->
+    Settings = wh_json:get_value(<<"Settings">>, JObj, wh_json:new()),
+    Gateways = wh_json:get_value(<<"Gateways">>, JObj, wh_json:new()),
+    [#xmlElement{name='settings'
+                 ,content=sofia_settings_el(Settings)
+                }
+     ,#xmlElement{name='gateways'
+                  ,content=sofia_gateways_el(Gateways)
+                 }            
+    ].
+
+sofia_settings_el(JObj) ->
+    lists:foldl(fun(Key, Xml) ->
+                        Value = wh_json:get_value(Key, JObj),
+                        Name = wh_util:to_lower_binary(Key),
+                        [#xmlElement{name='param'
+                                     ,attributes=[xml_attrib('name', Name)
+                                                  ,xml_attrib('value', Value)
+                                                 ]
+                                    }
+                         | Xml
+                        ]
+                end, [], wh_json:get_keys(JObj)).
+
+sofia_gateways_el(JObj) -> 
+    lists:foldl(fun(Key, Xml) ->
+                        Gateway = wh_json:get_value(Key, JObj),
+                        [#xmlElement{name='gateway'
+                                     ,attributes=[xml_attrib(name, Key)]
+                                     ,content=sofia_gateway_el(Gateway)
+                                    }
+                                    | Xml
+                        ]
+                end, [], wh_json:get_keys(JObj)).
+
+sofia_gateway_el(JObj) ->
+    lists:foldl(fun(<<"Variables">>, Xml) -> 
+                        Variables = wh_json:get_value(<<"Variables">>, JObj),
+                        [#xmlElement{name='variables'
+                                     ,content=sofia_gateway_vars_el(Variables)
+                                    }
+                         | Xml
+                        ];
+                   (Key, Xml) ->
+                        Value = wh_json:get_value(Key, JObj),
+                        Name = wh_util:to_lower_binary(Key),
+                        [#xmlElement{name='param'
+                                     ,attributes=[xml_attrib('name', Name)
+                                                  ,xml_attrib('value', Value)
+                                                 ]
+                                    }
+                         | Xml
+                        ]
+                end, [], wh_json:get_keys(JObj)).
+
+sofia_gateway_vars_el(JObj) ->
+    lists:foldl(fun(Key, Xml) ->
+                        Value = wh_json:get_value(Key, JObj),
+                        [#xmlElement{name='variable'
+                                     ,attributes=[xml_attrib('name', Key)
+                                                  ,xml_attrib('value', Value)
+                                                  ,xml_attrib('direction', "inbound")
+                                                 ]
+                                    }
+                         | Xml
+                        ]
+                end, [], wh_json:get_keys(JObj)).    
+
+
+sofia_gateways_xml_to_json(Xml) ->
+    lists:foldl(fun sofia_gateway_xml_to_json/2
+                ,wh_json:new()
+                ,get_sofia_gateways_el(Xml)).
+
+get_sofia_gateways_el(Xml) ->
+    case xmerl_xpath:string("/gateways/gateway", Xml) of
+        #xmlElement{}=Gateways -> [Gateways];
+        Else -> Else
+    end.
+
+sofia_gateway_xml_to_json(Xml, JObj) ->
+    Id = wh_util:get_xml_value("/gateway/name/text()", Xml),
+    InboundVars = xmerl_xpath:string("/gateway/inbound-variables/*", Xml),
+    OutboundVars = xmerl_xpath:string("/gateway/outbound-variables/*", Xml),
+    Props = [{<<"Username">>, wh_util:get_xml_value("/gateway/username/text()", Xml)}
+             ,{<<"Password">>, wh_util:get_xml_value("/gateway/password/text()", Xml)}
+             ,{<<"Realm">>, wh_util:get_xml_value("/gateway/realm/text()", Xml)}
+             ,{<<"Proxy">>, wh_util:get_xml_value("/gateway/proxy/text()", Xml)}
+             ,{<<"From-Domain">>, wh_util:get_xml_value("/gateway/from/text()", Xml)}
+             ,{<<"Expire-Seconds">>, wh_util:get_xml_value("/gateway/expires/text()", Xml)}
+             ,{<<"Inbound-Variables">>, sofia_gateway_vars_xml_to_json(InboundVars, wh_json:new())}
+             ,{<<"Outbound-Variables">>, sofia_gateway_vars_xml_to_json(OutboundVars, wh_json:new())}
+            ],
+    wh_json:set_value(Id, wh_json:from_list(Props), JObj).
+
+sofia_gateway_vars_xml_to_json(#xmlElement{}=Xml, JObj) ->
+    sofia_gateway_vars_xml_to_json([Xml], JObj);
+sofia_gateway_vars_xml_to_json([], JObj) ->
+    JObj;
+sofia_gateway_vars_xml_to_json([Var|Vars], JObj) ->
+    Key = wh_util:get_xml_value("/variable/@name", Var),
+    Value = wh_util:get_xml_value("/variable/@value", Var),
+    sofia_gateway_vars_xml_to_json(Vars, wh_json:set_value(Key, Value, JObj)).
+

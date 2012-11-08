@@ -9,19 +9,21 @@
 %%%-------------------------------------------------------------------
 -module(ecallmgr_fs_node).
 
--behaviour(gen_server).
+-behaviour(gen_listener).
 
 -export([start_link/1, start_link/2]).
+-export([handle_reload_acls/2]).
+-export([handle_reload_gtws/2]).
 -export([sync_channels/1]).
 -export([show_channels/1]).
 -export([fs_node/1]).
 -export([hostname/1]).
--export([reloadacl/1]).
 -export([process_custom_data/2]).
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
          ,handle_info/2
+         ,handle_event/2
          ,terminate/2
          ,code_change/3
         ]).
@@ -31,6 +33,14 @@
 -record(state, {node :: atom()
                 ,options = [] :: wh_proplist()
                }).
+
+-define(RESPONDERS, [{{?MODULE, handle_reload_acls}, [{<<"switch_event">>, <<"reload_acls">>}]}
+                     ,{{?MODULE, handle_reload_gtws}, [{<<"switch_event">>, <<"reload_gateways">>}]}
+                    ]).
+-define(BINDINGS, [{switch, []}]).
+-define(QUEUE_NAME, <<>>).
+-define(QUEUE_OPTIONS, []).
+-define(CONSUME_OPTIONS, []).
 
 -define(SERVER, ?MODULE).
 
@@ -61,7 +71,12 @@ start_link(Node) ->
     start_link(Node, []).
 
 start_link(Node, Options) ->
-    gen_server:start_link(?SERVER, [Node, Options], []).
+    gen_listener:start_link(?MODULE, [{responders, ?RESPONDERS}
+                                      ,{bindings, ?BINDINGS}
+                                      ,{queue_name, ?QUEUE_NAME}
+                                      ,{queue_options, ?QUEUE_OPTIONS}
+                                      ,{consume_options, ?CONSUME_OPTIONS}
+                                     ], [Node, Options]).
 
 -spec sync_channels/1 :: (pid()) -> 'ok'.
 sync_channels(Srv) ->
@@ -76,10 +91,9 @@ hostname(Srv) ->
             Hostname
     end.
 
--spec reloadacl/1 ::(atom() | pid()) -> 'ok'.
-reloadacl(Srv) when is_pid(Srv) ->
-    reloadacl(fs_node(Srv));
-reloadacl(Node) ->
+-spec handle_reload_acls/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
+handle_reload_acls(_JObj, Props) ->
+    Node = props:get_value(node, Props),
     case freeswitch:bgapi(Node, reloadacl, "") of
         {ok, Job} ->
             lager:debug("reloadacl command sent to ~s: JobID: ~s", [Node, Job]);
@@ -87,6 +101,25 @@ reloadacl(Node) ->
             lager:debug("reloadacl failed with error: ~p", [_E]);
         timeout ->
             lager:debug("reloadacl failed with error: timeout")
+    end.
+
+-spec handle_reload_gtws/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
+handle_reload_gtws(_JObj, Props) ->
+    Node = props:get_value(node, Props),
+    Args = ["profile "
+            ,?DEFAULT_FS_PROFILE
+            ," rescan"
+           ],
+    case wh_util:is_true(ecallmgr_config:get(<<"process_gateways">>, false)) 
+        andalso freeswitch:bgapi(Node, sofia, lists:flatten(Args))
+    of
+        false -> ok;
+        {ok, Job} ->
+            lager:debug("sofia ~s command sent to ~s: JobID: ~s", [Args, Node, Job]);
+        {error, _E} ->
+            lager:debug("sofia ~s failed with error: ~p", [Args, _E]);
+        timeout ->
+            lager:debug("sofia ~s failed with error: timeout", [Args])
     end.
 
 -spec fs_node/1 :: (pid()) -> atom().
@@ -216,6 +249,17 @@ handle_info({bgerror, _Job, _Result}, State) ->
 handle_info(_Msg, State) ->
     lager:debug("unhandled message: ~p", [_Msg]),
     {noreply, State}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Allows listener to pass options to handlers
+%%
+%% @spec handle_event(JObj, State) -> {reply, Options}
+%% @end
+%%--------------------------------------------------------------------
+handle_event(_JObj, #state{node=Node}) ->
+    {reply, [{node, Node}]}.
 
 %%--------------------------------------------------------------------
 %% @private
