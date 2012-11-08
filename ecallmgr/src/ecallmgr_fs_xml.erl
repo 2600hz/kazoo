@@ -362,8 +362,8 @@ config_el(Name, Desc, Content) ->
                 ,content=Content
                }.
 
--spec section_el/2 :: (xml_attrib_value(), xml_el()) -> xml_el().
--spec section_el/3 :: (xml_attrib_value(), xml_attrib_value(), xml_el()) -> xml_el().
+-spec section_el/2 :: (xml_attrib_value(), xml_el() | xml_els()) -> xml_el().
+-spec section_el/3 :: (xml_attrib_value(), xml_attrib_value(), xml_el() | xml_els()) -> xml_el().
 section_el(Name, #xmlElement{}=Content) ->
     section_el(Name, [Content]);
 section_el(Name, Content) ->
@@ -595,6 +595,7 @@ sofia_gateway_xml_to_json(Xml, JObj) ->
             ],
     wh_json:set_value(Id, wh_json:from_list(Props), JObj).
 
+-spec sofia_gateway_vars_xml_to_json/2 :: (xml_el() | xml_els(), wh_json:object()) -> wh_json:json_object().
 sofia_gateway_vars_xml_to_json(#xmlElement{}=Xml, JObj) ->
     sofia_gateway_vars_xml_to_json([Xml], JObj);
 sofia_gateway_vars_xml_to_json([], JObj) ->

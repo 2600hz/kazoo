@@ -160,7 +160,7 @@ update(Props, Node) ->
     put(callid, CallId),
     lager:debug("received session heartbeat", []),
     Update = authz_update(CallId, Props, Node),
-    wapi_authz:publish_update([KV || {_, V}=KV <- Update, V =/= undefined]).
+    wapi_authz:publish_update(props:filter_undefined(Update)).
 
 -spec rate_channel/1 :: (wh_proplist()) -> 'ok'.
 rate_channel(Props) ->
@@ -195,11 +195,11 @@ kill_channel(<<"outbound">>, CallId, Node) ->
     _ = freeswitch:api(Node, uuid_kill, wh_util:to_list(<<CallId/binary, " OUTGOING_CALL_BARRED">>)),
     ok.
 
--spec authorize/2 :: ('undefined' | ne_binary(), wh_proplist()) -> {'ok', ne_binary()} |
-                                                                   {'error', 'account_limited'} |
-                                                                   {'error', 'default_is_deny'}.
-authorize(undefined, _) ->
-    {error, no_account};
+-spec authorize/2 :: (api_binary(), wh_proplist()) ->
+                             {'ok', ne_binary()} |
+                             {'error', 'account_limited'} |
+                             {'error', 'default_is_deny'}.
+authorize(undefined, _) -> {error, no_account};
 authorize(AccountId, Props) ->
     lager:debug("channel authorization request started"),
     ReqResp = wh_amqp_worker:call(?ECALLMGR_AMQP_POOL
@@ -222,8 +222,9 @@ authorize(AccountId, Props) ->
             end
     end.
 
--spec identify_account/2 :: ('undefined' | ne_binary(), wh_proplist()) -> {'ok', wh_proplist()} |
-                                                                          {'error', 'unidentified_channel'}.
+-spec identify_account/2 :: (api_binary(), wh_proplist()) ->
+                                    {'ok', wh_proplist()} |
+                                    {'error', 'unidentified_channel' | 'not_required'}.
 identify_account(_, Props) ->
     lager:debug("requesting account identification"),
     ReqResp = wh_amqp_worker:call(?ECALLMGR_AMQP_POOL
@@ -248,7 +249,8 @@ identify_account(_, Props) ->
             end
     end.
 
--spec authz_default/0 :: () -> {'ok', ne_binary()} | {'error', 'default_is_deny'}.
+-spec authz_default/0 :: () -> {'ok', ne_binary()} |
+                               {'error', 'default_is_deny'}.
 authz_default() ->
     case ecallmgr_config:get(<<"authz_default_action">>, <<"deny">>) of
         <<"deny">> -> {error, default_is_deny};
