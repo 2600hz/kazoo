@@ -62,10 +62,15 @@ handle_route_win(JObj, _Props) ->
             whapps_call_command:answer(Call1),
 
             case catch update_acdc_actor(Call1) of
-                {'EXIT', _R} -> lager:debug("crash: ~p", [_R]);
-                _R -> timer:sleep(5000), lager:debug("update resulted in ~p", [_R])
-            end,
-            whapps_call_command:hangup(Call1);
+                {ok, P} when is_pid(P) -> ok;
+                {'EXIT', _R} ->
+                    lager:debug("crash: ~p", [_R]),
+                    whapps_call_command:hangup(Call1);
+                _R ->
+                    timer:sleep(5000),
+                    lager:debug("update resulted in ~p", [_R]),
+                    whapps_call_command:hangup(Call1)
+            end;
         {error, _R} ->
             lager:debug("failed to retrieve cached call: ~p", [_R])
     end.
@@ -80,13 +85,9 @@ update_acdc_actor(_Call, _, undefined) -> ok;
 update_acdc_actor(Call, QueueId, <<"queue">>) ->
     lager:debug("caller ~s wants a call in ~s", [whapps_call:caller_id_name(Call), QueueId]),
 
-    case wapi_acdc_queue:queue_size(whapps_call:account_id(Call), QueueId) of
-        N when is_integer(N), N > 0 ->
-            lager:debug("currently ~b calls waiting, let's go!", [N]),
-            acdc_agents_sup:new_thief(Call, QueueId);
-        _N ->
-            lager:debug("currently ~p calls, nothing to do", [_N])
-    end;
+    {ok, _P}=OK = acdc_agents_sup:new_thief(Call, QueueId),
+    lager:debug("started thief at ~p", [_P]),
+    OK;
 update_acdc_actor(Call, AgentId, <<"user">>) ->
     AcctId = whapps_call:account_id(Call),
 

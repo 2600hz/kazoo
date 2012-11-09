@@ -251,17 +251,15 @@ init([AcctId, AgentId, AgentProc, Props]) ->
     put(callid, <<"fsm_", AcctId/binary, "_", AgentId/binary>>),
     lager:debug("started acdc agent fsm"),
 
-    SyncRef = start_sync_timer(),
-    gen_fsm:send_event(self(), send_sync_event),
-
     acdc_stats:agent_active(AcctId, AgentId),
 
-    NextState = case props:get_value(skip_sync, Props) of
-                    true -> ready;
-                    _ ->
-                        gen_fsm:send_all_state_event(self(), load_endpoints),
-                        sync
-                end,
+    {NextState, SyncRef} = case props:get_value(skip_sync, Props) of
+                               true -> {ready, undefined};
+                               _ ->
+                                   gen_fsm:send_event(self(), send_sync_event),
+                                   gen_fsm:send_all_state_event(self(), load_endpoints),
+                                   {sync, start_sync_timer()}
+                           end,
 
     {ok, NextState, #state{acct_id=AcctId
                            ,acct_db=wh_util:format_account_id(AcctId, encoded)

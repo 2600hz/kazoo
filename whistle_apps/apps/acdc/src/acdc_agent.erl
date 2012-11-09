@@ -314,12 +314,12 @@ handle_cast({start_fsm, Supervisor}, #state{acct_id=AcctId
 
     gen_listener:cast(self(), bind_to_member_reqs),
 
-    {noreply, State#state{fsm_pid=FSMPid}};
+    {noreply, State#state{fsm_pid=FSMPid}, hibernate};
 
 
 handle_cast({queue_name, Q}, State) ->
     lager:debug("my queue: ~s", [Q]),
-    {noreply, State#state{my_q=Q}};
+    {noreply, State#state{my_q=Q}, hibernate};
 
 handle_cast({queue_login, Q}, #state{agent_queues=Qs
                                      ,acct_id=AcctId
@@ -356,6 +356,7 @@ handle_cast(bind_to_member_reqs, #state{agent_queues=Qs
 
 handle_cast({channel_hungup, CallId}, #state{call=Call
                                              ,record_calls=ShouldRecord
+                                             ,is_thief=IsThief
                                             }=State) ->
     case call_id(Call) of
         CallId ->
@@ -364,10 +365,17 @@ handle_cast({channel_hungup, CallId}, #state{call=Call
 
             maybe_stop_recording(Call, ShouldRecord),
 
-            {noreply, State#state{call=undefined
-                                  ,msg_queue_id=undefined
-                                  ,acdc_queue_id=undefined
-                                 }};
+            case IsThief of
+                false ->
+                    {noreply, State#state{call=undefined
+                                          ,msg_queue_id=undefined
+                                          ,acdc_queue_id=undefined
+                                         }
+                     ,hibernate};
+                true ->
+                    lager:debug("thief is done, going down"),
+                    {stop, normal, State}
+            end;
         undefined ->
             lager:debug("undefined call id for channel_hungup, ignoring"),
             {noreply, State};
