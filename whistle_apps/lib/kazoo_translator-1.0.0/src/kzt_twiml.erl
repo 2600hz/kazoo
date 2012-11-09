@@ -73,6 +73,10 @@ exec_element(Call, 'Dial', [#xmlElement{name='Conference'}=El1], #xmlElement{att
     dial_conference(Call, El1, Attrs);
 exec_element(Call, 'Dial', [#xmlElement{}|_]=Numbers, #xmlElement{attributes=Attrs}) ->
     dial_ring_group(Call, Numbers, Attrs);
+exec_element(Call, 'Dial', [#xmlElement{name='Device'}=El1], #xmlElement{attributes=Attrs}) ->
+    dial_device(Call, El1, Attrs);
+exec_element(Call, 'Dial', [#xmlElement{name='User'}=El1], #xmlElement{attributes=Attrs}) ->
+    dial_user(Call, El1, Attrs);
 
 exec_element(Call, 'Record', [], #xmlElement{attributes=Attrs}) ->
     record_call(Call, Attrs);
@@ -441,7 +445,8 @@ conf_wait_url(Url) -> Url. % can return audio data or TwiML
 %%
 %%   value        | DID to dial                       | DID
 %%-------------------------------------------------------------------------
--spec dial_number/3 :: (whapps_call:call(), ne_binary() | #xmlElement{}, wh_proplist()) -> exec_element_return().
+-spec dial_number/3 :: (whapps_call:call(), ne_binary() | #xmlElement{}, wh_proplist()) ->
+                               exec_element_return().
 dial_number(Call, #xmlElement{name='Number', content=[#xmlText{value=DialMe, type=text}]}, Attrs) ->
     lager:debug("DIAL number tag: ~s", [DialMe]),
     Props = attrs_to_proplist(Attrs),
@@ -463,7 +468,46 @@ dial_number(Call0, DialMe, Attrs) ->
     Call1 = send_call(Call0, DialMe, Props),
     finish_dial(Call1, Props).
 
--spec dial_ring_group/3 :: (whapps_call:call(), list(), wh_proplist()) -> ok_return() | stop_return().
+-spec dial_device/3 :: (whapps_call:call(), #xmlElement{}, wh_proplist()) ->
+                               ok_return().
+dial_device(Call, #xmlElement{name='Device'
+                              ,content=[#xmlText{value=DeviceId, type=text}]
+                             }
+            ,Attrs) ->
+    lager:debug("DIAL device id: ~s", [DeviceId]),
+    Props = attrs_to_proplist(Attrs),
+
+    {ok, Device} = couch_mgr:open_doc(whapps_call:account_db(Call), DeviceId),
+    {ok, Endpoint} = cf_endpoint:build(Device, Call),
+
+    bridge_ring_group(Call, [Endpoint], Props).
+
+-spec dial_user/3 :: (whapps_call:call(), #xmlElement{}, wh_proplist()) ->
+                             ok_return().
+dial_user(Call, #xmlElement{name='User'
+                            ,content=[#xmlText{value=UserId, type=text}]
+                             }
+            ,Attrs) ->
+    lager:debug("DIAL user id: ~s", [UserId]),
+    Props = attrs_to_proplist(Attrs),
+
+    case couch_mgr:get_results(whapps_call:account_db(Call)
+                               ,<<"cf_attributes/owned">>
+                               ,[{key, [UserId, <<"device">>]}]
+                              )
+    of
+        {ok, []} ->
+            lager:debug("no endpoints for user"),
+            {ok, Call};
+        {ok, Devices} ->
+            bridge_ring_group(Call, [cf_endpoint:build(wh_json:get_value(<<"id">>, EP), Call) || EP <- Devices], Props);
+        {error, _E} ->
+            lager:debug("error looking up user-owned devices: ~p", [_E]),
+            {ok, Call}
+    end.
+
+-spec dial_ring_group/3 :: (whapps_call:call(), wh_json:objects(), wh_proplist()) ->
+                                   ok_return() | stop_return().
 dial_ring_group(Call, Numbers, Attrs) ->
     lager:debug("DIAL ring group"),
     Props = attrs_to_proplist(Attrs),
@@ -474,24 +518,26 @@ dial_ring_group(Call, Numbers, Attrs) ->
             {ok, Call};
         EPs ->
             lager:debug("endpoints generated: ~p", [EPs]),
-
-            case ring_group_bridge_req(Call, EPs, Props) of
-                {ok, JObj} ->
-                    RecordCall = wh_util:is_true(props:get_value(record, Props, false)),
-                    StarHangup = wh_util:is_true(props:get_value(hangupOnStar, Props, false)),
-                    lager:debug("call bridged, do we need record: ~s or allow *-hangup: ~s", [RecordCall, StarHangup]),
-                    lager:debug("bridge resp: ~p", [JObj]),
-                    {ok, update_call_status(Call, ?STATUS_ANSWERED)};
-                {error, JObj} ->
-                    lager:debug("error bridging: ~p", [JObj]),
-                    {stop, update_call_status(Call, ?STATUS_FAILED)};
-                {stop, _}=Stop ->
-                    Stop
-            end
+            bridge_ring_group(Call, EPs, Props)
     catch
         error:function_clause ->
             lager:debug("invalid tag in list of numbers"),
             {stop, update_call_status(Call, ?STATUS_FAILED)}
+    end.
+
+bridge_ring_group(Call, EPs, Props) ->
+    case ring_group_bridge_req(Call, EPs, Props) of
+        {ok, JObj} ->
+            RecordCall = wh_util:is_true(props:get_value(record, Props, false)),
+            StarHangup = wh_util:is_true(props:get_value(hangupOnStar, Props, false)),
+            lager:debug("call bridged, do we need record: ~s or allow *-hangup: ~s", [RecordCall, StarHangup]),
+            lager:debug("bridge resp: ~p", [JObj]),
+            {ok, update_call_status(Call, ?STATUS_ANSWERED)};
+        {error, JObj} ->
+            lager:debug("error bridging: ~p", [JObj]),
+            {stop, update_call_status(Call, ?STATUS_FAILED)};
+        {stop, _}=Stop ->
+            Stop
     end.
 
 -spec ring_group_bridge_req/3 :: (whapps_call:call(), wh_json:json_objects(), wh_proplist()) ->
