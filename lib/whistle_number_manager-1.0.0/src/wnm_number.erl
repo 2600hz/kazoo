@@ -62,7 +62,7 @@ create_discovery(#number{number=Number, number_doc=Doc, module_name=ModuleName, 
                ,{<<"pvt_created">>, wh_util:current_tstamp()}
               ],
     JObj = wh_json:set_values(Updates, wh_json:public_fields(Doc)),
-    json_to_record(JObj).
+    json_to_record(JObj, true).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -84,7 +84,7 @@ create_available(#number{number=Number, auth_by=AuthBy, number_doc=Doc}=N) ->
                ,{<<"pvt_authorizing_account">>, AuthBy}
               ],
     JObj = wh_json:set_values(Updates, wh_json:public_fields(Doc)),
-    json_to_record(JObj, N).
+    json_to_record(JObj, true, N).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -109,7 +109,7 @@ create_port_in(#number{number=Number, assign_to=AssignTo
                ,{<<"pvt_assigned_to">>, AssignTo}
               ],
     JObj = wh_json:set_values(Updates, wh_json:public_fields(Doc)),
-    json_to_record(JObj, N).
+    json_to_record(JObj, true, N).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -546,7 +546,12 @@ disconnected(Number) ->
 json_to_record(JObj) ->
     json_to_record(JObj, #number{}).
 
-json_to_record(JObj, #number{number=Num, number_db=Db}=Number) ->
+json_to_record(JObj, #number{}=Number) ->
+    json_to_record(JObj, false, Number);
+json_to_record(JObj, IsNew) when is_boolean(IsNew) ->
+    json_to_record(JObj, IsNew, #number{}).
+
+json_to_record(JObj, IsNew, #number{number=Num, number_db=Db}=Number) ->
     Number#number{number=wh_json:get_value(<<"_id">>, JObj, Num)
                   ,number_db=wh_json:get_value(<<"pvt_db_name">>, JObj, Db)
                   ,state=wh_json:get_ne_value(<<"pvt_number_state">>, JObj)
@@ -559,7 +564,7 @@ json_to_record(JObj, #number{number=Num, number_db=Db}=Number) ->
                   ,features=sets:from_list(wh_json:get_ne_value(<<"pvt_features">>, JObj, []))
                   ,current_features=sets:from_list(wh_json:get_ne_value(<<"pvt_features">>, JObj, []))
                   ,number_doc=JObj
-                  ,current_number_doc=JObj
+                  ,current_number_doc=case IsNew of true -> wh_json:new(); false -> JObj end
                  }.
 
 %%--------------------------------------------------------------------
