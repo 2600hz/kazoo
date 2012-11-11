@@ -339,9 +339,12 @@ load_fax_binary(FaxId, #cb_context{resp_headers=RespHeaders}=Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec outgoing_summary/1 :: (#cb_context{}) -> #cb_context{}.
-outgoing_summary(#cb_context{}=Context) ->
+outgoing_summary(#cb_context{account_id=AccountId}=Context) ->
+    ViewOptions=[{<<"key">>, AccountId}
+                 ,include_docs
+                ],
     crossbar_doc:load_view(<<"faxes/crossbar_listing">>
-                           ,[include_docs]
+                           ,ViewOptions
                            ,Context
                            ,fun normalize_view_results/2
                           ).

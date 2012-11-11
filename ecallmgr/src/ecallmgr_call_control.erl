@@ -423,15 +423,15 @@ handle_cast({rm_leg, JObj}, #state{other_legs=Legs
                                   ,last_removed_leg=LegId
                                  }}
     end;
-handle_cast({channel_destroyed, CallId, _JObj},  #state{is_call_up=true
+handle_cast({channel_destroyed, CallId, JObj},  #state{is_call_up=true
                                                        ,sanity_check_tref=SCTRef
                                                        ,current_app=CurrentApp
                                                        ,current_cmd=CurrentCmd
                                                        ,callid=CallId
                                                        ,node=Node
                                                       }=State) ->
-    case ecallmgr_fs_nodes:channel_node(CallId) of
-        {ok, Node} ->
+    case wh_json:is_true(<<"Channel-Moving">>, JObj) of
+        false ->
             lager:debug("our channel has been destroyed, executing any post-hangup commands"),
             %% if our sanity check timer is running stop it, it will always return false
             %% now that the channel is gone
@@ -454,12 +454,9 @@ handle_cast({channel_destroyed, CallId, _JObj},  #state{is_call_up=true
                           ,is_call_up=false
                           ,is_node_up=true
                  }
-             , hibernate};
-        {ok, _NewNode} ->
-            lager:debug("channel is on other node: ~s, not ~s", [_NewNode, Node]),
-            {stop, normal, State};
-        {error, not_found} ->
-            lager:debug("channel destroyed, but not found in known nodes...must be down"),
+             ,hibernate};
+        true ->
+            lager:debug("channel destroy while moving to other node, deferring to new controller", []),
             {stop, normal, State}
     end;
 handle_cast({channel_destroyed, CallId, _},  #state{is_call_up=false

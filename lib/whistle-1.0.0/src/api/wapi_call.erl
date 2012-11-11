@@ -63,7 +63,7 @@
                                           ,<<"Fax-Transferred-Pages">>, <<"Fax-Total-Pages">>
                                           ,<<"Fax-Bad-Rows">>, <<"Fax-Transfer-Rate">>
                                           ,<<"Switch-Hostname">>, <<"Group-ID">>
-                                          ,<<"Control-Queue">>
+                                          ,<<"Control-Queue">>, <<"Channel-Moving">>
                                      ]).
 -define(CALL_EVENT_VALUES, [{<<"Event-Category">>, <<"call_event">>}]).
 -define(CALL_EVENT_TYPES, [{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}]).

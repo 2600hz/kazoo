@@ -450,7 +450,7 @@ process_broadcast_event(<<"channel_update">>, Data) ->
     put(callid, UUID),
     Name = props:get_value(<<"whistle_broadcast_parameter_name">>, Data),
     Value = props:get_value(<<"whistle_broadcast_parameter_value">>, Data),
-    Function = wh_util:to_atom(<<"channel_set_", Name/binary>>),
+    Function = wh_util:to_atom(<<"channel_set_", Name/binary>>, true),
     lager:debug("remote update for channel ~s parameter ~s: ~s~n", [UUID, Name, Value]),
     ecallmgr_fs_nodes:Function(undefined, UUID, Value).
 
