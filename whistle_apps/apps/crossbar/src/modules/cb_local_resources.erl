@@ -96,8 +96,10 @@ put(Context) ->
     crossbar_doc:save(Context).
 
 -spec delete/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
-delete(Context, _) ->
-    crossbar_doc:delete(Context).
+delete(Context, ResourceId) ->
+    Context1 = crossbar_doc:delete(Context),
+    _ = maybe_remove_aggregate(ResourceId, Context1),
+    Context1.
 
 %%%===================================================================
 %%% Internal functions
@@ -168,3 +170,34 @@ on_successful_validation(Id, #cb_context{}=Context) ->
 -spec normalize_view_results/2 :: (wh_json:json_object(), wh_json:json_objects()) -> wh_json:json_objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec maybe_aggregate_resource/1 :: (#cb_context{}) -> boolean().
+maybe_aggregate_resource(#cb_context{resp_status=success, doc=JObj}=Context) ->
+    case wh_util:is_true(cb_context:fetch(aggregate_resource, Context)) of
+        false -> 
+            ResourceId = wh_json:get_value(<<"_id">>, JObj),
+            maybe_remove_aggregate(ResourceId, Context);
+        true -> 
+            lager:debug("adding resource to the sip auth aggregate"),
+            couch_mgr:ensure_saved(?WH_SIP_DB, wh_json:delete_key(<<"_rev">>, JObj)),
+            wapi_switch:publish_reload_gateways(),
+            true
+    end;
+maybe_aggregate_resource(_) -> false.
+
+-spec maybe_remove_aggregate/2 :: (ne_binary(), #cb_context{}) -> boolean().
+maybe_remove_aggregate(ResourceId, #cb_context{resp_status=success, doc=JObj}) ->
+    case couch_mgr:open_doc(?WH_SIP_DB, ResourceId) of
+        {ok, JObj} ->
+            couch_mgr:del_doc(?WH_SIP_DB, JObj),
+            wapi_switch:publish_reload_gateways(),
+            true;
+        {error, not_found} -> false
+    end;    
+maybe_remove_aggregate(_, _) -> false.

@@ -192,6 +192,8 @@ create_sip_endpoint(Endpoint, Properties, Call) ->
             ,{<<"To-Realm">>, cf_util:get_sip_realm(Endpoint, whapps_call:account_id(Call))}
             ,{<<"To-DID">>, wh_json:get_value([<<"sip">>, <<"number">>], Endpoint, whapps_call:request_user(Call))}
             ,{<<"Route">>, wh_json:get_value([<<"sip">>, <<"route">>], Endpoint)}
+            ,{<<"Proxy-IP">>, wh_json:get_value([<<"sip">>, <<"proxy">>], Endpoint)}
+            ,{<<"Forward-IP">>, wh_json:get_value([<<"sip">>, <<"forward">>], Endpoint)}
             ,{<<"Outgoing-Caller-ID-Number">>, maybe_format_caller_id_number(Endpoint, IntCIDNumber, Call)}
             ,{<<"Outgoing-Caller-ID-Name">>, IntCIDName}
             ,{<<"Callee-ID-Number">>, CalleeNum}

@@ -16,6 +16,7 @@
 
 build(Node) ->
     Routines = [fun offnet_resources/1
+                ,fun local_resources/1
                 ,fun sip_auth_ips/1
                ],
     lists:foldl(fun(F, J) -> F(J) end, system_config_acls(Node), Routines).
@@ -43,6 +44,17 @@ handle_sip_auth_result(JObj, ACLs) ->
     AuthorizingType = wh_json:get_value([<<"value">>, <<"authorizing_type">>], JObj),    
     add_trusted_objects(IPs, AccountId, AuthorizingId, AuthorizingType, ACLs).
 
+-spec local_resources/1 :: (acls()) -> acls().
+local_resources(ACLs) ->
+    ViewOptions = [{include_docs, true}],
+    case couch_mgr:get_results(?WH_SIP_DB, <<"resources/listing_active_by_weight">>, ViewOptions) of
+        {error, _R} ->
+            lager:debug("Unable to get view results for local resources: ~p", [_R]),
+            ACLs;
+        {ok, JObjs} ->
+            lists:foldr(fun handle_resource_result/2, ACLs, JObjs)
+    end.
+
 -spec offnet_resources/1 :: (acls()) -> acls().
 offnet_resources(ACLs) ->
     ViewOptions = [{include_docs, true}],
@@ -51,14 +63,14 @@ offnet_resources(ACLs) ->
             lager:debug("Unable to get view results for offnet resources: ~p", [_R]),
             ACLs;
         {ok, JObjs} ->
-            lists:foldr(fun handle_offnet_result/2, ACLs, JObjs)
+            lists:foldr(fun handle_resource_result/2, ACLs, JObjs)
     end.
 
--spec handle_offnet_result/2 :: (wh_json:json_object(), acls()) -> acls().
-handle_offnet_result(JObj, ACLs) ->
+-spec handle_resource_result/2 :: (wh_json:json_object(), acls()) -> acls().
+handle_resource_result(JObj, ACLs) ->
     IPs = resource_ips(wh_json:get_value(<<"doc">>, JObj)),
     AuthorizingId = wh_json:get_value(<<"id">>, JObj),
-    add_trusted_objects(IPs, undefined, AuthorizingId, <<"offnet">>, ACLs).
+    add_trusted_objects(IPs, undefined, AuthorizingId, <<"resource">>, ACLs).
 
 -spec resource_ips/1 :: (acls()) -> acls().
 resource_ips(JObj) ->
@@ -74,7 +86,7 @@ resource_inbound_ips(JObj, IPs) ->
 -spec resource_server_ips/2 :: (wh_json:json_object(), ip_list()) -> ip_list().
 resource_server_ips(JObj, IPs) ->
     lists:foldl(fun(Gateway, I) ->
-                        case wh_json:is_true(<<"enabled">>, Gateway) of
+                        case (not wh_json:is_false(<<"enabled">>, Gateway)) of
                             false -> I;
                             true ->  
                                 Server = wh_json:get_value(<<"server">>, Gateway),
@@ -84,6 +96,12 @@ resource_server_ips(JObj, IPs) ->
 
 -spec resolve_ip/2 :: (ne_binary(), ip_list()) -> ip_list().
 resolve_ip(Domain, IPs) ->
+    case binary:split(Domain, <<":">>) of
+        [D|_] -> maybe_is_ip(D, IPs);
+        _ -> maybe_is_ip(Domain, IPs)
+    end.
+
+maybe_is_ip(Domain, IPs) ->
     case wh_util:is_ipv4(Domain) of
         true -> [Domain|IPs];
         false -> maybe_resolve_srv_records(Domain, IPs)
