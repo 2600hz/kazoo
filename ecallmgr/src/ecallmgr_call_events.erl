@@ -463,8 +463,13 @@ create_event_props(EventName, ApplicationName, Props) ->
        ,{<<"Raw-Application-Name">>, props:get_value(<<"Application">>, Props, ApplicationName)}
        ,{<<"Raw-Application-Data">>, props:get_value(<<"Application-Data">>, Props)}
        ,{<<"Media-Server">>, props:get_value(<<"FreeSWITCH-Hostname">>, Props)}
+       ,{<<"Channel-Moving">>, wh_util:to_binary(is_channel_moving(Props))}
        | event_specific(EventName, ApplicationName, Props) 
       ]).
+
+-spec is_channel_moving/1 :: (proplist()) -> boolean().
+is_channel_moving(Props) ->
+    wh_util:is_true(props:get_value(<<"variable_channel_is_moving">>, Props)).
 
 -spec publish_event/1 :: (proplist()) -> 'ok'.
 publish_event(Props) ->

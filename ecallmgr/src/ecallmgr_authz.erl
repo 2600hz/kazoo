@@ -26,7 +26,10 @@
 -spec maybe_authorize_channel/2 :: (wh_proplist(), atom()) -> boolean().
 maybe_authorize_channel(Props, Node) ->
     CallId = props:get_value(<<"Unique-ID">>, Props),
-    is_authz_enabled(Props, CallId, Node).
+    case wh_util:is_empty(props:get_value(<<"variable_recovered">>, Props)) of
+        false -> allow_call(Props, CallId, Node);
+        true -> is_authz_enabled(Props, CallId, Node)
+    end.
 
 -spec is_authz_enabled/3 :: (wh_proplist(), ne_binary(), atom()) -> boolean().
 is_authz_enabled(Props, CallId, Node) ->
