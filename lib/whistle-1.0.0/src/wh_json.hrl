@@ -15,7 +15,7 @@
 -define(EMPTY_JSON_OBJECT, ?JSON_WRAPPER([])).
 
 -type object() :: ?JSON_WRAPPER(json_proplist()).
--type objects() :: [object()].
+-type objects() :: [object(),...] | [].
 
 -type json_object() :: object().
 -type json_objects() :: objects().
@@ -34,7 +34,7 @@
 -type json_proplist() :: json_proplist_kv(json_proplist_key(), json_term()).
 
 -type json_iolist() :: {'json', iolist()}.
--type json_term() :: json_string() | json_number() | json_array() | json_object() | json_iolist() | <<>>.
+-type json_term() :: json_string() | json_number() | json_array() | object() | json_iolist() | <<>>.
 -type json_terms() :: [json_term()].
 
 -define(WH_JSON_HRL, true).
