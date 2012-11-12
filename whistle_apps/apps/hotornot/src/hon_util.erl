@@ -1,7 +1,7 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2012, VoIP INC
 %%% @doc
-%%% 
+%%%
 %%% @end
 %%% @contributors
 %%%   James Aimonetti
@@ -59,7 +59,6 @@ matching_rates(Rates, DID, Direction, RouteOptions) ->
     [Rate || Rate <- Rates,
              matching_rate(Rate, E164, Direction, RouteOptions)
     ].
-
 
 -spec sort_rates(wh_json:json_objects()) -> wh_json:json_objects().
 sort_rates(Rates) ->

@@ -47,7 +47,8 @@ get_rate_data(JObj) ->
             Direction = wh_json:get_value(<<"Direction">>, JObj),
             Matching = hon_util:matching_rates(Rates, ToDID, Direction, RouteOptions),
             case hon_util:sort_rates(Matching) of
-                [] -> 
+                [] ->
+                    wh_notify:system_alert("no rate found after filter/sort for ~s to ~s", [FromDID, ToDID]),
                     lager:debug("no rates left after filter"),
                     {error, no_rate_found};
                 [Rate|_] ->
