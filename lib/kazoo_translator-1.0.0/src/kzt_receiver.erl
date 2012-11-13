@@ -12,6 +12,8 @@
 
 -export([wait_for_offnet/1
          ,wait_for_noop/1
+         ,say_loop/6, say_loop/7
+         ,play_loop/3, play_loop/4
         ]).
 
 -record(offnet_req, {
@@ -26,6 +28,43 @@
 -type offnet_req() :: #offnet_req{}.
 
 -define(DEFAULT_EVENT_WAIT, 10000). % 10s or 10000ms
+
+-spec say_loop/6 :: (whapps_call:call(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), wh_timeout()) ->
+                            {'ok', whapps_call:call()} |
+                            {'error', _, whapps_call:call()}.
+-spec say_loop/7 :: (whapps_call:call(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), list() | 'undefined', wh_timeout()) ->
+                            {'ok', whapps_call:call()} |
+                            {'error', _, whapps_call:call()}.
+say_loop(Call, SayMe, Voice, Lang, Engine, N) ->
+    say_loop(Call, SayMe, Voice, Lang, undefined, Engine, N).
+
+say_loop(Call, _SayMe, _Voice, _Lang, _Terminators, _Engine, N) when N =< 0 -> {ok, Call};
+say_loop(Call, SayMe, Voice, Lang, Terminators, Engine, N) ->
+    NoopId = whapps_call_command:tts(SayMe, Voice, Lang, Terminators, Engine, Call),
+    case whapps_call_command:wait_for_noop(NoopId) of
+        {ok, _} -> say_loop(Call, SayMe, Voice, Lang, Terminators, Engine, decr_loop_counter(N));
+        {error, E} -> {error, E, Call}
+    end.
+
+-spec play_loop/3 :: (whapps_call:call(), ne_binary(), wh_timeout()) ->
+                             {'ok', whapps_call:call()} |
+                             {'error', _, whapps_call:call()}.
+-spec play_loop/4 :: (whapps_call:call(), ne_binary(), list() | 'undefined', wh_timeout()) ->
+                             {'ok', whapps_call:call()} |
+                             {'error', _, whapps_call:call()}.
+play_loop(Call, PlayMe, N) ->
+    play_loop(Call, PlayMe, undefined, N).
+play_loop(Call, PlayMe, Terminators, N) ->
+    NoopId = whapps_call_command:play(PlayMe, Terminators, Call),
+    case whapps_call_command:wait_for_noop(NoopId) of
+        {ok, _} -> play_loop(Call, PlayMe, Terminators, decr_loop_counter(N));
+        {error, E} -> {error, E, Call}
+    end.
+
+-spec decr_loop_counter/1 :: (wh_timeout()) -> wh_timeout().
+decr_loop_counter(infinity) -> infinity;
+decr_loop_counter(N) when is_integer(N), N > 0 -> N-1;
+decr_loop_counter(_) -> 0.
 
 wait_for_noop(NoopId) ->
     whapps_call_command:wait_for_noop(NoopId).

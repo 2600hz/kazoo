@@ -20,6 +20,9 @@
 
 -define(KZT_USER_VARS, <<"user_vars">>).
 
+-define(TTS_CONFIG_CAT, <<"speech">>).
+-define(TTS_SIZE_LIMIT, 4000).
+
 -define(STATUS_QUEUED, <<"queued">>).
 -define(STATUS_RINGING, <<"ringing">>).
 -define(STATUS_ANSWERED, <<"in-progress">>).

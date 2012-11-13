@@ -77,12 +77,22 @@ exec_element(Call, #xmlElement{name='Play'
                                   ,content=ToPlay
                                   ,attributes=Attrs
                                  }) ->
-    play(Call, ToPlay, Attrs);
+    case play(Call, ToPlay, Attrs) of
+        {ok, _}=OK -> OK;
+        {error, _E, Call1} ->
+            lager:debug("play stopped with error ~p", [_E]),
+            {error, Call1}
+    end;
 exec_element(Call, #xmlElement{name='Say'
                                   ,content=ToSay
                                   ,attributes=Attrs
                                  }) ->
-    say(Call, ToSay, Attrs);
+    case say(Call, ToSay, Attrs) of
+        {ok, _}=OK -> OK;
+        {error, _E, Call1} ->
+            lager:debug("say stopped with error ~p", [_E]),
+            {error, Call1}
+    end;
 exec_element(Call, #xmlElement{name='Redirect'
                                   ,content=RedirectUrl
                                   ,attributes=Attrs
@@ -166,32 +176,63 @@ dial(Call, [#xmlText{value=DialMe, type=text}], Attrs) ->
 hangup(Call) ->
     whapps_call_command:b_answer(Call),
     whapps_call_command:hangup(Call),
-    {stop, kzt_util:update_call_status(Call1, ?STATUS_COMPLETED)}.
+    {stop, kzt_util:update_call_status(Call, ?STATUS_COMPLETED)}.
 
+pause(Call, Attrs) ->
+    Props = kzt_util:attributes_to_proplist(Attrs),
+
+    PauseFor = pause_for(Props),
+    lager:debug("pause for ~b ms", [PauseFor]),
+    timer:sleep(PauseFor),
+    {ok, Call}.
+
+%% limit pause to 1 hour (3600000 ms)
+pause_for(Props) ->
+    case props:get_integer_value(length, Props) of
+        undefined -> 1000;
+        N when is_integer(N), N > 0, N =< 3600 -> N * 1000;
+        N when is_integer(N), N > 3600 -> 3600000
+    end.
+
+say(Call, XmlText, Attrs) ->
+    whapps_call_command:answer(Call),
+    SayMe = xml_text_to_binary(XmlText, whapps_config:get_integer(<<"pivot">>, <<"tts_text_size">>, ?TTS_SIZE_LIMIT)),
+
+    Props = kzt_util:attributes_to_proplist(Attrs),
+
+    Voice = get_voice(Props),
+    Lang = get_lang(Props),
+    Engine = get_engine(Props),
+
+    lager:debug("SAY: ~s using voice ~s, in lang ~s, and engine ~s", [SayMe, Voice, Lang, Engine]),
+
+    case loop_count(Props) of
+        0 -> kzt_receiver:say_loop(Call, SayMe, Voice, Lang, Engine, infinity);
+        N when N > 0 -> kzt_receiver:say_loop(Call, SayMe, Voice, Lang, Engine, N)
+    end.
+                          
 play(Call, XmlText, Attrs) ->
     whapps_call_command:answer(Call),
     PlayMe = xml_text_to_binary(XmlText),
     lager:debug("playing '~s'", [PlayMe]),
+
     Props = kzt_util:attributes_to_proplist(Attrs),
 
-    LoopCount = loop_count(Props),
-
-    case get_loop_count(props:get_value(loop, attrs_to_proplist(Attrs), 1)) of
-        %% TODO: play music in a continuous loop
-        0 -> whapps_call_command:b_play(PlayMe, Call);
-        1 -> whapps_call_command:b_play(PlayMe, Call);
-        N when N > 1 -> play_loop(Call, PlayMe, N)
-    end,
-    {ok, Call}.
-
-play_loop(Call, PlayMe, N) ->
-    Play = [{play, PlayMe} || _ <- lists:seq(1, N)],
-    NoopId = whapps_call_command:audio_macro(Play, Call),
-    kzt_receiver:wait_for_noop(NoopId).
+    case loop_count(Props) of
+        0 -> kzt_receiver:play_loop(Call, PlayMe, infinity);
+        N when N > 1 -> kzt_receiver:play_loop(Call, PlayMe, N)
+    end.
 
 -spec xml_text_to_binary/1 :: ([#xmlText{},...]|[]) -> binary().
 xml_text_to_binary(Vs) when is_list(Vs) ->
     iolist_to_binary([V || #xmlText{value=V, type='text'} <- Vs]).
+
+xml_text_to_binary(Vs, Size) when is_list(Vs), is_integer(Size), Size > 0 ->
+    B = xml_text_to_binary(Vs),
+    case byte_size(B) > Size of
+        true -> erlang:binary_part(B, 0, Size);
+        false -> B
+    end.
 
 -spec caller_id/2 :: (wh_proplist(), whapps_call:call()) -> ne_binary().
 caller_id(Props, Call) ->
@@ -220,3 +261,32 @@ hangup_dtmf(DTMF) ->
 
 media_processing(false, undefined) -> <<"bypass">>;
 media_processing(_ShouldRecord, _HangupDTMF) -> <<"process">>.
+
+-spec get_voice/1 :: (wh_proplist()) -> ne_binary().
+get_voice(Props) ->
+    case props:get_binary_value(voice, Props) of
+        <<"man">> -> <<"male">>;
+        <<"male">> -> <<"male">>;
+        <<"woman">> -> <<"female">>;
+        <<"female">> -> <<"female">>;
+        undefined -> <<"male">>
+    end.
+
+-spec get_lang/1 :: (wh_proplist()) -> ne_binary().
+get_lang(Props) ->
+    case props:get_binary_value(language, Props) of
+        undefined -> <<"en-US">>;
+        <<"en">> -> <<"en-US">>;
+        <<"en-gb">> -> <<"en-GB">>;
+        <<"es">> -> <<"es">>;
+        <<"fr">> -> <<"fr">>;
+        <<"de">> -> <<"de">>;
+        <<"it">> -> <<"it">>
+    end.
+
+-spec get_engine/1 :: (wh_proplist()) -> ne_binary().
+get_engine(Props) ->
+    case props:get_binary_value(engine, Props) of
+        undefined -> whapps_config:get_binary(?TTS_CONFIG_CAT, <<"tts_provider">>, <<"flite">>);
+        Engine -> Engine
+    end.
