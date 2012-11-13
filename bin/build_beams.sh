@@ -22,81 +22,12 @@ fExportLibs() {
     export ERL_LIBS=${WDIR}/lib/
 }
 
-fCompileUtils() {
-    echo "======================================================="
-    echo "  Compiling Utilities"
-    echo "======================================================="
-    echo "# cd ${WDIR}/utils/diagnostics; ${REBAR} clean compile"
-
-    cd ${WDIR}/utils/diagnostics; ${REBAR} clean compile
-    echo
-}
-
-fCompileWhistleLibs() {
-    echo "======================================================="
-    echo "  Compiling Whistle Libraries"
-    echo "======================================================="
-
-echo "Compiling utils"
-cd $WDIR/utils/diagnostics
-$REBAR clean compile
-
-echo "Compiling erlydtl"
-cd $WDIR/lib/erlydtl*
-$REBAR clean compile
-
-echo "Compiling Whistle LIBS"
-for WLIB in $WDIR/lib/whistle*
-do 
-    cd $WLIB
-    $REBAR clean compile 
-done
-
-echo "Compiling ecallmgr"
-cd $WDIR/ecallmgr
-$REBAR clean compile
-
-echo "Compiling Apps container and Apps"
-cd $WDIR/whistle_apps
-$REBAR clean compile
-
-    for WLIB in ${WDIR}/lib/whistle*
-    do
-        echo "# cd ${WLIB}; ${REBAR} clean compile"
-        cd ${WLIB}; ${REBAR} clean compile
-        echo
-    done
-}
-
-fCompileEcallmgr() {
-    echo "======================================================="
-    echo "  Compiling Erlang Call Manager"
-    echo "======================================================="
-    echo "# cd ${WDIR}/ecallmgr; ${REBAR} clean compile"
-
-    cd ${WDIR}/ecallmgr; ${REBAR} clean compile
-    echo
-}
-
-fCompileWhApps() {
-    echo "======================================================="
-    echo "  Compiling WhApps"
-    echo "======================================================="
-    echo "# cd ${WDIR}/whistle_apps; ${REBAR} clean compile"
-
-    cd ${WDIR}/whistle_apps; ${REBAR} clean compile
-    echo
-}
-
 fWelcome
 
 fExportLibs
 
-fCompileUtils
-fCompileWhistleLibs
-fCompileEcallmgr
-fCompileWhApps
-
-cd `readlink -f $0` # realpath
+cd ${WDIR}
+make clean
+make
 
 exit 0
