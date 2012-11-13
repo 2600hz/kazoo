@@ -11,6 +11,13 @@
 -export([http_method/1
          ,resolve_uri/2
          ,offnet_req/2
+         ,update_call_status/2
+         ,add_error/3, get_errors/2
+         ,set_hangup_dtmf/2, get_hangup_dtmf/1
+         ,set_call_timeout/2, get_call_timeout/1
+         ,set_call_time_limit/2, get_call_time_limit/1
+         ,set_record_call/2, get_record_call/1
+         ,attributes_to_proplist/1
         ]).
 
 -include("kzt.hrl").
@@ -53,7 +60,7 @@ resolve_uri(RawPath, Relative) ->
        ), <<"/">>).
 
 %% see cf_offnet.erl
--spec offnet_req/2 :: (wh_json:json_object(), whapps_call:call()) -> 'ok'.
+-spec offnet_req/2 :: (wh_json:object(), whapps_call:call()) -> 'ok'.
 offnet_req(Data, Call) ->
     {ECIDNum, ECIDName} = cf_attributes:caller_id(<<"emergency">>, Call),
     {CIDNumber, CIDName} = cf_attributes:caller_id(<<"external">>, Call),
@@ -80,6 +87,36 @@ offnet_req(Data, Call) ->
            ,{<<"Media">>, wh_json:get_value(<<"Media">>, Data)}
            | wh_api:default_headers(whapps_call:controller_queue(Call), ?APP_NAME, ?APP_VERSION)],
     wapi_offnet_resource:publish_req(Req).
+
+-spec update_call_status/2 :: (whapps_call:call(), ne_binary()) -> whapps_call:call().
+update_call_status(Call, Status) ->
+    whapps_call:kvs_store(<<"call_status">>, Status, Call).
+
+-spec add_error/3 :: (whapps_call:call(), ne_binary(), term()) -> whapps_call:call().
+add_error(Call, K, V) ->
+    case whapps_call:kvs_fetch(<<"response_errors">>, Call) of
+        undefined ->
+            whapps_call:kvs_store(<<"response_errors">>, [{K, V}], Call);
+        Vs ->
+            whapps_call:kvs_append_list(<<"response_errors">>, [{K, V}|Vs], Call)
+    end.
+
+get_errors(Call) -> whapps_call:kvs_fetch(<<"response_errors">>, Call).
+
+set_hangup_dtmf(DTMF, Call) -> whapps_call:kvs_store(<<"hangup_dtmf">>, DTMF, Call).
+get_hangup_dtmf(Call) -> whapps_call:kvs_fetch(<<"hangup_dtmf">>, Call).
+
+set_record_call(R, Call) -> whapps_call:kvs_store(<<"record_call">>, R, Call).
+get_record_call(Call) -> whapps_call:kvs_fetch(<<"record_call">>, Call).
+
+set_call_timeout(T, Call) -> whapps_call:kvs_store(<<"call_timeout">>, T, Call).
+get_call_timeout(Call) -> whapps_call:kvs_fetch(<<"call_timeout">>, Call).
+
+set_call_time_limit(T, Call) -> whapps_call:kvs_store(<<"call_time_limit">>, T, Call).
+get_call_time_limit(Call) -> whapps_call:kvs_fetch(<<"call_time_limit">>, Call).
+
+attributes_to_proplist(L) ->
+    [{K, V} || #xmlAttribute{name=K, value=V} <- L].
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
