@@ -16,7 +16,9 @@
 -export([b_call_status/1, b_channel_status/1]).
 -export([response/2, response/3, response/4]).
 
--export([relay_event/2]).
+-export([relay_event/2
+         ,receive_event/1, receive_event/2
+        ]).
 
 -export([audio_macro/2]).
 -export([pickup/2, pickup/3, pickup/4, pickup/5, pickup/6
@@ -235,9 +237,29 @@ b_channel_status(Call) -> b_channel_status(whapps_call:call_id(Call)).
 -spec relay_event(pid(), wh_json:object()) -> any().
 relay_event(Pid, JObj) -> Pid ! {'amqp_msg', JObj}.
 
+-spec receive_event(integer()) ->
+                           {'ok', wh_json:object()} |
+                           {'error', 'timeout'}.
+-spec receive_event(integer(), boolean()) ->
+                           {'ok', wh_json:object()} |
+                           {'other', wh_json:object()} |
+                           {'error', 'timeout'}.
+receive_event(Timeout) ->
+    receive_event(Timeout, true).
+receive_event(T, _) when T =< 0 -> {error, timeout};
+receive_event(Timeout, IgnoreOthers) ->
+    Start = erlang:now(),
+    receive
+        {amqp_msg, JObj} -> {ok, JObj};
+        _ when IgnoreOthers ->
+            receive_event(Timeout - wh_util:elapsed_ms(Start), IgnoreOthers);
+        Other -> {other, Other}
+    after
+        Timeout -> {error, timeout}
+    end.
+
 -spec audio_macro(audio_macro_prompts(), whapps_call:call()) -> ne_binary().
 -spec audio_macro(audio_macro_prompts(), whapps_call:call(), wh_json:objects()) -> binary().
-
 audio_macro([], Call) -> noop(Call);
 audio_macro(Prompts, Call) -> audio_macro(Prompts, Call, []).
 
