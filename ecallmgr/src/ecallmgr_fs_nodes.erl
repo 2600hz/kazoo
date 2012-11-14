@@ -744,7 +744,7 @@ close_node(Node) ->
 
 start_preconfigured_servers() ->
     put(callid, ?LOG_SYSTEM_ID),
-    case ecallmgr_config:get(<<"fs_nodes">>, []) of
+    case ecallmgr_config:get(<<"fs_nodes">>) of
         [] ->
             lager:info("no preconfigured servers available. Is the sysconf whapp running?"),
             timer:sleep(5000),
