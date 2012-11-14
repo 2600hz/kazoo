@@ -26,7 +26,9 @@
 %% like devices, ring groups, and resources.
 %% @end
 %%--------------------------------------------------------------------
--type build_errors() :: 'db_not_reachable' | 'disabled' | 'endpoint_called_self' | 'endpoint_id_undefined' | 'invalid_endpoint_id' | 'not_found' | 'owner_called_self'.
+-type build_errors() :: 'db_not_reachable' | 'disabled' | 'endpoint_called_self'
+                      | 'endpoint_id_undefined' | 'invalid_endpoint_id'
+                      | 'not_found' | 'owner_called_self'.
 
 -spec build/2 :: (cf_api_binary() | wh_json:json_object(), whapps_call:call()) ->
                          {'ok', wh_json:json_objects()} |
@@ -76,9 +78,9 @@ build(Endpoint, Properties, Call) ->
 %% bridge API.
 %% @end
 %%--------------------------------------------------------------------
--spec create_endpoints/3 :: (wh_json:json_object(), wh_json:json_object(), whapps_call:call()) -> {'ok', wh_json:json_objects()} |
-                                                                                                  {'error', 'no_endpoints'}.
-
+-spec create_endpoints/3 :: (wh_json:json_object(), wh_json:json_object(), whapps_call:call()) ->
+                                    {'ok', wh_json:json_objects()} |
+                                    {'error', 'no_endpoints'}.
 create_endpoints(Endpoint, Properties, Call) ->
     Fwd = cf_attributes:call_forward(Endpoint, Call),
     Substitue = wh_json:is_false(<<"substitute">>, Fwd),
@@ -163,55 +165,79 @@ flush(Db, Id) ->
 %% device) and the properties of this endpoint in the callflow.
 %% @end
 %%--------------------------------------------------------------------
--spec create_sip_endpoint/3 :: (wh_json:json_object(), wh_json:json_object(), whapps_call:call()) -> wh_json:json_object().
+-spec create_sip_endpoint/3 :: (wh_json:json_object(), wh_json:json_object(), whapps_call:call()) ->
+                                       wh_json:json_object().
 create_sip_endpoint(Endpoint, Properties, Call) ->
     CIDName = whapps_call:caller_id_name(Call),
     CIDNum = whapps_call:caller_id_number(Call),
     {CalleeNum, CalleeName} = cf_attributes:callee_id(Endpoint, Call),
-    {IntCIDNumber, IntCIDName} = case cf_attributes:caller_id(<<"internal">>, Call) of
-                                     %% if both the internal name and number are the same as the current
-                                     %% caller id then leave it alone
-                                     {CIDNum, CIDName} -> {undefined, undefined};
-                                     %% if both the internal name is the same as the current
-                                     %% caller id then leave it alone
-                                     {AltCIDNum, CIDName} -> {AltCIDNum, undefined};
-                                     %% if both the internal number is the same as the current
-                                     %% caller id then leave it alone
-                                     {CIDNum, AltCIDName} -> {undefined, AltCIDName};
-                                     %% if both the internal number and name are different, use them!
-                                     {AltCIDNum, AltCIDName} -> {AltCIDNum, AltCIDName}
-                                 end,
 
-    ForceFax = case wh_json:is_true([<<"media">>, <<"fax_option">>],Endpoint) of
+    {IntCIDNumber, IntCIDName} =
+        case cf_attributes:caller_id(<<"internal">>, Call) of
+            %% if both the internal name and number are the same as the current
+            %% caller id then leave it alone
+            {CIDNum, CIDName} -> {undefined, undefined};
+            %% if both the internal name is the same as the current
+            %% caller id then leave it alone
+            {AltCIDNum, CIDName} -> {AltCIDNum, undefined};
+            %% if both the internal number is the same as the current
+            %% caller id then leave it alone
+            {CIDNum, AltCIDName} -> {undefined, AltCIDName};
+            %% if both the internal number and name are different, use them!
+            {AltCIDNum, AltCIDName} -> {AltCIDNum, AltCIDName}
+        end,
+
+    OutgoingCIDNum = maybe_format_caller_id_number(Endpoint, IntCIDNumber, Call),
+
+    MediaJObj = wh_json:get_value(<<"media">>, Endpoint),
+    SIPJObj = wh_json:get_value(<<"sip">>, Endpoint),
+
+    ForceFax = case wh_json:is_true(<<"fax_option">>, MediaJObj) of
                    false -> undefined;
                    true -> <<"self">>
                end,
-    Prop = [{<<"Invite-Format">>, wh_json:get_value([<<"sip">>, <<"invite_format">>], Endpoint, <<"username">>)}
-            ,{<<"To-User">>, wh_json:get_value([<<"sip">>, <<"username">>], Endpoint)}
-            ,{<<"To-Realm">>, cf_util:get_sip_realm(Endpoint, whapps_call:account_id(Call))}
-            ,{<<"To-DID">>, wh_json:get_value([<<"sip">>, <<"number">>], Endpoint, whapps_call:request_user(Call))}
-            ,{<<"To-IP">>, wh_json:get_value([<<"sip">>, <<"ip">>], Endpoint)}
-            ,{<<"Route">>, wh_json:get_value([<<"sip">>, <<"route">>], Endpoint)}
-            ,{<<"Proxy-IP">>, wh_json:get_value([<<"sip">>, <<"proxy">>], Endpoint)}
-            ,{<<"Forward-IP">>, wh_json:get_value([<<"sip">>, <<"forward">>], Endpoint)}
-            ,{<<"Outgoing-Caller-ID-Number">>, maybe_format_caller_id_number(Endpoint, IntCIDNumber, Call)}
-            ,{<<"Outgoing-Caller-ID-Name">>, IntCIDName}
-            ,{<<"Callee-ID-Number">>, CalleeNum}
-            ,{<<"Callee-ID-Name">>, CalleeName}
-            ,{<<"Ignore-Early-Media">>, wh_json:get_binary_boolean([<<"media">>, <<"ignore_early_media">>], Endpoint)}
-            ,{<<"Bypass-Media">>, wh_json:get_binary_boolean([<<"media">>, <<"bypass_media">>], Endpoint)}
-            ,{<<"Endpoint-Progress-Timeout">>, wh_json:get_binary_value([<<"media">>, <<"progress_timeout">>], Endpoint)}
-            ,{<<"Endpoint-Timeout">>, wh_json:get_binary_value(<<"timeout">>, Properties)}
-            ,{<<"Endpoint-Delay">>, wh_json:get_binary_value(<<"delay">>, Properties)}
-            ,{<<"Codecs">>, cf_attributes:media_attributes(Endpoint, <<"codecs">>, Call)}
-            ,{<<"Hold-Media">>, cf_attributes:moh_attributes(Endpoint, <<"media_id">>, Call)}
-            ,{<<"Presence-ID">>, cf_attributes:presence_id(Endpoint, Call)}
-            ,{<<"SIP-Headers">>, generate_sip_headers(Endpoint, Call)}
-            ,{<<"Custom-Channel-Vars">>, generate_ccvs(Endpoint, Call)}
-            ,{<<"Flags">>, wh_json:get_value(<<"outbound_flags">>, Endpoint)}
-            ,{<<"Force-Fax">>, ForceFax}
-           ],
+
+    Prop =
+        [{<<"Invite-Format">>, wh_json:get_value(<<"invite_format">>, SIPJObj, <<"username">>)}
+         ,{<<"To-User">>, to_user(SIPJObj)}
+         ,{<<"To-Realm">>, cf_util:get_sip_realm(Endpoint, whapps_call:account_id(Call))}
+         ,{<<"To-DID">>, to_did(Endpoint, Call)}
+         ,{<<"To-IP">>, wh_json:get_value(<<"ip">>, SIPJObj)}
+         ,{<<"Route">>, wh_json:get_value(<<"route">>, SIPJObj)}
+         ,{<<"Proxy-IP">>, wh_json:get_value(<<"proxy">>, SIPJObj)}
+         ,{<<"Forward-IP">>, wh_json:get_value(<<"forward">>, SIPJObj)}
+         ,{<<"Outgoing-Caller-ID-Number">>, OutgoingCIDNum}
+         ,{<<"Outgoing-Caller-ID-Name">>, IntCIDName}
+         ,{<<"Callee-ID-Number">>, CalleeNum}
+         ,{<<"Callee-ID-Name">>, CalleeName}
+         ,{<<"Ignore-Early-Media">>, wh_json:is_true(<<"ignore_early_media">>, MediaJObj)}
+         ,{<<"Bypass-Media">>, wh_json:is_true(<<"bypass_media">>, MediaJObj)}
+         ,{<<"Endpoint-Progress-Timeout">>, wh_json:is_true(<<"progress_timeout">>, MediaJObj)}
+         ,{<<"Endpoint-Timeout">>, wh_json:get_binary_value(<<"timeout">>, Properties)}
+         ,{<<"Endpoint-Delay">>, wh_json:get_binary_value(<<"delay">>, Properties)}
+         ,{<<"Codecs">>, cf_attributes:media_attributes(Endpoint, <<"codecs">>, Call)}
+         ,{<<"Hold-Media">>, cf_attributes:moh_attributes(Endpoint, <<"media_id">>, Call)}
+         ,{<<"Presence-ID">>, cf_attributes:presence_id(Endpoint, Call)}
+         ,{<<"SIP-Headers">>, generate_sip_headers(Endpoint, Call)}
+         ,{<<"Custom-Channel-Vars">>, generate_ccvs(Endpoint, Call)}
+         ,{<<"Flags">>, wh_json:get_value(<<"outbound_flags">>, Endpoint)}
+         ,{<<"Force-Fax">>, ForceFax}
+        ],
     wh_json:from_list(props:filter_undefined(Prop)).
+
+-spec to_did/2 :: (wh_json:json_object(), whapps_call:call()) -> api_binary().
+to_did(Endpoint, Call) ->
+    wh_json:get_value([<<"sip">>, <<"number">>]
+                      ,Endpoint
+                      ,whapps_call:request_user(Call)
+                     ).
+
+-spec to_user/1 :: (wh_json:json_object()) -> api_binary().
+to_user(SIPJObj) ->
+    case wh_json:get_ne_value(<<"static_invite">>, SIPJObj) of
+        undefined -> wh_json:get_value(<<"username">>, SIPJObj);
+        To -> To
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
