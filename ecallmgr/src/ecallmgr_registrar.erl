@@ -1,7 +1,7 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2012, VoIP INC
 %%% @doc
-%%% 
+%%%
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
@@ -18,7 +18,7 @@
 -define(NODE_KEY(Realm, Username), {?MODULE, node, Username, Realm}).
 -define(LOOKUP_KEY(Realm, Username), {?MODULE, lookup, Username, Realm}).
 
--include("ecallmgr.hrl"). 
+-include("ecallmgr.hrl").
 
 -spec reg_success/2 :: (wh_proplist(), atom()) -> 'ok'.
 reg_success(Props, Node) ->
@@ -36,10 +36,10 @@ reg_success(Props, Node) ->
 lookup_contact(Realm, Username) ->
     case wh_cache:peek_local(?ECALLMGR_REG_CACHE, ?CONTACT_KEY(Realm, Username)) of
         {ok, Contact} -> {ok, Contact};
-        {error, not_found} -> 
+        {error, not_found} ->
             case lookup(Realm, Username, [<<"Contact">>]) of
                 [{<<"Contact">>, Contact}] -> {ok, Contact};
-                {error, _R}=E -> 
+                {error, _R}=E ->
                     lager:notice("failed to find registration for ~s@~s: ~p", [Username, Realm, _R]),
                     E
             end
@@ -49,7 +49,7 @@ lookup_contact(Realm, Username) ->
                                  {'ok', atom()} |
                                  {'error', 'not_found'}.
 endpoint_node(Realm, Username) ->
-    wh_cache:fetch_local(?ECALLMGR_REG_CACHE, ?NODE_KEY(Realm, Username)).    
+    wh_cache:fetch_local(?ECALLMGR_REG_CACHE, ?NODE_KEY(Realm, Username)).
 
 -spec lookup/3 :: (ne_binary(), ne_binary(), [ne_binary(),...]) ->
                           wh_proplist() |
@@ -66,7 +66,7 @@ lookup(Realm, Username, Fields) ->
                                   ,[{<<"Username">>, Username}
                                     ,{<<"Realm">>, Realm}
                                     ,{<<"Fields">>, []}
-                                    | wh_api:default_headers(?APP_NAME, ?APP_VERSION) 
+                                    | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                                    ]
                                   ,fun wapi_registration:publish_query_req/1
                                   ,fun wapi_registration:query_resp_v/1),
