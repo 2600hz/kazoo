@@ -17,6 +17,9 @@
          ,set_call_timeout/2, get_call_timeout/1
          ,set_call_time_limit/2, get_call_time_limit/1
          ,set_record_call/2, get_record_call/1
+         ,set_voice_uri/2, get_voice_uri/1
+         ,set_voice_uri_method/2, get_voice_uri_method/1
+         ,set_digits_collected/2, get_digits_collected/1, add_digit_collected/2
          ,attributes_to_proplist/1
         ]).
 
@@ -24,13 +27,12 @@
 
 -define(SUPPORTED_METHODS, [get, post]).
 
-http_method(M) when is_atom(M) ->
-    true = lists:member(M, ?SUPPORTED_METHODS),
-    M;
-http_method(M) when is_list(M) ->
-    http_method(wh_util:to_atom(wh_util:to_lower_string(M)));
-http_method(M) when is_binary(M) ->
-    http_method(wh_util:to_atom(wh_util:to_lower_binary(M))).
+http_method(Props) ->
+    case props:get_atom_value(method, Props, post) of
+        get -> get;
+        post -> post;
+        undefined -> post
+    end.
 
 -spec resolve_uri/2 :: (nonempty_string() | ne_binary(), nonempty_string() | ne_binary() | 'undefined') -> ne_binary().
 resolve_uri(Raw, undefined) -> wh_util:to_binary(Raw);
@@ -114,6 +116,17 @@ get_call_timeout(Call) -> whapps_call:kvs_fetch(<<"call_timeout">>, Call).
 
 set_call_time_limit(T, Call) -> whapps_call:kvs_store(<<"call_time_limit">>, T, Call).
 get_call_time_limit(Call) -> whapps_call:kvs_fetch(<<"call_time_limit">>, Call).
+
+set_voice_uri(Uri, Call) -> whapps_call:kvs_store(<<"voice_uri">>, Uri, Call).
+get_voice_uri(Call) -> whapps_call:kvs_fetch(<<"voice_uri">>, Call).
+
+set_voice_uri_method(M, Call) -> whapps_call:kvs_store(<<"voice_uri_method">>, M, Call).
+get_voice_uri_method(Call) -> whapps_call:kvs_fetch(<<"voice_uri_method">>, Call).
+
+set_digits_collected(Ds, Call) -> whapps_call:kvs_store(<<"digits_collected">>, Ds, Call).
+get_digits_collected(Call) -> whapps_call:kvs_fetch(<<"digits_collected">>, Call).
+add_digit_collected(D, Call) ->
+    whapps_call:kvs_update(<<"digits_collected">>, fun(Ds) -> <<Ds/binary, D/binary>> end, D, Call).
 
 attributes_to_proplist(L) ->
     [{K, V} || #xmlAttribute{name=K, value=V} <- L].
