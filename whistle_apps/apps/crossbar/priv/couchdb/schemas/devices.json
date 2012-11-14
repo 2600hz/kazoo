@@ -329,10 +329,14 @@
                ],
                "default":"username"
             },
+            "static_route":{
+                "name":"Static Route"
+                ,"description":"Sends all inbound calls to this string (instead of dialed number or username)"
+                ,"type":"string"
+            },
             "custom_sip_headers":{
                "type":"object",
                "default":{
-
                }
             },
             "registration_expiration":{
@@ -349,7 +353,6 @@
             }
          },
          "default":{
-
          }
       }
    }
