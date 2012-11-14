@@ -11,7 +11,7 @@
 -include("kzt.hrl").
 
 -export([wait_for_offnet/1
-         ,wait_for_noop/1
+         ,wait_for_noop/2
          ,say_loop/6, say_loop/7
          ,play_loop/3, play_loop/4
         ]).
@@ -41,8 +41,8 @@ say_loop(Call, SayMe, Voice, Lang, Engine, N) ->
 say_loop(Call, _SayMe, _Voice, _Lang, _Terminators, _Engine, N) when N =< 0 -> {ok, Call};
 say_loop(Call, SayMe, Voice, Lang, Terminators, Engine, N) ->
     NoopId = whapps_call_command:tts(SayMe, Voice, Lang, Terminators, Engine, Call),
-    case whapps_call_command:wait_for_noop(NoopId) of
-        {ok, _} -> say_loop(Call, SayMe, Voice, Lang, Terminators, Engine, decr_loop_counter(N));
+    case wait_for_noop(Call, NoopId) of
+        {ok, C} -> say_loop(C, SayMe, Voice, Lang, Terminators, Engine, decr_loop_counter(N));
         {error, E} -> {error, E, Call}
     end.
 
@@ -56,8 +56,8 @@ play_loop(Call, PlayMe, N) ->
     play_loop(Call, PlayMe, undefined, N).
 play_loop(Call, PlayMe, Terminators, N) ->
     NoopId = whapps_call_command:play(PlayMe, Terminators, Call),
-    case whapps_call_command:wait_for_noop(NoopId) of
-        {ok, _} -> play_loop(Call, PlayMe, Terminators, decr_loop_counter(N));
+    case wait_for_noop(Call, NoopId) of
+        {ok, C} -> play_loop(C, PlayMe, Terminators, decr_loop_counter(N));
         {error, E} -> {error, E, Call}
     end.
 
@@ -66,8 +66,25 @@ decr_loop_counter(infinity) -> infinity;
 decr_loop_counter(N) when is_integer(N), N > 0 -> N-1;
 decr_loop_counter(_) -> 0.
 
-wait_for_noop(NoopId) ->
-    whapps_call_command:wait_for_noop(NoopId).
+wait_for_noop(Call, NoopId) ->
+    case whapps_call_command:receive_event(?DEFAULT_EVENT_WAIT) of
+        {ok, JObj} -> process_noop_event(Call, NoopId, JObj);
+        {error, timeout} -> wait_for_noop(Call, NoopId)
+    end.
+process_noop_event(Call, NoopId, JObj) ->
+    case wh_util:get_event_type(JObj) of
+        {<<"call_event">>, <<"CHANNEL_DESTROY">>} -> {error, channel_destroy, Call};
+        {<<"call_event">>, <<"CHANNEL_HANGUP">>} -> {error, channel_hungup, Call};
+        {<<"call_event">>, <<"DTMF">>} ->
+            DTMF = wh_json:get_value(<<"DTMF-Digit">>, JObj),
+            wait_for_noop(kzt_util:add_digit_collected(DTMF, Call), NoopId);
+        {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>} ->
+            case wh_json:get_value(<<"Application-Response">>, JObj) of
+                NoopId -> {ok, Call};
+                _ -> wait_for_noop(Call, NoopId)
+            end;
+        _ -> wait_for_noop(Call, NoopId)
+    end.
 
 -spec wait_for_offnet/1 :: (whapps_call:call()) -> wh_proplist().
 wait_for_offnet(Call) ->
