@@ -14,6 +14,7 @@
          ,delete/2, delete_keys/2
          ,is_defined/2
          ,get_integer_value/2, get_integer_value/3
+         ,get_atom_value/2, get_atom_value/3
          ,get_binary_value/2, get_binary_value/3
          ,get_is_true/2, get_is_true/3
          ,get_is_false/2, get_is_false/3
@@ -94,6 +95,18 @@ get_integer_value(Key, Prop, Default) ->
     case ?MODULE:get_value(Key, Prop, Default) of
         Default -> Default;
         Val -> wh_util:to_integer(Val)
+    end.
+
+-spec get_atom_value/2 :: (wh_proplist_key(), wh_proplist()) ->
+                                  atom() | 'undefined'.
+-spec get_atom_value/3 :: (wh_proplist_key(), wh_proplist(), Default) ->
+                                  atom() | Default.
+get_atom_value(Key, Prop) ->
+    get_atom_value(Key, Prop, undefined).
+get_atom_value(Key, Prop, Default) ->
+    case ?MODULE:get_value(Key, Prop, Default) of
+        Default -> Default;
+        Val -> wh_util:to_atom(Val)
     end.
 
 -spec get_binary_value/2 :: (wh_proplist_key(), wh_proplist()) -> api_binary().
