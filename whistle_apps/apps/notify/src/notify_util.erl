@@ -1,3 +1,4 @@
+
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2012, VoIP INC
 %%% @doc
@@ -229,33 +230,45 @@ get_rep_email([Parent|Parents], AccountId) ->
 %% a sub account object or sub account db name.
 %% @end
 %%--------------------------------------------------------------------
--spec find_admin/1 :: ('undefined' | ne_binary() | wh_json:json_object()) -> wh_json:json_object().
+-type account_ids() :: [ne_binary(),...]|[].
+-spec find_admin/1 :: (api_binary() | account_ids() | wh_json:json_object()) -> wh_json:json_object().
 find_admin(undefined) ->
+    wh_json:new();
+find_admin([]) ->
     wh_json:new();
 find_admin(Account) when is_binary(Account) ->
     AccountDb = wh_util:format_account_id(Account, encoded),
+    AccountId = wh_util:format_account_id(Account, raw),
+    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+	{error, _} -> find_admin([AccountId]);
+	{ok, JObj} ->
+	    Tree = wh_json:get_value(<<"pvt_tree">>, JObj, []),
+	    find_admin([AccountId | lists:reverse(Tree)])
+    end;
+find_admin([AcctId|Tree]) ->
+    AccountDb = wh_util:format_account_id(AcctId),
     ViewOptions = [{key, <<"user">>}
                    ,include_docs
                   ],
     case couch_mgr:get_results(AccountDb, <<"maintenance/listing_by_type">>, ViewOptions) of
         {ok, Users} ->
-            Admins = [User || User <- Users
-                                  ,wh_json:get_value([<<"doc">>, <<"priv_level">>], User) =:= <<"admin">>
-                                  ,wh_json:get_ne_value([<<"doc">>, <<"email">>], User) =/= undefined
-                     ],
-            case Admins of
-                [] ->
-                    lager:debug("failed to find any admins with email addresses in ~s", [AccountDb]),
-                    wh_json:new();
-                Else ->
-                    wh_json:get_value(<<"doc">>, hd(Else))
+            case [User
+		  || User <- Users
+			 ,wh_json:get_value([<<"doc">>, <<"priv_level">>], User) =:= <<"admin">>
+			 ,wh_json:get_ne_value([<<"doc">>, <<"email">>], User) =/= undefined
+		 ]
+	    of
+                [] -> find_admin(Tree);
+                [Admin|_] -> wh_json:get_value(<<"doc">>, Admin)
             end;
         _E ->
             lager:debug("faild to find users in ~s: ~p", [AccountDb, _E]),
-            wh_json:new()
+	    find_admin(Tree)
     end;
 find_admin(Account) ->
-    find_admin(wh_json:get_value(<<"pvt_account_db">>, Account)).
+    find_admin([ wh_json:get_value(<<"pvt_account_id">>, Account)
+		 | lists:reverse(wh_json:get_value(<<"pvt_tree">>, Account, []))
+	       ]).
 
 %%--------------------------------------------------------------------
 %% @public
