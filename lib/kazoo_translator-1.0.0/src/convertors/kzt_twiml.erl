@@ -136,7 +136,11 @@ base_req_params(Call) ->
      ,{<<"CallerName">>, whapps_call:caller_id_name(Call)}
     ].
 
+%%------------------------------------------------------------------------------
+%% Verbs
+%%------------------------------------------------------------------------------
 dial(Call, [#xmlText{value=DialMe, type=text}], Attrs) ->
+    whapps_call_command:answer(Call),
     lager:debug("dial '~s'", [DialMe]),
 
     Props = kzt_util:attributes_to_proplist(Attrs),
@@ -174,11 +178,21 @@ dial(Call, [#xmlText{value=DialMe, type=text}], Attrs) ->
 
 -spec hangup/1 :: (whapps_call:call()) -> {'stop', whapps_call:call()}.
 hangup(Call) ->
-    whapps_call_command:b_answer(Call),
+    whapps_call_command:answer(Call),
     whapps_call_command:hangup(Call),
     {stop, kzt_util:update_call_status(Call, ?STATUS_COMPLETED)}.
 
+reject(Call, Attrs) ->
+    Props = kzt_util:attributes_to_proplist(Attrs),
+
+    Reason = reject_reason(Props),
+    Code = reject_code(Reason),
+
+    whapps_call_command:response(Code, Reason, reject_prompt(Props), Call),
+    {stop, kzt_util:update_call_status(Call, reject_status(Code))}.
+
 pause(Call, Attrs) ->
+    whapps_call_command:answer(Call),
     Props = kzt_util:attributes_to_proplist(Attrs),
 
     PauseFor = pause_for(Props),
@@ -186,13 +200,20 @@ pause(Call, Attrs) ->
     timer:sleep(PauseFor),
     {ok, Call}.
 
-%% limit pause to 1 hour (3600000 ms)
-pause_for(Props) ->
-    case props:get_integer_value(length, Props) of
-        undefined -> 1000;
-        N when is_integer(N), N > 0, N =< 3600 -> N * 1000;
-        N when is_integer(N), N > 3600 -> 3600000
-    end.
+set_variable(Call, Attrs) ->
+    whapps_call_command:answer(Call),
+    Props = kzt_util:attributes_to_proplist(Attrs),
+    {ok, kzt_translator:set_user_vars(
+           [{props:get_binary_value(key, Props), props:get_binary_value(value, Props)}]
+           ,Call
+          )}.
+
+-spec set_variables/2 :: (whapps_call:call(), list()) -> whapps_call:call().
+set_variables(Call, Els) when is_list(Els) ->
+    lists:foldl(fun(#xmlElement{attributes=Attrs}, C) ->
+                        set_variable(C, Attrs);
+                   (_, C) -> C
+                end, Call, Els).
 
 say(Call, XmlText, Attrs) ->
     whapps_call_command:answer(Call),
@@ -220,9 +241,56 @@ play(Call, XmlText, Attrs) ->
 
     case loop_count(Props) of
         0 -> kzt_receiver:play_loop(Call, PlayMe, infinity);
-        N when N > 1 -> kzt_receiver:play_loop(Call, PlayMe, N)
+        N when N > 0 -> kzt_receiver:play_loop(Call, PlayMe, N)
     end.
 
+redirect(Call, XmlText, Attrs) ->
+    whapps_call_command:answer(Call),
+
+    Props = kzt_util:attributes_to_proplist(Attrs),
+
+    CurrentUri = kzt_util:get_voice_uri(Call),
+    RedirectUri = xml_text_to_binary(XmlText),
+
+    Call1 = case xml_elements(XmlText) of
+                [] -> Call;
+                Els -> set_variables(Call, Els)
+            end,
+
+    NewUri = kzt_util:resolve_uri(CurrentUri, RedirectUri),
+    Method = kzt_util:http_method(Props),
+
+    lager:debug("redirect using ~s to ~s from ~s", [Method, NewUri, CurrentUri]),
+
+    Setters = [{fun kzt_util:set_voice_uri_method/2, Method}
+               ,{fun kzt_util:set_voice_uri/2, NewUri}
+              ],
+    {req, lists:foldl(fun({F, V}, C) -> F(V, C) end, Call1, Setters)}.
+
+gather(Call, SubActions, Attrs) ->
+    case exec_elements(Call, xml_elements(SubActions)) of
+        {ok, C} -> gather(C, Attrs);
+        Other -> Other
+    end.
+
+gather(Call, Attrs) ->
+    whapps_call_command:answer(Call),
+
+    Props = kzt_util:attributes_to_proplist(Attrs),
+
+    Timeout = timeout_s(Props) * 1000,
+    FinishKey = finish_dtmf(Props),
+    InitDigits = kvt_util:get_digits_collected(Call),
+
+    
+
+%%------------------------------------------------------------------------------
+%% Nouns
+%%------------------------------------------------------------------------------
+
+%%------------------------------------------------------------------------------
+%% Helpers
+%%------------------------------------------------------------------------------
 -spec xml_text_to_binary/1 :: ([#xmlText{},...]|[]) -> binary().
 xml_text_to_binary(Vs) when is_list(Vs) ->
     iolist_to_binary([V || #xmlText{value=V, type='text'} <- Vs]).
@@ -233,6 +301,9 @@ xml_text_to_binary(Vs, Size) when is_list(Vs), is_integer(Size), Size > 0 ->
         true -> erlang:binary_part(B, 0, Size);
         false -> B
     end.
+
+-spec xml_elements/1 :: (list()) -> [] | [#xmlElement{},...].
+xml_elements(Els) -> [El || #xmlElement{}=El <- Els].
 
 -spec caller_id/2 :: (wh_proplist(), whapps_call:call()) -> ne_binary().
 caller_id(Props, Call) ->
@@ -257,6 +328,14 @@ hangup_dtmf(DTMF) ->
     case lists:member(DTMF, ?ANY_DIGIT) of
         true -> DTMF;
         false -> undefined
+    end.
+
+finish_dtmf(Props) when is_list(Props) ->
+    case props:get_binary_value(finishOnKey, Props) of
+        undefined -> <<"#">>;
+        DTMF ->
+            true = lists:member(DTMF, ?ANY_DIGIT),
+            DTMF
     end.
 
 media_processing(false, undefined) -> <<"bypass">>;
@@ -290,3 +369,39 @@ get_engine(Props) ->
         undefined -> whapps_config:get_binary(?TTS_CONFIG_CAT, <<"tts_provider">>, <<"flite">>);
         Engine -> Engine
     end.
+
+%% limit pause to 1 hour (3600000 ms)
+-spec pause_for/1 :: (wh_proplist()) -> 1000..3600000.
+pause_for(Props) ->
+    case props:get_integer_value(length, Props) of
+        undefined -> 1000;
+        N when is_integer(N), N > 0, N =< 3600 -> N * 1000;
+        N when is_integer(N), N > 3600 -> 3600000
+    end.
+
+reject_reason(Props) ->
+    case props:get_binary_value(reason, Props) of
+        undefined -> <<"rejected">>;
+        <<"rejected">> -> <<"rejected">>;
+        <<"busy">> -> <<"busy">>
+    end.
+
+reject_code(<<"busy">>) -> <<"486">>;
+reject_code(<<"rejected">>) -> <<"503">>.
+
+reject_status(<<"486">>) -> ?STATUS_BUSY;
+reject_status(<<"503">>) -> ?STATUS_NOANSWER.
+
+reject_prompt(Props) ->
+    props:get_binary_value(prompt, Props).
+
+timeout_s(Props) ->
+    timeout_s(Props, 5).
+timeout_s(Props, Default) ->
+    case props:get_integer_value(timeout, Props, Default) of
+        N when is_integer(N), N > 3600 -> 3600;
+        N when is_integer(N), N > 0 -> N
+    end.
+            
+                
+        
