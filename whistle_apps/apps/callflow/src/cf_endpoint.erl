@@ -199,7 +199,7 @@ create_sip_endpoint(Endpoint, Properties, Call) ->
 
     Prop =
         [{<<"Invite-Format">>, invite_format(SIPJObj)}
-         ,{<<"To-User">>, to_user(SIPJObj)}
+         ,{<<"To-User">>, to_user(SIPJObj, Properties)}
          ,{<<"To-Username">>, to_username(SIPJObj)}
          ,{<<"To-Realm">>, cf_util:get_sip_realm(Endpoint, whapps_call:account_id(Call))}
          ,{<<"To-DID">>, to_did(Endpoint, Call)}
@@ -237,10 +237,14 @@ to_did(Endpoint, Call) ->
                       ,whapps_call:request_user(Call)
                      ).
 
--spec to_user/1 :: (wh_json:json_object()) -> api_binary().
-to_user(SIPJObj) ->
-    case wh_json:get_ne_value(<<"static_invite">>, SIPJObj) of
-        undefined -> wh_json:get_value(<<"username">>, SIPJObj);
+-spec to_user/2 :: (wh_json:json_object(), wh_json:json_object()) -> api_binary().
+to_user(SIPJObj, Properties) ->
+    case wh_json:get_ne_value(<<"static_invite">>, Properties) of
+        undefined ->
+            case wh_json:get_ne_value(<<"static_invite">>, SIPJObj) of
+                undefined -> wh_json:get_value(<<"username">>, SIPJObj);
+                To -> To
+            end;
         To -> To
     end.
 
