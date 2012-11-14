@@ -131,27 +131,65 @@ create_endpoint(DestNum, JObj, Call) ->
 %% number as formated by that rule (ie: capture group or full number).
 %% @end
 %%--------------------------------------------------------------------
--spec find_endpoints/2 :: (wh_json:json_object(), whapps_call:call()) -> {'ok', endpoints()} | {'error', atom()}.
+-spec find_endpoints/2 :: (wh_json:json_object(), whapps_call:call()) ->
+                                  {'ok', endpoints()} |
+                                  {'error', atom()}.
 find_endpoints(Data, Call) ->
     lager:debug("searching for resource endpoints"),
     AccountDb = whapps_call:account_db(Call),
 
+    AdditionalFlags = whapps_account_config:get(whapps_call:account_id(Call)
+                                                ,<<"callflow">>
+                                                ,<<"outbound_resource_flag_fields">>
+                                                ,[]
+                                               ),
+
     ToDID = get_to_did(Data, Call),
     case couch_mgr:get_results(AccountDb, ?VIEW_BY_RULES, []) of
         {ok, Resources} ->
-            lager:debug("found resources, filtering by rules"),
+            lager:debug("found resources, filtering by rules and flags"),
             {ok, [{Number
                    ,wh_json:get_value([<<"value">>], Resource, [])
-                   ,get_caller_id_type(Resource, Call)}
-                  || Resource <- Resources
-                         ,Number <- evaluate_rules(wh_json:get_value(<<"key">>, Resource), ToDID)
-                         ,Number =/= []
+                   ,get_caller_id_type(Resource, Call)
+                  }
+                  || Resource <- Resources,
+                     Number <- evaluate_rules(wh_json:get_value(<<"key">>, Resource), ToDID),
+                     Number =/= [],
+                     matching_flags(Call, wh_json:get_value([<<"value">>, <<"flags">>], Resource, []), AdditionalFlags)
                  ]};
-        {error, R}=E ->
-            lager:debug("search failed ~w", [R]),
+        {error, _R}=E ->
+            lager:debug("search failed ~w", [_R]),
             E
     end.
 
+matching_flags(_, _, []) -> true;
+matching_flags(_, [], _) -> false;
+matching_flags(Call, ResourceFlags, AdditionalFlags) ->
+    case [begin
+              Fun = wh_util:to_atom(Flag),
+              whapps_call:Fun(Call)
+          end
+          || Flag <- AdditionalFlags,
+             is_flag_exported(Flag)
+          ]
+    of
+        [] -> true;
+        Fs ->
+            lager:debug("additional flags: ~p", [Fs]),
+            lists:all(fun(F) -> lists:member(F, ResourceFlags) end, Fs)
+    end.
+
+is_flag_exported(Flag) ->
+    is_flag_exported(Flag, whapps_call:module_info(exports)).
+is_flag_exported(_, []) -> false;
+is_flag_exported(Flag, [{F, 1}|Funs]) ->
+    case wh_util:to_binary(F) =:= Flag of
+        true -> true;
+        false -> is_flag_exported(Flag, Funs)
+    end;
+is_flag_exported(Flag, [_|Funs]) ->
+    is_flag_exported(Flag, Funs).
+            
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
