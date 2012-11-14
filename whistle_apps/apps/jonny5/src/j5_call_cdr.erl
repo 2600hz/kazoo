@@ -16,59 +16,36 @@ handle_req(JObj, _Props) ->
     true = wapi_call:cdr_v(JObj),
     wh_util:put_callid(JObj),
     timer:sleep(crypto:rand_uniform(1000, 3000)),
-    Cost = extract_cost(JObj),
     CCV = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new()),
     case wh_json:get_value(<<"Account-Billing">>, CCV) of
-        <<"flat_rate">> -> ok;
-        _ -> reconcile_cost(wh_json:get_value(<<"Account-ID">>, CCV), Cost, JObj)
+        <<"per_minute">> -> 
+            AccountId = wh_json:get_value(<<"Account-ID">>, CCV),
+            reconcil_per_minute(AccountId, JObj);
+        _ -> ok 
     end,
     case wh_json:get_value(<<"Reseller-Billing">>, CCV) of
-        <<"flat_rate">> -> ok;
-        _ -> reconcile_cost(wh_json:get_value(<<"Reseller-ID">>, CCV), Cost, JObj)
+        <<"per_minute">> -> 
+            ResellerId = wh_json:get_value(<<"Reseller-ID">>, CCV),
+            reconcil_per_minute(ResellerId, JObj);
+        _ -> ok
     end.
 
--spec reconcile_cost/3 :: ('undefined' | ne_binary(), float(), wh_json:json_object()) -> 'ok'.
-reconcile_cost(undefined, _, _) -> ok;
-reconcile_cost(Ledger, Cost, JObj) ->
+-spec reconcil_per_minute/2 :: (api_binary(), wh_json:json_object()) -> 'ok'.
+reconcil_per_minute(undefined, _) -> ok;
+reconcil_per_minute(Account, JObj) ->
+    Cost = extract_cost(JObj),
     SessionId = j5_util:get_session_id(JObj),
-    Billed = j5_util:session_cost(SessionId, Ledger),
-    case Billed - (-1 * wapi_money:dollars_to_units(Cost)) of
-        Diff1 when Diff1 == 0 -> 
-            lager:debug("session ~s cost $~w and we charged $~w, no update for account ~s", [SessionId
-                                                                                             ,abs(wapi_money:units_to_dollars(Diff1))
-                                                                                             ,abs(wapi_money:units_to_dollars(Billed))
-                                                                                             ,Ledger
-                                                                                            ]),
+    Billed = j5_util:session_cost(SessionId, Account),
+    Units = Billed - (-1 * wapi_money:dollars_to_units(Cost)),
+    case j5_util:end_per_minute(Units, j5_util:get_limits(Account), JObj) of
+        {ok, _} -> 
+            %% two side-effects 1) the view is rebuilt 2) the current balance is logged
+            j5_util:current_balance(Account),
             ok;
-        Diff2 when Diff2 < 0 ->
-            case j5_util:write_credit_to_ledger(<<"end">>, Diff2, JObj, Ledger) of
-                {ok, _} -> lager:debug("session ~s cost $~w but we charged $~w, credited account ~s $~w"
-                                       ,[SessionId
-                                         ,Cost
-                                         ,abs(wapi_money:units_to_dollars(Billed))
-                                         ,Ledger
-                                         ,abs(wapi_money:units_to_dollars(Diff2))
-                                        ]);
-                {error, conflict} -> ok;
-                {error, _R} ->
-                    lager:debug("unable to update ledger ~s: ~p", [Ledger, _R]),
-                    reconcile_cost(Ledger, Cost, JObj)
-            end;
-        Diff3 when Diff3 > 0 ->
-            case j5_util:write_debit_to_ledger(<<"end">>, Diff3, JObj, Ledger) of
-                {ok, _} ->
-                    lager:debug("session ~s cost $~w but we charged $~w, debited account ~s $~w"
-                                ,[SessionId
-                                  ,Cost
-                                  ,abs(wapi_money:units_to_dollars(Billed))
-                                  ,Ledger
-                                  ,abs(wapi_money:units_to_dollars(Diff3))
-                                 ]);
-                {error, conflict} -> ok;
-                {error, _R} ->
-                    lager:debug("unable to update ledger ~s: ~p", [Ledger, _R]),
-                    reconcile_cost(Ledger, Cost, JObj)
-            end
+        {error, conflict} -> ok;
+        {error, _R} ->
+            lager:debug("unable to update ledger ~s: ~p", [Account, _R]),
+            reconcil_per_minute(Account, JObj)
     end.
 
 -spec extract_cost/1 :: (wh_json:json_object()) -> float().

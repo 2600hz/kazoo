@@ -14,7 +14,10 @@
 -define(APP_VERSION, <<"2.0.0">>).
 -define(APP_NAME, <<"jonny5">>).
 
--record(limits, {twoway_trunks = -1
+-record(limits, {account_id = undefined
+                 ,account_db = undefined
+                 ,enabled = true
+                 ,twoway_trunks = -1
                  ,inbound_trunks = 0
                  ,resource_consuming_calls = -1
                  ,calls = -1
@@ -22,6 +25,7 @@
                  ,allow_postpay = false
                  ,max_postpay_amount = 0.0
                  ,reserve_amount = 0.0
+                 ,allotments = wh_json:new()
                 }).
 
 -endif.
