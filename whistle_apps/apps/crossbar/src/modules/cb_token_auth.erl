@@ -13,7 +13,8 @@
 %%%-------------------------------------------------------------------
 -module(cb_token_auth).
 
--export([init/0, stop/0
+-export([init/0
+         ,stop/0
          ,authenticate/1
          ,finish_request/1
         ]).
@@ -51,7 +52,7 @@ init(Parent) ->
 
     cleanup_loop(Expiry).
 
--spec finish_request/1 :: (#cb_context{}) -> any().
+-spec finish_request/1 :: (cb_context:context()) -> any().
 finish_request(#cb_context{auth_doc=undefined}) -> ok;
 finish_request(#cb_context{auth_doc=AuthDoc}) ->
     lager:debug("updating auth doc: ~s:~s", [wh_json:get_value(<<"_id">>, AuthDoc)
@@ -75,7 +76,8 @@ clean_expired(Expiry) ->
     case couch_mgr:get_results(?TOKEN_DB, <<"token_auth/listing_by_mtime">>, [{startkey, 0}
                                                                               ,{endkey, CreatedBefore}
                                                                               ,{limit, 1000}
-                                                                             ]) of
+                                                                             ])
+    of
         {ok, []} -> lager:debug("no expired tokens found"), ok;
         {ok, L} ->
             lager:debug("removing ~b expired tokens", [length(L)]),
@@ -97,9 +99,9 @@ prepare_token_for_deletion(Token) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec authenticate/1 :: (#cb_context{}) -> 'false' | {'true', #cb_context{}}.
-authenticate(#cb_context{auth_token = <<>>}) ->
-    false;
+-spec authenticate/1 :: (cb_context:context()) -> 'false' | {'true', cb_context:context()}.
+authenticate(#cb_context{auth_token = <<>>}) -> false;
+authenticate(#cb_context{auth_token = undefined}) -> false;
 authenticate(#cb_context{auth_token=AuthToken}=Context) ->
     _ = cb_context:put_reqid(Context),
 
