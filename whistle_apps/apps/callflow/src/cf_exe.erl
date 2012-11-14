@@ -54,7 +54,7 @@
                 ,cf_module_pid = 'undefined' :: 'undefined' | pid()
                 ,status = <<"sane">> :: ne_binary()
                }).
-               
+
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -66,7 +66,7 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
-start_link(Call) ->    
+start_link(Call) ->
     CallId = whapps_call:call_id(Call),
     Bindings = [{call, [{callid, CallId}]}
                 ,{self, []}
@@ -89,7 +89,7 @@ get_call(Call) ->
 set_call(Call) ->
     Srv = whapps_call:kvs_fetch(cf_exe_pid, Call),
     gen_server:cast(Srv, {set_call, Call}).
-    
+
 -spec continue/1 :: (whapps_call:call() | pid()) -> 'ok'.
 -spec continue/2 :: (ne_binary(), whapps_call:call() | pid()) -> 'ok'.
 continue(Srv) ->
@@ -388,7 +388,7 @@ handle_cast({add_event_listener, {M, F, A}}, #state{call=Call}=State) ->
     end;
 
 handle_cast({controller_queue, ControllerQ}, #state{call=Call}=State) ->
-    {noreply, launch_cf_module(State#state{call=whapps_call:set_controller_queue(ControllerQ, Call)})};    
+    {noreply, launch_cf_module(State#state{call=whapps_call:set_controller_queue(ControllerQ, Call)})};
 
 handle_cast({send_amqp, API, PubFun}, #state{call=Call}=State) ->
     send_amqp_message(Call, API, PubFun),
@@ -511,8 +511,8 @@ code_change(_OldVsn, State, _Extra) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% this function determines if the callflow module specified at the 
-%% current node is 'available' and attempts to launch it if so. 
+%% this function determines if the callflow module specified at the
+%% current node is 'available' and attempts to launch it if so.
 %% Otherwise it will advance to the next child in the flow
 %% @doc
 %% @end
@@ -575,7 +575,7 @@ spawn_cf_module(CFModule, Data, Call) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% unlike the whapps_call_command this send command does not call the 
+%% unlike the whapps_call_command this send command does not call the
 %% functions of this module to form the headers, nor does it set
 %% the reply queue.  Used when this module is terminating to send
 %% a hangup command without relying on the (now terminated) cf_exe.

@@ -1,10 +1,10 @@
 %%%-------------------------------------------------------------------
-%%% @author Karl Anderson <karl@2600hz.org>
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2012, VoIP INC
 %%% @doc
 %%%
 %%% @end
-%%% Created : 7 April 2011 by Karl Anderson <karl@2600hz.org>
+%%% @contributors
+%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(cf_resources).
 
@@ -42,7 +42,7 @@ handle(Data, Call) ->
 %% advanced, because its cool like that
 %% @end
 %%--------------------------------------------------------------------
--spec bridge_to_resources/6 :: (endpoints(), cf_api_binary(), cf_api_binary(), cf_api_binary(), wh_json:json_object(), whapps_call:call()) -> 'ok'.
+-spec bridge_to_resources/6 :: (endpoints(), api_binary(), api_binary(), api_binary(), wh_json:json_object(), whapps_call:call()) -> 'ok'.
 bridge_to_resources([{DestNum, Rsc, _CIDType}|T], Timeout, IgnoreEarlyMedia, Ringback, Data, Call) ->
     Endpoint = [create_endpoint(DestNum, Gtw, Call)
                 || Gtw <- wh_json:get_value(<<"gateways">>, Rsc)
@@ -88,7 +88,7 @@ bridge_to_resources([], _, _, _, _, Call) ->
 %%--------------------------------------------------------------------
 -spec create_endpoint/3 :: (ne_binary(), wh_json:json_object(), whapps_call:call()) -> wh_json:json_object().
 create_endpoint(DestNum, JObj, Call) ->
-    AccountDb = whapps_call:account_db(Call), 
+    AccountDb = whapps_call:account_db(Call),
     CNum = whapps_call:caller_id_number(Call),
     Rule = <<"sip:"
               ,(wh_json:get_value(<<"prefix">>, JObj, <<>>))/binary
@@ -119,7 +119,7 @@ create_endpoint(DestNum, JObj, Call) ->
                 ,{<<"Endpoint-Progress-Timeout">>, wh_json:get_value(<<"progress_timeout">>, JObj, <<"6">>)}
                 ,{<<"Codecs">>, wh_json:get_value(<<"codecs">>, JObj)}
                 ,{<<"Custom-Channel-Vars">>, wh_json:from_list(props:filter_undefined(CCVs))}
-                ,{<<"Force-Fax">>, ForceFax}                
+                ,{<<"Force-Fax">>, ForceFax}
                ],
     wh_json:from_list(props:filter_undefined(Endpoint)).
 
@@ -155,7 +155,7 @@ find_endpoints(Data, Call) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Use the e164 normalized number unless the callflow options specify 
+%% Use the e164 normalized number unless the callflow options specify
 %% otherwise
 %% @end
 %%--------------------------------------------------------------------
@@ -165,7 +165,7 @@ get_to_did(Data, Call) ->
         false -> whapps_call:request_user(Call);
         true ->
             Request = whapps_call:request(Call),
-            [RequestUser, _] = binary:split(Request, <<"@">>),            
+            [RequestUser, _] = binary:split(Request, <<"@">>),
             RequestUser
     end.
 
@@ -246,7 +246,7 @@ build_sip_headers(Data, Call) ->
     Builders = [fun(J) ->
                         case wh_json:is_true(<<"emit_account_id">>, Data) of
                             false -> J;
-                            true -> 
+                            true ->
                                 wh_json:set_value(<<"X-Account-ID">>, whapps_call:account_id(Call), J)
                         end
                 end

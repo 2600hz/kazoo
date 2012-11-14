@@ -40,7 +40,7 @@ handle_req(JObj, Options) ->
         false ->
             ok
     end.
-    
+
 %%-----------------------------------------------------------------------------
 %% @private
 %% @doc
@@ -85,7 +85,7 @@ send_route_response(JObj, Q, Defer, Call) ->
 %%-----------------------------------------------------------------------------
 -spec pre_park_action/1 :: (whapps_call:call()) -> ne_binary().
 pre_park_action(Call) ->
-    case whapps_config:get_is_true(<<"callflow">>, <<"ring_ready_offnet">>, true) 
+    case whapps_config:get_is_true(<<"callflow">>, <<"ring_ready_offnet">>, true)
         andalso whapps_call:inception(Call) =:= <<"off-net">>
         andalso whapps_call:authorizing_type(Call) =:= undefined
     of
@@ -104,10 +104,10 @@ pre_park_action(Call) ->
 maybe_send_defered_route_response(JObj, ControllerQ, Call) ->
     AccountId = whapps_call:account_id(Call),
     case cf_util:lookup_callflow(<<"0">>, AccountId) of
-        {ok, Flow, false} ->        
+        {ok, Flow, false} ->
             lager:debug("default callflow ~s in ~s could satisfy request", [wh_json:get_value(<<"_id">>, Flow)
                                                                             ,whapps_call:account_id(Call)
-                                                                           ]),            
+                                                                           ]),
             cache_call(Flow, false, ControllerQ, Call),
             send_route_response(JObj, ControllerQ, <<"true">>, Call);
         _Else ->
@@ -128,7 +128,7 @@ cache_call(Flow, NoMatch, ControllerQ, Call) ->
                                  ,{cf_flow, wh_json:get_value(<<"flow">>, Flow)}
                                  ,{cf_capture_group, wh_json:get_ne_value(<<"capture_group">>, Flow)}
                                  ,{cf_no_match, NoMatch}
-                                ], 
+                                ],
                         whapps_call:kvs_store_proplist(Props, C)
                 end
                 ,fun(C) -> whapps_call:set_controller_queue(ControllerQ, C) end
