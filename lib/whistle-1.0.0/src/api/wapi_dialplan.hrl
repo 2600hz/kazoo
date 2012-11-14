@@ -21,15 +21,17 @@
 -define(DIAL_METHOD_SIMUL, <<"simultaneous">>).
 
 -define(BRIDGE_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Endpoints">>]).
--define(OPTIONAL_BRIDGE_REQ_HEADERS, [<<"Timeout">>, <<"Continue-On-Fail">>, <<"Ignore-Early-Media">>
-                                          ,<<"Outgoing-Caller-ID-Name">>, <<"Outgoing-Caller-ID-Number">>
-                                          ,<<"Outgoing-Callee-ID-Name">>, <<"Outgoing-Callee-ID-Number">>
-                                          ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
-                                          ,<<"Callee-ID-Name">>, <<"Callee-ID-Number">>
-                                          ,<<"Ringback">>, <<"Dial-Endpoint-Method">>, <<"Insert-At">>
-                                          ,<<"Media">>, <<"Hold-Media">>, <<"SIP-Headers">>, <<"Custom-Channel-Vars">>
-                                          ,<<"SIP-Transport">>, <<"Secure-RTP">>, <<"Force-Fax">>
-                                     ]).
+-define(OPTIONAL_BRIDGE_REQ_HEADERS
+        ,[<<"Timeout">>, <<"Continue-On-Fail">>, <<"Ignore-Early-Media">>
+              ,<<"Outgoing-Caller-ID-Name">>, <<"Outgoing-Caller-ID-Number">>
+              ,<<"Outgoing-Callee-ID-Name">>, <<"Outgoing-Callee-ID-Number">>
+              ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
+              ,<<"Callee-ID-Name">>, <<"Callee-ID-Number">>
+              ,<<"Dial-Endpoint-Method">>, <<"Insert-At">>
+              ,<<"Media">>, <<"Hold-Media">>, <<"Ringback">>
+              ,<<"Custom-Channel-Vars">>, <<"Secure-RTP">>, <<"Force-Fax">>
+              ,<<"SIP-Transport">>, <<"SIP-Headers">>
+         ]).
 -define(BRIDGE_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                             ,{<<"Event-Name">>, <<"command">>}
                             ,{<<"Application-Name">>, <<"bridge">>}
@@ -48,18 +50,21 @@
 
 %% Bridge Endpoints
 -define(BRIDGE_REQ_ENDPOINT_HEADERS, [<<"Invite-Format">>]).
--define(OPTIONAL_BRIDGE_REQ_ENDPOINT_HEADERS, [ <<"Route">>, <<"To-User">>, <<"To-Realm">>, <<"To-DID">>, <<"To-IP">>
-                                                    ,<<"Outgoing-Caller-ID-Name">>, <<"Outgoing-Caller-ID-Number">>
-                                                    ,<<"Outgoing-Callee-ID-Name">>, <<"Outgoing-Callee-ID-Number">>
-                                                    ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
-                                                    ,<<"Callee-ID-Name">>, <<"Callee-ID-Number">>
-                                                    ,<<"Ignore-Early-Media">>, <<"Bypass-Media">>, <<"Hold-Media">>
-                                                    ,<<"Endpoint-Timeout">>, <<"Endpoint-Progress-Timeout">>
-                                                    ,<<"Endpoint-Delay">>, <<"Codecs">>, <<"SIP-Headers">>, <<"Presence-ID">>
-                                                    ,<<"Custom-Channel-Vars">>, <<"Auth-User">>, <<"Auth-Password">>
-                                                    ,<<"Endpoint-Type">>, <<"Endpoint-Options">>, <<"Force-Fax">>
-                                                    ,<<"Proxy-IP">>, <<"Forward-IP">>, <<"SIP-Transport">>
-                                              ]).
+-define(OPTIONAL_BRIDGE_REQ_ENDPOINT_HEADERS
+        ,[ <<"Route">>, <<"To-User">>
+               ,<<"To-Realm">>, <<"To-DID">>
+               ,<<"To-IP">>, <<"To-Username">>
+               ,<<"Outgoing-Caller-ID-Name">>, <<"Outgoing-Caller-ID-Number">>
+               ,<<"Outgoing-Callee-ID-Name">>, <<"Outgoing-Callee-ID-Number">>
+               ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
+               ,<<"Callee-ID-Name">>, <<"Callee-ID-Number">>
+               ,<<"Ignore-Early-Media">>, <<"Bypass-Media">>, <<"Hold-Media">>
+               ,<<"Endpoint-Timeout">>, <<"Endpoint-Progress-Timeout">>
+               ,<<"Endpoint-Delay">>, <<"Codecs">>, <<"SIP-Headers">>, <<"Presence-ID">>
+               ,<<"Custom-Channel-Vars">>, <<"Auth-User">>, <<"Auth-Password">>
+               ,<<"Endpoint-Type">>, <<"Endpoint-Options">>, <<"Force-Fax">>
+               ,<<"Proxy-IP">>, <<"Forward-IP">>, <<"SIP-Transport">>
+         ]).
 -define(BRIDGE_REQ_ENDPOINT_VALUES, [?INVITE_FORMAT_TUPLE
                                      ,{<<"Endpoint-Type">>, [<<"sip">>, <<"freetdm">>]}
                                      ,{<<"Force-Fax">>, [<<"self">>, <<"peer">>]}
@@ -355,10 +360,11 @@
 -define(RECORD_CALL_REQ_TYPES, []).
 
 %% Play and Record Digits
--define(PLAY_COLLECT_DIGITS_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Minimum-Digits">>, <<"Maximum-Digits">>
-                                              ,<<"Media-Name">>, <<"Media-Tries">>, <<"Digits-Regex">>
-                                              ,<<"Timeout">>, <<"Terminators">>
-                                         ]).
+-define(PLAY_COLLECT_DIGITS_REQ_HEADERS
+        ,[<<"Application-Name">>, <<"Call-ID">>, <<"Minimum-Digits">>
+              ,<<"Maximum-Digits">>, <<"Media-Name">>, <<"Media-Tries">>
+              ,<<"Digits-Regex">>, <<"Timeout">>, <<"Terminators">>
+         ]).
 -define(OPTIONAL_PLAY_COLLECT_DIGITS_REQ_HEADERS, [<<"Insert-At">>, <<"Failed-Media-Name">>]).
 -define(PLAY_COLLECT_DIGITS_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                                          ,{<<"Event-Name">>, <<"command">>}
@@ -368,19 +374,27 @@
 -define(PLAY_COLLECT_DIGITS_REQ_TYPES, [{<<"Terminators">>, ?IS_TERMINATOR}]).
 
 %% Say
--define(SAY_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Language">>, <<"Type">>, <<"Method">>, <<"Say-Text">>]).
+-define(SAY_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Language">>
+                              ,<<"Type">>, <<"Method">>, <<"Say-Text">>
+                         ]).
 -define(OPTIONAL_SAY_REQ_HEADERS, [<<"Insert-At">>]).
--define(SAY_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
-                         ,{<<"Event-Name">>, <<"command">>}
-                         ,{<<"Application-Name">>, <<"say">>}
-                         ,{<<"Type">>, [<<"number">>, <<"items">>, <<"persons">>, <<"messages">>, <<"currency">>
-                                            ,<<"time_measurement">>, <<"current_date">>, <<"current_time">>
-                                            ,<<"current_date_time">>, <<"telephone_number">>, <<"telephone_extension">>
-                                            ,<<"url">>, <<"ip_address">>, <<"e-mail_address">>, <<"postal_address">>
-                                            ,<<"account_number">>, <<"name_spelled">>, <<"name_phonetic">>, <<"short_date_time">>]}
-                         ,{<<"Method">>, [<<"none">>, <<"pronounced">>, <<"iterated">>, <<"counted">>]}
-                         ,?INSERT_AT_TUPLE
-                        ]).
+-define(SAY_REQ_VALUES
+        ,[{<<"Event-Category">>, <<"call">>}
+          ,{<<"Event-Name">>, <<"command">>}
+          ,{<<"Application-Name">>, <<"say">>}
+          ,{<<"Type">>, [<<"number">>, <<"items">>, <<"persons">>, <<"messages">>
+                             ,<<"currency">>, <<"time_measurement">>
+                             ,<<"current_date">>, <<"current_time">>
+                             ,<<"current_date_time">>, <<"telephone_number">>
+                             ,<<"telephone_extension">>, <<"url">>
+                             ,<<"ip_address">>, <<"e-mail_address">>
+                             ,<<"postal_address">>, <<"account_number">>
+                             ,<<"name_spelled">>, <<"name_phonetic">>
+                             ,<<"short_date_time">>
+                        ]}
+          ,{<<"Method">>, [<<"none">>, <<"pronounced">>, <<"iterated">>, <<"counted">>]}
+          ,?INSERT_AT_TUPLE
+         ]).
 -define(SAY_REQ_TYPES, []).
 
 %% TTS

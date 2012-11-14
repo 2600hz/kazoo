@@ -198,8 +198,9 @@ create_sip_endpoint(Endpoint, Properties, Call) ->
                end,
 
     Prop =
-        [{<<"Invite-Format">>, wh_json:get_value(<<"invite_format">>, SIPJObj, <<"username">>)}
+        [{<<"Invite-Format">>, invite_format(SIPJObj)}
          ,{<<"To-User">>, to_user(SIPJObj)}
+         ,{<<"To-Username">>, to_username(SIPJObj)}
          ,{<<"To-Realm">>, cf_util:get_sip_realm(Endpoint, whapps_call:account_id(Call))}
          ,{<<"To-DID">>, to_did(Endpoint, Call)}
          ,{<<"To-IP">>, wh_json:get_value(<<"ip">>, SIPJObj)}
@@ -225,6 +226,10 @@ create_sip_endpoint(Endpoint, Properties, Call) ->
         ],
     wh_json:from_list(props:filter_undefined(Prop)).
 
+-spec invite_format/1 :: (wh_json:json_object()) -> ne_binary().
+invite_format(SIPJObj) ->
+    wh_json:get_value(<<"invite_format">>, SIPJObj, <<"username">>).
+
 -spec to_did/2 :: (wh_json:json_object(), whapps_call:call()) -> api_binary().
 to_did(Endpoint, Call) ->
     wh_json:get_value([<<"sip">>, <<"number">>]
@@ -238,6 +243,10 @@ to_user(SIPJObj) ->
         undefined -> wh_json:get_value(<<"username">>, SIPJObj);
         To -> To
     end.
+
+-spec to_username/1 :: (wh_json:json_object()) -> api_binary().
+to_username(SIPJObj) ->
+    wh_json:get_value(<<"username">>, SIPJObj).
 
 %%--------------------------------------------------------------------
 %% @private
