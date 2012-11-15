@@ -376,13 +376,8 @@ handle_cast({channel_hungup, CallId}, #state{call=Call
                     lager:debug("thief is done, going down"),
                     {stop, normal, State}
             end;
-        undefined ->
-            lager:debug("undefined call id for channel_hungup, ignoring"),
-            {noreply, State};
-        _ ->
-            lager:debug("other channel ~s hungup", [CallId]),
-            acdc_util:unbind_from_call_events(CallId),
-            maybe_stop_recording(Call, ShouldRecord),
+        _CallId ->
+            lager:debug("~s call id for channel_hungup, ignoring", [_CallId]),
             {noreply, State}
     end;
 
