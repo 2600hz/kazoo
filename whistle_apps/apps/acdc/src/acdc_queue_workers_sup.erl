@@ -14,7 +14,7 @@
 
 %% API
 -export([start_link/0
-         ,new_workers/4
+         ,new_worker/3, new_workers/4
          ,workers/1
         ]).
 
@@ -39,6 +39,9 @@
 -spec start_link/0 :: () -> startlink_ret().
 start_link() ->
     supervisor:start_link(?MODULE, []).
+
+new_worker(WorkersSup, AcctId, QueueId) ->
+    new_workers(WorkersSup, AcctId, QueueId, 1).
 
 -spec new_workers/4 :: (pid(), ne_binary(), ne_binary(), integer()) -> 'ok'.
 new_workers(_, _,_,N) when N =< 0 -> ok;
