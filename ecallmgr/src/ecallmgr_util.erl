@@ -47,6 +47,7 @@
                           ,transport :: api_binary()
                           ,span = <<"1">> :: ne_binary()
                           ,channel_selection = <<"a">> :: ne_binary()
+                          ,interface = <<"RR">> :: ne_binary() % for Skype
                           ,channel_vars = ["[",[],"]"] :: iolist()
                          }).
 
@@ -297,6 +298,7 @@ endpoint_jobj_to_record(Endpoint) ->
                      ,transport = wh_json:get_ne_value(<<"SIP-Transport">>, Endpoint)
                      ,span = get_endpoint_span(Endpoint)
                      ,channel_selection = get_endpoint_channel_selection(Endpoint)
+                     ,interface = get_endpoint_interface(Endpoint)
                      ,channel_vars = ecallmgr_fs_xml:get_leg_vars(Endpoint)
                     }.
 
@@ -309,6 +311,13 @@ get_endpoint_channel_selection(Endpoint) ->
     case wh_json:get_binary_value([<<"Endpoint-Options">>, <<"Span">>], Endpoint) of
         <<"descending">> -> <<"A">>;
         _Else -> <<"a">>
+    end.
+
+-spec get_endpoint_interface/1 :: (wh_json:json_object()) -> ne_binary().
+get_endpoint_interface(Endpoint) ->
+    case wh_json:is_true([<<"Endpoint-Options">>, <<"Skype-RR">>], Endpoint, false) of
+        false -> wh_json:get_value([<<"Endpoint-Options">>, <<"Skype-Interface">>], Endpoint);
+        true -> <<"RR">>
     end.
 
 -type bridge_channel() :: ne_binary().
@@ -355,12 +364,15 @@ maybe_collect_worker_channel(Pid, Channels) ->
 
 build_channel(#bridge_endpoint{endpoint_type = <<"freetdm">>}=Endpoint) ->
     build_freetdm_channel(Endpoint);
+build_channel(#bridge_endpoint{endpoint_type = <<"skype">>}=Endpoint) ->
+    build_skype_channel(Endpoint);
 build_channel(#bridge_endpoint{endpoint_type = <<"sip">>}=Endpoint) ->
     build_sip_channel(Endpoint);
 build_channel(EndpointJObj) ->
     build_channel(endpoint_jobj_to_record(EndpointJObj)).
 
--spec build_freetdm_channel/1 :: (#bridge_endpoint{}) -> {'ok', bridge_channel()} | {'error', _}.
+-spec build_freetdm_channel/1 :: (#bridge_endpoint{}) -> {'ok', bridge_channel()} |
+                                                         {'error', 'number_not_provided'}.
 build_freetdm_channel(#bridge_endpoint{number=undefined}) ->
     {error, number_not_provided};
 build_freetdm_channel(#bridge_endpoint{invite_format = <<"e164">>, number=Number
@@ -374,6 +386,13 @@ build_freetdm_channel(#bridge_endpoint{invite_format = <<"1npan">>, number=Numbe
     {ok, <<"freetdm/", Span/binary, "/", ChannelSelection/binary, "/", (wnm_util:to_1npan(Number))/binary>>};
 build_freetdm_channel(#bridge_endpoint{number=Number, span=Span, channel_selection=ChannelSelection}) ->
     {ok, <<"freetdm/", Span/binary, "/", ChannelSelection/binary, "/", Number/binary>>}.
+
+-spec build_skype_channel/1 :: (#bridge_endpoint{}) -> {'ok', bridge_channel()} |
+                                                       {'error', 'number_not_provided'}.
+build_skype_channel(#bridge_endpoint{number=undefined}) ->
+    {error, number_not_provided};
+build_skype_channel(#bridge_endpoint{number=Number, interface=IFace}) ->
+    {ok, <<"skypopen/", IFace/binary, "/", Number/binary>>}.
 
 -spec build_sip_channel/1 :: (#bridge_endpoint{}) ->
                                      {'ok', bridge_channel()} |
