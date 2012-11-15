@@ -66,7 +66,7 @@
                ,<<"Proxy-IP">>, <<"Forward-IP">>, <<"SIP-Transport">>
          ]).
 -define(BRIDGE_REQ_ENDPOINT_VALUES, [?INVITE_FORMAT_TUPLE
-                                     ,{<<"Endpoint-Type">>, [<<"sip">>, <<"freetdm">>]}
+                                     ,{<<"Endpoint-Type">>, [<<"sip">>, <<"freetdm">>, <<"skype">>]}
                                      ,{<<"Force-Fax">>, [<<"self">>, <<"peer">>]}
                                      ,{<<"SIP-Transport">>, [<<"udp">>, <<"tcp">>, <<"tls">>, <<"sctp">>]}
                                     ]).
