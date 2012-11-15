@@ -273,6 +273,17 @@
 
          }
       },
+      "skype":{
+        "type":"object",
+        "properties":{
+          "username":{
+            "name":"Skype Username",
+            "description":"Skype Username to connect with via Skype"
+            ,"type":"string"
+            ,"required":true
+          }
+        }
+      },
       "sip":{
          "type":"object",
          "properties":{
