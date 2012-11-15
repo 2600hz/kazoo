@@ -78,6 +78,30 @@ build(Endpoint, Properties, Call) ->
 %% bridge API.
 %% @end
 %%--------------------------------------------------------------------
+
+find_endpoint_builder(Endpoint) ->
+    case wh_json:get_value(<<"endpoint_type">>, Endpoint) of
+        undefined -> guess_endpoint_type(Endpoint);
+        Type -> endpoint_builder(Type)
+    end.
+
+guess_endpoint_type(Endpoint) ->
+    guess_endpoint_type(Endpoint, [<<"sip">>, <<"skype">>]).
+guess_endpoint_type(Endpoint, [Type|Types]) ->
+    case wh_json:get_value(Type, Endpoint) of
+        undefined -> guess_endpoint_type(Endpoint, Types);
+        _ -> endpoint_builder(Type)
+    end;
+guess_endpoint_type(_Endpoint, []) ->
+    endpoint_builder(<<"sip">>).
+
+endpoint_builder(<<"sip">>) ->
+    lager:debug("building a SIP endpoint"),
+    fun create_sip_endpoint/3;
+endpoint_builder(<<"skype">>) ->
+    lager:debug("building a Skype endpoint"),
+    fun create_skype_endpoint/3.
+
 -spec create_endpoints/3 :: (wh_json:json_object(), wh_json:json_object(), whapps_call:call()) ->
                                     {'ok', wh_json:json_objects()} |
                                     {'error', 'no_endpoints'}.
@@ -86,11 +110,14 @@ create_endpoints(Endpoint, Properties, Call) ->
     Substitue = wh_json:is_false(<<"substitute">>, Fwd),
     IgnoreFwd = wh_json:is_true(<<"direct_calls_only">>, Fwd)
         andalso lists:member(wh_json:get_value(<<"source">>, Properties), ?NON_DIRECT_MODULES),
+
+    EndpointBuilder = find_endpoint_builder(Endpoint),
+
     Endpoints = case {IgnoreFwd, Substitue, Fwd} of
                     %% if the call forward object is undefined then there is no fwd'n
                     {_, _, undefined} ->
-                        lager:debug("callfwd is undefined, try creating sip endpoint"),
-                        [catch(create_sip_endpoint(Endpoint, Properties, Call))];
+                        lager:debug("callfwd is undefined, try creating endpoint"),
+                        [catch(EndpointBuilder(Endpoint, Properties, Call))];
                     %% if ignore ring groups is true and susbtitues is true (hence false via is_false)
                     %% then there are no endpoints to ring
                     {true, false, _} ->
@@ -100,7 +127,7 @@ create_endpoints(Endpoint, Properties, Call) ->
                     %% then try to ring just the device
                     {true, true, _} ->
                         lager:debug("trying to ring just the device"),
-                        [catch(create_sip_endpoint(Endpoint, Properties, Call))];
+                        [catch(EndpointBuilder(Endpoint, Properties, Call))];
 
                     %% if we are not ignoring ring groups and and substitute is not set to false
                     %% (hence false via is_false) then only ring the fwd'd number
@@ -112,7 +139,7 @@ create_endpoints(Endpoint, Properties, Call) ->
                     {false, true, _} ->
                         lager:debug("trying to ring the fwd number only"),
                         [catch(create_call_fwd_endpoint(Endpoint, Properties, Fwd, Call))
-                         ,catch(create_sip_endpoint(Endpoint, Properties, Call))]
+                         ,catch(EndpointBuilder(Endpoint, Properties, Call))]
                 end,
     case lists:filter(fun wh_json:is_json_object/1, Endpoints) of
         [] -> {error, no_endpoints};
@@ -225,6 +252,29 @@ create_sip_endpoint(Endpoint, Properties, Call) ->
          ,{<<"Force-Fax">>, ForceFax}
         ],
     wh_json:from_list(props:filter_undefined(Prop)).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Creates the whistle API endpoint for a bridge call command. This
+%% endpoint is comprised of the endpoint definition (commonally a
+%% device) and the properties of this endpoint in the callflow.
+%% @end
+%%--------------------------------------------------------------------
+-spec create_skype_endpoint/3 :: (wh_json:json_object(), wh_json:json_object(), whapps_call:call()) ->
+                                         wh_json:json_object().
+create_skype_endpoint(Endpoint, Properties, _Call) ->
+    SkypeJObj = wh_json:get_value(<<"skype">>, Endpoint),
+
+    Prop =
+        [{<<"Invite-Format">>, <<"username">>}
+         ,{<<"To-User">>, to_user(SkypeJObj, Properties)}
+         ,{<<"To-Username">>, to_username(SkypeJObj)}
+         ,{<<"Endpoint-Type">>, <<"skype">>}
+         ,{<<"Endpoint-Options">>, wh_json:from_list([{<<"Skype-RR">>, <<"true">>}])}
+        ],
+    wh_json:from_list(props:filter_undefined(Prop)).
+
 
 -spec invite_format/1 :: (wh_json:json_object()) -> ne_binary().
 invite_format(SIPJObj) ->
