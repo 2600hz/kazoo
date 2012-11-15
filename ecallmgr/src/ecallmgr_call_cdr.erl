@@ -38,6 +38,7 @@
                             ,{<<"variable_progresssec">>, <<"Ringing-Seconds">>}
                             ,{<<"variable_digits_dialed">>, <<"Digits-Dialed">>}
                             ,{<<"ecallmgr">>, <<"Custom-Channel-Vars">>}
+                            ,{fun(P) -> ecallmgr_util:get_sip_request(P) end, <<"Request">>}
                            ]).
 -define(FS_TO_WHISTLE_OUTBOUND_MAP, [{<<"variable_sip_cid_type">>, <<"Caller-ID-Type">>}]).
 
@@ -60,22 +61,21 @@ create_cdr(EvtProp) ->
 
 -spec add_values/3 :: (fs_to_whistle_map(), proplist(), proplist()) -> proplist().
 add_values(Mappings, BaseProp, ChannelProp) ->
-    lists:foldl(fun({<<"ecallmgr">>, <<"Custom-Channel-Vars">>=WK}, WApi) ->
+    lists:foldl(fun({Fun, WK}, WApi) when is_function(Fun) ->
+                        [{WK, Fun(ChannelProp)} | WApi];
+                   ({<<"ecallmgr">>, <<"Custom-Channel-Vars">>=WK}, WApi) ->
                         [{WK, wh_json:from_list(ecallmgr_util:custom_channel_vars(ChannelProp))} | WApi];
-
                    ({<<"Event-Date-Timestamp">>=FSKey, WK}, WApi) ->
                         case props:get_value(FSKey, ChannelProp) of
                             undefined -> WApi;
                             V -> VUnix =  wh_util:unix_seconds_to_gregorian_seconds(wh_util:microseconds_to_seconds(V)),
                                  [{WK, wh_util:to_binary(VUnix)} | WApi]
                         end;
-
                    ({FSKeys, WK}, WApi) when is_list(FSKeys) ->
                         case get_first_value(FSKeys, ChannelProp) of
                             undefined -> WApi;
                             V -> [{WK, V} | WApi]
                         end;
-
                    ({FSKey, WK}, WApi) ->
                         case props:get_value(FSKey, ChannelProp) of
                             undefined -> WApi;

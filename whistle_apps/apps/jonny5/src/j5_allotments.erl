@@ -8,6 +8,8 @@
 -module(j5_allotments).
 
 -export([is_available/2]).
+-export([session_heartbeat/2]).
+-export([reconcile_cdr/2]).
 
 -include("jonny5.hrl").
 
@@ -15,9 +17,38 @@
 is_available(Limits, JObj) ->
     case try_find_allotment(Limits, JObj) of
         undefined -> false;
-        Allotment -> 
+        Allotment ->
             maybe_consume_allotment(Allotment, Limits, JObj)
     end.
+
+-spec session_heartbeat/2 :: (ne_binary(), wh_json:json_object()) -> 'ok'.
+session_heartbeat(Account, JObj) ->
+    Limits = j5_util:get_limits(Account),
+    Timestamp = wh_json:get_integer_value(<<"Timestamp">>, JObj),
+    Answered = wh_json:get_integer_value(<<"Answered-Time">>, JObj),
+    case (Timestamp - Answered) > 55 of
+        false -> false;
+        true ->
+            Allotment = try_find_allotment(Limits, JObj),
+            Props = [{<<"name">>, wh_json:get_value(<<"name">>, Allotment)}],
+            tick_allotment_consumption(Props, 60, Limits, JObj)
+    end.
+
+-spec reconcile_cdr/2 :: (ne_binary(), wh_json:json_object()) -> 'ok'.
+reconcile_cdr(Account, JObj) ->
+    Limits = j5_util:get_limits(Account),
+    case wh_json:get_ne_value(<<"Billing-Seconds">>, JObj) =:= undefined
+        andalso try_find_allotment(Limits, JObj)
+    of
+        undefined -> ok;
+        false -> ok;
+        Allotment ->
+            Name =  wh_json:get_value(<<"name">>, Allotment),
+            Cycle = wh_json:get_ne_value(<<"cycle">>, Allotment, <<"monthly">>),
+            return_allotment_consumption([{<<"name">>, Name}], 60, Limits, JObj),
+            allotment_consumed_sofar(Name, Cycle, Limits)
+    end,
+    ok.
 
 -spec try_find_allotment/2 :: (#limits{}, wh_json:json_object()) -> wh_json:json_object() | 'undefined'.
 -spec try_find_allotment/3 :: ([] | [ne_binary(),...], wh_json:json_object(), ne_binary()) -> wh_json:json_object() | 'undefined'.
@@ -37,32 +68,34 @@ try_find_allotment([Key|Keys], Allotments, Number) ->
             wh_json:set_value(<<"name">>, Name, wh_json:get_value(Key, Allotments))
     end.
 
-maybe_consume_allotment(Allotment, Limits, JObj) ->
+maybe_consume_allotment(Allotment, #limits{account_id=AccountId}=Limits, JObj) ->
     Amount = wh_json:get_integer_value(<<"amount">>, Allotment, 0),
-    case (allotment_consumed_sofar(Allotment, Limits) + 60) < Amount of
-        false -> false;
-        true -> consume_allotment(Allotment, Limits, JObj)
+    Name = wh_json:get_value(<<"name">>, Allotment),
+    Cycle = wh_json:get_ne_value(<<"cycle">>, Allotment, <<"monthly">>),
+    case allotment_consumed_sofar(Name, Cycle, Limits) of
+        Consumed when Consumed > (Amount - 60) -> 
+            lager:debug("~s allotment ~s for ~s at ~w/~w", [Cycle, Name, AccountId, Consumed, Amount]),
+            false;
+        Consumed ->
+            lager:debug("~s allotment ~s for ~s at ~w/~w", [Cycle, Name, AccountId, Consumed, Amount]),
+            start_allotment_consumption([{<<"name">>, Name}], 60, Limits, JObj),
+            true
     end.
 
-allotment_consumed_sofar(Allotment, #limits{account_db=AccountDb}) ->
-    Cycle = wh_json:get_ne_value(<<"cycle">>, Allotment, <<"monthly">>),
-    Name = wh_json:get_value(<<"name">>, Allotment),
+allotment_consumed_sofar(Name, Cycle, #limits{account_db=AccountDb}) ->
     ViewOptions = [{startkey, [Name, cycle_start(Cycle)]}
-                   ,{endkey, [Name, wh_json:new()]}
                    ,group
+                   ,{group_level, 1}
                    ,reduce
                   ],
-    case couch_mgr:get_results(AccountDb, <<"transactions/allotment_by_timestamp">>, ViewOptions) of
+    case couch_mgr:get_results(AccountDb, <<"transactions/allotment_consumed">>, ViewOptions) of
         {error, _R} ->
             lager:warning("unable to get consumed allotment for ~s in ~s: ~p", [Name, AccountDb, _R]),
             0;
-        {ok, JObj} ->
-            wh_json:get_integer_value(<<"value">>, JObj, 0)
+        {ok, []} -> 0;
+        {ok, [JObj|_]} ->
+            abs(wh_json:get_integer_value(<<"value">>, JObj, 0))
     end.
-
-consume_allotment(Allotment, #limits{account_db=AccountDb}, JObj) ->
-    j5_util:write_allotment_to_ledger(<<"start">>, 60, JObj, AccountDb), 
-    true.
 
 -spec cycle_start/1 :: (ne_binary()) -> integer().
 cycle_start(<<"yearly">>) ->
@@ -79,7 +112,35 @@ cycle_start(<<"daily">>) ->
     calendar:datetime_to_gregorian_seconds({{Year, Month, Day}, {0, 0, 0}});
 cycle_start(<<"hourly">>) -> 
     {{Year, Month, Day}, {Hour, _, _}} = calendar:universal_time(),
-    calendar:datetime_to_gregorian_seconds({{Year, Month, Day}, {Hour, 0, 0}}).
+    calendar:datetime_to_gregorian_seconds({{Year, Month, Day}, {Hour, 0, 0}});
+cycle_start(<<"minutely">>) -> 
+    {{Year, Month, Day}, {Hour, Min, _}} = calendar:universal_time(),
+    calendar:datetime_to_gregorian_seconds({{Year, Month, Day}, {Hour, Min, 0}}).
+
+-spec start_allotment_consumption/4 :: (proplist(), integer(), #limits{}, wh_json:json_object()) -> wh_couch_return().
+start_allotment_consumption(Props, Units, Limits, JObj) ->
+    CompleteProps = [{<<"reason">>, <<"allotment_channel">>}
+                     ,{<<"pvt_type">>, <<"debit_allotment">>}
+                     | Props
+                    ],
+    j5_util:write_to_ledger(<<"start">>, CompleteProps, Units, Limits, JObj).
+
+-spec tick_allotment_consumption/4 :: (proplist(), integer(), #limits{}, wh_json:json_object()) -> wh_couch_return().
+tick_allotment_consumption(Props, Units, Limits, JObj) ->
+    Timestamp = wh_json:get_integer_value(<<"Timestamp">>, JObj, wh_util:current_tstamp()),
+    CompleteProps = [{<<"reason">>, <<"allotment_channel">>}
+                     ,{<<"pvt_type">>, <<"debit_allotment">>}
+                     | Props
+                    ], 
+    j5_util:write_to_ledger(wh_util:to_binary(Timestamp), CompleteProps, Units, Limits, JObj).
+
+-spec return_allotment_consumption/4 :: (proplist(), integer(), #limits{}, wh_json:json_object()) -> wh_couch_return().
+return_allotment_consumption(Props, Units, Limits, JObj) ->
+    CompleteProps = [{<<"reason">>, <<"allotment_channel">>}
+                     ,{<<"pvt_type">>, <<"credit_allotment">>}
+                     | Props
+                    ],
+    j5_util:write_to_ledger(<<"return">>, CompleteProps, Units, Limits, JObj).
 
 -include_lib("eunit/include/eunit.hrl").
 -ifdef(TEST).

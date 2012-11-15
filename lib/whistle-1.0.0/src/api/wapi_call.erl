@@ -115,7 +115,7 @@
                                         ,<<"Remote-SDP">>, <<"Local-SDP">>, <<"Caller-ID-Name">>
                                         ,<<"Caller-ID-Number">>, <<"Callee-ID-Name">>, <<"Callee-ID-Number">>
                                         ,<<"User-Agent">>, <<"Caller-ID-Type">>, <<"Other-Leg-Call-ID">>
-                                        ,<<"Timestamp">>
+                                        ,<<"Timestamp">>, <<"Request">>
                                         ,<<"Call-Direction">>, <<"To-Uri">>, <<"From-Uri">>
                                         ,<<"Duration-Seconds">>, <<"Billing-Seconds">>, <<"Ringing-Seconds">>
                                         ,<<"Digits-Dialed">>

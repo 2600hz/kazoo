@@ -24,6 +24,7 @@ handle_req(JObj, Props) ->
 
     Routines = [fun maybe_ignore_limits/3
                 ,fun maybe_hard_limit/3
+                ,fun maybe_allotments/3
                 ,fun maybe_flat_rate/3
                 ,fun maybe_per_minute/3
                ],
@@ -50,8 +51,16 @@ maybe_hard_limit({ok, limits_enabled}, Limits, JObj) ->
     end;
 maybe_hard_limit(Else, _, _) -> Else.
 
+-spec maybe_allotments/3 :: (authz_resp(), #limits{}, wh_json:json_object()) -> authz_resp().
+maybe_allotments({ok, under_hard_limits}, Limits, JObj) -> 
+    case j5_allotments:is_available(Limits, JObj) of
+        true -> {ok, allotment};
+        false -> {error, no_allotment}
+    end;
+maybe_allotments(Else, _, _) -> Else.
+
 -spec maybe_flat_rate/3 :: (authz_resp(), #limits{}, wh_json:json_object()) -> authz_resp().
-maybe_flat_rate({ok, under_hard_limits}, Limits, JObj) -> 
+maybe_flat_rate({error, no_allotment}, Limits, JObj) -> 
     case j5_flat_rate:is_available(Limits, JObj) of
         true -> {ok, flat_rate};
         false -> {error, flat_rate_limit}

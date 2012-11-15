@@ -8,13 +8,9 @@
 -module(j5_util).
 
 -export([get_limits/1]).
--export([start_per_minute/3]).
--export([tick_per_minute/3]).
--export([end_per_minute/3]).
 -export([per_minute_discrepancy/3]).
--export([start_allotment_consumption/4]).
 -export([current_balance/1]).
--export([session_cost/2]).
+-export([write_to_ledger/5]).
 -export([get_session_id/1]).
 -export([send_system_alert/3]).
 
@@ -91,35 +87,6 @@ create_init_limits(AccountDb) ->
             wh_json:new()
     end.
 
--spec start_per_minute/3 :: (float(), #limits{}, wh_json:json_object()) -> wh_couch_return().
-start_per_minute(Units, Limits, JObj) ->
-    Props = [{<<"reason">>, <<"per_minute_channel">>}
-             ,{<<"pvt_type">>, <<"debit">>}
-            ], 
-    write_to_ledger(<<"start">>, Props, Units, Limits, JObj).
-
--spec tick_per_minute/3 :: (float(), #limits{}, wh_json:json_object()) -> wh_couch_return().
-tick_per_minute(Units, Limits, JObj) ->
-    Timestamp = wh_json:get_integer_value(<<"Timestamp">>, JObj, wh_util:current_tstamp()),
-    Props = [{<<"reason">>, <<"per_minute_channel">>}
-             ,{<<"pvt_type">>, <<"debit">>}
-            ], 
-    write_to_ledger(wh_util:to_binary(Timestamp), Props, Units, Limits, JObj).
-
--spec end_per_minute/3 :: (float(), #limits{}, wh_json:json_object()) -> wh_couch_return().
-end_per_minute(Units, Limits, JObj) when Units > 0 ->
-    Props = [{<<"reason">>, <<"per_minute_channel">>}
-             ,{<<"pvt_type">>, <<"debit">>}
-            ], 
-    write_to_ledger(<<"end">>, Props, Units, Limits, JObj);
-end_per_minute(Units, Limits, JObj) when Units < 0 ->
-    Props = [{<<"reason">>, <<"per_minute_channel">>}
-             ,{<<"pvt_type">>, <<"credit">>}
-            ], 
-    write_to_ledger(<<"end">>, Props, Units, Limits, JObj);
-end_per_minute(_, _, _) ->
-    {ok, wh_json:new()}.
-
 -spec per_minute_discrepancy/3 :: (float(), #limits{}, wh_json:json_object()) -> wh_couch_return().
 per_minute_discrepancy(Units, #limits{account_id=AccountId}=Limits, JObj) when Units > 0 ->
     Props = [{<<"reason">>, <<"jonny5 discrepancy correction">>}
@@ -136,14 +103,6 @@ per_minute_discrepancy(Units, #limits{account_id=AccountId}=Limits, JObj) when U
 per_minute_discrepancy(_, _, _) ->
     {ok, wh_json:new()}.
 
--spec start_allotment_consumption/4 :: (proplist(), integer(), #limits{}, wh_json:json_object()) -> wh_couch_return().
-start_allotment_consumption(Props, Units, Limits, JObj) ->
-    write_to_ledger(<<"start">>, [{<<"pvt_type">>, <<"allotment">>} | Props], Units, Limits, JObj).
-
--spec end_allotment_consumption/4 :: (proplist(), integer(), #limits{}, wh_json:json_object()) -> wh_couch_return().
-end_allotment_consumption(Props, Units, Limits, JObj) ->
-    write_to_ledger(<<"end">>, [{<<"pvt_type">>, <<"allotment">>} | Props], Units, Limits, JObj).
-
 -spec write_to_ledger/5 :: (ne_binary(), float() | integer(), wh_json:json_object(), ne_binary(), debit | credit) -> wh_couch_return().
 -ifdef(TEST).
 write_to_ledger(_Suffix, _Props, _Units, _Limits, _JObj) -> {ok, wh_json:new()}.
@@ -154,13 +113,16 @@ write_to_ledger(Suffix, Props, Units, #limits{account_id=LedgerId, account_db=Le
     Id = <<SessionId/binary, "-", (wh_util:to_binary(Suffix))/binary>>,
     case props:get_value(<<"pvt_type">>, Props) of
         <<"credit">> ->
-            lager:debug("credit ~s $~w session ~s: ~s"
+            lager:debug("credit ~s $~w for session ~s: ~s"
                         ,[LedgerId, abs(wapi_money:units_to_dollars(Units)), SessionId, props:get_value(<<"reason">>, Props, <<"no_reason">>)]);
         <<"debit">> ->
-            lager:debug("debit ~s $~w session ~s: ~s"
+            lager:debug("debit ~s $~w for session ~s: ~s"
                         ,[LedgerId, abs(wapi_money:units_to_dollars(Units)), SessionId, props:get_value(<<"reason">>, Props, <<"no_reason">>)]);
-        <<"allotment">> ->
-            lager:debug("modify allotment ~s ~w session ~s: ~s"
+        <<"credit_allotment">> ->
+            lager:debug("credit allotment ~s ~wsec for session ~s: ~s"
+                        ,[LedgerId, Units, SessionId, props:get_value(<<"reason">>, Props, <<"no_reason">>)]);
+        <<"debit_allotment">> ->
+            lager:debug("debit allotment ~s ~wsec for session ~s: ~s"
                         ,[LedgerId, Units, SessionId, props:get_value(<<"reason">>, Props, <<"no_reason">>)])
     end,
     Entry = wh_json:from_list([{<<"_id">>, Id}
@@ -218,21 +180,6 @@ current_balance(Ledger) ->
             0
     end.
 -endif.
-
--spec session_cost/2 :: (ne_binary(), ne_binary()) -> integer().
-session_cost(SessionId, Ledger) ->
-    LedgerDb = wh_util:format_account_id(Ledger, encoded),    
-    ViewOptions = [reduce
-                   ,group
-                   ,{<<"key">>, SessionId}
-                  ],
-    case couch_mgr:get_results(LedgerDb, <<"transactions/session_cost">>, ViewOptions) of
-        {ok, []} -> 0;
-        {ok, [ViewRes|_]} -> wh_json:get_integer_value(<<"value">>, ViewRes, 0);
-        {error, _R} -> 
-            lager:debug("unable to get session cost for ~s: ~p", [SessionId, _R]),
-            0
-    end.
 
 -spec get_session_id/1 :: (wh_json:json_object()) -> ne_binary().
 get_session_id(JObj) ->

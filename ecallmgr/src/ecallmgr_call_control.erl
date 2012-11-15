@@ -49,15 +49,18 @@
 
 %% API
 -export([start_link/3, stop/1]).
--export([handle_call_command/2, handle_conference_command/2, handle_call_events/2]).
--export([queue_name/1, callid/1, node/1, hostname/1]).
+-export([handle_call_command/2]).
+-export([handle_conference_command/2]).
+-export([handle_call_events/2]).
+-export([queue_name/1]).
+-export([callid/1]).
+-export([node/1]).
+-export([hostname/1]).
 -export([event_execute_complete/3]).
--export([add_leg/1, rm_leg/1]).
 -export([other_legs/1
          ,update_node/2
          ,control_procs/1
         ]).
--export([transferer/2, transferee/2]).
 
 %% gen_listener callbacks
 -export([init/1
@@ -163,19 +166,6 @@ other_legs(Srv) ->
 event_execute_complete(Srv, CallId, App) ->
     gen_listener:cast(Srv, {event_execute_complete, CallId, App, wh_json:new()}).
 
--spec add_leg/1 :: (wh_proplist()) -> 'ok'.
-add_leg(Props) ->
-    %% if there is a Other-Leg-Unique-ID then that MAY refer to a leg managed
-    %% by call_control, if so add the leg to it
-    case props:get_value(<<"Other-Leg-Unique-ID">>, Props) of
-        undefined -> ok;
-        CallId ->
-            _ = [gen_listener:cast(Srv, {add_leg, wh_json:from_list(Props)}) 
-                 || Srv <- gproc:lookup_pids({p, l, {call_control, CallId}})
-                ],
-            ok
-    end.
-
 -spec update_node/2 :: (atom(), ne_binary() | [pid(),...] | []) -> 'ok'.
 update_node(Node, CallId) when is_binary(CallId) ->
     update_node(Node, gproc:lookup_pids({p, l, {call_control, CallId}}));
@@ -186,27 +176,6 @@ update_node(Node, Pids) when is_list(Pids) ->
 -spec control_procs/1 :: (ne_binary()) -> [pid(),...] | [].
 control_procs(CallId) ->
     gproc:lookup_pids({p, l, {call_control, CallId}}).
-
--spec rm_leg/1 :: (wh_proplist()) -> 'ok'.
-rm_leg(Props) ->
-    %% if there is a Other-Leg-Unique-ID then that MAY refer to a leg managed
-    %% by call_control, if so remove the leg from it
-    case props:get_value(<<"Other-Leg-Unique-ID">>, Props) of
-        undefined -> ok;
-        CallId ->
-            _ = [gen_listener:cast(Srv, {rm_leg, wh_json:from_list(Props)}) 
-                 || Srv <- gproc:lookup_pids({p, l, {call_control, CallId}})
-                ],
-            ok
-    end.
-
--spec transferer/2 :: (pid(), proplist()) -> 'ok'.
-transferer(Srv, Props) ->
-    gen_listener:cast(Srv, {transferer, wh_json:from_list(Props)}).
-
--spec transferee/2 :: (pid(), proplist()) -> 'ok'.
-transferee(Srv, Props) ->
-    gen_listener:cast(Srv, {transferee, wh_json:from_list(Props)}).
 
 -spec handle_call_command/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
 handle_call_command(JObj, Props) ->
@@ -257,6 +226,41 @@ handle_call_events(JObj, Props) ->
             ok
     end.
 
+handle_channel_create(Props, _Node, CallId) ->
+    case props:get_value(<<"Other-Leg-Unique-ID">>, Props) =:= CallId of
+        false -> ok;
+        true -> 
+            gen_listener:cast(self(), {add_leg, wh_json:from_list(Props)})
+    end.    
+
+handle_channel_destroy(Props, _Node, CallId) ->
+    case props:get_value(<<"Other-Leg-Unique-ID">>, Props) =:= CallId of
+        false -> ok;
+        true -> 
+            gen_listener:cast(self(), {rm_leg, wh_json:from_list(Props)})
+    end.
+
+handle_transfer(Props, _Node, CallId) ->
+    Transferer = case props:get_value(<<"Transferor-Direction">>, Props) of
+                     <<"inbound">> ->
+                         props:get_value(<<"Transferor-UUID">>, Props);
+                     _ ->
+                         props:get_value(<<"Transferee-UUID">>, Props)
+                 end,
+    case Transferer =:= CallId of
+        false -> ok;
+        true -> 
+            gen_listener:cast(self(), {transferer, wh_json:from_list(Props)})
+    end,
+    case 
+        props:get_value(<<"Type">>, Props) =:= <<"BLIND_TRANSFER">>
+        andalso props:get_value(<<"Replaces">>, Props) =:= CallId
+    of
+        false -> ok;
+        true ->
+            gen_listener:cast(self(), {transferee, wh_json:from_list(Props)})
+    end.
+
 %%%===================================================================
 %%% gen_listener callbacks
 %%%===================================================================
@@ -278,6 +282,7 @@ init([Node, CallId, WhAppQ]) ->
     erlang:monitor_node(Node, true),
     gproc:reg({p, l, call_control}),
     gproc:reg({p, l, {call_control, CallId}}),
+    bind_to_events(freeswitch:version(Node), Node),
     TRef = erlang:send_after(?SANITY_CHECK_PERIOD, self(), {sanity_check}),
     {ok, #state{node=Node
                 ,callid=CallId
@@ -288,6 +293,15 @@ init([Node, CallId, WhAppQ]) ->
                 ,sanity_check_tref=TRef
                }
     }.
+
+bind_to_events({ok, <<"mod_kazoo", _/binary>>}, Node) ->
+    ok = freeswitch:event(Node, ['CHANNEL_CREATE', 'CHANNEL_DESTROY'
+                                 ,'CUSTOM', 'sofia::transfer'
+                                ]);
+bind_to_events(_, Node) ->
+    gproc:reg({p, l, {call_event, Node, <<"CHANNEL_CREATE">>}}),
+    gproc:reg({p, l, {call_event, Node, <<"CHANNEL_DESTROY">>}}),
+    gproc:reg({p, l, {call_event, Node, <<"sofia::transfer">>}}).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -560,6 +574,14 @@ handle_cast(_, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info({event, [_ | Props]}, #state{node=Node, callid=CallId}=State) ->
+    case props:get_value(<<"Event-Subclass">>, Props, props:get_value(<<"Event-Name">>, Props)) of
+        <<"CHANNEL_DESTROY">> -> handle_channel_destroy(Props, Node, CallId);
+        <<"CHANNEL_CREATE">> -> handle_channel_create(Props, Node, CallId);
+        <<"sofia::transfer">> -> handle_transfer(Props, Node, CallId);
+        _ -> ok
+    end,
+    {noreply, State};
 handle_info({nodedown, Node}, #state{node=Node
                                      ,is_node_up=true
                                     }=State) ->

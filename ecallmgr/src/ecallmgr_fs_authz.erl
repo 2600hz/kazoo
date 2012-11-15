@@ -7,14 +7,29 @@
 %%%   James Aimonetti
 %%%   Karl Anderson
 %%%-------------------------------------------------------------------
--module(ecallmgr_authz).
+-module(ecallmgr_fs_authz).
 
--export([maybe_authorize_channel/2]).
--export([update/2]).
+-behaviour(gen_listener).
+
+-export([start_link/1, start_link/2]).
+-export([handle_channel_create/3]).
+-export([handle_session_heartbeat/2]).
 -export([rate_channel/1]).
 -export([kill_channel/2]).
+-export([init/1
+         ,handle_call/3
+         ,handle_cast/2
+         ,handle_info/2
+         ,handle_event/2
+         ,terminate/2
+         ,code_change/3
+        ]).
 
 -include("ecallmgr.hrl").
+
+-record(state, {node = 'undefined' :: atom()
+                ,options = [] :: proplist()
+               }).
 
 -define(RATE_VARS, [<<"Rate">>, <<"Rate-Increment">>
                         ,<<"Rate-Minimum">>, <<"Surcharge">>
@@ -23,6 +38,186 @@
 
 -define(HEARTBEAT_ON_ANSWER(CallId), <<"api_on_answer=uuid_session_heartbeat ", CallId/binary, " 60">>).
 
+-define(BINDINGS, [{route, []}
+                   ,{self, []}
+                  ]).
+-define(RESPONDERS, []).
+-define(QUEUE_OPTIONS, [{exclusive, false}]).
+-define(CONSUME_OPTIONS, [{exclusive, false}]).
+
+%%%===================================================================
+%%% API
+%%%===================================================================
+
+%%--------------------------------------------------------------------
+%% @doc
+%% Starts the server
+%%
+%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
+%% @end
+%%--------------------------------------------------------------------
+start_link(Node) ->
+    start_link(Node, []).
+
+start_link(Node, Options) ->
+    QueueName = <<(wh_util:to_binary(Node))/binary, "-authz">>,
+    gen_listener:start_link(?MODULE, [{bindings, ?BINDINGS}
+                                      ,{responders, ?RESPONDERS}
+                                      ,{queue_name, QueueName}
+                                      ,{queue_options, ?QUEUE_OPTIONS}
+                                      ,{consume_options, ?CONSUME_OPTIONS}
+                                      ,{basic_qos, 1}
+                                     ], [Node, Options]).
+
+-spec kill_channel/2 :: (wh_proplist(), atom()) -> 'ok'.
+-spec kill_channel/3 :: (ne_binary(), ne_binary(), atom()) -> 'ok'.
+
+kill_channel(Props, Node) ->
+    Direction = props:get_value(<<"Call-Direction">>, Props),
+    CallId = props:get_value(<<"Unique-ID">>, Props),
+    kill_channel(Direction, CallId, Node).
+
+kill_channel(<<"inbound">>, CallId, Node) ->
+    %% Give any pending route requests a chance to cleanly terminate this call,
+    %% if it has not been processed yet.  Then chop its head off....
+    timer:sleep(1000),
+    _ = freeswitch:api(Node, uuid_kill, wh_util:to_list(<<CallId/binary, " INCOMING_CALL_BARRED">>)),
+    ok;
+kill_channel(<<"outbound">>, CallId, Node) ->
+    _ = freeswitch:api(Node, uuid_kill, wh_util:to_list(<<CallId/binary, " OUTGOING_CALL_BARRED">>)),
+    ok.
+
+-spec handle_channel_create/3 :: (wh_proplist(), ne_binary(), atom()) -> 'ok'.
+handle_channel_create(Props, CallId, Node) ->
+    Authorized = maybe_authorize_channel(Props, Node),
+    wh_cache:store_local(?ECALLMGR_UTIL_CACHE, ?AUTHZ_RESPONSE_KEY(CallId), Authorized).
+
+-spec handle_session_heartbeat/2 :: (wh_proplist(), atom()) -> 'ok'.
+handle_session_heartbeat(Props, Node) ->
+    CallId = props:get_value(<<"Unique-ID">>, Props),
+    put(callid, CallId),
+    lager:debug("received session heartbeat", []),
+    Update = authz_update(CallId, Props, Node),
+    wapi_authz:publish_update(props:filter_undefined(Update)).
+
+%%%===================================================================
+%%% gen_server callbacks
+%%%===================================================================
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Initializes the server
+%%
+%% @spec init(Args) -> {ok, State} |
+%%                     {ok, State, Timeout} |
+%%                     ignore |
+%%                     {stop, Reason}
+%% @end
+%%--------------------------------------------------------------------
+init([Node, Options]) ->
+    put(callid, Node),
+    process_flag(trap_exit, true),
+    bind_to_events(freeswitch:version(Node), Node),
+    {ok, #state{node=Node, options=Options}}.
+
+bind_to_events({ok, <<"mod_kazoo", _/binary>>}, Node) ->
+    ok = freeswitch:event(Node, ['CHANNEL_CREATE', 'SESSION_HEARTBEAT']);
+bind_to_events(_, Node) ->
+    ok = freeswitch:event(Node, ['SESSION_HEARTBEAT']),
+    lager:debug("bound to presence events on node ~s", [Node]),
+    gproc:reg({p, l, {call_event, Node, <<"CHANNEL_CREATE">>}}),
+    gproc:reg({p, l, {call_event, Node, <<"SESSION_HEARTBEAT">>}}).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Handling call messages
+%%
+%% @spec handle_call(Request, From, State) ->
+%%                                   {reply, Reply, State} |
+%%                                   {reply, Reply, State, Timeout} |
+%%                                   {noreply, State} |
+%%                                   {noreply, State, Timeout} |
+%%                                   {stop, Reason, Reply, State} |
+%%                                   {stop, Reason, State}
+%% @end
+%%--------------------------------------------------------------------
+handle_call(_Request, _From, State) ->
+    {reply, {error, not_implemented}, State}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Handling cast messages
+%%
+%% @spec handle_cast(Msg, State) -> {noreply, State} |
+%%                                  {noreply, State, Timeout} |
+%%                                  {stop, Reason, State}
+%% @end
+%%--------------------------------------------------------------------
+handle_cast(_Msg, State) ->
+    {noreply, State}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Handling all non call/cast messages
+%%
+%% @spec handle_info(Info, State) -> {noreply, State} |
+%%                                   {noreply, State, Timeout} |
+%%                                   {stop, Reason, State}
+%% @end
+%%--------------------------------------------------------------------
+handle_info({event, [CallId | Props]}, #state{node=Node}=State) ->
+    case props:get_value(<<"Event-Name">>, Props) of
+        <<"SESSION_HEARTBEAT">> -> spawn(?MODULE, handle_session_heartbeat, [Props, Node]);
+        <<"CHANNEL_CREATE">> -> spawn(?MODULE, handle_channel_create, [Props, CallId, Node]);
+        _ -> ok
+    end,
+    {noreply, State};            
+handle_info(_Info, State) ->
+    {noreply, State}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Allows listener to pass options to handlers
+%%
+%% @spec handle_event(JObj, State) -> {reply, Options}
+%% @end
+%%--------------------------------------------------------------------
+handle_event(_JObj, _State) ->
+    {reply, []}.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% This function is called by a gen_server when it is about to
+%% terminate. It should be the opposite of Module:init/1 and do any
+%% necessary cleaning up. When it returns, the gen_server terminates
+%% with Reason. The return value is ignored.
+%%
+%% @spec terminate(Reason, State) -> void()
+%% @end
+%%--------------------------------------------------------------------
+terminate(_Reason, _State) ->
+    lager:debug("listener terminating: ~p", [_Reason]).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Convert process state when code is changed
+%%
+%% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
+%% @end
+%%--------------------------------------------------------------------
+code_change(_OldVsn, State, _Extra) ->
+    {ok, State}.
+
+%%%===================================================================
+%%% Internal functions
+%%%===================================================================
 -spec maybe_authorize_channel/2 :: (wh_proplist(), atom()) -> boolean().
 maybe_authorize_channel(Props, Node) ->
     CallId = props:get_value(<<"Unique-ID">>, Props),
@@ -156,14 +351,6 @@ maybe_deny_call(Props, _, Node) ->
     DryRun = wh_util:is_true(ecallmgr_config:get(<<"authz_dry_run">>, false)),
     _ = DryRun orelse spawn(?MODULE, kill_channel, [Props, Node]),
     DryRun orelse false.
- 
--spec update/2 :: (wh_proplist(), atom()) -> 'ok'.
-update(Props, Node) ->
-    CallId = props:get_value(<<"Unique-ID">>, Props),
-    put(callid, CallId),
-    lager:debug("received session heartbeat", []),
-    Update = authz_update(CallId, Props, Node),
-    wapi_authz:publish_update(props:filter_undefined(Update)).
 
 -spec rate_channel/1 :: (wh_proplist()) -> 'ok'.
 rate_channel(Props) ->
@@ -179,24 +366,6 @@ rate_channel(Props) ->
         {error, _R} -> lager:debug("rate request lookup failed: ~p", [_R]);
         {ok, RespJObj} -> set_rating_ccvs(RespJObj)
     end.
-
--spec kill_channel/2 :: (wh_proplist(), atom()) -> 'ok'.
--spec kill_channel/3 :: (ne_binary(), ne_binary(), atom()) -> 'ok'.
-
-kill_channel(Props, Node) ->
-    Direction = props:get_value(<<"Call-Direction">>, Props),
-    CallId = props:get_value(<<"Unique-ID">>, Props),
-    kill_channel(Direction, CallId, Node).
-
-kill_channel(<<"inbound">>, CallId, Node) ->
-    %% Give any pending route requests a chance to cleanly terminate this call,
-    %% if it has not been processed yet.  Then chop its head off....
-    timer:sleep(1000),
-    _ = freeswitch:api(Node, uuid_kill, wh_util:to_list(<<CallId/binary, " INCOMING_CALL_BARRED">>)),
-    ok;
-kill_channel(<<"outbound">>, CallId, Node) ->
-    _ = freeswitch:api(Node, uuid_kill, wh_util:to_list(<<CallId/binary, " OUTGOING_CALL_BARRED">>)),
-    ok.
 
 -spec authorize/2 :: (api_binary(), wh_proplist()) ->
                              {'ok', ne_binary()} |
@@ -316,6 +485,7 @@ authz_identify_req(Props) ->
 authz_update(CallId, Props, Node) ->
     [{<<"Call-ID">>, CallId}
      ,{<<"Handling-Server-Name">>, wh_util:to_binary(Node)}
+     ,{<<"Request">>, ecallmgr_util:get_sip_request(Props)}
      ,{<<"Timestamp">>, get_time_value(<<"Event-Date-Timestamp">>, Props)}
      ,{<<"Custom-Channel-Vars">>, wh_json:from_list(ecallmgr_util:custom_channel_vars(Props))}
      ,{<<"Caller-ID-Name">>, props:get_value(<<"variable_effective_caller_id_name">>, Props

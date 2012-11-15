@@ -6,8 +6,16 @@
             "map": "function(doc) { if ( (doc.pvt_type != 'credit' && doc.pvt_type != 'debit') || doc.pvt_deleted) return; var modifier = (doc.pvt_type == 'credit' ? 1 : -1); emit(null, doc.amount * modifier); }"
             ,"reduce": "_sum"
         }
+        ,"allotment_consumed": {
+            "map": "function(doc) { if ( (doc.pvt_type != 'credit_allotment' && doc.pvt_type != 'debit_allotment') || doc.pvt_deleted) return; var modifier = (doc.pvt_type == 'credit_allotment' ? 1 : -1); emit([doc.name, doc.pvt_created], doc.amount * modifier); }"
+            ,"reduce": "_sum"
+        }
         ,"session_cost": {
             "map": "function(doc) { if ( (doc.pvt_type != 'credit' && doc.pvt_type != 'debit') || doc.pvt_deleted || !doc.session_id) return; var modifier = (doc.pvt_type == 'credit' ? 1 : -1); emit(doc.session_id, doc.amount * modifier);  }"
+            ,"reduce": "_sum"
+        }
+        ,"session_allotment": {
+            "map": "function(doc) { if ( (doc.pvt_type != 'credit_allotment' && doc.pvt_type != 'debit_allotment') || doc.pvt_deleted || !doc.session_id) return; var modifier = (doc.pvt_type == 'credit_allotment' ? 1 : -1); emit(doc.session_id, doc.amount * modifier);  }"
             ,"reduce": "_sum"
         }
         ,"by_timestamp": {

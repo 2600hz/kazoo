@@ -13,6 +13,7 @@
 
 %% API
 -export([start_link/1, start_link/2]).
+-export([handle_sucessful_registration/2]).
 -export([lookup_user/3]).
 -export([init/1
          ,handle_call/3
@@ -47,6 +48,13 @@ start_link(Node) ->
 start_link(Node, Options) ->
     gen_server:start_link(?MODULE, [Node, Options], []).
 
+-spec handle_sucessful_registration/2 :: (proplist(), atom()) -> 'ok'.
+handle_sucessful_registration(Props, Node) ->
+    lager:debug("received registration event"),
+    ecallmgr_registrar:reg_success(Props, Node),
+    publish_register_event(Props),
+    ok.
+
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -66,18 +74,31 @@ init([Node, Options]) ->
     put(callid, Node),
     process_flag(trap_exit, true),
     lager:debug("starting new fs auth listener for ~s", [Node]),
+    bind_to_events(freeswitch:version(Node), Node),
+    case bind_to_directory(Node) of
+        ok -> {ok, #state{node=Node, options=Options}};
+        {error, Reason} -> {stop, Reason}
+    end.
+
+bind_to_events({ok, <<"mod_kazoo", _/binary>>}, Node) ->
+    ok = freeswitch:event(Node, ['CUSTOM', 'sofia::register']);
+bind_to_events(_, Node) ->
+    ok = freeswitch:event(Node, ['CUSTOM', 'sofia::register']),    
+    gproc:reg({p, l, {call_event, Node, <<"sofia::register">>}}).
+
+bind_to_directory(Node) ->
     case freeswitch:bind(Node, directory) of
         ok ->
             lager:debug("bound to directory request on ~s", [Node]),
-            {ok, #state{node=Node, options=Options}};
-        {error, Reason} ->
+            ok;
+        {error, Reason}=E ->
             lager:warning("failed to bind to directory requests on ~s: ~p", [Node, Reason]),
-            {stop, Reason};
+            E;
         timeout ->
             lager:error("failed to bind to directory requests on ~s: timeout", [Node]),
-            {stop, timeout}
+            {error, timeout}
     end.
-
+    
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -118,6 +139,12 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info({event, [_ | Props]}, #state{node=Node}=State) ->
+    case props:get_value(<<"Event-Subclass">>, Props, props:get_value(<<"Event-Name">>, Props)) of
+        <<"sofia::register">> -> spawn(?MODULE, handle_sucessful_registration, [Props, Node]);
+        _ -> ok
+    end,
+    {noreply, State};
 handle_info({fetch, directory, <<"domain">>, <<"name">>, _Value, ID, [undefined | Data]}, #state{node=Node}=State) ->
     case props:get_value(<<"sip_auth_method">>, Data) of
         <<"REGISTER">> ->
@@ -208,3 +235,22 @@ lookup_user(Node, ID, Data) ->
             lager:debug("sending XML to ~w: ~s", [Node, Xml]),
             freeswitch:fetch_reply(Node, ID, iolist_to_binary(Xml))
     end.
+
+-spec publish_register_event/1 :: (proplist()) -> 'ok'.
+publish_register_event(Data) ->
+    ApiProp = lists:foldl(fun(K, Api) ->
+                                  case props:get_value(wh_util:to_lower_binary(K), Data) of
+                                      undefined ->
+                                          case props:get_value(K, Data) of
+                                              undefined -> Api;
+                                              V -> [{K, V} | Api]
+                                          end;
+                                      V -> [{K, V} | Api]
+                                  end
+                          end
+                          ,[{<<"Event-Timestamp">>, round(wh_util:current_tstamp())}
+                            ,{<<"Call-ID">>, get(callid)}
+                            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)]
+                          ,wapi_registration:success_keys()),
+    lager:debug("sending successful registration"),
+    wapi_registration:publish_success(ApiProp).

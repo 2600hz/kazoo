@@ -57,7 +57,9 @@
 -define(OPTIONAL_AUTHZ_RESP_HEADERS, [<<"Custom-Channel-Vars">>, <<"Type">>, <<"Global-Resource">>]).
 -define(AUTHZ_RESP_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
                             ,{<<"Event-Name">>, <<"resp">>}
-                            ,{<<"Type">>, [<<"flat_rate">>, <<"per_minute">>]}
+                            ,{<<"Type">>, [<<"flat_rate">>, <<"per_minute">>
+                                               ,<<"allotment">>, <<"limits_disabled">>
+                                          ]}
                             ,{<<"Is-Authorized">>, [<<"true">>, <<"false">>]}
                             ,{<<"Global-Resource">>, [<<"true">>, <<"false">>]}
                            ]).
@@ -108,7 +110,7 @@
                                             ,<<"Call-Direction">>, <<"To-Uri">>, <<"From-Uri">>
                                             ,<<"Created-Time">>, <<"Answered-Time">>, <<"Progress-Time">>
                                             ,<<"Progress-Media-Time">>, <<"Hangup-Time">>
-                                            ,<<"Transfer-Time">>
+                                            ,<<"Transfer-Time">>, <<"Request">>
                                        ]).
 -define(AUTHZ_UPDATE_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
                               ,{<<"Event-Name">>, <<"update">>}

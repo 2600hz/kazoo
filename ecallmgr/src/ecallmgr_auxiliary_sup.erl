@@ -6,7 +6,7 @@
 %%% @contributors
 %%%   Karl Anderson
 %%%-------------------------------------------------------------------
--module(ecallmgr_util_sup).
+-module(ecallmgr_auxiliary_sup).
 
 -behaviour(supervisor).
 
@@ -16,10 +16,16 @@
 -export([cache_proc/0]).
 -export([init/1]).
 
--define(CHILD(N), {N, {wh_cache, start_link, [N]}, permanent, 5000, worker, [wh_cache]}).
--define(CHILDREN, [?ECALLMGR_UTIL_CACHE
-                   ,?ECALLMGR_REG_CACHE
-                   ,?ECALLMGR_CALL_CACHE
+-define(CHILD(Name, Type), fun(N, cache) -> {N, {wh_cache, start_link, [N]}, permanent, 5000, worker, [wh_cache]};
+                              (N, T) -> {N, {N, start_link, []}, permanent, 5000, T, [N]}
+                           end(Name, Type)).
+
+-define(CHILDREN, [{?ECALLMGR_UTIL_CACHE, cache}
+                   ,{?ECALLMGR_REG_CACHE, cache}
+                   ,{?ECALLMGR_CALL_CACHE, cache}
+                   ,{ecallmgr_query, worker}
+                   ,{ecallmgr_conference_listener, worker}
+                   ,{ecallmgr_originate_sup, supervisor}
                   ]).
 
 %% ===================================================================
@@ -59,6 +65,6 @@ init([]) ->
     MaxSecondsBetweenRestarts = 10,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
-    Children = [?CHILD(Name) || Name <- ?CHILDREN],
+    Children = [?CHILD(Name, Type) || {Name, Type} <- ?CHILDREN],
 
     {ok, {SupFlags, Children}}.

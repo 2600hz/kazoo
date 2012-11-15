@@ -135,10 +135,7 @@ show_channels() ->
 new_channel(Props, Node) ->
     CallId = props:get_value(<<"Unique-ID">>, Props),
     put(callid, CallId),
-    gen_server:cast(?MODULE, {new_channel, props_to_channel_record(Props, Node)}),
-    ecallmgr_call_control:add_leg(Props),
-    Authorized = ecallmgr_authz:maybe_authorize_channel(Props, Node),
-    wh_cache:store_local(?ECALLMGR_UTIL_CACHE, ?AUTHZ_RESPONSE_KEY(CallId), Authorized).
+    gen_server:cast(?MODULE, {new_channel, props_to_channel_record(Props, Node)}).
 
 -spec fetch_channel/1 :: (ne_binary()) -> {'ok', wh_json:json_object()} |
                                           {'error', 'not_found'}.
@@ -399,9 +396,7 @@ channel_set_node(Node, UUID) ->
 -spec destroy_channel/2 :: (proplist(), atom()) -> 'ok'.
 destroy_channel(Props, Node) ->
     UUID = props:get_value(<<"Unique-ID">>, Props),
-    gen_server:cast(?MODULE, {destroy_channel, UUID, Node}),
-    ecallmgr_call_control:rm_leg(Props),
-    ecallmgr_call_events:publish_channel_destroy(Node, UUID, Props).
+    gen_server:cast(?MODULE, {destroy_channel, UUID, Node}).
 
 -spec props_to_channel_record/2 :: (proplist(), atom()) -> channel().
 props_to_channel_record(Props, Node) ->

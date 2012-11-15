@@ -18,7 +18,6 @@
 -export([show_channels/1]).
 -export([fs_node/1]).
 -export([hostname/1]).
--export([process_custom_data/2]).
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -154,25 +153,35 @@ init([Node, Options]) ->
     put(callid, Node),
     process_flag(trap_exit, true),
     lager:debug("starting new fs node ~s", [Node]),
-    case freeswitch:register_event_handler(Node) of
+    case bind_to_events(freeswitch:version(Node), Node) of
+        {error, Reason} -> {stop, Reason};
         ok ->
-            lager:debug("event handler registered on node ~s", [Node]),            
-            ok = freeswitch:event(Node, ['CHANNEL_CREATE', 'CHANNEL_DESTROY', 'CHANNEL_HANGUP_COMPLETE'
-                                         ,'SESSION_HEARTBEAT', 'CUSTOM', 'sofia::register', 'sofia::transfer'
-                                         ,'whistle::broadcast', 'loopback::bowout'
-                                         ,'sofia::move_released', 'sofia::move_complete'
-                                        ]),
-            lager:debug("bound to switch events on node ~s", [Node]),
             gproc:reg({p, l, fs_node}),
             run_start_cmds(Node),
             sync_channels(self()),
-            {ok, #state{node=Node, options=Options}};
-        {error, Reason} ->
+            {ok, #state{node=Node, options=Options}}
+    end.
+
+bind_to_events({ok, <<"mod_kazoo", _/binary>>}, Node) ->
+    freeswitch:event(Node, ['CHANNEL_CREATE', 'CHANNEL_DESTROY', 'CHANNEL_HANGUP_COMPLETE'
+                            ,'CUSTOM', 'whistle::broadcast', 'loopback::bowout'
+                            ,'sofia::move_released', 'sofia::move_complete'
+                           ]);
+bind_to_events(_, Node) ->
+    case freeswitch:register_event_handler(Node) of
+        ok ->
+            lager:debug("event handler registered on node ~s", [Node]),
+            freeswitch:event(Node, ['CHANNEL_CREATE', 'CHANNEL_DESTROY', 'CHANNEL_HANGUP_COMPLETE'
+                                    ,'SESSION_HEARTBEAT', 'CUSTOM', 'sofia::transfer'
+                                    ,'whistle::broadcast', 'loopback::bowout'
+                                    ,'sofia::move_released', 'sofia::move_complete'
+                                   ]);
+        {error, Reason}=E ->
             lager:warning("error when trying to register event handler on node ~s: ~p", [Node, Reason]),
-            {stop, Reason};
+            E;
         timeout ->
             lager:warning("timeout when trying to register event handler on node ~s", [Node]),
-            {stop, timeout}
+            {error, timeout}
     end.
 
 %%--------------------------------------------------------------------
@@ -292,164 +301,72 @@ code_change(_OldVsn, State, _Extra) ->
 -spec process_event/3 :: (api_binary(), wh_proplist(), atom()) -> 'ok'.
 -spec process_event/4 :: (ne_binary(), api_binary(), wh_proplist(), atom()) -> 'ok'.
 
-process_event(UUID, Data, Node) ->
-    EventName = props:get_value(<<"Event-Name">>, Data),
-    gproc:send({p, l, {call_event, Node, EventName}}, {event, [UUID | Data]}),
-    process_event(EventName, UUID, Data, Node).
+process_event(UUID, Props, Node) ->
+    EventName = props:get_value(<<"Event-Subclass">>, Props, props:get_value(<<"Event-Name">>, Props)),
+    gproc:send({p, l, {call_event, Node, EventName}}, {event, [UUID | Props]}),
+    process_event(EventName, UUID, Props, Node).
 
-process_event(<<"CUSTOM">>, _, Data, Node) ->
-    spawn(?MODULE, process_custom_data, [Data, Node]),
-    ok;
-process_event(<<"CHANNEL_CREATE">>, UUID, Data, Node) ->
+process_event(<<"CHANNEL_CREATE">>, UUID, Props, Node) ->
     lager:debug("received channel create event: ~s", [UUID]),
     _ = maybe_start_event_listener(Node, UUID),
-    spawn(ecallmgr_fs_nodes, new_channel, [Data, Node]),
+    spawn(ecallmgr_fs_nodes, new_channel, [Props, Node]),
     ok;
-process_event(<<"CHANNEL_DESTROY">>, UUID, Data, Node) ->
-    case props:get_value(<<"Channel-State">>, Data) of
+process_event(<<"CHANNEL_DESTROY">>, UUID, Props, Node) ->
+    case props:get_value(<<"Channel-State">>, Props) of
         <<"CS_NEW">> -> 
             lager:debug("ignoring channel destroy because of CS_NEW: ~s", [UUID]);
         <<"CS_DESTROY">> ->
             lager:debug("received channel destroyed: ~s", [UUID]),
             _ = case ecallmgr_fs_nodes:channel_node(UUID) of
-                    {ok, Node} -> spawn(ecallmgr_fs_nodes, destroy_channel, [Data, Node]);
+                    {ok, Node} -> 
+                        ecallmgr_call_events:publish_channel_destroy(Node, UUID, Props),
+                        spawn(ecallmgr_fs_nodes, destroy_channel, [Props, Node]);
                     {ok, _NewNode} -> lager:debug("surpressing destroy; ~s is on ~s, not ~s", [UUID, _NewNode, Node]);
                     {error, not_found} -> lager:debug("channel not found, surpressing destroy")
                 end,
             ok
     end;
-process_event(<<"CHANNEL_HANGUP_COMPLETE">>, UUID, Data, Node) ->
+process_event(<<"CHANNEL_HANGUP_COMPLETE">>, UUID, Props, Node) ->
     _ = case ecallmgr_fs_nodes:channel_node(UUID) of
-            {ok, Node} -> spawn(ecallmgr_call_cdr, new_cdr, [UUID, Data]);
+            {ok, Node} -> spawn(ecallmgr_call_cdr, new_cdr, [UUID, Props]);
             {ok, _NewNode} -> lager:debug("surpressing CDR; ~s is on ~s, not ~s", [UUID, _NewNode, Node]);
             {error, not_found} -> lager:debug("channel not found, surpressing CDR")
         end,
     ok;
-process_event(<<"SESSION_HEARTBEAT">>, _, Data, Node) ->
-    spawn(ecallmgr_authz, update, [Data, Node]),
-    ok;
+process_event(<<"loopback::bowout">>, _, Props, _) ->
+    lager:debug("received loopback bowout event"),
+    process_loopback_bowout_event(Props);
+process_event(<<"whistle::broadcast">>, _, Props, _) ->
+    Self = wh_util:to_binary(node()),
+    case props:get_value(<<"whistle_broadcast_node">>, Props, Self) of
+        Self -> ok;
+        _Else ->
+            process_broadcast_event(props:get_value(<<"whistle_broadcast_type">>, Props), Props)
+    end;
+process_event(<<"sofia::move_released">>, _, Props, Node) ->
+    UUID = props:get_value(<<"old_node_channel_uuid">>, Props),
+    lager:debug("sending channel_released for ~s", [UUID]),
+    gproc:send({p, l, {channel_move, Node, UUID}}, {channel_move_released, Node, UUID, Props});
+process_event(<<"sofia::move_complete">>, _, Props, Node) ->
+    UUID = props:get_value(<<"old_node_channel_uuid">>, Props),
+    lager:debug("sending move_complete for ~s on ~s", [UUID, Node]),
+    ecallmgr_fs_nodes:channel_set_node(Node, UUID),
+    gproc:send({p, l, {channel_move, Node, UUID}}, {channel_move_completed, Node, UUID, Props});
 process_event(_, _, _, _) ->
     ok.
 
--spec process_custom_data/2 :: (proplist(), atom()) -> 'ok'.
-process_custom_data(Data, Node) ->
-    put(callid, props:get_value(<<"call-id">>, Data, Node)),
-    Subclass = props:get_value(<<"Event-Subclass">>, Data),
-    case Subclass of
-        <<"sofia::register">> ->
-            lager:debug("received registration event"),
-            ecallmgr_registrar:reg_success(Data, Node),
-            publish_register_event(Data);
-        <<"sofia::transfer">> ->
-            lager:debug("received transfer event"),
-            process_transfer_event(props:get_value(<<"Type">>, Data), Data);
-        <<"loopback::bowout">> ->
-            lager:debug("received loopback bowout event"),
-            process_loopback_bowout_event(Data);
-        <<"whistle::broadcast">> ->
-            Self = wh_util:to_binary(node()),
-            case props:get_value(<<"whistle_broadcast_node">>, Data, Self) of
-                Self -> ok;
-                _Else ->
-                    process_broadcast_event(props:get_value(<<"whistle_broadcast_type">>, Data), Data)
-            end;
-        <<"sofia::move_released">> ->
-            UUID = props:get_value(<<"old_node_channel_uuid">>, Data),
-            lager:debug("sending channel_released for ~s", [UUID]),
-            gproc:send({p, l, {channel_move, Node, UUID}}, {channel_move_released, Node, UUID, Data});
-        <<"sofia::move_complete">> ->
-            UUID = props:get_value(<<"old_node_channel_uuid">>, Data),
-            lager:debug("sending move_complete for ~s on ~s", [UUID, Node]),
-            ecallmgr_fs_nodes:channel_set_node(Node, UUID),
-            gproc:send({p, l, {channel_move, Node, UUID}}, {channel_move_completed, Node, UUID, Data});
-        _Sub ->
-            lager:debug("custom evt ~s", [_Sub]),
-            _ = [lager:debug("custom evt data: ~s:~s", [K, V]) || {K,V} <- Data],
-            ok
-    end.
-
--spec publish_register_event/1 :: (proplist()) -> 'ok'.
-publish_register_event(Data) ->
-    ApiProp = lists:foldl(fun(K, Api) ->
-                                  case props:get_value(wh_util:to_lower_binary(K), Data) of
-                                      undefined ->
-                                          case props:get_value(K, Data) of
-                                              undefined -> Api;
-                                              V -> [{K, V} | Api]
-                                          end;
-                                      V -> [{K, V} | Api]
-                                  end
-                          end
-                          ,[{<<"Event-Timestamp">>, round(wh_util:current_tstamp())}
-                            ,{<<"Call-ID">>, get(callid)}
-                            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)]
-                          ,wapi_registration:success_keys()),
-    lager:debug("sending successful registration"),
-    wapi_registration:publish_success(ApiProp).
-
--spec process_transfer_event/2 :: (ne_binary(), proplist()) -> 'ok'.
-process_transfer_event(<<"BLIND_TRANSFER">>, Data) ->
-    lager:debug("recieved blind transfer notice"),
-    TransfererCtrlUUId = case props:get_value(<<"Transferor-Direction">>, Data) of
-                             <<"inbound">> ->
-                                 props:get_value(<<"Transferor-UUID">>, Data);
-                             _ ->
-                                 props:get_value(<<"Transferee-UUID">>, Data)
-                         end,
-
-    case gproc:lookup_pids({p, l, {call_control, TransfererCtrlUUId}}) of
-        [] -> lager:debug(TransfererCtrlUUId, "no ecallmgr_call_control processes exist locally for reception of transferer notice");
-        Pids ->
-            [begin
-                 _ = ecallmgr_call_control:transferer(Pid, Data),
-                 lager:debug("sending transferer notice for ~s to ecallmgr_call_control ~p", [TransfererCtrlUUId, Pid])
-             end
-             || Pid <- Pids
-            ]
-    end;
-process_transfer_event(_Type, Data) ->
-    lager:debug("recieved ~s transfer notice", [_Type]),
-    TransfererCtrlUUId = case props:get_value(<<"Transferor-Direction">>, Data) of
-                             <<"inbound">> ->
-                                 props:get_value(<<"Transferor-UUID">>, Data);
-                             _ ->
-                                 props:get_value(<<"Transferee-UUID">>, Data)
-                         end,
-
-    _ = case gproc:lookup_pids({p, l, {call_control, TransfererCtrlUUId}}) of
-            [] -> lager:debug(TransfererCtrlUUId, "no ecallmgr_call_control processes exist for reception of transferer notice");
-            TransfererPids ->
-                [begin
-                     _ = ecallmgr_call_control:transferer(Pid, Data),
-                     lager:debug("sending transferer notice for ~s to ecallmgr_call_control ~p", [TransfererCtrlUUId, Pid])
-                 end
-                 || Pid <- TransfererPids
-                ]
-        end,
-    TransfereeCtrlUUId = props:get_value(<<"Replaces">>, Data),
-    case gproc:lookup_pids({p, l, {call_control, TransfereeCtrlUUId}}) of
-        [] -> lager:debug(TransfererCtrlUUId, "no ecallmgr_call_control processes exist locally for reception of transferee notice");
-        ReplacesPids ->
-            [begin
-                 ecallmgr_call_control:transferee(Pid, Data),
-                 lager:debug("sending transferee notice for ~s to ecallmgr_call_control ~p", [TransfereeCtrlUUId, Pid])
-             end
-             || Pid <- ReplacesPids
-            ]
-    end.
-
 -spec process_loopback_bowout_event/1 :: (proplist()) -> 'ok'.
-process_loopback_bowout_event(Data) ->
-    Key = {loopback_bowout, props:get_value(<<"Resigning-UUID">>, Data)},
-    _ = gproc:send({p, l, Key}, {loopback_bowout, props:get_value(<<"Acquired-UUID">>, Data)}),
+process_loopback_bowout_event(Props) ->
+    Key = {loopback_bowout, props:get_value(<<"Resigning-UUID">>, Props)},
+    _ = gproc:send({p, l, Key}, {loopback_bowout, props:get_value(<<"Acquired-UUID">>, Props)}),
     ok.
 
 -spec process_broadcast_event/2 :: (ne_binary(), proplist()) -> ok.
-process_broadcast_event(<<"channel_update">>, Data) ->
-    UUID = props:get_value(<<"whistle_broadcast_call_id">>, Data),
+process_broadcast_event(<<"channel_update">>, Props) ->
+    UUID = props:get_value(<<"whistle_broadcast_call_id">>, Props),
     put(callid, UUID),
-    Name = props:get_value(<<"whistle_broadcast_parameter_name">>, Data),
-    Value = props:get_value(<<"whistle_broadcast_parameter_value">>, Data),
+    Name = props:get_value(<<"whistle_broadcast_parameter_name">>, Props),
+    Value = props:get_value(<<"whistle_broadcast_parameter_value">>, Props),
     Function = wh_util:to_atom(<<"channel_set_", Name/binary>>, true),
     lager:debug("remote update for channel ~s parameter ~s: ~s~n", [UUID, Name, Value]),
     ecallmgr_fs_nodes:Function(undefined, UUID, Value).
