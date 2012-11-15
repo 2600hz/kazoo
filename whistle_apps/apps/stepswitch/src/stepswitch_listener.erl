@@ -171,7 +171,7 @@ handle_info(_Info, State) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 handle_event(_JObj, #state{resrcs=Rs}) ->
@@ -236,12 +236,12 @@ update_resrc(DocId, Resrcs) ->
     lager:debug("received notification that resource ~s has changed", [DocId]),
     case couch_mgr:open_doc(?RESOURCES_DB, DocId) of
         {ok, JObj} ->
-            case wh_util:is_true(wh_json:get_value(<<"enabled">>, JObj)) of
+            case wh_json:is_true(<<"enabled">>, JObj) of
                 'true' ->
                     NewResrc = create_resrc(JObj),
                     lager:debug("resource ~s updated to rev ~s", [DocId, NewResrc#resrc.rev]),
                     [NewResrc|lists:keydelete(DocId, #resrc.id, Resrcs)];
-                false ->
+                'false' ->
                     lager:debug("resource ~s disabled", [DocId]),
                     lists:keydelete(DocId, #resrc.id, Resrcs)
             end;
@@ -309,9 +309,9 @@ create_gateway(JObj, Id) ->
              ,route =
                  wh_json:get_value(<<"route">>, JObj, Default#gateway.route)
              ,prefix =
-                 wh_util:to_binary(wh_json:get_value(<<"prefix">>, JObj, Default#gateway.prefix))
+                 wh_json:get_binary_value(<<"prefix">>, JObj, Default#gateway.prefix)
              ,suffix =
-                 wh_util:to_binary(wh_json:get_value(<<"suffix">>, JObj, Default#gateway.suffix))
+                 wh_json:get_binary_value(<<"suffix">>, JObj, Default#gateway.suffix)
              ,codecs =
                  wh_json:get_value(<<"codecs">>, JObj, Default#gateway.codecs)
              ,bypass_media =
@@ -321,26 +321,29 @@ create_gateway(JObj, Id) ->
              ,sip_headers =
                  wh_json:get_value(<<"custom_sip_headers">>, JObj, Default#gateway.sip_headers)
              ,progress_timeout =
-                 wh_util:to_integer(wh_json:get_value(<<"progress_timeout">>, JObj, Default#gateway.progress_timeout))
+                 wh_json:get_integer_value(<<"progress_timeout">>, JObj, Default#gateway.progress_timeout)
              ,invite_format =
                  wh_json:get_value(<<"invite_format">>, JObj, Default#gateway.invite_format)
-             ,endpoint_type =
-                 EndpointType
-             ,endpoint_options =
-                 EndpointOptions
+             ,endpoint_type = EndpointType
+             ,endpoint_options = EndpointOptions
              ,format_from_uri = wh_json:is_true(<<"format_from_uri">>, JObj, Default#gateway.format_from_uri)
             }.
 
-endpoint_type(JObj, Default) ->
-    case wh_json:get_value(<<"span">>, JObj) of
-        undefined -> Default#gateway.endpoint_type;
-        _ -> <<"freetdm">>
-    end.
+endpoint_type(JObj, #gateway{endpoint_type=ET}) ->
+    wh_json:get_value(<<"endpoint_type">>, JObj, ET).
 
 endpoint_options(JObj, <<"freetdm">>) ->
-    wh_json:from_list([{<<"Span">>, wh_json:get_value(<<"span">>, JObj)}
-                       ,{<<"Channel-Selection">>, wh_json:get_value(<<"channel_selection">>, JObj, <<"ascending">>)}
-                      ]);
+    wh_json:from_list(
+      props:filter_undefined(
+        [{<<"Span">>, wh_json:get_value(<<"span">>, JObj)}
+         ,{<<"Channel-Selection">>, wh_json:get_value(<<"channel_selection">>, JObj, <<"ascending">>)}
+        ]));
+endpoint_options(JObj, <<"skype">>) ->
+    wh_json:from_list(
+      props:filter_undefined(
+        [{<<"Skype-Interface">>, wh_json:get_value(<<"interface">>, JObj)}
+         ,{<<"Skype-RR">>, wh_json:is_true(<<"skype_rr">>, JObj, true)}
+        ]));
 endpoint_options(_, _) ->
     wh_json:new().
 
