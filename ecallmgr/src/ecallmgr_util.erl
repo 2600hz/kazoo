@@ -371,8 +371,9 @@ build_channel(#bridge_endpoint{endpoint_type = <<"sip">>}=Endpoint) ->
 build_channel(EndpointJObj) ->
     build_channel(endpoint_jobj_to_record(EndpointJObj)).
 
--spec build_freetdm_channel/1 :: (#bridge_endpoint{}) -> {'ok', bridge_channel()} |
-                                                         {'error', 'number_not_provided'}.
+-spec build_freetdm_channel/1 :: (#bridge_endpoint{}) ->
+                                         {'ok', bridge_channel()} |
+                                         {'error', 'number_not_provided'}.
 build_freetdm_channel(#bridge_endpoint{number=undefined}) ->
     {error, number_not_provided};
 build_freetdm_channel(#bridge_endpoint{invite_format = <<"e164">>, number=Number
@@ -387,12 +388,13 @@ build_freetdm_channel(#bridge_endpoint{invite_format = <<"1npan">>, number=Numbe
 build_freetdm_channel(#bridge_endpoint{number=Number, span=Span, channel_selection=ChannelSelection}) ->
     {ok, <<"freetdm/", Span/binary, "/", ChannelSelection/binary, "/", Number/binary>>}.
 
--spec build_skype_channel/1 :: (#bridge_endpoint{}) -> {'ok', bridge_channel()} |
-                                                       {'error', 'number_not_provided'}.
-build_skype_channel(#bridge_endpoint{number=undefined}) ->
+-spec build_skype_channel/1 :: (#bridge_endpoint{}) ->
+                                       {'ok', bridge_channel()} |
+                                       {'error', 'number_not_provided'}.
+build_skype_channel(#bridge_endpoint{user=undefined}) ->
     {error, number_not_provided};
-build_skype_channel(#bridge_endpoint{number=Number, interface=IFace}) ->
-    {ok, <<"skypopen/", IFace/binary, "/", Number/binary>>}.
+build_skype_channel(#bridge_endpoint{user=User, interface=IFace}) ->
+    {ok, <<"skypopen/", IFace/binary, "/", User/binary>>}.
 
 -spec build_sip_channel/1 :: (#bridge_endpoint{}) ->
                                      {'ok', bridge_channel()} |
