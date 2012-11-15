@@ -294,10 +294,10 @@ init([Node, CallId, WhAppQ]) ->
                }
     }.
 
-bind_to_events({ok, <<"mod_kazoo", _/binary>>}, Node) ->
-    ok = freeswitch:event(Node, ['CHANNEL_CREATE', 'CHANNEL_DESTROY'
-                                 ,'CUSTOM', 'sofia::transfer'
-                                ]);
+%%bind_to_events({ok, <<"mod_kazoo", _/binary>>}, Node) ->
+%%    ok = freeswitch:event(Node, ['CHANNEL_CREATE', 'CHANNEL_DESTROY'
+%%                                 ,'CUSTOM', 'sofia::transfer'
+%%                                ]);
 bind_to_events(_, Node) ->
     gproc:reg({p, l, {call_event, Node, <<"CHANNEL_CREATE">>}}),
     gproc:reg({p, l, {call_event, Node, <<"CHANNEL_DESTROY">>}}),

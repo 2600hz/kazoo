@@ -164,7 +164,7 @@ init([Node, Options]) ->
 
 bind_to_events({ok, <<"mod_kazoo", _/binary>>}, Node) ->
     freeswitch:event(Node, ['CHANNEL_CREATE', 'CHANNEL_DESTROY', 'CHANNEL_HANGUP_COMPLETE'
-                            ,'CUSTOM', 'whistle::broadcast', 'loopback::bowout'
+                            ,'CUSTOM', 'sofia::transfer', 'whistle::broadcast'
                             ,'sofia::move_released', 'sofia::move_complete'
                            ]);
 bind_to_events(_, Node) ->
@@ -172,9 +172,9 @@ bind_to_events(_, Node) ->
         ok ->
             lager:debug("event handler registered on node ~s", [Node]),
             freeswitch:event(Node, ['CHANNEL_CREATE', 'CHANNEL_DESTROY', 'CHANNEL_HANGUP_COMPLETE'
-                                    ,'SESSION_HEARTBEAT', 'CUSTOM', 'sofia::transfer'
-                                    ,'whistle::broadcast', 'loopback::bowout'
-                                    ,'sofia::move_released', 'sofia::move_complete'
+                                    ,'CUSTOM', 'sofia::transfer', 'whistle::broadcast'
+                                    ,'loopback::bowout', 'sofia::move_released'
+                                    ,'sofia::move_complete'
                                    ]);
         {error, Reason}=E ->
             lager:warning("error when trying to register event handler on node ~s: ~p", [Node, Reason]),
@@ -333,9 +333,6 @@ process_event(<<"CHANNEL_HANGUP_COMPLETE">>, UUID, Props, Node) ->
             {error, not_found} -> lager:debug("channel not found, surpressing CDR")
         end,
     ok;
-process_event(<<"loopback::bowout">>, _, Props, _) ->
-    lager:debug("received loopback bowout event"),
-    process_loopback_bowout_event(Props);
 process_event(<<"whistle::broadcast">>, _, Props, _) ->
     Self = wh_util:to_binary(node()),
     case props:get_value(<<"whistle_broadcast_node">>, Props, Self) of
@@ -353,12 +350,6 @@ process_event(<<"sofia::move_complete">>, _, Props, Node) ->
     ecallmgr_fs_nodes:channel_set_node(Node, UUID),
     gproc:send({p, l, {channel_move, Node, UUID}}, {channel_move_completed, Node, UUID, Props});
 process_event(_, _, _, _) ->
-    ok.
-
--spec process_loopback_bowout_event/1 :: (proplist()) -> 'ok'.
-process_loopback_bowout_event(Props) ->
-    Key = {loopback_bowout, props:get_value(<<"Resigning-UUID">>, Props)},
-    _ = gproc:send({p, l, Key}, {loopback_bowout, props:get_value(<<"Acquired-UUID">>, Props)}),
     ok.
 
 -spec process_broadcast_event/2 :: (ne_binary(), proplist()) -> ok.

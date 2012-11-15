@@ -131,6 +131,7 @@ handle_originate_execute(JObj, Props) ->
 init([Node, JObj]) ->
     _ = wh_util:put_callid(JObj),
     ServerId = wh_json:get_value(<<"Server-ID">>, JObj),
+    bind_to_events(freeswitch:version(Node), Node),
     case wapi_resource:originate_req_v(JObj) of
         false ->
             Error = <<"originate failed to execute as JObj did not validate">>,
@@ -144,6 +145,11 @@ init([Node, JObj]) ->
                   end),
             {ok, #state{node=Node, originate_req=JObj, server_id=ServerId}}
     end.
+
+bind_to_events({ok, <<"mod_kazoo", _/binary>>}, Node) ->
+    ok = freeswitch:event(Node, ['CUSTOM', 'loopback::bowout']);
+bind_to_events(_, Node) ->
+    gproc:reg({p, l, {call_event, Node, <<"loopback::bowout">>}}).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -233,7 +239,6 @@ handle_cast({originate_execute}, #state{dialstrings=Dialstrings, node=Node, orig
             put(callid, CallId),
             lager:debug("originate is executing, waiting for completion", []),
             erlang:monitor_node(Node, true),
-            gproc:reg({p, l, {loopback_bowout, CallId}}),
             bind_to_call_events(CallId),
             {noreply, State#state{uuid=CallId}};
         {error, Error} ->
@@ -270,6 +275,18 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info({event, [_ | Props]}, #state{node=Node, uuid=OldUUID}=State) ->
+    case props:get_value(<<"Event-Subclass">>, Props, props:get_value(<<"Event-Name">>, Props)) of
+        <<"loopback::bowout">> -> 
+            case  props:get_value(<<"Resigning-UUID">>, Props) =:= OldUUID of
+                false -> {noreply, State};
+                true ->
+                    NewUUID = props:get_value(<<"Acquired-UUID">>, Props),
+                    _ = update_uuid(OldUUID, NewUUID),
+                    {noreply, State#state{uuid=NewUUID}}
+            end;
+        _ -> {noreply, State}
+    end;
 handle_info({abandon_originate}, #state{tref=undefined}=State) ->
     %% Cancelling a timer does not guarantee that the message has not
     %% already been delivered to the message queue.
@@ -285,10 +302,6 @@ handle_info({nodedown, _}, #state{originate_req=JObj, uuid=UUID, server_id=Serve
     _ = publish_error(Error, UUID, JObj, ServerId),
     {stop, normal, State};
 
-handle_info({loopback_bowout, NewUUID}, #state{uuid=OldUUID}=State) ->
-    _ = update_uuid(OldUUID, NewUUID),
-    {noreply, State#state{uuid=NewUUID}};
-    
 handle_info(_Info, State) ->
     {noreply, State}.
 
@@ -413,8 +426,6 @@ update_uuid(OldUUID, NewUUID) ->
     lager:debug("updating call id from ~s to ~s", [OldUUID, NewUUID]),
     unbind_from_call_events(),
     bind_to_call_events(NewUUID),
-    gproc:reg({p, l, {loopback_bowout, NewUUID}}),
-    gproc:unreg({p, l, {loopback_bowout, OldUUID}}),
     ok.
 
 -spec create_uuid/1 :: (atom()) -> ne_binary().
