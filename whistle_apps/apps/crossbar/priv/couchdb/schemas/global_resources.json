@@ -160,7 +160,8 @@
                   "type":"string",
                   "enum":[
                      "sip",
-                     "freetdm"
+                     "freetdm",
+                     "skype"
                   ],
                   "default":"sip"
                },
@@ -191,6 +192,17 @@
                      "1npan"
                   ],
                   "default":"route"
+               },
+               "skype_interface":{
+                 "name":"Skype Interface",
+                 "description":"The name of the Skype interface to route the call over",
+                 "type":"string"
+               },
+               "skype_rr":{
+                 "name":"Skype Round-Robin",
+                 "description":"Determines whether to round-robin calls amongst all interfaces (overrides \"skype_interface\" setting)",
+                 "type":"boolean",
+                 "default":true
                }
             }
          }
