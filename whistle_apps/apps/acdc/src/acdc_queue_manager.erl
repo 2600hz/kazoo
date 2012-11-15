@@ -223,14 +223,17 @@ handle_cast({start_workers}, #state{acct_id=AcctId
 
     lager:debug("q sup: ~p ws sup: ~p", [QueueSup, WorkersSup]),
 
-    case couch_mgr:get_results_count(wh_util:format_account_id(AcctId, encoded)
-                                     ,<<"agents/agents_listing">>
-                                     ,[{key, QueueId}]
-                                    )
+    case couch_mgr:get_results(wh_util:format_account_id(AcctId, encoded)
+                               ,<<"agents/agents_listing">>
+                               ,[{key, QueueId}
+                                 ,include_docs
+                                ]
+                              )
     of
-        {ok, Cnt} ->
-            lager:debug("starting ~b workers for queue ~s", [Cnt, QueueId]),
-            acdc_queue_workers_sup:new_workers(WorkersSup, AcctId, QueueId, Cnt);
+        {ok, Agents} ->
+            _ = [start_agent_and_worker(WorkersSup, AcctId, QueueId, wh_json:get_value(<<"doc">>, A))
+                 || A <- Agents
+                ], ok;
         {error, _E} ->
             lager:debug("failed to find agent count: ~p", [_E]),
             acdc_queue_workers_sup:new_workers(WorkersSup, AcctId, QueueId, 5)
@@ -298,3 +301,20 @@ start_secondary_queue() ->
 
 make_ignore_key(AcctId, QueueId, CallId) ->
     {AcctId, QueueId, CallId}.
+
+-spec start_agent_and_worker/4 :: (pid(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
+start_agent_and_worker(WorkersSup, AcctId, QueueId, AgentJObj) ->
+    acdc_queue_workers_sup:new_worker(WorkersSup, AcctId, QueueId),
+
+    AgentId = wh_json:get_value(<<"_id">>, AgentJObj),
+
+    case acdc_util:agent_status(wh_json:get_value(<<"pvt_account_db">>, AgentJObj), AgentId) of
+        <<"logout">> -> ok;
+        _Status ->
+            lager:debug("starting agent ~s(~s) for queue ~s", [AgentId, _Status, QueueId]),
+
+            case acdc_agents_sup:find_agent_supervisor(AcctId, AgentId) of
+                undefined -> acdc_agents_sup:new(AgentJObj);
+                P when is_pid(P) -> ok
+            end
+    end.
