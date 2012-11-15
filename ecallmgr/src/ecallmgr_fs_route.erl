@@ -168,9 +168,9 @@ code_change(_OldVsn, State, _Extra) ->
 process_route_req(Node, FSID, CallId, Props) ->
     put(callid, CallId),
     lager:debug("processing fetch request ~s (call ~s) from ~s", [FSID, CallId, Node]),
-    case wh_util:is_empty(props:get_value(<<"variable_recovered">>, Props)) of
-        true -> search_for_route(Node, FSID, CallId, Props);
-        false ->
+    case wh_util:is_true(props:get_value(<<"variable_recovered">>, Props)) of
+        false -> search_for_route(Node, FSID, CallId, Props);
+        true ->
             lager:debug("recovered channel already exists on ~s, park it", [Node]),
             RespJObj = wh_json:from_list([{<<"Routes">>, []}
                                           ,{<<"Method">>, <<"park">>}
@@ -231,7 +231,6 @@ reply_affirmative(Node, FSID, CallId, RespJObj, Props) ->
                            lager:debug("channel ~s already has billing id ~s", [CallId, _Else]),
                            RouteCCVs
                    end,
-
             case ecallmgr_call_control:control_procs(CallId) of
                 [] -> start_control_and_events(Node, CallId, ServerQ, CCVs);
                 Ps -> ecallmgr_call_control:update_node(Node, Ps)
@@ -243,7 +242,6 @@ reply_affirmative(Node, FSID, CallId, RespJObj, Props) ->
 
 -spec start_control_and_events/4 :: (atom(), ne_binary(), ne_binary(), wh_json:json_object()) -> 'ok'.
 start_control_and_events(Node, CallId, SendTo, CCVs) ->
-    try
         {ok, CtlPid} = ecallmgr_call_sup:start_control_process(Node, CallId, SendTo),
         {ok, _EvtPid} = ecallmgr_call_sup:start_event_process(Node, CallId),
         CtlQ = ecallmgr_call_control:queue_name(CtlPid),
@@ -253,17 +251,15 @@ start_control_and_events(Node, CallId, SendTo, CCVs) ->
                    ,{<<"Custom-Channel-Vars">>, CCVs}
                    | wh_api:default_headers(CtlQ, <<"dialplan">>, <<"route_win">>, ?APP_NAME, ?APP_VERSION)
                   ],
-        send_control_queue(SendTo, CtlProp)
-    catch
-        _:Reason ->
-            lager:debug("error during control handoff to whapp, ~p", [Reason]),
-            {error, amqp_error}
-    end.
+    send_control_queue(SendTo, CtlProp).
 
 -spec send_control_queue/2 :: (ne_binary(), proplist()) -> 'ok'.
 send_control_queue(SendTo, CtlProp) ->
     lager:debug("sending route_win to ~s", [SendTo]),
-    wapi_route:publish_win(SendTo, CtlProp).
+    wh_amqp_worker:cast(?ECALLMGR_AMQP_POOL
+                        ,CtlProp
+                        ,fun(P) -> wapi_route:publish_win(SendTo, P) end
+                       ).
 
 -spec route_req/4 :: (ne_binary(), ne_binary(), proplist(), atom()) -> proplist().
 route_req(CallId, FSID, Props, Node) ->

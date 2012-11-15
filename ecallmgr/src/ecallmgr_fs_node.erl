@@ -299,40 +299,40 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 -spec process_event/3 :: (api_binary(), wh_proplist(), atom()) -> 'ok'.
--spec process_event/4 :: (ne_binary(), api_binary(), wh_proplist(), atom()) -> 'ok'.
+-spec process_event/4 :: (ne_binary(), api_binary(), wh_proplist(), atom()) -> any().
 
 process_event(UUID, Props, Node) ->
-    EventName = props:get_value(<<"Event-Subclass">>, Props, props:get_value(<<"Event-Name">>, Props)),
-    gproc:send({p, l, {call_event, Node, EventName}}, {event, [UUID | Props]}),
-    process_event(EventName, UUID, Props, Node).
+    EventName = props:get_value(<<"Event-Subclass">>, Props, props:get_value(<<"Event-Name">>, Props)),    
+    case wh_util:is_true(props:get_value(<<"variable_channel_is_moving">>, Props)) of
+        true -> ok;
+        false ->
+            gproc:send({p, l, {call_event, Node, EventName}}, {event, [UUID | Props]})
+    end,
+    _ = process_event(EventName, UUID, Props, Node),
+    ok.
 
 process_event(<<"CHANNEL_CREATE">>, UUID, Props, Node) ->
     lager:debug("received channel create event: ~s", [UUID]),
     _ = maybe_start_event_listener(Node, UUID),
-    spawn(ecallmgr_fs_nodes, new_channel, [Props, Node]),
-    ok;
+    case wh_util:is_true(props:get_value(<<"variable_channel_is_moving">>, Props)) of
+        true -> ok;
+        false -> spawn(ecallmgr_fs_nodes, new_channel, [Props, Node])
+    end;
 process_event(<<"CHANNEL_DESTROY">>, UUID, Props, Node) ->
-    case props:get_value(<<"Channel-State">>, Props) of
-        <<"CS_NEW">> -> 
-            lager:debug("ignoring channel destroy because of CS_NEW: ~s", [UUID]);
-        <<"CS_DESTROY">> ->
+    case props:get_value(<<"Channel-State">>, Props) =:= <<"CS_DESTROY">>
+        andalso (not wh_util:is_true(props:get_value(<<"variable_channel_is_moving">>, Props)))
+    of
+        false -> ok;
+        true ->
             lager:debug("received channel destroyed: ~s", [UUID]),
-            _ = case ecallmgr_fs_nodes:channel_node(UUID) of
-                    {ok, Node} -> 
-                        ecallmgr_call_events:publish_channel_destroy(Node, UUID, Props),
-                        spawn(ecallmgr_fs_nodes, destroy_channel, [Props, Node]);
-                    {ok, _NewNode} -> lager:debug("surpressing destroy; ~s is on ~s, not ~s", [UUID, _NewNode, Node]);
-                    {error, not_found} -> lager:debug("channel not found, surpressing destroy")
-                end,
-            ok
+            ecallmgr_call_events:publish_channel_destroy(Node, UUID, Props),
+            spawn(ecallmgr_fs_nodes, destroy_channel, [Props, Node])
     end;
 process_event(<<"CHANNEL_HANGUP_COMPLETE">>, UUID, Props, Node) ->
-    _ = case ecallmgr_fs_nodes:channel_node(UUID) of
-            {ok, Node} -> spawn(ecallmgr_call_cdr, new_cdr, [UUID, Props]);
-            {ok, _NewNode} -> lager:debug("surpressing CDR; ~s is on ~s, not ~s", [UUID, _NewNode, Node]);
-            {error, not_found} -> lager:debug("channel not found, surpressing CDR")
-        end,
-    ok;
+    case wh_util:is_true(props:get_value(<<"variable_channel_is_moving">>, Props))of
+        true -> ok;
+        false -> spawn(ecallmgr_call_cdr, new_cdr, [UUID, Props])
+    end;
 process_event(<<"whistle::broadcast">>, _, Props, _) ->
     Self = wh_util:to_binary(node()),
     case props:get_value(<<"whistle_broadcast_node">>, Props, Self) of

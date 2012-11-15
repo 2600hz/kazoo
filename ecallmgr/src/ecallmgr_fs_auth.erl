@@ -253,4 +253,7 @@ publish_register_event(Data) ->
                             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)]
                           ,wapi_registration:success_keys()),
     lager:debug("sending successful registration"),
-    wapi_registration:publish_success(ApiProp).
+    wh_amqp_worker:cast(?ECALLMGR_AMQP_POOL
+                        ,ApiProp
+                        ,fun wapi_registration:publish_success/1
+                       ).

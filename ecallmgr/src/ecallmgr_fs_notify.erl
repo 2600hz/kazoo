@@ -154,7 +154,7 @@ init([Node, Options]) ->
     put(callid, Node),
     process_flag(trap_exit, true),
     lager:debug("starting new ecallmgr notify process"),
-%%    gproc:reg({p, l, fs_notify}),
+    gproc:reg({p, l, fs_notify}),
     bind_to_events(freeswitch:version(Node), Node),
     {ok, #state{node=Node, options=Options}}.
 
