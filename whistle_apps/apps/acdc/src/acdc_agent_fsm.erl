@@ -473,8 +473,11 @@ ringing({originate_failed, JObj}, #state{agent_proc=Srv
     acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_GREEN),
     {next_state, ready, clear_call(State)};
 
-ringing({channel_bridged, CallId}, #state{member_call_id=CallId}=State) ->
+ringing({channel_bridged, CallId}, #state{member_call_id=CallId
+                                          ,agent_proc=Srv
+                                         }=State) ->
     lager:debug("agent has connected to member"),
+    acdc_agent:member_connect_accepted(Srv),
     {next_state, answered, State#state{call_status_ref=start_call_status_timer()
                                       ,call_status_failures=0
                                       }};
