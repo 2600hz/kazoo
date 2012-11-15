@@ -148,14 +148,21 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec is_node_up/2 :: (atom(), proplist()) -> boolean().
+-spec is_node_up/2 :: (atom(), wh_proplist()) -> boolean().
 is_node_up(Node, Opts) ->
-    lager:debug("pinging '~s'", [Node]),
+    case props:get_value(cookie, Opts) of
+        undefined -> ok;
+        Cookie when is_atom(Cookie) ->
+            lager:debug("setting cookie to ~s for ~s", [Cookie, Node]),
+            erlang:set_cookie(Node, Cookie)
+    end,
+
     case net_adm:ping(Node) of
         pong ->
             lager:info("node ~s has risen", [Node]),
             wh_notify:system_alert("node ~s connected to ~s", [Node, node()]),
             ok =:= ecallmgr_fs_nodes:add(Node, Opts);
         pang ->
+            lager:info("node ~s still not reachable", [Node]),
             false
     end.
