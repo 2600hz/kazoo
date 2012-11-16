@@ -328,7 +328,7 @@ process_event(<<"CHANNEL_DESTROY">>, UUID, Props, Node) ->
             ecallmgr_call_events:publish_channel_destroy(Node, UUID, Props),
             spawn(ecallmgr_fs_nodes, destroy_channel, [Props, Node])
     end;
-process_event(<<"CHANNEL_HANGUP_COMPLETE">>, UUID, Props, Node) ->
+process_event(<<"CHANNEL_HANGUP_COMPLETE">>, UUID, Props, _Node) ->
     case wh_util:is_true(props:get_value(<<"variable_channel_is_moving">>, Props))of
         true -> ok;
         false -> spawn(ecallmgr_call_cdr, new_cdr, [UUID, Props])

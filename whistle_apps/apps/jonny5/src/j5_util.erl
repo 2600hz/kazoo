@@ -8,7 +8,6 @@
 -module(j5_util).
 
 -export([get_limits/1]).
--export([per_minute_discrepancy/3]).
 -export([current_balance/1]).
 -export([write_to_ledger/5]).
 -export([get_session_id/1]).
@@ -39,9 +38,11 @@ get_limits(Account) ->
                              ,calls = get_limit(<<"calls">>, JObj)
                              ,allow_prepay = wh_json:is_true(<<"allow_prepay">>, JObj, DefaultUsePrepay)
                              ,allow_postpay = wh_json:is_true(<<"pvt_allow_postpay">>, JObj, DefaultPostpay)
-                             ,max_postpay_amount = wapi_money:dollars_to_units(wh_json:get_float_value(<<"pvt_max_postpay_amount">>, JObj, DefaultMaxPostpay))
+                             ,max_postpay_amount = wapi_money:dollars_to_units(abs(wh_json:get_float_value(<<"pvt_max_postpay_amount">>, JObj, DefaultMaxPostpay))) * -1
                              ,reserve_amount = wapi_money:dollars_to_units(wh_json:get_float_value(<<"pvt_reserve_amount">>, JObj, DefaultReserve))
                              ,allotments = wh_json:get_value(<<"pvt_allotments">>, JObj, wh_json:new())
+                             ,soft_limit_inbound = wh_json:is_true(<<"pvt_soft_limit_inbound">>, JObj)
+                             ,soft_limit_outbound = wh_json:is_true(<<"pvt_soft_limit_outbound">>, JObj)
                             },
             wh_cache:store_local(?JONNY5_CACHE, ?LIMITS_KEY(AccountId), Limits, 900),
             Limits
@@ -86,22 +87,6 @@ create_init_limits(AccountDb) ->
             lager:debug("failed to create initial limits document in db ~s: ~p", [AccountDb, _R]),
             wh_json:new()
     end.
-
--spec per_minute_discrepancy/3 :: (float(), #limits{}, wh_json:json_object()) -> wh_couch_return().
-per_minute_discrepancy(Units, #limits{account_id=AccountId}=Limits, JObj) when Units > 0 ->
-    Props = [{<<"reason">>, <<"jonny5 discrepancy correction">>}
-             ,{<<"balance">>, current_balance(AccountId)}
-             ,{<<"pvt_type">>, <<"debit">>}
-            ],
-    write_to_ledger(<<"discrepancy">>, Props, Units, Limits, JObj);
-per_minute_discrepancy(Units, #limits{account_id=AccountId}=Limits, JObj) when Units < 0 ->
-    Props = [{<<"reason">>, <<"jonny5 discrepancy correction">>}
-             ,{<<"balance">>, current_balance(AccountId)}
-             ,{<<"pvt_type">>, <<"credit">>}
-            ],
-    write_to_ledger(<<"discrepancy">>, Props, Units, Limits, JObj);
-per_minute_discrepancy(_, _, _) ->
-    {ok, wh_json:new()}.
 
 -spec write_to_ledger/5 :: (ne_binary(), float() | integer(), wh_json:json_object(), ne_binary(), debit | credit) -> wh_couch_return().
 -ifdef(TEST).

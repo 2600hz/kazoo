@@ -8,7 +8,7 @@
 -module(j5_allotments).
 
 -export([is_available/2]).
--export([session_heartbeat/2]).
+-export([reauthorize/2]).
 -export([reconcile_cdr/2]).
 
 -include("jonny5.hrl").
@@ -21,17 +21,15 @@ is_available(Limits, JObj) ->
             maybe_consume_allotment(Allotment, Limits, JObj)
     end.
 
--spec session_heartbeat/2 :: (ne_binary(), wh_json:json_object()) -> 'ok'.
-session_heartbeat(Account, JObj) ->
-    Limits = j5_util:get_limits(Account),
+-spec reauthorize/2 :: (#limits{}, wh_json:json_object()) -> 'ok'.
+reauthorize(Limits, JObj) ->
     Timestamp = wh_json:get_integer_value(<<"Timestamp">>, JObj),
     Answered = wh_json:get_integer_value(<<"Answered-Time">>, JObj),
     case (Timestamp - Answered) > 55 of
-        false -> false;
+        false -> j5_reauthz_req:send_allow_resp(JObj);
         true ->
             Allotment = try_find_allotment(Limits, JObj),
-            Props = [{<<"name">>, wh_json:get_value(<<"name">>, Allotment)}],
-            tick_allotment_consumption(Props, 60, Limits, JObj)
+            maybe_transition_to_per_minute(Allotment, Limits, JObj)
     end.
 
 -spec reconcile_cdr/2 :: (ne_binary(), wh_json:json_object()) -> 'ok'.
@@ -50,30 +48,51 @@ reconcile_cdr(Account, JObj) ->
     end,
     ok.
 
--spec try_find_allotment/2 :: (#limits{}, wh_json:json_object()) -> wh_json:json_object() | 'undefined'.
--spec try_find_allotment/3 :: ([] | [ne_binary(),...], wh_json:json_object(), ne_binary()) -> wh_json:json_object() | 'undefined'.
-
-try_find_allotment(#limits{allotments=Allotments}, JObj) ->
-    [Num, _] = binary:split(wh_json:get_value(<<"Request">>, JObj), <<"@">>),
-    Number = wnm_util:to_e164(Num),
-    try_find_allotment(wh_json:get_keys(Allotments), Allotments, Number).
-
-try_find_allotment([], _, _) -> undefined;
-try_find_allotment([Key|Keys], Allotments, Number) ->
-    case re:run(Number, Key) of
-        nomatch -> try_find_allotment(Keys, Allotments, Number);
-        _Match -> 
-            DefaultName = wh_util:to_hex_binary(crypto:md5(Key)),
-            Name = wh_json:get_ne_value([Key, <<"name">>], Allotments, DefaultName),
-            wh_json:set_value(<<"name">>, Name, wh_json:get_value(Key, Allotments))
+-spec maybe_transition_to_per_minute/3 :: ('undefined' | wh_json:json_object(), #limits{}, wh_json:json_object()) -> 'ok'.
+maybe_transition_to_per_minute(undefined, _, _) -> ok;
+maybe_transition_to_per_minute(Allotment, Limits, JObj) ->
+    Amount = wh_json:get_integer_value(<<"amount">>, Allotment, 0),
+    Name = wh_json:get_value(<<"name">>, Allotment),
+    Cycle = wh_json:get_ne_value(<<"cycle">>, Allotment, <<"monthly">>),
+    case allotment_consumed_sofar(Name, Cycle, Limits) of
+        Consumed when (Amount - Consumed) =< 60 ->
+            tick_allotment_consumption([{<<"name">>, Name}], 60, Limits, JObj),
+            transition_to_per_minute(JObj);
+        _Else ->
+            tick_allotment_consumption([{<<"name">>, Name}], 60, Limits, JObj),
+            j5_reauthz_req:send_allow_resp(JObj)
     end.
 
+-spec transition_to_per_minute/1 :: (wh_json:json_object()) -> 'ok'.
+transition_to_per_minute(JObj) ->
+    lager:debug("allotment consumed, transitioning to per_minute", []),
+    Timestamp = wh_json:get_integer_value(<<"Timestamp">>, JObj),
+    Answered = wh_json:get_integer_value(<<"Answered-Time">>, JObj),
+    CCVs = wh_json:from_list([{<<"Billing-Seconds-Offset">>, (Timestamp - Answered) + 62}]),
+    j5_reauthz_req:send_allow_resp(wh_json:set_value(<<"Type">>, <<"per_minute">>, JObj), CCVs).
+
+-spec try_find_allotment/2 :: (#limits{}, wh_json:json_object()) -> wh_json:json_object() | 'undefined'.
+try_find_allotment(#limits{allotments=Allotments}, JObj) ->
+    [Number, _] = binary:split(wh_json:get_value(<<"Request">>, JObj), <<"@">>),
+    case wnm_util:classify_number(Number) of
+        undefined -> undefined;
+        Classification ->
+            ensure_name_present(wh_json:get_value(Classification, Allotments), Classification)
+    end.
+
+-spec ensure_name_present/2 :: ('undefined' | wh_json:json_object(), ne_binary()) -> 'undefined' | wh_json:json_object().
+ensure_name_present(undefined, _) -> undefined;
+ensure_name_present(Allotment, Classification) -> 
+    Name = wh_json:get_ne_value(<<"name">>, Allotment, Classification),
+    wh_json:set_value(<<"name">>, Name, Allotment).
+
+-spec maybe_consume_allotment/3 :: (wh_json:json_object(), #limits{}, wh_json:json_object()) -> boolean().
 maybe_consume_allotment(Allotment, #limits{account_id=AccountId}=Limits, JObj) ->
     Amount = wh_json:get_integer_value(<<"amount">>, Allotment, 0),
     Name = wh_json:get_value(<<"name">>, Allotment),
     Cycle = wh_json:get_ne_value(<<"cycle">>, Allotment, <<"monthly">>),
     case allotment_consumed_sofar(Name, Cycle, Limits) of
-        Consumed when Consumed > (Amount - 60) -> 
+        Consumed when Consumed > (Amount - 60) ->
             lager:debug("~s allotment ~s for ~s at ~w/~w", [Cycle, Name, AccountId, Consumed, Amount]),
             false;
         Consumed ->
@@ -82,6 +101,7 @@ maybe_consume_allotment(Allotment, #limits{account_id=AccountId}=Limits, JObj) -
             true
     end.
 
+-spec allotment_consumed_sofar/3 :: (ne_binary(), ne_binary(), #limits{}) -> integer().
 allotment_consumed_sofar(Name, Cycle, #limits{account_db=AccountDb}) ->
     ViewOptions = [{startkey, [Name, cycle_start(Cycle)]}
                    ,group
@@ -145,25 +165,5 @@ return_allotment_consumption(Props, Units, Limits, JObj) ->
 -include_lib("eunit/include/eunit.hrl").
 -ifdef(TEST).
 
-limits(415) ->
-    #limits{allotments=wh_json:decode(<<"{\"^\\\\+?1415\\\\d{7}$\":{\"allotment\": 100}}">>)};
-limits(named) ->
-    #limits{allotments=wh_json:decode(<<"{\"^\\\\+?1415\\\\d{7}$\":{\"allotment\": 100, \"name\":\"san_francisco\"}}">>)}.
-
-request_jobj(R) ->
-    wh_json:from_list([{<<"Request">>, <<R/binary, "@2600hz.com">>}]).
-
-find_allotments_test() ->
-    ?assertEqual(wh_json:from_list([{<<"allotment">>, 100}
-                                    ,{<<"name">>, <<"1595b518c6e1b8103fb0843288e5d8e7">>}
-                                   ])
-                 ,try_find_allotment(limits(415), request_jobj(<<"+14158867900">>))),
-    ?assertEqual(wh_json:from_list([{<<"allotment">>, 100}
-                                    ,{<<"name">>, <<"san_francisco">>}
-                                   ])
-                 ,try_find_allotment(limits(named), request_jobj(<<"+14158867900">>))),
-    ?assertEqual(undefined
-                 ,try_find_allotment(limits(415), request_jobj(<<"+18008867900">>))),
-    ok.
-
+%% Before we used the wnm_util:classify I had tests here, but now they can't be run in a test env
 -endif.

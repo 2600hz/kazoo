@@ -9,7 +9,7 @@
 %%%-------------------------------------------------------------------
 -module(ecallmgr_fs_authz).
 
--behaviour(gen_listener).
+-behaviour(gen_server).
 
 -export([start_link/1, start_link/2]).
 -export([handle_channel_create/3]).
@@ -20,7 +20,6 @@
          ,handle_call/3
          ,handle_cast/2
          ,handle_info/2
-         ,handle_event/2
          ,terminate/2
          ,code_change/3
         ]).
@@ -38,13 +37,6 @@
 
 -define(HEARTBEAT_ON_ANSWER(CallId), <<"api_on_answer=uuid_session_heartbeat ", CallId/binary, " 60">>).
 
--define(BINDINGS, [{route, []}
-                   ,{self, []}
-                  ]).
--define(RESPONDERS, []).
--define(QUEUE_OPTIONS, [{exclusive, false}]).
--define(CONSUME_OPTIONS, [{exclusive, false}]).
-
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -60,14 +52,7 @@ start_link(Node) ->
     start_link(Node, []).
 
 start_link(Node, Options) ->
-    QueueName = <<(wh_util:to_binary(Node))/binary, "-authz">>,
-    gen_listener:start_link(?MODULE, [{bindings, ?BINDINGS}
-                                      ,{responders, ?RESPONDERS}
-                                      ,{queue_name, QueueName}
-                                      ,{queue_options, ?QUEUE_OPTIONS}
-                                      ,{consume_options, ?CONSUME_OPTIONS}
-                                      ,{basic_qos, 1}
-                                     ], [Node, Options]).
+    gen_server:start_link(?MODULE, [Node, Options], []).
 
 -spec kill_channel/2 :: (wh_proplist(), atom()) -> 'ok'.
 -spec kill_channel/3 :: (ne_binary(), ne_binary(), atom()) -> 'ok'.
@@ -97,11 +82,26 @@ handle_session_heartbeat(Props, Node) ->
     CallId = props:get_value(<<"Unique-ID">>, Props),
     put(callid, CallId),
     lager:debug("received session heartbeat", []),
-    Update = authz_update(CallId, Props, Node),
-    wh_amqp_worker:cast(?ECALLMGR_AMQP_POOL
-                        ,props:filter_undefined(Update)
-                        ,fun wapi_authz:publish_update/1
-                       ).
+    AccountId = props:get_value(?GET_CCV(<<"Account-ID">>), Props),
+    ResellerId = props:get_value(?GET_CCV(<<"Reseller-ID">>), Props),
+    _ = case (not wh_util:is_empty(AccountId))
+            andalso should_reauth(?GET_CCV(<<"Account-Billing">>), Props) 
+        of
+            false -> ok;
+            AType -> 
+                io:format("REAUTH ACCOUNT ~p~n", [AccountId]),
+                attempt_reauthorization(account, AccountId, AType, Props, Node)
+        end,
+    _ = case (not wh_util:is_empty(ResellerId))
+            andalso AccountId =/= ResellerId 
+            andalso should_reauth(?GET_CCV(<<"Reseller-Billing">>), Props) 
+        of
+            false -> ok;
+            RType ->
+                io:format("REAUTH RESELLER ~p~n", [ResellerId]),
+                attempt_reauthorization(reseller, ResellerId, RType, Props, Node)
+        end,    
+    ok.
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -185,17 +185,6 @@ handle_info(_Info, State) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Allows listener to pass options to handlers
-%%
-%% @spec handle_event(JObj, State) -> {reply, Options}
-%% @end
-%%--------------------------------------------------------------------
-handle_event(_JObj, _State) ->
-    {reply, []}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
 %% This function is called by a gen_server when it is about to
 %% terminate. It should be the opposite of Module:init/1 and do any
 %% necessary cleaning up. When it returns, the gen_server terminates
@@ -205,7 +194,7 @@ handle_event(_JObj, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
-    lager:debug("listener terminating: ~p", [_Reason]).
+    ok.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -379,8 +368,8 @@ authorize(AccountId, Props) ->
     lager:debug("channel authorization request started"),
     ReqResp = wh_amqp_worker:call(?ECALLMGR_AMQP_POOL
                                   ,authz_req(AccountId, Props)
-                                  ,fun wapi_authz:publish_req/1
-                                  ,fun wapi_authz:resp_v/1
+                                  ,fun wapi_authz:publish_authz_req/1
+                                  ,fun wapi_authz:authz_resp_v/1
                                   ,5000),
     case ReqResp of
         {error, _R} ->
@@ -389,11 +378,28 @@ authorize(AccountId, Props) ->
         {ok, RespJObj} ->
             case wh_util:is_true(wh_json:get_value(<<"Is-Authorized">>, RespJObj)) of
                 false -> {error, account_limited};
-                true ->
-                    wapi_authz:publish_win(wh_json:get_value(<<"Server-ID">>, RespJObj)
-                                           ,wh_json:delete_key(<<"Event-Name">>, RespJObj)),
-                    Type = wh_json:get_value(<<"Type">>, RespJObj),
-                    {ok, Type}
+                true -> {ok, wh_json:get_value(<<"Type">>, RespJObj)}
+            end
+    end.
+
+-spec reauthorize/3 :: (api_binary(), wh_proplist(), ne_binary()) -> {'ok', wh_json:json_object()} |
+                                                                     {'error', _}.
+reauthorize(undefined, _, _) -> {error, no_account};
+reauthorize(AccountId, Type, Props) ->
+    lager:debug("channel reauthorization request started"),
+    ReqResp = wh_amqp_worker:call(?ECALLMGR_AMQP_POOL
+                                  ,reauthz_req(AccountId, Type, Props)
+                                  ,fun wapi_authz:publish_reauthz_req/1
+                                  ,fun wapi_authz:reauthz_resp_v/1
+                                  ,5000),
+    case ReqResp of
+        {error, _R} ->
+            lager:debug("reauthz request lookup failed: ~p", [_R]),
+            authz_default();
+        {ok, RespJObj} ->
+            case wh_util:is_true(wh_json:get_value(<<"Is-Authorized">>, RespJObj)) of
+                false -> {error, account_limited};
+                true -> {ok, RespJObj}
             end
     end.
 
@@ -424,13 +430,50 @@ identify_account(_, Props) ->
             end
     end.
 
+-spec attempt_reauthorization/5 :: (account|reseller, ne_binary(), ne_binary(), proplist(), atom()) -> 'ok'.
+attempt_reauthorization(Billing, AccountId, Type, Props, Node) ->
+    case reauthorize(AccountId, Type, Props) of
+        {error, account_limited} -> 
+            maybe_deny_call(Props, undefined, Node);
+        {ok, JObj} ->
+            CallId = props:get_value(<<"Unique-ID">>, Props),
+            NewType = wh_json:get_value(<<"Type">>, JObj, Type),
+            maybe_update_billing_type(Billing, Type, NewType, CallId, Node),
+            CCVs = wh_json:get_ne_value(<<"Custom-Channel-Vars">>, JObj),
+            maybe_update_ccvs(CCVs, CallId, Node);
+        _Else -> ok
+    end.
+
+-spec maybe_update_ccvs/3 :: ('undefined' | wh_json:json_object(), ne_binary(), atom()) -> 'ok'.
+maybe_update_ccvs(undefined, _, _) ->
+    ok;
+maybe_update_ccvs(CCVs, CallId, Node) ->
+    ChannelVars = wh_json:to_proplist(CCVs),
+    ecallmgr_util:set(Node, CallId, ChannelVars).
+
+-spec maybe_update_billing_type/5 :: (account|reseller, ne_binary(), ne_binary(), ne_binary(), atom()) -> 'ok'.
+maybe_update_billing_type(_, Type, Type, _, _) ->
+    ok;
+maybe_update_billing_type(account, _, Type, CallId, Node) ->
+    ecallmgr_util:send_cmd(Node, CallId, "set", ?SET_CCV(<<"Account-Billing">>, Type));
+maybe_update_billing_type(reseller, _, Type, CallId, Node) ->
+    ecallmgr_util:send_cmd(Node, CallId, "set", ?SET_CCV(<<"Reseller-Billing">>, Type)).
+        
+-spec should_reauth/2 :: (ne_binary(), proplist()) -> ne_binary() | 'false'.
+should_reauth(BillingVar, Props) ->
+    case props:get_value(BillingVar, Props) of
+        <<"allotment">> = A -> A;
+        <<"per_minute">> = P -> P;
+        _ -> false
+    end.
+
 -spec authz_default/0 :: () -> {'ok', ne_binary()} |
                                {'error', 'default_is_deny'}.
 authz_default() ->
     case ecallmgr_config:get(<<"authz_default_action">>, <<"deny">>) of
-        <<"deny">> -> {error, default_is_deny};
+        <<"deny">> -> {error, account_limited};
         _Else ->
-            DefaultType = ecallmgr_config:get(<<"authz_default_type">>, <<"flat_rate">>),
+            DefaultType = ecallmgr_config:get(<<"authz_default_type">>, <<"per_minute">>),
             lager:debug("authorizing channel as config ecallmgr.authz_default_type: '~s'", [DefaultType]),
             {ok, DefaultType}
     end.
@@ -469,6 +512,28 @@ authz_req(AccountId, Props) ->
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
+-spec reauthz_req/3 :: (ne_binary(), ne_binary(), wh_proplist()) -> wh_proplist().
+reauthz_req(AccountId, Type, Props) ->
+    [{<<"Timestamp">>, get_time_value(<<"Event-Date-Timestamp">>, Props)}
+     ,{<<"Caller-ID-Name">>, props:get_value(<<"Caller-Caller-ID-Name">>, Props, <<"noname">>)}
+     ,{<<"Caller-ID-Number">>, props:get_value(<<"Caller-Caller-ID-Number">>, Props, <<"0000000000">>)}
+     ,{<<"Type">>, Type}
+     ,{<<"To">>, ecallmgr_util:get_sip_to(Props)}
+     ,{<<"From">>, ecallmgr_util:get_sip_from(Props)}
+     ,{<<"Request">>, ecallmgr_util:get_sip_request(Props)}
+     ,{<<"Call-ID">>, props:get_value(<<"Unique-ID">>, Props)}
+     ,{<<"Account-ID">>, AccountId}
+     ,{<<"Call-Direction">>, props:get_value(<<"Call-Direction">>, Props)}
+     ,{<<"Custom-Channel-Vars">>, wh_json:from_list(ecallmgr_util:custom_channel_vars(Props))}
+     ,{<<"Created-Time">>, get_time_value(<<"Caller-Channel-Created-Time">>, Props)}
+     ,{<<"Answered-Time">>, get_time_value(<<"Caller-Channel-Answered-Time">>, Props)}
+     ,{<<"Progress-Time">>, get_time_value(<<"Caller-Channel-Progress-Time">>, Props)}
+     ,{<<"Progress-Media-Time">>, get_time_value(<<"Caller-Channel-Progress-Media-Time">>, Props)}
+     ,{<<"Hangup-Time">>, get_time_value(<<"Caller-Channel-Hangup-Time">>, Props)}
+     ,{<<"Transfer-Time">>, get_time_value(<<"Caller-Channel-Transfer-Time">>, Props)}
+     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+    ].
+
 -spec authz_identify_req/1 :: (wh_proplist()) -> wh_proplist().
 authz_identify_req(Props) ->
     [{<<"Caller-ID-Name">>, props:get_value(<<"variable_effective_caller_id_name">>, Props,
@@ -481,35 +546,6 @@ authz_identify_req(Props) ->
      ,{<<"From-Network-Addr">>, props:get_value(<<"Caller-Network-Addr">>, Props)}
      ,{<<"Call-ID">>, props:get_value(<<"Unique-ID">>, Props)}
      ,{<<"Custom-Channel-Vars">>, wh_json:from_list(ecallmgr_util:custom_channel_vars(Props))}
-     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-    ].
-
--spec authz_update/3 :: (ne_binary(), wh_proplist(), atom()) -> wh_proplist().
-authz_update(CallId, Props, Node) ->
-    [{<<"Call-ID">>, CallId}
-     ,{<<"Handling-Server-Name">>, wh_util:to_binary(Node)}
-     ,{<<"Request">>, ecallmgr_util:get_sip_request(Props)}
-     ,{<<"Timestamp">>, get_time_value(<<"Event-Date-Timestamp">>, Props)}
-     ,{<<"Custom-Channel-Vars">>, wh_json:from_list(ecallmgr_util:custom_channel_vars(Props))}
-     ,{<<"Caller-ID-Name">>, props:get_value(<<"variable_effective_caller_id_name">>, Props
-                                             ,props:get_value(<<"Caller-Caller-ID-Name">>, Props))}
-     ,{<<"Caller-ID-Number">>, props:get_value(<<"variable_effective_caller_id_number">>, Props
-                                               ,props:get_value(<<"Caller-Caller-ID-Number">>, Props))}
-     ,{<<"Callee-ID-Name">>, props:get_value(<<"variable_effective_callee_id_name">>, Props
-                                             ,props:get_value(<<"Caller-Callee-ID-Name">>, Props))}
-     ,{<<"Callee-ID-Number">>, props:get_value(<<"variable_effective_callee_id_number">>, Props
-                                               ,props:get_value(<<"Caller-Callee-ID-Number">>, Props))}
-     ,{<<"Other-Leg-Call-ID">>, props:get_value(<<"Other-Leg-Unique-ID">>, Props
-                                                ,props:get_value(<<"variable_holding_uuid">>, Props))}
-     ,{<<"Call-Direction">>, props:get_value(<<"Call-Direction">>, Props)}
-     ,{<<"To-Uri">>, props:get_value(<<"variable_sip_to_uri">>, Props)}
-     ,{<<"From-Uri">>, props:get_value(<<"variable_sip_from_uri">>, Props)}
-     ,{<<"Created-Time">>, get_time_value(<<"Caller-Channel-Created-Time">>, Props)}
-     ,{<<"Answered-Time">>, get_time_value(<<"Caller-Channel-Answered-Time">>, Props)}
-     ,{<<"Progress-Time">>, get_time_value(<<"Caller-Channel-Progress-Time">>, Props)}
-     ,{<<"Progress-Media-Time">>, get_time_value(<<"Caller-Channel-Progress-Media-Time">>, Props)}
-     ,{<<"Hangup-Time">>, get_time_value(<<"Caller-Channel-Hangup-Time">>, Props)}
-     ,{<<"Transfer-Time">>, get_time_value(<<"Caller-Channel-Transfer-Time">>, Props)}
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 

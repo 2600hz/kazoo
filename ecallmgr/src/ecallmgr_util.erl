@@ -12,6 +12,9 @@
 -module(ecallmgr_util).
 
 -export([send_cmd/4]).
+-export([get_fs_kv/3]).
+-export([set/3]).
+-export([export/3]).
 -export([get_expires/1]).
 -export([get_interface_properties/1, get_interface_properties/2]).
 -export([get_sip_to/1, get_sip_from/1, get_sip_request/1, get_orig_ip/1, custom_channel_vars/1]).
@@ -261,6 +264,60 @@ is_node_up(Node, UUID) ->
 -spec put_callid/1 :: (wh_json:json_object()) -> 'undefined' | term().
 put_callid(JObj) ->
     wh_util:put_callid(JObj).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% set channel and call variables in FreeSWITCH
+%% @end
+%%--------------------------------------------------------------------
+-spec get_fs_kv/3 :: (ne_binary(), ne_binary(), ne_binary()) -> binary().
+get_fs_kv(<<"Hold-Media">>, Media, UUID) ->
+    list_to_binary(["hold_music="
+                    ,wh_util:to_list(media_path(Media, extant, UUID, wh_json:new()))
+                   ]);
+get_fs_kv(Key, Val, _) ->
+    case lists:keyfind(Key, 1, ?SPECIAL_CHANNEL_VARS) of
+        false ->
+            list_to_binary([?CHANNEL_VAR_PREFIX, wh_util:to_list(Key), "=", wh_util:to_list(Val)]);
+        {_, Prefix} ->
+            list_to_binary([Prefix, "=", wh_util:to_list(Val)])
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec set/3 :: (atom(), ne_binary(), wh_proplist() | ne_binary()) -> ecallmgr_util:send_cmd_ret().
+set(Node, UUID, [{K, V}]) ->
+    set(Node, UUID, get_fs_kv(K, V, UUID));
+set(Node, UUID, [{_, _}|_]=Props) ->
+    Multiset = lists:foldl(fun({K, V}, Acc) ->
+                                   <<"|", (get_fs_kv(K, V, UUID))/binary, Acc/binary>>
+                           end, <<>>, Props),
+    send_cmd(Node, UUID, "multiset", <<"^^", Multiset/binary>>);
+set(Node, UUID, Arg) ->
+    case wh_util:to_binary(Arg) of
+        <<"hold_music=", _/binary>> -> 
+            ecallmgr_fs_nodes:channel_set_import_moh(Node, UUID, false);
+        _Else -> ok
+    end,
+    send_cmd(Node, UUID, "set", Arg).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec export/3 :: (atom(), ne_binary(), binary()) -> ecallmgr_util:send_cmd_ret().
+export(Node, UUID, Arg) ->
+    case wh_util:to_binary(Arg) of
+        <<"hold_music=", _/binary>> -> 
+            ecallmgr_fs_nodes:channel_set_import_moh(Node, UUID, false);
+        _Else -> ok
+    end,
+    send_cmd(Node, UUID, "export", wh_util:to_list(Arg)).
 
 %%--------------------------------------------------------------------
 %% @public

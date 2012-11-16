@@ -7,7 +7,7 @@
 %%%   James Aimonetti
 %%%   Karl Anderson
 %%%-------------------------------------------------------------------
--module(ecallmgr_fs_auth).
+-module(ecallmgr_fs_authn).
 
 -behaviour(gen_server).
 

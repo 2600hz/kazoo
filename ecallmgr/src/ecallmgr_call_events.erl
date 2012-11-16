@@ -251,9 +251,7 @@ handle_info({call, _}, #state{passive=true}=State) ->
     {'noreply', State};
 handle_info({call_event, _}, #state{passive=true}=State) ->
     {'noreply', State};
-handle_info({_, {event, [CallId | Props]}}, #state{node=Node
-                                                   ,callid=CallId
-                                                  }=State) ->
+handle_info({_, {event, [CallId | Props]}}, #state{callid=CallId}=State) ->
     case wh_util:is_true(props:get_value(<<"variable_channel_is_moving">>, Props)) of
         true -> ok;
         false -> process_event_prop(Props)

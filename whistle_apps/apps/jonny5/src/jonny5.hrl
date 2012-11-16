@@ -26,6 +26,8 @@
                  ,max_postpay_amount = 0.0
                  ,reserve_amount = 0.0
                  ,allotments = wh_json:new()
+                 ,soft_limit_inbound = false
+                 ,soft_limit_outbound = false
                 }).
 
 -endif.

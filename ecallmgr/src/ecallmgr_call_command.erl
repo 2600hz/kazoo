@@ -140,7 +140,7 @@ get_fs_app(Node, UUID, JObj, <<"record">>) ->
                             ,get_terminators(wh_json:get_value(<<"Terminators">>, JObj))
                            ]
                 end,
-            _ = set(Node, UUID, Vars),
+            _ = ecallmgr_util:set(Node, UUID, Vars),
 
             MediaName = ecallmgr_util:recording_filename(wh_json:get_value(<<"Media-Name">>, JObj)),
 
@@ -175,7 +175,7 @@ get_fs_app(Node, UUID, JObj, <<"record_call">>) ->
                                     ,get_terminators(wh_json:get_value(<<"Terminators">>, JObj))
                                    ]
                            end,
-                    _ = set(Node, UUID, Vars),
+                    _ = ecallmgr_util:set(Node, UUID, Vars),
 
                     %% UUID start path/to/media limit
                     RecArg = binary_to_list(list_to_binary([
@@ -291,7 +291,7 @@ get_fs_app(Node, UUID, _JObj, <<"receive_fax">>) ->
     Vars = [{<<"fax_enable_t38_request">>, <<"true">>}
             ,{<<"fax_enable_t38">>, <<"true">>}
            ],
-    _ = set(Node, UUID, Vars),
+    _ = ecallmgr_util:set(Node, UUID, Vars),
 
     [{<<"playback">>, <<"silence_stream://2000">>}
      ,{<<"rxfax">>, ecallmgr_util:fax_filename(UUID)}
@@ -502,7 +502,7 @@ get_fs_app(Node, UUID, JObj, <<"execute_extension">>) ->
                                        true -> DP;
                                        false ->
                                            ChannelVars = wh_json:to_proplist(CCVs),
-                                           [{"application", <<"set ", (get_fs_kv(K, V, UUID))/binary>>}
+                                           [{"application", <<"set ", (ecallmgr_util:get_fs_kv(K, V, UUID))/binary>>}
                                             || {K, V} <- ChannelVars] ++ DP
                                    end
                            end
@@ -576,10 +576,10 @@ get_fs_app(Node, UUID, JObj, <<"set">>) ->
         false -> {'error', <<"set failed to execute as JObj did not validate">>};
         true ->
             ChannelVars = wh_json:to_proplist(wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new())),
-            _ = set(Node, UUID, ChannelVars),
+            _ = ecallmgr_util:set(Node, UUID, ChannelVars),
 
             CallVars = wh_json:to_proplist(wh_json:get_value(<<"Custom-Call-Vars">>, JObj, wh_json:new())),
-            _ = [ export(Node, UUID, get_fs_kv(K, V, UUID)) || {K, V} <- CallVars],
+            _ = [ ecallmgr_util:export(Node, UUID, ecallmgr_util:get_fs_kv(K, V, UUID)) || {K, V} <- CallVars],
 
             {<<"set">>, noop}
     end;
@@ -600,7 +600,7 @@ get_fs_app(Node, UUID, JObj, <<"redirect">>) ->
         true ->
             _ = case wh_json:get_value(<<"Redirect-Server">>, JObj) of
                     undefined -> ok;
-                    Server -> set(Node, UUID, <<"sip_rh_X-Redirect-Server=", Server/binary>>)
+                    Server -> ecallmgr_util:set(Node, UUID, <<"sip_rh_X-Redirect-Server=", Server/binary>>)
                 end,
             {<<"redirect">>, wh_json:get_value(<<"Redirect-Contact">>, JObj, <<>>)}
     end;
@@ -626,43 +626,30 @@ get_fs_app(_Node, _UUID, _JObj, _App) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% set channel and call variables in FreeSWITCH
+%%
 %% @end
 %%--------------------------------------------------------------------
--spec get_fs_kv/3 :: (ne_binary(), ne_binary(), ne_binary()) -> binary().
-get_fs_kv(<<"Hold-Media">>, Media, UUID) ->
-    list_to_binary(["hold_music="
-                    ,wh_util:to_list(ecallmgr_util:media_path(Media, extant, UUID, wh_json:new()))
-                   ]);
-get_fs_kv(Key, Val, _) ->
-    case lists:keyfind(Key, 1, ?SPECIAL_CHANNEL_VARS) of
-        false ->
-            list_to_binary([?CHANNEL_VAR_PREFIX, wh_util:to_list(Key), "=", wh_util:to_list(Val)]);
-        {_, Prefix} ->
-            list_to_binary([Prefix, "=", wh_util:to_list(Val)])
-    end.
-
 -spec get_call_pickup_app/4 :: (atom(), ne_binary(), wh_json:json_object(), ne_binary()) ->
                                        {ne_binary(), ne_binary()}.
 get_call_pickup_app(Node, UUID, JObj, Target) ->
     _ = case wh_json:is_true(<<"Park-After-Pickup">>, JObj, false) of
-            false -> export(Node, UUID, <<"park_after_bridge=false">>);
+            false -> ecallmgr_util:export(Node, UUID, <<"park_after_bridge=false">>);
             true ->
-                _ = set(Node, Target, <<"park_after_bridge=true">>),
-                set(Node, UUID, <<"park_after_bridge=true">>)
+                _ = ecallmgr_util:set(Node, Target, <<"park_after_bridge=true">>),
+                ecallmgr_util:set(Node, UUID, <<"park_after_bridge=true">>)
         end,
 
     _ = case wh_json:is_true(<<"Continue-On-Fail">>, JObj, true) of
-            false -> export(Node, UUID, <<"continue_on_fail=false">>);
-            true -> export(Node, UUID, <<"continue_on_fail=true">>)
+            false -> ecallmgr_util:export(Node, UUID, <<"continue_on_fail=false">>);
+            true -> ecallmgr_util:export(Node, UUID, <<"continue_on_fail=true">>)
         end,
 
     _ = case wh_json:is_true(<<"Continue-On-Cancel">>, JObj, true) of
-            false -> export(Node, UUID, <<"continue_on_cancel=false">>);
-            true -> export(Node, UUID, <<"continue_on_cancel=true">>)
+            false -> ecallmgr_util:export(Node, UUID, <<"continue_on_cancel=false">>);
+            true -> ecallmgr_util:export(Node, UUID, <<"continue_on_cancel=true">>)
         end,
 
-    _ = export(Node, UUID, <<"failure_causes=NORMAL_CLEARING,ORIGINATOR_CANCEL,CRASH">>),
+    _ = ecallmgr_util:export(Node, UUID, <<"failure_causes=NORMAL_CLEARING,ORIGINATOR_CANCEL,CRASH">>),
 
     {<<"call_pickup">>, <<UUID/binary, " ", Target/binary>>}.
 
@@ -735,42 +722,7 @@ get_terminators(Ts) ->
 -spec set_terminators/3 :: (atom(), ne_binary(), 'undefined' | binary() | list()) -> ecallmgr_util:send_cmd_ret().
 set_terminators(Node, UUID, Ts) -> 
     {K, V} = get_terminators(Ts),
-    set(Node, UUID, <<K/binary, "=", V/binary>>).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec set/3 :: (atom(), ne_binary(), wh_proplist() | ne_binary()) -> ecallmgr_util:send_cmd_ret().
-set(Node, UUID, [{K, V}]) ->
-    set(Node, UUID, get_fs_kv(K, V, UUID));
-set(Node, UUID, [{_, _}|_]=Props) ->
-    Multiset = lists:foldl(fun({K, V}, Acc) ->
-                                   <<"|", (get_fs_kv(K, V, UUID))/binary, Acc/binary>>
-                           end, <<>>, Props),
-    ecallmgr_util:send_cmd(Node, UUID, "multiset", <<"^^", Multiset/binary>>);
-set(Node, UUID, Arg) ->
-    case wh_util:to_binary(Arg) of
-        <<"hold_music=", _/binary>> -> 
-            ecallmgr_fs_nodes:channel_set_import_moh(Node, UUID, false);
-        _Else -> ok
-    end,
-    ecallmgr_util:send_cmd(Node, UUID, "set", Arg).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec export/3 :: (atom(), ne_binary(), binary()) -> ecallmgr_util:send_cmd_ret().
-export(Node, UUID, Arg) ->
-    case wh_util:to_binary(Arg) of
-        <<"hold_music=", _/binary>> -> 
-            ecallmgr_fs_nodes:channel_set_import_moh(Node, UUID, false);
-        _Else -> ok
-    end,
-    ecallmgr_util:send_cmd(Node, UUID, "export", wh_util:to_list(Arg)).
+    ecallmgr_util:set(Node, UUID, <<K/binary, "=", V/binary>>).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -898,7 +850,7 @@ play(Node, UUID, JObj) ->
                     ,get_terminators(wh_json:get_value(<<"Terminators">>, JObj))
                    ]
            end,
-    _ = set(Node, UUID, Vars),
+    _ = ecallmgr_util:set(Node, UUID, Vars),
 
     F = ecallmgr_util:media_path(wh_json:get_value(<<"Media-Name">>, JObj), new, UUID, JObj, ?ECALLMGR_CALL_CACHE),
 
@@ -915,9 +867,9 @@ tts_flite(Node, UUID, JObj) ->
 
     lager:debug("tts_flite voice: ~s", [TTSVoice]),
 
-    _ = set(Node, UUID, [{<<"tts_engine">>, <<"flite">>}
-                         ,{<<"tts_voice">>, TTSVoice}
-                        ]),
+    _ = ecallmgr_util:set(Node, UUID, [{<<"tts_engine">>, <<"flite">>}
+                                       ,{<<"tts_voice">>, TTSVoice}
+                                      ]),
     {<<"speak">>, wh_json:get_value(<<"Text">>, JObj)}.
 
 -spec tts_flite_voice/1 :: (api_binary()) -> ne_binary().

@@ -16,7 +16,7 @@
 
 -spec handle_req/2 :: (wh_json:json_object(), wh_proplist()) -> any().
 handle_req(JObj, Props) ->
-    true = wapi_authz:req_v(JObj),
+    true = wapi_authz:authz_req_v(JObj),
     wh_util:put_callid(JObj),
 
     AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
@@ -27,6 +27,8 @@ handle_req(JObj, Props) ->
                 ,fun maybe_allotments/3
                 ,fun maybe_flat_rate/3
                 ,fun maybe_per_minute/3
+                ,fun maybe_soft_limit/3
+                ,fun maybe_emergency/3
                ],
 
     send_resp(JObj
@@ -75,6 +77,34 @@ maybe_per_minute({error, flat_rate_limit}, Limits, JObj) ->
     end;
 maybe_per_minute(Else, _, _) -> Else.
 
+-spec maybe_soft_limit/3 :: (authz_resp(), #limits{}, wh_json:json_object()) -> authz_resp().
+maybe_soft_limit({error, _}=E, Limits, JObj) ->
+    case should_soft_limit(wh_json:get_value(<<"Call-Direction">>, JObj), Limits) of
+        true -> {ok, soft_limit};
+        false -> E
+    end;
+maybe_soft_limit(Else, _, _) -> Else.
+
+-spec maybe_emergency/3 :: (authz_resp(), #limits{}, wh_json:json_object()) -> authz_resp().
+maybe_emergency({error, _}=E, Limits, JObj) ->
+    [Number, _] = binary:split(wh_json:get_value(<<"Request">>, JObj), <<"@">>),
+    case wnm_util:classify_number(Number) of
+        <<"emergency">> -> 
+            lager:debug("allowing emergency call", []),
+            {ok, limits_disabled};
+        _Else -> E
+    end;
+maybe_emergency(Else, _, _) -> Else.
+
+-spec should_soft_limit/2 :: (ne_binary(), #limits{}) -> boolean().
+should_soft_limit(<<"outbound">>, #limits{soft_limit_outbound=true}) ->
+    lager:debug("outbound calls are not enforcing (soft limit)", []),
+    true;
+should_soft_limit(<<"inbound">>, #limits{soft_limit_inbound=true}) ->
+    lager:debug("inbound calls are not enforcing (soft limit)", []),
+    true;
+should_soft_limit(_, _) -> false.
+
 -spec send_resp/4 :: (wh_json:json_object(),  ne_binary(), #limits{}, {'ok', 'credit' | 'flatrate'} | {'error', _}) -> 'ok'.
 send_resp(JObj, Q, Limits, {error, _R}) ->
     lager:debug("call is unauthorize due to ~s", [_R]),
@@ -84,7 +114,7 @@ send_resp(JObj, Q, Limits, {error, _R}) ->
             ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
             | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
            ],
-    wapi_authz:publish_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp);
+    wapi_authz:publish_authz_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp);
 send_resp(JObj, Q, _, {ok, Type}) ->
     lager:debug("call is authorized as ~s", [Type]),
     Resp = [{<<"Is-Authorized">>, <<"true">>}
@@ -93,4 +123,4 @@ send_resp(JObj, Q, _, {ok, Type}) ->
             ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
             | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
            ],
-    wapi_authz:publish_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp).
+    wapi_authz:publish_authz_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp).
