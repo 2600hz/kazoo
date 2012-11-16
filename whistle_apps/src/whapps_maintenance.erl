@@ -154,8 +154,6 @@ do_refresh() ->
                         Current + 1
                 end, 1, Accounts).
 
-refresh(Database) when not is_binary(Database) ->
-    refresh(wh_util:to_binary(Database));
 refresh(?WH_SERVICES_DB) ->
     whistle_services_maintenance:refresh();
 refresh(?WH_SIP_DB) ->
@@ -209,9 +207,10 @@ refresh(?WH_FAXES) ->
     couch_mgr:db_create(?WH_FAXES),
     _ = couch_mgr:revise_doc_from_file(?WH_FAXES, whistle_apps, ?FAXES_VIEW_FILE),
     ok;
-refresh(?NE_BINARY = Account) ->
-    Views = get_all_account_views(),
-    refresh(Account, Views).
+refresh(Account) when is_binary(Account) ->
+    refresh(Account, get_all_account_views());
+refresh(Database) ->
+    refresh(wh_util:to_binary(Database)).
 
 refresh(Account, Views) ->
     AccountDb = wh_util:format_account_id(Account, encoded),
