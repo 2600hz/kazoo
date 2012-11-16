@@ -268,9 +268,14 @@ redirect(Call, XmlText, Attrs) ->
     {req, lists:foldl(fun({F, V}, C) -> F(V, C) end, Call1, Setters)}.
 
 gather(Call, SubActions, Attrs) ->
-    case exec_elements(Call, xml_elements(SubActions)) of
+    case exec_elements(kzt_util:clear_digits_collected(Call)
+                       ,xml_elements(SubActions)
+                      )
+    of
         {ok, C} -> gather(C, Attrs);
-        Other -> Other
+        Other ->
+            lager:debug("other: ~p", [Other]),
+            Other
     end.
 
 gather(Call, Attrs) ->
@@ -278,11 +283,45 @@ gather(Call, Attrs) ->
 
     Props = kzt_util:attributes_to_proplist(Attrs),
 
-    Timeout = timeout_s(Props) * 1000,
+    Timeout = timeout_s(Props, 5) * 1000,
     FinishKey = finish_dtmf(Props),
-    InitDigits = kvt_util:get_digits_collected(Call),
 
-    
+    gather(Call, FinishKey, Timeout, Props, num_digits(Props)).
+
+gather(Call, FinishKey, Timeout, Props, N) ->
+    case kzt_receiver:collect_dtmfs(Call, FinishKey, Timeout, N) of
+        {ok, timeout, C} -> gather_timeout(C, Props, N);
+        {ok, dtmf_finish, C} -> gather_dtmf_finish(C, Props, N);
+        {ok, C} -> gather_finished(C, Props, N);
+        {error, _E, _C}=ERR -> ERR;
+        {stop, _C}=STOP -> STOP
+    end.
+
+gather_timeout(Call, Props, N) ->
+    case kzt_util:get_digits_collected(Call) of
+        <<>> ->
+            lager:debug("caller entered no digits, continuing"),
+            {ok, kzt_util:clear_digits_collected(Call)};
+        DTMFs ->
+            CurrentUri = kzt_util:get_voice_uri(Call),
+            RedirectUri = action_url(Props),
+
+            NewUri = kzt_util:resolve_uri(CurrentUri, RedirectUri),
+            Method = kzt_util:http_method(Props),
+
+            lager:debug("redirect using ~s to ~s from ~s", [Method, NewUri, CurrentUri]),
+
+            Setters = [{fun kzt_util:set_voice_uri_method/2, Method}
+                       ,{fun kzt_util:set_voice_uri/2, NewUri}
+                      ],
+            {req, lists:foldl(fun({F, V}, C) -> F(V, C) end, Call1, Setters)}
+    end.
+
+gather_dtmf_finish(Call, Props, N) ->
+    ok.
+
+gather_finished(Call, Props, N) ->
+    ok.
 
 %%------------------------------------------------------------------------------
 %% Nouns
@@ -311,7 +350,6 @@ caller_id(Props, Call) ->
       props:get_value(callerId, Props, whapps_call:caller_id_number(Call))
      ).
 
-timeout_s(Props) -> props:get_integer_value(timeout, Props, 30).
 timelimit_s(Props) -> props:get_integer_value(timeLimit, Props, 14400).
 loop_count(Props) -> props:get_integer_value(loop, Props, 1).
 
@@ -379,6 +417,8 @@ pause_for(Props) ->
         N when is_integer(N), N > 3600 -> 3600000
     end.
 
+action_url(Props) -> props:get_value(action, Props).
+
 reject_reason(Props) ->
     case props:get_binary_value(reason, Props) of
         undefined -> <<"rejected">>;
@@ -395,13 +435,18 @@ reject_status(<<"503">>) -> ?STATUS_NOANSWER.
 reject_prompt(Props) ->
     props:get_binary_value(prompt, Props).
 
+-spec timeout_s/1 :: (wh_proplist()) -> pos_integer().
 timeout_s(Props) ->
-    timeout_s(Props, 5).
+    timeout_s(Props, 30).
 timeout_s(Props, Default) ->
     case props:get_integer_value(timeout, Props, Default) of
         N when is_integer(N), N > 3600 -> 3600;
         N when is_integer(N), N > 0 -> N
     end.
-            
-                
-        
+
+-spec num_digits/1 :: (wh_proplist()) -> wh_timeout().
+num_digits(Props) ->
+    case props:get_integer_value(numDigits, Props) of
+        undefined -> infinity;
+        N when is_integer(N), N > 0 -> N
+    end.
