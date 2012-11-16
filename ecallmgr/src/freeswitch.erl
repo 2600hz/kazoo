@@ -16,7 +16,7 @@
 
 -export([send/2, api/4, api/3, api/2, bgapi/3, bgapi/4, event/2, session_event/2,
                 nixevent/2, session_nixevent/2, noevents/1, session_noevents/1, close/1,
-                get_event_header/2, get_event_body/1,
+                get_event_header/2, get_event_body/1, version/1,
                 get_event_name/1, getpid/1, sendmsg/3, bind/2,
                 sendevent/3, sendevent_custom/3, handlecall/2, handlecall/3, start_fetch_handler/5,
                 start_log_handler/4, start_event_handler/4, fetch_reply/3, register_event_handler/1]).
@@ -48,6 +48,15 @@ get_event_name(Event) ->
 get_event_body(Event) ->
         get_event_header(Event, "body").
 
+version(Node) ->
+    {foo, Node} ! version,
+    receive
+        Response ->
+            Response
+    after ?TIMEOUT ->
+            timeout
+    end.
+    
 bind(Node, Type) ->
     {foo, Node} ! {bind, Type},
     receive

@@ -7,7 +7,7 @@
 %%%   Karl Anderson
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
--module(ecallmgr_fs_query).
+-module(ecallmgr_query).
 
 -behaviour(gen_listener).
 

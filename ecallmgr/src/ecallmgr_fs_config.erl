@@ -121,12 +121,10 @@ handle_cast(_Msg, State) ->
 handle_info({fetch, configuration, <<"configuration">>, <<"name">>, Conf, ID, _Data}, #state{node=Node}=State) ->
     lager:debug("fetch configuration request from ~s: ~s", [Node, ID]),
     spawn(?MODULE, handle_config_req, [Node, ID, Conf]),
-
     {noreply, State};
 handle_info({_Fetch, _Section, _Something, _Key, _Value, ID, _Data}, #state{node=Node}=State) ->
     lager:debug("unhandled fetch from section ~s for ~s:~s", [_Section, _Something, _Key]),
     _ = freeswitch:fetch_reply(Node, ID, ""),
-
     {noreply, State};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
@@ -270,6 +268,11 @@ default_sip_settings() ->
      ,{<<"debug">>, <<"info">>}
      ,{<<"sip-trace">>, <<"true">>}
      ,{<<"log-auth-failures">>, <<"true">>}
+     ,{<<"log-level">>, <<"info">>}
+     ,{<<"tracelevel">>, <<"debug">>}
+     ,{<<"debug-presence">>, <<"0">>}
+     ,{<<"debug-sla">>, <<"0">>}
+     ,{<<"auto-restart">>, <<"false">>}
     ].
 
 default_sip_gateways() ->

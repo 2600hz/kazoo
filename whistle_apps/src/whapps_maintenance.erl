@@ -291,8 +291,13 @@ cleanup_aggregated_device(Device) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec purge_doc_type/2 :: (ne_binary(), ne_binary()) -> {'ok', wh_json:json_objects()} |
-                                                        {'error', term()}.
+-spec purge_doc_type/2 :: ([] | [ne_binary(),...] | ne_binary(), ne_binary()) -> {'ok', wh_json:json_objects()} |
+                                                                                 {'error', term()} |
+                                                                                 'ok'.
+purge_doc_type([], Account) -> ok;
+purge_doc_type([Type|Types], Account) ->
+    _ = purge_doc_type(Type, Account),
+    purge_doc_type(Types, Account);
 purge_doc_type(Type, Account) when not is_binary(Type) ->
     purge_doc_type(wh_util:to_binary(Type), Account);
 purge_doc_type(Type, Account) when not is_binary(Account) ->

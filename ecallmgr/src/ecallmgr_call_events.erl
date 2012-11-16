@@ -251,31 +251,12 @@ handle_info({call, _}, #state{passive=true}=State) ->
     {'noreply', State};
 handle_info({call_event, _}, #state{passive=true}=State) ->
     {'noreply', State};
-
-handle_info({call, {event, [CallId | Props]}}, #state{node=Node
-                                                      ,callid=CallId
-                                                     }=State) ->
-    case ecallmgr_fs_nodes:channel_node(CallId) of
-        {ok, Node} -> process_event_prop(Props);
-        {ok, _NewNode} ->
-            lager:debug("surpressing: channel is on different node ~s, not ~s", [_NewNode, Node]);
-        {error, not_found} ->
-            lager:debug("channel ~s not found?", [CallId])
+handle_info({_, {event, [CallId | Props]}}, #state{callid=CallId}=State) ->
+    case wh_util:is_true(props:get_value(<<"variable_channel_is_moving">>, Props)) of
+        true -> ok;
+        false -> process_event_prop(Props)
     end,
     {'noreply', State};
-
-handle_info({call_event, {event, [CallId | Props]}}, #state{node=Node
-                                                            ,callid=CallId
-                                                           }=State) ->
-    case ecallmgr_fs_nodes:channel_node(CallId) of
-        {ok, Node} -> process_event_prop(Props);
-        {ok, _NewNode} ->
-            lager:debug("surpressing: channel is on different node ~s, not ~s", [_NewNode, Node]);
-        {error, not_found} ->
-            lager:debug("channel ~s not found?", [CallId])
-    end,
-    {'noreply', State};
-
 handle_info({nodedown, _}, #state{node=Node, is_node_up=true}=State) ->
     lager:debug("lost connection to node ~s, waiting for reconnection", [Node]),
     erlang:monitor_node(Node, false),

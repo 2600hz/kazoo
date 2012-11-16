@@ -23,8 +23,8 @@
 
 -record(state, {}).
 
--define(RESPONDERS, [{j5_authz_req, [{<<"authz">>, <<"req">>}]}
-                     ,{j5_authz_update, [{<<"authz">>, <<"update">>}]}
+-define(RESPONDERS, [{j5_authz_req, [{<<"authz">>, <<"authz_req">>}]}
+                     ,{j5_reauthz_req, [{<<"authz">>, <<"reauthz_req">>}]}
                      ,{j5_authz_identify, [{<<"authz">>, <<"identify_req">>}]}
                      ,{j5_call_cdr, [{<<"call_detail">>, <<"cdr">>}]}
                     ]).

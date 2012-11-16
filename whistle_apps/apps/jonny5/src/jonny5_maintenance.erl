@@ -10,6 +10,8 @@
 -export([flush/0]).
 -export([get_limits/1]).
 -export([reconcile/1]).
+-export([stop_reconciler/0]).
+-export([start_reconciler/0]).
 
 -include("jonny5.hrl").
 
@@ -29,3 +31,11 @@ reconcile(Account) when not is_binary(Account) ->
     reconcile(wh_util:to_binary(Account));
 reconcile(Account) ->
     j5_reconciler:process_account(Account).
+
+-spec stop_reconciler/0 :: () -> any().
+stop_reconciler() ->
+    supervisor:terminate_child(jonny5_sup, j5_reconciler).
+
+-spec start_reconciler/0 :: () -> any().
+start_reconciler() ->
+    supervisor:start_child(jonny5_sup, j5_reconciler).

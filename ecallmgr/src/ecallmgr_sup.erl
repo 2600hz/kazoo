@@ -25,12 +25,12 @@
                                                                      ]}
                                             ,permanent, 5000, worker, [poolboy]
                                            };
-                              (N, T) -> {N, {N, start_link, []}, permanent, 5000, T, [N]} end(Name, Type)).
+                              (N, T) -> {N, {N, start_link, []}, permanent, 5000, T, [N]}
+                           end(Name, Type)).
 -define(CHILDREN, [{?ECALLMGR_AMQP_POOL, pool}
-                   ,{ecallmgr_util_sup, supervisor}
+                   ,{ecallmgr_auxiliary_sup, supervisor}
                    ,{ecallmgr_call_sup, supervisor}
                    ,{ecallmgr_fs_sup, supervisor}
-                   ,{ecallmgr_originate_sup, supervisor}
                   ]).
 
 %% ===================================================================

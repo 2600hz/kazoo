@@ -15,7 +15,7 @@
 -export([mwi_update/2]).
 -export([relay_presence/5]).
 -export([publish_presence_event/3]).
--export([process_message_query_event/2]).
+-export([handle_message_query/2]).
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -155,40 +155,54 @@ init([Node, Options]) ->
     process_flag(trap_exit, true),
     lager:debug("starting new ecallmgr notify process"),
     gproc:reg({p, l, fs_notify}),
+    bind_to_events(freeswitch:version(Node), Node),
+    {ok, #state{node=Node, options=Options}}.
+
+bind_to_events({ok, <<"mod_kazoo", _/binary>>}, Node) ->
+    case ecallmgr_config:get(<<"distribute_presence">>, true) of
+        false -> ok;
+        true -> 
+            ok = freeswitch:event(Node, ['PRESENCE_IN', 'PRESENCE_OUT', 'PRESENCE_PROBE']),
+            bind_to_notify_presence(Node)
+    end,                     
+    case ecallmgr_config:get(<<"distribute_message_query">>, true) of
+        false -> ok;
+        true -> 
+            ok = freeswitch:event(Node, ['MESSAGE_QUERY'])
+    end;
+bind_to_events(_, Node) ->
     case ecallmgr_config:get(<<"distribute_presence">>, true) of
         false -> ok;
         true ->
             ok = freeswitch:event(Node, ['PRESENCE_IN', 'PRESENCE_OUT', 'PRESENCE_PROBE']),
-            lager:debug("bound to presence events on node ~s", [Node]),
             gproc:reg({p, l, {call_event, Node, <<"PRESENCE_IN">>}}),
             gproc:reg({p, l, {call_event, Node, <<"PRESENCE_OUT">>}}),
             gproc:reg({p, l, {call_event, Node, <<"PRESENCE_PROBE">>}}),
-            Self = self(),
-            spawn(
-              fun() ->
-                      put(callid, Node),
-                      QueueName = <<"ecallmgr_fs_notify_presence">>,
-                      QOptions = [{queue_options, [{exclusive, false}]}
-                                  ,{consume_options, [{exclusive, false}]}
-                                  ,{basic_qos, 1}
-                                 ],
-                      Bindings= [{notifications, [{restrict_to, [presence_update]}]}],
-                      case gen_listener:add_queue(Self, QueueName, QOptions, Bindings) of
-                          {ok, _NewQ} -> lager:debug("handling presence updates on queue ~s", [_NewQ]);
-                          {error, _E} -> lager:debug("failed to add queue ~s to ~p: ~p", [QueueName, Self, _E])
-                      end
-              end),
-            ok
+            bind_to_notify_presence(Node)
     end,
     case ecallmgr_config:get(<<"distribute_message_query">>, true) of
         false -> ok;
         true ->
             ok = freeswitch:event(Node, ['MESSAGE_QUERY']),
-            gproc:reg({p, l, {call_event, Node, <<"MESSAGE_QUERY">>}}),
-            lager:debug("bound to message_query events on node ~s", [Node])
-    end,
-    {ok, #state{node=Node, options=Options}}.
+            gproc:reg({p, l, {call_event, Node, <<"MESSAGE_QUERY">>}})
+    end.
 
+bind_to_notify_presence(Node) ->
+    Self = self(),
+    spawn(fun() ->
+                  put(callid, Node),
+                  QueueName = <<"ecallmgr_fs_notify_presence">>,
+                  QOptions = [{queue_options, [{exclusive, false}]}
+                              ,{consume_options, [{exclusive, false}]}
+                              ,{basic_qos, 1}
+                             ],
+                  Bindings= [{notifications, [{restrict_to, [presence_update]}]}],
+                  case gen_listener:add_queue(Self, QueueName, QOptions, Bindings) of
+                      {ok, _NewQ} -> lager:debug("handling presence updates on queue ~s", [_NewQ]);
+                      {error, _E} -> lager:debug("failed to add queue ~s to ~p: ~p", [QueueName, Self, _E])
+                  end
+          end).
+    
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -231,63 +245,13 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info({event, [_ | Props]}, #state{node=Node}=State) ->
     case props:get_value(<<"Event-Name">>, Props) of
-        <<"PRESENCE_PROBE">> ->
-            %% New logic: if it is not a presence_probe for a subscription then ignore it...
-            case wh_util:is_empty(props:get_value(<<"sub-call-id">>, Props)) of
-                true -> {noreply, State, hibernate};
-                false ->
-                    To = props:get_value(<<"to">>, Props, <<"noname@nodomain">>),
-                    From = props:get_value(<<"from">>, Props, <<"noname@nodomain">>),
-                    Key = wh_util:to_hex_binary(crypto:md5(<<To/binary, "|", From/binary>>)),
-                    Expires = ecallmgr_util:get_expires(Props),
-                    case wh_util:is_empty(Expires)  of
-                        true ->
-                            %% If the expires was empty or 0 then delete the subscription, might need to
-                            %% remove the specific sub-call-id... lets see how it goes
-                            lager:debug("removing sip subscription from '~s' to '~s'", [From, To]),
-                            DeleteSpec = [{#sip_subscription{to = '$1', from = '$2', _ = '_'}
-                                           ,[{'=:=', '$1', {const, To}}
-                                             ,{'=:=', '$2', {const, From}}
-                                            ]
-                                           ,[true]}
-                                         ],
-                            ets:select_delete(sip_subscriptions, DeleteSpec),
-                            {noreply, State, hibernate};
-                        false ->
-                            lager:debug("sip subscription from '~s' subscribing to '~s' via node '~s' for ~ps", [From, To, Node, Expires]),
-                            ets:insert(sip_subscriptions, #sip_subscription{key=Key
-                                                                            ,to=To
-                                                                            ,from=From
-                                                                            ,node=Node
-                                                                            ,expires=Expires
-                                                                           }),
-                            _ = spawn_link(?MODULE, publish_presence_event, [<<"PRESENCE_PROBE">>, Props, Node]),
-                            {noreply, State, hibernate}
-                    end
-            end;
-        <<"PRESENCE_IN">> ->
-            _ = case props:get_value(<<"Distributed-From">>, Props) of
-                    undefined ->
-                        PresenceId = props:get_value(<<"Channel-Presence-ID">>, Props,
-                                                     props:get_value(<<"from">>, Props)),
-                        spawn_link(?MODULE, relay_presence, ['PRESENCE_IN', PresenceId, Props, Node, undefined]);
-                    _Else -> ok
-                end,
-            {noreply, State, hibernate};
-        <<"PRESENCE_OUT">> ->
-            _ = case props:get_value(<<"Distributed-From">>, Props) of
-                    undefined ->
-                        PresenceId = props:get_value(<<"to">>, Props),
-                        spawn_link(?MODULE, relay_presence, ['PRESENCE_OUT', PresenceId, Props, Node, undefined]);
-                    _Else -> ok
-                end,
-            {noreply, State, hibernate};
-        <<"MESSAGE_QUERY">> ->
-            _ = spawn_link(?MODULE, process_message_query_event, [Props, Node]),
-            {noreply, State, hibernate};
-        _ ->
-            {noreply, State}
-    end;
+        <<"PRESENCE_PROBE">> -> maybe_handle_presence_probe(Props, Node);
+        <<"PRESENCE_IN">> -> maybe_handle_presence_in(Props, Node);
+        <<"PRESENCE_OUT">> -> maybe_handle_presence_out(Props, Node);
+        <<"MESSAGE_QUERY">> -> spawn_link(?MODULE, handle_message_query, [Props, Node]);
+        _ -> ok
+    end,
+    {noreply, State, hibernate};
 handle_info(_Info, State) ->
     {noreply, State}.
 
@@ -330,6 +294,58 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+maybe_handle_presence_probe(Props, Node) ->
+    %% New logic: if it is not a presence_probe for a subscription then ignore it...
+    case wh_util:is_empty(props:get_value(<<"sub-call-id">>, Props)) of
+        true -> ok;
+        false -> handle_presence_probe(Props, Node)
+    end.
+
+handle_presence_probe(Props, Node) ->
+    To = props:get_value(<<"to">>, Props, <<"noname@nodomain">>),
+    From = props:get_value(<<"from">>, Props, <<"noname@nodomain">>),
+    Key = wh_util:to_hex_binary(crypto:md5(<<To/binary, "|", From/binary>>)),
+    Expires = ecallmgr_util:get_expires(Props),
+    case wh_util:is_empty(Expires)  of
+        true ->
+            %% If the expires was empty or 0 then delete the subscription, might need to
+            %% remove the specific sub-call-id... lets see how it goes
+            lager:debug("removing sip subscription from '~s' to '~s'", [From, To]),
+            DeleteSpec = [{#sip_subscription{to = '$1', from = '$2', _ = '_'}
+                           ,[{'=:=', '$1', {const, To}}
+                             ,{'=:=', '$2', {const, From}}
+                            ]
+                           ,[true]}
+                         ],
+            ets:select_delete(sip_subscriptions, DeleteSpec);
+        false ->
+            lager:debug("sip subscription from '~s' subscribing to '~s' via node '~s' for ~ps", [From, To, Node, Expires]),
+            ets:insert(sip_subscriptions, #sip_subscription{key=Key
+                                                            ,to=To
+                                                            ,from=From
+                                                            ,node=Node
+                                                            ,expires=Expires
+                                                           }),
+            spawn_link(?MODULE, publish_presence_event, [<<"PRESENCE_PROBE">>, Props, Node])
+    end.
+
+maybe_handle_presence_in(Props, Node) ->
+    case props:get_value(<<"Distributed-From">>, Props) of
+        undefined ->
+            PresenceId = props:get_value(<<"Channel-Presence-ID">>, Props,
+                                         props:get_value(<<"from">>, Props)),
+            spawn_link(?MODULE, relay_presence, ['PRESENCE_IN', PresenceId, Props, Node, undefined]);
+        _Else -> ok
+    end.
+
+maybe_handle_presence_out(Props, Node) ->
+    case props:get_value(<<"Distributed-From">>, Props) of
+        undefined ->
+            PresenceId = props:get_value(<<"to">>, Props),
+            spawn_link(?MODULE, relay_presence, ['PRESENCE_OUT', PresenceId, Props, Node, undefined]);
+        _Else -> ok
+    end.
+
 -spec confirmed_presence_event/2 :: (ne_binary(), wh_json:json_object()) -> proplist().
 -spec confirmed_presence_event/3 :: (ne_binary(), ne_binary(), wh_json:json_object()) -> proplist().
 
@@ -478,8 +494,8 @@ relay_presence(EventName, _, Props, Node, Switch) ->
               ],
     freeswitch:sendevent(wh_util:to_atom(Switch), EventName, Headers).
 
--spec process_message_query_event/2 :: (proplist(), atom()) -> 'ok'.
-process_message_query_event(Data, Node) ->
+-spec handle_message_query/2 :: (proplist(), atom()) -> 'ok'.
+handle_message_query(Data, Node) ->
     MessageAccount = props:get_value(<<"VM-User">>, Data, props:get_value(<<"Message-Account">>, Data)),
     case re:run(MessageAccount, <<"(?:sip:)?(.*)@(.*)$">>, [{capture, all, binary}]) of
         {match, [_, Username, Realm]} ->
