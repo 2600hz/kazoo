@@ -19,7 +19,8 @@
          ,set_record_call/2, get_record_call/1
          ,set_voice_uri/2, get_voice_uri/1
          ,set_voice_uri_method/2, get_voice_uri_method/1
-         ,set_digits_collected/2, get_digits_collected/1, add_digit_collected/2
+         ,set_digits_collected/2, get_digits_collected/1
+         ,add_digit_collected/2, clear_digits_collected/1
          ,attributes_to_proplist/1
         ]).
 
@@ -125,6 +126,7 @@ get_voice_uri_method(Call) -> whapps_call:kvs_fetch(<<"voice_uri_method">>, Call
 
 set_digits_collected(Ds, Call) -> whapps_call:kvs_store(<<"digits_collected">>, Ds, Call).
 get_digits_collected(Call) -> whapps_call:kvs_fetch(<<"digits_collected">>, Call).
+clear_digits_collected(Call) -> whapps_call:kvs_store(<<"digits_collected">>, <<>>, Call).
 add_digit_collected(D, Call) ->
     whapps_call:kvs_update(<<"digits_collected">>, fun(Ds) -> <<Ds/binary, D/binary>> end, D, Call).
 
