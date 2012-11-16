@@ -1,24 +1,15 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012, 2600Hz
 %%% @doc
-%%% Manages agent processes:
-%%%   starting when an agent logs in
-%%%   stopping when an agent logs out
-%%%   collecting stats from agents
-%%%   and more!!!
+%%% 
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
--module(acdc_agent_manager).
+-module(acdc_listener).
 
 -behaviour(gen_listener).
 
-%% API
--export([start_link/0
-         ,check_agent_status/1
-        ]).
-
-%% gen_server callbacks
+-export([start_link/0]).
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -30,31 +21,26 @@
 
 -include("acdc.hrl").
 
--define(SERVER, ?MODULE).
+-record(state, {}).
 
--define(BINDINGS, [{conf, [{doc_type, <<"user">>}]}
-                   ,{acdc_agent, [{restrict_to, [status, stats_req]}]}
-                   ,{notifications, [{restrict_to, [presence_probe]}]}
+%% By convention, we put the options here in macros, but not required.
+-define(BINDINGS, [{route, []}
+                   ,{self, []}
                   ]).
--define(RESPONDERS, [{{acdc_agent_handler, handle_status_update} 
-                      ,[{<<"agent">>, <<"login">>}
-                        ,{<<"agent">>, <<"logout">>}
-                        ,{<<"agent">>, <<"pause">>}
-                        ,{<<"agent">>, <<"resume">>}
-                        ,{<<"agent">>, <<"login_queue">>}
-                        ,{<<"agent">>, <<"logout_queue">>}
-                       ]
+-define(RESPONDERS, [
+                     %% Received because of our route binding
+                     {{acdc_handlers, handle_route_req}
+                      ,[{<<"dialplan">>, <<"route_req">>}]
                      }
-                     ,{{acdc_agent_handler, handle_stats_req}
-                       ,[{<<"agent">>, <<"stats_req">>}]
-                      }
-                     ,{{acdc_agent_handler, handle_config_change}
-                       ,[{<<"configuration">>, <<"*">>}]
-                       }
-                     ,{{acdc_agent_handler, handle_presence_probe}
-                       ,[{<<"notification">>, <<"presence_probe">>}]
+                     %% Received because of our self binding (route_wins are sent to the route_resp's Server-ID
+                     %% which is usually populated with the listener's queue name
+                     ,{{acdc_handlers, handle_route_win}
+                       ,[{<<"dialplan">>, <<"route_win">>}]
                       }
                     ]).
+-define(QUEUE_NAME, <<>>).
+-define(QUEUE_OPTIONS, []).
+-define(CONSUME_OPTIONS, []).
 
 %%%===================================================================
 %%% API
@@ -68,12 +54,14 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    gen_listener:start_link({local, ?SERVER}, ?MODULE
-                            ,[{bindings, ?BINDINGS}
-                              ,{responders, ?RESPONDERS}
-                             ]
-                            ,[]
-                           ).
+    gen_listener:start_link(?MODULE, [
+                                      {bindings, ?BINDINGS}
+                                      ,{responders, ?RESPONDERS}
+                                      ,{queue_name, ?QUEUE_NAME}       % optional to include
+                                      ,{queue_options, ?QUEUE_OPTIONS} % optional to include
+                                      ,{consume_options, ?CONSUME_OPTIONS} % optional to include
+                                      %%,{basic_qos, 1}                % only needed if prefetch controls
+                                     ], []).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -91,8 +79,7 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    Ref = start_agent_timer(),
-    {ok, Ref}.
+    {ok, #state{}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -109,8 +96,7 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call(_Request, _From, State) ->
-    Reply = ok,
-    {reply, Reply, State}.
+    {reply, {error, not_implemented}, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -135,14 +121,17 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info(agent_check, State) ->
-    Self = self(),
-    _ = spawn(?MODULE, check_agent_status, [Self]),
-    {noreply, State};
 handle_info(_Info, State) ->
-    lager:debug("unhandled message: ~p", [_Info]),
     {noreply, State}.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Allows listener to pass options to handlers
+%%
+%% @spec handle_event(JObj, State) -> {reply, Options}
+%% @end
+%%--------------------------------------------------------------------
 handle_event(_JObj, _State) ->
     {reply, []}.
 
@@ -158,7 +147,7 @@ handle_event(_JObj, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
-    lager:debug("agent manager terminating: ~p", [_Reason]).
+    lager:debug("listener terminating: ~p", [_Reason]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -174,55 +163,3 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-start_agent_timer() ->
-    start_agent_timer(self()).
-start_agent_timer(Pid) ->
-    erlang:send_after(whapps_config:get(?APP_NAME, <<"agent_timeout">>, 600000)
-                      ,Pid
-                      ,agent_check
-                     ).
-
-check_agent_status(Self) ->
-    _ = [check_account(DB) || DB <- whapps_util:get_all_accounts(encoded)],
-    start_agent_timer(Self).
-
-check_account(AcctDb) ->
-    case couch_mgr:get_results(AcctDb, <<"agents/agent_listing">>, []) of
-        {ok, []} -> ok;
-        {error, _} -> ok;
-        {ok, Agents} -> [check_agent(AcctDb, wh_json:get_value(<<"id">>, Agent)) || Agent <- Agents]
-    end.
-
-check_agent(AcctDb, AgentId) ->
-    AcctId = wh_util:format_account_id(AcctDb, raw),
-
-    Req = [{<<"Account-ID">>, AcctId}
-           ,{<<"Agent-ID">>, AgentId}
-           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-          ],
-    case whapps_util:amqp_pool_request(Req
-                                       ,fun wapi_acdc_agent:publish_sync_req/1
-                                       ,fun wapi_acdc_agent:sync_resp_v/1
-                                       ,2000
-                                      ) of
-        {ok, _} -> ok;
-        {error, _E} -> maybe_logout_agent(AcctDb, AgentId)
-    end.
-
-maybe_logout_agent(AcctDb, AgentId) ->
-    case acdc_util:agent_status(AcctDb, AgentId) of
-        <<"logout">> -> ok;
-        _S ->
-            lager:debug("logging agent out from status ~s", [_S]),
-            logout_agent(AcctDb, AgentId)
-    end.
-
-logout_agent(AcctDb, AgentId) ->
-    lager:debug("logging ~s out for not responding to sync req", [AgentId]),
-
-    Doc = wh_json:from_list([{<<"agent_id">>, AgentId}
-                             ,{<<"method">>, <<"acdc_agent_manager">>}
-                             ,{<<"action">>, <<"logout">>}
-                             ,{<<"pvt_type">>, <<"agent_activity">>}
-                            ]),
-    couch_mgr:save_doc(AcctDb, wh_doc:update_pvt_parameters(Doc, AcctDb)).

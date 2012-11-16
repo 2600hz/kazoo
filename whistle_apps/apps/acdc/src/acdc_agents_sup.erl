@@ -15,6 +15,7 @@
 %% API
 -export([start_link/0
          ,new/1
+         ,new_thief/2
          ,workers/0
          ,find_acct_supervisors/1
          ,find_agent_supervisor/2
@@ -45,6 +46,10 @@ start_link() ->
 -spec new/1 :: (wh_json:json_object()) -> sup_startchild_ret().
 new(JObj) ->
     supervisor:start_child(?MODULE, [JObj]).
+
+-spec new_thief/2 :: (whapps_call:call(), ne_binary()) -> sup_startchild_ret().
+new_thief(Call, QueueId) ->
+    supervisor:start_child(?MODULE, [Call, QueueId]).
 
 -spec workers/0 :: () -> [pid(),...] | [].
 workers() ->

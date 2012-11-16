@@ -374,7 +374,6 @@ handle_cast(flush_table, Table) ->
     ets:delete_all_objects(Table),
     {noreply, Table};
 handle_cast({store, Stat}, Table) ->
-    lager:debug("stat: ~p", [Stat]),
     true = ets:insert(Table, Stat),
     {noreply, Table};
 handle_cast({remove, Stat}, Table) ->

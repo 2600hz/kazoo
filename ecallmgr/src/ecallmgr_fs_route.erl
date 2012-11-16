@@ -25,7 +25,7 @@
 -include("ecallmgr.hrl").
 
 -record(state, {node = 'undefined' :: atom()
-                ,options = [] :: proplist()
+                ,options = [] :: wh_proplist()
                }).
 
 %%%===================================================================
@@ -168,6 +168,7 @@ code_change(_OldVsn, State, _Extra) ->
 process_route_req(Node, FSID, CallId, Props) ->
     put(callid, CallId),
     lager:debug("processing fetch request ~s (call ~s) from ~s", [FSID, CallId, Node]),
+
     case wh_util:is_empty(props:get_value(<<"variable_recovered">>, Props)) of
         true -> search_for_route(Node, FSID, CallId, Props);
         false ->
@@ -185,13 +186,13 @@ search_for_route(Node, FSID, CallId, Props) ->
                                   ,fun wapi_route:is_actionable_resp/1
                                  ),
     case ReqResp of
-        {error, _R} -> 
+        {error, _R} ->
             lager:debug("did not receive route response: ~p", [_R]);
         {ok, RespJObj} ->
             true = wapi_route:resp_v(RespJObj),
             AuthzEnabled = wh_util:is_true(ecallmgr_config:get(<<"authz_enabled">>, false)),
             case AuthzEnabled andalso wh_cache:wait_for_key_local(?ECALLMGR_UTIL_CACHE, ?AUTHZ_RESPONSE_KEY(CallId)) of
-                {ok, false} -> 
+                {ok, false} ->
                     reply_forbidden(Node, FSID);
                 _Else ->
                     reply_affirmative(Node, FSID, CallId, RespJObj, Props)
@@ -222,12 +223,12 @@ reply_affirmative(Node, FSID, CallId, RespJObj, Props) ->
             lager:debug("node ~s accepted our route (authzed), starting control and events", [Node]),
             RouteCCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, RespJObj, wh_json:new()),
             CCVs = case props:get_value(?GET_CCV(<<"Billing-ID">>), Props) of
-                       undefined -> 
+                       undefined ->
                            BillingId = wh_util:to_hex_binary(crypto:md5(CallId)),
                            lager:debug("created new billing id ~s for channel ~s", [BillingId, CallId]),
                            _ = ecallmgr_util:send_cmd(Node, CallId, <<"export">>, ?SET_CCV(<<"Billing-ID">>, BillingId)),
                            wh_json:set_value(<<"Billing-ID">>, BillingId, RouteCCVs);
-                       _Else -> 
+                       _Else ->
                            lager:debug("channel ~s already has billing id ~s", [CallId, _Else]),
                            RouteCCVs
                    end,
@@ -236,7 +237,7 @@ reply_affirmative(Node, FSID, CallId, RespJObj, Props) ->
                 [] -> start_control_and_events(Node, CallId, ServerQ, CCVs);
                 Ps -> ecallmgr_call_control:update_node(Node, Ps)
             end;
-        {error, Reason} -> 
+        {error, Reason} ->
             lager:debug("node ~s rejected our route response, ~p", [Node, Reason]);
         timeout -> lager:error("received no reply from node ~s, timeout", [Node])
     end.
@@ -268,9 +269,9 @@ send_control_queue(SendTo, CtlProp) ->
 -spec route_req/4 :: (ne_binary(), ne_binary(), proplist(), atom()) -> proplist().
 route_req(CallId, FSID, Props, Node) ->
     [{<<"Msg-ID">>, FSID}
-     ,{<<"Caller-ID-Name">>, props:get_value(<<"variable_effective_caller_id_name">>, Props, 
+     ,{<<"Caller-ID-Name">>, props:get_value(<<"variable_effective_caller_id_name">>, Props,
                                              props:get_value(<<"Caller-Caller-ID-Name">>, Props, <<"Unknown">>))}
-     ,{<<"Caller-ID-Number">>, props:get_value(<<"variable_effective_caller_id_number">>, Props, 
+     ,{<<"Caller-ID-Number">>, props:get_value(<<"variable_effective_caller_id_number">>, Props,
                                                props:get_value(<<"Caller-Caller-ID-Number">>, Props, <<"0000000000">>))}
      ,{<<"To">>, ecallmgr_util:get_sip_to(Props)}
      ,{<<"From">>, ecallmgr_util:get_sip_from(Props)}

@@ -57,7 +57,7 @@ find(Number, Quanity) ->
 %% assignment
 %% @end
 %%--------------------------------------------------------------------
--spec lookup_account_by_number/1 :: (ne_binary()) -> {'ok', ne_binary(), boolean(), boolean()} |
+-spec lookup_account_by_number/1 :: (ne_binary()) -> {'ok', ne_binary(), wh_proplist()} |
                                                      {'error', _}.
 lookup_account_by_number(undefined) ->
     {error, not_reconcilable};

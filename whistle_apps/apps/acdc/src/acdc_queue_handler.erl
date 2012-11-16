@@ -51,15 +51,19 @@ handle_config_change(JObj, _Props) ->
                         ,wh_json:get_value(<<"Event-Name">>, JObj)
                        ).
 
-handle_queue_change(JObj, AcctId, QueueId, <<"doc_created">>) ->
+handle_queue_change(_JObj, AcctId, QueueId, <<"doc_created">>) ->
     case acdc_queues_sup:find_queue_supervisor(AcctId, QueueId) of
-        undefined -> acdc_queues_sup:new(JObj);
+        undefined -> acdc_queues_sup:new(AcctId, QueueId);
         P when is_pid(P) -> ok
     end;
 handle_queue_change(JObj, AcctId, QueueId, <<"doc_edited">>) ->
     case acdc_queues_sup:find_queue_supervisor(AcctId, QueueId) of
-        undefined -> acdc_queues_sup:new(JObj);
-        P when is_pid(P) -> acdc_queue_fsm:refresh(acdc_queue_sup:fsm(P), JObj)
+        undefined -> acdc_queues_sup:new(AcctId, QueueId);
+        QueueSup when is_pid(QueueSup) ->
+            WorkersSup = acdc_queue_sup:workers_sup(QueueSup),
+            [acdc_queue_fsm:refresh(acdc_queue_worker_sup:fsm(WorkerSup), JObj)
+             || WorkerSup <- acdc_queue_workers_sup:workers(WorkersSup)
+            ]
     end;
 handle_queue_change(_JObj, AcctId, QueueId, <<"doc_deleted">>) ->
     case acdc_queues_sup:find_queue_supervisor(AcctId, QueueId) of
@@ -86,48 +90,37 @@ handle_stats_req(AcctId, QueueId, ServerId, MsgId) ->
     end.
 
 -spec build_stats_resp/4 :: (api_binary(), api_binary(), api_binary(), [pid()] | []) -> any().
--spec build_stats_resp/6 :: (api_binary(), api_binary(), api_binary(), [pid()] | []
-                             ,wh_json:json_object(), wh_json:json_object()
+-spec build_stats_resp/5 :: (api_binary(), api_binary(), api_binary(), [pid()] | []
+                             ,wh_json:json_object()
                             ) -> any().
 build_stats_resp(AcctId, RespQ, MsgId, Ps) ->
     build_stats_resp(AcctId, RespQ, MsgId, Ps
                      ,wh_json:new()
-                     ,wh_json:new()
                     ).
 
-build_stats_resp(AcctId, RespQ, MsgId, [], CurrCalls, CurrQueues) ->
+build_stats_resp(AcctId, RespQ, MsgId, [], CurrCalls) ->
     Resp = props:filter_undefined(
              [{<<"Account-ID">>, AcctId}
               ,{<<"Current-Calls">>, CurrCalls}
               ,{<<"Current-Stats">>, acdc_stats:queue_stats(AcctId)}
-              ,{<<"Current-Statuses">>, CurrQueues}
               ,{<<"Msg-ID">>, MsgId}
               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     wapi_acdc_queue:publish_stats_resp(RespQ, Resp);
-build_stats_resp(AcctId, RespQ, MsgId, [P|Ps], CurrCalls, CurrQueues) ->
-    Q = acdc_queue_sup:queue(P),
-    {AcctId, QueueId} = acdc_queue:config(Q),
+build_stats_resp(AcctId, RespQ, MsgId, [P|Ps], CurrCalls) ->
+    MgrPid = acdc_queue_sup:manager(P),
+    {AcctId, QueueId} = acdc_queue_manager:config(MgrPid),
 
-    FSM = acdc_queue_sup:fsm(P),
-
-    CurrentCall = acdc_queue_fsm:current_call(FSM),
-    CallId = wh_json:get_value(<<"call_id">>, CurrentCall),
-
-    StatCalls = [{ACallId, ACallData}
-                 || {ACallId, ACallData} <- wh_json:to_proplist(acdc_stats:current_calls(AcctId, QueueId))
-                ],
-
-    CurrentCalls = [KV || {K,V}=KV <- [{CallId, CurrentCall} | StatCalls],
-                          K =/= undefined,
-                          V =/= undefined
+    CurrentCalls = [{ACallId, ACallData}
+                    || {ACallId, ACallData} <- wh_json:to_proplist(acdc_stats:current_calls(AcctId, QueueId)),
+                       ACallId =/= undefined,
+                       ACallData =/= undefined
                    ],
 
     QueueCalls = wh_json:get_value(QueueId, CurrCalls, wh_json:new()),
 
     build_stats_resp(AcctId, RespQ, MsgId, Ps
                      ,wh_json:set_value(QueueId, wh_json:set_values(CurrentCalls, QueueCalls), CurrCalls)
-                     ,wh_json:set_value(QueueId, acdc_queue_fsm:status(FSM), CurrQueues)
                     ).
 
 handle_agent_available(JObj, Prop) ->
@@ -145,23 +138,27 @@ handle_presence_probe(JObj, _Props) ->
 
     FromRealm = wh_json:get_value(<<"From-Realm">>, JObj),
     {ok, AcctDb} = whapps_util:get_account_by_realm(FromRealm),
-    AcctId = wh_util:format_account_id(AcctDb, raw),
 
-    lager:debug("find presence update for ~s(~s)", [AcctId, FromRealm]),
+    maybe_respond_to_presence_probe(JObj, AcctDb).
 
-    maybe_respond_to_presence_probe(JObj, AcctId).
-
-maybe_respond_to_presence_probe(JObj, AcctId) ->
+maybe_respond_to_presence_probe(JObj, AcctDb) ->
     case wh_json:get_value(<<"To-User">>, JObj) of
         undefined ->
             lager:debug("no to-user found on json: ~p", [JObj]);
         QueueId ->
+            {ok, Doc} = couch_mgr:open_doc(AcctDb, QueueId),
+
+            AcctId = wh_util:format_account_id(AcctDb, raw),
             lager:debug("looking for probe for queue ~s(~s)", [QueueId, AcctId]),
-            update_probe(JObj, AcctId, QueueId)
+
+            maybe_update_probe(JObj, AcctId, QueueId, wh_json:get_value(<<"pvt_type">>, Doc))
     end.
 
-update_probe(JObj, AcctId, QueueId) ->
-    update_probe(JObj, wapi_acdc_queue:queue_size(AcctId, QueueId)).
+maybe_update_probe(JObj, AcctId, QueueId, <<"queue">>) ->
+    update_probe(JObj, wapi_acdc_queue:queue_size(AcctId, QueueId));
+maybe_update_probe(_, _, _, _) ->
+    ok.
+
 update_probe(JObj, 0) ->
     lager:debug("no calls in queue, greenify!"),
     send_probe(JObj, ?PRESENCE_GREEN);

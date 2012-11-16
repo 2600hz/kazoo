@@ -14,7 +14,7 @@
 
 %% API
 -export([start_link/0
-         ,new/1
+         ,new/2
          ,workers/0
          ,find_acct_supervisors/1
          ,find_queue_supervisor/2
@@ -43,10 +43,8 @@
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
--spec new/1 :: (wh_json:json_object()) -> sup_startchild_ret().
-new(JObj) ->
-    true = wh_json:is_json_object(JObj),
-    supervisor:start_child(?MODULE, [JObj]).
+new(AcctId, QueueId) ->
+    supervisor:start_child(?MODULE, [AcctId, QueueId]).
 
 -spec workers/0 :: () -> [pid(),...] | [].
 workers() ->
@@ -58,7 +56,7 @@ find_acct_supervisors(AcctId) ->
 
 -spec is_queue_in_acct/2 :: (pid(), ne_binary()) -> boolean().
 is_queue_in_acct(Super, AcctId) ->
-    case catch acdc_queue:config(acdc_queue_sup:queue(Super)) of
+    case catch acdc_queue_manager:config(acdc_queue_sup:manager(Super)) of
         {'EXIT', _} -> false;
         {AcctId, _} -> true;
         _ -> false
@@ -71,14 +69,14 @@ find_queue_supervisor(AcctId, QueueId) ->
 
 find_queue_supervisor(_AcctId, _QueueId, []) -> undefined;
 find_queue_supervisor(AcctId, QueueId, [Super|Rest]) ->
-    case catch acdc_queue:config(acdc_queue_sup:queue(Super)) of
+    case catch acdc_queue_manager:config(acdc_queue_sup:manager(Super)) of
         {'EXIT', _} -> find_queue_supervisor(AcctId, QueueId, Rest);
         {AcctId, QueueId} -> Super;
         _ -> find_queue_supervisor(AcctId, QueueId, Rest)
     end.
 
 queues_running() ->
-    [{W, catch acdc_queue:config(acdc_queue_sup:queue(W))} || W <- workers()].
+    [{W, catch acdc_queue_manager:config(acdc_queue_sup:manager(W))} || W <- workers()].
 
 %%%===================================================================
 %%% Supervisor callbacks

@@ -67,12 +67,10 @@ start_link(FSMPid, AcctId, QueueId) ->
                            ).
 
 -spec ack/2 :: (pid(), #'basic.deliver'{}) -> 'ok'.
-ack(Srv, Delivery) ->
-    gen_listener:ack(Srv, Delivery).
+ack(Srv, Delivery) -> gen_listener:ack(Srv, Delivery).
 
 -spec nack/2 :: (pid(), #'basic.deliver'{}) -> 'ok'.
-nack(Srv, Delivery) ->
-    gen_listener:nack(Srv, Delivery).
+nack(Srv, Delivery) -> gen_listener:nack(Srv, Delivery).
 
 %%%===================================================================
 %%% gen_server callbacks

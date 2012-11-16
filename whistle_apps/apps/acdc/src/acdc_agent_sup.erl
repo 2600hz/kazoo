@@ -13,9 +13,9 @@
 -include("acdc.hrl").
 
 %% API
--export([start_link/1
+-export([start_link/1, start_link/2
          ,agent/1
-         ,fsm/1, start_fsm/3
+         ,fsm/1, start_fsm/3, start_fsm/4
          ,stop/1
         ]).
 
@@ -38,13 +38,12 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec start_link/1 :: (wh_json:json_object()) -> startlink_ret().
+-spec start_link/2 :: (whapps_call:call(), ne_binary()) -> startlink_ret().
 start_link(AgentJObj) ->
-    case supervisor:start_link(?MODULE, [AgentJObj]) of
-        {ok, Super}=OK ->
-            acdc_agent_manager:new_agent(Super),
-            OK;
-        Other -> Other
-    end.
+    supervisor:start_link(?MODULE, [AgentJObj]).
+
+start_link(ThiefCall, QueueId) ->
+    supervisor:start_link(?MODULE, [ThiefCall, QueueId]).
 
 -spec stop/1 :: (pid()) -> 'ok' | {'error', 'not_found'}.
 stop(Supervisor) ->
@@ -65,11 +64,14 @@ fsm(Super) ->
     end.
 
 -spec start_fsm/3 :: (pid(), ne_binary(), ne_binary()) -> sup_startchild_ret().
+-spec start_fsm/4 :: (pid(), ne_binary(), ne_binary(), wh_proplist()) -> sup_startchild_ret().
 start_fsm(Super, AcctId, AgentId) ->
+    start_fsm(Super, AcctId, AgentId, []).
+start_fsm(Super, AcctId, AgentId, Props) ->
     case fsm(Super) of
         undefined ->
             Parent = self(),
-            supervisor:start_child(Super, ?CHILD(acdc_agent_fsm, [AcctId, AgentId, Parent]));
+            supervisor:start_child(Super, ?CHILD(acdc_agent_fsm, [AcctId, AgentId, Parent, Props]));
         P when is_pid(P) -> {ok, P}
     end.
 

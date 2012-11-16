@@ -116,7 +116,7 @@
 start_link(Node, CallId, WhAppQ) ->
     %% We need to become completely decoupled from ecallmgr_call_events
     %% because the call_events process might have been spun up with A->B
-    %% then transfered to A->D, but the route landed in a different 
+    %% then transfered to A->D, but the route landed in a different
     %% ecallmgr.  Since our call_events will get a bad session if we
     %% try to handlecall more than once on a UUID we had to leave the
     %% call_events running on another ecallmgr... fun fun
@@ -170,7 +170,7 @@ add_leg(Props) ->
     case props:get_value(<<"Other-Leg-Unique-ID">>, Props) of
         undefined -> ok;
         CallId ->
-            _ = [gen_listener:cast(Srv, {add_leg, wh_json:from_list(Props)}) 
+            _ = [gen_listener:cast(Srv, {add_leg, wh_json:from_list(Props)})
                  || Srv <- gproc:lookup_pids({p, l, {call_control, CallId}})
                 ],
             ok
@@ -194,7 +194,7 @@ rm_leg(Props) ->
     case props:get_value(<<"Other-Leg-Unique-ID">>, Props) of
         undefined -> ok;
         CallId ->
-            _ = [gen_listener:cast(Srv, {rm_leg, wh_json:from_list(Props)}) 
+            _ = [gen_listener:cast(Srv, {rm_leg, wh_json:from_list(Props)})
                  || Srv <- gproc:lookup_pids({p, l, {call_control, CallId}})
                 ],
             ok
@@ -336,7 +336,7 @@ handle_cast({channel_redirected, _}, #state{callid=CallId
     {stop, normal, State};
 handle_cast({transferer, _}, #state{last_removed_leg=undefined
                                     ,other_legs=[]
-                                   }=State) ->    
+                                   }=State) ->
     %% if the callee preforms a blind transfer then sometimes the new control
     %% listener is built so quickly that it receives the transferer event ment
     %% to tear down the old one.  However, a new control listener will not have
@@ -362,7 +362,7 @@ handle_cast({transferee, JObj}, #state{other_legs=Legs
         PrevCallId ->
             lager:debug("new callid is the same as the old callid"),
             {noreply, State};
-        NewCallId ->            
+        NewCallId ->
             spawn(fun() -> publish_callid_update(PrevCallId, NewCallId, queue_name(Self)) end),
             lager:debug("updating callid from ~s to ~s", [PrevCallId, NewCallId]),
             put(callid, NewCallId),
@@ -411,7 +411,7 @@ handle_cast({rm_leg, JObj}, #state{other_legs=Legs
                     wh_json:get_value(<<"Caller-Unique-ID">>, JObj)
             end,
     case lists:member(LegId, Legs) of
-        false -> 
+        false ->
             {noreply, State};
         true ->
             lager:debug("removed leg ~s from call", [LegId]),
@@ -441,11 +441,11 @@ handle_cast({channel_destroyed, CallId, JObj},  #state{is_call_up=true
             %% if the current application can not be run without a channel and we have received the
             %% channel_destory (the last event we will ever receive from freeswitch for this call)
             %% then create an error and force advance. This will happen with dialplan actions that
-            %% have not been executed on freeswitch but were already queued (for example in xferext). 
+            %% have not been executed on freeswitch but were already queued (for example in xferext).
             %% Commonly events like masquerade, noop, ect
             _ = case CurrentApp =:= undefined orelse is_post_hangup_command(CurrentApp) of
                     true -> ok;
-                    false -> 
+                    false ->
                         send_error_resp(CallId, CurrentCmd),
                         self() ! {force_queue_advance, CallId}
                 end,
@@ -622,7 +622,7 @@ handle_info({sanity_check}, #state{callid=CallId
                                    ,keep_alive_ref=undefined
                                   }=State) ->
     case ecallmgr_fs_nodes:channel_exists(CallId) of
-        true -> 
+        true ->
             lager:debug("listener passed sanity check, call is still up"),
             TRef = erlang:send_after(?SANITY_CHECK_PERIOD, self(), {sanity_check}),
             {'noreply', State#state{sanity_check_tref=TRef}};
@@ -661,8 +661,8 @@ terminate(_Reason, #state{start_time=StartTime
                           ,sanity_check_tref=SCTRef
                           ,keep_alive_ref=KATRef
                          }) ->
-    catch (erlang:cancel_timer(SCTRef)), 
-    catch (erlang:cancel_timer(KATRef)), 
+    catch (erlang:cancel_timer(SCTRef)),
+    catch (erlang:cancel_timer(KATRef)),
     lager:debug("control queue was up for ~p microseconds", [timer:now_diff(erlang:now(), StartTime)]),
     ok.
 
@@ -826,7 +826,7 @@ maybe_filter_queue([AppJObj|T]=Apps, CommandQ) ->
                     lager:debug("app ~s matched next command, checking fields", [AppName]),
                     Fields = wh_json:get_value(<<"Fields">>, AppJObj),
                     lager:debug("fields: ~p", [Fields]),
-                    case lists:all(fun({AppField, AppValue}) -> 
+                    case lists:all(fun({AppField, AppValue}) ->
                                            wh_json:get_value(AppField, NextJObj) =:= AppValue
                                    end, wh_json:to_proplist(Fields)) of
                         false -> maybe_filter_queue(T, CommandQ);
@@ -907,17 +907,17 @@ send_error_resp(CallId, Cmd, Msg) ->
     Resp = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, Cmd)}
             ,{<<"Error-Message">>, Msg}
             ,{<<"Request">>, Cmd}
+            ,{<<"Call-ID">>, CallId}
             | wh_api:default_headers(<<>>, <<"error">>, <<"dialplan">>, ?APP_NAME, ?APP_VERSION)
            ],
     lager:debug("sending execution error: ~p", [Resp]),
     wapi_dialplan:publish_error(CallId, Resp).
 
 -spec get_keep_alive_ref/1 :: (#state{}) -> 'undefined' | reference().
-get_keep_alive_ref(#state{is_call_up=true}) -> 
-    undefined;
+get_keep_alive_ref(#state{is_call_up=true}) -> undefined;
 get_keep_alive_ref(#state{keep_alive_ref=undefined
                           ,is_call_up=false
-                         }) -> 
+                         }) ->
     lager:debug("started post hangup keep alive timer for ~bms", [?KEEP_ALIVE]),
     erlang:send_after(?KEEP_ALIVE, self(), keep_alive_expired);
 get_keep_alive_ref(#state{keep_alive_ref=TRef
@@ -957,7 +957,7 @@ publish_leg_removal(JObj) ->
     end.
 
 -spec publish_callid_update/3 :: (ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
-publish_callid_update(PrevCallId, NewCallId, CtrlQ) -> 
+publish_callid_update(PrevCallId, NewCallId, CtrlQ) ->
     lager:debug("sending callid update to ~s instead of ~s", [NewCallId, PrevCallId]),
     Update = [{<<"Call-ID">>, NewCallId}
               ,{<<"Replaces-Call-ID">>, PrevCallId}

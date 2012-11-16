@@ -6,28 +6,29 @@
 %%% @contributors
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
--module(acdc_queue_sup).
+-module(acdc_queue_worker_sup).
 
 -behaviour(supervisor).
 
 -include("acdc.hrl").
 
 %% API
--export([start_link/2
+-export([start_link/3
          ,stop/1
-         ,manager/1
-         ,workers_sup/1
+         ,queue/1
+         ,shared_queue/1, start_shared_queue/4
+         ,fsm/1, start_fsm/3
         ]).
 
 %% Supervisor callbacks
 -export([init/1]).
 
 %% Helper macro for declaring children of supervisor
--define(CHILD(Name, Args, Type),
-        {Name, {Name, start_link, Args}, permanent, 5000, Type, [Name]}).
+-define(CHILD(Name, Args),
+        {Name, {Name, start_link, Args}, transient, 5000, worker, [Name]}).
 
 %%%===================================================================
-%%% api functions
+%%% API functions
 %%%===================================================================
 
 %%--------------------------------------------------------------------
@@ -37,21 +38,47 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
--spec start_link/2 :: (ne_binary(), ne_binary()) -> startlink_ret().
-start_link(AcctId, QueueId) ->
-    supervisor:start_link(?MODULE, [AcctId, QueueId]).
+-spec start_link/3 :: (pid(), ne_binary(), ne_binary()) -> startlink_ret().
+start_link(MgrPid, AcctId, QueueId) ->
+    supervisor:start_link(?MODULE, [MgrPid, AcctId, QueueId]).
 
 -spec stop/1 :: (pid()) -> 'ok' | {'error', 'not_found'}.
-stop(Super) ->
-    supervisor:terminate_child(acdc_queues_sup, Super).
+stop(WorkerSup) ->
+    supervisor:terminate_child(acdc_queues_sup, WorkerSup).
 
--spec manager/1 :: (pid()) -> pid() | 'undefined'.
-manager(Super) ->
-    hd([P || {_, P, worker, _} <- supervisor:which_children(Super)]).
+-spec queue/1 :: (pid()) -> pid() | 'undefined'.
+queue(WorkerSup) ->
+    case child_of_type(WorkerSup, acdc_queue) of
+        [] -> undefined;
+        [P] -> P
+    end.
 
--spec workers_sup/1 :: (pid()) -> pid() | 'undefined'.
-workers_sup(Super) ->
-    hd([P || {_, P, supervisor, _} <- supervisor:which_children(Super)]).
+-spec shared_queue/1 :: (pid()) -> pid() | 'undefined'.
+shared_queue(WorkerSup) ->
+    case child_of_type(WorkerSup, acdc_queue_shared) of
+        [] -> undefined;
+        [P] -> P
+    end.
+
+-spec start_shared_queue/4 :: (pid(), pid(), ne_binary(), ne_binary()) -> sup_startchild_ret().
+start_shared_queue(WorkerSup, FSMPid, AcctId, QueueId) ->
+    supervisor:start_child(WorkerSup, ?CHILD(acdc_queue_shared, [FSMPid, AcctId, QueueId])).
+
+-spec fsm/1 :: (pid()) -> pid() | 'undefined'.
+fsm(WorkerSup) ->
+    case child_of_type(WorkerSup, acdc_queue_fsm) of
+        [] -> undefined;
+        [P] -> P
+    end.
+
+-spec start_fsm/3 :: (pid(), pid(), wh_json:json_object()) -> sup_startchild_ret().
+start_fsm(WorkerSup, MgrPid, QueueJObj) ->
+    ListenerPid = self(),
+    supervisor:start_child(WorkerSup, ?CHILD(acdc_queue_fsm, [MgrPid, ListenerPid, QueueJObj])).
+
+-spec child_of_type/2 :: (pid(), atom()) -> list(pid()).
+child_of_type(WorkerSup, T) ->
+    [ Pid || {Type, Pid, worker, [_]} <- supervisor:which_children(WorkerSup), T =:= Type].
 
 %%%===================================================================
 %%% Supervisor callbacks
@@ -72,18 +99,13 @@ workers_sup(Super) ->
 %%--------------------------------------------------------------------
 -spec init/1 :: (list()) -> sup_init_ret().
 init(Args) ->
-    RestartStrategy = one_for_one,
+    RestartStrategy = one_for_all,
     MaxRestarts = 2,
     MaxSecondsBetweenRestarts = 2,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    {ok, {SupFlags, [
-                     ?CHILD(acdc_queue_workers_sup, [], supervisor)
-                     ,?CHILD(acdc_queue_manager, [self() | Args], worker)
-                    ]
-         }
-    }.
+    {ok, {SupFlags, [?CHILD(acdc_queue_listener, [self() | Args])]}}.
 
 %%%===================================================================
 %%% Internal functions

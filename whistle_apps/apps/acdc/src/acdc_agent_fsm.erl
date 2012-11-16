@@ -12,7 +12,7 @@
 -behaviour(gen_fsm).
 
 %% API
--export([start_link/3
+-export([start_link/4
          ,call_event/4
          ,member_connect_req/2
          ,member_connect_win/2
@@ -226,9 +226,9 @@ status(FSM) ->
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
--spec start_link/3 :: (ne_binary(), ne_binary(), pid()) -> startlink_ret().
-start_link(AcctId, AgentId, AgentProc) ->
-    gen_fsm:start_link(?MODULE, [AcctId, AgentId, AgentProc], []).
+-spec start_link/4 :: (ne_binary(), ne_binary(), pid(), wh_proplist()) -> startlink_ret().
+start_link(AcctId, AgentId, AgentProc, Props) ->
+    gen_fsm:start_link(?MODULE, [AcctId, AgentId, AgentProc, Props], []).
 
 %%%===================================================================
 %%% gen_fsm callbacks
@@ -247,24 +247,27 @@ start_link(AcctId, AgentId, AgentProc) ->
 %%                     {stop, StopReason}
 %% @end
 %%--------------------------------------------------------------------
-init([AcctId, AgentId, AgentProc]) ->
+init([AcctId, AgentId, AgentProc, Props]) ->
     put(callid, <<"fsm_", AcctId/binary, "_", AgentId/binary>>),
     lager:debug("started acdc agent fsm"),
 
-    SyncRef = start_sync_timer(),
-    gen_fsm:send_event(self(), send_sync_event),
-
     acdc_stats:agent_active(AcctId, AgentId),
 
-    gen_fsm:send_all_state_event(self(), load_endpoints),
+    {NextState, SyncRef} = case props:get_value(skip_sync, Props) of
+                               true -> {ready, undefined};
+                               _ ->
+                                   gen_fsm:send_event(self(), send_sync_event),
+                                   gen_fsm:send_all_state_event(self(), load_endpoints),
+                                   {sync, start_sync_timer()}
+                           end,
 
-    {ok, sync, #state{acct_id=AcctId
-                      ,acct_db=wh_util:format_account_id(AcctId, encoded)
-                      ,agent_id=AgentId
-                      ,agent_proc=AgentProc
-                      ,agent_proc_id=acdc_util:proc_id(AgentProc)
-                      ,sync_ref=SyncRef
-                     }}.
+    {ok, NextState, #state{acct_id=AcctId
+                           ,acct_db=wh_util:format_account_id(AcctId, encoded)
+                           ,agent_id=AgentId
+                           ,agent_proc=AgentProc
+                           ,agent_proc_id=acdc_util:proc_id(AgentProc)
+                           ,sync_ref=SyncRef
+                          }}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -366,7 +369,7 @@ ready({sync_req, JObj}, #state{agent_proc=Srv}=State) ->
     {next_state, ready, State};
 
 ready({member_connect_win, JObj}, #state{agent_proc=Srv
-                                         ,endpoints=[_|_]=EPs
+                                         ,endpoints=EPs
                                          ,agent_proc_id=MyId
                                         }=State) ->
     Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, JObj)),
@@ -470,8 +473,11 @@ ringing({originate_failed, JObj}, #state{agent_proc=Srv
     acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_GREEN),
     {next_state, ready, clear_call(State)};
 
-ringing({channel_bridged, CallId}, #state{member_call_id=CallId}=State) ->
+ringing({channel_bridged, CallId}, #state{member_call_id=CallId
+                                          ,agent_proc=Srv
+                                         }=State) ->
     lager:debug("agent has connected to member"),
+    acdc_agent:member_connect_accepted(Srv),
     {next_state, answered, State#state{call_status_ref=start_call_status_timer()
                                       ,call_status_failures=0
                                       }};

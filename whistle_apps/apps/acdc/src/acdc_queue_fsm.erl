@@ -11,7 +11,7 @@
 -behaviour(gen_fsm).
 
 %% API
--export([start_link/2]).
+-export([start_link/3]).
 
 %% Event injectors
 -export([member_call/3
@@ -61,6 +61,7 @@
 
 -record(state, {
           queue_proc :: pid()
+         ,manager_proc :: pid()
          ,connect_resps = [] :: wh_json:json_objects()
          ,collect_ref :: reference()
          ,acct_id :: ne_binary()
@@ -108,9 +109,9 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
--spec start_link/2 :: (pid(), wh_json:json_object()) -> startlink_ret().
-start_link(QueuePid, QueueJObj) ->
-    gen_fsm:start_link(?MODULE, [QueuePid, QueueJObj], []).
+-spec start_link/3 :: (pid(), pid(), wh_json:json_object()) -> startlink_ret().
+start_link(MgrPid, ListenerPid, QueueJObj) ->
+    gen_fsm:start_link(?MODULE, [MgrPid, ListenerPid, QueueJObj], []).
 
 refresh(FSM, QueueJObj) ->
     gen_fsm:send_all_state_event(FSM, {refresh, QueueJObj}).
@@ -198,7 +199,7 @@ status(FSM) ->
 %%                     {stop, StopReason}
 %% @end
 %%--------------------------------------------------------------------
-init([QueuePid, QueueJObj]) ->
+init([MgrPid, ListenerPid, QueueJObj]) ->
     QueueId = wh_json:get_value(<<"_id">>, QueueJObj),
     AcctId = wh_json:get_value(<<"pvt_account_id">>, QueueJObj),
     AcctDb = wh_json:get_value(<<"pvt_account_db">>, QueueJObj),
@@ -207,7 +208,8 @@ init([QueuePid, QueueJObj]) ->
 
     gen_fsm:send_event(self(), {strategy_sync}),
 
-    {ok, sync, #state{queue_proc=QueuePid
+    {ok, sync, #state{queue_proc=ListenerPid
+                      ,manager_proc=MgrPid
                       ,acct_id=AcctId
                       ,acct_db=AcctDb
                       ,queue_id=QueueId
@@ -245,13 +247,13 @@ sync({strategy_sync}, #state{strategy=Type
         {true, SyncRef} ->
             {next_state, sync, State#state{timer_ref=SyncRef}}; % we're waiting for a sync_resp
         false ->
-            acdc_queue:accept_member_calls(Srv),
+            acdc_queue_listener:accept_member_calls(Srv),
             {next_state, ready, State} % no sync needed, let's go!
     end;
 
 sync({member_call, CallJObj, Delivery}, #state{queue_proc=Srv}=State) ->
     lager:debug("member_call recv, still syncing, cancel for redelivery"),
-    acdc_queue:cancel_member_call(Srv, CallJObj, Delivery),
+    acdc_queue_listener:cancel_member_call(Srv, CallJObj, Delivery),
     {next_state, sync, State};
 
 sync({agent_available, AcctId, QueueId, AgentId}, #state{acct_id=AcctId
@@ -271,7 +273,7 @@ sync({timeout, SyncRef, ?SYNC_MESSAGE}, #state{timer_ref=SyncRef
                                                ,queue_proc=Srv
                                               }=State) ->
     lager:debug("sync timeout, creating strategy state"),
-    acdc_queue:accept_member_calls(Srv),
+    acdc_queue_listener:accept_member_calls(Srv),
     {next_state, ready, State#state{timer_ref=undefined
                                     ,strategy_state=create_strategy_state(Strategy, StrategyState, AcctDb, QueueId)
                                    }};
@@ -294,16 +296,17 @@ sync(current_call, _, State) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
-ready({member_call, CallJObj, Delivery}, #state{queue_proc=Srv
+ready({member_call, CallJObj, Delivery}, #state{queue_proc=QueueSrv
+                                                ,manager_proc=MgrSrv
                                                 ,connection_timeout=ConnTimeout
                                                 ,connection_timer_ref=ConnRef
                                                }=State) ->
     Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, CallJObj)),
 
-    case acdc_queue_manager:should_ignore_member_call(Call, CallJObj) of
+    case acdc_queue_manager:should_ignore_member_call(MgrSrv, Call, CallJObj) of
         false ->
             lager:debug("member call received: ~s", [whapps_call:call_id(Call)]),
-            acdc_queue:member_connect_req(Srv, CallJObj, Delivery),
+            acdc_queue_listener:member_connect_req(QueueSrv, CallJObj, Delivery),
 
             maybe_stop_timer(ConnRef), % stop the old one, maybe
 
@@ -314,7 +317,7 @@ ready({member_call, CallJObj, Delivery}, #state{queue_proc=Srv
                                                  }};
         true ->
             lager:debug("queue mgr said to ignore this call: ~s", [whapps_call:call_id(Call)]),
-            acdc_queue:ignore_member_call(Srv, Call, Delivery),
+            acdc_queue_listener:ignore_member_call(QueueSrv, Call, Delivery),
             {next_state, ready, State}
     end;
 ready({agent_resp, _Resp}, State) ->
@@ -351,7 +354,7 @@ ready({sync_req, AcctId, QueueId, JObj}, #state{acct_id=AcctId
     case acdc_util:proc_id(Srv) =:= wh_json:get_value(<<"Process-ID">>, JObj) of
         true -> lager:debug("sync_req is for ourselves");
         false ->
-            acdc_queue:send_sync_resp(Srv, Strategy, serialize_strategy_state(Strategy, StrategyState), JObj)
+            acdc_queue_listener:send_sync_resp(Srv, Strategy, serialize_strategy_state(Strategy, StrategyState), JObj)
     end,
     {next_state, ready, State};
 
@@ -371,7 +374,7 @@ ready(current_call, _, State) ->
 %%--------------------------------------------------------------------
 connect_req({member_call, CallJObj, Delivery}, #state{queue_proc=Srv}=State) ->
     lager:debug("recv a member_call while processing a different member"),
-    acdc_queue:cancel_member_call(Srv, CallJObj, Delivery),
+    acdc_queue_listener:cancel_member_call(Srv, CallJObj, Delivery),
     {next_state, connect_req, State};
 
 connect_req({agent_resp, Resp}, #state{connect_resps=CRs}=State) ->
@@ -382,7 +385,7 @@ connect_req({timeout, Ref, ?COLLECT_RESP_MESSAGE}, #state{collect_ref=Ref
                                                           ,queue_proc=Srv
                                                          }=State) ->
     lager:debug("done waiting, no agents responded, let's ask again"),
-    acdc_queue:member_connect_re_req(Srv),
+    acdc_queue_listener:member_connect_re_req(Srv),
 
     {next_state, connect_req, State#state{collect_ref=start_collect_timer()}};
 
@@ -398,7 +401,7 @@ connect_req({timeout, Ref, ?COLLECT_RESP_MESSAGE}, #state{collect_ref=Ref
     lager:debug("done waiting for agents to respond, picking a winner"),
     case pick_winner(CRs, Strategy, StrategyState) of
         {[Winner|_]=Agents, Rest, StrategyState1} ->
-            _ = [acdc_queue:member_connect_win(Srv, update_agent(Agent, Winner), AgentTimeout, AgentWrapup, CallerExitKey)
+            _ = [acdc_queue_listener:member_connect_win(Srv, update_agent(Agent, Winner), AgentTimeout, AgentWrapup, CallerExitKey)
                  || Agent <- Agents
                 ],
 
@@ -412,7 +415,7 @@ connect_req({timeout, Ref, ?COLLECT_RESP_MESSAGE}, #state{collect_ref=Ref
                                                 }};
         undefined ->
             lager:debug("no more responses to choose from"),
-            acdc_queue:cancel_member_call(Srv),
+            acdc_queue_listener:cancel_member_call(Srv),
             {next_state, ready, clear_member_call(State)}
     end;
 
@@ -435,7 +438,7 @@ connect_req({member_hungup, JObj}, #state{queue_proc=Srv
     case wh_json:get_value(<<"Call-ID">>, JObj) =:= whapps_call:call_id(Call) of
         true ->
             lager:debug("member hungup before we could assign an agent"),
-            acdc_queue:finish_member_call(Srv, JObj),
+            acdc_queue_listener:finish_member_call(Srv, JObj),
             {next_state, ready, clear_member_call(State)};
         false ->
             lager:debug("hangup recv for ~s while processing ~s, ignoring", [wh_json:get_value(<<"Call-ID">>, JObj)
@@ -451,7 +454,7 @@ connect_req({dtmf_pressed, DTMF}, #state{caller_exit_key=DTMF
                                          ,member_call=Call
                                         }=State) when is_binary(DTMF) ->
     lager:debug("member pressed the exit key (~s)", [DTMF]),
-    acdc_queue:exit_member_call(Srv),
+    acdc_queue_listener:exit_member_call(Srv),
     acdc_stats:call_abandoned(AcctId, QueueId, whapps_call:call_id(Call), ?ABANDON_EXIT),
     {next_state, ready, clear_member_call(State)};
 
@@ -462,7 +465,7 @@ connect_req({timeout, ConnRef, ?CONNECTION_TIMEOUT_MESSAGE}, #state{queue_proc=S
                                                                     ,member_call=Call
                                                                    }=State) ->
     lager:debug("connection timeout occurred, bounce the caller out of the queue"),
-    acdc_queue:timeout_member_call(Srv),
+    acdc_queue_listener:timeout_member_call(Srv),
     acdc_stats:call_abandoned(AcctId, QueueId, whapps_call:call_id(Call), ?ABANDON_TIMEOUT),
     {next_state, ready, clear_member_call(State)};
 
@@ -484,7 +487,7 @@ connect_req({sync_req, AcctId, QueueId, JObj}, #state{acct_id=AcctId
     case acdc_util:proc_id(Srv) =:= wh_json:get_value(<<"Process-ID">>, JObj) of
         true -> lager:debug("sync_req is for ourselves");
         false ->
-            acdc_queue:send_sync_resp(Srv, Strategy, serialize_strategy_state(Strategy, StrategyState), JObj)
+            acdc_queue_listener:send_sync_resp(Srv, Strategy, serialize_strategy_state(Strategy, StrategyState), JObj)
     end,
     {next_state, connect_req, State};
 
@@ -507,7 +510,7 @@ connect_req(current_call, _, #state{member_call=Call
 %%--------------------------------------------------------------------
 connecting({member_call, CallJObj, Delivery}, #state{queue_proc=Srv}=State) ->
     lager:debug("recv a member_call while connecting"),
-    acdc_queue:cancel_member_call(Srv, CallJObj, Delivery),
+    acdc_queue_listener:cancel_member_call(Srv, CallJObj, Delivery),
     {next_state, connecting, State};
 
 connecting({agent_resp, _Resp}, State) ->
@@ -522,7 +525,7 @@ connecting({accepted, AcceptJObj}, #state{queue_proc=Srv
     case accept_is_for_call(AcceptJObj, Call) of
         true ->
             lager:debug("recv acceptance from agent"),
-            acdc_queue:finish_member_call(Srv, AcceptJObj),
+            acdc_queue_listener:finish_member_call(Srv, AcceptJObj),
             acdc_stats:call_handled(AcctId, QueueId, whapps_call:call_id(Call)
                                     ,wh_json:get_value(<<"Agent-ID">>, AcceptJObj)
                                    ),
@@ -539,7 +542,7 @@ connecting({retry, _RetryJObj}, #state{queue_proc=Srv
                                      }=State) ->
     lager:debug("recv retry from agent"),
 
-    acdc_queue:member_connect_re_req(Srv),
+    acdc_queue_listener:member_connect_re_req(Srv),
     maybe_stop_timer(CollectRef),
     maybe_stop_timer(AgentRef),
 
@@ -565,7 +568,7 @@ connecting({timeout, _OtherAgentRef, ?AGENT_RING_TIMEOUT_MESSAGE}, #state{agent_
 
 connecting({member_hungup, CallEvt}, #state{queue_proc=Srv}=State) ->
     lager:debug("caller hungup while we waited for the agent to connect"),
-    acdc_queue:cancel_member_call(Srv, CallEvt),
+    acdc_queue_listener:cancel_member_call(Srv, CallEvt),
     {next_state, ready, clear_member_call(State)};
 
 connecting({dtmf_pressed, DTMF}, #state{caller_exit_key=DTMF
@@ -575,7 +578,7 @@ connecting({dtmf_pressed, DTMF}, #state{caller_exit_key=DTMF
                                         ,member_call=Call
                                        }=State) when is_binary(DTMF) ->
     lager:debug("member pressed the exit key (~s)", [DTMF]),
-    acdc_queue:exit_member_call(Srv),
+    acdc_queue_listener:exit_member_call(Srv),
     acdc_stats:call_abandoned(AcctId, QueueId, whapps_call:call_id(Call), ?ABANDON_EXIT),
     {next_state, ready, clear_member_call(State)};
 
@@ -586,7 +589,7 @@ connecting({timeout, ConnRef, ?CONNECTION_TIMEOUT_MESSAGE}, #state{queue_proc=Sr
                                                                    ,member_call=Call
                                                                   }=State) ->
     lager:debug("connection timeout occurred, bounce the caller out of the queue"),
-    acdc_queue:timeout_member_call(Srv),
+    acdc_queue_listener:timeout_member_call(Srv),
     acdc_stats:call_abandoned(AcctId, QueueId, whapps_call:call_id(Call), ?ABANDON_TIMEOUT),
     {next_state, ready, clear_member_call(State)};
 
@@ -608,7 +611,7 @@ connecting({sync_req, AcctId, QueueId, JObj}, #state{acct_id=AcctId
     case acdc_util:proc_id(Srv) =:= wh_json:get_value(<<"Process-ID">>, JObj) of
         true -> lager:debug("sync_req is for ourselves");
         false ->
-            acdc_queue:send_sync_resp(Srv, Strategy, serialize_strategy_state(Strategy, StrategyState), JObj)
+            acdc_queue_listener:send_sync_resp(Srv, Strategy, serialize_strategy_state(Strategy, StrategyState), JObj)
     end,
     {next_state, connecting, State};
 
@@ -764,7 +767,7 @@ split_agents(AgentId, Rest) ->
 -spec maybe_send_sync_req/2 :: (queue_strategy(), pid()) -> 'false' | {'true', reference()}.
 maybe_send_sync_req(mi, _) -> false;
 maybe_send_sync_req(rr, Srv) ->
-    acdc_queue:send_sync_req(Srv, rr),
+    acdc_queue_listener:send_sync_req(Srv, rr),
     {true, gen_fsm:start_timer(?SYNC_TIMEOUT, ?SYNC_MESSAGE)}.
 
 -spec get_strategy/1 :: (api_binary()) -> queue_strategy().

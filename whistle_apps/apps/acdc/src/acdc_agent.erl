@@ -11,7 +11,7 @@
 -behaviour(gen_listener).
 
 %% API
--export([start_link/2
+-export([start_link/2, start_link/3
          ,member_connect_resp/2
          ,member_connect_retry/2
          ,bridge_to_member/4
@@ -60,7 +60,11 @@
          ,sync_resp :: wh_json:json_object() % furthest along resp
          ,supervisor :: pid()
          ,record_calls = false :: boolean()
+         ,is_thief = false :: boolean()
+         ,agent :: agent()
          }).
+
+-type agent() :: whapps_call:call() | wh_json:object().
 
 %%%===================================================================
 %%% Defines for different functionality
@@ -142,6 +146,16 @@ start_link(Supervisor, AgentJObj) ->
                                    )
     end.
 
+start_link(Supervisor, ThiefCall, QueueId) ->
+    AgentId = whapps_call:owner_id(ThiefCall),
+    AcctId = whapps_call:account_id(ThiefCall),
+    gen_listener:start_link(?MODULE
+                            ,[{bindings, ?BINDINGS(AcctId, AgentId)}
+                              ,{responders, ?RESPONDERS}
+                             ]
+                            ,[Supervisor, ThiefCall, [QueueId]]
+                           ).
+
 stop(Srv) ->
     gen_listener:cast(Srv, {stop_agent}).
 
@@ -210,12 +224,12 @@ call_status_req(Srv) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init([Supervisor, AgentJObj, Queues]) ->
-    AgentId = wh_json:get_value(<<"_id">>, AgentJObj),
+init([Supervisor, Agent, Queues]) ->
+    AgentId = agent_id(Agent),
     put(callid, AgentId),
 
     Self = self(),
-    AcctId = wh_json:get_value(<<"pvt_account_id">>, AgentJObj),
+    AcctId = account_id(Agent),
 
     gen_listener:cast(self(), {start_fsm, Supervisor}),
 
@@ -234,11 +248,13 @@ init([Supervisor, AgentJObj, Queues]) ->
     {ok, #state{
        agent_id = AgentId
        ,acct_id = AcctId
-       ,acct_db = wh_json:get_value(<<"pvt_account_db">>, AgentJObj)
+       ,acct_db = account_db(Agent)
        ,agent_queues = Queues
        ,my_id = acdc_util:proc_id()
        ,supervisor = Supervisor
-       ,record_calls = wh_json:is_true(<<"record_calls">>, AgentJObj, false)
+       ,record_calls = record_calls(Agent)
+       ,is_thief = is_thief(Agent)
+       ,agent = Agent
       }}.
 
 %%--------------------------------------------------------------------
@@ -278,6 +294,7 @@ handle_cast({stop_agent}, #state{supervisor=Supervisor}=State) ->
     {noreply, State};
 handle_cast({start_fsm, Supervisor}, #state{acct_id=AcctId
                                             ,agent_id=AgentId
+                                            ,is_thief=false
                                            }=State) ->
     {ok, FSMPid} = acdc_agent_sup:start_fsm(Supervisor, AcctId, AgentId),
 
@@ -286,9 +303,23 @@ handle_cast({start_fsm, Supervisor}, #state{acct_id=AcctId
     gen_listener:cast(self(), bind_to_member_reqs),
 
     {noreply, State#state{fsm_pid=FSMPid}};
+
+handle_cast({start_fsm, Supervisor}, #state{acct_id=AcctId
+                                            ,agent_id=AgentId
+                                            ,is_thief=true
+                                           }=State) ->
+    {ok, FSMPid} = acdc_agent_sup:start_fsm(Supervisor, AcctId, AgentId, [skip_sync]),
+
+    lager:debug("started FSM at ~p", [FSMPid]),
+
+    gen_listener:cast(self(), bind_to_member_reqs),
+
+    {noreply, State#state{fsm_pid=FSMPid}, hibernate};
+
+
 handle_cast({queue_name, Q}, State) ->
     lager:debug("my queue: ~s", [Q]),
-    {noreply, State#state{my_q=Q}};
+    {noreply, State#state{my_q=Q}, hibernate};
 
 handle_cast({queue_login, Q}, #state{agent_queues=Qs
                                      ,acct_id=AcctId
@@ -325,6 +356,7 @@ handle_cast(bind_to_member_reqs, #state{agent_queues=Qs
 
 handle_cast({channel_hungup, CallId}, #state{call=Call
                                              ,record_calls=ShouldRecord
+                                             ,is_thief=IsThief
                                             }=State) ->
     case call_id(Call) of
         CallId ->
@@ -333,17 +365,19 @@ handle_cast({channel_hungup, CallId}, #state{call=Call
 
             maybe_stop_recording(Call, ShouldRecord),
 
-            {noreply, State#state{call=undefined
-                                  ,msg_queue_id=undefined
-                                  ,acdc_queue_id=undefined
-                                 }};
-        undefined ->
-            lager:debug("undefined call id for channel_hungup, ignoring"),
-            {noreply, State};
-        _ ->
-            lager:debug("other channel ~s hungup", [CallId]),
-            acdc_util:unbind_from_call_events(CallId),
-            maybe_stop_recording(Call, ShouldRecord),
+            case IsThief of
+                false ->
+                    {noreply, State#state{call=undefined
+                                          ,msg_queue_id=undefined
+                                          ,acdc_queue_id=undefined
+                                         }
+                     ,hibernate};
+                true ->
+                    lager:debug("thief is done, going down"),
+                    {stop, normal, State}
+            end;
+        _CallId ->
+            lager:debug("~s call id for channel_hungup, ignoring", [_CallId]),
             {noreply, State}
     end;
 
@@ -397,6 +431,7 @@ handle_cast({member_connect_retry, WinJObj}, #state{my_id=MyId}=State) ->
 
 handle_cast({bridge_to_member, Call, WinJObj, EPs}, #state{fsm_pid=FSM
                                                            ,record_calls=RecordCall
+                                                           ,is_thief=false
                                                           }=State) ->
     lager:debug("bridging to agent endpoints: ~p", [EPs]),
 
@@ -413,10 +448,20 @@ handle_cast({bridge_to_member, Call, WinJObj, EPs}, #state{fsm_pid=FSM
                           ,record_calls=ShouldRecord
                          }};
 
+handle_cast({bridge_to_member, Call, _WinJObj, _}, #state{is_thief=true
+                                                          ,agent=Agent
+                                                         }=State) ->
+    lager:debug("connecting to thief at ~s", [whapps_call:call_id(Agent)]),
+    acdc_util:bind_to_call_events(Call),
+
+    whapps_call_command:pickup(whapps_call:call_id(Agent), <<"now">>, Call),
+
+    {noreply, State#state{call=Call}, hibernate};
+
 handle_cast({monitor_call, Call}, State) ->
     acdc_util:bind_to_call_events(Call),
     lager:debug("monitoring call ~s", [whapps_call:call_id(Call)]),
-    {noreply, State#state{call=Call}};
+    {noreply, State#state{call=Call}, hibernate};
 
 handle_cast({originate_execute, JObj}, State) ->
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
@@ -787,3 +832,34 @@ store_url(Call, JObj) ->
                     ,"/", MediaName
                     ,"?rev=", Rev
                    ]).
+
+-spec agent_id/1 :: (agent()) -> api_binary().
+agent_id(Agent) ->
+    case wh_json:is_json_object(Agent) of
+        true -> wh_json:get_value(<<"_id">>, Agent);
+        false -> whapps_call:owner_id(Agent)
+    end.
+
+-spec account_id/1 :: (agent()) -> api_binary().
+account_id(Agent) ->
+    case wh_json:is_json_object(Agent) of
+        true -> wh_json:get_value(<<"pvt_account_id">>, Agent);
+        false -> whapps_call:account_id(Agent)
+    end.
+
+-spec account_db/1 :: (agent()) -> api_binary().
+account_db(Agent) ->
+    case wh_json:is_json_object(Agent) of
+        true -> wh_json:get_value(<<"pvt_account_db">>, Agent);
+        false -> whapps_call:account_db(Agent)
+    end.
+
+-spec record_calls/1 :: (agent()) -> boolean().
+record_calls(Agent) ->
+    case wh_json:is_json_object(Agent) of
+        true -> wh_json:is_true(<<"record_calls">>, Agent, false);
+        false -> false
+    end.
+
+-spec is_thief/1 :: (agent()) -> boolean().
+is_thief(Agent) -> not wh_json:is_json_object(Agent).

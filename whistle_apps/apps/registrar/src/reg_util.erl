@@ -9,12 +9,16 @@
 %%%-------------------------------------------------------------------
 -module(reg_util).
 
--export([lookup_auth_user/2]).
--export([cache_reg_key/1, cache_user_to_reg_key/2, cache_user_key/2]).
--export([hash_contact/1, get_expires/1]).
--export([lookup_registrations/1, lookup_registration/2, fetch_all_registrations/0]).
--export([reg_removed_from_cache/3]).
--export([search_for_registration/2]).
+-export([lookup_auth_user/2
+         ,cache_reg_key/1, cache_user_to_reg_key/2, cache_user_key/2
+         ,hash_contact/1
+         ,get_expires/1
+         ,lookup_registrations/1, lookup_registration/2
+         ,fetch_all_registrations/0
+         ,reg_removed_from_cache/3
+         ,search_for_registration/2
+         ,remove_registration/2
+        ]).
 
 -include_lib("registrar/src/reg.hrl").
 
@@ -43,8 +47,10 @@ lookup_registrations(Realm) ->
         Else -> {'ok', Else}
     end.
 
--spec lookup_registration/2 :: (ne_binary(), 'undefined' | ne_binary()) -> {'ok', wh_json:json_object()} |
-                                                                           {'error', 'not_found'}.
+-spec lookup_registration/2 :: (ne_binary(), api_binary()) ->
+                                       {'ok', wh_json:json_object()} |
+                                       {'ok', wh_json:json_objects()} | % if no username, find all for realm
+                                       {'error', 'not_found'}.
 lookup_registration(Realm, undefined) ->
     lookup_registrations(Realm);
 lookup_registration(Realm, Username) when not is_binary(Realm) ->
@@ -54,6 +60,10 @@ lookup_registration(Realm, Username) when not is_binary(Username) ->
 lookup_registration(Realm, Username) ->
     wh_cache:peek_local(?REGISTRAR_CACHE, cache_user_to_reg_key(Realm, Username)).
 
+-spec remove_registration/2 :: (ne_binary(), ne_binary()) -> 'ok'.
+remove_registration(Realm, Username) ->
+    wh_cache:erase_local(?REGISTRAR_CACHE, cache_user_to_reg_key(Realm, Username)).
+
 %%-----------------------------------------------------------------------------
 %% @public
 %% @doc
@@ -62,11 +72,10 @@ lookup_registration(Realm, Username) ->
 %%-----------------------------------------------------------------------------
 -spec fetch_all_registrations/0 :: () -> {'ok', wh_json:json_objects()}.
 fetch_all_registrations() ->
-    Registrations = wh_cache:filter_local(?REGISTRAR_CACHE, fun({?MODULE, registration, _, _}, _) ->
-                                                 true;
-                                            (_K, _V) ->
-                                                 false
-                                         end),
+    Registrations = wh_cache:filter_local(?REGISTRAR_CACHE
+                                          ,fun({?MODULE, registration, _, _}, _) -> true;
+                                              (_K, _V) -> false
+                                           end),
     {'ok', [Registration || {_, Registration} <- Registrations]}.
 
 %%-----------------------------------------------------------------------------
@@ -75,12 +84,12 @@ fetch_all_registrations() ->
 %% calculate expiration time
 %% @end
 %%-----------------------------------------------------------------------------
--spec get_expires/1 :: (ne_binary()) -> number().
+-spec get_expires/1 :: (ne_binary()) -> pos_integer().
 get_expires(JObj) ->
     Multiplier = whapps_config:get_float(?CONFIG_CAT, <<"expires_multiplier">>, 1.25),
-    Fudge = whapps_config:get_float(?CONFIG_CAT, <<"expires_fudge_factor">>, 120),
+    Fudge = whapps_config:get_integer(?CONFIG_CAT, <<"expires_fudge_factor">>, 120),
     Expiry = wh_json:get_integer_value(<<"Expires">>, JObj, 3600),
-    round(Expiry * Multiplier) + Fudge.
+    erlang:trunc(Expiry * Multiplier) + Fudge.
 
 %%-----------------------------------------------------------------------------
 %% @public
@@ -98,8 +107,9 @@ hash_contact(Contact) ->
 %% look up the user and realm in the database and return the result
 %% @end
 %%-----------------------------------------------------------------------------
--spec lookup_auth_user/2 :: (ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} |
-                                                          {'error', 'not_found'}.
+-spec lookup_auth_user/2 :: (ne_binary(), ne_binary()) ->
+                                    {'ok', wh_json:json_object()} |
+                                    {'error', 'not_found'}.
 lookup_auth_user(Name, Realm) ->
     CacheKey = cache_user_key(Realm, Name),
     case wh_cache:peek_local(?REGISTRAR_CACHE, CacheKey) of
@@ -123,26 +133,30 @@ check_user_doc(UserJObj, CacheKey) ->
                                  ,fun reg_util:reg_removed_from_cache/3
                                 ),
             {ok, UserJObj};
-        false ->
-            {error, not_found}
+        false -> {error, not_found}
     end.
 
--spec get_auth_user/2 :: (ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} |
-                                                       {'error', 'not_found'}.
+-spec get_auth_user/2 :: (ne_binary(), ne_binary()) ->
+                                 {'ok', wh_json:json_object()} |
+                                 {'error', 'not_found'}.
 get_auth_user(Name, Realm) ->
     case whapps_util:get_account_by_realm(Realm) of
         {'error', E} ->
             lager:debug("failed to lookup realm ~s in accounts: ~p", [Realm, E]),
             get_auth_user_in_agg(Name, Realm);
-        {'ok', []} ->
+        {'multiples', []} ->
             lager:debug("failed to find realm ~s in accounts", [Realm]),
             get_auth_user_in_agg(Name, Realm);
+        {'multiples', [AccountDB|_]} ->
+            lager:debug("found multiple accounts by realm ~s, using first: ~s", [Realm, AccountDB]),
+            get_auth_user_in_account(Name, Realm, AccountDB);
         {'ok', AccountDB} ->
             get_auth_user_in_account(Name, Realm, AccountDB)
     end.
 
--spec get_auth_user_in_agg/2 :: (ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} |
-                                                              {'error', 'not_found'}.
+-spec get_auth_user_in_agg/2 :: (ne_binary(), ne_binary()) ->
+                                        {'ok', wh_json:json_object()} |
+                                        {'error', 'not_found'}.
 get_auth_user_in_agg(Name, Realm) ->
     UseAggregate = whapps_config:get_is_true(?CONFIG_CAT, <<"use_aggregate">>, false),
     ViewOptions = [{key, [Realm, Name]}, include_docs],
@@ -161,8 +175,9 @@ get_auth_user_in_agg(Name, Realm) ->
             {'ok', User}
     end.
 
--spec get_auth_user_in_account/3 :: (ne_binary(), ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} |
-                                                                               {'error', 'not_found'}.
+-spec get_auth_user_in_account/3 :: (ne_binary(), ne_binary(), ne_binary()) ->
+                                            {'ok', wh_json:json_object()} |
+                                            {'error', 'not_found'}.
 get_auth_user_in_account(Name, Realm, AccountDB) ->
     case couch_mgr:get_results(AccountDB, <<"devices/sip_credentials">>, [{key, Name}, include_docs]) of
         {'error', R} ->
@@ -196,13 +211,12 @@ reg_removed_from_cache({?MODULE, registration, Realm, User}, Reg, expire) ->
             Event = wh_json:to_proplist(lists:foldr(fun(F, J) -> F(J) end, Reg, Updaters))
                 ++ wh_api:default_headers(?APP_NAME, ?APP_VERSION),
             wapi_notifications:publish_deregister(Event)
-    end,
-    ok;
-reg_removed_from_cache(_, _, _) ->
-    ok.
+    end;
+reg_removed_from_cache(_, _, _) -> ok.
 
--spec search_for_registration/2 :: (ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()} |
-                                                                 {'error', 'timeout'}.
+-spec search_for_registration/2 :: (ne_binary(), ne_binary()) ->
+                                           {'ok', wh_json:json_object()} |
+                                           {'error', 'timeout'}.
 search_for_registration(User, Realm) ->
     wh_amqp_worker:call(whapps_amqp_pool
                         ,[{<<"Username">>, User}
@@ -211,4 +225,5 @@ search_for_registration(User, Realm) ->
                           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                          ]
                         ,fun wapi_registration:publish_query_req/1
-                        ,fun wapi_registration:query_resp_v/1).
+                        ,fun wapi_registration:query_resp_v/1
+                       ).
