@@ -14,6 +14,7 @@
          ,wait_for_noop/2
          ,say_loop/6, say_loop/7
          ,play_loop/3, play_loop/4
+         ,collect_dtmfs/4
         ]).
 
 -record(offnet_req, {
@@ -28,6 +29,22 @@
 -type offnet_req() :: #offnet_req{}.
 
 -define(DEFAULT_EVENT_WAIT, 10000). % 10s or 10000ms
+
+collect_dtmfs(Call, FinishKey, Timeout, N) ->
+    collect_dtmfs(Call, FinishKey, Timeout, N, kzt_util:get_collected_digits(Call)).
+collect_dtmfs(Call, FinishKey, Timeout, N, Collected) when byte_size(Collected) =:= N ->
+    {ok, Call};
+collect_dtmfs(Call, FinishKey, Timeout, N, Collected) ->
+    case whapps_call_command:wait_for_dtmf(Timeout) of
+        {ok, FinishKey} -> {ok, dtmf_finished, Call};
+        {ok, <<>>} -> {ok, timeout, Call};
+        {ok, DTMF} -> collect_dtmfs(kzt_util:add_collected_digit(DTMF, Call)
+                                    ,FinishKey, Timeout, N, <<DTMF/binary, Collected/binary>>
+                                   );
+        {error, channel_hungup} -> {stop, Call};
+        {error, channel_destroyed} -> {stop, Call};
+        {error, E} -> {error, E, Call}
+    end.
 
 -spec say_loop/6 :: (whapps_call:call(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), wh_timeout()) ->
                             {'ok', whapps_call:call()} |
@@ -77,6 +94,7 @@ process_noop_event(Call, NoopId, JObj) ->
         {<<"call_event">>, <<"CHANNEL_HANGUP">>} -> {error, channel_hungup, Call};
         {<<"call_event">>, <<"DTMF">>} ->
             DTMF = wh_json:get_value(<<"DTMF-Digit">>, JObj),
+            lager:debug("adding dtmf tone '~s' to collection", [DTMF]),
             wait_for_noop(kzt_util:add_digit_collected(DTMF, Call), NoopId);
         {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>} ->
             case wh_json:get_value(<<"Application-Response">>, JObj) of
@@ -135,7 +153,6 @@ call_status(_Status) ->
     lager:debug("unhandled call status: ~p", [_Status]),
     <<"failed">>.
 
-
 -spec wait_for_offnet_events/1 :: (offnet_req()) -> wh_proplist().
 wait_for_offnet_events(#offnet_req{
                           call_timeout=CallTimeout
@@ -185,6 +202,14 @@ process_offnet_event(#offnet_req{
                 OffnetReq#offnet_req{
                   call_timeout=undefined
                   ,acc=props:set_value(media_jobj, MediaJObj, Acc)
+                 }));
+        {<<"call_event">>, <<"DTMF">>} ->
+            DTMF = wh_json:get_value(<<"DTMF-Digit">>, JObj),
+            lager:debug("adding dtmf tone '~s' to collection", [DTMF]),
+            wait_for_offnet_events(
+              update_offnet_timers(
+                OffnetReq#offnet_req{
+                  call=kzt_util:add_digit_collected(DTMF, Call)
                  }));
         {_Cat, _Name} ->
             lager:debug("unhandled event ~s: ~s", [_Cat, _Name]),
