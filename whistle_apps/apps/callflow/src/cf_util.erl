@@ -394,7 +394,7 @@ maybe_use_nomatch(Number, Db) ->
             {error, not_found}
     end.
 
-is_digit(X) when X =< $0, X >= $9 -> true;
+is_digit(X) when X >= $0, X =< $9 -> true;
 is_digit(_) -> false.
 
 %%-----------------------------------------------------------------------------
