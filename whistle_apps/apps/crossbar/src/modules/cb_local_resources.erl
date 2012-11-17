@@ -89,11 +89,15 @@ validate(#cb_context{req_verb = <<"delete">>}=Context, Id) ->
 
 -spec post/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
 post(Context, _) ->
-    crossbar_doc:save(Context).
+    Context1 = crossbar_doc:save(Context),
+    _ = maybe_aggregate_resource(Context1),
+    Context1.    
 
 -spec put/1 :: (#cb_context{}) -> #cb_context{}.
 put(Context) ->
-    crossbar_doc:save(Context).
+    Context1 = crossbar_doc:save(Context),
+    _ = maybe_aggregate_resource(Context1),
+    Context1.
 
 -spec delete/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
 delete(Context, ResourceId) ->

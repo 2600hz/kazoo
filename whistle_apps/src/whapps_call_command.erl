@@ -705,7 +705,7 @@ tts(SayMe, Voice, Call) -> tts(SayMe, Voice, <<"en-US">>, Call).
 tts(SayMe, Voice, Lang, Call) -> tts(SayMe, Voice, Lang, ?ANY_DIGIT, Call).
 tts(SayMe, Voice, Lang, Terminators, Call) ->
     tts(SayMe, Voice, Lang, Terminators
-        ,whapps_config:get_binary(?MOD_CONFIG_CAT, <<"tts_provider">>, <<"ispeech">>)
+        ,whapps_config:get_binary(?MOD_CONFIG_CAT, <<"tts_provider">>, <<"flite">>)
         ,Call
        ).
 tts(SayMe, Voice, Lang, Terminators, Engine, Call) ->
@@ -733,7 +733,7 @@ tts_command(SayMe, Voice, Call) -> tts_command(SayMe, Voice, <<"en-US">>, Call).
 tts_command(SayMe, Voice, Lang, Call) -> tts_command(SayMe, Voice, Lang, ?ANY_DIGIT, Call).
 tts_command(SayMe, Voice, Lang, Terminators, Call) ->
     tts_command(SayMe, Voice, Lang, Terminators
-                ,whapps_config:get_binary(?MOD_CONFIG_CAT, <<"tts_provider">>, <<"ispeech">>)
+                ,whapps_config:get_binary(?MOD_CONFIG_CAT, <<"tts_provider">>, <<"flite">>)
                 ,Call
                ).
 tts_command(SayMe, Voice, Lang, Terminators, Engine, Call) ->

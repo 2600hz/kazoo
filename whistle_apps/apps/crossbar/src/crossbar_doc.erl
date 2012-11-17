@@ -428,7 +428,7 @@ rev_to_etag(JObj) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_couch_mgr_success/2 :: (wh_json:json_object() | wh_json:json_objects(), #cb_context{}) -> #cb_context{}.
-handle_couch_mgr_success([_|_]=JObjs, #cb_context{req_verb = <<"put">>, resp_headers=Headers}=Context) ->
+handle_couch_mgr_success([J1|_]=JObjs, #cb_context{req_verb = <<"put">>, resp_headers=Headers}=Context) when ?IS_JSON_GUARD(J1)->
     Context#cb_context{doc=JObjs
                        ,resp_status=success
                        ,resp_data=[wh_json:public_fields(JObj) 
@@ -441,7 +441,7 @@ handle_couch_mgr_success([_|_]=JObjs, #cb_context{req_verb = <<"put">>, resp_hea
                             || JObj <- JObjs
                            ] ++ Headers
                       };
-handle_couch_mgr_success([_|_]=JObjs, Context) ->
+handle_couch_mgr_success([J1|_]=JObjs, Context) when ?IS_JSON_GUARD(J1) ->
     Context#cb_context{doc=JObjs
                        ,resp_status=success
                        ,resp_data=[wh_json:public_fields(JObj) 
@@ -450,19 +450,26 @@ handle_couch_mgr_success([_|_]=JObjs, Context) ->
                                   ]
                        ,resp_etag=rev_to_etag(JObjs)
                       };
-handle_couch_mgr_success(JObj, #cb_context{req_verb = <<"put">>, resp_headers=Headers}=Context) ->
+handle_couch_mgr_success(JObj, #cb_context{req_verb = <<"put">>, resp_headers=Headers}=Context) when ?IS_JSON_GUARD(JObj) ->
     Context#cb_context{doc=JObj
                        ,resp_status=success
                        ,resp_data=wh_json:public_fields(JObj)
                        ,resp_etag=rev_to_etag(JObj)
                        ,resp_headers=[{<<"Location">>, wh_json:get_value(<<"_id">>, JObj)} | Headers]
                       };
-handle_couch_mgr_success(JObj, Context) ->
+handle_couch_mgr_success(JObj, Context) when ?IS_JSON_GUARD(JObj) ->
     Context#cb_context{doc=JObj
                        ,resp_status=success
                        ,resp_data=wh_json:public_fields(JObj)
                        ,resp_etag=rev_to_etag(JObj)
+                      };
+handle_couch_mgr_success(Thing, Context) ->
+    Context#cb_context{doc=Thing
+                       ,resp_status=success
+                       ,resp_data=Thing
+                       ,resp_etag=undefined
                       }.
+
 
 %%--------------------------------------------------------------------
 %% @private

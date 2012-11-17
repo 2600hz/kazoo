@@ -11,9 +11,6 @@
 %%        ).
 
 -define(JSON_WRAPPER(Proplist), {Proplist}).
--define(IS_JSON_GUARD(Obj), is_tuple(Obj)
-       andalso is_list(element(1, Obj))
-      ).
 
 -define(EMPTY_JSON_OBJECT, ?JSON_WRAPPER([])).
 

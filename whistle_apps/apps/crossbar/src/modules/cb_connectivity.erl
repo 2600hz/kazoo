@@ -159,7 +159,7 @@ on_successful_validation(Id, #cb_context{}=Context) ->
 %%--------------------------------------------------------------------
 -spec summary/1 :: (#cb_context{}) -> #cb_context{}.
 summary(Context) ->
-    crossbar_doc:load_view(?CB_LIST, [{<<"reduce">>, false}], Context, fun normalize_view_results/2).
+    crossbar_doc:load_view(?CB_LIST, [{reduce, false}], Context, fun normalize_view_results/2).
 
 %%--------------------------------------------------------------------
 %% @private

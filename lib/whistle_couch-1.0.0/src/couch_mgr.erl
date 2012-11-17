@@ -835,7 +835,7 @@ put_attachment(DbName, DocId, AName, Contents, Options) ->
                                      {'ok', wh_json:json_object()} |
                                      couchbeam_error().
 delete_attachment(DbName, DocId, AName) ->
-    delete_attachment(DbName, DocId, AName).
+    delete_attachment(DbName, DocId, AName, []).
 
 delete_attachment(DbName, DocId, AName, Options) when ?VALID_DBNAME ->
     couch_util:delete_attachment(get_conn(), DbName, DocId, AName, Options);

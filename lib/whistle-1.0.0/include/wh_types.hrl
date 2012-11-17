@@ -12,6 +12,10 @@
 %% Hangup Causes that are fine
 -define(SUCCESSFUL_HANGUPS, [<<"NORMAL_CLEARING">>, <<"ORIGINATOR_CANCEL">>, <<"SUCCESS">>]).
 
+-define(IS_JSON_GUARD(Obj), is_tuple(Obj)
+       andalso is_list(element(1, Obj))
+      ).
+
 -define(IS_JSON_OBJECT,
         fun({struct, L}) when is_list(L) ->
                 lists:all(fun({K, V}) when (is_binary(K) orelse is_atom(K)) andalso
