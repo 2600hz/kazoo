@@ -36,7 +36,7 @@ exec(Call, JObjs) ->
             {stop, kzt_util:update_call_status(Call, ?STATUS_FAILED)}
     end.
 
-exec_response(Call, JObjs) ->
+exec_response(Call, _JObjs) ->
     {ok, Call}.
 
 -spec req_params/1 :: (whapps_call:call()) -> wh_proplist().

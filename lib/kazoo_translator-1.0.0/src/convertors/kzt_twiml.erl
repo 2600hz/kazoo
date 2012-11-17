@@ -47,7 +47,7 @@ exec_elements(Call, [El|Els]) ->
     catch
         throw:{unknown_element, Name} ->
             lager:debug("unknown element in response: ~s", [Name]),
-            {error, kzt_util:set_error(Call, <<"unknown_element">>, Name)};
+            {error, kzt_util:add_error(Call, <<"unknown_element">>, Name)};
         _E:_R ->
             lager:debug("'~s' when execing el ~p: ~p", [_E, El, _R]),
             {error, Call}
@@ -168,11 +168,12 @@ dial(Call, [#xmlText{value=DialMe, type=text}], Attrs) ->
 
     ok = kzt_util:offnet_req(OffnetProps, Call1),
 
-    case kzt_receiver:wait_for_offnet(Call1) of
-        {ok, Call2, _ResultProps} ->
-            {stop, Call2};
-        {error, Call2, _E} ->
-            lager:debug("offnet failed: ~p", [_E]),
+    {ok, Call2} = kzt_receiver:wait_for_offnet(Call1),
+
+    case kzt_util:get_call_status(Call2) of
+        ?STATUS_COMPLETED -> {stop, Call2};
+        _Status ->
+            lager:debug("offnet failed: ~s", [_Status]),
             {ok, Call2} % will progress to next TwiML element
     end.
 
@@ -188,7 +189,7 @@ reject(Call, Attrs) ->
     Reason = reject_reason(Props),
     Code = reject_code(Reason),
 
-    whapps_call_command:response(Code, Reason, reject_prompt(Props), Call),
+    _ = whapps_call_command:response(Code, Reason, reject_prompt(Props), Call),
     {stop, kzt_util:update_call_status(Call, reject_status(Code))}.
 
 pause(Call, Attrs) ->
@@ -215,6 +216,9 @@ set_variables(Call, Els) when is_list(Els) ->
                    (_, C) -> C
                 end, Call, Els).
 
+-spec say/3 :: (whapps_call:call(), list(), list()) ->
+                       {'ok', whapps_call:call()} |
+                       {'error', _, whapps_call:call()}.
 say(Call, XmlText, Attrs) ->
     whapps_call_command:answer(Call),
     SayMe = xml_text_to_binary(XmlText, whapps_config:get_integer(<<"pivot">>, <<"tts_text_size">>, ?TTS_SIZE_LIMIT)),
@@ -231,7 +235,10 @@ say(Call, XmlText, Attrs) ->
         0 -> kzt_receiver:say_loop(Call, SayMe, Voice, Lang, Engine, infinity);
         N when N > 0 -> kzt_receiver:say_loop(Call, SayMe, Voice, Lang, Engine, N)
     end.
-                          
+
+-spec play/3 :: (whapps_call:call(), list(), list()) ->
+                        {'ok', whapps_call:call()} |
+                        {'error', _, whapps_call:call()}.                          
 play(Call, XmlText, Attrs) ->
     whapps_call_command:answer(Call),
     PlayMe = xml_text_to_binary(XmlText),
@@ -272,7 +279,7 @@ gather(Call, SubActions, Attrs) ->
                        ,xml_elements(SubActions)
                       )
     of
-        {ok, C} -> gather(C, Attrs);
+        {stop, C} -> gather(C, Attrs);
         Other ->
             lager:debug("other: ~p", [Other]),
             Other
@@ -290,37 +297,32 @@ gather(Call, Attrs) ->
 
 gather(Call, FinishKey, Timeout, Props, N) ->
     case kzt_receiver:collect_dtmfs(Call, FinishKey, Timeout, N) of
-        {ok, timeout, C} -> gather_timeout(C, Props, N);
-        {ok, dtmf_finish, C} -> gather_dtmf_finish(C, Props, N);
-        {ok, C} -> gather_finished(C, Props, N);
+        {ok, timeout, C} -> gather_finished(C, Props);
+        {ok, dtmf_finish, C} -> gather_finished(C, Props);
+        {ok, C} -> gather_finished(C, Props);
         {error, _E, _C}=ERR -> ERR;
         {stop, _C}=STOP -> STOP
     end.
 
-gather_timeout(Call, Props, N) ->
+gather_finished(Call, Props) ->
     case kzt_util:get_digits_collected(Call) of
         <<>> ->
             lager:debug("caller entered no digits, continuing"),
             {ok, kzt_util:clear_digits_collected(Call)};
-        DTMFs ->
+        _DTMFs ->
             CurrentUri = kzt_util:get_voice_uri(Call),
-            RedirectUri = action_url(Props),
-
-            NewUri = kzt_util:resolve_uri(CurrentUri, RedirectUri),
+            NewUri = kzt_util:resolve_uri(CurrentUri, action_url(Props)),
             Method = kzt_util:http_method(Props),
 
-            lager:debug("redirect using ~s to ~s from ~s", [Method, NewUri, CurrentUri]),
+            lager:debug("redirect w/ ~s using ~s to ~s from ~s", [_DTMFs, Method, NewUri, CurrentUri]),
 
             Setters = [{fun kzt_util:set_voice_uri_method/2, Method}
                        ,{fun kzt_util:set_voice_uri/2, NewUri}
                       ],
-            {req, lists:foldl(fun({F, V}, C) -> F(V, C) end, Call1, Setters)}
+            {req, lists:foldl(fun({F, V}, C) -> F(V, C) end, Call, Setters)}
     end.
 
-gather_dtmf_finish(Call, Props, N) ->
-    ok.
-
-gather_finished(Call, Props, N) ->
+record_call(Call, Props) ->
     ok.
 
 %%------------------------------------------------------------------------------

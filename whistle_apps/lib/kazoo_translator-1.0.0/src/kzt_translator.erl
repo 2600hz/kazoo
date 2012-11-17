@@ -39,7 +39,9 @@ exec(Call, Cmds, CT) ->
 -spec get_user_vars/1 :: (whapps_call:call()) -> wh_json:object().
 -spec set_user_vars/2 :: (wh_proplist(), whapps_call:call()) -> whapps_call:call().
 get_user_vars(Call) ->
-    whapps_call:kvs_fetch(?KZT_USER_VARS, wh_json:new(), Call).
+    ReqVars = kzt_util:get_request_vars(Call),
+    UserVars = whapps_call:kvs_fetch(?KZT_USER_VARS, wh_json:new(), Call),
+    wh_json:merge_jobjs(ReqVars, UserVars).
 set_user_vars(Prop, Call) ->
     UserVars = get_user_vars(Call),
     whapps_call:kvs_store(?KZT_USER_VARS, wh_json:set_values(Prop, UserVars), Call).

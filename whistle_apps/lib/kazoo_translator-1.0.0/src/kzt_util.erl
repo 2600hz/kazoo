@@ -11,8 +11,9 @@
 -export([http_method/1
          ,resolve_uri/2
          ,offnet_req/2
-         ,update_call_status/2
-         ,add_error/3, get_errors/2
+         ,update_call_status/2, get_call_status/1
+         ,get_request_vars/1
+         ,add_error/3, get_errors/1
          ,set_hangup_dtmf/2, get_hangup_dtmf/1
          ,set_call_timeout/2, get_call_timeout/1
          ,set_call_time_limit/2, get_call_time_limit/1
@@ -22,6 +23,17 @@
          ,set_digits_collected/2, get_digits_collected/1
          ,add_digit_collected/2, clear_digits_collected/1
          ,attributes_to_proplist/1
+         ,set_recording_url/2, get_recording_url/1
+         ,set_recording_duration/2, get_recording_duration/1
+         ,set_dial_call_status/2, get_dial_call_status/1
+         ,set_dial_call_sid/2, get_dial_call_sid/1
+         ,set_dial_call_duration/2, get_dial_call_duration/1
+         ,set_queue_sid/2, get_queue_sid/1
+         ,set_dequeue_result/2, get_dequeue_result/1
+         ,set_dequeued_call_sid/2, get_dequeued_call_sid/1
+         ,set_dequeued_call_queue_time/2, get_dequeued_call_queue_time/1
+         ,set_dequeued_call_duration/2, get_dequeued_call_duration/1
+         ,set_media_meta/2, get_media_meta/1
         ]).
 
 -include("kzt.hrl").
@@ -94,6 +106,8 @@ offnet_req(Data, Call) ->
 -spec update_call_status/2 :: (whapps_call:call(), ne_binary()) -> whapps_call:call().
 update_call_status(Call, Status) ->
     whapps_call:kvs_store(<<"call_status">>, Status, Call).
+get_call_status(Call) ->
+    whapps_call:kvs_fetch(<<"call_status">>, Call).
 
 -spec add_error/3 :: (whapps_call:call(), ne_binary(), term()) -> whapps_call:call().
 add_error(Call, K, V) ->
@@ -129,6 +143,52 @@ get_digits_collected(Call) -> whapps_call:kvs_fetch(<<"digits_collected">>, Call
 clear_digits_collected(Call) -> whapps_call:kvs_store(<<"digits_collected">>, <<>>, Call).
 add_digit_collected(D, Call) ->
     whapps_call:kvs_update(<<"digits_collected">>, fun(Ds) -> <<Ds/binary, D/binary>> end, D, Call).
+
+set_recording_url(RU, Call) -> whapps_call:kvs_store(<<"recording_url">>, RU, Call).
+get_recording_url(Call) -> whapps_call:kvs_fetch(<<"recording_url">>, Call).
+
+set_recording_duration(RD, Call) -> whapps_call:kvs_store(<<"recording_duration">>, RD, Call).
+get_recording_duration(Call) -> whapps_call:kvs_fetch(<<"recording_duration">>, Call).
+
+set_dial_call_status(DCS, Call) -> whapps_call:kvs_store(<<"dial_call_status">>, DCS, Call).
+get_dial_call_status(Call) -> whapps_call:kvs_fetch(<<"dial_call_status">>, Call).
+
+set_dial_call_sid(DCS, Call) -> whapps_call:kvs_store(<<"dial_call_sid">>, DCS, Call).
+get_dial_call_sid(Call) -> whapps_call:kvs_fetch(<<"dial_call_sid">>, Call).
+
+set_dial_call_duration(DCS, Call) -> whapps_call:kvs_store(<<"dial_call_duration">>, DCS, Call).
+get_dial_call_duration(Call) -> whapps_call:kvs_fetch(<<"dial_call_duration">>, Call).
+
+set_queue_sid(DCS, Call) -> whapps_call:kvs_store(<<"queue_sid">>, DCS, Call).
+get_queue_sid(Call) -> whapps_call:kvs_fetch(<<"queue_sid">>, Call).
+
+set_dequeue_result(DCS, Call) -> whapps_call:kvs_store(<<"dequeue_result">>, DCS, Call).
+get_dequeue_result(Call) -> whapps_call:kvs_fetch(<<"dequeue_result">>, Call).
+
+set_dequeued_call_sid(DCS, Call) -> whapps_call:kvs_store(<<"dequeued_call_sid">>, DCS, Call).
+get_dequeued_call_sid(Call) -> whapps_call:kvs_fetch(<<"dequeued_call_sid">>, Call).
+
+set_dequeued_call_queue_time(DCS, Call) -> whapps_call:kvs_store(<<"dequeued_call_queue_time">>, DCS, Call).
+get_dequeued_call_queue_time(Call) -> whapps_call:kvs_fetch(<<"dequeued_call_queue_time">>, Call).
+
+set_dequeued_call_duration(DCS, Call) -> whapps_call:kvs_store(<<"dequeued_call_duration">>, DCS, Call).
+get_dequeued_call_duration(Call) -> whapps_call:kvs_fetch(<<"dequeued_call_duration">>, Call).
+
+set_media_meta(DCS, Call) -> whapps_call:kvs_store(<<"media_meta">>, DCS, Call).
+get_media_meta(Call) -> whapps_call:kvs_fetch(<<"media_meta">>, Call).
+
+get_request_vars(Call) ->
+    wh_json:from_list(
+      props:filter_empty(
+        [{<<"Digits">>, get_digits_collected(Call)}
+         ,{<<"RecordingUrl">>, get_recording_url(Call)}
+         ,{<<"RecordingDuration">>, get_recording_duration(Call)}
+         ,{<<"DialCallStatus">>, get_dial_call_status(Call)}
+         ,{<<"DialCallSid">>, get_dial_call_sid(Call)}
+         ,{<<"DialCallDuration">>, get_dial_call_duration(Call)}
+         ,{<<"QueueSid">>, get_queue_sid(Call)}
+         ,{<<"CallStatus">>, get_call_status(Call)}
+        ])).
 
 attributes_to_proplist(L) ->
     [{K, V} || #xmlAttribute{name=K, value=V} <- L].
