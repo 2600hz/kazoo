@@ -110,16 +110,13 @@ queue_name(Srv) ->
 -spec publish_channel_destroy/3 :: (atom(), ne_binary(), wh_proplist()) -> 'ok'.
 publish_channel_destroy(Node, UUID, Props) ->
     put(callid, UUID),
-    case ecallmgr_fs_nodes:channel_node(UUID) of
-        {error, not_found} -> lager:debug("channel not found, surpressing destroy");
-        {ok, Node} ->
+    case wh_util:is_true(props:get_value(<<"variable_channel_is_moving">>, Props)) of
+        true -> publish_event(create_event(<<"CHANNEL_MOVED">>, <<"call_pickup">>, Props));
+        false -> 
             EventName = props:get_value(<<"Event-Name">>, Props),
             ApplicationName = props:get_value(<<"Application">>, Props),
             publish_event(create_event(EventName, ApplicationName, Props)),
-            stop(Node, UUID);
-        {ok, _NewNode} ->
-            lager:debug("surpressing destroy; ~s is on ~s, not ~s: publishing channel move instead", [UUID, _NewNode, Node]),
-            publish_event(create_event(<<"CHANNEL_MOVED">>, <<"call_pickup">>, Props))
+            stop(Node, UUID)
     end.
 
 -spec handle_publisher_usurp/2 :: (wh_json:json_object(), wh_proplist()) -> 'ok'.
@@ -212,21 +209,13 @@ handle_cast({channel_redirected, Props}, State) ->
     lager:debug("our channel has been redirected, shutting down immediately"),
     process_channel_event(Props),
     {stop, {shutdown, redirect}, State};
-handle_cast({channel_destroyed, _Evt}, #state{node=Node
-                                             ,callid=CallId
-                                            }=State) ->
-    _ = case ecallmgr_fs_nodes:channel_node(CallId) of
-            {ok, Node} ->
-                lager:debug("channel destroy recv, starting shutdown"),
-                erlang:send_after(1000, self(), {shutdown}),
-                {noreply, State};
-            {ok, _NewNode} ->
-                lager:debug("going down; ~s is on ~s, not ~s", [CallId, _NewNode, Node]),
-                {stop, normal, State};
-            {error, not_found} ->
-                lager:debug("channel not found, going down"),
-                erlang:send_after(1000, self(), {shutdown}),
-                {noreply, State}
+handle_cast({channel_destroyed, Props}, State) ->    
+    case wh_util:is_true(props:get_value(<<"variable_channel_is_moving">>, Props)) of
+        true -> {stop, normal, State};
+        false ->
+            lager:debug("channel destroy recv, starting shutdown"),
+            erlang:send_after(1000, self(), {shutdown}),
+            {noreply, State}
         end;
 handle_cast({transferer, _}, State) ->
     lager:debug("call control has been transfered."),
@@ -250,31 +239,12 @@ handle_info({call, _}, #state{passive=true}=State) ->
     {'noreply', State};
 handle_info({call_event, _}, #state{passive=true}=State) ->
     {'noreply', State};
-
-handle_info({call, {event, [CallId | Props]}}, #state{node=Node
-                                                      ,callid=CallId
-                                                     }=State) ->
-    case ecallmgr_fs_nodes:channel_node(CallId) of
-        {ok, Node} -> process_event_prop(Props);
-        {ok, _NewNode} ->
-            lager:debug("surpressing: channel is on different node ~s, not ~s", [_NewNode, Node]);
-        {error, not_found} ->
-            lager:debug("channel ~s not found?", [CallId])
+handle_info({_, {event, [CallId | Props]}}, #state{callid=CallId}=State) ->
+    case wh_util:is_true(props:get_value(<<"variable_channel_is_moving">>, Props)) of
+        true -> ok;
+        false -> process_event_prop(Props)
     end,
     {'noreply', State};
-
-handle_info({call_event, {event, [CallId | Props]}}, #state{node=Node
-                                                            ,callid=CallId
-                                                           }=State) ->
-    case ecallmgr_fs_nodes:channel_node(CallId) of
-        {ok, Node} -> process_event_prop(Props);
-        {ok, _NewNode} ->
-            lager:debug("surpressing: channel is on different node ~s, not ~s", [_NewNode, Node]);
-        {error, not_found} ->
-            lager:debug("channel ~s not found?", [CallId])
-    end,
-    {'noreply', State};
-
 handle_info({nodedown, _}, #state{node=Node, is_node_up=true}=State) ->
     lager:debug("lost connection to node ~s, waiting for reconnection", [Node]),
     erlang:monitor_node(Node, false),

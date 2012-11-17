@@ -194,13 +194,11 @@ handle_info({event, [undefined | Data]}, #state{node=Node}=State) ->
     catch process_event(undefined, Data, Node),
     {noreply, State, hibernate};
 
-handle_info({event, [UUID | Data]}, #state{node=Node}=State) ->
-    _ = case ecallmgr_fs_nodes:channel_node(UUID) of
-            {ok, Node} -> catch process_event(UUID, Data, Node);
-            {error, not_found} -> catch process_event(UUID, Data, Node);
-            {ok, _NewNode} ->
-                lager:debug("surpressing: channel is on different node ~s, not ~s", [_NewNode, Node])
-        end,
+handle_info({event, [UUID|Data]}, #state{node=Node}=State) ->
+    case wh_util:is_true(props:get_value(<<"variable_channel_is_moving">>, Data)) of
+        true -> lager:debug("surpressing: channel is on different node", []);
+        false -> catch process_event(UUID, Data, Node)
+    end,
     {noreply, State, hibernate};
 
 handle_info({bgok, _Job, _Result}, State) ->
@@ -265,18 +263,16 @@ process_event(<<"CHANNEL_DESTROY">>, UUID, Data, Node) ->
             lager:debug("ignoring channel destroy because of CS_NEW: ~s", [UUID]);
         <<"CS_DESTROY">> ->
             lager:debug("received channel destroyed: ~s", [UUID]),
-            _ = case ecallmgr_fs_nodes:channel_node(UUID) of
-                    {ok, Node} -> spawn(ecallmgr_fs_nodes, destroy_channel, [Data, Node]);
-                    {ok, _NewNode} -> lager:debug("surpressing destroy; ~s is on ~s, not ~s", [UUID, _NewNode, Node]);
-                    {error, not_found} -> lager:debug("channel not found, surpressing destroy")
-                end,
+            case wh_util:is_true(props:get_value(<<"variable_channel_is_moving">>, Data)) of
+                true -> lager:debug("surpressing: channel is on different node", []);
+                false -> spawn(ecallmgr_fs_nodes, destroy_channel, [Data, Node])
+            end,
             ok
     end;
-process_event(<<"CHANNEL_HANGUP_COMPLETE">>, UUID, Data, Node) ->
-    _ = case ecallmgr_fs_nodes:channel_node(UUID) of
-            {ok, Node} -> spawn(ecallmgr_call_cdr, new_cdr, [UUID, Data]);
-            {ok, _NewNode} -> lager:debug("surpressing CDR; ~s is on ~s, not ~s", [UUID, _NewNode, Node]);
-            {error, not_found} -> lager:debug("channel not found, surpressing CDR")
+process_event(<<"CHANNEL_HANGUP_COMPLETE">>, UUID, Data, _Node) ->
+    _ = case wh_util:is_true(props:get_value(<<"variable_channel_is_moving">>, Data)) of
+            true -> lager:debug("surpressing: channel is on different node", []);
+            false -> spawn(ecallmgr_call_cdr, new_cdr, [UUID, Data])
         end,
     ok;
 process_event(<<"SESSION_HEARTBEAT">>, _, Data, Node) ->

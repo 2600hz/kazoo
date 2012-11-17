@@ -168,10 +168,9 @@ code_change(_OldVsn, State, _Extra) ->
 process_route_req(Node, FSID, CallId, Props) ->
     put(callid, CallId),
     lager:debug("processing fetch request ~s (call ~s) from ~s", [FSID, CallId, Node]),
-
-    case wh_util:is_empty(props:get_value(<<"variable_recovered">>, Props)) of
-        true -> search_for_route(Node, FSID, CallId, Props);
-        false ->
+    case wh_util:is_true(props:get_value(<<"variable_recovered">>, Props)) of
+        false -> search_for_route(Node, FSID, CallId, Props);
+        true ->
             lager:debug("recovered channel already exists on ~s, park it", [Node]),
             RespJObj = wh_json:from_list([{<<"Routes">>, []}
                                           ,{<<"Method">>, <<"park">>}

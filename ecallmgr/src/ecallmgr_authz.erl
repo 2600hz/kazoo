@@ -11,7 +11,7 @@
 
 -export([maybe_authorize_channel/2]).
 -export([update/2]).
--export([rate_channel/1]).
+-export([rate_channel/2]).
 -export([kill_channel/2]).
 
 -include("ecallmgr.hrl").
@@ -143,7 +143,7 @@ authorize_reseller(Props, CallId, Node) ->
         
 -spec rate_call/3 :: (wh_proplist(), ne_binary(), atom()) -> 'true'.
 rate_call(Props, CallId, Node) ->
-    spawn(?MODULE, rate_channel, [Props]),
+    spawn(?MODULE, rate_channel, [Props, Node]),
     allow_call(Props, CallId, Node).
 
 -spec allow_call/3 :: (wh_proplist(), ne_binary(), atom()) -> 'true'.
@@ -165,8 +165,8 @@ update(Props, Node) ->
     Update = authz_update(CallId, Props, Node),
     wapi_authz:publish_update([KV || {_, V}=KV <- Update, V =/= undefined]).
 
--spec rate_channel/1 :: (wh_proplist()) -> 'ok'.
-rate_channel(Props) ->
+-spec rate_channel/2 :: (wh_proplist(), atom()) -> 'ok'.
+rate_channel(Props, Node) ->
     CallId = props:get_value(<<"Unique-ID">>, Props),
     put(callid, CallId),
     lager:debug("sending rate request"),
@@ -177,7 +177,7 @@ rate_channel(Props) ->
                                  ),
     case ReqResp of
         {error, _R} -> lager:debug("rate request lookup failed: ~p", [_R]);
-        {ok, RespJObj} -> set_rating_ccvs(RespJObj)
+        {ok, RespJObj} -> set_rating_ccvs(RespJObj, Node)
     end.
 
 -spec kill_channel/2 :: (wh_proplist(), atom()) -> 'ok'.
@@ -261,24 +261,19 @@ authz_default() ->
             {ok, DefaultType}
     end.
 
--spec set_rating_ccvs/1 :: (wh_json:json_object()) -> 'ok'.
-set_rating_ccvs(JObj) ->
+-spec set_rating_ccvs/2 :: (wh_json:json_object(), atom()) -> 'ok'.
+set_rating_ccvs(JObj, Node) ->
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
     put(callid, CallId),
-    case ecallmgr_fs_nodes:channel_node(CallId) of
-        {error, _} -> ok;
-        {ok, Node} ->
-            lager:debug("setting rating information", []),
-            Multiset = lists:foldl(fun(Key, Acc) ->
-                                           case wh_json:get_binary_value(Key, JObj) of
-                                               undefined -> Acc;
-                                               Value ->
-                                                   <<"|", (?SET_CCV(Key, Value))/binary, Acc/binary>>
-                                           end
+    lager:debug("setting rating information", []),
+    Multiset = lists:foldl(fun(Key, Acc) ->
+                                   case wh_json:get_binary_value(Key, JObj) of
+                                       undefined -> Acc;
+                                       Value ->
+                                           <<"|", (?SET_CCV(Key, Value))/binary, Acc/binary>>
+                                   end
                            end, <<>>, ?RATE_VARS),
-            'ok' = ecallmgr_util:send_cmd(Node, CallId, "multiset", <<"^^", Multiset/binary>>),
-            ok
-    end.
+    ecallmgr_util:send_cmd(Node, CallId, "multiset", <<"^^", Multiset/binary>>).
 
 -spec authz_req/2 :: (ne_binary(), wh_proplist()) -> wh_proplist().
 authz_req(AccountId, Props) ->
