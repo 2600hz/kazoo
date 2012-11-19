@@ -8,7 +8,9 @@
 %%%-------------------------------------------------------------------
 -module(trunkstore_maintenance).
 
--export([migrate/0]).
+-export([migrate/0
+         ,clear_old_calls/0
+        ]).
 
 -include("ts.hrl").
 
@@ -130,3 +132,21 @@ create_account_doc(Realm, AcctID, AcctDB) ->
             lager:debug("failed to save account doc into ~s: ~p", [AcctDB, _E]),
             ignore
     end.
+
+%% some calls get stuck if they miss the CDR
+%% this clears them out
+clear_old_calls() ->
+    clear_old_calls(ts_offnet_sup),
+    clear_old_calls(ts_onnet_sup).
+
+clear_old_calls(Super) ->
+    Ps = [P || {_,P,_,_} <- supervisor:which_children(Super)],
+    [begin
+         {dictionary, D} = erlang:process_info(P, dictionary),
+         C = proplists:get_value(callid, D),
+         case whapps_call_command:channel_status(C) of
+             {error, _} -> {P, C, supervisor:terminate_child(Super, P)};
+             _ -> {P, C, ok}
+         end
+     end || P <- Ps
+    ].
