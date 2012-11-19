@@ -17,10 +17,14 @@
 -export([start_link/3
          ,handle_member_call/2
          ,handle_member_call_cancel/2
+         ,handle_agent_change/2
          ,should_ignore_member_call/3
          ,handle_channel_destroy/2
          ,config/1
         ]).
+
+%% FSM helpers
+-export([pick_winner/2]).
 
 %% gen_server callbacks
 -export([init/1
@@ -36,14 +40,17 @@
 
 -define(SERVER, ?MODULE).
 
--record(state, {ignored_member_calls = dict:new() :: dict()
-               ,acct_id :: api_binary()
-               ,queue_id :: api_binary()
-               ,supervisor :: pid()
-               }).
+-record(state, {
+          ignored_member_calls = dict:new() :: dict()
+          ,acct_id :: api_binary()
+          ,queue_id :: api_binary()
+          ,supervisor :: pid()
+          ,strategy = 'rr' :: queue_strategy() % round-robin | most-idle
+          ,strategy_state :: queue_strategy_state() % based on the strategy
+         }).
 
 -define(BINDINGS(A, Q), [{conf, [{doc_type, <<"queue">>}]}
-                         ,{acdc_queue, [{restrict_to, [stats_req]}
+                         ,{acdc_queue, [{restrict_to, [stats_req, agent_change]}
                                         ,{account_id, A}
                                         ,{queue_id, Q}
                                        ]}
@@ -67,6 +74,9 @@
                       }
                      ,{{acdc_queue_manager, handle_channel_destroy}
                        ,[{<<"call_event">>, <<"CHANNEL_DESTROY">>}]
+                      }
+                     ,{{acdc_queue_manager, handle_agent_change}
+                       ,[{<<"queue">>, <<"agent_change">>}]
                       }
                     ]).
 
@@ -132,6 +142,16 @@ handle_member_call_cancel(JObj, Props) ->
                        ),
     gen_listener:cast(props:get_value(server, Props), {member_call_cancel, K}).
 
+
+handle_agent_change(JObj, Prop) ->
+    true = wapi_acdc_queue:agent_change_v(JObj),
+    case wh_json:get_value(<<"Change">>, JObj) of
+        <<"available">> ->
+            gen_listener:cast(props:get_value(server, Prop), {agent_available, JObj});
+        <<"ringing">> ->
+            gen_listener:cast(props:get_value(server, Prop), {agent_ringing, JObj})
+    end.
+
 should_ignore_member_call(Srv, Call, CallJObj) ->
     K = make_ignore_key(wh_json:get_value(<<"Account-ID">>, CallJObj)
                         ,wh_json:get_value(<<"Queue-ID">>, CallJObj)
@@ -141,6 +161,12 @@ should_ignore_member_call(Srv, Call, CallJObj) ->
 
 config(Srv) ->
     gen_listener:call(Srv, config).
+
+strategy(Srv) ->
+    gen_listener:call(Srv, strategy).
+pick_winner(Srv, Resps) ->
+    {Strategy, State} = strategy(Srv),
+    pick_winner(Srv, Resps, Strategy, State).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -159,12 +185,19 @@ config(Srv) ->
 %%--------------------------------------------------------------------
 init([Super, AcctId, QueueId]) ->
     _ = start_secondary_queue(),
+
+    AcctDb = wh_util:format_account_id(AcctId, encoded),
+    {ok, QueueJObj} = couch_mgr:open_doc(AcctDb, QueueId),
+
     gen_listener:cast(self(), {start_workers}),
+    Strategy = get_strategy(wh_json:get_value(<<"strategy">>, QueueJObj)),
 
     {ok, #state{
        acct_id=AcctId
        ,queue_id=QueueId
        ,supervisor=Super
+       ,strategy = Strategy
+       ,strategy_state = create_strategy_state(Strategy, AcctDb, QueueId)
       }}.
 
 %%--------------------------------------------------------------------
@@ -192,6 +225,11 @@ handle_call(config, _, #state{acct_id=AcctId
                              }=State) ->
     {reply, {AcctId, QueueId}, State};
 
+handle_call(strategy, _, #state{strategy=Strategy
+                                ,strategy_state=StrategyState
+                               }=State) ->
+    {reply, {Strategy, StrategyState}, State};
+
 handle_call(_Request, _From, State) ->
     Reply = ok,
     {reply, Reply, State}.
@@ -206,6 +244,8 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast({update_strategy, StrategyState}, State) ->
+    {noreply, State#state{strategy_state=StrategyState}, hibernate};
 handle_cast({member_call_cancel, K}, #state{ignored_member_calls=Dict}=State) ->
     {noreply, State#state{
                 ignored_member_calls=dict:store(K, true, Dict)
@@ -239,6 +279,15 @@ handle_cast({start_workers}, #state{acct_id=AcctId
             acdc_queue_workers_sup:new_workers(WorkersSup, AcctId, QueueId, 5)
     end,
     {noreply, State};
+
+handle_cast({agent_available, JObj}, #state{strategy=Strategy
+                                            ,strategy_state=StrategyState
+                                           }=State) ->
+    AgentId = wh_json:get_value(<<"Agent-ID">>, JObj),
+    lager:debug("adding agent ~s to strategy ~s", [AgentId, Strategy]),
+    StrategyState1 = update_strategy_with_agent(Strategy, StrategyState, AgentId),
+    {next_state, connecting, State#state{strategy_state=StrategyState1}};
+
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
@@ -318,3 +367,81 @@ start_agent_and_worker(WorkersSup, AcctId, QueueId, AgentJObj) ->
                 P when is_pid(P) -> ok
             end
     end.
+
+%% Really sophisticated selection algorithm
+-spec pick_winner/4 :: (pid(), wh_json:json_objects()
+                        ,queue_strategy(), queue_strategy_state()
+                       ) ->
+                               'undefined' |
+                               {wh_json:json_objects()
+                                ,wh_json:json_objects()
+                               }.
+pick_winner(_, [], _, _) -> 'undefined';
+pick_winner(Mgr, CRs, 'rr', AgentQ) ->
+    {{value, AgentId}, AgentQ1} = queue:out(AgentQ),
+
+    case split_agents(AgentId, CRs) of
+        {[], _O} -> pick_winner(Mgr, CRs, 'rr', queue:in(AgentId, AgentQ1));
+        {Winners, OtherAgents} ->
+            gen_listener:cast(Mgr, {update_strategy, queue:in(AgentId, AgentQ1)}),
+            {Winners, OtherAgents}
+    end;
+pick_winner(_Mgr, CRs, 'mi', _) ->
+    [MostIdle | Rest] = lists:usort(fun sort_agent/2, CRs),
+    AgentId = wh_json:get_value(<<"Agent-ID">>, MostIdle),
+    {Same, Other} = split_agents(AgentId, Rest),
+
+    {[MostIdle|Same], Other}.
+
+-spec update_strategy_with_agent/3 :: (queue_strategy(), queue_strategy_state(), ne_binary()) ->
+                                              queue_strategy_state().
+update_strategy_with_agent('rr', undefined, AgentId) ->
+    queue:in(AgentId, queue:new());
+update_strategy_with_agent('rr', AgentQueue, AgentId) ->
+    case queue:member(AgentId, AgentQueue) of
+        true -> AgentQueue;
+        false -> queue:in(AgentId, AgentQueue)
+    end;            
+update_strategy_with_agent('mi', _, _) -> 
+   undefined.
+
+%% If A's idle time is greater, it should come before B
+-spec sort_agent/2 :: (wh_json:json_object(), wh_json:json_object()) -> boolean().
+sort_agent(A, B) ->
+    wh_json:get_integer_value(<<"Idle-Time">>, A, 0) >
+        wh_json:get_integer_value(<<"Idle-Time">>, B, 0).
+
+-spec split_agents/2 :: (ne_binary(), wh_json:json_objects()) ->
+                                {wh_json:json_objects(), wh_json:json_objects()}.
+split_agents(AgentId, Rest) ->
+    lists:partition(fun(R) ->
+                            AgentId =:= wh_json:get_value(<<"Agent-ID">>, R)
+                    end, Rest).
+
+-spec get_strategy/1 :: (api_binary()) -> queue_strategy().
+get_strategy(<<"round_robin">>) -> 'rr';
+get_strategy(<<"most_idle">>) -> 'mi';
+get_strategy(_) -> 'rr'.
+
+-spec create_strategy_state/4 :: (queue_strategy(), queue_strategy_state(), ne_binary(), ne_binary()) -> queue_strategy_state().
+create_strategy_state(Strategy, AcctDb, QueueId) ->
+    create_strategy_state(Strategy, undefined, AcctDb, QueueId).
+
+create_strategy_state('rr', undefined, AcctDb, QueueId) ->
+    create_strategy_state('rr', queue:new(), AcctDb, QueueId);
+create_strategy_state('rr', AgentQ, AcctDb, QueueId) ->
+    case couch_mgr:get_results(AcctDb, <<"queues/agents_listing">>, [{key, QueueId}]) of
+        {ok, []} -> lager:debug("no agents around"), AgentQ;
+        {ok, JObjs} ->
+            Q = queue:from_list([Id
+                                 || JObj <- JObjs,
+                                    not queue:member((Id = wh_json:get_value(<<"id">>, JObj)), AgentQ)
+                                ]),
+            queue:join(AgentQ, Q);
+        {error, _E} -> lager:debug("error: ~p", [_E]), AgentQ
+    end;
+create_strategy_state('mi', _, _, _) ->
+    undefined.
+
+serialize_strategy_state('rr', AgentQ) -> queue:to_list(AgentQ);
+serialize_strategy_state('mi', _) -> undefined.
