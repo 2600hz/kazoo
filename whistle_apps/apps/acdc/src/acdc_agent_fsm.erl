@@ -411,6 +411,13 @@ ready({channel_hungup, CallId}, #state{agent_proc=Srv}=State) ->
     lager:debug("channel hungup for ~s", [CallId]),
     acdc_agent:channel_hungup(Srv, CallId),
     {next_state, ready, State};
+ready({channel_unbridged, CallId}, #state{agent_proc=Srv}=State) ->
+    lager:debug("channel unbridged: ~s", [CallId]),
+    {next_state, ready, State};
+ready({leg_destroyed, CallId}, #state{agent_proc=Srv}=State) ->
+    lager:debug("channel unbridged: ~s", [CallId]),
+    {next_state, ready, State};
+
 ready({resume}, State) ->
     {next_state, ready, State};
 
