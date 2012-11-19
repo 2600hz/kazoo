@@ -15,8 +15,6 @@
          ,handle_member_retry/2
          ,handle_config_change/2
          ,handle_stats_req/2
-         ,handle_agent_available/2
-         ,handle_sync_req/2
          ,handle_presence_probe/2
         ]).
 
@@ -123,16 +121,6 @@ build_stats_resp(AcctId, RespQ, MsgId, [P|Ps], CurrCalls) ->
                      ,wh_json:set_value(QueueId, wh_json:set_values(CurrentCalls, QueueCalls), CurrCalls)
                     ).
 
-handle_agent_available(JObj, Prop) ->
-    true = wapi_acdc_queue:agent_available_v(JObj),
-    FSM = props:get_value(fsm_pid, Prop),
-    acdc_queue_fsm:agent_available(FSM, JObj).
-
-handle_sync_req(JObj, Prop) ->
-    true = wapi_acdc_queue:sync_req_v(JObj),
-    FSM = props:get_value(fsm_pid, Prop),
-    acdc_queue_fsm:sync_req(FSM, JObj).
-    
 handle_presence_probe(JObj, _Props) ->
     true = wapi_notifications:presence_probe_v(JObj),
 
