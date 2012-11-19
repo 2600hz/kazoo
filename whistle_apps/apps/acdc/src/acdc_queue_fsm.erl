@@ -22,13 +22,10 @@
          ,refresh/2
          ,current_call/1
          ,status/1
-         ,agent_available/2
-         ,sync_req/2
         ]).
 
 %% State handlers
--export([sync/2, sync/3
-         ,ready/2, ready/3
+-export([ready/2, ready/3
          ,connect_req/2, connect_req/3
          ,connecting/2, connecting/3
         ]).
@@ -55,9 +52,6 @@
 %% How long to ring the agent before trying the next agent
 -define(AGENT_RING_TIMEOUT, 5).
 -define(AGENT_RING_TIMEOUT_MESSAGE, agent_timer_expired).
-
--define(SYNC_TIMEOUT, 3000).
--define(SYNC_MESSAGE, sync_timer_expired).
 
 -record(state, {
           queue_proc :: pid()
@@ -90,10 +84,6 @@
          ,caller_exit_key :: ne_binary() % DTMF a caller can press to leave the queue
          ,record_caller = false :: boolean() % record the caller
          ,cdr_url :: ne_binary() % optional URL to request for extra CDR data
-
-         ,strategy = 'rr' :: queue_strategy() % round-robin | most-idle
-         ,strategy_state :: queue_strategy_state() % based on the strategy
-
          }).
 
 %%%===================================================================
@@ -162,20 +152,6 @@ call_event(FSM, <<"call_event">>, <<"DTMF">>, EvtJObj) ->
     gen_fsm:send_event(FSM, {dtmf_pressed, wh_json:get_value(<<"DTMF-Digit">>, EvtJObj)});
 call_event(_, _, _, _) -> ok.
 
-agent_available(FSM, JObj) ->
-    gen_fsm:send_event(FSM, {agent_available
-                             ,wh_json:get_value(<<"Account-ID">>, JObj)
-                             ,wh_json:get_value(<<"Queue-ID">>, JObj)
-                             ,wh_json:get_value(<<"Agent-ID">>, JObj)
-                            }).
-
-sync_req(FSM, JObj) ->
-    gen_fsm:send_event(FSM, {sync_req
-                             ,wh_json:get_value(<<"Account-ID">>, JObj)
-                             ,wh_json:get_value(<<"Queue-ID">>, JObj)
-                             ,JObj
-                            }).
-
 current_call(FSM) ->
     gen_fsm:sync_send_event(FSM, current_call).
 
@@ -206,90 +182,26 @@ init([MgrPid, ListenerPid, QueueJObj]) ->
 
     put(callid, <<"fsm_", QueueId/binary>>),
 
-    gen_fsm:send_event(self(), {strategy_sync}),
+    {ok, ready, #state{queue_proc=ListenerPid
+                       ,manager_proc=MgrPid
+                       ,acct_id=AcctId
+                       ,acct_db=AcctDb
+                       ,queue_id=QueueId
 
-    {ok, sync, #state{queue_proc=ListenerPid
-                      ,manager_proc=MgrPid
-                      ,acct_id=AcctId
-                      ,acct_db=AcctDb
-                      ,queue_id=QueueId
-
-                      ,name = wh_json:get_value(<<"name">>, QueueJObj)
-                      ,connection_timeout = connection_timeout(wh_json:get_integer_value(<<"connection_timeout">>, QueueJObj))
-                      ,agent_ring_timeout = agent_ring_timeout(wh_json:get_integer_value(<<"agent_ring_timeout">>, QueueJObj))
-                      ,max_queue_size = wh_json:get_integer_value(<<"max_queue_size">>, QueueJObj)
-                      ,ring_simultaneously = wh_json:get_value(<<"ring_simultaneously">>, QueueJObj)
-                      ,enter_when_empty = wh_json:is_true(<<"enter_when_empty">>, QueueJObj, true)
-                      ,agent_wrapup_time = wh_json:get_integer_value(<<"agent_wrapup_time">>, QueueJObj)
-                      ,moh = wh_json:get_value(<<"moh">>, QueueJObj)
-                      ,announce = wh_json:get_value(<<"announce">>, QueueJObj)
-                      ,caller_exit_key = wh_json:get_value(<<"caller_exit_key">>, QueueJObj, <<"#">>)
-                      ,record_caller = wh_json:is_true(<<"record_caller">>, QueueJObj, false)
-                      ,cdr_url = wh_json:get_value(<<"cdr_url">>, QueueJObj)
-
-                      ,strategy = get_strategy(wh_json:get_value(<<"strategy">>, QueueJObj))
-                      ,strategy_state = undefined
-
-                      ,member_call = undefined
-                     }}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
-sync({strategy_sync}, #state{strategy=Type
-                             ,queue_proc=Srv
-                            }=State) ->
-    lager:debug("sync strategy '~s'", [Type]),
-    %% send sync_req
-    case maybe_send_sync_req(Type, Srv) of
-        {true, SyncRef} ->
-            {next_state, sync, State#state{timer_ref=SyncRef}}; % we're waiting for a sync_resp
-        false ->
-            acdc_queue_listener:accept_member_calls(Srv),
-            {next_state, ready, State} % no sync needed, let's go!
-    end;
-
-sync({member_call, CallJObj, Delivery}, #state{queue_proc=Srv}=State) ->
-    lager:debug("member_call recv, still syncing, cancel for redelivery"),
-    acdc_queue_listener:cancel_member_call(Srv, CallJObj, Delivery),
-    {next_state, sync, State};
-
-sync({agent_available, AcctId, QueueId, AgentId}, #state{acct_id=AcctId
-                                                         ,queue_id=QueueId
-                                                         ,strategy=Strategy
-                                                         ,strategy_state=StrategyState
-                                                        }=State) ->
-    lager:debug("adding agent ~s to strategy ~s", [AgentId, Strategy]),
-    StrategyState1 = update_strategy_with_agent(Strategy, StrategyState, AgentId),
-    {next_state, sync, State#state{strategy_state=StrategyState1}};
-
-sync({timeout, SyncRef, ?SYNC_MESSAGE}, #state{timer_ref=SyncRef
-                                               ,strategy=Strategy
-                                               ,strategy_state=StrategyState
-                                               ,acct_db=AcctDb
-                                               ,queue_id=QueueId
-                                               ,queue_proc=Srv
-                                              }=State) ->
-    lager:debug("sync timeout, creating strategy state"),
-    acdc_queue_listener:accept_member_calls(Srv),
-    {next_state, ready, State#state{timer_ref=undefined
-                                    ,strategy_state=create_strategy_state(Strategy, StrategyState, AcctDb, QueueId)
-                                   }};
-
-sync({sync_req, _AcctId, _QueueId, _JObj}, State) ->
-    lager:debug("sync_req during sync; ignoring"),
-    {next_state, sync, State};
-
-sync(_E, State) ->
-    lager:debug("recv unhandled event: ~p", [_E]),
-    {next_state, sync, State}.
-
-sync(status, _, State) ->
-    {reply, undefined, sync, State};
-sync(current_call, _, State) ->
-    {reply, undefined, sync, State}.
+                       ,name = wh_json:get_value(<<"name">>, QueueJObj)
+                       ,connection_timeout = connection_timeout(wh_json:get_integer_value(<<"connection_timeout">>, QueueJObj))
+                       ,agent_ring_timeout = agent_ring_timeout(wh_json:get_integer_value(<<"agent_ring_timeout">>, QueueJObj))
+                       ,max_queue_size = wh_json:get_integer_value(<<"max_queue_size">>, QueueJObj)
+                       ,ring_simultaneously = wh_json:get_value(<<"ring_simultaneously">>, QueueJObj)
+                       ,enter_when_empty = wh_json:is_true(<<"enter_when_empty">>, QueueJObj, true)
+                       ,agent_wrapup_time = wh_json:get_integer_value(<<"agent_wrapup_time">>, QueueJObj)
+                       ,moh = wh_json:get_value(<<"moh">>, QueueJObj)
+                       ,announce = wh_json:get_value(<<"announce">>, QueueJObj)
+                       ,caller_exit_key = wh_json:get_value(<<"caller_exit_key">>, QueueJObj, <<"#">>)
+                       ,record_caller = wh_json:is_true(<<"record_caller">>, QueueJObj, false)
+                       ,cdr_url = wh_json:get_value(<<"cdr_url">>, QueueJObj)
+                       ,member_call = undefined
+                      }}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -336,28 +248,6 @@ ready({dtmf_pressed, _DTMF}, State) ->
     lager:debug("DTMF(~s) for old call", [_DTMF]),
     {next_state, ready, State};
 
-ready({agent_available, AcctId, QueueId, AgentId}, #state{acct_id=AcctId
-                                                          ,queue_id=QueueId
-                                                          ,strategy=Strategy
-                                                          ,strategy_state=StrategyState
-                                                         }=State) ->
-    lager:debug("adding agent ~s to strategy ~s", [AgentId, Strategy]),
-    StrategyState1 = update_strategy_with_agent(Strategy, StrategyState, AgentId),
-    {next_state, ready, State#state{strategy_state=StrategyState1}};
-
-ready({sync_req, AcctId, QueueId, JObj}, #state{acct_id=AcctId
-                                                ,queue_id=QueueId
-                                                ,queue_proc=Srv
-                                                ,strategy=Strategy
-                                                ,strategy_state=StrategyState
-                                               }=State) ->
-    case acdc_util:proc_id(Srv) =:= wh_json:get_value(<<"Process-ID">>, JObj) of
-        true -> lager:debug("sync_req is for ourselves");
-        false ->
-            acdc_queue_listener:send_sync_resp(Srv, Strategy, serialize_strategy_state(Strategy, StrategyState), JObj)
-    end,
-    {next_state, ready, State};
-
 ready(_Event, State) ->
     lager:debug("unhandled event: ~p", [_Event]),
     {next_state, ready, State}.
@@ -392,15 +282,15 @@ connect_req({timeout, Ref, ?COLLECT_RESP_MESSAGE}, #state{collect_ref=Ref
 connect_req({timeout, Ref, ?COLLECT_RESP_MESSAGE}, #state{collect_ref=Ref
                                                           ,connect_resps=CRs
                                                           ,queue_proc=Srv
-                                                          ,strategy=Strategy
-                                                          ,strategy_state=StrategyState
+                                                          ,manager_proc=Mgr
                                                           ,agent_ring_timeout=AgentTimeout
                                                           ,agent_wrapup_time=AgentWrapup
                                                           ,caller_exit_key=CallerExitKey
                                                          }=State) ->
     lager:debug("done waiting for agents to respond, picking a winner"),
-    case pick_winner(CRs, Strategy, StrategyState) of
-        {[Winner|_]=Agents, Rest, StrategyState1} ->
+
+    case acdc_queue_manager:pick_winner(Mgr, CRs) of
+        {[Winner|_]=Agents, Rest} ->
             _ = [acdc_queue_listener:member_connect_win(Srv, update_agent(Agent, Winner), AgentTimeout, AgentWrapup, CallerExitKey)
                  || Agent <- Agents
                 ],
@@ -410,7 +300,6 @@ connect_req({timeout, Ref, ?COLLECT_RESP_MESSAGE}, #state{collect_ref=Ref
                                                  ]),
             {next_state, connecting, State#state{connect_resps=Rest
                                                  ,collect_ref=undefined
-                                                 ,strategy_state=StrategyState1
                                                  ,agent_ring_timer_ref=start_agent_ring_timer(AgentTimeout)
                                                 }};
         undefined ->
@@ -468,28 +357,6 @@ connect_req({timeout, ConnRef, ?CONNECTION_TIMEOUT_MESSAGE}, #state{queue_proc=S
     acdc_queue_listener:timeout_member_call(Srv),
     acdc_stats:call_abandoned(AcctId, QueueId, whapps_call:call_id(Call), ?ABANDON_TIMEOUT),
     {next_state, ready, clear_member_call(State)};
-
-connect_req({agent_available, AcctId, QueueId, AgentId}, #state{acct_id=AcctId
-                                                                ,queue_id=QueueId
-                                                                ,strategy=Strategy
-                                                                ,strategy_state=StrategyState
-                                                               }=State) ->
-    lager:debug("adding agent ~s to strategy ~s", [AgentId, Strategy]),
-    StrategyState1 = update_strategy_with_agent(Strategy, StrategyState, AgentId),
-    {next_state, connect_req, State#state{strategy_state=StrategyState1}};
-
-connect_req({sync_req, AcctId, QueueId, JObj}, #state{acct_id=AcctId
-                                                      ,queue_id=QueueId
-                                                      ,queue_proc=Srv
-                                                      ,strategy=Strategy
-                                                      ,strategy_state=StrategyState
-                                                     }=State) ->
-    case acdc_util:proc_id(Srv) =:= wh_json:get_value(<<"Process-ID">>, JObj) of
-        true -> lager:debug("sync_req is for ourselves");
-        false ->
-            acdc_queue_listener:send_sync_resp(Srv, Strategy, serialize_strategy_state(Strategy, StrategyState), JObj)
-    end,
-    {next_state, connect_req, State};
 
 connect_req(_Event, State) ->
     lager:debug("unhandled event: ~p", [_Event]),
@@ -593,28 +460,6 @@ connecting({timeout, ConnRef, ?CONNECTION_TIMEOUT_MESSAGE}, #state{queue_proc=Sr
     acdc_stats:call_abandoned(AcctId, QueueId, whapps_call:call_id(Call), ?ABANDON_TIMEOUT),
     {next_state, ready, clear_member_call(State)};
 
-connecting({agent_available, AcctId, QueueId, AgentId}, #state{acct_id=AcctId
-                                                               ,queue_id=QueueId
-                                                               ,strategy=Strategy
-                                                               ,strategy_state=StrategyState
-                                                              }=State) ->
-    lager:debug("adding agent ~s to strategy ~s", [AgentId, Strategy]),
-    StrategyState1 = update_strategy_with_agent(Strategy, StrategyState, AgentId),
-    {next_state, connecting, State#state{strategy_state=StrategyState1}};
-
-connecting({sync_req, AcctId, QueueId, JObj}, #state{acct_id=AcctId
-                                                     ,queue_id=QueueId
-                                                     ,queue_proc=Srv
-                                                     ,strategy=Strategy
-                                                     ,strategy_state=StrategyState
-                                                    }=State) ->
-    case acdc_util:proc_id(Srv) =:= wh_json:get_value(<<"Process-ID">>, JObj) of
-        true -> lager:debug("sync_req is for ourselves");
-        false ->
-            acdc_queue_listener:send_sync_resp(Srv, Strategy, serialize_strategy_state(Strategy, StrategyState), JObj)
-    end,
-    {next_state, connecting, State};
-
 connecting(_Event, State) ->
     lager:debug("unhandled event: ~p", [_Event]),
     {next_state, connecting, State}.
@@ -717,81 +562,6 @@ code_change(_OldVsn, StateName, State, _Extra) ->
 start_collect_timer() ->
     gen_fsm:start_timer(?COLLECT_RESP_TIMEOUT, ?COLLECT_RESP_MESSAGE).
 
-%% Really sophisticated selection algorithm
--spec pick_winner/3 :: (wh_json:json_objects(), queue_strategy(), queue_strategy_state()) ->
-                               'undefined' |
-                               {wh_json:json_objects()
-                                ,wh_json:json_objects()
-                                ,queue_strategy_state()
-                               }.
-pick_winner([], _, _) -> undefined;
-pick_winner(CRs, 'rr', AgentQ) ->
-    {{value, AgentId}, AgentQ1} = queue:out(AgentQ),
-
-    case split_agents(AgentId, CRs) of
-        {[], _O} -> pick_winner(CRs, 'rr', queue:in(AgentId, AgentQ1));
-        {Winners, OtherAgents} -> {Winners, OtherAgents, queue:in(AgentId, AgentQ1)}
-    end;
-pick_winner(CRs, 'mi', _) ->
-    [MostIdle | Rest] = lists:usort(fun sort_agent/2, CRs),
-    AgentId = wh_json:get_value(<<"Agent-ID">>, MostIdle),
-    {Same, Other} = split_agents(AgentId, Rest),
-
-    {[MostIdle|Same], Other, undefined}.
-
--spec update_strategy_with_agent/3 :: (queue_strategy(), queue_strategy_state(), ne_binary()) ->
-                                              queue_strategy_state().
-update_strategy_with_agent('rr', undefined, AgentId) ->
-    queue:in(AgentId, queue:new());
-update_strategy_with_agent('rr', AgentQueue, AgentId) ->
-    case queue:member(AgentId, AgentQueue) of
-        true -> AgentQueue;
-        false -> queue:in(AgentId, AgentQueue)
-    end;            
-update_strategy_with_agent('mi', _, _) ->
-    undefined.
-
-%% If A's idle time is greater, it should come before B
--spec sort_agent/2 :: (wh_json:json_object(), wh_json:json_object()) -> boolean().
-sort_agent(A, B) ->
-    wh_json:get_integer_value(<<"Idle-Time">>, A, 0) >
-        wh_json:get_integer_value(<<"Idle-Time">>, B, 0).
-
--spec split_agents/2 :: (ne_binary(), wh_json:json_objects()) ->
-                                {wh_json:json_objects(), wh_json:json_objects()}.
-split_agents(AgentId, Rest) ->
-    lists:partition(fun(R) ->
-                            AgentId =:= wh_json:get_value(<<"Agent-ID">>, R)
-                    end, Rest).
-
--spec maybe_send_sync_req/2 :: (queue_strategy(), pid()) -> 'false' | {'true', reference()}.
-maybe_send_sync_req(mi, _) -> false;
-maybe_send_sync_req(rr, Srv) ->
-    acdc_queue_listener:send_sync_req(Srv, rr),
-    {true, gen_fsm:start_timer(?SYNC_TIMEOUT, ?SYNC_MESSAGE)}.
-
--spec get_strategy/1 :: (api_binary()) -> queue_strategy().
-get_strategy(<<"round_robin">>) -> 'rr';
-get_strategy(<<"most_idle">>) -> 'mi';
-get_strategy(_) -> 'rr'.
-
--spec create_strategy_state/4 :: (queue_strategy(), queue_strategy_state(), ne_binary(), ne_binary()) -> queue_strategy_state().
-create_strategy_state('rr', undefined, AcctDb, QueueId) ->
-    create_strategy_state('rr', queue:new(), AcctDb, QueueId);
-create_strategy_state('rr', AgentQ, AcctDb, QueueId) ->
-    case couch_mgr:get_results(AcctDb, <<"queues/agents_listing">>, [{key, QueueId}]) of
-        {ok, []} -> lager:debug("no agents around"), AgentQ;
-        {ok, JObjs} ->
-            Q = queue:from_list([Id
-                                 || JObj <- JObjs,
-                                    not queue:member((Id = wh_json:get_value(<<"id">>, JObj)), AgentQ)
-                                ]),
-            queue:join(AgentQ, Q);
-        {error, _E} -> lager:debug("error: ~p", [_E]), AgentQ
-    end;
-create_strategy_state('mi', _, _, _) ->
-    undefined.
-
 -spec connection_timeout/1 :: (integer() | 'undefined') -> pos_integer().
 connection_timeout(N) when is_integer(N), N > 0 -> N * 1000;
 connection_timeout(_) -> ?CONNECTION_TIMEOUT.
@@ -848,9 +618,6 @@ update_properties(QueueJObj, State) ->
       %% Changing queue strategy currently isn't feasible; definitely a TODO
       %%,strategy = get_strategy(wh_json:get_value(<<"strategy">>, QueueJObj))
      }.
-
-serialize_strategy_state('rr', AgentQ) -> queue:to_list(AgentQ);
-serialize_strategy_state('mi', _) -> undefined.
 
 current_call(undefined, _, _) -> undefined;
 current_call(Call, QueueTimeLeft, Start) ->
