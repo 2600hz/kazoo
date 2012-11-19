@@ -88,9 +88,6 @@
                      ,{{acdc_queue_handler, handle_member_retry}
                        ,[{<<"member">>, <<"connect_retry">>}]
                       }
-                     ,{{acdc_queue_handler, handle_agent_available}
-                       ,[{<<"queue">>, <<"agent_available">>}]
-                      }
                      ,{{acdc_queue_handler, handle_sync_req}
                        ,[{<<"queue">>, <<"sync_req">>}]
                       }
@@ -110,7 +107,7 @@
 -spec start_link/4 :: (pid(), pid(), ne_binary(), ne_binary()) -> startlink_ret().
 start_link(WorkerSup, MgrPid, AcctId, QueueId) ->
     gen_listener:start_link(?MODULE
-                            ,[{bindings, [{acdc_queue, [{restrict_to, [agent_available, sync_req]}
+                            ,[{bindings, [{acdc_queue, [{restrict_to, [sync_req]}
                                                         ,{account_id, AcctId}
                                                         ,{queue_id, QueueId}
                                                        ]}
