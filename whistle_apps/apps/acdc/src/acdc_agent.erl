@@ -62,6 +62,7 @@
          ,record_calls = false :: boolean()
          ,is_thief = false :: boolean()
          ,agent :: agent()
+         ,agent_call_id :: api_binary()
          }).
 
 -type agent() :: whapps_call:call() | wh_json:object().
@@ -242,7 +243,11 @@ init([Supervisor, Agent, Queues]) ->
                               ,{<<"Agent-ID">>, AgentId}
                               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                              ],
-                      [wapi_acdc_queue:publish_agent_available([{<<"Queue-ID">>, QueueId} | Prop]) || QueueId <- Queues]
+                      [wapi_acdc_queue:publish_agent_change(
+                         [{<<"Queue-ID">>, QueueId}
+                          ,{<<"Change">>, <<"available">>}
+                          | Prop
+                         ]) || QueueId <- Queues]
               end),
 
     {ok, #state{
@@ -432,6 +437,9 @@ handle_cast({member_connect_retry, WinJObj}, #state{my_id=MyId}=State) ->
 handle_cast({bridge_to_member, Call, WinJObj, EPs}, #state{fsm_pid=FSM
                                                            ,record_calls=RecordCall
                                                            ,is_thief=false
+                                                           ,agent_queues=Qs
+                                                           ,acct_id=AcctId
+                                                           ,agent_id=AgentId
                                                           }=State) ->
     lager:debug("bridging to agent endpoints: ~p", [EPs]),
 
@@ -444,6 +452,7 @@ handle_cast({bridge_to_member, Call, WinJObj, EPs}, #state{fsm_pid=FSM
     _P = spawn(fun() -> maybe_connect_to_agent(FSM, EPs, Call, RingTimeout) end),
 
     lager:debug("waiting on successful bridge now: connecting in ~p", [_P]),
+    update_my_queues_of_change(AcctId, AgentId, Qs),
     {noreply, State#state{call=Call
                           ,record_calls=ShouldRecord
                          }};
@@ -465,7 +474,8 @@ handle_cast({monitor_call, Call}, State) ->
 
 handle_cast({originate_execute, JObj}, State) ->
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
-    acdc_util:bind_to_call_events(CallId),
+    %% acdc_util:bind_to_call_events(CallId),
+    lager:debug("execute the originate for ~s", [CallId]),
 
     send_originate_execute(JObj),
     {noreply, State};
@@ -740,6 +750,17 @@ logout_from_queue(AcctId, Q) ->
                                                  ,{queue_id, Q}
                                                  ,{account_id, AcctId}
                                                 ]).
+
+update_my_queues_of_change(AcctId, AgentId, Qs) ->
+    Props = [{<<"Account-ID">>, AcctId}
+             ,{<<"Agent-ID">>, AgentId}
+             ,{<<"Change">>, <<"ringing">>}
+             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+            ],
+    _ = [wapi_acdc_queue:publish_agent_change([{<<"Queue-Id">>, QueueId} | Props])
+         || QueueId <- Qs
+        ],
+    ok.
 
 fetch_my_queue() ->
     Self = self(),
