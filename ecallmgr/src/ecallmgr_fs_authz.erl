@@ -14,7 +14,7 @@
 -export([start_link/1, start_link/2]).
 -export([handle_channel_create/3]).
 -export([handle_session_heartbeat/2]).
--export([rate_channel/1]).
+-export([rate_channel/2]).
 -export([kill_channel/2]).
 -export([init/1
          ,handle_call/3
@@ -33,6 +33,7 @@
 -define(RATE_VARS, [<<"Rate">>, <<"Rate-Increment">>
                         ,<<"Rate-Minimum">>, <<"Surcharge">>
                         ,<<"Rate-Name">>, <<"Base-Cost">>
+                        ,<<"Discount-Percentage">>
                    ]).
 
 -define(HEARTBEAT_ON_ANSWER(CallId), <<"api_on_answer=uuid_session_heartbeat ", CallId/binary, " 60">>).
@@ -89,7 +90,6 @@ handle_session_heartbeat(Props, Node) ->
         of
             false -> ok;
             AType -> 
-                io:format("REAUTH ACCOUNT ~p~n", [AccountId]),
                 attempt_reauthorization(account, AccountId, AType, Props, Node)
         end,
     _ = case (not wh_util:is_empty(ResellerId))
@@ -98,7 +98,6 @@ handle_session_heartbeat(Props, Node) ->
         of
             false -> ok;
             RType ->
-                io:format("REAUTH RESELLER ~p~n", [ResellerId]),
                 attempt_reauthorization(reseller, ResellerId, RType, Props, Node)
         end,    
     ok.
@@ -330,7 +329,7 @@ authorize_reseller(Props, CallId, Node) ->
         
 -spec rate_call/3 :: (wh_proplist(), ne_binary(), atom()) -> 'true'.
 rate_call(Props, CallId, Node) ->
-    spawn(?MODULE, rate_channel, [Props]),
+    spawn(?MODULE, rate_channel, [Props, Node]),
     allow_call(Props, CallId, Node).
 
 -spec allow_call/3 :: (wh_proplist(), ne_binary(), atom()) -> 'true'.
@@ -344,8 +343,8 @@ maybe_deny_call(Props, _, Node) ->
     _ = DryRun orelse spawn(?MODULE, kill_channel, [Props, Node]),
     DryRun orelse false.
 
--spec rate_channel/1 :: (wh_proplist()) -> 'ok'.
-rate_channel(Props) ->
+-spec rate_channel/2 :: (wh_proplist(), atom()) -> 'ok'.
+rate_channel(Props, Node) ->
     CallId = props:get_value(<<"Unique-ID">>, Props),
     put(callid, CallId),
     lager:debug("sending rate request"),
@@ -356,7 +355,7 @@ rate_channel(Props) ->
                                  ),
     case ReqResp of
         {error, _R} -> lager:debug("rate request lookup failed: ~p", [_R]);
-        {ok, RespJObj} -> set_rating_ccvs(RespJObj)
+        {ok, RespJObj} -> set_rating_ccvs(RespJObj, Node)
     end.
 
 -spec authorize/2 :: (api_binary(), wh_proplist()) ->
@@ -478,24 +477,19 @@ authz_default() ->
             {ok, DefaultType}
     end.
 
--spec set_rating_ccvs/1 :: (wh_json:json_object()) -> 'ok'.
-set_rating_ccvs(JObj) ->
+-spec set_rating_ccvs/2 :: (wh_json:json_object(), atom()) -> 'ok'.
+set_rating_ccvs(JObj, Node) ->
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
     put(callid, CallId),
-    case ecallmgr_fs_nodes:channel_node(CallId) of
-        {error, _} -> ok;
-        {ok, Node} ->
-            lager:debug("setting rating information", []),
-            Multiset = lists:foldl(fun(Key, Acc) ->
-                                           case wh_json:get_binary_value(Key, JObj) of
-                                               undefined -> Acc;
-                                               Value ->
-                                                   <<"|", (?SET_CCV(Key, Value))/binary, Acc/binary>>
-                                           end
+    lager:debug("setting rating information", []),
+    Multiset = lists:foldl(fun(Key, Acc) ->
+                                   case wh_json:get_binary_value(Key, JObj) of
+                                       undefined -> Acc;
+                                       Value ->
+                                           <<"|", (?SET_CCV(Key, Value))/binary, Acc/binary>>
+                                   end
                            end, <<>>, ?RATE_VARS),
-            'ok' = ecallmgr_util:send_cmd(Node, CallId, "multiset", <<"^^", Multiset/binary>>),
-            ok
-    end.
+    'ok' = ecallmgr_util:send_cmd(Node, CallId, "multiset", <<"^^", Multiset/binary>>).
 
 -spec authz_req/2 :: (ne_binary(), wh_proplist()) -> wh_proplist().
 authz_req(AccountId, Props) ->

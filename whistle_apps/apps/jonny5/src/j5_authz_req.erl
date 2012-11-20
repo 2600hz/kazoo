@@ -86,7 +86,7 @@ maybe_soft_limit({error, _}=E, Limits, JObj) ->
 maybe_soft_limit(Else, _, _) -> Else.
 
 -spec maybe_emergency/3 :: (authz_resp(), #limits{}, wh_json:json_object()) -> authz_resp().
-maybe_emergency({error, _}=E, Limits, JObj) ->
+maybe_emergency({error, _}=E, _, JObj) ->
     [Number, _] = binary:split(wh_json:get_value(<<"Request">>, JObj), <<"@">>),
     case wnm_util:classify_number(Number) of
         <<"emergency">> -> 

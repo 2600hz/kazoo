@@ -17,10 +17,8 @@
 is_available(Limits, JObj) ->
     AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
     Balance = j5_util:current_balance(AccountId),
-    case prepay_is_available(Limits, Balance, JObj) of
-        false -> postpay_is_available(Limits, Balance, JObj);
-        true -> true
-    end.             
+    prepay_is_available(Limits, Balance, JObj) 
+        orelse postpay_is_available(Limits, Balance, JObj).
 
 -spec reauthorize/2 :: (#limits{}, wh_json:json_object()) -> 'ok'.
 reauthorize(Limits, JObj) ->
@@ -30,12 +28,12 @@ reauthorize(Limits, JObj) ->
     DefaultRateIncr = whapps_config:get_integer(<<"jonny5">>, <<"default_rate_increment">>, 60),    
     RateIncr = wh_json:get_integer_value([<<"Custom-Channel-Vars">>, <<"Rate-Increment">>]
                                          ,JObj, DefaultRateIncr),
-    case (Timestamp - Answered) of
-        Time when Time < RateIncr ->
+    case (Timestamp - Answered) < RateIncr of
+        true ->
             lager:debug("call has not exceeded the rate increment yet", []),
             j5_reauthz_req:send_allow_resp(JObj);
-        Time -> 
-            maybe_debit_next_minute(AccountId, Time, Limits, JObj)
+        false -> 
+            maybe_debit_next_minute(AccountId, Limits, JObj)
     end.
 
 -spec reconcile_cdr/2 :: (ne_binary(), wh_json:json_object()) -> 'ok'.
@@ -78,22 +76,16 @@ postpay_is_available(#limits{allow_postpay=true, max_postpay_amount=MaxPostpay
             true
     end.
 
--spec maybe_debit_next_minute/4 :: (ne_binary(), integer(), #limits{}, wh_json:json_object()) -> boolean().
-maybe_debit_next_minute(Account, Time, Limits, JObj) ->
-    case debit_next_minute(Account, Time, Limits, JObj) of
+-spec maybe_debit_next_minute/3 :: (ne_binary(), #limits{}, wh_json:json_object()) -> boolean().
+maybe_debit_next_minute(Account, Limits, JObj) ->
+    case debit_next_minute(Account, Limits, JObj) of
         true -> j5_reauthz_req:send_allow_resp(JObj);
         false -> j5_reauthz_req:send_deny_resp(JObj)
     end.
 
--spec debit_next_minute/4 :: (ne_binary(), integer(), #limits{}, wh_json:json_object()) -> boolean().
-debit_next_minute(Account, Time, Limits, JObj) ->
-    DefaultRate = whapps_config:get_float(<<"jonny5">>, <<"default_rate">>, ?DEFAULT_RATE),
-    DefaultRateIncr = whapps_config:get_integer(<<"jonny5">>, <<"default_rate_increment">>, 60),        
-    Rate = wh_json:get_float_value([<<"Custom-Channel-Vars">>, <<"Rate">>], JObj, DefaultRate),
-    RateIncr = wh_json:get_integer_value([<<"Custom-Channel-Vars">>, <<"Rate-Increment">>]
-                                         ,JObj, DefaultRateIncr),
-    Debit = whapps_util:calculate_cost(Rate, RateIncr, 0, 0.0, Time + 60)
-        - whapps_util:calculate_cost(Rate, RateIncr, 0, 0.0, Time),
+-spec debit_next_minute/3 :: (ne_binary(), #limits{}, wh_json:json_object()) -> boolean().
+debit_next_minute(Account, Limits, JObj) ->
+    Debit = extract_cost(wh_json:set_value(<<"Billing-Seconds">>, 60, JObj)),
     case is_credit_still_available(j5_util:current_balance(Account) - Debit, Limits) of
         false -> 
             lager:debug("account does not have the required credit to continue this call", []),
@@ -113,10 +105,10 @@ is_credit_still_available(_, _) ->
     false.
 
 -spec extract_cost/1 :: (wh_json:json_object()) -> float().
-extract_cost(JObj) ->    
+extract_cost(JObj) ->
     CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj),
     BillingSecs = wh_json:get_integer_value(<<"Billing-Seconds">>, JObj)
-        - wh_json:get_integer_value(<<"Billing-Second-Offset">>, CCVs, 0),
+        - wh_json:get_integer_value(<<"Billing-Seconds-Offset">>, CCVs, 0),
     %% if we transition from allotment to per_minute the offset has a slight 
     %% fudge factor to allow accounts with no credit to terminate the call
     %% on the next re-authorization cycle (to allow for the in-flight time)
@@ -130,19 +122,20 @@ extract_cost(JObj) ->
             Surcharge = wh_json:get_float_value(<<"Surcharge">>, CCVs, 0.0),
             Cost = whapps_util:calculate_cost(Rate, RateIncr, RateMin, Surcharge, BillingSecs),
             SessionId = j5_util:get_session_id(JObj),
-            lager:debug("final session ~s rate at $~p/~ps with minumim ~ps and surcharge $~p for ~p secs: $~p"
-                        ,[SessionId, Rate, RateIncr, RateMin, Surcharge, BillingSecs, Cost]),
-            Cost
+            Discount = (wh_json:get_integer_value(<<"Discount-Percentage">>, CCVs, 0) * 0.01) * Cost,
+            lager:debug("session ~s, rate $~p/~ps, minumim ~ps, surcharge $~p, for ~ps, sub total $~p, discount $~p, total $~p"
+                        ,[SessionId, Rate, RateIncr, RateMin, Surcharge, BillingSecs, Cost, Discount, (Cost - Discount)]),
+            Cost - Discount
     end.
 
--spec start_per_minute/3 :: (float(), #limits{}, wh_json:json_object()) -> wh_couch_return().
+-spec start_per_minute/3 :: (float(), #limits{}, wh_json:json_object()) -> wh_jobj_return().
 start_per_minute(Units, Limits, JObj) ->
     Props = [{<<"reason">>, <<"per_minute_channel">>}
              ,{<<"pvt_type">>, <<"debit">>}
             ], 
     j5_util:write_to_ledger(<<"start">>, Props, Units, Limits, JObj).
 
--spec tick_per_minute/3 :: (float(), #limits{}, wh_json:json_object()) -> wh_couch_return().
+-spec tick_per_minute/3 :: (float(), #limits{}, wh_json:json_object()) -> wh_jobj_return().
 tick_per_minute(Units, Limits, JObj) ->
     Timestamp = wh_json:get_integer_value(<<"Timestamp">>, JObj, wh_util:current_tstamp()),
     Props = [{<<"reason">>, <<"per_minute_channel">>}
@@ -150,7 +143,7 @@ tick_per_minute(Units, Limits, JObj) ->
             ], 
     j5_util:write_to_ledger(wh_util:to_binary(Timestamp), Props, Units, Limits, JObj).
 
--spec end_per_minute/3 :: (float(), #limits{}, wh_json:json_object()) -> wh_couch_return().
+-spec end_per_minute/3 :: (float(), #limits{}, wh_json:json_object()) -> wh_jobj_return().
 end_per_minute(Units, Limits, JObj) when Units > 0 ->
     Props = [{<<"reason">>, <<"per_minute_channel">>}
              ,{<<"pvt_type">>, <<"debit">>}
@@ -185,14 +178,14 @@ session_cost(SessionId, Ledger) ->
 postpay_limits() ->
     #limits{allow_postpay=true
             ,allow_prepay=false
-            ,max_postpay_amount=10000
+            ,max_postpay_amount=-10000
             ,reserve_amount=5000
            }.
 
 prepay_limits() ->
     #limits{allow_postpay=false
             ,allow_prepay=true
-            ,max_postpay_amount=10000
+            ,max_postpay_amount=-10000
             ,reserve_amount=5000
            }.
 

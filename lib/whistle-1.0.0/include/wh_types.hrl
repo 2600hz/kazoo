@@ -35,7 +35,8 @@
 
 -type wh_std_return() :: {'ok', _} | {'error', _}.
 
--type wh_couch_return() :: {'ok', wh_json:json_object() | wh_json:json_objects()} | {'error', _}.
+-type wh_jobj_return() :: {'ok', wh_json:json_object()} | {'error', _}.
+-type wh_jobjs_return() :: {'ok', wh_json:json_objects()} | {'error', _}.
 
 %% non-empty binary
 -define(NE_BINARY, <<_:8,_/binary>>).

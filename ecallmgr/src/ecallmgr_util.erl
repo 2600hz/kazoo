@@ -273,9 +273,9 @@ get_fs_kv(<<"Hold-Media">>, Media, UUID) ->
 get_fs_kv(Key, Val, _) ->
     case lists:keyfind(Key, 1, ?SPECIAL_CHANNEL_VARS) of
         false ->
-            list_to_binary([?CHANNEL_VAR_PREFIX, wh_util:to_list(Key), "=", wh_util:to_list(Val)]);
+            list_to_binary([?CHANNEL_VAR_PREFIX, wh_util:to_list(Key), "='", wh_util:to_list(Val), "'"]);
         {_, Prefix} ->
-            list_to_binary([Prefix, "=", wh_util:to_list(Val)])
+            list_to_binary([Prefix, "='", wh_util:to_list(Val), "'"])
     end.
 
 %%--------------------------------------------------------------------
@@ -284,6 +284,8 @@ get_fs_kv(Key, Val, _) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec set/3 :: (atom(), ne_binary(), wh_proplist() | ne_binary()) -> ecallmgr_util:send_cmd_ret().
+set(_, _, []) ->
+    ok;
 set(Node, UUID, [{K, V}]) ->
     set(Node, UUID, get_fs_kv(K, V, UUID));
 set(Node, UUID, [{_, _}|_]=Props) ->
@@ -497,6 +499,8 @@ maybe_clean_contact(Contact, _) ->
     re:replace(Contact, <<"^.*?[^=]sip:">>, <<>>, [{return, binary}]).
 
 -spec ensure_username_present/2 :: (ne_binary(), #bridge_endpoint{}) -> ne_binary().
+ensure_username_present(Contact, #bridge_endpoint{invite_format = <<"route">>}) ->
+    Contact;
 ensure_username_present(Contact, Endpoint) ->
     case binary:split(Contact, <<"@">>) of
         [_, _] -> Contact;
@@ -550,7 +554,6 @@ maybe_format_user(Contact, #bridge_endpoint{invite_format = <<"username">>
 
 maybe_format_user(Contact, #bridge_endpoint{number=undefined}) ->
     Contact;
-
 maybe_format_user(Contact, #bridge_endpoint{invite_format = <<"e164">>, number=Number}) ->
     re:replace(Contact, "^[^\@]+", wnm_util:to_e164(Number), [{return, binary}]);
 maybe_format_user(Contact, #bridge_endpoint{invite_format = <<"npan">>, number=Number}) ->
@@ -562,6 +565,8 @@ maybe_format_user(Contact, _) ->
 
 -spec maybe_set_interface/2 :: (ne_binary(), #bridge_endpoint{}) -> ne_binary().
 maybe_set_interface(<<"sofia/", _/binary>>=Contact, _) ->
+    Contact;
+maybe_set_interface(<<"loopback/", _/binary>>=Contact, _) ->
     Contact;
 maybe_set_interface(Contact, _) ->
     <<?SIP_INTERFACE, Contact/binary>>.

@@ -36,7 +36,7 @@
 -define(RATE_RESP_HEADERS, [<<"Rate">>, <<"Call-ID">>]).
 -define(OPTIONAL_RATE_RESP_HEADERS, [<<"Rate-Increment">>, <<"Rate-Minimum">>
                                          ,<<"Surcharge">>, <<"Base-Cost">>
-                                         ,<<"Rate-Name">>
+                                         ,<<"Rate-Name">>, <<"Discount-Percentage">>
                                     ]).
 -define(RATE_RESP_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
                            ,{<<"Event-Name">>, <<"resp">>}

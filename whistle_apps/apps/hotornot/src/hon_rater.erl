@@ -25,7 +25,8 @@ handle_req(JObj, _Props) ->
     case get_rate_data(JObj) of
         {error, no_rate_found} -> ok;
         {ok, Resp} ->
-            wapi_rate:publish_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp)
+            wapi_rate:publish_resp(wh_json:get_value(<<"Server-ID">>, JObj)
+                                   ,props:filter_undefined(Resp))
     end.
 
 -spec get_rate_data/1 :: (wh_json:json_object()) -> {'ok', wh_json:json_objects()} |
@@ -53,6 +54,21 @@ get_rate_data(JObj) ->
             end
     end.
 
+-spec maybe_get_rate_discount/1 :: (wh_json:json_object()) -> 'undefined' | ne_binary().
+maybe_get_rate_discount(JObj) ->
+    AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
+    AccountDb = wh_util:format_account_id(AccountId, encoded),
+    case couch_mgr:open_cache_doc(AccountDb, <<"limits">>) of
+        {error, _R} ->
+            lager:debug("unable to open account ~s definition: ~p", [AccountId, _R]),
+            undefined;
+        {ok, Def} ->
+            Number = wh_json:get_value(<<"To-DID">>, JObj),
+            Classification = wnm_util:classify_number(Number),
+            lager:debug("~s number discount percentage: ~p", [Classification, Def]),
+            wh_json:get_value([<<"pvt_discounts">>, Classification, <<"percentage">>], Def)
+    end.
+
 -spec rate_resp/2 :: (wh_json:json_object(), wh_json:json_object()) -> proplist().
 rate_resp(Rate, JObj) ->
     lager:debug("using rate definition ~s", [wh_json:get_value(<<"rate_name">>, Rate)]),
@@ -64,6 +80,7 @@ rate_resp(Rate, JObj) ->
     [{<<"Rate">>, wh_json:get_binary_value(<<"rate_cost">>, Rate)}
      ,{<<"Rate-Increment">>, wh_json:get_binary_value(<<"rate_increment">>, Rate)}
      ,{<<"Rate-Minimum">>, wh_json:get_binary_value(<<"rate_minimum">>, Rate)}
+     ,{<<"Discount-Percentage">>, maybe_get_rate_discount(JObj)}
      ,{<<"Surcharge">>, wh_json:get_binary_value(<<"rate_surcharge">>, Rate)}
      ,{<<"Rate-Name">>, wh_json:get_binary_value(<<"rate_name">>, Rate)}
      ,{<<"Base-Cost">>, wh_util:to_binary(BaseCost)}

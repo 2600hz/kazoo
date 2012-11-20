@@ -150,7 +150,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec correct_discrepancy/3 :: (ne_binary(), ne_binary(), integer()) -> wh_couch_return().
+-spec correct_discrepancy/3 :: (ne_binary(), ne_binary(), integer()) -> wh_jobj_return().
 correct_discrepancy(Ledger, CallId, Amount) ->
     put(callid, CallId),
     case should_correct_discrepancy(Ledger, CallId) of
@@ -164,7 +164,7 @@ correct_discrepancy(Ledger, CallId, Amount) ->
             end
     end.
 
--spec should_correct_discrepancy/2 :: (ne_binary(), ne_binary()) -> wh_couch_return().
+-spec should_correct_discrepancy/2 :: (ne_binary(), ne_binary()) -> wh_jobj_return().
 should_correct_discrepancy(Ledger, CallId) ->
     case get_cdr(Ledger, CallId) of
         {error, _}=E -> E;
@@ -178,7 +178,7 @@ should_correct_discrepancy(Ledger, CallId) ->
             end
     end.
 
--spec get_cdr/2 :: (ne_binary(), ne_binary()) -> wh_couch_return().
+-spec get_cdr/2 :: (ne_binary(), ne_binary()) -> wh_jobj_return().
 get_cdr(Ledger, CallId) ->
     LedgerDb = wh_util:format_account_id(Ledger, encoded),
     case couch_mgr:open_doc(LedgerDb, CallId) of
@@ -187,7 +187,7 @@ get_cdr(Ledger, CallId) ->
             maybe_create_cdr(Ledger, CallId)
     end.
 
--spec maybe_create_cdr/2 :: (ne_binary(), ne_binary()) -> wh_couch_return().
+-spec maybe_create_cdr/2 :: (ne_binary(), ne_binary()) -> wh_jobj_return().
 maybe_create_cdr(Ledger, CallId) ->
     case call_has_ended(CallId) of
         false -> {error, call_active};
@@ -282,7 +282,7 @@ send_system_alert(Ledger, CallId, Amount, Entry) ->
                   wh_notify:system_alert("account $~p discrepancy / ~s (~s) / Call ~s", [Dollars, AccountName, LedgerId, CallId], Details)
           end).
 
--spec per_minute_discrepancy/3 :: (float(), #limits{}, wh_json:json_object()) -> wh_couch_return().
+-spec per_minute_discrepancy/3 :: (float(), #limits{}, wh_json:json_object()) -> wh_jobj_return().
 per_minute_discrepancy(Units, #limits{account_id=AccountId}=Limits, JObj) when Units > 0 ->
     Props = [{<<"reason">>, <<"jonny5 discrepancy correction">>}
              ,{<<"balance">>, j5_util:current_balance(AccountId)}

@@ -88,7 +88,7 @@ create_init_limits(AccountDb) ->
             wh_json:new()
     end.
 
--spec write_to_ledger/5 :: (ne_binary(), float() | integer(), wh_json:json_object(), ne_binary(), debit | credit) -> wh_couch_return().
+-spec write_to_ledger/5 :: (ne_binary(), float() | integer(), wh_json:json_object(), ne_binary(), debit | credit) -> wh_jobj_return().
 -ifdef(TEST).
 write_to_ledger(_Suffix, _Props, _Units, _Limits, _JObj) -> {ok, wh_json:new()}.
 -else.

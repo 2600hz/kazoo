@@ -137,7 +137,7 @@ cycle_start(<<"minutely">>) ->
     {{Year, Month, Day}, {Hour, Min, _}} = calendar:universal_time(),
     calendar:datetime_to_gregorian_seconds({{Year, Month, Day}, {Hour, Min, 0}}).
 
--spec start_allotment_consumption/4 :: (proplist(), integer(), #limits{}, wh_json:json_object()) -> wh_couch_return().
+-spec start_allotment_consumption/4 :: (proplist(), integer(), #limits{}, wh_json:json_object()) -> wh_jobj_return().
 start_allotment_consumption(Props, Units, Limits, JObj) ->
     CompleteProps = [{<<"reason">>, <<"allotment_channel">>}
                      ,{<<"pvt_type">>, <<"debit_allotment">>}
@@ -145,7 +145,7 @@ start_allotment_consumption(Props, Units, Limits, JObj) ->
                     ],
     j5_util:write_to_ledger(<<"start">>, CompleteProps, Units, Limits, JObj).
 
--spec tick_allotment_consumption/4 :: (proplist(), integer(), #limits{}, wh_json:json_object()) -> wh_couch_return().
+-spec tick_allotment_consumption/4 :: (proplist(), integer(), #limits{}, wh_json:json_object()) -> wh_jobj_return().
 tick_allotment_consumption(Props, Units, Limits, JObj) ->
     Timestamp = wh_json:get_integer_value(<<"Timestamp">>, JObj, wh_util:current_tstamp()),
     CompleteProps = [{<<"reason">>, <<"allotment_channel">>}
@@ -154,7 +154,7 @@ tick_allotment_consumption(Props, Units, Limits, JObj) ->
                     ], 
     j5_util:write_to_ledger(wh_util:to_binary(Timestamp), CompleteProps, Units, Limits, JObj).
 
--spec return_allotment_consumption/4 :: (proplist(), integer(), #limits{}, wh_json:json_object()) -> wh_couch_return().
+-spec return_allotment_consumption/4 :: (proplist(), integer(), #limits{}, wh_json:json_object()) -> wh_jobj_return().
 return_allotment_consumption(Props, Units, Limits, JObj) ->
     CompleteProps = [{<<"reason">>, <<"allotment_channel">>}
                      ,{<<"pvt_type">>, <<"credit_allotment">>}

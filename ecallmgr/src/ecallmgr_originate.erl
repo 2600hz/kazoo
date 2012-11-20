@@ -275,7 +275,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({event, [_ | Props]}, #state{node=Node, uuid=OldUUID}=State) ->
+handle_info({event, [_ | Props]}, #state{uuid=OldUUID}=State) ->
     case props:get_value(<<"Event-Subclass">>, Props, props:get_value(<<"Event-Name">>, Props)) of
         <<"loopback::bowout">> -> 
             case  props:get_value(<<"Resigning-UUID">>, Props) =:= OldUUID of

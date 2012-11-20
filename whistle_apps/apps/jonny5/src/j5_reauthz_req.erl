@@ -67,7 +67,6 @@ send_deny_resp(JObj, CCVs) ->
 
 -spec send_resp/3 :: (wh_json:json_object(), wh_json:json_object(), ne_binary()) -> 'ok'.
 send_resp(JObj, CCVs, Authd) ->
-    io:format("~p~n", [JObj]),
     Resp = [{<<"Is-Authorized">>, Authd}
             ,{<<"Type">>, wh_json:get_value(<<"Type">>, JObj)}
             ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
