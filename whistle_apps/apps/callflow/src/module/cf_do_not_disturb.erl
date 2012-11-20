@@ -31,6 +31,7 @@
 handle(Data, Call) ->
     case maybe_build_dnd_record(Data, Call) of
         {error, _} ->
+            lager:debug("unable to determine what document to apply dnd against", []),
             _ = whapps_call_command:b_prompt(<<"dnd-not_available">>, Call),
             cf_exe:stop(Call);
         {ok, #dnd{}=DND} ->
@@ -40,35 +41,45 @@ handle(Data, Call) ->
             cf_exe:continue(Call)
     end.            
 
+-spec maybe_build_dnd_record/2 :: (wh_json:json_object(), whapps_call:call()) -> {'ok', #dnd{}} | {'error', _}.
 maybe_build_dnd_record(Data, Call) ->
     AccountDb = whapps_call:account_db(Call),
     case maybe_get_data_id(AccountDb, Data, Call) of
         {error, _}=E -> E;
         {ok, JObj} ->
-            {ok, #dnd{enabled=wh_json:is_true([<<"do_not_distrub">>, <<"enabled">>], JObj)
+            lager:debug("changing dnd settings on document ~s", [wh_json:get_value(<<"_id">>, JObj)]),
+            {ok, #dnd{enabled=wh_json:is_true([<<"do_not_disturb">>, <<"enabled">>], JObj)
                       ,jobj=JObj
                       ,account_db=AccountDb
                      }}
     end.
 
+-spec maybe_get_data_id/3 :: (ne_binary(), wh_json:json_object(), whapps_call:call()) -> wh_jobj_return().
 maybe_get_data_id(AccountDb, Data, Call) ->
     Id = wh_json:get_value(<<"id">>, Data),
     case maybe_get_doc(AccountDb, Id) of
-        {error, _} -> maybe_get_owner(AccountDb, Data, Call);
+        {error, _} -> 
+            lager:debug("dnd feature callflow does not specify a document", []),
+            maybe_get_owner(AccountDb, Data, Call);
         {ok, _}=Ok -> Ok
     end.
 
+-spec maybe_get_owner/3 :: (ne_binary(), wh_json:json_object(), whapps_call:call()) -> wh_jobj_return().
 maybe_get_owner(AccountDb, Data, Call) ->
     OwnerId = whapps_call:owner_id(Call),
     case maybe_get_doc(AccountDb, OwnerId) of
-        {error, _} -> maybe_get_authorizing_device(AccountDb, Data, Call);
+        {error, _} -> 
+            lager:debug("dnd feature could not find the owner document", []),
+            maybe_get_authorizing_device(AccountDb, Data, Call);
         {ok, _}=Ok -> Ok
     end.
 
+-spec maybe_get_authorizing_device/3 :: (ne_binary(), wh_json:json_object(), whapps_call:call()) -> wh_jobj_return().
 maybe_get_authorizing_device(AccountDb, _, Call) ->
     AuthorizingId = whapps_call:authorizing_id(Call),
     maybe_get_doc(AccountDb, AuthorizingId).
 
+-spec maybe_get_doc/2 :: (api_binary(), api_binary()) -> wh_jobj_return().
 maybe_get_doc(_, undefined) ->
     {error, no_device_id};
 maybe_get_doc(undefined, _) ->
@@ -76,21 +87,26 @@ maybe_get_doc(undefined, _) ->
 maybe_get_doc(AccountDb, Id) ->
     case couch_mgr:open_doc(AccountDb, Id) of
         {ok, JObj}=Ok ->
-            case wh_json:is_true(<<"pvt_type">>, JObj) of
+            case wh_json:get_value(<<"pvt_type">>, JObj) of
                 <<"device">> -> Ok;
                 <<"user">> -> Ok;
-                false -> {error, not_found}
+                _Else ->
+                    lager:debug("dnd can not be applied against a doc of type ~s", [_Else]),
+                    {error, not_found}
             end;
          {error, _R}=E ->
             lager:debug("unable to open ~s: ~p", [Id, _R]),
             E
     end.
 
-maybe_execute_action(<<"activate">>, #dnd{enabled=true}, Call) ->
+-spec maybe_execute_action/3 :: (ne_binary(), #dnd{}, whapps_call:call()) -> any().
+maybe_execute_action(<<"activate">>, #dnd{enabled=true}, Call) -> 
+    lager:debug("dnd is already enabled on this document", []),
     whapps_call_command:b_prompt(<<"dnd-activated">>, Call);
 maybe_execute_action(<<"activate">>, #dnd{enabled=false}=DND, Call) ->
     activate_dnd(DND, Call);
 maybe_execute_action(<<"deactivate">>, #dnd{enabled=false}, Call) ->
+    lager:debug("dnd is already disabled on this document", []),
     whapps_call_command:b_prompt(<<"dnd-deactivated">>, Call);
 maybe_execute_action(<<"deactivate">>,  #dnd{enabled=true}=DND, Call) ->
     deactivate_dnd(DND, Call);
@@ -98,9 +114,11 @@ maybe_execute_action(<<"toggle">>, #dnd{enabled=false}=DND, Call) ->
     maybe_execute_action(<<"activate">>, DND, Call);
 maybe_execute_action(<<"toggle">>,  #dnd{enabled=true}=DND, Call) ->
     maybe_execute_action(<<"deactivate">>, DND, Call);
-maybe_execute_action(_, _, Call) ->
+maybe_execute_action(_Action, _, Call) ->
+    lager:debug("dnd action ~s is invalid", [_Action]),
     whapps_call_command:b_prompt(<<"dnd-not_available">>, Call).
 
+-spec activate_dnd/2 :: (#dnd{}, whapps_call:call()) -> any().
 activate_dnd(#dnd{jobj=JObj, account_db=AccountDb}, Call) ->
     case maybe_update_doc(true, JObj, AccountDb) of
         {error, _} -> ok;
@@ -108,6 +126,7 @@ activate_dnd(#dnd{jobj=JObj, account_db=AccountDb}, Call) ->
             whapps_call_command:b_prompt(<<"dnd-activated">>, Call)
     end.            
 
+-spec deactivate_dnd/2 :: (#dnd{}, whapps_call:call()) -> any().
 deactivate_dnd(#dnd{jobj=JObj, account_db=AccountDb}, Call) ->
     case maybe_update_doc(false, JObj, AccountDb) of
         {error, _} -> ok;
@@ -115,10 +134,14 @@ deactivate_dnd(#dnd{jobj=JObj, account_db=AccountDb}, Call) ->
             whapps_call_command:b_prompt(<<"dnd-deactivated">>, Call)
     end.
 
+-spec maybe_update_doc/3 :: (boolean(), wh_json:json_object(), ne_binary()) -> wh_jobj_return().
 maybe_update_doc(Enabled, JObj, AccountDb) ->
-    Updated = wh_json:set_value(<<"do_not_disturb">>, Enabled, JObj),
+    Updated = wh_json:set_value([<<"do_not_disturb">>, <<"enabled">>], Enabled, JObj),
     case couch_mgr:save_doc(AccountDb, Updated) of
-        {ok, _}=Ok -> Ok;
+        {ok, _}=Ok -> 
+            DocId = wh_json:get_value(<<"_id">>, JObj),
+            lager:debug("dnd enabled set to ~s on document ~s", [Enabled, DocId]),
+            Ok;
         {error, conflict} ->
             Id = wh_json:get_value(<<"_id">>, JObj),
             case couch_mgr:open_doc(AccountDb, Id) of

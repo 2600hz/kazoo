@@ -65,31 +65,43 @@ maybe_have_endpoint(JObj, EndpointId, AccountDb) ->
 
 -spec fetch_realtime_attributes/1 :: (wh_json:json_object()) -> wh_json:json_object().
 fetch_realtime_attributes(Endpoint) ->
-    AccountDb = wh_json:get_value(<<"pvt_account_db">>, Endpoint),
     OwnerId = wh_json:get_ne_value(<<"owner_id">>, Endpoint),
-    case OwnerId =/= undefined 
-        andalso couch_mgr:open_doc(AccountDb, OwnerId) 
-    of
+    EndpointId = wh_json:get_ne_value(<<"_id">>, Endpoint),
+    AccountDb = wh_json:get_value(<<"pvt_account_db">>, Endpoint),
+    case maybe_fetch_realtime_attributes(OwnerId, EndpointId, AccountDb) of
+        {error, _} -> Endpoint;
         {ok, JObj} ->
             Keys = [<<"do_not_disturb">>
                         ,<<"call_forward">>
                    ],
-            fetch_realtime_attributes(Keys, JObj, Endpoint);
-        _Else -> Endpoint
+            merge_realtime_attributes(Keys, JObj, Endpoint)
     end.
 
--spec fetch_realtime_attributes/3 :: ([] | [ne_binary(),...], wh_json:json_object(), wh_json:json_object()) -> wh_json:json_object().
-fetch_realtime_attributes([], _, Endpoint) ->
-    Endpoint;
-fetch_realtime_attributes([Key|Keys], Owner, Endpoint) ->
-    Attribute = wh_json:get_ne_value(Key, Owner, wh_json:new()),
-    case wh_json:is_true(<<"enabled">>, Attribute) of
-        false -> 
-            fetch_realtime_attributes(Keys, Owner, Endpoint);
-        true ->
-            Updated = wh_json:set_value(Key, Attribute, Endpoint),
-            fetch_realtime_attributes(Keys, Owner, Updated)
+-spec maybe_fetch_realtime_attributes/3 :: (api_binary(), api_binary(), api_binary()) -> wh_json:return().
+maybe_fetch_realtime_attributes(_, _, undefined) ->
+    {error, not_found};
+maybe_fetch_realtime_attributes(undefined, undefined, _) ->
+    {error, not_found};
+maybe_fetch_realtime_attributes(undefined, EndpointId, AccountDb) ->
+    case couch_mgr:open_doc(AccountDb, EndpointId) of
+        {error, _} ->
+            maybe_fetch_realtime_attributes(undefined, undefined, AccountDb);
+        {ok, _}=Ok -> Ok
+    end;
+maybe_fetch_realtime_attributes(OwnerId, EndpointId, AccountDb) ->
+    case couch_mgr:open_doc(AccountDb, OwnerId) of
+        {error, _} ->
+            maybe_fetch_realtime_attributes(undefined, EndpointId, AccountDb);
+        {ok, _}=Ok -> Ok
     end.
+
+-spec merge_realtime_attributes/3 :: ([] | [ne_binary(),...], wh_json:json_object(), wh_json:json_object()) -> wh_json:json_object().
+merge_realtime_attributes([], _, Endpoint) ->
+    Endpoint;
+merge_realtime_attributes([Key|Keys], Owner, Endpoint) ->
+    Attribute = wh_json:get_ne_value(Key, Owner, wh_json:new()),
+    Updated = wh_json:set_value(Key, Attribute, Endpoint),
+    merge_realtime_attributes(Keys, Owner, Updated).    
 
 -spec merge_cached_attributes/1 :: (wh_json:json_object()) -> wh_json:json_object().
 merge_cached_attributes(Endpoint) ->
@@ -551,6 +563,7 @@ generate_sip_headers(Endpoint, Call) ->
 
 generate_ccvs(Endpoint, Call) ->
     generate_ccvs(Endpoint, Call, undefined).
+
 generate_ccvs(Endpoint, Call, CallFwd) ->
     CCVFuns = [fun(J) ->
                        case wh_json:is_true(<<"keep_caller_id">>, CallFwd) of

@@ -351,16 +351,8 @@ lookup_callflow(Number, AccountId) ->
         true -> {error, invalid_number};
         false ->
             Db = wh_util:format_account_id(AccountId, encoded),
-            maybe_get_cached(wh_util:to_binary(Number), Db)
-%%            do_lookup_callflow(wh_util:to_binary(Number), Db)
+            do_lookup_callflow(wh_util:to_binary(Number), Db)
     end.
-
-maybe_get_cached(Number, Db) ->
-    case wh_cache:peek_local(?CALLFLOW_CACHE, {cf_flow, Number, Db}) of
-        {ok, Flow} -> {ok, Flow, false};
-        {error, not_found} ->
-            do_lookup_callflow(Number, Db)
-    end.    
 
 do_lookup_callflow(Number, Db) ->
     lager:debug("searching for callflow in ~s to satisfy '~s'", [Db, Number]),

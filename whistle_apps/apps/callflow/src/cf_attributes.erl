@@ -55,6 +55,7 @@ caller_id(Attribute, Call) ->
             maybe_get_endpoint_cid(Attribute, Call)
     end.
 
+-spec maybe_get_endpoint_cid/2 :: (ne_binary(), whapps_call:call()) -> {api_binary(), api_binary()}.
 maybe_get_endpoint_cid(Attribute, Call) ->
     case cf_endpoint:get(Call) of
         {error, _R} ->
@@ -66,6 +67,7 @@ maybe_get_endpoint_cid(Attribute, Call) ->
             maybe_normalize_cid(Number, Name, JObj, Attribute, Call)
     end.
 
+-spec maybe_normalize_cid/5 :: (api_binary(), api_binary(), wh_json:json_object(), ne_binary(), whapps_call:call()) -> {api_binary(), api_binary()}.
 maybe_normalize_cid(undefined, Name, Endpoint, Attribute, Call) ->
     case whapps_call:caller_id_number(Call) of
         undefined ->
@@ -87,6 +89,7 @@ maybe_normalize_cid(Number, Name, Endpoint, Attribute, Call) when not is_binary(
 maybe_normalize_cid(Number, Name, Endpoint, Attribute, Call) ->
     maybe_prefix_cid_number(wh_util:to_binary(Number), Name, Endpoint, Attribute, Call).
 
+-spec maybe_prefix_cid_number/5 :: (ne_binary(), ne_binary(), wh_json:json_object(), ne_binary(), whapps_call:call()) -> {api_binary(), api_binary()}.
 maybe_prefix_cid_number(Number, Name, Endpoint, Attribute, Call) ->
     case whapps_call:kvs_fetch(prepend_cid_number, Call) of
         undefined -> maybe_prefix_cid_name(Number, Name, Endpoint, Attribute, Call);
@@ -95,6 +98,7 @@ maybe_prefix_cid_number(Number, Name, Endpoint, Attribute, Call) ->
             maybe_prefix_cid_name(Prefixed, Name, Endpoint, Attribute, Call)
     end.
 
+-spec maybe_prefix_cid_name/5 :: (ne_binary(), ne_binary(), wh_json:json_object(), ne_binary(), whapps_call:call()) -> {api_binary(), api_binary()}.
 maybe_prefix_cid_name(Number, Name, Endpoint, Attribute, Call) ->
     case whapps_call:kvs_fetch(prepend_cid_name, Call) of
         undefined -> maybe_ensure_cid_valid(Number, Name, Endpoint, Attribute, Call);
@@ -103,6 +107,7 @@ maybe_prefix_cid_name(Number, Name, Endpoint, Attribute, Call) ->
             maybe_ensure_cid_valid(Number, Prefixed, Endpoint, Attribute, Call)
     end.
 
+-spec maybe_ensure_cid_valid/5 :: (ne_binary(), ne_binary(), wh_json:json_object(), ne_binary(), whapps_call:call()) -> {api_binary(), api_binary()}.
 maybe_ensure_cid_valid(Number, Name, _, <<"external">>, Call) ->
     case whapps_config:get_is_true(<<"callflow">>, <<"ensure_valid_caller_id">>, false) of
         true -> ensure_valid_caller_id(Number, Name, Call);
@@ -114,6 +119,7 @@ maybe_ensure_cid_valid(Number, Name, _, Attribute, _) ->
     lager:debug("~s caller id <~s> ~s", [Attribute, Name, Number]),
     {Number, Name}.
 
+-spec ensure_valid_caller_id/3 :: (ne_binary(), ne_binary(), whapps_call:call()) -> {api_binary(), api_binary()}.
 ensure_valid_caller_id(Number, Name, Call) ->
     case is_valid_caller_id(Number, Call) of
         true ->
@@ -123,6 +129,7 @@ ensure_valid_caller_id(Number, Name, Call) ->
             maybe_get_account_cid(Number, Name, Call)
     end.
 
+-spec maybe_get_account_cid/3 :: (ne_binary(), ne_binary(), whapps_call:call()) -> {api_binary(), api_binary()}.
 maybe_get_account_cid(Number, Name, Call) ->
     AccountDb = whapps_call:account_db(Call),
     AccountId = whapps_call:account_id(Call),
@@ -132,6 +139,7 @@ maybe_get_account_cid(Number, Name, Call) ->
             maybe_get_account_external_number(Number, Name, JObj, Call)
     end.
 
+-spec maybe_get_account_external_number/4 :: (ne_binary(), ne_binary(), wh_json:json_object(), whapps_call:call()) -> {api_binary(), api_binary()}.
 maybe_get_account_external_number(Number, Name, Account, Call) ->
     External = wh_json:get_ne_value([<<"caller_id">>, <<"external">>, <<"number">>], Account),
     case is_valid_caller_id(External, Call) of
@@ -142,6 +150,7 @@ maybe_get_account_external_number(Number, Name, Account, Call) ->
             maybe_get_account_default_number(Number, Name, Account, Call)
     end.
 
+-spec maybe_get_account_default_number/4 :: (ne_binary(), ne_binary(), wh_json:json_object(), whapps_call:call()) -> {api_binary(), api_binary()}.
 maybe_get_account_default_number(Number, Name, Account, Call) ->
     Default = wh_json:get_ne_value([<<"caller_id">>, <<"default">>, <<"number">>], Account),
     case is_valid_caller_id(Default, Call) of
@@ -152,6 +161,7 @@ maybe_get_account_default_number(Number, Name, Account, Call) ->
             maybe_get_assigned_number(Number, Name, Call)
     end.
 
+-spec maybe_get_assigned_number/3 :: (ne_binary(), ne_binary(), whapps_call:call()) -> {api_binary(), api_binary()}.
 maybe_get_assigned_number(_, Name, Call) ->
     AccountDb = whapps_call:account_db(Call),
     case couch_mgr:open_cache_doc(AccountDb, ?WNM_PHONE_NUMBER_DOC) of
@@ -170,6 +180,7 @@ maybe_get_assigned_number(_, Name, Call) ->
             maybe_get_assigned_numbers(Numbers, Name, Call)
     end.
 
+-spec maybe_get_assigned_numbers/3 :: ([] | [ne_binary(),...], ne_binary(), whapps_call:call()) -> {api_binary(), api_binary()}.
 maybe_get_assigned_numbers([], Name, _) ->
     Number = default_cid_number(),
     lager:debug("failed to find any in-service numbers, using default <~s> ~s", [Name, Number]),
@@ -180,6 +191,7 @@ maybe_get_assigned_numbers([Number|_], Name, _) ->
     lager:debug("first assigned number caller id <~s> ~s", [Name, Number]),
     {Number, Name}.
 
+-spec is_valid_caller_id/2 :: (api_binary(), whapps_call:call()) -> boolean().
 is_valid_caller_id(undefined, _) -> false;
 is_valid_caller_id(Number, Call) ->
     AccountId = whapps_call:account_id(Call),
@@ -206,6 +218,7 @@ callee_id(EndpointId, Call) when is_binary(EndpointId) ->
             maybe_normalize_callee(undefined, undefined, wh_json:new(), Call)
     end.
 
+-spec maybe_normalize_callee/4 :: (api_binary(), api_binary(), wh_json:json_object(), whapps_call:call()) -> {api_binary(), api_binary()}.
 maybe_normalize_callee(undefined, Name, Endpoint, Call) ->
     case whapps_call:request_user(Call) of
         undefined ->
@@ -223,6 +236,7 @@ maybe_normalize_callee(Number, Name, _, _) ->
     lager:debug("callee id <~s> ~s", [Name, Number]),
     {Number, Name}.
 
+-spec determine_callee_attribute/1 :: (whapps_call:call()) -> ne_binary().
 determine_callee_attribute(Call) ->
     case whapps_call:inception(Call) =:= <<"off-net">> of
         true -> <<"external">>;
@@ -258,6 +272,7 @@ moh_attributes(EndpointId, Attribute, Call) ->
             maybe_normalize_moh_attribute(Value, Attribute, Call)
     end.
 
+-spec maybe_normalize_moh_attribute/3 :: (api_binary(), ne_binary(), whapps_call:call()) -> api_binary().
 maybe_normalize_moh_attribute(undefined, _, _) ->
     undefined;
 maybe_normalize_moh_attribute(Value, <<"media_id">>, Call) ->
