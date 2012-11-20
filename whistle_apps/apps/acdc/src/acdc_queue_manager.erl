@@ -286,7 +286,17 @@ handle_cast({agent_available, JObj}, #state{strategy=Strategy
     AgentId = wh_json:get_value(<<"Agent-ID">>, JObj),
     lager:debug("adding agent ~s to strategy ~s", [AgentId, Strategy]),
     StrategyState1 = update_strategy_with_agent(Strategy, StrategyState, AgentId),
-    {next_state, connecting, State#state{strategy_state=StrategyState1}};
+    {noreply, State#state{strategy_state=StrategyState1}, hibernate};
+
+handle_cast({agent_ringing, JObj}, #state{strategy=Strategy
+                                          ,strategy_state=StrategyState
+                                         }=State) ->
+    AgentId = wh_json:get_value(<<"Agent-ID">>, JObj),
+    lager:debug("agent ~s ringing, maybe updating strategy ~s", [AgentId, Strategy]),
+
+    StrategyState1 = maybe_update_strategy(Strategy, StrategyState, AgentId),
+
+    {noreply, State#state{strategy_state=StrategyState1}, hibernate};
 
 handle_cast(_Msg, State) ->
     {noreply, State}.
@@ -405,6 +415,15 @@ update_strategy_with_agent('rr', AgentQueue, AgentId) ->
 update_strategy_with_agent('mi', _, _) -> 
    undefined.
 
+maybe_update_strategy('mi', StrategyState, _AgentId) -> StrategyState;
+maybe_update_strategy('rr', StrategyState, AgentId) ->
+    case queue:out(StrategyState) of
+        {{value, AgentId}, StrategyState1} ->
+            lager:debug("agent ~s was front of queue, moving", [AgentId]),
+            queue:in(AgentId, StrategyState1);
+        _ -> StrategyState
+    end.
+
 %% If A's idle time is greater, it should come before B
 -spec sort_agent/2 :: (wh_json:json_object(), wh_json:json_object()) -> boolean().
 sort_agent(A, B) ->
@@ -442,6 +461,3 @@ create_strategy_state('rr', AgentQ, AcctDb, QueueId) ->
     end;
 create_strategy_state('mi', _, _, _) ->
     undefined.
-
-serialize_strategy_state('rr', AgentQ) -> queue:to_list(AgentQ);
-serialize_strategy_state('mi', _) -> undefined.

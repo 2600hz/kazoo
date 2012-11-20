@@ -27,6 +27,10 @@ handle_call_event(JObj, Props) ->
 
 handle_member_call(JObj, Props, Delivery) ->
     true = wapi_acdc_queue:member_call_v(JObj),
+    lager:debug("member call ~s being sent to FSM ~p"
+                ,[wh_json:get_value(<<"Call-ID">>, JObj)
+                  ,props:get_value(fsm_pid, Props)
+                 ]),
     acdc_queue_fsm:member_call(props:get_value(fsm_pid, Props), JObj, Delivery).
 
 handle_member_resp(JObj, Props) ->
