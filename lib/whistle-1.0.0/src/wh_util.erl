@@ -21,6 +21,7 @@
 -include_lib("eunit/include/eunit.hrl").
 -endif.
 
+-export([log_stacktrace/0]).
 -export([format_account_id/1, format_account_id/2]).
 -export([current_account_balance/1]).
 -export([is_in_account_hierarchy/2, is_in_account_hierarchy/3]).
@@ -78,6 +79,19 @@
 -export([get_hostname/0]).
 
 -define(WHISTLE_VERSION_CACHE_KEY, {?MODULE, whistle_version}).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Standardized way of logging the stacktrace...
+%% @end
+%%--------------------------------------------------------------------
+-spec log_stacktrace/0 :: () -> 'ok'.
+log_stacktrace() ->
+    ST = erlang:get_stacktrace(),
+    lager:debug("stacktrace:"),
+    _ = [lager:debug("~p", [Line]) || Line <- ST],
+    ok.
 
 %%--------------------------------------------------------------------
 %% @public

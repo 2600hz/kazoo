@@ -28,7 +28,9 @@ handle(Data, Call) ->
     Strategy = wh_json:get_binary_value(<<"strategy">>, Data, <<"simultaneous">>),
     IgnoreEarlyMedia = cf_util:ignore_early_media(Endpoints),
     lager:debug("attempting ~b user devices with strategy ~s", [length(Endpoints), Strategy]),
-    case length(Endpoints) > 0 andalso whapps_call_command:b_bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Call) of
+    case length(Endpoints) > 0 
+        andalso whapps_call_command:b_bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Call) 
+    of
         false ->
             lager:notice("user ~s has no endpoints", [UserId]),
             cf_exe:continue(Call);

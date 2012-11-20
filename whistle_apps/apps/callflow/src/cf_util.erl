@@ -22,7 +22,6 @@
 -export([get_sip_realm/2, get_sip_realm/3]).
 -export([handle_doc_change/2]).
 -export([get_operator_callflow/1]).
--export([default_caller_id_number/0]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -352,8 +351,16 @@ lookup_callflow(Number, AccountId) ->
         true -> {error, invalid_number};
         false ->
             Db = wh_util:format_account_id(AccountId, encoded),
-            do_lookup_callflow(wh_util:to_binary(Number), Db)
+            maybe_get_cached(wh_util:to_binary(Number), Db)
+%%            do_lookup_callflow(wh_util:to_binary(Number), Db)
     end.
+
+maybe_get_cached(Number, Db) ->
+    case wh_cache:peek_local(?CALLFLOW_CACHE, {cf_flow, Number, Db}) of
+        {ok, Flow} -> {ok, Flow, false};
+        {error, not_found} ->
+            do_lookup_callflow(Number, Db)
+    end.    
 
 do_lookup_callflow(Number, Db) ->
     lager:debug("searching for callflow in ~s to satisfy '~s'", [Db, Number]),
@@ -550,10 +557,6 @@ handle_doc_change(JObj, _Prop) ->
 maybe_clear_flows([], _) -> ok;
 maybe_clear_flows(Ns, Db) ->
     [wh_cache:erase_local(?CALLFLOW_CACHE, {cf_flow, N, Db}) || N <- Ns].
-
--spec default_caller_id_number/0 :: () -> ne_binary().
-default_caller_id_number() ->
-    whapps_config:get(?CF_CONFIG_CAT, <<"default_caller_id_number">>, ?DEFAULT_CALLER_ID_NUMBER).
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
