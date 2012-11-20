@@ -395,12 +395,13 @@ ready({member_connect_win, JObj}, #state{agent_proc=Srv
             lager:debug("one of our counterparts won us a member: ~s", [CallId]),
             acdc_agent:monitor_call(Srv, Call),
 
-            {next_state, ringing, State#state{wrapup_timeout=WrapupTimer
-                                              ,member_call_id=CallId
-                                              ,member_call_start=erlang:now()
-                                              ,member_call_queue_id=QueueId
-                                              ,caller_exit_key=CallerExitKey
-                                             }}
+            {next_state, ringing, State#state{
+                                    wrapup_timeout=WrapupTimer
+                                    ,member_call_id=CallId
+                                    ,member_call_start=erlang:now()
+                                    ,member_call_queue_id=QueueId
+                                    ,caller_exit_key=CallerExitKey
+                                   }}
     end;
 
 ready({member_connect_req, JObj}, #state{agent_proc=Srv}=State) ->
@@ -411,10 +412,10 @@ ready({channel_hungup, CallId}, #state{agent_proc=Srv}=State) ->
     lager:debug("channel hungup for ~s", [CallId]),
     acdc_agent:channel_hungup(Srv, CallId),
     {next_state, ready, State};
-ready({channel_unbridged, CallId}, #state{agent_proc=Srv}=State) ->
+ready({channel_unbridged, CallId}, #state{agent_proc=_Srv}=State) ->
     lager:debug("channel unbridged: ~s", [CallId]),
     {next_state, ready, State};
-ready({leg_destroyed, CallId}, #state{agent_proc=Srv}=State) ->
+ready({leg_destroyed, CallId}, #state{agent_proc=_Srv}=State) ->
     lager:debug("channel unbridged: ~s", [CallId]),
     {next_state, ready, State};
 
