@@ -245,7 +245,26 @@ validate_account_schema(AccountId, Context) ->
 on_successful_validation(undefined, #cb_context{}=Context) ->
     set_private_properties(Context);
 on_successful_validation(AccountId, #cb_context{}=Context) ->
-    crossbar_doc:load_merge(AccountId, Context).
+    Context1 = crossbar_doc:load_merge(AccountId, Context),
+    maybe_import_enabled(Context1).
+
+maybe_import_enabled(#cb_context{auth_account_id=AuthId, account_id=AuthId, doc=JObj}=Context) ->
+    Context#cb_context{doc=wh_json:delete_key(<<"enabled">>, JObj)};
+maybe_import_enabled(#cb_context{auth_account_id=AuthId
+				 ,resp_status=success, doc=JObj}=Context) ->
+
+    case lists:member(AuthId, wh_json:get_value(<<"pvt_tree">>, JObj, [])) of
+	false ->
+	    Context#cb_context{doc=wh_json:delete_key(<<"enabled">>, JObj)};
+	true ->
+	    case wh_json:get_value(<<"enabled">>, JObj) of
+		undefined -> 
+		    Context;
+		Enabled ->
+		    Context#cb_context{doc=wh_json:set_value(<<"pvt_enabled">>, wh_util:is_true(Enabled)
+							     ,wh_json:delete_key(<<"enabled">>, JObj))}
+	    end
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -297,7 +316,18 @@ leak_pvt_allow_additions(#cb_context{doc=JObj, resp_data=RespJObj}=Context) ->
 -spec leak_pvt_superduper_admin/1 :: (#cb_context{}) -> #cb_context{}.
 leak_pvt_superduper_admin(#cb_context{doc=JObj, resp_data=RespJObj}=Context) ->
     SuperAdmin = wh_json:is_true(<<"pvt_superduper_admin">>, JObj, false),
-    leak_billing_mode(Context#cb_context{resp_data=wh_json:set_value(<<"superduper_admin">>, SuperAdmin, RespJObj)}).
+    leak_pvt_enabled(Context#cb_context{resp_data=wh_json:set_value(<<"superduper_admin">>, SuperAdmin, RespJObj)}).
+
+-spec leak_pvt_enabled/1 :: (#cb_context{}) -> #cb_context{}.
+leak_pvt_enabled(#cb_context{doc=JObj, resp_data=RespJObj}=Context) ->
+    case wh_json:get_value(<<"pvt_enabled">>, JObj) of
+	true ->
+	    leak_billing_mode(Context#cb_context{resp_data=wh_json:set_value(<<"enabled">>, true, RespJObj)});
+	false ->
+	    leak_billing_mode(Context#cb_context{resp_data=wh_json:set_value(<<"enabled">>, false, RespJObj)});
+	_ ->
+	    leak_billing_mode(Context)
+    end.
 
 -spec leak_billing_mode/1 :: (#cb_context{}) -> #cb_context{}.
 leak_billing_mode(#cb_context{auth_account_id=AuthAccountId, account_id=AccountId, resp_data=RespJObj}=Context) ->
@@ -375,16 +405,32 @@ set_private_properties(Context) ->
                ,fun add_pvt_vsn/1
                ,fun maybe_add_pvt_api_key/1
                ,fun maybe_add_pvt_tree/1
+	       ,fun add_pvt_enabled/1
               ],
     lists:foldl(fun(F, C) -> F(C) end, Context, PvtFuns).
 
 -spec add_pvt_type/1 :: (#cb_context{}) -> #cb_context{}.
 add_pvt_type(#cb_context{doc=JObj}=Context) ->
     Context#cb_context{doc=wh_json:set_value(<<"pvt_type">>, ?PVT_TYPE, JObj)}.
-
+ 
 -spec add_pvt_vsn/1 :: (#cb_context{}) -> #cb_context{}.
 add_pvt_vsn(#cb_context{doc=JObj}=Context) ->
     Context#cb_context{doc=wh_json:set_value(<<"pvt_vsn">>, <<"1">>, JObj)}.
+
+-spec add_pvt_enabled/1 :: (#cb_context{}) -> #cb_context{}.
+add_pvt_enabled(#cb_context{doc=JObj}=Context) ->
+    AccountId = lists:last(wh_json:get_value(<<"pvt_tree">>, JObj, [])),
+    AccountDb = wh_util:format_account_id(AccountId, encoded),
+    case couch_mgr:open_doc(AccountDb, AccountId) of
+	{error, _} -> Context;
+	{ok, Parent} -> 
+	    case wh_json:is_true(<<"pvt_enabled">>, Parent, true) of
+		true ->
+		    Context#cb_context{doc=wh_json:set_value(<<"pvt_enabled">>, true, JObj)};
+		false ->
+		    Context#cb_context{doc=wh_json:set_value(<<"pvt_enabled">>, false, JObj)}
+	    end
+    end.
 
 -spec maybe_add_pvt_api_key/1 :: (#cb_context{}) -> #cb_context{}.
 maybe_add_pvt_api_key(#cb_context{doc=JObj}=Context) ->
