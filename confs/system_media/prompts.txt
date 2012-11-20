@@ -77,3 +77,10 @@ disa-enter_pin: Please enter your system access pin, then press pound.
 disa-invalid_pin: Invalid pin number.
 disa-retries_exceeded: I'm sorry; there have been to many attempts with incorrect pins, goodbye.
 disa-invalid_extension: Unable to find extension, please try again.
+
+dnd-activated: Do not disturb is now enabled.  You will not receive calls,
+including call forwarding, while do not disturb is enabled.
+dnd-deactivated: Do not disturb is now disabled.  Receiving calls, including
+call forwarding, has resumed.
+dnd-not_available: Do not disturb is not supported from this phone.  Please
+contact your system administrator if you believe this is in error.
