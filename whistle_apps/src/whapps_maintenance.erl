@@ -372,16 +372,16 @@ migrate_limits(Account) ->
     {TT, IT} = clean_trunkstore_docs(AccountDb, TwowayTrunks, InboundTrunks),
     JObj = wh_json:from_list(
              props:filter_undefined(
-               [KV || {_, V}= KV <- [{<<"_id">>, <<"limits">>}
-                                     ,{<<"twoway_trunks">>, TT}
-                                     ,{<<"inbound_trunks">>, IT}
-                                     ,{<<"pvt_account_db">>, AccountDb}
-                                     ,{<<"pvt_account_id">>, wh_util:format_account_id(Account, raw)}
-                                     ,{<<"pvt_type">>, <<"limits">>}
-                                     ,{<<"pvt_created">>, TStamp}
-                                     ,{<<"pvt_modified">>, TStamp}
-                                     ,{<<"pvt_vsn">>, 1}
-                                    ]
+               [V || V <- [{<<"_id">>, <<"limits">>}
+                           ,{<<"twoway_trunks">>, TT}
+                           ,{<<"inbound_trunks">>, IT}
+                           ,{<<"pvt_account_db">>, AccountDb}
+                           ,{<<"pvt_account_id">>, wh_util:format_account_id(Account, raw)}
+                           ,{<<"pvt_type">>, <<"limits">>}
+                           ,{<<"pvt_created">>, TStamp}
+                           ,{<<"pvt_modified">>, TStamp}
+                           ,{<<"pvt_vsn">>, 1}
+                          ]
                ])),
     _ = couch_mgr:save_doc(AccountDb, JObj),
     ok.
@@ -392,9 +392,10 @@ migrate_limits(Account) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec clean_trunkstore_docs/3 :: (ne_binary(), integer(), integer()) -> {integer(), integer()}.
--spec clean_trunkstore_docs/4 :: (ne_binary(), wh_json:objects(), integer(), integer())
-                                 -> {integer(), integer()}.
+-spec clean_trunkstore_docs/3 :: (ne_binary(), integer(), integer()) ->
+                                         {integer(), integer()}.
+-spec clean_trunkstore_docs/4 :: (ne_binary(), wh_json:json_objects(), integer(), integer()) ->
+                                         {integer(), integer()}.
 
 clean_trunkstore_docs(AccountDb, TwowayTrunks, InboundTrunks) ->
     ViewOptions = [include_docs
@@ -420,6 +421,7 @@ clean_trunkstore_docs(AccountDb, [JObj|JObjs], Trunks, InboundTrunks) ->
                     OldTrunks when OldTrunks > Trunks -> OldTrunks;
                     _ -> Trunks
            end,
+
     NewInboundTrunks = case wh_json:get_integer_value([<<"account">>, <<"inbound_trunks">>], Doc, 0) of
                            OldInboundTrunks when OldInboundTrunks > InboundTrunks -> OldInboundTrunks;
                            _ -> Trunks
