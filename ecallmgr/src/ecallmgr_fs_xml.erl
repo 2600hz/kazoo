@@ -13,6 +13,8 @@
          ,route_resp_xml/1 ,authn_resp_xml/1, reverse_authn_resp_xml/1
          ,acl_xml/1, route_not_found/0, empty_response/0
          ,sip_profiles_xml/1, sofia_gateways_xml_to_json/1
+
+         ,escape/2
         ]).
 
 -include("ecallmgr.hrl").
@@ -248,7 +250,7 @@ get_channel_vars({<<"Custom-Channel-Vars">>, JObj}, Vars) ->
                                                                              ,wh_util:to_list(ecallmgr_util:media_path(V, extant, get(callid), wh_json:new()))
                                                                              ,"'"
                                                                             ]) | Acc];
-                            {_, Prefix} -> [list_to_binary([Prefix, "='", wh_util:to_list(V), "'"]) | Acc]
+                            {_, Prefix} -> [encode_fs_val(Prefix, V) | Acc]
                         end
                 end, Vars, wh_json:to_proplist(JObj));
 
@@ -299,11 +301,17 @@ get_channel_vars({<<"Forward-IP">>, V}, Vars) ->
 get_channel_vars({AMQPHeader, V}, Vars) when not is_list(V) ->
     case lists:keyfind(AMQPHeader, 1, ?SPECIAL_CHANNEL_VARS) of
         false -> Vars;
-        {_, Prefix} -> [list_to_binary([Prefix, "='", wh_util:to_list(V), "'"]) | Vars]
+        {_, Prefix} -> [encode_fs_val(Prefix, V) | Vars]
     end;
-
 get_channel_vars(_, Vars) ->
     Vars.
+
+encode_fs_val(Prefix, V) ->
+    list_to_binary([Prefix, "='", escape(V, $'), "'"]).
+escape(V, C) ->
+    iolist_to_binary([encode(A, C) || <<A>> <= wh_util:to_binary(V)]).
+encode(C, C) -> [$\\, C];
+encode(C, _) -> C.
 
 -spec get_channel_params/1 :: (wh_json:json_object()) -> wh_json:json_proplist().
 get_channel_params(JObj) ->
