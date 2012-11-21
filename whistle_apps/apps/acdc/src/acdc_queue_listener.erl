@@ -190,9 +190,9 @@ init([WorkerSup, MgrPid, AcctId, QueueId]) ->
                                                ,QueueId
                                               ),
 
-    gen_listener:cast(self(), {start_fsm, QueueJObj}),
-
     fetch_my_queue(),
+
+    gen_listener:cast(self(), {start_friends, QueueJObj}),
 
     {ok, #state{
        queue_id = QueueId
@@ -236,27 +236,26 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({start_fsm, QueueJObj}, #state{worker_sup=WorkerSup
-                                           ,mgr_pid=MgrPid
-                                          }=State) ->
-    lager:debug("starting FSM in supervisor ~p", [WorkerSup]),
-    {ok, FSMPid} = acdc_queue_worker_sup:start_fsm(WorkerSup, MgrPid, QueueJObj),
-    {noreply, State#state{fsm_pid=FSMPid}, hibernate};
 
-handle_cast({accept_member_calls}, #state{worker_sup=WorkerSup
-                                          ,fsm_pid=FSMPid
-                                          ,shared_pid=undefined
-                                          ,acct_id=AcctId
-                                          ,queue_id=QueueId
-                                         }=State) ->
+handle_cast({start_friends, QueueJObj}, #state{worker_sup=WorkerSup
+                                               ,mgr_pid=MgrPid
+                                               ,acct_id=AcctId
+                                               ,queue_id=QueueId
+                                              }=State) ->    
+    {ok, FSMPid} = acdc_queue_worker_sup:start_fsm(WorkerSup, MgrPid, QueueJObj),
+    lager:debug("started queue FSM: ~p", [FSMPid]),
+
     {ok, SharedPid} = acdc_queue_worker_sup:start_shared_queue(WorkerSup, FSMPid, AcctId, QueueId),
     lager:debug("started shared queue listener: ~p", [SharedPid]),
-    {noreply, State#state{shared_pid=SharedPid}, hibernate};
 
-handle_cast({queue_name, <<>>}, #state{my_q=undefined}=State) ->
+    {noreply, State#state{
+                fsm_pid = FSMPid
+                ,shared_pid = SharedPid
+               }};
+handle_cast({queue_name, <<>>}, State) ->
     fetch_my_queue(),
     {noreply, State};
-handle_cast({queue_name, Q}, State) ->
+handle_cast({queue_name, Q}, #state{my_q=undefined}=State) ->
     lager:debug("my queue: ~s", [Q]),
     {noreply, State#state{my_q=Q}, hibernate};
 
