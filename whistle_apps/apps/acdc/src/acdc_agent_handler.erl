@@ -117,9 +117,20 @@ handle_sync_resp(JObj, Props) ->
 
 -spec handle_call_event/2 :: (wh_json:json_object(), wh_proplist()) -> 'ok'.
 handle_call_event(JObj, Props) ->
-    true = wapi_call:event_v(JObj),
-    {Cat, Name} = wh_util:get_event_type(JObj),
-    acdc_agent_fsm:call_event(props:get_value(fsm_pid, Props), Cat, Name, JObj).    
+    FSM = props:get_value(fsm_pid, Props),
+    case wapi_call:event_v(JObj) of
+        true ->
+            {Cat, Name} = wh_util:get_event_type(JObj),
+            acdc_agent_fsm:call_event(FSM, Cat, Name, JObj);
+        false ->
+            true = wh_api:error_resp_v(JObj),
+
+            case wh_json:get_value([<<"Request">>, <<"Event-Name">>], JObj) of
+                <<"originate_req">> ->
+                    acdc_agent_fsm:originate_failed(FSM, JObj);
+                _ -> ok
+            end
+    end.
 
 -spec handle_member_message/2 :: (wh_json:json_object(), wh_proplist()) -> 'ok'.
 -spec handle_member_message/3 :: (wh_json:json_object(), wh_proplist(), ne_binary()) -> 'ok'.

@@ -454,27 +454,14 @@ ringing({originate_ready, JObj}, #state{agent_proc=Srv}=State) ->
     acdc_agent:originate_execute(Srv, JObj),
     {next_state, ringing, State#state{agent_call_id=CallId}};
 
-ringing({originate_failed, timeout}, #state{agent_proc=Srv
-                                            ,acct_id=AcctId
-                                            ,agent_id=AgentId
-                                            ,member_call_queue_id=QueueId
-                                            ,member_call_id=CallId
-                                           }=State) ->
-    lager:debug("originate timed out, clearing call"),
-    acdc_agent:member_connect_retry(Srv, CallId),
-
-    acdc_stats:call_missed(AcctId, QueueId, AgentId, CallId),
-    acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_GREEN),
-    {next_state, ready, clear_call(State)};
-    
-ringing({originate_failed, JObj}, #state{agent_proc=Srv
+ringing({originate_failed, _E}, #state{agent_proc=Srv
                                          ,acct_id=AcctId
                                          ,agent_id=AgentId
                                          ,member_call_queue_id=QueueId
                                          ,member_call_id=CallId
                                         }=State) ->
-    lager:debug("failed to prepare originate to the agent"),
-    acdc_agent:member_connect_retry(Srv, JObj),
+    lager:debug("failed to execute originate to the agent: ~p", [_E]),
+    acdc_agent:member_connect_retry(Srv, CallId),
 
     acdc_stats:call_missed(AcctId, QueueId, AgentId, CallId),
 
