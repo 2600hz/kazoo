@@ -472,12 +472,12 @@ handle_cast({monitor_call, Call}, State) ->
     lager:debug("monitoring call ~s", [whapps_call:call_id(Call)]),
     {noreply, State#state{call=Call}, hibernate};
 
-handle_cast({originate_execute, JObj}, State) ->
+handle_cast({originate_execute, JObj}, #state{my_q=Q}=State) ->
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
     %% acdc_util:bind_to_call_events(CallId),
     lager:debug("execute the originate for ~s", [CallId]),
 
-    send_originate_execute(JObj),
+    send_originate_execute(JObj, Q),
     {noreply, State};
 
 handle_cast({join_agent, ACallId}, #state{call=Call
@@ -632,11 +632,11 @@ send_member_connect_accepted(Queue, CallId, AcctId, AgentId, MyId) ->
                                   ]),
     wapi_acdc_queue:publish_member_connect_accepted(Queue, Resp).
 
--spec send_originate_execute/1 :: (wh_json:json_object()) -> 'ok'.
-send_originate_execute(JObj) ->
+-spec send_originate_execute/2 :: (wh_json:json_object(), ne_binary()) -> 'ok'.
+send_originate_execute(JObj, Q) ->
     Prop = [{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
             ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
-            | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+            | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
            ],
     wapi_dialplan:publish_originate_execute(wh_json:get_value(<<"Server-ID">>, JObj), Prop).
 
@@ -757,7 +757,7 @@ update_my_queues_of_change(AcctId, AgentId, Qs) ->
              ,{<<"Change">>, <<"ringing">>}
              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
-    _ = [wapi_acdc_queue:publish_agent_change([{<<"Queue-Id">>, QueueId} | Props])
+    _ = [wapi_acdc_queue:publish_agent_change([{<<"Queue-ID">>, QueueId} | Props])
          || QueueId <- Qs
         ],
     ok.
