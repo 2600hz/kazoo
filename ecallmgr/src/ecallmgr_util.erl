@@ -273,9 +273,9 @@ get_fs_kv(<<"Hold-Media">>, Media, UUID) ->
 get_fs_kv(Key, Val, _) ->
     case lists:keyfind(Key, 1, ?SPECIAL_CHANNEL_VARS) of
         false ->
-            list_to_binary([?CHANNEL_VAR_PREFIX, wh_util:to_list(Key), "='", wh_util:to_list(Val), "'"]);
+            list_to_binary([?CHANNEL_VAR_PREFIX, wh_util:to_list(Key), "=", wh_util:to_list(Val)]);
         {_, Prefix} ->
-            list_to_binary([Prefix, "='", wh_util:to_list(Val), "'"])
+            list_to_binary([Prefix, "=", wh_util:to_list(Val), ""])
     end.
 
 %%--------------------------------------------------------------------
