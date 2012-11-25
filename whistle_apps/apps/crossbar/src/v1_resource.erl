@@ -119,53 +119,52 @@ allowed_methods(Req0, #cb_context{allowed_methods=Methods}=Context) ->
             %% HTTP method with the tunneled version
             case v1_util:get_req_data(Context, Req1) of
                 {halt, Context1, Req2} ->
-                    E = wh_json:set_value([<<"data">>, <<"parse">>], <<"failed to parse request body">>, wh_json:new()),
-                    v1_util:halt(Req2, crossbar_util:response_invalid_data(E, Context1));
+                    v1_util:halt(Req2, cb_context:add_system_error(parse_error, Context1));
                 {Context1, Req2} ->
-                    check_preflight(Req2, Context1#cb_context{req_nouns=Nouns})
+                    determine_http_verb(Req2, Context1#cb_context{req_nouns=Nouns})
             end;
         [] ->
             lager:debug("no path tokens: ~p", [Methods]),
             {Methods, Req1, Context#cb_context{allow_methods=Methods}}
     end.
 
--spec check_preflight/2 :: (#http_req{}, #cb_context{}) -> {http_methods(), #http_req{}, #cb_context{}}.
-check_preflight(Req0, #cb_context{allowed_methods=Methods, req_nouns=[{Mod, Params}|_]}=Context) ->
+-spec determine_http_verb/2 :: (#http_req{}, #cb_context{}) -> {http_methods(), #http_req{}, #cb_context{}}.
+determine_http_verb(Req0, Context) ->
+    {Method, Req1} = cowboy_http_req:method(Req0),
+    find_allowed_methods(Req1, Context#cb_context{req_verb=v1_util:get_http_verb(Method, Context)}).
+
+find_allowed_methods(Req0, #cb_context{allowed_methods=Methods, req_verb=Verb, req_nouns=[{Mod, Params}|_]}=Context) ->
     Responses = crossbar_bindings:map(<<"v1_resource.allowed_methods.", Mod/binary>>, Params),
     {Method, Req1} = cowboy_http_req:method(Req0),
-    Allowed = case v1_util:get_http_verb(Method, Context) of
-                <<"options">> = Verb -> ['OPTIONS'];
-                Verb -> v1_util:allow_methods(Responses, Methods, Verb, Method)
-            end,
+    AllowMethods = v1_util:allow_methods(Responses, Methods, Verb, Method),
+    maybe_add_cors_headers(Req1, Context#cb_context{allow_methods=AllowMethods}).
 
-    case Allowed of
-        [] -> {Methods, Req1, Context#cb_context{req_nouns=[{<<"404">>, []}]}};
-        Methods1 ->
-            case v1_util:is_cors_preflight(Req1) of
-                {true, Req2} ->
-                    lager:debug("allowing OPTIONS request for CORS preflight"),
-                    {ok, Req3} = v1_util:add_cors_headers(Req2, Context),
-                    {['OPTIONS'], Req3, Context#cb_context{allow_methods=Methods1
-                                                           ,req_verb=Verb
-                                                          }};
-                {false, Req2} ->
-                    lager:debug("not CORS preflight"),
-                    {ok, Req3} = v1_util:add_cors_headers(Req2, Context),
-                    VerbAtom = wh_util:to_atom(wh_util:to_upper_binary(Verb)),
-                    case lists:member(VerbAtom, Methods1) of
-                        true ->
-                            {Methods1, Req3, Context#cb_context{allow_methods=Methods1
-                                                                ,req_verb=Verb
-                                                               }};
-                        false ->
-                            Context1 = crossbar_util:response(error, <<"method not allowed">>, 405, Context),
-                            {Content, Req3} = v1_util:create_resp_content(Req3, Context1),
-                            {ok, Req4} = cowboy_http_req:set_resp_body(Content, Req3),
-                            {Methods1, Req4, Context1#cb_context{allow_methods=Methods1
-                                                                 ,req_verb=Verb
-                                                                }}
-                    end
-            end
+-spec maybe_add_cors_headers/2 :: (#http_req{}, #cb_context{}) -> {http_methods(), #http_req{}, #cb_context{}}.
+maybe_add_cors_headers(Req0, Context) ->
+    case v1_util:is_cors_request(Req0) of
+        {true, Req1} ->
+            {ok, Req2} = v1_util:add_cors_headers(Req1, Context),
+            check_preflight(Req2, Context);
+         {false, Req1} ->
+            maybe_allow_method(Req1, Context)
+    end.
+
+-spec check_preflight/2 :: (#http_req{}, #cb_context{}) -> {http_methods(), #http_req{}, #cb_context{}}.
+check_preflight(Req0, #cb_context{req_verb = <<"options">>}=Context) ->
+    lager:debug("allowing OPTIONS request for CORS preflight"),
+    {['OPTIONS'], Req0, Context};
+check_preflight(Req0, Context) ->
+    maybe_allow_method(Req0, Context).
+
+maybe_allow_method(Req0, #cb_context{allow_methods=[]}=Context) ->
+    v1_util:halt(Req0, cb_context:add_system_error(not_found, Context));
+maybe_allow_method(Req0, #cb_context{allow_methods=Methods, req_verb=Verb}=Context) ->
+    VerbAtom = wh_util:to_atom(wh_util:to_upper_binary(Verb)),
+    case lists:member(VerbAtom, Methods) of
+        true ->
+            {Methods, Req0, Context};
+        false ->
+            v1_util:halt(Req0, cb_context:add_system_error(invalid_method, Context))
     end.
 
 malformed_request(Req, #cb_context{req_json={malformed, _}}=Context) ->
@@ -193,8 +192,11 @@ is_authorized(Req, Context) ->
 
 -spec forbidden/2 :: (#http_req{}, #cb_context{}) -> {boolean(), #http_req{}, #cb_context{}}.
 forbidden(Req0, Context0) ->
-    {IsPermitted, Req1, Context1} = v1_util:is_permitted(Req0, Context0),
-    {not IsPermitted, Req1, Context1}.
+    case v1_util:is_permitted(Req0, Context0) of
+        {halt, _, _}=Reply -> Reply;
+        {IsPermitted, Req1, Context1} ->
+            {not IsPermitted, Req1, Context1}
+    end.
 
 -spec valid_content_headers/2 :: (#http_req{}, #cb_context{}) -> {'true', #http_req{}, #cb_context{}}.
 valid_content_headers(Req, Context) ->

@@ -67,11 +67,17 @@ is_cors_request(Req0) ->
                 {undefined, Req2} ->
                     case cowboy_http_req:header(<<"Access-Control-Request-Headers">>, Req2) of
                         {undefined, Req3} -> {false, Req3};
-                        {_, Req3} -> {true, Req3}
+                        {_H, Req3} -> 
+                            lager:debug("request has an Access-Control-Request-Headers header: ~s", [_H]),
+                            {true, Req3}
                     end;
-                {_M, Req2} -> {true, Req2}
+                {_M, Req2} -> 
+                    lager:debug("request has an Access-Control-Request-Method header: ~s", [_M]),
+                    {true, Req2}
             end;
-        {_O, Req1} -> {true, Req1}
+        {_O, Req1} -> 
+            lager:debug("request has an Origin header: ~s", [_O]),
+            {true, Req1}
     end.
 
 %%--------------------------------------------------------------------
@@ -82,10 +88,19 @@ is_cors_request(Req0) ->
 -spec add_cors_headers/2 :: (#http_req{}, #cb_context{}) -> {'ok', #http_req{}}.
 add_cors_headers(Req0, #cb_context{allow_methods=Ms}=Context) ->
     {ReqM, Req1} = cowboy_http_req:header(<<"Access-Control-Request-Method">>, Req0),
-
+    Methods = [wh_util:to_binary(M) 
+               || M <- [<<"OPTIONS">> | Ms]
+                      ,(not wh_util:is_empty(M))
+            ],
+    Allow = case wh_util:is_empty(ReqM)
+                orelse lists:member(ReqM, Methods) 
+            of
+                false -> [wh_util:to_binary(ReqM)|Methods];
+                true -> Methods
+            end,
     lists:foldl(fun({H, V}, {ok, ReqAcc}) ->
                         cowboy_http_req:set_resp_header(H, V, ReqAcc)
-                end, {ok, Req1}, get_cors_headers(Context#cb_context{allow_methods=[ReqM|Ms]})).
+                end, {ok, Req1}, get_cors_headers(Context#cb_context{allow_methods=Allow})).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -93,11 +108,9 @@ add_cors_headers(Req0, #cb_context{allow_methods=Ms}=Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec get_cors_headers/1 :: (#cb_context{}) -> [{ne_binary(), ne_binary()},...].
-get_cors_headers(#cb_context{allow_methods=Allowed}) ->
-    Methods = wh_util:join_binary([wh_util:to_binary(A) || A <- Allowed, A =/= undefined], <<", ">>),
-
+get_cors_headers(#cb_context{allow_methods=Allow}) ->
     [{<<"Access-Control-Allow-Origin">>, <<"*">>}
-     ,{<<"Access-Control-Allow-Methods">>, Methods}
+     ,{<<"Access-Control-Allow-Methods">>, wh_util:join_binary(Allow, <<", ">>)}
      ,{<<"Access-Control-Allow-Headers">>, <<"Content-Type, Depth, User-Agent, X-File-Size, X-Requested-With, If-Modified-Since, X-File-Name, Cache-Control, X-Auth-Token, If-Match">>}
      ,{<<"Access-Control-Expose-Headers">>, <<"Content-Type, X-Auth-Token, X-Request-ID, Location, Etag, ETag">>}
      ,{<<"Access-Control-Max-Age">>, wh_util:to_binary(?SECONDS_IN_DAY)}
@@ -436,10 +449,7 @@ is_authentic(Req0, Context0) ->
     case crossbar_bindings:succeeded(crossbar_bindings:map(Event, Context1)) of
         [] ->
             lager:debug("failed to authenticate"),
-            Context2 = crossbar_util:response(error, <<"unauthorized">>, 401, Context1),
-            {Content, Req1} = create_resp_content(Req1, Context2),
-            {ok, Req2} = cowboy_http_req:set_resp_body(Content, Req1),
-            {{false, <<>>}, Req2, Context2};
+            ?MODULE:halt(Req0, cb_context:add_system_error(invalid_crentials, Context0));
         [true|_] ->
             lager:debug("is_authentic: true"),
             {true, Req1, Context1};
@@ -484,19 +494,13 @@ is_permitted(Req, #cb_context{req_verb = <<"options">>}=Context) ->
     %% all all OPTIONS, they are harmless (I hope) and required for CORS preflight
     {true, Req, Context};
 is_permitted(Req0, #cb_context{req_nouns=[{<<"404">>, []}]}=Context0) ->
-    Context1 = crossbar_util:response(error, <<"not found">>, 404, Context0),
-    {Content, Req0} = create_resp_content(Req0, Context1),
-    {ok, Req1} = cowboy_http_req:set_resp_body(Content, Req0),
-    {false, Req1, Context1};
+    ?MODULE:halt(Req0, cb_context:add_system_error(not_found, Context0));
 is_permitted(Req0, Context0) ->
     Event = <<"v1_resource.authorize">>,
     case crossbar_bindings:succeeded(crossbar_bindings:map(Event, Context0)) of
         [] ->
             lager:debug("no on authz the request"),
-            Context1 = crossbar_util:response(error, <<"forbidden">>, 403, Context0),
-            {Content, Req0} = create_resp_content(Req0, Context1),
-            {ok, Req1} = cowboy_http_req:set_resp_body(Content, Req0),
-            {false, Req1, Context1};
+            ?MODULE:halt(Req0, cb_context:add_system_error(forbidden, Context0));
         [true|_] ->
             lager:debug("request was authz"),
             {true, Req0, Context0};

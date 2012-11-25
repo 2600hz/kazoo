@@ -405,7 +405,7 @@ process_cmd(Node, JObj, Acc0) ->
 process_cmd(Node, ApiCmd0, ApiArg, Acc) ->
     process_cmd(Node, ApiCmd0, ApiArg, Acc, binary).
 process_cmd(Node, ApiCmd0, ApiArg, Acc, ArgFormat) ->
-    ApiCmd = wh_util:to_atom(wh_util:to_binary(ApiCmd0), ?FS_CMD_SAFELIST),
+    ApiCmd = wh_util:to_atom(ApiCmd0, ?FS_CMD_SAFELIST),
     case freeswitch:bgapi(Node, ApiCmd, format_args(ArgFormat, ApiArg)) of
         {error, badarg} when ArgFormat =:= binary ->
             process_cmd(Node, ApiCmd0, ApiArg, Acc, list);

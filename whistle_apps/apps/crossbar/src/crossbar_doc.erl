@@ -359,30 +359,30 @@ save_attachment(DocId, AName, Contents, #cb_context{db_name=Db}=Context, Options
 -spec delete/1 :: (cb_context:context()) -> cb_context:context().
 -spec delete/2 :: (cb_context:context(), 'permanent') -> cb_context:context().
 
-delete(#cb_context{db_name=Db, doc=JObj}=Context) ->
-    JObj0 = update_pvt_parameters(JObj, Context),
-    JObj1 = wh_json:set_value(<<"pvt_deleted">>, true, JObj0),
-    case couch_mgr:save_doc(Db, JObj1) of
-        {error, not_found} -> handle_couch_mgr_success(wh_json:new(), Context);
+delete(#cb_context{db_name=Db, doc=JObj0}=Context) ->
+    JObj1 = update_pvt_parameters(JObj0, Context),
+    JObj2 = wh_json:set_value(<<"pvt_deleted">>, true, JObj1),
+    case couch_mgr:save_doc(Db, JObj2) of
+        {error, not_found} -> handle_couch_mgr_success(JObj0, Context);
         {error, Error} -> 
-            DocId = wh_json:get_value(<<"_id">>, JObj1),
+            DocId = wh_json:get_value(<<"_id">>, JObj2),
             handle_couch_mgr_errors(Error, DocId, Context);
         {ok, _} ->
-            lager:debug("deleted ~s from ~s", [wh_json:get_value(<<"_id">>, JObj), Db]),
-            _ = send_document_change(deleted, Db, JObj1),
-            handle_couch_mgr_success(wh_json:new(), Context)
+            lager:debug("deleted ~s from ~s", [wh_json:get_value(<<"_id">>, JObj2), Db]),
+            _ = send_document_change(deleted, Db, JObj2),
+            handle_couch_mgr_success(JObj2, Context)
     end.
 
-delete(#cb_context{db_name=Db, doc=JObj}=Context, permanent) ->
-    case couch_mgr:del_doc(Db, JObj) of
-        {error, not_found} -> handle_couch_mgr_success(wh_json:new(), Context);
+delete(#cb_context{db_name=Db, doc=JObj0}=Context, permanent) ->
+    case couch_mgr:del_doc(Db, JObj0) of
+        {error, not_found} -> handle_couch_mgr_success(JObj0, Context);
         {error, Error} -> 
-            DocId = wh_json:get_value(<<"_id">>, JObj),
+            DocId = wh_json:get_value(<<"_id">>, JObj0),
             handle_couch_mgr_errors(Error, DocId, Context);
         {ok, _} ->
-            lager:debug("permanently deleted ~s from ~s", [wh_json:get_value(<<"_id">>, JObj), Db]),
-            _ = send_document_change(deleted, Db, wh_json:set_value(<<"pvt_deleted">>, true, JObj)),
-            handle_couch_mgr_success(wh_json:new(), Context)
+            lager:debug("permanently deleted ~s from ~s", [wh_json:get_value(<<"_id">>, JObj0), Db]),
+            _ = send_document_change(deleted, Db, wh_json:set_value(<<"pvt_deleted">>, true, JObj0)),
+            handle_couch_mgr_success(JObj0, Context)
     end.
 
 %%--------------------------------------------------------------------
@@ -469,7 +469,6 @@ handle_couch_mgr_success(Thing, Context) ->
                        ,resp_data=Thing
                        ,resp_etag=undefined
                       }.
-
 
 %%--------------------------------------------------------------------
 %% @private

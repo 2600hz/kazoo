@@ -214,9 +214,10 @@
 
 -define(DEFAULT_RESPONSE_CODE, <<"488">>).
 
--define(FS_CMD_SAFELIST, [<<"load">>, <<"set">>, <<"uuid_dump">>, <<"uuid_record">>
-                              ,<<"uuid_kill">>, <<"uuid_getvar">>, <<"show">>
-                              ,<<"uuid_exists">>
+-define(FS_CMD_SAFELIST, ["load", "set", "uuid_dump", "uuid_record"
+                              ,"uuid_kill", "uuid_getvar", "show"
+                              ,"uuid_exists", "reload", "reloadxml"
+                              ,"reloadacl"
                          ]).
 
 -define(FS_CONFERNCE_ATTRS, [{'name', <<"Conference-ID">>}
