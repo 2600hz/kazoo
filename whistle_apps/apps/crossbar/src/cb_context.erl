@@ -183,7 +183,7 @@ add_system_error(datastore_unreachable, Context) ->
 add_system_error(datastore_fault, Context) ->
     crossbar_util:response_db_fatal(Context);
 add_system_error(empty_tree_accounts_exist, Context) ->
-    crossbar_util:response(error, <<"unable to create account tree">>, 400, Context).
+    crossbar_util:response(error, <<"unable to create account tree">>, 400, Context);
 
 add_system_error(parse_error, Context) ->
     crossbar_util:response(error, <<"failed to parse request body">>, 400, Context);
