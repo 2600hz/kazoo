@@ -109,9 +109,7 @@ response(#cb_context{resp_error_code=Code, resp_error_msg=Msg, resp_data=DataJOb
                end,
     ErrorData = case {wh_util:is_empty(ValidationJObj), wh_util:is_empty(DataJObj)} of
                     {false, _} -> ValidationJObj;
-                    {_, false} -> DataJObj;
-                    {true, true} ->
-                        <<(wh_util:to_binary(ErrorCode))/binary, ": ", ErrorMsg/binary>>
+                    {_, _} -> DataJObj
                 end,
     {error, {ErrorCode, ErrorMsg, ErrorData}}.
 
@@ -187,6 +185,12 @@ add_system_error(datastore_fault, Context) ->
 add_system_error(empty_tree_accounts_exist, Context) ->
     crossbar_util:response(error, <<"unable to create account tree">>, 400, Context).
 
+add_system_error(parse_error, Context) ->
+    crossbar_util:response(error, <<"failed to parse request body">>, 400, Context);
+add_system_error(invalid_method, Context) ->
+    crossbar_util:response(error, <<"method not allowed">>, 405, Context);
+add_system_error(not_found, Context) ->
+    crossbar_util:response(error, <<"not found">>, 404, Context).
 
 add_system_error(bad_identifier, Props, Context) ->
     Identifier = props:get_value(details, Props),

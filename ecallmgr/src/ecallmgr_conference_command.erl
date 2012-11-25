@@ -16,7 +16,7 @@
 exec(Focus, ConferenceId, JObj) ->
     App = wh_json:get_value(<<"Application-Name">>, JObj),
     case get_conf_command(App, Focus, ConferenceId, JObj) of
-        {'error', Msg}=E ->
+        {'error', _Msg}=E ->
             send_response(App, E, wh_json:get_value(<<"Server-ID">>, JObj), JObj);
         {noop, Conference} ->
             send_response(App, {noop, Conference}, wh_json:get_value(<<"Server-ID">>, JObj), JObj);
@@ -90,12 +90,11 @@ get_conf_command(<<"play">>, _Focus, ConferenceId, JObj) ->
                    end,
             {<<"play">>, Args}
     end;
-get_conf_command(<<"record">>, _Focus, ConferenceId, JObj) ->
+get_conf_command(<<"record">>, _Focus, _ConferenceId, JObj) ->
     case wapi_conference:record_v(JObj) of
         false ->
             {'error', <<"conference record failed to execute as JObj did not validate.">>};
         true ->
-            UUID = wh_json:get_binary_value(<<"Call-ID">>, JObj, ConferenceId),
             MediaName = ecallmgr_util:recording_filename(wh_json:get_binary_value(<<"Media-Name">>, JObj)),
             {<<"record">>, MediaName}
     end;
