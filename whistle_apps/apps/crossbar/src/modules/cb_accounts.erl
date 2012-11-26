@@ -23,7 +23,7 @@
 
 -export([is_unique_realm/2]).
 
--include_lib("crossbar/include/crossbar.hrl").
+-include("include/crossbar.hrl").
 
 -define(SERVER, ?MODULE).
 
@@ -419,17 +419,19 @@ add_pvt_vsn(#cb_context{doc=JObj}=Context) ->
 
 -spec add_pvt_enabled/1 :: (cb_context:context()) -> cb_context:context().
 add_pvt_enabled(#cb_context{doc=JObj}=Context) ->
-    AccountId = lists:last(wh_json:get_value(<<"pvt_tree">>, JObj, [])),
-    AccountDb = wh_util:format_account_id(AccountId, encoded),
-    case couch_mgr:open_doc(AccountDb, AccountId) of
-	{error, _} -> Context;
-	{ok, Parent} -> 
-	    case wh_json:is_true(<<"pvt_enabled">>, Parent, true) of
-		true ->
-		    Context#cb_context{doc=wh_json:set_value(<<"pvt_enabled">>, true, JObj)};
-		false ->
-		    Context#cb_context{doc=wh_json:set_value(<<"pvt_enabled">>, false, JObj)}
-	    end
+    [ParentId | _] = lists:reverse(wh_json:get_value(<<"pvt_tree">>, JObj, [])),
+    ParentDb = wh_util:format_account_id(ParentId, encoded),
+    case (not wh_util:is_empty(ParentId))
+        andalso couch_mgr:open_doc(ParentDb, ParentId) 
+    of
+        {ok, Parent} -> 
+            case wh_json:is_true(<<"pvt_enabled">>, Parent, true) of
+                true ->
+                    Context#cb_context{doc=wh_json:set_value(<<"pvt_enabled">>, true, JObj)};
+                false ->
+                    Context#cb_context{doc=wh_json:set_value(<<"pvt_enabled">>, false, JObj)}
+            end;
+        _Else -> Context
     end.
 
 -spec maybe_add_pvt_api_key/1 :: (cb_context:context()) -> cb_context:context().
