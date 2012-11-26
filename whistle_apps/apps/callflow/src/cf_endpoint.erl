@@ -639,7 +639,7 @@ generate_ccvs(Endpoint, Call, CallFwd) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_format_caller_id_number/3 :: (wh_json:json_object(), ne_binary(), whapps_call:call()) -> ne_binary().
-maybe_format_caller_id_number(Endpoint, CIDNum, Call) ->
+maybe_format_caller_id_number(_Endpoint, CIDNum, _Call) ->
 %% TODO: MOVE FROM CF_ATTRIBUTES
     CIDNum.
 %%    case cf_attributes:caller_id_attributes(Endpoint, <<"format">>, Call) of
