@@ -1,0 +1,21 @@
+Completely brand new DB setup.
+
+Start whistle_apps:
+
+./start-dev.sh
+
+Auto-created databases:
+accounts
+anonymous_cdrs
+faxes
+global_provisioner
+offnet
+services
+signups
+sip_auth
+system_config
+system_schemas
+token_auth
+
+Auto-started whapps:
+[registrar,stepswitch,sysconf,media_mgr,callflow,notify,cdr,crossbar,trunkstore,conference,fax,hangups]
