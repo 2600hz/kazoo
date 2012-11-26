@@ -222,20 +222,22 @@ handle_presence_probe(JObj, _Props) ->
     true = wapi_notifications:presence_probe_v(JObj),
 
     FromRealm = wh_json:get_value(<<"From-Realm">>, JObj),
-    {ok, AcctDb} = whapps_util:get_account_by_realm(FromRealm),
-
-    maybe_respond_to_presence_probe(JObj, AcctDb).
+    case whapps_util:get_account_by_realm(FromRealm) of
+        {ok, AcctDb} -> maybe_respond_to_presence_probe(JObj, AcctDb);
+        _ -> ok
+    end.
 
 maybe_respond_to_presence_probe(JObj, AcctDb) ->
     case wh_json:get_value(<<"To-User">>, JObj) of
-        undefined ->
-            lager:debug("no to-user found on json: ~p", [JObj]);
+        undefined -> lager:debug("no to-user found on json: ~p", [JObj]);
         AgentId ->
-            {ok, Doc} = couch_mgr:open_doc(AcctDb, AgentId),
-            AcctId = wh_util:format_account_id(AcctDb, raw),
-            lager:debug("maybe looking for probe for agent ~s(~s)", [AgentId, AcctId]),
-
-            maybe_update_probe(JObj, AcctId, AgentId, wh_json:get_value(<<"pvt_type">>, Doc))
+            case couch_mgr:open_doc(AcctDb, AgentId) of
+                {ok, Doc} ->
+                    AcctId = wh_util:format_account_id(AcctDb, raw),
+                    lager:debug("maybe looking for probe for agent ~s(~s)", [AgentId, AcctId]),
+                    maybe_update_probe(JObj, AcctId, AgentId, wh_json:get_value(<<"pvt_type">>, Doc));
+                _ -> ok
+            end
     end.
 
 maybe_update_probe(JObj, AcctId, AgentId, <<"user">>) ->
