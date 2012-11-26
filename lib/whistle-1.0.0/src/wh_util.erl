@@ -414,20 +414,20 @@ get_xml_value(Paths, Xml) ->
         [#xmlText{value=Value}] ->
             wh_util:to_binary(Value);
         [#xmlText{}|_]=Values ->
-            [wh_util:to_binary(Value)
-             || #xmlText{value=Value} <- Values
-            ];
+            iolist_to_binary([wh_util:to_binary(Value)
+                              || #xmlText{value=Value} <- Values
+                             ]);
         [#xmlAttribute{value=Value}] ->
             wh_util:to_binary(Value);
         [#xmlAttribute{}|_]=Values ->
-            [wh_util:to_binary(Value)
-             || #xmlText{value=Value} <- Values
-            ];
-        _Else -> 
+            iolist_to_binary([wh_util:to_binary(Value)
+                              || #xmlText{value=Value} <- Values
+                             ]);
+        _Else ->
             undefined
     catch
-        E:R ->
-            lager:debug("~s getting value of '~s': ~p", [E, Path, R]),
+        _E:_R ->
+            lager:debug("~s getting value of '~s': ~p", [_E, Path, _R]),
             undefined
     end.
 
