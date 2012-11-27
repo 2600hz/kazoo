@@ -1,4 +1,4 @@
-Completely brand new DB setup.
+Completely brand new setup, no DBs, nothing.
 
 ** Start whistle_apps:
 
@@ -49,3 +49,31 @@ FreeSWITCH server.
     "load": "mod_sofia"
 }]
 
+** Alias the SUP command
+
+alias sup="/path/to/kazoo/utils/sup/sup"
+
+You may want to put this in your .bash_profile or other appropriate place
+
+** Init all the known DBs, views, settings, etc
+
+#> sup whapps_maintenance refresh
+Refreshes system DBs
+
+#> sup whapps_maintenance migrate
+Migrates any old documents/dbs to the latest versions needed (run this anytime you update Kazoo)
+
+** Create First Crossbar Account
+
+#> sup crossbar_maintenance create_account <ACCOUNT NAME> <SIP REALM> <USERNAME> <PASSWORD>
+
+If this is the first account on the system, you should see output similar to:
+
+created new account '527e656299197bae67d1e8f99bfad075' in db 'account%2F52%2F7e%2F656299197bae67d1e8f99bfad075'
+created new account admin user '5def7c9107240e615ea2a8164598bffa'
+promoted account '527e656299197bae67d1e8f99bfad075', this account now has permission to change system settings
+allowing account '527e656299197bae67d1e8f99bfad075' to added numbers
+
+** Try logging into your Kazoo GUI
+
+You may need to enable apps in your toolbar
