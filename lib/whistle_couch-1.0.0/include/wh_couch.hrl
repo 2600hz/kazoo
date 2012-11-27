@@ -49,5 +49,7 @@
 
 -define(WH_COUCH_CACHE, whistle_couch_cache).
 
+-define(FIXTURES_FOLDER, <<"fixtures">>).
+
 -define(WH_COUCH_HRL, true).
 -endif.
