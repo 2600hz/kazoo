@@ -7,6 +7,8 @@
 %%%-------------------------------------------------------------------
 -module(wh_services).
 
+-export([add_service_plan/2]).
+-export([delete_service_plan/2]).
 -export([service_plan_json/1]).
 -export([public_json/1]).
 
@@ -109,6 +111,15 @@ new(AccountId) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+
+
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
 -spec from_service_json/1 :: (wh_json:json_object()) -> services().
 from_service_json(JObj) ->
     AccountId = wh_json:get_value(<<"pvt_account_id">>, JObj),
@@ -131,7 +142,6 @@ from_service_json(JObj) ->
 -spec fetch/1 :: (ne_binary()) -> services().
 fetch(Account) ->
     AccountId = wh_util:format_account_id(Account, raw),
-    AccountDb = wh_util:format_account_id(Account, encoded),
     %% TODO: if reseller populate cascade via merchant id
     case couch_mgr:open_doc(?WH_SERVICES_DB, AccountId) of
         {ok, JObj} ->
@@ -149,6 +159,27 @@ fetch(Account) ->
             lager:debug("unable to open account ~s services doc (creating new): ~p", [Account, _R]),
             new(AccountId)
     end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec add_service_plan/2 :: (ne_binary(), services()) -> services().
+add_service_plan(PlanId, #wh_services{jobj=JObj}=Services) ->
+    ResellerId = wh_json:get_value(<<"pvt_reseller_id">>, JObj),
+    Services#wh_services{jobj=wh_service_plans:add_service_plan(PlanId, ResellerId, JObj)}.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec delete_service_plan/2 :: (ne_binary(), services()) -> services().
+delete_service_plan(PlanId, #wh_services{jobj=JObj}=Services) ->
+    Services#wh_services{jobj=wh_service_plans:delete_service_plan(PlanId, JObj)}.
 
 %%--------------------------------------------------------------------
 %% @public

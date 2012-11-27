@@ -11,6 +11,8 @@
 
 -export([empty/0]).
 -export([public_json/1]).
+-export([add_service_plan/3]).
+-export([delete_service_plan/2]).
 -export([from_service_json/1]).
 -export([plan_summary/1]).
 -export([activation_charges/3]).
@@ -62,6 +64,27 @@ public_json([#wh_service_plans{plans=Plans}|ServicePlans], JObj) ->
                                   wh_json:merge_recursive(J, wh_json:get_value(<<"plan">>, P, wh_json:new()))
                           end, JObj, Plans),
     public_json(ServicePlans, NewJObj).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec add_service_plan/3 :: (ne_binary(), ne_binary(), wh_json:json_object()) -> wh_json:json_object().
+add_service_plan(PlanId, ResellerId, ServicesJObj) ->
+    Plan = wh_json:from_list([{<<"account_id">>, ResellerId}]),
+    wh_json:set_value([<<"plans">>, PlanId], Plan, ServicesJObj).    
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec delete_service_plan/2 :: (ne_binary(), wh_json:json_object()) -> wh_json:json_object().
+delete_service_plan(PlanId, ServicesJObj) ->
+    wh_json:delete_key([<<"plans">>, PlanId], ServicesJObj).
 
 %%--------------------------------------------------------------------
 %% @public
