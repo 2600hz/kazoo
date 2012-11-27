@@ -1,10 +1,10 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2011, VoIP INC
+%%% @copyright (C) 2011-2012, VoIP INC
 %%% @doc
 %%% Rating engine whapp
 %%% @end
-%%% Created :  7 Jul 2011 by James Aimonetti <james@2600hz.org>
+%%% @contributors
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(hotornot).
 
@@ -14,20 +14,18 @@
 %% @spec start_link() -> {ok,Pid::pid()}
 %% @doc Starts the app for inclusion in a supervisor tree
 start_link() ->
-    start_deps(),
+    _ = start_deps(),
     hotornot_sup:start_link().
 
 %% @spec start() -> ok
 %% @doc Start the app
 start() ->
-    start_deps(),
+    _ = start_deps(),
     application:start(hotornot).
 
 start_deps() ->
-    whistle_apps_deps:ensure(?MODULE), % if started by the whistle_controller, this will exist
-    wh_util:ensure_started(sasl), % logging
-    wh_util:ensure_started(crypto), % random
-    wh_util:ensure_started(whistle_amqp). % amqp wrapper
+    _ = whistle_apps_deps:ensure(?MODULE), % if started by the whistle_controller, this will exist
+    [wh_util:ensure_started(A) || A <- [sasl, crypto, whistle_amqp]].
 
 %% @spec stop() -> ok
 %% @doc Stop the basicapp server.
