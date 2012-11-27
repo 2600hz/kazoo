@@ -76,8 +76,8 @@ resource_exists(_) -> true.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec content_types_provided/1 :: (#cb_context{}) -> #cb_context{}.
-content_types_provided(#cb_context{}=Context) ->
+-spec content_types_provided/1 :: (cb_context()) -> cb_context().
+content_types_provided(cb_context()=Context) ->
     Context#cb_context{content_types_provided=[
                                                {to_json, [{<<"application">>, <<"json">>}]}
                                                ,{to_csv, [{<<"application">>, <<"octet-stream">>}]}
@@ -93,8 +93,8 @@ content_types_provided(#cb_context{}=Context) ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec validate/1 :: (#cb_context{}) -> #cb_context{}.
--spec validate/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+-spec validate/1 :: (cb_context()) -> cb_context().
+-spec validate/2 :: (cb_context(), path_token()) -> cb_context().
 validate(#cb_context{req_verb = <<"get">>}=Context) ->
         load_cdr_summary(Context).
 validate(#cb_context{req_verb = <<"get">>}=Context, CDRId) ->
@@ -107,7 +107,7 @@ validate(#cb_context{req_verb = <<"get">>}=Context, CDRId) ->
 %% account summary.
 %% @end
 %%--------------------------------------------------------------------
--spec load_cdr_summary/1 :: (#cb_context{}) -> #cb_context{}.
+-spec load_cdr_summary/1 :: (cb_context()) -> cb_context().
 load_cdr_summary(#cb_context{req_nouns=[_, {?WH_ACCOUNTS_DB, _AID} | _]}=Context) ->
     lager:debug("loading cdrs for account ~s", [_AID]),
     case create_view_options(undefined, Context) of
@@ -125,12 +125,13 @@ load_cdr_summary(Context) ->
     cb_context:add_system_error(faulty_request, Context).
 
 load_view(View, ViewOptions, #cb_context{query_json=JObj}=Context) ->
-    crossbar_doc:load_view(View	
+    crossbar_doc:load_view(View 
                            ,ViewOptions
                            ,Context#cb_context{query_json=wh_json:delete_keys([<<"created_to">>
-                                                                                   ,<<"created_from">>
+                                                                               ,<<"created_from">>
                                                                               ], JObj)}
-                           ,fun normalize_view_results/2).
+                           ,fun normalize_view_results/2
+                          ).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -138,7 +139,7 @@ load_view(View, ViewOptions, #cb_context{query_json=JObj}=Context) ->
 %% Load a CDR document from the database
 %% @end
 %%--------------------------------------------------------------------
--spec load_cdr/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
+-spec load_cdr/2 :: (ne_binary(), cb_context()) -> cb_context().
 load_cdr(CdrId, Context) ->
     crossbar_doc:load(CdrId, Context).
 
@@ -161,8 +162,9 @@ filter_cdr_fields(JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec create_view_options/2 :: ('undefined' | ne_binary(), #cb_context{}) -> {'error', #cb_context{}} |
-                                                                             {'ok', proplist()}.
+-spec create_view_options/2 :: (api_binary(), cb_context()) ->
+                                       {'ok', wh_proplist()} |
+                                       {'error', cb_context()}.
 create_view_options(OwnerId, #cb_context{query_json=JObj}=Context) ->
     MaxRange = whapps_config:get_integer(?MOD_CONFIG_CAT, <<"maximum_range">>, 6048000),
     To = wh_json:get_integer_value(<<"created_to">>, JObj, wh_util:current_tstamp()),
