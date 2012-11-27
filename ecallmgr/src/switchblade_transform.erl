@@ -23,7 +23,7 @@
 
 -module(switchblade_transform).
 
--include("lager.hrl").
+-include_lib("lager/include/lager.hrl").
 
 -export([parse_transform/2]).
 
