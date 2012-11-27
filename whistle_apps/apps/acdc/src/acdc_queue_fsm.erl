@@ -56,7 +56,7 @@
 -record(state, {
           queue_proc :: pid()
          ,manager_proc :: pid()
-         ,connect_resps = [] :: wh_json:json_objects()
+         ,connect_resps = [] :: wh_json:objects()
          ,collect_ref :: reference()
          ,acct_id :: ne_binary()
          ,acct_db :: ne_binary()
@@ -99,7 +99,7 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
--spec start_link/3 :: (pid(), pid(), wh_json:json_object()) -> startlink_ret().
+-spec start_link/3 :: (pid(), pid(), wh_json:object()) -> startlink_ret().
 start_link(MgrPid, ListenerPid, QueueJObj) ->
     gen_fsm:start_link(?MODULE, [MgrPid, ListenerPid, QueueJObj], []).
 
@@ -110,7 +110,7 @@ refresh(FSM, QueueJObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec member_call/3 :: (pid(), wh_json:json_object(), #'basic.deliver'{}) -> 'ok'.
+-spec member_call/3 :: (pid(), wh_json:object(), #'basic.deliver'{}) -> 'ok'.
 member_call(FSM, CallJObj, Delivery) ->
     gen_fsm:send_event(FSM, {member_call, CallJObj, Delivery}).
 
@@ -118,7 +118,7 @@ member_call(FSM, CallJObj, Delivery) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec member_connect_resp/2 :: (pid(), wh_json:json_object()) -> 'ok'.
+-spec member_connect_resp/2 :: (pid(), wh_json:object()) -> 'ok'.
 member_connect_resp(FSM, Resp) ->
     gen_fsm:send_event(FSM, {agent_resp, Resp}).
 
@@ -126,7 +126,7 @@ member_connect_resp(FSM, Resp) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec member_accepted/2 :: (pid(), wh_json:json_object()) -> 'ok'.
+-spec member_accepted/2 :: (pid(), wh_json:object()) -> 'ok'.
 member_accepted(FSM, AcceptJObj) ->
     gen_fsm:send_event(FSM, {accepted, AcceptJObj}).
 
@@ -134,7 +134,7 @@ member_accepted(FSM, AcceptJObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec member_connect_retry/2 :: (pid(), wh_json:json_object()) -> 'ok'.
+-spec member_connect_retry/2 :: (pid(), wh_json:object()) -> 'ok'.
 member_connect_retry(FSM, RetryJObj) ->
     gen_fsm:send_event(FSM, {retry, RetryJObj}).
 
@@ -145,7 +145,7 @@ member_connect_retry(FSM, RetryJObj) ->
 %%   for hangup events).
 %% @end
 %%--------------------------------------------------------------------
--spec call_event/4 :: (pid(), ne_binary(), ne_binary(), wh_json:json_object()) -> 'ok'.
+-spec call_event/4 :: (pid(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
 call_event(FSM, <<"call_event">>, <<"CHANNEL_DESTROY">>, EvtJObj) ->
     gen_fsm:send_event(FSM, {member_hungup, EvtJObj});
 call_event(FSM, <<"call_event">>, <<"DTMF">>, EvtJObj) ->
