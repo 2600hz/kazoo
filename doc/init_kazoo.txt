@@ -19,3 +19,4 @@ token_auth
 
 Auto-started whapps:
 [registrar,stepswitch,sysconf,media_mgr,callflow,notify,cdr,crossbar,trunkstore,conference,fax,hangups]
+
