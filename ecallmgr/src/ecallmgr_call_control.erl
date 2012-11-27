@@ -783,8 +783,9 @@ insert_command(#state{node=Node
             execute_control_request(JObj, State),
             CommandQ
     end;
-insert_command(_State, flush, JObj) ->
+insert_command(#state{node=Node, callid=CallId}, flush, JObj) ->
     lager:debug("received control queue flush command, clearing all waiting commands"),
+    freeswitch:api(Node, uuid_break, wh_util:to_list(<<CallId/binary, " all">>)),
     insert_command_into_queue(queue:new(), tail, JObj);
 insert_command(#state{command_q=CommandQ}, head, JObj) ->
     insert_command_into_queue(CommandQ, head, JObj);

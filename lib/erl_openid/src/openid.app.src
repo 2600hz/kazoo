@@ -1,7 +1,0 @@
-{application,
- openid,
- [{description, "OpenID 2.0 implementation"},
-  {vsn, "0.0.1"},
-  {registered,[]},
-  {applications,[kernel, stdlib, crypto, ibrowse]},
-  {env,[]}]}.

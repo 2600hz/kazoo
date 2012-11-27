@@ -179,3 +179,28 @@ code_change(_OldVsn, State, _Extra) ->
 create_anonymous_cdr_db(DB) ->
     couch_mgr:db_create(DB),
     couch_mgr:revise_doc_from_file(DB, cdr, <<"cdr.json">>).
+
+determine_cdr_database(JObj) ->
+    case wh_json:get_value([<<"Custom-Channel-Vars">>,<<"Account-ID">>], JObj) of
+        undefined -> ?ANONYMOUS_CDR_DB;
+        AccountId ->
+            determine_account_cdr_db(AccountId)
+    end.
+
+determine_account_cdr_db(Account) ->
+    AccountId = wh_util:format_account_id(Account, raw),
+    AccountDb = wh_util:format_account_id(Account, encoded),
+    case should_store_in_seperate_db(AccountDb, AccountId) of
+        false -> AccountDb;            
+        true -> seperate_cdr_db(AccountId)
+    end.
+
+should_store_in_seperate_db(AccountDb, AccountId) ->
+    case couch_mgr:open_doc(AccountDb, AccountId) of
+        {error, _} -> false;
+        {ok, JObj} ->
+            wh_json:is_true(<<"pvt_seperate_cdr">>, JObj)
+    end.
+        
+seperate_cdr_db(AccountId) ->
+    <<"cdrs%2F", AccountId/binary>>.
