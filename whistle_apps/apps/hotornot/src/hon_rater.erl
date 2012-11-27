@@ -12,10 +12,7 @@
 
 -include("hotornot.hrl").
 
-init() ->
-    couch_mgr:db_create(?WH_RATES_DB),
-    _ = couch_mgr:load_doc_from_file(?WH_RATES_DB, hotornot, <<"fixtures/us-1.json">>),
-    couch_mgr:revise_doc_from_file(?WH_RATES_DB, crossbar, <<"views/rates.json">>). %% only load it (will fail if exists)
+init() -> whapps_maintenance:refresh(?WH_RATES_DB).
 
 -spec handle_req/2 :: (wh_json:object(), wh_proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->

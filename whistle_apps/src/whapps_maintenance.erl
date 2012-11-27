@@ -176,6 +176,7 @@ refresh(?WH_SCHEMA_DB) ->
 refresh(?WH_RATES_DB) ->
     couch_mgr:db_create(?WH_RATES_DB),
     couch_mgr:revise_docs_from_folder(?WH_RATES_DB, hotornot, "views"),
+    couch_mgr:revise_doc_from_file(?WH_RATES_DB, crossbar, <<"views/rates.json">>),
     couch_mgr:load_fixtures_from_folder(?WH_RATES_DB, hotornot),
     ok;
 refresh(?WH_ACCOUNTS_DB) ->
