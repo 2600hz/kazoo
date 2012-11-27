@@ -89,6 +89,7 @@
          ,ensure_saved/2
          ,ensure_saved/3
         ]).
+-export([load_fixtures_from_folder/2]).
 
 -export([all_docs/1
          ,all_design_docs/1
@@ -272,6 +273,40 @@ do_revise_docs_from_folder(DbName, Sleep, [H|T]) ->
         _:_ ->
             do_revise_docs_from_folder(DbName, Sleep, T)
     end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Load fixture files from a folder into a database, only if the id
+%% isn't already existant
+%% @end
+%%--------------------------------------------------------------------
+-spec load_fixtures_from_folder/2 :: (ne_binary(), atom()) -> 'ok'.
+load_fixtures_from_folder(DbName, App) ->
+    Files = filelib:wildcard([code:priv_dir(App), "/couchdb/", ?FIXTURES_FOLDER, "/*.json"]),
+    do_load_fixtures_from_folder(DbName, Files).
+
+-spec do_load_fixtures_from_folder/2 :: (ne_binary(), [ne_binary(),...] | []) -> 'ok'.
+do_load_fixtures_from_folder(_, []) -> ok;
+do_load_fixtures_from_folder(DbName, [F|Fs]) ->
+    try
+        {ok, Bin} = file:read_file(F),
+        FixJObj = wh_json:decode(Bin),
+        FixId = wh_json:get_value(<<"_id">>, FixJObj),
+        case lookup_doc_rev(DbName, FixId) of
+            {ok, _Rev} ->
+                lager:debug("fixture ~s exists in ~s: ~s", [FixId, DbName, _Rev]);
+            {error, not_found} ->
+                lager:debug("saving fixture ~s to ~s", [FixId, DbName]),
+                save_doc(DbName, FixJObj);
+            {error, _Reason} ->
+                lager:debug("failed to lookup rev for fixture: ~p: ~s in ~s", [_Reason, FixId, DbName])
+        end
+    catch
+        _C:_R ->
+            lager:debug("failed to check fixture: ~s: ~p", [_C, _R])
+    end,
+    do_load_fixtures_from_folder(DbName, Fs).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -647,8 +682,10 @@ all_design_docs(DbName, Options) ->
 %% get the revision of a document (much faster than requesting the whole document)
 %% @end
 %%--------------------------------------------------------------------
--spec lookup_doc_rev/2 :: (text(), ne_binary()) -> {'ok', ne_binary()} |
-                                                        couchbeam_error().
+-spec lookup_doc_rev/2 :: (text(), api_binary()) ->
+                                  {'ok', ne_binary()} |
+                                  couchbeam_error().
+lookup_doc_rev(_DbName, undefined) -> {error, not_found};
 lookup_doc_rev(DbName, DocId) when ?VALID_DBNAME ->
     couch_util:lookup_doc_rev(get_conn(), DbName, DocId);
 lookup_doc_rev(DbName, DocId) ->
@@ -1247,7 +1284,9 @@ remove_ref(Ref, CH) ->
 %% NOTE: the attempt to correct the dbname is not very erlang like, but 
 %%  when since there are more places that expect an error and do not
 %%  handle a crash appropriately/gracefully this is a quick solution....
--spec maybe_convert_dbname/1 :: (text()) -> {'ok', ne_binary()} | {'error', 'invalid_db_name'}.
+-spec maybe_convert_dbname/1 :: (text()) ->
+                                        {'ok', ne_binary()} |
+                                        {'error', 'invalid_db_name'}.
 maybe_convert_dbname(DbName) ->
     case wh_util:is_empty(DbName) of
         true -> {error, invalid_db_name};
