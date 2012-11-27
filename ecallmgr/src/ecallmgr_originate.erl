@@ -26,14 +26,14 @@
 -include("ecallmgr.hrl").
 
 -record(state, {node :: atom()
-                ,server_id = undefined :: 'undefined' | ne_binary()
+                ,server_id :: api_binary()
                 ,originate_req = wh_json:new() :: wh_json:json_object()
-                ,uuid = undefined :: 'undefined' | ne_binary()
-                ,action = undefined :: 'undefined' | ne_binary()
-                ,dialstrings = undefined :: 'undefined' | ne_binary()
+                ,uuid :: api_binary()
+                ,action :: api_binary()
+                ,dialstrings :: api_binary()
                 ,queue = <<>> :: binary() 
-                ,control_pid = undefined :: 'undefined' | pid()
-                ,tref = undefined :: 'undefined' | reference()
+                ,control_pid :: 'undefined' | pid()
+                ,tref :: 'undefined' | reference()
                }).
 
 -define(BINDINGS, [{self, []}]).
@@ -76,7 +76,7 @@ start_link(Node, JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call_events/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
+-spec handle_call_events/2 :: (wh_json:json_object(), wh_proplist()) -> 'ok'.
 handle_call_events(JObj, Props) ->
     Srv = props:get_value(server, Props),
     case props:get_value(uuid, Props) =:=  wh_json:get_value(<<"Call-ID">>, JObj)
@@ -99,7 +99,7 @@ handle_call_events(JObj, Props) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec handle_originate_execute/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
+-spec handle_originate_execute/2 :: (wh_json:json_object(), wh_proplist()) -> 'ok'.
 handle_originate_execute(JObj, Props) ->
     true = wapi_dialplan:originate_execute_v(JObj),
     Srv = props:get_value(server, Props),
