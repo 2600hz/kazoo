@@ -251,19 +251,19 @@ on_successful_validation(AccountId, #cb_context{}=Context) ->
 maybe_import_enabled(#cb_context{auth_account_id=AuthId, account_id=AuthId, doc=JObj}=Context) ->
     Context#cb_context{doc=wh_json:delete_key(<<"enabled">>, JObj)};
 maybe_import_enabled(#cb_context{auth_account_id=AuthId
-				 ,resp_status=success, doc=JObj}=Context) ->
+                                 ,resp_status=success, doc=JObj}=Context) ->
 
     case lists:member(AuthId, wh_json:get_value(<<"pvt_tree">>, JObj, [])) of
-	false ->
-	    Context#cb_context{doc=wh_json:delete_key(<<"enabled">>, JObj)};
-	true ->
-	    case wh_json:get_value(<<"enabled">>, JObj) of
-		undefined -> 
-		    Context;
-		Enabled ->
-		    Context#cb_context{doc=wh_json:set_value(<<"pvt_enabled">>, wh_util:is_true(Enabled)
-							     ,wh_json:delete_key(<<"enabled">>, JObj))}
-	    end
+        false ->
+            Context#cb_context{doc=wh_json:delete_key(<<"enabled">>, JObj)};
+        true ->
+            case wh_json:get_value(<<"enabled">>, JObj) of
+                undefined -> 
+                    Context;
+                Enabled ->
+                    Context#cb_context{doc=wh_json:set_value(<<"pvt_enabled">>, wh_util:is_true(Enabled)
+                                                             ,wh_json:delete_key(<<"enabled">>, JObj))}
+            end
     end.
 
 %%--------------------------------------------------------------------
@@ -321,12 +321,12 @@ leak_pvt_superduper_admin(#cb_context{doc=JObj, resp_data=RespJObj}=Context) ->
 -spec leak_pvt_enabled/1 :: (#cb_context{}) -> #cb_context{}.
 leak_pvt_enabled(#cb_context{doc=JObj, resp_data=RespJObj}=Context) ->
     case wh_json:get_value(<<"pvt_enabled">>, JObj) of
-	true ->
-	    leak_billing_mode(Context#cb_context{resp_data=wh_json:set_value(<<"enabled">>, true, RespJObj)});
-	false ->
-	    leak_billing_mode(Context#cb_context{resp_data=wh_json:set_value(<<"enabled">>, false, RespJObj)});
-	_ ->
-	    leak_billing_mode(Context)
+        true ->
+            leak_billing_mode(Context#cb_context{resp_data=wh_json:set_value(<<"enabled">>, true, RespJObj)});
+        false ->
+            leak_billing_mode(Context#cb_context{resp_data=wh_json:set_value(<<"enabled">>, false, RespJObj)});
+        _ ->
+            leak_billing_mode(Context)
     end.
 
 -spec leak_billing_mode/1 :: (cb_context:context()) -> cb_context:context().
@@ -405,7 +405,7 @@ set_private_properties(Context) ->
                ,fun add_pvt_vsn/1
                ,fun maybe_add_pvt_api_key/1
                ,fun maybe_add_pvt_tree/1
-	       ,fun add_pvt_enabled/1
+               ,fun add_pvt_enabled/1
               ],
     lists:foldl(fun(F, C) -> F(C) end, Context, PvtFuns).
 
@@ -419,19 +419,23 @@ add_pvt_vsn(#cb_context{doc=JObj}=Context) ->
 
 -spec add_pvt_enabled/1 :: (cb_context:context()) -> cb_context:context().
 add_pvt_enabled(#cb_context{doc=JObj}=Context) ->
-    [ParentId | _] = lists:reverse(wh_json:get_value(<<"pvt_tree">>, JObj, [])),
-    ParentDb = wh_util:format_account_id(ParentId, encoded),
-    case (not wh_util:is_empty(ParentId))
-        andalso couch_mgr:open_doc(ParentDb, ParentId) 
-    of
-        {ok, Parent} -> 
-            case wh_json:is_true(<<"pvt_enabled">>, Parent, true) of
-                true ->
-                    Context#cb_context{doc=wh_json:set_value(<<"pvt_enabled">>, true, JObj)};
-                false ->
-                    Context#cb_context{doc=wh_json:set_value(<<"pvt_enabled">>, false, JObj)}
+    case lists:reverse(wh_json:get_value(<<"pvt_tree">>, JObj, [])) of
+        [ParentId | _] ->
+            ParentDb = wh_util:format_account_id(ParentId, encoded),
+            case (not wh_util:is_empty(ParentId))
+                andalso couch_mgr:open_doc(ParentDb, ParentId) 
+            of
+                {ok, Parent} -> 
+                    case wh_json:is_true(<<"pvt_enabled">>, Parent, true) of
+                        true ->
+                            Context#cb_context{doc=wh_json:set_value(<<"pvt_enabled">>, true, JObj)};
+                        false ->
+                            Context#cb_context{doc=wh_json:set_value(<<"pvt_enabled">>, false, JObj)}
+                    end;
+                _Else -> Context
             end;
-        _Else -> Context
+        [] ->
+            Context
     end.
 
 -spec maybe_add_pvt_api_key/1 :: (cb_context:context()) -> cb_context:context().
