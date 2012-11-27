@@ -84,7 +84,7 @@ rate_resp(Rate, JObj) ->
      ,{<<"Discount-Percentage">>, maybe_get_rate_discount(JObj)}
      ,{<<"Surcharge">>, wh_json:get_binary_value(<<"rate_surcharge">>, Rate)}
      ,{<<"Rate-Name">>, wh_json:get_binary_value(<<"rate_name">>, Rate)}
-     ,{<<"Rate-ID">>, wh_json:get_value(<<"_id">>, Rate)}
+     ,{<<"Rate-ID">>, wh_json:get_binary_value(<<"rate_id">>, Rate)}
      ,{<<"Base-Cost">>, wh_util:to_binary(BaseCost)}
      ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
      ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
