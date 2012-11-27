@@ -2,7 +2,6 @@
 %%% @copyright (C) 2010-2012, VoIP INC
 %%% @doc
 %%% Listen for CDR events and record them to the database
-%%% TODO: convert to gen_listener
 %%% @end
 %%% @contributors
 %%%   James Aimonetti
@@ -13,11 +12,19 @@
 -behaviour(gen_listener).
 
 %% API
--export([start_link/0, handle_cdr/2]).
+-export([start_link/0
+         ,handle_cdr/2
+        ]).
 
 %% gen_server callbacks
--export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2
-         ,terminate/2, code_change/3]).
+-export([init/1
+         ,handle_call/3
+         ,handle_cast/2
+         ,handle_info/2
+         ,handle_event/2
+         ,terminate/2
+         ,code_change/3
+        ]).
 
 -include("cdr.hrl").
 
@@ -48,7 +55,7 @@ start_link() ->
                                       ,{consume_options, ?CONSUME_OPTIONS}
                                      ], []).
 
--spec handle_cdr/2 :: (wh_json:json_object(), proplist()) -> no_return().
+-spec handle_cdr/2 :: (wh_json:object(), proplist()) -> no_return().
 handle_cdr(JObj, _Props) ->
     true = wapi_call:cdr_v(JObj),
     wh_util:put_callid(JObj),
@@ -57,17 +64,17 @@ handle_cdr(JObj, _Props) ->
 
     Db = case couch_mgr:db_exists(AccountDb) of
              true -> AccountDb;
-             false -> ?ANONYMOUS_CDR_DB
+             false -> ?WH_ANONYMOUS_CDR_DB
          end,
 
     NormDoc = wh_json:normalize_jobj(JObj),
-    DocOpts = [{type, cdr}, {crossbar_doc_vsn, 1}],
+    DocOpts = [{type, cdr}
+               ,{crossbar_doc_vsn, 1}
+              ],
     JObj1 = wh_doc:update_pvt_parameters(NormDoc, Db, DocOpts),
 
     Id = wh_json:get_value(<<"call_id">>, NormDoc, couch_mgr:get_uuid()),
     NewDoc = wh_json:set_value(<<"_id">>, Id, JObj1),
-
-    lager:debug("saving CDR to ~s", [Db]),
 
     couch_mgr:save_doc(Db, NewDoc).
 
@@ -87,10 +94,7 @@ handle_cdr(JObj, _Props) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    _ = create_anonymous_cdr_db(?ANONYMOUS_CDR_DB),
-
-    lager:debug("init complete"),
-
+    whapps_maintenance:refresh(?WH_ANONYMOUS_CDR_DB),
     {ok, ok}.
 
 %%--------------------------------------------------------------------
@@ -168,14 +172,3 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Creation of the anonymous_cdr DB if it doesn't exists
-%% @end
-%%--------------------------------------------------------------------
--spec create_anonymous_cdr_db/1 :: (ne_binary()) -> {'ok', wh_json:json_object()} | {'error', term()}.
-create_anonymous_cdr_db(DB) ->
-    couch_mgr:db_create(DB),
-    couch_mgr:revise_doc_from_file(DB, cdr, <<"cdr.json">>).

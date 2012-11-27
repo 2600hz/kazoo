@@ -136,7 +136,10 @@ do_refresh() ->
     refresh(?WH_ACCOUNTS_DB),
     refresh(?WH_PROVISIONER_DB),
     refresh(?WH_FAXES),
+    refresh(?WH_RATES_DB),
+    refresh(?WH_ANONYMOUS_CDR_DB),
     refresh(?WH_SERVICES_DB),
+
     Views = [whapps_util:get_view_json(whistle_apps, ?MAINTENANCE_VIEW_FILE)
              ,whapps_util:get_view_json(conference, <<"views/conference.json">>)
              |whapps_util:get_views_json(crossbar, "account")
@@ -178,6 +181,10 @@ refresh(?WH_RATES_DB) ->
     couch_mgr:revise_docs_from_folder(?WH_RATES_DB, hotornot, "views"),
     couch_mgr:revise_doc_from_file(?WH_RATES_DB, crossbar, <<"views/rates.json">>),
     couch_mgr:load_fixtures_from_folder(?WH_RATES_DB, hotornot),
+    ok;
+refresh(?WH_ANONYMOUS_CDR_DB) ->
+    couch_mgr:db_create(?WH_ANONYMOUS_CDR_DB),
+    couch_mgr:revise_doc_from_file(?WH_ANONYMOUS_CDR_DB, cdr, <<"cdr.json">>),
     ok;
 refresh(?WH_ACCOUNTS_DB) ->
     couch_mgr:db_create(?WH_ACCOUNTS_DB),
