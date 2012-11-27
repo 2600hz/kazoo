@@ -700,14 +700,17 @@ maybe_connect_to_agent(FSM, EPs, Call, Timeout) ->
               ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
               ,{<<"Timeout">>, Timeout}
               ,{<<"Endpoints">>, [wh_json:set_value(<<"Endpoint-Timeout">>, Timeout, EP) || EP <- EPs]}
-              ,{<<"Export-Custom-Channel-Vars">>, [<<"Account-ID">>, <<"Retain-CID">>
-                                                   ,<<"Authorizing-ID">>, <<"Authorizing-Type">>
+              ,{<<"Export-Custom-Channel-Vars">>, [<<"Account-ID">>
+                                                   ,<<"Retain-CID">>
+                                                   ,<<"Authorizing-ID">>
+                                                   ,<<"Authorizing-Type">>
                                                   ]}
               ,{<<"Account-ID">>, AcctId}
               ,{<<"Resource-Type">>, <<"originate">>}
               ,{<<"Application-Name">>, <<"park">>}
-              ,{<<"App-Name">>, ?APP_NAME}
-              ,{<<"App-Version">>, ?APP_VERSION}
+              ,{<<"Caller-ID-Name">>, whapps_call:caller_id_name(Call)}
+              ,{<<"Caller-ID-Number">>, whapps_call:caller_id_number(Call)}
+              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
 
     lager:debug("sending originate request"),
