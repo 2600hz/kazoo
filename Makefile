@@ -6,15 +6,13 @@ MAKEDIRS = lib/rabbitmq_server-2.8.6/Makefile \
 	   lib/rabbitmq_client-2.8.6/Makefile \
 	   lib/lager-1.0.0/Makefile \
 	   lib/*/Makefile \
-           ecallmgr/Makefile \
+       ecallmgr/Makefile \
 	   whistle_apps/Makefile
 
 DIRS = $(ROOT)/lib/whistle-1.0.0 \
-       $(ROOT)/lib/whistle_couch-1.0.0 \
-       $(ROOT)/lib/whistle_amqp-1.0.0 \
-       $(ROOT)/lib/whistle_number_manager-1.0.0 \
+	   $(ROOT)/lib/whistle_amqp-1.0.0 \
        $(ROOT)/ecallmgr \
-       $(ROOT)/whistle_apps
+	   $(ROOT)/whistle_apps
 
 .PHONY: $(MAKEDIRS)
 
@@ -32,7 +30,7 @@ deps : $(MAKEDIRS)
 clean : ACTION = clean
 clean : $(MAKEDIRS)
 	rm -f test/*.beam
-	rm -f erl_crash.dump
+	rm -f *crash.dump
 
 test : clean app eunit
 
