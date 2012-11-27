@@ -1,10 +1,10 @@
 Completely brand new DB setup.
 
-Start whistle_apps:
+** Start whistle_apps:
 
 ./start-dev.sh
 
-Auto-created databases:
+** Auto-created databases:
 accounts
 anonymous_cdrs
 faxes
@@ -17,6 +17,35 @@ system_config
 system_schemas
 token_auth
 
-Auto-started whapps:
+** Auto-started whapps:
 [registrar,stepswitch,sysconf,media_mgr,callflow,notify,cdr,crossbar,trunkstore,conference,fax,hangups]
+
+** Import system media files:
+
+./utils/media_importer/media_importer confs/system_media
+
+Should create the 'system_media' database
+
+** Configure BigCouch cookie file
+
+In the system_config DB, whistle_couch doc, set the bigcouch_cookie to match the
+cookie your nodes use. Optionally enable the auto-compactor to keep DB size low.
+
+** Configure FreeSWITCH nodes
+
+In the system_config DB, edit the ecallmgr doc to add/update fs_nodes and fs_cmds.
+
+"fs_nodes":[
+   "freeswitch@fs1.server.com",
+   {"freeswitch@fs2.server.com":"fs2_cookie"}
+]
+
+You have two options; if your FreeSWITCH servers' cookie values match ecallmgr's,
+you need only specify the node name. If you have/want different cookies on each
+FreeSWITCH node, create a JSON object with the key=node and value=cookie of the
+FreeSWITCH server.
+
+"fs_cmds": [{
+    "load": "mod_sofia"
+}]
 
