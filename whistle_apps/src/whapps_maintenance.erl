@@ -171,11 +171,11 @@ refresh(?WH_SIP_DB) ->
     wapi_switch:publish_reload_acls();
 refresh(?WH_SCHEMA_DB) ->
     couch_mgr:db_create(?WH_SCHEMA_DB),
-    couch_mgr:revise_docs_from_folder(?WH_SCHEMA_DB, crossbar, <<"schemas">>),
+    couch_mgr:revise_docs_from_folder(?WH_SCHEMA_DB, crossbar, "schemas"),
     ok;
 refresh(?WH_RATES_DB) ->
     couch_mgr:db_create(?WH_RATES_DB),
-    couch_mgr:revise_docs_from_folder(?WH_RATES_DB, hotornot, <<"views">>),
+    couch_mgr:revise_docs_from_folder(?WH_RATES_DB, hotornot, "views"),
     couch_mgr:load_fixtures_from_folder(?WH_RATES_DB, hotornot),
     ok;
 refresh(?WH_ACCOUNTS_DB) ->
