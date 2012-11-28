@@ -8,25 +8,37 @@
 %%%-------------------------------------------------------------------
 -module(cb_context).
 
--export([store/3]).
--export([fetch/2, fetch/3]).
--export([put_reqid/1]).
--export([import_errors/1]).
--export([response/1]).
--export([has_errors/1]).
--export([add_system_error/2
-         ,add_system_error/3
-        ]).
--export([add_validation_error/4]).
--export([validate_request_data/2
-         ,validate_request_data/3
-         ,validate_request_data/4
+-export([store/3
+         ,fetch/2, fetch/3
+         ,put_reqid/1
+         ,import_errors/1
+         ,response/1
+         ,has_errors/1
+         ,add_system_error/2, add_system_error/3
+         ,add_validation_error/4
+         ,validate_request_data/2, validate_request_data/3, validate_request_data/4
+         ,add_content_types_provided/2
+         ,add_content_types_accepted/2
         ]).
 
--include("include/crossbar.hrl").
+-include_lib("crossbar/include/crossbar.hrl").
 
 -type context() :: #cb_context{}.
 -export_type([context/0]).
+
+-spec add_content_types_provided/2 :: (context(), crossbar_content_handler() | crossbar_content_handlers()) ->
+                                              context().
+add_content_types_provided(#cb_context{content_types_provided=CTPs}=Context, [_|_]=NewCTPs) ->
+    Context#cb_context{content_types_provided = NewCTPs ++ CTPs};
+add_content_types_provided(Context, {_, _}=NewCTP) ->
+    add_content_types_provided(Context,[NewCTP]).
+
+-spec add_content_types_accepted/2 :: (context(), crossbar_content_handler() | crossbar_content_handlers()) ->
+                                              context().
+add_content_types_accepted(#cb_context{content_types_accepted=CTAs}=Context, [_|_]=NewCTAs) ->
+    Context#cb_context{content_types_provided = NewCTAs ++ CTAs};
+add_content_types_accepted(Context, {_, _}=NewCTA) ->
+    add_content_types_provided(Context,[NewCTA]).
 
 %%--------------------------------------------------------------------
 %% @public
