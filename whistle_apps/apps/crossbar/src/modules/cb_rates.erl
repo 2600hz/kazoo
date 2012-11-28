@@ -270,7 +270,7 @@ process_row([Prefix, ISO, Desc, InternalCost, Rate], {Cnt, RateDocs}=Acc) ->
                                         ,{<<"iso_country_code">>, ISO1}
                                         ,{<<"description">>, Desc1}
                                         ,{<<"rate_name">>, Desc1}
-                                          ,{<<"rate_cost">>, wh_util:to_float(Rate1)}
+                                        ,{<<"rate_cost">>, wh_util:to_float(Rate1)}
                                         ,{<<"rate_increment">>, 60}
                                         ,{<<"rate_minimum">>, 60}
                                         ,{<<"rate_surcharge">>, 0}
