@@ -19,7 +19,7 @@
 
 -include("ecallmgr.hrl").
 
--spec acl_xml/1 :: (wh_json:json_object()) -> {'ok', iolist()}.
+-spec acl_xml/1 :: (wh_json:object()) -> {'ok', iolist()}.
 acl_xml(AclsJObj) ->
     AclsFold = lists:foldl(fun arrange_acl_node/2, orddict:new(), wh_json:to_proplist(AclsJObj)),
 
@@ -41,7 +41,7 @@ sip_profiles_xml(JObj) ->
     {ok, xmerl:export([SectionEl], fs_xml)}.    
 
 -spec authn_resp_xml/1 :: (api_terms()) -> {'ok', iolist()}.
--spec authn_resp_xml/2 :: (ne_binary(), wh_json:json_object()) -> {'ok'|'error', iolist()}.
+-spec authn_resp_xml/2 :: (ne_binary(), wh_json:object()) -> {'ok', iolist()}.
 authn_resp_xml([_|_]=RespProp) ->
     authn_resp_xml(props:get_value(<<"Auth-Method">>, RespProp), wh_json:from_list(RespProp));
 authn_resp_xml(JObj) ->
@@ -123,7 +123,7 @@ route_resp_xml(RespJObj) ->
                   ).
 
 %% Prop = Route Response
--spec route_resp_xml/3 :: (ne_binary(), wh_json:json_objects(), wh_json:json_object()) -> {'ok', iolist()}.
+-spec route_resp_xml/3 :: (ne_binary(), wh_json:objects(), wh_json:object()) -> {'ok', iolist()}.
 route_resp_xml(<<"bridge">>, Routes, _JObj) ->
     lager:debug("creating a bridge XML response"),
     LogEl = route_resp_log_winning_node(),
@@ -219,7 +219,7 @@ route_resp_ringback() ->
     {ok, RBSetting} = ecallmgr_util:get_setting(<<"default_ringback">>, <<"%(2000,4000,440,480)">>),
     action_el(<<"set">>, <<"ringback=", (wh_util:to_binary(RBSetting))/binary>>).
 
--spec route_resp_pre_park_action/1 :: (wh_json:json_object()) -> 'undefined' | xml_el().
+-spec route_resp_pre_park_action/1 :: (wh_json:object()) -> 'undefined' | xml_el().
 route_resp_pre_park_action(JObj) ->
     case wh_json:get_value(<<"Pre-Park">>, JObj) of
         <<"ring_ready">> -> action_el(<<"ring_ready">>);
@@ -227,18 +227,18 @@ route_resp_pre_park_action(JObj) ->
         _Else -> undefined
     end.
 
--spec get_leg_vars/1 :: (wh_json:json_object() | proplist()) -> [nonempty_string(),...].
+-spec get_leg_vars/1 :: (wh_json:object() | proplist()) -> [nonempty_string(),...].
 get_leg_vars([_|_]=Prop) ->
     ["[", string:join([wh_util:to_list(V) || V <- lists:foldr(fun get_channel_vars/2, [], Prop)], ","), "]"];
 get_leg_vars(JObj) -> get_leg_vars(wh_json:to_proplist(JObj)).
 
--spec get_channel_vars/1 :: (wh_json:json_object() | proplist()) -> iolist().
+-spec get_channel_vars/1 :: (wh_json:object() | proplist()) -> iolist().
 get_channel_vars([_|_]=Prop) ->
     P = Prop ++ [{<<"Overwrite-Channel-Vars">>, <<"true">>}],
     ["{", string:join([wh_util:to_list(V) || V <- lists:foldr(fun get_channel_vars/2, [], P)], ","), "}"];
 get_channel_vars(JObj) -> get_channel_vars(wh_json:to_proplist(JObj)).
 
--spec get_channel_vars/2 :: ({binary(), binary() | wh_json:json_object()}, [binary(),...] | []) -> iolist().
+-spec get_channel_vars/2 :: ({binary(), binary() | wh_json:object()}, [binary(),...] | []) -> iolist().
 get_channel_vars({<<"Custom-Channel-Vars">>, JObj}, Vars) ->
     lists:foldl(fun({<<"Force-Fax">>, Direction}, Acc) ->
                         [<<"execute_on_answer='t38_gateway ", Direction/binary, "'">>|Acc];
@@ -313,7 +313,7 @@ escape(V, C) ->
 encode(C, C) -> [$\\, C];
 encode(C, _) -> C.
 
--spec get_channel_params/1 :: (wh_json:json_object()) -> wh_json:json_proplist().
+-spec get_channel_params/1 :: (wh_json:object()) -> wh_json:json_proplist().
 get_channel_params(JObj) ->
     CV0 = case wh_json:get_value(<<"Tenant-ID">>, JObj) of
               undefined -> [];
@@ -330,7 +330,7 @@ get_channel_params(JObj) ->
                         [{list_to_binary([?CHANNEL_VAR_PREFIX, K]), V} | CV]
                 end, CV1, Custom).
 
--spec arrange_acl_node/2 :: ({ne_binary(), wh_json:json_object()}, orddict:orddict()) -> orddict:orddict().
+-spec arrange_acl_node/2 :: ({ne_binary(), wh_json:object()}, orddict:orddict()) -> orddict:orddict().
 arrange_acl_node({_, JObj}, Dict) ->
     AclList = wh_json:get_value(<<"network-list-name">>, JObj),
 
@@ -621,7 +621,7 @@ sofia_gateway_xml_to_json(Xml, JObj) ->
             ],
     wh_json:set_value(Id, wh_json:from_list(Props), JObj).
 
--spec sofia_gateway_vars_xml_to_json/2 :: (xml_el() | xml_els(), wh_json:object()) -> wh_json:json_object().
+-spec sofia_gateway_vars_xml_to_json/2 :: (xml_el() | xml_els(), wh_json:object()) -> wh_json:object().
 sofia_gateway_vars_xml_to_json(#xmlElement{}=Xml, JObj) ->
     sofia_gateway_vars_xml_to_json([Xml], JObj);
 sofia_gateway_vars_xml_to_json([], JObj) ->
