@@ -27,7 +27,7 @@
 
 -record(state, {node :: atom()
                 ,server_id :: api_binary()
-                ,originate_req = wh_json:new() :: wh_json:json_object()
+                ,originate_req = wh_json:new() :: wh_json:object()
                 ,uuid :: api_binary()
                 ,action :: api_binary()
                 ,dialstrings :: api_binary()
@@ -59,7 +59,7 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
--spec start_link/2 :: (atom(), wh_json:json_object()) -> startlink_ret().
+-spec start_link/2 :: (atom(), wh_json:object()) -> startlink_ret().
 start_link(Node, JObj) ->
     gen_listener:start_link(?MODULE
                             ,[{bindings, ?BINDINGS}
@@ -76,7 +76,7 @@ start_link(Node, JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call_events/2 :: (wh_json:json_object(), wh_proplist()) -> 'ok'.
+-spec handle_call_events/2 :: (wh_json:object(), wh_proplist()) -> 'ok'.
 handle_call_events(JObj, Props) ->
     Srv = props:get_value(server, Props),
     case props:get_value(uuid, Props) =:=  wh_json:get_value(<<"Call-ID">>, JObj)
@@ -99,7 +99,7 @@ handle_call_events(JObj, Props) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec handle_originate_execute/2 :: (wh_json:json_object(), wh_proplist()) -> 'ok'.
+-spec handle_originate_execute/2 :: (wh_json:object(), wh_proplist()) -> 'ok'.
 handle_originate_execute(JObj, Props) ->
     true = wapi_dialplan:originate_execute_v(JObj),
     Srv = props:get_value(server, Props),
@@ -348,7 +348,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec get_originate_action/2 :: (ne_binary(), wh_json:json_object()) -> ne_binary().
+-spec get_originate_action/2 :: (ne_binary(), wh_json:object()) -> ne_binary().
 get_originate_action(<<"fax">>, JObj) ->
     lager:debug("got originate with action fax", []),
     Data = wh_json:get_value(<<"Application-Data">>, JObj),
@@ -373,7 +373,7 @@ get_originate_action(_, _) ->
     lager:debug("got originate with action park", []),
     ?ORIGINATE_PARK.
 
--spec build_originate_args/3 :: (ne_binary(), wh_json:json_objects(), wh_json:json_object()) -> ne_binary().
+-spec build_originate_args/3 :: (ne_binary(), wh_json:objects(), wh_json:object()) -> ne_binary().
 build_originate_args(Action, Endpoints, JObj) ->
     lager:debug("building originate command arguments", []),
     DialSeparator = case wh_json:get_value(<<"Dial-Endpoint-Method">>, JObj, <<"single">>) of
@@ -429,7 +429,7 @@ update_uuid(OldUUID, NewUUID) ->
     ok.
 
 -spec create_uuid/1 :: (atom()) -> ne_binary().
--spec create_uuid/2 :: (wh_json:json_object(), atom()) -> ne_binary().
+-spec create_uuid/2 :: (wh_json:object(), atom()) -> ne_binary().
 
 create_uuid(Node) ->
     case freeswitch:api(Node, 'create_uuid', " ") of
@@ -452,19 +452,23 @@ create_uuid(JObj, Node) ->
             CallId
     end.
 
--spec get_unset_vars/1 :: (wh_json:json_object()) -> string().
+-spec get_unset_vars/1 :: (wh_json:object()) -> string().
 get_unset_vars(JObj) ->
     %% Refactor (Karl wishes he had unit tests here for you to use)
     ExportProps = [{K, <<>>} || K <- wh_json:get_value(<<"Export-Custom-Channel-Vars">>, JObj, [])],
-    Export = [K || KV <- lists:foldr(fun ecallmgr_fs_xml:get_channel_vars/2, [], [{<<"Custom-Channel-Vars">>, wh_json:from_list(ExportProps)}])
-                       ,([K, _] = string:tokens(binary_to_list(KV), "=")) =/= undefined],
+    Export = [K || KV <- lists:foldr(fun ecallmgr_fs_xml:get_channel_vars/2
+                                     ,[]
+                                     ,[{<<"Custom-Channel-Vars">>, wh_json:from_list(ExportProps)}]
+                                    ),
+                   ([K, _] = string:tokens(binary_to_list(KV), "=")) =/= undefined
+             ],
     case [[$u,$n,$s,$e,$t,$: | K] || KV <- lists:foldr(fun ecallmgr_fs_xml:get_channel_vars/2, [], wh_json:to_proplist(JObj))
                                          ,not lists:member(begin [K, _] = string:tokens(binary_to_list(KV), "="), K end, Export)] of
         [] -> "";
         Unset -> [string:join(Unset, "^"), "^"]
     end.
 
--spec publish_error/4 :: (ne_binary(), 'undefined' | ne_binary(), wh_json:json_object(), ne_binary()) -> 'ok'.
+-spec publish_error/4 :: (ne_binary(), 'undefined' | ne_binary(), wh_json:object(), ne_binary()) -> 'ok'.
 publish_error(Error, UUID, Request, ServerId) ->
     lager:debug("originate error: ~s", [Error]),
     E = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, Request)}
@@ -475,7 +479,7 @@ publish_error(Error, UUID, Request, ServerId) ->
         ],
     wh_api:publish_error(ServerId, props:filter_undefined(E)).
 
--spec publish_originate_ready/5 :: (ne_binary(), ne_binary(), wh_json:json_object(), ne_binary(), ne_binary()) -> 'ok'.
+-spec publish_originate_ready/5 :: (ne_binary(), ne_binary(), wh_json:object(), ne_binary(), ne_binary()) -> 'ok'.
 publish_originate_ready(CtrlQ, UUID, Request, Q, ServerId) ->
     lager:debug("originate command is ready, waiting for originate_execute", []),
     Props = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, Request, UUID)}
