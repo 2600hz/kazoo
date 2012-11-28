@@ -18,19 +18,24 @@
 -export([publish_originate_req/1, publish_originate_req/2]).
 -export([publish_originate_resp/2, publish_originate_resp/3]).
  
--include_lib("wh_api.hrl").
+-include_lib("whistle/include/wh_api.hrl").
 
 -define(ORIGINATE_REQ_HEADERS, [<<"Endpoints">>, <<"Application-Name">>]).
 -define(OPTIONAL_ORIGINATE_REQ_HEADERS, [<<"Application-Data">>, <<"Custom-Channel-Vars">>
                                              ,<<"Export-Custom-Channel-Vars">>, <<"Outbound-Call-ID">>
-                                             | fun() -> wapi_dialplan:optional_bridge_req_headers() end()
+                                             | fun() ->
+                                                       wapi_dialplan:optional_bridge_req_headers() ++
+                                                           wapi_dialplan:eavesdrop_headers()
+                                               end()
                                         ]).
 -define(ORIGINATE_REQ_VALUES, [{<<"Event-Category">>, <<"resource">>}
                                ,{<<"Event-Name">>, <<"originate_req">>}
                                ,{<<"Dial-Endpoint-Method">>, [<<"single">>, <<"simultaneous">>]}
                                ,{<<"Media">>, [<<"process">>, <<"bypass">>, <<"auto">>]}
                                ,{<<"Continue-On-Fail">>, [<<"true">>, <<"false">>]}
-                               ,{<<"Application-Name">>, [<<"park">>, <<"bridge">>, <<"transfer">>, <<"fax">>]}
+                               ,{<<"Application-Name">>, [<<"park">>, <<"bridge">>, <<"transfer">>
+                                                          ,<<"fax">>, <<"eavesdrop">>
+                                                         ]}
                               ]).
 -define(ORIGINATE_REQ_TYPES, [{<<"Endpoints">>, fun is_list/1}
                               ,{<<"SIP-Headers">>, fun wh_json:is_json_object/1}
@@ -63,7 +68,9 @@
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec originate_req/1 :: (proplist() | wh_json:json_object()) -> {'ok', iolist()} | {'error', string()}.
+-spec originate_req/1 :: (wh_proplist() | wh_json:object()) ->
+                                 {'ok', iolist()} |
+                                 {'error', string()}.
 originate_req(Prop) when is_list(Prop) ->
     case originate_req_v(Prop) of
         true -> wh_api:build_message(Prop, ?ORIGINATE_REQ_HEADERS, ?OPTIONAL_ORIGINATE_REQ_HEADERS);
@@ -72,7 +79,7 @@ originate_req(Prop) when is_list(Prop) ->
 originate_req(JObj) ->
     originate_req(wh_json:to_proplist(JObj)).
 
--spec originate_req_v/1 :: (proplist() | wh_json:json_object()) -> boolean().
+-spec originate_req_v/1 :: (wh_proplist() | wh_json:object()) -> boolean().
 originate_req_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?ORIGINATE_REQ_HEADERS, ?ORIGINATE_REQ_VALUES, ?ORIGINATE_REQ_TYPES);
 originate_req_v(JObj) ->
@@ -83,7 +90,9 @@ originate_req_v(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec originate_resp/1 :: (proplist() | wh_json:json_object()) -> {'ok', iolist()} | {'error', string()}.
+-spec originate_resp/1 :: (wh_proplist() | wh_json:object()) ->
+                                  {'ok', iolist()} |
+                                  {'error', string()}.
 originate_resp(Prop) when is_list(Prop) ->
     case originate_resp_v(Prop) of
         true -> wh_api:build_message(Prop, ?ORIGINATE_RESP_HEADERS, ?OPTIONAL_ORIGINATE_RESP_HEADERS);
@@ -92,13 +101,13 @@ originate_resp(Prop) when is_list(Prop) ->
 originate_resp(JObj) ->
     originate_resp(wh_json:to_proplist(JObj)).
 
--spec originate_resp_v/1 :: (proplist() | wh_json:json_object()) -> boolean().
+-spec originate_resp_v/1 :: (wh_proplist() | wh_json:object()) -> boolean().
 originate_resp_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?ORIGINATE_RESP_HEADERS, ?ORIGINATE_RESP_VALUES, ?ORIGINATE_RESP_TYPES);
 originate_resp_v(JObj) ->
     originate_resp_v(wh_json:to_proplist(JObj)).
 
--spec bind_q/2 :: (ne_binary(), proplist()) -> 'ok'.
+-spec bind_q/2 :: (ne_binary(), wh_proplist()) -> 'ok'.
 bind_q(Queue, _Prop) ->
     amqp_util:callmgr_exchange(),
     amqp_util:bind_q_to_callmgr(Queue, ?KEY_RESOURCE_REQ).

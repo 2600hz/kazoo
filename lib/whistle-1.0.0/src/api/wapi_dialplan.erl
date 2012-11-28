@@ -11,6 +11,9 @@
 
 -compile({no_auto_import, [error/1]}).
 
+-include_lib("whistle/src/api/wapi_dialplan.hrl").
+-include_lib("whistle/include/wh_log.hrl").
+
 -export([v/1]).
 
 -export([optional_bridge_req_headers/0]).
@@ -35,6 +38,7 @@
          ,answer/1, answer_v/1
          ,hold/1, hold_v/1
          ,park/1, park_v/1
+         ,eavesdrop/1, eavesdrop_v/1, eavesdrop_headers/0
          ,play_and_collect_digits/1, play_and_collect_digits_v/1
          ,call_pickup/1, call_pickup_v/1
          ,hangup/1, hangup_v/1
@@ -71,9 +75,6 @@
          ,publish_originate_ready/2, publish_originate_ready/3
          ,publish_originate_execute/2, publish_originate_execute/3
         ]).
-
--include("wapi_dialplan.hrl").
--include_lib("whistle/include/wh_log.hrl").
 
 -spec optional_bridge_req_headers/0 :: () -> [ne_binary(),...].
 optional_bridge_req_headers() ->
@@ -573,6 +574,30 @@ park_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?PARK_REQ_HEADERS, ?PARK_REQ_VALUES, ?PARK_REQ_TYPES);
 park_v(JObj) ->
     park_v(wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
+%% @doc Eavesdrop on a call - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec eavesdrop/1 :: (api_terms()) -> api_formatter_return().
+eavesdrop(Prop) when is_list(Prop) ->
+    case eavesdrop_v(Prop) of
+        true -> wh_api:build_message(Prop, ?EAVESDROP_REQ_HEADERS, ?OPTIONAL_EAVESDROP_REQ_HEADERS);
+        false -> {error, "Proplist failed validation for eavesdrop_req"}
+    end;
+eavesdrop(JObj) ->
+    eavesdrop(wh_json:to_proplist(JObj)).
+
+-spec eavesdrop_v/1 :: (api_terms()) -> boolean().
+eavesdrop_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?EAVESDROP_REQ_HEADERS, ?EAVESDROP_REQ_VALUES, ?EAVESDROP_REQ_TYPES);
+eavesdrop_v(JObj) ->
+    eavesdrop_v(wh_json:to_proplist(JObj)).
+
+-spec eavesdrop_headers/0 :: () -> ne_binaries().
+eavesdrop_headers() ->
+    ?EAVESDROP_REQ_HEADERS ++ ?OPTIONAL_EAVESDROP_REQ_HEADERS.
 
 %%--------------------------------------------------------------------
 %% @doc Set Custom Channel variables - see wiki
