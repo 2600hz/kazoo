@@ -7,8 +7,6 @@
 
 -define(JONNY5_CACHE, jonny5_cache).
 
--define(JONNY5_HRL, true).
-
 -define(DEFAULT_RATE, 0.5).
 
 -define(APP_VERSION, <<"2.0.0">>).
@@ -29,5 +27,7 @@
                  ,soft_limit_inbound = false
                  ,soft_limit_outbound = false
                 }).
+-type j5_limits() :: #limits{}.
 
+-define(JONNY5_HRL, true).
 -endif.

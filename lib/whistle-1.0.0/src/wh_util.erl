@@ -352,8 +352,8 @@ pad_binary(Bin, _, _) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec join_binary/1 :: ([binary(),...]) -> binary().
--spec join_binary/2 :: ([binary(),...], binary()) -> binary().
+-spec join_binary/1 :: ([text() | atom(),...]) -> binary().
+-spec join_binary/2 :: ([text() | atom(),...], binary()) -> binary().
 
 join_binary(Bins) ->
     join_binary(Bins, <<", ">>, []).
@@ -361,13 +361,10 @@ join_binary(Bins, Sep) ->
     join_binary(Bins, Sep, []).
 
 join_binary([], _, Acc) -> iolist_to_binary(lists:reverse(Acc));
-join_binary([Bin], _, Acc) when is_binary(Bin) ->
-    iolist_to_binary(lists:reverse([Bin | Acc]));
-join_binary([Bin|Bins], Sep, Acc) when is_binary(Bin) ->
-    join_binary(Bins, Sep, [Sep, Bin |Acc]);
-join_binary([_|Bins], Sep, Acc) ->
-    join_binary(Bins, Sep, Acc).
-
+join_binary([Bin], _, Acc) ->
+    iolist_to_binary(lists:reverse([to_binary(Bin) | Acc]));
+join_binary([Bin|Bins], Sep, Acc) ->
+    join_binary(Bins, Sep, [Sep, to_binary(Bin) |Acc]).
 
 
 %%--------------------------------------------------------------------

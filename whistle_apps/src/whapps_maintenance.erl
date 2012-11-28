@@ -123,7 +123,7 @@ blocking_refresh() ->
 %%--------------------------------------------------------------------
 -spec refresh/0 :: () -> 'started'.
 -spec refresh/1 :: (ne_binary() | nonempty_string()) -> 'ok'.
--spec refresh/2 :: (ne_binary(), wh_json:json_objects()) -> 'ok'.
+-spec refresh/2 :: (ne_binary(), wh_json:objects()) -> 'ok'.
 
 refresh() ->
     spawn(fun do_refresh/0),
@@ -136,7 +136,10 @@ do_refresh() ->
     refresh(?WH_ACCOUNTS_DB),
     refresh(?WH_PROVISIONER_DB),
     refresh(?WH_FAXES),
+    refresh(?WH_RATES_DB),
+    refresh(?WH_ANONYMOUS_CDR_DB),
     refresh(?WH_SERVICES_DB),
+
     Views = [whapps_util:get_view_json(whistle_apps, ?MAINTENANCE_VIEW_FILE)
              ,whapps_util:get_view_json(conference, <<"views/conference.json">>)
              |whapps_util:get_views_json(crossbar, "account")
@@ -172,6 +175,16 @@ refresh(?WH_SIP_DB) ->
 refresh(?WH_SCHEMA_DB) ->
     couch_mgr:db_create(?WH_SCHEMA_DB),
     couch_mgr:revise_docs_from_folder(?WH_SCHEMA_DB, crossbar, "schemas"),
+    ok;
+refresh(?WH_RATES_DB) ->
+    couch_mgr:db_create(?WH_RATES_DB),
+    couch_mgr:revise_docs_from_folder(?WH_RATES_DB, hotornot, "views"),
+    couch_mgr:revise_doc_from_file(?WH_RATES_DB, crossbar, <<"views/rates.json">>),
+    couch_mgr:load_fixtures_from_folder(?WH_RATES_DB, hotornot),
+    ok;
+refresh(?WH_ANONYMOUS_CDR_DB) ->
+    couch_mgr:db_create(?WH_ANONYMOUS_CDR_DB),
+    couch_mgr:revise_doc_from_file(?WH_ANONYMOUS_CDR_DB, cdr, <<"cdr.json">>),
     ok;
 refresh(?WH_ACCOUNTS_DB) ->
     couch_mgr:db_create(?WH_ACCOUNTS_DB),
@@ -247,7 +260,7 @@ refresh(Account, Views) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec cleanup_aggregated_account/1 :: (wh_json:json_object()) -> ok.
+-spec cleanup_aggregated_account/1 :: (wh_json:object()) -> ok.
 cleanup_aggregated_account(Account) ->
     Default = case wh_json:get_value(<<"pvt_account_id">>, Account) of
                   undefined -> undefined;
@@ -269,7 +282,7 @@ cleanup_aggregated_account(Account) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec cleanup_aggregated_device/1 :: (wh_json:json_object()) -> 'ok'.
+-spec cleanup_aggregated_device/1 :: (wh_json:object()) -> 'ok'.
 cleanup_aggregated_device(Device) ->
     Default = case wh_json:get_value(<<"pvt_account_id">>, Device) of
                   undefined -> undefined;
@@ -291,7 +304,7 @@ cleanup_aggregated_device(Device) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec purge_doc_type/2 :: ([] | [ne_binary(),...] | ne_binary(), ne_binary()) -> {'ok', wh_json:json_objects()} |
+-spec purge_doc_type/2 :: ([] | [ne_binary(),...] | ne_binary(), ne_binary()) -> {'ok', wh_json:objects()} |
                                                                                  {'error', term()} |
                                                                                  'ok'.
 purge_doc_type([], _) -> ok;
@@ -365,7 +378,7 @@ migrate_limits(Account) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec clean_trunkstore_docs/3 :: (ne_binary(), integer(), integer()) -> {integer(), integer()}.
--spec clean_trunkstore_docs/4 :: (ne_binary(), wh_json:json_objects(), integer(), integer())
+-spec clean_trunkstore_docs/4 :: (ne_binary(), wh_json:objects(), integer(), integer())
                                  -> {integer(), integer()}.
 
 clean_trunkstore_docs(AccountDb, TwowayTrunks, InboundTrunks) ->
@@ -448,7 +461,7 @@ migrate_media(Account) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec migrate_attachment/2 :: (ne_binary(), wh_json:json_object()) -> 'ok'.
+-spec migrate_attachment/2 :: (ne_binary(), wh_json:object()) -> 'ok'.
 migrate_attachment(AccountDb, ViewJObj) ->
     Id = wh_json:get_value(<<"id">>, ViewJObj),
     _ = case couch_mgr:open_doc(AccountDb, Id) of
@@ -494,7 +507,7 @@ migrate_attachment(AccountDb, ViewJObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec migrate_attachment/4 :: (ne_binary(), wh_json:json_object(), ne_binary(), wh_json:json_object()) -> 'ok'.
+-spec migrate_attachment/4 :: (ne_binary(), wh_json:object(), ne_binary(), wh_json:object()) -> 'ok'.
 migrate_attachment(AccountDb, JObj, Attachment, MetaData) ->
     DocCT = wh_json:get_value(<<"content_type">>, JObj),
     MetaCT = wh_json:get_value(<<"content_type">>, MetaData),

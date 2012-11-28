@@ -83,7 +83,8 @@
 %% is the payload, possibly modified
 %% @end
 %%--------------------------------------------------------------------
--spec map/2 :: (ne_binary(), payload()) -> [boolean() | http_method(),...] | [].
+-type map_results() :: [boolean() | http_method(),...] | [].
+-spec map/2 :: (ne_binary(), payload()) -> map_results().
 map(Routing, Payload) ->
     map_processor(Routing, Payload, gen_server:call(?MODULE, current_bindings)).
 
@@ -444,8 +445,8 @@ filter_out_succeeded(false) -> true;
 filter_out_succeeded({'EXIT', _}) -> true;
 filter_out_succeeded(Term) -> wh_util:is_empty(Term).
 
--spec map_processor/3 :: (ne_binary(), payload(), wh_json:json_strings()) -> list().
--spec map_processor/5 :: (ne_binary(), payload(), ne_binary(), call_from(), wh_json:json_strings()) -> any().
+-spec map_processor/3 :: (ne_binary(), payload(), wh_json:json_strings()) -> any().
+-spec map_processor/5 :: (ne_binary(), payload(), ne_binary(), call_from(), wh_json:json_strings()) -> map_results().
 map_processor(Routing, Payload, ReqId, From, Bs) ->
     put(callid, ReqId),
     Reply = map_processor(Routing, Payload, Bs),

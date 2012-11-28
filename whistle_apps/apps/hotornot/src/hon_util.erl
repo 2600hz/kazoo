@@ -18,8 +18,12 @@
 -define(MIN_PREFIX_LEN, 1). % how many chars to strip off the e164 DID
 -define(BOTH_DIRECTIONS, [<<"inbound">>, <<"outbound">>]).
 
--spec candidate_rates/1 :: (ne_binary()) -> {'ok', wh_json:json_objects()} | {'error', atom()}.
--spec candidate_rates/2 :: (ne_binary(), binary()) -> {'ok', wh_json:json_objects()} | {'error', atom()}.
+-spec candidate_rates/1 :: (ne_binary()) ->
+                                   {'ok', wh_json:json_objects()} |
+                                   {'error', atom()}.
+-spec candidate_rates/2 :: (ne_binary(), binary()) ->
+                                   {'ok', wh_json:json_objects()} |
+                                   {'error', atom()}.
 candidate_rates(ToDID) ->
     candidate_rates(ToDID, <<>>).
 candidate_rates(ToDID, FromDID) ->
@@ -31,8 +35,8 @@ find_candidate_rates(E164, _FromDID) when byte_size(E164) > ?MIN_PREFIX_LEN ->
     End = get_suffix(E164),
 
     lager:debug("searching for rates in the range ~s to ~s", [Start, End]),
-    case couch_mgr:get_results(?WH_RATES_DB, <<"rates/lookup">>, [{<<"startkey">>, Start}
-                                                                  ,{<<"endkey">>, End}
+    case couch_mgr:get_results(?WH_RATES_DB, <<"rates/lookup">>, [{startkey, Start}
+                                                                  ,{endkey, End}
                                                                  ]) of
         {ok, []}=OK -> OK;
         {ok, ViewRows} -> {ok, [wh_json:get_value(<<"value">>, ViewRow) || ViewRow <- ViewRows]};

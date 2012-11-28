@@ -12,35 +12,36 @@
 
 -include("hotornot.hrl").
 
-init() ->
-    couch_mgr:db_create(?WH_RATES_DB),
-    couch_mgr:load_doc_from_file(?WH_RATES_DB, hotornot, <<"fixtures/us-1.json">>),
-    couch_mgr:revise_doc_from_file(?WH_RATES_DB, crossbar, <<"views/rates.json">>). %% only load it (will fail if exists)
+init() -> whapps_maintenance:refresh(?WH_RATES_DB).
 
--spec handle_req/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
+-spec handle_req/2 :: (wh_json:object(), wh_proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
     true = wapi_rate:req_v(JObj),
-    wh_util:put_callid(JObj),
+    _ = wh_util:put_callid(JObj),
     lager:debug("valid rating request"),
     case get_rate_data(JObj) of
         {error, no_rate_found} -> ok;
         {ok, Resp} ->
             wapi_rate:publish_resp(wh_json:get_value(<<"Server-ID">>, JObj)
-                                   ,props:filter_undefined(Resp))
+                                   ,props:filter_undefined(Resp)
+                                  )
     end.
 
--spec get_rate_data/1 :: (wh_json:json_object()) -> {'ok', wh_json:json_objects()} |
-                                                    {'error', 'no_rate_found'}.
+-spec get_rate_data/1 :: (wh_json:object()) ->
+                                 {'ok', wh_proplist()} |
+                                 {'error', 'no_rate_found'}.
 get_rate_data(JObj) ->
     ToDID = wh_json:get_value(<<"To-DID">>, JObj),
     FromDID = wh_json:get_value(<<"From-DID">>, JObj),
     case hon_util:candidate_rates(ToDID, FromDID) of
         {ok, []} -> 
             wh_notify:system_alert("no rate found for ~s to ~s", [FromDID, ToDID]),
-            lager:debug("rate lookup had no results"), {error, no_rate_found};
+            lager:debug("rate lookup had no results"),
+            {error, no_rate_found};
         {error, _E} -> 
             wh_notify:system_alert("no rate found for ~s to ~s", [FromDID, ToDID]),
-            lager:debug("rate lookup error: ~p", [_E]), {error, no_rate_found};
+            lager:debug("rate lookup error: ~p", [_E]),
+            {error, no_rate_found};
         {ok, Rates} ->
             RouteOptions = wh_json:get_value(<<"Options">>, JObj, []),
             Direction = wh_json:get_value(<<"Direction">>, JObj),
@@ -54,7 +55,7 @@ get_rate_data(JObj) ->
             end
     end.
 
--spec maybe_get_rate_discount/1 :: (wh_json:json_object()) -> 'undefined' | ne_binary().
+-spec maybe_get_rate_discount/1 :: (wh_json:object()) -> api_binary().
 maybe_get_rate_discount(JObj) ->
     AccountId = wh_json:get_value(<<"Account-ID">>, JObj),
     AccountDb = wh_util:format_account_id(AccountId, encoded),
@@ -69,7 +70,7 @@ maybe_get_rate_discount(JObj) ->
             wh_json:get_value([<<"pvt_discounts">>, Classification, <<"percentage">>], Def)
     end.
 
--spec rate_resp/2 :: (wh_json:json_object(), wh_json:json_object()) -> proplist().
+-spec rate_resp/2 :: (wh_json:object(), wh_json:object()) -> wh_proplist().
 rate_resp(Rate, JObj) ->
     lager:debug("using rate definition ~s", [wh_json:get_value(<<"rate_name">>, Rate)]),
     BaseCost = wapi_money:base_call_cost(wh_json:get_float_value(<<"rate_cost">>, Rate, 0.01)
@@ -83,6 +84,7 @@ rate_resp(Rate, JObj) ->
      ,{<<"Discount-Percentage">>, maybe_get_rate_discount(JObj)}
      ,{<<"Surcharge">>, wh_json:get_binary_value(<<"rate_surcharge">>, Rate)}
      ,{<<"Rate-Name">>, wh_json:get_binary_value(<<"rate_name">>, Rate)}
+     ,{<<"Rate-ID">>, wh_json:get_binary_value(<<"rate_id">>, Rate)}
      ,{<<"Base-Cost">>, wh_util:to_binary(BaseCost)}
      ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
      ,{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}

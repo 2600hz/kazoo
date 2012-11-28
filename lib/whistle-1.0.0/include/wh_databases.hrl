@@ -11,6 +11,8 @@
 -define(WH_SERVICES_DB, <<"services">>).
 -define(WH_OFFNET_DB, <<"offnet">>).
 
+-define(WH_ANONYMOUS_CDR_DB, <<"anonymous_cdrs">>).
+
 -define(WH_ACCOUNT_CONFIGS, <<"configs_">>).
 
 -define(WHISTLE_DBS_INCLUDED, true).
