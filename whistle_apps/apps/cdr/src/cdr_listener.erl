@@ -179,7 +179,9 @@ code_change(_OldVsn, State, _Extra) ->
 %% Creation of the anonymous_cdr DB if it doesn't exists
 %% @end
 %%--------------------------------------------------------------------
--spec create_anonymous_cdr_db/1 :: (ne_binary()) -> {'ok', wh_json:json_object()} | {'error', term()}.
+-spec create_anonymous_cdr_db/1 :: (ne_binary()) ->
+                                           {'ok', wh_json:json_object()} |
+                                           {'error', term()}.
 create_anonymous_cdr_db(DB) ->
     couch_mgr:db_create(DB),
     couch_mgr:revise_doc_from_file(DB, cdr, <<"cdr.json">>).
