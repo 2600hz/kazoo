@@ -76,13 +76,12 @@ resource_exists(_) -> true.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec content_types_provided/1 :: (cb_context()) -> cb_context().
-content_types_provided(cb_context()=Context) ->
-    Context#cb_context{content_types_provided=[
-                                               {to_json, [{<<"application">>, <<"json">>}]}
-                                               ,{to_csv, [{<<"application">>, <<"octet-stream">>}]}
-                                              ]
-                      }.
+-spec content_types_provided/1 :: (cb_context:context()) -> cb_context:context().
+content_types_provided(#cb_context{}=Context) ->
+    CTPs = [{to_json, [{<<"application">>, <<"json">>}]}
+            ,{to_csv, [{<<"application">>, <<"octet-stream">>}]}
+           ],
+    cb_context:add_content_types_provided(Context, CTPs).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -93,12 +92,12 @@ content_types_provided(cb_context()=Context) ->
 %% Failure here returns 400
 %% @end
 %%--------------------------------------------------------------------
--spec validate/1 :: (cb_context()) -> cb_context().
--spec validate/2 :: (cb_context(), path_token()) -> cb_context().
+-spec validate/1 :: (cb_context:context()) -> cb_context:context().
+-spec validate/2 :: (cb_context:context(), path_token()) -> cb_context:context().
 validate(#cb_context{req_verb = <<"get">>}=Context) ->
-        load_cdr_summary(Context).
+    load_cdr_summary(Context).
 validate(#cb_context{req_verb = <<"get">>}=Context, CDRId) ->
-        load_cdr(CDRId, Context).
+    load_cdr(CDRId, Context).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -107,7 +106,7 @@ validate(#cb_context{req_verb = <<"get">>}=Context, CDRId) ->
 %% account summary.
 %% @end
 %%--------------------------------------------------------------------
--spec load_cdr_summary/1 :: (cb_context()) -> cb_context().
+-spec load_cdr_summary/1 :: (cb_context:context()) -> cb_context:context().
 load_cdr_summary(#cb_context{req_nouns=[_, {?WH_ACCOUNTS_DB, _AID} | _]}=Context) ->
     lager:debug("loading cdrs for account ~s", [_AID]),
     case create_view_options(undefined, Context) of
@@ -125,13 +124,27 @@ load_cdr_summary(Context) ->
     cb_context:add_system_error(faulty_request, Context).
 
 load_view(View, ViewOptions, #cb_context{query_json=JObj}=Context) ->
-    crossbar_doc:load_view(View 
-                           ,ViewOptions
+    {G, L} = case cb_modules_util:is_superduper_admin(Context) of
+                 false -> {false, false};
+                 true ->
+                     {whapps_config:fetch(?CONFIG_CAT, <<"calculate_internal_cost_for_global_resources">>, false)
+                      ,whapps_config:fetch(?CONFIG_CAT, <<"calcuate_internal_cost_for_local_resources">>, false)
+                     }
+             end,
+    crossbar_doc:load_view(View
+                           ,maybe_load_doc(G, L, ViewOptions)
                            ,Context#cb_context{query_json=wh_json:delete_keys([<<"created_to">>
                                                                                ,<<"created_from">>
                                                                               ], JObj)}
-                           ,fun normalize_view_results/2
+                           ,fun(CDR, Acc) -> normalize_view_results(CDR, Acc, G, L) end
                           ).
+
+maybe_load_doc(true, _, ViewOptions) ->
+    [include_doc | ViewOptions];
+maybe_load_doc(_, true, ViewOptions) ->
+    [include_doc | ViewOptions];
+maybe_load_doc(_, _, ViewOptions) ->
+    ViewOptions.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -139,7 +152,7 @@ load_view(View, ViewOptions, #cb_context{query_json=JObj}=Context) ->
 %% Load a CDR document from the database
 %% @end
 %%--------------------------------------------------------------------
--spec load_cdr/2 :: (ne_binary(), cb_context()) -> cb_context().
+-spec load_cdr/2 :: (ne_binary(), cb_context:context()) -> cb_context:context().
 load_cdr(CdrId, Context) ->
     crossbar_doc:load(CdrId, Context).
 
@@ -149,9 +162,50 @@ load_cdr(CdrId, Context) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_view_results/2 :: (Doc :: wh_json:json_object(), Acc :: wh_json:json_objects()) -> wh_json:json_objects().
-normalize_view_results(JObj, Acc) ->
-    [filter_cdr_fields(wh_json:get_value(<<"value">>, JObj))|Acc].
+-spec normalize_view_results/4 :: (wh_json:object(), wh_json:objects(), boolean(), boolean()) -> wh_json:objects().
+normalize_view_results(JObj, Acc, false, false) ->
+    [filter_cdr_fields(wh_json:get_value(<<"value">>, JObj))|Acc];
+normalize_view_results(JObj, Acc, G, L) ->
+    V = filter_cdr_fields(wh_json:get_value(<<"value">>, JObj)),
+    case wh_json:get_value(<<"doc">>, JObj) of
+        undefined -> [V | Acc];
+        Doc -> update_cdr_fields(Acc, G, L, V, Doc)
+    end.
+
+update_cdr_fields(Acc, true, _, V, Cdr) ->
+    case wh_json:get_value(<<"pvt_internal_cost">>, Cdr) of
+        undefined -> update_cdr_fields(Acc, V, Cdr);
+        Cost -> [wh_json:set_value(<<"internal_cost">>, Cost, V) | Acc]
+    end.
+
+update_cdr_fields(Acc, V, Cdr) ->
+    case wh_json:get_value([<<"custom_channel_vars">>, <<"rate_id">>], Cdr) of
+        undefined -> [V | Acc];
+        RateId -> add_internal_cost(Acc, V, Cdr, RateId)
+    end.
+
+add_internal_cost(Acc, V, Cdr, RateId) ->
+    case couch_mgr:open_doc(?WH_RATES_DB, RateId) of
+        {ok, RateDoc} ->
+            Cost = calc_internal_cost(RateDoc, Cdr),
+
+            _ = spawn(fun() ->
+                              AcctDb = wh_json:get_value(<<"pvt_account_db">>, Cdr),
+                              couch_mgr:save_doc(AcctDb, wh_json:set_value(<<"pvt_internal_cost">>, Cost, Cdr))
+                      end),
+
+            [wh_json:set_value(<<"internal_cost">>, Cost, V) | Acc];
+        _ -> [V | Acc]
+    end.
+
+calc_internal_cost(RateDoc, Cdr) ->
+    Rate = wh_json:get_float_value(<<"pvt_rate_cost">>, RateDoc, 0.0),
+    RateIncr = wh_json:get_integer_value(<<"rate_increment">>, RateDoc, 60),
+    RateMin = wh_json:get_integer_value(<<"rate_minimum">>, RateDoc, 60),
+    Surcharge = wh_json:get_float_value(<<"rate_surcharge">>, RateDoc, 0.0),
+    BillingSecs = wh_json:get_integer_value(<<"billing_seconds">>, Cdr, 0),
+
+    whapps_util:calculate_cost(Rate, RateIncr, RateMin, Surcharge, BillingSecs).
 
 filter_cdr_fields(JObj) ->
     JObj.
@@ -162,19 +216,19 @@ filter_cdr_fields(JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec create_view_options/2 :: (api_binary(), cb_context()) ->
+-spec create_view_options/2 :: (api_binary(), cb_context:context()) ->
                                        {'ok', wh_proplist()} |
-                                       {'error', cb_context()}.
+                                       {'error', cb_context:context()}.
 create_view_options(OwnerId, #cb_context{query_json=JObj}=Context) ->
     MaxRange = whapps_config:get_integer(?MOD_CONFIG_CAT, <<"maximum_range">>, 6048000),
     To = wh_json:get_integer_value(<<"created_to">>, JObj, wh_util:current_tstamp()),
     From = wh_json:get_integer_value(<<"created_from">>, JObj, wh_util:current_tstamp() - MaxRange),
     Diff = To - From,
     case {Diff < 0, Diff > MaxRange} of
-        {true, _} -> 
+        {true, _} ->
             Message = <<"created_from is prior to created_to">>,
             {error, cb_context:add_validation_error(<<"created_from">>, <<"date_range">>, Message, Context)};
-        {_, true} -> 
+        {_, true} ->
             Message = <<"created_to is more than ", (wh_util:to_binary(MaxRange))/binary, " seconds from created_from">>,
             {error, cb_context:add_validation_error(<<"created_from">>, <<"date_range">>, Message, Context)};
         {false, false} when OwnerId =:= undefined ->
