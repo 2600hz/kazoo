@@ -33,8 +33,9 @@ init() ->
 -spec authorize/1 :: (#cb_context{}) -> boolean().
 authorize(#cb_context{req_nouns=[{?WH_ACCOUNTS_DB,[]}]
                       ,req_verb=Verb
-                      ,auth_account_id=AuthAccountId}) ->
-    case is_superduper_admin(AuthAccountId) of
+                     }=Context
+         ) ->
+    case cb_modules_util:is_superduper_admin(Context) of
         true -> true;
         false -> Verb =:= <<"put">>
     end;
@@ -42,7 +43,7 @@ authorize(#cb_context{req_nouns=[{<<"global_provisioner_templates">>,_}|_]
                       ,req_verb = <<"get">>}) ->
     true;
 authorize(#cb_context{auth_account_id=AuthAccountId}=Context) ->
-    IsSysAdmin = is_superduper_admin(AuthAccountId),
+    IsSysAdmin = cb_modules_util:is_superduper_admin(AuthAccountId),
     case allowed_if_sys_admin_mod(IsSysAdmin, Context)
         andalso account_is_descendant(IsSysAdmin, Context) of
         true ->
@@ -126,33 +127,6 @@ allowed_if_sys_admin_mod(IsSysAdmin, Context) ->
             true;
         true ->
             lager:debug("not authorizing, the request contains a system administration module"),
-            false
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Returns true if the request contains a system admin module.
-%% @end
-%%--------------------------------------------------------------------
--spec is_superduper_admin/1 :: ('undefined' | ne_binary()) -> boolean().
-is_superduper_admin(undefined) ->
-    false;
-is_superduper_admin(AccountId) ->
-    AccountDb = wh_util:format_account_id(AccountId, encoded),
-    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
-        {ok, JObj} ->
-            %% more logging was called for
-            case wh_json:is_true(<<"pvt_superduper_admin">>, JObj) of
-                true ->
-                    lager:debug("the requestor is a superduper admin"),
-                    true;
-                false ->
-                    lager:debug("the requestor is not a superduper admin"),
-                    false
-            end;
-        {error, _} ->
-            lager:debug("not authorizing, error during lookup"),
             false
     end.
 
