@@ -186,7 +186,7 @@ create_anonymous_cdr_db(DB) ->
 
 determine_cdr_database(JObj) ->
     case wh_json:get_value([<<"Custom-Channel-Vars">>,<<"Account-ID">>], JObj) of
-        undefined -> ?ANONYMOUS_CDR_DB;
+        undefined -> ?WH_ANONYMOUS_CDR_DB;
         AccountId ->
             determine_account_cdr_db(AccountId)
     end.
