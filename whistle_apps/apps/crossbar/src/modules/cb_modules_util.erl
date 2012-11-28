@@ -12,6 +12,7 @@
          ,update_mwi/2
          ,get_devices_owned_by/2
          ,maybe_originate_quickcall/1
+         ,is_superduper_admin/1
         ]).
 
 -include("include/crossbar.hrl").
@@ -30,7 +31,7 @@ update_mwi(OwnerId, AccountDb) ->
                   cf_util:update_mwi(OwnerId, AccountDb) 
           end).
 
--spec get_devices_owned_by/2 :: (ne_binary(), ne_binary()) -> wh_json:json_objects().
+-spec get_devices_owned_by/2 :: (ne_binary(), ne_binary()) -> wh_json:objects().
 get_devices_owned_by(OwnerID, DB) ->
     case couch_mgr:get_results(DB, <<"cf_attributes/owned">>, [{key, [OwnerID, <<"device">>]}
                                                                ,include_docs
@@ -190,4 +191,32 @@ get_caller_id_number(#cb_context{query_json=JObj}) ->
     case wh_json:get_binary_value(<<"cid-number">>, JObj) of
         undefined -> undefined;
         CIDNumber -> wh_util:uri_decode(CIDNumber)
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Returns true if the request contains a system admin module.
+%% @end
+%%--------------------------------------------------------------------
+-spec is_superduper_admin/1 :: (api_binary() | cb_context:context()) -> boolean().
+is_superduper_admin(undefined) -> false;
+is_superduper_admin(#cb_context{auth_account_id=AccountId}) ->
+    is_superduper_admin(AccountId);
+is_superduper_admin(AccountId) ->
+    AccountDb = wh_util:format_account_id(AccountId, encoded),
+    case couch_mgr:open_cache_doc(AccountDb, AccountId) of
+        {ok, JObj} ->
+            %% more logging was called for
+            case wh_json:is_true(<<"pvt_superduper_admin">>, JObj) of
+                true ->
+                    lager:debug("the requestor is a superduper admin"),
+                    true;
+                false ->
+                    lager:debug("the requestor is not a superduper admin"),
+                    false
+            end;
+        {error, _} ->
+            lager:debug("not authorizing, error during lookup"),
+            false
     end.
