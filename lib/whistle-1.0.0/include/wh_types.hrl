@@ -79,6 +79,8 @@
 
 -type wh_timeout() :: non_neg_integer() | 'infinity'.
 
+-type wh_ip_list() :: [ne_binary(),...] | [].
+
 %% Recreate the non-exported types defined in the erlang supervisor source
 -type sup_child_spec() :: supervisor:child_spec().
 -type sup_child_specs() :: [sup_child_spec()] | [].

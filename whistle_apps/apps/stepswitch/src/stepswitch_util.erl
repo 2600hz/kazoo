@@ -7,11 +7,12 @@
 -module(stepswitch_util).
 
 -export([lookup_number/1]).
+-export([maybe_gateway_by_address/2]).
 -export([evaluate_number/2]).
 -export([evaluate_flags/2]).
 -export([get_dialstring/2]).
 
--include_lib("stepswitch/src/stepswitch.hrl").
+-include("stepswitch.hrl").
 
 %%--------------------------------------------------------------------
 %% @public
@@ -46,6 +47,24 @@ maybe_transition_port_in(Num, Props) ->
         false -> false;
         true -> spawn(fun() -> wh_number_manager:ported(Num) end)
     end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec maybe_gateway_by_address/2 :: (ne_binary(), #resrc{}|[#gateway{},...]|[]) -> 'undefined' | #gateway{}.
+maybe_gateway_by_address(_, []) -> undefined;
+maybe_gateway_by_address(Address, [#resrc{gateways=Gateways}|Resources]) ->
+    case maybe_gateway_by_address(Address, Gateways) of
+        undefined -> maybe_gateway_by_address(Address, Resources);
+        Gateway -> Gateway
+    end;
+maybe_gateway_by_address(Address, [#gateway{server=Address}=Gateway|_]) ->
+    Gateway;
+maybe_gateway_by_address(Address, [_G|Gateways]) ->
+    maybe_gateway_by_address(Address, Gateways).
 
 %%--------------------------------------------------------------------
 %% @public
