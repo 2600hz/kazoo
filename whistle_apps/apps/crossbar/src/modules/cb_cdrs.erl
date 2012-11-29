@@ -127,8 +127,8 @@ load_view(View, ViewOptions, #cb_context{query_json=JObj}=Context) ->
     {G, L} = case cb_modules_util:is_superduper_admin(Context) of
                  false -> {false, false};
                  true ->
-                     {whapps_config:fetch(?CONFIG_CAT, <<"calculate_internal_cost_for_global_resources">>, false)
-                      ,whapps_config:fetch(?CONFIG_CAT, <<"calcuate_internal_cost_for_local_resources">>, false)
+                     {whapps_config:get_is_true(?CONFIG_CAT, <<"calculate_internal_cost_for_global_resources">>, false)
+                      ,whapps_config:get_is_true(?CONFIG_CAT, <<"calcuate_internal_cost_for_local_resources">>, false)
                      }
              end,
     crossbar_doc:load_view(View
