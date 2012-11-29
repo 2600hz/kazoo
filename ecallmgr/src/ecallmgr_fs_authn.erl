@@ -140,10 +140,10 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({event, [_ | Props]}, #state{node=Node}=State) ->
-    case props:get_value(<<"Event-Subclass">>, Props, props:get_value(<<"Event-Name">>, Props)) of
-        <<"sofia::register">> -> spawn(?MODULE, handle_sucessful_registration, [Props, Node]);
-        _ -> ok
-    end,
+    _ = case props:get_value(<<"Event-Subclass">>, Props, props:get_value(<<"Event-Name">>, Props)) of
+            <<"sofia::register">> -> spawn(?MODULE, handle_sucessful_registration, [Props, Node]);
+            _ -> ok
+        end,
     {noreply, State};
 handle_info({fetch, directory, <<"domain">>, <<"name">>, _Value, ID, [undefined | Data]}, #state{node=Node}=State) ->    
     case props:get_value(<<"sip_auth_method">>, Data) of

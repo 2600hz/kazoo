@@ -17,7 +17,7 @@
 -define(EVENT_CAT, <<"call_detail">>).
 -define(EVENT_NAME, <<"cdr">>).
 
--type fs_to_whistle_map() :: [{ne_binary() | [ne_binary(),...], ne_binary()},...].
+-type fs_to_whistle_map() :: [{ne_binary() | ne_binaries() | fun(), ne_binary()},...].
 -define(FS_TO_WHISTLE_MAP, [{<<"FreeSWITCH-Hostname">>, <<"Handling-Server-Name">>}
                             ,{<<"Hangup-Cause">>, <<"Hangup-Cause">>}
                             ,{<<"Unique-ID">>, <<"Call-ID">>}
@@ -42,7 +42,7 @@
                            ]).
 -define(FS_TO_WHISTLE_OUTBOUND_MAP, [{<<"variable_sip_cid_type">>, <<"Caller-ID-Type">>}]).
 
--spec new_cdr/2 :: (ne_binary(), proplist()) -> 'ok'.
+-spec new_cdr/2 :: (ne_binary(), wh_proplist()) -> 'ok'.
 new_cdr(UUID, EvtProp) ->
     put(callid, UUID),
     CDR = create_cdr(EvtProp),
@@ -50,7 +50,7 @@ new_cdr(UUID, EvtProp) ->
     lager:debug("publising cdr: ~p", [CDR]),
     wapi_call:publish_cdr(UUID, CDR).
 
--spec create_cdr/1 :: (proplist()) -> proplist().
+-spec create_cdr/1 :: (wh_proplist()) -> wh_proplist().
 create_cdr(EvtProp) ->
     DefProp = wh_api:default_headers(<<>>, ?EVENT_CAT, ?EVENT_NAME, ?APP_NAME, ?APP_VERSION),
     ApiProp0 = add_values(?FS_TO_WHISTLE_MAP, DefProp, EvtProp),
@@ -59,7 +59,7 @@ create_cdr(EvtProp) ->
         _ -> ApiProp0
     end.
 
--spec add_values/3 :: (fs_to_whistle_map(), proplist(), proplist()) -> proplist().
+-spec add_values/3 :: (fs_to_whistle_map(), wh_proplist(), wh_proplist()) -> wh_proplist().
 add_values(Mappings, BaseProp, ChannelProp) ->
     lists:foldl(fun({Fun, WK}, WApi) when is_function(Fun) ->
                         [{WK, Fun(ChannelProp)} | WApi];
@@ -83,10 +83,10 @@ add_values(Mappings, BaseProp, ChannelProp) ->
                         end
                 end, BaseProp, Mappings).
 
--spec get_first_value/2 :: ([ne_binary(),...] | [], proplist()) -> ne_binary() | 'undefined'.
+-spec get_first_value/2 :: (ne_binaries(), wh_proplist()) -> api_binary().
+get_first_value([], _) -> 'undefined';
 get_first_value([FSKey|T], ChannelProp) ->
     case props:get_value(FSKey, ChannelProp) of
         undefined -> get_first_value(T, ChannelProp);
         V -> wh_util:to_binary(V)
-    end;
-get_first_value([], _) -> undefined.
+    end.

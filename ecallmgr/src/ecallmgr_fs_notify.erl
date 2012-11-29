@@ -159,27 +159,27 @@ init([Node, Options]) ->
     {ok, #state{node=Node, options=Options}}.
 
 bind_to_events({ok, <<"mod_kazoo", _/binary>>}, Node) ->
-    case ecallmgr_config:get(<<"distribute_presence">>, true) of
-        false -> ok;
-        true -> 
-            ok = freeswitch:event(Node, ['PRESENCE_IN', 'PRESENCE_OUT', 'PRESENCE_PROBE']),
-            bind_to_notify_presence(Node)
-    end,                     
+    _ = case ecallmgr_config:get(<<"distribute_presence">>, true) of
+            false -> ok;
+            true -> 
+                ok = freeswitch:event(Node, ['PRESENCE_IN', 'PRESENCE_OUT', 'PRESENCE_PROBE']),
+                bind_to_notify_presence(Node)
+        end,                     
     case ecallmgr_config:get(<<"distribute_message_query">>, true) of
         false -> ok;
         true -> 
             ok = freeswitch:event(Node, ['MESSAGE_QUERY'])
     end;
 bind_to_events(_, Node) ->
-    case ecallmgr_config:get(<<"distribute_presence">>, true) of
-        false -> ok;
+    _ = case ecallmgr_config:get(<<"distribute_presence">>, true) of
+            false -> ok;
         true ->
-            ok = freeswitch:event(Node, ['PRESENCE_IN', 'PRESENCE_OUT', 'PRESENCE_PROBE']),
-            gproc:reg({p, l, {call_event, Node, <<"PRESENCE_IN">>}}),
-            gproc:reg({p, l, {call_event, Node, <<"PRESENCE_OUT">>}}),
-            gproc:reg({p, l, {call_event, Node, <<"PRESENCE_PROBE">>}}),
-            bind_to_notify_presence(Node)
-    end,
+                ok = freeswitch:event(Node, ['PRESENCE_IN', 'PRESENCE_OUT', 'PRESENCE_PROBE']),
+                gproc:reg({p, l, {call_event, Node, <<"PRESENCE_IN">>}}),
+                gproc:reg({p, l, {call_event, Node, <<"PRESENCE_OUT">>}}),
+                gproc:reg({p, l, {call_event, Node, <<"PRESENCE_PROBE">>}}),
+                bind_to_notify_presence(Node)
+        end,
     case ecallmgr_config:get(<<"distribute_message_query">>, true) of
         false -> ok;
         true ->
@@ -187,6 +187,7 @@ bind_to_events(_, Node) ->
             gproc:reg({p, l, {call_event, Node, <<"MESSAGE_QUERY">>}})
     end.
 
+-spec bind_to_notify_presence/1 :: (atom()) -> pid().
 bind_to_notify_presence(Node) ->
     Self = self(),
     spawn(fun() ->
@@ -244,15 +245,16 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({event, [_ | Props]}, #state{node=Node}=State) ->
-    case props:get_value(<<"Event-Name">>, Props) of
-        <<"PRESENCE_PROBE">> -> maybe_handle_presence_probe(Props, Node);
-        <<"PRESENCE_IN">> -> maybe_handle_presence_in(Props, Node);
-        <<"PRESENCE_OUT">> -> maybe_handle_presence_out(Props, Node);
-        <<"MESSAGE_QUERY">> -> spawn_link(?MODULE, handle_message_query, [Props, Node]);
-        _ -> ok
-    end,
+    _ = case props:get_value(<<"Event-Name">>, Props) of
+            <<"PRESENCE_PROBE">> -> maybe_handle_presence_probe(Props, Node);
+            <<"PRESENCE_IN">> -> maybe_handle_presence_in(Props, Node);
+            <<"PRESENCE_OUT">> -> maybe_handle_presence_out(Props, Node);
+            <<"MESSAGE_QUERY">> -> spawn_link(?MODULE, handle_message_query, [Props, Node]);
+            _ -> ok
+        end,
     {noreply, State, hibernate};
 handle_info(_Info, State) ->
+    lager:debug("unhandled message: ~p", [_Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
