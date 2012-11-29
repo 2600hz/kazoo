@@ -67,7 +67,7 @@ start_link(Node, Options) ->
                              ]
                             ,[Node, Options]).
 
--spec handle_originate_req/2 :: (wh_json:json_object(), wh_proplist()) -> sup_startchild_ret().
+-spec handle_originate_req/2 :: (wh_json:object(), wh_proplist()) -> sup_startchild_ret().
 handle_originate_req(JObj, Props) ->
     _ = wh_util:put_callid(JObj),
     Node = props:get_value(node, Props),
