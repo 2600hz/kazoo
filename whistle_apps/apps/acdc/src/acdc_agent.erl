@@ -57,7 +57,7 @@
          ,my_id :: ne_binary()
          ,my_q :: ne_binary() % AMQP queue name
          ,timer_ref :: reference()
-         ,sync_resp :: wh_json:json_object() % furthest along resp
+         ,sync_resp :: wh_json:object() % furthest along resp
          ,supervisor :: pid()
          ,record_calls = false :: boolean()
          ,is_thief = false :: boolean()
@@ -160,7 +160,7 @@ start_link(Supervisor, ThiefCall, QueueId) ->
 stop(Srv) ->
     gen_listener:cast(Srv, {stop_agent}).
 
--spec member_connect_resp/2 :: (pid(), wh_json:json_object()) -> 'ok'.
+-spec member_connect_resp/2 :: (pid(), wh_json:object()) -> 'ok'.
 member_connect_resp(Srv, ReqJObj) ->
     gen_listener:cast(Srv, {member_connect_resp, ReqJObj}).
 
@@ -591,7 +591,7 @@ code_change(_OldVsn, State, _Extra) ->
 -spec is_valid_queue/2 :: (ne_binary(), [ne_binary()]) -> boolean().
 is_valid_queue(Q, Qs) -> lists:member(Q, Qs).
 
--spec send_member_connect_resp/5 :: (wh_json:json_object(), ne_binary()
+-spec send_member_connect_resp/5 :: (wh_json:object(), ne_binary()
                                      ,ne_binary(), ne_binary(), wh_now() | 'undefined'
                                     ) -> 'ok'.
 send_member_connect_resp(JObj, MyQ, AgentId, MyId, LastConn) ->
@@ -607,7 +607,7 @@ send_member_connect_resp(JObj, MyQ, AgentId, MyId, LastConn) ->
     lager:debug("sending connect_resp to ~s: ~p", [Queue, Resp]),
     wapi_acdc_queue:publish_member_connect_resp(Queue, Resp).
 
--spec send_member_connect_retry/2 :: (wh_json:json_object(), ne_binary()) -> 'ok'.
+-spec send_member_connect_retry/2 :: (wh_json:object(), ne_binary()) -> 'ok'.
 -spec send_member_connect_retry/3 :: (ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 send_member_connect_retry(JObj, MyId) ->
     send_member_connect_retry(wh_json:get_value(<<"Server-ID">>, JObj)
@@ -632,7 +632,7 @@ send_member_connect_accepted(Queue, CallId, AcctId, AgentId, MyId) ->
                                   ]),
     wapi_acdc_queue:publish_member_connect_accepted(Queue, Resp).
 
--spec send_originate_execute/2 :: (wh_json:json_object(), ne_binary()) -> 'ok'.
+-spec send_originate_execute/2 :: (wh_json:object(), ne_binary()) -> 'ok'.
 send_originate_execute(JObj, Q) ->
     Prop = [{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
             ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
@@ -674,7 +674,7 @@ send_status_update(AcctId, AgentId, resume) ->
 idle_time(undefined) -> undefined;
 idle_time(T) -> wh_util:elapsed_s(T).
 
--spec call_id/1 :: ('undefined' | whapps_call:call() | wh_json:json_object()) ->
+-spec call_id/1 :: ('undefined' | whapps_call:call() | wh_json:object()) ->
                            api_binary().
 call_id(undefined) -> undefined;
 call_id(Call) ->
@@ -703,13 +703,20 @@ maybe_connect_to_agent(FSM, EPs, Call, Timeout) ->
     CCVs = props:filter_undefined([{<<"Account-ID">>, AcctId}
                                    ,{<<"Authorizing-ID">>, whapps_call:authorizing_id(Call)}
                                    ,{<<"Request-ID">>, ReqId}
+                                   ,{<<"Retain-CID">>, <<"true">>}
                                   ]),
 
     Prop = props:filter_undefined(
              [{<<"Msg-ID">>, wh_util:rand_hex_binary(6)}
               ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
               ,{<<"Timeout">>, Timeout}
-              ,{<<"Endpoints">>, [wh_json:set_value(<<"Endpoint-Timeout">>, Timeout, EP) || EP <- EPs]}
+              ,{<<"Endpoints">>, [wh_json:set_values([{<<"Endpoint-Timeout">>, Timeout}
+                                                      ,{<<"Outgoing-Caller-ID-Name">>, whapps_call:caller_id_name(Call)}
+                                                      ,{<<"Outgoing-Caller-ID-Number">>, whapps_call:caller_id_number(Call)}
+                                                     ], EP)
+                                  || EP <- EPs
+                                 ]
+               }
               ,{<<"Export-Custom-Channel-Vars">>, [<<"Account-ID">>
                                                    ,<<"Retain-CID">>
                                                    ,<<"Authorizing-ID">>
@@ -720,6 +727,8 @@ maybe_connect_to_agent(FSM, EPs, Call, Timeout) ->
               ,{<<"Application-Name">>, <<"park">>}
               ,{<<"Caller-ID-Name">>, whapps_call:caller_id_name(Call)}
               ,{<<"Caller-ID-Number">>, whapps_call:caller_id_number(Call)}
+              ,{<<"Outgoing-Caller-ID-Name">>, whapps_call:caller_id_name(Call)}
+              ,{<<"Outgoing-Caller-ID-Number">>, whapps_call:caller_id_number(Call)}
               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
 
@@ -767,7 +776,7 @@ fetch_my_queue() ->
     _ = spawn(fun() -> gen_listener:cast(Self, {queue_name, gen_listener:queue_name(Self)}) end),
     ok.
 
--spec should_record_endpoints/2 :: (wh_json:json_objects(), boolean()) -> boolean().
+-spec should_record_endpoints/2 :: (wh_json:objects(), boolean()) -> boolean().
 should_record_endpoints(_EPs, true) -> true;
 should_record_endpoints(EPs, false) ->
     lists:any(fun(EP) ->
@@ -809,7 +818,7 @@ store_recording(MediaName, StoreUrl, Call) ->
     ok = whapps_call_command:store(MediaName, StoreUrl, Call).
 
 -spec store_recording_meta/3 :: (whapps_call:call(), ne_binary(), ne_binary()) ->
-                                        {'ok', wh_json:json_object()} |
+                                        {'ok', wh_json:object()} |
                                         {'error', any()}.
 store_recording_meta(Call, MediaName, Ext) ->
     AcctDb = whapps_call:account_db(Call),
@@ -844,7 +853,7 @@ get_recording_doc_id(CallId) -> <<"call_recording_", CallId/binary>>.
 get_media_name(CallId, Ext) ->
     <<(get_recording_doc_id(CallId))/binary, ".", Ext/binary>>.
 
--spec store_url/2 :: (whapps_call:call(), wh_json:json_object()) -> ne_binary().
+-spec store_url/2 :: (whapps_call:call(), wh_json:object()) -> ne_binary().
 store_url(Call, JObj) ->
     AccountDb = whapps_call:account_db(Call),
     MediaId = wh_json:get_value(<<"_id">>, JObj),

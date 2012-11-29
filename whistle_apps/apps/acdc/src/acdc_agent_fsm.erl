@@ -83,7 +83,7 @@
          ,caller_exit_key = <<"#">> :: ne_binary()
          ,agent_call_id :: ne_binary()
          ,next_status :: ne_binary()
-         ,endpoints = [] :: wh_json:json_objects()
+         ,endpoints = [] :: wh_json:objects()
          }).
 
 %%%===================================================================
@@ -96,7 +96,7 @@
 %%   member_connect_resp payload or ignore the request
 %% @end
 %%--------------------------------------------------------------------
--spec member_connect_req/2 :: (pid(), wh_json:json_object()) -> 'ok'.
+-spec member_connect_req/2 :: (pid(), wh_json:object()) -> 'ok'.
 member_connect_req(FSM, JObj) ->
     gen_fsm:send_event(FSM, {member_connect_req, JObj}).
 
@@ -107,7 +107,7 @@ member_connect_req(FSM, JObj) ->
 %%   member_connect_resp payload or ignore the request
 %% @end
 %%--------------------------------------------------------------------
--spec member_connect_win/2 :: (pid(), wh_json:json_object()) -> 'ok'.
+-spec member_connect_win/2 :: (pid(), wh_json:object()) -> 'ok'.
 member_connect_win(FSM, JObj) ->
     gen_fsm:send_event(FSM, {member_connect_win, JObj}).
 
@@ -118,7 +118,7 @@ member_connect_win(FSM, JObj) ->
 %%   for bridge and hangup events).
 %% @end
 %%--------------------------------------------------------------------
--spec call_event/4 :: (pid(), ne_binary(), ne_binary(), wh_json:json_object()) -> 'ok'.
+-spec call_event/4 :: (pid(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
 call_event(FSM, <<"call_event">>, <<"CHANNEL_BRIDGE">>, JObj) ->
     gen_fsm:send_event(FSM, {channel_bridged, callid(JObj)});
 call_event(FSM, <<"call_event">>, <<"CHANNEL_UNBRIDGE">>, JObj) ->
@@ -154,7 +154,7 @@ call_event(_, _C, _E, _) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_send_execute_complete/3 :: (pid(), ne_binary(), wh_json:json_object()) -> 'ok'.
+-spec maybe_send_execute_complete/3 :: (pid(), ne_binary(), wh_json:object()) -> 'ok'.
 maybe_send_execute_complete(FSM, <<"bridge">>, JObj) ->
     gen_fsm:send_event(FSM, {channel_unbridged, callid(JObj)});
 maybe_send_execute_complete(FSM, <<"call_pickup">>, JObj) ->
@@ -210,7 +210,7 @@ resume(FSM) ->
 refresh(FSM, AgentJObj) ->
     gen_fsm:send_all_state_event(FSM, {refresh, AgentJObj}).
 
--spec current_call/1 :: (pid()) -> 'undefined' | wh_json:json_object().
+-spec current_call/1 :: (pid()) -> 'undefined' | wh_json:object().
 current_call(FSM) ->
     gen_fsm:sync_send_event(FSM, current_call).
 
@@ -895,14 +895,15 @@ start_pause_timer(Timeout) ->
 start_call_status_timer() ->
     gen_fsm:start_timer(?CALL_STATUS_TIMEOUT, ?CALL_STATUS_MESSAGE).
 
--spec callid/1 :: (wh_json:json_object()) -> ne_binary() | 'undefined'.
+-spec callid/1 :: (wh_json:object()) -> api_binary().
 callid(JObj) ->
     case wh_json:get_value(<<"Call-ID">>, JObj) of
         undefined -> wh_json:get_value([<<"Call">>, <<"Call-ID">>], JObj);
         CallId -> CallId
     end.
 
--spec update_agent_status_to_resume/2 :: (ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()}.
+-spec update_agent_status_to_resume/2 :: (ne_binary(), ne_binary()) ->
+                                                 {'ok', wh_json:object()}.
 update_agent_status_to_resume(AcctId, AgentId) ->
     AcctDb = wh_util:format_account_id(AcctId, encoded),
     Doc = wh_json:from_list([{<<"agent_id">>, AgentId}
@@ -932,7 +933,7 @@ clear_call(State) ->
                }.
 
 -spec current_call/4 :: (whapps_call:call() | 'undefined', atom(), ne_binary(), 'undefined' | wh_now()) ->
-                                wh_json:json_object() | 'undefined'.
+                                wh_json:object() | 'undefined'.
 current_call(undefined, _, _, _) -> undefined;
 current_call(Call, AgentState, QueueId, Start) -> 
     wh_json:from_list([{<<"call_id">>, whapps_call:call_id(Call)}

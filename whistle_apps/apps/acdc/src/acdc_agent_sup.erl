@@ -37,7 +37,7 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
--spec start_link/1 :: (wh_json:json_object()) -> startlink_ret().
+-spec start_link/1 :: (wh_json:object()) -> startlink_ret().
 -spec start_link/2 :: (whapps_call:call(), ne_binary()) -> startlink_ret().
 start_link(AgentJObj) ->
     supervisor:start_link(?MODULE, [AgentJObj]).

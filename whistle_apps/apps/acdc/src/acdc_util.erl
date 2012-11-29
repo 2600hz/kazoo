@@ -52,7 +52,7 @@ agents_in_queue(AcctDb, QueueId) ->
         {ok, As} -> [wh_json:get_value(<<"value">>, A) || A <- As]
     end.
 
--spec agent_devices/2 :: (ne_binary(), ne_binary()) -> wh_json:json_objects().
+-spec agent_devices/2 :: (ne_binary(), ne_binary()) -> wh_json:objects().
 agent_devices(AcctDb, AgentId) ->
     case couch_mgr:get_results(AcctDb, <<"cf_attributes/owned">>, [{key, [AgentId, <<"device">>]}
                                                                    ,include_docs
@@ -63,7 +63,7 @@ agent_devices(AcctDb, AgentId) ->
     end.
 
 -spec get_endpoints/2 :: (whapps_call:call(), ne_binary() | couch_mgr:get_results_return()) ->
-                                 wh_json:json_objects().
+                                 wh_json:objects().
 get_endpoints(Call, ?NE_BINARY = AgentId) ->
     AcctDb = whapps_call:account_db(Call),
     get_endpoints(Call
@@ -105,7 +105,7 @@ is_endpoint_registered(EPDoc, AcctRealm) ->
         {error, _E} -> lager:debug("reg query failed: ~p", [_E]), false
     end.
 
--spec get_endpoint/2 :: (whapps_call:call(), ne_binary()) -> wh_json:json_object() | 'undefined'.
+-spec get_endpoint/2 :: (whapps_call:call(), ne_binary()) -> wh_json:object() | 'undefined'.
 get_endpoint(Call, ?NE_BINARY = EndpointId) ->
     case couch_mgr:open_doc(whapps_call:account_db(Call), EndpointId) of
         {ok, JObj} -> JObj;
