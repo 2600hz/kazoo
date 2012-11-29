@@ -73,7 +73,7 @@
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec originate_req/1 :: (wh_proplist() | wh_json:object()) ->
+-spec originate_req/1 :: (api_terms()) ->
                                  {'ok', iolist()} |
                                  {'error', string()}.
 originate_req(Prop) when is_list(Prop) ->
@@ -84,7 +84,7 @@ originate_req(Prop) when is_list(Prop) ->
 originate_req(JObj) ->
     originate_req(wh_json:to_proplist(JObj)).
 
--spec originate_req_v/1 :: (wh_proplist() | wh_json:object()) -> boolean().
+-spec originate_req_v/1 :: (api_terms()) -> boolean().
 originate_req_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?ORIGINATE_REQ_HEADERS, ?ORIGINATE_REQ_VALUES, ?ORIGINATE_REQ_TYPES);
 originate_req_v(JObj) ->
@@ -95,7 +95,7 @@ originate_req_v(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec originate_resp/1 :: (wh_proplist() | wh_json:object()) ->
+-spec originate_resp/1 :: (api_terms()) ->
                                   {'ok', iolist()} |
                                   {'error', string()}.
 originate_resp(Prop) when is_list(Prop) ->
@@ -106,7 +106,7 @@ originate_resp(Prop) when is_list(Prop) ->
 originate_resp(JObj) ->
     originate_resp(wh_json:to_proplist(JObj)).
 
--spec originate_resp_v/1 :: (wh_proplist() | wh_json:object()) -> boolean().
+-spec originate_resp_v/1 :: (api_terms()) -> boolean().
 originate_resp_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?ORIGINATE_RESP_HEADERS, ?ORIGINATE_RESP_VALUES, ?ORIGINATE_RESP_TYPES);
 originate_resp_v(JObj) ->

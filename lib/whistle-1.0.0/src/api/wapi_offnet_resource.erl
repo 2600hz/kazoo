@@ -29,12 +29,20 @@
                                                    ,<<"Hold-Media">>, <<"Presence-ID">>, <<"Account-Realm">>
                                                    ,<<"Control-Queue">>, <<"Call-ID">>, <<"Application-Data">>
                                                    ,<<"Account-ID">>, <<"Outbound-Call-ID">>, <<"Force-Fax">>
+                                                   ,<<"Call-ID">>, <<"Mode">>, <<"Group-ID">> % Eavesdrop
                                               ]).
 -define(OFFNET_RESOURCE_REQ_VALUES, [{<<"Event-Category">>, <<"resource">>}
                                      ,{<<"Event-Name">>, <<"offnet_req">>}
                                      ,{<<"Resource-Type">>, [<<"audio">>, <<"video">>, <<"originate">>]}
-                                     ,{<<"Application-Name">>, [<<"park">>, <<"bridge">>, <<"transfer">>, <<"fax">>]}
+                                     ,{<<"Application-Name">>, [<<"park">>, <<"bridge">>, <<"transfer">>
+                                                                ,<<"fax">>, <<"eavesdrop">>
+                                                               ]}
                                      ,{<<"Media">>, [<<"process">>, <<"bypass">>, <<"auto">>]}
+                                     %% Eavesdrop
+                                     ,{<<"Mode">>, [<<"listen">>   % hear both sides - default
+                                                    ,<<"whisper">> % talk to one side
+                                                    ,<<"full">>    % talk to both sides
+                                                   ]}
                                     ]).
 -define(OFFNET_RESOURCE_REQ_TYPES, [{<<"Call-ID">>, fun is_binary/1}
                                     ,{<<"Account-ID">>, fun is_binary/1}
@@ -62,7 +70,9 @@
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec req/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec req/1 :: (api_terms()) ->
+                       {'ok', iolist()} |
+                       {'error', string()}.
 req(Prop) when is_list(Prop) ->
     case req_v(Prop) of
         true -> wh_api:build_message(Prop, ?OFFNET_RESOURCE_REQ_HEADERS, ?OPTIONAL_OFFNET_RESOURCE_REQ_HEADERS);
@@ -82,7 +92,9 @@ req_v(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec resp/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec resp/1 :: (api_terms()) ->
+                        {'ok', iolist()} |
+                        {'error', string()}.
 resp(Prop) when is_list(Prop) ->
     case resp_v(Prop) of
         true -> wh_api:build_message(Prop, ?OFFNET_RESOURCE_RESP_HEADERS, ?OPTIONAL_OFFNET_RESOURCE_RESP_HEADERS);
