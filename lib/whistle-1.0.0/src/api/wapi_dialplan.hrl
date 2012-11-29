@@ -257,21 +257,6 @@
                          ]).
 -define(PARK_REQ_TYPES, []).
 
-%% Eavesdrop
--define(EAVESDROP_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>]).
--define(OPTIONAL_EAVESDROP_REQ_HEADERS, [<<"Insert-At">>, <<"Mode">>, <<"Group-ID">>
-                                        ]).
--define(EAVESDROP_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
-                               ,{<<"Event-Name">>, <<"command">>}
-                               ,{<<"Application-Name">>, <<"eavesdrop">>}
-                               ,{<<"Mode">>, [<<"listen">>   % hear both sides - default
-                                              ,<<"whisper">> % talk to one side
-                                              ,<<"full">>    % talk to both sides
-                                             ]}
-                               ,?INSERT_AT_TUPLE
-                              ]).
--define(EAVESDROP_REQ_TYPES, []).
-
 %% Set
 -define(SET_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Custom-Channel-Vars">>, <<"Custom-Call-Vars">>]).
 -define(OPTIONAL_SET_REQ_HEADERS, [<<"Insert-At">>]).
