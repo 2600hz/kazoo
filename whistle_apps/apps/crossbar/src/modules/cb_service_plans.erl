@@ -6,7 +6,8 @@
 %%%
 %%% @end
 %%% @contributors:
-%%%     Peter
+%%%     Peter Defebvre
+%%%     Karl Anderson
 %%%-------------------------------------------------------------------
 -module(cb_service_plans).
 
@@ -37,7 +38,6 @@ init() ->
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.service_plans">>, ?MODULE, allowed_methods),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.service_plans">>, ?MODULE, resource_exists),
     _ = crossbar_bindings:bind(<<"v1_resource.validate.service_plans">>, ?MODULE, validate),
-    _ = crossbar_bindings:bind(<<"v1_resource.execute.put.service_plans">>, ?MODULE, put),
     _ = crossbar_bindings:bind(<<"v1_resource.execute.post.service_plans">>, ?MODULE, post),
     crossbar_bindings:bind(<<"v1_resource.execute.delete.service_plans">>, ?MODULE, delete).
 
@@ -86,7 +86,6 @@ validate(#cb_context{req_verb = <<"get">>, account_id=AccountId}=Context) ->
     ResellerId = wh_services:find_reseller_id(AccountId),
     ResellerDb = wh_util:format_account_id(ResellerId, encoded),
     crossbar_doc:load_view(?CB_LIST, [], Context#cb_context{db_name=ResellerDb}, fun normalize_view_results/2).
-
 validate(#cb_context{req_verb = <<"get">>, account_id=AccountId}=Context, <<"current">>) ->
     Context#cb_context{resp_data=wh_services:service_plan_json(AccountId)};
 validate(#cb_context{req_verb = <<"get">>, account_id=AccountId}=Context, PlanId) ->
@@ -94,9 +93,9 @@ validate(#cb_context{req_verb = <<"get">>, account_id=AccountId}=Context, PlanId
     ResellerDb = wh_util:format_account_id(ResellerId, encoded),
     crossbar_doc:read(PlanId, Context#cb_context{db_name=ResellerDb});
 validate(#cb_context{req_verb = <<"post">>}=Context, _PlanId) ->
-    Context;
+    maybe_allow_change(Context);
 validate(#cb_context{req_verb = <<"delete">>}=Context, _PlanId) ->
-    Context.
+    maybe_allow_change(Context).
 
 %% [PlanId || PlanId <- wh_json:get_keys(Plans), wh_json:get_value([PlanId, <<"account_id">>], Plans) =:= <<"reseller_id_1">>].
 
@@ -139,3 +138,21 @@ delete(#cb_context{account_id=AccountId}=Context, PlanId) ->
 -spec normalize_view_results/2 :: (wh_json:json_object(), wh_json:json_objects()) -> wh_json:json_objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
+
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Check if you have the permission to update or delete service plans
+%% @end
+%%--------------------------------------------------------------------
+-spec maybe_allow_change/1 :: (#cb_context{}) -> #cb_context{}.
+maybe_allow_change(#cb_context{auth_account_id=AuthAccountId, account_id=AccountId}=Context) ->
+    ResellerId = wh_services:find_reseller_id(AccountId),
+    case AuthAccountId =:= ResellerId  of
+        true ->
+            Context#cb_context{resp_status=success};
+        false ->    
+            cb_context:add_system_error(forbiden, Context)
+    end.
+

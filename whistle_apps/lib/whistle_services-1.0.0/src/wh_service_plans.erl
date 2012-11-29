@@ -19,6 +19,7 @@
 -export([create_items/1
          ,create_items/2
         ]).
+-export([json_items/1]).
 
 -record(wh_service_plans, {vendor_id = undefined
                            ,plans = []
@@ -148,6 +149,26 @@ create_items(Services, ServicePlans) ->
                         wh_service_plan:create_items(Plan, Items, Services)
                 end, wh_service_items:empty(), Plans).
 
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% ...
+%% @end
+%%--------------------------------------------------------------------
+-spec json_items/1 :: (wh_json:json_object()) -> wh_service_items:items().
+json_items(ServiceJObj) ->
+    % Foreach plan in the ServiceObj
+    % Get the plan ID from ServiceObj
+    % Get The Account ID
+    % Get the plan in the account DB
+    % Get the items
+    % Merge the items lists
+    case  create_items(ServiceJObj) of
+        {ok, Items} -> Items;
+        {error, _} -> []
+    end.
+    
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
