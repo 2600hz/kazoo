@@ -9,6 +9,8 @@
 %%%-------------------------------------------------------------------
 -module(wapi_resource).
 
+-include_lib("whistle/include/wh_api.hrl").
+
 -export([originate_req/1, originate_req_v/1]).
 -export([originate_resp/1, originate_resp_v/1]).
 
@@ -17,16 +19,14 @@
 
 -export([publish_originate_req/1, publish_originate_req/2]).
 -export([publish_originate_resp/2, publish_originate_resp/3]).
- 
--include_lib("whistle/include/wh_api.hrl").
 
 -define(ORIGINATE_REQ_HEADERS, [<<"Endpoints">>, <<"Application-Name">>]).
 -define(OPTIONAL_ORIGINATE_REQ_HEADERS, [<<"Application-Data">>, <<"Custom-Channel-Vars">>
-                                             ,<<"Export-Custom-Channel-Vars">>, <<"Outbound-Call-ID">>
-                                             | fun() ->
-                                                       wapi_dialplan:optional_bridge_req_headers() ++
-                                                           wapi_dialplan:eavesdrop_headers()
-                                               end()
+                                         ,<<"Export-Custom-Channel-Vars">>, <<"Outbound-Call-ID">>
+                                         ,<<"Call-ID">>, <<"Mode">>, <<"Group-ID">> % Eavesdrop
+                                         | fun() ->
+                                                   wapi_dialplan:optional_bridge_req_headers()
+                                           end()
                                         ]).
 -define(ORIGINATE_REQ_VALUES, [{<<"Event-Category">>, <<"resource">>}
                                ,{<<"Event-Name">>, <<"originate_req">>}
@@ -36,6 +36,11 @@
                                ,{<<"Application-Name">>, [<<"park">>, <<"bridge">>, <<"transfer">>
                                                           ,<<"fax">>, <<"eavesdrop">>
                                                          ]}
+                               %% Eavesdrop
+                               ,{<<"Mode">>, [<<"listen">>   % hear both sides - default
+                                              ,<<"whisper">> % talk to one side
+                                              ,<<"full">>    % talk to both sides
+                                             ]}
                               ]).
 -define(ORIGINATE_REQ_TYPES, [{<<"Endpoints">>, fun is_list/1}
                               ,{<<"SIP-Headers">>, fun wh_json:is_json_object/1}
