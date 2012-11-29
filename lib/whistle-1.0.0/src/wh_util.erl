@@ -71,12 +71,6 @@
 -export([get_xml_value/2]).
 
 -export([whistle_version/0, write_pid/1]).
--export([is_ipv4/1, is_ipv6/1]).
--export([expand_cidr/1]).
--export([is_rfc1918_ip/1]).
--export([iptuple_to_binary/1]).
--export([verify_cidr/2]).
--export([get_hostname/0]).
 
 -define(WHISTLE_VERSION_CACHE_KEY, {?MODULE, whistle_version}).
 
@@ -282,19 +276,6 @@ get_account_realm(Db, AccountId) ->
             lager:debug("error while looking up account realm: ~p", [R]),
             undefined
     end.
-
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Find the hostname of the system
-%% @end
-%%--------------------------------------------------------------------
--spec get_hostname/0 :: () -> string().
-get_hostname() ->
-    {ok, Host} = inet:gethostname(),
-    {ok, #hostent{h_name=Hostname}} = inet:gethostbyname(Host),
-    Hostname.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -812,74 +793,6 @@ pretty_print_datetime({{Y,Mo,D},{H,Mi,S}}) ->
 -spec microseconds_to_seconds/1 :: (float() | integer() | string() | binary()) -> non_neg_integer().
 microseconds_to_seconds(Microseconds) ->
     to_integer(Microseconds) div 1000000.
-
--spec is_ipv4/1 :: (nonempty_string() | ne_binary()) -> boolean().
-is_ipv4(Address) when is_binary(Address) ->
-    is_ipv4(to_list(Address));
-is_ipv4(Address) when is_list(Address) ->
-    case inet_parse:ipv4_address(Address) of
-        {ok, _} ->
-            true;
-        {error, _} -> false
-    end.
-
--spec is_ipv6/1 :: (nonempty_string() | ne_binary()) -> boolean().
-is_ipv6(Address) when is_binary(Address) ->
-    is_ipv6(to_list(Address));
-is_ipv6(Address) when is_list(Address) ->
-    case inet_parse:ipv6_address(Address) of
-        {ok, _} -> true;
-        {error, _} -> false
-    end.
-
--spec verify_cidr/2 :: (string() | ne_binary(), string() | ne_binary()) -> boolean().
-verify_cidr(IP, CIDR) when is_binary(IP) ->
-    verify_cidr(to_list(IP), CIDR);
-verify_cidr(IP, CIDR) when is_binary(CIDR) ->
-    verify_cidr(IP, to_list(CIDR));
-verify_cidr(IP, CIDR) ->
-    %% As per the docs... "This operation should only be used for test purposes"
-    %% so, ummm ya, but probably cheaper then my expand bellow followed by a list
-    %% test.  Just be aware this should only be used where performance is not 
-    %% critical
-    case orber_acl:verify(IP, CIDR, inet) of
-        true -> true;
-        {false, _, _} -> false;
-        {error, _} -> false
-    end.
-
--spec expand_cidr/1 :: (string() | ne_binary()) -> [ne_binary(),...] | [].
-expand_cidr(CIDR) when is_binary(CIDR) ->
-    expand_cidr(to_list(CIDR));    
-expand_cidr(CIDR) ->
-    %% EXTREMELY wastefull/naive approach, should never be used, but if you
-    %% must we keep it in a class C
-    case orber_acl:range(CIDR, inet) of
-        {error, _} -> [];
-        {ok, Start, End} ->
-            [A1, B1, C1, D1] = lists:map(fun wh_util:to_integer/1, string:tokens(Start, ".")),
-            [A2, B2, C2, D2] = lists:map(fun wh_util:to_integer/1, string:tokens(End, ".")),
-            true = ((A2 + B2 + C2 + D2) - (A1 + B1 + C1 + D1)) =< 510,
-            [iptuple_to_binary({A,B,C,D})
-             || A <- lists:seq(A1, A2)
-                    ,B <- lists:seq(B1, B2)
-                    ,C <- lists:seq(C1, C2)
-                    ,D <- lists:seq(D1, D2)
-            ]
-    end.
-
--spec is_rfc1918_ip/1 :: (string() | ne_binary()) -> boolean().
-is_rfc1918_ip(IP) ->
-    verify_cidr(IP, "192.168.0.0/16") 
-        orelse verify_cidr(IP, "10.0.0.0/8")
-        orelse verify_cidr(IP, "172.16.0.0/12").
-
--spec iptuple_to_binary/1 :: ({integer(), integer(), integer(), integer()}) -> ne_binary().
-iptuple_to_binary({A,B,C,D}) ->
-    <<(to_binary(A))/binary, "."
-      ,(to_binary(B))/binary, "."
-      ,(to_binary(C))/binary, "."
-      ,(to_binary(D))/binary>>.
 
 -spec elapsed_s/1 :: (wh_now() | pos_integer()) -> pos_integer().
 -spec elapsed_ms/1 :: (wh_now() | pos_integer()) -> pos_integer().

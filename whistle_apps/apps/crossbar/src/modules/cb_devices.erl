@@ -417,7 +417,7 @@ is_ip_unique(IP, DeviceId) ->
         andalso is_ip_sip_auth_unique(IP, DeviceId).
 
 is_ip_acl_unique(IP) ->
-    lists:all(fun(CIDR) -> not (wh_util:verify_cidr(IP, CIDR)) end, get_all_acl_ips()).
+    lists:all(fun(CIDR) -> not (wh_network_utils:verify_cidr(IP, CIDR)) end, get_all_acl_ips()).
 
 is_ip_sip_auth_unique(IP, DeviceId) ->
     ViewOptions = [{<<"key">>, IP}],

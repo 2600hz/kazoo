@@ -11,23 +11,28 @@
 
 %% API
 -export([start_link/0]).
-
-%% gen_server callbacks
--export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2
-         ,terminate/2, code_change/3]).
+-export([init/1
+         ,handle_call/3
+         ,handle_cast/2
+         ,handle_info/2
+         ,handle_event/2
+         ,terminate/2
+         ,code_change/3
+        ]).
 
 -define(SERVER, ?MODULE).
 
--record(state, {
-          last_doc_change = {<<>>, [<<>>]}
-          ,resrcs = []
-         }).
+-record(state, {last_doc_change = {<<>>, [<<>>]}
+                ,resrcs = []
+               }).
 
 -define(BINDINGS, [{route, []}
                    ,{offnet_resource, []}
+                   ,{authn, []}
                   ]).
 -define(RESPONDERS, [{stepswitch_inbound, [{<<"dialplan">>, <<"route_req">>}]}
                      ,{stepswitch_outbound, [{<<"resource">>, <<"offnet_req">>}]}
+                     ,{stepswitch_authn_req, [{<<"directory">>, <<"authn_req">>}]}
                     ]).
 -define(QUEUE_NAME, ?RESOURCE_QUEUE_NAME).
 -define(QUEUE_OPTIONS, [{exclusive, false}, {auto_delete, true}, {nowait, false}]).
