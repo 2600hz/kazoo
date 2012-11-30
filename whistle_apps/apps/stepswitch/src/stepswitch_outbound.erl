@@ -16,19 +16,19 @@
 -include("stepswitch.hrl").
 -include_lib("whistle_number_manager/include/wh_number_manager.hrl").
 
--type bridge_resp() :: {'error', wh_json:json_object()} |
+-type bridge_resp() :: {'error', wh_json:object()} |
                        {'error', 'timeout'} |
-                       {'ok', wh_json:json_object()} |
-                       {'fail', wh_json:json_object()}.
+                       {'ok', wh_json:object()} |
+                       {'fail', wh_json:object()}.
 
--type execute_ext_resp() ::  {'ok', wh_json:json_object()} |
+-type execute_ext_resp() ::  {'ok', wh_json:object()} |
                              {'ok', 'execute_extension'} |
-                             {'fail', wh_json:json_object()}.
+                             {'fail', wh_json:object()}.
 
--type originate_resp() :: {'error', wh_json:json_object()} |
-                          {'ok', wh_json:json_object()} |
-                          {'ready', wh_json:json_object()} |
-                          {'fail', wh_json:json_object()}.
+-type originate_resp() :: {'error', wh_json:object()} |
+                          {'ok', wh_json:object()} |
+                          {'ready', wh_json:object()} |
+                          {'fail', wh_json:object()}.
 
 init() ->
     'ok'.
@@ -40,8 +40,8 @@ init() ->
 %% route
 %% @end
 %%--------------------------------------------------------------------
--spec handle_req/2 :: (wh_json:json_object(), proplist()) -> any().
--spec handle_req/3 :: (ne_binary(), wh_json:json_object(), proplist()) -> any().
+-spec handle_req/2 :: (wh_json:object(), wh_proplist()) -> any().
+-spec handle_req/3 :: (ne_binary(), wh_json:object(), wh_proplist()) -> any().
 handle_req(JObj, Props) ->
     _ = whapps_util:put_callid(JObj),
     true = wapi_offnet_resource:req_v(JObj),
@@ -66,7 +66,7 @@ handle_req(<<"originate">>, JObj, Props) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec attempt_to_fulfill_bridge_req/4 :: (ne_binary(), ne_binary(), wh_json:json_object(), proplist()) -> bridge_resp() |
+-spec attempt_to_fulfill_bridge_req/4 :: (ne_binary(), ne_binary(), wh_json:object(), wh_proplist()) -> bridge_resp() |
                                                                                                           execute_ext_resp() |
                                                                                                           {'error', 'no_resources'}.
 attempt_to_fulfill_bridge_req(Number, CtrlQ, JObj, Props) ->
@@ -99,7 +99,7 @@ lookup_number(Number) ->
         _ -> {error, not_found}
     end.
 
--spec attempt_to_fulfill_originate_req/3 :: (ne_binary(), wh_json:json_object(), proplist()) -> originate_resp().
+-spec attempt_to_fulfill_originate_req/3 :: (ne_binary(), wh_json:object(), wh_proplist()) -> originate_resp().
 attempt_to_fulfill_originate_req(Number, JObj, Props) ->
     Flags = wh_json:get_value(<<"Flags">>, JObj, []),
     Resources = props:get_value(resources, Props),
@@ -121,7 +121,7 @@ attempt_to_fulfill_originate_req(Number, JObj, Props) ->
 %% the emergency CID.
 %% @end
 %%--------------------------------------------------------------------
--spec bridge_to_endpoints/4 :: (proplist(), boolean(), ne_binary(), wh_json:json_object()) -> {'error', 'no_resources'} | bridge_resp().
+-spec bridge_to_endpoints/4 :: (proplist(), boolean(), ne_binary(), wh_json:object()) -> {'error', 'no_resources'} | bridge_resp().
 bridge_to_endpoints([], _, _, _) ->
     {error, no_resources};
 bridge_to_endpoints(Endpoints, IsEmergency, CtrlQ, JObj) ->
@@ -198,7 +198,7 @@ bridge_to_endpoints(Endpoints, IsEmergency, CtrlQ, JObj) ->
 %% the emergency CID.
 %% @end
 %%--------------------------------------------------------------------
--spec originate_to_endpoints/2 :: (proplist(), wh_json:json_object()) ->
+-spec originate_to_endpoints/2 :: (proplist(), wh_json:object()) ->
                                           {'error', 'no_resources'} |
                                           originate_resp().
 originate_to_endpoints([], _) ->
@@ -267,7 +267,7 @@ originate_to_endpoints(Endpoints, JObj) ->
 %% macro).  This function will block until that callflow is complete.
 %% @end
 %%--------------------------------------------------------------------
--spec execute_local_extension/4 :: (ne_binary(), ne_binary(), ne_binary(), wh_json:json_object()) -> execute_ext_resp().
+-spec execute_local_extension/4 :: (ne_binary(), ne_binary(), ne_binary(), wh_json:object()) -> execute_ext_resp().
 execute_local_extension(Number, AccountId, CtrlQ, JObj) ->
     lager:debug("number belongs to another account, executing callflow from that account"),
     Q = create_queue(),
@@ -399,7 +399,7 @@ wait_for_bridge(Timeout) ->
 %% Determine if the hangup case indicates a call failure
 %% @end
 %%--------------------------------------------------------------------
--spec hangup_result/1 :: (wh_json:json_object()) -> {'ok' | 'fail', wh_json:json_object()}.
+-spec hangup_result/1 :: (wh_json:object()) -> {'ok' | 'fail', wh_json:object()}.
 hangup_result(JObj) ->
     AppResponse = wh_json:get_value(<<"Application-Response">>, JObj,
                                     wh_json:get_value(<<"Hangup-Cause">>, JObj)),
@@ -445,7 +445,7 @@ create_queue() ->
 %% us in a case clause to determine the appropriate action.
 %% @end
 %%--------------------------------------------------------------------
--spec get_event_type/1 :: (wh_json:json_object()) -> {binary(), binary(), binary()}.
+-spec get_event_type/1 :: (wh_json:object()) -> {binary(), binary(), binary()}.
 get_event_type(JObj) ->
     { wh_json:get_value(<<"Event-Category">>, JObj, <<>>)
       ,wh_json:get_value(<<"Event-Name">>, JObj, <<>>)
@@ -460,7 +460,7 @@ get_event_type(JObj) ->
 %% component of a Whistle dialplan bridge API.
 %% @end
 %%--------------------------------------------------------------------
--spec find_endpoints/4 :: (ne_binary(), [] | [ne_binary(),...], endpoints(), wh_json:json_object()) -> {wh_proplist(), boolean()}.
+-spec find_endpoints/4 :: (ne_binary(), [] | [ne_binary(),...], endpoints(), wh_json:object()) -> {wh_proplist(), boolean()}.
 find_endpoints(Number, Flags, Resources, JObj) ->
     Endpoints = case Flags of
                     'undefined' ->
@@ -495,8 +495,8 @@ contains_emergency_endpoint([{_, _, _, _, IsEmergency}|T], UseEmergency) ->
 %% in a delay between resources
 %% @end
 %%--------------------------------------------------------------------
--spec build_endpoints/2 :: (endpoints(), wh_json:json_object()) -> wh_proplist().
--spec build_endpoints/4 :: (endpoints(), wh_json:json_object(), non_neg_integer(), wh_proplist()) -> wh_proplist().
+-spec build_endpoints/2 :: (endpoints(), wh_json:object()) -> wh_proplist().
+-spec build_endpoints/4 :: (endpoints(), wh_json:object(), non_neg_integer(), wh_proplist()) -> wh_proplist().
 build_endpoints(Endpoints, JObj) ->
     build_endpoints(Endpoints, JObj, 0, []).
 
@@ -518,7 +518,7 @@ build_endpoints([{_, GracePeriod, Number, Gateways, _}|T], JObj, Delay, Acc0) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec build_endpoint/4 :: (ne_binary(), #gateway{}, non_neg_integer(), wh_json:json_object()) -> wh_json:json_object().
+-spec build_endpoint/4 :: (ne_binary(), #gateway{}, non_neg_integer(), wh_json:object()) -> wh_json:object().
 build_endpoint(Number, Gateway, _Delay, JObj) ->
     Route = stepswitch_util:get_dialstring(Gateway, Number),
     lager:debug("found resource ~s (~s)", [Gateway#gateway.resource_id, Route]),
@@ -558,7 +558,7 @@ build_endpoint(Number, Gateway, _Delay, JObj) ->
 %% create and send a Whistle offnet resource response
 %% @end
 %%--------------------------------------------------------------------
--spec response/2 :: ({'error', 'no_resources'} | bridge_resp() | execute_ext_resp() | originate_resp(), wh_json:json_object()) -> proplist().
+-spec response/2 :: ({'error', 'no_resources'} | bridge_resp() | execute_ext_resp() | originate_resp(), wh_json:object()) -> wh_proplist().
 response({ok, Resp}, JObj) ->
     lager:debug("outbound request successfully completed"),
     [{<<"Call-ID">>, wh_json:get_value(<<"Call-ID">>, JObj)}
@@ -626,7 +626,7 @@ response({error, Error}, JObj) ->
 %% callerid.
 %% @end
 %%--------------------------------------------------------------------
--spec correct_shortdial/2 :: (ne_binary(), wh_json:json_object()) -> ne_binary() | 'fail'.
+-spec correct_shortdial/2 :: (ne_binary(), wh_json:object()) -> ne_binary() | 'fail'.
 correct_shortdial(Number, JObj) ->
     CIDNum = wh_json:get_ne_value(<<"Outgoing-Caller-ID-Number">>, JObj
                                ,wh_json:get_ne_value(<<"Emergency-Caller-ID-Number">>, JObj)),
@@ -660,7 +660,7 @@ get_account_name(Number, AccountId) when is_binary(Number) ->
 %% e911 enabled
 %% @end
 %%--------------------------------------------------------------------
--spec get_emergency_cid_number/1 :: (wh_json:json_object()) -> ne_binary().
+-spec get_emergency_cid_number/1 :: (wh_json:object()) -> ne_binary().
 get_emergency_cid_number(JObj) ->
     Account = wh_json:get_value(<<"Account-ID">>, JObj),
     AccountDb = wh_util:format_account_id(Account, encoded),
