@@ -362,9 +362,11 @@ handle_cast(bind_to_member_reqs, #state{agent_queues=Qs
 handle_cast({channel_hungup, CallId}, #state{call=Call
                                              ,record_calls=ShouldRecord
                                              ,is_thief=IsThief
+                                             ,agent_call_id=ACallId
                                             }=State) ->
-    case call_id(Call) of
-        CallId ->
+    CCallId = call_id(Call),
+    case CallId of
+        CCallId ->
             lager:debug("member channel hungup, done with this call"),
             acdc_util:unbind_from_call_events(Call),
 
@@ -381,6 +383,10 @@ handle_cast({channel_hungup, CallId}, #state{call=Call
                     lager:debug("thief is done, going down"),
                     {stop, normal, State}
             end;
+        ACallId ->
+            lager:debug("agent channel hungup"),
+            acdc_util:unbind_from_call_events(ACallId),
+            {noreply, State#state{agent_call_id=undefined}};
         _CallId ->
             lager:debug("~s call id for channel_hungup, ignoring", [_CallId]),
             {noreply, State}
@@ -444,7 +450,7 @@ handle_cast({bridge_to_member, Call, WinJObj, EPs}, #state{fsm_pid=FSM
     lager:debug("bridging to agent endpoints: ~p", [EPs]),
 
     RingTimeout = wh_json:get_value(<<"Ring-Timeout">>, WinJObj),
-    lager:debug("ring agent for ~p", [RingTimeout]),
+    lager:debug("ring agent for ~ps", [RingTimeout]),
 
     ShouldRecord = should_record_endpoints(EPs, RecordCall),
 
@@ -473,12 +479,13 @@ handle_cast({monitor_call, Call}, State) ->
     {noreply, State#state{call=Call}, hibernate};
 
 handle_cast({originate_execute, JObj}, #state{my_q=Q}=State) ->
-    CallId = wh_json:get_value(<<"Call-ID">>, JObj),
-    %% acdc_util:bind_to_call_events(CallId),
-    lager:debug("execute the originate for ~s", [CallId]),
+    ACallId = wh_json:get_value(<<"Call-ID">>, JObj),
+    acdc_util:bind_to_call_events(ACallId),
+
+    lager:debug("execute the originate for agent callid ~s", [ACallId]),
 
     send_originate_execute(JObj, Q),
-    {noreply, State};
+    {noreply, State#state{agent_call_id=ACallId}};
 
 handle_cast({join_agent, ACallId}, #state{call=Call
                                           ,record_calls=ShouldRecord
