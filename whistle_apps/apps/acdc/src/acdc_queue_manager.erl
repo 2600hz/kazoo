@@ -49,7 +49,10 @@
           ,strategy_state :: queue_strategy_state() % based on the strategy
          }).
 
--define(BINDINGS(A, Q), [{conf, [{doc_type, <<"queue">>}]}
+-define(BINDINGS(A, Q), [{conf, [{doc_type, <<"queue">>}
+                                 ,{db, wh_util:format_account_id(A, encoded)}
+                                 ,{doc_id, Q}
+                                ]}
                          ,{acdc_queue, [{restrict_to, [stats_req, agent_change]}
                                         ,{account_id, A}
                                         ,{queue_id, Q}
