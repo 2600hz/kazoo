@@ -145,7 +145,7 @@ clear_old_calls(Super) ->
          {dictionary, D} = erlang:process_info(P, dictionary),
          C = proplists:get_value(callid, D),
          case whapps_call_command:channel_status(C) of
-             {error, _} -> {P, C, supervisor:terminate_child(Super, P)};
+             {error, _} -> {P, C, exit(P, kill)};
              _ -> {P, C, ok}
          end
      end || P <- Ps
