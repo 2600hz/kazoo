@@ -579,9 +579,13 @@ answered({dialplan_error, _App}, #state{agent_proc=Srv
 
 answered({channel_bridged, CallId}, #state{member_call_id=CallId
                                            ,agent_proc=Srv
+                                           ,acct_id=_AcctId
                                           }=State) ->
     lager:debug("member has connected to agent"),
     acdc_agent:member_connect_accepted(Srv),
+
+    _ = spawn(acdc_eavesdrop, start, [_AcctId, CallId]),
+
     {next_state, answered, State};
 
 answered({channel_bridged, CallId}, #state{agent_call_id=CallId
@@ -682,6 +686,11 @@ wrapup({sync_req, JObj}, #state{agent_proc=Srv
 
 wrapup({channel_hungup, CallId}, #state{agent_proc=Srv}=State) ->
     lager:debug("channel ~s hungup", [CallId]),
+    acdc_agent:channel_hungup(Srv, CallId),
+    {next_state, wrapup, State};
+
+wrapup({leg_destroyed, CallId}, #state{agent_proc=Srv}=State) ->
+    lager:debug("leg ~s destroyed", [CallId]),
     acdc_agent:channel_hungup(Srv, CallId),
     {next_state, wrapup, State};
 
