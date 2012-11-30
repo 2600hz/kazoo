@@ -680,8 +680,9 @@ wrapup({sync_req, JObj}, #state{agent_proc=Srv
     acdc_agent:send_sync_resp(Srv, wrapup, JObj, [{<<"Time-Left">>, time_left(Ref)}]),
     {next_state, wrapup, State};
 
-wrapup({channel_hungup, _CallId}, State) ->
-    lager:debug("channel ~s hungup", [_CallId]),
+wrapup({channel_hungup, CallId}, #state{agent_proc=Srv}=State) ->
+    lager:debug("channel ~s hungup", [CallId]),
+    acdc_agent:channel_hungup(Srv, CallId),
     {next_state, wrapup, State};
 
 wrapup(_Evt, State) ->
