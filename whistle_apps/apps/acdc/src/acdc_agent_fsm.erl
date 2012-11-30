@@ -580,11 +580,12 @@ answered({dialplan_error, _App}, #state{agent_proc=Srv
 answered({channel_bridged, CallId}, #state{member_call_id=CallId
                                            ,agent_proc=Srv
                                            ,acct_id=_AcctId
+                                           ,member_call=_Call
                                           }=State) ->
     lager:debug("member has connected to agent"),
     acdc_agent:member_connect_accepted(Srv),
 
-    _ = spawn(acdc_eavesdrop, start, [_AcctId, CallId]),
+    _ = spawn(acdc_eavesdrop, start, [_Call, _AcctId, CallId]),
 
     {next_state, answered, State};
 
