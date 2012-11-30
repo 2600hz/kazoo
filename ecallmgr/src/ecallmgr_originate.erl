@@ -184,11 +184,17 @@ handle_cast({queue_name, Q}, State) ->
     {noreply, State#state{queue=Q}};
 
 handle_cast({update_server_id, ServerId}, State) ->
-    {noreply, State#state{server_id=ServerId}};
+    {noreply, State#state{server_id=ServerId}, hibernate};
+
+handle_cast({maybe_update_node, Node}, #state{node=Node}=State) ->
+    {noreply, State};
+handle_cast({maybe_update_node, Node}, #state{node=_OldNode}=State) ->
+    lager:debug("updating node from ~s to ~s", [_OldNode, Node]),
+    {noreply, State#state{node=Node}, hibernate};
 
 handle_cast({create_uuid}, #state{node=Node, originate_req=JObj}=State) ->
     lager:debug("creating a new uuid", []),
-    {noreply, State#state{uuid=create_uuid(JObj, Node)}};
+    {noreply, State#state{uuid=create_uuid(JObj, Node)}, hibernate};
 
 handle_cast({get_originate_action}, #state{originate_req=JObj}=State) ->
     gen_listener:cast(self(), {build_originate_args}),
@@ -350,18 +356,18 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 -spec get_originate_action/2 :: (ne_binary(), wh_json:object()) -> ne_binary().
 get_originate_action(<<"fax">>, JObj) ->
-    lager:debug("got originate with action fax", []),
+    lager:debug("got originate with action fax"),
     Data = wh_json:get_value(<<"Application-Data">>, JObj),
     <<"&txfax(${http_get(", Data/binary, ")})">>;
 get_originate_action(<<"transfer">>, JObj) ->
-    lager:debug("got originate with action transfer", []),
+    lager:debug("got originate with action transfer"),
     case wh_json:get_value([<<"Application-Data">>, <<"Route">>], JObj) of
         undefined -> <<"error">>;
         Route ->
             list_to_binary(["'m:^:", get_unset_vars(JObj), "transfer:", wnm_util:to_e164(Route), " XML context_2' inline"])
     end;
 get_originate_action(<<"bridge">>, JObj) ->
-    lager:debug("got originate with action bridge", []),
+    lager:debug("got originate with action bridge"),
     Data = wh_json:get_value(<<"Application-Data">>, JObj),
 
     case ecallmgr_util:build_channel(Data) of
@@ -369,9 +375,28 @@ get_originate_action(<<"bridge">>, JObj) ->
         {ok, Channel} ->
             list_to_binary(["'m:^:", get_unset_vars(JObj), "bridge:", Channel, "' inline"])
     end;
+get_originate_action(<<"eavesdrop">>, JObj) ->
+    lager:debug("got originate with action eavesdrop"),
+    case ecallmgr_fs_nodes:channel_node(wh_json:get_value(<<"Eavesdrop-Call-ID">>, JObj)) of
+        {error, _} -> <<"error">>;
+        {ok, N} ->
+            gen_listener:cast(self(), {maybe_update_node, N}),
+            get_eavesdrop_action(JObj)
+    end;
 get_originate_action(_, _) ->
-    lager:debug("got originate with action park", []),
+    lager:debug("got originate with action park"),
     ?ORIGINATE_PARK.
+
+get_eavesdrop_action(JObj) ->
+    {CallId, Group} = case wh_json:get_value(<<"Eavesdrop-Group-ID">>, JObj) of
+                          undefined -> {wh_json:get_value(<<"Eavesdrop-Call-ID">>, JObj), <<>>};
+                          ID -> {<<"all">>, <<"eavesdrop_require_group=", ID/binary, ",">>}
+                      end,
+    case wh_json:get_value(<<"Eavesdrop-Mode">>, JObj) of
+        <<"listen">> -> <<"'", Group/binary, "eavesdrop:", CallId/binary, " inline'">>;
+        <<"whisper">> -> <<"'", Group/binary, "queue_dtmf:w2@500,eavesdrop:", CallId/binary, "' inlime'">>;
+        <<"full">> -> <<"'", Group/binary, "queue_dtmf:w3@500,eavesdrop:", CallId/binary, "' inlime'">>
+    end.
 
 -spec build_originate_args/3 :: (ne_binary(), wh_json:objects(), wh_json:object()) -> ne_binary().
 build_originate_args(Action, Endpoints, JObj) ->
