@@ -40,7 +40,7 @@
 -export([error_provider_fault/2]).
 -export([error_carrier_fault/2]).
 
--include("wh_number_manager.hrl").
+-include("wnm.hrl").
 
 -export_type([wnm_number/0]).
 

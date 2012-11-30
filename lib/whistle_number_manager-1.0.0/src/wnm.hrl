@@ -1,8 +1,8 @@
--ifndef(WH_NUMBER_MANAGER_HRL).
+-ifndef(WNM_HRL).
 
 -include_lib("whistle/include/wh_log.hrl").
 -include_lib("whistle/include/wh_types.hrl").
--include_lib("whistle_number_manager/include/wh_number_manager.hrl").
+-include_lib("include/wh_number_manager.hrl").
 
 -define(WNM_CONFIG_CAT, <<"number_manager">>).
 
@@ -19,15 +19,15 @@
                  ,prev_assigned_to :: api_binary()
                  ,auth_by :: 'system' | api_binary()
                  ,module_name :: atom()
-                 ,module_data = wh_json:new() :: wh_json:json_object()
+                 ,module_data = wh_json:new() :: wh_json:object()
                  ,features = sets:new() :: set()
                  ,current_features = sets:new() :: set()
-                 ,number_doc = wh_json:new() :: wh_json:json_object()
-                 ,current_number_doc = wh_json:new() :: wh_json:json_object()
+                 ,number_doc = wh_json:new() :: wh_json:object()
+                 ,current_number_doc = wh_json:new() :: wh_json:object()
                  ,phone_number_docs :: dict()
                  ,hard_delete = false :: boolean()
-                 ,error_jobj = wh_json:new() :: wh_json:json_object()
-                 ,activations = [] :: wh_json:json_objects()
+                 ,error_jobj = wh_json:new() :: wh_json:object()
+                 ,activations = [] :: wh_json:objects()
                  ,services :: wh_services:services()
                  ,current_balance :: float() | integer()
                  ,billing_id :: api_binary()
@@ -35,5 +35,5 @@
 
 -type wnm_number() :: #number{}.
 
--define(WH_NUMBER_MANAGER_HRL, true).
+-define(WNM_HRL, true).
 -endif.

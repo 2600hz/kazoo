@@ -13,7 +13,7 @@
 -export([acquire_number/1]).
 -export([disconnect_number/1]).
 
--include("../wh_number_manager.hrl").
+-include_lib("src/wnm.hrl").
 
 %%--------------------------------------------------------------------
 %% @public

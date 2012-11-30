@@ -12,7 +12,7 @@
          ,delete/1
         ]).
 
--include_lib("whistle_number_manager/src/wh_number_manager.hrl").
+-include_lib("src/wnm.hrl").
 
 -define(FAILOVER_KEY, <<"failover">>).
 

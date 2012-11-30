@@ -15,7 +15,7 @@
 
 -export([reconcile_providers/0]).
 
--include("wh_number_manager.hrl").
+-include("wnm.hrl").
 -include_lib("whistle/include/wh_databases.hrl").
 
 %% These are temporary until the viewing of numbers in an account can

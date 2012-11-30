@@ -26,7 +26,7 @@
 -export([delete_attachment/3]).
 -export([get_public_fields/2, set_public_fields/3]).
 
--include("wh_number_manager.hrl").
+-include("wnm.hrl").
 
 -define(SERVER, ?MODULE).
 
