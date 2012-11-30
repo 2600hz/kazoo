@@ -393,9 +393,10 @@ get_eavesdrop_action(JObj) ->
                           ID -> {<<"all">>, <<"eavesdrop_require_group=", ID/binary, ",">>}
                       end,
     case wh_json:get_value(<<"Eavesdrop-Mode">>, JObj) of
-        <<"listen">> -> <<"'", Group/binary, "eavesdrop:", CallId/binary, " inline'">>;
-        <<"whisper">> -> <<"'", Group/binary, "queue_dtmf:w2@500,eavesdrop:", CallId/binary, "' inlime'">>;
-        <<"full">> -> <<"'", Group/binary, "queue_dtmf:w3@500,eavesdrop:", CallId/binary, "' inlime'">>
+        <<"whisper">> -> <<Group/binary, "queue_dtmf:w2@500,eavesdrop:", CallId/binary, " inlime">>;
+        <<"full">> -> <<Group/binary, "queue_dtmf:w3@500,eavesdrop:", CallId/binary, " inlime">>;
+        <<"listen">> -> <<Group/binary, "eavesdrop:", CallId/binary, " inline">>;
+        undefined -> <<Group/binary, "eavesdrop:", CallId/binary, " inline">>
     end.
 
 -spec build_originate_args/3 :: (ne_binary(), wh_json:objects(), wh_json:object()) -> ne_binary().
