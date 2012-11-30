@@ -20,10 +20,13 @@
 -export([publish_originate_req/1, publish_originate_req/2]).
 -export([publish_originate_resp/2, publish_originate_resp/3]).
 
+%% Eavesdrop: If you set a Group ID, the Call-ID is ignored and "all" is used instead
+
 -define(ORIGINATE_REQ_HEADERS, [<<"Endpoints">>, <<"Application-Name">>]).
 -define(OPTIONAL_ORIGINATE_REQ_HEADERS, [<<"Application-Data">>, <<"Custom-Channel-Vars">>
                                          ,<<"Export-Custom-Channel-Vars">>, <<"Outbound-Call-ID">>
-                                         ,<<"Call-ID">>, <<"Mode">>, <<"Group-ID">> % Eavesdrop
+                                         %% Eavesdrop
+                                         ,<<"Eavesdrop-Call-ID">>, <<"Eavesdrop-Mode">>, <<"Eavesdrop-Group-ID">>
                                          | fun() ->
                                                    wapi_dialplan:optional_bridge_req_headers()
                                            end()
@@ -37,9 +40,9 @@
                                                           ,<<"fax">>, <<"eavesdrop">>
                                                          ]}
                                %% Eavesdrop
-                               ,{<<"Mode">>, [<<"listen">>   % hear both sides - default
-                                              ,<<"whisper">> % talk to one side
-                                              ,<<"full">>    % talk to both sides
+                               ,{<<"Eavesdrop-Mode">>, [<<"listen">>   % hear both sides - default
+                                                        ,<<"whisper">> % talk to one side
+                                                        ,<<"full">>    % talk to both sides
                                              ]}
                               ]).
 -define(ORIGINATE_REQ_TYPES, [{<<"Endpoints">>, fun is_list/1}
