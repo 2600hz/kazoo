@@ -10,9 +10,9 @@
 
 -include("acdc.hrl").
 
--export([start/2]).
+-export([start/3]).
 
-start(AcctId, CallId) ->
+start(MemberCall, AcctId, AgentCallId) ->
     EPId = <<"5381e0c5caa8d34eec06e0f75d0b4189">>,
     {ok, EPDoc} = couch_mgr:open_cache_doc(wh_util:format_account_id(AcctId, encoded), EPId),
     {ok, [EP]} = cf_endpoint:build(EPDoc, new_call(AcctId)),
@@ -24,8 +24,8 @@ start(AcctId, CallId) ->
               ,{<<"Custom-Channel-Vars">>, wh_json:from_list(CCVs)}
               ,{<<"Timeout">>, 8}
               ,{<<"Endpoints">>, [wh_json:set_values([{<<"Endpoint-Timeout">>, 8}
-                                                      ,{<<"Outgoing-Caller-ID-Name">>, <<"eavesdrop">>}
-                                                      ,{<<"Outgoing-Caller-ID-Number">>, <<"01010101">>}
+                                                      ,{<<"Outgoing-Caller-ID-Name">>, <<"eaves:", (whapps_call:caller_id_name(MemberCall))/binary>>}
+                                                      ,{<<"Outgoing-Caller-ID-Number">>, whapps_call:caller_id_number(MemberCall)}
                                                      ], EP)
                                  ]
                }
@@ -37,7 +37,8 @@ start(AcctId, CallId) ->
               ,{<<"Account-ID">>, AcctId}
               ,{<<"Resource-Type">>, <<"originate">>}
               ,{<<"Application-Name">>, <<"eavesdrop">>}
-              ,{<<"Eavesdrop-Call-ID">>, CallId}
+              ,{<<"Eavesdrop-Call-ID">>, AgentCallId}
+              ,{<<"Eavesdrop-Mode">>, <<"full">>}
               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
 
