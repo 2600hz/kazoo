@@ -393,8 +393,8 @@ get_eavesdrop_action(JObj) ->
                           ID -> {<<"all">>, <<"eavesdrop_require_group=", ID/binary, ",">>}
                       end,
     case wh_json:get_value(<<"Eavesdrop-Mode">>, JObj) of
-        <<"whisper">> -> <<Group/binary, "queue_dtmf:w2@500,eavesdrop:", CallId/binary, " inlime">>;
-        <<"full">> -> <<Group/binary, "queue_dtmf:w3@500,eavesdrop:", CallId/binary, " inlime">>;
+        <<"whisper">> -> <<Group/binary, "queue_dtmf:w2@500,eavesdrop:", CallId/binary, " inline">>;
+        <<"full">> -> <<Group/binary, "queue_dtmf:w3@500,eavesdrop:", CallId/binary, " inline">>;
         <<"listen">> -> <<Group/binary, "eavesdrop:", CallId/binary, " inline">>;
         undefined -> <<Group/binary, "eavesdrop:", CallId/binary, " inline">>
     end.
