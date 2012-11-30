@@ -154,7 +154,7 @@ validate(#cb_context{req_verb = <<"post">>}=Context, <<"outgoing">>, Id) ->
 validate(#cb_context{req_verb = <<"delete">>}=Context, <<"outgoing">>, Id) ->
     read(Id, Context#cb_context{db_name=?WH_FAXES}).
 
-validate(#cb_context{req_verb = <<"get">>}=Context, <<"inbound">>, Id, ?ATTACHMENT) ->
+validate(#cb_context{req_verb = <<"get">>}=Context, <<"incoming">>, Id, ?ATTACHMENT) ->
     load_fax_binary(Id, Context).
 
 %%--------------------------------------------------------------------
