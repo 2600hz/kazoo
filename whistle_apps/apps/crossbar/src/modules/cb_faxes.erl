@@ -23,6 +23,9 @@
 
 -include("include/crossbar.hrl").
 
+-define(OUTGOING, <<"outgoing">>).
+-define(INCOMING, <<"incoming">>).
+
 -define(ATTACHMENT, <<"attachment">>).
 
 -define(CB_LIST, <<"media/listing_private_media">>).
@@ -64,17 +67,17 @@ init() ->
 allowed_methods() ->
     ['PUT'].
 
-allowed_methods(<<"incoming">>) ->
+allowed_methods(?INCOMING) ->
     ['GET'];
-allowed_methods(<<"outgoing">>) ->
+allowed_methods(?OUTGOING) ->
     ['GET', 'PUT'].
 
-allowed_methods(<<"incoming">>, _Id) ->
+allowed_methods(?INCOMING, _Id) ->
     ['GET'];
-allowed_methods(<<"outgoing">>, _Id) ->
+allowed_methods(?OUTGOING, _Id) ->
     ['GET', 'POST', 'DELETE'].
 
-allowed_methods(<<"incoming">>, _Id, ?ATTACHMENT) ->
+allowed_methods(?INCOMING, _Id, ?ATTACHMENT) ->
     ['GET'].
 
 %%--------------------------------------------------------------------
@@ -92,11 +95,11 @@ allowed_methods(<<"incoming">>, _Id, ?ATTACHMENT) ->
 -spec resource_exists/3 :: (path_token(), path_token(), path_token()) -> 'true'.
 
 resource_exists() -> true.
-resource_exists(<<"incoming">>) -> true;
-resource_exists(<<"outgoing">>) -> true.
-resource_exists(<<"incoming">>, _Id) -> true;
-resource_exists(<<"outgoing">>, _Id) -> true.
-resource_exists(<<"incoming">>, _Id, ?ATTACHMENT) -> true.
+resource_exists(?INCOMING) -> true;
+resource_exists(?OUTGOING) -> true.
+resource_exists(?INCOMING, _Id) -> true;
+resource_exists(?OUTGOING, _Id) -> true.
+resource_exists(?INCOMING, _Id, ?ATTACHMENT) -> true.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -106,7 +109,7 @@ resource_exists(<<"incoming">>, _Id, ?ATTACHMENT) -> true.
 %% @end
 %%--------------------------------------------------------------------
 -spec content_types_provided/4 :: (#cb_context{}, path_token(), path_token(), path_token()) -> #cb_context{}.
-content_types_provided(#cb_context{req_verb = <<"get">>}=Context, <<"incoming">>, FaxId, ?ATTACHMENT) ->
+content_types_provided(#cb_context{req_verb = <<"get">>}=Context, ?INCOMING, FaxId, ?ATTACHMENT) ->
     case load_fax_meta(FaxId, Context) of
         #cb_context{resp_status=success, doc=JObj} ->
             case wh_json:get_keys(wh_json:get_value([<<"_attachments">>], JObj)) of
@@ -138,23 +141,23 @@ content_types_provided(Context, _, _, _) ->
 validate(#cb_context{req_verb = <<"put">>}=Context) ->
     create(Context#cb_context{db_name=?WH_FAXES}).
 
-validate(#cb_context{req_verb = <<"get">>}=Context, <<"outgoing">>) ->
+validate(#cb_context{req_verb = <<"get">>}=Context, ?OUTGOING) ->
     outgoing_summary(Context#cb_context{db_name=?WH_FAXES});
-validate(#cb_context{req_verb = <<"put">>}=Context, <<"outgoing">>) ->
+validate(#cb_context{req_verb = <<"put">>}=Context, ?OUTGOING) ->
     create(Context#cb_context{db_name=?WH_FAXES});
-validate(#cb_context{req_verb = <<"get">>}=Context, <<"incoming">>) ->
+validate(#cb_context{req_verb = <<"get">>}=Context, ?INCOMING) ->
     incoming_summary(Context).
 
-validate(#cb_context{req_verb = <<"get">>}=Context, <<"incoming">>, Id) ->
+validate(#cb_context{req_verb = <<"get">>}=Context, ?INCOMING, Id) ->
     read(Id, Context);
-validate(#cb_context{req_verb = <<"get">>}=Context, <<"outgoing">>, Id) ->
+validate(#cb_context{req_verb = <<"get">>}=Context, ?OUTGOING, Id) ->
     read(Id, Context#cb_context{db_name=?WH_FAXES});
-validate(#cb_context{req_verb = <<"post">>}=Context, <<"outgoing">>, Id) ->
+validate(#cb_context{req_verb = <<"post">>}=Context, ?OUTGOING, Id) ->
     update(Id, Context#cb_context{db_name=?WH_FAXES});
-validate(#cb_context{req_verb = <<"delete">>}=Context, <<"outgoing">>, Id) ->
+validate(#cb_context{req_verb = <<"delete">>}=Context, ?OUTGOING, Id) ->
     read(Id, Context#cb_context{db_name=?WH_FAXES}).
 
-validate(#cb_context{req_verb = <<"get">>}=Context, <<"incoming">>, Id, ?ATTACHMENT) ->
+validate(#cb_context{req_verb = <<"get">>}=Context, ?INCOMING, Id, ?ATTACHMENT) ->
     load_fax_binary(Id, Context).
 
 %%--------------------------------------------------------------------
@@ -189,7 +192,7 @@ get(#cb_context{}=Context, _, _, _) ->
 -spec put/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
 put(#cb_context{}=Context) ->
     crossbar_doc:save(Context).
-put(#cb_context{}=Context, <<"outgoing">>) ->
+put(#cb_context{}=Context, ?OUTGOING) ->
     crossbar_doc:save(Context).
 
 %%--------------------------------------------------------------------
@@ -203,7 +206,7 @@ put(#cb_context{}=Context, <<"outgoing">>) ->
 -spec post/3 :: (#cb_context{}, path_token(), path_token()) -> #cb_context{}.
 post(#cb_context{}=Context) ->
     crossbar_doc:save(Context).
-post(#cb_context{}=Context, <<"outgoing">>, _) ->
+post(#cb_context{}=Context, ?OUTGOING, _) ->
     crossbar_doc:save(Context).
 
 %%--------------------------------------------------------------------
@@ -213,7 +216,7 @@ post(#cb_context{}=Context, <<"outgoing">>, _) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec delete/3 :: (#cb_context{}, path_token(), path_token()) -> #cb_context{}.
-delete(#cb_context{}=Context, <<"outgoing">>, _Id) ->
+delete(#cb_context{}=Context, ?OUTGOING, _Id) ->
     crossbar_doc:delete(Context).
 
 %%--------------------------------------------------------------------
