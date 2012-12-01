@@ -19,12 +19,30 @@
          ,validate_request_data/2, validate_request_data/3, validate_request_data/4
          ,add_content_types_provided/2
          ,add_content_types_accepted/2
+
+         %% Accessors
+         ,account_id/1
+         ,account_db/1
+         ,auth_token/1
+         ,req_verb/1
+         ,req_data/1
+         ,req_id/1
         ]).
 
 -include("include/crossbar.hrl").
 
 -type context() :: #cb_context{}.
 -export_type([context/0]).
+
+%% Accessors
+account_id(#cb_context{account_id=AcctId}) -> AcctId.
+account_db(#cb_context{db_name=AcctDb}) -> AcctDb.
+auth_token(#cb_context{auth_token=AuthToken}) -> AuthToken.
+req_verb(#cb_context{req_verb=ReqVerb}) -> ReqVerb.
+req_data(#cb_context{req_data=ReqData}) -> ReqData.
+req_id(#cb_context{req_id=ReqId}) -> ReqId.
+
+%% Helpers
 
 -spec add_content_types_provided/2 :: (context(), crossbar_content_handler() | crossbar_content_handlers()) ->
                                               context().
@@ -181,8 +199,8 @@ add_system_error(bad_identifier, Context) ->
 
 add_system_error(forbidden, Context) ->
     crossbar_util:response(error, <<"forbidden">>, 403, Context);
-add_system_error(invalid_crentials, Context) ->
-    crossbar_util:response(error, <<"invalid crentials">>, 401, Context);
+add_system_error(invalid_credentials, Context) ->
+    crossbar_util:response(error, <<"invalid credentials">>, 401, Context);
 
 add_system_error(datastore_missing, Context) ->
     crossbar_util:response_db_missing(Context);
