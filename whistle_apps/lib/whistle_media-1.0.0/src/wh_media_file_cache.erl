@@ -6,7 +6,7 @@
 %%% @contributors
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
--module(media_file).
+-module(wh_media_file_cache).
 
 -behaviour(gen_server).
 
@@ -25,10 +25,10 @@
          ,code_change/3
         ]).
 
--include("media.hrl").
+-include("whistle_media.hrl").
 
 -define(TIMEOUT_LIFETIME, 600000).
--define(TIMEOUT_MESSAGE, {'$media_file', file_timeout}).
+-define(TIMEOUT_MESSAGE, {'$wh_media_file_cache', file_timeout}).
 
 -record(state, {
           db :: ne_binary()
@@ -55,8 +55,8 @@
 %%--------------------------------------------------------------------
 -spec start_link/4 :: (ne_binary(), ne_binary(), ne_binary(), wh_json:json_object()) ->
                               startlink_ret().
-start_link(Id, Doc, Attach, Meta) ->
-    gen_server:start_link(?MODULE, [Id, Doc, Attach, Meta], []).
+start_link(Id, Doc, Attach, Meta) ->    
+    gen_server:start_link(?MODULE, [Id, Doc, Attach, Meta, get(callid)], []).
 
 single(Srv) ->
     gen_server:call(Srv, single).
@@ -84,8 +84,11 @@ init([<<"system_media">>|Rest]) ->
 init([Id|Rest]) ->
     init(wh_util:format_account_id(Id, encoded), Rest).
 
-init(Db, [Doc, Attach, Meta]) ->
-    put(callid, <<Db/binary, "/", Doc/binary, "/", Attach/binary>>),
+init(Db, [Doc, Attach, Meta, CallId]) ->
+    case wh_util:is_empty(CallId) of
+        true -> put(callid, ?LOG_SYSTEM_ID);
+        false -> put(callid, CallId)
+    end,
 
     lager:debug("streaming ~s/~s/~s", [Db, Doc, Attach]),
     {ok, Ref} = couch_mgr:stream_attachment(Db, Doc, Attach),

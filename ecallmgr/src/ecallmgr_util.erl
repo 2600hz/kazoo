@@ -671,10 +671,35 @@ recording_extension(MediaName) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec get_fs_playback/1 :: (ne_binary()) -> ne_binary().
-get_fs_playback(<<"http://", _/binary>>=Url) ->
-    <<"${http_get(", Url/binary, ")}">>;
-get_fs_playback(Url) ->
-    Url.
+get_fs_playback(URI) ->
+    maybe_playback_via_vlc(URI).
+
+maybe_playback_via_vlc(URI) ->     
+    case wh_util:is_true(ecallmgr_config:get(<<"use_vlc">>, false)) of
+        false -> maybe_playback_via_shout(URI);
+        true -> 
+            lager:debug("media is streamed via VLC, prepending ~s", [URI]),
+            <<"vlc://", URI/binary>>
+    end.
+
+maybe_playback_via_shout(URI) ->
+    case filename:extension(URI) =:= <<".mp3">>
+        andalso wh_util:is_true(ecallmgr_config:get(<<"use_shout">>, false)) 
+    of
+        false -> maybe_playback_via_http_cache(URI);
+        true ->
+            lager:debug("media is streamed via shout, updating ~s", [URI]),
+            binary:replace(URI, [<<"http">>, <<"https">>], <<"shout">>)
+    end.
+
+
+maybe_playback_via_http_cache(URI) ->
+    case wh_util:is_true(ecallmgr_config:get(<<"use_http_cache">>, true)) of
+        false -> URI;
+        true -> 
+            lager:debug("media is streamed via http_cache, using ~s", [URI]),
+            <<"${http_get(", URI/binary, ")}">>
+    end.
 
 %% given a proplist of a FS event, return the Whistle-equivalent app name(s).
 %% a FS event could have multiple Whistle equivalents

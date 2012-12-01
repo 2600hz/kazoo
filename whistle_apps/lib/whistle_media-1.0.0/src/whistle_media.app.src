@@ -1,0 +1,12 @@
+{application, whistle_media,
+ [
+  {description, "Whistle Media provides support for generating media URLs as well as proxing media files"},
+  {vsn, "1"},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib
+                 ]},
+  {mod, { whistle_media_app, []}},
+  {env, []}
+ ]}.

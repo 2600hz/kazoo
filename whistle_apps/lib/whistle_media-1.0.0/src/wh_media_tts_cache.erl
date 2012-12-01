@@ -6,7 +6,7 @@
 %%% @contributors
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
--module(media_tts).
+-module(wh_media_tts_cache).
 
 -behaviour(gen_server).
 
@@ -25,12 +25,12 @@
          ,code_change/3
         ]).
 
--include("media.hrl").
+-include("whistle_media.hrl").
 
 -define(MOD_CONFIG_CAT, <<"speech">>).
 
 -define(TIMEOUT_LIFETIME, 600000).
--define(TIMEOUT_MESSAGE, {'$media_tts', tts_timeout}).
+-define(TIMEOUT_MESSAGE, {'$wh_media_tts_cache', tts_timeout}).
 
 -record(state, {
           text :: ne_binary()
@@ -79,11 +79,7 @@ continuous(Srv) ->
 %% @end
 %%--------------------------------------------------------------------
 init([Text, JObj]) ->
-    try erlang:binary_part(Text, 0, 10) of
-        Prefix -> put(callid, <<"TTS: ", Prefix/binary>>)
-    catch
-        _:_ -> put(callid, <<"TTS: ", Text/binary>>)
-    end,
+    put(callid, wh_util:binary_md5(Text)),
 
     Voice = list_to_binary([wh_json:get_value(<<"Voice">>, JObj, <<"female">>), "/"
                             ,wh_json:get_value(<<"Language">>, JObj, <<"en-US">>)
@@ -94,7 +90,7 @@ init([Text, JObj]) ->
 
     {ok, ReqID} = whapps_speech:create(Engine, Text, Voice, Format, [{stream_to, self()}]),
 
-    Meta = wh_json:from_list([{<<"content_type">>, media_util:content_type_of(Format)}
+    Meta = wh_json:from_list([{<<"content_type">>, wh_media_util:content_type_of(Format)}
                               ,{<<"media_name">>, wh_util:to_hex_binary(Text)}
                              ]),
 
