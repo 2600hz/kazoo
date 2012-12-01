@@ -2,7 +2,8 @@ ROOT = ..
 DIALYZER = dialyzer
 REBAR = $(ROOT)/bin/rebar
 
-MAKEDIRS = lib/*/Makefile
+MAKEDIRS = lib/*/Makefile \
+		   apps/*/Makefile
 
 DIRS =  . \
 		lib/whistle_number_manager-1.0.0 \
@@ -17,12 +18,15 @@ compile: ACTION = all
 compile: $(MAKEDIRS)
 	@$(REBAR) compile
 
+top_only:
+	@$(REBAR) compile
+
 $(MAKEDIRS):
 	$(MAKE) -C $(@D) $(ACTION)
 
 deps : ACTION = get-deps
 deps : $(MAKEDIRS)
-	@$(REBAR) get-deps
+	@$(REBAR) deps
 
 clean : ACTION = clean
 clean : $(MAKEDIRS)
