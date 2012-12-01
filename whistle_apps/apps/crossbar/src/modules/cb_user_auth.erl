@@ -159,7 +159,7 @@ maybe_authenticate_user(#cb_context{doc=JObj}=Context) ->
     case find_account(PhoneNumber, AccountRealm, AccountName, Context) of
         {error, _} ->
             lager:debug("failed to find account DB"),
-            cb_context:add_system_error(invalid_crentials, Context);
+            cb_context:add_system_error(invalid_credentials, Context);
         {ok, Account} ->
             maybe_authenticate_user(Context, Credentials, Method, Account)
     end.
@@ -167,7 +167,7 @@ maybe_authenticate_user(#cb_context{doc=JObj}=Context) ->
 
 maybe_authenticate_user(Context, _, _, []) ->
     lager:debug("no account(s) specified"),
-    cb_context:add_system_error(invalid_crentials, Context);
+    cb_context:add_system_error(invalid_credentials, Context);
 maybe_authenticate_user(Context, Credentials, Method, [Account|Accounts]) ->
     case maybe_authenticate_user(Context, Credentials, Method, Account) of
         #cb_context{resp_status=success}=Context1 -> Context1;
@@ -184,7 +184,7 @@ maybe_authenticate_user(Context, Credentials, <<"md5">>, Account) ->
             Context#cb_context{resp_status=success, doc=wh_json:get_value(<<"value">>, JObj)};
         _ ->
             lager:debug("credentials do not belong to any user"),
-            cb_context:add_system_error(invalid_crentials, Context)
+            cb_context:add_system_error(invalid_credentials, Context)
     end;
 maybe_authenticate_user(Context, Credentials, <<"sha">>, Account) ->
     AccountDb = wh_util:format_account_id(Account, encoded),
@@ -197,11 +197,11 @@ maybe_authenticate_user(Context, Credentials, <<"sha">>, Account) ->
             Context#cb_context{resp_status=success, doc=wh_json:get_value(<<"value">>, JObj)};
         _ ->
             lager:debug("credentials do not belong to any user"),
-            cb_context:add_system_error(invalid_crentials, Context)
+            cb_context:add_system_error(invalid_credentials, Context)
     end;
 maybe_authenticate_user(Context, _, _, _) ->
     lager:debug("invalid creds"),
-    cb_context:add_system_error(invalid_crentials, Context).
+    cb_context:add_system_error(invalid_credentials, Context).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -283,7 +283,7 @@ create_token(#cb_context{doc=JObj}=Context) ->
                                             ,Context#cb_context{auth_token=AuthToken, auth_doc=Doc});
                 {error, R} ->
                     lager:debug("could not create new local auth token, ~p", [R]),
-                    cb_context:add_system_error(invalid_crentials, Context)
+                    cb_context:add_system_error(invalid_credentials, Context)
             end
     end.
 

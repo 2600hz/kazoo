@@ -441,7 +441,7 @@ is_authentic(Req0, Context0) ->
     case crossbar_bindings:succeeded(crossbar_bindings:map(Event, Context1)) of
         [] ->
             lager:debug("failed to authenticate"),
-            ?MODULE:halt(Req0, cb_context:add_system_error(invalid_crentials, Context0));
+            ?MODULE:halt(Req0, cb_context:add_system_error(invalid_credentials, Context0));
         [true|_] ->
             lager:debug("is_authentic: true"),
             {true, Req1, Context1};

@@ -125,7 +125,7 @@ on_successful_validation(#cb_context{doc=JObj}=Context) ->
     case wh_json:is_empty(ApiKey)
         orelse crossbar_doc:load_view(?AGG_VIEW_API, ViewOptions, Context#cb_context{db_name=?WH_ACCOUNTS_DB}) 
     of
-        true -> cb_context:add_system_error(invalid_crentials, Context);
+        true -> cb_context:add_system_error(invalid_credentials, Context);
         #cb_context{resp_status=success, doc=[Doc|_]}->
             lager:debug("found more account with ~s, using ~s", [ApiKey, wh_json:get_value(<<"id">>, Doc)]),
             Context#cb_context{resp_status=success, doc=wh_json:get_value(<<"value">>, Doc)};
@@ -146,7 +146,7 @@ create_token(#cb_context{doc=JObj}=Context) ->
     case wh_json:is_empty(JObj) of
         true ->
             lager:debug("refusing to create auth token for an empty doc"),
-            cb_context:add_system_error(invalid_crentials, Context);
+            cb_context:add_system_error(invalid_credentials, Context);
         false ->
             AccountId = wh_json:get_value(<<"account_id">>, JObj),
             Token = [{<<"account_id">>, AccountId}

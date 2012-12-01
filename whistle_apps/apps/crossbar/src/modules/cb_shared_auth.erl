@@ -136,7 +136,7 @@ validate(#cb_context{req_data=JObj, req_verb = <<"put">>}=Context) ->
             end;
         {forbidden, _} ->
             lager:debug("authoritive shared auth request forbidden"),
-            cb_context:add_system_error(invalid_crentials, Context);
+            cb_context:add_system_error(invalid_credentials, Context);
         {error, _}=E ->
             lager:debug("authoritive shared auth request error: ~p", [E]),
             cb_context:add_system_error(datastore_unreachable, Context)
@@ -144,7 +144,7 @@ validate(#cb_context{req_data=JObj, req_verb = <<"put">>}=Context) ->
 validate(#cb_context{auth_doc=undefined, req_verb = <<"get">>}=Context) ->
     _ = cb_context:put_reqid(Context),
     lager:debug("valid shared auth request received but there is no authorizing doc (noauth running?)"),
-    cb_context:add_system_error(invalid_crentials, Context);
+    cb_context:add_system_error(invalid_credentials, Context);
 validate(#cb_context{auth_doc=JObj, req_verb = <<"get">>}=Context) ->
     _ = cb_context:put_reqid(Context),
     lager:debug("valid shared auth request received, creating response"),
@@ -206,7 +206,7 @@ create_local_token(#cb_context{doc=JObj, auth_token=SharedToken}=Context) ->
                                    ,Context#cb_context{auth_token=AuthToken, auth_doc=Doc});
         {error, R} ->
             lager:debug("could not create new local auth token, ~p", [R]),
-            cb_context:add_system_error(invalid_crentials, Context)
+            cb_context:add_system_error(invalid_credentials, Context)
     end.
 
 %%--------------------------------------------------------------------
