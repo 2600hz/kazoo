@@ -10,7 +10,6 @@
 -module(wh_util).
 
 -include_lib("kernel/include/inet.hrl").
--include_lib("xmerl/include/xmerl.hrl").
 
 -include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_log.hrl").
@@ -54,6 +53,7 @@
          ,uri_decode/1
         ]).
 
+-export([binary_md5/1]).
 -export([pad_binary/3, join_binary/1, join_binary/2]).
 -export([a1hash/3, floor/1, ceiling/1]).
 
@@ -407,7 +407,7 @@ get_event_type(JObj) when not is_list(JObj) -> % guard against json_objects() be
 %% Generic helper to get the text value of a XML path
 %% @end
 %%--------------------------------------------------------------------
--spec get_xml_value/2 :: (wh_deeplist(), string()) -> api_binary().
+-spec get_xml_value/2 :: (wh_deeplist(), xml_el()) -> api_binary().
 get_xml_value(Paths, Xml) ->
     Path = lists:flatten(Paths),
     try xmerl_xpath:string(Path, Xml) of
@@ -705,6 +705,10 @@ strip_right_binary(<<C, B/binary>>, C) ->
 strip_right_binary(<<A, B/binary>>, C) ->
     <<A, (strip_right_binary(B, C))/binary>>;
 strip_right_binary(<<>>, _) -> <<>>.
+
+-spec binary_md5/1 :: (text()) -> ne_binary().
+binary_md5(Text) ->
+    to_hex(erlang:md5(to_binary(Text))).
 
 -spec a1hash/3 :: (ne_binary(), ne_binary(), ne_binary()) -> nonempty_string().
 a1hash(User, Realm, Password) ->

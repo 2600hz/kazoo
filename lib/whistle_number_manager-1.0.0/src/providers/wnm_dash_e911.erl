@@ -15,7 +15,6 @@
 -export([is_valid_location/1]).
 
 -include_lib("whistle_number_manager/src/wh_number_manager.hrl").
--include_lib("xmerl/include/xmerl.hrl").
 
 -define(WNM_DASH_CONFIG_CAT, <<(?WNM_CONFIG_CAT)/binary, ".dash_e911">>).
 

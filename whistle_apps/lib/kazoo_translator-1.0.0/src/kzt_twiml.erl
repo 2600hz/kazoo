@@ -16,7 +16,6 @@
 -export([does_recognize/1, exec/2, req_params/1]).
 
 -include("kzt.hrl").
--include_lib("xmerl/include/xmerl.hrl").
 
 -define(NAME, <<"kzt_twiml">>).
 -define(VERSION, <<"0.2.0">>).

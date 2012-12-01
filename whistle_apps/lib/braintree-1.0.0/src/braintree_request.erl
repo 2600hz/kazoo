@@ -14,7 +14,6 @@
 -export([delete/1]).
 
 -include_lib("braintree/include/braintree.hrl").
--include_lib("xmerl/include/xmerl.hrl").
 
 -type http_verb() :: 'put' | 'post' | 'get' | 'delete'.
 
