@@ -133,7 +133,6 @@ from_service_json(JObj) ->
 -spec fetch/1 :: (ne_binary()) -> services().
 fetch(Account) ->
     AccountId = wh_util:format_account_id(Account, raw),
-    AccountDb = wh_util:format_account_id(Account, encoded),
     %% TODO: if reseller populate cascade via merchant id
     case couch_mgr:open_doc(?WH_SERVICES_DB, AccountId) of
         {ok, JObj} ->

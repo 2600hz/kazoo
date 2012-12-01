@@ -1313,9 +1313,6 @@ collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call, Digits
                             collect_digits(MaxDigits, Timeout, Interdigit, NoopId, Terminators, Call, Digits, T)
                     end;
                 { <<"call_event">>, <<"DTMF">>, _ } ->
-                    %% remove any queued prompts, and start collecting digits
-                    Digits =:= <<>> andalso flush(Call),
-
                     %% DTMF received, collect and start interdigit timeout
                     Digit = wh_json:get_value(<<"DTMF-Digit">>, JObj, <<>>),
                     case lists:member(Digit, Terminators) of
