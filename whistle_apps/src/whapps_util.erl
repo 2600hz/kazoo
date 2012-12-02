@@ -382,7 +382,7 @@ update_views([Found|Finds], Db, Views, Remove) ->
             update_views(Finds, Db, props:delete(Id, Views), Remove)
     end.
 
--spec wait_for_view_update/2 :: (ne_binary(), ne_binary() -> 'ok'.
+-spec wait_for_view_update/2 :: (ne_binary(), ne_binary()) -> 'ok'.
 -spec wait_for_view_update/3 :: (ne_binary(), ne_binary(), wh_json:json_object()) -> 'ok'.
 
 wait_for_view_update(Db, Id) ->
@@ -392,7 +392,7 @@ wait_for_view_update(Db, Id) ->
             timer:sleep(1000),
             wait_for_view_update(Db, Id);
         false ->
-            io:format("      view '~s' has been updated~n", [Id, Db])
+            io:format("      view '~s' has been updated~n", [Id])
     end.
 
 wait_for_view_update(Db, <<"_design/", Id/binary>>, JObj) ->
