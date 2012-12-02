@@ -25,10 +25,10 @@
 -include("ecallmgr.hrl").
 
 -record(state, {node :: atom()
-               ,options :: proplist()
+               ,options :: wh_proplist()
                }).
 
--define(BINDINGS, [{resource, []}
+-define(BINDINGS, [{resource, [{restrict_to, [originate]}]}
                    ,{self, []}
                   ]).
 -define(RESPONDERS, [{{?MODULE, handle_originate_req}
