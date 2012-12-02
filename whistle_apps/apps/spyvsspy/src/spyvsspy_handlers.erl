@@ -13,5 +13,5 @@
 
 -include("spyvsspy.hrl").
 
-handle_eavesdrop_req(_JObj, _Props) ->
-    ok.
+handle_eavesdrop_req(JObj, _Props) ->
+    true = wapi_resource:eavesdrop_req_v(JObj).
