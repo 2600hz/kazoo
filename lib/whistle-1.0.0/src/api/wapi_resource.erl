@@ -31,6 +31,8 @@
                                                 ,<<"full">>    % talk to both sides
                                                ]}).
 
+-define(KEY_EAVESDROP_REQ, <<"eavesdrop.resource.req">>). %% corresponds to eavesdrop_req/1 api call
+
 -define(EAVESDROP_REQ_HEADERS, [<<"Account-ID">>, <<"Endpoint-ID">>]).
 -define(OPTIONAL_EAVESDROP_REQ_HEADERS, [<<"Eavesdrop-Group-ID">>, <<"Eavesdrop-Mode">>
                                          ,<<"Eavesdrop-Call-ID">>
@@ -50,6 +52,9 @@
                                 ,{<<"Status">>, [<<"started">>, <<"error">>]}
                                ]).
 -define(EAVESDROP_RESP_TYPES, []).
+
+ %% corresponds to originate_req/1 api call
+-define(KEY_RESOURCE_REQ, <<"originate.resource.req">>).
 
 -define(ORIGINATE_REQ_HEADERS, [<<"Endpoints">>, <<"Application-Name">>]).
 -define(OPTIONAL_ORIGINATE_REQ_HEADERS, [<<"Application-Data">>, <<"Custom-Channel-Vars">>
@@ -186,13 +191,42 @@ eavesdrop_resp_v(JObj) ->
     eavesdrop_resp_v(wh_json:to_proplist(JObj)).
 
 -spec bind_q/2 :: (ne_binary(), wh_proplist()) -> 'ok'.
-bind_q(Queue, _Prop) ->
+bind_q(Queue, Prop) ->
     amqp_util:callmgr_exchange(),
-    amqp_util:bind_q_to_callmgr(Queue, ?KEY_RESOURCE_REQ).
+    bind_q(Queue, Prop, props:get_value(restrict_to, Prop)).
+
+bind_q(Queue, _Prop, undefined) ->
+    ok = amqp_util:bind_q_to_callmgr(Queue, ?KEY_RESOURCE_REQ),
+    amqp_util:bind_q_to_callmgr(Queue, ?KEY_EAVESDROP_REQ);
+bind_q(Queue, Prop, [originate|T]) ->
+    ok = amqp_util:bind_q_to_callmgr(Queue, ?KEY_RESOURCE_REQ),
+    bind_q(Queue, Prop, T);
+bind_q(Queue, Prop, [eavesdrop|T]) ->
+    ok = amqp_util:bind_q_to_callmgr(Queue, ?KEY_EAVESDROP_REQ),
+    bind_q(Queue, Prop, T);
+bind_q(Queue, Prop, [_|T]) ->
+    bind_q(Queue, Prop, T);
+bind_q(_, _, []) ->
+    ok.
 
 -spec unbind_q/2 :: (ne_binary(), wh_proplist()) -> 'ok'.
-unbind_q(Queue, _Props) ->
-    amqp_util:unbind_q_from_callmgr(Queue, ?KEY_RESOURCE_REQ).
+unbind_q(Queue, Prop) ->
+    unbind_q(Queue, Prop, props:get_value(restrict_to, Prop)).
+
+unbind_q(Queue, _Prop, undefined) ->
+    ok = amqp_util:unbind_q_from_callmgr(Queue, ?KEY_RESOURCE_REQ),
+    amqp_util:unbind_q_from_callmgr(Queue, ?KEY_EAVESDROP_REQ);
+unbind_q(Queue, Prop, [originate|T]) ->
+    ok = amqp_util:unbind_q_from_callmgr(Queue, ?KEY_RESOURCE_REQ),
+    unbind_q(Queue, Prop, T);
+unbind_q(Queue, Prop, [eavesdrop|T]) ->
+    ok = amqp_util:unbind_q_from_callmgr(Queue, ?KEY_EAVESDROP_REQ),
+    unbind_q(Queue, Prop, T);
+unbind_q(Queue, Prop, [_|T]) ->
+    unbind_q(Queue, Prop, T);
+unbind_q(_, _, []) ->
+    ok.
+
 
 -spec publish_originate_req/1 :: (api_terms()) -> 'ok'.
 -spec publish_originate_req/2 :: (api_terms(), ne_binary()) -> 'ok'.
