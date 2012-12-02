@@ -358,6 +358,7 @@ update_views([], _, [], _) ->
 update_views([], Db, [{Id,View}|Views], Remove) ->
     lager:debug("adding view '~s' to '~s'", [Id, Db]),
     _ = couch_mgr:ensure_saved(Db, View),
+    _ = wait_for_view_update(Db, Id, View),
     update_views([], Db, Views, Remove);
 update_views([Found|Finds], Db, Views, Remove) ->
     Id = wh_json:get_value(<<"id">>, Found),
@@ -377,7 +378,29 @@ update_views([Found|Finds], Db, Views, Remove) ->
             lager:debug("updating view '~s' in '~s'", [Id, Db]),
             Rev = wh_json:get_value(<<"_rev">>, Doc),
             _ = couch_mgr:ensure_saved(Db, wh_json:set_value(<<"_rev">>, Rev, View2)),
+            _ = wait_for_view_update(Db, Id, RawDoc),
             update_views(Finds, Db, props:delete(Id, Views), Remove)
+    end.
+
+-spec wait_for_view_update/2 :: (ne_binary(), ne_binary() -> 'ok'.
+-spec wait_for_view_update/3 :: (ne_binary(), ne_binary(), wh_json:json_object()) -> 'ok'.
+
+wait_for_view_update(Db, Id) ->
+    {ok, Info} = couch_mgr:design_info(Db, Id),
+    case  wh_json:is_true(<<"updater_running">>, Info) of
+        true ->
+            timer:sleep(1000),
+            wait_for_view_update(Db, Id);
+        false ->
+            io:format("      view '~s' has been updated~n", [Id, Db])
+    end.
+
+wait_for_view_update(Db, <<"_design/", Id/binary>>, JObj) ->
+    case wh_json:get_keys(wh_json:get_value(<<"views">>, JObj, wh_json:new())) of
+        [] -> ok;
+        [View|_] ->
+            _ = couch_mgr:get_results(Db, <<Id/binary, "/", View/binary>>, []),
+            wait_for_view_update(Db, Id)
     end.
 
 %%--------------------------------------------------------------------
