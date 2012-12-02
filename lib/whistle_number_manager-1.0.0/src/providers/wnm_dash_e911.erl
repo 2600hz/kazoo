@@ -15,7 +15,6 @@
 -export([is_valid_location/1]).
 
 -include_lib("src/wnm.hrl").
--include_lib("xmerl/include/xmerl.hrl").
 
 -type xmlElement() :: #xmlElement{}.
 
