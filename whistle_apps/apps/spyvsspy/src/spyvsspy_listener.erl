@@ -25,6 +25,7 @@
 
 %% By convention, we put the options here in macros, but not required.
 -define(BINDINGS, [{self, []}
+                   ,{resource, [{restrict_to, [eavesdrop]}]}
                   ]).
 -define(RESPONDERS, [
                      {{spyvsspy_handlers, handle_eavesdrop_req}
