@@ -11,7 +11,6 @@
 
 -define(DEFAULT_CONTENT_TYPE, <<"application/json">>).
 
--define(KEY_RESOURCE_REQ, <<"originate.resource.req">>). %% corresponds to resource_req/1 api call
 -define(KEY_ORGN_RESOURCE_REQ, <<"orginate.resource.req">>). %% corresponds to originate_resource_req/1 api call
 -define(KEY_OFFNET_RESOURCE_REQ, <<"offnet.resource.req">>). %% corresponds to offnet_resource_req/1 api call
 -define(RESOURCE_QUEUE_NAME, <<"resource.provider">>).
