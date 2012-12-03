@@ -17,6 +17,8 @@
          ,eavesdrop_resp/1, eavesdrop_resp_v/1
         ]).
 
+-export([is_valid_mode/1]).
+
 -export([bind_q/2, unbind_q/2]).
 
 -export([publish_originate_req/1, publish_originate_req/2
@@ -26,10 +28,11 @@
         ]).
 
 %% Eavesdrop: If you set a Group ID, the Call-ID is ignored and "all" is used instead
--define(EAVESDROP_MODE, {<<"Eavesdrop-Mode">>, [<<"listen">>   % hear both sides - default
-                                                ,<<"whisper">> % talk to one side
-                                                ,<<"full">>    % talk to both sides
-                                               ]}).
+-define(EAVESDROP_VALID_MODES, [<<"listen">>   % hear both sides - default
+                                ,<<"whisper">> % talk to one side
+                                ,<<"full">>    % talk to both sides
+                               ]).
+-define(EAVESDROP_MODE, {<<"Eavesdrop-Mode">>, ?EAVESDROP_VALID_MODES}).
 
 -define(KEY_EAVESDROP_REQ, <<"eavesdrop.resource.req">>). %% corresponds to eavesdrop_req/1 api call
 
@@ -189,6 +192,10 @@ eavesdrop_resp_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?EAVESDROP_RESP_HEADERS, ?EAVESDROP_RESP_VALUES, ?EAVESDROP_RESP_TYPES);
 eavesdrop_resp_v(JObj) ->
     eavesdrop_resp_v(wh_json:to_proplist(JObj)).
+
+-spec is_valid_mode/1 :: (ne_binary()) -> boolean().
+is_valid_mode(M) ->
+    lists:member(M, ?EAVESDROP_VALID_MODES).
 
 -spec bind_q/2 :: (ne_binary(), wh_proplist()) -> 'ok'.
 bind_q(Queue, Prop) ->
