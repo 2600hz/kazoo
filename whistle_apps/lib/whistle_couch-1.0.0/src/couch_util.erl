@@ -442,18 +442,11 @@ stream_attachment(#server{}=Conn, DbName, DocId, AName, Caller) ->
                                   {'ok', wh_json:object()} |
                                   couchbeam_error().
 put_attachment(#server{}=Conn, DbName, DocId, AName, Contents) ->
-    Db = get_db(Conn, DbName),
-    Rev = do_fetch_rev(Db, DocId),
-    do_put_attachment(Db, DocId, AName, Contents, [{<<"rev">>, Rev}]).
+    put_attachment(#server{}=Conn, DbName, DocId, AName, Contents, []).
+
 put_attachment(#server{}=Conn, DbName, DocId, AName, Contents, Options) ->
     Db = get_db(Conn, DbName),
-    case props:get_value(rev, Options) of
-        undefined ->
-            Rev = do_fetch_rev(Db, DocId),
-            do_put_attachment(Db, DocId, AName, Contents, [{<<"rev">>, Rev} | Options]);
-        _ ->
-            do_put_attachment(Db, DocId, AName, Contents, Options)
-    end.
+    do_put_attachment(Db, DocId, AName, Contents, maybe_add_rev(Db, DocId, Options)).
 
 -spec delete_attachment/4 :: (server(), ne_binary(), ne_binary(), ne_binary()) ->
                                      {'ok', wh_json:object()} |
@@ -462,23 +455,11 @@ put_attachment(#server{}=Conn, DbName, DocId, AName, Contents, Options) ->
                                      {'ok', wh_json:object()} |
                                      couchbeam_error().
 delete_attachment(#server{}=Conn, DbName, DocId, AName) ->
-    Db = get_db(Conn, DbName),
-    case do_fetch_rev(Db, DocId) of
-        {'error', _}=E -> E;
-        ?NE_BINARY = Rev -> do_del_attachment(Db, DocId, AName, [{<<"rev">>, Rev}])
-    end.
+    delete_attachment(#server{}=Conn, DbName, DocId, AName, []).
 
 delete_attachment(#server{}=Conn, DbName, DocId, AName, Options) ->
     Db = get_db(Conn, DbName),
-    case props:get_value(rev, Options) of
-        undefined ->
-            case do_fetch_rev(Db, DocId) of
-                {'error', _}=E -> E;
-                Rev -> do_del_attachment(Db, DocId, AName, [{<<"rev">>, Rev} | Options])
-            end;
-        _ ->
-            do_del_attachment(Db, DocId, AName, Options)
-    end.
+    do_del_attachment(Db, DocId, AName,  maybe_add_rev(Db, DocId, Options)).
 
 %% Internal Attachment-related functions ---------------------------------------
 -spec do_fetch_attachment/3 :: (db(), ne_binary(), ne_binary()) ->
@@ -518,6 +499,22 @@ do_del_attachment(#db{}=Db, DocId, AName, Options) ->
 get_db(#server{}=Conn, DbName) ->
     {'ok', Db} = couchbeam:open_db(Conn, DbName),
     Db.
+
+%%------------------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%------------------------------------------------------------------------------
+-spec maybe_add_rev/3 :: (db(), ne_binary(), proplist()) -> proplist().
+maybe_add_rev(Db, DocId, Options) ->
+    case props:get_value(rev, Options) =:= undefined
+        andalso do_fetch_rev(Db, DocId)
+    of
+        ?NE_BINARY = Rev ->
+            [{rev, Rev} | Options];
+        _Else -> Options
+    end.    
 
 %%------------------------------------------------------------------------------
 %% @private

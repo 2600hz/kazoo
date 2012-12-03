@@ -1,4 +1,5 @@
 -ifndef(WHISTLE_TYPES_INCLUDED).
+-include_lib("xmerl/include/xmerl.hrl").
 
 -define(MILLISECONDS_IN_DAY, 86400000).
 -define(SECONDS_IN_DAY, 86400).
@@ -115,6 +116,14 @@
                        {'error', 'req_timedout' | 'sel_conn_closed' | {'EXIT', term()}}.
 %% When using the stream_to option, ibrowse:send_req returns this tuple ReqID
 -type ibrowse_req_id() :: {pos_integer(), pos_integer(), pos_integer()}.
+
+%% XML types
+-type xml_attrib_name() :: atom().
+-type xml_attrib_value() :: ne_binary() | nonempty_string() | iolist() | atom().
+-type xml_attrib() :: #xmlAttribute{}.
+
+-type xml_el() :: #xmlElement{}.
+-type xml_els() :: [xml_el(),...] | [].
 
 -define(WHISTLE_TYPES_INCLUDED, true).
 -endif.

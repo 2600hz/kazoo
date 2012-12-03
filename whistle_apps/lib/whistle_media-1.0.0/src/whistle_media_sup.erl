@@ -1,12 +1,11 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010 VoIP INC
+%%% @copyright (C) 2012, VoIP, INC
 %%% @doc
-%%% 
+%%%
 %%% @end
 %%% @contributors
-%%%   James Aimonetti
 %%%-------------------------------------------------------------------
--module(media_mgr_sup).
+-module(whistle_media_sup).
 
 -behaviour(supervisor).
 
@@ -15,9 +14,13 @@
 -export([start_link/0]).
 -export([init/1]).
 
--define(CHILD(Name, Type), fun(N, T) -> {N, {N, start_link, []}, permanent, 5000, T, [N]} end(Name, Type)).
--define(CHILDREN, [{whistle_media_sup, supervisor}
-                   ,{media_listener, worker}
+%% Helper macro for declaring children of supervisor
+-define(CHILD(Name, Type, Args), fun(N, T, A) -> {N, {N, start_link, [A]}, permanent, 5000, T, [N]} end(Name, Type, Args)).
+-define(CHILD(Name, Type), fun(N, cache) -> {N, {wh_cache, start_link, [N]}, permanent, 5000, worker, [wh_cache]};
+                              (N, T) -> {N, {N, start_link, []}, permanent, 5000, T, [N]} end(Name, Type)).
+-define(CHILDREN, [{media_mgr_cache, cache}
+                   ,{wh_media_cache_sup, supervisor}
+                   ,{wh_media_proxy, worker}
                   ]).
 
 %% ===================================================================

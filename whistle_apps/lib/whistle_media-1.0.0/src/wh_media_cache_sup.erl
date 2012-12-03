@@ -6,7 +6,7 @@
 %%% @contributors
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
--module(media_files_sup).
+-module(wh_media_cache_sup).
 
 -behaviour(supervisor).
 
@@ -21,8 +21,8 @@
 
 -define(SERVER, ?MODULE).
 
--define(CHILD(Name, Id, Doc, Attachment, Meta), {Name, {media_file, start_link, [Id, Doc, Attachment, Meta]}, temporary, 5000, worker, [media_file]}).
--define(CHILD(Name, Text, JObj), {Name, {media_tts, start_link, [Text, JObj]}, temporary, 5000, worker, [media_tts]}).
+-define(CHILD(Name, Id, Doc, Attachment, Meta), {Name, {wh_media_file_cache, start_link, [Id, Doc, Attachment, Meta]}, temporary, 5000, worker, [wh_media_file_cache]}).
+-define(CHILD(Name, Text, JObj), {Name, {wh_media_tts_cache, start_link, [Text, JObj]}, temporary, 5000, worker, [wh_media_tts_cache]}).
 
 %%%===================================================================
 %%% API functions
@@ -65,7 +65,7 @@ find_tts_server(Id) ->
     end.
 
 find_tts_server(Text, JObj) ->
-    Id = list_to_binary([wh_util:to_hex_binary(Text), $., wh_json:get_value(<<"Format">>, JObj, <<"wav">>)]),
+    Id =  wh_util:binary_md5(Text),    
     find_tts_server(Text, JObj, Id).
 find_tts_server(Text, JObj, Id) ->
     case supervisor:start_child(?MODULE, ?CHILD(Id, Text, JObj)) of

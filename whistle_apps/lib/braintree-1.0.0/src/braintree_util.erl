@@ -25,7 +25,6 @@
 -export([error_min_amount/1]).
 -export([error_max_amount/1]).
 
--include_lib("xmerl/include/xmerl.hrl").
 -include_lib("braintree/include/braintree.hrl").
 
 %% from stdlib/src/unicode.erl

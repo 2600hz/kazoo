@@ -16,7 +16,6 @@
         ]).
 
 -include("ecallmgr.hrl").
--include_lib("xmerl/include/xmerl.hrl").
 
 -spec acl_xml/1 :: (wh_json:json_object()) -> {'ok', iolist()}.
 acl_xml(AclsJObj) ->
@@ -341,13 +340,6 @@ arrange_acl_node({_, JObj}, Dict) ->
 %%%-------------------------------------------------------------------
 %% XML record creators and helpers
 %%%-------------------------------------------------------------------
--type xml_attrib_name() :: atom().
--type xml_attrib_value() :: ne_binary() | nonempty_string() | iolist() | atom().
--type xml_attrib() :: #xmlAttribute{}.
-
--type xml_el() :: #xmlElement{}.
--type xml_els() :: [xml_el(),...] | [].
-
 -spec acl_node_el/2 :: (xml_attrib_value(), xml_attrib_value()) -> xml_el().
 acl_node_el(Type, CIDR) ->
     #xmlElement{name='node'

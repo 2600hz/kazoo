@@ -6,7 +6,7 @@
 %%% @contributors
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
--module(media_continuous).
+-module(wh_media_single_proxy).
 
 -export([init/3
          ,terminate/2
@@ -14,11 +14,10 @@
          ,stream/5
         ]).
 
--include("media.hrl").
+-include("whistle_media.hrl").
 
 init({_Transport, _Proto}, Req0, _Opts) ->
     put(callid, wh_util:rand_hex_binary(16)),
-
     case cowboy_http_req:path_info(Req0) of
         {[<<"tts">>, Id], Req1} ->
             init_from_tts(Id, Req1);
@@ -28,9 +27,9 @@ init({_Transport, _Proto}, Req0, _Opts) ->
 
 init_from_tts(Id, Req) ->
     lager:debug("fetching tts/~s", [Id]),
-    case media_files_sup:find_tts_server(Id) of
+    case wh_media_cache_sup:find_tts_server(Id) of
         {ok, Pid} ->
-            {ok, Req, media_file:single(Pid)};
+            {ok, Req, wh_media_file_cache:single(Pid)};
         {error, _} ->
             lager:debug("missing tts server"),
             {ok, Req1} = cowboy_http_req:reply(404, Req),
@@ -39,10 +38,9 @@ init_from_tts(Id, Req) ->
 
 init_from_doc(Id, Doc, Attachment, Req) ->
     lager:debug("fetching ~s/~s/~s", [Id, Doc, Attachment]),
-
-    case media_files_sup:find_file_server(Id, Doc, Attachment) of
+    case wh_media_cache_sup:find_file_server(Id, Doc, Attachment) of
         {ok, Pid} ->
-            {ok, Req, media_file:single(Pid)};
+            {ok, Req, wh_media_file_cache:single(Pid)};
         {error, _} ->
             lager:debug("missing file server"),
             {ok, Req1} = cowboy_http_req:reply(404, Req),
