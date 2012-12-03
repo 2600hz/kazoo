@@ -403,7 +403,6 @@ is_cb_module(Elem, Ebin) ->
 %%--------------------------------------------------------------------
 -spec allow_methods/4  :: ([http_methods(),...], http_methods(), ne_binary(), http_method()) -> http_methods().
 allow_methods(Responses, Available, ReqVerb, HttpVerb) ->
-    lager:debug("resps: ~p", [Responses]),
     case crossbar_bindings:succeeded(Responses) of
         [] -> [];
         Succeeded ->
