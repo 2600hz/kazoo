@@ -674,12 +674,12 @@ is_valid_format(<<"email">>, Instance) ->
         nomatch -> <<"email:Failed to validate email address">>
     end;
 is_valid_format(<<"ip-address">>, Instance) ->
-    case wh_util:is_ipv4(Instance) of
+    case wh_network_utils:is_ipv4(Instance) of
         true -> true;
         false -> <<"ip-address:Failed to validate IPv4">>
     end;
 is_valid_format(<<"ipv6">>, Instance) ->
-    case wh_util:is_ipv6(Instance) of
+    case wh_network_utils:is_ipv6(Instance) of
         true -> true;
         false -> <<"ipv6:Failed to validate IPv6">>
     end;

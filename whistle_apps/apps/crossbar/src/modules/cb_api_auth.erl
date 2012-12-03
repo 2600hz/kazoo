@@ -158,7 +158,7 @@ create_token(#cb_context{doc=JObj}=Context) ->
                 {ok, Doc} ->
                     AuthToken = wh_json:get_value(<<"_id">>, Doc),
                     lager:debug("created new local auth token ~s", [AuthToken]),
-                    crossbar_util:response(wh_json:from_list([{<<"account_id">>, AccountId}])
+                    crossbar_util:response(crossbar_util:response_auth(JObj)
                                            ,Context#cb_context{auth_token=AuthToken, auth_doc=Doc});
                 {error, R} ->
                     lager:debug("could not create new local auth token, ~p", [R]),

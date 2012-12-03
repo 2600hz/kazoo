@@ -28,9 +28,12 @@
 -define(EVENT_CATEGORY, <<"directory">>).
 -define(AUTHN_REQ_EVENT_NAME, <<"authn_req">>).
 
--define(AUTHN_REQ_HEADERS, [<<"To">>, <<"From">>, <<"Orig-IP">>
-                                , <<"Auth-User">>, <<"Auth-Realm">>]).
--define(OPTIONAL_AUTHN_REQ_HEADERS, [<<"Method">>, <<"Switch-Hostname">>]).
+-define(AUTHN_REQ_HEADERS, [<<"To">>, <<"From">>
+                            ,<<"Auth-User">>, <<"Auth-Realm">>
+                           ]).
+-define(OPTIONAL_AUTHN_REQ_HEADERS, [<<"Method">>, <<"Switch-Hostname">>
+                                         ,<<"Orig-IP">>
+                                    ]).
 -define(AUTHN_REQ_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
                            ,{<<"Event-Name">>, ?AUTHN_REQ_EVENT_NAME}
                           ]).
@@ -43,7 +46,10 @@
 
 %% Authentication Responses
 -define(AUTHN_RESP_HEADERS, [<<"Auth-Method">>, <<"Auth-Password">>]).
--define(OPTIONAL_AUTHN_RESP_HEADERS, [<<"Tenant-ID">>, <<"Access-Group">>, <<"Custom-Channel-Vars">>]).
+-define(OPTIONAL_AUTHN_RESP_HEADERS, [<<"Tenant-ID">>, <<"Access-Group">>
+                                          ,<<"Custom-Channel-Vars">>
+                                          ,<<"Auth-Username">>
+                                     ]).
 -define(AUTHN_RESP_VALUES, [{<<"Event-Category">>, <<"directory">>}
                            ,{<<"Event-Name">>, <<"authn_resp">>}
                            ,{<<"Auth-Method">>, [<<"password">>, <<"ip">>, <<"a1-hash">>, <<"error">>]}
@@ -205,7 +211,9 @@ get_auth_user(ApiJObj) ->
 -spec get_auth_realm/1  :: (wh_json:json_object() | proplist()) -> ne_binary().
 get_auth_realm(ApiProp) when is_list(ApiProp) ->
     AuthRealm = props:get_value(<<"Auth-Realm">>, ApiProp, <<"missing.realm">>),
-    case wh_util:is_ipv4(AuthRealm) orelse wh_util:is_ipv6(AuthRealm) of
+    case wh_network_utils:is_ipv4(AuthRealm) 
+        orelse wh_network_utils:is_ipv6(AuthRealm) 
+    of
         true ->
             [_ToUser, ToDomain] = binary:split(props:get_value(<<"To">>, ApiProp), <<"@">>),
             ToDomain;

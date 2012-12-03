@@ -54,6 +54,7 @@ callflow_should_respond(Call) ->
         <<"device">> -> true;
         <<"callforward">> -> true;
         <<"clicktocall">> -> true;
+        <<"resource">> -> true;
         undefined -> true;
         _Else -> false
     end.

@@ -505,7 +505,7 @@ send_fax(JobId, JObj, Q) ->
 
 -spec get_proxy_url/1 :: (ne_binary()) -> ne_binary().
 get_proxy_url(JobId) ->
-    Hostname = wh_util:get_hostname(),
+    Hostname = wh_network_utils:get_hostname(),
     Port = whapps_config:get_binary(?CONFIG_CAT, <<"port">>),
     list_to_binary(["http://", Hostname, ":", Port, "/fax/", JobId, ".tiff"]).
     

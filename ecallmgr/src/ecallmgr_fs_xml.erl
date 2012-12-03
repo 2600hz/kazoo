@@ -10,8 +10,8 @@
 -module(ecallmgr_fs_xml).
 
 -export([get_leg_vars/1, get_channel_vars/1, get_channel_vars/2
-         ,route_resp_xml/1 ,authn_resp_xml/1, acl_xml/1
-         ,route_not_found/0, empty_response/0
+         ,route_resp_xml/1 ,authn_resp_xml/1, reverse_authn_resp_xml/1
+         ,acl_xml/1, route_not_found/0, empty_response/0
          ,sip_profiles_xml/1, sofia_gateways_xml_to_json/1
         ]).
 
@@ -40,12 +40,22 @@ sip_profiles_xml(JObj) ->
     {ok, xmerl:export([SectionEl], fs_xml)}.    
 
 -spec authn_resp_xml/1 :: (api_terms()) -> {'ok', iolist()}.
--spec authn_resp_xml/2 :: (ne_binary(), wh_json:json_object()) -> {'ok', iolist()}.
+-spec authn_resp_xml/2 :: (ne_binary(), wh_json:json_object()) -> {'ok'|'error', iolist()}.
 authn_resp_xml([_|_]=RespProp) ->
     authn_resp_xml(props:get_value(<<"Auth-Method">>, RespProp), wh_json:from_list(RespProp));
-authn_resp_xml(RespJObj) ->
-    authn_resp_xml(wh_json:get_value(<<"Auth-Method">>, RespJObj), RespJObj).
+authn_resp_xml(JObj) ->
+    DomainName = wh_json:get_value(<<"Domain-Name">>, JObj),
+    UserId = wh_json:get_value(<<"User-ID">>, JObj),
 
+    case authn_resp_xml(wh_json:get_value(<<"Auth-Method">>, JObj), JObj) of
+        {error, ErrorXml} -> {ok, ErrorXml};
+        {ok, Elements} ->
+            UserEl = user_el(wh_json:get_value(<<"Auth-Username">>, JObj, UserId), Elements),            
+            DomainEl = domain_el(wh_json:get_value(<<"Auth-Realm">>, JObj, DomainName), UserEl),
+            SectionEl = section_el(<<"directory">>, DomainEl),
+            {ok, xmerl:export([SectionEl], fs_xml)}
+    end.
+    
 authn_resp_xml(<<"password">>, JObj) ->
     PassEl = param_el(<<"password">>, wh_json:get_value(<<"Auth-Password">>, JObj)),
     ParamsEl = params_el([PassEl]),
@@ -53,14 +63,7 @@ authn_resp_xml(<<"password">>, JObj) ->
     VariableEls = [variable_el(K, V) || {K, V} <- get_channel_params(JObj)],
     VariablesEl = variables_el(VariableEls),
 
-    UserEl = user_el(wh_json:get_value(<<"Auth-User">>, JObj), [VariablesEl, ParamsEl]),
-
-    DomainEl = domain_el(wh_json:get_value(<<"Auth-Realm">>, JObj), UserEl),
-
-    SectionEl = section_el(<<"directory">>, DomainEl),
-
-    {ok, xmerl:export([SectionEl], fs_xml)};
-
+    {ok, [VariablesEl, ParamsEl]};
 authn_resp_xml(<<"a1-hash">>, JObj) ->
     PassEl = param_el(<<"a1-hash">>, wh_json:get_value(<<"Auth-Password">>, JObj)),
     ParamsEl = params_el([PassEl]),
@@ -68,19 +71,42 @@ authn_resp_xml(<<"a1-hash">>, JObj) ->
     VariableEls = [variable_el(K, V) || {K, V} <- get_channel_params(JObj)],
     VariablesEl = variables_el(VariableEls),
 
-    UserEl = user_el(wh_json:get_value(<<"Auth-User">>, JObj), [VariablesEl, ParamsEl]),
-
-    DomainEl = domain_el(wh_json:get_value(<<"Auth-Realm">>, JObj), UserEl),
-
-    SectionEl = section_el(<<"directory">>, DomainEl),
-
-    {ok, xmerl:export([SectionEl], fs_xml)};
-
+    {ok, [VariablesEl, ParamsEl]};
 authn_resp_xml(<<"ip">>, _JObj) ->
-    empty_response();
+    {error, empty_response()};
 authn_resp_xml(_Method, _JObj) ->
     lager:debug("unknown method ~s", [_Method]),
-    empty_response().
+    {error, empty_response()}.
+
+-spec reverse_authn_resp_xml/1 :: (api_terms()) -> {'ok', iolist()}.
+-spec reverse_authn_resp_xml/2 :: (ne_binary(), wh_json:json_object()) -> {'ok'|'error', iolist()}.
+reverse_authn_resp_xml([_|_]=RespProp) ->
+    reverse_authn_resp_xml(props:get_value(<<"Auth-Method">>, RespProp), wh_json:from_list(RespProp));
+reverse_authn_resp_xml(JObj) ->
+    case reverse_authn_resp_xml(wh_json:get_value(<<"Auth-Method">>, JObj), JObj) of
+        {error, ErrorXml} -> {ok, ErrorXml};
+        {ok, Elements} ->
+            UserEl = user_el(wh_json:get_value(<<"User-ID">>, JObj), Elements),            
+            DomainEl = domain_el(wh_json:get_value(<<"Domain-Name">>, JObj), UserEl),
+            SectionEl = section_el(<<"directory">>, DomainEl),
+            {ok, xmerl:export([SectionEl], fs_xml)}
+    end.
+    
+reverse_authn_resp_xml(<<"password">>, JObj) ->
+    UserId = wh_json:get_value(<<"User-ID">>, JObj),
+
+    PassEl = param_el(<<"reverse-auth-pass">>, wh_json:get_value(<<"Auth-Password">>, JObj)),
+    UserEl = param_el(<<"reverse-auth-user">>, wh_json:get_value(<<"Auth-Username">>, JObj, UserId)),
+
+    ParamsEl = params_el([PassEl, UserEl]),
+
+    VariableEls = [variable_el(K, V) || {K, V} <- get_channel_params(JObj)],
+    VariablesEl = variables_el(VariableEls),
+
+    {ok, [VariablesEl, ParamsEl]};
+reverse_authn_resp_xml(_Method, _JObj) ->
+    lager:debug("unknown method ~s", [_Method]),
+    {error, empty_response()}.
 
 -spec empty_response/0 :: () -> {'ok', []}.
 empty_response() ->

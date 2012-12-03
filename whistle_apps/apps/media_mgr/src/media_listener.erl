@@ -92,7 +92,7 @@ send_media_resp(JObj, Id, Doc, Attachment, Meta) ->
     send_media_resp(JObj, [Id, <<"/">>, Doc, <<"/">>, Attachment], Meta).
 
 send_media_resp(JObj, Path, Meta) ->
-    Hostname = wh_util:get_hostname(),
+    Hostname = wh_network_utils:get_hostname(),
     Port = whapps_config:get_binary(?CONFIG_CAT, <<"port">>),
 
     {VlcPrefix, Protocol} = case whapps_config:get_is_true(?CONFIG_CAT, <<"use_vlc">>, false) of

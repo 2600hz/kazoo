@@ -14,7 +14,7 @@
 %% API
 -export([start_link/1, start_link/2]).
 -export([handle_sucessful_registration/2]).
--export([lookup_user/3]).
+-export([lookup_user/4]).
 -export([init/1
          ,handle_call/3
          ,handle_cast/2
@@ -145,7 +145,7 @@ handle_info({event, [_ | Props]}, #state{node=Node}=State) ->
         _ -> ok
     end,
     {noreply, State};
-handle_info({fetch, directory, <<"domain">>, <<"name">>, _Value, ID, [undefined | Data]}, #state{node=Node}=State) ->
+handle_info({fetch, directory, <<"domain">>, <<"name">>, _Value, ID, [undefined | Data]}, #state{node=Node}=State) ->    
     case props:get_value(<<"sip_auth_method">>, Data) of
         <<"REGISTER">> ->
             lager:debug("received fetch request (~s) for sip registration creds from ~s", [ID, Node]);
@@ -154,8 +154,11 @@ handle_info({fetch, directory, <<"domain">>, <<"name">>, _Value, ID, [undefined 
     end,
     case {props:get_value(<<"Event-Name">>, Data), props:get_value(<<"action">>, Data)} of
         {<<"REQUEST_PARAMS">>, <<"sip_auth">>} ->
-            %% TODO: move this to a supervisor somewhere....
-            spawn(?MODULE, lookup_user, [Node, ID, Data]),
+            Method = props:get_value(<<"sip_auth_method">>, Data),
+            spawn(?MODULE, lookup_user, [Node, ID, Method, Data]),
+            {noreply, State, hibernate};
+        {<<"REQUEST_PARAMS">>, <<"reverse-auth-lookup">>} ->
+            spawn(?MODULE, lookup_user, [Node, ID, <<"reverse-lookup">>, Data]),
             {noreply, State, hibernate};
         _Other ->
             {ok, Resp} = ecallmgr_fs_xml:empty_response(),
@@ -171,6 +174,7 @@ handle_info({fetch, _Section, _Something, _Key, _Value, ID, [undefined | _Data]}
     {noreply, State};
 
 handle_info(_Info, State) ->
+    lager:debug("got ~p", [_Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -201,41 +205,45 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec lookup_user/3 :: (atom(), ne_binary(), proplist()) ->  'ok' | 'timeout' | {'error', _}.
-lookup_user(Node, ID, Data) ->
+-spec lookup_user/4 :: (atom(), ne_binary(), ne_binary(), proplist()) ->  'ok' | 'timeout' | {'error', _}.
+lookup_user(Node, ID, Method,  Data) ->
     put(callid, ID),
     %% build req for rabbit
-    AuthRealm = props:get_value(<<"domain">>, Data, props:get_value(<<"Auth-Realm">>, Data)),
-    AuthUser = props:get_value(<<"user">>, Data, props:get_value(<<"Auth-User">>, Data)),
-    Method = props:get_value(<<"sip_auth_method">>, Data),
-    lager:debug("looking up credentials of ~s@~s for a ~s", [AuthUser, AuthRealm, Method]),
+    DomainName = props:get_value(<<"domain">>, Data, props:get_value(<<"Auth-Realm">>, Data)),
+    UserId = props:get_value(<<"user">>, Data, props:get_value(<<"Auth-User">>, Data)),
+    lager:debug("looking up credentials of ~s@~s for a ~s", [UserId, DomainName, Method]),
+    Req = [{<<"Msg-ID">>, ID}
+           ,{<<"To">>, ecallmgr_util:get_sip_to(Data)}
+           ,{<<"From">>, ecallmgr_util:get_sip_from(Data)}
+           ,{<<"Orig-IP">>, ecallmgr_util:get_orig_ip(Data)}
+           ,{<<"Method">>, Method}
+           ,{<<"Auth-User">>, UserId}
+           ,{<<"Auth-Realm">>, DomainName}
+           ,{<<"Media-Server">>, wh_util:to_binary(Node)}
+           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
     ReqResp = wh_amqp_worker:call(?ECALLMGR_AMQP_POOL
-                                  ,[{<<"Msg-ID">>, ID}
-                                    ,{<<"To">>, ecallmgr_util:get_sip_to(Data)}
-                                    ,{<<"From">>, ecallmgr_util:get_sip_from(Data)}
-                                    ,{<<"Orig-IP">>, ecallmgr_util:get_orig_ip(Data)}
-                                    ,{<<"Method">>, Method}
-                                    ,{<<"Auth-User">>, AuthUser}
-                                    ,{<<"Auth-Realm">>, AuthRealm}
-                                    ,{<<"Media-Server">>, wh_util:to_binary(Node)}
-                                    | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-                                   ]
+                                  ,props:filter_undefined(Req)
                                   ,fun wapi_authn:publish_req/1
                                   ,fun wapi_authn:resp_v/1),
-    case ReqResp of
-        {error, _R} ->
-            lager:debug("authn request lookup failed: ~p", [_R]),
-            {ok, RespXML} = ecallmgr_fs_xml:route_not_found(),
-            freeswitch:fetch_reply(Node, ID, iolist_to_binary(RespXML));
-        {ok, RespJObj} ->
-            {ok, Xml} = ecallmgr_fs_xml:authn_resp_xml(
-                          wh_json:set_value(<<"Auth-Realm">>, AuthRealm
-                                            ,wh_json:set_value(<<"Auth-User">>, AuthUser, RespJObj))
-                         ),
-            lager:debug("sending XML to ~w: ~s", [Node, Xml]),
-            freeswitch:fetch_reply(Node, ID, iolist_to_binary(Xml))
-    end.
+    {ok, Xml} = handle_lookup_resp(ReqResp, DomainName, UserId, Method),
+    lager:debug("sending XML to ~w: ~s", [Node, Xml]),
+    freeswitch:fetch_reply(Node, ID, iolist_to_binary(Xml)).    
 
+handle_lookup_resp({error, _R}, _, _, _) ->
+    lager:debug("authn request lookup failed: ~p", [_R]),
+    ecallmgr_fs_xml:route_not_found();
+handle_lookup_resp({ok, RespJObj}, DomainName, UserId, <<"reverse-lookup">>) ->
+    Props = [{<<"Domain-Name">>, DomainName}
+             ,{<<"User-ID">>, UserId}
+            ],
+    ecallmgr_fs_xml:reverse_authn_resp_xml(wh_json:set_values(Props, RespJObj));
+handle_lookup_resp({ok, RespJObj}, DomainName, UserId, _) ->
+    Props = [{<<"Domain-Name">>, DomainName}
+             ,{<<"User-ID">>, UserId}
+            ],
+    ecallmgr_fs_xml:authn_resp_xml(wh_json:set_values(Props, RespJObj)).
+    
 -spec publish_register_event/1 :: (proplist()) -> 'ok'.
 publish_register_event(Data) ->
     ApiProp = lists:foldl(fun(K, Api) ->
