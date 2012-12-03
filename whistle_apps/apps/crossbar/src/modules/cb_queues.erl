@@ -180,7 +180,10 @@ validate(#cb_context{req_verb = <<"get">>}=Context, Id, ?STATS_PATH_TOKEN, ?REAL
     fetch_queue_stats(Id, Context, realtime).
 
 validate_eavesdrop_on_call(#cb_context{req_data=Data}=Context) ->
-    case is_valid_endpoint(Context, Data) andalso is_valid_call(Data) of
+    case is_valid_endpoint(Context, Data)
+        andalso is_valid_call(Data)
+        andalso is_valid_mode(Data)
+    of
         true -> Context#cb_context{resp_status=success
                                    ,resp_data=wh_json:new()
                                   };
@@ -188,11 +191,22 @@ validate_eavesdrop_on_call(#cb_context{req_data=Data}=Context) ->
     end.
 
 validate_eavesdrop_on_queue(#cb_context{req_data=Data}=Context, QueueId) ->
-    case is_valid_endpoint(Context, Data) andalso is_valid_queue(Context, QueueId) of
-        true -> Context#cb_context{resp_status=success
-                                   ,resp_data=wh_json:new()
-                                  };
-        {error, E} -> cb_context:add_system_error(E, Context)
+    case is_valid_endpoint(Context, Data)
+        andalso is_valid_queue(Context, QueueId)
+        andalso is_valid_mode(Data)
+    of
+        true ->
+            Context#cb_context{resp_status=success
+                               ,resp_data=wh_json:new()
+                              };
+        {error, E} ->
+            cb_context:add_system_error(E, Context)
+    end.
+
+is_valid_mode(Data) ->
+    case wapi_resource:is_valid_mode(wh_json:get_value(<<"mode">>, Data, <<"listen">>)) of
+        true -> true;
+        false -> {error, faulty_request}
     end.
 
 is_valid_call(Data) ->
@@ -245,10 +259,35 @@ put(Context) ->
     lager:debug("saving new queue"),
     crossbar_doc:save(Context).
 
-put(Context, ?EAVESDROP_PATH_TOKEN) ->
-    Context#cb_context{resp_status=success}.
-put(Context, _, ?EAVESDROP_PATH_TOKEN) ->
-    Context#cb_context{resp_status=success}.
+put(#cb_context{req_data=Data}=Context, ?EAVESDROP_PATH_TOKEN) ->
+    Prop = [{<<"Eavesdrop-Call-ID">>, wh_json:get_value(<<"call_id">>, Data)}
+            | default_eavesdrop_req(Context)
+           ],
+    eavesdrop_req(Context, Prop).
+put(Context, QID, ?EAVESDROP_PATH_TOKEN) ->
+    Prop = [{<<"Eavesdrop-Group-ID">>, QID}
+            | default_eavesdrop_req(Context)
+           ],
+    eavesdrop_req(Context, Prop).
+
+default_eavesdrop_req(#cb_context{req_data=Data}=Context) ->
+    [{<<"Eavesdrop-Mode">>, wh_json:get_value(<<"mode">>, Data, <<"listen">>)}
+     ,{<<"Account-ID">>, cb_context:account_id(Context)}
+     ,{<<"Endpoint-ID">>, wh_json:get_value(<<"id">>, Data)}
+     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+    ].
+
+eavesdrop_req(Context, Prop) ->
+    case whapps_util:amqp_pool_request(Prop
+                                       ,fun wapi_resource:publish_eavesdrop_req/1
+                                       ,fun wapi_resource:eavesdrop_resp_v/1
+                                       ,2000
+                                      )
+    of
+        {ok, Resp} -> Context#cb_context{resp_status=success, resp_data=Resp};
+        {error, timeout} -> Context#cb_context{resp_status=error, resp_data = <<"request timed out">>};
+        {error, E} -> Context#cb_context{resp_status=error, resp_data=E}
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
