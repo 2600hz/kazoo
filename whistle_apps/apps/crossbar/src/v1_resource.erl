@@ -73,16 +73,17 @@ rest_init(Req0, Opts) ->
 
     lager:debug("~s: ~s?~s", [Method, Path, QS]),
 
-    Context0 = #cb_context{req_id=ReqId
-                           ,raw_host=Host
-                           ,port=Port
-                           ,raw_path=Path
-                           ,raw_qs=QS
-                           ,method=Method
-                           ,resp_status=fatal
-                           ,resp_error_msg = <<"init failed">>
-                           ,resp_error_code=500
-                          },
+    Context0 = #cb_context{
+      req_id = wh_util:to_binary(ReqId)
+      ,raw_host = wh_util:to_binary(Host)
+      ,port = wh_util:to_integer(Port)
+      ,raw_path = wh_util:to_binary(Path)
+      ,raw_qs = wh_util:to_binary(QS)
+      ,method = wh_util:to_atom(Method)
+      ,resp_status = 'fatal'
+      ,resp_error_msg = <<"init failed">>
+      ,resp_error_code = 500
+     },
 
     {Context1, _} = crossbar_bindings:fold(<<"v1_resource.init">>, {Context0, Opts}),
     {ok, Req6} = cowboy_http_req:set_resp_header(<<"X-Request-ID">>, ReqId, Req5),
@@ -204,7 +205,7 @@ is_authorized(Req, Context) ->
     v1_util:is_authentic(Req, Context).
 
 -spec forbidden/2 :: (#http_req{}, cb_context:context()) ->
-                             {boolean(), #http_req{}, cb_context:context()}.
+                             {'false', #http_req{}, cb_context:context()}.
 forbidden(Req0, Context0) ->
     case v1_util:is_permitted(Req0, Context0) of
         {halt, _, _}=Reply -> Reply;

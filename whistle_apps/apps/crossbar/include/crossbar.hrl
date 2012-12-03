@@ -1,10 +1,11 @@
 -ifndef(CROSSBAR_HRL).
 
+-include_lib("cowboy/include/http.hrl").
+
 -include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_amqp.hrl").
 -include_lib("whistle/include/wh_log.hrl").
 -include_lib("whistle/include/wh_databases.hrl").
--include_lib("cowboy/include/http.hrl").
 
 -include("include/crossbar_types.hrl").
 
@@ -50,37 +51,37 @@
           ,content_types_accepted = [] :: crossbar_content_handlers()
           ,allowed_methods = ?ALLOWED_METHODS :: http_methods()
           ,allow_methods = ?ALLOWED_METHODS :: http_methods()
-          ,languages_provided = [<<"en">>, <<"en-us">>] :: [ne_binary(),...] %% english by default
-          ,charsets_provided = [<<"iso-8859-1">>] :: [ne_binary(),...] %% all charsets provided
-          ,encodings_provided = [<<"gzip;q=1.0">>,<<"identity;q=0.5">>] :: [ne_binary(),...] %% gzip and identity
+          ,languages_provided = [<<"en">>, <<"en-us">>] :: ne_binaries() %% english by default
+          ,charsets_provided = [<<"iso-8859-1">>] :: ne_binaries() %% all charsets provided
+          ,encodings_provided = [<<"gzip;q=1.0">>,<<"identity;q=0.5">>] :: ne_binaries() %% gzip and identity
           ,auth_token = <<>> :: binary()
           ,auth_account_id :: ne_binary()
-          ,auth_doc :: wh_json:json_object()
+          ,auth_doc :: wh_json:object()
           ,req_verb = <<"get">> :: ne_binary() % <<"get">>, <<"post">>, <<"put">>, <<"delete">>, <<"head">>
           ,req_nouns = [{<<"404">>, []}] :: [{ne_binary(), wh_json:json_strings()},...] | [] % {module, [id]} most typical
-          ,req_json = wh_json:new() :: wh_json:json_object() | {'malformed', binary()} %% the request JSON envelope
-          ,req_files = [] :: [{ne_binary(), wh_json:json_object()},...] | [] %% {file_name, {"contents":<<bin>>, "headers":{"content-type":"", "content-length":1}}}
+          ,req_json = wh_json:new() :: wh_json:object() | {'malformed', binary()} %% the request JSON envelope
+          ,req_files = [] :: [{ne_binary(), wh_json:object()},...] | [] %% {file_name, {"contents":<<bin>>, "headers":{"content-type":"", "content-length":1}}}
           ,req_data :: wh_json:json_term()  % the "data" from the request JSON envelope
-          ,query_json = wh_json:new() :: wh_json:json_object()
+          ,query_json = wh_json:new() :: wh_json:object()
           ,account_id :: ne_binary()
           ,db_name :: ne_binary()
-          ,doc :: wh_json:json_object() | wh_json:json_objects()
+          ,doc :: wh_json:object() | wh_json:objects()
           ,resp_expires = {{1999,1,1},{0,0,0}} :: wh_datetime()
           ,resp_etag :: 'automatic' | string() | ne_binary()
           ,resp_status = 'error' :: crossbar_status()
           ,resp_error_msg :: wh_json:json_string()
-          ,resp_error_code :: wh_json:json_number()
-          ,resp_data :: wh_json:json_object() | wh_json:json_objects() | binary() | wh_json:json_term()
-          ,resp_headers = [] :: proplist() %% allow the modules to set headers (like Location: XXX to get a 201 response code)
+          ,resp_error_code :: pos_integer()
+          ,resp_data :: wh_json:object() | wh_json:objects() | binary() | wh_json:json_term()
+          ,resp_headers = [] :: wh_proplist() %% allow the modules to set headers (like Location: XXX to get a 201 response code)
           ,start = erlang:now() :: wh_now()
           ,req_id = <<"000000000000">> :: ne_binary()
-          ,storage = [] :: proplist()
+          ,storage = [] :: wh_proplist()
           ,raw_host = <<>> :: binary()
           ,port = 8000 :: integer()
           ,raw_path = <<>> :: binary()
           ,raw_qs = <<>> :: binary()
           ,method = 'GET' :: http_method()
-          ,validation_errors = wh_json:new() :: wh_json:json_object()
+          ,validation_errors = wh_json:new() :: wh_json:object()
          }).
 
 -define(CROSSBAR_HRL, true).

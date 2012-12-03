@@ -155,7 +155,7 @@ content_types_accepted(#cb_context{req_verb = <<"post">>}=Context, _Number, ?POR
 %% known, or false if not.
 %% @end
 %%--------------------------------------------------------------------
--spec authenticate/1 :: (cb_context:context()) -> boolean().
+-spec authenticate/1 :: (cb_context:context()) -> 'true'.
 authenticate(#cb_context{req_nouns=[{<<"phone_numbers">>,[]}], req_verb = <<"get">>}) -> true.
 
 %%--------------------------------------------------------------------
@@ -165,7 +165,7 @@ authenticate(#cb_context{req_nouns=[{<<"phone_numbers">>,[]}], req_verb = <<"get
 %% allowed to access the resource, or false if not.
 %% @end
 %%--------------------------------------------------------------------
--spec authorize/1 :: (cb_context:context()) -> boolean().
+-spec authorize/1 :: (cb_context:context()) -> 'true'.
 authorize(#cb_context{req_nouns=[{<<"phone_numbers">>,[]}], req_verb = <<"get">>}) -> true.
 
 %%--------------------------------------------------------------------

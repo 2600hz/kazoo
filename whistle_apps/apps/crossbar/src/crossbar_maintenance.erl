@@ -351,7 +351,7 @@ create_account(AccountName, Realm, Username, Password) ->
         _E:_R ->
             lager:debug("crashed creating account: ~s: ~p", [_E, _R]),
             ST = erlang:get_stacktrace(),
-            [lager:debug("st: ~p", [S]) || S <- ST],
+            _ = [lager:debug("st: ~p", [S]) || S <- ST],
             failed
     end.
 

@@ -65,7 +65,8 @@
 -type payload() :: path_tokens() | % mapping over path tokens in URI
                    [#cb_context{} | path_token() | 'undefined',...] |
                    #cb_context{} |
-                   {#cb_context{}, proplist()} | % v1_resource:rest_init/2
+                   {#cb_context{}, wh_proplist()} | % v1_resource:rest_init/2
+                   {'error', _} | % v1_util:execute_request/2
                    {wh_json:json_strings(), #cb_context{}, path_tokens()} |
                    {wh_datetime(), #http_req{}, #cb_context{}} | % v1_resource:expires/2
                    {#http_req{}, #cb_context{}}. % mapping over the request/context records
@@ -83,7 +84,7 @@
 %% is the payload, possibly modified
 %% @end
 %%--------------------------------------------------------------------
--type map_results() :: [boolean() | http_method(),...] | [].
+-type map_results() :: [boolean() | http_methods(),...] | [].
 -spec map/2 :: (ne_binary(), payload()) -> map_results().
 map(Routing, Payload) ->
     map_processor(Routing, Payload, gen_server:call(?MODULE, current_bindings)).
@@ -95,7 +96,8 @@ map(Routing, Payload) ->
 %% all matching bindings
 %% @end
 %%--------------------------------------------------------------------
--spec fold/2 :: (ne_binary(), payload()) -> term().
+-type fold_results() :: payload().
+-spec fold/2 :: (ne_binary(), payload()) -> fold_results().
 fold(Routing, Payload) ->
     fold_processor(Routing, Payload, gen_server:call(?MODULE, current_bindings)).
 
@@ -104,16 +106,16 @@ fold(Routing, Payload) ->
 %% Helper functions for working on a result set of bindings
 %% @end
 %%-------------------------------------------------------------------
--spec any/1 :: (proplist()) -> boolean().
+-spec any/1 :: (wh_proplist()) -> boolean().
 any(Res) when is_list(Res) -> lists:any(fun check_bool/1, Res).
 
--spec all/1 :: (proplist()) -> boolean().
+-spec all/1 :: (wh_proplist()) -> boolean().
 all(Res) when is_list(Res) -> lists:all(fun check_bool/1, Res).
 
--spec failed/1 :: (wh_proplist()) -> wh_proplist() | http_methods().
+-spec failed/1 :: (map_results()) -> map_results().
 failed(Res) when is_list(Res) -> [R || R <- Res, filter_out_succeeded(R)].
 
--spec succeeded/1 :: (wh_proplist()) -> wh_proplist() | http_methods().
+-spec succeeded/1 :: (map_results()) -> map_results().
 succeeded(Res) when is_list(Res) -> [R || R <- Res, filter_out_failed(R)].
 
 %%--------------------------------------------------------------------
@@ -471,8 +473,8 @@ map_processor(Routing, Payload, Bs) ->
                         end
                 end, [], Bs).
 
--spec fold_processor/3 :: (ne_binary(), payload(), wh_json:json_strings()) -> any().
--spec fold_processor/5 :: (ne_binary(), payload(), ne_binary(), call_from(), wh_json:json_strings()) -> any().
+-spec fold_processor/3 :: (ne_binary(), payload(), wh_json:json_strings()) -> fold_results().
+-spec fold_processor/5 :: (ne_binary(), payload(), ne_binary(), call_from(), wh_json:json_strings()) -> 'ok'.
 fold_processor(Routing, Payload, ReqId, From, Bs) ->
     put(callid, ReqId),
     Reply = fold_processor(Routing, Payload, Bs),
