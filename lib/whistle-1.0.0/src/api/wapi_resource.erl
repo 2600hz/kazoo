@@ -39,6 +39,7 @@
 -define(EAVESDROP_REQ_HEADERS, [<<"Account-ID">>, <<"Endpoint-ID">>]).
 -define(OPTIONAL_EAVESDROP_REQ_HEADERS, [<<"Eavesdrop-Group-ID">>, <<"Eavesdrop-Mode">>
                                          ,<<"Eavesdrop-Call-ID">>
+                                             | ?OPTIONAL_ORIGINATE_REQ_HEADERS
                                         ]).
 -define(EAVESDROP_REQ_VALUES, [{<<"Event-Category">>, <<"resource">>}
                                ,{<<"Event-Name">>, <<"eavesdrop_req">>}
@@ -257,7 +258,7 @@ publish_eavesdrop_req(JObj) ->
     publish_eavesdrop_req(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_eavesdrop_req(Req, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(Req, ?EAVESDROP_REQ_VALUES, fun ?MODULE:eavesdrop_req/1),
-    amqp_util:callmgr_publish(Payload, ContentType, ?KEY_RESOURCE_REQ, [{immediate, true}]).
+    amqp_util:callmgr_publish(Payload, ContentType, ?KEY_EAVESDROP_REQ, [{immediate, true}]).
 
 -spec publish_eavesdrop_resp/2 :: (ne_binary(), api_terms()) -> 'ok'.
 -spec publish_eavesdrop_resp/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
