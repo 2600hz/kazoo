@@ -242,7 +242,7 @@ is_valid_endpoint(Context, DataJObj) ->
 is_valid_endpoint(CallMeJObj) ->
     case wh_json:get_value(<<"pvt_type">>, CallMeJObj) of
         <<"device">> -> true;
-        <<"user">> -> true;
+        %%<<"user">> -> true;
         _ -> {error, bad_identifier}
     end.
 
@@ -277,6 +277,7 @@ default_eavesdrop_req(#cb_context{req_data=Data}=Context) ->
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
+-spec eavesdrop_req/2 :: (cb_context:context(), wh_proplist()) -> cb_context:context().
 eavesdrop_req(Context, Prop) ->
     case whapps_util:amqp_pool_request(Prop
                                        ,fun wapi_resource:publish_eavesdrop_req/1
