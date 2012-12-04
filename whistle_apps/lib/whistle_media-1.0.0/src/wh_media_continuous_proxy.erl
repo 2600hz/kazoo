@@ -18,19 +18,20 @@
 
 init({_Transport, _Proto}, Req0, _Opts) ->
     put(callid, wh_util:rand_hex_binary(16)),
-
     case cowboy_http_req:path_info(Req0) of
         {[<<"tts">>, Id], Req1} ->
             init_from_tts(Id, Req1);
-        {[Id, Doc, Attachment], Req1} ->
-            init_from_doc(Id, Doc, Attachment, Req1)
+        {[?MEDIA_DB = Db, Id, Attachment], Req1} ->
+            init_from_doc(Db, Id, Attachment, Req1);
+        {[Db, Id, Attachment], Req1} ->
+            AccountDb = wh_util:format_account_id(Db, encoded),
+            init_from_doc(AccountDb, Id, Attachment, Req1)
     end.
 
 init_from_tts(Id, Req) ->
     lager:debug("fetching tts/~s", [Id]),
     case wh_media_cache_sup:find_tts_server(Id) of
         {ok, Pid} ->
-            %%TODO: James should this not be continuous? -Karl
             {ok, Req, wh_media_file_cache:single(Pid)};
         {error, _} ->
             lager:debug("missing tts server"),
@@ -38,10 +39,9 @@ init_from_tts(Id, Req) ->
             {shutdown, Req1, ok}
     end.
 
-init_from_doc(Id, Doc, Attachment, Req) ->
-    lager:debug("fetching ~s/~s/~s", [Id, Doc, Attachment]),
-
-    case wh_media_cache_sup:find_file_server(Id, Doc, Attachment) of
+init_from_doc(Db, Id, Attachment, Req) ->
+    lager:debug("fetching ~s/~s/~s", [Db, Id, Attachment]),
+    case wh_media_cache_sup:find_file_server(Db, Id, Attachment) of
         {ok, Pid} ->
             {ok, Req, wh_media_file_cache:single(Pid)};
         {error, _} ->
