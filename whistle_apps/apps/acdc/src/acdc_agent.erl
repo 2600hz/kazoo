@@ -363,6 +363,7 @@ handle_cast({channel_hungup, CallId}, #state{call=Call
                                              ,record_calls=ShouldRecord
                                              ,is_thief=IsThief
                                              ,agent_call_id=ACallId
+                                             ,agent_id=AgentId
                                             }=State) ->
     CCallId = call_id(Call),
     case CallId of
@@ -372,6 +373,7 @@ handle_cast({channel_hungup, CallId}, #state{call=Call
 
             maybe_stop_recording(Call, ShouldRecord),
 
+            put(callid, AgentId),
             case IsThief of
                 false ->
                     {noreply, State#state{call=undefined
@@ -384,11 +386,11 @@ handle_cast({channel_hungup, CallId}, #state{call=Call
                     {stop, normal, State}
             end;
         ACallId ->
-            lager:debug("agent channel hungup"),
+            lager:debug("agent channel ~s hungup", [ACallId]),
             acdc_util:unbind_from_call_events(ACallId),
             {noreply, State#state{agent_call_id=undefined}};
         _CallId ->
-            lager:debug("~s call id for channel_hungup, ignoring", [_CallId]),
+            lager:debug("unknown call id ~s for channel_hungup, ignoring", [_CallId]),
             {noreply, State}
     end;
 
@@ -447,6 +449,7 @@ handle_cast({bridge_to_member, Call, WinJObj, EPs}, #state{fsm_pid=FSM
                                                            ,acct_id=AcctId
                                                            ,agent_id=AgentId
                                                           }=State) ->
+    put(callid, whapps_call:call_id(Call)),
     lager:debug("bridging to agent endpoints: ~p", [EPs]),
 
     RingTimeout = wh_json:get_value(<<"Ring-Timeout">>, WinJObj),
@@ -482,7 +485,7 @@ handle_cast({originate_execute, JObj}, #state{my_q=Q}=State) ->
     ACallId = wh_json:get_value(<<"Call-ID">>, JObj),
     acdc_util:bind_to_call_events(ACallId),
 
-    lager:debug("execute the originate for agent callid ~s", [ACallId]),
+    lager:debug("execute the originate for agent call-id ~s", [ACallId]),
 
     send_originate_execute(JObj, Q),
     {noreply, State#state{agent_call_id=ACallId}};
@@ -736,6 +739,7 @@ maybe_connect_to_agent(FSM, EPs, Call, Timeout) ->
               ,{<<"Caller-ID-Number">>, whapps_call:caller_id_number(Call)}
               ,{<<"Outgoing-Caller-ID-Name">>, whapps_call:caller_id_name(Call)}
               ,{<<"Outgoing-Caller-ID-Number">>, whapps_call:caller_id_number(Call)}
+              ,{<<"Existing-Call-ID">>, whapps_call:call_id(Call)}
               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
 
