@@ -228,6 +228,8 @@ add_system_error(bad_identifier, Props, Context) ->
 add_system_error(forbidden, Props, Context) ->
     Reason = props:get_value(details, Props),
     crossbar_util:response(error, <<"forbidden">>, 403, Reason, Context);
+add_system_error(timeout, Props, Context) ->
+    crossbar_util:response(error, <<"timeout">>, 500, props:get_value(details, Props), Context);
 add_system_error(Error, _, Context) ->
     add_system_error(Error, Context).
 
@@ -267,18 +269,17 @@ add_validation_error(Property, <<"divisibleBy">>=C, Message, Context) ->
     add_depreciated_validation_error(Property, C, Message, Context);
 
 %% Not unique within the datastore
-add_validation_error(Property, <<"unique">>=C, Message, Context) ->
+add_validation_error(Property, <<"unique">> = C, Message, Context) ->
     add_depreciated_validation_error(Property, C, Message, Context);
 %% User is not authorized to update the property  
-add_validation_error(Property, <<"forbidden">>=C, Message, Context) ->
+add_validation_error(Property, <<"forbidden">> = C, Message, Context) ->
     add_depreciated_validation_error(Property, C, Message, Context);
 %% Date range is invalid, too small, or too large
-add_validation_error(Property, <<"date_range">>=C, Message, Context) ->
+add_validation_error(Property, <<"date_range">> = C, Message, Context) ->
     add_depreciated_validation_error(Property, C, Message, Context);
 %% Value was required to locate a resource, but failed (like account_name)
-add_validation_error(Property, <<"not_found">>=C, Message, Context) ->
+add_validation_error(Property, <<"not_found">> = C, Message, Context) ->
     add_depreciated_validation_error(Property, C, Message, Context);
-
 
 add_validation_error(Property, Code, Message, Context) ->
     lager:debug("UNKNOWN ERROR CODE: ~p", [Code]),
