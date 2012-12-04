@@ -12,7 +12,7 @@
 
 -export([handle_req/2]).
 
--spec handle_req/2 :: (wh_json:json_object(), proplist()) -> any().
+-spec handle_req/2 :: (wh_json:object(), proplist()) -> any().
 handle_req(JObj, _Options) ->
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
     put(callid, CallId),
@@ -32,7 +32,7 @@ handle_req(JObj, _Options) ->
 %%
 %% @end
 %%-----------------------------------------------------------------------------
--spec bootstrap_callflow_executer/2 :: (wh_json:json_object(), whapps_call:call()) -> {'ok', pid()}.
+-spec bootstrap_callflow_executer/2 :: (wh_json:object(), whapps_call:call()) -> {'ok', pid()}.
 bootstrap_callflow_executer(JObj, Call) ->
     lists:foldl(fun(F, C) -> F(C) end
                 ,whapps_call:from_route_win(JObj, Call)
