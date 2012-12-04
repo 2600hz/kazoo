@@ -157,7 +157,7 @@ maybe_add_cors_headers(Req0, Context) ->
         {true, Req1} ->
             {ok, Req2} = v1_util:add_cors_headers(Req1, Context),
             check_preflight(Req2, Context);
-         {false, Req1} ->
+        {false, Req1} ->
             maybe_allow_method(Req1, Context)
     end.
 

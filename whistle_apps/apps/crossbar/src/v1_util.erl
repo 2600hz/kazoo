@@ -60,6 +60,7 @@ is_cors_preflight(Req0) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec is_cors_request/1 :: (#http_req{}) -> {boolean(), #http_req{}}.
+-spec is_cors_request/2 :: (#http_req{}, ne_binaries()) -> {boolean(), #http_req{}}.
 is_cors_request(Req) ->
     ReqHdrs = [<<"Origin">>, <<"Access-Control-Request-Method">>, <<"Access-Control-Request-Headers">>],
     is_cors_request(Req, ReqHdrs).
@@ -67,9 +68,7 @@ is_cors_request(Req, []) -> {false, Req};
 is_cors_request(Req, [ReqHdr|ReqHdrs]) ->
     case cowboy_http_req:header(ReqHdr, Req) of
         {undefined, Req1} -> is_cors_request(Req1, ReqHdrs);
-        {_H, Req1} ->
-            lager:debug("request has an ~s header: ~s", [ReqHdr, _H]),
-            {true, Req1}
+        {_H, Req1} -> {true, Req1}
     end.
 
 %%--------------------------------------------------------------------
