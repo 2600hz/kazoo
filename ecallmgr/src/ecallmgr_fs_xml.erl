@@ -227,12 +227,12 @@ route_resp_pre_park_action(JObj) ->
         _Else -> undefined
     end.
 
--spec get_leg_vars/1 :: (wh_json:object() | proplist()) -> [nonempty_string(),...].
+-spec get_leg_vars/1 :: (wh_json:object() | wh_proplist()) -> [nonempty_string(),...].
 get_leg_vars([_|_]=Prop) ->
     ["[", string:join([wh_util:to_list(V) || V <- lists:foldr(fun get_channel_vars/2, [], Prop)], ","), "]"];
 get_leg_vars(JObj) -> get_leg_vars(wh_json:to_proplist(JObj)).
 
--spec get_channel_vars/1 :: (wh_json:object() | proplist()) -> iolist().
+-spec get_channel_vars/1 :: (wh_json:object() | wh_proplist()) -> iolist().
 get_channel_vars([_|_]=Prop) ->
     P = Prop ++ [{<<"Overwrite-Channel-Vars">>, <<"true">>}],
     ["{", string:join([wh_util:to_list(V) || V <- lists:foldr(fun get_channel_vars/2, [], P)], ","), "}"];
