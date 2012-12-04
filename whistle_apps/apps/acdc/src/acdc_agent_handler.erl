@@ -117,9 +117,20 @@ handle_sync_resp(JObj, Props) ->
 
 -spec handle_call_event/2 :: (wh_json:json_object(), wh_proplist()) -> 'ok'.
 handle_call_event(JObj, Props) ->
-    true = wapi_call:event_v(JObj),
-    {Cat, Name} = wh_util:get_event_type(JObj),
-    acdc_agent_fsm:call_event(props:get_value(fsm_pid, Props), Cat, Name, JObj).    
+    FSM = props:get_value(fsm_pid, Props),
+    case wapi_call:event_v(JObj) of
+        true ->
+            {Cat, Name} = wh_util:get_event_type(JObj),
+            acdc_agent_fsm:call_event(FSM, Cat, Name, JObj);
+        false ->
+            true = wh_api:error_resp_v(JObj),
+
+            case wh_json:get_value([<<"Request">>, <<"Event-Name">>], JObj) of
+                <<"originate_req">> ->
+                    acdc_agent_fsm:originate_failed(FSM, JObj);
+                _ -> ok
+            end
+    end.
 
 -spec handle_member_message/2 :: (wh_json:json_object(), wh_proplist()) -> 'ok'.
 -spec handle_member_message/3 :: (wh_json:json_object(), wh_proplist(), ne_binary()) -> 'ok'.
@@ -211,20 +222,22 @@ handle_presence_probe(JObj, _Props) ->
     true = wapi_notifications:presence_probe_v(JObj),
 
     FromRealm = wh_json:get_value(<<"From-Realm">>, JObj),
-    {ok, AcctDb} = whapps_util:get_account_by_realm(FromRealm),
-
-    maybe_respond_to_presence_probe(JObj, AcctDb).
+    case whapps_util:get_account_by_realm(FromRealm) of
+        {ok, AcctDb} -> maybe_respond_to_presence_probe(JObj, AcctDb);
+        _ -> ok
+    end.
 
 maybe_respond_to_presence_probe(JObj, AcctDb) ->
     case wh_json:get_value(<<"To-User">>, JObj) of
-        undefined ->
-            lager:debug("no to-user found on json: ~p", [JObj]);
+        undefined -> lager:debug("no to-user found on json: ~p", [JObj]);
         AgentId ->
-            {ok, Doc} = couch_mgr:open_doc(AcctDb, AgentId),
-            AcctId = wh_util:format_account_id(AcctDb, raw),
-            lager:debug("maybe looking for probe for agent ~s(~s)", [AgentId, AcctId]),
-
-            maybe_update_probe(JObj, AcctId, AgentId, wh_json:get_value(<<"pvt_type">>, Doc))
+            case couch_mgr:open_doc(AcctDb, AgentId) of
+                {ok, Doc} ->
+                    AcctId = wh_util:format_account_id(AcctDb, raw),
+                    lager:debug("maybe looking for probe for agent ~s(~s)", [AgentId, AcctId]),
+                    maybe_update_probe(JObj, AcctId, AgentId, wh_json:get_value(<<"pvt_type">>, Doc));
+                _ -> ok
+            end
     end.
 
 maybe_update_probe(JObj, AcctId, AgentId, <<"user">>) ->

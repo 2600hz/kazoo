@@ -36,7 +36,6 @@
 -define(CONSUME_OPTIONS, [{exclusive, false}]).
 
 -include("ecallmgr.hrl").
--include_lib("xmerl/include/xmerl.hrl").
 
 %%%===================================================================
 %%% API

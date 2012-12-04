@@ -7,7 +7,7 @@
 %%%-------------------------------------------------------------------
 -module(ecallmgr).
 
--include_lib("whistle/include/wh_types.hrl").
+-include("ecallmgr.hrl").
 
 -export([start_link/0, start/0]).
 -export([stop/0]).

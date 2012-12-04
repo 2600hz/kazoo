@@ -303,7 +303,7 @@ maybe_validate_quickcall(#cb_context{resp_status=success, doc=JObj, auth_token=A
     case (not wh_util:is_empty(AuthToken))
           orelse wh_json:is_true(<<"allow_anoymous_quickcalls">>, JObj) 
     of
-        false -> cb_context:add_system_error(invalid_crentials, Context);
+        false -> cb_context:add_system_error(invalid_credentials, Context);
         true -> Context
     end.
 

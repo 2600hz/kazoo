@@ -23,6 +23,7 @@
 -export([response_missing_view/1]).
 -export([response_db_missing/1]).
 -export([response_db_fatal/1]).
+-export([response_auth/1]).
 -export([get_account_realm/1, get_account_realm/2]).
 -export([disable_account/1, enable_account/1, change_pvt_enabled/2]).
 -export([get_path/2]).
@@ -299,6 +300,23 @@ enable_account(AccountId) ->
             E
     end.
 
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Helper to set data for all auth type
+%% @end
+%%--------------------------------------------------------------------
+-spec response_auth/1 :: (wh_json:object()) -> wh_json:object().
+response_auth(JObj) ->
+    AccountId = wh_json:get_value(<<"account_id">>, JObj, <<>>),
+    OwnerId = wh_json:get_value(<<"owner_id">>, JObj, <<>>),
+    IsReseller = wh_services:is_reseller(AccountId),
+    wh_json:from_list([{<<"account_id">>, AccountId}
+                       ,{<<"owner_id">>, OwnerId}
+                       ,{<<"is_reseller">>, IsReseller}
+                      ]).
+    
 %%--------------------------------------------------------------------
 %% @public
 %% @doc

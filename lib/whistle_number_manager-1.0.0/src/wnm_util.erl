@@ -21,9 +21,8 @@
 -export([get_all_number_dbs/0]).
 -export([are_jobjs_identical/2]).
 
--include("wh_number_manager.hrl").
-
 -include_lib("whistle/include/wh_databases.hrl").
+-include("wnm.hrl").
 
 -define(SERVER, ?MODULE).
 -define(DEFAULT_CLASSIFIERS, [{<<"tollfree_us">>, <<"^\\+1(800|888|877|866|855)\\d{7}$">>}

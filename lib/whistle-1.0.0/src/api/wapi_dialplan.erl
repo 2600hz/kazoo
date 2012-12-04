@@ -11,6 +11,9 @@
 
 -compile({no_auto_import, [error/1]}).
 
+-include_lib("whistle/src/api/wapi_dialplan.hrl").
+-include_lib("whistle/include/wh_log.hrl").
+
 -export([v/1]).
 
 -export([optional_bridge_req_headers/0]).
@@ -71,9 +74,6 @@
          ,publish_originate_ready/2, publish_originate_ready/3
          ,publish_originate_execute/2, publish_originate_execute/3
         ]).
-
--include("wapi_dialplan.hrl").
--include_lib("whistle/include/wh_log.hrl").
 
 -spec optional_bridge_req_headers/0 :: () -> [ne_binary(),...].
 optional_bridge_req_headers() ->

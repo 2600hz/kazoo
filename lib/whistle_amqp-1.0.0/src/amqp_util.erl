@@ -66,7 +66,6 @@
 -export([delete_resource_queue/1]).
 -export([bind_q_to_resource/1, bind_q_to_resource/2]).
 -export([unbind_q_from_resource/2]).
--export([resource_publish/1, resource_publish/2, resource_publish/3]).
 
 -export([conference_exchange/0]).
 -export([new_conference_queue/0, new_conference_queue/1]).
@@ -243,16 +242,6 @@ callevt_publish(CallID, Payload, event, ContentType) ->
     basic_publish(?EXCHANGE_CALLEVT, <<?KEY_CALL_EVENT/binary, (encode(CallID))/binary>>, Payload, ContentType);
 callevt_publish(CallID, Payload, cdr, ContentType) ->
     basic_publish(?EXCHANGE_CALLEVT, <<?KEY_CALL_CDR/binary, (encode(CallID))/binary>>, Payload, ContentType).
-
--spec resource_publish/1 :: (amqp_payload()) -> 'ok'.
--spec resource_publish/2 :: (amqp_payload(), ne_binary()) -> 'ok'.
--spec resource_publish/3 :: (amqp_payload(), ne_binary(), ne_binary()) -> 'ok'.
-resource_publish(Payload) ->
-    resource_publish(Payload, ?DEFAULT_CONTENT_TYPE).
-resource_publish(Payload, ContentType) ->
-    resource_publish(Payload, ?KEY_RESOURCE_REQ, ContentType).
-resource_publish(Payload, RoutingKey, ContentType) ->
-    basic_publish(?EXCHANGE_RESOURCE, RoutingKey, Payload, ContentType).
 
 -spec originate_resource_publish/1 :: (amqp_payload()) -> 'ok'.
 -spec originate_resource_publish/2 :: (amqp_payload(), ne_binary()) -> 'ok'.

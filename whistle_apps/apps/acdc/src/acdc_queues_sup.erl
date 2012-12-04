@@ -44,7 +44,10 @@ start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
 new(AcctId, QueueId) ->
-    supervisor:start_child(?MODULE, [AcctId, QueueId]).
+    case find_queue_supervisor(AcctId, QueueId) of
+        P when is_pid(P) -> {ok, P};
+        undefined -> supervisor:start_child(?MODULE, [AcctId, QueueId])
+    end.
 
 -spec workers/0 :: () -> [pid(),...] | [].
 workers() ->

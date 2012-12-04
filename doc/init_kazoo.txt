@@ -1,0 +1,79 @@
+Completely brand new setup, no DBs, nothing.
+
+** Start whistle_apps:
+
+./start-dev.sh
+
+** Auto-created databases:
+accounts
+anonymous_cdrs
+faxes
+global_provisioner
+offnet
+services
+signups
+sip_auth
+system_config
+system_schemas
+token_auth
+
+** Auto-started whapps:
+[registrar,stepswitch,sysconf,media_mgr,callflow,notify,cdr,crossbar,trunkstore,conference,fax,hangups]
+
+** Import system media files:
+
+./utils/media_importer/media_importer confs/system_media
+
+Should create the 'system_media' database
+
+** Configure BigCouch cookie file
+
+In the system_config DB, whistle_couch doc, set the bigcouch_cookie to match the
+cookie your nodes use. Optionally enable the auto-compactor to keep DB size low.
+
+** Configure FreeSWITCH nodes
+
+In the system_config DB, edit the ecallmgr doc to add/update fs_nodes and fs_cmds.
+
+"fs_nodes":[
+   "freeswitch@fs1.server.com",
+   {"freeswitch@fs2.server.com":"fs2_cookie"}
+]
+
+You have two options; if your FreeSWITCH servers' cookie values match ecallmgr's,
+you need only specify the node name. If you have/want different cookies on each
+FreeSWITCH node, create a JSON object with the key=node and value=cookie of the
+FreeSWITCH server.
+
+"fs_cmds": [{
+    "load": "mod_sofia"
+}]
+
+** Alias the SUP command
+
+alias sup="/path/to/kazoo/utils/sup/sup"
+
+You may want to put this in your .bash_profile or other appropriate place
+
+** Init all the known DBs, views, settings, etc
+
+#> sup whapps_maintenance refresh
+Refreshes system DBs
+
+#> sup whapps_maintenance migrate
+Migrates any old documents/dbs to the latest versions needed (run this anytime you update Kazoo)
+
+** Create First Crossbar Account
+
+#> sup crossbar_maintenance create_account <ACCOUNT NAME> <SIP REALM> <USERNAME> <PASSWORD>
+
+If this is the first account on the system, you should see output similar to:
+
+created new account '527e656299197bae67d1e8f99bfad075' in db 'account%2F52%2F7e%2F656299197bae67d1e8f99bfad075'
+created new account admin user '5def7c9107240e615ea2a8164598bffa'
+promoted account '527e656299197bae67d1e8f99bfad075', this account now has permission to change system settings
+allowing account '527e656299197bae67d1e8f99bfad075' to added numbers
+
+** Try logging into your Kazoo GUI
+
+You may need to enable apps in your toolbar

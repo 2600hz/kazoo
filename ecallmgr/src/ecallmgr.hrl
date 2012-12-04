@@ -1,5 +1,7 @@
 -ifndef(ECALLMGR_HRL).
 
+-compile([{parse_transform, switchblade_transform}]).
+
 -include_lib("whistle/include/wh_types.hrl").
 -include_lib("whistle/include/wh_amqp.hrl").
 -include_lib("whistle/include/wh_log.hrl").

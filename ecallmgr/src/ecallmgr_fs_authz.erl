@@ -172,11 +172,11 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({event, [CallId | Props]}, #state{node=Node}=State) ->
-    case props:get_value(<<"Event-Name">>, Props) of
-        <<"SESSION_HEARTBEAT">> -> spawn(?MODULE, handle_session_heartbeat, [Props, Node]);
-        <<"CHANNEL_CREATE">> -> spawn(?MODULE, handle_channel_create, [Props, CallId, Node]);
-        _ -> ok
-    end,
+    _ = case props:get_value(<<"Event-Name">>, Props) of
+            <<"SESSION_HEARTBEAT">> -> spawn(?MODULE, handle_session_heartbeat, [Props, Node]);
+            <<"CHANNEL_CREATE">> -> spawn(?MODULE, handle_channel_create, [Props, CallId, Node]);
+            _ -> ok
+        end,
     {noreply, State};            
 handle_info(_Info, State) ->
     {noreply, State}.
@@ -337,7 +337,7 @@ allow_call(_, _, _) ->
     lager:debug("channel authorization succeeded, allowing call", []),
     true.
 
--spec maybe_deny_call/3 :: (wh_proplist(), ne_binary(), atom()) -> boolean().
+-spec maybe_deny_call/3 :: (wh_proplist(), api_binary(), atom()) -> boolean().
 maybe_deny_call(Props, _, Node) ->
     DryRun = wh_util:is_true(ecallmgr_config:get(<<"authz_dry_run">>, false)),
     _ = DryRun orelse spawn(?MODULE, kill_channel, [Props, Node]),
@@ -381,8 +381,9 @@ authorize(AccountId, Props) ->
             end
     end.
 
--spec reauthorize/3 :: (api_binary(), wh_proplist(), ne_binary()) -> {'ok', wh_json:json_object()} |
-                                                                     {'error', _}.
+-spec reauthorize/3 :: (api_binary(), ne_binary(), wh_proplist()) ->
+                               {'ok', wh_json:object()} |
+                               {'error', _}.
 reauthorize(undefined, _, _) -> {error, no_account};
 reauthorize(AccountId, Type, Props) ->
     lager:debug("channel reauthorization request started"),
@@ -429,7 +430,7 @@ identify_account(_, Props) ->
             end
     end.
 
--spec attempt_reauthorization/5 :: (account|reseller, ne_binary(), ne_binary(), proplist(), atom()) -> 'ok'.
+-spec attempt_reauthorization/5 :: ('account'|'reseller', api_binary(), ne_binary(), wh_proplist(), atom()) -> 'ok'.
 attempt_reauthorization(Billing, AccountId, Type, Props, Node) ->
     case reauthorize(AccountId, Type, Props) of
         {error, account_limited} -> 
@@ -443,7 +444,7 @@ attempt_reauthorization(Billing, AccountId, Type, Props, Node) ->
         _Else -> ok
     end.
 
--spec maybe_update_ccvs/3 :: ('undefined' | wh_json:json_object(), ne_binary(), atom()) -> 'ok'.
+-spec maybe_update_ccvs/3 :: ('undefined' | wh_json:object(), ne_binary(), atom()) -> 'ok'.
 maybe_update_ccvs(undefined, _, _) ->
     ok;
 maybe_update_ccvs(CCVs, CallId, Node) ->
@@ -467,7 +468,7 @@ should_reauth(BillingVar, Props) ->
     end.
 
 -spec authz_default/0 :: () -> {'ok', ne_binary()} |
-                               {'error', 'default_is_deny'}.
+                               {'error', 'account_limited'}.
 authz_default() ->
     case ecallmgr_config:get(<<"authz_default_action">>, <<"deny">>) of
         <<"deny">> -> {error, account_limited};
@@ -477,7 +478,7 @@ authz_default() ->
             {ok, DefaultType}
     end.
 
--spec set_rating_ccvs/2 :: (wh_json:json_object(), atom()) -> 'ok'.
+-spec set_rating_ccvs/2 :: (wh_json:object(), atom()) -> 'ok'.
 set_rating_ccvs(JObj, Node) ->
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
     put(callid, CallId),

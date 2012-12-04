@@ -12,7 +12,7 @@
 -export([save/1]).
 -export([delete/1]).
 
--include_lib("whistle_number_manager/src/wh_number_manager.hrl").
+-include_lib("src/wnm.hrl").
 
 -define(SERVER, ?MODULE).
 

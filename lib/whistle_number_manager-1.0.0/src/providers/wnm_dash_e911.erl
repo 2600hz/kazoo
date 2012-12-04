@@ -14,8 +14,9 @@
 -export([delete/1]).
 -export([is_valid_location/1]).
 
--include_lib("whistle_number_manager/src/wh_number_manager.hrl").
--include_lib("xmerl/include/xmerl.hrl").
+-include_lib("src/wnm.hrl").
+
+-type xmlElement() :: #xmlElement{}.
 
 -define(WNM_DASH_CONFIG_CAT, <<(?WNM_CONFIG_CAT)/binary, ".dash_e911">>).
 
@@ -51,15 +52,19 @@ save(Number) -> delete(Number).
 %% @end
 %%--------------------------------------------------------------------
 -spec delete/1 :: (wnm_number()) -> wnm_number().
-delete(#number{features=Features, number=Num
-               ,current_number_doc=CurrentDoc, number_doc=Doc}=Number) ->
+delete(#number{features=Features
+               ,number=Num
+               ,current_number_doc=CurrentDoc
+               ,number_doc=Doc
+              }=Number) ->
     case wh_json:get_ne_value(<<"dash_e911">>, CurrentDoc) of
         undefined -> Number;
         _Else ->
             lager:debug("removing e911 information"),
             _ = remove_number(Num),
             Number#number{features=sets:del_element(<<"dash_e911">>, Features)
-                          ,number_doc=wh_json:delete_key(<<"dash_e911">>, Doc)}
+                          ,number_doc=wh_json:delete_key(<<"dash_e911">>, Doc)
+                         }
     end.
 
 %%--------------------------------------------------------------------
@@ -69,8 +74,11 @@ delete(#number{features=Features, number=Num
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_update_dash_e911/1 :: (wnm_number()) -> wnm_number().
-maybe_update_dash_e911(#number{current_number_doc=CurrentJObj, number_doc=JObj
-                               ,features=Features, number=Number}=N) ->
+maybe_update_dash_e911(#number{current_number_doc=CurrentJObj
+                               ,number_doc=JObj
+                               ,features=Features
+                               ,number=Number
+                              }=N) ->
     CurrentE911 = wh_json:get_ne_value(<<"dash_e911">>, CurrentJObj),
     E911 = wh_json:get_ne_value(<<"dash_e911">>, JObj),
     NotChanged = wnm_util:are_jobjs_identical(CurrentE911, E911),
@@ -95,8 +103,9 @@ maybe_update_dash_e911(#number{current_number_doc=CurrentJObj, number_doc=JObj
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec update_e911/3 :: (ne_binary(), wh_json:json_object(), wh_json:json_object()) -> {'ok', wh_json:json_object()} |
-                                                                                      {'error', term()}.
+-spec update_e911/3 :: (ne_binary(), wh_json:json_object(), wh_json:json_object()) ->
+                               {'ok', wh_json:json_object()} |
+                               {'error', _}.
 update_e911(Number, Address, JObj) ->
     Location = json_address_to_xml_location(Address),
     CallerName = wh_json:get_ne_value(<<"caller_name">>, Address, <<"Valued Customer">>),
@@ -126,7 +135,15 @@ update_e911(Number, Address, JObj) ->
 %% the given verb (validatelocation, addlocation, ect).
 %% @end
 %%--------------------------------------------------------------------
--spec emergency_provisioning_request/2 :: (atom(), proplist()) -> {ok, term()} | {error, term()}.
+-type emergency_provisioning_error() :: 'authentication' |
+                                        'authorization' |
+                                        'not_found' |
+                                        'server_error' |
+                                        'empty_response' |
+                                        'unreachable'.
+-spec emergency_provisioning_request/2 :: (atom(), wh_proplist()) ->
+                                                  {'ok', xmlElement()} |
+                                                  {'error', emergency_provisioning_error()}.
 emergency_provisioning_request(Verb, Props) ->
     URL = list_to_binary([?DASH_EMERG_URL, "/", wh_util:to_lower_binary(Verb)]),
     Body = xmerl:export_simple([{Verb, Props}]
@@ -181,7 +198,7 @@ emergency_provisioning_request(Verb, Props) ->
             lager:debug("received response from dash e911"),
             try
                 {Xml, _} = xmerl_scan:string(Response),
-                Xml
+                {ok, Xml}
             catch
                 _:R ->
                     lager:debug("failed to decode xml: ~p", [R]),
@@ -198,9 +215,10 @@ emergency_provisioning_request(Verb, Props) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec is_valid_location/1 :: (term()) -> {geocoded, wh_json:json_object()} |
-                                                 {provisioned, wh_json:json_object()} |
-                                                 {error, binary()}.
+-spec is_valid_location/1 :: (term()) ->
+                                     {'geocoded', wh_json:json_object()} |
+                                     {'provisioned', wh_json:json_object()} |
+                                     {'error', binary()}.
 is_valid_location(Location) ->
     case emergency_provisioning_request('validateLocation', Location) of
         {error, Reason} -> {error, wh_util:to_binary(Reason)};
@@ -225,9 +243,10 @@ is_valid_location(Location) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec add_location/3 :: (ne_binary(), term(), ne_binary()) -> {geocoded, wh_json:json_object()} |
-                                                              {provisioned, wh_json:json_object()} |
-                                                              {error, binary()}.
+-spec add_location/3 :: (ne_binary(), term(), ne_binary()) ->
+                                {'geocoded', wh_json:json_object()} |
+                                {'provisioned', wh_json:json_object()} |
+                                {'error', binary()}.
 add_location(Number, Location, CallerName) ->
     Props = [{'uri', [{'uri', [wh_util:to_list(<<"tel:", (wnm_util:to_1npan(Number))/binary>>)]}
                       ,{'callername', [wh_util:to_list(CallerName)]}]}
@@ -256,7 +275,7 @@ add_location(Number, Location, CallerName) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec provision_location/1 :: (ne_binary()) -> undefined | ne_binary().
+-spec provision_location/1 :: (ne_binary()) -> api_binary().
 provision_location(LocationId) ->
     Props = [{'locationid', [wh_util:to_list(LocationId)]}],
     Response = emergency_provisioning_request('provisionLocation', Props),
@@ -268,7 +287,7 @@ provision_location(LocationId) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec remove_number/1 :: (ne_binary()) -> undefined | ne_binary().
+-spec remove_number/1 :: (ne_binary()) -> api_binary().
 remove_number(Number) ->
     lager:debug("removing dash e911 number '~s'", [Number]),
     Props = [{'uri', [wh_util:to_list(<<"tel:", (wnm_util:to_1npan(Number))/binary>>)]}],
@@ -293,7 +312,7 @@ remove_number(Number) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec json_address_to_xml_location/1 :: (wh_json:json_object()) -> proplist().
+-spec json_address_to_xml_location/1 :: (wh_json:json_object()) -> wh_proplist().
 json_address_to_xml_location(JObj) ->
     Props = [{'address1', [wh_json:get_string_value(<<"street_address">>, JObj)]}
              ,{'address2', [wh_json:get_string_value(<<"extended_address">>, JObj)]}
@@ -302,7 +321,7 @@ json_address_to_xml_location(JObj) ->
              ,{'postalcode', [wh_json:get_string_value(<<"postal_code">>, JObj)]}
              ,{'type', ["ADDRESS"]}
             ],
-    [{'location', [{K, V} || {K, V} <- Props, V =/= [undefined]]}].
+    [{'location', [KV || {_, V}=KV <- Props, V =/= [undefined]]}].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -318,23 +337,24 @@ location_xml_to_json_address([Xml]) ->
 location_xml_to_json_address(Xml) when is_list(Xml) ->
     [location_xml_to_json_address(X) || X <- Xml];
 location_xml_to_json_address(Xml) ->
-    Props = [{<<"street_address">>, wh_util:get_xml_value("address1/text()", Xml)}
-             ,{<<"extended_address">>, wh_util:get_xml_value("address2/text()", Xml)}
-             ,{<<"activated_time">>, wh_util:get_xml_value("activated_time/text()", Xml)}
-             ,{<<"caller_name">>, wh_util:get_xml_value("callername/text()", Xml)}
-             ,{<<"comments">>, wh_util:get_xml_value("comments/text()", Xml)}
-             ,{<<"locality">>, wh_util:get_xml_value("community/text()", Xml)}
-             ,{<<"order_id">>, wh_util:get_xml_value("customerorderid/text()", Xml)}
-             ,{<<"latitude">>, wh_util:get_xml_value("latitude/text()", Xml)}
-             ,{<<"longitude">>, wh_util:get_xml_value("longitude/text()", Xml)}
-             ,{<<"location_id">>, wh_util:get_xml_value("locationid/text()", Xml)}
-             ,{<<"plus_four">>, wh_util:get_xml_value("plusfour/text()", Xml)}
-             ,{<<"postal_code">>, wh_util:get_xml_value("postalcode/text()", Xml)}
-             ,{<<"region">>, wh_util:get_xml_value("state/text()", Xml)}
-             ,{<<"status">>, wh_util:get_xml_value("status/code/text()", Xml)}
-             ,{<<"legacy_data">>, legacy_data_xml_to_json(xmerl_xpath:string("legacydata", Xml))}
-            ],
-    wh_json:from_list([{K, V} || {K, V} <- Props, V =/= undefined]).
+    Props =
+        [{<<"street_address">>, wh_util:get_xml_value("address1/text()", Xml)}
+         ,{<<"extended_address">>, wh_util:get_xml_value("address2/text()", Xml)}
+         ,{<<"activated_time">>, wh_util:get_xml_value("activated_time/text()", Xml)}
+         ,{<<"caller_name">>, wh_util:get_xml_value("callername/text()", Xml)}
+         ,{<<"comments">>, wh_util:get_xml_value("comments/text()", Xml)}
+         ,{<<"locality">>, wh_util:get_xml_value("community/text()", Xml)}
+         ,{<<"order_id">>, wh_util:get_xml_value("customerorderid/text()", Xml)}
+         ,{<<"latitude">>, wh_util:get_xml_value("latitude/text()", Xml)}
+         ,{<<"longitude">>, wh_util:get_xml_value("longitude/text()", Xml)}
+         ,{<<"location_id">>, wh_util:get_xml_value("locationid/text()", Xml)}
+         ,{<<"plus_four">>, wh_util:get_xml_value("plusfour/text()", Xml)}
+         ,{<<"postal_code">>, wh_util:get_xml_value("postalcode/text()", Xml)}
+         ,{<<"region">>, wh_util:get_xml_value("state/text()", Xml)}
+         ,{<<"status">>, wh_util:get_xml_value("status/code/text()", Xml)}
+         ,{<<"legacy_data">>, legacy_data_xml_to_json(xmerl_xpath:string("legacydata", Xml))}
+        ],
+    wh_json:from_list(props:filter_undefined(Props)).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -355,4 +375,4 @@ legacy_data_xml_to_json(Xml) ->
              ,{<<"streetname">>, wh_util:get_xml_value("streetname/text()", Xml)}
              ,{<<"suite">>, wh_util:get_xml_value("suite/text()", Xml)}
             ],
-    wh_json:from_list([{K, V} || {K, V} <- Props, V =/= undefined]).
+    wh_json:from_list(props:filter_undefined(Props)).

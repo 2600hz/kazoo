@@ -27,6 +27,11 @@
 %%%   POST: add a list of agent_ids
 %%%   DELETE: rm a list of agent_ids
 %%%
+%%% /queues/eavesdrop
+%%%   PUT: ring a phone/user and eavesdrop on given call-id
+%%% /queues/QID/eavesdrop
+%%%   PUT: ring a phone/user and eavesdrop on the queue's calls
+%%%
 %%% @end
 %%% @contributors:
 %%%   James Aimonetti
@@ -37,7 +42,7 @@
          ,allowed_methods/0, allowed_methods/1, allowed_methods/2, allowed_methods/3
          ,resource_exists/0, resource_exists/1, resource_exists/2, resource_exists/3
          ,validate/1, validate/2, validate/3, validate/4
-         ,put/1
+         ,put/1, put/2, put/3
          ,post/2, post/3
          ,delete/2, delete/3
 
@@ -52,6 +57,7 @@
 -define(STATS_PATH_TOKEN, <<"stats">>).
 -define(REALTIME_PATH_TOKEN, <<"realtime">>).
 -define(ROSTER_PATH_TOKEN, <<"roster">>).
+-define(EAVESDROP_PATH_TOKEN, <<"eavesdrop">>).
 
 %%%===================================================================
 %%% API
@@ -87,6 +93,8 @@ allowed_methods() ->
     ['GET', 'PUT'].
 allowed_methods(?STATS_PATH_TOKEN) ->
     ['GET'];
+allowed_methods(?EAVESDROP_PATH_TOKEN) ->
+    ['PUT'];
 allowed_methods(_QID) ->
     ['GET', 'POST', 'DELETE'].
 
@@ -95,7 +103,9 @@ allowed_methods(?STATS_PATH_TOKEN, ?REALTIME_PATH_TOKEN) ->
 allowed_methods(_QID, ?STATS_PATH_TOKEN) ->
     ['GET'];
 allowed_methods(_QID, ?ROSTER_PATH_TOKEN) ->
-    ['GET', 'POST', 'DELETE'].
+    ['GET', 'POST', 'DELETE'];
+allowed_methods(_QID, ?EAVESDROP_PATH_TOKEN) ->
+    ['PUT'].
 
 allowed_methods(_QID, ?STATS_PATH_TOKEN, ?REALTIME_PATH_TOKEN) ->
     ['GET'].
@@ -119,7 +129,8 @@ resource_exists(_) -> true.
 
 resource_exists(?STATS_PATH_TOKEN, ?REALTIME_PATH_TOKEN) -> true;
 resource_exists(_, ?STATS_PATH_TOKEN) -> true;
-resource_exists(_, ?ROSTER_PATH_TOKEN) -> true.
+resource_exists(_, ?ROSTER_PATH_TOKEN) -> true;
+resource_exists(_, ?EAVESDROP_PATH_TOKEN) -> true.
 
 resource_exists(_, ?STATS_PATH_TOKEN, ?REALTIME_PATH_TOKEN) -> true.
 
@@ -133,9 +144,9 @@ resource_exists(_, ?STATS_PATH_TOKEN, ?REALTIME_PATH_TOKEN) -> true.
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
 %%--------------------------------------------------------------------
--spec validate/1 :: (#cb_context{}) -> #cb_context{}.
--spec validate/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
--spec validate/3 :: (#cb_context{}, path_token(), path_token()) -> #cb_context{}.
+-spec validate/1 :: (cb_context:context()) -> cb_context:context().
+-spec validate/2 :: (cb_context:context(), path_token()) -> cb_context:context().
+-spec validate/3 :: (cb_context:context(), path_token(), path_token()) -> cb_context:context().
 validate(#cb_context{req_verb = <<"get">>}=Context) ->
     summary(Context);
 validate(#cb_context{req_verb = <<"put">>}=Context) ->
@@ -143,6 +154,8 @@ validate(#cb_context{req_verb = <<"put">>}=Context) ->
 
 validate(#cb_context{req_verb = <<"get">>}=Context, ?STATS_PATH_TOKEN) ->
     fetch_all_queue_stats(Context);
+validate(#cb_context{req_verb = <<"put">>}=Context, ?EAVESDROP_PATH_TOKEN) ->
+    validate_eavesdrop_on_call(Context);
 validate(#cb_context{req_verb = <<"get">>}=Context, Id) ->
     read(Id, Context);
 validate(#cb_context{req_verb = <<"post">>}=Context, Id) ->
@@ -159,10 +172,116 @@ validate(#cb_context{req_verb = <<"get">>}=Context, Id, ?ROSTER_PATH_TOKEN) ->
 validate(#cb_context{req_verb = <<"post">>}=Context, Id, ?ROSTER_PATH_TOKEN) ->
     add_queue_to_agents(Id, Context);
 validate(#cb_context{req_verb = <<"delete">>}=Context, Id, ?ROSTER_PATH_TOKEN) ->
-    rm_queue_from_agents(Id, Context).
+    rm_queue_from_agents(Id, Context);
+validate(#cb_context{req_verb = <<"put">>}=Context, Id, ?EAVESDROP_PATH_TOKEN) ->
+    validate_eavesdrop_on_queue(Context, Id).
 
 validate(#cb_context{req_verb = <<"get">>}=Context, Id, ?STATS_PATH_TOKEN, ?REALTIME_PATH_TOKEN) ->
     fetch_queue_stats(Id, Context, realtime).
+
+validate_eavesdrop_on_call(#cb_context{req_data=Data}=Context) ->
+    case is_valid_endpoint(Context, Data)
+        andalso is_valid_call(Context, Data)
+        andalso is_valid_mode(Context, Data)
+    of
+        true -> Context#cb_context{resp_status=success};
+        {false, Context1} -> Context1
+    end.
+
+validate_eavesdrop_on_queue(#cb_context{req_data=Data}=Context, QueueId) ->
+    case is_valid_endpoint(Context, Data)
+        andalso is_valid_queue(Context, QueueId)
+        andalso is_valid_mode(Context, Data)
+    of
+        true ->
+            Context#cb_context{resp_status=success};
+        {false, Context1} -> Context1
+    end.
+
+is_valid_mode(Context, Data) ->
+    case wapi_resource:is_valid_mode(wh_json:get_value(<<"mode">>, Data, <<"listen">>)) of
+        true -> true;
+        false -> {false
+                  ,cb_context:add_validation_error(<<"mode">>, <<"enum">>
+                                                   ,<<"enum:Value not found in enumerated list of values">>
+                                                   ,Context
+                                                  )
+                 }
+    end.
+
+is_valid_call(Context, Data) ->
+    case wh_json:get_value(<<"call_id">>, Data) of
+        undefined ->
+            {false
+             ,cb_context:add_validation_error(<<"call_id">>, <<"required">>
+                                              ,<<"required:Field is required but missing">>
+                                              ,Context
+                                             )
+            };
+        CallId ->
+            case whapps_call_command:b_call_status(CallId) of
+                {error, _E} ->
+                    lager:debug("is not valid call: ~p", [_E]),
+                    {false
+                     ,cb_context:add_validation_error(<<"call_id">>, <<"not_found">>
+                                                      ,<<"not_found:Call was not found">>
+                                                      ,Context
+                                                     )
+                    };
+                {ok, _} -> true
+            end
+    end.
+
+is_valid_queue(Context, ?NE_BINARY = QueueId) ->
+    AcctDb = cb_context:account_db(Context),
+    case couch_mgr:open_cache_doc(AcctDb, QueueId) of
+        {ok, QueueJObj} -> is_valid_queue(Context, QueueJObj);
+        {error, _} ->
+            {false
+             ,cb_context:add_validation_error(<<"queue_id">>, <<"not_found">>
+                                              ,<<"not_found:Queue was not found">>
+                                              ,Context
+                                             )
+            }
+    end;
+is_valid_queue(Context, QueueJObj) ->
+    case wh_json:get_value(<<"pvt_type">>, QueueJObj) of
+        <<"queue">> -> true;
+        _ ->
+            {false
+             ,cb_context:add_validation_error(<<"queue_id">>, <<"type">>
+                                                  ,<<"type:Id did not represent a queue">>
+                                              ,Context
+                                             )
+            }
+    end.
+
+is_valid_endpoint(Context, DataJObj) ->
+    AcctDb = cb_context:account_db(Context),
+    Id = wh_json:get_value(<<"id">>, DataJObj),
+
+    case couch_mgr:open_cache_doc(AcctDb, Id) of
+        {ok, CallMeJObj} -> is_valid_endpoint_type(Context, CallMeJObj);
+        {error, _} ->
+            {false
+             ,cb_context:add_validation_error(<<"id">>, <<"not_found">>
+                                              ,<<"not_found:Id was not found">>
+                                              ,Context
+                                             )
+            }
+    end.
+is_valid_endpoint_type(Context, CallMeJObj) ->
+    case wh_json:get_value(<<"pvt_type">>, CallMeJObj) of
+        <<"device">> -> true;
+        %%<<"user">> -> true;
+        _ ->
+            {false
+             ,cb_context:add_validation_error(<<"id">>, <<"type">>
+                                              ,<<"type:Id did not represent a valid endpoint">>
+                                              ,Context
+                                             )
+            }
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -170,10 +289,64 @@ validate(#cb_context{req_verb = <<"get">>}=Context, Id, ?STATS_PATH_TOKEN, ?REAL
 %% If the HTTP verib is PUT, execute the actual action, usually a db save.
 %% @end
 %%--------------------------------------------------------------------
--spec put/1 :: (#cb_context{}) -> #cb_context{}.
-put(#cb_context{}=Context) ->
+-spec put/1 :: (cb_context:context()) -> cb_context:context().
+-spec put/2 :: (cb_context:context(), path_token()) -> cb_context:context().
+-spec put/3 :: (cb_context:context(), path_token(), path_token()) -> cb_context:context().
+put(Context) ->
     lager:debug("saving new queue"),
     crossbar_doc:save(Context).
+
+put(#cb_context{req_data=Data}=Context, ?EAVESDROP_PATH_TOKEN) ->
+    Prop = [{<<"Eavesdrop-Call-ID">>, wh_json:get_value(<<"call_id">>, Data)}
+            | default_eavesdrop_req(Context)
+           ],
+    eavesdrop_req(Context, Prop).
+put(Context, QID, ?EAVESDROP_PATH_TOKEN) ->
+    Prop = [{<<"Eavesdrop-Group-ID">>, QID}
+            | default_eavesdrop_req(Context)
+           ],
+    eavesdrop_req(Context, Prop).
+
+-spec default_eavesdrop_req/1 :: (cb_context:context()) -> wh_proplist().
+default_eavesdrop_req(#cb_context{req_data=Data}=Context) ->
+    [{<<"Eavesdrop-Mode">>, wh_json:get_value(<<"mode">>, Data, <<"listen">>)}
+     ,{<<"Account-ID">>, cb_context:account_id(Context)}
+     ,{<<"Endpoint-ID">>, wh_json:get_value(<<"id">>, Data)}
+     ,{<<"Endpoint-Timeout">>, wh_json:get_integer_value(<<"timeout">>, Data, 20)}
+     ,{<<"Outgoing-Caller-ID-Name">>, wh_json:get_value(<<"caller_id_name">>, Data)}
+     ,{<<"Outgoing-Caller-ID-Number">>, wh_json:get_value(<<"caller_id_number">>, Data)}
+     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+    ].
+
+-spec eavesdrop_req/2 :: (cb_context:context(), wh_proplist()) -> cb_context:context().
+eavesdrop_req(Context, Prop) ->
+    case whapps_util:amqp_pool_request(props:filter_undefined(Prop)
+                                       ,fun wapi_resource:publish_eavesdrop_req/1
+                                       ,fun wapi_resource:eavesdrop_resp_v/1
+                                       ,2000
+                                      )
+    of
+        {ok, Resp} -> crossbar_util:response(filter_response_fields(Resp), Context);
+        {error, timeout} ->
+            cb_context:add_system_error(timeout
+                                        ,[{details, <<"eavesdrop failed to start">>}]
+                                        ,Context
+                                       );
+        {error, E} -> crossbar_util:response(error, <<"error">>, 500, E, Context)
+    end.
+
+-define(REMOVE_FIELDS, [<<"Server-ID">>
+                        ,<<"Node">>
+                        ,<<"Msg-ID">>
+                        ,<<"App-Version">>
+                        ,<<"App-Name">>
+                        ,<<"Event-Name">>
+                        ,<<"Event-Category">>
+                       ]).
+filter_response_fields(JObj) ->
+    wh_json:set_value(<<"eavesdrop_request_id">>, wh_json:get_value(<<"Msg-ID">>, JObj)
+                      ,wh_json:normalize(wh_json:delete_keys(?REMOVE_FIELDS, JObj))
+                     ).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -182,8 +355,8 @@ put(#cb_context{}=Context) ->
 %% (after a merge perhaps).
 %% @end
 %%--------------------------------------------------------------------
--spec post/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
--spec post/3 :: (#cb_context{}, path_token(), path_token()) -> #cb_context{}.
+-spec post/2 :: (cb_context:context(), path_token()) -> cb_context:context().
+-spec post/3 :: (cb_context:context(), path_token(), path_token()) -> cb_context:context().
 post(#cb_context{}=Context, _) ->
     crossbar_doc:save(Context).
 post(#cb_context{}=Context, Id, ?ROSTER_PATH_TOKEN) ->
@@ -195,8 +368,8 @@ post(#cb_context{}=Context, Id, ?ROSTER_PATH_TOKEN) ->
 %% If the HTTP verib is DELETE, execute the actual action, usually a db delete
 %% @end
 %%--------------------------------------------------------------------
--spec delete/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
--spec delete/3 :: (#cb_context{}, path_token(), path_token()) -> #cb_context{}.
+-spec delete/2 :: (cb_context:context(), path_token()) -> cb_context:context().
+-spec delete/3 :: (cb_context:context(), path_token(), path_token()) -> cb_context:context().
 delete(#cb_context{}=Context, _) ->
     crossbar_doc:delete(Context).
 delete(#cb_context{}=Context, Id, ?ROSTER_PATH_TOKEN) ->
@@ -212,7 +385,7 @@ delete(#cb_context{}=Context, Id, ?ROSTER_PATH_TOKEN) ->
 %% Load an instance from the database
 %% @end
 %%--------------------------------------------------------------------
--spec read/2 :: (ne_binary(), #cb_context{}) -> #cb_context{}.
+-spec read/2 :: (ne_binary(), cb_context:context()) -> cb_context:context().
 read(Id, Context) ->
     case crossbar_doc:load(Id, Context) of
         #cb_context{resp_status=success}=Context1 ->
@@ -226,7 +399,7 @@ read(Id, Context) ->
 %% 
 %% @end
 %%--------------------------------------------------------------------
--spec validate_request/2 :: ('undefined'|ne_binary(), #cb_context{}) -> #cb_context{}.
+-spec validate_request/2 :: (api_binary(), cb_context:context()) -> cb_context:context().
 validate_request(QueueId, Context) ->
     check_queue_schema(QueueId, Context).
 
@@ -303,7 +476,7 @@ maybe_add_queue_to_agent(Id, A) ->
     lager:debug("agent ~s queues: ~p", [wh_json:get_value(<<"_id">>, A), Qs]),
     wh_json:set_value(<<"queues">>, Qs, A).
 
--spec maybe_rm_agents/3 :: (ne_binary(), #cb_context{}, wh_json:json_strings()) -> #cb_context{}.
+-spec maybe_rm_agents/3 :: (ne_binary(), cb_context:context(), wh_json:json_strings()) -> cb_context:context().
 maybe_rm_agents(_Id, Context, []) ->
     lager:debug("no agents to remove from the queue ~s", [_Id]),
     Context#cb_context{resp_status=success};
@@ -338,8 +511,8 @@ maybe_rm_queue_from_agent(Id, A) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec fetch_all_queue_stats/1 :: (#cb_context{}) -> #cb_context{}.
--spec fetch_all_queue_stats/2 :: (#cb_context{}, 'history' | 'realtime') -> #cb_context{}.
+-spec fetch_all_queue_stats/1 :: (cb_context:context()) -> cb_context:context().
+-spec fetch_all_queue_stats/2 :: (cb_context:context(), 'history' | 'realtime') -> cb_context:context().
 
 fetch_all_queue_stats(Context) ->
     fetch_all_queue_stats(Context, history).
@@ -367,8 +540,8 @@ fetch_all_queue_stats(#cb_context{account_id=AcctId}=Context, realtime) ->
             case [strip_api_fields(wh_json:normalize(R)) || R <- Resps0, wapi_acdc_queue:stats_resp_v(R)] of
                 [] ->
                     Context#cb_context{resp_status=success
-                                       ,resp_data=wh_json:new()
-                                       ,doc=wh_json:new()
+                                       ,resp_data=default_stats()
+                                       ,doc=default_stats()
                                       };
                 Resps1 ->
                     Resp = fold_stats(Resps1),
@@ -386,7 +559,12 @@ fetch_all_queue_stats(#cb_context{account_id=AcctId}=Context, realtime) ->
             Context
     end.
 
-fold_stats([]) -> wh_json:new();
+default_stats() ->
+    wh_json:from_list([{<<"current_stats">>, wh_json:new()}
+                       ,{<<"current_calls">>, wh_json:new()}
+                      ]).
+
+fold_stats([]) -> default_stats();
 fold_stats([R|Rs]) ->
     fold_stats(Rs, R).
 
@@ -512,7 +690,7 @@ fetch_queue_stats(Id, #cb_context{account_id=AcctId}=Context, realtime) ->
 %% resource.
 %% @end
 %%--------------------------------------------------------------------
--spec summary/1 :: (#cb_context{}) -> #cb_context{}.
+-spec summary/1 :: (cb_context:context()) -> cb_context:context().
 summary(Context) ->
     crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2).
 

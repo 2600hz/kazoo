@@ -88,9 +88,6 @@
                      ,{{acdc_queue_handler, handle_member_retry}
                        ,[{<<"member">>, <<"connect_retry">>}]
                       }
-                     ,{{acdc_queue_handler, handle_agent_available}
-                       ,[{<<"queue">>, <<"agent_available">>}]
-                      }
                      ,{{acdc_queue_handler, handle_sync_req}
                        ,[{<<"queue">>, <<"sync_req">>}]
                       }
@@ -110,7 +107,7 @@
 -spec start_link/4 :: (pid(), pid(), ne_binary(), ne_binary()) -> startlink_ret().
 start_link(WorkerSup, MgrPid, AcctId, QueueId) ->
     gen_listener:start_link(?MODULE
-                            ,[{bindings, [{acdc_queue, [{restrict_to, [agent_available, sync_req]}
+                            ,[{bindings, [{acdc_queue, [{restrict_to, [sync_req]}
                                                         ,{account_id, AcctId}
                                                         ,{queue_id, QueueId}
                                                        ]}
@@ -193,9 +190,9 @@ init([WorkerSup, MgrPid, AcctId, QueueId]) ->
                                                ,QueueId
                                               ),
 
-    gen_listener:cast(self(), {start_fsm, QueueJObj}),
-
     fetch_my_queue(),
+
+    gen_listener:cast(self(), {start_friends, QueueJObj}),
 
     {ok, #state{
        queue_id = QueueId
@@ -239,27 +236,52 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({start_fsm, QueueJObj}, #state{worker_sup=WorkerSup
-                                           ,mgr_pid=MgrPid
-                                          }=State) ->
-    lager:debug("starting FSM in supervisor ~p", [WorkerSup]),
-    {ok, FSMPid} = acdc_queue_worker_sup:start_fsm(WorkerSup, MgrPid, QueueJObj),
-    {noreply, State#state{fsm_pid=FSMPid}, hibernate};
 
-handle_cast({accept_member_calls}, #state{worker_sup=WorkerSup
-                                          ,fsm_pid=FSMPid
-                                          ,shared_pid=undefined
-                                          ,acct_id=AcctId
-                                          ,queue_id=QueueId
-                                         }=State) ->
-    {ok, SharedPid} = acdc_queue_worker_sup:start_shared_queue(WorkerSup, FSMPid, AcctId, QueueId),
-    lager:debug("started shared queue listener: ~p", [SharedPid]),
-    {noreply, State#state{shared_pid=SharedPid}, hibernate};
+handle_cast({start_friends, QueueJObj}, #state{worker_sup=WorkerSup
+                                               ,mgr_pid=MgrPid
+                                               ,acct_id=AcctId
+                                               ,queue_id=QueueId
+                                              }=State) ->
+    case acdc_queue_worker_sup:start_fsm(WorkerSup, MgrPid, QueueJObj) of
+        {ok, FSMPid} ->
+            lager:debug("started queue FSM: ~p", [FSMPid]),
+            {ok, SharedPid} = acdc_queue_worker_sup:start_shared_queue(WorkerSup, FSMPid, AcctId, QueueId),
+            lager:debug("started shared queue listener: ~p", [SharedPid]),
 
-handle_cast({queue_name, <<>>}, #state{my_q=undefined}=State) ->
+            {noreply, State#state{
+                        fsm_pid = FSMPid
+                        ,shared_pid = SharedPid
+                       }};
+        {error, {already_started, FSMPid}} ->
+            lager:debug("queue FSM already started: ~p", [FSMPid]),
+            {ok, SharedPid} = acdc_queue_worker_sup:start_shared_queue(WorkerSup, FSMPid, AcctId, QueueId),
+            lager:debug("started shared queue listener: ~p", [SharedPid]),
+
+            {noreply, State#state{
+                        fsm_pid = FSMPid
+                        ,shared_pid = SharedPid
+                       }};
+        {error, already_present} ->
+            lager:debug("queue FSM is already present"),
+            case acdc_queue_worker_sup:fsm(WorkerSup) of
+                FSMPid when is_pid(FSMPid) ->
+                    lager:debug("found queue FSM pid: ~p", [FSMPid]),
+                    {ok, SharedPid} = acdc_queue_worker_sup:start_shared_queue(WorkerSup, FSMPid, AcctId, QueueId),
+                    lager:debug("started shared queue listener: ~p", [SharedPid]),
+
+                    {noreply, State#state{
+                                fsm_pid = FSMPid
+                                ,shared_pid = SharedPid
+                       }};
+                undefined ->
+                    lager:debug("no queue FSM pid found"),
+                    {stop, failed_fsm, State}
+            end
+    end;
+handle_cast({queue_name, <<>>}, State) ->
     fetch_my_queue(),
     {noreply, State};
-handle_cast({queue_name, Q}, State) ->
+handle_cast({queue_name, Q}, #state{my_q=undefined}=State) ->
     lager:debug("my queue: ~s", [Q]),
     {noreply, State#state{my_q=Q}, hibernate};
 
@@ -505,7 +527,7 @@ send_member_connect_req(CallId, AcctId, QueueId, MyQ, MyId) ->
             ]),
     publish(Req, fun wapi_acdc_queue:publish_member_connect_req/1).
 
--spec send_member_connect_win/8 :: (wh_json:json_object(), pos_integer(), pos_integer(), whapps_call:call(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+-spec send_member_connect_win/8 :: (wh_json:object(), pos_integer(), pos_integer(), whapps_call:call(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 send_member_connect_win(RespJObj, RingTimeout, AgentWrapup, Call, QueueId, MyQ, MyId, CallerExitKey) ->
     CallJSON = whapps_call:to_json(Call),
     Q = wh_json:get_value(<<"Server-ID">>, RespJObj),

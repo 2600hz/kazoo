@@ -207,11 +207,15 @@ process_event_for_bridge(#ts_callflow_state{aleg_callid=ALeg, my_q=Q, callctl_q=
             ignore
     end.
 
--spec wait_for_cdr/1 :: (#ts_callflow_state{}) -> {'timeout', #ts_callflow_state{}} | {'cdr', 'aleg' | 'bleg', wh_json:json_object(), #ts_callflow_state{}}.
--spec wait_for_cdr/2 :: (#ts_callflow_state{}, pos_integer() | 'infinity') -> {'timeout', #ts_callflow_state{}} | {'cdr', 'aleg' | 'bleg', wh_json:json_object(), #ts_callflow_state{}}.
+-spec wait_for_cdr/1 :: (#ts_callflow_state{}) ->
+                                {'timeout', #ts_callflow_state{}} |
+                                {'cdr', 'aleg' | 'bleg', wh_json:json_object(), #ts_callflow_state{}}.
+-spec wait_for_cdr/2 :: (#ts_callflow_state{}, pos_integer() | 'infinity') ->
+                                {'timeout', #ts_callflow_state{}} |
+                                {'cdr', 'aleg' | 'bleg', wh_json:json_object(), #ts_callflow_state{}}.
 wait_for_cdr(State) ->
-    wait_for_cdr(State, infinity).
-wait_for_cdr(State, Timeout) ->
+    wait_for_cdr(State, 10000).
+wait_for_cdr(#ts_callflow_state{aleg_callid=ALeg}=State, Timeout) ->
     receive
         #'basic.consume_ok'{} -> wait_for_cdr(State, Timeout);
         {_, #amqp_msg{payload=Payload}} ->
@@ -224,7 +228,10 @@ wait_for_cdr(State, Timeout) ->
                 ignore -> wait_for_cdr(State, Timeout)
             end
     after Timeout ->
-            {timeout, State}
+            case whapps_call_command:b_call_status(ALeg) of
+                {error, _} -> {timeout, State};
+                _ -> wait_for_cdr(State, Timeout)
+            end
     end.
 
 -spec process_event_for_cdr/2 :: (#ts_callflow_state{}, wh_json:json_object()) -> {'hangup', #ts_callflow_state{}} | 'ignore' |

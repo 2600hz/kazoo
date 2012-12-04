@@ -25,7 +25,7 @@
          ,halt/2, content_type_matches/2, ensure_content_type/1
         ]).
 
--include_lib("crossbar/include/crossbar.hrl").
+-include("include/crossbar.hrl").
 
 -type cowboy_multipart_response() :: {{'headers', cowboy_http:headers()} |
                                       {'data', binary()} |
@@ -60,16 +60,15 @@ is_cors_preflight(Req0) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec is_cors_request/1 :: (#http_req{}) -> {boolean(), #http_req{}}.
+-spec is_cors_request/2 :: (#http_req{}, ne_binaries()) -> {boolean(), #http_req{}}.
 is_cors_request(Req) ->
     ReqHdrs = [<<"Origin">>, <<"Access-Control-Request-Method">>, <<"Access-Control-Request-Headers">>],
     is_cors_request(Req, ReqHdrs).
 is_cors_request(Req, []) -> {false, Req};
 is_cors_request(Req, [ReqHdr|ReqHdrs]) ->
     case cowboy_http_req:header(ReqHdr, Req) of
-        {undefined, Req1} -> is_cors_request(ReqHdrs, Req1);
-        {_H, Req1} ->
-            lager:debug("request has an ~s header: ~s", [ReqHdr, _H]),
-            {true, Req1}
+        {undefined, Req1} -> is_cors_request(Req1, ReqHdrs);
+        {_H, Req1} -> {true, Req1}
     end.
 
 %%--------------------------------------------------------------------
@@ -401,14 +400,13 @@ is_cb_module(Elem, Ebin) ->
 %% 'POST' from the allowed methods.
 %% @end
 %%--------------------------------------------------------------------
--spec allow_methods/4  :: (http_methods(), http_methods(), ne_binary(), http_method()) -> http_methods().
+-spec allow_methods/4  :: ([http_methods(),...], http_methods(), ne_binary(), http_method()) -> http_methods().
 allow_methods(Responses, Available, ReqVerb, HttpVerb) ->
     case crossbar_bindings:succeeded(Responses) of
         [] -> [];
         Succeeded ->
             AllowedSet = lists:foldr(fun(Response, Acc) ->
-                                             Set = sets:from_list(Response),
-                                             sets:intersection(Acc, Set)
+                                             sets:intersection(Acc, sets:from_list(Response))
                                      end, sets:from_list(Available), Succeeded),
             maybe_add_post_method(ReqVerb, HttpVerb, sets:to_list(AllowedSet))
     end.
@@ -441,13 +439,10 @@ is_authentic(Req0, Context0) ->
     case crossbar_bindings:succeeded(crossbar_bindings:map(Event, Context1)) of
         [] ->
             lager:debug("failed to authenticate"),
-            ?MODULE:halt(Req0, cb_context:add_system_error(invalid_crentials, Context0));
-        [true|_] ->
+            ?MODULE:halt(Req0, cb_context:add_system_error(invalid_credentials, Context0));
+        _ ->
             lager:debug("is_authentic: true"),
-            {true, Req1, Context1};
-        [{true, Context2}|_] ->
-            lager:debug("is_authentic: true"),
-            {true, Req1, Context2}
+            {true, Req1, Context1}
     end.
 
 -spec get_auth_token/2 :: (#http_req{}, cb_context:context()) -> {#http_req{}, cb_context:context()}.
@@ -493,12 +488,9 @@ is_permitted(Req0, Context0) ->
         [] ->
             lager:debug("no on authz the request"),
             ?MODULE:halt(Req0, cb_context:add_system_error(forbidden, Context0));
-        [true|_] ->
+        _ ->
             lager:debug("request was authz"),
-            {true, Req0, Context0};
-        [{true, Context1}|_] ->
-            lager:debug("request was authz"),
-            {true, Req0, Context1}
+            {true, Req0, Context0}
     end.
 
 -spec is_known_content_type/2 :: (#http_req{}, cb_context:context()) -> {boolean(), #http_req{}, cb_context:context()}.

@@ -26,6 +26,9 @@
 %% By convention, we put the options here in macros, but not required.
 -define(BINDINGS, [{route, []}
                    ,{self, []}
+                   ,{conf, [{doc_type, <<"queue">>}
+                            ,{action, <<"doc_created">>}
+                           ]}
                   ]).
 -define(RESPONDERS, [
                      %% Received because of our route binding
@@ -36,6 +39,10 @@
                      %% which is usually populated with the listener's queue name
                      ,{{acdc_handlers, handle_route_win}
                        ,[{<<"dialplan">>, <<"route_win">>}]
+                      }
+
+                     ,{{acdc_queue_handler, handle_config_change}
+                       ,[{<<"configuration">>, <<"*">>}]
                       }
                     ]).
 -define(QUEUE_NAME, <<>>).

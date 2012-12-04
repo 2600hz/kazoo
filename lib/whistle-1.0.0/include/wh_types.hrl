@@ -1,4 +1,5 @@
 -ifndef(WHISTLE_TYPES_INCLUDED).
+-include_lib("xmerl/include/xmerl.hrl").
 
 -define(MILLISECONDS_IN_DAY, 86400000).
 -define(SECONDS_IN_DAY, 86400).
@@ -41,6 +42,7 @@
 %% non-empty binary
 -define(NE_BINARY, <<_:8,_/binary>>).
 -type ne_binary() :: <<_:8,_:_*8>>.
+-type ne_binaries() :: [ne_binary(),...] | [].
 
 %% when using gen_smtp to send emails, it takes a 5-tuple for a message-body part
 -type mail_message_body() :: {ne_binary(), ne_binary(), proplist(), proplist(), ne_binary() | iolist()}.
@@ -115,6 +117,14 @@
                        {'error', 'req_timedout' | 'sel_conn_closed' | {'EXIT', term()}}.
 %% When using the stream_to option, ibrowse:send_req returns this tuple ReqID
 -type ibrowse_req_id() :: {pos_integer(), pos_integer(), pos_integer()}.
+
+%% XML types
+-type xml_attrib_name() :: atom().
+-type xml_attrib_value() :: ne_binary() | nonempty_string() | iolist() | atom().
+-type xml_attrib() :: #xmlAttribute{}.
+
+-type xml_el() :: #xmlElement{}.
+-type xml_els() :: [xml_el(),...] | [].
 
 -define(WHISTLE_TYPES_INCLUDED, true).
 -endif.

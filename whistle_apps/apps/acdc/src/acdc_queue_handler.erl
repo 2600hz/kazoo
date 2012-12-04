@@ -15,8 +15,6 @@
          ,handle_member_retry/2
          ,handle_config_change/2
          ,handle_stats_req/2
-         ,handle_agent_available/2
-         ,handle_sync_req/2
          ,handle_presence_probe/2
         ]).
 
@@ -123,35 +121,27 @@ build_stats_resp(AcctId, RespQ, MsgId, [P|Ps], CurrCalls) ->
                      ,wh_json:set_value(QueueId, wh_json:set_values(CurrentCalls, QueueCalls), CurrCalls)
                     ).
 
-handle_agent_available(JObj, Prop) ->
-    true = wapi_acdc_queue:agent_available_v(JObj),
-    FSM = props:get_value(fsm_pid, Prop),
-    acdc_queue_fsm:agent_available(FSM, JObj).
-
-handle_sync_req(JObj, Prop) ->
-    true = wapi_acdc_queue:sync_req_v(JObj),
-    FSM = props:get_value(fsm_pid, Prop),
-    acdc_queue_fsm:sync_req(FSM, JObj).
-    
 handle_presence_probe(JObj, _Props) ->
     true = wapi_notifications:presence_probe_v(JObj),
 
     FromRealm = wh_json:get_value(<<"From-Realm">>, JObj),
-    {ok, AcctDb} = whapps_util:get_account_by_realm(FromRealm),
-
-    maybe_respond_to_presence_probe(JObj, AcctDb).
+    case whapps_util:get_account_by_realm(FromRealm) of
+        {ok, AcctDb} -> maybe_respond_to_presence_probe(JObj, AcctDb);
+        _ -> ok
+    end.
 
 maybe_respond_to_presence_probe(JObj, AcctDb) ->
     case wh_json:get_value(<<"To-User">>, JObj) of
         undefined ->
             lager:debug("no to-user found on json: ~p", [JObj]);
         QueueId ->
-            {ok, Doc} = couch_mgr:open_doc(AcctDb, QueueId),
-
-            AcctId = wh_util:format_account_id(AcctDb, raw),
-            lager:debug("looking for probe for queue ~s(~s)", [QueueId, AcctId]),
-
-            maybe_update_probe(JObj, AcctId, QueueId, wh_json:get_value(<<"pvt_type">>, Doc))
+            case couch_mgr:open_doc(AcctDb, QueueId) of
+                {ok, Doc} ->
+                    AcctId = wh_util:format_account_id(AcctDb, raw),
+                    lager:debug("looking for probe for queue ~s(~s)", [QueueId, AcctId]),
+                    maybe_update_probe(JObj, AcctId, QueueId, wh_json:get_value(<<"pvt_type">>, Doc));
+                _ -> ok
+            end
     end.
 
 maybe_update_probe(JObj, AcctId, QueueId, <<"queue">>) ->

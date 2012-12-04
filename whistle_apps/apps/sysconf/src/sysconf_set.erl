@@ -15,7 +15,7 @@
 init() ->
     ok.
 
--spec handle_req/2 :: (wh_json:json_object(), proplist()) -> 'ok'.
+-spec handle_req/2 :: (wh_json:json_object(), wh_proplist()) -> 'ok'.
 handle_req(ApiJObj, _Props) ->
     lager:debug("received sysconf set"),
     true = wapi_sysconf:set_req_v(ApiJObj),

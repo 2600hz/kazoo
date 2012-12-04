@@ -83,7 +83,7 @@
          ,caller_exit_key = <<"#">> :: ne_binary()
          ,agent_call_id :: ne_binary()
          ,next_status :: ne_binary()
-         ,endpoints = [] :: wh_json:json_objects()
+         ,endpoints = [] :: wh_json:objects()
          }).
 
 %%%===================================================================
@@ -96,7 +96,7 @@
 %%   member_connect_resp payload or ignore the request
 %% @end
 %%--------------------------------------------------------------------
--spec member_connect_req/2 :: (pid(), wh_json:json_object()) -> 'ok'.
+-spec member_connect_req/2 :: (pid(), wh_json:object()) -> 'ok'.
 member_connect_req(FSM, JObj) ->
     gen_fsm:send_event(FSM, {member_connect_req, JObj}).
 
@@ -107,7 +107,7 @@ member_connect_req(FSM, JObj) ->
 %%   member_connect_resp payload or ignore the request
 %% @end
 %%--------------------------------------------------------------------
--spec member_connect_win/2 :: (pid(), wh_json:json_object()) -> 'ok'.
+-spec member_connect_win/2 :: (pid(), wh_json:object()) -> 'ok'.
 member_connect_win(FSM, JObj) ->
     gen_fsm:send_event(FSM, {member_connect_win, JObj}).
 
@@ -118,7 +118,7 @@ member_connect_win(FSM, JObj) ->
 %%   for bridge and hangup events).
 %% @end
 %%--------------------------------------------------------------------
--spec call_event/4 :: (pid(), ne_binary(), ne_binary(), wh_json:json_object()) -> 'ok'.
+-spec call_event/4 :: (pid(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
 call_event(FSM, <<"call_event">>, <<"CHANNEL_BRIDGE">>, JObj) ->
     gen_fsm:send_event(FSM, {channel_bridged, callid(JObj)});
 call_event(FSM, <<"call_event">>, <<"CHANNEL_UNBRIDGE">>, JObj) ->
@@ -154,7 +154,7 @@ call_event(_, _C, _E, _) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_send_execute_complete/3 :: (pid(), ne_binary(), wh_json:json_object()) -> 'ok'.
+-spec maybe_send_execute_complete/3 :: (pid(), ne_binary(), wh_json:object()) -> 'ok'.
 maybe_send_execute_complete(FSM, <<"bridge">>, JObj) ->
     gen_fsm:send_event(FSM, {channel_unbridged, callid(JObj)});
 maybe_send_execute_complete(FSM, <<"call_pickup">>, JObj) ->
@@ -210,7 +210,7 @@ resume(FSM) ->
 refresh(FSM, AgentJObj) ->
     gen_fsm:send_all_state_event(FSM, {refresh, AgentJObj}).
 
--spec current_call/1 :: (pid()) -> 'undefined' | wh_json:json_object().
+-spec current_call/1 :: (pid()) -> 'undefined' | wh_json:object().
 current_call(FSM) ->
     gen_fsm:sync_send_event(FSM, current_call).
 
@@ -395,12 +395,13 @@ ready({member_connect_win, JObj}, #state{agent_proc=Srv
             lager:debug("one of our counterparts won us a member: ~s", [CallId]),
             acdc_agent:monitor_call(Srv, Call),
 
-            {next_state, ringing, State#state{wrapup_timeout=WrapupTimer
-                                              ,member_call_id=CallId
-                                              ,member_call_start=erlang:now()
-                                              ,member_call_queue_id=QueueId
-                                              ,caller_exit_key=CallerExitKey
-                                             }}
+            {next_state, ringing, State#state{
+                                    wrapup_timeout=WrapupTimer
+                                    ,member_call_id=CallId
+                                    ,member_call_start=erlang:now()
+                                    ,member_call_queue_id=QueueId
+                                    ,caller_exit_key=CallerExitKey
+                                   }}
     end;
 
 ready({member_connect_req, JObj}, #state{agent_proc=Srv}=State) ->
@@ -411,6 +412,13 @@ ready({channel_hungup, CallId}, #state{agent_proc=Srv}=State) ->
     lager:debug("channel hungup for ~s", [CallId]),
     acdc_agent:channel_hungup(Srv, CallId),
     {next_state, ready, State};
+ready({channel_unbridged, CallId}, #state{agent_proc=_Srv}=State) ->
+    lager:debug("channel unbridged: ~s", [CallId]),
+    {next_state, ready, State};
+ready({leg_destroyed, CallId}, #state{agent_proc=_Srv}=State) ->
+    lager:debug("channel unbridged: ~s", [CallId]),
+    {next_state, ready, State};
+
 ready({resume}, State) ->
     {next_state, ready, State};
 
@@ -446,27 +454,14 @@ ringing({originate_ready, JObj}, #state{agent_proc=Srv}=State) ->
     acdc_agent:originate_execute(Srv, JObj),
     {next_state, ringing, State#state{agent_call_id=CallId}};
 
-ringing({originate_failed, timeout}, #state{agent_proc=Srv
-                                            ,acct_id=AcctId
-                                            ,agent_id=AgentId
-                                            ,member_call_queue_id=QueueId
-                                            ,member_call_id=CallId
-                                           }=State) ->
-    lager:debug("originate timed out, clearing call"),
-    acdc_agent:member_connect_retry(Srv, CallId),
-
-    acdc_stats:call_missed(AcctId, QueueId, AgentId, CallId),
-    acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_GREEN),
-    {next_state, ready, clear_call(State)};
-    
-ringing({originate_failed, JObj}, #state{agent_proc=Srv
+ringing({originate_failed, _E}, #state{agent_proc=Srv
                                          ,acct_id=AcctId
                                          ,agent_id=AgentId
                                          ,member_call_queue_id=QueueId
                                          ,member_call_id=CallId
                                         }=State) ->
-    lager:debug("failed to prepare originate to the agent"),
-    acdc_agent:member_connect_retry(Srv, JObj),
+    lager:debug("failed to execute originate to the agent: ~p", [_E]),
+    acdc_agent:member_connect_retry(Srv, CallId),
 
     acdc_stats:call_missed(AcctId, QueueId, AgentId, CallId),
 
@@ -584,9 +579,12 @@ answered({dialplan_error, _App}, #state{agent_proc=Srv
 
 answered({channel_bridged, CallId}, #state{member_call_id=CallId
                                            ,agent_proc=Srv
+                                           ,acct_id=_AcctId
+                                           ,member_call=_Call
                                           }=State) ->
     lager:debug("member has connected to agent"),
     acdc_agent:member_connect_accepted(Srv),
+
     {next_state, answered, State};
 
 answered({channel_bridged, CallId}, #state{agent_call_id=CallId
@@ -685,8 +683,14 @@ wrapup({sync_req, JObj}, #state{agent_proc=Srv
     acdc_agent:send_sync_resp(Srv, wrapup, JObj, [{<<"Time-Left">>, time_left(Ref)}]),
     {next_state, wrapup, State};
 
-wrapup({channel_hungup, _CallId}, State) ->
-    lager:debug("channel ~s hungup", [_CallId]),
+wrapup({channel_hungup, CallId}, #state{agent_proc=Srv}=State) ->
+    lager:debug("channel ~s hungup", [CallId]),
+    acdc_agent:channel_hungup(Srv, CallId),
+    {next_state, wrapup, State};
+
+wrapup({leg_destroyed, CallId}, #state{agent_proc=Srv}=State) ->
+    lager:debug("leg ~s destroyed", [CallId]),
+    acdc_agent:channel_hungup(Srv, CallId),
     {next_state, wrapup, State};
 
 wrapup(_Evt, State) ->
@@ -900,14 +904,15 @@ start_pause_timer(Timeout) ->
 start_call_status_timer() ->
     gen_fsm:start_timer(?CALL_STATUS_TIMEOUT, ?CALL_STATUS_MESSAGE).
 
--spec callid/1 :: (wh_json:json_object()) -> ne_binary() | 'undefined'.
+-spec callid/1 :: (wh_json:object()) -> api_binary().
 callid(JObj) ->
     case wh_json:get_value(<<"Call-ID">>, JObj) of
         undefined -> wh_json:get_value([<<"Call">>, <<"Call-ID">>], JObj);
         CallId -> CallId
     end.
 
--spec update_agent_status_to_resume/2 :: (ne_binary(), ne_binary()) -> {'ok', wh_json:json_object()}.
+-spec update_agent_status_to_resume/2 :: (ne_binary(), ne_binary()) ->
+                                                 {'ok', wh_json:object()}.
 update_agent_status_to_resume(AcctId, AgentId) ->
     AcctDb = wh_util:format_account_id(AcctId, encoded),
     Doc = wh_json:from_list([{<<"agent_id">>, AgentId}
@@ -937,7 +942,7 @@ clear_call(State) ->
                }.
 
 -spec current_call/4 :: (whapps_call:call() | 'undefined', atom(), ne_binary(), 'undefined' | wh_now()) ->
-                                wh_json:json_object() | 'undefined'.
+                                wh_json:object() | 'undefined'.
 current_call(undefined, _, _, _) -> undefined;
 current_call(Call, AgentState, QueueId, Start) -> 
     wh_json:from_list([{<<"call_id">>, whapps_call:call_id(Call)}

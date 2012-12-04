@@ -40,7 +40,7 @@
 -export([error_provider_fault/2]).
 -export([error_carrier_fault/2]).
 
--include("wh_number_manager.hrl").
+-include("wnm.hrl").
 
 -export_type([wnm_number/0]).
 
@@ -51,7 +51,11 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec create_discovery/1 :: (wnm_number()) -> wnm_number().
-create_discovery(#number{number=Number, number_doc=Doc, module_name=ModuleName, module_data=ModuleData}) ->
+create_discovery(#number{number=Number
+                         ,number_doc=Doc
+                         ,module_name=ModuleName
+                         ,module_data=ModuleData
+                        }) ->
     Num = wnm_util:normalize_number(Number),
     Updates = [{<<"_id">>, Num}
                ,{<<"pvt_module_name">>, ModuleName}
@@ -540,32 +544,29 @@ disconnected(Number) ->
 %% convert a json object to the number record
 %% @end
 %%--------------------------------------------------------------------
--spec json_to_record/1 :: (wh_json:json_object()) -> wnm_number().
--spec json_to_record/2 :: (wh_json:json_object(), wnm_number()) -> wnm_number().
-
-json_to_record(JObj) ->
-    json_to_record(JObj, #number{}).
-
+-spec json_to_record/2 :: (wh_json:json_object(), boolean() | wnm_number()) -> wnm_number().
+-spec json_to_record/3 :: (wh_json:json_object(), boolean(), wnm_number()) -> wnm_number().
 json_to_record(JObj, #number{}=Number) ->
     json_to_record(JObj, false, Number);
 json_to_record(JObj, IsNew) when is_boolean(IsNew) ->
     json_to_record(JObj, IsNew, #number{}).
 
 json_to_record(JObj, IsNew, #number{number=Num, number_db=Db}=Number) ->
-    Number#number{number=wh_json:get_value(<<"_id">>, JObj, Num)
-                  ,number_db=wh_json:get_value(<<"pvt_db_name">>, JObj, Db)
-                  ,state=wh_json:get_ne_value(<<"pvt_number_state">>, JObj)
-                  ,current_state=wh_json:get_ne_value(<<"pvt_number_state">>, JObj)
-                  ,reserve_history=ordsets:from_list(wh_json:get_ne_value(<<"pvt_reserve_history">>, JObj, []))
-                  ,assigned_to=wh_json:get_ne_value(<<"pvt_assigned_to">>, JObj)
-                  ,prev_assigned_to=wh_json:get_ne_value(<<"pvt_previously_assigned_to">>, JObj)
-                  ,module_name=wnm_util:get_carrier_module(JObj)
-                  ,module_data=wh_json:get_ne_value(<<"pvt_module_data">>, JObj)
-                  ,features=sets:from_list(wh_json:get_ne_value(<<"pvt_features">>, JObj, []))
-                  ,current_features=sets:from_list(wh_json:get_ne_value(<<"pvt_features">>, JObj, []))
-                  ,number_doc=JObj
-                  ,current_number_doc=case IsNew of true -> wh_json:new(); false -> JObj end
-                 }.
+    Number#number{
+      number=wh_json:get_value(<<"_id">>, JObj, Num)
+      ,number_db=wh_json:get_value(<<"pvt_db_name">>, JObj, Db)
+      ,state=wh_json:get_ne_value(<<"pvt_number_state">>, JObj)
+      ,current_state=wh_json:get_ne_value(<<"pvt_number_state">>, JObj)
+      ,reserve_history=ordsets:from_list(wh_json:get_ne_value(<<"pvt_reserve_history">>, JObj, []))
+      ,assigned_to=wh_json:get_ne_value(<<"pvt_assigned_to">>, JObj)
+      ,prev_assigned_to=wh_json:get_ne_value(<<"pvt_previously_assigned_to">>, JObj)
+      ,module_name=wnm_util:get_carrier_module(JObj)
+      ,module_data=wh_json:get_ne_value(<<"pvt_module_data">>, JObj)
+      ,features=sets:from_list(wh_json:get_ne_value(<<"pvt_features">>, JObj, []))
+      ,current_features=sets:from_list(wh_json:get_ne_value(<<"pvt_features">>, JObj, []))
+      ,number_doc=JObj
+      ,current_number_doc=case IsNew of true -> wh_json:new(); false -> JObj end
+     }.
 
 %%--------------------------------------------------------------------
 %% @private

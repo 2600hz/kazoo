@@ -152,9 +152,6 @@
 -define(TONES_REQ_TONE_HEADERS, [<<"Frequencies">>, <<"Duration-ON">>, <<"Duration-OFF">>]).
 -define(OPTIONAL_TONES_REQ_TONE_HEADERS, [<<"Volume">>, <<"Repeat">>]).
 -define(TONES_REQ_TONE_VALUES, []).
-%%{<<"Event-Category">>, <<"call">>}
-%%                              ,{<<"Event-Name">>, <<"command">>}
-%%                             ]).
 -define(TONES_REQ_TONE_TYPES, []).
 
 %% Tone Detect

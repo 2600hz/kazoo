@@ -320,3 +320,22 @@ This flow diagram shows how a queue reacts to a member_connect_retry (sent by th
 This diagram shows how the FSM reacts to receiving a HANGUP either during:
  *member_conn_req*: ignores member_connect_resps, unbinds from the call events, and ACKs the member_call so the queue can progress
  *member_conning*: ignores member_connect_accepted/retry messages, unbinds from the call events, and ACKs teh member_call
+
+* Supervisors
+
+A supervisor is able to listen/coach an agent while on the phone with a customer.
+
+** Supervisor process layout
+
+Similar to agent processes. The FSM will manage the lifecycle of a coach/whisper/listen
+
+ [acdc_supers_sup]
+         \|
+         \|----[acdc_super_sup]
+         \|----[acdc_super_sup]
+                      \|
+                      \|----acdc_super_listener
+                      \|----acdc_super_fsm
+
+*** Supervisor startup
+

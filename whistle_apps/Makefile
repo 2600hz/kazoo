@@ -2,37 +2,51 @@ ROOT = ..
 DIALYZER = dialyzer
 REBAR = $(ROOT)/bin/rebar
 
+MAKEDIRS = lib/*/Makefile \
+		   apps/*/Makefile
+
 DIRS =  . \
-	$(ROOT)/lib/whistle-1.0.0 \
-	$(ROOT)/lib/whistle_amqp-1.0.0 \
-	$(ROOT)/lib/whistle_couch-1.0.0
+		lib/whistle_number_manager-1.0.0 \
+		lib/whistle_couch-1.0.0 \
+		lib/whistle_services-1.0.0
 
-all: compile
+.PHONY: $(MAKEDIRS)
 
-compile:
+all : compile
+
+compile: ACTION = all
+compile: $(MAKEDIRS)
 	@$(REBAR) compile
 
-deps:
-	@$(REBAR) get-deps
+top_only:
+	@$(REBAR) compile
 
-clean:
+$(MAKEDIRS):
+	$(MAKE) -C $(@D) $(ACTION)
+
+deps : ACTION = get-deps
+deps : $(MAKEDIRS)
+	@$(REBAR) deps
+
+clean : ACTION = clean
+clean : $(MAKEDIRS)
 	@$(REBAR) clean
 	rm -f test/*.beam
-	rm -f erl_crash.dump
+	rm -f *crash.dump
 
-test: clean app eunit
+test : clean app eunit
 
-eunit:
+eunit :
 	@$(REBAR) eunit skip_deps=true
 
-build-plt:
+build-plt :
 	@$(DIALYZER) --build_plt --output_plt $(ROOT)/.platform_dialyzer.plt \
-		--apps kernel stdlib sasl inets crypto public_key ssl
+                --apps erts kernel stdlib sasl inets crypto public_key ssl
 
-dialyze: 
+dialyze :
 	@$(DIALYZER) $(foreach DIR,$(DIRS),$(DIR)/ebin) \
                 --plt $(ROOT)/.platform_dialyzer.plt --no_native \
-		-Werror_handling -Wrace_conditions -Wunmatched_returns # -Wunderspecs
+                -Werror_handling -Wrace_conditions -Wunmatched_returns # -Wunderspecs
 
 docs:
 	@$(REBAR) doc skip_deps=true

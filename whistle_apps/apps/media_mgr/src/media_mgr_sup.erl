@@ -10,64 +10,50 @@
 
 -behaviour(supervisor).
 
-%% API
--export([start_link/0, upgrade/0, cache_proc/0, listener_proc/0]).
+-include_lib("whistle/include/wh_types.hrl").
 
-%% Supervisor callbacks
+-export([start_link/0]).
 -export([init/1]).
 
-%% Helper macro for declaring children of supervisor
--define(CHILD(I, Type), {I, {I, start_link, []}, permanent, 5000, Type, [I]}).
--define(CHILD(I, Type, Args), {I, {I, start, [Args]}, permanent, 5000, Type, dynamic}).
--define(CACHE(Name), {Name, {wh_cache, start_link, [Name]}, permanent, 5000, worker, [wh_cache]}).
+-define(CHILD(Name, Type), fun(N, T) -> {N, {N, start_link, []}, permanent, 5000, T, [N]} end(Name, Type)).
+-define(CHILDREN, [{whistle_media_sup, supervisor}
+                   ,{media_listener, worker}
+                  ]).
 
 %% ===================================================================
 %% API functions
 %% ===================================================================
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Starts the supervisor
+%% @end
+%%--------------------------------------------------------------------
+-spec start_link/0 :: () -> startlink_ret().
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
-
--spec cache_proc/0 :: () -> {'ok', pid()}.
-cache_proc() ->
-    [P] = [P || {Mod, P, _, _} <- supervisor:which_children(?MODULE),
-                Mod =:= media_mgr_cache],
-    {ok, P}.
-
--spec listener_proc/0 :: () -> {'ok', pid()}.
-listener_proc() ->
-    [P] = [P || {Mod, P, _, _} <- supervisor:which_children(?MODULE),
-                Mod =:= media_listener],
-    {ok, P}.
-
-
-%% @spec upgrade() -> ok
-%% @doc Add processes if necessary.
-upgrade() ->
-    {ok, {_, Specs}} = init([]),
-
-    Old = sets:from_list(
-            [Name || {Name, _, _, _} <- supervisor:which_children(?MODULE)]),
-    New = sets:from_list([Name || {Name, _, _, _, _, _} <- Specs]),
-    Kill = sets:subtract(Old, New),
-
-    sets:fold(fun (Id, _) ->
-                      _ = supervisor:terminate_child(?MODULE, Id),
-                      supervisor:delete_child(?MODULE, Id)
-              end, ok, Kill),
-
-    _ = [supervisor:start_child(?MODULE, Spec) || Spec <- Specs],
-    ok.
-
 
 %% ===================================================================
 %% Supervisor callbacks
 %% ===================================================================
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Whenever a supervisor is started using supervisor:start_link/[2,3],
+%% this function is called by the new process to find out about
+%% restart strategy, maximum restart frequency and child
+%% specifications.
+%% @end
+%%--------------------------------------------------------------------
+-spec init([]) -> sup_init_ret().
 init([]) ->
-    Processes = [
-                 ?CACHE(media_mgr_cache)
-                 ,?CHILD(media_files_sup, supervisor)
-                 ,?CHILD(media_listener, worker)
-                ], %% Put list of ?CHILD(media_mgr_server, worker) or ?CHILD(media_mgr_other_sup, supervisor)
-    {ok, { {one_for_one, 10, 10}, Processes} }.
+    RestartStrategy = one_for_one,
+    MaxRestarts = 5,
+    MaxSecondsBetweenRestarts = 10,
+
+    SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
+    Children = [?CHILD(Name, Type) || {Name, Type} <- ?CHILDREN],
+
+    {ok, {SupFlags, Children}}.

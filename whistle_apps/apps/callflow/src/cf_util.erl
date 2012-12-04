@@ -29,7 +29,7 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec presence_probe/2 :: (wh_json:json_object(), wh_proplist()) -> any().
+-spec presence_probe/2 :: (wh_json:object(), wh_proplist()) -> any().
 presence_probe(JObj, _Props) ->
     ToUser = wh_json:get_value(<<"To-User">>, JObj),
     ToRealm = wh_json:get_value(<<"To-Realm">>, JObj),
@@ -42,7 +42,7 @@ presence_probe(JObj, _Props) ->
                     ],
     [Fun(Subscription, {FromUser, FromRealm}, {ToUser, ToRealm}, JObj) || Fun <- ProbeRepliers].
 
--spec presence_mwi_update/4 :: (ne_binary(), {ne_binary(), ne_binary()}, {ne_binary(), ne_binary()}, wh_json:json_object()) ->
+-spec presence_mwi_update/4 :: (ne_binary(), {ne_binary(), ne_binary()}, {ne_binary(), ne_binary()}, wh_json:object()) ->
                                        'ok'.
 presence_mwi_update(<<"message-summary">>, {FromUser, FromRealm}, _, JObj) ->
     case whapps_util:get_account_by_realm(FromRealm) of
@@ -69,7 +69,7 @@ presence_mwi_update(<<"message-summary">>, {FromUser, FromRealm}, _, JObj) ->
 presence_mwi_update(_, _, _, _) ->
     ok.
 
--spec presence_parking_slot/4 :: (ne_binary(), {ne_binary(), ne_binary()}, {ne_binary(), ne_binary()}, wh_json:json_object()) ->
+-spec presence_parking_slot/4 :: (ne_binary(), {ne_binary(), ne_binary()}, {ne_binary(), ne_binary()}, wh_json:object()) ->
                                          'ok'.
 presence_parking_slot(<<"message-summary">>, _, _, _) -> ok;
 presence_parking_slot(_, {_, FromRealm}, {ToUser, ToRealm}, _) ->
@@ -91,7 +91,7 @@ presence_parking_slot(_, {_, FromRealm}, {ToUser, ToRealm}, _) ->
         _E -> ok
     end.
 
--spec manual_presence/4 :: (ne_binary(), {ne_binary(), ne_binary()}, {ne_binary(), ne_binary()}, wh_json:json_object()) -> 'ok'.
+-spec manual_presence/4 :: (ne_binary(), {ne_binary(), ne_binary()}, {ne_binary(), ne_binary()}, wh_json:object()) -> 'ok'.
 manual_presence(<<"message-summary">>, _, _, _) -> ok;
 manual_presence(_, {_, FromRealm}, {ToUser, ToRealm}, Event) ->
     case whapps_util:get_account_by_realm(FromRealm) of
@@ -121,7 +121,7 @@ manual_presence(_, {_, FromRealm}, {ToUser, ToRealm}, Event) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec presence_mwi_query/2 :: (wh_json:json_object(), wh_proplist()) -> 'ok'.
+-spec presence_mwi_query/2 :: (wh_json:object(), wh_proplist()) -> 'ok'.
 presence_mwi_query(JObj, _Props) ->
     _ = wh_util:put_callid(JObj),
     Username = wh_json:get_value(<<"Username">>, JObj),
@@ -148,7 +148,7 @@ presence_mwi_query(JObj, _Props) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec presence_mwi_resp/5 :: (ne_binary(), ne_binary(), api_binary(), ne_binary(), wh_json:json_object()) -> 'ok'.
+-spec presence_mwi_resp/5 :: (ne_binary(), ne_binary(), api_binary(), ne_binary(), wh_json:object()) -> 'ok'.
 presence_mwi_resp(_, _, undefined, _, _) -> ok;
 presence_mwi_resp(Username, Realm, OwnerId, AccountDb, JObj) ->
     ViewOptions = [{reduce, true}
@@ -285,7 +285,7 @@ dialpad_digit(WXYZ) when WXYZ =:= $w orelse WXYZ =:= $x orelse WXYZ =:= $y orels
 %% Determine if we should ignore early media
 %% @end
 %%--------------------------------------------------------------------
--spec ignore_early_media/1 :: (wh_json:json_objects()) -> api_binary().
+-spec ignore_early_media/1 :: (wh_json:objects()) -> api_binary().
 ignore_early_media([]) -> undefined;
 ignore_early_media(Endpoints) ->
     Ignore = lists:foldr(fun(Endpoint, Acc) ->
@@ -318,7 +318,7 @@ correct_media_path(Media, Call) ->
 %% @end
 %%-----------------------------------------------------------------------------
 -spec get_operator_callflow/1 :: (ne_binary()) ->
-                                         {'ok', wh_json:json_object()} |
+                                         {'ok', wh_json:object()} |
                                          {'error', _}.
 get_operator_callflow(Account) ->
     AccountDb = wh_util:format_account_id(Account, encoded),
@@ -338,7 +338,7 @@ get_operator_callflow(Account) ->
 %% lookup the callflow based on the requested number in the account
 %% @end
 %%-----------------------------------------------------------------------------
--type lookup_callflow_ret() :: {'ok', wh_json:json_object(), boolean()} |
+-type lookup_callflow_ret() :: {'ok', wh_json:object(), boolean()} |
                                {'error', term()}.
 
 -spec lookup_callflow/1 :: (whapps_call:call()) -> lookup_callflow_ret().
@@ -404,7 +404,7 @@ is_digit(_) -> false.
 %% @end
 %%-----------------------------------------------------------------------------
 -spec lookup_callflow_patterns/2 :: (ne_binary(), ne_binary()) ->
-                                            {'ok', {wh_json:json_object(), ne_binary()}} |
+                                            {'ok', {wh_json:object(), ne_binary()}} |
                                             {'error', term()}.
 lookup_callflow_patterns(Number, Db) ->
     lager:debug("lookup callflow patterns for ~s in ~s", [Number, Db]),
@@ -424,9 +424,9 @@ lookup_callflow_patterns(Number, Db) ->
 %% @doc
 %% @end
 %%-----------------------------------------------------------------------------
--spec test_callflow_patterns/3 :: (wh_json:json_objects(), ne_binary()
-                                   ,{'undefined', <<>>} | {wh_json:json_object(), ne_binary()})
-                                  -> {'undefined', <<>>} | {wh_json:json_object(), ne_binary()}.
+-spec test_callflow_patterns/3 :: (wh_json:objects(), ne_binary()
+                                   ,{'undefined', <<>>} | {wh_json:object(), ne_binary()})
+                                  -> {'undefined', <<>>} | {wh_json:object(), ne_binary()}.
 test_callflow_patterns([], _, Result) ->
     Result;
 test_callflow_patterns([Pattern|T], Number, {_, Capture}=Result) ->
@@ -467,7 +467,7 @@ test_callflow_patterns([Pattern|T], Number, {_, Capture}=Result) ->
 %% certain actions, like cf_offnet and cf_resources
 %% @end
 %%--------------------------------------------------------------------
--spec handle_bridge_failure/2 :: ({'fail', wh_json:json_object()} | ne_binary() | 'undefined', whapps_call:call()) -> 'ok' | 'not_found'.
+-spec handle_bridge_failure/2 :: ({'fail', wh_json:object()} | ne_binary() | 'undefined', whapps_call:call()) -> 'ok' | 'not_found'.
 -spec handle_bridge_failure/3 :: (ne_binary() | 'undefined', ne_binary() | 'undefined', whapps_call:call()) -> 'ok' | 'not_found'.
 
 handle_bridge_failure({fail, Reason}, Call) ->
@@ -519,8 +519,8 @@ send_default_response(Cause, Call) ->
 %% Get the sip realm
 %% @end
 %%--------------------------------------------------------------------
--spec get_sip_realm/2 :: (wh_json:json_object(), ne_binary()) -> 'undefined' | ne_binary().
--spec get_sip_realm/3 :: (wh_json:json_object(), ne_binary(), Default) -> Default | ne_binary().
+-spec get_sip_realm/2 :: (wh_json:object(), ne_binary()) -> api_binary().
+-spec get_sip_realm/3 :: (wh_json:object(), ne_binary(), Default) -> Default | ne_binary().
 
 get_sip_realm(SIPJObj, AccountId) ->
     get_sip_realm(SIPJObj, AccountId, undefined).
@@ -535,7 +535,7 @@ get_sip_realm(SIPJObj, AccountId, Default) ->
         Realm -> Realm
     end.
 
--spec handle_doc_change/2 :: (wh_json:json_object(), wh_proplist()) -> any().
+-spec handle_doc_change/2 :: (wh_json:object(), wh_proplist()) -> any().
 handle_doc_change(JObj, _Prop) ->
     Db = wh_json:get_value(<<"Account-DB">>, JObj),
     Id = wh_json:get_value(<<"ID">>, JObj),

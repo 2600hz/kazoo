@@ -215,7 +215,7 @@ find_account_by_realm(Realm) ->
 allow_account_number_additions(AccountId) ->
     case update_account(AccountId, <<"pvt_wnm_allow_additions">>, true) of
         {ok, _} ->
-            io:format("allowing account '~s' to added numbers~n", [AccountId]),
+            io:format("allowing account '~s' to add numbers~n", [AccountId]),
             ok;
         {error, Reason} ->
             io:format("failed to find account: ~p~n", [Reason]),
@@ -348,7 +348,10 @@ create_account(AccountName, Realm, Username, Password) ->
         end,
         ok
     catch
-        _:_ ->
+        _E:_R ->
+            lager:debug("crashed creating account: ~s: ~p", [_E, _R]),
+            ST = erlang:get_stacktrace(),
+            _ = [lager:debug("st: ~p", [S]) || S <- ST],
             failed
     end.
 
@@ -358,8 +361,9 @@ create_account(AccountName, Realm, Username, Password) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec validate_account/2 :: (wh_json:json_object(), #cb_context{}) -> {'ok', #cb_context{}} |
-                                                                      {'error', wh_json:json_object()}.
+-spec validate_account/2 :: (wh_json:json_object(), cb_context:context()) ->
+                                    {'ok', cb_context:context()} |
+                                    {'error', wh_json:json_object()}.
 validate_account(JObj, Context) ->
     Payload = [Context#cb_context{req_data=JObj
                                   ,req_nouns=[{?WH_ACCOUNTS_DB, []}]
@@ -368,8 +372,8 @@ validate_account(JObj, Context) ->
               ],
     case crossbar_bindings:fold(<<"v1_resource.validate.accounts">>, Payload) of
         #cb_context{resp_status=success}=Context1 -> {ok, Context1};
-        #cb_context{resp_data=Errors} ->
-            io:format("failed to validate account properties: '~s'~n", [wh_json:encode(Errors)]),
+        #cb_context{resp_status=_S, resp_data=Errors} ->
+            io:format("failed to validate account properties(~p): '~s'~n", [_S, wh_json:encode(Errors)]),
             {error, Errors}
     end.
 
@@ -379,8 +383,9 @@ validate_account(JObj, Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec validate_user/2 :: (wh_json:json_object(), #cb_context{}) -> {'ok', #cb_context{}} |
-                                                                   {'error', wh_json:json_object()}.
+-spec validate_user/2 :: (wh_json:json_object(), cb_context:context()) ->
+                                 {'ok', cb_context:context()} |
+                                 {'error', wh_json:json_object()}.
 validate_user(JObj, Context) ->
     Payload = [Context#cb_context{req_data=JObj
                                   ,req_nouns=[{?WH_ACCOUNTS_DB, []}]
@@ -400,9 +405,9 @@ validate_user(JObj, Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec create_account/1 :: (#cb_context{}) ->
-                                  {'ok', #cb_context{}} |
-                                  {'error', wh_json:json_object()}.
+-spec create_account/1 :: (cb_context:context()) ->
+                                  {'ok', cb_context:context()} |
+                                  {'error', wh_json:object()}.
 create_account(Context) ->
     case crossbar_bindings:fold(<<"v1_resource.execute.put.accounts">>, [Context]) of
         #cb_context{resp_status=success, db_name=AccountDb, account_id=AccountId}=Context1 ->
@@ -421,8 +426,9 @@ create_account(Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec create_user/1 :: (#cb_context{}) -> {'ok', #cb_context{}} |
-                                             {'error', wh_json:json_object()}.
+-spec create_user/1 :: (cb_context:context()) ->
+                               {'ok', cb_context:context()} |
+                               {'error', wh_json:object()}.
 create_user(Context) ->
     case crossbar_bindings:fold(<<"v1_resource.execute.put.users">>, [Context]) of
         #cb_context{resp_status=success, doc=JObj}=Context1 ->
@@ -439,8 +445,9 @@ create_user(Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec update_account/3 :: (input_term(), ne_binary(), term()) -> {'ok', wh_json:json_object()} |
-                                                                 {'error', term()}.
+-spec update_account/3 :: (input_term(), ne_binary(), term()) ->
+                                  {'ok', wh_json:object()} |
+                                  {'error', term()}.
 update_account(AccountId, Key, Value) when not is_binary(AccountId) ->
     update_account(wh_util:to_binary(AccountId), Key, Value);
 update_account(AccountId, Key, Value) ->
