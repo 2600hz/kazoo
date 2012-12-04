@@ -13,6 +13,8 @@
 
 -include("whistle_media.hrl").
 
+-spec playback/2 :: (api_binary(), wh_json:object()) -> {'ok', ne_binary()} |
+                                                        {'error', _}.
 playback(undefined, _) ->
     {error, invalid_media_name};
 playback(<<"tts://", _/binary>> = TTS, Options) ->
@@ -27,6 +29,16 @@ playback(Media, Options) ->
             Ok
     end.
             
+-spec store/3 :: (ne_binary(), ne_binary(), ne_binary()) -> {'ok', ne_binary()} |
+                                                            {'error', _}.
 store(Db, Id, Attachment) ->
     Options = wh_json:from_list([{<<"Stream-Type">>, <<"store">>}]),
-    wh_media_file:get_uri([Db, Id, Attachment], Options).
+    Rev = case couch_mgr:lookup_doc_rev(Db, Id) of
+              {ok, R} -> <<"?rev=", R/binary>>;
+              _ -> <<>>
+          end,
+    case wh_media_file:get_uri([Db, Id, Attachment], Options) of
+        {error, _}=E -> E;
+        {ok, URI} ->
+            {ok, <<URI/binary, Rev/binary>>}
+    end.

@@ -20,27 +20,35 @@ base_url(Host, Port) ->
     base_url(Host, Port, proxy_playback).
 
 base_url(Host, Port, direct_playback) ->
-    case whapps_config:get_is_true(?CONFIG_CAT, <<"bigcouch_authenticated_playback">>, false) of    
+    case whapps_config:get_is_true(?CONFIG_CAT, <<"authenticated_playback">>, false) of    
         false -> build_url(Host, Port, [], []);
         true ->
             {Username, Password} = couch_mgr:get_creds(),
             build_url(Host, Port, Username, Password)
     end;
 base_url(Host, Port, proxy_playback) ->
-    Username = whapps_config:get_string(?CONFIG_CAT, <<"proxy_store_username">>, <<>>),
-    Password = whapps_config:get_string(?CONFIG_CAT, <<"proxy_store_password">>, <<>>),
-    build_url(Host, Port, Username, Password);
+    case whapps_config:get_is_true(?CONFIG_CAT, <<"authenticated_playback">>, false) of
+        false -> build_url(Host, Port, [], []);
+        true ->
+            Username = whapps_config:get_string(?CONFIG_CAT, <<"proxy_username">>, wh_util:rand_hex_binary(8)),
+            Password = whapps_config:get_string(?CONFIG_CAT, <<"proxy_password">>, wh_util:rand_hex_binary(8)),
+            build_url(Host, Port, Username, Password)
+    end;
 base_url(Host, Port, direct_store) ->
-    case whapps_config:get_is_true(?CONFIG_CAT, <<"bigcouch_authenticated_store">>, true) of
+    case whapps_config:get_is_true(?CONFIG_CAT, <<"authenticated_store">>, true) of
         false -> build_url(Host, Port, [], []);
         true ->
             {Username, Password} = couch_mgr:get_creds(),
             build_url(Host, Port, Username, Password)
     end;
-base_url(Host, Port, proxy_store) -> 
-    Username = whapps_config:get_string(?CONFIG_CAT, <<"proxy_store_username">>, <<>>),
-    Password = whapps_config:get_string(?CONFIG_CAT, <<"proxy_store_password">>, <<>>),
-    build_url(Host, Port, Username, Password).
+base_url(Host, Port, proxy_store) ->
+    case whapps_config:get_is_true(?CONFIG_CAT, <<"authenticated_store">>, true) of    
+        false -> build_url(Host, Port, [], []);
+        true ->
+            Username = whapps_config:get_string(?CONFIG_CAT, <<"proxy_username">>, wh_util:rand_hex_binary(8)),
+            Password = whapps_config:get_string(?CONFIG_CAT, <<"proxy_password">>, wh_util:rand_hex_binary(8)),
+            build_url(Host, Port, Username, Password)
+    end.
 
 build_url(H, P, [], []) ->
     Scheme = case whapps_config:get_is_true(?CONFIG_CAT, <<"use_https">>, false) of

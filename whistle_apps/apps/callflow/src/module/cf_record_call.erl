@@ -138,10 +138,5 @@ store_url(Call, JObj) ->
     AccountDb = whapps_call:account_db(Call),
     MediaId = wh_json:get_value(<<"_id">>, JObj),
     MediaName = wh_json:get_value(<<"name">>, JObj),
-
-    Rev = wh_json:get_value(<<"_rev">>, JObj),
-    list_to_binary([couch_mgr:get_url(), AccountDb
-                    ,"/", MediaId
-                    ,"/", MediaName
-                    ,"?rev=", Rev
-                   ]).
+    {ok, URL} = wh_media_url:store(AccountDb, MediaId, MediaName),
+    URL.

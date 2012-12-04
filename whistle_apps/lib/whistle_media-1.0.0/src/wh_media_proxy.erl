@@ -12,6 +12,7 @@
 
 -include("whistle_media.hrl").
 
+-spec start_link/0 :: () -> 'ignore'.
 start_link() ->
     put(callid, ?LOG_SYSTEM_ID),
     Dispatch = [

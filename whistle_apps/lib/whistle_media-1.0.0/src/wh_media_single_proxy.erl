@@ -21,8 +21,11 @@ init({_Transport, _Proto}, Req0, _Opts) ->
     case cowboy_http_req:path_info(Req0) of
         {[<<"tts">>, Id], Req1} ->
             init_from_tts(Id, Req1);
-        {[Id, Doc, Attachment], Req1} ->
-            init_from_doc(Id, Doc, Attachment, Req1)
+        {[?MEDIA_DB = Db, Id, Attachment], Req1} ->
+            init_from_doc(Db, Id, Attachment, Req1);
+        {[Db, Id, Attachment], Req1} ->
+            AccountDb = wh_util:format_account_id(Db, encoded),
+            init_from_doc(AccountDb, Id, Attachment, Req1)
     end.
 
 init_from_tts(Id, Req) ->
@@ -36,9 +39,9 @@ init_from_tts(Id, Req) ->
             {shutdown, Req1, ok}
     end.
 
-init_from_doc(Id, Doc, Attachment, Req) ->
-    lager:debug("fetching ~s/~s/~s", [Id, Doc, Attachment]),
-    case wh_media_cache_sup:find_file_server(Id, Doc, Attachment) of
+init_from_doc(Db, Id, Attachment, Req) ->
+    lager:debug("fetching ~s/~s/~s", [Db, Id, Attachment]),
+    case wh_media_cache_sup:find_file_server(Db, Id, Attachment) of
         {ok, Pid} ->
             {ok, Req, wh_media_file_cache:single(Pid)};
         {error, _} ->
@@ -131,8 +134,7 @@ the_header({K, H}) ->
 set_resp_headers(Req, ContentType) ->
     lists:foldl(fun({K,V}, {ok, Req0Acc}) ->
                         cowboy_http_req:set_resp_header(K, V, Req0Acc)
-                end, {ok, Req}, [
-                                 {<<"Server">>, list_to_binary([?APP_NAME, "/", ?APP_VERSION])}
+                end, {ok, Req}, [{<<"Server">>, list_to_binary([?APP_NAME, "/", ?APP_VERSION])}
                                  ,{<<"Content-Type">>, ContentType}
                                 ]
                ).
@@ -141,8 +143,7 @@ set_resp_headers(Req, ContentType) ->
 set_resp_headers(Req, ChunkSize, ContentType, MediaName, Url) ->
     lists:foldl(fun({K,V}, {ok, Req0Acc}) ->
                         cowboy_http_req:set_resp_header(K, V, Req0Acc)
-                end, {ok, Req}, [
-                                 {<<"Server">>, list_to_binary([?APP_NAME, "/", ?APP_VERSION])}
+                end, {ok, Req}, [{<<"Server">>, list_to_binary([?APP_NAME, "/", ?APP_VERSION])}
                                  ,{<<"Content-Type">>, ContentType}
                                  ,{<<"icy-notice1">>, <<"MediaMgr">>}
                                  ,{<<"icy-name">>, MediaName}

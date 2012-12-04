@@ -11,17 +11,20 @@
 -behaviour(supervisor).
 
 %% API
--export([start_link/0
-         ,find_file_server/3, find_file_server/4
-         ,find_tts_server/1, find_tts_server/2
-        ]).
+-export([start_link/0]).
+-export([find_file_server/3]).
+-export([start_file_server/3]).
+-export([find_tts_server/1]).
+-export([find_tts_server/2]).
 
 %% Supervisor callbacks
 -export([init/1]).
 
+-include("whistle_media.hrl").
+
 -define(SERVER, ?MODULE).
 
--define(CHILD(Name, Id, Doc, Attachment, Meta), {Name, {wh_media_file_cache, start_link, [Id, Doc, Attachment, Meta]}, temporary, 5000, worker, [wh_media_file_cache]}).
+-define(CHILD(Name, Id, Doc, Attachment), {Name, {wh_media_file_cache, start_link, [Id, Doc, Attachment]}, temporary, 5000, worker, [wh_media_file_cache]}).
 -define(CHILD(Name, Text, JObj), {Name, {wh_media_tts_cache, start_link, [Text, JObj]}, temporary, 5000, worker, [wh_media_tts_cache]}).
 
 %%%===================================================================
@@ -38,23 +41,27 @@
 start_link() ->
     supervisor:start_link({local, ?SERVER}, ?MODULE, []).
 
+-spec find_file_server/3 :: (ne_binary(), ne_binary(), ne_binary()) -> {'ok', pid()} |
+                                                                       {'error', 'no_file_server'}.
 find_file_server(Id, Doc, Attachment) ->
-    Name = [Id,Doc,Attachment],
+    Name = [Id, Doc, Attachment],
     case [P||{N,P,_,_} <- supervisor:which_children(?MODULE), N =:= Name, is_pid(P)] of
         [] -> {error, no_file_server};
         [P] -> {ok, P}
     end.
 
-find_file_server(Id, Doc, Attachment, Meta) ->
-    Name = [Id,Doc,Attachment],
-    find_file_server(Id, Doc, Attachment, Meta, Name).
-find_file_server(Id, Doc, Attachment, Meta, Name) ->
-    case supervisor:start_child(?MODULE, ?CHILD(Name, Id, Doc, Attachment, Meta)) of
+-spec start_file_server/3 :: (ne_binary(), ne_binary(), ne_binary()) -> {'ok', pid()} |
+                                                                        {'error', _}.
+start_file_server(Id, Doc, Attachment) ->
+    Name = [Id, Doc, Attachment],
+    start_file_server(Id, Doc, Attachment, Name).
+start_file_server(Id, Doc, Attachment, Name) ->
+    case supervisor:start_child(?MODULE, ?CHILD(Name, Id, Doc, Attachment)) of
         {ok, _Pid}=OK -> OK;
         {error, {already_started, Pid}} -> {ok, Pid};
         {error, already_present} ->
             _ = supervisor:delete_child(?MODULE, Name),
-            find_file_server(Id, Doc, Attachment, Meta, Name);
+            start_file_server(Id, Doc, Attachment, Name);
         {error, _}=E -> E
     end.
 

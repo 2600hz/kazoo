@@ -11,7 +11,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/4
+-export([start_link/3
          ,single/1
          ,continuous/1
         ]).
@@ -53,14 +53,15 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
--spec start_link/4 :: (ne_binary(), ne_binary(), ne_binary(), wh_json:json_object()) ->
-                              startlink_ret().
-start_link(Id, Doc, Attach, Meta) ->    
-    gen_server:start_link(?MODULE, [Id, Doc, Attach, Meta, get(callid)], []).
+-spec start_link/3 :: (ne_binary(), ne_binary(), ne_binary()) -> startlink_ret().
+start_link(Db, Id, Attachment) ->    
+    gen_server:start_link(?MODULE, [Db, Id, Attachment, get(callid)], []).
 
+-spec single/1 :: (pid()) -> {wh_json:object(), binary()}.
 single(Srv) ->
     gen_server:call(Srv, single).
 
+-spec continuous/1 :: (pid()) -> {wh_json:object(), binary()}.
 continuous(Srv) ->
     gen_server:call(Srv, continuous).
 
@@ -79,33 +80,33 @@ continuous(Srv) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init([<<"system_media">>|Rest]) ->
-    init(<<"system_media">>, Rest);
-init([Id|Rest]) ->
-    init(wh_util:format_account_id(Id, encoded), Rest).
-
-init(Db, [Doc, Attach, Meta, CallId]) ->
+init([Db, Id, Attachment, CallId]) ->
     case wh_util:is_empty(CallId) of
         true -> put(callid, ?LOG_SYSTEM_ID);
         false -> put(callid, CallId)
     end,
+    maybe_start_file_cache(Db, Id, Attachment).
 
-    lager:debug("streaming ~s/~s/~s", [Db, Doc, Attach]),
-    {ok, Ref} = couch_mgr:stream_attachment(Db, Doc, Attach),
-
-    {ok
-     ,#state{
-       db=Db
-       ,doc=Doc
-       ,attach=Attach
-       ,meta=Meta
-       ,stream_ref=Ref
-       ,status=streaming
-       ,contents = <<>>
-       ,reqs = [] %% buffer requests until file has completed streaming
-       ,timer_ref=start_timer()
-      }
-    }.
+maybe_start_file_cache(Db, Id, Attachment) ->
+    case couch_mgr:open_doc(Db, Id) of
+        {error, Reason} ->
+            lager:debug("unable get metadata for ~s on ~s in ~s: ~p", [Attachment, Id, Db, Reason]),
+            {stop, Reason};
+        {ok, JObj} ->
+            lager:debug("starting cache for ~s on ~s in ~s", [Attachment, Id, Db]),
+            Meta = wh_json:get_value([<<"_attachments">>, Attachment], JObj, wh_json:new()),
+            {ok, Ref} = couch_mgr:stream_attachment(Db, Id, Attachment),
+            {ok, #state{db=Db
+                        ,doc=Id
+                        ,attach=Attachment
+                        ,meta=Meta
+                        ,stream_ref=Ref
+                        ,status=streaming
+                        ,contents = <<>>
+                        ,reqs = [] %% buffer requests until file has completed streaming
+                        ,timer_ref=start_timer()
+                       }}
+    end.
 
 %%--------------------------------------------------------------------
 %% @private

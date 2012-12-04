@@ -195,16 +195,21 @@ handle_cast({maybe_update_node, Node}, #state{node=_OldNode}=State) ->
     {noreply, State#state{node=Node}, hibernate};
 
 handle_cast({create_uuid}, #state{node=Node, originate_req=JObj}=State) ->
-    lager:debug("creating a new uuid", []),
+    lager:debug("creating a new uuid"),
     {noreply, State#state{uuid=create_uuid(JObj, Node)}, hibernate};
 
-handle_cast({get_originate_action}, #state{originate_req=JObj}=State) ->
+handle_cast({get_originate_action}, #state{originate_req=JObj, node=Node}=State) ->
     gen_listener:cast(self(), {build_originate_args}),
     ApplicationName = wh_json:get_value(<<"Application-Name">>, JObj),
 
     Action = get_originate_action(ApplicationName, JObj),
+    UseNode = maybe_update_node(JObj, Node),
+    lager:debug("maybe updating node from ~s to ~s", [Node, UseNode]),
 
-    {noreply, State#state{action=Action, app=ApplicationName}};
+    {noreply, State#state{action=Action
+                          ,app=ApplicationName
+                          ,node=UseNode
+                         }};
 
 handle_cast({build_originate_args}, #state{uuid=undefined
                                            ,action = ?ORIGINATE_PARK
@@ -272,8 +277,13 @@ handle_cast({originate_execute}, #state{tref=TRef}=State) when is_reference(TRef
     gen_listener:cast(self(), {originate_execute}),
     _ = erlang:cancel_timer(TRef),
     {noreply, State#state{tref=undefined}};
-handle_cast({originate_execute}, #state{dialstrings=Dialstrings, node=Node, originate_req=JObj
-                                        ,uuid=UUID, server_id=ServerId, control_pid=CtrlPid}=State) ->
+handle_cast({originate_execute}, #state{dialstrings=Dialstrings
+                                        ,node=Node
+                                        ,originate_req=JObj
+                                        ,uuid=UUID
+                                        ,server_id=ServerId
+                                        ,control_pid=CtrlPid
+                                       }=State) ->
     case originate_execute(Node, Dialstrings) of
         {ok, _} when is_pid(CtrlPid) ->
             lager:debug("originate completed"),
@@ -424,6 +434,17 @@ get_originate_action(_, _) ->
     lager:debug("got originate with action park"),
     ?ORIGINATE_PARK.
 
+-spec maybe_update_node/2 :: (wh_json:object(), atom()) -> atom().
+maybe_update_node(JObj, Node) ->
+    case wh_json:get_value(<<"Existing-Call-ID">>, JObj) of
+        undefined -> Node;
+        CallId ->
+            case ecallmgr_fs_nodes:channel_node(CallId) of
+                {error, _} -> Node;
+                {ok, N} -> N
+            end
+    end.
+
 get_eavesdrop_action(JObj) ->
     {CallId, Group} = case wh_json:get_value(<<"Eavesdrop-Group-ID">>, JObj) of
                           undefined -> {wh_json:get_value(<<"Eavesdrop-Call-ID">>, JObj), <<>>};
@@ -450,9 +471,11 @@ build_originate_args(Action, Endpoints, JObj) ->
                            ], JObj),
     list_to_binary([ecallmgr_fs_xml:get_channel_vars(J), DialStrings, " ", Action]).
 
--spec originate_execute/2 :: (atom(), ne_binary()) -> {'ok', ne_binary()} |
-                                                      {'error', ne_binary()}.
+-spec originate_execute/2 :: (atom(), ne_binary()) ->
+                                     {'ok', ne_binary()} |
+                                     {'error', ne_binary()}.
 originate_execute(Node, Dialstrings) ->
+    lager:debug("executing on ~s: ~s", [Node, Dialstrings]),
     {ok, BGApiID} = freeswitch:bgapi(Node, 'originate', wh_util:to_list(Dialstrings)),
 
     receive

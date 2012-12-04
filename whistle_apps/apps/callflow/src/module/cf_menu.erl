@@ -355,15 +355,8 @@ get_new_attachment_url(AttachmentName, MediaId, Call) ->
             {error, _} ->
                 ok
         end,
-    Rev = case couch_mgr:lookup_doc_rev(AccountDb, MediaId) of
-              {ok, R} -> <<"?rev=", R/binary>>;
-              _ -> <<>>
-          end,
-    <<(couch_mgr:get_url())/binary
-      ,AccountDb/binary
-      ,$/, MediaId/binary
-      ,$/, AttachmentName/binary
-      ,Rev/binary>>.
+    {ok, URL} = wh_media_url:store(AccountDb, MediaId, AttachmentName),
+    URL.
 
 %%--------------------------------------------------------------------
 %% @private

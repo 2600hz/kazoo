@@ -46,7 +46,8 @@ add_node(Node, Options) ->
 
 -spec remove_node/1 :: (atom()) -> 'ok' | {'error', 'running' | 'not_found' | 'simple_one_for_one'}.
 remove_node(Node) ->
-    _ = supervisor:terminate_child(?SERVER, Node),
+    _T = supervisor:terminate_child(?SERVER, Node),
+    lager:debug("terminated pinger: ~p", [_T]),
     supervisor:delete_child(?SERVER, Node).
 
 %% ===================================================================
