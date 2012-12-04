@@ -181,54 +181,79 @@ validate(#cb_context{req_verb = <<"get">>}=Context, Id, ?STATS_PATH_TOKEN, ?REAL
 
 validate_eavesdrop_on_call(#cb_context{req_data=Data}=Context) ->
     case is_valid_endpoint(Context, Data)
-        andalso is_valid_call(Data)
-        andalso is_valid_mode(Data)
+        andalso is_valid_call(Context, Data)
+        andalso is_valid_mode(Context, Data)
     of
-        true -> Context#cb_context{resp_status=success
-                                   ,resp_data=wh_json:new()
-                                  };
-        {error, E} -> cb_context:add_system_error(E, Context)
+        true -> Context#cb_context{resp_status=success};
+        {false, Context1} -> Context1
     end.
 
 validate_eavesdrop_on_queue(#cb_context{req_data=Data}=Context, QueueId) ->
     case is_valid_endpoint(Context, Data)
         andalso is_valid_queue(Context, QueueId)
-        andalso is_valid_mode(Data)
+        andalso is_valid_mode(Context, Data)
     of
         true ->
-            Context#cb_context{resp_status=success
-                               ,resp_data=wh_json:new()
-                              };
-        {error, E} ->
-            cb_context:add_system_error(E, Context)
+            Context#cb_context{resp_status=success};
+        {false, Context1} -> Context1
     end.
 
-is_valid_mode(Data) ->
+is_valid_mode(Context, Data) ->
     case wapi_resource:is_valid_mode(wh_json:get_value(<<"mode">>, Data, <<"listen">>)) of
         true -> true;
-        false -> {error, faulty_request}
+        false -> {false
+                  ,cb_context:add_validation_error(<<"mode">>, <<"enum">>
+                                                   ,<<"enum:Value not found in enumerated list of values">>
+                                                   ,Context
+                                                  )
+                 }
     end.
 
-is_valid_call(Data) ->
+is_valid_call(Context, Data) ->
     case wh_json:get_value(<<"call_id">>, Data) of
-        undefined -> {error, bad_identifier};
+        undefined ->
+            {false
+             ,cb_context:add_validation_error(<<"call_id">>, <<"required">>
+                                              ,<<"required:Field is required but missing">>
+                                              ,Context
+                                             )
+            };
         CallId ->
             case whapps_call_command:b_call_status(CallId) of
-                {error, _} -> {error, bad_identifier};
+                {error, _E} ->
+                    lager:debug("is not valid call: ~p", [_E]),
+                    {false
+                     ,cb_context:add_validation_error(<<"call_id">>, <<"not_found">>
+                                                      ,<<"not_found:Call was not found">>
+                                                      ,Context
+                                                     )
+                    };
                 {ok, _} -> true
             end
     end.
 
-is_valid_queue(Context, QueueId) ->
+is_valid_queue(Context, ?NE_BINARY = QueueId) ->
     AcctDb = cb_context:account_db(Context),
     case couch_mgr:open_cache_doc(AcctDb, QueueId) of
-        {ok, QueueJObj} -> is_valid_queue(QueueJObj);
-        {error, _} -> {error, bad_identifier}
-    end.
-is_valid_queue(QueueJObj) ->
+        {ok, QueueJObj} -> is_valid_queue(Context, QueueJObj);
+        {error, _} ->
+            {false
+             ,cb_context:add_validation_error(<<"queue_id">>, <<"not_found">>
+                                              ,<<"not_found:Queue was not found">>
+                                              ,Context
+                                             )
+            }
+    end;
+is_valid_queue(Context, QueueJObj) ->
     case wh_json:get_value(<<"pvt_type">>, QueueJObj) of
         <<"queue">> -> true;
-        _ -> {error, bad_identifier}
+        _ ->
+            {false
+             ,cb_context:add_validation_error(<<"queue_id">>, <<"type">>
+                                                  ,<<"type:Id did not represent a queue">>
+                                              ,Context
+                                             )
+            }
     end.
 
 is_valid_endpoint(Context, DataJObj) ->
@@ -236,14 +261,26 @@ is_valid_endpoint(Context, DataJObj) ->
     Id = wh_json:get_value(<<"id">>, DataJObj),
 
     case couch_mgr:open_cache_doc(AcctDb, Id) of
-        {ok, CallMeJObj} -> is_valid_endpoint(CallMeJObj);
-        {error, _} -> {error, bad_identifier}
+        {ok, CallMeJObj} -> is_valid_endpoint_type(Context, CallMeJObj);
+        {error, _} ->
+            {false
+             ,cb_context:add_validation_error(<<"id">>, <<"not_found">>
+                                              ,<<"not_found:Id was not found">>
+                                              ,Context
+                                             )
+            }
     end.
-is_valid_endpoint(CallMeJObj) ->
+is_valid_endpoint_type(Context, CallMeJObj) ->
     case wh_json:get_value(<<"pvt_type">>, CallMeJObj) of
         <<"device">> -> true;
         %%<<"user">> -> true;
-        _ -> {error, bad_identifier}
+        _ ->
+            {false
+             ,cb_context:add_validation_error(<<"id">>, <<"type">>
+                                              ,<<"type:Id did not represent a valid endpoint">>
+                                              ,Context
+                                             )
+            }
     end.
 
 %%--------------------------------------------------------------------
@@ -270,25 +307,46 @@ put(Context, QID, ?EAVESDROP_PATH_TOKEN) ->
            ],
     eavesdrop_req(Context, Prop).
 
+-spec default_eavesdrop_req/1 :: (cb_context:context()) -> wh_proplist().
 default_eavesdrop_req(#cb_context{req_data=Data}=Context) ->
     [{<<"Eavesdrop-Mode">>, wh_json:get_value(<<"mode">>, Data, <<"listen">>)}
      ,{<<"Account-ID">>, cb_context:account_id(Context)}
      ,{<<"Endpoint-ID">>, wh_json:get_value(<<"id">>, Data)}
+     ,{<<"Endpoint-Timeout">>, wh_json:get_integer_value(<<"timeout">>, Data, 20)}
+     ,{<<"Outgoing-Caller-ID-Name">>, wh_json:get_value(<<"caller_id_name">>, Data)}
+     ,{<<"Outgoing-Caller-ID-Number">>, wh_json:get_value(<<"caller_id_number">>, Data)}
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
 -spec eavesdrop_req/2 :: (cb_context:context(), wh_proplist()) -> cb_context:context().
 eavesdrop_req(Context, Prop) ->
-    case whapps_util:amqp_pool_request(Prop
+    case whapps_util:amqp_pool_request(props:filter_undefined(Prop)
                                        ,fun wapi_resource:publish_eavesdrop_req/1
                                        ,fun wapi_resource:eavesdrop_resp_v/1
                                        ,2000
                                       )
     of
-        {ok, Resp} -> Context#cb_context{resp_status=success, resp_data=Resp};
-        {error, timeout} -> Context#cb_context{resp_status=error, resp_data = <<"request timed out">>};
-        {error, E} -> Context#cb_context{resp_status=error, resp_data=E}
+        {ok, Resp} -> crossbar_util:response(filter_response_fields(Resp), Context);
+        {error, timeout} ->
+            cb_context:add_system_error(timeout
+                                        ,[{details, <<"eavesdrop failed to start">>}]
+                                        ,Context
+                                       );
+        {error, E} -> crossbar_util:response(error, <<"error">>, 500, E, Context)
     end.
+
+-define(REMOVE_FIELDS, [<<"Server-ID">>
+                        ,<<"Node">>
+                        ,<<"Msg-ID">>
+                        ,<<"App-Version">>
+                        ,<<"App-Name">>
+                        ,<<"Event-Name">>
+                        ,<<"Event-Category">>
+                       ]).
+filter_response_fields(JObj) ->
+    wh_json:set_value(<<"eavesdrop_request_id">>, wh_json:get_value(<<"Msg-ID">>, JObj)
+                      ,wh_json:normalize(wh_json:delete_keys(?REMOVE_FIELDS, JObj))
+                     ).
 
 %%--------------------------------------------------------------------
 %% @public
