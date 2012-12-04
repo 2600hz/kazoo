@@ -111,7 +111,7 @@
                        ,app_name = <<"whapps_call">> :: ne_binary()        %% The application name used during whapps_call_command
                        ,app_version = <<"1.0.0">> :: ne_binary()           %% The application version used during whapps_call_command
                        ,custom_publish_fun :: whapps_custom_publish()      %% A custom command used to publish whapps_call_command
-                       ,ccvs = wh_json:new() :: wh_json:json_object()      %% Any custom channel vars that where provided with the route request
+                       ,ccvs = wh_json:new() :: wh_json:object()      %% Any custom channel vars that where provided with the route request
                        ,kvs = orddict:new() :: orddict:orddict()           %% allows callflows to set values that propogate to children
                       }).
 
@@ -136,11 +136,11 @@ default_helper_function(Field, #whapps_call{}) ->
 new() ->
     #whapps_call{}.
 
--spec from_route_req/1 :: (wh_json:json_object()) -> whapps_call:call().
+-spec from_route_req/1 :: (wh_json:object()) -> whapps_call:call().
 from_route_req(RouteReq) ->
     from_route_req(RouteReq, #whapps_call{}).
 
--spec from_route_req/2 :: (wh_json:json_object(), whapps_call:call()) -> whapps_call:call().
+-spec from_route_req/2 :: (wh_json:object(), whapps_call:call()) -> whapps_call:call().
 from_route_req(RouteReq, #whapps_call{}=Call) ->
     CallId = wh_json:get_value(<<"Call-ID">>, RouteReq, Call#whapps_call.call_id),
     put(callid, CallId),
@@ -186,11 +186,11 @@ from_route_req(RouteReq, #whapps_call{}=Call) ->
                      ,ccvs = CCVs
                     }.
 
--spec from_route_win/1 :: (wh_json:json_object()) -> whapps_call:call().
+-spec from_route_win/1 :: (wh_json:object()) -> whapps_call:call().
 from_route_win(RouteWin) ->
     from_route_win(RouteWin, #whapps_call{}).
 
--spec from_route_win/2 :: (wh_json:json_object(), whapps_call:call()) -> whapps_call:call().
+-spec from_route_win/2 :: (wh_json:object(), whapps_call:call()) -> whapps_call:call().
 from_route_win(RouteWin, #whapps_call{call_id=OldCallId
                                       ,ccvs=OldCCVs
                                       ,inception=OldInception
@@ -227,7 +227,7 @@ from_route_win(RouteWin, #whapps_call{call_id=OldCallId
                      ,ccvs = CCVs
                     }.
 
--spec from_json/1 :: (wh_json:json_object()) -> whapps_call:call().
+-spec from_json/1 :: (wh_json:object()) -> whapps_call:call().
 from_json(JObj) ->
     from_json(JObj, #whapps_call{}).
 
@@ -239,39 +239,40 @@ from_json(JObj) ->
 %% converting to/from json
 %% @end
 %%--------------------------------------------------------------------
--spec from_json/2 :: (wh_json:json_object(), whapps_call:call()) -> whapps_call:call().
-from_json(JObj, Call) ->
-    CCVs = wh_json:merge_recursive(Call#whapps_call.ccvs, wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new())),
+-spec from_json/2 :: (wh_json:object(), whapps_call:call()) -> whapps_call:call().
+from_json(JObj, #whapps_call{ccvs=OldCCVs}=Call) ->
+    CCVs = wh_json:merge_recursive(OldCCVs, wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new())),
     KVS = orddict:from_list(wh_json:to_proplist(wh_json:get_value(<<"Key-Value-Store">>, JObj, wh_json:new()))),
-    Call#whapps_call{call_id = wh_json:get_ne_value(<<"Call-ID">>, JObj, call_id_direct(Call))
-                     ,control_q = wh_json:get_ne_value(<<"Control-Queue">>, JObj, control_queue_direct(Call))
-                     ,controller_q = wh_json:get_ne_value(<<"Controller-Queue">>, JObj, controller_queue(Call))
-                     ,caller_id_name = wh_json:get_ne_value(<<"Caller-ID-Name">>, JObj, caller_id_name(Call))
-                     ,caller_id_number = wh_json:get_ne_value(<<"Caller-ID-Number">>, JObj, caller_id_number(Call))
-                     ,callee_id_name = wh_json:get_ne_value(<<"Callee-ID-Name">>, JObj, callee_id_name(Call))
-                     ,callee_id_number = wh_json:get_ne_value(<<"Callee-ID-Number">>, JObj, callee_id_number(Call))
-                     ,request = wh_json:get_ne_value(<<"Request">>, JObj, request(Call))
-                     ,request_user = wh_json:get_ne_value(<<"Request-User">>, JObj, request_user(Call))
-                     ,request_realm = wh_json:get_ne_value(<<"Request-Realm">>, JObj, request_realm(Call))
-                     ,from = wh_json:get_ne_value(<<"From">>, JObj, from(Call))
-                     ,from_user = wh_json:get_ne_value(<<"From-User">>, JObj, from_user(Call))
-                     ,from_realm = wh_json:get_ne_value(<<"From-Realm">>, JObj, from_realm(Call))
-                     ,to = wh_json:get_ne_value(<<"To">>, JObj, to(Call))
-                     ,to_user = wh_json:get_ne_value(<<"To-User">>, JObj, to_user(Call))
-                     ,to_realm = wh_json:get_ne_value(<<"To-Realm">>, JObj, to_realm(Call))
-                     ,switch_hostname = wh_json:get_value(<<"Switch-Hostname">>, JObj, switch_hostname(Call))
-                     ,switch_nodename = wh_json:get_value(<<"Switch-Nodename">>, JObj, switch_nodename(Call))
-                     ,inception = wh_json:get_ne_value(<<"Inception">>, JObj, inception(Call))
-                     ,account_db = wh_json:get_ne_value(<<"Account-DB">>, JObj, account_db(Call))
-                     ,account_id = wh_json:get_ne_value(<<"Account-ID">>, JObj, account_id(Call))
-                     ,authorizing_id = wh_json:get_ne_value(<<"Authorizing-ID">>, JObj, authorizing_id(Call))
-                     ,authorizing_type = wh_json:get_ne_value(<<"Authorizing-Type">>, JObj, authorizing_type(Call))
-                     ,owner_id = wh_json:get_ne_value(<<"Owner-ID">>, JObj, owner_id(Call))
-                     ,app_name = wh_json:get_ne_value(<<"App-Name">>, JObj, application_name(Call))
-                     ,app_version = wh_json:get_ne_value(<<"App-Version">>, JObj, application_version(Call))
-                     ,ccvs = CCVs
-                     ,kvs = orddict:merge(fun(_, _, V2) -> V2 end, Call#whapps_call.kvs, KVS)
-                    }.
+    Call#whapps_call{
+      call_id = wh_json:get_ne_value(<<"Call-ID">>, JObj, call_id_direct(Call))
+      ,control_q = wh_json:get_ne_value(<<"Control-Queue">>, JObj, control_queue_direct(Call))
+      ,controller_q = wh_json:get_ne_value(<<"Controller-Queue">>, JObj, controller_queue(Call))
+      ,caller_id_name = wh_json:get_ne_value(<<"Caller-ID-Name">>, JObj, caller_id_name(Call))
+      ,caller_id_number = wh_json:get_ne_value(<<"Caller-ID-Number">>, JObj, caller_id_number(Call))
+      ,callee_id_name = wh_json:get_ne_value(<<"Callee-ID-Name">>, JObj, callee_id_name(Call))
+      ,callee_id_number = wh_json:get_ne_value(<<"Callee-ID-Number">>, JObj, callee_id_number(Call))
+      ,request = wh_json:get_ne_value(<<"Request">>, JObj, request(Call))
+      ,request_user = wh_json:get_ne_value(<<"Request-User">>, JObj, request_user(Call))
+      ,request_realm = wh_json:get_ne_value(<<"Request-Realm">>, JObj, request_realm(Call))
+      ,from = wh_json:get_ne_value(<<"From">>, JObj, from(Call))
+      ,from_user = wh_json:get_ne_value(<<"From-User">>, JObj, from_user(Call))
+      ,from_realm = wh_json:get_ne_value(<<"From-Realm">>, JObj, from_realm(Call))
+      ,to = wh_json:get_ne_value(<<"To">>, JObj, to(Call))
+      ,to_user = wh_json:get_ne_value(<<"To-User">>, JObj, to_user(Call))
+      ,to_realm = wh_json:get_ne_value(<<"To-Realm">>, JObj, to_realm(Call))
+      ,switch_hostname = wh_json:get_value(<<"Switch-Hostname">>, JObj, switch_hostname(Call))
+      ,switch_nodename = wh_json:get_value(<<"Switch-Nodename">>, JObj, switch_nodename(Call))
+      ,inception = wh_json:get_ne_value(<<"Inception">>, JObj, inception(Call))
+      ,account_db = wh_json:get_ne_value(<<"Account-DB">>, JObj, account_db(Call))
+      ,account_id = wh_json:get_ne_value(<<"Account-ID">>, JObj, account_id(Call))
+      ,authorizing_id = wh_json:get_ne_value(<<"Authorizing-ID">>, JObj, authorizing_id(Call))
+      ,authorizing_type = wh_json:get_ne_value(<<"Authorizing-Type">>, JObj, authorizing_type(Call))
+      ,owner_id = wh_json:get_ne_value(<<"Owner-ID">>, JObj, owner_id(Call))
+      ,app_name = wh_json:get_ne_value(<<"App-Name">>, JObj, application_name(Call))
+      ,app_version = wh_json:get_ne_value(<<"App-Version">>, JObj, application_version(Call))
+      ,ccvs = CCVs
+      ,kvs = orddict:merge(fun(_, _, V2) -> V2 end, Call#whapps_call.kvs, KVS)
+     }.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -281,7 +282,7 @@ from_json(JObj, Call) ->
 %% converting to/from json
 %% @end
 %%--------------------------------------------------------------------
--spec to_json/1 :: (whapps_call:call()) -> wh_json:json_object().
+-spec to_json/1 :: (whapps_call:call()) -> wh_json:object().
 to_json(#whapps_call{}=Call) ->
     Props = to_proplist(Call),
     KVS = [KV
@@ -297,7 +298,7 @@ to_json(#whapps_call{}=Call) ->
                               ,wh_json:is_json_term(V)
                       ]).
 
--spec to_proplist/1 :: (whapps_call:call()) -> proplist().
+-spec to_proplist/1 :: (whapps_call:call()) -> wh_proplist().
 to_proplist(#whapps_call{}=Call) ->
     [{<<"Call-ID">>, call_id_direct(Call)}
      ,{<<"Control-Queue">>, control_queue_direct(Call)}
@@ -571,13 +572,13 @@ set_custom_channel_var(Key, Value, #whapps_call{ccvs=CCVs}=Call) ->
     whapps_call_command:set(wh_json:set_value(Key, Value, wh_json:new()), undefined, Call),
     handle_ccvs_update(wh_json:set_value(Key, Value, CCVs), Call).
 
--spec set_custom_channel_vars/2 :: (proplist(), whapps_call:call()) -> whapps_call:call().
+-spec set_custom_channel_vars/2 :: (wh_proplist(), whapps_call:call()) -> whapps_call:call().
 set_custom_channel_vars(Props, #whapps_call{ccvs=CCVs}=Call) ->
     NewCCVs = wh_json:set_values(Props, CCVs),
     whapps_call_command:set(NewCCVs, undefined, Call),
     handle_ccvs_update(NewCCVs, Call).
 
--spec update_custom_channel_vars/2 :: ([fun((wh_json:json_object()) -> wh_json:json_object()),...], whapps_call:call()) -> whapps_call:call().
+-spec update_custom_channel_vars/2 :: ([fun((wh_json:object()) -> wh_json:object()),...], whapps_call:call()) -> whapps_call:call().
 update_custom_channel_vars(Updaters, #whapps_call{ccvs=CCVs}=Call) ->
     NewCCVs = lists:foldr(fun(F, J) -> F(J) end, CCVs, Updaters),
     whapps_call_command:set(NewCCVs, undefined, Call),
@@ -591,11 +592,11 @@ custom_channel_var(Key, Default, #whapps_call{ccvs=CCVs}) ->
 custom_channel_var(Key, #whapps_call{ccvs=CCVs}) ->
     wh_json:get_value(Key, CCVs).
 
--spec custom_channel_vars/1 :: (whapps_call:call()) -> wh_json:json_object().
+-spec custom_channel_vars/1 :: (whapps_call:call()) -> wh_json:object().
 custom_channel_vars(#whapps_call{ccvs=CCVs}) ->
     CCVs.
 
--spec handle_ccvs_update/2 :: (wh_json:json_object(), whapps_call:call()) -> whapps_call:call().
+-spec handle_ccvs_update/2 :: (wh_json:object(), whapps_call:call()) -> whapps_call:call().
 handle_ccvs_update(CCVs, #whapps_call{}=Call) ->
     lists:foldl(fun({Var, Index}, C) ->
                         case wh_json:get_ne_value(Var, CCVs) of
@@ -658,7 +659,7 @@ kvs_find(Key, #whapps_call{kvs=Dict}) ->
 kvs_fold(Fun, Acc0, #whapps_call{kvs=Dict}) ->
     orddict:fold(Fun, Acc0, Dict).
 
--spec kvs_from_proplist/2 :: (proplist(), whapps_call:call()) -> whapps_call:call().
+-spec kvs_from_proplist/2 :: (wh_proplist(), whapps_call:call()) -> whapps_call:call().
 kvs_from_proplist(List, #whapps_call{kvs=Dict}=Call) ->
     L = orddict:from_list([{wh_util:to_binary(K), V} || {K, V} <- List]),
     Call#whapps_call{kvs=orddict:merge(fun(_, V1, _) -> V1 end, L, Dict)}.
@@ -675,13 +676,13 @@ kvs_map(Pred, #whapps_call{kvs=Dict}=Call) ->
 kvs_store(Key, Value, #whapps_call{kvs=Dict}=Call) ->
     Call#whapps_call{kvs=orddict:store(wh_util:to_binary(Key), Value, Dict)}.
 
--spec kvs_store_proplist/2 :: (proplist(), whapps_call:call()) -> whapps_call:call().
+-spec kvs_store_proplist/2 :: (wh_proplist(), whapps_call:call()) -> whapps_call:call().
 kvs_store_proplist(List, #whapps_call{kvs=Dict}=Call) ->
     Call#whapps_call{kvs=lists:foldr(fun({K, V}, D) ->
                                              orddict:store(wh_util:to_binary(K), V, D)
                                      end, Dict, List)}.
 
--spec kvs_to_proplist/1 :: (whapps_call:call()) -> proplist().
+-spec kvs_to_proplist/1 :: (whapps_call:call()) -> wh_proplist().
 kvs_to_proplist(#whapps_call{kvs=Dict}) ->
     orddict:to_list(Dict).
 
