@@ -156,7 +156,6 @@ maybe_allow_change(#cb_context{auth_account_id=AuthAccountId, account_id=Account
     case AuthAccountId =:= ResellerId  of
         true ->
             check_plan_id(Context, PlanId, ResellerId);
-%%            Context#cb_context{resp_status=success};
         false ->    
             cb_context:add_system_error(forbidden, Context)
     end.
@@ -176,6 +175,14 @@ check_plan_id(#cb_context{}=Context, PlanId, ResellerId) ->
         Else -> Else
     end.
 
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec is_service_plan/3 :: (#cb_context{}, path_token(), wh_json:object()) -> #cb_context{}.
 is_service_plan(#cb_context{}=Context, PlanId, JObj) ->
     case wh_json:get_value(<<"pvt_type">>, JObj) =:= <<>> of
         true -> Context#cb_context{resp_status=success};
