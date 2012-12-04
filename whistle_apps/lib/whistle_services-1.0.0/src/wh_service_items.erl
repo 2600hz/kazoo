@@ -9,6 +9,7 @@
 
 -export([empty/0]).
 -export([to_list/1]).
+-export([public_json/1]).
 -export([find/3]).
 -export([update/2]).
 
@@ -36,6 +37,18 @@ empty() ->
 -spec to_list/1 :: (items()) -> [wh_service_item:item(),...] | [].
 to_list(ServiceItems) ->
     [ServiceItem || {_, ServiceItem} <- dict:to_list(ServiceItems)].
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec public_json/1 :: (items()) -> wh_json:objects().
+public_json(ServiceItems) ->
+    [wh_service_item:public_json(ServiceItem)
+     || {_, ServiceItem} <- dict:to_list(ServiceItems)
+    ].
 
 %%--------------------------------------------------------------------
 %% @public

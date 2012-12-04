@@ -21,7 +21,7 @@
          ,add_content_types_accepted/2
         ]).
 
--include_lib("crossbar/include/crossbar.hrl").
+-include("include/crossbar.hrl").
 
 -type context() :: #cb_context{}.
 -export_type([context/0]).

@@ -25,7 +25,7 @@
          ,halt/2, content_type_matches/2, ensure_content_type/1
         ]).
 
--include_lib("crossbar/include/crossbar.hrl").
+-include("include/crossbar.hrl").
 
 -type cowboy_multipart_response() :: {{'headers', cowboy_http:headers()} |
                                       {'data', binary()} |
@@ -66,7 +66,7 @@ is_cors_request(Req) ->
 is_cors_request(Req, []) -> {false, Req};
 is_cors_request(Req, [ReqHdr|ReqHdrs]) ->
     case cowboy_http_req:header(ReqHdr, Req) of
-        {undefined, Req1} -> is_cors_request(ReqHdrs, Req1);
+        {undefined, Req1} -> is_cors_request(Req1, ReqHdrs);
         {_H, Req1} ->
             lager:debug("request has an ~s header: ~s", [ReqHdr, _H]),
             {true, Req1}

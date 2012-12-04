@@ -7,6 +7,7 @@
 %%%-------------------------------------------------------------------
 -module(wh_service_item).
 
+-export([public_json/1]).
 -export([empty/0]).
 -export([set_category/2
          ,category/1
@@ -50,6 +51,25 @@
 -export_type([item/0]).
 
 -include_lib("whistle_services/src/whistle_services.hrl").
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec public_json/1 :: (item()) -> wh_json:object().
+public_json(Item) ->
+    Props = [{<<"category">>, Item#wh_service_item.category}
+             ,{<<"item">>, Item#wh_service_item.item}
+             ,{<<"quantity">>, Item#wh_service_item.quantity}
+             ,{<<"rate">>, Item#wh_service_item.rate}
+             ,{<<"single_discount">>, Item#wh_service_item.single_discount}              
+             ,{<<"single_discount_rate">>, Item#wh_service_item.single_discount_rate}
+             ,{<<"cumulative_discount">>, Item#wh_service_item.cumulative_discount}
+             ,{<<"cumulative_discount_rate">>, Item#wh_service_item.cumulative_discount_rate}
+            ],
+    wh_json:from_list(props:filter_undefined(Props)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -241,3 +261,5 @@ bookkeeper(Bookkeeper, #wh_service_item{bookkeepers=Bookkeepers}) ->
 -spec set_bookkeepers/2 :: (wh_json:json_object(), #wh_service_item{}) -> #wh_service_item{}.
 set_bookkeepers(Bookkeepers, #wh_service_item{}=ServiceItem) ->
     ServiceItem#wh_service_item{bookkeepers=Bookkeepers}.
+
+

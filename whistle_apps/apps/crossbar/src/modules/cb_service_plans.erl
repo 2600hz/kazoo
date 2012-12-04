@@ -86,16 +86,19 @@ validate(#cb_context{req_verb = <<"get">>, account_id=AccountId}=Context) ->
     ResellerId = wh_services:find_reseller_id(AccountId),
     ResellerDb = wh_util:format_account_id(ResellerId, encoded),
     crossbar_doc:load_view(?CB_LIST, [], Context#cb_context{db_name=ResellerDb}, fun normalize_view_results/2).
+
 validate(#cb_context{req_verb = <<"get">>, account_id=AccountId}=Context, <<"current">>) ->
-    Context#cb_context{resp_data=wh_services:service_plan_json(AccountId)};
+    Context#cb_context{resp_status=success, resp_data=wh_services:public_json(AccountId)};
+validate(#cb_context{}=Context, <<"current">>) ->
+    cb_context:add_system_error(bad_identifier, Context);
 validate(#cb_context{req_verb = <<"get">>, account_id=AccountId}=Context, PlanId) ->
     ResellerId = wh_services:find_reseller_id(AccountId),
     ResellerDb = wh_util:format_account_id(ResellerId, encoded),
-    crossbar_doc:read(PlanId, Context#cb_context{db_name=ResellerDb});
-validate(#cb_context{req_verb = <<"post">>}=Context, _PlanId) ->
-    maybe_allow_change(Context);
-validate(#cb_context{req_verb = <<"delete">>}=Context, _PlanId) ->
-    maybe_allow_change(Context).
+    crossbar_doc:load(PlanId, Context#cb_context{db_name=ResellerDb});
+validate(#cb_context{req_verb = <<"post">>}=Context, PlanId) ->
+    maybe_allow_change(Context, PlanId);
+validate(#cb_context{req_verb = <<"delete">>}=Context, PlanId) ->
+    maybe_allow_change(Context, PlanId).
 
 %% [PlanId || PlanId <- wh_json:get_keys(Plans), wh_json:get_value([PlanId, <<"account_id">>], Plans) =:= <<"reseller_id_1">>].
 
@@ -112,7 +115,8 @@ post(#cb_context{account_id=AccountId}=Context, PlanId) ->
                 ,fun(S) -> wh_services:save(S) end
                ],
     Services = lists:foldl(fun(F, S) -> F(S) end, wh_services:fetch(AccountId), Routines),
-    Context#cb_context{resp_data=wh_services:service_plan_json(Services)}.
+    Context#cb_context{resp_data=wh_services:service_plan_json(Services)
+                      ,resp_status=success}.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -126,7 +130,8 @@ delete(#cb_context{account_id=AccountId}=Context, PlanId) ->
                 ,fun(S) -> wh_services:save(S) end
                ],
     Services = lists:foldl(fun(F, S) -> F(S) end, wh_services:fetch(AccountId), Routines),
-    Context#cb_context{resp_data=wh_services:service_plan_json(Services)}.
+    Context#cb_context{resp_data=wh_services:service_plan_json(Services)
+                       ,resp_status=success}.
 
 
 %%--------------------------------------------------------------------
@@ -139,20 +144,43 @@ delete(#cb_context{account_id=AccountId}=Context, PlanId) ->
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
 
-
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% Check if you have the permission to update or delete service plans
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_allow_change/1 :: (#cb_context{}) -> #cb_context{}.
-maybe_allow_change(#cb_context{auth_account_id=AuthAccountId, account_id=AccountId}=Context) ->
+-spec maybe_allow_change/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+maybe_allow_change(#cb_context{auth_account_id=AuthAccountId, account_id=AccountId}=Context, PlanId) ->
     ResellerId = wh_services:find_reseller_id(AccountId),
     case AuthAccountId =:= ResellerId  of
         true ->
-            Context#cb_context{resp_status=success};
+            check_plan_id(Context, PlanId, ResellerId);
+%%            Context#cb_context{resp_status=success};
         false ->    
-            cb_context:add_system_error(forbiden, Context)
+            cb_context:add_system_error(forbidden, Context)
     end.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec check_plan_id/3 :: (#cb_context{}, path_token(), ne_binary()) -> #cb_context{}.
+check_plan_id(#cb_context{}=Context, PlanId, ResellerId) ->
+    ResellerDb = wh_util:format_account_id(ResellerId, encoded),
+    case crossbar_doc:load(PlanId, Context#cb_context{db_name=ResellerDb}) of
+        #cb_context{resp_status=success, doc=JObj} ->
+            is_service_plan(Context, PlanId, JObj);
+        Else -> Else
+    end.
+
+is_service_plan(#cb_context{}=Context, PlanId, JObj) ->
+    case wh_json:get_value(<<"pvt_type">>, JObj) =:= <<>> of
+        true -> Context#cb_context{resp_status=success};
+        false ->
+            cb_context:add_system_error(bad_identifier, [{details, PlanId}], Context)
+    end.
+
+            

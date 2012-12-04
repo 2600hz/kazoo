@@ -35,8 +35,6 @@
 -export([reset_category/2]).
 -export([get_service_module/1]).
 
--export([is_reseller/1]).
-
 -include_lib("whistle_services/src/whistle_services.hrl").
 -include_lib("whistle/include/wh_databases.hrl").
 
@@ -356,28 +354,16 @@ public_json(#wh_services{jobj=ServicesJObj, cascade_quantities=CascadeQuantities
              ,{<<"reseller">>, wh_json:is_true(<<"pvt_reseller">>, ServicesJObj)}
              ,{<<"dirty">>, wh_json:is_true(<<"pvt_dirty">>, ServicesJObj)}
              ,{<<"in_good_standing">>, InGoodStanding}
+             ,{<<"items">>, wh_service_plans:public_json_items(ServicesJObj)}
             ],
     wh_json:from_list(Props);
 public_json(Account) ->
     public_json(fetch(Account)).
 
-
-
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Helper function to know if an account is a reseller or not.
-%% @end
-%%--------------------------------------------------------------------
--spec is_reseller/1 :: (ne_binary() | #wh_services{}) -> boolean().
-is_reseller(Account) ->
-    Service = public_json(Account),
-    wh_json:is_true(<<"reseller">>, Service).
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% 
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec find_reseller_id/1 :: ('undefined' | ne_binary()) -> 'undefined' | ne_binary().
