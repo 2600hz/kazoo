@@ -585,8 +585,6 @@ answered({channel_bridged, CallId}, #state{member_call_id=CallId
     lager:debug("member has connected to agent"),
     acdc_agent:member_connect_accepted(Srv),
 
-    _ = spawn(acdc_eavesdrop, start, [_Call, _AcctId, CallId]),
-
     {next_state, answered, State};
 
 answered({channel_bridged, CallId}, #state{agent_call_id=CallId
