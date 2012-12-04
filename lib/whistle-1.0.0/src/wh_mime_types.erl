@@ -35,7 +35,7 @@ to_extension(<<"audio/mpeg">>) -> <<"mp3">>;
 to_extension(<<"audio/mp3">>) -> <<"mp3">>;
 to_extension(<<CT/binary>>) -> 
     case lists:keysearch(wh_util:to_list(CT), 2, mime_types()) of
-        {value, Extension} -> wh_util:to_binary(Extension);
+        {value, {_, Extension}} -> wh_util:to_binary(Extension);
         false ->
             whapps_config:get(?CONFIG_CAT, <<"default_extension">>, <<"mp3">>)
     end;
