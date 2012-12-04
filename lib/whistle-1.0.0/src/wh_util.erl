@@ -273,7 +273,7 @@ get_account_realm(Db, AccountId) ->
         {ok, JObj} ->
             wh_json:get_ne_value(<<"realm">>, JObj);
         {error, R} ->
-            lager:debug("error while looking up account realm: ~p", [R]),
+            lager:debug("error while looking up account realm in ~s: ~p", [AccountId, R]),
             undefined
     end.
 
