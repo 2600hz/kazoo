@@ -35,6 +35,8 @@
 -export([reset_category/2]).
 -export([get_service_module/1]).
 
+-export([is_reseller/1]).
+
 -include_lib("whistle_services/src/whistle_services.hrl").
 -include_lib("whistle/include/wh_databases.hrl").
 
@@ -104,15 +106,6 @@ new(AccountId) ->
                  ,billing_id=BillingId
                  ,current_billing_id=BillingId
                  ,deleted=wh_json:is_true(<<"pvt_deleted">>, Account)}.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
-
-
 
 %%--------------------------------------------------------------------
 %% @public
@@ -578,6 +571,18 @@ cascade_category_quantity(Category, Exceptions, #wh_services{cascade_quantities=
 -spec reset_category/2 :: (ne_binary(), services()) -> services().
 reset_category(Category, #wh_services{updates=JObj}=Services) ->
     Services#wh_services{updates=wh_json:set_value(Category, wh_json:new(), JObj)}.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% Helper function to know if an account is a reseller or not.
+%% @end
+%%--------------------------------------------------------------------
+-spec is_reseller/1 :: (ne_binary() | #wh_services{}) -> boolean().
+is_reseller(Account) ->
+    Service = public_json(Account),
+    wh_json:is_true(<<"reseller">>, Service).
 
 %%%===================================================================
 %%% Internal functions
