@@ -16,7 +16,6 @@
          ,call_missed/4
          ,call_handled/4
          ,call_waiting/3
-         ,call_finished/1
 
          %% Agent-specific stats
          ,agent_active/2
@@ -38,17 +37,13 @@
          ,code_change/3
         ]).
 
-%% Internal functions
--export([write_to_dbs/1
-         ,flush_table/0
-        ]).
-
 -include("acdc.hrl").
 
 -type call_status() :: 'waiting'    % caller is waiting for an agent
                      | 'handling'   % caller is being handled by an agent (still active)
                      | 'finished'   % caller has finished (probably by another node)
                      | 'processed'  % caller has finished, handled by us
+                     | 'missed'     % agent missed the call
                      | 'abandoned'. % caller left the queue (hangup or dtmf exit)
 
 -record(call_stat, {
@@ -74,7 +69,6 @@
 -type agent_stat() :: #agent_stat{}.
 
 -type stat() :: call_stat() | agent_stat().
--type stats() :: [stat(),...] | [].
 
 %% An agent connected with a caller
 -spec call_processed/5 :: (ne_binary(), ne_binary()
@@ -96,12 +90,12 @@ call_processed(AcctId, QueueId, AgentId, CallId, Elapsed) ->
                            ,ne_binary(), abandon_reason()
                           ) -> 'ok'.
 call_abandoned(AcctId, QueueId, CallId, Reason) ->
-    gen_listener:cast(?MODULE, {store, CallStat#call_stat{acct_id=AcctId
-                                                          ,queue_id=QueueId
-                                                          ,call_id=CallId
-                                                          ,abandon_reason=Reason
-                                                          ,status='abandoned'
-                                                         }
+    gen_listener:cast(?MODULE, {store, #call_stat{acct_id=AcctId
+                                                  ,queue_id=QueueId
+                                                  ,call_id=CallId
+                                                  ,abandon_reason=Reason
+                                                  ,status='abandoned'
+                                                 }
                                }).
 
 %% Agent was rung for a call, and failed to pickup in time
@@ -118,24 +112,23 @@ call_missed(AcctId, QueueId, AgentId, CallId) ->
 %% Call was picked up by an agent, track how long caller was in queue
 -spec call_handled/4 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 call_handled(AcctId, QueueId, CallId, AgentId) ->
-    gen_listener:cast(?MODULE, {store, CallStat#call_stat{acct_id=AcctId
-                                                          ,queue_id=QueueId
-                                                          ,agent_id=AgentId
-                                                          ,call_id=CallId
-                                                          ,status='handling'
-                                                         }
+    gen_listener:cast(?MODULE, {store, #call_stat{acct_id=AcctId
+                                                  ,queue_id=QueueId
+                                                  ,agent_id=AgentId
+                                                  ,call_id=CallId
+                                                  ,status='handling'
+                                                 }
                                }).
 
 %% Call was placed in the AMQP Queue
 -spec call_waiting/3 :: (ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 call_waiting(AcctId, QueueId, CallId) ->
-    CallStat = find_call_stat(CallId),
-    gen_listener:cast(?MODULE, {store, CallStat#call_stat{
-                                         acct_id=AcctId
-                                         ,queue_id=QueueId
-                                         ,call_id=CallId
-                                         ,status='waiting'
-                                        }
+    gen_listener:cast(?MODULE, {store, #call_stat{
+                                  acct_id=AcctId
+                                  ,queue_id=QueueId
+                                  ,call_id=CallId
+                                  ,status='waiting'
+                                 }
                                }).
 
 %% marks an agent as active for an account
@@ -233,6 +226,57 @@ code_change(_OldVsn, State, _Extra) ->
 store_stat(#call_stat{acct_id=AcctId}=Stat) ->
     JObj = stat_to_jobj(Stat),
     store_stat(AcctId, JObj);
-store_stat(#agent_stat(acct_id=AcctId}=Stat) ->
+store_stat(#agent_stat{acct_id=AcctId}=Stat) ->
     JObj = stat_to_jobj(Stat),
     store_stat(AcctId, JObj).
+
+store_stat(AcctId, JObj) ->
+    case couch_mgr:save_doc(wh_util:format_account_id(AcctId, encoded), JObj) of
+        {ok, _} -> ok;
+        {error, _E} ->
+            lager:debug("error saving: ~p", [_E]),
+            timer:sleep(250),
+            store_stat(AcctId, JObj)
+    end.
+
+-spec stat_to_jobj/1 :: (stat()) -> wh_json:object().
+stat_to_jobj(#call_stat{
+                call_id=CallId
+                ,acct_id=AcctId
+                ,queue_id=QueueId
+                ,agent_id=AgentId
+                ,timestamp=TStamp
+                ,wait_time=WaitTime
+                ,talk_time=TalkTime
+                ,abandon_reason=AR
+                ,status=Status
+               }) ->
+    wh_json:from_list(
+      props:filter_undefined(
+        [{<<"call_id">>, CallId}
+         ,{<<"account_id">>, AcctId}
+         ,{<<"queue_id">>, QueueId}
+         ,{<<"agent_id">>, AgentId}
+         ,{<<"timestamp">>, TStamp}
+         ,{<<"wait_time">>, WaitTime}
+         ,{<<"talk_time">>, TalkTime}
+         ,{<<"abondon_reason">>, AR}
+         ,{<<"status">>, Status}
+         ,{<<"type">>, <<"call_partial">>}
+        ]));
+stat_to_jobj(#agent_stat{
+                agent_id=AgentId
+                ,acct_id=AcctId
+                ,timestamp=TStamp
+                ,status=Status
+                ,wait_time=WaitTime
+               }) ->
+    wh_json:from_list(
+      props:filter_undefined(
+        [{<<"account_id">>, AcctId}
+         ,{<<"agent_id">>, AgentId}
+         ,{<<"timestamp">>, TStamp}
+         ,{<<"wait_time">>, WaitTime}
+         ,{<<"status">>, Status}
+         ,{<<"type">>, <<"agent_partial">>}
+        ])).    
