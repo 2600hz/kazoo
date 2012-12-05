@@ -214,6 +214,7 @@ ready({member_call, CallJObj, Delivery}, #state{queue_proc=QueueSrv
                                                 ,connection_timer_ref=ConnRef
                                                }=State) ->
     Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, CallJObj)),
+    put(callid, whapps_call:call_id(Call)),
 
     case acdc_queue_manager:should_ignore_member_call(MgrSrv, Call, CallJObj) of
         false ->
@@ -588,7 +589,9 @@ maybe_stop_timer(ConnRef) ->
 clear_member_call(#state{connection_timer_ref=ConnRef
                          ,agent_ring_timer_ref=AgentRef
                          ,collect_ref=CollectRef
+                         ,queue_id=QueueId
                         }=State) ->
+    put(callid, QueueId),
     maybe_stop_timer(ConnRef),
     maybe_stop_timer(AgentRef),
     maybe_stop_timer(CollectRef),

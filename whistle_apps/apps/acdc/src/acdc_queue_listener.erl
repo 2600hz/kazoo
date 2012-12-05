@@ -293,6 +293,8 @@ handle_cast({member_connect_req, MemberCallJObj, Delivery}, #state{my_q=MyQ
            ) ->
     Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, MemberCallJObj)),
 
+    put(callid, whapps_call:call_id(Call)),
+
     acdc_util:bind_to_call_events(Call),
     send_member_connect_req(whapps_call:call_id(Call), AcctId, QueueId, MyQ, MyId),
 
@@ -616,6 +618,7 @@ clear_call_state(#state{acct_id=AcctId
                        }=State) ->
     _ = acdc_util:queue_presence_update(AcctId, QueueId),
 
+    put(callid, QueueId),
     State#state{call=undefined
                 ,member_call_queue=undefined
                 ,agent_id=undefined
