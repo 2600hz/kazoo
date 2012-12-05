@@ -19,7 +19,6 @@
          ,handle_member_call_cancel/2
          ,handle_agent_change/2
          ,should_ignore_member_call/3
-         ,handle_channel_destroy/2
          ,config/1
         ]).
 
@@ -75,9 +74,6 @@
                      ,{{acdc_queue_manager, handle_member_call_cancel}
                        ,[{<<"member">>, <<"call_cancel">>}]
                       }
-                     ,{{acdc_queue_manager, handle_channel_destroy}
-                       ,[{<<"call_event">>, <<"CHANNEL_DESTROY">>}]
-                      }
                      ,{{acdc_queue_manager, handle_agent_change}
                        ,[{<<"queue">>, <<"agent_change">>}]
                       }
@@ -111,10 +107,6 @@ start_link(Super, AcctId, QueueId) ->
                              ]
                             ,[Super, AcctId, QueueId]
                            ).
-
-handle_channel_destroy(JObj, _Props) ->
-    true = wapi_call:event_v(JObj),
-    acdc_stats:call_finished(wh_json:get_value(<<"Call-ID">>, JObj)).
 
 handle_member_call(JObj, Props) ->
     true = wapi_acdc_queue:member_call_v(JObj),
