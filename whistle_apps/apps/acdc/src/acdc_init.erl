@@ -34,4 +34,5 @@ init_account(AcctDb) ->
 init_queues(_, {ok, []}) -> ok;
 init_queues(_, {error, _E}) -> lager:debug("error fetching queues: ~p", [_E]);
 init_queues(AcctId, {ok, Qs}) ->
+    acdc_stats:init_db(AcctId),
     [acdc_queues_sup:new(AcctId, wh_json:get_value(<<"id">>, Q)) || Q <- Qs].

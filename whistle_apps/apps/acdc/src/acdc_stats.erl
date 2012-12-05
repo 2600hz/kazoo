@@ -24,6 +24,9 @@
          ,agent_resume/2
          ,agent_wrapup/3
          ,agent_ready/2
+
+         ,init_db/1
+         ,db_name/1
         ]).
 
 %% gen_listener functions
@@ -231,7 +234,7 @@ store_stat(#agent_stat{acct_id=AcctId}=Stat) ->
     store_stat(AcctId, JObj).
 
 store_stat(AcctId, JObj) ->
-    case couch_mgr:save_doc(wh_util:format_account_id(AcctId, encoded), JObj) of
+    case couch_mgr:save_doc(db_name(AcctId), JObj) of
         {ok, _} -> ok;
         {error, _E} ->
             lager:debug("error saving: ~p", [_E]),
@@ -280,3 +283,9 @@ stat_to_jobj(#agent_stat{
          ,{<<"status">>, Status}
          ,{<<"type">>, <<"agent_partial">>}
         ])).    
+
+init_db(AcctId) ->
+    couch_mgr:db_create(db_name(AcctId)).
+
+db_name(<<A:2/binary, B:2/binary, Rest/binary>>) ->
+    <<"acdc%2F",A/binary,"%2F",B/binary,"%2F", Rest/binary>>.
