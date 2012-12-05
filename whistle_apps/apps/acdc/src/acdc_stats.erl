@@ -24,6 +24,7 @@
          ,agent_resume/2
          ,agent_wrapup/3
          ,agent_ready/2
+         ,agent_oncall/3
 
          ,init_db/1
          ,db_name/1
@@ -66,8 +67,9 @@
           agent_id :: ne_binary()
           ,acct_id :: ne_binary()
           ,timestamp = wh_util:current_tstamp() :: integer()
-          ,status :: 'ready' | 'logged_out' | 'paused' | 'wrapup'
+          ,status :: 'ready' | 'logged_out' | 'paused' | 'wrapup' | 'busy'
           ,wait_time :: integer()
+          ,call_id :: ne_binary()
          }).
 -type agent_stat() :: #agent_stat{}.
 
@@ -148,7 +150,7 @@ agent_active(AcctId, AgentId) ->
 agent_inactive(AcctId, AgentId) ->
     gen_listener:cast(?MODULE, {store, #agent_stat{acct_id=AcctId
                                                    ,agent_id=AgentId
-                                                   ,status='paused'
+                                                   ,status='logout'
                                                   }
                                }).
 
@@ -180,12 +182,20 @@ agent_wrapup(AcctId, AgentId, Timeout) ->
                                                   }
                                }).
 
+-spec agent_oncall/3 :: (ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+agent_oncall(AcctId, AgentId, CallId) ->
+    gen_listener:cast(?MODULE, {store, #agent_stat{acct_id=AcctId
+                                                   ,agent_id=AgentId
+                                                   ,status='busy'
+                                                   ,call_id=CallId
+                                                  }
+                               }).
+
 -spec agent_ready/2 :: (ne_binary(), ne_binary()) -> 'ok'.
 agent_ready(AcctId, AgentId) ->
     gen_listener:cast(?MODULE, {store, #agent_stat{acct_id=AcctId
                                                    ,agent_id=AgentId
                                                    ,status='ready'
-                                                   ,timestamp=wh_util:current_tstamp()
                                                   }
                                }).
 
@@ -273,6 +283,7 @@ stat_to_jobj(#agent_stat{
                 ,timestamp=TStamp
                 ,status=Status
                 ,wait_time=WaitTime
+                ,call_id=CallId
                }) ->
     wh_json:from_list(
       props:filter_undefined(
@@ -282,7 +293,8 @@ stat_to_jobj(#agent_stat{
          ,{<<"wait_time">>, WaitTime}
          ,{<<"status">>, Status}
          ,{<<"type">>, <<"agent_partial">>}
-        ])).    
+         ,{<<"call_id">>, CallId}
+        ])).
 
 init_db(AcctId) ->
     DbName = db_name(AcctId),
@@ -290,5 +302,6 @@ init_db(AcctId) ->
     lager:debug("revised docs: ~p", [couch_mgr:revise_views_from_folder(DbName, acdc)]),
     ok.
 
-db_name(<<A:2/binary, B:2/binary, Rest/binary>>) ->
+db_name(Acct) ->
+    <<A:2/binary, B:2/binary, Rest/binary>> = wh_util:format_account_id(Acct, raw),
     <<"acdc%2F",A/binary,"%2F",B/binary,"%2F", Rest/binary>>.
