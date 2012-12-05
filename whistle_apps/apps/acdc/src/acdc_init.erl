@@ -30,7 +30,7 @@ init_account(AcctDb) ->
                 ,couch_mgr:get_results(AcctDb, <<"queues/crossbar_listing">>, [])
                ).
 
--spec init_queues/2 :: (ne_binary(), {'ok', wh_json:json_objects()} | {'error', _}) -> any().
+-spec init_queues/2 :: (ne_binary(), {'ok', wh_json:objects()} | {'error', _}) -> any().
 init_queues(_, {ok, []}) -> ok;
 init_queues(_, {error, _E}) -> lager:debug("error fetching queues: ~p", [_E]);
 init_queues(AcctId, {ok, Qs}) ->

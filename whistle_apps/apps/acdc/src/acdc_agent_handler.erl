@@ -12,7 +12,6 @@
 -export([handle_status_update/2
          ,handle_sync_req/2
          ,handle_sync_resp/2
-         ,handle_stats_req/2
          ,handle_call_event/2
          ,handle_member_message/2
          ,handle_config_change/2
@@ -21,7 +20,7 @@
 
 -include("acdc.hrl").
 
--spec handle_status_update/2 :: (wh_json:json_object(), wh_proplist()) -> 'ok'.
+-spec handle_status_update/2 :: (wh_json:object(), wh_proplist()) -> 'ok'.
 handle_status_update(JObj, _Props) ->
     AcctId = wh_json:get_value(<<"Account-ID">>, JObj),
     AgentId = wh_json:get_value(<<"Agent-ID">>, JObj),
@@ -105,17 +104,17 @@ maybe_resume_agent(AcctId, AgentId) ->
             acdc_agent_fsm:resume(acdc_agent_sup:fsm(P))
     end.
 
--spec handle_sync_req/2 :: (wh_json:json_object(), wh_proplist()) -> 'ok'.
+-spec handle_sync_req/2 :: (wh_json:object(), wh_proplist()) -> 'ok'.
 handle_sync_req(JObj, Props) ->
     true = wapi_acdc_agent:sync_req_v(JObj),
     acdc_agent_fsm:sync_req(props:get_value(fsm_pid, Props), JObj).
 
--spec handle_sync_resp/2 :: (wh_json:json_object(), wh_proplist()) -> 'ok'.
+-spec handle_sync_resp/2 :: (wh_json:object(), wh_proplist()) -> 'ok'.
 handle_sync_resp(JObj, Props) ->
     true = wapi_acdc_agent:sync_resp_v(JObj),
     acdc_agent_fsm:sync_resp(props:get_value(fsm_pid, Props), JObj).
 
--spec handle_call_event/2 :: (wh_json:json_object(), wh_proplist()) -> 'ok'.
+-spec handle_call_event/2 :: (wh_json:object(), wh_proplist()) -> 'ok'.
 handle_call_event(JObj, Props) ->
     FSM = props:get_value(fsm_pid, Props),
     case wapi_call:event_v(JObj) of
@@ -132,8 +131,8 @@ handle_call_event(JObj, Props) ->
             end
     end.
 
--spec handle_member_message/2 :: (wh_json:json_object(), wh_proplist()) -> 'ok'.
--spec handle_member_message/3 :: (wh_json:json_object(), wh_proplist(), ne_binary()) -> 'ok'.
+-spec handle_member_message/2 :: (wh_json:object(), wh_proplist()) -> 'ok'.
+-spec handle_member_message/3 :: (wh_json:object(), wh_proplist(), ne_binary()) -> 'ok'.
 handle_member_message(JObj, Props) ->
     handle_member_message(JObj, Props, wh_json:get_value(<<"Event-Name">>, JObj)).
 
@@ -145,52 +144,6 @@ handle_member_message(JObj, Props, <<"connect_win">>) ->
     acdc_agent_fsm:member_connect_win(props:get_value(fsm_pid, Props), JObj);
 handle_member_message(_, _, EvtName) ->
     lager:debug("not handling member event ~s", [EvtName]).
-
--spec handle_stats_req/2 :: (wh_json:json_object(), wh_proplist()) -> any().
-handle_stats_req(JObj, _Props) ->
-    true = wapi_acdc_agent:stats_req_v(JObj),
-    handle_stats_req(wh_json:get_value(<<"Account-ID">>, JObj)
-                     ,wh_json:get_value(<<"Agent-ID">>, JObj)
-                     ,wh_json:get_value(<<"Server-ID">>, JObj)
-                     ,wh_json:get_value(<<"Msg-ID">>, JObj)
-                    ).
-
--spec handle_stats_req/4 :: (api_binary(), api_binary(), api_binary(), api_binary()) -> any().
-handle_stats_req(AcctId, undefined, RespQ, MsgId) ->
-    build_stats_resp(AcctId, RespQ, MsgId, acdc_agents_sup:find_acct_supervisors(AcctId));
-handle_stats_req(AcctId, AgentId, RespQ, MsgId) ->
-    case acdc_agents_sup:find_agent_supervisor(AcctId, AgentId) of
-        undefined -> lager:debug("agent ~s in acct ~s isn't running", [AgentId, AcctId]);
-        P when is_pid(P) -> build_stats_resp(AcctId, RespQ, MsgId, [P])
-    end.
-
--spec build_stats_resp/4 :: (api_binary(), api_binary(), api_binary(), [pid()] | []) -> any().
--spec build_stats_resp/6 :: (api_binary(), api_binary(), api_binary(), [pid()] | []
-                             ,wh_proplist(), wh_proplist()
-                            ) -> any().
-build_stats_resp(AcctId, RespQ, MsgId, Ps) ->
-    build_stats_resp(AcctId, RespQ, MsgId, Ps, [], []).
-
-build_stats_resp(AcctId, RespQ, MsgId, [], CurrCalls, CurrAgents) ->
-    Resp = props:filter_undefined(
-             [{<<"Account-ID">>, AcctId}
-              ,{<<"Current-Calls">>, wh_json:from_list(props:filter_undefined(CurrCalls))}
-              ,{<<"Current-Stats">>, acdc_stats:agent_stats(AcctId)}
-              ,{<<"Current-Statuses">>, wh_json:from_list(props:filter_undefined(CurrAgents))}
-              ,{<<"Msg-ID">>, MsgId}
-              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-             ]),
-    wapi_acdc_agent:publish_stats_resp(RespQ, Resp);
-build_stats_resp(AcctId, RespQ, MsgId, [P|Ps], CurrCalls, CurrAgents) ->
-    A = acdc_agent_sup:agent(P),
-    {AcctId, AgentId} = acdc_agent:config(A),
-
-    FSM = acdc_agent_sup:fsm(P),
-
-    build_stats_resp(AcctId, RespQ, MsgId, Ps
-                     ,[{AgentId, acdc_agent_fsm:current_call(FSM)} | CurrCalls]
-                     ,[{AgentId, acdc_agent_fsm:status(FSM)} | CurrAgents]
-                    ).
 
 handle_config_change(JObj, _Props) ->
     true = wapi_conf:doc_update_v(JObj),

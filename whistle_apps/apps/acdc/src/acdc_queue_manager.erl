@@ -374,12 +374,12 @@ start_agent_and_worker(WorkersSup, AcctId, QueueId, AgentJObj) ->
     end.
 
 %% Really sophisticated selection algorithm
--spec pick_winner/4 :: (pid(), wh_json:json_objects()
+-spec pick_winner/4 :: (pid(), wh_json:objects()
                         ,queue_strategy(), queue_strategy_state()
                        ) ->
                                'undefined' |
-                               {wh_json:json_objects()
-                                ,wh_json:json_objects()
+                               {wh_json:objects()
+                                ,wh_json:objects()
                                }.
 pick_winner(_, [], _, _) -> 'undefined';
 pick_winner(Mgr, CRs, 'rr', AgentQ) ->
@@ -420,13 +420,13 @@ maybe_update_strategy('rr', StrategyState, AgentId) ->
     end.
 
 %% If A's idle time is greater, it should come before B
--spec sort_agent/2 :: (wh_json:json_object(), wh_json:json_object()) -> boolean().
+-spec sort_agent/2 :: (wh_json:object(), wh_json:object()) -> boolean().
 sort_agent(A, B) ->
     wh_json:get_integer_value(<<"Idle-Time">>, A, 0) >
         wh_json:get_integer_value(<<"Idle-Time">>, B, 0).
 
--spec split_agents/2 :: (ne_binary(), wh_json:json_objects()) ->
-                                {wh_json:json_objects(), wh_json:json_objects()}.
+-spec split_agents/2 :: (ne_binary(), wh_json:objects()) ->
+                                {wh_json:objects(), wh_json:objects()}.
 split_agents(AgentId, Rest) ->
     lists:partition(fun(R) ->
                             AgentId =:= wh_json:get_value(<<"Agent-ID">>, R)

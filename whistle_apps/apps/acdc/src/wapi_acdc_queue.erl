@@ -85,7 +85,7 @@ member_call_v(Prop) when is_list(Prop) ->
 member_call_v(JObj) ->
     member_call_v(wh_json:to_proplist(JObj)).
 
--spec member_call_routing_key/1 :: (wh_json:json_object() |
+-spec member_call_routing_key/1 :: (wh_json:object() |
                                     wh_proplist()
                                    ) -> ne_binary().
 -spec member_call_routing_key/2 :: (ne_binary(), ne_binary()) -> ne_binary().
@@ -214,7 +214,7 @@ member_connect_req_v(Prop) when is_list(Prop) ->
 member_connect_req_v(JObj) ->
     member_connect_req_v(wh_json:to_proplist(JObj)).
 
--spec member_connect_req_routing_key/1 :: (wh_json:json_object() |
+-spec member_connect_req_routing_key/1 :: (wh_json:object() |
                                            wh_proplist()
                                           ) -> ne_binary().
 -spec member_connect_req_routing_key/2 :: (ne_binary(), ne_binary()) -> ne_binary().
@@ -377,7 +377,7 @@ member_hungup_v(JObj) ->
 %%   Depending on the queue strategy, get the other queue's strategy state
 %%------------------------------------------------------------------------------
 -define(SYNC_REQ_KEY, "acdc.queue.sync_req.").
--spec sync_req_routing_key/1 :: (wh_json:json_object() |
+-spec sync_req_routing_key/1 :: (wh_json:object() |
                                  wh_proplist()
                                 ) -> ne_binary().
 -spec sync_req_routing_key/2 :: (ne_binary(), ne_binary()) -> ne_binary().
@@ -448,7 +448,7 @@ sync_resp_v(JObj) ->
 %%   Query for the current stats
 %%------------------------------------------------------------------------------
 -define(STATS_REQ_KEY, "acdc.queue.stats_req.").
--spec stats_req_routing_key/1 :: (wh_json:json_object() |
+-spec stats_req_routing_key/1 :: (wh_json:object() |
                                   wh_proplist() |
                                   ne_binary()
                                  ) -> ne_binary().
@@ -469,7 +469,7 @@ stats_req_routing_key(AcctId, undefined) ->
 stats_req_routing_key(AcctId, QID) ->
     <<?STATS_REQ_KEY, AcctId/binary, ".", QID/binary>>.
 
--spec stats_req_publish_key/1 :: (wh_json:json_object() | wh_proplist() | ne_binary()) -> ne_binary().
+-spec stats_req_publish_key/1 :: (wh_json:object() | wh_proplist() | ne_binary()) -> ne_binary().
 stats_req_publish_key(Props) when is_list(Props) ->
     stats_req_routing_key(props:get_value(<<"Account-ID">>, Props)
                           ,props:get_value(<<"Queue-ID">>, Props)
