@@ -391,6 +391,7 @@ handle_cast({channel_hungup, CallId}, #state{call=Call
             {noreply, State#state{agent_call_id=undefined}};
         _CallId ->
             lager:debug("unknown call id ~s for channel_hungup, ignoring", [_CallId]),
+            lager:debug("listening for agent(~s) and caller(~s)", [ACallId, CCallId]),
             {noreply, State}
     end;
 
