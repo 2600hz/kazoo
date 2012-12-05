@@ -29,6 +29,7 @@
          ,get_recording_doc_id/1
          ,call_status_req/1
          ,stop/1
+         ,fsm_started/2
         ]).
 
 %% gen_server callbacks
@@ -139,6 +140,7 @@ start_link(Supervisor, AgentJObj) ->
             ignore;
         Queues ->
             AcctId = wh_json:get_value(<<"pvt_account_id">>, AgentJObj),
+            lager:debug("start bindings for ~s(~s)", [AcctId, AgentId]),
             gen_listener:start_link(?MODULE
                                     ,[{bindings, ?BINDINGS(AcctId, AgentId)}
                                       ,{responders, ?RESPONDERS}
@@ -210,6 +212,9 @@ rm_acdc_queue(Srv, Q) ->
 call_status_req(Srv) ->
     gen_listener:cast(Srv, call_status_req).
 
+fsm_started(Srv, FSM) ->
+    gen_listener:cast(Srv, {fsm_started, FSM}).
+
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -228,28 +233,31 @@ call_status_req(Srv) ->
 init([Supervisor, Agent, Queues]) ->
     AgentId = agent_id(Agent),
     put(callid, AgentId),
+    lager:debug("starting acdc agent listener"),
 
     Self = self(),
     AcctId = account_id(Agent),
 
-    gen_listener:cast(self(), {start_fsm, Supervisor}),
+    _P = spawn(fun() ->
+                       put(amqp_publish_as, Self),
+                       put(callid, AgentId),
 
-    _ = spawn(fun() ->
-                      put(amqp_publish_as, Self),
+                       lager:debug("telling ~p about our queue", [Self]),
+                       gen_listener:cast(Self, {queue_name, gen_listener:queue_name(Self)}),
 
-                      gen_listener:cast(Self, {queue_name, gen_listener:queue_name(Self)}),
-
-                      Prop = [{<<"Account-ID">>, AcctId}
-                              ,{<<"Agent-ID">>, AgentId}
-                              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                       Prop = [{<<"Account-ID">>, AcctId}
+                               ,{<<"Agent-ID">>, AgentId}
+                               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                              ],
-                      [wapi_acdc_queue:publish_agent_change(
-                         [{<<"Queue-ID">>, QueueId}
-                          ,{<<"Change">>, <<"available">>}
-                          | Prop
-                         ]) || QueueId <- Queues]
-              end),
+                       [wapi_acdc_queue:publish_agent_change(
+                          [{<<"Queue-ID">>, QueueId}
+                           ,{<<"Change">>, <<"available">>}
+                           | Prop
+                          ]) || QueueId <- Queues],
+                       lager:debug("send agent_change update")
+               end),
 
+    lager:debug("started acdc agent listener, doing work in ~p", [_P]),
     {ok, #state{
        agent_id = AgentId
        ,acct_id = AcctId
@@ -295,18 +303,12 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast({stop_agent}, #state{supervisor=Supervisor}=State) ->
+    lager:debug("stop agent"),
     _ = acdc_agent_sup:stop(Supervisor),
     {noreply, State};
-handle_cast({start_fsm, Supervisor}, #state{acct_id=AcctId
-                                            ,agent_id=AgentId
-                                            ,is_thief=false
-                                           }=State) ->
-    {ok, FSMPid} = acdc_agent_sup:start_fsm(Supervisor, AcctId, AgentId),
-
-    lager:debug("started FSM at ~p", [FSMPid]),
-
-    gen_listener:cast(self(), bind_to_member_reqs),
-
+handle_cast({fsm_started, FSMPid}, #state{is_thief=false}=State) ->
+    lager:debug("not thief, fsm started: ~p", [FSMPid]),
+    handle_fsm_started(FSMPid),
     {noreply, State#state{fsm_pid=FSMPid}};
 
 handle_cast({start_fsm, Supervisor}, #state{acct_id=AcctId
@@ -320,7 +322,6 @@ handle_cast({start_fsm, Supervisor}, #state{acct_id=AcctId
     gen_listener:cast(self(), bind_to_member_reqs),
 
     {noreply, State#state{fsm_pid=FSMPid}, hibernate};
-
 
 handle_cast({queue_name, Q}, State) ->
     lager:debug("my queue: ~s", [Q]),
@@ -567,8 +568,8 @@ handle_info(_Info, State) ->
 %%                                   ignore
 %% @end
 %%--------------------------------------------------------------------
-handle_event(_JObj, #state{fsm_pid=FSM}) ->
-    {reply, [{fsm_pid, FSM}]}.
+handle_event(_JObj, #state{fsm_pid=undefined}) -> 'ignore';
+handle_event(_JObj, #state{fsm_pid=FSM}) -> {reply, [{fsm_pid, FSM}]}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -880,6 +881,7 @@ store_url(Call, JObj) ->
 
 -spec agent_id/1 :: (agent()) -> api_binary().
 agent_id(Agent) ->
+    lager:debug("agent: ~p", [Agent]),
     case wh_json:is_json_object(Agent) of
         true -> wh_json:get_value(<<"_id">>, Agent);
         false -> whapps_call:owner_id(Agent)
@@ -908,3 +910,7 @@ record_calls(Agent) ->
 
 -spec is_thief/1 :: (agent()) -> boolean().
 is_thief(Agent) -> not wh_json:is_json_object(Agent).
+
+handle_fsm_started(FSMPid) ->
+    _ = erlang:monitor(process, FSMPid),
+    gen_listener:cast(self(), bind_to_member_reqs).

@@ -23,8 +23,8 @@
 -export([init/1]).
 
 %% Helper macro for declaring children of supervisor
--define(CHILD(Name, Args, Type),
-        {Name, {Name, start_link, Args}, permanent, 5000, Type, [Name]}).
+-define(CHILD(Name, Args, Shutdown, Type),
+        {Name, {Name, start_link, Args}, permanent, Shutdown, Type, [Name]}).
 
 %%%===================================================================
 %%% api functions
@@ -79,8 +79,8 @@ init(Args) ->
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
     {ok, {SupFlags, [
-                     ?CHILD(acdc_queue_workers_sup, [], supervisor)
-                     ,?CHILD(acdc_queue_manager, [self() | Args], worker)
+                     ?CHILD(acdc_queue_workers_sup, [], infinity, supervisor)
+                     ,?CHILD(acdc_queue_manager, [self() | Args], 5000, worker)
                     ]
          }
     }.
