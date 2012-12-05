@@ -481,9 +481,12 @@ ringing({originate_failed, _E}, #state{agent_proc=Srv
 
 ringing({channel_bridged, CallId}, #state{member_call_id=CallId
                                           ,agent_proc=Srv
+                                          ,acct_id=AcctId
+                                          ,agent_id=AgentId
                                          }=State) ->
     lager:debug("agent phone has been connected to caller"),
     acdc_agent:member_connect_accepted(Srv),
+    acdc_stats:agent_oncall(AcctId, AgentId, CallId),
     {next_state, answered, State#state{call_status_ref=start_call_status_timer()
                                       ,call_status_failures=0
                                       }};
@@ -590,11 +593,13 @@ answered({dialplan_error, _App}, #state{agent_proc=Srv
 
 answered({channel_bridged, CallId}, #state{member_call_id=CallId
                                            ,agent_proc=Srv
-                                           ,acct_id=_AcctId
+                                           ,acct_id=AcctId
+                                           ,agent_id=AgentId
                                            ,member_call=_Call
                                           }=State) ->
     lager:debug("agent has connected to caller"),
     acdc_agent:member_connect_accepted(Srv),
+    acdc_stats:agent_oncall(AcctId, AgentId, CallId),
 
     {next_state, answered, State};
 
