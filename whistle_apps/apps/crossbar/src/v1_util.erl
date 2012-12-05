@@ -440,7 +440,10 @@ is_authentic(Req0, Context0) ->
         [] ->
             lager:debug("failed to authenticate"),
             ?MODULE:halt(Req0, cb_context:add_system_error(invalid_credentials, Context0));
-        _ ->
+        [true|_] ->
+            lager:debug("is_authentic: true"),
+            {true, Req1, Context1};
+        [{true, Context1}|_] ->
             lager:debug("is_authentic: true"),
             {true, Req1, Context1}
     end.
@@ -488,9 +491,12 @@ is_permitted(Req0, Context0) ->
         [] ->
             lager:debug("no on authz the request"),
             ?MODULE:halt(Req0, cb_context:add_system_error(forbidden, Context0));
-        _ ->
+        [true|_] ->
             lager:debug("request was authz"),
-            {true, Req0, Context0}
+            {true, Req0, Context0};
+        [{true, Context1}|_] ->
+            lager:debug("request was authz"),
+            {true, Req0, Context1}
     end.
 
 -spec is_known_content_type/2 :: (#http_req{}, cb_context:context()) -> {boolean(), #http_req{}, cb_context:context()}.
