@@ -285,7 +285,10 @@ stat_to_jobj(#agent_stat{
         ])).    
 
 init_db(AcctId) ->
-    couch_mgr:db_create(db_name(AcctId)).
+    DbName = db_name(AcctId),
+    lager:debug("created db ~s: ~s", [DbName, couch_mgr:db_create(DbName)]),
+    lager:debug("revised docs: ~p", [couch_mgr:revise_views_from_folder(DbName, acdc)]),
+    ok.
 
 db_name(<<A:2/binary, B:2/binary, Rest/binary>>) ->
     <<"acdc%2F",A/binary,"%2F",B/binary,"%2F", Rest/binary>>.
