@@ -4,8 +4,8 @@
 %%% Handles changing an agent's status
 %%%
 %%% "data":{
-%%%   "action":["login","logout","pause","resume"] // one of these
-%%%   ,"timeout":600 // in seconds, for "pause" status
+%%%   "action":["login","logout","paused","resume"] // one of these
+%%%   ,"timeout":600 // in seconds, for "paused" status
 %%% }
 %%% @end
 %%% @contributors
@@ -35,7 +35,7 @@ handle(Data, Call) ->
                 play_not_an_agent(Call);
             {ok, AgentId} ->
                 Status = find_agent_status(Call, AgentId),
-                NewStatus = wh_json:get_value(<<"action">>, Data),
+                NewStatus = fix_data_status(wh_json:get_value(<<"action">>, Data)),
                 lager:debug("agent ~s maybe changing status from ~s to ~s", [AgentId, Status, NewStatus]),
 
                 maybe_update_status(Call, AgentId, Status, NewStatus, Data)
@@ -43,22 +43,27 @@ handle(Data, Call) ->
     cf_exe:continue(Call).
 
 -spec find_agent_status/2 :: (whapps_call:call() | ne_binary(), ne_binary()) -> ne_binary().
-find_agent_status(?NE_BINARY = AcctDb, AgentId) ->
-    Opts = [{endkey, [AgentId, 0]}
-            ,{startkey, [AgentId, wh_json:new()]}
+find_agent_status(?NE_BINARY = AcctId, AgentId) ->
+    Opts = [{endkey, [0, AcctId, AgentId]}
+            ,{startkey, [wh_json:new(), AcctId, AgentId]}
             ,{limit, 1}
             ,descending
            ],
-    case couch_mgr:get_results(AcctDb, <<"agents/agent_status">>, Opts) of
-        {ok, []} -> <<"logout">>;
-        {error, _E} -> <<"logout">>;
-        {ok, [StatusJObj|_]} -> maybe_fix_resume(wh_json:get_value(<<"value">>, StatusJObj))
+    case couch_mgr:get_results(acdc_stats:db_name(AcctId), <<"agent_stats/status_log">>, Opts) of
+        {ok, []} -> lager:debug("no res"), <<"logout">>;
+        {error, _E} -> lager:debug("err: ~p", [_E]),  <<"logout">>;
+        {ok, [StatusJObj|_]} -> lager:debug("status: ~p", [StatusJObj]),
+                                maybe_fix_resume(wh_json:get_value(<<"value">>, StatusJObj))
     end;
 find_agent_status(Call, AgentId) ->
-    find_agent_status(whapps_call:account_db(Call), AgentId).
+    find_agent_status(whapps_call:account_id(Call), AgentId).
 
 maybe_fix_resume(<<"resume">>) -> <<"login">>;
+maybe_fix_resume(<<"ready">>) -> <<"login">>;
 maybe_fix_resume(Status) -> Status.
+
+fix_data_status(<<"pause">>) -> <<"paused">>;
+fix_data_status(Status) -> Status.
 
 maybe_update_status(Call, AgentId, _Curr, <<"logout">>, _Data) ->
     lager:debug("agent ~s wants to log out (currently: ~s)", [AgentId, _Curr]),
@@ -69,7 +74,7 @@ maybe_update_status(Call, AgentId, <<"login">>, <<"login">>, _Data) ->
     lager:debug("agent ~s is already logged in", [AgentId]),
     _ = play_agent_logged_in_already(Call),
     send_new_status(Call, AgentId, fun wapi_acdc_agent:publish_login/1, undefined);
-maybe_update_status(Call, AgentId, <<"login">>, <<"pause">>, Data) ->
+maybe_update_status(Call, AgentId, <<"login">>, <<"paused">>, Data) ->
     Timeout = wh_json:get_integer_value(<<"timeout">>, Data, whapps_config:get(<<"acdc">>, <<"default_agent_pause_timeout">>, 600)),
     lager:debug("agent ~s is pausing work for ~b s", [AgentId, Timeout]),
     pause_agent(Call, AgentId, Timeout),
@@ -80,11 +85,11 @@ maybe_update_status(Call, AgentId, <<"logout">>, <<"login">>, _Data) ->
     login_agent(Call, AgentId),
     play_agent_logged_in(Call);
 
-maybe_update_status(Call, AgentId, <<"pause">>, <<"resume">>, _Data) ->
+maybe_update_status(Call, AgentId, <<"paused">>, <<"resume">>, _Data) ->
     lager:debug("agent ~s is coming back from pause", [AgentId]),
     resume_agent(Call, AgentId),
     play_agent_resume(Call);
-maybe_update_status(Call, AgentId, <<"pause">>, <<"login">>, _Data) ->
+maybe_update_status(Call, AgentId, <<"paused">>, <<"login">>, _Data) ->
     lager:debug("agent ~s is coming back from pause", [AgentId]),
     resume_agent(Call, AgentId),
     play_agent_resume(Call);
@@ -99,7 +104,7 @@ logout_agent(Call, AgentId) ->
     update_agent_status(Call, AgentId, <<"logout">>, fun wapi_acdc_agent:publish_logout/1).
 
 pause_agent(Call, AgentId, Timeout) ->
-    update_agent_status(Call, AgentId, <<"pause">>, fun wapi_acdc_agent:publish_pause/1, Timeout).
+    update_agent_status(Call, AgentId, <<"paused">>, fun wapi_acdc_agent:publish_pause/1, Timeout).
 
 resume_agent(Call, AgentId) ->
     update_agent_status(Call, AgentId, <<"resume">>, fun wapi_acdc_agent:publish_resume/1).

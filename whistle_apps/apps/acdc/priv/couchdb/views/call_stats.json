@@ -1,0 +1,8 @@
+{ "_id":"_design/call_stats"
+  ,"language":"javascript"
+  ,"views":{
+    "call_log": {
+      "map":"function(doc) {        if ( doc.type != 'call_partial' || typeof doc.account_id == 'undefined' | typeof doc.queue_id == 'undefined' ) return;        emit([doc.timestamp, doc.account_id, doc.queue_id, doc.call_id], doc.status);      }"
+    }
+  }
+}

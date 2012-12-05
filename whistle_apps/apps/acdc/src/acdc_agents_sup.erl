@@ -43,7 +43,7 @@
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
--spec new/1 :: (wh_json:json_object()) -> sup_startchild_ret().
+-spec new/1 :: (wh_json:object()) -> sup_startchild_ret().
 new(JObj) ->
     supervisor:start_child(?MODULE, [JObj]).
 

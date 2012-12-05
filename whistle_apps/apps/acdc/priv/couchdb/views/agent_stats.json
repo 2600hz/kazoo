@@ -1,0 +1,11 @@
+{ "_id":"_design/agent_stats"
+  ,"language":"javascript"
+  ,"views":{
+    "status_log": {
+      "map":"function(doc) {        if ( doc.type != 'agent_partial' || typeof doc.account_id == 'undefined' | typeof doc.agent_id == 'undefined' ) return;        emit([doc.timestamp, doc.account_id, doc.agent_id], doc.status);      }"
+    },
+    "call_log": {
+      "map":"function(doc) {        if ( doc.type != 'call_partial' || typeof doc.account_id == 'undefined' | typeof doc.agent_id == 'undefined' ) return;        emit([doc.timestamp, doc.account_id, doc.agent_id, doc.queue_id, doc.call_id], doc.status);      }"
+    }
+  }
+}

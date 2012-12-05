@@ -72,7 +72,7 @@ sync_req_v(Prop) when is_list(Prop) ->
 sync_req_v(JObj) ->
     sync_req_v(wh_json:to_proplist(JObj)).
 
--spec sync_req_routing_key/1 :: (wh_json:json_object() | wh_proplist()) -> ne_binary().
+-spec sync_req_routing_key/1 :: (wh_json:object() | wh_proplist()) -> ne_binary().
 -spec sync_req_routing_key/2 :: (ne_binary(), ne_binary()) -> ne_binary().
 sync_req_routing_key(Props) when is_list(Props) ->
     Id = props:get_value(<<"Agent-ID">>, Props, <<"*">>),
@@ -151,7 +151,7 @@ stats_req_v(Prop) when is_list(Prop) ->
 stats_req_v(JObj) ->
     stats_req_v(wh_json:to_proplist(JObj)).
 
--spec stats_req_routing_key/1 :: (wh_json:json_object() | wh_proplist() | ne_binary()) -> ne_binary().
+-spec stats_req_routing_key/1 :: (wh_json:object() | wh_proplist() | ne_binary()) -> ne_binary().
 -spec stats_req_routing_key/2 :: (ne_binary(), ne_binary()) -> ne_binary().
 stats_req_routing_key(Props) when is_list(Props) ->
     Id = props:get_value(<<"Account-ID">>, Props, <<"*">>),
@@ -164,7 +164,7 @@ stats_req_routing_key(JObj) ->
     AgentId = wh_json:get_value(<<"Agent-ID">>, JObj, <<"*">>),
     stats_req_routing_key(Id, AgentId).
 
--spec stats_req_publish_key/1 :: (wh_json:json_object() | wh_proplist() | ne_binary()) -> ne_binary().
+-spec stats_req_publish_key/1 :: (wh_json:object() | wh_proplist() | ne_binary()) -> ne_binary().
 stats_req_publish_key(Props) when is_list(Props) ->
     stats_req_routing_key(props:get_value(<<"Account-ID">>, Props)
                           ,props:get_value(<<"Agent-ID">>, Props)
