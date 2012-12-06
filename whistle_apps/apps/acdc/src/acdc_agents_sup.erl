@@ -45,7 +45,13 @@ start_link() ->
 
 -spec new/1 :: (wh_json:object()) -> sup_startchild_ret().
 new(JObj) ->
-    supervisor:start_child(?MODULE, [JObj]).
+    case find_agent_supervisor(wh_json:get_value(<<"pvt_account_id">>, JObj)
+                               ,wh_json:get_value(<<"_id">>, JObj)
+                              )
+    of
+        [] -> supervisor:start_child(?MODULE, [JObj]);
+        [_P] -> lager:debug("agent already started here: ~p", [_P])
+    end.
 
 -spec new_thief/2 :: (whapps_call:call(), ne_binary()) -> sup_startchild_ret().
 new_thief(Call, QueueId) ->
