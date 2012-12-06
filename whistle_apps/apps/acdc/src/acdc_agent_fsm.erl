@@ -530,7 +530,7 @@ ringing({originate_failed, _E}, #state{agent_proc=Srv
                                          ,member_call_queue_id=QueueId
                                          ,member_call_id=CallId
                                         }=State) ->
-    lager:debug("ringing agent failed: ~p", [_E]),
+    lager:debug("ringing agent failed: ~s", [wh_json:get_value(<<"Error-Message">>, _E)]),
     acdc_agent:member_connect_retry(Srv, CallId),
 
     acdc_stats:call_missed(AcctId, QueueId, AgentId, CallId),
