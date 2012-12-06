@@ -34,10 +34,10 @@
 %% parameters on all crossbar documents
 %% @end
 %%--------------------------------------------------------------------
--spec update_pvt_parameters/2 :: (wh_json:json_object(), ne_binary()) ->
-                                         wh_json:json_object().
--spec update_pvt_parameters/3 :: (wh_json:json_object(), ne_binary(), wh_proplist()) ->
-                                         wh_json:json_object().
+-spec update_pvt_parameters/2 :: (wh_json:object(), ne_binary()) ->
+                                         wh_json:object().
+-spec update_pvt_parameters/3 :: (wh_json:object(), ne_binary(), wh_proplist()) ->
+                                         wh_json:object().
 update_pvt_parameters(JObj0, DBName) ->
     update_pvt_parameters(JObj0, DBName, [{now, wh_util:current_tstamp()}]).
 update_pvt_parameters(JObj0, DBName, Options) ->
@@ -85,10 +85,10 @@ add_pvt_modified(JObj, _, Opts) ->
 %% json proplist
 %% @end
 %%--------------------------------------------------------------------
--spec public_fields/1 :: (wh_json:json_object() | wh_json:json_objects()) ->
-                                 wh_json:json_object() | wh_json:json_objects().
+-spec public_fields/1 :: (wh_json:object() | wh_json:objects()) ->
+                                 wh_json:object() | wh_json:objects().
 public_fields(JObjs) when is_list(JObjs) ->
-    lists:map(fun public_fields/1, JObjs);
+    [public_fields(J) || J <- JObjs];
 public_fields(JObj) ->
     wh_json:filter(fun({K, _}) -> not is_private_key(K) end, JObj).
 
@@ -111,8 +111,8 @@ is_private_key(_) -> false.
 %% json proplist
 %% @end
 %%--------------------------------------------------------------------
--spec private_fields/1 :: (wh_json:json_object() | wh_json:json_objects()) ->
-                                  wh_json:json_object() | wh_json:json_objects().
+-spec private_fields/1 :: (wh_json:object() | wh_json:objects()) ->
+                                  wh_json:object() | wh_json:objects().
 private_fields(JObjs) when is_list(JObjs) ->
     lists:map(fun public_fields/1, JObjs);
 private_fields(JObj) ->
