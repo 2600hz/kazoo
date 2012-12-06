@@ -179,6 +179,8 @@ pick_winner(Srv, Resps) ->
 %% @end
 %%--------------------------------------------------------------------
 init([Super, AcctId, QueueId]) ->
+    put(callid, <<"mgr_", QueueId/binary>>),
+
     _ = start_secondary_queue(AcctId, QueueId),
 
     AcctDb = wh_util:format_account_id(AcctId, encoded),
@@ -187,6 +189,7 @@ init([Super, AcctId, QueueId]) ->
     gen_listener:cast(self(), {start_workers}),
     Strategy = get_strategy(wh_json:get_value(<<"strategy">>, QueueJObj)),
 
+    lager:debug("queue mgr started"),
     {ok, #state{
        acct_id=AcctId
        ,queue_id=QueueId
