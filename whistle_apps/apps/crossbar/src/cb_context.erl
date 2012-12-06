@@ -21,12 +21,12 @@
          ,add_content_types_accepted/2
 
          %% Accessors
-         ,account_id/1
-         ,account_db/1
-         ,auth_token/1
-         ,req_verb/1
-         ,req_data/1
-         ,req_id/1
+         ,account_id/1, set_account_id/2
+         ,account_db/1, set_account_db/2
+         ,auth_token/1, set_auth_token/2
+         ,req_verb/1, set_req_verb/2
+         ,req_data/1, set_req_data/2
+         ,req_id/1, set_req_id/2
         ]).
 
 -include("include/crossbar.hrl").
@@ -41,6 +41,14 @@ auth_token(#cb_context{auth_token=AuthToken}) -> AuthToken.
 req_verb(#cb_context{req_verb=ReqVerb}) -> ReqVerb.
 req_data(#cb_context{req_data=ReqData}) -> ReqData.
 req_id(#cb_context{req_id=ReqId}) -> ReqId.
+
+%% Setters
+set_account_id(#cb_context{}=Context, AcctId) -> Context#cb_context{account_id=AcctId}.
+set_account_db(#cb_context{}=Context, AcctDb) -> Context#cb_context{db_name=AcctDb}.
+set_auth_token(#cb_context{}=Context, AuthToken) -> Context#cb_context{auth_token=AuthToken}.
+set_req_verb(#cb_context{}=Context, ReqVerb) -> Context#cb_context{req_verb=ReqVerb}.
+set_req_data(#cb_context{}=Context, ReqData) -> Context#cb_context{req_data=ReqData}.
+set_req_id(#cb_context{}=Context, ReqId) -> Context#cb_context{req_id=ReqId}.
 
 %% Helpers
 
