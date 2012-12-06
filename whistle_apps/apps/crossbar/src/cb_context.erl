@@ -20,19 +20,28 @@
          ,add_content_types_provided/2
          ,add_content_types_accepted/2
 
-         %% Accessors
+         %% Getters / Setters
          ,account_id/1, set_account_id/2
          ,account_db/1, set_account_db/2
          ,auth_token/1, set_auth_token/2
          ,req_verb/1, set_req_verb/2
          ,req_data/1, set_req_data/2
          ,req_id/1, set_req_id/2
+         ,doc/1, set_doc/2
+         ,resp_data/1, set_resp_data/2
+
+         %% Special accessors
+         ,req_value/2, req_value/3
         ]).
 
 -include("include/crossbar.hrl").
 
 -type context() :: #cb_context{}.
 -export_type([context/0]).
+
+req_value(Context, Key) -> req_value(Context, Key, undefined).
+req_value(#cb_context{req_data=ReqData, query_json=QS}=Context, Key, Default) ->
+    wh_json:find(Key, [ReqData, QS], Default).
 
 %% Accessors
 account_id(#cb_context{account_id=AcctId}) -> AcctId.
@@ -41,6 +50,8 @@ auth_token(#cb_context{auth_token=AuthToken}) -> AuthToken.
 req_verb(#cb_context{req_verb=ReqVerb}) -> ReqVerb.
 req_data(#cb_context{req_data=ReqData}) -> ReqData.
 req_id(#cb_context{req_id=ReqId}) -> ReqId.
+doc(#cb_context{doc=Doc}) -> Doc.
+resp_data(#cb_context{resp_data=RespData}) -> RespData.
 
 %% Setters
 set_account_id(#cb_context{}=Context, AcctId) -> Context#cb_context{account_id=AcctId}.
@@ -49,6 +60,8 @@ set_auth_token(#cb_context{}=Context, AuthToken) -> Context#cb_context{auth_toke
 set_req_verb(#cb_context{}=Context, ReqVerb) -> Context#cb_context{req_verb=ReqVerb}.
 set_req_data(#cb_context{}=Context, ReqData) -> Context#cb_context{req_data=ReqData}.
 set_req_id(#cb_context{}=Context, ReqId) -> Context#cb_context{req_id=ReqId}.
+set_doc(#cb_context{}=Context, Doc) -> Context#cb_context{doc=Doc}.
+set_resp_data(#cb_context{}=Context, RespData) -> Context#cb_context{resp_data=RespData}.
 
 %% Helpers
 
