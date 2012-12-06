@@ -45,7 +45,13 @@ start_link() ->
 
 -spec new/1 :: (wh_json:object()) -> sup_startchild_ret().
 new(JObj) ->
-    supervisor:start_child(?MODULE, [JObj]).
+    case find_agent_supervisor(wh_json:get_value(<<"pvt_account_id">>, JObj)
+                               ,wh_json:get_value(<<"_id">>, JObj)
+                              )
+    of
+        undefined -> supervisor:start_child(?MODULE, [JObj]);
+        P when is_pid(P) -> lager:debug("agent already started here: ~p", [P])
+    end.
 
 -spec new_thief/2 :: (whapps_call:call(), ne_binary()) -> sup_startchild_ret().
 new_thief(Call, QueueId) ->
@@ -53,7 +59,7 @@ new_thief(Call, QueueId) ->
 
 -spec workers/0 :: () -> [pid(),...] | [].
 workers() ->
-    [ Pid || {_, Pid, worker, [_]} <- supervisor:which_children(?MODULE)].
+    [ Pid || {_, Pid, supervisor, [_]} <- supervisor:which_children(?MODULE)].
 
 -spec find_acct_supervisors/1 :: (ne_binary()) -> [pid(),...] | [].
 find_acct_supervisors(AcctId) ->

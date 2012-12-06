@@ -41,6 +41,7 @@
 
 -export([queue_name/1
          ,responders/1
+         ,is_consuming/1
         ]).
 
 -export([add_queue/4
@@ -139,6 +140,9 @@ behaviour_info(_) ->
 -spec queue_name/1 :: (pid() | atom()) -> ne_binary().
 queue_name(Srv) ->
     gen_server:call(Srv, queue_name).
+
+is_consuming(Srv) ->
+    gen_server:call(Srv, is_consuming).
 
 -spec responders/1 :: (pid() | atom()) -> listener_utils:responders().
 responders(Srv) ->
@@ -280,6 +284,9 @@ handle_call(queue_name, _From, #state{queue=Q}=State) ->
     {reply, Q, State};
 handle_call(responders, _From, #state{responders=Rs}=State) ->
     {reply, Rs, State};
+handle_call(is_consuming, _From, #state{is_consuming=IsC}=State) ->
+    {reply, IsC, State};
+
 handle_call(Request, From, #state{module=Module, module_state=ModState, module_timeout_ref=OldRef}=State) ->
     _ = stop_timer(OldRef),
     case catch Module:handle_call(Request, From, ModState) of

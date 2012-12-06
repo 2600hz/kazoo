@@ -313,11 +313,15 @@ wait_for_listener(Supervisor, FSM, Props) ->
 %%--------------------------------------------------------------------
 wait({listener, AgentProc, NextState, SyncRef}, State) ->
     lager:debug("setting agent proc to ~p", [AgentProc]),
+    acdc_agent:fsm_started(AgentProc, self()),
     {next_state, NextState, State#state{
                               agent_proc=AgentProc
                               ,sync_ref=SyncRef
                               ,agent_proc_id=acdc_util:proc_id(AgentProc)
                              }};
+wait(send_sync_event, State) ->
+    gen_fsm:send_event(self(), send_sync_event),
+    {next_state, wait, State};
 wait(_Msg, State) ->
     lager:debug("unhandled msg in wait: ~p", [_Msg]),
     {next_state, wait, State}.

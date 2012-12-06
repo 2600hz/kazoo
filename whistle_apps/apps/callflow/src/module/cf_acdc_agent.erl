@@ -112,14 +112,15 @@ resume_agent(Call, AgentId) ->
 update_agent_status(Call, AgentId, Status, PubFun) ->
     update_agent_status(Call, AgentId, Status, PubFun, undefined).
 update_agent_status(Call, AgentId, Status, PubFun, Timeout) ->
-    AcctDb = whapps_call:account_db(Call),
+    AcctId = whapps_call:account_id(Call),
     Doc = wh_json:from_list([{<<"call_id">>, whapps_call:call_id(Call)}
                              ,{<<"agent_id">>, AgentId}
                              ,{<<"method">>, <<"callflow">>}
                              ,{<<"action">>, Status}
-                             ,{<<"pvt_type">>, <<"agent_activity">>}
+                             ,{<<"pvt_type">>, <<"agent_partial">>}
                             ]),
-    {ok, _D} = couch_mgr:save_doc(AcctDb, wh_doc:update_pvt_parameters(Doc, AcctDb)),
+
+    {ok, _D} = couch_mgr:save_doc(acdc_stats:db_name(AcctId), wh_doc:update_pvt_parameters(Doc, AcctId)),
     send_new_status(Call, AgentId, PubFun, Timeout).
 
 -spec send_new_status/4 :: (whapps_call:call(), ne_binary(), wh_amqp_worker:publish_fun(), integer() | 'undefined') -> 'ok'.

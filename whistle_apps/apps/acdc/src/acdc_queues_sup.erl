@@ -51,7 +51,7 @@ new(AcctId, QueueId) ->
 
 -spec workers/0 :: () -> [pid(),...] | [].
 workers() ->
-    [ Pid || {_, Pid, worker, [_]} <- supervisor:which_children(?MODULE), is_pid(Pid)].
+    [ Pid || {_, Pid, supervisor, [_]} <- supervisor:which_children(?MODULE), is_pid(Pid)].
 
 -spec find_acct_supervisors/1 :: (ne_binary()) -> [pid(),...] | [].
 find_acct_supervisors(AcctId) ->
