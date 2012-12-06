@@ -195,7 +195,6 @@ handle_cast({maybe_update_node, Node}, #state{node=_OldNode}=State) ->
     {noreply, State#state{node=Node}, hibernate};
 
 handle_cast({create_uuid}, #state{node=Node, originate_req=JObj}=State) ->
-    lager:debug("creating a new uuid"),
     {noreply, State#state{uuid=create_uuid(JObj, Node)}, hibernate};
 
 handle_cast({get_originate_action}, #state{originate_req=JObj, node=Node}=State) ->
@@ -521,6 +520,7 @@ create_uuid(Node) ->
     case freeswitch:api(Node, 'create_uuid', " ") of
         {ok, UUID} ->
             put(callid, UUID),
+            lager:debug("FS generated our uuid: ~s", [UUID]),
             UUID;
         {error, _E} ->
             lager:debug("unable to get a uuid from ~s: ~p", [Node, _E]),
