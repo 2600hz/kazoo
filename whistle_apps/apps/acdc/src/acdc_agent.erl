@@ -243,7 +243,7 @@ init([Supervisor, Agent, Queues]) ->
                        put(callid, AgentId),
 
                        lager:debug("telling ~p about our queue", [Self]),
-                       gen_listener:cast(Self, {queue_name, gen_listener:queue_name(Self)}),
+                       my_queue(Self),
 
                        Prop = [{<<"Account-ID">>, AcctId}
                                ,{<<"Agent-ID">>, AgentId}
@@ -269,6 +269,10 @@ init([Supervisor, Agent, Queues]) ->
        ,is_thief = is_thief(Agent)
        ,agent = Agent
       }}.
+
+my_queue(Srv) ->
+    timer:sleep(100),
+    gen_listener:cast(Srv, {queue_name, gen_listener:queue_name(Srv)}).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -324,8 +328,15 @@ handle_cast({start_fsm, Supervisor}, #state{acct_id=AcctId
     {noreply, State#state{fsm_pid=FSMPid}, hibernate};
 
 handle_cast({queue_name, Q}, State) ->
-    lager:debug("my queue: ~s", [Q]),
-    {noreply, State#state{my_q=Q}, hibernate};
+    case wh_util:is_empty(Q) of
+        true ->
+            Self = self(),
+            spawn(fun() -> my_queue(Self) end),
+            {noreply, State};
+        false ->
+            lager:debug("my queue: ~s", [Q]),
+            {noreply, State#state{my_q=Q}, hibernate}
+    end;
 
 handle_cast({queue_login, Q}, #state{agent_queues=Qs
                                      ,acct_id=AcctId
@@ -582,8 +593,7 @@ handle_event(_JObj, #state{fsm_pid=FSM}) -> {reply, [{fsm_pid, FSM}]}.
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, #state{supervisor=Supervisor}) ->
-    _ = acdc_agent_sup:stop(Supervisor),
+terminate(_Reason, _State) ->
     lager:debug("agent process going down: ~p", [_Reason]).
 
 %%--------------------------------------------------------------------
