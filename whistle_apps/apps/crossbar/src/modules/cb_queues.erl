@@ -39,14 +39,12 @@
 -module(cb_queues).
 
 -export([init/0
-         ,allowed_methods/0, allowed_methods/1, allowed_methods/2, allowed_methods/3
-         ,resource_exists/0, resource_exists/1, resource_exists/2, resource_exists/3
-         ,validate/1, validate/2, validate/3, validate/4
+         ,allowed_methods/0, allowed_methods/1, allowed_methods/2
+         ,resource_exists/0, resource_exists/1, resource_exists/2
+         ,validate/1, validate/2, validate/3
          ,put/1, put/2, put/3
          ,post/2, post/3
          ,delete/2, delete/3
-
-         ,fold_stats/1
         ]).
 
 -include("include/crossbar.hrl").
@@ -55,9 +53,19 @@
 -define(CB_AGENTS_LIST, <<"queues/agents_listing">>). %{agent_id, queue_id}
 
 -define(STATS_PATH_TOKEN, <<"stats">>).
--define(REALTIME_PATH_TOKEN, <<"realtime">>).
 -define(ROSTER_PATH_TOKEN, <<"roster">>).
 -define(EAVESDROP_PATH_TOKEN, <<"eavesdrop">>).
+
+-define(STAT_TIMESTAMP_PROCESSED, <<"finished_with_agent">>).
+-define(STAT_TIMESTAMP_HANDLING, <<"connected_with_agent">>).
+-define(STAT_TIMESTAMP_ABANDONED, <<"caller_abandoned_queue">>).
+-define(STAT_TIMESTAMP_WAITING, <<"caller_entered_queue">>).
+
+-define(STAT_TIMESTAMP_KEYS, [?STAT_TIMESTAMP_PROCESSED
+                              ,?STAT_TIMESTAMP_HANDLING
+                              ,?STAT_TIMESTAMP_ABANDONED
+                              ,?STAT_TIMESTAMP_WAITING
+                             ]).
 
 %%%===================================================================
 %%% API
@@ -88,7 +96,7 @@ init() ->
 -spec allowed_methods/0 :: () -> http_methods().
 -spec allowed_methods/1 :: (path_token()) -> http_methods().
 -spec allowed_methods/2 :: (path_token(), path_token()) -> http_methods().
--spec allowed_methods/3 :: (path_token(), path_token(), path_token()) -> http_methods().
+
 allowed_methods() ->
     ['GET', 'PUT'].
 allowed_methods(?STATS_PATH_TOKEN) ->
@@ -98,17 +106,10 @@ allowed_methods(?EAVESDROP_PATH_TOKEN) ->
 allowed_methods(_QID) ->
     ['GET', 'POST', 'DELETE'].
 
-allowed_methods(?STATS_PATH_TOKEN, ?REALTIME_PATH_TOKEN) ->
-    ['GET'];
-allowed_methods(_QID, ?STATS_PATH_TOKEN) ->
-    ['GET'];
 allowed_methods(_QID, ?ROSTER_PATH_TOKEN) ->
     ['GET', 'POST', 'DELETE'];
 allowed_methods(_QID, ?EAVESDROP_PATH_TOKEN) ->
     ['PUT'].
-
-allowed_methods(_QID, ?STATS_PATH_TOKEN, ?REALTIME_PATH_TOKEN) ->
-    ['GET'].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -122,17 +123,12 @@ allowed_methods(_QID, ?STATS_PATH_TOKEN, ?REALTIME_PATH_TOKEN) ->
 -spec resource_exists/0 :: () -> 'true'.
 -spec resource_exists/1 :: (path_token()) -> 'true'.
 -spec resource_exists/2 :: (path_token(), path_token()) -> 'true'.
--spec resource_exists/3 :: (path_token(), path_token(), path_token()) -> 'true'.
 resource_exists() -> true.
 
 resource_exists(_) -> true.
 
-resource_exists(?STATS_PATH_TOKEN, ?REALTIME_PATH_TOKEN) -> true;
-resource_exists(_, ?STATS_PATH_TOKEN) -> true;
 resource_exists(_, ?ROSTER_PATH_TOKEN) -> true;
 resource_exists(_, ?EAVESDROP_PATH_TOKEN) -> true.
-
-resource_exists(_, ?STATS_PATH_TOKEN, ?REALTIME_PATH_TOKEN) -> true.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -163,10 +159,6 @@ validate(#cb_context{req_verb = <<"post">>}=Context, Id) ->
 validate(#cb_context{req_verb = <<"delete">>}=Context, Id) ->
     read(Id, Context).
 
-validate(#cb_context{req_verb = <<"get">>}=Context, ?STATS_PATH_TOKEN, ?REALTIME_PATH_TOKEN) ->
-    fetch_all_queue_stats(Context, realtime);
-validate(#cb_context{req_verb = <<"get">>}=Context, Id, ?STATS_PATH_TOKEN) ->
-    fetch_queue_stats(Id, Context);
 validate(#cb_context{req_verb = <<"get">>}=Context, Id, ?ROSTER_PATH_TOKEN) ->
     load_agent_roster(Id, Context);
 validate(#cb_context{req_verb = <<"post">>}=Context, Id, ?ROSTER_PATH_TOKEN) ->
@@ -175,9 +167,6 @@ validate(#cb_context{req_verb = <<"delete">>}=Context, Id, ?ROSTER_PATH_TOKEN) -
     rm_queue_from_agents(Id, Context);
 validate(#cb_context{req_verb = <<"put">>}=Context, Id, ?EAVESDROP_PATH_TOKEN) ->
     validate_eavesdrop_on_queue(Context, Id).
-
-validate(#cb_context{req_verb = <<"get">>}=Context, Id, ?STATS_PATH_TOKEN, ?REALTIME_PATH_TOKEN) ->
-    fetch_queue_stats(Id, Context, realtime).
 
 validate_eavesdrop_on_call(#cb_context{req_data=Data}=Context) ->
     case is_valid_endpoint(Context, Data)
@@ -512,176 +501,161 @@ maybe_rm_queue_from_agent(Id, A) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec fetch_all_queue_stats/1 :: (cb_context:context()) -> cb_context:context().
--spec fetch_all_queue_stats/2 :: (cb_context:context(), 'history' | 'realtime') -> cb_context:context().
-
 fetch_all_queue_stats(Context) ->
-    fetch_all_queue_stats(Context, history).
-fetch_all_queue_stats(Context, history) ->
-    {Today, _} = calendar:universal_time(),
-    From = calendar:datetime_to_gregorian_seconds({Today, {0,0,0}}),
+    Now = {Today, {H,M,S}} = calendar:universal_time(),
 
-    crossbar_doc:load_view(<<"acdc_stats/stats_per_queue_by_time">>
-                               ,[{startkey, [wh_util:current_tstamp(), <<"\ufff0">>]}
-                                 ,{endkey, [From, <<>>]}
-                                 ,descending
-                                ]
-                           ,Context
-                           ,fun normalize_queue_results/2
-                          );
-fetch_all_queue_stats(#cb_context{account_id=AcctId}=Context, realtime) ->
-    Req = [{<<"Account-ID">>, AcctId}
-           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-          ],
-    case whapps_util:amqp_pool_collect(Req
-                                       ,fun wapi_acdc_queue:publish_stats_req/1
-                                       ,1000
-                                      ) of
-        {ok, Resps0} ->
-            case [strip_api_fields(wh_json:normalize(R)) || R <- Resps0, wapi_acdc_queue:stats_resp_v(R)] of
-                [] ->
-                    Context#cb_context{resp_status=success
-                                       ,resp_data=default_stats()
-                                       ,doc=default_stats()
-                                      };
-                Resps1 ->
-                    Resp = fold_stats(Resps1),
-                    Totaled = total_up_stats(Resp),
+    From = calendar:datetime_to_gregorian_seconds({Today, {H-1,M,S}}),
+    To = calendar:datetime_to_gregorian_seconds(Now),
 
-                    lager:debug("acdc queue stats: ~p", [Totaled]),
+    AcctId = cb_context:account_id(Context),
+    Opts = [{startkey, [To, AcctId]}
+            ,{endkey, [From, AcctId]}
+            ,include_docs
+            ,descending
+           ],
 
-                    Context#cb_context{resp_status=success
-                                       ,resp_data=Totaled
-                                       ,doc=Resp
-                                      }
-            end;
-        {error, _E} ->
-            lager:debug("failed to fetch stats: ~p", [_E]),
-            Context
+    case cb_context:req_value(Context, <<"format">>, <<"compressed">>) of
+        <<"compressed">> ->
+            Context1 = crossbar_doc:load_view(<<"call_stats/call_log">>
+                                              ,Opts
+                                              ,cb_context:set_account_db(Context, acdc_stats:db_name(AcctId))
+                                              ,fun extract_doc/2
+                                             ),
+            compress_stats(Context1);
+        <<"verbose">> ->
+            crossbar_doc:load_view(<<"call_stats/call_log">>
+                                   ,Opts
+                                   ,cb_context:set_account_db(Context, acdc_stats:db_name(AcctId))
+                                   ,fun normalize_queue_stats/2
+                                  );
+        _Format ->
+            lager:debug("unrecognized stats format: ~s", [_Format]),
+            cb_context:add_validation_error(<<"format">>, <<"enum">>, <<"enum:Value not found in enumerated list">>, Context)
     end.
 
-default_stats() ->
-    wh_json:from_list([{<<"current_stats">>, wh_json:new()}
-                       ,{<<"current_calls">>, wh_json:new()}
-                      ]).
+compress_stats(Context) ->
+    Compressed = compress_stats(cb_context:doc(Context), wh_json:new()),
+    crossbar_util:response(Compressed, Context).
 
-fold_stats([]) -> default_stats();
-fold_stats([R|Rs]) ->
-    fold_stats(Rs, R).
+compress_stats([], Compressed) ->
+    accumulate_stats(Compressed);
+compress_stats([Stat|Stats], Compressed) ->
+    compress_stats(Stats, add_stat(Stat, Compressed)).
 
-fold_stats([R|Rs], Resp) ->
-    fold_stats(Rs, lists:foldl(fun(K, Acc) -> fold_stat(R, Acc, K) end, Resp, wh_json:get_keys(R)));
-fold_stats([], Resp) -> Resp.
+accumulate_stats(Compressed) ->
+    wh_json:map(fun accumulate_queue_stats/2, Compressed).
 
-fold_stat(R, Resp, <<"calls_this_hour">> = K) ->
-    CTH = wh_json:get_integer_value(K, R, 0) + wh_json:get_integer_value(K, Resp, 0),
-    wh_json:set_value(K, CTH, Resp);
+accumulate_queue_stats(QueueId, Calls) ->
+    AccCalls = wh_json:map(fun accumulate_call_stats/2, Calls),
+    {QueueId, AccCalls}.
+accumulate_call_stats(CallId, Stats) ->
+    WaitTime = wait_time(Stats),
+    TalkTime = call_time(Stats),
+    {CurrentStatus, CurrentTstamp} = current_status(Stats),
 
-fold_stat(R, Resp, <<"current_stats">> = K) ->
-    wh_json:foldl(fun(QID, QV, Acc) ->
-                          fold_queue(K, QID, QV, Acc)
-                  end, Resp, wh_json:get_value(K, R, wh_json:new()));
+    AccStats = wh_json:filter(fun({_, V}) -> V =/= undefined end
+                            ,wh_json:set_values([{<<"wait_time">>, WaitTime}
+                                                 ,{<<"call_time">>, TalkTime}
+                                                 ,{<<"current_timestamp">>, CurrentTstamp}
+                                                 ,{<<"current_status">>, CurrentStatus}
+                                                ], Stats)
+                             ),
+    {CallId, AccStats}.
 
-fold_stat(R, Resp, <<"current_calls">> = K) ->
-    wh_json:foldl(fun(CallK, CallV, Acc) ->
-                          wh_json:set_value([K, CallK], CallV, Acc)
-                  end, Resp, wh_json:get_value(K, R, wh_json:new()));
-
-fold_stat(R, Resp, <<"current_statuses">> = K) ->
-    Statuses = wh_json:get_value(K, R),
-    wh_json:foldl(fun(StatusK, StatusV, Acc) ->
-                          wh_json:set_value([K, StatusK], StatusV, Acc)
-                  end, Resp, Statuses);
-fold_stat(R, Resp, K) ->
-    wh_json:set_value(K, wh_json:get_value(K, R), Resp).
-
--spec fold_queue/4 :: (wh_json:json_key(), ne_binary(), wh_json:json_object(), wh_json:json_object()) ->
-                              wh_json:json_object().
-fold_queue(K, QID, QV, Resp) ->
-    wh_json:foldl(fun(<<"calls">> = CallK, CallV, Acc) ->
-                          Key = [K, QID, CallK],
-                          AccCallV = wh_json:get_value(Key, Acc, wh_json:new()),
-
-                          wh_json:set_value(Key, wh_json:merge_recursive(CallV, AccCallV), Acc);
-                     (QKey, QVal, Acc) ->
-                          wh_json:set_value([K, QID, QKey], QVal, Acc)
-                  end, Resp, QV).
-
-total_up_stats(Stats) ->
-    QueuesJObj = wh_json:get_value(<<"current_stats">>, Stats, wh_json:new()),
-    {TotalCalls, TotalWait, QueuesJObj1} = wh_json:foldl(fun total_up_stats_for_queue/3
-                                                         ,{0, 0, QueuesJObj}
-                                                         ,QueuesJObj
-                                                        ),
-    wh_json:set_values([{<<"current_stats">>, QueuesJObj1}
-                        ,{<<"calls_this_hour">>, TotalCalls}
-                        ,{<<"avg_wait_time_this_hour">>, avg_wait(TotalWait, TotalCalls)}
-                       ], Stats).
-
-total_up_stats_for_queue(QueueId, QueueStats, {TotCalls, TotWait, ByQueue}) ->
-    Calls = wh_json:get_value(<<"calls">>, QueueStats, wh_json:new()),
-    {Wait, L} = sum_and_count_wait_time(Calls),
-    ByQueue1 = wh_json:set_values([{[QueueId, <<"calls_this_hour">>], L}
-                                   ,{[QueueId, <<"avg_wait_time_this_hour">>], avg_wait(Wait, L)}
-                                  ], ByQueue),
-
-    {TotCalls + L, TotWait + Wait, ByQueue1}.
-
-sum_and_count_wait_time(Calls) ->
-    wh_json:foldl(fun(_CallId, CallData, {WaitAcc, Tot}) ->
-                          case wh_json:get_integer_value(<<"wait_time">>, CallData) of
-                              undefined -> find_wait_time(CallData, WaitAcc, Tot);
-                              N -> {N + WaitAcc, Tot+1}
-                          end
-                  end, {0, 0}, Calls).
-
-find_wait_time(CallData, WaitAcc, Tot) ->
-    case wh_json:get_integer_value(<<"entered">>, CallData) of
-        undefined -> {WaitAcc, Tot};
-        EnteredTStamp ->
-            try wh_json:get_integer_value(<<"timestamp">>, CallData) - EnteredTStamp of
-                WaitTime -> {WaitAcc+WaitTime, Tot+1}
-            catch
-                error:badarith -> {WaitAcc, Tot}
-            end
+wait_time(Stats) ->
+    case wh_json:get_integer_value(?STAT_TIMESTAMP_WAITING, Stats) of
+        undefined -> undefined;
+        Entered -> wait_time(Stats, Entered)
+    end.
+wait_time(Stats, Entered) ->
+    case wh_json:get_integer_value(?STAT_TIMESTAMP_HANDLING, Stats) of
+        undefined -> wait_time_abandoned(Stats, Entered);
+        Conn -> Conn - Entered
+    end.
+wait_time_abandoned(Stats, Entered) ->
+    case wh_json:get_integer_value(?STAT_TIMESTAMP_ABANDONED, Stats) of
+        undefined -> undefined;
+        Abandoned -> Abandoned - Entered
     end.
 
-avg_wait(_, 0) -> 0;
-avg_wait(W, C) -> ((W * 100) div C) / 100.
-
-fetch_queue_stats(Id, Context) ->
-    fetch_queue_stats(Id, Context, history).
-fetch_queue_stats(Id, Context, history) ->
-    lager:debug("fetching queue stats for ~s", [Id]),
-
-    {Today, _} = calendar:universal_time(),
-    From = calendar:datetime_to_gregorian_seconds({Today, {0,0,0}}),
-
-    crossbar_doc:load_view(<<"acdc_stats/stats_per_queue">>
-                               ,[{startkey, [Id, wh_util:current_tstamp()]}
-                                 ,{endkey, [Id, From]}
-                                 ,descending
-                                ]
-                           ,Context
-                           ,fun normalize_queue_results/2
-                          );
-fetch_queue_stats(Id, #cb_context{account_id=AcctId}=Context, realtime) ->
-    Req = [{<<"Account-ID">>, AcctId}
-           ,{<<"Queue-ID">>, Id}
-           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-          ],
-    case whapps_util:amqp_pool_request(Req
-                                       ,fun wapi_acdc_queue:publish_stats_req/1
-                                       ,fun wapi_acdc_queue:stats_resp_v/1
-                                       ,2000
-                                      ) of
-        {ok, Resp} ->
-            Resp1 = strip_api_fields(wh_json:normalize(Resp)),
-            Context#cb_context{resp_status=success
-                               ,resp_data=Resp1
-                               ,doc=Resp1
-                              };
-        {error, _} -> Context
+call_time(Stats) ->
+    case wh_json:get_integer_value(?STAT_TIMESTAMP_HANDLING, Stats) of
+        undefined -> undefined;
+        Conn -> call_time(Stats, Conn)
     end.
+call_time(Stats, Conn) ->
+    case wh_json:get_value(?STAT_TIMESTAMP_PROCESSED, Stats) of
+        undefined -> undefined;
+        Finished -> Finished - Conn
+    end.
+
+current_status(Stats) ->
+    current_status(Stats, ?STAT_TIMESTAMP_KEYS).
+current_status(_Stats, []) -> {undefined, undefined};
+current_status(Stats, [K|Ks]) ->
+    case wh_json:get_value(K, Stats) of
+        undefined -> current_status(Stats, Ks);
+        T -> {status(K), T}
+    end.
+
+status(?STAT_TIMESTAMP_PROCESSED) -> <<"processed">>;
+status(?STAT_TIMESTAMP_HANDLING) -> <<"handling">>;
+status(?STAT_TIMESTAMP_ABANDONED) -> <<"abandoned">>;
+status(?STAT_TIMESTAMP_WAITING) -> <<"waiting">>.
+
+add_stat(Stat, Compressed) ->
+    add_stat(Stat, Compressed, wh_json:get_value(<<"status">>, Stat)).
+add_stat(Stat, Compressed, <<"waiting">>) ->
+    QID = wh_json:get_value(<<"queue_id">>, Stat),
+    CID = wh_json:get_value(<<"call_id">>, Stat),
+
+    TStamp = wh_json:get_value(<<"timestamp">>, Stat),
+
+    wh_json:set_values([{[QID, CID, ?STAT_TIMESTAMP_WAITING], TStamp}
+                        ,{[QID, CID, <<"start_timestamp">>], TStamp}
+                       ], Compressed);
+add_stat(Stat, Compressed, <<"handling">>) ->
+    QID = wh_json:get_value(<<"queue_id">>, Stat),
+    CID = wh_json:get_value(<<"call_id">>, Stat),
+    AID = wh_json:get_value(<<"agent_id">>, Stat),
+
+    TStamp = wh_json:get_value(<<"timestamp">>, Stat),
+
+    wh_json:set_values([{[QID, CID, ?STAT_TIMESTAMP_HANDLING], TStamp}
+                       ,{[QID, CID, <<"agent_id">>], AID}
+                       ], Compressed);
+add_stat(Stat, Compressed, <<"processed">>) ->
+    QID = wh_json:get_value(<<"queue_id">>, Stat),
+    CID = wh_json:get_value(<<"call_id">>, Stat),
+    AID = wh_json:get_value(<<"agent_id">>, Stat),
+
+    TStamp = wh_json:get_value(<<"timestamp">>, Stat),
+
+    wh_json:set_values([{[QID, CID, ?STAT_TIMESTAMP_PROCESSED], TStamp}
+                        ,{[QID, CID, <<"agent_id">>], AID}
+                       ], Compressed);
+add_stat(Stat, Compressed, <<"missed">>) ->
+    QID = wh_json:get_value(<<"queue_id">>, Stat),
+    CID = wh_json:get_value(<<"call_id">>, Stat),
+    AID = wh_json:get_value(<<"agent_id">>, Stat),
+
+    TStamp = wh_json:get_value(<<"timestamp">>, Stat),
+
+    K = [QID, CID, <<"agents_tried">>],
+    AgentsTried = wh_json:get_value(K, Compressed, wh_json:new()),
+
+    wh_json:set_values([{K, wh_json:set_value(wh_util:to_binary(TStamp), AID, AgentsTried)}
+                       ], Compressed);
+add_stat(Stat, Compressed, <<"abandoned">>) ->
+    QID = wh_json:get_value(<<"queue_id">>, Stat),
+    CID = wh_json:get_value(<<"call_id">>, Stat),
+
+    TStamp = wh_json:get_value(<<"timestamp">>, Stat),
+    Reason = wh_json:get_value(<<"abandon_reason">>, Stat),
+
+    wh_json:set_values([{[QID, CID, ?STAT_TIMESTAMP_ABANDONED], TStamp}
+                        ,{[QID, CID, <<"abandon_reason">>], Reason}
+                       ], Compressed).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -704,156 +678,11 @@ summary(Context) ->
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
 
--spec normalize_queue_results/2 :: (wh_json:json_object(), wh_json:json_objects()) -> wh_json:json_objects().
-normalize_queue_results(JObj, Acc) ->
-    [begin
-         [_, QID] = wh_json:get_value(<<"key">>, JObj),
-         wh_json:set_value(<<"queue_id">>, QID, wh_json:get_value(<<"value">>, JObj))
-     end
-     | Acc].
+normalize_queue_stats(JObj, Acc) ->
+    [wh_doc:public_fields(wh_json:get_value(<<"doc">>, JObj)) | Acc].
 
 normalize_agents_results(JObj, Acc) ->
     [wh_json:get_value(<<"id">>, JObj) | Acc].
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
-strip_api_fields(JObj) ->
-    Strip = [<<"event_name">>, <<"event_category">>
-                 ,<<"app_name">>, <<"app_version">>
-                 ,<<"node">>, <<"msg_id">>, <<"server_id">>
-            ],
-    wh_json:filter(fun({K,_}) -> not lists:member(K, Strip) end, JObj).
-
-%% {[{<<"current_stats">>
-%%        ,{[{<<"55048d29e7fb29061f8c5ef0ae2dbbb9">>
-%%                ,{[{<<"calls">>
-%%                        ,{[{<<"76714966">>
-%%                                ,{[{<<"wait_time">>
-%%                                        ,7}
-%%                                   ,{<<"timestamp">>
-%%                                         ,63517892418}]}}
-%%                           ,{<<"1619546012">>
-%%                                 ,{[{<<"abandoned">>
-%%                                         ,<<"member_hangup">>}
-%%                                    ,{<<"timestamp">>
-%%                                          ,63517892617}]}}
-%%                           ,{<<"948285573">>
-%%                                 ,{[{<<"abandoned">>
-%%                                         ,<<"member_hangup">>}
-%%                                    ,{<<"timestamp">>
-%%                                          ,63517892633}]}}
-%%                           ,{<<"1847732656">>
-%%                                 ,{[{<<"wait_time">>
-%%                                         ,8}
-%%                                    ,{<<"timestamp">>
-%%                                          ,63517892814}
-%%                                    ,{<<"duration">>
-%%                                          ,169}
-%%                                    ,{<<"agent_id">>
-%%                                          ,<<"934a5d7bfc8a097d535297caab004b0e">>}]}}
-%%                           ,{<<"2108908609">>
-%%                                 ,{[{<<"entered">>
-%%                                         ,63517892912}
-%%                                    ,{<<"duration">>
-%%                                          ,163}
-%%                                    ,{<<"agent_id">>
-%%                                          ,<<"934a5d7bfc8a097d535297caab004b0e">>}
-%%                                    ,{<<"timestamp">>
-%%                                          ,63517893079}]}}]}}]}}]}}
-%%   ,{<<"account_id">>
-%%         ,<<"934a5d7bfc8a097d535297caab003839">>}]}
-
-%% {[{<<"current_stats">>
-%%        ,{[{<<"55048d29e7fb29061f8c5ef0ae2dbbb9">>
-%%                ,{[{<<"calls">>
-%%                        ,{[{<<"76714966">>
-%%                                ,{[{<<"duration">>
-%%                                        ,6}
-%%                                   ,{<<"agent_id">>
-%%                                         ,<<"934a5d7bfc8a097d535297caab004b0e">>}
-%%                                   ,{<<"timestamp">>
-%%                                         ,63517892420}]}}
-%%                           ,{<<"1619546012">>
-%%                                 ,{[{<<"entered">>
-%%                                         ,63517892612}
-%%                                    ,{<<"abandoned">>
-%%                                          ,<<"member_hangup">>}
-%%                                    ,{<<"timestamp">>
-%%                                          ,63517892617}]}}
-%%                           ,{<<"948285573">>
-%%                                 ,{[{<<"entered">>
-%%                                         ,63517892628}
-%%                                    ,{<<"abandoned">>
-%%                                          ,<<"member_hangup">>}
-%%                                    ,{<<"timestamp">>
-%%                                          ,63517892633}]}}
-%%                           ,{<<"1847732656">>
-%%                                 ,{[{<<"entered">>
-%%                                         ,63517892641}]}}
-%%                           ,{<<"2108908609">>
-%%                                 ,{[{<<"wait_time">>
-%%                                         ,7}
-%%                                    ,{<<"timestamp">>
-%%                                          ,63517893079}
-%%                                    ,{<<"duration">>
-%%                                          ,163}
-%%                                    ,{<<"agent_id">>
-%%                                          ,<<"934a5d7bfc8a097d535297caab004b0e">>}]}}]}}]}}]}}
-%%   ,{<<"account_id">>
-%%         ,<<"934a5d7bfc8a097d535297caab003839">>}]}
-
-
-
-
-
-
-%% {[{<<"current_stats">>
-%%        ,{[{<<"55048d29e7fb29061f8c5ef0ae2dbbb9">>
-%%                ,{[{<<"calls">>
-%%                        ,{[{<<"76714966">>
-%%                                ,{[{<<"duration">>
-%%                                        ,6}
-%%                                   ,{<<"agent_id">>
-%%                                         ,<<"934a5d7bfc8a097d535297caab004b0e">>}
-%%                                   ,{<<"timestamp">>
-%%                                         ,63517892420}]}}
-%%                           ,{<<"1619546012">>
-%%                                 ,{[{<<"entered">>
-%%                                         ,63517892612}
-%%                                    ,{<<"abandoned">>
-%%                                          ,<<"member_hangup">>}
-%%                                    ,{<<"timestamp">>
-%%                                          ,63517892617}]}}
-%%                           ,{<<"948285573">>
-%%                                 ,{[{<<"entered">>
-%%                                         ,63517892628}
-%%                                    ,{<<"abandoned">>
-%%                                          ,<<"member_hangup">>}
-%%                                    ,{<<"timestamp">>
-%%                                          ,63517892633}]}}
-%%                           ,{<<"1847732656">>
-%%                                 ,{[{<<"entered">>
-%%                                         ,63517892641}]}}
-%%                           ,{<<"2108908609">>
-%%                                 ,{[{<<"wait_time">>
-%%                                         ,7}
-%%                                    ,{<<"timestamp">>
-%%                                          ,63517893079}
-%%                                    ,{<<"duration">>
-%%                                          ,163}
-%%                                    ,{<<"agent_id">>
-%%                                          ,<<"934a5d7bfc8a097d535297caab004b0e">>}]}}]}}
-%%                   ,{<<"avg_wait_time_this_hour">>
-%%                         ,5.666666666666667}
-%%                   ,{<<"calls_this_hour">>
-%%                         ,3}]}}]}}
-%%   ,{<<"account_id">>
-%%         ,<<"934a5d7bfc8a097d535297caab003839">>}
-%%   ,{<<"avg_wait_time_this_hour">>
-%%         ,5.666666666666667}
-%%   ,{<<"calls_this_hour">>
-%%         ,3}]}
+extract_doc(JObj, Acc) ->
+    [wh_json:get_value(<<"doc">>, JObj) | Acc].

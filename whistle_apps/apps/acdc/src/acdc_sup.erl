@@ -19,28 +19,25 @@
 -export([init/1]).
 
 %% Helper macro for declaring children of supervisor
--define(CHILD(I, Type), {I, {I, start_link, []}, permanent, 5000, Type, [I]}).
+-define(CHILD(I, Type, Timeout), {I, {I, start_link, []}, permanent, Timeout, Type, [I]}).
 
--define(CHILDREN, [{acdc_agents_sup, supervisor}
-                   ,{acdc_queues_sup, supervisor}
-                   ,{acdc_stats, worker}
-%%                   ,{acdc_queue_manager, worker}
-                   ,{acdc_agent_manager, worker}
-                   ,{acdc_init, worker}
-                   ,{acdc_listener, worker}
+-define(CHILDREN, [{acdc_agents_sup, supervisor, infinity}
+                   ,{acdc_queues_sup, supervisor, infinity}
+                   ,{acdc_stats, worker, 5000}
+                   ,{acdc_agent_manager, worker, 5000}
+                   ,{acdc_init, worker, 5000}
+                   ,{acdc_listener, worker, 5000}
                   ]).
 
 %% ===================================================================
 %% API functions
 %% ===================================================================
-
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
 %% ===================================================================
 %% Supervisor callbacks
 %% ===================================================================
-
 -spec init([]) -> sup_init_ret().
 init([]) ->
     RestartStrategy = one_for_one,
@@ -48,5 +45,5 @@ init([]) ->
     MaxSecondsBetweenRestarts = 10,
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
-    Children = [?CHILD(Name, Type) || {Name, Type} <- ?CHILDREN],
+    Children = [?CHILD(Name, Type, Timeout) || {Name, Type, Timeout} <- ?CHILDREN],
     {ok, {SupFlags, Children}}.

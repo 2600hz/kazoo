@@ -247,7 +247,7 @@ filter(Pred, JObj, Keys) when is_list(Keys),
 filter(Pred, JObj, Key) ->
     filter(Pred, JObj, [Key]).
 
--spec map/2 :: (fun((json_string(), json_term()) -> term()), object()) -> object().
+-spec map/2 :: (fun((json_string(), json_term()) -> {json_string(), json_term()}), object()) -> object().
 map(F, ?JSON_WRAPPER(Prop)) ->
     from_list([ F(K, V) || {K,V} <- Prop]).
 
@@ -403,12 +403,12 @@ get_ne_value(Key, JObj, Default) ->
 find(Key, Docs) ->
     find(Key, Docs, undefined).
 
-find(Key, JObjs, Default) when is_list(JObjs) ->
-    case lists:dropwhile(fun(JObj) -> get_ne_value(Key, JObj) =:= undefined end, JObjs) of
-        [] -> Default;
-        [JObj|_] -> get_ne_value(Key, JObj)
+find(_, [], Default) -> Default;
+find(Key, [JObj|JObjs], Default) when is_list(JObjs) ->
+    case get_ne_value(Key, JObj) of
+        undefined -> find(Key, JObjs, Default);
+        V -> V
     end.
-
 
 -spec get_value/2 :: (json_string() | json_strings(), object() | objects()) ->
                              json_term() | 'undefined'.

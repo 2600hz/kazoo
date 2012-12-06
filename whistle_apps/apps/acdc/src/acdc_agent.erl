@@ -52,7 +52,7 @@
          ,acct_db :: ne_binary()
          ,acct_id :: ne_binary()
          ,fsm_pid :: pid()
-         ,agent_queues :: [ne_binary(),...] | []
+         ,agent_queues :: ne_binaries()
          ,last_connect :: wh_now() % last connection
          ,last_attempt :: wh_now() % last attempt to connect
          ,my_id :: ne_binary()
@@ -610,7 +610,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec is_valid_queue/2 :: (ne_binary(), [ne_binary()]) -> boolean().
+-spec is_valid_queue/2 :: (ne_binary(), ne_binaries()) -> boolean().
 is_valid_queue(Q, Qs) -> lists:member(Q, Qs).
 
 -spec send_member_connect_resp/5 :: (wh_json:object(), ne_binary()
@@ -921,6 +921,5 @@ record_calls(Agent) ->
 -spec is_thief/1 :: (agent()) -> boolean().
 is_thief(Agent) -> not wh_json:is_json_object(Agent).
 
-handle_fsm_started(FSMPid) ->
-    _ = erlang:monitor(process, FSMPid),
+handle_fsm_started(_FSMPid) ->
     gen_listener:cast(self(), bind_to_member_reqs).
