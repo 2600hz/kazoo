@@ -273,7 +273,7 @@ stat_to_jobj(#call_stat{
          ,{<<"timestamp">>, TStamp}
          ,{<<"wait_time">>, WaitTime}
          ,{<<"talk_time">>, TalkTime}
-         ,{<<"abondon_reason">>, AR}
+         ,{<<"abandon_reason">>, AR}
          ,{<<"status">>, Status}
          ,{<<"type">>, <<"call_partial">>}
         ]));
