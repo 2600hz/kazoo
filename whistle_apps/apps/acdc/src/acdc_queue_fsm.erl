@@ -449,6 +449,9 @@ connecting({dtmf_pressed, DTMF}, #state{caller_exit_key=DTMF
     acdc_queue_listener:exit_member_call(Srv),
     acdc_stats:call_abandoned(AcctId, QueueId, whapps_call:call_id(Call), ?ABANDON_EXIT),
     {next_state, ready, clear_member_call(State)};
+connecting({dtmf_pressed, _DTMF}, State) ->
+    lager:debug("caller pressed ~s, ignoring", [_DTMF]),
+    {next_state, connecting, State};
 
 connecting({timeout, ConnRef, ?CONNECTION_TIMEOUT_MESSAGE}, #state{queue_proc=Srv
                                                                    ,connection_timer_ref=ConnRef
