@@ -53,14 +53,15 @@ find_agent_status(?NE_BINARY = AcctId, AgentId) ->
         {ok, []} -> lager:debug("no res"), <<"logout">>;
         {error, _E} -> lager:debug("err: ~p", [_E]),  <<"logout">>;
         {ok, [StatusJObj|_]} -> lager:debug("status: ~p", [StatusJObj]),
-                                maybe_fix_resume(wh_json:get_value(<<"value">>, StatusJObj))
+                                fix_agent_status(wh_json:get_value(<<"value">>, StatusJObj))
     end;
 find_agent_status(Call, AgentId) ->
     find_agent_status(whapps_call:account_id(Call), AgentId).
 
-maybe_fix_resume(<<"resume">>) -> <<"login">>;
-maybe_fix_resume(<<"ready">>) -> <<"login">>;
-maybe_fix_resume(Status) -> Status.
+fix_agent_status(<<"resume">>) -> <<"login">>;
+fix_agent_status(<<"ready">>) -> <<"login">>;
+fix_agent_status(<<"wrapup">>) -> <<"login">>;
+fix_agent_status(Status) -> Status.
 
 fix_data_status(<<"pause">>) -> <<"paused">>;
 fix_data_status(Status) -> Status.
