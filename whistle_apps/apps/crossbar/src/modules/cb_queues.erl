@@ -509,7 +509,7 @@ fetch_all_queue_stats(Context) ->
 
     AcctId = cb_context:account_id(Context),
     Opts = [{startkey, [To, AcctId]}
-            ,{endkey, [0, AcctId]}
+            ,{endkey, [From, AcctId]}
             ,include_docs
             ,descending
            ],
