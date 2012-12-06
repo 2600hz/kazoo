@@ -12,7 +12,7 @@
 -behaviour(gen_fsm).
 
 %% API
--export([start_link/4
+-export([start_link/2, start_link/3, start_link/4
          ,call_event/4
          ,member_connect_req/2
          ,member_connect_win/2
@@ -26,6 +26,8 @@
          ,status/1
         ]).
 
+-export([wait_for_listener/3]).
+
 %% gen_fsm callbacks
 -export([init/1
          ,handle_event/3
@@ -36,12 +38,15 @@
         ]).
 
 %% Agent states
--export([sync/2
+-export([wait/2
+         ,sync/2
          ,ready/2
          ,ringing/2
          ,answered/2
          ,wrapup/2
          ,paused/2
+
+         ,wait/3
          ,sync/3
          ,ready/3
          ,ringing/3
@@ -227,9 +232,24 @@ status(FSM) ->
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
+-spec start_link/2 :: (pid(), wh_json:object()) -> startlink_ret().
+-spec start_link/3 :: (pid(), whapps_call:call(), ne_binary()) -> startlink_ret().
 -spec start_link/4 :: (ne_binary(), ne_binary(), pid(), wh_proplist()) -> startlink_ret().
-start_link(AcctId, AgentId, AgentProc, Props) ->
-    gen_fsm:start_link(?MODULE, [AcctId, AgentId, AgentProc, Props], []).
+
+start_link(Supervisor, AgentJObj) when is_pid(Supervisor) ->
+    start_link(wh_json:get_value(<<"pvt_account_id">>, AgentJObj)
+               ,wh_json:get_value(<<"_id">>, AgentJObj)
+               ,Supervisor
+               ,[]
+              ).
+start_link(Supervisor, ThiefCall, _QueueId) ->
+    start_link(whapps_call:account_id(ThiefCall)
+               ,whapps_call:owner_id(ThiefCall)
+               ,Supervisor
+               ,[]
+              ).
+start_link(AcctId, AgentId, Supervisor, Props) ->
+    gen_fsm:start_link(?MODULE, [AcctId, AgentId, Supervisor, Props], []).
 
 %%%===================================================================
 %%% gen_fsm callbacks
@@ -248,29 +268,64 @@ start_link(AcctId, AgentId, AgentProc, Props) ->
 %%                     {stop, StopReason}
 %% @end
 %%--------------------------------------------------------------------
-init([AcctId, AgentId, AgentProc, Props]) ->
+init([AcctId, AgentId, Supervisor, Props]) ->
     FSMCallId = <<"fsm_", AcctId/binary, "_", AgentId/binary>>,
     put(callid, FSMCallId),
     lager:debug("started acdc agent fsm"),
 
     acdc_stats:agent_active(AcctId, AgentId),
 
-    {NextState, SyncRef} = case props:get_value(skip_sync, Props) of
-                               true -> {ready, undefined};
-                               _ ->
-                                   gen_fsm:send_event(self(), send_sync_event),
-                                   gen_fsm:send_all_state_event(self(), load_endpoints),
-                                   {sync, start_sync_timer()}
-                           end,
+    Self = self(),
+    _P = spawn(?MODULE, wait_for_listener, [Supervisor, Self, Props]),
+    lager:debug("waiting for listener in ~p", [_P]),
 
-    {ok, NextState, #state{acct_id=AcctId
-                           ,acct_db=wh_util:format_account_id(AcctId, encoded)
-                           ,agent_id=AgentId
-                           ,agent_proc=AgentProc
-                           ,agent_proc_id=acdc_util:proc_id(AgentProc)
-                           ,sync_ref=SyncRef
-                           ,fsm_call_id=FSMCallId
-                          }}.
+    {ok, wait, #state{acct_id=AcctId
+                      ,acct_db=wh_util:format_account_id(AcctId, encoded)
+                      ,agent_id=AgentId
+                      ,fsm_call_id=FSMCallId
+                     }}.
+
+
+wait_for_listener(Supervisor, FSM, Props) ->
+    case acdc_agent_sup:agent(Supervisor) of
+        undefined ->
+            lager:debug("listener not ready yet, waiting"),
+            timer:sleep(100),
+            wait_for_listener(Supervisor, FSM, Props);
+        P when is_pid(P) ->
+            lager:debug("listener retrieved: ~p", [P]),
+
+            {NextState, SyncRef} = case props:get_value(skip_sync, Props) of
+                                       true -> {ready, undefined};
+                                       _ ->
+                                           gen_fsm:send_event(FSM, send_sync_event),
+                                           gen_fsm:send_all_state_event(FSM, load_endpoints),
+                                           {sync, start_sync_timer(FSM)}
+                                   end,
+
+            gen_fsm:send_event(FSM, {listener, P, NextState, SyncRef})
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+wait({listener, AgentProc, NextState, SyncRef}, State) ->
+    lager:debug("setting agent proc to ~p", [AgentProc]),
+    {next_state, NextState, State#state{
+                              agent_proc=AgentProc
+                              ,sync_ref=SyncRef
+                              ,agent_proc_id=acdc_util:proc_id(AgentProc)
+                             }};
+wait(_Msg, State) ->
+    lager:debug("unhandled msg in wait: ~p", [_Msg]),
+    {next_state, wait, State}.
+
+wait(status, _, State) ->
+    {reply, undefined, wait, State};
+wait(current_call, _, State) ->
+    {reply, undefined, wait, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -805,6 +860,7 @@ handle_event(load_endpoints, StateName, #state{acct_db=AcctDb
                                               }=State) ->
     Setters = [fun(C) -> whapps_call:set_account_id(AcctId, C) end
                ,fun(C) -> whapps_call:set_account_db(AcctDb, C) end
+               ,fun(C) -> whapps_call:set_owner_id(AgentId, C) end
               ],
 
     Call = lists:foldl(fun(F, C) -> F(C) end
@@ -862,6 +918,9 @@ handle_sync_event(_Event, _From, StateName, State) ->
 %%                   {stop, Reason, NewState}
 %% @end
 %%--------------------------------------------------------------------
+handle_info({timeout, _Ref, ?SYNC_RESPONSE_MESSAGE}=Msg, StateName, State) ->
+    gen_fsm:send_event(self(), Msg),
+    {next_state, StateName, State};
 handle_info(_Info, StateName, State) ->
     lager:debug("unhandled message in state ~s: ~p", [StateName, _Info]),
     {next_state, StateName, State}.
@@ -905,8 +964,13 @@ start_wrapup_timer(Timeout) when Timeout < 0 -> start_wrapup_timer(0); % send im
 start_wrapup_timer(Timeout) -> gen_fsm:start_timer(Timeout*1000, wrapup_expired).
 
 -spec start_sync_timer/0 :: () -> reference().
+-spec start_sync_timer/1 :: (pid()) -> reference().
 start_sync_timer() ->
+    lager:debug("sync timer start"),
     gen_fsm:start_timer(?SYNC_RESPONSE_TIMEOUT, ?SYNC_RESPONSE_MESSAGE).
+start_sync_timer(P) ->
+    lager:debug("sync timer start: ~p", [P]),
+    erlang:start_timer(?SYNC_RESPONSE_TIMEOUT, P, ?SYNC_RESPONSE_MESSAGE).
 
 -spec start_resync_timer/0 :: () -> reference().
 start_resync_timer() ->

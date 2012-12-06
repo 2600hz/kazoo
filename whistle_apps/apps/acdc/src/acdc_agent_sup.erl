@@ -24,7 +24,7 @@
 
 %% Helper macro for declaring children of supervisor
 -define(CHILD(Name, Args),
-        {Name, {Name, start_link, Args}, transient, 5000, worker, [Name]}).
+        {Name, {Name, start_link, Args}, permanent, 5000, worker, [Name]}).
 
 %%%===================================================================
 %%% API functions
@@ -104,7 +104,9 @@ init(Args) ->
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    {ok, {SupFlags, [?CHILD(acdc_agent, [self() | Args])]}}.
+    {ok, {SupFlags, [?CHILD(acdc_agent, [self() | Args])
+                     ,?CHILD(acdc_agent_fsm, [self() | Args])
+                    ]}}.
 
 %%%===================================================================
 %%% Internal functions
