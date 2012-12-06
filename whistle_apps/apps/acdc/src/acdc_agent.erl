@@ -921,5 +921,5 @@ record_calls(Agent) ->
 -spec is_thief/1 :: (agent()) -> boolean().
 is_thief(Agent) -> not wh_json:is_json_object(Agent).
 
-handle_fsm_started(FSMPid) ->
+handle_fsm_started(_FSMPid) ->
     gen_listener:cast(self(), bind_to_member_reqs).
