@@ -860,6 +860,7 @@ handle_event(load_endpoints, StateName, #state{acct_db=AcctDb
                                               }=State) ->
     Setters = [fun(C) -> whapps_call:set_account_id(AcctId, C) end
                ,fun(C) -> whapps_call:set_account_db(AcctDb, C) end
+               ,fun(C) -> whapps_call:set_owner_id(AgentId, C) end
               ],
 
     Call = lists:foldl(fun(F, C) -> F(C) end
