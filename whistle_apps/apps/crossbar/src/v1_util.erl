@@ -443,9 +443,9 @@ is_authentic(Req0, Context0) ->
         [true|_] ->
             lager:debug("is_authentic: true"),
             {true, Req1, Context1};
-        [{true, Context1}|_] ->
+        [{true, Context2}|_] ->
             lager:debug("is_authentic: true"),
-            {true, Req1, Context1}
+            {true, Req1, Context2}
     end.
 
 -spec get_auth_token/2 :: (#http_req{}, cb_context:context()) -> {#http_req{}, cb_context:context()}.
