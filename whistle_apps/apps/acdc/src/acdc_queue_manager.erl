@@ -79,11 +79,11 @@
                       }
                     ]).
 
--define(SECONDARY_BINDINGS, [{acdc_queue, [{restrict_to, [member_call]}
-                                           ,{account_id, <<"*">>}
-                                           ,{queue_id, <<"*">>}
-                                          ]}
-                            ]).
+-define(SECONDARY_BINDINGS(AcctId, QueueId), [{acdc_queue, [{restrict_to, [member_call]}
+                                                            ,{account_id, AcctId}
+                                                            ,{queue_id, QueueId}
+                                                           ]}
+                                             ]).
 -define(SECONDARY_QUEUE_NAME, <<"acdc.queue.manager">>).
 -define(SECONDARY_QUEUE_OPTIONS, [{exclusive, false}]).
 -define(SECONDARY_CONSUME_OPTIONS, [{exclusive, false}]).
@@ -179,7 +179,7 @@ pick_winner(Srv, Resps) ->
 %% @end
 %%--------------------------------------------------------------------
 init([Super, AcctId, QueueId]) ->
-    _ = start_secondary_queue(),
+    _ = start_secondary_queue(AcctId, QueueId),
 
     AcctDb = wh_util:format_account_id(AcctId, encoded),
     {ok, QueueJObj} = couch_mgr:open_doc(AcctDb, QueueId),
@@ -341,7 +341,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-start_secondary_queue() ->
+start_secondary_queue(AcctId, QueueId) ->
     Self = self(),
     spawn(fun() -> gen_listener:add_queue(Self
                                           ,?SECONDARY_QUEUE_NAME
@@ -349,7 +349,7 @@ start_secondary_queue() ->
                                             ,{consume_options, ?SECONDARY_CONSUME_OPTIONS}
                                             ,{basic_qos, 1}
                                            ]
-                                          ,?SECONDARY_BINDINGS
+                                          ,?SECONDARY_BINDINGS(AcctId, QueueId)
                                          )
           end).
 
