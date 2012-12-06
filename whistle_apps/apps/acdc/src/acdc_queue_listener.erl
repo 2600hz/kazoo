@@ -278,7 +278,7 @@ handle_cast({start_friends, QueueJObj}, #state{worker_sup=WorkerSup
                     {stop, failed_fsm, State}
             end
     end;
-handle_cast({queue_name, <<>>}, State) ->
+handle_cast({queue_name, undefined}, State) ->
     fetch_my_queue(),
     {noreply, State};
 handle_cast({queue_name, Q}, #state{my_q=undefined}=State) ->
@@ -519,6 +519,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 -spec send_member_connect_req/5 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 send_member_connect_req(CallId, AcctId, QueueId, MyQ, MyId) ->
+    lager:debug("sending req via ~s", [MyQ]),
     Req = props:filter_undefined(
             [{<<"Account-ID">>, AcctId}
              ,{<<"Queue-ID">>, QueueId}
