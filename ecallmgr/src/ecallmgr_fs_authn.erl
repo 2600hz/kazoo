@@ -91,6 +91,9 @@ bind_to_directory(Node) ->
         ok ->
             lager:debug("bound to directory request on ~s", [Node]),
             ok;
+        {ok, _Resp} ->
+            lager:debug("bound to directory request on ~s: ~s", [Node, _Resp]),
+            ok;
         {error, Reason}=E ->
             lager:warning("failed to bind to directory requests on ~s: ~p", [Node, Reason]),
             E;
