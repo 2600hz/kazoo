@@ -31,20 +31,26 @@
 
 %% Route Requests
 -define(ROUTE_REQ_HEADERS, [<<"To">>, <<"From">>, <<"Request">>, <<"Call-ID">>
-                                ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
+                            ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
                            ]).
--define(OPTIONAL_ROUTE_REQ_HEADERS, [<<"Geo-Location">>, <<"Orig-IP">>, <<"Max-Call-Length">>, <<"Media">>
-                                         ,<<"Transcode">>, <<"Codecs">>, <<"Custom-Channel-Vars">>
-                                         ,<<"Resource-Type">>, <<"Cost-Parameters">>, <<"From-Network-Addr">>
-                                         ,<<"Switch-Hostname">>, <<"Switch-Nodename">>
+-define(OPTIONAL_ROUTE_REQ_HEADERS, [<<"Geo-Location">>, <<"Orig-IP">>
+                                     ,<<"Max-Call-Length">>, <<"Media">>
+                                     ,<<"Transcode">>, <<"Codecs">>
+                                     ,<<"Custom-Channel-Vars">>
+                                     ,<<"Resource-Type">>, <<"Cost-Parameters">>
+                                     ,<<"From-Network-Addr">>
+                                     ,<<"Switch-Hostname">>, <<"Switch-Nodename">>
                                     ]).
 -define(ROUTE_REQ_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
                            ,{<<"Event-Name">>, ?ROUTE_REQ_EVENT_NAME}
-                           ,{<<"Resource-Type">>, [<<"MMS">>, <<"SMS">>, <<"audio">>, <<"video">>, <<"chat">>]}
+                           ,{<<"Resource-Type">>, [<<"MMS">>, <<"SMS">>
+                                                   ,<<"audio">>, <<"video">>
+                                                   ,<<"chat">>
+                                                  ]}
                            ,{<<"Media">>, [<<"process">>, <<"proxy">>, <<"bypass">>]}
                           ]).
 -define(ROUTE_REQ_COST_PARAMS, [<<"Min-Increment-Cost">>, <<"Max-Incremental-Cost">>
-                                    ,<<"Min-Setup-Cost">>, <<"Max-Setup-Cost">>
+                                ,<<"Min-Setup-Cost">>, <<"Max-Setup-Cost">>
                                ]).
 -define(ROUTE_REQ_TYPES, [{<<"To">>, fun is_binary/1}
                           ,{<<"From">>, fun is_binary/1}
@@ -54,8 +60,8 @@
                           ,{<<"Caller-ID-Name">>, fun is_binary/1}
                           ,{<<"Caller-ID-Number">>, fun is_binary/1}
                           ,{<<"Cost-Parameters">>, fun(JObj) ->
-                                                           wh_json:is_json_object(JObj) andalso
-                                                               lists:all(fun({K, _V}) ->
+                                                           wh_json:is_json_object(JObj)
+                                                               andalso lists:all(fun({K, _V}) ->
                                                                                  lists:member(K, ?ROUTE_REQ_COST_PARAMS)
                                                                          end, wh_json:to_proplist(JObj))
                                                    end}
@@ -64,31 +70,31 @@
 
 %% Route Responses
 -define(ROUTE_RESP_ROUTE_HEADERS, [<<"Invite-Format">>]).
--define(OPTIONAL_ROUTE_RESP_ROUTE_HEADERS, [ <<"Route">>, <<"To-User">>, <<"To-Realm">>, <<"To-DID">>
-                                                 ,<<"Proxy-Via">>, <<"Media">>, <<"Auth-User">>
-                                                 ,<<"Auth-Password">>, <<"Codecs">>, <<"Progress-Timeout">>
-                                                 ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>, <<"Caller-ID-Type">>
-                                                 ,<<"Rate">>, <<"Rate-Increment">>, <<"Rate-Minimum">>, <<"Surcharge">>
-                                                 ,<<"SIP-Headers">>, <<"Custom-Channel-Vars">>
-                                                 ,<<"Weight-Cost">>, <<"Weight-Location">>
+-define(OPTIONAL_ROUTE_RESP_ROUTE_HEADERS, [<<"Route">>, <<"To-User">>, <<"To-Realm">>, <<"To-DID">>
+                                            ,<<"Proxy-Via">>, <<"Media">>, <<"Auth-User">>
+                                            ,<<"Auth-Password">>, <<"Codecs">>, <<"Progress-Timeout">>
+                                            ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>, <<"Caller-ID-Type">>
+                                            ,<<"Rate">>, <<"Rate-Increment">>, <<"Rate-Minimum">>, <<"Surcharge">>
+                                            ,<<"SIP-Headers">>, <<"Custom-Channel-Vars">>
+                                            ,<<"Weight-Cost">>, <<"Weight-Location">>
                                            ]).
 -define(ROUTE_RESP_ROUTE_VALUES, [{<<"Media">>, [<<"process">>, <<"bypass">>, <<"auto">>]}
                                   ,{<<"Caller-ID-Type">>, [<<"from">>, <<"rpid">>, <<"pid">>]}
                                   ,?INVITE_FORMAT_TUPLE
                                  ]).
--define(ROUTE_RESP_ROUTE_TYPES, [ {<<"Codecs">>, fun is_list/1}
-                                  ,{<<"Route">>, fun is_binary/1}
-                                  ,{<<"To-User">>, fun is_binary/1}
-                                  ,{<<"To-Realm">>, fun is_binary/1}
-                                  ,{<<"SIP-Headers">>, fun wh_json:is_json_object/1}
-                                  ,{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}
+-define(ROUTE_RESP_ROUTE_TYPES, [{<<"Codecs">>, fun is_list/1}
+                                 ,{<<"Route">>, fun is_binary/1}
+                                 ,{<<"To-User">>, fun is_binary/1}
+                                 ,{<<"To-Realm">>, fun is_binary/1}
+                                 ,{<<"SIP-Headers">>, fun wh_json:is_json_object/1}
+                                 ,{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}
                                 ]).
 
 %% Route Responses
 -define(ROUTE_RESP_HEADERS, [<<"Method">>]).
 -define(OPTIONAL_ROUTE_RESP_HEADERS, [<<"Custom-Channel-Vars">>, <<"Routes">>
-                                          ,<<"Route-Error-Code">>, <<"Route-Error-Message">>
-                                          ,<<"Pre-Park">>
+                                      ,<<"Route-Error-Code">>, <<"Route-Error-Message">>
+                                      ,<<"Pre-Park">>
                                      ]).
 -define(ROUTE_RESP_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
                             ,{<<"Event-Name">>, <<"route_resp">>}
@@ -144,7 +150,8 @@ req_event_type() ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec resp/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec resp/1 :: (api_terms()) -> {'ok', iolist()} |
+                                 {'error', string()}.
 resp(Prop) when is_list(Prop) ->
     Prop1 = case props:get_value(<<"Method">>, Prop) of
                 <<"bridge">> ->
@@ -230,14 +237,14 @@ win_v(JObj) ->
 %% @doc Bind AMQP Queue for routing requests
 %% @end
 %%--------------------------------------------------------------------
--spec bind_q/2 :: (ne_binary(), proplist()) -> 'ok'.
+-spec bind_q/2 :: (ne_binary(), wh_proplist()) -> 'ok'.
 bind_q(Queue, Props) ->
     Realm = props:get_value(realm, Props, <<"*">>),
 
     amqp_util:callmgr_exchange(),
     amqp_util:bind_q_to_callmgr(Queue, get_route_req_routing(Realm)).
 
--spec unbind_q/2 :: (ne_binary(), proplist()) -> 'ok'.
+-spec unbind_q/2 :: (ne_binary(), wh_proplist()) -> 'ok'.
 unbind_q(Queue, Props) ->
     Realm = props:get_value(realm, Props, <<"*">>),
     amqp_util:unbind_q_from_callmgr(Queue, get_route_req_routing(Realm)).
@@ -278,7 +285,7 @@ publish_win(RespQ, Win, ContentType) ->
 %% when provided with an IP
 %% @end
 %%-----------------------------------------------------------------------------
--spec get_auth_realm/1  :: (wh_json:json_object()) -> ne_binary().
+-spec get_auth_realm/1  :: (wh_json:object()) -> ne_binary().
 get_auth_realm(ApiProp) when is_list(ApiProp) ->
     [_ReqUser, ReqDomain] = binary:split(props:get_value(<<"Request">>, ApiProp), <<"@">>),
     ReqDomain;
