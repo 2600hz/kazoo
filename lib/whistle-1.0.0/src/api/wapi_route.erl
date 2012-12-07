@@ -19,6 +19,7 @@
          ,publish_resp/2, publish_resp/3
          ,publish_win/2, publish_win/3
          ,get_auth_realm/1
+         ,get_auth_user/1
          ,req_event_type/0
          ,is_actionable_resp/1
         ]).
@@ -240,19 +241,24 @@ win_v(JObj) ->
 -spec bind_q/2 :: (ne_binary(), wh_proplist()) -> 'ok'.
 bind_q(Queue, Props) ->
     Realm = props:get_value(realm, Props, <<"*">>),
+    User = props:get_value(user, Props, <<"*">>),
 
     amqp_util:callmgr_exchange(),
-    amqp_util:bind_q_to_callmgr(Queue, get_route_req_routing(Realm)).
+    amqp_util:bind_q_to_callmgr(Queue, get_route_req_routing(Realm, User)).
 
 -spec unbind_q/2 :: (ne_binary(), wh_proplist()) -> 'ok'.
 unbind_q(Queue, Props) ->
     Realm = props:get_value(realm, Props, <<"*">>),
-    amqp_util:unbind_q_from_callmgr(Queue, get_route_req_routing(Realm)).
+    User = props:get_value(user, Props, <<"*">>),
 
-get_route_req_routing(Realm) when is_binary(Realm) ->
-    list_to_binary([?KEY_ROUTE_REQ, ".", amqp_util:encode(Realm)]);
+    amqp_util:unbind_q_from_callmgr(Queue, get_route_req_routing(Realm, User)).
+
+get_route_req_routing(Realm, User) when is_binary(Realm), is_binary(User) ->
+    list_to_binary([?KEY_ROUTE_REQ, ".", amqp_util:encode(Realm), ".", amqp_util:encode(User)]).
+
 get_route_req_routing(Api) ->
-    get_route_req_routing(get_auth_realm(Api)).
+    {U, R} = get_auth_user_realm(Api),
+    get_route_req_routing(R, U).
 
 -spec publish_req/1 :: (api_terms()) -> 'ok'.
 -spec publish_req/2 :: (api_terms(), binary()) -> 'ok'.
@@ -285,10 +291,26 @@ publish_win(RespQ, Win, ContentType) ->
 %% when provided with an IP
 %% @end
 %%-----------------------------------------------------------------------------
--spec get_auth_realm/1  :: (wh_json:object()) -> ne_binary().
+-spec get_auth_realm/1  :: (api_terms()) -> ne_binary().
 get_auth_realm(ApiProp) when is_list(ApiProp) ->
-    [_ReqUser, ReqDomain] = binary:split(props:get_value(<<"Request">>, ApiProp), <<"@">>),
+    [_ReqUser, ReqDomain] = binary:split(props:get_value(<<"From">>, ApiProp), <<"@">>),
     ReqDomain;
 get_auth_realm(ApiJObj) ->
-    [_ReqUser, ReqDomain] = binary:split(wh_json:get_value(<<"Request">>, ApiJObj), <<"@">>),
+    [_ReqUser, ReqDomain] = binary:split(wh_json:get_value(<<"From">>, ApiJObj), <<"@">>),
     ReqDomain.
+
+-spec get_auth_user/1  :: (api_terms()) -> ne_binary().
+get_auth_user(ApiProp) when is_list(ApiProp) ->
+    [ReqUser, _ReqDomain] = binary:split(props:get_value(<<"From">>, ApiProp), <<"@">>),
+    ReqUser;
+get_auth_user(ApiJObj) ->
+    [ReqUser, _ReqDomain] = binary:split(wh_json:get_value(<<"From">>, ApiJObj), <<"@">>),
+    ReqUser.
+
+-spec get_auth_user_realm/1  :: (api_terms()) -> {ne_binary(), ne_binary()}.
+get_auth_user_realm(ApiProp) when is_list(ApiProp) ->
+    [ReqUser, ReqDomain] = binary:split(props:get_value(<<"From">>, ApiProp), <<"@">>),
+    {ReqUser, ReqDomain};
+get_auth_user_realm(ApiJObj) ->
+    [ReqUser, ReqDomain] = binary:split(wh_json:get_value(<<"From">>, ApiJObj), <<"@">>),
+    {ReqUser, ReqDomain}.
