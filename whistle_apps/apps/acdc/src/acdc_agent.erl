@@ -497,7 +497,7 @@ handle_cast({bridge_to_member, Call, WinJObj, EPs}, #state{fsm_pid=FSM
                                                            ,acct_id=AcctId
                                                            ,agent_id=AgentId
                                                           }=State) ->
-    put(callid, whapps_call:call_id(Call)),
+    whapps_call:put_callid(Call),
     lager:debug("bridging to agent endpoints: ~p", [EPs]),
 
     RingTimeout = wh_json:get_value(<<"Ring-Timeout">>, WinJObj),
@@ -517,6 +517,7 @@ handle_cast({bridge_to_member, Call, WinJObj, EPs}, #state{fsm_pid=FSM
 handle_cast({bridge_to_member, Call, _WinJObj, _}, #state{is_thief=true
                                                           ,agent=Agent
                                                          }=State) ->
+    whapps_call:put_callid(Call),
     lager:debug("connecting to thief at ~s", [whapps_call:call_id(Agent)]),
     acdc_util:bind_to_call_events(Call),
 
@@ -525,6 +526,7 @@ handle_cast({bridge_to_member, Call, _WinJObj, _}, #state{is_thief=true
     {noreply, State#state{call=Call}, hibernate};
 
 handle_cast({monitor_call, Call}, State) ->
+    whapps_call:put_callid(Call),
     acdc_util:bind_to_call_events(Call),
     lager:debug("monitoring call ~s", [whapps_call:call_id(Call)]),
     {noreply, State#state{call=Call}, hibernate};
@@ -539,7 +541,7 @@ handle_cast({originate_execute, JObj}, #state{my_q=Q}=State) ->
     {noreply, State#state{agent_call_id=ACallId}};
 
 handle_cast({outbound_call, Call}, State) ->
-    whapps_call:put_callid(Call),
+    _ = whapps_call:put_callid(Call),
     acdc_util:bind_to_call_events(Call),
 
     lager:debug("bound to agent's outbound call"),
