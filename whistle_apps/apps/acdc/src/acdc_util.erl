@@ -114,7 +114,7 @@ get_endpoint(Call, ?NE_BINARY = EndpointId) ->
 
 %% Handles subscribing/unsubscribing from call events
 -spec bind_to_call_events/1 :: (ne_binary() | whapps_call:call()) -> 'ok'.
--spec unbind_from_call_events/1 :: (ne_binary() | whapps_call:call()) -> 'ok'.
+-spec unbind_from_call_events/1 :: (api_binary() | whapps_call:call()) -> 'ok'.
 bind_to_call_events(?NE_BINARY = CallId) ->
     gen_listener:add_binding(self(), call, [{callid, CallId}
                                             ,{restrict_to, [events, error]}
@@ -122,6 +122,7 @@ bind_to_call_events(?NE_BINARY = CallId) ->
 bind_to_call_events(Call) ->
     bind_to_call_events(whapps_call:call_id(Call)).
 
+unbind_from_call_events(undefined) -> ok;
 unbind_from_call_events(?NE_BINARY = CallId) ->
     gen_listener:rm_binding(self(), call, [{callid, CallId}
                                            ,{restrict_to, [events, error]}
