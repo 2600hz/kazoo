@@ -19,6 +19,7 @@
          ,member_connect_accepted/1
          ,channel_hungup/2
          ,originate_execute/2
+         ,outbound_call/2
          ,join_agent/2
          ,send_sync_req/1
          ,send_sync_resp/3, send_sync_resp/4
@@ -90,12 +91,13 @@
 %% When an agent is paused (on break, logged out, etc)
 -define(PAUSED_TIMER_MESSAGE, paused_timeout).
 
--define(BINDINGS(AcctId, AgentId), [{self, []}
-                                    ,{acdc_agent, [{account_id, AcctId}
-                                                   ,{agent_id, AgentId}
-                                                   ,{restrict_to, [sync, stats_req]}
-                                                  ]}
-                                   ]).
+-define(BINDINGS(AcctId, AgentId, Realm), [{self, []}
+                                           ,{acdc_agent, [{account_id, AcctId}
+                                                          ,{agent_id, AgentId}
+                                                          ,{restrict_to, [sync, stats_req]}
+                                                         ]}
+                                           ,{route, [{realm, Realm}]}
+                                          ]).
 
 -define(RESPONDERS, [{{acdc_agent_handler, handle_sync_req}
                       ,[{<<"agent">>, <<"sync_req">>}]
@@ -114,6 +116,9 @@
                       }
                      ,{{acdc_agent_handler, handle_member_message}
                        ,[{<<"member">>, <<"*">>}]
+                      }
+                     ,{{acdc_agent_handler, handle_route_req}
+                       ,[{<<"dialplan">>, <<"route_req">>}]
                       }
                     ]).
 
@@ -140,9 +145,14 @@ start_link(Supervisor, AgentJObj) ->
             ignore;
         Queues ->
             AcctId = wh_json:get_value(<<"pvt_account_id">>, AgentJObj),
+            AcctDb = wh_json:get_value(<<"pvt_account_db">>, AgentJObj),
+
+            {ok, AcctDoc} = couch_mgr:open_cache_doc(AcctDb, AcctId),
+            Realm = wh_json:get_value(<<"realm">>, AcctDoc),
+
             lager:debug("start bindings for ~s(~s)", [AcctId, AgentId]),
             gen_listener:start_link(?MODULE
-                                    ,[{bindings, ?BINDINGS(AcctId, AgentId)}
+                                    ,[{bindings, ?BINDINGS(AcctId, AgentId, Realm)}
                                       ,{responders, ?RESPONDERS}
                                      ]
                                     ,[Supervisor, AgentJObj, Queues]
@@ -152,8 +162,13 @@ start_link(Supervisor, AgentJObj) ->
 start_link(Supervisor, ThiefCall, QueueId) ->
     AgentId = whapps_call:owner_id(ThiefCall),
     AcctId = whapps_call:account_id(ThiefCall),
+    AcctDb = whapps_call:account_db(ThiefCall),
+
+    {ok, AcctDoc} = couch_mgr:open_cache_doc(AcctDb, AcctId),
+    Realm = wh_json:get_value(<<"realm">>, AcctDoc),
+
     gen_listener:start_link(?MODULE
-                            ,[{bindings, ?BINDINGS(AcctId, AgentId)}
+                            ,[{bindings, ?BINDINGS(AcctId, AgentId, Realm)}
                               ,{responders, ?RESPONDERS}
                              ]
                             ,[Supervisor, ThiefCall, [QueueId]]
@@ -184,6 +199,9 @@ channel_hungup(Srv, CallId) ->
 
 originate_execute(Srv, JObj) ->
     gen_listener:cast(Srv, {originate_execute, JObj}).
+
+outbound_call(Srv, Call) ->
+    gen_listener:cast(Srv, {outbound_call, Call}).
 
 join_agent(Srv, ACallId) ->
     gen_listener:cast(Srv, {join_agent, ACallId}).
@@ -520,6 +538,13 @@ handle_cast({originate_execute, JObj}, #state{my_q=Q}=State) ->
     send_originate_execute(JObj, Q),
     {noreply, State#state{agent_call_id=ACallId}};
 
+handle_cast({outbound_call, Call}, State) ->
+    whapps_call:put_callid(Call),
+    acdc_util:bind_to_call_events(Call),
+
+    lager:debug("bound to agent's outbound call"),
+    {noreply, State#state{call=Call}, hibernate};
+
 handle_cast({join_agent, ACallId}, #state{call=Call
                                           ,record_calls=ShouldRecord
                                          }=State) ->
@@ -597,7 +622,12 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_event(_JObj, #state{fsm_pid=undefined}) -> 'ignore';
-handle_event(_JObj, #state{fsm_pid=FSM}) -> {reply, [{fsm_pid, FSM}]}.
+handle_event(_JObj, #state{fsm_pid=FSM
+                           ,agent_id=AgentId
+                          }) ->
+    {reply, [{fsm_pid, FSM}
+             ,{agent_id, AgentId}
+            ]}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -908,7 +938,6 @@ store_url(Call, JObj) ->
 
 -spec agent_id/1 :: (agent()) -> api_binary().
 agent_id(Agent) ->
-    lager:debug("agent: ~p", [Agent]),
     case wh_json:is_json_object(Agent) of
         true -> wh_json:get_value(<<"_id">>, Agent);
         false -> whapps_call:owner_id(Agent)
