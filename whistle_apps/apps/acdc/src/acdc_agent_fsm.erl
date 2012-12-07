@@ -559,8 +559,8 @@ ringing({channel_hungup, CallId}, #state{agent_proc=Srv
                                         }=State) ->
     lager:debug("agent did not answer their phone in time: ~s", [CallId]),
 
-    acdc_agent:channel_hungup(Srv, CallId),
     acdc_agent:member_connect_retry(Srv, MCallId),
+    acdc_agent:channel_hungup(Srv, CallId),
     acdc_stats:call_missed(AcctId, QueueId, AgentId, MCallId),
 
     acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_GREEN),
@@ -642,8 +642,10 @@ answered({dialplan_error, _App}, #state{agent_proc=Srv
                                         ,agent_id=AgentId
                                         ,member_call_queue_id=QueueId
                                         ,member_call_id=CallId
+                                        ,agent_call_id=ACallId
                                        }=State) ->
     lager:debug("connecting agent to caller failed, clearing call"),
+    acdc_agent:channel_hungup(Srv, ACallId),
     acdc_agent:member_connect_retry(Srv, CallId),
 
     acdc_stats:call_missed(AcctId, QueueId, AgentId, CallId),
