@@ -93,7 +93,7 @@
          ,next_status :: ne_binary()
          ,fsm_call_id :: ne_binary() % used when no call-ids are available
          ,endpoints = [] :: wh_json:objects()
-         ,outbound_call_id :: whapps_call:call()
+         ,outbound_call_id :: api_binary()
          }).
 
 %%%===================================================================
