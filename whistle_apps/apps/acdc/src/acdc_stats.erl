@@ -67,7 +67,7 @@
           agent_id :: ne_binary()
           ,acct_id :: ne_binary()
           ,timestamp = wh_util:current_tstamp() :: integer()
-          ,status :: 'ready' | 'logged_out' | 'paused' | 'wrapup' | 'busy'
+          ,status :: 'ready' | 'logout' | 'paused' | 'wrapup' | 'busy'
           ,wait_time :: integer()
           ,call_id :: ne_binary()
          }).

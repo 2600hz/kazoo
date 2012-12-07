@@ -16,6 +16,7 @@
          ,handle_member_message/2
          ,handle_config_change/2
          ,handle_presence_probe/2
+         ,handle_route_req/2
         ]).
 
 -include("acdc.hrl").
@@ -67,9 +68,9 @@ maybe_start_agent(AcctId, AgentId) ->
             lager:debug("agent ~s (~s) not found, starting", [AgentId, AcctId]),
             case couch_mgr:open_doc(wh_util:format_account_id(AcctId, encoded), AgentId) of
                 {ok, AgentJObj} ->
-                    _R = acdc_agents_sup:new(AgentJObj),
+                    {ok, _APid} = acdc_agents_sup:new(AgentJObj),
                     acdc_stats:agent_active(AcctId, AgentId),
-                    lager:debug("started agent at ~p", [_R]);
+                    lager:debug("started agent at ~p", [_APid]);
                 {error, _E} ->
                     lager:debug("error opening agent doc: ~p", [_E])
             end;
@@ -215,3 +216,15 @@ send_probe(JObj, State) ->
          | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
         ],
     wapi_notifications:publish_presence_update(PresenceUpdate).
+
+handle_route_req(JObj, Props) ->
+    _ = wh_util:put_callid(JObj),
+    Call = whapps_call:from_route_req(JObj),
+
+    Owner = whapps_call:owner_id(Call),
+    Agent = props:get_value(agent_id, Props),
+
+    case Owner =:= Agent of
+        true -> acdc_agent_fsm:route_req(props:get_value(fsm_pid, Props), Call);
+        false -> ok
+    end.
