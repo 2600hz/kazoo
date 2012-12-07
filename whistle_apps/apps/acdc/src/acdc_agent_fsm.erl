@@ -896,6 +896,11 @@ outbound({leg_destroyed, CallId}, #state{agent_proc=Srv
     acdc_agent:channel_hungup(Srv, CallId),
     {next_state, ready, clear_call(State)};
 
+outbound({member_connect_win, JObj}, #state{agent_proc=Srv}=State) ->
+    lager:debug("agent won, but can't process this right now (on outbound call)"),
+    acdc_agent:member_connect_retry(Srv, JObj),
+    {next_state, outbound, State};
+
 outbound(_Msg, State) ->
     lager:debug("ignoring msg in outbound: ~p", [_Msg]),
     {next_state, outbound, State}.
