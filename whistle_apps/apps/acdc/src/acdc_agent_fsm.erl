@@ -926,6 +926,11 @@ outbound(current_call, _, State) ->
 handle_event({refresh, AgentJObj}, StateName, State) ->
     lager:debug("refresh agent config: ~p", [AgentJObj]),
     {next_state, StateName, State};
+
+handle_event(load_endpoints, StateName, #state{agent_proc=undefined}=State) ->
+    lager:debug("agent proc not ready, not loading endpoints yet"),
+    gen_fsm:send_all_state_event(self(), load_endpoints),
+    {next_state, StateName, State};
 handle_event(load_endpoints, StateName, #state{acct_db=AcctDb
                                                ,agent_id=AgentId
                                                ,acct_id=AcctId
@@ -947,7 +952,14 @@ handle_event(load_endpoints, StateName, #state{acct_db=AcctDb
         [_|_]=EPs ->
             lager:debug("endpoints loaded and registered"),
 
-            {next_state, StateName, State#state{endpoints=EPs}};
+            _ = [acdc_agent:add_endpoint_bindings(Srv
+                                                  ,wh_json:get_value(<<"To-Realm">>, EP)
+                                                  ,wh_json:get_value(<<"To-Username">>, EP)
+                                                 )
+                 || EP <- EPs
+                ],
+
+            {next_state, StateName, State#state{endpoints=EPs}, hibernate};
         {'EXIT', _E} ->
             lager:debug("failed to load endpoints: ~p", [_E]),
             acdc_agent:stop(Srv),

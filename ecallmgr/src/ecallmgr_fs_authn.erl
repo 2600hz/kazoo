@@ -28,7 +28,7 @@
 -include("ecallmgr.hrl").
 
 -record(state, {node = 'undefined' :: atom()
-                ,options = [] :: proplist()
+                ,options = [] :: wh_proplist()
                }).
 
 %%%===================================================================
@@ -208,7 +208,8 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec lookup_user/4 :: (atom(), ne_binary(), ne_binary(), proplist()) ->  'ok' | 'timeout' | {'error', _}.
+-spec lookup_user/4 :: (atom(), ne_binary(), ne_binary(), wh_proplist()) ->
+                               fs_handlecall_ret().
 lookup_user(Node, ID, Method,  Data) ->
     put(callid, ID),
     %% build req for rabbit
@@ -247,7 +248,7 @@ handle_lookup_resp({ok, RespJObj}, DomainName, UserId, _) ->
             ],
     ecallmgr_fs_xml:authn_resp_xml(wh_json:set_values(Props, RespJObj)).
     
--spec publish_register_event/1 :: (proplist()) -> 'ok'.
+-spec publish_register_event/1 :: (wh_proplist()) -> 'ok'.
 publish_register_event(Data) ->
     ApiProp = lists:foldl(fun(K, Api) ->
                                   case props:get_value(wh_util:to_lower_binary(K), Data) of

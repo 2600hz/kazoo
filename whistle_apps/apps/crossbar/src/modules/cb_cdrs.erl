@@ -107,7 +107,7 @@ validate(#cb_context{req_verb = <<"get">>}=Context, CDRId) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec load_cdr_summary/1 :: (cb_context:context()) -> cb_context:context().
-load_cdr_summary(#cb_context{req_nouns=[_, {?WH_ACCOUNTS_DB, _AID} | _]}=Context) ->
+load_cdr_summary(#cb_context{req_nouns=[_, {?WH_ACCOUNTS_DB, [_AID]} | _]}=Context) ->
     lager:debug("loading cdrs for account ~s", [_AID]),
     case create_view_options(undefined, Context) of
         {ok, ViewOptions} -> load_view(?CB_LIST, ViewOptions, Context);

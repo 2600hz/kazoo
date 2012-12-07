@@ -14,7 +14,7 @@
 
 %% API
 -export([start_link/0
-         ,new/1
+         ,new/1, new/2
          ,new_thief/2
          ,workers/0
          ,find_acct_supervisors/1
@@ -44,12 +44,20 @@ start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
 -spec new/1 :: (wh_json:object()) -> sup_startchild_ret().
+-spec new/2 :: (ne_binary(), ne_binary()) -> sup_startchild_ret().
 new(JObj) ->
     case find_agent_supervisor(wh_json:get_value(<<"pvt_account_id">>, JObj)
                                ,wh_json:get_value(<<"_id">>, JObj)
                               )
     of
         undefined -> supervisor:start_child(?MODULE, [JObj]);
+        P when is_pid(P) -> lager:debug("agent already started here: ~p", [P])
+    end.
+new(AcctId, AgentId) ->
+    case find_agent_supervisor(AcctId, AgentId) of
+        undefined ->
+            {ok, Agent} = couch_mgr:open_doc(wh_util:format_account_id(AcctId, encoded), AgentId),
+            supervisor:start_child(?MODULE, [Agent]);
         P when is_pid(P) -> lager:debug("agent already started here: ~p", [P])
     end.
 
