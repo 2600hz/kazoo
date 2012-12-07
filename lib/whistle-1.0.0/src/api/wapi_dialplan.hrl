@@ -198,6 +198,17 @@
                            ]).
 -define(ANSWER_REQ_TYPES, []).
 
+%% Privacy
+-define(PRIVACY_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>]).
+-define(OPTIONAL_PRIVACY_REQ_HEADERS, [<<"Insert-At">>]).
+-define(PRIVACY_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
+                             ,{<<"Event-Name">>, <<"command">>}
+                             ,{<<"Application-Name">>, <<"privacy">>}
+                             ,{<<"Privacy-Mode">>, [<<"full">>, <<"name">>, <<"number">>]}
+                             ,?INSERT_AT_TUPLE
+                            ]).
+-define(PRIVACY_REQ_TYPES, []).
+
 %% Progress
 -define(PROGRESS_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>]).
 -define(OPTIONAL_PROGRESS_REQ_HEADERS, [<<"Insert-At">>]).

@@ -33,6 +33,7 @@
          ,record/1, record_v/1
          ,record_call/1, record_call_v/1
          ,answer/1, answer_v/1
+         ,privacy/1, privacy_v/1
          ,hold/1, hold_v/1
          ,park/1, park_v/1
          ,play_and_collect_digits/1, play_and_collect_digits_v/1
@@ -433,6 +434,27 @@ answer_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?ANSWER_REQ_HEADERS, ?ANSWER_REQ_VALUES, ?ANSWER_REQ_TYPES);
 answer_v(JObj) ->
     answer_v(wh_json:to_proplist(JObj)).
+
+
+%%--------------------------------------------------------------------
+%% @doc Privacy
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec privacy/1 :: (api_terms()) -> api_formatter_return().
+privacy(Prop) when is_list(Prop) ->
+    case privacy_v(Prop) of
+        true -> wh_api:build_message(Prop, ?PRIVACY_REQ_HEADERS, ?OPTIONAL_PRIVACY_REQ_HEADERS);
+        false -> {error, "Proplist failed validation for privacy_req"}
+    end;
+privacy(JObj) ->
+    privacy(wh_json:to_proplist(JObj)).
+
+-spec privacy_v/1 :: (api_terms()) -> boolean().
+privacy_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?PRIVACY_REQ_HEADERS, ?PRIVACY_REQ_VALUES, ?PRIVACY_REQ_TYPES);
+privacy_v(JObj) ->
+    privacy_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc Progress a session - see wiki
