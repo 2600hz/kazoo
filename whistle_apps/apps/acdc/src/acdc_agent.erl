@@ -31,6 +31,7 @@
          ,call_status_req/1
          ,stop/1
          ,fsm_started/2
+         ,add_endpoint_bindings/3
         ]).
 
 %% gen_server callbacks
@@ -91,13 +92,12 @@
 %% When an agent is paused (on break, logged out, etc)
 -define(PAUSED_TIMER_MESSAGE, paused_timeout).
 
--define(BINDINGS(AcctId, AgentId, Realm), [{self, []}
-                                           ,{acdc_agent, [{account_id, AcctId}
-                                                          ,{agent_id, AgentId}
-                                                          ,{restrict_to, [sync, stats_req]}
-                                                         ]}
-                                           ,{route, [{realm, Realm}]}
-                                          ]).
+-define(BINDINGS(AcctId, AgentId), [{self, []}
+                                    ,{acdc_agent, [{account_id, AcctId}
+                                                   ,{agent_id, AgentId}
+                                                   ,{restrict_to, [sync, stats_req]}
+                                                  ]}
+                                   ]).
 
 -define(RESPONDERS, [{{acdc_agent_handler, handle_sync_req}
                       ,[{<<"agent">>, <<"sync_req">>}]
@@ -145,14 +145,10 @@ start_link(Supervisor, AgentJObj) ->
             ignore;
         Queues ->
             AcctId = wh_json:get_value(<<"pvt_account_id">>, AgentJObj),
-            AcctDb = wh_json:get_value(<<"pvt_account_db">>, AgentJObj),
-
-            {ok, AcctDoc} = couch_mgr:open_cache_doc(AcctDb, AcctId),
-            Realm = wh_json:get_value(<<"realm">>, AcctDoc),
 
             lager:debug("start bindings for ~s(~s)", [AcctId, AgentId]),
             gen_listener:start_link(?MODULE
-                                    ,[{bindings, ?BINDINGS(AcctId, AgentId, Realm)}
+                                    ,[{bindings, ?BINDINGS(AcctId, AgentId)}
                                       ,{responders, ?RESPONDERS}
                                      ]
                                     ,[Supervisor, AgentJObj, Queues]
@@ -162,13 +158,9 @@ start_link(Supervisor, AgentJObj) ->
 start_link(Supervisor, ThiefCall, QueueId) ->
     AgentId = whapps_call:owner_id(ThiefCall),
     AcctId = whapps_call:account_id(ThiefCall),
-    AcctDb = whapps_call:account_db(ThiefCall),
-
-    {ok, AcctDoc} = couch_mgr:open_cache_doc(AcctDb, AcctId),
-    Realm = wh_json:get_value(<<"realm">>, AcctDoc),
 
     gen_listener:start_link(?MODULE
-                            ,[{bindings, ?BINDINGS(AcctId, AgentId, Realm)}
+                            ,[{bindings, ?BINDINGS(AcctId, AgentId)}
                               ,{responders, ?RESPONDERS}
                              ]
                             ,[Supervisor, ThiefCall, [QueueId]]
@@ -232,6 +224,12 @@ call_status_req(Srv) ->
 
 fsm_started(Srv, FSM) ->
     gen_listener:cast(Srv, {fsm_started, FSM}).
+
+add_endpoint_bindings(Srv, Realm, User) ->
+    lager:debug("adding route bindings to ~p for endpoint ~s@~s", [Srv, User, Realm]),
+    gen_listener:add_binding(Srv, route, [{realm, Realm}
+                                          ,{user, User}
+                                          ]).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -498,7 +496,7 @@ handle_cast({bridge_to_member, Call, WinJObj, EPs}, #state{fsm_pid=FSM
                                                            ,agent_id=AgentId
                                                           }=State) ->
     whapps_call:put_callid(Call),
-    lager:debug("bridging to agent endpoints: ~p", [EPs]),
+    lager:debug("bridging to agent endpoints"),
 
     RingTimeout = wh_json:get_value(<<"Ring-Timeout">>, WinJObj),
     lager:debug("ring agent for ~ps", [RingTimeout]),
