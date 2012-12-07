@@ -18,6 +18,7 @@
          ,member_connect_win/2
          ,originate_ready/2
          ,originate_failed/2
+         ,route_req/2
          ,sync_req/2, sync_resp/2
          ,pause/2
          ,resume/1
@@ -45,6 +46,7 @@
          ,answered/2
          ,wrapup/2
          ,paused/2
+         ,outbound/2
 
          ,wait/3
          ,sync/3
@@ -53,6 +55,7 @@
          ,answered/3
          ,wrapup/3
          ,paused/3
+         ,outbound/3
         ]).
 
 -include("acdc.hrl").
@@ -90,6 +93,7 @@
          ,next_status :: ne_binary()
          ,fsm_call_id :: ne_binary() % used when no call-ids are available
          ,endpoints = [] :: wh_json:objects()
+         ,outbound_call_id :: whapps_call:call()
          }).
 
 %%%===================================================================
@@ -180,6 +184,9 @@ originate_ready(FSM, JObj) ->
 %%--------------------------------------------------------------------
 originate_failed(FSM, JObj) ->
     gen_fsm:send_event(FSM, {originate_failed, JObj}).
+
+route_req(FSM, Call) ->
+    gen_fsm:send_event(FSM, {route_req, Call}).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -322,6 +329,9 @@ wait({listener, AgentProc, NextState, SyncRef}, State) ->
 wait(send_sync_event, State) ->
     gen_fsm:send_event(self(), send_sync_event),
     {next_state, wait, State};
+wait({route_req, _Call}=Req, State) ->
+    gen_fsm:send_event(self(), Req),
+    {next_state, wait, State};
 wait(_Msg, State) ->
     lager:debug("unhandled msg in wait: ~p", [_Msg]),
     {next_state, wait, State}.
@@ -401,6 +411,10 @@ sync({pause, Timeout}, #state{acct_id=AcctId
     acdc_stats:agent_paused(AcctId, AgentId, Timeout),
     acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_RED_FLASH),
     {next_state, paused, State#state{sync_ref=Ref}};
+
+sync({route_req, _Call}=Req, State) ->
+    gen_fsm:send_event(self(), Req),
+    {next_state, sync, State};
 
 sync(_Evt, State) ->
     lager:debug("unhandled event: ~p", [_Evt]),
@@ -494,6 +508,14 @@ ready({dtmf_pressed, _}, State) ->
 
 ready({originate_failed, _E}, State) ->
     {next_state, ready, State};
+
+ready({route_req, Call}, #state{agent_proc=Srv}=State) ->
+    CallId = whapps_call:call_id(Call),
+    put(callid, CallId),
+    lager:debug("agent on outbound call, not receiving calls"),
+
+    acdc_agent:outbound_call(Srv, Call),
+    {next_state, outbound, State#state{outbound_call_id=CallId}};
 
 ready(_Evt, State) ->
     lager:debug("unhandled event: ~p", [_Evt]),
@@ -770,6 +792,14 @@ wrapup({leg_destroyed, CallId}, #state{agent_proc=Srv}=State) ->
     acdc_agent:channel_hungup(Srv, CallId),
     {next_state, wrapup, State};
 
+wrapup({route_req, Call}, #state{agent_proc=Srv}=State) ->
+    CallId = whapps_call:call_id(Call),
+    put(callid, CallId),
+    lager:debug("agent on outbound call, not receiving calls"),
+
+    acdc_agent:outbound_call(Srv, Call),
+    {next_state, outbound, State#state{outbound_call_id=CallId}};
+
 wrapup(_Evt, State) ->
     lager:debug("unhandled event: ~p", [_Evt]),
     {next_state, wrapup, State#state{wrapup_timeout=0}}.
@@ -834,6 +864,15 @@ paused({member_connect_win, JObj}, #state{agent_proc=Srv}=State) ->
     lager:debug("agent won, but can't process this right now"),
     acdc_agent:member_connect_retry(Srv, JObj),
     {next_state, paused, State};
+
+paused({route_req, Call}, #state{agent_proc=Srv}=State) ->
+    CallId = whapps_call:call_id(Call),
+    put(callid, CallId),
+    lager:debug("agent on outbound call, not receiving calls"),
+
+    acdc_agent:outbound_call(Srv, Call),
+    {next_state, outbound, State#state{outbound_call_id=CallId}};
+
 paused(_Evt, State) ->
     lager:debug("unhandled event: ~p", [_Evt]),
     {next_state, paused, State}.
@@ -842,6 +881,29 @@ paused(status, _, State) ->
     {reply, <<"paused">>, paused, State};
 paused(current_call, _, State) ->
     {reply, undefined, paused, State}.
+
+outbound({channel_hungup, CallId}, #state{agent_proc=Srv
+                                          ,outbound_call_id=CallId
+                                         }=State) ->
+    lager:debug("outbound channel ~s hungup", [CallId]),
+    acdc_agent:channel_hungup(Srv, CallId),
+    {next_state, ready, clear_call(State)};
+
+outbound({leg_destroyed, CallId}, #state{agent_proc=Srv
+                                         ,outbound_call_id=CallId
+                                        }=State) ->
+    lager:debug("outbound leg ~s destroyed", [CallId]),
+    acdc_agent:channel_hungup(Srv, CallId),
+    {next_state, ready, clear_call(State)};
+
+outbound(_Msg, State) ->
+    lager:debug("ignoring msg in outbound: ~p", [_Msg]),
+    {next_state, outbound, State}.
+
+outbound(status, _, State) ->
+    {reply, <<"outbound">>, outbound, State};
+outbound(current_call, _, State) ->
+    {reply, undefined, outbound, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1026,6 +1088,7 @@ clear_call(#state{fsm_call_id=FSMCallId}=State) ->
                 ,agent_call_id = undefined
                 ,caller_exit_key = <<"#">>
                 ,call_status_ref = undefined
+                ,outbound_call_id = undefined
                }.
 
 -spec current_call/4 :: (whapps_call:call() | 'undefined', atom(), ne_binary(), 'undefined' | wh_now()) ->
