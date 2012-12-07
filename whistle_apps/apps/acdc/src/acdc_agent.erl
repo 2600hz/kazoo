@@ -249,11 +249,13 @@ init([Supervisor, Agent, Queues]) ->
                                ,{<<"Agent-ID">>, AgentId}
                                | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                              ],
-                       [wapi_acdc_queue:publish_agent_change(
-                          [{<<"Queue-ID">>, QueueId}
-                           ,{<<"Change">>, <<"available">>}
-                           | Prop
-                          ]) || QueueId <- Queues],
+                       _ = [wapi_acdc_queue:publish_agent_change(
+                              [{<<"Queue-ID">>, QueueId}
+                               ,{<<"Change">>, <<"available">>}
+                               | Prop
+                              ])
+                            || QueueId <- Queues
+                           ],
                        lager:debug("send agent_change update")
                end),
 
@@ -382,6 +384,7 @@ handle_cast({channel_hungup, CallId}, #state{call=Call
         CCallId ->
             lager:debug("member channel hungup, done with this call"),
             acdc_util:unbind_from_call_events(Call),
+            acdc_util:unbind_from_call_events(ACallId),
 
             maybe_stop_recording(Call, ShouldRecord),
 
@@ -391,6 +394,7 @@ handle_cast({channel_hungup, CallId}, #state{call=Call
                     {noreply, State#state{call=undefined
                                           ,msg_queue_id=undefined
                                           ,acdc_queue_id=undefined
+                                          ,agent_call_id=undefined
                                          }
                      ,hibernate};
                 true ->
@@ -406,6 +410,31 @@ handle_cast({channel_hungup, CallId}, #state{call=Call
             lager:debug("listening for agent(~s) and caller(~s)", [ACallId, CCallId]),
             {noreply, State}
     end;
+
+handle_cast({member_connect_retry, CallId}, #state{my_id=MyId
+                                                   ,msg_queue_id=Server
+                                                   ,agent_call_id=ACallId
+                                                   ,call=Call
+                                                  }=State) when is_binary(CallId) ->
+    send_member_connect_retry(Server, CallId, MyId),
+    case whapps_call:call_id(Call) of
+        CallId ->
+            lager:debug("need to retry member connect, agent isn't able to take it"),
+            acdc_util:unbind_from_call_events(ACallId),
+            {noreply, State#state{msg_queue_id=undefined
+                                  ,acdc_queue_id=undefined
+                                  ,agent_call_id=undefined
+                                 }, hibernate};
+        _ ->
+            lager:debug("call id is not our member call id: ~s", [CallId]),
+            {noreply, State#state{msg_queue_id=undefined
+                                  ,acdc_queue_id=undefined
+                                 }, hibernate}
+    end;
+handle_cast({member_connect_retry, WinJObj}, #state{my_id=MyId}=State) ->
+    lager:debug("cannot process this win, sending a retry: ~s", [call_id(WinJObj)]),
+    send_member_connect_retry(WinJObj, MyId),
+    {noreply, State};
 
 handle_cast(member_connect_accepted, #state{msg_queue_id=AmqpQueue
                                             ,call=Call
@@ -442,18 +471,6 @@ handle_cast({member_connect_resp, ReqJObj}, #state{agent_id=AgentId
                                   ,msg_queue_id = wh_json:get_value(<<"Server-ID">>, ReqJObj)
                                  }}
     end;
-
-handle_cast({member_connect_retry, CallId}, #state{my_id=MyId
-                                                   ,msg_queue_id=Server
-                                                  }=State) when is_binary(CallId) ->
-    send_member_connect_retry(Server, CallId, MyId),
-    {noreply, State#state{msg_queue_id=undefined
-                          ,acdc_queue_id=undefined
-                          }};
-handle_cast({member_connect_retry, WinJObj}, #state{my_id=MyId}=State) ->
-    lager:debug("cannot process this call, sending a retry: ~p", [WinJObj]),
-    send_member_connect_retry(WinJObj, MyId),
-    {noreply, State};
 
 handle_cast({bridge_to_member, Call, WinJObj, EPs}, #state{fsm_pid=FSM
                                                            ,record_calls=RecordCall
