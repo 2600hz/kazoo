@@ -236,25 +236,21 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+find_pid_from_supervisor({ok, P}) when is_pid(P) -> {ok, P};
+find_pid_from_supervisor({error, {already_started, P}}) when is_pid(P) -> {ok, P};
+find_pid_from_supervisor(E) -> E.
 
 handle_cast({start_friends, QueueJObj}, #state{worker_sup=WorkerSup
                                                ,mgr_pid=MgrPid
                                                ,acct_id=AcctId
                                                ,queue_id=QueueId
                                               }=State) ->
-    case acdc_queue_worker_sup:start_fsm(WorkerSup, MgrPid, QueueJObj) of
+    case find_pid_from_supervisor(acdc_queue_worker_sup:start_fsm(WorkerSup, MgrPid, QueueJObj)) of
         {ok, FSMPid} ->
             lager:debug("started queue FSM: ~p", [FSMPid]),
-            {ok, SharedPid} = acdc_queue_worker_sup:start_shared_queue(WorkerSup, FSMPid, AcctId, QueueId),
-            lager:debug("started shared queue listener: ~p", [SharedPid]),
-
-            {noreply, State#state{
-                        fsm_pid = FSMPid
-                        ,shared_pid = SharedPid
-                       }};
-        {error, {already_started, FSMPid}} ->
-            lager:debug("queue FSM already started: ~p", [FSMPid]),
-            {ok, SharedPid} = acdc_queue_worker_sup:start_shared_queue(WorkerSup, FSMPid, AcctId, QueueId),
+            {ok, SharedPid} = find_pid_from_supervisor(
+                                acdc_queue_worker_sup:start_shared_queue(WorkerSup, FSMPid, AcctId, QueueId)
+                               ),
             lager:debug("started shared queue listener: ~p", [SharedPid]),
 
             {noreply, State#state{
@@ -266,7 +262,10 @@ handle_cast({start_friends, QueueJObj}, #state{worker_sup=WorkerSup
             case acdc_queue_worker_sup:fsm(WorkerSup) of
                 FSMPid when is_pid(FSMPid) ->
                     lager:debug("found queue FSM pid: ~p", [FSMPid]),
-                    {ok, SharedPid} = acdc_queue_worker_sup:start_shared_queue(WorkerSup, FSMPid, AcctId, QueueId),
+                    {ok, SharedPid} = find_pid_from_supervisor(
+                                        acdc_queue_worker_sup:start_shared_queue(WorkerSup, FSMPid, AcctId, QueueId)
+                                       ),
+
                     lager:debug("started shared queue listener: ~p", [SharedPid]),
 
                     {noreply, State#state{
