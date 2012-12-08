@@ -135,17 +135,16 @@
 %%--------------------------------------------------------------------
 start_link(Supervisor, AgentJObj) ->
     AgentId = wh_json:get_value(<<"_id">>, AgentJObj),
+    AcctId = wh_json:get_value(<<"pvt_account_id">>, AgentJObj),
 
     case wh_json:get_value(<<"queues">>, AgentJObj) of
         undefined ->
             lager:debug("agent ~s has no queues, ignoring", [AgentId]),
-            ignore;
+            {error, no_queues};
         [] ->
-            lager:debug("agent ~s in ~s has no queues, ignoring"),
-            ignore;
+            lager:debug("agent ~s in ~s has no queues, ignoring", [AgentId, AcctId]),
+            {error, no_queues};
         Queues ->
-            AcctId = wh_json:get_value(<<"pvt_account_id">>, AgentJObj),
-
             lager:debug("start bindings for ~s(~s)", [AcctId, AgentId]),
             gen_listener:start_link(?MODULE
                                     ,[{bindings, ?BINDINGS(AcctId, AgentId)}
