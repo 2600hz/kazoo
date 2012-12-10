@@ -211,14 +211,15 @@ start_link() ->
 
 init([]) ->
     put(callid, <<"acdc.stats">>),
-    lager:debug("started new acdc stats collector"),
-    {ok, ok}.
+    Prefix = wh_util:rand_hex_binary(5),
+    lager:debug("started new acdc stats collector, prefix: ~s", [Prefix]),
+    {ok, Prefix}.
 
 handle_call(_Req, _From, State) ->
     {reply, ok, State}.
 
 handle_cast({store, Stat}, State) ->
-    store_stat(Stat),
+    store_stat(Stat, State),
     {noreply, State};
 handle_cast(_Req, State) ->
     {noreply, State}.
@@ -236,14 +237,13 @@ terminate(_Reason, _) ->
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
-store_stat(#call_stat{acct_id=AcctId}=Stat) ->
-    JObj = stat_to_jobj(Stat),
+store_stat(#call_stat{acct_id=AcctId}=Stat, Prefix) ->
+    JObj = stat_to_jobj(Stat, Prefix),
     store_stat(AcctId, JObj);
-store_stat(#agent_stat{acct_id=AcctId}=Stat) ->
-    JObj = stat_to_jobj(Stat),
-    store_stat(AcctId, JObj).
-
-store_stat(AcctId, JObj) ->
+store_stat(#agent_stat{acct_id=AcctId}=Stat, Prefix) ->
+    JObj = stat_to_jobj(Stat, Prefix),
+    store_stat(AcctId, JObj);
+store_stat(?NE_BINARY = AcctId, JObj) ->
     case couch_mgr:save_doc(db_name(AcctId), JObj) of
         {ok, _} -> ok;
         {error, _E} ->
@@ -252,7 +252,7 @@ store_stat(AcctId, JObj) ->
             store_stat(AcctId, JObj)
     end.
 
--spec stat_to_jobj/1 :: (stat()) -> wh_json:object().
+-spec stat_to_jobj/2 :: (stat(), ne_binary()) -> wh_json:object().
 stat_to_jobj(#call_stat{
                 call_id=CallId
                 ,acct_id=AcctId
@@ -263,7 +263,7 @@ stat_to_jobj(#call_stat{
                 ,talk_time=TalkTime
                 ,abandon_reason=AR
                 ,status=Status
-               }) ->
+               }, Prefix) ->
     wh_json:from_list(
       props:filter_undefined(
         [{<<"call_id">>, CallId}
@@ -276,6 +276,7 @@ stat_to_jobj(#call_stat{
          ,{<<"abandon_reason">>, AR}
          ,{<<"status">>, Status}
          ,{<<"type">>, <<"call_partial">>}
+         ,{<<"_id">>, doc_id(Prefix, TStamp)}
         ]));
 stat_to_jobj(#agent_stat{
                 agent_id=AgentId
@@ -284,7 +285,7 @@ stat_to_jobj(#agent_stat{
                 ,status=Status
                 ,wait_time=WaitTime
                 ,call_id=CallId
-               }) ->
+               }, Prefix) ->
     wh_json:from_list(
       props:filter_undefined(
         [{<<"account_id">>, AcctId}
@@ -294,13 +295,17 @@ stat_to_jobj(#agent_stat{
          ,{<<"status">>, Status}
          ,{<<"type">>, <<"agent_partial">>}
          ,{<<"call_id">>, CallId}
+         ,{<<"_id">>, doc_id(Prefix, TStamp)}
         ])).
+
+-spec doc_id/2 :: (ne_binary(), pos_integer()) -> ne_binary().
+doc_id(Prefix, Timestamp) ->
+    list_to_binary([Prefix, "-", wh_util:to_binary(Timestamp), "-", couch_mgr:get_uuid(5)]).
 
 init_db(AcctId) ->
     DbName = db_name(AcctId),
     lager:debug("created db ~s: ~s", [DbName, couch_mgr:db_create(DbName)]),
-    lager:debug("revised docs: ~p", [couch_mgr:revise_views_from_folder(DbName, acdc)]),
-    ok.
+    lager:debug("revised docs in ~s: ~p", [AcctId, couch_mgr:revise_views_from_folder(DbName, acdc)]).
 
 db_name(Acct) ->
     <<A:2/binary, B:2/binary, Rest/binary>> = wh_util:format_account_id(Acct, raw),
