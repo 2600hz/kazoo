@@ -360,54 +360,60 @@ init([]) ->
     put(callid, <<"acdc.stats">>),
     LogTime = ms_to_next_hour(),
     _ = erlang:send_after(LogTime, self(), {the_hour_is_up, LogTime}),
-    lager:debug("started new acdc stats collector"),
-    {ok, ets:new(?ETS_TABLE, [set
-                              ,protected
-                              ,named_table
-                              ,{keypos, #call_stat.call_id} % same position as agent_id
-                             ])}.
 
-handle_call(_Req, _From, Table) ->
-    {reply, ok, Table}.
+    StoreDir = iolist_to_binary([code:priv_dir(acdc), "/calls/"]),
+    init_store(StoreDir),
 
-handle_cast(flush_table, Table) ->
+    lager:debug("started new acdc stats collector, storing files in ~s", [StoreDir]),
+    {ok, {StoreDir, ets:new(?ETS_TABLE, [set
+                                         ,protected
+                                         ,named_table
+                                         ,{keypos, #call_stat.call_id} % same position as agent_id
+                                        ])}
+    }.
+
+handle_call(_Req, _From, State) ->
+    {reply, ok, State}.
+
+handle_cast(flush_table, {_, Table}=State) ->
     ets:delete_all_objects(Table),
-    {noreply, Table};
-handle_cast({store, Stat}, Table) ->
+    {noreply, State};
+handle_cast({store, Stat}, {Dir, Table}=State) ->
     true = ets:insert(Table, Stat),
-    {noreply, Table};
-handle_cast({remove, Stat}, Table) ->
+    write_to_file(Dir, Stat),
+    {noreply, State};
+handle_cast({remove, Stat}, {_, Table}=State) ->
     _Objs = ets:select_delete(Table, [{Stat, [], [true]}]),
     lager:debug("maybe deleted ~p objects", [_Objs]),
-    {noreply, Table};
-handle_cast(_Req, Table) ->
-    {noreply, Table}.
+    {noreply, State};
+handle_cast(_Req, State) ->
+    {noreply, State}.
 
 %% 300 seconds (5 minutes) means we just started up, or the timers were
 %% off...either way, we are ignoring the log point and starting the
 %% timer back up.
-handle_info({the_hour_is_up, N}, Table) when N < 300000 ->
+handle_info({the_hour_is_up, N}, State) when N < 300000 ->
     lager:debug("the next hour came quickly: ~p", [N]),
     lager:debug("ignore and start again"),
     LogTime = ms_to_next_hour(),
     _ = erlang:send_after(LogTime, self(), {the_hour_is_up, LogTime}),
-    {noreply, Table};
-handle_info({the_hour_is_up, N}, Table) ->
+    {noreply, State};
+handle_info({the_hour_is_up, N}, {_, Table}=State) ->
     lager:debug("hour is up (~b ms), time to store the data", [N]),
     LogTime = ms_to_next_hour(),
     _ = erlang:send_after(LogTime, self(), {the_hour_is_up, LogTime}),
 
     flush_to_db(Table),
 
-    {noreply, Table};
-handle_info(_Msg, Table) ->
+    {noreply, State};
+handle_info(_Msg, State) ->
     lager:debug("unhandling message: ~p", [_Msg]),
-    {noreply, Table}.
+    {noreply, State}.
 
-handle_event(_JObj, _Table) ->
+handle_event(_JObj, _State) ->
     {reply, []}.
 
-terminate(_Reason, Table) ->
+terminate(_Reason, {_, Table}) ->
     lager:debug("acdc stats terminating: ~p", [_Reason]),
     flush_to_db(Table),
     ets:delete(Table).
@@ -415,8 +421,8 @@ terminate(_Reason, Table) ->
 flush_table() ->
     gen_listener:cast(?MODULE, flush_table).
 
-code_change(_OldVsn, Table, _Extra) ->
-    {ok, Table}.
+code_change(_OldVsn, State, _Extra) ->
+    {ok, State}.
 
 -spec ms_to_next_hour/0 :: () -> pos_integer().
 ms_to_next_hour() ->
@@ -715,3 +721,70 @@ update_status(AcctDoc, AgentId, TStamp, Status) ->
     StatusKey = [<<"agents">>, AgentId, <<"statuses">>],
     Statuses = wh_json:get_value(StatusKey, AcctDoc, wh_json:new()),
     wh_json:set_value(StatusKey, wh_json:set_value(wh_util:to_binary(TStamp), Status, Statuses), AcctDoc).
+
+write_to_file(_, #agent_stat{}) -> ok;
+write_to_file(Dir, #call_stat{call_id=CallId
+                              ,acct_id=AcctId
+                              ,queue_id=QueueId
+                              ,agent_id=AgentId
+                              ,agents_rung=AgentsRung
+                              ,started=Started
+                              ,wait_time=WaitTime
+                              ,talk_time=TalkTime
+                              ,abandon_reason=AbandonReason
+                              ,status=Status
+                             }) ->
+    Filename = iolist_to_binary([Dir, CallId, <<".csv">>]),
+    true = maybe_create_file(Filename),
+
+    FileLine = csvline([CallId, AcctId, QueueId, AgentId
+                        ,AgentsRung, Started, WaitTime, TalkTime
+                        ,AbandonReason, Status
+                       ]),
+
+    case file:open(Filename, [append]) of
+        {error, _R} ->
+            lager:debug("failed to write to file ~s: ~p", [Filename, _R]),
+            lager:debug("wanted to write ~s", [iolist_to_binary(FileLine)]);
+        {ok, IoDev} ->
+            lager:debug("writing ~s", [iolist_to_binary(FileLine)]),
+            ok = file:write(IoDev, FileLine),
+            ok = file:close(IoDev)
+    end.
+
+maybe_create_file(Filename) ->
+    case filelib:is_regular(Filename) of
+        true -> true;
+        false ->
+            lager:debug("creating stat file ~s", [Filename]),
+            case file:open(Filename, [write]) of
+                {error, _E} ->
+                    lager:debug("failed to open ~s for initial file write: ~p", [Filename, _E]),
+                    false;
+                {ok, IoDevice} ->
+                    lager:debug("writing header to csv"),
+                    ok = file:write(IoDevice, "\"Call ID\",\"Account\",\"Queue\",\"Agent\",\"Agents Tried\",\"Started\",\"Wait Time\",\"Talk Time\",\"Abandon Reason\",\"Status\",\"Line Written\"\n"),
+                    file:close(IoDevice) =:= ok
+            end
+    end.
+
+csvline(Vals) ->
+    csvline(Vals, []).
+csvline([], Acc) ->
+    lists:reverse([$\n, $\", wh_util:to_binary(wh_util:current_tstamp()), $\" | Acc]);
+csvline([V|Vs], Acc) ->
+    csvline(Vs, [ $,,  $\", encode(V), $\" | Acc]).
+
+encode(Vs) when is_list(Vs) -> wh_util:join_binary(Vs, <<" || ">>);
+encode(undefined) -> <<>>;
+encode(V) -> wh_util:to_binary(V).
+
+init_store(Dir) ->
+    case filelib:is_dir(Dir) of
+        true -> ok;
+        false ->
+            case file:make_dir(Dir) of
+                ok -> lager:debug("created ~s", [Dir]);
+                {error, _E} -> lager:info("failed to create dir ~s: ~p", [Dir, _E])
+            end
+    end.

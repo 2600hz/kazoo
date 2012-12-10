@@ -290,7 +290,7 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast({stop_agent}, #state{supervisor=Supervisor}=State) ->
-    _ = acdc_agent_sup:stop(Supervisor),
+    spawn(acdc_agent_sup,stop, [Supervisor]),
     {noreply, State};
 handle_cast({start_fsm, Supervisor}, #state{acct_id=AcctId
                                             ,agent_id=AgentId
@@ -560,9 +560,11 @@ handle_event(_JObj, #state{fsm_pid=FSM}) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, #state{supervisor=Supervisor}) ->
-    _ = acdc_agent_sup:stop(Supervisor),
-    lager:debug("agent process going down: ~p", [_Reason]).
+terminate(normal, #state{supervisor=Supervisor}) ->
+    _ = spawn(acdc_agent_sup,stop,[Supervisor]),
+    lager:debug("agent listener terminating normally");
+terminate(_Reason, _State) ->
+    lager:debug("agent listener going down: ~p", [_Reason]).
 
 %%--------------------------------------------------------------------
 %% @private

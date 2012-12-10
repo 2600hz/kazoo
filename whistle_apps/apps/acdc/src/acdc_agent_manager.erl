@@ -14,9 +14,7 @@
 -behaviour(gen_listener).
 
 %% API
--export([start_link/0
-         ,check_agent_status/1
-        ]).
+-export([start_link/0]).
 
 %% gen_server callbacks
 -export([init/1
@@ -91,8 +89,7 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    Ref = start_agent_timer(),
-    {ok, Ref}.
+    {ok, ok}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -135,10 +132,6 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info(agent_check, State) ->
-    Self = self(),
-    _ = spawn(?MODULE, check_agent_status, [Self]),
-    {noreply, State};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {noreply, State}.
@@ -174,55 +167,3 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-start_agent_timer() ->
-    start_agent_timer(self()).
-start_agent_timer(Pid) ->
-    erlang:send_after(whapps_config:get(?APP_NAME, <<"agent_timeout">>, 600000)
-                      ,Pid
-                      ,agent_check
-                     ).
-
-check_agent_status(Self) ->
-    _ = [check_account(DB) || DB <- whapps_util:get_all_accounts(encoded)],
-    start_agent_timer(Self).
-
-check_account(AcctDb) ->
-    case couch_mgr:get_results(AcctDb, <<"agents/agent_listing">>, []) of
-        {ok, []} -> ok;
-        {error, _} -> ok;
-        {ok, Agents} -> [check_agent(AcctDb, wh_json:get_value(<<"id">>, Agent)) || Agent <- Agents]
-    end.
-
-check_agent(AcctDb, AgentId) ->
-    AcctId = wh_util:format_account_id(AcctDb, raw),
-
-    Req = [{<<"Account-ID">>, AcctId}
-           ,{<<"Agent-ID">>, AgentId}
-           | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-          ],
-    case whapps_util:amqp_pool_request(Req
-                                       ,fun wapi_acdc_agent:publish_sync_req/1
-                                       ,fun wapi_acdc_agent:sync_resp_v/1
-                                       ,2000
-                                      ) of
-        {ok, _} -> ok;
-        {error, _E} -> maybe_logout_agent(AcctDb, AgentId)
-    end.
-
-maybe_logout_agent(AcctDb, AgentId) ->
-    case acdc_util:agent_status(AcctDb, AgentId) of
-        <<"logout">> -> ok;
-        _S ->
-            lager:debug("logging agent out from status ~s", [_S]),
-            logout_agent(AcctDb, AgentId)
-    end.
-
-logout_agent(AcctDb, AgentId) ->
-    lager:debug("logging ~s out for not responding to sync req", [AgentId]),
-
-    Doc = wh_json:from_list([{<<"agent_id">>, AgentId}
-                             ,{<<"method">>, <<"acdc_agent_manager">>}
-                             ,{<<"action">>, <<"logout">>}
-                             ,{<<"pvt_type">>, <<"agent_activity">>}
-                            ]),
-    couch_mgr:save_doc(AcctDb, wh_doc:update_pvt_parameters(Doc, AcctDb)).
