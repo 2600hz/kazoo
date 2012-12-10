@@ -117,12 +117,12 @@
 -spec targeted_publish/3 :: (ne_binary(), amqp_payload(), ne_binary()) -> 'ok'.
 targeted_publish(Queue, Payload) ->
     targeted_publish(Queue, Payload, ?DEFAULT_CONTENT_TYPE).
-targeted_publish(Queue, Payload, ContentType) ->
+targeted_publish(?NE_BINARY = Queue, Payload, ContentType) ->
     basic_publish(?EXCHANGE_TARGETED, Queue, Payload, ContentType).
 
 -spec whapps_publish/2 :: (ne_binary(), amqp_payload()) -> 'ok'.
 -spec whapps_publish/3 :: (ne_binary(), amqp_payload(), ne_binary()) -> 'ok'.
--spec whapps_publish/4 :: (ne_binary(), amqp_payload(), ne_binary(), proplist()) -> 'ok'.
+-spec whapps_publish/4 :: (ne_binary(), amqp_payload(), ne_binary(), wh_proplist()) -> 'ok'.
 whapps_publish(Routing, Payload) ->
     whapps_publish(Routing, Payload, ?DEFAULT_CONTENT_TYPE).
 whapps_publish(Routing, Payload, ContentType) ->
@@ -132,7 +132,7 @@ whapps_publish(Routing, Payload, ContentType, Opts) ->
 
 -spec notifications_publish/2 :: (ne_binary(), amqp_payload()) -> 'ok'.
 -spec notifications_publish/3 :: (ne_binary(), amqp_payload(), ne_binary()) -> 'ok'.
--spec notifications_publish/4 :: (ne_binary(), amqp_payload(), ne_binary(), proplist()) -> 'ok'.
+-spec notifications_publish/4 :: (ne_binary(), amqp_payload(), ne_binary(), wh_proplist()) -> 'ok'.
 notifications_publish(Routing, Payload) ->
     notifications_publish(Routing, Payload, ?DEFAULT_CONTENT_TYPE).
 notifications_publish(Routing, Payload, ContentType) ->
@@ -142,7 +142,7 @@ notifications_publish(Routing, Payload, ContentType, Opts) ->
 
 -spec sysconf_publish/2 :: (ne_binary(), amqp_payload()) -> 'ok'.
 -spec sysconf_publish/3 :: (ne_binary(), amqp_payload(), ne_binary()) -> 'ok'.
--spec sysconf_publish/4 :: (ne_binary(), amqp_payload(), ne_binary(), proplist()) -> 'ok'.
+-spec sysconf_publish/4 :: (ne_binary(), amqp_payload(), ne_binary(), wh_proplist()) -> 'ok'.
 sysconf_publish(Routing, Payload) ->
     sysconf_publish(Routing, Payload, ?DEFAULT_CONTENT_TYPE).
 sysconf_publish(Routing, Payload, ContentType) ->
@@ -151,7 +151,7 @@ sysconf_publish(Routing, Payload, ContentType, Opts) ->
     basic_publish(?EXCHANGE_SYSCONF, Routing, Payload, ContentType, Opts).
 
 -spec callmgr_publish/3 :: (amqp_payload(), ne_binary(), ne_binary()) -> 'ok'.
--spec callmgr_publish/4 :: (amqp_payload(), ne_binary(), ne_binary(), proplist()) -> 'ok'.
+-spec callmgr_publish/4 :: (amqp_payload(), ne_binary(), ne_binary(), wh_proplist()) -> 'ok'.
 %% TODO: The routing key on this function should be the first argument for consistency
 callmgr_publish(Payload, ContentType, RoutingKey) ->
     basic_publish(?EXCHANGE_CALLMGR, RoutingKey, Payload, ContentType).
@@ -198,7 +198,7 @@ document_routing_key(Action, Db, Type, Id) ->
 
 -spec callctl_publish/2 :: (ne_binary(), amqp_payload()) -> 'ok'.
 -spec callctl_publish/3 :: (ne_binary(), amqp_payload(), ne_binary()) -> 'ok'.
--spec callctl_publish/4 :: (ne_binary(), amqp_payload(), ne_binary(), proplist()) -> 'ok'.
+-spec callctl_publish/4 :: (ne_binary(), amqp_payload(), ne_binary(), wh_proplist()) -> 'ok'.
 callctl_publish(CtrlQ, Payload) ->
     callctl_publish(CtrlQ, Payload, ?DEFAULT_CONTENT_TYPE).
 callctl_publish(CtrlQ, Payload, ContentType) ->
@@ -264,9 +264,9 @@ monitor_publish(Payload, ContentType, RoutingKey) ->
 
 -type conf_routing_type() :: 'discovery' | 'event' | 'command'.
 -spec conference_publish/2 :: (amqp_payload(), conf_routing_type()) -> 'ok'.
--spec conference_publish/3 :: (amqp_payload(), conf_routing_type(), undefined | ne_binary()) -> 'ok'.
--spec conference_publish/4 :: (amqp_payload(), conf_routing_type(), undefined | ne_binary(), proplist()) -> 'ok'.
--spec conference_publish/5 :: (amqp_payload(), conf_routing_type(), undefined | ne_binary(), proplist(), ne_binary()) -> 'ok'.
+-spec conference_publish/3 :: (amqp_payload(), conf_routing_type(), api_binary()) -> 'ok'.
+-spec conference_publish/4 :: (amqp_payload(), conf_routing_type(), api_binary(), wh_proplist()) -> 'ok'.
+-spec conference_publish/5 :: (amqp_payload(), conf_routing_type(), api_binary(), wh_proplist(), ne_binary()) -> 'ok'.
 
 conference_publish(Payload, discovery) ->
     conference_publish(Payload, discovery, <<"*">>);
@@ -301,23 +301,21 @@ conference_publish(Payload, command, ConfId, Options, ContentType) ->
 
 -spec basic_publish/3 :: (ne_binary(), ne_binary(), amqp_payload()) -> 'ok'.
 -spec basic_publish/4 :: (ne_binary(), ne_binary(), amqp_payload(), ne_binary()) -> 'ok'.
--spec basic_publish/5 :: (ne_binary(), ne_binary(), amqp_payload(), ne_binary(), proplist()) -> 'ok'.
-basic_publish(Exchange, Queue, Payload) ->
-    basic_publish(Exchange, Queue, Payload, ?DEFAULT_CONTENT_TYPE).
+-spec basic_publish/5 :: (ne_binary(), ne_binary(), amqp_payload(), ne_binary(), wh_proplist()) -> 'ok'.
+basic_publish(Exchange, RoutingKey, Payload) ->
+    basic_publish(Exchange, RoutingKey, Payload, ?DEFAULT_CONTENT_TYPE).
 
-basic_publish(Exchange, Queue, Payload, ContentType) ->
-    basic_publish(Exchange, Queue, Payload, ContentType, []).
+basic_publish(Exchange, RoutingKey, Payload, ContentType) ->
+    basic_publish(Exchange, RoutingKey, Payload, ContentType, []).
 
-basic_publish(Exchange, Queue, Payload, ContentType, Prop) when is_list(Payload) ->
-    basic_publish(Exchange, Queue, iolist_to_binary(Payload), ContentType, Prop);
-basic_publish(Exchange, Queue, Payload, ContentType, Props) when is_binary(Payload),
-                                                                is_binary(Exchange),
-                                                                is_binary(Queue),
-                                                                is_binary(ContentType),
-                                                                is_list(Props) ->
+basic_publish(Exchange, RoutingKey, Payload, ContentType, Prop) when is_list(Payload) ->
+    basic_publish(Exchange, RoutingKey, iolist_to_binary(Payload), ContentType, Prop);
+basic_publish(Exchange, ?NE_BINARY = RoutingKey, ?NE_BINARY = Payload, ContentType, Props) when is_binary(Exchange),
+                                                                                                is_binary(ContentType),
+                                                                                                is_list(Props) ->
     BP = #'basic.publish'{
       exchange = Exchange
-      ,routing_key = Queue
+      ,routing_key = RoutingKey
       ,mandatory = props:get_value(mandatory, Props, false)
       ,immediate = props:get_value(immediate, Props, false)
      },
@@ -400,7 +398,7 @@ conference_exchange() ->
 
 %% A generic Exchange maker
 -spec new_exchange/2 :: (ne_binary(), ne_binary()) -> 'ok'.
--spec new_exchange/3 :: (ne_binary(), ne_binary(), proplist()) -> 'ok'.
+-spec new_exchange/3 :: (ne_binary(), ne_binary(), wh_proplist()) -> 'ok'.
 new_exchange(Exchange, Type) ->
     new_exchange(Exchange, Type, []).
 new_exchange(Exchange, Type, Options) ->
@@ -476,14 +474,14 @@ new_resource_queue(Queue) ->
     new_queue(Queue, [{exclusive, false}, {auto_delete, true}, {nowait, false}]).
 
 -spec new_callmgr_queue/1 :: (binary()) -> ne_binary() | {'error', _}.
--spec new_callmgr_queue/2 :: (binary(), proplist()) -> ne_binary() | {'error', _}.
+-spec new_callmgr_queue/2 :: (binary(), wh_proplist()) -> ne_binary() | {'error', _}.
 new_callmgr_queue(Queue) ->
     new_callmgr_queue(Queue, []).
 new_callmgr_queue(Queue, Opts) ->
     new_queue(Queue, Opts).
 
 -spec new_configuration_queue/1 :: (ne_binary()) -> ne_binary() | {'error', _}.
--spec new_configuration_queue/2 :: (ne_binary(), proplist()) -> ne_binary() | {'error', _}.
+-spec new_configuration_queue/2 :: (ne_binary(), wh_proplist()) -> ne_binary() | {'error', _}.
 new_configuration_queue(Queue) ->
     new_configuration_queue(Queue, []).
 new_configuration_queue(Queue, Options) ->
@@ -504,7 +502,7 @@ new_conference_queue(Queue) ->
     new_queue(Queue, [{exclusive, false}, {auto_delete, true}, {nowait, false}]).
 
 %% Declare a queue and returns the queue Name
--type new_queue_ret() :: ne_binary() | integer() | 'undefined' |
+-type new_queue_ret() :: api_binary() | integer() |
                          {ne_binary(), integer(), integer()} |
                          {'error', _}.
 -spec new_queue/0 :: () -> new_queue_ret().
@@ -612,21 +610,21 @@ bind_q_to_targeted(Queue, Routing) ->
     bind_q_to_exchange(Queue, Routing, ?EXCHANGE_TARGETED).
 
 -spec bind_q_to_whapps/2 :: (ne_binary(), ne_binary()) -> 'ok'.
--spec bind_q_to_whapps/3 :: (ne_binary(), ne_binary(), proplist()) -> 'ok'.
+-spec bind_q_to_whapps/3 :: (ne_binary(), ne_binary(), wh_proplist()) -> 'ok'.
 bind_q_to_whapps(Queue, Routing) ->
     bind_q_to_whapps(Queue, Routing, []).
 bind_q_to_whapps(Queue, Routing, Options) ->
     bind_q_to_exchange(Queue, Routing, ?EXCHANGE_WHAPPS, Options).
 
 -spec bind_q_to_notifications/2 :: (ne_binary(), ne_binary()) -> 'ok'.
--spec bind_q_to_notifications/3 :: (ne_binary(), ne_binary(), proplist()) -> 'ok'.
+-spec bind_q_to_notifications/3 :: (ne_binary(), ne_binary(), wh_proplist()) -> 'ok'.
 bind_q_to_notifications(Queue, Routing) ->
     bind_q_to_notifications(Queue, Routing, []).
 bind_q_to_notifications(Queue, Routing, Options) ->
     bind_q_to_exchange(Queue, Routing, ?EXCHANGE_NOTIFICATIONS, Options).
 
 -spec bind_q_to_sysconf/2 :: (ne_binary(), ne_binary()) -> 'ok'.
--spec bind_q_to_sysconf/3 :: (ne_binary(), ne_binary(), proplist()) -> 'ok'.
+-spec bind_q_to_sysconf/3 :: (ne_binary(), ne_binary(), wh_proplist()) -> 'ok'.
 bind_q_to_sysconf(Queue, Routing) ->
     bind_q_to_sysconf(Queue, Routing, []).
 bind_q_to_sysconf(Queue, Routing, Options) ->
@@ -679,7 +677,7 @@ bind_q_to_monitor(Queue, Routing) ->
     bind_q_to_exchange(Queue, Routing, ?EXCHANGE_MONITOR).
 
 -spec bind_q_to_conference/2 :: (ne_binary(), conf_routing_type()) -> 'ok'.
--spec bind_q_to_conference/3 :: (ne_binary(), conf_routing_type(), 'undefined' | ne_binary()) -> 'ok'.
+-spec bind_q_to_conference/3 :: (ne_binary(), conf_routing_type(), api_binary()) -> 'ok'.
 
 bind_q_to_conference(Queue, discovery) ->
     bind_q_to_conference(Queue, discovery, undefined);
@@ -696,7 +694,7 @@ bind_q_to_conference(Queue, command, ConfId) ->
     bind_q_to_exchange(Queue, <<?KEY_CONFERENCE_COMMAND/binary, ConfId/binary>>, ?EXCHANGE_CONFERENCE).
 
 -spec bind_q_to_exchange/3 :: (ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
--spec bind_q_to_exchange/4 :: (ne_binary(), ne_binary(), ne_binary(), proplist()) -> 'ok'.
+-spec bind_q_to_exchange/4 :: (ne_binary(), ne_binary(), ne_binary(), wh_proplist()) -> 'ok'.
 bind_q_to_exchange(Queue, _Routing, _Exchange) when not is_binary(Queue) ->
     {error, invalid_queue_name};
 bind_q_to_exchange(Queue, Routing, Exchange) ->
@@ -738,7 +736,7 @@ unbind_q_from_callevt(Queue, Routing, other) ->
 
 
 -spec unbind_q_from_conference/2 :: (ne_binary(), conf_routing_type()) -> 'ok' | {'error', _}.
--spec unbind_q_from_conference/3 :: (ne_binary(), conf_routing_type(), 'undefined' | ne_binary()) -> 'ok' | {'error', _}.
+-spec unbind_q_from_conference/3 :: (ne_binary(), conf_routing_type(), api_binary()) -> 'ok' | {'error', _}.
 
 unbind_q_from_conference(Queue, discovery) ->
     unbind_q_from_conference(Queue, discovery, undefined);
@@ -796,7 +794,7 @@ unbind_q_from_exchange(Queue, Routing, Exchange) ->
 %%------------------------------------------------------------------------------
 %% create a consumer for a Queue
 -spec basic_consume/1 :: (ne_binary()) -> 'ok' | {'error', _}.
--spec basic_consume/2 :: (ne_binary(), proplist()) -> 'ok' | {'error', _}.
+-spec basic_consume/2 :: (ne_binary(), wh_proplist()) -> 'ok' | {'error', _}.
 basic_consume(Queue) ->
     basic_consume(Queue, []).
 
@@ -829,7 +827,7 @@ basic_cancel() ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec access_request/0 :: () -> #'access.request'{}.
--spec access_request/1 :: (proplist()) -> #'access.request'{}.
+-spec access_request/1 :: (wh_proplist()) -> #'access.request'{}.
 access_request() ->
     access_request([]).
 access_request(Options) ->

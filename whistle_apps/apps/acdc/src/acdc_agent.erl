@@ -135,17 +135,16 @@
 %%--------------------------------------------------------------------
 start_link(Supervisor, AgentJObj) ->
     AgentId = wh_json:get_value(<<"_id">>, AgentJObj),
+    AcctId = wh_json:get_value(<<"pvt_account_id">>, AgentJObj),
 
     case wh_json:get_value(<<"queues">>, AgentJObj) of
         undefined ->
             lager:debug("agent ~s has no queues, ignoring", [AgentId]),
-            ignore;
+            {error, no_queues};
         [] ->
-            lager:debug("agent ~s in ~s has no queues, ignoring"),
-            ignore;
+            lager:debug("agent ~s in ~s has no queues, ignoring", [AgentId, AcctId]),
+            {error, no_queues};
         Queues ->
-            AcctId = wh_json:get_value(<<"pvt_account_id">>, AgentJObj),
-
             lager:debug("start bindings for ~s(~s)", [AcctId, AgentId]),
             gen_listener:start_link(?MODULE
                                     ,[{bindings, ?BINDINGS(AcctId, AgentId)}
@@ -167,7 +166,7 @@ start_link(Supervisor, ThiefCall, QueueId) ->
                            ).
 
 stop(Srv) ->
-    gen_listener:cast(Srv, {stop_agent}).
+    gen_listener:cast(Srv, {stop_agent, self()}).
 
 -spec member_connect_resp/2 :: (pid(), wh_json:object()) -> 'ok'.
 member_connect_resp(Srv, ReqJObj) ->
@@ -324,26 +323,15 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({stop_agent}, #state{supervisor=Supervisor}=State) ->
-    lager:debug("stop agent"),
-    _ = acdc_agent_sup:stop(Supervisor),
+handle_cast({stop_agent, Req}, #state{supervisor=Supervisor}=State) ->
+    lager:debug("stop agent requested by ~p", [Req]),
+    _ = spawn(acdc_agent_sup, stop, [Supervisor]),
     {noreply, State};
-handle_cast({fsm_started, FSMPid}, #state{is_thief=false}=State) ->
-    lager:debug("not thief, fsm started: ~p", [FSMPid]),
+
+handle_cast({fsm_started, FSMPid}, State) ->
+    lager:debug("fsm started: ~p", [FSMPid]),
     handle_fsm_started(FSMPid),
     {noreply, State#state{fsm_pid=FSMPid}};
-
-handle_cast({start_fsm, Supervisor}, #state{acct_id=AcctId
-                                            ,agent_id=AgentId
-                                            ,is_thief=true
-                                           }=State) ->
-    {ok, FSMPid} = acdc_agent_sup:start_fsm(Supervisor, AcctId, AgentId, [skip_sync]),
-
-    lager:debug("started FSM at ~p", [FSMPid]),
-
-    gen_listener:cast(self(), bind_to_member_reqs),
-
-    {noreply, State#state{fsm_pid=FSMPid}, hibernate};
 
 handle_cast({queue_name, Q}, State) ->
     case wh_util:is_empty(Q) of
@@ -415,7 +403,8 @@ handle_cast({channel_hungup, CallId}, #state{call=Call
                      ,hibernate};
                 true ->
                     lager:debug("thief is done, going down"),
-                    {stop, normal, State}
+                    acdc_agent:stop(self()),
+                    {noreply, State}
             end;
         ACallId ->
             lager:debug("agent channel ~s hungup", [ACallId]),
@@ -432,20 +421,18 @@ handle_cast({member_connect_retry, CallId}, #state{my_id=MyId
                                                    ,agent_call_id=ACallId
                                                    ,call=Call
                                                   }=State) when is_binary(CallId) ->
-    send_member_connect_retry(Server, CallId, MyId),
-    case whapps_call:call_id(Call) of
+    case catch whapps_call:call_id(Call) of
         CallId ->
             lager:debug("need to retry member connect, agent isn't able to take it"),
+            send_member_connect_retry(Server, CallId, MyId),
             acdc_util:unbind_from_call_events(ACallId),
             {noreply, State#state{msg_queue_id=undefined
                                   ,acdc_queue_id=undefined
                                   ,agent_call_id=undefined
                                  }, hibernate};
-        _ ->
-            lager:debug("call id is not our member call id: ~s", [CallId]),
-            {noreply, State#state{msg_queue_id=undefined
-                                  ,acdc_queue_id=undefined
-                                 }, hibernate}
+        _MCallId ->
+            lager:debug("retry call id(~s) is not our member call id ~p, ignoring", [CallId, _MCallId]),
+            {noreply, State}
     end;
 handle_cast({member_connect_retry, WinJObj}, #state{my_id=MyId}=State) ->
     lager:debug("cannot process this win, sending a retry: ~s", [call_id(WinJObj)]),

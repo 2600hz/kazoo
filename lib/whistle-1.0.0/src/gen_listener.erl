@@ -698,13 +698,13 @@ start_timer(_) -> 'undefined'.
 
 -spec next_timeout/1 :: (pos_integer()) -> ?START_TIMEOUT..?MAX_TIMEOUT.
 next_timeout(?MAX_TIMEOUT=Timeout) ->
-    Timeout;
+    Timeout + random:uniform(100);
 next_timeout(Timeout) when Timeout*2 > ?MAX_TIMEOUT ->
-    ?MAX_TIMEOUT;
+    ?MAX_TIMEOUT + random:uniform(100);
 next_timeout(Timeout) when Timeout < ?START_TIMEOUT ->
     ?START_TIMEOUT;
 next_timeout(Timeout) ->
-    Timeout * 2.
+    (Timeout * 2) + random:uniform(100).
 
 -spec add_other_queue/4 :: (binary(), wh_proplist(), wh_proplist(), #state{}) -> {ne_binary(), #state{}}.
 add_other_queue(<<>>, QueueProps, Bindings, #state{other_queues=OtherQueues}=State) ->

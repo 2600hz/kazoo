@@ -26,7 +26,7 @@
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec handle/2 :: (wh_json:json_object(), whapps_call:call()) -> 'ok'.
+-spec handle/2 :: (wh_json:object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     whapps_call_command:answer(Call),
     _ = case find_agent(Call) of
@@ -44,17 +44,7 @@ handle(Data, Call) ->
 
 -spec find_agent_status/2 :: (whapps_call:call() | ne_binary(), ne_binary()) -> ne_binary().
 find_agent_status(?NE_BINARY = AcctId, AgentId) ->
-    Opts = [{endkey, [0, AcctId, AgentId]}
-            ,{startkey, [wh_json:new(), AcctId, AgentId]}
-            ,{limit, 1}
-            ,descending
-           ],
-    case couch_mgr:get_results(acdc_stats:db_name(AcctId), <<"agent_stats/status_log">>, Opts) of
-        {ok, []} -> lager:debug("no res"), <<"logout">>;
-        {error, _E} -> lager:debug("err: ~p", [_E]),  <<"logout">>;
-        {ok, [StatusJObj|_]} -> lager:debug("status: ~p", [StatusJObj]),
-                                fix_agent_status(wh_json:get_value(<<"value">>, StatusJObj))
-    end;
+    fix_agent_status(acdc_util:agent_status(AcctId, AgentId));
 find_agent_status(Call, AgentId) ->
     find_agent_status(whapps_call:account_id(Call), AgentId).
 

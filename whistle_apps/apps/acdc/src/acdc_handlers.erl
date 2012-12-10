@@ -16,6 +16,8 @@
 
 handle_route_req(JObj, Props) ->
     true = wapi_route:req_v(JObj),
+    _ = wh_util:put_callid(JObj),
+
     Call = whapps_call:set_controller_queue(props:get_value(queue, Props)
                                             ,whapps_call:from_route_req(JObj)
                                            ),
@@ -55,16 +57,18 @@ send_route_response(ReqJObj, Call, AcctId, Id, Type) ->
 
 handle_route_win(JObj, _Props) ->
     true = wapi_route:win_v(JObj),
+    _ = wh_util:put_callid(JObj),
 
     case whapps_call:retrieve(wh_json:get_value(<<"Call-ID">>, JObj)) of
         {ok, Call} ->
+            lager:debug("won the call, updating the agent"),
             Call1 = whapps_call:from_route_win(JObj, Call),
             whapps_call_command:answer(Call1),
 
             case catch update_acdc_actor(Call1) of
                 {ok, P} when is_pid(P) -> ok;
                 {'EXIT', _R} ->
-                    lager:debug("crash: ~p", [_R]),
+                    lager:debug("crash starting agent: ~p", [_R]),
                     whapps_call_command:hangup(Call1);
                 _R ->
                     timer:sleep(5000),
@@ -83,7 +87,7 @@ update_acdc_actor(Call) ->
 update_acdc_actor(_Call, undefined, _) -> ok;
 update_acdc_actor(_Call, _, undefined) -> ok;
 update_acdc_actor(Call, QueueId, <<"queue">>) ->
-    lager:debug("caller ~s wants a call in ~s", [whapps_call:caller_id_name(Call), QueueId]),
+    lager:debug("caller ~s wants a call in queue ~s", [whapps_call:caller_id_name(Call), QueueId]),
 
     {ok, _P}=OK = acdc_agents_sup:new_thief(Call, QueueId),
     lager:debug("started thief at ~p", [_P]),
@@ -91,10 +95,10 @@ update_acdc_actor(Call, QueueId, <<"queue">>) ->
 update_acdc_actor(Call, AgentId, <<"user">>) ->
     AcctId = whapps_call:account_id(Call),
 
-    case acdc_util:agent_status(whapps_call:account_db(Call), AgentId) of
+    case acdc_util:agent_status(AcctId, AgentId) of
         <<"logout">> -> update_acdc_agent(Call, AcctId, AgentId, <<"login">>, fun wapi_acdc_agent:publish_login/1);
         <<"pause">> -> update_acdc_agent(Call, AcctId, AgentId, <<"resume">>, fun wapi_acdc_agent:publish_resume/1);
-        _ -> update_acdc_agent(Call, AcctId, AgentId, <<"logout">>, fun wapi_acdc_agent:publish_logout/1)
+        _S -> update_acdc_agent(Call, AcctId, AgentId, <<"logout">>, fun wapi_acdc_agent:publish_logout/1)
     end.
 
 update_acdc_agent(Call, AcctId, AgentId, Status, PubFun) ->
@@ -102,7 +106,7 @@ update_acdc_agent(Call, AcctId, AgentId, Status, PubFun) ->
 
     try update_agent_device(Call, AgentId, Status) of
         {ok, _D} ->
-            lager:debug("updated device: ~p", [_D]),
+            lager:debug("updated device with new owner"),
             {ok, _} = save_status(Call, AgentId, Status),
             send_new_status(AcctId, AgentId, PubFun),
             play_status_prompt(Call, Status);
@@ -115,14 +119,15 @@ update_acdc_agent(Call, AcctId, AgentId, Status, PubFun) ->
     end.
 
 save_status(Call, AgentId, Status) ->
-    AcctDb = whapps_call:account_db(Call),
+    AcctId = whapps_call:account_id(Call),
     Doc = wh_json:from_list([{<<"call_id">>, whapps_call:call_id(Call)}
                              ,{<<"agent_id">>, AgentId}
                              ,{<<"method">>, <<"acdc_blf">>}
                              ,{<<"action">>, Status}
-                             ,{<<"pvt_type">>, <<"agent_activity">>}
+                             ,{<<"pvt_type">>, <<"agent_partial">>}
                             ]),
-    couch_mgr:save_doc(AcctDb, wh_doc:update_pvt_parameters(Doc, AcctDb)).
+
+    {ok, _D} = couch_mgr:save_doc(acdc_stats:db_name(AcctId), wh_doc:update_pvt_parameters(Doc, AcctId)).
 
 update_agent_device(Call, AgentId, <<"login">>) ->
     lager:debug("need to set owner_id to ~s on device ~s", [AgentId, whapps_call:authorizing_id(Call)]),

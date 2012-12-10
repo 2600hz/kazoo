@@ -4,8 +4,7 @@ REBAR = $(ROOT)/bin/rebar
 
 DIRS =  . \
 	$(ROOT)/lib/whistle-1.0.0 \
-	$(ROOT)/lib/whistle_couch-1.0.0 \
-	$(ROOT)/lib/poolboy-0.6.1
+	$(ROOT)/whistle_apps/lib/whistle_couch-1.0.0
 
 all: app
 
