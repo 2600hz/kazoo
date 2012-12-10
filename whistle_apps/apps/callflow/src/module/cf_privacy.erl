@@ -10,20 +10,25 @@
 
 -export([handle/2]).
 
+-spec handle/2 :: (wh_json:object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
-    % Get the number in the 'calling string'
     CaptureGroup = whapps_call:kvs_fetch(cf_capture_group, Call),
-    io:format("CG: ~p ~p~n", [CaptureGroup, Data]),
-
-    % Get the account Id in the call
     AccountId = whapps_call:account_id(Call),
-    %Look what to do with the call, get the callflow
+    io:format("~p~n", [CaptureGroup]),
     case cf_util:lookup_callflow(CaptureGroup, AccountId) of
         {ok, CallFlow, _} ->
-            io:format("~p~n", [CallFlow]),
-            % give away the call to the next step of the callflow
+            Mode = wh_json:get_value(<<"mode">>, Data),
+            whapps_call_command:privacy(Mode, Call),
+             update_request(CaptureGroup
+                           ,cf_exe:get_call(Call)),
             cf_exe:branch(wh_json:get_value(<<"flow">>, CallFlow), Call);
         {error, _} ->
-            % If error 'drop the call' nothing to do with it bro
             cf_exe:stop(Call)
     end.
+
+-spec update_request/2 :: (ne_binary(), {'ok', whapps_call:call()}) -> 'ok'.
+update_request(CaptureGroup, {ok, Call}) ->
+    Request = <<CaptureGroup/binary, "@"
+                ,(whapps_call:request_realm(Call))/binary>>,
+    cf_exe:set_call(whapps_call:set_request(Request, Call)).
+    

@@ -276,6 +276,14 @@ get_fs_app(_Node, _UUID, _JObj, <<"answer">>) ->
 get_fs_app(_Node, _UUID, _JObj, <<"progress">>) ->
     {<<"pre_answer">>, <<>>};
 
+get_fs_app(_Node, _UUID, JObj, <<"privacy">>) ->
+    case wapi_dialplan:privacy_v(JObj) of
+        false -> {'error', <<"privacy failed to execute as JObj did not validate">>};
+        true ->
+            Mode = wh_json:get_value(<<"Privacy-Mode">>, JObj),
+            {<<"privacy">>, Mode}
+    end;
+   
 get_fs_app(Node, UUID, JObj, <<"ring">>) ->
     _ = case wh_json:get_value(<<"Ringback">>, JObj) of
             undefined -> ok;

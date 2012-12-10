@@ -63,6 +63,9 @@
 -export([conference/2, conference/3, conference/4, conference/5]).
 -export([noop/1]).
 -export([flush/1, flush_dtmf/1]).
+-export([privacy/1
+         ,privacy/2
+        ]).
 
 -export([b_answer/1, b_hangup/1, b_hangup/2, b_fetch/1, b_fetch/2]).
 -export([b_ring/1]).
@@ -85,6 +88,9 @@
 -export([b_conference/2, b_conference/3, b_conference/4, b_conference/5]).
 -export([b_noop/1]).
 -export([b_flush/1]).
+-export([b_privacy/1
+         ,b_privacy/2
+        ]).
 
 -export([wait_for_message/1, wait_for_message/2, wait_for_message/3, wait_for_message/4]).
 -export([wait_for_application/1, wait_for_application/2, wait_for_application/3, wait_for_application/4]).
@@ -1224,6 +1230,36 @@ flush(Call) ->
 
 b_flush(Call) ->
     wait_for_noop(flush(Call)).
+
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% 
+%% @end
+%%--------------------------------------------------------------------
+-spec privacy/1 ::  (whapps_call:call()) -> 'ok'.
+-spec b_privacy/1 :: (whapps_call:call()) -> whapps_api_error() | {'ok', wh_json:json_object()}.
+-spec privacy/2 :: (ne_binary(), whapps_call:call()) -> 'ok'.
+-spec b_privacy/2 :: (ne_binary(), whapps_call:call()) -> whapps_api_error() | {'ok', wh_json:json_object()}.
+
+privacy(Call) ->
+    privacy(<<"full">>, Call).
+privacy(undefined, Call) ->
+    privacy(Call);
+privacy(Mode, Call) ->
+    Command = [{<<"Application-Name">>, <<"privacy">>}
+               ,{<<"Privacy-Mode">>, Mode}
+              ],
+    send_command(Command, Call).
+
+b_privacy(Call) ->
+    b_privacy(<<"full">>, Call).
+b_privacy(undefined, Call) ->
+    b_privacy(Call);
+b_privacy(Mode, Call) ->
+    privacy(Mode, Call),
+    wait_for_message(<<"privacy">>).
 
 %%--------------------------------------------------------------------
 %% @public

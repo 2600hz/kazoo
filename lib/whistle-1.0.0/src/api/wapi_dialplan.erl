@@ -445,7 +445,7 @@ answer_v(JObj) ->
 privacy(Prop) when is_list(Prop) ->
     case privacy_v(Prop) of
         true -> wh_api:build_message(Prop, ?PRIVACY_REQ_HEADERS, ?OPTIONAL_PRIVACY_REQ_HEADERS);
-        false -> {error, "Proplist failed validation for privacy_req"}
+        false -> {error, "Proplist failed validation for privacy"}
     end;
 privacy(JObj) ->
     privacy(wh_json:to_proplist(JObj)).

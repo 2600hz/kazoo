@@ -200,7 +200,7 @@
 
 %% Privacy
 -define(PRIVACY_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>]).
--define(OPTIONAL_PRIVACY_REQ_HEADERS, [<<"Insert-At">>]).
+-define(OPTIONAL_PRIVACY_REQ_HEADERS, [<<"Insert-At">>, <<"Privacy-Mode">>]).
 -define(PRIVACY_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
                              ,{<<"Event-Name">>, <<"command">>}
                              ,{<<"Application-Name">>, <<"privacy">>}
