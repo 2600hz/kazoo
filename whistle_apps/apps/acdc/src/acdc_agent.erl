@@ -327,22 +327,11 @@ handle_cast({stop_agent, Req}, #state{supervisor=Supervisor}=State) ->
     lager:debug("stop agent requested by ~p", [Req]),
     _ = spawn(acdc_agent_sup, stop, [Supervisor]),
     {noreply, State};
-handle_cast({fsm_started, FSMPid}, #state{is_thief=false}=State) ->
-    lager:debug("not thief, fsm started: ~p", [FSMPid]),
+
+handle_cast({fsm_started, FSMPid}, State) ->
+    lager:debug("fsm started: ~p", [FSMPid]),
     handle_fsm_started(FSMPid),
     {noreply, State#state{fsm_pid=FSMPid}};
-
-handle_cast({start_fsm, Supervisor}, #state{acct_id=AcctId
-                                            ,agent_id=AgentId
-                                            ,is_thief=true
-                                           }=State) ->
-    {ok, FSMPid} = acdc_agent_sup:start_fsm(Supervisor, AcctId, AgentId, [skip_sync]),
-
-    lager:debug("started FSM at ~p", [FSMPid]),
-
-    gen_listener:cast(self(), bind_to_member_reqs),
-
-    {noreply, State#state{fsm_pid=FSMPid}, hibernate};
 
 handle_cast({queue_name, Q}, State) ->
     case wh_util:is_empty(Q) of

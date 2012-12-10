@@ -27,7 +27,7 @@
          ,status/1
         ]).
 
--export([wait_for_listener/3]).
+-export([wait_for_listener/4]).
 
 %% gen_fsm callbacks
 -export([init/1
@@ -248,15 +248,20 @@ start_link(Supervisor, AgentJObj) when is_pid(Supervisor) ->
                ,wh_json:get_value(<<"_id">>, AgentJObj)
                ,Supervisor
                ,[]
+               ,false
               ).
 start_link(Supervisor, ThiefCall, _QueueId) ->
     start_link(whapps_call:account_id(ThiefCall)
                ,whapps_call:owner_id(ThiefCall)
                ,Supervisor
                ,[]
+               ,true
               ).
 start_link(AcctId, AgentId, Supervisor, Props) ->
-    gen_fsm:start_link(?MODULE, [AcctId, AgentId, Supervisor, Props], []).
+    start_link(AcctId, AgentId, Supervisor, Props, false).
+
+start_link(AcctId, AgentId, Supervisor, Props, IsThief) ->
+    gen_fsm:start_link(?MODULE, [AcctId, AgentId, Supervisor, Props, IsThief], []).
 
 %%%===================================================================
 %%% gen_fsm callbacks
@@ -275,7 +280,7 @@ start_link(AcctId, AgentId, Supervisor, Props) ->
 %%                     {stop, StopReason}
 %% @end
 %%--------------------------------------------------------------------
-init([AcctId, AgentId, Supervisor, Props]) ->
+init([AcctId, AgentId, Supervisor, Props, IsThief]) ->
     FSMCallId = <<"fsm_", AcctId/binary, "_", AgentId/binary>>,
     put(callid, FSMCallId),
     lager:debug("started acdc agent fsm"),
@@ -283,7 +288,7 @@ init([AcctId, AgentId, Supervisor, Props]) ->
     acdc_stats:agent_active(AcctId, AgentId),
 
     Self = self(),
-    _P = spawn(?MODULE, wait_for_listener, [Supervisor, Self, Props]),
+    _P = spawn(?MODULE, wait_for_listener, [Supervisor, Self, Props, IsThief]),
     lager:debug("waiting for listener in ~p", [_P]),
 
     {ok, wait, #state{acct_id=AcctId
@@ -293,16 +298,16 @@ init([AcctId, AgentId, Supervisor, Props]) ->
                      }}.
 
 
-wait_for_listener(Supervisor, FSM, Props) ->
+wait_for_listener(Supervisor, FSM, Props, IsThief) ->
     case acdc_agent_sup:agent(Supervisor) of
         undefined ->
             lager:debug("listener not ready yet, waiting"),
             timer:sleep(100),
-            wait_for_listener(Supervisor, FSM, Props);
+            wait_for_listener(Supervisor, FSM, Props, IsThief);
         P when is_pid(P) ->
             lager:debug("listener retrieved: ~p", [P]),
 
-            {NextState, SyncRef} = case props:get_value(skip_sync, Props) of
+            {NextState, SyncRef} = case props:get_value(skip_sync, Props) =:= 'true' orelse IsThief of
                                        true -> {ready, undefined};
                                        _ ->
                                            gen_fsm:send_event(FSM, send_sync_event),

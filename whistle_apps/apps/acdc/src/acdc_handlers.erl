@@ -16,6 +16,8 @@
 
 handle_route_req(JObj, Props) ->
     true = wapi_route:req_v(JObj),
+    _ = wh_util:put_callid(JObj),
+
     Call = whapps_call:set_controller_queue(props:get_value(queue, Props)
                                             ,whapps_call:from_route_req(JObj)
                                            ),
@@ -55,16 +57,18 @@ send_route_response(ReqJObj, Call, AcctId, Id, Type) ->
 
 handle_route_win(JObj, _Props) ->
     true = wapi_route:win_v(JObj),
+    _ = wh_util:put_callid(JObj),
 
     case whapps_call:retrieve(wh_json:get_value(<<"Call-ID">>, JObj)) of
         {ok, Call} ->
+            lager:debug("won the call, updating the agent"),
             Call1 = whapps_call:from_route_win(JObj, Call),
             whapps_call_command:answer(Call1),
 
             case catch update_acdc_actor(Call1) of
                 {ok, P} when is_pid(P) -> ok;
                 {'EXIT', _R} ->
-                    lager:debug("crash: ~p", [_R]),
+                    lager:debug("crash starting agent: ~p", [_R]),
                     whapps_call_command:hangup(Call1);
                 _R ->
                     timer:sleep(5000),
@@ -83,7 +87,7 @@ update_acdc_actor(Call) ->
 update_acdc_actor(_Call, undefined, _) -> ok;
 update_acdc_actor(_Call, _, undefined) -> ok;
 update_acdc_actor(Call, QueueId, <<"queue">>) ->
-    lager:debug("caller ~s wants a call in ~s", [whapps_call:caller_id_name(Call), QueueId]),
+    lager:debug("caller ~s wants a call in queue ~s", [whapps_call:caller_id_name(Call), QueueId]),
 
     {ok, _P}=OK = acdc_agents_sup:new_thief(Call, QueueId),
     lager:debug("started thief at ~p", [_P]),
