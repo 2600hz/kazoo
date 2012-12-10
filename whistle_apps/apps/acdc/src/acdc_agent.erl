@@ -403,7 +403,8 @@ handle_cast({channel_hungup, CallId}, #state{call=Call
                      ,hibernate};
                 true ->
                     lager:debug("thief is done, going down"),
-                    {stop, normal, State}
+                    acdc_agent:stop(self()),
+                    {noreply, State}
             end;
         ACallId ->
             lager:debug("agent channel ~s hungup", [ACallId]),
