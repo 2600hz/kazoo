@@ -210,9 +210,17 @@ reconcile_grace_period_exceeded(LedgerDb, CallId) ->
             lager:debug("ignoring discrepancy, unable to open cdr: ~p", [_R]),
             false;
         {ok, JObj} ->
-            Current = wh_util:current_tstamp(),
-            Modified = wh_json:get_integer_value(<<"pvt_modified">>, JObj, Current), 
-            Current - Modified > 300
+            case wh_json:get_value([<<"custom_channel_vars">>, <<"account_billing">>], JObj) of                
+                <<"per_minute">> ->
+                    Current = wh_util:current_tstamp(),
+                    Modified = wh_json:get_integer_value(<<"pvt_modified">>, JObj, Current),
+                    Current - Modified > 300;
+                _Else ->
+                    lager:debug("billing type ~s does not require reconciliation, removing any existing discrepancy corrections", [_Else]),
+                    DocId = correction_doc_id(CallId),
+                    _ = couch_mgr:del_doc(LedgerDb, DocId),
+                    false
+            end            
     end.
 
 -spec correction_not_already_attempted/2 :: (ne_binary(), ne_binary()) -> boolean().
