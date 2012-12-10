@@ -60,8 +60,8 @@
 -type not_compacting() :: {'error', 'compactor_down'}.
 
 -record(state, {
-          nodes :: [ne_binary(),...] | []
-          ,dbs :: [ne_binary(),...] | []
+          nodes :: ne_binaries()
+          ,dbs :: ne_binaries()
           ,cookie :: atom()
           ,wait_ref :: reference()
 
@@ -259,7 +259,7 @@ ready(_Msg, State) ->
     lager:debug("unhandled msg: ~p", [_Msg]),
     {next_state, ready, State}.
 
-ready(status, _, State) ->
+ready(status, _, #state{}=State) ->
     {reply, {ok, ready}, ready, State};
 
 ready(cancel_current_job, _, State) ->
@@ -591,8 +591,12 @@ compact(_Msg, State) ->
 
 compact(status, _, #state{current_node=N
                           ,current_db=D
+                          ,queued_jobs=Jobs
                          }= State) ->
-    {reply, {ok, [{node, N},{db, D}]}, compact, State};
+    {reply, {ok, [{node, N}
+                  ,{db, D}
+                  ,{queued_jobs, queued_jobs_status(Jobs)}
+                 ]}, compact, State};
 
 compact(cancel_current_job, _, #state{current_job_pid=P
                                       ,current_job_ref=Ref
@@ -646,10 +650,12 @@ wait(_Msg, State) ->
 wait(status, _, #state{current_node=N
                        ,current_db=D
                        ,wait_ref=Ref
+                       ,queued_jobs=Jobs
                       }= State) ->
     {reply, {ok, [{node, N}
                   ,{db, D}
                   ,{wait_left, erlang:read_timer(Ref)}
+                  ,{queued_jobs, queued_jobs_status(Jobs)}
                  ]}
      ,wait, State};
 
@@ -925,4 +931,11 @@ maybe_start_auto_compaction_job() ->
     case couch_config:fetch(<<"compact_automatically">>, false) of
         true -> gen_fsm:send_event(self(), compact);
         false -> ok
+    end.
+
+-spec queued_jobs_status/1 :: (queue()) -> 'none' | [wh_proplist(),...].
+queued_jobs_status(Jobs) ->
+    case queue:to_list(Jobs) of
+        [] -> none;
+        Js -> [[{job, J}, {requested_by, P}] || {J, P, _} <- Js]
     end.
