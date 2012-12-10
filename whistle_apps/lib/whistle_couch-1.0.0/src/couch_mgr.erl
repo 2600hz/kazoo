@@ -13,17 +13,13 @@
 
 %% API
 -export([start_link/0
-         ,set_host/1
-         ,set_host/2
-         ,set_host/3
-         ,set_host/4
-         ,set_host/5
+         ,set_host/1, set_host/2, set_host/3, set_host/4, set_host/5
          ,get_host/0
          ,get_port/0
          ,get_creds/0
          ,get_url/0
-         ,get_uuid/0
-         ,get_uuids/1
+         ,get_uuid/0, get_uuid/1
+         ,get_uuids/1, get_uuids/2
          ,test_conn/0
          ,test_admin_conn/0
         ]).
@@ -37,84 +33,61 @@
 
 %% System manipulation
 -export([db_exists/1
-         ,db_info/0
-         ,db_info/1
-         ,db_create/1
-         ,db_create/2
+         ,db_info/0, db_info/1
+         ,db_create/1, db_create/2
          ,db_compact/1
          ,db_view_cleanup/1
          ,db_delete/1
          ,db_replicate/1
         ]).
--export([admin_db_info/0
-         ,admin_db_info/1
+-export([admin_db_info/0, admin_db_info/1
          ,admin_db_compact/1
          ,admin_db_view_cleanup/1
-        ]).
-
--export([design_info/2
+         ,design_info/2
          ,admin_design_info/2
          ,design_compact/2
          ,admin_design_compact/2
         ]).
 
 %% Document manipulation
--export([save_doc/2
-         ,save_doc/3
-         ,save_docs/2
-         ,save_docs/3
+-export([save_doc/2, save_doc/3
+         ,save_docs/2, save_docs/3
          ,open_cache_doc/2, open_cache_doc/3
          ,flush_cache_doc/2, flush_cache_doc/3
          ,open_doc/2, admin_open_doc/2
          ,open_doc/3, admin_open_doc/3
-         ,del_doc/2
-         ,del_docs/2
+         ,del_doc/2, del_docs/2
          ,lookup_doc_rev/2
-        ]).
--export([update_doc/3
-        ,update_doc/4
-        ]).
--export([add_change_handler/2
-         ,add_change_handler/3
+         ,update_doc/3, update_doc/4
+         ,add_change_handler/2, add_change_handler/3
          ,rm_change_handler/2
-        ]).
--export([load_doc_from_file/3
+         ,load_doc_from_file/3
          ,update_doc_from_file/3
-        ]).
--export([revise_doc_from_file/3]).
--export([revise_docs_from_folder/3
-         ,revise_docs_from_folder/4
-        ]).
--export([revise_views_from_folder/2
-         ,ensure_saved/2
-         ,ensure_saved/3
-        ]).
--export([load_fixtures_from_folder/2]).
-
--export([all_docs/1
+         ,revise_doc_from_file/3
+         ,revise_docs_from_folder/3, revise_docs_from_folder/4
+         ,revise_views_from_folder/2
+         ,ensure_saved/2, ensure_saved/3
+         ,load_fixtures_from_folder/2
+         ,all_docs/1
          ,all_design_docs/1
          ,admin_all_docs/1
-        ]).
--export([all_docs/2
-         ,all_design_docs/2
-         ,admin_all_docs/2
+         ,all_docs/2
+         ,all_design_docs/2, admin_all_docs/2
         ]).
 
 %% attachments
 -export([fetch_attachment/3
          ,stream_attachment/3
-         ,put_attachment/4
-         ,put_attachment/5
-         ,delete_attachment/3
-         ,delete_attachment/4
+         ,put_attachment/4, put_attachment/5
+         ,delete_attachment/3, delete_attachment/4
         ]).
 
 %% Views
 -export([get_all_results/2
          ,get_results/3
          ,get_results_count/3
+         ,get_result_keys/1
         ]).
--export([get_result_keys/1]).
 
 %% gen_server callbacks
 -export([init/1
@@ -132,6 +105,8 @@
 
 -define(SERVER, ?MODULE).
 -define(VALID_DBNAME, is_binary(DbName) andalso byte_size(DbName) > 0).
+
+-define(UUID_SIZE, 16).
 
 %% Host = IP Address or FQDN
 %% Connection = {Host, #server{}}
@@ -991,12 +966,14 @@ get_admin_conn() ->
     gen_server:call(?SERVER, get_admin_conn).
 
 -spec get_uuid/0 :: () -> ne_binary().
-get_uuid() ->
-    wh_util:rand_hex_binary(16).
+-spec get_uuid/1 :: (pos_integer()) -> ne_binary().
+get_uuid() -> get_uuid(?UUID_SIZE).
+get_uuid(N) -> wh_util:rand_hex_binary(N).
 
--spec get_uuids/1 :: (pos_integer()) -> [ne_binary(),...].
-get_uuids(Count) ->
-    [get_uuid() || _ <- lists:seq(1, Count)].
+-spec get_uuids/1 :: (pos_integer()) -> ne_binaries().
+-spec get_uuids/2 :: (pos_integer(), pos_integer()) -> ne_binaries().
+get_uuids(Count) -> get_uuids(Count, ?UUID_SIZE).
+get_uuids(Count, Size) -> [get_uuid(Size) || _ <- lists:seq(1, Count)].
 
 -spec get_node_cookie/0 :: () -> atom().
 get_node_cookie() ->
