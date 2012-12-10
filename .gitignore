@@ -21,6 +21,7 @@ whistle_apps/priv/startup.config
 whistle_apps/apps/*/ebin/*.beam
 whistle_apps/apps/*/ebin/*.app
 whistle_apps/apps/crossbar/priv/ssl/*
+whistle_apps/apps/acdc/priv/calls/*
 
 utils/*/ebin/*.beam
 utils/*/ebin/*.app
