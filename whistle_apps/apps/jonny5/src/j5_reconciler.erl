@@ -170,11 +170,19 @@ should_correct_discrepancy(Ledger, CallId) ->
         {error, _}=E -> E;
         {ok, JObj}=Ok ->
             DiscrepancyId = discrepancy_doc_id(JObj),
-            case reconcile_grace_period_exceeded(JObj) 
-                andalso not_already_attempted(Ledger, DiscrepancyId)
-            of
-                false -> {error, contention};
-                true -> Ok
+            case wh_json:get_value([<<"custom_channel_vars">>, <<"account_billing">>], JObj) =:=  <<"per_minute">> of
+                false ->
+                    lager:debug("billing type does not require reconciliation, removing any existing discrepancy corrections", []),
+                    LedgerDb = wh_util:format_account_id(Ledger, encoded),                    
+                    _ = couch_mgr:del_doc(LedgerDb, DiscrepancyId),
+                    {error, not_per_minute};
+                true ->
+                    case reconcile_grace_period_exceeded(JObj) 
+                        andalso not_already_attempted(Ledger, DiscrepancyId)
+                    of
+                        false -> {error, contention};
+                        true -> Ok
+                    end
             end
     end.
 
