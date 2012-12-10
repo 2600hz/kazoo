@@ -365,10 +365,10 @@ start_agent_and_worker(WorkersSup, AcctId, QueueId, AgentJObj) ->
 
     AgentId = wh_json:get_value(<<"_id">>, AgentJObj),
 
-    case acdc_util:agent_status(wh_json:get_value(<<"pvt_account_db">>, AgentJObj), AgentId) of
+    case acdc_util:agent_status(AcctId, AgentId) of
         <<"logout">> -> ok;
         _Status ->
-            lager:debug("starting agent ~s(~s) for queue ~s", [AgentId, _Status, QueueId]),
+            lager:debug("maybe starting agent ~s(~s) for queue ~s", [AgentId, _Status, QueueId]),
 
             case acdc_agents_sup:find_agent_supervisor(AcctId, AgentId) of
                 undefined -> acdc_agents_sup:new(AgentJObj);
