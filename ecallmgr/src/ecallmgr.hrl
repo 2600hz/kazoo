@@ -183,6 +183,7 @@
                                ,{<<"uuid_record">>, <<"record_call">>}
                                ,{<<"record">>, <<"record_call">>}
                                ,{<<"presence">>, <<"presence">>}
+                               ,{<<"privacy">>, <<"privacy">>}
                               ]).
 
 -define(FS_EVENTS, [<<"CHANNEL_EXECUTE">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"CHANNEL_HANGUP">>
