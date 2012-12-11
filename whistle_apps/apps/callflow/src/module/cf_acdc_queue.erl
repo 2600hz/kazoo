@@ -25,16 +25,16 @@
 -spec handle/2 :: (wh_json:json_object(), whapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     whapps_call_command:answer(Call),
-    case cf_acdc_agent:find_agent(Call) of
-        {ok, undefined} ->
-            lager:debug("not an agent calling in"),
-            cf_acdc_agent:play_not_an_agent(Call);
-        {ok, AgentId} ->
-            Action = wh_json:get_value(<<"action">>, Data),
-            QueueId = wh_json:get_value(<<"id">>, Data),
-            lager:debug("agent ~s wants to ~s to queue ~s", [AgentId, Action, QueueId]),
-            notify_agent(Call, AgentId, QueueId, Action)
-    end,
+    _ = case cf_acdc_agent:find_agent(Call) of
+            {ok, undefined} ->
+                lager:debug("not an agent calling in"),
+                cf_acdc_agent:play_not_an_agent(Call);
+            {ok, AgentId} ->
+                Action = wh_json:get_value(<<"action">>, Data),
+                QueueId = wh_json:get_value(<<"id">>, Data),
+                lager:debug("agent ~s wants to ~s to queue ~s", [AgentId, Action, QueueId]),
+                notify_agent(Call, AgentId, QueueId, Action)
+        end,
     cf_exe:continue(Call).
 
 notify_agent(Call, AgentId, QueueId, <<"login">>) ->
