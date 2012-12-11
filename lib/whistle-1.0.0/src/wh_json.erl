@@ -71,12 +71,10 @@
              ]).
 
 -spec new/0 :: () -> object().
-new() ->
-    ?JSON_WRAPPER([]).
+new() -> ?JSON_WRAPPER([]).
 
--spec encode/1 :: (object()) -> iolist() | ne_binary().
-encode(JObj) ->
-    ejson:encode(JObj).
+-spec encode/1 :: (json_term()) -> iolist() | ne_binary().
+encode(JObj) -> ejson:encode(JObj).
 
 -spec decode/1 :: (iolist() | ne_binary()) -> object().
 -spec decode/2 :: (iolist() | ne_binary(), ne_binary()) -> object().
@@ -201,10 +199,10 @@ encode_kv(Prefix, K, V) when is_binary(V) orelse is_number(V) ->
 
 % key:{k1:v1, k2:v2} => key[k1]=v1&key[k2]=v2
 %% if no prefix is present, use just key to prefix the key/value pairs in the jobj
-encode_kv(<<>>, K, JObj) when ?IS_JSON_GUARD(JObj) ->
+encode_kv(<<>>, K, ?JSON_WRAPPER(JObj)) ->
     to_querystring(JObj, [K]);
 %% if a prefix is defined, nest the key in square brackets
-encode_kv(Prefix, K, JObj) when ?IS_JSON_GUARD(JObj) ->
+encode_kv(Prefix, K, ?JSON_WRAPPER(JObj)) ->
     to_querystring(JObj, [Prefix, <<"[">>, K, <<"]">>]).
 
 -spec encode_kv/4 :: (iolist() | binary(), ne_binary(), ne_binary(), string() | binary()) -> iolist().
@@ -240,9 +238,8 @@ get_json_value(Key, JObj, Default) ->
 filter(Pred, ?JSON_WRAPPER(Prop)) when is_function(Pred, 1) ->
     from_list([E || {_,_}=E <- Prop, Pred(E)]).
 
-filter(Pred, JObj, Keys) when is_list(Keys),
-                              is_function(Pred, 1),
-                              ?IS_JSON_GUARD(JObj) ->
+filter(Pred, ?JSON_WRAPPER(JObj), Keys) when is_list(Keys),
+                                             is_function(Pred, 1) ->
     set_value(Keys, filter(Pred, get_json_value(Keys, JObj)), JObj);
 filter(Pred, JObj, Key) ->
     filter(Pred, JObj, [Key]).
