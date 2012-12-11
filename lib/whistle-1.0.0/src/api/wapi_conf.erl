@@ -16,6 +16,9 @@
          ,get_type/1, get_doc/1, get_id/1
         ]).
 
+-type action() :: 'created' | 'edited' | 'deleted'.
+-export_type([action/0]).
+
 -include_lib("wh_api.hrl").
 
 %% Configuration Document Update
@@ -67,7 +70,9 @@ get_type(JObj) ->
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec doc_update/1 :: (api_terms()) -> {'ok', iolist()} | {'error', string()}.
+-spec doc_update/1 :: (api_terms()) ->
+                              {'ok', iolist()} |
+                              {'error', string()}.
 doc_update(Prop) when is_list(Prop) ->
     case doc_update_v(Prop) of
         true -> wh_api:build_message(Prop, ?CONF_DOC_UPDATE_HEADERS, ?OPTIONAL_CONF_DOC_UPDATE_HEADERS);
@@ -82,19 +87,19 @@ doc_update_v(Prop) when is_list(Prop) ->
 doc_update_v(JObj) ->
     doc_update_v(wh_json:to_proplist(JObj)).
 
--spec bind_q/2 :: (binary(), proplist()) -> 'ok'.
+-spec bind_q/2 :: (binary(), wh_proplist()) -> 'ok'.
 bind_q(Q, Props) ->
     amqp_util:configuration_exchange(),
 
     RoutingKey = get_routing_key(Props),
     amqp_util:bind_q_to_configuration(Q, RoutingKey).
 
--spec unbind_q/2 :: (binary(), proplist()) -> 'ok'.
+-spec unbind_q/2 :: (binary(), wh_proplist()) -> 'ok'.
 unbind_q(Q, Props) ->
     RoutingKey = get_routing_key(Props),
     amqp_util:unbind_q_from_configuration(Q, RoutingKey).
 
--spec get_routing_key/1 :: (proplist()) -> binary().
+-spec get_routing_key/1 :: (wh_proplist()) -> binary().
 get_routing_key(Props) ->
     Action = props:get_value(action, Props, <<"*">>), % see conf_action() type below
     Db = props:get_value(db, Props, <<"*">>),
@@ -102,10 +107,8 @@ get_routing_key(Props) ->
     DocId = props:get_value(doc_id, Props, <<"*">>),
     amqp_util:document_routing_key(Action, Db, DocType, DocId).
 
--type conf_action() :: 'created' | 'edited' | 'deleted'.
-
--spec publish_doc_update/5 :: (conf_action(), binary(), binary(), binary(), api_terms()) -> 'ok'.
--spec publish_doc_update/6 :: (conf_action(), binary(), binary(), binary(), api_terms(), binary()) -> 'ok'.
+-spec publish_doc_update/5 :: (action(), binary(), binary(), binary(), api_terms()) -> 'ok'.
+-spec publish_doc_update/6 :: (action(), binary(), binary(), binary(), api_terms(), binary()) -> 'ok'.
 publish_doc_update(Action, Db, Type, Id, JObj) ->
     publish_doc_update(Action, Db, Type, Id, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_doc_update(Action, Db, Type, Id, Change, ContentType) ->
