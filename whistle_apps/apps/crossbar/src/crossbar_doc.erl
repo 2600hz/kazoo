@@ -494,7 +494,8 @@ handle_json_success(JObj, Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec handle_couch_mgr_errors/3 :: (couch_util:couchbeam_errors(), api_binary() | api_binaries(), cb_context:context()) -> cb_context:context().
+-spec handle_couch_mgr_errors/3 :: (couch_util:couchbeam_errors(), api_binary() | api_binaries(), cb_context:context()) ->
+                                           cb_context:context().
 handle_couch_mgr_errors(invalid_db_name, _, #cb_context{db_name=Db}=Context) ->
     lager:debug("datastore ~s not_found", [Db]),
     cb_context:add_system_error(datastore_missing, [{details, wh_util:to_binary(Db)}], Context);
