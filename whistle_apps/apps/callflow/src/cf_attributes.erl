@@ -68,29 +68,17 @@ maybe_get_endpoint_cid(Attribute, Call) ->
             maybe_normalize_cid(Number, Name, JObj, Attribute, Call)
     end.
 
--spec maybe_normalize_cid/5 :: (api_binary(), api_binary(), wh_json:object(), ne_binary(), whapps_call:call()) -> {api_binary(), api_binary()}.
+-spec maybe_normalize_cid/5 :: (api_binary(), api_binary(), wh_json:object(), ne_binary(), whapps_call:call()) ->
+                                       {api_binary(), api_binary()}.
 maybe_normalize_cid(undefined, Name, Endpoint, Attribute, Call) ->
-    case whapps_call:caller_id_number(Call) of
-        undefined ->
-            maybe_normalize_cid(default_cid_number(), Name, Endpoint, Attribute, Call);
-        Number ->
-            maybe_normalize_cid(Number, Name, Endpoint, Attribute, Call)
-    end;
+    maybe_normalize_cid(whapps_call:caller_id_number(Call), Name, Endpoint, Attribute, Call);
 maybe_normalize_cid(Number, undefined, Endpoint, Attribute, Call) ->
-    case whapps_call:caller_id_name(Call) of
-        undefined ->
-            maybe_normalize_cid(Number, default_cid_name(Endpoint), Endpoint, Attribute, Call);
-        Name ->
-            maybe_normalize_cid(Number, Name, Endpoint, Attribute, Call)
-    end;
-maybe_normalize_cid(Number, Name, Endpoint, Attribute, Call) when not is_binary(Number) ->
-    maybe_normalize_cid(wh_util:to_binary(Number), Name, Endpoint, Attribute, Call);
-maybe_normalize_cid(Number, Name, Endpoint, Attribute, Call) when not is_binary(Name) ->
-    maybe_normalize_cid(Number, wh_util:to_binary(Name), Endpoint, Attribute, Call);
+    maybe_normalize_cid(Number, whapps_call:caller_id_name(Call), Endpoint, Attribute, Call);
 maybe_normalize_cid(Number, Name, Endpoint, Attribute, Call) ->
     maybe_prefix_cid_number(wh_util:to_binary(Number), Name, Endpoint, Attribute, Call).
 
--spec maybe_prefix_cid_number/5 :: (ne_binary(), ne_binary(), wh_json:object(), ne_binary(), whapps_call:call()) -> {api_binary(), api_binary()}.
+-spec maybe_prefix_cid_number/5 :: (ne_binary(), ne_binary(), wh_json:object(), ne_binary(), whapps_call:call()) ->
+                                           {api_binary(), api_binary()}.
 maybe_prefix_cid_number(Number, Name, Endpoint, Attribute, Call) ->
     case whapps_call:kvs_fetch(prepend_cid_number, Call) of
         undefined -> maybe_prefix_cid_name(Number, Name, Endpoint, Attribute, Call);
@@ -99,7 +87,8 @@ maybe_prefix_cid_number(Number, Name, Endpoint, Attribute, Call) ->
             maybe_prefix_cid_name(Prefixed, Name, Endpoint, Attribute, Call)
     end.
 
--spec maybe_prefix_cid_name/5 :: (ne_binary(), ne_binary(), wh_json:object(), ne_binary(), whapps_call:call()) -> {api_binary(), api_binary()}.
+-spec maybe_prefix_cid_name/5 :: (ne_binary(), ne_binary(), wh_json:object(), ne_binary(), whapps_call:call()) ->
+                                         {api_binary(), api_binary()}.
 maybe_prefix_cid_name(Number, Name, Endpoint, Attribute, Call) ->
     case whapps_call:kvs_fetch(prepend_cid_name, Call) of
         undefined -> maybe_ensure_cid_valid(Number, Name, Endpoint, Attribute, Call);
@@ -206,7 +195,8 @@ is_valid_caller_id(Number, Call) ->
 %% @doc
 %% @end
 %%-----------------------------------------------------------------------------
--spec callee_id/2 :: (api_binary() | wh_json:object(), whapps_call:call()) -> {api_binary(), api_binary()}.
+-spec callee_id/2 :: (api_binary() | wh_json:object(), whapps_call:call()) ->
+                             {api_binary(), api_binary()}.
 callee_id(EndpointId, Call) when is_binary(EndpointId) ->
     case cf_endpoint:get(EndpointId, Call) of
         {ok, Endpoint} -> callee_id(Endpoint, Call);
@@ -220,20 +210,12 @@ callee_id(Endpoint, Call) ->
     maybe_normalize_callee(Number, Name, Endpoint, Call).
 
 
--spec maybe_normalize_callee/4 :: (api_binary(), api_binary(), wh_json:object(), whapps_call:call()) -> {api_binary(), api_binary()}.
+-spec maybe_normalize_callee/4 :: (api_binary(), api_binary(), wh_json:object(), whapps_call:call()) ->
+                                          {api_binary(), api_binary()}.
 maybe_normalize_callee(undefined, Name, Endpoint, Call) ->
-    case whapps_call:request_user(Call) of
-        undefined ->
-            maybe_normalize_callee(default_cid_number(), Name, Endpoint, Call);
-        Number ->
-            maybe_normalize_callee(Number, Name, Endpoint, Call)
-    end;
+    maybe_normalize_callee(whapps_call:request_user(Call), Name, Endpoint, Call);
 maybe_normalize_callee(Number, undefined, Endpoint, Call) ->
     maybe_normalize_callee(Number, default_cid_name(Endpoint), Endpoint, Call);
-maybe_normalize_callee(Number, Name, Endpoint, Call) when not is_binary(Number) ->
-    maybe_normalize_callee(wh_util:to_binary(Number), Name, Endpoint, Call);
-maybe_normalize_callee(Number, Name, Endpoint, Call) when not is_binary(Name) ->
-    maybe_normalize_callee(Number, wh_util:to_binary(Name), Endpoint, Call);
 maybe_normalize_callee(Number, Name, _, _) ->
     lager:debug("callee id <~s> ~s", [Name, Number]),
     {Number, Name}.
@@ -389,8 +371,7 @@ default_cid_number() ->
 -spec default_cid_name/1 :: (wh_json:object()) -> ne_binary().
 default_cid_name(Endpoint) ->
     case wh_json:get_ne_value(<<"name">>, Endpoint) of
-        undefined ->
-            whapps_config:get_ne_true(<<"callflow">>, <<"default_caller_id_name">>, <<"unknown">>);
+        undefined -> whapps_config:get_non_empty(<<"callflow">>, <<"default_caller_id_name">>, <<"unknown">>);
         Name -> Name
     end.
 
