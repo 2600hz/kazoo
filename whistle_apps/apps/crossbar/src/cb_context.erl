@@ -29,6 +29,7 @@
          ,req_id/1, set_req_id/2
          ,doc/1, set_doc/2
          ,resp_data/1, set_resp_data/2
+         ,resp_status/1, set_resp_status/2
 
          %% Special accessors
          ,req_value/2, req_value/3
@@ -52,6 +53,7 @@ req_data(#cb_context{req_data=ReqData}) -> ReqData.
 req_id(#cb_context{req_id=ReqId}) -> ReqId.
 doc(#cb_context{doc=Doc}) -> Doc.
 resp_data(#cb_context{resp_data=RespData}) -> RespData.
+resp_status(#cb_context{resp_status=RespStatus}) -> RespStatus.
 
 %% Setters
 set_account_id(#cb_context{}=Context, AcctId) -> Context#cb_context{account_id=AcctId}.
@@ -62,6 +64,7 @@ set_req_data(#cb_context{}=Context, ReqData) -> Context#cb_context{req_data=ReqD
 set_req_id(#cb_context{}=Context, ReqId) -> Context#cb_context{req_id=ReqId}.
 set_doc(#cb_context{}=Context, Doc) -> Context#cb_context{doc=Doc}.
 set_resp_data(#cb_context{}=Context, RespData) -> Context#cb_context{resp_data=RespData}.
+set_resp_status(#cb_context{}=Context, RespStatus) -> Context#cb_context{resp_status=RespStatus}.
 
 %% Helpers
 
