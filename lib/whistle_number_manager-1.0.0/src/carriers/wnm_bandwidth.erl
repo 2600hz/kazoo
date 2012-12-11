@@ -14,7 +14,7 @@
 -export([disconnect_number/1]).
 -export([get_number_data/1]).
 
--include_lib("src/wnm.hrl").
+-include("../wnm.hrl").
 
 -define(WNM_BW_CONFIG_CAT, <<(?WNM_CONFIG_CAT)/binary, ".bandwidth">>).
 

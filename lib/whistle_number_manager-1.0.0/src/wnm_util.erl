@@ -21,7 +21,6 @@
 -export([get_all_number_dbs/0]).
 -export([are_jobjs_identical/2]).
 
--include_lib("whistle/include/wh_databases.hrl").
 -include("wnm.hrl").
 
 -define(SERVER, ?MODULE).
