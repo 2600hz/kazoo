@@ -40,7 +40,7 @@
 -export_type([context/0]).
 
 req_value(Context, Key) -> req_value(Context, Key, undefined).
-req_value(#cb_context{req_data=ReqData, query_json=QS}=Context, Key, Default) ->
+req_value(#cb_context{req_data=ReqData, query_json=QS}, Key, Default) ->
     wh_json:find(Key, [ReqData, QS], Default).
 
 %% Accessors
