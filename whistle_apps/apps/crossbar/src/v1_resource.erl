@@ -518,7 +518,10 @@ csv_header(JObj) ->
 
 -spec csv_ize/1 :: (wh_json:keys()) -> iolist().
 csv_ize([F|Rest]) ->
-    [<<"\"">>, F, <<"\"">>, [[<<",\"">>, V, <<"\"">>] || V <- Rest], <<"\n">>].
+    [<<"\"">>, wh_util:to_binary(F), <<"\"">>
+     ,[[<<",\"">>, wh_util:to_binary(V), <<"\"">>] || V <- Rest]
+     ,<<"\n">>
+    ].
 
 -spec json_to_csv/1 :: (wh_json:json_object()) -> iolist().
 json_to_csv(JObj) ->
