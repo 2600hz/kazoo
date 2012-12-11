@@ -48,8 +48,8 @@ maybe_fetch_endpoint(EndpointId, AccountDb) ->
     case couch_mgr:open_doc(AccountDb, EndpointId) of
         {ok, JObj} ->
             maybe_have_endpoint(JObj, EndpointId, AccountDb);
-        {error, R}=E ->
-            lager:debug("unable to fetch endpoint ~s: ~p", [EndpointId, R]),
+        {error, _R}=E ->
+            lager:debug("unable to fetch endpoint ~s: ~p", [EndpointId, _R]),
             E
     end.
 
@@ -115,7 +115,8 @@ merge_cached_attributes(Endpoint) ->
            ],
     merge_cached_attributes(Keys, undefined, Endpoint, undefined).
 
--spec merge_cached_attributes/4 :: (ne_binaries(), wh_json:object(), wh_json:object(), wh_json:object()) -> wh_json:object().
+-spec merge_cached_attributes/4 :: (ne_binaries(), 'undefined' | wh_json:object(), wh_json:object(), 'undefined' | wh_json:object()) ->
+                                           wh_json:object().
 merge_cached_attributes(Keys, Account, Endpoint, undefined) ->
     AccountDb = wh_json:get_value(<<"pvt_account_db">>, Endpoint),
     OwnerId = wh_json:get_ne_value(<<"owner_id">>, Endpoint),
@@ -136,8 +137,7 @@ merge_cached_attributes(Keys, undefined, Endpoint, Owner) ->
         {error, _} ->
             merge_cached_attributes(Keys, wh_json:new(), Endpoint, Owner)
     end;
-merge_cached_attributes([], _, Endpoint, _) ->
-    Endpoint;
+merge_cached_attributes([], _, Endpoint, _) -> Endpoint;
 merge_cached_attributes([<<"name">>|Keys], Account, Endpoint, Owner) ->
     AccountName = wh_json:get_ne_value(<<"name">>, Account),
     EndpointName = wh_json:get_ne_value(<<"name">>, Endpoint),
@@ -154,16 +154,11 @@ merge_cached_attributes([Key|Keys], Account, Endpoint, Owner) ->
     merge_cached_attributes(Keys, Account, wh_json:set_value(Key, Merged2, Endpoint), Owner).
 
 -spec create_endpoint_name/4 :: (api_binary(), api_binary(), api_binary(), api_binary()) -> api_binary().
-create_endpoint_name(undefined, undefined, undefined, Account) ->
-    Account;
-create_endpoint_name(undefined, undefined, Endpoint, _) ->
-    Endpoint;
-create_endpoint_name(First, undefined, _, _) ->
-    First;
-create_endpoint_name(undefined, Last, _, _) ->
-    Last;
-create_endpoint_name(First, Last, _, _) ->
-    <<First/binary, " ", Last/binary>>.
+create_endpoint_name(undefined, undefined, undefined, Account) -> Account;
+create_endpoint_name(undefined, undefined, Endpoint, _) -> Endpoint;
+create_endpoint_name(First, undefined, _, _) -> First;
+create_endpoint_name(undefined, Last, _, _) -> Last;
+create_endpoint_name(First, Last, _, _) -> <<First/binary, " ", Last/binary>>.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -172,8 +167,7 @@ create_endpoint_name(First, Last, _, _) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec flush/2 :: (ne_binary(), ne_binary()) -> any().
-flush(Db, Id) ->
-    wh_cache:erase_local(?CALLFLOW_CACHE, {?MODULE, Db, Id}).
+flush(Db, Id) -> wh_cache:erase_local(?CALLFLOW_CACHE, {?MODULE, Db, Id}).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -335,7 +329,8 @@ try_create_endpoint(Routine, Endpoints, Endpoint, Properties, Call) when is_func
     end.
 
 -spec maybe_create_fwd_endpoint/3 :: (wh_json:object(), wh_json:object(), whapps_call:call()) ->
-                                             wh_jobj_return().
+                                             wh_json:object() |
+                                             {'error', 'cf_not_appropriate'}.
 maybe_create_fwd_endpoint(Endpoint, Properties, Call) ->
     CallFowarding = wh_json:get_ne_value(<<"call_forward">>, Endpoint, wh_json:new()),
     Source = wh_json:get_value(<<"source">>, Properties),
@@ -350,7 +345,9 @@ maybe_create_fwd_endpoint(Endpoint, Properties, Call) ->
             create_call_fwd_endpoint(Endpoint, Properties, CallFowarding, Call)
     end.
 
--spec maybe_create_endpoint/3 :: (wh_json:object(), wh_json:object(), whapps_call:call()) -> wh_jobj_return().
+-spec maybe_create_endpoint/3 :: (wh_json:object(), wh_json:object(), whapps_call:call()) ->
+                                         wh_json:object() |
+                                         {'error', 'cf_substitute'}.
 maybe_create_endpoint(Endpoint, Properties, Call) ->
     CallFowarding = wh_json:get_ne_value(<<"call_forward">>, Endpoint, wh_json:new()),
     case wh_json:is_true(<<"enabled">>, CallFowarding)
