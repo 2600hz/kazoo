@@ -189,7 +189,7 @@ fold_kvs([K], [V], Prefix, Acc) -> lists:reverse([encode_kv(Prefix, K, V) | Acc]
 fold_kvs([K|Ks], [V|Vs], Prefix, Acc) ->
     fold_kvs(Ks, Vs, Prefix, [<<"&">>, encode_kv(Prefix, K, V) | Acc]).
 
--spec encode_kv/3 :: (iolist() | binary(), json_string(), json_term() | json_terms()) -> iolist().
+-spec encode_kv/3 :: (iolist() | binary(), ne_binary(), json_term() | json_terms()) -> iolist().
 %% If a list of values, use the []= as a separator between the key and each value
 encode_kv(Prefix, K, Vs) when is_list(Vs) ->
     encode_kv(Prefix, wh_util:to_binary(K), Vs, <<"[]=">>, []);
@@ -199,10 +199,10 @@ encode_kv(Prefix, K, V) when is_binary(V) orelse is_number(V) ->
 
 % key:{k1:v1, k2:v2} => key[k1]=v1&key[k2]=v2
 %% if no prefix is present, use just key to prefix the key/value pairs in the jobj
-encode_kv(<<>>, K, ?JSON_WRAPPER(JObj)) ->
+encode_kv(<<>>, K, ?JSON_WRAPPER(_)=JObj) ->
     to_querystring(JObj, [K]);
 %% if a prefix is defined, nest the key in square brackets
-encode_kv(Prefix, K, ?JSON_WRAPPER(JObj)) ->
+encode_kv(Prefix, K, ?JSON_WRAPPER(_)=JObj) ->
     to_querystring(JObj, [Prefix, <<"[">>, K, <<"]">>]).
 
 -spec encode_kv/4 :: (iolist() | binary(), ne_binary(), ne_binary(), string() | binary()) -> iolist().
@@ -222,24 +222,22 @@ encode_kv(_, _, [], _, Acc) -> lists:reverse(Acc).
 -spec get_json_value/3 :: (json_string() | json_strings(), object(), Default) -> Default | object().
 get_json_value(Key, JObj) ->
     get_json_value(Key, JObj, undefined).
-get_json_value(Key, JObj, Default) ->
-    true = is_json_object(JObj),
+get_json_value(Key, ?JSON_WRAPPER(_)=JObj, Default) ->
     case get_value(Key, JObj) of
         undefined -> Default;
-        V ->
-            case is_json_object(V) of
-                true -> V;
-                false -> Default
-            end
+        ?JSON_WRAPPER(_)=V -> V;
+        _ -> Default
     end.
 
--spec filter/2 :: (fun( ({json_string(), json_term()}) -> boolean() ), object()) -> object().
--spec filter/3 :: (fun( ({json_string(), json_term()}) -> boolean() ), object(), json_string() | json_strings()) -> object().
+-spec filter/2 :: (fun(({json_string(), json_term()}) -> boolean()), object()) ->
+                          object().
+-spec filter/3 :: (fun(({json_string(), json_term()}) -> boolean()), object(), json_string() | json_strings()) ->
+                          object() | objects().
 filter(Pred, ?JSON_WRAPPER(Prop)) when is_function(Pred, 1) ->
     from_list([E || {_,_}=E <- Prop, Pred(E)]).
 
-filter(Pred, ?JSON_WRAPPER(JObj), Keys) when is_list(Keys),
-                                             is_function(Pred, 1) ->
+filter(Pred, ?JSON_WRAPPER(_)=JObj, Keys) when is_list(Keys),
+                                               is_function(Pred, 1) ->
     set_value(Keys, filter(Pred, get_json_value(Keys, JObj)), JObj);
 filter(Pred, JObj, Key) ->
     filter(Pred, JObj, [Key]).
@@ -700,8 +698,6 @@ is_private_key(_) -> false.
 
 %% EUNIT TESTING
 -ifdef(TEST).
--include_lib("proper/include/proper.hrl").
--include_lib("eunit/include/eunit.hrl").
 
 %% PropEr Testing
 prop_is_object() ->
