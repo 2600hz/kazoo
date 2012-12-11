@@ -533,15 +533,24 @@ fetch_all_queue_stats(Context) ->
             cb_context:add_validation_error(<<"format">>, <<"enum">>, <<"enum:Value not found in enumerated list">>, Context)
     end.
 
+-spec compress_stats/1 :: (cb_context:context()) -> cb_context:context().
 compress_stats(Context) ->
-    Compressed = compress_stats(cb_context:doc(Context), wh_json:new()),
-    crossbar_util:response(Compressed, Context).
+    case cb_context:resp_status(Context) of
+        success ->
+            Compressed = compress_stats(cb_context:doc(Context), wh_json:new()),
+            crossbar_util:response(Compressed, Context);
+        _S ->
+            lager:debug("failed to load stats"),
+            Context
+    end.
 
-compress_stats([], Compressed) ->
-    accumulate_stats(Compressed);
+-spec compress_stats/2 :: ('undefined' | wh_json:objects(), wh_json:object()) -> wh_json:object().
+compress_stats(undefined, Compressed) -> Compressed;
+compress_stats([], Compressed) -> accumulate_stats(Compressed);
 compress_stats([Stat|Stats], Compressed) ->
     compress_stats(Stats, add_stat(Stat, Compressed)).
 
+-spec accumulate_stats/1 :: (wh_json:object()) -> wh_json:object().
 accumulate_stats(Compressed) ->
     wh_json:map(fun accumulate_queue_stats/2, Compressed).
 
@@ -674,7 +683,7 @@ summary(Context) ->
 %% Normalizes the resuts of a view
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_view_results/2 :: (wh_json:json_object(), wh_json:json_objects()) -> wh_json:json_objects().
+-spec normalize_view_results/2 :: (wh_json:object(), wh_json:objects()) -> wh_json:objects().
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
 
