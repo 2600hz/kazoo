@@ -80,8 +80,7 @@ get_endpoints(Call, {ok, Devices}) ->
     EPDocs = [EPDoc
               || Device <- Devices,
                  (EPDoc = get_endpoint(Call, wh_json:get_value(<<"id">>, Device))) =/= undefined,
-                 wh_json:is_true(<<"enabled">>, EPDoc, false),
-                 is_endpoint_registered(EPDoc, AcctRealm)
+                 wh_json:is_true(<<"enabled">>, EPDoc, false)
              ],
 
     lists:foldl(fun(EPDoc, Acc) ->
