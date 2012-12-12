@@ -27,6 +27,7 @@
          ,req_verb/1, set_req_verb/2
          ,req_data/1, set_req_data/2
          ,req_id/1, set_req_id/2
+         ,query_string/1, set_query_string/2
          ,doc/1, set_doc/2
          ,resp_data/1, set_resp_data/2
          ,resp_status/1, set_resp_status/2
@@ -50,6 +51,7 @@ account_db(#cb_context{db_name=AcctDb}) -> AcctDb.
 auth_token(#cb_context{auth_token=AuthToken}) -> AuthToken.
 req_verb(#cb_context{req_verb=ReqVerb}) -> ReqVerb.
 req_data(#cb_context{req_data=ReqData}) -> ReqData.
+query_string(#cb_context{query_json=Q}) -> Q.
 req_id(#cb_context{req_id=ReqId}) -> ReqId.
 doc(#cb_context{doc=Doc}) -> Doc.
 resp_data(#cb_context{resp_data=RespData}) -> RespData.
@@ -61,6 +63,7 @@ set_account_db(#cb_context{}=Context, AcctDb) -> Context#cb_context{db_name=Acct
 set_auth_token(#cb_context{}=Context, AuthToken) -> Context#cb_context{auth_token=AuthToken}.
 set_req_verb(#cb_context{}=Context, ReqVerb) -> Context#cb_context{req_verb=ReqVerb}.
 set_req_data(#cb_context{}=Context, ReqData) -> Context#cb_context{req_data=ReqData}.
+set_query_string(#cb_context{}=Context, Q) -> Context#cb_context{query_json=Q}.
 set_req_id(#cb_context{}=Context, ReqId) -> Context#cb_context{req_id=ReqId}.
 set_doc(#cb_context{}=Context, Doc) -> Context#cb_context{doc=Doc}.
 set_resp_data(#cb_context{}=Context, RespData) -> Context#cb_context{resp_data=RespData}.
