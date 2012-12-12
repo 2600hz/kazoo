@@ -49,6 +49,8 @@
 
 -include("include/crossbar.hrl").
 
+-define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".queues">>).
+
 -define(CB_LIST, <<"queues/crossbar_listing">>).
 -define(CB_AGENTS_LIST, <<"queues/agents_listing">>). %{agent_id, queue_id}
 
@@ -60,6 +62,7 @@
 -define(STAT_TIMESTAMP_HANDLING, <<"connected_with_agent">>).
 -define(STAT_TIMESTAMP_ABANDONED, <<"caller_abandoned_queue">>).
 -define(STAT_TIMESTAMP_WAITING, <<"caller_entered_queue">>).
+-define(STAT_AGENTS_MISSED, <<"missed">>).
 
 -define(STAT_TIMESTAMP_KEYS, [?STAT_TIMESTAMP_PROCESSED
                               ,?STAT_TIMESTAMP_HANDLING
@@ -502,10 +505,16 @@ maybe_rm_queue_from_agent(Id, A) ->
 %%--------------------------------------------------------------------
 -spec fetch_all_queue_stats/1 :: (cb_context:context()) -> cb_context:context().
 fetch_all_queue_stats(Context) ->
-    Now = {Today, {H,M,S}} = calendar:universal_time(),
+    MaxRange = whapps_config:get_integer(?MOD_CONFIG_CAT, <<"maximum_range">>, 3600),
 
-    From = calendar:datetime_to_gregorian_seconds({Today, {H-1,M,S}}),
-    To = calendar:datetime_to_gregorian_seconds(Now),
+    To = wh_util:to_integer(cb_context:req_value(Context, <<"end_range">>, wh_util:current_tstamp())),
+    MaxFrom = To - MaxRange,
+
+    From = case wh_util:to_integer(cb_context:req_value(Context, <<"start_range">>, MaxFrom)) of
+               F when F > To -> MaxFrom; % created_from comes after created_to
+               F when F < MaxFrom -> MaxFrom; % range is too large
+               F -> F
+           end,
 
     AcctId = cb_context:account_id(Context),
     Opts = [{startkey, [To, AcctId]}
@@ -521,7 +530,7 @@ fetch_all_queue_stats(Context) ->
                                               ,cb_context:set_account_db(Context, acdc_stats:db_name(AcctId))
                                               ,fun extract_doc/2
                                              ),
-            compress_stats(Context1);
+            compress_stats(Context1, From, To);
         <<"verbose">> ->
             crossbar_doc:load_view(<<"call_stats/call_log">>
                                    ,Opts
@@ -533,26 +542,64 @@ fetch_all_queue_stats(Context) ->
             cb_context:add_validation_error(<<"format">>, <<"enum">>, <<"enum:Value not found in enumerated list">>, Context)
     end.
 
--spec compress_stats/1 :: (cb_context:context()) -> cb_context:context().
-compress_stats(Context) ->
+-spec compress_stats/3 :: (cb_context:context(), integer(), integer()) -> cb_context:context().
+compress_stats(Context, From, To) ->
     case cb_context:resp_status(Context) of
         success ->
-            Compressed = compress_stats(cb_context:doc(Context), wh_json:new()),
-            crossbar_util:response(Compressed, Context);
+            Compressed = compress_stats(cb_context:doc(Context), {wh_json:new(), wh_json:new(), wh_json:new()}),
+            crossbar_util:response(wh_json:set_values([{<<"start_range">>, From}
+                                                       ,{<<"end_range">>, To}
+                                                      ], Compressed)
+                                   ,Context);
         _S ->
             lager:debug("failed to load stats"),
             Context
     end.
 
--spec compress_stats/2 :: ('undefined' | wh_json:objects(), wh_json:object()) -> wh_json:object().
-compress_stats(undefined, Compressed) -> Compressed;
-compress_stats([], Compressed) -> accumulate_stats(Compressed);
-compress_stats([Stat|Stats], Compressed) ->
-    compress_stats(Stats, add_stat(Stat, Compressed)).
+-spec compress_stats/2 :: ('undefined' | wh_json:objects(), {wh_json:object(), wh_json:object(), wh_json:object()}) ->
+                                  wh_json:object().
+compress_stats(undefined, {Compressed, _, _}) -> Compressed;
+compress_stats([], {Compressed, Global, PerQueue}) -> accumulate_stats(Compressed, Global, PerQueue);
+compress_stats([Stat|Stats], {_Compressed, _Global, _PerQueue}=Res) ->
+    compress_stats(Stats, add_stat(Stat, Res)).
 
--spec accumulate_stats/1 :: (wh_json:object()) -> wh_json:object().
-accumulate_stats(Compressed) ->
-    wh_json:map(fun accumulate_queue_stats/2, Compressed).
+-spec accumulate_stats/3 :: (wh_json:object(), wh_json:object(), wh_json:object()) ->
+                                    wh_json:object().
+accumulate_stats(Compressed, Global, PerQueue) ->
+    AccCompressed = wh_json:map(fun accumulate_queue_stats/2, Compressed),
+    AccGlobal = wh_json:foldl(fun fold_call_totals/3, wh_json:new(), Global),
+    AccPerQueue = wh_json:foldl(fun fold_queue_totals/3, wh_json:new(), PerQueue),
+    wh_json:set_value(<<"totals">>, AccGlobal, wh_json:merge_recursive(AccPerQueue, AccCompressed)).
+
+fold_call_totals(_CallId, Stats, Acc) ->
+    AccWaitTime = wh_json:get_value(<<"wait_time">>, Acc, 0),
+    AccTalkTime = wh_json:get_value(<<"call_time">>, Acc, 0),
+    AccTotalCalls = wh_json:get_value(<<"total_calls">>, Acc, 0),
+    AccAbandonedCalls = wh_json:get_value(<<"abandoned_calls">>, Acc, 0),
+    AccAgentsMissed = wh_json:get_value(<<"agents_missed">>, Acc, 0),
+
+    Abandoned = case wh_json:get_value(?STAT_TIMESTAMP_ABANDONED, Stats) of undefined -> 0; _ -> 1 end,
+
+    Set = [{<<"total_calls">>, AccTotalCalls + 1}
+           ,{<<"agents_missed">>, AccAgentsMissed + wh_json:get_integer_value(?STAT_AGENTS_MISSED, Stats, 0)}
+           ,{<<"abandoned_calls">>, AccAbandonedCalls + Abandoned}
+          ],
+
+    Set1 = case wait_time(Stats) of
+               undefined -> Set;
+               WaitTime ->
+                   case call_time(Stats) of
+                       undefined -> Set;
+                       TalkTime -> [{<<"wait_time">>, AccWaitTime + WaitTime}
+                                    ,{<<"call_time">>, AccTalkTime + TalkTime}
+                                    | Set
+                                   ]
+                   end
+           end,
+    wh_json:set_values(Set1, Acc).
+
+fold_queue_totals(QueueId, Calls, Acc) ->
+    wh_json:set_value([QueueId, <<"totals">>], wh_json:foldl(fun fold_call_totals/3, wh_json:new(), Calls), Acc).
 
 accumulate_queue_stats(QueueId, Calls) ->
     AccCalls = wh_json:map(fun accumulate_call_stats/2, Calls),
@@ -612,38 +659,48 @@ status(?STAT_TIMESTAMP_HANDLING) -> <<"handling">>;
 status(?STAT_TIMESTAMP_ABANDONED) -> <<"abandoned">>;
 status(?STAT_TIMESTAMP_WAITING) -> <<"waiting">>.
 
-add_stat(Stat, Compressed) ->
-    add_stat(Stat, Compressed, wh_json:get_value(<<"status">>, Stat)).
-add_stat(Stat, Compressed, <<"waiting">>) ->
+add_stat(Stat, {_Compressed, _Global, _PerQueue}=Res) ->
+    add_stat(Stat, Res, wh_json:get_value(<<"status">>, Stat)).
+
+add_stat(Stat, {Compressed, Global, PerQueue}, <<"waiting">>) ->
     QID = wh_json:get_value(<<"queue_id">>, Stat),
     CID = wh_json:get_value(<<"call_id">>, Stat),
 
     TStamp = wh_json:get_value(<<"timestamp">>, Stat),
 
-    wh_json:set_values([{[QID, CID, ?STAT_TIMESTAMP_WAITING], TStamp}
+    {wh_json:set_values([{[QID, CID, ?STAT_TIMESTAMP_WAITING], TStamp}
                         ,{[QID, CID, <<"start_timestamp">>], TStamp}
-                       ], Compressed);
-add_stat(Stat, Compressed, <<"handling">>) ->
+                        ], Compressed)
+     ,wh_json:set_value([CID, ?STAT_TIMESTAMP_WAITING], TStamp, Global)
+     ,wh_json:set_value([QID, CID, ?STAT_TIMESTAMP_WAITING], TStamp, PerQueue)
+    };
+add_stat(Stat, {Compressed, Global, PerQueue}, <<"handling">>) ->
     QID = wh_json:get_value(<<"queue_id">>, Stat),
     CID = wh_json:get_value(<<"call_id">>, Stat),
     AID = wh_json:get_value(<<"agent_id">>, Stat),
 
     TStamp = wh_json:get_value(<<"timestamp">>, Stat),
 
-    wh_json:set_values([{[QID, CID, ?STAT_TIMESTAMP_HANDLING], TStamp}
-                       ,{[QID, CID, <<"agent_id">>], AID}
-                       ], Compressed);
-add_stat(Stat, Compressed, <<"processed">>) ->
+    {wh_json:set_values([{[QID, CID, ?STAT_TIMESTAMP_HANDLING], TStamp}
+                         ,{[QID, CID, <<"agent_id">>], AID}
+                        ], Compressed)
+     ,wh_json:set_value([CID, ?STAT_TIMESTAMP_HANDLING], TStamp, Global)
+     ,wh_json:set_value([QID, CID, ?STAT_TIMESTAMP_HANDLING], TStamp, PerQueue)
+    };
+add_stat(Stat, {Compressed, Global, PerQueue}, <<"processed">>) ->
     QID = wh_json:get_value(<<"queue_id">>, Stat),
     CID = wh_json:get_value(<<"call_id">>, Stat),
     AID = wh_json:get_value(<<"agent_id">>, Stat),
 
     TStamp = wh_json:get_value(<<"timestamp">>, Stat),
 
-    wh_json:set_values([{[QID, CID, ?STAT_TIMESTAMP_PROCESSED], TStamp}
-                        ,{[QID, CID, <<"agent_id">>], AID}
-                       ], Compressed);
-add_stat(Stat, Compressed, <<"missed">>) ->
+    {wh_json:set_values([{[QID, CID, ?STAT_TIMESTAMP_PROCESSED], TStamp}
+                         ,{[QID, CID, <<"agent_id">>], AID}
+                        ], Compressed)
+     ,wh_json:set_value([CID, ?STAT_TIMESTAMP_PROCESSED], TStamp, Global)
+     ,wh_json:set_value([QID, CID, ?STAT_TIMESTAMP_PROCESSED], TStamp, PerQueue)
+    };
+add_stat(Stat, {Compressed, Global, PerQueue}, ?STAT_AGENTS_MISSED) ->
     QID = wh_json:get_value(<<"queue_id">>, Stat),
     CID = wh_json:get_value(<<"call_id">>, Stat),
     AID = wh_json:get_value(<<"agent_id">>, Stat),
@@ -651,20 +708,36 @@ add_stat(Stat, Compressed, <<"missed">>) ->
     TStamp = wh_json:get_value(<<"timestamp">>, Stat),
 
     K = [QID, CID, <<"agents_tried">>],
-    AgentsTried = wh_json:get_value(K, Compressed, wh_json:new()),
+    AgentsTried = wh_json:set_value(wh_util:to_binary(TStamp), AID, wh_json:get_value(K, Compressed, wh_json:new())),
 
-    wh_json:set_values([{K, wh_json:set_value(wh_util:to_binary(TStamp), AID, AgentsTried)}
-                       ], Compressed);
-add_stat(Stat, Compressed, <<"abandoned">>) ->
+    NumAgentsTried = length(wh_json:get_keys(AgentsTried)),
+
+    {wh_json:set_values([{K, AgentsTried}
+                        ], Compressed)
+     ,case wh_json:get_value([CID, ?STAT_AGENTS_MISSED], Global, 0) of
+          N when N > NumAgentsTried ->
+              wh_json:set_value([CID, ?STAT_AGENTS_MISSED], NumAgentsTried, Global);
+          _ -> Global
+      end
+     ,case wh_json:get_value([QID, CID, ?STAT_AGENTS_MISSED], PerQueue, 0) of
+          N when N < NumAgentsTried ->
+              wh_json:set_value([QID, CID, ?STAT_AGENTS_MISSED], NumAgentsTried, PerQueue);
+          _ -> PerQueue
+      end
+    };
+add_stat(Stat, {Compressed, Global, PerQueue}, <<"abandoned">>) ->
     QID = wh_json:get_value(<<"queue_id">>, Stat),
     CID = wh_json:get_value(<<"call_id">>, Stat),
 
     TStamp = wh_json:get_value(<<"timestamp">>, Stat),
     Reason = wh_json:get_value(<<"abandon_reason">>, Stat),
 
-    wh_json:set_values([{[QID, CID, ?STAT_TIMESTAMP_ABANDONED], TStamp}
-                        ,{[QID, CID, <<"abandon_reason">>], Reason}
-                       ], Compressed).
+    {wh_json:set_values([{[QID, CID, ?STAT_TIMESTAMP_ABANDONED], TStamp}
+                         ,{[QID, CID, <<"abandon_reason">>], Reason}
+                        ], Compressed)
+     ,wh_json:set_value([CID, ?STAT_TIMESTAMP_ABANDONED], TStamp, Global)
+     ,wh_json:set_value([QID, CID, ?STAT_TIMESTAMP_ABANDONED], TStamp, PerQueue)
+    }.
 
 %%--------------------------------------------------------------------
 %% @private
