@@ -172,23 +172,33 @@ validate(#cb_context{req_verb = <<"put">>}=Context, Id, ?EAVESDROP_PATH_TOKEN) -
     validate_eavesdrop_on_queue(Context, Id).
 
 validate_eavesdrop_on_call(#cb_context{req_data=Data}=Context) ->
-    case is_valid_endpoint(Context, Data)
-        andalso is_valid_call(Context, Data)
-        andalso is_valid_mode(Context, Data)
-    of
+    Fs = [{fun is_valid_endpoint/2, [Context, Data]}
+          ,{fun is_valid_call/2, [Context, Data]}
+          ,{fun is_valid_mode/2, [Context, Data]}
+         ],
+    case all_true(Fs) of
         true -> Context#cb_context{resp_status=success};
         {false, Context1} -> Context1
     end.
 
 validate_eavesdrop_on_queue(#cb_context{req_data=Data}=Context, QueueId) ->
-    case is_valid_endpoint(Context, Data)
-        andalso is_valid_queue(Context, QueueId)
-        andalso is_valid_mode(Context, Data)
-    of
+    Fs = [{fun is_valid_endpoint/2, [Context, Data]}
+          ,{fun is_valid_queue/2, [Context, QueueId]}
+          ,{fun is_valid_mode/2, [Context, Data]}
+         ],
+    case all_true(Fs) of
         true ->
             Context#cb_context{resp_status=success};
         {false, Context1} -> Context1
     end.
+
+-spec all_true/1 :: ([{fun(), list()},...]) ->
+                            'true' |
+                            {'false', cb_context:context()}.
+all_true(Fs) ->
+    lists:foldl(fun({F, Args}, true) -> apply(F, Args);
+                   (_, Acc) -> Acc
+                end, true, Fs).
 
 is_valid_mode(Context, Data) ->
     case wapi_resource:is_valid_mode(wh_json:get_value(<<"mode">>, Data, <<"listen">>)) of
