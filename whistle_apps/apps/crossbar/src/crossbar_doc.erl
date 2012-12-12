@@ -132,8 +132,12 @@ merge(DataJObj, JObj, Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec load_view/3 :: (ne_binary(), wh_proplist(), cb_context:context()) -> cb_context:context().
-load_view(View, Options, #cb_context{db_name=Db, query_json=RJ}=Context) ->
-    HasFilter = has_filter(RJ),
+load_view(View, Options, Context) ->
+    Db = cb_context:account_db(Context),
+    QS = cb_context:query_string(Context),
+
+    HasFilter = has_filter(QS),
+
     ViewOptions = case HasFilter of
                       false -> Options;
                       true -> [include_docs
@@ -145,8 +149,8 @@ load_view(View, Options, #cb_context{db_name=Db, query_json=RJ}=Context) ->
         {ok, JObjs} when HasFilter ->
             lager:debug("loaded view ~s from ~s, running query filter", [View, Db]),
             Filtered = [JObj
-                        || JObj <- JObjs
-                               ,filter_doc(wh_json:get_value(<<"doc">>, JObj), RJ)
+                        || JObj <- JObjs,
+                           filter_doc(wh_json:get_value(<<"doc">>, JObj), QS)
                        ],
             handle_couch_mgr_success(Filtered, Context);
         {ok, JObjs} ->
@@ -170,8 +174,8 @@ load_view(View, Options, Context, Filter) when is_function(Filter, 2) ->
     case load_view(View, Options, Context) of
         #cb_context{resp_status=success, doc=JObjs} = Context1 ->
             Filtered = [JObj
-                        || JObj <- lists:foldl(Filter, [], JObjs)
-                               ,(not wh_util:is_empty(JObj))
+                        || JObj <- lists:foldl(Filter, [], JObjs),
+                           (not wh_util:is_empty(JObj))
                        ],
             handle_couch_mgr_success(Filtered, Context1);
         Else -> Else
@@ -429,9 +433,9 @@ rev_to_etag(JObj) ->
 %%--------------------------------------------------------------------
 -spec handle_couch_mgr_success/2 :: (wh_json:object() | wh_json:objects(), cb_context:context()) -> cb_context:context().
 handle_couch_mgr_success([], Context) ->
-    Context#cb_context{doc=wh_json:new()
+    Context#cb_context{doc=[]
                        ,resp_status=success
-                       ,resp_data=wh_json:new()
+                       ,resp_data=[]
                        ,resp_etag=undefined
                       };
 handle_couch_mgr_success([JObj|_]=JObjs, Context) ->
@@ -588,8 +592,8 @@ extract_included_docs(JObjs) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec has_filter/1 :: (wh_json:object()) -> boolean().
-has_filter(JObj) ->
-    lists:any(fun is_filter_key/1, wh_json:to_proplist(JObj)).
+has_filter(QS) ->
+    lists:any(fun is_filter_key/1, wh_json:to_proplist(QS)).
 
 %%--------------------------------------------------------------------
 %% @private
