@@ -218,23 +218,23 @@ fold_agent_totals(AgentId, Queues, Acc) ->
                        ], Acc).
 
 accumulate_agent_stats(AgentId, Calls) ->
-    {AgentId, wh_json:map(fun accumulate_call_stats/2, Calls)}.
+    {AgentId, wh_json:map(fun accumulate_queue_stats/2, Calls)}.
 
-accumulate_call_stats(CallId, Stats) ->
-    AccStats = wh_json:foldl(fun(_K, undefined, Acc) -> Acc;
-                                (K, V, Acc) ->
-                                     case wh_json:is_json_object(V) of
-                                         false -> wh_json:set_value(K, V, Acc);
-                                         true ->
-                                             CallIds = wh_json:get_value(<<"call_ids">>, Acc, []),
-                                             wh_json:set_value(<<"call_ids">>, [K | CallIds], Acc)
-                                     end
-                             end
+accumulate_queue_stats(QueueId, Stats) ->
+    AccStats = wh_json:foldl(fun fold_call_stats/3
                              ,wh_json:new()
                              ,wh_json:set_value(<<"call_time">>, call_time(Stats), Stats)
                             ),
-    {CallId, AccStats}.
+    {QueueId, AccStats}.
 
+fold_call_stats(_K, undefined, Acc) -> Acc;
+fold_call_stats(K, V, Acc) ->
+    case wh_json:is_json_object(V) of
+        false -> wh_json:set_value(K, V, Acc);
+        true ->
+            CallIds = wh_json:get_value(<<"call_ids">>, Acc, []),
+            wh_json:set_value(<<"call_ids">>, [K | CallIds], Acc)
+    end.
 
 call_time(Stats) ->
     case wh_json:get_integer_value(?STAT_TIMESTAMP_HANDLING, Stats) of
