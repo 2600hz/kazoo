@@ -50,7 +50,7 @@
            content_types_provided = [] :: crossbar_content_handlers()
           ,content_types_accepted = [] :: crossbar_content_handlers()
           ,allowed_methods = ?ALLOWED_METHODS :: http_methods()
-          ,allow_methods = ?ALLOWED_METHODS :: http_methods()
+          ,allow_methods = ?ALLOWED_METHODS :: http_methods() | ne_binaries()
           ,languages_provided = [<<"en">>, <<"en-us">>] :: ne_binaries() %% english by default
           ,charsets_provided = [<<"iso-8859-1">>] :: ne_binaries() %% all charsets provided
           ,encodings_provided = [<<"gzip;q=1.0">>,<<"identity;q=0.5">>] :: ne_binaries() %% gzip and identity
