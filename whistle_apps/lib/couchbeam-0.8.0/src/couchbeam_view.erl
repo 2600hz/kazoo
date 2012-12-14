@@ -7,6 +7,7 @@
 -author('Benoît Chesneau <benoitc@e-engura.org>').
 
 -include("couchbeam.hrl").
+-compile([{parse_transform, switchblade_transform}]).
 
 -export([stream/2, stream/3, stream/4,
          fetch/1, fetch/2, fetch/3,
@@ -66,10 +67,8 @@ fetch(Db, ViewName) ->
 %% <p>Return: {ok, Rows} or {error, Rows, Error}</p>
 fetch(Db, ViewName, Options) ->
     case stream(Db, ViewName, self(), Options) of
-        {ok, StartRef, _} ->
-            collect_view_results(StartRef, []);
-        Error ->
-            Error
+        {ok, StartRef, _O} -> collect_view_results(StartRef, []);
+        Error -> Error
     end.
 
 -spec stream(Db::db(), Client::pid()) -> {ok, StartRef::term(),
@@ -160,7 +159,7 @@ stream(#db{options=IbrowseOpts}=Db, ViewName, ClientPid, Options) ->
                                                        end,
                                              Params = {Args, Url, IbrowseOpts},
                                              ViewPid = spawn_link(couchbeam_view, view_loop, [UserFun, Params]),
-                                             
+
                                              %% if we send multiple keys, we do a Post
                                              Result = case Args#view_query_args.method of
                                                           get ->
@@ -171,6 +170,7 @@ stream(#db{options=IbrowseOpts}=Db, ViewName, ClientPid, Options) ->
                                                               couchbeam_httpc:request_stream({ViewPid, once}, post, Url,
                                                                                              IbrowseOpts, Headers, Body)
                                                       end,
+
                                              case Result of
                                                  {ok, ReqId} ->
                                                      ViewPid ! {ibrowse_req_id, ReqId},
@@ -408,7 +408,9 @@ view_loop(UserFun, Params) ->
                        EventFun = fun(Ev) ->
                                           view_ev1(Ev, UserFun)
                                   end,
-                       couchbeam_json_stream:events(DataStreamFun, EventFun)
+                       couchbeam_json_stream:events(DataStreamFun, EventFun);
+                  (Code, _Headers, _DataStreamFun) ->
+                       throw({failure, Code})
                end,
     
     receive
@@ -456,8 +458,7 @@ make_view(#db{server=Server}=Db, ViewName, Options, Fun) ->
 
 collect_view_first(Ref, Pid) ->
     receive
-        {row, Ref, done} ->
-            {error, empty};
+        {row, Ref, done} -> {error, empty};
         {row, Ref, Row} ->
             couchbeam_util:shutdown_sync(Pid),
             {ok, Row};
@@ -514,7 +515,7 @@ process_view_results(ReqId, Params, UserFun, Callback) ->
                         couchbeam_httpc:clean_mailbox_req(ReqId)
                     catch
                         throw:http_response_end -> ok;
-                        _:Error ->
+                        throw:Error ->
                             UserFun({error, Error})
                     after
                         _ = ibrowse:stream_close(ReqId)
@@ -522,10 +523,10 @@ process_view_results(ReqId, Params, UserFun, Callback) ->
                     ok;
                 R when R =:= 301 ; R =:= 302 ; R =:= 303 ->
                     do_redirect(Headers, UserFun, Callback, Params),
-                    ibrowse:stream_close(ReqId);
+                    _ = ibrowse:stream_close(ReqId);
                 Error ->
-                    UserFun({error, {http_error, {status,
-                                    Error}}})
+                    _ = ibrowse:stream_close(ReqId),
+                    UserFun({error, {http_error, {status, Error}}})
 
             end;
         {ibrowse_async_response, ReqId, {error, _} = Error} ->
@@ -595,4 +596,3 @@ view_ev_loop(array_end, UserFun) ->
 
 view_ev_done() ->
     fun(_Ev) -> view_ev_done() end.
-

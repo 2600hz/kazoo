@@ -13,22 +13,9 @@
 %% Hangup Causes that are fine
 -define(SUCCESSFUL_HANGUPS, [<<"NORMAL_CLEARING">>, <<"ORIGINATOR_CANCEL">>, <<"SUCCESS">>]).
 
--define(IS_JSON_GUARD(Obj), is_tuple(Obj)
-       andalso is_list(element(1, Obj))
-      ).
-
--define(IS_JSON_OBJECT,
-        fun({struct, L}) when is_list(L) ->
-                lists:all(fun({K, V}) when (is_binary(K) orelse is_atom(K)) andalso
-                                           (is_binary(V) orelse is_number(V)) -> true;
-                             (_) -> false
-                          end, L);
-           (_) -> false
-        end).
-
 -type text() :: string() | atom() | binary().
 
--type api_terms() :: wh_json:json_object() | wh_json:json_proplist().
+-type api_terms() :: wh_json:object() | wh_json:json_proplist().
 -type api_binary() :: ne_binary() | 'undefined'.
 -type api_binaries() :: [api_binary(),...] | [] | 'undefined'.
 
@@ -36,8 +23,8 @@
 
 -type wh_std_return() :: {'ok', _} | {'error', _}.
 
--type wh_jobj_return() :: {'ok', wh_json:json_object()} | {'error', _}.
--type wh_jobjs_return() :: {'ok', wh_json:json_objects()} | {'error', _}.
+-type wh_jobj_return() :: {'ok', wh_json:object()} | {'error', _}.
+-type wh_jobjs_return() :: {'ok', wh_json:objects()} | {'error', _}.
 
 %% non-empty binary
 -define(NE_BINARY, <<_:8,_/binary>>).
@@ -81,7 +68,7 @@
 
 -type wh_timeout() :: non_neg_integer() | 'infinity'.
 
--type wh_ip_list() :: [ne_binary(),...] | [].
+-type wh_ip_list() :: ne_binaries().
 
 %% Recreate the non-exported types defined in the erlang supervisor source
 -type sup_child_spec() :: supervisor:child_spec().

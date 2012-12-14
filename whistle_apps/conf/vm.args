@@ -26,3 +26,5 @@
 
 # Limit the size of error reports
 -riak_err term_max_size 8192 fmt_max_bytes 9000
+
+# -kernel inetrc '"conf/inet.cfg"'

@@ -37,7 +37,7 @@ handle(Data, Call) ->
         {ok, #dnd{}=DND} ->
             _ = whapps_call_command:answer(Call),
             Action = wh_json:get_value(<<"action">>, Data),
-            maybe_execute_action(Action, DND, Call),
+            _ = maybe_execute_action(Action, DND, Call),
             cf_exe:continue(Call)
     end.            
 

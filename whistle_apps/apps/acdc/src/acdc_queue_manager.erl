@@ -125,6 +125,11 @@ handle_member_call(JObj, Props) ->
 
     wapi_acdc_queue:publish_shared_member_call(AcctId, QueueId, JObj),
 
+    _ = whapps_call_command:set(undefined
+                                ,wh_json:from_list([{<<"Eavesdrop-Group-ID">>, QueueId}])
+                                ,Call
+                               ),
+
     gen_listener:cast(props:get_value(server, Props), {monitor_call, Call}),
 
     acdc_util:presence_update(AcctId, QueueId, ?PRESENCE_RED_FLASH).

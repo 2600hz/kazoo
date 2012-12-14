@@ -71,12 +71,10 @@
              ]).
 
 -spec new/0 :: () -> object().
-new() ->
-    ?JSON_WRAPPER([]).
+new() -> ?JSON_WRAPPER([]).
 
--spec encode/1 :: (object()) -> iolist() | ne_binary().
-encode(JObj) ->
-    ejson:encode(JObj).
+-spec encode/1 :: (json_term()) -> iolist() | ne_binary().
+encode(JObj) -> ejson:encode(JObj).
 
 -spec decode/1 :: (iolist() | ne_binary()) -> object().
 -spec decode/2 :: (iolist() | ne_binary(), ne_binary()) -> object().
@@ -98,8 +96,9 @@ is_json_object(_) -> false.
 -spec is_valid_json_object/1 :: (term()) -> boolean().
 is_valid_json_object(MaybeJObj) ->
     try
-        lists:all(fun(K) -> is_json_term(get_value([K], MaybeJObj)) end,
-                  get_keys(MaybeJObj))
+        lists:all(fun(K) ->
+                          is_json_term(get_value([K], MaybeJObj))
+                  end, ?MODULE:get_keys(MaybeJObj))
     catch
         throw:_ -> false;
         error:_ -> false
@@ -191,7 +190,7 @@ fold_kvs([K], [V], Prefix, Acc) -> lists:reverse([encode_kv(Prefix, K, V) | Acc]
 fold_kvs([K|Ks], [V|Vs], Prefix, Acc) ->
     fold_kvs(Ks, Vs, Prefix, [<<"&">>, encode_kv(Prefix, K, V) | Acc]).
 
--spec encode_kv/3 :: (iolist() | binary(), json_string(), json_term() | json_terms()) -> iolist().
+-spec encode_kv/3 :: (iolist() | binary(), ne_binary(), json_term() | json_terms()) -> iolist().
 %% If a list of values, use the []= as a separator between the key and each value
 encode_kv(Prefix, K, Vs) when is_list(Vs) ->
     encode_kv(Prefix, wh_util:to_binary(K), Vs, <<"[]=">>, []);
@@ -201,10 +200,10 @@ encode_kv(Prefix, K, V) when is_binary(V) orelse is_number(V) ->
 
 % key:{k1:v1, k2:v2} => key[k1]=v1&key[k2]=v2
 %% if no prefix is present, use just key to prefix the key/value pairs in the jobj
-encode_kv(<<>>, K, JObj) when ?IS_JSON_GUARD(JObj) ->
+encode_kv(<<>>, K, ?JSON_WRAPPER(_)=JObj) ->
     to_querystring(JObj, [K]);
 %% if a prefix is defined, nest the key in square brackets
-encode_kv(Prefix, K, JObj) when ?IS_JSON_GUARD(JObj) ->
+encode_kv(Prefix, K, ?JSON_WRAPPER(_)=JObj) ->
     to_querystring(JObj, [Prefix, <<"[">>, K, <<"]">>]).
 
 -spec encode_kv/4 :: (iolist() | binary(), ne_binary(), ne_binary(), string() | binary()) -> iolist().
@@ -224,25 +223,22 @@ encode_kv(_, _, [], _, Acc) -> lists:reverse(Acc).
 -spec get_json_value/3 :: (json_string() | json_strings(), object(), Default) -> Default | object().
 get_json_value(Key, JObj) ->
     get_json_value(Key, JObj, undefined).
-get_json_value(Key, JObj, Default) ->
-    true = is_json_object(JObj),
+get_json_value(Key, ?JSON_WRAPPER(_)=JObj, Default) ->
     case get_value(Key, JObj) of
         undefined -> Default;
-        V ->
-            case is_json_object(V) of
-                true -> V;
-                false -> Default
-            end
+        ?JSON_WRAPPER(_)=V -> V;
+        _ -> Default
     end.
 
--spec filter/2 :: (fun( ({json_string(), json_term()}) -> boolean() ), object()) -> object().
--spec filter/3 :: (fun( ({json_string(), json_term()}) -> boolean() ), object(), json_string() | json_strings()) -> object().
+-spec filter/2 :: (fun(({json_string(), json_term()}) -> boolean()), object()) ->
+                          object().
+-spec filter/3 :: (fun(({json_string(), json_term()}) -> boolean()), object(), json_string() | json_strings()) ->
+                          object() | objects().
 filter(Pred, ?JSON_WRAPPER(Prop)) when is_function(Pred, 1) ->
     from_list([E || {_,_}=E <- Prop, Pred(E)]).
 
-filter(Pred, JObj, Keys) when is_list(Keys),
-                              is_function(Pred, 1),
-                              ?IS_JSON_GUARD(JObj) ->
+filter(Pred, ?JSON_WRAPPER(_)=JObj, Keys) when is_list(Keys),
+                                               is_function(Pred, 1) ->
     set_value(Keys, filter(Pred, get_json_value(Keys, JObj)), JObj);
 filter(Pred, JObj, Key) ->
     filter(Pred, JObj, [Key]).
@@ -351,7 +347,7 @@ is_true(Key, JObj, Default) ->
         V -> wh_util:is_true(V)
     end.
 
--spec get_binary_boolean/2 :: (json_string() | json_strings(), wh_json:object() | objects()) -> 'undefined' | ne_binary().
+-spec get_binary_boolean/2 :: (json_string() | json_strings(), wh_json:object() | objects()) -> api_binary().
 -spec get_binary_boolean/3 :: (json_string() | json_strings(), wh_json:object() | objects(), Default) -> Default | ne_binary().
 get_binary_boolean(Key, JObj) ->
     get_binary_boolean(Key, JObj, undefined).
@@ -373,15 +369,12 @@ get_keys(Keys, JObj) ->
     get_keys1(get_value(Keys, JObj, new())).
 
 -spec get_keys1/1 :: (list() | object()) -> [pos_integer(),...] | json_strings().
-get_keys1(KVs) when is_list(KVs) ->
-    lists:seq(1,length(KVs));
-get_keys1(JObj) ->
-    props:get_keys(to_proplist(JObj)).
+get_keys1(KVs) when is_list(KVs) -> lists:seq(1,length(KVs));
+get_keys1(JObj) -> props:get_keys(to_proplist(JObj)).
 
 -spec get_ne_value/2 :: (json_string() | json_strings(), object() | objects()) -> json_term() | 'undefined'.
 -spec get_ne_value/3 :: (json_string() | json_strings(), object() | objects(), Default) -> json_term() | Default.
-get_ne_value(Key, JObj) ->
-    get_ne_value(Key, JObj, undefined).
+get_ne_value(Key, JObj) -> get_ne_value(Key, JObj, undefined).
 
 get_ne_value(Key, JObj, Default) ->
     Value = get_value(Key, JObj),
@@ -448,10 +441,9 @@ get_value1(_, _, Default) -> Default.
 %% split the json object into values and the corresponding keys
 -spec get_values/1 :: (object()) -> {json_terms(), json_strings()}.
 get_values(JObj) ->
-    Keys = get_keys(JObj),
     lists:foldr(fun(Key, {Vs, Ks}) ->
                         {[get_value(Key, JObj)|Vs], [Key|Ks]}
-                end, {[], []}, Keys).
+                end, {[], []}, ?MODULE:get_keys(JObj)).
 
 %% Figure out how to set the current key among a list of objects
 -spec set_values/2 :: (json_proplist(), object()) -> object().
@@ -703,8 +695,6 @@ is_private_key(_) -> false.
 
 %% EUNIT TESTING
 -ifdef(TEST).
--include_lib("proper/include/proper.hrl").
--include_lib("eunit/include/eunit.hrl").
 
 %% PropEr Testing
 prop_is_object() ->
@@ -744,7 +734,7 @@ prop_to_proplist() ->
       ?WHENFAIL(io:format("Failed prop_to_proplist ~p~n", [Prop]),
                 begin
                     JObj = from_list(Prop),
-                    lists:all(fun(K) -> props:get_value(K, Prop) =/= undefined end, get_keys(JObj))
+                    lists:all(fun(K) -> props:get_value(K, Prop) =/= undefined end, ?MODULE:get_keys(JObj))
                 end)
            ).
 
@@ -883,9 +873,9 @@ is_json_object_test() ->
 -spec get_keys_test/0 :: () -> no_return().
 get_keys_test() ->
     Keys = [<<"d1k1">>, <<"d1k2">>, <<"d1k3">>],
-    ?assertEqual(true, lists:all(fun(K) -> lists:member(K, Keys) end, get_keys([], ?D1))),
-    ?assertEqual(true, lists:all(fun(K) -> lists:member(K, Keys) end, get_keys([<<"sub_docs">>, 1], ?D3))),
-    ?assertEqual(true, lists:all(fun(K) -> lists:member(K, [1,2,3]) end, get_keys([<<"sub_docs">>], ?D3))).
+    ?assertEqual(true, lists:all(fun(K) -> lists:member(K, Keys) end, ?MODULE:get_keys([], ?D1))),
+    ?assertEqual(true, lists:all(fun(K) -> lists:member(K, Keys) end, ?MODULE:get_keys([<<"sub_docs">>, 1], ?D3))),
+    ?assertEqual(true, lists:all(fun(K) -> lists:member(K, [1,2,3]) end, ?MODULE:get_keys([<<"sub_docs">>], ?D3))).
 
 -spec to_proplist_test/0 :: () -> no_return().
 to_proplist_test() ->

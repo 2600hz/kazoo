@@ -222,7 +222,7 @@ all_docs(#server{}=Conn, DbName, Options) ->
     do_fetch_results(Db, 'all_docs', Options).
 
 -spec get_results/4 :: (server(), ne_binary(), ne_binary(), wh_proplist()) ->
-                               {'ok', wh_json:objects() | [ne_binary(),...]} |
+                               {'ok', wh_json:objects() | ne_binaries()} |
                                couchbeam_error().
 get_results(#server{}=Conn, DbName, DesignDoc, ViewOptions) ->
     Db = get_db(Conn, DbName),
@@ -238,16 +238,22 @@ get_results_count(#server{}=Conn, DbName, DesignDoc, ViewOptions) ->
 %% Design Doc/View internal functions
 
 -spec do_fetch_results/3 :: (db(), ne_binary() | 'all_docs' | 'design_docs', wh_proplist()) ->
-                                    {'ok', wh_json:objects() | [ne_binary(),...]} |
+                                    {'ok', wh_json:objects() | ne_binaries()} |
                                     couchbeam_error().
 do_fetch_results(Db, DesignDoc, Options) ->
     ?RETRY_504(
        case couchbeam_view:fetch(Db, DesignDoc, Options) of
            {'ok', JObj} -> {'ok', wh_json:get_value(<<"rows">>, JObj, JObj)};
-           {'error', _, E} -> {'error', E};
-           Other -> Other
+           {'error', _T, E} -> {'error', format_error(E)};
+           {'error', E} -> {'error', format_error(E)}
        end
       ).
+
+format_error({failure, 404}) -> not_found;
+format_error(E) ->
+    lager:debug("unfomatted error: ~p", [E]),
+    E.
+
 
 -spec do_fetch_results_count/3 :: (db(), ne_binary() | 'all_docs' | 'design_docs', wh_proplist()) ->
                                           {'ok', integer()} |
@@ -360,7 +366,7 @@ do_delete_docs(#db{}=Db, Docs) ->
                                    couchbeam_error().
 do_ensure_saved(#db{}=Db, Doc, Opts) ->
     case do_save_doc(Db, Doc, Opts) of
-        {'ok', _}=Saved -> lager:debug("saved doc"), Saved;
+        {'ok', _}=Saved -> Saved;
         {'error', conflict} ->
             case do_fetch_rev(Db, wh_json:get_value(<<"_id">>, Doc, <<>>)) of
                 ?NE_BINARY = Rev ->

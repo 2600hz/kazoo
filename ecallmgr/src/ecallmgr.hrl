@@ -136,6 +136,7 @@
                                ,{<<"Bypass-Media">>, <<"bypass_media">>}
                                ,{<<"Origination-UUID">>, <<"origination_uuid">>}
                                ,{<<"Ignore-Display-Updates">>, <<"ignore_display_updates">>}
+                               ,{<<"Eavesdrop-Group-ID">>, <<"eavesdrop_group">>}
                                %% ,{<<"Hold-Media">>, <<"hold_music">>}
                                ,{<<"Loopback-Bowout">>, <<"loopback_bowout_on_execute">>}
                                ,{<<"tts_engine">>, <<"tts_engine">>}
@@ -183,6 +184,7 @@
                                ,{<<"uuid_record">>, <<"record_call">>}
                                ,{<<"record">>, <<"record_call">>}
                                ,{<<"presence">>, <<"presence">>}
+                               ,{<<"privacy">>, <<"privacy">>}
                               ]).
 
 -define(FS_EVENTS, [<<"CHANNEL_EXECUTE">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"CHANNEL_HANGUP">>

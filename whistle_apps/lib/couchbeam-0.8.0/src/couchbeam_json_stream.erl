@@ -11,7 +11,7 @@
 % the License.
 
 -module(couchbeam_json_stream).
-
+-compile([{parse_transform, switchblade_transform}]).
 
 -export([events/2, to_ejson/1, collect_object/2]).
 
@@ -390,8 +390,7 @@ toke_number_exponent(_, _, _) ->
         err(unexpected_character_in_number).
 
 
-err(Error)->
-    throw({parse_error,Error}).
+err(Error)-> throw({parse_error,Error}).
 
 
 make_ejson([], Stack) ->

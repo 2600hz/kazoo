@@ -3,12 +3,12 @@ DIALYZER = dialyzer
 REBAR = $(ROOT)/bin/rebar
 
 MAKEDIRS = lib/*/Makefile \
-		   apps/*/Makefile
+	   apps/*/Makefile
 
 DIRS =  . \
-		lib/whistle_number_manager-1.0.0 \
-		lib/whistle_couch-1.0.0 \
-		lib/whistle_services-1.0.0
+	lib/whistle_number_manager-1.0.0 \
+	lib/whistle_couch-1.0.0 \
+	lib/whistle_services-1.0.0
 
 .PHONY: $(MAKEDIRS)
 

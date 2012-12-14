@@ -14,7 +14,7 @@
 -export([delete/1]).
 -export([is_valid_location/1]).
 
--include_lib("src/wnm.hrl").
+-include("../wnm.hrl").
 
 -type xmlElement() :: #xmlElement{}.
 

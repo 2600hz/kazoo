@@ -12,7 +12,7 @@
          ,delete/1
         ]).
 
--include_lib("src/wnm.hrl").
+-include("../wnm.hrl").
 
 -define(FAILOVER_KEY, <<"failover">>).
 

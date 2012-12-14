@@ -125,9 +125,15 @@ maybe_resolve_a_records(Domains) ->
 
 -spec resolve_a_record/2 :: (ne_binary(), wh_ip_list()) -> wh_ip_list().
 resolve_a_record(Domain, IPs) ->
-    lists:foldr(fun(IPTuple, I) ->
-                        [iptuple_to_binary(IPTuple)|I]
-                end, IPs, inet_res:lookup(Domain, in, a)).
+    case inet:getaddrs(Domain, inet) of
+        {error, _R} ->
+            lager:info("unable to resolve ~s: ~p", [Domain, _R]),
+            IPs;
+        {ok, Addresses} ->
+            lists:foldr(fun(IPTuple, I) ->
+                                [iptuple_to_binary(IPTuple)|I]
+                        end, IPs, Addresses)
+    end.
 
 -spec iptuple_to_binary/1 :: ({1..255, 1..255, 1..255, 1..255}) -> ne_binary().                      
 iptuple_to_binary({A,B,C,D}) ->
