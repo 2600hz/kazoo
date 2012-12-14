@@ -42,7 +42,7 @@ handle_member_retry(JObj, Props) ->
 
 handle_config_change(JObj, _Props) ->
     true = wapi_conf:doc_update_v(JObj),
-lager:debug("recv queue config change: ~p", [JObj]),
+
     handle_queue_change(wh_json:get_value(<<"Doc">>, JObj)
                         ,wh_json:get_value(<<"Account-ID">>, JObj)
                         ,wh_json:get_value(<<"ID">>, JObj)
@@ -50,11 +50,13 @@ lager:debug("recv queue config change: ~p", [JObj]),
                        ).
 
 handle_queue_change(_JObj, AcctId, QueueId, <<"doc_created">>) ->
+    lager:debug("maybe starting new queue for ~s: ~s", [AcctId, QueueId]),
     case acdc_queues_sup:find_queue_supervisor(AcctId, QueueId) of
         undefined -> acdc_queues_sup:new(AcctId, QueueId);
         P when is_pid(P) -> ok
     end;
 handle_queue_change(JObj, AcctId, QueueId, <<"doc_edited">>) ->
+    lager:debug("maybe updating existing queue for ~s: ~s", [AcctId, QueueId]),
     case acdc_queues_sup:find_queue_supervisor(AcctId, QueueId) of
         undefined -> acdc_queues_sup:new(AcctId, QueueId);
         QueueSup when is_pid(QueueSup) ->
@@ -64,6 +66,7 @@ handle_queue_change(JObj, AcctId, QueueId, <<"doc_edited">>) ->
             ]
     end;
 handle_queue_change(_JObj, AcctId, QueueId, <<"doc_deleted">>) ->
+    lager:debug("maybe stopping existing queue for ~s: ~s", [AcctId, QueueId]),
     case acdc_queues_sup:find_queue_supervisor(AcctId, QueueId) of
         undefined -> lager:debug("no queue(~s) started for account ~s", [QueueId, AcctId]);
         P when is_pid(P) ->
