@@ -152,9 +152,11 @@ show_channels(Node) ->
 init([Node, Options]) ->
     put(callid, Node),
     process_flag(trap_exit, true),
-    lager:debug("starting new fs node ~s", [Node]),
-    case bind_to_events(freeswitch:version(Node), Node) of
-        {error, Reason} -> {stop, Reason};
+    lager:info("starting new fs node listener for ~s", [Node]),
+    case bind_to_events(props:get_value(client_version, Options), Node) of
+        {error, Reason} ->
+            lager:critical("unable to establish node bindings: ~p", [Reason]),  
+            {stop, Reason};
         ok ->
             gproc:reg({p, l, fs_node}),
             run_start_cmds(Node),
@@ -162,26 +164,20 @@ init([Node, Options]) ->
             {ok, #state{node=Node, options=Options}}
     end.
 
-bind_to_events({ok, <<"mod_kazoo", _/binary>>}, Node) ->
-    freeswitch:event(Node, ['CHANNEL_CREATE', 'CHANNEL_DESTROY', 'CHANNEL_HANGUP_COMPLETE'
-                            ,'CUSTOM', 'sofia::transfer', 'whistle::broadcast'
-                            ,'sofia::move_released', 'sofia::move_complete'
-                           ]);
+bind_to_events(<<"mod_kazoo", _/binary>>, Node) ->
+    case freeswitch:event(Node, ?FS_EVENTS) of
+        timeout -> {error, timeout};
+        Else -> Else
+    end;
 bind_to_events(_, Node) ->
     case freeswitch:register_event_handler(Node) of
-        ok ->
-            lager:debug("event handler registered on node ~s", [Node]),
-            freeswitch:event(Node, ['CHANNEL_CREATE', 'CHANNEL_DESTROY', 'CHANNEL_HANGUP_COMPLETE'
-                                    ,'CUSTOM', 'sofia::transfer', 'whistle::broadcast'
-                                    ,'loopback::bowout', 'sofia::move_released'
-                                    ,'sofia::move_complete'
-                                   ]);
-        {error, Reason}=E ->
-            lager:warning("error when trying to register event handler on node ~s: ~p", [Node, Reason]),
-            E;
-        timeout ->
-            lager:warning("timeout when trying to register event handler on node ~s", [Node]),
-            {error, timeout}
+        timeout -> {error, timeout};
+        ok -> 
+            case freeswitch:event(Node, ?FS_EVENTS) of
+                timeout -> {error, timeout};
+                Else -> Else
+            end;
+        {error, _}=E -> E
     end.
 
 %%--------------------------------------------------------------------
@@ -232,20 +228,9 @@ handle_cast(_Req, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({event, [undefined | Data]}, #state{node=Node}=State) ->
-    catch process_event(undefined, Data, Node),
-    {noreply, State, hibernate};
-
 handle_info({event, [UUID | Data]}, #state{node=Node}=State) ->
-    _ = case ecallmgr_fs_nodes:channel_node(UUID) of
-            {ok, Node} -> catch process_event(UUID, Data, Node);
-            {error, not_found} -> catch process_event(UUID, Data, Node);
-            {ok, _NewNode} ->
-                lager:debug("surpressing ~s: channel is on different node ~s, not ~s"
-                            ,[props:get_value(<<"Event-Name">>, Data), _NewNode, Node]
-                           )
-        end,
-    {noreply, State, hibernate};
+    _ = process_event(UUID, Data, Node),
+    {noreply, State};
 
 handle_info({bgok, _Job, _Result}, State) ->
     lager:debug("job ~s finished successfully: ~p", [_Job, _Result]),
@@ -282,7 +267,7 @@ handle_event(_JObj, #state{node=Node}) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, #state{node=Node}) ->
-    lager:debug("fs node ~s termination: ~p", [Node, _Reason]).
+    lager:info("node listener for ~s terminating: ~p", [Node, _Reason]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -302,65 +287,34 @@ code_change(_OldVsn, State, _Extra) ->
 -spec process_event/4 :: (ne_binary(), api_binary(), wh_proplist(), atom()) -> any().
 
 process_event(UUID, Props, Node) ->
-    EventName = props:get_value(<<"Event-Subclass">>, Props, props:get_value(<<"Event-Name">>, Props)),    
+    EventName = props:get_value(<<"Event-Subclass">>, Props, props:get_value(<<"Event-Name">>, Props)),
+    process_event(EventName, UUID, props:set_value(<<"start">>, erlang:now(), Props), Node).
+
+process_event(<<"CHANNEL_CREATE">> = EventName, UUID, Props, Node) ->
+    maybe_start_event_listener(Node, UUID),
+    maybe_send_event(EventName, UUID, Props, Node);
+process_event(<<"sofia::move_released">> = EventName, _, Props, Node) ->
+    UUID = props:get_value(<<"old_node_channel_uuid">>, Props),    
+    maybe_send_event(EventName, UUID, Props, Node);
+process_event(<<"sofia::move_complete">> = EventName, _, Props, Node) ->
+    UUID = props:get_value(<<"old_node_channel_uuid">>, Props),    
+    maybe_send_event(EventName, UUID, Props, Node);
+process_event(EventName, UUID, Props, Node) ->
+    maybe_send_event(EventName, UUID, Props, Node).
+
+-spec maybe_send_event/4 :: (ne_binary(), api_binary(), wh_proplist(), atom()) -> any().
+maybe_send_event(EventName, UUID, Props, Node) ->
     case wh_util:is_true(props:get_value(<<"variable_channel_is_moving">>, Props)) of
         true -> ok;
         false ->
-            gproc:send({p, l, {call_event, Node, EventName}}, {event, [UUID | Props]})
-    end,
-    _ = process_event(EventName, UUID, Props, Node),
-    ok.
+            gproc:send({p, l, {event, Node, EventName}}, {event, [UUID | Props]}),
+            maybe_send_call_event(UUID, Props, Node)
+    end.    
 
-process_event(<<"CHANNEL_CREATE">>, UUID, Props, Node) ->
-    lager:debug("received channel create event: ~s", [UUID]),
-    _ = maybe_start_event_listener(Node, UUID),
-    case wh_util:is_true(props:get_value(<<"variable_channel_is_moving">>, Props)) of
-        true -> ok;
-        false -> spawn(ecallmgr_fs_nodes, new_channel, [Props, Node])
-    end;
-process_event(<<"CHANNEL_DESTROY">>, UUID, Props, Node) ->
-    case props:get_value(<<"Channel-State">>, Props) =:= <<"CS_DESTROY">>
-        andalso (not wh_util:is_true(props:get_value(<<"variable_channel_is_moving">>, Props)))
-    of
-        false -> ok;
-        true ->
-            lager:debug("received channel destroyed: ~s", [UUID]),
-            ecallmgr_call_events:publish_channel_destroy(Node, UUID, Props),
-            spawn(ecallmgr_fs_nodes, destroy_channel, [Props, Node])
-    end;
-process_event(<<"CHANNEL_HANGUP_COMPLETE">>, UUID, Props, _Node) ->
-    case wh_util:is_true(props:get_value(<<"variable_channel_is_moving">>, Props))of
-        true -> ok;
-        false -> spawn(ecallmgr_call_cdr, new_cdr, [UUID, Props])
-    end;
-process_event(<<"whistle::broadcast">>, _, Props, _) ->
-    Self = wh_util:to_binary(node()),
-    case props:get_value(<<"whistle_broadcast_node">>, Props, Self) of
-        Self -> ok;
-        _Else ->
-            process_broadcast_event(props:get_value(<<"whistle_broadcast_type">>, Props), Props)
-    end;
-process_event(<<"sofia::move_released">>, _, Props, Node) ->
-    UUID = props:get_value(<<"old_node_channel_uuid">>, Props),
-    lager:debug("sending channel_released for ~s", [UUID]),
-    gproc:send({p, l, {channel_move, Node, UUID}}, {channel_move_released, Node, UUID, Props});
-process_event(<<"sofia::move_complete">>, _, Props, Node) ->
-    UUID = props:get_value(<<"old_node_channel_uuid">>, Props),
-    lager:debug("sending move_complete for ~s on ~s", [UUID, Node]),
-    ecallmgr_fs_nodes:channel_set_node(Node, UUID),
-    gproc:send({p, l, {channel_move, Node, UUID}}, {channel_move_completed, Node, UUID, Props});
-process_event(_, _, _, _) ->
-    ok.
-
--spec process_broadcast_event/2 :: (ne_binary(), proplist()) -> ok.
-process_broadcast_event(<<"channel_update">>, Props) ->
-    UUID = props:get_value(<<"whistle_broadcast_call_id">>, Props),
-    put(callid, UUID),
-    Name = props:get_value(<<"whistle_broadcast_parameter_name">>, Props),
-    Value = props:get_value(<<"whistle_broadcast_parameter_value">>, Props),
-    Function = wh_util:to_atom(<<"channel_set_", Name/binary>>, true),
-    lager:debug("remote update for channel ~s parameter ~s: ~s~n", [UUID, Name, Value]),
-    ecallmgr_fs_nodes:Function(undefined, UUID, Value).
+-spec maybe_send_call_event/3 :: (api_binary(), wh_proplist(), atom()) -> any().
+maybe_send_call_event(undefined, _, _) -> ok;
+maybe_send_call_event(CallId, Props, Node) ->    
+    gproc:send({p, l, {call_event, Node, CallId}}, {event, [CallId | Props]}).
 
 -type cmd_result() :: {'ok', {atom(), nonempty_string()}, ne_binary()} |
                       {'error', {atom(), nonempty_string()}, ne_binary()} |
@@ -494,3 +448,4 @@ maybe_start_event_listener(Node, UUID) ->
         {ok, true} -> ecallmgr_call_sup:start_event_process(Node, UUID);
         _E -> ok
     end.
+ 

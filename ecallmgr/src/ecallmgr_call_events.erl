@@ -19,15 +19,16 @@
 -define(MAX_FAILED_NODE_CHECKS, 10).
 -define(NODE_CHECK_PERIOD, 1000).
 
--export([start_link/2, stop/2]).
-
+-export([start_link/2]).
+-export([graceful_shutdown/2]).
+-export([shutdown/2]).
+-export([to_json/1]).
 -export([swap_call_legs/1]).
 -export([create_event/3]).
 -export([create_event_props/3]).
 -export([publish_event/1]).
 -export([transfer/3]).
 -export([get_fs_var/4]).
--export([publish_channel_destroy/3]).
 -export([handle_publisher_usurp/2]).
 -export([queue_name/1
          ,callid/1
@@ -82,8 +83,14 @@ start_link(Node, CallId) ->
                                       ,{consume_options, ?CONSUME_OPTIONS}
                                      ], [Node, CallId]).
 
-stop(Node, UUID) ->
-    _ = [erlang:send_after(5000, Pid, {shutdown})
+graceful_shutdown(Node, UUID) ->
+    _ = [gen_listener:cast(Pid, {graceful_shutdown})
+         || Pid <- gproc:lookup_pids({p, l, {call_events, Node, UUID}})
+        ],
+    ok.
+
+shutdown(Node, UUID) ->
+    _ = [gen_listener:cast(Pid, {shutdown})
          || Pid <- gproc:lookup_pids({p, l, {call_events, Node, UUID}})
         ],
     ok.
@@ -107,20 +114,12 @@ transfer(Srv, TransferType, Props) ->
 queue_name(Srv) ->
     gen_listener:queue_name(Srv).
 
--spec publish_channel_destroy/3 :: (atom(), ne_binary(), wh_proplist()) -> 'ok'.
-publish_channel_destroy(Node, UUID, Props) ->
-    put(callid, UUID),
-    case ecallmgr_fs_nodes:channel_node(UUID) of
-        {error, not_found} -> lager:debug("channel not found, surpressing destroy");
-        {ok, Node} ->
-            EventName = props:get_value(<<"Event-Name">>, Props),
-            ApplicationName = props:get_value(<<"Application">>, Props),
-            publish_event(create_event(EventName, ApplicationName, Props)),
-            stop(Node, UUID);
-        {ok, _NewNode} ->
-            lager:debug("surpressing destroy; ~s is on ~s, not ~s: publishing channel move instead", [UUID, _NewNode, Node]),
-            publish_event(create_event(<<"CHANNEL_MOVED">>, <<"call_pickup">>, Props))
-    end.
+-spec to_json/1 :: (proplist()) -> wh_json:object().
+to_json(Props) ->
+    Masqueraded = is_masquerade(Props),
+    EventName = get_event_name(Props, Masqueraded),
+    ApplicationName = get_event_application(Props, Masqueraded),
+    wh_json:from_list(create_event(EventName, ApplicationName, Props)).
 
 -spec handle_publisher_usurp/2 :: (wh_json:json_object(), wh_proplist()) -> 'ok'.
 handle_publisher_usurp(JObj, Props) ->
@@ -158,6 +157,7 @@ init([Node, CallId]) when is_atom(Node) andalso is_binary(CallId) ->
     put(callid, CallId),
     TRef = erlang:send_after(?SANITY_CHECK_PERIOD, self(), {sanity_check}),
     lager:debug("starting call events listener"),
+    true = gproc:reg({p, l, call_events}),
     {'ok', #state{node=Node, callid=CallId, sanity_check_tref=TRef}, 0}.
 
 %%--------------------------------------------------------------------
@@ -193,19 +193,13 @@ handle_call(_Request, _From, State) ->
 %%--------------------------------------------------------------------
 handle_cast({update_node, Node}, #state{node=Node}=State) ->
     {noreply, State};
-handle_cast({update_node, Node}, #state{node=OldNode
-                                        ,callid=CallId
-                                       }=State) ->
+handle_cast({update_node, Node}, #state{node=OldNode, callid=CallId}=State) ->
     lager:debug("node has changed from ~s to ~s", [OldNode, Node]),
-
     erlang:monitor_node(OldNode, false),
-
-    gproc:unreg({p, l, call_events}),
-    gproc:unreg({p, l, {call_events, Node, CallId}}),
-    gproc:unreg({p, l, {channel_move, Node, CallId}}),
-
+    _ = gproc:unreg({p, l, {call_event, OldNode, CallId}}),
+    _ = gproc:unreg({p, l, {events, OldNode, <<"sofia::move_released">>}}),
+    _ = gproc:unreg({p, l, {events, OldNode, <<"sofia::move_complete">>}}),
     {noreply, State#state{node=Node}, 0};
-
 handle_cast({passive}, State) ->
     lager:debug("publisher has been usurp'd by newer process on another ecallmgr, moving to passive mode", []),
     {noreply, State#state{passive=true}};
@@ -213,22 +207,13 @@ handle_cast({channel_redirected, Props}, State) ->
     lager:debug("our channel has been redirected, shutting down immediately"),
     process_channel_event(Props),
     {stop, {shutdown, redirect}, State};
-handle_cast({channel_destroyed, _Evt}, #state{node=Node
-                                             ,callid=CallId
-                                            }=State) ->
-    _ = case ecallmgr_fs_nodes:channel_node(CallId) of
-            {ok, Node} ->
-                lager:debug("channel destroy recv, starting shutdown"),
-                erlang:send_after(1000, self(), {shutdown}),
-                {noreply, State};
-            {ok, _NewNode} ->
-                lager:debug("going down; ~s is on ~s, not ~s", [CallId, _NewNode, Node]),
-                {stop, normal, State};
-            {error, not_found} ->
-                lager:debug("channel not found, going down"),
-                erlang:send_after(1000, self(), {shutdown}),
-                {noreply, State}
-        end;
+handle_cast({graceful_shutdown}, #state{node=Node}=State) ->
+    lager:debug("call event listener on node ~s received graceful shutdown request", [Node]),
+    erlang:send_after(5000, self(), {shutdown}),
+    {noreply, State};
+handle_cast({shutdown}, #state{node=Node}=State) ->
+    lager:debug("call event listener on node ~s received shutdown request", [Node]),
+    {stop, normal, State};
 handle_cast({transferer, _}, State) ->
     lager:debug("call control has been transfered."),
     {stop, normal, State};
@@ -246,22 +231,32 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-
-handle_info({call, _}, #state{passive=true}=State) ->
-    {'noreply', State};
-handle_info({call_event, _}, #state{passive=true}=State) ->
-    {'noreply', State};
-handle_info({_, {event, [CallId | Props]}}, #state{callid=CallId}=State) ->
-    case wh_util:is_true(props:get_value(<<"variable_channel_is_moving">>, Props)) of
-        true -> ok;
-        false -> process_event_prop(Props)
-    end,
-    {'noreply', State};
+handle_info({event, [CallId | _]}, #state{callid=CallId, passive=true}=State) ->
+    {noreply, State};
+handle_info({event, [CallId | Props]}, #state{node=Node, callid=CallId}=State) ->
+    Start = props:get_value(<<"start">>, Props),
+    io:format("~p ~p~n", [props:get_value(<<"Event-Subclass">>, Props, props:get_value(<<"Event-Name">>, Props)), wh_util:elapsed_us(Start)]),
+    case {props:get_value(<<"Event-Subclass">>, Props, props:get_value(<<"Event-Name">>, Props))
+          ,props:get_value(<<"Application">>, Props)} 
+    of
+        {_, <<"redirect">>} -> 
+            gen_listener:cast(self(), {channel_redirected, Props}),
+            {noreply, State};
+        {<<"CHANNEL_DESTROY">>, _} -> 
+            maybe_process_channel_destroy(Node, CallId, Props),
+            {noreply, State};
+        {<<"sofia::move_released">>, _} -> 
+            lager:debug("channel move released call on our node", []),
+            {stop, normal, State};
+        {_, _} -> 
+            process_channel_event(Props),
+            {noreply, State}
+    end;
 handle_info({nodedown, _}, #state{node=Node, is_node_up=true}=State) ->
     lager:debug("lost connection to node ~s, waiting for reconnection", [Node]),
     erlang:monitor_node(Node, false),
     TRef = erlang:send_after(?NODE_CHECK_PERIOD, self(), {check_node_status}),
-    {'noreply', State#state{node_down_tref=TRef, is_node_up=false}, hibernate};
+    {noreply, State#state{node_down_tref=TRef, is_node_up=false}, hibernate};
 handle_info({check_node_status}, #state{is_node_up=false, failed_node_checks=FNC}=State) when (FNC+1) > ?MAX_FAILED_NODE_CHECKS ->
     lager:debug("node still not up after ~p checks, giving up", [FNC]),
     {stop, normal, State};
@@ -269,77 +264,47 @@ handle_info({check_node_status}, #state{node=Node, callid=CallId, is_node_up=fal
     case ecallmgr_util:is_node_up(Node, CallId) of
         true ->
             lager:debug("reconnected to node ~s and call is active", [Node]),
-            {'noreply', State#state{node_down_tref=undefined, is_node_up=true, failed_node_checks=0}, hibernate};
+            {noreply, State#state{node_down_tref=undefined, is_node_up=true, failed_node_checks=0}, hibernate};
         false ->
             lager:debug("node ~s still not up, waiting ~pms to test again", [Node, ?NODE_CHECK_PERIOD]),
             TRef = erlang:send_after(?NODE_CHECK_PERIOD, self(), {check_node_status}),
-            {'noreply', State#state{node_down_tref=TRef, failed_node_checks=FNC+1}}
+            {noreply, State#state{node_down_tref=TRef, failed_node_checks=FNC+1}}
     end;
 handle_info(timeout, #state{failed_node_checks=FNC}=State) when (FNC+1) > ?MAX_FAILED_NODE_CHECKS ->
     lager:debug("unable to establish initial connectivity to the media node, laterz"),
     {stop, normal, State};
-handle_info(timeout, #state{node=Node
-                            ,callid=CallId
-                            ,failed_node_checks=FNC
-                            ,ref=Ref
-                           }=State) ->
+handle_info(timeout, #state{node=Node, callid=CallId, failed_node_checks=FNC, ref=Ref}=State) ->
     erlang:monitor_node(Node, true),
     %% TODO: die if there is already a event producer on the AMPQ queue... ping/pong?
-    case freeswitch:handlecall(Node, CallId) of
-        ok ->
-            lager:debug("listening to channel events from ~s", [Node]),
+    case freeswitch:api(Node, 'uuid_exists', CallId) of
+        timeout ->
+            lager:warning("timeout trying to find call on node ~s, trying again", [Node]),
+            {noreply, State#state{failed_node_checks=FNC+1}, 1000};
+        {error, Reason} ->
+            lager:warning("unable to find call on node ~s: ~p", [Node, Reason]),
+            {stop, normal, State};
+        {ok, <<"true">>} ->
+            lager:debug("processing call events from ~s", [Node]),
+            true = gproc:reg({p, l, {call_event, Node, CallId}}),
+            true = gproc:reg({p, l, {events, Node, <<"sofia::move_released">>}}),
+            true = gproc:reg({p, l, {events, Node, <<"sofia::move_complete">>}}),
             Usurp = [{<<"Call-ID">>, CallId}
                      ,{<<"Media-Node">>, Node}
                      ,{<<"Reference">>, Ref}
                      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                     ],
             wapi_call:publish_usurp_publisher(CallId, Usurp),
-
-            gproc:reg({p, l, call_events}),
-            gproc:reg({p, l, {call_events, Node, CallId}}),
-            gproc:reg({p, l, {channel_move, Node, CallId}}),
-
-            {'noreply', State#state{failed_node_checks=0}, hibernate};
-        timeout ->
-            lager:debug("timed out trying to listen to channel events from ~s, trying again", [Node]),
-            {'noreply', State#state{failed_node_checks=FNC+1}, 1000};
-        {'error', 'badsession'} ->
-            lager:debug("bad session received when setting up listener for events from ~s", [Node]),
-            {stop, normal, State};
-        {'error', 'session_attach_failed'} ->
-            lager:debug("failed to attach ourselves to the session on ~s", [Node]),
-            {stop, normal, State};
-        {'error', 'baduuid'} ->
-            lager:debug("supplied uuid(~s) was invalid", [CallId]),
-            {stop, normal, State};
-        {'error', 'badarg'} ->
-            lager:debug("bad arg returned when trying to handle call, check message passed to ~s", [Node]),
-            {stop, normal, State};
-        _E ->
-            lager:debug("failed to setup listener for channel events from ~s: ~p", [Node, _E]),
+            {noreply, State#state{failed_node_checks=0}};
+        {ok, Reason} ->
+            lager:warning("unable to find call on node ~s: ~p", [Node, Reason]),
             {stop, normal, State}
     end;
-
-handle_info({channel_move_released, Node, _UUID, _Evt}, #state{node=Node}=State) ->
-    lager:debug("recv channel_move_released for ~s on ~s (our node)", [Node, _UUID]),
-    {stop, normal, State};
-handle_info({channel_move_released, _Node, _UUID, _Evt}, #state{node=_OurNode}=State) ->
-    lager:debug("recv channel_move_released for ~s on ~s (our node is ~s)", [_Node, _UUID, _OurNode]),
-    {noreply, State};
-
-handle_info({channel_move_completed, Node, _UUID, _Evt}, #state{node=Node}=State) ->
-    lager:debug("recv channel_move_completed for ~s on ~s (our node)", [Node, _UUID]),
-    {noreply, State};
-handle_info({channel_move_completed, _Node, _UUID, _Evt}, #state{node=_OurNode}=State) ->
-    lager:debug("recv channel_move_completed for ~s on ~s (our node is ~s)", [_Node, _UUID, _OurNode]),
-    {noreply, State};
-
 handle_info({sanity_check}, #state{callid=CallId}=State) ->
     case ecallmgr_fs_nodes:channel_exists(CallId) of
         true ->
             lager:debug("listener passed sanity check, call is still up"),
             TRef = erlang:send_after(?SANITY_CHECK_PERIOD, self(), {sanity_check}),
-            {'noreply', State#state{sanity_check_tref=TRef}};
+            {noreply, State#state{sanity_check_tref=TRef}};
         false ->
             lager:debug("call no longer exists, shutting down immediately"),
             {stop, normal, State#state{sanity_check_tref=undefined}}
@@ -348,7 +313,7 @@ handle_info({shutdown}, State) ->
     {stop, normal, State};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
-    {'noreply', State}.
+    {noreply, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -358,10 +323,7 @@ handle_info(_Info, State) ->
 %% @spec handle_event(JObj, State) -> {reply, Options}
 %% @end
 %%--------------------------------------------------------------------
-handle_event(_JObj, #state{ref=Ref
-                           ,callid=CallId
-                           ,node=Node
-                          }) ->
+handle_event(_JObj, #state{ref=Ref, callid=CallId, node=Node}) ->
     {reply, [{reference, Ref}
              ,{call_id, CallId}
              ,{node, Node}
@@ -397,12 +359,23 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-process_event_prop(Props) ->
-    case {props:get_value(<<"Event-Name">>, Props), props:get_value(<<"Application">>, Props)} of
-        {_, <<"redirect">>} -> gen_listener:cast(self(), {channel_redirected, Props});
-        {<<"CHANNEL_DESTROY">>, _} -> gen_listener:cast(self(), {channel_destroyed, Props});
-        {_, _} -> process_channel_event(Props)
+-spec maybe_process_channel_destroy/3 :: (atom(), ne_binary(), wh_proplist()) -> 'ok'.
+maybe_process_channel_destroy(Node, CallId, Props) ->
+    case ecallmgr_fs_nodes:channel_node(CallId) of
+        {ok, Node} -> process_channel_destroy(Node, CallId, Props);
+        {error, _} -> process_channel_destroy(Node, CallId, Props);
+        {ok, _NewNode} ->
+            lager:debug("surpressing destroy; ~s is on ~s, not ~s: publishing channel move instead", [CallId, _NewNode, Node]),
+            publish_event(create_event(<<"CHANNEL_MOVED">>, <<"call_pickup">>, Props));
+        _Else -> ok
     end.
+
+-spec process_channel_destroy/3 :: (atom(), ne_binary(), wh_proplist()) -> 'ok'.
+process_channel_destroy(_, _, Props) ->
+    EventName = props:get_value(<<"Event-Name">>, Props),
+    ApplicationName = props:get_value(<<"Application">>, Props),
+    publish_event(create_event(EventName, ApplicationName, Props)),
+    gen_server:cast(self(), {graceful_shutdown}).
 
 -spec process_channel_event/1 :: (wh_proplist()) -> 'ok'.
 process_channel_event(Props) ->
@@ -600,7 +573,7 @@ should_publish(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"execute_extension">>, false) -
 should_publish(<<"CHANNEL_EXECUTE", _/binary>>, Application, _) ->
     props:get_value(Application, ?FS_APPLICATION_NAMES) =/= undefined;
 should_publish(EventName, _, _) ->
-    lists:member(EventName, ?FS_EVENTS).
+    lists:member(EventName, ?CALL_EVENTS).
 
 -spec get_transfer_history/1 :: (wh_proplist()) -> wh_json:json_object().
 get_transfer_history(Props) ->

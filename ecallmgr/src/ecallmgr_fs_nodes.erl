@@ -33,17 +33,17 @@
 -export([channel_match_presence/1]).
 -export([channel_exists/1]).
 -export([channel_import_moh/1]).
--export([channel_set_account_id/3]).
--export([channel_set_billing_id/3]).
--export([channel_set_account_billing/3]).
--export([channel_set_reseller_id/3]).
--export([channel_set_reseller_billing/3]).
--export([channel_set_authorizing_id/3]).
--export([channel_set_resource_id/3]).
--export([channel_set_authorizing_type/3]).
--export([channel_set_owner_id/3]).
--export([channel_set_presence_id/3]).
--export([channel_set_import_moh/3]).
+-export([channel_set_account_id/2]).
+-export([channel_set_billing_id/2]).
+-export([channel_set_account_billing/2]).
+-export([channel_set_reseller_id/2]).
+-export([channel_set_reseller_billing/2]).
+-export([channel_set_authorizing_id/2]).
+-export([channel_set_resource_id/2]).
+-export([channel_set_authorizing_type/2]).
+-export([channel_set_owner_id/2]).
+-export([channel_set_presence_id/2]).
+-export([channel_set_import_moh/2]).
 -export([fetch_channel/1]).
 -export([destroy_channel/2]).
 -export([props_to_channel_record/2]).
@@ -148,7 +148,7 @@ fetch_channel(UUID) ->
 -spec channel_node/1 :: (ne_binary()) -> {'ok', atom()} |
                                          {'error', _}.
 channel_node(UUID) ->
-    MatchSpec = [{#channel{uuid = '$1', node = '$2'}
+    MatchSpec = [{#channel{uuid = '$1', node = '$2', _ = '_'}
                   ,[{'=:=', '$1', {const, UUID}}]
                   ,['$2']}
                 ],
@@ -160,12 +160,12 @@ channel_node(UUID) ->
 -spec channel_former_node/1 :: (ne_binary()) -> {'ok', atom()} |
                                                 {'error', _}.
 channel_former_node(UUID) ->
-    MatchSpec = [{#channel{uuid = '$1', former_node = '$2'}
+    MatchSpec = [{#channel{uuid = '$1', former_node = '$2', _ = '_'}
                   ,[{'=:=', '$1', {const, UUID}}]
                   ,['$2']}
                 ],
     case ets:select(ecallmgr_channels, MatchSpec) of
-        ['_'] -> {ok, undefined};
+        [undefined] -> {ok, undefined};
         [Node] -> {ok, Node};
         _ -> {error, not_found}
     end.
@@ -186,7 +186,7 @@ channel_import_moh(UUID) ->
 channel_account_summary(AccountId) ->
     MatchSpec = [{#channel{direction = '$1', account_id = '$2', account_billing = '$7'
                            ,authorizing_id = '$3', resource_id = '$4', billing_id = '$5'
-                           ,bridge_id = '$6'
+                           ,bridge_id = '$6',  _ = '_'
                           }
                   ,[{'=:=', '$2', {const, AccountId}}]
                   ,['$_']}
@@ -195,7 +195,7 @@ channel_account_summary(AccountId) ->
 
 -spec channel_match_presence/1 :: (ne_binary()) -> wh_proplist_kv(ne_binary(), atom()).
 channel_match_presence(PresenceId) ->
-    MatchSpec = [{#channel{uuid = '$1', presence_id = '$2', node = '$3'}
+    MatchSpec = [{#channel{uuid = '$1', presence_id = '$2', node = '$3',  _ = '_'}
                   ,[{'=:=', '$2', {const, PresenceId}}]
                   ,[{{'$1', '$3'}}]}
                 ],
@@ -206,7 +206,7 @@ channel_move(UUID, ONode, NNode) ->
     NewNode = wh_util:to_atom(NNode),
 
     channel_set_node(NewNode, UUID),
-    ecallmgr_call_events:stop(OriginalNode, UUID),
+    ecallmgr_call_events:shutdown(OriginalNode, UUID),
     ecallmgr_call_control:update_node(NewNode, UUID),
 
     lager:debug("updated ~s to point to ~s", [UUID, NewNode]),
@@ -306,78 +306,68 @@ channel_teardown_sbd(UUID, OriginalNode) ->
             false
     end.
 
--spec channel_set_account_id/3 :: (atom(), ne_binary(), string() | ne_binary()) -> 'ok'.
-channel_set_account_id(Node, UUID, Value) when is_binary(Value) ->
-    gen_server:cast(?MODULE, {channel_update, UUID, {#channel.account_id, Value}}),
-    broadcast_channel_update(Node, UUID, <<"account_id">>, Value);
-channel_set_account_id(Node, UUID, Value) ->
-    channel_set_account_id(Node, UUID, wh_util:to_binary(Value)).
+-spec channel_set_account_id/2 :: (ne_binary(), string() | ne_binary()) -> 'ok'.
+channel_set_account_id(UUID, Value) when is_binary(Value) ->
+    gen_server:cast(?MODULE, {channel_update, UUID, {#channel.account_id, Value}});
+channel_set_account_id(UUID, Value) ->
+    channel_set_account_id(UUID, wh_util:to_binary(Value)).
 
--spec channel_set_billing_id/3 :: (atom(), ne_binary(), string() | ne_binary()) -> 'ok'.
-channel_set_billing_id(Node, UUID, Value) when is_binary(Value) ->
-    gen_server:cast(?MODULE, {channel_update, UUID, {#channel.billing_id, Value}}),
-    broadcast_channel_update(Node, UUID, <<"billing_id">>, Value);
-channel_set_billing_id(Node, UUID, Value) ->
-    channel_set_billing_id(Node, UUID, wh_util:to_binary(Value)).
+-spec channel_set_billing_id/2 :: (ne_binary(), string() | ne_binary()) -> 'ok'.
+channel_set_billing_id(UUID, Value) when is_binary(Value) ->
+    gen_server:cast(?MODULE, {channel_update, UUID, {#channel.billing_id, Value}});
+channel_set_billing_id(UUID, Value) ->
+    channel_set_billing_id(UUID, wh_util:to_binary(Value)).
 
--spec channel_set_account_billing/3 :: (atom(), ne_binary(), string() | ne_binary()) -> 'ok'.
-channel_set_account_billing(Node, UUID, Value) when is_binary(Value) ->
-    gen_server:cast(?MODULE, {channel_update, UUID, {#channel.account_billing, Value}}),
-    broadcast_channel_update(Node, UUID, <<"account_billing">>, Value);
-channel_set_account_billing(Node, UUID, Value) ->
-    channel_set_account_billing(Node, UUID, wh_util:to_binary(Value)).
+-spec channel_set_account_billing/2 :: (ne_binary(), string() | ne_binary()) -> 'ok'.
+channel_set_account_billing(UUID, Value) when is_binary(Value) ->
+    gen_server:cast(?MODULE, {channel_update, UUID, {#channel.account_billing, Value}});
+channel_set_account_billing(UUID, Value) ->
+    channel_set_account_billing(UUID, wh_util:to_binary(Value)).
 
--spec channel_set_reseller_id/3 :: (atom(), ne_binary(), string() | ne_binary()) -> 'ok'.
-channel_set_reseller_id(Node, UUID, Value) when is_binary(Value) ->
-    gen_server:cast(?MODULE, {channel_update, UUID, {#channel.reseller_id, Value}}),
-    broadcast_channel_update(Node, UUID, <<"resller_id">>, Value);
-channel_set_reseller_id(Node, UUID, Value) ->
-    channel_set_reseller_id(Node, UUID, wh_util:to_binary(Value)).
+-spec channel_set_reseller_id/2 :: (ne_binary(), string() | ne_binary()) -> 'ok'.
+channel_set_reseller_id(UUID, Value) when is_binary(Value) ->
+    gen_server:cast(?MODULE, {channel_update, UUID, {#channel.reseller_id, Value}});
+channel_set_reseller_id(UUID, Value) ->
+    channel_set_reseller_id(UUID, wh_util:to_binary(Value)).
 
--spec channel_set_reseller_billing/3 :: (atom(), ne_binary(), string() | ne_binary()) -> 'ok'.
-channel_set_reseller_billing(Node, UUID, Value) when is_binary(Value) ->
-    gen_server:cast(?MODULE, {channel_update, UUID, {#channel.reseller_billing, Value}}),
-    broadcast_channel_update(Node, UUID, <<"reseller_billing">>, Value);
-channel_set_reseller_billing(Node, UUID, Value) ->
-    channel_set_reseller_billing(Node, UUID, wh_util:to_binary(Value)).
+-spec channel_set_reseller_billing/2 :: (ne_binary(), string() | ne_binary()) -> 'ok'.
+channel_set_reseller_billing(UUID, Value) when is_binary(Value) ->
+    gen_server:cast(?MODULE, {channel_update, UUID, {#channel.reseller_billing, Value}});
+channel_set_reseller_billing(UUID, Value) ->
+    channel_set_reseller_billing(UUID, wh_util:to_binary(Value)).
 
--spec channel_set_resource_id/3 :: (atom(), ne_binary(), string() | ne_binary()) -> 'ok'.
-channel_set_resource_id(Node, UUID, Value) when is_binary(Value) ->
-    gen_server:cast(?MODULE, {channel_update, UUID, {#channel.resource_id, Value}}),
-    broadcast_channel_update(Node, UUID, <<"resource_id">>, Value);
-channel_set_resource_id(Node, UUID, Value) ->
-    channel_set_resource_id(Node, UUID, wh_util:to_binary(Value)).
+-spec channel_set_resource_id/2 :: (ne_binary(), string() | ne_binary()) -> 'ok'.
+channel_set_resource_id(UUID, Value) when is_binary(Value) ->
+    gen_server:cast(?MODULE, {channel_update, UUID, {#channel.resource_id, Value}});
+channel_set_resource_id(UUID, Value) ->
+    channel_set_resource_id(UUID, wh_util:to_binary(Value)).
 
--spec channel_set_authorizing_id/3 :: (atom(), ne_binary(), string() | ne_binary()) -> 'ok'.
-channel_set_authorizing_id(Node, UUID, Value) when is_binary(Value) ->
-    gen_server:cast(?MODULE, {channel_update, UUID, {#channel.authorizing_id, Value}}),
-    broadcast_channel_update(Node, UUID, <<"authorizing_id">>, Value);
-channel_set_authorizing_id(Node, UUID, Value) ->
-    channel_set_authorizing_id(Node, UUID, wh_util:to_binary(Value)).
+-spec channel_set_authorizing_id/2 :: (ne_binary(), string() | ne_binary()) -> 'ok'.
+channel_set_authorizing_id(UUID, Value) when is_binary(Value) ->
+    gen_server:cast(?MODULE, {channel_update, UUID, {#channel.authorizing_id, Value}});
+channel_set_authorizing_id(UUID, Value) ->
+    channel_set_authorizing_id(UUID, wh_util:to_binary(Value)).
 
--spec channel_set_authorizing_type/3 :: (atom(), ne_binary(), string() | ne_binary()) -> 'ok'.
-channel_set_authorizing_type(Node, UUID, Value) when is_binary(Value) ->
-    gen_server:cast(?MODULE, {channel_update, UUID, {#channel.authorizing_type, Value}}),
-    broadcast_channel_update(Node, UUID, <<"authorizing_type">>, Value);
-channel_set_authorizing_type(Node, UUID, Value) ->
-    channel_set_authorizing_type(Node, UUID, wh_util:to_binary(Value)).
+-spec channel_set_authorizing_type/2 :: (ne_binary(), string() | ne_binary()) -> 'ok'.
+channel_set_authorizing_type(UUID, Value) when is_binary(Value) ->
+    gen_server:cast(?MODULE, {channel_update, UUID, {#channel.authorizing_type, Value}});
+channel_set_authorizing_type(UUID, Value) ->
+    channel_set_authorizing_type(UUID, wh_util:to_binary(Value)).
 
--spec channel_set_owner_id/3 :: (atom(), ne_binary(), string() | ne_binary()) -> 'ok'.
-channel_set_owner_id(Node, UUID, Value) when is_binary(Value) ->
-    gen_server:cast(?MODULE, {channel_update, UUID, {#channel.owner_id, Value}}),
-    broadcast_channel_update(Node, UUID, <<"owner_id">>, Value);
-channel_set_owner_id(Node, UUID, Value) ->
-    channel_set_owner_id(Node, UUID, wh_util:to_binary(Value)).
+-spec channel_set_owner_id/2 :: (ne_binary(), string() | ne_binary()) -> 'ok'.
+channel_set_owner_id(UUID, Value) when is_binary(Value) ->
+    gen_server:cast(?MODULE, {channel_update, UUID, {#channel.owner_id, Value}});
+channel_set_owner_id(UUID, Value) ->
+    channel_set_owner_id(UUID, wh_util:to_binary(Value)).
 
--spec channel_set_presence_id/3 :: (atom(), ne_binary(), string() | ne_binary()) -> 'ok'.
-channel_set_presence_id(Node, UUID, Value) when is_binary(Value) ->
-    gen_server:cast(?MODULE, {channel_update, UUID, {#channel.presence_id, Value}}),
-    broadcast_channel_update(Node, UUID, <<"presence_id">>, Value);
-channel_set_presence_id(Node, UUID, Value) ->
-    channel_set_presence_id(Node, UUID, wh_util:to_binary(Value)).
+-spec channel_set_presence_id/2 :: (ne_binary(), string() | ne_binary()) -> 'ok'.
+channel_set_presence_id(UUID, Value) when is_binary(Value) ->
+    gen_server:cast(?MODULE, {channel_update, UUID, {#channel.presence_id, Value}});
+channel_set_presence_id(UUID, Value) ->
+    channel_set_presence_id(UUID, wh_util:to_binary(Value)).
 
--spec channel_set_import_moh/3 :: (atom(), ne_binary(), boolean()) -> 'ok'.
-channel_set_import_moh(_Node, UUID, Import) ->
+-spec channel_set_import_moh/2 :: (ne_binary(), boolean()) -> 'ok'.
+channel_set_import_moh(UUID, Import) ->
     gen_server:cast(?MODULE, {channel_update, UUID, {#channel.import_moh, Import}}).
 
 -spec channel_set_node/2 :: (atom(), ne_binary()) -> 'ok'.
@@ -545,7 +535,7 @@ handle_cast({channel_update, UUID, Update}, State) ->
     ets:update_element(ecallmgr_channels, UUID, Update),
     {noreply, State, hibernate};
 handle_cast({destroy_channel, UUID, Node}, State) ->
-    MatchSpec = [{#channel{uuid='$1', node='$2'}
+    MatchSpec = [{#channel{uuid='$1', node='$2', _ = '_'}
                   ,[{'andalso', {'=:=', '$2', {const, Node}}
                      ,{'=:=', '$1', UUID}
                     }
@@ -553,14 +543,13 @@ handle_cast({destroy_channel, UUID, Node}, State) ->
                   [true]
                  }],
     N = ets:select_delete(ecallmgr_channels, MatchSpec),
-    lager:debug("maybe removed channel ~s on ~s: ~p", [UUID, Node, N]),
+    lager:debug("removed ~p channel(s) with id ~s on ~s", [N, UUID, Node]),
     {noreply, State, hibernate};
 handle_cast({rm_fs_node, Node}, State) ->
     {noreply, rm_fs_node(Node, State), hibernate};
 handle_cast({sync_channels, Node, Channels}, State) ->
     lager:debug("ensuring channel cache is in sync with ~s", [Node]),
-
-    MatchSpec = [{#channel{uuid = '$1', node = '$2'}
+    MatchSpec = [{#channel{uuid = '$1', node = '$2', _ = '_'}
                   ,[{'=:=', '$2', {const, Node}}]
                   ,['$1']}
                 ],
@@ -586,7 +575,7 @@ handle_cast({sync_channels, Node, Channels}, State) ->
     {noreply, State, hibernate};
 handle_cast({flush_node_channels, Node}, State) ->
     lager:debug("flushing all channels in cache associated to node ~s", [Node]),
-    MatchSpec = [{#channel{node = '$1'}
+    MatchSpec = [{#channel{node = '$1', _ = '_'}
                   ,[{'=:=', '$1', {const, Node}}]
                   ,['true']}
                 ],
@@ -594,7 +583,7 @@ handle_cast({flush_node_channels, Node}, State) ->
     {noreply, State};
 handle_cast(_, State) ->
     {noreply, State, hibernate}.
-
+    
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -605,11 +594,27 @@ handle_cast(_, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info({event, [UUID | Props]}, State) ->
+    Node = get_node_from_props(Props),
+    case props:get_value(<<"Event-Subclass">>, Props, props:get_value(<<"Event-Name">>, Props)) of
+        <<"CHANNEL_CREATE">> -> ?MODULE:new_channel(Props, Node);
+        <<"CHANNEL_DESTROY">> ->  ?MODULE:destroy_channel(Props, Node);
+        <<"sofia::move_complete">> -> ?MODULE:channel_set_node(Node, UUID);
+        <<"CHANNEL_EXECUTE_COMPLETE">> -> 
+            Data = props:get_value(<<"Application-Data">>, Props),
+            case props:get_value(<<"Application">>, Props) of
+                <<"set">> -> process_channel_update(UUID, Data);
+                <<"export">> -> process_channel_update(UUID, Data);
+                <<"multiset">> -> process_channel_multiset(UUID, Data);
+                _Else -> ok
+            end;
+        _Else -> ok
+    end,        
+    {noreply, State};
 handle_info(expire_sip_subscriptions, Cache) ->
     Now = wh_util:current_tstamp(),
-    DeleteSpec = [{#sip_subscription{key = '_', to = '_', expires = '$3',
-                                     timestamp = '$4', from = '_', node = '_'},
-                   [{'>', {const, Now}, {'+', '$4', '$3'}}],
+    DeleteSpec = [{#sip_subscription{expires = '$1', timestamp = '$2', _ = '_'},
+                   [{'>', {const, Now}, {'+', '$2', '$1'}}],
                    [true]}
                  ],
     ets:select_delete(sip_subscriptions, DeleteSpec),
@@ -623,13 +628,13 @@ handle_info({nodedown, Node}, #state{nodes=Nodes}=State) ->
            end,
     case ecallmgr_fs_pinger_sup:add_node(Node, Opts) of
         {ok, _} ->
-            lager:debug("started fs pinger for node '~s'", [Node]),
+            lager:warning("started fs pinger for node '~s'", [Node]),
             NodeBin = amqp_util:encode(wh_util:to_binary(Node)),
             wh_gauge:set(<<"freeswitch.nodes.", NodeBin/binary, ".up">>, 0),
             wh_timer:delete(<<"freeswitch.nodes.", NodeBin/binary, ".uptime">>),
             {noreply, State#state{nodes=lists:keydelete(Node, #node.node, Nodes)}};
         {error, {already_started, _}} ->
-            lager:debug("fs pinger for node '~s' already exists", [Node]),
+            lager:warning("started fs pinger for node '~s'", [Node]),
             NodeBin = amqp_util:encode(wh_util:to_binary(Node)),
             wh_gauge:set(<<"freeswitch.nodes.", NodeBin/binary, ".up">>, 0),
             wh_timer:delete(<<"freeswitch.nodes.", NodeBin/binary, ".uptime">>),
@@ -637,7 +642,7 @@ handle_info({nodedown, Node}, #state{nodes=Nodes}=State) ->
         _Else ->
             _ = ecallmgr_fs_pinger_sup:remove_node(Node),
             self() ! {nodedown, Node},
-            lager:debug("failed to start fs pinger for node '~s': ~p", [Node, _Else]),
+            lager:critical("failed to start fs pinger for node '~s': ~p", [Node, _Else]),
             {noreply, State}
     end;
 handle_info(_Info, State) ->
@@ -673,6 +678,38 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+-spec process_channel_multiset/2 :: (ne_binary(), ne_binary()) -> any().
+process_channel_multiset(UUID, Datas) ->
+    [process_channel_update(UUID, Data)
+     || Data <- binary:split(Datas, <<"|">>, [global])
+    ].
+
+-spec process_channel_update/2 :: (ne_binary(), ne_binary()) -> any().
+-spec process_channel_update/3 :: (ne_binary(), ne_binary(), ne_binary()) -> any().
+
+process_channel_update(UUID, Data) ->
+    case binary:split(Data, <<"=">>) of
+        [Var, Value] -> process_channel_update(UUID, Var, Value);
+        _Else -> ok
+    end.
+
+process_channel_update(UUID, <<"ecallmgr_", Var/binary>>, Value) ->
+    Normalized = wh_util:to_lower_binary(binary:replace(Var, <<"-">>, <<"_">> , [global])),
+    process_channel_update(UUID, Normalized, Value);
+process_channel_update(UUID, <<"hold_music">>, _) ->
+    ?MODULE:channel_set_import_moh(UUID, false);
+process_channel_update(UUID, Var, Value) ->
+    try wh_util:to_atom(<<"channel_set_", Var/binary>>) of
+        Function ->
+            Exports = ?MODULE:module_info(exports),
+            case lists:keysearch(Function, 1, Exports) of
+                {value, {_, 2}} -> ?MODULE:Function(UUID, Value);
+                _Else -> ok
+            end
+    catch
+        _:_ -> ok
+    end.
+
 -spec find_cookie/2 :: (atom(), wh_proplist()) -> atom().
 find_cookie(undefined, Options) -> wh_util:to_atom(props:get_value(cookie, Options, erlang:get_cookie()));
 find_cookie(Cookie, _Opts) when is_atom(Cookie) -> Cookie.
@@ -680,54 +717,69 @@ find_cookie(Cookie, _Opts) when is_atom(Cookie) -> Cookie.
 -spec add_fs_node/4 :: (atom(), atom(), proplist(), #state{}) -> {'ok', #state{}} |
                                                                  {{'error', 'no_connection'}, #state{}} |
                                                                  {{'error', 'failed_starting_handlers'}, #state{}}.
-add_fs_node(Node, Cookie0, Options, #state{nodes=Nodes}=State) ->
-    Cookie = find_cookie(Cookie0, Options),
-
-    case [N || #node{node=Node1}=N <- Nodes, Node =:= Node1] of
-        [] ->
-            erlang:set_cookie(Node, Cookie),
-            case net_adm:ping(Node) of
-                pong ->
-                    lager:debug("no node matching ~p found, adding", [Node]),
-                    case ecallmgr_fs_sup:add_node(Node, [{cookie, Cookie} | props:delete(cookie, Options)]) of
-                        {ok, _} ->
-                            erlang:monitor_node(Node, true),
-                            lager:info("successfully connected to node '~s'", [Node]),
-                            NodeBin = amqp_util:encode(wh_util:to_binary(Node)),
-                            wh_gauge:set(<<"freeswitch.nodes.", NodeBin/binary, ".up">>, 1),
-                            wh_timer:update(<<"freeswitch.nodes.", NodeBin/binary, ".uptime">>),
-                            wh_timer:update(<<"freeswitch.nodes.", NodeBin/binary, ".last_connected">>),
-                            {ok, State#state{nodes=[#node{node=Node, cookie=Cookie, options=Options} | Nodes]}};
-                        {error, {already_started, _}} ->
-                            lager:info("already connected to node '~s'", [Node]),
-                            NodeBin = amqp_util:encode(wh_util:to_binary(Node)),
-                            wh_gauge:set(<<"freeswitch.nodes.", NodeBin/binary, ".up">>, 1),
-                            wh_timer:update(<<"freeswitch.nodes.", NodeBin/binary, ".uptime">>),
-                            wh_timer:update(<<"freeswitch.nodes.", NodeBin/binary, ".last_connected">>),
-                            {ok, State#state{nodes=[#node{node=Node, cookie=Cookie, options=Options} | Nodes]}};
-                        _Else ->
-                            lager:warning("failed to add node '~s'", [Node]),
-                            self() ! {nodedown, Node},
-                            {{error, failed_starting_handlers}, State}
-                    end;
-                pang ->
-                    lager:info("unable to connect to node '~s'; ensure it is reachable from this server and using cookie '~s'", [Node, Cookie]),
-                    self() ! {nodedown, Node},
-                    {{error, no_connection}, State}
-            end;
-        [#node{node=Node}] ->
+add_fs_node(Node, Cookie, Options, #state{nodes=Nodes}=State) ->
+    Cookie = find_cookie(Cookie, Options),
+    case lists:keysearch(Nodes, #node.node, Nodes) of
+        false -> maybe_ping_node(Node, Cookie, Options, State);
+        {value, #node{}} -> 
             lager:info("already connected to node '~s'", [Node]),
             {ok, State}
+    end.
+
+-spec maybe_ping_node/4 :: (atom(), atom(), proplist(), #state{}) -> {'ok', #state{}} |
+                                                                     {{'error', 'no_connection'}, #state{}} |
+                                                                     {{'error', 'failed_starting_handlers'}, #state{}}.
+maybe_ping_node(Node, Cookie, Options, #state{nodes=Nodes}=State) ->
+    erlang:set_cookie(Node, Cookie),
+    case net_adm:ping(Node) of
+        pong -> 
+            try maybe_start_node_handlers(Node, Cookie, Options) of
+                _ -> 
+                    lager:info("successfully connected to node '~s'", [Node]),
+                    _ = update_stats(connect, Node),
+                    {ok, State#state{nodes=[#node{node=Node, cookie=Cookie, options=Options} 
+                                            | lists:keydelete(Node, #node.node, Nodes)
+                                           ]}}
+            catch
+                error:{badmatch, timeout} ->
+                    lager:warning("connection timeout while starting node ~s handlers", [Node]),
+                    self() ! {nodedown, Node},
+                    {{error, failed_starting_handlers}, State};
+                _:Reason ->
+                    lager:warning("unable to start node ~s handlers: ~p", [Node, Reason]),
+                    self() ! {nodedown, Node},
+                    {{error, failed_starting_handlers}, State}
+            end;
+        pang ->
+            lager:warning("unable to connect to node '~s'; ensure it is reachable from this server and using cookie '~s'", [Node, Cookie]),
+            self() ! {nodedown, Node},
+            {{error, no_connection}, State}
+    end.
+
+-spec maybe_start_node_handlers/3 :: (atom(), atom(), proplist()) -> {'ok', #state{}} |
+                                                                     {{'error', 'no_connection'}, #state{}} |
+                                                                     {{'error', 'failed_starting_handlers'}, #state{}}.
+maybe_start_node_handlers(Node, Cookie, Options) ->
+    Version = get_client_version(Node),
+    case ecallmgr_fs_sup:add_node(Node, [{cookie, Cookie}
+                                         ,{client_version, Version}
+                                         | props:delete(cookie, Options)
+                                        ]) 
+    of
+        {ok, _} ->
+            erlang:monitor_node(Node, true),
+            bind_to_fs_events(Version, Node);
+        {error, {already_started, _}} ->
+            bind_to_fs_events(Version, Node)
     end.
 
 -spec rm_fs_node/2 :: (atom(), #state{}) -> #state{}.
 rm_fs_node(Node, #state{nodes=Nodes}=State) ->
     lager:debug("closing node handler for ~s", [Node]),
+    _ = update_stats(disconnect, Node),
+    _ = unbind_from_fs_events(Node),    
     _ = close_node(Node),
-    NodeBin = amqp_util:encode(wh_util:to_binary(Node)),
-    wh_gauge:set(<<"freeswitch.nodes.", NodeBin/binary, ".up">>, 0),
-    wh_timer:delete(<<"freeswitch.nodes.", NodeBin/binary, ".uptime">>),
-    State#state{nodes=lists:keydelete(Node, 2, Nodes)}.
+    State#state{nodes=lists:keydelete(Node, #node.node, Nodes)}.
 
 -spec close_node/1 :: (atom() | #node{}) -> 'ok' | {'error','not_found' | 'running' | 'simple_one_for_one'}.
 close_node(#node{node=Node}) ->
@@ -737,6 +789,61 @@ close_node(Node) ->
     _P = ecallmgr_fs_pinger_sup:remove_node(Node),
     lager:debug("stopped pinger: ~p", [_P]),
     ecallmgr_fs_sup:remove_node(Node).
+
+-spec get_client_version/1 :: (atom()) -> api_binary().
+get_client_version(Node) ->
+    io:format("~p: ~p~n", [Node, freeswitch:version(Node)]),
+    case freeswitch:version(Node) of
+        {ok, Version} -> Version;
+        _Else ->
+            lager:debug("unable to get freeswitch client version: ~p", [_Else]),
+            undefined
+    end.
+
+-spec bind_to_fs_events/2 :: (ne_binary(), atom()) -> 'ok'.  
+bind_to_fs_events(<<"mod_kazoo", _/binary>>, Node) ->
+    ok =  freeswitch:event(Node, ['CHANNEL_CREATE', 'CHANNEL_DESTROY'
+                                  ,'CHANNEL_EXECUTE_COMPLETE', 'CUSTOM'
+                                  ,'sofia::move_complete'
+                                 ]);
+bind_to_fs_events(_Else, Node) ->
+    true = gproc:reg({p, l, {event, Node, <<"CHANNEL_CREATE">>}}),
+    true = gproc:reg({p, l, {event, Node, <<"CHANNEL_DESTROY">>}}),
+    true = gproc:reg({p, l, {event, Node, <<"sofia::move_complete">>}}),
+    true = gproc:reg({p, l, {event, Node, <<"CHANNEL_EXECUTE_COMPLETE">>}}),
+    ok.
+
+-spec unbind_from_fs_events/1 :: (atom()) -> 'ok'.  
+unbind_from_fs_events(Node) ->
+    _ = gproc:unreg({p, l, {event, Node, <<"CHANNEL_CREATE">>}}),
+    _ = gproc:unreg({p, l, {event, Node, <<"CHANNEL_DESTROY">>}}),
+    _ = gproc:unreg({p, l, {event, Node, <<"sofia::move_complete">>}}),
+    _ = gproc:unreg({p, l, {event, Node, <<"CHANNEL_EXECUTE_COMPLETE">>}}),
+    ok.
+
+-spec update_stats/2 :: (connect|disconnect, atom()) -> 'ok'.
+update_stats(connect, Node) ->
+    NodeBin = amqp_util:encode(wh_util:to_binary(Node)),
+    wh_gauge:set(<<"freeswitch.nodes.", NodeBin/binary, ".up">>, 1),
+    wh_timer:update(<<"freeswitch.nodes.", NodeBin/binary, ".uptime">>),
+    wh_timer:update(<<"freeswitch.nodes.", NodeBin/binary, ".last_connected">>),
+    ok;
+update_stats(disconnect, Node) ->
+    NodeBin = amqp_util:encode(wh_util:to_binary(Node)),
+    wh_gauge:set(<<"freeswitch.nodes.", NodeBin/binary, ".up">>, 0),
+    wh_timer:delete(<<"freeswitch.nodes.", NodeBin/binary, ".uptime">>),
+    ok.
+
+-spec get_node_from_props/1 :: (proplist()) -> atom().
+get_node_from_props(Props) ->
+    case props:get_value(<<"ecallmgr_node">>, Props) of
+        undefined -> guess_node_from_props(Props);
+        Node -> wh_util:to_atom(Node, true)
+    end.
+
+-spec guess_node_from_props/1 :: (proplist()) -> atom().
+guess_node_from_props(Props) ->
+    wh_util:to_atom(<<"freeswitch@", (props:get_value(<<"FreeSWITCH-Hostname">>, Props))/binary>>, true).
 
 start_preconfigured_servers() ->
     put(callid, ?LOG_SYSTEM_ID),
@@ -837,19 +944,3 @@ classify_channel(#channel{direction = <<"outbound">>, billing_id=BillingId}
                            ,#astats{resource_consumers=ResourceConsumers, billing_ids=BillingIds}=AStats) ->
     AStats#astats{resource_consumers=sets:add_element(BillingId, ResourceConsumers)
                   ,billing_ids=sets:add_element(BillingId, BillingIds)}.
-
--spec broadcast_channel_update/4 :: (atom(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
-broadcast_channel_update(undefined, _, _, _) ->
-    ok;
-broadcast_channel_update(Node, UUID, Name, Value) ->
-    Arg = <<"Event-Name=CUSTOM,Event-Subclass=whistle::broadcast"
-            ,",whistle_broadcast_type=channel_update"
-            ,",whistle_broadcast_parameter_name=", Name/binary
-            ,",whistle_broadcast_parameter_value=", Value/binary
-            ,",whistle_broadcast_call_id=", UUID/binary
-            ,",whistle_broadcast_node=", (wh_util:to_binary(node()))/binary>>,
-    _ = freeswitch:sendmsg(Node, UUID, [{"call-command", "execute"}
-                                        ,{"execute-app-name", "event"}
-                                        ,{"execute-app-arg", wh_util:to_list(Arg)}
-                                       ]),
-    ok.

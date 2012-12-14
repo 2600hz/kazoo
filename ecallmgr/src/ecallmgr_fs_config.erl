@@ -65,16 +65,14 @@ start_link(Node, Options) ->
 init([Node, Options]) ->
     put(callid, Node),
     process_flag(trap_exit, true),
-    lager:debug("starting new fs config listener for ~s", [Node]),
-    case freeswitch:bind(Node, configuration) of
-        ok ->
-            lager:debug("bound to config request on ~s", [Node]),
-            {ok, #state{node=Node, options=Options}};
+    lager:info("starting new fs config listener for ~s", [Node]),
+    case freeswitch:bind(Node, dialplan) of
+        ok -> {ok, #state{node=Node, options=Options}};
         {error, Reason} ->
-            lager:warning("failed to bind to config requests on ~s, ~p", [Node, Reason]),
+            lager:critical("unable to establish config bindings: ~p", [Reason]),
             {stop, Reason};
         timeout ->
-            lager:warning("failed to bind to config requests on ~s: timeout", [Node]),
+            lager:critical("unable to establish config bindings: timeout", []),
             {stop, timeout}
     end.
 
@@ -142,7 +140,7 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, #state{node=Node}) ->
-    lager:debug("fs config ~s termination: ~p", [Node, _Reason]).
+    lager:info("config listener for ~s terminating: ~p", [Node, _Reason]).
 
 %%--------------------------------------------------------------------
 %% @private

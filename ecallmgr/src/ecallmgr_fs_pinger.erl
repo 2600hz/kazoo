@@ -163,6 +163,6 @@ is_node_up(Node, Opts) ->
             wh_notify:system_alert("node ~s connected to ~s", [Node, node()]),
             ok =:= ecallmgr_fs_nodes:add(Node, Opts);
         pang ->
-            lager:info("node ~s still not reachable", [Node]),
+            lager:debug("node ~s still not reachable", [Node]),
             false
     end.

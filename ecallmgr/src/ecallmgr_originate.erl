@@ -151,7 +151,7 @@ init([Node, JObj]) ->
 bind_to_events({ok, <<"mod_kazoo", _/binary>>}, Node) ->
     ok = freeswitch:event(Node, ['CUSTOM', 'loopback::bowout']);
 bind_to_events(_, Node) ->
-    gproc:reg({p, l, {call_event, Node, <<"loopback::bowout">>}}).
+    gproc:reg({p, l, {event, Node, <<"loopback::bowout">>}}).
 
 %%--------------------------------------------------------------------
 %% @private
