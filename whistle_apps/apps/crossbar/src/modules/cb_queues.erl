@@ -8,9 +8,7 @@
 %%%   PUT: create a new queue
 %%%
 %%% /queues/stats
-%%%   GET: retrieve stats across all queues
-%%% /queues/stats/realtime
-%%%   GET: retrieve stats across all queues
+%%%   GET: retrieve stats across all queues for the last hour
 %%%
 %%% /queues/QID
 %%%   GET: queue details
@@ -725,7 +723,7 @@ add_stat(Stat, {Compressed, Global, PerQueue}, ?STAT_AGENTS_MISSED) ->
     {wh_json:set_values([{K, AgentsTried}
                         ], Compressed)
      ,case wh_json:get_value([CID, ?STAT_AGENTS_MISSED], Global, 0) of
-          N when N > NumAgentsTried ->
+          N when N < NumAgentsTried ->
               wh_json:set_value([CID, ?STAT_AGENTS_MISSED], NumAgentsTried, Global);
           _ -> Global
       end
