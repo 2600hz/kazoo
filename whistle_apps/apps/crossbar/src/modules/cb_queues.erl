@@ -611,7 +611,7 @@ fold_queue_totals(QueueId, Calls, Acc) ->
 
 accumulate_queue_stats(QueueId, Calls) ->
     AccCalls = wh_json:map(fun accumulate_call_stats/2, Calls),
-    {QueueId, AccCalls}.
+    {QueueId, wh_json:foldl(fun fold_calls_waiting/3, wh_json:set_value(<<"calls_waiting">>, [], AccCalls), Calls)}.
 accumulate_call_stats(CallId, Stats) ->
     WaitTime = wait_time(Stats),
     TalkTime = call_time(Stats),
@@ -625,6 +625,13 @@ accumulate_call_stats(CallId, Stats) ->
                                                 ], Stats)
                              ),
     {CallId, AccStats}.
+
+fold_calls_waiting(CallId, Stats, Acc) ->
+    Waiting = wh_json:get_value(<<"calls_waiting">>, Acc, []),
+    case current_status(Stats) of
+        {<<"waiting">>, _} -> wh_json:set_value(<<"calls_waiting">>, [CallId | Waiting], Acc);
+        _ -> Acc
+    end.
 
 wait_time(Stats) ->
     case wh_json:get_integer_value(?STAT_TIMESTAMP_WAITING, Stats) of
