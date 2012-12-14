@@ -78,17 +78,21 @@ is_cors_request(Req, [ReqHdr|ReqHdrs]) ->
 %%--------------------------------------------------------------------
 -spec add_cors_headers/2 :: (#http_req{}, cb_context:context()) -> {'ok', #http_req{}}.
 add_cors_headers(Req0, #cb_context{allow_methods=Ms}=Context) ->
-    {ReqM, Req1} = cowboy_http_req:header(<<"Access-Control-Request-Method">>, Req0),
+    {ReqMethod0, Req1} = cowboy_http_req:header(<<"Access-Control-Request-Method">>, Req0),
+
+    ReqMethod = wh_util:to_binary(ReqMethod0),
     Methods = [wh_util:to_binary(M) 
-               || M <- [<<"OPTIONS">> | Ms]
-                      ,(not wh_util:is_empty(M))
-            ],
-    Allow = case wh_util:is_empty(ReqM)
-                orelse lists:member(ReqM, Methods) 
+               || M <- [<<"OPTIONS">> | Ms],
+                  (not wh_util:is_empty(M))
+              ],
+
+    Allow = case wh_util:is_empty(ReqMethod)
+                orelse lists:member(ReqMethod, Methods) 
             of
-                false -> [wh_util:to_binary(ReqM)|Methods];
+                false -> [ReqMethod|Methods];
                 true -> Methods
             end,
+
     lists:foldl(fun({H, V}, {ok, ReqAcc}) ->
                         cowboy_http_req:set_resp_header(H, V, ReqAcc)
                 end, {ok, Req1}, get_cors_headers(Context#cb_context{allow_methods=Allow})).
