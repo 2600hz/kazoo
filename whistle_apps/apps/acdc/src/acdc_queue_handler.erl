@@ -42,9 +42,10 @@ handle_member_retry(JObj, Props) ->
 
 handle_config_change(JObj, _Props) ->
     true = wapi_conf:doc_update_v(JObj),
+lager:debug("recv queue config change: ~p", [JObj]),
     handle_queue_change(wh_json:get_value(<<"Doc">>, JObj)
-                        ,wh_json:get_value(<<"pvt_account_id">>, JObj)
-                        ,wh_json:get_value(<<"_id">>, JObj)
+                        ,wh_json:get_value(<<"Account-ID">>, JObj)
+                        ,wh_json:get_value(<<"ID">>, JObj)
                         ,wh_json:get_value(<<"Event-Name">>, JObj)
                        ).
 
