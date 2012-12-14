@@ -59,17 +59,17 @@
 
 %% {FullBinding, BindingPieces, QueueOfMods}
 %% {<<"foo.bar.#">>, [<<"foo">>, <<"bar">>, <<"#">>], queue()}
--type binding() :: {ne_binary(), [ne_binary(),...], queue()}. %% queue(Module::atom() | pid())
+-type binding() :: {ne_binary(), ne_binaries(), queue()}. %% queue(Module::atom() | pid())
 -type bindings() :: [binding(),...] | [].
 
 -type payload() :: path_tokens() | % mapping over path tokens in URI
-                   [#cb_context{} | path_token() | 'undefined',...] |
-                   #cb_context{} |
-                   {#cb_context{}, wh_proplist()} | % v1_resource:rest_init/2
+                   [cb_context:context() | path_token() | 'undefined',...] |
+                   cb_context:context() |
+                   {cb_context:context(), wh_proplist()} | % v1_resource:rest_init/2
                    {'error', _} | % v1_util:execute_request/2
-                   {wh_json:json_strings(), #cb_context{}, path_tokens()} |
-                   {wh_datetime(), #http_req{}, #cb_context{}} | % v1_resource:expires/2
-                   {#http_req{}, #cb_context{}}. % mapping over the request/context records
+                   {wh_json:json_strings(), cb_context:context(), path_tokens()} |
+                   {wh_datetime(), #http_req{}, cb_context:context()} | % v1_resource:expires/2
+                   {#http_req{}, cb_context:context()}. % mapping over the request/context records
 
 -record(state, {bindings = [] :: bindings()}).
 
@@ -84,7 +84,7 @@
 %% is the payload, possibly modified
 %% @end
 %%--------------------------------------------------------------------
--type map_results() :: [boolean() | http_methods(),...] | [].
+-type map_results() :: [boolean() | http_methods() | {boolean(), cb_context:context()},...] | [].
 -spec map/2 :: (ne_binary(), payload()) -> map_results().
 map(Routing, Payload) ->
     map_processor(Routing, Payload, gen_server:call(?MODULE, current_bindings)).
