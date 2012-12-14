@@ -27,7 +27,7 @@
 -define(BINDINGS, [{route, []}
                    ,{self, []}
                    ,{conf, [{doc_type, <<"queue">>}
-                            ,{action, <<"doc_created">>}
+                            ,{action, <<"created">>}
                            ]}
                   ]).
 -define(RESPONDERS, [
