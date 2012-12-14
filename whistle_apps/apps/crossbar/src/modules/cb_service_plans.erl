@@ -95,6 +95,20 @@ validate(#cb_context{req_verb = <<"get">>, account_id=AccountId}=Context, PlanId
     ResellerId = wh_services:find_reseller_id(AccountId),
     ResellerDb = wh_util:format_account_id(ResellerId, encoded),
     crossbar_doc:load(PlanId, Context#cb_context{db_name=ResellerDb});
+validate(#cb_context{req_verb = <<"post">>}=Context, <<"sync">>) ->
+    case is_reseler(Context) of
+        {ok, _} ->
+            Context;
+        false ->
+            cb_context:add_system_error(forbidden, Context)
+    end;
+validate(#cb_context{req_verb = <<"post">>}=Context, <<"reconcile">>) ->
+    case is_reseler(Context) of
+        {ok, _} ->
+            Context;
+        false ->
+            cb_context:add_system_error(forbidden, Context)
+    end;
 validate(#cb_context{req_verb = <<"post">>}=Context, PlanId) ->
     maybe_allow_change(Context, PlanId);
 validate(#cb_context{req_verb = <<"delete">>}=Context, PlanId) ->
@@ -110,13 +124,26 @@ validate(#cb_context{req_verb = <<"delete">>}=Context, PlanId) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec post/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
+post(#cb_context{account_id=AccountId}=Context, <<"sync">>) ->
+    wh_service_sync:sync(AccountId),
+    Context#cb_context{resp_status=success};
+post(#cb_context{account_id=AccountId}=Context, <<"reconcile">>) ->
+    try wh_services:reconcile(AccountId) of
+        _ -> 
+            Context#cb_context{resp_status=success}
+    catch
+        _E:_R ->
+            io:format("failed to reconcile account ~s(~p): ~p~n", [AccountId, _E, _R]),
+            cb_context:add_system_error(unspecified_fault, Context)
+    end;
 post(#cb_context{account_id=AccountId}=Context, PlanId) ->
     Routines = [fun(S) -> wh_services:add_service_plan(PlanId, S) end
                 ,fun(S) -> wh_services:save(S) end
                ],
-    Services = lists:foldl(fun(F, S) -> F(S) end, wh_services:fetch(AccountId), Routines),
+    Services = lists:foldl(fun(F, S) -> F(S) end, 
+                           wh_services:fetch(AccountId), Routines),
     Context#cb_context{resp_data=wh_services:service_plan_json(Services)
-                      ,resp_status=success}.
+                       ,resp_status=success}.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -144,6 +171,23 @@ delete(#cb_context{account_id=AccountId}=Context, PlanId) ->
 normalize_view_results(JObj, Acc) ->
     [wh_json:get_value(<<"value">>, JObj)|Acc].
 
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Check if you have the permission to update or delete service plans
+%% @end
+%%--------------------------------------------------------------------
+-spec is_reseler/1 :: (#cb_context{}) -> {ok, ne_binary()} | boolean().
+is_reseler(#cb_context{auth_account_id=AuthAccountId, account_id=AccountId}) ->
+    ResellerId = wh_services:find_reseller_id(AccountId),
+    case AuthAccountId =:= ResellerId of
+        true ->
+            {ok, ResellerId};
+        false ->
+            false 
+    end.
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -151,10 +195,9 @@ normalize_view_results(JObj, Acc) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_allow_change/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
-maybe_allow_change(#cb_context{auth_account_id=AuthAccountId, account_id=AccountId}=Context, PlanId) ->
-    ResellerId = wh_services:find_reseller_id(AccountId),
-    case AuthAccountId =:= ResellerId  of
-        true ->
+maybe_allow_change(#cb_context{}=Context, PlanId) ->
+    case is_reseler(Context) of
+        {ok, ResellerId} ->
             check_plan_id(Context, PlanId, ResellerId);
         false ->    
             cb_context:add_system_error(forbidden, Context)
