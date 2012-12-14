@@ -96,8 +96,9 @@ is_json_object(_) -> false.
 -spec is_valid_json_object/1 :: (term()) -> boolean().
 is_valid_json_object(MaybeJObj) ->
     try
-        lists:all(fun(K) -> is_json_term(get_value([K], MaybeJObj)) end,
-                  get_keys(MaybeJObj))
+        lists:all(fun(K) ->
+                          is_json_term(get_value([K], MaybeJObj))
+                  end, ?MODULE:get_keys(MaybeJObj))
     catch
         throw:_ -> false;
         error:_ -> false
@@ -346,7 +347,7 @@ is_true(Key, JObj, Default) ->
         V -> wh_util:is_true(V)
     end.
 
--spec get_binary_boolean/2 :: (json_string() | json_strings(), wh_json:object() | objects()) -> 'undefined' | ne_binary().
+-spec get_binary_boolean/2 :: (json_string() | json_strings(), wh_json:object() | objects()) -> api_binary().
 -spec get_binary_boolean/3 :: (json_string() | json_strings(), wh_json:object() | objects(), Default) -> Default | ne_binary().
 get_binary_boolean(Key, JObj) ->
     get_binary_boolean(Key, JObj, undefined).
@@ -368,15 +369,12 @@ get_keys(Keys, JObj) ->
     get_keys1(get_value(Keys, JObj, new())).
 
 -spec get_keys1/1 :: (list() | object()) -> [pos_integer(),...] | json_strings().
-get_keys1(KVs) when is_list(KVs) ->
-    lists:seq(1,length(KVs));
-get_keys1(JObj) ->
-    props:get_keys(to_proplist(JObj)).
+get_keys1(KVs) when is_list(KVs) -> lists:seq(1,length(KVs));
+get_keys1(JObj) -> props:get_keys(to_proplist(JObj)).
 
 -spec get_ne_value/2 :: (json_string() | json_strings(), object() | objects()) -> json_term() | 'undefined'.
 -spec get_ne_value/3 :: (json_string() | json_strings(), object() | objects(), Default) -> json_term() | Default.
-get_ne_value(Key, JObj) ->
-    get_ne_value(Key, JObj, undefined).
+get_ne_value(Key, JObj) -> get_ne_value(Key, JObj, undefined).
 
 get_ne_value(Key, JObj, Default) ->
     Value = get_value(Key, JObj),
@@ -443,10 +441,9 @@ get_value1(_, _, Default) -> Default.
 %% split the json object into values and the corresponding keys
 -spec get_values/1 :: (object()) -> {json_terms(), json_strings()}.
 get_values(JObj) ->
-    Keys = get_keys(JObj),
     lists:foldr(fun(Key, {Vs, Ks}) ->
                         {[get_value(Key, JObj)|Vs], [Key|Ks]}
-                end, {[], []}, Keys).
+                end, {[], []}, ?MODULE:get_keys(JObj)).
 
 %% Figure out how to set the current key among a list of objects
 -spec set_values/2 :: (json_proplist(), object()) -> object().
@@ -737,7 +734,7 @@ prop_to_proplist() ->
       ?WHENFAIL(io:format("Failed prop_to_proplist ~p~n", [Prop]),
                 begin
                     JObj = from_list(Prop),
-                    lists:all(fun(K) -> props:get_value(K, Prop) =/= undefined end, get_keys(JObj))
+                    lists:all(fun(K) -> props:get_value(K, Prop) =/= undefined end, ?MODULE:get_keys(JObj))
                 end)
            ).
 
@@ -876,9 +873,9 @@ is_json_object_test() ->
 -spec get_keys_test/0 :: () -> no_return().
 get_keys_test() ->
     Keys = [<<"d1k1">>, <<"d1k2">>, <<"d1k3">>],
-    ?assertEqual(true, lists:all(fun(K) -> lists:member(K, Keys) end, get_keys([], ?D1))),
-    ?assertEqual(true, lists:all(fun(K) -> lists:member(K, Keys) end, get_keys([<<"sub_docs">>, 1], ?D3))),
-    ?assertEqual(true, lists:all(fun(K) -> lists:member(K, [1,2,3]) end, get_keys([<<"sub_docs">>], ?D3))).
+    ?assertEqual(true, lists:all(fun(K) -> lists:member(K, Keys) end, ?MODULE:get_keys([], ?D1))),
+    ?assertEqual(true, lists:all(fun(K) -> lists:member(K, Keys) end, ?MODULE:get_keys([<<"sub_docs">>, 1], ?D3))),
+    ?assertEqual(true, lists:all(fun(K) -> lists:member(K, [1,2,3]) end, ?MODULE:get_keys([<<"sub_docs">>], ?D3))).
 
 -spec to_proplist_test/0 :: () -> no_return().
 to_proplist_test() ->
