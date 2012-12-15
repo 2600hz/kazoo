@@ -221,9 +221,40 @@ fold_agent_totals(AgentId, Queues, Acc, AcctId) ->
     AgentTotals = wh_json:foldl(fun fold_queue_totals/3, wh_json:new(), Queues),
 
     wh_json:set_values([{[AgentId, <<"totals">>], AgentTotals}
-                        ,{[AgentId, <<"current_status">>], acdc_util:agent_status(AcctId, AgentId)}
+                        ,{AgentId, agent_status(AcctId, AgentId)}
                         | QueueTotals
                        ], Acc).
+
+agent_status(AcctId, AgentId) ->
+    case acdc_util:agent_status(AcctId, AgentId, true) of
+        Status when is_binary(Status) ->
+            wh_json:set_value(<<"current_status">>, Status, wh_json:new());
+        StatusJObj ->
+            complex_agent_status(StatusJObj, wh_json:get_value(<<"status">>, StatusJObj))
+    end.
+
+complex_agent_status(StatusJObj, <<"wrapup">> = Status) ->
+    wh_json:from_list(
+      props:filter_undefined(
+        [{<<"current_status">>, Status}
+         ,{<<"wait_time">>, wh_json:get_value(<<"wait_time">>, StatusJObj)}
+         ,{<<"started">>, wh_json:get_value(<<"timestamp">>, StatusJObj)}
+        ]));
+complex_agent_status(StatusJObj, <<"paused">> = Status) ->
+    wh_json:from_list(
+      props:filter_undefined(
+        [{<<"current_status">>, Status}
+         ,{<<"wait_time">>, wh_json:get_value(<<"wait_time">>, StatusJObj)}
+         ,{<<"started">>, wh_json:get_value(<<"timestamp">>, StatusJObj)}
+        ]));
+complex_agent_status(StatusJObj, <<"logout">> = Status) ->
+    wh_json:from_list(
+      props:filter_undefined(
+        [{<<"current_status">>, Status}
+         ,{<<"logged_out_timestamp">>, wh_json:get_value(<<"timestamp">>, StatusJObj)}
+        ]));
+complex_agent_status(_StatusJObj, Status) ->
+    wh_json:set_value(<<"current_status">>, Status, wh_json:new()).
 
 %% returns {AgentID: {queues: {QueueId: data}}}
 accumulate_agent_stats(AgentId, Calls) ->
