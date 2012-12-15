@@ -514,12 +514,16 @@ ready({dtmf_pressed, _}, State) ->
 ready({originate_failed, _E}, State) ->
     {next_state, ready, State};
 
-ready({route_req, Call}, #state{agent_proc=Srv}=State) ->
+ready({route_req, Call}, #state{agent_proc=Srv
+                                ,acct_id=AcctId
+                                ,agent_id=AgentId
+                               }=State) ->
     CallId = whapps_call:call_id(Call),
     put(callid, CallId),
     lager:debug("agent on outbound call, not receiving calls"),
 
     acdc_agent:outbound_call(Srv, Call),
+    acdc_stats:agent_oncall(AcctId, AgentId, CallId),
     {next_state, outbound, State#state{outbound_call_id=CallId}};
 
 ready(_Evt, State) ->
@@ -567,12 +571,10 @@ ringing({originate_failed, _E}, #state{agent_proc=Srv
 
 ringing({channel_bridged, CallId}, #state{member_call_id=CallId
                                           ,agent_proc=Srv
-                                          ,acct_id=AcctId
-                                          ,agent_id=AgentId
                                          }=State) ->
     lager:debug("agent phone has been connected to caller"),
     acdc_agent:member_connect_accepted(Srv),
-    acdc_stats:agent_oncall(AcctId, AgentId, CallId),
+
     {next_state, answered, State#state{call_status_ref=start_call_status_timer()
                                       ,call_status_failures=0
                                       }};
@@ -681,13 +683,10 @@ answered({dialplan_error, _App}, #state{agent_proc=Srv
 
 answered({channel_bridged, CallId}, #state{member_call_id=CallId
                                            ,agent_proc=Srv
-                                           ,acct_id=AcctId
-                                           ,agent_id=AgentId
                                            ,member_call=_Call
                                           }=State) ->
     lager:debug("agent has connected to caller"),
     acdc_agent:member_connect_accepted(Srv),
-    acdc_stats:agent_oncall(AcctId, AgentId, CallId),
 
     {next_state, answered, State};
 
@@ -797,12 +796,17 @@ wrapup({leg_destroyed, CallId}, #state{agent_proc=Srv}=State) ->
     acdc_agent:channel_hungup(Srv, CallId),
     {next_state, wrapup, State};
 
-wrapup({route_req, Call}, #state{agent_proc=Srv}=State) ->
+wrapup({route_req, Call}, #state{agent_proc=Srv
+                                 ,acct_id=AcctId
+                                 ,agent_id=AgentId
+                                }=State) ->
     CallId = whapps_call:call_id(Call),
     put(callid, CallId),
     lager:debug("agent on outbound call, not receiving calls"),
 
     acdc_agent:outbound_call(Srv, Call),
+    acdc_stats:agent_oncall(AcctId, AgentId, CallId),
+
     {next_state, outbound, State#state{outbound_call_id=CallId}};
 
 wrapup(_Evt, State) ->
@@ -870,12 +874,17 @@ paused({member_connect_win, JObj}, #state{agent_proc=Srv}=State) ->
     acdc_agent:member_connect_retry(Srv, JObj),
     {next_state, paused, State};
 
-paused({route_req, Call}, #state{agent_proc=Srv}=State) ->
+paused({route_req, Call}, #state{agent_proc=Srv
+                                 ,acct_id=AcctId
+                                 ,agent_id=AgentId
+                                }=State) ->
     CallId = whapps_call:call_id(Call),
     put(callid, CallId),
     lager:debug("agent on outbound call, not receiving calls"),
 
     acdc_agent:outbound_call(Srv, Call),
+    acdc_stats:agent_oncall(AcctId, AgentId, CallId),
+
     {next_state, outbound, State#state{outbound_call_id=CallId}};
 
 paused(_Evt, State) ->
