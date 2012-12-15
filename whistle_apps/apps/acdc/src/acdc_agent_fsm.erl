@@ -1084,14 +1084,10 @@ callid(JObj) ->
 -spec update_agent_status_to_resume/2 :: (ne_binary(), ne_binary()) ->
                                                  {'ok', wh_json:object()}.
 update_agent_status_to_resume(AcctId, AgentId) ->
-    AcctDb = wh_util:format_account_id(AcctId, encoded),
-    Doc = wh_json:from_list([{<<"agent_id">>, AgentId}
-                             ,{<<"action">>, <<"resume">>}
-                             ,{<<"node">>, wh_util:to_binary(node())}
-                             ,{<<"pid">>, wh_util:to_binary(pid_to_list(self()))}
-                             ,{<<"pvt_type">>, <<"agent_activity">>}
-                            ]),
-    {ok, _D} = couch_mgr:save_doc(AcctDb, wh_doc:update_pvt_parameters(Doc, AcctDb)).
+    Extra = [{<<"node">>, wh_util:to_binary(node())}
+             ,{<<"pid">>, wh_util:to_binary(pid_to_list(self()))}
+            ],
+    {ok, _} = acdc_util:update_agent_status(AcctId, AgentId, <<"resume">>, Extra).
 
 %% returns time left in seconds
 time_left(Ref) when is_reference(Ref) ->
