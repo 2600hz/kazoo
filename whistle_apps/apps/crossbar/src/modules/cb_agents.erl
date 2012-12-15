@@ -146,7 +146,7 @@ fetch_all_agent_stats(Context) ->
                                               ,cb_context:set_account_db(Context, acdc_stats:db_name(AcctId)) 
                                               ,fun normalize_agent_stats/2
                                              ),
-            compress_stats(Context1, From, To);
+            maybe_compress_stats(Context1, From, To);
         <<"verbose">> ->
             crossbar_doc:load_view(<<"agent_stats/call_log">>
                                    ,Opts
@@ -158,10 +158,12 @@ fetch_all_agent_stats(Context) ->
             cb_context:add_validation_error(<<"format">>, <<"enum">>, <<"enum:Value not found in enumerated list">>, Context)
     end.
 
-compress_stats(Context, From, To) ->
+maybe_compress_stats(Context, From, To) ->
     case cb_context:resp_status(Context) of
-        success ->
-            Compressed = compress_stats(cb_context:doc(Context), {wh_json:new(), wh_json:new(), wh_json:new()}),
+        'success' ->
+            Compressed = compress_stats(cb_context:doc(Context)
+                                        ,cb_context:account_id(Context)
+                                        ,{wh_json:new(), wh_json:new(), wh_json:new()}),
             crossbar_util:response(wh_json:set_values([{<<"start_range">>, From}
                                                        ,{<<"end_range">>, To}
                                                       ], Compressed)
@@ -171,21 +173,22 @@ compress_stats(Context, From, To) ->
             Context
     end.
 
-compress_stats(undefined, {Compressed, _, _}) -> Compressed;
-compress_stats([], {Compressed, Global, PerAgent}) -> accumulate_stats(Compressed, Global, PerAgent);
-compress_stats([Stat|Stats], {_,_,_}=Res) ->
-    compress_stats(Stats, add_stat(Stat, Res)).
+compress_stats(undefined, _, {Compressed, _, _}) -> Compressed;
+compress_stats([], AcctId, {Compressed, Global, PerAgent}) -> accumulate_stats(AcctId, Compressed, Global, PerAgent);
+compress_stats([Stat|Stats], AcctId, {_,_,_}=Res) ->
+    compress_stats(Stats, AcctId, add_stat(Stat, Res)).
 
--spec accumulate_stats/3 :: (wh_json:object(), wh_json:object(), wh_json:object()) ->
+-spec accumulate_stats/4 :: (ne_binary(), wh_json:object(), wh_json:object(), wh_json:object()) ->
                                     wh_json:object().
-accumulate_stats(Compressed, Global, PerAgent) ->
-    wh_json:set_value(
-      <<"totals">>
-      ,wh_json:foldl(fun fold_queue_totals/3, wh_json:new(), Global)
-      ,wh_json:merge_recursive(
-         wh_json:foldl(fun fold_agent_totals/3, wh_json:new(), PerAgent)
-         ,wh_json:map(fun accumulate_agent_stats/2, Compressed)
-        )).
+accumulate_stats(AcctId, Compressed, Global, PerAgent) ->
+    wh_json:from_list([{<<"totals">>, wh_json:foldl(fun fold_queue_totals/3, wh_json:new(), Global)}
+                       ,{<<"agents">>, wh_json:merge_recursive(
+                                         wh_json:foldl(fun(AgentId, Queues, Acc) ->
+                                                               fold_agent_totals(AgentId, Queues, Acc, AcctId)
+                                                       end, wh_json:new(), PerAgent)
+                                         ,wh_json:map(fun accumulate_agent_stats/2, Compressed)
+                                        )}
+                      ]).
 
 fold_queue_totals(_QueueId, Calls, Acc) ->
     wh_json:foldl(fun fold_call_totals/3, Acc, Calls).
@@ -207,18 +210,27 @@ fold_call_totals(_CallId, Stats, Acc) ->
            end,
     wh_json:set_values(Set1, Acc).
 
-fold_agent_totals(AgentId, Queues, Acc) ->
+fold_agent_totals(AgentId, Queues, Acc, AcctId) ->
     QueueTotals = lists:map(fun({QueueId, Calls}) ->
-                                    {[AgentId, QueueId, <<"totals">>], wh_json:foldl(fun fold_call_totals/3, wh_json:new(), Calls)}
+                                    {[AgentId, <<"queues">>, QueueId, <<"totals">>]
+                                     ,wh_json:foldl(fun fold_call_totals/3, wh_json:new(), Calls)
+                                    }
                             end, wh_json:to_proplist(Queues)
                            ),
+
     AgentTotals = wh_json:foldl(fun fold_queue_totals/3, wh_json:new(), Queues),
+
     wh_json:set_values([{[AgentId, <<"totals">>], AgentTotals}
+                        ,{[AgentId, <<"current_status">>], acdc_util:agent_status(AcctId, AgentId)}
                         | QueueTotals
                        ], Acc).
 
+%% returns {AgentID: {queues: {QueueId: data}}}
 accumulate_agent_stats(AgentId, Calls) ->
-    {AgentId, wh_json:map(fun accumulate_queue_stats/2, Calls)}.
+    {AgentId, wh_json:set_value(<<"queues">>
+                                ,wh_json:map(fun accumulate_queue_stats/2, Calls)
+                                ,wh_json:new()
+                               )}.
 
 accumulate_queue_stats(QueueId, Stats) ->
     AccStats = wh_json:foldl(fun fold_call_stats/3
