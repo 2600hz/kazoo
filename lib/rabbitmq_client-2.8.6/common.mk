@@ -36,6 +36,7 @@ ifndef TMPDIR
 TMPDIR := /tmp
 endif
 
+ERL_LIBS=../
 EBIN_DIR=ebin
 BROKER_DIR=../rabbitmq_server-2.8.6
 export INCLUDE_DIR=include
