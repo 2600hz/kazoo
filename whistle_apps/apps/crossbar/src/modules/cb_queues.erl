@@ -62,6 +62,11 @@
 -define(STAT_TIMESTAMP_WAITING, <<"caller_entered_queue">>).
 -define(STAT_AGENTS_MISSED, <<"missed">>).
 
+-define(STATUS_PROCESSED, <<"processed">>).
+-define(STATUS_HANDLING, <<"handling">>).
+-define(STATUS_ABANDONED, <<"abandoned">>).
+-define(STATUS_WAITING, <<"waiting">>).
+
 -define(STAT_TIMESTAMP_KEYS, [?STAT_TIMESTAMP_PROCESSED
                               ,?STAT_TIMESTAMP_HANDLING
                               ,?STAT_TIMESTAMP_ABANDONED
@@ -577,7 +582,9 @@ accumulate_stats(Compressed, Global, PerQueue) ->
     AccCompressed = wh_json:map(fun accumulate_queue_stats/2, Compressed),
     AccGlobal = wh_json:foldl(fun fold_call_totals/3, wh_json:new(), Global),
     AccPerQueue = wh_json:foldl(fun fold_queue_totals/3, wh_json:new(), PerQueue),
-    wh_json:set_value(<<"totals">>, AccGlobal, wh_json:merge_recursive(AccPerQueue, AccCompressed)).
+    wh_json:from_list([{<<"totals">>, AccGlobal}
+                       ,{<<"queues">>, wh_json:merge_recursive(AccPerQueue, AccCompressed)}
+                      ]).
 
 fold_call_totals(_CallId, Stats, Acc) ->
     AccWaitTime = wh_json:get_value(<<"wait_time">>, Acc, 0),
@@ -607,29 +614,46 @@ fold_call_totals(_CallId, Stats, Acc) ->
     wh_json:set_values(Set1, Acc).
 
 fold_queue_totals(QueueId, Calls, Acc) ->
-    wh_json:set_value([QueueId, <<"totals">>], wh_json:foldl(fun fold_call_totals/3, wh_json:new(), Calls), Acc).
+    wh_json:set_value([QueueId, <<"totals">>]
+                      ,wh_json:foldl(fun fold_call_totals/3, wh_json:new(), Calls)
+                      ,Acc
+                     ).
 
 accumulate_queue_stats(QueueId, Calls) ->
     AccCalls = wh_json:map(fun accumulate_call_stats/2, Calls),
-    {QueueId, wh_json:foldl(fun fold_calls_waiting/3, wh_json:set_value(<<"calls_waiting">>, [], AccCalls), Calls)}.
+    {QueueId, wh_json:foldl(fun fold_call_statuses/3
+                            ,wh_json:set_value(<<"calls">>, AccCalls, wh_json:new())
+                            ,Calls
+                           )}.
+
 accumulate_call_stats(CallId, Stats) ->
     WaitTime = wait_time(Stats),
     TalkTime = call_time(Stats),
     {CurrentStatus, CurrentTstamp} = current_status(Stats),
 
     AccStats = wh_json:filter(fun({_, V}) -> V =/= undefined end
-                            ,wh_json:set_values([{<<"wait_time">>, WaitTime}
-                                                 ,{<<"call_time">>, TalkTime}
-                                                 ,{<<"current_timestamp">>, CurrentTstamp}
-                                                 ,{<<"current_status">>, CurrentStatus}
+                              ,wh_json:set_values([{<<"wait_time">>, WaitTime}
+                                                   ,{<<"call_time">>, TalkTime}
+                                                   ,{<<"current_timestamp">>, CurrentTstamp}
+                                                   ,{<<"current_status">>, CurrentStatus}
                                                 ], Stats)
                              ),
     {CallId, AccStats}.
 
-fold_calls_waiting(CallId, Stats, Acc) ->
-    Waiting = wh_json:get_value(<<"calls_waiting">>, Acc, []),
+fold_call_statuses(CallId, Stats, Acc) ->
     case current_status(Stats) of
-        {<<"waiting">>, _} -> wh_json:set_value(<<"calls_waiting">>, [CallId | Waiting], Acc);
+        {?STATUS_WAITING, _} ->
+            Waiting = wh_json:get_value(<<"calls_waiting">>, Acc, []),
+            wh_json:set_value(<<"calls_waiting">>, [CallId | Waiting], Acc);
+        {?STATUS_HANDLING, _} ->
+            Waiting = wh_json:get_value(<<"calls_in_progress">>, Acc, []),
+            wh_json:set_value(<<"calls_in_progress">>, [CallId | Waiting], Acc);
+        {?STATUS_ABANDONED, _} ->
+            Waiting = wh_json:get_value(<<"calls_abandoned">>, Acc, []),
+            wh_json:set_value(<<"calls_abandoned">>, [CallId | Waiting], Acc);
+        {?STATUS_PROCESSED, _} ->
+            Waiting = wh_json:get_value(<<"calls_finished">>, Acc, []),
+            wh_json:set_value(<<"calls_finished">>, [CallId | Waiting], Acc);
         _ -> Acc
     end.
 
@@ -669,15 +693,15 @@ current_status(Stats, [K|Ks]) ->
         T -> {status(K), T}
     end.
 
-status(?STAT_TIMESTAMP_PROCESSED) -> <<"processed">>;
-status(?STAT_TIMESTAMP_HANDLING) -> <<"handling">>;
-status(?STAT_TIMESTAMP_ABANDONED) -> <<"abandoned">>;
-status(?STAT_TIMESTAMP_WAITING) -> <<"waiting">>.
+status(?STAT_TIMESTAMP_PROCESSED) -> ?STATUS_PROCESSED;
+status(?STAT_TIMESTAMP_HANDLING) -> ?STATUS_HANDLING;
+status(?STAT_TIMESTAMP_ABANDONED) -> ?STATUS_ABANDONED;
+status(?STAT_TIMESTAMP_WAITING) -> ?STATUS_WAITING.
 
 add_stat(Stat, {_Compressed, _Global, _PerQueue}=Res) ->
     add_stat(Stat, Res, wh_json:get_value(<<"status">>, Stat)).
 
-add_stat(Stat, {Compressed, Global, PerQueue}, <<"waiting">>) ->
+add_stat(Stat, {Compressed, Global, PerQueue}, ?STATUS_WAITING) ->
     QID = wh_json:get_value(<<"queue_id">>, Stat),
     CID = wh_json:get_value(<<"call_id">>, Stat),
 
@@ -689,7 +713,7 @@ add_stat(Stat, {Compressed, Global, PerQueue}, <<"waiting">>) ->
      ,wh_json:set_value([CID, ?STAT_TIMESTAMP_WAITING], TStamp, Global)
      ,wh_json:set_value([QID, CID, ?STAT_TIMESTAMP_WAITING], TStamp, PerQueue)
     };
-add_stat(Stat, {Compressed, Global, PerQueue}, <<"handling">>) ->
+add_stat(Stat, {Compressed, Global, PerQueue}, ?STATUS_HANDLING) ->
     QID = wh_json:get_value(<<"queue_id">>, Stat),
     CID = wh_json:get_value(<<"call_id">>, Stat),
     AID = wh_json:get_value(<<"agent_id">>, Stat),
@@ -702,7 +726,7 @@ add_stat(Stat, {Compressed, Global, PerQueue}, <<"handling">>) ->
      ,wh_json:set_value([CID, ?STAT_TIMESTAMP_HANDLING], TStamp, Global)
      ,wh_json:set_value([QID, CID, ?STAT_TIMESTAMP_HANDLING], TStamp, PerQueue)
     };
-add_stat(Stat, {Compressed, Global, PerQueue}, <<"processed">>) ->
+add_stat(Stat, {Compressed, Global, PerQueue}, ?STATUS_PROCESSED) ->
     QID = wh_json:get_value(<<"queue_id">>, Stat),
     CID = wh_json:get_value(<<"call_id">>, Stat),
     AID = wh_json:get_value(<<"agent_id">>, Stat),
@@ -740,7 +764,7 @@ add_stat(Stat, {Compressed, Global, PerQueue}, ?STAT_AGENTS_MISSED) ->
           _ -> PerQueue
       end
     };
-add_stat(Stat, {Compressed, Global, PerQueue}, <<"abandoned">>) ->
+add_stat(Stat, {Compressed, Global, PerQueue}, ?STATUS_ABANDONED) ->
     QID = wh_json:get_value(<<"queue_id">>, Stat),
     CID = wh_json:get_value(<<"call_id">>, Stat),
 

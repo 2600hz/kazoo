@@ -12,7 +12,8 @@
          ,bind_to_call_events/1
          ,unbind_from_call_events/1
          ,agents_in_queue/2
-         ,agent_status/2
+         ,agent_status/2, agent_status/3
+         ,update_agent_status/3, update_agent_status/4
          ,agent_devices/2
          ,proc_id/0, proc_id/1, proc_id/2
          ,queue_presence_update/2
@@ -75,8 +76,6 @@ get_endpoints(Call, ?NE_BINARY = AgentId) ->
 get_endpoints(_Call, {ok, []}) -> [];
 get_endpoints(_Call, {error, _E}) -> [];
 get_endpoints(Call, {ok, Devices}) ->
-    {ok, AcctDoc} = couch_mgr:open_cache_doc(whapps_call:account_db(Call), whapps_call:account_id(Call)),
-    AcctRealm = wh_json:get_value(<<"realm">>, AcctDoc),
     EPDocs = [EPDoc
               || Device <- Devices,
                  (EPDoc = get_endpoint(Call, wh_json:get_value(<<"id">>, Device))) =/= undefined,
@@ -89,20 +88,6 @@ get_endpoints(Call, {ok, Devices}) ->
                             {error, _} -> Acc
                         end
                 end, [], EPDocs).
-
-is_endpoint_registered(EPDoc, AcctRealm) ->
-    Query = [{<<"Realm">>, AcctRealm}
-             ,{<<"Username">>, wh_json:get_value([<<"sip">>, <<"username">>], EPDoc)}
-             ,{<<"Fields">>, [<<"Contact">>]}
-             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
-            ],
-    case whapps_util:amqp_pool_request(Query
-                                       ,fun wapi_registration:publish_query_req/1
-                                       ,fun wapi_registration:query_resp_v/1
-                                      ) of
-        {ok, _Resp} -> true;
-        {error, _E} -> lager:debug("reg query failed: ~p", [_E]), false
-    end.
 
 -spec get_endpoint/2 :: (whapps_call:call(), ne_binary()) -> wh_json:object() | 'undefined'.
 get_endpoint(Call, ?NE_BINARY = EndpointId) ->
@@ -130,17 +115,39 @@ unbind_from_call_events(Call) ->
     unbind_from_call_events(whapps_call:call_id(Call)).
 
 -spec agent_status/2 :: (ne_binary(), ne_binary()) -> ne_binary().
+-spec agent_status/3 :: (ne_binary(), ne_binary(), boolean()) -> ne_binary() | wh_json:object().
 agent_status(?NE_BINARY = AcctId, AgentId) ->
-    Opts = [{endkey, [AgentId, 0]}
-            ,{startkey, [AgentId, wh_json:new()]}
+    agent_status(AcctId, AgentId, []).
+agent_status(?NE_BINARY = AcctId, AgentId, ReturnDoc) ->
+    Opts = [{endkey, [AcctId, AgentId, 0]}
+            ,{startkey, [AcctId, AgentId, wh_json:new()]}
             ,{limit, 1}
             ,descending
+            | case ReturnDoc of true -> [include_docs]; false -> [] end
            ],
+
+    Key = case ReturnDoc of true -> <<"doc">>; false -> <<"value">> end,
+
     case couch_mgr:get_results(acdc_stats:db_name(AcctId), <<"agent_stats/status_log">>, Opts) of
         {ok, []} -> <<"logout">>;
         {error, _E} -> <<"logout">>;
-        {ok, [StatusJObj|_]} -> wh_json:get_value(<<"value">>, StatusJObj)
+        {ok, [StatusJObj|_]} -> wh_json:get_value(Key, StatusJObj)
     end.
+
+update_agent_status(AcctId, AgentId, Status) ->
+    update_agent_status(AcctId, AgentId, Status, []).
+update_agent_status(?NE_BINARY = AcctId, AgentId, Status, Options) ->
+    Doc =
+        wh_doc:update_pvt_parameters(
+          wh_json:from_list(
+            props:filter_undefined(
+              [{<<"agent_id">>, AgentId}
+               ,{<<"status">>, Status}
+               ,{<<"pvt_type">>, <<"agent_partial">>}
+               | Options
+              ]))
+          ,AcctId),
+    couch_mgr:save_doc(acdc_stats:db_name(AcctId), Doc).
 
 -spec proc_id/0 :: () -> ne_binary().
 -spec proc_id/1 :: (pid()) -> ne_binary().
