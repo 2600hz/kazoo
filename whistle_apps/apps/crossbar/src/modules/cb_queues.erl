@@ -614,7 +614,10 @@ fold_call_totals(_CallId, Stats, Acc) ->
     wh_json:set_values(Set1, Acc).
 
 fold_queue_totals(QueueId, Calls, Acc) ->
-    wh_json:set_value([QueueId, <<"totals">>], wh_json:foldl(fun fold_call_totals/3, wh_json:new(), Calls), Acc).
+    wh_json:set_value([QueueId, <<"totals">>]
+                      ,wh_json:foldl(fun fold_call_totals/3, wh_json:new(), Calls)
+                      ,Acc
+                     ).
 
 accumulate_queue_stats(QueueId, Calls) ->
     AccCalls = wh_json:map(fun accumulate_call_stats/2, Calls),
