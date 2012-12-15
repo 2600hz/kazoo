@@ -12,7 +12,7 @@
          ,bind_to_call_events/1
          ,unbind_from_call_events/1
          ,agents_in_queue/2
-         ,agent_status/2
+         ,agent_status/2, agent_status/3
          ,update_agent_status/3, update_agent_status/4
          ,agent_devices/2
          ,proc_id/0, proc_id/1, proc_id/2
@@ -115,16 +115,23 @@ unbind_from_call_events(Call) ->
     unbind_from_call_events(whapps_call:call_id(Call)).
 
 -spec agent_status/2 :: (ne_binary(), ne_binary()) -> ne_binary().
+-spec agent_status/3 :: (ne_binary(), ne_binary(), boolean()) -> ne_binary() | wh_json:object().
 agent_status(?NE_BINARY = AcctId, AgentId) ->
+    agent_status(AcctId, AgentId, []).
+agent_status(?NE_BINARY = AcctId, AgentId, ReturnDoc) ->
     Opts = [{endkey, [AcctId, AgentId, 0]}
             ,{startkey, [AcctId, AgentId, wh_json:new()]}
             ,{limit, 1}
             ,descending
+            | case ReturnDoc of true -> [include_docs]; false -> [] end
            ],
+
+    Key = case ReturnDoc of true -> <<"doc">>; false -> <<"value">> end,
+
     case couch_mgr:get_results(acdc_stats:db_name(AcctId), <<"agent_stats/status_log">>, Opts) of
         {ok, []} -> <<"logout">>;
         {error, _E} -> <<"logout">>;
-        {ok, [StatusJObj|_]} -> wh_json:get_value(<<"value">>, StatusJObj)
+        {ok, [StatusJObj|_]} -> wh_json:get_value(Key, StatusJObj)
     end.
 
 update_agent_status(AcctId, AgentId, Status) ->
