@@ -898,16 +898,22 @@ paused(current_call, _, State) ->
 
 outbound({channel_hungup, CallId}, #state{agent_proc=Srv
                                           ,outbound_call_id=CallId
+                                          ,acct_id=AcctId
+                                          ,agent_id=AgentId
                                          }=State) ->
     lager:debug("outbound channel ~s hungup", [CallId]),
     acdc_agent:channel_hungup(Srv, CallId),
+    acdc_stats:agent_ready(AcctId, AgentId),
     {next_state, ready, clear_call(State)};
 
 outbound({leg_destroyed, CallId}, #state{agent_proc=Srv
                                          ,outbound_call_id=CallId
+                                          ,acct_id=AcctId
+                                          ,agent_id=AgentId
                                         }=State) ->
     lager:debug("outbound leg ~s destroyed", [CallId]),
     acdc_agent:channel_hungup(Srv, CallId),
+    acdc_stats:agent_ready(AcctId, AgentId),
     {next_state, ready, clear_call(State)};
 
 outbound({member_connect_win, JObj}, #state{agent_proc=Srv}=State) ->
