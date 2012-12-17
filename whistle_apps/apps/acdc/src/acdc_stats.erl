@@ -260,24 +260,25 @@ stat_to_jobj(#call_stat{acct_id=AcctId
                         ,status='handling'=Status
                         ,timestamp=Timestamp
                        }, Prefix) ->
-    wh_json:from_list(
-      props:filter_undefined(
-        [{<<"call_id">>, CallId}
-         ,{<<"account_id">>, AcctId}
-         ,{<<"queue_id">>, QueueId}
-         ,{<<"agent_id">>, AgentId}
-         ,{<<"timestamp">>, Timestamp}
-         ,{<<"status">>, Status}
-         ,{<<"type">>, <<"call_partial">>}
-         ,{<<"_id">>, doc_id(Prefix, Timestamp)}
-        ])),
-    stat_to_jobj(#agent_stat{
-                    agent_id=AgentId
-                    ,acct_id=AcctId
-                    ,timestamp=Timestamp
-                    ,status='handling'
-                    ,call_id=CallId
-                   }, Prefix);
+    [wh_json:from_list(
+       props:filter_undefined(
+         [{<<"call_id">>, CallId}
+          ,{<<"account_id">>, AcctId}
+          ,{<<"queue_id">>, QueueId}
+          ,{<<"agent_id">>, AgentId}
+          ,{<<"timestamp">>, Timestamp}
+          ,{<<"status">>, Status}
+          ,{<<"type">>, <<"call_partial">>}
+          ,{<<"_id">>, doc_id(Prefix, Timestamp)}
+         ]))
+     ,stat_to_jobj(#agent_stat{
+                      agent_id=AgentId
+                      ,acct_id=AcctId
+                      ,timestamp=Timestamp
+                      ,status='handling'
+                      ,call_id=CallId
+                     }, Prefix)
+    ];
 stat_to_jobj(#call_stat{
                 call_id=CallId
                 ,acct_id=AcctId
