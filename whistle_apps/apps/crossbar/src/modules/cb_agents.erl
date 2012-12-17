@@ -163,12 +163,15 @@ maybe_compress_stats(Context, From, To) ->
         'success' ->
             Compressed = compress_stats(cb_context:doc(Context)
                                         ,cb_context:account_id(Context)
-                                        ,{wh_json:new(), wh_json:new(), wh_json:new()}),
-            crossbar_util:response(wh_json:set_values([{<<"start_range">>, From}
-                                                       ,{<<"end_range">>, To}
-                                                       ,{<<"current_timestamp">>, wh_util:current_tstamp()}
-                                                      ], Compressed)
-                                   ,Context);
+                                        ,{wh_json:new(), wh_json:new(), wh_json:new()}
+                                       ),
+            crossbar_util:response(
+              wh_json:set_values([{<<"start_range">>, From}
+                                  ,{<<"end_range">>, To}
+                                  ,{<<"current_timestamp">>, wh_util:current_tstamp()}
+                                 ]
+                                 ,Compressed)
+              ,Context);
         _S ->
             lager:debug("failed to load stats"),
             Context
@@ -205,9 +208,7 @@ fold_call_totals(_CallId, Stats, Acc) ->
 
     Set1 = case call_time(Stats) of
                undefined -> Set;
-               TalkTime -> [{<<"call_time">>, AccTalkTime + TalkTime}
-                            | Set
-                           ]
+               TalkTime -> [{<<"call_time">>, AccTalkTime + TalkTime} | Set]
            end,
     wh_json:set_values(Set1, Acc).
 
@@ -218,8 +219,6 @@ fold_agent_totals(AgentId, Queues, Acc, AcctId) ->
                                     }
                             end, wh_json:to_proplist(Queues)
                            ),
-
-    lager:debug("queue totes: ~p", [QueueTotals]),
 
     AgentTotals = wh_json:foldl(fun fold_queue_totals/3, wh_json:new(), Queues),
 
@@ -345,7 +344,8 @@ add_stat(Stat, {Compressed, Global, PerAgent}, ?STAT_AGENTS_MISSED) ->
           _ -> PerAgent
       end
     };
-add_stat(_Stat, {_Compressed, _Global, _PerAgent}=Res, _) ->
+add_stat(_Stat, {_Compressed, _Global, _PerAgent}=Res, _T) ->
+    lager:debug("unhandled stat type: ~p", [_T]),
     Res.
 
 -spec num_agents_tried/2 :: (wh_json:object(), ne_binary()) -> non_neg_integer().    
