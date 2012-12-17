@@ -560,11 +560,13 @@ compress_stats(Context, From, To) ->
     case cb_context:resp_status(Context) of
         success ->
             Compressed = compress_stats(cb_context:doc(Context), {wh_json:new(), wh_json:new(), wh_json:new()}),
-            crossbar_util:response(wh_json:set_values([{<<"start_range">>, From}
-                                                       ,{<<"end_range">>, To}
-                                                       ,{<<"current_timestamp">>, wh_util:current_tstamp()}
-                                                      ], Compressed)
-                                   ,Context);
+            crossbar_util:response(
+              wh_json:set_values([{<<"start_range">>, From}
+                                  ,{<<"end_range">>, To}
+                                  ,{<<"current_timestamp">>, wh_util:current_tstamp()}
+                                 ]
+                                 ,Compressed)
+              ,Context);
         _S ->
             lager:debug("failed to load stats"),
             Context
