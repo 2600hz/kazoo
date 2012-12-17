@@ -420,15 +420,18 @@ handle_cast({member_connect_retry, CallId}, #state{my_id=MyId
                                                    ,msg_queue_id=Server
                                                    ,agent_call_id=ACallId
                                                    ,call=Call
+                                                   ,agent_id=AgentId
                                                   }=State) when is_binary(CallId) ->
     case catch whapps_call:call_id(Call) of
         CallId ->
             lager:debug("need to retry member connect, agent isn't able to take it"),
             send_member_connect_retry(Server, CallId, MyId),
             acdc_util:unbind_from_call_events(ACallId),
+            put(callid, AgentId),
             {noreply, State#state{msg_queue_id=undefined
                                   ,acdc_queue_id=undefined
                                   ,agent_call_id=undefined
+                                  ,call=undefined
                                  }, hibernate};
         _MCallId ->
             lager:debug("retry call id(~s) is not our member call id ~p, ignoring", [CallId, _MCallId]),
@@ -660,7 +663,7 @@ send_member_connect_resp(JObj, MyQ, AgentId, MyId, LastConn) ->
               ,{<<"Server-ID">>, MyQ}
               | wh_api:default_headers(MyQ, ?APP_NAME, ?APP_VERSION)
              ]),
-    lager:debug("sending connect_resp to ~s: ~p", [Queue, Resp]),
+    lager:debug("sending connect_resp to ~s for ~s: ~s", [Queue, call_id(JObj), MyId]),
     wapi_acdc_queue:publish_member_connect_resp(Queue, Resp).
 
 -spec send_member_connect_retry/2 :: (wh_json:object(), ne_binary()) -> 'ok'.
