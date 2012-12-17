@@ -95,14 +95,14 @@ validate(#cb_context{req_verb = <<"get">>, account_id=AccountId}=Context, PlanId
     ResellerId = wh_services:find_reseller_id(AccountId),
     ResellerDb = wh_util:format_account_id(ResellerId, encoded),
     crossbar_doc:load(PlanId, Context#cb_context{db_name=ResellerDb});
-validate(#cb_context{req_verb = <<"post">>}=Context, <<"sync">>) ->
+validate(#cb_context{req_verb = <<"post">>}=Context, <<"synchronization">>) ->
     case is_reseler(Context) of
         {ok, _} ->
             Context;
         false ->
             cb_context:add_system_error(forbidden, Context)
     end;
-validate(#cb_context{req_verb = <<"post">>}=Context, <<"reconcile">>) ->
+validate(#cb_context{req_verb = <<"post">>}=Context, <<"reconciliation">>) ->
     case is_reseler(Context) of
         {ok, _} ->
             Context;
@@ -124,10 +124,10 @@ validate(#cb_context{req_verb = <<"delete">>}=Context, PlanId) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec post/2 :: (#cb_context{}, path_token()) -> #cb_context{}.
-post(#cb_context{account_id=AccountId}=Context, <<"sync">>) ->
+post(#cb_context{account_id=AccountId}=Context, <<"synchronization">>) ->
     wh_service_sync:sync(AccountId),
     Context#cb_context{resp_status=success};
-post(#cb_context{account_id=AccountId}=Context, <<"reconcile">>) ->
+post(#cb_context{account_id=AccountId}=Context, <<"reconciliation">>) ->
     try wh_services:reconcile(AccountId) of
         _ -> 
             Context#cb_context{resp_status=success}
