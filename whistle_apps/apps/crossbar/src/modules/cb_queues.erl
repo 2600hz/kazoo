@@ -562,6 +562,7 @@ compress_stats(Context, From, To) ->
             Compressed = compress_stats(cb_context:doc(Context), {wh_json:new(), wh_json:new(), wh_json:new()}),
             crossbar_util:response(wh_json:set_values([{<<"start_range">>, From}
                                                        ,{<<"end_range">>, To}
+                                                       ,{<<"current_timestamp">>, wh_util:current_tstamp()}
                                                       ], Compressed)
                                    ,Context);
         _S ->
@@ -629,14 +630,13 @@ accumulate_queue_stats(QueueId, Calls) ->
 accumulate_call_stats(CallId, Stats) ->
     WaitTime = wait_time(Stats),
     TalkTime = call_time(Stats),
-    {CurrentStatus, CurrentTstamp} = current_status(Stats),
+    {CurrentStatus, _CurrentTstamp} = current_status(Stats),
 
     AccStats = wh_json:filter(fun({_, V}) -> V =/= undefined end
                               ,wh_json:set_values([{<<"wait_time">>, WaitTime}
                                                    ,{<<"call_time">>, TalkTime}
-                                                   ,{<<"current_timestamp">>, CurrentTstamp}
                                                    ,{<<"current_status">>, CurrentStatus}
-                                                ], Stats)
+                                                  ], Stats)
                              ),
     {CallId, AccStats}.
 

@@ -166,6 +166,7 @@ maybe_compress_stats(Context, From, To) ->
                                         ,{wh_json:new(), wh_json:new(), wh_json:new()}),
             crossbar_util:response(wh_json:set_values([{<<"start_range">>, From}
                                                        ,{<<"end_range">>, To}
+                                                       ,{<<"current_timestamp">>, wh_util:current_tstamp()}
                                                       ], Compressed)
                                    ,Context);
         _S ->
@@ -217,6 +218,8 @@ fold_agent_totals(AgentId, Queues, Acc, AcctId) ->
                                     }
                             end, wh_json:to_proplist(Queues)
                            ),
+
+    lager:debug("queue totes: ~p", [QueueTotals]),
 
     AgentTotals = wh_json:foldl(fun fold_queue_totals/3, wh_json:new(), Queues),
 
