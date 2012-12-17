@@ -265,7 +265,7 @@ fold_agent_totals(AgentId, AgentData, Acc) ->
 %% returns {AgentID: {queues: {QueueId: data}}}
 accumulate_agent_stats(AgentId, Calls) ->
     {AgentId, wh_json:set_value(<<"queues">>
-                                ,wh_json:map(fun accumulate_queue_stats/2, wh_json:get_value(<<"queues">>, Calls))
+                                ,wh_json:map(fun accumulate_queue_stats/2, wh_json:get_value(<<"queues">>, Calls, wh_json:new()))
                                 ,Calls
                                )}.
 
