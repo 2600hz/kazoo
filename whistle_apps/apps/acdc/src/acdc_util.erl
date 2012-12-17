@@ -117,7 +117,7 @@ unbind_from_call_events(Call) ->
 -spec agent_status/2 :: (ne_binary(), ne_binary()) -> ne_binary().
 -spec agent_status/3 :: (ne_binary(), ne_binary(), boolean()) -> ne_binary() | wh_json:object().
 agent_status(?NE_BINARY = AcctId, AgentId) ->
-    agent_status(AcctId, AgentId, []).
+    agent_status(AcctId, AgentId, false).
 agent_status(?NE_BINARY = AcctId, AgentId, ReturnDoc) ->
     Opts = [{endkey, [AcctId, AgentId, 0]}
             ,{startkey, [AcctId, AgentId, wh_json:new()]}
