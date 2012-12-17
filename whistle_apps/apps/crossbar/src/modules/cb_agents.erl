@@ -21,6 +21,7 @@
 -export([init/0
          ,allowed_methods/0, allowed_methods/1
          ,resource_exists/0, resource_exists/1
+         ,content_types_provided/2
          ,validate/1, validate/2
         ]).
 
@@ -33,6 +34,9 @@
 -define(STAT_TIMESTAMP_ABANDONED, <<"caller_abandoned_queue">>).
 -define(STAT_TIMESTAMP_WAITING, <<"caller_entered_queue">>).
 -define(STAT_AGENTS_MISSED, <<"missed">>).
+
+-define(FORMAT_COMPRESSED, <<"compressed">>).
+-define(FORMAT_VERBOSE, <<"verbose">>).
 
 -define(STAT_TIMESTAMP_KEYS, [?STAT_TIMESTAMP_PROCESSED
                               ,?STAT_TIMESTAMP_HANDLING
@@ -58,6 +62,7 @@
 init() ->
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.agents">>, ?MODULE, allowed_methods),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.agents">>, ?MODULE, resource_exists),
+    _ = crossbar_bindings:bind(<<"v1_resource.content_types_provided.agents">>, ?MODULE, content_types_provided),
     _ = crossbar_bindings:bind(<<"v1_resource.validate.agents">>, ?MODULE, validate).
 
 %%--------------------------------------------------------------------
@@ -87,6 +92,26 @@ allowed_methods(_) ->
 -spec resource_exists/1 :: (path_token()) -> 'true'.
 resource_exists() -> true.
 resource_exists(_) -> true.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Add content types accepted and provided by this module
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec content_types_provided/2 :: (cb_context:context(), path_token()) -> cb_context:context().
+content_types_provided(#cb_context{}=Context, ?STATS_PATH_TOKEN) ->
+    case cb_context:req_value(Context, <<"format">>, ?FORMAT_COMPRESSED) of
+        ?FORMAT_VERBOSE ->
+            CTPs = [{to_json, [{<<"application">>, <<"json">>}]}
+                    ,{to_csv, [{<<"application">>, <<"octet-stream">>}]}
+                   ],
+            cb_context:add_content_types_provided(Context, CTPs);
+        ?FORMAT_COMPRESSED ->
+            CTPs = [{to_json, [{<<"application">>, <<"json">>}]}],
+            cb_context:add_content_types_provided(Context, CTPs)
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -139,15 +164,15 @@ fetch_all_agent_stats(Context) ->
             ,descending
            ],
 
-    case cb_context:req_value(Context, <<"format">>, <<"compressed">>) of
-        <<"compressed">> ->
+    case cb_context:req_value(Context, <<"format">>, ?FORMAT_COMPRESSED) of
+        ?FORMAT_COMPRESSED ->
             Context1 = crossbar_doc:load_view(<<"agent_stats/call_log">>
                                               ,Opts
                                               ,cb_context:set_account_db(Context, acdc_stats:db_name(AcctId)) 
                                               ,fun normalize_agent_stats/2
                                              ),
             maybe_compress_stats(Context1, From, To);
-        <<"verbose">> ->
+        ?FORMAT_VERBOSE ->
             crossbar_doc:load_view(<<"agent_stats/call_log">>
                                    ,Opts
                                    ,cb_context:set_account_db(Context, acdc_stats:db_name(AcctId))
@@ -382,4 +407,7 @@ normalize_view_results(JObj, Acc) ->
     ].
 
 normalize_agent_stats(JObj, Acc) ->
-    [wh_doc:public_fields(wh_json:get_value(<<"doc">>, JObj)) | Acc].
+    [wh_doc:public_fields(
+       wh_json:delete_key(<<"type">>, wh_json:get_value(<<"doc">>, JObj))
+      )
+     | Acc].

@@ -39,6 +39,7 @@
 -export([init/0
          ,allowed_methods/0, allowed_methods/1, allowed_methods/2
          ,resource_exists/0, resource_exists/1, resource_exists/2
+         ,content_types_provided/2
          ,validate/1, validate/2, validate/3
          ,put/1, put/2, put/3
          ,post/2, post/3
@@ -73,6 +74,9 @@
                               ,?STAT_TIMESTAMP_WAITING
                              ]).
 
+-define(FORMAT_COMPRESSED, <<"compressed">>).
+-define(FORMAT_VERBOSE, <<"verbose">>).
+
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -87,6 +91,7 @@
 init() ->
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.queues">>, ?MODULE, allowed_methods),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.queues">>, ?MODULE, resource_exists),
+    _ = crossbar_bindings:bind(<<"v1_resource.content_types_provided.queues">>, ?MODULE, content_types_provided),
     _ = crossbar_bindings:bind(<<"v1_resource.validate.queues">>, ?MODULE, validate),
     _ = crossbar_bindings:bind(<<"v1_resource.execute.put.queues">>, ?MODULE, put),
     _ = crossbar_bindings:bind(<<"v1_resource.execute.post.queues">>, ?MODULE, post),
@@ -135,6 +140,26 @@ resource_exists(_) -> true.
 
 resource_exists(_, ?ROSTER_PATH_TOKEN) -> true;
 resource_exists(_, ?EAVESDROP_PATH_TOKEN) -> true.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Add content types accepted and provided by this module
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec content_types_provided/2 :: (cb_context:context(), path_token()) -> cb_context:context().
+content_types_provided(#cb_context{}=Context, ?STATS_PATH_TOKEN) ->
+    case cb_context:req_value(Context, <<"format">>, ?FORMAT_COMPRESSED) of
+        ?FORMAT_VERBOSE ->
+            CTPs = [{to_json, [{<<"application">>, <<"json">>}]}
+                    ,{to_csv, [{<<"application">>, <<"octet-stream">>}]}
+                   ],
+            cb_context:add_content_types_provided(Context, CTPs);
+        ?FORMAT_COMPRESSED ->
+            CTPs = [{to_json, [{<<"application">>, <<"json">>}]}],
+            cb_context:add_content_types_provided(Context, CTPs)
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -536,15 +561,15 @@ fetch_all_queue_stats(Context) ->
             ,descending
            ],
 
-    case cb_context:req_value(Context, <<"format">>, <<"compressed">>) of
-        <<"compressed">> ->
+    case cb_context:req_value(Context, <<"format">>, ?FORMAT_COMPRESSED) of
+        ?FORMAT_COMPRESSED ->
             Context1 = crossbar_doc:load_view(<<"call_stats/call_log">>
                                               ,Opts
                                               ,cb_context:set_account_db(Context, acdc_stats:db_name(AcctId))
                                               ,fun extract_doc/2
                                              ),
             compress_stats(Context1, From, To);
-        <<"verbose">> ->
+        ?FORMAT_VERBOSE ->
             crossbar_doc:load_view(<<"call_stats/call_log">>
                                    ,Opts
                                    ,cb_context:set_account_db(Context, acdc_stats:db_name(AcctId))
@@ -654,8 +679,8 @@ fold_call_statuses(CallId, Stats, Acc) ->
             Waiting = wh_json:get_value(<<"calls_abandoned">>, Acc, []),
             wh_json:set_value(<<"calls_abandoned">>, [CallId | Waiting], Acc);
         {?STATUS_PROCESSED, _} ->
-            Waiting = wh_json:get_value(<<"calls_finished">>, Acc, []),
-            wh_json:set_value(<<"calls_finished">>, [CallId | Waiting], Acc);
+            Waiting = wh_json:get_value(<<"calls_processed">>, Acc, []),
+            wh_json:set_value(<<"calls_processed">>, [CallId | Waiting], Acc);
         _ -> Acc
     end.
 
