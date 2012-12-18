@@ -524,7 +524,7 @@ ready({route_req, Call}, #state{agent_proc=Srv
 
     acdc_agent:outbound_call(Srv, Call),
     acdc_stats:agent_oncall(AcctId, AgentId, CallId),
-    {next_state, outbound, State#state{outbound_call_id=CallId}};
+    {next_state, outbound, State#state{outbound_call_id=CallId}, hibernate};
 
 ready(_Evt, State) ->
     lager:debug("unhandled event: ~p", [_Evt]),
@@ -807,7 +807,7 @@ wrapup({route_req, Call}, #state{agent_proc=Srv
     acdc_agent:outbound_call(Srv, Call),
     acdc_stats:agent_oncall(AcctId, AgentId, CallId),
 
-    {next_state, outbound, State#state{outbound_call_id=CallId}};
+    {next_state, outbound, State#state{outbound_call_id=CallId}, hibernate};
 
 wrapup(_Evt, State) ->
     lager:debug("unhandled event: ~p", [_Evt]),
@@ -885,7 +885,7 @@ paused({route_req, Call}, #state{agent_proc=Srv
     acdc_agent:outbound_call(Srv, Call),
     acdc_stats:agent_oncall(AcctId, AgentId, CallId),
 
-    {next_state, outbound, State#state{outbound_call_id=CallId}};
+    {next_state, outbound, State#state{outbound_call_id=CallId}, hibernate};
 
 paused(_Evt, State) ->
     lager:debug("unhandled event: ~p", [_Evt]),
@@ -904,7 +904,7 @@ outbound({channel_hungup, CallId}, #state{agent_proc=Srv
     lager:debug("outbound channel ~s hungup", [CallId]),
     acdc_agent:channel_hungup(Srv, CallId),
     acdc_stats:agent_ready(AcctId, AgentId),
-    {next_state, ready, clear_call(State)};
+    {next_state, ready, clear_call(State), hibernate};
 
 outbound({leg_destroyed, CallId}, #state{agent_proc=Srv
                                          ,outbound_call_id=CallId
@@ -914,7 +914,7 @@ outbound({leg_destroyed, CallId}, #state{agent_proc=Srv
     lager:debug("outbound leg ~s destroyed", [CallId]),
     acdc_agent:channel_hungup(Srv, CallId),
     acdc_stats:agent_ready(AcctId, AgentId),
-    {next_state, ready, clear_call(State)};
+    {next_state, ready, clear_call(State), hibernate};
 
 outbound({member_connect_win, JObj}, #state{agent_proc=Srv}=State) ->
     lager:debug("agent won, but can't process this right now (on outbound call)"),
