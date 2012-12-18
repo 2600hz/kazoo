@@ -51,12 +51,14 @@
 
 -define(AGENT_STATUS_READY, <<"ready">>).
 -define(AGENT_STATUS_BUSY, <<"busy">>).
+-define(AGENT_STATUS_HANDLING, <<"handling">>).
 -define(AGENT_STATUS_WRAPUP, <<"wrapup">>).
 -define(AGENT_STATUS_PAUSED, <<"paused">>).
 -define(AGENT_STATUS_LOGOUT, <<"logout">>).
 
 -define(CB_LIST, <<"agents/crossbar_listing">>).
 -define(STATS_PATH_TOKEN, <<"stats">>).
+-define(STATUS_PATH_TOKEN, <<"status">>).
 
 %%%===================================================================
 %%% API
@@ -84,10 +86,8 @@ init() ->
 %%--------------------------------------------------------------------
 -spec allowed_methods/0 :: () -> http_methods().
 -spec allowed_methods/1 :: (path_token()) -> http_methods().
-allowed_methods() ->
-    ['GET'].
-allowed_methods(_) ->
-    ['GET'].
+allowed_methods() -> ['GET'].
+allowed_methods(_) -> ['GET'].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -113,6 +113,7 @@ resource_exists(_) -> true.
 -spec content_types_provided/1 :: (cb_context:context()) -> cb_context:context().
 -spec content_types_provided/2 :: (cb_context:context(), path_token()) -> cb_context:context().
 content_types_provided(#cb_context{}=Context) -> Context.
+content_types_provided(#cb_context{}=Context, ?STATUS_PATH_TOKEN) -> Context;
 content_types_provided(#cb_context{}=Context, ?STATS_PATH_TOKEN) ->
     case cb_context:req_value(Context, <<"format">>, ?FORMAT_COMPRESSED) of
         ?FORMAT_VERBOSE ->
@@ -140,6 +141,8 @@ content_types_provided(#cb_context{}=Context, ?STATS_PATH_TOKEN) ->
 validate(#cb_context{req_verb = <<"get">>}=Context) ->
     summary(Context).
 
+validate(#cb_context{req_verb = <<"get">>}=Context, ?STATUS_PATH_TOKEN) ->
+    fetch_all_agent_statuses(Context);
 validate(#cb_context{req_verb = <<"get">>}=Context, ?STATS_PATH_TOKEN) ->
     fetch_all_agent_stats(Context);
 validate(#cb_context{req_verb = <<"get">>}=Context, Id) ->
@@ -152,8 +155,11 @@ validate(#cb_context{req_verb = <<"get">>}=Context, Id) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec read/2 :: (path_token(), cb_context:context()) -> cb_context:context().
-read(Id, Context) ->
-    crossbar_doc:load(Id, Context).
+read(Id, Context) -> crossbar_doc:load(Id, Context).
+
+fetch_all_agent_statuses(Context) ->
+    AcctId = cb_context:account_id(Context),
+    Context.
 
 -spec fetch_all_agent_stats/1 :: (cb_context:context()) -> cb_context:context().
 fetch_all_agent_stats(Context) ->
@@ -301,44 +307,42 @@ call_time(Stats, Conn) ->
 add_stat(Stat, {_Compressed, _Global, _PerAgent}=Res) ->
     add_stat(Stat, Res, wh_json:get_value(<<"status">>, Stat)).
 
-add_stat(Stat, {Compressed, Global, PerAgent}=Res, ?QUEUE_STATUS_HANDLING = Status) ->
+add_stat(Stat, {Compressed, Global, PerAgent}, ?QUEUE_STATUS_HANDLING = Status) ->
     AID = wh_json:get_value(<<"agent_id">>, Stat),
     TStamp = wh_json:get_value(<<"timestamp">>, Stat),
 
     case wh_json:get_value(<<"queue_id">>, Stat) of
         undefined ->
-            case wh_json:get_integer_value([AID, <<"current">>, <<"status_timestamp">>], PerAgent) of
-                T when T < TStamp; T =:= undefined ->
-                    {wh_json:set_values(complex_agent_status(Stat, Status, AID)
-                                        ,wh_json:delete_key([AID, <<"current">>], Compressed)
-                                       )
-                     ,Global
-                     ,PerAgent
-                    };
-                _T -> Res
-            end;
+            {maybe_add_current_status(Compressed, Stat, Status, AID, TStamp)
+             ,Global
+             ,PerAgent
+            };
         QID ->
             CID = wh_json:get_value(<<"call_id">>, Stat),
 
-            {wh_json:set_values([{[AID, <<"queues">>, QID, CID, ?STAT_TIMESTAMP_HANDLING], TStamp}
-                                ], Compressed)
+            {wh_json:set_value([AID, <<"queues">>, QID, CID, ?STAT_TIMESTAMP_HANDLING]
+                               ,TStamp
+                               ,maybe_add_current_status(Compressed, Stat, Status, AID, TStamp)
+                              )
              ,wh_json:set_value([QID, CID, ?STAT_TIMESTAMP_HANDLING], TStamp, Global)
              ,wh_json:set_value([AID, <<"queues">>, QID, CID, ?STAT_TIMESTAMP_HANDLING], TStamp, PerAgent)
             }
     end;
-add_stat(Stat, {Compressed, Global, PerAgent}, ?QUEUE_STATUS_PROCESSED) ->
+add_stat(Stat, {Compressed, Global, PerAgent}, ?QUEUE_STATUS_PROCESSED = Status) ->
     QID = wh_json:get_value(<<"queue_id">>, Stat),
     CID = wh_json:get_value(<<"call_id">>, Stat),
     AID = wh_json:get_value(<<"agent_id">>, Stat),
 
     TStamp = wh_json:get_value(<<"timestamp">>, Stat),
 
-    {wh_json:set_values([{[AID, <<"queues">>, QID, CID, ?STAT_TIMESTAMP_PROCESSED], TStamp}
-                        ], Compressed)
+    {wh_json:set_value([AID, <<"queues">>, QID, CID, ?STAT_TIMESTAMP_PROCESSED]
+                       ,TStamp
+                       ,maybe_add_current_status(Compressed, Stat, Status, AID, TStamp)
+                      )
      ,wh_json:set_value([QID, CID, ?STAT_TIMESTAMP_PROCESSED], TStamp, Global)
      ,wh_json:set_value([AID, <<"queues">>, QID, CID, ?STAT_TIMESTAMP_PROCESSED], TStamp, PerAgent)
     };
-add_stat(Stat, {Compressed, Global, PerAgent}, ?STAT_AGENTS_MISSED) ->
+add_stat(Stat, {Compressed, Global, PerAgent}, ?STAT_AGENTS_MISSED = Status) ->
     QID = wh_json:get_value(<<"queue_id">>, Stat),
     CID = wh_json:get_value(<<"call_id">>, Stat),
     AID = wh_json:get_value(<<"agent_id">>, Stat),
@@ -350,8 +354,9 @@ add_stat(Stat, {Compressed, Global, PerAgent}, ?STAT_AGENTS_MISSED) ->
 
     NumAgentsTried = num_agents_tried(AgentsTried, AID),
 
-    {wh_json:set_values([{K, AgentsTried}
-                        ], Compressed)
+    {wh_json:set_values([{K, AgentsTried}]
+                        ,maybe_add_current_status(Compressed, Stat, Status, AID, TStamp)
+                       )
      ,case wh_json:get_value([QID, CID, ?STAT_AGENTS_MISSED], Global, 0) of
           N when N < NumAgentsTried ->
               wh_json:set_value([QID, CID, ?STAT_AGENTS_MISSED], NumAgentsTried, Global);
@@ -363,7 +368,7 @@ add_stat(Stat, {Compressed, Global, PerAgent}, ?STAT_AGENTS_MISSED) ->
           _ -> PerAgent
       end
     };
-add_stat(Stat, {Compressed, Global, PerAgent}=Res, Status) when
+add_stat(Stat, {Compressed, Global, PerAgent}, Status) when
       Status =:= ?AGENT_STATUS_READY;
       Status =:= ?AGENT_STATUS_BUSY;
       Status =:= ?AGENT_STATUS_LOGOUT;
@@ -373,20 +378,26 @@ add_stat(Stat, {Compressed, Global, PerAgent}=Res, Status) when
     AID = wh_json:get_value(<<"agent_id">>, Stat),
     TStamp = wh_json:get_integer_value(<<"timestamp">>, Stat, 0),
 
-    case wh_json:get_integer_value([AID, <<"current">>, <<"status_timestamp">>], PerAgent) of
-        T when T < TStamp; T =:= undefined ->
-            {wh_json:set_values(complex_agent_status(Stat, Status, AID)
-                                ,wh_json:delete_key([AID, <<"current">>], Compressed)
-                               )
-             ,Global
-             ,PerAgent
-            };
-        _T -> Res
-    end;
+    {maybe_add_current_status(Compressed, Stat, Status, AID, TStamp)
+     ,Global
+     ,PerAgent
+    };
 add_stat(_Stat, {_Compressed, _Global, _PerAgent}=Res, _T) ->
     lager:debug("unhandled stat type: ~p: ~p", [_T, _Stat]),
     Res.
 
+-spec maybe_add_current_status/5 :: (wh_json:object(), wh_json:object(), ne_binary(), ne_binary(), wh_now()) ->
+                                            wh_json:object().
+maybe_add_current_status(Compressed, Stat, Status, AID, TStamp) ->
+    case wh_json:get_integer_value([AID, <<"current">>, <<"status_timestamp">>], Compressed) of
+        T when T < TStamp; T =:= undefined ->
+            wh_json:set_values(complex_agent_status(Stat, Status, AID)
+                               ,wh_json:delete_key([AID, <<"current">>], Compressed)
+                              );
+        _ -> Compressed
+    end.
+
+-spec complex_agent_status/3 :: (wh_json:object(), ne_binary(), ne_binary()) -> wh_proplist().
 complex_agent_status(Stat, ?AGENT_STATUS_BUSY = Status, AID) ->
     [{[AID, <<"current">>, <<"status_started">>], wh_json:get_integer_value(<<"timestamp">>, Stat)}
      ,{[AID, <<"current">>, <<"status">>], Status}
@@ -409,6 +420,12 @@ complex_agent_status(Stat, ?AGENT_STATUS_LOGOUT = Status, AID) ->
       [{[AID, <<"current">>, <<"status">>], Status}
        ,{[AID, <<"current">>, <<"status_started">>], wh_json:get_value(<<"timestamp">>, Stat)}
       ]);
+complex_agent_status(Stat, ?STAT_AGENTS_MISSED, AID) ->
+    complex_agent_status(Stat, ?AGENT_STATUS_READY, AID);
+complex_agent_status(Stat, ?QUEUE_STATUS_HANDLING, AID) ->
+    complex_agent_status(Stat, ?AGENT_STATUS_HANDLING, AID);
+complex_agent_status(Stat, ?QUEUE_STATUS_PROCESSED, AID) ->
+    complex_agent_status(Stat, ?AGENT_STATUS_READY, AID);
 complex_agent_status(_Stat, Status, AID) ->
     [{[AID, <<"current">>, <<"status">>], Status}].
 
