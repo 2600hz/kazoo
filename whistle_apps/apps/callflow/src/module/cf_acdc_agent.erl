@@ -111,7 +111,6 @@ update_agent_status(Call, AgentId, Status, PubFun, Timeout) ->
             ],
 
     {ok, _D} = acdc_util:update_agent_status(AcctId, AgentId, Status, Extra),
-    lager:debug("saved d: ~p", [_D]),
     send_new_status(Call, AgentId, PubFun, Timeout).
 
 -spec send_new_status/4 :: (whapps_call:call(), ne_binary(), wh_amqp_worker:publish_fun(), integer() | 'undefined') -> 'ok'.
