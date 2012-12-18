@@ -152,9 +152,6 @@ update_agent_status(?NE_BINARY = AcctId, AgentId, Status, Options) ->
 -spec proc_id/0 :: () -> ne_binary().
 -spec proc_id/1 :: (pid()) -> ne_binary().
 -spec proc_id/2 :: (pid(), atom() | ne_binary()) -> ne_binary().
-proc_id() ->
-    proc_id(self()).
-proc_id(Pid) ->
-    proc_id(Pid, node()).
-proc_id(Pid, Node) ->
-    list_to_binary([wh_util:to_binary(Node), "-", pid_to_list(Pid)]).
+proc_id() -> proc_id(self()).
+proc_id(Pid) -> proc_id(Pid, node()).
+proc_id(Pid, Node) -> list_to_binary([wh_util:to_binary(Node), "-", pid_to_list(Pid)]).
