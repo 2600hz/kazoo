@@ -263,12 +263,12 @@ stat_to_jobj(#call_stat{acct_id=AcctId
     [wh_json:from_list(
        props:filter_undefined(
          [{<<"call_id">>, CallId}
-          ,{<<"account_id">>, AcctId}
+          ,{<<"pvt_account_id">>, AcctId}
           ,{<<"queue_id">>, QueueId}
           ,{<<"agent_id">>, AgentId}
           ,{<<"timestamp">>, Timestamp}
           ,{<<"status">>, Status}
-          ,{<<"type">>, <<"call_partial">>}
+          ,{<<"pvt_type">>, <<"call_partial">>}
           ,{<<"_id">>, doc_id(Prefix, Timestamp)}
          ]))
      ,stat_to_jobj(#agent_stat{
@@ -293,7 +293,7 @@ stat_to_jobj(#call_stat{
     wh_json:from_list(
       props:filter_undefined(
         [{<<"call_id">>, CallId}
-         ,{<<"account_id">>, AcctId}
+         ,{<<"pvt_account_id">>, AcctId}
          ,{<<"queue_id">>, QueueId}
          ,{<<"agent_id">>, AgentId}
          ,{<<"timestamp">>, TStamp}
@@ -301,7 +301,7 @@ stat_to_jobj(#call_stat{
          ,{<<"talk_time">>, TalkTime}
          ,{<<"abandon_reason">>, AR}
          ,{<<"status">>, Status}
-         ,{<<"type">>, <<"call_partial">>}
+         ,{<<"pvt_type">>, <<"call_partial">>}
          ,{<<"_id">>, doc_id(Prefix, TStamp)}
         ]));
 stat_to_jobj(#agent_stat{
@@ -314,12 +314,12 @@ stat_to_jobj(#agent_stat{
                }, Prefix) ->
     wh_json:from_list(
       props:filter_undefined(
-        [{<<"account_id">>, AcctId}
+        [{<<"pvt_account_id">>, AcctId}
          ,{<<"agent_id">>, AgentId}
          ,{<<"timestamp">>, TStamp}
          ,{<<"wait_time">>, WaitTime}
          ,{<<"status">>, Status}
-         ,{<<"type">>, <<"agent_partial">>}
+         ,{<<"pvt_type">>, <<"agent_partial">>}
          ,{<<"call_id">>, CallId}
          ,{<<"_id">>, doc_id(Prefix, TStamp)}
         ])).
