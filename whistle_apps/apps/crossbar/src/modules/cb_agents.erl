@@ -309,7 +309,7 @@ add_stat(Stat, {_Compressed, _Global, _PerAgent}=Res) ->
 
 add_stat(Stat, {Compressed, Global, PerAgent}, ?QUEUE_STATUS_HANDLING = Status) ->
     AID = wh_json:get_value(<<"agent_id">>, Stat),
-    TStamp = wh_json:get_value(<<"timestamp">>, Stat),
+    TStamp = wh_json:get_integer_value(<<"timestamp">>, Stat, 0),
 
     case wh_json:get_value(<<"queue_id">>, Stat) of
         undefined ->
@@ -333,7 +333,7 @@ add_stat(Stat, {Compressed, Global, PerAgent}, ?QUEUE_STATUS_PROCESSED = Status)
     CID = wh_json:get_value(<<"call_id">>, Stat),
     AID = wh_json:get_value(<<"agent_id">>, Stat),
 
-    TStamp = wh_json:get_value(<<"timestamp">>, Stat),
+    TStamp = wh_json:get_integer_value(<<"timestamp">>, Stat, 0),
 
     {wh_json:set_value([AID, <<"queues">>, QID, CID, ?STAT_TIMESTAMP_PROCESSED]
                        ,TStamp
@@ -347,7 +347,7 @@ add_stat(Stat, {Compressed, Global, PerAgent}, ?STAT_AGENTS_MISSED = Status) ->
     CID = wh_json:get_value(<<"call_id">>, Stat),
     AID = wh_json:get_value(<<"agent_id">>, Stat),
 
-    TStamp = wh_json:get_value(<<"timestamp">>, Stat),
+    TStamp = wh_json:get_integer_value(<<"timestamp">>, Stat, 0),
 
     K = [AID, <<"queues">>, QID, CID, <<"agents_tried">>],
     AgentsTried = wh_json:set_value(wh_util:to_binary(TStamp), AID, wh_json:get_value(K, Compressed, wh_json:new())),
