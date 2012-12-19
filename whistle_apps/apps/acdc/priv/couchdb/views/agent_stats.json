@@ -2,10 +2,10 @@
   ,"language":"javascript"
   ,"views":{
     "status_log": {
-      "map":"function(doc) {        if ( doc.type != 'agent_partial' || typeof doc.account_id == 'undefined' | typeof doc.agent_id == 'undefined' ) return;        emit([doc.account_id, doc.agent_id, doc.timestamp], doc.status);      }"
+      "map":"function(doc) {        if ( doc.type != 'agent_partial' || typeof doc.account_id == 'undefined' | typeof doc.agent_id == 'undefined' ) return;        emit([doc.agent_id, doc.timestamp], doc.status);      }"
     },
     "call_log": {
-      "map":"function(doc) {        if ( (doc.type != 'call_partial' && doc.type != 'agent_partial') || typeof doc.account_id == 'undefined' | typeof doc.agent_id == 'undefined' ) return;        emit([doc.timestamp, doc.account_id, doc.agent_id], doc.status);      }"
+      "map":"function(doc) {        if ( (doc.type != 'call_partial' && doc.type != 'agent_partial') || typeof doc.account_id == 'undefined' | typeof doc.agent_id == 'undefined' ) return;        emit([doc.timestamp, doc.agent_id], doc.status);      }"
     }
   }
 }
