@@ -39,7 +39,7 @@
 -export([init/0
          ,allowed_methods/0, allowed_methods/1, allowed_methods/2
          ,resource_exists/0, resource_exists/1, resource_exists/2
-         ,content_types_provided/2
+         ,content_types_provided/1, content_types_provided/2
          ,validate/1, validate/2, validate/3
          ,put/1, put/2, put/3
          ,post/2, post/3
@@ -148,7 +148,9 @@ resource_exists(_, ?EAVESDROP_PATH_TOKEN) -> true.
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec content_types_provided/1 :: (cb_context:context()) -> cb_context:context().
 -spec content_types_provided/2 :: (cb_context:context(), path_token()) -> cb_context:context().
+content_types_provided(#cb_context{}=Context) -> Context.
 content_types_provided(#cb_context{}=Context, ?STATS_PATH_TOKEN) ->
     case cb_context:req_value(Context, <<"format">>, ?FORMAT_COMPRESSED) of
         ?FORMAT_VERBOSE ->
@@ -555,8 +557,8 @@ fetch_all_queue_stats(Context) ->
            end,
 
     AcctId = cb_context:account_id(Context),
-    Opts = [{startkey, [To, AcctId]}
-            ,{endkey, [From, AcctId]}
+    Opts = [{startkey, [To]}
+            ,{endkey, [From]}
             ,include_docs
             ,descending
            ],

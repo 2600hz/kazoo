@@ -176,8 +176,8 @@ fetch_all_agent_stats(Context) ->
                F -> F
            end,
 
-    Opts = [{startkey, [To, AcctId]}
-            ,{endkey, [From, AcctId]}
+    Opts = [{startkey, [To]}
+            ,{endkey, [From]}
             ,include_docs
             ,descending
            ],
@@ -416,6 +416,11 @@ complex_agent_status(StatusJObj, ?AGENT_STATUS_PAUSED = Status, AID) ->
        ,{[AID, <<"current">>, <<"status_started">>], wh_json:get_value(<<"timestamp">>, StatusJObj)}
       ]);
 complex_agent_status(Stat, ?AGENT_STATUS_LOGOUT = Status, AID) ->
+    props:filter_undefined(
+      [{[AID, <<"current">>, <<"status">>], Status}
+       ,{[AID, <<"current">>, <<"status_started">>], wh_json:get_value(<<"timestamp">>, Stat)}
+      ]);
+complex_agent_status(Stat, ?AGENT_STATUS_HANDLING = Status, AID) ->
     props:filter_undefined(
       [{[AID, <<"current">>, <<"status">>], Status}
        ,{[AID, <<"current">>, <<"status_started">>], wh_json:get_value(<<"timestamp">>, Stat)}
