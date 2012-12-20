@@ -328,8 +328,8 @@ put(Context) ->
     lager:debug("saving new queue"),
     crossbar_doc:save(Context).
 
-put(#cb_context{req_data=Data}=Context, ?EAVESDROP_PATH_TOKEN) ->
-    Prop = [{<<"Eavesdrop-Call-ID">>, wh_json:get_value(<<"call_id">>, Data)}
+put(Context, ?EAVESDROP_PATH_TOKEN) ->
+    Prop = [{<<"Eavesdrop-Call-ID">>, cb_context:req_value(Context, <<"call_id">>)}
             | default_eavesdrop_req(Context)
            ],
     eavesdrop_req(Context, Prop).
@@ -340,13 +340,13 @@ put(Context, QID, ?EAVESDROP_PATH_TOKEN) ->
     eavesdrop_req(Context, Prop).
 
 -spec default_eavesdrop_req/1 :: (cb_context:context()) -> wh_proplist().
-default_eavesdrop_req(#cb_context{req_data=Data}=Context) ->
-    [{<<"Eavesdrop-Mode">>, wh_json:get_value(<<"mode">>, Data, <<"listen">>)}
+default_eavesdrop_req(Context) ->
+    [{<<"Eavesdrop-Mode">>, cb_context:req_value(Context, <<"mode">>, <<"listen">>)}
      ,{<<"Account-ID">>, cb_context:account_id(Context)}
-     ,{<<"Endpoint-ID">>, wh_json:get_value(<<"id">>, Data)}
-     ,{<<"Endpoint-Timeout">>, wh_json:get_integer_value(<<"timeout">>, Data, 20)}
-     ,{<<"Outgoing-Caller-ID-Name">>, wh_json:get_value(<<"caller_id_name">>, Data)}
-     ,{<<"Outgoing-Caller-ID-Number">>, wh_json:get_value(<<"caller_id_number">>, Data)}
+     ,{<<"Endpoint-ID">>, cb_context:req_value(Context, <<"id">>)}
+     ,{<<"Endpoint-Timeout">>, wh_util:to_integer(cb_context:req_value(Context, <<"timeout">>, 20))}
+     ,{<<"Outgoing-Caller-ID-Name">>, cb_context:req_value(Context, <<"caller_id_name">>)}
+     ,{<<"Outgoing-Caller-ID-Number">>, cb_context:req_value(Context, <<"caller_id_number">>)}
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
@@ -377,7 +377,7 @@ eavesdrop_req(Context, Prop) ->
                        ]).
 filter_response_fields(JObj) ->
     wh_json:set_value(<<"eavesdrop_request_id">>, wh_json:get_value(<<"Msg-ID">>, JObj)
-                      ,wh_json:normalize(wh_json:delete_keys(?REMOVE_FIELDS, JObj))
+                      ,wh_json:normalize(wh_api:remove_defaults(JObj))
                      ).
 
 %%--------------------------------------------------------------------
