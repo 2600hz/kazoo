@@ -65,11 +65,8 @@ maybe_update_status(Call, AgentId, <<"login">>, <<"login">>, _Data) ->
     lager:debug("agent ~s is already logged in", [AgentId]),
     _ = play_agent_logged_in_already(Call),
     send_new_status(Call, AgentId, fun wapi_acdc_agent:publish_login/1, undefined);
-maybe_update_status(Call, AgentId, <<"login">>, <<"paused">>, Data) ->
-    Timeout = wh_json:get_integer_value(<<"timeout">>, Data, whapps_config:get(<<"acdc">>, <<"default_agent_pause_timeout">>, 600)),
-    lager:debug("agent ~s is pausing work for ~b s", [AgentId, Timeout]),
-    pause_agent(Call, AgentId, Timeout),
-    play_agent_pause(Call);
+maybe_update_status(Call, AgentId, FromStatus, <<"paused">>, Data) ->
+    maybe_pause_agent(Call, AgentId, FromStatus, Data);
 
 maybe_update_status(Call, AgentId, <<"logout">>, <<"login">>, _Data) ->
     lager:debug("agent ~s wants to log in", [AgentId]),
@@ -88,14 +85,31 @@ maybe_update_status(Call, _AgentId, _Status, _NewStatus, _Data) ->
     lager:debug("agent ~s: invalid status change from ~s to ~s", [_AgentId, _Status, _NewStatus]),
     play_agent_invalid(Call).
 
+
+maybe_pause_agent(Call, AgentId, <<"login">>, Data) ->
+    pause_agent(Call, AgentId, Data);
+maybe_pause_agent(Call, AgentId, <<"busy">>, Data) ->
+    pause_agent(Call, AgentId, Data);
+maybe_pause_agent(Call, _AgentId, FromStatus, _Data) ->
+    lager:debug("unable to go from ~s to paused", [FromStatus]),
+    play_agent_invalid(Call).
+
 login_agent(Call, AgentId) ->
     update_agent_status(Call, AgentId, <<"login">>, fun wapi_acdc_agent:publish_login/1).
 
 logout_agent(Call, AgentId) ->
     update_agent_status(Call, AgentId, <<"logout">>, fun wapi_acdc_agent:publish_logout/1).
 
-pause_agent(Call, AgentId, Timeout) ->
-    update_agent_status(Call, AgentId, <<"paused">>, fun wapi_acdc_agent:publish_pause/1, Timeout).
+pause_agent(Call, AgentId, Timeout) when is_integer(Timeout) ->
+    play_agent_pause(Call),
+    update_agent_status(Call, AgentId, <<"paused">>, fun wapi_acdc_agent:publish_pause/1, Timeout);
+pause_agent(Call, AgentId, Data) ->
+    Timeout = wh_json:get_integer_value(<<"timeout">>
+                                        ,Data
+                                        ,whapps_config:get(<<"acdc">>, <<"default_agent_pause_timeout">>, 600)
+                                       ),
+    lager:debug("agent ~s is pausing work for ~b s", [AgentId, Timeout]),
+    pause_agent(Call, AgentId, Timeout).
 
 resume_agent(Call, AgentId) ->
     update_agent_status(Call, AgentId, <<"resume">>, fun wapi_acdc_agent:publish_resume/1).
@@ -111,7 +125,6 @@ update_agent_status(Call, AgentId, Status, PubFun, Timeout) ->
             ],
 
     {ok, _D} = acdc_util:update_agent_status(AcctId, AgentId, Status, Extra),
-    lager:debug("saved d: ~p", [_D]),
     send_new_status(Call, AgentId, PubFun, Timeout).
 
 -spec send_new_status/4 :: (whapps_call:call(), ne_binary(), wh_amqp_worker:publish_fun(), integer() | 'undefined') -> 'ok'.

@@ -306,7 +306,7 @@ connect_req({timeout, Ref, ?COLLECT_RESP_MESSAGE}, #state{collect_ref=Ref
         undefined ->
             lager:debug("no more responses to choose from"),
             acdc_queue_listener:cancel_member_call(Srv),
-            {next_state, ready, clear_member_call(State)}
+            {next_state, ready, clear_member_call(State), hibernate}
     end;
 
 connect_req({accepted, AcceptJObj}=Accept, #state{member_call=Call}=State) ->
@@ -324,12 +324,15 @@ connect_req({retry, _RetryJObj}, State) ->
 
 connect_req({member_hungup, JObj}, #state{queue_proc=Srv
                                           ,member_call=Call
+                                          ,acct_id=AcctId
+                                          ,queue_id=QueueId
                                          }=State) ->
     case wh_json:get_value(<<"Call-ID">>, JObj) =:= whapps_call:call_id(Call) of
         true ->
             lager:debug("member hungup before we could assign an agent"),
             acdc_queue_listener:finish_member_call(Srv, JObj),
-            {next_state, ready, clear_member_call(State)};
+            acdc_stats:call_abandoned(AcctId, QueueId, whapps_call:call_id(Call), ?ABANDON_HANGUP),
+            {next_state, ready, clear_member_call(State), hibernate};
         false ->
             lager:debug("hangup recv for ~s while processing ~s, ignoring", [wh_json:get_value(<<"Call-ID">>, JObj)
                                                                              ,whapps_call:call_id(Call)
@@ -346,7 +349,7 @@ connect_req({dtmf_pressed, DTMF}, #state{caller_exit_key=DTMF
     lager:debug("member pressed the exit key (~s)", [DTMF]),
     acdc_queue_listener:exit_member_call(Srv),
     acdc_stats:call_abandoned(AcctId, QueueId, whapps_call:call_id(Call), ?ABANDON_EXIT),
-    {next_state, ready, clear_member_call(State)};
+    {next_state, ready, clear_member_call(State), hibernate};
 
 connect_req({timeout, ConnRef, ?CONNECTION_TIMEOUT_MESSAGE}, #state{queue_proc=Srv
                                                                     ,connection_timer_ref=ConnRef
@@ -357,7 +360,7 @@ connect_req({timeout, ConnRef, ?CONNECTION_TIMEOUT_MESSAGE}, #state{queue_proc=S
     lager:debug("connection timeout occurred, bounce the caller out of the queue"),
     acdc_queue_listener:timeout_member_call(Srv),
     acdc_stats:call_abandoned(AcctId, QueueId, whapps_call:call_id(Call), ?ABANDON_TIMEOUT),
-    {next_state, ready, clear_member_call(State)};
+    {next_state, ready, clear_member_call(State), hibernate};
 
 connect_req(_Event, State) ->
     lager:debug("unhandled event: ~p", [_Event]),
@@ -397,7 +400,7 @@ connecting({accepted, AcceptJObj}, #state{queue_proc=Srv
             acdc_stats:call_handled(AcctId, QueueId, whapps_call:call_id(Call)
                                     ,wh_json:get_value(<<"Agent-ID">>, AcceptJObj)
                                    ),
-            {next_state, ready, clear_member_call(State)};
+            {next_state, ready, clear_member_call(State), hibernate};
         false ->
             lager:debug("ignoring accepted message"),
             {next_state, connecting, State}
@@ -434,10 +437,15 @@ connecting({timeout, _OtherAgentRef, ?AGENT_RING_TIMEOUT_MESSAGE}, #state{agent_
     lager:debug("unknown agent ref: ~p known: ~p", [_OtherAgentRef, _AgentRef]),
     {next_state, connect_req, State};
 
-connecting({member_hungup, CallEvt}, #state{queue_proc=Srv}=State) ->
+connecting({member_hungup, CallEvt}, #state{queue_proc=Srv
+                                            ,acct_id=AcctId
+                                            ,queue_id=QueueId
+                                            ,member_call=Call
+                                           }=State) ->
     lager:debug("caller hungup while we waited for the agent to connect"),
     acdc_queue_listener:cancel_member_call(Srv, CallEvt),
-    {next_state, ready, clear_member_call(State)};
+    acdc_stats:call_abandoned(AcctId, QueueId, whapps_call:call_id(Call), ?ABANDON_HANGUP),
+    {next_state, ready, clear_member_call(State), hibernate};
 
 connecting({dtmf_pressed, DTMF}, #state{caller_exit_key=DTMF
                                         ,queue_proc=Srv
@@ -448,7 +456,7 @@ connecting({dtmf_pressed, DTMF}, #state{caller_exit_key=DTMF
     lager:debug("member pressed the exit key (~s)", [DTMF]),
     acdc_queue_listener:exit_member_call(Srv),
     acdc_stats:call_abandoned(AcctId, QueueId, whapps_call:call_id(Call), ?ABANDON_EXIT),
-    {next_state, ready, clear_member_call(State)};
+    {next_state, ready, clear_member_call(State), hibernate};
 connecting({dtmf_pressed, _DTMF}, State) ->
     lager:debug("caller pressed ~s, ignoring", [_DTMF]),
     {next_state, connecting, State};
@@ -462,7 +470,7 @@ connecting({timeout, ConnRef, ?CONNECTION_TIMEOUT_MESSAGE}, #state{queue_proc=Sr
     lager:debug("connection timeout occurred, bounce the caller out of the queue"),
     acdc_queue_listener:timeout_member_call(Srv),
     acdc_stats:call_abandoned(AcctId, QueueId, whapps_call:call_id(Call), ?ABANDON_TIMEOUT),
-    {next_state, ready, clear_member_call(State)};
+    {next_state, ready, clear_member_call(State), hibernate};
 
 connecting(_Event, State) ->
     lager:debug("unhandled event: ~p", [_Event]),

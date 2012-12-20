@@ -39,6 +39,7 @@
 -export([init/0
          ,allowed_methods/0, allowed_methods/1, allowed_methods/2
          ,resource_exists/0, resource_exists/1, resource_exists/2
+         ,content_types_provided/1, content_types_provided/2
          ,validate/1, validate/2, validate/3
          ,put/1, put/2, put/3
          ,post/2, post/3
@@ -73,6 +74,9 @@
                               ,?STAT_TIMESTAMP_WAITING
                              ]).
 
+-define(FORMAT_COMPRESSED, <<"compressed">>).
+-define(FORMAT_VERBOSE, <<"verbose">>).
+
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -87,6 +91,7 @@
 init() ->
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.queues">>, ?MODULE, allowed_methods),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.queues">>, ?MODULE, resource_exists),
+    _ = crossbar_bindings:bind(<<"v1_resource.content_types_provided.queues">>, ?MODULE, content_types_provided),
     _ = crossbar_bindings:bind(<<"v1_resource.validate.queues">>, ?MODULE, validate),
     _ = crossbar_bindings:bind(<<"v1_resource.execute.put.queues">>, ?MODULE, put),
     _ = crossbar_bindings:bind(<<"v1_resource.execute.post.queues">>, ?MODULE, post),
@@ -135,6 +140,28 @@ resource_exists(_) -> true.
 
 resource_exists(_, ?ROSTER_PATH_TOKEN) -> true;
 resource_exists(_, ?EAVESDROP_PATH_TOKEN) -> true.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Add content types accepted and provided by this module
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec content_types_provided/1 :: (cb_context:context()) -> cb_context:context().
+-spec content_types_provided/2 :: (cb_context:context(), path_token()) -> cb_context:context().
+content_types_provided(#cb_context{}=Context) -> Context.
+content_types_provided(#cb_context{}=Context, ?STATS_PATH_TOKEN) ->
+    case cb_context:req_value(Context, <<"format">>, ?FORMAT_COMPRESSED) of
+        ?FORMAT_VERBOSE ->
+            CTPs = [{to_json, [{<<"application">>, <<"json">>}]}
+                    ,{to_csv, [{<<"application">>, <<"octet-stream">>}]}
+                   ],
+            cb_context:add_content_types_provided(Context, CTPs);
+        ?FORMAT_COMPRESSED ->
+            CTPs = [{to_json, [{<<"application">>, <<"json">>}]}],
+            cb_context:add_content_types_provided(Context, CTPs)
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -301,8 +328,8 @@ put(Context) ->
     lager:debug("saving new queue"),
     crossbar_doc:save(Context).
 
-put(#cb_context{req_data=Data}=Context, ?EAVESDROP_PATH_TOKEN) ->
-    Prop = [{<<"Eavesdrop-Call-ID">>, wh_json:get_value(<<"call_id">>, Data)}
+put(Context, ?EAVESDROP_PATH_TOKEN) ->
+    Prop = [{<<"Eavesdrop-Call-ID">>, cb_context:req_value(Context, <<"call_id">>)}
             | default_eavesdrop_req(Context)
            ],
     eavesdrop_req(Context, Prop).
@@ -313,13 +340,13 @@ put(Context, QID, ?EAVESDROP_PATH_TOKEN) ->
     eavesdrop_req(Context, Prop).
 
 -spec default_eavesdrop_req/1 :: (cb_context:context()) -> wh_proplist().
-default_eavesdrop_req(#cb_context{req_data=Data}=Context) ->
-    [{<<"Eavesdrop-Mode">>, wh_json:get_value(<<"mode">>, Data, <<"listen">>)}
+default_eavesdrop_req(Context) ->
+    [{<<"Eavesdrop-Mode">>, cb_context:req_value(Context, <<"mode">>, <<"listen">>)}
      ,{<<"Account-ID">>, cb_context:account_id(Context)}
-     ,{<<"Endpoint-ID">>, wh_json:get_value(<<"id">>, Data)}
-     ,{<<"Endpoint-Timeout">>, wh_json:get_integer_value(<<"timeout">>, Data, 20)}
-     ,{<<"Outgoing-Caller-ID-Name">>, wh_json:get_value(<<"caller_id_name">>, Data)}
-     ,{<<"Outgoing-Caller-ID-Number">>, wh_json:get_value(<<"caller_id_number">>, Data)}
+     ,{<<"Endpoint-ID">>, cb_context:req_value(Context, <<"id">>)}
+     ,{<<"Endpoint-Timeout">>, wh_util:to_integer(cb_context:req_value(Context, <<"timeout">>, 20))}
+     ,{<<"Outgoing-Caller-ID-Name">>, cb_context:req_value(Context, <<"caller_id_name">>)}
+     ,{<<"Outgoing-Caller-ID-Number">>, cb_context:req_value(Context, <<"caller_id_number">>)}
      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
@@ -350,7 +377,7 @@ eavesdrop_req(Context, Prop) ->
                        ]).
 filter_response_fields(JObj) ->
     wh_json:set_value(<<"eavesdrop_request_id">>, wh_json:get_value(<<"Msg-ID">>, JObj)
-                      ,wh_json:normalize(wh_json:delete_keys(?REMOVE_FIELDS, JObj))
+                      ,wh_json:normalize(wh_api:remove_defaults(JObj))
                      ).
 
 %%--------------------------------------------------------------------
@@ -530,21 +557,21 @@ fetch_all_queue_stats(Context) ->
            end,
 
     AcctId = cb_context:account_id(Context),
-    Opts = [{startkey, [To, AcctId]}
-            ,{endkey, [From, AcctId]}
+    Opts = [{startkey, [To]}
+            ,{endkey, [From]}
             ,include_docs
             ,descending
            ],
 
-    case cb_context:req_value(Context, <<"format">>, <<"compressed">>) of
-        <<"compressed">> ->
+    case cb_context:req_value(Context, <<"format">>, ?FORMAT_COMPRESSED) of
+        ?FORMAT_COMPRESSED ->
             Context1 = crossbar_doc:load_view(<<"call_stats/call_log">>
                                               ,Opts
                                               ,cb_context:set_account_db(Context, acdc_stats:db_name(AcctId))
                                               ,fun extract_doc/2
                                              ),
             compress_stats(Context1, From, To);
-        <<"verbose">> ->
+        ?FORMAT_VERBOSE ->
             crossbar_doc:load_view(<<"call_stats/call_log">>
                                    ,Opts
                                    ,cb_context:set_account_db(Context, acdc_stats:db_name(AcctId))
@@ -560,10 +587,13 @@ compress_stats(Context, From, To) ->
     case cb_context:resp_status(Context) of
         success ->
             Compressed = compress_stats(cb_context:doc(Context), {wh_json:new(), wh_json:new(), wh_json:new()}),
-            crossbar_util:response(wh_json:set_values([{<<"start_range">>, From}
-                                                       ,{<<"end_range">>, To}
-                                                      ], Compressed)
-                                   ,Context);
+            crossbar_util:response(
+              wh_json:set_values([{<<"start_range">>, From}
+                                  ,{<<"end_range">>, To}
+                                  ,{<<"current_timestamp">>, wh_util:current_tstamp()}
+                                 ]
+                                 ,Compressed)
+              ,Context);
         _S ->
             lager:debug("failed to load stats"),
             Context
@@ -629,14 +659,13 @@ accumulate_queue_stats(QueueId, Calls) ->
 accumulate_call_stats(CallId, Stats) ->
     WaitTime = wait_time(Stats),
     TalkTime = call_time(Stats),
-    {CurrentStatus, CurrentTstamp} = current_status(Stats),
+    {CurrentStatus, _CurrentTstamp} = current_status(Stats),
 
     AccStats = wh_json:filter(fun({_, V}) -> V =/= undefined end
                               ,wh_json:set_values([{<<"wait_time">>, WaitTime}
                                                    ,{<<"call_time">>, TalkTime}
-                                                   ,{<<"current_timestamp">>, CurrentTstamp}
                                                    ,{<<"current_status">>, CurrentStatus}
-                                                ], Stats)
+                                                  ], Stats)
                              ),
     {CallId, AccStats}.
 
@@ -652,8 +681,8 @@ fold_call_statuses(CallId, Stats, Acc) ->
             Waiting = wh_json:get_value(<<"calls_abandoned">>, Acc, []),
             wh_json:set_value(<<"calls_abandoned">>, [CallId | Waiting], Acc);
         {?STATUS_PROCESSED, _} ->
-            Waiting = wh_json:get_value(<<"calls_finished">>, Acc, []),
-            wh_json:set_value(<<"calls_finished">>, [CallId | Waiting], Acc);
+            Waiting = wh_json:get_value(<<"calls_processed">>, Acc, []),
+            wh_json:set_value(<<"calls_processed">>, [CallId | Waiting], Acc);
         _ -> Acc
     end.
 

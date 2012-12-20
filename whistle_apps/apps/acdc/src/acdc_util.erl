@@ -117,10 +117,10 @@ unbind_from_call_events(Call) ->
 -spec agent_status/2 :: (ne_binary(), ne_binary()) -> ne_binary().
 -spec agent_status/3 :: (ne_binary(), ne_binary(), boolean()) -> ne_binary() | wh_json:object().
 agent_status(?NE_BINARY = AcctId, AgentId) ->
-    agent_status(AcctId, AgentId, []).
+    agent_status(AcctId, AgentId, false).
 agent_status(?NE_BINARY = AcctId, AgentId, ReturnDoc) ->
-    Opts = [{endkey, [AcctId, AgentId, 0]}
-            ,{startkey, [AcctId, AgentId, wh_json:new()]}
+    Opts = [{endkey, [AgentId, 0]}
+            ,{startkey, [AgentId, wh_json:new()]}
             ,{limit, 1}
             ,descending
             | case ReturnDoc of true -> [include_docs]; false -> [] end
@@ -152,9 +152,6 @@ update_agent_status(?NE_BINARY = AcctId, AgentId, Status, Options) ->
 -spec proc_id/0 :: () -> ne_binary().
 -spec proc_id/1 :: (pid()) -> ne_binary().
 -spec proc_id/2 :: (pid(), atom() | ne_binary()) -> ne_binary().
-proc_id() ->
-    proc_id(self()).
-proc_id(Pid) ->
-    proc_id(Pid, node()).
-proc_id(Pid, Node) ->
-    list_to_binary([wh_util:to_binary(Node), "-", pid_to_list(Pid)]).
+proc_id() -> proc_id(self()).
+proc_id(Pid) -> proc_id(Pid, node()).
+proc_id(Pid, Node) -> list_to_binary([wh_util:to_binary(Node), "-", pid_to_list(Pid)]).
