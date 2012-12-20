@@ -119,8 +119,8 @@ unbind_from_call_events(Call) ->
 agent_status(?NE_BINARY = AcctId, AgentId) ->
     agent_status(AcctId, AgentId, false).
 agent_status(?NE_BINARY = AcctId, AgentId, ReturnDoc) ->
-    Opts = [{endkey, [AcctId, AgentId, 0]}
-            ,{startkey, [AcctId, AgentId, wh_json:new()]}
+    Opts = [{endkey, [AgentId, 0]}
+            ,{startkey, [AgentId, wh_json:new()]}
             ,{limit, 1}
             ,descending
             | case ReturnDoc of true -> [include_docs]; false -> [] end
