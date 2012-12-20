@@ -192,14 +192,14 @@ extract_defaults(Prop) when is_list(Prop) ->
 extract_defaults(JObj) ->
     extract_defaults(wh_json:to_proplist(JObj)).
 
--spec remove_defaults/1 :: (api_terms()) -> wh_proplist().
+-spec remove_defaults/1 :: (api_terms()) -> api_terms().
 remove_defaults(Prop) when is_list(Prop) ->
     [ KV || {K, _}=KV <- Prop,
             (not lists:member(K, ?DEFAULT_HEADERS)),
             (not lists:member(K, ?OPTIONAL_DEFAULT_HEADERS))
     ];
 remove_defaults(JObj) ->
-    remove_defaults(wh_json:to_proplist(JObj)).
+    wh_json:from_list(remove_defaults(wh_json:to_proplist(JObj))).
 
 %%--------------------------------------------------------------------
 %% @doc Format an error event
