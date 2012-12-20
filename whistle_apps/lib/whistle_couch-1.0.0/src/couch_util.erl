@@ -228,6 +228,10 @@ get_results(#server{}=Conn, DbName, DesignDoc, ViewOptions) ->
     Db = get_db(Conn, DbName),
     do_fetch_results(Db, DesignDoc, ViewOptions).
 
+%% This function assumes a "reduce" function that returns the count of docs exists
+%% Need to see how to get couchbeam to return the "rows" property instead of the result
+%% list; that would be better, but for not, setting the view's "reduce" to the _count
+%% function will suffice (provided a reduce isn't already defined).
 -spec get_results_count/4 :: (server(), ne_binary(), ne_binary(), wh_proplist()) ->
                                      {'ok', integer()} |
                                      couchbeam_error().
@@ -254,14 +258,22 @@ format_error(E) ->
     lager:debug("unfomatted error: ~p", [E]),
     E.
 
-
 -spec do_fetch_results_count/3 :: (db(), ne_binary() | 'all_docs' | 'design_docs', wh_proplist()) ->
-                                          {'ok', integer()} |
+                                          {'ok', integer() | 'undefined'} |
                                           couchbeam_error().
 do_fetch_results_count(Db, DesignDoc, Options) ->
     ?RETRY_504(
-       case couchbeam_view:fetch(Db, DesignDoc, Options) of
-           {'ok', JObj} -> {'ok', wh_json:get_integer_value(<<"total_rows">>, JObj, 0)};
+       case couchbeam_view:fetch(Db, DesignDoc
+                                 ,[{reduce, true} | props:delete(reduce, Options)]
+                                )
+       of
+           {'ok', [JObj]} ->
+               {'ok', wh_json:get_integer_value(<<"value">>, JObj)};
+           {'ok', JObj} ->
+               case wh_json:get_integer_value(<<"total_rows">>, JObj) of
+                   undefined -> {'ok', length(wh_json:get_value(<<"rows">>, JObj, []))};
+                   N -> {'ok', N}
+               end;
            {'error', _, E} -> {'error', E};
            Other -> Other
        end
