@@ -87,18 +87,12 @@ maybe_update_status(Call, _AgentId, _Status, _NewStatus, _Data) ->
 
 
 maybe_pause_agent(Call, AgentId, <<"login">>, Data) ->
-    Timeout = wh_json:get_integer_value(<<"timeout">>
-                                        ,Data
-                                        ,whapps_config:get(<<"acdc">>, <<"default_agent_pause_timeout">>, 600)
-                                       ),
-    lager:debug("agent ~s is pausing work for ~b s", [AgentId, Timeout]),
-    pause_agent(Call, AgentId, Timeout),
-
-play_agent_pause(Call)
-maybe_pause_agent(Call, AgentId, FromStatus, Data) ->
-play_agent_pause() ->
-
-
+    pause_agent(Call, AgentId, Data);
+maybe_pause_agent(Call, AgentId, <<"busy">>, Data) ->
+    pause_agent(Call, AgentId, Data);
+maybe_pause_agent(Call, _AgentId, FromStatus, _Data) ->
+    lager:debug("unable to go from ~s to paused", [FromStatus]),
+    play_agent_invalid(Call).
 
 login_agent(Call, AgentId) ->
     update_agent_status(Call, AgentId, <<"login">>, fun wapi_acdc_agent:publish_login/1).
@@ -106,8 +100,16 @@ login_agent(Call, AgentId) ->
 logout_agent(Call, AgentId) ->
     update_agent_status(Call, AgentId, <<"logout">>, fun wapi_acdc_agent:publish_logout/1).
 
-pause_agent(Call, AgentId, Timeout) ->
-    update_agent_status(Call, AgentId, <<"paused">>, fun wapi_acdc_agent:publish_pause/1, Timeout).
+pause_agent(Call, AgentId, Timeout) when is_integer(Timeout) ->
+    play_agent_pause(Call),
+    update_agent_status(Call, AgentId, <<"paused">>, fun wapi_acdc_agent:publish_pause/1, Timeout);
+pause_agent(Call, AgentId, Data) ->
+    Timeout = wh_json:get_integer_value(<<"timeout">>
+                                        ,Data
+                                        ,whapps_config:get(<<"acdc">>, <<"default_agent_pause_timeout">>, 600)
+                                       ),
+    lager:debug("agent ~s is pausing work for ~b s", [AgentId, Timeout]),
+    pause_agent(Call, AgentId, Timeout).
 
 resume_agent(Call, AgentId) ->
     update_agent_status(Call, AgentId, <<"resume">>, fun wapi_acdc_agent:publish_resume/1).
