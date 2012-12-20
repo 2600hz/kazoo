@@ -248,7 +248,7 @@ store_stat(?NE_BINARY = AcctId, JObj) ->
         {ok, _} -> ok;
         {error, _E} ->
             lager:debug("error saving: ~p", [_E]),
-            timer:sleep(250),
+            timer:sleep(250 + random:uniform(100)),
             store_stat(AcctId, JObj)
     end.
 
