@@ -573,6 +573,7 @@ ringing({originate_failed, _E}, #state{agent_proc=Srv
     acdc_agent:member_connect_retry(Srv, CallId),
 
     acdc_stats:call_missed(AcctId, QueueId, AgentId, CallId),
+    acdc_stats:agent_ready(AcctId, AgentId),
 
     acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_GREEN),
     {next_state, ready, clear_call(State)};
@@ -598,7 +599,9 @@ ringing({channel_hungup, CallId}, #state{agent_proc=Srv
 
     acdc_agent:member_connect_retry(Srv, MCallId),
     acdc_agent:channel_hungup(Srv, CallId),
+
     acdc_stats:call_missed(AcctId, QueueId, AgentId, MCallId),
+    acdc_stats:agent_ready(AcctId, AgentId),
 
     acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_GREEN),
     {next_state, ready, clear_call(State)};
@@ -614,6 +617,7 @@ ringing({channel_hungup, CallId}, #state{agent_proc=Srv
     acdc_agent:channel_hungup(Srv, AgentCallId),
 
     acdc_stats:call_abandoned(AcctId, QueueId, CallId, ?ABANDON_HANGUP),
+    acdc_stats:agent_ready(AcctId, AgentId),
 
     acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_GREEN),
     {next_state, ready, clear_call(State)};
@@ -628,9 +632,16 @@ ringing({dtmf_pressed, DTMF}, #state{caller_exit_key=DTMF
                                     }=State) when is_binary(DTMF) ->
     lager:debug("caller exit key pressed: ~s", [DTMF]),
     acdc_agent:channel_hungup(Srv, AgentCallId),
+
     acdc_stats:call_abandoned(AcctId, QueueId, CallId, ?ABANDON_EXIT),
+    acdc_stats:agent_ready(AcctId, AgentId),
+
     acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_GREEN),
+
     {next_state, ready, clear_call(State)};
+ringing({dtmf_pressed, DTMF}, #state{caller_exit_key=_ExitKey}=State) ->
+    lager:debug("caller pressed ~s, exit key is ~s", [DTMF, _ExitKey]),
+    {next_state, ringing, State};
 
 ringing({channel_answered, ACallId}, #state{agent_call_id=ACallId
                                             ,agent_proc=Srv
@@ -685,6 +696,8 @@ answered({dialplan_error, _App}, #state{agent_proc=Srv
     acdc_agent:member_connect_retry(Srv, CallId),
 
     acdc_stats:call_missed(AcctId, QueueId, AgentId, CallId),
+    acdc_stats:agent_ready(AcctId, AgentId),
+
     acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_GREEN),
     {next_state, ready, clear_call(State)};
 
@@ -858,7 +871,7 @@ paused({timeout, Ref, ?PAUSE_MESSAGE}, #state{sync_ref=Ref
 
     acdc_agent:send_status_resume(Srv),
 
-    acdc_stats:agent_resume(AcctId, AgentId),
+    acdc_stats:agent_ready(AcctId, AgentId),
     acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_GREEN),
 
     {next_state, ready, clear_call(State#state{sync_ref=undefined})};
@@ -874,7 +887,7 @@ paused({resume}, #state{acct_id=AcctId
 
     acdc_agent:send_status_resume(Srv),
 
-    acdc_stats:agent_resume(AcctId, AgentId),
+    acdc_stats:agent_ready(AcctId, AgentId),
 
     acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_GREEN),
     {next_state, ready, clear_call(State)};
@@ -960,8 +973,11 @@ outbound({pause, Timeout}, #state{acct_id=AcctId
 
 outbound({timeout, CRef, ?CALL_STATUS_MESSAGE}, #state{call_status_ref=CRef
                                                        ,call_status_failures=Failures
+                                                       ,acct_id=AcctId
+                                                       ,agent_id=AgentId
                                                       }=State) when Failures > 3 ->
     lager:debug("outbound call status failed ~b times, call is probably down", [Failures]),
+    acdc_stats:agent_ready(AcctId, AgentId),
     {next_state, ready, clear_call(State), hibernate};
 outbound({timeout, CRef, ?CALL_STATUS_MESSAGE}, #state{call_status_ref=CRef
                                                        ,call_status_failures=Failures
