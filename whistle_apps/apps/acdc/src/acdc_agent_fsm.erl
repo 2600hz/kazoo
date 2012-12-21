@@ -524,7 +524,15 @@ ready({route_req, Call}, #state{agent_proc=Srv
 
     acdc_agent:outbound_call(Srv, Call),
     acdc_stats:agent_oncall(AcctId, AgentId, CallId),
-    {next_state, outbound, State#state{outbound_call_id=CallId}, hibernate};
+
+    {next_state
+     ,outbound
+     ,State#state{outbound_call_id=CallId
+                  ,call_status_ref=start_call_status_timer()
+                  ,call_status_failures=0
+                 }
+     ,hibernate
+    };
 
 ready(_Evt, State) ->
     lager:debug("unhandled event while ready: ~p", [_Evt]),
@@ -565,6 +573,7 @@ ringing({originate_failed, _E}, #state{agent_proc=Srv
     acdc_agent:member_connect_retry(Srv, CallId),
 
     acdc_stats:call_missed(AcctId, QueueId, AgentId, CallId),
+    acdc_stats:agent_ready(AcctId, AgentId),
 
     acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_GREEN),
     {next_state, ready, clear_call(State)};
@@ -590,7 +599,9 @@ ringing({channel_hungup, CallId}, #state{agent_proc=Srv
 
     acdc_agent:member_connect_retry(Srv, MCallId),
     acdc_agent:channel_hungup(Srv, CallId),
+
     acdc_stats:call_missed(AcctId, QueueId, AgentId, MCallId),
+    acdc_stats:agent_ready(AcctId, AgentId),
 
     acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_GREEN),
     {next_state, ready, clear_call(State)};
@@ -601,12 +612,12 @@ ringing({channel_hungup, CallId}, #state{agent_proc=Srv
                                          ,member_call_id=CallId
                                          ,member_call_queue_id=QueueId
                                          ,agent_call_id=AgentCallId
-                                        }=State
-       ) ->
+                                        }=State) ->
     lager:debug("caller's channel (~s) has gone down, stop agent's call", [CallId]),
     acdc_agent:channel_hungup(Srv, AgentCallId),
 
     acdc_stats:call_abandoned(AcctId, QueueId, CallId, ?ABANDON_HANGUP),
+    acdc_stats:agent_ready(AcctId, AgentId),
 
     acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_GREEN),
     {next_state, ready, clear_call(State)};
@@ -621,9 +632,16 @@ ringing({dtmf_pressed, DTMF}, #state{caller_exit_key=DTMF
                                     }=State) when is_binary(DTMF) ->
     lager:debug("caller exit key pressed: ~s", [DTMF]),
     acdc_agent:channel_hungup(Srv, AgentCallId),
+
     acdc_stats:call_abandoned(AcctId, QueueId, CallId, ?ABANDON_EXIT),
+    acdc_stats:agent_ready(AcctId, AgentId),
+
     acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_GREEN),
+
     {next_state, ready, clear_call(State)};
+ringing({dtmf_pressed, DTMF}, #state{caller_exit_key=_ExitKey}=State) ->
+    lager:debug("caller pressed ~s, exit key is ~s", [DTMF, _ExitKey]),
+    {next_state, ringing, State};
 
 ringing({channel_answered, ACallId}, #state{agent_call_id=ACallId
                                             ,agent_proc=Srv
@@ -678,6 +696,8 @@ answered({dialplan_error, _App}, #state{agent_proc=Srv
     acdc_agent:member_connect_retry(Srv, CallId),
 
     acdc_stats:call_missed(AcctId, QueueId, AgentId, CallId),
+    acdc_stats:agent_ready(AcctId, AgentId),
+
     acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_GREEN),
     {next_state, ready, clear_call(State)};
 
@@ -719,16 +739,22 @@ answered({sync_req, JObj}, #state{agent_proc=Srv
 
 answered({channel_unbridged, CallId}, #state{member_call_id=CallId}=State) ->
     lager:debug("caller channel unbridged"),
-    {next_state, wrapup, State#state{wrapup_timeout=0, wrapup_ref=hangup_call(State)}};
+    {next_state, wrapup, State#state{wrapup_timeout=0
+                                     ,wrapup_ref=hangup_call(State)
+                                    }};
 answered({channel_unbridged, CallId}, #state{agent_call_id=CallId}=State) ->
     lager:debug("agent channel unbridged"),
-    {next_state, wrapup, State#state{wrapup_timeout=0, wrapup_ref=hangup_call(State)}};
+    {next_state, wrapup, State#state{wrapup_timeout=0
+                                     ,wrapup_ref=hangup_call(State)
+                                    }};
 
 answered({timeout, CRef, ?CALL_STATUS_MESSAGE}, #state{call_status_ref=CRef
                                                        ,call_status_failures=Failures
                                                       }=State) when Failures > 3 ->
     lager:debug("call status failed ~b times, call is probably down", [Failures]),
-    {next_state, wrapup, State#state{wrapup_timeout=0, wrapup_ref=hangup_call(State)}};
+    {next_state, wrapup, State#state{wrapup_timeout=0
+                                     ,wrapup_ref=hangup_call(State)
+                                    }};
 
 answered({timeout, CRef, ?CALL_STATUS_MESSAGE}, #state{call_status_ref=CRef
                                                        ,call_status_failures=Failures
@@ -744,6 +770,7 @@ answered({call_status, JObj}, #state{call_status_failures=Failures}=State) ->
         _S ->
             {next_state, answered, State#state{call_status_failures=Failures+1}}
     end;
+
 answered(_Evt, State) ->
     lager:debug("unhandled event while answered: ~p", [_Evt]),
     {next_state, answered, State}.
@@ -807,7 +834,14 @@ wrapup({route_req, Call}, #state{agent_proc=Srv
     acdc_agent:outbound_call(Srv, Call),
     acdc_stats:agent_oncall(AcctId, AgentId, CallId),
 
-    {next_state, outbound, State#state{outbound_call_id=CallId}, hibernate};
+    {next_state
+     ,outbound
+     ,State#state{outbound_call_id=CallId
+                  ,call_status_ref=start_call_status_timer()
+                  ,call_status_failures=0
+                 }
+     ,hibernate
+    };
 
 wrapup(_Evt, State) ->
     lager:debug("unhandled event while in wrapup: ~p", [_Evt]),
@@ -837,7 +871,7 @@ paused({timeout, Ref, ?PAUSE_MESSAGE}, #state{sync_ref=Ref
 
     acdc_agent:send_status_resume(Srv),
 
-    acdc_stats:agent_resume(AcctId, AgentId),
+    acdc_stats:agent_ready(AcctId, AgentId),
     acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_GREEN),
 
     {next_state, ready, clear_call(State#state{sync_ref=undefined})};
@@ -853,7 +887,7 @@ paused({resume}, #state{acct_id=AcctId
 
     acdc_agent:send_status_resume(Srv),
 
-    acdc_stats:agent_resume(AcctId, AgentId),
+    acdc_stats:agent_ready(AcctId, AgentId),
 
     acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_GREEN),
     {next_state, ready, clear_call(State)};
@@ -885,7 +919,14 @@ paused({route_req, Call}, #state{agent_proc=Srv
     acdc_agent:outbound_call(Srv, Call),
     acdc_stats:agent_oncall(AcctId, AgentId, CallId),
 
-    {next_state, outbound, State#state{outbound_call_id=CallId}, hibernate};
+    {next_state
+     ,outbound
+     ,State#state{outbound_call_id=CallId
+                  ,call_status_ref=start_call_status_timer()
+                  ,call_status_failures=0
+                 }
+     ,hibernate
+    };
 
 paused(_Evt, State) ->
     lager:debug("unhandled event while paused: ~p", [_Evt]),
@@ -908,8 +949,8 @@ outbound({channel_hungup, CallId}, #state{agent_proc=Srv
 
 outbound({leg_destroyed, CallId}, #state{agent_proc=Srv
                                          ,outbound_call_id=CallId
-                                          ,acct_id=AcctId
-                                          ,agent_id=AgentId
+                                         ,acct_id=AcctId
+                                         ,agent_id=AgentId
                                         }=State) ->
     lager:debug("outbound leg ~s destroyed", [CallId]),
     acdc_agent:channel_hungup(Srv, CallId),
@@ -930,7 +971,41 @@ outbound({pause, Timeout}, #state{acct_id=AcctId
     acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_RED_FLASH),
     {next_state, paused, clear_call(State#state{sync_ref=Ref})};
 
-outbound(_Msg, State) ->
+outbound({timeout, CRef, ?CALL_STATUS_MESSAGE}, #state{call_status_ref=CRef
+                                                       ,call_status_failures=Failures
+                                                       ,acct_id=AcctId
+                                                       ,agent_id=AgentId
+                                                      }=State) when Failures > 3 ->
+    lager:debug("outbound call status failed ~b times, call is probably down", [Failures]),
+    acdc_stats:agent_ready(AcctId, AgentId),
+    {next_state, ready, clear_call(State), hibernate};
+outbound({timeout, CRef, ?CALL_STATUS_MESSAGE}, #state{call_status_ref=CRef
+                                                       ,call_status_failures=Failures
+                                                       ,agent_proc=Srv
+                                                       ,outbound_call_id=CallId
+                                                      }=State) ->
+    acdc_agent:call_status_req(Srv, CallId),
+    {next_state, outbound, State#state{call_status_ref=start_call_status_timer()
+                                       ,call_status_failures=Failures+1
+                                      }};
+
+outbound({call_status, JObj}, #state{call_status_failures=Failures
+                                    ,call_status_ref=Ref
+                                    }=State) ->
+    maybe_stop_timer(Ref),
+    case wh_json:get_value(<<"Status">>, JObj) of
+        <<"active">> ->
+            {next_state, outbound, State#state{call_status_ref=start_call_status_timer()
+                                               ,call_status_failures=0
+                                              }};
+        _S ->
+            lager:debug("outbound call isn't active: ~s, trying call status again", [_S]),
+            {next_state, outbound, State#state{call_status_ref=start_call_status_timer()
+                                               ,call_status_failures=Failures+1
+                                              }}
+    end;
+
+outbound(_Msg, #state{}=State) ->
     lager:debug("ignoring msg in outbound: ~p", [_Msg]),
     {next_state, outbound, State}.
 
@@ -1080,10 +1155,8 @@ start_wrapup_timer(Timeout) -> gen_fsm:start_timer(Timeout*1000, wrapup_expired)
 -spec start_sync_timer/0 :: () -> reference().
 -spec start_sync_timer/1 :: (pid()) -> reference().
 start_sync_timer() ->
-    lager:debug("sync timer start"),
     gen_fsm:start_timer(?SYNC_RESPONSE_TIMEOUT, ?SYNC_RESPONSE_MESSAGE).
 start_sync_timer(P) ->
-    lager:debug("sync timer start: ~p", [P]),
     erlang:start_timer(?SYNC_RESPONSE_TIMEOUT, P, ?SYNC_RESPONSE_MESSAGE).
 
 -spec start_resync_timer/0 :: () -> reference().
@@ -1119,8 +1192,15 @@ time_left(Ref) when is_reference(Ref) ->
 time_left(false) -> undefined;
 time_left(Ms) when is_integer(Ms) -> Ms div 1000.
 
-clear_call(#state{fsm_call_id=FSMCallId}=State) ->
+clear_call(#state{fsm_call_id=FSMCallId
+                  ,call_status_ref=CSRef
+                  ,wrapup_ref=WRef
+                 }=State) ->
     put(callid, FSMCallId),
+
+    _ = maybe_stop_timer(CSRef),
+    _ = maybe_stop_timer(WRef),
+
     State#state{wrapup_timeout = 0
                 ,wrapup_ref = undefined
                 ,member_call = undefined

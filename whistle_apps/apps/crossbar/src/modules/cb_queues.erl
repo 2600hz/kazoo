@@ -242,7 +242,7 @@ is_valid_mode(Context, Data) ->
     end.
 
 is_valid_call(Context, Data) ->
-    case wh_json:get_value(<<"call_id">>, Data) of
+    case wh_json:get_binary_value(<<"call_id">>, Data) of
         undefined ->
             {false
              ,cb_context:add_validation_error(<<"call_id">>, <<"required">>
@@ -736,8 +736,11 @@ add_stat(Stat, {Compressed, Global, PerQueue}, ?STATUS_WAITING) ->
 
     TStamp = wh_json:get_value(<<"timestamp">>, Stat),
 
+    CallerIDInfo = get_caller_id_info(Stat, QID, CID),
+
     {wh_json:set_values([{[QID, CID, ?STAT_TIMESTAMP_WAITING], TStamp}
                         ,{[QID, CID, <<"start_timestamp">>], TStamp}
+                         | CallerIDInfo
                         ], Compressed)
      ,wh_json:set_value([CID, ?STAT_TIMESTAMP_WAITING], TStamp, Global)
      ,wh_json:set_value([QID, CID, ?STAT_TIMESTAMP_WAITING], TStamp, PerQueue)
@@ -806,6 +809,21 @@ add_stat(Stat, {Compressed, Global, PerQueue}, ?STATUS_ABANDONED) ->
      ,wh_json:set_value([CID, ?STAT_TIMESTAMP_ABANDONED], TStamp, Global)
      ,wh_json:set_value([QID, CID, ?STAT_TIMESTAMP_ABANDONED], TStamp, PerQueue)
     }.
+
+-spec get_caller_id_info/3 :: (wh_json:object(), ne_binary(), ne_binary()) -> wh_proplist().
+get_caller_id_info(Stat, QID, CID) ->
+    case {wh_json:get_value(<<"caller_id_name">>, Stat)
+          ,wh_json:get_value(<<"caller_id_number">>, Stat)
+         }
+    of
+        {undefined, undefined} -> [];
+        {CName, undefined} -> [{[QID, CID, <<"caller_id_name">>], CName}];
+        {undefined, CNum} ->  [{[QID, CID, <<"caller_id_number">>], CNum}];
+        {CName, CNum} ->
+            [{[QID, CID, <<"caller_id_number">>], CNum}
+             ,{[QID, CID, <<"caller_id_name">>], CName}
+            ]
+    end.
 
 %%--------------------------------------------------------------------
 %% @private

@@ -15,7 +15,7 @@
          ,call_abandoned/4
          ,call_missed/4
          ,call_handled/4
-         ,call_waiting/3
+         ,call_waiting/3, call_waiting/5
 
          %% Agent-specific stats
          ,agent_active/2
@@ -60,6 +60,8 @@
           ,talk_time :: integer() % how long was agent connected to caller
           ,abandon_reason :: abandon_reason()
           ,status :: call_status()
+          ,caller_id_name :: api_binary()
+          ,caller_id_number :: api_binary()
          }).
 -type call_stat() :: #call_stat{}.
 
@@ -127,12 +129,17 @@ call_handled(AcctId, QueueId, CallId, AgentId) ->
 
 %% Call was placed in the AMQP Queue
 -spec call_waiting/3 :: (ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+-spec call_waiting/5 :: (ne_binary(), ne_binary(), ne_binary(), api_binary(), api_binary()) -> 'ok'.
 call_waiting(AcctId, QueueId, CallId) ->
+    call_waiting(AcctId, QueueId, CallId, undefined, undefined).
+call_waiting(AcctId, QueueId, CallId, CName, CNum) ->
     gen_listener:cast(?MODULE, {store, #call_stat{
                                   acct_id=AcctId
                                   ,queue_id=QueueId
                                   ,call_id=CallId
                                   ,status='waiting'
+                                  ,caller_id_name=CName
+                                  ,caller_id_number=CNum
                                  }
                                }).
 
@@ -248,7 +255,7 @@ store_stat(?NE_BINARY = AcctId, JObj) ->
         {ok, _} -> ok;
         {error, _E} ->
             lager:debug("error saving: ~p", [_E]),
-            timer:sleep(250),
+            timer:sleep(250 + random:uniform(100)),
             store_stat(AcctId, JObj)
     end.
 
@@ -259,6 +266,8 @@ stat_to_jobj(#call_stat{acct_id=AcctId
                         ,call_id=CallId
                         ,status='handling'=Status
                         ,timestamp=Timestamp
+                        ,caller_id_name=CName
+                        ,caller_id_number=CNum
                        }, Prefix) ->
     [wh_json:from_list(
        props:filter_undefined(
@@ -268,6 +277,8 @@ stat_to_jobj(#call_stat{acct_id=AcctId
           ,{<<"agent_id">>, AgentId}
           ,{<<"timestamp">>, Timestamp}
           ,{<<"status">>, Status}
+          ,{<<"caller_id_name">>, CName}
+          ,{<<"caller_id_number">>, CNum}
           ,{<<"pvt_type">>, <<"call_partial">>}
           ,{<<"_id">>, doc_id(Prefix, Timestamp)}
          ]))
@@ -289,6 +300,8 @@ stat_to_jobj(#call_stat{
                 ,talk_time=TalkTime
                 ,abandon_reason=AR
                 ,status=Status
+                ,caller_id_name=CName
+                ,caller_id_number=CNum
                }, Prefix) ->
     wh_json:from_list(
       props:filter_undefined(
@@ -301,6 +314,8 @@ stat_to_jobj(#call_stat{
          ,{<<"talk_time">>, TalkTime}
          ,{<<"abandon_reason">>, AR}
          ,{<<"status">>, Status}
+         ,{<<"caller_id_name">>, CName}
+         ,{<<"caller_id_number">>, CNum}
          ,{<<"pvt_type">>, <<"call_partial">>}
          ,{<<"_id">>, doc_id(Prefix, TStamp)}
         ]));

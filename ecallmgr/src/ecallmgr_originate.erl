@@ -81,7 +81,7 @@ start_link(Node, JObj) ->
 -spec handle_call_events/2 :: (wh_json:object(), wh_proplist()) -> 'ok'.
 handle_call_events(JObj, Props) ->
     Srv = props:get_value(server, Props),
-    case props:get_value(uuid, Props) =:=  wh_json:get_value(<<"Call-ID">>, JObj)
+    case props:get_value(uuid, Props) =:=  wh_json:get_binary_value(<<"Call-ID">>, JObj)
         andalso wh_json:get_value(<<"Event-Name">>, JObj)
     of
         <<"CHANNEL_EXECUTE_COMPLETE">> ->
@@ -204,6 +204,7 @@ handle_cast({get_originate_action}, #state{originate_req=JObj, node=Node}=State)
     Action = get_originate_action(ApplicationName, JObj),
     UseNode = maybe_update_node(JObj, Node),
     lager:debug("maybe updating node from ~s to ~s", [Node, UseNode]),
+    lager:debug("originate action: ~s", [Action]),
 
     {noreply, State#state{action=Action
                           ,app=ApplicationName
@@ -423,8 +424,10 @@ get_originate_action(<<"bridge">>, JObj) ->
     end;
 get_originate_action(<<"eavesdrop">>, JObj) ->
     lager:debug("got originate with action eavesdrop"),
-    case ecallmgr_fs_nodes:channel_node(wh_json:get_value(<<"Eavesdrop-Call-ID">>, JObj)) of
-        {error, _} -> <<"error">>;
+    case ecallmgr_fs_nodes:channel_node(wh_json:get_binary_value(<<"Eavesdrop-Call-ID">>, JObj)) of
+        {error, _} ->
+            lager:debug("failed to find channel ~p in node list", [wh_json:get_value(<<"Eavesdrop-Call-ID">>, JObj)]),
+            <<"error">>;
         {ok, N} ->
             gen_listener:cast(self(), {maybe_update_node, N}),
             get_eavesdrop_action(JObj)
@@ -435,7 +438,7 @@ get_originate_action(_, _) ->
 
 -spec maybe_update_node/2 :: (wh_json:object(), atom()) -> atom().
 maybe_update_node(JObj, Node) ->
-    case wh_json:get_value(<<"Existing-Call-ID">>, JObj) of
+    case wh_json:get_binary_value(<<"Existing-Call-ID">>, JObj) of
         undefined -> Node;
         CallId ->
             case ecallmgr_fs_nodes:channel_node(CallId) of
@@ -446,7 +449,7 @@ maybe_update_node(JObj, Node) ->
 
 get_eavesdrop_action(JObj) ->
     {CallId, Group} = case wh_json:get_value(<<"Eavesdrop-Group-ID">>, JObj) of
-                          undefined -> {wh_json:get_value(<<"Eavesdrop-Call-ID">>, JObj), <<>>};
+                          undefined -> {wh_json:get_binary_value(<<"Eavesdrop-Call-ID">>, JObj), <<>>};
                           ID -> {<<"all">>, <<"eavesdrop_require_group=", ID/binary, ",">>}
                       end,
     case wh_json:get_value(<<"Eavesdrop-Mode">>, JObj) of
@@ -531,7 +534,7 @@ create_uuid(Node) ->
     end.
 
 create_uuid(JObj, Node) ->
-    case wh_json:get_ne_value(<<"Outbound-Call-ID">>, JObj) of
+    case wh_json:get_binary_value(<<"Outbound-Call-ID">>, JObj) of
         undefined -> create_uuid(Node);
         CallId ->
             put(callid, CallId),

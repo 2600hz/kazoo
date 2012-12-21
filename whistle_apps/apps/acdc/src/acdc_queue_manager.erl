@@ -118,7 +118,11 @@ handle_member_call(JObj, Props) ->
 
     lager:debug("member call for ~s:~s: ~s", [AcctId, QueueId, whapps_call:call_id(Call)]),
 
-    acdc_stats:call_waiting(AcctId, QueueId, whapps_call:call_id(Call)),
+    acdc_stats:call_waiting(AcctId, QueueId
+                            ,whapps_call:call_id(Call)
+                            ,whapps_call:caller_id_name(Call)
+                            ,whapps_call:caller_id_number(Call)
+                           ),
 
     whapps_call_command:answer(Call),
     whapps_call_command:hold(Call),
