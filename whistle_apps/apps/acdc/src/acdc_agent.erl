@@ -28,7 +28,7 @@
          ,add_acdc_queue/2
          ,rm_acdc_queue/2
          ,get_recording_doc_id/1
-         ,call_status_req/1
+         ,call_status_req/1, call_status_req/2
          ,stop/1
          ,fsm_started/2
          ,add_endpoint_bindings/3
@@ -220,6 +220,8 @@ rm_acdc_queue(Srv, Q) ->
 
 call_status_req(Srv) ->
     gen_listener:cast(Srv, call_status_req).
+call_status_req(Srv, CallId) ->
+    gen_listener:cast(Srv, {call_status_req, CallId}).
 
 fsm_started(Srv, FSM) ->
     gen_listener:cast(Srv, {fsm_started, FSM}).
@@ -582,11 +584,21 @@ handle_cast(call_status_req, #state{call=Call, my_q=Q}=State) ->
               ],
 
     wapi_call:publish_call_status_req(CallId, Command),
-    {noreply, State, hibernate};
+    {noreply, State};
+
+handle_cast({call_status_req, CallId}, #state{my_q=Q}=State) when is_binary(CallId) ->
+    Command = [{<<"Call-ID">>, CallId}
+               ,{<<"Server-ID">>, Q}
+               | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
+              ],
+    wapi_call:publish_call_status_req(CallId, Command),
+    {noreply, State};
+handle_cast({call_status_req, Call}, State) ->
+    handle_cast({call_status_req, whapps_call:call_id(Call)}, State);
 
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
-    {noreply, State}.
+    {noreply, State, hibernate}.
 
 %%--------------------------------------------------------------------
 %% @private
