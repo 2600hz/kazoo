@@ -428,8 +428,12 @@ handle_cast({member_connect_retry, CallId}, #state{my_id=MyId
         CallId ->
             lager:debug("need to retry member connect, agent isn't able to take it"),
             send_member_connect_retry(Server, CallId, MyId),
+
             acdc_util:unbind_from_call_events(ACallId),
+            acdc_util:unbind_from_call_events(CallId),
+
             put(callid, AgentId),
+
             {noreply, State#state{msg_queue_id=undefined
                                   ,acdc_queue_id=undefined
                                   ,agent_call_id=undefined
