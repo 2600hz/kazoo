@@ -524,7 +524,15 @@ ready({route_req, Call}, #state{agent_proc=Srv
 
     acdc_agent:outbound_call(Srv, Call),
     acdc_stats:agent_oncall(AcctId, AgentId, CallId),
-    {next_state, outbound, State#state{outbound_call_id=CallId}, hibernate};
+
+    {next_state
+     ,outbound
+     ,State#state{outbound_call_id=CallId
+                  ,call_status_ref=start_call_status_timer()
+                  ,call_status_failures=0
+                 }
+     ,hibernate
+    };
 
 ready(_Evt, State) ->
     lager:debug("unhandled event while ready: ~p", [_Evt]),
@@ -744,6 +752,7 @@ answered({call_status, JObj}, #state{call_status_failures=Failures}=State) ->
         _S ->
             {next_state, answered, State#state{call_status_failures=Failures+1}}
     end;
+
 answered(_Evt, State) ->
     lager:debug("unhandled event while answered: ~p", [_Evt]),
     {next_state, answered, State}.
@@ -807,7 +816,14 @@ wrapup({route_req, Call}, #state{agent_proc=Srv
     acdc_agent:outbound_call(Srv, Call),
     acdc_stats:agent_oncall(AcctId, AgentId, CallId),
 
-    {next_state, outbound, State#state{outbound_call_id=CallId}, hibernate};
+    {next_state
+     ,outbound
+     ,State#state{outbound_call_id=CallId
+                  ,call_status_ref=start_call_status_timer()
+                  ,call_status_failures=0
+                 }
+     ,hibernate
+    };
 
 wrapup(_Evt, State) ->
     lager:debug("unhandled event while in wrapup: ~p", [_Evt]),
@@ -885,7 +901,14 @@ paused({route_req, Call}, #state{agent_proc=Srv
     acdc_agent:outbound_call(Srv, Call),
     acdc_stats:agent_oncall(AcctId, AgentId, CallId),
 
-    {next_state, outbound, State#state{outbound_call_id=CallId}, hibernate};
+    {next_state
+     ,outbound
+     ,State#state{outbound_call_id=CallId
+                  ,call_status_ref=start_call_status_timer()
+                  ,call_status_failures=0
+                 }
+     ,hibernate
+    };
 
 paused(_Evt, State) ->
     lager:debug("unhandled event while paused: ~p", [_Evt]),
@@ -929,6 +952,28 @@ outbound({pause, Timeout}, #state{acct_id=AcctId
     acdc_stats:agent_paused(AcctId, AgentId, Timeout),
     acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_RED_FLASH),
     {next_state, paused, clear_call(State#state{sync_ref=Ref})};
+
+outbound({timeout, CRef, ?CALL_STATUS_MESSAGE}, #state{call_status_ref=CRef
+                                                       ,call_status_failures=Failures
+                                                      }=State) when Failures > 3 ->
+    lager:debug("outbound call status failed ~b times, call is probably down", [Failures]),
+    {next_state, ready, clear_call(State), hibernate};
+outbound({timeout, CRef, ?CALL_STATUS_MESSAGE}, #state{call_status_ref=CRef
+                                                       ,call_status_failures=Failures
+                                                       ,agent_proc=Srv
+                                                       ,outbound_call_id=CallId
+                                                      }=State) ->
+    acdc_agent:call_status_req(Srv, CallId),
+    {next_state, outbound, State#state{call_status_ref=start_call_status_timer()
+                                       ,call_status_failures=Failures+1
+                                      }};
+
+outbound({call_status, JObj}, #state{call_status_failures=Failures}=State) ->
+    case wh_json:get_value(<<"Status">>, JObj) of
+        <<"active">> -> {next_state, outbound, State#state{call_status_failures=0}};
+        _S ->
+            {next_state, outbound, State#state{call_status_failures=Failures+1}}
+    end;
 
 outbound(_Msg, State) ->
     lager:debug("ignoring msg in outbound: ~p", [_Msg]),
@@ -1080,10 +1125,8 @@ start_wrapup_timer(Timeout) -> gen_fsm:start_timer(Timeout*1000, wrapup_expired)
 -spec start_sync_timer/0 :: () -> reference().
 -spec start_sync_timer/1 :: (pid()) -> reference().
 start_sync_timer() ->
-    lager:debug("sync timer start"),
     gen_fsm:start_timer(?SYNC_RESPONSE_TIMEOUT, ?SYNC_RESPONSE_MESSAGE).
 start_sync_timer(P) ->
-    lager:debug("sync timer start: ~p", [P]),
     erlang:start_timer(?SYNC_RESPONSE_TIMEOUT, P, ?SYNC_RESPONSE_MESSAGE).
 
 -spec start_resync_timer/0 :: () -> reference().
