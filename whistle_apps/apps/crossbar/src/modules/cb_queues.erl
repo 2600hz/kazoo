@@ -242,7 +242,7 @@ is_valid_mode(Context, Data) ->
     end.
 
 is_valid_call(Context, Data) ->
-    case wh_json:get_value(<<"call_id">>, Data) of
+    case wh_json:get_binary_value(<<"call_id">>, Data) of
         undefined ->
             {false
              ,cb_context:add_validation_error(<<"call_id">>, <<"required">>
