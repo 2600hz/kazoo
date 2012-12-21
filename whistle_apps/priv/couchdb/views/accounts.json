@@ -2,7 +2,10 @@
     "_id":"_design/accounts"
     ,"language":"javascript"
     ,"views": {
-        "listing_by_id": {
+        "listing_by_ip": {
+            "map":"function(doc) {if (doc.pvt_type != 'account' || doc.pvt_deleted || !doc.ips) return;for(var z in doc.ips) {emit(doc.ips[z].ip, {'owner_id': doc.ips[z].owner_id, 'account_id': doc.pvt_account_id});}}"
+         }
+        ,"listing_by_id": {
             "map":"function(doc) { if (doc.pvt_type != 'account' || doc.pvt_deleted) return; var t = doc.pvt_tree.slice(0); t.push(doc.pvt_account_id); emit([doc.pvt_account_id, t], {'id': doc.pvt_account_id, 'name': doc.name, 'realm' : doc.realm}); }"
         }
         ,"listing_by_parent": {
