@@ -164,7 +164,8 @@ b_call_status(CallId) when is_binary(CallId) ->
     Resp = wh_amqp_worker:call(whapps_amqp_pool
                                ,Command
                                ,fun(C) -> wapi_call:publish_call_status_req(CallId, C) end
-                               ,fun wapi_call:call_status_resp_v/1),
+                               ,fun wapi_call:call_status_resp_v/1
+                              ),
     case Resp of
         {error, _}=E -> E;
         {ok, JObj}=Ok ->
