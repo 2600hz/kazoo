@@ -609,8 +609,7 @@ ringing({channel_hungup, CallId}, #state{agent_proc=Srv
                                          ,member_call_id=CallId
                                          ,member_call_queue_id=QueueId
                                          ,agent_call_id=AgentCallId
-                                        }=State
-       ) ->
+                                        }=State) ->
     lager:debug("caller's channel (~s) has gone down, stop agent's call", [CallId]),
     acdc_agent:channel_hungup(Srv, AgentCallId),
 
@@ -727,16 +726,22 @@ answered({sync_req, JObj}, #state{agent_proc=Srv
 
 answered({channel_unbridged, CallId}, #state{member_call_id=CallId}=State) ->
     lager:debug("caller channel unbridged"),
-    {next_state, wrapup, State#state{wrapup_timeout=0, wrapup_ref=hangup_call(State)}};
+    {next_state, wrapup, State#state{wrapup_timeout=0
+                                     ,wrapup_ref=hangup_call(State)
+                                    }};
 answered({channel_unbridged, CallId}, #state{agent_call_id=CallId}=State) ->
     lager:debug("agent channel unbridged"),
-    {next_state, wrapup, State#state{wrapup_timeout=0, wrapup_ref=hangup_call(State)}};
+    {next_state, wrapup, State#state{wrapup_timeout=0
+                                     ,wrapup_ref=hangup_call(State)
+                                    }};
 
 answered({timeout, CRef, ?CALL_STATUS_MESSAGE}, #state{call_status_ref=CRef
                                                        ,call_status_failures=Failures
                                                       }=State) when Failures > 3 ->
     lager:debug("call status failed ~b times, call is probably down", [Failures]),
-    {next_state, wrapup, State#state{wrapup_timeout=0, wrapup_ref=hangup_call(State)}};
+    {next_state, wrapup, State#state{wrapup_timeout=0
+                                     ,wrapup_ref=hangup_call(State)
+                                    }};
 
 answered({timeout, CRef, ?CALL_STATUS_MESSAGE}, #state{call_status_ref=CRef
                                                        ,call_status_failures=Failures
@@ -931,8 +936,8 @@ outbound({channel_hungup, CallId}, #state{agent_proc=Srv
 
 outbound({leg_destroyed, CallId}, #state{agent_proc=Srv
                                          ,outbound_call_id=CallId
-                                          ,acct_id=AcctId
-                                          ,agent_id=AgentId
+                                         ,acct_id=AcctId
+                                         ,agent_id=AgentId
                                         }=State) ->
     lager:debug("outbound leg ~s destroyed", [CallId]),
     acdc_agent:channel_hungup(Srv, CallId),
@@ -968,14 +973,23 @@ outbound({timeout, CRef, ?CALL_STATUS_MESSAGE}, #state{call_status_ref=CRef
                                        ,call_status_failures=Failures+1
                                       }};
 
-outbound({call_status, JObj}, #state{call_status_failures=Failures}=State) ->
+outbound({call_status, JObj}, #state{call_status_failures=Failures
+                                    ,call_status_ref=Ref
+                                    }=State) ->
+    maybe_stop_timer(Ref),
     case wh_json:get_value(<<"Status">>, JObj) of
-        <<"active">> -> {next_state, outbound, State#state{call_status_failures=0}};
+        <<"active">> ->
+            {next_state, outbound, State#state{call_status_ref=start_call_status_timer()
+                                               ,call_status_failures=0
+                                              }};
         _S ->
-            {next_state, outbound, State#state{call_status_failures=Failures+1}}
+            lager:debug("outbound call isn't active: ~s, trying call status again", [_S]),
+            {next_state, outbound, State#state{call_status_ref=start_call_status_timer()
+                                               ,call_status_failures=Failures+1
+                                              }}
     end;
 
-outbound(_Msg, State) ->
+outbound(_Msg, #state{}=State) ->
     lager:debug("ignoring msg in outbound: ~p", [_Msg]),
     {next_state, outbound, State}.
 
@@ -1162,8 +1176,15 @@ time_left(Ref) when is_reference(Ref) ->
 time_left(false) -> undefined;
 time_left(Ms) when is_integer(Ms) -> Ms div 1000.
 
-clear_call(#state{fsm_call_id=FSMCallId}=State) ->
+clear_call(#state{fsm_call_id=FSMCallId
+                  ,call_status_ref=CSRef
+                  ,wrapup_ref=WRef
+                 }=State) ->
     put(callid, FSMCallId),
+
+    _ = maybe_stop_timer(CSRef),
+    _ = maybe_stop_timer(WRef),
+
     State#state{wrapup_timeout = 0
                 ,wrapup_ref = undefined
                 ,member_call = undefined
