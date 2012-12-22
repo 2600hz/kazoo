@@ -5,7 +5,6 @@ notifications:
     channels: 
       - "irc.freenode.org#2600hz-dev"
 otp_release:
-  - R15B03
   - R15B02
   - R15B01
   - R15B
