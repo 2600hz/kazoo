@@ -157,8 +157,7 @@ call_event(FSM, <<"error">>, <<"dialplan">>, JObj) ->
 
     gen_fsm:send_event(FSM, {dialplan_error, wh_json:get_value(<<"Application-Name">>, Req)});
 call_event(_, _C, _E, _) ->
-    ok.
-    %% lager:debug("unhandled call event: ~s: ~s", [_C, _E]).
+    lager:debug("unhandled call event: ~s: ~s", [_C, _E]).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -357,6 +356,8 @@ sync({timeout, Ref, ?SYNC_RESPONSE_MESSAGE}, #state{sync_ref=Ref
                                                    }=State) when is_reference(Ref) ->
     lager:debug("done waiting for sync responses"),
     acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_GREEN),
+    acdc_stats:agent_ready(AcctId, AgentId),
+
     {next_state, ready, State#state{sync_ref=Ref}};
 sync({timeout, Ref, ?RESYNC_RESPONSE_MESSAGE}, #state{sync_ref=Ref}=State) when is_reference(Ref) ->
     lager:debug("resync timer expired, lets check with the others again"),
@@ -394,6 +395,7 @@ sync({sync_resp, JObj}, #state{sync_ref=Ref
             lager:debug("other agent is in ready state, joining"),
             _ = erlang:cancel_timer(Ref),
             acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_GREEN),
+            acdc_stats:agent_ready(AcctId, AgentId),
             {next_state, ready, State#state{sync_ref=undefined}};
         {'EXIT', _} ->
             lager:debug("other agent sent unusable state, ignoring"),
