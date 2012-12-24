@@ -516,7 +516,9 @@ get_prompt(Name, Lang, Call) ->
     JObj = whapps_account_config:get(whapps_call:account_id(Call), ?PROMPTS_CONFIG_CAT),
     wh_json:get_value([Lang, Name], JObj, DefaultPrompt).
 
--spec try_split/2 :: (ne_binary(), wh_json:object()) -> {ne_binary(), ne_binary()} | 'undefined'.
+-spec try_split/2 :: (ne_binary(), wh_json:object()) ->
+                             {ne_binary(), ne_binary()} |
+                             'undefined'.
 try_split(Key, JObj) ->
     case wh_json:get_value(Key, JObj) of
         undefined -> undefined;
