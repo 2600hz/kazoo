@@ -233,7 +233,7 @@ handle_cast({build_originate_args}, #state{originate_req=JObj
     Endpoints = [wh_json:set_value(<<"origination_uuid">>, UUID, Endpoint)
                  || Endpoint <- wh_json:get_ne_value(<<"Endpoints">>, JObj, [])
                 ],
-    {noreply, State#state{dialstrings=build_originate_args(?ORIGINATE_PARK, Endpoints, JObj)}, hibernate};
+    {noreply, State#state{dialstrings=build_originate_args(?ORIGINATE_PARK, Endpoints, JObj)}};
 
 handle_cast({build_originate_args}, #state{originate_req=JObj
                                            ,uuid=UUID
@@ -244,14 +244,14 @@ handle_cast({build_originate_args}, #state{originate_req=JObj
     Endpoints = [wh_json:set_value(<<"origination_uuid">>, UUID, Endpoint)
                  || Endpoint <- wh_json:get_ne_value(<<"Endpoints">>, JObj, [])
                 ],
-    {noreply, State#state{dialstrings=build_originate_args(Action, Endpoints, JObj)}, hibernate};
+    {noreply, State#state{dialstrings=build_originate_args(Action, Endpoints, JObj)}};
 
 handle_cast({build_originate_args}, #state{originate_req=JObj
                                            ,action=Action
                                           }=State) ->
     gen_listener:cast(self(), {originate_execute}),
     Endpoints = wh_json:get_ne_value(<<"Endpoints">>, JObj, []),
-    {noreply, State#state{dialstrings=build_originate_args(Action, Endpoints, JObj)}, hibernate};
+    {noreply, State#state{dialstrings=build_originate_args(Action, Endpoints, JObj)}};
 
 handle_cast({originate_ready}, #state{originate_req=JObj
                                       ,node=Node
@@ -265,7 +265,8 @@ handle_cast({originate_ready}, #state{originate_req=JObj
             CtrlQ = ecallmgr_call_control:queue_name(CtrlPid),
             publish_originate_ready(CtrlQ, UUID, JObj, Q, ServerId),
             {noreply, State#state{control_pid=CtrlPid
-                                  ,tref=erlang:send_after(?REPLY_TIMEOUT, self(), {abandon_originate})}};
+                                  ,tref=erlang:send_after(?REPLY_TIMEOUT, self(), {abandon_originate})
+                                 }, hibernate};
         _Else ->
             lager:debug("failed to start cc process: ~p", [_Else]),
             Error = <<"failed to preemptively start a call control process">>,
@@ -295,6 +296,7 @@ handle_cast({originate_execute}, #state{dialstrings=Dialstrings
             bind_to_call_events(CallId),
             {noreply, State#state{uuid=CallId}};
         {error, Error} ->
+            lager:debug("failed to originate: ~p", [Error]),
             _ = publish_error(Error, UUID, JObj, ServerId),
             {stop, normal, State}
     end;
@@ -415,12 +417,10 @@ get_originate_action(<<"transfer">>, JObj) ->
     end;
 get_originate_action(<<"bridge">>, JObj) ->
     lager:debug("got originate with action bridge"),
-    Data = wh_json:get_value(<<"Application-Data">>, JObj),
 
-    case ecallmgr_util:build_channel(Data) of
-        {error, _} -> <<"error">>;
-        {ok, Channel} ->
-            list_to_binary(["'m:^:", get_unset_vars(JObj), "bridge:", Channel, "' inline"])
+    case wh_json:get_binary_value(<<"Existing-Call-ID">>, JObj) of
+        undefined -> get_bridge_action(JObj);
+        ExistingCallId -> <<" 'set:api_result=$(uuid_bridge ${uuid} ", ExistingCallId/binary, ")' inline ">>
     end;
 get_originate_action(<<"eavesdrop">>, JObj) ->
     lager:debug("got originate with action eavesdrop"),
@@ -435,6 +435,15 @@ get_originate_action(<<"eavesdrop">>, JObj) ->
 get_originate_action(_, _) ->
     lager:debug("got originate with action park"),
     ?ORIGINATE_PARK.
+
+get_bridge_action(JObj) ->
+    Data = wh_json:get_value(<<"Application-Data">>, JObj),
+
+    case ecallmgr_util:build_channel(Data) of
+        {error, _} -> <<"error">>;
+        {ok, Channel} ->
+            list_to_binary(["'m:^:", get_unset_vars(JObj), "bridge:", Channel, "' inline"])
+    end.
 
 -spec maybe_update_node/2 :: (wh_json:object(), atom()) -> atom().
 maybe_update_node(JObj, Node) ->
