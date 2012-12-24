@@ -484,12 +484,12 @@ handle_cast({member_connect_resp, ReqJObj}, #state{agent_id=AgentId
                                  }}
     end;
 
-handle_cast({bridge_to_member, Call, WinJObj, EPs}, #state{fsm_pid=FSM
-                                                           ,record_calls=RecordCall
+handle_cast({bridge_to_member, Call, WinJObj, EPs}, #state{record_calls=RecordCall
                                                            ,is_thief=false
                                                            ,agent_queues=Qs
                                                            ,acct_id=AcctId
                                                            ,agent_id=AgentId
+                                                           ,my_q=MyQ
                                                           }=State) ->
     _ = whapps_call:put_callid(Call),
     lager:debug("bridging to agent endpoints"),
@@ -500,9 +500,9 @@ handle_cast({bridge_to_member, Call, WinJObj, EPs}, #state{fsm_pid=FSM
     ShouldRecord = should_record_endpoints(EPs, RecordCall),
 
     acdc_util:bind_to_call_events(Call),
-    _P = spawn(fun() -> maybe_connect_to_agent(FSM, EPs, Call, RingTimeout) end),
+    maybe_connect_to_agent(MyQ, EPs, Call, RingTimeout),
 
-    lager:debug("waiting on successful bridge now: connecting in ~p", [_P]),
+    lager:debug("originate sent, waiting on successful bridge now"),
     update_my_queues_of_change(AcctId, AgentId, Qs),
     {noreply, State#state{call=Call
                           ,record_calls=ShouldRecord
@@ -768,8 +768,8 @@ call_id(Call) ->
                        )
     end.
 
--spec maybe_connect_to_agent/4 :: (pid(), list(), whapps_call:call(), integer() | 'undefined') -> 'ok'.
-maybe_connect_to_agent(FSM, EPs, Call, Timeout) ->
+-spec maybe_connect_to_agent/4 :: (ne_binary(), list(), whapps_call:call(), integer() | 'undefined') -> 'ok'.
+maybe_connect_to_agent(MyQ, EPs, Call, Timeout) ->
     put(callid, whapps_call:call_id(Call)),
 
     ReqId = wh_util:rand_hex_binary(6),
@@ -799,28 +799,18 @@ maybe_connect_to_agent(FSM, EPs, Call, Timeout) ->
                                                   ]}
               ,{<<"Account-ID">>, AcctId}
               ,{<<"Resource-Type">>, <<"originate">>}
-              ,{<<"Application-Name">>, <<"park">>}
+              ,{<<"Application-Name">>, <<"bridge">>}
               ,{<<"Caller-ID-Name">>, whapps_call:caller_id_name(Call)}
               ,{<<"Caller-ID-Number">>, whapps_call:caller_id_number(Call)}
               ,{<<"Outgoing-Caller-ID-Name">>, whapps_call:caller_id_name(Call)}
               ,{<<"Outgoing-Caller-ID-Number">>, whapps_call:caller_id_number(Call)}
               ,{<<"Existing-Call-ID">>, whapps_call:call_id(Call)}
-              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+              | wh_api:default_headers(MyQ, ?APP_NAME, ?APP_VERSION)
              ]),
 
     lager:debug("sending originate request"),
 
-    case whapps_util:amqp_pool_request(Prop
-                                       ,fun wapi_resource:publish_originate_req/1
-                                       ,fun wapi_dialplan:originate_ready_v/1
-                                      ) of
-        {ok, JObj} ->
-            lager:debug("originate is ready to execute"),
-            acdc_agent_fsm:originate_ready(FSM, JObj);
-        {error, E} ->
-            lager:debug("error originating: ~p", [E]),
-            acdc_agent_fsm:originate_failed(FSM, E)
-    end.
+    wapi_resource:publish_originate_req(Prop).
 
 -spec login_to_queue/2 :: (ne_binary(), ne_binary()) -> 'ok'.
 login_to_queue(AcctId, Q) ->
