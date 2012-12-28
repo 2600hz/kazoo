@@ -152,6 +152,7 @@ show_channels(Node) ->
 init([Node, Options]) ->
     put(callid, Node),
     process_flag(trap_exit, true),
+    process_flag(priority, high), %% Living dangerously!
     lager:info("starting new fs node listener for ~s", [Node]),
     case bind_to_events(props:get_value(client_version, Options), Node) of
         {error, Reason} ->

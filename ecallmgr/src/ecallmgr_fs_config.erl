@@ -66,7 +66,7 @@ init([Node, Options]) ->
     put(callid, Node),
     process_flag(trap_exit, true),
     lager:info("starting new fs config listener for ~s", [Node]),
-    case freeswitch:bind(Node, dialplan) of
+    case freeswitch:bind(Node, configuration) of
         ok -> {ok, #state{node=Node, options=Options}};
         {error, Reason} ->
             lager:critical("unable to establish config bindings: ~p", [Reason]),

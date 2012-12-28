@@ -234,8 +234,6 @@ handle_cast(_Msg, State) ->
 handle_info({event, [CallId | _]}, #state{callid=CallId, passive=true}=State) ->
     {noreply, State};
 handle_info({event, [CallId | Props]}, #state{node=Node, callid=CallId}=State) ->
-    Start = props:get_value(<<"start">>, Props),
-    io:format("~p ~p~n", [props:get_value(<<"Event-Subclass">>, Props, props:get_value(<<"Event-Name">>, Props)), wh_util:elapsed_us(Start)]),
     case {props:get_value(<<"Event-Subclass">>, Props, props:get_value(<<"Event-Name">>, Props))
           ,props:get_value(<<"Application">>, Props)} 
     of
