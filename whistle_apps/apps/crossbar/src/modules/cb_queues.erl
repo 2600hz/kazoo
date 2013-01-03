@@ -601,8 +601,10 @@ compress_stats(Context, From, To) ->
             case couch_mgr:db_exists(acdc_stats:db_name(AcctId)) of
                 'true' -> Context;
                 'false' ->
-                    lager:debug("db ~s doesn't exist, let's init it", [AcctId]),
-                    _ = acdc_stats:init_db(AcctId),
+                    spawn(fun() ->
+                                  lager:debug("db ~s doesn't exist, let's init it", [AcctId]),
+                                  acdc_stats:init_db(AcctId)
+                          end),
                     crossbar_util:response_db_fatal(Context)
             end
     end.
