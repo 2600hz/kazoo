@@ -32,6 +32,7 @@
          ,stop/1
          ,fsm_started/2
          ,add_endpoint_bindings/3
+         ,agent_call_id/2
         ]).
 
 %% gen_server callbacks
@@ -111,6 +112,9 @@
                      ,{{acdc_agent_handler, handle_call_event}
                        ,[{<<"call_event">>, <<"*">>}]
                       }
+                     ,{{acdc_agent_handler, handle_originate_resp}
+                       ,[{<<"resource">>, <<"originate_resp">>}]
+                      }
                      ,{{acdc_agent_handler, handle_call_event}
                        ,[{<<"error">>, <<"*">>}]
                       }
@@ -187,6 +191,9 @@ monitor_call(Srv, Call) ->
 -spec channel_hungup/2 :: (pid(), ne_binary()) -> 'ok'.
 channel_hungup(Srv, CallId) ->
     gen_listener:cast(Srv, {channel_hungup, CallId}).
+
+agent_call_id(Srv, ACallId) ->
+    gen_listener:cast(Srv, {agent_call_id, ACallId}).
 
 originate_execute(Srv, JObj) ->
     gen_listener:cast(Srv, {originate_execute, JObj}).
@@ -540,6 +547,16 @@ handle_cast({outbound_call, Call}, State) ->
 
     lager:debug("bound to agent's outbound call"),
     {noreply, State#state{call=Call}, hibernate};
+
+handle_cast({agent_call_id, ACallId}, #state{call=Call
+                                             ,record_calls=ShouldRecord
+                                            }=State) ->
+    lager:debug("agent call id set: ~s", [ACallId]),
+
+    acdc_util:bind_to_call_events(ACallId),
+    maybe_start_recording(Call, ShouldRecord),
+
+    {noreply, State#state{agent_call_id=ACallId}, hibernate};
 
 handle_cast({join_agent, ACallId}, #state{call=Call
                                           ,record_calls=ShouldRecord
