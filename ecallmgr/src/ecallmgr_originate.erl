@@ -140,13 +140,17 @@ init([Node, JObj]) ->
             publish_error(Error, undefined, JObj, ServerId),
             {stop, normal};
         true ->
-            Self = self(),
-            spawn(fun() ->
-                          Q = gen_listener:queue_name(Self),
-                          gen_server:cast(Self, {queue_name, Q})
-                  end),
+            _ = get_queue_name(),
             {ok, #state{node=Node, originate_req=JObj, server_id=ServerId}}
     end.
+
+get_queue_name() ->
+    get_queue_name(self()).
+get_queue_name(Srv) ->
+    spawn(fun() ->
+                  Q = gen_listener:queue_name(Srv),
+                  gen_server:cast(Srv, {queue_name, Q})
+          end).
 
 bind_to_events({ok, <<"mod_kazoo", _/binary>>}, Node) ->
     ok = freeswitch:event(Node, ['CUSTOM', 'loopback::bowout']);
@@ -180,8 +184,11 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast({queue_name, undefined}, State) ->
+    _ = get_queue_name(),
+    {noreply, State};
 handle_cast({queue_name, Q}, State) ->
-    lager:debug("starting originate request", []),
+    lager:debug("starting originate request"),
     gen_listener:cast(self(), {get_originate_action}),
     {noreply, State#state{queue=Q}};
 
@@ -318,7 +325,7 @@ handle_cast({channel_destroy, JObj}, #state{server_id=ServerId}=State) ->
     {stop, normal, State};
 
 handle_cast(_Msg, State) ->
-    {noreply, State}.
+    {noreply, State, hibernate}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -358,7 +365,8 @@ handle_info({nodedown, _}, #state{originate_req=JObj, uuid=UUID, server_id=Serve
     {stop, normal, State};
 
 handle_info(_Info, State) ->
-    {noreply, State}.
+    lager:debug("unhandled message: ~p", [_Info]),
+    {noreply, State, hibernate}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -420,8 +428,9 @@ get_originate_action(<<"bridge">>, JObj) ->
 
     case wh_json:get_binary_value(<<"Existing-Call-ID">>, JObj) of
         undefined -> get_bridge_action(JObj);
-        ExistingCallId -> <<" 'set:api_result=$(uuid_bridge ${uuid} ", ExistingCallId/binary, ")' inline ">>
+        ExistingCallId -> <<" 'set:api_result=${uuid_bridge ${uuid} ", ExistingCallId/binary, "}' inline ">>
     end;
+
 get_originate_action(<<"eavesdrop">>, JObj) ->
     lager:debug("got originate with action eavesdrop"),
     case ecallmgr_fs_nodes:channel_node(wh_json:get_binary_value(<<"Eavesdrop-Call-ID">>, JObj)) of
