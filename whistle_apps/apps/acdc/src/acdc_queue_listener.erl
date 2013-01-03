@@ -384,7 +384,7 @@ handle_cast({finish_member_call}, #state{delivery=Delivery
 
     acdc_util:unbind_from_call_events(Call),
     acdc_queue_shared:ack(Pid, Delivery),
-    send_member_call_success(Q, AcctId, QueueId, MyId, AgentId),
+    send_member_call_success(Q, AcctId, QueueId, MyId, AgentId, whapps_call:call_id(Call)),
 
     {noreply, clear_call_state(State), hibernate};
 handle_cast({finish_member_call, _AcceptJObj}, #state{delivery=Delivery
@@ -400,7 +400,7 @@ handle_cast({finish_member_call, _AcceptJObj}, #state{delivery=Delivery
 
     acdc_util:unbind_from_call_events(Call),
     acdc_queue_shared:ack(Pid, Delivery),
-    send_member_call_success(Q, AcctId, QueueId, MyId, AgentId),
+    send_member_call_success(Q, AcctId, QueueId, MyId, AgentId, whapps_call:call_id(Call)),
 
     {noreply, clear_call_state(State), hibernate};
 
@@ -545,12 +545,13 @@ send_member_connect_win(RespJObj, RingTimeout, AgentWrapup, Call, QueueId, MyQ, 
             ]),
     publish(Q, Win, fun wapi_acdc_queue:publish_member_connect_win/2).
 
-send_member_call_success(Q, AcctId, QueueId, MyId, AgentId) ->
+send_member_call_success(Q, AcctId, QueueId, MyId, AgentId, CallId) ->
     Resp = props:filter_undefined(
              [{<<"Account-ID">>, AcctId}
               ,{<<"Queue-ID">>, QueueId}
               ,{<<"Process-ID">>, MyId}
               ,{<<"Agent-ID">>, AgentId}
+              ,{<<"Call-ID">>, CallId}
               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     publish(Q, Resp, fun wapi_acdc_queue:publish_member_call_success/2).

@@ -13,6 +13,7 @@
          ,handle_sync_req/2
          ,handle_sync_resp/2
          ,handle_call_event/2
+         ,handle_originate_resp/2
          ,handle_member_message/2
          ,handle_config_change/2
          ,handle_presence_probe/2
@@ -131,6 +132,10 @@ handle_call_event(JObj, Props) ->
                 _ -> ok
             end
     end.
+
+handle_originate_resp(JObj, Props) ->
+    true = wapi_resource:originate_resp_v(JObj),
+    acdc_agent_fsm:originate_resp(props:get_value(fsm_pid, Props), JObj).
 
 -spec handle_member_message/2 :: (wh_json:object(), wh_proplist()) -> 'ok'.
 -spec handle_member_message/3 :: (wh_json:object(), wh_proplist(), ne_binary()) -> 'ok'.

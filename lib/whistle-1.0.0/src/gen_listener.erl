@@ -5,7 +5,7 @@
 %%% Behaviour for setting up an AMQP listener.
 %%% Add/rm responders for Event-Cat/Event-Name pairs. Each responder
 %%% corresponds to a module that has defined a handle/1 function, receiving
-%%% the wh_json:json_object() from the AMQP request.
+%%% the wh_json:object() from the AMQP request.
 %%%
 %%% Params :: [
 %%%   {bindings, [ {atom(), wh_proplist()}, ...]} -> the type of bindings, with optional properties to pass along
@@ -115,7 +115,7 @@ behaviour_info(_) ->
                         ].
 
 -record(state, {
-          queue :: ne_binary()
+          queue :: api_binary()
          ,is_consuming = 'false' :: boolean()
          ,responders = [] :: listener_utils:responders() %% { {EvtCat, EvtName}, Module }
          ,bindings = [] :: bindings() %% {authentication, [{key, value},...]}
@@ -555,7 +555,7 @@ handle_event(Payload, <<"application/erlang">>, BD, State) ->
     JObj = binary_to_term(Payload),
     process_req(State, JObj, BD).
 
--spec process_req/3 :: (#state{}, wh_json:json_object(), #'basic.deliver'{}) -> #state{}.
+-spec process_req/3 :: (#state{}, wh_json:object(), #'basic.deliver'{}) -> #state{}.
 process_req(#state{responders=Responders, active_responders=ARs}=State, JObj, BD) ->
     case handle_callback_event(State, JObj) of
         ignore -> State;
@@ -569,7 +569,7 @@ process_req(#state{responders=Responders, active_responders=ARs}=State, JObj, BD
             State#state{active_responders=[Pid | ARs]}
     end.
 
--spec process_req/4 :: (wh_proplist(), listener_utils:responders(), wh_json:json_object(), #'basic.deliver'{}) -> 'ok'.
+-spec process_req/4 :: (wh_proplist(), listener_utils:responders(), wh_json:object(), #'basic.deliver'{}) -> 'ok'.
 process_req(Props, Responders, JObj, BD) ->
     Key = wh_util:get_event_type(JObj),
     PublishAs = get(amqp_publish_as),
@@ -586,7 +586,7 @@ process_req(Props, Responders, JObj, BD) ->
                ],
     wait_for_handlers(Handlers).
 
--spec handle_callback_event/2 :: (#state{}, wh_json:json_object()) -> 'ignore' | wh_proplist().
+-spec handle_callback_event/2 :: (#state{}, wh_json:object()) -> 'ignore' | wh_proplist().
 handle_callback_event(#state{module=Module, module_state=ModState, queue=Queue, other_queues=OtherQueues}, JObj) ->
     OtherQueueNames = props:get_keys(OtherQueues),
     case catch Module:handle_event(JObj, ModState) of
