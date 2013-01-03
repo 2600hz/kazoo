@@ -133,7 +133,7 @@ member_call_failure_v(JObj) ->
 %% Member Call Success - if an agent is handling the call
 %%------------------------------------------------------------------------------
 -define(MEMBER_CALL_SUCCESS_HEADERS, [<<"Account-ID">>, <<"Queue-ID">>]).
--define(OPTIONAL_MEMBER_CALL_SUCCESS_HEADERS, [<<"Process-ID">>, <<"Agent-ID">>]).
+-define(OPTIONAL_MEMBER_CALL_SUCCESS_HEADERS, [<<"Process-ID">>, <<"Agent-ID">>, <<"Call-ID">>]).
 -define(MEMBER_CALL_SUCCESS_VALUES, [{<<"Event-Category">>, <<"member">>}
                                      ,{<<"Event-Name">>, <<"call_success">>}
                                     ]).
