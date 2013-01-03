@@ -585,7 +585,7 @@ fetch_all_queue_stats(Context) ->
 -spec compress_stats/3 :: (cb_context:context(), integer(), integer()) -> cb_context:context().
 compress_stats(Context, From, To) ->
     case cb_context:resp_status(Context) of
-        success ->
+        'success' ->
             Compressed = compress_stats(cb_context:doc(Context), {wh_json:new(), wh_json:new(), wh_json:new()}),
             crossbar_util:response(
               wh_json:set_values([{<<"start_range">>, From}
@@ -595,8 +595,16 @@ compress_stats(Context, From, To) ->
                                  ,Compressed)
               ,Context);
         _S ->
-            lager:debug("failed to load stats"),
-            Context
+            AcctId = cb_context:account_id(Context),
+            lager:debug("failed to load stats from ~s", [acdc_stats:db_name(AcctId)]),
+
+            case couch_mgr:db_exists(acdc_stats:db_name(AcctId)) of
+                'true' -> Context;
+                'false' ->
+                    lager:debug("db ~s doesn't exist, let's init it", [AcctId]),
+                    _ = acdc_stats:init_db(AcctId),
+                    crossbar_util:response_db_fatal(Context)
+            end
     end.
 
 -spec compress_stats/2 :: ('undefined' | wh_json:objects(), {wh_json:object(), wh_json:object(), wh_json:object()}) ->
