@@ -17,6 +17,7 @@
          ,member_connect_req/2
          ,member_connect_win/2
          ,originate_ready/2
+         ,originate_resp/2
          ,originate_failed/2
          ,route_req/2
          ,sync_req/2, sync_resp/2
@@ -176,6 +177,9 @@ maybe_send_execute_complete(_, _, _) -> ok.
 %%--------------------------------------------------------------------
 originate_ready(FSM, JObj) ->
     gen_fsm:send_event(FSM, {originate_ready, JObj}).
+
+originate_resp(FSM, JObj) ->
+    gen_fsm:send_event(FSM, {originate_resp, wh_json:get_value(<<"Call-ID">>, JObj)}).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -564,6 +568,15 @@ ringing({originate_ready, JObj}, #state{agent_proc=Srv}=State) ->
     lager:debug("ringing agent's phone with call-id ~s", [CallId]),
     acdc_agent:originate_execute(Srv, JObj),
     {next_state, ringing, State#state{agent_call_id=CallId}};
+
+ringing({originate_resp, ACallId}, #state{agent_proc=Srv}=State) ->
+    lager:debug("originate resp on ~s, connecting to caller", [ACallId]),
+    acdc_agent:agent_call_id(Srv, ACallId),
+    acdc_agent:member_connect_accepted(Srv),
+    {next_state, answered, State#state{call_status_ref=start_call_status_timer()
+                                       ,call_status_failures=0
+                                       ,agent_call_id=ACallId
+                                      }};
 
 ringing({originate_failed, _E}, #state{agent_proc=Srv
                                          ,acct_id=AcctId
