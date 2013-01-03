@@ -35,7 +35,7 @@ handle(Data, Call) ->
                     | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                    ]),
 
-    lager:debug("loading queue ~s", [QueueId]),
+    lager:debug("loading ACDc queue: ~s", [QueueId]),
     {ok, QueueJObj} = couch_mgr:open_cache_doc(whapps_call:account_db(Call), QueueId),
 
     MaxWait = max_wait(wh_json:get_integer_value(<<"connection_timeout">>, QueueJObj, 3600)),
@@ -110,7 +110,7 @@ process_message(Call, _, Start, _Wait, _JObj, {<<"member">>, <<"call_success">>}
     lager:debug("call was processed by queue (took ~b s)", [wh_util:elapsed_s(Start)]),
     cf_exe:control_usurped(Call);
 process_message(Call, Timeout, Start, Wait, _JObj, _Type) ->
-    %% lager:debug("recv unhandled type: ~p: ~s", [_Type, wh_json:get_value(<<"Application-Name">>, _JObj)]),
+    %%lager:debug("recv unhandled message: ~p: ~s", [_Type, wh_json:get_value(<<"Application-Name">>, _JObj)]),
     wait_for_bridge(Call, reduce_timeout(Timeout, wh_util:elapsed_ms(Wait)), Start).
 
 -spec reduce_timeout/2 :: (max_wait(), integer()) -> max_wait().
