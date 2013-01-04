@@ -28,7 +28,7 @@
 -type config_category() :: ne_binary() | nonempty_string() | atom().
 -type config_key() :: ne_binary() | nonempty_string() | atom() | [config_key(),...].
 
--type fetch_ret() :: {'ok', wh_json:json_object()} |
+-type fetch_ret() :: {'ok', wh_json:object()} |
                      {'error', 'not_found'}.
 
 %%-----------------------------------------------------------------------------
@@ -216,7 +216,7 @@ get(Category0, Keys, Default, Node0) ->
             Default
     end.
 
--spec fetch_value/5 :: (config_category(), config_key(), config_key(), Default, wh_json:json_object()) ->
+-spec fetch_value/5 :: (config_category(), config_key(), config_key(), Default, wh_json:object()) ->
                                Default | term().
 fetch_value(Category, Node, Keys, Default, JObj) ->
     case wh_json:get_value([Node | Keys], JObj) of
@@ -224,7 +224,7 @@ fetch_value(Category, Node, Keys, Default, JObj) ->
         Else -> Else
     end.
 
--spec fetch_default_value/4 :: (config_category(), config_key(), Default, wh_json:json_object()) ->
+-spec fetch_default_value/4 :: (config_category(), config_key(), Default, wh_json:object()) ->
                                        Default | term().
 fetch_default_value(Category, Keys, Default, JObj) ->
     case wh_json:get_value([<<"default">> | Keys], JObj) of
@@ -247,14 +247,14 @@ get_all_kvs(Category) ->
         {ok, JObj} -> get_all_kvs(wh_util:to_binary(node()), JObj)
     end.
 
--spec get_all_kvs/2 :: (ne_binary(), wh_json:json_object()) -> wh_proplist().
+-spec get_all_kvs/2 :: (ne_binary(), wh_json:object()) -> wh_proplist().
 get_all_kvs(Node, JObj) ->
     case wh_json:get_value(Node, JObj) of
         undefined -> get_all_default_kvs(JObj);
         NodeJObj -> wh_json:to_proplist(NodeJObj)
     end.
 
--spec get_all_default_kvs/1 :: (wh_json:json_object()) -> wh_proplist().
+-spec get_all_default_kvs/1 :: (wh_json:object()) -> wh_proplist().
 get_all_default_kvs(JObj) ->
     case wh_json:get_value(<<"default">>, JObj) of
         undefined -> [];
@@ -267,8 +267,8 @@ get_all_default_kvs(JObj) ->
 %% set the key to the value in the given category but specific to this node
 %% @end
 %%-----------------------------------------------------------------------------
--spec set/3 :: (config_category(), config_key(), term()) -> {'ok', wh_json:json_object()}.
--spec set/4 :: (config_category(), config_key(), term(), ne_binary() | atom()) -> {'ok', wh_json:json_object()}.
+-spec set/3 :: (config_category(), config_key(), term()) -> {'ok', wh_json:object()}.
+-spec set/4 :: (config_category(), config_key(), term(), ne_binary() | atom()) -> {'ok', wh_json:object()}.
 set(Category, Key, Value) ->
     set(Category, Key, Value, node()).
 set(Category, Key, Value, Node) ->
@@ -281,7 +281,8 @@ set(Category, Key, Value, Node) ->
 %% section
 %% @end
 %%-----------------------------------------------------------------------------
--spec set_default/3 :: (config_category(), config_key(), term()) -> {'ok', wh_json:json_object()} | 'ok'.
+-spec set_default/3 :: (config_category(), config_key(), term()) ->
+                               {'ok', wh_json:object()} | 'ok'.
 set_default(_Category, _Key, undefined) -> ok;
 set_default(Category, Key, Value) ->
     do_set(Category, Key, Value, <<"default">>).
@@ -301,7 +302,7 @@ flush(Category) ->
     wh_cache:erase_local(?WHAPPS_CONFIG_CACHE, category_key(Category)).
 
 -spec flush/2 :: (ne_binary(), ne_binary()) -> 'ok'.
--spec flush/3 :: (ne_binary(), ne_binary() | [ne_binary(),...], atom() | ne_binary()) -> 'ok'.
+-spec flush/3 :: (ne_binary(), ne_binary() | ne_binaries(), atom() | ne_binary()) -> 'ok'.
 flush(Category, Key) ->
     flush(Category, Key, <<"default">>).
 
@@ -330,7 +331,7 @@ flush(Category0, Keys, Node0) ->
 %% file (can be used when a new option is added)
 %% @end
 %%-----------------------------------------------------------------------------
--spec import/1 :: (config_category()) -> {'ok', wh_json:json_object()}.
+-spec import/1 :: (config_category()) -> {'ok', wh_json:object()}.
 import(Category) when not is_binary(Category) ->
     import(wh_util:to_binary(Category));
 import(Category) ->
@@ -393,7 +394,7 @@ fetch_db_config(_Category, _Cache, _) ->
 %% save it to the db and cache it
 %% @end
 %%-----------------------------------------------------------------------------
--spec fetch_file_config/2 :: (ne_binary(), atom()) -> {'ok', wh_json:json_object()}.
+-spec fetch_file_config/2 :: (ne_binary(), atom()) -> {'ok', wh_json:object()}.
 fetch_file_config(Category, Cache) ->
     File = category_to_file(Category),
     case file:consult(File) of
@@ -422,7 +423,7 @@ fetch_file_config(Category, Cache) ->
 %% convert the result of the file consult into a json object
 %% @end
 %%-----------------------------------------------------------------------------
--spec config_terms_to_json/1 :: (wh_proplist()) -> wh_json:json_object().
+-spec config_terms_to_json/1 :: (wh_proplist()) -> wh_json:object().
 config_terms_to_json(Terms) ->
     wh_json:from_list([{wh_util:to_binary(K), V} || {K, V} <- Terms]).
 
@@ -434,7 +435,7 @@ config_terms_to_json(Terms) ->
 %% @end
 %%-----------------------------------------------------------------------------
 -spec do_set/4 :: (config_category(), config_key(), term(), ne_binary() | atom()) ->
-                          {'ok', wh_json:json_object()}.
+                          {'ok', wh_json:object()}.
 do_set(Category, Key, Value, Node) when not is_list(Key) ->
     do_set(Category, [wh_util:to_binary(Key)], Value, Node);
 do_set(Category0, Keys, Value, Node0) ->
@@ -456,9 +457,9 @@ do_set(Category0, Keys, Value, Node0) ->
 %% update the configuration category for a given node in both the db and cache
 %% @end
 %%-----------------------------------------------------------------------------
--type update_fun() :: fun((wh_json:json_object()) -> wh_json:json_object()).
+-type update_fun() :: fun((wh_json:object()) -> wh_json:object()).
 -spec update_category_node/4 :: (ne_binary(), ne_binary(), update_fun(), atom()) ->
-                                        {'ok', wh_json:json_object()}.
+                                        {'ok', wh_json:object()}.
 update_category_node(Category, Node, UpdateFun, Cache) ->
     DBReady = case wh_cache:fetch_local(Cache, couch_ready_key()) of
                   {ok, true} -> true;
@@ -494,10 +495,10 @@ update_category_node(Category, Node, UpdateFun, Cache) ->
 %% update the entire category in both the db and cache
 %% @end
 %%-----------------------------------------------------------------------------
--spec update_category/3 :: (ne_binary(), wh_json:json_object(), atom()) ->
-                                   {'ok', wh_json:json_object()}.
--spec update_category/4 :: (ne_binary(), wh_json:json_object(), atom(), boolean()) ->
-                                   {'ok', wh_json:json_object()}.
+-spec update_category/3 :: (ne_binary(), wh_json:object(), atom()) ->
+                                   {'ok', wh_json:object()}.
+-spec update_category/4 :: (ne_binary(), wh_json:object(), atom(), boolean()) ->
+                                   {'ok', wh_json:object()}.
 
 update_category(Category, JObj, Cache) ->
     update_category(Category, JObj, Cache, false).
@@ -516,8 +517,8 @@ update_category(Category, JObj, Cache, Looped) ->
             cache_jobj(Cache, Category, JObj1)
     end.
 
--spec cache_jobj/3 :: (atom(), ne_binary(), wh_json:json_object()) ->
-                              {'ok', wh_json:json_object()}.
+-spec cache_jobj/3 :: (atom(), ne_binary(), wh_json:object()) ->
+                              {'ok', wh_json:object()}.
 cache_jobj(Cache, Category, JObj) ->
     lager:debug("stored ~s into ~s", [Category, Cache]),
     wh_cache:store_local(Cache, category_key(Category), JObj),
