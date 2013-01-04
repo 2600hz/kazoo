@@ -50,7 +50,7 @@
 -define(CONSUME_OPTIONS, []).
 
 -record(state, {call = whapps_call:new() :: whapps_call:call()
-                ,flow = wh_json:new() :: wh_json:json_object()
+                ,flow = wh_json:new() :: wh_json:object()
                 ,cf_module_pid = 'undefined' :: 'undefined' | pid()
                 ,status = <<"sane">> :: ne_binary()
                }).
@@ -101,7 +101,7 @@ continue(Key, Call) ->
     Srv = whapps_call:kvs_fetch(cf_exe_pid, Call),
     continue(Key, Srv).
 
--spec branch/2 :: (wh_json:json_object(), whapps_call:call() | pid()) -> 'ok'.
+-spec branch/2 :: (wh_json:object(), whapps_call:call() | pid()) -> 'ok'.
 branch(Flow, Srv) when is_pid(Srv) ->
     gen_listener:cast(Srv, {branch, Flow});
 branch(Flow, Call) ->
@@ -144,7 +144,7 @@ callid_update(CallId, CtrlQ, Call) ->
     callid_update(CallId, CtrlQ, Srv).
 
 -spec callid/1 :: (whapps_call:call() | pid()) -> ne_binary().
--spec callid/2 :: ('undefined' | ne_binary(), whapps_call:call()) -> ne_binary().
+-spec callid/2 :: (api_binary(), whapps_call:call()) -> ne_binary().
 
 callid(Srv) when is_pid(Srv) ->
     CallId = gen_server:call(Srv, {callid}, 1000),
@@ -165,7 +165,7 @@ queue_name(Call) ->
     queue_name(Srv).
 
 -spec control_queue/1 :: (whapps_call:call() | pid()) -> ne_binary().
--spec control_queue/2 :: ('undefined' | ne_binary(), whapps_call:call() | pid()) -> ne_binary().
+-spec control_queue/2 :: (api_binary(), whapps_call:call() | pid()) -> ne_binary().
 
 control_queue(Srv) when is_pid(Srv) ->
     gen_listener:call(Srv, {control_queue_name});
@@ -212,7 +212,7 @@ wildcard_is_empty(Call) ->
     Srv = whapps_call:kvs_fetch(cf_exe_pid, Call),
     wildcard_is_empty(Srv).
 
--spec relay_amqp/2 :: (wh_json:json_object(), proplist()) -> any().
+-spec relay_amqp/2 :: (wh_json:object(), wh_proplist()) -> any().
 relay_amqp(JObj, Props) ->
     Pids = [props:get_value(cf_module_pid, Props)
             | props:get_value(cf_event_pids, Props, [])

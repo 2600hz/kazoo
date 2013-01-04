@@ -140,13 +140,17 @@ init([Node, JObj]) ->
             publish_error(Error, undefined, JObj, ServerId),
             {stop, normal};
         true ->
-            Self = self(),
-            spawn(fun() ->
-                          Q = gen_listener:queue_name(Self),
-                          gen_server:cast(Self, {queue_name, Q})
-                  end),
+            _ = get_queue_name(),
             {ok, #state{node=Node, originate_req=JObj, server_id=ServerId}}
     end.
+
+get_queue_name() ->
+    get_queue_name(self()).
+get_queue_name(Srv) ->
+    spawn(fun() ->
+                  Q = gen_listener:queue_name(Srv),
+                  gen_server:cast(Srv, {queue_name, Q})
+          end).
 
 bind_to_events({ok, <<"mod_kazoo", _/binary>>}, Node) ->
     ok = freeswitch:event(Node, ['CUSTOM', 'loopback::bowout']);
@@ -180,8 +184,11 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast({queue_name, undefined}, State) ->
+    _ = get_queue_name(),
+    {noreply, State};
 handle_cast({queue_name, Q}, State) ->
-    lager:debug("starting originate request", []),
+    lager:debug("starting originate request"),
     gen_listener:cast(self(), {get_originate_action}),
     {noreply, State#state{queue=Q}};
 
@@ -233,7 +240,7 @@ handle_cast({build_originate_args}, #state{originate_req=JObj
     Endpoints = [wh_json:set_value(<<"origination_uuid">>, UUID, Endpoint)
                  || Endpoint <- wh_json:get_ne_value(<<"Endpoints">>, JObj, [])
                 ],
-    {noreply, State#state{dialstrings=build_originate_args(?ORIGINATE_PARK, Endpoints, JObj)}, hibernate};
+    {noreply, State#state{dialstrings=build_originate_args(?ORIGINATE_PARK, Endpoints, JObj)}};
 
 handle_cast({build_originate_args}, #state{originate_req=JObj
                                            ,uuid=UUID
@@ -244,14 +251,14 @@ handle_cast({build_originate_args}, #state{originate_req=JObj
     Endpoints = [wh_json:set_value(<<"origination_uuid">>, UUID, Endpoint)
                  || Endpoint <- wh_json:get_ne_value(<<"Endpoints">>, JObj, [])
                 ],
-    {noreply, State#state{dialstrings=build_originate_args(Action, Endpoints, JObj)}, hibernate};
+    {noreply, State#state{dialstrings=build_originate_args(Action, Endpoints, JObj)}};
 
 handle_cast({build_originate_args}, #state{originate_req=JObj
                                            ,action=Action
                                           }=State) ->
     gen_listener:cast(self(), {originate_execute}),
     Endpoints = wh_json:get_ne_value(<<"Endpoints">>, JObj, []),
-    {noreply, State#state{dialstrings=build_originate_args(Action, Endpoints, JObj)}, hibernate};
+    {noreply, State#state{dialstrings=build_originate_args(Action, Endpoints, JObj)}};
 
 handle_cast({originate_ready}, #state{originate_req=JObj
                                       ,node=Node
@@ -265,7 +272,8 @@ handle_cast({originate_ready}, #state{originate_req=JObj
             CtrlQ = ecallmgr_call_control:queue_name(CtrlPid),
             publish_originate_ready(CtrlQ, UUID, JObj, Q, ServerId),
             {noreply, State#state{control_pid=CtrlPid
-                                  ,tref=erlang:send_after(?REPLY_TIMEOUT, self(), {abandon_originate})}};
+                                  ,tref=erlang:send_after(?REPLY_TIMEOUT, self(), {abandon_originate})
+                                 }, hibernate};
         _Else ->
             lager:debug("failed to start cc process: ~p", [_Else]),
             Error = <<"failed to preemptively start a call control process">>,
@@ -274,9 +282,8 @@ handle_cast({originate_ready}, #state{originate_req=JObj
     end;
 
 handle_cast({originate_execute}, #state{tref=TRef}=State) when is_reference(TRef) ->
-    gen_listener:cast(self(), {originate_execute}),
     _ = erlang:cancel_timer(TRef),
-    {noreply, State#state{tref=undefined}};
+    handle_cast({originate_execute}, State#state{tref=undefined});
 handle_cast({originate_execute}, #state{dialstrings=Dialstrings
                                         ,node=Node
                                         ,originate_req=JObj
@@ -290,11 +297,19 @@ handle_cast({originate_execute}, #state{dialstrings=Dialstrings
             {stop, normal, State#state{control_pid=undefined}};
         {ok, CallId} ->
             put(callid, CallId),
-            lager:debug("originate is executing, waiting for completion", []),
+            lager:debug("originate is executing, waiting for completion"),
             erlang:monitor_node(Node, true),
             bind_to_call_events(CallId),
+
+            Resp = wh_json:set_values([{<<"Event-Category">>, <<"resource">>}
+                                       ,{<<"Event-Name">>, <<"originate_resp">>}
+                                       ,{<<"Call-ID">>, CallId}
+                                      ], JObj),
+            wapi_resource:publish_originate_resp(ServerId, Resp),
+
             {noreply, State#state{uuid=CallId}};
         {error, Error} ->
+            lager:debug("failed to originate: ~p", [Error]),
             _ = publish_error(Error, UUID, JObj, ServerId),
             {stop, normal, State}
     end;
@@ -303,7 +318,7 @@ handle_cast({bridge_execute_complete, JObj}, #state{server_id=ServerId}=State) -
     Resp = wh_json:set_values([{<<"Event-Category">>, <<"resource">>}
                                ,{<<"Event-Name">>, <<"originate_resp">>}
                               ], JObj),
-    lager:debug("received bridge complete event, sending originate response", []),
+    lager:debug("received bridge complete event, sending originate response"),
     wapi_resource:publish_originate_resp(ServerId, Resp),
     {stop, normal, State};
 
@@ -311,12 +326,13 @@ handle_cast({channel_destroy, JObj}, #state{server_id=ServerId}=State) ->
     Resp = wh_json:set_values([{<<"Event-Category">>, <<"resource">>}
                                ,{<<"Event-Name">>, <<"originate_resp">>}
                               ], JObj),
-    lager:debug("received channel destroy event, sending originate response", []),
+    lager:debug("received channel destroy event, sending originate response"),
     wapi_resource:publish_originate_resp(ServerId, Resp),
     {stop, normal, State};
 
 handle_cast(_Msg, State) ->
-    {noreply, State}.
+    lager:debug("unhandled cast: ~p", [_Msg]),
+    {noreply, State, hibernate}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -349,14 +365,19 @@ handle_info({abandon_originate}, #state{originate_req=JObj, uuid=UUID, server_id
     _ = publish_error(Error, UUID, JObj, ServerId),
     {stop, normal, State};
 
-handle_info({nodedown, _}, #state{originate_req=JObj, uuid=UUID, server_id=ServerId, node=Node}=State) ->
+handle_info({nodedown, _}, #state{originate_req=JObj
+                                  ,uuid=UUID
+                                  ,server_id=ServerId
+                                  ,node=Node
+                                 }=State) ->
     erlang:monitor_node(Node, false),
     Error = <<"lost connection to freeswitch node">>,
     _ = publish_error(Error, UUID, JObj, ServerId),
     {stop, normal, State};
 
 handle_info(_Info, State) ->
-    {noreply, State}.
+    lager:debug("unhandled message: ~p", [_Info]),
+    {noreply, State, hibernate}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -415,13 +436,12 @@ get_originate_action(<<"transfer">>, JObj) ->
     end;
 get_originate_action(<<"bridge">>, JObj) ->
     lager:debug("got originate with action bridge"),
-    Data = wh_json:get_value(<<"Application-Data">>, JObj),
 
-    case ecallmgr_util:build_channel(Data) of
-        {error, _} -> <<"error">>;
-        {ok, Channel} ->
-            list_to_binary(["'m:^:", get_unset_vars(JObj), "bridge:", Channel, "' inline"])
+    case wh_json:get_binary_value(<<"Existing-Call-ID">>, JObj) of
+        undefined -> get_bridge_action(JObj);
+        ExistingCallId -> <<" 'set:api_result=${uuid_bridge ${uuid} ", ExistingCallId/binary, "}' inline ">>
     end;
+
 get_originate_action(<<"eavesdrop">>, JObj) ->
     lager:debug("got originate with action eavesdrop"),
     case ecallmgr_fs_nodes:channel_node(wh_json:get_binary_value(<<"Eavesdrop-Call-ID">>, JObj)) of
@@ -435,6 +455,15 @@ get_originate_action(<<"eavesdrop">>, JObj) ->
 get_originate_action(_, _) ->
     lager:debug("got originate with action park"),
     ?ORIGINATE_PARK.
+
+get_bridge_action(JObj) ->
+    Data = wh_json:get_value(<<"Application-Data">>, JObj),
+
+    case ecallmgr_util:build_channel(Data) of
+        {error, _} -> <<"error">>;
+        {ok, Channel} ->
+            list_to_binary(["'m:^:", get_unset_vars(JObj), "bridge:", Channel, "' inline"])
+    end.
 
 -spec maybe_update_node/2 :: (wh_json:object(), atom()) -> atom().
 maybe_update_node(JObj, Node) ->
@@ -461,7 +490,7 @@ get_eavesdrop_action(JObj) ->
 
 -spec build_originate_args/3 :: (ne_binary(), wh_json:objects(), wh_json:object()) -> ne_binary().
 build_originate_args(Action, Endpoints, JObj) ->
-    lager:debug("building originate command arguments", []),
+    lager:debug("building originate command arguments"),
     DialSeparator = case wh_json:get_value(<<"Dial-Endpoint-Method">>, JObj, <<"single">>) of
                         <<"simultaneous">> when length(Endpoints) > 1 -> <<",">>;
                         _Else -> <<"|">>
@@ -504,7 +533,7 @@ bind_to_call_events(CallId) ->
 
 -spec unbind_from_call_events/0 :: () -> 'ok'.
 unbind_from_call_events() ->
-    lager:debug("unbind from call events", []),
+    lager:debug("unbind from call events"),
     gen_listener:rm_binding(self(), call, []).
 
 
@@ -570,7 +599,7 @@ publish_error(Error, UUID, Request, ServerId) ->
 
 -spec publish_originate_ready/5 :: (ne_binary(), ne_binary(), wh_json:object(), ne_binary(), ne_binary()) -> 'ok'.
 publish_originate_ready(CtrlQ, UUID, Request, Q, ServerId) ->
-    lager:debug("originate command is ready, waiting for originate_execute", []),
+    lager:debug("originate command is ready, waiting for originate_execute"),
     Props = [{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, Request, UUID)}
              ,{<<"Call-ID">>, UUID}
              ,{<<"Control-Queue">>, CtrlQ}

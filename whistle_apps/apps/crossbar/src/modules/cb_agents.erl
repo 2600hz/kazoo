@@ -215,8 +215,18 @@ maybe_compress_stats(Context, From, To) ->
                                  ,Compressed)
               ,Context);
         _S ->
-            lager:debug("failed to load stats"),
-            Context
+            AcctId = cb_context:account_id(Context),
+            lager:debug("failed to load stats from ~s", [acdc_stats:db_name(AcctId)]),
+
+            case couch_mgr:db_exists(acdc_stats:db_name(AcctId)) of
+                'true' -> Context;
+                'false' ->
+                    spawn(fun() ->
+                                  lager:debug("db ~s doesn't exist, let's init it", [AcctId]),
+                                  acdc_stats:init_db(AcctId)
+                          end),
+                    crossbar_util:response_db_fatal(Context)
+            end
     end.
 
 compress_stats(undefined, {Compressed, _, _}) -> Compressed;

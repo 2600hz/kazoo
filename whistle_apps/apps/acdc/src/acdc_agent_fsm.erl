@@ -17,6 +17,7 @@
          ,member_connect_req/2
          ,member_connect_win/2
          ,originate_ready/2
+         ,originate_resp/2
          ,originate_failed/2
          ,route_req/2
          ,sync_req/2, sync_resp/2
@@ -157,8 +158,7 @@ call_event(FSM, <<"error">>, <<"dialplan">>, JObj) ->
 
     gen_fsm:send_event(FSM, {dialplan_error, wh_json:get_value(<<"Application-Name">>, Req)});
 call_event(_, _C, _E, _) ->
-    ok.
-    %% lager:debug("unhandled call event: ~s: ~s", [_C, _E]).
+    lager:debug("unhandled call event: ~s: ~s", [_C, _E]).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -177,6 +177,9 @@ maybe_send_execute_complete(_, _, _) -> ok.
 %%--------------------------------------------------------------------
 originate_ready(FSM, JObj) ->
     gen_fsm:send_event(FSM, {originate_ready, JObj}).
+
+originate_resp(FSM, JObj) ->
+    gen_fsm:send_event(FSM, {originate_resp, wh_json:get_value(<<"Call-ID">>, JObj)}).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -357,6 +360,8 @@ sync({timeout, Ref, ?SYNC_RESPONSE_MESSAGE}, #state{sync_ref=Ref
                                                    }=State) when is_reference(Ref) ->
     lager:debug("done waiting for sync responses"),
     acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_GREEN),
+    acdc_stats:agent_ready(AcctId, AgentId),
+
     {next_state, ready, State#state{sync_ref=Ref}};
 sync({timeout, Ref, ?RESYNC_RESPONSE_MESSAGE}, #state{sync_ref=Ref}=State) when is_reference(Ref) ->
     lager:debug("resync timer expired, lets check with the others again"),
@@ -394,6 +399,7 @@ sync({sync_resp, JObj}, #state{sync_ref=Ref
             lager:debug("other agent is in ready state, joining"),
             _ = erlang:cancel_timer(Ref),
             acdc_util:presence_update(AcctId, AgentId, ?PRESENCE_GREEN),
+            acdc_stats:agent_ready(AcctId, AgentId),
             {next_state, ready, State#state{sync_ref=undefined}};
         {'EXIT', _} ->
             lager:debug("other agent sent unusable state, ignoring"),
@@ -562,6 +568,15 @@ ringing({originate_ready, JObj}, #state{agent_proc=Srv}=State) ->
     lager:debug("ringing agent's phone with call-id ~s", [CallId]),
     acdc_agent:originate_execute(Srv, JObj),
     {next_state, ringing, State#state{agent_call_id=CallId}};
+
+ringing({originate_resp, ACallId}, #state{agent_proc=Srv}=State) ->
+    lager:debug("originate resp on ~s, connecting to caller", [ACallId]),
+    acdc_agent:agent_call_id(Srv, ACallId),
+    acdc_agent:member_connect_accepted(Srv),
+    {next_state, answered, State#state{call_status_ref=start_call_status_timer()
+                                       ,call_status_failures=0
+                                       ,agent_call_id=ACallId
+                                      }};
 
 ringing({originate_failed, _E}, #state{agent_proc=Srv
                                          ,acct_id=AcctId
