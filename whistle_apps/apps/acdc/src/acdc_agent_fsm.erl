@@ -71,6 +71,8 @@
 
 -define(PAUSE_MESSAGE, pause_expired).
 
+-define(WRAPUP_FINISHED, wrapup_finished).
+
 -define(CALL_STATUS_TIMEOUT, 10000).
 -define(CALL_STATUS_MESSAGE, call_status_timeout).
 
@@ -483,7 +485,7 @@ ready({member_connect_win, JObj}, #state{agent_proc=Srv
                                               ,caller_exit_key=CallerExitKey
                                              }};
         _OtherId ->
-            lager:debug("monitoring agent ~s connecting to caller", [AgentId]),
+            lager:debug("monitoring agent ~s connecting to caller: ~s", [AgentId, _OtherId]),
 
             acdc_agent:monitor_call(Srv, Call),
 
@@ -526,7 +528,7 @@ ready({route_req, Call}, #state{agent_proc=Srv
                                }=State) ->
     CallId = whapps_call:call_id(Call),
     put(callid, CallId),
-    lager:debug("agent on outbound call, not receiving calls"),
+    lager:debug("agent making outbound call, not receiving calls"),
 
     acdc_agent:outbound_call(Srv, Call),
     acdc_stats:agent_oncall(AcctId, AgentId, CallId),
@@ -810,7 +812,7 @@ wrapup({member_connect_win, JObj}, #state{agent_proc=Srv}=State) ->
     acdc_agent:member_connect_retry(Srv, JObj),
     {next_state, wrapup, State#state{wrapup_timeout=0}};
 
-wrapup({timeout, Ref, wrapup_expired}, #state{wrapup_ref=Ref
+wrapup({timeout, Ref, ?WRAPUP_FINISHED}, #state{wrapup_ref=Ref
                                               ,acct_id=AcctId
                                               ,agent_id=AgentId
                                              }=State) ->
@@ -1165,7 +1167,7 @@ code_change(_OldVsn, StateName, State, _Extra) ->
 %%%===================================================================
 -spec start_wrapup_timer/1 :: (integer()) -> reference().
 start_wrapup_timer(Timeout) when Timeout < 0 -> start_wrapup_timer(0); % send immediately
-start_wrapup_timer(Timeout) -> gen_fsm:start_timer(Timeout*1000, wrapup_expired).
+start_wrapup_timer(Timeout) -> gen_fsm:start_timer(Timeout*1000, ?WRAPUP_FINISHED).
 
 -spec start_sync_timer/0 :: () -> reference().
 -spec start_sync_timer/1 :: (pid()) -> reference().

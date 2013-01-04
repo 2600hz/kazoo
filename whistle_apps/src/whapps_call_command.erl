@@ -1236,9 +1236,9 @@ b_flush(Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec privacy/1 ::  (whapps_call:call()) -> 'ok'.
--spec b_privacy/1 :: (whapps_call:call()) -> whapps_api_error() | {'ok', wh_json:json_object()}.
+-spec b_privacy/1 :: (whapps_call:call()) -> whapps_api_error() | {'ok', wh_json:object()}.
 -spec privacy/2 :: (ne_binary(), whapps_call:call()) -> 'ok'.
--spec b_privacy/2 :: (ne_binary(), whapps_call:call()) -> whapps_api_error() | {'ok', wh_json:json_object()}.
+-spec b_privacy/2 :: (ne_binary(), whapps_call:call()) -> whapps_api_error() | {'ok', wh_json:object()}.
 
 privacy(Call) ->
     privacy(<<"full">>, Call).

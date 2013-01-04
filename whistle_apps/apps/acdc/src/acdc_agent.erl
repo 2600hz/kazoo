@@ -149,19 +149,25 @@ start_link(Supervisor, AgentJObj) ->
             lager:debug("agent ~s in ~s has no queues, ignoring", [AgentId, AcctId]),
             {error, no_queues};
         Queues ->
-            lager:debug("start bindings for ~s(~s)", [AcctId, AgentId]),
-            gen_listener:start_link(?MODULE
-                                    ,[{bindings, ?BINDINGS(AcctId, AgentId)}
-                                      ,{responders, ?RESPONDERS}
-                                     ]
-                                    ,[Supervisor, AgentJObj, Queues]
-                                   )
+            case acdc_util:agent_status(AcctId, AgentId) of
+                <<"logout">> ->
+                    {error, logged_out};
+                _S ->
+                    lager:debug("start bindings for ~s(~s) in ~s", [AcctId, AgentId, _S]),
+                    gen_listener:start_link(?MODULE
+                                            ,[{bindings, ?BINDINGS(AcctId, AgentId)}
+                                              ,{responders, ?RESPONDERS}
+                                             ]
+                                            ,[Supervisor, AgentJObj, Queues]
+                                           )
+            end
     end.
 
 start_link(Supervisor, ThiefCall, QueueId) ->
     AgentId = whapps_call:owner_id(ThiefCall),
     AcctId = whapps_call:account_id(ThiefCall),
 
+    lager:debug("starting thief agent ~s(~s)", [AgentId, AcctId]),
     gen_listener:start_link(?MODULE
                             ,[{bindings, ?BINDINGS(AcctId, AgentId)}
                               ,{responders, ?RESPONDERS}
@@ -526,10 +532,16 @@ handle_cast({bridge_to_member, Call, _WinJObj, _}, #state{is_thief=true
 
     {noreply, State#state{call=Call}, hibernate};
 
-handle_cast({monitor_call, Call}, State) ->
+handle_cast({monitor_call, Call}, #state{agent_queues=Qs
+                                         ,acct_id=AcctId
+                                         ,agent_id=AgentId
+                                        }=State) ->
     _ = whapps_call:put_callid(Call),
     acdc_util:bind_to_call_events(Call),
     lager:debug("monitoring call ~s", [whapps_call:call_id(Call)]),
+
+    update_my_queues_of_change(AcctId, AgentId, Qs),
+
     {noreply, State#state{call=Call}, hibernate};
 
 handle_cast({originate_execute, JObj}, #state{my_q=Q}=State) ->

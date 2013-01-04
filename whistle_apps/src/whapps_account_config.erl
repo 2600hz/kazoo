@@ -16,7 +16,7 @@
          ,flush/1, flush/2
         ]).
 
--spec get/2 :: (ne_binary(), ne_binary()) -> wh_json:json_object().
+-spec get/2 :: (ne_binary(), ne_binary()) -> wh_json:object().
 get(Account, Config) ->
     AccountId = wh_util:format_account_id(Account, raw),
     case wh_cache:peek_local(?WHAPPS_CONFIG_CACHE, cache_key(AccountId, Config)) of
@@ -60,7 +60,7 @@ get(Account, Config, Key, Default) ->
     wh_json:get_value(Key, get(Account, Config), Default).
 
 -spec set/4 :: (ne_binary(), ne_binary(), wh_json:json_string() | wh_json:json_strings(), wh_json:json_term()) ->
-                       wh_json:json_object().
+                       wh_json:object().
 set(Account, Config, Key, Value) ->
     JObj = wh_json:set_value(Key, Value, ?MODULE:get(Account, Config)),
 

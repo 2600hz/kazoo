@@ -75,7 +75,7 @@
          ,require_moderator = false :: boolean()                              %% does the conference require a moderator
          ,wait_for_moderator = false :: boolean()                             %% can members wait for a moderator
          ,play_name_on_join = false :: boolean()                              %% should participants have their name played on join
-         ,conference_doc = 'undefined' :: 'undefined' | wh_json:json_object() %% the complete conference doc used to create the record (when and if)
+         ,conference_doc = 'undefined' :: 'undefined' | wh_json:object() %% the complete conference doc used to create the record (when and if)
          ,app_name = <<"whapps_conference">> :: ne_binary()                   %% The application name used during whapps_conference_command
          ,app_version = <<"1.0.0">> :: ne_binary()                            %% The application version used during whapps_conference_command
          ,kvs = orddict:new() :: orddict:orddict()                            %% allows conferences to set values that propogate to children
@@ -87,10 +87,10 @@
 -spec new/0 :: () -> conference().
 new() -> #whapps_conference{}.
 
--spec from_json/1 :: (wh_json:json_object()) -> conference().
+-spec from_json/1 :: (wh_json:object()) -> conference().
 from_json(JObj) -> from_json(JObj, #whapps_conference{}).
 
--spec from_json/2 :: (wh_json:json_object(), conference()) -> conference().    
+-spec from_json/2 :: (wh_json:object(), conference()) -> conference().    
 from_json(JObj, Conference) ->
     KVS = orddict:from_list(wh_json:to_proplist(wh_json:get_value(<<"Key-Value-Store">>, JObj, wh_json:new()))),
     Conference#whapps_conference{
@@ -114,7 +114,7 @@ from_json(JObj, Conference) ->
       ,kvs = orddict:merge(fun(_, _, V2) -> V2 end, Conference#whapps_conference.kvs, KVS)
      }.
 
--spec to_json/1 :: (conference()) -> wh_json:json_object().
+-spec to_json/1 :: (conference()) -> wh_json:object().
 to_json(#whapps_conference{}=Conference) ->
     Props = to_proplist(Conference),
     KVS = [KV 
@@ -156,8 +156,8 @@ to_proplist(#whapps_conference{}=Conference) ->
 is_conference(#whapps_conference{}) -> true;
 is_conference(_) -> false. 
 
--spec from_conference_doc/1 :: (wh_json:json_object()) -> conference().
--spec from_conference_doc/2 :: (wh_json:json_object(), conference()) -> conference().
+-spec from_conference_doc/1 :: (wh_json:object()) -> conference().
+-spec from_conference_doc/2 :: (wh_json:object(), conference()) -> conference().
 
 from_conference_doc(JObj) ->
     from_conference_doc(JObj, #whapps_conference{}).
@@ -333,11 +333,11 @@ play_name_on_join(#whapps_conference{play_name_on_join=PlayNameOnJoin}) ->
 set_play_name_on_join(PlayNameOnJoin, Conference) when is_boolean(PlayNameOnJoin) ->
     Conference#whapps_conference{play_name_on_join=PlayNameOnJoin}.
 
--spec conference_doc/1 :: (conference()) -> 'undefined' | wh_json:json_object().
+-spec conference_doc/1 :: (conference()) -> 'undefined' | wh_json:object().
 conference_doc(#whapps_conference{conference_doc=JObj}) ->
     JObj.
 
--spec set_conference_doc/2 :: (wh_json:json_object(), conference()) -> conference().
+-spec set_conference_doc/2 :: (wh_json:object(), conference()) -> conference().
 set_conference_doc(JObj, Conference) ->
     Conference#whapps_conference{conference_doc=JObj}.
 
