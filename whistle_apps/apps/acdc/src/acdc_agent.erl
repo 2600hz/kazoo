@@ -149,19 +149,25 @@ start_link(Supervisor, AgentJObj) ->
             lager:debug("agent ~s in ~s has no queues, ignoring", [AgentId, AcctId]),
             {error, no_queues};
         Queues ->
-            lager:debug("start bindings for ~s(~s)", [AcctId, AgentId]),
-            gen_listener:start_link(?MODULE
-                                    ,[{bindings, ?BINDINGS(AcctId, AgentId)}
-                                      ,{responders, ?RESPONDERS}
-                                     ]
-                                    ,[Supervisor, AgentJObj, Queues]
-                                   )
+            case acdc_util:agent_status(AcctId, AgentId) of
+                <<"logout">> ->
+                    {error, logged_out};
+                _S ->
+                    lager:debug("start bindings for ~s(~s) in ~s", [AcctId, AgentId, _S]),
+                    gen_listener:start_link(?MODULE
+                                            ,[{bindings, ?BINDINGS(AcctId, AgentId)}
+                                              ,{responders, ?RESPONDERS}
+                                             ]
+                                            ,[Supervisor, AgentJObj, Queues]
+                                           )
+            end
     end.
 
 start_link(Supervisor, ThiefCall, QueueId) ->
     AgentId = whapps_call:owner_id(ThiefCall),
     AcctId = whapps_call:account_id(ThiefCall),
 
+    lager:debug("starting thief agent ~s(~s)", [AgentId, AcctId]),
     gen_listener:start_link(?MODULE
                             ,[{bindings, ?BINDINGS(AcctId, AgentId)}
                               ,{responders, ?RESPONDERS}
