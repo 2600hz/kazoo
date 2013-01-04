@@ -33,9 +33,9 @@
                        {'error', provider_errors() | 'tts_provider_failure'}.
 
 -type asr_resp() :: {'ok', ibrowse_req_id()} |
-                    {'ok', wh_json:json_object()} | %% {'ok', JObj}
+                    {'ok', wh_json:object()} | %% {'ok', JObj}
                     {'error', provider_errors()} |
-                    {'error',  'asr_provider_failure', wh_json:json_object()}.
+                    {'error',  'asr_provider_failure', wh_json:object()}.
 
 %%------------------------------------------------------------------------------
 %% Create a tts audio file using a configured provider

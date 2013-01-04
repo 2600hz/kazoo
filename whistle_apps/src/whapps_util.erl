@@ -141,7 +141,7 @@ get_master_account_id({ok, Accounts}) ->
 %% Given a list of accounts this returns the id of the oldest
 %% @end
 %%--------------------------------------------------------------------
--spec find_oldest_doc/1 :: (wh_json:json_objects()) ->
+-spec find_oldest_doc/1 :: (wh_json:objects()) ->
                                    {'ok', ne_binary()} |
                                    {'error', 'no_docs'}.
 find_oldest_doc([]) -> {error, no_docs};
@@ -249,7 +249,7 @@ get_accounts_by_name(Name) ->
 %% tuple for easy processing
 %% @end
 %%--------------------------------------------------------------------
--spec get_event_type/1 :: (wh_json:json_object()) -> {ne_binary(), ne_binary()}.
+-spec get_event_type/1 :: (wh_json:object()) -> {ne_binary(), ne_binary()}.
 get_event_type(JObj) ->
     wh_util:get_event_type(JObj).
 
@@ -260,7 +260,7 @@ get_event_type(JObj) ->
 %% dictionary, failing that the Msg-ID and finally a generic
 %% @end
 %%--------------------------------------------------------------------
--spec put_callid/1 :: (wh_json:json_object()) -> ne_binary() | 'undefined'.
+-spec put_callid/1 :: (wh_json:object()) -> ne_binary() | 'undefined'.
 put_callid(JObj) ->
     wh_util:put_callid(JObj).
 
@@ -271,7 +271,7 @@ put_callid(JObj) ->
 %% this returns the cause and code for the call termination
 %% @end
 %%--------------------------------------------------------------------
--spec get_call_termination_reason/1 :: (wh_json:json_object()) -> {ne_binary(), ne_binary()}.
+-spec get_call_termination_reason/1 :: (wh_json:object()) -> {ne_binary(), ne_binary()}.
 get_call_termination_reason(JObj) ->
     Cause = case wh_json:get_ne_value(<<"Application-Response">>, JObj) of
                undefined ->
@@ -302,7 +302,7 @@ calculate_cost(R, RI, RM, Sur, Secs) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_views_json/2 :: (atom(), string()) -> wh_json:json_objects().
+-spec get_views_json/2 :: (atom(), string()) -> wh_json:objects().
 get_views_json(App, Folder) ->
     Files = filelib:wildcard(lists:flatten([code:priv_dir(App), "/couchdb/", Folder, "/*.json"])),
     [JObj
@@ -319,8 +319,8 @@ get_views_json(App, Folder) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get_view_json/2 :: (atom(), ne_binary() | nonempty_string()) -> {ne_binary(), wh_json:json_object()}.
--spec get_view_json/1 :: (ne_binary() | nonempty_string()) -> {ne_binary(), wh_json:json_object()}.
+-spec get_view_json/2 :: (atom(), ne_binary() | nonempty_string()) -> {ne_binary(), wh_json:object()}.
+-spec get_view_json/1 :: (ne_binary() | nonempty_string()) -> {ne_binary(), wh_json:object()}.
 
 get_view_json(App, File) ->
     Path = list_to_binary([code:priv_dir(App), "/couchdb/", File]),
@@ -340,7 +340,7 @@ get_view_json(Path) ->
 %%--------------------------------------------------------------------
 -spec update_views/2 :: (ne_binary(), proplist()) -> 'ok'.
 -spec update_views/3 :: (ne_binary(), proplist(), boolean()) -> 'ok'.
--spec update_views/4 :: (wh_json:json_objects(), ne_binary(), proplist(), boolean()) -> 'ok'.
+-spec update_views/4 :: (wh_json:objects(), ne_binary(), proplist(), boolean()) -> 'ok'.
 
 update_views(Db, Views) ->
     update_views(Db, Views, false).
@@ -419,10 +419,10 @@ rm_aggregate_device(Db, Device) ->
     end.
 
 -spec amqp_pool_request/3 :: (api_terms(), wh_amqp_worker:publish_fun(), wh_amqp_worker:validate_fun()) ->
-                                     {'ok', wh_json:json_object()} |
+                                     {'ok', wh_json:object()} |
                                      {'error', any()}.
 -spec amqp_pool_request/4 :: (api_terms(), wh_amqp_worker:publish_fun(), wh_amqp_worker:validate_fun(), wh_timeout()) ->
-                                     {'ok', wh_json:json_object()} |
+                                     {'ok', wh_json:object()} |
                                      {'error', any()}.
 amqp_pool_request(Api, PubFun, ValidateFun) when is_function(PubFun, 1), is_function(ValidateFun, 1) ->
     amqp_pool_request(Api, PubFun, ValidateFun, wh_amqp_worker:default_timeout()).
@@ -433,10 +433,10 @@ amqp_pool_request(Api, PubFun, ValidateFun, Timeout) when is_function(PubFun, 1)
     wh_amqp_worker:call(?WHAPPS_AMQP_POOL, Api, PubFun, ValidateFun, Timeout).
 
 -spec amqp_pool_collect/2 :: (api_terms(), wh_amqp_worker:publish_fun()) ->
-                                     {'ok', wh_json:json_objects()} |
+                                     {'ok', wh_json:objects()} |
                                      {'error', any()}.
 -spec amqp_pool_collect/3 :: (api_terms(), wh_amqp_worker:publish_fun(), wh_timeout()) ->
-                                     {'ok', wh_json:json_objects()} |
+                                     {'ok', wh_json:objects()} |
                                      {'error', any()}.
 amqp_pool_collect(Api, PubFun) when is_function(PubFun, 1) ->
     amqp_pool_collect(Api, PubFun, wh_amqp_worker:default_timeout()).
@@ -453,7 +453,7 @@ amqp_pool_collect(Api, PubFun, Timeout) when is_function(PubFun, 1),
 %% in the system_config DB. Defaults to Request (To is the other option)
 %% @end
 %%--------------------------------------------------------------------
--spec get_destination/3 :: (wh_json:json_object(), ne_binary(), ne_binary()) -> {ne_binary(), ne_binary()}.
+-spec get_destination/3 :: (wh_json:object(), ne_binary(), ne_binary()) -> {ne_binary(), ne_binary()}.
 get_destination(JObj, Cat, Key) ->
     case whapps_config:get(Cat, Key, <<"Request">>) of
         <<"To">> ->
@@ -495,7 +495,7 @@ get_prompt(Name, Lang, Call) ->
     JObj = whapps_account_config:get(whapps_call:account_id(Call), ?PROMPTS_CONFIG_CAT),
     wh_json:get_value([Lang, Name], JObj, DefaultPrompt).
 
--spec try_split/2 :: (ne_binary(), wh_json:json_object()) -> {ne_binary(), ne_binary()} | 'undefined'.
+-spec try_split/2 :: (ne_binary(), wh_json:object()) -> {ne_binary(), ne_binary()} | 'undefined'.
 try_split(Key, JObj) ->
     case wh_json:get_value(Key, JObj) of
         undefined -> undefined;

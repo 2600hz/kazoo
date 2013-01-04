@@ -316,7 +316,7 @@ cleanup_aggregated_device(Device) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec purge_doc_type/2 :: (ne_binaries() | ne_binary(), ne_binary()) ->
-                                  {'ok', wh_json:json_objects()} |
+                                  {'ok', wh_json:objects()} |
                                   {'error', term()} |
                                   'ok'.
 purge_doc_type([], _Account) -> ok;
@@ -394,7 +394,7 @@ migrate_limits(Account) ->
 %%--------------------------------------------------------------------
 -spec clean_trunkstore_docs/3 :: (ne_binary(), integer(), integer()) ->
                                          {integer(), integer()}.
--spec clean_trunkstore_docs/4 :: (ne_binary(), wh_json:json_objects(), integer(), integer()) ->
+-spec clean_trunkstore_docs/4 :: (ne_binary(), wh_json:objects(), integer(), integer()) ->
                                          {integer(), integer()}.
 
 clean_trunkstore_docs(AccountDb, TwowayTrunks, InboundTrunks) ->
@@ -489,7 +489,7 @@ maybe_migrate_attachments(AccountDb, Id, JObj) ->
                 ]
     end.
 
--spec migrate_attachment/2 :: (ne_binary(), wh_json:json_object()) -> 'ok'.
+-spec migrate_attachment/2 :: (ne_binary(), wh_json:object()) -> 'ok'.
 migrate_attachment(AccountDb, ViewJObj) ->
     Id = wh_json:get_value(<<"id">>, ViewJObj),
     _ = case couch_mgr:open_doc(AccountDb, Id) of
