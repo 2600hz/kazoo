@@ -532,10 +532,16 @@ handle_cast({bridge_to_member, Call, _WinJObj, _}, #state{is_thief=true
 
     {noreply, State#state{call=Call}, hibernate};
 
-handle_cast({monitor_call, Call}, State) ->
+handle_cast({monitor_call, Call}, #state{agent_queues=Qs
+                                         ,acct_id=AcctId
+                                         ,agent_id=AgentId
+                                        }=State) ->
     _ = whapps_call:put_callid(Call),
     acdc_util:bind_to_call_events(Call),
     lager:debug("monitoring call ~s", [whapps_call:call_id(Call)]),
+
+    update_my_queues_of_change(AcctId, AgentId, Qs),
+
     {noreply, State#state{call=Call}, hibernate};
 
 handle_cast({originate_execute, JObj}, #state{my_q=Q}=State) ->
