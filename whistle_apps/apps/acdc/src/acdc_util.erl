@@ -144,6 +144,7 @@ update_agent_status(?NE_BINARY = AcctId, AgentId, Status, Options) ->
               [{<<"agent_id">>, AgentId}
                ,{<<"status">>, Status}
                ,{<<"pvt_type">>, <<"agent_partial">>}
+               ,{<<"timestamp">>, wh_util:current_tstamp()}
                | Options
               ]))
           ,AcctId),
