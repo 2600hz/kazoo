@@ -485,7 +485,7 @@ ready({member_connect_win, JObj}, #state{agent_proc=Srv
                                               ,caller_exit_key=CallerExitKey
                                              }};
         _OtherId ->
-            lager:debug("monitoring agent ~s connecting to caller", [AgentId]),
+            lager:debug("monitoring agent ~s connecting to caller: ~s", [AgentId, _OtherId]),
 
             acdc_agent:monitor_call(Srv, Call),
 
@@ -528,7 +528,7 @@ ready({route_req, Call}, #state{agent_proc=Srv
                                }=State) ->
     CallId = whapps_call:call_id(Call),
     put(callid, CallId),
-    lager:debug("agent on outbound call, not receiving calls"),
+    lager:debug("agent making outbound call, not receiving calls"),
 
     acdc_agent:outbound_call(Srv, Call),
     acdc_stats:agent_oncall(AcctId, AgentId, CallId),
