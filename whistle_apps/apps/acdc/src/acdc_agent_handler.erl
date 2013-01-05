@@ -134,7 +134,7 @@ handle_call_event(JObj, Props) ->
     end.
 
 handle_originate_resp(JObj, Props) ->
-    true = wapi_resource:originate_resp_v(JObj),
+    true = wapi_resource:originate_resp_v(JObj) orelse wapi_resource:originate_started_v(JObj),
     acdc_agent_fsm:originate_resp(props:get_value(fsm_pid, Props), JObj).
 
 -spec handle_member_message/2 :: (wh_json:object(), wh_proplist()) -> 'ok'.
