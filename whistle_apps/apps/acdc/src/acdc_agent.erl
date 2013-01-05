@@ -113,7 +113,7 @@
                        ,[{<<"call_event">>, <<"*">>}]
                       }
                      ,{{acdc_agent_handler, handle_originate_resp}
-                       ,[{<<"resource">>, <<"originate_resp">>}]
+                       ,[{<<"resource">>, <<"*">>}]
                       }
                      ,{{acdc_agent_handler, handle_call_event}
                        ,[{<<"error">>, <<"*">>}]
