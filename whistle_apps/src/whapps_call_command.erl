@@ -1823,7 +1823,11 @@ wait_for_fax(Timeout) ->
 get_event_type(JObj) ->
     { wh_json:get_value(<<"Event-Category">>, JObj, <<>>)
       ,wh_json:get_value(<<"Event-Name">>, JObj, <<>>)
-      ,wh_json:get_value(<<"Application-Name">>, JObj, wh_json:get_value([<<"Request">>, <<"Application-Name">>], JObj, <<>>)) }.
+      ,wh_json:get_value(<<"Application-Name">>
+                         ,JObj
+                         ,wh_json:get_value([<<"Request">>, <<"Application-Name">>], JObj, <<>>)
+                        )
+    }.
 
 %%--------------------------------------------------------------------
 %% @public
