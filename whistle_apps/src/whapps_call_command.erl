@@ -649,10 +649,10 @@ b_prompt(Prompt, Lang, Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec play/2 :: (ne_binary(), whapps_call:call()) -> ne_binary().
--spec play/3 :: (ne_binary(), [ne_binary(),...], whapps_call:call()) -> ne_binary().
+-spec play/3 :: (ne_binary(), ne_binaries(), whapps_call:call()) -> ne_binary().
 
 -spec b_play/2 :: (ne_binary(), whapps_call:call()) -> whapps_api_std_return().
--spec b_play/3 :: (ne_binary(), [ne_binary(),...], whapps_call:call()) -> whapps_api_std_return().
+-spec b_play/3 :: (ne_binary(), ne_binaries(), whapps_call:call()) -> whapps_api_std_return().
 
 play(Media, Call) ->
     play(Media, ?ANY_DIGIT, Call).
@@ -681,7 +681,7 @@ b_play(Media, Call) ->
 b_play(Media, Terminators, Call) ->
     wait_for_noop(play(Media, Terminators, Call)).
 
--spec play_command/3 :: (ne_binary(), [ne_binary(),...], whapps_call:call()) -> wh_json:object().
+-spec play_command/3 :: (ne_binary(), ne_binaries(), whapps_call:call()) -> wh_json:object().
 play_command(Media, Terminators, Call) ->
     wh_json:from_list([{<<"Application-Name">>, <<"play">>}
                        ,{<<"Media-Name">>, Media}
@@ -948,7 +948,7 @@ tones_command(Tones, Call) ->
 -spec prompt_and_collect_digits/8 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), whapps_api_binary(), ne_binary()
                                     ,whapps_call:call()) -> ok.
 -spec prompt_and_collect_digits/9 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), whapps_api_binary(), ne_binary()
-                                    ,[ne_binary(),...], whapps_call:call()) -> 'ok'.
+                                    ,ne_binaries(), whapps_call:call()) -> 'ok'.
 
 
 -spec b_prompt_and_collect_digit/2 :: (ne_binary(), whapps_call:call()) -> b_play_and_collect_digits_return().
@@ -961,7 +961,7 @@ tones_command(Tones, Call) ->
 -spec b_prompt_and_collect_digits/8 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), whapps_api_binary(), ne_binary()
                                       ,whapps_call:call()) -> b_play_and_collect_digits_return().
 -spec b_prompt_and_collect_digits/9 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), whapps_api_binary(), ne_binary()
-                                      ,[ne_binary(),...], whapps_call:call()) -> b_play_and_collect_digits_return().
+                                      ,ne_binaries(), whapps_call:call()) -> b_play_and_collect_digits_return().
 
 prompt_and_collect_digit(Prompt, Call) ->
     prompt_and_collect_digits(<<"1">>, <<"1">>, Prompt, Call).
@@ -1017,7 +1017,7 @@ b_prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, Invali
 -spec play_and_collect_digits/8 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), whapps_api_binary(), ne_binary()
                                     ,whapps_call:call()) -> 'ok'.
 -spec play_and_collect_digits/9 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), whapps_api_binary(), ne_binary()
-                                    ,[ne_binary(),...], whapps_call:call()) -> 'ok'.
+                                    ,ne_binaries(), whapps_call:call()) -> 'ok'.
 
 
 -spec b_play_and_collect_digit/2 :: (ne_binary(), whapps_call:call()) -> b_play_and_collect_digits_return().
@@ -1030,7 +1030,7 @@ b_prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, Invali
 -spec b_play_and_collect_digits/8 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), whapps_api_binary(), ne_binary()
                                       ,whapps_call:call()) -> b_play_and_collect_digits_return().
 -spec b_play_and_collect_digits/9 :: (ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), whapps_api_binary(), ne_binary()
-                                      ,[ne_binary(),...], whapps_call:call()) -> b_play_and_collect_digits_return().
+                                      ,ne_binaries(), whapps_call:call()) -> b_play_and_collect_digits_return().
 
 play_and_collect_digit(Media, Call) ->
     play_and_collect_digits(<<"1">>, <<"1">>, Media, Call).
