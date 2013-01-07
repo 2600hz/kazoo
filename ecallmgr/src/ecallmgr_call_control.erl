@@ -190,29 +190,8 @@ handle_conference_command(JObj, Props) ->
 -spec handle_call_events/2 :: (wh_json:object(), wh_proplist()) -> 'ok'.
 handle_call_events(JObj, Props) ->
     Srv = props:get_value(server, Props),
-    CallId = wh_json:get_value(<<"Call-ID">>, JObj),
-    put(callid, CallId),
+    put(callid, wh_json:get_value(<<"Call-ID">>, JObj)),
     case wh_json:get_value(<<"Event-Name">>, JObj) of
-        <<"CHANNEL_EXECUTE_COMPLETE">> ->
-            Application = wh_json:get_value(<<"Raw-Application-Name">>, JObj, wh_json:get_value(<<"Application-Name">>, JObj)),
-            lager:debug("control queue ~p channel execute completion for '~s'", [Srv, Application]),
-            gen_listener:cast(Srv, {event_execute_complete, CallId, Application, JObj});
-        <<"RECORD_STOP">> ->
-            Application = wh_json:get_value(<<"Raw-Application-Name">>, JObj, wh_json:get_value(<<"Application-Name">>, JObj)),
-            lager:debug("control queue ~p channel execute completion for '~s'", [Srv, Application]),
-            gen_listener:cast(Srv, {event_execute_complete, CallId, Application, JObj});
-        <<"CHANNEL_DESTROY">> ->
-            lager:debug("recv channel_destroy from evt bus"),
-            gen_listener:cast(Srv, {channel_destroyed, wh_json:get_value(<<"Call-ID">>, JObj), JObj});
-        <<"CHANNEL_UNBRIDGE">> ->
-            gen_listener:cast(Srv, {rm_leg, JObj});
-        <<"CHANNEL_BRIDGE">> ->
-            gen_listener:cast(Srv, {add_leg, JObj});
-        <<"CHANNEL_EXECUTE">> ->
-            case wh_json:get_value(<<"Raw-Application-Name">>, JObj) of
-                <<"redirect">> -> gen_listener:cast(Srv, {channel_redirected, JObj});
-                _Else -> ok
-            end;
         <<"controller_queue">> ->
             ControllerQ = wh_json:get_value(<<"Controller-Queue">>, JObj),
             gen_listener:cast(Srv, {controller_queue, ControllerQ});
@@ -222,43 +201,7 @@ handle_call_events(JObj, Props) ->
                 Q -> ok;
                 _Else -> gen_listener:cast(Srv, {usurp_control, JObj})
             end;
-        _ ->
-            ok
-    end.
-
-handle_channel_create(Props, _Node, CallId) ->
-    case props:get_value(<<"Other-Leg-Unique-ID">>, Props) =:= CallId of
-        false -> ok;
-        true ->
-            gen_listener:cast(self(), {add_leg, wh_json:from_list(Props)})
-    end.
-
-handle_channel_destroy(Props, _Node, CallId) ->
-    case props:get_value(<<"Other-Leg-Unique-ID">>, Props) =:= CallId of
-        false -> ok;
-        true ->
-            gen_listener:cast(self(), {rm_leg, wh_json:from_list(Props)})
-    end.
-
-handle_transfer(Props, _Node, CallId) ->
-    Transferer = case props:get_value(<<"Transferor-Direction">>, Props) of
-                     <<"inbound">> ->
-                         props:get_value(<<"Transferor-UUID">>, Props);
-                     _ ->
-                         props:get_value(<<"Transferee-UUID">>, Props)
-                 end,
-    case Transferer =:= CallId of
-        false -> ok;
-        true ->
-            gen_listener:cast(self(), {transferer, wh_json:from_list(Props)})
-    end,
-    case
-        props:get_value(<<"Type">>, Props) =:= <<"BLIND_TRANSFER">>
-        andalso props:get_value(<<"Replaces">>, Props) =:= CallId
-    of
-        false -> ok;
-        true ->
-            gen_listener:cast(self(), {transferee, wh_json:from_list(Props)})
+        _Else -> ok
     end.
 
 %%%===================================================================
@@ -282,7 +225,7 @@ init([Node, CallId, WhAppQ]) ->
     erlang:monitor_node(Node, true),
     gproc:reg({p, l, call_control}),
     gproc:reg({p, l, {call_control, CallId}}),
-    bind_to_events(freeswitch:version(Node), Node),
+    bind_to_events(Node, CallId),
     TRef = erlang:send_after(?SANITY_CHECK_PERIOD, self(), {sanity_check}),
     {ok, #state{node=Node
                 ,callid=CallId
@@ -294,10 +237,13 @@ init([Node, CallId, WhAppQ]) ->
                }
     }.
 
-bind_to_events(_, Node) ->
-    gproc:reg({p, l, {call_event, Node, <<"CHANNEL_CREATE">>}}),
-    gproc:reg({p, l, {call_event, Node, <<"CHANNEL_DESTROY">>}}),
-    gproc:reg({p, l, {call_event, Node, <<"sofia::transfer">>}}).
+bind_to_events(Node, CallId) ->
+    true = gproc:reg({p, l, {call_event, Node, CallId}}),
+    true = gproc:reg({p, l, {event, Node, <<"CHANNEL_CREATE">>}}),
+    true = gproc:reg({p, l, {event, Node, <<"CHANNEL_DESTROY">>}}),
+    true = gproc:reg({p, l, {event, Node, <<"sofia::transfer">>}}),
+    true = gproc:reg({p, l, {event, Node, <<"whistle::masquerade">>}}),
+    true = gproc:reg({p, l, {event, Node, <<"whistle::noop">>}}).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -516,7 +462,7 @@ handle_cast({event_execute_complete, CallId, EvtName, JObj}, #state{callid=CallI
                                                                     ,command_q=CmdQ
                                                                    }=State) ->
     NoopId = wh_json:get_value(<<"Application-Response">>, JObj),
-    case lists:member(EvtName, ecallmgr_util:convert_whistle_app_name(CurrApp)) of
+    case EvtName =:= CurrApp orelse lists:member(EvtName, ecallmgr_util:convert_whistle_app_name(CurrApp)) of
         false ->
             lager:debug("evt ~s not app ~s", [EvtName, CurrApp]),
             {noreply, State};
@@ -570,17 +516,32 @@ handle_cast(_, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({event, [_ | Props]}, #state{node=Node, callid=CallId}=State) ->
-    case props:get_value(<<"Event-Subclass">>, Props, props:get_value(<<"Event-Name">>, Props)) of
-        <<"CHANNEL_DESTROY">> -> handle_channel_destroy(Props, Node, CallId);
-        <<"CHANNEL_CREATE">> -> handle_channel_create(Props, Node, CallId);
-        <<"sofia::transfer">> -> handle_transfer(Props, Node, CallId);
-        _ -> ok
-    end,
+handle_info({event, [CallId | Props]}, #state{callid=CallId}=State) ->
+    JObj = ecallmgr_call_events:to_json(Props),
+    Application = wh_json:get_value(<<"Application-Name">>, JObj),
+    _ = case wh_json:get_value(<<"Event-Name">>, JObj) of
+            <<"CHANNEL_EXECUTE_COMPLETE">> ->
+                lager:debug("control queue channel execute completion for '~s'", [Application]),
+                gen_listener:cast(self(), {event_execute_complete, CallId, Application, JObj});
+            <<"RECORD_STOP">> ->
+                lager:debug("control queue channel execute completion for '~s'", [Application]),
+                gen_listener:cast(self(), {event_execute_complete, CallId, Application, JObj});
+            <<"CHANNEL_DESTROY">> ->
+                gen_listener:cast(self(), {channel_destroyed, CallId, JObj});
+            <<"CHANNEL_EXECUTE">> when Application =:= <<"redirect">> ->
+                gen_listener:cast(self(), {channel_redirected, JObj});
+            _Else -> ok
+        end,
     {noreply, State};
-handle_info({nodedown, Node}, #state{node=Node
-                                     ,is_node_up=true
-                                    }=State) ->
+handle_info({event, [_ | Props]}, #state{node=Node, callid=CallId}=State) ->
+    _ = case props:get_value(<<"Event-Subclass">>, Props, props:get_value(<<"Event-Name">>, Props)) of
+            <<"CHANNEL_DESTROY">> -> handle_channel_destroy(Props, Node, CallId);
+            <<"CHANNEL_CREATE">> -> handle_channel_create(Props, Node, CallId);
+            <<"sofia::transfer">> -> handle_transfer(Props, Node, CallId);
+            _Else -> ok
+        end,
+    {noreply, State};
+handle_info({nodedown, Node}, #state{node=Node, is_node_up=true}=State) ->
     lager:debug("lost connection to media node ~s, waiting for reconnection", [Node]),
     erlang:monitor_node(Node, false),
     _Ref = erlang:send_after(0, self(), {is_node_up, 100, 1}),
@@ -589,9 +550,7 @@ handle_info({nodedown, Node}, #state{node=Node
 handle_info({is_node_up, _Timeout, N}, State) when N > ?MAX_NODE_RESTART_FAILURES ->
     lager:debug("we've failed ~b times to reconnect to the node, assuming down for good for this call", [N]),
     {stop, normal, State};
-handle_info({is_node_up, Timeout, N}, #state{node=Node
-                                          ,is_node_up=false
-                                         }=State) ->
+handle_info({is_node_up, Timeout, N}, #state{node=Node, is_node_up=false}=State) ->
     case ecallmgr_fs_nodes:is_node_up(Node) of
         true ->
             erlang:monitor_node(Node, true),
@@ -699,6 +658,44 @@ terminate(_Reason, #state{start_time=StartTime
 %%--------------------------------------------------------------------
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
+
+%%%===================================================================
+%%% Internal functions
+%%%===================================================================
+handle_channel_create(Props, _Node, CallId) ->
+    case props:get_value(<<"Other-Leg-Unique-ID">>, Props) =:= CallId of
+        false -> ok;
+        true ->
+            gen_listener:cast(self(), {add_leg, wh_json:from_list(Props)})
+    end.
+
+handle_channel_destroy(Props, _Node, CallId) ->
+    case props:get_value(<<"Other-Leg-Unique-ID">>, Props) =:= CallId of
+        false -> ok;
+        true ->
+            gen_listener:cast(self(), {rm_leg, wh_json:from_list(Props)})
+    end.
+
+handle_transfer(Props, _Node, CallId) ->
+    Transferer = case props:get_value(<<"Transferor-Direction">>, Props) of
+                     <<"inbound">> ->
+                         props:get_value(<<"Transferor-UUID">>, Props);
+                     _ ->
+                         props:get_value(<<"Transferee-UUID">>, Props)
+                 end,
+    case Transferer =:= CallId of
+        false -> ok;
+        true ->
+            gen_listener:cast(self(), {transferer, wh_json:from_list(Props)})
+    end,
+    case
+        props:get_value(<<"Type">>, Props) =:= <<"BLIND_TRANSFER">>
+        andalso props:get_value(<<"Replaces">>, Props) =:= CallId
+    of
+        false -> ok;
+        true ->
+            gen_listener:cast(self(), {transferee, wh_json:from_list(Props)})
+    end.
 
 -spec flush_group_id/3 :: (queue(), api_binary(), ne_binary()) -> queue().
 flush_group_id(CmdQ, undefined, _) -> CmdQ;

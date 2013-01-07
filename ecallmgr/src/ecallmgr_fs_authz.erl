@@ -120,17 +120,28 @@ handle_session_heartbeat(Props, Node) ->
 init([Node, Options]) ->
     put(callid, Node),
     process_flag(trap_exit, true),
-    bind_to_events(freeswitch:version(Node), Node),
-    {ok, #state{node=Node, options=Options}}.
+    lager:info("starting new fs authz listener for ~s", [Node]),
+    case bind_to_events(props:get_value(client_version, Options), Node) of
+        ok -> {ok, #state{node=Node, options=Options}};
+        {error, Reason} ->
+            lager:critical("unable to establish authz bindings: ~p", [Reason]),
+            {stop, Reason}
+    end.
 
-bind_to_events({ok, <<"mod_kazoo", _/binary>>}, Node) ->
-    ok = freeswitch:event(Node, ['CHANNEL_CREATE', 'SESSION_HEARTBEAT']);
+bind_to_events(<<"mod_kazoo", _/binary>>, Node) ->
+%%    case freeswitch:event(Node, ['CHANNEL_CREATE', 'SESSION_HEARTBEAT']) of
+    case freeswitch:event(Node, ['CHANNEL_CREATE']) of
+        timeout -> {error, timeout};
+        Else -> Else
+    end;
 bind_to_events(_, Node) ->
-    ok = freeswitch:event(Node, ['SESSION_HEARTBEAT']),
-    lager:debug("bound to presence events on node ~s", [Node]),
-    gproc:reg({p, l, {call_event, Node, <<"CHANNEL_CREATE">>}}),
-    gproc:reg({p, l, {call_event, Node, <<"SESSION_HEARTBEAT">>}}).
-
+    case gproc:reg({p, l, {event, Node, <<"CHANNEL_CREATE">>}}) =:= true
+        andalso gproc:reg({p, l, {event, Node, <<"SESSION_HEARTBEAT">>}}) =:= true
+    of
+        true -> ok;
+        _ -> {error, gproc_badarg}
+    end.
+            
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -192,8 +203,8 @@ handle_info(_Info, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, _State) ->
-    ok.
+terminate(_Reason, #state{node=Node}) ->
+    lager:info("authz listener for ~s terminating: ~p", [Node, _Reason]).
 
 %%--------------------------------------------------------------------
 %% @private

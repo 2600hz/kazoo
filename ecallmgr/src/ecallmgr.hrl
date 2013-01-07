@@ -45,29 +45,31 @@
                            ,timestamp=wh_util:current_tstamp()
                           }).
 
--record(channel, {uuid = '_'
-                  ,destination = '_'
-                  ,direction = '_'
-                  ,account_id = '_'
-                  ,account_billing = '_'
-                  ,authorizing_id = '_'
-                  ,authorizing_type = '_'
-                  ,owner_id = '_'
-                  ,resource_id = '_'
-                  ,presence_id = '_'
-                  ,billing_id = '_'
-                  ,bridge_id = '_'
-                  ,reseller_id = '_'
-                  ,reseller_billing = '_'
-                  ,realm = '_'
-                  ,username = '_'
-                  ,import_moh = '_'
-                  ,node = '_'
-                  ,former_node = '_'
-                  ,timestamp = '_'
-                  ,profile = '_'
-                  ,context = '_'
-                  ,dialplan = '_'
+-record(channel, {uuid = undefined
+                  ,destination = undefined
+                  ,direction = undefined
+                  ,account_id = undefined
+                  ,account_billing = undefined
+                  ,authorizing_id = undefined
+                  ,authorizing_type = undefined
+                  ,owner_id = undefined
+                  ,resource_id = undefined
+                  ,presence_id = undefined
+                  ,billing_id = undefined
+                  ,bridge_id = undefined
+                  ,reseller_id = undefined
+                  ,reseller_billing = undefined
+                  ,realm = undefined
+                  ,username = undefined
+                  ,import_moh = undefined
+                  ,answered = false
+                  ,node = undefined
+                  ,former_node = undefined
+                  ,timestamp = undefined
+                  ,profile = undefined
+                  ,context = undefined
+                  ,dialplan = undefined
+                  ,precedence = 5
                  }).
 
 -type channel() :: #channel{}.
@@ -129,6 +131,7 @@
                                ,{<<"Confirm-File">>, <<"group_confirm_file">>}
                                ,{<<"Confirm-Key">>, <<"group_confirm_key">>}
                                ,{<<"Confirm-Cancel-Timeout">>, <<"group_confirm_cancel_timeout">>}
+                               ,{<<"Alert-Info">>, <<"alert_info">>}
                                ,{<<"Fax-Enabled">>, <<"t38_passthrough">>}
                                ,{<<"Presence-ID">>, <<"presence_id">>}
                                ,{<<"Inherit-Codec">>, <<"inherit_codec">>}
@@ -187,12 +190,21 @@
                                ,{<<"privacy">>, <<"privacy">>}
                               ]).
 
--define(FS_EVENTS, [<<"CHANNEL_EXECUTE">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"CHANNEL_HANGUP">>
-                        ,<<"CHANNEL_HANGUP_COMPLETE">>, <<"CHANNEL_BRIDGE">>, <<"CHANNEL_UNBRIDGE">>
-                        ,<<"DETECTED_TONE">>, <<"DTMF">>, <<"CALL_UPDATE">>, <<"CHANNEL_CREATE">>
-                        ,<<"RECORD_START">>, <<"RECORD_STOP">>
-                        ,<<"CHANNEL_DESTROY">>, <<"CHANNEL_EXECUTE_ERROR">>, <<"CHANNEL_PROGRESS_MEDIA">>
-                        ,<<"CHANNEL_ANSWER">>, <<"CHANNEL_PARK">>
+-define(CALL_EVENTS, [<<"CHANNEL_EXECUTE_COMPLETE">>, <<"CHANNEL_HANGUP">>
+                          ,<<"CHANNEL_HANGUP_COMPLETE">>, <<"CHANNEL_BRIDGE">>, <<"CHANNEL_UNBRIDGE">>
+                          ,<<"DETECTED_TONE">>, <<"DTMF">>, <<"CALL_UPDATE">>, <<"CHANNEL_CREATE">>
+                          ,<<"RECORD_START">>, <<"RECORD_STOP">>
+                          ,<<"CHANNEL_DESTROY">>, <<"CHANNEL_EXECUTE_ERROR">>, <<"CHANNEL_PROGRESS_MEDIA">>
+                          ,<<"CHANNEL_ANSWER">>, <<"CHANNEL_PARK">>
+                     ]).
+
+-define(FS_EVENTS, ['CHANNEL_CREATE', 'CHANNEL_PROGRESS_MEDIA', 'CHANNEL_ANSWER'
+                    ,'CHANNEL_PARK', 'CHANNEL_ANSWER', 'CALL_UPDATE', 'DETECTED_TONE'
+                    ,'DTMF', 'RECORD_START', 'RECORD_STOP', 'CHANNEL_BRIDGE'
+                    ,'CHANNEL_UNBRIDGE', 'CHANNEL_EXECUTE_COMPLETE'%%, 'CHANNEL_EXECUTE_ERROR'
+                    ,'CHANNEL_HANGUP', 'CHANNEL_HANGUP_COMPLETE', 'CHANNEL_DESTROY'
+                    ,'CUSTOM', 'sofia::transfer', 'loopback::bowout', 'whistle::noop'
+                    ,'whistle::masquerade', 'sofia::move_released', 'sofia::move_complete'
                    ]).
 
 -define(FS_DEFAULT_HDRS, [<<"Event-Name">>, <<"Core-UUID">>, <<"FreeSWITCH-Hostname">>, <<"FreeSWITCH-Switchname">>

@@ -73,33 +73,35 @@ handle_sucessful_registration(Props, Node) ->
 init([Node, Options]) ->
     put(callid, Node),
     process_flag(trap_exit, true),
-    lager:debug("starting new fs auth listener for ~s", [Node]),
-    bind_to_events(freeswitch:version(Node), Node),
-    case bind_to_directory(Node) of
+    lager:info("starting new fs authn listener for ~s", [Node]),
+    case bind_to_events(props:get_value(client_version, Options), Node) of
         ok -> {ok, #state{node=Node, options=Options}};
-        {error, Reason} -> {stop, Reason}
+        {error, Reason} -> 
+            lager:critical("unable to establish authn bindings: ~p", [Reason]),
+            {stop, Reason}
     end.
 
-bind_to_events({ok, <<"mod_kazoo", _/binary>>}, Node) ->
-    ok = freeswitch:event(Node, ['CUSTOM', 'sofia::register']);
+bind_to_events(<<"mod_kazoo", _/binary>>, Node) ->
+    case freeswitch:event(Node, ['CUSTOM', 'sofia::register']) of
+        timeout -> {error, timeout};
+        ok -> bind_to_directory(Node);
+        Else -> Else
+    end;
 bind_to_events(_, Node) ->
-    ok = freeswitch:event(Node, ['CUSTOM', 'sofia::register']),    
-    gproc:reg({p, l, {call_event, Node, <<"sofia::register">>}}).
-
+    case freeswitch:event(Node, ['CUSTOM', 'sofia::register']) of
+        timeout -> {error, timeout};
+        ok ->
+            case gproc:reg({p, l, {event, Node, <<"sofia::register">>}}) =:= true of
+                true -> bind_to_directory(Node);
+                false -> {error, gproc_badarg}
+            end;
+        Else -> Else
+    end.
+                
 bind_to_directory(Node) ->
     case freeswitch:bind(Node, directory) of
-        ok ->
-            lager:debug("bound to directory request on ~s", [Node]),
-            ok;
-        {ok, _Resp} ->
-            lager:debug("bound to directory request on ~s: ~s", [Node, _Resp]),
-            ok;
-        {error, Reason}=E ->
-            lager:warning("failed to bind to directory requests on ~s: ~p", [Node, Reason]),
-            E;
-        timeout ->
-            lager:error("failed to bind to directory requests on ~s: timeout", [Node]),
-            {error, timeout}
+        timeout -> {error, timeout};
+        Else -> Else
     end.
     
 %%--------------------------------------------------------------------
@@ -143,10 +145,7 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({event, [_ | Props]}, #state{node=Node}=State) ->
-    _ = case props:get_value(<<"Event-Subclass">>, Props, props:get_value(<<"Event-Name">>, Props)) of
-            <<"sofia::register">> -> spawn(?MODULE, handle_sucessful_registration, [Props, Node]);
-            _ -> ok
-        end,
+    spawn(?MODULE, handle_sucessful_registration, [Props, Node]),
     {noreply, State};
 handle_info({fetch, directory, <<"domain">>, <<"name">>, _Value, ID, [undefined | Data]}, #state{node=Node}=State) ->    
     case props:get_value(<<"sip_auth_method">>, Data) of
@@ -177,7 +176,6 @@ handle_info({fetch, _Section, _Something, _Key, _Value, ID, [undefined | _Data]}
     {noreply, State};
 
 handle_info(_Info, State) ->
-    lager:debug("got ~p", [_Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -192,7 +190,7 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, #state{node=Node}) ->
-    lager:debug("fs auth ~s termination: ~p", [Node, _Reason]).
+    lager:info("authn listener for ~s terminating: ~p", [Node, _Reason]).
 
 %%--------------------------------------------------------------------
 %% @private

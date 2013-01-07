@@ -116,39 +116,10 @@ send_cmd(Node, UUID, "set", "ecallmgr_Account-ID=" ++ Value) ->
     send_cmd(Node, UUID, "export", "ecallmgr_Account-ID=" ++ Value);
 send_cmd(Node, UUID, AppName, Args) ->
     lager:debug("execute on node ~s: ~s(~s)", [Node, AppName, Args]),
-    case AppName of
-        "set" -> maybe_update_channel_cache(Args, Node, UUID);
-        "export" -> maybe_update_channel_cache(Args, Node, UUID);
-        _Else -> ok
-    end,
     freeswitch:sendmsg(Node, UUID, [{"call-command", "execute"}
                                     ,{"execute-app-name", AppName}
                                     ,{"execute-app-arg", wh_util:to_list(Args)}
                                    ]).
-
--spec maybe_update_channel_cache/3 :: (string(), atom(), ne_binary()) -> 'ok'.
-maybe_update_channel_cache("ecallmgr_Account-ID=" ++ Value, Node, UUID) ->
-    ecallmgr_fs_nodes:channel_set_account_id(Node, UUID, Value);
-maybe_update_channel_cache("ecallmgr_Billing-ID=" ++ Value, Node, UUID) ->
-    ecallmgr_fs_nodes:channel_set_billing_id(Node, UUID, Value);
-maybe_update_channel_cache("ecallmgr_Account-Billing=" ++ Value, Node, UUID) ->
-    ecallmgr_fs_nodes:channel_set_account_billing(Node, UUID, Value);
-maybe_update_channel_cache("ecallmgr_Reseller-ID=" ++ Value, Node, UUID) ->
-    ecallmgr_fs_nodes:channel_set_reseller_id(Node, UUID, Value);
-maybe_update_channel_cache("ecallmgr_Reseller-Billing=" ++ Value, Node, UUID) ->
-    ecallmgr_fs_nodes:channel_set_reseller_billing(Node, UUID, Value);
-maybe_update_channel_cache("ecallmgr_Authorizing-ID=" ++ Value, Node, UUID) ->
-    ecallmgr_fs_nodes:channel_set_authorizing_id(Node, UUID, Value);
-maybe_update_channel_cache("ecallmgr_Resource-ID=" ++ Value, Node, UUID) ->
-    ecallmgr_fs_nodes:channel_set_resource_id(Node, UUID, Value);
-maybe_update_channel_cache("ecallmgr_Authorizing-Type=" ++ Value, Node, UUID) ->
-    ecallmgr_fs_nodes:channel_set_authorizing_type(Node, UUID, Value);
-maybe_update_channel_cache("ecallmgr_Owner-ID=" ++ Value, Node, UUID) ->
-    ecallmgr_fs_nodes:channel_set_owner_id(Node, UUID, Value);
-maybe_update_channel_cache("ecallmgr_Presence-ID=" ++ Value, Node, UUID) ->
-    ecallmgr_fs_nodes:channel_set_presence_id(Node, UUID, Value);
-maybe_update_channel_cache(_, _, _) ->
-    ok.
 
 -spec get_expires/1 :: (wh_proplist()) -> integer().
 get_expires(Props) ->
@@ -294,11 +265,6 @@ set(Node, UUID, [{_, _}|_]=Props) ->
                            end, <<>>, Props),
     send_cmd(Node, UUID, "multiset", <<"^^", Multiset/binary>>);
 set(Node, UUID, Arg) ->
-    case wh_util:to_binary(Arg) of
-        <<"hold_music=", _/binary>> -> 
-            ecallmgr_fs_nodes:channel_set_import_moh(Node, UUID, false);
-        _Else -> ok
-    end,
     send_cmd(Node, UUID, "set", Arg).
 
 %%--------------------------------------------------------------------
@@ -308,11 +274,6 @@ set(Node, UUID, Arg) ->
 %%--------------------------------------------------------------------
 -spec export/3 :: (atom(), ne_binary(), binary()) -> ecallmgr_util:send_cmd_ret().
 export(Node, UUID, Arg) ->
-    case wh_util:to_binary(Arg) of
-        <<"hold_music=", _/binary>> -> 
-            ecallmgr_fs_nodes:channel_set_import_moh(Node, UUID, false);
-        _Else -> ok
-    end,
     send_cmd(Node, UUID, "export", wh_util:to_list(Arg)).
 
 %%--------------------------------------------------------------------
