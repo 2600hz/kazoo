@@ -237,6 +237,8 @@ handle_call(config, _, #state{acct_id=AcctId
 handle_call(strategy, _, #state{strategy=Strategy}=State) ->
     {reply, Strategy, State};
 
+handle_call(next_winner, _, #state{strategy_state=undefined}=State) ->
+    {reply, undefined, State};
 handle_call(next_winner, _, #state{strategy_state=SS}=State) ->
     case queue:out(SS) of
         {{value, Winner}, SS1} ->
