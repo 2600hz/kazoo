@@ -150,7 +150,8 @@ call_event(FSM, <<"call_event">>, <<"CHANNEL_DESTROY">>, EvtJObj) ->
     gen_fsm:send_event(FSM, {member_hungup, EvtJObj});
 call_event(FSM, <<"call_event">>, <<"DTMF">>, EvtJObj) ->
     gen_fsm:send_event(FSM, {dtmf_pressed, wh_json:get_value(<<"DTMF-Digit">>, EvtJObj)});
-call_event(_, _, _, _) -> ok.
+call_event(_, _E, _N, _J) ->
+    lager:debug("unhandled event: ~s: ~s (~s)", [_E, _N, wh_json:get_value(<<"Application-Name">>, _J)]).
 
 current_call(FSM) ->
     gen_fsm:sync_send_event(FSM, current_call).
@@ -250,7 +251,7 @@ ready({dtmf_pressed, _DTMF}, State) ->
     {next_state, ready, State};
 
 ready(_Event, State) ->
-    lager:debug("unhandled event: ~p", [_Event]),
+    lager:debug("unhandled event in ready: ~p", [_Event]),
     {next_state, ready, State}.
 
 ready(status, _, State) ->
@@ -363,7 +364,7 @@ connect_req({timeout, ConnRef, ?CONNECTION_TIMEOUT_MESSAGE}, #state{queue_proc=S
     {next_state, ready, clear_member_call(State), hibernate};
 
 connect_req(_Event, State) ->
-    lager:debug("unhandled event: ~p", [_Event]),
+    lager:debug("unhandled event in connect_req: ~p", [_Event]),
     {next_state, connect_req, State}.
 
 connect_req(status, _, State) ->
@@ -473,7 +474,7 @@ connecting({timeout, ConnRef, ?CONNECTION_TIMEOUT_MESSAGE}, #state{queue_proc=Sr
     {next_state, ready, clear_member_call(State), hibernate};
 
 connecting(_Event, State) ->
-    lager:debug("unhandled event: ~p", [_Event]),
+    lager:debug("unhandled event in connecting: ~p", [_Event]),
     {next_state, connecting, State}.
 
 connecting(status, _, State) ->

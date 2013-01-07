@@ -543,7 +543,7 @@ system_alert_v(Prop) when is_list(Prop) ->
 system_alert_v(JObj) ->
     system_alert_v(wh_json:to_proplist(JObj)).
 
--spec bind_q/2 :: (binary(), proplist()) -> 'ok'.
+-spec bind_q/2 :: (ne_binary(), wh_proplist()) -> 'ok'.
 bind_q(Queue, Props) ->
     amqp_util:notifications_exchange(),
     bind_to_q(Queue, props:get_value(restrict_to, Props)).
