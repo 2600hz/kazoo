@@ -301,11 +301,11 @@ handle_cast({originate_execute}, #state{dialstrings=Dialstrings
             erlang:monitor_node(Node, true),
             bind_to_call_events(CallId),
 
-            Resp = wh_json:set_values([{<<"Event-Category">>, <<"resource">>}
-                                       ,{<<"Event-Name">>, <<"originate_resp">>}
-                                       ,{<<"Call-ID">>, CallId}
-                                      ], JObj),
-            wapi_resource:publish_originate_resp(ServerId, Resp),
+            Resp = wh_json:from_list([{<<"Call-ID">>, CallId}
+                                      ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+                                      | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                                     ]),
+            wapi_resource:publish_originate_started(ServerId, Resp),
 
             {noreply, State#state{uuid=CallId}};
         {error, Error} ->
@@ -439,7 +439,7 @@ get_originate_action(<<"bridge">>, JObj) ->
 
     case wh_json:get_binary_value(<<"Existing-Call-ID">>, JObj) of
         undefined -> get_bridge_action(JObj);
-        ExistingCallId -> <<" 'set:api_result=${uuid_bridge ${uuid} ", ExistingCallId/binary, "}' inline ">>
+        ExistingCallId -> <<" 'set:intercept_unbridged_only=true,intercept:", ExistingCallId/binary, "' inline ">>
     end;
 
 get_originate_action(<<"eavesdrop">>, JObj) ->

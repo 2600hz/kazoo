@@ -168,9 +168,11 @@ config(Srv) ->
 
 strategy(Srv) ->
     gen_listener:call(Srv, strategy).
+next_winner(Srv) ->
+    gen_listener:call(Srv, next_winner).
+
 pick_winner(Srv, Resps) ->
-    {Strategy, State} = strategy(Srv),
-    pick_winner(Srv, Resps, Strategy, State).
+    pick_winner(Srv, Resps, strategy(Srv), next_winner(Srv)).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -232,10 +234,18 @@ handle_call(config, _, #state{acct_id=AcctId
                              }=State) ->
     {reply, {AcctId, QueueId}, State};
 
-handle_call(strategy, _, #state{strategy=Strategy
-                                ,strategy_state=StrategyState
-                               }=State) ->
-    {reply, {Strategy, StrategyState}, State};
+handle_call(strategy, _, #state{strategy=Strategy}=State) ->
+    {reply, Strategy, State};
+
+handle_call(next_winner, _, #state{strategy_state=undefined}=State) ->
+    {reply, undefined, State};
+handle_call(next_winner, _, #state{strategy_state=SS}=State) ->
+    case queue:out(SS) of
+        {{value, Winner}, SS1} ->
+            {reply, Winner, State#state{strategy_state=queue:in(Winner, SS1)}};
+        {empty, _} ->
+            {reply, undefined, State}
+    end;
 
 handle_call(_Request, _From, State) ->
     Reply = ok,
@@ -387,20 +397,22 @@ start_agent_and_worker(WorkersSup, AcctId, QueueId, AgentJObj) ->
 
 %% Really sophisticated selection algorithm
 -spec pick_winner/4 :: (pid(), wh_json:objects()
-                        ,queue_strategy(), queue_strategy_state()
+                        ,queue_strategy(), api_binary()
                        ) ->
                                'undefined' |
                                {wh_json:objects()
                                 ,wh_json:objects()
                                }.
 pick_winner(_, [], _, _) -> 'undefined';
-pick_winner(Mgr, CRs, 'rr', AgentQ) ->
-    {{value, AgentId}, AgentQ1} = queue:out(AgentQ),
+pick_winner(Mgr, CRs, 'rr', AgentId) ->
+    lager:debug("chose ~s to win", [AgentId]),
 
     case split_agents(AgentId, CRs) of
-        {[], _O} -> pick_winner(Mgr, CRs, 'rr', queue:in(AgentId, AgentQ1));
+        {[], _O} ->
+            lager:debug("oops, agent appears to have not responded; try again"),
+            pick_winner(Mgr, CRs, 'rr', next_winner(Mgr));
         {Winners, OtherAgents} ->
-            gen_listener:cast(Mgr, {update_strategy, queue:in(AgentId, AgentQ1)}),
+            lager:debug("found winner(s) for the agent"),
             {Winners, OtherAgents}
     end;
 pick_winner(_Mgr, CRs, 'mi', _) ->
