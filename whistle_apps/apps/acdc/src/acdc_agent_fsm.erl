@@ -959,7 +959,7 @@ outbound({channel_hungup, CallId}, #state{agent_proc=Srv
                                           ,acct_id=AcctId
                                           ,agent_id=AgentId
                                          }=State) ->
-    lager:debug("outbound channel ~s hungup", [CallId]),
+    lager:debug("outbound channel ~s hungup, ready for action", [CallId]),
     acdc_agent:channel_hungup(Srv, CallId),
     acdc_stats:agent_ready(AcctId, AgentId),
     {next_state, ready, clear_call(State), hibernate};
