@@ -43,7 +43,11 @@
 -export([channel_set_authorizing_type/2]).
 -export([channel_set_owner_id/2]).
 -export([channel_set_presence_id/2]).
+-export([channel_set_precedence/2]).
+-export([channel_set_answered/2]).
 -export([channel_set_import_moh/2]).
+-export([get_call_precedence/1]).
+-export([channels_by_auth_id/1]).
 -export([fetch_channel/1]).
 -export([destroy_channel/2]).
 -export([props_to_channel_record/2]).
@@ -366,9 +370,43 @@ channel_set_presence_id(UUID, Value) when is_binary(Value) ->
 channel_set_presence_id(UUID, Value) ->
     channel_set_presence_id(UUID, wh_util:to_binary(Value)).
 
+-spec channel_set_precedence/2 :: (ne_binary(), string() | ne_binary()) -> 'ok'.
+channel_set_precedence(UUID, Value) when is_integer(Value) ->
+    gen_server:cast(?MODULE, {channel_update, UUID, {#channel.precedence, Value}});
+channel_set_precedence(UUID, Value) ->
+    channel_set_precedence(UUID, wh_util:to_integer(Value)).
+
+-spec channel_set_answered/2 :: (ne_binary(), boolean()) -> 'ok'.
+channel_set_answered(UUID, Answered) ->
+    gen_server:cast(?MODULE, {channel_update, UUID, {#channel.answered, (not wh_util:is_empty(Answered))}}).
+
 -spec channel_set_import_moh/2 :: (ne_binary(), boolean()) -> 'ok'.
 channel_set_import_moh(UUID, Import) ->
     gen_server:cast(?MODULE, {channel_update, UUID, {#channel.import_moh, Import}}).
+
+-spec channels_by_auth_id/1 :: (ne_binary()) -> {'error', 'not_found'} | {'ok', wh_json:objects()}.
+channels_by_auth_id(AuthorizingId) ->     
+    MatchSpec = [{#channel{authorizing_id = '$1', _ = '_'}
+                  ,[{'=:=', '$1', {const, AuthorizingId}}]
+                  ,['$_']}
+                ],
+    case ets:select(ecallmgr_channels, MatchSpec) of
+        [] ->
+            {error, not_found};
+        Channels ->
+            {ok, [channel_record_to_json(Channel) || Channel <- Channels]}
+    end.
+
+-spec get_call_precedence/1 :: (ne_binary()) -> integer().
+get_call_precedence(UUID) ->
+    MatchSpec = [{#channel{uuid = '$1', precedence = '$2', _ = '_'}
+                  ,[{'=:=', '$1', {const, UUID}}]
+                  ,['$2']}
+                ],
+    case ets:select(ecallmgr_channels, MatchSpec) of
+        [Presedence] -> Presedence;
+        _ -> 5
+    end.
 
 -spec channel_set_node/2 :: (atom(), ne_binary()) -> 'ok'.
 channel_set_node(Node, UUID) ->
@@ -405,11 +443,13 @@ props_to_channel_record(Props, Node) ->
              ,bridge_id=props:get_value(?GET_CCV(<<"Bridge-ID">>), Props)
              ,reseller_id=props:get_value(?GET_CCV(<<"Reseller-ID">>), Props)
              ,reseller_billing=props:get_value(?GET_CCV(<<"Reseller-Billing">>), Props)
+             ,precedence=wh_util:to_integer(props:get_value(?GET_CCV(<<"Precedence">>), Props, 5))
              ,realm=props:get_value(?GET_CCV(<<"Realm">>), Props
                                     ,props:get_value(<<"variable_domain_name">>, Props))
              ,username=props:get_value(?GET_CCV(<<"Username">>), Props
                                        ,props:get_value(<<"variable_user_name">>, Props))
              ,import_moh=props:get_value(<<"variable_hold_music">>, Props) =:= undefined
+             ,answered=props:get_value(<<"Answer-State">>, Props) =:= <<"answered">>
              ,node=Node
              ,timestamp=wh_util:current_tstamp()
              ,profile=props:get_value(<<"variable_sofia_profile_name">>, Props, ?DEFAULT_FS_PROFILE)
@@ -431,10 +471,12 @@ channel_record_to_json(Channel) ->
                        ,{<<"presence_id">>, Channel#channel.presence_id}
                        ,{<<"billing_id">>, Channel#channel.billing_id}
                        ,{<<"bridge_id">>, Channel#channel.bridge_id}
+                       ,{<<"precedence">>, Channel#channel.precedence}
                        ,{<<"reseller_id">>, Channel#channel.reseller_id}
                        ,{<<"reseller_billing">>, Channel#channel.reseller_billing}
                        ,{<<"realm">>, Channel#channel.realm}
                        ,{<<"username">>, Channel#channel.username}
+                       ,{<<"answered">>, Channel#channel.answered}
                        ,{<<"node">>, Channel#channel.node}
                        ,{<<"timestamp">>, Channel#channel.timestamp}
                        ,{<<"profile">>, Channel#channel.profile}
@@ -600,6 +642,7 @@ handle_info({event, [UUID | Props]}, State) ->
         <<"CHANNEL_CREATE">> -> ?MODULE:new_channel(Props, Node);
         <<"CHANNEL_DESTROY">> ->  ?MODULE:destroy_channel(Props, Node);
         <<"sofia::move_complete">> -> ?MODULE:channel_set_node(Node, UUID);
+        <<"CHANNEL_ANSWER">> -> ?MODULE:channel_set_answered(UUID, true);
         <<"CHANNEL_EXECUTE_COMPLETE">> -> 
             Data = props:get_value(<<"Application-Data">>, Props),
             case props:get_value(<<"Application">>, Props) of
@@ -792,7 +835,6 @@ close_node(Node) ->
 
 -spec get_client_version/1 :: (atom()) -> api_binary().
 get_client_version(Node) ->
-    io:format("~p: ~p~n", [Node, freeswitch:version(Node)]),
     case freeswitch:version(Node) of
         {ok, Version} -> Version;
         _Else ->
@@ -803,12 +845,13 @@ get_client_version(Node) ->
 -spec bind_to_fs_events/2 :: (ne_binary(), atom()) -> 'ok'.  
 bind_to_fs_events(<<"mod_kazoo", _/binary>>, Node) ->
     ok =  freeswitch:event(Node, ['CHANNEL_CREATE', 'CHANNEL_DESTROY'
-                                  ,'CHANNEL_EXECUTE_COMPLETE', 'CUSTOM'
-                                  ,'sofia::move_complete'
+                                  ,'CHANNEL_EXECUTE_COMPLETE', 'CHANNEL_ANSWER'
+                                  ,'CUSTOM', 'sofia::move_complete'
                                  ]);
 bind_to_fs_events(_Else, Node) ->
     true = gproc:reg({p, l, {event, Node, <<"CHANNEL_CREATE">>}}),
     true = gproc:reg({p, l, {event, Node, <<"CHANNEL_DESTROY">>}}),
+    true = gproc:reg({p, l, {event, Node, <<"CHANNEL_ANSWER">>}}),
     true = gproc:reg({p, l, {event, Node, <<"sofia::move_complete">>}}),
     true = gproc:reg({p, l, {event, Node, <<"CHANNEL_EXECUTE_COMPLETE">>}}),
     ok.
@@ -817,6 +860,7 @@ bind_to_fs_events(_Else, Node) ->
 unbind_from_fs_events(Node) ->
     _ = gproc:unreg({p, l, {event, Node, <<"CHANNEL_CREATE">>}}),
     _ = gproc:unreg({p, l, {event, Node, <<"CHANNEL_DESTROY">>}}),
+    _ = gproc:unreg({p, l, {event, Node, <<"CHANNEL_ANSWER">>}}),
     _ = gproc:unreg({p, l, {event, Node, <<"sofia::move_complete">>}}),
     _ = gproc:unreg({p, l, {event, Node, <<"CHANNEL_EXECUTE_COMPLETE">>}}),
     ok.

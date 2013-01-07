@@ -62,12 +62,14 @@
                   ,realm = undefined
                   ,username = undefined
                   ,import_moh = undefined
+                  ,answered = false
                   ,node = undefined
                   ,former_node = undefined
                   ,timestamp = undefined
                   ,profile = undefined
                   ,context = undefined
                   ,dialplan = undefined
+                  ,precedence = 5
                  }).
 
 -type channel() :: #channel{}.
@@ -129,6 +131,7 @@
                                ,{<<"Confirm-File">>, <<"group_confirm_file">>}
                                ,{<<"Confirm-Key">>, <<"group_confirm_key">>}
                                ,{<<"Confirm-Cancel-Timeout">>, <<"group_confirm_cancel_timeout">>}
+                               ,{<<"Alert-Info">>, <<"alert_info">>}
                                ,{<<"Fax-Enabled">>, <<"t38_passthrough">>}
                                ,{<<"Presence-ID">>, <<"presence_id">>}
                                ,{<<"Inherit-Codec">>, <<"inherit_codec">>}
@@ -194,10 +197,10 @@
                           ,<<"CHANNEL_ANSWER">>, <<"CHANNEL_PARK">>
                      ]).
 
--define(FS_EVENTS, ['CHANNEL_CREATE', 'CHANNEL_PROGRESS_MEDIA', 'CHANNEL_PARK'
-                    ,'CHANNEL_ANSWER', 'CALL_UPDATE', 'DETECTED_TONE', 'DTMF'
-                    ,'RECORD_START', 'RECORD_STOP', 'CHANNEL_BRIDGE', 'CHANNEL_UNBRIDGE'
-                    ,'CHANNEL_EXECUTE_COMPLETE'%%, 'CHANNEL_EXECUTE_ERROR'
+-define(FS_EVENTS, ['CHANNEL_CREATE', 'CHANNEL_PROGRESS_MEDIA', 'CHANNEL_ANSWER'
+                    ,'CHANNEL_PARK', 'CHANNEL_ANSWER', 'CALL_UPDATE', 'DETECTED_TONE'
+                    ,'DTMF', 'RECORD_START', 'RECORD_STOP', 'CHANNEL_BRIDGE'
+                    ,'CHANNEL_UNBRIDGE', 'CHANNEL_EXECUTE_COMPLETE'%%, 'CHANNEL_EXECUTE_ERROR'
                     ,'CHANNEL_HANGUP', 'CHANNEL_HANGUP_COMPLETE', 'CHANNEL_DESTROY'
                     ,'CUSTOM', 'sofia::transfer', 'loopback::bowout'
                     ,'sofia::move_released', 'sofia::move_complete'

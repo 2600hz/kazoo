@@ -15,6 +15,7 @@
 -spec start_link/0 :: () -> 'ignore'.
 start_link() ->
     put(callid, ?LOG_SYSTEM_ID),
+    _ = application:start(cowboy),
     Dispatch = [
                 {'_', [{[<<"store">>,'...'], wh_media_store_proxy, []}
                        ,{[<<"single">>, '...'], wh_media_single_proxy, []}
