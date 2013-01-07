@@ -483,16 +483,13 @@ get_event_name(Props, true) -> props:get_value(<<"whistle_event_name">>, Props);
 get_event_name(Props, false) -> props:get_value(<<"Event-Name">>, Props).
 
 -spec get_event_application/2 :: (wh_proplist(), boolean()) -> api_binary().
-get_event_application(Props, Masqueraded) ->
-    case Masqueraded of
-        %% when the evet is masqueraded override the actual application
-        %% with what whistle wants the event to be
-        true ->
-            props:get_value(<<"whistle_application_name">>, Props);
-        false ->
-            props:get_value(<<"Application">>, Props
-                            ,props:get_value(<<"Event-Subclass">>, Props))
-    end.
+get_event_application(Props, true) ->
+    %% when the evet is masqueraded override the actual application
+    %% with what whistle wants the event to be
+    props:get_value(<<"whistle_application_name">>, Props);
+get_event_application(Props, false) ->
+    props:get_value(<<"Application">>, Props
+                    ,props:get_value(<<"Event-Subclass">>, Props)).
 
 %% return a proplist of k/v pairs specific to the event
 -spec event_specific/3 :: (binary(), api_binary(), wh_proplist()) -> wh_proplist().
@@ -505,7 +502,7 @@ event_specific(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"playback">> = Application, Pro
     ];
 
 event_specific(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"noop">>, Prop) ->
-    [{<<"Application-Name">>, props:get_value(<<"whistle_application_name">>, Prop)}
+    [{<<"Application-Name">>, <<"noop">>}
      ,{<<"Application-Response">>, props:get_value(<<"whistle_application_response">>, Prop)}
     ];
 event_specific(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>, Prop) ->

@@ -202,8 +202,8 @@
                     ,'DTMF', 'RECORD_START', 'RECORD_STOP', 'CHANNEL_BRIDGE'
                     ,'CHANNEL_UNBRIDGE', 'CHANNEL_EXECUTE_COMPLETE'%%, 'CHANNEL_EXECUTE_ERROR'
                     ,'CHANNEL_HANGUP', 'CHANNEL_HANGUP_COMPLETE', 'CHANNEL_DESTROY'
-                    ,'CUSTOM', 'sofia::transfer', 'loopback::bowout'
-                    ,'sofia::move_released', 'sofia::move_complete'
+                    ,'CUSTOM', 'sofia::transfer', 'loopback::bowout', 'whistle::noop'
+                    ,'whistle::masquerade', 'sofia::move_released', 'sofia::move_complete'
                    ]).
 
 -define(FS_DEFAULT_HDRS, [<<"Event-Name">>, <<"Core-UUID">>, <<"FreeSWITCH-Hostname">>, <<"FreeSWITCH-Switchname">>

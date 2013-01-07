@@ -241,7 +241,9 @@ bind_to_events(Node, CallId) ->
     true = gproc:reg({p, l, {call_event, Node, CallId}}),
     true = gproc:reg({p, l, {event, Node, <<"CHANNEL_CREATE">>}}),
     true = gproc:reg({p, l, {event, Node, <<"CHANNEL_DESTROY">>}}),
-    true = gproc:reg({p, l, {event, Node, <<"sofia::transfer">>}}).
+    true = gproc:reg({p, l, {event, Node, <<"sofia::transfer">>}}),
+    true = gproc:reg({p, l, {event, Node, <<"whistle::masquerade">>}}),
+    true = gproc:reg({p, l, {event, Node, <<"whistle::noop">>}}).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -460,7 +462,7 @@ handle_cast({event_execute_complete, CallId, EvtName, JObj}, #state{callid=CallI
                                                                     ,command_q=CmdQ
                                                                    }=State) ->
     NoopId = wh_json:get_value(<<"Application-Response">>, JObj),
-    case lists:member(EvtName, ecallmgr_util:convert_whistle_app_name(CurrApp)) of
+    case EvtName =:= CurrApp orelse lists:member(EvtName, ecallmgr_util:convert_whistle_app_name(CurrApp)) of
         false ->
             lager:debug("evt ~s not app ~s", [EvtName, CurrApp]),
             {noreply, State};
@@ -516,8 +518,7 @@ handle_cast(_, State) ->
 %%--------------------------------------------------------------------
 handle_info({event, [CallId | Props]}, #state{callid=CallId}=State) ->
     JObj = ecallmgr_call_events:to_json(Props),
-    Application = wh_json:get_value(<<"Raw-Application-Name">>, JObj
-                                    ,wh_json:get_value(<<"Application-Name">>, JObj)),
+    Application = wh_json:get_value(<<"Application-Name">>, JObj),
     _ = case wh_json:get_value(<<"Event-Name">>, JObj) of
             <<"CHANNEL_EXECUTE_COMPLETE">> ->
                 lager:debug("control queue channel execute completion for '~s'", [Application]),
