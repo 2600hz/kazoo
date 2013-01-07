@@ -184,9 +184,9 @@ misc_req(Srv,  #'exchange.declare'{exchange=_Ex, type=_Ty}=ExchangeDeclare) ->
         Err -> {error, Err}
     end.
 
--spec my_channel/1 :: (atom()) -> {'ok', pid(), 'undefined' | ne_binary()} |
+-spec my_channel/1 :: (atom()) -> {'ok', pid(), api_binary()} |
                                   {'error', term()}.
--spec my_channel/2 :: (atom(), boolean()) -> {'ok', pid(), 'undefined' | ne_binary()} |
+-spec my_channel/2 :: (atom(), boolean()) -> {'ok', pid(), api_binary()} |
                                              {'error', term()}.
 my_channel(Srv) ->
     my_channel(Srv, true).
@@ -228,7 +228,7 @@ create_channel(Srv, Consumer) ->
         {error, _}=E -> E;
         {ok, Conn} ->
             lager:debug("starting new AMQP channel for process ~p", [Consumer]),
-            case start_channel(Conn, whereis(Srv)) of
+            case start_channel(Conn, whereis(Srv), Consumer) of
                 {error, _}=E -> E;
                 closing ->
                     lager:debug("failed to start channel for ~p: closing", [Consumer]),
@@ -352,7 +352,7 @@ handle_info({'DOWN', Ref, process, ConnPid, Reason}, #state{connection={ConnPid,
     gen_server:cast(wh_amqp_mgr, {broker_unavailable, Name}),
     notify_consumers({amqp_channel_event, Reason}, Name),
     self() ! {connect, ?START_TIMEOUT},
-    {noreply, State#state{connection=undefined}};
+    {noreply, State#state{connection=undefined}, hibernate};
 handle_info({'DOWN', Ref, process, _Pid, _Reason}, #state{connection={Connection, _}, broker_name=Name}=State) ->
     erlang:demonitor(Ref, [flush]),
     MatchSpec = [{#wh_amqp_channel{channel_ref = '$1', _ = '_'},
@@ -421,11 +421,11 @@ handle_info({connect, Timeout}, #state{broker=Broker, broker_name=Name}=State) -
         {error, auth_failure} ->
             lager:debug("authentication failure coonection to broker '~s',  will retry in ~p", [Name, Timeout]),
             _Ref = erlang:send_after(Timeout, self(), {connect, next_timeout(Timeout)}),
-            {noreply, State#state{connection=undefined}};
+            {noreply, State#state{connection=undefined}, hibernate};
         {error, _Reason} ->
             lager:debug("failed to connect to AMQP broker '~s' will retry in ~p: ~p", [Name, Timeout, _Reason]),
             _Ref = erlang:send_after(Timeout, self(), {connect, next_timeout(Timeout)}),
-            {noreply, State#state{connection=undefined}};
+            {noreply, State#state{connection=undefined}, hibernate};
         {ok, Connection} ->
             Ref = erlang:monitor(process, Connection),
             try
@@ -441,11 +441,12 @@ handle_info({connect, Timeout}, #state{broker=Broker, broker_name=Name}=State) -
                     lager:debug("unable to initialize publish channel on AMQP broker '~s' will retry in ~p", [Name, Timeout]),
                     erlang:demonitor(Ref, [flush]),
                     _Ref = erlang:send_after(Timeout, self(), {connect, next_timeout(Timeout)}),
-                    {noreply, State#state{connection=undefined}}
+                    {noreply, State#state{connection=undefined}, hibernate}
             end
     end;
 handle_info(_Info, State) ->
-    {noreply, State}.
+    lager:debug("unhandled message: ~p", [_Info]),
+    {noreply, State, hibernate}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -482,27 +483,34 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec start_channel/1 :: ('undefined' | {pid(), reference()} | pid()) -> #wh_amqp_channel{} |
-                                                                         {'error', 'no_connection'} |
-                                                                         'closing'.
--spec start_channel/2 :: ('undefined' | {pid(), reference()} | pid(), pid()) -> #wh_amqp_channel{} |
-                                                                                {'error', 'no_connection'} |
-                                                                                'closing'.
+-type connection() :: 'undefined' | {pid(), reference()} | pid().
+-spec start_channel/1 :: (connection()) ->
+                                 #wh_amqp_channel{} |
+                                 {'error', 'no_connection'} |
+                                 'closing'.
+-spec start_channel/3 :: (connection(), pid(), 'undefined' | pid()) ->
+                                 #wh_amqp_channel{} |
+                                 {'error', 'no_connection'} |
+                                 'closing'.
 start_channel(Connection) ->
-    start_channel(Connection, self()).
+    start_channel(Connection, self(), undefined).
 
-start_channel(undefined, _) ->
+start_channel(undefined, _, _) ->
     {error, no_connection};
-start_channel({Connection, _}, Srv) ->
-    start_channel(Connection, Srv);
-start_channel(Connection, Srv) when is_pid(Connection) ->
+start_channel({Connection, _}, Srv, Consumer) ->
+    start_channel(Connection, Srv, Consumer);
+start_channel(Connection, Srv, Consumer) when is_pid(Connection) ->
     case erlang:is_process_alive(Connection)
         andalso amqp_connection:open_channel(Connection) of
         {ok, Channel} ->
             amqp_selective_consumer:register_default_consumer(Channel, Srv),
-            #wh_amqp_channel{channel = Channel
-                             ,channel_ref = erlang:monitor(process, Channel)
-                            };
+
+            case Consumer =:= self() of
+                true -> #wh_amqp_channel{channel = Channel};
+                false -> #wh_amqp_channel{channel = Channel
+                                          ,channel_ref = erlang:monitor(process, Channel)
+                                         }
+            end;
         false ->
             lager:debug("unabled to start new channel: no_connection", []),
             {error, no_connection};
