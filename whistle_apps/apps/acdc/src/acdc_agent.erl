@@ -519,9 +519,10 @@ handle_cast({bridge_to_member, Call, WinJObj, EPs}, #state{record_calls=RecordCa
     update_my_queues_of_change(AcctId, AgentId, Qs),
     {noreply, State#state{call=Call
                           ,record_calls=ShouldRecord
+                          ,msg_queue_id = wh_json:get_value(<<"Server-ID">>, WinJObj)
                          }};
 
-handle_cast({bridge_to_member, Call, _WinJObj, _}, #state{is_thief=true
+handle_cast({bridge_to_member, Call, WinJObj, _}, #state{is_thief=true
                                                           ,agent=Agent
                                                          }=State) ->
     _ = whapps_call:put_callid(Call),
@@ -530,7 +531,9 @@ handle_cast({bridge_to_member, Call, _WinJObj, _}, #state{is_thief=true
 
     whapps_call_command:pickup(whapps_call:call_id(Agent), <<"now">>, Call),
 
-    {noreply, State#state{call=Call}, hibernate};
+    {noreply, State#state{call=Call
+                          ,msg_queue_id = wh_json:get_value(<<"Server-ID">>, WinJObj)
+                         }, hibernate};
 
 handle_cast({monitor_call, Call}, #state{agent_queues=Qs
                                          ,acct_id=AcctId
@@ -718,6 +721,8 @@ send_member_connect_retry(JObj, MyId) ->
                               ,call_id(JObj)
                               ,MyId).
 
+send_member_connect_retry(undefined, _, _) ->
+    lager:debug("no queue to send the retry to, seems bad");
 send_member_connect_retry(Queue, CallId, MyId) ->
     Resp = props:filter_undefined(
              [{<<"Process-ID">>, MyId}
