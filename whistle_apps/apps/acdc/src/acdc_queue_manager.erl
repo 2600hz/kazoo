@@ -304,7 +304,7 @@ handle_cast({agent_available, JObj}, #state{strategy=Strategy
     AgentId = wh_json:get_value(<<"Agent-ID">>, JObj),
     lager:debug("adding agent ~s to strategy ~s", [AgentId, Strategy]),
     StrategyState1 = update_strategy_with_agent(Strategy, StrategyState, AgentId),
-    lager:debug("agent queue: ~p ~s", [queue:to_list(StrategyState1)]),
+    lager:debug("agent queue: ~p", [queue:to_list(StrategyState1)]),
     {noreply, State#state{strategy_state=StrategyState1}, hibernate};
 
 handle_cast({agent_ringing, JObj}, #state{strategy=Strategy
@@ -314,7 +314,7 @@ handle_cast({agent_ringing, JObj}, #state{strategy=Strategy
     lager:debug("agent ~s ringing, maybe updating strategy ~s", [AgentId, Strategy]),
 
     StrategyState1 = maybe_update_strategy(Strategy, StrategyState, AgentId),
-    lager:debug("agent queue: ~p ~s", [queue:to_list(StrategyState1)]),
+    lager:debug("agent queue: ~p", [queue:to_list(StrategyState1)]),
     {noreply, State#state{strategy_state=StrategyState1}, hibernate};
 
 handle_cast(_Msg, State) ->
