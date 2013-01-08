@@ -482,7 +482,8 @@ ready({member_connect_win, JObj}, #state{agent_proc=Srv
 
             acdc_agent:bridge_to_member(Srv, Call, JObj, EPs),
 
-            webseq:note(self(), right, [<<"ringing (and bridge): ">>, CallId]),
+            webseq:evt(self(), CallId, <<"bridge">>),
+            webseq:note(self(), right, <<"ringing">>),
             {next_state, ringing, State#state{wrapup_timeout=WrapupTimer
                                               ,member_call=Call
                                               ,member_call_id=CallId
@@ -495,7 +496,9 @@ ready({member_connect_win, JObj}, #state{agent_proc=Srv
 
             acdc_agent:monitor_call(Srv, Call),
 
-            webseq:note(self(), right, [<<"ringing (and monitor): ">>, CallId]),
+            webseq:evt(self(), CallId, <<"monitor">>),
+            webseq:note(self(), right, <<"ringing">>),
+
             {next_state, ringing, State#state{
                                     wrapup_timeout=WrapupTimer
                                     ,member_call_id=CallId
