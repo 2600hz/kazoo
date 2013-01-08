@@ -294,7 +294,8 @@ handle_cast({start_workers}, #state{acct_id=AcctId
                 ], ok;
         {error, _E} ->
             lager:debug("failed to find agent count: ~p", [_E]),
-            acdc_queue_workers_sup:new_workers(WorkersSup, AcctId, QueueId, 5)
+            QWC = whapps_config:get_integer(<<"acdc">>, <<"queue_worker_count">>, 5),
+            acdc_queue_workers_sup:new_workers(WorkersSup, AcctId, QueueId, QWC)
     end,
     {noreply, State};
 
