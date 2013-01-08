@@ -25,6 +25,7 @@
          ,agent_wrapup/3
          ,agent_ready/2
          ,agent_oncall/3
+         ,agent_handling/3
 
          ,init_db/1
          ,db_name/1
@@ -180,6 +181,16 @@ agent_paused(AcctId, AgentId, Timeout) ->
                                                   }
                                }).
 
+%% marks the agent as handling a member call
+-spec agent_handling/3 :: (ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+agent_handling(AcctId, AgentId, CallId) ->
+    gen_listener:cast(?MODULE, {store, #agent_stat{agent_id=AgentId
+                                                   ,acct_id=AcctId
+                                                   ,status='handling'
+                                                   ,call_id=CallId
+                                                  }
+                               }).
+
 -spec agent_wrapup/3 :: (ne_binary(), ne_binary(), integer()) -> 'ok'.
 agent_wrapup(AcctId, AgentId, Timeout) ->
     gen_listener:cast(?MODULE, {store, #agent_stat{acct_id=AcctId
@@ -269,40 +280,31 @@ stat_to_jobj(#call_stat{acct_id=AcctId
                         ,caller_id_name=CName
                         ,caller_id_number=CNum
                        }, Prefix) ->
-    [wh_json:from_list(
-       props:filter_undefined(
-         [{<<"call_id">>, CallId}
-          ,{<<"pvt_account_id">>, AcctId}
-          ,{<<"queue_id">>, QueueId}
-          ,{<<"agent_id">>, AgentId}
-          ,{<<"timestamp">>, Timestamp}
-          ,{<<"status">>, Status}
-          ,{<<"caller_id_name">>, CName}
-          ,{<<"caller_id_number">>, CNum}
-          ,{<<"pvt_type">>, <<"call_partial">>}
-          ,{<<"_id">>, doc_id(Prefix, Timestamp)}
-         ]))
-     ,stat_to_jobj(#agent_stat{
-                      agent_id=AgentId
-                      ,acct_id=AcctId
-                      ,timestamp=Timestamp
-                      ,status='handling'
-                      ,call_id=CallId
-                     }, Prefix)
-    ];
-stat_to_jobj(#call_stat{
-                call_id=CallId
-                ,acct_id=AcctId
-                ,queue_id=QueueId
-                ,agent_id=AgentId
-                ,timestamp=TStamp
-                ,wait_time=WaitTime
-                ,talk_time=TalkTime
-                ,abandon_reason=AR
-                ,status=Status
-                ,caller_id_name=CName
-                ,caller_id_number=CNum
-               }, Prefix) ->
+    wh_json:from_list(
+      props:filter_undefined(
+        [{<<"call_id">>, CallId}
+         ,{<<"pvt_account_id">>, AcctId}
+         ,{<<"queue_id">>, QueueId}
+         ,{<<"agent_id">>, AgentId}
+         ,{<<"timestamp">>, Timestamp}
+         ,{<<"status">>, Status}
+         ,{<<"caller_id_name">>, CName}
+         ,{<<"caller_id_number">>, CNum}
+         ,{<<"pvt_type">>, <<"call_partial">>}
+         ,{<<"_id">>, doc_id(Prefix, Timestamp)}
+        ]));
+stat_to_jobj(#call_stat{call_id=CallId
+                        ,acct_id=AcctId
+                        ,queue_id=QueueId
+                        ,agent_id=AgentId
+                        ,timestamp=TStamp
+                        ,wait_time=WaitTime
+                        ,talk_time=TalkTime
+                        ,abandon_reason=AR
+                        ,status=Status
+                        ,caller_id_name=CName
+                        ,caller_id_number=CNum
+                       }, Prefix) ->
     wh_json:from_list(
       props:filter_undefined(
         [{<<"call_id">>, CallId}
@@ -319,14 +321,13 @@ stat_to_jobj(#call_stat{
          ,{<<"pvt_type">>, <<"call_partial">>}
          ,{<<"_id">>, doc_id(Prefix, TStamp)}
         ]));
-stat_to_jobj(#agent_stat{
-                agent_id=AgentId
-                ,acct_id=AcctId
-                ,timestamp=TStamp
-                ,status=Status
-                ,wait_time=WaitTime
-                ,call_id=CallId
-               }, Prefix) ->
+stat_to_jobj(#agent_stat{agent_id=AgentId
+                         ,acct_id=AcctId
+                         ,timestamp=TStamp
+                         ,status=Status
+                         ,wait_time=WaitTime
+                         ,call_id=CallId
+                        }, Prefix) ->
     wh_json:from_list(
       props:filter_undefined(
         [{<<"pvt_account_id">>, AcctId}

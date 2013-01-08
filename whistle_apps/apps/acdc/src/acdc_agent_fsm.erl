@@ -466,6 +466,7 @@ ready({member_connect_win, JObj}, #state{agent_proc=Srv
                                          ,endpoints=EPs
                                          ,agent_proc_id=MyId
                                          ,agent_id=AgentId
+                                         ,acct_id=AcctId
                                         }=State) ->
     Call = whapps_call:from_json(wh_json:get_value(<<"Call">>, JObj)),
     CallId = whapps_call:call_id(Call),
@@ -481,6 +482,7 @@ ready({member_connect_win, JObj}, #state{agent_proc=Srv
             lager:debug("trying to ring agent ~s to connect to caller", [AgentId]),
 
             acdc_agent:bridge_to_member(Srv, Call, JObj, EPs),
+            acdc_stats:agent_handling(AcctId, AgentId, CallId),
 
             webseq:evt(self(), CallId, <<"bridge">>),
             webseq:note(self(), right, <<"ringing">>),
