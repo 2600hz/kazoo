@@ -67,7 +67,6 @@
 
           %% While processing a call
          ,call :: whapps_call:call()
-         ,agent_process :: ne_binary()
          ,agent_id :: ne_binary()
          ,delivery :: #'basic.deliver'{}
          }).
@@ -256,6 +255,7 @@ handle_cast({start_friends, QueueJObj}, #state{worker_sup=WorkerSup
             {noreply, State#state{
                         fsm_pid = FSMPid
                         ,shared_pid = SharedPid
+                        ,my_id = acdc_util:proc_id(FSMPid)
                        }};
         {error, already_present} ->
             lager:debug("queue FSM is already present"),
@@ -271,6 +271,7 @@ handle_cast({start_friends, QueueJObj}, #state{worker_sup=WorkerSup
                     {noreply, State#state{
                                 fsm_pid = FSMPid
                                 ,shared_pid = SharedPid
+                                ,my_id = acdc_util:proc_id(FSMPid)
                        }};
                 undefined ->
                     lager:debug("no queue FSM pid found"),
@@ -327,10 +328,7 @@ handle_cast({member_connect_win, RespJObj, RingTimeout, AgentWrapup, CallerExitK
     lager:debug("agent process won the call, sending the win"),
 
     send_member_connect_win(RespJObj, RingTimeout, AgentWrapup, Call, QueueId, MyQ, MyId, CallerExitKey),
-    {noreply, State#state{agent_process=wh_json:get_value(<<"Agent-Process-ID">>, RespJObj)
-                          ,agent_id=wh_json:get_value(<<"Agent-ID">>, RespJObj)
-                         }
-    ,hibernate};
+    {noreply, State#state{agent_id=wh_json:get_value(<<"Agent-ID">>, RespJObj)}, hibernate};
 
 handle_cast({timeout_member_call}, #state{delivery=Delivery
                                           ,call=Call
