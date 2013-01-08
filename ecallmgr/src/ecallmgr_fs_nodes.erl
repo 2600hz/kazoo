@@ -789,7 +789,9 @@ maybe_ping_node(Node, Cookie, Options, #state{nodes=Nodes}=State) ->
                     self() ! {nodedown, Node},
                     {{error, failed_starting_handlers}, State};
                 _:Reason ->
+                    ST = erlang:get_stacktrace(),
                     lager:warning("unable to start node ~s handlers: ~p", [Node, Reason]),
+                    [lager:debug("st: ~p", [S]) || S <- ST],
                     self() ! {nodedown, Node},
                     {{error, failed_starting_handlers}, State}
             end;

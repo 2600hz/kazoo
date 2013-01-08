@@ -78,6 +78,7 @@ what(IO) when is_list(IO) -> iolist_to_binary(IO).
 
 
 init(_) ->
+    file:rename(?WEBSEQNAME, iolist_to_binary([?WEBSEQNAME, ".", wh_util:to_binary(wh_util:current_tstamp())])),
     {ok, IO} = file:open(?WEBSEQNAME, [append, raw, delayed_write]),
     {ok, #state{io_device=IO
                 ,who_registry=dict:new()

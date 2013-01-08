@@ -400,10 +400,13 @@ add_stat(_Stat, {_Compressed, _Global, _PerAgent}=Res, _T) ->
                                             wh_json:object().
 maybe_add_current_status(Compressed, Stat, Status, AID, TStamp) ->
     case wh_json:get_integer_value([AID, <<"current">>, <<"status_timestamp">>], Compressed) of
-        T when T < TStamp; T =:= undefined ->
-            wh_json:set_values(complex_agent_status(Stat, Status, AID)
-                               ,wh_json:delete_key([AID, <<"current">>], Compressed)
-                              );
+        T when T =:= undefined orelse T < TStamp ->
+            case complex_agent_status(Stat, Status, AID) of
+                undefined -> Compressed;
+                [_|_]=StatusData -> wh_json:set_values(StatusData
+                                                       ,wh_json:delete_key([AID, <<"current">>], Compressed)
+                                                      )
+            end;
         _ -> Compressed
     end.
 
@@ -439,8 +442,8 @@ complex_agent_status(Stat, ?STAT_AGENTS_MISSED, AID) ->
     complex_agent_status(Stat, ?AGENT_STATUS_READY, AID);
 complex_agent_status(Stat, ?QUEUE_STATUS_HANDLING, AID) ->
     complex_agent_status(Stat, ?AGENT_STATUS_HANDLING, AID);
-complex_agent_status(Stat, ?QUEUE_STATUS_PROCESSED, AID) ->
-    complex_agent_status(Stat, ?AGENT_STATUS_READY, AID);
+complex_agent_status(_Stat, ?QUEUE_STATUS_PROCESSED, _AID) ->
+    undefined;
 complex_agent_status(_Stat, Status, AID) ->
     [{[AID, <<"current">>, <<"status">>], Status}].
 
