@@ -106,7 +106,7 @@ handle_cast(trunc, #state{io_device=IO}=State) ->
     {noreply, State};
 handle_cast(rotate, #state{io_device=OldIO}=State) ->
     file:close(OldIO),
-    file:rename(?WEBSEQNAME, [?WEBSEQNAME, ".", wh_util:to_binary(wh_util:current_tstamp())]),
+    file:rename(?WEBSEQNAME, iolist_to_binary([?WEBSEQNAME, ".", wh_util:to_binary(wh_util:current_tstamp())])),
     {ok, IO} = file:open(?WEBSEQNAME, [append, raw, delayed_write]),
     {noreply, State#state{io_device=IO}};
 handle_cast({reg_who, P, W}, #state{who_registry=Who}=State) when is_pid(P) ->
