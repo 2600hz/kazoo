@@ -346,7 +346,9 @@ handle_cast({stop_agent, Req}, #state{supervisor=Supervisor}=State) ->
 handle_cast({fsm_started, FSMPid}, State) ->
     lager:debug("fsm started: ~p", [FSMPid]),
     handle_fsm_started(FSMPid),
-    {noreply, State#state{fsm_pid=FSMPid}};
+    {noreply, State#state{fsm_pid=FSMPid
+                          ,my_id=acdc_util:proc_id(FSMPid)
+                         }};
 
 handle_cast({queue_name, Q}, State) ->
     case wh_util:is_empty(Q) of
