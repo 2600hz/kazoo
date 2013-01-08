@@ -155,10 +155,18 @@ init([Node, Options]) ->
     process_flag(trap_exit, true),
     lager:debug("starting new ecallmgr notify process"),
     gproc:reg({p, l, fs_notify}),
-    bind_to_events(freeswitch:version(Node), Node),
-    {ok, #state{node=Node, options=Options}}.
+    try  bind_to_events(props:get_value(client_version, Options), Node) of
+         _ -> {ok, #state{node=Node, options=Options}}
+    catch
+        error:{badmatch, timeout} ->
+            lager:critical("unable to establish notify bindings: timeout", []),
+            {stop, timeout};
+        error:{badmatch, {error, Reason}} ->
+            lager:critical("unable to establish notify bindings: ~p", [Reason]),
+            {stop, Reason}
+    end.
 
-bind_to_events({ok, <<"mod_kazoo", _/binary>>}, Node) ->
+bind_to_events(<<"mod_kazoo", _/binary>>, Node) ->
     _ = case ecallmgr_config:get(<<"distribute_presence">>, true) of
             false -> ok;
             true -> 
@@ -173,18 +181,18 @@ bind_to_events({ok, <<"mod_kazoo", _/binary>>}, Node) ->
 bind_to_events(_, Node) ->
     _ = case ecallmgr_config:get(<<"distribute_presence">>, true) of
             false -> ok;
-        true ->
+            true ->
                 ok = freeswitch:event(Node, ['PRESENCE_IN', 'PRESENCE_OUT', 'PRESENCE_PROBE']),
-                gproc:reg({p, l, {call_event, Node, <<"PRESENCE_IN">>}}),
-                gproc:reg({p, l, {call_event, Node, <<"PRESENCE_OUT">>}}),
-                gproc:reg({p, l, {call_event, Node, <<"PRESENCE_PROBE">>}}),
+                true = gproc:reg({p, l, {event, Node, <<"PRESENCE_IN">>}}),
+                true = gproc:reg({p, l, {event, Node, <<"PRESENCE_OUT">>}}),
+                true = gproc:reg({p, l, {event, Node, <<"PRESENCE_PROBE">>}}),
                 bind_to_notify_presence(Node)
         end,
     case ecallmgr_config:get(<<"distribute_message_query">>, true) of
         false -> ok;
         true ->
             ok = freeswitch:event(Node, ['MESSAGE_QUERY']),
-            gproc:reg({p, l, {call_event, Node, <<"MESSAGE_QUERY">>}})
+            gproc:reg({p, l, {event, Node, <<"MESSAGE_QUERY">>}})
     end.
 
 -spec bind_to_notify_presence/1 :: (atom()) -> pid().
@@ -279,8 +287,8 @@ handle_event(_JObj, #state{node=Node}) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, _State) ->
-    lager:debug("ecallmgr notify terminating: ~p", [_Reason]).
+terminate(_Reason, #state{node=Node}) ->
+    lager:info("notify listener for ~s terminating: ~p", [Node, _Reason]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -462,12 +470,9 @@ publish_presence_event(EventName, Props, Node) ->
 
 -spec relay_presence/5 :: (atom(), ne_binary(), wh_proplist(), atom(), 'undefined' | ne_binary()) -> [fs_sendevent_ret(),...].
 relay_presence(EventName, PresenceId, Props, Node, undefined) ->
-    Match = #sip_subscription{key='_'
-                              ,to=PresenceId
-                              ,from='_'
+    Match = #sip_subscription{to=PresenceId
                               ,node='$1'
-                              ,expires='_'
-                              ,timestamp='_'
+                              ,_ = '_'
                              },
     Subs = lists:concat(ets:match(sip_subscriptions, Match)),
     Headers = [{"Distributed-From", wh_util:to_list(Node)}

@@ -72,7 +72,7 @@ workers_sup(Super) ->
 %%--------------------------------------------------------------------
 -spec init/1 :: (list()) -> sup_init_ret().
 init(Args) ->
-    RestartStrategy = one_for_one,
+    RestartStrategy = one_for_all,
     MaxRestarts = 2,
     MaxSecondsBetweenRestarts = 2,
 

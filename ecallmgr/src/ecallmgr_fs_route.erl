@@ -63,16 +63,14 @@ start_link(Node, Options) ->
 init([Node, Options]) ->
     put(callid, Node),
     process_flag(trap_exit, true),
-    lager:debug("starting new fs route listener for ~s", [Node]),
+    lager:info("starting new fs route listener for ~s", [Node]),
     case freeswitch:bind(Node, dialplan) of
-        ok ->
-            lager:debug("bound to dialplan request on ~s", [Node]),
-            {ok, #state{node=Node, options=Options}};
+        ok -> {ok, #state{node=Node, options=Options}};
         {error, Reason} ->
-            lager:warning("failed to bind to dialplan requests on ~s, ~p", [Node, Reason]),
+            lager:critical("unable to establish route bindings: ~p", [Reason]),
             {stop, Reason};
         timeout ->
-            lager:error("timeout when trying to bind to dialplan requests on node ~s", [Node]),
+            lager:critical("unable to establish route bindings: timeout", []),
             {stop, timeout}
     end.
 
@@ -148,7 +146,7 @@ handle_info(_Other, State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, #state{node=Node}) ->
-    lager:debug("fs route ~s termination: ~p", [Node, _Reason]).
+    lager:info("route listener for ~s terminating: ~p", [Node, _Reason]).
 
 %%--------------------------------------------------------------------
 %% @private

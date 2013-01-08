@@ -792,7 +792,7 @@ set_resp_headers(Req0, #cb_context{resp_headers=Headers}) ->
 
                         {ok, ReqAcc1} = cowboy_http_req:set_resp_header(H, V, ReqAcc),
                         ReqAcc1
-                end, Req0, Headers).
+                end, Req0, props:filter_empty(Headers)).
 
 -spec fix_header/3 :: (nonempty_string() | ne_binary(), nonempty_string() | ne_binary(), #http_req{}) -> {binary(), binary()}.
 fix_header(<<"Location">> = H, Path, Req) ->

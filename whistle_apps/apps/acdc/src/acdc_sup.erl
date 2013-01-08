@@ -27,6 +27,7 @@
                    ,{acdc_agent_manager, worker, 5000}
                    ,{acdc_init, worker, 5000}
                    ,{acdc_listener, worker, 5000}
+                   ,{webseq, worker, 5000}
                   ]).
 
 %% ===================================================================

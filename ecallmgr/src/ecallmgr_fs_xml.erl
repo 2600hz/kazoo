@@ -260,6 +260,17 @@ get_channel_vars({<<"SIP-Headers">>, SIPJObj}, Vars) ->
                         [ list_to_binary(["sip_h_", K, "=", V]) | Vars0]
                 end, Vars, SIPHeaders);
 
+get_channel_vars({<<"To-User">>, Username}, Vars) ->
+    [list_to_binary([?CHANNEL_VAR_PREFIX, "Username"
+                     ,"='", wh_util:to_list(Username), "'"]) 
+     | Vars
+    ];
+get_channel_vars({<<"To-Realm">>, Realm}, Vars) ->
+    [list_to_binary([?CHANNEL_VAR_PREFIX, "Realm"
+                     ,"='", wh_util:to_list(Realm), "'"]) 
+     | Vars
+    ];
+
 get_channel_vars({<<"Caller-ID-Type">>, <<"from">>}, Vars) ->
     [ <<"sip_cid_type=none">> | Vars];
 get_channel_vars({<<"Caller-ID-Type">>, <<"rpid">>}, Vars) ->
