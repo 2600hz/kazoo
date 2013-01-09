@@ -278,8 +278,11 @@ add_location(Number, Location, CallerName) ->
 -spec provision_location/1 :: (ne_binary()) -> api_binary().
 provision_location(LocationId) ->
     Props = [{'locationid', [wh_util:to_list(LocationId)]}],
-    Response = emergency_provisioning_request('provisionLocation', Props),
-    wh_util:get_xml_value("//LocationStatus/code/text()", Response).
+    case emergency_provisioning_request('provisionLocation', Props) of
+        {error, _} -> undefined;
+        {ok, Response} ->
+            wh_util:get_xml_value("//LocationStatus/code/text()", Response)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
