@@ -156,9 +156,18 @@ handle_publisher_usurp(JObj, Props) ->
 init([Node, CallId]) when is_atom(Node) andalso is_binary(CallId) ->
     put(callid, CallId),
     TRef = erlang:send_after(?SANITY_CHECK_PERIOD, self(), {sanity_check}),
-    lager:debug("starting call events listener"),
+
     true = gproc:reg({p, l, call_events}),
-    {'ok', #state{node=Node, callid=CallId, sanity_check_tref=TRef}, 0}.
+    true = gproc:reg({p, l, {call_event, Node, CallId} }),
+    true = gproc:reg({p, l, {events, Node, <<"sofia::move_released">>}}),
+    true = gproc:reg({p, l, {events, Node, <<"sofia::move_complete">>}}),
+
+    lager:debug("starting call events listener"),
+    {'ok', #state{node=Node
+                  ,callid=CallId
+                  ,sanity_check_tref=TRef
+                 }
+    }.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -235,18 +244,18 @@ handle_info({event, [CallId | _]}, #state{callid=CallId, passive=true}=State) ->
     {noreply, State};
 handle_info({event, [CallId | Props]}, #state{node=Node, callid=CallId}=State) ->
     case {props:get_value(<<"Event-Subclass">>, Props, props:get_value(<<"Event-Name">>, Props))
-          ,props:get_value(<<"Application">>, Props)} 
+          ,props:get_value(<<"Application">>, Props)}
     of
-        {_, <<"redirect">>} -> 
+        {_, <<"redirect">>} ->
             gen_listener:cast(self(), {channel_redirected, Props}),
             {noreply, State};
-        {<<"CHANNEL_DESTROY">>, _} -> 
+        {<<"CHANNEL_DESTROY">>, _} ->
             maybe_process_channel_destroy(Node, CallId, Props),
             {noreply, State};
-        {<<"sofia::move_released">>, _} -> 
+        {<<"sofia::move_released">>, _} ->
             lager:debug("channel move released call on our node", []),
             {stop, normal, State};
-        {_, _} -> 
+        {_, _} ->
             process_channel_event(Props),
             {noreply, State}
     end;
@@ -271,7 +280,11 @@ handle_info({check_node_status}, #state{node=Node, callid=CallId, is_node_up=fal
 handle_info(timeout, #state{failed_node_checks=FNC}=State) when (FNC+1) > ?MAX_FAILED_NODE_CHECKS ->
     lager:debug("unable to establish initial connectivity to the media node, laterz"),
     {stop, normal, State};
-handle_info(timeout, #state{node=Node, callid=CallId, failed_node_checks=FNC, ref=Ref}=State) ->
+handle_info(timeout, #state{node=Node
+                            ,callid=CallId
+                            ,failed_node_checks=FNC
+                            ,ref=Ref
+                           }=State) ->
     erlang:monitor_node(Node, true),
     %% TODO: die if there is already a event producer on the AMPQ queue... ping/pong?
     case freeswitch:api(Node, 'uuid_exists', CallId) of
@@ -436,7 +449,7 @@ create_event_props(EventName, ApplicationName, Props) ->
        ,{<<"Raw-Application-Data">>, props:get_value(<<"Application-Data">>, Props)}
        ,{<<"Media-Server">>, props:get_value(<<"FreeSWITCH-Hostname">>, Props)}
        ,{<<"Channel-Moving">>, wh_util:to_binary(is_channel_moving(Props))}
-       | event_specific(EventName, ApplicationName, Props) 
+       | event_specific(EventName, ApplicationName, Props)
       ]).
 
 -spec is_channel_moving/1 :: (proplist()) -> boolean().
