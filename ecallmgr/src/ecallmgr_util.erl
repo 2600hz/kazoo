@@ -115,6 +115,9 @@ send_cmd(Node, UUID, "hangup", _) ->
 send_cmd(Node, UUID, "set", "ecallmgr_Account-ID=" ++ _ = Args) ->
     _ = maybe_update_channel_cache(Args, UUID),
     send_cmd(Node, UUID, "export", Args);
+send_cmd(Node, UUID, "set", "ecallmgr_Precedence=" ++ _ = Args) ->
+    _ = maybe_update_channel_cache(Args, UUID),
+    send_cmd(Node, UUID, "export", Args);
 send_cmd(Node, UUID, AppName, Args) ->
     lager:debug("execute on node ~s: ~s(~s)", [Node, AppName, Args]),
     _ = maybe_update_channel_cache(Args, UUID),
