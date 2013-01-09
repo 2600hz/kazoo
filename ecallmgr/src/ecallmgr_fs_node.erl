@@ -292,7 +292,7 @@ process_event(UUID, Props, Node) ->
     process_event(EventName, UUID, props:set_value(<<"start">>, erlang:now(), Props), Node).
 
 process_event(<<"CHANNEL_CREATE">> = EventName, UUID, Props, Node) ->
-    maybe_start_event_listener(Node, UUID),
+    _ = maybe_start_event_listener(Node, UUID),
     maybe_send_event(EventName, UUID, Props, Node);
 process_event(<<"sofia::move_released">> = EventName, _, Props, Node) ->
     UUID = props:get_value(<<"old_node_channel_uuid">>, Props),    
@@ -314,7 +314,7 @@ maybe_send_event(EventName, UUID, Props, Node) ->
 
 -spec maybe_send_call_event/3 :: (api_binary(), wh_proplist(), atom()) -> any().
 maybe_send_call_event(undefined, _, _) -> ok;
-maybe_send_call_event(CallId, Props, Node) ->    
+maybe_send_call_event(CallId, Props, Node) ->
     gproc:send({p, l, {call_event, Node, CallId}}, {event, [CallId | Props]}).
 
 -type cmd_result() :: {'ok', {atom(), nonempty_string()}, ne_binary()} |
@@ -446,7 +446,8 @@ show_channels_as_json(Node) ->
 -spec maybe_start_event_listener/2 :: (atom(), ne_binary()) -> 'ok' | sup_startchild_ret().
 maybe_start_event_listener(Node, UUID) ->
     case wh_cache:fetch_local(?ECALLMGR_UTIL_CACHE, {UUID, start_listener}) of
-        {ok, true} -> ecallmgr_call_sup:start_event_process(Node, UUID);
+        {ok, true} ->
+            ecallmgr_call_sup:start_event_process(Node, UUID);
         _E -> ok
     end.
  
