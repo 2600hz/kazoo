@@ -41,21 +41,23 @@ start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
 -type who() :: pid() | ne_binary().
+-type what() :: ne_binary() | iolist().
 
--spec title/1 :: (ne_binary()) -> 'ok'.
+-spec title/1 :: (what()) -> 'ok'.
 title(Title) ->
     gen_server:cast(?MODULE, {write, "title ~s~n", [what(Title)]}).
 
--spec evt/3 :: (who(), who(), ne_binary()) -> 'ok'.
+-spec evt/3 :: (who(), who(), what()) -> 'ok'.
 evt(From, To, Desc) ->
     gen_server:cast(?MODULE, {write, "~s->~s: ~s~n", [who(From), who(To), what(Desc)]}).
 
--spec note/3 :: (who(), 'right' | 'left', ne_binary()) -> 'ok'.
+-spec note/3 :: (who(), 'right' | 'left', what()) -> 'ok'.
 note(Who, Dir, Note) ->
     gen_server:cast(?MODULE, {write, "note ~s of ~s: ~s~n", [Dir, who(Who), what(Note)]}).
 
 trunc() -> gen_server:cast(?MODULE, trunc).
 rotate() -> gen_server:cast(?MODULE, rotate).
+
 process_pid(P) ->
     ProcId = wh_json:get_value(<<"Process-ID">>, P),
     case re:run(ProcId, <<".*(\<.*\>)">>, [{capture, [1], binary}]) of
@@ -73,12 +75,12 @@ who(P) ->
         W -> W
     end.
 
+-spec what/1 :: (what()) -> ne_binary().
 what(B) when is_binary(B) -> B;
 what(IO) when is_list(IO) -> iolist_to_binary(IO).
 
-
 init(_) ->
-    file:rename(?WEBSEQNAME, iolist_to_binary([?WEBSEQNAME, ".", wh_util:to_binary(wh_util:current_tstamp())])),
+    _ = file:rename(?WEBSEQNAME, iolist_to_binary([?WEBSEQNAME, ".", wh_util:to_binary(wh_util:current_tstamp())])),
     {ok, IO} = file:open(?WEBSEQNAME, [append, raw, delayed_write]),
     {ok, #state{io_device=IO
                 ,who_registry=dict:new()
@@ -106,8 +108,8 @@ handle_cast(trunc, #state{io_device=IO}=State) ->
     catch file:truncate(IO),
     {noreply, State};
 handle_cast(rotate, #state{io_device=OldIO}=State) ->
-    file:close(OldIO),
-    file:rename(?WEBSEQNAME, iolist_to_binary([?WEBSEQNAME, ".", wh_util:to_binary(wh_util:current_tstamp())])),
+    _ = file:close(OldIO),
+    _ = file:rename(?WEBSEQNAME, iolist_to_binary([?WEBSEQNAME, ".", wh_util:to_binary(wh_util:current_tstamp())])),
     {ok, IO} = file:open(?WEBSEQNAME, [append, raw, delayed_write]),
     {noreply, State#state{io_device=IO}};
 handle_cast({reg_who, P, W}, #state{who_registry=Who}=State) when is_pid(P) ->
@@ -125,5 +127,5 @@ code_change(_, S, _) ->
     {ok, S}.
 
 terminate(_Reason, #state{io_device=IO}) ->
-    file:close(IO),
+    _ = file:close(IO),
     lager:debug("webseq terminating: ~p", [_Reason]).
