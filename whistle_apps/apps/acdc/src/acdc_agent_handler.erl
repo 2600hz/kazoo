@@ -134,8 +134,17 @@ handle_call_event(JObj, Props) ->
     end.
 
 handle_originate_resp(JObj, Props) ->
-    true = wapi_resource:originate_resp_v(JObj) orelse wapi_resource:originate_started_v(JObj),
-    acdc_agent_fsm:originate_resp(props:get_value(fsm_pid, Props), JObj).
+    case wh_json:get_value(<<"Event-Name">>, JObj) of
+        <<"originate_resp">> ->
+            true = wapi_resource:originate_resp_v(JObj),
+            acdc_agent_fsm:originate_resp(props:get_value(fsm_pid, Props), JObj);
+        <<"originate_started">> ->
+            true = wapi_resource:originate_started_v(JObj),
+            acdc_agent_fsm:originate_started(props:get_value(fsm_pid, Props), JObj);
+        <<"originate_uuid">> ->
+            true = wapi_resource:originate_uuid_v(JObj),
+            acdc_agent_fsm:originate_uuid(props:get_value(fsm_pid, Props), JObj)
+    end.
 
 -spec handle_member_message/2 :: (wh_json:object(), wh_proplist()) -> 'ok'.
 -spec handle_member_message/3 :: (wh_json:object(), wh_proplist(), ne_binary()) -> 'ok'.
