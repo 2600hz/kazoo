@@ -17,7 +17,7 @@
          ,member_connect_req/2
          ,member_connect_win/2
          ,originate_ready/2
-         ,originate_resp/2
+         ,originate_resp/2, originate_started/2, originate_uuid/2
          ,originate_failed/2
          ,route_req/2
          ,sync_req/2, sync_resp/2
@@ -182,6 +182,10 @@ originate_ready(FSM, JObj) ->
 
 originate_resp(FSM, JObj) ->
     gen_fsm:send_event(FSM, {originate_resp, wh_json:get_value(<<"Call-ID">>, JObj)}).
+originate_started(FSM, JObj) ->
+    gen_fsm:send_event(FSM, {originate_started, wh_json:get_value(<<"Call-ID">>, JObj)}).
+originate_uuid(FSM, JObj) ->
+    gen_fsm:send_event(FSM, {originate_uuid, wh_json:get_value(<<"Outgoing-Call-ID">>, JObj)}).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -592,7 +596,12 @@ ringing({originate_ready, JObj}, #state{agent_proc=Srv}=State) ->
     acdc_agent:originate_execute(Srv, JObj),
     {next_state, ringing, State#state{agent_call_id=CallId}};
 
-ringing({originate_resp, ACallId}, #state{agent_proc=Srv
+ringing({originate_uuid, ACallId}, #state{agent_proc=Srv}=State) ->
+    lager:debug("recv agent call id ~s", [ACallId]),
+    acdc_agent:agent_call_id(Srv, ACallId),
+    {next_state, ringing, State#state{agent_call_id=ACallId}};
+    
+ringing({originate_started, ACallId}, #state{agent_proc=Srv
                                           ,member_call_id=MCallId
                                          }=State) ->
     lager:debug("originate resp on ~s, connecting to caller", [ACallId]),
