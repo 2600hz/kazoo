@@ -14,6 +14,7 @@
 -export([originate_req/1, originate_req_v/1
          ,originate_resp/1, originate_resp_v/1
          ,originate_started/1, originate_started_v/1
+         ,originate_uuid/1, originate_uuid_v/1
          ,eavesdrop_req/1, eavesdrop_req_v/1
          ,eavesdrop_resp/1, eavesdrop_resp_v/1
         ]).
@@ -25,6 +26,7 @@
 -export([publish_originate_req/1, publish_originate_req/2
          ,publish_originate_resp/2, publish_originate_resp/3
          ,publish_originate_started/2, publish_originate_started/3
+         ,publish_originate_uuid/2, publish_originate_uuid/3
          ,publish_eavesdrop_req/1, publish_eavesdrop_req/2
          ,publish_eavesdrop_resp/2, publish_eavesdrop_resp/3
         ]).
@@ -117,6 +119,14 @@
                                   ]).
 -define(ORIGINATE_STARTED_TYPES, [{<<"Custom-Channel-Vars">>, fun wh_json:is_json_object/1}]).
 
+%% Origintate UUID
+-define(ORIGINATE_UUID_HEADERS, [<<"Outgoing-Call-ID">>]).
+-define(OPTIONAL_ORIGINATE_UUID_HEADERS, []).
+-define(ORIGINATE_UUID_VALUES, [{<<"Event-Category">>, <<"resource">>}
+                                   ,{<<"Event-Name">>, <<"originate_uuid">>}
+                                  ]).
+-define(ORIGINATE_UUID_TYPES, []).
+
 %%--------------------------------------------------------------------
 %% @doc Resource Request - see wiki
 %% Takes proplist, creates JSON string or error
@@ -182,6 +192,28 @@ originate_started_v(Prop) when is_list(Prop) ->
     wh_api:validate(Prop, ?ORIGINATE_STARTED_HEADERS, ?ORIGINATE_STARTED_VALUES, ?ORIGINATE_STARTED_TYPES);
 originate_started_v(JObj) ->
     originate_started_v(wh_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
+%% @doc Resource Request UUID - see wiki
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec originate_uuid/1 :: (api_terms()) ->
+                                  {'ok', iolist()} |
+                                  {'error', string()}.
+originate_uuid(Prop) when is_list(Prop) ->
+    case originate_uuid_v(Prop) of
+        true -> wh_api:build_message(Prop, ?ORIGINATE_UUID_HEADERS, ?OPTIONAL_ORIGINATE_UUID_HEADERS);
+        false -> {error, "Proplist failed validation for originate uuid"}
+    end;
+originate_uuid(JObj) ->
+    originate_uuid(wh_json:to_proplist(JObj)).
+
+-spec originate_uuid_v/1 :: (api_terms()) -> boolean().
+originate_uuid_v(Prop) when is_list(Prop) ->
+    wh_api:validate(Prop, ?ORIGINATE_UUID_HEADERS, ?ORIGINATE_UUID_VALUES, ?ORIGINATE_UUID_TYPES);
+originate_uuid_v(JObj) ->
+    originate_uuid_v(wh_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc Eavesdrop Request - see wiki
@@ -291,6 +323,14 @@ publish_originate_started(TargetQ, JObj) ->
     publish_originate_started(TargetQ, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_originate_started(TargetQ, Resp, ContentType) ->
     {ok, Payload} = wh_api:prepare_api_payload(Resp, ?ORIGINATE_STARTED_VALUES, fun ?MODULE:originate_started/1),
+    amqp_util:targeted_publish(TargetQ, Payload, ContentType).
+
+-spec publish_originate_uuid/2 :: (ne_binary(), api_terms()) -> 'ok'.
+-spec publish_originate_uuid/3 :: (ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+publish_originate_uuid(TargetQ, JObj) ->
+    publish_originate_uuid(TargetQ, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_originate_uuid(TargetQ, Resp, ContentType) ->
+    {ok, Payload} = wh_api:prepare_api_payload(Resp, ?ORIGINATE_UUID_VALUES, fun ?MODULE:originate_uuid/1),
     amqp_util:targeted_publish(TargetQ, Payload, ContentType).
 
 -spec publish_eavesdrop_req/1 :: (api_terms()) -> 'ok'.
