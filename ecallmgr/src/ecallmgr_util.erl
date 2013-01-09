@@ -112,14 +112,42 @@ send_cmd(Node, _UUID, "call_pickup", Args) ->
 send_cmd(Node, UUID, "hangup", _) ->
     lager:debug("terminate call on node ~s", [Node]),
     freeswitch:api(Node, uuid_kill, wh_util:to_list(UUID));
-send_cmd(Node, UUID, "set", "ecallmgr_Account-ID=" ++ Value) ->
-    send_cmd(Node, UUID, "export", "ecallmgr_Account-ID=" ++ Value);
+send_cmd(Node, UUID, "set", "ecallmgr_Account-ID=" ++ _ = Args) ->
+    _ = maybe_update_channel_cache(Args, UUID),
+    send_cmd(Node, UUID, "export", Args);
 send_cmd(Node, UUID, AppName, Args) ->
     lager:debug("execute on node ~s: ~s(~s)", [Node, AppName, Args]),
+    _ = maybe_update_channel_cache(Args, UUID),
     freeswitch:sendmsg(Node, UUID, [{"call-command", "execute"}
                                     ,{"execute-app-name", AppName}
                                     ,{"execute-app-arg", wh_util:to_list(Args)}
                                    ]).
+
+-spec maybe_update_channel_cache/2 :: (string(), ne_binary()) -> 'ok'.
+maybe_update_channel_cache("ecallmgr_Account-ID=" ++ Value, UUID) ->
+    ecallmgr_fs_nodes:channel_set_account_id(UUID, Value);
+maybe_update_channel_cache("ecallmgr_Billing-ID=" ++ Value, UUID) ->
+    ecallmgr_fs_nodes:channel_set_billing_id(UUID, Value);
+maybe_update_channel_cache("ecallmgr_Account-Billing=" ++ Value, UUID) ->
+    ecallmgr_fs_nodes:channel_set_account_billing(UUID, Value);
+maybe_update_channel_cache("ecallmgr_Reseller-ID=" ++ Value, UUID) ->
+    ecallmgr_fs_nodes:channel_set_reseller_id(UUID, Value);
+maybe_update_channel_cache("ecallmgr_Reseller-Billing=" ++ Value, UUID) ->
+    ecallmgr_fs_nodes:channel_set_reseller_billing(UUID, Value);
+maybe_update_channel_cache("ecallmgr_Authorizing-ID=" ++ Value, UUID) ->
+    ecallmgr_fs_nodes:channel_set_authorizing_id(UUID, Value);
+maybe_update_channel_cache("ecallmgr_Resource-ID=" ++ Value, UUID) ->
+    ecallmgr_fs_nodes:channel_set_resource_id(UUID, Value);
+maybe_update_channel_cache("ecallmgr_Authorizing-Type=" ++ Value, UUID) ->
+    ecallmgr_fs_nodes:channel_set_authorizing_type(UUID, Value);
+maybe_update_channel_cache("ecallmgr_Owner-ID=" ++ Value, UUID) ->
+    ecallmgr_fs_nodes:channel_set_owner_id(UUID, Value);
+maybe_update_channel_cache("ecallmgr_Presence-ID=" ++ Value, UUID) ->
+    ecallmgr_fs_nodes:channel_set_presence_id(UUID, Value);
+maybe_update_channel_cache("ecallmgr_Precedence=" ++ Value, UUID) ->
+    ecallmgr_fs_nodes:channel_set_precedence(UUID, Value);
+maybe_update_channel_cache(_, _) ->
+    ok.
 
 -spec get_expires/1 :: (wh_proplist()) -> integer().
 get_expires(Props) ->
