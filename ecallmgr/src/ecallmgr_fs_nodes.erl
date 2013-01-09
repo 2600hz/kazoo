@@ -94,8 +94,8 @@ start_link() ->
 
 %% returns ok or {error, some_error_atom_explaining_more}
 -spec add/1 :: (atom()) -> 'ok' | {'error', 'no_connection'}.
--spec add/2 :: (atom(), proplist() | atom()) -> 'ok' | {'error', 'no_connection'}.
--spec add/3 :: (atom(), atom(), proplist() | atom()) -> 'ok' | {'error', 'no_connection'}.
+-spec add/2 :: (atom(), wh_proplist() | atom()) -> 'ok' | {'error', 'no_connection'}.
+-spec add/3 :: (atom(), atom(), wh_proplist() | atom()) -> 'ok' | {'error', 'no_connection'}.
 
 add(Node) ->
     add(Node, []).
@@ -135,7 +135,7 @@ show_channels() ->
                       [channel_record_to_json(Channel) | Acc]
               end, [], ecallmgr_channels).
 
--spec new_channel/2 :: (proplist(), atom()) -> 'ok'.
+-spec new_channel/2 :: (wh_proplist(), atom()) -> 'ok'.
 new_channel(Props, Node) ->
     CallId = props:get_value(<<"Unique-ID">>, Props),
     put(callid, CallId),
@@ -370,7 +370,7 @@ channel_set_presence_id(UUID, Value) when is_binary(Value) ->
 channel_set_presence_id(UUID, Value) ->
     channel_set_presence_id(UUID, wh_util:to_binary(Value)).
 
--spec channel_set_precedence/2 :: (ne_binary(), string() | ne_binary()) -> 'ok'.
+-spec channel_set_precedence/2 :: (ne_binary(), string() | ne_binary() | integer()) -> 'ok'.
 channel_set_precedence(UUID, Value) when is_integer(Value) ->
     gen_server:cast(?MODULE, {channel_update, UUID, {#channel.precedence, Value}});
 channel_set_precedence(UUID, Value) ->
@@ -385,7 +385,7 @@ channel_set_import_moh(UUID, Import) ->
     gen_server:cast(?MODULE, {channel_update, UUID, {#channel.import_moh, Import}}).
 
 -spec channels_by_auth_id/1 :: (ne_binary()) -> {'error', 'not_found'} | {'ok', wh_json:objects()}.
-channels_by_auth_id(AuthorizingId) ->     
+channels_by_auth_id(AuthorizingId) ->
     MatchSpec = [{#channel{authorizing_id = '$1', _ = '_'}
                   ,[{'=:=', '$1', {const, AuthorizingId}}]
                   ,['$_']}
@@ -421,12 +421,12 @@ channel_set_node(Node, UUID) ->
     lager:debug("updaters: ~p", [Updates]),
     gen_server:cast(?MODULE, {channel_update, UUID, Updates}).
 
--spec destroy_channel/2 :: (proplist(), atom()) -> 'ok'.
+-spec destroy_channel/2 :: (wh_proplist(), atom()) -> 'ok'.
 destroy_channel(Props, Node) ->
     UUID = props:get_value(<<"Unique-ID">>, Props),
     gen_server:cast(?MODULE, {destroy_channel, UUID, Node}).
 
--spec props_to_channel_record/2 :: (proplist(), atom()) -> channel().
+-spec props_to_channel_record/2 :: (wh_proplist(), atom()) -> channel().
 props_to_channel_record(Props, Node) ->
     #channel{uuid=props:get_value(<<"Unique-ID">>, Props)
              ,destination=props:get_value(<<"Caller-Destination-Number">>, Props)
@@ -625,7 +625,7 @@ handle_cast({flush_node_channels, Node}, State) ->
     {noreply, State};
 handle_cast(_, State) ->
     {noreply, State, hibernate}.
-    
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -643,7 +643,7 @@ handle_info({event, [UUID | Props]}, State) ->
         <<"CHANNEL_DESTROY">> ->  ?MODULE:destroy_channel(Props, Node);
         <<"sofia::move_complete">> -> ?MODULE:channel_set_node(Node, UUID);
         <<"CHANNEL_ANSWER">> -> ?MODULE:channel_set_answered(UUID, true);
-        <<"CHANNEL_EXECUTE_COMPLETE">> -> 
+        <<"CHANNEL_EXECUTE_COMPLETE">> ->
             Data = props:get_value(<<"Application-Data">>, Props),
             case props:get_value(<<"Application">>, Props) of
                 <<"set">> -> process_channel_update(UUID, Data);
@@ -652,7 +652,7 @@ handle_info({event, [UUID | Props]}, State) ->
                 _Else -> ok
             end;
         _Else -> ok
-    end,        
+    end,
     {noreply, State};
 handle_info(expire_sip_subscriptions, Cache) ->
     Now = wh_util:current_tstamp(),
@@ -757,30 +757,32 @@ process_channel_update(UUID, Var, Value) ->
 find_cookie(undefined, Options) -> wh_util:to_atom(props:get_value(cookie, Options, erlang:get_cookie()));
 find_cookie(Cookie, _Opts) when is_atom(Cookie) -> Cookie.
 
--spec add_fs_node/4 :: (atom(), atom(), proplist(), #state{}) -> {'ok', #state{}} |
-                                                                 {{'error', 'no_connection'}, #state{}} |
-                                                                 {{'error', 'failed_starting_handlers'}, #state{}}.
+-spec add_fs_node/4 :: (atom(), atom(), wh_proplist(), #state{}) ->
+                               {'ok', #state{}} |
+                               {{'error', 'no_connection'}, #state{}} |
+                               {{'error', 'failed_starting_handlers'}, #state{}}.
 add_fs_node(Node, Cookie, Options, #state{nodes=Nodes}=State) ->
     Cookie = find_cookie(Cookie, Options),
-    case lists:keysearch(Nodes, #node.node, Nodes) of
+    case lists:keysearch(Node, #node.node, Nodes) of
         false -> maybe_ping_node(Node, Cookie, Options, State);
-        {value, #node{}} -> 
+        {value, #node{}} ->
             lager:info("already connected to node '~s'", [Node]),
             {ok, State}
     end.
 
--spec maybe_ping_node/4 :: (atom(), atom(), proplist(), #state{}) -> {'ok', #state{}} |
-                                                                     {{'error', 'no_connection'}, #state{}} |
-                                                                     {{'error', 'failed_starting_handlers'}, #state{}}.
+-spec maybe_ping_node/4 :: (atom(), atom(), wh_proplist(), #state{}) ->
+                                   {'ok', #state{}} |
+                                   {{'error', 'no_connection'}, #state{}} |
+                                   {{'error', 'failed_starting_handlers'}, #state{}}.
 maybe_ping_node(Node, Cookie, Options, #state{nodes=Nodes}=State) ->
     erlang:set_cookie(Node, Cookie),
     case net_adm:ping(Node) of
-        pong -> 
+        pong ->
             try maybe_start_node_handlers(Node, Cookie, Options) of
-                _ -> 
+                _ ->
                     lager:info("successfully connected to node '~s'", [Node]),
                     _ = update_stats(connect, Node),
-                    {ok, State#state{nodes=[#node{node=Node, cookie=Cookie, options=Options} 
+                    {ok, State#state{nodes=[#node{node=Node, cookie=Cookie, options=Options}
                                             | lists:keydelete(Node, #node.node, Nodes)
                                            ]}}
             catch
@@ -791,7 +793,7 @@ maybe_ping_node(Node, Cookie, Options, #state{nodes=Nodes}=State) ->
                 _:Reason ->
                     ST = erlang:get_stacktrace(),
                     lager:warning("unable to start node ~s handlers: ~p", [Node, Reason]),
-                    [lager:debug("st: ~p", [S]) || S <- ST],
+                    _ = [lager:debug("st: ~p", [S]) || S <- ST],
                     self() ! {nodedown, Node},
                     {{error, failed_starting_handlers}, State}
             end;
@@ -801,15 +803,13 @@ maybe_ping_node(Node, Cookie, Options, #state{nodes=Nodes}=State) ->
             {{error, no_connection}, State}
     end.
 
--spec maybe_start_node_handlers/3 :: (atom(), atom(), proplist()) -> {'ok', #state{}} |
-                                                                     {{'error', 'no_connection'}, #state{}} |
-                                                                     {{'error', 'failed_starting_handlers'}, #state{}}.
+-spec maybe_start_node_handlers/3 :: (atom(), atom(), wh_proplist()) -> ok.
 maybe_start_node_handlers(Node, Cookie, Options) ->
     Version = get_client_version(Node),
     case ecallmgr_fs_sup:add_node(Node, [{cookie, Cookie}
                                          ,{client_version, Version}
                                          | props:delete(cookie, Options)
-                                        ]) 
+                                        ])
     of
         {ok, _} ->
             erlang:monitor_node(Node, true),
@@ -822,13 +822,13 @@ maybe_start_node_handlers(Node, Cookie, Options) ->
 rm_fs_node(Node, #state{nodes=Nodes}=State) ->
     lager:debug("closing node handler for ~s", [Node]),
     _ = update_stats(disconnect, Node),
-    _ = unbind_from_fs_events(Node),    
+    _ = unbind_from_fs_events(Node),
     _ = close_node(Node),
     State#state{nodes=lists:keydelete(Node, #node.node, Nodes)}.
 
--spec close_node/1 :: (atom() | #node{}) -> 'ok' | {'error','not_found' | 'running' | 'simple_one_for_one'}.
-close_node(#node{node=Node}) ->
-    close_node(Node);
+-spec close_node/1 :: (atom()) ->
+                              'ok' |
+                              {'error','not_found' | 'running' | 'simple_one_for_one'}.
 close_node(Node) ->
     catch erlang:monitor_node(Node, false), % will crash if Node is down already
     _P = ecallmgr_fs_pinger_sup:remove_node(Node),
@@ -844,7 +844,7 @@ get_client_version(Node) ->
             undefined
     end.
 
--spec bind_to_fs_events/2 :: (ne_binary(), atom()) -> 'ok'.  
+-spec bind_to_fs_events/2 :: (ne_binary(), atom()) -> 'ok'.
 bind_to_fs_events(<<"mod_kazoo", _/binary>>, Node) ->
     ok =  freeswitch:event(Node, ['CHANNEL_CREATE', 'CHANNEL_DESTROY'
                                   ,'CHANNEL_EXECUTE_COMPLETE', 'CHANNEL_ANSWER'
@@ -858,7 +858,7 @@ bind_to_fs_events(_Else, Node) ->
     true = gproc:reg({p, l, {event, Node, <<"CHANNEL_EXECUTE_COMPLETE">>}}),
     ok.
 
--spec unbind_from_fs_events/1 :: (atom()) -> 'ok'.  
+-spec unbind_from_fs_events/1 :: (atom()) -> 'ok'.
 unbind_from_fs_events(Node) ->
     _ = gproc:unreg({p, l, {event, Node, <<"CHANNEL_CREATE">>}}),
     _ = gproc:unreg({p, l, {event, Node, <<"CHANNEL_DESTROY">>}}),
@@ -880,14 +880,14 @@ update_stats(disconnect, Node) ->
     wh_timer:delete(<<"freeswitch.nodes.", NodeBin/binary, ".uptime">>),
     ok.
 
--spec get_node_from_props/1 :: (proplist()) -> atom().
+-spec get_node_from_props/1 :: (wh_proplist()) -> atom().
 get_node_from_props(Props) ->
     case props:get_value(<<"ecallmgr_node">>, Props) of
         undefined -> guess_node_from_props(Props);
         Node -> wh_util:to_atom(Node, true)
     end.
 
--spec guess_node_from_props/1 :: (proplist()) -> atom().
+-spec guess_node_from_props/1 :: (wh_proplist()) -> atom().
 guess_node_from_props(Props) ->
     wh_util:to_atom(<<"freeswitch@", (props:get_value(<<"FreeSWITCH-Hostname">>, Props))/binary>>, true).
 
