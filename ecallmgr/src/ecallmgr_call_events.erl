@@ -152,20 +152,31 @@ handle_publisher_usurp(JObj, Props) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
--spec init/1 :: ([atom() | ne_binary(),...]) -> {'ok', #state{}, 0}.
+-spec init/1 :: ([atom() | ne_binary(),...]) -> {'ok', #state{}}.
 init([Node, CallId]) when is_atom(Node) andalso is_binary(CallId) ->
     put(callid, CallId),
     TRef = erlang:send_after(?SANITY_CHECK_PERIOD, self(), {sanity_check}),
+
+    erlang:monitor_node(Node, true),
 
     true = gproc:reg({p, l, call_events}),
     true = gproc:reg({p, l, {call_event, Node, CallId} }),
     true = gproc:reg({p, l, {events, Node, <<"sofia::move_released">>}}),
     true = gproc:reg({p, l, {events, Node, <<"sofia::move_complete">>}}),
 
+    Ref = wh_util:rand_hex_binary(12),
+    Usurp = [{<<"Call-ID">>, CallId}
+             ,{<<"Media-Node">>, Node}
+             ,{<<"Reference">>, Ref}
+             | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+            ],
+    wapi_call:publish_usurp_publisher(CallId, Usurp),
+
     lager:debug("starting call events listener"),
     {'ok', #state{node=Node
                   ,callid=CallId
                   ,sanity_check_tref=TRef
+                  ,ref = Ref
                  }
     }.
 
@@ -377,8 +388,7 @@ maybe_process_channel_destroy(Node, CallId, Props) ->
         {error, _} -> process_channel_destroy(Node, CallId, Props);
         {ok, _NewNode} ->
             lager:debug("surpressing destroy; ~s is on ~s, not ~s: publishing channel move instead", [CallId, _NewNode, Node]),
-            publish_event(create_event(<<"CHANNEL_MOVED">>, <<"call_pickup">>, Props));
-        _Else -> ok
+            publish_event(create_event(<<"CHANNEL_MOVED">>, <<"call_pickup">>, Props))
     end.
 
 -spec process_channel_destroy/3 :: (atom(), ne_binary(), wh_proplist()) -> 'ok'.
