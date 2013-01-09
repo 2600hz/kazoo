@@ -655,12 +655,15 @@ do_cascade_quantities(Account, View) ->
                    ,{startkey, [AccountId]}
                    ,{endkey, [AccountId, wh_json:new()]}
                   ],
-    {ok, JObjs} = couch_mgr:get_results(?WH_SERVICES_DB, View, ViewOptions),
-    lists:foldl(fun(JObj, J) ->
-                        Key = wh_json:get_value(<<"key">>, JObj),
-                        Value = wh_json:get_integer_value(<<"value">>, JObj),
-                        wh_json:set_value(tl(Key), Value, J)
-                end, wh_json:new(), JObjs).
+    case couch_mgr:get_results(?WH_SERVICES_DB, View, ViewOptions) of
+        {error, _} -> wh_json:new();
+        {ok, JObjs} ->
+            lists:foldl(fun(JObj, J) ->
+                                Key = wh_json:get_value(<<"key">>, JObj),
+                                Value = wh_json:get_integer_value(<<"value">>, JObj),
+                                wh_json:set_value(tl(Key), Value, J)
+                        end, wh_json:new(), JObjs)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
