@@ -202,7 +202,9 @@ handle_cast({maybe_update_node, Node}, #state{node=_OldNode}=State) ->
     {noreply, State#state{node=Node}, hibernate};
 
 handle_cast({create_uuid}, #state{node=Node, originate_req=JObj}=State) ->
-    {noreply, State#state{uuid=create_uuid(JObj, Node)}, hibernate};
+    UUID = create_uuid(JObj, Node),
+    wh_cache:store_local(?ECALLMGR_UTIL_CACHE, {UUID, start_listener}, true),
+    {noreply, State#state{uuid=UUID}, hibernate};
 
 handle_cast({get_originate_action}, #state{originate_req=JObj, node=Node}=State) ->
     gen_listener:cast(self(), {build_originate_args}),
@@ -218,20 +220,10 @@ handle_cast({get_originate_action}, #state{originate_req=JObj, node=Node}=State)
                           ,node=UseNode
                          }};
 
-handle_cast({build_originate_args}, #state{uuid=undefined
-                                           ,action = ?ORIGINATE_PARK
-                                          }=State) ->
+handle_cast({build_originate_args}, #state{uuid=undefined}=State) ->
     gen_listener:cast(self(), {create_uuid}),
     gen_listener:cast(self(), {build_originate_args}),
     {noreply, State};
-
-handle_cast({build_originate_args}, #state{uuid=undefined
-                                           ,app = ?ORIGINATE_EAVESDROP
-                                          }=State) ->
-    gen_listener:cast(self(), {create_uuid}),
-    gen_listener:cast(self(), {build_originate_args}),
-    {noreply, State};
-
 handle_cast({build_originate_args}, #state{originate_req=JObj
                                            ,uuid=UUID
                                            ,action = ?ORIGINATE_PARK
@@ -255,9 +247,12 @@ handle_cast({build_originate_args}, #state{originate_req=JObj
 
 handle_cast({build_originate_args}, #state{originate_req=JObj
                                            ,action=Action
+                                           ,uuid=UUID
                                           }=State) ->
     gen_listener:cast(self(), {originate_execute}),
-    Endpoints = wh_json:get_ne_value(<<"Endpoints">>, JObj, []),
+    Endpoints = [wh_json:set_value(<<"origination_uuid">>, UUID, Endpoint)
+                 || Endpoint <- wh_json:get_ne_value(<<"Endpoints">>, JObj, [])
+                ],
     {noreply, State#state{dialstrings=build_originate_args(Action, Endpoints, JObj)}};
 
 handle_cast({originate_ready}, #state{originate_req=JObj
@@ -564,7 +559,14 @@ create_uuid(Node) ->
 
 create_uuid(JObj, Node) ->
     case wh_json:get_binary_value(<<"Outbound-Call-ID">>, JObj) of
-        undefined -> create_uuid(Node);
+        undefined ->
+            UUID = create_uuid(Node),
+            wapi_resource:publish_originate_uuid(wh_json:get_value(<<"Server-ID">>, JObj)
+                                                 ,[{<<"Outgoing-Call-ID">>, UUID}
+                                                   ,{<<"Msg-ID">>, wh_json:get_value(<<"Msg-ID">>, JObj)}
+                                                   | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
+                                                  ]),
+            UUID;
         CallId ->
             put(callid, CallId),
             CallId
