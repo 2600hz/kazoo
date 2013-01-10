@@ -1,15 +1,19 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2013, 2600Hz
 %%% @doc
 %%%
 %%% @end
-%%% Created : 22 Jan 2012 by James Aimonetti <james@2600hz.org>
+%%% @contributors
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(trunkstore).
 
 -author('James Aimonetti <james@2600hz.org>').
--export([start/0, start_link/0, stop/0, start_deps/0]).
+-export([start/0
+         ,start_link/0
+         ,stop/0
+         ,start_deps/0
+        ]).
 
 -include("ts.hrl").
 
@@ -17,7 +21,7 @@
 %% @doc Starts the app for inclusion in a supervisor tree
 -spec start_link/0 :: () -> startlink_ret().
 start_link() ->
-    start_deps(),
+    _ = start_deps(),
     trunkstore_sup:start_link().
 
 %% @spec start() -> ok
@@ -27,10 +31,7 @@ start() ->
 
 start_deps() ->
     whistle_apps_deps:ensure(?MODULE),
-    wh_util:ensure_started(sasl),
-    wh_util:ensure_started(crypto),
-    wh_util:ensure_started(whistle_amqp),
-    wh_util:ensure_started(ibrowse).
+    [wh_util:ensure_started(A) || A <- [sasl, crypto, whistle_amqp, ibrowse]].
 
 %% @spec stop() -> ok
 %% @doc Stop the callmgr server.

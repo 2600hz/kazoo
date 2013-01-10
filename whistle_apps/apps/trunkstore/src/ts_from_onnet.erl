@@ -97,7 +97,7 @@ onnet_data(State) ->
                                      ,wh_json:get_value(<<"flags">>, SrvOptions)
                                      ,wh_json:get_value(<<"flags">>, AcctOptions)
                                     ]),
-io:format("~p ~p~n", [DIDFlags, SrvOptions]),
+
     Q = ts_callflow:get_my_queue(State),
 
     Command = [ KV
@@ -122,6 +122,7 @@ io:format("~p ~p~n", [DIDFlags, SrvOptions]),
               ],
 
     try
+        lager:debug("we know how to route this call, sending park route response"),
         send_park(State, Command)
     catch
         _A:_B ->
@@ -132,13 +133,11 @@ io:format("~p ~p~n", [DIDFlags, SrvOptions]),
     end.
 
 send_park(State, Command) ->
-    State1 = ts_callflow:send_park(State),
-    wait_for_win(State1, Command).
+    wait_for_win(ts_callflow:send_park(State), Command).
 
 wait_for_win(State, Command) ->
     case ts_callflow:wait_for_win(State) of
         {won, State1} ->
-            lager:info("route won, sending offnet resource request"),
             send_offnet(State1, Command);
         {lost, State2} ->
             lager:info("did not win route, passive listening"),
@@ -146,7 +145,6 @@ wait_for_win(State, Command) ->
     end.
 
 send_offnet(State, Command) ->
-    lager:info("sending offnet request"),
     CtlQ = ts_callflow:get_control_queue(State),
     wapi_offnet_resource:publish_req([{<<"Control-Queue">>, CtlQ} | Command]),
     wait_for_bridge(State).
@@ -154,10 +152,12 @@ send_offnet(State, Command) ->
 wait_for_bridge(State) ->
     case ts_callflow:wait_for_bridge(State) of
         {bridged, State1} ->
+            lager:info("call was successfully bridged"),
             wait_for_cdr(State1);
         {error, State2} ->
             wait_for_bridge(State2);
         {hangup, State3} ->
+            lager:info("call was hungup"),
             ALeg = ts_callflow:get_aleg_id(State3),
             ts_callflow:finish_leg(State3, ALeg);
         {timeout, State4} ->

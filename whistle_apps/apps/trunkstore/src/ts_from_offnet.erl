@@ -32,8 +32,10 @@ endpoint_data(State) ->
         {endpoint, EP} ->
             proceed_with_endpoint(State, EP, JObj)
     catch
+        throw:no_did_found ->
+            lager:info("call was not for a trunkstore number");
         throw:_E ->
-            lager:info("thrown exception caught: ~p", [_E])
+            lager:info("thrown exception caught, not continuing: ~p", [_E])
     end.
 
 proceed_with_endpoint(State, EP, JObj) ->
@@ -109,7 +111,7 @@ wait_for_cdr(State) ->
             lager:info("a-leg CDR for ~s costs ~p", [AcctID, Cost]),
 
             case ts_callflow:get_bleg_id(State1) of
-                <<>> -> 
+                <<>> ->
                     ALeg = ts_callflow:get_aleg_id(State1),
                     ts_callflow:finish_leg(State1, ALeg);
                 _Else -> wait_for_other_leg(State1, bleg)

@@ -1,10 +1,10 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2013, 2600Hz
 %%% @doc
 %%%
 %%% @end
-%%% Created : 22 Jan 2012 by James Aimonetti <james@2600hz.org>
+%%% @contributors
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(trunkstore_sup).
 
@@ -24,7 +24,7 @@
 %% ===================================================================
 -spec start_link/0 :: () -> {'ok', pid()} | 'ignore' | {'error', term()}.
 start_link() ->
-    trunkstore:start_deps(),
+    _ = trunkstore:start_deps(),
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
 %% ===================================================================
