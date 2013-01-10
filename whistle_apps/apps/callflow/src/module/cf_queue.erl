@@ -24,11 +24,11 @@ handle(Data, Call) ->
     QID = wh_json:get_value(<<"id">>, Data),
     case couch_mgr:open_doc(whapps_call:account_db(Call), QID) of
         {error, _Reason} ->
-            lager:debug("failed to find queue ~s: ~p", [QID, _Reason]),
+            lager:info("failed to find queue ~s: ~p", [QID, _Reason]),
             cf_exe:continue(Call);
         {ok, Queue} ->
             ConnTimeout = wh_json:get_integer_value(<<"connection_timeout">>, Queue, 30),
-            lager:debug("transfering call control to ACD queue '~s' with timeout ~b", [QID, ConnTimeout]),
+            lager:info("transfering call control to ACD queue '~s' with timeout ~b", [QID, ConnTimeout]),
             publish_queue_join(Queue, Call, ConnTimeout),
             wait_for_queue(Call)
     end.

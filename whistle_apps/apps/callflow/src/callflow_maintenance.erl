@@ -93,8 +93,8 @@ migrate_recorded_name(Db) ->
     lager:info("migrating all name recordings from vmboxes w/ owner_id in ~s", [Db]),
 
     case couch_mgr:get_results(Db, <<"vmboxes/crossbar_listing">>, [include_docs]) of
-        {ok, []} -> lager:debug("no vmboxes in ~s", [Db]);
-        {error, _E} -> lager:debug("unable to get vm box list: ~p", [_E]);
+        {ok, []} -> lager:info("no vmboxes in ~s", [Db]);
+        {error, _E} -> lager:info("unable to get vm box list: ~p", [_E]);
         {ok, VMBoxes} -> [do_recorded_name_migration(Db, wh_json:get_value(<<"doc">>, VMBox)) || VMBox <- VMBoxes]
     end.
 
@@ -103,26 +103,26 @@ migrate_recorded_name(Db) ->
 do_recorded_name_migration(Db, VMBox) ->
     VMBoxId = wh_json:get_value(<<"_id">>, VMBox),
     case wh_json:get_value(?RECORDED_NAME_KEY, VMBox) of
-        undefined -> lager:debug("vm box ~s has no recorded name to migrate", [VMBoxId]);
+        undefined -> lager:info("vm box ~s has no recorded name to migrate", [VMBoxId]);
         MediaId ->
-            lager:debug("vm box ~s has recorded name in doc ~s", [VMBoxId, MediaId]),
+            lager:info("vm box ~s has recorded name in doc ~s", [VMBoxId, MediaId]),
             do_recorded_name_migration(Db, MediaId, wh_json:get_value(<<"owner_id">>, VMBox)),
             {ok, _} = couch_mgr:save_doc(Db, wh_json:delete_key(?RECORDED_NAME_KEY, VMBox))
     end.
 
 do_recorded_name_migration(_Db, _MediaId, undefined) ->
-    lager:debug("no owner id on vm box");
+    lager:info("no owner id on vm box");
 do_recorded_name_migration(Db, MediaId, OwnerId) ->
     {ok, Owner} = couch_mgr:open_doc(Db, OwnerId),
     case wh_json:get_value(?RECORDED_NAME_KEY, Owner) of
         undefined ->
-            lager:debug("no recorded name on owner, setting to ~s", [MediaId]),
+            lager:info("no recorded name on owner, setting to ~s", [MediaId]),
             {ok, _} = couch_mgr:save_doc(Db, wh_json:set_value(?RECORDED_NAME_KEY, MediaId, Owner)),
-            lager:debug("updated owner doc with recorded name doc id ~s", [MediaId]);
+            lager:info("updated owner doc with recorded name doc id ~s", [MediaId]);
         MediaId ->
-            lager:debug("owner already has recorded name at ~s", [MediaId]);
+            lager:info("owner already has recorded name at ~s", [MediaId]);
         OwnerMediaId ->
-            lager:debug("owner has recorded name at ~s(not ~s), using owners", [OwnerMediaId, MediaId]),
+            lager:info("owner has recorded name at ~s(not ~s), using owners", [OwnerMediaId, MediaId]),
             couch_mgr:del_doc(Db, MediaId)
     end.
 

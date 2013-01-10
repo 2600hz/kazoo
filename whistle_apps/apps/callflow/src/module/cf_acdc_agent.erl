@@ -31,12 +31,12 @@ handle(Data, Call) ->
     whapps_call_command:answer(Call),
     _ = case find_agent(Call) of
             {ok, undefined} ->
-                lager:debug("no owner on this device == no agent"),
+                lager:info("no owner on this device == no agent"),
                 play_not_an_agent(Call);
             {ok, AgentId} ->
                 Status = find_agent_status(Call, AgentId),
                 NewStatus = fix_data_status(wh_json:get_value(<<"action">>, Data)),
-                lager:debug("agent ~s maybe changing status from ~s to ~s", [AgentId, Status, NewStatus]),
+                lager:info("agent ~s maybe changing status from ~s to ~s", [AgentId, Status, NewStatus]),
 
                 maybe_update_status(Call, AgentId, Status, NewStatus, Data)
         end,
@@ -57,32 +57,32 @@ fix_data_status(<<"pause">>) -> <<"paused">>;
 fix_data_status(Status) -> Status.
 
 maybe_update_status(Call, AgentId, _Curr, <<"logout">>, _Data) ->
-    lager:debug("agent ~s wants to log out (currently: ~s)", [AgentId, _Curr]),
+    lager:info("agent ~s wants to log out (currently: ~s)", [AgentId, _Curr]),
     logout_agent(Call, AgentId),
     play_agent_logged_out(Call);
 
 maybe_update_status(Call, AgentId, <<"login">>, <<"login">>, _Data) ->
-    lager:debug("agent ~s is already logged in", [AgentId]),
+    lager:info("agent ~s is already logged in", [AgentId]),
     _ = play_agent_logged_in_already(Call),
     send_new_status(Call, AgentId, fun wapi_acdc_agent:publish_login/1, undefined);
 maybe_update_status(Call, AgentId, FromStatus, <<"paused">>, Data) ->
     maybe_pause_agent(Call, AgentId, FromStatus, Data);
 
 maybe_update_status(Call, AgentId, <<"logout">>, <<"login">>, _Data) ->
-    lager:debug("agent ~s wants to log in", [AgentId]),
+    lager:info("agent ~s wants to log in", [AgentId]),
     login_agent(Call, AgentId),
     play_agent_logged_in(Call);
 
 maybe_update_status(Call, AgentId, <<"paused">>, <<"resume">>, _Data) ->
-    lager:debug("agent ~s is coming back from pause", [AgentId]),
+    lager:info("agent ~s is coming back from pause", [AgentId]),
     resume_agent(Call, AgentId),
     play_agent_resume(Call);
 maybe_update_status(Call, AgentId, <<"paused">>, <<"login">>, _Data) ->
-    lager:debug("agent ~s is coming back from pause", [AgentId]),
+    lager:info("agent ~s is coming back from pause", [AgentId]),
     resume_agent(Call, AgentId),
     play_agent_resume(Call);
 maybe_update_status(Call, _AgentId, _Status, _NewStatus, _Data) ->
-    lager:debug("agent ~s: invalid status change from ~s to ~s", [_AgentId, _Status, _NewStatus]),
+    lager:info("agent ~s: invalid status change from ~s to ~s", [_AgentId, _Status, _NewStatus]),
     play_agent_invalid(Call).
 
 
@@ -91,7 +91,7 @@ maybe_pause_agent(Call, AgentId, <<"login">>, Data) ->
 maybe_pause_agent(Call, AgentId, <<"busy">>, Data) ->
     pause_agent(Call, AgentId, Data);
 maybe_pause_agent(Call, _AgentId, FromStatus, _Data) ->
-    lager:debug("unable to go from ~s to paused", [FromStatus]),
+    lager:info("unable to go from ~s to paused", [FromStatus]),
     play_agent_invalid(Call).
 
 login_agent(Call, AgentId) ->
@@ -108,7 +108,7 @@ pause_agent(Call, AgentId, Data) ->
                                         ,Data
                                         ,whapps_config:get(<<"acdc">>, <<"default_agent_pause_timeout">>, 600)
                                        ),
-    lager:debug("agent ~s is pausing work for ~b s", [AgentId, Timeout]),
+    lager:info("agent ~s is pausing work for ~b s", [AgentId, Timeout]),
     pause_agent(Call, AgentId, Timeout).
 
 resume_agent(Call, AgentId) ->

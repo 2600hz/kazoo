@@ -150,16 +150,16 @@ directory_start(Call, State, CurrUsers) ->
 collect_min_digits(Call, State, CurrUsers, Min) when Min =< 0 ->
     case whapps_call_command:wait_for_dtmf(?TIMEOUT_DTMF) of
         {ok, <<>>} ->
-            lager:debug("waited enough, trying to match"),
+            lager:info("waited enough, trying to match"),
             maybe_match(Call, State, CurrUsers);
         {ok, DTMF} ->
-            lager:debug("caller still entering DTMF, keep letting them"),
+            lager:info("caller still entering DTMF, keep letting them"),
             collect_more_digits(Call, add_dtmf(State, DTMF), CurrUsers)
     end;
 collect_min_digits(Call, State, CurrUsers, Min) ->
     case whapps_call_command:wait_for_dtmf(?TIMEOUT_MIN_DTMF) of
         {ok, <<>>} ->
-            lager:debug("timeout waiting for a dtmf"),
+            lager:info("timeout waiting for a dtmf"),
             {ok, DTMF} = play_min_digits_needed(Call, min_dtmf(State)),
             collect_min_digits(Call, add_dtmf(clear_dtmf(State), DTMF), CurrUsers, Min - byte_size(DTMF));
         {ok, DTMF} ->
@@ -169,31 +169,31 @@ collect_min_digits(Call, State, CurrUsers, Min) ->
 collect_more_digits(Call, State, CurrUsers) ->
     case whapps_call_command:wait_for_dtmf(?TIMEOUT_DTMF) of
         {ok, <<>>} ->
-            lager:debug("failed to collect more digits, maybe_match"),
+            lager:info("failed to collect more digits, maybe_match"),
             maybe_match(Call, State, CurrUsers);
         {ok, DTMF} ->
-            lager:debug("recv more dtmf: ~s", [DTMF]),
+            lager:info("recv more dtmf: ~s", [DTMF]),
             collect_more_digits(Call, add_dtmf(State, DTMF), CurrUsers)
     end.
 
 maybe_match(Call, State, CurrUsers) ->
     case filter_users(CurrUsers, dtmf_collected(State)) of
         [] ->
-            lager:debug("no users left matching DTMF string"),
+            lager:info("no users left matching DTMF string"),
             _ = play_no_users(Call),
             directory_start(Call, clear_dtmf(State), users(State));
         [User] ->
-            lager:debug("one user found: ~s", [full_name(User)]),
+            lager:info("one user found: ~s", [full_name(User)]),
             case maybe_confirm_match(Call, User, confirm_match(State)) of
                 true ->
-                    lager:debug("match confirmed, routing"),
+                    lager:info("match confirmed, routing"),
                     route_to_match(Call, callflow(Call, User));
                 false ->
-                    lager:debug("match denied, starting over"),
+                    lager:info("match denied, starting over"),
                     directory_start(Call, clear_dtmf(State), users(State))
             end;
         Users ->
-            lager:debug("more than one match found"),
+            lager:info("more than one match found"),
             matches_menu(Call, State, Users)
     end.
 
@@ -202,7 +202,7 @@ matches_menu(Call, State, Users) ->
     maybe_match_users(Call, save_current_users(State, Users), Users, 1).
 
 maybe_match_users(Call, State, [], _) ->
-    lager:debug("failed to match any users, back to the beginning"),
+    lager:info("failed to match any users, back to the beginning"),
     _ = play_no_users(Call),
     directory_start(Call, clear_dtmf(State), users(State));
 maybe_match_users(Call, State, [U|Us], MatchNum) ->
@@ -210,23 +210,23 @@ maybe_match_users(Call, State, [U|Us], MatchNum) ->
         route ->
             case maybe_confirm_match(Call, U, confirm_match(State)) of
                 true ->
-                    lager:debug("match confirmed, routing"),
+                    lager:info("match confirmed, routing"),
                     route_to_match(Call, callflow(Call, U));
                 false ->
-                    lager:debug("match denied, continuing"),
+                    lager:info("match denied, continuing"),
                     maybe_match_users(Call, State, Us, MatchNum+1)
             end;
         next ->
-            lager:debug("moving to next user"),
+            lager:info("moving to next user"),
             maybe_match_users(Call, State, Us, MatchNum+1);
         continue ->
-            lager:debug("caller wants to enter more DMTF"),
+            lager:info("caller wants to enter more DMTF"),
             collect_more_digits(Call, clear_current_users(State), get_current_users(State));
         start_over ->
-            lager:debug("starting over"),
+            lager:info("starting over"),
             directory_start(Call, clear_dtmf(State), users(State));
         invalid ->
-            lager:debug("invalid key press"),
+            lager:info("invalid key press"),
             _ = play_invalid(Call),
             maybe_match_users(Call, State, [U|Us], MatchNum)
     end.
@@ -242,11 +242,11 @@ maybe_match_user(Call, U, MatchNum) ->
                    MediaID -> {play, <<$/, (whapps_call:account_db(Call))/binary
                                        ,$/, MediaID/binary>>}
                end,
-    lager:debug("playing username with: ~p", [UserName]),
+    lager:info("playing username with: ~p", [UserName]),
 
     case play_user(Call, UserName, MatchNum) of
         {ok, <<>>} ->
-            lager:debug("nothing pressed during user prompts, wait for something"),
+            lager:info("nothing pressed during user prompts, wait for something"),
             case whapps_call_command:wait_for_dtmf(?TIMEOUT_DTMF) of
                 {ok, <<>>} ->
                     maybe_match_user(Call, U, MatchNum);
@@ -301,7 +301,7 @@ play_confirm_match(Call, User) ->
                    MediaID -> {play, <<$/, (whapps_call:account_db(Call))/binary
                                        ,$/, MediaID/binary>>}
                end,
-    lager:debug("playing confirm_match with username: ~p", [UserName]),
+    lager:info("playing confirm_match with username: ~p", [UserName]),
 
     play_and_collect(Call, [{play, ?PROMPT_FOUND}
                             ,UserName
@@ -339,7 +339,7 @@ play_and_collect(Call, AudioMacro) ->
     play_and_collect(Call, AudioMacro, 1).
 play_and_collect(Call, AudioMacro, NumDigits) ->
     NoopID = whapps_call_command:audio_macro(AudioMacro, Call),
-    lager:debug("play and collect noopID: ~s", [NoopID]),
+    lager:info("play and collect noopID: ~s", [NoopID]),
     whapps_call_command:collect_digits(NumDigits, ?TIMEOUT_DTMF, ?TIMEOUT_DTMF, NoopID, Call).
 
 %%------------------------------------------------------------------------------
@@ -385,7 +385,7 @@ callflow(Call, #directory_user{callflow_id=CF}) ->
     case couch_mgr:open_doc(whapps_call:account_db(Call), CF) of
         {ok, JObj} -> JObj;
         {error, _E} ->
-            lager:debug("failed to find callflow ~s: ~p", [CF, _E]),
+            lager:info("failed to find callflow ~s: ~p", [CF, _E]),
             fail
     end.
 
@@ -413,13 +413,13 @@ get_sort_by(_) -> last.
 get_directory_listing(Db, DirId) ->
     case couch_mgr:get_results(Db, ?DIR_DOCS_VIEW, [{key, DirId}, include_docs]) of
         {ok, []} ->
-            lager:debug("no users have been assigned to directory ~s", [DirId]),
+            lager:info("no users have been assigned to directory ~s", [DirId]),
             %% play no users in this directory
             {error, no_users_in_directory};
         {ok, Users} ->
             {ok, [ get_directory_user(wh_json:get_value(<<"doc">>, U), wh_json:get_value(<<"value">>, U)) || U <- Users]};
         {error, _E}=E ->
-            lager:debug("failed to lookup users for directory ~s: ~p", [DirId, _E]),
+            lager:info("failed to lookup users for directory ~s: ~p", [DirId, _E]),
             E
     end.
 
@@ -440,7 +440,7 @@ get_directory_user(U, CallflowId) ->
 
 
 filter_users(Users, DTMFs) ->
-    lager:debug("filtering users by ~s", [DTMFs]),
+    lager:info("filtering users by ~s", [DTMFs]),
     Size = byte_size(DTMFs),
 
     [U || U <- Users,
@@ -452,9 +452,9 @@ filter_users(Users, DTMFs) ->
 maybe_dtmf_matches(_, 0, _) -> false;
 maybe_dtmf_matches(_, Size, User) when byte_size(User) < Size -> false;
 maybe_dtmf_matches(DTMFs, Size, User) ->
-    lager:debug("match ~s(~b) to ~s", [DTMFs, Size, User]),
+    lager:info("match ~s(~b) to ~s", [DTMFs, Size, User]),
     <<ToMatch:Size/binary, _/binary>> = User,
     ToMatch =:= DTMFs.
 
 log(Users) ->
-    [lager:debug("user: ~s: ~s: ~s", [full_name(U), last_first_dtmfs(U), first_last_dtmfs(U)]) || U <- Users].
+    [lager:info("user: ~s: ~s: ~s", [full_name(U), last_first_dtmfs(U), first_last_dtmfs(U)]) || U <- Users].

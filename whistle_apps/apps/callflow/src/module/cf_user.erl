@@ -27,7 +27,7 @@ handle(Data, Call) ->
     Timeout = wh_json:get_binary_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT),
     Strategy = wh_json:get_binary_value(<<"strategy">>, Data, <<"simultaneous">>),
     IgnoreEarlyMedia = cf_util:ignore_early_media(Endpoints),
-    lager:debug("attempting ~b user devices with strategy ~s", [length(Endpoints), Strategy]),
+    lager:info("attempting ~b user devices with strategy ~s", [length(Endpoints), Strategy]),
     case length(Endpoints) > 0 
         andalso whapps_call_command:b_bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Call) 
     of
@@ -35,12 +35,12 @@ handle(Data, Call) ->
             lager:notice("user ~s has no endpoints", [UserId]),
             cf_exe:continue(Call);
         {ok, _} ->
-            lager:debug("completed successful bridge to user"),
+            lager:info("completed successful bridge to user"),
             cf_exe:stop(Call);
         {fail, _}=F ->
             cf_util:handle_bridge_failure(F, Call);
         {error, _R} ->
-            lager:debug("error bridging to user: ~p", [_R]),
+            lager:info("error bridging to user: ~p", [_R]),
             cf_exe:continue(Call)
     end.
 

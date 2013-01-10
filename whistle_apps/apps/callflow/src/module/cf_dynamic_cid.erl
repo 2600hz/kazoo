@@ -70,7 +70,7 @@ handle(Data, Call) ->
                   _ = whapps_call_command:play(Prompts#prompts.reject_tone, Call),
                   DefaultCID
           end,
-    lager:debug("setting the caller id number to ~s", [CID]),
+    lager:info("setting the caller id number to ~s", [CID]),
 
     {ok, C1} = cf_exe:get_call(Call),
     Updates = [fun(C) -> whapps_call:kvs_store(dynamic_cid, CID, C) end

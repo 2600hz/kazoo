@@ -49,7 +49,7 @@ caller_id(Attribute, Call) ->
         orelse wh_json:is_true(<<"Retain-CID">>, CCVs)
     of
         true ->
-            lager:debug("retaining original caller id"),
+            lager:info("retaining original caller id"),
             {whapps_call:caller_id_number(Call)
              ,whapps_call:caller_id_name(Call)};
         false ->
@@ -60,7 +60,7 @@ caller_id(Attribute, Call) ->
 maybe_get_endpoint_cid(Attribute, Call) ->
     case cf_endpoint:get(Call) of
         {error, _R} ->
-            lager:debug("unable to get endpoint: ~p", [_R]),
+            lager:info("unable to get endpoint: ~p", [_R]),
             maybe_normalize_cid(undefined, undefined, wh_json:new(), Attribute, Call);
         {ok, JObj} ->
             Number = get_cid_or_default(Attribute, <<"number">>, JObj),
@@ -102,18 +102,18 @@ maybe_ensure_cid_valid(Number, Name, _, <<"external">>, Call) ->
     case whapps_config:get_is_true(<<"callflow">>, <<"ensure_valid_caller_id">>, false) of
         true -> ensure_valid_caller_id(Number, Name, Call);
         false ->
-            lager:debug("external caller id <~s> ~s", [Name, Number]),
+            lager:info("external caller id <~s> ~s", [Name, Number]),
             {Number, Name}
     end;
 maybe_ensure_cid_valid(Number, Name, _, Attribute, _) ->
-    lager:debug("~s caller id <~s> ~s", [Attribute, Name, Number]),
+    lager:info("~s caller id <~s> ~s", [Attribute, Name, Number]),
     {Number, Name}.
 
 -spec ensure_valid_caller_id/3 :: (ne_binary(), ne_binary(), whapps_call:call()) -> {api_binary(), api_binary()}.
 ensure_valid_caller_id(Number, Name, Call) ->
     case is_valid_caller_id(Number, Call) of
         true ->
-            lager:debug("valid external caller id <~s> ~s", [Name, Number]),
+            lager:info("valid external caller id <~s> ~s", [Name, Number]),
             {Number, Name};
         false ->
             maybe_get_account_cid(Number, Name, Call)
@@ -134,7 +134,7 @@ maybe_get_account_external_number(Number, Name, Account, Call) ->
     External = wh_json:get_ne_value([<<"caller_id">>, <<"external">>, <<"number">>], Account),
     case is_valid_caller_id(External, Call) of
         true ->
-            lager:debug("valid account external caller id <~s> ~s", [Name, Number]),
+            lager:info("valid account external caller id <~s> ~s", [Name, Number]),
             {External, Name};
         false ->
             maybe_get_account_default_number(Number, Name, Account, Call)
@@ -145,7 +145,7 @@ maybe_get_account_default_number(Number, Name, Account, Call) ->
     Default = wh_json:get_ne_value([<<"caller_id">>, <<"default">>, <<"number">>], Account),
     case is_valid_caller_id(Default, Call) of
         true ->
-            lager:debug("valid account default caller id <~s> ~s", [Name, Number]),
+            lager:info("valid account default caller id <~s> ~s", [Name, Number]),
             {Default, Name};
         false ->
             maybe_get_assigned_number(Number, Name, Call)
@@ -157,7 +157,7 @@ maybe_get_assigned_number(_, Name, Call) ->
     case couch_mgr:open_cache_doc(AccountDb, ?WNM_PHONE_NUMBER_DOC) of
         {error, _} ->
             Number = default_cid_number(),
-            lager:debug("could not open phone_numbers doc, using <~s> ~s", [Name, Number]),
+            lager:info("could not open phone_numbers doc, using <~s> ~s", [Name, Number]),
             {Number, Name};
         {ok, JObj} ->
             PublicJObj = wh_json:public_fields(JObj),
@@ -173,12 +173,12 @@ maybe_get_assigned_number(_, Name, Call) ->
 -spec maybe_get_assigned_numbers/3 :: ([] | [ne_binary(),...], ne_binary(), whapps_call:call()) -> {api_binary(), api_binary()}.
 maybe_get_assigned_numbers([], Name, _) ->
     Number = default_cid_number(),
-    lager:debug("failed to find any in-service numbers, using default <~s> ~s", [Name, Number]),
+    lager:info("failed to find any in-service numbers, using default <~s> ~s", [Name, Number]),
     {Number, Name};
 maybe_get_assigned_numbers([Number|_], Name, _) ->
     %% This could optionally cycle all found numbers and ensure they valid
     %% but that could be a lot of wasted db lookups...
-    lager:debug("first assigned number caller id <~s> ~s", [Name, Number]),
+    lager:info("first assigned number caller id <~s> ~s", [Name, Number]),
     {Number, Name}.
 
 -spec is_valid_caller_id/2 :: (api_binary(), whapps_call:call()) -> boolean().
@@ -217,7 +217,7 @@ maybe_normalize_callee(undefined, Name, Endpoint, Call) ->
 maybe_normalize_callee(Number, undefined, Endpoint, Call) ->
     maybe_normalize_callee(Number, default_cid_name(Endpoint), Endpoint, Call);
 maybe_normalize_callee(Number, Name, _, _) ->
-    lager:debug("callee id <~s> ~s", [Name, Number]),
+    lager:info("callee id <~s> ~s", [Name, Number]),
     {Number, Name}.
 
 -spec determine_callee_attribute/1 :: (whapps_call:call()) -> ne_binary().
@@ -238,7 +238,7 @@ determine_callee_attribute(Call) ->
 moh_attributes(Attribute, Call) ->
     case cf_endpoint:get(Call) of
         {error, _R} ->
-            lager:debug("unable to get endpoint: ~p", [_R]),
+            lager:info("unable to get endpoint: ~p", [_R]),
             undefined;
         {ok, Endpoint} ->
             Value = wh_json:get_ne_value([<<"music_on_hold">>, Attribute], Endpoint),
@@ -261,10 +261,10 @@ moh_attributes(Endpoint, Attribute, Call) ->
 maybe_normalize_moh_attribute(undefined, _, _) -> undefined;
 maybe_normalize_moh_attribute(Value, <<"media_id">>, Call) ->
     MediaId = cf_util:correct_media_path(Value, Call),
-    lager:debug("found music_on_hold media_id: '~p'", [MediaId]),
+    lager:info("found music_on_hold media_id: '~p'", [MediaId]),
     MediaId;
 maybe_normalize_moh_attribute(Value, Attribute, _) ->
-    lager:debug("found music_on_hold ~s: '~p'", [Attribute, Value]),
+    lager:info("found music_on_hold ~s: '~p'", [Attribute, Value]),
     Value.
 
 %%-----------------------------------------------------------------------------
@@ -282,7 +282,7 @@ owner_id(Call) ->
             case wh_json:get_ne_value(<<"owner_id">>, Endpoint) of
                 undefined -> undefined;
                 OwnerId ->
-                    lager:debug("initiating endpoint is owned by ~s", [OwnerId]),
+                    lager:info("initiating endpoint is owned by ~s", [OwnerId]),
                     OwnerId
             end
     end.
@@ -297,7 +297,7 @@ owner_id(ObjectId, Call) ->
             case wh_json:get_ne_value(<<"owner_id">>, JObj) of
                 undefined -> undefined;
                 OwnerId ->
-                    lager:debug("object ~s is owned by ~s", [ObjectId, OwnerId]),
+                    lager:info("object ~s is owned by ~s", [ObjectId, OwnerId]),
                     OwnerId
             end
     end.
@@ -400,7 +400,7 @@ fetch_attributes(Attribute, ?NE_BINARY = AccountDb) ->
                     wh_cache:store_local(?CALLFLOW_CACHE, {?MODULE, AccountDb, Attribute}, Props, 900),
                     Props;
                 {error, R} ->
-                    lager:debug("unable to fetch attribute ~s: ~p", [Attribute, R]),
+                    lager:info("unable to fetch attribute ~s: ~p", [Attribute, R]),
                     []
             end
     end;

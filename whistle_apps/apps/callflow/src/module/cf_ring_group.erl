@@ -29,19 +29,19 @@ handle(Data, Call) ->
     Strategy = wh_json:get_binary_value(<<"strategy">>, Data, <<"simultaneous">>),
     Ringback = wh_json:get_value(<<"ringback">>, Data),
 
-    lager:debug("attempting ring group of ~b members with strategy ~s", [length(Endpoints), Strategy]),
+    lager:info("attempting ring group of ~b members with strategy ~s", [length(Endpoints), Strategy]),
 
     case length(Endpoints) > 0 andalso whapps_call_command:b_bridge(Endpoints, Timeout, Strategy, <<"true">>, Ringback, Call) of
         false ->
             lager:notice("ring group has no endpoints"),
             cf_exe:continue(Call);
         {ok, _} ->
-            lager:debug("completed successful bridge to the ring group"),
+            lager:info("completed successful bridge to the ring group"),
             cf_exe:stop(Call);
         {fail, _}=F ->
             cf_util:handle_bridge_failure(F, Call);
         {error, _R} ->
-            lager:debug("error bridging to ring group: ~p", [_R]),
+            lager:info("error bridging to ring group: ~p", [_R]),
             cf_exe:continue(Call)
     end.
 
@@ -89,8 +89,8 @@ fold_eps({ok, EP}, Acc0) -> [EP | Acc0];
 fold_eps(_, Acc0) -> Acc0.
 
 fetch_endpoints(MemberId, <<"user">>, Call) ->
-    lager:debug("member ~s is a user, get all the user's endpoints", [MemberId]),
+    lager:info("member ~s is a user, get all the user's endpoints", [MemberId]),
     cf_attributes:fetch_owned_by(MemberId, device, Call);
 fetch_endpoints(MemberId, _, _) ->
-    lager:debug("member ~s is not a user, assuming a device", [MemberId]),
+    lager:info("member ~s is not a user, assuming a device", [MemberId]),
     [MemberId].

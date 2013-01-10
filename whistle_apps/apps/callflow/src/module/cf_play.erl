@@ -23,17 +23,17 @@ handle(Data, Call) ->
     AccountId = whapps_call:account_id(Call),
     case wh_json:get_value(<<"id">>, Data) of
         undefined ->
-            lager:debug("invalid data in the play callflow"),
+            lager:info("invalid data in the play callflow"),
             cf_exe:continue(Call);
         <<"/system_media", _/binary>> = Path -> play(Data, Call, Path);
         <<"system_media", _/binary>> = Path -> play(Data, Call, Path);
         <<"local_stream://",_/binary>> = Path -> play(Data, Call, Path);
         Path when AccountId =/= undefined ->
-            lager:debug("prepending media ID with /~s/", [AccountId]),
+            lager:info("prepending media ID with /~s/", [AccountId]),
             Path1 = <<$/, (wh_util:to_binary(AccountId))/binary, $/, Path/binary>>,
             play(Data, Call, Path1);
         _Path ->
-            lager:debug("unable to play ~s, as account id is undefined", [_Path]),
+            lager:info("unable to play ~s, as account id is undefined", [_Path]),
             cf_exe:continue(Call)
     end.
 
@@ -43,6 +43,6 @@ play(Data, Call, Media) ->
         true -> ok;
         false -> whapps_call_command:answer(Call)
     end,
-    lager:debug("playing media ~s", [Media]),
+    lager:info("playing media ~s", [Media]),
     _ = whapps_call_command:b_play(Media, Call),
     cf_exe:continue(Call).

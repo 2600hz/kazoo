@@ -24,12 +24,12 @@
 handle(Data, Call) ->
     case bridge_to_endpoints(Data, Call) of
         {ok, _} ->
-            lager:debug("completed successful bridge to the device"),
+            lager:info("completed successful bridge to the device"),
             cf_exe:stop(Call);
         {fail, _}=F ->
             cf_util:handle_bridge_failure(F, Call);
         {error, _R} ->
-            lager:debug("error bridging to device: ~p", [_R]),
+            lager:info("error bridging to device: ~p", [_R]),
             cf_exe:continue(Call)
     end.
 

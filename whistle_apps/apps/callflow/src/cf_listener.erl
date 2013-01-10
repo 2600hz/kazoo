@@ -92,7 +92,7 @@ stop() ->
 %%--------------------------------------------------------------------
 init([]) ->
     process_flag(trap_exit, true),
-    lager:debug("starting new callflow listener"),
+    lager:info("starting new callflow listener"),
     Self = self(),
     spawn(fun() -> 
                   QueueName = <<"callflow_presence_probe">>,
@@ -146,7 +146,7 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info(_Info, State) ->
-    lager:debug("unhandled message: ~p", [_Info]),
+    lager:info("unhandled message: ~p", [_Info]),
     {noreply, State}.
 
 %%--------------------------------------------------------------------
@@ -173,7 +173,7 @@ handle_event(_JObj, _State) ->
 %%--------------------------------------------------------------------
 -spec terminate/2 :: (term(), term()) -> 'ok'.
 terminate(_Reason, _) ->
-    lager:debug("callflow listner ~p termination", [_Reason]).
+    lager:info("callflow listner ~p termination", [_Reason]).
 
 %%--------------------------------------------------------------------
 %% @private

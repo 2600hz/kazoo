@@ -49,7 +49,7 @@ maybe_fetch_endpoint(EndpointId, AccountDb) ->
         {ok, JObj} ->
             maybe_have_endpoint(JObj, EndpointId, AccountDb);
         {error, _R}=E ->
-            lager:debug("unable to fetch endpoint ~s: ~p", [EndpointId, _R]),
+            lager:info("unable to fetch endpoint ~s: ~p", [EndpointId, _R]),
             E
     end.
 
@@ -61,7 +61,7 @@ maybe_have_endpoint(JObj, EndpointId, AccountDb) ->
             wh_cache:store_local(?CALLFLOW_CACHE, {?MODULE, AccountDb, EndpointId}, Endpoint, 300),
             {ok, Endpoint};
         _Else ->
-            lager:debug("endpoint module does not manage document type ~s", [_Else]),
+            lager:info("endpoint module does not manage document type ~s", [_Else]),
             {error, not_device}
     end.
 
@@ -244,7 +244,7 @@ maybe_owner_called_self(Endpoint, Properties, Call) ->
     of
         true -> ok;
         false ->
-            lager:debug("owner ~s stop calling your self...stop calling your self...", [OwnerId]),
+            lager:info("owner ~s stop calling your self...stop calling your self...", [OwnerId]),
             {error, owner_called_self}
     end.
 
@@ -262,7 +262,7 @@ maybe_endpoint_called_self(Endpoint, Properties, Call) ->
     of
         true -> ok;
         false ->
-            lager:debug("endpoint ~s is calling self", [EndpointId]),
+            lager:info("endpoint ~s is calling self", [EndpointId]),
             {error, endpoint_called_self}
     end.
 
@@ -274,7 +274,7 @@ maybe_endpoint_disabled(Endpoint, _, _) ->
         false -> ok;
         true ->
             EndpointId = wh_json:get_value(<<"_id">>, Endpoint),
-            lager:debug("endpoint ~s is disabled", [EndpointId]),
+            lager:info("endpoint ~s is disabled", [EndpointId]),
             {error, endpoint_disabled}
     end.
 
@@ -287,7 +287,7 @@ maybe_do_not_disturb(Endpoint, _, _) ->
         false -> ok;
         true ->
             EndpointId = wh_json:get_value(<<"_id">>, Endpoint),
-            lager:debug("do not distrub endpoint ~s", [EndpointId]),
+            lager:info("do not distrub endpoint ~s", [EndpointId]),
             {error, do_not_disturb}
     end.
 
@@ -341,7 +341,7 @@ maybe_create_fwd_endpoint(Endpoint, Properties, Call) ->
     of
         false -> {error, cf_not_appropriate};
         true ->
-            lager:debug("creating call forwarding endpoint", []),
+            lager:info("creating call forwarding endpoint", []),
             create_call_fwd_endpoint(Endpoint, Properties, CallFowarding, Call)
     end.
 
@@ -361,10 +361,10 @@ maybe_create_endpoint(Endpoint, Properties, Call) ->
 -spec maybe_create_endpoint/4 :: (ne_binary(), wh_json:object(), wh_json:object(), whapps_call:call()) ->
                                          wh_json:object().
 maybe_create_endpoint(<<"sip">>, Endpoint, Properties, Call) ->
-    lager:debug("building a SIP endpoint"),
+    lager:info("building a SIP endpoint"),
     create_sip_endpoint(Endpoint, Properties, Call);
 maybe_create_endpoint(<<"skype">>, Endpoint, Properties, Call) ->
-    lager:debug("building a Skype endpoint"),
+    lager:info("building a Skype endpoint"),
     create_skype_endpoint(Endpoint, Properties, Call).
 
 -spec get_endpoint_type/1 :: (wh_json:object()) -> ne_binary().
@@ -517,7 +517,7 @@ to_username(SIPJObj) ->
 -spec create_call_fwd_endpoint/4 :: (wh_json:object(), wh_json:object(), wh_json:object(), whapps_call:call()) ->
                                             wh_json:object().
 create_call_fwd_endpoint(Endpoint, Properties, CallFwd, Call) ->
-    lager:debug("call forwarding endpoint to ~s", [wh_json:get_value(<<"number">>, CallFwd)]),
+    lager:info("call forwarding endpoint to ~s", [wh_json:get_value(<<"number">>, CallFwd)]),
     IgnoreEarlyMedia = case wh_json:is_true(<<"require_keypress">>, CallFwd)
                            orelse not wh_json:is_true(<<"substitute">>, CallFwd)
                        of
@@ -589,7 +589,7 @@ generate_ccvs(Endpoint, Call, CallFwd) ->
                        case wh_json:is_true(<<"keep_caller_id">>, CallFwd) of
                            false -> J;
                            true ->
-                               lager:debug("call forwarding configured to keep the caller id"),
+                               lager:info("call forwarding configured to keep the caller id"),
                                wh_json:set_value(<<"Retain-CID">>, <<"true">>, J)
                        end
                end
@@ -628,7 +628,7 @@ generate_ccvs(Endpoint, Call, CallFwd) ->
                         case wh_json:is_true(<<"require_keypress">>, CallFwd) of
                             false -> J;
                             _ ->
-                                lager:debug("call forwarding configured to require key press"),
+                                lager:info("call forwarding configured to require key press"),
                                 Confirm = [{<<"Confirm-Key">>, <<"1">>}
                                            ,{<<"Confirm-Cancel-Timeout">>, <<"2">>}
                                            ,{<<"Confirm-File">>, ?CONFIRM_FILE}],
@@ -644,7 +644,7 @@ generate_ccvs(Endpoint, Call, CallFwd) ->
                ,fun(J) ->
                         case wh_json:get_value(<<"pvt_type">>, Endpoint) of
                             <<"device">> ->
-                                lager:debug("setting inherit_codec"),
+                                lager:info("setting inherit_codec"),
                                 wh_json:set_value(<<"Inherit-Codec">>, <<"true">>, J);
                             false -> J
                         end

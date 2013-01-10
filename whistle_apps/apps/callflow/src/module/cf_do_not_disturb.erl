@@ -31,7 +31,7 @@
 handle(Data, Call) ->
     case maybe_build_dnd_record(Data, Call) of
         {error, _} ->
-            lager:debug("unable to determine what document to apply dnd against", []),
+            lager:info("unable to determine what document to apply dnd against", []),
             _ = whapps_call_command:b_prompt(<<"dnd-not_available">>, Call),
             cf_exe:stop(Call);
         {ok, #dnd{}=DND} ->
@@ -47,7 +47,7 @@ maybe_build_dnd_record(Data, Call) ->
     case maybe_get_data_id(AccountDb, Data, Call) of
         {error, _}=E -> E;
         {ok, JObj} ->
-            lager:debug("changing dnd settings on document ~s", [wh_json:get_value(<<"_id">>, JObj)]),
+            lager:info("changing dnd settings on document ~s", [wh_json:get_value(<<"_id">>, JObj)]),
             {ok, #dnd{enabled=wh_json:is_true([<<"do_not_disturb">>, <<"enabled">>], JObj)
                       ,jobj=JObj
                       ,account_db=AccountDb
@@ -59,7 +59,7 @@ maybe_get_data_id(AccountDb, Data, Call) ->
     Id = wh_json:get_value(<<"id">>, Data),
     case maybe_get_doc(AccountDb, Id) of
         {error, _} -> 
-            lager:debug("dnd feature callflow does not specify a document", []),
+            lager:info("dnd feature callflow does not specify a document", []),
             maybe_get_owner(AccountDb, Data, Call);
         {ok, _}=Ok -> Ok
     end.
@@ -69,7 +69,7 @@ maybe_get_owner(AccountDb, Data, Call) ->
     OwnerId = whapps_call:owner_id(Call),
     case maybe_get_doc(AccountDb, OwnerId) of
         {error, _} -> 
-            lager:debug("dnd feature could not find the owner document", []),
+            lager:info("dnd feature could not find the owner document", []),
             maybe_get_authorizing_device(AccountDb, Data, Call);
         {ok, _}=Ok -> Ok
     end.
@@ -91,22 +91,22 @@ maybe_get_doc(AccountDb, Id) ->
                 <<"device">> -> Ok;
                 <<"user">> -> Ok;
                 _Else ->
-                    lager:debug("dnd can not be applied against a doc of type ~s", [_Else]),
+                    lager:info("dnd can not be applied against a doc of type ~s", [_Else]),
                     {error, not_found}
             end;
          {error, _R}=E ->
-            lager:debug("unable to open ~s: ~p", [Id, _R]),
+            lager:info("unable to open ~s: ~p", [Id, _R]),
             E
     end.
 
 -spec maybe_execute_action/3 :: (ne_binary(), #dnd{}, whapps_call:call()) -> any().
 maybe_execute_action(<<"activate">>, #dnd{enabled=true}, Call) -> 
-    lager:debug("dnd is already enabled on this document", []),
+    lager:info("dnd is already enabled on this document", []),
     whapps_call_command:b_prompt(<<"dnd-activated">>, Call);
 maybe_execute_action(<<"activate">>, #dnd{enabled=false}=DND, Call) ->
     activate_dnd(DND, Call);
 maybe_execute_action(<<"deactivate">>, #dnd{enabled=false}, Call) ->
-    lager:debug("dnd is already disabled on this document", []),
+    lager:info("dnd is already disabled on this document", []),
     whapps_call_command:b_prompt(<<"dnd-deactivated">>, Call);
 maybe_execute_action(<<"deactivate">>,  #dnd{enabled=true}=DND, Call) ->
     deactivate_dnd(DND, Call);
@@ -115,7 +115,7 @@ maybe_execute_action(<<"toggle">>, #dnd{enabled=false}=DND, Call) ->
 maybe_execute_action(<<"toggle">>,  #dnd{enabled=true}=DND, Call) ->
     maybe_execute_action(<<"deactivate">>, DND, Call);
 maybe_execute_action(_Action, _, Call) ->
-    lager:debug("dnd action ~s is invalid", [_Action]),
+    lager:info("dnd action ~s is invalid", [_Action]),
     whapps_call_command:b_prompt(<<"dnd-not_available">>, Call).
 
 -spec activate_dnd/2 :: (#dnd{}, whapps_call:call()) -> any().
@@ -140,7 +140,7 @@ maybe_update_doc(Enabled, JObj, AccountDb) ->
     case couch_mgr:save_doc(AccountDb, Updated) of
         {ok, _}=Ok -> 
             DocId = wh_json:get_value(<<"_id">>, JObj),
-            lager:debug("dnd enabled set to ~s on document ~s", [Enabled, DocId]),
+            lager:info("dnd enabled set to ~s on document ~s", [Enabled, DocId]),
             Ok;
         {error, conflict} ->
             Id = wh_json:get_value(<<"_id">>, JObj),

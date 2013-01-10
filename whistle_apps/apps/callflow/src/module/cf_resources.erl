@@ -50,7 +50,7 @@ bridge_to_resources([{DestNum, Rsc, _CIDType}|T], Timeout, IgnoreEarlyMedia, Rin
     SIPHeaders = build_sip_headers(Data, Call),
     case whapps_call_command:b_bridge(Endpoint, Timeout, <<"single">>, IgnoreEarlyMedia, Ringback, SIPHeaders, Call) of
         {ok, _} ->
-            lager:debug("completed successful bridge to resource"),
+            lager:info("completed successful bridge to resource"),
             cf_exe:stop(Call);
         {fail, R} when T =:= [] ->
             {Cause, Code} = whapps_util:get_call_termination_reason(R),
@@ -69,7 +69,7 @@ bridge_to_resources([{DestNum, Rsc, _CIDType}|T], Timeout, IgnoreEarlyMedia, Rin
             bridge_to_resources(T, Timeout, IgnoreEarlyMedia, Ringback, Data, Call)
     end;
 bridge_to_resources([], _, _, _, _, Call) ->
-    lager:debug("resources exhausted without success"),
+    lager:info("resources exhausted without success"),
     WildcardIsEmpty = cf_exe:wildcard_is_empty(Call),
     case cf_util:handle_bridge_failure(<<"NO_ROUTE_DESTINATION">>, Call) =:= ok of
         true -> ok;
@@ -95,7 +95,7 @@ create_endpoint(DestNum, JObj, Call) ->
               ,DestNum/binary
               ,(wh_json:get_value(<<"suffix">>, JObj, <<>>))/binary
               ,$@ ,(wh_json:get_value(<<"server">>, JObj))/binary>>,
-    lager:debug("attempting resource ~s", [Rule]),
+    lager:info("attempting resource ~s", [Rule]),
     AuthdEndpoint = case cf_endpoint:get(Call) of
                         {ok, J} -> J;
                         {error, _} -> wh_json:new()
@@ -135,7 +135,7 @@ create_endpoint(DestNum, JObj, Call) ->
                                   {'ok', endpoints()} |
                                   {'error', atom()}.
 find_endpoints(Data, Call) ->
-    lager:debug("searching for resource endpoints"),
+    lager:info("searching for resource endpoints"),
     AccountDb = whapps_call:account_db(Call),
 
     AdditionalFlags = whapps_account_config:get(whapps_call:account_id(Call)
@@ -147,7 +147,7 @@ find_endpoints(Data, Call) ->
     ToDID = get_to_did(Data, Call),
     case couch_mgr:get_results(AccountDb, ?VIEW_BY_RULES, []) of
         {ok, Resources} ->
-            lager:debug("found resources, filtering by rules and flags"),
+            lager:info("found resources, filtering by rules and flags"),
             {ok, [{Number
                    ,wh_json:get_value([<<"value">>], Resource, [])
                    ,get_caller_id_type(Resource, Call)
@@ -158,7 +158,7 @@ find_endpoints(Data, Call) ->
                      matching_flags(Call, wh_json:get_value([<<"value">>, <<"flags">>], Resource, []), AdditionalFlags)
                  ]};
         {error, _R}=E ->
-            lager:debug("search failed ~w", [_R]),
+            lager:info("search failed ~w", [_R]),
             E
     end.
 
@@ -175,7 +175,7 @@ matching_flags(Call, ResourceFlags, AdditionalFlags) ->
     of
         [] -> true;
         Fs ->
-            lager:debug("additional flags: ~p", [Fs]),
+            lager:info("additional flags: ~p", [Fs]),
             lists:all(fun(F) -> lists:member(F, ResourceFlags) end, Fs)
     end.
 
@@ -266,7 +266,7 @@ maybe_from_uri(AccountDb, Gateway, CNum) ->
     end.
 
 from_uri(?NE_BINARY = CNum, Realm) ->
-    lager:debug("setting From-URI to sip:~s@~s", [CNum, Realm]),
+    lager:info("setting From-URI to sip:~s@~s", [CNum, Realm]),
     <<"sip:", CNum/binary, "@", Realm/binary>>;
 from_uri(_, _) ->
     undefined.
