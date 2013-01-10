@@ -1,10 +1,10 @@
 %%%-------------------------------------------------------------------
-%%% @author James Aimonetti <james@2600hz.org>
-%%% @copyright (C) 2012, VoIP INC
+%%% @copyright (C) 2012-2013, 2600Hz
 %%% @doc
-%%% 
+%%%
 %%% @end
-%%% Created : 21 Jan 2012 by James Aimonetti <james@2600hz.org>
+%%% @contributors
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(trunkstore_maintenance).
 
@@ -20,7 +20,7 @@ migrate() ->
         {error, not_found} ->
             lager:info("ts database not found or ts_account/crossbar_listing view missing");
         {ok, TSAccts} ->
-            lager:info("trying ~b ts accounts", [length(TSAccts)]),            
+            lager:info("trying ~b ts accounts", [length(TSAccts)]),
             _ = [maybe_migrate(wh_json:set_value(<<"_rev">>, <<>>, wh_json:get_value(<<"doc">>, Acct))) || Acct <- TSAccts],
             lager:info("migration complete")
     end.
@@ -70,7 +70,7 @@ create_ts_doc(AcctDB, AcctID, TSJObj) ->
     lager:info("saving ts doc ~s into ~s", [wh_json:get_value(<<"_id">>, TSJObj), AcctDB]),
     {ok, _} = couch_mgr:save_doc(AcctDB, JObj).
 
-create_credit_doc(AcctDB, AcctID, TSJObj) ->    
+create_credit_doc(AcctDB, AcctID, TSJObj) ->
     Credit = wh_json:get_value([<<"account">>, <<"credits">>, <<"prepay">>], TSJObj, 0.0),
     Units = wapi_money:dollars_to_units(wh_util:to_float(Credit)),
     lager:info("Putting ~p units", [Units]),
@@ -81,7 +81,7 @@ create_credit_doc(AcctDB, AcctID, TSJObj) ->
                                      ,{<<"pvt_account_id">>, AcctID}
                                     ]),
     couch_mgr:save_doc(AcctDB, Transaction).
-    
+
 account_exists_with_realm(Realm) ->
     case couch_mgr:get_results(?WH_ACCOUNTS_DB, <<"accounts/listing_by_realm">>, [{<<"key">>, Realm}]) of
         {ok, []} -> false;
@@ -136,7 +136,7 @@ create_account_doc(Realm, AcctID, AcctDB) ->
 %% some calls get stuck if they miss the CDR
 %% this clears them out
 clear_old_calls() ->
-    clear_old_calls(ts_offnet_sup),
+    _ = clear_old_calls(ts_offnet_sup),
     clear_old_calls(ts_onnet_sup).
 
 clear_old_calls(Super) ->
