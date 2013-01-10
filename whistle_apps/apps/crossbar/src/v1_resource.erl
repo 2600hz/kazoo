@@ -71,8 +71,9 @@ rest_init(Req0, Opts) ->
     {QS, Req4} = cowboy_http_req:raw_qs(Req3),
     {Method, Req5} = cowboy_http_req:method(Req4),
     {Peer, Req6} = cowboy_http_req:peer_addr(Req5),
+    ClientIP = wh_network_utils:iptuple_to_binary(Peer),
 
-    lager:debug("~s: ~s?~s", [Method, Path, QS]),
+    lager:debug("~s: ~s?~s from ~s", [Method, Path, QS, ClientIP]),
 
     Context0 = #cb_context{
       req_id = wh_util:to_binary(ReqId)
@@ -84,7 +85,7 @@ rest_init(Req0, Opts) ->
       ,resp_status = 'fatal'
       ,resp_error_msg = <<"init failed">>
       ,resp_error_code = 500
-      ,client_ip = wh_network_utils:iptuple_to_binary(Peer)
+      ,client_ip = ClientIP
      },
 
     {Context1, _} = crossbar_bindings:fold(<<"v1_resource.init">>, {Context0, Opts}),
