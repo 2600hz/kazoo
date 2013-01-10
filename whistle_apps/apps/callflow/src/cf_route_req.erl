@@ -17,7 +17,7 @@ handle_req(JObj, Options) ->
     Call = whapps_call:from_route_req(JObj),
     case is_binary(whapps_call:account_id(Call)) andalso callflow_should_respond(Call) of
         true ->
-            lager:info("received route request"),
+            lager:info("received a request asking if callflows can route this call"),
             ControllerQ = props:get_value(queue, Options),
             AllowNoMatch = whapps_call:authorizing_type(Call) =/= undefined
                 orelse whapps_call:custom_channel_var(<<"Referred-By">>, Call) =/= undefined,
@@ -76,7 +76,7 @@ send_route_response(JObj, Q, Defer, Call) ->
             | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
            ],
     wapi_route:publish_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp),
-    lager:info("sent route response to park the call").
+    lager:info("callflows knows how to route the call! responding with a park response").
 
 %%-----------------------------------------------------------------------------
 %% @private

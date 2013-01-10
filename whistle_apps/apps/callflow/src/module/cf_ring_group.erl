@@ -21,7 +21,7 @@
 %% stop when successfull.
 %% @end
 %%--------------------------------------------------------------------
--spec handle/2 :: (wh_json:json_object(), whapps_call:call()) -> ok.
+-spec handle/2 :: (wh_json:object(), whapps_call:call()) -> ok.
 handle(Data, Call) ->
     Endpoints = get_endpoints(wh_json:get_value(<<"endpoints">>, Data, []), Call),
 
@@ -33,10 +33,10 @@ handle(Data, Call) ->
 
     case length(Endpoints) > 0 andalso whapps_call_command:b_bridge(Endpoints, Timeout, Strategy, <<"true">>, Ringback, Call) of
         false ->
-            lager:notice("ring group has no endpoints"),
+            lager:notice("ring group has no endpoints, moving to next callflow element"),
             cf_exe:continue(Call);
         {ok, _} ->
-            lager:info("completed successful bridge to the ring group"),
+            lager:info("completed successful bridge to the ring group - call finished normally"),
             cf_exe:stop(Call);
         {fail, _}=F ->
             cf_util:handle_bridge_failure(F, Call);
@@ -52,7 +52,7 @@ handle(Data, Call) ->
 %% json object used in the bridge API
 %% @end
 %%--------------------------------------------------------------------
--spec get_endpoints/2 :: (wh_json:json_objects(), whapps_call:call()) -> wh_json:json_objects().
+-spec get_endpoints/2 :: (wh_json:objects(), whapps_call:call()) -> wh_json:objects().
 get_endpoints([], _) ->
     [];
 get_endpoints([_]=Members, Call) ->
