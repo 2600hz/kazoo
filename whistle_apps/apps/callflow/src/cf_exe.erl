@@ -245,26 +245,21 @@ init([Call]) ->
     CallId = whapps_call:call_id(Call),
     put(callid, CallId),
 
-    lager:info("executing callflow ~s", [whapps_call:kvs_fetch(cf_flow_id, Call)]),
-    lager:info("account id ~s", [whapps_call:account_id(Call)]),
-    lager:info("request ~s", [whapps_call:request(Call)]),
-    lager:info("to ~s", [whapps_call:to(Call)]),
-    lager:info("from ~s", [whapps_call:from(Call)]),
-    lager:info("CID ~s ~s", [whapps_call:caller_id_name(Call), whapps_call:caller_id_number(Call)]),
-    lager:info("inception ~s", [whapps_call:inception(Call)]),
-    lager:info("authorizing id ~s", [whapps_call:authorizing_id(Call)]),
+    log_call_information(Call),
 
     Flow = whapps_call:kvs_fetch(cf_flow, Call),
     Self = self(),
-    spawn(fun() ->
-                  ControllerQ = queue_name(Self),
-                  gen_listener:cast(Self, {controller_queue, ControllerQ})
-          end),
+    _ = spawn(fun() ->
+                      ControllerQ = queue_name(Self),
+                      gen_listener:cast(Self, {controller_queue, ControllerQ})
+              end),
     Updaters = [fun(C) -> whapps_call:kvs_store(cf_exe_pid, Self, C) end
                 ,fun(C) -> whapps_call:call_id_helper(fun cf_exe:callid/2, C) end
                 ,fun(C) -> whapps_call:control_queue_helper(fun cf_exe:control_queue/2, C) end
                ],
-    {ok, #state{call=lists:foldr(fun(F, C) -> F(C) end, Call, Updaters), flow=Flow}}.
+    {ok, #state{call=lists:foldr(fun(F, C) -> F(C) end, Call, Updaters)
+                ,flow=Flow
+               }}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -599,3 +594,18 @@ send_command(Command, ControlQ, CallId) ->
                        | wh_api:default_headers(<<>>, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
                       ],
     wapi_dialplan:publish_command(ControlQ, Prop).
+
+-spec log_call_information/1 :: (whapps_call:call()) -> 'ok'.
+log_call_information(Call) ->
+    lager:info("executing callflow ~s", [whapps_call:kvs_fetch(cf_flow_id, Call)]),
+    lager:info("account id ~s", [whapps_call:account_id(Call)]),
+    lager:info("request ~s", [whapps_call:request(Call)]),
+    lager:info("to ~s", [whapps_call:to(Call)]),
+    lager:info("from ~s", [whapps_call:from(Call)]),
+    lager:info("CID ~s ~s", [whapps_call:caller_id_name(Call), whapps_call:caller_id_number(Call)]),
+    case whapps_call:inception(Call) of
+        <<"offnet">> = I -> lager:info("inception ~s: call began from outside the network", [I]);
+        <<"onnet">> = I -> lager:info("inception ~s: call began on the network", [I]);
+        I -> lager:info("inception ~s", [I])
+    end,
+    lager:info("authorizing id ~s", [whapps_call:authorizing_id(Call)]).

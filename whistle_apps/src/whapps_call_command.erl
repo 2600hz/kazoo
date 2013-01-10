@@ -1847,10 +1847,10 @@ send_command(Command, Call) when is_list(Command) ->
             CallId = whapps_call:call_id(Call),
             AppName = whapps_call:application_name(Call),
             AppVersion = whapps_call:application_version(Call),
-            _ = case whapps_call:kvs_fetch(cf_exe_pid, Call) of
-                    Pid when is_pid(Pid) -> put(amqp_publish_as, Pid);
-                    _Else -> lager:debug("cf_exe_pid down, publish as self(~p)", [self()])
-                end,
+            case whapps_call:kvs_fetch(cf_exe_pid, Call) of
+                Pid when is_pid(Pid) -> put(amqp_publish_as, Pid), ok;
+                _Else -> ok
+            end,
             Prop = Command ++ [{<<"Call-ID">>, CallId}
                                | wh_api:default_headers(Q, <<"call">>, <<"command">>, AppName, AppVersion)
                               ],

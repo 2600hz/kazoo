@@ -97,7 +97,8 @@ maybe_prefix_cid_name(Number, Name, Endpoint, Attribute, Call) ->
             maybe_ensure_cid_valid(Number, Prefixed, Endpoint, Attribute, Call)
     end.
 
--spec maybe_ensure_cid_valid/5 :: (ne_binary(), ne_binary(), wh_json:object(), ne_binary(), whapps_call:call()) -> {api_binary(), api_binary()}.
+-spec maybe_ensure_cid_valid/5 :: (ne_binary(), ne_binary(), wh_json:object(), ne_binary(), whapps_call:call()) ->
+                                          {api_binary(), api_binary()}.
 maybe_ensure_cid_valid(Number, Name, _, <<"external">>, Call) ->
     case whapps_config:get_is_true(<<"callflow">>, <<"ensure_valid_caller_id">>, false) of
         true -> ensure_valid_caller_id(Number, Name, Call);
@@ -109,7 +110,8 @@ maybe_ensure_cid_valid(Number, Name, _, Attribute, _) ->
     lager:info("~s caller id <~s> ~s", [Attribute, Name, Number]),
     {Number, Name}.
 
--spec ensure_valid_caller_id/3 :: (ne_binary(), ne_binary(), whapps_call:call()) -> {api_binary(), api_binary()}.
+-spec ensure_valid_caller_id/3 :: (ne_binary(), ne_binary(), whapps_call:call()) ->
+                                          {api_binary(), api_binary()}.
 ensure_valid_caller_id(Number, Name, Call) ->
     case is_valid_caller_id(Number, Call) of
         true ->
@@ -387,7 +389,7 @@ get_cid_or_default(Attribute, Property, Endpoint) ->
 %% @doc
 %% @end
 %%-----------------------------------------------------------------------------
--spec fetch_attributes/2 :: (atom(), whapps_call:call() | api_binary()) -> proplist().
+-spec fetch_attributes/2 :: (atom(), whapps_call:call() | api_binary()) -> wh_proplist().
 fetch_attributes(_Attribute, undefined) -> [];
 fetch_attributes(Attribute, ?NE_BINARY = AccountDb) ->
     case wh_cache:peek_local(?CALLFLOW_CACHE, {?MODULE, AccountDb, Attribute}) of
@@ -400,7 +402,7 @@ fetch_attributes(Attribute, ?NE_BINARY = AccountDb) ->
                     wh_cache:store_local(?CALLFLOW_CACHE, {?MODULE, AccountDb, Attribute}, Props, 900),
                     Props;
                 {error, R} ->
-                    lager:info("unable to fetch attribute ~s: ~p", [Attribute, R]),
+                    lager:info("unable to fetch attribute ~s: ~p, may just be missing/unset", [Attribute, R]),
                     []
             end
     end;
