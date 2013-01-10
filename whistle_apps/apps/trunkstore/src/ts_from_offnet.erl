@@ -33,7 +33,7 @@ endpoint_data(State) ->
             proceed_with_endpoint(State, EP, JObj)
     catch
         throw:_E ->
-            lager:debug("thrown exception caught: ~p", [_E])
+            lager:info("thrown exception caught: ~p", [_E])
     end.
 
 proceed_with_endpoint(State, EP, JObj) ->
@@ -71,15 +71,15 @@ send_park(State, Command) ->
 wait_for_win(State, Command) ->
     case ts_callflow:wait_for_win(State) of
         {won, State1} ->
-            lager:debug("route won, sending command"),
+            lager:info("route won, sending command"),
             send_onnet(State1, Command);
         {lost, State2} ->
-            lager:debug("didn't win route, passive listening"),
+            lager:info("didn't win route, passive listening"),
             wait_for_bridge(State2)
     end.
 
 send_onnet(State, Command) ->
-    lager:debug("sending onnet command: ~p", [Command]),
+    lager:info("sending onnet command: ~p", [Command]),
 
     CtlQ = ts_callflow:get_control_queue(State),
 
@@ -91,7 +91,7 @@ wait_for_bridge(State) ->
         {bridged, State1} ->
             wait_for_cdr(State1);
         {error, State2} ->
-            lager:debug("error waiting for bridge, try failover"),
+            lager:info("error waiting for bridge, try failover"),
             try_failover(State2);
         {hangup, State3} ->
             ALeg = ts_callflow:get_aleg_id(State3),
@@ -106,7 +106,7 @@ wait_for_cdr(State) ->
             AcctID = ts_callflow:get_account_id(State1),
             Cost = ts_callflow:get_call_cost(State1),
 
-            lager:debug("a-leg CDR for ~s costs ~p", [AcctID, Cost]),
+            lager:info("a-leg CDR for ~s costs ~p", [AcctID, Cost]),
 
             case ts_callflow:get_bleg_id(State1) of
                 <<>> -> 
@@ -119,11 +119,11 @@ wait_for_cdr(State) ->
             AcctID = ts_callflow:get_account_id(State2),
             Cost = ts_callflow:get_call_cost(State2),
 
-            lager:debug("b-leg ~s CDR for ~s costs ~p", [BLeg, AcctID, Cost]),
+            lager:info("b-leg ~s CDR for ~s costs ~p", [BLeg, AcctID, Cost]),
 
             wait_for_other_leg(State2, aleg);
         {timeout, State3} ->
-            lager:debug("Timed out waiting for CDRs, cleaning up"),
+            lager:info("Timed out waiting for CDRs, cleaning up"),
             CallID = ts_callflow:get_aleg_id(State3),
             ts_callflow:finish_leg(State3, CallID)
     end.
@@ -139,31 +139,31 @@ wait_for_other_leg(_State, aleg, {cdr, aleg, _CDR, State1}) ->
 wait_for_other_leg(_State, bleg, {cdr, bleg, _CDR, State1}) ->
     ts_callflow:finish_leg(State1, ts_callflow:get_bleg_id(State1));
 wait_for_other_leg(_State, Leg, {cdr, _OtherLeg, _CDR, State1}) ->
-    lager:debug("waiting for leg ~s, got cdr for ~s again, ignoring", [Leg, _OtherLeg]),
+    lager:info("waiting for leg ~s, got cdr for ~s again, ignoring", [Leg, _OtherLeg]),
     wait_for_other_leg(State1, Leg);
 wait_for_other_leg(_State, Leg, {timeout, State1}) ->
-    lager:debug("timed out waiting for ~s CDR, cleaning up", [Leg]),
+    lager:info("timed out waiting for ~s CDR, cleaning up", [Leg]),
 
     ts_callflow:finish_leg(State1, ts_callflow:get_bleg_id(State1)).
 
 try_failover(State) ->
     case {ts_callflow:get_control_queue(State), ts_callflow:get_failover(State)} of
         {<<>>, _} ->
-            lager:debug("no callctl for failover"),
+            lager:info("no callctl for failover"),
             ts_callflow:send_hangup(State),
             wait_for_cdr(State);
         {_, undefined} ->
-            lager:debug("no failover defined"),
+            lager:info("no failover defined"),
             ts_callflow:send_hangup(State),
             wait_for_cdr(State);
         {_, Failover} ->
             case wh_json:is_empty(Failover) of
                 true ->
-                    lager:debug("no failover configured"),
+                    lager:info("no failover configured"),
                     ts_callflow:send_hangup(State),
                     wait_for_cdr(State);
                 false ->
-                    lager:debug("trying failover"),
+                    lager:info("trying failover"),
                     case wh_json:get_value(<<"e164">>, Failover) of
                         undefined -> try_failover_sip(State, wh_json:get_value(<<"sip">>, Failover));
                         DID -> try_failover_e164(State, DID)
@@ -172,14 +172,14 @@ try_failover(State) ->
     end.
 
 try_failover_sip(State, undefined) ->
-    lager:debug("SIP failover undefined"),
+    lager:info("SIP failover undefined"),
     wait_for_cdr(State);
 try_failover_sip(State, SIPUri) ->
     CallID = ts_callflow:get_aleg_id(State),
     CtlQ = ts_callflow:get_control_queue(State),
     Q = ts_callflow:get_my_queue(State),
 
-    lager:debug("routing to failover sip uri: ~s", [SIPUri]),
+    lager:info("routing to failover sip uri: ~s", [SIPUri]),
 
     EndPoint = wh_json:from_list([{<<"Invite-Format">>, <<"route">>}
                                   ,{<<"Route">>, SIPUri}
@@ -218,7 +218,7 @@ try_failover_e164(State, ToDID) ->
            ,{<<"Ringback">>, wh_json:get_value(<<"ringback">>, EP)}
            | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
           ],
-    lager:debug("sending offnet request for DID ~s", [ToDID]),
+    lager:info("sending offnet request for DID ~s", [ToDID]),
     wapi_offnet_resource:publish_req(Req),
 
     wait_for_bridge(ts_callflow:set_failover(State, wh_json:new())).
@@ -236,7 +236,7 @@ get_endpoint_data(JObj) ->
 
     {ok, AcctId, NumberProps} = wh_number_manager:lookup_account_by_number(ToDID),
     ForceOut = props:get_value(force_outbound, NumberProps),
-    lager:debug("acct ~s force out ~s", [AcctId, ForceOut]),
+    lager:info("acct ~s force out ~s", [AcctId, ForceOut]),
 
     RoutingData = routing_data(ToDID, AcctId),
 
@@ -261,10 +261,10 @@ get_endpoint_data(JObj) ->
 routing_data(ToDID, AcctID) ->
     case ts_util:lookup_did(ToDID, AcctID) of
         {ok, Settings} ->
-            lager:debug("got settings for DID ~s", [ToDID]),
+            lager:info("got settings for DID ~s", [ToDID]),
             routing_data(ToDID, AcctID, Settings);
         {error, no_did_found} ->
-            lager:debug("DID ~s not found in ~s", [ToDID, AcctID]),
+            lager:info("DID ~s not found in ~s", [ToDID, AcctID]),
             throw(no_did_found)
     end.
 
@@ -284,14 +284,14 @@ routing_data(ToDID, AcctID, Settings) ->
 
     {Srv, AcctStuff} = try
                            {ok, AccountSettings} = ts_util:lookup_user_flags(AuthU, AuthR, AcctID),
-                           lager:debug("got account settings"),
+                           lager:info("got account settings"),
                            {
                              wh_json:get_value(<<"server">>, AccountSettings, wh_json:new())
                              ,wh_json:get_value(<<"account">>, AccountSettings, wh_json:new())
                            }
                        catch
                            _A:_B ->
-                               lager:debug("failed to get account settings: ~p: ~p", [_A, _B]),
+                               lager:info("failed to get account settings: ~p: ~p", [_A, _B]),
                                {wh_json:new(), wh_json:new()}
                        end,
 
@@ -328,10 +328,10 @@ routing_data(ToDID, AcctID, Settings) ->
                          ,wh_json:get_value(<<"failover">>, SrvOptions)
                          ,wh_json:get_value(<<"failover">>, AcctStuff)
                         ],
-    lager:debug("looking for failover in ~p", [FailoverLocations]),
+    lager:info("looking for failover in ~p", [FailoverLocations]),
 
     Failover = ts_util:failover(FailoverLocations),
-    lager:debug("failover found: ~p", [Failover]),
+    lager:info("failover found: ~p", [Failover]),
 
     Delay = ts_util:delay([
                            wh_json:get_value(<<"delay">>, DIDOptions)

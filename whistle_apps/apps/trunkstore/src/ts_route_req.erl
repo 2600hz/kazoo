@@ -24,12 +24,12 @@ handle_req(ApiJObj, _Options) ->
     case {wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], ApiJObj), wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Authorizing-ID">>], ApiJObj)} of
         {AcctID, undefined} when is_binary(AcctID) ->
             %% Coming from carrier (off-net)
-            lager:debug("offnet call starting"),
+            lager:info("offnet call starting"),
             ts_offnet_sup:start_handler(<<"offnet-", CallID/binary>>, ApiJObj);
         {AcctID, AuthID} when is_binary(AcctID) andalso is_binary(AuthID) ->
             %% Coming from PBX (on-net); authed by Registrar or ts_auth
-            lager:debug("onnet call starting"),
+            lager:info("onnet call starting"),
             ts_onnet_sup:start_handler(<<"onnet-", CallID/binary>>, ApiJObj);
         {_AcctID, _AuthID} ->
-            lager:debug("error in routing: AcctID: ~s AuthID: ~s", [_AcctID, _AuthID])
+            lager:info("error in routing: AcctID: ~s AuthID: ~s", [_AcctID, _AuthID])
     end.

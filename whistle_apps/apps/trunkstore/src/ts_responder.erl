@@ -75,7 +75,7 @@ stop(Srv) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    lager:debug("started ts_responder"),
+    lager:info("started ts_responder"),
     {ok, ok}.
 
 %%--------------------------------------------------------------------
@@ -119,7 +119,7 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info(_Unhandled, State) ->
-    lager:debug("unknown message: ~p", [_Unhandled]),
+    lager:info("unknown message: ~p", [_Unhandled]),
     {noreply, State}.
 
 
@@ -138,7 +138,7 @@ handle_event(_JObj, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _) ->
-    lager:debug("ts_responder terminating: ~p", [_Reason]).
+    lager:info("ts_responder terminating: ~p", [_Reason]).
 
 %%--------------------------------------------------------------------
 %% @private
