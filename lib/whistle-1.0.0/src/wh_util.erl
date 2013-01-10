@@ -72,6 +72,11 @@
 
 -export([whistle_version/0, write_pid/1]).
 
+-export([change_console_log_level/1
+         ,change_error_log_level/1
+         ,change_syslog_log_level/1
+        ]).
+
 -define(WHISTLE_VERSION_CACHE_KEY, {?MODULE, whistle_version}).
 
 %%--------------------------------------------------------------------
@@ -84,8 +89,38 @@
 log_stacktrace() ->
     ST = erlang:get_stacktrace(),
     lager:debug("stacktrace:"),
-    _ = [lager:debug("~p", [Line]) || Line <- ST],
+    _ = [lager:debug("st: ~p", [Line]) || Line <- ST],
     ok.
+
+-define(LOG_LEVELS, ['emergency'
+                     ,'alert'
+                     ,'critical'
+                     ,'error'
+                     ,'warning'
+                     ,'notice'
+                     ,'info'
+                     ,'debug'
+                    ]).
+-type log_level() :: 'emergency'
+                     | 'alert'
+                     | 'critical'
+                     | 'error'
+                     | 'warning'
+                     | 'notice'
+                     | 'info'
+                     | 'debug'.
+
+-spec change_console_log_level/1 :: (log_level()) -> 'ok'.
+change_console_log_level(L) ->
+    lager:set_loglevel(lager_console_backend, L).
+
+-spec change_error_log_level/1 :: (log_level()) -> 'ok'.
+change_error_log_level(L) ->
+    lager:set_loglevel(lager_file_backend, L).
+
+-spec change_syslog_log_level/1 :: (log_level()) -> 'ok'.
+change_syslog_log_level(L) ->
+    lager:set_loglevel(lager_syslog_backend, L).
 
 %%--------------------------------------------------------------------
 %% @public
