@@ -23,10 +23,10 @@ handle(Data, Call) ->
     Id = wh_json:get_value(<<"id">>, Data),
     case couch_mgr:open_doc(whapps_call:account_db(Call), Id) of
         {ok, JObj} ->
-            lager:debug("branching to callflow ~s", [Id]),
+            lager:info("branching to callflow ~s", [Id]),
             Flow = wh_json:get_value(<<"flow">>, JObj, wh_json:new()),
             cf_exe:branch(Flow, Call);
         {error, R} ->
-            lager:debug("could not branch to callflow ~s, ~p", [Id, R]),
+            lager:info("could not branch to callflow ~s, ~p", [Id, R]),
             cf_exe:continue(Call)
     end.

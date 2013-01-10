@@ -84,16 +84,16 @@ handle(Data, Call) ->
             whapps_call_command:answer(Call),
             case compose_voicemail(get_mailbox_profile(Data, Call), Call) of
                 ok ->
-                    lager:debug("compose voicemail complete"),
+                    lager:info("compose voicemail complete"),
                     cf_exe:continue(Call);
                 {branch, Flow} ->
-                    lager:debug("compose voicemail complete, branch to operator"),
+                    lager:info("compose voicemail complete, branch to operator"),
                     cf_exe:branch(Flow, Call)
             end;
         <<"check">> ->
             whapps_call_command:answer(Call),
             check_mailbox(get_mailbox_profile(Data, Call), Call),
-            lager:debug("check voicemail complete"),
+            lager:info("check voicemail complete"),
             cf_exe:continue(Call);
         _ ->
             cf_exe:continue(Call)
@@ -125,7 +125,7 @@ check_mailbox(#mailbox{owner_id=OwnerId}=Box, Call, Loop) ->
 
 check_mailbox(#mailbox{max_login_attempts=MaxLoginAttempts}, _, Call, Loop) when Loop > MaxLoginAttempts ->
     %% if we have exceeded the maximum loop attempts then terminate this call
-    lager:debug("maximum number of invalid attempts to check mailbox"),
+    lager:info("maximum number of invalid attempts to check mailbox"),
     _ = whapps_call_command:b_prompt(<<"vm-abort">>, Call),
     ok;
 check_mailbox(#mailbox{exists=false}=Box, _ , Call, Loop) ->
@@ -134,27 +134,27 @@ check_mailbox(#mailbox{exists=false}=Box, _ , Call, Loop) ->
 check_mailbox(#mailbox{require_pin=false}=Box, true, Call, _) ->
     %% If this is the owner of the mailbox calling in and it doesn't require a pin then jump
     %% right to the main menu
-    lager:debug("caller is the owner of this mailbox, and requires no pin"),
+    lager:info("caller is the owner of this mailbox, and requires no pin"),
     main_menu(Box, Call);
 check_mailbox(#mailbox{pin = <<>>}=Box, true, Call, _) ->
     %% If this is the owner of the mailbox calling in and it doesn't require a pin then jump
     %% right to the main menu
-    lager:debug("caller is the owner of this mailbox, and it has no pin"),
+    lager:info("caller is the owner of this mailbox, and it has no pin"),
     main_menu(Box, Call);
 check_mailbox(#mailbox{pin = <<>>, exists=true}, false, Call, _) ->
     %% If the caller is not the owner or the mailbox requires a pin to access it but has none set
     %% then terminate this call.
-    lager:debug("attempted to sign into a mailbox with no pin"),
+    lager:info("attempted to sign into a mailbox with no pin"),
     _ = whapps_call_command:b_prompt(<<"vm-no_access">>, Call),
     ok;
 check_mailbox(#mailbox{pin=Pin}=Box, IsOwner, Call, Loop) ->
-    lager:debug("requesting pin number to check mailbox"),
+    lager:info("requesting pin number to check mailbox"),
     case whapps_call_command:b_prompt_and_collect_digits(<<"1">>, <<"6">>, <<"vm-enter_pass">>, <<"1">>, Call) of
         {ok, Pin} ->
-            lager:debug("caller entered a valid pin"),
+            lager:info("caller entered a valid pin"),
             main_menu(Box, Call);
         {ok, _} ->
-            lager:debug("invalid mailbox login"),
+            lager:info("invalid mailbox login"),
             _ = whapps_call_command:b_prompt(<<"vm-fail_auth">>, Call),
             check_mailbox(Box, IsOwner, Call, Loop + 1);
         _ ->
@@ -172,11 +172,11 @@ check_mailbox(#mailbox{pin=Pin}=Box, IsOwner, Call, Loop) ->
 
 find_mailbox(#mailbox{max_login_attempts=MaxLoginAttempts}, Call, Loop) when Loop > MaxLoginAttempts ->
     %% if we have exceeded the maximum loop attempts then terminate this call
-    lager:debug("maximum number of invalid attempts to find mailbox"),
+    lager:info("maximum number of invalid attempts to find mailbox"),
     _ = whapps_call_command:b_prompt(<<"vm-abort">>, Call),
     ok;
 find_mailbox(Box, Call, Loop) ->
-    lager:debug("requesting mailbox number to check"),
+    lager:info("requesting mailbox number to check"),
     case whapps_call_command:b_prompt_and_collect_digits(<<"1">>, <<"6">>, <<"vm-enter_id">>, <<"1">>, Call) of
         {ok, <<>>} ->
             find_mailbox(Box, Call, Loop + 1);
@@ -188,21 +188,21 @@ find_mailbox(Box, Call, Loop) ->
             AccountDb = whapps_call:account_db(Call),
             case couch_mgr:get_results(AccountDb, <<"vmboxes/listing_by_mailbox">>, ViewOptions) of
                 {ok, []} ->
-                    lager:debug("mailbox ~s doesnt exist", [Mailbox]),
+                    lager:info("mailbox ~s doesnt exist", [Mailbox]),
                     find_mailbox(Box, Call, Loop + 1);
                 {ok, [JObj]} ->
-                    lager:debug("get profile of ~p", [JObj]),
+                    lager:info("get profile of ~p", [JObj]),
                     ReqBox = get_mailbox_profile(wh_json:from_list([{<<"id">>, wh_json:get_value(<<"id">>, JObj)}]), Call),
                     check_mailbox(ReqBox, Call, Loop);
                 {ok, _} ->
-                    lager:debug("mailbox ~s is ambiguous", [Mailbox]),
+                    lager:info("mailbox ~s is ambiguous", [Mailbox]),
                     find_mailbox(Box, Call, Loop + 1);
                 _E ->
-                    lager:debug("failed to find mailbox ~s: ~p", [Mailbox, _E]),
+                    lager:info("failed to find mailbox ~s: ~p", [Mailbox, _E]),
                     find_mailbox(Box, Call, Loop + 1)
             end;
         _E ->
-            lager:debug("recv other: ~p", [_E]),
+            lager:info("recv other: ~p", [_E]),
             ok
     end,
     ok.
@@ -229,45 +229,45 @@ compose_voicemail(#mailbox{owner_id=OwnerId}=Box, Call) ->
     compose_voicemail(Box, IsOwner, Call).
 
 compose_voicemail(#mailbox{check_if_owner=true}=Box, true, Call) ->
-    lager:debug("caller is the owner of this mailbox"),
-    lager:debug("overriding action as check (instead of compose)"),
+    lager:info("caller is the owner of this mailbox"),
+    lager:info("overriding action as check (instead of compose)"),
     check_mailbox(Box, Call);
 compose_voicemail(#mailbox{exists=false}, _, Call) ->
-    lager:debug("attempted to compose voicemail for missing mailbox"),
+    lager:info("attempted to compose voicemail for missing mailbox"),
     _ = whapps_call_command:b_prompt(<<"vm-not_available_no_voicemail">>, Call),
     ok;
 compose_voicemail(#mailbox{max_message_count=Count, message_count=Count}, _, Call) when Count > 0 ->
-    lager:debug("voicemail box is full, cannot hold more messages"),
+    lager:info("voicemail box is full, cannot hold more messages"),
     _ = whapps_call_command:b_prompt(<<"vm-mailbox_full">>, Call),
     ok;
 compose_voicemail(#mailbox{keys=#keys{login=Login, operator=Operator}}=Box, _, Call) ->
-    lager:debug("playing mailbox greeting to caller"),
+    lager:info("playing mailbox greeting to caller"),
     _ = play_greeting(Box, Call),
     _ = play_instructions(Box, Call),
     _NoopId = whapps_call_command:noop(Call),
     %% timeout after 5 min for saftey, so this process cant hang around forever
     case whapps_call_command:wait_for_application_or_dtmf(<<"noop">>, 300000) of
         {ok, _} ->
-            lager:debug("played greeting and instructions to caller, recording new message"),
+            lager:info("played greeting and instructions to caller, recording new message"),
             record_voicemail(tmp_file(), Box, Call);
         {dtmf, Digit} ->
             _ = whapps_call_command:b_flush(Call),
             case Digit of
                 Login ->
-                    lager:debug("caller pressed '~s', redirecting to check voicemail", [Login]),
+                    lager:info("caller pressed '~s', redirecting to check voicemail", [Login]),
                     check_mailbox(Box, Call);
                 Operator ->
-                    lager:debug("caller choose to ring the operator"),
+                    lager:info("caller choose to ring the operator"),
                     case cf_util:get_operator_callflow(whapps_call:account_id(Call)) of
                         {ok, Flow} -> {branch, Flow};
                         {error, _R} -> record_voicemail(tmp_file(), Box, Call)
                     end;                
                 _Else ->
-                    lager:debug("caller pressed unbound '~s', skip to recording new message", [_Else]),
+                    lager:info("caller pressed unbound '~s', skip to recording new message", [_Else]),
                     record_voicemail(tmp_file(), Box, Call)
             end;
         {error, R} ->
-            lager:debug("error while playing voicemail greeting: ~p", [R]),
+            lager:info("error while playing voicemail greeting: ~p", [R]),
             ok
     end.
 
@@ -281,16 +281,16 @@ compose_voicemail(#mailbox{keys=#keys{login=Login, operator=Operator}}=Box, _, C
 play_greeting(#mailbox{skip_greeting=true}, _) ->
     ok;
 play_greeting(#mailbox{unavailable_media_id=undefined, mailbox_number=Mailbox}, Call) ->
-    lager:debug("mailbox has no greeting, playing the generic"),
+    lager:info("mailbox has no greeting, playing the generic"),
     whapps_call_command:audio_macro([{prompt, <<"vm-person">>}
                                      ,{say, Mailbox}
                                      ,{prompt, <<"vm-not_available">>}
                                     ], Call);
 play_greeting(#mailbox{unavailable_media_id = <<"local_stream://", _/binary>> = Id}, Call) ->
-    lager:debug("mailbox has a greeting file on the softswitch: ~s", Id),
+    lager:info("mailbox has a greeting file on the softswitch: ~s", Id),
     whapps_call_command:play(Id, Call);
 play_greeting(#mailbox{unavailable_media_id=Id}, Call) ->
-    lager:debug("streaming mailbox greeting"),
+    lager:info("streaming mailbox greeting"),
     whapps_call_command:play(<<$/, (whapps_call:account_db(Call))/binary, $/, Id/binary>>, Call).
 
 %%--------------------------------------------------------------------
@@ -318,7 +318,7 @@ record_voicemail(AttachmentName, #mailbox{max_message_length=MaxMessageLength}=B
                               ,{<<"Duration-OFF">>, <<"100">>}
                              ]),
     whapps_call_command:tones([Tone], Call),
-    lager:debug("composing new voicemail"),
+    lager:info("composing new voicemail"),
     case whapps_call_command:b_record(AttachmentName, ?ANY_DIGIT, wh_util:to_binary(MaxMessageLength), Call) of
         {ok, Msg} ->
             Length = wh_json:get_integer_value(<<"Length">>, Msg, 0),
@@ -338,7 +338,7 @@ record_voicemail(AttachmentName, #mailbox{max_message_length=MaxMessageLength}=B
                     cf_exe:branch(Flow, Call)
             end;
         {error, _R} ->
-            lager:debug("error while attempting to record a new message: ~p", [_R]),
+            lager:info("error while attempting to record a new message: ~p", [_R]),
             ok
     end.
 
@@ -349,18 +349,18 @@ record_voicemail(AttachmentName, #mailbox{max_message_length=MaxMessageLength}=B
 %%--------------------------------------------------------------------
 -spec setup_mailbox/2 :: (#mailbox{}, whapps_call:call()) -> #mailbox{}.
 setup_mailbox(#mailbox{}=Box, Call) ->
-    lager:debug("starting voicemail configuration wizard"),
+    lager:info("starting voicemail configuration wizard"),
     {ok, _} = whapps_call_command:b_prompt(<<"vm-setup_intro">>, Call),
 
-    lager:debug("prompting caller to set a pin"),
+    lager:info("prompting caller to set a pin"),
     _ = change_pin(Box, Call),
 
     {ok, _} = whapps_call_command:b_prompt(<<"vm-setup_rec_greeting">>, Call),
-    lager:debug("prompting caller to record an unavailable greeting"),
+    lager:info("prompting caller to record an unavailable greeting"),
 
     #mailbox{}=Box1 = record_unavailable_greeting(tmp_file(), Box, Call),
     ok = update_doc(<<"is_setup">>, true, Box1, Call),
-    lager:debug("voicemail configuration wizard is complete"),
+    lager:info("voicemail configuration wizard is complete"),
 
     {ok, _} = whapps_call_command:b_prompt(<<"vm-setup_complete">>, Call),
     Box1#mailbox{is_setup=true}.
@@ -382,44 +382,44 @@ main_menu(Box, Call) ->
 main_menu(_, Call, Loop) when Loop > 4 ->
     %% If there have been too may loops with no action from the caller this
     %% is likely a abandonded channel, terminate
-    lager:debug("entered main menu with too many invalid entries"),
+    lager:info("entered main menu with too many invalid entries"),
     _ = whapps_call_command:b_prompt(<<"vm-goodbye">>, Call),
     ok;
 main_menu(#mailbox{owner_id=OwnerId, keys=#keys{hear_new=HearNew, hear_saved=HearSaved, configure=Configure, exit=Exit}}=Box, Call, Loop) ->
-    lager:debug("playing mailbox main menu"),
+    lager:info("playing mailbox main menu"),
     _ = whapps_call_command:b_flush(Call),
     AccountDb = whapps_call:account_db(Call),
     Messages = get_messages(Box, Call),
     New = count_messages(Messages, ?FOLDER_NEW),
     Saved = count_messages(Messages, ?FOLDER_SAVED),
-    lager:debug("mailbox has ~p new and ~p saved messages", [New, Saved]),
+    lager:info("mailbox has ~p new and ~p saved messages", [New, Saved]),
     NoopId = whapps_call_command:audio_macro(message_count_prompts(New, Saved)
                                              ++ [{prompt, <<"vm-main_menu">>}], Call),
     case whapps_call_command:collect_digits(1, 5000, 2000, NoopId, Call) of
         {error, _} ->
-            lager:debug("error during mailbox main menu"),
+            lager:info("error during mailbox main menu"),
             cf_util:update_mwi(OwnerId, AccountDb),
             ok;
         {ok, Exit} ->
-            lager:debug("user choose to exit voicemail menu"),
+            lager:info("user choose to exit voicemail menu"),
             cf_util:update_mwi(OwnerId, AccountDb),
             ok;
         {ok, HearNew} ->
-            lager:debug("playing all messages in folder: ~s", [?FOLDER_NEW]),
+            lager:info("playing all messages in folder: ~s", [?FOLDER_NEW]),
             Folder = get_folder(Messages, ?FOLDER_NEW),
             case play_messages(Folder, length(Folder), Box, Call) of
                 ok -> ok;
                 _Else -> main_menu(Box, Call)
             end;
         {ok, HearSaved} ->
-            lager:debug("playing all messages in folder: ~s", [?FOLDER_SAVED]),
+            lager:info("playing all messages in folder: ~s", [?FOLDER_SAVED]),
             Folder = get_folder(Messages, ?FOLDER_SAVED),
             case play_messages(Folder, length(Folder), Box, Call) of
                 ok -> ok;
                 _Else ->  main_menu(Box, Call)
             end;
         {ok, Configure} ->
-            lager:debug("caller choose to change their mailbox configuration"),
+            lager:info("caller choose to change their mailbox configuration"),
             case config_menu(Box, Call) of
                 ok -> ok;
                 Else -> main_menu(Else, Call)
@@ -496,7 +496,7 @@ message_count_prompts(New, Saved) ->
 -spec play_messages/4 :: (wh_json:json_objects(), non_neg_integer(), #mailbox{}, whapps_call:call()) -> 'ok' | 'complete'.
 play_messages([H|T]=Messages, Count, #mailbox{timezone=Timezone}=Box, Call) ->
     Message = get_message(H, Call),
-    lager:debug("playing mailbox message ~p (~s)", [Count, Message]),
+    lager:info("playing mailbox message ~p (~s)", [Count, Message]),
     Prompt = [{prompt, <<"vm-message_number">>}
               ,{say, wh_util:to_binary(Count - length(Messages) + 1), <<"number">>}
               ,{play, Message}
@@ -506,29 +506,29 @@ play_messages([H|T]=Messages, Count, #mailbox{timezone=Timezone}=Box, Call) ->
              ],
     case message_menu(Prompt, Box, Call) of
         {ok, keep} ->
-            lager:debug("caller choose to save the message"),
+            lager:info("caller choose to save the message"),
             _ = whapps_call_command:b_prompt(<<"vm-saved">>, Call),
             set_folder(?FOLDER_SAVED, H, Box, Call),
             play_messages(T, Count, Box, Call);
         {ok, delete} ->
-            lager:debug("caller choose to delete the message"),
+            lager:info("caller choose to delete the message"),
             _ = whapps_call_command:b_prompt(<<"vm-deleted">>, Call),
             set_folder(?FOLDER_DELETED, H, Box, Call),
             play_messages(T, Count, Box, Call);
         {ok, return} ->
-            lager:debug("caller choose to return to the main menu"),
+            lager:info("caller choose to return to the main menu"),
             _ = whapps_call_command:b_prompt(<<"vm-saved">>, Call),
             set_folder(?FOLDER_SAVED, H, Box, Call),
             complete;
         {ok, replay} ->
-            lager:debug("caller choose to replay"),
+            lager:info("caller choose to replay"),
             play_messages(Messages, Count, Box, Call);
         {error, _} ->
-            lager:debug("error during message playback"),
+            lager:info("error during message playback"),
             ok
     end;
 play_messages([], _, _, _) ->
-    lager:debug("all messages in folder played to caller"),
+    lager:info("all messages in folder played to caller"),
     complete.
 
 %%--------------------------------------------------------------------
@@ -550,7 +550,7 @@ message_menu(Box, Call) ->
     message_menu([{prompt, <<"vm-message_menu">>}], Box, Call).
 message_menu(Prompt, #mailbox{keys=#keys{replay=Replay, keep=Keep,
                                          delete=Delete, return_main=ReturnMain}}=Box, Call) ->
-    lager:debug("playing message menu"),
+    lager:info("playing message menu"),
     NoopId = whapps_call_command:audio_macro(Prompt, Call),
     case whapps_call_command:collect_digits(1, 5000, 2000, NoopId, Call)of
         {ok, Keep} -> {ok, keep};
@@ -575,29 +575,29 @@ config_menu(Box, Call) ->
 
 config_menu(#mailbox{keys=#keys{rec_unavailable=RecUnavailable, rec_name=RecName
                                 ,set_pin=SetPin, return_main=ReturnMain}}=Box, Call, Loop) when Loop < 4 ->
-    lager:debug("playing mailbox configuration menu"),
+    lager:info("playing mailbox configuration menu"),
     {ok, _} = whapps_call_command:b_flush(Call),
     case whapps_call_command:b_prompt_and_collect_digit(<<"vm-settings_menu">>, Call) of
         {ok, RecUnavailable} ->
-            lager:debug("caller choose to record their unavailable greeting"),
+            lager:info("caller choose to record their unavailable greeting"),
             case record_unavailable_greeting(tmp_file(), Box, Call) of
                 ok -> ok;
                 Else -> config_menu(Else, Call)
             end;
         {ok, RecName} ->
-            lager:debug("caller choose to record their name"),
+            lager:info("caller choose to record their name"),
             case record_name(tmp_file(), Box, Call) of
                 ok -> ok;
                 Else -> config_menu(Else, Call)
             end;
         {ok, SetPin} ->
-            lager:debug("caller choose to change their pin"),
+            lager:info("caller choose to change their pin"),
             case change_pin(Box, Call) of
                 ok -> ok;
                 _Else -> config_menu(Box, Call)
             end;
         {ok, ReturnMain} ->
-            lager:debug("caller choose to return to the main menu"),
+            lager:info("caller choose to return to the main menu"),
             Box;
         %% Bulk delete -> delete all voicemails
         %% Reset -> delete all voicemails, greetings, name, and reset pin
@@ -617,7 +617,7 @@ record_unavailable_greeting(AttachmentName, #mailbox{unavailable_media_id=undefi
     MediaId = recording_media_doc(<<"unavailable greeting">>, Box, Call),
     record_unavailable_greeting(AttachmentName, Box#mailbox{unavailable_media_id=MediaId}, Call);
 record_unavailable_greeting(AttachmentName, #mailbox{unavailable_media_id=MediaId}=Box, Call) ->
-    lager:debug("recording unavailable greeting  as ~s", [AttachmentName]),
+    lager:info("recording unavailable greeting  as ~s", [AttachmentName]),
     Tone = wh_json:from_list([{<<"Frequencies">>, [<<"440">>]}
                               ,{<<"Duration-ON">>, <<"500">>}
                               ,{<<"Duration-OFF">>, <<"100">>}
@@ -651,28 +651,28 @@ record_unavailable_greeting(AttachmentName, #mailbox{unavailable_media_id=MediaI
 record_name(AttachmentName, #mailbox{owner_id=undefined
                                      ,name_media_id=undefined
                                     }=Box, Call) ->
-    lager:debug("no recorded name media id nor owner id"),
+    lager:info("no recorded name media id nor owner id"),
     MediaId = recording_media_doc(<<"users name">>, Box, Call),
-    lager:debug("created recorded name media doc: ~s", [MediaId]),
+    lager:info("created recorded name media doc: ~s", [MediaId]),
     record_name(AttachmentName, Box#mailbox{name_media_id=MediaId}, Call);
 record_name(AttachmentName, #mailbox{owner_id=undefined
                                      ,mailbox_id=BoxId
                                     }=Box, Call) ->
-    lager:debug("no owner_id set on mailbox, saving recorded name id into mailbox"),
+    lager:info("no owner_id set on mailbox, saving recorded name id into mailbox"),
     record_name(AttachmentName, Box, Call, BoxId);
 record_name(AttachmentName, #mailbox{owner_id=OwnerId
                                      ,name_media_id=undefined
                                     }=Box, Call) ->
-    lager:debug("no recorded name media id for owner"),
+    lager:info("no recorded name media id for owner"),
     MediaId = recording_media_doc(<<"users name">>, Box, Call),
-    lager:debug("created recorded name media doc: ~s", [MediaId]),
+    lager:info("created recorded name media doc: ~s", [MediaId]),
     record_name(AttachmentName, Box#mailbox{name_media_id=MediaId}, Call, OwnerId);
 record_name(AttachmentName, #mailbox{owner_id=OwnerId}=Box, Call) ->
-    lager:debug("owner_id (~s) set on mailbox, saving into owner's doc", [OwnerId]),
+    lager:info("owner_id (~s) set on mailbox, saving into owner's doc", [OwnerId]),
     record_name(AttachmentName, Box, Call, OwnerId).
 
 record_name(AttachmentName, #mailbox{name_media_id=MediaId}=Box, Call, DocId) ->
-    lager:debug("recording name as ~s in ~s", [AttachmentName, MediaId]),
+    lager:info("recording name as ~s in ~s", [AttachmentName, MediaId]),
     Tone = wh_json:from_list([{<<"Frequencies">>, [<<"440">>]}
                               ,{<<"Duration-ON">>, <<"500">>}
                               ,{<<"Duration-OFF">>, <<"100">>}
@@ -703,23 +703,23 @@ record_name(AttachmentName, #mailbox{name_media_id=MediaId}=Box, Call, DocId) ->
 %%--------------------------------------------------------------------
 -spec change_pin/2 :: (#mailbox{}, whapps_call:call()) -> 'ok' | #mailbox{}.
 change_pin(#mailbox{mailbox_id=Id}=Box, Call) ->
-    lager:debug("requesting new mailbox pin number"),
+    lager:info("requesting new mailbox pin number"),
     try
         {ok, Pin} = whapps_call_command:b_prompt_and_collect_digits(<<"1">>, <<"6">>, <<"vm-enter_new_pin">>, <<"1">>, Call),
-        lager:debug("collected first pin"),
+        lager:info("collected first pin"),
         {ok, Pin} = whapps_call_command:b_prompt_and_collect_digits(<<"1">>, <<"6">>, <<"vm-enter_new_pin_confirm">>, <<"1">>, Call),
-        lager:debug("collected second pin"),
+        lager:info("collected second pin"),
         if byte_size(Pin) == 0 -> throw(pin_empty); true -> ok end,
-        lager:debug("entered pin is not empty"),
+        lager:info("entered pin is not empty"),
         AccountDb = whapps_call:account_db(Call),
         {ok, JObj} = couch_mgr:open_doc(AccountDb, Id),
         {ok, _} = couch_mgr:save_doc(AccountDb, wh_json:set_value(<<"pin">>, Pin, JObj)),
         {ok, _} = whapps_call_command:b_prompt(<<"vm-pin_set">>, Call),
-        lager:debug("updated mailbox pin number"),
+        lager:info("updated mailbox pin number"),
         Box
     catch
         _:_ ->
-            lager:debug("new pin was invalid, trying again"),
+            lager:info("new pin was invalid, trying again"),
             case whapps_call_command:b_prompt(<<"vm-pin_invalid">>, Call) of
                 {ok, _} -> change_pin(Box, Call);
                 _ -> ok
@@ -737,17 +737,17 @@ new_message(AttachmentName, Length, #mailbox{mailbox_id=Id
                                              ,transcribe_voicemail=MaybeTranscribe
                                              ,delete_after_notify=DeleteAfterNotify
                                             }=Box, Call) ->
-    lager:debug("saving new ~bms voicemail message and metadata", [Length]),
+    lager:info("saving new ~bms voicemail message and metadata", [Length]),
     CallID = cf_exe:callid(Call),
     AccountDb = whapps_call:account_db(Call),
     MediaId = message_media_doc(AccountDb, Box),
 
     {ok, StoreJObj} = store_recording(AttachmentName, MediaId, Call),
-    lager:debug("store: ~p", [StoreJObj]),
+    lager:info("store: ~p", [StoreJObj]),
 
     Status = wh_json:get_value([<<"Application-Response">>, <<"Status-Code">>], StoreJObj),
     Loc = wh_json:get_value([<<"Application-Response">>, <<"Headers">>, <<"Location">>], StoreJObj),
-    lager:debug("stored voicemail message (~s) ~s", [Status, Loc]),
+    lager:info("stored voicemail message (~s) ~s", [Status, Loc]),
 
     Tstamp = new_timestamp(),
     Metadata = wh_json:from_list(
@@ -762,7 +762,7 @@ new_message(AttachmentName, Length, #mailbox{mailbox_id=Id
                   ,{<<"media_id">>, MediaId}
                  ]),
     {ok, BoxJObj} = save_metadata(Metadata, AccountDb, Id),
-    lager:debug("stored voicemail metadata for ~s: ~p", [MediaId, BoxJObj]),
+    lager:info("stored voicemail metadata for ~s: ~p", [MediaId, BoxJObj]),
 
     Transcription = maybe_transcribe(Call, MediaId, MaybeTranscribe),
 
@@ -800,10 +800,10 @@ maybe_transcribe(Call, MediaId, true) ->
             {Attachment, MetaData} = hd(wh_json:to_proplist(Attachments)),
             case couch_mgr:fetch_attachment(Db, MediaId, Attachment) of
                 {ok, Bin} ->
-                    lager:debug("transcribing first attachment ~s: ~p", [Attachment, MetaData]),
+                    lager:info("transcribing first attachment ~s: ~p", [Attachment, MetaData]),
                     maybe_transcribe(Db, MediaDoc, Bin, wh_json:get_value(<<"content_type">>, MetaData));
                 {error, _E} ->
-                    lager:debug("error fetching vm: ~p", [_E]),
+                    lager:info("error fetching vm: ~p", [_E]),
                     undefined
             end
     end;
@@ -817,7 +817,7 @@ maybe_transcribe(_, _, <<>>, _) -> undefined;
 maybe_transcribe(Db, MediaDoc, Bin, <<"audio/wav">>) ->
     case whapps_speech:asr_freeform(Bin) of
         {ok, Resp} ->
-            lager:debug("transcription resp: ~p", [Resp]),
+            lager:info("transcription resp: ~p", [Resp]),
             MediaDoc1 = wh_json:set_value(<<"transcription">>, Resp, MediaDoc),
             _ = couch_mgr:ensure_saved(Db, MediaDoc1),
             is_valid_transcription(wh_json:get_value(<<"result">>, Resp)
@@ -825,18 +825,18 @@ maybe_transcribe(Db, MediaDoc, Bin, <<"audio/wav">>) ->
                                    ,Resp
                                   );
         {error, _E} ->
-            lager:debug("error getting ASR: ~p", [_E]),
+            lager:info("error getting ASR: ~p", [_E]),
             undefined
     end;
 maybe_transcribe(_, _, _, _ContentType) ->
-    lager:debug("un-ASR-able content type: ~s", [_ContentType]),
+    lager:info("un-ASR-able content type: ~s", [_ContentType]),
     undefined.
 
 -spec is_valid_transcription/3 :: (ne_binary() | 'undefined', binary(), wh_json:json_object()) ->
                                           wh_json:json_object() | 'undefined'.
 is_valid_transcription(<<"success">>, ?NE_BINARY, Resp) -> Resp;
 is_valid_transcription(_Res, _Txt, _) ->
-    lager:debug("not valid transcription: ~s: '~s'", [_Res, _Txt]),
+    lager:info("not valid transcription: ~s: '~s'", [_Res, _Txt]),
     undefined.
 
 %%--------------------------------------------------------------------
@@ -852,16 +852,16 @@ save_metadata(NewMessage, Db, Id) ->
     Messages = wh_json:get_value([<<"messages">>], JObj, []),
     case has_message_meta(wh_json:get_value(<<"call_id">>, NewMessage), Messages) of
         true ->
-            lager:debug("message meta already exists in VM Messages"),
+            lager:info("message meta already exists in VM Messages"),
             {ok, JObj};
         false ->
             case couch_mgr:save_doc(Db, wh_json:set_value([<<"messages">>], [NewMessage | Messages], JObj)) of
                 {error, conflict} ->
-                    lager:debug("saving resulted in a conflict, trying again"),
+                    lager:info("saving resulted in a conflict, trying again"),
                     save_metadata(NewMessage, Db, Id);
                 {ok, _}=Ok -> Ok;
                 {error, R}=E ->
-                    lager:debug("error while storing voicemail metadata: ~p", [R]),
+                    lager:info("error while storing voicemail metadata: ~p", [R]),
                     E
             end
     end.
@@ -886,7 +886,7 @@ get_mailbox_profile(Data, Call) ->
     case get_mailbox_doc(AccountDb, Id, whapps_call:kvs_fetch(cf_capture_group, Call)) of
         {ok, JObj} ->
             MailboxId = wh_json:get_value(<<"_id">>, JObj),
-            lager:debug("loaded voicemail box ~s", [MailboxId]),
+            lager:info("loaded voicemail box ~s", [MailboxId]),
             Default = #mailbox{},
 
             %% dont check if the voicemail box belongs to the owner (by default) if the call was not
@@ -902,7 +902,7 @@ get_mailbox_profile(Data, Call) ->
                               {ok, Owner} ->
                                   {wh_json:find(?RECORDED_NAME_KEY, [Owner, JObj]), OId};
                               {error, not_found} ->
-                                  lager:debug("owner ~s no longer exists", [OId]),
+                                  lager:info("owner ~s no longer exists", [OId]),
                                   {wh_json:get_ne_value(?RECORDED_NAME_KEY, JObj), undefined}
                           end
                   end,
@@ -921,7 +921,7 @@ get_mailbox_profile(Data, Call) ->
                 end,
             MsgCount = length(wh_json:get_value(<<"messages">>, JObj, [])),
 
-            lager:debug("mailbox limited to ~p voicemail messages (has ~b currently)", [MaxMessageCount, MsgCount]),
+            lager:info("mailbox limited to ~p voicemail messages (has ~b currently)", [MaxMessageCount, MsgCount]),
 
             #mailbox{mailbox_id = MailboxId
                      ,exists = true
@@ -960,7 +960,7 @@ get_mailbox_profile(Data, Call) ->
                          wh_json:is_true(<<"delete_after_notify">>, JObj, false)
                     };
         {error, R} ->
-            lager:debug("failed to load voicemail box ~s, ~p", [Id, R]),
+            lager:info("failed to load voicemail box ~s, ~p", [Id, R]),
             #mailbox{}
     end.
 
@@ -1005,10 +1005,10 @@ get_mailbox_doc(Db, Id, CaptureGroup) ->
     CGIsEmpty = wh_util:is_empty(CaptureGroup),
     case wh_util:is_empty(Id) of
         false ->
-            lager:debug("opening ~s", [Id]),
+            lager:info("opening ~s", [Id]),
             couch_mgr:open_doc(Db, Id);
         true when not CGIsEmpty ->
-            lager:debug("capture group not empty: ~s", [CaptureGroup]),
+            lager:info("capture group not empty: ~s", [CaptureGroup]),
             Opts = [{key, CaptureGroup}, include_docs],
             case couch_mgr:get_results(Db, <<"cf_attributes/mailbox_number">>, Opts) of
                 {ok, []} -> {error, not_found};
@@ -1044,26 +1044,26 @@ review_recording(AttachmentName, AllowOperator
                                       ,operator=Operator
                                      }}=Box
                  ,Call, Loop) ->
-    lager:debug("playing recording review options"),
+    lager:info("playing recording review options"),
     case whapps_call_command:b_prompt_and_collect_digit(<<"vm-review_recording">>, Call) of
         {ok, Listen} ->
-            lager:debug("caller choose to replay the recording"),
+            lager:info("caller choose to replay the recording"),
             _ = whapps_call_command:b_play(AttachmentName, Call),
             review_recording(AttachmentName, AllowOperator, Box, Call);
         {ok, Record} ->
-            lager:debug("caller choose to re-record"),
+            lager:info("caller choose to re-record"),
             {ok, record};
         {ok, Save} ->
-            lager:debug("caller choose to save the recording"),
+            lager:info("caller choose to save the recording"),
             {ok, save};
         {ok, Operator} when AllowOperator ->
-            lager:debug("caller choose to ring the operator"),
+            lager:info("caller choose to ring the operator"),
             case cf_util:get_operator_callflow(whapps_call:account_id(Call)) of
                 {ok, Flow} -> {branch, Flow};
                 {error,_R} -> review_recording(AttachmentName, AllowOperator, Box, Call, Loop + 1)
             end;
         {error, _} ->
-            lager:debug("error while waiting for review selection"),
+            lager:info("error while waiting for review selection"),
             {ok, no_selection};
         _ ->
             review_recording(AttachmentName, AllowOperator, Box, Call, Loop + 1)
@@ -1078,7 +1078,7 @@ review_recording(AttachmentName, AllowOperator
                                    {'ok', wh_json:json_object()} |
                                    {'error', wh_json:json_object()}.
 store_recording(AttachmentName, DocId, Call) ->
-    lager:debug("storing recording ~s in doc ~s", [AttachmentName, DocId]),
+    lager:info("storing recording ~s in doc ~s", [AttachmentName, DocId]),
     whapps_call_command:b_store(AttachmentName
                                 ,get_new_attachment_url(AttachmentName, DocId, Call)
                                 ,Call).
@@ -1097,7 +1097,7 @@ get_new_attachment_url(AttachmentName, MediaId, Call) ->
                     [] -> ok;
                     Existing ->
                         [begin
-                             lager:debug("need to remove ~s/~s/~s first", [AccountDb, MediaId, Attach]),
+                             lager:info("need to remove ~s/~s/~s first", [AccountDb, MediaId, Attach]),
                              couch_mgr:delete_attachment(AccountDb, MediaId, Attach)
                          end
                          || Attach <- Existing
@@ -1128,7 +1128,7 @@ message_media_doc(Db, #mailbox{mailbox_number=BoxNum, mailbox_id=Id, timezone=Ti
                                    ,wh_util:to_binary(S)
                                   ]);
                {error, unknown_tz} ->
-                   lager:debug("unknown timezone: ~s", [Timezone]),
+                   lager:info("unknown timezone: ~s", [Timezone]),
                    {{Y,M,D},{H,I,S}} = UtcDateTime,
                    list_to_binary(["mailbox ", BoxNum, " message "
                                    ,wh_util:to_binary(M), "-"
@@ -1232,7 +1232,7 @@ get_folder(Messages, Folder) ->
 %%--------------------------------------------------------------------
 -spec set_folder/4 :: (ne_binary(), wh_json:json_object(), #mailbox{}, whapps_call:call()) -> no_return().
 set_folder(Folder, Message, Box, Call) ->
-    lager:debug("setting folder for message to ~s", [Folder]),
+    lager:info("setting folder for message to ~s", [Folder]),
     not (wh_json:get_value(<<"folder">>, Message) =:= Folder) andalso
         update_folder(Folder, wh_json:get_value(<<"media_id">>, Message), Box, Call).
 
@@ -1259,11 +1259,11 @@ update_folder(Folder, MediaId, #mailbox{mailbox_id=Id}=Mailbox, Call) ->
                 {ok, _}=OK ->
                     OK;
                 {error, R}=E ->
-                    lager:debug("error while updating folder ~s ~p", [Folder, R]),
+                    lager:info("error while updating folder ~s ~p", [Folder, R]),
                     E
             end;
         {error, R}=E ->
-            lager:debug("failed ot open mailbox ~s: ~p", [Id, R]),
+            lager:info("failed ot open mailbox ~s: ~p", [Id, R]),
             E
     end.
 
@@ -1294,11 +1294,11 @@ update_doc(Key, Value, Id, ?NE_BINARY = Db) ->
                 {ok, _} ->
                     ok;
                 {error, R}=E ->
-                    lager:debug("unable to update ~s in ~s, ~p", [Id, Db, R]),
+                    lager:info("unable to update ~s in ~s, ~p", [Id, Db, R]),
                     E
             end;
         {error, R}=E ->
-            lager:debug("unable to update ~s in ~s, ~p", [Id, Db, R]),
+            lager:info("unable to update ~s in ~s, ~p", [Id, Db, R]),
             E
     end;
 update_doc(Key, Value, Id, Call) ->

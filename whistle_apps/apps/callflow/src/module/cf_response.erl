@@ -24,6 +24,6 @@ handle(Data, Call) ->
     Code = wh_json:get_value(<<"code">>, Data, <<"486">>),
     Cause = wh_json:get_ne_value(<<"message">>, Data),
     Media = wh_json:get_ne_value(<<"media">>, Data),
-    lager:debug("responding to call with ~s ~s", [Code, Cause]),
+    lager:info("responding to call with ~s ~s", [Code, Cause]),
     _ = whapps_call_command:response(Code, Cause, Media, Call),
     cf_exe:stop(Call).

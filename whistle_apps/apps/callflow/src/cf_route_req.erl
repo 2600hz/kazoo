@@ -17,7 +17,7 @@ handle_req(JObj, Options) ->
     Call = whapps_call:from_route_req(JObj),
     case is_binary(whapps_call:account_id(Call)) andalso callflow_should_respond(Call) of
         true ->
-            lager:debug("received route request"),
+            lager:info("received route request"),
             ControllerQ = props:get_value(queue, Options),
             AllowNoMatch = whapps_call:authorizing_type(Call) =/= undefined
                 orelse whapps_call:custom_channel_var(<<"Referred-By">>, Call) =/= undefined,
@@ -25,16 +25,16 @@ handle_req(JObj, Options) ->
                 %% if NoMatch is false then allow the callflow or if it is true and we are able allowed
                 %% to use it for this call
                 {ok, Flow, NoMatch} when (not NoMatch) orelse AllowNoMatch ->
-                    lager:debug("callflow ~s in ~s satisfies request", [wh_json:get_value(<<"_id">>, Flow)
+                    lager:info("callflow ~s in ~s satisfies request", [wh_json:get_value(<<"_id">>, Flow)
                                                                         ,whapps_call:account_id(Call)
                                                                        ]),
                     cache_call(Flow, NoMatch, ControllerQ, Call),
                     send_route_response(JObj, ControllerQ, <<"false">>, Call);
                 {ok, _, true} ->
-                    lager:debug("only available callflow is a nomatch for a unauthorized call", []),
+                    lager:info("only available callflow is a nomatch for a unauthorized call", []),
                     maybe_send_defered_route_response(JObj, ControllerQ, Call);
                 {error, R} ->
-                    lager:debug("unable to find callflow ~p", [R]),
+                    lager:info("unable to find callflow ~p", [R]),
                     maybe_send_defered_route_response(JObj, ControllerQ, Call)
             end;
         false ->
@@ -76,7 +76,7 @@ send_route_response(JObj, Q, Defer, Call) ->
             | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
            ],
     wapi_route:publish_resp(wh_json:get_value(<<"Server-ID">>, JObj), Resp),
-    lager:debug("sent route response to park the call").
+    lager:info("sent route response to park the call").
 
 %%-----------------------------------------------------------------------------
 %% @private
@@ -106,7 +106,7 @@ maybe_send_defered_route_response(JObj, ControllerQ, Call) ->
     AccountId = whapps_call:account_id(Call),
     case cf_util:lookup_callflow(<<"0">>, AccountId) of
         {ok, Flow, false} ->
-            lager:debug("default callflow ~s in ~s could satisfy request", [wh_json:get_value(<<"_id">>, Flow)
+            lager:info("default callflow ~s in ~s could satisfy request", [wh_json:get_value(<<"_id">>, Flow)
                                                                             ,whapps_call:account_id(Call)
                                                                            ]),
             cache_call(Flow, false, ControllerQ, Call),

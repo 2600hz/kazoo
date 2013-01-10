@@ -27,12 +27,12 @@ handle(Data, Call) ->
     whapps_call_command:answer(Call),
     _ = case cf_acdc_agent:find_agent(Call) of
             {ok, undefined} ->
-                lager:debug("not an agent calling in"),
+                lager:info("not an agent calling in"),
                 cf_acdc_agent:play_not_an_agent(Call);
             {ok, AgentId} ->
                 Action = wh_json:get_value(<<"action">>, Data),
                 QueueId = wh_json:get_value(<<"id">>, Data),
-                lager:debug("agent ~s wants to ~s to queue ~s", [AgentId, Action, QueueId]),
+                lager:info("agent ~s wants to ~s to queue ~s", [AgentId, Action, QueueId]),
                 notify_agent(Call, AgentId, QueueId, Action)
         end,
     cf_exe:continue(Call).
@@ -44,7 +44,7 @@ notify_agent(Call, AgentId, QueueId, <<"logout">>) ->
     send_agent_message(Call, AgentId, QueueId, fun wapi_acdc_agent:publish_logout_queue/1),
     whapps_call_command:b_prompt(<<"agent-logged_out">>, Call);
 notify_agent(Call, _AgentId, _QueueId, _Action) ->
-    lager:debug("invalid agent action: ~s", [_Action]),
+    lager:info("invalid agent action: ~s", [_Action]),
     cf_acdc_agent:play_agent_invalid(Call).
 
 send_agent_message(Call, AgentId, QueueId, PubFun) ->

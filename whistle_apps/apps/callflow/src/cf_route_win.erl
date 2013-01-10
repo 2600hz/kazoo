@@ -17,13 +17,13 @@ handle_req(JObj, _Options) ->
     CallId = wh_json:get_value(<<"Call-ID">>, JObj),
     put(callid, CallId),
 
-    lager:debug("received route win"),
+    lager:info("received route win"),
     case whapps_call:retrieve(CallId) of
         {ok, Call} ->
-            lager:debug("bootstrapping callflow executer"),
+            lager:info("bootstrapping callflow executer"),
             bootstrap_callflow_executer(JObj, Call);
         {error, R} ->
-            lager:debug("unable to find callflow during second lookup (HUH?) ~p", [R])
+            lager:info("unable to find callflow during second lookup (HUH?) ~p", [R])
     end.
 
 %%-----------------------------------------------------------------------------
@@ -77,5 +77,5 @@ update_ccvs(Call) ->
 %%-----------------------------------------------------------------------------
 -spec execute_callflow/1 :: (whapps_call:call()) -> {'ok', pid()}.
 execute_callflow(Call) ->
-    lager:debug("call has been setup, passing control to callflow executer"),
+    lager:info("call has been setup, passing control to callflow executer"),
     cf_exe_sup:new(Call).

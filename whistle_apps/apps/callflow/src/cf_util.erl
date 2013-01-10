@@ -52,18 +52,18 @@ presence_mwi_update(<<"message-summary">>, {FromUser, FromRealm}, _, JObj) ->
                           ],
             case couch_mgr:get_results(AccountDb, <<"cf_attributes/sip_credentials">>, ViewOptions) of
                 {ok, []} ->
-                    lager:debug("sip credentials not in account db ~s", [AccountDb]),
+                    lager:info("sip credentials not in account db ~s", [AccountDb]),
                     ok;
                 {ok, [Device]} ->
-                    lager:debug("replying to mwi presence probe"),
+                    lager:info("replying to mwi presence probe"),
                     OwnerId = wh_json:get_value([<<"doc">>, <<"owner_id">>], Device),
                     presence_mwi_resp(FromUser, FromRealm, OwnerId, AccountDb, JObj);
                 {error, _R} ->
-                    lager:debug("unable to lookup sip credentials for owner id: ~p", [_R]),
+                    lager:info("unable to lookup sip credentials for owner id: ~p", [_R]),
                     ok
             end;
         _E ->
-            lager:debug("failed to find the account for realm ~s: ~p", [FromRealm, _E]),
+            lager:info("failed to find the account for realm ~s: ~p", [FromRealm, _E]),
             ok
     end;
 presence_mwi_update(_, _, _, _) ->
@@ -82,7 +82,7 @@ presence_parking_slot(_, {_, FromRealm}, {ToUser, ToRealm}, _) ->
                 {ok, Flow} ->
                     case wh_json:get_value([<<"flow">>, <<"module">>], Flow) of
                         <<"park">> ->
-                            lager:debug("replying to presence query for a parking slot"),
+                            lager:info("replying to presence query for a parking slot"),
                             SlotNumber = wh_json:get_ne_value(<<"capture_group">>, Flow, ToUser),
                             cf_park:update_presence(SlotNumber, <<ToUser/binary, "@", ToRealm/binary>>, AccountDb);
                         _Else -> ok
@@ -134,7 +134,7 @@ presence_mwi_query(JObj, _Props) ->
             case couch_mgr:get_results(AccountDb, <<"cf_attributes/sip_credentials">>, ViewOptions) of
                 {ok, []} ->  ok;
                 {ok, [Device]} ->
-                    lager:debug("replying to mwi query"),
+                    lager:info("replying to mwi query"),
                     OwnerId = wh_json:get_value([<<"doc">>, <<"owner_id">>], Device),
                     presence_mwi_resp(Username, Realm, OwnerId, AccountDb, JObj);
                 {error, _R} -> ok
@@ -175,10 +175,10 @@ presence_mwi_resp(Username, Realm, OwnerId, AccountDb, JObj) ->
                        ,{<<"Message-Account">>, wh_json:get_value(<<"Message-Account">>, JObj, DefaultAccount)}
                        | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
                       ],
-            lager:debug("updating MWI for owner ~s: (~b/~b)", [OwnerId, New, Saved]),
+            lager:info("updating MWI for owner ~s: (~b/~b)", [OwnerId, New, Saved]),
             wapi_notifications:publish_mwi_update(Command);
         {error, _R} ->
-            lager:debug("unable to lookup vm counts by owner: ~p", [_R]),
+            lager:info("unable to lookup vm counts by owner: ~p", [_R]),
             ok
     end.
 
@@ -210,7 +210,7 @@ update_mwi(OwnerId, AccountDb) ->
                     ],
             update_mwi(props:get_value(<<"new">>, Props, 0), props:get_value(<<"saved">>, Props, 0), OwnerId, AccountDb);
         {error, _R} ->
-            lager:debug("unable to lookup vm counts by owner: ~p", [_R]),
+            lager:info("unable to lookup vm counts by owner: ~p", [_R]),
             ok
     end.
 
@@ -221,7 +221,7 @@ update_mwi(New, Saved, OwnerId, AccountDb) ->
                   ],
     case couch_mgr:get_results(AccountDb, <<"cf_attributes/owned">>, ViewOptions) of
         {ok, Devices} ->
-            lager:debug("updating MWI for owner ~s: (~b/~b) on ~b devices", [OwnerId, New, Saved, length(Devices)]),
+            lager:info("updating MWI for owner ~s: (~b/~b) on ~b devices", [OwnerId, New, Saved, length(Devices)]),
             CommonHeaders = [{<<"Messages-New">>, New}
                              ,{<<"Messages-Saved">>, Saved}
                              | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
@@ -239,7 +239,7 @@ update_mwi(New, Saved, OwnerId, AccountDb) ->
                           end, Devices),
             ok;
         {error, _R} ->
-            lager:debug("failed to find devices owned by ~s: ~p", [OwnerId, _R]),
+            lager:info("failed to find devices owned by ~s: ~p", [OwnerId, _R]),
             ok
     end.
 
@@ -328,7 +328,7 @@ get_operator_callflow(Account) ->
         {ok, [JObj|_]} ->
             {ok, wh_json:get_value([<<"doc">>, <<"flow">>], JObj, wh_json:new())};
         {error, _R}=E ->
-            lager:debug("unable to find operator callflow in ~s: ~p", [Account, _R]),
+            lager:info("unable to find operator callflow in ~s: ~p", [Account, _R]),
             E
     end.
 
@@ -355,7 +355,7 @@ lookup_callflow(Number, AccountId) ->
     end.
 
 do_lookup_callflow(Number, Db) ->
-    lager:debug("searching for callflow in ~s to satisfy '~s'", [Db, Number]),
+    lager:info("searching for callflow in ~s to satisfy '~s'", [Db, Number]),
     Options = [{key, Number}, include_docs],
     case couch_mgr:get_results(Db, ?LIST_BY_NUMBER, Options) of
         {ok, []} when Number =/= ?NO_MATCH_CF ->
@@ -374,7 +374,7 @@ do_lookup_callflow(Number, Db) ->
             wh_cache:store_local(?CALLFLOW_CACHE, {cf_flow, Number, Db}, Flow),
             {ok, Flow, Number =:= ?NO_MATCH_CF};
         {ok, [JObj | _Rest]} ->
-            lager:debug("lookup resulted in more than one result, using the first"),
+            lager:info("lookup resulted in more than one result, using the first"),
             Flow = wh_json:get_value(<<"doc">>, JObj),
             wh_cache:store_local(?CALLFLOW_CACHE, {cf_flow, Number, Db}, Flow),
             {ok, Flow, Number =:= ?NO_MATCH_CF};
@@ -389,7 +389,7 @@ maybe_use_nomatch(Number, Db) ->
     case lists:all(fun is_digit/1, wh_util:to_list(Number)) of
         true -> do_lookup_callflow(?NO_MATCH_CF, Db);
         false ->
-            lager:debug("can't use no_match: number not all digits: ~s", [Number]),
+            lager:info("can't use no_match: number not all digits: ~s", [Number]),
             {error, not_found}
     end.
 
@@ -407,7 +407,7 @@ is_digit(_) -> false.
                                             {'ok', {wh_json:object(), ne_binary()}} |
                                             {'error', term()}.
 lookup_callflow_patterns(Number, Db) ->
-    lager:debug("lookup callflow patterns for ~s in ~s", [Number, Db]),
+    lager:info("lookup callflow patterns for ~s in ~s", [Number, Db]),
     case couch_mgr:get_results(Db, ?LIST_BY_PATTERN, [include_docs]) of
         {ok, Patterns} ->
             case test_callflow_patterns(Patterns, Number, {undefined, <<>>}) of
@@ -478,14 +478,14 @@ handle_bridge_failure(undefined, _) ->
 handle_bridge_failure(Failure, Call) ->
     case cf_exe:attempt(Failure, Call) of
         {attempt_resp, ok} ->
-            lager:debug("found child branch to handle failure: ~s", [Failure]),
+            lager:info("found child branch to handle failure: ~s", [Failure]),
             ok;
         {attempt_resp, _} ->
             not_found
     end.
 
 handle_bridge_failure(Cause, Code, Call) ->
-    lager:debug("attempting to find failure branch for ~s:~s", [Code, Cause]),
+    lager:info("attempting to find failure branch for ~s:~s", [Code, Cause]),
     case (handle_bridge_failure(Cause, Call) =:= ok)
         orelse (handle_bridge_failure(Code, Call) =:= ok) of
         true -> ok;

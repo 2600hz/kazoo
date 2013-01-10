@@ -24,10 +24,10 @@
 start_event_listener(Call, Data) ->
     put(callid, whapps_call:call_id(Call)),
     TimeLimit = get_timelimit(wh_json:get_integer_value(<<"time_limit">>, Data)),
-    lager:debug("listening for record stop (or ~b s), then storing the recording", [TimeLimit]),
+    lager:info("listening for record stop (or ~b s), then storing the recording", [TimeLimit]),
 
     _Wait = whapps_call_command:wait_for_headless_application(<<"record">>, <<"RECORD_STOP">>, <<"call_event">>, (TimeLimit + 10) * 1000),
-    lager:debug("ok, done waiting: ~p", [_Wait]),
+    lager:info("ok, done waiting: ~p", [_Wait]),
 
     Format = get_format(wh_json:get_value(<<"format">>, Data)),
     MediaName = get_media_name(whapps_call:call_id(Call), Format),
@@ -53,23 +53,23 @@ handle(Data, Call, <<"start">> = Action) ->
 
     _P = cf_exe:add_event_listener(Call, {?MODULE, start_event_listener, [Data]}),
 
-    lager:debug("recording ~s starting, evt listener at ~p", [MediaName, _P]),
+    lager:info("recording ~s starting, evt listener at ~p", [MediaName, _P]),
     whapps_call_command:record_call(MediaName, Action, TimeLimit, Call);
 handle(Data, Call, <<"stop">> = Action) ->
     Format = get_format(wh_json:get_value(<<"format">>, Data)),
     MediaName = get_media_name(whapps_call:call_id(Call), Format),
 
     _ = whapps_call_command:record_call(MediaName, Action, Call),
-    lager:debug("recording of ~s stopped", [MediaName]),
+    lager:info("recording of ~s stopped", [MediaName]),
 
     save_recording(Call, MediaName, Format).
 
 save_recording(Call, MediaName, Format) ->
     {ok, MediaJObj} = store_recording_meta(Call, MediaName, Format),
-    lager:debug("stored meta: ~p", [MediaJObj]),
+    lager:info("stored meta: ~p", [MediaJObj]),
 
     StoreUrl = store_url(Call, MediaJObj),
-    lager:debug("store url: ~s", [StoreUrl]),
+    lager:info("store url: ~s", [StoreUrl]),
 
     store_recording(MediaName, StoreUrl, Call).
 

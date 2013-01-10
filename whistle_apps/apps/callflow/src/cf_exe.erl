@@ -245,14 +245,14 @@ init([Call]) ->
     CallId = whapps_call:call_id(Call),
     put(callid, CallId),
 
-    lager:debug("executing callflow ~s", [whapps_call:kvs_fetch(cf_flow_id, Call)]),
-    lager:debug("account id ~s", [whapps_call:account_id(Call)]),
-    lager:debug("request ~s", [whapps_call:request(Call)]),
-    lager:debug("to ~s", [whapps_call:to(Call)]),
-    lager:debug("from ~s", [whapps_call:from(Call)]),
-    lager:debug("CID ~s ~s", [whapps_call:caller_id_name(Call), whapps_call:caller_id_number(Call)]),
-    lager:debug("inception ~s", [whapps_call:inception(Call)]),
-    lager:debug("authorizing id ~s", [whapps_call:authorizing_id(Call)]),
+    lager:info("executing callflow ~s", [whapps_call:kvs_fetch(cf_flow_id, Call)]),
+    lager:info("account id ~s", [whapps_call:account_id(Call)]),
+    lager:info("request ~s", [whapps_call:request(Call)]),
+    lager:info("to ~s", [whapps_call:to(Call)]),
+    lager:info("from ~s", [whapps_call:from(Call)]),
+    lager:info("CID ~s ~s", [whapps_call:caller_id_name(Call), whapps_call:caller_id_number(Call)]),
+    lager:info("inception ~s", [whapps_call:inception(Call)]),
+    lager:info("authorizing id ~s", [whapps_call:authorizing_id(Call)]),
 
     Flow = whapps_call:kvs_fetch(cf_flow, Call),
     Self = self(),
@@ -297,17 +297,17 @@ handle_call({get_branch_keys, all}, _From, #state{flow = Flow}=State) ->
 handle_call({attempt, Key}, _From, #state{flow = Flow}=State) ->
     case wh_json:get_value([<<"children">>, Key], Flow) of
         undefined ->
-            lager:debug("attempted undefined child ~s", [Key]),
+            lager:info("attempted undefined child ~s", [Key]),
             Reply = {attempt_resp, {error, undefined}},
             {reply, Reply, State};
         NewFlow ->
             case wh_json:is_empty(NewFlow) of
                 true ->
-                    lager:debug("attempted empty child ~s", [Key]),
+                    lager:info("attempted empty child ~s", [Key]),
                     Reply = {attempt_resp, {error, empty}},
                     {reply, Reply, State};
                 false ->
-                    lager:debug("branching to attempted child ~s", [Key]),
+                    lager:info("branching to attempted child ~s", [Key]),
                     Reply = {attempt_resp, ok},
                     {reply, Reply, launch_cf_module(State#state{flow = NewFlow})}
             end
@@ -334,13 +334,13 @@ handle_call(_Request, _From, State) ->
 handle_cast({set_call, Call}, State) ->
     {noreply, State#state{call=Call}};
 handle_cast({continue, Key}, #state{flow=Flow}=State) ->
-    lager:debug("continuing to child ~s", [Key]),
+    lager:info("continuing to child ~s", [Key]),
     case wh_json:get_value([<<"children">>, Key], Flow) of
         undefined when Key =:= <<"_">> ->
-            lager:debug("wildcard child does not exist, we are lost..."),
+            lager:info("wildcard child does not exist, we are lost..."),
             {stop, normal, State};
         undefined ->
-            lager:debug("requested child does not exist, trying wild card", [Key]),
+            lager:info("requested child does not exist, trying wild card", [Key]),
             ?MODULE:continue(self()),
             {noreply, State};
         NewFlow ->
@@ -358,24 +358,24 @@ handle_cast({transfer}, State) ->
 handle_cast({control_usurped}, State) ->
     {stop, {shutdown, control_usurped}, State};
 handle_cast({branch, NewFlow}, State) ->
-    lager:debug("callflow has been branched"),
+    lager:info("callflow has been branched"),
     {noreply, launch_cf_module(State#state{flow=NewFlow})};
 handle_cast({callid_update, NewCallId, NewCtrlQ}, #state{call=Call}=State) ->
     put(callid, NewCallId),
     PrevCallId = whapps_call:call_id_direct(Call),
-    lager:debug("updating callid to ~s (from ~s), catch you on the flip side", [NewCallId, PrevCallId]),
-    lager:debug("removing call event bindings for ~s", [PrevCallId]),
+    lager:info("updating callid to ~s (from ~s), catch you on the flip side", [NewCallId, PrevCallId]),
+    lager:info("removing call event bindings for ~s", [PrevCallId]),
     gen_listener:rm_binding(self(), call, [{callid, PrevCallId}]),
-    lager:debug("binding to new call events"),
+    lager:info("binding to new call events"),
     gen_listener:add_binding(self(), call, [{callid, NewCallId}]),
-    lager:debug("updating control q to ~s", [NewCtrlQ]),
+    lager:info("updating control q to ~s", [NewCtrlQ]),
     NewCall = whapps_call:set_call_id(NewCallId, whapps_call:set_control_queue(NewCtrlQ, Call)),
     {noreply, State#state{call=NewCall}};
 
 handle_cast({add_event_listener, {M, F, A}}, #state{call=Call}=State) ->
     try spawn_link(M, F, [Call | A]) of
         P when is_pid(P) ->
-            lager:debug("started event listener ~p from ~s:~s", [P, M, F]),
+            lager:info("started event listener ~p from ~s:~s", [P, M, F]),
             {noreply, State#state{call=whapps_call:kvs_update(cf_event_pids
                                                               ,fun(Ps) -> [P | Ps] end
                                                               ,[P]
@@ -383,7 +383,7 @@ handle_cast({add_event_listener, {M, F, A}}, #state{call=Call}=State) ->
                                                              )}}
     catch
         _:_R ->
-            lager:debug("failed to spawn ~s:~s: ~p", [M, F, _R]),
+            lager:info("failed to spawn ~s:~s: ~p", [M, F, _R]),
             {noreply, State}
     end;
 
@@ -462,10 +462,10 @@ handle_event(JObj, #state{cf_module_pid=Pid, call=Call}) ->
                      ,{cf_event_pids, Others}
                     ]};
         {_, _Else} when Others =:= [] ->
-            lager:debug("received event from call ~s while relaying for ~s, dropping", [_Else, CallId]),
+            lager:info("received event from call ~s while relaying for ~s, dropping", [_Else, CallId]),
             ignore;
         {_Evt, _Else} ->
-            lager:debug("the others want to know about ~p", [_Evt]),
+            lager:info("the others want to know about ~p", [_Evt]),
             {reply, [{cf_event_pids, Others}]}
     end.
 
@@ -481,17 +481,17 @@ handle_event(JObj, #state{cf_module_pid=Pid, call=Call}) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate({shutdown, transfer}, _) ->
-    lager:debug("callflow execution has been transfered"),
+    lager:info("callflow execution has been transfered"),
     ok;
 terminate({shutdown, control_usurped}, _) ->
-    lager:debug("the call has been usurped by an external process"),
+    lager:info("the call has been usurped by an external process"),
     ok;
 terminate(_Reason, #state{call=Call}) ->
     Command = [{<<"Application-Name">>, <<"hangup">>}
                ,{<<"Insert-At">>, <<"now">>}
               ],
     send_command(Command, whapps_call:control_queue_direct(Call), whapps_call:call_id_direct(Call)),
-    lager:debug("callflow execution has been stopped: ~p", [_Reason]),
+    lager:info("callflow execution has been stopped: ~p", [_Reason]),
     ok.
 
 %%--------------------------------------------------------------------
@@ -529,7 +529,7 @@ launch_cf_module(#state{call=Call, flow=Flow}=State) ->
 maybe_start_cf_module(ModuleBin, Data, Call) ->
     try wh_util:to_atom(ModuleBin) of
         CFModule ->
-            lager:debug("moving to action ~s", [CFModule]),
+            lager:info("moving to action ~s", [CFModule]),
             spawn_cf_module(CFModule, Data, Call)
     catch
         error:undef -> cf_module_not_found(Call);
@@ -566,8 +566,8 @@ spawn_cf_module(CFModule, Data, Call) ->
                         catch
                             _E:_R ->
                                 ST = erlang:get_stacktrace(),
-                                lager:debug("action ~s died unexpectedly (~s): ~p", [CFModule, _E, _R]),
-                                _ = [lager:debug("stacktrace: ~p", [S]) || S <- ST],
+                                lager:info("action ~s died unexpectedly (~s): ~p", [CFModule, _E, _R]),
+                                _ = [lager:info("stacktrace: ~p", [S]) || S <- ST],
                                 throw(_R)
                         end
                 end), CFModule}.

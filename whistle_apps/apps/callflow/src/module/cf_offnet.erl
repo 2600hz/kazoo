@@ -26,10 +26,10 @@ handle(Data, Call) ->
     _ = offnet_req(Data, Call),
     case wait_for_offnet() of
         {<<"SUCCESS">>, _} ->
-            lager:debug("completed successful offnet request"),
+            lager:info("completed successful offnet request"),
             cf_exe:stop(Call);
         {Cause, Code} ->
-            lager:debug("offnet request error, attempting to find failure branch for ~s:~s", [Code, Cause]),
+            lager:info("offnet request error, attempting to find failure branch for ~s:~s", [Code, Cause]),
             case (cf_util:handle_bridge_failure(Cause, Call) =:= ok)
                 orelse (cf_util:handle_bridge_failure(Code, Call) =:= ok) of
                 true -> ok;
@@ -111,7 +111,7 @@ wait_for_offnet() ->
                      ,wh_json:get_value(<<"Response-Code">>, JObj)
                     };
                 { <<"call_event">>, <<"CHANNEL_DESTROY">> } ->
-                    lager:debug("recv channel destroy"),
+                    lager:info("recv channel destroy"),
                     {wh_json:get_value(<<"Hangup-Cause">>, JObj)
                      ,wh_json:get_value(<<"Hangup-Code">>, JObj)
                     };
