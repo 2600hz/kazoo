@@ -73,7 +73,7 @@ start_link(Node, Options) ->
                              ]
                             ,[Node, Options]).
 
--spec presence_update/2 :: (wh_json:json_object(), proplist()) -> any().
+-spec presence_update/2 :: (wh_json:json_object(), wh_proplist()) -> any().
 presence_update(JObj, _Props) ->
     do_presence_update(wh_json:get_value(<<"State">>, JObj), JObj).
 
@@ -107,7 +107,7 @@ do_presence_update(State, JObj) ->
             end,
     relay_presence('PRESENCE_IN', PresenceId, Event, node(), Switch).
 
--spec mwi_update/2 :: (wh_json:json_object(), proplist()) -> no_return().
+-spec mwi_update/2 :: (wh_json:json_object(), wh_proplist()) -> no_return().
 mwi_update(JObj, Props) ->
     _ = wh_util:put_callid(JObj),
 
@@ -356,8 +356,8 @@ maybe_handle_presence_out(Props, Node) ->
         _Else -> ok
     end.
 
--spec confirmed_presence_event/2 :: (ne_binary(), wh_json:json_object()) -> proplist().
--spec confirmed_presence_event/3 :: (ne_binary(), ne_binary(), wh_json:json_object()) -> proplist().
+-spec confirmed_presence_event/2 :: (ne_binary(), wh_json:json_object()) -> wh_proplist().
+-spec confirmed_presence_event/3 :: (ne_binary(), ne_binary(), wh_json:json_object()) -> wh_proplist().
 
 confirmed_presence_event(PresenceId, JObj) ->
     UniqueId = case wh_json:get_ne_value(<<"Call-ID">>, JObj) of
@@ -382,8 +382,8 @@ confirmed_presence_event(PresenceId, UniqueId, JObj) ->
      ,{"Caller-Caller-ID-Name", wh_json:get_string_value(<<"Caller-ID-Name">>, JObj)}
     ].
 
--spec early_presence_event/2 :: (ne_binary(), wh_json:json_object()) -> proplist().
--spec early_presence_event/3 :: (ne_binary(), ne_binary(), wh_json:json_object()) -> proplist().
+-spec early_presence_event/2 :: (ne_binary(), wh_json:json_object()) -> wh_proplist().
+-spec early_presence_event/3 :: (ne_binary(), ne_binary(), wh_json:json_object()) -> wh_proplist().
 
 early_presence_event(PresenceId, JObj) ->
     UniqueId = case wh_json:get_ne_value(<<"Call-ID">>, JObj) of
@@ -408,8 +408,8 @@ early_presence_event(PresenceId, UniqueId, JObj) ->
      ,{"Caller-Caller-ID-Name", wh_json:get_string_value(<<"Caller-ID-Name">>, JObj)}
     ].
 
--spec terminated_presence_event/2 :: (ne_binary(), wh_json:json_object()) -> proplist().
--spec terminated_presence_event/3 :: (ne_binary(), ne_binary(), wh_json:json_object()) -> proplist().
+-spec terminated_presence_event/2 :: (ne_binary(), wh_json:json_object()) -> wh_proplist().
+-spec terminated_presence_event/3 :: (ne_binary(), ne_binary(), wh_json:json_object()) -> wh_proplist().
 
 terminated_presence_event(PresenceId, JObj) ->
     UniqueId = case wh_json:get_ne_value(<<"Call-ID">>, JObj) of
@@ -434,7 +434,7 @@ terminated_presence_event(PresenceId, UniqueId, JObj) ->
      ,{"Caller-Caller-ID-Name", wh_json:get_string_value(<<"Caller-ID-Name">>, JObj)}
     ].
 
--spec empty_presence_event/1 :: (ne_binary()) -> proplist().
+-spec empty_presence_event/1 :: (ne_binary()) -> wh_proplist().
 empty_presence_event(PresenceId) ->
     [{"proto", "any"}
      ,{"login", "kazoo by 2600hz"}
@@ -446,7 +446,7 @@ empty_presence_event(PresenceId) ->
      ,{"force-full-dialog", "true"}
     ].
 
--spec publish_presence_event/3 :: (ne_binary(), proplist(), ne_binary() | atom()) -> 'ok'.
+-spec publish_presence_event/3 :: (ne_binary(), wh_proplist(), ne_binary() | atom()) -> 'ok'.
 publish_presence_event(EventName, Props, Node) ->
     From = props:get_value(<<"from">>, Props, <<"nouser@nodomain">>),
     To = props:get_value(<<"to">>, Props, <<"nouser@nodomain">>),
@@ -468,7 +468,7 @@ publish_presence_event(EventName, Props, Node) ->
           ],
     wapi_notifications:publish_presence_probe(Req).
 
--spec relay_presence/5 :: (atom(), ne_binary(), wh_proplist(), atom(), 'undefined' | ne_binary()) -> [fs_sendevent_ret(),...].
+-spec relay_presence/5 :: (atom(), ne_binary(), wh_proplist(), atom(), api_binary()) -> [fs_sendevent_ret(),...].
 relay_presence(EventName, PresenceId, Props, Node, undefined) ->
     Match = #sip_subscription{to=PresenceId
                               ,node='$1'
@@ -501,7 +501,7 @@ relay_presence(EventName, _, Props, Node, Switch) ->
               ],
     freeswitch:sendevent(wh_util:to_atom(Switch), EventName, Headers).
 
--spec handle_message_query/2 :: (proplist(), atom()) -> 'ok'.
+-spec handle_message_query/2 :: (wh_proplist(), atom()) -> 'ok'.
 handle_message_query(Data, Node) ->
     MessageAccount = props:get_value(<<"VM-User">>, Data, props:get_value(<<"Message-Account">>, Data)),
     case re:run(MessageAccount, <<"(?:sip:)?(.*)@(.*)$">>, [{capture, all, binary}]) of
