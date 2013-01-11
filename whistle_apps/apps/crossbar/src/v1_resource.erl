@@ -347,7 +347,12 @@ languages_provided(Req0, #cb_context{req_nouns=Nouns}=Context0) ->
                             {ReqAcc1, ContextAcc1, _} = crossbar_bindings:fold(Event, Payload),
                             {ReqAcc1, ContextAcc1}
                     end, {Req0, Context0}, Nouns),
-    {LangsProvided, Req1, Context1}.
+    case cowboy_http_req:parse_header('Accept-Language', Req1) of
+        {undefined, Req2} -> {LangsProvided, Req2, Context1};
+        {[{A,_}|_]=_Accepted, Req2} ->
+            lager:debug("adding first accept-lang header language: ~s", [A]),
+            {LangsProvided ++ [A], Req2, Context1}
+    end.
 
 %% -spec charsets_provided/2 :: (#http_req{}, cb_context:context()) -> {[ne_binary(),...], #http_req{}, cb_context:context()}.
 %% charsets_provided(Req0, #cb_context{req_nouns=Nouns}=Context0) ->
