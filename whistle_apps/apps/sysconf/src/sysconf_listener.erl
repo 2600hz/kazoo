@@ -11,11 +11,17 @@
 -behaviour(gen_listener).
 
 %% API
--export([start_link/0, stop/1]).
-
-%% gen_listener callbacks
--export([init/1, handle_call/3, handle_cast/2, handle_info/2, handle_event/2
-         ,terminate/2, code_change/3]).
+-export([start_link/0
+         ,stop/1
+        ]).
+-export([init/1
+         ,handle_call/3
+         ,handle_cast/2
+         ,handle_info/2
+         ,handle_event/2
+         ,terminate/2
+         ,code_change/3
+        ]).
 
 -include("sysconf.hrl").
 
@@ -72,6 +78,7 @@ stop(Srv) ->
 init([]) ->
     process_flag(trap_exit, true),
     lager:debug("starting new sysconf server"),
+    _ = couch_mgr:add_change_handler(?WH_CONFIG_DB),
     {ok, ok}.
 
 %%--------------------------------------------------------------------
@@ -114,6 +121,14 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info({document_changes, _, _}, State) ->
+    whapps_config:flush(),
+    lager:debug("system configuration was updated, flushing whapps config cache", []),
+    {noreply, State};
+handle_info({document_deleted, _}, State) ->
+    whapps_config:flush(),
+    lager:debug("system configuration was updated, flushing whapps config cache", []),
+    {noreply, State};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {noreply, State}.
