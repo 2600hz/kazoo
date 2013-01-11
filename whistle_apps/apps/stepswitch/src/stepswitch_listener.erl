@@ -22,9 +22,7 @@
 
 -define(SERVER, ?MODULE).
 
--record(state, {last_doc_change = {<<>>, [<<>>]}
-                ,resrcs = []
-               }).
+-record(state, {resrcs = []}).
 
 -define(BINDINGS, [{route, []}
                    ,{offnet_resource, []}
@@ -75,6 +73,7 @@ start_link() ->
 %%--------------------------------------------------------------------
 init([]) ->
     lager:debug("starting new stepswitch outbound responder"),
+    _ = couch_mgr:add_change_handler(?RESOURCES_DB),
     stepswitch_maintenance:refresh(),
     {ok, #state{resrcs=get_resrcs()}}.
 
@@ -144,31 +143,21 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({document_changes, DocId, Changes}, #state{last_doc_change={DocId, Changes}}=State) ->
-    %% Ignore the duplicate document change notifications used for keep alives
-    {noreply, State};
-
-handle_info({document_changes, DocId, [Changes]=C}, #state{resrcs=Resrcs}=State) ->
+handle_info({document_changes, DocId, [Changes]}, #state{resrcs=Resrcs}=State) ->
     Rev = wh_json:get_value(<<"rev">>, Changes),
     case lists:keysearch(DocId, #resrc.id, Resrcs) of
-        {value, #resrc{rev=Rev}} -> {noreply, State#state{last_doc_change={DocId, C}}, hibernate};
-        _ -> {noreply, State#state{resrcs=update_resrc(DocId, Resrcs), last_doc_change={DocId, C}}, hibernate}
+        {value, #resrc{rev=Rev}} -> {noreply, State, hibernate};
+        _ -> 
+            lager:info("reloading offnet resource ~s", [DocId]),
+            {noreply, State#state{resrcs=update_resrc(DocId, Resrcs)}, hibernate}
     end;
-
 handle_info({document_deleted, DocId}, #state{resrcs=Resrcs}=State) ->
     case lists:keyfind(DocId, #resrc.id, Resrcs) of
         false -> {noreply, State};
         _ ->
-            lager:debug("resource ~s deleted", [DocId]),
-            couch_mgr:rm_change_handler(?RESOURCES_DB, DocId),
+            lager:info("removing offnet resource ~s", [DocId]),
             {noreply, State#state{resrcs=lists:keydelete(DocId, #resrc.id, Resrcs)}, hibernate}
     end;
-
-handle_info({change_handler_terminating, ?RESOURCES_DB, DocId}, State) ->
-    lager:debug("change handler down for ~s:~s", [?RESOURCES_DB, DocId]),
-    _ = couch_mgr:add_change_handler(?RESOURCES_DB, DocId),
-    {noreply, State};
-
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {noreply, State}.
@@ -221,8 +210,6 @@ code_change(_OldVsn, State, _Extra) ->
 get_resrcs() ->
     case couch_mgr:get_results(?RESOURCES_DB, ?LIST_RESOURCES_BY_ID, [include_docs]) of
         {ok, Resrcs} ->
-            _ = [couch_mgr:add_change_handler(?RESOURCES_DB, wh_json:get_value(<<"id">>, R))
-                 || R <- Resrcs],
             [create_resrc(wh_json:get_value(<<"doc">>, R))
              || R <- Resrcs, wh_util:is_true(wh_json:get_value([<<"doc">>, <<"enabled">>], R, 'true'))];
         {error, _}=E ->
@@ -252,7 +239,6 @@ update_resrc(DocId, Resrcs) ->
             end;
         {error, R} ->
             lager:debug("removing resource ~s, ~w", [DocId, R]),
-            couch_mgr:rm_change_handler(?RESOURCES_DB, DocId),
             lists:keydelete(DocId, #resrc.id, Resrcs)
     end.
 

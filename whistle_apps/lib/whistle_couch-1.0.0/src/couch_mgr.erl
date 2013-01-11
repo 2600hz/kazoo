@@ -59,7 +59,9 @@
          ,del_doc/2, del_docs/2
          ,lookup_doc_rev/2
          ,update_doc/3, update_doc/4
-         ,add_change_handler/2, add_change_handler/3
+         ,add_change_handler/1
+         ,add_change_handler/2
+         ,add_change_handler/3
          ,rm_change_handler/2
          ,load_doc_from_file/3
          ,update_doc_from_file/3
@@ -1004,6 +1006,13 @@ get_url(H, {User, Pwd}, P) ->
                     ,"@", H, ":", wh_util:to_binary(P), "/"
                    ]).
 
+add_change_handler(DBName) ->
+    lager:debug("add change handler for DB: ~s", [DBName]),
+    gen_server:cast(?SERVER, {add_change_handler, wh_util:to_binary(DBName), <<>>, self()}).
+
+add_change_handler(DBName, Pid) when is_pid(Pid) ->
+    lager:debug("add change handler for DB: ~s", [DBName]),
+    gen_server:cast(?SERVER, {add_change_handler, wh_util:to_binary(DBName), <<>>, Pid});
 add_change_handler(DBName, DocID) ->
     lager:debug("add change handler for DB: ~s and Doc: ~s", [DBName, DocID]),
     gen_server:cast(?SERVER, {add_change_handler, wh_util:to_binary(DBName), wh_util:to_binary(DocID), self()}).
@@ -1132,18 +1141,14 @@ handle_call({rm_change_handler, DBName, DocID}, {Pid, _Ref}, #state{change_handl
 handle_cast(load_configs, State) ->
     couch_config:ready(),
     {noreply, State};
-handle_cast({add_change_handler, DBName, DocID, Pid}, #state{change_handlers=CH, connection=S}=State) ->
-    case dict:find(DBName, CH) of
+handle_cast({add_change_handler, DbName, DocID, Pid}, #state{change_handlers=CH}=State) ->
+    case dict:find(DbName, CH) of
         {ok, {Srv, _}} ->
-            lager:debug("found change handler(~p): adding listener(~p) for ~s:~s", [Srv, Pid, DBName, DocID]),
+            lager:debug("found change handler(~p) ~s", [Srv, DbName]),
             change_handler:add_listener(Srv, Pid, DocID),
             {noreply, State};
         error ->
-            {ok, Srv} = change_mgr_sup:start_handler(couch_util:get_db(S, DBName), []),
-            lager:debug("started change handler(~p): adding listener(~p) for ~s:~s", [Srv, Pid, DBName, DocID]),
-            SrvRef = erlang:monitor(process, Srv),
-            change_handler:add_listener(Srv, Pid, DocID),
-            {noreply, State#state{change_handlers=dict:store(DBName, {Srv, SrvRef}, CH)}}
+            {noreply, maybe_start_change_handler(DbName, Pid, State)}
     end.
 
 %%--------------------------------------------------------------------
@@ -1156,12 +1161,8 @@ handle_cast({add_change_handler, DBName, DocID, Pid}, #state{change_handlers=CH,
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({'DOWN', Ref, process, Srv, complete}, #state{change_handlers=CH}=State) ->
-    lager:debug("srv ~p down after complete", [Srv]),
-    erlang:demonitor(Ref, [flush]),
-    {noreply, State#state{change_handlers=remove_ref(Ref, CH)}};
-handle_info({'DOWN', Ref, process, Srv, {error,connection_closed}}, #state{change_handlers=CH}=State) ->
-    lager:debug("srv ~p down after conn closed", [Srv]),
+handle_info({'DOWN', Ref, process, Srv, Reason}, #state{change_handlers=CH}=State) ->
+    lager:debug("change handler ~p down: ~p", [Srv, Reason]),
     erlang:demonitor(Ref, [flush]),
     {noreply, State#state{change_handlers=remove_ref(Ref, CH)}};
 handle_info(_Info, State) ->
@@ -1268,4 +1269,30 @@ maybe_convert_dbname(DbName) ->
     case wh_util:is_empty(DbName) of
         true -> {error, invalid_db_name};
         false -> {ok, wh_util:to_binary(DbName)}
+    end.
+
+-spec maybe_start_change_handler/3 :: (ne_binary(), pid(), #state{}) -> #state{}.
+maybe_start_change_handler(DbName, Pid, #state{connection=Conn}=State) ->
+    case couch_util:db_info(Conn, DbName) of
+        {error, _} ->
+            lager:notice("unable to fetch database info for ~s", [DbName]),
+            State;
+        {ok, JObj} ->
+            UpdateSeq = wh_json:get_value(<<"update_seq">>, JObj),
+            Db = couch_util:get_db(Conn, DbName),
+            start_change_handler(Db, UpdateSeq, Pid, State)
+    end.
+
+-spec start_change_handler/4 :: (#db{}, list(), pid(), #state{}) -> #state{}.
+start_change_handler(#db{name=DbName}=Db, [SeqNumber, Seq], Pid, #state{change_handlers=CH}=State) ->
+    Since = <<"[", (wh_util:to_binary(SeqNumber))/binary, ",\"", Seq/binary, "\"]">>,
+    case change_mgr_sup:start_handler(Db, [{since, wh_util:to_list(Since)}]) of
+        {ok, Srv} ->
+            lager:debug("started change handler(~p) ~s at sequence ~p", [Srv, DbName, SeqNumber]),
+            SrvRef = erlang:monitor(process, Srv),
+            change_handler:add_listener(Srv, Pid),
+            State#state{change_handlers=dict:store(wh_util:to_binary(DbName), {Srv, SrvRef}, CH)};
+        _Else ->
+            lager:notice("failed to start ~s change handler: ~p", [DbName, _Else]),          
+            State
     end.
