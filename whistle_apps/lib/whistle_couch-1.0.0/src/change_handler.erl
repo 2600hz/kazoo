@@ -68,11 +68,9 @@ add_listener(Srv, Pid) ->
     add_listener(Srv, Pid, <<>>).
 
 add_listener(Srv, Pid, Doc) ->
-    lager:debug("adding listener ~p for doc ~s to CH ~p", [Pid, Doc, Srv]),
     gen_changes:cast(Srv, {add_listener, Pid, Doc}).
 
 rm_listener(Srv, Pid, Doc) ->
-    lager:debug("removing listener ~p for doc ~s to CH ~p", [Pid, Doc, Srv]),
     gen_changes:cast(Srv, {rm_listener, Pid, Doc}).
 
 %%%===================================================================
@@ -128,10 +126,12 @@ handle_cast({add_listener, Pid, Doc}, #state{listeners=Ls}=State) ->
                    end, Ls) of
         true -> {noreply, State};
         false ->
+            lager:debug("adding listener(~p) for ~s", [Pid, case Doc of <<>> -> <<"_all_docs">>; Else -> Else end]),
             Ref = erlang:monitor(process, Pid),
             {noreply, State#state{listeners=[#listener{pid=Pid,doc=Doc,monitor_ref=Ref} | Ls]}, hibernate}
     end;
 handle_cast({rm_listener, Pid, Doc}, #state{listeners=Ls}=State) ->
+    lager:debug("remove listener(~p) for ~s", [Pid, case Doc of <<>> -> <<"_all_docs">>; Else -> Else end]),
     Ls1 = [ V || V <- Ls, keep_listener(V, Doc, Pid)],
     {noreply, State#state{listeners=Ls1}, hibernate}.
 
@@ -146,7 +146,7 @@ handle_cast({rm_listener, Pid, Doc}, #state{listeners=Ls}=State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({'DOWN', _Ref, process, Pid, Info}, #state{listeners=Ls}=State) ->
-    lager:debug("DOWN recv for ~p(~p)", [Pid, Info]),
+    lager:debug("change listener(~p) went down: ~p", [Pid, Info]),
     Ls1 = [ V || V <- Ls, keep_listener(V, Pid)],
     {noreply, State#state{listeners=Ls1}, hibernate};
 handle_info({error, {_, connection_closed}}, State) ->
