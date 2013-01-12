@@ -36,7 +36,7 @@ handle(Data, Call) ->
               ,{<<"Voice-URI">>, wh_json:get_value(<<"voice_url">>, Data)}
               ,{<<"CDR-URI">>, wh_json:get_value(<<"cdr_url">>, Data)}
               ,{<<"Request-Format">>, wh_json:get_value(<<"req_format">>, Data)}
-              ,{<<"HTTP-Method">>, kzt_util:http_method(wh_json:get_value(<<"http_method">>, Data, get))}
+              ,{<<"HTTP-Method">>, kzt_util:http_method(wh_json:get_atom_value(<<"http_method">>, Data, get))}
               | wh_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     wapi_pivot:publish_req(Prop),
