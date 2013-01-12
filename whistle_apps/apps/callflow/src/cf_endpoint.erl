@@ -100,6 +100,14 @@ maybe_fetch_realtime_attributes(OwnerId, EndpointId, AccountDb) ->
 -spec merge_realtime_attributes/3 :: ([] | [ne_binary(),...], wh_json:object(), wh_json:object()) -> wh_json:object().
 merge_realtime_attributes([], _, Endpoint) ->
     Endpoint;
+merge_realtime_attributes([<<"call_forward">> = Key|Keys], Owner, Endpoint) ->
+    case wh_json:is_true([Key, <<"enabled">>], Endpoint) of
+        true -> merge_realtime_attributes(Keys, Owner, Endpoint);
+        false ->
+            Attribute = wh_json:get_ne_value(Key, Owner, wh_json:new()),
+            Updated = wh_json:set_value(Key, Attribute, Endpoint),
+            merge_realtime_attributes(Keys, Owner, Updated)
+    end;
 merge_realtime_attributes([Key|Keys], Owner, Endpoint) ->
     Attribute = wh_json:get_ne_value(Key, Owner, wh_json:new()),
     Updated = wh_json:set_value(Key, Attribute, Endpoint),
@@ -138,13 +146,24 @@ merge_cached_attributes(Keys, undefined, Endpoint, Owner) ->
             merge_cached_attributes(Keys, wh_json:new(), Endpoint, Owner)
     end;
 merge_cached_attributes([], _, Endpoint, _) -> Endpoint;
-merge_cached_attributes([<<"name">>|Keys], Account, Endpoint, Owner) ->
-    AccountName = wh_json:get_ne_value(<<"name">>, Account),
-    EndpointName = wh_json:get_ne_value(<<"name">>, Endpoint),
+merge_cached_attributes([<<"name">> = Key|Keys], Account, Endpoint, Owner) ->
+    AccountName = wh_json:get_ne_value(Key, Account),
+    EndpointName = wh_json:get_ne_value(Key, Endpoint),
     FirstName = wh_json:get_ne_value(<<"first_name">>, Owner),
     LastName = wh_json:get_ne_value(<<"last_name">>, Owner),
     Name = create_endpoint_name(FirstName, LastName, EndpointName, AccountName),
-    merge_cached_attributes(Keys, Account, wh_json:set_value(<<"name">>, Name, Endpoint), Owner);
+    merge_cached_attributes(Keys, Account, wh_json:set_value(Key, Name, Endpoint), Owner);
+merge_cached_attributes([<<"call_forward">> = Key|Keys], Account, Endpoint, Owner) ->
+    EndpointAttr = wh_json:get_ne_value(Key, Endpoint, wh_json:new()),
+    case wh_json:is_true(<<"enabled">>, EndpointAttr) of
+        true -> merge_cached_attributes(Keys, Account, Endpoint, Owner);
+        false ->
+            AccountAttr = wh_json:get_ne_value(Key, Account, wh_json:new()),
+            OwnerAttr = wh_json:get_ne_value(Key, Owner, wh_json:new()),
+            Merged1 = wh_json:merge_recursive(AccountAttr, EndpointAttr),
+            Merged2 = wh_json:merge_recursive(Merged1, OwnerAttr),
+            merge_cached_attributes(Keys, Account, wh_json:set_value(Key, Merged2, Endpoint), Owner)
+    end;
 merge_cached_attributes([Key|Keys], Account, Endpoint, Owner) ->
     AccountAttr = wh_json:get_ne_value(Key, Account, wh_json:new()),
     EndpointAttr = wh_json:get_ne_value(Key, Endpoint, wh_json:new()),
