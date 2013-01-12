@@ -56,7 +56,7 @@ find_candidate_translators(_) ->
     [].
 
 is_recognized(M, Cmds) ->
-    case catch M:does_recognize(Cmds) of
-        {true, _}=True -> True;
-        _F -> {false, []}
+    case catch M:parse_cmds(Cmds) of
+        {error, _} -> {false, []};
+        {ok, Resp} -> {true, Resp}
     end.
