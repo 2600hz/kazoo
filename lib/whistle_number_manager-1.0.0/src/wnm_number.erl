@@ -723,7 +723,7 @@ error_no_change_required(State, N) ->
 
 -spec error_not_reconcilable/1 :: (wnm_number()) -> no_return().
 error_not_reconcilable(N) ->
-    Error = <<"The number does not met the minium requirements for reconciliation">>,
+    Error = <<"The number does not meet the minium requirements for reconciliation">>,
     lager:debug("~s", [Error]),
     throw({not_reconcilable, N#number{error_jobj=wh_json:from_list([{<<"not_routable">>, Error}])}}).
 
