@@ -312,9 +312,11 @@ response_auth(JObj) ->
     AccountId = wh_json:get_value(<<"account_id">>, JObj, <<>>),
     OwnerId = wh_json:get_value(<<"owner_id">>, JObj, <<>>),
     IsReseller = wh_services:is_reseller(AccountId),
+    ResellerId = wh_services:find_reseller_id(AccountId),
     wh_json:from_list([{<<"account_id">>, AccountId}
                        ,{<<"owner_id">>, OwnerId}
                        ,{<<"is_reseller">>, IsReseller}
+                       ,{<<"reseller_id">>, ResellerId}
                       ]).
     
 %%--------------------------------------------------------------------
