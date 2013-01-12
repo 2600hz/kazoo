@@ -390,7 +390,11 @@ get_fs_app(Node, UUID, JObj, <<"bridge">>) ->
                                            case wh_json:get_value([<<"Custom-Channel-Vars">>, <<"Hold-Media">>], JObj) of
                                                undefined ->
                                                    case ecallmgr_fs_nodes:channel_import_moh(UUID) of
-                                                       true -> [{"application", "export hold_music=${hold_music}"}|DP];
+                                                       true -> 
+                                                           [{"application", "export hold_music=${hold_music}"}
+                                                            ,{"application", "set import=hold_music"}
+                                                            |DP
+                                                           ];
                                                        false -> DP
                                                    end;
                                                Media ->
