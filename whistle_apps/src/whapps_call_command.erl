@@ -743,11 +743,14 @@ play(Media, Terminators, Call) ->
                                    ,{<<"Call-ID">>, CallId}
                                    ,{<<"Msg-ID">>, NoopId}
                                   ])
-                ,wh_json:from_list([{<<"Application-Name">>, <<"play">>}
-                                    ,{<<"Media-Name">>, Media}
-                                    ,{<<"Terminators">>, Terminators}
-                                    ,{<<"Call-ID">>, CallId}
-                                   ])
+                ,wh_json:from_list(
+                   props:filter_undefined(
+                     [{<<"Application-Name">>, <<"play">>}
+                      ,{<<"Media-Name">>, Media}
+                      ,{<<"Terminators">>, Terminators}
+                      ,{<<"Call-ID">>, CallId}
+                     ])
+                  )
                ],
     Command = [{<<"Application-Name">>, <<"queue">>}
                ,{<<"Commands">>, Commands}
