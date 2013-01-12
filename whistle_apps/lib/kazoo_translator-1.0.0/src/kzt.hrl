@@ -7,7 +7,7 @@
 -type stop_return() :: {'stop', whapps_call:call()}.
 
 %% {request, Call, URI, Method, BaseParams}
--type request_return() :: {'request', whapps_call:call(), ne_binary(), 'get' | 'post', api_terms()}.
+-type request_return() :: {'request', whapps_call:call()}.
 
 -type exec_element_return() ::
         ok_return() |
