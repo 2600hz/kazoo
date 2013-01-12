@@ -40,16 +40,19 @@
 
 -define(SUPPORTED_METHODS, [get, post]).
 
-http_method(Props) ->
-    case props:get_atom_value(method, Props, post) of
+-spec http_method/1 :: (api_binary() | list()) -> 'atom'.
+http_method(L) when is_list(L) ->
+    http_method(props:get_value(method, L));
+http_method(Method) ->
+    case wh_util:to_atom(Method) of
         get -> get;
         post -> post;
         undefined -> post
     end.
-
--spec resolve_uri/2 :: (nonempty_string() | ne_binary(), nonempty_string() | ne_binary() | 'undefined') -> ne_binary().
+        
+-spec resolve_uri/2 :: (nonempty_string() | ne_binary(), nonempty_string() | api_binary()) -> ne_binary().
 resolve_uri(Raw, undefined) -> wh_util:to_binary(Raw);
-resolve_uri(_Raw, [$h,$t,$t,$p|_]=Abs) -> Abs;
+resolve_uri(_Raw, [$h,$t,$t,$p|_]=Abs) -> wh_util:to_binary(Abs);
 resolve_uri(_Raw, <<"http", _/binary>> = Abs) -> Abs;
 resolve_uri(RawPath, Relative) ->
     lager:debug("taking url ~s and applying path ~s", [RawPath, Relative]),
@@ -103,8 +106,9 @@ offnet_req(Data, Call) ->
            | wh_api:default_headers(whapps_call:controller_queue(Call), ?APP_NAME, ?APP_VERSION)],
     wapi_offnet_resource:publish_req(Req).
 
--spec update_call_status/2 :: (whapps_call:call(), ne_binary()) -> whapps_call:call().
-update_call_status(Call, Status) ->
+-spec update_call_status/2 :: (ne_binary(), whapps_call:call()) -> whapps_call:call().
+-spec get_call_status/1 :: (whapps_call:call()) -> api_binary().
+update_call_status(Status, Call) ->
     whapps_call:kvs_store(<<"call_status">>, Status, Call).
 get_call_status(Call) ->
     whapps_call:kvs_fetch(<<"call_status">>, Call).
