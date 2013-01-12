@@ -15,7 +15,7 @@
          ,handle_resp/4
          ,handle_call_event/2
          ,stop_call/2
-         ,new_request/4
+         ,new_request/3, new_request/4
          ,updated_call/2
         ]).
 
@@ -154,8 +154,10 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast({request, Uri, Method}, #state{request_params=Params}=State) ->
+    handle_cast({request, Uri, Method, Params}, State);
 handle_cast({request, Uri, Method, Params}, #state{call=Call}=State) ->
-    Call1 = whapps_call:kvs_store(<<"voice_uri">>, Uri, Call),
+    Call1 = kzt_util:set_voice_uri(Uri, Call),
 
     {ok, ReqId} = send_req(Call1, Uri, Method, Params),
     lager:debug("sent request ~p to '~s' via '~s'", [ReqId, Uri, Method]),
@@ -171,7 +173,7 @@ handle_cast({request, Uri, Method, Params}, #state{call=Call}=State) ->
 handle_cast({updated_call, Call}, State) ->
     {noreply, State#state{call=Call}};
 
-handle_cast({controller_queue, <<>>}, State) ->
+handle_cast({controller_queue, undefined}, State) ->
     get_my_queue(),
     {noreply, State};
 handle_cast({controller_queue, ControllerQ}, #state{call=Call}=State) ->
@@ -305,7 +307,7 @@ send_req(Call, Uri, post, BaseParams) ->
                         {'ok', ibrowse_req_id()} |
                         {'stop', whapps_call:call()}.
 send(Call, Uri, Method, ReqHdrs, ReqBody) ->
-    lager:debug("sending req to ~s(~s): ~s", [iolist_to_binary(Uri), Method, ReqBody]),
+    lager:debug("sending req to ~s(~s): ~s", [iolist_to_binary(Uri), Method, iolist_to_binary(ReqBody)]),
 
     Opts = [{stream_to, self()}
             | ?DEFAULT_OPTS
@@ -341,9 +343,12 @@ handle_resp(Call, CT, RespBody, Srv) ->
     case handle_resp(Call, CT, RespBody) of
         {stop, Call1} -> ?MODULE:stop_call(Srv, Call1);
         {ok, Call1} -> ?MODULE:stop_call(Srv, Call1);
-        {request, Call1, Uri, Method, Params} ->
+        {request, Call1} ->
             ?MODULE:updated_call(Srv, Call1),
-            ?MODULE:new_request(Srv, Uri, Method, Params)
+            ?MODULE:new_request(Srv
+                                ,kzt_util:get_voice_uri(Call1)
+                                ,kzt_util:get_voice_uri_method(Call1)
+                               )
     end.
 
 handle_resp(Call, _, <<>>) ->
@@ -359,9 +364,12 @@ handle_resp(Call, CT, RespBody) ->
         {ok, _Call1}=OK ->
             lager:debug("translator says ok, continuing"),
             OK;
-        {request, _Call1, _Uri, _Method, _Params}=Req ->
-            lager:debug("translator says make request to ~s", [_Uri]),
-            Req
+        {request, _Call1}=Req ->
+            lager:debug("translator says make another request"),
+            Req;
+        {error, Call1} ->
+            lager:debug("error in translator, FAIL"),
+            {stop, Call1}
     catch
         throw:{error, no_translators, _CT} ->
             lager:debug("unknown content type ~s, no translators", [_CT]),
