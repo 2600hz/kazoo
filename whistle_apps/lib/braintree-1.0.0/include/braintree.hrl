@@ -104,7 +104,7 @@
                   ,number :: api_binary()
                   ,cvv :: api_binary()
                   ,customer_id :: api_binary()
-                  ,make_default = 'false' :: boolean()
+                  ,make_default = 'true' :: boolean()
                   ,verify = 'true' :: boolean()
                   ,update_existing = 'false' :: boolean() | ne_binary()
                   ,billing_address_id :: api_binary()

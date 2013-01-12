@@ -270,7 +270,7 @@ json_to_record(JObj) ->
              ,billing_address = braintree_address:json_to_record(wh_json:get_value(<<"billing_address">>, JObj))
              ,update_existing = wh_json:get_binary_value(<<"update_existing">>, JObj)
              ,verify = wh_json:is_true(<<"verify">>, JObj, true)
-             ,make_default = wh_json:is_true(<<"make_default">>, JObj)
+             ,make_default = wh_json:is_true(<<"make_default">>, JObj, true)
             }.
 
 %%--------------------------------------------------------------------
