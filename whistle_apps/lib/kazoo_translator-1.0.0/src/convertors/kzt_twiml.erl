@@ -12,7 +12,7 @@
 
 -export([exec/2
          ,parse_cmds/1
-         ,base_req_params/1
+         ,req_params/1
         ]).
 
 parse_cmds(XMLString) ->
@@ -25,7 +25,7 @@ parse_cmds(XMLString) ->
 
 -spec exec/2 :: (whapps_call:call(), #xmlElement{} | text()) ->
                         {'error', whapps_call:call()} |
-                        {'req', whapps_call:call()} |
+                        {'request', whapps_call:call()} |
                         {'stop', whapps_call:call()}.
 exec(Call, #xmlElement{name='Response', content=Els}) ->
     exec_elements(Call, Els);
@@ -70,83 +70,106 @@ exec_elements(Call, [El|Els]) ->
                                 {'req', whapps_call:call()} |
                                 {'stop', whapps_call:call()} |
                                 {'error', whapps_call:call()}.
-exec_element(Call, #xmlElement{name='Dial'
-                               ,content=Endpoints
-                               ,attributes=Attrs
-                              }) ->
+exec_element(Call
+             ,#xmlElement{name='Dial'
+                          ,content=Endpoints
+                          ,attributes=Attrs
+                         }
+            ) ->
     dial(Call, Endpoints, Attrs);
-exec_element(Call, #xmlElement{name='Record'
-                               ,content=[] % nothing inside the tags please
-                               ,attributes=Attrs
-                              }) ->
+exec_element(Call
+             ,#xmlElement{name='Record'
+                          ,content=[] % nothing inside the tags please
+                          ,attributes=Attrs
+                         }
+            ) ->
     record_call(Call, Attrs);
-exec_element(Call, #xmlElement{name='Gather'
-                                  ,content=SubActions
-                                  ,attributes=Attrs
-                                 }) ->
+exec_element(Call
+             ,#xmlElement{name='Gather'
+                          ,content=SubActions
+                          ,attributes=Attrs
+                         }
+            ) ->
     gather(Call, SubActions, Attrs);
-exec_element(Call, #xmlElement{name='Play'
-                                  ,content=ToPlay
-                                  ,attributes=Attrs
-                                 }) ->
+exec_element(Call
+             ,#xmlElement{name='Play'
+                          ,content=ToPlay
+                          ,attributes=Attrs
+                         }
+            ) ->
     case play(Call, ToPlay, Attrs) of
         {ok, _}=OK -> OK;
         {error, _E, Call1} ->
             lager:debug("play stopped with error ~p", [_E]),
             {error, Call1}
     end;
-exec_element(Call, #xmlElement{name='Say'
-                                  ,content=ToSay
-                                  ,attributes=Attrs
-                                 }) ->
+exec_element(Call
+             ,#xmlElement{name='Say'
+                          ,content=ToSay
+                          ,attributes=Attrs
+                         }
+            ) ->
     case say(Call, ToSay, Attrs) of
         {ok, _}=OK -> OK;
         {error, _E, Call1} ->
             lager:debug("say stopped with error ~p", [_E]),
             {error, Call1}
     end;
-exec_element(Call, #xmlElement{name='Redirect'
-                                  ,content=RedirectUrl
-                                  ,attributes=Attrs
-                                 }) ->
+exec_element(Call
+             ,#xmlElement{name='Redirect'
+                          ,content=RedirectUrl
+                          ,attributes=Attrs
+                         }
+            ) ->
     redirect(Call, RedirectUrl, Attrs);
-exec_element(Call, #xmlElement{name='Pause'
-                                  ,content=[]
-                                  ,attributes=Attrs
-                                 }) ->
+exec_element(Call
+             ,#xmlElement{name='Pause'
+                          ,content=[]
+                          ,attributes=Attrs
+                         }
+            ) ->
     pause(Call, Attrs);
-exec_element(Call, #xmlElement{name='Variable'
-                                  ,content=[]
-                                  ,attributes=Attrs
-                                 }) ->
+exec_element(Call
+             ,#xmlElement{name='Variable'
+                          ,content=[]
+                          ,attributes=Attrs
+                         }
+            ) ->
     set_variable(Call, Attrs);
-exec_element(Call, #xmlElement{name='Hangup'
-                                  ,content=[]
-                                  ,attributes=[]
-                                 }) ->
+exec_element(Call
+             ,#xmlElement{name='Hangup'
+                          ,content=[]
+                          ,attributes=[]
+                         }
+            ) ->
     hangup(Call);
-exec_element(Call, #xmlElement{name='Reject'
-                               ,content=[]
-                               ,attributes=Attrs
-                              }) ->
+exec_element(Call
+             ,#xmlElement{name='Reject'
+                          ,content=[]
+                          ,attributes=Attrs
+                         }
+            ) ->
     reject(Call, Attrs);
-exec_element(_Call, #xmlElement{name=Unknown
-                               ,content=_Content
-                               ,attributes=_Attrs
-                              }) ->
+exec_element(_Call
+             ,#xmlElement{name=Unknown
+                          ,content=_Content
+                          ,attributes=_Attrs
+                         }
+            ) ->
     throw({unknown_element, Unknown}).
 
--spec base_req_params/1 :: (whapps_call:call()) -> wh_proplist().
-base_req_params(Call) ->
-    [{<<"CallSid">>, whapps_call:call_id(Call)}
-     ,{<<"AccountSid">>, whapps_call:account_id(Call)}
-     ,{<<"From">>, whapps_call:from_user(Call)}
-     ,{<<"To">>, whapps_call:to_user(Call)}
-     ,{<<"CallStatus">>, whapps_call:kvs_fetch(<<"call_status">>, ?STATUS_RINGING, Call)}
-     ,{<<"ApiVersion">>, <<"2010-04-01">>}
-     ,{<<"Direction">>, <<"inbound">>}
-     ,{<<"CallerName">>, whapps_call:caller_id_name(Call)}
-    ].
+-spec req_params/1 :: (whapps_call:call()) -> wh_proplist().
+req_params(Call) ->
+    props:filter_undefined(
+      [{<<"CallSid">>, whapps_call:call_id(Call)}
+       ,{<<"AccountSid">>, whapps_call:account_id(Call)}
+       ,{<<"From">>, whapps_call:from_user(Call)}
+       ,{<<"To">>, whapps_call:to_user(Call)}
+       ,{<<"CallStatus">>, kzt_util:get_call_status(Call)}
+       ,{<<"ApiVersion">>, <<"2010-04-01">>}
+       ,{<<"Direction">>, <<"inbound">>}
+       ,{<<"CallerName">>, whapps_call:caller_id_name(Call)}
+      ]).
 
 %%------------------------------------------------------------------------------
 %% Verbs
