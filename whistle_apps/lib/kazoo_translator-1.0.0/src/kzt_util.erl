@@ -34,6 +34,7 @@
          ,set_dequeued_call_queue_time/2, get_dequeued_call_queue_time/1
          ,set_dequeued_call_duration/2, get_dequeued_call_duration/1
          ,set_media_meta/2, get_media_meta/1
+         ,set_amqp_listener/2, get_amqp_listener/1
         ]).
 
 -include("kzt.hrl").
@@ -180,6 +181,9 @@ get_dequeued_call_duration(Call) -> whapps_call:kvs_fetch(<<"dequeued_call_durat
 
 set_media_meta(DCS, Call) -> whapps_call:kvs_store(<<"media_meta">>, DCS, Call).
 get_media_meta(Call) -> whapps_call:kvs_fetch(<<"media_meta">>, Call).
+
+set_amqp_listener(Pid, Call) -> whapps_call:kvs_store(<<"amqp_listener">>, Pid, Call).
+get_amqp_listener(Call) -> whapps_call:kvs_fetch(<<"amqp_listener">>, Call).
 
 get_request_vars(Call) ->
     wh_json:from_list(
