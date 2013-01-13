@@ -10,6 +10,7 @@
 -behaviour(supervisor).
 
 -include_lib("whistle/include/wh_types.hrl").
+-include("ecallmgr.hrl").
 
 -define(SERVER, ?MODULE).
 
