@@ -12,7 +12,7 @@
 
 %% API
 -export([start_link/2
-         ,handle_resp/4
+         ,handle_resp/3
          ,handle_call_event/2
          ,stop_call/2
          ,new_request/3, new_request/4
@@ -115,7 +115,7 @@ init([Call, JObj]) ->
     VoiceUri = wh_json:get_value(<<"Voice-URI">>, JObj),
 
     ReqFormat = wh_json:get_value(<<"Request-Format">>, JObj, <<"twiml">>),
-    BaseParams = wh_json:from_list(init_req_params(ReqFormat, Call)),
+    BaseParams = wh_json:from_list(req_params(ReqFormat, Call)),
 
     lager:debug("starting pivot req to ~s to ~s", [Method, VoiceUri]),
 
@@ -124,6 +124,7 @@ init([Call, JObj]) ->
     {ok, #state{
        cdr_uri = wh_json:get_value(<<"CDR-URI">>, JObj)
        ,call = Call
+       ,request_format = ReqFormat
       }, hibernate}.
 
 %%--------------------------------------------------------------------
@@ -154,8 +155,10 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({request, Uri, Method}, #state{request_params=Params}=State) ->
-    handle_cast({request, Uri, Method, Params}, State);
+handle_cast({request, Uri, Method}, #state{call=Call
+                                           ,request_format=ReqFormat
+                                          }=State) ->
+    handle_cast({request, Uri, Method, req_params(ReqFormat, Call)}, State);
 handle_cast({request, Uri, Method, Params}, #state{call=Call}=State) ->
     Call1 = kzt_util:set_voice_uri(Uri, Call),
 
@@ -224,7 +227,11 @@ handle_info({ibrowse_async_response_end, ReqId}, #state{request_id=ReqId
                                                         ,call=Call
                                                        }=State) ->
     Self = self(),
-    {Pid, Ref} = spawn_monitor(?MODULE, handle_resp, [Call, CT, RespBody, Self]),
+    
+    {Pid, Ref} = spawn_monitor(?MODULE, handle_resp, [kzt_util:set_amqp_listener(Self, Call)
+                                                      ,CT
+                                                      ,RespBody
+                                                     ]),
     lager:debug("processing resp with ~p(~p)", [Pid, Ref]),
     {noreply, State#state{request_id = undefined
                           ,request_params = wh_json:new()
@@ -269,7 +276,8 @@ handle_event(_JObj, #state{response_pid=Pid}) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, _State) ->
+terminate(_Reason, #state{call=Call}) ->
+    _ = whapps_call_command:hangup(Call),
     lager:debug("pivot call terminating: ~p", [_Reason]).
 
 %%--------------------------------------------------------------------
@@ -296,9 +304,9 @@ send_req(Call, Uri, get, BaseParams) ->
 
     send(Call, uri(Uri, wh_json:to_querystring(Params)), get, [], []);
 
-send_req(Call, Uri, post, BaseParams) ->
+send_req(Call, Uri, post, BaseParams) when is_list(BaseParams) ->
     UserParams = kzt_translator:get_user_vars(Call),
-    Params = wh_json:set_values(wh_json:to_proplist(BaseParams), UserParams),
+    Params = wh_json:set_values(BaseParams, UserParams),
 
     send(Call, Uri, post, [{"Content-Type", "application/x-www-form-urlencoded"}], wh_json:to_querystring(Params)).
 
@@ -337,10 +345,12 @@ send(Call, Uri, Method, ReqHdrs, ReqBody) ->
             {stop, Call}
     end.
 
--spec handle_resp(whapps_call:call(), ne_binary(), binary(), pid()) -> 'ok'.
-handle_resp(Call, CT, RespBody, Srv) ->
+-spec handle_resp(whapps_call:call(), ne_binary(), binary()) -> 'ok'.
+handle_resp(Call, CT, RespBody) ->
     put(callid, whapps_call:call_id(Call)),
-    case handle_resp(Call, CT, RespBody) of
+    Srv = kzt_util:get_amqp_listener(Call),
+
+    case process_resp(Call, CT, RespBody) of
         {stop, Call1} -> ?MODULE:stop_call(Srv, Call1);
         {ok, Call1} -> ?MODULE:stop_call(Srv, Call1);
         {request, Call1} ->
@@ -351,12 +361,12 @@ handle_resp(Call, CT, RespBody, Srv) ->
                                )
     end.
 
-handle_resp(Call, _, <<>>) ->
+process_resp(Call, _, <<>>) ->
     lager:debug("no response body, finishing up"),
     {stop, Call};
-handle_resp(Call, Hdrs, RespBody) when is_list(Hdrs) ->
+process_resp(Call, Hdrs, RespBody) when is_list(Hdrs) ->
     handle_resp(Call, props:get_value("Content-Type", Hdrs), RespBody);
-handle_resp(Call, CT, RespBody) ->
+process_resp(Call, CT, RespBody) ->
     try kzt_translator:exec(Call, wh_util:to_list(RespBody), CT) of
         {stop, _Call1}=Stop ->
             lager:debug("translator says stop"),
@@ -388,11 +398,12 @@ uri(URI, QueryString) ->
             mochiweb_util:urlunsplit({Scheme, Host, Path, [QS, "&", QueryString], Fragment})
     end.
 
--spec init_req_params(ne_binary(), whapps_call:call()) -> proplist().
-init_req_params(Format, Call) ->
+-spec req_params(ne_binary(), whapps_call:call()) -> wh_proplist().
+req_params(Format, Call) ->
     FmtBin = <<"kzt_", Format/binary>>,
     try 
         FmtAtom = wh_util:to_atom(FmtBin),
+        lager:debug("get req params from ~s", [FmtBin]),
         FmtAtom:req_params(Call)
     catch
         error:badarg ->
@@ -400,7 +411,7 @@ init_req_params(Format, Call) ->
                 non_existing -> [];
                 _Path ->
                     wh_util:to_atom(FmtBin, true),
-                    init_req_params(Format, Call)
+                    req_params(Format, Call)
             end;
         error:undef ->
             []
