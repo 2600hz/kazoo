@@ -40,7 +40,7 @@ handle(Data, Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec bridge_to_endpoints(wh_json:json_object(), whapps_call:call()) ->
-                                       cf_api_bridge_return().
+                                 cf_api_bridge_return().
 bridge_to_endpoints(Data, Call) ->
     EndpointId = wh_json:get_value(<<"id">>, Data),
     Params = wh_json:set_value(<<"source">>, ?MODULE, Data),
