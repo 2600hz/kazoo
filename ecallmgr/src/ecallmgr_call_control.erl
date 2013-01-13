@@ -462,7 +462,9 @@ handle_cast({event_execute_complete, CallId, EvtName, JObj}, #state{callid=CallI
                                                                     ,command_q=CmdQ
                                                                    }=State) ->
     NoopId = wh_json:get_value(<<"Application-Response">>, JObj),
-    case EvtName =:= CurrApp orelse lists:member(EvtName, ecallmgr_util:convert_whistle_app_name(CurrApp)) of
+    RawAppName = wh_json:get_value(<<"Raw-Application-Name">>, JObj, EvtName),
+    AppName = wh_json:get_value(<<"Application-Name">>, JObj, EvtName),
+    case AppName =:= CurrApp orelse lists:member(RawAppName, ecallmgr_util:convert_whistle_app_name(CurrApp)) of
         false ->
             lager:debug("evt ~s not app ~s", [EvtName, CurrApp]),
             {noreply, State};
