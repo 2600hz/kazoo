@@ -119,7 +119,7 @@ change_console_log_level(L) ->
 
 -spec change_error_log_level(log_level()) -> 'ok'.
 change_error_log_level(L) ->
-    lager:set_loglevel(lager_file_backend, L).
+    lager:set_loglevel({lager_file_backend, "log/error.log"}, L).
 
 -spec change_syslog_log_level(log_level()) -> 'ok'.
 change_syslog_log_level(L) ->
