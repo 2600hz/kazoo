@@ -174,7 +174,7 @@ req_params(Call) ->
 %%------------------------------------------------------------------------------
 %% Verbs
 %%------------------------------------------------------------------------------
--spec dial/3 :: (whapps_call:call(), xml_els(), xml_els()) -> {'stop' | 'ok', whapps_call:call()}.
+-spec dial/3 :: (whapps_call:call(), xml_els(), xml_els()) -> {'ok' | 'stop', whapps_call:call()}.
 dial(Call, [#xmlText{type=text}|_]=DialMeTxts, Attrs) ->
     whapps_call_command:answer(Call),
     DialMe = xml_text_to_binary(DialMeTxts),
@@ -241,9 +241,10 @@ setup_call_for_dial(Call, Props) ->
                 ,Setters
                ).
 
+-spec maybe_end_dial/1 :: (whapps_call:call()) -> {'ok' | 'stop', whapps_call:call()}.
 maybe_end_dial(Call) ->
     case kzt_util:get_call_status(Call) of
-        ?STATUS_COMPLETED -> {stop, Call};            
+        ?STATUS_COMPLETED -> {stop, Call};
         _Status ->
             lager:debug("dial failed: ~s", [_Status]),
             {ok, Call} % will progress to next TwiML element
@@ -310,7 +311,7 @@ say(Call, XmlText, Attrs) ->
 
 -spec play/3 :: (whapps_call:call(), list(), list()) ->
                         {'ok', whapps_call:call()} |
-                        {'error', _, whapps_call:call()}.                          
+                        {'error', _, whapps_call:call()}.
 play(Call, XmlText, Attrs) ->
     whapps_call_command:answer(Call),
     PlayMe = xml_text_to_binary(XmlText),
@@ -443,7 +444,6 @@ xml_elements_to_endpoints(Call, [#xmlElement{name='Device'
             lager:debug("failed to add device ~s: ~p", [DeviceId, _E]),
             xml_elements_to_endpoints(Call, EPs, Acc)
     end;
-                          
 xml_elements_to_endpoints(Call, [#xmlElement{name='User'
                                             ,content=UserIdTxt
                                             ,attributes=_UserAttrs

@@ -227,7 +227,7 @@ handle_info({ibrowse_async_response_end, ReqId}, #state{request_id=ReqId
                                                         ,call=Call
                                                        }=State) ->
     Self = self(),
-    
+
     {Pid, Ref} = spawn_monitor(?MODULE, handle_resp, [kzt_util:set_amqp_listener(Self, Call)
                                                       ,CT
                                                       ,RespBody
@@ -401,7 +401,7 @@ uri(URI, QueryString) ->
 -spec req_params(ne_binary(), whapps_call:call()) -> wh_proplist().
 req_params(Format, Call) ->
     FmtBin = <<"kzt_", Format/binary>>,
-    try 
+    try
         FmtAtom = wh_util:to_atom(FmtBin),
         lager:debug("get req params from ~s", [FmtBin]),
         FmtAtom:req_params(Call)

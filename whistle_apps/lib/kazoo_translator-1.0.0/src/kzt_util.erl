@@ -50,7 +50,7 @@ http_method(Method) ->
         post -> post;
         undefined -> post
     end.
-        
+
 -spec resolve_uri/2 :: (nonempty_string() | ne_binary(), nonempty_string() | api_binary()) -> ne_binary().
 resolve_uri(Raw, undefined) -> wh_util:to_binary(Raw);
 resolve_uri(_Raw, [$h,$t,$t,$p|_]=Abs) -> wh_util:to_binary(Abs);

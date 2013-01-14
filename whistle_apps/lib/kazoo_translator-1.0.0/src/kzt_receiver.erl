@@ -334,10 +334,9 @@ handle_offnet_timeout(#offnet_req{
 handle_offnet_timeout(#offnet_req{call=Call}) ->
     {ok, kzt_util:update_call_status(?STATUS_NOANSWER, Call)}.
 
--spec which_time/2 :: (api_integer(), api_integer()) -> non_neg_integer().
-which_time(TimeLimit, undefined) when is_integer(TimeLimit), TimeLimit > 0 -> TimeLimit;
-which_time(_, undefined) -> 0;
-which_time(_, Timeout) when Timeout > 0 -> Timeout;
+-spec which_time/2 :: (api_integer(), pos_integer()) -> non_neg_integer().
+which_time(undefined, Timelimit) when is_integer(Timelimit), Timelimit > 0 -> Timelimit;
+which_time(Timeout, _) when is_integer(Timeout), Timeout > 0 -> Timeout;
 which_time(_, _) -> 0.
 
 -spec update_offnet_timers/1 :: (offnet_req()) -> offnet_req().
