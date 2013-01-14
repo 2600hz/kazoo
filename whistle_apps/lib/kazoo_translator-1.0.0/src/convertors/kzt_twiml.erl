@@ -44,7 +44,7 @@ exec(Call, Resp) ->
 
 -spec exec_elements/2 :: (whapps_call:call(), [#xmlElement{},...]) ->
                                  {'error', whapps_call:call()} |
-                                 {'req', whapps_call:call()} |
+                                 {'request', whapps_call:call()} |
                                  {'stop', whapps_call:call()}.
 exec_elements(Call, []) -> {ok, Call};
 exec_elements(Call, [#xmlText{}=_El|Els]) ->
@@ -67,7 +67,7 @@ exec_elements(Call, [El|Els]) ->
 
 -spec exec_element/2 :: (whapps_call:call(), #xmlElement{}) ->
                                 {'ok', whapps_call:call()} |
-                                {'req', whapps_call:call()} |
+                                {'request', whapps_call:call()} |
                                 {'stop', whapps_call:call()} |
                                 {'error', whapps_call:call()}.
 exec_element(Call
