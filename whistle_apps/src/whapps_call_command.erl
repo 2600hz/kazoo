@@ -625,9 +625,9 @@ b_page(Endpoints, Timeout, CIDName, CIDNumber, SIPHeaders, Call) ->
 -spec b_bridge(wh_json:objects(), api_binary(), api_binary(), whapps_call:call()) -> whapps_api_bridge_return().
 -spec b_bridge(wh_json:objects(), api_binary(), api_binary(), api_binary(), whapps_call:call()) -> whapps_api_bridge_return().
 -spec b_bridge(wh_json:objects(), api_binary(), api_binary(), api_binary(), api_binary(), whapps_call:call())
-                    -> whapps_api_bridge_return().
+              -> whapps_api_bridge_return().
 -spec b_bridge(wh_json:objects(), api_binary(), api_binary(), api_binary(), api_binary(), api_object(), whapps_call:call())
-                    -> whapps_api_bridge_return().
+              -> whapps_api_bridge_return().
 
 bridge(Endpoints, Call) ->
     bridge(Endpoints, ?DEFAULT_TIMEOUT, Call).
@@ -1026,22 +1026,21 @@ tones_command(Tones, Call) ->
 -spec prompt_and_collect_digits(ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> 'ok'.
 -spec prompt_and_collect_digits(ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), api_binary(), whapps_call:call()) -> 'ok'.
 -spec prompt_and_collect_digits(ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), api_binary(), ne_binary()
-                                    ,whapps_call:call()) -> 'ok'.
+                                ,whapps_call:call()) -> 'ok'.
 -spec prompt_and_collect_digits(ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), api_binary(), ne_binary()
-                                    ,ne_binaries(), whapps_call:call()) -> 'ok'.
-
+                                ,ne_binaries(), whapps_call:call()) -> 'ok'.
 
 -spec b_prompt_and_collect_digit(ne_binary(), whapps_call:call()) -> b_play_and_collect_digits_return().
 -spec b_prompt_and_collect_digits(ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> b_play_and_collect_digits_return().
 -spec b_prompt_and_collect_digits(ne_binary(), ne_binary(), ne_binary(), ne_binary(), whapps_call:call()) -> b_play_and_collect_digits_return().
 -spec b_prompt_and_collect_digits(ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), whapps_call:call())
-                                     -> b_play_and_collect_digits_return().
+                                 -> b_play_and_collect_digits_return().
 -spec b_prompt_and_collect_digits(ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), api_binary(), whapps_call:call())
-                                     -> b_play_and_collect_digits_return().
+                                 -> b_play_and_collect_digits_return().
 -spec b_prompt_and_collect_digits(ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), api_binary(), ne_binary()
-                                      ,whapps_call:call()) -> b_play_and_collect_digits_return().
+                                  ,whapps_call:call()) -> b_play_and_collect_digits_return().
 -spec b_prompt_and_collect_digits(ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), api_binary(), ne_binary()
-                                      ,ne_binaries(), whapps_call:call()) -> b_play_and_collect_digits_return().
+                                  ,ne_binaries(), whapps_call:call()) -> b_play_and_collect_digits_return().
 
 prompt_and_collect_digit(Prompt, Call) ->
     prompt_and_collect_digits(<<"1">>, <<"1">>, Prompt, Call).

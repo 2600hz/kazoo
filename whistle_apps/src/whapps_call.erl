@@ -86,7 +86,7 @@
                        ,call_id_helper = fun ?MODULE:default_helper_function/2 :: whapps_helper_function()         %% A function used when requesting the call id, to ensure it is up-to-date
                        ,control_q :: api_binary()                   %% The control queue provided on route win
                        ,control_q_helper = fun ?MODULE:default_helper_function/2 :: whapps_helper_function()       %% A function used when requesting the call id, to ensure it is up-to-date
-                       ,controller_q = <<>> :: binary()                    %%
+                       ,controller_q :: api_binary()                %%
                        ,caller_id_name = <<"Unknown">> :: ne_binary()      %% The caller name
                        ,caller_id_number = <<"0000000000">> :: ne_binary() %% The caller number
                        ,callee_id_name = <<>> :: binary()                  %% The callee name
@@ -361,7 +361,6 @@ set_call_id(?NE_BINARY = CallId, #whapps_call{}=Call) ->
 
 -spec call_id(call()) -> api_binary().
 -spec call_id_direct(call()) -> api_binary().
-
 call_id(#whapps_call{call_id=CallId, call_id_helper=Fun}=Call) when is_function(Fun, 2) ->
     Fun(CallId, Call);
 call_id(#whapps_call{call_id=CallId}=Call) ->
@@ -382,7 +381,6 @@ set_control_queue(ControlQ, #whapps_call{}=Call) when is_binary(ControlQ) ->
 
 -spec control_queue(call()) -> api_binary().
 -spec control_queue_direct(call()) -> api_binary().
-
 control_queue(#whapps_call{control_q=ControlQ, control_q_helper=Fun}=Call) when is_function(Fun, 2) ->
     Fun(ControlQ, Call);
 control_queue(#whapps_call{control_q=ControlQ}=Call) ->
