@@ -41,7 +41,7 @@
 
 -define(SUPPORTED_METHODS, [get, post]).
 
--spec http_method/1 :: (api_binary() | list()) -> 'atom'.
+-spec http_method/1 :: (api_binary() | list()) -> 'get' | 'post'.
 http_method(L) when is_list(L) ->
     http_method(props:get_value(method, L));
 http_method(Method) ->
